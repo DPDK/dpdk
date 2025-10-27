@@ -2467,13 +2467,9 @@ txgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	if (txq == NULL)
 		return -ENOMEM;
 
-	/*
-	 * Allocate TX ring hardware descriptors. A memzone large enough to
-	 * handle the maximum ring size is allocated in order to allow for
-	 * resizing in later calls to the queue setup function.
-	 */
+	/* Allocate TX ring hardware descriptors. */
 	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
-			sizeof(struct txgbe_tx_desc) * TXGBE_RING_DESC_MAX,
+			sizeof(struct txgbe_tx_desc) * nb_desc,
 			TXGBE_ALIGN, socket_id);
 	if (tz == NULL) {
 		txgbe_tx_queue_release(txq);
@@ -2724,6 +2720,7 @@ txgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	uint16_t len;
 	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
 	uint64_t offloads;
+	uint32_t size;
 
 	PMD_INIT_FUNC_TRACE();
 	hw = TXGBE_DEV_HW(dev);
@@ -2774,13 +2771,10 @@ txgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	 */
 	rxq->pkt_type_mask = TXGBE_PTID_MASK;
 
-	/*
-	 * Allocate RX ring hardware descriptors. A memzone large enough to
-	 * handle the maximum ring size is allocated in order to allow for
-	 * resizing in later calls to the queue setup function.
-	 */
+	/* Allocate RX ring hardware descriptors. */
+	size = (nb_desc + RTE_PMD_TXGBE_RX_MAX_BURST) * sizeof(struct txgbe_rx_desc);
 	rz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx,
-				      RX_RING_SZ, TXGBE_ALIGN, socket_id);
+				      size, TXGBE_ALIGN, socket_id);
 	if (rz == NULL) {
 		txgbe_rx_queue_release(rxq);
 		return -ENOMEM;
@@ -2790,7 +2784,7 @@ txgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	/*
 	 * Zero init all the descriptors in the ring.
 	 */
-	memset(rz->addr, 0, RX_RING_SZ);
+	memset(rz->addr, 0, size);
 
 	/*
 	 * Modified to setup VFRDT for Virtual Function
