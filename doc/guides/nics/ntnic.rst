@@ -23,66 +23,68 @@ The physical ports are located behind PF0 as DPDK port 0 and 1.
 Supported NICs
 --------------
 
-- NT200A02 2x100G SmartNIC
+================== ================ ================================
+SmartNIC           total bandwidth  FPGA ID
+================== ================ ================================
+**NT200A02**       2x100 Gb/s       9563 (inline flow management)
+**NT400D11**       2x100 Gb/s       9569 (inline flow management)
+**NT400D13**       2x100 Gb/s       9574 (inline flow management)
+================== ================ ================================
 
-    - FPGA ID 9563 (Inline Flow Management)
+All information about Napatech SmartNICs can be found by links below:
 
-- NT400D11 2x100G SmartNIC
-
-    - FPGA ID 9569 (Inline Flow Management)
-
-- NT400D13 2x100G SmartNIC
-
-    - FPGA ID 9574 (Inline Flow Management)
-
-All information about NT200A02 and NT400D13 can be found by links below:
-
-- https://www.napatech.com/products/nt200a02-smartnic-inline/
-- https://www.napatech.com/products/nt400d11-smartnic-programmable/
-- https://www.napatech.com/products/nt400d13-smartnic-programmable/
-- https://www.napatech.com/support/resources/data-sheets/link-inline-software-for-napatech/
+- `NT200A02
+  <https://www.napatech.com/products/nt200a02-smartnic-inline/>`_
+- `NT400D11
+  <https://www.napatech.com/products/nt400d11-smartnic-programmable/>`_
+- `NT400D13
+  <https://www.napatech.com/products/nt400d13-smartnic-programmable/>`_
+- `Napatech FPGA-based SmartNICs
+  <https://www.napatech.com/support/resources/data-sheets/link-inline-software-for-napatech/>`_
 
 
 Features
 --------
 
-- FW version
-- Speed capabilities
-- Link status (Link update only)
-- Unicast MAC filter
-- Multicast MAC filter
-- Promiscuous mode (Enable only. The device always run promiscuous mode)
-- Flow API support.
-- Support for multiple rte_flow groups.
-- Multiple TX and RX queues.
-- Scattered and gather for TX and RX.
-- Jumbo frame support.
-- Traffic mirroring.
-- VLAN filtering.
-- Packet modification: NAT, TTL decrement, DSCP tagging
-- Tunnel types: GTP.
-- Encapsulation and decapsulation of GTP data.
-- RX VLAN stripping via raw decap.
-- TX VLAN insertion via raw encap.
-- CAM and TCAM based matching.
-- Exact match of 140 million flows and policies.
-- Tunnel HW offload: Packet type, inner/outer RSS, IP and UDP checksum verification.
-- RSS hash
-- RSS key update
-- RSS based on VLAN or 5-tuple.
-- RSS using different combinations of fields: L3 only, L4 only or both,
-  and source only, destination only or both.
-- Several RSS hash keys, one for each flow type.
-- Default RSS operation with no hash key specification.
-- Port and queue statistics.
-- RMON statistics in extended stats.
-- Link state information.
-- Flow statistics
-- Flow aging support
-- Flow metering, including meter policy API.
-- Flow update. Update of the action list for specific flow
-- Asynchronous flow support
-- MTU update
+.. list-table:: Supported Features
+   :widths: 100
+
+   * - FW version
+   * - Speed capabilities
+   * - Link status (link updates only)
+   * - Unicast MAC filtering
+   * - Multicast MAC filtering
+   * - Promiscuous mode (device always runs in promiscuous mode)
+   * - Flow API support
+   * - Support for multiple rte_flow groups
+   * - Multiple TX and RX queues
+   * - Scatter/gather for TX and RX
+   * - Jumbo frame support
+   * - Traffic mirroring
+   * - VLAN filtering
+   * - Packet modification: NAT, TTL decrement, DSCP tagging
+   * - Tunnel types: GTP
+   * - Encapsulation and decapsulation of GTP data
+   * - RX VLAN stripping via raw decap
+   * - TX VLAN insertion via raw encap
+   * - CAM- and TCAM-based matching
+   * - Exact match for up to 140 million flows and policies
+   * - Tunnel HW offload: packet type, inner/outer RSS, IP and UDP checksum verification
+   * - RSS hash
+   * - RSS key update
+   * - RSS based on VLAN or 5-tuple
+   * - RSS using combinations of fields (L3, L4, source/destination)
+   * - Several RSS hash keys (one per flow type)
+   * - Default RSS operation with no hash key specification
+   * - Port and queue statistics
+   * - RMON statistics in extended stats
+   * - Link state information
+   * - Flow statistics
+   * - Flow aging support
+   * - Flow metering, including meter policy API
+   * - Flow update (update action list for a specific flow)
+   * - Asynchronous flow support
+   * - MTU update
 
 Limitations
 ~~~~~~~~~~~
@@ -101,28 +103,26 @@ Configuration
 Command line arguments
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Following standard DPDK command line arguments are used by the PMD:
+Following standard DPDK command line arguments are used by the PMD.
 
-``-a``
-   Used to specifically define the NT adapter by PCI ID.
+NTNIC-specific arguments can be passed in the PCI device parameter list:
 
-``--iova-mode``
-   Must be set to ``pa`` for Physical Address mode.
-
-NTNIC specific arguments can be passed to the PMD in the PCI device parameter list::
+.. code-block:: console
 
    <application> ... -a 0000:03:00.0[{,<NTNIC specific argument>}]
 
-The NTNIC specific argument format is::
+The NTNIC-specific argument format is
 
-   <object>.<attribute>=[<object-ids>:]<value>
+``<object>.<attribute>=[<object-ids>:]<value>``
 
-Multiple arguments for the same device are separated by ‘,’ comma.
-<object-ids> can be a single value or a range.
+Multiple arguments for the same device are separated by commas.
+The ``<object-ids>`` field can be a single value or a range.
 
 ``rxqs`` parameter [int]
 
-   Specify number of Rx queues to use::
+   Number of Rx queues to use. Example:
+
+   .. code-block:: console
 
       -a <domain>:<bus>:00.0,rxqs=4,txqs=4
 
@@ -130,7 +130,9 @@ Multiple arguments for the same device are separated by ‘,’ comma.
 
 ``txqs`` parameter [int]
 
-   Specify number of Tx queues to use::
+   Number of Tx queues to use. Example:
+
+   .. code-block:: console
 
       -a <domain>:<bus>:00.0,rxqs=4,txqs=4
 
@@ -140,7 +142,9 @@ Multiple arguments for the same device are separated by ‘,’ comma.
 
    Enable exception path for unmatched packets to go through queue 0.
 
-   To enable exception_path::
+   To enable exception_path:
+
+   .. code-block:: console
 
       -a <domain>:<bus>:00.0,exception_path=1
 
@@ -148,32 +152,41 @@ Multiple arguments for the same device are separated by ‘,’ comma.
 
 
 Logging and Debugging
----------------------
+~~~~~~~~~~~~~~~~~~~~~
 
 NTNIC supports several groups of logging
 that can be enabled with ``--log-level`` parameter:
 
 NTNIC
-   Logging info from the main PMD code. i.e. code that is related to DPDK::
+   Logging info from the main PMD code. i.e. code that is related to DPDK:
+
+   .. code-block:: console
 
       --log-level=pmd.net.ntnic.ntnic,8
 
 NTHW
-   Logging info from NTHW. i.e. code that is related to the FPGA and the adapter::
+   Logging info from NTHW. i.e. code that is related to the FPGA and the adapter:
+
+   .. code-block:: console
 
       --log-level=pmd.net.ntnic.nthw,8
 
 FILTER
-   Logging info from filter. i.e. code that is related to the binary filter::
+   Logging info from filter. i.e. code that is related to the binary filter:
 
-        --log-level=pmd.net.ntnic.filter,8
+   .. code-block:: console
 
-To enable logging on all levels use wildcard in the following way::
+      --log-level=pmd.net.ntnic.filter,8
+
+To enable logging on all levels use wildcard in the following way:
+
+.. code-block:: console
 
    --log-level=pmd.net.ntnic.*,8
 
+
 Flow Scanner
-------------
+~~~~~~~~~~~~
 
 Flow Scanner is DPDK mechanism that constantly and periodically scans
 the flow tables to check for aged-out flows.
@@ -204,7 +217,7 @@ There are list of characteristics that age timeout action has:
 
 
 Service API
------------
+~~~~~~~~~~~
 
 The NTNIC PMD provides a service API that allows applications to configure services:
 
@@ -214,29 +227,29 @@ The NTNIC PMD provides a service API that allows applications to configure servi
 
 The services are responsible for handling the vital functionality of the NTNIC PMD:
 
-FLM Update
-   is responsible for creating and destroying flows;
-Statistics
-   is responsible for collecting statistics;
-Port event
-   is responsible for handling port events: aging, port load, and flow load;
-Adapter monitor
-   is responsible for link control;
+======================== =================================================
+Service name             Service purpose
+======================== =================================================
+**FLM Update**           create and destroy flows
+**Statistics**           collect statistics
+**Port event**           handle port events (aging, port load, flow load)
+**Adapter monitor**      monitor link state
+======================== =================================================
 
 .. note::
 
    Use next EAL options to configure set service cores:
 
-   * -s SERVICE COREMASK Hexadecimal bitmask of cores to be used as service cores;
-   * -S SERVICE CORELIST List of cores to run services on;
+   * **-S SERVICE CORELIST** List of cores to run services on;
+   * **-s SERVICE COREMASK** Hexadecimal bitmask of cores to be used as service cores;
 
-   At least 5 lcores must be reserved for the ntnic services by EAL options.
+   At least **5 (five)** lcores must be reserved for the ntnic services by EAL options.
 
-For example,
+   For example,
 
-.. code-block:: console
+   .. code-block:: console
 
-   dpdk-testpmd -S 8,9,10,11,12
+      dpdk-testpmd -S 8,9,10,11,12
 
 The PMD registers each service during initialization by function ``nthw_service_add``
 and unregistered by the PMD during deinitialization by the function ``nthw_service_del``.
@@ -262,7 +275,7 @@ For example to assign lcores 8,9,10,11,12 to the services, the application can u
    rte_pmd_ntnic_service_set_lcore(RTE_NTNIC_SERVICE_PORT_1_EVENT,11);
    rte_pmd_ntnic_service_set_lcore(RTE_NTNIC_SERVICE_FLM_UPDATE, 12);
 
-The API will automatically lcore to service core list and map the service to the lcore.
+The API will automatically map a service to an lcore.
 
 .. note::
 
@@ -284,9 +297,9 @@ For example, to enable statistics for flm_update service, the application can us
    int flm_update_id = rte_pmd_ntnic_service_get_id(RTE_NTNIC_SERVICE_FLM_UPDATE);
    rte_service_set_stats_enable(flm_update_id, 1);
 
-All other manipulations with the service can be done with the service ID and rte_service API.
+All other manipulations with the service can be done with the service ID and *rte_service* API.
 
-To use the service API, an application must have included the header file:
+To use the NTNIC service API, an application must have included the header file:
 
 .. code-block:: c
 
