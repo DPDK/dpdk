@@ -165,6 +165,15 @@ configure_fdir_flags(const struct rte_eth_fdir_conf *conf,
 	return 0;
 }
 
+static inline uint16_t
+txgbe_reverse_fdir_bitmasks(uint16_t mask)
+{
+	mask = ((mask & 0x5555) << 1) | ((mask & 0xAAAA) >> 1);
+	mask = ((mask & 0x3333) << 2) | ((mask & 0xCCCC) >> 2);
+	mask = ((mask & 0x0F0F) << 4) | ((mask & 0xF0F0) >> 4);
+	return ((mask & 0x00FF) << 8) | ((mask & 0xFF00) >> 8);
+}
+
 int
 txgbe_fdir_set_input_mask(struct rte_eth_dev *dev)
 {
@@ -206,15 +215,15 @@ txgbe_fdir_set_input_mask(struct rte_eth_dev *dev)
 	wr32(hw, TXGBE_FDIRUDPMSK, ~fdirtcpm);
 	wr32(hw, TXGBE_FDIRSCTPMSK, ~fdirtcpm);
 
-	/* Store source and destination IPv4 masks (big-endian) */
-	wr32(hw, TXGBE_FDIRSIP4MSK, ~info->mask.src_ipv4_mask);
-	wr32(hw, TXGBE_FDIRDIP4MSK, ~info->mask.dst_ipv4_mask);
+	/* Store source and destination IPv4 masks (little-endian) */
+	wr32(hw, TXGBE_FDIRSIP4MSK, rte_be_to_cpu_32(~info->mask.src_ipv4_mask));
+	wr32(hw, TXGBE_FDIRDIP4MSK, rte_be_to_cpu_32(~info->mask.dst_ipv4_mask));
 
 	/*
 	 * Store source and destination IPv6 masks (bit reversed)
 	 */
-	fdiripv6m = TXGBE_FDIRIP6MSK_DST(info->mask.dst_ipv6_mask) |
-		    TXGBE_FDIRIP6MSK_SRC(info->mask.src_ipv6_mask);
+	fdiripv6m = txgbe_reverse_fdir_bitmasks(info->mask.dst_ipv6_mask) << 16;
+	fdiripv6m |= txgbe_reverse_fdir_bitmasks(info->mask.src_ipv6_mask);
 	wr32(hw, TXGBE_FDIRIP6MSK, ~fdiripv6m);
 
 	return 0;
@@ -636,8 +645,14 @@ fdir_write_perfect_filter(struct txgbe_hw *hw,
 	fdircmd |= TXGBE_FDIRPICMD_QP(queue);
 	fdircmd |= TXGBE_FDIRPICMD_POOL(input->vm_pool);
 
-	if (input->flow_type & TXGBE_ATR_L3TYPE_IPV6)
+	if (input->flow_type & TXGBE_ATR_L3TYPE_IPV6) {
+		/* use SIP4 to store LS Dword of the Source iPv6 address */
+		wr32(hw, TXGBE_FDIRPISIP4, be_to_le32(input->src_ip[3]));
+		wr32(hw, TXGBE_FDIRPISIP6(0), be_to_le32(input->src_ip[2]));
+		wr32(hw, TXGBE_FDIRPISIP6(1), be_to_le32(input->src_ip[1]));
+		wr32(hw, TXGBE_FDIRPISIP6(2), be_to_le32(input->src_ip[0]));
 		fdircmd |= TXGBE_FDIRPICMD_IP6;
+	}
 	wr32(hw, TXGBE_FDIRPICMD, fdircmd);
 
 	PMD_DRV_LOG(DEBUG, "Rx Queue=%x hash=%x", queue, fdirhash);
@@ -783,6 +798,26 @@ txgbe_remove_fdir_filter(struct txgbe_hw_fdir_info *fdir_info,
 	return 0;
 }
 
+static void
+txgbe_fdir_mask_input(struct txgbe_hw_fdir_mask *mask,
+		      struct txgbe_atr_input *input)
+{
+	int i;
+
+	if (input->flow_type & TXGBE_ATR_L3TYPE_IPV6) {
+		for (i = 0; i < 16; i++) {
+			if (!(mask->src_ipv6_mask & (1 << i)))
+				input->src_ip[i / 4] &= ~(0xFF << ((i % 4) * 8));
+		}
+	} else {
+		input->src_ip[0] &= mask->src_ipv4_mask;
+		input->dst_ip[0] &= mask->dst_ipv4_mask;
+	}
+
+	input->src_port &= mask->src_port_mask;
+	input->dst_port &= mask->dst_port_mask;
+}
+
 int
 txgbe_fdir_filter_program(struct rte_eth_dev *dev,
 			  struct txgbe_fdir_rule *rule,
@@ -804,6 +839,8 @@ txgbe_fdir_filter_program(struct rte_eth_dev *dev,
 
 	if (fdir_mode >= RTE_FDIR_MODE_PERFECT)
 		is_perfect = TRUE;
+
+	txgbe_fdir_mask_input(&info->mask, &rule->input);
 
 	if (is_perfect) {
 		fdirhash = atr_compute_perfect_hash(&rule->input,
