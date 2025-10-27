@@ -2839,7 +2839,6 @@ txgbe_parse_fdir_filter(struct rte_eth_dev *dev,
 			struct rte_flow_error *error)
 {
 	int ret;
-	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct rte_eth_fdir_conf *fdir_conf = TXGBE_DEV_FDIR_CONF(dev);
 
 	ret = txgbe_parse_fdir_filter_normal(dev, attr, pattern,
@@ -2853,12 +2852,6 @@ txgbe_parse_fdir_filter(struct rte_eth_dev *dev,
 		return ret;
 
 step_next:
-
-	if (hw->mac.type == txgbe_mac_raptor &&
-		rule->fdirflags == TXGBE_FDIRPICMD_DROP &&
-		(rule->input.src_port != 0 || rule->input.dst_port != 0))
-		return -ENOTSUP;
-
 	if (fdir_conf->mode == RTE_FDIR_MODE_NONE) {
 		fdir_conf->mode = rule->mode;
 		ret = txgbe_fdir_configure(dev);
