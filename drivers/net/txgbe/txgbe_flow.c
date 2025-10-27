@@ -1358,7 +1358,6 @@ txgbe_parse_fdir_act_attr(const struct rte_flow_attr *attr,
 {
 	const struct rte_flow_action *act;
 	const struct rte_flow_action_queue *act_q;
-	const struct rte_flow_action_mark *mark;
 
 	/* parse attr */
 	/* must be input direction */
@@ -1423,10 +1422,9 @@ txgbe_parse_fdir_act_attr(const struct rte_flow_attr *attr,
 		rule->fdirflags = TXGBE_FDIRPICMD_DROP;
 	}
 
-	/* check if the next not void item is MARK */
+	/* nothing else supported */
 	act = next_no_void_action(actions, act);
-	if (act->type != RTE_FLOW_ACTION_TYPE_MARK &&
-		act->type != RTE_FLOW_ACTION_TYPE_END) {
+	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
 		memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1435,21 +1433,6 @@ txgbe_parse_fdir_act_attr(const struct rte_flow_attr *attr,
 	}
 
 	rule->soft_id = 0;
-
-	if (act->type == RTE_FLOW_ACTION_TYPE_MARK) {
-		mark = (const struct rte_flow_action_mark *)act->conf;
-		rule->soft_id = mark->id;
-		act = next_no_void_action(actions, act);
-	}
-
-	/* check if the next not void item is END */
-	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
-		memset(rule, 0, sizeof(struct txgbe_fdir_rule));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ACTION,
-			act, "Not supported action.");
-		return -rte_errno;
-	}
 
 	return 0;
 }
@@ -1562,8 +1545,6 @@ txgbe_fdir_parse_flow_type(struct txgbe_atr_input *input, u8 ptid, bool tun)
  * The next not void item must be END.
  * ACTION:
  * The first not void action should be QUEUE or DROP.
- * The second not void optional action should be MARK,
- * mark_id is a uint32_t number.
  * The next not void action should be END.
  * UDP/TCP/SCTP pattern example:
  * ITEM		Spec			Mask
