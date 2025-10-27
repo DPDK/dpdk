@@ -90,8 +90,6 @@ static const struct reg_info *txgbe_regs_others[] = {
 				txgbe_regs_diagnostic,
 				NULL};
 
-static int txgbe_fdir_filter_init(struct rte_eth_dev *eth_dev);
-static int txgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev);
 static int txgbe_l2_tn_filter_init(struct rte_eth_dev *eth_dev);
 static int txgbe_l2_tn_filter_uninit(struct rte_eth_dev *eth_dev);
 static int  txgbe_dev_set_link_up(struct rte_eth_dev *dev);
@@ -898,7 +896,7 @@ int txgbe_ntuple_filter_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static int txgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev)
+int txgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct txgbe_hw_fdir_info *fdir_info = TXGBE_DEV_FDIR(eth_dev);
 	struct txgbe_fdir_filter *fdir_filter;
@@ -934,7 +932,7 @@ static int txgbe_l2_tn_filter_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static int txgbe_fdir_filter_init(struct rte_eth_dev *eth_dev)
+int txgbe_fdir_filter_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_eth_fdir_conf *fdir_conf = TXGBE_DEV_FDIR_CONF(eth_dev);
 	struct txgbe_hw_fdir_info *fdir_info = TXGBE_DEV_FDIR(eth_dev);
@@ -4478,6 +4476,7 @@ txgbe_add_5tuple_filter(struct rte_eth_dev *dev,
 {
 	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
 	int i, idx, shift;
+	int err;
 
 	/*
 	 * look for an unused 5tuple filter index,
@@ -4501,12 +4500,19 @@ txgbe_add_5tuple_filter(struct rte_eth_dev *dev,
 		return -ENOSYS;
 	}
 
-	if (txgbe_is_pf(TXGBE_DEV_HW(dev)))
+	if (txgbe_is_pf(TXGBE_DEV_HW(dev))) {
 		txgbe_inject_5tuple_filter(dev, filter);
-	else
-		txgbevf_inject_5tuple_filter(dev, filter);
+		return 0;
+	}
 
-	return 0;
+	err = txgbevf_inject_5tuple_filter(dev, filter);
+	if (err) {
+		filter_info->fivetuple_mask[i / (sizeof(uint32_t) * NBBY)] &=
+				~(1 << (i % (sizeof(uint32_t) * NBBY)));
+		TAILQ_REMOVE(&filter_info->fivetuple_list, filter, entries);
+	}
+
+	return err;
 }
 
 /*

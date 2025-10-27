@@ -60,5 +60,6 @@ int txgbevf_get_queues(struct txgbe_hw *hw, unsigned int *num_tcs,
 		       unsigned int *default_tc);
 int txgbevf_add_5tuple_filter(struct txgbe_hw *hw, u32 *msg, u16 index);
 int txgbevf_del_5tuple_filter(struct txgbe_hw *hw, u16 index);
+int txgbevf_set_fdir(struct txgbe_hw *hw, u32 *msg, bool add);
 
 #endif /* __TXGBE_VF_H__ */
