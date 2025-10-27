@@ -1983,13 +1983,9 @@ ngbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	if (txq == NULL)
 		return -ENOMEM;
 
-	/*
-	 * Allocate Tx ring hardware descriptors. A memzone large enough to
-	 * handle the maximum ring size is allocated in order to allow for
-	 * resizing in later calls to the queue setup function.
-	 */
+	/* Allocate Tx ring hardware descriptors. */
 	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
-			sizeof(struct ngbe_tx_desc) * NGBE_RING_DESC_MAX,
+			sizeof(struct ngbe_tx_desc) * nb_desc,
 			NGBE_ALIGN, socket_id);
 	if (tz == NULL) {
 		ngbe_tx_queue_release(txq);
@@ -2236,6 +2232,7 @@ ngbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	uint16_t len;
 	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
 	uint64_t offloads;
+	uint32_t size;
 
 	PMD_INIT_FUNC_TRACE();
 	hw = ngbe_dev_hw(dev);
@@ -2269,13 +2266,10 @@ ngbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
 	rxq->offloads = offloads;
 
-	/*
-	 * Allocate Rx ring hardware descriptors. A memzone large enough to
-	 * handle the maximum ring size is allocated in order to allow for
-	 * resizing in later calls to the queue setup function.
-	 */
+	/* Allocate Rx ring hardware descriptors. */
+	size = (nb_desc + RTE_PMD_NGBE_RX_MAX_BURST) * sizeof(struct ngbe_rx_desc);
 	rz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx,
-				      RX_RING_SZ, NGBE_ALIGN, socket_id);
+				      size, NGBE_ALIGN, socket_id);
 	if (rz == NULL) {
 		ngbe_rx_queue_release(rxq);
 		return -ENOMEM;
@@ -2285,7 +2279,7 @@ ngbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	/*
 	 * Zero init all the descriptors in the ring.
 	 */
-	memset(rz->addr, 0, RX_RING_SZ);
+	memset(rz->addr, 0, size);
 
 	rxq->rdt_reg_addr = NGBE_REG_ADDR(hw, NGBE_RXWP(rxq->reg_idx));
 	rxq->rdh_reg_addr = NGBE_REG_ADDR(hw, NGBE_RXRP(rxq->reg_idx));
