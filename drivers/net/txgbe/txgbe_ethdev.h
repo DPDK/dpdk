@@ -243,6 +243,7 @@ struct txgbe_filter_info {
 	/* Bit mask for every used 5tuple filter */
 	uint32_t fivetuple_mask[TXGBE_5TUPLE_ARRAY_SIZE];
 	struct txgbe_5tuple_filter_list fivetuple_list;
+	bool ntuple_is_full;
 	/* store the SYN filter info */
 	uint32_t syn_info;
 	/* store the rss filter info */
