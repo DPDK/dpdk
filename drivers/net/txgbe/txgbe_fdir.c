@@ -261,10 +261,7 @@ txgbe_fdir_get_flex_base(struct txgbe_fdir_rule *rule)
 	if (rule->input.flow_type & TXGBE_ATR_L4TYPE_MASK)
 		return TXGBE_FDIRFLEXCFG_BASE_PAY;
 
-	if (rule->input.flow_type & TXGBE_ATR_L3TYPE_MASK)
-		return TXGBE_FDIRFLEXCFG_BASE_L3;
-
-	return TXGBE_FDIRFLEXCFG_BASE_L2;
+	return TXGBE_FDIRFLEXCFG_BASE_L3;
 }
 
 int
