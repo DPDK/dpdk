@@ -145,6 +145,7 @@
  */
 
 #include <stdint.h>
+#include <errno.h>
 
 #include <rte_bitops.h>
 #include <rte_common.h>
