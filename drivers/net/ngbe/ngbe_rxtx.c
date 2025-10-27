@@ -972,22 +972,28 @@ rx_desc_status_to_pkt_flags(uint32_t rx_status, uint64_t vlan_flags)
 }
 
 static inline uint64_t
-rx_desc_error_to_pkt_flags(uint32_t rx_status)
+rx_desc_error_to_pkt_flags(uint32_t rx_status, struct ngbe_rx_queue *rxq)
 {
 	uint64_t pkt_flags = 0;
 
 	/* checksum offload can't be disabled */
-	if (rx_status & NGBE_RXD_STAT_IPCS)
+	if (rx_status & NGBE_RXD_STAT_IPCS) {
 		pkt_flags |= (rx_status & NGBE_RXD_ERR_IPCS
 				? RTE_MBUF_F_RX_IP_CKSUM_BAD : RTE_MBUF_F_RX_IP_CKSUM_GOOD);
+		rxq->csum_err += !!(rx_status & NGBE_RXD_ERR_IPCS);
+	}
 
-	if (rx_status & NGBE_RXD_STAT_L4CS)
+	if (rx_status & NGBE_RXD_STAT_L4CS) {
 		pkt_flags |= (rx_status & NGBE_RXD_ERR_L4CS
 				? RTE_MBUF_F_RX_L4_CKSUM_BAD : RTE_MBUF_F_RX_L4_CKSUM_GOOD);
+		rxq->csum_err += !!(rx_status & NGBE_RXD_ERR_L4CS);
+	}
 
 	if (rx_status & NGBE_RXD_STAT_EIPCS &&
-	    rx_status & NGBE_RXD_ERR_EIPCS)
+	    rx_status & NGBE_RXD_ERR_EIPCS) {
 		pkt_flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
+		rxq->csum_err += !!(rx_status & NGBE_RXD_ERR_EIPCS);
+	}
 
 	return pkt_flags;
 }
@@ -1060,7 +1066,7 @@ ngbe_rx_scan_hw_ring(struct ngbe_rx_queue *rxq)
 			/* convert descriptor fields to rte mbuf flags */
 			pkt_flags = rx_desc_status_to_pkt_flags(s[j],
 					rxq->vlan_flags);
-			pkt_flags |= rx_desc_error_to_pkt_flags(s[j]);
+			pkt_flags |= rx_desc_error_to_pkt_flags(s[j], rxq);
 			pkt_flags |=
 				ngbe_rxd_pkt_info_to_pkt_flags(pkt_info[j]);
 			mb->ol_flags = pkt_flags;
@@ -1393,7 +1399,7 @@ ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		pkt_flags = rx_desc_status_to_pkt_flags(staterr,
 					rxq->vlan_flags);
-		pkt_flags |= rx_desc_error_to_pkt_flags(staterr);
+		pkt_flags |= rx_desc_error_to_pkt_flags(staterr, rxq);
 		pkt_flags |= ngbe_rxd_pkt_info_to_pkt_flags(pkt_info);
 		rxm->ol_flags = pkt_flags;
 		rxm->packet_type = ngbe_rxd_pkt_info_to_pkt_type(pkt_info,
@@ -1464,7 +1470,7 @@ ngbe_fill_cluster_head_buf(struct rte_mbuf *head, struct ngbe_rx_desc *desc,
 	head->vlan_tci = rte_le_to_cpu_16(desc->qw1.hi.tag);
 	pkt_info = rte_le_to_cpu_32(desc->qw0.dw0);
 	pkt_flags = rx_desc_status_to_pkt_flags(staterr, rxq->vlan_flags);
-	pkt_flags |= rx_desc_error_to_pkt_flags(staterr);
+	pkt_flags |= rx_desc_error_to_pkt_flags(staterr, rxq);
 	pkt_flags |= ngbe_rxd_pkt_info_to_pkt_flags(pkt_info);
 	head->ol_flags = pkt_flags;
 	head->packet_type = ngbe_rxd_pkt_info_to_pkt_type(pkt_info,
@@ -2266,6 +2272,7 @@ ngbe_reset_rx_queue(struct ngbe_adapter *adapter, struct ngbe_rx_queue *rxq)
 	rxq->rx_free_trigger = (uint16_t)(rxq->rx_free_thresh - 1);
 	rxq->rx_tail = 0;
 	rxq->nb_rx_hold = 0;
+	rxq->csum_err = 0;
 	rte_pktmbuf_free(rxq->pkt_first_seg);
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
