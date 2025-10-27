@@ -171,7 +171,7 @@ txgbevf_inject_5tuple_filter(struct rte_eth_dev *dev,
 	uint32_t msg[TXGBEVF_5T_MAX];
 	int err;
 
-	memset(msg, 0, sizeof(*msg));
+	memset(msg, 0, sizeof(msg));
 
 	/* 0 means compare */
 	mask &= ~TXGBE_5TFCTL0_MPOOL;
