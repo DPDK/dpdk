@@ -895,11 +895,13 @@ static int txgbe_l2_tn_filter_uninit(struct rte_eth_dev *eth_dev)
 
 static int txgbe_fdir_filter_init(struct rte_eth_dev *eth_dev)
 {
+	struct rte_eth_fdir_conf *fdir_conf = TXGBE_DEV_FDIR_CONF(eth_dev);
 	struct txgbe_hw_fdir_info *fdir_info = TXGBE_DEV_FDIR(eth_dev);
 	char fdir_hash_name[RTE_HASH_NAMESIZE];
+	u16 max_fdir_num = (1024 << (fdir_conf->pballoc + 1)) - 2;
 	struct rte_hash_parameters fdir_hash_params = {
 		.name = fdir_hash_name,
-		.entries = TXGBE_MAX_FDIR_FILTER_NUM,
+		.entries = max_fdir_num,
 		.key_len = sizeof(struct txgbe_atr_input),
 		.hash_func = rte_hash_crc,
 		.hash_func_init_val = 0,
@@ -916,7 +918,7 @@ static int txgbe_fdir_filter_init(struct rte_eth_dev *eth_dev)
 	}
 	fdir_info->hash_map = rte_zmalloc("txgbe",
 					  sizeof(struct txgbe_fdir_filter *) *
-					  TXGBE_MAX_FDIR_FILTER_NUM,
+					  max_fdir_num,
 					  0);
 	if (!fdir_info->hash_map) {
 		PMD_INIT_LOG(ERR,
