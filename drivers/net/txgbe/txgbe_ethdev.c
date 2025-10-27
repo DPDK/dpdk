@@ -893,6 +893,7 @@ int txgbe_ntuple_filter_uninit(struct rte_eth_dev *eth_dev)
 	}
 	memset(filter_info->fivetuple_mask, 0,
 	       sizeof(uint32_t) * TXGBE_5TUPLE_ARRAY_SIZE);
+	filter_info->ntuple_is_full = false;
 
 	return 0;
 }
@@ -4495,7 +4496,8 @@ txgbe_add_5tuple_filter(struct rte_eth_dev *dev,
 		}
 	}
 	if (i >= TXGBE_MAX_FTQF_FILTERS) {
-		PMD_DRV_LOG(ERR, "5tuple filters are full.");
+		PMD_DRV_LOG(INFO, "5tuple filters are full, switch to FDIR");
+		filter_info->ntuple_is_full = true;
 		return -ENOSYS;
 	}
 
@@ -4526,6 +4528,7 @@ txgbe_remove_5tuple_filter(struct rte_eth_dev *dev,
 				~(1 << (index % (sizeof(uint32_t) * NBBY)));
 	TAILQ_REMOVE(&filter_info->fivetuple_list, filter, entries);
 	rte_free(filter);
+	filter_info->ntuple_is_full = false;
 
 	if (!txgbe_is_pf(TXGBE_DEV_HW(dev))) {
 		txgbevf_remove_5tuple_filter(dev, index);
