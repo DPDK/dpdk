@@ -132,6 +132,7 @@ txgbevf_negotiate_api(struct txgbe_hw *hw)
 
 	/* start with highest supported, proceed down */
 	static const int sup_ver[] = {
+		txgbe_mbox_api_23,
 		txgbe_mbox_api_21,
 		txgbe_mbox_api_13,
 		txgbe_mbox_api_12,
@@ -165,6 +166,7 @@ int
 txgbevf_inject_5tuple_filter(struct rte_eth_dev *dev,
 			     struct txgbe_5tuple_filter *filter)
 {
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	uint32_t mask = TXGBE_5TFCTL0_MASK;
 	uint16_t index = filter->index;
@@ -197,9 +199,16 @@ txgbevf_inject_5tuple_filter(struct rte_eth_dev *dev,
 	msg[TXGBEVF_5T_SA] = be_to_le32(filter->filter_info.src_ip);
 
 	err = txgbevf_add_5tuple_filter(hw, msg, index);
-	if (err)
-		PMD_DRV_LOG(ERR, "VF request PF to add 5tuple filters failed.");
+	if (!err)
+		return 0;
 
+	if (msg[TXGBEVF_5T_REQ] & TXGBE_VT_MSGTYPE_SPEC) {
+		PMD_DRV_LOG(INFO, "5tuple filters are full, switch to FDIR");
+		filter_info->ntuple_is_full = true;
+		return -ENOSYS;
+	}
+
+	PMD_DRV_LOG(ERR, "VF request PF to add 5tuple filters failed.");
 	return err;
 }
 
@@ -369,6 +378,9 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	/* initialize filter info */
 	memset(filter_info, 0,
 	       sizeof(struct txgbe_filter_info));
+
+	/* initialize flow director filter list & hash */
+	txgbe_fdir_filter_init(eth_dev);
 
 	/* initialize 5tuple filter list */
 	TAILQ_INIT(&filter_info->fivetuple_list);
@@ -862,6 +874,9 @@ txgbevf_dev_close(struct rte_eth_dev *dev)
 	rte_intr_disable(intr_handle);
 	rte_intr_callback_unregister(intr_handle,
 				     txgbevf_dev_interrupt_handler, dev);
+
+	/* remove all the fdir filters & hash */
+	txgbe_fdir_filter_uninit(dev);
 
 	/* Remove all ntuple filters of the device */
 	txgbe_ntuple_filter_uninit(dev);

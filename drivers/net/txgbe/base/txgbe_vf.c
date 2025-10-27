@@ -362,6 +362,7 @@ s32 txgbevf_update_xcast_mode(struct txgbe_hw *hw, int xcast_mode)
 		/* Fall through */
 	case txgbe_mbox_api_13:
 	case txgbe_mbox_api_21:
+	case txgbe_mbox_api_23:
 		break;
 	default:
 		return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
@@ -638,6 +639,7 @@ int txgbevf_get_queues(struct txgbe_hw *hw, unsigned int *num_tcs,
 	case txgbe_mbox_api_12:
 	case txgbe_mbox_api_13:
 	case txgbe_mbox_api_21:
+	case txgbe_mbox_api_23:
 		break;
 	default:
 		return 0;
@@ -688,6 +690,8 @@ int txgbevf_get_queues(struct txgbe_hw *hw, unsigned int *num_tcs,
 int
 txgbevf_add_5tuple_filter(struct txgbe_hw *hw, u32 *msg, u16 index)
 {
+	int err;
+
 	if (hw->api_version < txgbe_mbox_api_21)
 		return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
 
@@ -695,13 +699,22 @@ txgbevf_add_5tuple_filter(struct txgbe_hw *hw, u32 *msg, u16 index)
 	msg[TXGBEVF_5T_CMD] = index;
 	msg[TXGBEVF_5T_CMD] |= 1 << TXGBEVF_5T_ADD_SHIFT;
 
-	return txgbevf_write_msg_read_ack(hw, msg, msg, TXGBEVF_5T_MAX);
+	err = txgbevf_write_msg_read_ack(hw, msg, msg, TXGBEVF_5T_MAX);
+	if (err)
+		return err;
+
+	msg[0] &= ~TXGBE_VT_MSGTYPE_CTS;
+	if (msg[0] != (TXGBE_VF_SET_5TUPLE | TXGBE_VT_MSGTYPE_ACK))
+		return TXGBE_ERR_NOSUPP;
+
+	return 0;
 }
 
 int
 txgbevf_del_5tuple_filter(struct txgbe_hw *hw, u16 index)
 {
 	u32 msg[2] = {0, 0};
+	int err;
 
 	if (hw->api_version < txgbe_mbox_api_21)
 		return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
@@ -709,5 +722,40 @@ txgbevf_del_5tuple_filter(struct txgbe_hw *hw, u16 index)
 	msg[TXGBEVF_5T_REQ] = TXGBE_VF_SET_5TUPLE;
 	msg[TXGBEVF_5T_CMD] = index;
 
-	return txgbevf_write_msg_read_ack(hw, msg, msg, 2);
+	err = txgbevf_write_msg_read_ack(hw, msg, msg, 2);
+	if (err)
+		return err;
+
+	msg[0] &= ~TXGBE_VT_MSGTYPE_CTS;
+	if (msg[0] != (TXGBE_VF_SET_5TUPLE | TXGBE_VT_MSGTYPE_ACK))
+		return TXGBE_ERR_NOSUPP;
+
+	return 0;
+}
+
+int
+txgbevf_set_fdir(struct txgbe_hw *hw, u32 *msg, bool add)
+{
+	u16 msg_len = TXGBEVF_FDIR_MAX;
+	int err = 0;
+
+	if (hw->api_version < txgbe_mbox_api_23)
+		return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
+
+	msg[TXGBEVF_FDIR_REQ] = TXGBE_VF_SET_FDIR;
+
+	if (add)
+		msg[TXGBEVF_FDIR_CMD] |= 1 << TXGBEVF_FDIR_ADD_SHIFT;
+	else
+		msg_len = 2;
+
+	err = txgbevf_write_msg_read_ack(hw, msg, msg, msg_len);
+	if (err)
+		return err;
+
+	msg[0] &= ~TXGBE_VT_MSGTYPE_CTS;
+	if (msg[0] == (TXGBE_VF_SET_FDIR | TXGBE_VT_MSGTYPE_NACK))
+		return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
+
+	return 0;
 }

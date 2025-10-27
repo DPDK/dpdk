@@ -775,7 +775,7 @@ txgbe_insert_fdir_filter(struct txgbe_hw_fdir_info *fdir_info,
 
 	TAILQ_INSERT_TAIL(&fdir_info->fdir_list, fdir_filter, entries);
 
-	return 0;
+	return ret;
 }
 
 static inline int
@@ -795,7 +795,7 @@ txgbe_remove_fdir_filter(struct txgbe_hw_fdir_info *fdir_info,
 	TAILQ_REMOVE(&fdir_info->fdir_list, fdir_filter, entries);
 	rte_free(fdir_filter);
 
-	return 0;
+	return ret;
 }
 
 static void
@@ -929,12 +929,158 @@ txgbe_fdir_filter_program(struct rte_eth_dev *dev,
 	return err;
 }
 
+static void
+txgbevf_flush_fdir_filter(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t msg[2] = {0, 0};
+
+	/* flush bit */
+	msg[TXGBEVF_FDIR_CMD] = 1 << 16;
+
+	txgbevf_set_fdir(hw, msg, FALSE);
+}
+
+static int
+txgbevf_del_fdir_filter(struct rte_eth_dev *dev,
+			struct txgbe_fdir_rule *rule,
+			int id)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_hw_fdir_info *info = TXGBE_DEV_FDIR(dev);
+	uint32_t msg[2] = {0, 0};
+	int ret = 0;
+
+	/* node id [15:0] */
+	msg[TXGBEVF_FDIR_CMD] = id;
+
+	ret = txgbevf_set_fdir(hw, msg, FALSE);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "VF request PF to delete FDIR filters failed.");
+		return ret;
+	}
+
+	ret = txgbe_remove_fdir_filter(info, &rule->input);
+	if (ret < 0)
+		PMD_DRV_LOG(ERR, "Fail to delete FDIR filter!");
+
+	return 0;
+}
+
+static int
+txgbevf_add_fdir_filter(struct rte_eth_dev *dev,
+			struct txgbe_fdir_rule *rule,
+			int id)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t msg[TXGBEVF_FDIR_MAX];
+	int ret = 0;
+
+	memset(msg, 0, sizeof(msg));
+
+	/* node id [15:0] */
+	msg[TXGBEVF_FDIR_CMD] = id;
+	/* ring_idx [23:16] */
+	msg[TXGBEVF_FDIR_CMD] |= rule->queue << 16;
+	/* flow_type [30:24] */
+	msg[TXGBEVF_FDIR_CMD] |= rule->input.flow_type << 24;
+
+	msg[TXGBEVF_FDIR_IP4SA] = rule->input.src_ip[0];
+	msg[TXGBEVF_FDIR_IP4DA] = rule->input.dst_ip[0];
+	msg[TXGBEVF_FDIR_PORT] = (rule->input.dst_port << 16) |
+				rule->input.src_port;
+	if (rule->mask.flex_bytes_mask) {
+		/* base [1:0] */
+		msg[TXGBEVF_FDIR_FLEX] = txgbe_fdir_get_flex_base(rule);
+		/* offset [7:3] */
+		msg[TXGBEVF_FDIR_FLEX] |=
+			TXGBE_FDIRFLEXCFG_OFST(rule->flex_bytes_offset / 2);
+		/* flex bytes [31:16]*/
+		msg[TXGBEVF_FDIR_FLEX] |= rule->input.flex_bytes << 16;
+	}
+	msg[TXGBEVF_FDIR_IP4SM] = rule->mask.src_ipv4_mask;
+	msg[TXGBEVF_FDIR_IP4DM] = rule->mask.dst_ipv4_mask;
+	msg[TXGBEVF_FDIR_PORTM] = (rule->mask.dst_port_mask << 16) |
+				rule->mask.src_port_mask;
+
+	ret = txgbevf_set_fdir(hw, msg, TRUE);
+	if (ret)
+		PMD_DRV_LOG(ERR, "VF request PF to add FDIR filters failed.");
+
+	return ret;
+}
+
+int
+txgbevf_fdir_filter_program(struct rte_eth_dev *dev,
+			    struct txgbe_fdir_rule *rule,
+			    bool del)
+{
+	struct txgbe_hw_fdir_info *info = TXGBE_DEV_FDIR(dev);
+	struct txgbe_atr_input *input = &rule->input;
+	struct txgbe_fdir_filter *node;
+	uint32_t fdirhash;
+	int ret;
+
+	if (rule->mode != RTE_FDIR_MODE_PERFECT ||
+	    rule->fdirflags == TXGBE_FDIRPICMD_DROP)
+		return -ENOTSUP;
+
+	if (input->flow_type & TXGBE_ATR_FLOW_TYPE_IPV6)
+		return -ENOTSUP;
+
+	fdirhash = atr_compute_perfect_hash(input,
+			TXGBE_DEV_FDIR_CONF(dev)->pballoc);
+
+	ret = rte_hash_lookup(info->hash_handle, (const void *)input);
+	if (ret < 0) {
+		if (del) {
+			PMD_DRV_LOG(ERR, "No such fdir filter to delete!");
+			return ret;
+		}
+	} else {
+		if (!del) {
+			PMD_DRV_LOG(ERR, "Conflict with existing fdir filter!");
+			return -EINVAL;
+		}
+	}
+
+	if (del)
+		return txgbevf_del_fdir_filter(dev, rule, ret);
+
+	node = rte_zmalloc("txgbe_fdir",
+			   sizeof(struct txgbe_fdir_filter), 0);
+	if (!node)
+		return -ENOMEM;
+	rte_memcpy(&node->input, input,
+		   sizeof(struct txgbe_atr_input));
+	node->fdirflags = rule->fdirflags;
+	node->fdirhash = fdirhash;
+	node->queue = rule->queue;
+
+	ret = txgbe_insert_fdir_filter(info, node);
+	if (ret < 0) {
+		rte_free(node);
+		return ret;
+	}
+
+	ret = txgbevf_add_fdir_filter(dev, rule, ret);
+	if (ret)
+		txgbe_remove_fdir_filter(info, input);
+
+	return ret;
+}
+
 static int
 txgbe_fdir_flush(struct rte_eth_dev *dev)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct txgbe_hw_fdir_info *info = TXGBE_DEV_FDIR(dev);
 	int ret;
+
+	if (!txgbe_is_pf(hw)) {
+		txgbevf_flush_fdir_filter(dev);
+		return 0;
+	}
 
 	ret = txgbe_reinit_fdir_tables(hw);
 	if (ret < 0) {

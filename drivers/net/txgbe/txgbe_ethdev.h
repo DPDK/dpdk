@@ -555,6 +555,8 @@ txgbe_dev_l2_tunnel_filter_del(struct rte_eth_dev *dev,
 			       struct txgbe_l2_tunnel_conf *l2_tunnel);
 void txgbe_filterlist_init(void);
 void txgbe_filterlist_flush(void);
+int txgbe_fdir_filter_init(struct rte_eth_dev *eth_dev);
+int txgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev);
 
 void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
@@ -570,7 +572,9 @@ int txgbe_fdir_set_flexbytes_offset(struct rte_eth_dev *dev,
 int txgbe_fdir_filter_program(struct rte_eth_dev *dev,
 			      struct txgbe_fdir_rule *rule,
 			      bool del, bool update);
-
+int txgbevf_fdir_filter_program(struct rte_eth_dev *dev,
+				struct txgbe_fdir_rule *rule,
+				bool del);
 void txgbe_configure_pb(struct rte_eth_dev *dev);
 void txgbe_configure_port(struct rte_eth_dev *dev);
 void txgbe_configure_dcb(struct rte_eth_dev *dev);

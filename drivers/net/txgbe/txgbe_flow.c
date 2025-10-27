@@ -828,6 +828,13 @@ txgbe_parse_ethertype_filter(struct rte_eth_dev *dev,
 {
 	int ret;
 
+	if (!txgbe_is_pf(TXGBE_DEV_HW(dev))) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   NULL, "Flow type not suppotted yet on VF");
+		return -rte_errno;
+	}
+
 	ret = cons_parse_ethertype_filter(attr, pattern,
 					actions, filter, error);
 
@@ -1114,6 +1121,13 @@ txgbe_parse_syn_filter(struct rte_eth_dev *dev,
 {
 	int ret;
 
+	if (!txgbe_is_pf(TXGBE_DEV_HW(dev))) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   NULL, "Flow type not suppotted yet on VF");
+		return -rte_errno;
+	}
+
 	ret = cons_parse_syn_filter(attr, pattern,
 					actions, filter, error);
 
@@ -1316,6 +1330,13 @@ txgbe_parse_l2_tn_filter(struct rte_eth_dev *dev,
 	int ret = 0;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	uint16_t vf_num;
+
+	if (!txgbe_is_pf(TXGBE_DEV_HW(dev))) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   NULL, "Flow type not suppotted yet on VF");
+		return -rte_errno;
+	}
 
 	ret = cons_parse_l2_tn_filter(dev, attr, pattern,
 				actions, l2_tn_filter, error);
@@ -2960,6 +2981,9 @@ txgbe_parse_fdir_filter(struct rte_eth_dev *dev,
 		return ret;
 
 step_next:
+	if (!txgbe_is_pf(TXGBE_DEV_HW(dev)))
+		return ret;
+
 	if (fdir_conf->mode == RTE_FDIR_MODE_NONE) {
 		fdir_conf->mode = rule->mode;
 		ret = txgbe_fdir_configure(dev);
@@ -2987,6 +3011,13 @@ txgbe_parse_rss_filter(struct rte_eth_dev *dev,
 	const struct rte_flow_action *act;
 	const struct rte_flow_action_rss *rss;
 	uint16_t n;
+
+	if (!txgbe_is_pf(TXGBE_DEV_HW(dev))) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   NULL, "Flow type not suppotted yet on VF");
+		return -rte_errno;
+	}
 
 	/**
 	 * rss only supports forwarding,
@@ -3256,11 +3287,6 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 		goto out;
 	}
 
-	if (!txgbe_is_pf(TXGBE_DEV_HW(dev))) {
-		PMD_DRV_LOG(ERR, "Flow type not suppotted yet on VF.");
-		goto out;
-	}
-
 next:
 	memset(&ethertype_filter, 0, sizeof(struct rte_eth_ethertype_filter));
 	ret = txgbe_parse_ethertype_filter(dev, attr, pattern,
@@ -3317,6 +3343,27 @@ next:
 	ret = txgbe_parse_fdir_filter(dev, attr, pattern,
 				actions, &fdir_rule, error);
 	if (!ret) {
+		if (!txgbe_is_pf(TXGBE_DEV_HW(dev))) {
+			ret = txgbevf_fdir_filter_program(dev, &fdir_rule, FALSE);
+			if (ret < 0)
+				goto out;
+
+			fdir_rule_ptr = rte_zmalloc("txgbe_fdir_filter",
+					    sizeof(struct txgbe_fdir_rule_ele), 0);
+			if (!fdir_rule_ptr) {
+				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				goto out;
+			}
+			rte_memcpy(&fdir_rule_ptr->filter_info,
+				   &fdir_rule,
+				   sizeof(struct txgbe_fdir_rule));
+			TAILQ_INSERT_TAIL(&filter_fdir_list,
+					  fdir_rule_ptr, entries);
+			flow->rule = fdir_rule_ptr;
+			flow->filter_type = RTE_ETH_FILTER_FDIR;
+			return flow;
+		}
+
 		/* A mask cannot be deleted. */
 		if (fdir_rule.b_mask) {
 			if (!fdir_info->mask_added) {
@@ -3583,7 +3630,10 @@ txgbe_flow_destroy(struct rte_eth_dev *dev,
 		rte_memcpy(&fdir_rule,
 			&fdir_rule_ptr->filter_info,
 			sizeof(struct txgbe_fdir_rule));
-		ret = txgbe_fdir_filter_program(dev, &fdir_rule, TRUE, FALSE);
+		if (txgbe_is_pf(TXGBE_DEV_HW(dev)))
+			ret = txgbe_fdir_filter_program(dev, &fdir_rule, TRUE, FALSE);
+		else
+			ret = txgbevf_fdir_filter_program(dev, &fdir_rule, TRUE);
 		if (!ret) {
 			TAILQ_REMOVE(&filter_fdir_list,
 				fdir_rule_ptr, entries);
@@ -3656,18 +3706,18 @@ txgbe_flow_flush(struct rte_eth_dev *dev,
 
 	txgbe_clear_all_ntuple_filter(dev);
 
-	if (!txgbe_is_pf(TXGBE_DEV_HW(dev)))
-		goto out;
-
-	txgbe_clear_all_ethertype_filter(dev);
-	txgbe_clear_syn_filter(dev);
-
 	ret = txgbe_clear_all_fdir_filter(dev);
 	if (ret < 0) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_HANDLE,
 					NULL, "Failed to flush rule");
 		return ret;
 	}
+
+	if (!txgbe_is_pf(TXGBE_DEV_HW(dev)))
+		goto out;
+
+	txgbe_clear_all_ethertype_filter(dev);
+	txgbe_clear_syn_filter(dev);
 
 	ret = txgbe_clear_all_l2_tn_filter(dev);
 	if (ret < 0) {
