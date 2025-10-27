@@ -524,8 +524,12 @@ txgbe_handle_devarg(__rte_unused const char *key, const char *value,
 }
 
 static void
-txgbe_parse_devargs(struct txgbe_hw *hw, struct rte_devargs *devargs)
+txgbe_parse_devargs(struct rte_eth_dev *dev)
 {
+	struct rte_eth_fdir_conf *fdir_conf = TXGBE_DEV_FDIR_CONF(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_devargs *devargs = pci_dev->device.devargs;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct rte_kvargs *kvlist;
 	u16 auto_neg = 1;
 	u16 poll = 0;
@@ -535,6 +539,9 @@ txgbe_parse_devargs(struct txgbe_hw *hw, struct rte_devargs *devargs)
 	u16 ffe_main = 27;
 	u16 ffe_pre = 8;
 	u16 ffe_post = 44;
+	/* FDIR args */
+	u8 pballoc = 0;
+	u8 drop_queue = 127;
 	/* New devargs for amberlite config */
 	u16 tx_headwb = 1;
 	u16 tx_headwb_size = 16;
@@ -563,6 +570,10 @@ txgbe_parse_devargs(struct txgbe_hw *hw, struct rte_devargs *devargs)
 			   &txgbe_handle_devarg, &ffe_pre);
 	rte_kvargs_process(kvlist, TXGBE_DEVARG_FFE_POST,
 			   &txgbe_handle_devarg, &ffe_post);
+	rte_kvargs_process(kvlist, TXGBE_DEVARG_FDIR_PBALLOC,
+			   &txgbe_handle_devarg, &pballoc);
+	rte_kvargs_process(kvlist, TXGBE_DEVARG_FDIR_DROP_QUEUE,
+			   &txgbe_handle_devarg, &drop_queue);
 	rte_kvargs_process(kvlist, TXGBE_DEVARG_TX_HEAD_WB,
 			   &txgbe_handle_devarg, &tx_headwb);
 	rte_kvargs_process(kvlist, TXGBE_DEVARG_TX_HEAD_WB_SIZE,
@@ -583,6 +594,9 @@ null:
 	hw->phy.ffe_main = ffe_main;
 	hw->phy.ffe_pre = ffe_pre;
 	hw->phy.ffe_post = ffe_post;
+
+	fdir_conf->pballoc = pballoc;
+	fdir_conf->drop_queue = drop_queue;
 }
 
 static int
@@ -671,7 +685,7 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	hw->isb_dma = TMZ_PADDR(mz);
 	hw->isb_mem = TMZ_VADDR(mz);
 
-	txgbe_parse_devargs(hw, pci_dev->device.devargs);
+	txgbe_parse_devargs(eth_dev);
 	/* Initialize the shared code (base driver) */
 	err = txgbe_init_shared_code(hw);
 	if (err != 0) {
@@ -6034,6 +6048,8 @@ RTE_PMD_REGISTER_PARAM_STRING(net_txgbe,
 			      TXGBE_DEVARG_FFE_MAIN "=<uint16>"
 			      TXGBE_DEVARG_FFE_PRE "=<uint16>"
 			      TXGBE_DEVARG_FFE_POST "=<uint16>"
+			      TXGBE_DEVARG_FDIR_PBALLOC "=<0|1|2>"
+			      TXGBE_DEVARG_FDIR_DROP_QUEUE "=<uint8>"
 			      TXGBE_DEVARG_TX_HEAD_WB "=<0|1>"
 			      TXGBE_DEVARG_TX_HEAD_WB_SIZE "=<1|16>"
 			      TXGBE_DEVARG_RX_DESC_MERGE "=<0|1>");
