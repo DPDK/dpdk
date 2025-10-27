@@ -876,7 +876,6 @@ txgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	tx_offload.data[0] = 0;
 	tx_offload.data[1] = 0;
-	txq = tx_queue;
 	sw_ring = txq->sw_ring;
 	txr     = txq->tx_ring;
 	tx_id   = txq->tx_tail;
