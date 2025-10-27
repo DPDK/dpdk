@@ -976,6 +976,7 @@ txgbe_clear_all_fdir_filter(struct rte_eth_dev *dev)
 	memset(fdir_info->hash_map, 0,
 	       sizeof(struct txgbe_fdir_filter *) *
 	       ((1024 << (fdir_conf->pballoc + 1)) - 2));
+	fdir_conf->mode = RTE_FDIR_MODE_NONE;
 	filter_flag = TAILQ_FIRST(&fdir_info->fdir_list);
 	while ((fdir_filter = TAILQ_FIRST(&fdir_info->fdir_list))) {
 		TAILQ_REMOVE(&fdir_info->fdir_list,
