@@ -2121,7 +2121,7 @@ main(int argc, char **argv)
 {
 	int ret;
 	int i;
-	char c_flag[] = "-c1";
+	char c_flag[] = "-l0";
 	char n_flag[] = "-n4";
 	char mp_flag[] = "--proc-type=secondary";
 	char log_flag[] = "--log-level=6";
