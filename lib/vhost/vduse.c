@@ -479,7 +479,7 @@ vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
 }
 
 int
-vduse_device_create(const char *path, bool compliant_ol_flags)
+vduse_device_create(const char *path, bool compliant_ol_flags, bool extbuf, bool linearbuf)
 {
 	int control_fd, dev_fd, vid, ret;
 	rte_thread_t fdset_tid;
@@ -606,6 +606,12 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 	dev->vduse_ctrl_fd = control_fd;
 	dev->vduse_dev_fd = dev_fd;
 	vhost_setup_virtio_net(dev->vid, true, compliant_ol_flags, true, true);
+
+	if (extbuf)
+		vhost_enable_extbuf(dev->vid);
+
+	if (linearbuf)
+		vhost_enable_linearbuf(dev->vid);
 
 	for (i = 0; i < total_queues; i++) {
 		struct vduse_vq_config vq_cfg = { 0 };

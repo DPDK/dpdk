@@ -11,15 +11,17 @@
 
 #ifdef VHOST_HAS_VDUSE
 
-int vduse_device_create(const char *path, bool compliant_ol_flags);
+int vduse_device_create(const char *path, bool compliant_ol_flags, bool extbuf, bool linearbuf);
 int vduse_device_destroy(const char *path);
 
 #else
 
 static inline int
-vduse_device_create(const char *path, bool compliant_ol_flags)
+vduse_device_create(const char *path, bool compliant_ol_flags, bool extbuf, bool linearbuf)
 {
 	RTE_SET_USED(compliant_ol_flags);
+	RTE_SET_USED(extbuf);
+	RTE_SET_USED(linearbuf);
 
 	VHOST_LOG_CONFIG(path, ERR, "VDUSE support disabled at build time\n");
 	return -1;
