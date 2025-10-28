@@ -34,7 +34,7 @@ from framework.test_suite import TestSuite, func_test
 
 
 @requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
-@requires_nic_capability(NicCapability.RX_OFFLOAD_SCATTER)
+@requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_SCATTER)
 class TestPmdBufferScatter(TestSuite):
     """DPDK PMD packet scattering test suite.
 
@@ -148,7 +148,7 @@ class TestPmdBufferScatter(TestSuite):
         """
         self._pmd_scatter(mb_size=2048)
 
-    @requires_nic_capability(NicCapability.RX_OFFLOAD_SCATTER)
+    @requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_SCATTER)
     @func_test
     def scatter_mbuf_2048_with_offload(self) -> None:
         """Run the :meth:`pmd_scatter` test with `mb_size` set to 2048 and rx_scatter offload.

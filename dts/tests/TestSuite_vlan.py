@@ -28,7 +28,7 @@ from api.testpmd.config import SimpleForwardingModes
 from framework.test_suite import TestSuite, func_test
 
 
-@requires_nic_capability(NicCapability.RX_OFFLOAD_VLAN_FILTER)
+@requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_VLAN_FILTER)
 @requires_link_topology(LinkTopology.TWO_LINKS)
 class TestVlan(TestSuite):
     """DPDK VLAN test suite.
@@ -142,7 +142,7 @@ class TestVlan(TestSuite):
             testpmd.start()
             self._send_vlan_packet_and_verify(should_receive=True, strip=False, vlan_id=1)
 
-    @requires_nic_capability(NicCapability.RX_OFFLOAD_VLAN_STRIP)
+    @requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_VLAN_STRIP)
     @func_test
     def vlan_receipt_stripping(self) -> None:
         """Ensure VLAN packet received with no tag when receipts and header stripping are enabled.

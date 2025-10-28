@@ -34,9 +34,9 @@ from framework.test_suite import TestSuite, func_test
 
 
 @requires_link_topology(LinkTopology.TWO_LINKS)
-@requires_nic_capability(NicCapability.RX_OFFLOAD_IPV4_CKSUM)
-@requires_nic_capability(NicCapability.RX_OFFLOAD_UDP_CKSUM)
-@requires_nic_capability(NicCapability.RX_OFFLOAD_TCP_CKSUM)
+@requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_IPV4_CKSUM)
+@requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_UDP_CKSUM)
+@requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_TCP_CKSUM)
 class TestChecksumOffload(TestSuite):
     """Checksum offload test suite.
 
@@ -293,7 +293,7 @@ class TestChecksumOffload(TestSuite):
                     packet=packet_list[i], good_L4=False, good_IP=True, testpmd=testpmd, id=dport_id
                 )
 
-    @requires_nic_capability(NicCapability.RX_OFFLOAD_VLAN)
+    @requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_VLAN)
     @func_test
     def vlan_checksum(self) -> None:
         """Test VLAN Rx checksum hardware offload and verify packet reception.
@@ -352,7 +352,7 @@ class TestChecksumOffload(TestSuite):
                     packet=packet_list[i], good_L4=False, good_IP=True, testpmd=testpmd, id=dport_id
                 )
 
-    @requires_nic_capability(NicCapability.RX_OFFLOAD_SCTP_CKSUM)
+    @requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_SCTP_CKSUM)
     @func_test
     def validate_sctp_checksum(self) -> None:
         """Test SCTP Rx checksum hardware offload and verify packet reception.

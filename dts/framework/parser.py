@@ -117,6 +117,36 @@ class TextParser(ABC):
         return ParserFn(TextParser_fn=_composite_parser_fn)
 
     @staticmethod
+    def find_all(
+        pattern: str | re.Pattern[str],
+        flags: re.RegexFlag = re.RegexFlag(0),
+    ) -> ParserFn:
+        """Makes a parser function that finds all of the regular expression matches in the text.
+
+        If there are no matches found in the text than None will be returned, otherwise a list
+        containing all matches will be returned. Patterns that contain multiple groups will pack
+        the matches for each group into a tuple.
+
+        Args:
+            pattern: The regular expression pattern.
+            flags: The regular expression flags. Ignored if the given pattern is already compiled.
+
+        Returns:
+            A :class:`ParserFn` that can be used as metadata for a dataclass field.
+        """
+        if isinstance(pattern, str):
+            pattern = re.compile(pattern, flags)
+
+        def _find_all(text: str) -> list[str] | None:
+            m = pattern.findall(text)
+            if len(m) == 0:
+                return None
+
+            return m
+
+        return ParserFn(TextParser_fn=_find_all)
+
+    @staticmethod
     def find(
         pattern: str | re.Pattern[str],
         flags: re.RegexFlag = re.RegexFlag(0),

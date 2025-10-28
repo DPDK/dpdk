@@ -18,6 +18,8 @@ from typing_extensions import Self
 from framework.parser import ParserFn, TextParser
 from framework.utils import REGEX_FOR_MAC_ADDRESS, StrEnum
 
+RxTxLiteralSwitch = Literal["rx", "tx"]
+
 
 class TestPmdDevice:
     """The data of a device that testpmd can recognize.
@@ -1246,7 +1248,99 @@ class TestPmdVerbosePacket(TextParser):
     )
 
 
-class RxOffloadCapability(Flag):
+class OffloadCapability(Flag):
+    """Flags generated from RxOffloadCapabilites and TxOffloadCapabilities classes."""
+
+    @classmethod
+    def from_string(cls, line: str) -> Self:
+        """Make an instance from a string containing the flag names separated with a space.
+
+        Args:
+            line: The line to parse.
+
+        Returns:
+            A new instance containing all found flags.
+        """
+        flag = cls(0)
+        for flag_name in line.split():
+            flag |= cls[flag_name]
+        return flag
+
+    @classmethod
+    def from_list(cls, lines: list[str]) -> list[Self]:
+        """Gather capabilities from a list of strings.
+
+        Args:
+            lines: The list of capabilities to make flags from.
+        """
+        return [cls.from_string(line) for line in lines]
+
+    @classmethod
+    def make_parser(
+        cls, port_or_queue: Literal["port", "queue"], /, find_multiple: bool = False
+    ) -> ParserFn:
+        """Make a parser function.
+
+        Args:
+            port_or_queue: If :data:`True`, will return capabilities per port. If :data:`False`,
+                will return capabilities per queue.
+            find_multiple: If :data:`True`, will use :func:`TextParser.find_all` to find all
+                matches for the regex query and return a list of instances based on those matches.
+                If :data:`False`, will return a single instance of the flag based off a single
+                match.
+
+        Returns:
+            ParserFn: A dictionary for the `dataclasses.field` metadata argument containing a
+                parser function that makes an instance of this flag from text.
+        """
+        granularity = port_or_queue.capitalize()
+        regex = rf"{granularity}[\s\[\]\d]+:(.*)$"
+        if find_multiple:
+            return TextParser.wrap(TextParser.find_all(regex, re.MULTILINE), cls.from_list)
+        return TextParser.wrap(TextParser.find(regex, re.MULTILINE), cls.from_string)
+
+
+class TxOffloadCapability(OffloadCapability):
+    """Tx offload capabilities of a device.
+
+    The flags are taken from ``lib/ethdev/rte_ethdev.h``.
+    They're prefixed with ``RTE_ETH_TX_OFFLOAD`` in ``lib/ethdev/rte_ethdev.h``
+    instead of ``TX_OFFLOAD``, which is what testpmd changes the prefix to.
+
+    The ``TX_OFFLOAD`` prefix has been preserved so that the same flag names can be used
+    in :class:`NicCapability`. The prefix is needed in :class:`NicCapability` since there's
+    no other qualifier which would sufficiently distinguish it from other capabilities.
+
+    References:
+        DPDK lib: ``lib/ethdev/rte_ethdev.h``
+        testpmd display function: ``app/test-pmd/cmdline.c:print_rx_offloads()``
+    """
+
+    VLAN_INSERT = auto()
+    IPV4_CKSUM = auto()
+    UDP_CKSUM = auto()
+    TCP_CKSUM = auto()
+    SCTP_CKSUM = auto()
+    TCP_TSO = auto()
+    UDP_TSO = auto()
+    OUTER_IPV4_CKSUM = auto()
+    QINQ_INSERT = auto()
+    VXLAN_TNL_TSO = auto()
+    GRE_TNL_TSO = auto()
+    IPIP_TNL_TSO = auto()
+    GENEVE_TNL_TSO = auto()
+    MACSEC_INSERT = auto()
+    MT_LOCKFREE = auto()
+    MULTI_SEGS = auto()
+    MBUF_FAST_FREE = auto()
+    SECURITY = auto()
+    UDP_TNL_TSO = auto()
+    IP_TNL_TSO = auto()
+    OUTER_UDP_CKSUM = auto()
+    SEND_ON_TIMESTAMP = auto()
+
+
+class RxOffloadCapability(OffloadCapability):
     """Rx offload capabilities of a device.
 
     The flags are taken from ``lib/ethdev/rte_ethdev.h``.
@@ -1265,102 +1359,103 @@ class RxOffloadCapability(Flag):
     """
 
     #:
-    RX_OFFLOAD_VLAN_STRIP = auto()
+    VLAN_STRIP = auto()
     #: Device supports L3 checksum offload.
-    RX_OFFLOAD_IPV4_CKSUM = auto()
+    IPV4_CKSUM = auto()
     #: Device supports L4 checksum offload.
-    RX_OFFLOAD_UDP_CKSUM = auto()
+    UDP_CKSUM = auto()
     #: Device supports L4 checksum offload.
-    RX_OFFLOAD_TCP_CKSUM = auto()
+    TCP_CKSUM = auto()
     #: Device supports Large Receive Offload.
-    RX_OFFLOAD_TCP_LRO = auto()
+    TCP_LRO = auto()
     #: Device supports QinQ (queue in queue) offload.
-    RX_OFFLOAD_QINQ_STRIP = auto()
+    QINQ_STRIP = auto()
     #: Device supports inner packet L3 checksum.
-    RX_OFFLOAD_OUTER_IPV4_CKSUM = auto()
+    OUTER_IPV4_CKSUM = auto()
     #: Device supports MACsec.
-    RX_OFFLOAD_MACSEC_STRIP = auto()
+    MACSEC_STRIP = auto()
     #: Device supports filtering of a VLAN Tag identifier.
-    RX_OFFLOAD_VLAN_FILTER = 1 << 9
+    VLAN_FILTER = 1 << 9
     #: Device supports VLAN offload.
-    RX_OFFLOAD_VLAN_EXTEND = auto()
+    VLAN_EXTEND = auto()
     #: Device supports receiving segmented mbufs.
-    RX_OFFLOAD_SCATTER = 1 << 13
+    SCATTER = 1 << 13
     #: Device supports Timestamp.
-    RX_OFFLOAD_TIMESTAMP = auto()
+    TIMESTAMP = auto()
     #: Device supports crypto processing while packet is received in NIC.
-    RX_OFFLOAD_SECURITY = auto()
+    SECURITY = auto()
     #: Device supports CRC stripping.
-    RX_OFFLOAD_KEEP_CRC = auto()
+    KEEP_CRC = auto()
     #: Device supports L4 checksum offload.
-    RX_OFFLOAD_SCTP_CKSUM = auto()
+    SCTP_CKSUM = auto()
     #: Device supports inner packet L4 checksum.
-    RX_OFFLOAD_OUTER_UDP_CKSUM = auto()
+    OUTER_UDP_CKSUM = auto()
     #: Device supports RSS hashing.
-    RX_OFFLOAD_RSS_HASH = auto()
+    RSS_HASH = auto()
     #: Device supports
-    RX_OFFLOAD_BUFFER_SPLIT = auto()
+    BUFFER_SPLIT = auto()
     #: Device supports all checksum capabilities.
-    RX_OFFLOAD_CHECKSUM = RX_OFFLOAD_IPV4_CKSUM | RX_OFFLOAD_UDP_CKSUM | RX_OFFLOAD_TCP_CKSUM
+    CHECKSUM = IPV4_CKSUM | UDP_CKSUM | TCP_CKSUM
     #: Device supports all VLAN capabilities.
-    RX_OFFLOAD_VLAN = (
-        RX_OFFLOAD_VLAN_STRIP
-        | RX_OFFLOAD_VLAN_FILTER
-        | RX_OFFLOAD_VLAN_EXTEND
-        | RX_OFFLOAD_QINQ_STRIP
-    )
-
-    @classmethod
-    def from_string(cls, line: str) -> Self:
-        """Make an instance from a string containing the flag names separated with a space.
-
-        Args:
-            line: The line to parse.
-
-        Returns:
-            A new instance containing all found flags.
-        """
-        flag = cls(0)
-        for flag_name in line.split():
-            flag |= cls[f"RX_OFFLOAD_{flag_name}"]
-        return flag
-
-    @classmethod
-    def make_parser(cls, per_port: bool) -> ParserFn:
-        """Make a parser function.
-
-        Args:
-            per_port: If :data:`True`, will return capabilities per port. If :data:`False`,
-                will return capabilities per queue.
-
-        Returns:
-            ParserFn: A dictionary for the `dataclasses.field` metadata argument containing a
-                parser function that makes an instance of this flag from text.
-        """
-        granularity = "Port" if per_port else "Queue"
-        return TextParser.wrap(
-            TextParser.find(rf"Per {granularity}\s+:(.*)$", re.MULTILINE),
-            cls.from_string,
-        )
+    VLAN = VLAN_STRIP | VLAN_FILTER | VLAN_EXTEND | QINQ_STRIP
 
 
 @dataclass
-class RxOffloadCapabilities(TextParser):
-    """The result of testpmd's ``show port <port_id> rx_offload capabilities`` command.
+class OffloadCapabilities(TextParser):
+    """The result of testpmd's ``show port <port_id> rx/tx_offload capabilities`` command."""
 
-    References:
-        testpmd command function: ``app/test-pmd/cmdline.c:cmd_rx_offload_get_capa()``
-        testpmd display function: ``app/test-pmd/cmdline.c:cmd_rx_offload_get_capa_parsed()``
-    """
+    port_id: int = field(metadata=TextParser.find_int(r"Offloading Capabilities of port (\d+) :"))
+    #: Per-queue offload capabilities.
+    per_queue: OffloadCapability
+    #: Capabilities other than per-queue offload capabilities.
+    per_port: OffloadCapability
 
-    #:
-    port_id: int = field(
-        metadata=TextParser.find_int(r"Rx Offloading Capabilities of port (\d+) :")
+
+@dataclass
+class RxOffloadCapabilities(OffloadCapabilities):
+    """Extends :class:`OffloadCapabilities` with Rx specific functionality."""
+
+    per_queue: OffloadCapability = field(metadata=RxOffloadCapability.make_parser("queue"))
+    per_port: OffloadCapability = field(metadata=RxOffloadCapability.make_parser("port"))
+
+
+@dataclass
+class TxOffloadCapabilities(OffloadCapabilities):
+    """Extends :class:`OffloadCapabilities` with Tx specific functionality."""
+
+    per_queue: OffloadCapability = field(metadata=TxOffloadCapability.make_parser("queue"))
+    per_port: OffloadCapability = field(metadata=TxOffloadCapability.make_parser("port"))
+
+
+@dataclass
+class OffloadConfiguration(TextParser):
+    """The result of testpmd's ``show port <port_id> rx/tx_offload configuration`` command."""
+
+    port_id: int = field(metadata=TextParser.find_int(r"Offloading Configuration of port (\d+) :"))
+    #: Queue offload configurations.
+    queue_configs: list[OffloadCapability]
+    #: Port offload configuration.
+    port_config: OffloadCapability
+
+
+@dataclass
+class RxOffloadConfiguration(OffloadConfiguration):
+    """Extends :class:`OffloadingConfiguration` with Rx specific functionality."""
+
+    queue_configs: list[OffloadCapability] = field(
+        metadata=RxOffloadCapability.make_parser("queue", find_multiple=True)
     )
-    #: Per-queue Rx offload capabilities.
-    per_queue: RxOffloadCapability = field(metadata=RxOffloadCapability.make_parser(False))
-    #: Capabilities other than per-queue Rx offload capabilities.
-    per_port: RxOffloadCapability = field(metadata=RxOffloadCapability.make_parser(True))
+    port_config: OffloadCapability = field(metadata=RxOffloadCapability.make_parser("port"))
+
+
+@dataclass
+class TxOffloadConfiguration(OffloadConfiguration):
+    """Extends :class:`OffloadingConfiguration` with Tx specific functionality."""
+
+    queue_configs: list[OffloadCapability] = field(
+        metadata=TxOffloadCapability.make_parser("queue", find_multiple=True)
+    )
+    port_config: OffloadCapability = field(metadata=TxOffloadCapability.make_parser("port"))
 
 
 @dataclass

@@ -77,45 +77,65 @@ class NicCapability(IntEnum):
     #: Scattered packets Rx enabled.
     SCATTERED_RX_ENABLED = 0
     #: Device supports VLAN stripping.
-    RX_OFFLOAD_VLAN_STRIP = auto()
+    PORT_RX_OFFLOAD_VLAN_STRIP = auto()
+    QUEUE_RX_OFFLOAD_VLAN_STRIP = auto()
     #: Device supports L3 checksum offload.
-    RX_OFFLOAD_IPV4_CKSUM = auto()
+    PORT_RX_OFFLOAD_IPV4_CKSUM = auto()
+    QUEUE_RX_OFFLOAD_IPV4_CKSUM = auto()
     #: Device supports L4 checksum offload.
-    RX_OFFLOAD_UDP_CKSUM = auto()
+    PORT_RX_OFFLOAD_UDP_CKSUM = auto()
+    QUEUE_RX_OFFLOAD_UDP_CKSUM = auto()
     #: Device supports L4 checksum offload.
-    RX_OFFLOAD_TCP_CKSUM = auto()
+    PORT_RX_OFFLOAD_TCP_CKSUM = auto()
+    QUEUE_RX_OFFLOAD_TCP_CKSUM = auto()
     #: Device supports Large Receive Offload.
-    RX_OFFLOAD_TCP_LRO = auto()
+    PORT_RX_OFFLOAD_TCP_LRO = auto()
+    QUEUE_RX_OFFLOAD_TCP_LRO = auto()
     #: Device supports QinQ (queue in queue) offload.
-    RX_OFFLOAD_QINQ_STRIP = auto()
+    PORT_RX_OFFLOAD_QINQ_STRIP = auto()
+    QUEUE_RX_OFFLOAD_QINQ_STRIP = auto()
     #: Device supports inner packet L3 checksum.
-    RX_OFFLOAD_OUTER_IPV4_CKSUM = auto()
+    PORT_RX_OFFLOAD_OUTER_IPV4_CKSUM = auto()
+    QUEUE_RX_OFFLOAD_OUTER_IPV4_CKSUM = auto()
     #: Device supports MACsec.
-    RX_OFFLOAD_MACSEC_STRIP = auto()
+    PORT_RX_OFFLOAD_MACSEC_STRIP = auto()
+    QUEUE_RX_OFFLOAD_MACSEC_STRIP = auto()
     #: Device supports filtering of a VLAN Tag identifier.
-    RX_OFFLOAD_VLAN_FILTER = auto()
+    PORT_RX_OFFLOAD_VLAN_FILTER = auto()
+    QUEUE_RX_OFFLOAD_VLAN_FILTER = auto()
     #: Device supports VLAN offload.
-    RX_OFFLOAD_VLAN_EXTEND = auto()
+    PORT_RX_OFFLOAD_VLAN_EXTEND = auto()
+    QUEUE_RX_OFFLOAD_VLAN_EXTEND = auto()
     #: Device supports receiving segmented mbufs.
-    RX_OFFLOAD_SCATTER = auto()
+    PORT_RX_OFFLOAD_SCATTER = auto()
+    QUEUE_RX_OFFLOAD_SCATTER = auto()
     #: Device supports Timestamp.
-    RX_OFFLOAD_TIMESTAMP = auto()
+    PORT_RX_OFFLOAD_TIMESTAMP = auto()
+    QUEUE_RX_OFFLOAD_TIMESTAMP = auto()
     #: Device supports crypto processing while packet is received in NIC.
-    RX_OFFLOAD_SECURITY = auto()
+    PORT_RX_OFFLOAD_SECURITY = auto()
+    QUEUE_RX_OFFLOAD_SECURITY = auto()
     #: Device supports CRC stripping.
-    RX_OFFLOAD_KEEP_CRC = auto()
+    PORT_RX_OFFLOAD_KEEP_CRC = auto()
+    QUEUE_RX_OFFLOAD_KEEP_CRC = auto()
     #: Device supports L4 checksum offload.
-    RX_OFFLOAD_SCTP_CKSUM = auto()
+    PORT_RX_OFFLOAD_SCTP_CKSUM = auto()
+    QUEUE_RX_OFFLOAD_SCTP_CKSUM = auto()
     #: Device supports inner packet L4 checksum.
-    RX_OFFLOAD_OUTER_UDP_CKSUM = auto()
+    PORT_RX_OFFLOAD_OUTER_UDP_CKSUM = auto()
+    QUEUE_RX_OFFLOAD_OUTER_UDP_CKSUM = auto()
     #: Device supports RSS hashing.
-    RX_OFFLOAD_RSS_HASH = auto()
+    PORT_RX_OFFLOAD_RSS_HASH = auto()
+    QUEUE_RX_OFFLOAD_RSS_HASH = auto()
     #: Device supports scatter Rx packets to segmented mbufs.
-    RX_OFFLOAD_BUFFER_SPLIT = auto()
+    PORT_RX_OFFLOAD_BUFFER_SPLIT = auto()
+    QUEUE_RX_OFFLOAD_BUFFER_SPLIT = auto()
     #: Device supports all checksum capabilities.
-    RX_OFFLOAD_CHECKSUM = auto()
+    PORT_RX_OFFLOAD_CHECKSUM = auto()
+    QUEUE_RX_OFFLOAD_CHECKSUM = auto()
     #: Device supports all VLAN capabilities.
-    RX_OFFLOAD_VLAN = auto()
+    PORT_RX_OFFLOAD_VLAN = auto()
+    QUEUE_RX_OFFLOAD_VLAN = auto()
     #: Device supports Rx queue setup after device started.
     RUNTIME_RX_QUEUE_SETUP = auto()
     #: Device supports Tx queue setup after device started.
@@ -132,6 +152,72 @@ class NicCapability(IntEnum):
     FLOW_CTRL = auto()
     #: Device is running on a physical function.
     PHYSICAL_FUNCTION = auto()
+    #:
+    PORT_TX_OFFLOAD_VLAN_INSERT = auto()
+    QUEUE_TX_OFFLOAD_VLAN_INSERT = auto()
+    #:
+    PORT_TX_OFFLOAD_IPV4_CKSUM = auto()
+    QUEUE_TX_OFFLOAD_IPV4_CKSUM = auto()
+    #:
+    PORT_TX_OFFLOAD_UDP_CKSUM = auto()
+    QUEUE_TX_OFFLOAD_UDP_CKSUM = auto()
+    #:
+    PORT_TX_OFFLOAD_TCP_CKSUM = auto()
+    QUEUE_TX_OFFLOAD_TCP_CKSUM = auto()
+    #:
+    PORT_TX_OFFLOAD_SCTP_CKSUM = auto()
+    QUEUE_TX_OFFLOAD_SCTP_CKSUM = auto()
+    #:
+    PORT_TX_OFFLOAD_TCP_TSO = auto()
+    QUEUE_TX_OFFLOAD_TCP_TSO = auto()
+    #:
+    PORT_TX_OFFLOAD_UDP_TSO = auto()
+    QUEUE_TX_OFFLOAD_UDP_TSO = auto()
+    #:
+    PORT_TX_OFFLOAD_OUTER_IPV4_CKSUM = auto()
+    QUEUE_TX_OFFLOAD_OUTER_IPV4_CKSUM = auto()
+    #:
+    PORT_TX_OFFLOAD_QINQ_INSERT = auto()
+    QUEUE_TX_OFFLOAD_QINQ_INSERT = auto()
+    #:
+    PORT_TX_OFFLOAD_VXLAN_TNL_TSO = auto()
+    QUEUE_TX_OFFLOAD_VXLAN_TNL_TSO = auto()
+    #:
+    PORT_TX_OFFLOAD_GRE_TNL_TSO = auto()
+    QUEUE_TX_OFFLOAD_GRE_TNL_TSO = auto()
+    #:
+    PORT_TX_OFFLOAD_IPIP_TNL_TSO = auto()
+    QUEUE_TX_OFFLOAD_IPIP_TNL_TSO = auto()
+    #:
+    PORT_TX_OFFLOAD_GENEVE_TNL_TSO = auto()
+    QUEUE_TX_OFFLOAD_GENEVE_TNL_TSO = auto()
+    #:
+    PORT_TX_OFFLOAD_MACSEC_INSERT = auto()
+    QUEUE_TX_OFFLOAD_MACSEC_INSERT = auto()
+    #:
+    PORT_TX_OFFLOAD_MT_LOCKFREE = auto()
+    QUEUE_TX_OFFLOAD_MT_LOCKFREE = auto()
+    #:
+    PORT_TX_OFFLOAD_MULTI_SEGS = auto()
+    QUEUE_TX_OFFLOAD_MULTI_SEGS = auto()
+    #:
+    PORT_TX_OFFLOAD_MBUF_FAST_FREE = auto()
+    QUEUE_TX_OFFLOAD_MBUF_FAST_FREE = auto()
+    #:
+    PORT_TX_OFFLOAD_SECURITY = auto()
+    QUEUE_TX_OFFLOAD_SECURITY = auto()
+    #:
+    PORT_TX_OFFLOAD_UDP_TNL_TSO = auto()
+    QUEUE_TX_OFFLOAD_UDP_TNL_TSO = auto()
+    #:
+    PORT_TX_OFFLOAD_IP_TNL_TSO = auto()
+    QUEUE_TX_OFFLOAD_IP_TNL_TSO = auto()
+    #:
+    PORT_TX_OFFLOAD_OUTER_UDP_CKSUM = auto()
+    QUEUE_TX_OFFLOAD_OUTER_UDP_CKSUM = auto()
+    #:
+    PORT_TX_OFFLOAD_SEND_ON_TIMESTAMP = auto()
+    QUEUE_TX_OFFLOAD_SEND_ON_TIMESTAMP = auto()
 
 
 def requires_link_topology(

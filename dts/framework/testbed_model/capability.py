@@ -227,28 +227,95 @@ class DecoratedNicCapability(Capability):
                 case NicCapability.SCATTERED_RX_ENABLED:
                     return (TestPmd.get_capabilities_rxq_info, _add_remove_mtu(9000))
                 case (
-                    NicCapability.RX_OFFLOAD_VLAN_STRIP
-                    | NicCapability.RX_OFFLOAD_IPV4_CKSUM
-                    | NicCapability.RX_OFFLOAD_UDP_CKSUM
-                    | NicCapability.RX_OFFLOAD_TCP_CKSUM
-                    | NicCapability.RX_OFFLOAD_TCP_LRO
-                    | NicCapability.RX_OFFLOAD_QINQ_STRIP
-                    | NicCapability.RX_OFFLOAD_OUTER_IPV4_CKSUM
-                    | NicCapability.RX_OFFLOAD_MACSEC_STRIP
-                    | NicCapability.RX_OFFLOAD_VLAN_FILTER
-                    | NicCapability.RX_OFFLOAD_VLAN_EXTEND
-                    | NicCapability.RX_OFFLOAD_SCATTER
-                    | NicCapability.RX_OFFLOAD_TIMESTAMP
-                    | NicCapability.RX_OFFLOAD_SECURITY
-                    | NicCapability.RX_OFFLOAD_KEEP_CRC
-                    | NicCapability.RX_OFFLOAD_SCTP_CKSUM
-                    | NicCapability.RX_OFFLOAD_OUTER_UDP_CKSUM
-                    | NicCapability.RX_OFFLOAD_RSS_HASH
-                    | NicCapability.RX_OFFLOAD_BUFFER_SPLIT
-                    | NicCapability.RX_OFFLOAD_CHECKSUM
-                    | NicCapability.RX_OFFLOAD_VLAN
+                    NicCapability.PORT_RX_OFFLOAD_VLAN_STRIP
+                    | NicCapability.PORT_RX_OFFLOAD_IPV4_CKSUM
+                    | NicCapability.PORT_RX_OFFLOAD_UDP_CKSUM
+                    | NicCapability.PORT_RX_OFFLOAD_TCP_CKSUM
+                    | NicCapability.PORT_RX_OFFLOAD_TCP_LRO
+                    | NicCapability.PORT_RX_OFFLOAD_QINQ_STRIP
+                    | NicCapability.PORT_RX_OFFLOAD_OUTER_IPV4_CKSUM
+                    | NicCapability.PORT_RX_OFFLOAD_MACSEC_STRIP
+                    | NicCapability.PORT_RX_OFFLOAD_VLAN_FILTER
+                    | NicCapability.PORT_RX_OFFLOAD_VLAN_EXTEND
+                    | NicCapability.PORT_RX_OFFLOAD_SCATTER
+                    | NicCapability.PORT_RX_OFFLOAD_TIMESTAMP
+                    | NicCapability.PORT_RX_OFFLOAD_SECURITY
+                    | NicCapability.PORT_RX_OFFLOAD_KEEP_CRC
+                    | NicCapability.PORT_RX_OFFLOAD_SCTP_CKSUM
+                    | NicCapability.PORT_RX_OFFLOAD_OUTER_UDP_CKSUM
+                    | NicCapability.PORT_RX_OFFLOAD_RSS_HASH
+                    | NicCapability.PORT_RX_OFFLOAD_BUFFER_SPLIT
+                    | NicCapability.PORT_RX_OFFLOAD_CHECKSUM
+                    | NicCapability.PORT_RX_OFFLOAD_VLAN
+                    | NicCapability.QUEUE_RX_OFFLOAD_VLAN_STRIP
+                    | NicCapability.QUEUE_RX_OFFLOAD_IPV4_CKSUM
+                    | NicCapability.QUEUE_RX_OFFLOAD_UDP_CKSUM
+                    | NicCapability.QUEUE_RX_OFFLOAD_TCP_CKSUM
+                    | NicCapability.QUEUE_RX_OFFLOAD_TCP_LRO
+                    | NicCapability.QUEUE_RX_OFFLOAD_QINQ_STRIP
+                    | NicCapability.QUEUE_RX_OFFLOAD_OUTER_IPV4_CKSUM
+                    | NicCapability.QUEUE_RX_OFFLOAD_MACSEC_STRIP
+                    | NicCapability.QUEUE_RX_OFFLOAD_VLAN_FILTER
+                    | NicCapability.QUEUE_RX_OFFLOAD_VLAN_EXTEND
+                    | NicCapability.QUEUE_RX_OFFLOAD_SCATTER
+                    | NicCapability.QUEUE_RX_OFFLOAD_TIMESTAMP
+                    | NicCapability.QUEUE_RX_OFFLOAD_SECURITY
+                    | NicCapability.QUEUE_RX_OFFLOAD_KEEP_CRC
+                    | NicCapability.QUEUE_RX_OFFLOAD_SCTP_CKSUM
+                    | NicCapability.QUEUE_RX_OFFLOAD_OUTER_UDP_CKSUM
+                    | NicCapability.QUEUE_RX_OFFLOAD_RSS_HASH
+                    | NicCapability.QUEUE_RX_OFFLOAD_BUFFER_SPLIT
+                    | NicCapability.QUEUE_RX_OFFLOAD_CHECKSUM
+                    | NicCapability.QUEUE_RX_OFFLOAD_VLAN
                 ):
-                    return (TestPmd.get_capabilities_rx_offload, None)
+                    return (TestPmd.get_offload_capabilities_func("rx"), None)
+                case (
+                    NicCapability.PORT_TX_OFFLOAD_VLAN_INSERT
+                    | NicCapability.PORT_TX_OFFLOAD_IPV4_CKSUM
+                    | NicCapability.PORT_TX_OFFLOAD_UDP_CKSUM
+                    | NicCapability.PORT_TX_OFFLOAD_TCP_CKSUM
+                    | NicCapability.PORT_TX_OFFLOAD_SCTP_CKSUM
+                    | NicCapability.PORT_TX_OFFLOAD_TCP_TSO
+                    | NicCapability.PORT_TX_OFFLOAD_UDP_TSO
+                    | NicCapability.PORT_TX_OFFLOAD_OUTER_IPV4_CKSUM
+                    | NicCapability.PORT_TX_OFFLOAD_QINQ_INSERT
+                    | NicCapability.PORT_TX_OFFLOAD_VXLAN_TNL_TSO
+                    | NicCapability.PORT_TX_OFFLOAD_GRE_TNL_TSO
+                    | NicCapability.PORT_TX_OFFLOAD_IPIP_TNL_TSO
+                    | NicCapability.PORT_TX_OFFLOAD_GENEVE_TNL_TSO
+                    | NicCapability.PORT_TX_OFFLOAD_MACSEC_INSERT
+                    | NicCapability.PORT_TX_OFFLOAD_MT_LOCKFREE
+                    | NicCapability.PORT_TX_OFFLOAD_MULTI_SEGS
+                    | NicCapability.PORT_TX_OFFLOAD_MBUF_FAST_FREE
+                    | NicCapability.PORT_TX_OFFLOAD_SECURITY
+                    | NicCapability.PORT_TX_OFFLOAD_UDP_TNL_TSO
+                    | NicCapability.PORT_TX_OFFLOAD_IP_TNL_TSO
+                    | NicCapability.PORT_TX_OFFLOAD_OUTER_UDP_CKSUM
+                    | NicCapability.PORT_TX_OFFLOAD_SEND_ON_TIMESTAMP
+                    | NicCapability.QUEUE_TX_OFFLOAD_VLAN_INSERT
+                    | NicCapability.QUEUE_TX_OFFLOAD_IPV4_CKSUM
+                    | NicCapability.QUEUE_TX_OFFLOAD_UDP_CKSUM
+                    | NicCapability.QUEUE_TX_OFFLOAD_TCP_CKSUM
+                    | NicCapability.QUEUE_TX_OFFLOAD_SCTP_CKSUM
+                    | NicCapability.QUEUE_TX_OFFLOAD_TCP_TSO
+                    | NicCapability.QUEUE_TX_OFFLOAD_UDP_TSO
+                    | NicCapability.QUEUE_TX_OFFLOAD_OUTER_IPV4_CKSUM
+                    | NicCapability.QUEUE_TX_OFFLOAD_QINQ_INSERT
+                    | NicCapability.QUEUE_TX_OFFLOAD_VXLAN_TNL_TSO
+                    | NicCapability.QUEUE_TX_OFFLOAD_GRE_TNL_TSO
+                    | NicCapability.QUEUE_TX_OFFLOAD_IPIP_TNL_TSO
+                    | NicCapability.QUEUE_TX_OFFLOAD_GENEVE_TNL_TSO
+                    | NicCapability.QUEUE_TX_OFFLOAD_MACSEC_INSERT
+                    | NicCapability.QUEUE_TX_OFFLOAD_MT_LOCKFREE
+                    | NicCapability.QUEUE_TX_OFFLOAD_MULTI_SEGS
+                    | NicCapability.QUEUE_TX_OFFLOAD_MBUF_FAST_FREE
+                    | NicCapability.QUEUE_TX_OFFLOAD_SECURITY
+                    | NicCapability.QUEUE_TX_OFFLOAD_UDP_TNL_TSO
+                    | NicCapability.QUEUE_TX_OFFLOAD_IP_TNL_TSO
+                    | NicCapability.QUEUE_TX_OFFLOAD_OUTER_UDP_CKSUM
+                    | NicCapability.QUEUE_TX_OFFLOAD_SEND_ON_TIMESTAMP
+                ):
+                    return (TestPmd.get_offload_capabilities_func("tx"), None)
                 case (
                     NicCapability.RUNTIME_RX_QUEUE_SETUP
                     | NicCapability.RUNTIME_TX_QUEUE_SETUP

@@ -39,6 +39,8 @@ from api.testpmd.types import (
     FlowRule,
     RxOffloadCapabilities,
     RxOffloadCapability,
+    RxOffloadConfiguration,
+    RxTxLiteralSwitch,
     TestPmdDevice,
     TestPmdPort,
     TestPmdPortFlowCtrl,
@@ -46,6 +48,9 @@ from api.testpmd.types import (
     TestPmdQueueInfo,
     TestPmdRxqInfo,
     TestPmdVerbosePacket,
+    TxOffloadCapabilities,
+    TxOffloadCapability,
+    TxOffloadConfiguration,
     VLANOffloadFlag,
 )
 from framework.context import get_ctx
@@ -1190,13 +1195,14 @@ class TestPmd(DPDKShell):
         unsupported_capabilities: MutableSet["NicCapability"],
         flag_class: type[Flag],
         supported_flags: Flag,
+        prefix: str = "",
     ) -> None:
         """Divide all flags from `flag_class` into supported and unsupported."""
         for flag in flag_class:
             if flag in supported_flags:
-                supported_capabilities.add(NicCapability[str(flag.name)])
+                supported_capabilities.add(NicCapability[f"{prefix}{flag.name}"])
             else:
-                unsupported_capabilities.add(NicCapability[str(flag.name)])
+                unsupported_capabilities.add(NicCapability[f"{prefix}{flag.name}"])
 
     @_requires_started_ports
     def get_capabilities_rxq_info(
@@ -1293,6 +1299,55 @@ class TestPmd(DPDKShell):
         else:
             unsupported_capabilities.add(NicCapability.PHYSICAL_FUNCTION)
 
+    @staticmethod
+    def get_offload_capabilities_func(
+        rxtx: RxTxLiteralSwitch,
+    ) -> Callable[["TestPmd", MutableSet["NicCapability"], MutableSet["NicCapability"]], None]:
+        """High-order function that returns a method for gathering Rx/Tx offload capabilities.
+
+        Args:
+            rxtx: whether to gather the rx or tx capabilities in the returned method.
+
+        Returns:
+            A method for gathering Rx/Tx offload capabilities that meets the required structure.
+        """
+
+        def get_capabilities(
+            self: "TestPmd",
+            supported_capabilities: MutableSet["NicCapability"],
+            unsupported_capabilities: MutableSet["NicCapability"],
+        ) -> None:
+            """Get all rx/tx offload capabilities and divide them into supported and unsupported.
+
+            Args:
+                self: The shell instance to get the capabilities from.
+                supported_capabilities: Supported capabilities will be added to this set.
+                unsupported_capabilities: Unsupported capabilities will be added to this set.
+            """
+            self._logger.info(f"Getting {rxtx} offload capabilities.")
+            command = f"show port {self.ports[0].id} {rxtx}_offload capabilities"
+            offload_capabilities_out = self.send_command(command)
+
+            capabilities = TxOffloadCapabilities if rxtx == "tx" else RxOffloadCapabilities
+            offload_capabilities = capabilities.parse(offload_capabilities_out)
+
+            self._update_capabilities_from_flag(
+                supported_capabilities,
+                unsupported_capabilities,
+                TxOffloadCapability if rxtx == "tx" else RxOffloadCapability,
+                offload_capabilities.per_port | offload_capabilities.per_queue,
+                prefix=f"PORT_{rxtx.upper()}_OFFLOAD_",
+            )
+            self._update_capabilities_from_flag(
+                supported_capabilities,
+                unsupported_capabilities,
+                TxOffloadCapability if rxtx == "tx" else RxOffloadCapability,
+                offload_capabilities.per_queue,
+                prefix=f"QUEUE_{rxtx.upper()}_OFFLOAD_",
+            )
+
+        return get_capabilities
+
     @_requires_stopped_ports
     def set_port_mbuf_fast_free(
         self,
@@ -1352,3 +1407,41 @@ class TestPmd(DPDKShell):
             raise InteractiveCommandExecutionError(
                 f"Failed to get offload config on port {port_id}, queue {queue_id}:\n{output}"
             )
+
+    @_requires_started_ports
+    def get_offload_config(
+        self,
+        port_id: int,
+        rxtx: RxTxLiteralSwitch,
+        /,
+        verify: bool = True,
+    ) -> RxOffloadConfiguration | TxOffloadConfiguration:
+        """Get the Rx or Tx offload configuration of the queues from the given port.
+
+        Args:
+            port_id: The port ID that contains the desired queues.
+            rxtx: Whether to get the Rx or Tx configuration of the given queues.
+            verify: If :data:`True` the output of the command will be scanned in an attempt to
+                verify that the offload configuration was retrieved successfully on all queues.
+
+        Returns:
+            An offload configuration containing the capabilities of the port and queues.
+
+        Raises:
+            InteractiveCommandExecutionError: If all queue offload configurations could not be
+                retrieved.
+        """
+        config_output = self.send_command(f"show port {port_id} {rxtx}_offload configuration")
+        if verify:
+            if (
+                f"Rx Offloading Configuration of port {port_id}" not in config_output
+                and f"Tx Offloading Configuration of port {port_id}" not in config_output
+            ):
+                self._logger.debug(f"Get port offload config error\n{config_output}")
+                raise InteractiveCommandExecutionError(
+                    f"Failed to get offload config on port {port_id}:\n{config_output}"
+                )
+        if rxtx == "rx":
+            return RxOffloadConfiguration.parse(config_output)
+        else:
+            return TxOffloadConfiguration.parse(config_output)
