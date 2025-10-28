@@ -484,7 +484,7 @@ typedef int (*rawdev_firmware_version_get_t)(struct rte_rawdev *dev,
  *   >0, ~0: for successful load
  *   <0: for failure
  *
- * @see Application may use 'firmware_version_get` for ascertaining successful
+ * @see Application may use `firmware_version_get` for ascertaining successful
  * load
  */
 typedef int (*rawdev_firmware_load_t)(struct rte_rawdev *dev,
