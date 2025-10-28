@@ -301,7 +301,7 @@ stats_mem_populate(struct rte_graph_cluster_stats *stats,
 				    graph_node->node->name, graph->name);
 
 		cluster->stat.xstat_desc = rte_zmalloc_socket(NULL,
-			sizeof(RTE_NODE_XSTAT_DESC_SIZE) * graph_node->node->xstats->nb_xstats,
+			RTE_NODE_XSTAT_DESC_SIZE * graph_node->node->xstats->nb_xstats,
 			RTE_CACHE_LINE_SIZE, stats->socket_id);
 		if (cluster->stat.xstat_desc == NULL) {
 			rte_free(cluster->stat.xstat_count);
