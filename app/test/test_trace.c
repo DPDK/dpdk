@@ -179,7 +179,7 @@ static int
 test_generic_trace_points(void)
 {
 	uint8_t arr[RTE_TRACE_BLOB_LEN_MAX];
-	int tmp;
+	int tmp = 0;
 	int i;
 
 	for (i = 0; i < RTE_TRACE_BLOB_LEN_MAX; i++)
