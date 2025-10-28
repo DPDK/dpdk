@@ -136,7 +136,6 @@ test_dma_adapter_params(void)
 {
 	struct rte_event_dma_adapter_runtime_params out_params;
 	struct rte_event_dma_adapter_runtime_params in_params;
-	struct rte_event event;
 	uint32_t cap;
 	int err, rc;
 
@@ -144,6 +143,8 @@ test_dma_adapter_params(void)
 	TEST_ASSERT_SUCCESS(err, "Failed to get adapter capabilities\n");
 
 	if (cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND) {
+		struct rte_event event = { .queue_id = 0, };
+
 		err = rte_event_dma_adapter_vchan_add(TEST_ADAPTER_ID, TEST_DMA_DEV_ID,
 							    TEST_DMA_VCHAN_ID, &event);
 	} else
@@ -520,7 +521,6 @@ test_dma_adapter_create(void)
 static int
 test_dma_adapter_vchan_add_del(void)
 {
-	struct rte_event event;
 	uint32_t cap;
 	int ret;
 
@@ -528,6 +528,8 @@ test_dma_adapter_vchan_add_del(void)
 	TEST_ASSERT_SUCCESS(ret, "Failed to get adapter capabilities\n");
 
 	if (cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND) {
+		struct rte_event event = { .queue_id = 0, };
+
 		ret = rte_event_dma_adapter_vchan_add(TEST_ADAPTER_ID, TEST_DMA_DEV_ID,
 							    TEST_DMA_VCHAN_ID, &event);
 	} else
