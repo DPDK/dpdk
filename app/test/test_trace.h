@@ -13,5 +13,5 @@ RTE_TRACE_POINT(
 
 RTE_TRACE_POINT_FP(
 	app_dpdk_test_fp,
-	RTE_TRACE_POINT_ARGS(void),
+	(void),
 )

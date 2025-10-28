@@ -20,7 +20,7 @@ extern "C" {
 /* Generic */
 RTE_TRACE_POINT(
 	rte_eal_trace_generic_void,
-	RTE_TRACE_POINT_ARGS(void),
+	(void),
 )
 
 RTE_TRACE_POINT(
