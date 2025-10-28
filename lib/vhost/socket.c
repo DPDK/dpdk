@@ -1192,7 +1192,8 @@ rte_vhost_driver_start(const char *path)
 		return -1;
 
 	if (vsocket->is_vduse)
-		return vduse_device_create(path, vsocket->net_compliant_ol_flags);
+		return vduse_device_create(path, vsocket->net_compliant_ol_flags,
+			vsocket->extbuf, vsocket->linearbuf);
 
 	if (vhost_user.fdset == NULL) {
 		vhost_user.fdset = fdset_init("vhost-evt");

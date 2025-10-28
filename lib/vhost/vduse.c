@@ -671,7 +671,7 @@ out_err:
 }
 
 int
-vduse_device_create(const char *path, bool compliant_ol_flags)
+vduse_device_create(const char *path, bool compliant_ol_flags, bool extbuf, bool linearbuf)
 {
 	int control_fd, dev_fd, vid, ret;
 	uint32_t i, max_queue_pairs, total_queues;
@@ -815,6 +815,12 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 	}
 
 	vhost_setup_virtio_net(dev->vid, true, compliant_ol_flags, true, true);
+
+	if (extbuf)
+		vhost_enable_extbuf(dev->vid);
+
+	if (linearbuf)
+		vhost_enable_linearbuf(dev->vid);
 
 	for (i = 0; i < total_queues; i++) {
 		struct vduse_vq_config vq_cfg = { 0 };
