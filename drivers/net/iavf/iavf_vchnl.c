@@ -93,7 +93,7 @@ iavf_dev_event_post(struct rte_eth_dev *dev,
 		void *param, size_t param_alloc_size)
 {
 	struct iavf_event_handler *handler = &event_handler;
-	char notify_byte;
+	char notify_byte = 0;
 	struct iavf_event_element *elem = rte_malloc(NULL, sizeof(*elem) + param_alloc_size, 0);
 	if (!elem)
 		return;
