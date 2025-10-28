@@ -346,3 +346,18 @@ rte_fib6_select_lookup(struct rte_fib6 *fib,
 		return -EINVAL;
 	}
 }
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_fib6_rcu_qsbr_add, 25.11)
+int
+rte_fib6_rcu_qsbr_add(struct rte_fib6 *fib, struct rte_fib6_rcu_config *cfg)
+{
+	if (fib == NULL || cfg == NULL)
+		return -EINVAL;
+
+	switch (fib->type) {
+	case RTE_FIB6_TRIE:
+		return trie_rcu_qsbr_add(fib->dp, cfg, fib->name);
+	default:
+		return -ENOTSUP;
+	}
+}

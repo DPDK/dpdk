@@ -38,6 +38,10 @@ struct rte_trie_tbl {
 	uint64_t	*tbl8;		/**< tbl8 table. */
 	uint32_t	*tbl8_pool;	/**< bitmap containing free tbl8 idxes*/
 	uint32_t	tbl8_pool_pos;
+	/* RCU config. */
+	enum rte_fib6_qsbr_mode rcu_mode; /**< Blocking, defer queue. */
+	struct rte_rcu_qsbr *v; /**< RCU QSBR variable. */
+	struct rte_rcu_qsbr_dq *dq; /**< RCU QSBR defer queue. */
 	/* tbl24 table. */
 	alignas(RTE_CACHE_LINE_SIZE) uint64_t	tbl24[];
 };
@@ -142,5 +146,9 @@ trie_get_lookup_fn(void *p, enum rte_fib6_lookup_type type);
 int
 trie_modify(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 	uint8_t depth, uint64_t next_hop, int op);
+
+int
+trie_rcu_qsbr_add(struct rte_trie_tbl *dp, struct rte_fib6_rcu_config *cfg,
+	const char *name);
 
 #endif /* _TRIE_H_ */

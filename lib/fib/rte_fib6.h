@@ -19,6 +19,7 @@
 
 #include <rte_common.h>
 #include <rte_ip6.h>
+#include <rte_rcu_qsbr.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,6 +34,19 @@ extern "C" {
 
 struct rte_fib6;
 struct rte_rib6;
+
+/** @internal Default RCU defer queue entries to reclaim in one go. */
+#define RTE_FIB6_RCU_DQ_RECLAIM_MAX     16
+/** @internal Default RCU defer queue size. */
+#define RTE_FIB6_RCU_DQ_RECLAIM_SZ      128
+
+/** RCU reclamation modes */
+enum rte_fib6_qsbr_mode {
+	/** Create defer queue for reclaim. */
+	RTE_FIB6_QSBR_MODE_DQ = 0,
+	/** Use blocking mode reclaim. No defer queue created. */
+	RTE_FIB6_QSBR_MODE_SYNC
+};
 
 /** Type of FIB struct */
 enum rte_fib6_type {
@@ -83,6 +97,26 @@ struct rte_fib6_conf {
 			uint32_t	num_tbl8;
 		} trie;
 	};
+};
+
+/** FIB RCU QSBR configuration structure. */
+struct rte_fib6_rcu_config {
+	/** RCU QSBR variable. */
+	struct rte_rcu_qsbr *v;
+	/** Mode of RCU QSBR. See RTE_FIB6_QSBR_MODE_*.
+	 * Default: RTE_FIB6_QSBR_MODE_DQ, create defer queue for reclaim.
+	 */
+	enum rte_fib6_qsbr_mode mode;
+	/** RCU defer queue size.
+	 * Default: RTE_FIB6_RCU_DQ_RECLAIM_SZ.
+	 */
+	uint32_t dq_size;
+	/** Threshold to trigger auto reclaim. */
+	uint32_t reclaim_thd;
+	/** Max entries to reclaim in one go.
+	 * Default: RTE_FIB6_RCU_DQ_RECLAIM_MAX.
+	 */
+	uint32_t reclaim_max;
 };
 
 /**
@@ -219,6 +253,24 @@ rte_fib6_get_rib(struct rte_fib6 *fib);
  */
 int
 rte_fib6_select_lookup(struct rte_fib6 *fib, enum rte_fib6_lookup_type type);
+
+/**
+ * Associate RCU QSBR variable with a FIB object.
+ *
+ * @param fib
+ *   FIB object handle
+ * @param cfg
+ *   RCU QSBR configuration
+ * @return
+ *   0 on success
+ *   -EINVAL - invalid pointer
+ *   -EEXIST - already added QSBR
+ *   -ENOMEM - memory allocation failure
+ *   -ENOTSUP - not supported by configured dataplane algorithm
+ */
+__rte_experimental
+int
+rte_fib6_rcu_qsbr_add(struct rte_fib6 *fib, struct rte_fib6_rcu_config *cfg);
 
 #ifdef __cplusplus
 }

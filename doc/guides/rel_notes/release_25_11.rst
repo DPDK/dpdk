@@ -197,6 +197,11 @@ New Features
   and the zip also supports data copy and fill.
   This driver exposes this capability to DPDK applications.
 
+* **Added RCU support in the FIB6 library.**
+
+  It is now possible to register an RCU QSBR object
+  to handle graceful deletion of table groups.
+
 * **Allow overriding the automatic usage/help generation in argparse library.**
 
   The argparse library now supports overriding the automatic help text generation,
