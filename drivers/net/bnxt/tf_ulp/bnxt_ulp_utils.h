@@ -1057,6 +1057,8 @@ bnxt_ulp_cap_feat_process(uint64_t feat_bits, uint64_t *out_bits)
 		BNXT_DRV_DBG(ERR, "Port Mac Address Feature is enabled\n");
 	if (bit & BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW)
 		BNXT_DRV_DBG(ERR, "Multi Tunnel Flow Feature is enabled\n");
+	if (bit & BNXT_ULP_FEATURE_BIT_MULTI_INSTANCE)
+		BNXT_DRV_DBG(ERR, "Multi Instance Feature is enabled\n");
 
 	*out_bits =  bit;
 	return 0;

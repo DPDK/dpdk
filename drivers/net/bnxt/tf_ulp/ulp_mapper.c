@@ -729,11 +729,13 @@ ulp_mapper_tbl_ident_scan_ext(struct bnxt_ulp_mapper_parms *parms,
 static int32_t
 ulp_mapper_ident_process(struct bnxt_ulp_mapper_parms *parms,
 			 struct bnxt_ulp_mapper_tbl_info *tbl,
+			 struct ulp_blob *key __rte_unused,
 			 struct bnxt_ulp_mapper_ident_info *ident,
 			 uint16_t *val)
 {
 	const struct ulp_mapper_core_ops *op = parms->mapper_data->mapper_oper;
 	struct ulp_flow_db_res_params fid_parms = { 0 };
+	bool global = false;
 	uint64_t id = 0;
 	int32_t idx;
 	int rc;
@@ -742,14 +744,25 @@ ulp_mapper_ident_process(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.resource_func = ident->resource_func;
 	fid_parms.resource_type = ident->ident_type;
 	fid_parms.critical_resource = tbl->critical_resource;
-	ulp_flow_db_shared_session_set(&fid_parms, tbl->session_type);
 
-	rc = op->ulp_mapper_core_ident_alloc_process(parms->ulp_ctx,
-						     tbl->session_type,
-						     ident->ident_type,
-						     tbl->direction,
-						     tbl->track_type,
-						     &id);
+	if (tbl->resource_func == BNXT_ULP_RESOURCE_FUNC_GLOBAL_IDENTIFIER)
+		global = true;
+
+	if (!global) {
+		ulp_flow_db_shared_session_set(&fid_parms, tbl->session_type);
+		rc = op->ulp_mapper_core_ident_alloc_process(parms->ulp_ctx,
+							     tbl->session_type,
+							     ident->ident_type,
+							     tbl->direction,
+							     tbl->track_type,
+							     &id);
+	} else {
+		rc = op->ulp_mapper_core_global_ident_alloc(parms->ulp_ctx,
+							    ident->ident_type,
+							    tbl->direction,
+							    &id);
+	}
+
 	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR, "identifier process failed\n");
 		return rc;
@@ -781,7 +794,11 @@ ulp_mapper_ident_process(struct bnxt_ulp_mapper_parms *parms,
 
 error:
 	/* Need to free the identifier */
-	op->ulp_mapper_core_ident_free(parms->ulp_ctx, &fid_parms);
+	if (!global)
+		op->ulp_mapper_core_ident_free(parms->ulp_ctx, &fid_parms);
+	else
+		op->ulp_mapper_core_global_ident_free(parms->ulp_ctx,
+						      &fid_parms);
 	return rc;
 }
 
@@ -2413,7 +2430,7 @@ ulp_mapper_tcam_tbl_ident_alloc(struct bnxt_ulp_mapper_parms *parms,
 
 	idents = ulp_mapper_ident_fields_get(parms, tbl, &num_idents);
 	for (i = 0; i < num_idents; i++) {
-		if (unlikely(ulp_mapper_ident_process(parms, tbl,
+		if (unlikely(ulp_mapper_ident_process(parms, tbl, NULL,
 						      &idents[i], NULL)))
 			return -EINVAL;
 	}
@@ -3004,6 +3021,55 @@ ulp_mapper_stats_cache_tbl_res_free(struct bnxt_ulp_context *ulp,
 {
 	ulp_sc_mgr_entry_free(ulp, fid);
 	return 0;
+}
+
+static int32_t
+ulp_mapper_global_identifier_process(struct bnxt_ulp_mapper_parms *parms,
+				     struct bnxt_ulp_mapper_tbl_info *tbl)
+{
+	int32_t rc = 0;
+	struct bnxt_ulp_mapper_ident_info *idents;
+	struct bnxt_ulp_mapper_key_info	*kflds;
+	struct ulp_blob key;
+	uint32_t num_idents;
+	uint32_t num_kflds;
+	uint32_t i;
+
+	/* check the table opcode  */
+	if (tbl->tbl_opcode != BNXT_ULP_GLOBAL_IDENTIFIER_TBL_OPC_ALLOC) {
+		BNXT_DRV_DBG(ERR, "Invalid global ident table opcode %d\n",
+			     tbl->tbl_opcode);
+		return -EINVAL;
+	}
+
+	/* Create the key blob */
+	if (unlikely(ulp_blob_init(&key, tbl->blob_key_bit_size,
+				   BNXT_ULP_BYTE_ORDER_BE))) {
+		BNXT_DRV_DBG(ERR, "blob init failed.\n");
+		return -EINVAL;
+	}
+
+	kflds = ulp_mapper_key_fields_get(parms, tbl, &num_kflds);
+	for (i = 0; i < num_kflds; i++) {
+		rc = ulp_mapper_field_opc_process(parms, tbl->direction,
+						  &kflds[i].field_info_spec,
+						  &key, 1, "Global Id Context");
+		if (unlikely(rc)) {
+			BNXT_DRV_DBG(ERR, "Key field set failed %s\n",
+				     kflds[i].field_info_spec.description);
+			return rc;
+		}
+	}
+
+	/* Get the identifiers to process it */
+	idents = ulp_mapper_ident_fields_get(parms, tbl, &num_idents);
+	for (i = 0; i < num_idents; i++) {
+		if (unlikely(ulp_mapper_ident_process(parms, tbl, &key,
+						      &idents[i], NULL)))
+			return -EINVAL;
+	}
+
+	return rc;
 }
 
 /* Free the vnic resource */
@@ -4211,6 +4277,9 @@ ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, void *error)
 		case BNXT_ULP_RESOURCE_FUNC_STATS_CACHE:
 			rc = ulp_mapper_stats_cache_tbl_process(parms, tbl);
 			break;
+		case BNXT_ULP_RESOURCE_FUNC_GLOBAL_IDENTIFIER:
+			rc = ulp_mapper_global_identifier_process(parms, tbl);
+			break;
 		default:
 			BNXT_DRV_DBG(ERR, "Unexpected mapper resource %d\n",
 				     tbl->resource_func);
@@ -4353,6 +4422,8 @@ ulp_mapper_resource_free(struct bnxt_ulp_context *ulp,
 		rc = ulp_mapper_stats_cache_tbl_res_free(ulp,
 							 fid);
 		break;
+	case BNXT_ULP_RESOURCE_FUNC_GLOBAL_IDENTIFIER:
+		rc = mapper_op->ulp_mapper_core_global_ident_free(ulp, res);
 	default:
 		break;
 	}

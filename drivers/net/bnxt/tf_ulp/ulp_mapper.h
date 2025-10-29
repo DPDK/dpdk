@@ -147,6 +147,17 @@ struct ulp_mapper_core_ops {
 	int32_t
 	(*ulp_mapper_core_ident_free)(struct bnxt_ulp_context *ulp_ctx,
 				      struct ulp_flow_db_res_params *res);
+
+	int32_t
+	(*ulp_mapper_core_global_ident_alloc)(struct bnxt_ulp_context *ulp_ctx,
+					      uint16_t ident_type,
+					      uint8_t direction,
+					      uint64_t *identifier_id);
+
+	int32_t
+	(*ulp_mapper_core_global_ident_free)(struct bnxt_ulp_context *ulp_ctx,
+					     struct ulp_flow_db_res_params *r);
+
 	uint32_t
 	(*ulp_mapper_core_dyn_tbl_type_get)(struct bnxt_ulp_mapper_parms *parms,
 					    struct bnxt_ulp_mapper_tbl_info *t,
