@@ -1030,6 +1030,7 @@ Listed below are the rte_flow items supported:
 * ``eth``
 * ``geneve``
 * ``gre``
+* ``gre_key``
 * ``icmp``
 * ``icmp6``
 * ``ipv4``
