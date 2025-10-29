@@ -5324,6 +5324,15 @@ __translate_group(struct rte_eth_dev *dev,
 						  NULL,
 						  "group index not supported");
 		*table_group = group + 1;
+	} else if (mlx5_vport_tx_metadata_passing_enabled(priv->sh) && flow_attr->egress) {
+		/*
+		 * If VM cross GVMI metadata Tx was enabled, PMD creates a default
+		 * flow rule in the group 0 to copy metadata value.
+		 */
+		if (group > MLX5_HW_MAX_EGRESS_GROUP)
+			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
+						  NULL, "group index not supported");
+		*table_group = group + 1;
 	} else {
 		*table_group = group;
 	}
@@ -8006,14 +8015,17 @@ __flow_hw_actions_template_create(struct rte_eth_dev *dev,
 		mf_masks[expand_mf_num] = quota_color_inc_mask;
 		expand_mf_num++;
 	}
-	if (priv->sh->config.dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS &&
-	    priv->sh->config.dv_esw_en &&
-	    !attr->transfer &&
+	if (attr->ingress &&
 	    (action_flags & (MLX5_FLOW_ACTION_QUEUE | MLX5_FLOW_ACTION_RSS))) {
-		/* Insert META copy */
-		mf_actions[expand_mf_num] = rx_meta_copy_action;
-		mf_masks[expand_mf_num] = rx_meta_copy_mask;
-		expand_mf_num++;
+		if ((priv->sh->config.dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS &&
+		    priv->sh->config.dv_esw_en) ||
+		    mlx5_vport_rx_metadata_passing_enabled(priv->sh)) {
+			/* Insert META copy */
+			mf_actions[expand_mf_num] = rx_meta_copy_action;
+			mf_masks[expand_mf_num] = rx_meta_copy_mask;
+			expand_mf_num++;
+			MLX5_ASSERT(expand_mf_num <= MLX5_HW_MAX_ACTS);
+		}
 	}
 	if (expand_mf_num) {
 		if (act_num + expand_mf_num > MLX5_HW_MAX_ACTS) {
@@ -10809,7 +10821,7 @@ flow_hw_create_lacp_rx_table(struct rte_eth_dev *dev,
  *   0 on success, negative values otherwise
  */
 static int
-flow_hw_create_ctrl_tables(struct rte_eth_dev *dev, struct rte_flow_error *error)
+flow_hw_create_fdb_ctrl_tables(struct rte_eth_dev *dev, struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_hw_ctrl_fdb *hw_ctrl_fdb;
@@ -10956,6 +10968,59 @@ flow_hw_create_ctrl_tables(struct rte_eth_dev *dev, struct rte_flow_error *error
 err:
 	flow_hw_cleanup_ctrl_fdb_tables(dev);
 	return -EINVAL;
+}
+
+static void
+flow_hw_cleanup_ctrl_nic_tables(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_hw_ctrl_nic *ctrl = priv->hw_ctrl_nic;
+
+	if (ctrl == NULL)
+		return;
+	if (ctrl->hw_tx_meta_cpy_tbl)
+		claim_zero(flow_hw_table_destroy(dev, ctrl->hw_tx_meta_cpy_tbl, NULL));
+	if (ctrl->tx_meta_items_tmpl != NULL)
+		claim_zero(flow_hw_pattern_template_destroy(dev, ctrl->tx_meta_items_tmpl, NULL));
+	if (ctrl->tx_meta_actions_tmpl != NULL)
+		claim_zero(flow_hw_actions_template_destroy(dev, ctrl->tx_meta_actions_tmpl, NULL));
+	mlx5_free(ctrl);
+	priv->hw_ctrl_nic = NULL;
+}
+
+static int
+flow_hw_create_nic_ctrl_tables(struct rte_eth_dev *dev, struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	struct mlx5_flow_hw_ctrl_nic *ctrl = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*ctrl),
+							 0, SOCKET_ID_ANY);
+	if (!ctrl)
+		return rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "failed to allocate port control flow table");
+	priv->hw_ctrl_nic = ctrl;
+	ctrl->tx_meta_items_tmpl = flow_hw_create_tx_repr_sq_pattern_tmpl(dev, error);
+	if (ctrl->tx_meta_items_tmpl == NULL)
+		goto error;
+	ctrl->tx_meta_actions_tmpl =
+		flow_hw_create_tx_default_mreg_copy_actions_template(dev, error);
+	if (ctrl->tx_meta_actions_tmpl == NULL) {
+		rte_flow_error_set(error, rte_errno, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				  "failed to create default Tx metadata copy actions template");
+		goto error;
+	}
+	ctrl->hw_tx_meta_cpy_tbl =
+		flow_hw_create_tx_default_mreg_copy_table(dev, ctrl->tx_meta_items_tmpl,
+							  ctrl->tx_meta_actions_tmpl, error);
+	if (ctrl->hw_tx_meta_cpy_tbl == NULL) {
+		rte_flow_error_set(error, rte_errno, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				  "failed to create default Tx metadata copy table");
+	}
+	return 0;
+
+error:
+	flow_hw_cleanup_ctrl_nic_tables(dev);
+	return -rte_errno;
 }
 
 static void
@@ -11697,6 +11762,7 @@ __flow_hw_resource_release(struct rte_eth_dev *dev, bool ctx_close)
 	flow_hw_rxq_flag_set(dev, false);
 	flow_hw_flush_all_ctrl_flows(dev);
 	flow_hw_cleanup_ctrl_fdb_tables(dev);
+	flow_hw_cleanup_ctrl_nic_tables(dev);
 	flow_hw_cleanup_tx_repr_tagging(dev);
 	flow_hw_cleanup_ctrl_rx_tables(dev);
 	flow_hw_action_template_drop_release(dev);
@@ -12141,8 +12207,15 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 					   NULL, "Failed to create vport actions.");
 			goto err;
 		}
-		ret = flow_hw_create_ctrl_tables(dev, error);
+		ret = flow_hw_create_fdb_ctrl_tables(dev, error);
 		if (ret) {
+			rte_errno = -ret;
+			goto err;
+		}
+	}
+	if (mlx5_vport_tx_metadata_passing_enabled(priv->sh)) {
+		ret = flow_hw_create_nic_ctrl_tables(dev, error);
+		if (ret != 0) {
 			rte_errno = -ret;
 			goto err;
 		}
@@ -16005,7 +16078,8 @@ mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev)
 }
 
 int
-mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev, uint32_t sqn, bool external)
+mlx5_flow_hw_create_fdb_tx_default_mreg_copy_flow(struct rte_eth_dev *dev,
+						  uint32_t sqn, bool external)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rte_flow_item_sq sq_spec = {
@@ -16057,6 +16131,56 @@ mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev, uint32_t 
 	return flow_hw_create_ctrl_flow(dev, dev,
 					priv->hw_ctrl_fdb->hw_tx_meta_cpy_tbl,
 					items, 0, copy_reg_action, 0, &flow_info, external);
+}
+
+int
+mlx5_flow_hw_create_nic_tx_default_mreg_copy_flow(struct rte_eth_dev *dev, uint32_t sqn)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rte_flow_item_sq sq_spec = {
+		.queue = sqn,
+	};
+	struct rte_flow_item items[] = {
+		{
+			.type = (enum rte_flow_item_type)MLX5_RTE_FLOW_ITEM_TYPE_SQ,
+			.spec = &sq_spec,
+		},
+		{
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		},
+	};
+	struct rte_flow_action_modify_field mreg_action = {
+		.operation = RTE_FLOW_MODIFY_SET,
+		.dst = {
+			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
+			.tag_index = REG_C_1,
+		},
+		.src = {
+			.field = (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG,
+			.tag_index = REG_A,
+		},
+		.width = 32,
+	};
+	struct rte_flow_action copy_reg_action[] = {
+		[0] = {
+			.type = RTE_FLOW_ACTION_TYPE_MODIFY_FIELD,
+			.conf = &mreg_action,
+		},
+		[1] = {
+			.type = RTE_FLOW_ACTION_TYPE_JUMP,
+		},
+		[2] = {
+			.type = RTE_FLOW_ACTION_TYPE_END,
+		},
+	};
+	struct mlx5_ctrl_flow_info flow_info = {
+		.type = MLX5_CTRL_FLOW_TYPE_TX_META_COPY,
+		.tx_repr_sq = sqn,
+	};
+
+	return flow_hw_create_ctrl_flow(dev, dev,
+					priv->hw_ctrl_nic->hw_tx_meta_cpy_tbl,
+					items, 0, copy_reg_action, 0, &flow_info, false);
 }
 
 static bool

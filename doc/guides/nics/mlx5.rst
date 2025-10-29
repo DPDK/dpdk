@@ -2483,6 +2483,18 @@ and it should be allowed to specify zero values as parameters
 for the META and MARK flow items and actions.
 In the same time, zero mask has no meaning and should be rejected on validation stage.
 
+Starting from firmware version 47.0274,
+if :ref:`switchdev mode <mlx5_switchdev>` was enabled,
+flow metadata can be shared between flows in FDB and VF domains:
+
+* If metadata was attached to FDB flow
+  and that flow transferred incoming packet to a VF,
+  representor, ingress flow bound to the VF can match the metadata.
+
+* If metadata was attached to VF egress flow, FDB flow can match the metadata.
+
+The metadata sharing functionality is controlled with firmware configuration.
+
 Requirements
 ^^^^^^^^^^^^
 

@@ -487,6 +487,34 @@ mlx5_devx_cmd_destroy(struct mlx5_devx_obj *obj)
 	return ret;
 }
 
+static int
+mlx5_devx_cmd_query_esw_vport_context(void *ctx,
+				      struct mlx5_hca_attr *attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(query_esw_vport_context_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(query_esw_vport_context_out)] = {0};
+	void *vctx;
+	int rc;
+
+	MLX5_SET(query_esw_vport_context_in, in, opcode, MLX5_CMD_OP_QUERY_ESW_VPORT_CONTEXT);
+	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
+	if (rc || MLX5_FW_STATUS(out)) {
+		DEVX_DRV_LOG(ERR, out, "query ESW vport context", NULL, 0);
+		return MLX5_DEVX_ERR_RC(rc);
+	}
+	vctx = MLX5_ADDR_OF(query_esw_vport_context_out, out, esw_vport_context);
+	attr->fdb_to_vport_reg_c = MLX5_GET(esw_vport_context, vctx, fdb_to_vport_reg_c);
+	if (attr->fdb_to_vport_reg_c != 0) {
+		attr->vport_to_fdb_metadata =
+			MLX5_GET(esw_vport_context, vctx, vport_to_fdb_metadata);
+		attr->fdb_to_vport_metadata =
+			MLX5_GET(esw_vport_context, vctx, fdb_to_vport_metadata);
+		attr->fdb_to_vport_reg_c_id =
+			MLX5_GET(esw_vport_context, vctx, fdb_to_vport_reg_c_id);
+	}
+	return 0;
+}
+
 /**
  * Query NIC vport context.
  * Fills minimal inline attribute.
@@ -531,6 +559,8 @@ mlx5_devx_cmd_query_nic_vport_context(void *ctx,
 						   min_wqe_inline_mode);
 	attr->system_image_guid = MLX5_GET64(nic_vport_context, vctx,
 					     system_image_guid);
+	attr->vport_to_fdb_metadata = MLX5_GET(nic_vport_context, vctx, vport_to_fdb_metadata);
+	attr->fdb_to_vport_metadata = MLX5_GET(nic_vport_context, vctx, fdb_to_vport_metadata);
 	return 0;
 }
 
@@ -1407,6 +1437,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 				 esw_manager_vport_number_valid);
 		attr->esw_mgr_vport_id =
 			MLX5_GET(esw_cap, hcattr, esw_manager_vport_number);
+		mlx5_devx_cmd_query_esw_vport_context(ctx, attr);
 	}
 	if (attr->eswitch_manager) {
 		uint32_t esw_reg, reg_c_8_15;

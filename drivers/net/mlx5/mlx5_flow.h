@@ -1745,6 +1745,10 @@ struct rte_flow_template_table {
 	struct mlx5_dr_rule_action_container rule_acts[];
 };
 
+bool mlx5_vport_rx_metadata_passing_enabled(const struct mlx5_dev_ctx_shared *sh);
+bool mlx5_vport_tx_metadata_passing_enabled(const struct mlx5_dev_ctx_shared *sh);
+bool mlx5_esw_metadata_passing_enabled(const struct mlx5_dev_ctx_shared *sh);
+
 static __rte_always_inline struct mlx5dr_matcher *
 mlx5_table_matcher(const struct rte_flow_template_table *table)
 {
@@ -1789,6 +1793,11 @@ flow_hw_get_reg_id_by_domain(struct rte_eth_dev *dev,
 		    sh->config.dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS) {
 			return REG_C_1;
 		}
+		if ((mlx5_vport_rx_metadata_passing_enabled(sh) &&
+		     domain_type == MLX5DR_TABLE_TYPE_NIC_RX) ||
+		    (mlx5_vport_tx_metadata_passing_enabled(sh) &&
+		     domain_type == MLX5DR_TABLE_TYPE_NIC_TX))
+			return REG_C_1;
 		/*
 		 * On root table - PMD allows only egress META matching, thus
 		 * REG_A matching is sufficient.
@@ -2998,6 +3007,12 @@ struct mlx5_flow_hw_ctrl_fdb {
 	struct rte_flow_template_table *hw_lacp_rx_tbl;
 };
 
+struct mlx5_flow_hw_ctrl_nic {
+	struct rte_flow_pattern_template *tx_meta_items_tmpl;
+	struct rte_flow_actions_template *tx_meta_actions_tmpl;
+	struct rte_flow_template_table *hw_tx_meta_cpy_tbl;
+};
+
 #define MLX5_CTRL_PROMISCUOUS    (RTE_BIT32(0))
 #define MLX5_CTRL_ALL_MULTICAST  (RTE_BIT32(1))
 #define MLX5_CTRL_BROADCAST      (RTE_BIT32(2))
@@ -3565,8 +3580,9 @@ int mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev,
 int mlx5_flow_hw_esw_destroy_sq_miss_flow(struct rte_eth_dev *dev,
 					  uint32_t sqn, bool external);
 int mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev);
-int mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev,
+int mlx5_flow_hw_create_fdb_tx_default_mreg_copy_flow(struct rte_eth_dev *dev,
 						  uint32_t sqn, bool external);
+int mlx5_flow_hw_create_nic_tx_default_mreg_copy_flow(struct rte_eth_dev *dev, uint32_t sqn);
 int mlx5_flow_hw_destroy_tx_default_mreg_copy_flow(struct rte_eth_dev *dev,
 						   uint32_t sqn, bool external);
 int mlx5_flow_hw_create_tx_repr_matching_flow(struct rte_eth_dev *dev,

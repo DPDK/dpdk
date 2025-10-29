@@ -262,6 +262,8 @@ struct mlx5_hca_attr {
 	uint32_t mini_cqe_resp_l3_l4_tag:1;
 	uint32_t enhanced_cqe_compression:1;
 	uint32_t pkt_integrity_match:1; /* 1 if HW supports integrity item */
+	uint32_t fdb_to_vport_metadata:1; /* 1 if enabled */
+	uint32_t vport_to_fdb_metadata:1; /* 1 if enabled */
 	struct mlx5_hca_qos_attr qos;
 	struct mlx5_hca_vdpa_attr vdpa;
 	struct mlx5_hca_flow_attr flow;
@@ -328,6 +330,9 @@ struct mlx5_hca_attr {
 	uint32_t fdb_unified_en:1;
 	uint32_t jump_fdb_rx_en:1;
 	uint32_t fdb_rx_set_flow_tag_stc:1;
+	uint32_t return_reg_id:16;
+	uint32_t fdb_to_vport_reg_c:1;
+	uint8_t fdb_to_vport_reg_c_id;
 	uint8_t max_header_modify_pattern_length;
 	uint64_t system_image_guid;
 	uint32_t log_max_conn_track_offload:5;

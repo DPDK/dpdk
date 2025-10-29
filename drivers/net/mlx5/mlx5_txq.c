@@ -1462,7 +1462,7 @@ rte_pmd_mlx5_external_sq_enable(uint16_t port_id, uint32_t sq_num)
 
 		if (!priv->sh->config.repr_matching &&
 		    priv->sh->config.dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS &&
-		    mlx5_flow_hw_create_tx_default_mreg_copy_flow(dev, sq_num, true)) {
+		    mlx5_flow_hw_create_fdb_tx_default_mreg_copy_flow(dev, sq_num, true)) {
 			if (sq_miss_created)
 				mlx5_flow_hw_esw_destroy_sq_miss_flow(dev, sq_num, true);
 			return -rte_errno;

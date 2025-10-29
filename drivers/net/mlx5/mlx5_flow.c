@@ -1238,33 +1238,43 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 	case MLX5_HAIRPIN_TX:
 		return REG_A;
 	case MLX5_METADATA_RX:
-		switch (config->dv_xmeta_en) {
-		case MLX5_XMETA_MODE_LEGACY:
-			return REG_B;
-		case MLX5_XMETA_MODE_META16:
-			return REG_C_0;
-		case MLX5_XMETA_MODE_META32:
+		if (mlx5_vport_rx_metadata_passing_enabled(priv->sh)) {
 			return REG_C_1;
-		case MLX5_XMETA_MODE_META32_HWS:
-			return REG_C_1;
+		} else {
+			switch (config->dv_xmeta_en) {
+			case MLX5_XMETA_MODE_LEGACY:
+				return REG_B;
+			case MLX5_XMETA_MODE_META16:
+				return REG_C_0;
+			case MLX5_XMETA_MODE_META32:
+				return REG_C_1;
+			case MLX5_XMETA_MODE_META32_HWS:
+				return REG_C_1;
+			}
 		}
 		break;
 	case MLX5_METADATA_TX:
-		if (config->dv_flow_en == 2 && config->dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS) {
+		if ((config->dv_flow_en == 2 &&
+		    config->dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS) ||
+		    mlx5_vport_tx_metadata_passing_enabled(priv->sh)) {
 			return REG_C_1;
 		} else {
 			return REG_A;
 		}
 	case MLX5_METADATA_FDB:
-		switch (config->dv_xmeta_en) {
-		case MLX5_XMETA_MODE_LEGACY:
-			return REG_NON;
-		case MLX5_XMETA_MODE_META16:
-			return REG_C_0;
-		case MLX5_XMETA_MODE_META32:
+		if (mlx5_esw_metadata_passing_enabled(priv->sh)) {
 			return REG_C_1;
-		case MLX5_XMETA_MODE_META32_HWS:
-			return REG_C_1;
+		} else {
+			switch (config->dv_xmeta_en) {
+			case MLX5_XMETA_MODE_LEGACY:
+				return REG_NON;
+			case MLX5_XMETA_MODE_META16:
+				return REG_C_0;
+			case MLX5_XMETA_MODE_META32:
+				return REG_C_1;
+			case MLX5_XMETA_MODE_META32_HWS:
+				return REG_C_1;
+			}
 		}
 		break;
 	case MLX5_FLOW_MARK:
@@ -12525,4 +12535,34 @@ rte_pmd_mlx5_enable_steering(void)
 	mlx5_steering_disabled = false;
 
 	return 0;
+}
+
+bool
+mlx5_vport_rx_metadata_passing_enabled(const struct mlx5_dev_ctx_shared *sh)
+{
+	const struct mlx5_sh_config *dev_config = &sh->config;
+	const struct mlx5_hca_attr  *hca_attr = &sh->cdev->config.hca_attr;
+
+	return !dev_config->dv_esw_en && hca_attr->fdb_to_vport_metadata;
+}
+
+bool
+mlx5_vport_tx_metadata_passing_enabled(const struct mlx5_dev_ctx_shared *sh)
+{
+	const struct mlx5_sh_config *dev_config = &sh->config;
+	const struct mlx5_hca_attr  *hca_attr = &sh->cdev->config.hca_attr;
+
+	return !dev_config->dv_esw_en && hca_attr->vport_to_fdb_metadata;
+}
+
+bool
+mlx5_esw_metadata_passing_enabled(const struct mlx5_dev_ctx_shared *sh)
+{
+	const struct mlx5_sh_config *dev_config = &sh->config;
+	const struct mlx5_hca_attr  *hca_attr = &sh->cdev->config.hca_attr;
+	bool fdb_to_vport_metadata_on = (hca_attr->fdb_to_vport_reg_c_id &
+					 RTE_BIT32(MLX5_ESW_VPORT_METADATA_REG_C_1)) != 0;
+
+	return dev_config->dv_esw_en && hca_attr->fdb_to_vport_reg_c && fdb_to_vport_metadata_on &&
+		hca_attr->vport_to_fdb_metadata && hca_attr->fdb_to_vport_metadata;
 }

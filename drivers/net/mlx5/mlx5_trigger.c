@@ -1604,7 +1604,7 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 	struct mlx5_sh_config *config = &priv->sh->config;
 	uint64_t flags = 0;
 	unsigned int i;
-	int ret;
+	int ret = 0;
 
 	for (i = 0; i < priv->txqs_n; ++i) {
 		struct mlx5_txq_ctrl *txq = mlx5_txq_get(dev, i);
@@ -1635,10 +1635,13 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 		if (config->dv_esw_en && !config->repr_matching &&
 		    config->dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS &&
 		    (priv->master || priv->representor)) {
-			if (mlx5_flow_hw_create_tx_default_mreg_copy_flow(dev, queue, false)) {
-				mlx5_txq_release(dev, i);
-				goto error;
-			}
+			ret = mlx5_flow_hw_create_fdb_tx_default_mreg_copy_flow(dev, queue, false);
+		} else if (mlx5_vport_tx_metadata_passing_enabled(priv->sh)) {
+			ret = mlx5_flow_hw_create_nic_tx_default_mreg_copy_flow(dev, queue);
+		}
+		if (ret != 0) {
+			mlx5_txq_release(dev, i);
+			goto error;
 		}
 		mlx5_txq_release(dev, i);
 	}

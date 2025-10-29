@@ -2029,7 +2029,8 @@ struct mlx5_priv {
 	rte_spinlock_t hw_ctrl_lock;
 	LIST_HEAD(hw_ctrl_flow, mlx5_ctrl_flow_entry) hw_ctrl_flows;
 	LIST_HEAD(hw_ext_ctrl_flow, mlx5_ctrl_flow_entry) hw_ext_ctrl_flows;
-	struct mlx5_flow_hw_ctrl_fdb *hw_ctrl_fdb;
+	struct mlx5_flow_hw_ctrl_fdb *hw_ctrl_fdb; /* FDB control flow context */
+	struct mlx5_flow_hw_ctrl_nic *hw_ctrl_nic; /* NIC control flow context */
 	struct rte_flow_pattern_template *hw_tx_repr_tagging_pt;
 	struct rte_flow_actions_template *hw_tx_repr_tagging_at;
 	struct rte_flow_template_table *hw_tx_repr_tagging_tbl;
