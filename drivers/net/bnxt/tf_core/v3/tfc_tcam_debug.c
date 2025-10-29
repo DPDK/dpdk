@@ -1804,7 +1804,7 @@ int tfc_wc_show(FILE *fd, struct tfc *tfcp, uint8_t tsid, enum cfa_dir dir)
 	struct wc_frp_context wc_frp;
 	bool is_bs_owner;
 	struct bnxt *bp;
-	bool is_shared;
+	enum cfa_scope_type scope_type;
 	bool valid;
 	int rc = 0;
 

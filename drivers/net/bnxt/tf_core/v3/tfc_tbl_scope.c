@@ -56,9 +56,8 @@
  * @param[in] key_sz_in_bytes
  *   The lookup key size in bytes
  *
- * @param[in] shared
- *   True if the table scope will be shared.  Shared table scopes cannot have
- *   dynamic buckets.
+ * @param[in] scope_type
+ *   Shared-app or global table scopes cannot have dynamic buckets.
  *
  * @param[in] factor
  *   This indicates a multiplier factor for determining the static and dynamic
@@ -76,7 +75,7 @@
  *
  */
 static int calc_lkup_rec_cnt(uint32_t flow_cnt, uint16_t key_sz_in_bytes,
-			     __rte_unused bool shared,
+			     __rte_unused enum cfa_scope_type scope_type,
 			     enum tfc_tbl_scope_bucket_factor factor,
 			     uint32_t *lkup_rec_cnt,
 			     uint8_t *static_bucket_cnt_exp,
@@ -127,7 +126,7 @@ static int calc_lkup_rec_cnt(uint32_t flow_cnt, uint16_t key_sz_in_bytes,
 	key_rec_cnt = flow_cnt * entry_size;
 
 #ifdef DYNAMIC_BUCKETS_SUPPORTED
-	if (shared) {
+	if (scope_type != CFA_SCOPE_TYPE_NON_SHARED) {
 #endif
 		*static_bucket_cnt_exp =
 			next_pow2(flow_adj / ENTRIES_PER_BUCKET);
@@ -531,9 +530,9 @@ cleanup:
  */
 struct tbl_scope_pools_create_parms {
 	/**
-	 * [in] Indicates if the table scope will be shared.
+	 * [in] Indicates non-shared, shared-app or global scope.
 	 */
-	bool shared;
+	enum cfa_scope_type scope_type;
 	/**
 	 * [in] The number of pools the table scope will be divided into. (set
 	 * to 1 if not shared).
@@ -599,7 +598,7 @@ static int tbl_scope_pools_create(struct tfc *tfcp, uint8_t tsid,
 		return -EINVAL;
 	}
 
-	rc = tfo_tim_get(tfcp->tfo, &tim);
+	rc = tfo_tim_get(tfcp->tfo, &tim, tsid);
 	if (rc)
 		return -EINVAL;
 
@@ -703,7 +702,7 @@ static int tbl_scope_pools_destroy(struct tfc *tfcp, uint8_t tsid)
 		return -EINVAL;
 	}
 
-	rc = tfo_tim_get(tfcp->tfo, &tim);
+	rc = tfo_tim_get(tfcp->tfo, &tim, tsid);
 	if (rc)
 		return -EINVAL;
 
@@ -755,7 +754,7 @@ static int tbl_scope_tpm_fid_rem(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 				 uint16_t *pool_cnt)
 {
 	int rc = 0;
-	bool shared;
+	enum cfa_scope_type scope_type;
 	bool valid;
 	enum cfa_dir dir;
 	uint16_t pool_id;
@@ -783,15 +782,16 @@ static int tbl_scope_tpm_fid_rem(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 		PMD_DRV_LOG_LINE(ERR, "only valid for PF");
 		return -EINVAL;
 	}
-	rc = tfo_ts_get(tfcp->tfo, tsid, &shared, NULL, &valid, NULL);
-	if (!valid || !shared) {
-		PMD_DRV_LOG_LINE(ERR, "tsid(%d) valid(%s) shared(%s)",
-				 tsid, valid ? "TRUE" : "FALSE",
-				 shared ? "TRUE" : "FALSE");
+	rc = tfo_ts_get(tfcp->tfo, tsid, &scope_type, NULL, &valid, NULL);
+	if (!valid || scope_type == CFA_SCOPE_TYPE_NON_SHARED) {
+		PMD_DRV_LOG_LINE(ERR,
+				 "%s: tsid(%d) valid(%s) scope_type(%s)",
+				 __func__, tsid, valid ? "TRUE" : "FALSE",
+				 tfc_scope_type_2_str(scope_type));
 		return -EINVAL;
 	}
 
-	rc = tfo_tim_get(tfcp->tfo, &tim);
+	rc = tfo_tim_get(tfcp->tfo, &tim, tsid);
 	if (rc) {
 		PMD_DRV_LOG_LINE(ERR, "Failed to get TIM");
 		return -EINVAL;
@@ -879,10 +879,7 @@ static int tbl_scope_tpm_fid_rem(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 
 /* Public APIs */
 
-int tfc_tbl_scope_qcaps(struct tfc *tfcp, bool *tbl_scope_capable,
-			uint32_t *max_lkup_rec_cnt,
-			uint32_t *max_act_rec_cnt,
-			uint8_t	*max_lkup_static_buckets_exp)
+int tfc_tbl_scope_qcaps(struct tfc *tfcp, struct tfc_tbl_scope_qcaps_parms *parms)
 {
 	int rc = 0;
 
@@ -890,14 +887,17 @@ int tfc_tbl_scope_qcaps(struct tfc *tfcp, bool *tbl_scope_capable,
 		PMD_DRV_LOG_LINE(ERR, "Invalid tfcp pointer");
 		return -EINVAL;
 	}
-	if (tbl_scope_capable == NULL) {
-		PMD_DRV_LOG_LINE(ERR, "Invalid tbl_scope_capable pointer");
+	if (parms == NULL) {
+		PMD_DRV_LOG_LINE(ERR, "%s: Invalid parms", __func__);
 		return -EINVAL;
 	}
 
-	rc = tfc_msg_tbl_scope_qcaps(tfcp, tbl_scope_capable, max_lkup_rec_cnt,
-				     max_act_rec_cnt,
-				     max_lkup_static_buckets_exp);
+	rc = tfc_msg_tbl_scope_qcaps(tfcp, &parms->tbl_scope_cap,
+				     &parms->global_cap,
+				     &parms->locked_cap,
+				     &parms->max_lkup_rec_cnt,
+				     &parms->max_act_rec_cnt,
+				     &parms->max_lkup_static_bucket_exp);
 	if (rc)
 		PMD_DRV_LOG_LINE(ERR,
 				 "table scope qcaps message failed, rc:%s",
@@ -927,15 +927,15 @@ int tfc_tbl_scope_size_query(struct tfc *tfcp,
 	}
 
 	if (is_pow2(parms->max_pools)) {
-		PMD_DRV_LOG(ERR, "%s: Invalid max_pools %u not pow2\n",
-			    __func__, parms->max_pools);
+		PMD_DRV_LOG_LINE(ERR, "%s: Invalid max_pools %u not pow2",
+				 __func__, parms->max_pools);
 		return -EINVAL;
 	}
 
 	for (dir = CFA_DIR_RX; dir < CFA_DIR_MAX; dir++) {
 		rc = calc_lkup_rec_cnt(parms->flow_cnt[dir],
 				       parms->key_sz_in_bytes[dir],
-				       parms->shared, parms->factor,
+				       parms->scope_type, parms->factor,
 				       &parms->lkup_rec_cnt[dir],
 				       &parms->static_bucket_cnt_exp[dir],
 				       &parms->dynamic_bucket_cnt[dir]);
@@ -970,7 +970,7 @@ int tfc_tbl_scope_size_query(struct tfc *tfcp,
 	return rc;
 }
 
-int tfc_tbl_scope_id_alloc(struct tfc *tfcp, bool shared,
+int tfc_tbl_scope_id_alloc(struct tfc *tfcp, enum cfa_scope_type scope_type,
 			   enum cfa_app_type app_type, uint8_t *tsid,
 			   bool *first)
 {
@@ -994,13 +994,13 @@ int tfc_tbl_scope_id_alloc(struct tfc *tfcp, bool shared,
 		return -EINVAL;
 	}
 	rc = tfc_msg_tbl_scope_id_alloc(tfcp, ((struct bnxt *)tfcp->bp)->fw_fid,
-					shared, app_type, tsid, first);
+					scope_type, app_type, tsid, first);
 	if (rc) {
 		PMD_DRV_LOG_LINE(ERR,
 				 "table scope ID alloc message failed, rc:%s",
 				 strerror(-rc));
 	} else {
-		rc = tfo_ts_set(tfcp->tfo, *tsid, shared, app_type, valid, 0);
+		rc = tfo_ts_set(tfcp->tfo, *tsid, scope_type, app_type, valid, 0);
 	}
 	return rc;
 }
@@ -1014,7 +1014,6 @@ int tfc_tbl_scope_mem_alloc(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 	uint64_t act_base_addr[2];
 	int dir;
 	int rc = 0;
-	bool shared = false;
 	uint32_t page_sz;
 	uint16_t pfid;
 	uint8_t lkup_pbl_level[2];
@@ -1044,8 +1043,8 @@ int tfc_tbl_scope_mem_alloc(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 	}
 
 	if (is_pow2(parms->max_pools)) {
-		PMD_DRV_LOG(ERR, "%s: Invalid max_pools %u not pow2\n",
-			    __func__, parms->max_pools);
+		PMD_DRV_LOG_LINE(ERR, "%s: Invalid max_pools %u not pow2",
+				 __func__, parms->max_pools);
 		return -EINVAL;
 	}
 
@@ -1082,12 +1081,6 @@ int tfc_tbl_scope_mem_alloc(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 		if (rc)
 			return rc;
 	}
-
-	/*
-	 * A shared table scope will have more than 1 pool
-	 */
-	if (parms->max_pools > 1)
-		shared = true;
 
 	/* If we are running on a PF, we will allocate memory locally
 	 */
@@ -1176,9 +1169,9 @@ int tfc_tbl_scope_mem_alloc(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 				goto cleanup;
 			}
 
-			/* Set shared and valid in local state */
+			/* Set scope_type and valid in local state */
 			valid = true;
-			rc = tfo_ts_set(tfcp->tfo, tsid, shared, CFA_APP_TYPE_TF,
+			rc = tfo_ts_set(tfcp->tfo, tsid, parms->scope_type, CFA_APP_TYPE_TF,
 					valid, parms->max_pools);
 			if (rc)
 				goto cleanup;
@@ -1190,7 +1183,7 @@ int tfc_tbl_scope_mem_alloc(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 
 			cfg_cnt++;
 		}
-		cparms.shared = shared;
+		cparms.scope_type = parms->scope_type;
 		cparms.max_pools = parms->max_pools;
 
 		for (dir = 0; dir < CFA_DIR_MAX; dir++) {
@@ -1205,7 +1198,7 @@ int tfc_tbl_scope_mem_alloc(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 		/* If not shared, allocate the single pool_id in each region
 		 * so that we can save the associated fid for the table scope
 		 */
-		if (!shared) {
+		if (parms->scope_type == CFA_SCOPE_TYPE_NON_SHARED) {
 			uint16_t pool_id;
 			enum cfa_region_type region;
 			uint16_t max_vf;
@@ -1239,7 +1232,7 @@ int tfc_tbl_scope_mem_alloc(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 
 	} else /* this is a VF */ {
 		/* If first or !shared, send message to PF to allocate the memory */
-		if (parms->first || !shared) {
+		if (parms->first || parms->scope_type == CFA_SCOPE_TYPE_NON_SHARED) {
 			struct tfc_vf2pf_tbl_scope_mem_alloc_cfg_cmd req = { { 0 } };
 			struct tfc_vf2pf_tbl_scope_mem_alloc_cfg_resp resp = { { 0 } };
 			uint16_t fid;
@@ -1252,6 +1245,7 @@ int tfc_tbl_scope_mem_alloc(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 			req.hdr.fid = fid;
 			req.tsid = tsid;
 			req.max_pools = parms->max_pools;
+			req.scope_type = parms->scope_type;
 			for (dir = CFA_DIR_RX; dir < CFA_DIR_MAX; dir++) {
 				req.static_bucket_cnt_exp[dir] = parms->static_bucket_cnt_exp[dir];
 				req.dynamic_bucket_cnt[dir] = parms->dynamic_bucket_cnt[dir];
@@ -1298,9 +1292,9 @@ int tfc_tbl_scope_mem_alloc(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 			if (rc)
 				goto cleanup;
 
-			/* Set shared and valid in local state */
+			/* Set scope_type and valid in local state */
 			valid = true;
-			rc = tfo_ts_set(tfcp->tfo, tsid, shared, CFA_APP_TYPE_TF,
+			rc = tfo_ts_set(tfcp->tfo, tsid, parms->scope_type, CFA_APP_TYPE_TF,
 					valid, parms->max_pools);
 		}
 	}
@@ -1330,7 +1324,8 @@ cleanup:
 	return rc;
 }
 
-int tfc_tbl_scope_mem_free(struct tfc *tfcp, uint16_t fid, uint8_t tsid)
+int tfc_tbl_scope_mem_free(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
+			   uint16_t fid_cnt)
 {
 	struct tfc_ts_mem_cfg mem_cfg;
 	bool local;
@@ -1338,7 +1333,9 @@ int tfc_tbl_scope_mem_free(struct tfc *tfcp, uint16_t fid, uint8_t tsid)
 	int lrc = 0;
 	int rc = 0;
 	bool is_pf = false;
-	bool shared;
+	enum cfa_scope_type scope_type;
+	struct tfc_cpm *cpm_lkup;
+	struct tfc_cpm *cpm_act;
 
 	if (tfcp == NULL) {
 		PMD_DRV_LOG_LINE(ERR, "Invalid tfcp pointer");
@@ -1355,7 +1352,7 @@ int tfc_tbl_scope_mem_free(struct tfc *tfcp, uint16_t fid, uint8_t tsid)
 		return -EINVAL;
 	}
 
-	rc = tfo_ts_get(tfcp->tfo, tsid, &shared, NULL, NULL, NULL);
+	rc = tfo_ts_get(tfcp->tfo, tsid, &scope_type, NULL, NULL, NULL);
 	if (rc)
 		return rc;
 
@@ -1370,7 +1367,6 @@ int tfc_tbl_scope_mem_free(struct tfc *tfcp, uint16_t fid, uint8_t tsid)
 		return rc;
 
 	if (!is_pf) {
-		PMD_DRV_LOG_LINE(DEBUG, "Send VF2PF message and await response");
 		struct tfc_vf2pf_tbl_scope_mem_free_cmd req = { { 0 } };
 		struct tfc_vf2pf_tbl_scope_mem_free_resp resp = { { 0 } };
 		uint16_t fid;
@@ -1382,22 +1378,44 @@ int tfc_tbl_scope_mem_free(struct tfc *tfcp, uint16_t fid, uint8_t tsid)
 		req.hdr.type = TFC_VF2PF_TYPE_TBL_SCOPE_MEM_FREE_CMD;
 		req.hdr.fid = fid;
 		req.tsid = tsid;
-
 		rc = tfc_vf2pf_mem_free(tfcp, &req, &resp);
-		if (rc != 0) {
-			PMD_DRV_LOG_LINE(ERR, "tfc_vf2pf_mem_free failed");
-			/* continue cleanup regardless */
-		}
-		PMD_DRV_LOG_LINE(DEBUG, "%s: tsid: %d, status %d",
-				 __func__, resp.tsid, resp.status);
-		if (shared) {
+		if (rc != 0)
+			PMD_DRV_LOG_LINE(ERR, "%s: tfc_vf2pf_mem_free failed",
+					 __func__);
+		/* continue cleanup regardless */
+
+		if (scope_type == CFA_SCOPE_TYPE_SHARED_APP) {
+			/*
+			 * Check if any direction has a CPM instance and, if so, free
+			 * it.
+			 */
+			rc = tfo_ts_get_cpm_inst(tfcp->tfo, tsid, CFA_DIR_RX, &cpm_lkup,
+						 &cpm_act);
+			if (rc == 0 && (cpm_lkup != NULL || cpm_act != NULL))
+				(void)tfc_tbl_scope_cpm_free(tfcp, tsid);
+
 			/* reset scope */
-			tfo_ts_set(tfcp->tfo, tsid, false, CFA_APP_TYPE_INVALID, false, 0);
+			tfo_ts_set(tfcp->tfo, tsid, CFA_SCOPE_TYPE_INVALID,
+				   CFA_APP_TYPE_INVALID, false, 0);
+			return rc;
+		} else if (scope_type == CFA_SCOPE_TYPE_GLOBAL) {
+			if (fid_cnt == 0) {
+				/*
+				 * Check if any direction has a CPM instance and, if so, free
+				 * it.
+				 */
+				rc = tfo_ts_get_cpm_inst(tfcp->tfo, tsid, CFA_DIR_RX, &cpm_lkup,
+							 &cpm_act);
+				if (rc == 0 && (cpm_lkup != NULL || cpm_act != NULL))
+					(void)tfc_tbl_scope_cpm_free(tfcp, tsid);
+				/* reset scope */
+				tfo_ts_set(tfcp->tfo, tsid, CFA_SCOPE_TYPE_INVALID,
+					   CFA_APP_TYPE_INVALID, false, 0);
+			}
 			return rc;
 		}
 	}
-
-	if (shared && is_pf) {
+	if (scope_type != CFA_SCOPE_TYPE_NON_SHARED && is_pf) {
 		uint16_t pool_cnt;
 		uint16_t max_vf;
 
@@ -1421,13 +1439,6 @@ int tfc_tbl_scope_mem_free(struct tfc *tfcp, uint16_t fid, uint8_t tsid)
 					 tsid, pool_cnt);
 			return 0;
 		}
-	}
-
-	/* Send Deconfig HWRM before freeing memory */
-	rc = tfc_msg_tbl_scope_deconfig(tfcp, tsid);
-	if (rc) {
-		PMD_DRV_LOG_LINE(ERR, "deconfig failure: %s", strerror(-rc));
-		return rc;
 	}
 
 	for (region = 0; region < CFA_REGION_TYPE_MAX; region++) {
@@ -1462,8 +1473,7 @@ int tfc_tbl_scope_mem_free(struct tfc *tfcp, uint16_t fid, uint8_t tsid)
 		}
 	}
 	/* cleanup state */
-	rc = tfo_ts_set(tfcp->tfo, tsid, false, CFA_APP_TYPE_INVALID, false, 0);
-
+	rc = tfo_ts_set(tfcp->tfo, tsid, CFA_SCOPE_TYPE_INVALID, CFA_APP_TYPE_INVALID, false, 0);
 	return rc;
 }
 
@@ -1499,8 +1509,6 @@ int tfc_tbl_scope_fid_add(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 int tfc_tbl_scope_fid_rem(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 			  uint16_t *fid_cnt)
 {
-	struct tfc_cpm *cpm_lkup;
-	struct tfc_cpm *cpm_act;
 	int rc = 0;
 
 	if (tfcp == NULL) {
@@ -1529,16 +1537,6 @@ int tfc_tbl_scope_fid_rem(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 				 "table scope fid rem message failed, rc:%s",
 				 strerror(-rc));
 
-	/*
-	 * Check if any direction has a CPM instance and, if so, free
-	 * it.
-	 */
-	rc = tfo_ts_get_cpm_inst(tfcp->tfo, tsid, CFA_DIR_RX, &cpm_lkup,
-				 &cpm_act);
-	if (rc == 0 && (cpm_lkup != NULL || cpm_act != NULL))
-		(void)tfc_tbl_scope_cpm_free(tfcp, tsid);
-
-	/* tbl_scope_mem_free() will reset the remaining tsid state */
 	return rc;
 }
 
@@ -1547,7 +1545,7 @@ int tfc_tbl_scope_cpm_alloc(struct tfc *tfcp, uint8_t tsid,
 {
 	int dir;
 	struct tfc_ts_pool_info pi;
-	bool is_shared;
+	enum cfa_scope_type scope_type;
 	int rc;
 	struct tfc_cmm *cmm_lkup = NULL;
 	struct tfc_cmm *cmm_act = NULL;
@@ -1560,8 +1558,9 @@ int tfc_tbl_scope_cpm_alloc(struct tfc *tfcp, uint8_t tsid,
 		PMD_DRV_LOG_LINE(ERR, "tsid(%d) invalid", tsid);
 		return -EINVAL;
 	}
-	if (tfo_ts_get(tfcp->tfo, tsid, &is_shared, NULL, NULL, NULL)) {
-		PMD_DRV_LOG_LINE(ERR, "tsid(%d) info get failed", tsid);
+	if (tfo_ts_get(tfcp->tfo, tsid, &scope_type, NULL, NULL, NULL)) {
+		PMD_DRV_LOG_LINE(ERR, "%s: tsid(%d) info get failed",
+				 __func__, tsid);
 		return -EINVAL;
 	}
 
@@ -1569,6 +1568,14 @@ int tfc_tbl_scope_cpm_alloc(struct tfc *tfcp, uint8_t tsid,
 	 */
 	for (dir = 0; dir < CFA_DIR_MAX; dir++) {
 		tfo_ts_get_pool_info(tfcp->tfo, tsid, dir, &pi);
+
+		/* If global scope, do not overwrite the CPM instance
+		 * already configured
+		 */
+		if (scope_type == CFA_SCOPE_TYPE_GLOBAL &&
+		    pi.act_cpm)
+			return 0;
+
 		pi.lkup_max_contig_rec = parms->lkup_max_contig_rec[dir];
 		pi.act_max_contig_rec = parms->act_max_contig_rec[dir];
 		tfc_cpm_open(&pi.lkup_cpm, parms->max_pools);
@@ -1578,12 +1585,13 @@ int tfc_tbl_scope_cpm_alloc(struct tfc *tfcp, uint8_t tsid,
 		tfo_ts_set_cpm_inst(tfcp->tfo, tsid, dir, pi.lkup_cpm, pi.act_cpm);
 		tfo_ts_set_pool_info(tfcp->tfo, tsid, dir, &pi);
 
+
 		/* If not shared create CMM instance for and populate CPM with pool_id 0.
 		 * If shared, a pool_id will be allocated during tfc_act_alloc() or
 		 * tfc_em_insert() and the CMM instance will be created on the first
 		 * call.
 		 */
-		if (!is_shared) {
+		if (scope_type == CFA_SCOPE_TYPE_NON_SHARED) {
 			struct cfa_mm_query_parms qparms;
 			struct cfa_mm_open_parms oparms;
 			uint32_t pool_id = 0;
@@ -1704,7 +1712,6 @@ int tfc_tbl_scope_cpm_free(struct tfc *tfcp, uint8_t tsid)
 		return -EINVAL;
 	}
 
-
 	for (dir = 0; dir < CFA_DIR_MAX; dir++) {
 		uint16_t pool_id;
 		struct tfc_cmm *cmm;
@@ -1801,7 +1808,7 @@ int tfc_tbl_scope_pool_alloc(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 	}
 
 	if (is_pf) {
-		rc = tfo_tim_get(tfcp->tfo, &tim);
+		rc = tfo_tim_get(tfcp->tfo, &tim, tsid);
 		if (rc) {
 			PMD_DRV_LOG_LINE(ERR, "Failed to get TIM");
 			return -EINVAL;
@@ -1895,7 +1902,7 @@ int tfc_tbl_scope_pool_free(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 	}
 
 	if (is_pf) {
-		rc = tfo_tim_get(tfcp->tfo, &tim);
+		rc = tfo_tim_get(tfcp->tfo, &tim, tsid);
 		if (rc)
 			return -EINVAL;
 
@@ -2000,7 +2007,7 @@ static void tfc_tbl_scope_delete_by_pool(uint16_t *found_cnt,
 int tfc_tbl_scope_func_reset(struct tfc *tfcp, uint16_t fid)
 {
 	int rc = 0;
-	bool shared;
+	enum cfa_scope_type scope_type;
 	enum cfa_app_type app;
 	bool valid;
 	uint8_t tsid;
@@ -2026,20 +2033,20 @@ int tfc_tbl_scope_func_reset(struct tfc *tfcp, uint16_t fid)
 		return -EINVAL;
 	}
 
-	rc = tfo_tim_get(tfcp->tfo, &tim);
-	if (rc) {
-		PMD_DRV_LOG_LINE(ERR, "Failed to get TIM");
-		return -EINVAL;
-	}
-
 	data = rte_zmalloc("data", 32 * TFC_MPC_BYTES_PER_WORD, 32);
 
 	for (tsid = 1; tsid < TFC_TBL_SCOPE_MAX; tsid++) {
-		rc = tfo_ts_get(tfcp->tfo, tsid, &shared, &app, &valid, NULL);
+		rc = tfo_ts_get(tfcp->tfo, tsid, &scope_type, &app, &valid, NULL);
 		if (rc)
 			continue; /* TS is not used, move on to the next */
 
-		if (!shared || !valid)
+		rc = tfo_tim_get(tfcp->tfo, &tim, tsid);
+		if (rc) {
+			PMD_DRV_LOG_LINE(INFO, "%s: Failed to get TIM", __func__);
+			continue;
+		}
+
+		if (scope_type == CFA_SCOPE_TYPE_NON_SHARED || !valid)
 			continue; /* TS invalid or not shared, move on */
 
 		for (dir = 0; dir < CFA_DIR_MAX; dir++) {

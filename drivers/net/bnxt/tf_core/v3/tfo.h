@@ -50,6 +50,10 @@
  * @ref tfo_sid_set
  *
  * @ref tfo_sid_get
+ *
+ * @ref tfo_tim_get
+ *
+ * @ref tfo_tsid_get
  */
 
 /** Invalid Table Scope ID */
@@ -161,8 +165,8 @@ int tfo_ts_validate(void *tfo, uint8_t ts_tsid, bool *ts_valid);
  * @param[in] ts_tsid
  *   The table scope ID
  *
- * @param[in] ts_is_shared
- *   True if the table scope is shared
+ * @param[in] scope_type
+ *   non-shared, shared-app or global
  *
  * @param[in] ts_app
  *   Application type TF/AFM
@@ -171,12 +175,12 @@ int tfo_ts_validate(void *tfo, uint8_t ts_tsid, bool *ts_valid);
  *   True if the table scope is valid
  *
  * @param[in] ts_max_pools
- *   Maximum number of pools if shared.
+ *   Maximum number of pools
  *
  * @return
  *   0 for SUCCESS, negative error value for FAILURE (errno.h)
  */
-int tfo_ts_set(void *tfo, uint8_t ts_tsid, bool ts_is_shared,
+int tfo_ts_set(void *tfo, uint8_t ts_tsid, enum cfa_scope_type scope_type,
 	       enum cfa_app_type ts_app, bool ts_valid,
 	       uint16_t ts_max_pools);
 
@@ -189,8 +193,8 @@ int tfo_ts_set(void *tfo, uint8_t ts_tsid, bool ts_is_shared,
  * @param[in] ts_tsid
  *   The table scope ID
  *
- * @param[out] ts_is_shared
- *   True if the table scope is shared
+ * @param[out] scope_type
+ *   True if the table scope is sharednon-shared, shared-app, global
  *
  * @param[out] ts_app
  *   Application type TF/AFM
@@ -199,12 +203,12 @@ int tfo_ts_set(void *tfo, uint8_t ts_tsid, bool ts_is_shared,
  *   True if the table scope is valid
  *
  * @param[out] ts_max_pools
- *   Maximum number of pools returned if shared.
+ *   Maximum number of pools.
  *
  * @return
  *   0 for SUCCESS, negative error value for FAILURE (errno.h)
  */
-int tfo_ts_get(void *tfo, uint8_t ts_tsid, bool *ts_is_shared,
+int tfo_ts_get(void *tfo, uint8_t ts_tsid, enum cfa_scope_type *scope_type,
 	       enum cfa_app_type *ts_app, bool *ts_valid,
 	       uint16_t *ts_max_pools);
 
@@ -399,20 +403,6 @@ int tfo_sid_set(void *tfo, uint16_t sid);
 int tfo_sid_get(void *tfo, uint16_t *sid);
 
 /**
- * Set the table scope instance manager.
- *
- * @param[in] tfo
- *   Pointer to TFC object
- *
- * @param[in] tim
- *   Pointer to the table scope instance manager
- *
- * @return
- *   0 for SUCCESS, negative error value for FAILURE (errno.h)
- */
-int tfo_tim_set(void *tfo, void *tim);
-
-/**
  * Get the table scope instance manager.
  *
  * @param[in] tfo
@@ -421,10 +411,27 @@ int tfo_tim_set(void *tfo, void *tim);
  * @param[out] tim
  *   Pointer to a pointer to the table scope instance manager
  *
+ * @param[in] ts_tsid
+ *   Table scope id
+ *
  * @return
  *   0 for SUCCESS, negative error value for FAILURE (errno.h)
  */
-int tfo_tim_get(void *tfo, void **tim);
+int tfo_tim_get(void *tfo, void **tim, uint8_t ts_tsid);
+
+/**
+ * Get the table scope
+ *
+ * @param[in] tfo
+ *   Pointer to TFC object
+ *
+ * @param[out] tsid
+ *   Pointer to the returned table scope
+ *
+ * @return
+ *   0 for SUCCESS, negative error value for FAILURE (errno.h)
+ */
+int tfo_tsid_get(void *tfo, uint8_t *tsid);
 
 /**
  * Get the table scope

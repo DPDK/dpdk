@@ -181,6 +181,8 @@ tfc_msg_free_dma_buf(struct tfc_msg_dma_buf *buf)
 int
 tfc_msg_tbl_scope_qcaps(struct tfc *tfcp,
 			bool *tbl_scope_capable,
+			bool *global_scope_capable,
+			bool *locked_scope_capable,
 			uint32_t *max_lkup_rec_cnt,
 			uint32_t *max_act_rec_cnt,
 			uint8_t	*max_lkup_static_buckets_exp)
@@ -200,8 +202,24 @@ tfc_msg_tbl_scope_qcaps(struct tfc *tfcp,
 		return -EINVAL;
 	}
 
+	if (global_scope_capable == NULL) {
+		PMD_DRV_LOG_LINE(ERR,
+				 "%s: Invalid global_scope_capable pointer",
+				 __func__);
+		return -EINVAL;
+	}
+
+	if (tbl_scope_capable == NULL) {
+		PMD_DRV_LOG_LINE(ERR,
+				 "%s: Invalid locked_scope_capable pointer",
+				 __func__);
+		return -EINVAL;
+	}
+
 	bp = tfcp->bp;
 	*tbl_scope_capable = false;
+	*global_scope_capable = false;
+	*locked_scope_capable = false;
 
 	rc = bnxt_hwrm_tf_message_direct(bp, false, HWRM_TFC_TBL_SCOPE_QCAPS,
 					 &req, sizeof(req), &resp,
@@ -211,6 +229,10 @@ tfc_msg_tbl_scope_qcaps(struct tfc *tfcp,
 
 	if (resp.tbl_scope_capable) {
 		*tbl_scope_capable = true;
+		if (resp.flags & HWRM_TFC_TBL_SCOPE_QCAPS_OUTPUT_FLAGS_GLOBAL)
+			*global_scope_capable = true;
+		if (resp.flags & HWRM_TFC_TBL_SCOPE_QCAPS_OUTPUT_FLAGS_LOCKED)
+			*locked_scope_capable = true;
 		if (max_lkup_rec_cnt)
 			*max_lkup_rec_cnt =
 				rte_le_to_cpu_32(resp.max_lkup_rec_cnt);
@@ -226,7 +248,7 @@ tfc_msg_tbl_scope_qcaps(struct tfc *tfcp,
 }
 int
 tfc_msg_tbl_scope_id_alloc(struct tfc *tfcp, uint16_t fid,
-			   bool shared, enum cfa_app_type app_type,
+			   enum cfa_scope_type scope_type, enum cfa_app_type app_type,
 			   uint8_t *tsid,
 			   bool *first)
 {
@@ -247,8 +269,21 @@ tfc_msg_tbl_scope_id_alloc(struct tfc *tfcp, uint16_t fid,
 
 	bp = tfcp->bp;
 	req.app_type = app_type;
-	req.shared = shared;
-
+	switch (scope_type) {
+	case CFA_SCOPE_TYPE_NON_SHARED:
+		req.scope_type = HWRM_TFC_TBL_SCOPE_ID_ALLOC_INPUT_SCOPE_TYPE_NON_SHARED;
+		break;
+	case CFA_SCOPE_TYPE_SHARED_APP:
+		req.scope_type = HWRM_TFC_TBL_SCOPE_ID_ALLOC_INPUT_SCOPE_TYPE_SHARED_APP;
+		break;
+	case CFA_SCOPE_TYPE_GLOBAL:
+		req.scope_type = HWRM_TFC_TBL_SCOPE_ID_ALLOC_INPUT_SCOPE_TYPE_GLOBAL;
+		break;
+	default:
+		PMD_DRV_LOG_LINE(ERR, "%s: Invalid scope_type",
+				 __func__);
+		return -EINVAL;
+	}
 	rc = tfc_msg_set_fid(bp, fid, &req.fid);
 	if (rc)
 		return rc;
@@ -390,28 +425,6 @@ tfc_msg_backing_store_cfg_v2(struct tfc *tfcp, uint8_t tsid, enum cfa_dir dir,
 	rc = bnxt_hwrm_tf_message_direct(bp, false, HWRM_FUNC_BACKING_STORE_CFG_V2,
 					 &req, sizeof(req), &resp,
 					 sizeof(resp));
-	return rc;
-}
-
-int
-tfc_msg_tbl_scope_deconfig(struct tfc *tfcp, uint8_t tsid)
-{
-	struct hwrm_tfc_tbl_scope_deconfig_input req = { 0 };
-	struct hwrm_tfc_tbl_scope_deconfig_output resp = { 0 };
-	struct bnxt *bp;
-	int rc;
-
-	if (tfcp == NULL) {
-		PMD_DRV_LOG_LINE(ERR, "Invalid tfcp pointer");
-		return -EINVAL;
-	}
-
-	bp = tfcp->bp;
-	req.tsid = tsid;
-	rc = bnxt_hwrm_tf_message_direct(bp, false, HWRM_TFC_TBL_SCOPE_DECONFIG,
-					 &req, sizeof(req), &resp,
-					 sizeof(resp));
-
 	return rc;
 }
 

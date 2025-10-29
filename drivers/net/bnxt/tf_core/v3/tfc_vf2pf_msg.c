@@ -179,6 +179,7 @@ tfc_vf2pf_mem_alloc_process(struct tfc *tfcp,
 	/* This is not for local use if we are getting a message from the VF */
 	ma_parms.local = false;
 	ma_parms.max_pools = req->max_pools;
+	ma_parms.scope_type = req->scope_type;
 	rc = tfc_tbl_scope_mem_alloc(tfcp, req->hdr.fid, req->tsid, &ma_parms);
 	if (rc == 0) {
 		PMD_DRV_LOG_LINE(ERR, "tsid(%d) PF allocation succeeds",
@@ -222,7 +223,7 @@ tfc_vf2pf_mem_free_process(struct tfc *tfcp,
 	PMD_DRV_LOG_LINE(ERR, "Table scope mem free cfg cmd:");
 	PMD_DRV_LOG_LINE(ERR, "\ttsid: 0x%x", req->tsid);
 
-	rc = tfc_tbl_scope_mem_free(tfcp, req->hdr.fid, req->tsid);
+	rc = tfc_tbl_scope_mem_free(tfcp, req->hdr.fid, req->tsid, 0);
 	if (rc == 0) {
 		PMD_DRV_LOG_LINE(ERR, "tsid(%d) PF free succeeds", req->tsid);
 	} else {

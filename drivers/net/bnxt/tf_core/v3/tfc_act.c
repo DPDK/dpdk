@@ -45,12 +45,12 @@ int tfc_act_alloc(struct tfc *tfcp,
 	struct tfc_cmm *cmm;
 	uint32_t entry_offset;
 	struct cfa_mm_alloc_parms aparms;
-	bool is_shared;
+	enum cfa_scope_type scope_type;
 	struct tfc_ts_pool_info pi;
 	bool valid;
 	uint16_t max_pools;
 
-	rc = tfo_ts_get(tfcp->tfo, tsid, &is_shared, NULL, &valid, &max_pools);
+	rc = tfo_ts_get(tfcp->tfo, tsid, &scope_type, NULL, &valid, &max_pools);
 	if (unlikely(rc)) {
 		PMD_DRV_LOG_LINE(ERR, "failed to get tsid: %s", strerror(-rc));
 		return -EINVAL;
@@ -67,7 +67,11 @@ int tfc_act_alloc(struct tfc *tfcp,
 		return -EINVAL;
 	}
 
-	tfo_ts_get_pool_info(tfcp->tfo, tsid, cmm_info->dir, &pi);
+	rc = tfo_ts_get_pool_info(tfcp->tfo, tsid, cmm_info->dir, &pi);
+	if (unlikely(rc)) {
+		PMD_DRV_LOG_LINE(ERR, "%s: failed to get pool info: %s",
+				 __func__, strerror(-rc));
+	}
 
 	/* Get CPM instances */
 	rc = tfo_ts_get_cpm_inst(tfcp->tfo, tsid, cmm_info->dir, &cpm_lkup, &cpm_act);
@@ -99,8 +103,9 @@ int tfc_act_alloc(struct tfc *tfcp,
 		/* There is only 1 pool for a non-shared table scope
 		 * and it is full.
 		 */
-		if (unlikely(!is_shared)) {
-			PMD_DRV_LOG_LINE(ERR, "no records remain");
+		if (unlikely(scope_type == CFA_SCOPE_TYPE_NON_SHARED)) {
+			PMD_DRV_LOG_LINE(ERR, "%s: no records remain",
+					 __func__);
 			return -ENOMEM;
 		}
 		rc = tfc_get_fid(tfcp, &fid);
@@ -157,7 +162,6 @@ int tfc_act_alloc(struct tfc *tfcp,
 			return -EINVAL;
 		}
 	}
-
 	aparms.num_contig_records = 1 << next_pow2(num_contig_rec);
 	rc = cfa_mm_alloc(cmm, &aparms);
 	if (unlikely(rc)) {
@@ -231,7 +235,7 @@ int tfc_act_set(struct tfc *tfcp,
 	struct cfa_bld_mpcinfo *mpc_info;
 	uint32_t record_size;
 	uint8_t tsid;
-	bool is_shared;
+	enum cfa_scope_type scope_type;
 	bool valid;
 
 	tfo_mpcinfo_get(tfcp->tfo, &mpc_info);
@@ -247,7 +251,7 @@ int tfc_act_set(struct tfc *tfcp,
 					  &record_size,
 					  &entry_offset);
 
-	rc = tfo_ts_get(tfcp->tfo, tsid, &is_shared, NULL, &valid, NULL);
+	rc = tfo_ts_get(tfcp->tfo, tsid, &scope_type, NULL, &valid, NULL);
 	if (unlikely(rc)) {
 		PMD_DRV_LOG_LINE(ERR, "failed to get tsid: %s", strerror(-rc));
 		return -EINVAL;
@@ -382,7 +386,7 @@ static int tfc_act_get_only(struct tfc *tfcp,
 	struct bnxt_mpc_mbuf mpc_msg_out;
 	uint32_t record_size;
 	uint8_t tsid;
-	bool is_shared;
+	enum cfa_scope_type scope_type;
 	struct cfa_bld_mpcinfo *mpc_info;
 	bool valid;
 
@@ -393,7 +397,7 @@ static int tfc_act_get_only(struct tfc *tfcp,
 					  &record_size,
 					  &entry_offset);
 
-	rc = tfo_ts_get(tfcp->tfo, tsid, &is_shared, NULL, &valid, NULL);
+	rc = tfo_ts_get(tfcp->tfo, tsid, &scope_type, NULL, &valid, NULL);
 	if (unlikely(rc)) {
 		PMD_DRV_LOG_LINE(ERR, "failed to get tsid: %s", strerror(-rc));
 		return -EINVAL;
@@ -561,7 +565,7 @@ static int tfc_act_get_clear(struct tfc *tfcp,
 	struct bnxt_mpc_mbuf mpc_msg_out;
 	uint32_t record_size;
 	uint8_t tsid;
-	bool is_shared;
+	enum cfa_scope_type scope_type;
 	struct cfa_bld_mpcinfo *mpc_info;
 	bool valid;
 	uint16_t mask = 0;
@@ -573,7 +577,7 @@ static int tfc_act_get_clear(struct tfc *tfcp,
 					  &record_size,
 					  &entry_offset);
 
-	rc = tfo_ts_get(tfcp->tfo, tsid, &is_shared, NULL, &valid, NULL);
+	rc = tfo_ts_get(tfcp->tfo, tsid, &scope_type, NULL, &valid, NULL);
 	if (unlikely(rc)) {
 		PMD_DRV_LOG_LINE(ERR, "failed to get tsid: %s",
 				 strerror(-rc));
@@ -739,7 +743,7 @@ int tfc_act_free(struct tfc *tfcp,
 	uint32_t record_offset;
 	struct cfa_mm_free_parms fparms;
 	uint8_t tsid;
-	bool is_shared;
+	enum cfa_scope_type scope_type;
 	bool valid;
 	bool is_bs_owner;
 	struct tfc_ts_mem_cfg mem_cfg;
@@ -750,7 +754,7 @@ int tfc_act_free(struct tfc *tfcp,
 					  &record_size,
 					  &record_offset);
 
-	rc = tfo_ts_get(tfcp->tfo, tsid, &is_shared, NULL, &valid, NULL);
+	rc = tfo_ts_get(tfcp->tfo, tsid, &scope_type, NULL, &valid, NULL);
 	if (unlikely(rc)) {
 		PMD_DRV_LOG_LINE(ERR, "failed to get tsid: %s", strerror(-rc));
 		return -EINVAL;

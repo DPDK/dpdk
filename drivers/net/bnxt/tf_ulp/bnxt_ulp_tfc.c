@@ -20,6 +20,7 @@
 #include "bnxt_tf_common.h"
 #include "hsi_struct_def_dpdk.h"
 #include "tf_core.h"
+#include "tfc_util.h"
 #include "tf_ext_flow_handle.h"
 
 #include "ulp_template_db_enum.h"
@@ -313,14 +314,6 @@ ulp_tfc_tbl_scope_deinit(struct bnxt *bp)
 	if (rc)
 		return;
 
-	rc = tfc_tbl_scope_cpm_free(tfcp, tsid);
-	if (rc)
-		BNXT_DRV_DBG(ERR, "Failed Freeing CPM TSID:%d FID:%d\n",
-			     tsid, fid);
-	else
-		BNXT_DRV_DBG(DEBUG, "Freed CPM TSID:%d FID: %d\n", tsid, fid);
-
-
 	rc = tfc_tbl_scope_fid_rem(tfcp, fid, tsid, &fid_cnt);
 	if (rc)
 		BNXT_DRV_DBG(ERR, "Failed removing FID from TSID:%d FID:%d",
@@ -329,7 +322,14 @@ ulp_tfc_tbl_scope_deinit(struct bnxt *bp)
 		BNXT_DRV_DBG(DEBUG, "Removed FID from TSID:%d FID:%d",
 			     tsid, fid);
 
-	rc = tfc_tbl_scope_mem_free(tfcp, fid, tsid);
+	rc = tfc_tbl_scope_cpm_free(tfcp, tsid);
+	if (rc)
+		BNXT_DRV_DBG(ERR, "Failed Freeing CPM TSID:%d FID:%d",
+			     tsid, fid);
+	else
+		BNXT_DRV_DBG(DEBUG, "Freed CPM TSID:%d FID: %d", tsid, fid);
+
+	rc = tfc_tbl_scope_mem_free(tfcp, fid, tsid, fid_cnt);
 	if (rc)
 		BNXT_DRV_DBG(ERR, "Failed freeing tscope mem TSID:%d FID:%d",
 			     tsid, fid);
@@ -345,8 +345,10 @@ ulp_tfc_tbl_scope_init(struct bnxt *bp)
 	struct tfc_tbl_scope_size_query_parms qparms =  { 0 };
 	uint16_t max_lkup_sz[CFA_DIR_MAX], max_act_sz[CFA_DIR_MAX];
 	struct tfc_tbl_scope_cpm_alloc_parms cparms;
+	struct tfc_tbl_scope_qcaps_parms qcparms;
 	uint16_t fid, max_pools;
-	bool first = true, shared = false;
+	bool first = true;
+	enum cfa_scope_type scope_type = CFA_SCOPE_TYPE_NON_SHARED;
 	uint64_t feat_bits;
 	uint8_t tsid = 0;
 	struct tfc *tfcp;
@@ -368,18 +370,37 @@ ulp_tfc_tbl_scope_init(struct bnxt *bp)
 	max_act_sz[CFA_DIR_TX] =
 		bnxt_ulp_cntxt_act_rec_tx_max_sz_get(bp->ulp_ctx);
 
-	shared = bnxt_ulp_cntxt_shared_tbl_scope_enabled(bp->ulp_ctx);
+	if (bnxt_ulp_cntxt_shared_tbl_scope_enabled(bp->ulp_ctx))
+		scope_type = CFA_SCOPE_TYPE_SHARED_APP;
 
 	feat_bits = bnxt_ulp_feature_bits_get(bp->ulp_ctx);
 	if ((feat_bits & BNXT_ULP_FEATURE_BIT_MULTI_INSTANCE)) {
 		if (!BNXT_PF(bp)) {
-			shared = true;
+			scope_type = CFA_SCOPE_TYPE_SHARED_APP;
 			max_pools = 32;
 		}
 	}
 
+	rc = tfc_tbl_scope_qcaps(tfcp, &qcparms);
+	if (rc) {
+		PMD_DRV_LOG_LINE(ERR,
+				 "Failed obtaining table scope capabilities");
+		return rc;
+	}
+
+	if (feat_bits & BNXT_ULP_FEATURE_BIT_SOCKET_DIRECT) {
+		if (qcparms.global_cap) {
+			scope_type = CFA_SCOPE_TYPE_GLOBAL;
+			max_pools = 4;
+		} else {
+			PMD_DRV_LOG_LINE(ERR,
+					 "Socket direct requires global scope");
+			return -EINVAL;
+		}
+	}
+
 	/* Calculate the sizes for setting up memory */
-	qparms.shared = shared;
+	qparms.scope_type = scope_type;
 	qparms.max_pools = max_pools;
 	qparms.factor = bnxt_ulp_cntxt_em_mulitplier_get(bp->ulp_ctx);
 	qparms.flow_cnt[CFA_DIR_RX] =
@@ -394,15 +415,12 @@ ulp_tfc_tbl_scope_init(struct bnxt *bp)
 	if (rc)
 		return rc;
 
-
-
-	rc = tfc_tbl_scope_id_alloc(tfcp, shared, CFA_APP_TYPE_TF, &tsid,
+	rc = tfc_tbl_scope_id_alloc(tfcp, scope_type, CFA_APP_TYPE_TF, &tsid,
 				    &first);
 	if (rc) {
 		BNXT_DRV_DBG(ERR, "Failed to allocate tscope\n");
 		return rc;
 	}
-	BNXT_DRV_DBG(DEBUG, "Allocated tscope TSID:%d\n", tsid);
 
 	rc = bnxt_ulp_cntxt_tsid_set(bp->ulp_ctx, tsid);
 	if (rc)
@@ -410,7 +428,7 @@ ulp_tfc_tbl_scope_init(struct bnxt *bp)
 
 	/* If we are shared and not the first table scope creator
 	 */
-	if (shared && !first) {
+	if (scope_type != CFA_SCOPE_TYPE_NON_SHARED && !first) {
 		bool configured;
 		#define ULP_SHARED_TSID_WAIT_TIMEOUT 5000
 		#define ULP_SHARED_TSID_WAIT_TIME 50
@@ -426,12 +444,12 @@ ulp_tfc_tbl_scope_init(struct bnxt *bp)
 			}
 			timeout -= ULP_SHARED_TSID_WAIT_TIME;
 			BNXT_DRV_DBG(INFO,
-				     "Waiting %d ms for shared tsid(%d)\n",
-				     timeout, tsid);
+				     "Waiting %d ms for %s tsid(%d)",
+				     timeout, tfc_scope_type_2_str(scope_type), tsid);
 		} while (!configured && timeout > 0);
 		if (timeout <= 0) {
-			BNXT_DRV_DBG(ERR, "Timed out on shared tsid(%d)\n",
-				     tsid);
+			BNXT_DRV_DBG(ERR, "Timed out on %s tsid(%d)",
+				     tfc_scope_type_2_str(scope_type), tsid);
 			return -ETIMEDOUT;
 		}
 	}
@@ -457,8 +475,9 @@ ulp_tfc_tbl_scope_init(struct bnxt *bp)
 		qparms.act_pool_sz_exp[CFA_DIR_RX];
 	mem_parms.act_pool_sz_exp[CFA_DIR_TX] =
 		qparms.act_pool_sz_exp[CFA_DIR_TX];
+	mem_parms.scope_type = scope_type;
 
-	if (shared)
+	if (scope_type != CFA_SCOPE_TYPE_NON_SHARED)
 		mem_parms.local = false;
 	else
 		mem_parms.local = true;
@@ -540,7 +559,10 @@ ulp_tfc_cntxt_app_caps_init(struct bnxt *bp, uint8_t app_id, uint32_t dev_id)
 				ulp_ctx->cfg_data->ulp_flags |=
 					BNXT_ULP_APP_SOCKET_DIRECT;
 				BNXT_DRV_DBG(DEBUG,
-					    "Socket Direct feature is enabled\n");
+					    "Socket Direct feature is enabled");
+			} else {
+				BNXT_DRV_DBG(DEBUG,
+					     "No Socket Direct feature - must enable multiroot");
 			}
 		}
 		/* Update the capability feature bits*/
