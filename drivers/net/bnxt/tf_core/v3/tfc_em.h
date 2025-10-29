@@ -61,6 +61,86 @@ enum tfc_mpc_cmd_type {
 
 #define TFC_BUCKET_ENTRIES 6
 
+/* MPC opaque currently unused */
+#define TFC_MPC_OPAQUE_VAL 0
+
+#define TFC_MOD_STRING_LENGTH  512
+#define TFC_STAT_STRING_LENGTH 128
+#define TFC_ENC_STRING_LENGTH  256
+
+struct act_compact_info_t {
+	bool drop;
+	uint8_t vlan_del_rep;
+	uint8_t dest_op;
+	uint16_t vnic_vport;
+	uint8_t decap_func;
+	uint8_t mirror;
+	uint16_t meter_ptr;
+	uint8_t stat0_ctr_type;
+	bool stat0_ing_egr;
+	uint8_t stat0_offs;
+	uint8_t mod_offs;
+	uint8_t enc_offs;
+	uint8_t src_offs;
+	char mod_str[512];
+	char stat0_str[128];
+	char enc_str[256];
+};
+
+struct act_full_info_t {
+	bool drop;
+	uint8_t vlan_del_rep;
+	uint8_t dest_op;
+	uint16_t vnic_vport;
+	uint8_t decap_func;
+	uint16_t mirror;
+	uint16_t meter_ptr;
+	uint8_t stat0_ctr_type;
+	bool stat0_ing_egr;
+	uint32_t stat0_ptr;
+	uint8_t stat1_ctr_type;
+	bool stat1_ing_egr;
+	uint32_t stat1_ptr;
+	uint32_t mod_ptr;
+	uint32_t enc_ptr;
+	uint32_t src_ptr;
+	char mod_str[512];
+	char stat0_str[128];
+	char stat1_str[128];
+	char enc_str[256];
+};
+
+struct act_mcg_info_t {
+	uint8_t src_ko_en;
+	uint32_t nxt_ptr;
+	uint8_t act_hint0;
+	uint32_t act_rec_ptr0;
+	uint8_t act_hint1;
+	uint32_t act_rec_ptr1;
+	uint8_t act_hint2;
+	uint32_t act_rec_ptr2;
+	uint8_t act_hint3;
+	uint32_t act_rec_ptr3;
+	uint8_t act_hint4;
+	uint32_t act_rec_ptr4;
+	uint8_t act_hint5;
+	uint32_t act_rec_ptr5;
+	uint8_t act_hint6;
+	uint32_t act_rec_ptr6;
+	uint8_t act_hint7;
+	uint32_t act_rec_ptr7;
+};
+
+struct act_info_t {
+	bool valid;
+	uint8_t vector;
+	union {
+		struct act_compact_info_t compact;
+		struct act_full_info_t full;
+		struct act_mcg_info_t mcg;
+	};
+};
+
 struct em_info_t {
 	bool valid;
 	uint8_t rec_size;
@@ -69,12 +149,9 @@ struct em_info_t {
 	uint8_t opcode;
 	uint8_t strength;
 	uint8_t act_hint;
-
-	uint32_t act_rec_ptr; /* Not FAST */
-
-	uint32_t destination; /* Just FAST */
-
-	uint8_t tcp_direction; /* Just CT */
+	uint32_t act_rec_ptr;	/* Not FAST */
+	uint32_t destination;	/* Just FAST */
+	uint8_t tcp_direction;	/* Just CT */
 	uint8_t tcp_update_en;
 	uint8_t tcp_win;
 	uint32_t tcp_msb_loc;
@@ -82,23 +159,20 @@ struct em_info_t {
 	uint8_t tcp_msb_opp_init;
 	uint8_t state;
 	uint8_t timer_value;
-
-	uint16_t ring_table_idx; /* Not CT and not RECYCLE */
+	uint16_t ring_table_idx;	/* Not CT and not RECYCLE */
 	uint8_t act_rec_size;
 	uint8_t paths_m1;
 	uint8_t fc_op;
 	uint8_t fc_type;
 	uint32_t fc_ptr;
-
-	uint8_t recycle_dest; /* Just Recycle */
+	uint8_t recycle_dest;	/* Just Recycle */
 	uint8_t prof_func;
 	uint8_t meta_prof;
 	uint32_t metadata;
-
 	uint8_t range_profile;
 	uint16_t range_index;
-
 	uint8_t *key;
+	struct act_info_t act_info;
 };
 
 struct sb_entry_t {

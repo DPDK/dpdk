@@ -19,7 +19,6 @@
 #include "ulp_template_db_enum.h"
 #include "ulp_template_struct.h"
 #include "tfc.h"
-#include "tfc_debug.h"
 #include "tfc_action_handle.h"
 
 #define ULP_TFC_CNTR_READ_BYTES 32

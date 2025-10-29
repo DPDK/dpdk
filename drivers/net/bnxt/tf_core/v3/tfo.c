@@ -571,3 +571,35 @@ int tfo_tim_get(void *tfo, void **tim)
 
 	return 0;
 }
+
+
+int tfo_tsid_get(void *tfo, uint8_t *tsid)
+{
+	struct tfc_object *tfco = (struct tfc_object *)tfo;
+	struct tfc_tsid_db *tsid_db;
+	uint8_t i;
+
+	if (tfo == NULL) {
+		PMD_DRV_LOG(ERR, "%s: Invalid tfo pointer", __func__);
+		return -EINVAL;
+	}
+	if (tfco->signature != TFC_OBJ_SIGNATURE) {
+		PMD_DRV_LOG(ERR, "%s: Invalid tfo object", __func__);
+		return -EINVAL;
+	}
+	if (tsid == NULL) {
+		PMD_DRV_LOG(ERR, "%s: Invalid tsid pointer", __func__);
+		return -EINVAL;
+	}
+
+	for (i = 1; i < TFC_TBL_SCOPE_MAX; i++) {
+		tsid_db = &tfco->tsid_db[i];
+
+		if (tsid_db->ts_valid) {
+			*tsid = i;
+			return 0;
+		}
+	}
+
+	return -1;
+}
