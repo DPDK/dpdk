@@ -255,6 +255,15 @@ implementer_hisilicon = {
                 ['RTE_MAX_LCORE', 1280],
                 ['RTE_MAX_NUMA_NODES', 16]
             ]
+        },
+        '0xd06': {
+            'mcpu': 'mcpu_hip12',
+            'flags': [
+                ['RTE_MACHINE', '"hip12"'],
+                ['RTE_ARM_FEATURE_ATOMICS', true],
+                ['RTE_MAX_LCORE', 1280],
+                ['RTE_MAX_NUMA_NODES', 16]
+            ]
         }
     }
 }
@@ -562,6 +571,13 @@ soc_hip10 = {
     'numa': true
 }
 
+soc_hip12 = {
+    'description': 'HiSilicon HIP12',
+    'implementer': '0x48',
+    'part_number': '0xd06',
+    'numa': true
+}
+
 soc_imx = {
     'description': 'NXP IMX',
     'implementer': '0x41',
@@ -703,6 +719,10 @@ mcpu_defs = {
         'march': 'armv8.5-a',
         'march_extensions': ['crypto', 'sve']
     },
+    'mcpu_hip12': {
+        'march': 'armv8.5-a',
+        'march_extensions': ['crypto', 'sve']
+    },
     'mcpu_kunpeng930': {
         'march': 'armv8.2-a',
         'march_extensions': ['crypto', 'sve']
@@ -758,6 +778,7 @@ graviton2:       AWS Graviton2
 graviton3:       AWS Graviton3
 graviton4:       AWS Graviton4
 hip10:           HiSilicon HIP10
+hip12:           HiSilicon HIP12
 imx:             NXP IMX
 kunpeng920:      HiSilicon Kunpeng 920
 kunpeng930:      HiSilicon Kunpeng 930
@@ -801,6 +822,7 @@ socs = {
     'graviton3': soc_graviton3,
     'graviton4': soc_graviton4,
     'hip10': soc_hip10,
+    'hip12': soc_hip12,
     'imx': soc_imx,
     'kunpeng920': soc_kunpeng920,
     'kunpeng930': soc_kunpeng930,
