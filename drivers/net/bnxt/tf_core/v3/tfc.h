@@ -1575,4 +1575,88 @@ int tfc_if_tbl_set(struct tfc *tfcp, uint16_t fid,
 int tfc_if_tbl_get(struct tfc *tfcp, uint16_t fid,
 		   const struct tfc_if_tbl_info *tbl_info,
 		   uint8_t *data, uint8_t *data_sz_in_bytes);
+
+/**
+ * Get a TFC hot upgrade status and application instance count
+ *
+ * @param[in] tfcp
+ *   Pointer to TFC handle
+ *
+ * @param[in] fid
+ *   FID - Function ID to be used
+ *
+ * @param[in] app_inst_id
+ *   the applicatoin instance id.
+ *
+ * @param[out] app_inst_cnt
+ *   Pointer to the application instance count.
+ *
+ * @returns
+ *   0 for SUCCESS, negative error value for FAILURE (errno.h)
+ */
+int
+tfc_hot_up_app_inst_count(struct tfc *tfcp, uint16_t fid,
+			  uint8_t app_inst_id, uint8_t *app_inst_cnt);
+
+/**
+ * Allocate and initialize the TFC hot upgrade state
+ *
+ * @param[in] tfcp
+ *   Pointer to TFC handle
+ *
+ * @param[in] fid
+ *   FID - Function ID to be used
+ *
+ * @param[in] app_inst_id
+ *   the application instance id.
+ *
+ * @param[in] app_inst_cnt
+ *   the application instance count.
+ *
+ * @param[out] session
+ *   the session count.
+ *
+ * @returns
+ *   0 for SUCCESS, negative error value for FAILURE (errno.h)
+ */
+int
+tfc_hot_up_app_inst_alloc(struct tfc *tfcp, uint16_t fid,
+			  uint8_t app_inst_id, uint8_t app_inst_cnt,
+			  uint8_t *session);
+/**
+ * Free the TFC hot upgrade state
+ *
+ * @param[in] tfcp
+ *   Pointer to TFC handle
+ *
+ * @param[in] fid
+ *   FID - Function ID to be used
+ *
+ * @param[in] app_inst_id
+ *   the application instance id.
+ *
+ * @returns
+ *   0 for SUCCESS, negative error value for FAILURE (errno.h)
+ */
+int
+tfc_hot_up_app_inst_free(struct tfc *tfcp, uint16_t fid, uint8_t app_inst_id);
+
+/**
+ * Set the TFC hot upgrade state to primary
+ *
+ * @param[in] tfcp
+ *   Pointer to TFC handle
+ *
+ * @param[in] fid
+ *   FID - Function ID to be used
+ *
+ * @param[in] app_inst_id
+ *   the application instance id.
+ *
+ * @returns
+ *   0 for SUCCESS, negative error value for FAILURE (errno.h)
+ */
+int
+tfc_hot_up_app_inst_set(struct tfc *tfcp, uint16_t fid, uint8_t app_inst_id);
+
 #endif /* _TFC_H_ */

@@ -32,7 +32,7 @@
 #include "ulp_matcher.h"
 #include "ulp_port_db.h"
 #include "ulp_tun.h"
-#include "ulp_ha_mgr.h"
+#include "ulp_tfc_ha_mgr.h"
 #include "bnxt_tf_pmd_shim.h"
 #include "ulp_template_db_tbl.h"
 #include "tfc_resources.h"
@@ -546,6 +546,21 @@ ulp_tfc_cntxt_app_caps_init(struct bnxt *bp, uint8_t app_id, uint32_t dev_id)
 						  info[i].default_priority);
 		bnxt_ulp_max_def_priority_set(ulp_ctx,
 					      info[i].max_def_priority);
+
+		/* if hot upgrade is enabled */
+		if (bnxt_ulp_tfc_hot_upgrade_enabled(ulp_ctx)) {
+			uint32_t ha_prio = 0;
+
+			if (info[i].min_flow_priority >
+			    info[i].max_flow_priority)
+				ha_prio = info[i].min_flow_priority -
+					info[i].max_flow_priority;
+			else
+				ha_prio = info[i].max_flow_priority -
+					info[i].min_flow_priority;
+			ha_prio = ha_prio / 2;
+			bnxt_ulp_ha_priority_set(ulp_ctx, ha_prio);
+		}
 		bnxt_ulp_min_flow_priority_set(ulp_ctx,
 					       info[i].min_flow_priority);
 		bnxt_ulp_max_flow_priority_set(ulp_ctx,
@@ -677,6 +692,16 @@ ulp_tfc_ctx_init(struct bnxt *bp,
 		goto error_deinit;
 	}
 	BNXT_DRV_DBG(DEBUG, "Ulp initialized with app id %d\n", bp->app_id);
+
+	rc = bnxt_ulp_app_instance_id_set(bp->ulp_ctx, bp->app_instance_id);
+	if (rc) {
+		BNXT_DRV_DBG(ERR,
+			     "Unable to set app_instance_id for ULP init.\n");
+		goto error_deinit;
+	}
+	if (bp->app_instance_id)
+		BNXT_DRV_DBG(DEBUG, "Hot upgrade instance id %u\n",
+			     bp->app_instance_id);
 
 	rc = ulp_tfc_dparms_init(bp, bp->ulp_ctx, devid);
 	if (rc) {
@@ -875,19 +900,14 @@ static void
 ulp_tfc_deinit(struct bnxt *bp,
 	       struct bnxt_ulp_session_state *session)
 {
-	bool ha_enabled;
 	uint16_t fid_cnt = 0;
 	int32_t rc;
 
 	if (!bp->ulp_ctx || !bp->ulp_ctx->cfg_data)
 		return;
 
-	ha_enabled = bnxt_ulp_cntxt_ha_enabled(bp->ulp_ctx);
-	if (ha_enabled) {
-		rc = ulp_ha_mgr_close(bp->ulp_ctx);
-		if (rc)
-			BNXT_DRV_DBG(ERR, "Failed to close HA (%d)\n", rc);
-	}
+	/* Delete the Hot upgrade manager */
+	ulp_tfc_hot_upgrade_mgr_deinit(bp->ulp_ctx);
 
 	/* Delete the Stats Counter Manager */
 	ulp_sc_mgr_deinit(bp->ulp_ctx);
@@ -1047,6 +1067,12 @@ ulp_tfc_init(struct bnxt *bp,
 	rc = ulp_sc_mgr_init(bp->ulp_ctx);
 	if (rc) {
 		BNXT_DRV_DBG(ERR, "Failed to initialize ulp stats cache mgr\n");
+		goto jump_to_error;
+	}
+
+	rc = ulp_tfc_hot_upgrade_mgr_init(bp->ulp_ctx);
+	if (rc) {
+		BNXT_DRV_DBG(ERR, "Failed to initialize ulp hot upgrade mgr\n");
 		goto jump_to_error;
 	}
 

@@ -162,6 +162,9 @@ static const struct rte_eth_speed_lanes_capa speed_lanes_capa_tbl[] = {
  */
 #define BNXT_DEVARG_APP_ID_INVALID(val)			((val) > 255)
 
+/* app-instance-id = an non-negative 3-bit number */
+#define BNXT_DEVARG_APP_INSTANCE_ID_INVALID(val)	((val) > 8)
+
 /*
  * ieee-1588 = an non-negative 8-bit number
  */
@@ -6055,6 +6058,40 @@ bnxt_parse_devarg_cqe_mode(__rte_unused const char *key,
 		bp->flags2 |= BNXT_FLAGS2_COMPRESSED_RX_CQE;
 	PMD_DRV_LOG_LINE(INFO, "cqe-mode=%d feature enabled.", (uint8_t)cqe_mode);
 
+	return 0;
+}
+
+static int
+bnxt_parse_devarg_app_instance_id(__rte_unused const char *key,
+				  const char *value, void *opaque_arg)
+{
+	struct bnxt *bp = opaque_arg;
+	unsigned long app_instance_id;
+	char *end = NULL;
+
+	if (!opaque_arg) {
+		PMD_DRV_LOG_LINE(ERR,
+				 "Invalid param passed to app-instance-id devarg");
+		return -EINVAL;
+	}
+
+	app_instance_id = strtoul(value, &end, 10);
+	if (end == NULL || *end != '\0' ||
+	    (app_instance_id == ULONG_MAX && errno == ERANGE)) {
+		PMD_DRV_LOG_LINE(ERR,
+				 "Invalid parameter passed to instance devargs");
+		return -EINVAL;
+	}
+
+	if (BNXT_DEVARG_APP_INSTANCE_ID_INVALID(app_instance_id)) {
+		PMD_DRV_LOG_LINE(ERR, "Invalid app-instance-id(%d) devargs",
+				 (uint16_t)app_instance_id);
+		return -EINVAL;
+	}
+
+	bp->app_instance_id = app_instance_id;
+	PMD_DRV_LOG_LINE(INFO, "app_instance_id=%u feature enabled",
+			 (uint16_t)app_instance_id);
 	return 0;
 }
 

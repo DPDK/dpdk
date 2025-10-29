@@ -1067,4 +1067,64 @@ bnxt_ulp_cap_feat_process(uint64_t feat_bits, uint64_t *out_bits)
 	return 0;
 }
 
+/* Function to set the tfc ha info into the context */
+static inline int32_t
+bnxt_ulp_cntxt_ptr2_tfc_ha_info_set(struct bnxt_ulp_context *ulp_ctx,
+				    struct bnxt_ulp_tfc_ha_mgr_info *ha_info)
+{
+	if (unlikely(ulp_ctx == NULL || ulp_ctx->cfg_data == NULL)) {
+		BNXT_DRV_DBG(ERR, "Invalid ulp context data\n");
+		return -EINVAL;
+	}
+	ulp_ctx->cfg_data->tfc_ha_info = ha_info;
+	return 0;
+}
+
+/* Function to retrieve the tfc ha info from the context. */
+static inline struct bnxt_ulp_tfc_ha_mgr_info *
+bnxt_ulp_cntxt_ptr2_tfc_ha_info_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (unlikely(ulp_ctx == NULL || ulp_ctx->cfg_data == NULL))
+		return NULL;
+	return ulp_ctx->cfg_data->tfc_ha_info;
+}
+
+/* This function sets the app instance id */
+static inline int32_t
+bnxt_ulp_app_instance_id_set(struct bnxt_ulp_context *ulp_ctx,
+			     uint8_t app_instance_id)
+{
+	if (unlikely(!ulp_ctx))
+		return -EINVAL;
+	ulp_ctx->cfg_data->app_instance_id = app_instance_id;
+	return 0;
+}
+
+/* This function gets the app instance id */
+static inline uint8_t
+bnxt_ulp_app_instance_id_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (unlikely(!ulp_ctx || !ulp_ctx->cfg_data))
+		return 0;
+	return ulp_ctx->cfg_data->app_instance_id;
+}
+
+static inline int
+bnxt_ulp_ha_priority_set(struct bnxt_ulp_context *ulp_ctx, uint32_t prio)
+{
+	if (unlikely(!ulp_ctx || !ulp_ctx->cfg_data))
+		return -EINVAL;
+
+	ulp_ctx->cfg_data->ha_priority = prio;
+	return 0;
+}
+
+static inline uint32_t
+bnxt_ulp_ha_priority_id_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (unlikely(!ulp_ctx || !ulp_ctx->cfg_data))
+		return 0;
+	return ulp_ctx->cfg_data->ha_priority;
+}
+
 #endif /* _BNXT_ULP_UTILS_H_ */

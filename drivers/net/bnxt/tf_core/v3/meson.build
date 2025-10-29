@@ -31,4 +31,5 @@ sources += files(
         'tfc_util.c',
         'tfo.c',
         'tfc_vf2pf_msg.c',
+        'tfc_hot_upgrade.c',
 )

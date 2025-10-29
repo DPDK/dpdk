@@ -158,6 +158,8 @@ ulp_sc_mgr_deinit(struct bnxt_ulp_context *ctxt)
 	if (!ulp_sc_info)
 		return -EINVAL;
 
+	ulp_sc_mgr_thread_cancel(ctxt);
+
 	if (ulp_sc_info->stats_cache_tbl)
 		rte_free(ulp_sc_info->stats_cache_tbl);
 
@@ -208,11 +210,11 @@ static uint32_t ulp_stats_cache_main_loop(void *arg)
 				goto terminate;
 			rte_delay_us_block(ULP_SC_CTX_DELAY);
 		}
+		bnxt_ulp_cntxt_entry_release();
 
 		/* get the stats counter info block from ulp context */
 		ulp_sc_info = bnxt_ulp_cntxt_ptr2_sc_info_get(ctxt);
 		if (unlikely(!ulp_sc_info)) {
-			bnxt_ulp_cntxt_entry_release();
 			goto terminate;
 		}
 
@@ -247,7 +249,6 @@ static uint32_t ulp_stats_cache_main_loop(void *arg)
 				tfcp = bnxt_ulp_cntxt_tfcp_get(sce->ctxt);
 				if (unlikely(!tfcp)) {
 					bnxt_ulp_cntxt_release_fdb_lock(ctxt);
-					bnxt_ulp_cntxt_entry_release();
 					goto terminate;
 				}
 
@@ -307,7 +308,6 @@ static uint32_t ulp_stats_cache_main_loop(void *arg)
 				data += ULP_SC_PAGE_SIZE;
 			}
 		}
-		bnxt_ulp_cntxt_entry_release();
 		/* Sleep to give any other threads opportunity to access ULP */
 		rte_delay_us_sleep(ULP_SC_PERIOD_US);
 	}
@@ -400,6 +400,7 @@ void ulp_sc_mgr_thread_cancel(struct bnxt_ulp_context *ctxt)
 		return;
 
 	ulp_sc_info->flags &= ~ULP_FLAG_SC_THREAD;
+	pthread_cancel(ulp_sc_info->tid);
 }
 
 /*

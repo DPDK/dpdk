@@ -966,6 +966,8 @@ struct __rte_packed_begin cmd_nums {
 	#define HWRM_TFC_GLOBAL_ID_FREE                   UINT32_C(0x39c)
 	/* TruFlow command to update the priority of one tcam entry. */
 	#define HWRM_TFC_TCAM_PRI_UPDATE                  UINT32_C(0x39d)
+	/* TruFlow command to process hot upgrade requests. */
+	#define HWRM_TFC_HOT_UPGRADE_PROCESS              UINT32_C(0x3a0)
 	/* Experimental */
 	#define HWRM_SV                                   UINT32_C(0x400)
 	/* Flush any trace buffer data that has not been sent to the host. */
@@ -1250,8 +1252,8 @@ struct __rte_packed_begin hwrm_err_output {
 #define HWRM_VERSION_MINOR 10
 #define HWRM_VERSION_UPDATE 3
 /* non-zero means beta version */
-#define HWRM_VERSION_RSVD 86
-#define HWRM_VERSION_STR "1.10.3.86"
+#define HWRM_VERSION_RSVD 87
+#define HWRM_VERSION_STR "1.10.3.87"
 
 /****************
  * hwrm_ver_get *
@@ -41082,6 +41084,59 @@ struct __rte_packed_begin hwrm_queue_adptv_qos_rx_feature_cfg_output {
 	uint8_t	valid;
 } __rte_packed_end;
 
+/* hwrm_queue_adptv_qos_rx_feature_cfg_cmd_err (size:64b/8B) */
+struct __rte_packed_begin hwrm_queue_adptv_qos_rx_feature_cfg_cmd_err {
+	/*
+	 * command specific error codes that goes to
+	 * the cmd_err field in Common HWRM Error Response.
+	 */
+	uint8_t	code;
+	/* Success */
+	#define HWRM_QUEUE_ADPTV_QOS_RX_FEATURE_CFG_CMD_ERR_CODE_SUCCESS \
+		UINT32_C(0x0)
+	/* Unknown error */
+	#define HWRM_QUEUE_ADPTV_QOS_RX_FEATURE_CFG_CMD_ERR_CODE_UNKNOWN \
+		UINT32_C(0x1)
+	/* Cannot configure TCs with interfaces up */
+	#define HWRM_QUEUE_ADPTV_QOS_RX_FEATURE_CFG_CMD_ERR_CODE_INTERFACES_UP \
+		UINT32_C(0x2)
+	/*
+	 * Configured TCs are less than the minimum required.
+	 * The minimum is 3 if RoCE is enabled, else 1.
+	 */
+	#define HWRM_QUEUE_ADPTV_QOS_RX_FEATURE_CFG_CMD_ERR_CODE_MIN_TCS \
+		UINT32_C(0x3)
+	/* Configured TCs are more than the maximum allowed */
+	#define HWRM_QUEUE_ADPTV_QOS_RX_FEATURE_CFG_CMD_ERR_CODE_MAX_TCS \
+		UINT32_C(0x4)
+	/* Configured TCs are not contiguous */
+	#define HWRM_QUEUE_ADPTV_QOS_RX_FEATURE_CFG_CMD_ERR_CODE_CONTIGUOUS_TCS \
+		UINT32_C(0x5)
+	/* Cannot configure TC that has a priority mapping */
+	#define HWRM_QUEUE_ADPTV_QOS_RX_FEATURE_CFG_CMD_ERR_CODE_COS_PRI_MAPPED \
+		UINT32_C(0x6)
+	/* Cannot configure TC that has a priority with pfc enabled */
+	#define HWRM_QUEUE_ADPTV_QOS_RX_FEATURE_CFG_CMD_ERR_CODE_COS_PRI_PFC_ENABLED \
+		UINT32_C(0x7)
+	/*
+	 * Cannot configure TCs 0-2 differently than TC 0 and 2 as
+	 * lossy and TC 1 as lossless.
+	 * A maximum of 4 TCs can be configured as lossless.
+	 * TCs 1, 3, 4, 5, 6, and 7 can be configured as lossless.
+	 */
+	#define HWRM_QUEUE_ADPTV_QOS_RX_FEATURE_CFG_CMD_ERR_CODE_DEFAULT_TCS_CANNOT_BE_CHANGED \
+		UINT32_C(0x8)
+	/*
+	 * Cannot configure more than 4 lossless TCs.
+	 * TCs 1, 3, 4, 5, 6, and 7 can be configured as lossless.
+	 */
+	#define HWRM_QUEUE_ADPTV_QOS_RX_FEATURE_CFG_CMD_ERR_CODE_MAX_LOSSLESS_TCS \
+		UINT32_C(0x9)
+	#define HWRM_QUEUE_ADPTV_QOS_RX_FEATURE_CFG_CMD_ERR_CODE_LAST \
+		HWRM_QUEUE_ADPTV_QOS_RX_FEATURE_CFG_CMD_ERR_CODE_MAX_LOSSLESS_TCS
+	uint8_t	unused_0[7];
+} __rte_packed_end;
+
 /****************************************
  * hwrm_queue_adptv_qos_tx_feature_qcfg *
  ****************************************/
@@ -41395,6 +41450,59 @@ struct __rte_packed_begin hwrm_queue_adptv_qos_tx_feature_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
+} __rte_packed_end;
+
+/* hwrm_queue_adptv_qos_tx_feature_cfg_cmd_err (size:64b/8B) */
+struct __rte_packed_begin hwrm_queue_adptv_qos_tx_feature_cfg_cmd_err {
+	/*
+	 * command specific error codes that goes to
+	 * the cmd_err field in Common HWRM Error Response.
+	 */
+	uint8_t	code;
+	/* Success */
+	#define HWRM_QUEUE_ADPTV_QOS_TX_FEATURE_CFG_CMD_ERR_CODE_SUCCESS \
+		UINT32_C(0x0)
+	/* Unknown error */
+	#define HWRM_QUEUE_ADPTV_QOS_TX_FEATURE_CFG_CMD_ERR_CODE_UNKNOWN \
+		UINT32_C(0x1)
+	/* Cannot configure TCs with interfaces up */
+	#define HWRM_QUEUE_ADPTV_QOS_TX_FEATURE_CFG_CMD_ERR_CODE_INTERFACES_UP \
+		UINT32_C(0x2)
+	/*
+	 * Configured TCs are less than the minimum required.
+	 * The minimum is 3 if RoCE is enabled, else 1.
+	 */
+	#define HWRM_QUEUE_ADPTV_QOS_TX_FEATURE_CFG_CMD_ERR_CODE_MIN_TCS \
+		UINT32_C(0x3)
+	/* Configured TCs are more than the maximum allowed */
+	#define HWRM_QUEUE_ADPTV_QOS_TX_FEATURE_CFG_CMD_ERR_CODE_MAX_TCS \
+		UINT32_C(0x4)
+	/* Configured TCs are not contiguous */
+	#define HWRM_QUEUE_ADPTV_QOS_TX_FEATURE_CFG_CMD_ERR_CODE_CONTIGUOUS_TCS \
+		UINT32_C(0x5)
+	/* Cannot configure TC that has a priority mapping */
+	#define HWRM_QUEUE_ADPTV_QOS_TX_FEATURE_CFG_CMD_ERR_CODE_COS_PRI_MAPPED \
+		UINT32_C(0x6)
+	/* Cannot configure TC that has a priority with pfc enabled */
+	#define HWRM_QUEUE_ADPTV_QOS_TX_FEATURE_CFG_CMD_ERR_CODE_COS_PRI_PFC_ENABLED \
+		UINT32_C(0x7)
+	/*
+	 * Cannot configure TCs 0-2 differently than TC 0 and 2 as
+	 * lossy and TC 1 as lossless.
+	 * A maximum of 4 TCs can be configured as lossless.
+	 * TCs 1, 3, 4, 5, 6, and 7 can be configured as lossless.
+	 */
+	#define HWRM_QUEUE_ADPTV_QOS_TX_FEATURE_CFG_CMD_ERR_CODE_DEFAULT_TCS_CANNOT_BE_CHANGED \
+		UINT32_C(0x8)
+	/*
+	 * Cannot configure more than 4 lossless TCs.
+	 * TCs 1, 3, 4, 5, 6, and 7 can be configured as lossless.
+	 */
+	#define HWRM_QUEUE_ADPTV_QOS_TX_FEATURE_CFG_CMD_ERR_CODE_MAX_LOSSLESS_TCS \
+		UINT32_C(0x9)
+	#define HWRM_QUEUE_ADPTV_QOS_TX_FEATURE_CFG_CMD_ERR_CODE_LAST \
+		HWRM_QUEUE_ADPTV_QOS_TX_FEATURE_CFG_CMD_ERR_CODE_MAX_LOSSLESS_TCS
+	uint8_t	unused_0[7];
 } __rte_packed_end;
 
 /********************
@@ -62545,6 +62653,101 @@ struct hwrm_tfc_tcam_pri_update_output {
 	uint16_t	resp_len;
 	/* unused. */
 	uint8_t	unused0[7];
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been
+	 * completely written. When writing a command completion or
+	 * response to an internal processor, the order of writes has
+	 * to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/********************************
+ * hwrm_tfc_hot_upgrade_process *
+ ********************************/
+
+
+/* hwrm_tfc_hot_upgrade_process_input (size:192b/24B) */
+struct hwrm_tfc_hot_upgrade_process_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/*
+	 * Function ID.
+	 * If running on a trusted VF or PF, the fid field can be used to
+	 * specify that the function is a non-trusted VF of the parent PF.
+	 * If this command is used for the target_id itself, this field is
+	 * set to 0xffff. A non-trusted VF cannot specify a valid FID in this
+	 * field.
+	 */
+	uint16_t	fid;
+	/*
+	 * Session id associated with the firmware. Will be used
+	 * for validation if the track type matches.
+	 */
+	uint16_t	sid;
+	/*
+	 * The ID of an hot upgrade application. Will be used to track
+	 * sessions associated with this app.
+	 */
+	uint8_t	app_id;
+	/* The hot-Up command. */
+	uint8_t	cmd;
+	/* Alloc a hot-up app entry and register a session for it */
+	#define HWRM_TFC_HOT_UPGRADE_PROCESS_INPUT_CMD_ALLOC     UINT32_C(0x1)
+	/* Free a hot-up session from hot-up app */
+	#define HWRM_TFC_HOT_UPGRADE_PROCESS_INPUT_CMD_FREE      UINT32_C(0x2)
+	/* Get the count of registered sessions for the hot-up app */
+	#define HWRM_TFC_HOT_UPGRADE_PROCESS_INPUT_CMD_GET       UINT32_C(0x4)
+	/* Set the active session for the hot-up app */
+	#define HWRM_TFC_HOT_UPGRADE_PROCESS_INPUT_CMD_SET       UINT32_C(0x8)
+	/* The count of sessions registered for the hot-up app */
+	uint8_t	cur_session_cnt;
+	/* unused. */
+	uint8_t	unused0;
+} __rte_packed;
+
+/* hwrm_tfc_hot_upgrade_process_output (size:128b/16B) */
+struct hwrm_tfc_hot_upgrade_process_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* The count of sessions registered for the hot-up application. */
+	uint8_t	session_cnt;
+	/* unused. */
+	uint8_t	unused0[6];
 	/*
 	 * This field is used in Output records to indicate that the
 	 * output is completely written to RAM. This field should be
