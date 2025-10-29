@@ -6247,7 +6247,7 @@ flow_hw_create_tx_default_mreg_copy_table(struct rte_eth_dev *dev,
 			.priority = MLX5_HW_LOWEST_PRIO_ROOT,
 			.egress = 1,
 		},
-		.nb_flows = 1, /* One default flow rule for all. */
+		.nb_flows = MLX5_HW_CTRL_FLOW_NB_RULES,
 	};
 	struct mlx5_flow_template_table_cfg tx_tbl_cfg = {
 		.attr = tx_tbl_attr,
@@ -9272,21 +9272,18 @@ mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev)
 }
 
 int
-mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev)
+mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev, uint32_t sqn, bool external)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct rte_flow_item_eth promisc = {
-		.dst.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
-		.src.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
-		.type = 0,
+	struct mlx5_rte_flow_item_sq sq_spec = {
+		.queue = sqn,
 	};
-	struct rte_flow_item eth_all[] = {
-		[0] = {
-			.type = RTE_FLOW_ITEM_TYPE_ETH,
-			.spec = &promisc,
-			.mask = &promisc,
+	struct rte_flow_item items[] = {
+		{
+			.type = (enum rte_flow_item_type)MLX5_RTE_FLOW_ITEM_TYPE_SQ,
+			.spec = &sq_spec,
 		},
-		[1] = {
+		{
 			.type = RTE_FLOW_ITEM_TYPE_END,
 		},
 	};
@@ -9316,6 +9313,7 @@ mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev)
 	};
 	struct mlx5_hw_ctrl_flow_info flow_info = {
 		.type = MLX5_HW_CTRL_FLOW_TYPE_TX_META_COPY,
+		.tx_repr_sq = sqn,
 	};
 
 	MLX5_ASSERT(priv->master);
@@ -9325,7 +9323,7 @@ mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev)
 		return 0;
 	return flow_hw_create_ctrl_flow(dev, dev,
 					priv->hw_ctrl_fdb->hw_tx_meta_cpy_tbl,
-					eth_all, 0, copy_reg_action, 0, &flow_info, false);
+					items, 0, copy_reg_action, 0, &flow_info, external);
 }
 
 int
