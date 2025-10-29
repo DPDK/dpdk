@@ -47,7 +47,16 @@ static int rtl_allmulticast_disable(struct rte_eth_dev *dev);
 static int rtl_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int rtl_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
 			      size_t fw_size);
-
+static int rtl_reta_update(struct rte_eth_dev *dev,
+			   struct rte_eth_rss_reta_entry64 *reta_conf,
+			   uint16_t reta_size);
+static int rtl_reta_query(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_reta_entry64 *reta_conf,
+			  uint16_t reta_size);
+static int rtl_rss_hash_update(struct rte_eth_dev *dev,
+			       struct rte_eth_rss_conf *rss_conf);
+static int rtl_rss_hash_conf_get(struct rte_eth_dev *dev,
+				 struct rte_eth_rss_conf *rss_conf);
 /*
  * The set of PCI devices this driver supports
  */
@@ -108,6 +117,11 @@ static const struct eth_dev_ops rtl_eth_dev_ops = {
 	.tx_queue_release     = rtl_tx_queue_release,
 	.tx_done_cleanup      = rtl_tx_done_cleanup,
 	.txq_info_get         = rtl_txq_info_get,
+
+	.reta_update          = rtl_reta_update,
+	.reta_query           = rtl_reta_query,
+	.rss_hash_update      = rtl_rss_hash_update,
+	.rss_hash_conf_get    = rtl_rss_hash_conf_get,
 };
 
 static int
@@ -408,8 +422,13 @@ rtl_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_pktlen = JUMBO_FRAME_9K;
 	dev_info->max_mac_addrs = 1;
 
-	dev_info->max_rx_queues = 1;
-	dev_info->max_tx_queues = 1;
+	if (hw->mcfg >= CFG_METHOD_69) {
+		dev_info->max_rx_queues = 4;
+		dev_info->max_tx_queues = 2;
+	} else {
+		dev_info->max_rx_queues = 1;
+		dev_info->max_tx_queues = 1;
+	}
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_free_thresh = RTL_RX_FREE_THRESH,
@@ -445,9 +464,13 @@ rtl_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 	dev_info->max_mtu = dev_info->max_rx_pktlen - RTL_ETH_OVERHEAD;
 
-	dev_info->rx_offload_capa = (rtl_get_rx_port_offloads() |
+	dev_info->rx_offload_capa = (rtl_get_rx_port_offloads(hw) |
 				     dev_info->rx_queue_offload_capa);
 	dev_info->tx_offload_capa = rtl_get_tx_port_offloads();
+
+	dev_info->hash_key_size = RTL_RSS_KEY_SIZE;
+	dev_info->reta_size = RTL_MAX_INDIRECTION_TABLE_ENTRIES;
+	dev_info->flow_type_rss_offloads = RTL_RSS_CTRL_OFFLOAD_ALL;
 
 	return 0;
 }
@@ -535,7 +558,7 @@ rtl_sw_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 
 static int
 rtl_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats,
-		struct eth_queue_stats *qstats __rte_unused)
+		  struct eth_queue_stats *qstats __rte_unused)
 {
 	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
 	struct rtl_hw *hw = &adapter->hw;
@@ -707,6 +730,160 @@ rtl_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 		return ret;
 	else
 		return 0;
+}
+
+static int
+rtl_reta_update(struct rte_eth_dev *dev,
+		struct rte_eth_rss_reta_entry64 *reta_conf, uint16_t reta_size)
+{
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+	u32 reta;
+	u16 idx, shift;
+	u8 mask, rss_indir_tbl;
+	int i, j;
+
+	if (reta_size != RTL_MAX_INDIRECTION_TABLE_ENTRIES) {
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number hardware can supported "
+			"(%d)", reta_size, RTL_MAX_INDIRECTION_TABLE_ENTRIES);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < reta_size; i += 4) {
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
+		mask = (reta_conf[idx].mask >> shift) & 0xf;
+
+		if (!mask)
+			continue;
+
+		for (j = 0, reta = 0; j < 4; j++) {
+			rss_indir_tbl = (u8)reta_conf[idx].reta[shift + j];
+			reta |= rss_indir_tbl << (j * 8);
+
+			if (!(mask & (1 << j)))
+				continue;
+
+			hw->rss_indir_tbl[i + j] = rss_indir_tbl;
+		}
+
+		RTL_W32(hw, RSS_INDIRECTION_TBL_8125_V2 + i, reta);
+	}
+
+	return 0;
+}
+
+static int
+rtl_reta_query(struct rte_eth_dev *dev,
+	       struct rte_eth_rss_reta_entry64 *reta_conf, uint16_t reta_size)
+{
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+	u16 idx, shift;
+	int i;
+
+	if (reta_size != RTL_MAX_INDIRECTION_TABLE_ENTRIES) {
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number hardware can supported "
+			"(%d)", reta_size, RTL_MAX_INDIRECTION_TABLE_ENTRIES);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
+
+		if (reta_conf[idx].mask & (1ULL << shift))
+			reta_conf[idx].reta[shift] = hw->rss_indir_tbl[i];
+	}
+
+	return 0;
+}
+
+static int
+rtl_rss_hash_update(struct rte_eth_dev *dev, struct rte_eth_rss_conf *rss_conf)
+{
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+	u32 rss_ctrl_8125;
+
+	if (!hw->EnableRss || !(rss_conf->rss_hf & RTL_RSS_OFFLOAD_ALL))
+		return -EINVAL;
+
+	if (rss_conf->rss_key)
+		memcpy(hw->rss_key, rss_conf->rss_key, RTL_RSS_KEY_SIZE);
+
+	rtl8125_store_rss_key(hw);
+
+	rss_ctrl_8125 = RTL_R32(hw, RSS_CTRL_8125) & ~RTL_RSS_CTRL_OFFLOAD_ALL;
+
+	if (rss_conf->rss_hf & RTE_ETH_RSS_IPV4)
+		rss_ctrl_8125 |= RSS_CTRL_IPV4_SUPP;
+	if (rss_conf->rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
+		rss_ctrl_8125 |= RSS_CTRL_TCP_IPV4_SUPP;
+	if (rss_conf->rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP)
+		rss_ctrl_8125 |= RSS_CTRL_TCP_IPV6_SUPP;
+	if (rss_conf->rss_hf & RTE_ETH_RSS_IPV6)
+		rss_ctrl_8125 |= RSS_CTRL_IPV6_SUPP;
+	if (rss_conf->rss_hf & RTE_ETH_RSS_IPV6_EX)
+		rss_ctrl_8125 |= RSS_CTRL_IPV6_EXT_SUPP;
+	if (rss_conf->rss_hf & RTE_ETH_RSS_IPV6_TCP_EX)
+		rss_ctrl_8125 |= RSS_CTRL_TCP_IPV6_EXT_SUPP;
+	if (rss_conf->rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP)
+		rss_ctrl_8125 |= RSS_CTRL_UDP_IPV4_SUPP;
+	if (rss_conf->rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP)
+		rss_ctrl_8125 |= RSS_CTRL_UDP_IPV6_SUPP;
+	if (rss_conf->rss_hf & RTE_ETH_RSS_IPV6_UDP_EX)
+		rss_ctrl_8125 |= RSS_CTRL_UDP_IPV6_EXT_SUPP;
+
+	RTL_W32(hw, RSS_CTRL_8125, rss_ctrl_8125);
+
+	return 0;
+}
+
+static int
+rtl_rss_hash_conf_get(struct rte_eth_dev *dev, struct rte_eth_rss_conf *rss_conf)
+{
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+	u64 rss_hf = 0;
+	u32 rss_ctrl_8125;
+
+	if (!hw->EnableRss) {
+		rss_conf->rss_hf = rss_hf;
+		return 0;
+	}
+
+	if (rss_conf->rss_key) {
+		rss_conf->rss_key_len = RTL_RSS_KEY_SIZE;
+		memcpy(rss_conf->rss_key, hw->rss_key, RTL_RSS_KEY_SIZE);
+	}
+
+	rss_ctrl_8125 = RTL_R32(hw, RSS_CTRL_8125);
+
+	if (rss_ctrl_8125 & RSS_CTRL_IPV4_SUPP)
+		rss_hf |= RTE_ETH_RSS_IPV4;
+	if (rss_ctrl_8125 & RSS_CTRL_TCP_IPV4_SUPP)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
+	if (rss_ctrl_8125 & RSS_CTRL_TCP_IPV6_SUPP)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_TCP;
+	if (rss_ctrl_8125 & RSS_CTRL_IPV6_SUPP)
+		rss_hf |= RTE_ETH_RSS_IPV6;
+	if (rss_ctrl_8125 & RSS_CTRL_IPV6_EXT_SUPP)
+		rss_hf |= RTE_ETH_RSS_IPV6_EX;
+	if (rss_ctrl_8125 & RSS_CTRL_TCP_IPV6_EXT_SUPP)
+		rss_hf |= RTE_ETH_RSS_IPV6_TCP_EX;
+	if (rss_ctrl_8125 & RSS_CTRL_UDP_IPV4_SUPP)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP;
+	if (rss_ctrl_8125 & RSS_CTRL_UDP_IPV6_SUPP)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP;
+	if (rss_ctrl_8125 & RSS_CTRL_UDP_IPV6_EXT_SUPP)
+		rss_hf |= RTE_ETH_RSS_IPV6_UDP_EX;
+
+	rss_conf->rss_hf = rss_hf;
+
+	return 0;
 }
 
 static int

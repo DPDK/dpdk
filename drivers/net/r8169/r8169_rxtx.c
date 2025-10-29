@@ -36,16 +36,11 @@
 #define MIN_PATCH_LENGTH 47
 #define ETH_ZLEN	 60		/* Min. octets in frame sans FCS */
 
+#define QUEUE_NUM_LIMIT 128
+
 /* Struct TxDesc in kernel r8169 */
 struct rtl_tx_desc {
 	RTE_ATOMIC(u32) opts1;
-	u32 opts2;
-	u64 addr;
-};
-
-/* Struct RxDesc in kernel r8169 */
-struct rtl_rx_desc {
-	u32 opts1;
 	u32 opts2;
 	u64 addr;
 };
@@ -73,6 +68,10 @@ struct rtl_tx_queue {
 	uint16_t	     port_id;
 	uint16_t	     tx_free_thresh;
 	uint16_t	     tx_free;
+	uint16_t	     hw_clo_ptr_reg;
+	uint16_t	     sw_tail_ptr_reg;
+	uint32_t	     NextHwDesCloPtr;
+	uint32_t	     BeginHwDesCloPtr;
 };
 
 /* Structure associated with each RX queue. */
@@ -99,10 +98,15 @@ enum _DescStatusBit {
 	FirstFrag   = (1 << 29), /* First segment of a packet */
 	LastFrag    = (1 << 28), /* Final segment of a packet */
 
-	DescOwn_V3  = DescOwn, /* Descriptor is owned by NIC. */
-	RingEnd_V3  = RingEnd, /* End of descriptor ring */
+	DescOwn_V3   = DescOwn, /* Descriptor is owned by NIC. */
+	RingEnd_V3   = RingEnd, /* End of descriptor ring */
 	FirstFrag_V3 = (1 << 25), /* First segment of a packet */
-	LastFrag_V3 = (1 << 24), /* Final segment of a packet */
+	LastFrag_V3  = (1 << 24), /* Final segment of a packet */
+
+	DescOwn_V4   = DescOwn, /* Descriptor is owned by NIC */
+	RingEnd_V4   = RingEnd, /* End of descriptor ring */
+	FirstFrag_V4 = FirstFrag, /* First segment of a packet */
+	LastFrag_V4  = LastFrag, /* Final segment of a packet */
 
 	/* TX private */
 	/*------ offset 0 of TX descriptor ------*/
@@ -172,7 +176,24 @@ enum _DescStatusBit {
 	/*@@@@@@ offset 4 of RX descriptor => bits for RTL8169 only     begin @@@@@@*/
 	RxV6F_v3       = RxV6F,
 	RxV4F_v3       = RxV4F,
+
 	/*@@@@@@ offset 4 of RX descriptor => bits for RTL8169 only     end @@@@@@*/
+	RxIPF_v4       = (1 << 17), /* IP checksum failed */
+	RxUDPF_v4      = (1 << 16), /* UDP/IP checksum failed */
+	RxTCPF_v4      = (1 << 15), /* TCP/IP checksum failed */
+	RxSCTPF_v4     = (1 << 19), /* SCTP checksum failed */
+	RxVlanTag_v4   = RxVlanTag, /* VLAN tag available */
+
+	/*@@@@@@ offset 0 of rx descriptor => bits for RTL8125 only     begin @@@@@@*/
+	RxUDPT_v4      = (1 << 19),
+	RxTCPT_v4      = (1 << 18),
+	RxSCTP_v4      = (1 << 19),
+	/*@@@@@@ offset 0 of rx descriptor => bits for RTL8125 only     end @@@@@@*/
+
+	/*@@@@@@ offset 4 of rx descriptor => bits for RTL8125 only     begin @@@@@@*/
+	RxV6F_v4       = RxV6F,
+	RxV4F_v4       = RxV4F,
+	/*@@@@@@ offset 4 of rx descriptor => bits for RTL8125 only     end @@@@@@*/
 };
 
 #define GTTCPHO_SHIFT  18
@@ -183,7 +204,7 @@ enum _DescStatusBit {
 #define LSOPKTSIZE_MAX 0xffffU
 #define MSS_MAX        0x07ffu /* MSS value */
 
-typedef void (*rtl_clear_rdu_func)(struct rtl_hw *);
+typedef void (*rtl_clear_rdu_func)(struct rtl_hw *, uint16_t);
 static rtl_clear_rdu_func rtl_clear_rdu;
 
 /* ---------------------------------RX---------------------------------- */
@@ -238,22 +259,58 @@ rtl_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 }
 
 static void
+rtl_mark_as_last_descriptor_v1(struct rtl_rx_desc *desc)
+{
+	desc->opts1 |= rte_cpu_to_le_32(RingEnd);
+}
+
+static void
+rtl_mark_as_last_descriptor_v3(struct rtl_rx_descv3 *descv3)
+{
+	descv3->RxDescNormalDDWord4.opts1 |= rte_cpu_to_le_32(RingEnd);
+}
+
+static void
+rtl_mark_as_last_descriptor_v4(struct rtl_rx_descv4 *descv4)
+{
+	descv4->RxDescNormalDDWord2.opts1 |= rte_cpu_to_le_32(RingEnd);
+}
+
+static void
+rtl_mark_as_last_descriptor(struct rtl_hw *hw, struct rtl_rx_desc *desc)
+{
+	switch (hw->HwSuppRxDescType) {
+	case RX_DESC_RING_TYPE_3:
+		rtl_mark_as_last_descriptor_v3((struct rtl_rx_descv3 *)desc);
+		break;
+	case RX_DESC_RING_TYPE_4:
+		rtl_mark_as_last_descriptor_v4((struct rtl_rx_descv4 *)desc);
+		break;
+	default:
+		rtl_mark_as_last_descriptor_v1(desc);
+		break;
+	}
+}
+
+static void
 rtl_reset_rx_queue(struct rtl_rx_queue *rxq)
 {
-	static const struct rtl_rx_desc zero_rxd = {0};
+	struct rtl_hw *hw = rxq->hw;
 	int i;
 
 	for (i = 0; i < rxq->nb_rx_desc; i++)
-		rxq->hw_ring[i] = zero_rxd;
+		memset(rxq->hw_ring, 0, hw->RxDescLength * rxq->nb_rx_desc);
 
-	rxq->hw_ring[rxq->nb_rx_desc - 1].opts1 = rte_cpu_to_le_32(RingEnd);
+	rtl_mark_as_last_descriptor(hw, rtl_get_rxdesc(hw, rxq->hw_ring,
+						       rxq->nb_rx_desc - 1));
+
 	rxq->rx_tail = 0;
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
 }
 
 uint64_t
-rtl_get_rx_port_offloads(void)
+rtl_get_rx_port_offloads(struct rtl_hw *hw)
 {
 	uint64_t offloads;
 
@@ -262,6 +319,9 @@ rtl_get_rx_port_offloads(void)
 		   RTE_ETH_RX_OFFLOAD_TCP_CKSUM   |
 		   RTE_ETH_RX_OFFLOAD_SCATTER     |
 		   RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
+
+	if (hw->EnableRss)
+		offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	return offloads;
 }
@@ -323,7 +383,7 @@ rtl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	 * handle the maximum ring size is allocated in order to allow for
 	 * resizing in later calls to the queue setup function.
 	 */
-	size = sizeof(struct rtl_rx_desc) * (nb_rx_desc + 1);
+	size = hw->RxDescLength * (nb_rx_desc + 1);
 	mz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx, size,
 				      RTL_RING_ALIGN, socket_id);
 	if (mz == NULL) {
@@ -346,16 +406,85 @@ rtl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	return 0;
 }
 
+static inline void
+rtl_set_desc_dma_addr(struct rtl_hw *hw, struct rtl_rx_desc *desc,
+		      uint64_t dma_addr)
+{
+	switch (hw->HwSuppRxDescType) {
+	case RX_DESC_RING_TYPE_3:
+		((struct rtl_rx_descv3 *)desc)->addr = dma_addr;
+		break;
+	case RX_DESC_RING_TYPE_4:
+		((struct rtl_rx_descv4 *)desc)->addr = dma_addr;
+		break;
+	default:
+		desc->addr = dma_addr;
+		break;
+	}
+}
+
+static inline void
+rtl_mark_to_asic_v1(struct rtl_rx_desc *desc, u32 rx_buf_sz)
+{
+	u32 eor = rte_le_to_cpu_32(desc->opts1) & RingEnd;
+
+	desc->opts2 = 0;
+	rte_wmb();
+	desc->opts1 = rte_cpu_to_le_32(DescOwn | eor | rx_buf_sz);
+}
+
+static inline void
+rtl_mark_to_asic_v3(struct rtl_rx_descv3 *descv3, u32 rx_buf_sz)
+{
+	u32 eor = rte_le_to_cpu_32(descv3->RxDescNormalDDWord4.opts1) & RingEnd;
+
+	descv3->RxDescNormalDDWord4.opts2 = 0;
+	rte_wmb();
+	descv3->RxDescNormalDDWord4.opts1 = rte_cpu_to_le_32(DescOwn | eor |
+							     rx_buf_sz);
+}
+
+static inline void
+rtl_mark_to_asic_v4(struct rtl_rx_descv4 *descv4, u32 rx_buf_sz)
+{
+	u32 eor = rte_le_to_cpu_32(descv4->RxDescNormalDDWord2.opts1) & RingEnd;
+
+	descv4->RxDescNormalDDWord2.opts2 = 0;
+	rte_wmb();
+	descv4->RxDescNormalDDWord2.opts1 = rte_cpu_to_le_32(DescOwn | eor |
+							     rx_buf_sz);
+}
+
+static inline void
+rtl_mark_to_asic(struct rtl_hw *hw, struct rtl_rx_desc *desc)
+{
+	switch (hw->HwSuppRxDescType) {
+	case RX_DESC_RING_TYPE_3:
+		rtl_mark_to_asic_v3((struct rtl_rx_descv3 *)desc, hw->rx_buf_sz);
+		break;
+	case RX_DESC_RING_TYPE_4:
+		rtl_mark_to_asic_v4((struct rtl_rx_descv4 *)desc, hw->rx_buf_sz);
+		break;
+	default:
+		rtl_mark_to_asic_v1(desc, hw->rx_buf_sz);
+		break;
+	}
+}
+
+static inline void
+rtl_map_to_asic(struct rtl_hw *hw, struct rtl_rx_desc *desc, uint64_t dma_addr)
+{
+	rtl_set_desc_dma_addr(hw, desc, dma_addr);
+	rtl_mark_to_asic(hw, desc);
+}
+
 static int
 rtl_alloc_rx_queue_mbufs(struct rtl_rx_queue *rxq)
 {
 	struct rtl_rx_entry *rxe = rxq->sw_ring;
 	struct rtl_hw *hw = rxq->hw;
-	struct rtl_rx_desc *rxd;
 	int i;
 	uint64_t dma_addr;
-
-	rxd = &rxq->hw_ring[0];
 
 	/* Initialize software ring entries */
 	for (i = 0; i < rxq->nb_rx_desc; i++) {
@@ -369,16 +498,12 @@ rtl_alloc_rx_queue_mbufs(struct rtl_rx_queue *rxq)
 
 		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
 
-		rxd = &rxq->hw_ring[i];
-		rxd->addr = dma_addr;
-		rxd->opts2 = 0;
-		rte_wmb();
-		rxd->opts1 = rte_cpu_to_le_32(DescOwn | hw->rx_buf_sz);
+		rtl_map_to_asic(hw, rtl_get_rxdesc(hw, rxq->hw_ring, i),
+				dma_addr);
 		rxe[i].mbuf = mbuf;
 	}
 
-	/* Mark as last desc */
-	rxd->opts1 |= rte_cpu_to_le_32(RingEnd);
+	rtl_mark_as_last_descriptor(hw, rtl_get_rxdesc(hw, rxq->hw_ring, i));
 
 	return 0;
 }
@@ -448,15 +573,48 @@ rtl_hw_set_rx_packet_filter(struct rtl_hw *hw)
 }
 
 static void
-rtl8125_clear_rdu(struct rtl_hw *hw)
+rtl8125_clear_rdu(struct rtl_hw *hw, uint16_t queue_id)
 {
-	RTL_W32(hw, ISR0_8125, (RxOK | RxErr | RxDescUnavail));
+	if (queue_id == 0)
+		RTL_W32(hw, ISR0_8125, (RxOK | RxErr | RxDescUnavail));
+	else
+		RTL_W8(hw, ISR1_8125 + (queue_id - 1) * 4, (BIT_0 | BIT_1));
 }
 
 static void
-rtl8168_clear_rdu(struct rtl_hw *hw)
+rtl8168_clear_rdu(struct rtl_hw *hw, uint16_t queue_id __rte_unused)
 {
 	RTL_W16(hw, IntrStatus, (RxOK | RxErr | RxDescUnavail));
+}
+
+static void
+rtl_init_rss(struct rtl_hw *hw, u16 nb_rx_queues)
+{
+	u64 rand;
+	int i;
+
+	for (i = 0; i < RTL_MAX_INDIRECTION_TABLE_ENTRIES; i++)
+		hw->rss_indir_tbl[i] = i & (nb_rx_queues - 1);
+
+	for (i = 0; i < RTL_RSS_KEY_SIZE; i += sizeof(u64)) {
+		rand = rte_rand();
+		memcpy(&hw->rss_key[i], &rand, sizeof(u64));
+	}
+}
+
+static void
+rtl8125_set_rx_q_num(struct rtl_hw *hw, unsigned int num_rx_queues)
+{
+	u16 q_ctrl;
+	u16 rx_q_num;
+
+	rx_q_num = (u16)rte_log2_u32(num_rx_queues);
+	rx_q_num &= (BIT_0 | BIT_1 | BIT_2);
+	rx_q_num <<= 2;
+	q_ctrl = RTL_R16(hw, Q_NUM_CTRL_8125);
+	q_ctrl &= ~(BIT_2 | BIT_3 | BIT_4);
+	q_ctrl |= rx_q_num;
+	RTL_W16(hw, Q_NUM_CTRL_8125, q_ctrl);
 }
 
 int
@@ -465,38 +623,51 @@ rtl_rx_init(struct rte_eth_dev *dev)
 	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
 	struct rtl_hw *hw = &adapter->hw;
 	struct rtl_rx_queue *rxq;
-	int ret;
+	int ret, i;
 	u32 csi_tmp, max_rx_pkt_size;
+	u16 nb_rx_queues = dev->data->nb_rx_queues;
+	u16 desc_start_addr_lo[QUEUE_NUM_LIMIT];
+
+	desc_start_addr_lo[0] = RxDescAddrLow;
+	for (i = 1; i < nb_rx_queues; i++)
+		desc_start_addr_lo[i] = (u16)(RDSAR_Q1_LOW_8125 + (i - 1) * 8);
 
 	rxq = dev->data->rx_queues[0];
+	for (i = 0; i < nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
 
-	if (rxq->mb_pool == NULL) {
-		PMD_INIT_LOG(ERR, "r8169 rx queue pool not setup!");
-		return -ENOMEM;
+		if (!rxq->mb_pool) {
+			PMD_INIT_LOG(ERR, "r8169 rx queue pool not setup!");
+			return -ENOMEM;
+		}
+
+		hw->rx_buf_sz = rte_pktmbuf_data_room_size(rxq->mb_pool) -
+				RTE_PKTMBUF_HEADROOM;
+
+		RTL_W32(hw, desc_start_addr_lo[i],
+			(u64)rxq->hw_ring_phys_addr & DMA_BIT_MASK(32));
+		RTL_W32(hw, desc_start_addr_lo[i] + 4,
+			(u64)rxq->hw_ring_phys_addr >> 32);
+
+		ret = rtl_alloc_rx_queue_mbufs(rxq);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "r8169 rx mbuf alloc failed!");
+			return ret;
+		}
+
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 	}
 
-	RTL_W32(hw, RxDescAddrLow, ((u64)rxq->hw_ring_phys_addr & DMA_BIT_MASK(32)));
-	RTL_W32(hw, RxDescAddrHigh, ((u64)rxq->hw_ring_phys_addr >> 32));
+	max_rx_pkt_size = dev->data->mtu + RTL_ETH_OVERHEAD;
+	RTL_W16(hw, RxMaxSize, max_rx_pkt_size);
 
 	dev->rx_pkt_burst = rtl_recv_pkts;
-	hw->rx_buf_sz = rte_pktmbuf_data_room_size(rxq->mb_pool) - RTE_PKTMBUF_HEADROOM;
-
-	max_rx_pkt_size = dev->data->mtu + RTL_ETH_OVERHEAD;
-
 	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER ||
 	    max_rx_pkt_size > hw->rx_buf_sz) {
 		if (!dev->data->scattered_rx)
 			PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 		dev->rx_pkt_burst = rtl_recv_scattered_pkts;
 		dev->data->scattered_rx = 1;
-	}
-
-	RTL_W16(hw, RxMaxSize, max_rx_pkt_size);
-
-	ret = rtl_alloc_rx_queue_mbufs(rxq);
-	if (ret) {
-		PMD_INIT_LOG(ERR, "r8169 rx mbuf alloc failed!");
-		return ret;
 	}
 
 	rtl_enable_cfg9346_write(hw);
@@ -524,24 +695,57 @@ rtl_rx_init(struct rte_eth_dev *dev)
 
 	rtl_disable_cfg9346_write(hw);
 
-	RTL_W8(hw, ChipCmd, RTL_R8(hw, ChipCmd) | CmdRxEnb);
-
-	dev->data->rx_queue_state[0] = RTE_ETH_QUEUE_STATE_STARTED;
-
 	if (rtl_is_8125(hw))
 		rtl_clear_rdu = rtl8125_clear_rdu;
 	else
 		rtl_clear_rdu = rtl8168_clear_rdu;
 
+	/* RSS_control_0 */
+	if (hw->EnableRss) {
+		rtl_init_rss(hw, nb_rx_queues);
+		rtl8125_config_rss(hw, nb_rx_queues);
+	} else {
+		RTL_W32(hw, RSS_CTRL_8125, 0x00);
+	}
+
+	/* VMQ_control */
+	rtl8125_set_rx_q_num(hw, nb_rx_queues);
+
+	RTL_W8(hw, ChipCmd, RTL_R8(hw, ChipCmd) | CmdRxEnb);
+
 	return 0;
 }
 
-static inline void
-rtl_mark_to_asic(struct rtl_rx_desc *rxd, u32 size)
+static inline bool
+rtl_rx_ip_csum(struct rtl_hw *hw, uint32_t opts1, uint32_t opts2)
 {
-	u32 eor = rte_le_to_cpu_32(rxd->opts1) & RingEnd;
+	switch (hw->HwSuppRxDescType) {
+	case RX_DESC_RING_TYPE_3:
+		return (((opts2 & RxV4F_v3) && !(opts2 & RxIPF_v3)) ||
+			(opts2 & RxV6F_v3));
+	case RX_DESC_RING_TYPE_4:
+		return (((opts2 & RxV4F_v4) && !(opts1 & RxIPF_v4)) ||
+			(opts2 & RxV6F_v4));
+	default:
+		return (((opts2 & RxV4F) && !(opts1 & RxIPF)) ||
+			(opts2 & RxV6F));
+	}
+}
 
-	rxd->opts1 = rte_cpu_to_le_32(DescOwn | eor | size);
+static inline bool
+rtl_rx_l4_csum(struct rtl_hw *hw, uint32_t opts1, uint32_t opts2)
+{
+	switch (hw->HwSuppRxDescType) {
+	case RX_DESC_RING_TYPE_3:
+		return (((opts2 & RxTCPT_v3) && !(opts2 & RxTCPF_v3)) ||
+			((opts2 & RxUDPT_v3) && !(opts2 & RxUDPF_v3)));
+	case RX_DESC_RING_TYPE_4:
+		return (((opts1 & RxTCPT_v4) && !(opts1 & RxTCPF_v4)) ||
+			((opts1 & RxUDPT_v4) && !(opts1 & RxUDPF_v4)));
+	default:
+		return (((opts1 & RxTCPT) && !(opts1 & RxTCPF)) ||
+			((opts1 & RxUDPT) && !(opts1 & RxUDPF)));
+	}
 }
 
 static inline uint64_t
@@ -549,20 +753,90 @@ rtl_rx_desc_error_to_pkt_flags(struct rtl_rx_queue *rxq, uint32_t opts1,
 			       uint32_t opts2)
 {
 	uint64_t pkt_flags = 0;
+	struct rtl_hw *hw = rxq->hw;
 
 	if (!(rxq->offloads & RTE_ETH_RX_OFFLOAD_CHECKSUM))
 		goto exit;
 
 	/* RX csum offload for RTL8169*/
-	if (((opts2 & RxV4F) && !(opts1 & RxIPF)) || (opts2 & RxV6F)) {
+	if (rtl_rx_ip_csum(hw, opts1, opts2)) {
 		pkt_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
-		if (((opts1 & RxTCPT) && !(opts1 & RxTCPF)) ||
-		    ((opts1 & RxUDPT) && !(opts1 & RxUDPF)))
+		if (rtl_rx_l4_csum(hw, opts1, opts2))
 			pkt_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 	}
 
 exit:
 	return pkt_flags;
+}
+
+static u32
+rtl_rx_desc_opts1(struct rtl_hw *hw, struct rtl_rx_desc *desc)
+{
+	uint32_t opts1;
+
+	switch (hw->HwSuppRxDescType) {
+	case RX_DESC_RING_TYPE_3:
+		opts1 = ((struct rtl_rx_descv3 *)desc)->RxDescNormalDDWord4.opts1;
+		break;
+	case RX_DESC_RING_TYPE_4:
+		opts1 = ((struct rtl_rx_descv4 *)desc)->RxDescNormalDDWord2.opts1;
+		break;
+	default:
+		opts1 = desc->opts1;
+		break;
+	}
+
+	return rte_le_to_cpu_32(opts1);
+}
+
+static u32
+rtl_rx_desc_opts2(struct rtl_hw *hw, struct rtl_rx_desc *desc)
+{
+	uint32_t opts2;
+
+	switch (hw->HwSuppRxDescType) {
+	case RX_DESC_RING_TYPE_3:
+		opts2 = ((struct rtl_rx_descv3 *)desc)->RxDescNormalDDWord4.opts2;
+		break;
+	case RX_DESC_RING_TYPE_4:
+		opts2 = ((struct rtl_rx_descv4 *)desc)->RxDescNormalDDWord2.opts2;
+		break;
+	default:
+		opts2 = desc->opts2;
+		break;
+	}
+
+	return rte_le_to_cpu_32(opts2);
+}
+
+static u32
+rtl_get_rx_desc_hash(struct rtl_hw *hw, struct rtl_rx_desc *desc)
+{
+	u32 rss = 0;
+
+	switch (hw->HwSuppRxDescType) {
+	case RX_DESC_RING_TYPE_3:
+		rss = ((struct rtl_rx_descv3 *)desc)->RxDescNormalDDWord2.RSSResult;
+		break;
+	case RX_DESC_RING_TYPE_4:
+		rss = ((struct rtl_rx_descv4 *)desc)->RxDescNormalDDWord1.RSSResult;
+		break;
+	}
+
+	return rte_le_to_cpu_32(rss);
+}
+
+static inline int
+rtl_check_rx_desc_error(struct rtl_hw *hw, uint32_t opts1)
+{
+	switch (hw->HwSuppRxDescType) {
+	case RX_DESC_RING_TYPE_3:
+		return (opts1 & RxRES_V3);
+	case RX_DESC_RING_TYPE_4:
+		return (opts1 & RxRES_V4);
+	default:
+		return (opts1 & RxRES);
+	}
 }
 
 /* PMD receive function */
@@ -573,7 +847,6 @@ rtl_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	struct rte_eth_dev *dev = &rte_eth_devices[rxq->port_id];
 	struct rtl_hw *hw = rxq->hw;
 	struct rtl_rx_desc *rxd;
-	struct rtl_rx_desc *hw_ring;
 	struct rtl_rx_entry *rxe;
 	struct rtl_rx_entry *sw_ring = rxq->sw_ring;
 	struct rte_mbuf *new_mb;
@@ -589,14 +862,12 @@ rtl_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint32_t opts2;
 	uint64_t dma_addr;
 
-	hw_ring = rxq->hw_ring;
-
 	RTE_ASSERT(RTL_R8(hw, ChipCmd) & CmdRxEnb);
 
 	while (nb_rx < nb_pkts) {
-		rxd = &hw_ring[tail];
+		rxd = rtl_get_rxdesc(hw, rxq->hw_ring, tail);
 
-		opts1 = rte_le_to_cpu_32(rxd->opts1);
+		opts1 = rtl_rx_desc_opts1(hw, rxd);
 		if (opts1 & DescOwn)
 			break;
 
@@ -607,78 +878,78 @@ rtl_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 */
 		rte_rmb();
 
-		if (unlikely(opts1 & RxRES)) {
+		if (unlikely(rtl_check_rx_desc_error(hw, opts1))) {
 			stats->rx_errors++;
-			rtl_mark_to_asic(rxd, hw->rx_buf_sz);
+			rtl_mark_to_asic(hw, rxd);
 			nb_hold++;
 			tail = (tail + 1) % nb_rx_desc;
-		} else {
-			opts2 = rte_le_to_cpu_32(rxd->opts2);
-
-			new_mb = rte_mbuf_raw_alloc(rxq->mb_pool);
-			if (new_mb == NULL) {
-				PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
-					   "queue_id=%u",
-					   (uint32_t)rxq->port_id, (uint32_t)rxq->queue_id);
-				dev->data->rx_mbuf_alloc_failed++;
-				break;
-			}
-
-			nb_hold++;
-			rxe = &sw_ring[tail];
-
-			rmb = rxe->mbuf;
-
-			tail = (tail + 1) % nb_rx_desc;
-
-			/* Prefetch next mbufs */
-			rte_prefetch0(sw_ring[tail].mbuf);
-
-			/*
-			 * When next RX descriptor is on a cache-line boundary,
-			 * prefetch the next 4 RX descriptors and the next 8 pointers
-			 * to mbufs.
-			 */
-			if ((tail & 0x3) == 0) {
-				rte_prefetch0(&sw_ring[tail]);
-				rte_prefetch0(&hw_ring[tail]);
-			}
-
-			/* Refill the RX desc */
-			rxe->mbuf = new_mb;
-			dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(new_mb));
-
-			/* Setup RX descriptor */
-			rxd->addr = dma_addr;
-			rxd->opts2 = 0;
-			rte_wmb();
-			rtl_mark_to_asic(rxd, hw->rx_buf_sz);
-
-			pkt_len = opts1 & 0x00003fff;
-			pkt_len -= RTE_ETHER_CRC_LEN;
-
-			rmb->data_off = RTE_PKTMBUF_HEADROOM;
-			rte_prefetch1((char *)rmb->buf_addr + rmb->data_off);
-			rmb->nb_segs = 1;
-			rmb->next = NULL;
-			rmb->pkt_len = pkt_len;
-			rmb->data_len = pkt_len;
-			rmb->port = rxq->port_id;
-
-			if (opts2 & RxVlanTag)
-				rmb->vlan_tci = rte_bswap16(opts2 & 0xffff);
-
-			rmb->ol_flags = rtl_rx_desc_error_to_pkt_flags(rxq, opts1, opts2);
-
-			/*
-			 * Store the mbuf address into the next entry of the array
-			 * of returned packets.
-			 */
-			rx_pkts[nb_rx++] = rmb;
-
-			stats->rx_bytes += pkt_len;
-			stats->rx_packets++;
+			continue;
 		}
+
+		opts2 = rtl_rx_desc_opts2(hw, rxd);
+
+		new_mb = rte_mbuf_raw_alloc(rxq->mb_pool);
+		if (!new_mb) {
+			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+				   "queue_id=%u",
+				   (u32)rxq->port_id, (u32)rxq->queue_id);
+			dev->data->rx_mbuf_alloc_failed++;
+			break;
+		}
+
+		nb_hold++;
+		rxe = &sw_ring[tail];
+
+		rmb = rxe->mbuf;
+
+		/* Prefetch next mbufs */
+		tail = (tail + 1) % nb_rx_desc;
+		rte_prefetch0(sw_ring[tail].mbuf);
+
+		/*
+		 * When next RX descriptor is on a cache-line boundary,
+		 * prefetch the next 4 RX descriptors and the next 8 pointers
+		 * to mbufs.
+		 */
+		if ((tail & 0x3) == 0) {
+			rte_prefetch0(&sw_ring[tail]);
+			rte_prefetch0(rtl_get_rxdesc(hw, rxq->hw_ring, tail));
+		}
+
+		/* Refill the RX desc */
+		rxe->mbuf = new_mb;
+		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(new_mb));
+
+		/* Setup RX descriptor */
+		rtl_map_to_asic(hw, rxd, dma_addr);
+
+		pkt_len = opts1 & 0x00003fff;
+		pkt_len -= RTE_ETHER_CRC_LEN;
+
+		rmb->data_off = RTE_PKTMBUF_HEADROOM;
+		rte_prefetch1((char *)rmb->buf_addr + rmb->data_off);
+		rmb->nb_segs = 1;
+		rmb->next = NULL;
+		rmb->pkt_len = pkt_len;
+		rmb->data_len = pkt_len;
+		rmb->port = rxq->port_id;
+
+		if (hw->EnableRss)
+			rmb->hash.rss = rtl_get_rx_desc_hash(hw, rxd);
+
+		if (opts2 & RxVlanTag)
+			rmb->vlan_tci = rte_bswap16(opts2 & 0xffff);
+
+		rmb->ol_flags = rtl_rx_desc_error_to_pkt_flags(rxq, opts1, opts2);
+
+		/*
+		 * Store the mbuf address into the next entry of the array
+		 * of returned packets.
+		 */
+		rx_pkts[nb_rx++] = rmb;
+
+		stats->rx_bytes += pkt_len;
+		stats->rx_packets++;
 	}
 
 	rxq->rx_tail = tail;
@@ -688,7 +959,7 @@ rtl_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rte_wmb();
 
 		/* Clear RDU */
-		rtl_clear_rdu(hw);
+		rtl_clear_rdu(hw, rxq->queue_id);
 
 		nb_hold = 0;
 	}
@@ -696,6 +967,19 @@ rtl_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	rxq->nb_rx_hold = nb_hold;
 
 	return nb_rx;
+}
+
+static inline int
+rtl_is_non_eop(struct rtl_hw *hw, u32 opts1)
+{
+	switch (hw->HwSuppRxDescType) {
+	case RX_DESC_RING_TYPE_3:
+		return !(opts1 & LastFrag_V3);
+	case RX_DESC_RING_TYPE_4:
+		return !(opts1 & LastFrag_V4);
+	default:
+		return !(opts1 & LastFrag);
+	}
 }
 
 /* PMD receive function for scattered pkts */
@@ -707,7 +991,6 @@ rtl_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct rte_eth_dev *dev = &rte_eth_devices[rxq->port_id];
 	struct rtl_hw *hw = rxq->hw;
 	struct rtl_rx_desc *rxd;
-	struct rtl_rx_desc *hw_ring;
 	struct rtl_rx_entry *rxe;
 	struct rtl_rx_entry *sw_ring = rxq->sw_ring;
 	struct rte_mbuf *first_seg;
@@ -725,8 +1008,6 @@ rtl_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint32_t opts2;
 	uint64_t dma_addr;
 
-	hw_ring = rxq->hw_ring;
-
 	/*
 	 * Retrieve RX context of current packet, if any.
 	 */
@@ -737,136 +1018,136 @@ rtl_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	while (nb_rx < nb_pkts) {
 next_desc:
-		rxd = &hw_ring[tail];
+		rxd = rtl_get_rxdesc(hw, rxq->hw_ring, tail);
 
-		opts1 = rte_le_to_cpu_32(rxd->opts1);
+		opts1 = rtl_rx_desc_opts1(hw, rxd);
 		if (opts1 & DescOwn)
 			break;
 
 		/*
 		 * This barrier is needed to keep us from reading
 		 * any other fields out of the Rx descriptor until
-		 * we know the status of DescOwn
+		 * we know the status of DescOwn.
 		 */
 		rte_rmb();
 
-		if (unlikely(opts1 & RxRES)) {
+		if (unlikely(rtl_check_rx_desc_error(hw, opts1))) {
 			stats->rx_errors++;
-			rtl_mark_to_asic(rxd, hw->rx_buf_sz);
+			rtl_mark_to_asic(hw, rxd);
 			nb_hold++;
 			tail = (tail + 1) % nb_rx_desc;
-		} else {
-			opts2 = rte_le_to_cpu_32(rxd->opts2);
-
-			new_mb = rte_mbuf_raw_alloc(rxq->mb_pool);
-			if (new_mb == NULL) {
-				PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
-					   "queue_id=%u",
-					   (uint32_t)rxq->port_id, (uint32_t)rxq->queue_id);
-				dev->data->rx_mbuf_alloc_failed++;
-				break;
-			}
-
-			nb_hold++;
-			rxe = &sw_ring[tail];
-
-			rmb = rxe->mbuf;
-
-			/* Prefetch next mbufs */
-			tail = (tail + 1) % nb_rx_desc;
-			rte_prefetch0(sw_ring[tail].mbuf);
-
-			/*
-			 * When next RX descriptor is on a cache-line boundary,
-			 * prefetch the next 4 RX descriptors and the next 8 pointers
-			 * to mbufs.
-			 */
-			if ((tail & 0x3) == 0) {
-				rte_prefetch0(&sw_ring[tail]);
-				rte_prefetch0(&hw_ring[tail]);
-			}
-
-			/* Refill the RX desc */
-			rxe->mbuf = new_mb;
-			dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(new_mb));
-
-			/* Setup RX descriptor */
-			rxd->addr = dma_addr;
-			rxd->opts2 = 0;
-			rte_wmb();
-			rtl_mark_to_asic(rxd, hw->rx_buf_sz);
-
-			data_len = opts1 & 0x00003fff;
-			rmb->data_len = data_len;
-			rmb->data_off = RTE_PKTMBUF_HEADROOM;
-
-			/*
-			 * If this is the first buffer of the received packet,
-			 * set the pointer to the first mbuf of the packet and
-			 * initialize its context.
-			 * Otherwise, update the total length and the number of segments
-			 * of the current scattered packet, and update the pointer to
-			 * the last mbuf of the current packet.
-			 */
-			if (first_seg == NULL) {
-				first_seg = rmb;
-				first_seg->pkt_len = data_len;
-				first_seg->nb_segs = 1;
-			} else {
-				first_seg->pkt_len += data_len;
-				first_seg->nb_segs++;
-				last_seg->next = rmb;
-			}
-
-			/*
-			 * If this is not the last buffer of the received packet,
-			 * update the pointer to the last mbuf of the current scattered
-			 * packet and continue to parse the RX ring.
-			 */
-			if (!(opts1 & LastFrag)) {
-				last_seg = rmb;
-				goto next_desc;
-			}
-
-			/*
-			 * This is the last buffer of the received packet.
-			 */
-			rmb->next = NULL;
-
-			first_seg->pkt_len -= RTE_ETHER_CRC_LEN;
-			if (data_len <= RTE_ETHER_CRC_LEN) {
-				rte_pktmbuf_free_seg(rmb);
-				first_seg->nb_segs--;
-				last_seg->data_len = last_seg->data_len -
-						     (RTE_ETHER_CRC_LEN - data_len);
-				last_seg->next = NULL;
-			} else {
-				rmb->data_len = data_len - RTE_ETHER_CRC_LEN;
-			}
-
-			first_seg->port = rxq->port_id;
-
-			if (opts2 & RxVlanTag)
-				first_seg->vlan_tci = rte_bswap16(opts2 & 0xffff);
-
-			first_seg->ol_flags = rtl_rx_desc_error_to_pkt_flags(rxq, opts1, opts2);
-
-			rte_prefetch1((char *)first_seg->buf_addr + first_seg->data_off);
-
-			/*
-			 * Store the mbuf address into the next entry of the array
-			 * of returned packets.
-			 */
-			rx_pkts[nb_rx++] = first_seg;
-
-			stats->rx_bytes += first_seg->pkt_len;
-			stats->rx_packets++;
-
-			/*
-			 * Setup receipt context for a new packet.
-			 */
-			first_seg = NULL;
+			continue;
 		}
+
+		opts2 = rtl_rx_desc_opts2(hw, rxd);
+
+		new_mb = rte_mbuf_raw_alloc(rxq->mb_pool);
+		if (!new_mb) {
+			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+				   "queue_id=%u",
+				   (u32)rxq->port_id, (u32)rxq->queue_id);
+			dev->data->rx_mbuf_alloc_failed++;
+			break;
+		}
+
+		nb_hold++;
+		rxe = &sw_ring[tail];
+
+		rmb = rxe->mbuf;
+
+		/* Prefetch next mbufs */
+		tail = (tail + 1) % nb_rx_desc;
+		rte_prefetch0(sw_ring[tail].mbuf);
+
+		/*
+		 * When next RX descriptor is on a cache-line boundary,
+		 * prefetch the next 4 RX descriptors and the next 8 pointers
+		 * to mbufs.
+		 */
+		if ((tail & 0x3) == 0) {
+			rte_prefetch0(&sw_ring[tail]);
+			rte_prefetch0(rtl_get_rxdesc(hw, rxq->hw_ring, tail));
+		}
+
+		/* Refill the RX desc */
+		rxe->mbuf = new_mb;
+		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(new_mb));
+
+		/* Setup RX descriptor */
+		rtl_map_to_asic(hw, rxd, dma_addr);
+
+		data_len = opts1 & 0x00003fff;
+		rmb->data_len = data_len;
+		rmb->data_off = RTE_PKTMBUF_HEADROOM;
+
+		/*
+		 * If this is the first buffer of the received packet,
+		 * set the pointer to the first mbuf of the packet and
+		 * initialize its context.
+		 * Otherwise, update the total length and the number of segments
+		 * of the current scattered packet, and update the pointer to
+		 * the last mbuf of the current packet.
+		 */
+		if (!first_seg) {
+			first_seg = rmb;
+			first_seg->pkt_len = data_len;
+			first_seg->nb_segs = 1;
+		} else {
+			first_seg->pkt_len += data_len;
+			first_seg->nb_segs++;
+			last_seg->next = rmb;
+		}
+
+		/*
+		 * If this is not the last buffer of the received packet,
+		 * update the pointer to the last mbuf of the current scattered
+		 * packet and continue to parse the RX ring.
+		 */
+		if (rtl_is_non_eop(hw, opts1)) {
+			last_seg = rmb;
+			goto next_desc;
+		}
+
+		/*
+		 * This is the last buffer of the received packet.
+		 */
+		rmb->next = NULL;
+
+		first_seg->pkt_len -= RTE_ETHER_CRC_LEN;
+		if (data_len <= RTE_ETHER_CRC_LEN) {
+			rte_pktmbuf_free_seg(rmb);
+			first_seg->nb_segs--;
+			last_seg->data_len = last_seg->data_len -
+					     (RTE_ETHER_CRC_LEN - data_len);
+			last_seg->next = NULL;
+		} else {
+			rmb->data_len = data_len - RTE_ETHER_CRC_LEN;
+		}
+
+		first_seg->port = rxq->port_id;
+		if (hw->EnableRss)
+			first_seg->hash.rss = rtl_get_rx_desc_hash(hw, rxd);
+
+		if (opts2 & RxVlanTag)
+			first_seg->vlan_tci = rte_bswap16(opts2 & 0xffff);
+
+		first_seg->ol_flags = rtl_rx_desc_error_to_pkt_flags(rxq, opts1, opts2);
+
+		rte_prefetch1((char *)first_seg->buf_addr + first_seg->data_off);
+
+		/*
+		 * Store the mbuf address into the next entry of the array
+		 * of returned packets.
+		 */
+		rx_pkts[nb_rx++] = first_seg;
+
+		stats->rx_bytes += first_seg->pkt_len;
+		stats->rx_packets++;
+
+		/*
+		 * Setup receipt context for a new packet.
+		 */
+		first_seg = NULL;
 	}
 
 	/*
@@ -885,7 +1166,7 @@ next_desc:
 		rte_wmb();
 
 		/* Clear RDU */
-		rtl_clear_rdu(hw);
+		rtl_clear_rdu(hw, rxq->queue_id);
 
 		nb_hold = 0;
 	}
@@ -954,6 +1235,10 @@ rtl_reset_tx_queue(struct rtl_tx_queue *txq)
 	txq->tx_tail = 0;
 	txq->tx_head = 0;
 	txq->tx_free = txq->nb_tx_desc - 1;
+
+	/* EnableTxNoClose */
+	txq->NextHwDesCloPtr = 0;
+	txq->BeginHwDesCloPtr = 0;
 }
 
 uint64_t
@@ -1042,10 +1327,6 @@ rtl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	rtl_reset_tx_queue(txq);
 
-	/* EnableTxNoClose */
-	hw->NextHwDesCloPtr0 = 0;
-	hw->BeginHwDesCloPtr0 = 0;
-
 	dev->data->tx_queues[queue_idx] = txq;
 
 	return 0;
@@ -1092,18 +1373,64 @@ rtl8168_set_mtps(struct rtl_hw *hw)
 		RTL_W8(hw, MTPS, 0x3F);
 }
 
+static void
+rtl8125_set_tx_q_num(struct rtl_hw *hw, unsigned int num_tx_queues)
+{
+	u16 mac_ocp_data;
+
+	mac_ocp_data = rtl_mac_ocp_read(hw, 0xE63E);
+	mac_ocp_data &= ~(BIT_11 | BIT_10);
+	mac_ocp_data |= ((rte_log2_u32(num_tx_queues) & 0x03) << 10);
+	rtl_mac_ocp_write(hw, 0xE63E, mac_ocp_data);
+}
+
 int
 rtl_tx_init(struct rte_eth_dev *dev)
 {
 	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
 	struct rtl_hw *hw = &adapter->hw;
 	struct rtl_tx_queue *txq;
+	u16 nb_tx_queues = dev->data->nb_tx_queues;
+	u16 desc_start_addr_lo[QUEUE_NUM_LIMIT];
+	u16 hw_clo_ptr0_reg, sw_tail_ptr0_reg, reg_len;
+	int i;
 
-	txq = dev->data->tx_queues[0];
+	desc_start_addr_lo[0] = TxDescStartAddrLow;
+	for (i = 1; i < nb_tx_queues; i++)
+		desc_start_addr_lo[i] = (u16)(TNPDS_Q1_LOW_8125 + (i - 1) * 8);
 
-	RTL_W32(hw, TxDescStartAddrLow,
-		((u64)txq->hw_ring_phys_addr & DMA_BIT_MASK(32)));
-	RTL_W32(hw, TxDescStartAddrHigh, ((u64)txq->hw_ring_phys_addr >> 32));
+	switch (hw->HwSuppTxNoCloseVer) {
+	case 4:
+	case 5:
+		hw_clo_ptr0_reg = HW_CLO_PTR0_8126;
+		sw_tail_ptr0_reg = SW_TAIL_PTR0_8126;
+		reg_len = 4;
+		break;
+	case 6:
+		hw_clo_ptr0_reg = HW_CLO_PTR0_8125BP;
+		sw_tail_ptr0_reg = SW_TAIL_PTR0_8125BP;
+		reg_len = 8;
+		break;
+	default:
+		hw_clo_ptr0_reg = HW_CLO_PTR0_8125;
+		sw_tail_ptr0_reg = SW_TAIL_PTR0_8125;
+		reg_len = 4;
+		break;
+	}
+
+	for (i = 0; i < nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+
+		RTL_W32(hw, desc_start_addr_lo[i],
+			(u64)txq->hw_ring_phys_addr & DMA_BIT_MASK(32));
+		RTL_W32(hw, desc_start_addr_lo[i] + 4,
+			(u64)txq->hw_ring_phys_addr >> 32);
+
+		txq->hw_clo_ptr_reg = (u16)(hw_clo_ptr0_reg + i * reg_len);
+		txq->sw_tail_ptr_reg = (u16)(sw_tail_ptr0_reg + i * reg_len);
+
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	}
 
 	rtl_enable_cfg9346_write(hw);
 
@@ -1119,9 +1446,9 @@ rtl_tx_init(struct rte_eth_dev *dev)
 
 	rtl_disable_cfg9346_write(hw);
 
-	RTL_W8(hw, ChipCmd, RTL_R8(hw, ChipCmd) | CmdTxEnb);
+	rtl8125_set_tx_q_num(hw, nb_tx_queues);
 
-	dev->data->tx_queue_state[0] = RTE_ETH_QUEUE_STATE_STARTED;
+	RTL_W8(hw, ChipCmd, RTL_R8(hw, ChipCmd) | CmdTxEnb);
 
 	return 0;
 }
@@ -1351,15 +1678,17 @@ rtl_fast_mod_mask(const u32 input, const u32 mask)
 }
 
 static u32
-rtl_get_hw_clo_ptr(struct rtl_hw *hw)
+rtl_get_hw_clo_ptr(struct rtl_tx_queue *txq)
 {
+	struct rtl_hw *hw = txq->hw;
+
 	switch (hw->HwSuppTxNoCloseVer) {
 	case 3:
-		return RTL_R16(hw, hw->hw_clo_ptr_reg);
+		return RTL_R16(hw, txq->hw_clo_ptr_reg);
 	case 4:
 	case 5:
 	case 6:
-		return RTL_R32(hw, hw->hw_clo_ptr_reg);
+		return RTL_R32(hw, txq->hw_clo_ptr_reg);
 	default:
 		return 0;
 	}
@@ -1384,20 +1713,20 @@ rtl8125_tx_clean(struct rtl_hw *hw, struct rtl_tx_queue *txq)
 	uint16_t head = txq->tx_head;
 	uint16_t desc_freed = 0;
 	uint32_t tx_left;
-	uint32_t tx_desc_closed, next_hw_desc_clo_ptr0;
+	uint32_t tx_desc_closed;
 
 	if (!txq)
 		return;
 
 	if (enable_tx_no_close) {
-		next_hw_desc_clo_ptr0 = rtl_get_hw_clo_ptr(hw);
-		hw->NextHwDesCloPtr0 = next_hw_desc_clo_ptr0;
-		tx_desc_closed = rtl_fast_mod_mask(next_hw_desc_clo_ptr0 -
-						   hw->BeginHwDesCloPtr0, hw->MaxTxDescPtrMask);
+		txq->NextHwDesCloPtr = rtl_get_hw_clo_ptr(txq);
+		tx_desc_closed = rtl_fast_mod_mask(txq->NextHwDesCloPtr -
+						   txq->BeginHwDesCloPtr,
+						   hw->MaxTxDescPtrMask);
 		tx_left = RTE_MIN(((rte_atomic_load_explicit(&txq->tx_tail,
 				    rte_memory_order_relaxed) % nb_tx_desc) - head),
 				    tx_desc_closed);
-		hw->BeginHwDesCloPtr0 += tx_left;
+		txq->BeginHwDesCloPtr += tx_left;
 	} else {
 		tx_left = (rte_atomic_load_explicit(&txq->tx_tail,
 						    rte_memory_order_relaxed) % nb_tx_desc) - head;
@@ -1484,20 +1813,20 @@ rtl8125_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
 	uint32_t tx_left;
 	uint32_t count = 0;
 	uint32_t status;
-	uint32_t tx_desc_closed, next_hw_desc_clo_ptr0;
+	uint32_t tx_desc_closed;
 
 	if (!txq)
 		return -ENODEV;
 
 	if (enable_tx_no_close) {
-		next_hw_desc_clo_ptr0 = rtl_get_hw_clo_ptr(hw);
-		hw->NextHwDesCloPtr0 = next_hw_desc_clo_ptr0;
-		tx_desc_closed = rtl_fast_mod_mask(next_hw_desc_clo_ptr0 -
-						   hw->BeginHwDesCloPtr0, hw->MaxTxDescPtrMask);
+		txq->NextHwDesCloPtr = rtl_get_hw_clo_ptr(txq);
+		tx_desc_closed = rtl_fast_mod_mask(txq->NextHwDesCloPtr -
+						   txq->BeginHwDesCloPtr,
+						   hw->MaxTxDescPtrMask);
 		tx_left = RTE_MIN(((rte_atomic_load_explicit(&txq->tx_tail,
 				    rte_memory_order_relaxed) % nb_tx_desc) - head),
 				    tx_desc_closed);
-		hw->BeginHwDesCloPtr0 += tx_left;
+		txq->BeginHwDesCloPtr += tx_left;
 	} else {
 		tx_left = (rte_atomic_load_explicit(&txq->tx_tail,
 						    rte_memory_order_relaxed) % nb_tx_desc) - head;
@@ -1602,9 +1931,9 @@ rtl8125_doorbell(struct rtl_hw *hw, struct rtl_tx_queue *txq)
 {
 	if (hw->EnableTxNoClose)
 		if (hw->HwSuppTxNoCloseVer > 3)
-			RTL_W32(hw, hw->sw_tail_ptr_reg, txq->tx_tail);
+			RTL_W32(hw, txq->sw_tail_ptr_reg, txq->tx_tail);
 		else
-			RTL_W16(hw, hw->sw_tail_ptr_reg, txq->tx_tail);
+			RTL_W16(hw, txq->sw_tail_ptr_reg, txq->tx_tail);
 	else
 		RTL_W16(hw, TPPOLL_8125, BIT_0);
 }
@@ -1671,36 +2000,46 @@ rtl_stop_queues(struct rte_eth_dev *dev)
 {
 	struct rtl_tx_queue *txq;
 	struct rtl_rx_queue *rxq;
+	int i;
 
 	PMD_INIT_FUNC_TRACE();
 
-	txq = dev->data->tx_queues[0];
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
 
-	rtl_tx_queue_release_mbufs(txq);
-	rtl_reset_tx_queue(txq);
-	dev->data->tx_queue_state[0] = RTE_ETH_QUEUE_STATE_STOPPED;
+		rtl_tx_queue_release_mbufs(txq);
+		rtl_reset_tx_queue(txq);
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	}
 
-	rxq = dev->data->rx_queues[0];
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
 
-	rtl_rx_queue_release_mbufs(rxq);
-	rtl_reset_rx_queue(rxq);
-	dev->data->rx_queue_state[0] = RTE_ETH_QUEUE_STATE_STOPPED;
-
+		rtl_rx_queue_release_mbufs(rxq);
+		rtl_reset_rx_queue(rxq);
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	}
 	return 0;
 }
 
 void
 rtl_free_queues(struct rte_eth_dev *dev)
 {
+	int i;
+
 	PMD_INIT_FUNC_TRACE();
 
-	rte_eth_dma_zone_free(dev, "rx_ring", 0);
-	rtl_rx_queue_release(dev, 0);
-	dev->data->rx_queues[0] = 0;
-	dev->data->nb_rx_queues = 0;
-
-	rte_eth_dma_zone_free(dev, "tx_ring", 0);
-	rtl_tx_queue_release(dev, 0);
-	dev->data->tx_queues[0] = 0;
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		rte_eth_dma_zone_free(dev, "tx_ring", i);
+		rtl_tx_queue_release(dev, i);
+		dev->data->tx_queues[i] = 0;
+	}
 	dev->data->nb_tx_queues = 0;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rte_eth_dma_zone_free(dev, "rx_ring", i);
+		rtl_rx_queue_release(dev, i);
+		dev->data->rx_queues[i] = 0;
+	}
+	dev->data->nb_rx_queues = 0;
 }

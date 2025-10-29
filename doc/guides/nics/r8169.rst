@@ -31,3 +31,5 @@ Features of the R8169 PMD are:
 
 * Checksum offload
 * Jumbo frames supported
+* RSS (Receive Side Scaling)
+* Multiple queues for Tx and Rx
