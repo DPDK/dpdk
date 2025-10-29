@@ -293,6 +293,15 @@ enum RTL_register_content {
 	RxRUNT = (1UL << 20),
 	RxCRC  = (1UL << 19),
 
+	RxRWT_V3  = (1 << 18),
+	RxRES_V3  = (1 << 20),
+	RxRUNT_V3 = (1 << 19),
+	RxCRC_V3  = (1 << 17),
+
+	RxRES_V4  = (1 << 22),
+	RxRUNT_V4 = (1 << 21),
+	RxCRC_V4  = (1 << 20),
+
 	/* ChipCmd bits */
 	StopReq    = 0x80,
 	CmdReset   = 0x10,

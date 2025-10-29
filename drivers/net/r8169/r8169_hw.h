@@ -79,6 +79,9 @@ void rtl8168_set_mcu_ocp_bit(struct rtl_hw *hw, u16 addr, u16 mask);
 u64 rtl_get_hw_mcu_patch_code_ver(struct rtl_hw *hw);
 u64 rtl_get_bin_mcu_patch_code_ver(const u16 *entry, u16 entry_cnt);
 
+void rtl8125_store_rss_key(struct rtl_hw *hw);
+void rtl8125_config_rss(struct rtl_hw *hw, u16 nb_rx_queues);
+
 extern const struct rtl_hw_ops rtl8168g_ops;
 extern const struct rtl_hw_ops rtl8168h_ops;
 extern const struct rtl_hw_ops rtl8168ep_ops;

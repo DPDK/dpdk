@@ -32,6 +32,49 @@ enum rtl_fc_mode {
 	rtl_fc_default
 };
 
+enum rtl_rss_register_content {
+	/* RSS */
+	RSS_CTRL_TCP_IPV4_SUPP     = (1 << 0),
+	RSS_CTRL_IPV4_SUPP         = (1 << 1),
+	RSS_CTRL_TCP_IPV6_SUPP     = (1 << 2),
+	RSS_CTRL_IPV6_SUPP         = (1 << 3),
+	RSS_CTRL_IPV6_EXT_SUPP     = (1 << 4),
+	RSS_CTRL_TCP_IPV6_EXT_SUPP = (1 << 5),
+	RSS_HALF_SUPP              = (1 << 7),
+	RSS_CTRL_UDP_IPV4_SUPP     = (1 << 11),
+	RSS_CTRL_UDP_IPV6_SUPP     = (1 << 12),
+	RSS_CTRL_UDP_IPV6_EXT_SUPP = (1 << 13),
+	RSS_QUAD_CPU_EN            = (1 << 16),
+	RSS_HQ_Q_SUP_R             = (1 << 31),
+};
+
+#define RTL_RSS_OFFLOAD_ALL ( \
+	RTE_ETH_RSS_IPV4 | \
+	RTE_ETH_RSS_NONFRAG_IPV4_TCP | \
+	RTE_ETH_RSS_NONFRAG_IPV4_UDP | \
+	RTE_ETH_RSS_IPV6 | \
+	RTE_ETH_RSS_NONFRAG_IPV6_TCP | \
+	RTE_ETH_RSS_NONFRAG_IPV6_UDP | \
+	RTE_ETH_RSS_IPV6_EX | \
+	RTE_ETH_RSS_IPV6_TCP_EX | \
+	RTE_ETH_RSS_IPV6_UDP_EX)
+
+#define RTL_RSS_CTRL_OFFLOAD_ALL ( \
+	RSS_CTRL_TCP_IPV4_SUPP | \
+	RSS_CTRL_IPV4_SUPP | \
+	RSS_CTRL_TCP_IPV6_SUPP | \
+	RSS_CTRL_IPV6_SUPP | \
+	RSS_CTRL_IPV6_EXT_SUPP | \
+	RSS_CTRL_TCP_IPV6_EXT_SUPP | \
+	RSS_CTRL_UDP_IPV4_SUPP | \
+	RSS_CTRL_UDP_IPV6_SUPP | \
+	RSS_CTRL_UDP_IPV6_EXT_SUPP)
+
+#define RTL_RSS_KEY_SIZE     40  /* size of RSS Hash Key in bytes */
+#define RTL_MAX_INDIRECTION_TABLE_ENTRIES RTE_ETH_RSS_RETA_SIZE_128
+#define RSS_MASK_BITS_OFFSET 8
+#define RSS_CPU_NUM_OFFSET   16
+
 struct rtl_hw {
 	struct rtl_hw_ops hw_ops;
 	u8  *mmio_addr;
@@ -77,11 +120,7 @@ struct rtl_hw {
 	/* Enable Tx No Close */
 	u8  HwSuppTxNoCloseVer;
 	u8  EnableTxNoClose;
-	u16 hw_clo_ptr_reg;
-	u16 sw_tail_ptr_reg;
 	u32 MaxTxDescPtrMask;
-	u32 NextHwDesCloPtr0;
-	u32 BeginHwDesCloPtr0;
 
 	/* Dash */
 	u8 HwSuppDashVer;
@@ -93,6 +132,13 @@ struct rtl_hw {
 
 	/* Fiber */
 	u32 HwFiberModeVer;
+
+	/* Multi queue*/
+	u8 EnableRss;
+	u8 HwSuppRxDescType;
+	u16 RxDescLength;
+	u8 rss_key[RTL_RSS_KEY_SIZE];
+	u8 rss_indir_tbl[RTL_MAX_INDIRECTION_TABLE_ENTRIES];
 };
 
 struct rtl_sw_stats {
@@ -107,6 +153,93 @@ struct rtl_sw_stats {
 struct rtl_adapter {
 	struct rtl_hw       hw;
 	struct rtl_sw_stats sw_stats;
+};
+
+/* Struct RxDesc in kernel r8169 */
+struct rtl_rx_desc {
+	u32 opts1;
+	u32 opts2;
+	u64 addr;
+};
+
+struct rtl_rx_descv3 {
+	union {
+		struct {
+			u32 rsv1;
+			u32 rsv2;
+		} RxDescDDWord1;
+	};
+
+	union {
+		struct {
+			u32 RSSResult;
+			u16 HeaderBufferLen;
+			u16 HeaderInfo;
+		} RxDescNormalDDWord2;
+
+		struct {
+			u32 rsv5;
+			u32 rsv6;
+		} RxDescDDWord2;
+	};
+
+	union {
+		u64   addr;
+
+		struct {
+			u32 TimeStampLow;
+			u32 TimeStampHigh;
+		} RxDescTimeStamp;
+
+		struct {
+			u32 rsv8;
+			u32 rsv9;
+		} RxDescDDWord3;
+	};
+
+	union {
+		struct {
+			u32 opts2;
+			u32 opts1;
+		} RxDescNormalDDWord4;
+
+		struct {
+			u16 TimeStampHHigh;
+			u16 rsv11;
+			u32 opts1;
+		} RxDescPTPDDWord4;
+	};
+};
+
+struct rtl_rx_descv4 {
+	union {
+		u64   addr;
+
+		struct {
+			u32 RSSInfo;
+			u32 RSSResult;
+		} RxDescNormalDDWord1;
+	};
+
+	struct {
+		u32 opts2;
+		u32 opts1;
+	} RxDescNormalDDWord2;
+};
+
+enum rx_desc_ring_type {
+	RX_DESC_RING_TYPE_UNKNOWN = 0,
+	RX_DESC_RING_TYPE_1,
+	RX_DESC_RING_TYPE_2,
+	RX_DESC_RING_TYPE_3,
+	RX_DESC_RING_TYPE_4,
+	RX_DESC_RING_TYPE_MAX
+};
+
+enum rx_desc_len {
+	RX_DESC_LEN_TYPE_1 = (sizeof(struct rtl_rx_desc)),
+	RX_DESC_LEN_TYPE_3 = (sizeof(struct rtl_rx_descv3)),
+	RX_DESC_LEN_TYPE_4 = (sizeof(struct rtl_rx_descv4))
 };
 
 #define RTL_DEV_PRIVATE(eth_dev) \
@@ -149,7 +282,7 @@ void rtl_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 void rtl_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		      struct rte_eth_txq_info *qinfo);
 
-uint64_t rtl_get_rx_port_offloads(void);
+uint64_t rtl_get_rx_port_offloads(struct rtl_hw *hw);
 uint64_t rtl_get_tx_port_offloads(void);
 
 int rtl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
@@ -164,5 +297,11 @@ int rtl_tx_done_cleanup(void *tx_queue, uint32_t free_cnt);
 
 int rtl_stop_queues(struct rte_eth_dev *dev);
 void rtl_free_queues(struct rte_eth_dev *dev);
+
+static inline struct rtl_rx_desc*
+rtl_get_rxdesc(struct rtl_hw *hw, struct rtl_rx_desc *base, u32 const number)
+{
+	return (struct rtl_rx_desc *)((u8 *)base + hw->RxDescLength * number);
+}
 
 #endif /* R8169_ETHDEV_H */

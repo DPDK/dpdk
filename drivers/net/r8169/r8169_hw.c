@@ -930,6 +930,88 @@ rtl8125_hw_clear_int_miti(struct rtl_hw *hw)
 }
 
 static void
+rtl8125_set_rss_hash_opt(struct rtl_hw *hw, u16 nb_rx_queues)
+{
+	u32 hash_mask_len;
+	u32 rss_ctrl;
+
+	rss_ctrl = rte_log2_u32(nb_rx_queues);
+	rss_ctrl &= (BIT_0 | BIT_1 | BIT_2);
+	rss_ctrl <<= RSS_CPU_NUM_OFFSET;
+
+	/* Perform hash on these packet types */
+	rss_ctrl |= RTL_RSS_CTRL_OFFLOAD_ALL;
+
+	hash_mask_len = rte_log2_u32(RTL_MAX_INDIRECTION_TABLE_ENTRIES);
+	hash_mask_len &= (BIT_0 | BIT_1 | BIT_2);
+	rss_ctrl |= hash_mask_len << RSS_MASK_BITS_OFFSET;
+
+	RTL_W32(hw, RSS_CTRL_8125, rss_ctrl);
+}
+
+static void
+rtl8125_store_reta(struct rtl_hw *hw)
+{
+	u32 reta;
+	int i;
+
+	for (i = 0; i < RTL_MAX_INDIRECTION_TABLE_ENTRIES; i += 4) {
+		reta = hw->rss_indir_tbl[i];
+		reta |= hw->rss_indir_tbl[i + 1] << 8;
+		reta |= hw->rss_indir_tbl[i + 2] << 16;
+		reta |= hw->rss_indir_tbl[i + 3] << 24;
+		RTL_W32(hw, RSS_INDIRECTION_TBL_8125_V2 + i, reta);
+	}
+}
+
+void
+rtl8125_store_rss_key(struct rtl_hw *hw)
+{
+	u32 rss_key;
+	int i;
+
+	for (i = 0; i < RTL_RSS_KEY_SIZE; i += 4) {
+		rss_key = hw->rss_key[i];
+		rss_key |= hw->rss_key[i + 1] << 8;
+		rss_key |= hw->rss_key[i + 2] << 16;
+		rss_key |= hw->rss_key[i + 3] << 24;
+		RTL_W32(hw, RSS_KEY_8125 + i, rss_key);
+	}
+}
+
+void
+rtl8125_config_rss(struct rtl_hw *hw, u16 nb_rx_queues)
+{
+	rtl8125_set_rss_hash_opt(hw, nb_rx_queues);
+
+	rtl8125_store_reta(hw);
+
+	rtl8125_store_rss_key(hw);
+}
+
+static void
+rtl8125_set_rx_desc_type(struct rtl_hw *hw)
+{
+	switch (hw->mcfg) {
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_58:
+		RTL_W8(hw, 0xD8, RTL_R8(hw, 0xD8) & ~EnableRxDescV4_0);
+		break;
+	case CFG_METHOD_69:
+		RTL_W32(hw, RxConfig, EnableRxDescV3 | RTL_R32(hw, RxConfig));
+		break;
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
+	case CFG_METHOD_91:
+		RTL_W8(hw, 0xD8, RTL_R8(hw, 0xD8) | EnableRxDescV4_0);
+		break;
+	}
+}
+
+static void
 rtl8125_hw_config(struct rtl_hw *hw)
 {
 	u32 mac_ocp_data;
@@ -973,12 +1055,6 @@ rtl8125_hw_config(struct rtl_hw *hw)
 		break;
 	}
 
-	/* RSS_control_0 */
-	RTL_W32(hw, RSS_CTRL_8125, 0x00);
-
-	/* VMQ_control */
-	RTL_W16(hw, Q_NUM_CTRL_8125, 0x0000);
-
 	/* Disable speed down */
 	RTL_W8(hw, Config1, RTL_R8(hw, Config1) & ~0x10);
 
@@ -1002,18 +1078,7 @@ rtl8125_hw_config(struct rtl_hw *hw)
 			RTL_W8(hw, 0x20E4, RTL_R8(hw, 0x20E4) & ~BIT_2);
 	}
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_58:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
-	case CFG_METHOD_91:
-		RTL_W8(hw, 0xD8, RTL_R8(hw, 0xD8) & ~EnableRxDescV4_0);
-		break;
-	}
+	rtl8125_set_rx_desc_type(hw);
 
 	if (hw->mcfg == CFG_METHOD_58 || hw->mcfg == CFG_METHOD_91) {
 		rtl_clear_mac_ocp_bit(hw, 0xE00C, BIT_12);
@@ -1844,22 +1909,6 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	if (hw->HwSuppTxNoCloseVer > 0 && tx_no_close_enable == 1)
 		hw->EnableTxNoClose = TRUE;
 
-	switch (hw->HwSuppTxNoCloseVer) {
-	case 4:
-	case 5:
-		hw->hw_clo_ptr_reg = HW_CLO_PTR0_8126;
-		hw->sw_tail_ptr_reg = SW_TAIL_PTR0_8126;
-		break;
-	case 6:
-		hw->hw_clo_ptr_reg = HW_CLO_PTR0_8125BP;
-		hw->sw_tail_ptr_reg = SW_TAIL_PTR0_8125BP;
-		break;
-	default:
-		hw->hw_clo_ptr_reg = HW_CLO_PTR0_8125;
-		hw->sw_tail_ptr_reg = SW_TAIL_PTR0_8125;
-		break;
-	}
-
 	switch (hw->mcfg) {
 	case CFG_METHOD_21:
 	case CFG_METHOD_22:
@@ -1950,6 +1999,11 @@ rtl_init_software_variable(struct rtl_hw *hw)
 		hw->mcu_pme_setting = rtl_mac_ocp_read(hw, 0xE00A);
 	}
 
+	if (hw->mcfg >= CFG_METHOD_69)
+		hw->EnableRss = 1;
+	else
+		hw->EnableRss = 0;
+
 	switch (hw->mcfg) {
 	case CFG_METHOD_49:
 	case CFG_METHOD_52:
@@ -1982,6 +2036,23 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 		hw->HwSuppIntMitiVer = 5;
+		break;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_69:
+		hw->HwSuppRxDescType = RX_DESC_RING_TYPE_3;
+		hw->RxDescLength = RX_DESC_LEN_TYPE_3;
+		break;
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
+	case CFG_METHOD_91:
+		hw->HwSuppRxDescType = RX_DESC_RING_TYPE_4;
+		hw->RxDescLength = RX_DESC_LEN_TYPE_4;
+		break;
+	default:
+		hw->HwSuppRxDescType = RX_DESC_RING_TYPE_1;
+		hw->RxDescLength = RX_DESC_LEN_TYPE_1;
 		break;
 	}
 

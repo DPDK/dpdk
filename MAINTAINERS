@@ -1035,6 +1035,7 @@ Realtek r8169
 M: Howard Wang <howard_wang@realsil.com.cn>
 M: Chunhao Lin <hau@realtek.com>
 M: Xing Wang <xing_wang@realsil.com.cn>
+M: Javen Xu <javen_xu@realsil.com.cn>
 F: drivers/net/r8169/
 F: doc/guides/nics/r8169.rst
 F: doc/guides/nics/features/r8169.ini
