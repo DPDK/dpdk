@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2024 Broadcom
+ * Copyright(c) 2014-2025 Broadcom
  * All rights reserved.
  */
 
@@ -5719,9 +5719,7 @@ struct bnxt_ulp_mapper_field_info ulp_thor_act_result_field_list[] = {
 	.description = "stats_op",
 	.field_bit_size = 1,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-	.field_opr1 = {
-	1}
+	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "stats_ptr",
@@ -5877,9 +5875,7 @@ struct bnxt_ulp_mapper_field_info ulp_thor_act_result_field_list[] = {
 	.description = "stats_op",
 	.field_bit_size = 1,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-	.field_opr1 = {
-	1}
+	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "stats_ptr",
@@ -8994,9 +8990,7 @@ struct bnxt_ulp_mapper_field_info ulp_thor_act_result_field_list[] = {
 	.description = "stats_op",
 	.field_bit_size = 1,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-	.field_opr1 = {
-	1}
+	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
 	{
 	.description = "stats_ptr",
