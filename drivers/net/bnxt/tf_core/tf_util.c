@@ -85,6 +85,8 @@ tf_tbl_type_2_str(enum tf_tbl_type tbl_type)
 		return "Encap 32B";
 	case TF_TBL_TYPE_ACT_ENCAP_64B:
 		return "Encap 64B";
+	case TF_TBL_TYPE_ACT_ENCAP_128B:
+		return "Encap 128B";
 	case TF_TBL_TYPE_ACT_SP_SMAC:
 		return "Source Properties SMAC";
 	case TF_TBL_TYPE_ACT_SP_SMAC_IPV4:

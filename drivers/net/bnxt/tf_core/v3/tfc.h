@@ -372,6 +372,7 @@ struct tfc_idx_tbl_info {
 	enum cfa_resource_subtype_idx_tbl rsubtype; /**< resource subtype */
 	enum cfa_dir dir; /**< direction rx/tx */
 	uint16_t id; /**< alloc/free index */
+	enum cfa_resource_blktype_idx_tbl blktype; /**< block type */
 };
 
 /**
