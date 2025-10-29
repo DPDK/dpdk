@@ -18889,7 +18889,7 @@ flow_dv_create_mtr_tbls(struct rte_eth_dev *dev,
 			}
 		}
 		/* Create default matcher in drop table. */
-		matcher.tbl = mtrmng->drop_tbl[domain],
+		matcher.tbl = mtrmng->drop_tbl[domain];
 		tbl_data = container_of(mtrmng->drop_tbl[domain],
 				struct mlx5_flow_tbl_data_entry, tbl);
 		if (!mtrmng->def_matcher[domain]) {
