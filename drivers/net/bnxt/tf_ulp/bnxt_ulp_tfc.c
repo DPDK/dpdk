@@ -346,6 +346,7 @@ ulp_tfc_tbl_scope_init(struct bnxt *bp)
 	struct tfc_tbl_scope_cpm_alloc_parms cparms;
 	uint16_t fid, max_pools;
 	bool first = true, shared = false;
+	uint64_t feat_bits;
 	uint8_t tsid = 0;
 	struct tfc *tfcp;
 	int32_t rc = 0;
@@ -368,15 +369,14 @@ ulp_tfc_tbl_scope_init(struct bnxt *bp)
 
 	shared = bnxt_ulp_cntxt_shared_tbl_scope_enabled(bp->ulp_ctx);
 
-#if (TFC_SHARED_TBL_SCOPE_ENABLE == 1)
-	/* Temporary code for testing shared table scopes until ULP
-	 * usage defined.
-	 */
-	if (!BNXT_PF(bp)) {
-		shared = true;
-		max_pools = 8;
+	feat_bits = bnxt_ulp_feature_bits_get(bp->ulp_ctx);
+	if ((feat_bits & BNXT_ULP_FEATURE_BIT_MULTI_INSTANCE)) {
+		if (!BNXT_PF(bp)) {
+			shared = true;
+			max_pools = 8;
+		}
 	}
-#endif
+
 	/* Calculate the sizes for setting up memory */
 	qparms.shared = shared;
 	qparms.max_pools = max_pools;

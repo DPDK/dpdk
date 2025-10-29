@@ -124,6 +124,9 @@ struct bucket_info_t {
 #define CREATE_OFFSET(result, pool_sz_exp, pool_id, record_offset) \
 	(*(result) = (((pool_id) << (pool_sz_exp)) | (record_offset)))
 
+#define REMOVE_POOL_FROM_OFFSET(pool_sz_exp, record_offset) \
+	(((1 << (pool_sz_exp)) - 1) & (record_offset))
+
 int tfc_em_delete_raw(struct tfc *tfcp,
 		      uint8_t tsid,
 		      enum cfa_dir dir,

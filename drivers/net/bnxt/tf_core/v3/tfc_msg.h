@@ -76,10 +76,13 @@ tfc_msg_idx_tbl_free(struct tfc *tfcp, uint16_t fid,
 		     uint16_t id, enum cfa_resource_blktype_idx_tbl blktype);
 
 int tfc_msg_global_id_alloc(struct tfc *tfcp, uint16_t fid, uint16_t sid,
-			    enum tfc_domain_id domain_id, uint16_t req_cnt,
 			    const struct tfc_global_id_req *glb_id_req,
-			    struct tfc_global_id *rsp, uint16_t *rsp_cnt,
+			    struct tfc_global_id *rsp,
 			    bool *first);
+
+int tfc_msg_global_id_free(struct tfc *tfcp, uint16_t fid, uint16_t sid,
+			   const struct tfc_global_id_req *glb_id_req);
+
 int
 tfc_msg_session_id_alloc(struct tfc *tfcp, uint16_t fid, uint16_t *tsid);
 

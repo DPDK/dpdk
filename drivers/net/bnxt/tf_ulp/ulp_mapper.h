@@ -152,6 +152,8 @@ struct ulp_mapper_core_ops {
 	(*ulp_mapper_core_global_ident_alloc)(struct bnxt_ulp_context *ulp_ctx,
 					      uint16_t ident_type,
 					      uint8_t direction,
+					      uint8_t *context_id,
+					      uint16_t context_len,
 					      uint64_t *identifier_id);
 
 	int32_t

@@ -9,9 +9,8 @@
 #include "tfc_msg.h"
 
 int tfc_global_id_alloc(struct tfc *tfcp, uint16_t fid,
-			enum tfc_domain_id domain_id, uint16_t req_cnt,
 			const struct tfc_global_id_req *req,
-			struct tfc_global_id *rsp, uint16_t *rsp_cnt,
+			struct tfc_global_id *rsp,
 			bool *first)
 {
 	int rc = 0;
@@ -86,7 +85,7 @@ int tfc_global_id_free(struct tfc *tfcp, uint16_t fid,
 	rc = tfo_sid_get(tfcp->tfo, &sid);
 	if (rc) {
 		PMD_DRV_LOG_LINE(ERR, "%s: Failed to retrieve SID, rc:%s",
-			    __func__, strerror(-rc));
+				 __func__, strerror(-rc));
 		return rc;
 	}
 
