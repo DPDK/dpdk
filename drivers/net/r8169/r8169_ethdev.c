@@ -164,26 +164,19 @@ _rtl_setup_link(struct rte_eth_dev *dev)
 
 	/* Setup link speed and duplex */
 	if (*link_speeds == RTE_ETH_LINK_SPEED_AUTONEG) {
-		switch (hw->mcfg) {
-		case CFG_METHOD_48:
-		case CFG_METHOD_49:
-		case CFG_METHOD_50:
-		case CFG_METHOD_51:
-		case CFG_METHOD_52:
-		case CFG_METHOD_53:
-		case CFG_METHOD_54:
-		case CFG_METHOD_55:
-		case CFG_METHOD_56:
-		case CFG_METHOD_57:
-		case CFG_METHOD_58:
+		switch (hw->chipset_name) {
+		case RTL8125A:
+		case RTL8125B:
+		case RTL8168KB:
+		case RTL8125BP:
+		case RTL8125D:
+		case RTL8125CP:
 			speed_mode = SPEED_2500;
 			break;
-		case CFG_METHOD_69:
-		case CFG_METHOD_70:
-		case CFG_METHOD_71:
+		case RTL8126A:
 			speed_mode = SPEED_5000;
 			break;
-		case CFG_METHOD_91:
+		case RTL8127:
 			speed_mode = SPEED_10000;
 			break;
 		default:

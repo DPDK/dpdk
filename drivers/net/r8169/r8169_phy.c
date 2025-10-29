@@ -470,44 +470,20 @@ rtl_wait_phy_ups_resume(struct rtl_hw *hw, u16 PhyState)
 	u16 tmp_phy_state;
 	int i = 0;
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_29:
-	case CFG_METHOD_30:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-	case CFG_METHOD_35:
-	case CFG_METHOD_36:
+	if (hw->mcfg >= CFG_METHOD_29 && hw->mcfg <= CFG_METHOD_36) {
 		do {
 			tmp_phy_state = rtl_mdio_real_read_phy_ocp(hw, 0x0A42, 0x10);
 			tmp_phy_state &= 0x7;
 			rte_delay_ms(1);
 			i++;
 		} while ((i < 100) && (tmp_phy_state != PhyState));
-		break;
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_58:
-	case CFG_METHOD_69:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
-	case CFG_METHOD_91:
+	} else if (rtl_is_8125(hw)) {
 		do {
 			tmp_phy_state = rtl_mdio_direct_read_phy_ocp(hw, 0xA420);
 			tmp_phy_state &= 0x7;
 			rte_delay_ms(1);
 			i++;
 		} while ((i < 100) && (tmp_phy_state != PhyState));
-		break;
 	}
 }
 
@@ -522,13 +498,9 @@ rtl_phy_power_up(struct rtl_hw *hw)
 	rtl_mdio_write(hw, MII_BMCR, BMCR_ANENABLE);
 
 	/* Wait mdc/mdio ready */
-	switch (hw->mcfg) {
-	case CFG_METHOD_23:
-	case CFG_METHOD_27:
-	case CFG_METHOD_28:
+	if  (hw->mcfg == CFG_METHOD_23 || hw->mcfg == CFG_METHOD_27 ||
+	     hw->mcfg == CFG_METHOD_28)
 		rte_delay_ms(10);
-		break;
-	}
 
 	/* Wait ups resume (phy state 3) */
 	rtl_wait_phy_ups_resume(hw, 3);
@@ -537,40 +509,8 @@ rtl_phy_power_up(struct rtl_hw *hw)
 void
 rtl_powerup_pll(struct rtl_hw *hw)
 {
-	switch (hw->mcfg) {
-	case CFG_METHOD_21:
-	case CFG_METHOD_22:
-	case CFG_METHOD_24:
-	case CFG_METHOD_25:
-	case CFG_METHOD_26:
-	case CFG_METHOD_27:
-	case CFG_METHOD_28:
-	case CFG_METHOD_29:
-	case CFG_METHOD_30:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-	case CFG_METHOD_35:
-	case CFG_METHOD_36:
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_58:
-	case CFG_METHOD_69:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
-	case CFG_METHOD_91:
+	if (!(hw->mcfg == CFG_METHOD_23 || hw->mcfg == CFG_METHOD_37))
 		RTL_W8(hw, PMCH, RTL_R8(hw, PMCH) | BIT_7 | BIT_6);
-		break;
-	}
 
 	rtl_phy_power_up(hw);
 }
@@ -581,66 +521,24 @@ rtl_phy_power_down(struct rtl_hw *hw)
 	u32 csi_tmp;
 
 	/* MCU PME intr masks */
-	switch (hw->mcfg) {
-	case CFG_METHOD_21:
-	case CFG_METHOD_22:
-	case CFG_METHOD_23:
-	case CFG_METHOD_24:
+	if (hw->mcfg >= CFG_METHOD_21 && hw->mcfg <= CFG_METHOD_24) {
 		csi_tmp = rtl_eri_read(hw, 0x1AB, 1, ERIAR_ExGMAC);
 		csi_tmp &= ~(BIT_2 | BIT_3 | BIT_4 | BIT_5 | BIT_6 | BIT_7);
 		rtl_eri_write(hw, 0x1AB, 1, csi_tmp, ERIAR_ExGMAC);
-		break;
-	case CFG_METHOD_25:
-	case CFG_METHOD_27:
-	case CFG_METHOD_28:
-	case CFG_METHOD_29:
-	case CFG_METHOD_30:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-	case CFG_METHOD_35:
-	case CFG_METHOD_36:
-	case CFG_METHOD_37:
+	} else if (hw->mcfg == CFG_METHOD_25 ||
+		   (hw->mcfg >= CFG_METHOD_27 && hw->mcfg <= CFG_METHOD_37)) {
 		csi_tmp = rtl_eri_read(hw, 0x1AB, 1, ERIAR_ExGMAC);
 		csi_tmp &= ~(BIT_3 | BIT_6);
 		rtl_eri_write(hw, 0x1AB, 1, csi_tmp, ERIAR_ExGMAC);
-		break;
 	}
 
 	rtl_mdio_write(hw, 0x1F, 0x0000);
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_21:
-	case CFG_METHOD_22:
-	case CFG_METHOD_23:
-	case CFG_METHOD_24:
-	case CFG_METHOD_29:
-	case CFG_METHOD_30:
-	case CFG_METHOD_35:
-	case CFG_METHOD_36:
-	case CFG_METHOD_37:
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_58:
-	case CFG_METHOD_69:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
-	case CFG_METHOD_91:
-		rtl_mdio_write(hw, MII_BMCR, BMCR_ANENABLE | BMCR_PDOWN);
-		break;
-	default:
+	if ((hw->mcfg >= CFG_METHOD_25 && hw->mcfg <= CFG_METHOD_28) ||
+	    (hw->mcfg >= CFG_METHOD_31 && hw->mcfg <= CFG_METHOD_34))
 		rtl_mdio_write(hw, MII_BMCR, BMCR_PDOWN);
-		break;
-	}
+	else
+		rtl_mdio_write(hw, MII_BMCR, BMCR_ANENABLE | BMCR_PDOWN);
 }
 
 void
@@ -652,78 +550,18 @@ rtl_powerdown_pll(struct rtl_hw *hw)
 	rtl_phy_power_down(hw);
 
 	if (!hw->HwIcVerUnknown) {
-		switch (hw->mcfg) {
-		case CFG_METHOD_21:
-		case CFG_METHOD_22:
-		case CFG_METHOD_24:
-		case CFG_METHOD_25:
-		case CFG_METHOD_26:
-		case CFG_METHOD_27:
-		case CFG_METHOD_28:
-		case CFG_METHOD_29:
-		case CFG_METHOD_30:
-		case CFG_METHOD_31:
-		case CFG_METHOD_32:
-		case CFG_METHOD_33:
-		case CFG_METHOD_34:
-		case CFG_METHOD_35:
-		case CFG_METHOD_36:
-		case CFG_METHOD_48:
-		case CFG_METHOD_49:
-		case CFG_METHOD_50:
-		case CFG_METHOD_51:
-		case CFG_METHOD_52:
-		case CFG_METHOD_53:
-		case CFG_METHOD_54:
-		case CFG_METHOD_55:
-		case CFG_METHOD_56:
-		case CFG_METHOD_57:
-		case CFG_METHOD_58:
-		case CFG_METHOD_69:
-		case CFG_METHOD_70:
-		case CFG_METHOD_71:
+		if (!(hw->mcfg == CFG_METHOD_23 || hw->mcfg == CFG_METHOD_37 ||
+		      hw->mcfg == CFG_METHOD_91))
 			RTL_W8(hw, PMCH, RTL_R8(hw, PMCH) & ~BIT_7);
-			break;
-		}
 	}
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_21:
-	case CFG_METHOD_22:
-	case CFG_METHOD_23:
-	case CFG_METHOD_24:
-	case CFG_METHOD_25:
-	case CFG_METHOD_26:
-	case CFG_METHOD_27:
-	case CFG_METHOD_28:
-	case CFG_METHOD_29:
-	case CFG_METHOD_30:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-	case CFG_METHOD_35:
-	case CFG_METHOD_36:
+	if (hw->mcfg >= CFG_METHOD_21 && hw->mcfg <= CFG_METHOD_36) {
 		RTL_W8(hw, 0xD0, RTL_R8(hw, 0xD0) & ~BIT_6);
 		RTL_W8(hw, 0xF2, RTL_R8(hw, 0xF2) & ~BIT_6);
-		break;
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_58:
-	case CFG_METHOD_69:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
-	case CFG_METHOD_91:
+	} else if ((hw->mcfg >= CFG_METHOD_48 && hw->mcfg <= CFG_METHOD_58) ||
+		   (hw->mcfg >= CFG_METHOD_69 && hw->mcfg <= CFG_METHOD_71) ||
+		   hw->mcfg == CFG_METHOD_91) {
 		RTL_W8(hw, 0xF2, RTL_R8(hw, 0xF2) & ~BIT_6);
-		break;
 	}
 }
 
@@ -786,8 +624,7 @@ rtl8125_set_hw_phy_before_init_phy_mcu(struct rtl_hw *hw)
 {
 	u16 val;
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_50:
+	if (hw->mcfg == CFG_METHOD_50) {
 		rtl_mdio_direct_write_phy_ocp(hw, 0xBF86, 0x9000);
 
 		rtl_set_eth_phy_ocp_bit(hw, 0xC402, BIT_10);
@@ -805,7 +642,6 @@ rtl8125_set_hw_phy_before_init_phy_mcu(struct rtl_hw *hw)
 		rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xBD4E, (BIT_11 | BIT_10), BIT_11);
 		rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xBF46, (BIT_11 | BIT_10 | BIT_9 | BIT_8),
 						  (BIT_10 | BIT_9 | BIT_8));
-		break;
 	}
 }
 
@@ -1057,42 +893,17 @@ rtl_is_adv_eee_enabled(struct rtl_hw *hw)
 {
 	bool enabled = false;
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_25:
-	case CFG_METHOD_26:
-	case CFG_METHOD_27:
-	case CFG_METHOD_28:
-	case CFG_METHOD_29:
-	case CFG_METHOD_30:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-	case CFG_METHOD_35:
-	case CFG_METHOD_36:
+	if (hw->mcfg >= CFG_METHOD_25 && hw->mcfg <= CFG_METHOD_36) {
 		rtl_mdio_write(hw, 0x1F, 0x0A43);
 		if (rtl_mdio_read(hw, 0x10) & BIT_15)
 			enabled = true;
 		rtl_mdio_write(hw, 0x1F, 0x0000);
-		break;
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_58:
-	case CFG_METHOD_69:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
-	case CFG_METHOD_91:
+	} else if ((hw->mcfg >= CFG_METHOD_48 && hw->mcfg <= CFG_METHOD_55) ||
+		   hw->mcfg == CFG_METHOD_58 || hw->mcfg == CFG_METHOD_69 ||
+		   hw->mcfg == CFG_METHOD_70 || hw->mcfg == CFG_METHOD_71 ||
+		   hw->mcfg == CFG_METHOD_91){
 		if (rtl_mdio_direct_read_phy_ocp(hw, 0xA430) & BIT_15)
 			enabled = true;
-		break;
-	default:
-		break;
 	}
 
 	return enabled;
