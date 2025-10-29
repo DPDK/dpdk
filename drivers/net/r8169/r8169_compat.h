@@ -310,6 +310,7 @@ enum RTL_register_content {
 	RxBufEmpty = 0x01,
 
 	/* Cfg9346 bits */
+	Cfg9346_EEM_MASK = 0xC0,
 	Cfg9346_Lock = 0x00,
 	Cfg9346_Unlock = 0xC0,
 	Cfg9346_EEDO = (1UL << 0),

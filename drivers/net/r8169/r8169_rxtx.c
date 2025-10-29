@@ -1612,16 +1612,8 @@ rtl_xmit_pkt(struct rtl_hw *hw, struct rtl_tx_queue *txq,
 	if (large_send == 0) {
 		rtl_setup_csum_offload(tx_pkt, tx_ol_flags, opts);
 
-		switch (hw->mcfg) {
-		case CFG_METHOD_48:
-		case CFG_METHOD_49:
-		case CFG_METHOD_50:
-		case CFG_METHOD_51:
-		case CFG_METHOD_52:
-		case CFG_METHOD_53:
+		if (hw->mcfg >= CFG_METHOD_48 && hw->mcfg <= CFG_METHOD_53)
 			rtl8125_ptp_patch(tx_pkt);
-			break;
-		}
 	}
 
 	for (m_seg = tx_pkt; m_seg; m_seg = m_seg->next) {
