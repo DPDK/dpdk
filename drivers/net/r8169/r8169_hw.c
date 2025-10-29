@@ -346,16 +346,16 @@ rtl_oob_mutex_lock(struct rtl_hw *hw)
 	}
 
 	rtl_ocp_write(hw, ocp_reg_mutex_ib, 1, BIT_0);
-	reg_16 = rtl_ocp_read(hw, ocp_reg_mutex_oob, 1);
+	reg_16 = (u8)rtl_ocp_read(hw, ocp_reg_mutex_oob, 1);
 	wait_cnt_0 = 0;
 	while (reg_16) {
-		reg_a0 = rtl_ocp_read(hw, ocp_reg_mutex_prio, 1);
+		reg_a0 = (u8)rtl_ocp_read(hw, ocp_reg_mutex_prio, 1);
 		if (reg_a0) {
 			rtl_ocp_write(hw, ocp_reg_mutex_ib, 1, 0x00);
-			reg_a0 = rtl_ocp_read(hw, ocp_reg_mutex_prio, 1);
+			reg_a0 = (u8)rtl_ocp_read(hw, ocp_reg_mutex_prio, 1);
 			wait_cnt_1 = 0;
 			while (reg_a0) {
-				reg_a0 = rtl_ocp_read(hw, ocp_reg_mutex_prio, 1);
+				reg_a0 = (u8)rtl_ocp_read(hw, ocp_reg_mutex_prio, 1);
 
 				wait_cnt_1++;
 
@@ -364,7 +364,7 @@ rtl_oob_mutex_lock(struct rtl_hw *hw)
 			};
 			rtl_ocp_write(hw, ocp_reg_mutex_ib, 1, BIT_0);
 		}
-		reg_16 = rtl_ocp_read(hw, ocp_reg_mutex_oob, 1);
+		reg_16 = (u8)rtl_ocp_read(hw, ocp_reg_mutex_oob, 1);
 
 		wait_cnt_0++;
 

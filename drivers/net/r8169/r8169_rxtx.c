@@ -1707,9 +1707,6 @@ rtl8125_tx_clean(struct rtl_hw *hw, struct rtl_tx_queue *txq)
 	uint32_t tx_left;
 	uint32_t tx_desc_closed;
 
-	if (!txq)
-		return;
-
 	if (enable_tx_no_close) {
 		txq->NextHwDesCloPtr = rtl_get_hw_clo_ptr(txq);
 		tx_desc_closed = rtl_fast_mod_mask(txq->NextHwDesCloPtr -
@@ -1755,9 +1752,6 @@ rtl8168_tx_clean(struct rtl_hw *hw __rte_unused, struct rtl_tx_queue *txq)
 	int head = txq->tx_head;
 	uint16_t desc_freed = 0;
 
-	if (!txq)
-		return;
-
 	while (1) {
 		txd = &txq->hw_ring[head];
 
@@ -1794,13 +1788,13 @@ static int
 rtl8125_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
 {
 	struct rtl_tx_queue *txq = tx_queue;
-	struct rtl_hw *hw = txq->hw;
-	struct rtl_tx_entry *sw_ring = txq->sw_ring;
+	struct rtl_hw *hw;
+	struct rtl_tx_entry *sw_ring;
 	struct rtl_tx_entry *txe;
 	struct rtl_tx_desc *txd;
-	const uint8_t enable_tx_no_close = hw->EnableTxNoClose;
-	const uint16_t nb_tx_desc = txq->nb_tx_desc;
-	uint16_t head = txq->tx_head;
+	uint8_t enable_tx_no_close;
+	uint16_t nb_tx_desc;
+	uint16_t head;
 	uint16_t desc_freed = 0;
 	uint32_t tx_left;
 	uint32_t count = 0;
@@ -1809,6 +1803,12 @@ rtl8125_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
 
 	if (!txq)
 		return -ENODEV;
+
+	hw = txq->hw;
+	enable_tx_no_close = hw->EnableTxNoClose;
+	sw_ring = txq->sw_ring;
+	nb_tx_desc = txq->nb_tx_desc;
+	head = txq->tx_head;
 
 	if (enable_tx_no_close) {
 		txq->NextHwDesCloPtr = rtl_get_hw_clo_ptr(txq);
@@ -1860,18 +1860,23 @@ static int
 rtl8168_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
 {
 	struct rtl_tx_queue *txq = tx_queue;
-	struct rtl_tx_entry *sw_ring = txq->sw_ring;
+	struct rtl_tx_entry *sw_ring;
 	struct rtl_tx_entry *txe;
 	struct rtl_tx_desc *txd;
-	const uint16_t nb_tx_desc = txq->nb_tx_desc;
-	const int tx_tail = txq->tx_tail % nb_tx_desc;
-	int head = txq->tx_head;
+	uint16_t nb_tx_desc;
 	uint16_t desc_freed = 0;
-	int count = 0;
 	uint32_t status;
+	int tx_tail;
+	int head;
+	int count = 0;
 
 	if (!txq)
 		return -ENODEV;
+
+	sw_ring = txq->sw_ring;
+	nb_tx_desc = txq->nb_tx_desc;
+	tx_tail = txq->tx_tail % nb_tx_desc;
+	head = txq->tx_head;
 
 	while (1) {
 		txd = &txq->hw_ring[head];

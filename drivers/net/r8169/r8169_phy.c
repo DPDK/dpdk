@@ -807,7 +807,7 @@ rtl8168_phy_ram_code_check(struct rtl_hw *hw)
 				retval = FALSE;
 		}
 
-		retval = rtl_clear_phy_mcu_patch_request(hw);
+		rtl_clear_phy_mcu_patch_request(hw);
 
 		rte_delay_ms(2);
 	}
