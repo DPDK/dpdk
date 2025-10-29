@@ -219,4 +219,16 @@ uint32_t
 ulp_gen_tbl_simple_list_search(struct ulp_mapper_gen_tbl_list *tbl_list,
 			       uint8_t *match_key,
 			       uint32_t *key_idx);
+
+/*
+ * Perform simple list iteration
+ *
+ * tbl_list [in] - pointer to the generic table list
+ * key_idx [in/out] - returns key index .
+ *
+ * returns 2 on success.
+ */
+uint32_t
+ulp_gen_tbl_simple_list_get_next(struct ulp_mapper_gen_tbl_list *tbl_list,
+				 uint32_t *key_idx);
 #endif /* _ULP_EN_TBL_H_ */

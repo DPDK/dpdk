@@ -828,6 +828,18 @@ struct __rte_packed_begin cmd_nums {
 	#define HWRM_UDCC_COMP_QCFG                       UINT32_C(0x25f)
 	/* This command queries the status and statistics of the computation unit. */
 	#define HWRM_UDCC_COMP_QUERY                      UINT32_C(0x260)
+	/*
+	 * This command is used to query the pfc watchdog max configurable
+	 * timeout value.
+	 */
+	#define HWRM_QUEUE_PFCWD_TIMEOUT_QCAPS            UINT32_C(0x261)
+	/* This command is used to set the PFC watchdog timeout value. */
+	#define HWRM_QUEUE_PFCWD_TIMEOUT_CFG              UINT32_C(0x262)
+	/*
+	 * This command is used to query the current configured pfc watchdog
+	 * timeout value.
+	 */
+	#define HWRM_QUEUE_PFCWD_TIMEOUT_QCFG             UINT32_C(0x263)
 	/* Experimental */
 	#define HWRM_TF                                   UINT32_C(0x2bc)
 	/* Experimental */
@@ -950,18 +962,10 @@ struct __rte_packed_begin cmd_nums {
 	#define HWRM_TFC_TBL_SCOPE_CONFIG_GET             UINT32_C(0x39a)
 	/* TruFlow command to query the resource usage state. */
 	#define HWRM_TFC_RESC_USAGE_QUERY                 UINT32_C(0x39b)
-	/*
-	 * This command is used to query the pfc watchdog max configurable
-	 * timeout value.
-	 */
-	#define HWRM_QUEUE_PFCWD_TIMEOUT_QCAPS            UINT32_C(0x39c)
-	/* This command is used to set the PFC watchdog timeout value. */
-	#define HWRM_QUEUE_PFCWD_TIMEOUT_CFG              UINT32_C(0x39d)
-	/*
-	 * This command is used to query the current configured pfc watchdog
-	 * timeout value.
-	 */
-	#define HWRM_QUEUE_PFCWD_TIMEOUT_QCFG             UINT32_C(0x39e)
+	/* TruFlow command to free resources for a global id. */
+	#define HWRM_TFC_GLOBAL_ID_FREE                   UINT32_C(0x39c)
+	/* TruFlow command to update the priority of one tcam entry. */
+	#define HWRM_TFC_TCAM_PRI_UPDATE                  UINT32_C(0x39d)
 	/* Experimental */
 	#define HWRM_SV                                   UINT32_C(0x400)
 	/* Flush any trace buffer data that has not been sent to the host. */
@@ -1246,8 +1250,8 @@ struct __rte_packed_begin hwrm_err_output {
 #define HWRM_VERSION_MINOR 10
 #define HWRM_VERSION_UPDATE 3
 /* non-zero means beta version */
-#define HWRM_VERSION_RSVD 40
-#define HWRM_VERSION_STR "1.10.3.40"
+#define HWRM_VERSION_RSVD 86
+#define HWRM_VERSION_STR "1.10.3.86"
 
 /****************
  * hwrm_ver_get *
@@ -12667,29 +12671,94 @@ struct __rte_packed_begin hwrm_async_event_cmpl_dbg_buf_producer {
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_SFT \
 		0
-	/* SRT trace. */
+	/* SRT or APE trace. */
 	#define HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_SRT_TRACE \
 		UINT32_C(0x0)
-	/* SRT2 trace. */
+	/* SRT2 or AFM/Kong trace. */
 	#define HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_SRT2_TRACE \
 		UINT32_C(0x1)
-	/* CRT trace. */
+	/* CRT or ChiMP trace. */
 	#define HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_CRT_TRACE \
 		UINT32_C(0x2)
-	/* CRT2 trace. */
+	/* CRT2 or Bono trace. */
 	#define HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_CRT2_TRACE \
 		UINT32_C(0x3)
 	/* RIGP0 trace. */
 	#define HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_RIGP0_TRACE \
 		UINT32_C(0x4)
-	/* L2 HWRM trace. */
+	/* L2 or ChiMP HWRM trace. */
 	#define HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_L2_HWRM_TRACE \
 		UINT32_C(0x5)
-	/* RoCE HWRM trace. */
+	/* RoCE or Bono HWRM trace. */
 	#define HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_ROCE_HWRM_TRACE \
 		UINT32_C(0x6)
+	/* Context Accelerator CPU 0 trace. */
+	#define HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_CA0_TRACE \
+		UINT32_C(0x7)
+	/* Context Accelerator CPU 1 trace. */
+	#define HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_CA1_TRACE \
+		UINT32_C(0x8)
+	/* Context Accelerator CPU 2 trace. */
+	#define HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_CA2_TRACE \
+		UINT32_C(0x9)
+	/* RIGP1 trace. */
+	#define HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_RIGP1_TRACE \
+		UINT32_C(0xa)
+	/* AFM/Kong HWRM trace. */
+	#define HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_AFM_KONG_HWRM_TRACE \
+		UINT32_C(0xb)
 	#define HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_LAST \
-		HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_ROCE_HWRM_TRACE
+		HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_AFM_KONG_HWRM_TRACE
+} __rte_packed_end;
+
+/* hwrm_async_event_cmpl_peer_mmap_change (size:128b/16B) */
+struct __rte_packed_begin hwrm_async_event_cmpl_peer_mmap_change {
+	uint16_t	type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units. Even values indicate 16B
+	 * records. Odd values indicate 32B
+	 * records.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PEER_MMAP_CHANGE_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define HWRM_ASYNC_EVENT_CMPL_PEER_MMAP_CHANGE_TYPE_SFT             0
+	/* HWRM Asynchronous Event Information */
+	#define HWRM_ASYNC_EVENT_CMPL_PEER_MMAP_CHANGE_TYPE_HWRM_ASYNC_EVENT \
+		UINT32_C(0x2e)
+	#define HWRM_ASYNC_EVENT_CMPL_PEER_MMAP_CHANGE_TYPE_LAST \
+		HWRM_ASYNC_EVENT_CMPL_PEER_MMAP_CHANGE_TYPE_HWRM_ASYNC_EVENT
+	/* Identifiers of events. */
+	uint16_t	event_id;
+	/*
+	 * This async notification message is used to inform the driver
+	 * that the memory mapping for a peer device is set. The driver
+	 * will need to query using get_structured_data.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PEER_MMAP_CHANGE_EVENT_ID_PEER_MMAP_CHANGE \
+		UINT32_C(0x4d)
+	#define HWRM_ASYNC_EVENT_CMPL_PEER_MMAP_CHANGE_EVENT_ID_LAST \
+		HWRM_ASYNC_EVENT_CMPL_PEER_MMAP_CHANGE_EVENT_ID_PEER_MMAP_CHANGE
+	/* Event specific data. */
+	uint32_t	event_data2;
+	uint8_t	opaque_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue. The even passes
+	 * will write 1. The odd passes will write 0.
+	 */
+	#define HWRM_ASYNC_EVENT_CMPL_PEER_MMAP_CHANGE_V          UINT32_C(0x1)
+	/* opaque is 7 b */
+	#define HWRM_ASYNC_EVENT_CMPL_PEER_MMAP_CHANGE_OPAQUE_MASK \
+		UINT32_C(0xfe)
+	#define HWRM_ASYNC_EVENT_CMPL_PEER_MMAP_CHANGE_OPAQUE_SFT 1
+	/* 8-lsb timestamp (100-msec resolution) */
+	uint8_t	timestamp_lo;
+	/* 16-lsb timestamp (100-msec resolution) */
+	uint16_t	timestamp_hi;
+	/* Event specific data */
+	uint32_t	event_data1;
 } __rte_packed_end;
 
 /* hwrm_async_event_cmpl_fw_trace_msg (size:128b/16B) */
@@ -14990,9 +15059,7 @@ struct __rte_packed_begin hwrm_func_qcaps_output {
 	/*
 	 * The maximum number of VFs that can be
 	 * allocated to the function. This is valid only on the
-	 * PF with SR-IOV enabled. 0xFF... (All Fs) if this
-	 * command is called on a PF with SR-IOV disabled or
-	 * on a VF.
+	 * PF with SR-IOV enabled.
 	 */
 	uint16_t	max_vfs;
 	/*
@@ -23717,27 +23784,45 @@ struct __rte_packed_begin hwrm_func_backing_store_cfg_v2_input {
 	/* XID partition context. */
 	#define HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_XID_PARTITION \
 		UINT32_C(0x1d)
-	/* SRT trace. */
+	/* SRT or APE trace. */
 	#define HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_SRT_TRACE \
 		UINT32_C(0x1e)
-	/* SRT2 trace. */
+	/* SRT2 or AFM/Kong trace. */
 	#define HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_SRT2_TRACE \
 		UINT32_C(0x1f)
-	/* CRT trace. */
+	/* CRT or ChiMP trace. */
 	#define HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_CRT_TRACE \
 		UINT32_C(0x20)
-	/* CRT2 trace. */
+	/* CRT2 or Bono trace. */
 	#define HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_CRT2_TRACE \
 		UINT32_C(0x21)
 	/* RIGP0 trace. */
 	#define HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_RIGP0_TRACE \
 		UINT32_C(0x22)
-	/* L2 HWRM trace. */
+	/* L2 or ChiMP HWRM trace. */
 	#define HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_L2_HWRM_TRACE \
 		UINT32_C(0x23)
-	/* RoCE HWRM trace. */
+	/* RoCE or Bono HWRM trace. */
 	#define HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_ROCE_HWRM_TRACE \
 		UINT32_C(0x24)
+	/* TimedTx pacing TQM ring. */
+	#define HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_TTX_PACING_TQM_RING \
+		UINT32_C(0x25)
+	/* Context Accelerator CPU 0 trace. */
+	#define HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_CA0_TRACE \
+		UINT32_C(0x26)
+	/* Context Accelerator CPU 1 trace. */
+	#define HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_CA1_TRACE \
+		UINT32_C(0x27)
+	/* Context Accelerator CPU 2 trace. */
+	#define HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_CA2_TRACE \
+		UINT32_C(0x28)
+	/* RIGP1 trace. */
+	#define HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_RIGP1_TRACE \
+		UINT32_C(0x29)
+	/* AFM/Kong HWRM trace. */
+	#define HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_AFM_KONG_HWRM_TRACE \
+		UINT32_C(0x2a)
 	/* Invalid type. */
 	#define HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_INVALID \
 		UINT32_C(0xffff)
@@ -23877,6 +23962,21 @@ struct __rte_packed_begin hwrm_func_backing_store_cfg_v2_input {
 	uint32_t	split_entry_2;
 	/* Split entry #3. */
 	uint32_t	split_entry_3;
+	uint32_t	enables;
+	/*
+	 * This bit must be '1' for the next_bs_offset field to be
+	 * configured.
+	 */
+	#define HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_ENABLES_NEXT_BS_OFFSET \
+		UINT32_C(0x1)
+	/*
+	 * This field specifies the next byte offset of the backing store
+	 * for the firmware to use. The driver can use this field to
+	 * direct the firmware to resume the logging-to-host from
+	 * the host buffer where the firmware was lastly written
+	 * before it restarts, e.g. due to an error recovery.
+	 */
+	uint32_t	next_bs_offset;
 } __rte_packed_end;
 
 /* hwrm_func_backing_store_cfg_v2_output (size:128b/16B) */
@@ -23992,27 +24092,45 @@ struct __rte_packed_begin hwrm_func_backing_store_qcfg_v2_input {
 	/* VF XID partition in-use table. */
 	#define HWRM_FUNC_BACKING_STORE_QCFG_V2_INPUT_TYPE_XID_PARTITION_TABLE \
 		UINT32_C(0x1d)
-	/* SRT trace. */
+	/* SRT or APE trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCFG_V2_INPUT_TYPE_SRT_TRACE \
 		UINT32_C(0x1e)
-	/* SRT2 trace. */
+	/* SRT2 or AFM/Kong trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCFG_V2_INPUT_TYPE_SRT2_TRACE \
 		UINT32_C(0x1f)
-	/* CRT trace. */
+	/* CRT or ChiMP trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCFG_V2_INPUT_TYPE_CRT_TRACE \
 		UINT32_C(0x20)
-	/* CRT2 trace. */
+	/* CRT2 or Bono trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCFG_V2_INPUT_TYPE_CRT2_TRACE \
 		UINT32_C(0x21)
 	/* RIGP0 trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCFG_V2_INPUT_TYPE_RIGP0_TRACE \
 		UINT32_C(0x22)
-	/* L2 HWRM trace. */
+	/* L2 or ChiMP HWRM trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCFG_V2_INPUT_TYPE_L2_HWRM_TRACE \
 		UINT32_C(0x23)
-	/* RoCE HWRM trace. */
+	/* RoCE or Bono HWRM trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCFG_V2_INPUT_TYPE_ROCE_HWRM_TRACE \
 		UINT32_C(0x24)
+	/* TimedTx pacing TQM ring. */
+	#define HWRM_FUNC_BACKING_STORE_QCFG_V2_INPUT_TYPE_TTX_PACING_TQM_RING \
+		UINT32_C(0x25)
+	/* Context Accelerator CPU 0 trace. */
+	#define HWRM_FUNC_BACKING_STORE_QCFG_V2_INPUT_TYPE_CA0_TRACE \
+		UINT32_C(0x26)
+	/* Context Accelerator CPU 1 trace. */
+	#define HWRM_FUNC_BACKING_STORE_QCFG_V2_INPUT_TYPE_CA1_TRACE \
+		UINT32_C(0x27)
+	/* Context Accelerator CPU 2 trace. */
+	#define HWRM_FUNC_BACKING_STORE_QCFG_V2_INPUT_TYPE_CA2_TRACE \
+		UINT32_C(0x28)
+	/* RIGP1 trace. */
+	#define HWRM_FUNC_BACKING_STORE_QCFG_V2_INPUT_TYPE_RIGP1_TRACE \
+		UINT32_C(0x29)
+	/* AFM/Kong HWRM trace. */
+	#define HWRM_FUNC_BACKING_STORE_QCFG_V2_INPUT_TYPE_AFM_KONG_HWRM_TRACE \
+		UINT32_C(0x2a)
 	/* Invalid type. */
 	#define HWRM_FUNC_BACKING_STORE_QCFG_V2_INPUT_TYPE_INVALID \
 		UINT32_C(0xffff)
@@ -24436,27 +24554,45 @@ struct __rte_packed_begin hwrm_func_backing_store_qcaps_v2_input {
 	/* XID partition context. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_XID_PARTITION \
 		UINT32_C(0x1d)
-	/* SRT trace. */
+	/* SRT or APE trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_SRT_TRACE \
 		UINT32_C(0x1e)
-	/* SRT2 trace. */
+	/* SRT2 or AFM/Kong trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_SRT2_TRACE \
 		UINT32_C(0x1f)
-	/* CRT trace. */
+	/* CRT or ChiMP trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_CRT_TRACE \
 		UINT32_C(0x20)
-	/* CRT2 trace. */
+	/* CRT2 or Bono trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_CRT2_TRACE \
 		UINT32_C(0x21)
 	/* RIGP0 trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_RIGP0_TRACE \
 		UINT32_C(0x22)
-	/* L2 HWRM trace. */
+	/* L2 or ChiMP HWRM trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_L2_HWRM_TRACE \
 		UINT32_C(0x23)
-	/* RoCE HWRM trace. */
+	/* RoCE or Bono HWRM trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_ROCE_HWRM_TRACE \
 		UINT32_C(0x24)
+	/* TimedTx pacing TQM ring. */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_TTX_PACING_TQM_RING \
+		UINT32_C(0x25)
+	/* Context Accelerator CPU 0 trace. */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_CA0_TRACE \
+		UINT32_C(0x26)
+	/* Context Accelerator CPU 1 trace. */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_CA1_TRACE \
+		UINT32_C(0x27)
+	/* Context Accelerator CPU 2 trace. */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_CA2_TRACE \
+		UINT32_C(0x28)
+	/* RIGP1 trace. */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_RIGP1_TRACE \
+		UINT32_C(0x29)
+	/* AFM/Kong HWRM trace. */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_AFM_KONG_HWRM_TRACE \
+		UINT32_C(0x2a)
 	/* Invalid type. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_INVALID \
 		UINT32_C(0xffff)
@@ -24531,27 +24667,45 @@ struct __rte_packed_begin hwrm_func_backing_store_qcaps_v2_output {
 	/* XID partition context. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_XID_PARTITION \
 		UINT32_C(0x1d)
-	/* SRT trace. */
+	/* SRT or APE trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_SRT_TRACE \
 		UINT32_C(0x1e)
-	/* SRT2 trace. */
+	/* SRT2 or AFM/Kong trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_SRT2_TRACE \
 		UINT32_C(0x1f)
-	/* CRT trace. */
+	/* CRT or ChiMP trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_CRT_TRACE \
 		UINT32_C(0x20)
-	/* CRT2 trace. */
+	/* CRT2 or Bono trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_CRT2_TRACE \
 		UINT32_C(0x21)
 	/* RIGP0 trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_RIGP0_TRACE \
 		UINT32_C(0x22)
-	/* L2 HWRM trace. */
+	/* L2 or ChiMP HWRM trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_L2_HWRM_TRACE \
 		UINT32_C(0x23)
-	/* RoCE HWRM trace. */
+	/* RoCE or Bono HWRM trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_ROCE_HWRM_TRACE \
 		UINT32_C(0x24)
+	/* TimedTx pacing TQM ring. */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_TTX_PACING_TQM_RING \
+		UINT32_C(0x25)
+	/* Context Accelerator CPU 0 trace. */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_CA0_TRACE \
+		UINT32_C(0x26)
+	/* Context Accelerator CPU 1 trace. */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_CA1_TRACE \
+		UINT32_C(0x27)
+	/* Context Accelerator CPU 2 trace. */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_CA2_TRACE \
+		UINT32_C(0x28)
+	/* RIGP1 trace. */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_RIGP1_TRACE \
+		UINT32_C(0x29)
+	/* AFM/Kong HWRM trace. */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_AFM_KONG_HWRM_TRACE \
+		UINT32_C(0x2a)
 	/* Invalid type. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_INVALID \
 		UINT32_C(0xffff)
@@ -24595,6 +24749,26 @@ struct __rte_packed_begin hwrm_func_backing_store_qcaps_v2_output {
 	 */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_ROCE_QP_PSEUDO_STATIC_ALLOC \
 		UINT32_C(0x8)
+	/*
+	 * When set, it indicates the region for this type is not a regular
+	 * context memory but a memory for firmware text-based debug traces
+	 * which consist of ASCII characters.
+	 */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_FW_DBG_TRACE \
+		UINT32_C(0x10)
+	/*
+	 * When set, it indicates the region for this type is not a regular
+	 * context memory but a memory for firmware debug traces which
+	 * consist of binary data.
+	 */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_FW_BIN_DBG_TRACE \
+		UINT32_C(0x20)
+	/*
+	 * When set, it indicates the support of configuring
+	 * the next_bs_offset in hwrm_func_backing_store_cfg_v2.
+	 */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_NEXT_BS_OFFSET \
+		UINT32_C(0x40)
 	/*
 	 * Bit map of the valid instances associated with the
 	 * backing store type.
@@ -62274,6 +62448,114 @@ struct __rte_packed_begin hwrm_tfc_resc_usage_query_output {
 	uint8_t	valid;
 } __rte_packed_end;
 
+/****************************
+ * hwrm_tfc_tcam_pri_update *
+ ****************************/
+
+
+/* hwrm_tfc_tcam_pri_update_input (size:256b/32B) */
+struct hwrm_tfc_tcam_pri_update_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/*
+	 * Function ID.
+	 * If running on a trusted VF or PF, the fid field can be used to
+	 * specify that the function is a non-trusted VF of the parent PF.
+	 * If this command is used for the target_id itself, this field is
+	 * set to 0xffff. A non-trusted VF cannot specify a valid FID in this
+	 * field.
+	 */
+	uint16_t	fid;
+	/*
+	 * Session id associated with the firmware. Will be used
+	 * for validation if the track type matches.
+	 */
+	uint16_t	sid;
+	/* Logical TCAM ID. */
+	uint16_t	tcam_id;
+	/* Entry new priority. */
+	uint16_t	priority;
+	/* Control flags. */
+	uint8_t	flags;
+	/* Indicates the flow direction. */
+	#define HWRM_TFC_TCAM_PRI_UPDATE_INPUT_FLAGS_DIR     UINT32_C(0x1)
+	/* If this bit set to 0, then it indicates rx flow. */
+	#define HWRM_TFC_TCAM_PRI_UPDATE_INPUT_FLAGS_DIR_RX    UINT32_C(0x0)
+	/* If this bit is set to 1, then it indicates tx flow. */
+	#define HWRM_TFC_TCAM_PRI_UPDATE_INPUT_FLAGS_DIR_TX    UINT32_C(0x1)
+	#define HWRM_TFC_TCAM_PRI_UPDATE_INPUT_FLAGS_DIR_LAST \
+		HWRM_TFC_TCAM_PRI_UPDATE_INPUT_FLAGS_DIR_TX
+	/*
+	 * Subtype of TCAM resource. See
+	 * cfa_v3/include/cfa_resources.h.
+	 */
+	uint8_t	subtype;
+	/* Describes the type of tracking id to be used */
+	uint8_t	track_type;
+	/* Invalid track type */
+	#define HWRM_TFC_TCAM_PRI_UPDATE_INPUT_TRACK_TYPE_TRACK_TYPE_INVALID \
+		UINT32_C(0x0)
+	/* Tracked by session id */
+	#define HWRM_TFC_TCAM_PRI_UPDATE_INPUT_TRACK_TYPE_TRACK_TYPE_SID \
+		UINT32_C(0x1)
+	/* Tracked by function id */
+	#define HWRM_TFC_TCAM_PRI_UPDATE_INPUT_TRACK_TYPE_TRACK_TYPE_FID \
+		UINT32_C(0x2)
+	#define HWRM_TFC_TCAM_PRI_UPDATE_INPUT_TRACK_TYPE_LAST \
+		HWRM_TFC_TCAM_PRI_UPDATE_INPUT_TRACK_TYPE_TRACK_TYPE_FID
+	/* unused. */
+	uint8_t	unused0[5];
+} __rte_packed;
+
+/* hwrm_tfc_tcam_pri_update_output (size:128b/16B) */
+struct hwrm_tfc_tcam_pri_update_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* unused. */
+	uint8_t	unused0[7];
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been
+	 * completely written. When writing a command completion or
+	 * response to an internal processor, the order of writes has
+	 * to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
 /******************************
  * hwrm_tunnel_dst_port_query *
  ******************************/
@@ -63557,9 +63839,14 @@ struct __rte_packed_begin hwrm_pcie_qstats_input {
 	 */
 	uint64_t	resp_addr;
 	/*
-	 * The size of PCIe statistics block in bytes.
-	 * Firmware will DMA the PCIe statistics to
-	 * the host with this field size in the response.
+	 * This field specifies the size of the host buffer for the
+	 * statistics block. The actual size of the statistics block
+	 * returned by FW will depend on the chip. Older chips will
+	 * use the pcie_ctx_hw_stats structure and newer chips will
+	 * use the superset pcie_ctx_hw_stats_v2 structure. The actual
+	 * size of the data will be returned in the HWRM response and
+	 * it will be smaller than or equal to the size specified in
+	 * this field.
 	 */
 	uint16_t	pcie_stat_size;
 	uint8_t	unused_0[6];
@@ -63628,6 +63915,119 @@ struct __rte_packed_begin pcie_ctx_hw_stats {
 	 */
 	uint64_t	pcie_recovery_histogram;
 } __rte_packed_end;
+
+/*
+ * Extended PCIe Statistics Format. This structure is a superset of
+ * pcie_ctx_hw_stats, i.e. the fields between the two structures are
+ * identical up to and including the pcie_recovery_histogram field.
+ */
+/* pcie_ctx_hw_stats_v2 (size:4096b/512B) */
+struct pcie_ctx_hw_stats_v2 {
+	/* Number of physical layer receiver errors */
+	uint64_t	pcie_pl_signal_integrity;
+	/* Number of DLLP CRC errors detected by Data Link Layer */
+	uint64_t	pcie_dl_signal_integrity;
+	/*
+	 * Number of TLP LCRC and sequence number errors detected
+	 * by Data Link Layer
+	 */
+	uint64_t	pcie_tl_signal_integrity;
+	/* Number of times LTSSM entered Recovery state */
+	uint64_t	pcie_link_integrity;
+	/* Report number of TLP bits that have been transmitted in Mbps */
+	uint64_t	pcie_tx_traffic_rate;
+	/* Report number of TLP bits that have been received in Mbps */
+	uint64_t	pcie_rx_traffic_rate;
+	/* Number of DLLP bytes that have been transmitted */
+	uint64_t	pcie_tx_dllp_statistics;
+	/* Number of DLLP bytes that have been received */
+	uint64_t	pcie_rx_dllp_statistics;
+	/*
+	 * Number of times spent in each phase of gen3
+	 * equalization
+	 */
+	uint64_t	pcie_equalization_time;
+	/* Records the last 16 transitions of the LTSSM */
+	uint32_t	pcie_ltssm_histogram[4];
+	/*
+	 * Record the last 8 reasons on why LTSSM transitioned
+	 * to Recovery
+	 */
+	uint64_t	pcie_recovery_histogram;
+	/* The TL credit histogram counter buckets for non-posted-headers. */
+	uint32_t	pcie_tl_credit_nph_histogram[8];
+	/* The TL credit histogram counter buckets for posted-headers. */
+	uint32_t	pcie_tl_credit_ph_histogram[8];
+	/* The TL credit histogram counter buckets for posted-data. */
+	uint32_t	pcie_tl_credit_pd_histogram[8];
+	/*
+	 * The most recently completed read request times (in microseconds)
+	 * for the 4 tags.
+	 */
+	uint32_t	pcie_cmpl_latest_times[4];
+	/* The longest read completion time (in microseconds). */
+	uint32_t	pcie_cmpl_longest_time;
+	/* The shortest read completion time (in microseconds). */
+	uint32_t	pcie_cmpl_shortest_time;
+	uint32_t	unused_0[2];
+	/*
+	 * This field represents an array of 4 most recent (in time) read
+	 * completion headers for tags 0 to 3. Each header consists of 4
+	 * words, in the following arrangement:
+	 * | Word | Contains                            |
+	 * | ---- | ------------------------------------|
+	 * |   0  | The header bits 0 to 31.            |
+	 * |   1  | The header bits 32 to 63.           |
+	 * |   2  | The header bits 64 to 95.           |
+	 * |   3  | Reserved.                           |
+	 */
+	uint32_t	pcie_cmpl_latest_headers[4][4];
+	/*
+	 * This field represents an array of 4 longest (in time) read
+	 * completion headers for tags 0 to 3. Each header consists of 4
+	 * words, in the following arrangement:
+	 * | Word | Contains                            |
+	 * | ---- | ------------------------------------|
+	 * |   0  | The header bits 0 to 31.            |
+	 * |   1  | The header bits 32 to 63.           |
+	 * |   2  | The header bits 64 to 95.           |
+	 * |   3  | Reserved.                           |
+	 */
+	uint32_t	pcie_cmpl_longest_headers[4][4];
+	/*
+	 * This field represents an array of 4 shortest (in time) read
+	 * completion headers for tags 0 to 3. Each header consists of 4
+	 * words, in the following arrangement:
+	 * | Word | Contains                            |
+	 * | ---- | ------------------------------------|
+	 * |   0  | The header bits 0 to 31.            |
+	 * |   1  | The header bits 32 to 63.           |
+	 * |   2  | The header bits 64 to 95.           |
+	 * |   3  | Reserved.                           |
+	 */
+	uint32_t	pcie_cmpl_shortest_headers[4][4];
+	/* The PCIe write latency histogram data counter values. */
+	uint32_t	pcie_wr_latency_histogram[12];
+	/*
+	 * The total count for all of the requests, less the ones in the
+	 * buckets.
+	 */
+	uint32_t	pcie_wr_latency_all_normal_count;
+	uint32_t	unused_1;
+	/* The count of posted packets sent to the PCI-e. */
+	uint64_t	pcie_posted_packet_count;
+	/* The count of non-posted packets sent to the PCI-e. */
+	uint64_t	pcie_non_posted_packet_count;
+	/*
+	 * The count of other packets (i.e. not posted or non-posted) sent to
+	 * the PCI-e.
+	 */
+	uint64_t	pcie_other_packet_count;
+	/* The count of blocked packets sent to the PCI-e. */
+	uint64_t	pcie_blocked_packet_count;
+	/* The count of completion packets sent to the PCI-e. */
+	uint64_t	pcie_cmpl_packet_count;
+} __rte_packed;
 
 /****************************
  * hwrm_stat_generic_qstats *
@@ -64641,6 +65041,16 @@ struct __rte_packed_begin hwrm_nvm_write_input {
 	 */
 	#define HWRM_NVM_WRITE_INPUT_FLAGS_BATCH_LAST \
 		UINT32_C(0x4)
+	/*
+	 * This flag can only be used when NIC is running a fastboot image.
+	 * It has no effect when supplied to a non-fastboot image. Normally,
+	 * all signed binaries must have the same CRID as the CRID programmed
+	 * in the NIC SOTP. When the skip_crid_check flag is set, the CRID of
+	 * the signed binary being written to the NVM does not have to match
+	 * the CRID programmed in the SOTP of the NIC.
+	 */
+	#define HWRM_NVM_WRITE_INPUT_FLAGS_SKIP_CRID_CHECK \
+		UINT32_C(0x8)
 	/*
 	 * The requested length of the allocated NVM for the item, in bytes.
 	 * This value may be greater than or equal to the specified data
@@ -68388,29 +68798,44 @@ struct __rte_packed_begin hwrm_dbg_log_buffer_flush_input {
 	uint64_t	resp_addr;
 	/* Type of trace buffer to flush. */
 	uint16_t	type;
-	/* SRT trace. */
+	/* SRT or APE trace. */
 	#define HWRM_DBG_LOG_BUFFER_FLUSH_INPUT_TYPE_SRT_TRACE \
 		UINT32_C(0x0)
-	/* SRT2 trace. */
+	/* SRT2 or AFM/Kong trace. */
 	#define HWRM_DBG_LOG_BUFFER_FLUSH_INPUT_TYPE_SRT2_TRACE \
 		UINT32_C(0x1)
-	/* CRT trace. */
+	/* CRT or ChiMP trace. */
 	#define HWRM_DBG_LOG_BUFFER_FLUSH_INPUT_TYPE_CRT_TRACE \
 		UINT32_C(0x2)
-	/* CRT2 trace. */
+	/* CRT2 or Bono trace. */
 	#define HWRM_DBG_LOG_BUFFER_FLUSH_INPUT_TYPE_CRT2_TRACE \
 		UINT32_C(0x3)
 	/* RIGP0 trace. */
 	#define HWRM_DBG_LOG_BUFFER_FLUSH_INPUT_TYPE_RIGP0_TRACE \
 		UINT32_C(0x4)
-	/* L2 HWRM trace. */
+	/* L2 or ChiMP HWRM trace. */
 	#define HWRM_DBG_LOG_BUFFER_FLUSH_INPUT_TYPE_L2_HWRM_TRACE \
 		UINT32_C(0x5)
-	/* RoCE HWRM trace. */
+	/* RoCE or Bono HWRM trace. */
 	#define HWRM_DBG_LOG_BUFFER_FLUSH_INPUT_TYPE_ROCE_HWRM_TRACE \
 		UINT32_C(0x6)
+	/* Context Accelerator CPU 0 trace. */
+	#define HWRM_DBG_LOG_BUFFER_FLUSH_INPUT_TYPE_CA0_TRACE \
+		UINT32_C(0x7)
+	/* Context Accelerator CPU 1 trace. */
+	#define HWRM_DBG_LOG_BUFFER_FLUSH_INPUT_TYPE_CA1_TRACE \
+		UINT32_C(0x8)
+	/* Context Accelerator CPU 2 trace. */
+	#define HWRM_DBG_LOG_BUFFER_FLUSH_INPUT_TYPE_CA2_TRACE \
+		UINT32_C(0x9)
+	/* RIGP1 trace. */
+	#define HWRM_DBG_LOG_BUFFER_FLUSH_INPUT_TYPE_RIGP1_TRACE \
+		UINT32_C(0xa)
+	/* AFM/Kong HWRM trace. */
+	#define HWRM_DBG_LOG_BUFFER_FLUSH_INPUT_TYPE_AFM_KONG_HWRM_TRACE \
+		UINT32_C(0xb)
 	#define HWRM_DBG_LOG_BUFFER_FLUSH_INPUT_TYPE_LAST \
-		HWRM_DBG_LOG_BUFFER_FLUSH_INPUT_TYPE_ROCE_HWRM_TRACE
+		HWRM_DBG_LOG_BUFFER_FLUSH_INPUT_TYPE_AFM_KONG_HWRM_TRACE
 	uint8_t	unused_1[2];
 	/* Control flags. */
 	uint32_t	flags;

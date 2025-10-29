@@ -103,6 +103,13 @@ struct ulp_mapper_core_ops {
 	(*ulp_mapper_core_tcam_entry_free)(struct bnxt_ulp_context *ulp_ctx,
 					   struct ulp_flow_db_res_params *res);
 	int32_t
+	(*ulp_mapper_core_tcam_prio_update)(struct bnxt_ulp_mapper_parms *parms,
+					    uint8_t dir,
+					    enum cfa_track_type tt,
+					    enum cfa_resource_subtype_tcam type,
+					    uint32_t tcam_id,
+					    uint16_t priority);
+	int32_t
 	(*ulp_mapper_core_em_tbl_process)(struct bnxt_ulp_mapper_parms *parms,
 					  struct bnxt_ulp_mapper_tbl_info *t,
 					  void *error);
@@ -110,7 +117,6 @@ struct ulp_mapper_core_ops {
 	(*ulp_mapper_core_em_entry_free)(struct bnxt_ulp_context *ulp,
 					 struct ulp_flow_db_res_params *res,
 					 void *error);
-
 	int32_t
 	(*ulp_mapper_core_index_tbl_process)(struct bnxt_ulp_mapper_parms *parm,
 					     struct bnxt_ulp_mapper_tbl_info

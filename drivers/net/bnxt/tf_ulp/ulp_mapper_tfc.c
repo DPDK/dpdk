@@ -1911,11 +1911,47 @@ ulp_mapper_tfc_mtr_stats_hndl_del(uint32_t mtr_id)
 		}
 
 	return rc;
+
+static inline int32_t
+ulp_mapper_tfc_tcam_prio_update(struct bnxt_ulp_mapper_parms *parms,
+				uint8_t dir,
+				enum cfa_track_type tt,
+				enum cfa_resource_subtype_tcam rtype,
+				uint32_t tcam_id,
+				uint16_t priority)
+{
+	struct tfc *tfcp = NULL;
+	struct tfc_tcam_info tcam_info = { 0 };
+	uint16_t fw_fid = 0;
+
+	if (unlikely(bnxt_ulp_cntxt_fid_get(parms->ulp_ctx, &fw_fid))) {
+		BNXT_DRV_DBG(ERR, "Failed to get func_id\n");
+		return -EINVAL;
+	}
+
+	tfcp = bnxt_ulp_cntxt_tfcp_get(parms->ulp_ctx);
+	if (unlikely(tfcp == NULL)) {
+		PMD_DRV_LOG_LINE(ERR, "Failed to get tfcp pointer");
+		return -EINVAL;
+	}
+	tcam_info.dir = (enum cfa_dir)dir;
+	tcam_info.rsubtype = rtype;
+	tcam_info.id = (uint16_t)tcam_id;
+
+	if (unlikely(!tfcp || tfc_tcam_priority_update(tfcp, fw_fid, tt,
+						       &tcam_info,
+						       priority))) {
+		BNXT_DRV_DBG(ERR, "Unable to update tcam priority %u\n",
+			     tcam_info.id);
+		return -EINVAL;
+	}
+	return 0;
 }
 
 const struct ulp_mapper_core_ops ulp_mapper_tfc_core_ops = {
 	.ulp_mapper_core_tcam_tbl_process = ulp_mapper_tfc_tcam_tbl_process,
 	.ulp_mapper_core_tcam_entry_free = ulp_mapper_tfc_tcam_entry_free,
+	.ulp_mapper_core_tcam_prio_update = ulp_mapper_tfc_tcam_prio_update,
 	.ulp_mapper_core_em_tbl_process = ulp_mapper_tfc_em_tbl_process,
 	.ulp_mapper_core_em_entry_free = ulp_mapper_tfc_em_entry_free,
 	.ulp_mapper_core_index_tbl_process = ulp_mapper_tfc_index_tbl_process,

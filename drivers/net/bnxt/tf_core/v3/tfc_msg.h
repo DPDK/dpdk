@@ -155,6 +155,12 @@ tfc_msg_tcam_free(struct tfc *tfcp, uint16_t fid, uint16_t sid,
 		 uint16_t tcam_id);
 
 int
+tfc_msg_tcam_prioriry_update(struct tfc *tfcp, uint16_t fid, uint16_t sid,
+			     enum cfa_dir dir, enum cfa_track_type tt,
+			     enum cfa_resource_subtype_tcam subtype,
+			     uint16_t tcam_id, uint16_t priority);
+
+int
 tfc_msg_if_tbl_set(struct tfc *tfcp, uint16_t fid, uint16_t sid,
 		   enum cfa_dir dir, enum cfa_resource_subtype_if_tbl subtype,
 		   uint16_t index, uint8_t data_size, const uint8_t *data);
