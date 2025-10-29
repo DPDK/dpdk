@@ -16,6 +16,11 @@
 #include "hsi_struct_def_dpdk.h"
 #include "bnxt_hwrm.h"
 
+#ifndef RTE_HASH_BUCKET_ENTRIES
+/* it is defined in lib/hash/rte_cuckoo_hash.h */
+#define RTE_HASH_BUCKET_ENTRIES     8
+#endif /* RTE_HASH_BUCKET_ENTRIES */
+
 /* Macros to manipulate vnic bitmaps*/
 #define BNXT_VNIC_BITMAP_SIZE	64
 #define BNXT_VNIC_BITMAP_SET(b, i)	((b[(i) / BNXT_VNIC_BITMAP_SIZE]) |= \
@@ -978,6 +983,12 @@ int32_t bnxt_vnic_queue_db_init(struct bnxt *bp)
 	hash_tbl_params.name = hash_tbl_name;
 	hash_tbl_params.entries = (bp->max_vnics > BNXT_VNIC_MAX_SUPPORTED_ID) ?
 		BNXT_VNIC_MAX_SUPPORTED_ID : bp->max_vnics;
+
+	/* if the number of max vnis is less than bucket size */
+	/* then let the max entries size be the least value */
+	if (hash_tbl_params.entries <= RTE_HASH_BUCKET_ENTRIES)
+		hash_tbl_params.entries = RTE_HASH_BUCKET_ENTRIES;
+
 	hash_tbl_params.key_len = BNXT_VNIC_MAX_QUEUE_SZ_IN_8BITS;
 	hash_tbl_params.socket_id = rte_socket_id();
 	bp->vnic_queue_db.rss_q_db = rte_hash_create(&hash_tbl_params);

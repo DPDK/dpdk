@@ -260,8 +260,10 @@ struct bnxt_pf_info {
 #define BNXT_MAX_VFS(bp)	((bp)->pf->max_vfs)
 #define BNXT_MAX_VF_REPS_P4     64
 #define BNXT_MAX_VF_REPS_P5     256
+#define BNXT_MAX_VF_REPS_P7     128
 #define BNXT_MAX_VF_REPS(bp) \
 				(BNXT_CHIP_P5(bp) ? BNXT_MAX_VF_REPS_P5 : \
+				BNXT_CHIP_P7(bp) ? BNXT_MAX_VF_REPS_P7 : \
 				BNXT_MAX_VF_REPS_P4)
 #define BNXT_TOTAL_VFS(bp)	((bp)->pf->total_vfs)
 #define BNXT_FIRST_VF_FID	128
