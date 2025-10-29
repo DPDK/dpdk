@@ -575,7 +575,9 @@ bnxt_mpc_open_err:
 	return rc;
 }
 
-int bnxt_mpc_cmd_cmpl(struct bnxt_mpc_txq *mpc_queue, struct bnxt_mpc_mbuf *out_msg)
+int bnxt_mpc_cmd_cmpl(struct bnxt_mpc_txq *mpc_queue,
+		      struct bnxt_mpc_mbuf *out_msg,
+		      uint16_t *opaque)
 {
 	struct bnxt_cp_ring_info *cpr = mpc_queue->cp_ring;
 	uint32_t raw_cons = cpr->cp_raw_cons;
@@ -665,12 +667,13 @@ int bnxt_mpc_cmd_cmpl(struct bnxt_mpc_txq *mpc_queue, struct bnxt_mpc_mbuf *out_
 		bnxt_db_mpc_cq(cpr);
 	}
 
+	*opaque = (uint16_t)mpc_cmpl->info2;
 	return nb_mpc_cmds;
 }
 
 static uint16_t bnxt_mpc_xmit(struct bnxt_mpc_mbuf *mpc_cmd,
 			      struct bnxt_mpc_txq *mpc_queue,
-			      uint32_t *opaque)
+			      uint16_t *opaque)
 {
 	struct bnxt_mpc_ring_info *mpr = mpc_queue->mpc_ring;
 	struct bnxt_ring *ring = mpr->mpc_ring_struct;
@@ -715,13 +718,14 @@ static uint16_t bnxt_mpc_xmit(struct bnxt_mpc_mbuf *mpc_cmd,
 int bnxt_mpc_send(struct bnxt *bp,
 		  struct bnxt_mpc_mbuf *in_msg,
 		  struct bnxt_mpc_mbuf *out_msg,
-		  uint32_t *opaque,
+		  uint16_t *opaque,
 		  bool batch)
 {
 	int rc;
 	struct bnxt_mpc_txq *mpc_queue = bp->mpc->mpc_txq[in_msg->chnl_id];
 	int retry = BNXT_MPC_RX_RETRY;
 	uint32_t pi = 0;
+	uint16_t rx_opaque;
 
 	if (out_msg->cmp_type != CMPL_BASE_TYPE_MID_PATH_SHORT &&
 	    out_msg->cmp_type != CMPL_BASE_TYPE_MID_PATH_LONG)
@@ -737,6 +741,8 @@ int bnxt_mpc_send(struct bnxt *bp,
 	 * it can be detected.
 	 */
 	pi = mpc_queue->mpc_ring->raw_prod;
+	*opaque = mpc_queue->seq_num;
+	mpc_queue->seq_num++;
 	rc = bnxt_mpc_xmit(in_msg, mpc_queue, opaque);
 
 	if (unlikely(rc))
@@ -761,10 +767,20 @@ int bnxt_mpc_send(struct bnxt *bp,
 	do {
 		rte_delay_us_block(BNXT_MPC_RX_US_DELAY);
 
-		rc =  bnxt_mpc_cmd_cmpl(mpc_queue, out_msg);
+		rc =  bnxt_mpc_cmd_cmpl(mpc_queue, out_msg, &rx_opaque);
 
-		if (rc == 1)
+		if (rc == 1) {
+			if (rx_opaque != *opaque)
+				PMD_DRV_LOG_LINE(ERR,
+					    "%s: Out of order completion. Opaque Expected:%d Got:%d",
+					    __func__,
+					    *opaque,
+					    rx_opaque);
 			return 0;
+		}
+#ifdef MPC_DEBUG
+		PMD_DRV_LOG_LINE("Received zero or more than one completion:%d", rc);
+#endif
 		retry--;
 	} while (retry);
 
