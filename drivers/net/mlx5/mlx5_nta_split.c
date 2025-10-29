@@ -345,8 +345,8 @@ flow_nta_mreg_create_cb(void *tool_ctx, void *cb_ctx)
 	/* (match REG 'tag') or all. */
 	items[1].type = RTE_FLOW_ITEM_TYPE_END;
 	/* (Mark) or void + copy to Rx meta + jump to the MREG_ACT_TABLE_GROUP. */
-	actions[1].type = RTE_FLOW_ACTION_TYPE_MODIFY_FIELD,
-	actions[1].conf = &rx_meta,
+	actions[1].type = RTE_FLOW_ACTION_TYPE_MODIFY_FIELD;
+	actions[1].conf = &rx_meta;
 	actions[2].type = RTE_FLOW_ACTION_TYPE_JUMP;
 	actions[2].conf = &jump;
 	actions[3].type = RTE_FLOW_ACTION_TYPE_END;
