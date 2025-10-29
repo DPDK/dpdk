@@ -15897,7 +15897,7 @@ flow_hw_is_matching_sq_miss_flow(struct mlx5_ctrl_flow_entry *cf,
 }
 
 int
-mlx5_flow_hw_esw_destroy_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn)
+mlx5_flow_hw_esw_destroy_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn, bool external)
 {
 	uint16_t port_id = dev->data->port_id;
 	uint16_t proxy_port_id = dev->data->port_id;
@@ -15924,7 +15924,8 @@ mlx5_flow_hw_esw_destroy_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn)
 	    !proxy_priv->hw_ctrl_fdb->hw_esw_sq_miss_root_tbl ||
 	    !proxy_priv->hw_ctrl_fdb->hw_esw_sq_miss_tbl)
 		return 0;
-	cf = LIST_FIRST(&proxy_priv->hw_ctrl_flows);
+	cf = external ? LIST_FIRST(&proxy_priv->hw_ext_ctrl_flows) :
+			LIST_FIRST(&proxy_priv->hw_ctrl_flows);
 	while (cf != NULL) {
 		cf_next = LIST_NEXT(cf, next);
 		if (flow_hw_is_matching_sq_miss_flow(cf, dev, sqn)) {
@@ -16058,8 +16059,58 @@ mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev, uint32_t 
 					items, 0, copy_reg_action, 0, &flow_info, external);
 }
 
+static bool
+flow_hw_is_matching_tx_mreg_copy_flow(struct mlx5_ctrl_flow_entry *cf,
+				      struct rte_eth_dev *dev,
+				      uint32_t sqn)
+{
+	if (cf->owner_dev != dev)
+		return false;
+	if (cf->info.type == MLX5_CTRL_FLOW_TYPE_TX_META_COPY && cf->info.tx_repr_sq == sqn)
+		return true;
+	return false;
+}
+
 int
-mlx5_flow_hw_tx_repr_matching_flow(struct rte_eth_dev *dev, uint32_t sqn, bool external)
+mlx5_flow_hw_destroy_tx_default_mreg_copy_flow(struct rte_eth_dev *dev, uint32_t sqn, bool external)
+{
+	uint16_t port_id = dev->data->port_id;
+	uint16_t proxy_port_id = dev->data->port_id;
+	struct rte_eth_dev *proxy_dev;
+	struct mlx5_priv *proxy_priv;
+	struct mlx5_ctrl_flow_entry *cf;
+	struct mlx5_ctrl_flow_entry *cf_next;
+	int ret;
+
+	ret = rte_flow_pick_transfer_proxy(port_id, &proxy_port_id, NULL);
+	if (ret) {
+		DRV_LOG(ERR, "Unable to pick transfer proxy port for port %u. Transfer proxy "
+			     "port must be present for default SQ miss flow rules to exist.",
+			     port_id);
+		return ret;
+	}
+	proxy_dev = &rte_eth_devices[proxy_port_id];
+	proxy_priv = proxy_dev->data->dev_private;
+	if (!proxy_priv->dr_ctx ||
+	    !proxy_priv->hw_ctrl_fdb ||
+	    !proxy_priv->hw_ctrl_fdb->hw_tx_meta_cpy_tbl)
+		return 0;
+	cf = external ? LIST_FIRST(&proxy_priv->hw_ext_ctrl_flows) :
+			LIST_FIRST(&proxy_priv->hw_ctrl_flows);
+	while (cf != NULL) {
+		cf_next = LIST_NEXT(cf, next);
+		if (flow_hw_is_matching_tx_mreg_copy_flow(cf, dev, sqn)) {
+			claim_zero(flow_hw_destroy_ctrl_flow(proxy_dev, cf->flow));
+			LIST_REMOVE(cf, next);
+			mlx5_free(cf);
+		}
+		cf = cf_next;
+	}
+	return 0;
+}
+
+int
+mlx5_flow_hw_create_tx_repr_matching_flow(struct rte_eth_dev *dev, uint32_t sqn, bool external)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rte_flow_item_sq sq_spec = {
@@ -16114,6 +16165,55 @@ mlx5_flow_hw_tx_repr_matching_flow(struct rte_eth_dev *dev, uint32_t sqn, bool e
 	}
 	return flow_hw_create_ctrl_flow(dev, dev, priv->hw_tx_repr_tagging_tbl,
 					items, 0, actions, 0, &flow_info, external);
+}
+
+static bool
+flow_hw_is_tx_matching_repr_matching_flow(struct mlx5_ctrl_flow_entry *cf,
+					  struct rte_eth_dev *dev,
+					  uint32_t sqn)
+{
+	if (cf->owner_dev != dev)
+		return false;
+	if (cf->info.type == MLX5_CTRL_FLOW_TYPE_TX_REPR_MATCH && cf->info.tx_repr_sq == sqn)
+		return true;
+	return false;
+}
+
+int
+mlx5_flow_hw_destroy_tx_repr_matching_flow(struct rte_eth_dev *dev, uint32_t sqn, bool external)
+{
+	uint16_t port_id = dev->data->port_id;
+	uint16_t proxy_port_id = dev->data->port_id;
+	struct rte_eth_dev *proxy_dev;
+	struct mlx5_priv *proxy_priv;
+	struct mlx5_ctrl_flow_entry *cf;
+	struct mlx5_ctrl_flow_entry *cf_next;
+	int ret;
+
+	ret = rte_flow_pick_transfer_proxy(port_id, &proxy_port_id, NULL);
+	if (ret) {
+		DRV_LOG(ERR, "Unable to pick transfer proxy port for port %u. Transfer proxy "
+			     "port must be present for default SQ miss flow rules to exist.",
+			     port_id);
+		return ret;
+	}
+	proxy_dev = &rte_eth_devices[proxy_port_id];
+	proxy_priv = proxy_dev->data->dev_private;
+	if (!proxy_priv->dr_ctx ||
+	    !proxy_priv->hw_tx_repr_tagging_tbl)
+		return 0;
+	cf = external ? LIST_FIRST(&proxy_priv->hw_ext_ctrl_flows) :
+			LIST_FIRST(&proxy_priv->hw_ctrl_flows);
+	while (cf != NULL) {
+		cf_next = LIST_NEXT(cf, next);
+		if (flow_hw_is_tx_matching_repr_matching_flow(cf, dev, sqn)) {
+			claim_zero(flow_hw_destroy_ctrl_flow(proxy_dev, cf->flow));
+			LIST_REMOVE(cf, next);
+			mlx5_free(cf);
+		}
+		cf = cf_next;
+	}
+	return 0;
 }
 
 int

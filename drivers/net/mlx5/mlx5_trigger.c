@@ -1622,7 +1622,7 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 			}
 		}
 		if (config->dv_esw_en && config->repr_matching) {
-			if (mlx5_flow_hw_tx_repr_matching_flow(dev, queue, false)) {
+			if (mlx5_flow_hw_create_tx_repr_matching_flow(dev, queue, false)) {
 				mlx5_txq_release(dev, i);
 				goto error;
 			}

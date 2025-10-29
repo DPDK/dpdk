@@ -485,6 +485,24 @@ typedef void (*rte_pmd_mlx5_driver_event_callback_t)(uint16_t port_id,
 
 
 /**
+ * Disable traffic for external SQ. Should be invoked by application
+ * before destroying the external SQ.
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] sq_num
+ *   SQ HW number.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   Possible values for rte_errno:
+ *   - EINVAL - invalid sq_number or port type.
+ *   - ENODEV - there is no Ethernet device for this port id.
+ */
+__rte_experimental
+int rte_pmd_mlx5_external_sq_disable(uint16_t port_id, uint32_t sq_num);
+
+/**
  * Register mlx5 driver event callback.
  *
  * mlx5 PMD configures HW through interfaces exposed by rdma-core and mlx5 kernel driver.
