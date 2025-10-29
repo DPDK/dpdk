@@ -26,6 +26,8 @@
  */
 #define ULP_FC_TFC_PKT_CNT_OFFS 0
 #define ULP_FC_TFC_BYTE_CNT_OFFS 1
+#define ULP_FC_TFC_PKT_MTR_DROP_CNT_OFFS 2
+#define ULP_FC_TFC_BYTE_MTR_DROP_CNT_OFFS 3
 #define ULP_TFC_CNTR_READ_BYTES 32
 #define ULP_TFC_CNTR_ALIGN 32
 #define ULP_TFC_ACT_WORD_SZ 32
@@ -56,11 +58,12 @@ static uint8_t *data;
 static uint64_t virt2iova_data;
 
 static int32_t
-ulp_fc_tfc_flow_stat_get(struct bnxt_ulp_context *ctxt,
-			 uint8_t direction,
-			 uint32_t session_type __rte_unused,
-			 uint64_t handle,
-			 struct rte_flow_query_count *count)
+ulp_fc_tfc_stat_get(struct bnxt_ulp_context *ctxt,
+		    uint8_t direction,
+		    uint32_t session_type __rte_unused,
+		    uint64_t handle,
+		    struct rte_flow_query_count *count,
+		    struct rte_mtr_stats *mtr_drop_count)
 {
 	uint16_t data_size = ULP_TFC_CNTR_READ_BYTES;
 	struct tfc_cmm_clr cmm_clr = { 0 };
@@ -102,11 +105,15 @@ ulp_fc_tfc_flow_stat_get(struct bnxt_ulp_context *ctxt,
 	cmm_info.act_handle = handle;
 	cmm_info.dir = (enum cfa_dir)direction;
 	/* Read and Clear the hw stat if requested */
-	if (count->reset) {
+	if (count && count->reset) {
 		cmm_clr.clr = true;
 		cmm_clr.offset_in_byte = 0;
 		cmm_clr.sz_in_byte = sizeof(data64[ULP_FC_TFC_PKT_CNT_OFFS]) +
 			sizeof(data64[ULP_FC_TFC_BYTE_CNT_OFFS]);
+		if (mtr_drop_count) {
+			cmm_clr.sz_in_byte += sizeof(data64[ULP_FC_TFC_PKT_MTR_DROP_CNT_OFFS]);
+			cmm_clr.sz_in_byte += sizeof(data64[ULP_FC_TFC_BYTE_MTR_DROP_CNT_OFFS]);
+		}
 	}
 	rc = tfc_act_get(tfcp, NULL, &cmm_info, &cmm_clr, &virt2iova_data, &word_size);
 	if (rc) {
@@ -115,19 +122,57 @@ ulp_fc_tfc_flow_stat_get(struct bnxt_ulp_context *ctxt,
 			     handle);
 		return rc;
 	}
-	if (data64[ULP_FC_TFC_PKT_CNT_OFFS]) {
+	if (count && data64[ULP_FC_TFC_PKT_CNT_OFFS]) {
 		count->hits_set = 1;
 		count->hits = data64[ULP_FC_TFC_PKT_CNT_OFFS];
 	}
-	if (data64[ULP_FC_TFC_BYTE_CNT_OFFS]) {
+	if (count && data64[ULP_FC_TFC_BYTE_CNT_OFFS]) {
 		count->bytes_set = 1;
 		count->bytes = data64[ULP_FC_TFC_BYTE_CNT_OFFS];
+	}
+
+	if (mtr_drop_count) {
+		mtr_drop_count->n_pkts[RTE_COLOR_GREEN] = data64[ULP_FC_TFC_PKT_CNT_OFFS];
+		mtr_drop_count->n_bytes[RTE_COLOR_GREEN] = data64[ULP_FC_TFC_BYTE_CNT_OFFS];
+		mtr_drop_count->n_pkts_dropped = data64[ULP_FC_TFC_PKT_MTR_DROP_CNT_OFFS];
+		mtr_drop_count->n_pkts[RTE_COLOR_RED] = data64[ULP_FC_TFC_PKT_MTR_DROP_CNT_OFFS];
+		mtr_drop_count->n_bytes_dropped = data64[ULP_FC_TFC_BYTE_MTR_DROP_CNT_OFFS];
+		mtr_drop_count->n_bytes[RTE_COLOR_RED] = data64[ULP_FC_TFC_BYTE_MTR_DROP_CNT_OFFS];
 	}
 
 	return rc;
 }
 
+static int32_t
+ulp_fc_tfc_flow_stat_get(struct bnxt_ulp_context *ctxt,
+			 uint8_t direction,
+			 uint32_t session_type,
+			 uint64_t handle,
+			 struct rte_flow_query_count *count)
+{
+	return ulp_fc_tfc_stat_get(ctxt, direction, session_type, handle, count, NULL);
+}
+
+static int32_t
+ulp_fc_tfc_mtr_stat_get(struct bnxt_ulp_context *ctxt,
+			uint8_t direction,
+			uint32_t session_type,
+			uint64_t handle,
+			int32_t clear,
+			struct rte_mtr_stats *mtr_count)
+{
+	struct rte_flow_query_count count;
+
+	if (clear)
+		count.reset = 1;
+	else
+		count.reset = 0;
+
+	return ulp_fc_tfc_stat_get(ctxt, direction, session_type, handle, &count, mtr_count);
+}
+
 const struct bnxt_ulp_fc_core_ops ulp_fc_tfc_core_ops = {
 	.ulp_flow_stat_get = ulp_fc_tfc_flow_stat_get,
-	.ulp_flow_stats_accum_update = ulp_fc_tfc_update_accum_stats
+	.ulp_flow_stats_accum_update = ulp_fc_tfc_update_accum_stats,
+	.ulp_mtr_stat_get = ulp_fc_tfc_mtr_stat_get
 };

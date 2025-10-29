@@ -36,6 +36,13 @@ struct bnxt_ulp_fc_core_ops {
 	(*ulp_flow_stats_accum_update)(struct bnxt_ulp_context *ctxt,
 				       struct bnxt_ulp_fc_info *ulp_fc_info,
 				       struct bnxt_ulp_device_params *dparms);
+	int32_t
+	(*ulp_mtr_stat_get)(struct bnxt_ulp_context *ctxt,
+			    uint8_t direction,
+			    uint32_t session_type,
+			    uint64_t handle,
+			    int32_t clear,
+			    struct rte_mtr_stats *mtr_count);
 };
 
 struct sw_acc_counter {
@@ -186,6 +193,10 @@ bool ulp_fc_mgr_thread_isstarted(struct bnxt_ulp_context *ctxt);
 int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ulp_ctx,
 			       uint32_t flow_id,
 			       struct rte_flow_query_count *count);
+int ulp_mtr_query_count_get(struct bnxt_ulp_context *ulp_ctx,
+			    uint32_t mtr_id,
+			    int clear,
+			    struct rte_mtr_stats *count);
 
 /*
  * Set the parent flow if in the SW accumulator table entry

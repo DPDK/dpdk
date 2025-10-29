@@ -42,7 +42,6 @@
  * Meter init status
  */
 int bnxt_mtr_initialized;
-
 int32_t
 bnxt_flow_mtr_init(struct bnxt *bp __rte_unused)
 {
@@ -542,6 +541,7 @@ bnxt_flow_mtr_destroy(struct rte_eth_dev *dev,
 	uint16_t func_id;
 	int ret;
 	uint32_t tmp_mtr_id;
+	const struct ulp_mapper_core_ops *oper;
 
 	if (!bnxt_mtr_initialized)
 		return -rte_mtr_error_set(error, ENOTSUP,
@@ -750,17 +750,40 @@ bnxt_flow_mtr_stats_update(struct rte_eth_dev *dev __rte_unused,
  * Read meter statistics.
  */
 static int
-bnxt_flow_mtr_stats_read(struct rte_eth_dev *dev __rte_unused,
-			   uint32_t mtr_id __rte_unused,
-			   struct rte_mtr_stats *stats __rte_unused,
-			   uint64_t *stats_mask __rte_unused,
-			   int clear __rte_unused,
-			   struct rte_mtr_error *error)
+bnxt_flow_mtr_stats_read(struct rte_eth_dev *dev,
+			 uint32_t mtr_id,
+			 struct rte_mtr_stats *stats,
+			 uint64_t *stats_mask,
+			 int clear,
+			 struct rte_mtr_error *error)
 {
-	return -rte_mtr_error_set(error, ENOTSUP,
-				  RTE_MTR_ERROR_TYPE_UNSPECIFIED,
-				  NULL,
-				  "Meter_stats_read not supported yet");
+	int rc = 0;
+	struct bnxt_ulp_context *ulp_ctx;
+
+	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(dev);
+	if (unlikely(!ulp_ctx)) {
+		BNXT_DRV_DBG(ERR, "ULP context is not initialized\n");
+		goto error;
+	}
+
+	memset(stats, 0, sizeof(*stats));
+	rc = ulp_mtr_query_count_get(ulp_ctx, mtr_id, clear, stats);
+	if (unlikely(rc))
+		goto error;
+
+	*stats_mask = 0;
+	*stats_mask |= RTE_MTR_STATS_N_PKTS_GREEN;
+	*stats_mask |= RTE_MTR_STATS_N_PKTS_RED;
+	*stats_mask |= RTE_MTR_STATS_N_PKTS_DROPPED;
+	*stats_mask |= RTE_MTR_STATS_N_BYTES_GREEN;
+	*stats_mask |= RTE_MTR_STATS_N_BYTES_RED;
+	*stats_mask |= RTE_MTR_STATS_N_BYTES_DROPPED;
+
+	return rc;
+error:
+	return -rte_mtr_error_set(error, EINVAL,
+				  RTE_MTR_ERROR_TYPE_STATS, NULL,
+				  "Failed to query meter.");
 }
 
 static const struct rte_mtr_ops bnxt_flow_mtr_ops = {

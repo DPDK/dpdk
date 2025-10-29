@@ -1759,6 +1759,55 @@ ulp_mapper_tfc_mpc_batch_start(struct tfc_mpc_batch_info_t *batch_info)
 	return tfc_mpc_batch_start(batch_info);
 }
 
+static int32_t
+ulp_mapper_tfc_mtr_stats_hndl_set(struct bnxt_ulp_mapper_parms *parms __rte_unused,
+				  uint32_t mtr_id, uint64_t stats_hndl)
+{
+	int32_t i, rc = -ENOMEM;
+
+	for (i = 0; i < BNXT_METER_MAX_NUM; i++)
+		if (!mtr_stats[i].valid) {
+			mtr_stats[i].mtr_id = mtr_id;
+			mtr_stats[i].stats_hndl = stats_hndl;
+			mtr_stats[i].valid = true;
+			rc = 0;
+			break;
+		}
+
+	return rc;
+}
+
+static int32_t
+ulp_mapper_tfc_mtr_stats_hndl_get(uint32_t mtr_id, uint64_t *stats_hndl)
+{
+	int32_t i, rc = -EINVAL;
+
+	for (i = 0; i < BNXT_METER_MAX_NUM; i++) {
+		if (mtr_stats[i].valid && mtr_stats[i].mtr_id == mtr_id) {
+			*stats_hndl = mtr_stats[i].stats_hndl;
+			rc = 0;
+			break;
+		}
+	}
+
+	return rc;
+}
+
+static int32_t
+ulp_mapper_tfc_mtr_stats_hndl_del(uint32_t mtr_id)
+{
+	int32_t i, rc = -EINVAL;
+
+	for (i = 0; i < BNXT_METER_MAX_NUM; i++)
+		if (mtr_stats[i].valid && mtr_stats[i].mtr_id == mtr_id) {
+			mtr_stats[i].valid = false;
+			rc = 0;
+			break;
+		}
+
+	return rc;
+}
+
 const struct ulp_mapper_core_ops ulp_mapper_tfc_core_ops = {
 	.ulp_mapper_core_tcam_tbl_process = ulp_mapper_tfc_tcam_tbl_process,
 	.ulp_mapper_core_tcam_entry_free = ulp_mapper_tfc_tcam_entry_free,
@@ -1779,5 +1828,8 @@ const struct ulp_mapper_core_ops ulp_mapper_tfc_core_ops = {
 	.ulp_mapper_core_handle_to_offset = ulp_mapper_tfc_handle_to_offset,
 	.ulp_mapper_mpc_batch_start = ulp_mapper_tfc_mpc_batch_start,
 	.ulp_mapper_mpc_batch_started = ulp_mapper_tfc_mpc_batch_started,
-	.ulp_mapper_mpc_batch_end = ulp_mapper_tfc_mpc_batch_end
+	.ulp_mapper_mpc_batch_end = ulp_mapper_tfc_mpc_batch_end,
+	.ulp_mapper_mtr_stats_hndl_set = ulp_mapper_tfc_mtr_stats_hndl_set,
+	.ulp_mapper_mtr_stats_hndl_get = ulp_mapper_tfc_mtr_stats_hndl_get,
+	.ulp_mapper_mtr_stats_hndl_del = ulp_mapper_tfc_mtr_stats_hndl_del
 };

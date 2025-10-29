@@ -255,5 +255,6 @@ ulp_fc_tf_flow_stat_get(struct bnxt_ulp_context *ctxt,
 
 const struct bnxt_ulp_fc_core_ops ulp_fc_tf_core_ops = {
 	.ulp_flow_stat_get = ulp_fc_tf_flow_stat_get,
-	.ulp_flow_stats_accum_update = ulp_fc_tf_update_accum_stats
+	.ulp_flow_stats_accum_update = ulp_fc_tf_update_accum_stats,
+	.ulp_mtr_stat_get = NULL,
 };

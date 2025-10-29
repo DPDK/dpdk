@@ -91,6 +91,12 @@ struct ulp_flow_db_res_params {
 	uint64_t			resource_hndl;
 };
 
+struct bnxt_mtr_stats_id_map {
+	bool valid;
+	uint32_t mtr_id;
+	uint64_t stats_hndl;
+};
+
 /*
  * Initialize the flow database. Memory is allocated in this
  * call and assigned to the flow database.
