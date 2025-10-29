@@ -638,7 +638,7 @@ mlx4_tx_burst_fill_tso_hdr(struct rte_mbuf *buf,
 			thdr.vto = sq->buf;
 		/* New TXBB, stash the first 32bits for later use. */
 		pv[*pv_counter].dst = (volatile uint32_t *)thdr.to;
-		pv[(*pv_counter)++].val = *(uint32_t *)from,
+		pv[(*pv_counter)++].val = *(uint32_t *)from;
 		from += sizeof(uint32_t);
 		thdr.to += sizeof(uint32_t);
 		remain_size -= txbb_avail_space + sizeof(uint32_t);
