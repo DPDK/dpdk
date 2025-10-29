@@ -2868,29 +2868,6 @@ static uint32_t bnxt_sanitize_rss_type(struct bnxt *bp, uint32_t types)
 	return hwrm_type;
 }
 
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-static int
-bnxt_hwrm_vnic_rss_qcfg_p5(struct bnxt *bp)
-{
-	struct hwrm_vnic_rss_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
-	struct hwrm_vnic_rss_qcfg_input req = {0};
-	int rc;
-
-	HWRM_PREP(&req, HWRM_VNIC_RSS_QCFG, BNXT_USE_CHIMP_MB);
-	/* vnic_id and rss_ctx_idx must be set to INVALID to read the
-	 * global hash mode.
-	 */
-	req.vnic_id = rte_cpu_to_le_16(BNXT_DFLT_VNIC_ID_INVALID);
-	req.rss_ctx_idx = rte_cpu_to_le_16(BNXT_RSS_CTX_IDX_INVALID);
-	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req),
-				    BNXT_USE_CHIMP_MB);
-	HWRM_CHECK_RESULT();
-	HWRM_UNLOCK();
-	PMD_DRV_LOG_LINE(DEBUG, "RSS QCFG: Hash level %d", resp->hash_mode_flags);
-
-	return rc;
-}
-#endif
 
 static int
 bnxt_hwrm_vnic_rss_cfg_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic)

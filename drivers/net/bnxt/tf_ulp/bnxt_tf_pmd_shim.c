@@ -16,9 +16,6 @@
 #include "bnxt_hwrm.h"
 #include "bnxt_tf_common.h"
 #include "bnxt_tf_pmd_shim.h"
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#include "ulp_template_debug_proto.h"
-#endif
 
 
 int
@@ -617,9 +614,6 @@ bnxt_pmd_global_tunnel_set(struct bnxt_ulp_context *ulp_ctx,
 			    port_id, rc);
 		return rc;
 	}
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-	ulp_mapper_global_register_tbl_dump(type, udp_port);
-#endif
 	if (udp_port)
 		bnxt_pmd_global_reg_data_to_hndl(port_id, lupar_id,
 						 type, udp_port, handle);

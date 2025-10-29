@@ -653,12 +653,6 @@ ulp_mapper_priority_opc_process(struct bnxt_ulp_mapper_parms *parms,
 		rc = -EINVAL;
 		break;
 	}
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-	if (!rc)
-		BNXT_DRV_DBG(DEBUG, "Tcam priority = 0x%x\n", *priority);
-#endif
-#endif
 	return rc;
 }
 
@@ -1504,13 +1498,6 @@ ulp_mapper_key_recipe_alloc(struct bnxt_ulp_context *ulp_ctx,
 			BNXT_DRV_DBG(ERR, "Unable to alloc key recipe\n");
 			return NULL;
 		}
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-	BNXT_DRV_INF("Alloc key recipe [%s]:[%s] = 0x%X\n",
-		     (dir == BNXT_ULP_DIRECTION_INGRESS) ? "rx" : "tx",
-		     ulp_mapper_key_recipe_type_to_str(stype), recipe_id);
-#endif
-#endif
 	} else if (alloc_only) {
 		BNXT_DRV_DBG(ERR, "Recipe ID (%d) already allocated\n",
 			     recipe_id);
@@ -1554,13 +1541,6 @@ ulp_mapper_key_recipe_free(struct bnxt_ulp_context *ulp_ctx,
 	}
 	rte_free(recipes[index]);
 	recipes[index] = NULL;
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-	BNXT_DRV_INF("Free key recipe [%s]:[%s] = 0x%X\n",
-		     (dir == BNXT_ULP_DIRECTION_INGRESS) ? "rx" : "tx",
-		     ulp_mapper_key_recipe_type_to_str(stype), index);
-#endif
-#endif
 	return 0;
 }
 
@@ -1768,13 +1748,6 @@ ulp_mapper_key_recipe_field_opc_process(struct bnxt_ulp_mapper_parms *parms,
 			}
 		}
 	}
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-	if (*written && is_key)
-		BNXT_DRV_DBG(DEBUG, "%-20s bits = %-3d\n", fld->description,
-			     fld->field_bit_size);
-#endif
-#endif
 	return rc;
 }
 
@@ -3064,11 +3037,6 @@ ulp_mapper_stats_cache_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			     rc);
 		return rc;
 	}
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-	BNXT_DRV_DBG(DEBUG, "flow id =0x%x\n", parms->flow_id);
-#endif
-#endif
 	return rc;
 }
 
@@ -4039,12 +4007,6 @@ ulp_mapper_func_info_process(struct bnxt_ulp_mapper_parms *parms,
 			     func_info->func_dst_opr);
 		return -EINVAL;
 	}
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-	BNXT_DRV_DBG(DEBUG, "write the %" PRIX64 " into func_opc %u\n", res,
-		     func_info->func_dst_opr);
-#endif
-#endif
 
 	return rc;
 }

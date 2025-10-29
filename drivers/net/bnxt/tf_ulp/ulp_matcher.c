@@ -225,12 +225,6 @@ ulp_matcher_pattern_match(struct ulp_rte_parser_params *params,
 
 error:
 	BNXT_DRV_DBG(DEBUG, "Did not find any matching template\n");
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-	BNXT_DRV_DBG(DEBUG,
-		     "hid:%x,Hdr:%" PRIX64 " Fld:%" PRIX64 " SFl:%" PRIX64 "\n",
-		     class_match_idx, params->hdr_bitmap.bits,
-		     params->fld_bitmap.bits, params->fld_s_bitmap.bits);
-#endif
 	*class_id = 0;
 	return BNXT_TF_RC_ERROR;
 }
@@ -326,9 +320,6 @@ ulp_matcher_action_match(struct ulp_rte_parser_params *params,
 	return BNXT_TF_RC_SUCCESS;
 error:
 	BNXT_DRV_DBG(DEBUG, "Did not find any matching action template\n");
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-	BNXT_DRV_DBG(DEBUG, "Hdr:%" PRIX64 "\n", params->act_bitmap.bits);
-#endif
 	*act_id = 0;
 	return BNXT_TF_RC_ERROR;
 }

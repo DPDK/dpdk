@@ -960,12 +960,6 @@ bnxt_ulp_grp_miss_act_set(struct rte_eth_dev *dev,
 	/* Perform the rte flow post process */
 	bnxt_ulp_rte_parser_post_process(&params);
 
-#ifdef	RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef	RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_PARSER
-	/* Dump the rte flow action */
-	ulp_parser_act_info_dump(&params);
-#endif
-#endif
 
 	ret = ulp_matcher_action_match(&params, &params.act_tmpl);
 	if (unlikely(ret != BNXT_TF_RC_SUCCESS))
