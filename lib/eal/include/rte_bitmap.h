@@ -282,20 +282,15 @@ rte_bitmap_init_with_all_set(uint32_t n_bits, uint8_t *mem, uint32_t mem_size)
 /**
  * Bitmap free
  *
+ * This function does nothing in current implementation.
+ *
  * @param bmp
  *   Handle to bitmap instance
- * @return
- *   0 upon success, error code otherwise
  */
-static inline int
+static inline void
 rte_bitmap_free(struct rte_bitmap *bmp)
 {
-	/* Check input arguments */
-	if (bmp == NULL) {
-		return -1;
-	}
-
-	return 0;
+	RTE_SET_USED(bmp);
 }
 
 /**

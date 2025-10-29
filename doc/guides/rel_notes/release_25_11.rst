@@ -262,6 +262,9 @@ API Changes
   The link type was previously hardcoded to the Ethernet link type in the API.
   This argument is added to ``rte_pcapng_add_interface``.
 
+* bitmap: Changed the return type of ``rte_bitmap_free()`` to void
+  for consistency with other free functions.
+
 
 ABI Changes
 -----------
