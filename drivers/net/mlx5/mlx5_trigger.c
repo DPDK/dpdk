@@ -1479,18 +1479,6 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 	unsigned int i;
 	int ret;
 
-	/*
-	 * With extended metadata enabled, the Tx metadata copy is handled by default
-	 * Tx tagging flow rules, so default Tx flow rule is not needed. It is only
-	 * required when representor matching is disabled.
-	 */
-	if (config->dv_esw_en &&
-	    !config->repr_matching &&
-	    config->dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS &&
-	    priv->master) {
-		if (mlx5_flow_hw_create_tx_default_mreg_copy_flow(dev))
-			goto error;
-	}
 	for (i = 0; i < priv->txqs_n; ++i) {
 		struct mlx5_txq_ctrl *txq = mlx5_txq_get(dev, i);
 		uint32_t queue;
@@ -1508,6 +1496,19 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 		}
 		if (config->dv_esw_en && config->repr_matching) {
 			if (mlx5_flow_hw_tx_repr_matching_flow(dev, queue, false)) {
+				mlx5_txq_release(dev, i);
+				goto error;
+			}
+		}
+		/*
+		 * With extended metadata enabled, the Tx metadata copy is handled by default
+		 * Tx tagging flow rules, so default Tx flow rule is not needed. It is only
+		 * required when representor matching is disabled.
+		 */
+		if (config->dv_esw_en && !config->repr_matching &&
+		    config->dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS &&
+		    (priv->master || priv->representor)) {
+			if (mlx5_flow_hw_create_tx_default_mreg_copy_flow(dev, queue, false)) {
 				mlx5_txq_release(dev, i);
 				goto error;
 			}
