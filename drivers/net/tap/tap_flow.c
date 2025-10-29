@@ -535,20 +535,16 @@ tap_flow_create_eth(const struct rte_flow_item *item, void *data)
 		return 0;
 	msg = &flow->msg;
 	if (!rte_is_zero_ether_addr(&mask->dst)) {
-		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_ETH_DST,
-			RTE_ETHER_ADDR_LEN,
-			   &spec->dst.addr_bytes);
-		tap_nlattr_add(&msg->nh,
-			   TCA_FLOWER_KEY_ETH_DST_MASK, RTE_ETHER_ADDR_LEN,
-			   &mask->dst.addr_bytes);
+		tap_nlattr_add(msg, TCA_FLOWER_KEY_ETH_DST, RTE_ETHER_ADDR_LEN,
+			&spec->dst.addr_bytes);
+		tap_nlattr_add(msg, TCA_FLOWER_KEY_ETH_DST_MASK, RTE_ETHER_ADDR_LEN,
+			&mask->dst.addr_bytes);
 	}
 	if (!rte_is_zero_ether_addr(&mask->src)) {
-		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_ETH_SRC,
-			RTE_ETHER_ADDR_LEN,
+		tap_nlattr_add(msg, TCA_FLOWER_KEY_ETH_SRC, RTE_ETHER_ADDR_LEN,
 			&spec->src.addr_bytes);
-		tap_nlattr_add(&msg->nh,
-			   TCA_FLOWER_KEY_ETH_SRC_MASK, RTE_ETHER_ADDR_LEN,
-			   &mask->src.addr_bytes);
+		tap_nlattr_add(msg, TCA_FLOWER_KEY_ETH_SRC_MASK, RTE_ETHER_ADDR_LEN,
+			&mask->src.addr_bytes);
 	}
 	return 0;
 }
@@ -604,11 +600,9 @@ tap_flow_create_vlan(const struct rte_flow_item *item, void *data)
 		uint8_t vid = VLAN_ID(tci);
 
 		if (prio)
-			tap_nlattr_add8(&msg->nh,
-					TCA_FLOWER_KEY_VLAN_PRIO, prio);
+			tap_nlattr_add8(msg, TCA_FLOWER_KEY_VLAN_PRIO, prio);
 		if (vid)
-			tap_nlattr_add16(&msg->nh,
-					 TCA_FLOWER_KEY_VLAN_ID, vid);
+			tap_nlattr_add16(msg, TCA_FLOWER_KEY_VLAN_ID, vid);
 	}
 	return 0;
 }
@@ -651,20 +645,15 @@ tap_flow_create_ipv4(const struct rte_flow_item *item, void *data)
 	if (!spec)
 		return 0;
 	if (mask->hdr.dst_addr) {
-		tap_nlattr_add32(&msg->nh, TCA_FLOWER_KEY_IPV4_DST,
-			     spec->hdr.dst_addr);
-		tap_nlattr_add32(&msg->nh, TCA_FLOWER_KEY_IPV4_DST_MASK,
-			     mask->hdr.dst_addr);
+		tap_nlattr_add32(msg, TCA_FLOWER_KEY_IPV4_DST, spec->hdr.dst_addr);
+		tap_nlattr_add32(msg, TCA_FLOWER_KEY_IPV4_DST_MASK, mask->hdr.dst_addr);
 	}
 	if (mask->hdr.src_addr) {
-		tap_nlattr_add32(&msg->nh, TCA_FLOWER_KEY_IPV4_SRC,
-			     spec->hdr.src_addr);
-		tap_nlattr_add32(&msg->nh, TCA_FLOWER_KEY_IPV4_SRC_MASK,
-			     mask->hdr.src_addr);
+		tap_nlattr_add32(msg, TCA_FLOWER_KEY_IPV4_SRC, spec->hdr.src_addr);
+		tap_nlattr_add32(msg, TCA_FLOWER_KEY_IPV4_SRC_MASK, mask->hdr.src_addr);
 	}
 	if (spec->hdr.next_proto_id)
-		tap_nlattr_add8(&msg->nh, TCA_FLOWER_KEY_IP_PROTO,
-			    spec->hdr.next_proto_id);
+		tap_nlattr_add8(msg, TCA_FLOWER_KEY_IP_PROTO, spec->hdr.next_proto_id);
 	return 0;
 }
 
@@ -707,20 +696,19 @@ tap_flow_create_ipv6(const struct rte_flow_item *item, void *data)
 	if (!spec)
 		return 0;
 	if (memcmp(mask->hdr.dst_addr, empty_addr, 16)) {
-		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_DST,
-			   sizeof(spec->hdr.dst_addr), &spec->hdr.dst_addr);
-		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_DST_MASK,
-			   sizeof(mask->hdr.dst_addr), &mask->hdr.dst_addr);
+		tap_nlattr_add(msg, TCA_FLOWER_KEY_IPV6_DST, sizeof(spec->hdr.dst_addr),
+			&spec->hdr.dst_addr);
+		tap_nlattr_add(msg, TCA_FLOWER_KEY_IPV6_DST_MASK, sizeof(mask->hdr.dst_addr),
+			&mask->hdr.dst_addr);
 	}
 	if (memcmp(mask->hdr.src_addr, empty_addr, 16)) {
-		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_SRC,
-			   sizeof(spec->hdr.src_addr), &spec->hdr.src_addr);
-		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_SRC_MASK,
-			   sizeof(mask->hdr.src_addr), &mask->hdr.src_addr);
+		tap_nlattr_add(msg, TCA_FLOWER_KEY_IPV6_SRC, sizeof(spec->hdr.src_addr),
+			&spec->hdr.src_addr);
+		tap_nlattr_add(msg, TCA_FLOWER_KEY_IPV6_SRC_MASK, sizeof(mask->hdr.src_addr),
+			&mask->hdr.src_addr);
 	}
 	if (spec->hdr.proto)
-		tap_nlattr_add8(&msg->nh,
-				TCA_FLOWER_KEY_IP_PROTO, spec->hdr.proto);
+		tap_nlattr_add8(msg, TCA_FLOWER_KEY_IP_PROTO, spec->hdr.proto);
 	return 0;
 }
 
@@ -758,15 +746,13 @@ tap_flow_create_udp(const struct rte_flow_item *item, void *data)
 	if (!flow)
 		return 0;
 	msg = &flow->msg;
-	tap_nlattr_add8(&msg->nh, TCA_FLOWER_KEY_IP_PROTO, IPPROTO_UDP);
+	tap_nlattr_add8(msg, TCA_FLOWER_KEY_IP_PROTO, IPPROTO_UDP);
 	if (!spec)
 		return 0;
 	if (mask->hdr.dst_port)
-		tap_nlattr_add16(&msg->nh, TCA_FLOWER_KEY_UDP_DST,
-			     spec->hdr.dst_port);
+		tap_nlattr_add16(msg, TCA_FLOWER_KEY_UDP_DST, spec->hdr.dst_port);
 	if (mask->hdr.src_port)
-		tap_nlattr_add16(&msg->nh, TCA_FLOWER_KEY_UDP_SRC,
-			     spec->hdr.src_port);
+		tap_nlattr_add16(msg, TCA_FLOWER_KEY_UDP_SRC, spec->hdr.src_port);
 	return 0;
 }
 
@@ -804,15 +790,13 @@ tap_flow_create_tcp(const struct rte_flow_item *item, void *data)
 	if (!flow)
 		return 0;
 	msg = &flow->msg;
-	tap_nlattr_add8(&msg->nh, TCA_FLOWER_KEY_IP_PROTO, IPPROTO_TCP);
+	tap_nlattr_add8(msg, TCA_FLOWER_KEY_IP_PROTO, IPPROTO_TCP);
 	if (!spec)
 		return 0;
 	if (mask->hdr.dst_port)
-		tap_nlattr_add16(&msg->nh, TCA_FLOWER_KEY_TCP_DST,
-			     spec->hdr.dst_port);
+		tap_nlattr_add16(msg, TCA_FLOWER_KEY_TCP_DST, spec->hdr.dst_port);
 	if (mask->hdr.src_port)
-		tap_nlattr_add16(&msg->nh, TCA_FLOWER_KEY_TCP_SRC,
-			     spec->hdr.src_port);
+		tap_nlattr_add16(msg, TCA_FLOWER_KEY_TCP_SRC, spec->hdr.src_port);
 	return 0;
 }
 
@@ -920,35 +904,27 @@ add_action(struct rte_flow *flow, size_t *act_index, struct action_data *adata)
 	if (tap_nlattr_nested_start(msg, (*act_index)++) < 0)
 		return -1;
 
-	tap_nlattr_add(&msg->nh, TCA_ACT_KIND,
-				strlen(adata->id) + 1, adata->id);
+	tap_nlattr_add(msg, TCA_ACT_KIND, strlen(adata->id) + 1, adata->id);
 	if (tap_nlattr_nested_start(msg, TCA_ACT_OPTIONS) < 0)
 		return -1;
 	if (strcmp("gact", adata->id) == 0) {
-		tap_nlattr_add(&msg->nh, TCA_GACT_PARMS, sizeof(adata->gact),
-			   &adata->gact);
+		tap_nlattr_add(msg, TCA_GACT_PARMS, sizeof(adata->gact), &adata->gact);
 	} else if (strcmp("mirred", adata->id) == 0) {
 		if (adata->mirred.eaction == TCA_EGRESS_MIRROR)
 			adata->mirred.action = TC_ACT_PIPE;
 		else /* REDIRECT */
 			adata->mirred.action = TC_ACT_STOLEN;
-		tap_nlattr_add(&msg->nh, TCA_MIRRED_PARMS,
-			   sizeof(adata->mirred),
-			   &adata->mirred);
+		tap_nlattr_add(msg, TCA_MIRRED_PARMS, sizeof(adata->mirred), &adata->mirred);
 	} else if (strcmp("skbedit", adata->id) == 0) {
-		tap_nlattr_add(&msg->nh, TCA_SKBEDIT_PARMS,
-			   sizeof(adata->skbedit.skbedit),
-			   &adata->skbedit.skbedit);
-		tap_nlattr_add16(&msg->nh, TCA_SKBEDIT_QUEUE_MAPPING,
-			     adata->skbedit.queue);
+		tap_nlattr_add(msg, TCA_SKBEDIT_PARMS, sizeof(adata->skbedit.skbedit),
+			&adata->skbedit.skbedit);
+		tap_nlattr_add16(msg, TCA_SKBEDIT_QUEUE_MAPPING, adata->skbedit.queue);
 	} else if (strcmp("bpf", adata->id) == 0) {
-		tap_nlattr_add32(&msg->nh, TCA_ACT_BPF_FD, adata->bpf.bpf_fd);
-		tap_nlattr_add(&msg->nh, TCA_ACT_BPF_NAME,
-			   strlen(adata->bpf.annotation) + 1,
-			   adata->bpf.annotation);
-		tap_nlattr_add(&msg->nh, TCA_ACT_BPF_PARMS,
-			   sizeof(adata->bpf.bpf),
-			   &adata->bpf.bpf);
+		tap_nlattr_add32(msg, TCA_ACT_BPF_FD, adata->bpf.bpf_fd);
+		tap_nlattr_add(msg, TCA_ACT_BPF_NAME, strlen(adata->bpf.annotation) + 1,
+			adata->bpf.annotation);
+		tap_nlattr_add(msg, TCA_ACT_BPF_PARMS, sizeof(adata->bpf.bpf),
+			&adata->bpf.bpf);
 	} else {
 		return -1;
 	}
@@ -1078,7 +1054,7 @@ priv_flow_process(struct pmd_internals *pmd,
 				TC_H_MAKE(MULTIQ_MAJOR_HANDLE, 0);
 		}
 		/* use flower filter type */
-		tap_nlattr_add(&flow->msg.nh, TCA_KIND, sizeof("flower"), "flower");
+		tap_nlattr_add(&flow->msg, TCA_KIND, sizeof("flower"), "flower");
 		if (tap_nlattr_nested_start(&flow->msg, TCA_OPTIONS) < 0) {
 			rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_ACTION,
 					   actions, "could not allocated netlink msg");
@@ -1118,15 +1094,11 @@ priv_flow_process(struct pmd_internals *pmd,
 	}
 	if (flow) {
 		if (data.vlan) {
-			tap_nlattr_add16(&flow->msg.nh, TCA_FLOWER_KEY_ETH_TYPE,
-				     htons(ETH_P_8021Q));
-			tap_nlattr_add16(&flow->msg.nh,
-				     TCA_FLOWER_KEY_VLAN_ETH_TYPE,
-				     data.eth_type ?
-				     data.eth_type : htons(ETH_P_ALL));
+			tap_nlattr_add16(&flow->msg, TCA_FLOWER_KEY_ETH_TYPE, htons(ETH_P_8021Q));
+			tap_nlattr_add16(&flow->msg, TCA_FLOWER_KEY_VLAN_ETH_TYPE,
+				data.eth_type ?  data.eth_type : htons(ETH_P_ALL));
 		} else if (data.eth_type) {
-			tap_nlattr_add16(&flow->msg.nh, TCA_FLOWER_KEY_ETH_TYPE,
-				     data.eth_type);
+			tap_nlattr_add16(&flow->msg, TCA_FLOWER_KEY_ETH_TYPE, data.eth_type);
 		}
 	}
 	if (mirred && flow) {
@@ -1919,13 +1891,13 @@ static int rss_enable(struct pmd_internals *pmd,
 		msg->t.tcm_info = TC_H_MAKE(prio << 16, msg->t.tcm_info);
 		msg->t.tcm_parent = TC_H_MAKE(MULTIQ_MAJOR_HANDLE, 0);
 
-		tap_nlattr_add(&msg->nh, TCA_KIND, sizeof("bpf"), "bpf");
+		tap_nlattr_add(msg, TCA_KIND, sizeof("bpf"), "bpf");
 		if (tap_nlattr_nested_start(msg, TCA_OPTIONS) < 0)
 			return -1;
-		tap_nlattr_add32(&msg->nh, TCA_BPF_FD, pmd->bpf_fd[i]);
+		tap_nlattr_add32(msg, TCA_BPF_FD, pmd->bpf_fd[i]);
 		snprintf(annotation, sizeof(annotation), "[%s%d]",
 			SEC_NAME_CLS_Q, i);
-		tap_nlattr_add(&msg->nh, TCA_BPF_NAME, strlen(annotation) + 1,
+		tap_nlattr_add(msg, TCA_BPF_NAME, strlen(annotation) + 1,
 			   annotation);
 		/* Actions */
 		{
