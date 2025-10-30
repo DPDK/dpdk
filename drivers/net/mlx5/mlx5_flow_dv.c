@@ -15121,6 +15121,145 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/*
+ * Protocol selector bitmap
+ * Each flag is used as an indicator that given protocol is specified in given RSS hash fields.
+ */
+#define RX_HASH_SELECTOR_IPV4 RTE_BIT32(0)
+#define RX_HASH_SELECTOR_IPV6 RTE_BIT32(1)
+#define RX_HASH_SELECTOR_UDP RTE_BIT32(2)
+#define RX_HASH_SELECTOR_TCP RTE_BIT32(3)
+#define RX_HASH_SELECTOR_ESP_SPI RTE_BIT32(4)
+#define RX_HASH_SELECTOR_NONE (0)
+
+#define RX_HASH_SELECTOR_IPV4_TCP (RX_HASH_SELECTOR_IPV4 | RX_HASH_SELECTOR_TCP)
+#define RX_HASH_SELECTOR_IPV4_UDP (RX_HASH_SELECTOR_IPV4 | RX_HASH_SELECTOR_UDP)
+#define RX_HASH_SELECTOR_IPV4_ESP (RX_HASH_SELECTOR_IPV4 | RX_HASH_SELECTOR_ESP_SPI)
+
+#define RX_HASH_SELECTOR_IPV6_TCP (RX_HASH_SELECTOR_IPV6 | RX_HASH_SELECTOR_TCP)
+#define RX_HASH_SELECTOR_IPV6_UDP (RX_HASH_SELECTOR_IPV6 | RX_HASH_SELECTOR_UDP)
+#define RX_HASH_SELECTOR_IPV6_ESP (RX_HASH_SELECTOR_IPV6 | RX_HASH_SELECTOR_ESP_SPI)
+
+static bool
+rx_hash_selector_has_valid_l3(const uint32_t selectors)
+{
+	/* In TIR configuration, RSS hashing on both IPv4 and IPv6 is mutually exclusive. */
+	return !((selectors & RX_HASH_SELECTOR_IPV4) && (selectors & RX_HASH_SELECTOR_IPV6));
+}
+
+static bool
+rx_hash_selector_has_valid_l4(const uint32_t selectors)
+{
+	/* In TIR configuration, RSS hashing on both UDP and TCP is mutually exclusive. */
+	return !((selectors & RX_HASH_SELECTOR_UDP) && (selectors & RX_HASH_SELECTOR_TCP));
+}
+
+static bool
+rx_hash_selector_has_valid_esp(const uint32_t selectors)
+{
+	/* In TIR configuration, RSS hashing on ESP and other L4 protocol is mutually exclusive. */
+	if (selectors & RX_HASH_SELECTOR_ESP_SPI)
+		return !((selectors & RX_HASH_SELECTOR_UDP) || (selectors & RX_HASH_SELECTOR_TCP));
+
+	return true;
+}
+
+/**
+ * Calculate protocol combination based on provided RSS hashing fields.
+ *
+ * @param[in] hash_fields
+ *   Requested RSS hashing fields specified as a flags bitmap, based on ibv_rx_hash_fields.
+ * @param[out] selectors_out
+ *   Calculated protocol combination will be written here.
+ *   Result will be a bitmap of RX_HASH_SELECTOR_* flags.
+ *
+ * @return
+ *   0 if conversion is successful and protocol combination written to @p selectors_out.
+ *   (-EINVAL) otherwise.
+ */
+static int
+rx_hash_calc_selector(const uint64_t hash_fields, uint32_t *selectors_out)
+{
+	const uint64_t filtered_hf = hash_fields & ~IBV_RX_HASH_INNER;
+	uint32_t selectors = 0;
+
+	if (filtered_hf & MLX5_RSS_HASH_IPV4)
+		selectors |= RX_HASH_SELECTOR_IPV4;
+	if (filtered_hf & MLX5_RSS_HASH_IPV6)
+		selectors |= RX_HASH_SELECTOR_IPV6;
+	if (!rx_hash_selector_has_valid_l3(selectors)) {
+		DRV_LOG(NOTICE, "hrxq hashing on both IPv4 and IPv6 is invalid: "
+				"selectors=0x%" PRIx32, selectors);
+		return -EINVAL;
+	}
+
+	if (filtered_hf & MLX5_UDP_IBV_RX_HASH)
+		selectors |= RX_HASH_SELECTOR_UDP;
+	if (filtered_hf & MLX5_TCP_IBV_RX_HASH)
+		selectors |= RX_HASH_SELECTOR_TCP;
+	if (!rx_hash_selector_has_valid_l4(selectors)) {
+		DRV_LOG(NOTICE, "hrxq hashing on both UDP and TCP is invalid: "
+				"selectors=0x%" PRIx32, selectors);
+		return -EINVAL;
+	}
+
+	if (filtered_hf & MLX5_RSS_HASH_ESP_SPI)
+		selectors |= RX_HASH_SELECTOR_ESP_SPI;
+	if (!rx_hash_selector_has_valid_esp(selectors)) {
+		DRV_LOG(NOTICE, "hrxq hashing on ESP SPI and UDP or TCP is mutually exclusive: "
+				"selectors=0x%" PRIx32, selectors);
+		return -EINVAL;
+	}
+
+	*selectors_out = selectors;
+	return 0;
+}
+
+/**
+ * Calculate the hrxq object index based on protocol combination.
+ *
+ * @param[in] selectors
+ *   Protocol combination specified as bitmap of RX_HASH_SELECTOR_* flags.
+ *
+ * @return
+ *   Index into hrxq array in #mlx5_shared_action_rss based on ginve protocol combination.
+ *   (-EINVAL) if given protocol combination is not supported or is invalid.
+ */
+static int
+get_rss_hash_idx(const uint32_t selectors)
+{
+	switch (selectors) {
+	case RX_HASH_SELECTOR_IPV4:
+		return MLX5_RSS_HASH_IDX_IPV4;
+	case RX_HASH_SELECTOR_IPV4_TCP:
+		return MLX5_RSS_HASH_IDX_IPV4_TCP;
+	case RX_HASH_SELECTOR_IPV4_UDP:
+		return MLX5_RSS_HASH_IDX_IPV4_UDP;
+	case RX_HASH_SELECTOR_IPV4_ESP:
+		return MLX5_RSS_HASH_IDX_IPV4_ESP;
+	case RX_HASH_SELECTOR_IPV6:
+		return MLX5_RSS_HASH_IDX_IPV6;
+	case RX_HASH_SELECTOR_IPV6_TCP:
+		return MLX5_RSS_HASH_IDX_IPV6_TCP;
+	case RX_HASH_SELECTOR_IPV6_UDP:
+		return MLX5_RSS_HASH_IDX_IPV6_UDP;
+	case RX_HASH_SELECTOR_IPV6_ESP:
+		return MLX5_RSS_HASH_IDX_IPV6_ESP;
+	case RX_HASH_SELECTOR_TCP:
+		return MLX5_RSS_HASH_IDX_TCP;
+	case RX_HASH_SELECTOR_UDP:
+		return MLX5_RSS_HASH_IDX_UDP;
+	case RX_HASH_SELECTOR_ESP_SPI:
+		return MLX5_RSS_HASH_IDX_ESP_SPI;
+	case RX_HASH_SELECTOR_NONE:
+		return MLX5_RSS_HASH_IDX_NONE;
+	default:
+		DRV_LOG(ERR, "invalid hrxq hash fields combination: "
+			     "selectors=0x%" PRIx32, selectors);
+		return -EINVAL;
+	}
+}
+
 /**
  * Set hash RX queue by hash fields (see enum ibv_rx_hash_fields)
  * and tunnel.
@@ -15128,7 +15267,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
  * @param[in, out] action
  *   Shred RSS action holding hash RX queue objects.
  * @param[in] hash_fields
- *   Defines combination of packet fields to participate in RX hash.
+ *   Defines combination of packet fields to participate in RX hash,
+ *   specified as a bitmap of #ibv_rx_hash_fields flags.
  * @param[in] tunnel
  *   Tunnel type
  * @param[in] hrxq_idx
@@ -15143,65 +15283,26 @@ __flow_dv_action_rss_hrxq_set(struct mlx5_shared_action_rss *action,
 			      uint32_t hrxq_idx)
 {
 	uint32_t *hrxqs = action->hrxq;
+	uint32_t selectors = 0;
+	int ret;
 
-	switch (hash_fields & ~IBV_RX_HASH_INNER) {
-	case MLX5_RSS_HASH_IPV4:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV4_DST_ONLY:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV4_SRC_ONLY:
-		hrxqs[0] = hrxq_idx;
-		return 0;
-	case MLX5_RSS_HASH_IPV4_TCP:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV4_TCP_DST_ONLY:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV4_TCP_SRC_ONLY:
-		hrxqs[1] = hrxq_idx;
-		return 0;
-	case MLX5_RSS_HASH_IPV4_UDP:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV4_UDP_DST_ONLY:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV4_UDP_SRC_ONLY:
-		hrxqs[2] = hrxq_idx;
-		return 0;
-	case MLX5_RSS_HASH_IPV6:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV6_DST_ONLY:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV6_SRC_ONLY:
-		hrxqs[3] = hrxq_idx;
-		return 0;
-	case MLX5_RSS_HASH_IPV6_TCP:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV6_TCP_DST_ONLY:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV6_TCP_SRC_ONLY:
-		hrxqs[4] = hrxq_idx;
-		return 0;
-	case MLX5_RSS_HASH_IPV6_UDP:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV6_UDP_DST_ONLY:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV6_UDP_SRC_ONLY:
-		hrxqs[5] = hrxq_idx;
-		return 0;
-	case MLX5_RSS_HASH_NONE:
-		hrxqs[6] = hrxq_idx;
-		return 0;
-	case MLX5_RSS_HASH_IPV4_ESP:
-		hrxqs[7] = hrxq_idx;
-		return 0;
-	case MLX5_RSS_HASH_IPV6_ESP:
-		hrxqs[8] = hrxq_idx;
-		return 0;
-	case MLX5_RSS_HASH_ESP_SPI:
-		hrxqs[9] = hrxq_idx;
-		return 0;
-	default:
-		return -1;
-	}
+	ret = rx_hash_calc_selector(hash_fields, &selectors);
+	/*
+	 * Hash fields passed to this function are constructed internally.
+	 * If this fails, then this is a PMD bug.
+	 */
+	MLX5_ASSERT(ret == 0);
+
+	ret = get_rss_hash_idx(selectors);
+	/*
+	 * Based on above assert, selectors should always yield correct index
+	 * in mlx5_rss_hash_fields array.
+	 * If this fails, then this is a PMD bug.
+	 */
+	MLX5_ASSERT(ret >= 0 && ret < MLX5_RSS_HASH_IDX_MAX);
+	hrxqs[ret] = hrxq_idx;
+
+	return 0;
 }
 
 /**
@@ -15213,7 +15314,8 @@ __flow_dv_action_rss_hrxq_set(struct mlx5_shared_action_rss *action,
  * @param[in] idx
  *   Shared RSS action ID holding hash RX queue objects.
  * @param[in] hash_fields
- *   Defines combination of packet fields to participate in RX hash.
+ *   Defines combination of packet fields to participate in RX hash,
+ *   specified as a bitmap of #ibv_rx_hash_fields flags.
  * @param[in] tunnel
  *   Tunnel type
  *
@@ -15228,56 +15330,26 @@ flow_dv_action_rss_hrxq_lookup(struct rte_eth_dev *dev, uint32_t idx,
 	struct mlx5_shared_action_rss *shared_rss =
 	    mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS], idx);
 	const uint32_t *hrxqs = shared_rss->hrxq;
+	uint32_t selectors = 0;
+	int ret;
 
-	switch (hash_fields & ~IBV_RX_HASH_INNER) {
-	case MLX5_RSS_HASH_IPV4:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV4_DST_ONLY:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV4_SRC_ONLY:
-		return hrxqs[0];
-	case MLX5_RSS_HASH_IPV4_TCP:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV4_TCP_DST_ONLY:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV4_TCP_SRC_ONLY:
-		return hrxqs[1];
-	case MLX5_RSS_HASH_IPV4_UDP:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV4_UDP_DST_ONLY:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV4_UDP_SRC_ONLY:
-		return hrxqs[2];
-	case MLX5_RSS_HASH_IPV6:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV6_DST_ONLY:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV6_SRC_ONLY:
-		return hrxqs[3];
-	case MLX5_RSS_HASH_IPV6_TCP:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV6_TCP_DST_ONLY:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV6_TCP_SRC_ONLY:
-		return hrxqs[4];
-	case MLX5_RSS_HASH_IPV6_UDP:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV6_UDP_DST_ONLY:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV6_UDP_SRC_ONLY:
-		return hrxqs[5];
-	case MLX5_RSS_HASH_NONE:
-		return hrxqs[6];
-	case MLX5_RSS_HASH_IPV4_ESP:
-		return hrxqs[7];
-	case MLX5_RSS_HASH_IPV6_ESP:
-		return hrxqs[8];
-	case MLX5_RSS_HASH_ESP_SPI:
-		return hrxqs[9];
-	default:
+	ret = rx_hash_calc_selector(hash_fields, &selectors);
+	if (ret < 0) {
+		DRV_LOG(ERR, "port %u Rx hash selector calculation failed: "
+			     "rss_act_idx=%u hash_fields=0x%" PRIx64 " selectors=0x%" PRIx32,
+			dev->data->port_id, idx, hash_fields, selectors);
 		return 0;
 	}
 
+	ret = get_rss_hash_idx(selectors);
+	if (ret < 0) {
+		DRV_LOG(ERR, "port %u failed hrxq index lookup: "
+			     "rss_act_idx=%u hash_fields=0x%" PRIx64 " selectors=0x%" PRIx32,
+			dev->data->port_id, idx, hash_fields, selectors);
+		return 0;
+	}
+
+	return hrxqs[ret];
 }
 
 /**
@@ -15950,7 +16022,7 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
  */
 static int
 __flow_dv_hrxqs_release(struct rte_eth_dev *dev,
-			uint32_t (*hrxqs)[MLX5_RSS_HASH_FIELDS_LEN])
+			uint32_t (*hrxqs)[MLX5_RSS_HASH_IDX_MAX])
 {
 	size_t i;
 	int remaining = 0;
@@ -15985,6 +16057,62 @@ __flow_dv_action_rss_hrxqs_release(struct rte_eth_dev *dev,
 	return __flow_dv_hrxqs_release(dev, &shared_rss->hrxq);
 }
 
+static inline void
+filter_ipv4_types(uint64_t rss_types, uint64_t *hash_fields)
+{
+	if (rss_types & MLX5_IPV4_LAYER_TYPES) {
+		*hash_fields &= ~MLX5_RSS_HASH_IPV4;
+		if (rss_types & RTE_ETH_RSS_L3_DST_ONLY)
+			*hash_fields |= IBV_RX_HASH_DST_IPV4;
+		else if (rss_types & RTE_ETH_RSS_L3_SRC_ONLY)
+			*hash_fields |= IBV_RX_HASH_SRC_IPV4;
+		else
+			*hash_fields |= MLX5_RSS_HASH_IPV4;
+	}
+}
+
+static inline void
+filter_ipv6_types(uint64_t rss_types, uint64_t *hash_fields)
+{
+	if (rss_types & MLX5_IPV6_LAYER_TYPES) {
+		*hash_fields &= ~MLX5_RSS_HASH_IPV6;
+		if (rss_types & RTE_ETH_RSS_L3_DST_ONLY)
+			*hash_fields |= IBV_RX_HASH_DST_IPV6;
+		else if (rss_types & RTE_ETH_RSS_L3_SRC_ONLY)
+			*hash_fields |= IBV_RX_HASH_SRC_IPV6;
+		else
+			*hash_fields |= MLX5_RSS_HASH_IPV6;
+	}
+}
+
+static inline void
+filter_udp_types(uint64_t rss_types, uint64_t *hash_fields)
+{
+	if (rss_types & RTE_ETH_RSS_UDP) {
+		*hash_fields &= ~MLX5_UDP_IBV_RX_HASH;
+		if (rss_types & RTE_ETH_RSS_L4_DST_ONLY)
+			*hash_fields |= IBV_RX_HASH_DST_PORT_UDP;
+		else if (rss_types & RTE_ETH_RSS_L4_SRC_ONLY)
+			*hash_fields |= IBV_RX_HASH_SRC_PORT_UDP;
+		else
+			*hash_fields |= MLX5_UDP_IBV_RX_HASH;
+	}
+}
+
+static inline void
+filter_tcp_types(uint64_t rss_types, uint64_t *hash_fields)
+{
+	if (rss_types & RTE_ETH_RSS_TCP) {
+		*hash_fields &= ~MLX5_TCP_IBV_RX_HASH;
+		if (rss_types & RTE_ETH_RSS_L4_DST_ONLY)
+			*hash_fields |= IBV_RX_HASH_DST_PORT_TCP;
+		else if (rss_types & RTE_ETH_RSS_L4_SRC_ONLY)
+			*hash_fields |= IBV_RX_HASH_SRC_PORT_TCP;
+		else
+			*hash_fields |= MLX5_TCP_IBV_RX_HASH;
+	}
+}
+
 /**
  * Adjust L3/L4 hash value of pre-created shared RSS hrxq according to
  * user input.
@@ -15996,9 +16124,9 @@ __flow_dv_action_rss_hrxqs_release(struct rte_eth_dev *dev,
  * same slot in mlx5_rss_hash_fields.
  *
  * @param[in] orig_rss_types
- *   RSS type as provided in shared RSS action.
+ *   RSS type as provided in shared RSS action, specified as a bitmap of RTE_ETH_RSS_* flags.
  * @param[in, out] hash_field
- *   hash_field variable needed to be adjusted.
+ *   hash_field variable needed to be adjusted, specified as a bitmap of #ibv_rx_hash_fields flags.
  *
  * @return
  *   void
@@ -16007,60 +16135,18 @@ void
 flow_dv_action_rss_l34_hash_adjust(uint64_t orig_rss_types,
 				   uint64_t *hash_field)
 {
+	uint64_t hash_field_protos = *hash_field & ~IBV_RX_HASH_INNER;
 	uint64_t rss_types = rte_eth_rss_hf_refine(orig_rss_types);
 
-	switch (*hash_field & ~IBV_RX_HASH_INNER) {
-	case MLX5_RSS_HASH_IPV4:
-		if (rss_types & MLX5_IPV4_LAYER_TYPES) {
-			*hash_field &= ~MLX5_RSS_HASH_IPV4;
-			if (rss_types & RTE_ETH_RSS_L3_DST_ONLY)
-				*hash_field |= IBV_RX_HASH_DST_IPV4;
-			else if (rss_types & RTE_ETH_RSS_L3_SRC_ONLY)
-				*hash_field |= IBV_RX_HASH_SRC_IPV4;
-			else
-				*hash_field |= MLX5_RSS_HASH_IPV4;
-		}
-		return;
-	case MLX5_RSS_HASH_IPV6:
-		if (rss_types & MLX5_IPV6_LAYER_TYPES) {
-			*hash_field &= ~MLX5_RSS_HASH_IPV6;
-			if (rss_types & RTE_ETH_RSS_L3_DST_ONLY)
-				*hash_field |= IBV_RX_HASH_DST_IPV6;
-			else if (rss_types & RTE_ETH_RSS_L3_SRC_ONLY)
-				*hash_field |= IBV_RX_HASH_SRC_IPV6;
-			else
-				*hash_field |= MLX5_RSS_HASH_IPV6;
-		}
-		return;
-	case MLX5_RSS_HASH_IPV4_UDP:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV6_UDP:
-		if (rss_types & RTE_ETH_RSS_UDP) {
-			*hash_field &= ~MLX5_UDP_IBV_RX_HASH;
-			if (rss_types & RTE_ETH_RSS_L4_DST_ONLY)
-				*hash_field |= IBV_RX_HASH_DST_PORT_UDP;
-			else if (rss_types & RTE_ETH_RSS_L4_SRC_ONLY)
-				*hash_field |= IBV_RX_HASH_SRC_PORT_UDP;
-			else
-				*hash_field |= MLX5_UDP_IBV_RX_HASH;
-		}
-		return;
-	case MLX5_RSS_HASH_IPV4_TCP:
-		/* fall-through. */
-	case MLX5_RSS_HASH_IPV6_TCP:
-		if (rss_types & RTE_ETH_RSS_TCP) {
-			*hash_field &= ~MLX5_TCP_IBV_RX_HASH;
-			if (rss_types & RTE_ETH_RSS_L4_DST_ONLY)
-				*hash_field |= IBV_RX_HASH_DST_PORT_TCP;
-			else if (rss_types & RTE_ETH_RSS_L4_SRC_ONLY)
-				*hash_field |= IBV_RX_HASH_SRC_PORT_TCP;
-			else
-				*hash_field |= MLX5_TCP_IBV_RX_HASH;
-		}
-		return;
-	default:
-		return;
-	}
+	if (hash_field_protos & MLX5_RSS_HASH_IPV4)
+		filter_ipv4_types(rss_types, hash_field);
+	else if (hash_field_protos & MLX5_RSS_HASH_IPV6)
+		filter_ipv6_types(rss_types, hash_field);
+
+	if (hash_field_protos & MLX5_UDP_IBV_RX_HASH)
+		filter_udp_types(rss_types, hash_field);
+	else if (hash_field_protos & MLX5_TCP_IBV_RX_HASH)
+		filter_tcp_types(rss_types, hash_field);
 }
 
 /**
@@ -16112,7 +16198,7 @@ __flow_dv_action_rss_setup(struct rte_eth_dev *dev,
 	rss_desc.ind_tbl = shared_rss->ind_tbl;
 	if (priv->sh->config.dv_flow_en == 2)
 		rss_desc.hws_flags = MLX5DR_ACTION_FLAG_HWS_RX;
-	for (i = 0; i < MLX5_RSS_HASH_FIELDS_LEN; i++) {
+	for (i = 0; i < MLX5_RSS_HASH_IDX_MAX; i++) {
 		struct mlx5_hrxq *hrxq;
 		uint64_t hash_fields = mlx5_rss_hash_fields[i];
 		int tunnel = 0;
