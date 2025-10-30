@@ -6,12 +6,11 @@
 #ifndef _TAP_NETLINK_H_
 #define _TAP_NETLINK_H_
 
-#include <ctype.h>
 #include <inttypes.h>
 #include <linux/rtnetlink.h>
 #include <linux/netlink.h>
-#include <stdio.h>
 
+#include <rte_ether.h>
 #include <rte_log.h>
 
 #define NLMSG_BUF 512
@@ -38,5 +37,12 @@ void tap_nlattr_add16(struct tap_nlmsg *msg, unsigned short type, uint16_t data)
 void tap_nlattr_add32(struct tap_nlmsg *msg, unsigned short type, uint32_t data);
 int tap_nlattr_nested_start(struct tap_nlmsg *msg, uint16_t type);
 void tap_nlattr_nested_finish(struct tap_nlmsg *msg);
+
+/* Link management functions using netlink */
+int tap_nl_get_flags(int nlsk_fd, unsigned int ifindex, unsigned int *flags);
+int tap_nl_set_flags(int nlsk_fd, unsigned int ifindex, unsigned int flags, int set);
+int tap_nl_set_mtu(int nlsk_fd, unsigned int ifindex, unsigned int mtu);
+int tap_nl_set_mac(int nlsk_fd, unsigned int ifindex, const struct rte_ether_addr *mac);
+int tap_nl_get_mac(int nlsk_fd, unsigned int ifindex, struct rte_ether_addr *mac);
 
 #endif /* _TAP_NETLINK_H_ */
