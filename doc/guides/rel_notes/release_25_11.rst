@@ -132,6 +132,11 @@ New Features
 
   Added ENETC4 PMD for multiple new generation SoCs.
 
+* **Updated TAP ethernet driver.**
+
+  * Replaced ioctl-based link control with a Netlink-based implementation.
+  * Linux net devices can now be renamed without breaking link control.
+
 * **Updated Wangxun txgbe ethernet driver.**
 
   Added support for Wangxun Amber-Lite NIC series,
