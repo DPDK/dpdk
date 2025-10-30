@@ -324,11 +324,12 @@ void cmd_list_parsed(
 {
 	uint32_t queue_num;
 	uint64_t features;
+	uint64_t protocol_features;
 	struct rte_vdpa_device *vdev;
 	struct rte_device *dev;
 	struct rte_dev_iterator dev_iter;
 
-	cmdline_printf(cl, "device name\tqueue num\tsupported features\n");
+	cmdline_printf(cl, "device name\tqueue num\tsupported features\tsupported protocol features\n");
 	RTE_DEV_FOREACH(dev, "class=vdpa", &dev_iter) {
 		vdev = rte_vdpa_find_device_by_name(rte_dev_name(dev));
 		if (!vdev)
@@ -345,8 +346,14 @@ void cmd_list_parsed(
 				"for device %s.\n", rte_dev_name(dev));
 			continue;
 		}
-		cmdline_printf(cl, "%s\t\t%" PRIu32 "\t\t0x%" PRIx64 "\n",
-			rte_dev_name(dev), queue_num, features);
+		if (rte_vdpa_get_protocol_features(vdev, &protocol_features) < 0) {
+			RTE_LOG(ERR, VDPA,
+				"failed to get vdpa protocol features "
+				"for device %s.\n", rte_dev_name(dev));
+			continue;
+		}
+		cmdline_printf(cl, "%s\t\t%" PRIu32 "\t\t0x%" PRIx64 "\t\t0x%" PRIx64 "\n",
+			rte_dev_name(dev), queue_num, features, protocol_features);
 	}
 }
 
