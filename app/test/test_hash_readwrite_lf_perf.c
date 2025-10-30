@@ -1310,6 +1310,10 @@ test_hash_rcu_qsbr_writer_perf(struct rwc_perf *rwc_perf_results, int rwc_lf,
 
 	sz = rte_rcu_qsbr_get_memsize(RTE_MAX_LCORE);
 	rv = (struct rte_rcu_qsbr *)rte_zmalloc(NULL, sz, RTE_CACHE_LINE_SIZE);
+	if (rv == NULL) {
+		printf("allocation failed\n");
+		goto err;
+	}
 	rcu_config.v = rv;
 
 	if (rte_hash_rcu_qsbr_add(tbl_rwc_test_param.h, &rcu_config) < 0) {
