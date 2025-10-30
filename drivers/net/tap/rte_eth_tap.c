@@ -1392,6 +1392,22 @@ tap_mac_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 	return 0;
 }
 
+static int tap_carrier_set(struct pmd_internals *pmd, int carrier)
+{
+#ifdef TUNSETCARRIER
+	int ret = ioctl(pmd->ka_fd, TUNSETCARRIER, &carrier);
+	if (ret < 0) {
+		TAP_LOG(ERR, "%s: ioctl(TUNSETCARRIER) failed: %s",
+			pmd->name, strerror(errno));
+		return ret;
+	}
+#else
+	(void)pmd;
+	(void)carrier;
+#endif
+	return 0;
+}
+
 static int
 tap_gso_ctx_setup(struct rte_gso_ctx *gso_ctx, struct rte_eth_dev *dev)
 {
@@ -1559,6 +1575,11 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 		tmp = &(*tmp)->next;
 	}
 
+	/* set carrier after creating at least one rxq */
+	ret = tap_carrier_set(internals, 1);
+	if (ret < 0)
+		goto error;
+
 	TAP_LOG(DEBUG, "  RX TUNTAP device name %s, qid %d on fd %d",
 		internals->name, rx_queue_id,
 		process_private->fds[rx_queue_id]);
@@ -1690,6 +1711,9 @@ tap_netns_change(struct rte_eth_dev *dev)
 	if (tap_lsc_intr_handle_set(dev, 1) < 0)
 		TAP_LOG(WARNING, "%s: failed to recreate LSC interrupt socket",
 			pmd->name);
+
+	/* Force carrier back after switching netns */
+	tap_carrier_set(pmd, 1);
 
 	/* Switch back to original namespace */
 	if (setns(orig_netns_fd, CLONE_NEWNET) < 0)
