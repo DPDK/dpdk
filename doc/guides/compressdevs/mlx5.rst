@@ -6,9 +6,8 @@
 NVIDIA MLX5 Compress Driver
 ===========================
 
-The mlx5 compress driver library
-(**librte_compress_mlx5**) provides support for **NVIDIA BlueField-2**,
-and **NVIDIA BlueField-3** families of 25/50/100/200/400 Gb/s adapters.
+The mlx5 compress driver (``librte_compress_mlx5``)
+provides support for NVIDIA DPU device family.
 
 Design
 ------
@@ -108,11 +107,11 @@ for an additional list of options shared with other mlx5 drivers.
   The default value is 15.
 
 
-Supported NICs
---------------
+Supported Devices
+-----------------
 
-* NVIDIA\ |reg| BlueField-2 SmartNIC
-* NVIDIA\ |reg| BlueField-3 SmartNIC
+* NVIDIA\ |reg| BlueField-2 DPU
+* NVIDIA\ |reg| BlueField-3 DPU/SuperNIC
 
 Prerequisites
 -------------
