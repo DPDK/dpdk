@@ -1897,19 +1897,30 @@ flow_hw_get_reg_id_from_ctx(void *dr_ctx, enum rte_flow_item_type type,
 		(((func) == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ) || \
 		 ((func) == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ_SORT))
 
-/* array of valid combinations of RX Hash fields for RSS */
-static const uint64_t mlx5_rss_hash_fields[] = {
-	MLX5_RSS_HASH_IPV4,
-	MLX5_RSS_HASH_IPV4_TCP,
-	MLX5_RSS_HASH_IPV4_UDP,
-	MLX5_RSS_HASH_IPV4_ESP,
-	MLX5_RSS_HASH_IPV6,
-	MLX5_RSS_HASH_IPV6_TCP,
-	MLX5_RSS_HASH_IPV6_UDP,
-	MLX5_RSS_HASH_IPV6_ESP,
-	MLX5_RSS_HASH_ESP_SPI,
-	MLX5_RSS_HASH_NONE,
+
+/**
+ * Each enum variant corresponds to a single valid protocols combination for hrxq configuration
+ * Each variant serves as an index into #mlx5_rss_hash_fields array containing default
+ * bitmaps of ibv_rx_hash_fields flags for given protocols combination.
+ */
+enum {
+	MLX5_RSS_HASH_IDX_IPV4,
+	MLX5_RSS_HASH_IDX_IPV4_TCP,
+	MLX5_RSS_HASH_IDX_IPV4_UDP,
+	MLX5_RSS_HASH_IDX_IPV4_ESP,
+	MLX5_RSS_HASH_IDX_IPV6,
+	MLX5_RSS_HASH_IDX_IPV6_TCP,
+	MLX5_RSS_HASH_IDX_IPV6_UDP,
+	MLX5_RSS_HASH_IDX_IPV6_ESP,
+	MLX5_RSS_HASH_IDX_TCP,
+	MLX5_RSS_HASH_IDX_UDP,
+	MLX5_RSS_HASH_IDX_ESP_SPI,
+	MLX5_RSS_HASH_IDX_NONE,
+	MLX5_RSS_HASH_IDX_MAX,
 };
+
+/** Array of valid combinations of RX Hash fields for RSS. */
+extern const uint64_t mlx5_rss_hash_fields[];
 
 /* Shared RSS action structure */
 struct mlx5_shared_action_rss {
@@ -1919,7 +1930,7 @@ struct mlx5_shared_action_rss {
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
 	struct mlx5_ind_table_obj *ind_tbl;
 	/**< Hash RX queues (hrxq, hrxq_tunnel fields) indirection table. */
-	uint32_t hrxq[MLX5_RSS_HASH_FIELDS_LEN];
+	uint32_t hrxq[MLX5_RSS_HASH_IDX_MAX];
 	/**< Hash RX queue indexes mapped to mlx5_rss_hash_fields */
 	rte_spinlock_t action_rss_sl; /**< Shared RSS action spinlock. */
 };
