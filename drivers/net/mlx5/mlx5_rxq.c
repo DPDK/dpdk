@@ -779,7 +779,7 @@ mlx5_shared_rxq_match(struct mlx5_rxq_ctrl *rxq_ctrl, struct rte_eth_dev *dev,
 			dev->data->port_id, idx);
 		return false;
 	}
-	if (priv->mtu != spriv->mtu) {
+	if (priv->mtu != rxq_ctrl->mtu) {
 		DRV_LOG(ERR, "port %u queue index %u failed to join shared group: mtu mismatch",
 			dev->data->port_id, idx);
 		return false;
@@ -1769,6 +1769,10 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	}
 	LIST_INIT(&tmpl->owners);
 	MLX5_ASSERT(n_seg && n_seg <= MLX5_MAX_RXQ_NSEG);
+	/*
+	 * Save the original MTU to check against for shared rx queues.
+	 */
+	tmpl->mtu = dev->data->mtu;
 	/*
 	 * Save the original segment configuration in the shared queue
 	 * descriptor for the later check on the sibling queue creation.
