@@ -64,6 +64,11 @@ test_hash_readwrite_worker(__rte_unused void *arg)
 
 	ret = rte_malloc(NULL, sizeof(int) *
 				tbl_rw_test_param.num_insert, 0);
+	if (ret == NULL) {
+		printf("allocation failed\n");
+		return -1;
+	}
+
 	for (i = 0; i < rte_lcore_count(); i++) {
 		if (worker_core_ids[i] == lcore_id)
 			break;
