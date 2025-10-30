@@ -2216,7 +2216,8 @@ mlx5_ext_rxq_ref(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_external_q *rxq = mlx5_ext_rxq_get(dev, idx);
 
-	rte_atomic_fetch_add_explicit(&rxq->refcnt, 1, rte_memory_order_relaxed);
+	if (rxq != NULL)
+		rte_atomic_fetch_add_explicit(&rxq->refcnt, 1, rte_memory_order_relaxed);
 	return rxq;
 }
 
@@ -2236,7 +2237,9 @@ mlx5_ext_rxq_deref(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_external_q *rxq = mlx5_ext_rxq_get(dev, idx);
 
-	return rte_atomic_fetch_sub_explicit(&rxq->refcnt, 1, rte_memory_order_relaxed) - 1;
+	return rxq != NULL ?
+		rte_atomic_fetch_sub_explicit(&rxq->refcnt, 1, rte_memory_order_relaxed) - 1 :
+		UINT32_MAX;
 }
 
 /**
@@ -2255,8 +2258,8 @@ mlx5_ext_rxq_get(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	MLX5_ASSERT(mlx5_is_external_rxq(dev, idx));
-	return &priv->ext_rxqs[idx - RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN];
+	return mlx5_is_external_rxq(dev, idx) ?
+		&priv->ext_rxqs[idx -  RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN] : NULL;
 }
 
 /**
@@ -2419,7 +2422,6 @@ int
 mlx5_ext_rxq_verify(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_external_q *rxq;
 	uint32_t i;
 	int ret = 0;
 
@@ -2427,8 +2429,9 @@ mlx5_ext_rxq_verify(struct rte_eth_dev *dev)
 		return 0;
 
 	for (i = RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN; i <= UINT16_MAX ; ++i) {
-		rxq = mlx5_ext_rxq_get(dev, i);
-		if (rxq->refcnt < 2)
+		struct mlx5_external_q *rxq = mlx5_ext_rxq_get(dev, i);
+
+		if (rxq == NULL || rxq->refcnt < 2)
 			continue;
 		DRV_LOG(DEBUG, "Port %u external RxQ %u still referenced.",
 			dev->data->port_id, i);

@@ -2042,6 +2042,8 @@ flow_hw_get_sqn(struct rte_eth_dev *dev, uint16_t tx_queue, uint32_t *sqn)
 	}
 	if (mlx5_is_external_txq(dev, tx_queue)) {
 		ext_txq = mlx5_ext_txq_get(dev, tx_queue);
+		if (ext_txq == NULL)
+			return -EINVAL;
 		*sqn = ext_txq->hw_id;
 		return 0;
 	}
