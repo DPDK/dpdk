@@ -6,6 +6,7 @@
 Create a softnic virtual device and verify it successfully forwards packets.
 """
 
+from api.artifact import Artifact
 from api.capabilities import (
     LinkTopology,
     NicCapability,
@@ -20,7 +21,6 @@ from api.packet import (
 from api.testpmd import TestPmd
 from api.testpmd.config import EthPeer
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.artifact import Artifact
 from framework.testbed_model.virtual_device import VirtualDevice
 from framework.utils import generate_random_packets
 

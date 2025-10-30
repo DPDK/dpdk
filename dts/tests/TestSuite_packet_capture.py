@@ -25,6 +25,7 @@ from scapy.layers.sctp import SCTP
 from scapy.packet import Packet, Raw, raw
 from scapy.utils import rdpcap
 
+from api.artifact import Artifact
 from api.capabilities import (
     LinkTopology,
     requires_link_topology,
@@ -40,7 +41,6 @@ from framework.params import Params
 from framework.remote_session.blocking_app import BlockingApp
 from framework.remote_session.dpdk_shell import compute_eal_params
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.artifact import Artifact
 from framework.testbed_model.cpu import LogicalCoreList
 from framework.testbed_model.traffic_generator.capturing_traffic_generator import (
     PacketFilteringConfig,

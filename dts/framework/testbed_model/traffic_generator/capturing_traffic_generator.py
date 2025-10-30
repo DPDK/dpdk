@@ -16,7 +16,7 @@ from dataclasses import dataclass
 import scapy.utils
 from scapy.packet import Packet
 
-from framework.testbed_model.artifact import Artifact
+from api.artifact import Artifact
 from framework.testbed_model.port import Port
 from framework.utils import get_packet_summaries
 

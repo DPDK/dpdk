@@ -3,6 +3,6 @@
 artifact - File Management
 ==========================
 
-.. automodule:: framework.testbed_model.artifact
+.. automodule:: api.artifact
    :members:
    :show-inheritance:

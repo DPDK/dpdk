@@ -17,6 +17,7 @@ api - DTS API
    :hidden:
    :maxdepth: 1
 
+   api.artifact
    api.capabilities
    api.packet
    api.test

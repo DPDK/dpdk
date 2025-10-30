@@ -18,7 +18,7 @@ from logging import StreamHandler
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
 if TYPE_CHECKING:
-    from framework.testbed_model.artifact import Artifact
+    from api.artifact import Artifact
 
 date_fmt = "%Y/%m/%d %H:%M:%S"
 stream_fmt = "%(asctime)s - %(stage)s - %(name)s - %(levelname)s - %(message)s"
@@ -140,7 +140,7 @@ class DTSLogger(logging.Logger):
         Returns:
             The newly created artifact handlers.
         """
-        from framework.testbed_model.artifact import Artifact
+        from api.artifact import Artifact
 
         log_artifact = Artifact("local", f"{log_file_name}.log")
         handler = StreamHandler(log_artifact.open("w"))

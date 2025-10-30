@@ -10,7 +10,7 @@ Example usage of the :class:`Artifact` class:
 
     .. code:: python
 
-        from framework.testbed_model.artifact import Artifact
+        from api.artifact import Artifact
 
         # Create an artifact on a remote node
         artifact = Artifact(node="sut", file_name="example.txt")
