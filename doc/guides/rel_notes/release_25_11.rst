@@ -136,6 +136,8 @@ New Features
 
   * Replaced ioctl-based link control with a Netlink-based implementation.
   * Linux net devices can now be renamed without breaking link control.
+  * Linux net devices can now be moved to different namespaces
+    without breaking link control (requires Linux >= 5.2).
 
 * **Updated Wangxun txgbe ethernet driver.**
 
