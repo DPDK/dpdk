@@ -1209,8 +1209,8 @@ mlx5_ext_txq_get(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	MLX5_ASSERT(mlx5_is_external_txq(dev, idx));
-	return &priv->ext_txqs[idx - MLX5_EXTERNAL_TX_QUEUE_ID_MIN];
+	return mlx5_is_external_txq(dev, idx) ?
+		&priv->ext_txqs[idx - MLX5_EXTERNAL_TX_QUEUE_ID_MIN] : NULL;
 }
 
 /**
@@ -1226,7 +1226,6 @@ int
 mlx5_ext_txq_verify(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_external_q *txq;
 	uint32_t i;
 	int ret = 0;
 
@@ -1234,8 +1233,9 @@ mlx5_ext_txq_verify(struct rte_eth_dev *dev)
 		return 0;
 
 	for (i = MLX5_EXTERNAL_TX_QUEUE_ID_MIN; i <= UINT16_MAX ; ++i) {
-		txq = mlx5_ext_txq_get(dev, i);
-		if (txq->refcnt < 2)
+		struct mlx5_external_q *txq = mlx5_ext_txq_get(dev, i);
+
+		if (txq == NULL || txq->refcnt < 2)
 			continue;
 		DRV_LOG(DEBUG, "Port %u external TxQ %u still referenced.",
 			dev->data->port_id, i);
