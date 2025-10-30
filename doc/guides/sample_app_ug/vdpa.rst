@@ -70,10 +70,10 @@ Then we can create 2 vdpa ports in interactive cmdline.
 .. code-block:: console
 
         vdpa> list
-        device id       device address  queue num       supported features
-        0               0000:06:00.3    1               0x14c238020
-        1               0000:06:00.4    1               0x14c238020
-        2               0000:06:00.5    1               0x14c238020
+        device id       device address  queue num       supported features      supported protocol features
+        0               0000:06:00.3    1               0x14c238020             0x10c33
+        1               0000:06:00.4    1               0x14c238020             0x10c33
+        2               0000:06:00.5    1               0x14c238020             0x10c33
 
         vdpa> create /tmp/vdpa-socket0 0000:06:00.3
         vdpa> create /tmp/vdpa-socket1 0000:06:00.4
