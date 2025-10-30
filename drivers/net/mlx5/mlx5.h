@@ -1819,8 +1819,6 @@ struct mlx5_obj_ops {
 	void (*lb_dummy_queue_release)(struct rte_eth_dev *dev);
 };
 
-#define MLX5_RSS_HASH_FIELDS_LEN RTE_DIM(mlx5_rss_hash_fields)
-
 enum mlx5_ctrl_flow_type {
 	MLX5_CTRL_FLOW_TYPE_GENERAL,
 	MLX5_CTRL_FLOW_TYPE_SQ_MISS_ROOT,
