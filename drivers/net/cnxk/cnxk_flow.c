@@ -464,8 +464,8 @@ static int
 cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 		 const struct rte_flow_action actions[], struct roc_npc_action in_actions[],
 		 struct roc_npc_action_sample *in_sample_actions, uint32_t *flowkey_cfg,
-		 uint16_t *dst_pf_func, uint8_t has_tunnel_pattern, bool is_rep,
-		 uint8_t rep_pattern, uint64_t *free_allocs)
+		 uint16_t *dst_pf_func, uint64_t *npc_default_action, uint8_t has_tunnel_pattern,
+		 bool is_rep, uint8_t rep_pattern, uint64_t *free_allocs)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	const struct rte_flow_action_queue *act_q = NULL;
@@ -531,9 +531,10 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 				    eth_dev->data->port_id, if_name, act_ethdev->port_id);
 			if (cnxk_ethdev_is_representor(if_name)) {
 				if (representor_rep_portid_action(in_actions, eth_dev,
-					    portid_eth_dev, actions->type, rep_pattern,
-					    dst_pf_func, is_rep, has_tunnel_pattern,
-					    free_allocs, &i, flowkey_cfg)) {
+								  portid_eth_dev, actions->type,
+								  rep_pattern, dst_pf_func,
+								  is_rep, has_tunnel_pattern,
+								  free_allocs, &i, flowkey_cfg)) {
 					plt_err("Representor port action set failed");
 					goto err_exit;
 				}
@@ -583,6 +584,8 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 				}
 
 				hw_dst = portid_eth_dev->data->dev_private;
+				roc_npc_mcam_default_rule_action_get(&hw_dst->npc,
+								     npc_default_action);
 				roc_npc_dst = &hw_dst->npc;
 				*dst_pf_func = roc_npc_dst->pf_func;
 			}
@@ -800,7 +803,7 @@ cnxk_map_flow_data(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr
 		   struct roc_npc_attr *in_attr, struct roc_npc_item_info in_pattern[],
 		   struct roc_npc_action in_actions[],
 		   struct roc_npc_action_sample *in_sample_actions, uint32_t *flowkey_cfg,
-		   uint16_t *dst_pf_func, bool is_rep, uint64_t *free_allocs)
+		   uint16_t *dst_pf_func, uint64_t *def_action, bool is_rep, uint64_t *free_allocs)
 {
 	uint8_t has_tunnel_pattern = 0, rep_pattern = 0;
 	int rc;
@@ -838,7 +841,8 @@ cnxk_map_flow_data(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr
 	}
 
 	return cnxk_map_actions(eth_dev, attr, actions, in_actions, in_sample_actions, flowkey_cfg,
-				dst_pf_func, has_tunnel_pattern, is_rep, rep_pattern, free_allocs);
+				dst_pf_func, def_action, has_tunnel_pattern, is_rep, rep_pattern,
+				free_allocs);
 }
 
 int
@@ -850,14 +854,15 @@ cnxk_flow_validate_common(struct rte_eth_dev *eth_dev, const struct rte_flow_att
 	struct roc_npc_item_info in_pattern[ROC_NPC_ITEM_TYPE_END + 1];
 	struct roc_npc_action in_actions[ROC_NPC_MAX_ACTION_COUNT];
 	struct roc_npc_action_sample in_sample_action;
+	uint64_t npc_default_action = 0;
 	struct cnxk_rep_dev *rep_dev;
 	struct roc_npc_attr in_attr;
 	uint64_t *free_allocs, sz;
 	struct cnxk_eth_dev *dev;
 	struct roc_npc_flow flow;
-	uint32_t flowkey_cfg = 0;
 	uint16_t dst_pf_func = 0;
-	struct roc_npc *npc;
+	uint32_t flowkey_cfg = 0;
+	struct roc_npc *npc = 0;
 	int rc, j;
 
 	/* is_rep set for operation performed via representor ports */
@@ -885,7 +890,8 @@ cnxk_flow_validate_common(struct rte_eth_dev *eth_dev, const struct rte_flow_att
 		return -ENOMEM;
 	}
 	rc = cnxk_map_flow_data(eth_dev, attr, pattern, actions, &in_attr, in_pattern, in_actions,
-				&in_sample_action, &flowkey_cfg, &dst_pf_func, is_rep, free_allocs);
+				&in_sample_action, &flowkey_cfg, &dst_pf_func, &npc_default_action,
+				is_rep, free_allocs);
 	if (rc) {
 		rte_flow_error_set(error, 0, RTE_FLOW_ERROR_TYPE_ACTION_NUM, NULL,
 				   "Failed to map flow data");
@@ -928,10 +934,11 @@ cnxk_flow_create_common(struct rte_eth_dev *eth_dev, const struct rte_flow_attr 
 	struct cnxk_rep_dev *rep_dev = NULL;
 	struct roc_npc_flow *flow = NULL;
 	struct cnxk_eth_dev *dev = NULL;
+	uint64_t npc_default_action = 0;
 	struct roc_npc_attr in_attr;
+	struct roc_npc *npc = NULL;
 	uint64_t *free_allocs, sz;
 	uint16_t dst_pf_func = 0;
-	struct roc_npc *npc;
 	int errcode = 0;
 	int rc, j;
 
@@ -954,15 +961,16 @@ cnxk_flow_create_common(struct rte_eth_dev *eth_dev, const struct rte_flow_attr 
 	memset(&in_sample_action, 0, sizeof(in_sample_action));
 	memset(&in_attr, 0, sizeof(struct roc_npc_attr));
 	rc = cnxk_map_flow_data(eth_dev, attr, pattern, actions, &in_attr, in_pattern, in_actions,
-				&in_sample_action, &npc->flowkey_cfg_state, &dst_pf_func, is_rep,
-				free_allocs);
+				&in_sample_action, &npc->flowkey_cfg_state, &dst_pf_func,
+				&npc_default_action, is_rep, free_allocs);
 	if (rc) {
 		rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_ACTION_NUM, NULL,
 				   "Failed to map flow data");
 		goto clean;
 	}
 
-	flow = roc_npc_flow_create(npc, &in_attr, in_pattern, in_actions, dst_pf_func, &errcode);
+	flow = roc_npc_flow_create(npc, &in_attr, in_pattern, in_actions, dst_pf_func,
+				   npc_default_action, &errcode);
 	if (errcode != 0) {
 		rte_flow_error_set(error, errcode, errcode, NULL, roc_error_msg_get(errcode));
 		goto clean;

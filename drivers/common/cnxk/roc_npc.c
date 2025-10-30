@@ -599,8 +599,9 @@ roc_npc_process_sample_action(struct roc_npc *roc_npc,
 static int
 npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		  const struct roc_npc_action actions[], struct roc_npc_flow *flow,
-		  uint16_t dst_pf_func)
+		  uint16_t dst_pf_func, uint64_t npc_default_action)
 {
+	bool vlan_insert_action = false, npc_action_set = false;
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	const struct roc_npc_action *sec_action = NULL;
 	const struct roc_npc_action_sample *act_sample;
@@ -609,7 +610,6 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	const struct roc_npc_action_meter *act_mtr;
 	const struct roc_npc_action_queue *act_q;
 	const struct roc_npc_action_vf *vf_act;
-	bool vlan_insert_action = false;
 	uint8_t has_spi_to_sa_act = 0;
 	int sel_act, req_act = 0;
 	uint16_t pf_func, vf_id;
@@ -907,7 +907,8 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	} else if (req_act & (ROC_NPC_ACTION_TYPE_PF | ROC_NPC_ACTION_TYPE_VF)) {
 		/* Check if any other action is set */
 		if ((req_act == ROC_NPC_ACTION_TYPE_PF) || (req_act == ROC_NPC_ACTION_TYPE_VF)) {
-			flow->npc_action = NIX_RX_ACTIONOP_DEFAULT;
+			flow->npc_action = npc_default_action;
+			npc_action_set = true;
 		} else {
 			flow->npc_action = NIX_RX_ACTIONOP_UCAST;
 			if (req_act & ROC_NPC_ACTION_TYPE_QUEUE)
@@ -944,15 +945,16 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		goto err_exit;
 	}
 
-	if (req_act & ROC_NPC_ACTION_TYPE_SAMPLE)
-		flow->npc_action = NIX_RX_ACTIONOP_MCAST;
+	if (!npc_action_set) {
+		if (req_act & ROC_NPC_ACTION_TYPE_SAMPLE)
+			flow->npc_action = NIX_RX_ACTIONOP_MCAST;
 
-	if (mark)
-		flow->npc_action |= (uint64_t)mark << 40;
+		if (mark)
+			flow->npc_action |= (uint64_t)mark << 40;
 
-	/* Ideally AF must ensure that correct pf_func is set */
-	flow->npc_action |= (uint64_t)pf_func << 4;
-
+		/* Ideally AF must ensure that correct pf_func is set */
+		flow->npc_action |= (uint64_t)pf_func << 4;
+	}
 done:
 	return 0;
 
@@ -1072,7 +1074,8 @@ npc_parse_rule(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		return err;
 
 	/* Check action */
-	err = npc_parse_actions(roc_npc, attr, actions, flow, pst->dst_pf_func);
+	err = npc_parse_actions(roc_npc, attr, actions, flow, pst->dst_pf_func,
+				pst->npc_default_action);
 	if (err)
 		return err;
 	return 0;
@@ -1643,7 +1646,7 @@ roc_npc_sdp_channel_get(struct roc_npc *roc_npc, uint16_t *chan_base, uint16_t *
 struct roc_npc_flow *
 roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		    const struct roc_npc_item_info pattern[], const struct roc_npc_action actions[],
-		    uint16_t dst_pf_func, int *errcode)
+		    uint16_t dst_pf_func, uint64_t npc_default_action, int *errcode)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	uint16_t sdp_chan_base = 0, sdp_chan_mask = 0;
@@ -1693,6 +1696,7 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	}
 
 	parse_state.dst_pf_func = dst_pf_func;
+	parse_state.npc_default_action = npc_default_action;
 
 	rc = npc_parse_rule(roc_npc, attr, pattern, actions, flow, &parse_state);
 	if (rc != 0) {
@@ -1955,6 +1959,30 @@ roc_npc_mcam_merge_base_steering_rule(struct roc_npc *roc_npc, struct roc_npc_fl
 		}
 	}
 	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+int
+roc_npc_mcam_default_rule_action_get(struct roc_npc *roc_npc, uint64_t *action)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+	struct mbox *mbox = mbox_get(npc->mbox);
+	int rc;
+
+	struct npc_mcam_read_base_rule_rsp *base_rule_rsp;
+	struct mcam_entry *base_entry;
+
+	(void)mbox_alloc_msg_npc_read_default_rule(mbox);
+	rc = mbox_process_msg(mbox, (void *)&base_rule_rsp);
+	if (rc) {
+		plt_err("Failed to fetch default MCAM entry");
+		goto exit;
+	}
+	base_entry = &base_rule_rsp->entry_data;
+
+	*action = base_entry->action;
 exit:
 	mbox_put(mbox);
 	return rc;

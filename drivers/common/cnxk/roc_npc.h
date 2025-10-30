@@ -449,7 +449,8 @@ struct roc_npc_flow *__roc_api roc_npc_flow_create(struct roc_npc *roc_npc,
 						   const struct roc_npc_attr *attr,
 						   const struct roc_npc_item_info pattern[],
 						   const struct roc_npc_action actions[],
-						   uint16_t dst_pf_func, int *errcode);
+						   uint16_t dst_pf_funct,
+						   uint64_t npc_default_action, int *errcode);
 int __roc_api roc_npc_flow_destroy(struct roc_npc *roc_npc, struct roc_npc_flow *flow);
 int __roc_api roc_npc_mcam_free(struct roc_npc *roc_npc, struct roc_npc_flow *mcam);
 int __roc_api roc_npc_mcam_free_entry(struct roc_npc *roc_npc, uint32_t entry);
@@ -486,6 +487,7 @@ int __roc_api roc_npc_vtag_actions_get(struct roc_npc *roc_npc);
 int __roc_api roc_npc_vtag_actions_sub_return(struct roc_npc *roc_npc, uint32_t count);
 int __roc_api roc_npc_mcam_merge_base_steering_rule(struct roc_npc *roc_npc,
 						    struct roc_npc_flow *flow);
+int __roc_api roc_npc_mcam_default_rule_action_get(struct roc_npc *roc_npc, uint64_t *action);
 int __roc_api roc_npc_validate_portid_action(struct roc_npc *roc_npc_src,
 					     struct roc_npc *roc_npc_dst);
 int __roc_api roc_npc_mcam_init(struct roc_npc *roc_npc, struct roc_npc_flow *flow, int mcam_id);

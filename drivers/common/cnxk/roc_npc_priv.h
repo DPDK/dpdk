@@ -219,6 +219,7 @@ struct npc_parse_state {
 	uint8_t *mcam_mask; /* point to flow->mcam_mask + key_len */
 	bool is_vf;
 	uint16_t dst_pf_func;
+	uint64_t npc_default_action;
 	uint16_t nb_tx_queues;
 };
 
