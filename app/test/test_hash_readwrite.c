@@ -18,9 +18,11 @@
 
 #define RTE_RWTEST_FAIL 0
 
-#define TOTAL_ENTRY (5*1024*1024)
-#define TOTAL_INSERT (4.5*1024*1024)
-#define TOTAL_INSERT_EXT (5*1024*1024)
+#define TOTAL_ENTRY           (5*1024) /* must be multiplied for perf test */
+#define TOTAL_INSERT_FUNC   (4.5*1024)
+#define TOTAL_INSERT_FUNC_EXT (5*1024)
+#define PERF_MULTIPLIER  1024
+#define TOTAL_INSERT (TOTAL_INSERT_FUNC * PERF_MULTIPLIER) /* only for perf */
 
 #define NUM_TEST 3
 unsigned int core_cnt[NUM_TEST] = {2, 4, 8};
@@ -136,16 +138,15 @@ test_hash_readwrite_worker(__rte_unused void *arg)
 }
 
 static int
-init_params(int use_ext, int use_htm, int rw_lf, int use_jhash)
+init_params(int use_ext, int use_htm, int rw_lf, int use_jhash, bool perf)
 {
 	unsigned int i;
-
 	uint32_t *keys = NULL;
 	uint8_t *found = NULL;
 	struct rte_hash *handle;
 
 	struct rte_hash_parameters hash_params = {
-		.entries = TOTAL_ENTRY,
+		.entries = TOTAL_ENTRY * (perf ? PERF_MULTIPLIER : 1),
 		.key_len = sizeof(uint32_t),
 		.hash_func_init_val = 0,
 		.socket_id = rte_socket_id(),
@@ -182,14 +183,13 @@ init_params(int use_ext, int use_htm, int rw_lf, int use_jhash)
 	}
 
 	tbl_rw_test_param.h = handle;
-	keys = rte_malloc(NULL, sizeof(uint32_t) * TOTAL_ENTRY, 0);
-
+	keys = rte_malloc(NULL, sizeof(uint32_t) * hash_params.entries, 0);
 	if (keys == NULL) {
 		printf("RTE_MALLOC failed\n");
 		goto err;
 	}
 
-	found = rte_zmalloc(NULL, sizeof(uint8_t) * TOTAL_ENTRY, 0);
+	found = rte_zmalloc(NULL, sizeof(uint8_t) * hash_params.entries, 0);
 	if (found == NULL) {
 		printf("RTE_ZMALLOC failed\n");
 		goto err;
@@ -198,7 +198,7 @@ init_params(int use_ext, int use_htm, int rw_lf, int use_jhash)
 	tbl_rw_test_param.keys = keys;
 	tbl_rw_test_param.found = found;
 
-	for (i = 0; i < TOTAL_ENTRY; i++)
+	for (i = 0; i < hash_params.entries; i++)
 		keys[i] = i;
 
 	return 0;
@@ -227,13 +227,13 @@ test_hash_readwrite_functional(int use_htm, int use_rw_lf, int use_ext)
 	rte_atomic_store_explicit(&gcycles, 0, rte_memory_order_relaxed);
 	rte_atomic_store_explicit(&ginsertions, 0, rte_memory_order_relaxed);
 
-	if (init_params(use_ext, use_htm, use_rw_lf, use_jhash) != 0)
+	if (init_params(use_ext, use_htm, use_rw_lf, use_jhash, false) != 0)
 		goto err;
 
 	if (use_ext)
-		tot_insert = TOTAL_INSERT_EXT;
+		tot_insert = TOTAL_INSERT_FUNC_EXT;
 	else
-		tot_insert = TOTAL_INSERT;
+		tot_insert = TOTAL_INSERT_FUNC;
 
 	tbl_rw_test_param.num_insert =
 		tot_insert / worker_cnt;
@@ -390,7 +390,7 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 	rte_atomic_store_explicit(&gread_cycles, 0, rte_memory_order_relaxed);
 	rte_atomic_store_explicit(&gwrite_cycles, 0, rte_memory_order_relaxed);
 
-	if (init_params(0, use_htm, 0, use_jhash) != 0)
+	if (init_params(0, use_htm, 0, use_jhash, true) != 0)
 		goto err;
 
 	/*
@@ -548,7 +548,7 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 		rte_eal_mp_wait_lcore();
 
 		iter = 0;
-		memset(tbl_rw_test_param.found, 0, TOTAL_ENTRY);
+		memset(tbl_rw_test_param.found, 0, TOTAL_ENTRY * PERF_MULTIPLIER);
 		while (rte_hash_iterate(tbl_rw_test_param.h,
 				&next_key, &next_data, &iter) >= 0) {
 			/* Search for the key in the list of keys added .*/
