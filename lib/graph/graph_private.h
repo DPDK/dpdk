@@ -302,6 +302,18 @@ int graph_node_has_loop_edge(struct graph *graph);
 /**
  * @internal
  *
+ * Replace all pointers of a given node with another one in all active graphs.
+ *
+ * @param old
+ *   Node pointer to replace in all graphs.
+ * @param new
+ *   Updated pointer.
+ */
+void graph_node_replace_all(struct node *old, struct node *new);
+
+/**
+ * @internal
+ *
  * Get the count of source nodes in the graph.
  *
  * @param graph
