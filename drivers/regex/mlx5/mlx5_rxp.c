@@ -24,8 +24,6 @@
 #define MLX5_REGEX_MAX_RULES_PER_GROUP UINT32_MAX
 #define MLX5_REGEX_MAX_GROUPS MLX5_RXP_MAX_SUBSETS
 
-#define MLX5_REGEX_RXP_ROF2_LINE_LEN 34
-
 const uint64_t combined_rof_tag = 0xff52544424a52475;
 
 /* Private Declarations */
