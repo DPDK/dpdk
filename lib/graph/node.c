@@ -268,11 +268,15 @@ edge_update(struct node *node, struct node *prev, rte_edge_t from,
 	need_realloc = max_edges > node->nb_edges;
 	if (need_realloc) {
 		sz = sizeof(struct node) + (max_edges * RTE_NODE_NAMESIZE);
-		new_node = realloc(node, sz);
+		new_node = malloc(sz);
 		if (new_node == NULL) {
 			rte_errno = ENOMEM;
 			goto restore;
 		} else {
+			sz = sizeof(*node) + (node->nb_edges * RTE_NODE_NAMESIZE);
+			memcpy(new_node, node, sz);
+			graph_node_replace_all(node, new_node);
+			free(node);
 			node = new_node;
 		}
 	}
