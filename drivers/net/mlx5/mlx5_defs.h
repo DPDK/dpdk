@@ -46,9 +46,6 @@
 /* Maximum number of DCS created per port. */
 #define MLX5_HWS_CNT_DCS_NUM 4
 
-/* Alarm timeout. */
-#define MLX5_ALARM_TIMEOUT_US 100000
-
 /* Maximum number of extended statistics counters. */
 #define MLX5_MAX_XSTATS 64
 
@@ -169,9 +166,6 @@
 
 /* Size of the hash table for tag table. */
 #define MLX5_TAGS_HLIST_ARRAY_SIZE	(1 << 15)
-
-/* Size fo the hash table for SFT table. */
-#define MLX5_FLOW_SFT_HLIST_ARRAY_SIZE	4096
 
 /* Hairpin TX/RX queue configuration parameters. */
 #define MLX5_HAIRPIN_QUEUE_STRIDE 6
