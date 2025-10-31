@@ -28,8 +28,6 @@
 #endif
 
 
-/* Size of the buffer to receive kernel messages */
-#define MLX5_NL_BUF_SIZE (32 * 1024)
 /* Send buffer size for the Netlink socket */
 #define MLX5_SEND_BUF_SIZE 32768
 /* Receive buffer size for the Netlink socket */

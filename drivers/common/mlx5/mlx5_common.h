@@ -575,9 +575,6 @@ typedef int (mlx5_class_driver_probe_t)(struct mlx5_common_device *cdev,
  */
 typedef int (mlx5_class_driver_remove_t)(struct mlx5_common_device *cdev);
 
-/** Device already probed can be probed again to check for new ports. */
-#define MLX5_DRV_PROBE_AGAIN 0x0004
-
 /**
  * A structure describing a mlx5 common class driver.
  */
