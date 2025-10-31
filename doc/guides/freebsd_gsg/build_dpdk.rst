@@ -18,7 +18,7 @@ The following FreeBSD packages are required to build DPDK:
 * pkgconf
 * py38-pyelftools
 
-.. note:
+.. note::
 
   The specific package for pyelftools is dependent on the version of python in use,
   Python 3.8 being the version at type of writing, hence the ``py38`` prefix.
