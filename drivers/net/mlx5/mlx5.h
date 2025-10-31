@@ -509,8 +509,6 @@ struct __rte_cache_aligned mlx5_hw_q {
 #define MLX5_MAX_PENDING_QUERIES 4
 #define MLX5_CNT_MR_ALLOC_BULK 64
 #define MLX5_CNT_SHARED_OFFSET 0x80000000
-#define IS_BATCH_CNT(cnt) (((cnt) & (MLX5_CNT_SHARED_OFFSET - 1)) >= \
-			   MLX5_CNT_BATCH_OFFSET)
 #define MLX5_CNT_SIZE (sizeof(struct mlx5_flow_counter))
 #define MLX5_AGE_SIZE (sizeof(struct mlx5_age_param))
 
