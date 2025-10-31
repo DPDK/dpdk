@@ -1,5 +1,4 @@
-/*
- * SPDX-License-Identifier: BSD-3-Clause
+/* SPDX-License-Identifier: BSD-3-Clause
  * Inspired from FreeBSD src/sys/powerpc/include/atomic.h
  * Copyright (c) 2021 IBM Corporation
  * Copyright (c) 2008 Marcel Moolenaar

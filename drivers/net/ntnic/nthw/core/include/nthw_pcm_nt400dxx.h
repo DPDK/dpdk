@@ -1,5 +1,4 @@
-/*
- * SPDX-License-Identifier: BSD-3-Clause
+/* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2023 Napatech A/S
  */
 #ifndef __NTHW_PCM_NT400DXX_H__

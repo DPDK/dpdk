@@ -1,5 +1,4 @@
-/*
- * SPDX-License-Identifier: BSD-3-Clause
+/* SPDX-License-Identifier: BSD-3-Clause
  * Inspired from FreeBSD src/sys/powerpc/include/endian.h
  * Copyright(c) 1987, 1991, 1993
  * The Regents of the University of California.  All rights reserved.

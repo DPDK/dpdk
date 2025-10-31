@@ -1,5 +1,4 @@
-/*
- * SPDX-License-Identifier: BSD-3-Clause
+/* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2014 Intel Corporation
  * Copyright 2017 Cavium, Inc.
  */
