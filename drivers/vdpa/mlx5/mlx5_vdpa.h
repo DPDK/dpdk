@@ -37,7 +37,6 @@
 #define VIRTIO_F_RING_PACKED 34
 #endif
 
-#define MLX5_VDPA_DEFAULT_TIMER_DELAY_US 0u
 #define MLX5_VDPA_DEFAULT_TIMER_STEP_US 1u
 
 struct mlx5_vdpa_cq {
