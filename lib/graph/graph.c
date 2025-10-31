@@ -260,6 +260,20 @@ graph_node_fini(struct graph *graph)
 						       graph_node->node->name));
 }
 
+void
+graph_node_replace_all(struct node *old, struct node *new)
+{
+	struct graph_node *graph_node;
+	struct graph *graph;
+
+	STAILQ_FOREACH(graph, &graph_list, next) {
+		STAILQ_FOREACH(graph_node, &graph->node_list, next) {
+			if (graph_node->node == old)
+				graph_node->node = new;
+		}
+	}
+}
+
 static struct rte_graph *
 graph_mem_fixup_node_ctx(struct rte_graph *graph)
 {
