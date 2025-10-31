@@ -43,7 +43,7 @@ struct mlx5_hws_cnt_dcs_mng {
 };
 
 union mlx5_hws_cnt_state {
-	alignas(RTE_CACHE_LINE_SIZE) RTE_ATOMIC(uint32_t)data;
+	RTE_ATOMIC(uint32_t) data;
 	struct {
 		uint32_t in_used:1;
 		/* Indicator whether this counter in used or in pool. */
@@ -64,7 +64,7 @@ struct mlx5_hws_cnt {
 	struct flow_counter_stats reset;
 	union mlx5_hws_cnt_state cnt_state;
 	/* This struct is only meaningful when user own this counter. */
-	alignas(RTE_CACHE_LINE_SIZE) RTE_ATOMIC(uint32_t)query_gen_when_free;
+	RTE_ATOMIC(uint32_t) query_gen_when_free;
 	/*
 	 * When PMD own this counter (user put back counter to PMD
 	 * counter pool, i.e), this field recorded value of counter
