@@ -22,9 +22,6 @@
 
 #include "mlx5_defs.h"
 
-/* Save and restore errno around argument evaluation. */
-#define ERRNO_SAFE(x) ((errno = (int []){ errno, ((x), 0) }[0]))
-
 extern int mlx5_logtype;
 
 #define MLX5_NET_LOG_PREFIX "mlx5_net"
