@@ -1550,13 +1550,6 @@ struct rte_flow_template_table {
 		(((func) == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ) || \
 		 ((func) == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ_SORT))
 
-/* extract next protocol type from Ethernet & VLAN headers */
-#define MLX5_ETHER_TYPE_FROM_HEADER(_s, _m, _itm, _prt) do { \
-	(_prt) = ((const struct _s *)(_itm)->mask)->_m;       \
-	(_prt) &= ((const struct _s *)(_itm)->spec)->_m;      \
-	(_prt) = rte_be_to_cpu_16((_prt));                    \
-} while (0)
-
 /* array of valid combinations of RX Hash fields for RSS */
 static const uint64_t mlx5_rss_hash_fields[] = {
 	MLX5_RSS_HASH_IPV4,
