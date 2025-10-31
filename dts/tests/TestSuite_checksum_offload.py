@@ -86,12 +86,17 @@ class TestChecksumOffload(TestSuite):
         testpmd.start()
         self.send_packet_and_capture(packet=packet)
         verbose_output = testpmd.extract_verbose_output(testpmd.stop())
+        is_IP = is_L4 = None
         for packet in verbose_output:
             if packet.dst_mac == id:
-                isIP = PacketOffloadFlag.RTE_MBUF_F_RX_IP_CKSUM_GOOD in packet.ol_flags
-                isL4 = PacketOffloadFlag.RTE_MBUF_F_RX_L4_CKSUM_GOOD in packet.ol_flags
-        self.verify(isL4 == goodL4, "Layer 4 checksum flag did not match expected checksum flag.")
-        self.verify(isIP == goodIP, "IP checksum flag did not match expected checksum flag.")
+                is_IP = PacketOffloadFlag.RTE_MBUF_F_RX_IP_CKSUM_GOOD in packet.ol_flags
+                is_L4 = PacketOffloadFlag.RTE_MBUF_F_RX_L4_CKSUM_GOOD in packet.ol_flags
+        self.verify(
+            is_IP is not None and is_L4 is not None,
+            "Test packet was dropped when it should have been received.",
+        )
+        self.verify(is_L4 == goodL4, "Layer 4 checksum flag did not match expected checksum flag.")
+        self.verify(is_IP == goodIP, "IP checksum flag did not match expected checksum flag.")
 
     def setup_hw_offload(self, testpmd: TestPmdShell) -> None:
         """Sets IP, UDP, and TCP layers to hardware offload.
