@@ -417,10 +417,6 @@ enum mlx5_feature_name {
 
 #define MLX5_FLOW_XCAP_ACTIONS (MLX5_FLOW_ACTION_ENCAP | MLX5_FLOW_ACTION_DECAP)
 
-#ifndef IPPROTO_MPLS
-#define IPPROTO_MPLS 137
-#endif
-
 /* UDP port number for MPLS */
 #define MLX5_UDP_PORT_MPLS 6635
 
