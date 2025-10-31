@@ -12,8 +12,6 @@ enum {
 	MLX5_FS_PATH_MAX = MLX5_DEVX_DEVICE_PNP_SIZE + 1
 };
 
-#define PCI_DRV_FLAGS 0
-
 #define MLX5_NAMESIZE MLX5_FS_NAME_MAX
 
 enum mlx5_sw_parsing_offloads {

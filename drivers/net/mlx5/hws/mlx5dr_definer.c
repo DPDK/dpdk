@@ -6,8 +6,6 @@
 
 #define GTP_PDU_SC	0x85
 #define BAD_PORT	0xBAD
-#define ETH_TYPE_IPV4_VXLAN	0x0800
-#define ETH_TYPE_IPV6_VXLAN	0x86DD
 #define UDP_VXLAN_PORT	4789
 
 #define STE_NO_VLAN	0x0

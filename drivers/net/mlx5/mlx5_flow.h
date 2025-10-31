@@ -144,9 +144,6 @@ enum mlx5_feature_name {
 	MLX5_SAMPLE_ID,
 };
 
-/* Default queue number. */
-#define MLX5_RSSQ_DEFAULT_NUM 16
-
 #define MLX5_FLOW_LAYER_OUTER_L2 (1u << 0)
 #define MLX5_FLOW_LAYER_OUTER_L3_IPV4 (1u << 1)
 #define MLX5_FLOW_LAYER_OUTER_L3_IPV6 (1u << 2)
@@ -352,10 +349,6 @@ enum mlx5_feature_name {
 				MLX5_FLOW_ACTION_OF_PUSH_VLAN)
 
 #define MLX5_FLOW_XCAP_ACTIONS (MLX5_FLOW_ACTION_ENCAP | MLX5_FLOW_ACTION_DECAP)
-
-#ifndef IPPROTO_MPLS
-#define IPPROTO_MPLS 137
-#endif
 
 /* UDP port number for MPLS */
 #define MLX5_UDP_PORT_MPLS 6635
