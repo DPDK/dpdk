@@ -138,6 +138,11 @@ foreach l:libraries
     # use "deps" for internal DPDK dependencies, and "ext_deps" for
     # external package/library requirements
     ext_deps = []
+
+    if ext_libnuma
+        ext_deps += numa_dep
+    endif
+
     deps = []
     if dpdk_conf.has('RTE_LIB_EAL')
         # eal is standard dependency once built
