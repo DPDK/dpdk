@@ -29,8 +29,8 @@ RTE_LOG_REGISTER_DEFAULT(bbdev_null_logtype, NOTICE);
 
 /*  Initialisation params structure that can be used by null BBDEV driver */
 struct bbdev_null_params {
-	int socket_id;  /*< Null BBDEV socket */
-	uint16_t queues_num;  /*< Null BBDEV queues number */
+	int socket_id;
+	uint16_t queues_num;
 };
 
 /* Acceptable params for null BBDEV devices */

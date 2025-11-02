@@ -32,7 +32,7 @@ extern "C" {
 
 enum {
 	RTE_BPF_ETH_F_NONE = 0,
-	RTE_BPF_ETH_F_JIT  = 0x1, /*< use compiled into native ISA code */
+	RTE_BPF_ETH_F_JIT  = 0x1, /**< use compiled into native ISA code */
 };
 
 /**

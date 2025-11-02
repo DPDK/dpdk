@@ -27,8 +27,8 @@
 
 /*  Initialisation params structure that can be used by LA12xx BBDEV driver */
 struct bbdev_la12xx_params {
-	uint8_t queues_num; /*< LA12xx BBDEV queues number */
-	int8_t modem_id; /*< LA12xx modem instance id */
+	uint8_t queues_num;
+	int8_t modem_id;
 };
 
 #define LA12XX_MAX_NB_QUEUES_ARG	"max_nb_queues"

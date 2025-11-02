@@ -987,12 +987,9 @@ get_digest_byte_length(IMB_HASH_ALG algo)
 
 /** AES-NI multi-buffer private session structure */
 struct __rte_cache_aligned aesni_mb_session {
-	IMB_JOB template_job;
-	/*< Template job structure */
-	uint32_t session_id;
-	/*< IPSec MB session ID */
-	pid_t pid;
-	/*< Process ID that created session */
+	IMB_JOB template_job; /* Template job structure */
+	uint32_t session_id; /* IPSec MB session ID */
+	pid_t pid; /* Process ID that created session */
 	struct {
 		uint16_t offset;
 	} iv;

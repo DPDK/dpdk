@@ -13675,8 +13675,8 @@ update_fields(uint8_t *buf, struct rte_flow_item *item, uint16_t next_proto)
 		if (next_proto && ipv6->proto == 0)
 			ipv6->proto = (uint8_t)next_proto;
 		ipv6_vtc_flow = rte_be_to_cpu_32(ipv6->vtc_flow);
-		ipv6_vtc_flow &= 0x0FFFFFFF; /*< reset version bits. */
-		ipv6_vtc_flow |= 0x60000000; /*< set ipv6 version. */
+		ipv6_vtc_flow &= 0x0FFFFFFF; /* reset version bits. */
+		ipv6_vtc_flow |= 0x60000000; /* set ipv6 version. */
 		ipv6->vtc_flow = rte_cpu_to_be_32(ipv6_vtc_flow);
 		break;
 	case RTE_FLOW_ITEM_TYPE_VXLAN:

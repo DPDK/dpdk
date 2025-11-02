@@ -222,7 +222,7 @@ vrb_device_fft_win(struct rte_bbdev *dev)
 			vrb_vf2pf(d, ACC_VF2PF_FFT_WIN_REQUEST | win);
 			reg = acc_reg_read(d, d->reg_addr->pf2vf_doorbell);
 			while ((time_out < ACC_STATUS_TO) && (reg == RTE_BBDEV_DEV_NOSTATUS)) {
-				usleep(ACC_STATUS_WAIT); /*< Wait or VF->PF->VF Comms. */
+				usleep(ACC_STATUS_WAIT); /* Wait or VF->PF->VF Comms. */
 				reg = acc_reg_read(d, d->reg_addr->pf2vf_doorbell);
 				time_out++;
 			}
@@ -386,7 +386,7 @@ vrb_device_status(struct rte_bbdev *dev)
 	vrb_vf2pf(d, ACC_VF2PF_STATUS_REQUEST);
 	reg = acc_reg_read(d, d->reg_addr->pf2vf_doorbell);
 	while ((time_out < ACC_STATUS_TO) && (reg == RTE_BBDEV_DEV_NOSTATUS)) {
-		usleep(ACC_STATUS_WAIT); /*< Wait or VF->PF->VF Comms */
+		usleep(ACC_STATUS_WAIT); /* Wait or VF->PF->VF Comms */
 		reg = acc_reg_read(d, d->reg_addr->pf2vf_doorbell);
 		time_out++;
 	}

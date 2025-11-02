@@ -53,13 +53,13 @@ RTE_LOG_REGISTER_DEFAULT(bbdev_turbo_sw_logtype, NOTICE);
 
 /* private data structure */
 struct bbdev_private {
-	unsigned int max_nb_queues;  /**< Max number of queues */
+	unsigned int max_nb_queues;
 };
 
 /*  Initialisation params structure that can be used by Turbo SW driver */
 struct turbo_sw_params {
-	int socket_id;  /*< Turbo SW device socket */
-	uint16_t queues_num;  /*< Turbo SW device queues number */
+	int socket_id;
+	uint16_t queues_num;
 };
 
 /* Acceptable params for Turbo SW devices */

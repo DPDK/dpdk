@@ -74,7 +74,7 @@ enum hcapi_cfa_dir {
 enum hcapi_cfa_hwops {
 	HCAPI_CFA_HWOPS_PUT,   /**< Write to HW operation */
 	HCAPI_CFA_HWOPS_GET,   /**< Read from HW operation */
-	HCAPI_CFA_HWOPS_ADD,   /*<
+	HCAPI_CFA_HWOPS_ADD,   /**<
 				* For operations which require more then
 				* simple writes to HW, this operation is
 				* used.  The distinction with this operation
@@ -83,12 +83,12 @@ enum hcapi_cfa_hwops {
 				* the HCAPI_CFA_HWOPS_DEL op to remove
 				* the operations issued by the ADD OP.
 				*/
-	HCAPI_CFA_HWOPS_DEL,   /*<
+	HCAPI_CFA_HWOPS_DEL,   /**<
 				*  Beside to delete from the hardware, this
 				*   operation is also undo the add operation
 				*   performed by the HCAPI_CFA_HWOPS_ADD op.
 				*/
-	HCAPI_CFA_HWOPS_EVICT, /*< This operation is used to edit entries from
+	HCAPI_CFA_HWOPS_EVICT, /**< This operation is used to edit entries from
 				*   CFA cache memories. This operation is only
 				*   applicable to tables that use CFA caches.
 				*/

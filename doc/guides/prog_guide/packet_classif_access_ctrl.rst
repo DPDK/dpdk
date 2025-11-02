@@ -41,11 +41,11 @@ To define each field inside an AC rule, the following structure is used:
 .. code-block:: c
 
     struct rte_acl_field_def {
-        uint8_t type;         /*< type - ACL_FIELD_TYPE. */
-        uint8_t size;         /*< size of field 1,2,4, or 8. */
-        uint8_t field_index;  /*< index of field inside the rule. */
-        uint8_t input_index;  /*< 0-N input index. */
-        uint32_t offset;      /*< offset to start of field. */
+        uint8_t type;         /**< type - ACL_FIELD_TYPE. */
+        uint8_t size;         /**< size of field 1,2,4, or 8. */
+        uint8_t field_index;  /**< index of field inside the rule. */
+        uint8_t input_index;  /**< 0-N input index. */
+        uint32_t offset;      /**< offset to start of field. */
     };
 
 *   type
@@ -229,7 +229,7 @@ The structure for the classification is:
         uint8_t ip_proto;
         uint32_t ip_src;
         uint32_t ip_dst;
-        uint8_t tos;      /*< This is partially using a 32-bit input element */
+        uint8_t tos;    /**< This is partially using a 32-bit input element */
     };
 
 The following array of field definitions can be used:

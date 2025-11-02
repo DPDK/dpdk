@@ -20,8 +20,7 @@ static struct rte_ml_dev_global ml_dev_globals = {
  * appended after the mempool structure (in private data).
  */
 struct rte_ml_op_pool_private {
-	uint16_t user_size;
-	/*< Size of private user data with each operation. */
+	uint16_t user_size; /* Size of private user data with each operation. */
 };
 
 RTE_EXPORT_INTERNAL_SYMBOL(rte_ml_dev_pmd_get_dev)

@@ -127,7 +127,7 @@ struct sw_qid {
 	struct sw_fid_t fids[SW_QID_NUM_FIDS];
 
 	/* Track packet order for reordering when needed */
-	struct reorder_buffer_entry *reorder_buffer; /*< pkts await reorder */
+	struct reorder_buffer_entry *reorder_buffer; /* pkts await reorder */
 	struct rob_ring *reorder_buffer_freelist; /* available reorder slots */
 	uint32_t reorder_buffer_index; /* oldest valid reorder buffer entry */
 	uint32_t window_size;          /* Used to wrap reorder_buffer_index */
