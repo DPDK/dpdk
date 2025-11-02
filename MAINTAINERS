@@ -72,7 +72,6 @@ T: git://dpdk.org/next/dpdk-next-dts
 Stable Branches
 M: Luca Boccassi <bluca@debian.org>
 M: Kevin Traynor <ktraynor@redhat.com>
-M: Christian Ehrhardt <christian.ehrhardt@canonical.com>
 M: Xueming Li <xuemingl@nvidia.com>
 T: git://dpdk.org/dpdk-stable
 
@@ -139,7 +138,6 @@ F: devtools/check-meson.py
 
 Public CI
 M: Aaron Conole <aconole@redhat.com>
-M: Michael Santana <maicolgabriel@hotmail.com>
 F: .github/workflows/build.yml
 F: .ci/
 
@@ -160,7 +158,6 @@ Environment Abstraction Layer
 T: git://dpdk.org/dpdk
 
 EAL API and common code
-M: Tyler Retzlaff <roretzla@linux.microsoft.com>
 F: lib/eal/common/
 F: lib/eal/unix/
 F: lib/eal/include/
@@ -392,7 +389,6 @@ F: kernel/freebsd/nic_uio/
 
 Windows support
 M: Dmitry Kozlyuk <dmitry.kozliuk@gmail.com>
-M: Tyler Retzlaff <roretzla@linux.microsoft.com>
 F: lib/eal/windows/
 F: doc/guides/windows_gsg/
 
