@@ -296,9 +296,22 @@ static int nbl_disp_get_mac_addr(void *priv __rte_unused, u8 *mac)
 	return 0;
 }
 
-static int nbl_disp_get_mac_addr_req(void *priv __rte_unused, u8 *mac)
+static int nbl_disp_get_mac_addr_req(void *priv, u8 *mac)
 {
-	rte_eth_random_addr(mac);
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_common_info *common = NBL_DISP_MGT_TO_COMMON(disp_mgt);
+	int ret = -1;
+
+	if (common->nl_socket_route >= 0 && common->ifindex >= 0)
+		ret = nbl_userdev_get_mac_addr(common, mac);
+
+	if (ret) {
+		if (rte_is_zero_ether_addr((struct rte_ether_addr *)common->mac))
+			rte_eth_random_addr(mac);
+		else
+			rte_ether_addr_copy((struct rte_ether_addr *)common->mac,
+					    (struct rte_ether_addr *)mac);
+	}
 
 	return 0;
 }

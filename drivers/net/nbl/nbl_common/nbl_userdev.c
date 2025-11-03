@@ -760,3 +760,43 @@ void nbl_pci_unmap_device(struct nbl_adapter *adapter)
 
 	nbl_mdev_unmap_device(adapter);
 }
+
+static int nbl_userdev_ifreq(int ifindex, int req, struct ifreq *ifr)
+{
+	int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
+	int ret = 0;
+
+	if (sock == -1) {
+		rte_errno = errno;
+		return -rte_errno;
+	}
+
+	if (!if_indextoname(ifindex, &ifr->ifr_name[0]))
+		goto error;
+
+	ret = ioctl(sock, req, ifr);
+	if (ret == -1) {
+		rte_errno = errno;
+		goto error;
+	}
+	close(sock);
+	return 0;
+error:
+	close(sock);
+	return -rte_errno;
+}
+
+int nbl_userdev_get_mac_addr(struct nbl_common_info *common, u8 *mac)
+{
+	struct ifreq request;
+	int ret;
+
+	ret = nbl_userdev_ifreq(common->ifindex, SIOCGIFHWADDR, &request);
+	if (ret) {
+		NBL_LOG(ERR, "userdev get mac failed: %d", ret);
+		return ret;
+	}
+
+	memcpy(mac, request.ifr_hwaddr.sa_data, RTE_ETHER_ADDR_LEN);
+	return 0;
+}

@@ -23,6 +23,7 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <net/if.h>
 
 #include <rte_ethdev.h>
 #include <ethdev_driver.h>
@@ -146,6 +147,7 @@ struct nbl_common_info {
 	u8 dma_set_msb:1;
 	u8 rsv:2;
 	struct nbl_board_port_info board_info;
+	u8 mac[RTE_ETHER_ADDR_LEN];
 };
 
 struct nbl_register_net_param {
@@ -172,6 +174,8 @@ struct nbl_register_net_result {
 	u16 vlan_tci;
 	u32 rate;
 	bool trusted;
+	u64 vlan_features;
+	u64 hw_enc_features;
 };
 
 struct nbl_eth_link_info {

@@ -116,5 +116,6 @@ int nbl_userdev_port_config(struct nbl_adapter *adapter, int start);
 int nbl_userdev_port_isolate(struct nbl_adapter *adapter, int set, struct rte_flow_error *error);
 int nbl_pci_map_device(struct nbl_adapter *adapter);
 void nbl_pci_unmap_device(struct nbl_adapter *adapter);
+int nbl_userdev_get_mac_addr(struct nbl_common_info *common, u8 *mac);
 
 #endif

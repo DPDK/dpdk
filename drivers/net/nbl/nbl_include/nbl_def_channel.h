@@ -322,6 +322,7 @@ struct nbl_chan_param_register_net_info {
 	u16 offset;
 	u16 stride;
 	u64 pf_bar_start;
+	u16 is_vdpa;
 };
 
 struct nbl_chan_param_get_vsi_id {
