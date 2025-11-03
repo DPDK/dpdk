@@ -16,16 +16,16 @@ The following FreeBSD packages are required to build DPDK:
 * meson
 * ninja
 * pkgconf
-* py38-pyelftools
+* py311-pyelftools
 
 .. note::
 
-  The specific package for pyelftools is dependent on the version of python in use,
-  Python 3.8 being the version at type of writing, hence the ``py38`` prefix.
+   The specific package for pyelftools is dependent on the version of python in use,
+   Python 3.11 being the version at type of writing, hence the ``py311`` prefix.
 
 These can be installed using (as root)::
 
-  pkg install meson pkgconf py38-pyelftools
+   pkg install meson pkgconf py311-pyelftools
 
 To compile the required kernel modules for memory management and working
 with physical NIC devices, the kernel sources for FreeBSD also
