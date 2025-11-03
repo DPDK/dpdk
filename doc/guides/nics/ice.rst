@@ -426,6 +426,109 @@ The DCF PMD needs to advertise and acquire DCF capability which allows DCF to
 send AdminQ commands that it would like to execute over to the PF and receive
 responses for the same from PF.
 
+
+Data Center Bridging (DCB) and Priority Flow Control (PFC)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ice PMD supports Data Center Bridging (DCB) and Priority Flow Control (PFC).
+These features enable Quality of Service (QoS) in data center environments by allowing
+traffic classification and prioritization across multiple traffic classes.
+
+DCB Configuration
++++++++++++++++++
+
+DCB can be enabled by configuring the device with ``RTE_ETH_MQ_RX_DCB_FLAG``
+in the Rx mode during device configuration.
+
+The ice PMD supports:
+
+* 4 or 8 traffic classes (TCs)
+* VLAN Priority to Traffic Class mapping
+
+Limitations:
+
+* All TCs are configured with Enhanced Transmission Selection (ETS) with even bandwidth allocation
+* Queues are evenly distributed across configured TCs
+* The number of queues must be evenly divisible by the number of traffic classes
+* The number of queues per TC must be a power of 2
+* Traffic classes must be configured contiguously starting from TC 0
+
+Example DCB configuration in testpmd:
+
+.. code-block:: console
+
+   dpdk-testpmd -a 0000:18:00.0 -- -i --nb-cores=8 --rxq=8 --txq=8
+   port stop 0
+   port config 0 dcb vt off 4 pfc off
+   port start 0
+
+This configures 4 traffic classes with 2 queues per TC.
+
+Example DCB configuration in application code:
+
+.. code-block:: c
+
+   struct rte_eth_conf port_conf = {
+       .rxmode = {
+           .mq_mode = RTE_ETH_MQ_RX_DCB,
+       },
+       .rx_adv_conf = {
+           .dcb_rx_conf = {
+               .nb_tcs = RTE_ETH_4_TCS,
+               .dcb_tc = {0, 1, 2, 3, 0, 1, 2, 3},  /* Map priorities to TCs */
+           },
+       },
+   };
+
+   ret = rte_eth_dev_configure(port_id, nb_rx_queues, nb_tx_queues, &port_conf);
+
+PFC Configuration
++++++++++++++++++
+
+Priority Flow Control (PFC) provides a mechanism to pause and resume traffic
+on individual traffic classes, enabling lossless Ethernet for specific priorities.
+
+PFC can be configured per priority using the ``rte_eth_dev_priority_flow_ctrl_set()`` API.
+Each traffic class can be independently configured with:
+
+* RX pause only
+* TX pause only
+* Full duplex pause
+* No pause (disabled)
+
+PFC operates in VLAN-based mode and requires DCB to be configured first.
+
+Features:
+
+* Per-TC pause control (XON/XOFF)
+* Configurable high/low watermarks for buffer management
+* Configurable pause quanta
+* PFC statistics exposed via xstats
+
+Example PFC configuration in testpmd:
+
+.. code-block:: console
+
+   set pfc_ctrl rx on tx on 100000 50000 65535 0 0
+
+This enables PFC on port 0 priority 0 with high watermark of 100000 bytes,
+low watermark of 50000 bytes, and pause time of 65535.
+
+Example PFC configuration using DPDK API:
+
+.. code-block:: c
+
+   struct rte_eth_pfc_conf pfc_conf;
+
+   pfc_conf.fc.mode = RTE_ETH_FC_FULL;           /* Enable full duplex pause */
+   pfc_conf.fc.high_water = 100000;              /* High watermark in bytes */
+   pfc_conf.fc.low_water = 50000;                /* Low watermark in bytes */
+   pfc_conf.fc.pause_time = 0xFFFF;              /* Pause quanta (in 512 bit-time units) */
+   pfc_conf.priority = 0;                        /* Configure PFC for priority 0 */
+
+   ret = rte_eth_dev_priority_flow_ctrl_set(port_id, &pfc_conf);
+
+
 Forward Error Correction (FEC)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
