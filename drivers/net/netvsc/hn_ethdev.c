@@ -41,6 +41,13 @@
 #include "hn_nvs.h"
 #include "ndis.h"
 
+#ifndef LIST_FOREACH_SAFE
+#define LIST_FOREACH_SAFE(var, head, field, tvar)			\
+	for ((var) = LIST_FIRST((head));				\
+	    (var) && ((tvar) = LIST_NEXT((var), field), 1);		\
+	    (var) = (tvar))
+#endif
+
 #define HN_TX_OFFLOAD_CAPS (RTE_ETH_TX_OFFLOAD_IPV4_CKSUM | \
 			    RTE_ETH_TX_OFFLOAD_TCP_CKSUM  | \
 			    RTE_ETH_TX_OFFLOAD_UDP_CKSUM  | \
@@ -1479,14 +1486,14 @@ out:
 
 static void remove_cache_list(void)
 {
-	struct da_cache *cache;
+	struct da_cache *cache, *tmp;
 
 	rte_spinlock_lock(&netvsc_lock);
 	da_cache_usage--;
 	if (da_cache_usage)
 		goto out;
 
-	LIST_FOREACH(cache, &da_cache_list, list) {
+	LIST_FOREACH_SAFE(cache, &da_cache_list, list, tmp) {
 		LIST_REMOVE(cache, list);
 		free(cache);
 	}
