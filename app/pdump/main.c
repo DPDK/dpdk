@@ -552,6 +552,7 @@ cleanup_pdump_resources(void)
 		}
 
 	}
+	rte_pdump_uninit();
 	cleanup_rings();
 }
 
@@ -821,6 +822,9 @@ enable_pdump(void)
 	int i;
 	struct pdump_tuples *pt;
 	int ret = 0, ret1 = 0;
+
+	if (rte_pdump_init() < 0)
+		rte_exit(EXIT_FAILURE, "pdump init failed\n");
 
 	for (i = 0; i < num_tuples; i++) {
 		pt = &pdump_t[i];
