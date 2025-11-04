@@ -360,9 +360,11 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	unsigned int max;
 	uint16_t max_wqe;
 
+	info->min_mtu = priv->min_mtu;
+	info->max_mtu = priv->max_mtu;
+	info->max_rx_pktlen = info->max_mtu + MLX5_ETH_OVERHEAD;
 	/* FIXME: we should ask the device for these values. */
 	info->min_rx_bufsize = 32;
-	info->max_rx_pktlen = 65536;
 	info->max_lro_pkt_size = MLX5_MAX_LRO_SIZE;
 	/*
 	 * Since we need one CQ per QP, the limit is the minimum number
@@ -862,4 +864,42 @@ mlx5_get_restore_flags(__rte_unused struct rte_eth_dev *dev,
 {
 	/* mlx5 PMD does not require any configuration restore. */
 	return 0;
+}
+
+/**
+ * Query minimum and maximum allowed MTU value on the device.
+ *
+ * This functions will always return valid MTU bounds.
+ * In case platform-specific implementation fails or current platform does not support it,
+ * the fallback default values will be used.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device
+ * @param[out] min_mtu
+ *   Minimum MTU value output buffer.
+ * @param[out] max_mtu
+ *   Maximum MTU value output buffer.
+ */
+void
+mlx5_get_mtu_bounds(struct rte_eth_dev *dev, uint16_t *min_mtu, uint16_t *max_mtu)
+{
+	int ret;
+
+	MLX5_ASSERT(min_mtu != NULL);
+	MLX5_ASSERT(max_mtu != NULL);
+
+	ret = mlx5_os_get_mtu_bounds(dev, min_mtu, max_mtu);
+	if (ret < 0) {
+		if (ret != -ENOTSUP)
+			DRV_LOG(INFO, "port %u failed to query MTU bounds, using fallback values",
+				dev->data->port_id);
+		*min_mtu = MLX5_ETH_MIN_MTU;
+		*max_mtu = MLX5_ETH_MAX_MTU;
+
+		/* This function does not fail. Clear rte_errno. */
+		rte_errno = 0;
+	}
+
+	DRV_LOG(INFO, "port %u minimum MTU is %u", dev->data->port_id, *min_mtu);
+	DRV_LOG(INFO, "port %u maximum MTU is %u", dev->data->port_id, *max_mtu);
 }

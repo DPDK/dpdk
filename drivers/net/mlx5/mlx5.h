@@ -74,6 +74,15 @@
 /* Maximal number of field/field parts to map into sample registers .*/
 #define MLX5_FLEX_ITEM_MAPPING_NUM		32
 
+/* Number of bytes not included in MTU. */
+#define MLX5_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_VLAN_HLEN + RTE_ETHER_CRC_LEN)
+
+/* Minimum allowed MTU to be reported whenever PMD cannot query it from OS. */
+#define MLX5_ETH_MIN_MTU (RTE_ETHER_MIN_MTU)
+
+/* Maximum allowed MTU to be reported whenever PMD cannot query it from OS. */
+#define MLX5_ETH_MAX_MTU (9978)
+
 enum mlx5_ipool_index {
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	MLX5_IPOOL_DECAP_ENCAP = 0, /* Pool for encap/decap resource. */
@@ -1957,6 +1966,8 @@ struct mlx5_priv {
 	unsigned int vlan_filter_n; /* Number of configured VLAN filters. */
 	/* Device properties. */
 	uint16_t mtu; /* Configured MTU. */
+	uint16_t min_mtu; /* Minimum MTU allowed on the NIC. */
+	uint16_t max_mtu; /* Maximum MTU allowed on the NIC. */
 	unsigned int isolated:1; /* Whether isolated mode is enabled. */
 	unsigned int representor:1; /* Device is a port representor. */
 	unsigned int master:1; /* Device is a E-Switch master. */
@@ -2286,6 +2297,7 @@ struct mlx5_priv *mlx5_dev_to_eswitch_info(struct rte_eth_dev *dev);
 int mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev);
 uint64_t mlx5_get_restore_flags(struct rte_eth_dev *dev,
 				enum rte_eth_dev_operation op);
+void mlx5_get_mtu_bounds(struct rte_eth_dev *dev, uint16_t *min_mtu, uint16_t *max_mtu);
 
 /* mlx5_ethdev_os.c */
 
@@ -2323,6 +2335,7 @@ int mlx5_os_get_stats_n(struct rte_eth_dev *dev, bool bond_master,
 			uint16_t *n_stats, uint16_t *n_stats_sec);
 void mlx5_os_stats_init(struct rte_eth_dev *dev);
 int mlx5_get_flag_dropless_rq(struct rte_eth_dev *dev);
+int mlx5_os_get_mtu_bounds(struct rte_eth_dev *dev, uint16_t *min_mtu, uint16_t *max_mtu);
 
 /* mlx5_mac.c */
 
