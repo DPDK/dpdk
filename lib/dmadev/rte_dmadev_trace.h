@@ -120,10 +120,12 @@ RTE_TRACE_POINT(
 
 RTE_TRACE_POINT(
 	rte_dma_trace_access_pair_group_join,
-	RTE_TRACE_POINT_ARGS(int16_t dev_id, int16_t group_id, rte_uuid_t token),
+	RTE_TRACE_POINT_ARGS(int16_t dev_id, rte_uuid_t domain_id, rte_uuid_t token,
+			     int16_t group_id),
 	rte_trace_point_emit_i16(dev_id);
-	rte_trace_point_emit_i16(group_id);
+	rte_trace_point_emit_u8_ptr(&domain_id[0]);
 	rte_trace_point_emit_u8_ptr(&token[0]);
+	rte_trace_point_emit_i16(group_id);
 )
 
 RTE_TRACE_POINT(

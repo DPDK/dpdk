@@ -177,7 +177,7 @@ the :doc:`../howto/telemetry`.
 
 
 Inter-domain DMA Transfers
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------
 
 The inter-domain DMA feature enables DMA devices to perform data transfers
 across different processes and OS domains.
@@ -201,32 +201,52 @@ can perform DMA transfers across processes or OS domains.
 Below is the API usage flow
 for setting up the access pair group for DMA between process#1 and process#2.
 
-Process#1 (Group Creator)
-^^^^^^^^^^^^^^^^^^^^^^^^^
+Each process must generate a unique ``domain_id`` to represent its identity
+(e.g., a process-specific or OS-specific domain identifier).
 
-Calls ``rte_dma_access_pair_group_create`` to establish a new access pair group,
-then shares the ``group_id``, ``token`` and ``domain_id`` with Process#2 via IPC.
+
+Process#1 (Group Creator)
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Generates a unique ``token`` that will be used to secure the access pair group.
+
+* Calls ``rte_dma_access_pair_group_create`` to establish a new access pair group.
+
+* Shares the ``group_id``, ``token`` and its ``domain_id`` details with Process#2
+  via IPC or sideband communication channel.
+
 
 Process#2 (Group Joiner)
-^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-Receives the ``group_id`` and ``token`` from Process#1
-and calls ``rte_dma_access_pair_group_join`` to join the group.
+* Receives the ``group_id``, ``token`` and Process#1's ``domain_id``.
+
+* Passes ``group_id``, ``token`` and its own ``domain_id``
+  to ``rte_dma_access_pair_group_join`` to join the access group.
+
+* Shares its ``domain_id`` details with Process#1
+  via IPC or sideband communication channel.
+
 
 Both Processes
-^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~
 
-Use ``rte_dma_access_pair_group_handler_get`` to obtain ``handler`` information
-for domains in the group.
+* Each process retrieves the ``handler`` information
+  associated with its own or the peer's ``domain_id``
+  using ``rte_dma_access_pair_group_handler_get``.
 
-Perform inter-domain DMA transfers as required.
+* Use these ``handler`` details to setup the virtual channel configuration.
+
+* Perform the inter-domain DMA transfers as required.
+
 
 Process#2 (when finished)
-^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Calls ``rte_dma_access_pair_group_leave`` to exit the group.
+* Calls ``rte_dma_access_pair_group_leave`` to exit the group.
+
 
 Process#1 (final cleanup)
-^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Calls ``rte_dma_access_pair_group_destroy`` to destroy the group.
+* Calls ``rte_dma_access_pair_group_destroy`` to destroy the group.

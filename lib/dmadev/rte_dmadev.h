@@ -868,7 +868,7 @@ typedef void (*rte_dma_access_pair_group_event_cb_t)(int16_t dev_id,
  * @param dev_id
  *   Identifier of the DMA device initiating the group.
  * @param domain_id
- *   Unique identifier representing the process or OS domain.
+ *   Unique identifier representing the current process or OS domain.
  * @param token
  *   Authentication token used to establish the access group.
  * @param[out] group_id
@@ -913,10 +913,12 @@ int rte_dma_access_pair_group_destroy(int16_t dev_id, int16_t group_id);
  *
  * @param dev_id
  *   Identifier of the DMA device attempting to join the group.
- * @param group_id
- *   ID of the access group to join.
+ * @param domain_id
+ *   Unique identifier representing the current process or OS domain.
  * @param token
  *   Authentication token used to validate group membership.
+ * @param group_id
+ *   ID of the access group to join.
  * @param cb
  *   Callback function to be invoked when the device leaves the group
  *   or when the group is destroyed due to some exception or failure.
@@ -926,8 +928,8 @@ int rte_dma_access_pair_group_destroy(int16_t dev_id, int16_t group_id);
  *   negative value on failure indicating the error code.
  */
 __rte_experimental
-int rte_dma_access_pair_group_join(int16_t dev_id, int16_t group_id, rte_uuid_t token,
-				   rte_dma_access_pair_group_event_cb_t cb);
+int rte_dma_access_pair_group_join(int16_t dev_id, rte_uuid_t domain_id, rte_uuid_t token,
+				   int16_t group_id, rte_dma_access_pair_group_event_cb_t cb);
 
 /**
  * Leave an access group, removing the device's entry from the group table

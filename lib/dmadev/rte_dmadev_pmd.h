@@ -75,8 +75,8 @@ typedef int (*rte_dma_access_pair_group_destroy_t)(const struct rte_dma_dev *dev
 						   int16_t group_id);
 
 /** @internal Used to join an access pair group for inter-process or inter-OS DMA transfers. */
-typedef int (*rte_dma_access_pair_group_join_t)(const struct rte_dma_dev *dev, int16_t group_id,
-						rte_uuid_t token,
+typedef int (*rte_dma_access_pair_group_join_t)(const struct rte_dma_dev *dev, rte_uuid_t domain_id,
+						rte_uuid_t token, int16_t group_id,
 						rte_dma_access_pair_group_event_cb_t cb);
 
 /** @internal Used to leave an access pair group, removing the device from the group. */

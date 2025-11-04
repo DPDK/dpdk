@@ -875,8 +875,8 @@ rte_dma_access_pair_group_destroy(int16_t dev_id, int16_t group_id)
 
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dma_access_pair_group_join, 25.11)
 int
-rte_dma_access_pair_group_join(int16_t dev_id, int16_t group_id, rte_uuid_t token,
-			       rte_dma_access_pair_group_event_cb_t cb)
+rte_dma_access_pair_group_join(int16_t dev_id, rte_uuid_t domain_id, rte_uuid_t token,
+			       int16_t group_id, rte_dma_access_pair_group_event_cb_t cb)
 {
 	struct rte_dma_info dev_info;
 	struct rte_dma_dev *dev;
@@ -899,7 +899,7 @@ rte_dma_access_pair_group_join(int16_t dev_id, int16_t group_id, rte_uuid_t toke
 
 	if (*dev->dev_ops->access_pair_group_join == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->access_pair_group_join)(dev, group_id, token, cb);
+	return (*dev->dev_ops->access_pair_group_join)(dev, domain_id, token, group_id, cb);
 }
 
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dma_access_pair_group_leave, 25.11)
