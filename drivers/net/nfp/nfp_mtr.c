@@ -12,6 +12,13 @@
 #include "flower/nfp_flower_representor.h"
 #include "nfp_logs.h"
 
+#ifndef LIST_FOREACH_SAFE
+#define	LIST_FOREACH_SAFE(var, head, field, tvar)			\
+	for ((var) = LIST_FIRST((head));				\
+	    (var) && ((tvar) = LIST_NEXT((var), field), 1);		\
+	    (var) = (tvar))
+#endif
+
 #define NFP_MAX_POLICY_CNT             NFP_MAX_MTR_CNT
 #define NFP_MAX_PROFILE_CNT            NFP_MAX_MTR_CNT
 
@@ -1124,10 +1131,10 @@ nfp_mtr_priv_init(struct nfp_pf_dev *pf_dev)
 void
 nfp_mtr_priv_uninit(struct nfp_pf_dev *pf_dev)
 {
-	struct nfp_mtr *mtr;
+	struct nfp_mtr *mtr, *tmp_mtr;
 	struct nfp_mtr_priv *priv;
-	struct nfp_mtr_policy *mtr_policy;
-	struct nfp_mtr_profile *mtr_profile;
+	struct nfp_mtr_policy *mtr_policy, *tmp_policy;
+	struct nfp_mtr_profile *mtr_profile, *tmp_profile;
 	struct nfp_app_fw_flower *app_fw_flower;
 
 	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(pf_dev->app_fw_priv);
@@ -1135,17 +1142,17 @@ nfp_mtr_priv_uninit(struct nfp_pf_dev *pf_dev)
 
 	rte_eal_alarm_cancel(nfp_mtr_stats_request, (void *)app_fw_flower);
 
-	LIST_FOREACH(mtr, &priv->mtrs, next) {
+	LIST_FOREACH_SAFE(mtr, &priv->mtrs, next, tmp_mtr) {
 		LIST_REMOVE(mtr, next);
 		rte_free(mtr);
 	}
 
-	LIST_FOREACH(mtr_profile, &priv->profiles, next) {
+	LIST_FOREACH_SAFE(mtr_profile, &priv->profiles, next, tmp_profile) {
 		LIST_REMOVE(mtr_profile, next);
 		rte_free(mtr_profile);
 	}
 
-	LIST_FOREACH(mtr_policy, &priv->policies, next) {
+	LIST_FOREACH_SAFE(mtr_policy, &priv->policies, next, tmp_policy) {
 		LIST_REMOVE(mtr_policy, next);
 		rte_free(mtr_policy);
 	}
