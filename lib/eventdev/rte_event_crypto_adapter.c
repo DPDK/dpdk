@@ -1457,7 +1457,7 @@ crypto_adapter_cap_check(struct event_crypto_adapter *adapter)
 						&caps);
 	if (ret) {
 		RTE_EDEV_LOG_ERR("Failed to get adapter caps dev %" PRIu8
-			" cdev %" PRIu8, adapter->eventdev_id,
+			" cdev %" PRIu16, adapter->eventdev_id,
 			adapter->next_cdev_id);
 		return ret;
 	}
@@ -1589,7 +1589,7 @@ rte_event_crypto_adapter_vector_limits_get(
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 
 	if (!rte_cryptodev_is_valid_dev(cdev_id)) {
-		RTE_EDEV_LOG_ERR("Invalid dev_id=%" PRIu8, cdev_id);
+		RTE_EDEV_LOG_ERR("Invalid dev_id=%" PRIu16, cdev_id);
 		return -EINVAL;
 	}
 
@@ -1610,7 +1610,7 @@ rte_event_crypto_adapter_vector_limits_get(
 
 	if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_EVENT_VECTOR)) {
 		RTE_EDEV_LOG_ERR("Event vectorization is not supported,"
-				 "dev %" PRIu8 " cdev %" PRIu8, dev_id, cdev_id);
+				 "dev %" PRIu8 " cdev %" PRIu16, dev_id, cdev_id);
 		return -ENOTSUP;
 	}
 
