@@ -27,6 +27,8 @@ RTE_LOG_REGISTER_DEFAULT(pdump_logtype, NOTICE);
 /* Used for the multi-process communication */
 #define PDUMP_MP	"mp_pdump"
 
+#define PDUMP_BURST_SIZE	32
+
 /* Overly generous timeout for secondary to respond */
 #define MP_TIMEOUT_S 5
 
@@ -135,20 +137,22 @@ pdump_cb_release(struct pdump_rxtx_cbs *cbs)
 
 /* Create a clone of mbuf to be placed into ring. */
 static void
-pdump_copy(uint16_t port_id, uint16_t queue,
-	   enum rte_pcapng_direction direction,
-	   struct rte_mbuf **pkts, uint16_t nb_pkts,
-	   const struct pdump_rxtx_cbs *cbs,
-	   struct rte_pdump_stats *stats)
+pdump_copy_burst(uint16_t port_id, uint16_t queue_id,
+		 enum rte_pcapng_direction direction,
+		 struct rte_mbuf **pkts, uint16_t nb_pkts,
+		 const struct pdump_rxtx_cbs *cbs,
+		 struct rte_pdump_stats *stats)
 {
 	unsigned int i;
 	int ring_enq;
 	uint16_t d_pkts = 0;
-	struct rte_mbuf *dup_bufs[nb_pkts];
+	struct rte_mbuf *dup_bufs[PDUMP_BURST_SIZE]; /* duplicated packets */
 	struct rte_ring *ring;
 	struct rte_mempool *mp;
 	struct rte_mbuf *p;
-	uint64_t rcs[nb_pkts];
+	uint64_t rcs[PDUMP_BURST_SIZE];		     /* filter result */
+
+	RTE_ASSERT(nb_pkts <= PDUMP_BURST_SIZE);
 
 	if (cbs->filter)
 		rte_bpf_exec_burst(cbs->filter, (void **)pkts, rcs, nb_pkts);
@@ -173,8 +177,7 @@ pdump_copy(uint16_t port_id, uint16_t queue,
 		 * otherwise a simple copy.
 		 */
 		if (cbs->ver == V2)
-			p = rte_pcapng_copy(port_id, queue,
-					    pkts[i], mp, cbs->snaplen,
+			p = rte_pcapng_copy(port_id, queue_id, pkts[i], mp, cbs->snaplen,
 					    direction, NULL);
 		else
 			p = rte_pktmbuf_copy(pkts[i], mp, 0, cbs->snaplen);
@@ -185,6 +188,9 @@ pdump_copy(uint16_t port_id, uint16_t queue,
 			dup_bufs[d_pkts++] = p;
 	}
 
+	if (unlikely(d_pkts == 0))
+		return;
+
 	rte_atomic_fetch_add_explicit(&stats->accepted, d_pkts, rte_memory_order_relaxed);
 
 	ring_enq = rte_ring_enqueue_burst(ring, (void *)&dup_bufs[0], d_pkts, NULL);
@@ -194,6 +200,24 @@ pdump_copy(uint16_t port_id, uint16_t queue,
 		rte_atomic_fetch_add_explicit(&stats->ringfull, drops, rte_memory_order_relaxed);
 		rte_pktmbuf_free_bulk(&dup_bufs[ring_enq], drops);
 	}
+}
+
+/* Create a clone of mbuf to be placed into ring. */
+static void
+pdump_copy(uint16_t port_id, uint16_t queue_id,
+	   enum rte_pcapng_direction direction,
+	   struct rte_mbuf **pkts, uint16_t nb_pkts,
+	   const struct pdump_rxtx_cbs *cbs,
+	   struct rte_pdump_stats *stats)
+{
+	uint16_t offs = 0;
+
+	do {
+		uint16_t n = RTE_MIN(nb_pkts - offs, PDUMP_BURST_SIZE);
+
+		pdump_copy_burst(port_id, queue_id, direction, &pkts[offs], n, cbs, stats);
+		offs += n;
+	} while (offs < nb_pkts);
 }
 
 static uint16_t
