@@ -87,4 +87,7 @@ __rte_internal
 int mlx5_nl_devlink_esw_multiport_get(int nlsk_fd, int family_id,
 				      const char *pci_addr, int *enable);
 
+__rte_internal
+int mlx5_nl_get_mtu_bounds(int nl, unsigned int ifindex, uint16_t *min_mtu, uint16_t *max_mtu);
+
 #endif /* RTE_PMD_MLX5_NL_H_ */

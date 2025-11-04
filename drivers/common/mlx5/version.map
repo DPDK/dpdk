@@ -142,6 +142,7 @@ INTERNAL {
 	mlx5_nl_vf_mac_addr_modify; # WINDOWS_NO_EXPORT
 	mlx5_nl_vlan_vmwa_create; # WINDOWS_NO_EXPORT
 	mlx5_nl_vlan_vmwa_delete; # WINDOWS_NO_EXPORT
+	mlx5_nl_get_mtu_bounds; # WINDOWS_NO_EXPORT
 
 	mlx5_os_umem_dereg;
 	mlx5_os_umem_reg;
