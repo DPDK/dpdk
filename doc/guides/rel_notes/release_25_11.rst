@@ -202,6 +202,11 @@ New Features
   It is now possible to register an RCU QSBR object
   to handle graceful deletion of table groups.
 
+* **Added packet capture (pdump) for secondary process.**
+
+  Added multi-process support to allow packets sent and received
+  by secondary process to be visible in packet capture.
+
 * **Allow overriding the automatic usage/help generation in argparse library.**
 
   The argparse library now supports overriding the automatic help text generation,
