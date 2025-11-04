@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!-- Copyright (c) 2025 Stephen Hemminger -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Created with ChatGPT  -->
+
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1080" viewBox="0 0 1200 1080">
+  <defs>
+    <marker id="arrowBlue" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+      <polygon points="0,0 12,4 0,8" fill="#0066cc"/>
+    </marker>
+    <marker id="arrowThinBlue" markerWidth="10" markerHeight="6" refX="9" refY="3" orient="auto">
+      <polygon points="0,0 10,3 0,6" fill="#3399ff"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+      <polygon points="0,0 12,4 0,8" fill="#cc0000"/>
+    </marker>
+    <marker id="arrowThinRed" markerWidth="10" markerHeight="6" refX="9" refY="3" orient="auto">
+      <polygon points="0,0 10,3 0,6" fill="#ff3333"/>
+    </marker>
+    <style>
+      .lane-title { font: 700 20px system-ui, sans-serif; fill: #234; }
+      .lifeline { stroke: #9db3cc; stroke-dasharray: 6 6; stroke-width: 2; }
+      .step { fill: #fff; stroke: #517fa4; stroke-width: 1.5; rx: 8; ry: 8; }
+      .step text, .note text { font: 13px ui-monospace, monospace; fill: #102030; }
+      .note { fill: #fff9e6; stroke: #d9b54a; stroke-width: 1.2; rx: 8; ry: 8; }
+      .msg-blue { stroke: #0066cc; stroke-width: 2.2; marker-end: url(#arrowBlue); fill: none; }
+      .msg-thin-blue { stroke: #3399ff; stroke-width: 2; marker-end: url(#arrowThinBlue); fill: none; }
+      .msg-red { stroke: #cc0000; stroke-width: 2.2; marker-end: url(#arrowRed); fill: none; }
+      .msg-thin-red { stroke: #ff3333; stroke-width: 2; marker-end: url(#arrowThinRed); fill: none; }
+      .label { font: 14px ui-monospace, monospace; fill: #0d2238; }
+      .small { font-size: 12px; fill: #334b63; }
+    </style>
+  </defs>
+
+  <!-- Lanes -->
+  <rect x="30" y="20" width="340" height="1040" fill="#e6f0ff" stroke="#8aa4c2" stroke-width="2" rx="20" ry="20"/>
+  <text class="lane-title" x="200" y="52" text-anchor="middle">Capture Process</text>
+  <rect x="430" y="20" width="340" height="1040" fill="#e8f8e8" stroke="#8aa4c2" stroke-width="2" rx="20" ry="20"/>
+  <text class="lane-title" x="600" y="52" text-anchor="middle">Primary Process</text>
+  <rect x="830" y="20" width="340" height="1040" fill="#f9f9f9" stroke="#8aa4c2" stroke-width="2" rx="20" ry="20"/>
+  <text class="lane-title" x="1000" y="52" text-anchor="middle">Secondary Processes</text>
+
+  <!-- Lifelines -->
+  <line class="lifeline" x1="200" y1="70" x2="200" y2="1040"/>
+  <line class="lifeline" x1="600" y1="70" x2="600" y2="1040"/>
+  <line class="lifeline" x1="1000" y1="70" x2="1000" y2="1040"/>
+
+  <!-- Startup -->
+  <g transform="translate(80,90)">
+    <rect class="step" x="0" y="0" width="240" height="40"/>
+    <text x="12" y="25" class="label">rte_eal_init()</text>
+    <rect class="step" x="0" y="52" width="240" height="40"/>
+    <text x="12" y="77" class="label">rte_pdump_init()</text>
+  </g>
+  <g transform="translate(480,90)">
+    <rect class="step" x="0" y="0" width="240" height="40"/>
+    <text x="12" y="25" class="label">rte_eal_init()</text>
+    <rect class="step" x="0" y="52" width="240" height="40"/>
+    <text x="12" y="77" class="label">rte_pdump_init()</text>
+  </g>
+  <g transform="translate(880,90)">
+    <rect class="step" x="0" y="0" width="240" height="40"/>
+    <text x="12" y="25" class="label">rte_eal_init()</text>
+    <rect class="step" x="0" y="52" width="240" height="40"/>
+    <text x="12" y="77" class="label">rte_pdump_init()</text>
+  </g>
+
+  <!-- Enable sequence (Blue) -->
+  <line class="msg-blue" x1="200" y1="220" x2="600" y2="220"/>
+  <text class="label" x="400" y="212" text-anchor="middle">rte_pdump_enable()</text>
+  <rect class="note" x="260" y="230" width="280" height="36"/>
+  <text x="274" y="253" class="small">uses rte_mp_request() to message primary</text>
+
+  <g transform="translate(480,280)">
+    <rect class="step" x="0" y="0" width="240" height="96"/>
+    <text x="12" y="24" class="label">pdump_server()</text>
+    <text x="20" y="46" class="small">• enable RX/TX callbacks</text>
+    <text x="20" y="64" class="small">• send ACK to capture</text>
+    <text x="20" y="82" class="small">• forward request to all secondaries</text>
+  </g>
+  <line class="msg-thin-blue" x1="600" y1="330" x2="200" y2="330"/>
+  <text class="label" x="400" y="322" text-anchor="middle">ACK</text>
+  <line class="msg-blue" x1="600" y1="380" x2="1000" y2="380"/>
+  <text class="label" x="800" y="372" text-anchor="middle">forward enable request</text>
+
+  <g transform="translate(880,420)">
+    <rect class="step" x="0" y="0" width="240" height="78"/>
+    <text x="12" y="22" class="label">pdump_server()</text>
+    <text x="20" y="42" class="small">• register RX/TX callbacks</text>
+    <text x="20" y="60" class="small">• send response</text>
+  </g>
+  <line class="msg-thin-blue" x1="1000" y1="520" x2="600" y2="520"/>
+  <text class="label" x="800" y="512" text-anchor="middle">response</text>
+
+  <g transform="translate(480,560)">
+    <rect class="step" x="0" y="0" width="240" height="56"/>
+    <text x="12" y="24" class="label">collect responses</text>
+    <text x="12" y="44" class="small">from secondary processes</text>
+  </g>
+
+  <!-- Packet capture running -->
+  <g transform="translate(480,640)">
+    <rect class="step" x="-300" y="0" width="840" height="50"/>
+    <text x="120" y="30" class="label" text-anchor="middle">Packet capture in progress...</text>
+  </g>
+
+  <!-- Shutdown sequence (Red) -->
+  <line class="msg-red" x1="200" y1="720" x2="600" y2="720"/>
+  <text class="label" x="400" y="712" text-anchor="middle">rte_pdump_disable()</text>
+
+  <g transform="translate(480,760)">
+    <rect class="step" x="0" y="0" width="240" height="80"/>
+    <text x="12" y="24" class="label">pdump_server()</text>
+    <text x="20" y="46" class="small">• remove RX/TX callbacks</text>
+    <text x="20" y="64" class="small">• forward disable to secondaries</text>
+  </g>
+
+  <line class="msg-red" x1="600" y1="820" x2="1000" y2="820"/>
+  <text class="label" x="800" y="812" text-anchor="middle">forward disable request</text>
+
+  <g transform="translate(880,860)">
+    <rect class="step" x="0" y="0" width="240" height="60"/>
+    <text x="12" y="24" class="label">pdump_server()</text>
+    <text x="20" y="46" class="small">• remove RX/TX callbacks</text>
+  </g>
+
+  <line class="msg-thin-red" x1="1000" y1="940" x2="600" y2="940"/>
+  <text class="label" x="800" y="932" text-anchor="middle">response</text>
+
+  <g transform="translate(480,980)">
+    <rect class="step" x="0" y="0" width="240" height="40"/>
+    <text x="12" y="25" class="label">collect disable responses</text>
+  </g>
+</svg>

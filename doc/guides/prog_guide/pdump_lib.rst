@@ -4,90 +4,150 @@
 Packet Capture Library
 ======================
 
-The DPDK ``pdump`` library provides a framework for packet capturing in DPDK.
-The library does the complete copy of the Rx and Tx mbufs to a new mempool and
-hence it slows down the performance of the applications, so it is recommended
-to use this library for debugging purposes.
+The DPDK ``pdump`` library provides a framework
+for capturing packets within DPDK applications.
+It enables a **secondary process** to monitor packets
+being processed by both **primary** or **secondary** processes.
 
-The library uses a generic multi process channel to facilitate communication
-between primary and secondary process for enabling/disabling packet capture on
-ports.
 
-The library provides the following APIs to initialize the packet capture framework, to enable
-or disable the packet capture, and to uninitialize it.
+Overview
+--------
 
-* ``rte_pdump_init()``:
-  This API initializes the packet capture framework.
+The library uses a multi-process channel
+to facilitate communication between the primary and secondary processes.
+This mechanism allows enabling or disabling packet capture
+on specific ports or queues.
 
-* ``rte_pdump_enable()``:
-  This API enables the packet capture on a given port and queue.
+.. _figure_pdump_overview:
 
-* ``rte_pdump_enable_bpf()``
-  This API enables the packet capture on a given port and queue.
-  It also allows setting an optional filter using DPDK BPF interpreter
-  and setting the captured packet length.
+.. figure:: img/pdump_overview.*
 
-* ``rte_pdump_enable_by_deviceid()``:
-  This API enables the packet capture on a given device id (``vdev name or pci address``) and queue.
+   Packet Capture enable and disable sequence
 
-* ``rte_pdump_enable_bpf_by_deviceid()``
-  This API enables the packet capture on a given device id (``vdev name or pci address``) and queue.
-  It also allows setting an optional filter using DPDK BPF interpreter
-  and setting the captured packet length.
 
-* ``rte_pdump_disable()``:
-  This API disables the packet capture on a given port and queue.
+API Reference
+-------------
 
-* ``rte_pdump_disable_by_deviceid()``:
-  This API disables the packet capture on a given device id (``vdev name or pci address``) and queue.
+The library exposes API for:
 
-* ``rte_pdump_uninit()``:
-  This API uninitializes the packet capture framework.
+* Initializing and uninitializing the packet capture framework.
+* Enabling and disabling packet capture.
+* Applying optional filters and limiting captured packet length.
+
+
+.. function:: int rte_pdump_init(void)
+
+   Initialize the packet capture framework.
+
+.. function:: int rte_pdump_enable(uint16_t port_id, uint16_t queue, uint32_t flags)
+
+   Enable packet capture on the specified port and queue.
+
+.. function:: int rte_pdump_enable_bpf(uint16_t port_id, uint16_t queue, const struct rte_bpf_program *bpf, uint32_t snaplen)
+
+   Enable packet capture on the specified port and queue
+   with an optional BPF packet filter
+   and a limit on the captured packet length.
+
+.. function:: int rte_pdump_enable_by_deviceid(const char *device_id, uint16_t queue, uint32_t flags)
+
+   Enable packet capture on the specified device ID (``vdev`` name or PCI address)
+   and queue.
+
+.. function:: int rte_pdump_enable_bpf_by_deviceid(const char *device_id, uint16_t queue, const struct rte_bpf_program *bpf, uint32_t snaplen)
+
+   Enable packet capture on the specified device ID (``vdev`` name or PCI address)
+   and queue, with optional filtering and captured packet length limit.
+
+.. function:: int rte_pdump_disable(uint16_t port_id, uint16_t queue)
+
+   Disable packet capture on the specified port and queue.
+   This applies to the current process and all other processes.
+
+.. function:: int rte_pdump_disable_by_deviceid(const char *device_id, uint16_t queue)
+
+   Disable packet capture on the specified device ID (``vdev`` name or PCI address)
+   and queue.
+
+.. function:: int rte_pdump_uninit(void)
+
+   Uninitialize the packet capture framework for this process.
+
+.. function:: int rte_pdump_stats(uint16_t port_id, struct rte_dump_stats *stats)
+
+   Reports the number of packets captured, filtered, and missed.
+   Packets maybe missed due to mbuf pool being exhausted or the ring being full.
 
 
 Operation
 ---------
 
-The primary process using ``librte_pdump`` is responsible for initializing the packet
-capture framework. The packet capture framework, as part of its initialization, creates the
-multi process channel to facilitate communication with secondary process, so the
-secondary process ``app/pdump`` tool is responsible for enabling and disabling the packet capture on ports.
+All processes using ``librte_pdump`` must initialize
+the packet capture framework before use.
+This initialization is required in both the primary and secondary processes.
+
+DPDK provides the following utilities that use this library:
+
+* ``dpdk-dumpcap``
+* ``dpdk-pdump``
+
 
 Implementation Details
 ----------------------
 
-The library API ``rte_pdump_init()``, initializes the packet capture framework by creating the multi process
-channel using ``rte_mp_action_register()`` API. The primary process will listen to secondary process requests
-to enable or disable the packet capture over the multi process channel.
+``rte_pdump_init()`` creates the multi-process channel
+by calling ``rte_mp_action_register()``.
 
-The library APIs ``rte_pdump_enable()`` and ``rte_pdump_enable_by_deviceid()`` enables the packet capture.
-For the calls to these APIs from secondary process, the library creates the "pdump enable" request and sends
-the request to the primary process over the multi process channel. The primary process takes this request
-and enables the packet capture by registering the Ethernet RX and TX callbacks for the given port or device_id
-and queue combinations. Then the primary process will mirror the packets to the new mempool and enqueue them to
-the rte_ring that secondary process have passed to these APIs.
+The primary process listens for requests from secondary processes
+to enable or disable packet capture over the multi-process channel.
 
-The packet ring supports one of two formats.
-The default format enqueues copies of the original packets into the rte_ring.
-If the ``RTE_PDUMP_FLAG_PCAPNG`` is set, the mbuf data is extended
-with header and trailer to match the format of Pcapng enhanced packet block.
-The enhanced packet block has meta-data such as the timestamp, port and queue
-the packet was captured on.
-It is up to the application consuming the packets from the ring
-to select the format desired.
+When a secondary process calls ``rte_pdump_enable()``
+or ``rte_pdump_enable_by_deviceid()``,
+the library sends a "pdump enable" request
+to the primary process.
+The primary process then:
 
-The library APIs ``rte_pdump_disable()`` and ``rte_pdump_disable_by_deviceid()`` disables the packet capture.
-For the calls to these APIs from secondary process, the library creates the "pdump disable" request and sends
-the request to the primary process over the multi process channel. The primary process takes this request and
-disables the packet capture by removing the Ethernet RX and TX callbacks for the given port or device_id and
-queue combinations.
-
-The library API ``rte_pdump_uninit()``, uninitializes the packet capture framework by calling ``rte_mp_action_unregister()``
-function.
+#. Receives the request over the multi-process channel.
+#. Registers Ethernet Rx and Tx callbacks for the specified port.
+#. Forwards the request to other secondary processes (if any).
 
 
-Use Case: Packet Capturing
---------------------------
+FAQ
+---
 
-The DPDK ``app/dpdk-dumpcap`` utility uses this library
-to capture packets in DPDK.
+What is the performance impact of pdump?
+
+   Setting up pdump with ``rte_pdump_init`` has no impact,
+   there are no changes in the fast path.
+   When pdump is enabled, the Tx and Rx fast path functions
+   callbacks make a copy of the mbufs and enqueue them.
+   This will impact performance.
+   The effect can be reduced by filtering
+   to only see the packets of interest
+   and using the ``snaplen`` parameter to only copy the needed headers.
+
+What happens if process does not call pdump init?
+
+   If application does not call ``rte_pdump_init``
+   then the request to enable (in the capture command)
+   will timeout and an error is returned.
+
+Where do packets go?
+
+   Packets captured are placed in the ring passed in ``rte_pdump_enable``.
+   The capture application must dequeue these mbuf's and free them.
+
+Why is copy required?
+
+   A copy is used instead of incrementing the reference count
+   because on transmit the device may be using fast free which does not use refcounts;
+   and on receive the application may modify the incoming packet.
+
+What about offloads?
+
+   The offload flags of the original mbuf are copied to the ring.
+   It is up to the capture application to handle flags like VLAN stripping
+   as necessary.
+   Packets are captured before passing to driver and hardware
+   so the actual packet on the wire may be segmented or encapsulated
+   based on the offload flags.
