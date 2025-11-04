@@ -426,12 +426,12 @@ rte_rawdev_start(uint16_t dev_id)
 	struct rte_rawdev *dev;
 	int diag;
 
-	RTE_RDEV_DEBUG("Start dev_id=%" PRIu8, dev_id);
+	RTE_RDEV_DEBUG("Start dev_id=%" PRIu16, dev_id);
 
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 	if (dev->started != 0) {
-		RTE_RDEV_ERR("Device with dev_id=%" PRIu8 "already started",
+		RTE_RDEV_ERR("Device with dev_id=%" PRIu16 "already started",
 			     dev_id);
 		return 0;
 	}
@@ -454,13 +454,13 @@ rte_rawdev_stop(uint16_t dev_id)
 {
 	struct rte_rawdev *dev;
 
-	RTE_RDEV_DEBUG("Stop dev_id=%" PRIu8, dev_id);
+	RTE_RDEV_DEBUG("Stop dev_id=%" PRIu16, dev_id);
 
 	RTE_RAWDEV_VALID_DEVID_OR_RET(dev_id);
 	dev = &rte_rawdevs[dev_id];
 
 	if (dev->started == 0) {
-		RTE_RDEV_ERR("Device with dev_id=%" PRIu8 "already stopped",
+		RTE_RDEV_ERR("Device with dev_id=%" PRIu16 "already stopped",
 			dev_id);
 		return;
 	}
