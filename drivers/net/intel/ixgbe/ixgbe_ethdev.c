@@ -2797,6 +2797,11 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 			allowed_speeds = RTE_ETH_LINK_SPEED_10M |
 				RTE_ETH_LINK_SPEED_100M | RTE_ETH_LINK_SPEED_1G;
 		break;
+	case ixgbe_mac_E610:
+		allowed_speeds = RTE_ETH_LINK_SPEED_100M | RTE_ETH_LINK_SPEED_1G |
+			RTE_ETH_LINK_SPEED_2_5G | RTE_ETH_LINK_SPEED_5G |
+			RTE_ETH_LINK_SPEED_10G;
+		break;
 	default:
 		allowed_speeds = RTE_ETH_LINK_SPEED_100M | RTE_ETH_LINK_SPEED_1G |
 			RTE_ETH_LINK_SPEED_10G;
