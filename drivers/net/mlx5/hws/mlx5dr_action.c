@@ -832,16 +832,11 @@ int mlx5dr_action_root_build_attr(struct mlx5dr_rule_action rule_actions[],
 			attr[i].type = MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
 			attr[i].action = action->flow_action;
 			break;
-#ifdef HAVE_IBV_FLOW_DEVX_COUNTERS
+#ifdef HAVE_MLX5DV_FLOW_ACTION_COUNTERS_DEVX_WITH_OFFSET
 		case MLX5DR_ACTION_TYP_CTR:
-			attr[i].type = MLX5DV_FLOW_ACTION_COUNTERS_DEVX;
-			attr[i].obj = action->devx_obj;
-
-			if (rule_actions[i].counter.offset) {
-				DR_LOG(ERR, "Counter offset not supported over root");
-				rte_errno = ENOTSUP;
-				return rte_errno;
-			}
+			attr[i].type = MLX5DV_FLOW_ACTION_COUNTERS_DEVX_WITH_OFFSET;
+			attr[i].bulk_obj.obj = action->devx_obj;
+			attr[i].bulk_obj.offset = rule_actions[i].counter.offset;
 			break;
 #endif
 		default:
@@ -1708,6 +1703,13 @@ mlx5dr_action_create_counter(struct mlx5dr_context *ctx,
 	if (mlx5dr_action_is_hws_flags(flags) &&
 	    mlx5dr_action_is_root_flags(flags)) {
 		DR_LOG(ERR, "Same action cannot be used for root and non root");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
+	if (mlx5dr_action_is_root_flags(flags) &&
+	    !mlx5dr_action_counter_root_is_supported()) {
+		DR_LOG(ERR, "Counter action is not supported on root");
 		rte_errno = ENOTSUP;
 		return NULL;
 	}

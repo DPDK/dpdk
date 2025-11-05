@@ -738,6 +738,20 @@ mlx5dr_action_create_counter(struct mlx5dr_context *ctx,
 			     struct mlx5dr_devx_obj *obj,
 			     uint32_t flags);
 
+/* Check if counter action on root table is supported.
+ *
+ * @return true if counter action on root table is supported.
+ */
+static inline bool
+mlx5dr_action_counter_root_is_supported(void)
+{
+#ifdef HAVE_MLX5DV_FLOW_ACTION_COUNTERS_DEVX_WITH_OFFSET
+	return true;
+#else
+	return false;
+#endif
+}
+
 /* Create direct rule reformat action.
  *
  * @param[in] ctx
