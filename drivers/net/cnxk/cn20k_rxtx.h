@@ -106,7 +106,7 @@ struct __rte_packed_begin cn20k_sec_sess_priv {
 			uint16_t partial_len : 10;
 			uint16_t chksum : 2;
 			uint16_t dec_ttl : 1;
-			uint16_t nixtx_off : 1;
+			uint16_t cpt_cq_ena : 1;
 			uint16_t rsvd : 2;
 		};
 

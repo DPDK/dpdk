@@ -678,6 +678,18 @@ Runtime Config Options for inline device
    With the above configuration, driver would poll for soft expiry events every
    1000 usec.
 
+- ``CPT completion queue enable for outbound expiry packet`` (default ``0``)
+
+   CPT completion queue can be enabled for outbound expiry packet processing
+   by specifying ``cpt_cq_ena`` devargs parameter.
+
+   For example::
+
+      -a 0002:1d:00.0,cpt_cq_ena=1
+
+   With the above configuration, CPT completion queue will be enabled
+   for outbound expiry packet handling on the inline device.
+
 - ``Rx Inject Enable inbound inline IPsec for second pass`` (default ``0``)
 
    Rx packet inject feature for inbound inline IPsec processing can be enabled

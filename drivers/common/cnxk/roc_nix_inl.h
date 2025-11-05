@@ -213,6 +213,7 @@ int __roc_api roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr,
 void __roc_api roc_nix_inl_outb_cpt_lfs_dump(struct roc_nix *roc_nix, FILE *file);
 uint64_t __roc_api roc_nix_inl_eng_caps_get(struct roc_nix *roc_nix);
 void *__roc_api roc_nix_inl_dev_qptr_get(uint8_t qid);
+uint8_t __roc_api roc_nix_inl_is_cq_ena(struct roc_nix *roc_nix);
 
 enum roc_nix_cpt_lf_stats_type {
 	ROC_NIX_CPT_LF_STATS_INL_DEV,

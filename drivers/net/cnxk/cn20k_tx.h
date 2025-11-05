@@ -444,14 +444,15 @@ cn20k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 	uint32_t pkt_len, dlen_adj, rlen;
 	uint8_t l3l4type, chksum;
 	uint64x2_t cmd01, cmd23;
+	uint64_t sa, cpt_cq_ena;
 	uint8_t l2_len, l3_len;
 	uintptr_t dptr, nixtx;
 	uint64_t ucode_cmd[4];
 	uint64_t *laddr, w0;
 	uint16_t tag;
-	uint64_t sa;
 
 	sess_priv.u64 = *rte_security_dynfield(m);
+	cpt_cq_ena = sess_priv.cpt_cq_ena;
 
 	if (flags & NIX_TX_NEED_SEND_HDR_W1) {
 		/* Extract l3l4type either from il3il4type or ol3ol4type */
@@ -530,7 +531,7 @@ cn20k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 	cmd01 = vdupq_n_u64(0);
 	cmd01 = vsetq_lane_u64(w0, cmd01, 0);
 	/* CPT_RES_S is 16B above NIXTX */
-	cmd01 = vsetq_lane_u64(nixtx - 16, cmd01, 1);
+	cmd01 = vsetq_lane_u64((nixtx - 16) | cpt_cq_ena << 63, cmd01, 1);
 
 	/* Return nixtx addr */
 	*nixtx_addr = nixtx;
@@ -577,15 +578,16 @@ cn20k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr, uin
 	uint8_t l3l4type, chksum;
 	uint64x2_t cmd01, cmd23;
 	union nix_send_sg_s *sg;
+	uint64_t sa, cpt_cq_ena;
 	uint8_t l2_len, l3_len;
 	uintptr_t dptr, nixtx;
 	uint64_t ucode_cmd[4];
 	uint64_t *laddr, w0;
 	uint16_t tag;
-	uint64_t sa;
 
 	/* Move to our line from base */
 	sess_priv.u64 = *rte_security_dynfield(m);
+	cpt_cq_ena = sess_priv.cpt_cq_ena;
 	send_hdr = (struct nix_send_hdr_s *)cmd;
 	if (flags & NIX_TX_NEED_EXT_HDR)
 		sg = (union nix_send_sg_s *)&cmd[4];
@@ -668,7 +670,8 @@ cn20k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr, uin
 	cmd01 = vdupq_n_u64(0);
 	cmd01 = vsetq_lane_u64(w0, cmd01, 0);
 	/* CPT_RES_S is 16B above NIXTX */
-	cmd01 = vsetq_lane_u64(nixtx - 16, cmd01, 1);
+	/* CQ_ENA for cpt */
+	cmd01 = vsetq_lane_u64((nixtx - 16) | cpt_cq_ena << 63, cmd01, 1);
 
 	/* Return nixtx addr */
 	*nixtx_addr = nixtx;

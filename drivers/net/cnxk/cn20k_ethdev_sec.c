@@ -664,6 +664,9 @@ cn20k_eth_sec_outb_sa_misc_fill(struct roc_nix *roc_nix, struct roc_ow_ipsec_out
 {
 	uint64_t *ring_base, ring_addr;
 
+	if (roc_nix_inl_is_cq_ena(roc_nix))
+		goto done;
+
 	if (ipsec_xfrm->life.bytes_soft_limit | ipsec_xfrm->life.packets_soft_limit) {
 		ring_base = roc_nix_inl_outb_ring_base_get(roc_nix);
 		if (ring_base == NULL)
@@ -674,6 +677,7 @@ cn20k_eth_sec_outb_sa_misc_fill(struct roc_nix *roc_nix, struct roc_ow_ipsec_out
 		sa->ctx.err_ctl.s.address = ring_addr >> 3;
 		sa->w0.s.ctx_id = ((uintptr_t)sa_cptr >> 51) & 0x1ff;
 	}
+done:
 	return 0;
 }
 
@@ -909,8 +913,7 @@ cn20k_eth_sec_session_create(void *device, struct rte_security_session_conf *con
 		sess_priv.chksum =
 			(!ipsec->options.ip_csum_enable << 1 | !ipsec->options.l4_csum_enable);
 		sess_priv.dec_ttl = ipsec->options.dec_ttl;
-		if (roc_feature_nix_has_inl_ipsec_mseg() && dev->outb.cpt_eng_caps & BIT_ULL(35))
-			sess_priv.nixtx_off = 1;
+		sess_priv.cpt_cq_ena = roc_nix_inl_is_cq_ena(&dev->nix);
 
 		/* Pointer from eth_sec -> outb_sa */
 		eth_sec->sa = outb_sa;
@@ -1106,9 +1109,8 @@ cn20k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 		sess_priv.chksum =
 			(!ipsec->options.ip_csum_enable << 1 | !ipsec->options.l4_csum_enable);
 		sess_priv.dec_ttl = ipsec->options.dec_ttl;
-		if (roc_feature_nix_has_inl_ipsec_mseg() && dev->outb.cpt_eng_caps & BIT_ULL(35))
-			sess_priv.nixtx_off = 1;
 
+		sess_priv.cpt_cq_ena = roc_nix_inl_is_cq_ena(&dev->nix);
 		rc = roc_nix_inl_ctx_write(&dev->nix, outb_sa_dptr, eth_sec->sa, eth_sec->inb,
 					   sizeof(struct roc_ow_ipsec_outb_sa));
 		if (rc)

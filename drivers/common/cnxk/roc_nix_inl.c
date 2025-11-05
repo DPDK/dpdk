@@ -2563,3 +2563,21 @@ roc_nix_inl_custom_meta_pool_cb_register(roc_nix_inl_custom_meta_pool_cb_t cb)
 {
 	custom_meta_pool_cb = cb;
 }
+
+uint8_t
+roc_nix_inl_is_cq_ena(struct roc_nix *roc_nix)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev;
+
+	PLT_SET_USED(roc_nix);
+	if (idev != NULL) {
+		inl_dev = idev->nix_inl_dev;
+		if (inl_dev)
+			return inl_dev->cpt_cq_ena;
+		else
+			return 0;
+	} else {
+		return 0;
+	}
+}
