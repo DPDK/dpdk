@@ -1588,7 +1588,7 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 		lf->pci_dev = nix->pci_dev;
 
 		/* Setup CPT LF instruction queue */
-		rc = cpt_lf_init(lf);
+		rc = cpt_lf_init(lf, false);
 		if (rc) {
 			plt_err("Failed to initialize CPT LF, rc=%d", rc);
 			goto lf_fini;
@@ -1678,7 +1678,7 @@ skip_sa_alloc:
 
 lf_fini:
 	for (j = i - 1; j >= 0; j--)
-		cpt_lf_fini(&lf_base[j]);
+		cpt_lf_fini(&lf_base[j], false);
 	plt_free(lf_base);
 lf_free:
 	rc |= cpt_lfs_free(dev);
@@ -1705,7 +1705,7 @@ roc_nix_inl_outb_fini(struct roc_nix *roc_nix)
 
 	/* Cleanup CPT LF instruction queue */
 	for (i = 0; i < nix->nb_cpt_lf; i++)
-		cpt_lf_fini(&lf_base[i]);
+		cpt_lf_fini(&lf_base[i], false);
 
 	/* Free LF resources */
 	rc = cpt_lfs_free(dev);

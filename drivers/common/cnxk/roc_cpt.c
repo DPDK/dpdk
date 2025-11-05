@@ -44,7 +44,7 @@ cpt_lf_misc_intr_enb_dis(struct roc_cpt_lf *lf, bool enb)
 			    lf->rbase + CPT_LF_MISC_INT_ENA_W1C);
 }
 
-static void
+void
 cpt_lf_misc_irq(void *param)
 {
 	struct roc_cpt_lf *lf = (struct roc_cpt_lf *)param;
@@ -70,7 +70,7 @@ cpt_lf_misc_irq(void *param)
 }
 
 static int
-cpt_lf_register_misc_irq(struct roc_cpt_lf *lf)
+cpt_lf_register_misc_irq(struct roc_cpt_lf *lf, misc_irq_cb_t misc_cb)
 {
 	struct plt_pci_device *pci_dev = lf->pci_dev;
 	struct plt_intr_handle *handle;
@@ -82,7 +82,7 @@ cpt_lf_register_misc_irq(struct roc_cpt_lf *lf)
 	/* Clear err interrupt */
 	cpt_lf_misc_intr_enb_dis(lf, false);
 	/* Set used interrupt vectors */
-	rc = dev_irq_register(handle, cpt_lf_misc_irq, lf, vec);
+	rc = dev_irq_register(handle, misc_cb, lf, vec);
 	/* Enable all dev interrupt except for RQ_DISABLED */
 	cpt_lf_misc_intr_enb_dis(lf, true);
 
@@ -90,7 +90,7 @@ cpt_lf_register_misc_irq(struct roc_cpt_lf *lf)
 }
 
 static void
-cpt_lf_unregister_misc_irq(struct roc_cpt_lf *lf)
+cpt_lf_unregister_misc_irq(struct roc_cpt_lf *lf, misc_irq_cb_t misc_cb)
 {
 	struct plt_pci_device *pci_dev = lf->pci_dev;
 	struct plt_intr_handle *handle;
@@ -101,7 +101,7 @@ cpt_lf_unregister_misc_irq(struct roc_cpt_lf *lf)
 	vec = lf->msixoff + CPT_LF_INT_VEC_MISC;
 	/* Clear err interrupt */
 	cpt_lf_misc_intr_enb_dis(lf, false);
-	dev_irq_unregister(handle, cpt_lf_misc_irq, lf, vec);
+	dev_irq_unregister(handle, misc_cb, lf, vec);
 }
 
 static void
@@ -134,7 +134,7 @@ cpt_lf_done_irq(void *param)
 }
 
 static int
-cpt_lf_register_done_irq(struct roc_cpt_lf *lf)
+cpt_lf_register_done_irq(struct roc_cpt_lf *lf, done_irq_cb_t done_cb)
 {
 	struct plt_pci_device *pci_dev = lf->pci_dev;
 	struct plt_intr_handle *handle;
@@ -148,7 +148,7 @@ cpt_lf_register_done_irq(struct roc_cpt_lf *lf)
 	cpt_lf_done_intr_enb_dis(lf, false);
 
 	/* Set used interrupt vectors */
-	rc = dev_irq_register(handle, cpt_lf_done_irq, lf, vec);
+	rc = dev_irq_register(handle, done_cb, lf, vec);
 
 	/* Enable done interrupt */
 	cpt_lf_done_intr_enb_dis(lf, true);
@@ -157,7 +157,7 @@ cpt_lf_register_done_irq(struct roc_cpt_lf *lf)
 }
 
 static void
-cpt_lf_unregister_done_irq(struct roc_cpt_lf *lf)
+cpt_lf_unregister_done_irq(struct roc_cpt_lf *lf, done_irq_cb_t done_cb)
 {
 	struct plt_pci_device *pci_dev = lf->pci_dev;
 	struct plt_intr_handle *handle;
@@ -169,11 +169,11 @@ cpt_lf_unregister_done_irq(struct roc_cpt_lf *lf)
 
 	/* Clear done interrupt */
 	cpt_lf_done_intr_enb_dis(lf, false);
-	dev_irq_unregister(handle, cpt_lf_done_irq, lf, vec);
+	dev_irq_unregister(handle, done_cb, lf, vec);
 }
 
-static int
-cpt_lf_register_irqs(struct roc_cpt_lf *lf)
+int
+cpt_lf_register_irqs(struct roc_cpt_lf *lf, misc_irq_cb_t misc_cb, done_irq_cb_t done_cb)
 {
 	int rc;
 
@@ -184,22 +184,22 @@ cpt_lf_register_irqs(struct roc_cpt_lf *lf)
 	}
 
 	/* Register lf err interrupt */
-	rc = cpt_lf_register_misc_irq(lf);
+	rc = cpt_lf_register_misc_irq(lf, misc_cb);
 	if (rc)
 		plt_err("Error registering IRQs");
 
-	rc = cpt_lf_register_done_irq(lf);
+	rc = cpt_lf_register_done_irq(lf, done_cb);
 	if (rc)
 		plt_err("Error registering IRQs");
 
 	return rc;
 }
 
-static void
-cpt_lf_unregister_irqs(struct roc_cpt_lf *lf)
+void
+cpt_lf_unregister_irqs(struct roc_cpt_lf *lf, misc_irq_cb_t misc_cb, done_irq_cb_t done_cb)
 {
-	cpt_lf_unregister_misc_irq(lf);
-	cpt_lf_unregister_done_irq(lf);
+	cpt_lf_unregister_misc_irq(lf, misc_cb);
+	cpt_lf_unregister_done_irq(lf, done_cb);
 }
 
 static void
@@ -688,7 +688,7 @@ cpt_get_blkaddr(struct dev *dev)
 }
 
 int
-cpt_lf_init(struct roc_cpt_lf *lf)
+cpt_lf_init(struct roc_cpt_lf *lf, bool skip_register_irq)
 {
 	struct dev *dev = lf->dev;
 	uint64_t blkaddr;
@@ -713,9 +713,11 @@ cpt_lf_init(struct roc_cpt_lf *lf)
 	/* Initialize instruction queue */
 	cpt_iq_init(lf);
 
-	rc = cpt_lf_register_irqs(lf);
-	if (rc)
-		goto disable_iq;
+	if (!skip_register_irq) {
+		rc = cpt_lf_register_irqs(lf, cpt_lf_misc_irq, cpt_lf_done_irq);
+		if (rc)
+			goto disable_iq;
+	}
 
 	return 0;
 
@@ -736,7 +738,7 @@ roc_cpt_lf_init(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf)
 	lf->msixoff = cpt->lf_msix_off[lf->lf_id];
 	lf->pci_dev = cpt->pci_dev;
 
-	rc = cpt_lf_init(lf);
+	rc = cpt_lf_init(lf, false);
 	if (rc)
 		return rc;
 
@@ -946,10 +948,11 @@ roc_cpt_iq_reset(struct roc_cpt_lf *lf)
 }
 
 void
-cpt_lf_fini(struct roc_cpt_lf *lf)
+cpt_lf_fini(struct roc_cpt_lf *lf, bool skip_register_irq)
 {
 	/* Unregister IRQ's */
-	cpt_lf_unregister_irqs(lf);
+	if (!skip_register_irq)
+		cpt_lf_unregister_irqs(lf, cpt_lf_misc_irq, cpt_lf_done_irq);
 
 	/* Disable IQ */
 	roc_cpt_iq_disable(lf);
@@ -980,7 +983,7 @@ roc_cpt_lf_fini(struct roc_cpt_lf *lf)
 	if (lf == NULL)
 		return;
 	lf->roc_cpt->lf[lf->lf_id] = NULL;
-	cpt_lf_fini(lf);
+	cpt_lf_fini(lf, false);
 }
 
 int

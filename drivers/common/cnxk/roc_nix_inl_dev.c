@@ -451,7 +451,7 @@ nix_inl_cpt_setup(struct nix_inl_dev *inl_dev, bool inl_dev_sso)
 		lf->msixoff = inl_dev->cpt_msixoff[i];
 		lf->pci_dev = inl_dev->pci_dev;
 
-		rc = cpt_lf_init(lf);
+		rc = cpt_lf_init(lf, false);
 		if (rc) {
 			plt_err("Failed to initialize CPT LF, rc=%d", rc);
 			goto lf_free;
@@ -477,7 +477,7 @@ nix_inl_cpt_setup(struct nix_inl_dev *inl_dev, bool inl_dev_sso)
 	return 0;
 lf_fini:
 	for (i = 0; i < inl_dev->nb_cptlf; i++)
-		cpt_lf_fini(&inl_dev->cpt_lf[i]);
+		cpt_lf_fini(&inl_dev->cpt_lf[i], false);
 lf_free:
 	rc |= cpt_lfs_free(dev);
 	return rc;
@@ -501,7 +501,7 @@ nix_inl_cpt_release(struct nix_inl_dev *inl_dev)
 
 	/* Cleanup CPT LF queue */
 	for (i = 0; i < inl_dev->nb_cptlf; i++)
-		cpt_lf_fini(&inl_dev->cpt_lf[i]);
+		cpt_lf_fini(&inl_dev->cpt_lf[i], false);
 
 	/* Free LF resources */
 	rc = cpt_lfs_free(dev);
