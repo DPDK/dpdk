@@ -647,6 +647,8 @@ for an additional list of options shared with other mlx5 drivers.
 
   - 3, this engages tunnel offload mode. In E-Switch configuration, that
     mode implicitly activates ``dv_xmeta_en=1``.
+    Tunnel offload is not supported in synchronous flow API
+    when using :ref:`HW steering <mlx5_hws>`.
 
   - 4, this mode is only supported in :ref:`HW steering <mlx5_hws>`.
     The Rx/Tx metadata with 32b width copy between FDB and NIC is supported.
@@ -1367,6 +1369,13 @@ Reconfiguring HW steering engine is not supported.
 Any subsequent call to ``rte_flow_configure()`` with different configuration
 than initially provided will be rejected.
 
+.. note::
+
+   The application must call ``rte_flow_configure()``
+   before creating any flow rules
+   when using :ref:`asynchronous flow API <flow_async_api>`.
+   It is also recommended for synchronous API.
+
 Limitations
 ^^^^^^^^^^^
 
@@ -1403,6 +1412,41 @@ Limitations
    c. Any encapsulation action, including the combination of RAW_ENCAP and RAW_DECAP actions
       which results in L3 encap.
    d. Only in transfer (switchdev) mode.
+
+#. When using synchronous flow API,
+   the following limitations and considerations apply:
+
+   - There are limitations on size of match fields.
+     Exceeding these limitations will result in an error,
+     unlike other flow engines (``dv_flow_en`` < 2)
+     that handle this by creating a tree of rules.
+
+   - When updating a rule by inserting a new one and deleting the old one,
+     for non-zero group, after adding the new rule,
+     and before the deletion of the old rule, the new rule will be matched,
+     contrary to the behavior in other flow engines (``dv_flow_en`` < 2)
+     in which the old rule will be matched.
+
+   - By default, the port is configured with zeroed ``rte_flow_port_attr``:
+     there are zero flow queues (one is created by default),
+     no actions, and no flags set.
+     The default flow queue size for ``rte_flow_queue_attr`` is 32
+     (used for the internal flow queue).
+     If the application uses any configurable actions
+     (such as meter, age, conntrack or counter),
+     the system will allocate the maximum number of available actions per port.
+     To optimize memory usage,
+     the application should call ``rte_flow_configure``
+     and specify only the required number of actions.
+     If the application needs to modify flow queue settings,
+     it should also use ``rte_flow_configure``.
+
+   - When creating a rule with a partial `mask` provided in the flow item,
+     the `spec` value must be calculated after the "AND" operation with the `mask`.
+     If more significant bits are present in the `spec` than in the `mask`,
+     the rule will be created without any error
+     but the packets will not hit as expected.
+     Such limitation will be removed in future.
 
 
 .. _mlx5_bifurcated:
@@ -2355,6 +2399,14 @@ Limitations
    restricts the ``port_id`` configuration to only accept the value ``0xffff``,
    indicating the E-Switch manager.
 
+#. When using synchronous flow API with :ref:`HW steering <mlx5_hws>`:
+
+   - ``RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR`` is not supported.
+     ``RTE_FLOW_ITEM_TYPE_TX_QUEUE`` can be used with a rule for each queue.
+   - Transfer rules are not supported on representor ports.
+   - Rules created on proxy ports without explicit represented port matching
+     will match packets from all ports.
+
 Examples
 ^^^^^^^^
 
@@ -2543,6 +2595,10 @@ DPDK       19.05         18.11
 
 Limitations
 ^^^^^^^^^^^
+
+#. When using synchronous flow API with :ref:`HW steering <mlx5_hws>`,
+   ``RTE_FLOW_ITEM_TYPE_MARK`` (16-bit match) is unsupported.
+   ``RTE_FLOW_ITEM_TYPE_META`` (32-bit match) can be used as an alternative.
 
 #. ``RTE_FLOW_ACTION_TYPE_MARK`` can be used in transfer flow rules,
    since firmware version xx.43.1014,
@@ -2759,6 +2815,9 @@ With :ref:`HW steering <mlx5_hws>`,
      in addition to flow rules using only age (without count action).
    - ``nb_aging_objects`` is the number of flow rules containing age action.
 
+#. When using synchronous flow API with :ref:`HW steering <mlx5_hws>`,
+   aged flows are reported only once.
+
 #. With strict queueing enabled
    (``RTE_FLOW_PORT_FLAG_STRICT_QUEUE`` passed to ``rte_flow_configure()``),
    indirect age actions can be created only through asynchronous flow API.
@@ -2891,9 +2950,11 @@ Limitations
    it cannot be used by flow matching all ports.
 
 #. When using :ref:`HW steering <mlx5_hws>`,
-   only meter mark action is supported.
+   only ``RTE_FLOW_ACTION_TYPE_METER_MARK`` is supported,
+   not ``RTE_FLOW_ACTION_TYPE_METER``.
 
 #. The maximal number of HW quota and HW meter objects is ``16e6``.
+
 
 Examples
 ^^^^^^^^
@@ -3757,6 +3818,12 @@ Requirements
 ^^^^^^^^^^^^
 
 Matching on checksum and sequence needs MLNX_OFED 5.6+.
+
+Limitations
+^^^^^^^^^^^
+
+#. When using synchronous flow API with :ref:`HW steering <mlx5_hws>`,
+   matching the field ``c_rsvd0_ver`` is not supported on group 0 (root table).
 
 
 .. _mlx5_nvgre:
