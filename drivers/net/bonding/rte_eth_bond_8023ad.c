@@ -1183,6 +1183,14 @@ bond_mode_8023ad_mac_address_update(struct rte_eth_dev *bond_dev)
 			continue;
 
 		rte_ether_addr_copy(&internals->mode4.mac_addr, &slave->actor.system);
+
+		/* Update physical NIC hardware MAC address to match bonding device. */
+		if (rte_eth_dev_default_mac_addr_set(slave_id, &internals->mode4.mac_addr) != 0) {
+			RTE_BOND_LOG(ERR,
+				"Failed to update MAC address on member port %u",
+				slave_id);
+		}
+
 		/* Do nothing if this port is not an aggregator. In other case
 		 * Set NTT flag on every port that use this aggregator. */
 		if (slave->aggregator_port_id != slave_id)
