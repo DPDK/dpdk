@@ -30,7 +30,8 @@ int cpt_lf_init(struct roc_cpt_lf *lf, bool skip_register_irq);
 void cpt_lf_fini(struct roc_cpt_lf *lf, bool skip_register_irq);
 int cpt_lf_register_irqs(struct roc_cpt_lf *lf, misc_irq_cb_t misc_cb, done_irq_cb_t done_cb);
 void cpt_lf_unregister_irqs(struct roc_cpt_lf *lf, misc_irq_cb_t misc_cb, done_irq_cb_t done_cb);
-void cpt_lf_cq_init(struct roc_cpt_lf *lf);
+int cpt_lf_cq_init(struct roc_cpt_lf *lf);
+void cpt_lf_cq_fini(struct roc_cpt_lf *lf);
 void cpt_lf_misc_irq(void *params);
 
 int cpt_lf_outb_cfg(struct dev *dev, uint16_t sso_pf_func, uint16_t nix_pf_func,

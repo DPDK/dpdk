@@ -24,6 +24,7 @@
 #define CPT_LF_MAX_NB_DESC	128000
 #define CPT_LF_DEFAULT_NB_DESC	1024
 #define CPT_LF_FC_MIN_THRESHOLD 32
+#define CQ_ENTRY_SIZE_UNIT	32
 
 static struct cpt_int_cb {
 	roc_cpt_int_misc_cb_t cb;
@@ -688,6 +689,37 @@ cpt_get_blkaddr(struct dev *dev)
 }
 
 int
+cpt_lf_cq_init(struct roc_cpt_lf *lf)
+{
+	union cpt_lf_cq_size lf_cq_size = {.u = 0x0};
+	union cpt_lf_cq_base lf_cq_base = {.u = 0x0};
+	uint8_t max_cq_entry_size = 0x3;
+	uintptr_t addr;
+	uint32_t len;
+
+	if (!lf->cq_size || lf->cq_entry_size > max_cq_entry_size)
+		return -EINVAL;
+
+	/* Disable CPT completion queue */
+	roc_cpt_cq_disable(lf);
+
+	/* Set command queue base address */
+	len = PLT_ALIGN(lf->cq_size * (CQ_ENTRY_SIZE_UNIT << lf->cq_entry_size), ROC_ALIGN);
+	lf->cq_vaddr = plt_zmalloc(len, ROC_ALIGN);
+	if (lf->cq_vaddr == NULL)
+		return -ENOMEM;
+
+	addr = (uintptr_t)lf->cq_vaddr;
+
+	lf_cq_base.s.addr = addr >> 7;
+	plt_write64(lf_cq_base.u, lf->rbase + CPT_LF_CQ_BASE);
+	lf_cq_size.s.size = PLT_ALIGN(len, ROC_ALIGN);
+	plt_write64(lf_cq_size.u, lf->rbase + CPT_LF_CQ_SIZE);
+
+	return 0;
+}
+
+int
 cpt_lf_init(struct roc_cpt_lf *lf, bool skip_register_irq)
 {
 	struct dev *dev = lf->dev;
@@ -713,14 +745,22 @@ cpt_lf_init(struct roc_cpt_lf *lf, bool skip_register_irq)
 	/* Initialize instruction queue */
 	cpt_iq_init(lf);
 
-	if (!skip_register_irq) {
-		rc = cpt_lf_register_irqs(lf, cpt_lf_misc_irq, cpt_lf_done_irq);
+	if (lf->cpt_cq_ena) {
+		rc = cpt_lf_cq_init(lf);
 		if (rc)
 			goto disable_iq;
 	}
 
+	if (!skip_register_irq) {
+		rc = cpt_lf_register_irqs(lf, cpt_lf_misc_irq, cpt_lf_done_irq);
+		if (rc)
+			goto disable_cq;
+	}
+
 	return 0;
 
+disable_cq:
+	cpt_lf_cq_fini(lf);
 disable_iq:
 	roc_cpt_iq_disable(lf);
 	plt_free(iq_mem);
@@ -954,6 +994,7 @@ cpt_lf_fini(struct roc_cpt_lf *lf, bool skip_register_irq)
 	if (!skip_register_irq)
 		cpt_lf_unregister_irqs(lf, cpt_lf_misc_irq, cpt_lf_done_irq);
 
+	cpt_lf_cq_fini(lf);
 	/* Disable IQ */
 	roc_cpt_iq_disable(lf);
 	roc_cpt_iq_reset(lf);
@@ -961,6 +1002,17 @@ cpt_lf_fini(struct roc_cpt_lf *lf, bool skip_register_irq)
 	/* Free memory */
 	plt_free(lf->iq_vaddr);
 	lf->iq_vaddr = NULL;
+}
+
+void
+cpt_lf_cq_fini(struct roc_cpt_lf *lf)
+{
+	if (!lf->cpt_cq_ena)
+		return;
+
+	roc_cpt_cq_disable(lf);
+	plt_free(lf->cq_vaddr);
+	lf->cq_vaddr = NULL;
 }
 
 void
@@ -1072,6 +1124,26 @@ roc_cpt_eng_grp_add(struct roc_cpt *roc_cpt, enum cpt_eng_type eng_type)
 exit:
 	mbox_put(mbox);
 	return ret;
+}
+
+void
+roc_cpt_cq_enable(struct roc_cpt_lf *lf)
+{
+	union cpt_lf_cq_ctl lf_cq_ctl = {.u = 0x0};
+
+	lf_cq_ctl.s.ena = 1;
+	lf_cq_ctl.s.dq_ack_ena = lf->dq_ack_ena;
+	lf_cq_ctl.s.entry_size = lf->cq_entry_size;
+	lf_cq_ctl.s.cq_all = lf->cq_all;
+	plt_write64(lf_cq_ctl.u, lf->rbase + CPT_LF_CQ_CTL);
+}
+
+void
+roc_cpt_cq_disable(struct roc_cpt_lf *lf)
+{
+	union cpt_lf_cq_ctl lf_cq_ctl = {.u = 0x0};
+
+	plt_write64(lf_cq_ctl.u, lf->rbase + CPT_LF_CQ_CTL);
 }
 
 void
