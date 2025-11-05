@@ -1600,6 +1600,8 @@ flow_hw_meter_mark_compile(struct rte_eth_dev *dev,
 		return -1;
 	aso_mtr = flow_hw_meter_mark_alloc(dev, queue, action, job, true);
 	if (!aso_mtr) {
+		if (queue == MLX5_HW_INV_QUEUE)
+			queue = CTRL_QUEUE_ID(priv);
 		flow_hw_job_put(priv, job, queue);
 		return -1;
 	}
