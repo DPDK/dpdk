@@ -38,8 +38,9 @@ NIC / DPU          total bandwidth max ports PCIe        embedded CPU
 **ConnectX-6 Dx**  200 Gb/s        2         Gen4        --
 **BlueField-2**    200 Gb/s        2         Gen4        A72 x8
 **ConnectX-7**     400 Gb/s        4         Gen5        --
-**ConnectX-8**     400 Gb/s        4         Gen6        --
 **BlueField-3**    400 Gb/s        2         Gen5        A78 x16
+**ConnectX-8**     400 Gb/s        4         Gen6        --
+**ConnectX-9**     800 Gb/s        4         Gen6        --
 ================== =============== ========= =========== ============
 
 The details of models and specifications can be found on the website
@@ -232,9 +233,9 @@ for an additional list of options shared with other mlx5 drivers.
   Supported on:
 
   - x86_64 with ConnectX-4, ConnectX-4 Lx, ConnectX-5, ConnectX-6, ConnectX-6 Dx,
-    ConnectX-6 Lx, ConnectX-7, ConnectX-8, BlueField-2, and BlueField-3.
+    ConnectX-6 Lx, ConnectX-7, ConnectX-8, ConnectX-9, BlueField-2, and BlueField-3.
   - POWER9 and ARMv8 with ConnectX-4 Lx, ConnectX-5, ConnectX-6, ConnectX-6 Dx,
-    ConnectX-6 Lx, ConnectX-7, ConnectX-8, BlueField-2, and BlueField-3.
+    ConnectX-6 Lx, ConnectX-7, ConnectX-8, ConnectX-9, BlueField-2, and BlueField-3.
 
 - ``rxq_pkt_pad_en`` parameter [int]
 
@@ -247,9 +248,9 @@ for an additional list of options shared with other mlx5 drivers.
   Supported on:
 
   - x86_64 with ConnectX-4, ConnectX-4 Lx, ConnectX-5, ConnectX-6, ConnectX-6 Dx,
-    ConnectX-6 Lx, ConnectX-7, ConnectX-8, BlueField-2, and BlueField-3.
+    ConnectX-6 Lx, ConnectX-7, ConnectX-8, ConnectX-9, BlueField-2, and BlueField-3.
   - POWER8 and ARMv8 with ConnectX-4 Lx, ConnectX-5, ConnectX-6, ConnectX-6 Dx,
-    ConnectX-6 Lx, ConnectX-7, ConnectX-8, BlueField-2, and BlueField-3.
+    ConnectX-6 Lx, ConnectX-7, ConnectX-8, ConnectX-9, BlueField-2, and BlueField-3.
 
 .. _mlx5_delay_drop_param:
 

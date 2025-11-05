@@ -205,6 +205,7 @@ Supported Devices
 * NVIDIA\ |reg| ConnectX\ |reg|-6 200G MCX654106A-HCAT (2x200G)
 * NVIDIA\ |reg| ConnectX\ |reg|-6 Dx
 * NVIDIA\ |reg| ConnectX\ |reg|-7
+* NVIDIA\ |reg| ConnectX\ |reg|-9 SuperNIC
 * NVIDIA\ |reg| BlueField\ |reg|-2 DPU
 * NVIDIA\ |reg| BlueField\ |reg|-3 DPU/SuperNIC
 
@@ -232,6 +233,7 @@ FW Prerequisites
 - xx.32.0108 for ConnectX-6 Dx and BlueField-2.
 - xx.36.xxxx for ConnectX-7 and BlueField-3.
 - 40.44.1036 for ConnectX-8.
+- 82.47.xxxx for ConnectX-9.
 - xx.37.3010 for BlueField-3 and newer for AES-GCM.
 
 Linux Prerequisites

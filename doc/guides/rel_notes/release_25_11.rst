@@ -119,6 +119,10 @@ New Features
 
   Added the PMD for Nebulamatrix NICs.
 
+* **Updated NVIDIA mlx5 driver.**
+
+  * Added support for NVIDIA ConnectX-9 SuperNIC adapters.
+
 * **Updated NXP DPAA2 ethernet driver.**
 
   * Enabled software taildrop for ordered queues.
