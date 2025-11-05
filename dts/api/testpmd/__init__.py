@@ -93,6 +93,9 @@ def _requires_started_ports(func: TestPmdMethod) -> TestPmdMethod:
 
     Args:
         func: The :class:`TestPmd` method to decorate.
+
+    Raises:
+        InteractiveCommandExecutionError: If the ports has been started but a port link will not come up.
     """
 
     @functools.wraps(func)
@@ -100,6 +103,12 @@ def _requires_started_ports(func: TestPmdMethod) -> TestPmdMethod:
         if not self.ports_started:
             self._logger.debug("Ports need to be started to continue.")
             self.start_all_ports()
+        if get_ctx().topology.type is not LinkTopology.NO_LINK:
+            for port in self.ports:
+                if not self.wait_link_status_up(port.id):
+                    raise InteractiveCommandExecutionError(
+                        f"Port {port.id} link failed to come up."
+                    )
 
         return func(self, *args, **kwargs)
 
@@ -265,7 +274,7 @@ class TestPmd(DPDKShell):
             port_info = self.send_command(f"show port info {port_id}")
             if "Link status: up" in port_info:
                 break
-            time.sleep(0.5)
+            time.sleep(0.25)
         else:
             self._logger.error(f"The link for port {port_id} did not come up in the given timeout.")
         return "Link status: up" in port_info
