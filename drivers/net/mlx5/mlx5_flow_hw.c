@@ -10549,13 +10549,16 @@ flow_hw_action_handle_destroy(struct rte_eth_dev *dev, uint32_t queue,
 			break;
 		}
 		/* Wait for ASO object completion. */
-		if (queue == MLX5_HW_INV_QUEUE &&
-		    mlx5_aso_mtr_wait(priv, aso_mtr, true)) {
-			ret = -EINVAL;
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				NULL, "Unable to wait for ASO meter CQE");
-			break;
+		if (queue == MLX5_HW_INV_QUEUE) {
+			if (mlx5_aso_mtr_wait(priv, aso_mtr, true)) {
+				ret = -EINVAL;
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL, "Unable to wait for ASO meter CQE");
+			}
+			mlx5_ipool_free(pool->idx_pool, idx);
+			if (ret < 0)
+				break;
 		}
 		aso = true;
 		break;
