@@ -2525,7 +2525,7 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 	unsigned int of_vlan_offset;
 	uint32_t ct_idx;
 	int ret, err;
-	uint32_t target_grp = 0;
+	bool is_root = mlx5_group_id_is_root(cfg->attr.flow_attr.group);
 	bool unified_fdb = is_unified_fdb(priv);
 
 	flow_hw_modify_field_init(&mhdr, at);
@@ -2537,7 +2537,7 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 
 		switch ((int)actions->type) {
 		case RTE_FLOW_ACTION_TYPE_INDIRECT_LIST:
-			if (!attr->group) {
+			if (is_root) {
 				DRV_LOG(ERR, "Indirect action is not supported in root table.");
 				goto err;
 			}
@@ -2547,7 +2547,7 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 				goto err;
 			break;
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
-			if (!attr->group) {
+			if (is_root) {
 				DRV_LOG(ERR, "Indirect action is not supported in root table.");
 				goto err;
 			}
@@ -2568,7 +2568,7 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 				priv->hw_drop[!!attr->group];
 			break;
 		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
-			if (!attr->group) {
+			if (is_root) {
 				DRV_LOG(ERR, "Port representor is not supported in root table.");
 				goto err;
 			}
@@ -2763,11 +2763,7 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 			recom_type = MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
-			ret = flow_hw_translate_group(dev, cfg, attr->group,
-						&target_grp, &sub_error);
-			if (ret)
-				goto err;
-			if (target_grp == 0) {
+			if (is_root) {
 				__flow_hw_action_template_destroy(dev, acts);
 				rte_flow_error_set(&sub_error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ACTION,
@@ -2791,11 +2787,7 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 				goto err;
 			break;
 		case RTE_FLOW_ACTION_TYPE_AGE:
-			ret = flow_hw_translate_group(dev, cfg, attr->group,
-						&target_grp, &sub_error);
-			if (ret)
-				goto err;
-			if (target_grp == 0) {
+			if (is_root) {
 				__flow_hw_action_template_destroy(dev, acts);
 				rte_flow_error_set(&sub_error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ACTION,
@@ -2810,11 +2802,7 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 				goto err;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-			ret = flow_hw_translate_group(dev, cfg, attr->group,
-						&target_grp, &sub_error);
-			if (ret)
-				goto err;
-			if (target_grp == 0) {
+			if (is_root) {
 				__flow_hw_action_template_destroy(dev, acts);
 				rte_flow_error_set(&sub_error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ACTION,
@@ -2873,12 +2861,6 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 				goto err;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS:
-			/* Internal, can be skipped. */
-			if (!!attr->group) {
-				DRV_LOG(ERR, "DEFAULT MISS action is only"
-					" supported in root table.");
-				goto err;
-			}
 			acts->rule_acts[dr_pos].action = priv->hw_def_miss;
 			break;
 		case RTE_FLOW_ACTION_TYPE_NAT64:
