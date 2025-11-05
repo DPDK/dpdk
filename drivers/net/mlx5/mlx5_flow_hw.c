@@ -1012,7 +1012,8 @@ flow_hw_shared_action_translate(struct rte_eth_dev *dev,
 				const struct rte_flow_action *action,
 				struct mlx5_hw_actions *acts,
 				uint16_t action_src,
-				uint16_t action_dst)
+				uint16_t action_dst,
+				struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_shared_action_rss *shared_rss;
@@ -1029,8 +1030,10 @@ flow_hw_shared_action_translate(struct rte_eth_dev *dev,
 		    (priv, acts,
 		    (enum rte_flow_action_type)MLX5_RTE_FLOW_ACTION_TYPE_RSS,
 		    action_src, action_dst, idx, shared_rss)) {
-			DRV_LOG(WARNING, "Indirect RSS action index %d translate failed", act_idx);
-			return -1;
+			DRV_LOG(ERR, "port %u Indirect RSS action (handle %p) translate failed",
+				dev->data->port_id, action->conf);
+			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+						  action, "Indirect RSS action translate failed");
 		}
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_COUNT:
@@ -1038,15 +1041,22 @@ flow_hw_shared_action_translate(struct rte_eth_dev *dev,
 			(enum rte_flow_action_type)
 			MLX5_RTE_FLOW_ACTION_TYPE_COUNT,
 			action_src, action_dst, act_idx)) {
-			DRV_LOG(WARNING, "Indirect count action translate failed");
-			return -1;
+			DRV_LOG(ERR,
+				"port %u Indirect count action (handle %p) "
+				"translate failed",
+				dev->data->port_id, action->conf);
+			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+						  action,
+						  "Indirect count action translate failed");
 		}
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_CT:
 		if (flow_hw_ct_compile(dev, MLX5_HW_INV_QUEUE,
 				       idx, &acts->rule_acts[action_dst])) {
-			DRV_LOG(WARNING, "Indirect CT action translate failed");
-			return -1;
+			DRV_LOG(ERR, "port %u Indirect CT action (handle %p) translate failed",
+				dev->data->port_id, action->conf);
+			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+						  action, "Indirect CT action translate failed");
 		}
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_METER_MARK:
@@ -1054,16 +1064,22 @@ flow_hw_shared_action_translate(struct rte_eth_dev *dev,
 			(enum rte_flow_action_type)
 			MLX5_RTE_FLOW_ACTION_TYPE_METER_MARK,
 			action_src, action_dst, idx)) {
-			DRV_LOG(WARNING, "Indirect meter mark action translate failed");
-			return -1;
+			DRV_LOG(ERR,
+				"port %u Indirect meter mark action (handle %p) "
+				"translate failed",
+				dev->data->port_id, action->conf);
+			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+						  action,
+						  "Indirect meter mark action translate failed");
 		}
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_QUOTA:
 		flow_hw_construct_quota(priv, &acts->rule_acts[action_dst], idx);
 		break;
 	default:
-		DRV_LOG(WARNING, "Unsupported shared action type:%d", type);
-		break;
+		DRV_LOG(ERR, "Unsupported shared action type: %d", type);
+		return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "Unsupported shared action type");
 	}
 	return 0;
 }
@@ -2162,8 +2178,8 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 				goto err;
 			}
 			if (actions->conf && masks->conf) {
-				if (flow_hw_shared_action_translate
-				(dev, actions, acts, src_pos, dr_pos))
+				if (flow_hw_shared_action_translate(dev, actions, acts,
+								    src_pos, dr_pos, &sub_error))
 					goto err;
 			} else if (__flow_hw_act_data_general_append
 					(priv, acts, RTE_FLOW_ACTION_TYPE_INDIRECT,
