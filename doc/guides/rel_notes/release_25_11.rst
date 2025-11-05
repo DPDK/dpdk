@@ -127,6 +127,8 @@ New Features
 * **Updated NVIDIA mlx5 driver.**
 
   * Added support for NVIDIA ConnectX-9 SuperNIC adapters.
+  * Added support for count and age flow actions on root tables
+    with HW steering flow engine.
 
 * **Updated NXP DPAA2 ethernet driver.**
 

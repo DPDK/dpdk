@@ -31,7 +31,8 @@
 #define MLX5_HWS_AGE_IDX_MASK (RTE_BIT32(MLX5_INDIRECT_ACTION_TYPE_OFFSET) - 1)
 
 struct mlx5_hws_cnt_dcs {
-	void *dr_action;
+	struct mlx5dr_action *root_action; /* mlx5dr action used on root groups. */
+	struct mlx5dr_action *hws_action; /* mlx5dr action used on non-root groups. */
 	uint32_t batch_sz;
 	uint32_t iidx; /* internal index of first counter in this bulk. */
 	struct mlx5_devx_obj *obj;
@@ -632,12 +633,21 @@ mlx5_hws_cnt_pool_get_size(struct mlx5_hws_cnt_pool *cpool)
 static __rte_always_inline int
 mlx5_hws_cnt_pool_get_action_offset(struct mlx5_hws_cnt_pool *cpool,
 		cnt_id_t cnt_id, struct mlx5dr_action **action,
-		uint32_t *offset)
+		uint32_t *offset, bool is_root)
 {
 	uint8_t idx = cnt_id >> MLX5_HWS_CNT_DCS_IDX_OFFSET;
 
 	idx &= MLX5_HWS_CNT_DCS_IDX_MASK;
-	*action = cpool->dcs_mng.dcs[idx].dr_action;
+	if (likely(!is_root)) {
+		*action = cpool->dcs_mng.dcs[idx].hws_action;
+	} else {
+		/*
+		 * Any table using counter on root group should be rejected on validation
+		 * when counter on root is not supported.
+		 */
+		MLX5_ASSERT(cpool->dcs_mng.dcs[idx].root_action != NULL);
+		*action = cpool->dcs_mng.dcs[idx].root_action;
+	}
 	*offset = cnt_id & MLX5_HWS_CNT_IDX_MASK;
 	return 0;
 }

@@ -2701,19 +2701,27 @@ DPDK       19.05         19.02          21.05                    21.05
 Limitations
 ^^^^^^^^^^^
 
-Because freeing a counter (by destroying a flow rule or destroying indirect action)
-does not immediately make it available for the application,
-the PMD might return:
+With :ref:`HW steering <mlx5_hws>`:
 
-- ``ENOENT`` if no counter is available in ``free``, ``reuse``
-  or ``wait_reset`` rings.
-  No counter will be available until the application releases some of them.
-- ``EAGAIN`` if no counter is available in ``free`` and ``reuse`` rings,
-  but there are counters in ``wait_reset`` ring.
-  This means that after the next service thread cycle new counters will be available.
+#. Because freeing a counter (by destroying a flow rule or destroying indirect action)
+   does not immediately make it available for the application,
+   the PMD might return:
 
-The application has to be aware that flow rule create or indirect action create
-might need be retried.
+   - ``ENOENT`` if no counter is available in ``free``, ``reuse``
+     or ``wait_reset`` rings.
+     No counter will be available until the application releases some of them.
+   - ``EAGAIN`` if no counter is available in ``free`` and ``reuse`` rings,
+     but there are counters in ``wait_reset`` ring.
+     This means that after the next service thread cycle,
+     new counters will be available.
+
+   The application has to be aware that flow rule or indirect action creation
+   might need to be retried.
+
+#. Using count action on root tables requires:
+
+   - Linux kernel >= 6.4
+   - rdma-core >= 60.0
 
 
 .. _mlx5_age:
@@ -2756,6 +2764,11 @@ With :ref:`HW steering <mlx5_hws>`,
 #. With strict queueing enabled
    (``RTE_FLOW_PORT_FLAG_STRICT_QUEUE`` passed to ``rte_flow_configure()``),
    indirect age actions can be created only through asynchronous flow API.
+
+#. Using age action on root tables requires:
+
+   - Linux kernel >= 6.4
+   - rdma-core >= 60.0
 
 
 .. _mlx5_quota:
