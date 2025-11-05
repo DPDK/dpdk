@@ -36,6 +36,10 @@
 #define CPT_LF_Q_SIZE		(0x100ull)
 #define CPT_LF_Q_INST_PTR	(0x110ull)
 #define CPT_LF_Q_GRP_PTR	(0x120ull)
+#define CPT_LF_CQ_BASE		(0x200ull)
+#define CPT_LF_CQ_SIZE		(0x210ull)
+#define CPT_LF_CQ_PTR		(0x220ull)
+#define CPT_LF_CQ_CTL		(0x230ull)
 #define CPT_LF_NQX(a)		(0x400ull | (uint64_t)(a) << 3)
 #define CPT_LF_CTX_CTL		(0x500ull)
 #define CPT_LF_CTX_FLUSH	(0x510ull)
@@ -85,6 +89,24 @@ union cpt_eng_caps {
 		uint64_t __io eddsa : 1;
 		uint64_t __io reserved_40_63 : 24;
 	};
+};
+
+union cpt_lf_cq_ctl {
+	uint64_t u;
+	struct cpt_lf_cq_ctl_s {
+		uint64_t ena : 1;
+		uint64_t fc_ena : 1;
+		uint64_t fc_up_crossing : 1;
+		uint64_t reserved_3_3 : 1;
+		uint64_t fc_hyst_bits : 4;
+		uint64_t reserved_8_15 : 8;
+		uint64_t entry_size : 2;
+		uint64_t reserved_18_23 : 6;
+		uint64_t dq_ack_ena : 1;
+		uint64_t cq_all : 1;
+		uint64_t reserved_26_43 : 18;
+		uint64_t busy_count : 20;
+	} s;
 };
 
 union cpt_lf_ctl {
@@ -161,6 +183,16 @@ union cpt_lf_q_inst_ptr {
 	} s;
 };
 
+union cpt_lf_cq_ptr {
+	uint64_t u;
+	struct cpt_lf_cq_ptr_s {
+		uint64_t count : 20;
+		uint64_t reserved_20_31 : 12;
+		uint64_t nq_ptr : 20;
+		uint64_t reserved_52_63 : 12;
+	} s;
+};
+
 union cpt_lf_q_base {
 	uint64_t u;
 	struct cpt_lf_q_base_s {
@@ -177,6 +209,23 @@ union cpt_lf_q_size {
 	struct cpt_lf_q_size_s {
 		uint64_t size_div40 : 15;
 		uint64_t reserved_15_63 : 49;
+	} s;
+};
+
+union cpt_lf_cq_base {
+	uint64_t u;
+	struct cpt_lf_cq_base_s {
+		uint64_t reserved_0_6 : 7;
+		uint64_t addr : 46;
+		uint64_t reserved_53_63 : 11;
+	} s;
+};
+
+union cpt_lf_cq_size {
+	uint64_t u;
+	struct cpt_lf_cq_size_s {
+		uint64_t size : 20;
+		uint64_t reserved_20_63 : 44;
 	} s;
 };
 
@@ -305,6 +354,34 @@ struct cpt_inst_s {
 	};
 
 	union cpt_inst_w7 w7;
+};
+
+struct cpt_cq_s {
+	union cpt_cq_w0 {
+		struct {
+			uint64_t compcode : 7;
+			uint64_t doneint : 1;
+			uint64_t uc_compcode : 8;
+			uint64_t uc_info : 48;
+		} s;
+		uint64_t u64;
+	} w0;
+
+	struct {
+		uint64_t esn : 64;
+	} w1;
+
+	union cpt_cq_w2 {
+		struct {
+			uint64_t fmt : 2;
+			uint64_t rsv : 14;
+			uint64_t uc_info2 : 48;
+		} s;
+	} w2;
+
+	struct {
+		uint64_t comp_ptr : 64;
+	} w3;
 };
 
 union cpt_res_s {
