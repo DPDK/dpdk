@@ -37,11 +37,14 @@ nix_inl_dev_pffunc_get(void)
 }
 
 static void
-nix_inl_selftest_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
+nix_inl_selftest_work_cb(uint64_t *gw, void *args, enum nix_inl_event_type type, void *cq_s,
+			 uint32_t port_id)
 {
 	uintptr_t work = gw[1];
 
-	(void)soft_exp_event;
+	(void)type;
+	(void)cq_s;
+	(void)port_id;
 	*((uintptr_t *)args + (gw[0] & 0x1)) = work;
 
 	plt_atomic_thread_fence(__ATOMIC_ACQ_REL);
@@ -476,8 +479,10 @@ nix_inl_cpt_setup(struct nix_inl_dev *inl_dev, bool inl_dev_sso)
 
 	return 0;
 lf_fini:
-	for (i = 0; i < inl_dev->nb_cptlf; i++)
-		cpt_lf_fini(&inl_dev->cpt_lf[i], false);
+	for (i = 0; i < inl_dev->nb_cptlf; i++) {
+		struct roc_cpt_lf *lf = &inl_dev->cpt_lf[i];
+		cpt_lf_fini(lf, lf->cpt_cq_ena);
+	}
 lf_free:
 	rc |= cpt_lfs_free(dev);
 	return rc;
@@ -500,9 +505,12 @@ nix_inl_cpt_release(struct nix_inl_dev *inl_dev)
 	/* TODO: Wait for CPT/RXC queue to drain */
 
 	/* Cleanup CPT LF queue */
-	for (i = 0; i < inl_dev->nb_cptlf; i++)
-		cpt_lf_fini(&inl_dev->cpt_lf[i], false);
-
+	for (i = 0; i < inl_dev->nb_cptlf; i++) {
+		struct roc_cpt_lf *lf = &inl_dev->cpt_lf[i];
+		cpt_lf_fini(lf, lf->cpt_cq_ena);
+		if (lf->cpt_cq_ena)
+			cpt_lf_unregister_irqs(lf, cpt_lf_misc_irq, nix_inl_cpt_done_irq);
+	}
 	/* Free LF resources */
 	rc = cpt_lfs_free(dev);
 	if (!rc) {
@@ -1162,7 +1170,7 @@ inl_outb_soft_exp_poll(struct nix_inl_dev *inl_dev, uint32_t ring_idx)
 
 		if (sa != NULL) {
 			uint64_t tmp = ~(uint32_t)0x0;
-			inl_dev->work_cb(&tmp, sa, (port_id << 8) | 0x1);
+			inl_dev->work_cb(&tmp, sa, NIX_INL_SOFT_EXPIRY_THRD, NULL, port_id);
 			__atomic_store_n(ring_base + tail_l + 1, 0ULL,
 					 __ATOMIC_RELAXED);
 			__atomic_fetch_add((uint32_t *)ring_base, 1,
@@ -1381,6 +1389,7 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	inl_dev->nb_meta_bufs = roc_inl_dev->nb_meta_bufs;
 	inl_dev->meta_buf_sz = roc_inl_dev->meta_buf_sz;
 	inl_dev->soft_exp_poll_freq = roc_inl_dev->soft_exp_poll_freq;
+	inl_dev->cpt_cq_ena = roc_inl_dev->cpt_cq_enable;
 	inl_dev->custom_inb_sa = roc_inl_dev->custom_inb_sa;
 	inl_dev->nix_inb_q_bpid = -1;
 	inl_dev->nb_cptlf = 1;
@@ -1401,6 +1410,10 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 		inl_dev->nb_cptlf++;
 	}
 
+	if (roc_feature_nix_has_cpt_cq_support() && inl_dev->cpt_cq_ena) {
+		inl_dev->soft_exp_poll_freq = 0;
+		inl_dev->set_soft_exp_poll = 0;
+	}
 	/* Attach inline inbound CPT LF to NIX has multi queue support */
 	if (roc_feature_nix_has_inl_multi_queue() && roc_inl_dev->nb_inb_cptlfs) {
 		inl_dev->nb_inb_cptlfs = roc_inl_dev->nb_inb_cptlfs;

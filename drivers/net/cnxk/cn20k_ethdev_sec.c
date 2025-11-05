@@ -437,8 +437,79 @@ cnxk_pktmbuf_free_no_cache(struct rte_mbuf *mbuf)
 	} while (mbuf != NULL);
 }
 
+static void
+cn20k_eth_sec_post_event(struct rte_eth_dev *eth_dev, struct roc_ow_ipsec_outb_sa *sa,
+			 uint16_t uc_compcode, uint16_t compcode, struct rte_mbuf *mbuf)
+{
+	struct rte_eth_event_ipsec_desc desc;
+	struct cn20k_sec_sess_priv sess_priv;
+	struct cn20k_outb_priv_data *priv;
+	static uint64_t warn_cnt;
+
+	memset(&desc, 0, sizeof(desc));
+	priv = roc_nix_inl_ow_ipsec_outb_sa_sw_rsvd(sa);
+	sess_priv.u64 = 0;
+
+	if (mbuf)
+		sess_priv.u64 = *rte_security_dynfield(mbuf);
+
+	switch (uc_compcode) {
+	case ROC_IE_OW_UCC_ERR_SA_OVERFLOW:
+		desc.subtype = RTE_ETH_EVENT_IPSEC_ESN_OVERFLOW;
+		break;
+	case ROC_IE_OW_UCC_ERR_SA_EXPIRED:
+		if (sa->w2.s.life_unit == ROC_IE_OW_SA_LIFE_UNIT_PKTS)
+			desc.subtype = RTE_ETH_EVENT_IPSEC_SA_PKT_HARD_EXPIRY;
+		else
+			desc.subtype = RTE_ETH_EVENT_IPSEC_SA_BYTE_HARD_EXPIRY;
+		break;
+	case ROC_IE_OW_UCC_SUCCESS_SA_SOFTEXP_FIRST:
+		if (sa->w2.s.life_unit == ROC_IE_OW_SA_LIFE_UNIT_PKTS)
+			desc.subtype = RTE_ETH_EVENT_IPSEC_SA_PKT_EXPIRY;
+		else
+			desc.subtype = RTE_ETH_EVENT_IPSEC_SA_BYTE_EXPIRY;
+		break;
+	case ROC_IE_OW_UCC_ERR_PKT_IP:
+		warn_cnt++;
+		if (warn_cnt % 10000 == 0)
+			plt_warn("Outbound error, bad ip pkt, mbuf %p,"
+				 "sa_index %u (total warnings %" PRIu64 ")",
+				 mbuf, sess_priv.sa_idx, warn_cnt);
+		desc.subtype = -uc_compcode;
+		break;
+	default:
+		warn_cnt++;
+		if (warn_cnt % 10000 == 0)
+			plt_warn("Outbound error, mbuf %p, sa_index %u,"
+				 " compcode %x uc %x,"
+				 " (total warnings %" PRIu64 ")",
+				 mbuf, sess_priv.sa_idx, compcode, uc_compcode, warn_cnt);
+		desc.subtype = -uc_compcode;
+		break;
+	}
+
+	desc.metadata = (uint64_t)priv->userdata;
+	rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_IPSEC, &desc);
+}
+
+static const char *
+get_inl_event_type(enum nix_inl_event_type type)
+{
+	switch (type) {
+	case NIX_INL_CPT_CQ:
+		return "NIX_INL_CPT_CQ";
+	case NIX_INL_SSO:
+		return "NIX_INL_SSO";
+	case NIX_INL_SOFT_EXPIRY_THRD:
+		return "NIX_INL_SOFT_EXPIRY_THRD";
+	default:
+		return "Unknown event";
+	}
+}
+
 void
-cn20k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
+cn20k_eth_sec_sso_work_cb(uint64_t *gw, void *args, enum nix_inl_event_type type, void *cq_s,
+			  uint32_t port_id)
 {
 	struct rte_eth_event_ipsec_desc desc;
 	struct cn20k_sec_sess_priv sess_priv;
@@ -447,7 +518,6 @@ cn20k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
 	struct cpt_cn20k_res_s *res;
 	struct rte_eth_dev *eth_dev;
 	struct cnxk_eth_dev *dev;
-	static uint64_t warn_cnt;
 	uint16_t dlen_adj, rlen;
 	struct rte_mbuf *mbuf;
 	uintptr_t sa_base;
@@ -455,6 +525,7 @@ cn20k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
 	uint8_t port;
 
 	RTE_SET_USED(args);
+	plt_nix_dbg("Received %s event", get_inl_event_type(type));
 
 	switch ((gw[0] >> 28) & 0xF) {
 	case RTE_EVENT_TYPE_ETHDEV:
@@ -472,15 +543,25 @@ cn20k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
 		}
 		/* Fall through */
 	default:
-		if (soft_exp_event & 0x1) {
+		if (type) {
 			sa = (struct roc_ow_ipsec_outb_sa *)args;
 			priv = roc_nix_inl_ow_ipsec_outb_sa_sw_rsvd(sa);
 			desc.metadata = (uint64_t)priv->userdata;
-			if (sa->w2.s.life_unit == ROC_IE_OT_SA_LIFE_UNIT_PKTS)
-				desc.subtype = RTE_ETH_EVENT_IPSEC_SA_PKT_EXPIRY;
-			else
-				desc.subtype = RTE_ETH_EVENT_IPSEC_SA_BYTE_EXPIRY;
-			eth_dev = &rte_eth_devices[soft_exp_event >> 8];
+			eth_dev = &rte_eth_devices[port_id];
+			if (type == NIX_INL_CPT_CQ) {
+				struct cpt_cq_s *cqs = (struct cpt_cq_s *)cq_s;
+
+				cn20k_eth_sec_post_event(eth_dev, sa,
+							 (uint16_t)cqs->w0.s.uc_compcode,
+							 (uint16_t)cqs->w0.s.compcode, NULL);
+				return;
+			}
+			if (type == NIX_INL_SOFT_EXPIRY_THRD) {
+				if (sa->w2.s.life_unit == ROC_IE_OW_SA_LIFE_UNIT_PKTS)
+					desc.subtype = RTE_ETH_EVENT_IPSEC_SA_PKT_EXPIRY;
+				else
+					desc.subtype = RTE_ETH_EVENT_IPSEC_SA_BYTE_EXPIRY;
+			}
 			rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_IPSEC, &desc);
 		} else {
 			plt_err("Unknown event gw[0] = 0x%016lx, gw[1] = 0x%016lx", gw[0], gw[1]);
@@ -514,41 +595,9 @@ cn20k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
 
 	sa_base = dev->outb.sa_base;
 	sa = roc_nix_inl_ow_ipsec_outb_sa(sa_base, sess_priv.sa_idx);
-	priv = roc_nix_inl_ow_ipsec_outb_sa_sw_rsvd(sa);
 
-	memset(&desc, 0, sizeof(desc));
+	cn20k_eth_sec_post_event(eth_dev, sa, res->uc_compcode, res->compcode, mbuf);
 
-	switch (res->uc_compcode) {
-	case ROC_IE_OT_UCC_ERR_SA_OVERFLOW:
-		desc.subtype = RTE_ETH_EVENT_IPSEC_ESN_OVERFLOW;
-		break;
-	case ROC_IE_OT_UCC_ERR_SA_EXPIRED:
-		if (sa->w2.s.life_unit == ROC_IE_OT_SA_LIFE_UNIT_PKTS)
-			desc.subtype = RTE_ETH_EVENT_IPSEC_SA_PKT_HARD_EXPIRY;
-		else
-			desc.subtype = RTE_ETH_EVENT_IPSEC_SA_BYTE_HARD_EXPIRY;
-		break;
-	case ROC_IE_OT_UCC_ERR_PKT_IP:
-		warn_cnt++;
-		if (warn_cnt % 10000 == 0)
-			plt_warn("Outbound error, bad ip pkt, mbuf %p,"
-				 " sa_index %u (total warnings %" PRIu64 ")",
-				 mbuf, sess_priv.sa_idx, warn_cnt);
-		desc.subtype = -res->uc_compcode;
-		break;
-	default:
-		warn_cnt++;
-		if (warn_cnt % 10000 == 0)
-			plt_warn("Outbound error, mbuf %p, sa_index %u,"
-				 " compcode %x uc %x,"
-				 " (total warnings %" PRIu64 ")",
-				 mbuf, sess_priv.sa_idx, res->compcode, res->uc_compcode, warn_cnt);
-		desc.subtype = -res->uc_compcode;
-		break;
-	}
-
-	desc.metadata = (uint64_t)priv->userdata;
-	rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_IPSEC, &desc);
 	cnxk_pktmbuf_free_no_cache(mbuf);
 }
 
@@ -625,7 +674,6 @@ cn20k_eth_sec_outb_sa_misc_fill(struct roc_nix *roc_nix, struct roc_ow_ipsec_out
 		sa->ctx.err_ctl.s.address = ring_addr >> 3;
 		sa->w0.s.ctx_id = ((uintptr_t)sa_cptr >> 51) & 0x1ff;
 	}
-
 	return 0;
 }
 

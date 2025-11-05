@@ -27,6 +27,7 @@ void cn20k_eth_set_tx_function(struct rte_eth_dev *eth_dev);
 void cn20k_eth_sec_ops_override(void);
 
 /* SSO Work callback */
-void cn20k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event);
+void cn20k_eth_sec_sso_work_cb(uint64_t *gw, void *args, enum nix_inl_event_type type, void *cq_s,
+			       uint32_t port_id);
 
 #endif /* __CN20K_ETHDEV_H__ */

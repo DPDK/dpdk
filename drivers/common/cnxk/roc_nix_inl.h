@@ -41,6 +41,19 @@
 #define ROC_NIX_INL_REAS_ZOMBIE_LIMIT	  0xFFF
 #define ROC_NIX_INL_REAS_ZOMBIE_THRESHOLD 10
 
+enum nix_inl_event_type {
+	NIX_INL_CPT_CQ = 1,
+	NIX_INL_SSO,
+	NIX_INL_SOFT_EXPIRY_THRD,
+};
+
+enum comp_ptr {
+	WQE_PTR_CPTR,
+	CPTR_WQE_PTR,
+	WQE_PTR_ANTI_REPLAY,
+	CPTR_ANTI_REPLAY,
+};
+
 static inline struct roc_ie_on_inb_sa *
 roc_nix_inl_on_ipsec_inb_sa(uintptr_t base, uint64_t idx)
 {
@@ -70,8 +83,8 @@ roc_nix_inl_on_ipsec_outb_sa_sw_rsvd(void *sa)
 }
 
 /* Inline device SSO Work callback */
-typedef void (*roc_nix_inl_sso_work_cb_t)(uint64_t *gw, void *args,
-					  uint32_t soft_exp_event);
+typedef void (*roc_nix_inl_sso_work_cb_t)(uint64_t *gw, void *args, enum nix_inl_event_type type,
+					  void *cq_s, uint32_t port_id);
 
 typedef int (*roc_nix_inl_meta_pool_cb_t)(uint64_t *aura_handle,  uintptr_t *mpool,
 					  uint32_t blk_sz, uint32_t nb_bufs, bool destroy,
@@ -93,6 +106,7 @@ struct roc_nix_inl_dev {
 	uint8_t spb_drop_pc;
 	uint8_t lpb_drop_pc;
 	uint32_t soft_exp_poll_freq; /* Polling disabled if 0 */
+	uint8_t cpt_cq_enable;
 	uint32_t nb_meta_bufs;
 	uint32_t meta_buf_sz;
 	uint32_t max_ipsec_rules;

@@ -22,6 +22,7 @@
 #define CNXK_NIX_INL_RX_INJ_ENABLE	"rx_inj_ena"
 #define CNXK_NIX_CUSTOM_INB_SA	      "custom_inb_sa"
 #define CNXK_NIX_NB_INL_INB_QS        "nb_inl_inb_qs"
+#define CNXK_NIX_INL_CPT_CQ_ENABLE    "cpt_cq_enable"
 
 /* Default soft expiry poll freq in usec */
 #define CNXK_NIX_SOFT_EXP_POLL_FREQ_DFLT 100
@@ -567,6 +568,7 @@ nix_inl_parse_devargs(struct rte_devargs *devargs,
 	uint32_t meta_buf_sz = 0;
 	uint8_t rx_inj_ena = 0;
 	uint8_t selftest = 0;
+	uint8_t cpt_cq_enable = 0;
 
 	memset(&cpt_channel, 0, sizeof(cpt_channel));
 
@@ -595,6 +597,7 @@ nix_inl_parse_devargs(struct rte_devargs *devargs,
 	rte_kvargs_process(kvlist, CNXK_NIX_INL_RX_INJ_ENABLE, &parse_val_u8, &rx_inj_ena);
 	rte_kvargs_process(kvlist, CNXK_NIX_CUSTOM_INB_SA, &parse_val_u8, &custom_inb_sa);
 	rte_kvargs_process(kvlist, CNXK_NIX_NB_INL_INB_QS, &parse_val_u8, &nb_inl_inb_qs);
+	rte_kvargs_process(kvlist, CNXK_NIX_INL_CPT_CQ_ENABLE, &parse_val_u8, &cpt_cq_enable);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -607,6 +610,7 @@ null_devargs:
 	inl_dev->nb_meta_bufs = nb_meta_bufs;
 	inl_dev->meta_buf_sz = meta_buf_sz;
 	inl_dev->soft_exp_poll_freq = soft_exp_poll_freq;
+	inl_dev->cpt_cq_enable = cpt_cq_enable;
 	inl_dev->max_ipsec_rules = max_ipsec_rules;
 	if (roc_feature_nix_has_rx_inject())
 		inl_dev->rx_inj_ena = rx_inj_ena;
