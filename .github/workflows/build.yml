@@ -55,6 +55,27 @@ jobs:
       RUN_TESTS: ${{ contains(matrix.config.checks, 'tests') }}
       STDATOMIC: ${{ contains(matrix.config.checks, 'stdatomic') }}
       UBSAN: ${{ contains(matrix.config.checks, 'ubsan') }}
+      build_deps: |
+        ccache \
+        libarchive-dev \
+        libbsd-dev \
+        libbpf-dev \
+        libfdt-dev \
+        libibverbs-dev \
+        libipsec-mb-dev \
+        libisal-dev \
+        libjansson-dev \
+        libnuma-dev \
+        libpcap-dev \
+        libssl-dev \
+        libvirt-dev \
+        ninja-build \
+        pkg-config \
+        python3-pip \
+        python3-pyelftools \
+        python3-setuptools \
+        python3-wheel \
+        zlib1g-dev
 
     strategy:
       fail-fast: false
@@ -133,10 +154,7 @@ jobs:
     - name: Update APT cache
       run: sudo apt update || true
     - name: Install packages
-      run: sudo apt install -y ccache libarchive-dev libbsd-dev libbpf-dev
-        libfdt-dev libibverbs-dev libipsec-mb-dev libisal-dev libjansson-dev
-        libnuma-dev libpcap-dev libssl-dev libvirt-dev ninja-build pkg-config python3-pip
-        python3-pyelftools python3-setuptools python3-wheel zlib1g-dev
+      run: sudo apt install -y ${{ env.build_deps }}
     - name: Install libabigail build dependencies if no cache is available
       if: env.ABI_CHECKS == 'true' && steps.libabigail-cache.outputs.cache-hit != 'true'
       run: sudo apt install -y autoconf automake libdw-dev libtool libxml2-dev libxxhash-dev
@@ -227,7 +245,31 @@ jobs:
   prepare-container-images:
     name: ${{ join(matrix.config.*, '-') }}
     runs-on: ubuntu-latest
+    env:
+      build_deps: |
+        ccache \
+        intel-ipsec-mb-devel \
+        isa-l-devel \
+        jansson-devel \
+        libarchive-devel \
+        libatomic \
+        libbsd-devel \
+        libbpf-devel \
+        libfdt-devel \
+        libpcap-devel \
+        libvirt-devel \
+        libxdp-devel \
+        ninja-build \
+        numactl-devel \
+        openssl-devel \
+        python3-pip \
+        python3-pyelftools \
+        python3-setuptools \
+        python3-wheel \
+        rdma-core-devel \
+        zlib-devel
     outputs:
+      build_deps: ${{ steps.get_keys.outputs.build_deps }}
       image: ${{ steps.get_keys.outputs.image }}
 
     strategy:
@@ -240,6 +282,7 @@ jobs:
     - name: Generate various keys
       id: get_keys
       run: |
+        echo 'build_deps='$(echo -n ${{ env.build_deps }}) >> $GITHUB_OUTPUT
         echo 'image=image-${{ matrix.config.image }}-'$(date -u +%Y-%m-%d) >> $GITHUB_OUTPUT
     - name: Retrieve image cache
       id: image_cache
@@ -259,11 +302,7 @@ jobs:
       run: docker exec -i dpdk dnf update -y
     - name: Install packages
       if: steps.image_cache.outputs.cache-hit != 'true'
-      run: docker exec -i dpdk dnf install -y ccache intel-ipsec-mb-devel
-        isa-l-devel jansson-devel libarchive-devel libatomic libbsd-devel
-        libbpf-devel libfdt-devel libpcap-devel libvirt-devel libxdp-devel
-        ninja-build numactl-devel openssl-devel python3-pip python3-pyelftools
-        python3-setuptools python3-wheel rdma-core-devel zlib-devel
+      run: docker exec -i dpdk dnf install -y ${{ env.build_deps }}
     - name: Save image in cache
       if: steps.image_cache.outputs.cache-hit != 'true'
       run: |
@@ -335,11 +374,8 @@ jobs:
     - name: Update
       run: docker exec -i dpdk dnf update -y || true
     - name: Install packages
-      run: docker exec -i dpdk dnf install -y ccache intel-ipsec-mb-devel
-        isa-l-devel jansson-devel libarchive-devel libatomic libbsd-devel
-        libbpf-devel libfdt-devel libpcap-devel libvirt-devel libxdp-devel
-        ninja-build numactl-devel openssl-devel python3-pip python3-pyelftools
-        python3-setuptools python3-wheel rdma-core-devel zlib-devel
+      run: docker exec -i dpdk dnf install -y
+        ${{ needs.prepare-container-images.outputs.build_deps }}
         ${{ matrix.config.compiler }}
     - name: Run setup
       run: docker exec -i dpdk .ci/linux-setup.sh
