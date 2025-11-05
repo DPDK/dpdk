@@ -248,6 +248,7 @@ jobs:
     env:
       build_deps: |
         ccache \
+        esmi_ib_library-devel \
         intel-ipsec-mb-devel \
         isa-l-devel \
         jansson-devel \
