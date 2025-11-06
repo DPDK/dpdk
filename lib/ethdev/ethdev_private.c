@@ -152,11 +152,20 @@ rte_eth_devargs_parse_representor_ports(char *str, void *data)
 		if (str == NULL)
 			goto done;
 	}
-	if (str[0] == 'p' && str[1] == 'f') {
+	/* pfX... or (pfX)... */
+	if ((str[0] == 'p' && str[1] == 'f') ||
+	    (str[0] == '(' && str[1] == 'p' && str[2] == 'f')) {
 		eth_da->type = RTE_ETH_REPRESENTOR_PF;
-		str += 2;
+		if (str[0] == '(')
+			str++; /* advance past leading "(" */
+		str += 2; /* advance past "pf" */
 		str = rte_eth_devargs_process_list(str, eth_da->ports,
 				&eth_da->nb_ports, RTE_DIM(eth_da->ports));
+		if (str != NULL && str[0] == ')') {
+			str++; /* advance past ")" */
+			eth_da->flags =
+				RTE_ETH_DEVARG_REPRESENTOR_IGNORE_PF;
+		}
 		if (str == NULL || str[0] == '\0')
 			goto done;
 	} else if (eth_da->nb_mh_controllers > 0) {

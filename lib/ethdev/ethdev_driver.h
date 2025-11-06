@@ -2012,6 +2012,10 @@ __rte_internal
 int
 rte_eth_switch_domain_free(uint16_t domain_id);
 
+/* Flags for rte_eth_devargs::flags. */
+/* When enclosed in parentheses, the PF representor is not required. */
+#define RTE_ETH_DEVARG_REPRESENTOR_IGNORE_PF RTE_BIT32(0)
+
 /**
  * Generic Ethernet device arguments
  *
@@ -2026,6 +2030,7 @@ struct rte_eth_devargs {
 	/** port/s number to enable on a multi-port single function */
 	uint16_t nb_ports;
 	/** number of ports in ports field */
+	uint32_t flags; /* see RTE_ETH_DEVARG_* */
 	uint16_t representor_ports[RTE_MAX_ETHPORTS];
 	/** representor port/s identifier to enable on device */
 	uint16_t nb_representor_ports;

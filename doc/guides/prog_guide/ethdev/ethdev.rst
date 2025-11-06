@@ -379,18 +379,35 @@ parameters to those ports.
    -a DBDF,representor=vf[0,4,6,9]
    -a DBDF,representor=vf[0-31]
    -a DBDF,representor=vf[0,2-4,7,9-11]
+
+  These examples will attach VF representors relative to DBDF.
+  The VF IDs can be a list, a range or a mix.
+  SF representors follow the same syntax::
+
    -a DBDF,representor=sf0
    -a DBDF,representor=sf[1,3,5]
    -a DBDF,representor=sf[0-1023]
    -a DBDF,representor=sf[0,2-4,7,9-11]
-   -a DBDF,representor=pf1vf0
-   -a DBDF,representor=pf[0-1]sf[0-127]
-   -a DBDF,representor=pf1
-   -a DBDF,representor=[pf[0-1],pf2vf[0-2],pf3[3,5-8]]
-   (Multiple representors in one device argument can be represented as a list)
 
-Note: PMDs are not required to support the standard device arguments and users
-should consult the relevant PMD documentation to see support devargs.
+  If there are multiple PFs associated with the same PCI device,
+  the PF ID must be used to distinguish between representors relative to different PFs::
+
+   -a DBDF,representor=pf1vf0
+   -a DBDF,representor=pf[0-1]vf0
+
+  The example above will attach 4 representors pf0vf0, pf1vf0, pf0 and pf1.
+  If only VF representors are required, the PF part must be enclosed with parentheses::
+
+   -a DBDF,representor=(pf[0-1])vf0
+
+  The example above will attach 2 representors pf0vf0, pf1vf0.
+
+  List of representors for the same PCI device is enclosed in square brackets::
+
+   -a DBDF,representor=[pf[0-1],pf2vf[0-2],pf3[3,5-8]]
+
+  Note: PMDs may have additional extensions for the representor parameter, and users
+  should consult the relevant PMD documentation to see support devargs.
 
 Extended Statistics API
 ~~~~~~~~~~~~~~~~~~~~~~~
