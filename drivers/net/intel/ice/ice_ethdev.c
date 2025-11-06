@@ -2873,6 +2873,8 @@ ice_dev_stop(struct rte_eth_dev *dev)
 {
 	struct rte_eth_dev_data *data = dev->data;
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_adapter *ad =
+			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct ice_vsi *main_vsi = pf->main_vsi;
 	struct rte_pci_device *pci_dev = ICE_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
@@ -2893,8 +2895,10 @@ ice_dev_stop(struct rte_eth_dev *dev)
 	/* disable all queue interrupts */
 	ice_vsi_disable_queues_intr(main_vsi);
 
-	if (dev->data->dev_conf.txmode.offloads & RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP)
+	if (dev->data->dev_conf.txmode.offloads & RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP) {
+		ad->txpp_ena = 0;
 		ice_timesync_disable(dev);
+	}
 
 	if (pf->adapter->devargs.link_state_on_close == ICE_LINK_UP ||
 			(pf->adapter->devargs.link_state_on_close == ICE_LINK_INITIAL &&
@@ -4436,8 +4440,10 @@ ice_dev_start(struct rte_eth_dev *dev)
 		}
 	}
 
-	if (dev->data->dev_conf.txmode.offloads & RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP)
+	if (dev->data->dev_conf.txmode.offloads & RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP) {
 		ice_timesync_enable(dev);
+		ad->txpp_ena = 1;
+	}
 
 	return 0;
 
@@ -7029,6 +7035,9 @@ ice_timesync_enable(struct rte_eth_dev *dev)
 			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	int ret;
 
+	if (ad->txpp_ena)
+		return 0;
+
 	if (dev->data->dev_started && !(dev->data->dev_conf.rxmode.offloads &
 	    RTE_ETH_RX_OFFLOAD_TIMESTAMP)) {
 		PMD_DRV_LOG(ERR, "Rx timestamp offload not configured");
@@ -7266,6 +7275,9 @@ ice_timesync_disable(struct rte_eth_dev *dev)
 	uint8_t tmr_idx = hw->func_caps.ts_func_info.tmr_index_assoc;
 	uint64_t val;
 	uint8_t lport;
+
+	if (ad->txpp_ena)
+		return 0;
 
 	lport = hw->port_info->lport;
 

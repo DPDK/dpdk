@@ -667,6 +667,7 @@ struct ice_adapter {
 	uint8_t ptp_tx_block;
 	uint8_t ptp_tx_index;
 	bool ptp_ena;
+	bool txpp_ena;	/* For TxPP */
 	uint64_t time_hw;
 	struct ice_fdir_prof_info fdir_prof_info[ICE_MAX_PTGS];
 	struct ice_rss_prof_info rss_prof_info[ICE_MAX_PTGS];
