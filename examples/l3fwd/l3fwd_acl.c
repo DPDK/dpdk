@@ -1136,7 +1136,7 @@ acl_main_loop(__rte_unused void *dummy)
 			portid = qconf->rx_queue_list[i].port_id;
 			queueid = qconf->rx_queue_list[i].queue_id;
 			nb_rx = rte_eth_rx_burst(portid, queueid,
-				pkts_burst, nb_pkt_per_burst);
+				pkts_burst, rx_burst_size);
 
 			if (nb_rx > 0) {
 				nb_drop = acl_process_pkts(pkts_burst, hops,
