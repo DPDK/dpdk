@@ -4937,7 +4937,7 @@ dcb_fwd_config_setup(void)
 				fwd_lcores[lc_id]->stream_idx;
 			rxq = rxp_dcb_info.tc_queue.tc_rxq[i][tc].base;
 			txq = txp_dcb_info.tc_queue.tc_txq[i][tc].base;
-			nb_rx_queue = txp_dcb_info.tc_queue.tc_rxq[i][tc].nb_queue;
+			nb_rx_queue = rxp_dcb_info.tc_queue.tc_rxq[i][tc].nb_queue;
 			nb_tx_queue = txp_dcb_info.tc_queue.tc_txq[i][tc].nb_queue;
 			for (j = 0; j < nb_rx_queue; j++) {
 				struct fwd_stream *fs;
