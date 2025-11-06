@@ -333,6 +333,8 @@ struct ice_vsi {
 	uint8_t vlan_anti_spoof_on; /* The VLAN anti-spoofing enabled */
 	uint8_t vlan_filter_on; /* The VLAN filter enabled */
 	/* information about rss configuration */
+	uint8_t global_lut_allocated : 1;
+	uint8_t global_lut_id : 7;
 	u32 rss_key_size;
 	u32 rss_lut_size;
 	uint8_t *rss_lut;

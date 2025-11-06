@@ -104,6 +104,8 @@ enum ice_link_state_on_close {
 #define ICE_MAC_TC_MAX_WATERMARK	(((hw)->mac_type == ICE_MAC_E830) ?	\
 				ICE_MAC_E830_MAX_WATERMARK : ICE_MAC_E810_MAX_WATERMARK)
 
+#define ICE_RSS_LUT_GLOBAL_QUEUE_NB	64
+
 static int ice_dev_configure(struct rte_eth_dev *dev);
 static int ice_dev_start(struct rte_eth_dev *dev);
 static int ice_dev_stop(struct rte_eth_dev *dev);
@@ -3776,11 +3778,47 @@ static int ice_init_rss(struct ice_pf *pf)
 	for (i = 0; i < vsi->rss_lut_size; i++)
 		vsi->rss_lut[i] = i % nb_q;
 
+	if (nb_q <= ICE_RSS_LUT_GLOBAL_QUEUE_NB && (hw)->mac_type == ICE_MAC_E830) {
+		struct ice_vsi_ctx vsi_ctx;
+		uint16_t global_lut;
+
+		if (!vsi->global_lut_allocated) {
+			ret = ice_alloc_rss_global_lut(hw, false, &global_lut);
+			if (ret)
+				goto out;
+			vsi->global_lut_allocated = true;
+			vsi->global_lut_id = global_lut;
+		}
+		global_lut = vsi->global_lut_id;
+
+		vsi_ctx.flags = ICE_AQ_VSI_TYPE_PF;
+		vsi_ctx.info = vsi->info;
+		vsi_ctx.info.q_opt_rss &= ICE_AQ_VSI_Q_OPT_RSS_LUT_M |
+					ICE_AQ_VSI_Q_OPT_RSS_GBL_LUT_M;
+		vsi_ctx.info.q_opt_rss |= ICE_AQ_VSI_Q_OPT_RSS_LUT_GBL |
+			((global_lut << ICE_AQ_VSI_Q_OPT_RSS_GBL_LUT_S) &
+			 ICE_AQ_VSI_Q_OPT_RSS_GBL_LUT_M);
+
+		vsi_ctx.info.valid_sections =
+			rte_cpu_to_le_16(ICE_AQ_VSI_PROP_Q_OPT_VALID);
+
+		ret = ice_update_vsi(hw, vsi->idx, &vsi_ctx, NULL);
+		if (ret != ICE_SUCCESS) {
+			PMD_INIT_LOG(ERR, "update vsi failed, err = %d", ret);
+			goto out;
+		}
+
+		vsi->info = vsi_ctx.info;
+		lut_params.lut_type = ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_GLOBAL;
+		lut_params.global_lut_id = global_lut;
+	} else {
+		lut_params.lut_type = ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_PF;
+		lut_params.global_lut_id = 0;
+	}
+
 	lut_params.vsi_handle = vsi->idx;
 	lut_params.lut_size = vsi->rss_lut_size;
-	lut_params.lut_type = ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_PF;
 	lut_params.lut = vsi->rss_lut;
-	lut_params.global_lut_id = 0;
 	ret = ice_aq_set_rss_lut(hw, &lut_params);
 	if (ret)
 		goto out;
