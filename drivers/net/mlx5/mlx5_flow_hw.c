@@ -62,10 +62,6 @@ static struct rte_flow_fp_ops mlx5_flow_hw_fp_ops;
 #define MLX5_HW_VLAN_PUSH_VID_IDX 1
 #define MLX5_HW_VLAN_PUSH_PCP_IDX 2
 
-#define MLX5_HW_PORT_IS_PROXY(priv) \
-	(!!((priv)->sh->esw_mode && (priv)->master))
-
-
 struct mlx5_indlst_legacy {
 	struct mlx5_indirect_list indirect;
 	struct rte_flow_action_handle *handle;

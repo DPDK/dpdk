@@ -525,6 +525,42 @@ validate_prefix_actions(const struct rte_flow_action *actions)
 	return i < MLX5_HW_MAX_ACTS - 1;
 }
 
+static bool
+validate_sample_terminal_actions(const struct rte_eth_dev *dev,
+				 const struct rte_flow_attr *flow_attr,
+				 const struct rte_flow_action *actions)
+{
+	uint32_t i;
+	const struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_action_ethdev *port = NULL;
+	bool is_proxy = MLX5_HW_PORT_IS_PROXY(priv);
+	const struct rte_flow_action *a = NULL;
+
+	for (i = 0; actions[i].type != RTE_FLOW_ACTION_TYPE_END; i++) {
+		if (actions[i].type != RTE_FLOW_ACTION_TYPE_VOID)
+			a = &actions[i];
+	}
+	if (a == NULL)
+		return false;
+	switch (a->type) {
+	case RTE_FLOW_ACTION_TYPE_JUMP:
+	case RTE_FLOW_ACTION_TYPE_QUEUE:
+	case RTE_FLOW_ACTION_TYPE_DROP:
+	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+		return true;
+	case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
+		if (!is_proxy || !flow_attr->transfer)
+			return false;
+		port = a->conf;
+		if (!port || port->port_id != MLX5_REPRESENTED_PORT_ESW_MGR)
+			return false;
+		return true;
+	default:
+		break;
+	}
+	return false;
+}
+
 static void
 action_append(struct rte_flow_action *actions, const struct rte_flow_action *last)
 {
@@ -829,8 +865,13 @@ mlx5_nta_sample_flow_list_create(struct rte_eth_dev *dev,
 	}
 	mlx5_nta_parse_sample_actions(actions, &sample, prefix_actions, suffix_actions);
 	if (!validate_prefix_actions(prefix_actions)) {
-		rte_flow_error_set(error, -EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
 				   NULL, "Too many actions");
+		return NULL;
+	}
+	if (!validate_sample_terminal_actions(dev, attr, sample)) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+				   NULL, "Invalid sample actions");
 		return NULL;
 	}
 	sample_conf = (const struct rte_flow_action_sample *)sample->conf;
