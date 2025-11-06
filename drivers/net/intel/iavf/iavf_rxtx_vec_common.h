@@ -174,6 +174,8 @@ iavf_txd_enable_offload(__rte_unused struct rte_mbuf *tx_pkt,
 	uint32_t td_offset = 0;
 #endif
 
+	RTE_SET_USED(vlan_flag);
+
 #ifdef IAVF_TX_CSUM_OFFLOAD
 	/* Set MACLEN */
 	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
