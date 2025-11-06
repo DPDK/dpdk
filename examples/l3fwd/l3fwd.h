@@ -32,10 +32,6 @@
 
 #define VECTOR_SIZE_DEFAULT   MAX_PKT_BURST
 #define VECTOR_TMO_NS_DEFAULT 1E6 /* 1ms */
-/*
- * Try to avoid TX buffering if we have at least MAX_TX_BURST packets to send.
- */
-#define	MAX_TX_BURST	  (MAX_PKT_BURST / 2)
 
 #define NB_SOCKETS        8
 
@@ -116,7 +112,7 @@ extern struct acl_algorithms acl_alg[];
 
 extern uint32_t max_pkt_len;
 
-extern uint32_t nb_pkt_per_burst;
+extern uint32_t rx_burst_size;
 extern uint32_t mb_mempool_cache_size;
 
 /* Send burst of packets on an output interface */
@@ -152,8 +148,8 @@ send_single_packet(struct lcore_conf *qconf,
 	len++;
 
 	/* enough pkts to be sent */
-	if (unlikely(len == MAX_PKT_BURST)) {
-		send_burst(qconf, MAX_PKT_BURST, port);
+	if (unlikely(len == rx_burst_size)) {
+		send_burst(qconf, rx_burst_size, port);
 		len = 0;
 	}
 

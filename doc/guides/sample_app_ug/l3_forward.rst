@@ -77,6 +77,8 @@ The application has a number of command line options::
                              [-P]
                              [--lookup LOOKUP_METHOD]
                              --config(port,queue,lcore)[,(port,queue,lcore)]
+                             [--rx-burst NPKTS]
+                             [--tx-burst NPKTS]
                              [--eth-dest=X,MM:MM:MM:MM:MM:MM]
                              [--max-pkt-len PKTLEN]
                              [--no-numa]
@@ -112,6 +114,10 @@ Where,
   Default is ``lpm``.
 
 * ``--config (port,queue,lcore)[,(port,queue,lcore)]:`` Determines which queues from which ports are mapped to which cores.
+
+* ``--rx-burst NPKTS:`` Optional, Rx burst size in decimal (default 32).
+
+* ``--tx-burst NPKTS:`` Optional, Tx burst size in decimal (default 32).
 
 * ``--eth-dest=X,MM:MM:MM:MM:MM:MM:`` Optional, ethernet destination for port X.
 

@@ -25,6 +25,9 @@
  */
 #define SENDM_PORT_OVERHEAD(x) (x)
 
+extern uint32_t rx_burst_size;
+extern uint32_t tx_burst_size;
+
 /*
  * From http://www.rfc-editor.org/rfc/rfc1812.txt section 5.2.2:
  * - The IP version number must be 4.
@@ -71,7 +74,7 @@ send_packetsx4(struct lcore_conf *qconf, uint16_t port, struct rte_mbuf *m[],
 	 * If TX buffer for that queue is empty, and we have enough packets,
 	 * then send them straightway.
 	 */
-	if (num >= MAX_TX_BURST && len == 0) {
+	if (num >= tx_burst_size && len == 0) {
 		n = rte_eth_tx_burst(port, qconf->tx_queue_id[port], m, num);
 		if (unlikely(n < num)) {
 			do {

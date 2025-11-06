@@ -57,8 +57,9 @@
 static_assert(MEMPOOL_CACHE_SIZE >= MAX_PKT_BURST, "MAX_PKT_BURST should be at most MEMPOOL_CACHE_SIZE");
 uint16_t nb_rxd = RX_DESC_DEFAULT;
 uint16_t nb_txd = TX_DESC_DEFAULT;
-uint32_t nb_pkt_per_burst = DEFAULT_PKT_BURST;
+uint32_t rx_burst_size = DEFAULT_PKT_BURST;
 uint32_t mb_mempool_cache_size = MEMPOOL_CACHE_SIZE;
+uint32_t tx_burst_size = DEFAULT_PKT_BURST;
 
 /**< Ports set in promiscuous mode off by default. */
 static int promiscuous_on;
@@ -400,7 +401,8 @@ print_usage(const char *prgname)
 		" --config (port,queue,lcore)[,(port,queue,lcore)]"
 		" [--rx-queue-size NPKTS]"
 		" [--tx-queue-size NPKTS]"
-		" [--burst NPKTS]"
+		" [--rx-burst NPKTS]"
+		" [--tx-burst NPKTS]"
 		" [--mbcache CACHESZ]"
 		" [--eth-dest=X,MM:MM:MM:MM:MM:MM]"
 		" [--max-pkt-len PKTLEN]"
@@ -427,7 +429,9 @@ print_usage(const char *prgname)
 		"            Default: %d\n"
 		"  --tx-queue-size NPKTS: Tx queue size in decimal\n"
 		"            Default: %d\n"
-		"  --burst NPKTS: Burst size in decimal\n"
+		"  --rx-burst NPKTS: RX Burst size in decimal\n"
+		"            Default: %d\n"
+		"  --tx-burst NPKTS: TX Burst size in decimal\n"
 		"            Default: %d\n"
 		"  --mbcache CACHESZ: Mbuf cache size in decimal\n"
 		"            Default: %d\n"
@@ -460,8 +464,8 @@ print_usage(const char *prgname)
 		"                    another is route entry at while line leads with character '%c'.\n"
 		"  --rule_ipv6=FILE: Specify the ipv6 rules entries file.\n"
 		"  --alg: ACL classify method to use, one of: %s.\n\n",
-		prgname, RX_DESC_DEFAULT, TX_DESC_DEFAULT, DEFAULT_PKT_BURST, MEMPOOL_CACHE_SIZE,
-		ACL_LEAD_CHAR, ROUTE_LEAD_CHAR, alg);
+		prgname, RX_DESC_DEFAULT, TX_DESC_DEFAULT, DEFAULT_PKT_BURST, DEFAULT_PKT_BURST,
+		MEMPOOL_CACHE_SIZE, ACL_LEAD_CHAR, ROUTE_LEAD_CHAR, alg);
 }
 
 static int
@@ -695,7 +699,7 @@ parse_mbcache_size(const char *optarg)
 }
 
 static void
-parse_pkt_burst(const char *optarg)
+parse_pkt_burst(const char *optarg, bool is_rx_burst, uint32_t *burst_sz)
 {
 	struct rte_eth_dev_info dev_info;
 	unsigned long pkt_burst;
@@ -710,31 +714,38 @@ parse_pkt_burst(const char *optarg)
 
 	if (pkt_burst > MAX_PKT_BURST) {
 		RTE_LOG(INFO, L3FWD, "User provided burst must be <= %d. Using default value %d\n",
-			MAX_PKT_BURST, nb_pkt_per_burst);
+			MAX_PKT_BURST, *burst_sz);
 		return;
 	} else if (pkt_burst > 0) {
-		nb_pkt_per_burst = (uint32_t)pkt_burst;
+		*burst_sz = (uint32_t)pkt_burst;
 		return;
 	}
 
-	/* If user gives a value of zero, query the PMD for its recommended Rx burst size. */
-	ret = rte_eth_dev_info_get(0, &dev_info);
-	if (ret != 0)
-		return;
-	burst_size = dev_info.default_rxportconf.burst_size;
-	if (burst_size == 0) {
-		RTE_LOG(INFO, L3FWD, "PMD does not recommend a burst size. Using default value %d. "
-			"User provided value must be in [1, %d]\n",
-			nb_pkt_per_burst, MAX_PKT_BURST);
-		return;
-	} else if (burst_size > MAX_PKT_BURST) {
-		RTE_LOG(INFO, L3FWD, "PMD recommended burst size %d exceeds maximum value %d. "
-			"Using default value %d\n",
-			burst_size, MAX_PKT_BURST, nb_pkt_per_burst);
-		return;
+	if (is_rx_burst) {
+		/* If user gives a value of zero, query the PMD for its recommended
+		 * Rx burst size.
+		 */
+		ret = rte_eth_dev_info_get(0, &dev_info);
+		if (ret != 0)
+			return;
+		burst_size = dev_info.default_rxportconf.burst_size;
+		if (burst_size == 0) {
+			RTE_LOG(INFO, L3FWD, "PMD does not recommend a burst size. Using default value %d. "
+				"User provided value must be in [1, %d]\n",
+				rx_burst_size, MAX_PKT_BURST);
+			return;
+		} else if (burst_size > MAX_PKT_BURST) {
+			RTE_LOG(INFO, L3FWD, "PMD recommended burst size %d exceeds maximum value %d. "
+				"Using default value %d\n",
+				burst_size, MAX_PKT_BURST, rx_burst_size);
+			return;
+		}
+		*burst_sz = burst_size;
+		RTE_LOG(INFO, L3FWD, "Using PMD-provided RX burst value %d\n", burst_size);
+	} else {
+		RTE_LOG(INFO, L3FWD, "User provided TX burst is 0. Using default value %d\n",
+			*burst_sz);
 	}
-	nb_pkt_per_burst = burst_size;
-	RTE_LOG(INFO, L3FWD, "Using PMD-provided burst value %d\n", burst_size);
 }
 
 #define MAX_JUMBO_PKT_LEN  9600
@@ -768,7 +779,8 @@ static const char short_options[] =
 #define CMD_LINE_OPT_RULE_IPV4 "rule_ipv4"
 #define CMD_LINE_OPT_RULE_IPV6 "rule_ipv6"
 #define CMD_LINE_OPT_ALG "alg"
-#define CMD_LINE_OPT_PKT_BURST "burst"
+#define CMD_LINE_OPT_PKT_RX_BURST "rx-burst"
+#define CMD_LINE_OPT_PKT_TX_BURST "tx-burst"
 #define CMD_LINE_OPT_MB_CACHE_SIZE "mbcache"
 
 enum {
@@ -799,7 +811,8 @@ enum {
 	CMD_LINE_OPT_ENABLE_VECTOR_NUM,
 	CMD_LINE_OPT_VECTOR_SIZE_NUM,
 	CMD_LINE_OPT_VECTOR_TMO_NS_NUM,
-	CMD_LINE_OPT_PKT_BURST_NUM,
+	CMD_LINE_OPT_PKT_RX_BURST_NUM,
+	CMD_LINE_OPT_PKT_TX_BURST_NUM,
 	CMD_LINE_OPT_MB_CACHE_SIZE_NUM,
 };
 
@@ -827,7 +840,8 @@ static const struct option lgopts[] = {
 	{CMD_LINE_OPT_RULE_IPV4,   1, 0, CMD_LINE_OPT_RULE_IPV4_NUM},
 	{CMD_LINE_OPT_RULE_IPV6,   1, 0, CMD_LINE_OPT_RULE_IPV6_NUM},
 	{CMD_LINE_OPT_ALG,   1, 0, CMD_LINE_OPT_ALG_NUM},
-	{CMD_LINE_OPT_PKT_BURST,   1, 0, CMD_LINE_OPT_PKT_BURST_NUM},
+	{CMD_LINE_OPT_PKT_RX_BURST,   1, 0, CMD_LINE_OPT_PKT_RX_BURST_NUM},
+	{CMD_LINE_OPT_PKT_TX_BURST,   1, 0, CMD_LINE_OPT_PKT_TX_BURST_NUM},
 	{CMD_LINE_OPT_MB_CACHE_SIZE,   1, 0, CMD_LINE_OPT_MB_CACHE_SIZE_NUM},
 	{NULL, 0, 0, 0}
 };
@@ -917,8 +931,12 @@ parse_args(int argc, char **argv)
 			parse_queue_size(optarg, &nb_txd, 0);
 			break;
 
-		case CMD_LINE_OPT_PKT_BURST_NUM:
-			parse_pkt_burst(optarg);
+		case CMD_LINE_OPT_PKT_RX_BURST_NUM:
+			parse_pkt_burst(optarg, true, &rx_burst_size);
+			break;
+
+		case CMD_LINE_OPT_PKT_TX_BURST_NUM:
+			parse_pkt_burst(optarg, false, &tx_burst_size);
 			break;
 
 		case CMD_LINE_OPT_MB_CACHE_SIZE_NUM:
@@ -1653,6 +1671,8 @@ main(int argc, char **argv)
 	ret = parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid L3FWD parameters\n");
+
+	RTE_LOG(INFO, L3FWD, "Using Rx burst %u Tx burst %u\n", rx_burst_size, tx_burst_size);
 
 	/* Setup function pointers for lookup method. */
 	setup_l3fwd_lookup_tables();
