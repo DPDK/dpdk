@@ -2127,63 +2127,37 @@ ctx_vtx(volatile struct iavf_tx_desc *txdp,
 				((uint64_t)pkt[0]->data_len <<
 					IAVF_TXD_QW1_TX_BUF_SZ_SHIFT);
 
-		if (pkt[1]->ol_flags & RTE_MBUF_F_TX_VLAN) {
-			if (vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
-				hi_ctx_qw1 |=
-					IAVF_TX_CTX_DESC_IL2TAG2 << IAVF_TXD_CTX_QW1_CMD_SHIFT;
-				low_ctx_qw1 |=
-					(uint64_t)pkt[1]->vlan_tci << IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
-			} else {
-				hi_data_qw1 |=
-					(uint64_t)pkt[1]->vlan_tci << IAVF_TXD_QW1_L2TAG1_SHIFT;
-			}
+		if (pkt[1]->ol_flags & RTE_MBUF_F_TX_VLAN &&
+				vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
+			hi_ctx_qw1 |=
+				IAVF_TX_CTX_DESC_IL2TAG2 << IAVF_TXD_CTX_QW1_CMD_SHIFT;
+			low_ctx_qw1 |=
+				(uint64_t)pkt[1]->vlan_tci << IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
 		}
 		if (pkt[1]->ol_flags & RTE_MBUF_F_TX_QINQ) {
+			uint64_t qinq_tag = vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2 ?
+				(uint64_t)pkt[0]->vlan_tci_outer :
+				(uint64_t)pkt[0]->vlan_tci;
 			hi_ctx_qw1 |= IAVF_TX_CTX_DESC_IL2TAG2 << IAVF_TXD_CTX_QW1_CMD_SHIFT;
-			if (vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
-				/* Inner tag at L2TAG2, outer tag at L2TAG1. */
-				low_ctx_qw1 |= (uint64_t)pkt[1]->vlan_tci <<
-							IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
-				hi_data_qw1 |= (uint64_t)pkt[1]->vlan_tci_outer <<
-							IAVF_TXD_QW1_L2TAG1_SHIFT;
-			} else {
-				/* Outer tag at L2TAG2, inner tag at L2TAG1. */
-				low_ctx_qw1 |= (uint64_t)pkt[1]->vlan_tci_outer <<
-							IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
-				hi_data_qw1 |= (uint64_t)pkt[1]->vlan_tci <<
-							IAVF_TXD_QW1_L2TAG1_SHIFT;
-			}
+			low_ctx_qw1 |= qinq_tag << IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
 		}
 		if (IAVF_CHECK_TX_LLDP(pkt[1]))
 			hi_ctx_qw1 |= IAVF_TX_CTX_DESC_SWTCH_UPLINK
 				<< IAVF_TXD_CTX_QW1_CMD_SHIFT;
 
-		if (pkt[0]->ol_flags & RTE_MBUF_F_TX_VLAN) {
-			if (vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
-				hi_ctx_qw0 |=
-					IAVF_TX_CTX_DESC_IL2TAG2 << IAVF_TXD_CTX_QW1_CMD_SHIFT;
-				low_ctx_qw0 |=
-					(uint64_t)pkt[0]->vlan_tci << IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
-			} else {
-				hi_data_qw0 |=
-					(uint64_t)pkt[0]->vlan_tci << IAVF_TXD_QW1_L2TAG1_SHIFT;
-			}
+		if (pkt[0]->ol_flags & RTE_MBUF_F_TX_VLAN &&
+				vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
+			hi_ctx_qw0 |=
+				IAVF_TX_CTX_DESC_IL2TAG2 << IAVF_TXD_CTX_QW1_CMD_SHIFT;
+			low_ctx_qw0 |=
+				(uint64_t)pkt[0]->vlan_tci << IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
 		}
 		if (pkt[0]->ol_flags & RTE_MBUF_F_TX_QINQ) {
+			uint64_t qinq_tag = vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2 ?
+				(uint64_t)pkt[0]->vlan_tci_outer :
+				(uint64_t)pkt[0]->vlan_tci;
 			hi_ctx_qw0 |= IAVF_TX_CTX_DESC_IL2TAG2 << IAVF_TXD_CTX_QW1_CMD_SHIFT;
-			if (vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
-				/* Inner tag at L2TAG2, outer tag at L2TAG1. */
-				low_ctx_qw0 |= (uint64_t)pkt[0]->vlan_tci <<
-							IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
-				hi_data_qw0 |= (uint64_t)pkt[0]->vlan_tci_outer <<
-							IAVF_TXD_QW1_L2TAG1_SHIFT;
-			} else {
-				/* Outer tag at L2TAG2, inner tag at L2TAG1. */
-				low_ctx_qw0 |= (uint64_t)pkt[0]->vlan_tci_outer <<
-							IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
-				hi_data_qw0 |= (uint64_t)pkt[0]->vlan_tci <<
-							IAVF_TXD_QW1_L2TAG1_SHIFT;
-			}
+			low_ctx_qw0 |= qinq_tag << IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
 		}
 		if (IAVF_CHECK_TX_LLDP(pkt[0]))
 			hi_ctx_qw0 |= IAVF_TX_CTX_DESC_SWTCH_UPLINK
