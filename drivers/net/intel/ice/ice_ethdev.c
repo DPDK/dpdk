@@ -2893,6 +2893,9 @@ ice_dev_stop(struct rte_eth_dev *dev)
 	/* disable all queue interrupts */
 	ice_vsi_disable_queues_intr(main_vsi);
 
+	if (dev->data->dev_conf.txmode.offloads & RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP)
+		ice_timesync_disable(dev);
+
 	if (pf->adapter->devargs.link_state_on_close == ICE_LINK_UP ||
 			(pf->adapter->devargs.link_state_on_close == ICE_LINK_INITIAL &&
 				pf->init_link_up))
@@ -4432,6 +4435,9 @@ ice_dev_start(struct rte_eth_dev *dev)
 			goto rx_err;
 		}
 	}
+
+	if (dev->data->dev_conf.txmode.offloads & RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP)
+		ice_timesync_enable(dev);
 
 	return 0;
 
