@@ -6,20 +6,12 @@
 NVIDIA MLX5 vDPA Driver
 =======================
 
-The mlx5 vDPA (vhost data path acceleration) driver library
-(**librte_vdpa_mlx5**) provides support for **NVIDIA ConnectX-6**,
-**NVIDIA ConnectX-6 Dx**, **NVIDIA ConnectX-6 Lx**, **NVIDIA ConnectX7**,
-**NVIDIA BlueField**, **NVIDIA BlueField-2** and **NVIDIA BlueField-3** families
-of 10/25/40/50/100/200 Gb/s adapters as well as their virtual functions (VF) in
-SR-IOV context.
-
-.. note::
-
-   This driver is enabled automatically when using "meson" build system which
-   will detect dependencies.
+The mlx5 vDPA (vhost data path acceleration) driver (``librte_vdpa_mlx5``)
+provides support for NVIDIA NIC and DPU device families.
 
 See :doc:`../../platform/mlx5` guide for design details,
 and which PMDs can be combined with vDPA PMD.
+
 
 Supported NICs
 --------------
@@ -28,21 +20,23 @@ Supported NICs
 * NVIDIA\ |reg| ConnectX\ |reg|-6 Lx
 * NVIDIA\ |reg| ConnectX\ |reg|-6 Dx
 * NVIDIA\ |reg| ConnectX\ |reg|-7
-* NVIDIA\ |reg| BlueField
-* NVIDIA\ |reg| BlueField |reg|-2
-* NVIDIA\ |reg| BlueField\ |reg|-3
+* NVIDIA\ |reg| BlueField\ |reg|-2 DPU
+* NVIDIA\ |reg| BlueField\ |reg|-3 DPU/SuperNIC
+
 
 Prerequisites
 -------------
 
 - NVIDIA MLNX_OFED version: **5.0**
-  See :ref:`mlx5 common prerequisites <mlx5_linux_prerequisites>` for more details.
+
+See :ref:`mlx5 common prerequisites <mlx5_linux_prerequisites>` for more details.
+
 
 Run-time configuration
-~~~~~~~~~~~~~~~~~~~~~~
+----------------------
 
 Driver options
-^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~
 
 Please refer to :ref:`mlx5 common options <mlx5_common_driver_options>`
 for an additional list of options shared with other mlx5 drivers.
@@ -136,16 +130,18 @@ for an additional list of options shared with other mlx5 drivers.
 
   - 0, default value, no pre-create virtq resource.
 
+
 Error handling
-^^^^^^^^^^^^^^
+--------------
 
 Upon potential hardware errors, mlx5 PMD try to recover, give up if failed 3
 times in 3 seconds, virtq will be put in disable state. User should check log
 to get error information, or query vdpa statistics counter to know error type
 and count report.
 
+
 Statistics
-^^^^^^^^^^
+----------
 
 The device statistics counter persists in reconfiguration until the device gets
 removed. User can reset counters by calling function rte_vdpa_reset_stats().
