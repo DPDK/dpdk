@@ -5187,7 +5187,7 @@ dcb_fwd_config_setup(void)
 	/* reinitialize forwarding streams */
 	init_fwd_streams();
 	sm_id = 0;
-	txp = 1;
+	txp = fwd_topology_tx_port_get(rxp);
 	/* get the dcb info on the first RX and TX ports */
 	(void)rte_eth_dev_get_dcb_info(fwd_ports_ids[rxp], &rxp_dcb_info);
 	(void)rte_eth_dev_get_dcb_info(fwd_ports_ids[txp], &txp_dcb_info);
@@ -5235,11 +5235,8 @@ dcb_fwd_config_setup(void)
 			rxp++;
 		if (rxp >= nb_fwd_ports)
 			return;
+		txp = fwd_topology_tx_port_get(rxp);
 		/* get the dcb information on next RX and TX ports */
-		if ((rxp & 0x1) == 0)
-			txp = (portid_t) (rxp + 1);
-		else
-			txp = (portid_t) (rxp - 1);
 		rte_eth_dev_get_dcb_info(fwd_ports_ids[rxp], &rxp_dcb_info);
 		rte_eth_dev_get_dcb_info(fwd_ports_ids[txp], &txp_dcb_info);
 	}
