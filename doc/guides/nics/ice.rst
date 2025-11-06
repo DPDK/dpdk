@@ -560,6 +560,10 @@ This feature is currently supported only in E830 adapters.
 The flag ``RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP`` is used to enable the feature.
 In order to deliver timestamps internally ``set txtimes`` is used,
 where inter burst and intra burst time interval in nsecs is provided.
+
+Note that DPDK library should be compiled using PTP support enabled
+and testpmd application should run on PF.
+
 For example:
 
 .. code-block:: console
