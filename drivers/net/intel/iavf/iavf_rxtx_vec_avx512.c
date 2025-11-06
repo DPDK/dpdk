@@ -2077,12 +2077,16 @@ ctx_vtx1(volatile struct iavf_tx_desc *txdp, struct rte_mbuf *pkt,
 	if (offload) {
 		iavf_fill_ctx_desc_tunneling_avx512(&low_ctx_qw, pkt);
 #ifdef IAVF_TX_VLAN_QINQ_OFFLOAD
-		if (pkt->ol_flags & RTE_MBUF_F_TX_VLAN &&
+		if (pkt->ol_flags & RTE_MBUF_F_TX_QINQ) {
+			uint64_t qinq_tag = vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2 ?
+				(uint64_t)pkt->vlan_tci_outer :
+				(uint64_t)pkt->vlan_tci;
+			high_ctx_qw |= IAVF_TX_CTX_DESC_IL2TAG2 << IAVF_TXD_CTX_QW1_CMD_SHIFT;
+			low_ctx_qw |= qinq_tag << IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
+		} else if ((pkt->ol_flags & RTE_MBUF_F_TX_VLAN) &&
 				vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
-			high_ctx_qw |= IAVF_TX_CTX_DESC_IL2TAG2 <<
-					IAVF_TXD_CTX_QW1_CMD_SHIFT;
-			low_ctx_qw |= (uint64_t)pkt->vlan_tci <<
-					IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
+			high_ctx_qw |= IAVF_TX_CTX_DESC_IL2TAG2 << IAVF_TXD_CTX_QW1_CMD_SHIFT;
+			low_ctx_qw |= (uint64_t)pkt->vlan_tci << IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
 		}
 #endif
 	}
