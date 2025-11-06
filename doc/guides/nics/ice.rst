@@ -183,6 +183,17 @@ Runtime Configuration
   If the value provided is greater than the number of levels provided by the HW,
   SW will use the hardware maximum value.
 
+- ``Source Prune Enable`` (default ``0``)
+
+  Enable Source Prune to automatically drop incoming packets
+  when their source MAC address matches one of the MAC addresses
+  assigned to that same NIC port.
+
+  Source Prune can be enabled by setting the devargs parameter ``source-prune``,
+  for example::
+
+    -a 80:00.0,source-prune=1
+
 - ``Protocol extraction for per queue``
 
   Configure the RX queues to do protocol extraction into mbuf for protocol
