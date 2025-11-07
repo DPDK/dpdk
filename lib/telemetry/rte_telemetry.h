@@ -337,17 +337,6 @@ typedef int (*telemetry_cb)(const char *cmd, const char *params,
 		struct rte_tel_data *info);
 
 /**
- * Used for handling data received over a telemetry socket.
- *
- * @param sock_id
- * ID for the socket to be used by the handler.
- *
- * @return
- * Void.
- */
-typedef void * (*handler)(void *sock_id);
-
-/**
  * Used when registering a command and callback function with telemetry.
  *
  * @param cmd
