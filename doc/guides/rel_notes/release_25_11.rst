@@ -120,6 +120,12 @@ New Features
   * Added support for Data Center Bridging (DCB).
   * Added support for Priority Flow Control (PFC).
 
+* **Updated Marvell cnxk ethernet driver.**
+
+  Added support to set/get link configuration as mentioned below:
+
+  * Get speed capability from firmware.
+
 * **Added Nebulamatrix nbl ethernet driver.**
 
   Added the PMD for Nebulamatrix NICs.
