@@ -1523,6 +1523,23 @@ class TestPmd(DPDKShell):
                 f"Failed to get offload config on port {port_id}, queue {queue_id}:\n{output}"
             )
 
+    def set_portlist(self, order: list[int], verify: bool = True) -> None:
+        """Sets the order of forwarding ports.
+
+        Args:
+            order: List of integers representing the desired port ordering.
+            verify: If :data:`True` the output of the command will be scanned in an attempt to
+                verify that the portlist was successfully set.
+
+        Raises:
+            InteractiveCommandExecutionError: If the portlist could not be set.
+        """
+        order_list = ",".join(map(str, order))
+        portlist_output = self.send_command(f"set portlist {order_list}")
+        if verify:
+            if "Invalid port" in portlist_output:
+                raise InteractiveCommandExecutionError(f"Invalid port in order {order_list}")
+
     @_requires_started_ports
     def get_offload_config(
         self,
