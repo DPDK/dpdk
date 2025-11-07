@@ -125,7 +125,7 @@ New Features
   Added support to set/get link configuration as mentioned below:
 
   * Get speed capability from firmware.
-  * Report link type and status.
+  * Report link type, mode and status.
   * Configure link mode.
 
 * **Added Nebulamatrix nbl ethernet driver.**
