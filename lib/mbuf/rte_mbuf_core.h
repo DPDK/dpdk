@@ -37,8 +37,8 @@ extern "C" {
  *   added to the right of the previously defined flags i.e. they should count
  *   downwards, not upwards.
  *
- * Keep these flags synchronized with rte_get_rx_ol_flag_name() and
- * rte_get_tx_ol_flag_name().
+ * Keep these flags synchronized with rte_get_rx_ol_flag_name(), rte_get_rx_ol_flag_list(),
+ * rte_get_tx_ol_flag_name(), and rte_get_tx_ol_flag_list().
  */
 
 /**
@@ -180,12 +180,20 @@ extern "C" {
 #define RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD	(1ULL << 22)
 #define RTE_MBUF_F_RX_OUTER_L4_CKSUM_INVALID	((1ULL << 21) | (1ULL << 22))
 
-/* add new RX flags here, don't forget to update RTE_MBUF_F_FIRST_FREE */
+/*
+ * Add new Rx flags here.
+ * Don't forget to update RTE_MBUF_F_FIRST_FREE,
+ * rte_get_rx_ol_flag_name(), and rte_get_rx_ol_flag_list().
+ */
 
 #define RTE_MBUF_F_FIRST_FREE (1ULL << 23)
 #define RTE_MBUF_F_LAST_FREE (1ULL << 40)
 
-/* add new TX flags here, don't forget to update RTE_MBUF_F_LAST_FREE  */
+/*
+ * Add new Tx flags here.
+ * Don't forget to update RTE_MBUF_F_LAST_FREE, RTE_MBUF_F_TX_OFFLOAD_MASK,
+ * rte_get_tx_ol_flag_name(), and rte_get_tx_ol_flag_list().
+ */
 
 /**
  * Outer UDP checksum offload flag. This flag is used for enabling
@@ -485,7 +493,10 @@ struct __rte_cache_aligned rte_mbuf {
 	struct rte_mbuf *next;
 #endif
 
-	/* next 8 bytes are initialised on RX descriptor rearm */
+	/*
+	 * Next 8 bytes are initialised on Rx descriptor rearm,
+	 * or on Rx when pulling packet from descriptor.
+	 */
 	union {
 		uint64_t rearm_data[1];
 		__extension__
@@ -517,7 +528,7 @@ struct __rte_cache_aligned rte_mbuf {
 
 	uint64_t ol_flags;        /**< Offload features. */
 
-	/* remaining 24 bytes are set on RX when pulling packet from descriptor */
+	/* Remaining 24 bytes are set on Rx when pulling packet from descriptor. */
 	union {
 		/* void * type of the array elements is retained for driver compatibility. */
 		void *rx_descriptor_fields1[24 / sizeof(void *)];
@@ -603,7 +614,11 @@ struct __rte_cache_aligned rte_mbuf {
 
 	struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
 
-	/* second cache line - fields only used in slow path or on TX */
+	/*
+	 * Second cache line - fields only used in slow path or on Tx.
+	 * In special cases, some of these fields are also set on Rx,
+	 * most notably the 'next' field is set on Rx scattered packets.
+	 */
 #if RTE_IOVA_IN_MBUF
 	/**
 	 * Next segment of scattered packet. Must be NULL in the last
