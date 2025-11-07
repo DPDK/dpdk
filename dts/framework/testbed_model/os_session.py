@@ -591,6 +591,22 @@ class OSSession(ABC):
         """
 
     @abstractmethod
+    def set_interface_link_up(self, name: str) -> None:
+        """Send operating system specific command for bringing up link on specified interface.
+
+        Args:
+            name: String representing logical name of port to apply the link up command to.
+        """
+
+    @abstractmethod
+    def delete_interface(self, name: str) -> None:
+        """Send operating system specific command for deleting specified interface.
+
+        Args:
+            name: String representing logical name of interface to delete.
+        """
+
+    @abstractmethod
     def configure_port_mtu(self, mtu: int, port: Port) -> None:
         """Configure `mtu` on `port`.
 
