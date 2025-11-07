@@ -46,7 +46,7 @@ struct cmd_callback {
 struct socket {
 	int sock;
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)];
-	handler fn;
+	telemetry_sock_handler fn;
 	RTE_ATOMIC(uint16_t) *num_clients;
 };
 static struct socket v2_socket; /* socket for v2 telemetry */
