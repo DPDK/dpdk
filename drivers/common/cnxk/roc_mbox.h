@@ -766,13 +766,18 @@ struct cgx_lmac_fwdata_s {
 	uint64_t __io supported_fec;
 	uint64_t __io supported_an;
 	uint64_t __io supported_link_modes;
-	/* Only applicable if AN is supported */
+	/* only applicable if AN is supported */
 	uint64_t __io advertised_fec;
-	uint64_t __io advertised_link_modes;
+	uint64_t __io advertised_link_modes_own : 1; /* CGX_CMD_OWN */
+	uint64_t __io advertised_link_modes : 63;
 	/* Only applicable if SFP/QSFP slot is present */
 	struct sfp_eeprom_s sfp_eeprom;
 	struct phy_s phy;
-#define LMAC_FWDATA_RESERVED_MEM 1023
+	uint32_t __io lmac_type;
+	uint32_t __io portm_idx;
+	uint64_t __io mgmt_port : 1;
+	uint64_t __io port;
+#define LMAC_FWDATA_RESERVED_MEM 1018
 	uint64_t __io reserved[LMAC_FWDATA_RESERVED_MEM];
 };
 
@@ -800,8 +805,10 @@ struct cgx_set_link_mode_args {
 	uint32_t __io speed;
 	uint8_t __io duplex;
 	uint8_t __io an;
-	uint8_t __io ports;
+	uint8_t __io mode_baseidx;
+	uint8_t __io multimode;
 	uint64_t __io mode;
+	uint64_t __io advertising;
 };
 
 struct cgx_set_link_mode_req {

@@ -267,20 +267,19 @@ roc_nix_mac_link_info_set(struct roc_nix *roc_nix,
 	struct cgx_set_link_mode_req *req;
 	int rc;
 
-	rc = roc_nix_mac_link_state_set(roc_nix, link_info->status);
-	if (rc)
-		goto exit;
-
 	req = mbox_alloc_msg_cgx_set_link_mode(mbox);
 	if (req == NULL) {
 		rc =  -ENOSPC;
 		goto exit;
 	}
+
+	req->args.advertising = link_info->advertising;
 	req->args.speed = link_info->speed;
 	req->args.duplex = link_info->full_duplex;
 	req->args.an = link_info->autoneg;
 
-	rc = mbox_process(mbox);
+	/* Link mode changes takes more time. */
+	rc = mbox_process_tmo(mbox, mbox->rsp_tmo * 4);
 exit:
 	mbox_put(mbox);
 	return rc;
@@ -411,4 +410,33 @@ roc_nix_mac_link_info_get_cb_unregister(struct roc_nix *roc_nix)
 	struct dev *dev = &nix->dev;
 
 	dev->ops->link_status_get = NULL;
+}
+
+int
+roc_nix_mac_fwdata_get(struct roc_nix *roc_nix, struct roc_nix_mac_fwdata *data)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct cgx_fw_data *fw_data;
+	struct dev *dev = &nix->dev;
+	struct mbox *mbox;
+	int rc;
+
+	if (roc_nix_is_sdp(roc_nix))
+		return 0;
+
+	mbox = mbox_get(dev->mbox);
+
+	mbox_alloc_msg_cgx_get_aux_link_info(mbox);
+	rc = mbox_process_msg(mbox, (void *)&fw_data);
+	if (rc)
+		goto exit;
+
+	nix->supported_link_modes = fw_data->fwdata.supported_link_modes;
+	nix->advertised_link_modes = fw_data->fwdata.advertised_link_modes;
+	data->supported_link_modes = nix->supported_link_modes;
+	data->advertised_link_modes = nix->advertised_link_modes;
+	data->supported_an = fw_data->fwdata.supported_an;
+exit:
+	mbox_put(mbox);
+	return rc;
 }

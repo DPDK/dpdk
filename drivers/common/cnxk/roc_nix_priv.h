@@ -138,6 +138,8 @@ struct nix {
 	uint16_t bpid[NIX_MAX_CHAN];
 	struct nix_qint *qints_mem;
 	struct nix_qint *cints_mem;
+	uint64_t supported_link_modes;
+	uint64_t advertised_link_modes;
 	uint8_t configured_qints;
 	uint8_t configured_cints;
 	uint8_t exact_match_ena;
