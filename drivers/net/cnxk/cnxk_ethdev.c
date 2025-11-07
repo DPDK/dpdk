@@ -62,6 +62,17 @@ static const uint32_t cnxk_mac_modes[CGX_MODE_MAX + 1] = {
 	[ETH_MODE_10G_QXGMII_BIT] = RTE_ETH_LINK_SPEED_10G,
 };
 
+static const uint8_t cnxk_port_type[] = {
+	[CGX_PORT_TP] = RTE_ETH_LINK_CONNECTOR_TP,
+	[CGX_PORT_AUI] = RTE_ETH_LINK_CONNECTOR_AUI,
+	[CGX_PORT_MII] = RTE_ETH_LINK_CONNECTOR_MII,
+	[CGX_PORT_FIBRE] = RTE_ETH_LINK_CONNECTOR_FIBER,
+	[CGX_PORT_BNC] = RTE_ETH_LINK_CONNECTOR_BNC,
+	[CGX_PORT_DA] = RTE_ETH_LINK_CONNECTOR_DAC,
+	[CGX_PORT_NONE] = RTE_ETH_LINK_CONNECTOR_NONE,
+	[CGX_PORT_OTHER] = RTE_ETH_LINK_CONNECTOR_OTHER,
+};
+
 cnxk_ethdev_rx_offload_cb_t cnxk_ethdev_rx_offload_cb;
 
 #define CNXK_NIX_CQ_INL_CLAMP_MAX (64UL * 1024UL)
@@ -98,6 +109,7 @@ static inline uint32_t
 nix_get_speed_capa(struct cnxk_eth_dev *dev)
 {
 	struct roc_nix_mac_fwdata fwdata;
+	struct rte_eth_link link;
 	uint32_t speed_capa;
 	uint8_t mode;
 	int rc;
@@ -120,6 +132,12 @@ nix_get_speed_capa(struct cnxk_eth_dev *dev)
 			if (fwdata.supported_link_modes & BIT_ULL(mode))
 				speed_capa |= cnxk_mac_modes[mode];
 		}
+		dev->link_type = cnxk_port_type[(uint8_t)fwdata.port_type];
+
+		/* Set link type at init */
+		memset(&link, 0, sizeof(link));
+		link.link_connector = dev->link_type;
+		rte_eth_linkstatus_set(dev->eth_dev, &link);
 	}
 
 	return speed_capa;
@@ -1787,6 +1805,7 @@ cnxk_nix_dev_stop(struct rte_eth_dev *eth_dev)
 
 	/* Bring down link status internally */
 	memset(&link, 0, sizeof(link));
+	link.link_connector = dev->link_type;
 	rte_eth_linkstatus_set(eth_dev, &link);
 
 	return 0;
