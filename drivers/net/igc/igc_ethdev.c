@@ -2806,6 +2806,12 @@ eth_igc_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
 {
 	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 
+	/*
+	 * Reading the SYSTIML register latches the upper 32 bits to the SYSTIMH
+	 * shadow register for coherent access. As long as we read SYSTIML first
+	 * followed by SYSTIMH, we avoid race conditions where the time rolls
+	 * over between the two register reads.
+	 */
 	ts->tv_nsec = IGC_READ_REG(hw, IGC_SYSTIML);
 	ts->tv_sec = IGC_READ_REG(hw, IGC_SYSTIMH);
 
@@ -2965,10 +2971,10 @@ eth_igc_timesync_disable(struct rte_eth_dev *dev)
 static int
 eth_igc_read_clock(__rte_unused struct rte_eth_dev *dev, uint64_t *clock)
 {
-	struct timespec system_time;
+	struct timespec ts;
 
-	clock_gettime(CLOCK_REALTIME, &system_time);
-	*clock = system_time.tv_sec * NSEC_PER_SEC + system_time.tv_nsec;
+	eth_igc_timesync_read_time(dev, &ts);
+	*clock = rte_timespec_to_ns(&ts);
 
 	return 0;
 }
