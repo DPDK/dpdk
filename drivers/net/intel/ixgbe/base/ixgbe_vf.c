@@ -482,7 +482,7 @@ int ixgbevf_get_pf_link_state(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 
 	msgbuf[0] = IXGBE_VF_GET_PF_LINK_STATE;
 
-	err = ixgbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 6);
+	err = ixgbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 3);
 	if (err || (msgbuf[0] & IXGBE_VT_MSGTYPE_FAILURE)) {
 		err = IXGBE_ERR_MBX;
 		*speed = IXGBE_LINK_SPEED_UNKNOWN;
