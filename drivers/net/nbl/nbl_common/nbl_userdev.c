@@ -679,11 +679,20 @@ int nbl_pci_map_device(struct nbl_adapter *adapter)
 
 	NBL_USERDEV_INIT_COMMON(common);
 	iova_mode = rte_eal_iova_mode();
+
+	snprintf(pathname, sizeof(pathname), "/dev/nbl_userdev/" PCI_PRI_FMT, loc->domain,
+		 loc->bus, loc->devid, loc->function);
+
+	/* check iommu passthrough mode */
+	if (!access(pathname, F_OK) && iova_mode != RTE_IOVA_PA) {
+		NBL_LOG(ERR, "%s IOMMU is in passthrough mode, must select IOVA as PA"
+			" with --iova-mode=pa", pci_dev->device.name);
+		ret = -1;
+		return ret;
+	}
+
 	if (iova_mode == RTE_IOVA_PA) {
 		/* check iommu disable */
-		snprintf(pathname, sizeof(pathname),
-			 "/dev/nbl_userdev/" PCI_PRI_FMT, loc->domain,
-			 loc->bus, loc->devid, loc->function);
 		common->devfd = open(pathname, O_RDWR);
 		if (common->devfd >= 0)
 			goto mmap;

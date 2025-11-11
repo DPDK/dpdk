@@ -70,6 +70,15 @@ Anolis community:
 Alternatively, you can contact us to obtain the `nbl_core` code and installation package.
 
 
+Coexistence Between DPDK And Kernel Driver
+------------------------------------------
+
+When the device is bound to the `nbl_core` driver and IOMMU is in passthrough mode,
+it is necessary to force I/O virtual address (IOVA)
+to be mapped to physical address (PA)
+with the EAL command line option ``--iova-mode=pa``.
+
+
 Prerequisites
 -------------
 
