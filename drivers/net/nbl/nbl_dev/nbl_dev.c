@@ -87,7 +87,7 @@ static int nbl_dev_txrx_start(struct rte_eth_dev *eth_dev)
 		param.local_queue_id = i + ring_mgt->queue_offset;
 		param.intr_en = 0;
 		param.intr_mask = 0;
-		param.half_offload_en = 1;
+		param.half_offload_en = 0;
 		param.extend_header = 1;
 		param.split = 0;
 		param.rxcsum = 1;

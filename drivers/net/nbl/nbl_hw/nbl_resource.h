@@ -107,8 +107,6 @@ union nbl_rx_extend_head {
 		u32 l4s_dec_ind :1;
 		u32 rsv2 :4;
 		u32 num_buffers :8;
-		/* DW3 */
-		u32 hash_value;
 	} leonis;
 	struct nbl_rx_ehdr_common {
 		u32 dw0;
