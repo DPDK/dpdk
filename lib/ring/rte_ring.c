@@ -25,6 +25,7 @@
 #include <rte_string_fns.h>
 #include <rte_tailq.h>
 #include <rte_telemetry.h>
+#include <rte_bitops.h>
 
 #include "rte_ring.h"
 #include "rte_ring_elem.h"
@@ -46,9 +47,6 @@ EAL_REGISTER_TAILQ(rte_ring_tailq)
 		     RING_F_MP_RTS_ENQ | RING_F_MC_RTS_DEQ |	       \
 		     RING_F_MP_HTS_ENQ | RING_F_MC_HTS_DEQ)
 
-/* true if x is a power of 2 */
-#define POWEROF2(x) ((((x)-1) & (x)) == 0)
-
 /* by default set head/tail distance as 1/8 of ring capacity */
 #define HTD_MAX_DEF	8
 
@@ -67,7 +65,7 @@ rte_ring_get_memsize_elem(unsigned int esize, unsigned int count)
 	}
 
 	/* count must be a power of 2 */
-	if ((!POWEROF2(count)) || (count > RTE_RING_SZ_MASK )) {
+	if ((!RTE_IS_POWER_OF_2(count)) || (count > RTE_RING_SZ_MASK)) {
 		RING_LOG(ERR,
 			"Requested number of elements is invalid, must be power of 2, and not exceed %u",
 			RTE_RING_SZ_MASK);
@@ -227,7 +225,7 @@ rte_ring_init(struct rte_ring *r, const char *name, unsigned int count,
 		r->mask = r->size - 1;
 		r->capacity = count;
 	} else {
-		if ((!POWEROF2(count)) || (count > RTE_RING_SZ_MASK)) {
+		if ((!RTE_IS_POWER_OF_2(count)) || (count > RTE_RING_SZ_MASK)) {
 			RING_LOG(ERR,
 				"Requested size is invalid, must be power of 2, and not exceed the size limit %u",
 				RTE_RING_SZ_MASK);
