@@ -36,6 +36,11 @@ __rte_ring_update_tail(struct rte_ring_headtail *ht, uint32_t old_val,
 		rte_wait_until_equal_32((uint32_t *)(uintptr_t)&ht->tail, old_val,
 			rte_memory_order_relaxed);
 
+	/*
+	 * R0: Establishes a synchronizing edge with load-acquire of tail at A1.
+	 * Ensures that memory effects by this thread on ring elements array
+	 * is observed by a different thread of the other type.
+	 */
 	rte_atomic_store_explicit(&ht->tail, new_val, rte_memory_order_release);
 }
 
@@ -77,17 +82,24 @@ __rte_ring_headtail_move_head(struct rte_ring_headtail *d,
 	int success;
 	unsigned int max = n;
 
+	/*
+	 * A0: Establishes a synchronizing edge with R1.
+	 * Ensure that this thread observes same values
+	 * to stail observed by the thread that updated
+	 * d->head.
+	 * If not, an unsafe partial order may ensue.
+	 */
 	*old_head = rte_atomic_load_explicit(&d->head,
-			rte_memory_order_relaxed);
+			rte_memory_order_acquire);
 	do {
 		/* Reset n to the initial burst count */
 		n = max;
 
-		/* Ensure the head is read before tail */
-		rte_atomic_thread_fence(rte_memory_order_acquire);
-
-		/* load-acquire synchronize with store-release of ht->tail
-		 * in update_tail.
+		/*
+		 * A1: Establishes a synchronizing edge with R0.
+		 * Ensures that other thread's memory effects on
+		 * ring elements array is observed by the time
+		 * this thread observes its tail update.
 		 */
 		stail = rte_atomic_load_explicit(&s->tail,
 					rte_memory_order_acquire);
@@ -113,10 +125,19 @@ __rte_ring_headtail_move_head(struct rte_ring_headtail *d,
 			success = 1;
 		} else
 			/* on failure, *old_head is updated */
+			/*
+			 * R1/A2.
+			 * R1: Establishes a synchronizing edge with A0 of a
+			 * different thread.
+			 * A2: Establishes a synchronizing edge with R1 of a
+			 * different thread to observe same value for stail
+			 * observed by that thread on CAS failure (to retry
+			 * with an updated *old_head).
+			 */
 			success = rte_atomic_compare_exchange_strong_explicit(
 					&d->head, old_head, *new_head,
-					rte_memory_order_relaxed,
-					rte_memory_order_relaxed);
+					rte_memory_order_release,
+					rte_memory_order_acquire);
 	} while (unlikely(success == 0));
 	return n;
 }
