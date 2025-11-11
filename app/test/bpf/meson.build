@@ -31,6 +31,7 @@ cflags += '-DTEST_BPF_ELF_LOAD'
 
 # BPF sources to compile
 bpf_progs = {
+    'filter': 'test_bpf_filter',
     'load': 'test_bpf_load',
 }
 
