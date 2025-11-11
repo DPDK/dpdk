@@ -294,6 +294,20 @@ mlx5_monitor_callback(const uint64_t value,
 	return (value & m) == v ? -1 : 0;
 }
 
+static int
+mlx5_monitor_cqe_own_callback(const uint64_t value,
+		const uint64_t opaque[RTE_POWER_MONITOR_OPAQUE_SZ])
+{
+	const uint64_t m = opaque[CLB_MSK_IDX];
+	const uint64_t v = opaque[CLB_VAL_IDX];
+	const uint64_t sw_owned = ((value & m) == v);
+	const uint64_t opcode = MLX5_CQE_OPCODE(value);
+	const uint64_t valid_op = (opcode != MLX5_CQE_INVALID);
+
+	/* ownership bit is not valid for invalid opcode; CQE is HW owned */
+	return -(valid_op & sw_owned);
+}
+
 int mlx5_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
 {
 	struct mlx5_rxq_data *rxq = rx_queue;
@@ -311,12 +325,13 @@ int mlx5_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
 		pmc->addr = &cqe->validity_iteration_count;
 		pmc->opaque[CLB_VAL_IDX] = vic;
 		pmc->opaque[CLB_MSK_IDX] = MLX5_CQE_VIC_INIT;
+		pmc->fn = mlx5_monitor_callback;
 	} else {
 		pmc->addr = &cqe->op_own;
 		pmc->opaque[CLB_VAL_IDX] = !!idx;
 		pmc->opaque[CLB_MSK_IDX] = MLX5_CQE_OWNER_MASK;
+		pmc->fn = mlx5_monitor_cqe_own_callback;
 	}
-	pmc->fn = mlx5_monitor_callback;
 	pmc->size = sizeof(uint8_t);
 	return 0;
 }
