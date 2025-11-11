@@ -300,7 +300,7 @@ implementer_microsoft = {
     'flags': [],
     'part_number_config': {
         '0xd49': {
-            'mcpu': 'mcpu_cobalt100',
+            'mcpu': 'cobalt-100',
             'flags': [
                 ['RTE_MACHINE', '"neoverse-n2"'],
                 ['RTE_ARM_FEATURE_ATOMICS', true],
@@ -492,6 +492,7 @@ soc_cobalt100 = {
     'description' : 'Microsoft Azure Cobalt 100',
     'implementer' : '0x6d',
     'part_number': '0xd49',
+    'extra_march_features': ['crypto'],
     'numa': true
 }
 
@@ -702,10 +703,6 @@ mcpu_defs = {
     'mcpu_centriq2400': {
         'march': 'armv8-a',
         'march_extensions': ['crc']
-    },
-    'mcpu_cobalt100': {
-        'march': 'armv9-a',
-        'march_extensions': ['crypto', 'sve', 'sve2']
     },
     'mcpu_cortex-a78ae': {
         'march': 'armv8.4-a',
