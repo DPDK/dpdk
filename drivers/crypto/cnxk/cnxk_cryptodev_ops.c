@@ -199,14 +199,19 @@ cnxk_cpt_dev_start(struct rte_cryptodev *dev)
 	struct cnxk_cpt_vf *vf = dev->data->dev_private;
 	struct roc_cpt *roc_cpt = &vf->cpt;
 	uint16_t nb_lf = roc_cpt->nb_lf;
+	struct roc_cpt_lf *lf;
 	uint16_t qp_id;
 
 	for (qp_id = 0; qp_id < nb_lf; qp_id++) {
+		lf = vf->cpt.lf[qp_id];
+
 		/* Application may not setup all queue pair */
-		if (roc_cpt->lf[qp_id] == NULL)
+		if (lf == NULL)
 			continue;
 
-		roc_cpt_iq_enable(roc_cpt->lf[qp_id]);
+		roc_cpt_iq_enable(lf);
+		if (lf->cpt_cq_ena)
+			roc_cpt_cq_enable(lf);
 	}
 
 	return 0;
@@ -218,13 +223,17 @@ cnxk_cpt_dev_stop(struct rte_cryptodev *dev)
 	struct cnxk_cpt_vf *vf = dev->data->dev_private;
 	struct roc_cpt *roc_cpt = &vf->cpt;
 	uint16_t nb_lf = roc_cpt->nb_lf;
+	struct roc_cpt_lf *lf;
 	uint16_t qp_id;
 
 	for (qp_id = 0; qp_id < nb_lf; qp_id++) {
-		if (roc_cpt->lf[qp_id] == NULL)
+		lf = vf->cpt.lf[qp_id];
+		if (lf == NULL)
 			continue;
 
 		roc_cpt_iq_disable(roc_cpt->lf[qp_id]);
+		if (lf->cpt_cq_ena)
+			roc_cpt_cq_disable(lf);
 	}
 }
 
@@ -347,7 +356,7 @@ static struct cnxk_cpt_qp *
 cnxk_cpt_qp_create(const struct rte_cryptodev *dev, uint16_t qp_id,
 		   uint32_t iq_len)
 {
-	const struct rte_memzone *pq_mem;
+	const struct rte_memzone *pq_mem = NULL;
 	char name[RTE_MEMZONE_NAMESIZE];
 	struct cnxk_cpt_qp *qp;
 	uint32_t len;
@@ -363,23 +372,25 @@ cnxk_cpt_qp_create(const struct rte_cryptodev *dev, uint16_t qp_id,
 	}
 
 	/* For pending queue */
-	len = iq_len * sizeof(struct cpt_inflight_req);
+	if (!roc_model_is_cn20k()) {
+		len = iq_len * sizeof(struct cpt_inflight_req);
 
-	qp_memzone_name_get(name, RTE_MEMZONE_NAMESIZE, dev->data->dev_id,
-			    qp_id);
+		qp_memzone_name_get(name, RTE_MEMZONE_NAMESIZE, dev->data->dev_id, qp_id);
 
-	pq_mem = rte_memzone_reserve_aligned(name, len, rte_socket_id(),
-					     RTE_MEMZONE_SIZE_HINT_ONLY |
-						     RTE_MEMZONE_256MB,
-					     RTE_CACHE_LINE_SIZE);
-	if (pq_mem == NULL) {
-		plt_err("Could not allocate reserved memzone");
-		goto qp_free;
+		pq_mem = rte_memzone_reserve_aligned(name, len, rte_socket_id(),
+						     RTE_MEMZONE_SIZE_HINT_ONLY | RTE_MEMZONE_256MB,
+						     RTE_CACHE_LINE_SIZE);
+		if (pq_mem == NULL) {
+			plt_err("Could not allocate reserved memzone");
+			goto qp_free;
+		}
+
+		va = pq_mem->addr;
+
+		memset(va, 0, len);
+
+		qp->pend_q.req_queue = pq_mem->addr;
 	}
-
-	va = pq_mem->addr;
-
-	memset(va, 0, len);
 
 	ret = cnxk_cpt_metabuf_mempool_create(dev, qp, qp_id, iq_len);
 	if (ret) {
@@ -388,14 +399,14 @@ cnxk_cpt_qp_create(const struct rte_cryptodev *dev, uint16_t qp_id,
 	}
 
 	/* Initialize pending queue */
-	qp->pend_q.req_queue = pq_mem->addr;
 	qp->pend_q.head = 0;
 	qp->pend_q.tail = 0;
 
 	return qp;
 
 pq_mem_free:
-	rte_memzone_free(pq_mem);
+	if (!roc_model_is_cn20k())
+		rte_memzone_free(pq_mem);
 qp_free:
 	rte_free(qp);
 	return NULL;
@@ -410,14 +421,15 @@ cnxk_cpt_qp_destroy(const struct rte_cryptodev *dev, struct cnxk_cpt_qp *qp)
 
 	cnxk_cpt_metabuf_mempool_destroy(qp);
 
-	qp_memzone_name_get(name, RTE_MEMZONE_NAMESIZE, dev->data->dev_id,
-			    qp->lf.lf_id);
+	if (!roc_model_is_cn20k()) {
+		qp_memzone_name_get(name, RTE_MEMZONE_NAMESIZE, dev->data->dev_id, qp->lf.lf_id);
 
-	pq_mem = rte_memzone_lookup(name);
+		pq_mem = rte_memzone_lookup(name);
 
-	ret = rte_memzone_free(pq_mem);
-	if (ret)
-		return ret;
+		ret = rte_memzone_free(pq_mem);
+		if (ret)
+			return ret;
+	}
 
 	rte_free(qp);
 
@@ -487,6 +499,13 @@ cnxk_cpt_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 
 	qp->lf.lf_id = qp_id;
 	qp->lf.nb_desc = nb_desc;
+	if (roc_model_is_cn20k()) {
+		qp->lf.cpt_cq_ena = true;
+		qp->lf.dq_ack_ena = false;
+		/* CQ entry size is 128B(32 << 2) */
+		qp->lf.cq_entry_size = 2;
+		qp->lf.cq_size = nb_desc;
+	}
 
 	ret = roc_cpt_lf_init(roc_cpt, &qp->lf);
 	if (ret < 0) {
@@ -496,6 +515,17 @@ cnxk_cpt_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	}
 
 	qp->pend_q.pq_mask = qp->lf.nb_desc - 1;
+
+	if (roc_model_is_cn20k()) {
+		if (qp->lf.cq_vaddr == NULL) {
+			plt_err("Could not initialize completion queue");
+			ret = -EINVAL;
+			goto exit;
+		}
+
+		qp->pend_q.req_queue = PLT_PTR_ADD(
+			qp->lf.cq_vaddr, ROC_CPT_CQ_ENTRY_SIZE_UNIT << qp->lf.cq_entry_size);
+	}
 
 	roc_cpt->lf[qp_id] = &qp->lf;
 
@@ -543,6 +573,9 @@ cnxk_cpt_queue_pair_reset(struct rte_cryptodev *dev, uint16_t qp_id,
 		lf = vf->cpt.lf[qp_id];
 		roc_cpt_lf_reset(lf);
 		roc_cpt_iq_enable(lf);
+
+		if (lf->cpt_cq_ena)
+			roc_cpt_cq_enable(lf);
 
 		return 0;
 	}

@@ -54,13 +54,15 @@ struct cpt_qp_meta_info {
 
 struct __rte_aligned(ROC_ALIGN) cpt_inflight_req {
 	union cpt_res_s res;
+	uint8_t rsvd[16];
+	uint8_t meta[META_LEN];
 	union {
 		void *opaque;
 		struct rte_crypto_op *cop;
 		struct rte_event_vector *vec;
 	};
+	void *qp;
 	void *mdata;
-	uint8_t meta[META_LEN];
 	uint8_t op_flags;
 #ifdef CPT_INST_DEBUG_ENABLE
 	uint8_t scatter_sz;
@@ -69,7 +71,6 @@ struct __rte_aligned(ROC_ALIGN) cpt_inflight_req {
 	uint8_t *dptr;
 	uint8_t *rptr;
 #endif
-	void *qp;
 };
 
 PLT_STATIC_ASSERT(sizeof(struct cpt_inflight_req) == ROC_CACHE_LINE_SZ);

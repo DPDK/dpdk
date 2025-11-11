@@ -24,7 +24,6 @@
 #define CPT_LF_MAX_NB_DESC	128000
 #define CPT_LF_DEFAULT_NB_DESC	1024
 #define CPT_LF_FC_MIN_THRESHOLD 32
-#define CQ_ENTRY_SIZE_UNIT	32
 
 static struct cpt_int_cb {
 	roc_cpt_int_misc_cb_t cb;
@@ -704,7 +703,7 @@ cpt_lf_cq_init(struct roc_cpt_lf *lf)
 	roc_cpt_cq_disable(lf);
 
 	/* Set command queue base address */
-	len = PLT_ALIGN(lf->cq_size * (CQ_ENTRY_SIZE_UNIT << lf->cq_entry_size), ROC_ALIGN);
+	len = PLT_ALIGN(lf->cq_size * (ROC_CPT_CQ_ENTRY_SIZE_UNIT << lf->cq_entry_size), ROC_ALIGN);
 	lf->cq_vaddr = plt_zmalloc(len, ROC_ALIGN);
 	if (lf->cq_vaddr == NULL)
 		return -ENOMEM;
