@@ -24,6 +24,12 @@ __rte_ring_update_tail(struct rte_ring_headtail *ht, uint32_t old_val,
 	if (!single)
 		rte_wait_until_equal_32(&ht->tail, old_val, __ATOMIC_RELAXED);
 
+	/*
+	 * R0: Establishes a synchronizing edge with load-acquire of
+	 * cons_tail at A1 or prod_tail at A4.
+	 * Ensures that memory effects by this thread on ring elements array
+	 * is observed by a different thread of the other type.
+	 */
 	__atomic_store_n(&ht->tail, new_val, __ATOMIC_RELEASE);
 }
 
@@ -61,19 +67,25 @@ __rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
 	unsigned int max = n;
 	int success;
 
-	*old_head = __atomic_load_n(&r->prod.head, __ATOMIC_RELAXED);
+	/*
+	 * A0: Establishes a synchronizing edge with R1.
+	 * Ensure that this thread observes same values
+	 * to cons_tail observed by the thread that
+	 * updated r->prod.head.
+	 * If not, an unsafe partial order may ensue.
+	 */
+	*old_head = __atomic_load_n(&r->prod.head, __ATOMIC_ACQUIRE);
 	do {
 		/* Reset n to the initial burst count */
 		n = max;
 
-		/* Ensure the head is read before tail */
-		__atomic_thread_fence(__ATOMIC_ACQUIRE);
-
-		/* load-acquire synchronize with store-release of ht->tail
-		 * in update_tail.
+		/*
+		 * A1: Establishes a synchronizing edge with R0.
+		 * Ensures that other thread's memory effects on
+		 * ring elements array is observed by the time
+		 * this thread observes its tail update.
 		 */
-		cons_tail = __atomic_load_n(&r->cons.tail,
-					__ATOMIC_ACQUIRE);
+		cons_tail = __atomic_load_n(&r->cons.tail, __ATOMIC_ACQUIRE);
 
 		/* The subtraction is done between two unsigned 32bits value
 		 * (the result is always modulo 32 bits even if we have
@@ -95,10 +107,19 @@ __rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
 			r->prod.head = *new_head, success = 1;
 		else
 			/* on failure, *old_head is updated */
+			/*
+			 * R1/A2.
+			 * R1: Establishes a synchronizing edge with A0 of a
+			 * different thread.
+			 * A2: Establishes a synchronizing edge with R1 of a
+			 * different thread to observe same value for
+			 * cons_tail observed by that thread on CAS failure
+			 * (to retry with an updated *old_head).
+			 */
 			success = __atomic_compare_exchange_n(&r->prod.head,
 					old_head, *new_head,
-					0, __ATOMIC_RELAXED,
-					__ATOMIC_RELAXED);
+					0, __ATOMIC_RELEASE,
+					__ATOMIC_ACQUIRE);
 	} while (unlikely(success == 0));
 	return n;
 }
@@ -136,20 +157,25 @@ __rte_ring_move_cons_head(struct rte_ring *r, int is_sc,
 	uint32_t prod_tail;
 	int success;
 
-	/* move cons.head atomically */
-	*old_head = __atomic_load_n(&r->cons.head, __ATOMIC_RELAXED);
+	/*
+	 * A3: Establishes a synchronizing edge with R2.
+	 * Ensure that this thread observes same values
+	 * to prod_tail observed by the thread that
+	 * updated r->cons.head.
+	 * If not, an unsafe partial order may ensue.
+	 */
+	*old_head = __atomic_load_n(&r->cons.head, __ATOMIC_ACQUIRE);
 	do {
 		/* Restore n as it may change every loop */
 		n = max;
 
-		/* Ensure the head is read before tail */
-		__atomic_thread_fence(__ATOMIC_ACQUIRE);
-
-		/* this load-acquire synchronize with store-release of ht->tail
-		 * in update_tail.
+		/*
+		 * A4: Establishes a synchronizing edge with R0.
+		 * Ensures that other thread's memory effects on
+		 * ring elements array is observed by the time
+		 * this thread observes its tail update.
 		 */
-		prod_tail = __atomic_load_n(&r->prod.tail,
-					__ATOMIC_ACQUIRE);
+		prod_tail = __atomic_load_n(&r->prod.tail, __ATOMIC_ACQUIRE);
 
 		/* The subtraction is done between two unsigned 32bits value
 		 * (the result is always modulo 32 bits even if we have
@@ -170,10 +196,19 @@ __rte_ring_move_cons_head(struct rte_ring *r, int is_sc,
 			r->cons.head = *new_head, success = 1;
 		else
 			/* on failure, *old_head will be updated */
+			/*
+			 * R2/A5.
+			 * R2: Establishes a synchronizing edge with A3 of a
+			 * different thread.
+			 * A5: Establishes a synchronizing edge with R2 of a
+			 * different thread to observe same value for
+			 * prod_tail observed by that thread on CAS failure
+			 * (to retry with an updated *old_head).
+			 */
 			success = __atomic_compare_exchange_n(&r->cons.head,
 							old_head, *new_head,
-							0, __ATOMIC_RELAXED,
-							__ATOMIC_RELAXED);
+							0, __ATOMIC_RELEASE,
+							__ATOMIC_ACQUIRE);
 	} while (unlikely(success == 0));
 	return n;
 }
