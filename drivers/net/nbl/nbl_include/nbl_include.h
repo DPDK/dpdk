@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <net/if.h>
 
+#include <rte_alarm.h>
 #include <rte_ethdev.h>
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
@@ -200,6 +201,11 @@ struct nbl_txq_stats {
 	uint64_t tx_errors;
 	uint64_t tx_descs;
 	uint64_t tx_tso_packets;
+};
+
+struct nbl_ustore_stats {
+	u64 rx_drop_packets;
+	u64 rx_trun_packets;
 };
 
 #endif

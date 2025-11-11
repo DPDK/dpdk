@@ -816,6 +816,60 @@ static int nbl_disp_get_stats(void *priv, struct rte_eth_stats *rte_stats,
 	return res_ops->get_stats(NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), rte_stats, qstats);
 }
 
+static int nbl_disp_get_uvn_pkt_drop_stats(void *priv, u16 vsi_id,
+					   u16 num_queues, u32 *uvn_stat_pkt_drop)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+	int ret = 0;
+
+	ret = NBL_OPS_CALL(res_ops->get_uvn_pkt_drop_stats,
+			   (NBL_DISP_MGT_TO_RES_PRIV(disp_mgt),
+			    vsi_id, num_queues, uvn_stat_pkt_drop));
+	return ret;
+}
+
+static int nbl_disp_chan_get_uvn_pkt_drop_stats_req(void *priv, u16 vsi_id,
+						    u16 num_queues, u32 *uvn_stat_pkt_drop)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	const struct nbl_channel_ops *chan_ops = NBL_DISP_MGT_TO_CHAN_OPS(disp_mgt);
+	struct nbl_chan_param_get_uvn_pkt_drop_stats param = {0};
+	struct nbl_chan_send_info chan_send = {0};
+
+	param.vsi_id = vsi_id;
+	param.num_queues = num_queues;
+
+	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_GET_UVN_PKT_DROP_STATS,
+		      &param, sizeof(param),
+		      uvn_stat_pkt_drop, num_queues * sizeof(*uvn_stat_pkt_drop), 1);
+	return chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
+}
+
+static int nbl_disp_get_ustore_total_pkt_drop_stats(void *priv, u8 eth_id,
+						    struct nbl_ustore_stats *ustore_stats)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+	int ret = 0;
+
+	ret = NBL_OPS_CALL(res_ops->get_ustore_total_pkt_drop_stats,
+			   (NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), eth_id, ustore_stats));
+	return ret;
+}
+
+static int nbl_disp_chan_get_ustore_total_pkt_drop_stats_req(void *priv, u8 eth_id,
+							     struct nbl_ustore_stats *ustore_stats)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	const struct nbl_channel_ops *chan_ops = NBL_DISP_MGT_TO_CHAN_OPS(disp_mgt);
+	struct nbl_chan_send_info chan_send = {0};
+
+	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_GET_USTORE_TOTAL_PKT_DROP_STATS,
+		      &eth_id, sizeof(eth_id), ustore_stats, sizeof(*ustore_stats), 1);
+	return chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
+}
+
 static int nbl_disp_reset_stats(void *priv)
 {
 	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
@@ -1111,6 +1165,17 @@ do {									\
 	NBL_DISP_SET_OPS(get_stats, nbl_disp_get_stats,			\
 			 NBL_DISP_CTRL_LVL_ALWAYS, -1,			\
 			 NULL, NULL);					\
+	NBL_DISP_SET_OPS(get_uvn_pkt_drop_stats,			\
+			 nbl_disp_get_uvn_pkt_drop_stats,		\
+			 NBL_DISP_CTRL_LVL_MGT,				\
+			 NBL_CHAN_GET_UVN_PKT_DROP_STATS,		\
+			 nbl_disp_chan_get_uvn_pkt_drop_stats_req, NULL);\
+	NBL_DISP_SET_OPS(get_ustore_total_pkt_drop_stats,		\
+			 nbl_disp_get_ustore_total_pkt_drop_stats,	\
+			 NBL_DISP_CTRL_LVL_MGT,				\
+			 NBL_CHAN_GET_USTORE_TOTAL_PKT_DROP_STATS,	\
+			 nbl_disp_chan_get_ustore_total_pkt_drop_stats_req,\
+			 NULL);						\
 	NBL_DISP_SET_OPS(reset_stats, nbl_disp_reset_stats,		\
 			 NBL_DISP_CTRL_LVL_ALWAYS, -1,			\
 			 NULL, NULL);					\

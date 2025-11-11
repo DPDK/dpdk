@@ -395,6 +395,11 @@ struct nbl_chan_param_get_private_stat_data {
 	u32 data_len;
 };
 
+struct nbl_chan_param_get_uvn_pkt_drop_stats {
+	u16 vsi_id;
+	u16 num_queues;
+};
+
 struct nbl_chan_send_info {
 	uint16_t dstid;
 	uint16_t msg_type;

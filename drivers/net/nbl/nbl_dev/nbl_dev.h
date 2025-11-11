@@ -20,6 +20,8 @@
 #define NBL_FRAME_SIZE_MAX			(9600)
 #define NBL_DEV_MIN_RX_BUFSIZE			(2048)
 
+#define NBL_ALARM_INTERNAL			(10000000)
+
 struct nbl_dev_ring {
 	u16 index;
 	u64 dma;
@@ -37,6 +39,11 @@ struct nbl_dev_ring_mgt {
 	u8 active_ring_num;
 };
 
+struct nbl_hw_stats {
+	u64 *total_uvn_stat_pkt_drop;
+	struct nbl_ustore_stats *start_ustore_stats;
+};
+
 struct nbl_dev_net_mgt {
 	const struct rte_eth_dev *eth_dev;
 	struct nbl_dev_ring_mgt ring_mgt;
@@ -51,6 +58,8 @@ struct nbl_dev_net_mgt {
 	u8 trust:1;
 	u8 promisc:1;
 	u8 rsv:6;
+	struct nbl_hw_stats hw_stats;
+	bool hw_stats_inited;
 };
 
 struct nbl_dev_mgt {
