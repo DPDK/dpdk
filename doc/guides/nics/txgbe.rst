@@ -147,6 +147,16 @@ Please note that following ``devargs`` are only set for backplane NICs.
   PHY parameter used for user debugging. Setting other values to
   take effect requires setting the ``ffe_set``.
 
+- ``pkt-filter-size`` (default **0**)
+
+  Memory allocation for the flow director filter.
+  Default 0 for 64K mode, set 1 for 128K mode, set 2 for 256K mode.
+
+- ``pkt-filter-drop-queue`` (default **127**)
+
+  The drop queue number for packets that match the drop rule in flow director.
+  Valid values are from 0 to 127.
+
 Please note that following ``devargs`` are only set for Amber-Lite NICs.
 
 - ``tx_headwb`` (default **1**)
