@@ -57,11 +57,21 @@ rte_mcslock_lock(RTE_ATOMIC(rte_mcslock_t *) *msl, rte_mcslock_t *me)
 	rte_atomic_store_explicit(&me->locked, 1, rte_memory_order_relaxed);
 	rte_atomic_store_explicit(&me->next, NULL, rte_memory_order_relaxed);
 
-	/* If the queue is empty, the exchange operation is enough to acquire
-	 * the lock. Hence, the exchange operation requires acquire semantics.
-	 * The store to me->next above should complete before the node is
-	 * visible to other CPUs/threads. Hence, the exchange operation requires
-	 * release semantics as well.
+	/*
+	 * A0/R0: Queue might be empty, perform the exchange (RMW) with both acquire and
+	 * release semantics:
+	 * A0: Acquire — synchronizes with both R0 and R2.
+	 *     Must synchronize with R0 to ensure that this thread observes predecessor's
+	 *     initialization of its lock object or risk them overwriting this thread's
+	 *     update to the next of the same object via store to prev->next.
+	 *
+	 *     Must synchronize with R2 the releasing CAS in unlock(), this will ensure
+	 *     that all prior critical-section writes become visible to this thread.
+	 *
+	 * R0: Release — ensures the successor observes our initialization of me->next;
+	 *     without it, me->next could be overwritten to NULL after the successor
+	 *     sets its own address, causing deadlock. This release synchronizes with
+	 *     A0 above.
 	 */
 	prev = rte_atomic_exchange_explicit(msl, me, rte_memory_order_acq_rel);
 	if (likely(prev == NULL)) {
@@ -70,24 +80,26 @@ rte_mcslock_lock(RTE_ATOMIC(rte_mcslock_t *) *msl, rte_mcslock_t *me)
 		 */
 		return;
 	}
-	/* The store to me->next above should also complete before the node is
-	 * visible to predecessor thread releasing the lock. Hence, the store
-	 * prev->next also requires release semantics. Note that, for example,
-	 * on ARM, the release semantics in the exchange operation is not
-	 * strong as a release fence and is not sufficient to enforce the
-	 * desired order here.
+
+	/*
+	 * R1: With the relaxed memory model of C/C++, it's essential that after
+	 * we link ourselves by storing prev->next = me, the owner of prev must
+	 * observe our prior initialization of me->locked. Otherwise it could
+	 * clear me->locked before we set it to 1, which may deadlock.
+	 * Perform a releasing store so the predecessor's acquire loads A2 and A3
+	 * observes our initialization, establishing a happens-before from those
+	 * writes.
 	 */
 	rte_atomic_store_explicit(&prev->next, me, rte_memory_order_release);
 
-	/* The while-load of me->locked should not move above the previous
-	 * store to prev->next. Otherwise it will cause a deadlock. Need a
-	 * store-load barrier.
-	 */
-	rte_atomic_thread_fence(rte_memory_order_acq_rel);
-	/* If the lock has already been acquired, it first atomically
+	/*
+	 * A1: If the lock has already been acquired, it first atomically
 	 * places the node at the end of the queue and then proceeds
 	 * to spin on me->locked until the previous lock holder resets
-	 * the me->locked using mcslock_unlock().
+	 * the me->locked in rte_mcslock_unlock().
+	 * This load must synchronize with store-release R3 to ensure that
+	 * all updates to critical section by previous lock holder is visible
+	 * to this thread after acquiring the lock.
 	 */
 	rte_wait_until_equal_32((uint32_t *)(uintptr_t)&me->locked, 0, rte_memory_order_acquire);
 }
@@ -103,30 +115,46 @@ rte_mcslock_lock(RTE_ATOMIC(rte_mcslock_t *) *msl, rte_mcslock_t *me)
 static inline void
 rte_mcslock_unlock(RTE_ATOMIC(rte_mcslock_t *) *msl, RTE_ATOMIC(rte_mcslock_t *) me)
 {
-	/* Check if there are more nodes in the queue. */
-	if (likely(rte_atomic_load_explicit(&me->next, rte_memory_order_relaxed) == NULL)) {
+	/*
+	 * A2: Check whether a successor is already queued.
+	 * Load me->next with acquire semantics so it can synchronize with the
+	 * successor’s release store R1. This guarantees that the successor’s
+	 * initialization of its lock object (me) is completed before we observe
+	 * it here, preventing a race between this thread’s store-release to
+	 * me->next->locked and the successor’s store to me->locked.
+	 */
+	if (likely(rte_atomic_load_explicit(&me->next, rte_memory_order_acquire) == NULL)) {
 		/* No, last member in the queue. */
-		rte_mcslock_t *save_me = rte_atomic_load_explicit(&me, rte_memory_order_relaxed);
+		rte_mcslock_t *save_me = me;
 
-		/* Release the lock by setting it to NULL */
+		/*
+		 * R2: Try to release the lock by swinging *msl from save_me to NULL.
+		 * Use release semantics so all critical section writes become
+		 * visible to the next lock acquirer.
+		 */
 		if (likely(rte_atomic_compare_exchange_strong_explicit(msl, &save_me, NULL,
 				rte_memory_order_release, rte_memory_order_relaxed)))
 			return;
 
-		/* Speculative execution would be allowed to read in the
-		 * while-loop first. This has the potential to cause a
-		 * deadlock. Need a load barrier.
-		 */
-		rte_atomic_thread_fence(rte_memory_order_acquire);
-		/* More nodes added to the queue by other CPUs.
-		 * Wait until the next pointer is set.
+		/*
+		 * A3: Another thread was enqueued concurrently, so the CAS and the lock
+		 * release failed. Wait until the successor sets our 'next' pointer.
+		 * This load must synchronize with the successor’s release store (R1) to
+		 * ensure that the successor’s initialization completes before we observe
+		 * it here. This ordering prevents a race between this thread’s later
+		 * store-release to me->next->locked and the successor’s store to me->locked.
 		 */
 		RTE_ATOMIC(uintptr_t) *next;
 		next = (__rte_atomic uintptr_t *)&me->next;
-		RTE_WAIT_UNTIL_MASKED(next, UINTPTR_MAX, !=, 0, rte_memory_order_relaxed);
+		RTE_WAIT_UNTIL_MASKED(next, UINTPTR_MAX, !=, 0, rte_memory_order_acquire);
 	}
 
-	/* Pass lock to next waiter. */
+	/*
+	 * R3: Pass the lock to the successor.
+	 * Use a release store to synchronize with A1 when clearing me->next->locked
+	 * so the successor observes our critical section writes after it sees locked
+	 * become 0.
+	 */
 	rte_atomic_store_explicit(&me->next->locked, 0, rte_memory_order_release);
 }
 
@@ -149,11 +177,11 @@ rte_mcslock_trylock(RTE_ATOMIC(rte_mcslock_t *) *msl, rte_mcslock_t *me)
 	/* Try to lock */
 	rte_mcslock_t *expected = NULL;
 
-	/* The lock can be taken only when the queue is empty. Hence,
-	 * the compare-exchange operation requires acquire semantics.
-	 * The store to me->next above should complete before the node
-	 * is visible to other CPUs/threads. Hence, the compare-exchange
-	 * operation requires release semantics as well.
+	/*
+	 * A4/R4: The lock can be acquired only when the queue is empty.
+	 * The compare-and-exchange operation must use acquire and release
+	 * semantics for the same reasons described in the rte_mcslock_lock()
+	 * function’s empty-queue case (see A0/R0 for details).
 	 */
 	return rte_atomic_compare_exchange_strong_explicit(msl, &expected, me,
 			rte_memory_order_acq_rel, rte_memory_order_relaxed);
