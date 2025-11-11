@@ -300,6 +300,7 @@ int nbl_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *dev_
 	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
 	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
 	struct nbl_dev_ring_mgt *ring_mgt = &dev_mgt->net_dev->ring_mgt;
+	struct nbl_common_info *common = NBL_DEV_MGT_TO_COMMON(dev_mgt);
 	struct nbl_board_port_info *board_info = &dev_mgt->common->board_info;
 	u8 speed_mode = board_info->speed;
 
@@ -330,6 +331,10 @@ int nbl_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *dev_
 	dev_info->default_txportconf.nb_queues = ring_mgt->tx_ring_num;
 	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_SCATTER;
+	if (!common->is_vf) {
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
+	}
 	switch (speed_mode) {
 	case NBL_FW_PORT_SPEED_100G:
 		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_100G;

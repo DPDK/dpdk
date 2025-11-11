@@ -237,7 +237,10 @@ static int nbl_res_txrx_start_rx_ring(void *priv,
 	const struct nbl_hw_ops *hw_ops = NBL_RES_MGT_TO_HW_OPS(res_mgt);
 	struct nbl_common_info *common = NBL_RES_MGT_TO_COMMON(res_mgt);
 	const struct rte_memzone *memzone;
+	uint64_t offloads;
 	u32 size;
+
+	offloads = param->conf->offloads | eth_dev->data->dev_conf.rxmode.offloads;
 
 	if (eth_dev->data->rx_queues[param->queue_idx] != NULL) {
 		NBL_LOG(WARNING, "re-setup an already allocated rx queue");
@@ -284,6 +287,7 @@ static int nbl_res_txrx_start_rx_ring(void *priv,
 	rx_ring->dma_limit_msb = common->dma_limit_msb;
 	rx_ring->common = common;
 	rx_ring->notify = hw_ops->get_tail_ptr(NBL_RES_MGT_TO_HW_PRIV(res_mgt));
+	rx_ring->offloads = offloads;
 
 	switch (param->product) {
 	case NBL_LEONIS_TYPE:
@@ -437,6 +441,23 @@ static inline void nbl_fill_rx_ring(struct nbl_res_rx_ring *rxq,
 	rxq->next_to_use = desc_index;
 }
 
+static inline void nbl_res_txrx_vlan_insert_out_mbuf(struct rte_mbuf *tx_pkt,
+						     union nbl_tx_extend_head *u,
+						     u16 vlan_proto, u16 vlan_tci)
+{
+	struct rte_vlan_hdr *vlan_hdr;
+	struct rte_ether_hdr *ether_hdr;
+
+	ether_hdr = (struct rte_ether_hdr *)((u8 *)u + sizeof(struct nbl_tx_ehdr_leonis));
+	memcpy(ether_hdr, rte_pktmbuf_mtod(tx_pkt, u8 *), sizeof(struct rte_ether_hdr));
+
+	vlan_hdr = (struct rte_vlan_hdr *)(ether_hdr + 1);
+	vlan_hdr->vlan_tci = rte_cpu_to_be_16(vlan_tci);
+	vlan_hdr->eth_proto = ether_hdr->ether_type;
+
+	ether_hdr->ether_type = rte_cpu_to_be_16(vlan_proto);
+}
+
 static u16
 nbl_res_txrx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, u16 nb_pkts, u16 extend_set)
 {
@@ -477,6 +498,12 @@ nbl_res_txrx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, u16 nb_pkts, u
 
 		tx_pkt = *tx_pkts++;
 
+		if (tx_pkt->ol_flags & RTE_MBUF_F_TX_VLAN) {
+			required_headroom += sizeof(struct rte_vlan_hdr);
+			/* extend_hdr + ether_hdr + vlan_hdr */
+			tx_extend_len = required_headroom + sizeof(struct rte_ether_hdr);
+		}
+
 		if (rte_pktmbuf_headroom(tx_pkt) >= required_headroom) {
 			can_push = 1;
 			u = rte_pktmbuf_mtod_offset(tx_pkt, union nbl_tx_extend_head *,
@@ -485,6 +512,21 @@ nbl_res_txrx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, u16 nb_pkts, u
 			can_push = 0;
 			u = (union nbl_tx_extend_head *)(&tx_region[desc_index]);
 		}
+
+		if (tx_pkt->ol_flags & RTE_MBUF_F_TX_VLAN) {
+			if (likely(can_push)) {
+				if (rte_vlan_insert(&tx_pkt)) {
+					can_push = 0;
+					u = (union nbl_tx_extend_head *)(&tx_region[desc_index]);
+				}
+			}
+			if (unlikely(!can_push)) {
+				addr_offset += sizeof(struct rte_ether_hdr);
+				nbl_res_txrx_vlan_insert_out_mbuf(tx_pkt, u, RTE_ETHER_TYPE_VLAN,
+								  tx_pkt->vlan_tci);
+			}
+		}
+
 		nb_descs = !can_push + tx_pkt->nb_segs;
 
 		if (nb_descs > txq->vq_free_cnt) {
@@ -638,6 +680,10 @@ nbl_res_txrx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, u16 nb_pkts)
 
 		if (--num_sg)
 			continue;
+
+		if (rxq->eth_dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+			rte_vlan_strip(rx_mbuf);
+
 		if (drop) {
 			rxq->rxq_stats.rx_drop_proto++;
 			rte_pktmbuf_free(rx_mbuf);
