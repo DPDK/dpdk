@@ -5121,10 +5121,46 @@ get_fwd_port_total_tc_num(void)
 
 	for (i = 0; i < nb_fwd_ports; i++) {
 		(void)rte_eth_dev_get_dcb_info(fwd_ports_ids[i], &dcb_info);
-		total_tc_num += dcb_info.nb_tcs;
+		total_tc_num += rte_popcount32(dcb_fwd_tc_mask & ((1u << dcb_info.nb_tcs) - 1));
 	}
 
 	return total_tc_num;
+}
+
+static void
+dcb_fwd_tc_update_dcb_info(struct rte_eth_dcb_info *org_dcb_info)
+{
+	struct rte_eth_dcb_info dcb_info = {0};
+	uint32_t i, vmdq_idx;
+	uint32_t tc = 0;
+
+	if (dcb_fwd_tc_mask == DEFAULT_DCB_FWD_TC_MASK)
+		return;
+
+	/*
+	 * Use compress scheme to update dcb-info.
+	 * E.g. If org_dcb_info->nb_tcs is 4 and dcb_fwd_tc_mask is 0x8, it
+	 *      means only enable TC3, then the new dcb-info's nb_tcs is set to
+	 *      1, and also move corresponding tc_rxq and tc_txq info to new
+	 *      index.
+	 */
+	for (i = 0; i < org_dcb_info->nb_tcs; i++) {
+		if (!(dcb_fwd_tc_mask & (1u << i)))
+			continue;
+		for (vmdq_idx = 0; vmdq_idx < RTE_ETH_MAX_VMDQ_POOL; vmdq_idx++) {
+			dcb_info.tc_queue.tc_rxq[vmdq_idx][tc].base =
+				org_dcb_info->tc_queue.tc_rxq[vmdq_idx][i].base;
+			dcb_info.tc_queue.tc_rxq[vmdq_idx][tc].nb_queue =
+				org_dcb_info->tc_queue.tc_rxq[vmdq_idx][i].nb_queue;
+			dcb_info.tc_queue.tc_txq[vmdq_idx][tc].base =
+				org_dcb_info->tc_queue.tc_txq[vmdq_idx][i].base;
+			dcb_info.tc_queue.tc_txq[vmdq_idx][tc].nb_queue =
+				org_dcb_info->tc_queue.tc_txq[vmdq_idx][i].nb_queue;
+		}
+		tc++;
+	}
+	dcb_info.nb_tcs = tc;
+	*org_dcb_info = dcb_info;
 }
 
 /**
@@ -5176,11 +5212,17 @@ dcb_fwd_config_setup(void)
 		}
 	}
 
+	total_tc_num = get_fwd_port_total_tc_num();
+	if (total_tc_num == 0) {
+		fprintf(stderr, "Error: total forwarding TC num is zero!\n");
+		cur_fwd_config.nb_fwd_lcores = 0;
+		return;
+	}
+
 	cur_fwd_config.nb_fwd_lcores = (lcoreid_t) nb_fwd_lcores;
 	cur_fwd_config.nb_fwd_ports = nb_fwd_ports;
 	cur_fwd_config.nb_fwd_streams =
 		(streamid_t) (nb_rxq * cur_fwd_config.nb_fwd_ports);
-	total_tc_num = get_fwd_port_total_tc_num();
 	if (cur_fwd_config.nb_fwd_lcores > total_tc_num)
 		cur_fwd_config.nb_fwd_lcores = total_tc_num;
 
@@ -5190,7 +5232,9 @@ dcb_fwd_config_setup(void)
 	txp = fwd_topology_tx_port_get(rxp);
 	/* get the dcb info on the first RX and TX ports */
 	(void)rte_eth_dev_get_dcb_info(fwd_ports_ids[rxp], &rxp_dcb_info);
+	dcb_fwd_tc_update_dcb_info(&rxp_dcb_info);
 	(void)rte_eth_dev_get_dcb_info(fwd_ports_ids[txp], &txp_dcb_info);
+	dcb_fwd_tc_update_dcb_info(&txp_dcb_info);
 
 	for (lc_id = 0; lc_id < cur_fwd_config.nb_fwd_lcores; lc_id++) {
 		fwd_lcores[lc_id]->stream_nb = 0;
@@ -5238,7 +5282,9 @@ dcb_fwd_config_setup(void)
 		txp = fwd_topology_tx_port_get(rxp);
 		/* get the dcb information on next RX and TX ports */
 		rte_eth_dev_get_dcb_info(fwd_ports_ids[rxp], &rxp_dcb_info);
+		dcb_fwd_tc_update_dcb_info(&rxp_dcb_info);
 		rte_eth_dev_get_dcb_info(fwd_ports_ids[txp], &txp_dcb_info);
+		dcb_fwd_tc_update_dcb_info(&txp_dcb_info);
 	}
 }
 

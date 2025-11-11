@@ -511,6 +511,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set fwd (%s)\n"
 			"    Set packet forwarding mode.\n\n"
 
+			"set dcb fwd_tc (tc_mask)\n"
+			"    Set DCB forwarding on specify TCs, if bit-n in tc-mask is 1, then TC-n's forwarding is enabled\n\n"
+
 			"mac_addr add (port_id) (XX:XX:XX:XX:XX:XX)\n"
 			"    Add a MAC address on port_id.\n\n"
 
@@ -6223,6 +6226,59 @@ static void cmd_set_fwd_retry_mode_init(void)
 		cmd_set_fwd_retry_mode.tokens[2];
 	token_struct->string_data.str = token;
 }
+
+/* *** set DCB forward TCs *** */
+struct cmd_set_dcb_fwd_tc_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t dcb;
+	cmdline_fixed_string_t fwd_tc;
+	uint8_t                tc_mask;
+};
+
+static void cmd_set_dcb_fwd_tc_parsed(void *parsed_result,
+				      __rte_unused struct cmdline *cl,
+				      __rte_unused void *data)
+{
+	struct cmd_set_dcb_fwd_tc_result *res = parsed_result;
+	int i;
+	if (res->tc_mask == 0) {
+		fprintf(stderr, "TC mask should not be zero!\n");
+		return;
+	}
+	printf("Enabled DCB forwarding TC list:");
+	dcb_fwd_tc_mask = res->tc_mask;
+	for (i = 0; i < RTE_ETH_8_TCS; i++) {
+		if (dcb_fwd_tc_mask & (1u << i))
+			printf(" %d", i);
+	}
+	printf("\n");
+}
+
+static cmdline_parse_token_string_t cmd_set_dcb_fwd_tc_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_dcb_fwd_tc_result,
+			set, "set");
+static cmdline_parse_token_string_t cmd_set_dcb_fwd_tc_dcb =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_dcb_fwd_tc_result,
+			dcb, "dcb");
+static cmdline_parse_token_string_t cmd_set_dcb_fwd_tc_fwdtc =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_dcb_fwd_tc_result,
+			fwd_tc, "fwd_tc");
+static cmdline_parse_token_num_t cmd_set_dcb_fwd_tc_tcmask =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_dcb_fwd_tc_result,
+			tc_mask, RTE_UINT8);
+
+static cmdline_parse_inst_t cmd_set_dcb_fwd_tc = {
+	.f = cmd_set_dcb_fwd_tc_parsed,
+	.data = NULL,
+	.help_str = "config DCB forwarding on specify TCs, if bit-n in tc-mask is 1, then TC-n's forwarding is enabled, and vice versa.",
+	.tokens = {
+		(void *)&cmd_set_dcb_fwd_tc_set,
+		(void *)&cmd_set_dcb_fwd_tc_dcb,
+		(void *)&cmd_set_dcb_fwd_tc_fwdtc,
+		(void *)&cmd_set_dcb_fwd_tc_tcmask,
+		NULL,
+	},
+};
 
 /* *** SET BURST TX DELAY TIME RETRY NUMBER *** */
 struct cmd_set_burst_tx_retry_result {
@@ -14003,6 +14059,7 @@ static cmdline_parse_ctx_t builtin_ctx[] = {
 	&cmd_set_fwd_mask,
 	&cmd_set_fwd_mode,
 	&cmd_set_fwd_retry_mode,
+	&cmd_set_dcb_fwd_tc,
 	&cmd_set_burst_tx_retry,
 	&cmd_set_promisc_mode_one,
 	&cmd_set_promisc_mode_all,

@@ -1487,6 +1487,14 @@ Where:
 * ``pause_time`` (integer): Pause quanta filled in the PFC frame for which
   interval, remote Tx will be paused. Valid only if Tx pause is on.
 
+Set dcb fwd_tc
+~~~~~~~~~~~~~~
+
+Config DCB forwarding on specify TCs, if bit-n in tc-mask is 1, then TC-n's
+forwarding is enabled, and vice versa::
+
+   testpmd> set dcb fwd_tc (tc_mask)
+
 Set Rx queue available descriptors threshold
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

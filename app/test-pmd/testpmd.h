@@ -484,6 +484,9 @@ extern cmdline_parse_inst_t cmd_show_set_raw_all;
 extern cmdline_parse_inst_t cmd_set_flex_is_pattern;
 extern cmdline_parse_inst_t cmd_set_flex_spec_pattern;
 
+#define DEFAULT_DCB_FWD_TC_MASK	0xFF
+extern uint8_t dcb_fwd_tc_mask;
+
 extern uint16_t mempool_flags;
 
 /**
