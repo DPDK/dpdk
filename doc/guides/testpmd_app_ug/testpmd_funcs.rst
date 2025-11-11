@@ -1495,6 +1495,14 @@ forwarding is enabled, and vice versa::
 
    testpmd> set dcb fwd_tc (tc_mask)
 
+set dcb fwd_tc_cores
+~~~~~~~~~~~~~~~~~~~~
+
+Config DCB forwarding cores per-TC, 1-means one core process all queues of a TC,
+2-means two cores process all queues of a TC, and so on::
+
+   testpmd> set dcb fwd_tc_cores (tc_cores)
+
 Set Rx queue available descriptors threshold
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

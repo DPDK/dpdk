@@ -216,6 +216,15 @@ struct fwd_engine * fwd_engines[] = {
  * If bit-n in tc-mask is 1, then TC-n's forwarding is enabled, and vice versa.
  */
 uint8_t dcb_fwd_tc_mask = DEFAULT_DCB_FWD_TC_MASK;
+/*
+ * Poll cores per TC when DCB forwarding.
+ * E.g. 1 indicates that one core process all queues of a TC.
+ *      2 indicates that two cores process all queues of a TC. If there
+ *        is a TC with 8 queues, then [0, 3] belong to first core, and
+ *        [4, 7] belong to second core.
+ *      ...
+ */
+uint8_t dcb_fwd_tc_cores = 1;
 
 struct rte_mempool *mempools[RTE_MAX_NUMA_NODES * MAX_SEGS_BUFFER_SPLIT];
 uint16_t mempool_flags;

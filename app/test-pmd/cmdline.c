@@ -6280,6 +6280,53 @@ static cmdline_parse_inst_t cmd_set_dcb_fwd_tc = {
 	},
 };
 
+/* *** set DCB forward cores per TC *** */
+struct cmd_set_dcb_fwd_tc_cores_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t dcb;
+	cmdline_fixed_string_t fwd_tc_cores;
+	uint8_t                tc_cores;
+};
+
+static void cmd_set_dcb_fwd_tc_cores_parsed(void *parsed_result,
+					    __rte_unused struct cmdline *cl,
+					    __rte_unused void *data)
+{
+	struct cmd_set_dcb_fwd_tc_cores_result *res = parsed_result;
+	if (res->tc_cores == 0) {
+		fprintf(stderr, "Cores per-TC should not be zero!\n");
+		return;
+	}
+	dcb_fwd_tc_cores = res->tc_cores;
+	printf("Set cores-per-TC: %u\n", dcb_fwd_tc_cores);
+}
+
+static cmdline_parse_token_string_t cmd_set_dcb_fwd_tc_cores_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_dcb_fwd_tc_cores_result,
+			set, "set");
+static cmdline_parse_token_string_t cmd_set_dcb_fwd_tc_cores_dcb =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_dcb_fwd_tc_cores_result,
+			dcb, "dcb");
+static cmdline_parse_token_string_t cmd_set_dcb_fwd_tc_cores_fwdtccores =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_dcb_fwd_tc_cores_result,
+			fwd_tc_cores, "fwd_tc_cores");
+static cmdline_parse_token_num_t cmd_set_dcb_fwd_tc_cores_tccores =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_dcb_fwd_tc_cores_result,
+			tc_cores, RTE_UINT8);
+
+static cmdline_parse_inst_t cmd_set_dcb_fwd_tc_cores = {
+	.f = cmd_set_dcb_fwd_tc_cores_parsed,
+	.data = NULL,
+	.help_str = "config DCB forwarding cores per-TC, 1-means one core process all queues of a TC.",
+	.tokens = {
+		(void *)&cmd_set_dcb_fwd_tc_cores_set,
+		(void *)&cmd_set_dcb_fwd_tc_cores_dcb,
+		(void *)&cmd_set_dcb_fwd_tc_cores_fwdtccores,
+		(void *)&cmd_set_dcb_fwd_tc_cores_tccores,
+		NULL,
+	},
+};
+
 /* *** SET BURST TX DELAY TIME RETRY NUMBER *** */
 struct cmd_set_burst_tx_retry_result {
 	cmdline_fixed_string_t set;
@@ -14060,6 +14107,7 @@ static cmdline_parse_ctx_t builtin_ctx[] = {
 	&cmd_set_fwd_mode,
 	&cmd_set_fwd_retry_mode,
 	&cmd_set_dcb_fwd_tc,
+	&cmd_set_dcb_fwd_tc_cores,
 	&cmd_set_burst_tx_retry,
 	&cmd_set_promisc_mode_one,
 	&cmd_set_promisc_mode_all,
