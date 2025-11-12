@@ -1456,6 +1456,9 @@ dpaa2_qdma_stop(struct rte_dma_dev *dev)
 }
 
 static int
+dpaa2_dpdmai_dev_uninit(struct rte_dma_dev *dev);
+
+static int
 dpaa2_qdma_close(struct rte_dma_dev *dev)
 {
 	struct dpaa2_dpdmai_dev *dpdmai_dev = dev->data->dev_private;
@@ -1504,6 +1507,8 @@ dpaa2_qdma_close(struct rte_dma_dev *dev)
 
 	/* Reset QDMA device structure */
 	qdma_dev->num_vqs = 0;
+
+	dpaa2_dpdmai_dev_uninit(dev);
 
 	return 0;
 }
@@ -1703,7 +1708,6 @@ dpaa2_qdma_probe(struct rte_dpaa2_driver *dpaa2_drv,
 		return -EINVAL;
 	}
 
-	dpaa2_dev->dmadev = dmadev;
 	dmadev->dev_ops = &dpaa2_qdma_ops;
 	dmadev->device = &dpaa2_dev->device;
 	dmadev->fp_obj->dev_private = dmadev->data->dev_private;
@@ -1727,12 +1731,9 @@ dpaa2_qdma_probe(struct rte_dpaa2_driver *dpaa2_drv,
 static int
 dpaa2_qdma_remove(struct rte_dpaa2_device *dpaa2_dev)
 {
-	struct rte_dma_dev *dmadev = dpaa2_dev->dmadev;
 	int ret;
 
 	DPAA2_QDMA_FUNC_TRACE();
-
-	dpaa2_dpdmai_dev_uninit(dmadev);
 
 	ret = rte_dma_pmd_release(dpaa2_dev->device.name);
 	if (ret)
