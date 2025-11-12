@@ -2595,7 +2595,8 @@ static int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 		hash->auth_counter.counter = 0;
 
 		hash_cd_ctrl->outer_prefix_sz = digestsize;
-		auth_param->hash_state_sz = digestsize;
+		auth_param->hash_state_sz = (RTE_ALIGN_CEIL(auth_param->u2.aad_sz,
+						ICP_QAT_HW_CCM_AAD_ALIGNMENT) >> 3);
 
 		memcpy(cdesc->cd_cur_ptr + state1_size, authkey, authkeylen);
 		break;
