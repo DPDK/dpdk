@@ -2955,7 +2955,7 @@ fm10k_set_tx_function(struct rte_eth_dev *dev)
 		} else {
 			PMD_INIT_LOG(DEBUG, "Use vector Tx func");
 			dev->tx_pkt_burst = fm10k_xmit_pkts_vec;
-			dev->tx_pkt_prepare = NULL;
+			dev->tx_pkt_prepare = rte_eth_tx_pkt_prepare_dummy;
 		}
 		return;
 	}
@@ -2979,7 +2979,7 @@ fm10k_set_tx_function(struct rte_eth_dev *dev)
 			fm10k_txq_vec_setup(txq);
 		}
 		dev->tx_pkt_burst = fm10k_xmit_pkts_vec;
-		dev->tx_pkt_prepare = NULL;
+		dev->tx_pkt_prepare = rte_eth_tx_pkt_prepare_dummy;
 	} else {
 		dev->tx_pkt_burst = fm10k_xmit_pkts;
 		dev->tx_pkt_prepare = fm10k_prep_pkts;
