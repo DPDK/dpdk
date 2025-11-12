@@ -52,7 +52,7 @@ extern "C" {
  *   Length of the memory region the pointers are constrained to.
  * @return
  *   Number of bits required to store a value.
- **/
+ */
 #define RTE_PTR_COMPRESS_BITS_NEEDED_FOR_POINTER_WITHIN_RANGE(mem_length) \
 	(((uint64_t)mem_length) < 2 ? 1 : \
 		(sizeof(uint64_t) * CHAR_BIT - \
@@ -66,7 +66,7 @@ extern "C" {
  *   Memory alignment.
  * @return
  *   Size of shift allowed without dropping any information from the pointer.
- **/
+ */
 #define RTE_PTR_COMPRESS_BIT_SHIFT_FROM_ALIGNMENT(alignment) \
 	((alignment) == 0 ? 0 : rte_ctz64((uint64_t)alignment))
 
@@ -81,7 +81,7 @@ extern "C" {
  *   The alignment of objects pointed to.
  * @return
  *   1 if function can be used, 0 otherwise.
- **/
+ */
 #define RTE_PTR_COMPRESS_CAN_COMPRESS_16_SHIFT(mem_length, obj_alignment) \
 	((RTE_PTR_COMPRESS_BITS_NEEDED_FOR_POINTER_WITHIN_RANGE(mem_length) - \
 	RTE_PTR_COMPRESS_BIT_SHIFT_FROM_ALIGNMENT(obj_alignment)) <= 16 ? 1 : 0)
@@ -97,7 +97,7 @@ extern "C" {
  *   The alignment of objects pointed to.
  * @return
  *   1 if function can be used, 0 otherwise.
- **/
+ */
 #define RTE_PTR_COMPRESS_CAN_COMPRESS_32_SHIFT(mem_length, obj_alignment) \
 	((RTE_PTR_COMPRESS_BITS_NEEDED_FOR_POINTER_WITHIN_RANGE(mem_length) - \
 	RTE_PTR_COMPRESS_BIT_SHIFT_FROM_ALIGNMENT(obj_alignment)) <= 32 ? 1 : 0)
@@ -124,7 +124,7 @@ extern "C" {
  *   Byte alignment of memory pointed to by the pointers allows for
  *   bits to be dropped from the offset and hence widen the memory region that
  *   can be covered. This controls how many bits are right shifted.
- **/
+ */
 static __rte_always_inline void
 rte_ptr_compress_32_shift(void *ptr_base, void * const *src_table,
 		uint32_t *dest_table, size_t n, uint8_t bit_shift)
@@ -185,7 +185,7 @@ rte_ptr_compress_32_shift(void *ptr_base, void * const *src_table,
  *   bits to be dropped from the offset and hence widen the memory region that
  *   can be covered. This controls how many bits are left shifted when pointers
  *   are recovered from the offsets.
- **/
+ */
 static __rte_always_inline void
 rte_ptr_decompress_32_shift(void *ptr_base, uint32_t const *src_table,
 		void **dest_table, size_t n, uint8_t bit_shift)
@@ -249,7 +249,7 @@ rte_ptr_decompress_32_shift(void *ptr_base, uint32_t const *src_table,
  *   Byte alignment of memory pointed to by the pointers allows for
  *   bits to be dropped from the offset and hence widen the memory region that
  *   can be covered. This controls how many bits are right shifted.
- **/
+ */
 static __rte_always_inline void
 rte_ptr_compress_16_shift(void *ptr_base, void * const *src_table,
 		uint16_t *dest_table, size_t n, uint8_t bit_shift)
@@ -293,7 +293,7 @@ rte_ptr_compress_16_shift(void *ptr_base, void * const *src_table,
  *   bits to be dropped from the offset and hence widen the memory region that
  *   can be covered. This controls how many bits are left shifted when pointers
  *   are recovered from the offsets.
- **/
+ */
 static __rte_always_inline void
 rte_ptr_decompress_16_shift(void *ptr_base, uint16_t const *src_table,
 		void **dest_table, size_t n, uint8_t bit_shift)

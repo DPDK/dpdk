@@ -573,7 +573,6 @@ rte_graph_feature_data_first_feature_get(struct rte_graph_feature_arc *arc,
  * @return
  *  0: If no feature enabled
  *  Non-Zero: Bitmask of features enabled.
- *
  */
 __rte_experimental
 static __rte_always_inline uint64_t

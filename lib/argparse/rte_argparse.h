@@ -24,7 +24,6 @@
  * There are two ways to parse arguments:
  * 1) AutoSave: for which known value types, the way can be used.
  * 2) Callback: will invoke user callback to parse.
- *
  */
 
 #include <stdbool.h>

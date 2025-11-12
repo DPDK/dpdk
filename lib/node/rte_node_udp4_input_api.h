@@ -14,7 +14,6 @@
  *
  * This API allows to control path functions of udp4_* nodes
  * like udp4_input.
- *
  */
 #include <rte_common.h>
 #include <rte_compat.h>

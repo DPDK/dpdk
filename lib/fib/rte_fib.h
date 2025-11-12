@@ -109,7 +109,7 @@ struct rte_fib_conf {
 			uint32_t	num_tbl8;
 		} dir24_8;
 	};
-	unsigned int flags; /**< Optional feature flags from RTE_FIB_F_* **/
+	unsigned int flags; /**< Optional feature flags from RTE_FIB_F_* */
 };
 
 /** FIB RCU QSBR configuration structure. */

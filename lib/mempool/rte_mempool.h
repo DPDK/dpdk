@@ -1955,7 +1955,7 @@ struct rte_mempool_mem_range_info {
  *   and whether these addresses are contiguous.
  * @return
  *   0 on success, -EINVAL if mempool is not valid or mem_range is NULL.
- **/
+ */
 __rte_experimental
 int
 rte_mempool_get_mem_range(const struct rte_mempool *mp,
@@ -1971,8 +1971,7 @@ rte_mempool_get_mem_range(const struct rte_mempool *mp,
  *   Pointer to a mempool.
  * @return
  *   Object alignment if mp is valid. 0 if mp is NULL.
- *
- **/
+ */
 __rte_experimental
 size_t
 rte_mempool_get_obj_alignment(const struct rte_mempool *mp);

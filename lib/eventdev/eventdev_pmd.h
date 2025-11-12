@@ -1427,7 +1427,6 @@ typedef int (*eventdev_eth_tx_adapter_queue_stop)
  *   - 0: Success, driver provides event adapter capabilities for the
  *	dmadev.
  *   - <0: Error code returned by the driver function.
- *
  */
 typedef int (*eventdev_dma_adapter_caps_get_t)(const struct rte_eventdev *dev,
 					       const int16_t dma_dev_id, uint32_t *caps);
@@ -1454,7 +1453,6 @@ typedef int (*eventdev_dma_adapter_caps_get_t)(const struct rte_eventdev *dev,
  * @return
  *   - 0: Success, dmadev vchan added successfully.
  *   - <0: Error code returned by the driver function.
- *
  */
 typedef int (*eventdev_dma_adapter_vchan_add_t)(const struct rte_eventdev *dev,
 						const int16_t dma_dev_id,
@@ -1478,7 +1476,6 @@ typedef int (*eventdev_dma_adapter_vchan_add_t)(const struct rte_eventdev *dev,
  * @return
  *   - 0: Success, dmadev vchan deleted successfully.
  *   - <0: Error code returned by the driver function.
- *
  */
 typedef int (*eventdev_dma_adapter_vchan_del_t)(const struct rte_eventdev *dev,
 						const int16_t dma_dev_id,
@@ -1570,7 +1567,6 @@ typedef int (*eventdev_dma_adapter_stats_reset)(const struct rte_eventdev *dev,
  *
  * @return
  *   Return 0 on success.
- *
  */
 typedef int (*eventdev_vector_adapter_caps_get_t)(const struct rte_eventdev *dev, uint32_t *caps,
 						  const struct event_vector_adapter_ops **ops);

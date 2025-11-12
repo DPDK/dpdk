@@ -4274,7 +4274,6 @@ rte_flow_dynf_metadata_set(struct rte_mbuf *m, uint32_t v)
  * RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX
  *
  * Redirects packets to a particular index in a flow table.
- *
  */
 struct rte_flow_action_jump_to_table_index {
 	struct rte_flow_template_table *table;

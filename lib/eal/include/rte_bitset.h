@@ -27,7 +27,6 @@
  * All functions modifying a bitset may overwrite any unused bits of
  * the last word. Such unused bits are ignored by all functions reading
  * bits.
- *
  */
 
 #include <limits.h>

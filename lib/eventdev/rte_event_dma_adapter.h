@@ -138,7 +138,6 @@
  * rte_event_dma_adapter_vchan_del() APIs. If HW supports the capability
  * RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND, event information must be passed to the
  * add API.
- *
  */
 
 #include <stdint.h>

@@ -1951,7 +1951,6 @@ rte_event_crypto_adapter_caps_get(uint8_t dev_id, uint8_t cdev_id,
  *   - 0: Success, driver provides event adapter capabilities for the
  *     dmadev device.
  *   - <0: Error code returned by the driver function.
- *
  */
 __rte_experimental
 int
@@ -2209,7 +2208,6 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
  * (EDQUOT) Quota exceeded(Application tried to link the queue configured with
  *  RTE_EVENT_QUEUE_CFG_SINGLE_LINK to more than one event ports)
  * (EINVAL) Invalid parameter
- *
  */
 __rte_experimental
 int
@@ -2262,7 +2260,6 @@ rte_event_port_profile_links_set(uint8_t dev_id, uint8_t port_id, const uint8_t 
  * If return value is less than *nb_unlinks* then implementation shall update
  * the rte_errno accordingly, Possible rte_errno values are
  * (EINVAL) Invalid parameter
- *
  */
 __rte_experimental
 int
