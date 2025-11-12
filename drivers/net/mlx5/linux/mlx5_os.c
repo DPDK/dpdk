@@ -737,6 +737,30 @@ error:
 	return err;
 }
 
+#ifdef HAVE_MLX5DV_DR
+static void
+mlx5_destroy_send_to_kernel_action(struct mlx5_dev_ctx_shared *sh)
+{
+	int i;
+
+	for (i = 0; i < MLX5DR_TABLE_TYPE_MAX; i++) {
+		if (sh->send_to_kernel_action[i].action) {
+			void *action = sh->send_to_kernel_action[i].action;
+
+			mlx5_glue->destroy_flow_action(action);
+			sh->send_to_kernel_action[i].action = NULL;
+		}
+		if (sh->send_to_kernel_action[i].tbl) {
+			struct mlx5_flow_tbl_resource *tbl =
+					sh->send_to_kernel_action[i].tbl;
+
+			flow_dv_tbl_resource_release(sh, tbl);
+			sh->send_to_kernel_action[i].tbl = NULL;
+		}
+	}
+}
+#endif /* HAVE_MLX5DV_DR */
+
 /**
  * Destroy DR related data within private structure.
  *
@@ -763,6 +787,7 @@ mlx5_os_free_shared_dr(struct mlx5_priv *priv)
 			priv->dev_data->port_id, i);
 	MLX5_ASSERT(LIST_EMPTY(&sh->shared_rxqs));
 #ifdef HAVE_MLX5DV_DR
+	mlx5_destroy_send_to_kernel_action(sh);
 	if (sh->rx_domain) {
 		mlx5_glue->dr_destroy_domain(sh->rx_domain);
 		sh->rx_domain = NULL;
@@ -784,21 +809,6 @@ mlx5_os_free_shared_dr(struct mlx5_priv *priv)
 	if (sh->pop_vlan_action) {
 		mlx5_glue->destroy_flow_action(sh->pop_vlan_action);
 		sh->pop_vlan_action = NULL;
-	}
-	for (i = 0; i < MLX5DR_TABLE_TYPE_MAX; i++) {
-		if (sh->send_to_kernel_action[i].action) {
-			void *action = sh->send_to_kernel_action[i].action;
-
-			mlx5_glue->destroy_flow_action(action);
-			sh->send_to_kernel_action[i].action = NULL;
-		}
-		if (sh->send_to_kernel_action[i].tbl) {
-			struct mlx5_flow_tbl_resource *tbl =
-					sh->send_to_kernel_action[i].tbl;
-
-			flow_dv_tbl_resource_release(sh, tbl);
-			sh->send_to_kernel_action[i].tbl = NULL;
-		}
 	}
 #endif /* HAVE_MLX5DV_DR */
 	if (sh->default_miss_action)
