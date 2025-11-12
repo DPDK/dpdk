@@ -1595,6 +1595,11 @@ flow_hw_modify_field_compile(struct rte_eth_dev *dev,
 			value = *(const uint8_t *)item.spec << 24;
 			value = rte_cpu_to_be_32(value);
 			item.spec = &value;
+		} else if (conf->dst.field == RTE_FLOW_FIELD_IPV6_DSCP &&
+			   !(mask[0] & MLX5_IPV6_HDR_ECN_MASK) &&
+			   mlx5_dv_modify_ipv6_traffic_class_supported(dev->data->dev_private)) {
+			value = *(const unaligned_uint32_t *)item.spec << MLX5_IPV6_HDR_DSCP_SHIFT;
+			item.spec = &value;
 		}
 	} else {
 		type = conf->operation == RTE_FLOW_MODIFY_SET ?
