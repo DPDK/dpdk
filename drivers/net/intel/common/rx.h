@@ -300,8 +300,11 @@ ci_rx_path_select(struct ci_rx_path_features req_features,
 			/* Do not select paths with lower SIMD width than the current path. */
 			if (path_features->simd_width < current_features->simd_width)
 				continue;
-			/* Do not select paths with more offloads enabled than the current path. */
-			if (rte_popcount32(path_features->rx_offloads) >
+			/* Do not select paths with more offloads enabled than the current path if
+			 * the SIMD widths are the same.
+			 */
+			if (path_features->simd_width == current_features->simd_width &&
+					rte_popcount32(path_features->rx_offloads) >
 					rte_popcount32(current_features->rx_offloads))
 				continue;
 			/* Do not select paths without bulk alloc support if requested and the
