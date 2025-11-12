@@ -367,6 +367,9 @@ enum mlx5_feature_name {
 /* UDP port numbers for GENEVE. */
 #define MLX5_UDP_PORT_GENEVE 6081
 
+/* UDP port numbers for ESP. */
+#define MLX5_UDP_PORT_ESP 4500
+
 /* Lowest priority indicator. */
 #define MLX5_FLOW_LOWEST_PRIO_INDICATOR ((uint32_t)-1)
 
