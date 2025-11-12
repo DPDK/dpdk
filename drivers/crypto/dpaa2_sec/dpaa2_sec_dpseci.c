@@ -4503,8 +4503,6 @@ cryptodev_dpaa2_sec_probe(struct rte_dpaa2_driver *dpaa2_drv __rte_unused,
 		return -ENOMEM;
 	}
 
-	dpaa2_dev->cryptodev = cryptodev;
-
 	if (dpaa2_svr_family == SVR_LX2160A)
 		rta_set_sec_era(RTA_SEC_ERA_10);
 	else
@@ -4526,10 +4524,14 @@ cryptodev_dpaa2_sec_probe(struct rte_dpaa2_driver *dpaa2_drv __rte_unused,
 static int
 cryptodev_dpaa2_sec_remove(struct rte_dpaa2_device *dpaa2_dev)
 {
+	char cryptodev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct rte_cryptodev *cryptodev;
 	int ret;
 
-	cryptodev = dpaa2_dev->cryptodev;
+	snprintf(cryptodev_name, sizeof(cryptodev_name), "dpsec-%d",
+			dpaa2_dev->object_id);
+
+	cryptodev = rte_cryptodev_pmd_get_named_dev(cryptodev_name);
 	if (cryptodev == NULL)
 		return -ENODEV;
 
