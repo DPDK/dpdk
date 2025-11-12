@@ -14,6 +14,7 @@
 #define UDP_VXLAN_PORT	4789
 #define UDP_VXLAN_GPE_PORT	4790
 #define UDP_GTPU_PORT	2152
+#define UDP_ESP_PORT	4500
 #define UDP_PORT_MPLS	6635
 #define UDP_GENEVE_PORT 6081
 #define UDP_ROCEV2_PORT	4791
@@ -230,6 +231,8 @@ struct mlx5dr_definer_conv_data {
 	X(SET_BE16,	nvgre_protocol,		v->protocol,		rte_flow_item_nvgre) \
 	X(SET_BE32P,	nvgre_dw1,		&v->tni[0],		rte_flow_item_nvgre) \
 	X(SET,		meter_color,		rte_col_2_mlx5_col(v->color),	rte_flow_item_meter_color) \
+	X(SET,		ipsec_protocol,		IPPROTO_ESP,		rte_flow_item_esp) \
+	X(SET,		ipsec_udp_port,		UDP_ESP_PORT,		rte_flow_item_esp) \
 	X(SET_BE32,     ipsec_spi,              v->hdr.spi,             rte_flow_item_esp) \
 	X(SET_BE32,     ipsec_sequence_number,  v->hdr.seq,             rte_flow_item_esp) \
 	X(SET,		ib_l4_udp_port,		UDP_ROCEV2_PORT,	rte_flow_item_ib_bth) \
@@ -2803,6 +2806,32 @@ mlx5dr_definer_conv_item_esp(struct mlx5dr_definer_conv_data *cd,
 {
 	const struct rte_flow_item_esp *m = item->mask;
 	struct mlx5dr_definer_fc *fc;
+
+	/* To match on ESP we must match on ip_protocol and optionally on l4_dport */
+	if (!cd->relaxed) {
+		bool over_udp;
+
+		fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, false)];
+		over_udp = fc->tag_set == &mlx5dr_definer_udp_protocol_set;
+
+		if (over_udp) {
+			fc = &cd->fc[DR_CALC_FNAME(L4_DPORT, false)];
+			if (!fc->tag_set) {
+				fc->item_idx = item_idx;
+				fc->tag_mask_set = &mlx5dr_definer_ones_set;
+				fc->tag_set = &mlx5dr_definer_ipsec_udp_port_set;
+				DR_CALC_SET(fc, eth_l4, destination_port, false);
+			}
+		} else {
+			fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, false)];
+			if (!fc->tag_set) {
+				fc->item_idx = item_idx;
+				fc->tag_set = &mlx5dr_definer_ipsec_protocol_set;
+				fc->tag_mask_set = &mlx5dr_definer_ones_set;
+				DR_CALC_SET(fc, eth_l3, protocol_next_header, false);
+			}
+		}
+	}
 
 	if (!m)
 		return 0;
