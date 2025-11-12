@@ -1710,18 +1710,24 @@ mlx5_mr_mempool_register_primary(struct mlx5_mr_share_cache *share_cache,
 	 * hugepage can be shared across mempools that also fit in it.
 	 */
 	if (share_hugepage) {
+		struct mlx5_mempool_mr *gc_mrs = NULL;
+
 		rte_rwlock_write_lock(&share_cache->rwlock);
 		LIST_FOREACH(mpr, &share_cache->mempool_reg_list, next) {
 			if (mpr->mrs[0].pmd_mr.addr == (void *)ranges[0].start)
 				break;
 		}
 		if (mpr != NULL) {
+			/* Releasing MRs here can create a dead-lock on share_cache->rwlock */
+			gc_mrs = new_mpr->mrs;
 			new_mpr->mrs = mpr->mrs;
 			mlx5_mempool_reg_attach(new_mpr);
 			LIST_INSERT_HEAD(&share_cache->mempool_reg_list,
 					 new_mpr, next);
 		}
 		rte_rwlock_write_unlock(&share_cache->rwlock);
+		if (gc_mrs != NULL)
+			mlx5_free(gc_mrs);
 		if (mpr != NULL) {
 			DRV_LOG(DEBUG, "Shared MR %#x in PD %p for mempool %s with mempool %s",
 				mpr->mrs[0].pmd_mr.lkey, pd, mp->name,
