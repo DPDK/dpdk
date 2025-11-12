@@ -576,12 +576,12 @@ __pdump_request(void *param)
 	PDUMP_LOG_LINE(DEBUG, "primary pdump %s", pdump_opname(req->op));
 
 	ret = set_pdump_rxtx_cbs(req);
-	ret = pdump_send_response(req, ret, bundle->peer);
 
 	/* Primary process is responsible for broadcasting request to all secondaries */
 	if (ret == 0)
 		pdump_request_to_secondary(req);
 
+	pdump_send_response(req, ret, bundle->peer);
 	free(bundle);
 }
 
