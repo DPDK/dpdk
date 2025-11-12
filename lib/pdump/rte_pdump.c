@@ -27,7 +27,7 @@ RTE_LOG_REGISTER_DEFAULT(pdump_logtype, NOTICE);
 /* Used for the multi-process communication */
 #define PDUMP_MP	"mp_pdump"
 
-#define PDUMP_BURST_SIZE	32
+#define PDUMP_BURST_SIZE	32u
 
 /* Overly generous timeout for secondary to respond */
 #define MP_TIMEOUT_S 5
@@ -139,13 +139,11 @@ pdump_cb_release(struct pdump_rxtx_cbs *cbs)
 static void
 pdump_copy_burst(uint16_t port_id, uint16_t queue_id,
 		 enum rte_pcapng_direction direction,
-		 struct rte_mbuf **pkts, uint16_t nb_pkts,
+		 struct rte_mbuf **pkts, unsigned int nb_pkts,
 		 const struct pdump_rxtx_cbs *cbs,
 		 struct rte_pdump_stats *stats)
 {
-	unsigned int i;
-	int ring_enq;
-	uint16_t d_pkts = 0;
+	unsigned int i, ring_enq, d_pkts = 0;
 	struct rte_mbuf *dup_bufs[PDUMP_BURST_SIZE]; /* duplicated packets */
 	struct rte_ring *ring;
 	struct rte_mempool *mp;
@@ -188,7 +186,7 @@ pdump_copy_burst(uint16_t port_id, uint16_t queue_id,
 			dup_bufs[d_pkts++] = p;
 	}
 
-	if (unlikely(d_pkts == 0))
+	if (d_pkts == 0)
 		return;
 
 	rte_atomic_fetch_add_explicit(&stats->accepted, d_pkts, rte_memory_order_relaxed);
@@ -210,10 +208,10 @@ pdump_copy(uint16_t port_id, uint16_t queue_id,
 	   const struct pdump_rxtx_cbs *cbs,
 	   struct rte_pdump_stats *stats)
 {
-	uint16_t offs = 0;
+	unsigned int offs = 0;
 
 	do {
-		uint16_t n = RTE_MIN(nb_pkts - offs, PDUMP_BURST_SIZE);
+		unsigned int n = RTE_MIN(nb_pkts - offs, PDUMP_BURST_SIZE);
 
 		pdump_copy_burst(port_id, queue_id, direction, &pkts[offs], n, cbs, stats);
 		offs += n;
