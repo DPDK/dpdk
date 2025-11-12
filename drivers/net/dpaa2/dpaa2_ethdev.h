@@ -531,12 +531,6 @@ int dpaa2_dev_recycle_config(struct rte_eth_dev *eth_dev);
 int dpaa2_dev_recycle_deconfig(struct rte_eth_dev *eth_dev);
 int dpaa2_soft_parser_loaded(void);
 
-int dpaa2_dev_recycle_qp_setup(struct rte_dpaa2_device *dpaa2_dev,
-	uint16_t qidx, uint64_t cntx,
-	eth_rx_burst_t tx_lpbk, eth_tx_burst_t rx_lpbk,
-	struct dpaa2_queue **txq,
-	struct dpaa2_queue **rxq);
-
 void
 dpaa2_dev_mac_setup_stats(struct rte_eth_dev *dev);
 
