@@ -167,7 +167,7 @@ static struct mlx5dr_buddy_mem *
 mlx5dr_pool_buddy_get_next_buddy(struct mlx5dr_pool *pool, int idx,
 				 uint32_t order, bool *is_new_buddy)
 {
-	static struct mlx5dr_buddy_mem *buddy;
+	struct mlx5dr_buddy_mem *buddy;
 	uint32_t new_buddy_size;
 
 	buddy = pool->db.buddy_manager->buddies[idx];
@@ -271,7 +271,6 @@ static void mlx5dr_pool_buddy_db_uninit(struct mlx5dr_pool *pool)
 		buddy = pool->db.buddy_manager->buddies[i];
 		if (buddy) {
 			mlx5dr_buddy_cleanup(buddy);
-			simple_free(buddy);
 			pool->db.buddy_manager->buddies[i] = NULL;
 		}
 	}
