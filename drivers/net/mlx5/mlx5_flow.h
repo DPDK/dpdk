@@ -1810,7 +1810,8 @@ flow_hw_get_reg_id_by_domain(struct rte_eth_dev *dev,
 	switch (type) {
 	case RTE_FLOW_ITEM_TYPE_META:
 		if (sh->config.dv_esw_en &&
-		    sh->config.dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS) {
+		    (sh->config.dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS ||
+		     mlx5_esw_metadata_passing_enabled(sh))) {
 			return REG_C_1;
 		}
 		if ((mlx5_vport_rx_metadata_passing_enabled(sh) &&
