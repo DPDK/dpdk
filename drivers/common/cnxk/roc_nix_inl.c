@@ -581,7 +581,7 @@ nix_inl_reass_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 	struct nix_inl_dev *inl_dev = NULL;
 	uint64_t max_sa = 1, sa_pow2_sz;
 	uint64_t sa_idx_w, lenm1_max;
-	uint64_t res_addr_offset;
+	uint64_t res_addr_offset = 0;
 	uint64_t def_cptq = 0;
 	size_t inb_sa_sz = 1;
 	uint8_t profile_id;
@@ -626,11 +626,10 @@ nix_inl_reass_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 		inl_dev = idev->nix_inl_dev;
 		if (inl_dev->nb_inb_cptlfs)
 			def_cptq = inl_dev->nix_inb_qids[inl_dev->inb_cpt_lf_id];
+		res_addr_offset = (uint64_t)(inl_dev->res_addr_offset & 0xFF) << 48;
+		if (res_addr_offset)
+			res_addr_offset |= (1UL << 56);
 	}
-
-	res_addr_offset = (uint64_t)(inl_dev->res_addr_offset & 0xFF) << 48;
-	if (res_addr_offset)
-		res_addr_offset |= (1UL << 56);
 
 	lf_cfg->enable = 1;
 	lf_cfg->profile_id = profile_id;
