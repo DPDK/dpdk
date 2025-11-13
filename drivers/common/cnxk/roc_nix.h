@@ -493,6 +493,8 @@ struct roc_nix_sq {
 	void *lmt_addr;
 	void *sqe_mem;
 	void *fc;
+	void *sq_cnt_ptr;
+	uint8_t update_sq_cnt;
 	uint8_t tc;
 	bool enable;
 };
@@ -1083,6 +1085,7 @@ int __roc_api roc_nix_sq_fini(struct roc_nix_sq *sq);
 int __roc_api roc_nix_sq_ena_dis(struct roc_nix_sq *sq, bool enable);
 void __roc_api roc_nix_sq_head_tail_get(struct roc_nix *roc_nix, uint16_t qid,
 					uint32_t *head, uint32_t *tail);
+int __roc_api roc_nix_sq_cnt_update(struct roc_nix_sq *sq, bool enable);
 
 /* PTP */
 int __roc_api roc_nix_ptp_rx_ena_dis(struct roc_nix *roc_nix, int enable);

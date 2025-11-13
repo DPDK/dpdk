@@ -19,6 +19,12 @@ roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 	plt_tm_dbg("Setting SQ %u SQB aura FC to %s", sq->qid,
 		   enable ? "enable" : "disable");
 
+	/* For cn20K, enable/disable SQ count updates if the SQ count pointer
+	 * was allocated based on the enable field.
+	 */
+	if (sq->sq_cnt_ptr)
+		return roc_nix_sq_cnt_update(sq, enable);
+
 	lf = idev_npa_obj_get();
 	if (!lf)
 		return NPA_ERR_DEVICE_NOT_BOUNDED;
@@ -554,7 +560,7 @@ roc_nix_tm_hierarchy_disable(struct roc_nix *roc_nix)
 		tail_off = (val >> 28) & 0x3F;
 
 		if (sqb_cnt > 1 || head_off != tail_off ||
-		    (*(uint64_t *)sq->fc != sq->aura_sqb_bufs))
+		    (!sq->sq_cnt_ptr && (*(uint64_t *)sq->fc != sq->aura_sqb_bufs)))
 			plt_err("Failed to gracefully flush sq %u", sq->qid);
 	}
 

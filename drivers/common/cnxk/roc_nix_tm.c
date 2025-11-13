@@ -601,7 +601,7 @@ roc_nix_tm_sq_flush_spin(struct roc_nix_sq *sq)
 
 		/* SQ reached quiescent state */
 		if (sqb_cnt <= 1 && head_off == tail_off &&
-		    (*(volatile uint64_t *)sq->fc == sq->aura_sqb_bufs)) {
+		    (sq->sq_cnt_ptr || (*(volatile uint64_t *)sq->fc == sq->aura_sqb_bufs))) {
 			break;
 		}
 

@@ -1464,7 +1464,7 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 
 	if (roc_nix->sqb_slack)
 		nb_sqb_bufs += roc_nix->sqb_slack;
-	else
+	else if (!sq->sq_cnt_ptr)
 		nb_sqb_bufs += PLT_MAX((int)thr, (int)ROC_NIX_SQB_SLACK_DFLT);
 	/* Explicitly set nat_align alone as by default pool is with both
 	 * nat_align and buf_offset = 1 which we don't want for SQB.
@@ -1473,7 +1473,9 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 	pool.nat_align = 1;
 
 	memset(&aura, 0, sizeof(aura));
-	aura.fc_ena = 1;
+	/* Disable SQ pool FC updates when SQ count updates are used */
+	if (!sq->sq_cnt_ptr)
+		aura.fc_ena = 1;
 	if (roc_model_is_cn9k() || roc_errata_npa_has_no_fc_stype_ststp())
 		aura.fc_stype = 0x0; /* STF */
 	else
@@ -1827,6 +1829,11 @@ sq_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum, uint16_t sm
 	aq->sq.sq_int_ena |= BIT(NIX_SQINT_SEND_ERR);
 	aq->sq.sq_int_ena |= BIT(NIX_SQINT_MNQ_ERR);
 
+	/* HW atomic update of SQ count */
+	if (sq->sq_cnt_ptr) {
+		aq->sq.sq_count_iova = ((uintptr_t)sq->sq_cnt_ptr) >> 3;
+		aq->sq.update_sq_count = sq->update_sq_cnt;
+	}
 	/* Many to one reduction */
 	aq->sq.qint_idx = sq->qid % nix->qints;
 	if (roc_errata_nix_assign_incorrect_qint()) {
@@ -2132,4 +2139,63 @@ roc_nix_q_err_cb_unregister(struct roc_nix *roc_nix)
 	struct dev *dev = &nix->dev;
 
 	dev->ops->q_err_cb = NULL;
+}
+
+int
+roc_nix_sq_cnt_update(struct roc_nix_sq *sq, bool enable)
+{
+	struct nix *nix = roc_nix_to_nix_priv(sq->roc_nix);
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
+	int64_t __plt_atomic *sq_cntm = (int64_t __plt_atomic *)sq->sq_cnt_ptr;
+	struct nix_cn20k_aq_enq_rsp *rsp;
+	struct nix_cn20k_aq_enq_req *aq;
+	int rc;
+
+	aq = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
+	if (!aq) {
+		mbox_put(mbox);
+		return -ENOSPC;
+	}
+
+	aq->qidx = sq->qid;
+	aq->ctype = NIX_AQ_CTYPE_SQ;
+	aq->op = NIX_AQ_INSTOP_READ;
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc) {
+		mbox_put(mbox);
+		return rc;
+	}
+
+	/* Check if sq is already in same state */
+	if ((enable && rsp->sq.update_sq_count) || (!enable && !rsp->sq.update_sq_count)) {
+		mbox_put(mbox);
+		return 0;
+	}
+
+	/* Disable sq */
+	aq = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
+	if (!aq) {
+		mbox_put(mbox);
+		return -ENOSPC;
+	}
+
+	aq->qidx = sq->qid;
+	aq->ctype = NIX_AQ_CTYPE_SQ;
+	aq->op = NIX_AQ_INSTOP_WRITE;
+	aq->sq_mask.update_sq_count = ~aq->sq_mask.update_sq_count;
+	aq->sq.update_sq_count = enable;
+	if (enable)
+		aq->sq.update_sq_count = sq->update_sq_cnt;
+	rc = mbox_process(mbox);
+	if (rc) {
+		mbox_put(mbox);
+		return rc;
+	}
+	if (enable)
+		plt_atomic_store_explicit(sq_cntm, sq->nb_desc, plt_memory_order_relaxed);
+	else
+		plt_atomic_store_explicit(sq_cntm, 0, plt_memory_order_relaxed);
+
+	mbox_put(mbox);
+	return 0;
 }

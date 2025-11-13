@@ -125,4 +125,11 @@ roc_feature_nix_has_cpt_cq_support(void)
 {
 	return roc_model_is_cn20k();
 }
+
+static inline bool
+roc_feature_nix_has_sq_cnt_update(void)
+{
+	return roc_model_is_cn20k();
+}
+
 #endif

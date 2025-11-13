@@ -212,6 +212,12 @@ plt_thread_is_valid(plt_thread_t thr)
 #define plt_io_rmb()		rte_io_rmb()
 #define plt_atomic_thread_fence rte_atomic_thread_fence
 
+#define plt_atomic_store_explicit rte_atomic_store_explicit
+#define plt_atomic_load_explicit  rte_atomic_load_explicit
+#define plt_memory_order_release  rte_memory_order_release
+#define plt_memory_order_acquire  rte_memory_order_acquire
+#define plt_memory_order_relaxed  rte_memory_order_relaxed
+
 #define plt_bit_relaxed_get32   rte_bit_relaxed_get32
 #define plt_bit_relaxed_set32   rte_bit_relaxed_set32
 #define plt_bit_relaxed_clear32 rte_bit_relaxed_clear32

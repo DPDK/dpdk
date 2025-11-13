@@ -2092,21 +2092,25 @@ struct nix_cn20k_sq_ctx_hw_s {
 	uint64_t default_chan : 12;
 	uint64_t sdp_mcast : 1;
 	uint64_t sso_ena : 1;
-	uint64_t dse_rsvd1 : 28;
+	uint64_t dse_rsvd1 : 10;
+	uint64_t update_sq_count : 2;
+	uint64_t seb_count : 16;
 	uint64_t sqb_enqueue_count : 16; /* W4 */
 	uint64_t tail_offset : 6;
 	uint64_t lmt_dis : 1;
 	uint64_t smq_rr_weight : 14;
-	uint64_t dnq_rsvd1 : 27;
+	uint64_t dnq_rsvd1 : 4;
+	uint64_t sq_count_iova_lo : 23;
 	uint64_t tail_sqb : 64; /* W5 */
 	uint64_t next_sqb : 64; /* W6 */
-	uint64_t smq : 11; /* W7 */
+	uint64_t smq : 11;	/* W7 */
 	uint64_t smq_pend : 1;
 	uint64_t smq_next_sq : 20;
 	uint64_t smq_next_sq_vld : 1;
 	uint64_t mnq_dis : 1;
-	uint64_t scm1_rsvd2 : 30;
-	uint64_t smenq_sqb : 64; /* W8 */
+	uint64_t scm1_rsvd2 : 7;
+	uint64_t sq_count_iova_hi : 23;
+	uint64_t smenq_sqb : 64;   /* W8 */
 	uint64_t smenq_offset : 6; /* W9 */
 	uint64_t cq_limit : 8;
 	uint64_t smq_rr_count : 32;
@@ -2122,7 +2126,7 @@ struct nix_cn20k_sq_ctx_hw_s {
 	uint64_t smenq_next_sqb_vld : 1;
 	uint64_t scm_dq_rsvd1 : 9;
 	uint64_t smenq_next_sqb : 64; /* W11 */
-	uint64_t age_drop_octs : 32; /* W12 */
+	uint64_t age_drop_octs : 32;  /* W12 */
 	uint64_t age_drop_pkts : 32;
 	uint64_t drop_pkts : 48; /* W13 */
 	uint64_t drop_octs_lsw : 16;
@@ -2160,19 +2164,20 @@ struct nix_cn20k_sq_ctx_s {
 	uint64_t lmt_dis : 1;
 	uint64_t mnq_dis : 1;
 	uint64_t smq_next_sq : 20;
-	uint64_t smq_lso_segnum :  8;
-	uint64_t tail_offset :  6;
-	uint64_t smenq_offset :  6;
-	uint64_t head_offset :  6;
-	uint64_t smenq_next_sqb_vld :  1;
-	uint64_t smq_pend :  1;
-	uint64_t smq_next_sq_vld :  1;
-	uint64_t reserved_253_255 :  3;
-	uint64_t next_sqb : 64; /* W4 */
-	uint64_t tail_sqb : 64; /* W5 */
-	uint64_t smenq_sqb : 64; /* W6 */
-	uint64_t smenq_next_sqb : 64; /* W7 */
-	uint64_t head_sqb : 64; /* W8 */
+	uint64_t smq_lso_segnum : 8;
+	uint64_t tail_offset : 6;
+	uint64_t smenq_offset : 6;
+	uint64_t head_offset : 6;
+	uint64_t smenq_next_sqb_vld : 1;
+	uint64_t smq_pend : 1;
+	uint64_t smq_next_sq_vld : 1;
+	uint64_t update_sq_count : 2;
+	uint64_t reserved_255_255 : 1;
+	uint64_t next_sqb : 64;	       /* W4 */
+	uint64_t tail_sqb : 64;	       /* W5 */
+	uint64_t smenq_sqb : 64;       /* W6 */
+	uint64_t smenq_next_sqb : 64;  /* W7 */
+	uint64_t head_sqb : 64;	       /* W8 */
 	uint64_t reserved_576_583 : 8; /* W9 */
 	uint64_t vfi_lso_total : 18;
 	uint64_t vfi_lso_sizem1 : 3;
@@ -2183,7 +2188,7 @@ struct nix_cn20k_sq_ctx_s {
 	uint64_t vfi_lso_vld : 1;
 	uint64_t reserved_630_639 : 10;
 	uint64_t scm_lso_rem : 18; /* W10 */
-	uint64_t reserved_658_703 : 46;
+	uint64_t sq_count_iova : 46;
 	uint64_t octs : 48; /* W11 */
 	uint64_t reserved_752_767 : 16;
 	uint64_t pkts : 48; /* W12 */
@@ -2193,7 +2198,7 @@ struct nix_cn20k_sq_ctx_s {
 	uint64_t drop_octs : 48; /* W14 */
 	uint64_t reserved_944_959 : 16;
 	uint64_t drop_pkts : 48; /* W15 */
-	uint64_t reserved_1008_1023 : 16;
+	uint64_t seb_count : 16;
 };
 
 /* [CN10K, .) NIX sq context hardware structure */
