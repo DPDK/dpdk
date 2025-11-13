@@ -769,8 +769,8 @@ nix_lf_rq_dump(__io struct nix_cn20k_rq_ctx_s *ctx, FILE *file)
 
 	nix_dump(file, "W2: xqe_hdr_split \t\t%d\nW2: xqe_imm_copy \t\t%d",
 		 ctx->xqe_hdr_split, ctx->xqe_imm_copy);
-	nix_dump(file, "W2: band_prof_id\t\t%d\n",
-		 ((ctx->band_prof_id_h << 10) | ctx->band_prof_id_l));
+	nix_dump(file, "W2: band_prof_id\t\t0x%" PRIx64 "\n",
+		 (uint64_t)((ctx->band_prof_id_h << 10) | ctx->band_prof_id_l));
 	nix_dump(file, "W2: xqe_imm_size \t\t%d\nW2: later_skip \t\t\t%d",
 		 ctx->xqe_imm_size, ctx->later_skip);
 	nix_dump(file, "W2: sso_bp_ena\t\t%d\n", ctx->sso_bp_ena);
