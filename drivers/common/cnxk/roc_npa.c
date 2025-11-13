@@ -172,10 +172,47 @@ exit:
 	return rc;
 }
 
+static inline void
+npa_pool_multi_bp_reset(struct npa_cn20k_aq_enq_req *pool_req)
+{
+	pool_req->pool.bp_0 = 0;
+	pool_req->pool.bp_1 = 0;
+	pool_req->pool.bp_2 = 0;
+	pool_req->pool.bp_3 = 0;
+	pool_req->pool.bp_4 = 0;
+	pool_req->pool.bp_5 = 0;
+	pool_req->pool.bp_6 = 0;
+	pool_req->pool.bp_7 = 0;
+	pool_req->pool.bp_ena_0 = 0;
+	pool_req->pool.bp_ena_1 = 0;
+	pool_req->pool.bp_ena_2 = 0;
+	pool_req->pool.bp_ena_3 = 0;
+	pool_req->pool.bp_ena_4 = 0;
+	pool_req->pool.bp_ena_5 = 0;
+	pool_req->pool.bp_ena_6 = 0;
+	pool_req->pool.bp_ena_7 = 0;
+	pool_req->pool_mask.bp_0 = ~(pool_req->pool_mask.bp_0);
+	pool_req->pool_mask.bp_1 = ~(pool_req->pool_mask.bp_1);
+	pool_req->pool_mask.bp_2 = ~(pool_req->pool_mask.bp_2);
+	pool_req->pool_mask.bp_3 = ~(pool_req->pool_mask.bp_3);
+	pool_req->pool_mask.bp_4 = ~(pool_req->pool_mask.bp_4);
+	pool_req->pool_mask.bp_5 = ~(pool_req->pool_mask.bp_5);
+	pool_req->pool_mask.bp_6 = ~(pool_req->pool_mask.bp_6);
+	pool_req->pool_mask.bp_7 = ~(pool_req->pool_mask.bp_7);
+	pool_req->pool_mask.bp_ena_0 = ~(pool_req->pool_mask.bp_ena_0);
+	pool_req->pool_mask.bp_ena_1 = ~(pool_req->pool_mask.bp_ena_1);
+	pool_req->pool_mask.bp_ena_2 = ~(pool_req->pool_mask.bp_ena_2);
+	pool_req->pool_mask.bp_ena_3 = ~(pool_req->pool_mask.bp_ena_3);
+	pool_req->pool_mask.bp_ena_4 = ~(pool_req->pool_mask.bp_ena_4);
+	pool_req->pool_mask.bp_ena_5 = ~(pool_req->pool_mask.bp_ena_5);
+	pool_req->pool_mask.bp_ena_6 = ~(pool_req->pool_mask.bp_ena_6);
+	pool_req->pool_mask.bp_ena_7 = ~(pool_req->pool_mask.bp_ena_7);
+}
+
 static int
 npa_aura_pool_fini(struct mbox *m_box, uint32_t aura_id, uint64_t aura_handle)
 {
-	struct npa_cn20k_aq_enq_req *aura_req_cn20k, *pool_req_cn20k;
+	struct npa_cn20k_aq_enq_req *aura_req_cn20k, *pool_req_cn20k = NULL;
 	struct npa_aq_enq_req *aura_req, *pool_req;
 	struct npa_aq_enq_rsp *aura_rsp, *pool_rsp;
 	struct mbox_dev *mdev = &m_box->dev[0];
@@ -201,6 +238,10 @@ npa_aura_pool_fini(struct mbox *m_box, uint32_t aura_id, uint64_t aura_handle)
 	}
 	if (pool_req == NULL)
 		goto exit;
+
+	/* Disable backpressure on pool on CN20K */
+	if (roc_model_is_cn20k())
+		npa_pool_multi_bp_reset(pool_req_cn20k);
 	pool_req->aura_id = aura_id;
 	pool_req->ctype = NPA_AQ_CTYPE_POOL;
 	pool_req->op = NPA_AQ_INSTOP_WRITE;
@@ -981,6 +1022,118 @@ roc_npa_zero_aura_handle(void)
 	if (lf->zero_aura_rsvd)
 		return roc_npa_aura_handle_gen(0, lf->base);
 	return 0;
+}
+
+int
+roc_npa_pool_bp_configure(uint64_t aura_handle, uint16_t bpid, uint8_t bp_thresh, uint8_t bp_class,
+			  bool enable)
+{
+	uint32_t pool_id = roc_npa_aura_handle_to_aura(aura_handle);
+	struct npa_lf *lf = idev_npa_obj_get();
+	struct npa_cn20k_aq_enq_req *aq;
+	uint8_t bp, bp_ena;
+	struct mbox *mbox;
+	int rc = 0;
+
+	plt_npa_dbg("Setting BPID %u BP_CLASS %u enable %u on pool %" PRIx64, bpid, bp_class,
+		    bp_thresh, aura_handle);
+
+	if (lf == NULL)
+		return NPA_ERR_PARAM;
+
+	mbox = mbox_get(lf->mbox);
+	aq = mbox_alloc_msg_npa_cn20k_aq_enq(mbox);
+	if (aq == NULL) {
+		rc = -ENOSPC;
+		goto fail;
+	}
+
+	aq->aura_id = pool_id;
+	aq->ctype = NPA_AQ_CTYPE_POOL;
+	aq->op = NPA_AQ_INSTOP_WRITE;
+
+	if (enable) {
+		aq->pool.bpid_0 = bpid;
+		aq->pool_mask.bpid_0 = ~(aq->pool_mask.bpid_0);
+
+		bp = bp_thresh;
+	} else {
+		bp = 0;
+	}
+
+	switch (bp_class) {
+	case 0:
+		aq->pool.bp_0 = bp;
+		aq->pool_mask.bp_0 = ~(aq->pool_mask.bp_0);
+		aq->pool.bp_ena_0 = enable;
+		aq->pool_mask.bp_ena_0 = ~(aq->pool_mask.bp_ena_0);
+		break;
+	case 1:
+		aq->pool.bp_1 = bp;
+		aq->pool_mask.bp_1 = ~(aq->pool_mask.bp_1);
+		aq->pool.bp_ena_1 = enable;
+		aq->pool_mask.bp_ena_1 = ~(aq->pool_mask.bp_ena_1);
+		break;
+	case 2:
+		aq->pool.bp_2 = bp;
+		aq->pool_mask.bp_2 = ~(aq->pool_mask.bp_2);
+		aq->pool.bp_ena_2 = enable;
+		aq->pool_mask.bp_ena_2 = ~(aq->pool_mask.bp_ena_2);
+		break;
+	case 3:
+		aq->pool.bp_3 = bp;
+		aq->pool_mask.bp_3 = ~(aq->pool_mask.bp_3);
+		aq->pool.bp_ena_3 = enable;
+		aq->pool_mask.bp_ena_3 = ~(aq->pool_mask.bp_ena_3);
+		break;
+	case 4:
+		aq->pool.bp_4 = bp;
+		aq->pool_mask.bp_4 = ~(aq->pool_mask.bp_4);
+		aq->pool.bp_ena_4 = enable;
+		aq->pool_mask.bp_ena_4 = ~(aq->pool_mask.bp_ena_4);
+		break;
+	case 5:
+		aq->pool.bp_5 = bp;
+		aq->pool_mask.bp_5 = ~(aq->pool_mask.bp_5);
+		aq->pool.bp_ena_5 = enable;
+		aq->pool_mask.bp_ena_5 = ~(aq->pool_mask.bp_ena_5);
+		break;
+	case 6:
+		aq->pool.bp_6 = bp;
+		aq->pool_mask.bp_6 = ~(aq->pool_mask.bp_6);
+		aq->pool.bp_ena_6 = enable;
+		aq->pool_mask.bp_ena_6 = ~(aq->pool_mask.bp_ena_6);
+		break;
+	case 7:
+		aq->pool.bp_7 = bp;
+		aq->pool_mask.bp_7 = ~(aq->pool_mask.bp_7);
+		aq->pool.bp_ena_7 = enable;
+		aq->pool_mask.bp_ena_7 = ~(aq->pool_mask.bp_ena_7);
+		break;
+	default:
+		rc = -EINVAL;
+		goto fail;
+	}
+
+	rc = mbox_process(mbox);
+	if (rc)
+		goto fail;
+
+	bp_ena = lf->aura_attr[pool_id].bp_ena;
+	bp_ena &= ~(1 << bp_class);
+	bp_ena |= (enable << bp_class);
+
+	if (enable && !lf->aura_attr[pool_id].bp_ena)
+		lf->aura_attr[pool_id].nix0_bpid = bpid;
+	else if (!enable && !lf->aura_attr[pool_id].bp_ena)
+		lf->aura_attr[pool_id].nix0_bpid = 0;
+
+	lf->aura_attr[pool_id].bp_ena = bp_ena;
+	lf->aura_attr[pool_id].bp_thresh[bp_class] = bp;
+
+fail:
+	mbox_put(mbox);
+	return rc;
 }
 
 int

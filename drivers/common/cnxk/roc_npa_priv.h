@@ -55,7 +55,10 @@ struct npa_aura_attr {
 	uint64_t shift;
 	uint64_t limit;
 	uint8_t bp_ena;
-	uint8_t bp;
+	union {
+		uint8_t bp;	      /* CN9K, CN10K */
+		uint8_t bp_thresh[8]; /* CN20K */
+	};
 };
 
 struct dev;

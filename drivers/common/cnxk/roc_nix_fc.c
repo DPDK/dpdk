@@ -549,6 +549,61 @@ nix_rx_chan_multi_bpid_cfg(struct roc_nix *roc_nix, uint8_t chan, uint16_t bpid,
 
 #define NIX_BPID_INVALID 0xFFFF
 
+static void
+nix_fc_npa_multi_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_handle, uint8_t ena, uint8_t force,
+			uint8_t tc, uint64_t drop_percent)
+{
+	uint32_t pool_id = roc_npa_aura_handle_to_aura(pool_handle);
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct npa_lf *lf = idev_npa_obj_get();
+	struct npa_aura_attr *aura_attr;
+	uint8_t bp_thresh, bp_ena;
+	uint16_t bpid;
+	int i;
+
+	if (!lf)
+		return;
+
+	aura_attr = &lf->aura_attr[pool_id];
+
+	bp_thresh = NIX_RQ_AURA_BP_THRESH(drop_percent, aura_attr->limit, aura_attr->shift);
+	bpid = aura_attr->nix0_bpid;
+	bp_ena = aura_attr->bp_ena;
+
+	/* BP is already enabled. */
+	if ((bp_ena & (0x1 << tc)) && ena) {
+		if (bp_thresh != aura_attr->bp_thresh[tc]) {
+			if (roc_npa_pool_bp_configure(pool_id, nix->bpid[0], bp_thresh, tc, true))
+				plt_err("Enabling backpressue failed on pool 0x%" PRIx32, pool_id);
+		} else {
+			aura_attr->ref_count++;
+		}
+
+		return;
+	}
+
+	if (ena) {
+		if (roc_npa_pool_bp_configure(pool_id, nix->bpid[0], bp_thresh, tc, true))
+			plt_err("Enabling backpressue failed on pool 0x%" PRIx32, pool_id);
+		else
+			aura_attr->ref_count++;
+	} else {
+		bool found = !!force;
+
+		/* Don't disable if existing BPID is not within this port's list */
+		for (i = 0; i < nix->chan_cnt; i++)
+			if (bpid == nix->bpid[i])
+				found = true;
+		if (!found)
+			return;
+		else if ((aura_attr->ref_count > 0) && --(aura_attr->ref_count))
+			return;
+
+		if (roc_npa_pool_bp_configure(pool_id, 0, 0, 0, false))
+			plt_err("Disabling backpressue failed on pool 0x%" PRIx32, pool_id);
+	}
+}
+
 void
 roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, uint8_t force,
 		      uint8_t tc, uint64_t drop_percent)
@@ -566,6 +621,11 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, ui
 
 	if (!lf)
 		return;
+
+	if (roc_model_is_cn20k() && roc_nix->use_multi_bpids) {
+		nix_fc_npa_multi_bp_cfg(roc_nix, pool_id, ena, force, tc, drop_percent);
+		return;
+	}
 
 	aura_attr = &lf->aura_attr[aura_id];
 

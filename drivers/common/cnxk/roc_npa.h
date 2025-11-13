@@ -816,6 +816,8 @@ uint64_t __roc_api roc_npa_buf_type_mask(uint64_t aura_handle);
 uint64_t __roc_api roc_npa_buf_type_limit_get(uint64_t type_mask);
 int __roc_api roc_npa_aura_bp_configure(uint64_t aura_id, uint16_t bpid, uint8_t bp_intf,
 					uint8_t bp_thresh, bool enable);
+int __roc_api roc_npa_pool_bp_configure(uint64_t pool_id, uint16_t bpid, uint8_t bp_thresh,
+					uint8_t bp_class, bool enable);
 
 /* Init callbacks */
 typedef int (*roc_npa_lf_init_cb_t)(struct plt_pci_device *pci_dev);

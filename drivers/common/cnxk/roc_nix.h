@@ -600,6 +600,7 @@ struct roc_nix {
 	uint16_t rep_cnt;
 	uint16_t rep_pfvf_map[MAX_PFVF_REP];
 	bool reass_ena;
+	bool use_multi_bpids;
 	TAILQ_ENTRY(roc_nix) next;
 
 #define ROC_NIX_MEM_SZ (6 * 1131)
