@@ -1553,7 +1553,8 @@ iavf_recv_pkts_flex_rxd(void *rx_queue,
 		rxd_to_pkt_fields_ops[rxq->rxdid](rxq, rxm, &rxd);
 		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
 
-		if (iavf_timestamp_dynflag > 0) {
+		if (iavf_timestamp_dynflag > 0 &&
+		    rxd.wb.time_stamp_low & IAVF_RX_FLX_DESC_TS_VALID) {
 			ts_ns = iavf_tstamp_convert_32b_64b(rxq->phc_time,
 				rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high));
 
@@ -1722,7 +1723,8 @@ iavf_recv_scattered_pkts_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxd_to_pkt_fields_ops[rxq->rxdid](rxq, first_seg, &rxd);
 		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
 
-		if (iavf_timestamp_dynflag > 0) {
+		if (iavf_timestamp_dynflag > 0 &&
+		    rxd.wb.time_stamp_low & IAVF_RX_FLX_DESC_TS_VALID) {
 			ts_ns = iavf_tstamp_convert_32b_64b(rxq->phc_time,
 				rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high));
 
@@ -2007,7 +2009,8 @@ iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq,
 			stat_err0 = rte_le_to_cpu_16(rxdp[j].wb.status_error0);
 			pkt_flags = iavf_flex_rxd_error_to_pkt_flags(stat_err0);
 
-			if (iavf_timestamp_dynflag > 0) {
+			if (iavf_timestamp_dynflag > 0 &&
+			    rxdp[j].wb.time_stamp_low & IAVF_RX_FLX_DESC_TS_VALID) {
 				ts_ns = iavf_tstamp_convert_32b_64b(rxq->phc_time,
 					rte_le_to_cpu_32(rxdp[j].wb.flex_ts.ts_high));
 
