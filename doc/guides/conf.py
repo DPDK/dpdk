@@ -106,6 +106,9 @@ if environ.get('DTS_DOC_BUILD'):
     # fabric.Connection (without) vs. fabric.connection.Connection (with)
     autodoc_mock_imports = importlib.import_module('check-dts-requirements').get_missing_imports()
 
+    # Always mock Pydantic to avoid autodoc introspecting its internals.
+    autodoc_mock_imports = list(set(autodoc_mock_imports + ['pydantic', 'pydantic_core']))
+
 
 # ####### :numref: fallback ########
 # The following hook functions add some simple handling for the :numref:
