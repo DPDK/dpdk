@@ -170,12 +170,17 @@ class ScapyAsyncSniffer(PythonShell):
         finally:
             self.stop_capturing()
 
-    def start_application(self, prompt: str | None = None) -> None:
+    def start_application(self, prompt: str | None = None, add_to_shell_pool: bool = True) -> None:
         """Overrides :meth:`framework.remote_session.interactive_shell.start_application`.
 
         Prepares the Python shell for scapy and starts the sniffing in a new thread.
+
+        Args:
+            prompt: When starting up the application, expect this string at the end of stdout when
+                the application is ready. If :data:`None`, the class' default prompt will be used.
+            add_to_shell_pool: If :data:`True`, the shell will be registered to the shell pool.
         """
-        super().start_application(prompt)
+        super().start_application(prompt, add_to_shell_pool)
         self.send_command("from scapy.all import *")
         self._sniffer.start()
         self._is_sniffing.wait()
@@ -320,15 +325,16 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
 
         Binds the TG node ports to the kernel drivers and starts up the async sniffer.
         """
+        super().setup(topology)
         topology.configure_ports("tg", "kernel")
 
         self._sniffer = ScapyAsyncSniffer(
             self._tg_node, topology.tg_port_ingress, self._sniffer_name
         )
-        self._sniffer.start_application()
+        self._sniffer.start_application(add_to_shell_pool=False)
 
         self._shell = PythonShell(self._tg_node, "scapy", privileged=True)
-        self._shell.start_application()
+        self._shell.start_application(add_to_shell_pool=False)
         self._shell.send_command("from scapy.all import *")
         self._shell.send_command("from scapy.contrib.lldp import *")
 

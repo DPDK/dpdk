@@ -6,7 +6,7 @@
 import functools
 from collections.abc import Callable
 from dataclasses import MISSING, dataclass, field, fields
-from typing import TYPE_CHECKING, Any, ParamSpec, Union
+from typing import TYPE_CHECKING, Any, Optional, ParamSpec, Union
 
 from framework.exception import InternalError
 from framework.remote_session.shell_pool import ShellPool
@@ -76,7 +76,8 @@ class Context:
     topology: Topology
     dpdk_build: "DPDKBuildEnvironment"
     dpdk: "DPDKRuntimeEnvironment"
-    tg: "TrafficGenerator"
+    func_tg: Optional["TrafficGenerator"]
+    perf_tg: Optional["TrafficGenerator"]
     local: LocalContext = field(default_factory=LocalContext)
     shell_pool: ShellPool = field(default_factory=ShellPool)
 

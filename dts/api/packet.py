@@ -85,9 +85,9 @@ def send_packets_and_capture(
     )
 
     assert isinstance(
-        get_ctx().tg, CapturingTrafficGenerator
+        get_ctx().func_tg, CapturingTrafficGenerator
     ), "Cannot capture with a non-capturing traffic generator"
-    tg: CapturingTrafficGenerator = cast(CapturingTrafficGenerator, get_ctx().tg)
+    tg: CapturingTrafficGenerator = cast(CapturingTrafficGenerator, get_ctx().func_tg)
     # TODO: implement @requires for types of traffic generator
     packets = adjust_addresses(packets)
     return tg.send_packets_and_capture(
@@ -108,7 +108,7 @@ def send_packets(
         packets: Packets to send.
     """
     packets = adjust_addresses(packets)
-    get_ctx().tg.send_packets(packets, get_ctx().topology.tg_port_egress)
+    get_ctx().func_tg.send_packets(packets, get_ctx().topology.tg_port_egress)
 
 
 def get_expected_packets(

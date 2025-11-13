@@ -11,9 +11,12 @@ only count the number of received packets.
 from abc import ABC, abstractmethod
 from typing import Any
 
+from scapy.packet import Packet
+
 from framework.config.test_run import TrafficGeneratorConfig
 from framework.logger import DTSLogger, get_dts_logger
 from framework.testbed_model.node import Node
+from framework.testbed_model.port import Port
 from framework.testbed_model.topology import Topology
 
 
@@ -30,6 +33,7 @@ class TrafficGenerator(ABC):
     _config: TrafficGeneratorConfig
     _tg_node: Node
     _logger: DTSLogger
+    _is_setup: bool
 
     def __init__(self, tg_node: Node, config: TrafficGeneratorConfig, **kwargs: Any) -> None:
         """Initialize the traffic generator.
@@ -45,12 +49,25 @@ class TrafficGenerator(ABC):
         self._config = config
         self._tg_node = tg_node
         self._logger = get_dts_logger(f"{self._tg_node.name} {self._config.type}")
+        self._is_setup = False
+
+    def send_packets(self, packets: list[Packet], port: Port) -> None:
+        """Send `packets` and block until they are fully sent.
+
+        Send `packets` on `port`, then wait until `packets` are fully sent.
+
+        Args:
+            packets: The packets to send.
+            port: The egress port on the TG node.
+        """
 
     def setup(self, topology: Topology) -> None:
         """Setup the traffic generator."""
+        self._is_setup = True
 
     def teardown(self) -> None:
         """Teardown the traffic generator."""
+        self._is_setup = False
         self.close()
 
     @property
@@ -61,3 +78,8 @@ class TrafficGenerator(ABC):
     @abstractmethod
     def close(self) -> None:
         """Free all resources used by the traffic generator."""
+
+    @property
+    def is_setup(self) -> bool:
+        """Indicates whether the traffic generator application is currently running."""
+        return self._is_setup

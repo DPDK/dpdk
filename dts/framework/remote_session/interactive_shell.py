@@ -140,7 +140,7 @@ class InteractiveShell(ABC):
             start_command = self._node.main_session._get_privileged_command(start_command)
         return start_command
 
-    def start_application(self, prompt: str | None = None) -> None:
+    def start_application(self, prompt: str | None = None, add_to_shell_pool: bool = True) -> None:
         """Starts a new interactive application based on the path to the app.
 
         This method is often overridden by subclasses as their process for starting may look
@@ -151,6 +151,7 @@ class InteractiveShell(ABC):
         Args:
             prompt: When starting up the application, expect this string at the end of stdout when
                 the application is ready. If :data:`None`, the class' default prompt will be used.
+            add_to_shell_pool: If :data:`True`, the shell will be registered to the shell pool.
 
         Raises:
             InteractiveCommandExecutionError: If the application fails to start within the allotted
@@ -174,7 +175,8 @@ class InteractiveShell(ABC):
             self.is_alive = False  # update state on failure to start
             raise InteractiveCommandExecutionError("Failed to start application.")
         self._ssh_channel.settimeout(self._timeout)
-        get_ctx().shell_pool.register_shell(self)
+        if add_to_shell_pool:
+            get_ctx().shell_pool.register_shell(self)
 
     def send_command(
         self, command: str, prompt: str | None = None, skip_first_line: bool = False
@@ -259,7 +261,7 @@ class InteractiveShell(ABC):
 
     @property
     @abstractmethod
-    def path(self) -> PurePath:
+    def path(self) -> str | PurePath:
         """Path to the shell executable."""
 
     def _make_real_path(self) -> PurePath:

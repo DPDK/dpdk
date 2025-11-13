@@ -113,7 +113,7 @@ from framework.logger import DTSLogger, get_dts_logger
 from framework.remote_session.dpdk import DPDKBuildEnvironment, DPDKRuntimeEnvironment
 from framework.settings import SETTINGS
 from framework.test_result import Result, ResultNode, TestRunResult
-from framework.test_suite import BaseConfig, TestCase, TestSuite
+from framework.test_suite import BaseConfig, TestCase, TestCaseType, TestSuite
 from framework.testbed_model.capability import (
     Capability,
     get_supported_capabilities,
@@ -199,10 +199,26 @@ class TestRun:
 
         dpdk_build_env = DPDKBuildEnvironment(config.dpdk.build, sut_node)
         dpdk_runtime_env = DPDKRuntimeEnvironment(config.dpdk, sut_node, dpdk_build_env)
-        traffic_generator = create_traffic_generator(config.traffic_generator, tg_node)
+
+        func_traffic_generator = (
+            create_traffic_generator(config.func_traffic_generator, tg_node)
+            if config.func and config.func_traffic_generator
+            else None
+        )
+        perf_traffic_generator = (
+            create_traffic_generator(config.perf_traffic_generator, tg_node)
+            if config.perf and config.perf_traffic_generator
+            else None
+        )
 
         self.ctx = Context(
-            sut_node, tg_node, topology, dpdk_build_env, dpdk_runtime_env, traffic_generator
+            sut_node,
+            tg_node,
+            topology,
+            dpdk_build_env,
+            dpdk_runtime_env,
+            func_traffic_generator,
+            perf_traffic_generator,
         )
         self.result = result
         self.selected_tests = list(self.config.filter_tests(tests_config))
@@ -335,7 +351,10 @@ class TestRunSetup(State):
             test_run.ctx.topology.instantiate_vf_ports()
 
         test_run.ctx.topology.configure_ports("sut", "dpdk")
-        test_run.ctx.tg.setup(test_run.ctx.topology)
+        if test_run.ctx.func_tg:
+            test_run.ctx.func_tg.setup(test_run.ctx.topology)
+        if test_run.ctx.perf_tg:
+            test_run.ctx.perf_tg.setup(test_run.ctx.topology)
 
         self.result.ports = [
             port.to_dict()
@@ -425,7 +444,10 @@ class TestRunTeardown(State):
             self.test_run.ctx.topology.delete_vf_ports()
 
         self.test_run.ctx.shell_pool.terminate_current_pool()
-        self.test_run.ctx.tg.teardown()
+        if self.test_run.ctx.func_tg and self.test_run.ctx.func_tg.is_setup:
+            self.test_run.ctx.func_tg.teardown()
+        if self.test_run.ctx.perf_tg and self.test_run.ctx.perf_tg.is_setup:
+            self.test_run.ctx.perf_tg.teardown()
         self.test_run.ctx.topology.teardown()
         self.test_run.ctx.dpdk.teardown()
         self.test_run.ctx.tg_node.teardown()
@@ -610,6 +632,26 @@ class TestCaseSetup(TestCaseState):
             self.test_case.sut_ports_drivers or self.test_suite.sut_ports_drivers or "dpdk"
         )
         self.test_run.ctx.topology.configure_ports("sut", sut_ports_drivers)
+
+        if (
+            self.test_run.ctx.perf_tg
+            and self.test_run.ctx.perf_tg.is_setup
+            and self.test_case.test_type is TestCaseType.FUNCTIONAL
+        ):
+            self.test_run.ctx.perf_tg.teardown()
+            self.test_run.ctx.topology.configure_ports("tg", "kernel")
+            if self.test_run.ctx.func_tg and not self.test_run.ctx.func_tg.is_setup:
+                self.test_run.ctx.func_tg.setup(self.test_run.ctx.topology)
+
+        if (
+            self.test_run.ctx.func_tg
+            and self.test_run.ctx.func_tg.is_setup
+            and self.test_case.test_type is TestCaseType.PERFORMANCE
+        ):
+            self.test_run.ctx.func_tg.teardown()
+            self.test_run.ctx.topology.configure_ports("tg", "dpdk")
+            if self.test_run.ctx.perf_tg and not self.test_run.ctx.perf_tg.is_setup:
+                self.test_run.ctx.perf_tg.setup(self.test_run.ctx.topology)
 
         self.test_suite.set_up_test_case()
         self.result.mark_step_as("setup", Result.PASS)

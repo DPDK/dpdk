@@ -209,13 +209,49 @@ These need to be set up on a Traffic Generator Node:
 #. **Traffic generator dependencies**
 
    The traffic generator running on the traffic generator node must be installed beforehand.
-   For Scapy traffic generator, only a few Python libraries need to be installed:
+
+   For Scapy traffic generator (functional tests),
+   only a few Python libraries need to be installed:
 
    .. code-block:: console
 
       sudo apt install python3-pip
       sudo pip install --upgrade pip
       sudo pip install scapy==2.5.0
+
+   For TRex traffic generator (performance tests),
+   TRex must be downloaded and a TRex config produced for each TG NIC.
+   For example:
+
+   .. code-block:: console
+
+      wget https://trex-tgn.cisco.com/trex/release/v3.03.tar.gz
+      tar -xf v3.03.tar.gz
+      cd v3.03
+      sudo ./dpdk_setup_ports.py -i
+
+   Within the ``dpdk_setup_ports.py`` utility, follow these instructions:
+
+     - Select MAC based config.
+     - Select interfaces 0 and 1 on your TG NIC.
+     - Do not change assumed dest to DUT MAC (just leave the default loopback).
+     - Print preview of the config.
+     - Check for device address correctness.
+     - Check for socket and CPU correctness (CPU/socket NUMA node should match NIC NUMA node).
+     - Write the file to a path on your system.
+
+   Then, presuming you are using the ``test_run.example.yaml``
+   as a template for your `test_run` config:
+
+     - Uncomment the `performance_traffic_generator` section,
+       making DTS use a performance TG.
+     - Update the `remote_path` and config fields
+       to the remote path of your TRex directory
+       and the path to your new TRex config file.
+     - Update the `perf` field to enable performance testing.
+
+   After these steps, you should be ready to run performance tests with TRex.
+
 
 #. **Hardware dependencies**
 
@@ -249,9 +285,9 @@ DTS configuration is split into nodes and a test run,
 and must respect the model definitions
 as documented in the DTS API docs under the ``config`` page.
 The root of the configuration is represented by the ``Configuration`` model.
-By default, DTS will try to use the ``dts/test_run.example.yaml``
+By default, DTS will try to use the ``dts/configurations/test_run.example.yaml``
 :ref:`config file <test_run_configuration_example>`,
-and ``dts/nodes.example.yaml``
+and ``dts/configurations/nodes.example.yaml``
 :ref:`config file <nodes_configuration_example>`
 which are templates that illustrate what can be configured in DTS.
 
@@ -278,9 +314,9 @@ DTS is run with ``main.py`` located in the ``dts`` directory using the ``poetry 
    options:
      -h, --help            show this help message and exit
      --test-run-config-file FILE_PATH
-                           [DTS_TEST_RUN_CFG_FILE] The configuration file that describes the test cases and DPDK build options. (default: test-run.conf.yaml)
+                           [DTS_TEST_RUN_CFG_FILE] The configuration file that describes the test cases and DPDK build options. (default: configurations/test_run.yaml)
      --nodes-config-file FILE_PATH
-                           [DTS_NODES_CFG_FILE] The configuration file that describes the SUT and TG nodes. (default: nodes.conf.yaml)
+                           [DTS_NODES_CFG_FILE] The configuration file that describes the SUT and TG nodes. (default: configurations/nodes.yaml)
      --tests-config-file FILE_PATH
                            [DTS_TESTS_CFG_FILE] Configuration file used to override variable values inside specific test suites. (default: None)
      --output-dir DIR_PATH, --output DIR_PATH
@@ -564,20 +600,20 @@ And they both have two network ports which are physically connected to each othe
 
 .. _test_run_configuration_example:
 
-``dts/test_run.example.yaml``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``dts/configurations/test_run.example.yaml``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. literalinclude:: ../../../dts/test_run.example.yaml
+.. literalinclude:: ../../../dts/configurations/test_run.example.yaml
    :language: yaml
    :start-at: # Define
 
 .. _nodes_configuration_example:
 
 
-``dts/nodes.example.yaml``
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+``dts/configurations/nodes.example.yaml``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. literalinclude:: ../../../dts/nodes.example.yaml
+.. literalinclude:: ../../../dts/configurations/nodes.example.yaml
    :language: yaml
    :start-at: # Define
 
@@ -590,9 +626,9 @@ to demonstrate custom test suite configuration:
 
 .. _tests_config_example:
 
-``dts/tests_config.example.yaml``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``dts/configurations/tests_config.example.yaml``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. literalinclude:: ../../../dts/tests_config.example.yaml
+.. literalinclude:: ../../../dts/configurations/tests_config.example.yaml
    :language: yaml
    :start-at: # Define

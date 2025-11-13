@@ -48,20 +48,23 @@ class BlockingApp(InteractiveShell, Generic[P]):
     def __init__(
         self,
         node: Node,
-        path: PurePath,
+        path: str | PurePath,
         name: str | None = None,
         privileged: bool = False,
         app_params: P | str = "",
+        add_to_shell_pool: bool = True,
     ) -> None:
         """Constructor.
 
         Args:
             node: The node to run the app on.
-            path: Path to the application on the node.
+            path: Path to the application on the node.s
             name: Name to identify this application.
             privileged: Run as privileged user.
             app_params: The application parameters. Can be of any type inheriting :class:`Params` or
                 a plain string.
+            add_to_shell_pool: If :data:`True`, the blocking app's shell will be added to the
+                shell pool.
         """
         if isinstance(app_params, str):
             params = Params()
@@ -69,11 +72,12 @@ class BlockingApp(InteractiveShell, Generic[P]):
             app_params = cast(P, params)
 
         self._path = path
+        self._add_to_shell_pool = add_to_shell_pool
 
         super().__init__(node, name, privileged, app_params)
 
     @property
-    def path(self) -> PurePath:
+    def path(self) -> str | PurePath:
         """The path of the DPDK app relative to the DPDK build folder."""
         return self._path
 
@@ -86,7 +90,7 @@ class BlockingApp(InteractiveShell, Generic[P]):
         Returns:
             Itself.
         """
-        self.start_application(end_token)
+        self.start_application(end_token, self._add_to_shell_pool)
         return self
 
     def close(self) -> None:
