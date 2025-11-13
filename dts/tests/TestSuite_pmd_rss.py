@@ -20,8 +20,8 @@ from api.capabilities import (
     requires_link_topology,
     requires_nic_capability,
 )
-from api.test import verify
 from api.packet import send_packets_and_capture
+from api.test import verify
 from api.testpmd import TestPmd
 from api.testpmd.config import SimpleForwardingModes
 from api.testpmd.types import (
