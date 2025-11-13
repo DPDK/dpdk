@@ -1742,6 +1742,7 @@ axgbe_timesync_disable(struct rte_eth_dev *dev)
 {
 	struct axgbe_port *pdata = dev->data->dev_private;
 	unsigned int mac_tscr = 0;
+	unsigned int value = 0;
 
 	/*disable timestamp for all pkts*/
 	AXGMAC_SET_BITS(mac_tscr, MAC_TSCR, TSENALL, 0);
@@ -1751,6 +1752,11 @@ axgbe_timesync_disable(struct rte_eth_dev *dev)
 	AXGMAC_SET_BITS(mac_tscr, MAC_TSCR, TSCFUPDT, 0);
 	/*disable time stamp*/
 	AXGMAC_SET_BITS(mac_tscr, MAC_TSCR, TSENA, 0);
+
+	value = AXGMAC_IOREAD(pdata, MAC_TSCR);
+	value |= mac_tscr;
+	AXGMAC_IOWRITE(pdata, MAC_TSCR, value);
+
 	return 0;
 }
 
