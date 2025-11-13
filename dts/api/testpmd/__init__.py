@@ -96,7 +96,7 @@ def _requires_started_ports(func: TestPmdMethod) -> TestPmdMethod:
         func: The :class:`TestPmd` method to decorate.
 
     Raises:
-        InteractiveCommandExecutionError: If the ports has been started but a port link will not come up.
+        InteractiveCommandExecutionError: If ports have been started but the link won't come up.
     """
 
     @functools.wraps(func)
