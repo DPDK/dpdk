@@ -632,6 +632,9 @@ enum iavf_tx_ctx_desc_tunnel_l4_tunnel_type {
 /* for iavf_32b_rx_flex_desc.pkt_len member */
 #define IAVF_RX_FLX_DESC_PKT_LEN_M	(0x3FFF) /* 14-bits */
 
+/* Valid indicator bit for the time_stamp_low field */
+#define IAVF_RX_FLX_DESC_TS_VALID	(0x1UL)
+
 int iavf_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			   uint16_t queue_idx,
 			   uint16_t nb_desc,
