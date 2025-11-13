@@ -42,6 +42,8 @@ idpf_tx_offload_convert(uint64_t offload)
 		ol |= IDPF_TX_OFFLOAD_TCP_CKSUM;
 	if ((offload & RTE_ETH_TX_OFFLOAD_SCTP_CKSUM) != 0)
 		ol |= IDPF_TX_OFFLOAD_SCTP_CKSUM;
+	if ((offload & RTE_ETH_TX_OFFLOAD_TCP_TSO) != 0)
+		ol |= IDPF_TX_OFFLOAD_TCP_TSO;
 	if ((offload & RTE_ETH_TX_OFFLOAD_MULTI_SEGS) != 0)
 		ol |= IDPF_TX_OFFLOAD_MULTI_SEGS;
 	if ((offload & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) != 0)
