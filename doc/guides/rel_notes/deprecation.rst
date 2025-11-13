@@ -147,14 +147,3 @@ Deprecation Notices
   This change will not result in any feature loss,
   as the fallback scalar paths which have feature parity with SSE
   will be used in the cases where the SSE paths would have been used.
-
-* net/mlx5: ``repr_matching_en`` device argument is deprecated
-  and will be removed in DPDK 25.11 release.
-  With disabled representor matching, behavior of Rx datapath in mlx5 PMD
-  is incompatible with current DPDK representor model.
-  Packets from any E-Switch port can arrive on any representor,
-  depending only on created flow rules.
-  Such working model should be exposed directly in DPDK ethdev API,
-  without relying on flow API.
-  Currently there is no alternative API
-  providing the same functionality as with ``repr_matching_en`` set to 0.

@@ -244,6 +244,14 @@ Removed Items
   the functions ``rte_tel_data_add_array_u64`` and ``rte_tel_data_add_dict_u64`` are removed.
   They are replaced by ``rte_tel_data_add_array_uint`` and ``rte_tel_data_add_dict_uint`` respectively.
 
+* net/mlx5: ``repr_matching_en`` device argument has been removed.
+  Applications which disabled this option were able to receive traffic
+  from any physical port/VF/SF on any representor port.
+  Specifically, in most cases, this was used to process all traffic on representor port
+  which is a transfer proxy port.
+  Similar behavior in mlx5 PMD can be achieved without this device argument,
+  by using ``RTE_FLOW_ACTION_TYPE_RSS`` in transfer flow rules.
+
 
 API Changes
 -----------

@@ -758,24 +758,6 @@ for an additional list of options shared with other mlx5 drivers.
 
     <Primary_PCI_BDF>,representor=pf[0,2]vf[0-2]
 
-- ``repr_matching_en`` parameter [int]
-
-  - 0. If representor matching is disabled, then there will be no implicit
-    item added. As a result, ingress flow rules will match traffic
-    coming to any port, not only the port on which flow rule is created.
-    Because of that, default flow rules for ingress traffic cannot be created
-    and port starts in isolated mode by default. Port cannot be switched back
-    to non-isolated mode.
-
-  - 1. If representor matching is enabled (default setting),
-    then each ingress pattern template has an implicit REPRESENTED_PORT
-    item added. Flow rules based on this pattern template will match
-    the vport associated with port on which rule is created.
-
-  .. note::
-
-     This parameter is deprecated and will be removed in future releases.
-
 - ``max_dump_files_num`` parameter [int]
 
   The maximum number of files per PMD entity that may be created for debug information.
@@ -2359,7 +2341,6 @@ Runtime configuration
 
 The behaviour of port representors is configured
 with some :ref:`parameters <mlx5_representor_params>`.
-The option ``repr_matching_en`` has an impact on flow steering.
 
 Limitations
 ^^^^^^^^^^^
@@ -2369,9 +2350,6 @@ Limitations
 #. A driver limitation for ``RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR`` action
    restricts the ``port_id`` configuration to only accept the value ``0xffff``,
    indicating the E-Switch manager.
-   If the ``repr_matching_en`` parameter is enabled, the traffic will be directed
-   to the representor of the source virtual port (SF/VF), while if it is disabled,
-   the traffic will be routed based on the steering rules in the ingress domain.
 
 Examples
 ^^^^^^^^
@@ -3246,7 +3224,7 @@ Limitations
 
 #. Only single item is supported per pattern template.
 
-#. In switch mode, when ``repr_matching_en`` is enabled (default setting),
+#. In switch mode,
    matching ``RTE_FLOW_ITEM_TYPE_COMPARE`` is not supported for ``ingress`` rules.
    This is because an implicit ``RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT``
    needs to be added to the matcher,

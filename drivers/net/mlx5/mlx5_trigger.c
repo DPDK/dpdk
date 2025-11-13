@@ -1132,9 +1132,9 @@ mlx5_hw_representor_port_allowed_start(struct rte_eth_dev *dev)
 		rte_errno = EAGAIN;
 		return -rte_errno;
 	}
-	if (priv->sh->config.repr_matching && !priv->dr_ctx) {
-		DRV_LOG(ERR, "Failed to start port %u: with representor matching enabled, port "
-			     "must be configured for HWS", dev->data->port_id);
+	if (priv->dr_ctx == NULL) {
+		DRV_LOG(ERR, "Failed to start port %u: port must be configured for HWS",
+			dev->data->port_id);
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
@@ -1621,27 +1621,17 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 				goto error;
 			}
 		}
-		if (config->dv_esw_en && config->repr_matching) {
+		if (config->dv_esw_en) {
 			if (mlx5_flow_hw_create_tx_repr_matching_flow(dev, queue, false)) {
 				mlx5_txq_release(dev, i);
 				goto error;
 			}
 		}
-		/*
-		 * With extended metadata enabled, the Tx metadata copy is handled by default
-		 * Tx tagging flow rules, so default Tx flow rule is not needed. It is only
-		 * required when representor matching is disabled.
-		 */
-		if (config->dv_esw_en && !config->repr_matching &&
-		    config->dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS &&
-		    (priv->master || priv->representor)) {
-			ret = mlx5_flow_hw_create_fdb_tx_default_mreg_copy_flow(dev, queue, false);
-		} else if (mlx5_vport_tx_metadata_passing_enabled(priv->sh)) {
-			ret = mlx5_flow_hw_create_nic_tx_default_mreg_copy_flow(dev, queue);
-		}
-		if (ret != 0) {
-			mlx5_txq_release(dev, i);
-			goto error;
+		if (mlx5_vport_tx_metadata_passing_enabled(priv->sh)) {
+			if (mlx5_flow_hw_create_nic_tx_default_mreg_copy_flow(dev, queue)) {
+				mlx5_txq_release(dev, i);
+				goto error;
+			}
 		}
 		mlx5_txq_release(dev, i);
 	}
