@@ -1245,7 +1245,13 @@ nix_mtr_config_map(struct cnxk_meter_node *mtr, struct roc_nix_bpf_cfg *cfg)
 
 	cfg->alg = alg_map[profile->profile.alg];
 	cfg->lmode = profile->profile.packet_mode;
-	cfg->icolor = color_map[mtr->params.default_input_color];
+	int idx = mtr->params.default_input_color;
+
+	/* Index validation */
+	if (idx >= RTE_COLORS)
+		cfg->icolor = ROC_NIX_BPF_COLOR_GREEN;
+	else
+		cfg->icolor = color_map[idx];
 
 	switch (RTE_MTR_COLOR_IN_PROTO_OUTER_IP) {
 	case RTE_MTR_COLOR_IN_PROTO_OUTER_IP:
