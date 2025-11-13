@@ -261,7 +261,7 @@ ci_rx_path_select(struct ci_rx_path_features req_features,
 			int default_path)
 {
 	int i, idx = default_path;
-	const struct ci_rx_path_features *current_features = NULL;
+	const struct ci_rx_path_features *chosen_path_features = NULL;
 
 	for (i = 0; i < num_paths; i++) {
 		const struct ci_rx_path_features *path_features = &infos[i].features;
@@ -295,29 +295,29 @@ ci_rx_path_select(struct ci_rx_path_features req_features,
 		if (path_features->simd_width > req_features.simd_width)
 			continue;
 
-		/* Do not select the path if it is less suitable than the current path. */
-		if (current_features != NULL) {
-			/* Do not select paths with lower SIMD width than the current path. */
-			if (path_features->simd_width < current_features->simd_width)
+		/* Do not select the path if it is less suitable than the chosen path. */
+		if (chosen_path_features != NULL) {
+			/* Do not select paths with lower SIMD width than the chosen path. */
+			if (path_features->simd_width < chosen_path_features->simd_width)
 				continue;
-			/* Do not select paths with more offloads enabled than the current path if
+			/* Do not select paths with more offloads enabled than the chosen path if
 			 * the SIMD widths are the same.
 			 */
-			if (path_features->simd_width == current_features->simd_width &&
+			if (path_features->simd_width == chosen_path_features->simd_width &&
 					rte_popcount32(path_features->rx_offloads) >
-					rte_popcount32(current_features->rx_offloads))
+					rte_popcount32(chosen_path_features->rx_offloads))
 				continue;
 			/* Do not select paths without bulk alloc support if requested and the
-			 * current path already meets this requirement.
+			 * chosen path already meets this requirement.
 			 */
 			if (!path_features->extra.bulk_alloc && req_features.extra.bulk_alloc &&
-					current_features->extra.bulk_alloc)
+					chosen_path_features->extra.bulk_alloc)
 				continue;
 		}
 
 		/* Finally, select the path since it has met all the requirements. */
 		idx = i;
-		current_features = &infos[idx].features;
+		chosen_path_features = &infos[idx].features;
 	}
 
 	return idx;
