@@ -483,6 +483,7 @@ struct roc_nix_sq {
 	bool cq_ena;
 	uint8_t fc_hyst_bits;
 	/* End of Input parameters */
+	uint16_t sqes_per_sqb;
 	uint16_t sqes_per_sqb_log2;
 	struct roc_nix *roc_nix;
 	uint64_t aura_handle;
@@ -588,6 +589,7 @@ struct roc_nix {
 	uint16_t inb_cfg_param2;
 	bool force_tail_drop;
 	bool dis_xqe_drop;
+	bool sq_resize_ena;
 	/* End of input parameters */
 	/* LMT line base for "Per Core Tx LMT line" mode*/
 	uintptr_t lmt_base;
@@ -1087,6 +1089,7 @@ int __roc_api roc_nix_sq_ena_dis(struct roc_nix_sq *sq, bool enable);
 void __roc_api roc_nix_sq_head_tail_get(struct roc_nix *roc_nix, uint16_t qid,
 					uint32_t *head, uint32_t *tail);
 int __roc_api roc_nix_sq_cnt_update(struct roc_nix_sq *sq, bool enable);
+int __roc_api roc_nix_sq_resize(struct roc_nix_sq *sq, uint32_t nb_desc);
 
 /* PTP */
 int __roc_api roc_nix_ptp_rx_ena_dis(struct roc_nix *roc_nix, int enable);

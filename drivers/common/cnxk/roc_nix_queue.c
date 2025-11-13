@@ -1430,11 +1430,57 @@ roc_nix_cq_fini(struct roc_nix_cq *cq)
 	return 0;
 }
 
+static uint16_t
+sqes_per_sqb_calc(uint16_t sqb_size, enum roc_nix_sq_max_sqe_sz max_sqe_sz)
+{
+	uint16_t sqes_per_sqb;
+
+	if (max_sqe_sz == roc_nix_maxsqesz_w16)
+		sqes_per_sqb = (sqb_size / 8) / 16;
+	else
+		sqes_per_sqb = (sqb_size / 8) / 8;
+
+	/* Reserve One SQE in each SQB to hold pointer for next SQB */
+	sqes_per_sqb -= 1;
+	return sqes_per_sqb;
+}
+
+static uint16_t
+sq_desc_to_sqb(struct nix *nix, uint16_t sqes_per_sqb, uint32_t nb_desc)
+{
+	struct roc_nix *roc_nix = nix_priv_to_roc_nix(nix);
+	uint16_t nb_sqb_bufs;
+
+	nb_desc = PLT_MAX(512U, nb_desc);
+	nb_sqb_bufs = PLT_DIV_CEIL(nb_desc, sqes_per_sqb);
+
+	nb_sqb_bufs += NIX_SQB_PREFETCH;
+	/* Clamp up the SQB count */
+	nb_sqb_bufs = PLT_MAX(NIX_DEF_SQB, nb_sqb_bufs);
+	nb_sqb_bufs = PLT_MIN(roc_nix->max_sqb_count, (uint16_t)nb_sqb_bufs);
+
+	return nb_sqb_bufs;
+}
+
+static uint16_t
+sqb_slack_adjust(struct nix *nix, uint16_t nb_sqb_bufs, bool sq_cnt_ena)
+{
+	struct roc_nix *roc_nix = nix_priv_to_roc_nix(nix);
+	uint16_t thr;
+
+	thr = PLT_DIV_CEIL((nb_sqb_bufs * ROC_NIX_SQB_THRESH), 100);
+	if (roc_nix->sqb_slack)
+		nb_sqb_bufs += roc_nix->sqb_slack;
+	else if (!sq_cnt_ena)
+		nb_sqb_bufs += PLT_MAX((int)thr, (int)ROC_NIX_SQB_SLACK_DFLT);
+	return nb_sqb_bufs;
+}
+
 static int
 sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	uint16_t sqes_per_sqb, count, nb_sqb_bufs, thr;
+	uint16_t sqes_per_sqb, count, nb_sqb_bufs;
 	struct npa_pool_s pool;
 	struct npa_aura_s aura;
 	uint64_t blk_sz;
@@ -1442,30 +1488,19 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 	int rc;
 
 	blk_sz = nix->sqb_size;
-	if (sq->max_sqe_sz == roc_nix_maxsqesz_w16)
-		sqes_per_sqb = (blk_sz / 8) / 16;
-	else
-		sqes_per_sqb = (blk_sz / 8) / 8;
+	sqes_per_sqb = sqes_per_sqb_calc(blk_sz, sq->max_sqe_sz);
 
-	/* Reserve One SQE in each SQB to hold pointer for next SQB */
-	sqes_per_sqb -= 1;
+	/* Translate desc count to SQB count */
+	nb_sqb_bufs = sq_desc_to_sqb(nix, sqes_per_sqb, sq->nb_desc);
 
-	sq->nb_desc = PLT_MAX(512U, sq->nb_desc);
-	nb_sqb_bufs = PLT_DIV_CEIL(sq->nb_desc, sqes_per_sqb);
-	thr = PLT_DIV_CEIL((nb_sqb_bufs * ROC_NIX_SQB_THRESH), 100);
-	nb_sqb_bufs += NIX_SQB_PREFETCH;
-	/* Clamp up the SQB count */
-	nb_sqb_bufs = PLT_MAX(NIX_DEF_SQB, nb_sqb_bufs);
-	nb_sqb_bufs = PLT_MIN(roc_nix->max_sqb_count, (uint16_t)nb_sqb_bufs);
-
-	sq->nb_sqb_bufs = nb_sqb_bufs;
+	sq->sqes_per_sqb = sqes_per_sqb;
 	sq->sqes_per_sqb_log2 = (uint16_t)plt_log2_u32(sqes_per_sqb);
 	sq->nb_sqb_bufs_adj = nb_sqb_bufs;
+	sq->nb_sqb_bufs = nb_sqb_bufs;
 
-	if (roc_nix->sqb_slack)
-		nb_sqb_bufs += roc_nix->sqb_slack;
-	else if (!sq->sq_cnt_ptr)
-		nb_sqb_bufs += PLT_MAX((int)thr, (int)ROC_NIX_SQB_SLACK_DFLT);
+	/* Add slack to SQB's */
+	nb_sqb_bufs = sqb_slack_adjust(nix, nb_sqb_bufs, !!sq->sq_cnt_ptr);
+
 	/* Explicitly set nat_align alone as by default pool is with both
 	 * nat_align and buf_offset = 1 which we don't want for SQB.
 	 */
@@ -1515,6 +1550,96 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 npa_fail:
 	plt_free(sq->sqe_mem);
 nomem:
+	roc_npa_pool_destroy(sq->aura_handle);
+fail:
+	return rc;
+}
+
+static int
+sqb_pool_dyn_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	uint16_t count, nb_sqb_bufs;
+	uint16_t max_sqb_count;
+	struct npa_pool_s pool;
+	struct npa_aura_s aura;
+	uint16_t sqes_per_sqb;
+	uint64_t blk_sz;
+	uint64_t iova;
+	int rc;
+
+	blk_sz = nix->sqb_size;
+	sqes_per_sqb = sqes_per_sqb_calc(blk_sz, sq->max_sqe_sz);
+
+	/* Translate desc count to SQB count */
+	nb_sqb_bufs = sq_desc_to_sqb(nix, sqes_per_sqb, sq->nb_desc);
+
+	sq->sqes_per_sqb_log2 = (uint16_t)plt_log2_u32(sqes_per_sqb);
+	sq->sqes_per_sqb = sqes_per_sqb;
+	sq->nb_sqb_bufs_adj = nb_sqb_bufs;
+	sq->nb_sqb_bufs = nb_sqb_bufs;
+
+	/* Add slack to SQB's */
+	nb_sqb_bufs = sqb_slack_adjust(nix, nb_sqb_bufs, !!sq->sq_cnt_ptr);
+
+	/* Explicitly set nat_align alone as by default pool is with both
+	 * nat_align and buf_offset = 1 which we don't want for SQB.
+	 */
+	memset(&pool, 0, sizeof(struct npa_pool_s));
+	pool.nat_align = 0;
+
+	memset(&aura, 0, sizeof(aura));
+	if (!sq->sq_cnt_ptr)
+		aura.fc_ena = 1;
+	if (roc_model_is_cn9k() || roc_errata_npa_has_no_fc_stype_ststp())
+		aura.fc_stype = 0x0; /* STF */
+	else
+		aura.fc_stype = 0x3; /* STSTP */
+	aura.fc_addr = (uint64_t)sq->fc;
+	aura.fc_hyst_bits = sq->fc_hyst_bits & 0xF;
+	max_sqb_count = sqb_slack_adjust(nix, roc_nix->max_sqb_count, false);
+	rc = roc_npa_pool_create(&sq->aura_handle, blk_sz, max_sqb_count, &aura, &pool, 0);
+	if (rc)
+		goto fail;
+
+	roc_npa_buf_type_update(sq->aura_handle, ROC_NPA_BUF_TYPE_SQB, 1);
+	roc_npa_aura_op_cnt_set(sq->aura_handle, 0, nb_sqb_bufs);
+
+	/* Fill the initial buffers */
+	for (count = 0; count < nb_sqb_bufs; count++) {
+		iova = (uint64_t)plt_zmalloc(blk_sz, ROC_ALIGN);
+		if (!iova) {
+			rc = -ENOMEM;
+			goto nomem;
+		}
+		plt_io_wmb();
+
+		roc_npa_aura_op_free(sq->aura_handle, 0, iova);
+	}
+
+	if (roc_npa_aura_op_available_wait(sq->aura_handle, nb_sqb_bufs, 0) != nb_sqb_bufs) {
+		plt_err("Failed to free all pointers to the pool");
+		rc = NIX_ERR_NO_MEM;
+		goto npa_fail;
+	}
+
+	/* Update aura count */
+	roc_npa_aura_limit_modify(sq->aura_handle, nb_sqb_bufs);
+	roc_npa_pool_op_range_set(sq->aura_handle, 0, UINT64_MAX);
+	sq->aura_sqb_bufs = nb_sqb_bufs;
+
+	return rc;
+npa_fail:
+nomem:
+	while (count) {
+		iova = roc_npa_aura_op_alloc(sq->aura_handle, 0);
+		if (!iova)
+			break;
+		plt_free((uint64_t *)iova);
+		count--;
+	}
+	if (count)
+		plt_err("Failed to recover %u SQB's", count);
 	roc_npa_pool_destroy(sq->aura_handle);
 fail:
 	return rc;
@@ -1768,10 +1893,10 @@ sq_cn10k_fini(struct nix *nix, struct roc_nix_sq *sq)
 		return rc;
 	}
 
-	if (aq->sq.smq_pend)
+	if (rsp->sq.smq_pend)
 		plt_err("SQ has pending SQE's");
 
-	count = aq->sq.sqb_count;
+	count = rsp->sq.sqb_count;
 	sqes_per_sqb = 1 << sq->sqes_per_sqb_log2;
 	/* Free SQB's that are used */
 	sqb_buf = (void *)rsp->sq.head_sqb;
@@ -1939,6 +2064,7 @@ int
 roc_nix_sq_init(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	bool sq_resize_ena = roc_nix->sq_resize_ena;
 	struct mbox *m_box = (&nix->dev)->mbox;
 	uint16_t qid, smq = UINT16_MAX;
 	uint32_t rr_quantum = 0;
@@ -1964,7 +2090,10 @@ roc_nix_sq_init(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 		goto fail;
 	}
 
-	rc = sqb_pool_populate(roc_nix, sq);
+	if (sq_resize_ena)
+		rc = sqb_pool_dyn_populate(roc_nix, sq);
+	else
+		rc = sqb_pool_populate(roc_nix, sq);
 	if (rc)
 		goto nomem;
 
@@ -2014,19 +2143,38 @@ fail:
 	return rc;
 }
 
+static void
+nix_sqb_mem_dyn_free(uint64_t aura_handle, uint16_t count)
+{
+	uint64_t iova;
+
+	/* Recover SQB's and free them back */
+	while (count) {
+		iova = roc_npa_aura_op_alloc(aura_handle, 0);
+		if (!iova)
+			break;
+		plt_free((uint64_t *)iova);
+		count--;
+	}
+	if (count)
+		plt_err("Failed to recover %u SQB's", count);
+}
+
 int
 roc_nix_sq_fini(struct roc_nix_sq *sq)
 {
-	struct nix *nix;
-	struct mbox *mbox;
+	struct roc_nix *roc_nix = sq->roc_nix;
+	bool sq_resize_ena = roc_nix->sq_resize_ena;
 	struct ndc_sync_op *ndc_req;
+	struct mbox *mbox;
+	struct nix *nix;
 	uint16_t qid;
 	int rc = 0;
 
 	if (sq == NULL)
 		return NIX_ERR_PARAM;
 
-	nix = roc_nix_to_nix_priv(sq->roc_nix);
+	nix = roc_nix_to_nix_priv(roc_nix);
 	mbox = (&nix->dev)->mbox;
 
 	qid = sq->qid;
@@ -2058,11 +2206,198 @@ roc_nix_sq_fini(struct roc_nix_sq *sq)
 	 * for aura drain to succeed.
 	 */
 	roc_npa_aura_limit_modify(sq->aura_handle, sq->aura_sqb_bufs);
+
+	if (sq_resize_ena)
+		nix_sqb_mem_dyn_free(sq->aura_handle, sq->aura_sqb_bufs);
+
 	rc |= roc_npa_pool_destroy(sq->aura_handle);
 	plt_free(sq->fc);
-	plt_free(sq->sqe_mem);
+	if (!sq_resize_ena)
+		plt_free(sq->sqe_mem);
 	nix->sqs[qid] = NULL;
 
+	return rc;
+}
+
+static int
+sqb_aura_dyn_expand(struct roc_nix_sq *sq, uint16_t count)
+{
+	struct nix *nix = roc_nix_to_nix_priv(sq->roc_nix);
+	uint64_t *sqbs = NULL;
+	uint16_t blk_sz;
+	int i;
+
+	blk_sz = nix->sqb_size;
+	sqbs = calloc(1, count * sizeof(uint64_t *));
+	if (!sqbs)
+		return -ENOMEM;
+
+	for (i = 0; i < count; i++) {
+		sqbs[i] = (uint64_t)plt_zmalloc(blk_sz, ROC_ALIGN);
+		if (!sqbs[i])
+			break;
+	}
+
+	if (i != count) {
+		i = i - 1;
+		for (; i >= 0; i--)
+			plt_free((void *)sqbs[i]);
+		free(sqbs);
+		return -ENOMEM;
+	}
+
+	plt_io_wmb();
+
+	/* Add new buffers to sqb aura */
+	for (i = 0; i < count; i++)
+		roc_npa_aura_op_free(sq->aura_handle, 0, sqbs[i]);
+	free(sqbs);
+
+	/* Adjust SQ info */
+	sq->nb_sqb_bufs += count;
+	sq->nb_sqb_bufs_adj += count;
+	sq->aura_sqb_bufs += count;
+	return 0;
+}
+
+static int
+sqb_aura_dyn_contract(struct roc_nix_sq *sq, uint16_t count)
+{
+	struct nix *nix = roc_nix_to_nix_priv(sq->roc_nix);
+	struct dev *dev = &nix->dev;
+	struct ndc_sync_op *ndc_req;
+	uint64_t *sqbs = NULL;
+	struct mbox *mbox;
+	uint64_t timeout; /* 10's of usec */
+	uint64_t cycles;
+	int i, rc;
+
+	mbox = dev->mbox;
+	/* Sync NDC-NIX-TX for LF */
+	ndc_req = mbox_alloc_msg_ndc_sync_op(mbox_get(mbox));
+	if (ndc_req == NULL) {
+		mbox_put(mbox);
+		return -EFAULT;
+	}
+
+	ndc_req->nix_lf_tx_sync = 1;
+	rc = mbox_process(mbox);
+	if (rc) {
+		mbox_put(mbox);
+		return rc;
+	}
+	mbox_put(mbox);
+
+	/* Wait for enough time based on shaper min rate */
+	timeout = (sq->nb_desc * roc_nix_max_pkt_len(sq->roc_nix) * 8 * 1E5);
+	/* Wait for worst case scenario of this SQ being last priority
+	 * and so have to wait for all other SQ's drain out by their own.
+	 */
+	timeout = timeout * nix->nb_tx_queues;
+	timeout = timeout / nix->tm_rate_min;
+	if (!timeout)
+		timeout = 10000;
+	cycles = (timeout * 10 * plt_tsc_hz()) / (uint64_t)1E6;
+	cycles += plt_tsc_cycles();
+
+	sqbs = calloc(1, count * sizeof(uint64_t *));
+	if (!sqbs)
+		return -ENOMEM;
+
+	i = 0;
+	while (i < count && plt_tsc_cycles() < cycles) {
+		sqbs[i] = roc_npa_aura_op_alloc(sq->aura_handle, 0);
+		if (sqbs[i])
+			i++;
+		else
+			plt_delay_us(1);
+	}
+
+	if (i != count) {
+		plt_warn("SQ %u busy, unable to recover %u SQB's(%u desc)", sq->qid, count,
+			 count * sq->sqes_per_sqb);
+
+		/* Restore the SQB aura state and return */
+		i--;
+		for (; i >= 0; i--)
+			roc_npa_aura_op_free(sq->aura_handle, 0, sqbs[i]);
+		free(sqbs);
+		return -EAGAIN;
+	}
+
+	/* Extracted necessary SQB's, on free them */
+	for (i = 0; i < count; i++)
+		plt_free((void *)sqbs[i]);
+	free(sqbs);
+
+	/* Adjust SQ info */
+	sq->nb_sqb_bufs -= count;
+	sq->nb_sqb_bufs_adj -= count;
+	sq->aura_sqb_bufs -= count;
+	return 0;
+}
+
+int
+roc_nix_sq_resize(struct roc_nix_sq *sq, uint32_t nb_desc)
+{
+	struct roc_nix *roc_nix = sq->roc_nix;
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	uint16_t aura_sqb_bufs, nb_sqb_bufs, sqes_per_sqb;
+	int64_t *regaddr;
+	uint64_t wdata;
+	uint16_t diff;
+	int rc;
+
+	if (!roc_nix->sq_resize_ena)
+		return -ENOTSUP;
+
+	sqes_per_sqb = sq->sqes_per_sqb;
+
+	/* Calculate new nb_sqb_bufs */
+	nb_sqb_bufs = sq_desc_to_sqb(nix, sqes_per_sqb, nb_desc);
+	aura_sqb_bufs = sqb_slack_adjust(nix, nb_sqb_bufs, !!sq->sq_cnt_ptr);
+
+	if (aura_sqb_bufs == sq->aura_sqb_bufs)
+		return 0;
+
+	/* Issue atomic op to make sure all inflight LMTST's are complete
+	 * assuming no new submissions will take place.
+	 */
+	wdata = ((uint64_t)sq->qid) << 32;
+	regaddr = (int64_t *)(nix->base + NIX_LF_SQ_OP_STATUS);
+	roc_atomic64_add_nosync(wdata, regaddr);
+
+	/* Expand or Contract SQB aura */
+	if (aura_sqb_bufs > sq->aura_sqb_bufs) {
+		/* Increase the limit */
+		roc_npa_aura_limit_modify(sq->aura_handle, aura_sqb_bufs);
+		diff = aura_sqb_bufs - sq->aura_sqb_bufs;
+		roc_npa_aura_op_cnt_set(sq->aura_handle, 1, diff);
+
+		rc = sqb_aura_dyn_expand(sq, diff);
+	} else {
+		diff = sq->aura_sqb_bufs - aura_sqb_bufs;
+		rc = sqb_aura_dyn_contract(sq, diff);
+
+		/* Decrease the limit */
+		if (!rc) {
+			roc_npa_aura_limit_modify(sq->aura_handle, aura_sqb_bufs);
+			roc_npa_aura_op_cnt_set(sq->aura_handle, 1, -(int64_t)diff);
+		}
+	}
+
+	plt_io_wmb();
+	if (!rc) {
+		sq->nb_desc = nb_desc;
+		if (sq->sq_cnt_ptr)
+			plt_atomic_store_explicit((uint64_t __plt_atomic *)sq->sq_cnt_ptr, nb_desc,
+						  plt_memory_order_release);
+		*(uint64_t *)sq->fc = roc_npa_aura_op_cnt_get(sq->aura_handle);
+	} else {
+		roc_npa_aura_limit_modify(sq->aura_handle, sq->aura_sqb_bufs);
+	}
+
+	plt_io_wmb();
 	return rc;
 }
 
