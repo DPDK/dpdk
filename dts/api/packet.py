@@ -33,6 +33,9 @@ from framework.exception import InternalError
 from framework.testbed_model.traffic_generator.capturing_traffic_generator import (
     PacketFilteringConfig,
 )
+from framework.testbed_model.traffic_generator.performance_traffic_generator import (
+    PerformanceTrafficStats,
+)
 from framework.utils import get_packet_summaries
 
 
@@ -108,7 +111,9 @@ def send_packets(
         packets: Packets to send.
     """
     packets = adjust_addresses(packets)
-    get_ctx().func_tg.send_packets(packets, get_ctx().topology.tg_port_egress)
+    tg = get_ctx().func_tg
+    if tg:
+        tg.send_packets(packets, get_ctx().topology.tg_port_egress)
 
 
 def get_expected_packets(
@@ -317,3 +322,31 @@ def _verify_l3_packet(received_packet: IP, expected_packet: IP) -> bool:
     if received_packet.src != expected_packet.src or received_packet.dst != expected_packet.dst:
         return False
     return True
+
+
+def assess_performance_by_packet(
+    packet: Packet, duration: float, send_mpps: int | None = None
+) -> PerformanceTrafficStats:
+    """Send a given packet for a given duration and assess basic performance statistics.
+
+    Send `packet` and assess NIC performance for a given duration, corresponding to the test
+    suite's given topology.
+
+    Args:
+        packet: The packet to send.
+        duration: Performance test duration (in seconds).
+        send_mpps: The millions packets per second send rate.
+
+    Returns:
+        Performance statistics of the generated test.
+    """
+    from framework.testbed_model.traffic_generator.performance_traffic_generator import (
+        PerformanceTrafficGenerator,
+    )
+
+    assert isinstance(
+        get_ctx().perf_tg, PerformanceTrafficGenerator
+    ), "Cannot send performance traffic with non-performance traffic generator"
+    tg: PerformanceTrafficGenerator = cast(PerformanceTrafficGenerator, get_ctx().perf_tg)
+    # TODO: implement @requires for types of traffic generator
+    return tg.calculate_traffic_and_stats(packet, duration, send_mpps)

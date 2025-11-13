@@ -6,6 +6,10 @@
 This module provides utility functions for test cases, including logging, verification.
 """
 
+import json
+from datetime import datetime
+
+from api.artifact import Artifact
 from framework.context import get_ctx
 from framework.exception import InternalError, SkippedTestException, TestCaseVerifyError
 from framework.logger import DTSLogger
@@ -124,3 +128,31 @@ def get_logger() -> DTSLogger:
     if current_test_suite is None:
         raise InternalError("No current test suite")
     return current_test_suite._logger
+
+
+def write_performance_json(
+    performance_data: dict, filename: str = "performance_metrics.json"
+) -> None:
+    """Write performance test results to a JSON file in the test suite's output directory.
+
+    This method creates a JSON file containing performance metrics in the test suite's
+    output directory. The data can be a dictionary of any structure. No specific format
+    is required.
+
+    Args:
+        performance_data: Dictionary containing performance metrics and results.
+        filename: Name of the JSON file to create.
+
+    Raises:
+        InternalError: If performance data is not provided.
+    """
+    if not performance_data:
+        raise InternalError("No performance data to write")
+
+    perf_data = {"timestamp": datetime.now().isoformat(), **performance_data}
+    perf_json_artifact = Artifact("local", filename)
+
+    with perf_json_artifact.open("w") as json_file:
+        json.dump(perf_data, json_file, indent=2)
+
+    get_logger().info(f"Performance results written to: {perf_json_artifact.local_path}")

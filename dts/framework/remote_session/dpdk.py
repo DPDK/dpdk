@@ -24,6 +24,7 @@ from framework.config.test_run import (
     RemoteDPDKTarballLocation,
     RemoteDPDKTreeLocation,
 )
+from framework.context import get_ctx
 from framework.exception import ConfigurationError, RemoteFileNotFoundError
 from framework.logger import DTSLogger, get_dts_logger
 from framework.params.eal import EalParams
@@ -259,9 +260,21 @@ class DPDKBuildEnvironment:
         Uses the already configured DPDK build configuration. Assumes that the
         `remote_dpdk_tree_path` has already been set on the SUT node.
         """
+        ctx = get_ctx()
+        # If the SUT is an ice driver device, make sure to build with 16B descriptors.
+        if (
+            ctx.topology.sut_port_ingress
+            and ctx.topology.sut_port_ingress.config.os_driver == "ice"
+        ):
+            meson_args = MesonArgs(
+                default_library="static", libdir="lib", c_args="-DRTE_NET_INTEL_USE_16BYTE_DESC"
+            )
+        else:
+            meson_args = MesonArgs(default_library="static", libdir="lib")
+
         self._session.build_dpdk(
             self._env_vars,
-            MesonArgs(default_library="static", libdir="lib"),
+            meson_args,
             self.remote_dpdk_tree_path,
             self.remote_dpdk_build_dir,
         )
