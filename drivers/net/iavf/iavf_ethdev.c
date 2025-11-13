@@ -1146,7 +1146,8 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_CRC)
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_KEEP_CRC;
 
-	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_CAP_PTP)
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_CAP_PTP &&
+	    vf->ptp_caps & VIRTCHNL_1588_PTP_CAP_RX_TSTAMP)
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 
 	if (iavf_ipsec_crypto_supported(adapter)) {
