@@ -1346,6 +1346,8 @@ cn10k_eth_sec_rx_inject_config(void *device, uint16_t port_id, bool enable)
 	roc_idev_nix_rx_inject_set(port_id, enable);
 
 	inl_lf = roc_nix_inl_inb_inj_lf_get(nix);
+	if (!inl_lf)
+		return -ENOTSUP;
 	sa_base = roc_nix_inl_inb_sa_base_get(nix, dev->inb.inl_dev);
 
 	inj_cfg = &dev->inj_cfg;
