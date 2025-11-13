@@ -1474,7 +1474,7 @@ roc_nix_sq_fini(struct roc_nix_sq *sq)
 	/* Restore limit to max SQB count that the pool was created
 	 * for aura drain to succeed.
 	 */
-	roc_npa_aura_limit_modify(sq->aura_handle, NIX_MAX_SQB);
+	roc_npa_aura_limit_modify(sq->aura_handle, sq->aura_sqb_bufs);
 	rc |= roc_npa_pool_destroy(sq->aura_handle);
 	plt_free(sq->fc);
 	plt_free(sq->sqe_mem);
