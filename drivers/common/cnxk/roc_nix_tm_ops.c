@@ -624,6 +624,13 @@ roc_nix_tm_hierarchy_xmit_enable(struct roc_nix *roc_nix, enum roc_nix_tm_tree t
 		sq_id = node->id;
 		sq = nix->sqs[sq_id];
 
+		if (!sq) {
+			plt_err("nb_rxq %d nb_txq %d sq_id %d lvl %d", nix->nb_rx_queues,
+				nix->nb_tx_queues, sq_id, node->lvl);
+			roc_nix_tm_dump(roc_nix, NULL);
+			roc_nix_dump(roc_nix, NULL);
+			return NIX_ERR_TM_INVALID_NODE;
+		}
 		rc = roc_nix_sq_ena_dis(sq, true);
 		if (rc) {
 			plt_err("TM sw xon failed on SQ %u, rc=%d", node->id,
