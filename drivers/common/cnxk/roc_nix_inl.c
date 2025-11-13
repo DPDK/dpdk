@@ -849,12 +849,12 @@ roc_nix_inl_inb_rx_inject_enable(struct roc_nix *roc_nix, bool inb_inl_dev)
 
 	if (inb_inl_dev) {
 		inl_dev = idev->nix_inl_dev;
-		if (inl_dev && inl_dev->attach_cptlf && inl_dev->rx_inj_ena &&
+		if (inl_dev && inl_dev->attach_cptlf && inl_dev->rx_inj_ena && roc_nix &&
 		    roc_nix->rx_inj_ena)
 			return true;
 	}
 
-	return roc_nix->rx_inj_ena;
+	return roc_nix ? roc_nix->rx_inj_ena : 0;
 }
 
 uint32_t
