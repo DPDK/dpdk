@@ -1205,7 +1205,11 @@ struct mlx5_ifc_fte_match_set_misc5_bits {
 	u8 tunnel_header_1[0x20];
 	u8 tunnel_header_2[0x20];
 	u8 tunnel_header_3[0x20];
-	u8 reserved[0x100];
+	u8 reserved[0x80];
+	u8 metadata_reg_c_8[0x20];
+	u8 metadata_reg_c_9[0x20];
+	u8 metadata_reg_c_10[0x20];
+	u8 metadata_reg_c_11[0x20];
 };
 
 /* Flow matcher. */

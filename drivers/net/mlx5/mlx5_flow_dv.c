@@ -10554,8 +10554,8 @@ static void
 flow_dv_match_meta_reg(void *key, enum modify_reg reg_type,
 		       uint32_t data, uint32_t mask)
 {
-	void *misc2_v =
-		MLX5_ADDR_OF(fte_match_param, key, misc_parameters_2);
+	void *misc2_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_2);
+	void *misc5_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_5);
 	uint32_t temp;
 
 	if (!key)
@@ -10600,6 +10600,18 @@ flow_dv_match_meta_reg(void *key, enum modify_reg reg_type,
 		break;
 	case REG_C_7:
 		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_c_7, data);
+		break;
+	case REG_C_8:
+		MLX5_SET(fte_match_set_misc5, misc5_v, metadata_reg_c_8, data);
+		break;
+	case REG_C_9:
+		MLX5_SET(fte_match_set_misc5, misc5_v, metadata_reg_c_9, data);
+		break;
+	case REG_C_10:
+		MLX5_SET(fte_match_set_misc5, misc5_v, metadata_reg_c_10, data);
+		break;
+	case REG_C_11:
+		MLX5_SET(fte_match_set_misc5, misc5_v, metadata_reg_c_11, data);
 		break;
 	default:
 		MLX5_ASSERT(false);
@@ -10819,8 +10831,11 @@ flow_dv_translate_mlx5_item_tag(struct rte_eth_dev *dev, void *key,
  *   Flow pattern to translate.
  * @param[in] key_type
  *   Set flow matcher mask or value.
+ *
+ * @return
+ *   0 on success. Negative errno value otherwise.
  */
-static void
+static int
 flow_dv_translate_item_tag(struct rte_eth_dev *dev, void *key,
 			   const struct rte_flow_item *item,
 			   uint32_t key_type)
@@ -10832,7 +10847,7 @@ flow_dv_translate_item_tag(struct rte_eth_dev *dev, void *key,
 	uint32_t index;
 
 	if (MLX5_ITEM_VALID(item, key_type))
-		return;
+		return 0;
 	MLX5_ITEM_UPDATE(item, key_type, tag_v, tag_m,
 		&rte_flow_item_tag_mask);
 	/* When set mask, the index should be from spec. */
@@ -10842,8 +10857,18 @@ flow_dv_translate_item_tag(struct rte_eth_dev *dev, void *key,
 		reg = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, index, NULL);
 	else
 		reg = flow_hw_get_reg_id(dev, RTE_FLOW_ITEM_TYPE_TAG, index);
-	MLX5_ASSERT(reg > 0);
+	if (reg < 0) {
+		DRV_LOG(ERR, "port %u tag index %u does not map to correct register",
+			dev->data->port_id, index);
+		return -EINVAL;
+	}
+	if (reg == REG_NON) {
+		DRV_LOG(ERR, "port %u tag index %u maps to unsupported register",
+			dev->data->port_id, index);
+		return -ENOTSUP;
+	}
 	flow_dv_match_meta_reg(key, (enum modify_reg)reg, tag_v->data, tag_m->data);
+	return 0;
 }
 
 /**
@@ -14402,7 +14427,10 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
 		last_item = MLX5_FLOW_LAYER_ICMP6;
 		break;
 	case RTE_FLOW_ITEM_TYPE_TAG:
-		flow_dv_translate_item_tag(dev, key, items, key_type);
+		ret = flow_dv_translate_item_tag(dev, key, items, key_type);
+		if (ret < 0)
+			return rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+						  "invalid flow tag item");
 		last_item = MLX5_FLOW_ITEM_TAG;
 		break;
 	case MLX5_RTE_FLOW_ITEM_TYPE_TAG:
