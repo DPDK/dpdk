@@ -15305,7 +15305,7 @@ error:
 }
 
 static int
-flow_hw_table_resize_complete(__rte_unused struct rte_eth_dev *dev,
+flow_hw_table_resize_complete(struct rte_eth_dev *dev,
 			      struct rte_flow_template_table *table,
 			      struct rte_flow_error *error)
 {
@@ -15319,12 +15319,16 @@ flow_hw_table_resize_complete(__rte_unused struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  table, "no resizable attribute");
+	if (matcher_info->matcher == NULL)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  table, "table resize was not started");
 	matcher_refcnt = rte_atomic_load_explicit(&matcher_info->refcnt,
 						  rte_memory_order_relaxed);
-	if (!matcher_info->matcher || matcher_refcnt)
+	if (matcher_refcnt > 0)
 		return rte_flow_error_set(error, EBUSY,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  table, "cannot complete table resize");
+					  table, "all rules not yet updated");
 	if (matcher_info->jump)
 		mlx5dr_action_destroy(matcher_info->jump);
 	ret = mlx5dr_matcher_destroy(matcher_info->matcher);
