@@ -1784,7 +1784,8 @@ flow_hw_get_reg_id_by_domain(struct rte_eth_dev *dev,
 	case RTE_FLOW_ITEM_TYPE_TAG:
 		if (id == RTE_PMD_MLX5_LINEAR_HASH_TAG_INDEX)
 			return REG_C_3;
-		MLX5_ASSERT(id < MLX5_FLOW_HW_TAGS_MAX);
+		if (id >= MLX5_FLOW_HW_TAGS_MAX)
+			return REG_NON;
 		return reg->hw_avl_tags[id];
 	default:
 		return REG_NON;
