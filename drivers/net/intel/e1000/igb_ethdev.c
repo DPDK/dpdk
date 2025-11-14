@@ -4270,7 +4270,8 @@ eth_igb_add_del_flex_filter(struct rte_eth_dev *dev,
 	flex_filter->filter_info.len = filter->len;
 	flex_filter->filter_info.priority = filter->priority;
 	memcpy(flex_filter->filter_info.dwords, filter->bytes, filter->len);
-	for (i = 0; i < RTE_ALIGN(filter->len, CHAR_BIT) / CHAR_BIT; i++) {
+	for (i = 0; i < RTE_ALIGN(filter->len, CHAR_BIT) / CHAR_BIT &&
+			i < E1000_FLEX_FILTERS_MASK_SIZE; i++) {
 		mask = 0;
 		/* reverse bits in flex filter's mask*/
 		for (shift = 0; shift < CHAR_BIT; shift++) {
