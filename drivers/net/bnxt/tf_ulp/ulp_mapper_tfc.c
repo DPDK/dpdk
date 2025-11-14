@@ -90,6 +90,10 @@ ulp_mapper_tfc_wc_tcam_post_process(struct bnxt_ulp_device_params *dparms,
 
 	slice_width = dparms->wc_slice_width;
 	clen = dparms->wc_ctl_size_bits;
+	if (clen > 32) {
+		BNXT_DRV_DBG(ERR, "Key size bits %d too large\n", clen);
+		return -EINVAL;
+	}
 	max_slices = dparms->wc_max_slices;
 	blen = ulp_blob_data_len_get(key);
 
