@@ -511,20 +511,19 @@ Leveraging the DTS framework in writing testsuites
 
 One should avoid directly importing DTS framework code to their testsuites where possible.
 Instead, for performing common processes required in testsuites,
-one should use (or add to) the list of methods provided in the ``Testsuite`` class
-(the base class of all testsuites).
+one should use (or add to) the list of methods provided in the ``api`` module.
 
 For instance, for sending a list of packets,
 one should work through the packet transmitting function
-already made available in the ``TestSuite`` class,
+already made available in the ``api`` module,
 instead of directly importing the DTS traffic generator class
 and using that class in one's testsuite implementation.
 It is also acceptable to import and instantiate classes for various DPDK applications.
 For instance, writing a testsuite for a simple packet forwarding operation
-would involve importing the DTS ``TestPmd`` class,
+would involve importing the DTS ``TestPmd`` class from the ``api`` module,
 instantiating ``TestPmd``, calling ``TestPmd``'s ``start()`` method,
 and then sending traffic via one of the traffic transmitting functions
-exposed in the ``Testsuite`` class.
+exposed in the ``api`` module.
 
 Test Case Verification
 ~~~~~~~~~~~~~~~~~~~~~~
