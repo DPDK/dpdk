@@ -14272,6 +14272,12 @@ test_AES_CCM_authenticated_encryption_test_case_128_3(void)
 }
 
 static int
+test_AES_CCM_authenticated_encryption_test_case_128_4(void)
+{
+	return test_authenticated_encryption(&ccm_test_case_128_4);
+}
+
+static int
 test_AES_CCM_authenticated_decryption_test_case_128_1(void)
 {
 	return test_authenticated_decryption(&ccm_test_case_128_1);
@@ -14287,6 +14293,12 @@ static int
 test_AES_CCM_authenticated_decryption_test_case_128_3(void)
 {
 	return test_authenticated_decryption(&ccm_test_case_128_3);
+}
+
+static int
+test_AES_CCM_authenticated_decryption_test_case_128_4(void)
+{
+	return test_authenticated_decryption(&ccm_test_case_128_4);
 }
 
 static int
@@ -18975,6 +18987,8 @@ static struct unit_test_suite cryptodev_aes_ccm_auth_testsuite  = {
 			test_AES_CCM_authenticated_encryption_test_case_128_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_CCM_authenticated_encryption_test_case_128_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_encryption_test_case_128_4),
 
 		/** AES CCM Authenticated Decryption 128 bits key*/
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -18983,6 +18997,8 @@ static struct unit_test_suite cryptodev_aes_ccm_auth_testsuite  = {
 			test_AES_CCM_authenticated_decryption_test_case_128_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_CCM_authenticated_decryption_test_case_128_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_decryption_test_case_128_4),
 
 		/** AES CCM Authenticated Encryption 192 bits key */
 		TEST_CASE_ST(ut_setup, ut_teardown,
