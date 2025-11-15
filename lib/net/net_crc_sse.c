@@ -96,23 +96,14 @@ crcr32_reduce_128_to_64(__m128i data128, __m128i precomp)
 static __rte_always_inline uint32_t
 crcr32_reduce_64_to_32(__m128i data64, __m128i precomp)
 {
-	static const alignas(16) uint32_t mask1[4] = {
-		0xffffffff, 0xffffffff, 0x00000000, 0x00000000
-	};
-
-	static const alignas(16) uint32_t mask2[4] = {
-		0x00000000, 0xffffffff, 0xffffffff, 0xffffffff
-	};
 	__m128i tmp0, tmp1, tmp2;
 
-	tmp0 = _mm_and_si128(data64, _mm_load_si128((const __m128i *)mask2));
+	tmp0 = _mm_blend_epi16(data64, _mm_setzero_si128(), 0x3);
 
 	tmp1 = _mm_clmulepi64_si128(tmp0, precomp, 0x00);
 	tmp1 = _mm_xor_si128(tmp1, tmp0);
-	tmp1 = _mm_and_si128(tmp1, _mm_load_si128((const __m128i *)mask1));
 
 	tmp2 = _mm_clmulepi64_si128(tmp1, precomp, 0x10);
-	tmp2 = _mm_xor_si128(tmp2, tmp1);
 	tmp2 = _mm_xor_si128(tmp2, tmp0);
 
 	return _mm_extract_epi32(tmp2, 2);
