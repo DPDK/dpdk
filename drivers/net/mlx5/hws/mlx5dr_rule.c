@@ -1071,7 +1071,7 @@ int mlx5dr_rule_hash_calculate(struct mlx5dr_matcher *matcher,
 
 	if (mlx5dr_matcher_req_fw_wqe(matcher) ||
 	    mlx5dr_table_is_root(matcher->tbl) ||
-	    matcher->tbl->ctx->caps->access_index_mode == MLX5DR_MATCHER_INSERT_BY_HASH ||
+	    matcher->attr.distribute_mode != MLX5DR_MATCHER_DISTRIBUTE_BY_HASH ||
 	    matcher->tbl->ctx->caps->flow_table_hash_type != MLX5_FLOW_TABLE_HASH_TYPE_CRC32) {
 		DR_LOG(DEBUG, "Matcher is not supported");
 		rte_errno = ENOTSUP;
