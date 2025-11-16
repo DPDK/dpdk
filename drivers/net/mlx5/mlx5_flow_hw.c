@@ -2302,9 +2302,10 @@ mlx5_tbl_translate_modify_header(struct rte_eth_dev *dev,
 		.sz = sizeof(struct mlx5_modification_cmd) * mhdr->mhdr_cmds_num
 	};
 
-	if (flow_hw_validate_compiled_modify_field(dev, cfg, mhdr, error)) {
+	int ret = flow_hw_validate_compiled_modify_field(dev, cfg, mhdr, error);
+	if (ret) {
 		__flow_hw_action_template_destroy(dev, acts);
-		return -rte_errno;
+		return ret;
 	}
 	acts->mhdr = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*acts->mhdr),
 				 0, SOCKET_ID_ANY);
@@ -2335,9 +2336,14 @@ mlx5_tbl_ensure_shared_modify_header(struct rte_eth_dev *dev,
 	const struct rte_flow_template_table_attr *table_attr = &cfg->attr;
 	const struct rte_flow_attr *attr = &table_attr->flow_attr;
 	enum mlx5dr_table_type tbl_type = get_mlx5dr_table_type(attr);
-	struct mlx5dr_action_mh_pattern pattern = {
-		.sz = sizeof(struct mlx5_modification_cmd) * acts->mhdr->mhdr_cmds_num
-	};
+	struct mlx5dr_action_mh_pattern pattern;
+
+	if (!acts->mhdr)
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"translate modify_header: mhdr is NULL");
+
+	pattern.sz = sizeof(struct mlx5_modification_cmd) * acts->mhdr->mhdr_cmds_num;
 	uint16_t mhdr_ix = acts->mhdr->pos;
 	uint32_t flags = mlx5_hw_act_flag[!!attr->group][tbl_type] | MLX5DR_ACTION_FLAG_SHARED;
 
