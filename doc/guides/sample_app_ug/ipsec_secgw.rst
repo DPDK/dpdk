@@ -576,6 +576,7 @@ where each options means:
    * *aes-128-ctr*: AES-CTR 128-bit algorithm
    * *3des-cbc*: 3DES-CBC 192-bit algorithm
    * *des-cbc*: DES-CBC 64-bit algorithm
+   * *sm4-cbc*: SM4-CBC 128-bit algorithm
 
  * Syntax: *cipher_algo <your algorithm>*
 
@@ -605,6 +606,7 @@ where each options means:
     * *sha1-hmac*: HMAC SHA1 algorithm
     * *sha256-hmac*: HMAC SHA256 algorithm
     * *aes-xcbc-mac*: AES XCBC MAC algorithm
+    * *sm3-hmac*: HMAC SM3 algorithm
 
 ``<auth_key>``
 
@@ -819,6 +821,13 @@ Example SA rules:
     mode ipv6-tunnel \
     src 1111:1111:1111:1111:1111:1111:1111:5555 \
     dst 2222:2222:2222:2222:2222:2222:2222:5555
+
+    sa out 30 cipher_algo sm4-cbc \
+    cipher_key 01:23:45:67:89:ab:cd:ef:fe:dc:ba:98:76:54:32:10 \
+    auth_algo sm3-hmac \
+    auth_key 01:23:45:67:89:ab:cd:ef:fe:dc:ba:98:76:54:32:10:11:22:33:44 \
+    mode ipv4-tunnel \
+    src 172.16.1.5 dst 172.16.2.5
 
     sa in 105 aead_algo aes-128-gcm \
     aead_key de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \
