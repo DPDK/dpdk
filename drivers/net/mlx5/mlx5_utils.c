@@ -748,7 +748,7 @@ mlx5_ipool_free(struct mlx5_indexed_pool *pool, uint32_t idx)
 	uint32_t trunk_idx;
 	uint32_t entry_idx;
 
-	if (!idx)
+	if (!pool || !idx)
 		return;
 	if (pool->cfg.per_core_cache) {
 		mlx5_ipool_free_cache(pool, idx);

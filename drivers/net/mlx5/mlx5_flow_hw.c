@@ -3958,7 +3958,7 @@ flow_hw_async_flow_create_generic(struct rte_eth_dev *dev,
 			items, pattern_template_index, actions, action_template_index, error))
 			return NULL;
 	}
-	flow = mlx5_ipool_malloc(table->flow, &flow_idx);
+	flow = mlx5_ipool_malloc(table->flow_pool, &flow_idx);
 	if (!flow) {
 		rte_errno = ENOMEM;
 		goto error;
@@ -4048,7 +4048,7 @@ error:
 	if (table->resource && res_idx)
 		mlx5_ipool_free(table->resource, res_idx);
 	if (flow_idx)
-		mlx5_ipool_free(table->flow, flow_idx);
+		mlx5_ipool_free(table->flow_pool, flow_idx);
 	if (sub_error.cause != RTE_FLOW_ERROR_TYPE_NONE && error != NULL)
 		*error = sub_error;
 	else
@@ -4498,7 +4498,8 @@ hw_cmpl_flow_update_or_destroy(struct rte_eth_dev *dev,
 		if (!flow->nt_rule) {
 			if (table->resource)
 				mlx5_ipool_free(table->resource, res_idx);
-			mlx5_ipool_free(table->flow, flow->idx);
+			if (table->flow_pool)
+				mlx5_ipool_free(table->flow_pool, flow->idx);
 		}
 	}
 }
@@ -4786,7 +4787,7 @@ flow_hw_q_flow_flush(struct rte_eth_dev *dev,
 	LIST_FOREACH(tbl, &priv->flow_hw_tbl, next) {
 		if (!tbl->cfg.external)
 			continue;
-		MLX5_IPOOL_FOREACH(tbl->flow, fidx, flow) {
+		MLX5_IPOOL_FOREACH(tbl->flow_pool, fidx, flow) {
 			if (flow_hw_async_flow_destroy(dev,
 						MLX5_DEFAULT_FLUSH_QUEUE,
 						&attr,
@@ -5108,8 +5109,8 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 		goto error;
 	tbl->cfg = *table_cfg;
 	/* Allocate flow indexed pool. */
-	tbl->flow = mlx5_ipool_create(&cfg);
-	if (!tbl->flow)
+	tbl->flow_pool = mlx5_ipool_create(&cfg);
+	if (!tbl->flow_pool)
 		goto error;
 	/* Allocate table of auxiliary flow rule structs. */
 	tbl->flow_aux = mlx5_malloc(MLX5_MEM_ZERO, sizeof(struct rte_flow_hw_aux) * nb_flows,
@@ -5264,8 +5265,8 @@ error:
 					      &tbl->grp->entry);
 		if (tbl->flow_aux)
 			mlx5_free(tbl->flow_aux);
-		if (tbl->flow)
-			mlx5_ipool_destroy(tbl->flow);
+		if (tbl->flow_pool)
+			mlx5_ipool_destroy(tbl->flow_pool);
 		mlx5_free(tbl);
 	}
 	if (error != NULL) {
@@ -5495,10 +5496,10 @@ flow_hw_table_destroy(struct rte_eth_dev *dev,
 	/* Build ipool allocated object bitmap. */
 	if (table->resource)
 		mlx5_ipool_flush_cache(table->resource);
-	mlx5_ipool_flush_cache(table->flow);
+	mlx5_ipool_flush_cache(table->flow_pool);
 	/* Check if ipool has allocated objects. */
 	if (table->refcnt ||
-	    mlx5_ipool_get_next(table->flow, &fidx) ||
+	    mlx5_ipool_get_next(table->flow_pool, &fidx) ||
 	    (table->resource && mlx5_ipool_get_next(table->resource, &ridx))) {
 		DRV_LOG(WARNING, "Table %p is still in use.", (void *)table);
 		return rte_flow_error_set(error, EBUSY,
@@ -5528,7 +5529,7 @@ flow_hw_table_destroy(struct rte_eth_dev *dev,
 	if (table->resource)
 		mlx5_ipool_destroy(table->resource);
 	mlx5_free(table->flow_aux);
-	mlx5_ipool_destroy(table->flow);
+	mlx5_ipool_destroy(table->flow_pool);
 	mlx5_free(table);
 	return 0;
 }
@@ -15227,7 +15228,7 @@ flow_hw_table_resize(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  table, "shrinking table is not supported");
-	ret = mlx5_ipool_resize(table->flow, nb_flows, error);
+	ret = mlx5_ipool_resize(table->flow_pool, nb_flows, error);
 	if (ret)
 		return ret;
 	/*
