@@ -1404,7 +1404,7 @@ insert_flows(int port_id, uint8_t core_id, uint16_t dst_port_id)
 	global_actions[0] = FLOW_ITEM_MASK(RTE_FLOW_ACTION_TYPE_JUMP);
 
 	flows_list = rte_zmalloc("flows_list",
-		(sizeof(struct rte_flow *) * rules_count_per_core) + 1, 0);
+		(sizeof(struct rte_flow *) * (rules_count_per_core + 1)), 0);
 	if (flows_list == NULL)
 		rte_exit(EXIT_FAILURE, "No Memory available!\n");
 
