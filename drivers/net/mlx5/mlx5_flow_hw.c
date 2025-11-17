@@ -13500,8 +13500,9 @@ static int flow_hw_prepare(struct rte_eth_dev *dev,
 	(*flow)->nt2hws = (struct rte_flow_nt2hws *)
 				((uintptr_t)(*flow) + sizeof(struct rte_flow_hw));
 	(*flow)->idx = idx;
-	(*flow)->nt2hws->flow_aux = mlx5_malloc(MLX5_MEM_ZERO, sizeof(struct rte_flow_hw_aux),
-				    RTE_CACHE_LINE_SIZE, rte_dev_numa_node(dev->device));
+	(*flow)->nt2hws->flow_aux = (struct rte_flow_hw_aux *)
+		((uintptr_t)((*flow)->nt2hws) + sizeof(struct rte_flow_nt2hws));
+
 	if (!(*flow)->nt2hws->flow_aux)
 		return rte_flow_error_set(error, ENOMEM,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -14152,10 +14153,8 @@ flow_hw_destroy(struct rte_eth_dev *dev, struct rte_flow_hw *flow)
 	  * Notice matcher destroy will take place when matcher's list is destroyed
 	  * , same as for DV.
 	  */
-	if (flow->nt2hws->flow_aux) {
-		mlx5_free(flow->nt2hws->flow_aux);
+	if (flow->nt2hws->flow_aux)
 		flow->nt2hws->flow_aux = NULL;
-	}
 	if (flow->nt2hws->rix_encap_decap) {
 		flow_encap_decap_resource_release(dev, flow->nt2hws->rix_encap_decap);
 		flow->nt2hws->rix_encap_decap = 0;
