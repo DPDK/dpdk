@@ -219,9 +219,9 @@ mlx5_flow_os_create_flow(void *matcher, void *match_value,
 		default:
 			break;
 		}
-		MLX5_SET(devx_fs_rule_add_in, in, match_criteria_enable,
-			 MLX5_MATCH_OUTER_HEADERS);
 	}
+	MLX5_SET(devx_fs_rule_add_in, in, match_criteria_enable,
+		mlx5_matcher->attr.match_criteria_enable);
 	*flow = mlx5_glue->devx_fs_rule_add(mlx5_matcher->ctx, in, sizeof(in));
 	return (*flow) ? 0 : -1;
 }

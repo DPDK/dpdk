@@ -47,6 +47,7 @@ mlx5_flow_os_item_supported(int item)
 	case RTE_FLOW_ITEM_TYPE_IPV6:
 	case RTE_FLOW_ITEM_TYPE_VLAN:
 	case RTE_FLOW_ITEM_TYPE_ESP:
+	case RTE_FLOW_ITEM_TYPE_NVGRE:
 		return true;
 	default:
 		return false;
