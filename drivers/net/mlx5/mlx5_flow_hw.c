@@ -11183,8 +11183,8 @@ flow_hw_create_vlan(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
-flow_hw_cleanup_ctrl_rx_tables(struct rte_eth_dev *dev)
+void
+mlx5_flow_hw_cleanup_ctrl_rx_tables(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i;
@@ -11469,8 +11469,8 @@ flow_hw_create_ctrl_rx_pattern_template
 	return flow_hw_pattern_template_create(dev, &attr, items, NULL);
 }
 
-static int
-flow_hw_create_ctrl_rx_tables(struct rte_eth_dev *dev)
+int
+mlx5_flow_hw_create_ctrl_rx_tables(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i;
@@ -11506,8 +11506,6 @@ flow_hw_create_ctrl_rx_tables(struct rte_eth_dev *dev)
 	return 0;
 err:
 	ret = rte_errno;
-	flow_hw_cleanup_ctrl_rx_tables(dev);
-	rte_errno = ret;
 	return -ret;
 }
 
@@ -11706,7 +11704,6 @@ __flow_hw_resource_release(struct rte_eth_dev *dev, bool ctx_close)
 	flow_hw_cleanup_ctrl_fdb_tables(dev);
 	flow_hw_cleanup_ctrl_nic_tables(dev);
 	flow_hw_cleanup_tx_repr_tagging(dev);
-	flow_hw_cleanup_ctrl_rx_tables(dev);
 	flow_hw_action_template_drop_release(dev);
 	grp = LIST_FIRST(&priv->flow_hw_grp);
 	while (grp) {
@@ -12064,12 +12061,6 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 	ret = flow_hw_action_template_drop_init(dev, error);
 	if (ret)
 		goto err;
-	ret = flow_hw_create_ctrl_rx_tables(dev);
-	if (ret) {
-		rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				   "Failed to set up Rx control flow templates");
-		goto err;
-	}
 	/* Initialize quotas */
 	if (port_attr->nb_quotas || (host_priv && host_priv->quota_ctx.devx_obj)) {
 		ret = mlx5_flow_quota_init(dev, port_attr->nb_quotas);

@@ -1676,6 +1676,12 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 			goto error;
 	if (priv->isolated)
 		return 0;
+	ret = mlx5_flow_hw_create_ctrl_rx_tables(dev);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to set up Rx control flow templates for port %u, %d",
+			dev->data->port_id, -ret);
+		goto error;
+	}
 	if (dev->data->promiscuous)
 		flags |= MLX5_CTRL_PROMISCUOUS;
 	if (dev->data->all_multicast)
@@ -1689,6 +1695,7 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 error:
 	ret = rte_errno;
 	mlx5_flow_hw_flush_ctrl_flows(dev);
+	mlx5_flow_hw_cleanup_ctrl_rx_tables(dev);
 	rte_errno = ret;
 	return -rte_errno;
 }
@@ -1929,8 +1936,13 @@ mlx5_traffic_disable(struct rte_eth_dev *dev)
 #ifdef HAVE_MLX5_HWS_SUPPORT
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (priv->sh->config.dv_flow_en == 2)
+	if (priv->sh->config.dv_flow_en == 2) {
+		/* Device started flag was cleared before, this is used to derefer the Rx queues. */
+		priv->hws_rule_flushing = true;
 		mlx5_flow_hw_flush_ctrl_flows(dev);
+		mlx5_flow_hw_cleanup_ctrl_rx_tables(dev);
+		priv->hws_rule_flushing = false;
+	}
 	else
 #endif
 		mlx5_traffic_disable_legacy(dev);
