@@ -526,11 +526,26 @@ get_tunnel_ol_flags_by_ptype(uint32_t ptype)
 }
 
 static uint8_t
-parse_l4_proto(const struct rte_mbuf *m, uint32_t off, uint32_t ptype, bool parse_inner)
+parse_l4_proto(const struct rte_mbuf *m, uint32_t off, uint32_t ptype, bool in_tunnel)
 {
+	uint32_t align_ptype = ptype;
 	int frag = 0, ret;
 
-	if (RTE_ETH_IS_IPV4_HDR(ptype)) {
+	if (in_tunnel) {
+		uint32_t mask_ptype = ptype & RTE_PTYPE_INNER_L3_MASK;
+		if (mask_ptype == RTE_PTYPE_INNER_L3_IPV4)
+			align_ptype = RTE_PTYPE_L3_IPV4;
+		else if (mask_ptype == RTE_PTYPE_INNER_L3_IPV4_EXT)
+			align_ptype = RTE_PTYPE_L3_IPV4_EXT;
+		else if (mask_ptype == RTE_PTYPE_INNER_L3_IPV6)
+			align_ptype = RTE_PTYPE_L3_IPV6;
+		else if (mask_ptype == RTE_PTYPE_INNER_L3_IPV6_EXT)
+			align_ptype = RTE_PTYPE_L3_IPV6_EXT;
+		else
+			align_ptype = 0;
+	}
+
+	if (RTE_ETH_IS_IPV4_HDR(align_ptype)) {
 		const struct rte_ipv4_hdr *ip4h;
 		struct rte_ipv4_hdr ip4h_copy;
 		ip4h = rte_pktmbuf_read(m, off, sizeof(*ip4h), &ip4h_copy);
@@ -538,17 +553,14 @@ parse_l4_proto(const struct rte_mbuf *m, uint32_t off, uint32_t ptype, bool pars
 			return 0;
 
 		return ip4h->next_proto_id;
-	} else if (RTE_ETH_IS_IPV6_HDR(ptype)) {
+	} else if (RTE_ETH_IS_IPV6_HDR(align_ptype)) {
 		const struct rte_ipv6_hdr *ip6h;
 		struct rte_ipv6_hdr ip6h_copy;
 		ip6h = rte_pktmbuf_read(m, off, sizeof(*ip6h), &ip6h_copy);
 		if (unlikely(ip6h == NULL))
 			return 0;
 
-		if (!parse_inner && (ptype & RTE_PTYPE_L3_MASK) != RTE_PTYPE_L3_IPV6_EXT)
-			return ip6h->proto;
-
-		if (parse_inner && (ptype & RTE_PTYPE_INNER_L3_MASK) != RTE_PTYPE_INNER_L3_IPV6_EXT)
+		if ((align_ptype & RTE_PTYPE_L3_MASK) != RTE_PTYPE_L3_IPV6_EXT)
 			return ip6h->proto;
 
 		off += sizeof(struct rte_ipv6_hdr);
