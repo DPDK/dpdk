@@ -160,7 +160,7 @@ test_ipv6_llocal_from_ethernet(void)
 {
 	const struct rte_ether_addr local_mac = {{0x04, 0x7b, 0xcb, 0x5c, 0x08, 0x44}};
 	const struct rte_ipv6_addr local_ip =
-		RTE_IPV6(0xfe80, 0, 0, 0, 0x047b, 0xcbff, 0xfe5c, 0x0844);
+		RTE_IPV6(0xfe80, 0, 0, 0, 0x067b, 0xcbff, 0xfe5c, 0x0844);
 	struct rte_ipv6_addr ip;
 
 	rte_ipv6_llocal_from_ethernet(&ip, &local_mac);
