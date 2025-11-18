@@ -554,7 +554,7 @@ mlx5_flex_translate_length(struct mlx5_hca_flex_attr *attr,
 				 "mask and shift combination not supported (OFFSET)");
 		msb++;
 		offset += field->field_size - msb;
-		if (msb < attr->header_length_mask_width) {
+		if (attr->header_length_field_mode_wa && msb < attr->header_length_mask_width) {
 			if (attr->header_length_mask_width - msb > offset)
 				return rte_flow_error_set
 					(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
@@ -572,6 +572,7 @@ mlx5_flex_translate_length(struct mlx5_hca_flex_attr *attr,
 		node->header_length_field_mask = mask;
 		node->header_length_field_shift = shift;
 		node->header_length_field_offset = offset;
+		node->header_length_field_offset_mode = !attr->header_length_field_mode_wa;
 		break;
 	}
 	case FIELD_MODE_BITMASK:

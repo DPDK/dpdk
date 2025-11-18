@@ -2111,7 +2111,9 @@ struct mlx5_ifc_parse_graph_node_cap_bits {
 	u8 max_num_arc_in[0x08];
 	u8 max_num_arc_out[0x08];
 	u8 max_num_sample[0x08];
-	u8 reserved_at_78[0x03];
+	u8 reserved_at_78[0x01];
+	u8 header_length_field_offset_mode[0x1];
+	u8 reserved_at_79[0x01];
 	u8 parse_graph_anchor[0x1];
 	u8 reserved_at_7c[0x01];
 	u8 sample_tunnel_inner2[0x1];
@@ -4920,7 +4922,9 @@ struct mlx5_ifc_parse_graph_flex_bits {
 	u8 next_header_field_offset[0x10];
 	u8 reserved_at_160[0x12];
 	u8 head_anchor_id[0x6];
-	u8 reserved_at_178[0x3];
+	u8 reserved_at_178[0x1];
+	u8 header_length_field_offset_mode[0x1];
+	u8 reserved_at_17a[0x1];
 	u8 next_header_field_size[0x5];
 	u8 header_length_field_mask[0x20];
 	u8 reserved_at_224[0x20];

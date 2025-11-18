@@ -1092,9 +1092,15 @@ mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev)
 	/* The unit is uint64_t. */
 	node.header_length_field_shift = 0x3;
 	/* Header length is the 2nd byte. */
-	node.header_length_field_offset = 0x8;
-	if (attr->header_length_mask_width < 8)
-		node.header_length_field_offset += 8 - attr->header_length_mask_width;
+	if (attr->header_length_field_mode_wa) {
+		/* Legacy firmware before ConnectX-8, we should provide offset WA. */
+		node.header_length_field_offset = 8;
+		if (attr->header_length_mask_width < 8)
+			node.header_length_field_offset += 8 - attr->header_length_mask_width;
+	} else {
+		/* The new firmware, we can specify the correct offset directly. */
+		node.header_length_field_offset = 12;
+	}
 	node.header_length_field_mask = 0xF;
 	/* One byte next header protocol. */
 	node.next_header_field_size = 0x8;
