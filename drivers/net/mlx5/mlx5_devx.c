@@ -684,6 +684,11 @@ mlx5_devx_ind_table_create_rqt_attr(struct rte_eth_dev *dev,
 			struct mlx5_external_rxq *ext_rxq =
 					mlx5_ext_rxq_get(dev, queues[i]);
 
+			if (ext_rxq == NULL) {
+				rte_errno = EINVAL;
+				mlx5_free(rqt_attr);
+				return NULL;
+			}
 			rqt_attr->rq_list[i] = ext_rxq->hw_id;
 		} else {
 			struct mlx5_rxq_priv *rxq =
