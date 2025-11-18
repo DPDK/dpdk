@@ -119,6 +119,7 @@ struct mlx5_hca_flex_attr {
 	uint8_t  sample_tunnel_inner2:1;
 	uint8_t  zero_size_supported:1;
 	uint8_t  sample_id_in_out:1;
+	uint8_t  header_length_field_mode_wa:1;
 	uint16_t max_base_header_length;
 	uint8_t  max_sample_base_offset;
 	uint16_t max_next_header_offset;
@@ -624,6 +625,7 @@ struct mlx5_devx_graph_node_attr {
 	uint32_t header_length_base_value:16;
 	uint32_t header_length_field_shift:4;
 	uint32_t header_length_field_offset:16;
+	uint32_t header_length_field_offset_mode:1;
 	uint32_t header_length_field_mask;
 	struct mlx5_devx_match_sample_attr sample[MLX5_GRAPH_NODE_SAMPLE_NUM];
 	uint32_t next_header_field_offset:16;

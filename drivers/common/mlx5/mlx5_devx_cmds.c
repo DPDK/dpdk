@@ -741,6 +741,8 @@ mlx5_devx_cmd_create_flex_parser(void *ctx,
 		 MLX5_GENERAL_OBJ_TYPE_FLEX_PARSE_GRAPH);
 	MLX5_SET(parse_graph_flex, flex, header_length_mode,
 		 data->header_length_mode);
+	MLX5_SET(parse_graph_flex, flex, header_length_field_offset_mode,
+		 data->header_length_field_offset_mode);
 	MLX5_SET64(parse_graph_flex, flex, modify_field_select,
 		   data->modify_field_select);
 	MLX5_SET(parse_graph_flex, flex, header_length_base_value,
@@ -868,6 +870,8 @@ mlx5_devx_cmd_query_hca_parse_graph_node_cap
 						max_next_header_offset);
 	attr->header_length_mask_width = MLX5_GET(parse_graph_node_cap, hcattr,
 						  header_length_mask_width);
+	attr->header_length_field_mode_wa = !MLX5_GET(parse_graph_node_cap, hcattr,
+						      header_length_field_offset_mode);
 	/* Get the max supported samples from HCA CAP 2 */
 	hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 			MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE_2 |
