@@ -232,6 +232,24 @@ enum rte_pmd_mlx5_flow_engine_mode {
 __rte_experimental
 int rte_pmd_mlx5_flow_engine_set_mode(enum rte_pmd_mlx5_flow_engine_mode mode, uint32_t flags);
 
+/**
+ * Disable traffic for external SQ. Should be invoked by application
+ * before destroying the external SQ.
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] sq_num
+ *   SQ HW number.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   Possible values for rte_errno:
+ *   - EINVAL - invalid sq_number or port type.
+ *   - ENODEV - there is no Ethernet device for this port id.
+ */
+__rte_experimental
+int rte_pmd_mlx5_external_sq_disable(uint16_t port_id, uint32_t sq_num);
+
 #ifdef __cplusplus
 }
 #endif

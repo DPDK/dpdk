@@ -17,4 +17,5 @@ EXPERIMENTAL {
 	rte_pmd_mlx5_external_sq_enable;
 	# added in 23.03
 	rte_pmd_mlx5_flow_engine_set_mode;
+	rte_pmd_mlx5_external_sq_disable;
 };
