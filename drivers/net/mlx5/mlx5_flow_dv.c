@@ -5089,6 +5089,13 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 	}
 	if (action_modify_field->src.field != RTE_FLOW_FIELD_VALUE &&
 	    action_modify_field->src.field != RTE_FLOW_FIELD_POINTER) {
+		if (action_modify_field->operation != RTE_FLOW_MODIFY_SET)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+						  &action_modify_field->operation,
+						  "modify field action type add is not"
+						  " supported when src field type is"
+						  " not value/pointer");
 		if (root)
 			return rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,

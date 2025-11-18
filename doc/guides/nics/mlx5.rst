@@ -466,7 +466,26 @@ Limitations
 
 - Modify Field flow:
 
-  - Supports the 'set' and 'add' operations for ``RTE_FLOW_ACTION_TYPE_MODIFY_FIELD`` action.
+  - Supports the 'set' operation for ``RTE_FLOW_ACTION_TYPE_MODIFY_FIELD`` in all flow engines.
+  - Supports the 'add' operation with 'src' field of type
+    ``RTE_FLOW_FIELD_VALUE`` or ``RTE_FLOW_FIELD_POINTER`` with both HW steering (``dv_flow_en=2``)
+    and DV flow engine (``dv_flow_en=1``).
+  - HW steering flow engine, starting with ConnectX-7 and BlueField-3,
+    supports packet header fields in 'src' field.
+    'dst' field can be any of the following:
+
+      - ``RTE_FLOW_FIELD_IPV4_TTL``
+      - ``RTE_FLOW_FIELD_IPV6_HOPLIMIT``
+      - ``RTE_FLOW_FIELD_TCP_SEQ_NUM``
+      - ``RTE_FLOW_FIELD_TCP_ACK_NUM``
+      - ``RTE_FLOW_FIELD_TAG``
+      - ``RTE_FLOW_FIELD_META``
+      - ``RTE_FLOW_FIELD_FLEX_ITEM``
+      - ``RTE_FLOW_FIELD_TCP_DATA_OFFSET``
+      - ``RTE_FLOW_FIELD_IPV4_IHL``
+      - ``RTE_FLOW_FIELD_IPV4_TOTAL_LEN``
+      - ``RTE_FLOW_FIELD_IPV6_PAYLOAD_LEN``
+
   - Modification of an arbitrary place in a packet via the special ``RTE_FLOW_FIELD_START`` Field ID is not supported.
   - Modification of the 802.1Q Tag, VXLAN Network or GENEVE Network ID's is not supported.
   - Encapsulation levels are not supported, can modify outermost header fields only.
