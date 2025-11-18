@@ -2632,12 +2632,16 @@ int mlx5_flow_hw_flush_ctrl_flows(struct rte_eth_dev *dev);
 int mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev,
 					 uint32_t sqn, bool external);
 int mlx5_flow_hw_esw_destroy_sq_miss_flow(struct rte_eth_dev *dev,
-					  uint32_t sqn);
+					  uint32_t sqn, bool external);
 int mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev);
 int mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev,
-						  uint32_t sqn,
-						  bool external);
-int mlx5_flow_hw_tx_repr_matching_flow(struct rte_eth_dev *dev, uint32_t sqn, bool external);
+						  uint32_t sqn, bool external);
+int mlx5_flow_hw_destroy_tx_default_mreg_copy_flow(struct rte_eth_dev *dev,
+						   uint32_t sqn, bool external);
+int mlx5_flow_hw_create_tx_repr_matching_flow(struct rte_eth_dev *dev,
+					      uint32_t sqn, bool external);
+int mlx5_flow_hw_destroy_tx_repr_matching_flow(struct rte_eth_dev *dev,
+					       uint32_t sqn, bool external);
 int mlx5_flow_hw_lacp_rx_flow(struct rte_eth_dev *dev);
 int mlx5_flow_actions_validate(struct rte_eth_dev *dev,
 		const struct rte_flow_actions_template_attr *attr,
