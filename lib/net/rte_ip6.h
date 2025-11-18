@@ -393,7 +393,7 @@ rte_ipv6_mc_scope(const struct rte_ipv6_addr *ip)
 
 /*
  * Generate a link-local IPv6 address from an Ethernet address as specified in
- * RFC 2464, section 5.
+ * RFC 4291, section 2.5.1.
  *
  * @param[out] ip
  *   The link-local IPv6 address to generate.
@@ -406,7 +406,12 @@ rte_ipv6_llocal_from_ethernet(struct rte_ipv6_addr *ip, const struct rte_ether_a
 	ip->a[0] = 0xfe;
 	ip->a[1] = 0x80;
 	memset(&ip->a[2], 0, 6);
-	ip->a[8] = mac->addr_bytes[0];
+	/*
+	 * The "u" bit (universal/local bit in IEEE EUI-64 terminology)
+	 * must be inverted for IPv6 link local address.
+	 * 0 means local scope, 1 means universal scope.
+	 */
+	ip->a[8] = mac->addr_bytes[0] ^ RTE_ETHER_LOCAL_ADMIN_ADDR;
 	ip->a[9] = mac->addr_bytes[1];
 	ip->a[10] = mac->addr_bytes[2];
 	ip->a[11] = 0xff;
