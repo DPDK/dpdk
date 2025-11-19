@@ -4456,8 +4456,6 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 			     retcode);
 		goto init_error;
 	}
-	snprintf(cryptodev->data->name, sizeof(cryptodev->data->name),
-			"dpsec-%u", hw_id);
 
 	internals->max_nb_queue_pairs = attr.num_tx_queues;
 	cryptodev->data->nb_queue_pairs = internals->max_nb_queue_pairs;
@@ -4482,7 +4480,6 @@ cryptodev_dpaa2_sec_probe(struct rte_dpaa2_driver *dpaa2_drv __rte_unused,
 			  struct rte_dpaa2_device *dpaa2_dev)
 {
 	struct rte_cryptodev *cryptodev;
-	char cryptodev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	int retval;
 	struct rte_cryptodev_pmd_init_params init_params = {
 		.name = "",
@@ -4493,10 +4490,7 @@ cryptodev_dpaa2_sec_probe(struct rte_dpaa2_driver *dpaa2_drv __rte_unused,
 			/* setting default, will be updated in init. */
 	};
 
-	snprintf(cryptodev_name, sizeof(cryptodev_name), "dpsec-%d",
-			dpaa2_dev->object_id);
-
-	cryptodev = rte_cryptodev_pmd_create(cryptodev_name, &dpaa2_dev->device,
+	cryptodev = rte_cryptodev_pmd_create(dpaa2_dev->device.name, &dpaa2_dev->device,
 			&init_params);
 	if (cryptodev == NULL) {
 		DPAA2_SEC_ERR("failed to create cryptodev vdev");
@@ -4524,14 +4518,10 @@ cryptodev_dpaa2_sec_probe(struct rte_dpaa2_driver *dpaa2_drv __rte_unused,
 static int
 cryptodev_dpaa2_sec_remove(struct rte_dpaa2_device *dpaa2_dev)
 {
-	char cryptodev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct rte_cryptodev *cryptodev;
 	int ret;
 
-	snprintf(cryptodev_name, sizeof(cryptodev_name), "dpsec-%d",
-			dpaa2_dev->object_id);
-
-	cryptodev = rte_cryptodev_pmd_get_named_dev(cryptodev_name);
+	cryptodev = rte_cryptodev_pmd_get_named_dev(dpaa2_dev->device.name);
 	if (cryptodev == NULL)
 		return -ENODEV;
 
