@@ -8466,23 +8466,132 @@ mlx5_hw_validate_item_nsh(struct rte_eth_dev *dev,
 	return mlx5_flow_validate_item_nsh(dev, item, error);
 }
 
-static bool
-mlx5_hw_flow_tunnel_ip_check(uint64_t last_item, uint64_t *item_flags)
+static inline uint8_t
+mlx5_hw_flow_get_next_protocol(const struct rte_flow_item *item)
 {
-	bool tunnel;
+	if (!item || !item->spec)
+		return 0xff;
 
-	if (last_item == MLX5_FLOW_LAYER_OUTER_L3_IPV4 ||
-	    last_item == MLX5_FLOW_LAYER_OUTER_L3_IPV6) {
-		tunnel = true;
-		*item_flags |= MLX5_FLOW_LAYER_IPIP;
-	} else if (last_item == MLX5_FLOW_LAYER_OUTER_L3_IPV6 ||
-		   last_item == MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT) {
-		tunnel = true;
-		*item_flags |= MLX5_FLOW_LAYER_IPV6_ENCAP;
-	} else {
-		tunnel = false;
+	switch (item->type) {
+	case RTE_FLOW_ITEM_TYPE_IPV4: {
+		const struct rte_flow_item_ipv4 *spec = item->spec;
+		const struct rte_flow_item_ipv4 *mask = item->mask;
+
+		/* If mask is NULL or next_proto_id field in mask is 0,
+		 * then next_protocol in spec should not be read
+		 */
+		if (!mask || mask->hdr.next_proto_id == 0)
+			return 0xff;
+
+		return spec->hdr.next_proto_id & mask->hdr.next_proto_id;
 	}
-	return tunnel;
+	case RTE_FLOW_ITEM_TYPE_IPV6: {
+		const struct rte_flow_item_ipv6 *spec = item->spec;
+		const struct rte_flow_item_ipv6 *mask = item->mask;
+
+		/* If mask is NULL or proto field in mask is 0,
+		 * then proto in spec should not be read
+		 */
+		if (!mask || mask->hdr.proto == 0)
+			return 0xff;
+
+		return spec->hdr.proto & mask->hdr.proto;
+	}
+	case RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT: {
+		const struct rte_flow_item_ipv6_frag_ext *spec = item->spec;
+		const struct rte_flow_item_ipv6_frag_ext *mask = item->mask;
+
+		/* If mask is NULL or next_header field in mask is 0,
+		 * then next_header in spec should not be read
+		 */
+		if (!mask || mask->hdr.next_header == 0)
+			return 0xff;
+
+		return spec->hdr.next_header & mask->hdr.next_header;
+	}
+	default:
+		return 0xff;
+	}
+}
+
+static int
+mlx5_hw_flow_tunnel_ip_check(uint64_t last_item,
+			     const struct rte_flow_item *last_l3_item,
+			     const struct rte_flow_item *item,
+			     uint64_t *item_flags,
+			     struct rte_flow_error *error)
+{
+	uint64_t tunnel_flag = 0;
+	uint8_t outer_protocol;
+
+	/* IP tunnel detection - only single-level tunneling supported */
+	if (last_l3_item && (last_item == MLX5_FLOW_LAYER_OUTER_L3_IPV4 ||
+			     last_item == MLX5_FLOW_LAYER_OUTER_L3_IPV6)) {
+		/*
+		 * Tunnel type determination strategy:
+		 * 1. If previous L3 item has protocol field specified, use it (RFC compliant)
+		 * 2. Otherwise, fall back to inner header type (what's being encapsulated)
+		 */
+		outer_protocol = mlx5_hw_flow_get_next_protocol(last_l3_item);
+
+		if (outer_protocol != 0xff) {
+			/* Proto field specified in outer hdr mask - use RFC-compliant detection */
+			switch (outer_protocol) {
+			case IPPROTO_IPIP:  /* 4 - IP-in-IP */
+				/* Outer header indicates IPv4 payload */
+				if (item->type == RTE_FLOW_ITEM_TYPE_IPV6)
+					return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM, item,
+						"protocol mismatch: outer proto is IPIP but inner is IPv6");
+				tunnel_flag = MLX5_FLOW_LAYER_IPIP;
+				break;
+			case IPPROTO_IPV6:  /* 41 - IPv6-in-IP */
+				/* Outer header indicates IPv6 payload */
+				if (item->type == RTE_FLOW_ITEM_TYPE_IPV4)
+					return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM, item,
+						"protocol mismatch: outer proto is IPV6 but inner is IPv4");
+				tunnel_flag = MLX5_FLOW_LAYER_IPV6_ENCAP;
+				break;
+			default:
+				/* Unknown/unsupported protocol, fall back to inner header type */
+				goto fallback_classification;
+			}
+		} else {
+fallback_classification:
+			/*
+			 * Protocol field not specified or unknown - classify based on
+			 * what is being encapsulated (inner header type)
+			 */
+			if (item->type == RTE_FLOW_ITEM_TYPE_IPV4)
+				tunnel_flag = MLX5_FLOW_LAYER_IPIP;
+			else if (item->type == RTE_FLOW_ITEM_TYPE_IPV6)
+				tunnel_flag = MLX5_FLOW_LAYER_IPV6_ENCAP;
+			else
+				return 0; /* Not an IP item - shouldn't happen, but be defensive */
+		}
+
+		/* Check for unsupported nested tunneling after tunnel is detected */
+		if (*item_flags & MLX5_FLOW_LAYER_TUNNEL)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM, item,
+						  "multiple tunnel layers not supported");
+
+		*item_flags |= tunnel_flag;
+		return 1; /* Tunnel detected */
+	} else if (last_item == MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT) {
+		/* Special case: IPv6 routing extension header */
+		/* Check for unsupported nested tunneling */
+		if (*item_flags & MLX5_FLOW_LAYER_TUNNEL)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM, item,
+						  "multiple tunnel layers not supported");
+
+		*item_flags |= MLX5_FLOW_LAYER_IPV6_ENCAP;
+		return 1; /* Tunnel detected */
+	}
+
+	return 0; /* No tunnel */
 }
 
 const struct rte_flow_item_ipv4 hws_nic_ipv4_mask = {
@@ -8557,6 +8666,7 @@ __flow_hw_pattern_validate(struct rte_eth_dev *dev,
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item *last_l3_item = NULL;
 	const struct rte_flow_item *item;
 	const struct rte_flow_item *gtp_item = NULL;
 	const struct rte_flow_item *gre_item = NULL;
@@ -8759,21 +8869,28 @@ __flow_hw_pattern_validate(struct rte_eth_dev *dev,
 				    MLX5_FLOW_LAYER_OUTER_VLAN;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
-			tunnel |= mlx5_hw_flow_tunnel_ip_check(last_item,
-							       item_flags);
+			ret = mlx5_hw_flow_tunnel_ip_check(last_item, last_l3_item, item,
+							   item_flags, error);
+			if (ret < 0)
+				return ret;
+			tunnel |= (ret > 0);
 			ret = mlx5_flow_dv_validate_item_ipv4(dev, item,
-							      *item_flags,
-							      last_item, 0,
-							      &hws_nic_ipv4_mask,
-							      error);
+							*item_flags,
+							last_item, 0,
+							&hws_nic_ipv4_mask,
+							error);
 			if (ret)
 				return ret;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
-				    MLX5_FLOW_LAYER_OUTER_L3_IPV4;
+				MLX5_FLOW_LAYER_OUTER_L3_IPV4;
+			last_l3_item = item;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
-			tunnel |= mlx5_hw_flow_tunnel_ip_check(last_item,
-							       item_flags);
+			ret = mlx5_hw_flow_tunnel_ip_check(last_item, last_l3_item, item,
+							item_flags, error);
+			if (ret < 0)
+				return ret;
+			tunnel |= (ret > 0);
 			ret = mlx5_flow_validate_item_ipv6(dev, item,
 							   *item_flags,
 							   last_item, 0,
@@ -8783,6 +8900,7 @@ __flow_hw_pattern_validate(struct rte_eth_dev *dev,
 				return ret;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
 				    MLX5_FLOW_LAYER_OUTER_L3_IPV6;
+			last_l3_item = item;
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			ret = mlx5_flow_validate_item_udp(dev, item,
