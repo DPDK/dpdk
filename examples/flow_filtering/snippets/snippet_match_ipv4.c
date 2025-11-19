@@ -127,7 +127,7 @@ snippet_ipv4_flow_create_table(uint16_t port_id, struct rte_flow_error *error)
 				.reserved = 0,
 		},
 			/* Maximum number of flow rules that this table holds. */
-			.nb_flows = 1,
+			.nb_flows = 100000,
 	};
 
 	/* The pattern template defines common matching fields without values.
