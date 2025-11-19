@@ -4561,7 +4561,7 @@ hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 	} else {
 		eth_dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
 		eth_dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
-		eth_dev->tx_pkt_prepare = NULL;
+		eth_dev->tx_pkt_prepare = rte_eth_tx_pkt_prepare_dummy;
 	}
 
 	hns3_trace_rxtx_function(eth_dev);
@@ -4917,7 +4917,7 @@ void
 hns3_stop_tx_datapath(struct rte_eth_dev *dev)
 {
 	dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
-	dev->tx_pkt_prepare = NULL;
+	dev->tx_pkt_prepare = rte_eth_tx_pkt_prepare_dummy;
 	hns3_eth_dev_fp_ops_config(dev);
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)

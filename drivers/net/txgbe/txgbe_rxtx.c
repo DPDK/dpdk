@@ -2344,7 +2344,7 @@ txgbe_set_tx_function(struct rte_eth_dev *dev, struct txgbe_tx_queue *txq)
 #endif
 			txq->tx_free_thresh >= RTE_PMD_TXGBE_TX_MAX_BURST) {
 		PMD_INIT_LOG(DEBUG, "Using simple tx code path");
-		dev->tx_pkt_prepare = NULL;
+		dev->tx_pkt_prepare = rte_eth_tx_pkt_prepare_dummy;
 		if (txq->tx_free_thresh <= RTE_TXGBE_TX_MAX_FREE_BUF_SZ &&
 				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128 &&
 				(rte_eal_process_type() != RTE_PROC_PRIMARY ||

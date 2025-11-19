@@ -312,7 +312,6 @@ pmd_ethdev_register(struct rte_vdev_device *vdev,
 	/* dev */
 	dev->rx_pkt_burst = pmd_rx_pkt_burst;
 	dev->tx_pkt_burst = pmd_tx_pkt_burst;
-	dev->tx_pkt_prepare = NULL;
 	dev->dev_ops = &pmd_ops;
 	dev->device = &vdev->device;
 

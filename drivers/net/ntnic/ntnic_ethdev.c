@@ -2561,7 +2561,6 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		NT_LOG_DBGX(DBG, NTNIC, "Setting up RX functions for SCG");
 		eth_dev->rx_pkt_burst = eth_dev_rx_scg;
 		eth_dev->tx_pkt_burst = eth_dev_tx_scg;
-		eth_dev->tx_pkt_prepare = NULL;
 
 		struct rte_eth_link pmd_link;
 		pmd_link.link_speed = RTE_ETH_SPEED_NUM_NONE;
