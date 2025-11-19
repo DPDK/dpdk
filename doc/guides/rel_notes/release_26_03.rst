@@ -70,6 +70,10 @@ New Features
   * NEA5, NIA5, NCA5: AES 256 confidentiality, integrity and AEAD modes.
   * NEA6, NIA6, NCA6: ZUC 256 confidentiality, integrity and AEAD modes.
 
+* **Updated openssl crypto driver.**
+
+  * Added support for AES-XTS cipher algorithm.
+
 
 Removed Items
 -------------
