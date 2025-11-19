@@ -982,4 +982,3 @@ int hinic_comm_func_to_func_init(struct hinic_hwdev *hwdev)
 
 	return 0;
 }
-

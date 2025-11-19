@@ -4065,4 +4065,3 @@ uint32_t ulp_act_prop_map_table[] = {
 	[BNXT_ULP_ACT_PROP_IDX_LAST] =
 		BNXT_ULP_ACT_PROP_SZ_LAST
 };
-

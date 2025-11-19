@@ -438,4 +438,3 @@ s32 ngbe_init_phy(struct ngbe_hw *hw)
 init_phy_ops_out:
 	return err;
 }
-

@@ -28,4 +28,3 @@ foreach flag: extra_flags
 endforeach
 
 deps += ['hash']
-

@@ -18776,4 +18776,3 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	.ident_bit_pos = 0
 	}
 };
-

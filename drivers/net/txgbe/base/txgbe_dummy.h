@@ -660,4 +660,3 @@ static inline void txgbe_init_ops_dummy(struct txgbe_hw *hw)
 }
 
 #endif /* _TXGBE_TYPE_DUMMY_H_ */
-

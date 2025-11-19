@@ -764,4 +764,3 @@ s32 e1000_init_mbx_params_pf(struct e1000_hw *hw)
 		return E1000_SUCCESS;
 	}
 }
-

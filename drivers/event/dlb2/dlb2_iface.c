@@ -81,4 +81,3 @@ int (*dlb2_iface_set_cq_inflight_ctrl)(struct dlb2_hw_dev *handle,
 
 int (*dlb2_iface_set_cos_bw)(struct dlb2_hw_dev *handle,
 			     struct dlb2_set_cos_bw_args *args);
-

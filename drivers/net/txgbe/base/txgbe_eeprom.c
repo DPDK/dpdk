@@ -461,4 +461,3 @@ s32 txgbe_update_eeprom_checksum(struct txgbe_hw *hw)
 
 	return status;
 }
-

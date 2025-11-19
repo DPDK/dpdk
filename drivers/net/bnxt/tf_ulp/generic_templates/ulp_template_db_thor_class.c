@@ -69581,4 +69581,3 @@ struct bnxt_ulp_mapper_ident_info ulp_thor_class_ident_list[] = {
 	.ident_bit_pos = 62
 	}
 };
-

@@ -198,4 +198,3 @@ void mlx5dr_buddy_free_mem(struct mlx5dr_buddy_mem *buddy, uint32_t seg, int ord
 
 	++buddy->num_free[order];
 }
-

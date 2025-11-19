@@ -221,4 +221,3 @@ virtio_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl, int *
 	rte_spinlock_unlock(&cvq->lock);
 	return result->status;
 }
-

@@ -1080,4 +1080,3 @@ out:
 		gve_free_dma_mem(&rss_key_dma_mem);
 	return err;
 }
-

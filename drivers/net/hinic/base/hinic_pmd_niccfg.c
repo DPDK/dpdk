@@ -2115,5 +2115,3 @@ int hinic_set_fdir_tcam_rule_filter(void *hwdev, bool enable)
 
 	return err;
 }
-
-

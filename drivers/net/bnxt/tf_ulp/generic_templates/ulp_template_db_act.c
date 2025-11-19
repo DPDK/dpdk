@@ -261,4 +261,3 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	.act_tid = 12
 	}
 };
-

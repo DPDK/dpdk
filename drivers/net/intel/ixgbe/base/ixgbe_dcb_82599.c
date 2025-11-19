@@ -578,4 +578,3 @@ s32 ixgbe_dcb_hw_config_82599(struct ixgbe_hw *hw, int link_speed,
 
 	return IXGBE_SUCCESS;
 }
-

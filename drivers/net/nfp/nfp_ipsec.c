@@ -1464,4 +1464,3 @@ nfp_ipsec_uninit(struct rte_eth_dev *dev)
 
 	rte_free(net_hw->ipsec_data);
 }
-

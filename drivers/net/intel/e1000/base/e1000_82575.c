@@ -3579,4 +3579,3 @@ void e1000_i2c_bus_clear(struct e1000_hw *hw)
 	/* Put the i2c bus back to default state */
 	e1000_i2c_stop(hw);
 }
-

@@ -1083,4 +1083,3 @@ nfp_elf_get_fw_version(uint32_t *fw_version,
 	free(fw_buf);
 	return 0;
 }
-

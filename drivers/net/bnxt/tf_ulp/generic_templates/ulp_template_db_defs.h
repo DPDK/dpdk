@@ -85,4 +85,3 @@ enum bnxt_ulp_template_id {
 };
 
 #endif
-
