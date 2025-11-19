@@ -118,7 +118,7 @@ struct __rte_cache_aligned openssl_session {
 		/**< cipher algorithm */
 
 		struct {
-			uint8_t data[32];
+			uint8_t data[64];
 			/**< key data */
 			size_t length;
 			/**< key length in bytes */

@@ -211,6 +211,18 @@ get_cipher_algo(enum rte_crypto_cipher_algorithm sess_algo, size_t keylen,
 				res = -EINVAL;
 			}
 			break;
+		case RTE_CRYPTO_CIPHER_AES_XTS:
+			switch (keylen) {
+			case 32:
+				*algo = EVP_aes_128_xts();
+				break;
+			case 64:
+				*algo = EVP_aes_256_xts();
+				break;
+			default:
+				res = -EINVAL;
+			}
+			break;
 		case RTE_CRYPTO_CIPHER_AES_CTR:
 			switch (keylen) {
 			case 16:
@@ -493,6 +505,7 @@ openssl_set_session_cipher_parameters(struct openssl_session *sess,
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
 	case RTE_CRYPTO_CIPHER_AES_CBC:
 	case RTE_CRYPTO_CIPHER_AES_CTR:
+	case RTE_CRYPTO_CIPHER_AES_XTS:
 		sess->cipher.mode = OPENSSL_CIPHER_LIB;
 		sess->cipher.algo = xform->cipher.algo;
 		sess->cipher.ctx = EVP_CIPHER_CTX_new();
