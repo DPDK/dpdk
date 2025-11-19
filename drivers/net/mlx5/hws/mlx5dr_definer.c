@@ -3381,6 +3381,7 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 			if (cd.last_item == RTE_FLOW_ITEM_TYPE_IPV4 ||
 			    cd.last_item == RTE_FLOW_ITEM_TYPE_IPV6) {
 				cd.tunnel = true;
+				/* [IPv4 | IPv6] / IPv4: IPIP */
 				item_flags |= MLX5_FLOW_LAYER_IPIP;
 			}
 			ret = mlx5dr_definer_conv_item_ipv4(&cd, items, i);
@@ -3391,7 +3392,8 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 			if (cd.last_item == RTE_FLOW_ITEM_TYPE_IPV4 ||
 			    cd.last_item == RTE_FLOW_ITEM_TYPE_IPV6) {
 				cd.tunnel = true;
-				item_flags |= MLX5_FLOW_LAYER_IPIP;
+				/* [IPv4 | IPv6] / IPv6: IPV6_ENCAP */
+				item_flags |= MLX5_FLOW_LAYER_IPV6_ENCAP;
 			}
 			ret = mlx5dr_definer_conv_item_ipv6(&cd, items, i);
 			item_flags |= cd.tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
