@@ -2892,11 +2892,6 @@ mlx5_flow_validate_item_ipv4(const struct rte_eth_dev *dev,
 						  "multiple tunnel "
 						  "not supported");
 	}
-	if (item_flags & MLX5_FLOW_LAYER_IPV6_ENCAP)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "wrong tunnel type - IPv6 specified "
-					  "but IPv4 item provided");
 	if (item_flags & l3m)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
