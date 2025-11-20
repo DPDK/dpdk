@@ -884,6 +884,13 @@ setup_queue_tbl(struct rx_queue *rxq, uint32_t lcore, uint32_t queue)
 
 	nb_mbuf = RTE_MAX(nb_mbuf, (uint32_t)NB_MBUF);
 
+	/* Should never happen but check so that pool name won't be too long. */
+	if (lcore > RTE_MAX_LCORE || queue > RTE_MAX_QUEUES_PER_PORT) {
+		RTE_LOG(ERR, IP_RSMBL, "invalid lcore %u or queue %u",
+			lcore, queue);
+		return -1;
+	}
+
 	snprintf(buf, sizeof(buf), "mbuf_pool_%u_%u", lcore, queue);
 
 	rxq->pool = rte_pktmbuf_pool_create(buf, nb_mbuf, MEMPOOL_CACHE_SIZE, 0,
