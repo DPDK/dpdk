@@ -68,7 +68,7 @@ static const char *
 get_printable_mac_addr(uint16_t port)
 {
 	static const char err_address[] = "00:00:00:00:00:00";
-	static char addresses[RTE_MAX_ETHPORTS][sizeof(err_address)];
+	static char addresses[RTE_MAX_ETHPORTS][RTE_ETHER_ADDR_FMT_SIZE + 1];
 	struct rte_ether_addr mac;
 	int ret;
 

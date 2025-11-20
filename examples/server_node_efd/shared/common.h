@@ -58,8 +58,9 @@ get_rx_queue_name(unsigned int id)
 	/*
 	 * Buffer for return value. Size calculated by %u being replaced
 	 * by maximum 3 digits (plus an extra byte for safety)
+	 * Used as ring name, so upper limit is ring name size.
 	 */
-	static char buffer[sizeof(MP_NODE_RXQ_NAME) + 2];
+	static char buffer[RTE_RING_NAMESIZE];
 
 	snprintf(buffer, sizeof(buffer), MP_NODE_RXQ_NAME, id);
 	return buffer;
