@@ -25,6 +25,7 @@
 
 #define MAX_PATH_LEN 128
 #define MAX_VDPA_SAMPLE_PORTS 1024
+#define MAX_VDPA_STR_LEN sizeof(RTE_STR(MAX_VDPA_SAMPLE_PORTS))
 #define RTE_LOGTYPE_VDPA RTE_LOGTYPE_USER1
 
 struct vdpa_port {
@@ -39,7 +40,7 @@ struct vdpa_port {
 
 static struct vdpa_port vports[MAX_VDPA_SAMPLE_PORTS];
 
-static char iface[MAX_PATH_LEN];
+static char iface[MAX_PATH_LEN - MAX_VDPA_STR_LEN];
 static int devcnt;
 static int interactive;
 static int client_mode;
@@ -77,9 +78,8 @@ parse_args(int argc, char **argv)
 			break;
 		/* long options */
 		case 0:
-			if (strncmp(long_option[idx].name, "iface",
-						MAX_PATH_LEN) == 0) {
-				rte_strscpy(iface, optarg, MAX_PATH_LEN);
+			if (!strcmp(long_option[idx].name, "iface")) {
+				rte_strscpy(iface, optarg, sizeof(iface));
 				printf("iface %s\n", iface);
 			}
 			if (!strcmp(long_option[idx].name, "interactive")) {
