@@ -1,5 +1,5 @@
 .. SPDX-License-Identifier: BSD-3-Clause
-   Copyright 2021-2024 Advanced Micro Devices, Inc.
+   Copyright 2021-2025 Advanced Micro Devices, Inc.
 
 IONIC Crypto Driver
 ===================
@@ -16,6 +16,8 @@ It currently supports the below models:
   `(pdf) <https://www.amd.com/content/dam/amd/en/documents/pensando-technical-docs/product-briefs/pensando-elba-product-brief.pdf>`__
 - DSC3-400 dual-port 400G Distributed Services Card
   `(pdf) <https://www.amd.com/content/dam/amd/en/documents/pensando-technical-docs/product-briefs/pensando-dsc3-product-brief.pdf>`__
+- Pollara 400 single-port 400G AI NIC
+  `(pdf) <https://www.amd.com/content/dam/amd/en/documents/pensando-technical-docs/product-briefs/pollara-product-brief.pdf>`__
 
 Please visit the
 `AMD Pensando Networking
