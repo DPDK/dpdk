@@ -5429,7 +5429,8 @@ __translate_group(struct rte_eth_dev *dev,
 						  NULL,
 						  "group index not supported");
 		*table_group = group + 1;
-	} else if (mlx5_vport_tx_metadata_passing_enabled(priv->sh) && flow_attr->egress) {
+	} else if (mlx5_vport_tx_metadata_passing_enabled(priv->sh) &&
+		   flow_attr->egress && external) {
 		/*
 		 * If VM cross GVMI metadata Tx was enabled, PMD creates a default
 		 * flow rule in the group 0 to copy metadata value.
