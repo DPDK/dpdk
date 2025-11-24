@@ -696,11 +696,8 @@ for an additional list of options shared with other mlx5 drivers.
   Value 2 enables the WQE based hardware steering.
   In this mode, only queue-based flow management is supported.
 
-  By default, the PMD will set this value according to capability.
-  If DV flow steering is supported, it will be set to 1.
-  If DV flow steering is not supported and HW steering is supported,
-  then it will be set to 2.
-  Otherwise, it will be set to 0.
+  It is configured by default to 1 (DV flow steering) if supported.
+  Otherwise, the value is 0 which indicates legacy Verbs flow offloading.
 
 - ``dv_esw_en`` parameter [int]
 
@@ -836,10 +833,7 @@ for an additional list of options shared with other mlx5 drivers.
     In this case, all rules are inserted but only the first rule takes effect,
     the next rule takes effect only if the previous rules are deleted.
 
-  This option is not supported in :ref:`HW steering <mlx5_hws>`,
-  and will be forced to 0 in this mode.
-
-  By default, the PMD will set this value according to capability.
+  By default, the PMD will set this value to 1.
 
 
 .. _mlx5_net_stats:
