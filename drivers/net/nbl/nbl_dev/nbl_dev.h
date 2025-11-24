@@ -95,5 +95,6 @@ int nbl_xstats_reset(struct rte_eth_dev *eth_dev);
 int nbl_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu);
 int nbl_promiscuous_enable(struct rte_eth_dev *eth_dev);
 int nbl_promiscuous_disable(struct rte_eth_dev *eth_dev);
+int nbl_vlan_offload_set(__rte_unused struct rte_eth_dev *dev, __rte_unused int mask);
 
 #endif

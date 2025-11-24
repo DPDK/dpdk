@@ -45,6 +45,7 @@ const struct eth_dev_ops nbl_eth_dev_ops = {
 	.mtu_set = nbl_mtu_set,
 	.promiscuous_enable = nbl_promiscuous_enable,
 	.promiscuous_disable = nbl_promiscuous_disable,
+	.vlan_offload_set = nbl_vlan_offload_set,
 };
 
 static int nbl_eth_dev_init(struct rte_eth_dev *eth_dev)
