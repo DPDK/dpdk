@@ -2768,8 +2768,8 @@ With :ref:`HW steering <mlx5_hws>`:
 
 #. Using count action on root tables requires:
 
-   - Linux kernel >= 6.4
-   - rdma-core >= 60.0
+   - Linux kernel >= 6.4 and rdma-core >= 60.0 for upstream drivers/libraries or,
+   - DOCA >= 3.2.0 for drivers/libraries provided by NVIDIA.
 
 
 .. _mlx5_age:
