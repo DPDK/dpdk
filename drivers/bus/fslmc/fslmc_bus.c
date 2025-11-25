@@ -238,7 +238,7 @@ static int
 rte_fslmc_parse(const char *name, void *addr)
 {
 	uint16_t dev_id;
-	char *t_ptr;
+	const char *t_ptr;
 	const char *sep;
 	uint8_t sep_exists = 0;
 	int ret = -1;
