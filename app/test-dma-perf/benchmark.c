@@ -258,6 +258,25 @@ end:
 }
 
 static void
+stop_dmadev(struct test_configure *cfg, bool *stopped)
+{
+	struct lcore_dma_map_t *lcore_dma_map;
+	uint32_t i;
+
+	if (*stopped)
+		return;
+
+	if (cfg->is_dma) {
+		for (i = 0; i < cfg->num_worker; i++) {
+			lcore_dma_map = &cfg->dma_config[i].lcore_dma_map;
+			printf("Stopping dmadev %d\n", lcore_dma_map->dma_id);
+			rte_dma_stop(lcore_dma_map->dma_id);
+		}
+	}
+	*stopped = true;
+}
+
+static void
 error_exit(int dev_id)
 {
 	rte_dma_stop(dev_id);
@@ -709,6 +728,7 @@ mem_copy_benchmark(struct test_configure *cfg)
 	float memory = 0;
 	uint32_t avg_cycles = 0;
 	uint32_t avg_cycles_total;
+	bool dev_stopped = false;
 	float mops, mops_total;
 	float bandwidth, bandwidth_total;
 	uint32_t nr_sgsrc = 0, nr_sgdst = 0;
@@ -770,7 +790,7 @@ mem_copy_benchmark(struct test_configure *cfg)
 		    vchan_dev->tdir == RTE_DMA_DIR_MEM_TO_DEV) {
 			if (attach_ext_buffer(vchan_dev, lcores[i], cfg->is_sg,
 					      (nr_sgsrc/nb_workers), (nr_sgdst/nb_workers)) < 0)
-				goto out;
+				goto stop_dmadev;
 		}
 
 		rte_eal_remote_launch(get_work_function(cfg), (void *)(lcores[i]), lcore_id);
@@ -804,6 +824,8 @@ mem_copy_benchmark(struct test_configure *cfg)
 		lcores[i]->worker_info.stop_flag = true;
 
 	rte_eal_mp_wait_lcore();
+
+	stop_dmadev(cfg, &dev_stopped);
 
 	for (k = 0; k < nb_workers; k++) {
 		struct rte_mbuf **src_buf = NULL, **dst_buf = NULL;
@@ -889,6 +911,8 @@ mem_copy_benchmark(struct test_configure *cfg)
 			cfg->scenario_id, nr_buf, memory * nb_workers,
 			(avg_cycles_total * (float) 1.0) / nb_workers, bandwidth_total, mops_total);
 
+stop_dmadev:
+	stop_dmadev(cfg, &dev_stopped);
 out:
 
 	for (k = 0; k < nb_workers; k++) {
@@ -942,14 +966,6 @@ out:
 	for (i = 0; i < nb_workers; i++) {
 		rte_free(lcores[i]);
 		lcores[i] = NULL;
-	}
-
-	if (cfg->is_dma) {
-		for (i = 0; i < nb_workers; i++) {
-			lcore_dma_map = &cfg->dma_config[i].lcore_dma_map;
-			printf("Stopping dmadev %d\n", lcore_dma_map->dma_id);
-			rte_dma_stop(lcore_dma_map->dma_id);
-		}
 	}
 
 	return ret;
