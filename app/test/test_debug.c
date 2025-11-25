@@ -46,7 +46,7 @@ test_debug(void)
  * ==========
  */
 
-static const char *test_args[7];
+static const char *test_args[8];
 
 int
 test_panic(void)
@@ -158,10 +158,17 @@ test_debug(void)
 		test_args[4] = "";
 		test_args[5] = "";
 		test_args[6] = "";
+		test_args[7] = "";
 	} else {
 		test_args[4] = "--no-huge";
 		test_args[5] = "-m";
 		test_args[6] = "2048";
+#ifdef RTE_ARCH_PPC_64
+		/* iova=pa is the default, but fails on ppc64 with --no-huge */
+		test_args[7] = "--iova-mode=va";
+#else
+		test_args[7] = "";
+#endif
 	}
 
 	rte_dump_stack();
