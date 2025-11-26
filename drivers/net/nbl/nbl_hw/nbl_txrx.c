@@ -727,9 +727,9 @@ static int nbl_res_txrx_get_stats(void *priv, struct rte_eth_stats *rte_stats,
 	struct nbl_resource_mgt *res_mgt = (struct nbl_resource_mgt *)priv;
 	struct rte_eth_dev *eth_dev = res_mgt->eth_dev;
 	struct nbl_res_rx_ring *rxq;
-	struct nbl_rxq_stats *rxq_stats;
+	struct nbl_rxq_stats *rxq_stats, *rxq_stats_reset;
 	struct nbl_res_tx_ring  *txq;
-	struct nbl_txq_stats *txq_stats;
+	struct nbl_txq_stats *txq_stats, *txq_stats_reset;
 	uint32_t i;
 	uint16_t idx;
 
@@ -739,16 +739,18 @@ static int nbl_res_txrx_get_stats(void *priv, struct rte_eth_stats *rte_stats,
 		if (unlikely(rxq  == NULL))
 			return -EINVAL;
 		rxq_stats = &rxq->rxq_stats;
+		rxq_stats_reset = &rxq->rxq_stats_reset;
 		idx = rxq->queue_id;
 
 		if (qstats && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_ipackets[idx] += rxq_stats->rx_packets;
-			qstats->q_ibytes[idx] += rxq_stats->rx_bytes;
+			qstats->q_ipackets[idx] += rxq_stats->rx_packets -
+							rxq_stats_reset->rx_packets;
+			qstats->q_ibytes[idx] += rxq_stats->rx_bytes - rxq_stats_reset->rx_bytes;
 		}
-		rte_stats->ipackets += rxq_stats->rx_packets;
-		rte_stats->ibytes += rxq_stats->rx_bytes;
-		rte_stats->rx_nombuf += rxq_stats->rx_nombuf;
-		rte_stats->ierrors += rxq_stats->rx_ierror;
+		rte_stats->ipackets += rxq_stats->rx_packets - rxq_stats_reset->rx_packets;
+		rte_stats->ibytes += rxq_stats->rx_bytes - rxq_stats_reset->rx_bytes;
+		rte_stats->rx_nombuf += rxq_stats->rx_nombuf - rxq_stats_reset->rx_nombuf;
+		rte_stats->ierrors += rxq_stats->rx_ierror - rxq_stats_reset->rx_ierror;
 	}
 
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
@@ -756,15 +758,17 @@ static int nbl_res_txrx_get_stats(void *priv, struct rte_eth_stats *rte_stats,
 		if (unlikely(txq  == NULL))
 			return -EINVAL;
 		txq_stats = &txq->txq_stats;
+		txq_stats_reset = &txq->txq_stats_reset;
 		idx = txq->queue_id;
 
 		if (qstats && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_opackets[idx] += txq_stats->tx_packets;
-			qstats->q_obytes[idx] += txq_stats->tx_bytes;
+			qstats->q_opackets[idx] += txq_stats->tx_packets -
+							txq_stats_reset->tx_packets;
+			qstats->q_obytes[idx] += txq_stats->tx_bytes - txq_stats_reset->tx_bytes;
 		}
-		rte_stats->opackets += txq_stats->tx_packets;
-		rte_stats->obytes += txq_stats->tx_bytes;
-		rte_stats->oerrors += txq_stats->tx_errors;
+		rte_stats->opackets += txq_stats->tx_packets - txq_stats_reset->tx_packets;
+		rte_stats->obytes += txq_stats->tx_bytes - txq_stats_reset->tx_bytes;
+		rte_stats->oerrors += txq_stats->tx_errors - txq_stats_reset->tx_errors;
 	}
 
 	return 0;
@@ -776,9 +780,7 @@ nbl_res_txrx_reset_stats(void *priv)
 	struct nbl_resource_mgt *res_mgt = (struct nbl_resource_mgt *)priv;
 	struct rte_eth_dev *eth_dev = res_mgt->eth_dev;
 	struct nbl_res_rx_ring *rxq;
-	struct nbl_rxq_stats *rxq_stats;
 	struct nbl_res_tx_ring  *txq;
-	struct nbl_txq_stats *txq_stats;
 	uint32_t i;
 
 	/* Add software counters. */
@@ -787,8 +789,7 @@ nbl_res_txrx_reset_stats(void *priv)
 		if (unlikely(rxq == NULL))
 			continue;
 
-		rxq_stats = &rxq->rxq_stats;
-		memset(rxq_stats, 0, sizeof(struct nbl_rxq_stats));
+		rxq->rxq_stats_reset = rxq->rxq_stats;
 	}
 
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
@@ -796,8 +797,7 @@ nbl_res_txrx_reset_stats(void *priv)
 		if (unlikely(txq == NULL))
 			continue;
 
-		txq_stats = &txq->txq_stats;
-		memset(txq_stats, 0, sizeof(struct nbl_txq_stats));
+		txq->txq_stats_reset = txq->txq_stats;
 	}
 
 	return 0;

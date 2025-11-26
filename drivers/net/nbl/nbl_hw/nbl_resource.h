@@ -141,6 +141,7 @@ struct nbl_res_tx_ring {
 	const struct rte_eth_dev *eth_dev;
 	struct nbl_common_info *common;
 	struct nbl_txq_stats txq_stats;
+	struct nbl_txq_stats txq_stats_reset;
 	u64 default_hdr[2];
 
 	enum nbl_product_type product;
@@ -182,6 +183,7 @@ struct nbl_res_rx_ring {
 	const struct rte_eth_dev *eth_dev;
 	struct nbl_common_info *common;
 	struct nbl_rxq_stats rxq_stats;
+	struct nbl_rxq_stats rxq_stats_reset;
 	uint64_t mbuf_initializer; /**< value to init mbufs */
 	struct rte_mbuf fake_mbuf;
 
