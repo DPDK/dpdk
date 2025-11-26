@@ -134,6 +134,7 @@ flex_link_item_parse(const char *src, struct rte_flow_item *item)
 	struct rte_flow_attr *attr;
 	struct rte_flow_item *pattern;
 	struct rte_flow_action *actions;
+	size_t sz;
 
 	sprintf(flow_rule,
 		"flow create 0 pattern %s / end actions drop / end", src);
@@ -143,21 +144,38 @@ flex_link_item_parse(const char *src, struct rte_flow_item *item)
 	if (ret)
 		return ret;
 	item->type = pattern->type;
+	switch (item->type) {
+	case RTE_FLOW_ITEM_TYPE_IPV4:
+		sz = sizeof(struct rte_flow_item_ipv4);
+	break;
+	case RTE_FLOW_ITEM_TYPE_IPV6:
+		sz = sizeof(struct rte_flow_item_ipv6);
+	break;
+	case RTE_FLOW_ITEM_TYPE_UDP:
+		sz = sizeof(struct rte_flow_item_udp);
+       break;
+	case RTE_FLOW_ITEM_TYPE_TCP:
+		sz = sizeof(struct rte_flow_item_tcp);
+	break;
+	default:
+		printf("Unsupported item type in specified in link\n");
+		return -EINVAL;
+	}
 	if (pattern->spec) {
 		ptr = (void *)(uintptr_t)item->spec;
-		memcpy(ptr, pattern->spec, FLEX_MAX_FLOW_PATTERN_LENGTH);
+		memcpy(ptr, pattern->spec, sz);
 	} else {
 		item->spec = NULL;
 	}
 	if (pattern->mask) {
 		ptr = (void *)(uintptr_t)item->mask;
-		memcpy(ptr, pattern->mask, FLEX_MAX_FLOW_PATTERN_LENGTH);
+		memcpy(ptr, pattern->mask, sz);
 	} else {
 		item->mask = NULL;
 	}
 	if (pattern->last) {
 		ptr = (void *)(uintptr_t)item->last;
-		memcpy(ptr, pattern->last, FLEX_MAX_FLOW_PATTERN_LENGTH);
+		memcpy(ptr, pattern->last, sz);
 	} else {
 		item->last = NULL;
 	}
