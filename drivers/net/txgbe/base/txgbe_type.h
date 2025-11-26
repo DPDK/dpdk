@@ -786,6 +786,8 @@ struct txgbe_mbx_info {
 	s32  (*check_for_msg)(struct txgbe_hw *hw, u16 mbx_id);
 	s32  (*check_for_ack)(struct txgbe_hw *hw, u16 mbx_id);
 	s32  (*check_for_rst)(struct txgbe_hw *hw, u16 mbx_id);
+	s32  (*host_interface_command)(struct txgbe_hw *hw, u32 *buffer,
+				u32 length, u32 timeout, bool return_data);
 
 	struct txgbe_mbx_stats stats;
 	u32 timeout;

@@ -17,6 +17,7 @@ void txgbe_init_ops_aml(struct txgbe_hw *hw)
 {
 	struct txgbe_mac_info *mac = &hw->mac;
 	struct txgbe_phy_info *phy = &hw->phy;
+	struct txgbe_mbx_info *mbx = &hw->mbx;
 
 	txgbe_init_ops_generic(hw);
 
@@ -27,6 +28,9 @@ void txgbe_init_ops_aml(struct txgbe_hw *hw)
 	mac->init_mac_link_ops = txgbe_init_mac_link_ops_aml;
 	mac->get_link_capabilities = txgbe_get_link_capabilities_aml;
 	mac->check_link = txgbe_check_mac_link_aml;
+
+	/* FW interaction */
+	mbx->host_interface_command = txgbe_host_interface_command_aml;
 }
 
 s32 txgbe_check_mac_link_aml(struct txgbe_hw *hw, u32 *speed,

@@ -2998,6 +2998,7 @@ void txgbe_init_ops_sp(struct txgbe_hw *hw)
 {
 	struct txgbe_mac_info *mac = &hw->mac;
 	struct txgbe_phy_info *phy = &hw->phy;
+	struct txgbe_mbx_info *mbx = &hw->mbx;
 
 	txgbe_init_ops_generic(hw);
 
@@ -3008,6 +3009,9 @@ void txgbe_init_ops_sp(struct txgbe_hw *hw)
 	mac->init_mac_link_ops = txgbe_init_mac_link_ops_sp;
 	mac->get_link_capabilities = txgbe_get_link_capabilities_sp;
 	mac->check_link = txgbe_check_mac_link_sp;
+
+	/* FW interaction */
+	mbx->host_interface_command = txgbe_host_interface_command_sp;
 }
 
 /**

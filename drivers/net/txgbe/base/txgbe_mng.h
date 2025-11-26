@@ -208,6 +208,10 @@ struct txgbe_hic_write_lldp {
 	u16 pad3;
 };
 
+s32 txgbe_host_interface_command_sp(struct txgbe_hw *hw, u32 *buffer,
+				u32 length, u32 timeout, bool return_data);
+s32 txgbe_host_interface_command_aml(struct txgbe_hw *hw, u32 *buffer,
+				u32 length, u32 timeout, bool return_data);
 s32 txgbe_hic_sr_read(struct txgbe_hw *hw, u32 addr, u8 *buf, int len);
 s32 txgbe_hic_sr_write(struct txgbe_hw *hw, u32 addr, u8 *buf, int len);
 s32 txgbe_close_notify(struct txgbe_hw *hw);

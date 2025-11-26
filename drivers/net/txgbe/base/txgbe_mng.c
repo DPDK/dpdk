@@ -79,7 +79,7 @@ txgbe_hic_unlocked(struct txgbe_hw *hw, u32 *buffer, u32 length, u32 timeout)
 }
 
 /**
- *  txgbe_host_interface_command - Issue command to manageability block
+ *  txgbe_host_interface_command_sp - Issue command to manageability block
  *  @hw: pointer to the HW structure
  *  @buffer: contains the command to write and where the return status will
  *   be placed
@@ -96,9 +96,9 @@ txgbe_hic_unlocked(struct txgbe_hw *hw, u32 *buffer, u32 length, u32 timeout)
  *  else returns semaphore error when encountering an error acquiring
  *  semaphore or TXGBE_ERR_HOST_INTERFACE_COMMAND when command fails.
  **/
-static s32
-txgbe_host_interface_command(struct txgbe_hw *hw, u32 *buffer,
-				 u32 length, u32 timeout, bool return_data)
+s32
+txgbe_host_interface_command_sp(struct txgbe_hw *hw, u32 *buffer,
+				u32 length, u32 timeout, bool return_data)
 {
 	u32 hdr_size = sizeof(struct txgbe_hic_hdr);
 	struct txgbe_hic_hdr *resp = (struct txgbe_hic_hdr *)buffer;
@@ -160,7 +160,7 @@ rel_out:
 	return err;
 }
 
-static s32
+s32
 txgbe_host_interface_command_aml(struct txgbe_hw *hw, u32 *buffer,
 				 u32 length, u32 timeout, bool return_data)
 {
@@ -303,12 +303,8 @@ s32 txgbe_hic_sr_read(struct txgbe_hw *hw, u32 addr, u8 *buf, int len)
 	command.address = cpu_to_be32(addr);
 	command.length = cpu_to_be16(len);
 
-	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40)
-		err = txgbe_host_interface_command_aml(hw, (u32 *)&command,
-				sizeof(command), TXGBE_HI_COMMAND_TIMEOUT, false);
-	else
-		err = txgbe_hic_unlocked(hw, (u32 *)&command,
-				sizeof(command), TXGBE_HI_COMMAND_TIMEOUT);
+	err = hw->mbx.host_interface_command(hw, (u32 *)&command,
+			sizeof(command), TXGBE_HI_COMMAND_TIMEOUT, false);
 	if (err)
 		return err;
 
@@ -381,7 +377,7 @@ s32 txgbe_close_notify(struct txgbe_hw *hw)
 	buffer.length = 0;
 	buffer.address = 0;
 
-	status = txgbe_host_interface_command(hw, (u32 *)&buffer,
+	status = hw->mbx.host_interface_command(hw, (u32 *)&buffer,
 					      sizeof(buffer),
 					      TXGBE_HI_COMMAND_TIMEOUT, false);
 	if (status)
@@ -411,7 +407,7 @@ s32 txgbe_open_notify(struct txgbe_hw *hw)
 	buffer.length = 0;
 	buffer.address = 0;
 
-	status = txgbe_host_interface_command(hw, (u32 *)&buffer,
+	status = hw->mbx.host_interface_command(hw, (u32 *)&buffer,
 					      sizeof(buffer),
 					      TXGBE_HI_COMMAND_TIMEOUT, false);
 	if (status)
@@ -466,7 +462,7 @@ s32 txgbe_hic_set_drv_ver(struct txgbe_hw *hw, u8 maj, u8 min,
 				(FW_CEM_HDR_LEN + fw_cmd.hdr.buf_len));
 
 	for (i = 0; i <= FW_CEM_MAX_RETRIES; i++) {
-		ret_val = txgbe_host_interface_command(hw, (u32 *)&fw_cmd,
+		ret_val = hw->mbx.host_interface_command(hw, (u32 *)&fw_cmd,
 						       sizeof(fw_cmd),
 						       TXGBE_HI_COMMAND_TIMEOUT,
 						       true);
@@ -511,7 +507,7 @@ txgbe_hic_reset(struct txgbe_hw *hw)
 				(FW_CEM_HDR_LEN + reset_cmd.hdr.buf_len));
 
 	for (i = 0; i <= FW_CEM_MAX_RETRIES; i++) {
-		err = txgbe_host_interface_command(hw, (u32 *)&reset_cmd,
+		err = hw->mbx.host_interface_command(hw, (u32 *)&reset_cmd,
 						       sizeof(reset_cmd),
 						       TXGBE_HI_COMMAND_TIMEOUT,
 						       true);
@@ -568,7 +564,7 @@ s32 txgbe_hic_get_lldp(struct txgbe_hw *hw)
 	buffer.hdr.checksum = FW_DEFAULT_CHECKSUM;
 	buffer.func = hw->bus.lan_id;
 
-	err = txgbe_host_interface_command(hw, (u32 *)&buffer, sizeof(buffer),
+	err = hw->mbx.host_interface_command(hw, (u32 *)&buffer, sizeof(buffer),
 					   TXGBE_HI_COMMAND_TIMEOUT, true);
 	if (err)
 		return err;
@@ -599,7 +595,7 @@ s32 txgbe_hic_set_lldp(struct txgbe_hw *hw, bool on)
 	buffer.hdr.checksum = FW_DEFAULT_CHECKSUM;
 	buffer.func = hw->bus.lan_id;
 
-	return txgbe_host_interface_command(hw, (u32 *)&buffer, sizeof(buffer),
+	return hw->mbx.host_interface_command(hw, (u32 *)&buffer, sizeof(buffer),
 					    TXGBE_HI_COMMAND_TIMEOUT, false);
 }
 
@@ -619,7 +615,7 @@ s32 txgbe_hic_ephy_set_link(struct txgbe_hw *hw, u8 speed, u8 autoneg, u8 duplex
 	buffer.duplex = duplex;
 
 	for (i = 0; i <= FW_CEM_MAX_RETRIES; i++) {
-		status = txgbe_host_interface_command(hw, (u32 *)&buffer,
+		status = hw->mbx.host_interface_command(hw, (u32 *)&buffer,
 						      sizeof(buffer),
 						      TXGBE_HI_COMMAND_TIMEOUT_SHORT, true);
 		if (status != 0) {
