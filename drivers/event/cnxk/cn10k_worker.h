@@ -52,12 +52,12 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags, struc
 	uint64_t mbuf_init = 0x100010000ULL | RTE_PKTMBUF_HEADROOM;
 	struct cnxk_timesync_info *tstamp = ws->tstamp[port_id];
 	void *lookup_mem = ws->lookup_mem;
+	uint64_t meta_aura = 0, laddr = 0;
+	uint16_t lmt_id = 0, d_off = 0;
 	uintptr_t lbase = ws->lmt_base;
-	uint64_t meta_aura = 0, laddr;
+	struct rte_mempool *mp = NULL;
 	struct rte_event_vector *vec;
 	uint16_t nb_mbufs, non_vec;
-	struct rte_mempool *mp;
-	uint16_t lmt_id, d_off;
 	struct rte_mbuf **wqe;
 	struct rte_mbuf *mbuf;
 	uint64_t sa_base = 0;

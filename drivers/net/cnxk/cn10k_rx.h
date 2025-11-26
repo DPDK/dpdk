@@ -572,7 +572,7 @@ nix_sec_meta_to_mbuf(uint64_t cq_w1, uint64_t cq_w5, uintptr_t inb_sa,
 	const struct cpt_cn10k_parse_hdr_s *hdr =
 		(const struct cpt_cn10k_parse_hdr_s *)cpth;
 	uint64_t mbuf_init = vgetq_lane_u64(*rearm, 0);
-	struct cn10k_inb_priv_data *inb_priv;
+	struct cn10k_inb_priv_data *inb_priv = NULL;
 	uintptr_t p;
 
 	/* Clear checksum flags */
@@ -1464,9 +1464,9 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 	struct rte_mbuf *mbuf0, *mbuf1, *mbuf2, *mbuf3;
 	uint8_t loff = 0, lnum = 0, shft = 0;
 	struct rte_mempool *meta_pool = NULL;
+	uint16_t lmt_id = 0, d_off = 0;
+	uint64_t lbase = 0, laddr = 0;
 	uint8x16_t f0, f1, f2, f3;
-	uint16_t lmt_id, d_off;
-	uint64_t lbase, laddr;
 	uintptr_t sa_base = 0;
 	uint16_t packets = 0;
 	uint16_t pkts_left;

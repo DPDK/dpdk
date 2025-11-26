@@ -307,7 +307,7 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf, uint6
 	const struct cpt_parse_hdr_s *hdr = (const struct cpt_parse_hdr_s *)cpth;
 	struct cn20k_inb_priv_data *inb_priv = NULL;
 	const struct cpt_frag_info_s *finfo = NULL;
-	uint64_t fsz_w1 = 0, cq_w1, cq_w5, sg;
+	uint64_t fsz_w1 = 0, cq_w1, cq_w5 = 0, sg;
 	uint32_t offset = hdr->w2.ptr_offset;
 	uint8_t num_frags = 0, nxt_frag = 0;
 	struct rte_mbuf *head, *last_mbuf;
@@ -845,10 +845,10 @@ cn20k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts, c
 	uint64x2_t rearm2 = vdupq_n_u64(mbuf_initializer);
 	uint64x2_t rearm3 = vdupq_n_u64(mbuf_initializer);
 	struct rte_mbuf *mbuf0, *mbuf1, *mbuf2, *mbuf3;
+	uint64_t lbase = 0, laddr = 0, buf_sz = 0;
 	uint8_t loff = 0, lnum = 0, shft = 0;
-	uint64_t lbase, laddr, buf_sz;
+	uint16_t lmt_id = 0, d_off;
 	uint8x16_t f0, f1, f2, f3;
-	uint16_t lmt_id, d_off;
 	uintptr_t sa_base = 0;
 	uint16_t packets = 0;
 	uint16_t pkts_left;
