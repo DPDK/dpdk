@@ -464,8 +464,8 @@ ifpga_parse(const char *name, void *addr)
 	int *out = addr;
 	struct rte_rawdev *rawdev = NULL;
 	char rawdev_name[RTE_RAWDEV_NAME_MAX_LEN];
-	char *c1 = NULL;
-	char *c2 = NULL;
+	const char *c1 = NULL;
+	const char *c2 = NULL;
 	int port = IFPGA_BUS_DEV_PORT_MAX;
 	char str_port[8];
 	int str_port_len = 0;
