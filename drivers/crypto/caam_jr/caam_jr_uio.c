@@ -106,19 +106,11 @@ static int g_uio_jr_num;
 static bool
 file_name_match_extract(const char filename[], const char match[], int *number)
 {
-	char *substr = NULL;
-
-	substr = strstr(filename, match);
-	if (substr == NULL)
-		return false;
-
 	/* substring <match> was found in <filename>
 	 * read number following <match> substring in <filename>
 	 */
-	if (sscanf(filename + strlen(match), "%d", number) <= 0)
-		return false;
-
-	return true;
+	return strstr(filename, match) != NULL &&
+		sscanf(filename + strlen(match), "%d", number) > 0;
 }
 
 /** @brief Reads first line from a file.
