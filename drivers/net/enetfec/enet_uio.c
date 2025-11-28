@@ -32,13 +32,7 @@ static int enetfec_count;
 static bool
 file_name_match_extract(const char filename[], const char match[])
 {
-	char *substr = NULL;
-
-	substr = strstr(filename, match);
-	if (substr == NULL)
-		return false;
-
-	return true;
+	return strstr(filename, match) != NULL;
 }
 
 /*
