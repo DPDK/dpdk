@@ -217,7 +217,7 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev)
 	const struct qat_crypto_gen_dev_ops *gen_dev_ops =
 		&qat_sym_gen_dev_ops[qat_pci_dev->qat_dev_gen];
 	uint16_t sub_id = qat_dev_instance->pci_dev->id.subsystem_device_id;
-	char *cmdline = NULL;
+	const char *cmdline = NULL;
 
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "sym");

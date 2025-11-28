@@ -42,7 +42,7 @@ typedef int (*qat_dev_get_extra_size_t)(void);
 typedef int (*qat_dev_get_slice_map_t)(uint32_t *map,
 		const struct rte_pci_device *pci_dev);
 
-char *qat_dev_cmdline_get_val(struct qat_pci_device *qat_dev, const char *key);
+const char *qat_dev_cmdline_get_val(struct qat_pci_device *qat_dev, const char *key);
 
 struct qat_dev_hw_spec_funcs {
 	qat_dev_reset_ring_pairs_t	qat_dev_reset_ring_pairs;

@@ -1567,7 +1567,7 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev)
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	char capa_memz_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	uint16_t sub_id = qat_dev_instance->pci_dev->id.subsystem_device_id;
-	char *cmdline = NULL;
+	const char *cmdline = NULL;
 
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "asym");

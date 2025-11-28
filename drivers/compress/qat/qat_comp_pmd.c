@@ -690,7 +690,7 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev)
 			&qat_comp_gen_dev_ops[qat_pci_dev->qat_dev_gen];
 	uint64_t capa_size;
 	uint16_t sub_id = qat_dev_instance->pci_dev->id.subsystem_device_id;
-	char *cmdline = NULL;
+	const char *cmdline = NULL;
 
 	snprintf(name, RTE_COMPRESSDEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "comp");
