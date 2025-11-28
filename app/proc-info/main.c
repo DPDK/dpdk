@@ -501,7 +501,7 @@ nic_stats_clear(uint16_t port_id)
 
 static void collectd_resolve_cnt_type(char *cnt_type, size_t cnt_type_len,
 				      const char *cnt_name) {
-	char *type_end = strrchr(cnt_name, '_');
+	const char *type_end = strrchr(cnt_name, '_');
 
 	if ((type_end != NULL) &&
 	    (strncmp(cnt_name, "rx_", strlen("rx_")) == 0)) {
