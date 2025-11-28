@@ -1829,7 +1829,8 @@ memif_set_rs(const char *key __rte_unused, const char *value, void *extra_args)
 static int
 memif_check_socket_filename(const char *filename)
 {
-	char *dir = NULL, *tmp;
+	char *dir = NULL;
+	const char *tmp;
 	uint32_t idx;
 	int ret = 0;
 
