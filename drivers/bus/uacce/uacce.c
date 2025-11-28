@@ -328,8 +328,8 @@ static bool
 uacce_match(const struct rte_uacce_driver *dr, const struct rte_uacce_device *dev)
 {
 	const struct rte_uacce_id *id_table;
+	const char *map;
 	uint32_t len;
-	char *map;
 
 	for (id_table = dr->id_table; id_table->dev_api != NULL; id_table++) {
 		if (strcmp(id_table->dev_api, dev->api) != 0)
