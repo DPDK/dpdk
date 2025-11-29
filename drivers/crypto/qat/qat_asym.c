@@ -1325,7 +1325,7 @@ session_set_modexp(struct qat_asym_session *qat_session,
 	qat_session->xform.modex.exponent.data = rte_malloc(NULL,
 				xform->modex.exponent.length, 0);
 	if (qat_session->xform.modex.exponent.data == NULL) {
-		rte_free(qat_session->xform.modex.exponent.data);
+		rte_free(qat_session->xform.modex.modulus.data);
 		return -ENOMEM;
 	}
 	qat_session->xform.modex.exponent.length = xform->modex.exponent.length;
