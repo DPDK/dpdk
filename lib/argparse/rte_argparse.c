@@ -702,7 +702,7 @@ parse_args(const struct rte_argparse *obj, bool *arg_parsed,
 	const char *arg_name;
 	size_t n_args_to_move;
 	char **args_to_move;
-	uint32_t arg_idx;
+	uint32_t arg_idx = 0;
 	char *curr_argv;
 	char *value;
 	int ret;
