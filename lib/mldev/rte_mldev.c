@@ -55,7 +55,7 @@ rte_ml_dev_pmd_allocate(const char *name, uint8_t socket_id)
 {
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
-	struct rte_ml_dev *dev;
+	struct rte_ml_dev *dev = NULL;
 	int16_t dev_id;
 
 	/* implicit initialization of library before adding first device */
