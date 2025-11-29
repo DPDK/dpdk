@@ -689,9 +689,11 @@ for an additional list of options shared with other mlx5 drivers.
 - ``dv_flow_en`` parameter [int]
 
   Value 0 means legacy Verbs flow offloading.
+  It is available for devices older than ConnectX-9.
 
-  Value 1 enables the DV flow steering assuming it is supported by the
-  driver (requires rdma-core 24 or higher).
+  Value 1 enables the Direct Verbs flow steering.
+  It is available for devices older than ConnectX-9,
+  and requires rdma-core 24 or later.
 
   Value 2 enables the WQE based hardware steering.
   In this mode, only queue-based flow management is supported.
@@ -1338,7 +1340,8 @@ Hardware Steering
 ~~~~~~~~~~~~~~~~~
 
 Faster than software steering (SWS),
-hardware steering (HWS) is the only mode supporting the flow template async API.
+hardware steering (HWS) is the only mode supporting the flow template async API,
+and the only mode supported on device ConnectX-9 and later.
 
 Flow rules are managed by the hardware,
 with a WQE-based high scaling and safer flow insertion/destruction.
