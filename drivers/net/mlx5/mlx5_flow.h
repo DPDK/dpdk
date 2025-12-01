@@ -1794,6 +1794,13 @@ mlx5_multi_pattern_segment_find(struct rte_flow_template_table *table,
 	return NULL;
 }
 
+static inline bool
+mlx5_esw_hws_xmeta_mode_meta32_enabled(const struct mlx5_dev_ctx_shared *sh)
+{
+	return sh->config.dv_esw_en &&
+		(sh->config.dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS);
+}
+
 /*
  * Convert metadata or tag to the actual register.
  * META: Fixed C_1 for FDB mode, REG_A for NIC TX and REG_B for NIC RX.
@@ -1809,15 +1816,10 @@ flow_hw_get_reg_id_by_domain(struct rte_eth_dev *dev,
 
 	switch (type) {
 	case RTE_FLOW_ITEM_TYPE_META:
-		if (sh->config.dv_esw_en &&
-		    (sh->config.dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS ||
-		     mlx5_esw_metadata_passing_enabled(sh))) {
-			return REG_C_1;
-		}
-		if ((mlx5_vport_rx_metadata_passing_enabled(sh) &&
-		     domain_type == MLX5DR_TABLE_TYPE_NIC_RX) ||
-		    (mlx5_vport_tx_metadata_passing_enabled(sh) &&
-		     domain_type == MLX5DR_TABLE_TYPE_NIC_TX))
+		if (mlx5_esw_hws_xmeta_mode_meta32_enabled(sh) ||
+		    mlx5_esw_metadata_passing_enabled(sh)      ||
+		    mlx5_vport_rx_metadata_passing_enabled(sh) ||
+		    mlx5_vport_tx_metadata_passing_enabled(sh))
 			return REG_C_1;
 		/*
 		 * On root table - PMD allows only egress META matching, thus
