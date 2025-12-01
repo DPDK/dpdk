@@ -2675,6 +2675,45 @@ rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	uint32_t prev_hdrs = 0;
 	int ret;
 
+	if (rx_conf->share_group > 0) {
+		/* Check required switch info for Rx queue sharing */
+		const uint16_t dom_id = ports[port_id].dev_info.switch_info.domain_id;
+		const uint16_t rx_dom = ports[port_id].dev_info.switch_info.rx_domain;
+
+		uint16_t pid;
+		const char *mismatch = NULL;
+		uint16_t mismatch_pid = (uint16_t)RTE_PORT_ALL;
+
+		RTE_ETH_FOREACH_DEV(pid) {
+			struct rte_port *o_port = &ports[pid];
+			const uint16_t o_dom_id = o_port->dev_info.switch_info.domain_id;
+			const uint16_t o_rx_dom = o_port->dev_info.switch_info.rx_domain;
+
+			for (uint16_t q = 0; q < nb_rxq; ++q) {
+				struct port_rxqueue *rxq = &o_port->rxq[q];
+				if (rxq->conf.share_group != rx_conf->share_group ||
+						rxq->conf.share_qid != rx_conf->share_qid)
+					continue;
+				if (o_dom_id == dom_id && o_rx_dom == rx_dom)
+					continue;
+
+				if (o_dom_id != dom_id)
+					mismatch = "switch domain";
+				else if (o_rx_dom != rx_dom)
+					mismatch = "rx domain";
+
+				mismatch_pid = pid;
+				break;
+			}
+		}
+
+		if (mismatch) {
+			fprintf(stderr,
+				"Invalid shared rxq config: %s mismatch between ports %u and %u\n",
+				mismatch, port_id, mismatch_pid);
+			return -EINVAL;
+		}
+	}
 
 	if ((rx_pkt_nb_segs > 1) &&
 	    (rx_conf->offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT)) {
