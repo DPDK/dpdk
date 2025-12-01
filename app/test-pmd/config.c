@@ -6379,8 +6379,8 @@ vlan_extend_set(portid_t port_id, int on)
 	diag = rte_eth_dev_set_vlan_offload(port_id, vlan_offload);
 	if (diag < 0) {
 		fprintf(stderr,
-			"rx_vlan_extend_set(port_pi=%d, on=%d) failed diag=%d\n",
-			port_id, on, diag);
+			"%s(port_pi=%d, on=%d) failed diag=%d\n",
+			__func__, port_id, on, diag);
 		return;
 	}
 	ports[port_id].dev_conf.rxmode.offloads = port_rx_offloads;
@@ -6534,8 +6534,8 @@ vlan_tpid_set(portid_t port_id, enum rte_vlan_type vlan_type, uint16_t tp_id)
 		return;
 
 	fprintf(stderr,
-		"tx_vlan_tpid_set(port_pi=%d, vlan_type=%d, tpid=%d) failed diag=%d\n",
-		port_id, vlan_type, tp_id, diag);
+		"%s(port_pi=%d, vlan_type=%d, tpid=%d) failed diag=%d\n",
+		__func__, port_id, vlan_type, tp_id, diag);
 }
 
 void
