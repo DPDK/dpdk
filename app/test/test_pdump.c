@@ -173,7 +173,7 @@ int
 run_pdump_server_tests(void)
 {
 	int ret = 0;
-	char coremask[10];
+	char core_str[10];
 
 #ifdef RTE_EXEC_ENV_LINUX
 	char tmp[PATH_MAX] = { 0 };
@@ -187,12 +187,11 @@ run_pdump_server_tests(void)
 
 	/* good case, using secondary */
 	const char *const argv1[] = {
-		prgname, "-c", coremask, "--proc-type=secondary",
+		prgname, "-l", core_str, "--proc-type=secondary",
 		prefix
 	};
 
-	snprintf(coremask, sizeof(coremask), "%x",
-		 (1 << rte_get_main_lcore()));
+	snprintf(core_str, sizeof(core_str), "%u", rte_get_main_lcore());
 
 	ret = test_pdump_init();
 	ret |= launch_p(argv1);

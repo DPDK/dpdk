@@ -50,7 +50,7 @@ struct test_info {
 static int
 timer_secondary_spawn_wait(unsigned int lcore)
 {
-	char coremask[10];
+	char core_str[10];
 #ifdef RTE_EXEC_ENV_LINUXAPP
 	char tmp[PATH_MAX] = {0};
 	char prefix[PATH_MAX] = {0};
@@ -63,12 +63,12 @@ timer_secondary_spawn_wait(unsigned int lcore)
 #endif
 	char const *argv[] = {
 		prgname,
-		"-c", coremask,
+		"-l", core_str,
 		"--proc-type=secondary",
 		prefix
 	};
 
-	snprintf(coremask, sizeof(coremask), "%x", (1 << lcore));
+	snprintf(core_str, sizeof(core_str), "%u", lcore);
 
 	return launch_proc(argv);
 }

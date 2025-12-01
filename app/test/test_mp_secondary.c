@@ -66,7 +66,7 @@ static int
 run_secondary_instances(void)
 {
 	int ret = 0;
-	char coremask[10];
+	char core_str[10];
 
 #ifdef RTE_EXEC_ENV_LINUX
 	char tmp[PATH_MAX] = {0};
@@ -81,29 +81,28 @@ run_secondary_instances(void)
 
 	/* good case, using secondary */
 	const char *argv1[] = {
-			prgname, "-c", coremask, "--proc-type=secondary",
+			prgname, "-l", core_str, "--proc-type=secondary",
 			prefix
 	};
 	/* good case, using auto */
 	const char *argv2[] = {
-			prgname, "-c", coremask, "--proc-type=auto",
+			prgname, "-l", core_str, "--proc-type=auto",
 			prefix
 	};
 	/* bad case, using invalid type */
 	const char *argv3[] = {
-			prgname, "-c", coremask, "--proc-type=ERROR",
+			prgname, "-l", core_str, "--proc-type=ERROR",
 			prefix
 	};
 #ifdef RTE_EXEC_ENV_LINUX
 	/* bad case, using invalid file prefix */
 	const char *argv4[]  = {
-			prgname, "-c", coremask, "--proc-type=secondary",
+			prgname, "-l", core_str, "--proc-type=secondary",
 					"--file-prefix=ERROR"
 	};
 #endif
 
-	snprintf(coremask, sizeof(coremask), "%x", \
-			(1 << rte_get_main_lcore()));
+	snprintf(core_str, sizeof(core_str), "%u", rte_get_main_lcore());
 
 	ret |= launch_proc(argv1);
 	printf("### Testing rte_mp_disable() reject:\n");
