@@ -3472,23 +3472,28 @@ convert_pci_address_format(const char *identifier, char *pci_buffer, size_t buf_
 	struct rte_devargs da;
 	struct rte_pci_addr pci_addr;
 	size_t pci_len;
+	char *result = NULL;
 
 	if (rte_devargs_parse(&da, identifier) != 0)
 		return NULL;
 
 	if (da.bus == NULL)
-		return NULL;
+		goto cleanup;
 
 	if (strcmp(rte_bus_name(da.bus), "pci") != 0)
-		return NULL;
+		goto cleanup;
 
 	if (rte_pci_addr_parse(da.name, &pci_addr) != 0)
-		return NULL;
+		goto cleanup;
 
 	rte_pci_device_name(&pci_addr, pci_buffer, buf_size);
 	pci_len = strlen(pci_buffer);
 	snprintf(pci_buffer + pci_len, buf_size - pci_len, ",%s", da.args);
-	return pci_buffer;
+	result = pci_buffer;
+
+cleanup:
+	rte_devargs_reset(&da);
+	return result;
 }
 
 void
