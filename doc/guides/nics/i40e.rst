@@ -357,7 +357,40 @@ To start ``testpmd``, and add vlan 10 to port 0:
     ...
 
     testpmd> set promisc 0 off
+    testpmd> vlan set filter on 0
     testpmd> rx_vlan add 10 0
+
+
+QinQ strip
+~~~~~~~~~~
+
+QinQ TPID is set as 0x8100 IEEE 802.1Q by default.
+For QinQ strip with TPID 0x88A8 IEEE 802.1ad,
+extend VLAN is enabled and VLAN outer TPID is set to 0x88A8.
+VLAN filter steps can be added before or after.
+
+To start ``testpmd``, and enable QinQ strip for TPID 0x88A8 on port 0:
+
+.. code-block:: console
+
+   ./<build_dir>/app/dpdk-testpmd -l 0-15 -- -i --forward-mode=mac
+   ...
+
+   testpmd> vlan set extend on 0
+   testpmd> vlan set outer tpid 0x88A8 0
+   testpmd> vlan set qinq_strip on 0
+
+For QinQ strip with TPID 0x8100, extend VLAN is enabled only.
+
+To start ``testpmd``, and enable QinQ strip for default TPID on port 0:
+
+.. code-block:: console
+
+   ./<build_dir>/app/dpdk-testpmd -l 0-15 -- -i --forward-mode=mac
+   ...
+
+   testpmd> vlan set extend on 0
+   testpmd> vlan set qinq_strip on 0
 
 
 Flow Director
@@ -919,10 +952,7 @@ Vlan related Features miss when FW >= 8.4
 
 If FW version >= 8.4, there'll be some Vlan related issues:
 
-#. TCI input set for QinQ  is invalid.
-#. Fail to configure TPID for QinQ.
-#. Need to enable QinQ before enabling Vlan filter.
-#. Fail to strip outer Vlan.
+#. TCI input set for QinQ is invalid.
 
 Example of getting best performance with l3fwd example
 ------------------------------------------------------
