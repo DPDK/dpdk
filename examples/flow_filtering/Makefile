@@ -3,7 +3,7 @@
 
 APP = flow
 
-SRCS-y := main.c flow_skeleton.c
+SRCS-y := main.c flow_skeleton.c jump_flow.c
 subdir := snippets
 snippet_objects := $(addprefix build/,$(notdir $(patsubst %.c,%.o,$(wildcard $(subdir)/*.c))))
 
