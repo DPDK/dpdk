@@ -351,6 +351,8 @@ cop_prepare(const struct entity_priv *en_priv, struct rte_mbuf *mb, struct rte_c
 		op->auth.data.length = (pkt_len - RTE_PDCP_MAC_I_LEN) << auth_shift;
 		op->auth.digest.data = rte_pktmbuf_mtod_offset(mb, uint8_t *,
 							       (pkt_len - RTE_PDCP_MAC_I_LEN));
+		op->auth.digest.phys_addr = rte_pktmbuf_iova_offset(mb,
+							       (pkt_len - RTE_PDCP_MAC_I_LEN));
 	}
 
 	__rte_crypto_sym_op_attach_sym_session(op, en_priv->crypto_sess);
