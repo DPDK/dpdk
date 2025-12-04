@@ -35,6 +35,7 @@ if is_ms_compiler
     error_cflags = [
             '/wd4101', # unreferenced local variable
             '/wd4334', # result of 32-bit shift implicitly converted to 64 bits
+            '/wd4319', # zero extending 'unsigned long' to 'u64' of greater size
     ]
 else
     error_cflags = [
