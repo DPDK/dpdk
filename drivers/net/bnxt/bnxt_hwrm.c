@@ -1198,15 +1198,6 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	if (BNXT_PF(bp))
 		bp->pf->total_vnics = rte_le_to_cpu_16(resp->max_vnics);
 
-	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_PTP_SUPPORTED) {
-		if (BNXT_CHIP_P5(bp) || BNXT_PF(bp)) {
-			bp->flags |= BNXT_FLAG_PTP_SUPPORTED;
-			PMD_DRV_LOG_LINE(DEBUG, "PTP SUPPORTED");
-			HWRM_UNLOCK();
-			bnxt_hwrm_ptp_qcfg(bp);
-		}
-	}
-
 	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT_STATS_SUPPORTED)
 		bp->flags |= BNXT_FLAG_EXT_STATS_SUPPORTED;
 
@@ -1262,6 +1253,18 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		bp->fw_cap |= BNXT_FW_CAP_UDP_GSO;
 	if (flags_ext3 & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT3_RX_RATE_PROFILE_SEL_SUPPORTED)
 		bp->fw_cap |= BNXT_FW_CAP_RX_RATE_PROFILE;
+
+	/* This block should be kept at the end of this function because it
+	 * sends another hwrm msg.
+	 */
+	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_PTP_SUPPORTED) {
+		if (BNXT_CHIP_P5(bp) || BNXT_PF(bp)) {
+			bp->flags |= BNXT_FLAG_PTP_SUPPORTED;
+			PMD_DRV_LOG_LINE(DEBUG, "PTP SUPPORTED");
+			HWRM_UNLOCK();
+			bnxt_hwrm_ptp_qcfg(bp);
+		}
+	}
 
 unlock:
 	HWRM_UNLOCK();
