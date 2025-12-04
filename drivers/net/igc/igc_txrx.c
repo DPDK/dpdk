@@ -1416,6 +1416,10 @@ what_advctx_update(struct igc_tx_queue *txq, uint64_t flags,
 {
 	uint32_t curr = txq->ctx_curr;
 
+	/* Launch time feature always need a new context descriptor */
+	if (flags & igc_tx_timestamp_dynflag)
+		return IGC_CTX_NUM;
+
 	/* If match with the current context */
 	if (likely(txq->ctx_cache[curr].flags == flags &&
 		txq->ctx_cache[curr].tx_offload.data ==
@@ -1621,7 +1625,8 @@ igc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		tx_last = (uint16_t)(tx_id + tx_pkt->nb_segs - 1);
 
 		ol_flags = tx_pkt->ol_flags;
-		tx_ol_req = ol_flags & IGC_TX_OFFLOAD_MASK;
+		tx_ol_req = ol_flags & (IGC_TX_OFFLOAD_MASK |
+				igc_tx_timestamp_dynflag);
 
 		/* If a Context Descriptor need be built . */
 		if (tx_ol_req) {
