@@ -563,7 +563,7 @@ __rte_rcu_qsbr_check_selective(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 			if (c != __RTE_QSBR_CNT_THR_OFFLINE && acked_token > c)
 				acked_token = c;
 
-			bmap &= ~(1UL << j);
+			bmap &= ~RTE_BIT64(j);
 		}
 	}
 
