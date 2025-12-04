@@ -92,9 +92,13 @@
 /* L4 Packet TYPE of Reserved */
 #define IGC_ADVTXD_TUCMD_L4T_RSV	0x00001800
 
+/* Indicate the first packet in a Qbv cycle */
+#define IGC_ADVTXD_TSN_CNTX_FRST	0x00000080
+
 #define IGC_TX_OFFLOAD_NOTSUP_MASK (RTE_MBUF_F_TX_OFFLOAD_MASK ^ IGC_TX_OFFLOAD_MASK)
 
 #define IGC_TS_HDR_LEN 16
+#define IGC_DUMMY_PKT_SIZE 64
 
 static inline uint64_t
 rx_desc_statuserr_to_pkt_flags(uint32_t statuserr)
@@ -1442,17 +1446,143 @@ what_advctx_update(struct igc_tx_queue *txq, uint64_t flags,
 	return IGC_CTX_NUM;
 }
 
-static uint32_t igc_tx_launchtime(uint64_t txtime, uint16_t port_id)
+static uint32_t
+igc_tx_launchtime(uint64_t txtime, struct igc_tx_queue *txq,
+		bool *need_dummy_pkt, bool *need_frst_flag)
 {
-	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct rte_eth_dev *dev = &rte_eth_devices[txq->port_id];
 	struct igc_adapter *adapter = IGC_DEV_PRIVATE(dev);
-	uint64_t base_time = adapter->base_time;
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint64_t cycle_time = adapter->cycle_time;
+	uint64_t base_time = adapter->base_time;
+	uint64_t current_cycle_end;
+	uint64_t cycles_elapsed;
 	uint32_t launchtime;
+	uint32_t nsec, sec;
+	uint64_t systime;
 
+	/*
+	 * Read current PTP hardware time from SYSTIM registers.
+	 * Reading the SYSTIML register latches the upper 32 bits to the SYSTIMH
+	 * shadow register for coherent access. As long as we read SYSTIML first
+	 * followed by SYSTIMH, we avoid race conditions where the time rolls
+	 * over between the two register reads.
+	 */
+	nsec = E1000_READ_REG(hw, E1000_SYSTIML);
+	sec = E1000_READ_REG(hw, E1000_SYSTIMH);
+	systime = (uint64_t)sec * NSEC_PER_SEC + (uint64_t)nsec;
+
+	/* Calculate end time of current Qbv cycle */
+	cycles_elapsed = (systime - base_time) / cycle_time;
+	current_cycle_end = (cycles_elapsed + 1) * cycle_time + base_time;
+
+	/* Set launchtime to 0 if txtime has expired or exceeds the horizon */
+	if (txtime <= systime || txtime >= current_cycle_end + cycle_time) {
+		txq->last_packet_cycle = current_cycle_end;
+		return 0;
+	}
+
+	/* Calculate launchtime to be inserted into Tx context descriptor */
 	launchtime = (txtime - base_time) % cycle_time;
 
+	/* Handle txtime that fall into next Qbv cycle */
+	if (txtime >= current_cycle_end) {
+		/* Only mark as first if the cycle hasn't had a first pkt yet */
+		if (txq->last_frst_flag != current_cycle_end) {
+			*need_frst_flag = true;
+			txq->last_frst_flag = current_cycle_end;
+
+			/* Check if we need dummy pkt to dirty current cycle */
+			if (txq->last_packet_cycle < current_cycle_end)
+				*need_dummy_pkt = true;
+		}
+		txq->last_packet_cycle = current_cycle_end + cycle_time;
+	} else {
+		txq->last_packet_cycle = current_cycle_end;
+	}
+
 	return rte_cpu_to_le_32(launchtime);
+}
+
+/*
+ * If the IGC_ADVTXD_TSN_CNTX_FRST flag is used to schedule a packet for the
+ * next Qbv cycle while no packet was transmitted from that queue in the current
+ * cycle, then the IGC_ADVTXD_TSN_CNTX_FRST flag may be valid in the current
+ * cycle and the packet will be transmitted in the current cycle. To overcome
+ * this issue, we transmit an IGC_DUMMY_PKT_SIZE byte "dummy" packet to "dirty"
+ * the current cycle before sending the packet intended for the next cycle.
+ */
+static void
+igc_insert_dummy_packet(struct igc_tx_queue *txq, uint16_t *tx_id)
+{
+	volatile union e1000_adv_tx_desc * const txr = txq->tx_ring;
+	struct igc_tx_entry * const sw_ring = txq->sw_ring;
+	volatile struct e1000_adv_tx_context_desc *ctx_txd;
+	volatile union e1000_adv_tx_desc *txd;
+	struct igc_tx_entry *txe, *txn;
+
+	/* Get Tx entry (txe) for Tx context descriptor of dummy packet */
+	txe = &sw_ring[*tx_id];
+
+	/* Prepare for next Tx entry (txn) */
+	txn = &sw_ring[txe->next_id];
+	RTE_MBUF_PREFETCH_TO_FREE(txn->mbuf);
+
+	/* Set up Tx context descriptor for dummy packet */
+	ctx_txd = (volatile struct e1000_adv_tx_context_desc *)&txr[*tx_id];
+	ctx_txd->type_tucmd_mlhl = rte_cpu_to_le_32(E1000_ADVTXD_DTYP_CTXT |
+			E1000_ADVTXD_DCMD_DEXT);
+	ctx_txd->mss_l4len_idx = rte_cpu_to_le_32(txq->ctx_curr <<
+			E1000_ADVTXD_IDX_SHIFT);
+	ctx_txd->vlan_macip_lens = 0;
+	ctx_txd->u.launch_time = 0;
+
+	/* Update tx_id and last_id */
+	*tx_id = txe->next_id;
+	txe->last_id = *tx_id;
+
+	/* Get Tx entry (txe) for Tx data descriptor of dummy packet */
+	txe = txn;
+
+	/* Prepare for next Tx entry (txn) */
+	txn = &sw_ring[txe->next_id];
+	RTE_MBUF_PREFETCH_TO_FREE(txn->mbuf);
+
+	/* Free previous mbuf */
+	if (txe->mbuf != NULL) {
+		rte_pktmbuf_free_seg(txe->mbuf);
+		txe->mbuf = NULL;
+	}
+
+	/* Set up Tx data descriptor for dummy packet */
+	txd = &txr[*tx_id];
+	txd->read.buffer_addr = rte_cpu_to_le_64(txq->dummy_pkt_dma);
+	txd->read.cmd_type_len = rte_cpu_to_le_32(txq->txd_type |
+			IGC_DUMMY_PKT_SIZE | E1000_ADVTXD_DCMD_IFCS |
+			E1000_ADVTXD_DCMD_DEXT | E1000_TXD_CMD_EOP |
+			E1000_TXD_CMD_RS);
+	txd->read.olinfo_status = rte_cpu_to_le_32(IGC_DUMMY_PKT_SIZE <<
+			E1000_ADVTXD_PAYLEN_SHIFT);
+
+	/* Update last_id and tx_id */
+	txe->last_id = *tx_id;
+	*tx_id = txe->next_id;
+
+	/* Get Tx entry (txe) for Tx context descriptor of actual packet */
+	txe = txn;
+
+	/* Prepare for next Tx entry (txn) */
+	txn = &sw_ring[txe->next_id];
+	RTE_MBUF_PREFETCH_TO_FREE(txn->mbuf);
+
+	/* Free previous mbuf */
+	if (txe->mbuf != NULL) {
+		rte_pktmbuf_free_seg(txe->mbuf);
+		txe->mbuf = NULL;
+	}
+
+	/* Update ctx_curr */
+	txq->ctx_curr ^= 1;
 }
 
 /*
@@ -1460,16 +1590,22 @@ static uint32_t igc_tx_launchtime(uint64_t txtime, uint16_t port_id)
  * Rework required to go with the pre-defined values.
  */
 static inline void
-igc_set_xmit_ctx(struct igc_tx_queue *txq,
-		volatile struct e1000_adv_tx_context_desc *ctx_txd,
+igc_set_xmit_ctx(struct igc_tx_queue *txq, uint16_t *tx_id,
 		uint64_t ol_flags, union igc_tx_offload tx_offload,
-		uint64_t txtime)
+		uint64_t txtime, uint16_t tx_last)
 {
+	volatile union e1000_adv_tx_desc * const txr = txq->tx_ring;
+	struct igc_tx_entry * const sw_ring = txq->sw_ring;
+	volatile struct e1000_adv_tx_context_desc *ctx_txd;
+	struct igc_tx_entry *txe;
 	uint32_t type_tucmd_mlhl;
-	uint32_t mss_l4len_idx;
+	uint32_t mss_l4len_idx = 0;
 	uint32_t ctx_curr;
 	uint32_t vlan_macip_lens;
 	union igc_tx_offload tx_offload_mask;
+	bool need_frst_flag = false;
+	bool need_dummy_pkt = false;
+	uint32_t launch_time = 0;
 
 	/* Use the previous context */
 	txq->ctx_curr ^= 1;
@@ -1477,9 +1613,6 @@ igc_set_xmit_ctx(struct igc_tx_queue *txq,
 
 	tx_offload_mask.data = 0;
 	type_tucmd_mlhl = 0;
-
-	/* Specify which HW CTX to upload. */
-	mss_l4len_idx = (ctx_curr << E1000_ADVTXD_IDX_SHIFT);
 
 	if (ol_flags & RTE_MBUF_F_TX_VLAN)
 		tx_offload_mask.vlan_tci = 0xffff;
@@ -1542,18 +1675,32 @@ igc_set_xmit_ctx(struct igc_tx_queue *txq,
 		txq->ctx_cache[ctx_curr].tx_offload.data =
 			tx_offload_mask.data & tx_offload.data;
 		txq->ctx_cache[ctx_curr].tx_offload_mask = tx_offload_mask;
+	} else {
+		launch_time = igc_tx_launchtime(txtime, txq, &need_dummy_pkt,
+				&need_frst_flag);
 	}
 
+	if (need_frst_flag)
+		mss_l4len_idx |= IGC_ADVTXD_TSN_CNTX_FRST;
+
+	if (need_dummy_pkt)
+		igc_insert_dummy_packet(txq, tx_id);
+
+	/* Specify which HW CTX to upload. */
+	mss_l4len_idx |= (txq->ctx_curr << E1000_ADVTXD_IDX_SHIFT);
+
+	/* Set up Tx context descriptor */
+	ctx_txd = (volatile struct e1000_adv_tx_context_desc *)&txr[*tx_id];
 	ctx_txd->type_tucmd_mlhl = rte_cpu_to_le_32(type_tucmd_mlhl);
 	vlan_macip_lens = (uint32_t)tx_offload.data;
 	ctx_txd->vlan_macip_lens = rte_cpu_to_le_32(vlan_macip_lens);
 	ctx_txd->mss_l4len_idx = rte_cpu_to_le_32(mss_l4len_idx);
+	ctx_txd->u.launch_time = launch_time;
 
-	if (txtime)
-		ctx_txd->u.launch_time = igc_tx_launchtime(txtime,
-							   txq->port_id);
-	else
-		ctx_txd->u.launch_time = 0;
+	/* Update last_id and tx_id */
+	txe = &sw_ring[*tx_id];
+	txe->last_id = tx_last;
+	*tx_id = txe->next_id;
 }
 
 static inline uint32_t
@@ -1603,7 +1750,7 @@ igc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint64_t tx_ol_req;
 	uint32_t new_ctx = 0;
 	union igc_tx_offload tx_offload = {0};
-	uint64_t ts;
+	uint64_t ts = 0;
 
 	tx_id = txq->tx_tail;
 	txe = &sw_ring[tx_id];
@@ -1653,7 +1800,7 @@ igc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		/*
 		 * Check if there are enough free descriptors in the TX ring
 		 * to transmit the next packet.
-		 * This operation is based on the two following rules:
+		 * This operation is based on the three following rules:
 		 *
 		 *   1- Only check that the last needed TX descriptor can be
 		 *      allocated (by construction, if that descriptor is free,
@@ -1674,13 +1821,17 @@ igc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 *      By extension, avoid to allocate a free descriptor that
 		 *      belongs to the last set of free descriptors allocated
 		 *      to the same packet previously transmitted.
+		 *
+		 *   3- Make sure there are two extra descriptors available in
+		 *      the ring, in case a dummy packet is needed to dirty the
+		 *      current Qbv cycle when using launch time feature.
 		 */
 
 		/*
 		 * The "last descriptor" of the previously sent packet, if any,
 		 * which used the last descriptor to allocate.
 		 */
-		tx_end = sw_ring[tx_last].last_id;
+		tx_end = sw_ring[tx_last + 2].last_id;
 
 		/*
 		 * The next descriptor following that "last descriptor" in the
@@ -1740,10 +1891,6 @@ igc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		if (tx_ol_req) {
 			/* Setup TX Advanced context descriptor if required */
 			if (new_ctx) {
-				volatile struct e1000_adv_tx_context_desc *
-					ctx_txd = (volatile struct
-					e1000_adv_tx_context_desc *)&txr[tx_id];
-
 				txn = &sw_ring[txe->next_id];
 				RTE_MBUF_PREFETCH_TO_FREE(txn->mbuf);
 
@@ -1752,20 +1899,15 @@ igc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 					txe->mbuf = NULL;
 				}
 
-				if (igc_tx_timestamp_dynflag > 0) {
+				if (igc_tx_timestamp_dynflag > 0)
 					ts = *RTE_MBUF_DYNFIELD(tx_pkt,
 						igc_tx_timestamp_dynfield_offset,
 						uint64_t *);
-					igc_set_xmit_ctx(txq, ctx_txd,
-						tx_ol_req, tx_offload, ts);
-				} else {
-					igc_set_xmit_ctx(txq, ctx_txd,
-						tx_ol_req, tx_offload, 0);
-				}
 
-				txe->last_id = tx_last;
-				tx_id = txe->next_id;
-				txe = txn;
+				igc_set_xmit_ctx(txq, &tx_id, tx_ol_req,
+						 tx_offload, ts, tx_last);
+
+				txe = &sw_ring[tx_id];
 			}
 
 			/* Setup the TX Advanced Data Descriptor */
@@ -1863,6 +2005,7 @@ static void
 igc_tx_queue_release(struct igc_tx_queue *txq)
 {
 	igc_tx_queue_release_mbufs(txq);
+	rte_free(txq->dummy_pkt_buf);
 	rte_free(txq->sw_ring);
 	rte_free(txq);
 }
@@ -2016,6 +2159,21 @@ int eth_igc_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	}
 	PMD_DRV_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%" PRIx64,
 		txq->sw_ring, txq->tx_ring, txq->tx_ring_phys_addr);
+
+	/* Allocate dummy packet buffer */
+	txq->dummy_pkt_buf = rte_zmalloc("dummy_pkt", IGC_DUMMY_PKT_SIZE,
+			RTE_CACHE_LINE_SIZE);
+	if (txq->dummy_pkt_buf == NULL) {
+		igc_tx_queue_release(txq);
+		return -ENOMEM;
+	}
+
+	txq->dummy_pkt_dma = rte_mem_virt2iova(txq->dummy_pkt_buf);
+	if (txq->dummy_pkt_dma == RTE_BAD_IOVA) {
+		PMD_DRV_LOG(ERR, "Failed to get DMA address for dummy packet");
+		igc_tx_queue_release(txq);
+		return -ENOMEM;
+	}
 
 	igc_reset_tx_queue(txq);
 	dev->tx_pkt_burst = igc_xmit_pkts;

@@ -128,6 +128,15 @@ struct igc_tx_queue {
 	struct igc_advctx_info ctx_cache[IGC_CTX_NUM];
 	/**< Hardware context history.*/
 	uint64_t               offloads; /**< offloads of RTE_ETH_TX_OFFLOAD_* */
+
+	/**< Qbv cycle when the last first flag was marked. */
+	uint64_t               last_frst_flag;
+	/**< Qbv cycle when the last packet was transmitted. */
+	uint64_t               last_packet_cycle;
+	/**< Virtual address of dummy packet buffer for Qbv cycle dirtying. */
+	void                   *dummy_pkt_buf;
+	/**< DMA/physical address of dummy packet buffer for hardware access. */
+	rte_iova_t             dummy_pkt_dma;
 };
 
 /*
