@@ -3999,8 +3999,9 @@ hns3_handle_simple_bd(struct hns3_tx_queue *txq, struct hns3_desc *desc,
 	if (txq->simple_bd_enable && !(m->ol_flags & RTE_MBUF_F_TX_IP_CKSUM) &&
 	    !(m->ol_flags & RTE_MBUF_F_TX_TCP_SEG) &&
 	    !(m->ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM) &&
+	    !(m->ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM) &&
 	    ((m->ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_TCP_CKSUM ||
-	    (m->ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_UDP_CKSUM)) {
+	     (m->ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_UDP_CKSUM)) {
 		/* set checksum start and offset, defined in 2 Bytes */
 		hns3_set_field(desc->tx.type_cs_vlan_tso_len,
 			       HNS3_TXD_L4_START_M, HNS3_TXD_L4_START_S,
