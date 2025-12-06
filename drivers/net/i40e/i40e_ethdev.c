@@ -4149,6 +4149,16 @@ i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			i40e_vsi_config_vlan_stripping(vsi, TRUE);
 		else
 			i40e_vsi_config_vlan_stripping(vsi, FALSE);
+
+		/* When VLAN strip is enabled/disabled
+		 * after enabling outer VLAN stripping,
+		 * outer VLAN stripping gets disabled
+		 * as the register gets overridden by
+		 * VLAN's strip vsi param update.
+		 * Hence, re-enable outer VLAN stripping.
+		 */
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP)
+			i40e_vsi_config_outer_vlan_stripping(vsi, TRUE);
 	}
 
 	if (mask & RTE_ETH_VLAN_EXTEND_MASK) {
