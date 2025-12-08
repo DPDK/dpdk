@@ -1839,64 +1839,67 @@ static rte_be32_t vlan_hdr_to_be32(const struct rte_flow_action *actions)
 #endif
 }
 
-static __rte_always_inline struct mlx5_aso_mtr *
+static __rte_always_inline int
 flow_hw_meter_mark_alloc(struct rte_eth_dev *dev, uint32_t queue,
 			 const struct rte_flow_action *action,
 			 struct mlx5_hw_q_job *job, bool push,
+			 struct mlx5_aso_mtr **aso_mtr,
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_mtr_pool *pool = priv->hws_mpool;
 	const struct rte_flow_action_meter_mark *meter_mark = action->conf;
-	struct mlx5_aso_mtr *aso_mtr;
 	struct mlx5_flow_meter_info *fm;
 	uint32_t mtr_id = 0;
 	uintptr_t handle = (uintptr_t)MLX5_INDIRECT_ACTION_TYPE_METER_MARK <<
 					MLX5_INDIRECT_ACTION_TYPE_OFFSET;
 
-	if (priv->shared_host) {
-		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				   "Meter mark actions can only be created on the host port");
-		return NULL;
-	}
+	if (priv->shared_host)
+		return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Meter mark actions can only be created on the host port");
+	MLX5_ASSERT(aso_mtr);
 	if (meter_mark->profile == NULL)
-		return NULL;
-	aso_mtr = mlx5_ipool_malloc(pool->idx_pool, &mtr_id);
-	if (!aso_mtr) {
-		rte_flow_error_set(error, ENOMEM,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL,
-				   "failed to allocate aso meter entry");
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "No Meter mark profile");
+
+	*aso_mtr = mlx5_ipool_malloc(pool->idx_pool, &mtr_id);
+	if (!*aso_mtr) {
 		if (mtr_id)
 			mlx5_ipool_free(pool->idx_pool, mtr_id);
-		return NULL;
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "failed to allocate aso meter entry");
 	}
 	/* Fill the flow meter parameters. */
-	aso_mtr->type = ASO_METER_INDIRECT;
-	fm = &aso_mtr->fm;
+	(*aso_mtr)->type = ASO_METER_INDIRECT;
+	fm = &(*aso_mtr)->fm;
 	fm->meter_id = mtr_id;
 	fm->profile = (struct mlx5_flow_meter_profile *)(meter_mark->profile);
 	fm->is_enable = meter_mark->state;
 	fm->color_aware = meter_mark->color_mode;
-	aso_mtr->pool = pool;
-	aso_mtr->state = (queue == MLX5_HW_INV_QUEUE) ?
+	(*aso_mtr)->pool = pool;
+	(*aso_mtr)->state = (queue == MLX5_HW_INV_QUEUE) ?
 			  ASO_METER_WAIT : ASO_METER_WAIT_ASYNC;
-	aso_mtr->offset = mtr_id - 1;
-	aso_mtr->init_color = fm->color_aware ? RTE_COLORS : RTE_COLOR_GREEN;
+	(*aso_mtr)->offset = mtr_id - 1;
+	(*aso_mtr)->init_color = fm->color_aware ? RTE_COLORS : RTE_COLOR_GREEN;
 	job->action = (void *)(handle | mtr_id);
 	/* Update ASO flow meter by wqe. */
-	if (mlx5_aso_meter_update_by_wqe(priv, queue, aso_mtr,
+	if (mlx5_aso_meter_update_by_wqe(priv, queue, *aso_mtr,
 					 &priv->mtr_bulk, job, push)) {
 		mlx5_ipool_free(pool->idx_pool, mtr_id);
-		return NULL;
+		return rte_flow_error_set(error, EBUSY,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "Failed to enqueue ASO meter update");
 	}
 	/* Wait for ASO object completion. */
 	if (queue == MLX5_HW_INV_QUEUE &&
-	    mlx5_aso_mtr_wait(priv, aso_mtr, true)) {
+	    mlx5_aso_mtr_wait(priv, *aso_mtr, true)) {
 		mlx5_ipool_free(pool->idx_pool, mtr_id);
-		return NULL;
+		return -EIO;
 	}
-	return aso_mtr;
+	return 0;
 }
 
 static __rte_always_inline int
@@ -1910,20 +1913,22 @@ flow_hw_meter_mark_compile(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_mtr_pool *pool = priv->hws_mpool;
-	struct mlx5_aso_mtr *aso_mtr;
+	struct mlx5_aso_mtr *aso_mtr = NULL;
 	struct mlx5_hw_q_job *job =
 		flow_hw_action_job_init(priv, queue, NULL, NULL, NULL,
 					MLX5_HW_Q_JOB_TYPE_CREATE,
 					MLX5_HW_INDIRECT_TYPE_LEGACY, NULL);
+	int ret;
 
 	if (!job)
 		return -1;
-	aso_mtr = flow_hw_meter_mark_alloc(dev, queue, action, job,
-					   true, error);
-	if (!aso_mtr) {
-		if (queue == MLX5_HW_INV_QUEUE)
-			queue = CTRL_QUEUE_ID(priv);
-		flow_hw_job_put(priv, job, queue);
+	ret = flow_hw_meter_mark_alloc(dev, queue, action, job, true, &aso_mtr, error);
+	if (ret) {
+		if (ret != -EIO) {
+			if (queue == MLX5_HW_INV_QUEUE)
+				queue = CTRL_QUEUE_ID(priv);
+			flow_hw_job_put(priv, job, queue);
+		}
 		return -1;
 	}
 
@@ -12377,12 +12382,13 @@ flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 	struct mlx5_hw_q_job *job = NULL;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_age *age;
-	struct mlx5_aso_mtr *aso_mtr;
+	struct mlx5_aso_mtr *aso_mtr = NULL;
 	cnt_id_t cnt_id;
 	uint32_t age_idx;
 	bool push = flow_hw_action_push(attr);
 	bool aso = false;
 	bool force_job = action->type == RTE_FLOW_ACTION_TYPE_METER_MARK;
+	int ret;
 
 	if (!mlx5_hw_ctx_validate(dev, error))
 		return NULL;
@@ -12438,9 +12444,15 @@ flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 		break;
 	case RTE_FLOW_ACTION_TYPE_METER_MARK:
 		aso = true;
-		aso_mtr = flow_hw_meter_mark_alloc(dev, queue, action, job, push, error);
-		if (!aso_mtr)
+		ret = flow_hw_meter_mark_alloc(dev, queue, action, job, push, &aso_mtr, error);
+		if (ret) {
+			if (ret != -EIO) {
+				if (queue == MLX5_HW_INV_QUEUE)
+					queue = CTRL_QUEUE_ID(priv);
+				flow_hw_job_put(priv, job, queue);
+			}
 			break;
+		}
 		handle = (void *)(uintptr_t)job->action;
 		break;
 	case RTE_FLOW_ACTION_TYPE_RSS:
@@ -12456,7 +12468,7 @@ flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 				   NULL, "action type not supported");
 		break;
 	}
-	if (job && !force_job) {
+	if (job && (!force_job || handle)) {
 		job->action = handle;
 		flow_hw_action_finalize(dev, queue, job, push, aso,
 					handle != NULL);
