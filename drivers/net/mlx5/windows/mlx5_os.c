@@ -690,23 +690,27 @@ mlx5_os_read_dev_stat(struct mlx5_priv *priv, const char *ctr_name,
 
 /**
  * Flush device MAC addresses
- * Currently it has no support under Windows.
- *
+ * Currently Windows does not support adding and removing MAC addresses,
+ * This function resets the mac_own bit for all MAC addresses for internal tracking.
  * @param dev
  *   Pointer to Ethernet device structure.
- *
  */
 void
 mlx5_os_mac_addr_flush(struct rte_eth_dev *dev)
 {
-	(void)dev;
-	DRV_LOG(WARNING, "%s: is not supported", __func__);
+	struct mlx5_priv *priv = dev->data->dev_private;
+	int i;
+
+	for (i = MLX5_MAX_MAC_ADDRESSES - 1; i >= 0; --i) {
+		if (BITFIELD_ISSET(priv->mac_own, i))
+			BITFIELD_RESET(priv->mac_own, i);
+	}
 }
 
 /**
  * Remove a MAC address from device
- * Currently it has no support under Windows.
- *
+ * Currently Windows does not support adding and removing MAC addresses,
+ * This function resets the mac_own bit for the specified index for internal tracking.
  * @param dev
  *   Pointer to Ethernet device structure.
  * @param index
@@ -715,14 +719,16 @@ mlx5_os_mac_addr_flush(struct rte_eth_dev *dev)
 void
 mlx5_os_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
-	(void)dev;
-	(void)(index);
-	DRV_LOG(WARNING, "%s: is not supported", __func__);
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (index < MLX5_MAX_MAC_ADDRESSES)
+		BITFIELD_RESET(priv->mac_own, index);
 }
 
 /**
  * Adds a MAC address to the device
- * Currently it has no support under Windows.
+ * Currently Windows does not support adding and removing MAC addresses,
+ * This function sets the mac_own bit only if the MAC address already exists.
  *
  * @param dev
  *   Pointer to Ethernet device structure.
@@ -738,7 +744,7 @@ int
 mlx5_os_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 		     uint32_t index)
 {
-	(void)index;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_ether_addr lmac;
 
 	if (mlx5_get_mac(dev, &lmac.addr_bytes)) {
@@ -753,6 +759,8 @@ mlx5_os_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 			"adding new mac address to device is unsupported");
 		return -ENOTSUP;
 	}
+	/* Mark this MAC address as owned by the PMD */
+	BITFIELD_SET(priv->mac_own, index);
 	return 0;
 }
 
