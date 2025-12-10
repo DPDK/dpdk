@@ -2789,6 +2789,14 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 		}
 	}
 
+	/* Get PTP caps early to verify device capabilities */
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_CAP_PTP) {
+		if (iavf_get_ptp_cap(adapter)) {
+			PMD_INIT_LOG(ERR, "Failed to get ptp capability");
+			goto security_init_err;
+		}
+	}
+
 	iavf_default_rss_disable(adapter);
 
 	iavf_dev_stats_reset(eth_dev);
