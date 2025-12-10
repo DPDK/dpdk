@@ -15,6 +15,12 @@ from glob import glob
 from os.path import exists, basename
 from os.path import join as path_join
 
+is_linux = sys.platform.startswith('linux')
+is_bsd = sys.platform.startswith('freebsd')
+freebsd_err_unsupported_string = """Error: This operation is unsupported on FreeBSD.
+See FreeBSD Getting Started Guide for details on binding and unbinding devices.
+"""
+
 # The PCI base class for all devices
 network_class = {'Class': '02', 'Vendor': None, 'Device': None,
                  'SVendor': None, 'SDevice': None}
@@ -106,7 +112,7 @@ misc_devices = [cnxk_bphy, cnxk_bphy_cgx, cnxk_inl_dev,
 # Each device within this is itself a dictionary of device properties
 devices = {}
 # list of supported DPDK drivers
-dpdk_drivers = ["igb_uio", "vfio-pci", "uio_pci_generic"]
+dpdk_drivers = ["igb_uio", "vfio-pci", "uio_pci_generic"] if is_linux else ["nic_uio"]
 # list of currently loaded kernel modules
 loaded_modules = None
 
@@ -123,6 +129,9 @@ args = []
 # check if a specific kernel module is loaded
 def module_is_loaded(module):
     global loaded_modules
+
+    if is_bsd:
+        return subprocess.run(["kldstat", "-qn", module]).returncode == 0
 
     if module == 'vfio_pci':
         module = 'vfio-pci'
@@ -214,12 +223,8 @@ def clear_data():
     devices = {}
 
 
-def get_device_details(devices_type):
-    '''This function populates the "devices" dictionary. The keys used are
-    the pci addresses (domain:bus:slot.func). The values are themselves
-    dictionaries - one for each NIC.'''
+def get_basic_devinfo_linux(devices_type):
     global devices
-    global dpdk_drivers
 
     # first loop through and read details for all devices
     # request machine readable format, with numeric IDs and String
@@ -248,7 +253,53 @@ def get_device_details(devices_type):
             dev[name.rstrip(":")] = value_list[len(value_list) - 1] \
                 .rstrip("]").lstrip("[")
 
-    if devices_type == network_devices:
+
+def get_basic_devinfo_bsd(devices_type):
+    global devices
+
+    dev_lines = subprocess.check_output(["pciconf", "-l"]).decode("utf8").splitlines()
+    netifs = subprocess.check_output(["ifconfig", "-a"]).decode("utf8").splitlines()
+    for dev_line in dev_lines:
+        dev = {}
+        name_addr, fields = dev_line.split(maxsplit=1)
+        devname, addr = name_addr.split('@')
+        dev["Slot"] = addr
+        dev["Slot_str"] = addr
+        dev["Driver_str"] = devname[:-1]
+        if devices_type == network_devices:
+            iflines = [ln for ln in netifs if ln.startswith(f"{devname}:")]
+            if iflines:
+                dev["Interface"] = devname
+        fields = fields.split()
+        for field in fields:
+            name, value = field.split("=")
+            name = name.title()
+            if name.startswith("Sub"):
+                name = "S" + name[3:].title()
+            dev[name + "_str"] = value
+            dev[name] = value[2:] if value.startswith("0x") else value
+        # explicitly query the device name string
+        devdetails = subprocess.check_output(["pciconf", "-lv", addr]).decode("utf8")
+        for devline in devdetails.splitlines():
+            if devline.lstrip().startswith("device") and "=" in devline:
+                dev["Device_str"] = devline.split("=")[1].strip().strip("'")
+        if device_type_match(dev, devices_type):
+            devices[addr] = dict(dev)
+
+
+def get_device_details(devices_type):
+    '''This function populates the "devices" dictionary. The keys used are
+    the pci addresses (domain:bus:slot.func). The values are themselves
+    dictionaries - one for each NIC.'''
+    global devices
+    global dpdk_drivers
+
+    if is_linux:
+        get_basic_devinfo_linux(devices_type)
+    else:
+        get_basic_devinfo_bsd(devices_type)
+
+    if is_linux and devices_type == network_devices:
         # check what is the interface if any for an ssh connection if
         # any to this host, so we can mark it later.
         ssh_if = []
@@ -271,7 +322,7 @@ def get_device_details(devices_type):
         # No need to probe lspci
         devices[d].update(get_pci_device_details(d, False).items())
 
-        if devices_type == network_devices:
+        if is_linux and devices_type == network_devices:
             for _if in ssh_if:
                 if _if in devices[d]["Interface"].split(","):
                     devices[d]["Ssh_if"] = True
@@ -470,6 +521,9 @@ def bind_one(dev_id, driver, force):
 def unbind_all(dev_list, force=False):
     """Unbind method, takes a list of device locations"""
 
+    if is_bsd:
+        sys.exit(freebsd_err_unsupported_string)
+
     if dev_list[0] == "dpdk":
         for d in devices.keys():
             if "Driver_str" in devices[d]:
@@ -519,6 +573,9 @@ def check_noiommu_mode():
 def bind_all(dev_list, driver, force=False):
     """Bind method, takes a list of device locations"""
     global devices
+
+    if is_bsd:
+        sys.exit(freebsd_err_unsupported_string)
 
     # a common user error is to forget to specify the driver the devices need to
     # be bound to. check if the driver is a valid device, and if it is, show
@@ -719,10 +776,7 @@ def parse_args():
     global vfio_uid
     global vfio_gid
 
-    parser = argparse.ArgumentParser(
-        description='Utility to bind and unbind devices from Linux kernel',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+    epilog_linux = """
 Examples:
 ---------
 
@@ -740,7 +794,16 @@ To unbind 0000:01:00.0 from using any driver
 
 To bind 0000:02:00.0 and 0000:02:00.1 to the ixgbe kernel driver
         %(prog)s -b ixgbe 02:00.0 02:00.1
-""")
+"""
+    epilog_bsd = """
+NOTE: Only query options, -s/--status and --status-dev, are supported on FreeBSD.
+"""
+
+    epilog = epilog_linux if is_linux else epilog_bsd
+    parser = argparse.ArgumentParser(
+        description='Utility to bind and unbind devices from OS kernel',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=epilog)
 
     parser.add_argument(
         '-s',
@@ -866,12 +929,13 @@ def do_arg_actions():
 
 def main():
     '''program main function'''
-    # check if lspci is installed, suppress any output
+    # check if lspci/pciconf is installed, suppress any output
+    pcitool = 'lspci' if is_linux else 'pciconf'
     with open(os.devnull, 'w') as devnull:
-        ret = subprocess.call(['which', 'lspci'],
+        ret = subprocess.call(['which', pcitool],
                               stdout=devnull, stderr=devnull)
         if ret != 0:
-            sys.exit("'lspci' not found - please install 'pciutils'")
+            sys.exit(f"'{pcitool}' not found - please install relevant package, e.g. 'pciutils'")
     parse_args()
     check_modules()
     clear_data()
