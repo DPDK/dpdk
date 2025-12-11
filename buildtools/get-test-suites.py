@@ -38,4 +38,5 @@ for fname in input_list:
 
 for suite in test_suites.keys():
     print(f"{suite}={','.join(test_suites[suite])}")
-print(f"non_suite_tests={','.join(non_suite_tests)}")
+if non_suite_tests:
+    print(f"non_suite_tests={','.join(non_suite_tests)}")
