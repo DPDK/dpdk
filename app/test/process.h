@@ -18,6 +18,7 @@
 
 #include <rte_string_fns.h> /* strlcpy */
 #include <rte_devargs.h>
+#include <rte_eal.h>
 
 #ifdef RTE_EXEC_ENV_FREEBSD
 #define self "curproc"
@@ -36,6 +37,7 @@ extern uint16_t flag_for_send_pkts;
 #endif
 
 #define PREFIX_ALLOW "--allow="
+#define PREFIX_DRIVER_PATH "--driver-path="
 
 static int
 add_parameter_allow(char **argv, int max_capacity)
@@ -63,6 +65,23 @@ add_parameter_allow(char **argv, int max_capacity)
 	return count;
 }
 
+static int
+add_parameter_driver_path(char **argv, int max_capacity)
+{
+	const char *driver_path;
+	int count = 0;
+
+	RTE_EAL_DRIVER_PATH_FOREACH(driver_path, true) {
+		if (asprintf(&argv[count], PREFIX_DRIVER_PATH"%s", driver_path) < 0)
+			break;
+
+		if (++count == max_capacity)
+			break;
+	}
+
+	return count;
+}
+
 /*
  * launches a second copy of the test process using the given argv parameters,
  * which should include argv[0] as the process name. To identify in the
@@ -75,6 +94,7 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 	int num = 0;
 	char **argv_cpy;
 	int allow_num;
+	int driver_path_num;
 	int argv_num;
 	int i, status;
 	char path[32];
@@ -90,7 +110,8 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 		return -1;
 	else if (pid == 0) {
 		allow_num = rte_devargs_type_count(RTE_DEVTYPE_ALLOWED);
-		argv_num = numargs + allow_num + 1;
+		driver_path_num = rte_eal_driver_path_count(true);
+		argv_num = numargs + allow_num + driver_path_num + 1;
 		argv_cpy = calloc(argv_num, sizeof(char *));
 		if (!argv_cpy)
 			rte_panic("Memory allocation failed\n");
@@ -104,6 +125,11 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 		if (allow_num > 0)
 			num = add_parameter_allow(&argv_cpy[i], allow_num);
 		num += numargs;
+
+		if (driver_path_num > 0) {
+			int added = add_parameter_driver_path(&argv_cpy[num], driver_path_num);
+			num += added;
+		}
 
 #ifdef RTE_EXEC_ENV_LINUX
 		{
