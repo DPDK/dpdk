@@ -263,6 +263,7 @@ struct shared_driver {
 
 	char    name[PATH_MAX];
 	void*   lib_handle;
+	bool    from_cmdline; /**< true if from -d flag, false if driver found in a directory */
 };
 
 /* List of external loadable drivers */
@@ -533,7 +534,7 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 }
 
 static int
-eal_plugin_add(const char *path)
+eal_plugin_add(const char *path, bool from_cmdline)
 {
 	struct shared_driver *solib;
 
@@ -544,6 +545,7 @@ eal_plugin_add(const char *path)
 	}
 	memset(solib, 0, sizeof(*solib));
 	strlcpy(solib->name, path, PATH_MAX);
+	solib->from_cmdline = from_cmdline;
 	TAILQ_INSERT_TAIL(&solib_list, solib, next);
 
 	return 0;
@@ -595,7 +597,7 @@ eal_plugindir_init(const char *path)
 		if (!(stat(sopath, &sb) == 0 && S_ISREG(sb.st_mode)))
 			continue;
 
-		if (eal_plugin_add(sopath) == -1)
+		if (eal_plugin_add(sopath, false) == -1)
 			break;
 	}
 
@@ -727,7 +729,7 @@ eal_plugins_init(void)
 			*default_solib_dir != '\0' &&
 			stat(default_solib_dir, &sb) == 0 &&
 			S_ISDIR(sb.st_mode))
-		eal_plugin_add(default_solib_dir);
+		eal_plugin_add(default_solib_dir, false);
 
 	TAILQ_FOREACH(solib, &solib_list, next) {
 
@@ -750,6 +752,50 @@ eal_plugins_init(void)
 	return 0;
 }
 #endif
+
+RTE_EXPORT_INTERNAL_SYMBOL(rte_eal_driver_path_next)
+const char *
+rte_eal_driver_path_next(const char *start, bool cmdline_only)
+{
+	struct shared_driver *solib;
+
+	if (start == NULL) {
+		solib = TAILQ_FIRST(&solib_list);
+	} else {
+		/* Find the current entry based on the name string */
+		TAILQ_FOREACH(solib, &solib_list, next) {
+			if (start == solib->name) {
+				solib = TAILQ_NEXT(solib, next);
+				break;
+			}
+		}
+		if (solib == NULL)
+			return NULL;
+	}
+
+	/* Skip entries that were expanded from directories if cmdline_only is true */
+	if (cmdline_only) {
+		while (solib != NULL && !solib->from_cmdline)
+			solib = TAILQ_NEXT(solib, next);
+	}
+
+	return solib ? solib->name : NULL;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(rte_eal_driver_path_count)
+unsigned int
+rte_eal_driver_path_count(bool cmdline_only)
+{
+	struct shared_driver *solib;
+	unsigned int count = 0;
+
+	TAILQ_FOREACH(solib, &solib_list, next) {
+		if (!cmdline_only || solib->from_cmdline)
+			count++;
+	}
+
+	return count;
+}
 
 /*
  * Parse the coremask given as argument (hexadecimal string) and fill
@@ -1929,7 +1975,7 @@ eal_parse_args(void)
 			return -1;
 	/* driver loading options */
 	TAILQ_FOREACH(arg, &args.driver_path, next)
-		if (eal_plugin_add(arg->arg) < 0)
+		if (eal_plugin_add(arg->arg, true) < 0)
 			return -1;
 
 	if (remap_lcores && args.remap_lcore_ids != (void *)1) {
