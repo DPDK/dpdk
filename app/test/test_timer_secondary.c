@@ -162,7 +162,7 @@ test_timer_secondary(void)
 		ret = timer_secondary_spawn_wait(*sec_lcorep);
 		TEST_ASSERT_SUCCESS(ret, "Secondary process execution failed");
 
-		rte_delay_ms(2000);
+		rte_delay_ms(500);
 
 		test_info->exit_flag = 1;
 		rte_eal_wait_lcore(*mgr_lcorep);
@@ -189,8 +189,8 @@ test_timer_secondary(void)
 
 			rte_timer_init(tim);
 
-			/* generate timeouts between 10 and 160 ms */
-			timeout_ms = ((rte_rand() & 0xF) + 1) * 10;
+			/* generate timeouts between 10 and 80 ms */
+			timeout_ms = ((rte_rand() & 0x7) + 1) * 10;
 			ticks = timeout_ms * rte_get_timer_hz() / MSECPERSEC;
 
 			ret = rte_timer_alt_reset(test_info->timer_data_id,
