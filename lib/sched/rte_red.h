@@ -172,8 +172,15 @@ __rte_red_calc_qempty_factor(uint8_t wq_log2, uint16_t m)
 	f = (n >> 6) & 0xf;
 	n >>= 10;
 
-	if (n < RTE_RED_SCALING)
+	if (n < RTE_RED_SCALING) {
+		/* When n == 0, no rounding or shifting needed.
+		 * For n > 0, add 2^(n-1) for rounding before right shift.
+		 * This avoids UB from (1 << -1) when n == 0.
+		 */
+		if (n == 0)
+			return (uint16_t) rte_red_pow2_frac_inv[f];
 		return (uint16_t) ((rte_red_pow2_frac_inv[f] + (1 << (n - 1))) >> n);
+	}
 
 	return 0;
 }
