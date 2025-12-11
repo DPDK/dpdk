@@ -218,5 +218,9 @@ void add_test_command(struct test_command *t);
  */
 #define REGISTER_FAST_TEST(cmd, no_huge, ASan, func)  REGISTER_TEST_COMMAND(cmd, func)
 
+/* For unstable or experimental tests cases which need work or which may be removed
+ * in the future.
+ */
+#define REGISTER_ATTIC_TEST REGISTER_TEST_COMMAND
 
 #endif
