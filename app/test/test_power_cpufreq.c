@@ -661,7 +661,7 @@ test_power_caps(void)
 			"correctly(APCI cpufreq) or operating in another valid "
 			"Power management environment\n", TEST_POWER_LCORE_ID);
 		rte_power_unset_env();
-		return -1;
+		return TEST_SKIPPED;
 	}
 
 	ret = rte_power_get_capabilities(TEST_POWER_LCORE_ID, &caps);
