@@ -18,7 +18,7 @@ def get_fast_test_params(test_name, ln):
     "Extract the extra fast-test parameters from the line"
     (_, rest_of_line) = ln.split(test_name, 1)
     (_, nohuge, asan, _func) = rest_of_line.split(',', 3)
-    return f":{nohuge.strip().lower()}:{asan.strip().lower()}"
+    return f":{nohuge.strip()}:{asan.strip()}"
 
 for fname in input_list:
     with open(fname, "r", encoding="utf-8") as f:

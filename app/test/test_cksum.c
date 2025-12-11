@@ -267,4 +267,4 @@ fail:
 }
 #undef GOTO_FAIL
 
-REGISTER_FAST_TEST(cksum_autotest, true, true, test_cksum);
+REGISTER_FAST_TEST(cksum_autotest, NOHUGE_OK, ASAN_OK, test_cksum);

@@ -190,4 +190,4 @@ test_ptr_compress(void)
 	return 0;
 }
 
-REGISTER_FAST_TEST(ptr_compress_autotest, true, true, test_ptr_compress);
+REGISTER_FAST_TEST(ptr_compress_autotest, NOHUGE_OK, ASAN_OK, test_ptr_compress);

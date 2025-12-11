@@ -953,4 +953,4 @@ err:
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_FAST_TEST(distributor_autotest, false, true, test_distributor);
+REGISTER_FAST_TEST(distributor_autotest, NOHUGE_SKIP, ASAN_OK, test_distributor);

@@ -303,4 +303,4 @@ fail_all:
 }
 #endif
 
-REGISTER_FAST_TEST(power_intel_uncore_autotest, true, true, test_power_intel_uncore);
+REGISTER_FAST_TEST(power_intel_uncore_autotest, NOHUGE_OK, ASAN_OK, test_power_intel_uncore);

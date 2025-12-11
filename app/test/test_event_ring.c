@@ -256,4 +256,4 @@ test_event_ring(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_FAST_TEST(event_ring_autotest, true, true, test_event_ring);
+REGISTER_FAST_TEST(event_ring_autotest, NOHUGE_OK, ASAN_OK, test_event_ring);

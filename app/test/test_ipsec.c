@@ -2617,4 +2617,4 @@ test_ipsec(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_FAST_TEST(ipsec_autotest, true, true, test_ipsec);
+REGISTER_FAST_TEST(ipsec_autotest, NOHUGE_OK, ASAN_OK, test_ipsec);

@@ -1081,7 +1081,7 @@ test_service_common(void)
 	return unit_test_suite_runner(&service_tests);
 }
 
-REGISTER_FAST_TEST(service_autotest, true, true, test_service_common);
+REGISTER_FAST_TEST(service_autotest, NOHUGE_OK, ASAN_OK, test_service_common);
 
 static struct unit_test_suite service_perf_tests  = {
 	.suite_name = "service core performance test suite",

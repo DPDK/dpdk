@@ -3278,7 +3278,7 @@ test_bpf(void)
 
 #endif /* !RTE_LIB_BPF */
 
-REGISTER_FAST_TEST(bpf_autotest, true, true, test_bpf);
+REGISTER_FAST_TEST(bpf_autotest, NOHUGE_OK, ASAN_OK, test_bpf);
 
 #ifdef TEST_BPF_ELF_LOAD
 
@@ -3751,7 +3751,7 @@ test_bpf_elf(void)
 
 #endif /* !TEST_BPF_ELF_LOAD */
 
-REGISTER_FAST_TEST(bpf_elf_autotest, true, true, test_bpf_elf);
+REGISTER_FAST_TEST(bpf_elf_autotest, NOHUGE_OK, ASAN_OK, test_bpf_elf);
 
 #ifndef RTE_HAS_LIBPCAP
 
@@ -3969,4 +3969,4 @@ test_bpf_convert(void)
 
 #endif /* RTE_HAS_LIBPCAP */
 
-REGISTER_FAST_TEST(bpf_convert_autotest, true, true, test_bpf_convert);
+REGISTER_FAST_TEST(bpf_convert_autotest, NOHUGE_OK, ASAN_OK, test_bpf_convert);

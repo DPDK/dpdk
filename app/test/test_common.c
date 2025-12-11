@@ -354,4 +354,4 @@ test_common(void)
 	return ret;
 }
 
-REGISTER_FAST_TEST(common_autotest, true, true, test_common);
+REGISTER_FAST_TEST(common_autotest, NOHUGE_OK, ASAN_OK, test_common);

@@ -241,4 +241,4 @@ test_mcslock(void)
 	return ret;
 }
 
-REGISTER_FAST_TEST(mcslock_autotest, false, true, test_mcslock);
+REGISTER_FAST_TEST(mcslock_autotest, NOHUGE_SKIP, ASAN_OK, test_mcslock);

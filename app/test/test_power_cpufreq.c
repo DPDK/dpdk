@@ -678,5 +678,5 @@ test_power_caps(void)
 
 #endif
 
-REGISTER_FAST_TEST(power_cpufreq_autotest, false, true, test_power_cpufreq);
+REGISTER_FAST_TEST(power_cpufreq_autotest, NOHUGE_SKIP, ASAN_OK, test_power_cpufreq);
 REGISTER_TEST_COMMAND(power_caps_autotest, test_power_caps);

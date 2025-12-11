@@ -996,4 +996,4 @@ test_member(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_FAST_TEST(member_autotest, true, true, test_member);
+REGISTER_FAST_TEST(member_autotest, NOHUGE_OK, ASAN_OK, test_member);

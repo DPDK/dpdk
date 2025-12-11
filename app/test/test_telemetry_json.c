@@ -213,4 +213,4 @@ test_telemetry_json(void)
 	return 0;
 }
 
-REGISTER_FAST_TEST(telemetry_json_autotest, true, true, test_telemetry_json);
+REGISTER_FAST_TEST(telemetry_json_autotest, NOHUGE_OK, ASAN_OK, test_telemetry_json);

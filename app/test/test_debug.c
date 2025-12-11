@@ -183,4 +183,4 @@ test_debug(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_FAST_TEST(debug_autotest, true, true, test_debug);
+REGISTER_FAST_TEST(debug_autotest, NOHUGE_OK, ASAN_OK, test_debug);

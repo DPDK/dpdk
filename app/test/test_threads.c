@@ -280,4 +280,4 @@ test_threads(void)
 	return unit_test_suite_runner(&threads_test_suite);
 }
 
-REGISTER_FAST_TEST(threads_autotest, true, true, test_threads);
+REGISTER_FAST_TEST(threads_autotest, NOHUGE_OK, ASAN_OK, test_threads);

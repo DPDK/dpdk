@@ -1166,4 +1166,4 @@ test_malloc(void)
 	return unit_test_suite_runner(&test_suite);
 }
 
-REGISTER_FAST_TEST(malloc_autotest, false, true, test_malloc);
+REGISTER_FAST_TEST(malloc_autotest, NOHUGE_SKIP, ASAN_OK, test_malloc);

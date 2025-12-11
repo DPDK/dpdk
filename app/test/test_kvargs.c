@@ -364,4 +364,4 @@ test_kvargs(void)
 	return unit_test_suite_runner(&kvargs_test_suite);
 }
 
-REGISTER_FAST_TEST(kvargs_autotest, true, true, test_kvargs);
+REGISTER_FAST_TEST(kvargs_autotest, NOHUGE_OK, ASAN_OK, test_kvargs);

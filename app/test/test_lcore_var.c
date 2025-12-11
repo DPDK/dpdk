@@ -411,4 +411,4 @@ static int test_lcore_var(void)
 	return unit_test_suite_runner(&lcore_var_testsuite);
 }
 
-REGISTER_FAST_TEST(lcore_var_autotest, true, false, test_lcore_var);
+REGISTER_FAST_TEST(lcore_var_autotest, NOHUGE_OK, ASAN_SKIP, test_lcore_var);

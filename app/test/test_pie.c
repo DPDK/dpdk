@@ -1082,6 +1082,6 @@ test_pie_all(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_FAST_TEST(pie_autotest, true, true, test_pie);
+REGISTER_FAST_TEST(pie_autotest, NOHUGE_OK, ASAN_OK, test_pie);
 REGISTER_PERF_TEST(pie_perf, test_pie_perf);
 REGISTER_PERF_TEST(pie_all, test_pie_all);

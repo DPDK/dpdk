@@ -110,4 +110,4 @@ test_memory(void)
 	return 0;
 }
 
-REGISTER_FAST_TEST(memory_autotest, false, true, test_memory);
+REGISTER_FAST_TEST(memory_autotest, NOHUGE_SKIP, ASAN_OK, test_memory);

@@ -438,4 +438,4 @@ test_bitops(void)
 	return unit_test_suite_runner(&test_suite);
 }
 
-REGISTER_FAST_TEST(bitops_autotest, true, true, test_bitops);
+REGISTER_FAST_TEST(bitops_autotest, NOHUGE_OK, ASAN_OK, test_bitops);

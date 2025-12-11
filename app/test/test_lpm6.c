@@ -1767,4 +1767,4 @@ test_lpm6(void)
 	return global_status;
 }
 
-REGISTER_FAST_TEST(lpm6_autotest, true, true, test_lpm6);
+REGISTER_FAST_TEST(lpm6_autotest, NOHUGE_OK, ASAN_OK, test_lpm6);

@@ -1248,4 +1248,4 @@ test_fail:
 	return -1;
 }
 
-REGISTER_FAST_TEST(ring_autotest, true, true, test_ring);
+REGISTER_FAST_TEST(ring_autotest, NOHUGE_OK, ASAN_OK, test_ring);

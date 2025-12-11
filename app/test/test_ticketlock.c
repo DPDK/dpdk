@@ -315,4 +315,4 @@ test_ticketlock(void)
 	return ret;
 }
 
-REGISTER_FAST_TEST(ticketlock_autotest, true, true, test_ticketlock);
+REGISTER_FAST_TEST(ticketlock_autotest, NOHUGE_OK, ASAN_OK, test_ticketlock);

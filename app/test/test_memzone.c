@@ -1162,4 +1162,4 @@ test_memzone(void)
 	return 0;
 }
 
-REGISTER_FAST_TEST(memzone_autotest, false, true, test_memzone);
+REGISTER_FAST_TEST(memzone_autotest, NOHUGE_SKIP, ASAN_OK, test_memzone);

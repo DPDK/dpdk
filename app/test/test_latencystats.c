@@ -246,4 +246,4 @@ static int test_latencystats(void)
 	return unit_test_suite_runner(&latencystats_testsuite);
 }
 
-REGISTER_FAST_TEST(latencystats_autotest, true, true, test_latencystats);
+REGISTER_FAST_TEST(latencystats_autotest, NOHUGE_OK, ASAN_OK, test_latencystats);

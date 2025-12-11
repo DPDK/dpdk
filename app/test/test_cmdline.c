@@ -60,4 +60,4 @@ test_cmdline(void)
 	return 0;
 }
 
-REGISTER_FAST_TEST(cmdline_autotest, true, true, test_cmdline);
+REGISTER_FAST_TEST(cmdline_autotest, NOHUGE_OK, ASAN_OK, test_cmdline);

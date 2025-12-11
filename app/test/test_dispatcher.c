@@ -1053,4 +1053,4 @@ test_dispatcher(void)
 	return unit_test_suite_runner(&test_suite);
 }
 
-REGISTER_FAST_TEST(dispatcher_autotest, false, true, test_dispatcher);
+REGISTER_FAST_TEST(dispatcher_autotest, NOHUGE_SKIP, ASAN_OK, test_dispatcher);

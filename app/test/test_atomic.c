@@ -632,5 +632,5 @@ test_atomic(void)
 
 	return 0;
 }
-REGISTER_FAST_TEST(atomic_autotest, false, true, test_atomic);
+REGISTER_FAST_TEST(atomic_autotest, NOHUGE_SKIP, ASAN_OK, test_atomic);
 #endif /* RTE_TOOLCHAIN_MSVC */

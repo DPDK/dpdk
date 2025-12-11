@@ -171,4 +171,4 @@ test_bitcount(void)
 	return unit_test_suite_runner(&bitcount_test_suite);
 }
 
-REGISTER_FAST_TEST(bitcount_autotest, true, true, test_bitcount);
+REGISTER_FAST_TEST(bitcount_autotest, NOHUGE_OK, ASAN_OK, test_bitcount);

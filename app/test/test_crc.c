@@ -140,4 +140,4 @@ crc_autotest(void)
 	return ret;
 }
 
-REGISTER_FAST_TEST(crc_autotest, true, true, crc_autotest);
+REGISTER_FAST_TEST(crc_autotest, NOHUGE_OK, ASAN_OK, crc_autotest);

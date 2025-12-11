@@ -78,4 +78,4 @@ test_power(void)
 }
 #endif
 
-REGISTER_FAST_TEST(power_autotest, true, true, test_power);
+REGISTER_FAST_TEST(power_autotest, NOHUGE_OK, ASAN_OK, test_power);

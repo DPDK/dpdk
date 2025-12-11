@@ -118,4 +118,4 @@ test_per_lcore(void)
 	return 0;
 }
 
-REGISTER_FAST_TEST(per_lcore_autotest, true, true, test_per_lcore);
+REGISTER_FAST_TEST(per_lcore_autotest, NOHUGE_OK, ASAN_OK, test_per_lcore);

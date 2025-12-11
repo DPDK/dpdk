@@ -53,5 +53,5 @@ test_pmu(void)
 }
 
 /* disabled because of reported failures, waiting for a fix
- * REGISTER_FAST_TEST(pmu_autotest, true, true, test_pmu);
+ * REGISTER_FAST_TEST(pmu_autotest, NOHUGE_OK, ASAN_OK, test_pmu);
  */

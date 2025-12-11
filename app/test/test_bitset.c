@@ -909,4 +909,4 @@ test_bitset(void)
 	return unit_test_suite_runner(&bitset_tests);
 }
 
-REGISTER_FAST_TEST(bitset_autotest, true, true, test_bitset);
+REGISTER_FAST_TEST(bitset_autotest, NOHUGE_OK, ASAN_OK, test_bitset);

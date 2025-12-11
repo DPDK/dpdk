@@ -399,4 +399,4 @@ test_cfgfile(void)
 	return unit_test_suite_runner(&test_cfgfile_suite);
 }
 
-REGISTER_FAST_TEST(cfgfile_autotest, true, true, test_cfgfile);
+REGISTER_FAST_TEST(cfgfile_autotest, NOHUGE_OK, ASAN_OK, test_cfgfile);

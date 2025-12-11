@@ -594,4 +594,4 @@ out:
 	return ret;
 }
 
-REGISTER_FAST_TEST(interrupt_autotest, true, true, test_interrupt);
+REGISTER_FAST_TEST(interrupt_autotest, NOHUGE_OK, ASAN_OK, test_interrupt);

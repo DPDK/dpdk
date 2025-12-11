@@ -709,5 +709,5 @@ test_event_vector_adapter(void)
 #endif
 
 /* disabled because of reported failures, waiting for a fix
- * REGISTER_FAST_TEST(event_vector_adapter_autotest, true, true, test_event_vector_adapter);
+ * REGISTER_FAST_TEST(event_vector_adapter_autotest, NOHUGE_OK, ASAN_OK, test_event_vector_adapter);
  */

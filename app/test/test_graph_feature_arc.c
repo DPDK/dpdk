@@ -1368,6 +1368,6 @@ graph_feature_arc_autotest_fn(void)
 	return unit_test_suite_runner(&graph_feature_arc_testsuite);
 }
 
-REGISTER_FAST_TEST(graph_feature_arc_autotest, true, true, graph_feature_arc_autotest_fn);
+REGISTER_FAST_TEST(graph_feature_arc_autotest, NOHUGE_OK, ASAN_OK, graph_feature_arc_autotest_fn);
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */

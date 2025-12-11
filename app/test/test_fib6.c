@@ -640,5 +640,5 @@ test_slow_fib6(void)
 	return unit_test_suite_runner(&fib6_slow_tests);
 }
 
-REGISTER_FAST_TEST(fib6_autotest, true, true, test_fib6);
+REGISTER_FAST_TEST(fib6_autotest, NOHUGE_OK, ASAN_OK, test_fib6);
 REGISTER_PERF_TEST(fib6_slow_autotest, test_slow_fib6);

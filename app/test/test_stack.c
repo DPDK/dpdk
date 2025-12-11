@@ -379,5 +379,5 @@ test_lf_stack(void)
 #endif
 }
 
-REGISTER_FAST_TEST(stack_autotest, false, true, test_stack);
-REGISTER_FAST_TEST(stack_lf_autotest, false, true, test_lf_stack);
+REGISTER_FAST_TEST(stack_autotest, NOHUGE_SKIP, ASAN_OK, test_stack);
+REGISTER_FAST_TEST(stack_lf_autotest, NOHUGE_SKIP, ASAN_OK, test_lf_stack);

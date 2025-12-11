@@ -1010,4 +1010,5 @@ test_event_eth_tx_adapter_common(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_FAST_TEST(event_eth_tx_adapter_autotest, false, true, test_event_eth_tx_adapter_common);
+REGISTER_FAST_TEST(event_eth_tx_adapter_autotest, NOHUGE_SKIP, ASAN_OK,
+	test_event_eth_tx_adapter_common);

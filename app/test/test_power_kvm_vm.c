@@ -263,4 +263,4 @@ fail_all:
 }
 #endif
 
-REGISTER_FAST_TEST(power_kvm_vm_autotest, false, true, test_power_kvm_vm);
+REGISTER_FAST_TEST(power_kvm_vm_autotest, NOHUGE_SKIP, ASAN_OK, test_power_kvm_vm);

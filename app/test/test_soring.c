@@ -438,4 +438,4 @@ test_fail:
 	return -1;
 }
 
-REGISTER_FAST_TEST(soring_autotest, true, true, test_soring);
+REGISTER_FAST_TEST(soring_autotest, NOHUGE_OK, ASAN_OK, test_soring);

@@ -422,4 +422,4 @@ test_lcores(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(lcores_autotest, true, true, test_lcores);
+REGISTER_FAST_TEST(lcores_autotest, NOHUGE_OK, ASAN_OK, test_lcores);

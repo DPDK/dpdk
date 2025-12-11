@@ -601,4 +601,4 @@ test_timer(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(timer_autotest, false, true, test_timer);
+REGISTER_FAST_TEST(timer_autotest, NOHUGE_SKIP, ASAN_OK, test_timer);

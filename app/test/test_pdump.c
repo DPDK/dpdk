@@ -218,4 +218,4 @@ test_pdump(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(pdump_autotest, true, false, test_pdump);
+REGISTER_FAST_TEST(pdump_autotest, NOHUGE_OK, ASAN_SKIP, test_pdump);

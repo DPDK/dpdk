@@ -328,4 +328,4 @@ test_string_fns(void)
 	return 0;
 }
 
-REGISTER_FAST_TEST(string_autotest, true, true, test_string_fns);
+REGISTER_FAST_TEST(string_autotest, NOHUGE_OK, ASAN_OK, test_string_fns);

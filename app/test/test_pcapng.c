@@ -464,4 +464,4 @@ test_pcapng(void)
 	return unit_test_suite_runner(&test_pcapng_suite);
 }
 
-REGISTER_FAST_TEST(pcapng_autotest, true, true, test_pcapng);
+REGISTER_FAST_TEST(pcapng_autotest, NOHUGE_OK, ASAN_OK, test_pcapng);

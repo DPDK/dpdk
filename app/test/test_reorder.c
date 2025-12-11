@@ -552,4 +552,4 @@ test_reorder(void)
 }
 
 
-REGISTER_FAST_TEST(reorder_autotest, true, true, test_reorder);
+REGISTER_FAST_TEST(reorder_autotest, NOHUGE_OK, ASAN_OK, test_reorder);

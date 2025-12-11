@@ -218,4 +218,4 @@ test_net_ipv6(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(net_ipv6_autotest, true, true, test_net_ipv6);
+REGISTER_FAST_TEST(net_ipv6_autotest, NOHUGE_OK, ASAN_OK, test_net_ipv6);

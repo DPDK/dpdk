@@ -303,4 +303,4 @@ test_spinlock(void)
 	return ret;
 }
 
-REGISTER_FAST_TEST(spinlock_autotest, true, true, test_spinlock);
+REGISTER_FAST_TEST(spinlock_autotest, NOHUGE_OK, ASAN_OK, test_spinlock);

@@ -1122,4 +1122,4 @@ err:
 	return ret;
 }
 
-REGISTER_FAST_TEST(mempool_autotest, false, true, test_mempool);
+REGISTER_FAST_TEST(mempool_autotest, NOHUGE_SKIP, ASAN_OK, test_mempool);

@@ -327,4 +327,4 @@ test_cpuflags(void)
 	return 0;
 }
 
-REGISTER_FAST_TEST(cpuflags_autotest, true, true, test_cpuflags);
+REGISTER_FAST_TEST(cpuflags_autotest, NOHUGE_OK, ASAN_OK, test_cpuflags);
