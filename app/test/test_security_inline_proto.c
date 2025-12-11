@@ -3616,6 +3616,6 @@ test_event_inline_ipsec(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(inline_ipsec_autotest, test_inline_ipsec);
-REGISTER_TEST_COMMAND(inline_ipsec_sg_autotest, test_inline_ipsec_sg);
-REGISTER_TEST_COMMAND(event_inline_ipsec_autotest, test_event_inline_ipsec);
+REGISTER_DRIVER_TEST(inline_ipsec_autotest, test_inline_ipsec);
+REGISTER_DRIVER_TEST(inline_ipsec_sg_autotest, test_inline_ipsec_sg);
+REGISTER_DRIVER_TEST(event_inline_ipsec_autotest, test_event_inline_ipsec);

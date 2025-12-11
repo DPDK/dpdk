@@ -2584,4 +2584,4 @@ test_inline_macsec(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(inline_macsec_autotest, test_inline_macsec);
+REGISTER_DRIVER_TEST(inline_macsec_autotest, test_inline_macsec);

@@ -1555,7 +1555,7 @@ test_event_eth_rx_intr_adapter_common(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(event_eth_rx_adapter_autotest,
+REGISTER_DRIVER_TEST(event_eth_rx_adapter_autotest,
 		test_event_eth_rx_adapter_common);
-REGISTER_TEST_COMMAND(event_eth_rx_intr_adapter_autotest,
+REGISTER_DRIVER_TEST(event_eth_rx_intr_adapter_autotest,
 		test_event_eth_rx_intr_adapter_common);

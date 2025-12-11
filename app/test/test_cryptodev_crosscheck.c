@@ -1047,4 +1047,4 @@ exit:
 	return ret;
 }
 
-REGISTER_TEST_COMMAND(cryptodev_crosscheck, test_crosscheck);
+REGISTER_DRIVER_TEST(cryptodev_crosscheck, test_crosscheck);
