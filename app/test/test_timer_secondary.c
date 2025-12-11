@@ -160,11 +160,12 @@ test_timer_secondary(void)
 		TEST_ASSERT_SUCCESS(ret, "Failed to launch timer manage loop");
 
 		ret = timer_secondary_spawn_wait(*sec_lcorep);
-		TEST_ASSERT_SUCCESS(ret, "Secondary process execution failed");
+		/* must set exit flag even on error case, so check ret later */
 
 		rte_delay_ms(500);
-
 		test_info->exit_flag = 1;
+
+		TEST_ASSERT_SUCCESS(ret, "Secondary process execution failed");
 		rte_eal_wait_lcore(*mgr_lcorep);
 
 #ifdef RTE_LIBRTE_TIMER_DEBUG
