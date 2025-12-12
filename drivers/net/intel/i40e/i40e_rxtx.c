@@ -1341,8 +1341,8 @@ static __rte_always_inline int
 i40e_tx_free_bufs(struct ci_tx_queue *txq)
 {
 	struct ci_tx_entry *txep;
-	uint16_t tx_rs_thresh = txq->tx_rs_thresh;
-	uint16_t i = 0, j = 0;
+	const uint16_t tx_rs_thresh = txq->tx_rs_thresh;
+	uint16_t i, j;
 	struct rte_mbuf *free[I40E_TX_MAX_FREE_BUF_SZ];
 	const uint16_t k = RTE_ALIGN_FLOOR(tx_rs_thresh, I40E_TX_MAX_FREE_BUF_SZ);
 	const uint16_t m = tx_rs_thresh % I40E_TX_MAX_FREE_BUF_SZ;
@@ -1354,17 +1354,19 @@ i40e_tx_free_bufs(struct ci_tx_queue *txq)
 
 	txep = &txq->sw_ring[txq->tx_next_dd - (tx_rs_thresh - 1)];
 
-	for (i = 0; i < tx_rs_thresh; i++)
-		rte_prefetch0((txep + i)->mbuf);
+	struct rte_mempool *fast_free_mp =
+			likely(txq->fast_free_mp != (void *)UINTPTR_MAX) ?
+			txq->fast_free_mp :
+			(txq->fast_free_mp = txep[0].mbuf->pool);
 
-	if (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) {
+	if (fast_free_mp != NULL) {
 		if (k) {
 			for (j = 0; j != k; j += I40E_TX_MAX_FREE_BUF_SZ) {
 				for (i = 0; i < I40E_TX_MAX_FREE_BUF_SZ; ++i, ++txep) {
 					free[i] = txep->mbuf;
 					txep->mbuf = NULL;
 				}
-				rte_mbuf_raw_free_bulk(free[0]->pool, free,
+				rte_mbuf_raw_free_bulk(fast_free_mp, free,
 						I40E_TX_MAX_FREE_BUF_SZ);
 			}
 		}
@@ -1374,21 +1376,24 @@ i40e_tx_free_bufs(struct ci_tx_queue *txq)
 				free[i] = txep->mbuf;
 				txep->mbuf = NULL;
 			}
-			rte_mbuf_raw_free_bulk(free[0]->pool, free, m);
+			rte_mbuf_raw_free_bulk(fast_free_mp, free, m);
 		}
 	} else {
-		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
+		for (i = 0; i < tx_rs_thresh; i++)
+			rte_prefetch0((txep + i)->mbuf);
+
+		for (i = 0; i < tx_rs_thresh; ++i, ++txep) {
 			rte_pktmbuf_free_seg(txep->mbuf);
 			txep->mbuf = NULL;
 		}
 	}
 
-	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + txq->tx_rs_thresh);
-	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + txq->tx_rs_thresh);
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + tx_rs_thresh);
+	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + tx_rs_thresh);
 	if (txq->tx_next_dd >= txq->nb_tx_desc)
-		txq->tx_next_dd = (uint16_t)(txq->tx_rs_thresh - 1);
+		txq->tx_next_dd = (uint16_t)(tx_rs_thresh - 1);
 
-	return txq->tx_rs_thresh;
+	return tx_rs_thresh;
 }
 
 /* Populate 4 descriptors with data from 4 mbufs */
@@ -2618,6 +2623,8 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->queue_id = queue_idx;
 	txq->reg_idx = reg_idx;
 	txq->port_id = dev->data->port_id;
+	txq->fast_free_mp = offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE ?
+			(void *)UINTPTR_MAX : NULL;
 	txq->offloads = offloads;
 	txq->i40e_vsi = vsi;
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;

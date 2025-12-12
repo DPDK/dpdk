@@ -129,10 +129,14 @@ ci_tx_recycle_mbufs(struct ci_tx_queue *txq, ci_desc_done_fn desc_done,
 	rxep += refill_head;
 
 	/* is fast-free enabled in offloads? */
-	if (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) {
+	struct rte_mempool *fast_free_mp =
+			likely(txq->fast_free_mp != (void *)UINTPTR_MAX) ?
+			txq->fast_free_mp :
+			(txq->fast_free_mp = txep[0].mbuf->pool);
+
+	if (fast_free_mp != NULL) {
 		/* Avoid txq containing buffers from unexpected mempool. */
-		if (unlikely(recycle_rxq_info->mp
-					!= txep[0].mbuf->pool))
+		if (unlikely(recycle_rxq_info->mp != fast_free_mp))
 			return 0;
 
 		/* Directly put mbufs from Tx to Rx. */

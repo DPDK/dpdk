@@ -1632,6 +1632,8 @@ ice_tx_queue_setup(struct rte_eth_dev *dev,
 
 	txq->reg_idx = vsi->base_queue + queue_idx;
 	txq->port_id = dev->data->port_id;
+	txq->fast_free_mp = offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE ?
+			(void *)UINTPTR_MAX : NULL;
 	txq->offloads = offloads;
 	txq->ice_vsi = vsi;
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
@@ -3405,15 +3407,20 @@ ice_tx_free_bufs(struct ci_tx_queue *txq)
 
 	txep = &txq->sw_ring[txq->tx_next_dd - (txq->tx_rs_thresh - 1)];
 
-	for (i = 0; i < txq->tx_rs_thresh; i++)
-		rte_prefetch0((txep + i)->mbuf);
+	struct rte_mempool *fast_free_mp =
+			likely(txq->fast_free_mp != (void *)UINTPTR_MAX) ?
+			txq->fast_free_mp :
+			(txq->fast_free_mp = txep[0].mbuf->pool);
 
-	if (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) {
+	if (fast_free_mp != NULL) {
 		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
-			rte_mempool_put(txep->mbuf->pool, txep->mbuf);
+			rte_mempool_put(fast_free_mp, txep->mbuf);
 			txep->mbuf = NULL;
 		}
 	} else {
+		for (i = 0; i < txq->tx_rs_thresh; i++)
+			rte_prefetch0((txep + i)->mbuf);
+
 		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
 			rte_pktmbuf_free_seg(txep->mbuf);
 			txep->mbuf = NULL;

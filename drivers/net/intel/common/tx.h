@@ -62,6 +62,11 @@ struct ci_tx_queue {
 	uint16_t reg_idx;
 	uint16_t tx_next_dd;
 	uint16_t tx_next_rs;
+	/* Mempool pointer for fast release of mbufs.
+	 * NULL if disabled, UINTPTR_MAX if enabled and not yet known.
+	 * Set at first use (if enabled and not yet known).
+	 */
+	struct rte_mempool *fast_free_mp;
 	uint64_t offloads;
 	uint64_t mbuf_errors;
 	rte_iova_t tx_ring_dma;        /* TX ring DMA address */
@@ -171,8 +176,13 @@ ci_tx_free_bufs_vec(struct ci_tx_queue *txq, ci_desc_done_fn desc_done, bool ctx
 	struct ci_tx_entry_vec *txep = txq->sw_ring_vec;
 	txep += (txq->tx_next_dd >> ctx_descs) - (n - 1);
 
-	if (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE && (n & 31) == 0) {
-		struct rte_mempool *mp = txep[0].mbuf->pool;
+	/* is fast-free enabled? */
+	struct rte_mempool *mp =
+			likely(txq->fast_free_mp != (void *)UINTPTR_MAX) ?
+			txq->fast_free_mp :
+			(txq->fast_free_mp = txep[0].mbuf->pool);
+
+	if (mp != NULL && (n & 31) == 0) {
 		void **cache_objs;
 		struct rte_mempool_cache *cache = rte_mempool_default_cache(mp, rte_lcore_id());
 
