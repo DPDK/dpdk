@@ -168,8 +168,6 @@ struct idpf_vport {
 
 	uint16_t devarg_id;
 
-	bool tx_vec_allowed;
-
 	struct virtchnl2_vport_stats eth_stats_offset;
 
 	/* Event from ipf */
