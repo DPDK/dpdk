@@ -209,19 +209,6 @@ check_tx_thresh(uint16_t nb_desc, uint16_t tx_rs_thresh,
 }
 
 static inline bool
-check_tx_vec_allow(struct ci_tx_queue *txq)
-{
-	if (!(txq->offloads & IAVF_TX_NO_VECTOR_FLAGS) &&
-	    txq->tx_rs_thresh >= IAVF_VPMD_TX_BURST &&
-	    txq->tx_rs_thresh <= IAVF_VPMD_TX_MAX_FREE_BUF) {
-		PMD_INIT_LOG(DEBUG, "Vector tx can be enabled on this txq.");
-		return true;
-	}
-	PMD_INIT_LOG(DEBUG, "Vector Tx cannot be enabled on this txq.");
-	return false;
-}
-
-static inline bool
 check_rx_bulk_allow(struct ci_rx_queue *rxq)
 {
 	int ret = true;
@@ -860,12 +847,6 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->q_set = true;
 	dev->data->tx_queues[queue_idx] = txq;
 	txq->qtx_tail = hw->hw_addr + IAVF_QTX_TAIL1(queue_idx);
-
-	if (check_tx_vec_allow(txq) == false) {
-		struct iavf_adapter *ad =
-			IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-		ad->tx_vec_allowed = false;
-	}
 
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS &&
 	    vf->tm_conf.committed) {
@@ -4002,26 +3983,82 @@ iavf_rx_burst_mode_get(struct rte_eth_dev *dev,
 	return -EINVAL;
 }
 
-static const struct {
-	eth_tx_burst_t pkt_burst;
-	const char *info;
-} iavf_tx_pkt_burst_ops[] = {
-	[IAVF_TX_DISABLED] = {iavf_xmit_pkts_no_poll, "Disabled"},
-	[IAVF_TX_DEFAULT] = {iavf_xmit_pkts, "Scalar"},
+static const struct ci_tx_path_info iavf_tx_path_infos[] = {
+	[IAVF_TX_DISABLED] = {
+		.pkt_burst = iavf_xmit_pkts_no_poll,
+		.info = "Disabled",
+		.features = {
+			.disabled = true
+		}
+	},
+	[IAVF_TX_DEFAULT] = {
+		.pkt_burst = iavf_xmit_pkts,
+		.info = "Scalar",
+		.features = {
+			.tx_offloads = IAVF_TX_SCALAR_OFFLOADS,
+			.ctx_desc = true
+		}
+	},
 #ifdef RTE_ARCH_X86
-	[IAVF_TX_SSE] = {iavf_xmit_pkts_vec, "Vector SSE"},
-	[IAVF_TX_AVX2] = {iavf_xmit_pkts_vec_avx2, "Vector AVX2"},
-	[IAVF_TX_AVX2_OFFLOAD] = {iavf_xmit_pkts_vec_avx2_offload,
-		"Vector AVX2 Offload"},
+	[IAVF_TX_SSE] = {
+		.pkt_burst = iavf_xmit_pkts_vec,
+		.info = "Vector SSE",
+		.features = {
+			.tx_offloads = IAVF_TX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_128
+		}
+	},
+	[IAVF_TX_AVX2] = {
+		.pkt_burst = iavf_xmit_pkts_vec_avx2,
+		.info = "Vector AVX2",
+		.features = {
+			.tx_offloads = IAVF_TX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_256
+		}
+	},
+	[IAVF_TX_AVX2_OFFLOAD] = {
+		.pkt_burst = iavf_xmit_pkts_vec_avx2_offload,
+		.info = "Vector AVX2 Offload",
+		.features = {
+			.tx_offloads = IAVF_TX_VECTOR_OFFLOAD_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_256
+		}
+	},
 #ifdef CC_AVX512_SUPPORT
-	[IAVF_TX_AVX512] = {iavf_xmit_pkts_vec_avx512, "Vector AVX512"},
-	[IAVF_TX_AVX512_OFFLOAD] = {iavf_xmit_pkts_vec_avx512_offload,
-		"Vector AVX512 Offload"},
-	[IAVF_TX_AVX512_CTX] = {iavf_xmit_pkts_vec_avx512_ctx,
-		"Vector AVX512 Ctx"},
+	[IAVF_TX_AVX512] = {
+		.pkt_burst = iavf_xmit_pkts_vec_avx512,
+		.info = "Vector AVX512",
+		.features = {
+			.tx_offloads = IAVF_TX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_512
+		}
+	},
+	[IAVF_TX_AVX512_OFFLOAD] = {
+		.pkt_burst = iavf_xmit_pkts_vec_avx512_offload,
+		.info = "Vector AVX512 Offload",
+		.features = {
+			.tx_offloads = IAVF_TX_VECTOR_OFFLOAD_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_512
+		}
+	},
+	[IAVF_TX_AVX512_CTX] = {
+		.pkt_burst = iavf_xmit_pkts_vec_avx512_ctx,
+		.info = "Vector AVX512 Ctx",
+		.features = {
+			.tx_offloads = IAVF_TX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_512,
+			.ctx_desc = true
+		}
+	},
 	[IAVF_TX_AVX512_CTX_OFFLOAD] = {
-		iavf_xmit_pkts_vec_avx512_ctx_offload,
-		"Vector AVX512 Ctx Offload"},
+		.pkt_burst = iavf_xmit_pkts_vec_avx512_ctx_offload,
+		.info = "Vector AVX512 Ctx Offload",
+		.features = {
+			.tx_offloads = IAVF_TX_VECTOR_CTX_OFFLOAD_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_512,
+			.ctx_desc = true
+		}
+	},
 #endif
 #endif
 };
@@ -4034,10 +4071,10 @@ iavf_tx_burst_mode_get(struct rte_eth_dev *dev,
 	eth_tx_burst_t pkt_burst = dev->tx_pkt_burst;
 	size_t i;
 
-	for (i = 0; i < RTE_DIM(iavf_tx_pkt_burst_ops); i++) {
-		if (pkt_burst == iavf_tx_pkt_burst_ops[i].pkt_burst) {
+	for (i = 0; i < RTE_DIM(iavf_tx_path_infos); i++) {
+		if (pkt_burst == iavf_tx_path_infos[i].pkt_burst) {
 			snprintf(mode->info, sizeof(mode->info), "%s",
-				 iavf_tx_pkt_burst_ops[i].info);
+				 iavf_tx_path_infos[i].info);
 			return 0;
 		}
 	}
@@ -4073,7 +4110,7 @@ iavf_xmit_pkts_no_poll(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	tx_func_type = txq->iavf_vsi->adapter->tx_func_type;
 
-	return iavf_tx_pkt_burst_ops[tx_func_type].pkt_burst(tx_queue,
+	return iavf_tx_path_infos[tx_func_type].pkt_burst(tx_queue,
 								tx_pkts, nb_pkts);
 }
 
@@ -4158,7 +4195,7 @@ iavf_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts,
 			return 0;
 	}
 
-	return iavf_tx_pkt_burst_ops[tx_func_type].pkt_burst(tx_queue, tx_pkts, good_pkts);
+	return iavf_tx_path_infos[tx_func_type].pkt_burst(tx_queue, tx_pkts, good_pkts);
 }
 
 /* choose rx function*/
@@ -4229,109 +4266,66 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 {
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	enum iavf_tx_func_type tx_func_type;
 	int mbuf_check = adapter->devargs.mbuf_check;
 	int no_poll_on_link_down = adapter->devargs.no_poll_on_link_down;
 #ifdef RTE_ARCH_X86
 	struct ci_tx_queue *txq;
 	int i;
-	int check_ret;
-	bool use_sse = false;
-	bool use_avx2 = false;
-	bool use_avx512 = false;
-	enum rte_vect_max_simd tx_simd_path = iavf_get_max_simd_bitwidth();
+#endif
+	struct ci_tx_path_features req_features = {
+		.tx_offloads = dev->data->dev_conf.txmode.offloads,
+		.simd_width = RTE_VECT_SIMD_DISABLED,
+	};
 
-	check_ret = iavf_tx_vec_dev_check(dev);
+	/* The primary process selects the tx path for all processes. */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		goto out;
 
-	if (check_ret >= 0 &&
-	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
-		/* SSE not support offload path yet. */
-		if (check_ret == IAVF_VECTOR_PATH) {
-			use_sse = true;
-		}
+#ifdef RTE_ARCH_X86
+	if (iavf_tx_vec_dev_check(dev) != -1)
+		req_features.simd_width = iavf_get_max_simd_bitwidth();
 
-		use_avx2 = tx_simd_path == RTE_VECT_SIMD_256;
-		use_avx512 = tx_simd_path == RTE_VECT_SIMD_512;
+	if (rte_pmd_iavf_tx_lldp_dynfield_offset > 0)
+		req_features.ctx_desc = true;
 
-		if (!use_sse && !use_avx2 && !use_avx512)
-			goto normal;
-
-		if (use_sse) {
-			PMD_DRV_LOG(DEBUG, "Using Vector Tx (port %d).",
-				    dev->data->port_id);
-			tx_func_type = IAVF_TX_SSE;
-		}
-		if (!use_avx512 && use_avx2) {
-			if (check_ret == IAVF_VECTOR_PATH) {
-				tx_func_type = IAVF_TX_AVX2;
-				PMD_DRV_LOG(DEBUG, "Using AVX2 Vector Tx (port %d).",
-					    dev->data->port_id);
-			} else if (check_ret == IAVF_VECTOR_CTX_OFFLOAD_PATH) {
-				PMD_DRV_LOG(DEBUG,
-					"AVX2 does not support requested Tx offloads.");
-				goto normal;
-			} else {
-				tx_func_type = IAVF_TX_AVX2_OFFLOAD;
-				PMD_DRV_LOG(DEBUG, "Using AVX2 OFFLOAD Vector Tx (port %d).",
-					    dev->data->port_id);
-			}
-		}
-#ifdef CC_AVX512_SUPPORT
-		if (use_avx512) {
-			if (check_ret == IAVF_VECTOR_PATH) {
-				tx_func_type = IAVF_TX_AVX512;
-				PMD_DRV_LOG(DEBUG, "Using AVX512 Vector Tx (port %d).",
-					    dev->data->port_id);
-			} else if (check_ret == IAVF_VECTOR_OFFLOAD_PATH) {
-				tx_func_type = IAVF_TX_AVX512_OFFLOAD;
-				PMD_DRV_LOG(DEBUG, "Using AVX512 OFFLOAD Vector Tx (port %d).",
-					    dev->data->port_id);
-			} else if (check_ret == IAVF_VECTOR_CTX_PATH) {
-				tx_func_type = IAVF_TX_AVX512_CTX;
-				PMD_DRV_LOG(DEBUG, "Using AVX512 CONTEXT Vector Tx (port %d).",
-						dev->data->port_id);
-			} else {
-				tx_func_type = IAVF_TX_AVX512_CTX_OFFLOAD;
-				PMD_DRV_LOG(DEBUG, "Using AVX512 CONTEXT OFFLOAD Vector Tx (port %d).",
-					    dev->data->port_id);
-			}
-		}
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if (!txq)
+			continue;
+		if (txq->offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT &&
+				txq->vlan_flag == IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2)
+			req_features.ctx_desc = true;
+	}
 #endif
 
+	adapter->tx_func_type = ci_tx_path_select(&req_features,
+						&iavf_tx_path_infos[0],
+						RTE_DIM(iavf_tx_path_infos),
+						IAVF_TX_DEFAULT);
+
+out:
+#ifdef RTE_ARCH_X86
+	if (iavf_tx_path_infos[adapter->tx_func_type].features.simd_width != 0) {
 		for (i = 0; i < dev->data->nb_tx_queues; i++) {
 			txq = dev->data->tx_queues[i];
 			if (!txq)
 				continue;
 			iavf_txq_vec_setup(txq);
+			txq->use_ctx =
+				iavf_tx_path_infos[adapter->tx_func_type].features.ctx_desc;
 		}
-
-		if (no_poll_on_link_down) {
-			adapter->tx_func_type = tx_func_type;
-			dev->tx_pkt_burst = iavf_xmit_pkts_no_poll;
-		} else if (mbuf_check) {
-			adapter->tx_func_type = tx_func_type;
-			dev->tx_pkt_burst = iavf_xmit_pkts_check;
-		} else {
-			dev->tx_pkt_burst = iavf_tx_pkt_burst_ops[tx_func_type].pkt_burst;
-		}
-		return;
 	}
-
-normal:
 #endif
-	PMD_DRV_LOG(DEBUG, "Using Basic Tx callback (port=%d).",
-		    dev->data->port_id);
-	tx_func_type = IAVF_TX_DEFAULT;
 
-	if (no_poll_on_link_down) {
-		adapter->tx_func_type = tx_func_type;
+	if (no_poll_on_link_down)
 		dev->tx_pkt_burst = iavf_xmit_pkts_no_poll;
-	} else if (mbuf_check) {
-		adapter->tx_func_type = tx_func_type;
+	else if (mbuf_check)
 		dev->tx_pkt_burst = iavf_xmit_pkts_check;
-	} else {
-		dev->tx_pkt_burst = iavf_tx_pkt_burst_ops[tx_func_type].pkt_burst;
-	}
+	else
+		dev->tx_pkt_burst = iavf_tx_path_infos[adapter->tx_func_type].pkt_burst;
+
+	PMD_DRV_LOG(NOTICE, "Using %s (port %d).",
+		 iavf_tx_path_infos[adapter->tx_func_type].info, dev->data->port_id);
 }
 
 static int

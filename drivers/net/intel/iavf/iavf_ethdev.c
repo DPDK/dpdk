@@ -666,10 +666,8 @@ iavf_dev_configure(struct rte_eth_dev *dev)
 		return -EIO;
 
 	ad->rx_bulk_alloc_allowed = true;
-	/* Initialize to TRUE. If any of Rx queues doesn't meet the
-	 * vector Rx/Tx preconditions, it will be reset.
-	 */
-	ad->tx_vec_allowed = true;
+
+	ad->tx_func_type = IAVF_TX_DEFAULT;
 
 	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
 		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
@@ -2795,8 +2793,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->tx_pkt_prepare = &iavf_prep_pkts;
 
 	/* For secondary processes, we don't initialise any further as primary
-	 * has already done this work. Only check if we need a different RX
-	 * and TX function.
+	 * has already done this work.
 	 */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		iavf_set_rx_function(eth_dev);

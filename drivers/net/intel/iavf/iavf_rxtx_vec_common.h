@@ -73,8 +73,6 @@ iavf_rx_vec_queue_default(struct ci_rx_queue *rxq)
 static inline int
 iavf_tx_vec_queue_default(struct ci_tx_queue *txq)
 {
-	bool vlan_offload = false, vlan_needs_ctx = false;
-
 	if (!txq)
 		return -1;
 
@@ -82,35 +80,7 @@ iavf_tx_vec_queue_default(struct ci_tx_queue *txq)
 	    txq->tx_rs_thresh > IAVF_VPMD_TX_MAX_FREE_BUF)
 		return -1;
 
-	if (txq->offloads & IAVF_TX_NO_VECTOR_FLAGS)
-		return -1;
-
-	if (rte_pmd_iavf_tx_lldp_dynfield_offset > 0) {
-		txq->use_ctx = 1;
-		return IAVF_VECTOR_CTX_PATH;
-	}
-
-	/* Vlan tci needs to be inserted via ctx desc, if the vlan_flag is L2TAG2. */
-	if (txq->offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT) {
-		vlan_offload = true;
-		if (txq->vlan_flag == IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2)
-			vlan_needs_ctx = true;
-	}
-
-	/**
-	 * Tunneling parameters and other fields need be configured in ctx desc
-	 * if the outer checksum offload is enabled.
-	 */
-	if (txq->offloads & (IAVF_TX_VECTOR_OFFLOAD | IAVF_TX_VECTOR_OFFLOAD_CTX) || vlan_offload) {
-		if (txq->offloads & IAVF_TX_VECTOR_OFFLOAD_CTX || vlan_needs_ctx) {
-			txq->use_ctx = 1;
-			return IAVF_VECTOR_CTX_OFFLOAD_PATH;
-		} else {
-			return IAVF_VECTOR_OFFLOAD_PATH;
-		}
-	} else {
-		return IAVF_VECTOR_PATH;
-	}
+	return 0;
 }
 
 static inline int
@@ -137,19 +107,16 @@ iavf_tx_vec_dev_check_default(struct rte_eth_dev *dev)
 	int i;
 	struct ci_tx_queue *txq;
 	int ret;
-	int result = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
 		ret = iavf_tx_vec_queue_default(txq);
 
 		if (ret < 0)
-			return -1;
-		if (ret > result)
-			result = ret;
+			break;
 	}
 
-	return result;
+	return ret;
 }
 
 /******************************************************************************
