@@ -23,13 +23,6 @@
 		RTE_ETH_RX_OFFLOAD_TCP_CKSUM |	\
 		RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |	\
 		RTE_ETH_RX_OFFLOAD_TIMESTAMP)
-#define IDPF_TX_NO_VECTOR_FLAGS (		\
-		RTE_ETH_TX_OFFLOAD_TCP_TSO |	\
-		RTE_ETH_TX_OFFLOAD_MULTI_SEGS |	\
-		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |		\
-		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |		\
-		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |	\
-		RTE_ETH_TX_OFFLOAD_TCP_CKSUM)
 
 static inline int
 idpf_tx_desc_done(struct ci_tx_queue *txq, uint16_t idx)
@@ -72,9 +65,6 @@ idpf_tx_vec_queue_default(struct ci_tx_queue *txq)
 
 	if (txq->tx_rs_thresh < IDPF_VPMD_TX_MAX_BURST ||
 	    (txq->tx_rs_thresh & 3) != 0)
-		return IDPF_SCALAR_PATH;
-
-	if ((txq->offloads & IDPF_TX_NO_VECTOR_FLAGS) != 0)
 		return IDPF_SCALAR_PATH;
 
 	return IDPF_VECTOR_PATH;

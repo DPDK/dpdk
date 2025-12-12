@@ -813,97 +813,51 @@ idpf_set_tx_function(struct rte_eth_dev *dev)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
 #ifdef RTE_ARCH_X86
-	enum rte_vect_max_simd tx_simd_width = RTE_VECT_SIMD_DISABLED;
 #ifdef CC_AVX512_SUPPORT
 	struct ci_tx_queue *txq;
 	int i;
 #endif /* CC_AVX512_SUPPORT */
-
-	if (idpf_tx_vec_dev_check_default(dev) == IDPF_VECTOR_PATH &&
-	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
-		vport->tx_vec_allowed = true;
-		tx_simd_width = idpf_get_max_simd_bitwidth();
-#ifdef CC_AVX512_SUPPORT
-		if (tx_simd_width == RTE_VECT_SIMD_512) {
-			for (i = 0; i < dev->data->nb_tx_queues; i++) {
-				txq = dev->data->tx_queues[i];
-				idpf_qc_tx_vec_avx512_setup(txq);
-			}
-		}
-#else
-		PMD_DRV_LOG(NOTICE,
-			    "AVX512 is not supported in build env");
-#endif /* CC_AVX512_SUPPORT */
-	} else {
-		vport->tx_vec_allowed = false;
-	}
 #endif /* RTE_ARCH_X86 */
+	struct idpf_adapter *ad = vport->adapter;
+	struct ci_tx_path_features req_features = {
+		.tx_offloads = dev->data->dev_conf.txmode.offloads,
+		.simd_width = RTE_VECT_SIMD_DISABLED,
+		.single_queue = (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE)
+	};
+
+	/* The primary process selects the tx path for all processes. */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		goto out;
 
 #ifdef RTE_ARCH_X86
-	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT) {
-		if (vport->tx_vec_allowed) {
+	if (idpf_tx_vec_dev_check_default(dev) == IDPF_VECTOR_PATH)
+		req_features.simd_width = idpf_get_max_simd_bitwidth();
+#endif
+
+	ad->tx_func_type = ci_tx_path_select(&req_features,
+					&idpf_tx_path_infos[0],
+					IDPF_TX_MAX,
+					IDPF_TX_DEFAULT);
+
+out:
+	dev->tx_pkt_burst = idpf_tx_path_infos[ad->tx_func_type].pkt_burst;
+	dev->tx_pkt_prepare = idpf_dp_prep_pkts;
+	PMD_DRV_LOG(NOTICE, "Using %s Tx (port %d).",
+			idpf_tx_path_infos[ad->tx_func_type].info, dev->data->port_id);
+
+#ifdef RTE_ARCH_X86
 #ifdef CC_AVX512_SUPPORT
-			if (tx_simd_width == RTE_VECT_SIMD_512) {
-				PMD_DRV_LOG(NOTICE,
-					    "Using Split AVX512 Vector Tx (port %d).",
-					    dev->data->port_id);
-				dev->tx_pkt_burst = idpf_dp_splitq_xmit_pkts_avx512;
-				dev->tx_pkt_prepare = idpf_dp_prep_pkts;
-				return;
-			}
-#endif /* CC_AVX512_SUPPORT */
+	if (idpf_tx_path_infos[ad->tx_func_type].features.simd_width >= RTE_VECT_SIMD_256 &&
+			idpf_tx_path_infos[ad->tx_func_type].features.single_queue) {
+		for (i = 0; i < dev->data->nb_tx_queues; i++) {
+			txq = dev->data->tx_queues[i];
+			if (txq == NULL)
+				continue;
+			if (idpf_tx_path_infos[ad->tx_func_type].features.simd_width ==
+					RTE_VECT_SIMD_512)
+				idpf_qc_tx_vec_avx512_setup(txq);
 		}
-		PMD_DRV_LOG(NOTICE,
-			    "Using Split Scalar Tx (port %d).",
-			    dev->data->port_id);
-		dev->tx_pkt_burst = idpf_dp_splitq_xmit_pkts;
-		dev->tx_pkt_prepare = idpf_dp_prep_pkts;
-	} else {
-		if (vport->tx_vec_allowed) {
-#ifdef CC_AVX512_SUPPORT
-			if (tx_simd_width == RTE_VECT_SIMD_512) {
-				for (i = 0; i < dev->data->nb_tx_queues; i++) {
-					txq = dev->data->tx_queues[i];
-					if (txq == NULL)
-						continue;
-					idpf_qc_tx_vec_avx512_setup(txq);
-				}
-				PMD_DRV_LOG(NOTICE,
-					    "Using Single AVX512 Vector Tx (port %d).",
-					    dev->data->port_id);
-				dev->tx_pkt_burst = idpf_dp_singleq_xmit_pkts_avx512;
-				dev->tx_pkt_prepare = idpf_dp_prep_pkts;
-				return;
-			}
+	}
 #endif /* CC_AVX512_SUPPORT */
-			if (tx_simd_width == RTE_VECT_SIMD_256) {
-				PMD_DRV_LOG(NOTICE,
-					    "Using Single AVX2 Vector Tx (port %d).",
-					    dev->data->port_id);
-				dev->tx_pkt_burst = idpf_dp_singleq_xmit_pkts_avx2;
-				dev->tx_pkt_prepare = idpf_dp_prep_pkts;
-				return;
-			}
-		}
-		PMD_DRV_LOG(NOTICE,
-			    "Using Single Scalar Tx (port %d).",
-			    dev->data->port_id);
-		dev->tx_pkt_burst = idpf_dp_singleq_xmit_pkts;
-		dev->tx_pkt_prepare = idpf_dp_prep_pkts;
-	}
-#else
-	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT) {
-		PMD_DRV_LOG(NOTICE,
-			    "Using Split Scalar Tx (port %d).",
-			    dev->data->port_id);
-		dev->tx_pkt_burst = idpf_dp_splitq_xmit_pkts;
-		dev->tx_pkt_prepare = idpf_dp_prep_pkts;
-	} else {
-		PMD_DRV_LOG(NOTICE,
-			    "Using Single Scalar Tx (port %d).",
-			    dev->data->port_id);
-		dev->tx_pkt_burst = idpf_dp_singleq_xmit_pkts;
-		dev->tx_pkt_prepare = idpf_dp_prep_pkts;
-	}
 #endif /* RTE_ARCH_X86 */
 }

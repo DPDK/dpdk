@@ -75,6 +75,19 @@ enum idpf_rx_func_type {
 	IDPF_RX_MAX
 };
 
+enum idpf_tx_func_type {
+	IDPF_TX_DEFAULT,
+	IDPF_TX_SINGLEQ,
+	IDPF_TX_SINGLEQ_AVX2,
+	IDPF_TX_AVX512,
+	IDPF_TX_SINGLEQ_AVX512,
+	/* Need a max value defined as array values in are defined
+	 * in a C file in idpf driver, but cpfl driver needs to reuse
+	 * that array and know the size
+	 */
+	IDPF_TX_MAX
+};
+
 struct idpf_adapter {
 	struct idpf_hw hw;
 	struct virtchnl2_version_info virtchnl_version;
@@ -92,6 +105,7 @@ struct idpf_adapter {
 	uint64_t time_hw;
 
 	enum idpf_rx_func_type rx_func_type;
+	enum idpf_tx_func_type tx_func_type;
 };
 
 struct idpf_chunks_info {

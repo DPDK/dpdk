@@ -1701,3 +1701,52 @@ const struct ci_rx_path_info idpf_rx_path_infos[] = {
 #endif /* CC_AVX512_SUPPORT */
 #endif /* RTE_ARCH_X86 */
 };
+
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_tx_path_infos)
+const struct ci_tx_path_info idpf_tx_path_infos[] = {
+	[IDPF_TX_DEFAULT] = {
+		.pkt_burst = idpf_dp_splitq_xmit_pkts,
+		.info = "Split Scalar",
+		.features = {
+			.tx_offloads = IDPF_TX_SCALAR_OFFLOADS
+		}
+	},
+	[IDPF_TX_SINGLEQ] = {
+		.pkt_burst = idpf_dp_singleq_xmit_pkts,
+		.info = "Single Scalar",
+		.features = {
+			.tx_offloads = IDPF_TX_SCALAR_OFFLOADS,
+			.single_queue = true
+		}
+	},
+#ifdef RTE_ARCH_X86
+	[IDPF_TX_SINGLEQ_AVX2] = {
+		.pkt_burst = idpf_dp_singleq_xmit_pkts_avx2,
+		.info = "Single AVX2",
+		.features = {
+			.tx_offloads = IDPF_TX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_256,
+			.single_queue = true
+		}
+	},
+#ifdef CC_AVX512_SUPPORT
+	[IDPF_TX_AVX512] = {
+		.pkt_burst = idpf_dp_splitq_xmit_pkts_avx512,
+		.info = "Split AVX512",
+		.features = {
+			.tx_offloads = IDPF_TX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_512
+		}
+	},
+	[IDPF_TX_SINGLEQ_AVX512] = {
+		.pkt_burst = idpf_dp_singleq_xmit_pkts_avx512,
+		.info = "Single AVX512",
+		.features = {
+			.tx_offloads = IDPF_TX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_512,
+			.single_queue = true
+		}
+	},
+#endif /* CC_AVX512_SUPPORT */
+#endif /* RTE_ARCH_X86 */
+};

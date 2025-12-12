@@ -106,6 +106,17 @@
 		RTE_ETH_RX_OFFLOAD_SCATTER)
 #define IDPF_RX_VECTOR_OFFLOADS 0
 
+#define IDPF_TX_SCALAR_OFFLOADS (		\
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |	\
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |	\
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM |	\
+		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |	\
+		RTE_ETH_TX_OFFLOAD_TCP_TSO |	\
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS |	\
+		RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
+
+#define IDPF_TX_VECTOR_OFFLOADS RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE
+
 struct idpf_rx_stats {
 	RTE_ATOMIC(uint64_t) mbuf_alloc_failed;
 };
@@ -264,5 +275,6 @@ uint16_t idpf_dp_singleq_xmit_pkts_avx2(void *tx_queue,
 					uint16_t nb_pkts);
 
 extern const struct ci_rx_path_info idpf_rx_path_infos[IDPF_RX_MAX];
+extern const struct ci_tx_path_info idpf_tx_path_infos[IDPF_TX_MAX];
 
 #endif /* _IDPF_COMMON_RXTX_H_ */

@@ -124,6 +124,7 @@ struct ci_tx_path_features {
 	bool simple_tx;
 	bool ctx_desc;
 	bool disabled;
+	bool single_queue;
 };
 
 struct ci_tx_path_info {
@@ -320,6 +321,10 @@ ci_tx_path_select(const struct ci_tx_path_features *req_features,
 
 		/* If a context descriptor is requested, ensure the path supports it. */
 		if (!path_features->ctx_desc && req_features->ctx_desc)
+			continue;
+
+		/* If requested, ensure the path supports single queue TX. */
+		if (path_features->single_queue != req_features->single_queue)
 			continue;
 
 		/* Ensure the path supports the requested TX offloads. */
