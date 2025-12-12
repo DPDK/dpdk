@@ -719,12 +719,6 @@ ice_rxq_vec_setup(struct ci_rx_queue *rxq)
 }
 
 int __rte_cold
-ice_txq_vec_setup(struct ci_tx_queue *txq __rte_unused)
-{
-	return 0;
-}
-
-int __rte_cold
 ice_rx_vec_dev_check(struct rte_eth_dev *dev)
 {
 	return ice_rx_vec_dev_check_default(dev);

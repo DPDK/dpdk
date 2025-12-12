@@ -208,6 +208,16 @@ enum ice_rx_func_type {
 	ICE_RX_AVX512_SCATTERED_OFFLOAD,
 };
 
+enum ice_tx_func_type {
+	ICE_TX_DEFAULT,
+	ICE_TX_SIMPLE,
+	ICE_TX_SSE,
+	ICE_TX_AVX2,
+	ICE_TX_AVX2_OFFLOAD,
+	ICE_TX_AVX512,
+	ICE_TX_AVX512_OFFLOAD,
+};
+
 struct ice_adapter;
 
 /**
@@ -658,14 +668,13 @@ struct ice_adapter {
 	bool tx_vec_allowed;
 	bool tx_simple_allowed;
 	enum ice_rx_func_type rx_func_type;
+	enum ice_tx_func_type tx_func_type;
 	/* ptype mapping table */
 	alignas(RTE_CACHE_LINE_MIN_SIZE) uint32_t ptype_tbl[ICE_MAX_PKT_TYPE];
 	bool is_safe_mode;
 	struct ice_devargs devargs;
 	enum ice_pkg_type active_pkg_type; /* loaded ddp package type */
 	uint16_t fdir_ref_cnt;
-	/* For vector PMD */
-	eth_rx_burst_t tx_pkt_burst;
 	/* For PTP */
 	uint8_t ptp_tx_block;
 	uint8_t ptp_tx_index;
@@ -679,7 +688,6 @@ struct ice_adapter {
 	/* Set bit if the engine is disabled */
 	unsigned long disabled_engine_mask;
 	struct ice_parser *psr;
-	enum rte_vect_max_simd tx_simd_width;
 	bool rx_vec_offload_support;
 };
 

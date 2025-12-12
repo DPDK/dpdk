@@ -51,28 +51,6 @@ _ice_rx_queue_release_mbufs_vec(struct ci_rx_queue *rxq)
 	memset(rxq->sw_ring, 0, sizeof(rxq->sw_ring[0]) * rxq->nb_rx_desc);
 }
 
-#define ICE_TX_NO_VECTOR_FLAGS (			\
-		RTE_ETH_TX_OFFLOAD_MULTI_SEGS |		\
-		RTE_ETH_TX_OFFLOAD_QINQ_INSERT |	\
-		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |	\
-		RTE_ETH_TX_OFFLOAD_TCP_TSO |	\
-		RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |    \
-		RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |    \
-		RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO |    \
-		RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |    \
-		RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM |	\
-		RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP)
-
-#define ICE_TX_VECTOR_OFFLOAD (				\
-		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |		\
-		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |		\
-		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |		\
-		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |		\
-		RTE_ETH_TX_OFFLOAD_TCP_CKSUM)
-
-#define ICE_VECTOR_PATH		0
-#define ICE_VECTOR_OFFLOAD_PATH	1
-
 static inline int
 ice_rx_vec_queue_default(struct ci_rx_queue *rxq)
 {
@@ -98,13 +76,7 @@ ice_tx_vec_queue_default(struct ci_tx_queue *txq)
 	    txq->tx_rs_thresh > ICE_TX_MAX_FREE_BUF_SZ)
 		return -1;
 
-	if (txq->offloads & ICE_TX_NO_VECTOR_FLAGS)
-		return -1;
-
-	if (txq->offloads & ICE_TX_VECTOR_OFFLOAD)
-		return ICE_VECTOR_OFFLOAD_PATH;
-
-	return ICE_VECTOR_PATH;
+	return 0;
 }
 
 static inline int
@@ -130,18 +102,15 @@ ice_tx_vec_dev_check_default(struct rte_eth_dev *dev)
 	int i;
 	struct ci_tx_queue *txq;
 	int ret = 0;
-	int result = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
 		ret = ice_tx_vec_queue_default(txq);
 		if (ret < 0)
 			return -1;
-		if (ret == ICE_VECTOR_OFFLOAD_PATH)
-			result = ret;
 	}
 
-	return result;
+	return ret;
 }
 
 static inline void

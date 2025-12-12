@@ -3900,6 +3900,7 @@ ice_dev_configure(struct rte_eth_dev *dev)
 	ad->tx_simple_allowed = true;
 
 	ad->rx_func_type = ICE_RX_DEFAULT;
+	ad->tx_func_type = ICE_TX_DEFAULT;
 
 	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
 		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;

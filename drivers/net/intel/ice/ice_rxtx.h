@@ -108,6 +108,35 @@
 		RTE_ETH_RX_OFFLOAD_VLAN_FILTER |\
 		RTE_ETH_RX_OFFLOAD_RSS_HASH)
 
+/* basic scalar path */
+#define ICE_TX_SCALAR_OFFLOADS (		\
+	RTE_ETH_TX_OFFLOAD_VLAN_INSERT |	\
+	RTE_ETH_TX_OFFLOAD_TCP_TSO |		\
+	RTE_ETH_TX_OFFLOAD_MULTI_SEGS |		\
+	RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE |	\
+	RTE_ETH_TX_OFFLOAD_QINQ_INSERT |	\
+	RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |		\
+	RTE_ETH_TX_OFFLOAD_UDP_CKSUM |		\
+	RTE_ETH_TX_OFFLOAD_TCP_CKSUM |		\
+	RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |		\
+	RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |	\
+	RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM |	\
+	RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |	\
+	RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |	\
+	RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO |	\
+	RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |	\
+	RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP)
+/* basic vector path */
+#define ICE_TX_VECTOR_OFFLOADS RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE
+/* vector offload paths */
+#define ICE_TX_VECTOR_OFFLOAD_OFFLOADS (	\
+	ICE_TX_VECTOR_OFFLOADS |		\
+	RTE_ETH_TX_OFFLOAD_VLAN_INSERT |	\
+	RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |		\
+	RTE_ETH_TX_OFFLOAD_UDP_CKSUM |		\
+	RTE_ETH_TX_OFFLOAD_TCP_CKSUM |		\
+	RTE_ETH_TX_OFFLOAD_SCTP_CKSUM)
+
 /* Max header size can be 2K - 64 bytes */
 #define ICE_RX_HDR_BUF_SIZE    (2048 - 64)
 
@@ -249,7 +278,6 @@ void ice_select_rxd_to_pkt_fields_handler(struct ci_rx_queue *rxq,
 int ice_rx_vec_dev_check(struct rte_eth_dev *dev);
 int ice_tx_vec_dev_check(struct rte_eth_dev *dev);
 int ice_rxq_vec_setup(struct ci_rx_queue *rxq);
-int ice_txq_vec_setup(struct ci_tx_queue *txq);
 uint16_t ice_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			   uint16_t nb_pkts);
 uint16_t ice_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
