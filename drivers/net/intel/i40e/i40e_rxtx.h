@@ -91,6 +91,25 @@ enum i40e_header_split_mode {
 		RTE_ETH_RX_OFFLOAD_VLAN_FILTER |	\
 		RTE_ETH_RX_OFFLOAD_RSS_HASH)
 
+#define I40E_TX_SCALAR_OFFLOADS (			\
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |	\
+		RTE_ETH_TX_OFFLOAD_QINQ_INSERT |	\
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |		\
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |		\
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM |		\
+		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |		\
+		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |	\
+		RTE_ETH_TX_OFFLOAD_TCP_TSO |		\
+		RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |	\
+		RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |	\
+		RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO |	\
+		RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |	\
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS |		\
+		RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM |	\
+		RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
+
+#define I40E_TX_VECTOR_OFFLOADS RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE
+
 /** Offload features */
 union i40e_tx_offload {
 	uint64_t data;
@@ -165,7 +184,6 @@ uint16_t i40e_recv_scattered_pkts_vec(void *rx_queue,
 				      uint16_t nb_pkts);
 int i40e_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev);
 int i40e_rxq_vec_setup(struct ci_rx_queue *rxq);
-int i40e_txq_vec_setup(struct ci_tx_queue *txq);
 void i40e_rx_queue_release_mbufs_vec(struct ci_rx_queue *rxq);
 uint16_t i40e_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 				   uint16_t nb_pkts);

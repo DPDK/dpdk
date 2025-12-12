@@ -698,12 +698,6 @@ i40e_rxq_vec_setup(struct ci_rx_queue *rxq)
 }
 
 int __rte_cold
-i40e_txq_vec_setup(struct ci_tx_queue *txq __rte_unused)
-{
-	return 0;
-}
-
-int __rte_cold
 i40e_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev)
 {
 	return i40e_rx_vec_dev_conf_condition_check_default(dev);
