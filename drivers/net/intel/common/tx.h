@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
+#include <rte_vect.h>
 
 /* forward declaration of the common intel (ci) queue structure */
 struct ci_tx_queue;
@@ -115,6 +116,19 @@ struct ci_tx_queue {
 				uint8_t expected_gen_id;
 		};
 	};
+};
+
+struct ci_tx_path_features {
+	uint32_t tx_offloads;
+	enum rte_vect_max_simd simd_width;
+	bool simple_tx;
+};
+
+struct ci_tx_path_info {
+	eth_tx_burst_t pkt_burst;
+	const char *info;
+	struct ci_tx_path_features features;
+	eth_tx_prep_t pkt_prep;
 };
 
 static __rte_always_inline void
@@ -260,6 +274,73 @@ ci_txq_release_all_mbufs(struct ci_tx_queue *txq, bool use_ctx)
 	for (; i < end; i++)
 		rte_pktmbuf_free_seg(txq->sw_ring_vec[i].mbuf);
 	memset(txq->sw_ring_vec, 0, sizeof(txq->sw_ring_vec[0]) * nb_desc);
+}
+
+/**
+ * Select the best matching Tx path based on features
+ *
+ * @param req_features
+ *   The requested features for the Tx path
+ * @param infos
+ *   Array of information about the available Tx paths
+ * @param num_paths
+ *   Number of available paths in the infos array
+ * @param default_path
+ *   Index of the default path to use if no suitable path is found
+ *
+ * @return
+ *   The packet burst function index that best matches the requested features,
+ *   or default_path if no suitable path is found
+ */
+static inline int
+ci_tx_path_select(const struct ci_tx_path_features *req_features,
+			const struct ci_tx_path_info *infos,
+			size_t num_paths,
+			int default_path)
+{
+	int idx = default_path;
+	const struct ci_tx_path_features *chosen_path_features = NULL;
+
+	for (unsigned int i = 0; i < num_paths; i++) {
+		const struct ci_tx_path_features *path_features = &infos[i].features;
+
+		/* Do not select a path with a NULL pkt_burst function. */
+		if (infos[i].pkt_burst == NULL)
+			continue;
+
+		/* Do not use a simple tx path if not requested. */
+		if (path_features->simple_tx && !req_features->simple_tx)
+			continue;
+
+		/* Ensure the path supports the requested TX offloads. */
+		if ((path_features->tx_offloads & req_features->tx_offloads) !=
+				req_features->tx_offloads)
+			continue;
+
+		/* Ensure the path's SIMD width is compatible with the requested width. */
+		if (path_features->simd_width > req_features->simd_width)
+			continue;
+
+		/* Do not select the path if it is less suitable than the chosen path. */
+		if (chosen_path_features != NULL) {
+			/* Do not select paths with lower SIMD width than the chosen path. */
+			if (path_features->simd_width < chosen_path_features->simd_width)
+				continue;
+			/* Do not select paths with more offloads enabled than the chosen path if
+			 * the SIMD widths are the same.
+			 */
+			if (path_features->simd_width == chosen_path_features->simd_width &&
+					rte_popcount32(path_features->tx_offloads) >
+					rte_popcount32(chosen_path_features->tx_offloads))
+				continue;
+		}
+
+		/* Finally, select the path since it has met all the requirements. */
+		idx = i;
+		chosen_path_features = &infos[idx].features;
+	}
+
+	return idx;
 }
 
 #endif /* _COMMON_INTEL_TX_H_ */
