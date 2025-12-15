@@ -151,20 +151,6 @@ iavf_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
 }
 
 static inline int
-check_rx_thresh(uint16_t nb_desc, uint16_t thresh)
-{
-	/* The following constraints must be satisfied:
-	 *   thresh < rxq->nb_rx_desc
-	 */
-	if (thresh >= nb_desc) {
-		PMD_INIT_LOG(ERR, "rx_free_thresh (%u) must be less than %u",
-			     thresh, nb_desc);
-		return -EINVAL;
-	}
-	return 0;
-}
-
-static inline int
 check_tx_thresh(uint16_t nb_desc, uint16_t tx_rs_thresh,
 		uint16_t tx_free_thresh)
 {
@@ -580,8 +566,15 @@ iavf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rx_free_thresh = (rx_conf->rx_free_thresh == 0) ?
 			 IAVF_DEFAULT_RX_FREE_THRESH :
 			 rx_conf->rx_free_thresh;
-	if (check_rx_thresh(nb_desc, rx_free_thresh) != 0)
+	/* Check that ring size is > 2 * rx_free_thresh */
+	if (nb_desc <= 2 * rx_free_thresh) {
+		PMD_INIT_LOG(ERR, "rx ring size (%u) must be > 2 * rx_free_thresh (%u)",
+			     nb_desc, rx_free_thresh);
+		if (nb_desc == IAVF_MIN_RING_DESC)
+			PMD_INIT_LOG(ERR, "To use the minimum ring size (%u), reduce rx_free_thresh to a lower value (recommended %u)",
+				     IAVF_MIN_RING_DESC, IAVF_MIN_RING_DESC / 4);
 		return -EINVAL;
+	}
 
 	/* Free memory if needed */
 	if (dev->data->rx_queues[queue_idx]) {

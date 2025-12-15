@@ -2187,6 +2187,16 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
+	/* Check that ring size is > 2 * rx_free_thresh */
+	if (nb_desc <= 2 * rx_conf->rx_free_thresh) {
+		PMD_DRV_LOG(ERR, "rx ring size (%u) must be > 2 * rx_free_thresh (%u)",
+			    nb_desc, rx_conf->rx_free_thresh);
+		if (nb_desc == I40E_MIN_RING_DESC)
+			PMD_DRV_LOG(ERR, "To use the minimum ring size (%u), reduce rx_free_thresh to a lower value (recommended %u)",
+				    I40E_MIN_RING_DESC, I40E_MIN_RING_DESC / 4);
+		return -EINVAL;
+	}
+
 	/* Free memory if needed */
 	if (dev->data->rx_queues[queue_idx]) {
 		i40e_rx_queue_release(dev->data->rx_queues[queue_idx]);

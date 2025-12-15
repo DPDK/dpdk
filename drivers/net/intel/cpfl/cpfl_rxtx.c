@@ -362,6 +362,16 @@ cpfl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (idpf_qc_rx_thresh_check(nb_desc, rx_free_thresh) != 0)
 		return -EINVAL;
 
+	/* Check that ring size is > 2 * rx_free_thresh */
+	if (nb_desc <= 2 * rx_free_thresh) {
+		PMD_INIT_LOG(ERR, "rx ring size (%u) must be > 2 * rx_free_thresh (%u)",
+			     nb_desc, rx_free_thresh);
+		if (rx_free_thresh == CPFL_DEFAULT_RX_FREE_THRESH)
+			PMD_INIT_LOG(ERR, "To use ring sizes of %u or smaller, reduce rx_free_thresh",
+					CPFL_DEFAULT_RX_FREE_THRESH * 2);
+		return -EINVAL;
+	}
+
 	/* Free memory if needed */
 	if (dev->data->rx_queues[queue_idx] != NULL) {
 		cpfl_rx_queue_release(dev->data->rx_queues[queue_idx]);
