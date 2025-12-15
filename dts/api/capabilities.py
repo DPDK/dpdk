@@ -219,6 +219,10 @@ class NicCapability(IntEnum):
     PORT_TX_OFFLOAD_SEND_ON_TIMESTAMP = auto()
     QUEUE_TX_OFFLOAD_SEND_ON_TIMESTAMP = auto()
 
+    def __str__(self):
+        """Override the default string representation to return the name of the capability."""
+        return self.name
+
 
 def requires_link_topology(
     link_topology: LinkTopology,
