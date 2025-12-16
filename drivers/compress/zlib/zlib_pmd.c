@@ -48,12 +48,12 @@ process_zlib_deflate_chksum(struct rte_comp_op *op,
 			return;
 		}
 
-		dictionary_start = (uint32_t)(*dictionary);
-		dictionary_end = (uint32_t)(*(dictionary + dictionary_len - 4));
+		dictionary_start = *(uint32_t *)dictionary;
+		dictionary_end = *(uint32_t *)(dictionary + dictionary_len - 4);
 		sum = (dictionary_start & BOTTOM_NIBBLE_OF_BYTES_IN_DOUBLE_WORD)
-			+ (dictionary_start & (TOP_NIBBLE_OF_BYTE_IN_DOUBLE_WORD >> 4))
+			+ ((dictionary_start & TOP_NIBBLE_OF_BYTE_IN_DOUBLE_WORD) >> 4)
 			+ (dictionary_end & BOTTOM_NIBBLE_OF_BYTES_IN_DOUBLE_WORD)
-			+ (dictionary_end & (TOP_NIBBLE_OF_BYTE_IN_DOUBLE_WORD >> 4));
+			+ ((dictionary_end & TOP_NIBBLE_OF_BYTE_IN_DOUBLE_WORD) >> 4);
 
 		op->output_chksum = ~(sum_bytes[0] + sum_bytes[1] + sum_bytes[2] + sum_bytes[3])
 			 & BOTTOM_NIBBLE_OF_BYTE;
@@ -98,12 +98,12 @@ process_zlib_inflate_chksum(struct rte_comp_op *op,
 			return;
 		}
 
-		dictionary_start = (uint32_t)(*dictionary);
-		dictionary_end = (uint32_t)(*(dictionary + dictionary_len - 4));
+		dictionary_start = *(uint32_t *)dictionary;
+		dictionary_end = *(uint32_t *)(dictionary + dictionary_len - 4);
 		sum = (dictionary_start & BOTTOM_NIBBLE_OF_BYTES_IN_DOUBLE_WORD)
-			+ (dictionary_start & (TOP_NIBBLE_OF_BYTE_IN_DOUBLE_WORD >> 4))
+			+ ((dictionary_start & TOP_NIBBLE_OF_BYTE_IN_DOUBLE_WORD) >> 4)
 			+ (dictionary_end & BOTTOM_NIBBLE_OF_BYTES_IN_DOUBLE_WORD)
-			+ (dictionary_end & (TOP_NIBBLE_OF_BYTE_IN_DOUBLE_WORD >> 4));
+			+ ((dictionary_end & TOP_NIBBLE_OF_BYTE_IN_DOUBLE_WORD) >> 4);
 
 		op->output_chksum = ~(sum_bytes[0] + sum_bytes[1] + sum_bytes[2] + sum_bytes[3])
 			 & BOTTOM_NIBBLE_OF_BYTE;
