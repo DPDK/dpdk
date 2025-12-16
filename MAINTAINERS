@@ -1052,7 +1052,6 @@ F: doc/guides/nics/features/ngbe.ini
 
 Wangxun txgbe
 M: Jiawen Wu <jiawenwu@trustnetic.com>
-M: Jian Wang <jianwang@trustnetic.com>
 M: Zaiyu Wang <zaiyuwang@trustnetic.com>
 F: drivers/net/txgbe/
 F: doc/guides/nics/txgbe.rst
