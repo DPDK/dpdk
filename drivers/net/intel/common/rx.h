@@ -126,18 +126,14 @@ struct ci_rx_queue {
 	};
 };
 
-struct ci_rx_path_features_extra {
+struct ci_rx_path_features {
+	uint32_t rx_offloads;
+	enum rte_vect_max_simd simd_width;
 	bool scattered;
 	bool flex_desc;
 	bool bulk_alloc;
 	bool disabled;
 	bool single_queue;
-};
-
-struct ci_rx_path_features {
-	uint32_t rx_offloads;
-	enum rte_vect_max_simd simd_width;
-	struct ci_rx_path_features_extra extra;
 };
 
 struct ci_rx_path_info {
@@ -255,15 +251,15 @@ ci_rxq_vec_capable(uint16_t nb_desc, uint16_t free_thresh)
  *   or default_path if no suitable path is found
  */
 static inline int
-ci_rx_path_select(struct ci_rx_path_features req_features,
+ci_rx_path_select(const struct ci_rx_path_features *req_features,
 			const struct ci_rx_path_info *infos,
-			int num_paths,
+			size_t num_paths,
 			int default_path)
 {
-	int i, idx = default_path;
+	int idx = default_path;
 	const struct ci_rx_path_features *chosen_path_features = NULL;
 
-	for (i = 0; i < num_paths; i++) {
+	for (unsigned int i = 0; i < num_paths; i++) {
 		const struct ci_rx_path_features *path_features = &infos[i].features;
 
 		/* Do not select a path with a NULL pkt_burst function. */
@@ -271,32 +267,32 @@ ci_rx_path_select(struct ci_rx_path_features req_features,
 			continue;
 
 		/* Do not select a disabled rx path. */
-		if (path_features->extra.disabled)
+		if (path_features->disabled)
 			continue;
 
 		/* If requested, ensure the path uses the flexible descriptor. */
-		if (path_features->extra.flex_desc != req_features.extra.flex_desc)
+		if (path_features->flex_desc != req_features->flex_desc)
 			continue;
 
 		/* If requested, ensure the path supports single queue RX. */
-		if (path_features->extra.single_queue != req_features.extra.single_queue)
+		if (path_features->single_queue != req_features->single_queue)
 			continue;
 
 		/* If requested, ensure the path supports scattered RX. */
-		if (path_features->extra.scattered != req_features.extra.scattered)
+		if (path_features->scattered != req_features->scattered)
 			continue;
 
 		/* Do not use a bulk alloc path if not requested. */
-		if (path_features->extra.bulk_alloc && !req_features.extra.bulk_alloc)
+		if (path_features->bulk_alloc && !req_features->bulk_alloc)
 			continue;
 
 		/* Ensure the path supports the requested RX offloads. */
-		if ((path_features->rx_offloads & req_features.rx_offloads) !=
-				req_features.rx_offloads)
+		if ((path_features->rx_offloads & req_features->rx_offloads) !=
+				req_features->rx_offloads)
 			continue;
 
 		/* Ensure the path's SIMD width is compatible with the requested width. */
-		if (path_features->simd_width > req_features.simd_width)
+		if (path_features->simd_width > req_features->simd_width)
 			continue;
 
 		/* Do not select the path if it is less suitable than the chosen path. */
@@ -314,8 +310,8 @@ ci_rx_path_select(struct ci_rx_path_features req_features,
 			/* Do not select paths without bulk alloc support if requested and the
 			 * chosen path already meets this requirement.
 			 */
-			if (!path_features->extra.bulk_alloc && req_features.extra.bulk_alloc &&
-					chosen_path_features->extra.bulk_alloc)
+			if (!path_features->bulk_alloc && req_features->bulk_alloc &&
+					chosen_path_features->bulk_alloc)
 				continue;
 		}
 

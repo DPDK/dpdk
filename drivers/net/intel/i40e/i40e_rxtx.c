@@ -3373,7 +3373,7 @@ static const struct ci_rx_path_info i40e_rx_path_infos[] = {
 		.info = "Scalar Scattered",
 		.features = {
 			.rx_offloads = I40E_RX_SCALAR_OFFLOADS,
-			.extra.scattered = true
+			.scattered = true
 		}
 	},
 	[I40E_RX_BULK_ALLOC] = {
@@ -3381,7 +3381,7 @@ static const struct ci_rx_path_info i40e_rx_path_infos[] = {
 		.info = "Scalar Bulk Alloc",
 		.features = {
 			.rx_offloads = I40E_RX_SCALAR_OFFLOADS,
-			.extra.bulk_alloc = true
+			.bulk_alloc = true
 		}
 	},
 #ifdef RTE_ARCH_X86
@@ -3391,7 +3391,7 @@ static const struct ci_rx_path_info i40e_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = I40E_RX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_128,
-			.extra.bulk_alloc = true
+			.bulk_alloc = true
 		}
 	},
 	[I40E_RX_SSE_SCATTERED] = {
@@ -3400,8 +3400,8 @@ static const struct ci_rx_path_info i40e_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = I40E_RX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_128,
-			.extra.scattered = true,
-			.extra.bulk_alloc = true
+			.scattered = true,
+			.bulk_alloc = true
 		}
 	},
 	[I40E_RX_AVX2] = {
@@ -3410,7 +3410,7 @@ static const struct ci_rx_path_info i40e_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = I40E_RX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_256,
-			.extra.bulk_alloc = true
+			.bulk_alloc = true
 		}
 	},
 	[I40E_RX_AVX2_SCATTERED] = {
@@ -3419,8 +3419,8 @@ static const struct ci_rx_path_info i40e_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = I40E_RX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_256,
-			.extra.scattered = true,
-			.extra.bulk_alloc = true
+			.scattered = true,
+			.bulk_alloc = true
 		}
 	},
 #ifdef CC_AVX512_SUPPORT
@@ -3430,7 +3430,7 @@ static const struct ci_rx_path_info i40e_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = I40E_RX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_512,
-			.extra.bulk_alloc = true
+			.bulk_alloc = true
 		}
 	},
 	[I40E_RX_AVX512_SCATTERED] = {
@@ -3439,8 +3439,8 @@ static const struct ci_rx_path_info i40e_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = I40E_RX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_512,
-			.extra.scattered = true,
-			.extra.bulk_alloc = true
+			.scattered = true,
+			.bulk_alloc = true
 		}
 	},
 #endif
@@ -3451,7 +3451,7 @@ static const struct ci_rx_path_info i40e_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = I40E_RX_SCALAR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_128,
-			.extra.bulk_alloc = true
+			.bulk_alloc = true
 		}
 	},
 	[I40E_RX_NEON_SCATTERED] = {
@@ -3460,8 +3460,8 @@ static const struct ci_rx_path_info i40e_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = I40E_RX_SCALAR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_128,
-			.extra.scattered = true,
-			.extra.bulk_alloc = true
+			.scattered = true,
+			.bulk_alloc = true
 		}
 	},
 #elif defined(RTE_ARCH_PPC_64)
@@ -3471,7 +3471,7 @@ static const struct ci_rx_path_info i40e_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = I40E_RX_SCALAR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_128,
-			.extra.bulk_alloc = true
+			.bulk_alloc = true
 		}
 	},
 	[I40E_RX_ALTIVEC_SCATTERED] = {
@@ -3480,8 +3480,8 @@ static const struct ci_rx_path_info i40e_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = I40E_RX_SCALAR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_128,
-			.extra.scattered = true,
-			.extra.bulk_alloc = true
+			.scattered = true,
+			.bulk_alloc = true
 		}
 	},
 #endif
@@ -3517,11 +3517,11 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 
 	req_features.simd_width = rx_simd_width;
 	if (dev->data->scattered_rx)
-		req_features.extra.scattered = true;
+		req_features.scattered = true;
 	if (ad->rx_bulk_alloc_allowed)
-		req_features.extra.bulk_alloc = true;
+		req_features.bulk_alloc = true;
 
-	ad->rx_func_type = ci_rx_path_select(req_features,
+	ad->rx_func_type = ci_rx_path_select(&req_features,
 						&i40e_rx_path_infos[0],
 						RTE_DIM(i40e_rx_path_infos),
 						I40E_RX_DEFAULT);

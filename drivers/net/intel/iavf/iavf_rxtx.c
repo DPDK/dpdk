@@ -3693,7 +3693,7 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.pkt_burst = iavf_recv_pkts_no_poll,
 		.info = "Disabled",
 		.features = {
-			.extra.disabled = true
+			.disabled = true
 		}
 	},
 	[IAVF_RX_DEFAULT] = {
@@ -3708,7 +3708,7 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.info = "Scalar Scattered",
 		.features = {
 			.rx_offloads = IAVF_RX_SCALAR_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
-			.extra.scattered = true
+			.scattered = true
 		}
 	},
 	[IAVF_RX_FLEX_RXD] = {
@@ -3716,7 +3716,7 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.info = "Scalar Flex",
 		.features = {
 			.rx_offloads = IAVF_RX_SCALAR_FLEX_OFFLOADS,
-			.extra.flex_desc = true
+			.flex_desc = true
 		}
 	},
 	[IAVF_RX_SCATTERED_FLEX_RXD] = {
@@ -3724,8 +3724,8 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.info = "Scalar Scattered Flex",
 		.features = {
 			.rx_offloads = IAVF_RX_SCALAR_FLEX_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
-			.extra.scattered = true,
-			.extra.flex_desc = true
+			.scattered = true,
+			.flex_desc = true
 		}
 	},
 	[IAVF_RX_BULK_ALLOC] = {
@@ -3733,7 +3733,7 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.info = "Scalar Bulk Alloc",
 		.features = {
 			.rx_offloads = IAVF_RX_SCALAR_OFFLOADS,
-			.extra.bulk_alloc = true
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_BULK_ALLOC_FLEX_RXD] = {
@@ -3741,8 +3741,8 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.info = "Scalar Bulk Alloc Flex",
 		.features = {
 			.rx_offloads = IAVF_RX_SCALAR_FLEX_OFFLOADS,
-			.extra.flex_desc = true,
-			.extra.bulk_alloc = true
+			.flex_desc = true,
+			.bulk_alloc = true
 		}
 	},
 #ifdef RTE_ARCH_X86
@@ -3752,7 +3752,7 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOAD_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_128,
-			.extra.bulk_alloc = true
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_SSE_SCATTERED] = {
@@ -3761,8 +3761,8 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
 			.simd_width = RTE_VECT_SIMD_128,
-			.extra.scattered = true,
-			.extra.bulk_alloc = true
+			.scattered = true,
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_SSE_FLEX_RXD] = {
@@ -3771,8 +3771,8 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOAD_FLEX_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_128,
-			.extra.flex_desc = true,
-			.extra.bulk_alloc = true
+			.flex_desc = true,
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_SSE_SCATTERED_FLEX_RXD] = {
@@ -3782,9 +3782,9 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOAD_FLEX_OFFLOADS |
 				       RTE_ETH_RX_OFFLOAD_SCATTER,
 			.simd_width = RTE_VECT_SIMD_128,
-			.extra.scattered = true,
-			.extra.flex_desc = true,
-			.extra.bulk_alloc = true
+			.scattered = true,
+			.flex_desc = true,
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_AVX2] = {
@@ -3793,7 +3793,7 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_256,
-			.extra.bulk_alloc = true
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_AVX2_SCATTERED] = {
@@ -3802,8 +3802,8 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
 			.simd_width = RTE_VECT_SIMD_256,
-			.extra.scattered = true,
-			.extra.bulk_alloc = true
+			.scattered = true,
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_AVX2_OFFLOAD] = {
@@ -3812,7 +3812,7 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOAD_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_256,
-			.extra.bulk_alloc = true
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_AVX2_SCATTERED_OFFLOAD] = {
@@ -3821,8 +3821,8 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOAD_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
 			.simd_width = RTE_VECT_SIMD_256,
-			.extra.scattered = true,
-			.extra.bulk_alloc = true
+			.scattered = true,
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_AVX2_FLEX_RXD] = {
@@ -3831,8 +3831,8 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_FLEX_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_256,
-			.extra.flex_desc = true,
-			.extra.bulk_alloc = true
+			.flex_desc = true,
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_AVX2_SCATTERED_FLEX_RXD] = {
@@ -3841,9 +3841,9 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_FLEX_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
 			.simd_width = RTE_VECT_SIMD_256,
-			.extra.scattered = true,
-			.extra.flex_desc = true,
-			.extra.bulk_alloc = true
+			.scattered = true,
+			.flex_desc = true,
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_AVX2_FLEX_RXD_OFFLOAD] = {
@@ -3852,8 +3852,8 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOAD_FLEX_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_256,
-			.extra.flex_desc = true,
-			.extra.bulk_alloc = true
+			.flex_desc = true,
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_AVX2_SCATTERED_FLEX_RXD_OFFLOAD] = {
@@ -3863,9 +3863,9 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOAD_FLEX_OFFLOADS |
 				       RTE_ETH_RX_OFFLOAD_SCATTER,
 			.simd_width = RTE_VECT_SIMD_256,
-			.extra.scattered = true,
-			.extra.flex_desc = true,
-			.extra.bulk_alloc = true
+			.scattered = true,
+			.flex_desc = true,
+			.bulk_alloc = true
 		}
 	},
 #ifdef CC_AVX512_SUPPORT
@@ -3875,7 +3875,7 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_512,
-			.extra.bulk_alloc = true
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_AVX512_SCATTERED] = {
@@ -3884,8 +3884,8 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
 			.simd_width = RTE_VECT_SIMD_512,
-			.extra.scattered = true,
-			.extra.bulk_alloc = true
+			.scattered = true,
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_AVX512_OFFLOAD] = {
@@ -3894,7 +3894,7 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOAD_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_512,
-			.extra.bulk_alloc = true
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_AVX512_SCATTERED_OFFLOAD] = {
@@ -3903,8 +3903,8 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOAD_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
 			.simd_width = RTE_VECT_SIMD_512,
-			.extra.scattered = true,
-			.extra.bulk_alloc = true
+			.scattered = true,
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_AVX512_FLEX_RXD] = {
@@ -3913,8 +3913,8 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_FLEX_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_512,
-			.extra.flex_desc = true,
-			.extra.bulk_alloc = true
+			.flex_desc = true,
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_AVX512_SCATTERED_FLEX_RXD] = {
@@ -3923,9 +3923,9 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_FLEX_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
 			.simd_width = RTE_VECT_SIMD_512,
-			.extra.scattered = true,
-			.extra.flex_desc = true,
-			.extra.bulk_alloc = true
+			.scattered = true,
+			.flex_desc = true,
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_AVX512_FLEX_RXD_OFFLOAD] = {
@@ -3934,8 +3934,8 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOAD_FLEX_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_512,
-			.extra.flex_desc = true,
-			.extra.bulk_alloc = true
+			.flex_desc = true,
+			.bulk_alloc = true
 		}
 	},
 	[IAVF_RX_AVX512_SCATTERED_FLEX_RXD_OFFLOAD] = {
@@ -3945,9 +3945,9 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOAD_FLEX_OFFLOADS |
 				       RTE_ETH_RX_OFFLOAD_SCATTER,
 			.simd_width = RTE_VECT_SIMD_512,
-			.extra.scattered = true,
-			.extra.flex_desc = true,
-			.extra.bulk_alloc = true
+			.scattered = true,
+			.flex_desc = true,
+			.bulk_alloc = true
 		}
 	},
 #endif
@@ -3958,7 +3958,7 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IAVF_RX_SCALAR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_128,
-			.extra.bulk_alloc = true
+			.bulk_alloc = true
 		}
 	},
 #endif
@@ -4233,11 +4233,11 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 	}
 
 	if (use_flex)
-		req_features.extra.flex_desc = true;
+		req_features.flex_desc = true;
 	if (dev->data->scattered_rx)
-		req_features.extra.scattered = true;
+		req_features.scattered = true;
 	if (adapter->rx_bulk_alloc_allowed) {
-		req_features.extra.bulk_alloc = true;
+		req_features.bulk_alloc = true;
 		default_path = IAVF_RX_BULK_ALLOC;
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
 		if (iavf_rx_vec_dev_check(dev) != -1)
@@ -4245,7 +4245,7 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 #endif
 	}
 
-	adapter->rx_func_type = ci_rx_path_select(req_features,
+	adapter->rx_func_type = ci_rx_path_select(&req_features,
 						&iavf_rx_path_infos[0],
 						RTE_DIM(iavf_rx_path_infos),
 						default_path);

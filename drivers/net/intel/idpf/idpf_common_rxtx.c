@@ -1667,15 +1667,15 @@ const struct ci_rx_path_info idpf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IDPF_RX_SCALAR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_DISABLED,
-			.extra.single_queue = true}},
+			.single_queue = true}},
 	[IDPF_RX_SINGLEQ_SCATTERED] = {
 		.pkt_burst = idpf_dp_singleq_recv_scatter_pkts,
 		.info = "Single Scalar Scattered",
 		.features = {
 			.rx_offloads = IDPF_RX_SCALAR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_DISABLED,
-			.extra.scattered = true,
-			.extra.single_queue = true}},
+			.scattered = true,
+			.single_queue = true}},
 #ifdef RTE_ARCH_X86
 	[IDPF_RX_SINGLEQ_AVX2] = {
 		.pkt_burst = idpf_dp_singleq_recv_pkts_avx2,
@@ -1683,7 +1683,7 @@ const struct ci_rx_path_info idpf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IDPF_RX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_256,
-			.extra.single_queue = true}},
+			.single_queue = true}},
 #ifdef CC_AVX512_SUPPORT
 	[IDPF_RX_AVX512] = {
 		.pkt_burst = idpf_dp_splitq_recv_pkts_avx512,
@@ -1697,7 +1697,7 @@ const struct ci_rx_path_info idpf_rx_path_infos[] = {
 		.features = {
 			.rx_offloads = IDPF_RX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_512,
-			.extra.single_queue = true}},
+			.single_queue = true}},
 #endif /* CC_AVX512_SUPPORT */
 #endif /* RTE_ARCH_X86 */
 };
