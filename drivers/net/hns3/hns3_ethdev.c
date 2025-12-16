@@ -5230,7 +5230,7 @@ hns3_dev_stop(struct rte_eth_dev *dev)
 	struct hns3_hw *hw = &hns->hw;
 
 	PMD_INIT_FUNC_TRACE();
-	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed) != 0) {
+	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED) != 0) {
 		hns3_warn(hw, "device is resetting, stop operation is not allowed.");
 		return -EBUSY;
 	}
