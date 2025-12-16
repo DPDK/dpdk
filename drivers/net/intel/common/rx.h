@@ -266,6 +266,10 @@ ci_rx_path_select(struct ci_rx_path_features req_features,
 	for (i = 0; i < num_paths; i++) {
 		const struct ci_rx_path_features *path_features = &infos[i].features;
 
+		/* Do not select a path with a NULL pkt_burst function. */
+		if (infos[i].pkt_burst == NULL)
+			continue;
+
 		/* Do not select a disabled rx path. */
 		if (path_features->extra.disabled)
 			continue;
