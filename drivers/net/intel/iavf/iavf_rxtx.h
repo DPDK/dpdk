@@ -323,9 +323,8 @@ struct iavf_32b_rx_flex_desc_comms_ipsec {
 
 enum iavf_rxtx_rel_mbufs_type {
 	IAVF_REL_MBUFS_DEFAULT		= 0,
-	IAVF_REL_MBUFS_SSE_VEC		= 1,
-	IAVF_REL_MBUFS_AVX512_VEC	= 2,
-	IAVF_REL_MBUFS_NEON_VEC		= 3,
+	IAVF_REL_MBUFS_VEC		= 1,
+	IAVF_REL_MBUFS_NEON_VEC		= 2,
 };
 
 /* Receive Flex Descriptor profile IDs: There are a total
@@ -654,9 +653,7 @@ int iavf_txq_vec_setup_avx512(struct ci_tx_queue *txq);
 uint8_t iavf_proto_xtr_type_to_rxdid(uint8_t xtr_type);
 
 void iavf_set_default_ptype_table(struct rte_eth_dev *dev);
-void iavf_tx_queue_release_mbufs_avx512(struct ci_tx_queue *txq);
-void iavf_rx_queue_release_mbufs_sse(struct ci_rx_queue *rxq);
-void iavf_tx_queue_release_mbufs_sse(struct ci_tx_queue *txq);
+void iavf_rx_queue_release_mbufs_vec(struct ci_rx_queue *rxq);
 void iavf_rx_queue_release_mbufs_neon(struct ci_rx_queue *rxq);
 enum rte_vect_max_simd iavf_get_max_simd_bitwidth(void);
 

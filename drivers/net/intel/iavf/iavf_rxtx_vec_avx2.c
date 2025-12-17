@@ -1810,3 +1810,36 @@ iavf_xmit_pkts_vec_avx2_offload(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	return iavf_xmit_pkts_vec_avx2_common(tx_queue, tx_pkts, nb_pkts, true);
 }
+
+int __rte_cold
+iavf_txq_vec_setup(struct ci_tx_queue *txq)
+{
+	txq->vector_tx = true;
+	return 0;
+}
+
+void __rte_cold
+iavf_rx_queue_release_mbufs_vec(struct ci_rx_queue *rxq)
+{
+	_iavf_rx_queue_release_mbufs_vec(rxq);
+}
+
+int __rte_cold
+iavf_rxq_vec_setup(struct ci_rx_queue *rxq)
+{
+	rxq->rel_mbufs_type = IAVF_REL_MBUFS_VEC;
+	rxq->mbuf_initializer = ci_rxq_mbuf_initializer(rxq->port_id);
+	return 0;
+}
+
+int __rte_cold
+iavf_rx_vec_dev_check(struct rte_eth_dev *dev)
+{
+	return iavf_rx_vec_dev_check_default(dev);
+}
+
+int __rte_cold
+iavf_tx_vec_dev_check(struct rte_eth_dev *dev)
+{
+	return iavf_tx_vec_dev_check_default(dev);
+}

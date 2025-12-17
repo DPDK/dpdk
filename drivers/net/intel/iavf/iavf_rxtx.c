@@ -34,6 +34,10 @@
 #include "iavf_ipsec_crypto.h"
 #include "rte_pmd_iavf.h"
 
+#ifdef RTE_ARCH_X86
+#include "../common/rx_vec_x86.h"
+#endif
+
 #define GRE_CHECKSUM_PRESENT	0x8000
 #define GRE_KEY_PRESENT		0x2000
 #define GRE_SEQUENCE_PRESENT	0x1000
@@ -372,7 +376,7 @@ static const
 struct iavf_rxq_ops iavf_rxq_release_mbufs_ops[] = {
 	[IAVF_REL_MBUFS_DEFAULT].release_mbufs = release_rxq_mbufs,
 #ifdef RTE_ARCH_X86
-	[IAVF_REL_MBUFS_SSE_VEC].release_mbufs = iavf_rx_queue_release_mbufs_sse,
+	[IAVF_REL_MBUFS_VEC].release_mbufs = iavf_rx_queue_release_mbufs_vec,
 #endif
 #ifdef RTE_ARCH_ARM64
 	[IAVF_REL_MBUFS_NEON_VEC].release_mbufs = iavf_rx_queue_release_mbufs_neon,
@@ -3746,47 +3750,6 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		}
 	},
 #ifdef RTE_ARCH_X86
-	[IAVF_RX_SSE] = {
-		.pkt_burst = iavf_recv_pkts_vec,
-		.info = "Vector SSE",
-		.features = {
-			.rx_offloads = IAVF_RX_VECTOR_OFFLOAD_OFFLOADS,
-			.simd_width = RTE_VECT_SIMD_128,
-			.bulk_alloc = true
-		}
-	},
-	[IAVF_RX_SSE_SCATTERED] = {
-		.pkt_burst = iavf_recv_scattered_pkts_vec,
-		.info = "Vector Scattered SSE",
-		.features = {
-			.rx_offloads = IAVF_RX_VECTOR_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
-			.simd_width = RTE_VECT_SIMD_128,
-			.scattered = true,
-			.bulk_alloc = true
-		}
-	},
-	[IAVF_RX_SSE_FLEX_RXD] = {
-		.pkt_burst = iavf_recv_pkts_vec_flex_rxd,
-		.info = "Vector Flex SSE",
-		.features = {
-			.rx_offloads = IAVF_RX_VECTOR_OFFLOAD_FLEX_OFFLOADS,
-			.simd_width = RTE_VECT_SIMD_128,
-			.flex_desc = true,
-			.bulk_alloc = true
-		}
-	},
-	[IAVF_RX_SSE_SCATTERED_FLEX_RXD] = {
-		.pkt_burst = iavf_recv_scattered_pkts_vec_flex_rxd,
-		.info = "Vector Scattered SSE Flex",
-		.features = {
-			.rx_offloads = IAVF_RX_VECTOR_OFFLOAD_FLEX_OFFLOADS |
-				       RTE_ETH_RX_OFFLOAD_SCATTER,
-			.simd_width = RTE_VECT_SIMD_128,
-			.scattered = true,
-			.flex_desc = true,
-			.bulk_alloc = true
-		}
-	},
 	[IAVF_RX_AVX2] = {
 		.pkt_burst = iavf_recv_pkts_vec_avx2,
 		.info = "Vector AVX2",
@@ -3952,7 +3915,7 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 	},
 #endif
 #elif defined RTE_ARCH_ARM
-	[IAVF_RX_SSE] = {
+	[IAVF_RX_NEON] = {
 		.pkt_burst = iavf_recv_pkts_vec,
 		.info = "Vector Neon",
 		.features = {
@@ -4000,14 +3963,6 @@ static const struct ci_tx_path_info iavf_tx_path_infos[] = {
 		}
 	},
 #ifdef RTE_ARCH_X86
-	[IAVF_TX_SSE] = {
-		.pkt_burst = iavf_xmit_pkts_vec,
-		.info = "Vector SSE",
-		.features = {
-			.tx_offloads = IAVF_TX_VECTOR_OFFLOADS,
-			.simd_width = RTE_VECT_SIMD_128
-		}
-	},
 	[IAVF_TX_AVX2] = {
 		.pkt_burst = iavf_xmit_pkts_vec_avx2,
 		.info = "Vector AVX2",
@@ -4197,6 +4152,14 @@ iavf_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	return iavf_tx_path_infos[tx_func_type].pkt_burst(tx_queue, tx_pkts, good_pkts);
 }
+
+#ifdef RTE_ARCH_X86
+enum rte_vect_max_simd
+iavf_get_max_simd_bitwidth(void)
+{
+	return ci_get_x86_max_simd_bitwidth();
+}
+#endif
 
 /* choose rx function*/
 void
