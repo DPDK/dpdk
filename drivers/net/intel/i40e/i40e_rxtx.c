@@ -31,6 +31,10 @@
 #include "i40e_ethdev.h"
 #include "i40e_rxtx.h"
 
+#ifdef RTE_ARCH_X86
+#include "../common/rx_vec_x86.h"
+#endif
+
 #define DEFAULT_TX_RS_THRESH   32
 #define DEFAULT_TX_FREE_THRESH 32
 
@@ -1527,6 +1531,7 @@ i40e_xmit_pkts_simple(void *tx_queue,
 	return nb_tx;
 }
 
+#ifndef RTE_ARCH_X86
 static uint16_t
 i40e_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		   uint16_t nb_pkts)
@@ -1549,6 +1554,7 @@ i40e_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	return nb_tx;
 }
+#endif
 
 static const struct ci_tx_path_info i40e_tx_path_infos[] = {
 	[I40E_TX_DEFAULT] = {
@@ -1569,15 +1575,6 @@ static const struct ci_tx_path_info i40e_tx_path_infos[] = {
 		.pkt_prep = i40e_simple_prep_pkts,
 	},
 #ifdef RTE_ARCH_X86
-	[I40E_TX_SSE] = {
-		.pkt_burst = i40e_xmit_pkts_vec,
-		.info = "Vector SSE",
-		.features = {
-			.tx_offloads = I40E_TX_VECTOR_OFFLOADS,
-			.simd_width = RTE_VECT_SIMD_128,
-		},
-		.pkt_prep = i40e_simple_prep_pkts,
-	},
 	[I40E_TX_AVX2] = {
 		.pkt_burst = i40e_xmit_pkts_vec_avx2,
 		.info = "Vector AVX2",
@@ -2019,6 +2016,8 @@ i40e_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 const uint32_t *
 i40e_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
+	const struct i40e_adapter *ad = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
 	static const uint32_t ptypes[] = {
 		/* refers to i40e_rxd_pkt_type_mapping() */
 		RTE_PTYPE_L2_ETHER,
@@ -2047,19 +2046,17 @@ i40e_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 		RTE_PTYPE_INNER_L4_UDP,
 	};
 
-	if (dev->rx_pkt_burst == i40e_recv_pkts ||
-#ifdef RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC
-	    dev->rx_pkt_burst == i40e_recv_pkts_bulk_alloc ||
-#endif
-	    dev->rx_pkt_burst == i40e_recv_scattered_pkts ||
-	    dev->rx_pkt_burst == i40e_recv_scattered_pkts_vec ||
-	    dev->rx_pkt_burst == i40e_recv_pkts_vec ||
-#ifdef CC_AVX512_SUPPORT
-	    dev->rx_pkt_burst == i40e_recv_scattered_pkts_vec_avx512 ||
-	    dev->rx_pkt_burst == i40e_recv_pkts_vec_avx512 ||
-#endif
-	    dev->rx_pkt_burst == i40e_recv_scattered_pkts_vec_avx2 ||
-	    dev->rx_pkt_burst == i40e_recv_pkts_vec_avx2) {
+	if (ad->rx_func_type == I40E_RX_DEFAULT ||
+	    ad->rx_func_type == I40E_RX_BULK_ALLOC ||
+	    ad->rx_func_type == I40E_RX_SCATTERED ||
+	    ad->rx_func_type == I40E_RX_NEON_SCATTERED ||
+	    ad->rx_func_type == I40E_RX_NEON ||
+	    ad->rx_func_type == I40E_RX_ALTIVEC_SCATTERED ||
+	    ad->rx_func_type == I40E_RX_ALTIVEC ||
+	    ad->rx_func_type == I40E_RX_AVX512_SCATTERED ||
+	    ad->rx_func_type == I40E_RX_AVX512 ||
+	    ad->rx_func_type == I40E_RX_AVX2_SCATTERED ||
+	    ad->rx_func_type == I40E_RX_AVX2) {
 		*no_of_elements = RTE_DIM(ptypes);
 		return ptypes;
 	}
@@ -2708,7 +2705,7 @@ i40e_rx_queue_release_mbufs(struct ci_rx_queue *rxq)
 {
 	uint16_t i;
 
-	/* SSE Vector driver has a different way of releasing mbufs. */
+	/* Vector driver has a different way of releasing mbufs. */
 	if (rxq->vector_rx) {
 		i40e_rx_queue_release_mbufs_vec(rxq);
 		return;
@@ -3385,25 +3382,6 @@ static const struct ci_rx_path_info i40e_rx_path_infos[] = {
 		}
 	},
 #ifdef RTE_ARCH_X86
-	[I40E_RX_SSE] = {
-		.pkt_burst = i40e_recv_pkts_vec,
-		.info = "Vector SSE",
-		.features = {
-			.rx_offloads = I40E_RX_VECTOR_OFFLOADS,
-			.simd_width = RTE_VECT_SIMD_128,
-			.bulk_alloc = true
-		}
-	},
-	[I40E_RX_SSE_SCATTERED] = {
-		.pkt_burst = i40e_recv_scattered_pkts_vec,
-		.info = "Vector SSE Scattered",
-		.features = {
-			.rx_offloads = I40E_RX_VECTOR_OFFLOADS,
-			.simd_width = RTE_VECT_SIMD_128,
-			.scattered = true,
-			.bulk_alloc = true
-		}
-	},
 	[I40E_RX_AVX2] = {
 		.pkt_burst = i40e_recv_pkts_vec_avx2,
 		.info = "Vector AVX2",
@@ -3626,7 +3604,6 @@ out:
 		i40e_tx_path_infos[ad->tx_func_type].info, dev->data->port_id);
 
 	if (ad->tx_func_type == I40E_TX_SCALAR_SIMPLE ||
-			ad->tx_func_type == I40E_TX_SSE ||
 			ad->tx_func_type == I40E_TX_NEON ||
 			ad->tx_func_type == I40E_TX_ALTIVEC ||
 			ad->tx_func_type == I40E_TX_AVX2)
@@ -3729,7 +3706,14 @@ i40e_set_default_pctype_table(struct rte_eth_dev *dev)
 	}
 }
 
-#ifndef RTE_ARCH_X86
+#ifdef RTE_ARCH_X86
+enum rte_vect_max_simd
+i40e_get_max_simd_bitwidth(void)
+{
+	return ci_get_x86_max_simd_bitwidth();
+}
+
+#else
 uint16_t
 i40e_recv_pkts_vec_avx2(void __rte_unused *rx_queue,
 			struct rte_mbuf __rte_unused **rx_pkts,

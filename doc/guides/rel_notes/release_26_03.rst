@@ -76,6 +76,13 @@ Removed Items
 
   7000 series adaptors are out of support in terms of hardware.
 
+* **Removed the SSE vector paths from some Intel drivers.**
+
+  The SSE path was not widely used, so it was removed from the i40e driver.
+  Each of these drivers have faster vector paths (AVX2 and AVX-512)
+  which have feature parity with the SSE paths,
+  and a fallback scalar path which also has feature parity.
+
 
 API Changes
 -----------

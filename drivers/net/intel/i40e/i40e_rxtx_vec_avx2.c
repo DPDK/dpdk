@@ -820,3 +820,23 @@ i40e_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	return nb_tx;
 }
+
+void __rte_cold
+i40e_rx_queue_release_mbufs_vec(struct ci_rx_queue *rxq)
+{
+	_i40e_rx_queue_release_mbufs_vec(rxq);
+}
+
+int __rte_cold
+i40e_rxq_vec_setup(struct ci_rx_queue *rxq)
+{
+	rxq->vector_rx = 1;
+	rxq->mbuf_initializer = ci_rxq_mbuf_initializer(rxq->port_id);
+	return 0;
+}
+
+int __rte_cold
+i40e_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev)
+{
+	return i40e_rx_vec_dev_conf_condition_check_default(dev);
+}

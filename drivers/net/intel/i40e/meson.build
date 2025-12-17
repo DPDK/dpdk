@@ -37,7 +37,6 @@ testpmd_sources = files('i40e_testpmd.c')
 deps += ['hash']
 
 if arch_subdir == 'x86'
-    sources += files('i40e_rxtx_vec_sse.c')
     sources_avx2 += files('i40e_rxtx_vec_avx2.c')
     sources_avx512 += files('i40e_rxtx_vec_avx512.c')
 elif arch_subdir == 'ppc'
