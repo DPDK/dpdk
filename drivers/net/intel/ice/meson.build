@@ -31,7 +31,6 @@ else
 endif
 
 if arch_subdir == 'x86'
-    sources += files('ice_rxtx_vec_sse.c')
     sources_avx2 += files('ice_rxtx_vec_avx2.c')
     sources_avx512 += files('ice_rxtx_vec_avx512.c')
 endif

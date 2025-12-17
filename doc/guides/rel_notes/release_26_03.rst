@@ -79,7 +79,7 @@ Removed Items
 * **Removed the SSE vector paths from some Intel drivers.**
 
   The SSE path was not widely used, so it was removed
-  from the i40e, iavf drivers.
+  from the i40e, iavf and ice drivers.
   Each of these drivers have faster vector paths (AVX2 and AVX-512)
   which have feature parity with the SSE paths,
   and a fallback scalar path which also has feature parity.

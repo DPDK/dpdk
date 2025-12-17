@@ -9,6 +9,10 @@
 #include "ice_rxtx.h"
 #include "ice_rxtx_vec_common.h"
 
+#ifdef RTE_ARCH_X86
+#include "../common/rx_vec_x86.h"
+#endif
+
 #define ICE_TX_CKSUM_OFFLOAD_MASK (RTE_MBUF_F_TX_IP_CKSUM |		 \
 		RTE_MBUF_F_TX_L4_MASK |		 \
 		RTE_MBUF_F_TX_TCP_SEG |		 \
@@ -2477,26 +2481,18 @@ ice_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 		ptypes = ptypes_os;
 	}
 
-	if (dev->rx_pkt_burst == ice_recv_pkts ||
-	    dev->rx_pkt_burst == ice_recv_pkts_bulk_alloc ||
-	    dev->rx_pkt_burst == ice_recv_scattered_pkts)
+	if (ad->rx_func_type == ICE_RX_DEFAULT ||
+	    ad->rx_func_type == ICE_RX_BULK_ALLOC ||
+	    ad->rx_func_type == ICE_RX_SCATTERED ||
+	    ad->rx_func_type == ICE_RX_AVX2 ||
+	    ad->rx_func_type == ICE_RX_AVX2_OFFLOAD ||
+	    ad->rx_func_type == ICE_RX_AVX2_SCATTERED ||
+	    ad->rx_func_type == ICE_RX_AVX2_SCATTERED_OFFLOAD ||
+	    ad->rx_func_type == ICE_RX_AVX512 ||
+	    ad->rx_func_type == ICE_RX_AVX512_SCATTERED ||
+	    ad->rx_func_type == ICE_RX_AVX512_OFFLOAD ||
+	    ad->rx_func_type == ICE_RX_AVX512_SCATTERED_OFFLOAD)
 		return ptypes;
-
-#ifdef RTE_ARCH_X86
-	if (dev->rx_pkt_burst == ice_recv_pkts_vec ||
-	    dev->rx_pkt_burst == ice_recv_scattered_pkts_vec ||
-#ifdef CC_AVX512_SUPPORT
-	    dev->rx_pkt_burst == ice_recv_pkts_vec_avx512 ||
-	    dev->rx_pkt_burst == ice_recv_pkts_vec_avx512_offload ||
-	    dev->rx_pkt_burst == ice_recv_scattered_pkts_vec_avx512 ||
-	    dev->rx_pkt_burst == ice_recv_scattered_pkts_vec_avx512_offload ||
-#endif
-	    dev->rx_pkt_burst == ice_recv_pkts_vec_avx2 ||
-	    dev->rx_pkt_burst == ice_recv_pkts_vec_avx2_offload ||
-	    dev->rx_pkt_burst == ice_recv_scattered_pkts_vec_avx2 ||
-	    dev->rx_pkt_burst == ice_recv_scattered_pkts_vec_avx2_offload)
-		return ptypes;
-#endif
 
 	return NULL;
 }
@@ -3498,6 +3494,12 @@ ice_tx_done_cleanup_vec(struct ci_tx_queue *txq __rte_unused,
 {
 	return -ENOTSUP;
 }
+
+enum rte_vect_max_simd
+ice_get_max_simd_bitwidth(void)
+{
+	return ci_get_x86_max_simd_bitwidth();
+}
 #endif
 
 static int
@@ -3710,25 +3712,6 @@ static const struct ci_rx_path_info ice_rx_path_infos[] = {
 		}
 	},
 #ifdef RTE_ARCH_X86
-	[ICE_RX_SSE] = {
-		.pkt_burst = ice_recv_pkts_vec,
-		.info = "Vector SSE",
-		.features = {
-			.rx_offloads = ICE_RX_VECTOR_OFFLOAD_OFFLOADS,
-			.simd_width = RTE_VECT_SIMD_128,
-			.bulk_alloc = true
-		}
-	},
-	[ICE_RX_SSE_SCATTERED] = {
-		.pkt_burst = ice_recv_scattered_pkts_vec,
-		.info = "Vector SSE Scattered",
-		.features = {
-			.rx_offloads = ICE_RX_VECTOR_OFFLOAD_OFFLOADS,
-			.simd_width = RTE_VECT_SIMD_128,
-			.scattered = true,
-			.bulk_alloc = true
-		}
-	},
 	[ICE_RX_AVX2] = {
 		.pkt_burst = ice_recv_pkts_vec_avx2,
 		.info = "Vector AVX2",
@@ -3831,7 +3814,7 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 		rx_simd_width = RTE_VECT_SIMD_DISABLED;
 	} else {
 		rx_simd_width = ice_get_max_simd_bitwidth();
-		if (rx_simd_width >= RTE_VECT_SIMD_128)
+		if (rx_simd_width >= RTE_VECT_SIMD_256)
 			if (ice_rx_vec_dev_check(dev) == -1)
 				rx_simd_width = RTE_VECT_SIMD_DISABLED;
 	}
@@ -3850,7 +3833,7 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 #ifdef RTE_ARCH_X86
 	int i;
 
-	if (ice_rx_path_infos[ad->rx_func_type].features.simd_width >= RTE_VECT_SIMD_128)
+	if (ice_rx_path_infos[ad->rx_func_type].features.simd_width >= RTE_VECT_SIMD_256)
 		/* Vector function selected. Prepare the rxq accordingly. */
 		for (i = 0; i < dev->data->nb_rx_queues; i++)
 			if (dev->data->rx_queues[i])
@@ -3948,15 +3931,6 @@ static const struct ci_tx_path_info ice_tx_path_infos[] = {
 		.pkt_prep = rte_eth_tx_pkt_prepare_dummy
 	},
 #ifdef RTE_ARCH_X86
-	[ICE_TX_SSE] = {
-		.pkt_burst = ice_xmit_pkts_vec,
-		.info = "Vector SSE",
-		.features = {
-			.tx_offloads = ICE_TX_VECTOR_OFFLOADS,
-			.simd_width = RTE_VECT_SIMD_128
-		},
-		.pkt_prep = rte_eth_tx_pkt_prepare_dummy
-	},
 	[ICE_TX_AVX2] = {
 		.pkt_burst = ice_xmit_pkts_vec_avx2,
 		.info = "Vector AVX2",
@@ -4190,7 +4164,7 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 
 out:
 	ad->tx_vec_allowed =
-		(ice_tx_path_infos[ad->tx_func_type].features.simd_width >= RTE_VECT_SIMD_128);
+		(ice_tx_path_infos[ad->tx_func_type].features.simd_width >= RTE_VECT_SIMD_256);
 
 	dev->tx_pkt_burst = mbuf_check ? ice_xmit_pkts_check :
 					 ice_tx_path_infos[ad->tx_func_type].pkt_burst;

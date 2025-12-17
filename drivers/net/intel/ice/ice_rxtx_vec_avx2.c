@@ -949,3 +949,26 @@ ice_xmit_pkts_vec_avx2_offload(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	return ice_xmit_pkts_vec_avx2_common(tx_queue, tx_pkts, nb_pkts, true);
 }
+
+int __rte_cold
+ice_rxq_vec_setup(struct ci_rx_queue *rxq)
+{
+	if (!rxq)
+		return -1;
+
+	rxq->rx_rel_mbufs = _ice_rx_queue_release_mbufs_vec;
+	rxq->mbuf_initializer = ci_rxq_mbuf_initializer(rxq->port_id);
+	return 0;
+}
+
+int __rte_cold
+ice_rx_vec_dev_check(struct rte_eth_dev *dev)
+{
+	return ice_rx_vec_dev_check_default(dev);
+}
+
+int __rte_cold
+ice_tx_vec_dev_check(struct rte_eth_dev *dev)
+{
+	return ice_tx_vec_dev_check_default(dev);
+}

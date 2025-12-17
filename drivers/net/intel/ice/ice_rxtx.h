@@ -278,12 +278,6 @@ void ice_select_rxd_to_pkt_fields_handler(struct ci_rx_queue *rxq,
 int ice_rx_vec_dev_check(struct rte_eth_dev *dev);
 int ice_tx_vec_dev_check(struct rte_eth_dev *dev);
 int ice_rxq_vec_setup(struct ci_rx_queue *rxq);
-uint16_t ice_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
-			   uint16_t nb_pkts);
-uint16_t ice_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
-				     uint16_t nb_pkts);
-uint16_t ice_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
-			   uint16_t nb_pkts);
 uint16_t ice_recv_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 				uint16_t nb_pkts);
 uint16_t ice_recv_pkts_vec_avx2_offload(void *rx_queue, struct rte_mbuf **rx_pkts,
