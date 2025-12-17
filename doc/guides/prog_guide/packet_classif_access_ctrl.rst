@@ -359,7 +359,20 @@ For example:
         ret = rte_acl_build(acx, &cfg);
      }
 
+Custom Memory Hooks
+~~~~~~~~~~~~~~~~~~~~
 
+The ACL library supports custom memory allocation for runtime structures.
+
+The structure ``rte_acl_mem_hook`` defines memory hooks
+to allocate and free memory.
+
+Applications can supply their own memory hooks
+through ``rte_acl_set_mem_hook()``.
+to allocate memory from custom pools or pre-allocated buffers.
+
+If no memory hook is provided,
+the ACL library uses ``rte_zmalloc_socket()`` internally.
 
 Classification methods
 ~~~~~~~~~~~~~~~~~~~~~~

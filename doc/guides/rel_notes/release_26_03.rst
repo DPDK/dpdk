@@ -55,6 +55,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added custom memory allocation hooks in ACL library.**
+
+  Added a hook API mechanism
+  allowing applications to provide their own allocation and free functions
+  for ACL runtime memory.
+
 * **Updated AMD axgbe ethernet driver.**
 
   * Added support for V4000 Krackan2e.
