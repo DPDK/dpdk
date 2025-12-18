@@ -44,6 +44,19 @@ static const char *const jump_tbl[16] = {
 	[EBPF_CALL >> 4] = "call", [EBPF_EXIT >> 4] = "exit",
 };
 
+static inline const char *
+atomic_op(int32_t imm)
+{
+	switch (imm) {
+	case BPF_ATOMIC_ADD:
+		return "xadd";
+	case BPF_ATOMIC_XCHG:
+		return "xchg";
+	default:
+		return NULL;
+	}
+}
+
 RTE_EXPORT_SYMBOL(rte_bpf_dump)
 void rte_bpf_dump(FILE *f, const struct ebpf_insn *buf, uint32_t len)
 {
@@ -52,7 +65,7 @@ void rte_bpf_dump(FILE *f, const struct ebpf_insn *buf, uint32_t len)
 	for (i = 0; i < len; ++i) {
 		const struct ebpf_insn *ins = buf + i;
 		uint8_t cls = BPF_CLASS(ins->code);
-		const char *op, *postfix = "";
+		const char *op, *postfix = "", *warning = "";
 
 		fprintf(f, " L%u:\t", i);
 
@@ -66,12 +79,15 @@ void rte_bpf_dump(FILE *f, const struct ebpf_insn *buf, uint32_t len)
 			/* fall through */
 		case EBPF_ALU64:
 			op = alu_op_tbl[BPF_OP_INDEX(ins->code)];
+			if (ins->off != 0)
+				/* Not yet supported variation with non-zero offset. */
+				warning = ", off != 0";
 			if (BPF_SRC(ins->code) == BPF_X)
-				fprintf(f, "%s%s r%u, r%u\n", op, postfix, ins->dst_reg,
-					ins->src_reg);
+				fprintf(f, "%s%s r%u, r%u%s\n", op, postfix, ins->dst_reg,
+					ins->src_reg, warning);
 			else
-				fprintf(f, "%s%s r%u, #0x%x\n", op, postfix,
-					ins->dst_reg, ins->imm);
+				fprintf(f, "%s%s r%u, #0x%x%s\n", op, postfix,
+					ins->dst_reg, ins->imm, warning);
 			break;
 		case BPF_LD:
 			op = "ld";
@@ -79,10 +95,13 @@ void rte_bpf_dump(FILE *f, const struct ebpf_insn *buf, uint32_t len)
 			if (ins->code == (BPF_LD | BPF_IMM | EBPF_DW)) {
 				uint64_t val;
 
+				if (ins->src_reg != 0)
+					/* Not yet supported variation with non-zero src. */
+					warning = ", src != 0";
 				val = (uint32_t)ins[0].imm |
 					(uint64_t)(uint32_t)ins[1].imm << 32;
-				fprintf(f, "%s%s r%d, #0x%"PRIx64"\n",
-					op, postfix, ins->dst_reg, val);
+				fprintf(f, "%s%s r%d, #0x%"PRIx64"%s\n",
+					op, postfix, ins->dst_reg, val, warning);
 				i++;
 			} else if (BPF_MODE(ins->code) == BPF_IMM)
 				fprintf(f, "%s%s r%d, #0x%x\n", op, postfix,
@@ -100,8 +119,12 @@ void rte_bpf_dump(FILE *f, const struct ebpf_insn *buf, uint32_t len)
 		case BPF_LDX:
 			op = "ldx";
 			postfix = size_tbl[BPF_SIZE_INDEX(ins->code)];
-			fprintf(f, "%s%s r%d, [r%u + %d]\n", op, postfix, ins->dst_reg,
-				ins->src_reg, ins->off);
+			if (BPF_MODE(ins->code) == BPF_MEM)
+				fprintf(f, "%s%s r%d, [r%u + %d]\n", op, postfix, ins->dst_reg,
+					ins->src_reg, ins->off);
+			else
+				fprintf(f, "// BUG: LDX opcode 0x%02x in eBPF insns\n",
+					ins->code);
 			break;
 		case BPF_ST:
 			op = "st";
@@ -114,7 +137,20 @@ void rte_bpf_dump(FILE *f, const struct ebpf_insn *buf, uint32_t len)
 					ins->code);
 			break;
 		case BPF_STX:
-			op = "stx";
+			if (BPF_MODE(ins->code) == BPF_MEM)
+				op = "stx";
+			else if (BPF_MODE(ins->code) == EBPF_ATOMIC) {
+				op = atomic_op(ins->imm);
+				if (op == NULL) {
+					fprintf(f, "// BUG: ATOMIC operation 0x%x in eBPF insns\n",
+						ins->imm);
+					break;
+				}
+			} else {
+				fprintf(f, "// BUG: STX opcode 0x%02x in eBPF insns\n",
+					ins->code);
+				break;
+			}
 			postfix = size_tbl[BPF_SIZE_INDEX(ins->code)];
 			fprintf(f, "%s%s [r%d + %d], r%u\n", op, postfix,
 				ins->dst_reg, ins->off, ins->src_reg);
@@ -122,12 +158,21 @@ void rte_bpf_dump(FILE *f, const struct ebpf_insn *buf, uint32_t len)
 #define L(pc, off) ((int)(pc) + 1 + (off))
 		case BPF_JMP:
 			op = jump_tbl[BPF_OP_INDEX(ins->code)];
+			if (ins->src_reg != 0)
+				/* Not yet supported variation with non-zero src w/o condition. */
+				warning = ", src != 0";
 			if (op == NULL)
 				fprintf(f, "invalid jump opcode: %#x\n", ins->code);
 			else if (BPF_OP(ins->code) == BPF_JA)
-				fprintf(f, "%s L%d\n", op, L(i, ins->off));
+				fprintf(f, "%s L%d%s\n", op, L(i, ins->off), warning);
+			else if (BPF_OP(ins->code) == EBPF_CALL)
+				/* Call of helper function with index in immediate. */
+				fprintf(f, "%s #%u%s\n", op, ins->imm, warning);
 			else if (BPF_OP(ins->code) == EBPF_EXIT)
-				fprintf(f, "%s\n", op);
+				fprintf(f, "%s%s\n", op, warning);
+			else if (BPF_SRC(ins->code) == BPF_X)
+				fprintf(f, "%s r%u, r%u, L%d\n", op, ins->dst_reg,
+					ins->src_reg, L(i, ins->off));
 			else
 				fprintf(f, "%s r%u, #0x%x, L%d\n", op, ins->dst_reg,
 					ins->imm, L(i, ins->off));
