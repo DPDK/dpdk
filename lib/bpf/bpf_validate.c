@@ -910,6 +910,16 @@ eval_store(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 
 	if (BPF_CLASS(ins->code) == BPF_STX) {
 		rs = st->rv[ins->src_reg];
+		if (BPF_MODE(ins->code) == EBPF_ATOMIC)
+			switch (ins->imm) {
+			case BPF_ATOMIC_ADD:
+				break;
+			case BPF_ATOMIC_XCHG:
+				eval_max_bound(&st->rv[ins->src_reg], msk);
+				break;
+			default:
+				return "unsupported atomic operation";
+			}
 		eval_apply_mask(&rs, msk);
 	} else
 		eval_fill_imm(&rs, msk, ins->imm);
@@ -926,7 +936,7 @@ eval_store(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 
 		sv = st->sv + rd.u.max / sizeof(uint64_t);
 		if (BPF_CLASS(ins->code) == BPF_STX &&
-				BPF_MODE(ins->code) == EBPF_XADD)
+				BPF_MODE(ins->code) == EBPF_ATOMIC)
 			eval_max_bound(sv, msk);
 		else
 			*sv = rs;
@@ -1549,17 +1559,17 @@ static const struct bpf_ins_check ins_chk[UINT8_MAX + 1] = {
 		.imm = { .min = 0, .max = 0},
 		.eval = eval_store,
 	},
-	/* atomic add instructions */
-	[(BPF_STX | EBPF_XADD | BPF_W)] = {
+	/* atomic instructions */
+	[(BPF_STX | EBPF_ATOMIC | BPF_W)] = {
 		.mask = { .dreg = ALL_REGS, .sreg = ALL_REGS},
 		.off = { .min = 0, .max = UINT16_MAX},
-		.imm = { .min = 0, .max = 0},
+		.imm = { .min = BPF_ATOMIC_ADD, .max = BPF_ATOMIC_XCHG},
 		.eval = eval_store,
 	},
-	[(BPF_STX | EBPF_XADD | EBPF_DW)] = {
+	[(BPF_STX | EBPF_ATOMIC | EBPF_DW)] = {
 		.mask = { .dreg = ALL_REGS, .sreg = ALL_REGS},
 		.off = { .min = 0, .max = UINT16_MAX},
-		.imm = { .min = 0, .max = 0},
+		.imm = { .min = BPF_ATOMIC_ADD, .max = BPF_ATOMIC_XCHG},
 		.eval = eval_store,
 	},
 	/* store IMM instructions */

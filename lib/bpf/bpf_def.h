@@ -55,6 +55,11 @@
 #define	BPF_MSH		0xa0
 
 #define EBPF_XADD	0xc0
+/* Generalize XADD for other operations depending on imm (0 still means ADD). */
+#define EBPF_ATOMIC	0xc0
+
+#define BPF_ATOMIC_ADD	0x00
+#define BPF_ATOMIC_XCHG	0xe1
 
 /* alu/jmp fields */
 #define BPF_OP(code)    ((code) & 0xf0)

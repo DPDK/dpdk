@@ -169,7 +169,7 @@ emit_rex(struct bpf_jit_state *st, uint32_t op, uint32_t reg, uint32_t rm)
 	if (BPF_CLASS(op) == EBPF_ALU64 ||
 			op == (BPF_ST | BPF_MEM | EBPF_DW) ||
 			op == (BPF_STX | BPF_MEM | EBPF_DW) ||
-			op == (BPF_STX | EBPF_XADD | EBPF_DW) ||
+			op == (BPF_STX | EBPF_ATOMIC | EBPF_DW) ||
 			op == (BPF_LD | BPF_IMM | EBPF_DW) ||
 			(BPF_CLASS(op) == BPF_LDX &&
 			BPF_MODE(op) == BPF_MEM &&
@@ -654,22 +654,41 @@ emit_st_reg(struct bpf_jit_state *st, uint32_t op, uint32_t sreg, uint32_t dreg,
 	emit_st_common(st, op, sreg, dreg, 0, ofs);
 }
 
+static void
+emit_abs_jmp(struct bpf_jit_state *st, int32_t ofs);
+
 /*
  * emit lock add %<sreg>, <ofs>(%<dreg>)
  */
 static void
-emit_st_xadd(struct bpf_jit_state *st, uint32_t op, uint32_t sreg,
-	uint32_t dreg, int32_t ofs)
+emit_st_atomic(struct bpf_jit_state *st, uint32_t op, uint32_t sreg,
+	uint32_t dreg, int32_t ofs, int32_t atomic_op)
 {
 	uint32_t imsz, mods;
+	uint8_t ops;
 
 	const uint8_t lck = 0xF0; /* lock prefix */
-	const uint8_t ops = 0x01; /* add opcode */
+
+	switch (atomic_op) {
+	case BPF_ATOMIC_ADD:
+		ops = 0x01; /* add opcode */
+		break;
+	case BPF_ATOMIC_XCHG:
+		ops = 0x87; /* xchg opcode */
+		break;
+	default:
+		/* this should be caught by validator and never reach here */
+		emit_ld_imm64(st, RAX, 0, 0);
+		emit_abs_jmp(st, st->exit.off);
+		return;
+	}
 
 	imsz = imm_size(ofs);
 	mods = (imsz == 1) ? MOD_IDISP8 : MOD_IDISP32;
 
-	emit_bytes(st, &lck, sizeof(lck));
+	/* xchg already implies lock */
+	if (atomic_op != BPF_ATOMIC_XCHG)
+		emit_bytes(st, &lck, sizeof(lck));
 	emit_rex(st, op, sreg, dreg);
 	emit_bytes(st, &ops, sizeof(ops));
 	emit_modregrm(st, mods, sreg, dreg);
@@ -1443,10 +1462,10 @@ emit(struct bpf_jit_state *st, const struct rte_bpf *bpf)
 		case (BPF_ST | BPF_MEM | EBPF_DW):
 			emit_st_imm(st, op, dr, ins->imm, ins->off);
 			break;
-		/* atomic add instructions */
-		case (BPF_STX | EBPF_XADD | BPF_W):
-		case (BPF_STX | EBPF_XADD | EBPF_DW):
-			emit_st_xadd(st, op, sr, dr, ins->off);
+		/* atomic instructions */
+		case (BPF_STX | EBPF_ATOMIC | BPF_W):
+		case (BPF_STX | EBPF_ATOMIC | EBPF_DW):
+			emit_st_atomic(st, op, sr, dr, ins->off, ins->imm);
 			break;
 		/* jump instructions */
 		case (BPF_JMP | BPF_JA):

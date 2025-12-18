@@ -4359,3 +4359,462 @@ test_bpf_convert(void)
 #endif /* RTE_HAS_LIBPCAP */
 
 REGISTER_FAST_TEST(bpf_convert_autotest, NOHUGE_OK, ASAN_OK, test_bpf_convert);
+
+/*
+ * Tests of BPF atomic instructions.
+ */
+
+/* Value that should be returned by the xchg test programs. */
+#define XCHG_RETURN_VALUE 0xdeadbeefcafebabe
+
+/* Operand of XADD, should overflow both 32-bit and 64-bit parts of initial value. */
+#define XADD_OPERAND 0xc1c3c5c7c9cbcdcf
+
+/* Argument type of the xchg test program. */
+struct xchg_arg {
+	uint64_t value0;
+	uint64_t value1;
+};
+
+/* Initial value of the data area passed to the xchg test program. */
+static const struct xchg_arg xchg_input = {
+	.value0 = 0xa0a1a2a3a4a5a6a7,
+	.value1 = 0xb0b1b2b3b4b5b6b7,
+};
+
+/* Run program against xchg_input and compare output value with expected. */
+static int
+run_xchg_test(uint32_t nb_ins, const struct ebpf_insn *ins, struct xchg_arg expected)
+{
+	const struct rte_bpf_prm prm = {
+		.ins = ins,
+		.nb_ins = nb_ins,
+		.prog_arg = {
+			.type = RTE_BPF_ARG_PTR,
+			.size = sizeof(struct xchg_arg),
+		},
+	};
+
+	for (int use_jit = false; use_jit <= true; ++use_jit) {
+		struct xchg_arg argument = xchg_input;
+		uint64_t return_value;
+
+		struct rte_bpf *const bpf = rte_bpf_load(&prm);
+		RTE_TEST_ASSERT_NOT_NULL(bpf, "expect rte_bpf_load() != NULL");
+
+		if (use_jit) {
+			struct rte_bpf_jit jit;
+			RTE_TEST_ASSERT_SUCCESS(rte_bpf_get_jit(bpf, &jit),
+				"expect rte_bpf_get_jit() to succeed");
+			if (jit.func == NULL) {
+				/* No JIT on this platform. */
+				rte_bpf_destroy(bpf);
+				continue;
+			}
+
+			return_value = jit.func(&argument);
+		} else
+			return_value = rte_bpf_exec(bpf, &argument);
+
+		rte_bpf_destroy(bpf);
+
+		RTE_TEST_ASSERT_EQUAL(return_value, XCHG_RETURN_VALUE,
+			"expect return_value == %#jx, found %#jx, use_jit=%d",
+			(uintmax_t)XCHG_RETURN_VALUE, (uintmax_t)return_value,
+			use_jit);
+
+		RTE_TEST_ASSERT_EQUAL(argument.value0, expected.value0,
+			"expect value0 == %#jx, found %#jx, use_jit=%d",
+			(uintmax_t)expected.value0, (uintmax_t)argument.value0,
+			use_jit);
+
+		RTE_TEST_ASSERT_EQUAL(argument.value1, expected.value1,
+			"expect value1 == %#jx, found %#jx, use_jit=%d",
+			(uintmax_t)expected.value1, (uintmax_t)argument.value1,
+			use_jit);
+	}
+
+	return TEST_SUCCESS;
+}
+
+/*
+ * Test 32-bit XADD.
+ *
+ * - Pre-fill r0 with return value.
+ * - Fill r2 with XADD_OPERAND.
+ * - Add (uint32_t)XADD_OPERAND to *(uint32_t *)&value0.
+ * - Negate r2 and use it in the next operation to verify it was not corrupted.
+ * - Add (uint32_t)-XADD_OPERAND to *(uint32_t *)&value1.
+ * - Return r0 which should remain unchanged.
+ */
+
+static int
+test_xadd32(void)
+{
+	static const struct ebpf_insn ins[] = {
+		{
+			/* Set r0 to return value. */
+			.code = (BPF_LD | BPF_IMM | EBPF_DW),
+			.dst_reg = EBPF_REG_0,
+			.imm = (uint32_t)XCHG_RETURN_VALUE,
+		},
+		{
+			/* Second part of 128-bit instruction. */
+			.imm = XCHG_RETURN_VALUE >> 32,
+		},
+		{
+			/* Set r2 to XADD operand. */
+			.code = (BPF_LD | BPF_IMM | EBPF_DW),
+			.dst_reg = EBPF_REG_2,
+			.imm = (uint32_t)XADD_OPERAND,
+		},
+		{
+			/* Second part of 128-bit instruction. */
+			.imm = XADD_OPERAND >> 32,
+		},
+		{
+			/* Atomically add r2 to value0, 32-bit. */
+			.code = (BPF_STX | EBPF_ATOMIC | BPF_W),
+			.src_reg = EBPF_REG_2,
+			.dst_reg = EBPF_REG_1,
+			.off = offsetof(struct xchg_arg, value0),
+			.imm = BPF_ATOMIC_ADD,
+		},
+		{
+			/* Negate r2. */
+			.code = (EBPF_ALU64 | BPF_NEG | BPF_K),
+			.dst_reg = EBPF_REG_2,
+		},
+		{
+			/* Atomically add r2 to value1, 32-bit. */
+			.code = (BPF_STX | EBPF_ATOMIC | BPF_W),
+			.src_reg = EBPF_REG_2,
+			.dst_reg = EBPF_REG_1,
+			.off = offsetof(struct xchg_arg, value1),
+			.imm = BPF_ATOMIC_ADD,
+		},
+		{
+			.code = (BPF_JMP | EBPF_EXIT),
+		},
+	};
+	const struct xchg_arg expected = {
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+		/* Only high 32 bits should be added. */
+		.value0 = xchg_input.value0 + (XADD_OPERAND & RTE_GENMASK64(63, 32)),
+		.value1 = xchg_input.value1 - (XADD_OPERAND & RTE_GENMASK64(63, 32)),
+#elif RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+		/* Only low 32 bits should be added, without carry. */
+		.value0 = (xchg_input.value0 & RTE_GENMASK64(63, 32)) |
+			((xchg_input.value0 + XADD_OPERAND) & RTE_GENMASK64(31, 0)),
+		.value1 = (xchg_input.value1 & RTE_GENMASK64(63, 32)) |
+			((xchg_input.value1 - XADD_OPERAND) & RTE_GENMASK64(31, 0)),
+#else
+#error Unsupported endianness.
+#endif
+	};
+	return run_xchg_test(RTE_DIM(ins), ins, expected);
+}
+
+REGISTER_FAST_TEST(bpf_xadd32_autotest, NOHUGE_OK, ASAN_OK, test_xadd32);
+
+/*
+ * Test 64-bit XADD.
+ *
+ * - Pre-fill r0 with return value.
+ * - Fill r2 with XADD_OPERAND.
+ * - Add XADD_OPERAND to value0.
+ * - Negate r2 and use it in the next operation to verify it was not corrupted.
+ * - Add -XADD_OPERAND to value1.
+ * - Return r0 which should remain unchanged.
+ */
+
+static int
+test_xadd64(void)
+{
+	static const struct ebpf_insn ins[] = {
+		{
+			/* Set r0 to return value. */
+			.code = (BPF_LD | BPF_IMM | EBPF_DW),
+			.dst_reg = EBPF_REG_0,
+			.imm = (uint32_t)XCHG_RETURN_VALUE,
+		},
+		{
+			/* Second part of 128-bit instruction. */
+			.imm = XCHG_RETURN_VALUE >> 32,
+		},
+		{
+			/* Set r2 to XADD operand. */
+			.code = (BPF_LD | BPF_IMM | EBPF_DW),
+			.dst_reg = EBPF_REG_2,
+			.imm = (uint32_t)XADD_OPERAND,
+		},
+		{
+			/* Second part of 128-bit instruction. */
+			.imm = XADD_OPERAND >> 32,
+		},
+		{
+			/* Atomically add r2 to value0. */
+			.code = (BPF_STX | EBPF_ATOMIC | EBPF_DW),
+			.src_reg = EBPF_REG_2,
+			.dst_reg = EBPF_REG_1,
+			.off = offsetof(struct xchg_arg, value0),
+			.imm = BPF_ATOMIC_ADD,
+		},
+		{
+			/* Negate r2. */
+			.code = (EBPF_ALU64 | BPF_NEG | BPF_K),
+			.dst_reg = EBPF_REG_2,
+		},
+		{
+			/* Atomically add r2 to value1. */
+			.code = (BPF_STX | EBPF_ATOMIC | EBPF_DW),
+			.src_reg = EBPF_REG_2,
+			.dst_reg = EBPF_REG_1,
+			.off = offsetof(struct xchg_arg, value1),
+			.imm = BPF_ATOMIC_ADD,
+		},
+		{
+			.code = (BPF_JMP | EBPF_EXIT),
+		},
+	};
+	const struct xchg_arg expected = {
+		.value0 = xchg_input.value0 + XADD_OPERAND,
+		.value1 = xchg_input.value1 - XADD_OPERAND,
+	};
+	return run_xchg_test(RTE_DIM(ins), ins, expected);
+}
+
+REGISTER_FAST_TEST(bpf_xadd64_autotest, NOHUGE_OK, ASAN_OK, test_xadd64);
+
+/*
+ * Test 32-bit XCHG.
+ *
+ * - Pre-fill r2 with return value.
+ * - Exchange *(uint32_t *)&value0 and *(uint32_t *)&value1 via r2.
+ * - Upper half of r2 should get cleared, so add it back before returning.
+ */
+
+static int
+test_xchg32(void)
+{
+	static const struct ebpf_insn ins[] = {
+		{
+			/* Set r2 to return value. */
+			.code = (BPF_LD | BPF_IMM | EBPF_DW),
+			.dst_reg = EBPF_REG_2,
+			.imm = (uint32_t)XCHG_RETURN_VALUE,
+		},
+		{
+			/* Second part of 128-bit instruction. */
+			.imm = XCHG_RETURN_VALUE >> 32,
+		},
+		{
+			/* Atomically exchange r2 with value0, 32-bit. */
+			.code = (BPF_STX | EBPF_ATOMIC | BPF_W),
+			.src_reg = EBPF_REG_2,
+			.dst_reg = EBPF_REG_1,
+			.off = offsetof(struct xchg_arg, value0),
+			.imm = BPF_ATOMIC_XCHG,
+		},
+		{
+			/* Atomically exchange r2 with value1, 32-bit. */
+			.code = (BPF_STX | EBPF_ATOMIC | BPF_W),
+			.src_reg = EBPF_REG_2,
+			.dst_reg = EBPF_REG_1,
+			.off = offsetof(struct xchg_arg, value1),
+			.imm = BPF_ATOMIC_XCHG,
+		},
+		{
+			/* Atomically exchange r2 with value0, 32-bit. */
+			.code = (BPF_STX | EBPF_ATOMIC | BPF_W),
+			.src_reg = EBPF_REG_2,
+			.dst_reg = EBPF_REG_1,
+			.off = offsetof(struct xchg_arg, value0),
+			.imm = BPF_ATOMIC_XCHG,
+		},
+		{
+			/* Set upper half of r0 to return value. */
+			.code = (BPF_LD | BPF_IMM | EBPF_DW),
+			.dst_reg = EBPF_REG_0,
+			.imm = 0,
+		},
+		{
+			/* Second part of 128-bit instruction. */
+			.imm = XCHG_RETURN_VALUE >> 32,
+		},
+		{
+			/*
+			 * Add r2 (should have upper half cleared by this time)
+			 * to r0 to use as a return value.
+			 */
+			.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
+			.src_reg = EBPF_REG_2,
+			.dst_reg = EBPF_REG_0,
+		},
+		{
+			.code = (BPF_JMP | EBPF_EXIT),
+		},
+	};
+	struct xchg_arg expected = {
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+	/* Only high 32 bits should be exchanged. */
+		.value0 =
+			(xchg_input.value0 & RTE_GENMASK64(31, 0)) |
+			(xchg_input.value1 & RTE_GENMASK64(63, 32)),
+		.value1 =
+			(xchg_input.value1 & RTE_GENMASK64(31, 0)) |
+			(xchg_input.value0 & RTE_GENMASK64(63, 32)),
+#elif RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	/* Only low 32 bits should be exchanged. */
+		.value0 =
+			(xchg_input.value1 & RTE_GENMASK64(31, 0)) |
+			(xchg_input.value0 & RTE_GENMASK64(63, 32)),
+		.value1 =
+			(xchg_input.value0 & RTE_GENMASK64(31, 0)) |
+			(xchg_input.value1 & RTE_GENMASK64(63, 32)),
+#else
+#error Unsupported endianness.
+#endif
+	};
+	return run_xchg_test(RTE_DIM(ins), ins, expected);
+}
+
+REGISTER_FAST_TEST(bpf_xchg32_autotest, NOHUGE_OK, ASAN_OK, test_xchg32);
+
+/*
+ * Test 64-bit XCHG.
+ *
+ * - Pre-fill r2 with return value.
+ * - Exchange value0 and value1 via r2.
+ * - Return r2, which should remain unchanged.
+ */
+
+static int
+test_xchg64(void)
+{
+	static const struct ebpf_insn ins[] = {
+		{
+			/* Set r2 to return value. */
+			.code = (BPF_LD | BPF_IMM | EBPF_DW),
+			.dst_reg = EBPF_REG_2,
+			.imm = (uint32_t)XCHG_RETURN_VALUE,
+		},
+		{
+			/* Second part of 128-bit instruction. */
+			.imm = XCHG_RETURN_VALUE >> 32,
+		},
+		{
+			/* Atomically exchange r2 with value0. */
+			.code = (BPF_STX | EBPF_ATOMIC | EBPF_DW),
+			.src_reg = EBPF_REG_2,
+			.dst_reg = EBPF_REG_1,
+			.off = offsetof(struct xchg_arg, value0),
+			.imm = BPF_ATOMIC_XCHG,
+		},
+		{
+			/* Atomically exchange r2 with value1. */
+			.code = (BPF_STX | EBPF_ATOMIC | EBPF_DW),
+			.src_reg = EBPF_REG_2,
+			.dst_reg = EBPF_REG_1,
+			.off = offsetof(struct xchg_arg, value1),
+			.imm = BPF_ATOMIC_XCHG,
+		},
+		{
+			/* Atomically exchange r2 with value0. */
+			.code = (BPF_STX | EBPF_ATOMIC | EBPF_DW),
+			.src_reg = EBPF_REG_2,
+			.dst_reg = EBPF_REG_1,
+			.off = offsetof(struct xchg_arg, value0),
+			.imm = BPF_ATOMIC_XCHG,
+		},
+		{
+			/* Copy r2 to r0 to use as a return value. */
+			.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+			.src_reg = EBPF_REG_2,
+			.dst_reg = EBPF_REG_0,
+		},
+		{
+			.code = (BPF_JMP | EBPF_EXIT),
+		},
+	};
+	const struct xchg_arg expected = {
+		.value0 = xchg_input.value1,
+		.value1 = xchg_input.value0,
+	};
+	return run_xchg_test(RTE_DIM(ins), ins, expected);
+}
+
+REGISTER_FAST_TEST(bpf_xchg64_autotest, NOHUGE_OK, ASAN_OK, test_xchg64);
+
+/*
+ * Test invalid and unsupported atomic imm values (also valid ones for control).
+ *
+ * For realism use a meaningful subset of the test_xchg64 program.
+ */
+
+static int
+test_atomic_imm(int32_t imm, bool is_valid)
+{
+	const struct ebpf_insn ins[] = {
+		{
+			/* Set r2 to return value. */
+			.code = (BPF_LD | BPF_IMM | EBPF_DW),
+			.dst_reg = EBPF_REG_2,
+			.imm = (uint32_t)XCHG_RETURN_VALUE,
+		},
+		{
+			/* Second part of 128-bit instruction. */
+			.imm = XCHG_RETURN_VALUE >> 32,
+		},
+		{
+			/* Atomically exchange r2 with value0. */
+			.code = (BPF_STX | EBPF_ATOMIC | EBPF_DW),
+			.src_reg = EBPF_REG_2,
+			.dst_reg = EBPF_REG_1,
+			.off = offsetof(struct xchg_arg, value0),
+			.imm = imm,
+		},
+		{
+			/* Copy r2 to r0 to use as a return value. */
+			.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+			.src_reg = EBPF_REG_2,
+			.dst_reg = EBPF_REG_0,
+		},
+		{
+			.code = (BPF_JMP | EBPF_EXIT),
+		},
+	};
+	const struct rte_bpf_prm prm = {
+		.ins = ins,
+		.nb_ins = RTE_DIM(ins),
+		.prog_arg = {
+			.type = RTE_BPF_ARG_PTR,
+			.size = sizeof(struct xchg_arg),
+		},
+	};
+
+	struct rte_bpf *const bpf = rte_bpf_load(&prm);
+	rte_bpf_destroy(bpf);
+
+	if (is_valid)
+		RTE_TEST_ASSERT_NOT_NULL(bpf, "expect rte_bpf_load() != NULL, imm=%#x", imm);
+	else
+		RTE_TEST_ASSERT_NULL(bpf, "expect rte_bpf_load() == NULL, imm=%#x", imm);
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_atomic_imms(void)
+{
+	RTE_TEST_ASSERT_SUCCESS(test_atomic_imm(INT32_MIN, false), "expect success");
+	for (int32_t imm = BPF_ATOMIC_ADD - 1; imm <= BPF_ATOMIC_XCHG + 1; ++imm) {
+		const bool is_valid = imm == BPF_ATOMIC_ADD || imm == BPF_ATOMIC_XCHG;
+		RTE_TEST_ASSERT_SUCCESS(test_atomic_imm(imm, is_valid), "expect success");
+	}
+	RTE_TEST_ASSERT_SUCCESS(test_atomic_imm(INT32_MAX, false), "expect success");
+
+	return TEST_SUCCESS;
+}
+
+REGISTER_FAST_TEST(bpf_atomic_imms_autotest, NOHUGE_OK, ASAN_OK, test_atomic_imms);

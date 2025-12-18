@@ -979,6 +979,20 @@ emit_stadd(struct a64_jit_ctx *ctx, bool is64, uint8_t rs, uint8_t rn)
 }
 
 static void
+emit_swpal(struct a64_jit_ctx *ctx, bool is64, uint8_t rs, uint8_t rt, uint8_t rn)
+{
+	uint32_t insn;
+
+	insn = 0xb8e08000;
+	insn |= (!!is64) << 30;
+	insn |= rs << 16;
+	insn |= rn << 5;
+	insn |= rt;
+
+	emit_insn(ctx, insn, check_reg(rs) || check_reg(rt) || check_reg(rn));
+}
+
+static void
 emit_ldxr(struct a64_jit_ctx *ctx, bool is64, uint8_t rt, uint8_t rn)
 {
 	uint32_t insn;
@@ -1018,8 +1032,8 @@ has_atomics(void)
 }
 
 static void
-emit_xadd(struct a64_jit_ctx *ctx, uint8_t op, uint8_t tmp1, uint8_t tmp2,
-	  uint8_t tmp3, uint8_t dst, int16_t off, uint8_t src)
+emit_atomic(struct a64_jit_ctx *ctx, uint8_t op, uint8_t tmp1, uint8_t tmp2,
+	  uint8_t tmp3, uint8_t dst, int16_t off, uint8_t src, int32_t atomic_op)
 {
 	bool is64 = (BPF_SIZE(op) == EBPF_DW);
 	uint8_t rn;
@@ -1032,13 +1046,32 @@ emit_xadd(struct a64_jit_ctx *ctx, uint8_t op, uint8_t tmp1, uint8_t tmp2,
 		rn = dst;
 	}
 
-	if (has_atomics()) {
-		emit_stadd(ctx, is64, src, rn);
-	} else {
-		emit_ldxr(ctx, is64, tmp2, rn);
-		emit_add(ctx, is64, tmp2, src);
-		emit_stxr(ctx, is64, tmp3, tmp2, rn);
-		emit_cbnz(ctx, is64, tmp3, -3);
+	switch (atomic_op) {
+	case BPF_ATOMIC_ADD:
+		if (has_atomics()) {
+			emit_stadd(ctx, is64, src, rn);
+		} else {
+			emit_ldxr(ctx, is64, tmp2, rn);
+			emit_add(ctx, is64, tmp2, src);
+			emit_stxr(ctx, is64, tmp3, tmp2, rn);
+			emit_cbnz(ctx, is64, tmp3, -3);
+		}
+		break;
+	case BPF_ATOMIC_XCHG:
+		if (has_atomics()) {
+			emit_swpal(ctx, is64, src, src, rn);
+		} else {
+			emit_ldxr(ctx, is64, tmp2, rn);
+			emit_stxr(ctx, is64, tmp3, src, rn);
+			emit_cbnz(ctx, is64, tmp3, -2);
+			emit_mov(ctx, is64, src, tmp2);
+		}
+		break;
+	default:
+		/* this should be caught by validator and never reach here */
+		emit_mov_imm(ctx, 1, ebpf_to_a64_reg(ctx, EBPF_REG_0), 0);
+		emit_epilogue(ctx);
+		return;
 	}
 }
 
@@ -1322,10 +1355,10 @@ emit(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
 			emit_mov_imm(ctx, 1, tmp2, off);
 			emit_str(ctx, BPF_SIZE(op), tmp1, dst, tmp2);
 			break;
-		/* STX XADD: lock *(size *)(dst + off) += src */
-		case (BPF_STX | EBPF_XADD | BPF_W):
-		case (BPF_STX | EBPF_XADD | EBPF_DW):
-			emit_xadd(ctx, op, tmp1, tmp2, tmp3, dst, off, src);
+		/* lock *(size *)(dst + off) += src or xchg(dst + off, &src) */
+		case (BPF_STX | EBPF_ATOMIC | BPF_W):
+		case (BPF_STX | EBPF_ATOMIC | EBPF_DW):
+			emit_atomic(ctx, op, tmp1, tmp2, tmp3, dst, off, src, imm);
 			break;
 		/* PC += off */
 		case (BPF_JMP | BPF_JA):
