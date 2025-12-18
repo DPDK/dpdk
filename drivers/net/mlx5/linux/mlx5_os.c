@@ -1832,6 +1832,11 @@ error:
 			close(priv->nl_socket_route);
 		if (priv->vmwa_context)
 			mlx5_vlan_vmwa_exit(priv->vmwa_context);
+		for (i = 0; i < MLX5_FLOW_TYPE_MAXI; i++) {
+			if (!priv->flows[i])
+				continue;
+			mlx5_ipool_destroy(priv->flows[i]);
+		}
 		if (eth_dev && priv->drop_queue.hrxq)
 			mlx5_drop_action_destroy(eth_dev);
 		if (priv->mtr_profile_tbl)
