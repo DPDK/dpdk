@@ -33,11 +33,10 @@
 #include "malloc_heap.h"
 
 /*
- * Try to mmap *size bytes in /dev/zero. If it is successful, return the
- * pointer to the mmap'd area and keep *size unmodified. Else, retry
- * with a smaller zone: decrease *size by hugepage_sz until it reaches
- * 0. In this case, return NULL. Note: this function returns an address
- * which is a multiple of hugepage size.
+ * Try to mmap *size bytes. If it is successful, return the pointer to the
+ * mmap'd area and keep *size unmodified. Else, retry with a smaller zone:
+ * decrease *size by page_sz until it reaches 0. In this case, return NULL.
+ * Note: this function returns an address which is a multiple of page size.
  */
 
 #define MEMSEG_LIST_FMT "memseg-%" PRIu64 "k-%i-%i"
