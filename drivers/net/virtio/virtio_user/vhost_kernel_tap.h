@@ -36,10 +36,10 @@
 
 int vhost_kernel_tap_setup(int tapfd, int hdr_size, uint64_t features);
 
-int tap_support_features(unsigned int *tap_features);
-int tap_open(const char *ifname, unsigned int r_flags, bool multi_queue);
-int tap_get_name(int tapfd, char **ifname);
-int tap_get_flags(int tapfd, unsigned int *tap_flags);
-int tap_set_mac(int tapfd, uint8_t *mac);
+int vhost_tap_support_features(unsigned int *tap_features);
+int vhost_tap_open(const char *ifname, unsigned int r_flags, bool multi_queue);
+int vhost_tap_get_name(int tapfd, char **ifname);
+int vhost_tap_get_flags(int tapfd, unsigned int *tap_flags);
+int vhost_tap_set_mac(int tapfd, uint8_t *mac);
 
 #endif
