@@ -43,6 +43,7 @@
 #include <fsl_bman.h>
 #include <netcfg.h>
 
+#define RTE_PRIORITY_102 102
 struct rte_dpaa_bus {
 	struct rte_bus bus;
 	TAILQ_HEAD(, rte_dpaa_device) device_list;
@@ -56,6 +57,9 @@ struct netcfg_info *dpaa_netcfg;
 
 /* define a variable to hold the portal_key, once created.*/
 static pthread_key_t dpaa_portal_key;
+/* dpaa lcore specific  portals */
+struct dpaa_portal *dpaa_portals[RTE_MAX_LCORE] = {NULL};
+static int dpaa_bus_global_init;
 
 unsigned int dpaa_svr_family;
 
@@ -377,6 +381,7 @@ int rte_dpaa_portal_init(void *arg)
 
 		return ret;
 	}
+	dpaa_portals[lcore] = DPAA_PER_LCORE_PORTAL;
 
 	DPAA_BUS_LOG(DEBUG, "QMAN thread initialized");
 
@@ -434,6 +439,8 @@ dpaa_portal_finish(void *arg)
 	rte_free(dpaa_io_portal);
 	dpaa_io_portal = NULL;
 	DPAA_PER_LCORE_PORTAL = NULL;
+	dpaa_portals[rte_lcore_id()] = NULL;
+	DPAA_BUS_DEBUG("Portal cleanup done for lcore = %d", rte_lcore_id());
 }
 
 static int
@@ -712,6 +719,7 @@ rte_dpaa_bus_probe(void)
 			break;
 		}
 	}
+	dpaa_bus_global_init = 1;
 
 	return 0;
 }
@@ -819,6 +827,55 @@ dpaa_bus_dev_iterate(const void *start, const char *str,
 	return NULL;
 }
 
+static int
+dpaa_bus_cleanup(void)
+{
+	struct rte_dpaa_device *dev, *tmp_dev;
+
+	BUS_INIT_FUNC_TRACE();
+	RTE_TAILQ_FOREACH_SAFE(dev, &rte_dpaa_bus.device_list, next, tmp_dev) {
+		struct rte_dpaa_driver *drv = dev->driver;
+		int ret = 0;
+
+		if (!rte_dev_is_probed(&dev->device))
+			continue;
+		if (!drv || !drv->remove)
+			continue;
+		ret = drv->remove(dev);
+		if (ret < 0) {
+			rte_errno = errno;
+			return -1;
+		}
+		dev->driver = NULL;
+		dev->device.driver = NULL;
+	}
+	dpaa_portal_finish((void *)DPAA_PER_LCORE_PORTAL);
+	dpaa_bus_global_init = 0;
+	DPAA_BUS_DEBUG("Bus cleanup done");
+
+	return 0;
+}
+
+/* Adding destructor for double check in case non-gracefully
+ * exit.
+ */
+RTE_FINI_PRIO(dpaa_cleanup, 102)
+{
+	unsigned int lcore_id;
+
+	if (!dpaa_bus_global_init)
+		return;
+
+	/* cleanup portals in case non-graceful exit */
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
+		/* Check for non zero id */
+		dpaa_portal_finish((void *)dpaa_portals[lcore_id]);
+	}
+	dpaa_portal_finish((void *)DPAA_PER_LCORE_PORTAL);
+	dpaa_bus_global_init = 0;
+	DPAA_BUS_DEBUG("Worker thread clean up done");
+}
+
 static struct rte_dpaa_bus rte_dpaa_bus = {
 	.bus = {
 		.scan = rte_dpaa_bus_scan,
@@ -829,6 +886,7 @@ static struct rte_dpaa_bus rte_dpaa_bus = {
 		.plug = dpaa_bus_plug,
 		.unplug = dpaa_bus_unplug,
 		.dev_iterate = dpaa_bus_dev_iterate,
+		.cleanup = dpaa_bus_cleanup,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_dpaa_bus.device_list),
 	.driver_list = TAILQ_HEAD_INITIALIZER(rte_dpaa_bus.driver_list),
