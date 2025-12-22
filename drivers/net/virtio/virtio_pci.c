@@ -269,7 +269,7 @@ legacy_dev_close(struct virtio_hw *hw)
 	return 0;
 }
 
-const struct virtio_ops legacy_ops = {
+const struct virtio_ops virtio_legacy_ops = {
 	.read_dev_cfg	= legacy_read_dev_config,
 	.write_dev_cfg	= legacy_write_dev_config,
 	.get_status	= legacy_get_status,
@@ -524,7 +524,7 @@ modern_dev_close(struct virtio_hw *hw)
 	return 0;
 }
 
-const struct virtio_ops modern_ops = {
+const struct virtio_ops virtio_modern_ops = {
 	.read_dev_cfg	= modern_read_dev_config,
 	.write_dev_cfg	= modern_write_dev_config,
 	.get_status	= modern_get_status,
@@ -669,7 +669,7 @@ vtpci_init(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev)
 	 */
 	if (virtio_read_caps(pci_dev, hw) == 0) {
 		PMD_INIT_LOG(INFO, "modern virtio pci detected.");
-		VIRTIO_OPS(hw) = &modern_ops;
+		VIRTIO_OPS(hw) = &virtio_modern_ops;
 		dev->modern = true;
 		goto msix_detect;
 	}
@@ -688,7 +688,7 @@ vtpci_init(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev)
 		return -1;
 	}
 
-	VIRTIO_OPS(hw) = &legacy_ops;
+	VIRTIO_OPS(hw) = &virtio_legacy_ops;
 	dev->modern = false;
 
 msix_detect:

@@ -131,7 +131,7 @@ vhost_kernel_get_features(struct virtio_user_dev *dev, uint64_t *features)
 		return -1;
 	}
 
-	ret = tap_get_flags(data->tapfds[0], &tap_flags);
+	ret = vhost_tap_get_flags(data->tapfds[0], &tap_flags);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to get TAP features");
 		return -1;
@@ -389,7 +389,7 @@ vhost_kernel_setup(struct virtio_user_dev *dev)
 	uint32_t q, i;
 	int vhostfd;
 
-	if (tap_support_features(&tap_features) < 0)
+	if (vhost_tap_support_features(&tap_features) < 0)
 		return -1;
 
 	if ((tap_features & IFF_VNET_HDR) == 0) {
@@ -435,14 +435,14 @@ vhost_kernel_setup(struct virtio_user_dev *dev)
 	}
 
 	ifname = dev->ifname != NULL ? dev->ifname : "tap%d";
-	data->tapfds[0] = tap_open(ifname, r_flags, (tap_features & IFF_MULTI_QUEUE) != 0);
+	data->tapfds[0] = vhost_tap_open(ifname, r_flags, (tap_features & IFF_MULTI_QUEUE) != 0);
 	if (data->tapfds[0] < 0)
 		goto err_tapfds;
-	if (dev->ifname == NULL && tap_get_name(data->tapfds[0], &dev->ifname) < 0) {
+	if (dev->ifname == NULL && vhost_tap_get_name(data->tapfds[0], &dev->ifname) < 0) {
 		PMD_DRV_LOG(ERR, "fail to get tap name (%d)", data->tapfds[0]);
 		goto err_tapfds;
 	}
-	if (tap_get_flags(data->tapfds[0], &tap_flags) < 0) {
+	if (vhost_tap_get_flags(data->tapfds[0], &tap_flags) < 0) {
 		PMD_DRV_LOG(ERR, "fail to get tap flags for tap %s", dev->ifname);
 		goto err_tapfds;
 	}
@@ -452,7 +452,7 @@ vhost_kernel_setup(struct virtio_user_dev *dev)
 	}
 
 	for (i = 1; i < dev->max_queue_pairs; i++) {
-		data->tapfds[i] = tap_open(dev->ifname, r_flags, true);
+		data->tapfds[i] = vhost_tap_open(dev->ifname, r_flags, true);
 		if (data->tapfds[i] < 0)
 			goto err_tapfds;
 	}
@@ -558,7 +558,7 @@ vhost_kernel_enable_queue_pair(struct virtio_user_dev *dev,
 
 	/* Set mac on tap only once when starting */
 	if (!dev->started && pair_idx == 0 &&
-			tap_set_mac(data->tapfds[pair_idx], dev->mac_addr) < 0)
+	    vhost_tap_set_mac(data->tapfds[pair_idx], dev->mac_addr) < 0)
 		return -1;
 
 	if (vhost_kernel_tap_setup(tapfd, hdr_size, dev->features) < 0) {

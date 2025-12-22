@@ -87,9 +87,9 @@ eth_virtio_pci_init(struct rte_eth_dev *eth_dev)
 	} else {
 		VTPCI_DEV(hw) = pci_dev;
 		if (dev->modern)
-			VIRTIO_OPS(hw) = &modern_ops;
+			VIRTIO_OPS(hw) = &virtio_modern_ops;
 		else
-			VIRTIO_OPS(hw) = &legacy_ops;
+			VIRTIO_OPS(hw) = &virtio_legacy_ops;
 
 		ret = virtio_remap_pci(RTE_ETH_DEV_TO_PCI(eth_dev), dev);
 		if (ret < 0) {

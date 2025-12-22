@@ -139,7 +139,7 @@ int vtpci_init(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev);
 void vtpci_legacy_ioport_unmap(struct virtio_hw *hw);
 int vtpci_legacy_ioport_map(struct virtio_hw *hw);
 
-extern const struct virtio_ops legacy_ops;
-extern const struct virtio_ops modern_ops;
+extern const struct virtio_ops virtio_legacy_ops;
+extern const struct virtio_ops virtio_modern_ops;
 
 #endif /* _VIRTIO_PCI_H_ */

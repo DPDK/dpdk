@@ -20,7 +20,7 @@
 
 
 int
-tap_support_features(unsigned int *tap_features)
+vhost_tap_support_features(unsigned int *tap_features)
 {
 	int tapfd;
 
@@ -42,7 +42,7 @@ tap_support_features(unsigned int *tap_features)
 }
 
 int
-tap_open(const char *ifname, unsigned int r_flags, bool multi_queue)
+vhost_tap_open(const char *ifname, unsigned int r_flags, bool multi_queue)
 {
 	struct ifreq ifr;
 	int tapfd;
@@ -81,7 +81,7 @@ retry_mono_q:
 }
 
 int
-tap_get_name(int tapfd, char **name)
+vhost_tap_get_name(int tapfd, char **name)
 {
 	struct ifreq ifr;
 	int ret;
@@ -98,7 +98,7 @@ tap_get_name(int tapfd, char **name)
 }
 
 int
-tap_get_flags(int tapfd, unsigned int *tap_flags)
+vhost_tap_get_flags(int tapfd, unsigned int *tap_flags)
 {
 	struct ifreq ifr;
 
@@ -112,7 +112,7 @@ tap_get_flags(int tapfd, unsigned int *tap_flags)
 }
 
 int
-tap_set_mac(int tapfd, uint8_t *mac)
+vhost_tap_set_mac(int tapfd, uint8_t *mac)
 {
 	struct ifreq ifr;
 
