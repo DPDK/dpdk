@@ -92,7 +92,7 @@ static void setup_ports(struct app_config *app_cfg, int cnt_ports)
 	int size_pktpool;
 	struct rte_eth_conf cfg_port;
 	struct rte_eth_dev_info dev_info;
-	char str_name[16];
+	char str_name[RTE_MEMPOOL_NAMESIZE];
 	uint16_t nb_rxd = PORT_RX_QUEUE_SIZE;
 	uint16_t nb_txd = PORT_TX_QUEUE_SIZE;
 	int ret;
@@ -112,7 +112,7 @@ static void setup_ports(struct app_config *app_cfg, int cnt_ports)
 		size_pktpool = dev_info.rx_desc_lim.nb_max +
 			dev_info.tx_desc_lim.nb_max + PKTPOOL_EXTRA_SIZE;
 
-		snprintf(str_name, 16, "pkt_pool%i", idx_port);
+		snprintf(str_name, sizeof(str_name), "pkt_pool%i", idx_port);
 		ptr_port->pkt_pool = rte_pktmbuf_pool_create(
 			str_name,
 			size_pktpool, PKTPOOL_CACHE,
