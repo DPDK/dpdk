@@ -74,6 +74,12 @@ gve_tx_clean_dqo(struct gve_tx_queue *txq)
 	txq->complq_tail = next;
 }
 
+static inline void
+gve_tx_clean_descs_dqo(struct gve_tx_queue *txq, uint16_t nb_descs) {
+	while (--nb_descs)
+		gve_tx_clean_dqo(txq);
+}
+
 static uint16_t
 gve_tx_pkt_nb_data_descs(struct rte_mbuf *tx_pkt)
 {
@@ -96,7 +102,6 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	struct rte_mbuf **sw_ring;
 	struct rte_mbuf *tx_pkt;
 	uint16_t mask, sw_mask;
-	uint16_t nb_to_clean;
 	uint16_t first_sw_id;
 	const char *reason;
 	uint16_t nb_tx = 0;
@@ -119,11 +124,9 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
 		tx_pkt = tx_pkts[nb_tx];
 
-		if (txq->nb_free <= txq->free_thresh) {
-			nb_to_clean = DQO_TX_MULTIPLIER * txq->rs_thresh;
-			while (nb_to_clean--)
-				gve_tx_clean_dqo(txq);
-		}
+		if (txq->nb_free <= txq->free_thresh)
+			gve_tx_clean_descs_dqo(txq, DQO_TX_MULTIPLIER *
+					       txq->rs_thresh);
 
 		if (txq->nb_free < tx_pkt->nb_segs)
 			break;
@@ -140,8 +143,16 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		csum = !!(ol_flags & GVE_TX_CKSUM_OFFLOAD_MASK_DQO);
 
 		nb_descs = gve_tx_pkt_nb_data_descs(tx_pkt);
-		if (txq->nb_free < nb_descs)
-			break;
+
+		/* Clean if there aren't enough descriptors to send the packet. */
+		if (unlikely(txq->nb_free < nb_descs)) {
+			int nb_to_clean = RTE_MAX(DQO_TX_MULTIPLIER * txq->rs_thresh,
+						  nb_descs);
+
+			gve_tx_clean_descs_dqo(txq, nb_to_clean);
+			if (txq->nb_free < nb_descs)
+				break;
+		}
 
 		do {
 			if (sw_ring[sw_id] != NULL)
