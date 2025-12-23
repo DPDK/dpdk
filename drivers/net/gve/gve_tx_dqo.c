@@ -74,6 +74,19 @@ gve_tx_clean_dqo(struct gve_tx_queue *txq)
 	txq->complq_tail = next;
 }
 
+static uint16_t
+gve_tx_pkt_nb_data_descs(struct rte_mbuf *tx_pkt)
+{
+	int nb_descs = 0;
+
+	while (tx_pkt) {
+		nb_descs += (GVE_TX_MAX_BUF_SIZE_DQO - 1 + tx_pkt->data_len) /
+			GVE_TX_MAX_BUF_SIZE_DQO;
+		tx_pkt = tx_pkt->next;
+	}
+	return nb_descs;
+}
+
 uint16_t
 gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
@@ -88,7 +101,7 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	const char *reason;
 	uint16_t nb_tx = 0;
 	uint64_t ol_flags;
-	uint16_t nb_used;
+	uint16_t nb_descs;
 	uint16_t tx_id;
 	uint16_t sw_id;
 	uint64_t bytes;
@@ -122,10 +135,13 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		ol_flags = tx_pkt->ol_flags;
-		nb_used = tx_pkt->nb_segs;
 		first_sw_id = sw_id;
 
 		csum = !!(ol_flags & GVE_TX_CKSUM_OFFLOAD_MASK_DQO);
+
+		nb_descs = gve_tx_pkt_nb_data_descs(tx_pkt);
+		if (txq->nb_free < nb_descs)
+			break;
 
 		do {
 			if (sw_ring[sw_id] != NULL)
@@ -135,22 +151,29 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			if (!tx_pkt->data_len)
 				goto finish_mbuf;
 
-			txd = &txr[tx_id];
 			sw_ring[sw_id] = tx_pkt;
 
-			/* fill Tx descriptor */
-			txd->pkt.buf_addr = rte_cpu_to_le_64(rte_mbuf_data_iova(tx_pkt));
-			txd->pkt.dtype = GVE_TX_PKT_DESC_DTYPE_DQO;
-			txd->pkt.compl_tag = rte_cpu_to_le_16(first_sw_id);
-			txd->pkt.buf_size = RTE_MIN(tx_pkt->data_len, GVE_TX_MAX_BUF_SIZE_DQO);
-			txd->pkt.end_of_packet = 0;
-			txd->pkt.checksum_offload_enable = csum;
+			/* fill Tx descriptors */
+			int mbuf_offset = 0;
+			while (mbuf_offset < tx_pkt->data_len) {
+				uint64_t buf_addr = rte_mbuf_data_iova(tx_pkt) +
+					mbuf_offset;
 
-			/* size of desc_ring and sw_ring could be different */
-			tx_id = (tx_id + 1) & mask;
+				txd = &txr[tx_id];
+				txd->pkt.buf_addr = rte_cpu_to_le_64(buf_addr);
+				txd->pkt.compl_tag = rte_cpu_to_le_16(first_sw_id);
+				txd->pkt.dtype = GVE_TX_PKT_DESC_DTYPE_DQO;
+				txd->pkt.buf_size = RTE_MIN(tx_pkt->data_len - mbuf_offset,
+							    GVE_TX_MAX_BUF_SIZE_DQO);
+				txd->pkt.end_of_packet = 0;
+				txd->pkt.checksum_offload_enable = csum;
+
+				mbuf_offset += txd->pkt.buf_size;
+				tx_id = (tx_id + 1) & mask;
+			}
+
 finish_mbuf:
 			sw_id = (sw_id + 1) & sw_mask;
-
 			bytes += tx_pkt->data_len;
 			tx_pkt = tx_pkt->next;
 		} while (tx_pkt);
@@ -159,8 +182,8 @@ finish_mbuf:
 		txd = &txr[(tx_id - 1) & mask];
 		txd->pkt.end_of_packet = 1;
 
-		txq->nb_free -= nb_used;
-		txq->nb_used += nb_used;
+		txq->nb_free -= nb_descs;
+		txq->nb_used += nb_descs;
 	}
 
 	/* update the tail pointer if any packets were processed */
