@@ -450,6 +450,7 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_max = gve_is_gqi(priv) ? priv->tx_desc_cnt : GVE_MAX_QUEUE_SIZE_DQO,
 		.nb_min = priv->tx_desc_cnt,
 		.nb_align = 1,
+		.nb_mtu_seg_max = GVE_TX_MAX_DATA_DESCS,
 	};
 
 	return 0;

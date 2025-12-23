@@ -154,6 +154,12 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				break;
 		}
 
+		/* Drop packet if it doesn't adhere to hardware limits. */
+		if (nb_descs > GVE_TX_MAX_DATA_DESCS) {
+			txq->stats.too_many_descs++;
+			break;
+		}
+
 		do {
 			if (sw_ring[sw_id] != NULL)
 				PMD_DRV_LOG(DEBUG, "Overwriting an entry in sw_ring");
