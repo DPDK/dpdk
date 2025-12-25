@@ -1472,7 +1472,8 @@ struct mlx5_flex_item {
 };
 
 /*
- * Sample an IPv6 address and the first dword of SRv6 header.
+ * Sample IPv6 address in the first segment list
+ * and the first dword of SRv6 header.
  * Then it is 16 + 4 = 20 bytes which is 5 dwords.
  */
 #define MLX5_SRV6_SAMPLE_NUM 5
