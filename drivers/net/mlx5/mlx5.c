@@ -1032,6 +1032,11 @@ error:
 	return (rte_errno == 0) ? -ENODEV : -rte_errno;
 }
 
+/* IPv6 SRH header is defined in RFC 8754 */
+#define MLX5_SRH_HEADER_LENGTH_FIELD_OFFSET 8
+#define MLX5_SRH_HEADER_LENGTH_FIELD_SIZE 8
+#define MLX5_SRH_HEADER_LENGTH_SHIFT 3
+
 /*
  * Destroy the flex parser node, including the parser itself, input / output
  * arcs and DW samples. Resources could be reused then.
@@ -1090,18 +1095,14 @@ mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev)
 	/* Srv6 first two DW are not counted in. */
 	node.header_length_base_value = 0x8;
 	/* The unit is uint64_t. */
-	node.header_length_field_shift = 0x3;
+	node.header_length_field_shift = MLX5_SRH_HEADER_LENGTH_SHIFT;
+	node.header_length_field_offset_mode = !attr->header_length_field_mode_wa;
 	/* Header length is the 2nd byte. */
-	if (attr->header_length_field_mode_wa) {
-		/* Legacy firmware before ConnectX-8, we should provide offset WA. */
-		node.header_length_field_offset = 8;
-		if (attr->header_length_mask_width < 8)
-			node.header_length_field_offset += 8 - attr->header_length_mask_width;
-	} else {
-		/* The new firmware, we can specify the correct offset directly. */
-		node.header_length_field_offset = 12;
-	}
-	node.header_length_field_mask = 0xF;
+	node.header_length_field_offset = MLX5_SRH_HEADER_LENGTH_FIELD_OFFSET;
+	if (attr->header_length_mask_width < MLX5_SRH_HEADER_LENGTH_FIELD_SIZE)
+		node.header_length_field_offset +=
+			MLX5_SRH_HEADER_LENGTH_FIELD_SIZE - attr->header_length_mask_width;
+	node.header_length_field_mask = mlx5_flex_hdr_len_mask(MLX5_SRH_HEADER_LENGTH_SHIFT, attr);
 	/* One byte next header protocol. */
 	node.next_header_field_size = 0x8;
 	node.in[0].arc_parse_graph_node = MLX5_GRAPH_ARC_NODE_IP;
@@ -1155,6 +1156,11 @@ mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev)
 						(i + 1) * sizeof(uint32_t) * CHAR_BIT;
 	}
 	priv->sh->srh_flex_parser.flex.map[0].shift = 0;
+	DRV_LOG(NOTICE,
+		"SRH flex parser node object is created successfully. "
+		"Header extension length field size: %d bits\n",
+		attr->header_length_mask_width > MLX5_SRH_HEADER_LENGTH_FIELD_SIZE ?
+		MLX5_SRH_HEADER_LENGTH_FIELD_SIZE : attr->header_length_mask_width);
 	return 0;
 error:
 	if (fp)

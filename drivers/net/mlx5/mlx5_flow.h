@@ -3652,6 +3652,8 @@ flow_hw_get_ipv6_route_ext_mod_id_from_ctx(void *dr_ctx, uint8_t idx)
 	return 0;
 }
 
+uint8_t mlx5_flex_hdr_len_mask(uint8_t shift, const struct mlx5_hca_flex_attr *attr);
+
 static inline bool
 mlx5_dv_modify_ipv6_traffic_class_supported(struct mlx5_priv *priv)
 {
