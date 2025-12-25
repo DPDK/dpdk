@@ -458,7 +458,7 @@ mlx5_flex_release_index(struct rte_eth_dev *dev,
  *    6     b00000011  0x03
  *    7     b00000001  0x01
  */
-static uint8_t
+uint8_t
 mlx5_flex_hdr_len_mask(uint8_t shift,
 		       const struct mlx5_hca_flex_attr *attr)
 {
