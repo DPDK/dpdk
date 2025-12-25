@@ -3022,6 +3022,8 @@ flow_hw_get_ipv6_route_ext_mod_id_from_ctx(void *dr_ctx, uint8_t idx)
 	return 0;
 }
 
+uint8_t mlx5_flex_hdr_len_mask(uint8_t shift, const struct mlx5_hca_flex_attr *attr);
+
 void
 mlx5_indirect_list_handles_release(struct rte_eth_dev *dev);
 #ifdef HAVE_MLX5_HWS_SUPPORT
