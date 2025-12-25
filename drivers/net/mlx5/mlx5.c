@@ -1055,6 +1055,7 @@ error:
 int
 mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev)
 {
+	static rte_spinlock_t srh_init_sl = RTE_SPINLOCK_INITIALIZER;
 	struct mlx5_devx_graph_node_attr node = {
 		.modify_field_select = 0,
 	};
@@ -1072,13 +1073,16 @@ mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev)
 		DRV_LOG(ERR, "Dynamic flex parser is not supported on HWS");
 		return -ENOTSUP;
 	}
-	if (rte_atomic_fetch_add_explicit(&priv->sh->srh_flex_parser.refcnt, 1,
-			rte_memory_order_relaxed) + 1 > 1)
-		return 0;
+	rte_spinlock_lock(&srh_init_sl);
+	if (rte_atomic_load_explicit(&priv->sh->srh_flex_parser.refcnt,
+				     rte_memory_order_relaxed) > 0)
+		goto end;
 	priv->sh->srh_flex_parser.flex.devx_fp = mlx5_malloc(MLX5_MEM_ZERO,
 			sizeof(struct mlx5_flex_parser_devx), 0, SOCKET_ID_ANY);
-	if (!priv->sh->srh_flex_parser.flex.devx_fp)
-		return -ENOMEM;
+	if (!priv->sh->srh_flex_parser.flex.devx_fp) {
+		rte_errno = ENOMEM;
+		goto error;
+	}
 	node.header_length_mode = MLX5_GRAPH_NODE_LEN_FIELD;
 	/* Srv6 first two DW are not counted in. */
 	node.header_length_base_value = 0x8;
@@ -1149,12 +1153,17 @@ mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev)
 		"Header extension length field size: %d bits\n",
 		attr->header_length_mask_width > MLX5_SRH_HEADER_LENGTH_FIELD_SIZE ?
 		MLX5_SRH_HEADER_LENGTH_FIELD_SIZE : attr->header_length_mask_width);
+end:
+	rte_atomic_fetch_add_explicit(&priv->sh->srh_flex_parser.refcnt, 1,
+				      rte_memory_order_relaxed);
+	rte_spinlock_unlock(&srh_init_sl);
 	return 0;
 error:
 	if (fp)
 		mlx5_devx_cmd_destroy(fp);
 	if (priv->sh->srh_flex_parser.flex.devx_fp)
 		mlx5_free(priv->sh->srh_flex_parser.flex.devx_fp);
+	rte_spinlock_unlock(&srh_init_sl);
 	return (rte_errno == 0) ? -ENODEV : -rte_errno;
 }
 
@@ -1171,7 +1180,7 @@ mlx5_free_srh_flex_parser(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_internal_flex_parser_profile *fp = &priv->sh->srh_flex_parser;
 
-	if (rte_atomic_fetch_sub_explicit(&fp->refcnt, 1, rte_memory_order_relaxed) - 1)
+	if (rte_atomic_fetch_sub_explicit(&fp->refcnt, 1, rte_memory_order_relaxed) > 1)
 		return;
 	mlx5_devx_cmd_destroy(fp->flex.devx_fp->devx_obj);
 	mlx5_free(fp->flex.devx_fp);
