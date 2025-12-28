@@ -142,7 +142,7 @@ int process_portal_map(struct dpaa_ioctl_portal_map *params)
 
 	ret = ioctl(fd, DPAA_IOCTL_PORTAL_MAP, params);
 	if (ret) {
-		perror("ioctl(DPAA_IOCTL_PORTAL_MAP)");
+		DPAA_BUS_ERR("Failed ioctl DPAA_IOCTL_PORTAL_MAP: %s", strerror(errno));
 		return ret;
 	}
 	return 0;
@@ -157,7 +157,7 @@ int process_portal_unmap(struct dpaa_portal_map *map)
 
 	ret = ioctl(fd, DPAA_IOCTL_PORTAL_UNMAP, map);
 	if (ret) {
-		perror("ioctl(DPAA_IOCTL_PORTAL_UNMAP)");
+		DPAA_BUS_ERR("Failed ioctl DPAA_IOCTL_PORTAL_UNMAP: %s", strerror(errno));
 		return ret;
 	}
 	return 0;
@@ -215,7 +215,7 @@ static int process_portal_allocate(struct dpaa_ioctl_raw_portal *portal)
 
 	ret = ioctl(fd, DPAA_IOCTL_ALLOC_RAW_PORTAL, portal);
 	if (ret) {
-		perror("ioctl(DPAA_IOCTL_ALLOC_RAW_PORTAL)");
+		DPAA_BUS_ERR("Failed ioctl DPAA_IOCTL_ALLOC_RAW_PORTAL: %s", strerror(errno));
 		return ret;
 	}
 	return 0;
@@ -230,7 +230,7 @@ static int process_portal_free(struct dpaa_ioctl_raw_portal *portal)
 
 	ret = ioctl(fd, DPAA_IOCTL_FREE_RAW_PORTAL, portal);
 	if (ret) {
-		perror("ioctl(DPAA_IOCTL_FREE_RAW_PORTAL)");
+		DPAA_BUS_ERR("Failed ioctl DPAA_IOCTL_FREE_RAW_PORTAL: %s", strerror(errno));
 		return ret;
 	}
 	return 0;
