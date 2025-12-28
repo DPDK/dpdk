@@ -117,7 +117,7 @@ iterate_dir(struct dirent **d, int num, struct dt_dir *dt)
 		case DT_DIR:
 			subdir = malloc(sizeof(*subdir));
 			if (!subdir) {
-				perror("malloc");
+				DPAAX_LOG(ERR, "malloc failed");
 				return -ENOMEM;
 			}
 			strlcpy(subdir->node.node.name, d[loop]->d_name,
