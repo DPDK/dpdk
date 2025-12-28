@@ -73,7 +73,7 @@ check_forbidden_additions() { # <patch>
 
 	# no output on stdout or stderr
 	awk -v FOLDERS="lib drivers" \
-		-v EXPRESSIONS="\\\<printf\\\> \\\<fprintf\\\(stdout, \\\<fprintf\\\(stderr," \
+		-v EXPRESSIONS="perror\\\( \\\<printf\\\> \\\<fprintf\\\(stdout, \\\<fprintf\\\(stderr," \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Writing to stdout or stderr' \
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
