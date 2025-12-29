@@ -1242,6 +1242,7 @@ typedef enum efx_phy_cap_type_e {
 	EFX_PHY_CAP_NTYPES
 } efx_phy_cap_type_t;
 
+#define EFX_PHY_CAP_PAUSE_MASK (EFX_PHY_CAP_PAUSE | EFX_PHY_CAP_ASYM)
 
 #define	EFX_PHY_CAP_CURRENT	0x00000000
 #define	EFX_PHY_CAP_DEFAULT	0x00000001
