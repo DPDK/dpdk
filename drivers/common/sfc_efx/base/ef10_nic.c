@@ -2220,35 +2220,23 @@ efx_mcdi_nic_board_cfg(
 
 	encp->enc_board_type = board_type;
 
-	if (efx_np_supported(enp) != B_FALSE)
-		goto skip_phy_props;
+	if (efx_np_supported(enp) == B_FALSE) {
+		/*
+		 * Fill out fields in enp->en_port and enp->en_nic_cfg from MCDI
+		 */
+		rc = efx_mcdi_get_phy_cfg(enp);
+		if (rc != 0)
+			goto fail8;
 
-	/* Fill out fields in enp->en_port and enp->en_nic_cfg from MCDI */
-	if ((rc = efx_mcdi_get_phy_cfg(enp)) != 0)
-		goto fail8;
+		/* Obtain the default PHY advertised capabilities */
+		rc = ef10_phy_get_link(enp, &els);
+		if (rc != 0)
+			goto fail9;
 
-	/*
-	 * Firmware with support for *_FEC capability bits does not
-	 * report that the corresponding *_FEC_REQUESTED bits are supported.
-	 * Add them here so that drivers understand that they are supported.
-	 */
-	if (epp->ep_phy_cap_mask & (1u << EFX_PHY_CAP_BASER_FEC))
-		epp->ep_phy_cap_mask |=
-		    (1u << EFX_PHY_CAP_BASER_FEC_REQUESTED);
-	if (epp->ep_phy_cap_mask & (1u << EFX_PHY_CAP_RS_FEC))
-		epp->ep_phy_cap_mask |=
-		    (1u << EFX_PHY_CAP_RS_FEC_REQUESTED);
-	if (epp->ep_phy_cap_mask & (1u << EFX_PHY_CAP_25G_BASER_FEC))
-		epp->ep_phy_cap_mask |=
-		    (1u << EFX_PHY_CAP_25G_BASER_FEC_REQUESTED);
+		epp->ep_default_adv_cap_mask = els.epls.epls_adv_cap_mask;
+		epp->ep_adv_cap_mask = els.epls.epls_adv_cap_mask;
+	}
 
-	/* Obtain the default PHY advertised capabilities */
-	if ((rc = ef10_phy_get_link(enp, &els)) != 0)
-		goto fail9;
-	epp->ep_default_adv_cap_mask = els.epls.epls_adv_cap_mask;
-	epp->ep_adv_cap_mask = els.epls.epls_adv_cap_mask;
-
-skip_phy_props:
 	/* Check capabilities of running datapath firmware */
 	if ((rc = ef10_get_datapath_caps(enp)) != 0)
 		goto fail10;
@@ -2483,6 +2471,7 @@ ef10_nic_probe(
 {
 	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
 	efx_drv_cfg_t *edcp = &(enp->en_drv_cfg);
+	efx_port_t *epp = &(enp->en_port);
 	efx_rc_t rc;
 
 	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
@@ -2505,6 +2494,22 @@ ef10_nic_probe(
 	rc = efx_np_attach(enp);
 	if (rc != 0)
 		goto fail5;
+
+	/*
+	 * Firmware with support for *_FEC capability bits does not
+	 * report that the corresponding *_FEC_REQUESTED bits are supported.
+	 * Add them here so that drivers understand that they are supported.
+	 */
+
+	if (epp->ep_phy_cap_mask & (1u << EFX_PHY_CAP_BASER_FEC))
+		epp->ep_phy_cap_mask |=
+		    (1u << EFX_PHY_CAP_BASER_FEC_REQUESTED);
+	if (epp->ep_phy_cap_mask & (1u << EFX_PHY_CAP_RS_FEC))
+		epp->ep_phy_cap_mask |=
+		    (1u << EFX_PHY_CAP_RS_FEC_REQUESTED);
+	if (epp->ep_phy_cap_mask & (1u << EFX_PHY_CAP_25G_BASER_FEC))
+		epp->ep_phy_cap_mask |=
+		    (1u << EFX_PHY_CAP_25G_BASER_FEC_REQUESTED);
 
 	/*
 	 * Set default driver config limits (based on board config).
