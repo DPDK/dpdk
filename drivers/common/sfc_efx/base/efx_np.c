@@ -1392,7 +1392,7 @@ efx_np_link_ctrl(
 		 * no 'FEC_REQUESTED' bits, use 'NONE' or 'AUTO' from above.
 		 */
 		EFX_NP_CAP_SW_MASK_TO_HW_ENUM(efx_np_cap_map_fec_req,
-		    ETH_AN_FIELDS_FEC_REQ, cap_data_raw, cap_mask_sw,
+		    ETH_AN_FIELDS_FEC_MASK, cap_data_raw, cap_mask_sw,
 		    NULL, NULL, &supported, &cap_enum_hw);
 
 		if ((cap_mask_sw & EFX_PHY_CAP_FEC_MASK) != 0
