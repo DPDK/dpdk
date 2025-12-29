@@ -532,7 +532,7 @@ sfc_repr_dev_link_update(struct rte_eth_dev *dev,
 	struct rte_eth_link link;
 
 	if (sr->state != SFC_ETHDEV_STARTED) {
-		sfc_port_link_mode_to_info(EFX_LINK_UNKNOWN, &link);
+		sfc_port_link_mode_to_info(EFX_LINK_UNKNOWN, 0, &link);
 	} else {
 		memset(&link, 0, sizeof(link));
 		link.link_status = RTE_ETH_LINK_UP;
