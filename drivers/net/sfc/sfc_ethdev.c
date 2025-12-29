@@ -259,13 +259,14 @@ sfc_dev_get_rte_link(struct rte_eth_dev *dev, int wait_to_complete,
 	SFC_ASSERT(link != NULL);
 
 	if (sa->state != SFC_ETHDEV_STARTED) {
-		sfc_port_link_mode_to_info(EFX_LINK_UNKNOWN, link);
+		sfc_port_link_mode_to_info(EFX_LINK_UNKNOWN, 0, link);
 	} else if (wait_to_complete) {
 		efx_link_mode_t link_mode;
 
 		if (efx_port_poll(sa->nic, &link_mode) != 0)
 			link_mode = EFX_LINK_UNKNOWN;
-		sfc_port_link_mode_to_info(link_mode, link);
+		sfc_port_link_mode_to_info(link_mode, sa->port.phy_adv_cap,
+					   link);
 	} else {
 		sfc_ev_mgmt_qpoll(sa);
 		rte_eth_linkstatus_get(dev, link);
