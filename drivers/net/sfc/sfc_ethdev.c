@@ -7,6 +7,8 @@
  * for Solarflare) and Solarflare Communications, Inc.
  */
 
+#include <stdbool.h>
+
 #include <dev_driver.h>
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
@@ -14,6 +16,7 @@
 #include <bus_pci_driver.h>
 #include <rte_errno.h>
 #include <rte_string_fns.h>
+#include <rte_bitops.h>
 #include <rte_ether.h>
 
 #include "efx.h"
@@ -2347,6 +2350,10 @@ sfc_rx_metadata_negotiate(struct rte_eth_dev *dev, uint64_t *features)
 	return 0;
 }
 
+/*
+ * When adding support for new speeds/capabilities, make sure to adjust
+ * validity checks conducted by 'sfc_fec_capa_check' for user input.
+ */
 static unsigned int
 sfc_fec_get_capa_speed_to_fec(uint32_t supported_caps,
 			      struct rte_eth_fec_capa *speed_fec_capa)
@@ -2559,60 +2566,74 @@ adapter_unlock:
 	return -rc;
 }
 
+/*
+ * When adding checks for new speeds and/or capabilities, keep that consistent
+ * with capabilities that 'sfc_fec_get_capa_speed_to_fec' reports to the user.
+ */
 static int
 sfc_fec_capa_check(struct rte_eth_dev *dev, uint32_t fec_capa,
 		   uint32_t supported_caps)
 {
-	struct rte_eth_fec_capa *speed_fec_capa;
-	struct rte_eth_link current_link;
-	bool is_supported = false;
-	unsigned int num_entries;
-	bool auto_fec = false;
-	unsigned int i;
-
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
-
-	if (sa->state != SFC_ETHDEV_STARTED)
-		return 0;
+	unsigned int ncaps = rte_popcount32(fec_capa);
+	/* Set by 'sfc_phy_cap_from_link_speeds'. */
+	uint32_t speeds_cur = sa->port.phy_adv_cap;
+	uint32_t speeds_baser = 0;
+	uint32_t speeds_rs = 0;
 
 	if (fec_capa & RTE_ETH_FEC_MODE_TO_CAPA(RTE_ETH_FEC_AUTO)) {
-		auto_fec = true;
-		fec_capa &= ~RTE_ETH_FEC_MODE_TO_CAPA(RTE_ETH_FEC_AUTO);
-	}
-
-	/*
-	 * If only the AUTO bit is set, the decision on which FEC
-	 * mode to use will be made by HW/FW or driver.
-	 */
-	if (auto_fec && fec_capa == 0)
-		return 0;
-
-	sfc_dev_get_rte_link(dev, 1, &current_link);
-
-	num_entries = sfc_fec_get_capa_speed_to_fec(supported_caps, NULL);
-	if (num_entries == 0)
-		return ENOTSUP;
-
-	speed_fec_capa = rte_calloc("fec_capa", num_entries,
-				    sizeof(*speed_fec_capa), 0);
-	num_entries = sfc_fec_get_capa_speed_to_fec(supported_caps,
-						    speed_fec_capa);
-
-	for (i = 0; i < num_entries; i++) {
-		if (speed_fec_capa[i].speed == current_link.link_speed) {
-			if ((fec_capa & speed_fec_capa[i].capa) != 0)
-				is_supported = true;
-
-			break;
+		if (ncaps == 1) {
+			/* Let the FW choose a best-effort setting. */
+			return 0;
+		} else {
+			/*
+			 * Each requested FEC capability must be supported in
+			 * general and at least one speed that supports this
+			 * FEC mode must be currently advertised/configured.
+			 */
 		}
+	} else if (ncaps != 1) {
+		/*
+		 * Fixed FEC mode does not allow for multiple capabilities.
+		 * Empty mask is invalid, as No-FEC has a capability bit.
+		 */
+		return EINVAL;
+	} else if (fec_capa & RTE_ETH_FEC_MODE_TO_CAPA(RTE_ETH_FEC_NOFEC)) {
+		/* No-FEC is assumed to be always acceptable. */
+		return 0;
 	}
 
-	rte_free(speed_fec_capa);
+	/* 25G BASE-R is accounted for separately below. */
+	speeds_baser |= (1U << EFX_PHY_CAP_50000FDX);
+	speeds_baser |= (1U << EFX_PHY_CAP_40000FDX);
+	speeds_baser |= (1U << EFX_PHY_CAP_10000FDX);
 
-	if (is_supported)
-		return 0;
+	speeds_rs |= (1U << EFX_PHY_CAP_100000FDX);
+	speeds_rs |= (1U << EFX_PHY_CAP_50000FDX);
+	speeds_rs |= (1U << EFX_PHY_CAP_25000FDX);
 
-	return ENOTSUP;
+	if (fec_capa & RTE_ETH_FEC_MODE_TO_CAPA(RTE_ETH_FEC_BASER)) {
+		bool supported = false;
+
+		if ((supported_caps & EFX_PHY_CAP_FEC_BIT(25G_BASER_FEC)) &&
+		    (speeds_cur & (1U << EFX_PHY_CAP_25000FDX)))
+			supported = true;
+
+		if ((supported_caps & EFX_PHY_CAP_FEC_BIT(BASER_FEC)) &&
+		    (speeds_cur & speeds_baser))
+			supported = true;
+
+		if (!supported)
+			return ENOTSUP;
+	}
+
+	if (fec_capa & RTE_ETH_FEC_MODE_TO_CAPA(RTE_ETH_FEC_RS)) {
+		if ((supported_caps & EFX_PHY_CAP_FEC_BIT(RS_FEC)) == 0 ||
+		    (speeds_cur & speeds_rs) == 0)
+			return ENOTSUP;
+	}
+
+	return 0;
 }
 
 static int
