@@ -273,6 +273,7 @@ ef10_mac_reconfigure(
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_SET_MAC_IN_LEN,
 		MC_CMD_SET_MAC_OUT_LEN);
+	uint32_t fcntl;
 	efx_rc_t rc;
 
 	req.emr_cmd = MC_CMD_SET_MAC;
@@ -299,13 +300,29 @@ ef10_mac_reconfigure(
 				    SET_MAC_IN_REJECT_UNCST, 0,
 				    SET_MAC_IN_REJECT_BRDCST, 0);
 
-	/*
-	 * Flow control, whether it is auto-negotiated or not,
-	 * is set via the PHY advertised capabilities.  When set to
-	 * automatic the MAC will use the PHY settings to determine
-	 * the flow control settings.
-	 */
-	MCDI_IN_SET_DWORD(req, SET_MAC_IN_FCNTL, MC_CMD_FCNTL_AUTO);
+	if (epp->ep_fcntl_autoneg != B_FALSE) {
+		fcntl = MC_CMD_FCNTL_AUTO;
+	} else {
+		switch (epp->ep_fcntl) {
+		case 0:
+			fcntl = MC_CMD_FCNTL_OFF;
+			break;
+		case EFX_FCNTL_RESPOND:
+			fcntl = MC_CMD_FCNTL_RESPOND;
+			break;
+		case EFX_FCNTL_GENERATE:
+			fcntl = MC_CMD_FCNTL_GENERATE;
+			break;
+		case EFX_FCNTL_RESPOND | EFX_FCNTL_GENERATE:
+			fcntl = MC_CMD_FCNTL_BIDIR;
+			break;
+		default:
+			rc = EINVAL;
+			goto fail1;
+		}
+	}
+
+	MCDI_IN_SET_DWORD(req, SET_MAC_IN_FCNTL, fcntl);
 
 	/* Include the Ethernet frame checksum in RX packets if it's required */
 	MCDI_IN_POPULATE_DWORD_1(req, SET_MAC_IN_FLAGS,
@@ -321,7 +338,7 @@ ef10_mac_reconfigure(
 		 */
 		if (req.emr_rc != EACCES) {
 			rc = req.emr_rc;
-			goto fail1;
+			goto fail2;
 		}
 	}
 
@@ -338,6 +355,8 @@ ef10_mac_reconfigure(
 
 	return (0);
 
+fail2:
+	EFSYS_PROBE(fail2);
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 
