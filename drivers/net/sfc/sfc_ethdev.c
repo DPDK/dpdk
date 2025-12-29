@@ -2517,18 +2517,20 @@ sfc_fec_get_capa_speed_to_fec(uint32_t supported_caps,
 		rs = true;
 
 	/*
-	 * NOFEC and AUTO FEC modes are always supported.
-	 * FW does not provide information about the supported
-	 * FEC modes per the link speed.
-	 * Supported FEC depends on supported link speeds and
-	 * supported FEC modes by a device.
+	 * NOFEC can always be requested, but if the link technology for the
+	 * intended speed mandates FEC, doing so will not bring the link up.
+	 *
+	 * FW cannot report supported FEC modes per speed/link technology,
+	 * so use best-effort approximation to fill in the capabilities.
+	 *
+	 * Do not indicate 'AUTO'. This bit is reserved for user
+	 * input. It has nothing to do with capability reporting.
 	 */
 	if (supported_caps & (1u << EFX_PHY_CAP_10000FDX)) {
 		if (speed_fec_capa != NULL) {
 			speed_fec_capa[num].speed = RTE_ETH_SPEED_NUM_10G;
 			speed_fec_capa[num].capa =
-				RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
-				RTE_ETH_FEC_MODE_CAPA_MASK(AUTO);
+				RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
 			if (baser) {
 				speed_fec_capa[num].capa |=
 					RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
@@ -2540,8 +2542,7 @@ sfc_fec_get_capa_speed_to_fec(uint32_t supported_caps,
 		if (speed_fec_capa != NULL) {
 			speed_fec_capa[num].speed = RTE_ETH_SPEED_NUM_25G;
 			speed_fec_capa[num].capa =
-				RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
-				RTE_ETH_FEC_MODE_CAPA_MASK(AUTO);
+				RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
 			if (baser) {
 				speed_fec_capa[num].capa |=
 					RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
@@ -2557,8 +2558,7 @@ sfc_fec_get_capa_speed_to_fec(uint32_t supported_caps,
 		if (speed_fec_capa != NULL) {
 			speed_fec_capa[num].speed = RTE_ETH_SPEED_NUM_40G;
 			speed_fec_capa[num].capa =
-				RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
-				RTE_ETH_FEC_MODE_CAPA_MASK(AUTO);
+				RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
 			if (baser) {
 				speed_fec_capa[num].capa |=
 					RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
@@ -2570,8 +2570,7 @@ sfc_fec_get_capa_speed_to_fec(uint32_t supported_caps,
 		if (speed_fec_capa != NULL) {
 			speed_fec_capa[num].speed = RTE_ETH_SPEED_NUM_50G;
 			speed_fec_capa[num].capa =
-				RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
-				RTE_ETH_FEC_MODE_CAPA_MASK(AUTO);
+				RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
 			if (baser) {
 				speed_fec_capa[num].capa |=
 					RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
@@ -2587,8 +2586,7 @@ sfc_fec_get_capa_speed_to_fec(uint32_t supported_caps,
 		if (speed_fec_capa != NULL) {
 			speed_fec_capa[num].speed = RTE_ETH_SPEED_NUM_100G;
 			speed_fec_capa[num].capa =
-				RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
-				RTE_ETH_FEC_MODE_CAPA_MASK(AUTO);
+				RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
 			if (rs) {
 				speed_fec_capa[num].capa |=
 					RTE_ETH_FEC_MODE_CAPA_MASK(RS);
@@ -2600,8 +2598,7 @@ sfc_fec_get_capa_speed_to_fec(uint32_t supported_caps,
 		if (speed_fec_capa != NULL) {
 			speed_fec_capa[num].speed = RTE_ETH_SPEED_NUM_200G;
 			speed_fec_capa[num].capa =
-				RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
-				RTE_ETH_FEC_MODE_CAPA_MASK(AUTO);
+				RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
 			if (rs) {
 				speed_fec_capa[num].capa |=
 					RTE_ETH_FEC_MODE_CAPA_MASK(RS);
