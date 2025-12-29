@@ -259,6 +259,8 @@ gve_start_queues(struct rte_eth_dev *dev)
 		}
 	}
 
+	gve_set_device_rings_ok(priv);
+
 	return 0;
 
 err_rx:
@@ -271,6 +273,8 @@ err_tx:
 		gve_stop_tx_queues(dev);
 	else
 		gve_stop_tx_queues_dqo(dev);
+
+	gve_clear_device_rings_ok(priv);
 	return ret;
 }
 
@@ -295,8 +299,11 @@ static int
 gve_dev_stop(struct rte_eth_dev *dev)
 {
 	struct gve_priv *priv = dev->data->dev_private;
+
+	dev->data->dev_started = 0;
 	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 
+	gve_clear_device_rings_ok(priv);
 	if (gve_is_gqi(priv)) {
 		gve_stop_tx_queues(dev);
 		gve_stop_rx_queues(dev);
@@ -305,23 +312,14 @@ gve_dev_stop(struct rte_eth_dev *dev)
 		gve_stop_rx_queues_dqo(dev);
 	}
 
-	dev->data->dev_started = 0;
-
 	return 0;
 }
 
-static int
-gve_dev_close(struct rte_eth_dev *dev)
+static void
+gve_free_queues(struct rte_eth_dev *dev)
 {
 	struct gve_priv *priv = dev->data->dev_private;
-	int err = 0;
 	uint16_t i;
-
-	if (dev->data->dev_started) {
-		err = gve_dev_stop(dev);
-		if (err != 0)
-			PMD_DRV_LOG(ERR, "Failed to stop dev.");
-	}
 
 	if (gve_is_gqi(priv)) {
 		for (i = 0; i < dev->data->nb_tx_queues; i++)
@@ -336,9 +334,58 @@ gve_dev_close(struct rte_eth_dev *dev)
 		for (i = 0; i < dev->data->nb_rx_queues; i++)
 			gve_rx_queue_release_dqo(dev, i);
 	}
+}
 
+static void
+gve_free_counter_array(struct gve_priv *priv)
+{
+	rte_memzone_free(priv->cnt_array_mz);
+	priv->cnt_array = NULL;
+}
+
+static void
+gve_free_irq_db(struct gve_priv *priv)
+{
+	rte_memzone_free(priv->irq_dbs_mz);
+	priv->irq_dbs = NULL;
+}
+
+static void
+gve_teardown_device_resources(struct gve_priv *priv)
+{
+	int err;
+
+	/* Tell device its resources are being freed */
+	if (gve_get_device_resources_ok(priv)) {
+		err = gve_adminq_deconfigure_device_resources(priv);
+		if (err)
+			PMD_DRV_LOG(ERR, "Could not deconfigure device resources: err=%d", err);
+	}
+
+	gve_free_counter_array(priv);
+	gve_free_irq_db(priv);
+	gve_clear_device_resources_ok(priv);
+}
+
+static int
+gve_dev_close(struct rte_eth_dev *dev)
+{
+	struct gve_priv *priv = dev->data->dev_private;
+	int err = 0;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	if (dev->data->dev_started) {
+		err = gve_dev_stop(dev);
+		if (err != 0)
+			PMD_DRV_LOG(ERR, "Failed to stop dev.");
+	}
+
+	gve_free_queues(dev);
 	gve_free_qpls(priv);
-	rte_free(priv->adminq);
+	gve_teardown_device_resources(priv);
+	gve_adminq_free(priv);
 
 	dev->data->mac_addrs = NULL;
 
@@ -692,36 +739,6 @@ static const struct eth_dev_ops gve_eth_dev_ops_dqo = {
 	.xstats_get_names     = gve_xstats_get_names,
 };
 
-static void
-gve_free_counter_array(struct gve_priv *priv)
-{
-	rte_memzone_free(priv->cnt_array_mz);
-	priv->cnt_array = NULL;
-}
-
-static void
-gve_free_irq_db(struct gve_priv *priv)
-{
-	rte_memzone_free(priv->irq_dbs_mz);
-	priv->irq_dbs = NULL;
-}
-
-static void
-gve_teardown_device_resources(struct gve_priv *priv)
-{
-	int err;
-
-	/* Tell device its resources are being freed */
-	if (gve_get_device_resources_ok(priv)) {
-		err = gve_adminq_deconfigure_device_resources(priv);
-		if (err)
-			PMD_DRV_LOG(ERR, "Could not deconfigure device resources: err=%d", err);
-	}
-	gve_free_counter_array(priv);
-	gve_free_irq_db(priv);
-	gve_clear_device_resources_ok(priv);
-}
-
 static int
 pci_dev_msix_vec_count(struct rte_pci_device *pdev)
 {
@@ -776,6 +793,9 @@ gve_setup_device_resources(struct gve_priv *priv)
 		PMD_DRV_LOG(ERR, "Could not config device resources: err=%d", err);
 		goto free_irq_dbs;
 	}
+
+	gve_set_device_resources_ok(priv);
+
 	return 0;
 
 free_irq_dbs:
@@ -891,13 +911,6 @@ free_adminq:
 	return err;
 }
 
-static void
-gve_teardown_priv_resources(struct gve_priv *priv)
-{
-	gve_teardown_device_resources(priv);
-	gve_adminq_free(priv);
-}
-
 static int
 gve_dev_init(struct rte_eth_dev *eth_dev)
 {
@@ -958,18 +971,6 @@ gve_dev_init(struct rte_eth_dev *eth_dev)
 }
 
 static int
-gve_dev_uninit(struct rte_eth_dev *eth_dev)
-{
-	struct gve_priv *priv = eth_dev->data->dev_private;
-
-	gve_teardown_priv_resources(priv);
-
-	eth_dev->data->mac_addrs = NULL;
-
-	return 0;
-}
-
-static int
 gve_pci_probe(__rte_unused struct rte_pci_driver *pci_drv,
 	      struct rte_pci_device *pci_dev)
 {
@@ -979,7 +980,7 @@ gve_pci_probe(__rte_unused struct rte_pci_driver *pci_drv,
 static int
 gve_pci_remove(struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_remove(pci_dev, gve_dev_uninit);
+	return rte_eth_dev_pci_generic_remove(pci_dev, gve_dev_close);
 }
 
 static const struct rte_pci_id pci_id_gve_map[] = {
