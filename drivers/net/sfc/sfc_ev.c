@@ -516,7 +516,12 @@ sfc_ev_link_change(void *arg, efx_link_mode_t link_mode)
 	}
 
 decode_comprehensive:
-	sfc_port_link_mode_to_info(link_mode, &new_link);
+	/*
+	 * Reading 'sa->port.phy_adv_cap' without acquiring adaptor lock may
+	 * render autonegotiation status inaccurate, but that's not critical,
+	 * as it's unlikely to happen often and may be a practical trade-off.
+	 */
+	sfc_port_link_mode_to_info(link_mode, sa->port.phy_adv_cap, &new_link);
 
 set:
 	if (rte_eth_linkstatus_set(sa->eth_dev, &new_link) == 0)
