@@ -72,6 +72,10 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* **Discontinued support for AMD Solarflare SFN7xxx family boards.**
+
+  7000 series adaptors are out of support in terms of hardware.
+
 
 API Changes
 -----------

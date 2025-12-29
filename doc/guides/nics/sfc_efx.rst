@@ -52,20 +52,6 @@ Supported NICs
 
    - Solarflare SFN8722 Dual Port SFP+ OCP Server Adapter
 
-   - Solarflare SFN7002F Dual Port SFP+ Server Adapter
-
-   - Solarflare SFN7004F Quad Port SFP+ Server Adapter
-
-   - Solarflare SFN7042Q Dual Port QSFP+ Server Adapter
-
-   - Solarflare SFN7122F Dual Port SFP+ Server Adapter
-
-   - Solarflare SFN7124F Quad Port SFP+ Server Adapter
-
-   - Solarflare SFN7142Q Dual Port QSFP+ Server Adapter
-
-   - Solarflare SFN7322F Precision Time Synchronization Server Adapter
-
 
 Features
 --------
