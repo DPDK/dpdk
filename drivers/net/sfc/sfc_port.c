@@ -130,7 +130,8 @@ sfc_port_init_dev_link(struct sfc_adapter *sa)
 	if (rc != 0)
 		return rc;
 
-	sfc_port_link_mode_to_info(link_mode, &current_link);
+	sfc_port_link_mode_to_info(link_mode, sa->port.phy_adv_cap,
+				   &current_link);
 
 	EFX_STATIC_ASSERT(sizeof(*dev_link) == sizeof(rte_atomic64_t));
 	rte_atomic64_set((rte_atomic64_t *)dev_link,
@@ -614,7 +615,7 @@ sfc_set_rx_mode(struct sfc_adapter *sa)
 }
 
 void
-sfc_port_link_mode_to_info(efx_link_mode_t link_mode,
+sfc_port_link_mode_to_info(efx_link_mode_t link_mode, uint32_t phy_cap_req,
 			   struct rte_eth_link *link_info)
 {
 	SFC_ASSERT(link_mode < EFX_LINK_NMODES);
@@ -684,7 +685,8 @@ sfc_port_link_mode_to_info(efx_link_mode_t link_mode,
 		break;
 	}
 
-	link_info->link_autoneg = RTE_ETH_LINK_AUTONEG;
+	if ((phy_cap_req & (1U << EFX_PHY_CAP_AN)) != 0)
+		link_info->link_autoneg = RTE_ETH_LINK_AUTONEG;
 }
 
 int
