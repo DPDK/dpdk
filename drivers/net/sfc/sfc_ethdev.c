@@ -2857,8 +2857,13 @@ sfc_fec_set(struct rte_eth_dev *dev, uint32_t fec_capa)
 	if (sa->state == SFC_ETHDEV_STARTED) {
 		efx_phy_adv_cap_get(sa->nic, EFX_PHY_CAP_CURRENT,
 				    &updated_caps);
-		updated_caps = updated_caps & ~EFX_PHY_CAP_FEC_MASK;
-		updated_caps |= efx_fec_caps;
+
+		/* Keep pause capabilities set by efx_mac_fcntl_set(). */
+		updated_caps = (updated_caps & EFX_PHY_CAP_PAUSE_MASK) |
+			       (port->phy_adv_cap & ~EFX_PHY_CAP_PAUSE_MASK);
+
+		updated_caps = (updated_caps & ~EFX_PHY_CAP_FEC_MASK) |
+			       (efx_fec_caps & EFX_PHY_CAP_FEC_MASK);
 
 		rc = efx_phy_adv_cap_set(sa->nic, updated_caps);
 		if (rc != 0)
