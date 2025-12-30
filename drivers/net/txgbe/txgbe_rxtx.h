@@ -315,6 +315,7 @@ struct txgbe_rx_queue {
 	/** hold packets to return to application */
 	struct rte_mbuf *rx_stage[RTE_PMD_TXGBE_RX_MAX_BURST * 2];
 	const struct rte_memzone *mz;
+	uint64_t            csum_err;
 };
 
 /**

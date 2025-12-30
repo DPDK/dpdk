@@ -2569,6 +2569,8 @@ txgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct txgbe_hw_stats *hw_stats = TXGBE_DEV_STATS(dev);
+	struct txgbe_rx_queue *rxq;
+	uint64_t rx_csum_err = 0;
 	unsigned int i, count;
 
 	txgbe_read_stats_registers(hw, hw_stats);
@@ -2581,6 +2583,13 @@ txgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		return count;
 
 	limit = min(limit, txgbe_xstats_calc_num(dev));
+
+	/* Rx Checksum Errors */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		rx_csum_err += rxq->csum_err;
+	}
+	hw_stats->rx_l3_l4_xsum_error = rx_csum_err;
 
 	/* Extended stats from txgbe_hw_stats */
 	for (i = 0; i < limit; i++) {
@@ -2658,6 +2667,8 @@ txgbe_dev_xstats_reset(struct rte_eth_dev *dev)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct txgbe_hw_stats *hw_stats = TXGBE_DEV_STATS(dev);
+	struct txgbe_rx_queue *rxq;
+	int i = 0;
 
 	/* HW registers are cleared on read */
 	hw->offset_loaded = 0;
@@ -2666,6 +2677,12 @@ txgbe_dev_xstats_reset(struct rte_eth_dev *dev)
 
 	/* Reset software totals */
 	memset(hw_stats, 0, sizeof(*hw_stats));
+
+	/* Reset rxq checksum errors */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		rxq->csum_err = 0;
+	}
 
 	return 0;
 }
