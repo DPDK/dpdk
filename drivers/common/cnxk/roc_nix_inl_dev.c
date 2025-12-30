@@ -751,12 +751,10 @@ inl_outb_soft_exp_poll(struct nix_inl_dev *inl_dev, uint32_t ring_idx)
 						     (entry.s.data0 << 7));
 
 		if (sa != NULL) {
-			uint64_t tmp = ~(uint32_t)0x0;
-			inl_dev->work_cb(&tmp, sa, (port_id << 8) | 0x1);
-			__atomic_store_n(ring_base + tail_l + 1, 0ULL,
-					 __ATOMIC_RELAXED);
-			__atomic_fetch_add((uint32_t *)ring_base, 1,
-					   __ATOMIC_ACQ_REL);
+			uint64_t tmp[2];
+			inl_dev->work_cb(tmp, sa, (port_id << 8) | 0x1);
+			__atomic_store_n(ring_base + tail_l + 1, 0ULL, __ATOMIC_RELAXED);
+			__atomic_fetch_add((uint32_t *)ring_base, 1, __ATOMIC_ACQ_REL);
 		} else
 			plt_err("Invalid SA");
 
