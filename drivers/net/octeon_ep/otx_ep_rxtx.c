@@ -284,6 +284,32 @@ otx_ep_droq_setup_ring_buffers(struct otx_ep_droq *droq)
 	return 0;
 }
 
+static inline uint64_t
+otx_ep_set_rearm_data(struct otx_ep_device *otx_ep)
+{
+	uint16_t port_id = otx_ep->port_id;
+	struct rte_mbuf mb_def;
+	uint64_t *tmp;
+
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_off) % 8 != 0);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, refcnt) - offsetof(struct rte_mbuf, data_off) !=
+			 2);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, nb_segs) - offsetof(struct rte_mbuf, data_off) !=
+			 4);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, port) - offsetof(struct rte_mbuf, data_off) !=
+			 6);
+	mb_def.nb_segs = 1;
+	mb_def.data_off = RTE_PKTMBUF_HEADROOM + OTX_EP_INFO_SIZE;
+	mb_def.port = port_id;
+	rte_mbuf_refcnt_set(&mb_def, 1);
+
+	/* Prevent compiler reordering: rearm_data covers previous fields */
+	rte_compiler_barrier();
+	tmp = (uint64_t *)&mb_def.rearm_data;
+
+	return *tmp;
+}
+
 /* OQ initialization */
 static int
 otx_ep_init_droq(struct otx_ep_device *otx_ep, uint32_t q_no,
@@ -340,6 +366,7 @@ otx_ep_init_droq(struct otx_ep_device *otx_ep, uint32_t q_no,
 		goto init_droq_fail;
 
 	droq->refill_threshold = c_refill_threshold;
+	droq->rearm_data = otx_ep_set_rearm_data(otx_ep);
 
 	/* Set up OQ registers */
 	ret = otx_ep->fn_list.setup_oq_regs(otx_ep, q_no);
