@@ -39,6 +39,10 @@
 #define TEST_VECTOR_SIZE 256
 #define DEQ_TIMEOUT 10000
 
+#define ADD_ASYM_TESTSUITE(index, parent_ts, child_ts, num_child_ts)	\
+	for (j = 0; j < num_child_ts; index++, j++)			\
+		parent_ts.unit_test_suites[index] = child_ts[j]
+
 static int gbl_driver_id;
 static struct crypto_testsuite_params_asym {
 	struct rte_mempool *op_mpool;
@@ -3114,6 +3118,9 @@ test_sm2_enc(void)
 	capa = rte_cryptodev_asym_capability_get(dev_id, &idx);
 	if (capa == NULL)
 		return -ENOTSUP;
+	if (!rte_cryptodev_asym_xform_capability_check_opcap(capa,
+			RTE_CRYPTO_ASYM_OP_ENCRYPT, 0))
+		return TEST_SKIPPED;
 
 	/* Setup crypto op data structure */
 	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
@@ -3298,6 +3305,9 @@ test_sm2_dec(void)
 	capa = rte_cryptodev_asym_capability_get(dev_id, &idx);
 	if (capa == NULL)
 		return -ENOTSUP;
+	if (!rte_cryptodev_asym_xform_capability_check_opcap(capa,
+			RTE_CRYPTO_ASYM_OP_DECRYPT, 0))
+		return TEST_SKIPPED;
 
 	/* Setup crypto op data structure */
 	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
@@ -4996,27 +5006,230 @@ test_sm2_partial_decryption(const void *data)
 	return 0;
 }
 
-static struct unit_test_suite cryptodev_openssl_asym_testsuite  = {
-	.suite_name = "Crypto Device OPENSSL ASYM Unit Test Suite",
-	.setup = testsuite_setup,
-	.teardown = testsuite_teardown,
+static int
+check_asym_capabilities_supported(const enum rte_crypto_asym_xform_type xform_type)
+{
+	uint8_t dev_id = testsuite_params.valid_devs[0];
+	struct rte_cryptodev_asym_capability_idx idx = {xform_type};
+
+	if (rte_cryptodev_asym_capability_get(dev_id, &idx) == NULL)
+		return TEST_SKIPPED;
+	return 0;
+}
+
+static int
+crypto_asym_dh_testsuite_setup(void)
+{
+	if (check_asym_capabilities_supported(RTE_CRYPTO_ASYM_XFORM_DH) != 0) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support required ASYM capabilities. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+	return 0;
+}
+
+static int
+crypto_asym_dsa_testsuite_setup(void)
+{
+	if (check_asym_capabilities_supported(RTE_CRYPTO_ASYM_XFORM_DSA) != 0) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support required ASYM capabilities. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+	return 0;
+}
+
+static int
+crypto_asym_ecdh_testsuite_setup(void)
+{
+	if (check_asym_capabilities_supported(RTE_CRYPTO_ASYM_XFORM_ECDH) != 0) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support required ASYM capabilities. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+	return 0;
+}
+
+static int
+crypto_asym_ecdsa_testsuite_setup(void)
+{
+	if (check_asym_capabilities_supported(RTE_CRYPTO_ASYM_XFORM_ECDSA) != 0) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support required ASYM capabilities. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+	return 0;
+}
+
+static int
+crypto_asym_ecpm_testsuite_setup(void)
+{
+	if (check_asym_capabilities_supported(RTE_CRYPTO_ASYM_XFORM_ECPM) != 0) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support required ASYM capabilities. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+	return 0;
+}
+
+static int
+crypto_asym_eddsa_testsuite_setup(void)
+{
+	if (check_asym_capabilities_supported(RTE_CRYPTO_ASYM_XFORM_EDDSA) != 0) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support required ASYM capabilities. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+	return 0;
+}
+
+static int
+crypto_asym_mod_ex_testsuite_setup(void)
+{
+	if (check_asym_capabilities_supported(RTE_CRYPTO_ASYM_XFORM_MODEX) != 0) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support required ASYM capabilities. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+	return 0;
+}
+
+static int
+crypto_asym_mod_inv_testsuite_setup(void)
+{
+	if (check_asym_capabilities_supported(RTE_CRYPTO_ASYM_XFORM_MODINV) != 0) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support required ASYM capabilities. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+	return 0;
+}
+
+static int
+crypto_asym_rsa_testsuite_setup(void)
+{
+	if (check_asym_capabilities_supported(RTE_CRYPTO_ASYM_XFORM_RSA) != 0) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support required ASYM capabilities. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+	return 0;
+}
+
+static int
+crypto_asym_sm2_testsuite_setup(void)
+{
+	if (check_asym_capabilities_supported(RTE_CRYPTO_ASYM_XFORM_SM2) != 0) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support required ASYM capabilities. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+	return 0;
+}
+
+static int
+crypto_asym_ml_kem_testsuite_setup(void)
+{
+	if (check_asym_capabilities_supported(RTE_CRYPTO_ASYM_XFORM_ML_KEM) != 0) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support required ASYM capabilities. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+	return 0;
+}
+
+static int
+crypto_asym_ml_dsa_testsuite_setup(void)
+{
+	if (check_asym_capabilities_supported(RTE_CRYPTO_ASYM_XFORM_ML_DSA) != 0) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support required ASYM capabilities. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+	return 0;
+}
+
+static struct unit_test_suite cryptodev_asym_gen_testsuite = {
+	.suite_name = "Cryptodev ASYM General Unit Test Suite",
 	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_capability),
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_asym_dh_testsuite = {
+	.suite_name = "Cryptodev ASYM DH Unit Test Suite",
+	.setup = crypto_asym_dh_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_dh_key_generation),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
+static struct unit_test_suite cryptodev_asym_dsa_testsuite = {
+	.suite_name = "Cryptodev ASYM DSA Unit Test Suite",
+	.setup = crypto_asym_dsa_testsuite_setup,
+	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_dsa),
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_asym_ecdh_testsuite = {
+	.suite_name = "Cryptodev ASYM ECDH Unit Test Suite",
+	.setup = crypto_asym_ecdh_testsuite_setup,
+	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
-				test_dh_key_generation),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_sm2_sign),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_sm2_verify),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_sm2_enc),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_sm2_dec),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_rsa_enc_dec),
+				test_ecdh_all_curve),
+		TEST_CASE_NAMED_ST(
+			"ECDH Elliptic Curve tests",
+			ut_setup_asym, ut_teardown_asym,
+			test_ecdh_qat_curves),
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_asym_ecdsa_testsuite = {
+	.suite_name = "Cryptodev ASYM ECDSA Unit Test Suite",
+	.setup = crypto_asym_ecdsa_testsuite_setup,
+	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
-				test_rsa_sign_verify),
+			     test_ecdsa_sign_verify_all_curve),
+		TEST_CASE_NAMED_ST(
+			"ECDSA Elliptic Curve tests",
+			ut_setup_asym, ut_teardown_asym,
+			test_ecdsa_sign_verify_qat_curves),
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_asym_ecpm_testsuite = {
+	.suite_name = "Cryptodev ASYM ECPM Unit Test Suite",
+	.setup = crypto_asym_ecpm_testsuite_setup,
+	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
-				test_rsa_enc_dec_crt),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
-				test_rsa_sign_verify_crt),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_mod_inv),
+				test_ecpm_all_curve),
+		TEST_CASE_NAMED_ST(
+			"ECPM Elliptic Curve tests",
+			ut_setup_asym, ut_teardown_asym,
+			test_ecpm_qat_curves),
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_asym_eddsa_testsuite = {
+	.suite_name = "Cryptodev ASYM EdDSA Unit Test Suite",
+	.setup = crypto_asym_eddsa_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_eddsa_sign_verify_all_curve),
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_asym_mod_ex_testsuite = {
+	.suite_name = "Cryptodev ASYM MOD Ex Unit Test Suite",
+	.setup = crypto_asym_mod_ex_testsuite_setup,
+	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_mod_exp),
 		TEST_CASE_NAMED_WITH_DATA(
 			"Modex test for zero padding",
@@ -5058,34 +5271,39 @@ static struct unit_test_suite cryptodev_openssl_asym_testsuite  = {
 			"Modex Group 24 subgroup test",
 			ut_setup_asym, ut_teardown_asym,
 			modular_exponentiation, &modex_group_test_cases[7]),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_eddsa_sign_verify_all_curve),
-
-		TEST_CASES_END() /**< NULL terminate unit test array */
-	}
-};
-
-static struct unit_test_suite cryptodev_qat_asym_testsuite  = {
-	.suite_name = "Crypto Device QAT ASYM Unit Test Suite",
-	.setup = testsuite_setup,
-	.teardown = testsuite_teardown,
-	.unit_test_cases = {
-		TEST_CASE_NAMED_WITH_DATA(
-			"SM2 encryption - test case 1",
-			ut_setup_asym, ut_teardown_asym,
-			test_sm2_partial_encryption, &sm2_enc_hw_t1),
-		TEST_CASE_NAMED_WITH_DATA(
-			"SM2 decryption - test case 1",
-			ut_setup_asym, ut_teardown_asym,
-			test_sm2_partial_decryption, &sm2_enc_hw_t1),
 		TEST_CASE_NAMED_WITH_DATA(
 			"Modular Exponentiation (mod=128, base=20, exp=3, res=128)",
 			ut_setup_asym, ut_teardown_asym,
 			modular_exponentiation, &modex_test_case_m128_b20_e3),
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_asym_mod_inv_testsuite = {
+	.suite_name = "Cryptodev ASYM MOD Inv Unit Test Suite",
+	.setup = crypto_asym_mod_inv_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_mod_inv),
 		/* Modular Multiplicative Inverse */
 		TEST_CASE_NAMED_WITH_DATA(
 			"Modular Inverse (mod=128, base=20, exp=3, inv=128)",
 			ut_setup_asym, ut_teardown_asym,
 			modular_multiplicative_inverse, &modinv_test_case),
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_asym_rsa_testsuite = {
+	.suite_name = "Cryptodev ASYM RSA Unit Test Suite",
+	.setup = crypto_asym_rsa_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_rsa_enc_dec),
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
+				test_rsa_sign_verify),
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
+				test_rsa_enc_dec_crt),
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
+				test_rsa_sign_verify_crt),
 		/* RSA EXP */
 		TEST_CASE_NAMED_WITH_DATA(
 			"RSA Encryption (n=128, pt=20, e=3) EXP, Padding: NONE",
@@ -5104,203 +5322,149 @@ static struct unit_test_suite cryptodev_qat_asym_testsuite  = {
 			"RSA Decryption (n=128, pt=20, e=3) CRT, Padding: NONE",
 			ut_setup_asym, ut_teardown_asym,
 			kat_rsa_decrypt_crt, &rsa_vector_128_20_3_none),
-		TEST_CASE_NAMED_ST(
-			"ECDH Elliptic Curve tests",
-			ut_setup_asym, ut_teardown_asym,
-			test_ecdh_qat_curves),
-		TEST_CASE_NAMED_ST(
-			"ECPM Elliptic Curve tests",
-			ut_setup_asym, ut_teardown_asym,
-			test_ecpm_qat_curves),
-		TEST_CASE_NAMED_ST(
-			"ECDSA Elliptic Curve tests",
-			ut_setup_asym, ut_teardown_asym,
-			test_ecdsa_sign_verify_qat_curves),
-
-		TEST_CASES_END() /**< NULL terminate unit test array */
+		TEST_CASES_END()
 	}
 };
 
-static struct unit_test_suite cryptodev_octeontx_asym_testsuite  = {
-	.suite_name = "Crypto Device OCTEONTX ASYM Unit Test Suite",
-	.setup = testsuite_setup,
-	.teardown = testsuite_teardown,
+static struct unit_test_suite cryptodev_asym_sm2_testsuite = {
+	.suite_name = "Cryptodev ASYM SM2 Unit Test Suite",
+	.setup = crypto_asym_sm2_testsuite_setup,
 	.unit_test_cases = {
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_capability),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
-				test_rsa_enc_dec_crt),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
-				test_rsa_sign_verify_crt),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_rsa_enc_dec),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
-				test_rsa_sign_verify),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_mod_exp),
-		TEST_CASE_NAMED_WITH_DATA(
-			"Modex test for zero padding",
-			ut_setup_asym, ut_teardown_asym,
-			modular_exponentiation, &modex_test_cases[0]),
-		TEST_CASE_NAMED_WITH_DATA(
-			"Modex test for zero padding (2)",
-			ut_setup_asym, ut_teardown_asym,
-			modular_exponentiation, &modex_test_cases[1]),
-		TEST_CASE_NAMED_WITH_DATA(
-			"Modex Group 5 test",
-			ut_setup_asym, ut_teardown_asym,
-			modular_exponentiation, &modex_group_test_cases[0]),
-		TEST_CASE_NAMED_WITH_DATA(
-			"Modex Group 14 test",
-			ut_setup_asym, ut_teardown_asym,
-			modular_exponentiation, &modex_group_test_cases[1]),
-		TEST_CASE_NAMED_WITH_DATA(
-			"Modex Group 15 test",
-			ut_setup_asym, ut_teardown_asym,
-			modular_exponentiation, &modex_group_test_cases[2]),
-		TEST_CASE_NAMED_WITH_DATA(
-			"Modex Group 16 test",
-			ut_setup_asym, ut_teardown_asym,
-			modular_exponentiation, &modex_group_test_cases[3]),
-		TEST_CASE_NAMED_WITH_DATA(
-			"Modex Group 17 test",
-			ut_setup_asym, ut_teardown_asym,
-			modular_exponentiation, &modex_group_test_cases[4]),
-		TEST_CASE_NAMED_WITH_DATA(
-			"Modex Group 18 test",
-			ut_setup_asym, ut_teardown_asym,
-			modular_exponentiation, &modex_group_test_cases[5]),
-		TEST_CASE_NAMED_WITH_DATA(
-			"Modex Group 24 test",
-			ut_setup_asym, ut_teardown_asym,
-			modular_exponentiation, &modex_group_test_cases[6]),
-		TEST_CASE_NAMED_WITH_DATA(
-			"Modex Group 24 subgroup test",
-			ut_setup_asym, ut_teardown_asym,
-			modular_exponentiation, &modex_group_test_cases[7]),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
-			     test_ecdsa_sign_verify_all_curve),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_sm2_sign),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_sm2_verify),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
-				test_ecdh_all_curve),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
-				test_ecpm_all_curve),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_eddsa_sign_verify_all_curve),
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_sm2_enc),
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_sm2_dec),
+		TEST_CASE_NAMED_WITH_DATA(
+			"SM2 encryption - test case 1",
+			ut_setup_asym, ut_teardown_asym,
+			test_sm2_partial_encryption, &sm2_enc_hw_t1),
+		TEST_CASE_NAMED_WITH_DATA(
+			"SM2 decryption - test case 1",
+			ut_setup_asym, ut_teardown_asym,
+			test_sm2_partial_decryption, &sm2_enc_hw_t1),
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_asym_ml_kem_testsuite = {
+	.suite_name = "Cryptodev ASYM ML KEM Unit Test Suite",
+	.setup = crypto_asym_ml_kem_testsuite_setup,
+	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_mlkem_keygen),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_mlkem_encap),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_mlkem_decap),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_mldsa_keygen),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_mldsa_sign),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_mldsa_verify),
-		TEST_CASES_END() /**< NULL terminate unit test array */
+		TEST_CASES_END()
 	}
 };
 
-static struct unit_test_suite cryptodev_virtio_asym_testsuite  = {
-	.suite_name = "Crypto Device VIRTIO ASYM Unit Test Suite",
-	.setup = testsuite_setup,
-	.teardown = testsuite_teardown,
+static struct unit_test_suite cryptodev_asym_ml_dsa_testsuite = {
+	.suite_name = "Cryptodev ASYM ML DSA Unit Test Suite",
+	.setup = crypto_asym_ml_dsa_testsuite_setup,
 	.unit_test_cases = {
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_capability),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
-				test_rsa_sign_verify_crt),
-		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_rsa_enc_dec_crt),
-		TEST_CASES_END() /**< NULL terminate unit test array */
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_mldsa_keygen),
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_mldsa_sign),
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_mldsa_verify),
+		TEST_CASES_END()
 	}
 };
+
+static struct unit_test_suite end_testsuite = {
+	.suite_name = NULL,
+	.setup = NULL,
+	.teardown = NULL,
+	.unit_test_suites = NULL
+};
+
+static int
+run_cryptodev_asym_testsuite(const char *pmd_name)
+{
+	uint8_t ret, j, i = 0;
+
+	struct unit_test_suite *asym_suites[] = {
+		&cryptodev_asym_gen_testsuite,
+		&cryptodev_asym_dh_testsuite,
+		&cryptodev_asym_dsa_testsuite,
+		&cryptodev_asym_ecdh_testsuite,
+		&cryptodev_asym_ecdsa_testsuite,
+		&cryptodev_asym_ecpm_testsuite,
+		&cryptodev_asym_eddsa_testsuite,
+		&cryptodev_asym_mod_ex_testsuite,
+		&cryptodev_asym_mod_inv_testsuite,
+		&cryptodev_asym_rsa_testsuite,
+		&cryptodev_asym_sm2_testsuite,
+		&cryptodev_asym_ml_kem_testsuite,
+		&cryptodev_asym_ml_dsa_testsuite,
+		&end_testsuite
+	};
+
+	static struct unit_test_suite asym_ts = {
+		.suite_name = "Cryptodev ASYM Unit Test Suite",
+		.setup = testsuite_setup,
+		.teardown = testsuite_teardown,
+		.unit_test_cases = {TEST_CASES_END()}
+	};
+
+	gbl_driver_id = rte_cryptodev_driver_id_get(pmd_name);
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "%s PMD must be loaded.\n", pmd_name);
+		return TEST_SKIPPED;
+	}
+
+	asym_ts.unit_test_suites = malloc(sizeof(struct unit_test_suite *) * RTE_DIM(asym_suites));
+	if (asym_ts.unit_test_suites == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Failed to allocate memory for unit test suites\n");
+		return TEST_FAILED;
+	}
+
+	ADD_ASYM_TESTSUITE(i, asym_ts, asym_suites, RTE_DIM(asym_suites));
+	ret = unit_test_suite_runner(&asym_ts);
+
+	free(asym_ts.unit_test_suites);
+
+	return ret;
+}
 
 static int
 test_cryptodev_openssl_asym(void)
 {
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "OPENSSL PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_openssl_asym_testsuite);
+	return run_cryptodev_asym_testsuite(RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
 }
 
 static int
 test_cryptodev_qat_asym(void)
 {
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_QAT_ASYM_PMD));
-
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "QAT PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	return unit_test_suite_runner(&cryptodev_qat_asym_testsuite);
+	return run_cryptodev_asym_testsuite(RTE_STR(CRYPTODEV_NAME_QAT_ASYM_PMD));
 }
 
 static int
 test_cryptodev_octeontx_asym(void)
 {
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD));
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "OCTEONTX PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-	return unit_test_suite_runner(&cryptodev_octeontx_asym_testsuite);
+	return run_cryptodev_asym_testsuite(RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD));
 }
 
 static int
 test_cryptodev_cn9k_asym(void)
 {
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_CN9K_PMD));
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "CN9K PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	/* Use test suite registered for crypto_octeontx PMD */
-	return unit_test_suite_runner(&cryptodev_octeontx_asym_testsuite);
+	return run_cryptodev_asym_testsuite(RTE_STR(CRYPTODEV_NAME_CN9K_PMD));
 }
 
 static int
 test_cryptodev_cn10k_asym(void)
 {
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_CN10K_PMD));
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "CN10K PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	/* Use test suite registered for crypto_octeontx PMD */
-	return unit_test_suite_runner(&cryptodev_octeontx_asym_testsuite);
+	return run_cryptodev_asym_testsuite(RTE_STR(CRYPTODEV_NAME_CN10K_PMD));
 }
 
 static int
 test_cryptodev_virtio_asym(void)
 {
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_VIRTIO_PMD));
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "virtio PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	/* Use test suite registered for crypto_virtio PMD */
-	return unit_test_suite_runner(&cryptodev_virtio_asym_testsuite);
+	return run_cryptodev_asym_testsuite(RTE_STR(CRYPTODEV_NAME_VIRTIO_PMD));
 }
 
 static int
 test_cryptodev_virtio_user_asym(void)
 {
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_VIRTIO_USER_PMD));
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "virtio user PMD must be loaded.\n");
-		return TEST_SKIPPED;
-	}
-
-	/* Use test suite registered for crypto_virtio_user PMD */
-	return unit_test_suite_runner(&cryptodev_virtio_asym_testsuite);
+	return run_cryptodev_asym_testsuite(RTE_STR(CRYPTODEV_NAME_VIRTIO_USER_PMD));
 }
 
 REGISTER_DRIVER_TEST(cryptodev_openssl_asym_autotest, test_cryptodev_openssl_asym);
