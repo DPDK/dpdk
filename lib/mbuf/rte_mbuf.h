@@ -1334,17 +1334,23 @@ static inline void
 __rte_pktmbuf_free_direct(struct rte_mbuf *m)
 {
 	struct rte_mbuf *md;
+	bool refcnt_not_one;
 
 	RTE_ASSERT(RTE_MBUF_CLONED(m));
 
 	md = rte_mbuf_from_indirect(m);
 
-	if (rte_mbuf_refcnt_update(md, -1) == 0) {
-		md->next = NULL;
-		md->nb_segs = 1;
+	refcnt_not_one = unlikely(rte_mbuf_refcnt_read(md) != 1);
+	if (refcnt_not_one && __rte_mbuf_refcnt_update(md, -1) != 0)
+		return;
+
+	if (refcnt_not_one)
 		rte_mbuf_refcnt_set(md, 1);
-		rte_mbuf_raw_free(md);
-	}
+	if (md->nb_segs != 1)
+		md->nb_segs = 1;
+	if (md->next != NULL)
+		md->next = NULL;
+	rte_mbuf_raw_free(md);
 }
 
 /**
