@@ -1834,9 +1834,7 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 
 			/* check dst addr mask */
 			for (j = 0; j < 16; j++) {
-				if (ipv6_mask->hdr.dst_addr[j] == UINT8_MAX) {
-					rule->mask.dst_ipv6_mask |= 1 << j;
-				} else if (ipv6_mask->hdr.dst_addr[j] != 0) {
+				if (ipv6_mask->hdr.dst_addr[j] != 0) {
 					memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 					rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2597,9 +2595,7 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 
 			/* check dst addr mask */
 			for (j = 0; j < 16; j++) {
-				if (ipv6_mask->hdr.dst_addr[j] == UINT8_MAX) {
-					rule->mask.dst_ipv6_mask |= 1 << j;
-				} else if (ipv6_mask->hdr.dst_addr[j] != 0) {
+				if (ipv6_mask->hdr.dst_addr[j] != 0) {
 					memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 					rte_flow_error_set(error, EINVAL,
 							   RTE_FLOW_ERROR_TYPE_ITEM,
