@@ -608,7 +608,7 @@ af_xdp_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	for (i = 0; i < nb_pkts; i++) {
 		mbuf = bufs[i];
 
-		if (mbuf->pool == umem->mb_pool) {
+		if (RTE_MBUF_DIRECT(mbuf) && mbuf->pool == umem->mb_pool) {
 			desc = reserve_and_fill(txq, mbuf, umem, NULL);
 			if (!desc) {
 				kick_tx(txq, cq);
