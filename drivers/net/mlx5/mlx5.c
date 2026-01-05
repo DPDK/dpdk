@@ -2404,7 +2404,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		priv->ptype_rss_groups = NULL;
 	}
 #endif
-	mlx5_q_counters_destroy(dev);
 	if (priv->rxq_privs != NULL) {
 		/* XXX race condition if mlx5_rx_burst() is still running. */
 		rte_delay_us_sleep(1000);
@@ -2425,6 +2424,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	mlx5_proc_priv_uninit(dev);
 	if (priv->drop_queue.hrxq)
 		mlx5_drop_action_destroy(dev);
+	mlx5_q_counters_destroy(dev);
 	mlx5_mprq_free_mp(dev);
 	mlx5_os_free_shared_dr(priv);
 #ifdef HAVE_MLX5_HWS_SUPPORT
