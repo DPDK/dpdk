@@ -493,8 +493,9 @@ mlx5_representor_info_get(struct rte_eth_dev *dev,
 			  struct rte_eth_representor_info *info)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	int n_type = 5; /* Representor types: PF, VF, HPF@VF, SF and HPF@SF. */
-	int n_pf = 2; /* Number of PFs. */
+	/* Representor types: PF, VF, HPF@VF, SF and HPF@SF, total 5. */
+	int n_type = RTE_ETH_REPRESENTOR_PF + 2; /* Maximal type + 2 for HPFs. */
+	int n_pf = 8; /* Maximal number of PFs. */
 	int i = 0, pf;
 	int n_entries;
 
@@ -509,25 +510,29 @@ mlx5_representor_info_get(struct rte_eth_dev *dev,
 	info->pf = 0;
 	if (mlx5_is_port_on_mpesw_device(priv)) {
 		info->pf = priv->mpesw_port;
-		/* PF range, both ports will show the same information. */
-		info->ranges[i].type = RTE_ETH_REPRESENTOR_PF;
-		info->ranges[i].controller = 0;
-		info->ranges[i].pf = priv->mpesw_owner + 1;
-		info->ranges[i].vf = 0;
-		/*
-		 * The representor indexes should be the values set of "priv->mpesw_port".
-		 * In the real case now, only 1 PF/UPLINK representor is supported.
-		 * The port index will always be the value of "owner + 1".
-		 */
-		info->ranges[i].id_base =
-			MLX5_REPRESENTOR_ID(priv->mpesw_owner, info->ranges[i].type,
-					    info->ranges[i].pf);
-		info->ranges[i].id_end =
-			MLX5_REPRESENTOR_ID(priv->mpesw_owner, info->ranges[i].type,
-					    info->ranges[i].pf);
-		snprintf(info->ranges[i].name, sizeof(info->ranges[i].name),
-			 "pf%d", info->ranges[i].pf);
-		i++;
+		for (i = 0; i < n_pf; i++) {
+			/* PF range, both ports will show the same information. */
+			info->ranges[i].type = RTE_ETH_REPRESENTOR_PF;
+			info->ranges[i].controller = 0;
+			info->ranges[i].pf = priv->mpesw_owner + i + 1;
+			info->ranges[i].vf = 0;
+			/*
+			 * The representor indexes should be the values set of "priv->mpesw_port".
+			 * In the real case now, only 1 PF/UPLINK representor is supported.
+			 * The port index will always be the value of "owner + 1".
+			 */
+			info->ranges[i].id_base =
+				MLX5_REPRESENTOR_ID(priv->mpesw_owner,
+						    info->ranges[i].type,
+						    info->ranges[i].pf);
+			info->ranges[i].id_end =
+				MLX5_REPRESENTOR_ID(priv->mpesw_owner,
+						    info->ranges[i].type,
+						    info->ranges[i].pf);
+			snprintf(info->ranges[i].name,
+				 sizeof(info->ranges[i].name),
+				 "pf%d", info->ranges[i].pf);
+		}
 	} else if (priv->pf_bond >= 0)
 		info->pf = priv->pf_bond;
 	for (pf = 0; pf < n_pf; ++pf) {
