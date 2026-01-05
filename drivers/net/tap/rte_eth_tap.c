@@ -769,7 +769,7 @@ tap_link_set_up(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static int
+static void
 tap_mp_req_on_rxtx(struct rte_eth_dev *dev)
 {
 	struct rte_mp_msg msg;
@@ -791,13 +791,10 @@ tap_mp_req_on_rxtx(struct rte_eth_dev *dev)
 	msg.num_fds = dev->data->nb_rx_queues;
 
 	err = rte_mp_sendmsg(&msg);
-	if (err < 0) {
+	if (err < 0 && rte_errno != ENOTSUP) {
 		TAP_LOG(ERR, "Failed to send start req to secondary %d",
 			rte_errno);
-		return -1;
 	}
-
-	return 0;
 }
 
 static int
