@@ -38,6 +38,7 @@ extern "C" {
 #endif
 #define vt100_word_left    "\033\142"
 #define vt100_word_right   "\033\146"
+#define vt100_homecursor   "\033[H"
 
 /* Result of parsing : it must be synchronized with
  * cmdline_vt100_commands[] in vt100.c */

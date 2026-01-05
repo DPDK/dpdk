@@ -87,6 +87,10 @@ New Features
   * Added support for AES-XTS cipher algorithm.
   * Added support for SHAKE-128 and SHAKE-256 authentication algorithms.
 
+* **Added Ctrl+L support to cmdline library.**
+
+  Added handling of the key combination Control+L
+  to clear the screen before redisplaying the prompt.
 
 Removed Items
 -------------
