@@ -721,8 +721,8 @@ F: doc/guides/nics/ark.rst
 F: doc/guides/nics/features/ark.ini
 
 Broadcom bnxt
+M: Kishore Padmanabha <kishore.padmanabha@broadcom.com>
 M: Ajit Khaparde <ajit.khaparde@broadcom.com>
-M: Somnath Kotur <somnath.kotur@broadcom.com>
 T: git://dpdk.org/next/dpdk-next-net-brcm
 F: drivers/net/bnxt/
 F: doc/guides/nics/bnxt.rst
