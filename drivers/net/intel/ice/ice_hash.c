@@ -641,6 +641,7 @@ ice_hash_parse_pattern(const struct rte_flow_item pattern[], uint64_t *phint,
 static int
 ice_hash_parse_raw_pattern(struct ice_adapter *ad,
 				const struct rte_flow_item *item,
+				struct rte_flow_error *error,
 				struct ice_rss_meta *meta)
 {
 	const struct rte_flow_item_raw *raw_spec, *raw_mask;
@@ -657,6 +658,13 @@ ice_hash_parse_raw_pattern(struct ice_adapter *ad,
 
 	raw_spec = item->spec;
 	raw_mask = item->mask;
+
+	if (!raw_spec || !raw_mask) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "NULL RAW spec/mask");
+		return -rte_errno;
+	}
 
 	spec_len = strnlen((char *)(uintptr_t)raw_spec->pattern,
 		raw_spec->length + 1);
@@ -1185,7 +1193,7 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 
 	if (phint == ICE_PHINT_RAW) {
 		rss_meta_ptr->raw.raw_ena = true;
-		ret = ice_hash_parse_raw_pattern(ad, pattern, rss_meta_ptr);
+		ret = ice_hash_parse_raw_pattern(ad, pattern, error, rss_meta_ptr);
 		if (ret) {
 			rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ITEM, NULL,

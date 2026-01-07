@@ -1853,6 +1853,13 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			raw_spec = item->spec;
 			raw_mask = item->mask;
 
+			if (!raw_spec || !raw_mask) {
+				rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item, "NULL RAW spec/mask");
+				return -rte_errno;
+			}
+
 			if (item_num != 1)
 				break;
 

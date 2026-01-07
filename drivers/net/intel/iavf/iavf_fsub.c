@@ -185,6 +185,14 @@ iavf_fsub_parse_pattern(const struct rte_flow_item pattern[],
 			raw_spec = item->spec;
 			raw_mask = item->mask;
 
+			if (!raw_spec || !raw_mask) {
+				PMD_DRV_LOG(ERR, "NULL RAW spec/mask");
+				rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item, "NULL RAW spec/mask");
+				return -rte_errno;
+			}
+
 			if (item_num != 1)
 				return -rte_errno;
 
