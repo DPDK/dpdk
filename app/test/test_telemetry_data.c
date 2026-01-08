@@ -406,6 +406,26 @@ test_array_with_array_uint_hex_values_nopadding(void)
 }
 
 static int
+test_array_with_dict_values(void)
+{
+	rte_tel_data_start_array(&response_data, RTE_TEL_CONTAINER);
+
+	struct rte_tel_data *d1 = rte_tel_data_alloc();
+	rte_tel_data_start_dict(d1);
+	rte_tel_data_add_dict_string(d1, "name", "foo");
+	rte_tel_data_add_dict_uint(d1, "size", 42);
+	rte_tel_data_add_array_container(&response_data, d1, 0);
+
+	struct rte_tel_data *d2 = rte_tel_data_alloc();
+	rte_tel_data_start_dict(d2);
+	rte_tel_data_add_dict_string(d2, "name", "bar");
+	rte_tel_data_add_dict_uint(d2, "size", 666);
+	rte_tel_data_add_array_container(&response_data, d2, 0);
+
+	return CHECK_OUTPUT("[{\"name\":\"foo\",\"size\":42},{\"name\":\"bar\",\"size\":666}]");
+}
+
+static int
 test_case_array_u64(void)
 {
 	int i;
@@ -597,6 +617,7 @@ telemetry_data_autotest(void)
 			test_array_with_array_string_values,
 			test_array_with_array_uint_hex_values_padding,
 			test_array_with_array_uint_hex_values_nopadding,
+			test_array_with_dict_values,
 			test_string_char_escaping,
 			test_array_char_escaping,
 			test_dict_char_escaping,

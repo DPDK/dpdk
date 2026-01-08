@@ -94,10 +94,10 @@ int
 rte_tel_data_add_array_container(struct rte_tel_data *d,
 		struct rte_tel_data *val, int keep)
 {
-	if (d->type != TEL_ARRAY_CONTAINER ||
-			(val->type != TEL_ARRAY_UINT
+	if (d->type != TEL_ARRAY_CONTAINER || (val->type != TEL_ARRAY_UINT
 			&& val->type != TEL_ARRAY_INT
-			&& val->type != TEL_ARRAY_STRING))
+			&& val->type != TEL_ARRAY_STRING
+			&& val->type != TEL_DICT))
 		return -EINVAL;
 	if (d->data_len >= RTE_TEL_MAX_ARRAY_ENTRIES)
 		return -ENOSPC;
