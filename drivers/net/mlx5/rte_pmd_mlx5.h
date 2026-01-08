@@ -9,6 +9,7 @@
 
 #include <rte_byteorder.h>
 #include <rte_compat.h>
+#include <rte_flow.h>
 #include <rte_per_lcore.h>
 
 /**
@@ -625,6 +626,59 @@ rte_pmd_mlx5_disable_steering(void);
 __rte_experimental
 int
 rte_pmd_mlx5_enable_steering(void);
+
+struct rte_pmd_mlx5_rss_devx {
+	void *obj; /**< DevX object pointer. */
+	void *destroy_handle; /**< Destroy handle passed to #rte_pmd_mlx5_rss_tir_unregister. */
+	uint32_t id; /**< DevX object ID. */
+};
+
+/**
+ * Register TIR DevX object for RSS flow action.
+ *
+ * TIR (Transport Interface Receive) is a hardware object that encodes
+ * RSS configuration (hash function, key, destination queues) and serves
+ * as the destination for steering rules directing traffic to Rx queues.
+ *
+ * This function creates a TIR object based on the provided RSS configuration.
+ * The returned DevX handle can be used as a destination action in mlx5dv
+ * flow steering API from rdma-core, enabling external libraries to direct
+ * traffic to DPDK-managed Rx queues.
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] rss
+ *  RSS flow action configuration.
+ * @param[out] devx
+ *   A pointer to an object that will store returned data.
+ *
+ * @return
+ *   - (0) if successful. *devx* will hold DevX object.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if *rss* data was incorrect or port HWS was not activated.
+ *   - (-ENOMEM) memory allocation error.
+ */
+__rte_experimental
+int
+rte_pmd_mlx5_rss_tir_register(uint16_t port_id,
+				   const struct rte_flow_action_rss *rss,
+				   struct rte_pmd_mlx5_rss_devx *devx);
+
+/**
+ * Unregister RSS action DevX object.
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] handle
+ *   DevX object handle (destroy_handle from rte_pmd_mlx5_rss_devx).
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port_id* invalid.
+ */
+__rte_experimental
+int
+rte_pmd_mlx5_rss_tir_unregister(uint16_t port_id, void *handle);
+
 
 #ifdef __cplusplus
 }

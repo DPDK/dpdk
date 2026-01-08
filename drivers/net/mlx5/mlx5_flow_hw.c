@@ -2,6 +2,7 @@
  * Copyright (c) 2022 NVIDIA Corporation & Affiliates
  */
 
+#include <eal_export.h>
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
 #include <rte_stdatomic.h>
@@ -572,6 +573,87 @@ flow_hw_hashfields_set(struct mlx5_flow_rss_desc *rss_desc,
 	if (rss_inner)
 		fields |= IBV_RX_HASH_INNER;
 	*hash_fields |= fields;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_mlx5_rss_tir_register, 26.03)
+int
+rte_pmd_mlx5_rss_tir_register(uint16_t port_id,
+			      const struct rte_flow_action_rss *rss,
+			      struct rte_pmd_mlx5_rss_devx *devx)
+{
+	struct rte_eth_dev *dev;
+	struct mlx5_hrxq *hrxq;
+	struct mlx5_flow_rss_desc rss_desc = {
+		.hws_flags = MLX5DR_ACTION_FLAG_ROOT_RX,
+	};
+
+	if (rte_eth_dev_is_valid_port(port_id) < 0) {
+		DRV_LOG(ERR, "port %u: no Ethernet device", port_id);
+		rte_errno = ENODEV;
+		return -rte_errno;
+	}
+	if (!rss->queue_num || !rss->queue) {
+		DRV_LOG(ERR, "port %u: invalid RSS queues configuration", port_id);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (rss->key && rss->key_len != MLX5_RSS_HASH_KEY_LEN) {
+		DRV_LOG(ERR, "port %u: RSS key length must be %d",
+			port_id, MLX5_RSS_HASH_KEY_LEN);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	dev = &rte_eth_devices[port_id];
+	if (!mlx5_hws_active(dev)) {
+		DRV_LOG(ERR, "port %u: HWS not active", port_id);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	rss_desc.queue_num = rss->queue_num;
+	rss_desc.const_q = rss->queue;
+	if (rss->queue_num > 1) {
+		memcpy(rss_desc.key,
+		       rss->key ? rss->key : rss_hash_default_key,
+		       MLX5_RSS_HASH_KEY_LEN);
+		rss_desc.key_len = MLX5_RSS_HASH_KEY_LEN;
+		rss_desc.types = !rss->types ? RTE_ETH_RSS_IP : rss->types;
+		rss_desc.symmetric_hash_function = MLX5_RSS_IS_SYMM(rss->func);
+		flow_hw_hashfields_set(&rss_desc, &rss_desc.hash_fields);
+		flow_dv_action_rss_l34_hash_adjust(rss->types,
+						   &rss_desc.hash_fields);
+		if (rss->level > 1) {
+			rss_desc.hash_fields |= IBV_RX_HASH_INNER;
+			rss_desc.tunnel = 1;
+		}
+	}
+
+	hrxq = mlx5_hrxq_get(dev, &rss_desc);
+	if (!hrxq) {
+		DRV_LOG(ERR, "port %u: failed to allocate DevX", port_id);
+		return -rte_errno;
+	}
+	devx->destroy_handle = hrxq;
+	devx->obj = hrxq->tir->obj;
+	devx->id = hrxq->tir->id;
+
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_mlx5_rss_tir_unregister, 26.03)
+int
+rte_pmd_mlx5_rss_tir_unregister(uint16_t port_id, void *handle)
+{
+	struct rte_eth_dev *dev;
+	struct mlx5_hrxq *hrxq = handle;
+
+	if (rte_eth_dev_is_valid_port(port_id) < 0) {
+		DRV_LOG(ERR, "port %u: no Ethernet device", port_id);
+		rte_errno = ENODEV;
+		return -rte_errno;
+	}
+	dev = &rte_eth_devices[port_id];
+	mlx5_hrxq_obj_release(dev, hrxq);
+	return 0;
 }
 
 uint64_t
