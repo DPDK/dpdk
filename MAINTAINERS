@@ -1119,7 +1119,7 @@ F: doc/guides/nics/features/zxdh.ini
 
 PCAP PMD
 F: drivers/net/pcap/
-F: doc/guides/nics/pcap_ring.rst
+F: doc/guides/nics/pcap.rst
 F: doc/guides/nics/features/pcap.ini
 
 Tap PMD
@@ -1131,7 +1131,7 @@ F: doc/guides/nics/features/tap.ini
 Ring PMD
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: drivers/net/ring/
-F: doc/guides/nics/pcap_ring.rst
+F: doc/guides/nics/ring.rst
 F: app/test/test_pmd_ring.c
 F: app/test/test_pmd_ring_perf.c
 

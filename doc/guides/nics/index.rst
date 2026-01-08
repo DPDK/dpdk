@@ -60,10 +60,11 @@ Network Interface Controller Drivers
     null
     octeon_ep
     octeontx
-    pcap_ring
+    pcap
     pfe
     qede
     r8169
+    ring
     rnp
     sfc_efx
     softnic
