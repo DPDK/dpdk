@@ -1125,12 +1125,18 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = &adapter->vf;
+	uint16_t max_queue_pairs;
 
 	if (adapter->closed)
 		return -EIO;
 
-	dev_info->max_rx_queues = IAVF_MAX_NUM_QUEUES_LV;
-	dev_info->max_tx_queues = IAVF_MAX_NUM_QUEUES_LV;
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_LARGE_NUM_QPAIRS)
+		max_queue_pairs = IAVF_MAX_NUM_QUEUES_LV;
+	else
+		max_queue_pairs = IAVF_MAX_NUM_QUEUES_DFLT;
+
+	dev_info->max_rx_queues = max_queue_pairs;
+	dev_info->max_tx_queues = max_queue_pairs;
 	dev_info->min_rx_bufsize = IAVF_BUF_SIZE_MIN;
 	dev_info->max_rx_pktlen = IAVF_FRAME_SIZE_MAX;
 	dev_info->max_mtu = dev_info->max_rx_pktlen - IAVF_ETH_OVERHEAD;
