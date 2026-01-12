@@ -1851,37 +1851,37 @@ mlx5_aso_cnt_queue_uninit(struct mlx5_dev_ctx_shared *sh)
 	sh->cnt_svc->aso_mng.sq_num = 0;
 }
 
-static uint16_t
+static uint32_t
+aso_hw_id(uint32_t base, uint32_t offset)
+{
+	return (base + offset) / 4;
+}
+
+static uint32_t
 mlx5_aso_cnt_sq_enqueue_burst(struct mlx5_hws_cnt_pool *cpool,
 		struct mlx5_dev_ctx_shared *sh,
 		struct mlx5_aso_sq *sq, uint32_t n,
-		uint32_t offset, uint32_t dcs_id_base)
+		uint32_t stats_mem_idx, uint32_t aso_id)
 {
 	volatile struct mlx5_aso_wqe *wqe;
 	uint16_t size = 1 << sq->log_desc_n;
 	uint16_t mask = size - 1;
 	uint16_t max;
-	uint32_t upper_offset = offset;
 	uint64_t addr;
-	uint32_t ctrl_gen_id = 0;
 	uint8_t opcmod = sh->cdev->config.hca_attr.flow_access_aso_opc_mod;
 	rte_be32_t lkey = rte_cpu_to_be_32(cpool->raw_mng->mr.lkey);
 	uint16_t aso_n = (uint16_t)(RTE_ALIGN_CEIL(n, 4) / 4);
-	uint32_t ccntid;
+	uint32_t bursted_cnts = 0;
 
 	max = RTE_MIN(size - (uint16_t)(sq->head - sq->tail), aso_n);
 	if (unlikely(!max))
 		return 0;
-	upper_offset += (max * 4);
 	/* Because only one burst at one time, we can use the same elt. */
 	sq->elts[0].burst_size = max;
-	ctrl_gen_id = dcs_id_base;
-	ctrl_gen_id /= 4;
 	do {
-		ccntid = upper_offset - max * 4;
 		wqe = &sq->sq_obj.aso_wqes[sq->head & mask];
 		rte_prefetch0(&sq->sq_obj.aso_wqes[(sq->head + 1) & mask]);
-		wqe->general_cseg.misc = rte_cpu_to_be_32(ctrl_gen_id);
+		wqe->general_cseg.misc = rte_cpu_to_be_32(aso_id);
 		wqe->general_cseg.flags = RTE_BE32(MLX5_COMP_ONLY_FIRST_ERR <<
 							 MLX5_COMP_MODE_OFFSET);
 		wqe->general_cseg.opcode = rte_cpu_to_be_32
@@ -1891,22 +1891,24 @@ mlx5_aso_cnt_sq_enqueue_burst(struct mlx5_hws_cnt_pool *cpool,
 						 (sq->pi <<
 						  WQE_CSEG_WQE_INDEX_OFFSET));
 		addr = (uint64_t)RTE_PTR_ADD(cpool->raw_mng->raw,
-				ccntid * sizeof(struct flow_counter_stats));
+				stats_mem_idx * sizeof(struct flow_counter_stats));
 		wqe->aso_cseg.va_h = rte_cpu_to_be_32((uint32_t)(addr >> 32));
 		wqe->aso_cseg.va_l_r = rte_cpu_to_be_32((uint32_t)addr | 1u);
 		wqe->aso_cseg.lkey = lkey;
 		sq->pi += 2; /* Each WQE contains 2 WQEBB's. */
 		sq->head++;
 		sq->next++;
-		ctrl_gen_id++;
+		aso_id++;
 		max--;
+		stats_mem_idx += 4;
 	} while (max);
 	wqe->general_cseg.flags = RTE_BE32(MLX5_COMP_ALWAYS <<
 							 MLX5_COMP_MODE_OFFSET);
 	mlx5_doorbell_ring(&sh->tx_uar.bf_db, *(volatile uint64_t *)wqe,
 			   sq->pi, &sq->sq_obj.db_rec[MLX5_SND_DBR],
 			   !sh->tx_uar.dbnc);
-	return sq->elts[0].burst_size;
+	bursted_cnts = RTE_MIN((uint32_t)(sq->elts[0].burst_size * 4), n);
+	return bursted_cnts;
 }
 
 static uint16_t
@@ -1949,7 +1951,7 @@ mlx5_aso_cnt_completion_handle(struct mlx5_aso_sq *sq)
 	return i;
 }
 
-static uint16_t
+static uint64_t
 mlx5_aso_cnt_query_one_dcs(struct mlx5_dev_ctx_shared *sh,
 			   struct mlx5_hws_cnt_pool *cpool,
 			   uint8_t dcs_idx, uint32_t num)
@@ -1958,7 +1960,7 @@ mlx5_aso_cnt_query_one_dcs(struct mlx5_dev_ctx_shared *sh,
 	uint64_t cnt_num = cpool->dcs_mng.dcs[dcs_idx].batch_sz;
 	uint64_t left;
 	uint32_t iidx = cpool->dcs_mng.dcs[dcs_idx].iidx;
-	uint32_t offset;
+	uint32_t bursted, dcs_offset = 0;
 	uint16_t mask;
 	uint16_t sq_idx;
 	uint64_t burst_sz = (uint64_t)(1 << MLX5_ASO_CNT_QUEUE_LOG_DESC) * 4 *
@@ -1978,12 +1980,12 @@ mlx5_aso_cnt_query_one_dcs(struct mlx5_dev_ctx_shared *sh,
 				continue;
 			}
 			n = RTE_MIN(left, qburst_sz);
-			offset = cnt_num - left;
-			offset += iidx;
-			mlx5_aso_cnt_sq_enqueue_burst(cpool, sh,
-					&sh->cnt_svc->aso_mng.sqs[sq_idx], n,
-					offset, dcs_id);
-			left -= n;
+			bursted = mlx5_aso_cnt_sq_enqueue_burst(cpool, sh,
+							&sh->cnt_svc->aso_mng.sqs[sq_idx], n,
+							iidx, aso_hw_id(dcs_id, dcs_offset));
+			left -= bursted;
+			dcs_offset += bursted;
+			iidx += bursted;
 		}
 		do {
 			for (sq_idx = 0; sq_idx < sh->cnt_svc->aso_mng.sq_num;
