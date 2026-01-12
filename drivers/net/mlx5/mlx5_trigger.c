@@ -1569,13 +1569,17 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 			dev->data->port_id, -ret);
 		goto error;
 	}
-	if (dev->data->promiscuous)
+	if (dev->data->promiscuous) {
 		flags |= MLX5_CTRL_PROMISCUOUS;
-	if (dev->data->all_multicast)
-		flags |= MLX5_CTRL_ALL_MULTICAST;
-	else
-		flags |= MLX5_CTRL_BROADCAST | MLX5_CTRL_IPV4_MULTICAST | MLX5_CTRL_IPV6_MULTICAST;
-	flags |= MLX5_CTRL_DMAC;
+	} else {
+		if (dev->data->all_multicast)
+			flags |= MLX5_CTRL_ALL_MULTICAST;
+		else
+			flags |= (MLX5_CTRL_BROADCAST |
+				  MLX5_CTRL_IPV4_MULTICAST |
+				  MLX5_CTRL_IPV6_MULTICAST);
+		flags |= MLX5_CTRL_DMAC;
+	}
 	if (priv->vlan_filter_n)
 		flags |= MLX5_CTRL_VLAN_FILTER;
 	return mlx5_flow_hw_ctrl_flows(dev, flags);
