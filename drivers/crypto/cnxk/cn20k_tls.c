@@ -385,13 +385,20 @@ cn20k_tls_read_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	int ret = 0;
 
 	tls = &sec_sess->tls_rec;
-	read_sa = &tls->read_sa;
+
+	read_sa = rte_zmalloc("cn20k_tls", sizeof(struct roc_ie_ow_tls_read_sa), ROC_CPTR_ALIGN);
+	if (read_sa == NULL) {
+		plt_err("Couldn't allocate memory for READ SA");
+		return -ENOMEM;
+	}
+	tls->read_sa = read_sa;
 
 	/* Allocate memory to be used as dptr for CPT ucode WRITE_SA op */
 	sa_dptr = plt_zmalloc(sizeof(struct roc_ie_ow_tls_read_sa), 8);
 	if (sa_dptr == NULL) {
 		plt_err("Could not allocate memory for SA dptr");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto sa_cptr_free;
 	}
 
 	/* Translate security parameters to SA */
@@ -457,6 +464,11 @@ cn20k_tls_read_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 sa_dptr_free:
 	plt_free(sa_dptr);
+sa_cptr_free:
+	if (ret != 0) {
+		rte_free(read_sa);
+		read_sa = NULL;
+	}
 
 	return ret;
 }
@@ -706,13 +718,20 @@ cn20k_tls_write_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	int ret = 0;
 
 	tls = &sec_sess->tls_rec;
-	write_sa = &tls->write_sa;
+
+	write_sa = rte_zmalloc("cn20k_tls", sizeof(struct roc_ie_ow_tls_write_sa), ROC_CPTR_ALIGN);
+	if (write_sa == NULL) {
+		plt_err("Couldn't allocate memory for WRITE SA");
+		return -ENOMEM;
+	}
+	tls->write_sa = write_sa;
 
 	/* Allocate memory to be used as dptr for CPT ucode WRITE_SA op */
 	sa_dptr = plt_zmalloc(sizeof(struct roc_ie_ow_tls_write_sa), 8);
 	if (sa_dptr == NULL) {
 		plt_err("Could not allocate memory for SA dptr");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto sa_cptr_free;
 	}
 
 	/* Translate security parameters to SA */
@@ -781,6 +800,11 @@ cn20k_tls_write_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 sa_dptr_free:
 	plt_free(sa_dptr);
+sa_cptr_free:
+	if (ret != 0) {
+		rte_free(write_sa);
+		write_sa = NULL;
+	}
 
 	return ret;
 }
@@ -868,15 +892,18 @@ cn20k_sec_tls_session_destroy(struct cnxk_cpt_qp *qp, struct cn20k_sec_session *
 
 	tls = &sess->tls_rec;
 
+	if (tls->sa_ptr == NULL)
+		return -EINVAL;
+
 	/* Trigger CTX flush to write dirty data back to DRAM */
-	roc_cpt_lf_ctx_flush(lf, &tls->read_sa, false);
+	roc_cpt_lf_ctx_flush(lf, tls->read_sa, false);
 
 	if (sess->tls_opt.is_write) {
 		sa_dptr = plt_zmalloc(sizeof(struct roc_ie_ow_tls_write_sa), 8);
 		if (sa_dptr != NULL) {
 			tls_write_sa_init(sa_dptr);
 
-			ret = roc_cpt_ctx_write(lf, sa_dptr, &tls->write_sa,
+			ret = roc_cpt_ctx_write(lf, sa_dptr, tls->write_sa,
 						sizeof(struct roc_ie_ow_tls_write_sa));
 			plt_free(sa_dptr);
 		}
@@ -889,14 +916,14 @@ cn20k_sec_tls_session_destroy(struct cnxk_cpt_qp *qp, struct cn20k_sec_session *
 			rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
 			/* Trigger CTX reload to fetch new data from DRAM */
-			roc_cpt_lf_ctx_reload(lf, &tls->write_sa);
+			roc_cpt_lf_ctx_reload(lf, tls->write_sa);
 		}
 	} else {
 		sa_dptr = plt_zmalloc(sizeof(struct roc_ie_ow_tls_read_sa), 8);
 		if (sa_dptr != NULL) {
 			tls_read_sa_init(sa_dptr);
 
-			ret = roc_cpt_ctx_write(lf, sa_dptr, &tls->read_sa,
+			ret = roc_cpt_ctx_write(lf, sa_dptr, tls->read_sa,
 						sizeof(struct roc_ie_ow_tls_read_sa));
 			plt_free(sa_dptr);
 		}
@@ -909,9 +936,11 @@ cn20k_sec_tls_session_destroy(struct cnxk_cpt_qp *qp, struct cn20k_sec_session *
 			rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
 			/* Trigger CTX reload to fetch new data from DRAM */
-			roc_cpt_lf_ctx_reload(lf, &tls->read_sa);
+			roc_cpt_lf_ctx_reload(lf, tls->read_sa);
 		}
 	}
+
+	rte_free(tls->sa_ptr);
 
 	return 0;
 }
