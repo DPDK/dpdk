@@ -9234,6 +9234,7 @@ static struct rte_flow_pattern_template *
 flow_hw_pattern_template_create(struct rte_eth_dev *dev,
 			     const struct rte_flow_pattern_template_attr *attr,
 			     const struct rte_flow_item items[],
+			     bool external,
 			     struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -9388,9 +9389,11 @@ setup_pattern_template:
 		}
 	}
 	rte_atomic_fetch_add_explicit(&it->refcnt, 1, rte_memory_order_relaxed);
-	rc = pattern_template_validate(dev, &it, 1, error);
-	if (rc)
-		goto error;
+	if (external) {
+		rc = pattern_template_validate(dev, &it, 1, error);
+		if (rc)
+			goto error;
+	}
 	LIST_INSERT_HEAD(&priv->flow_hw_itt, it, next);
 	return it;
 error:
@@ -9407,6 +9410,16 @@ error:
 	if (copied_items)
 		mlx5_free(copied_items);
 	return NULL;
+}
+
+static struct rte_flow_pattern_template *
+flow_hw_external_pattern_template_create
+			(struct rte_eth_dev *dev,
+			 const struct rte_flow_pattern_template_attr *attr,
+			 const struct rte_flow_item items[],
+			 struct rte_flow_error *error)
+{
+	return flow_hw_pattern_template_create(dev, attr, items, true, error);
 }
 
 /**
@@ -10014,7 +10027,7 @@ flow_hw_create_tx_repr_sq_pattern_tmpl(struct rte_eth_dev *dev, struct rte_flow_
 		},
 	};
 
-	return flow_hw_pattern_template_create(dev, &attr, items, error);
+	return flow_hw_pattern_template_create(dev, &attr, items, false, error);
 }
 
 static __rte_always_inline uint32_t
@@ -10306,7 +10319,7 @@ flow_hw_create_ctrl_esw_mgr_pattern_template(struct rte_eth_dev *dev,
 		},
 	};
 
-	return flow_hw_pattern_template_create(dev, &attr, items, error);
+	return flow_hw_pattern_template_create(dev, &attr, items, false, error);
 }
 
 /**
@@ -10360,7 +10373,7 @@ flow_hw_create_ctrl_regc_sq_pattern_template(struct rte_eth_dev *dev,
 		},
 	};
 
-	return flow_hw_pattern_template_create(dev, &attr, items, error);
+	return flow_hw_pattern_template_create(dev, &attr, items, false, error);
 }
 
 /**
@@ -10397,7 +10410,7 @@ flow_hw_create_ctrl_port_pattern_template(struct rte_eth_dev *dev,
 		},
 	};
 
-	return flow_hw_pattern_template_create(dev, &attr, items, error);
+	return flow_hw_pattern_template_create(dev, &attr, items, false, error);
 }
 
 /*
@@ -10433,7 +10446,8 @@ flow_hw_create_lacp_rx_pattern_template(struct rte_eth_dev *dev, struct rte_flow
 			.type = RTE_FLOW_ITEM_TYPE_END,
 		},
 	};
-	return flow_hw_pattern_template_create(dev, &pa_attr, eth_all, error);
+	return flow_hw_pattern_template_create(dev, &pa_attr, eth_all,
+					       false, error);
 }
 
 /**
@@ -11677,7 +11691,7 @@ flow_hw_create_ctrl_rx_pattern_template
 		{ .type = RTE_FLOW_ITEM_TYPE_END }
 	};
 
-	return flow_hw_pattern_template_create(dev, &attr, items, NULL);
+	return flow_hw_pattern_template_create(dev, &attr, items, false, NULL);
 }
 
 int
@@ -15705,6 +15719,7 @@ flow_hw_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	return 0;
 }
 
+
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.list_create = flow_hw_list_create,
 	.list_destroy = flow_hw_list_destroy,
@@ -15712,7 +15727,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.info_get = flow_hw_info_get,
 	.configure = flow_hw_configure,
 	.pattern_validate = flow_hw_pattern_validate,
-	.pattern_template_create = flow_hw_pattern_template_create,
+	.pattern_template_create = flow_hw_external_pattern_template_create,
 	.pattern_template_destroy = flow_hw_pattern_template_destroy,
 	.actions_validate = flow_hw_actions_validate,
 	.actions_template_create = flow_hw_actions_template_create,
