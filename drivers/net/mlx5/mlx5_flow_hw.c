@@ -4364,6 +4364,9 @@ mlx5_hw_pull_flow_transfer_comp(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_ring *ring = priv->hw_q[queue].flow_transfer_completed;
 
+	if (ring == NULL)
+		return 0;
+
 	size = RTE_MIN(rte_ring_count(ring), n_res);
 	for (i = 0; i < size; i++) {
 		res[i].status = RTE_FLOW_OP_SUCCESS;
@@ -4595,8 +4598,9 @@ __flow_hw_push_action(struct rte_eth_dev *dev,
 	struct mlx5_hw_q *hw_q = &priv->hw_q[queue];
 
 	mlx5_hw_push_queue(hw_q->indir_iq, hw_q->indir_cq);
-	mlx5_hw_push_queue(hw_q->flow_transfer_pending,
-			   hw_q->flow_transfer_completed);
+	if (hw_q->flow_transfer_pending != NULL && hw_q->flow_transfer_completed != NULL)
+		mlx5_hw_push_queue(hw_q->flow_transfer_pending,
+				   hw_q->flow_transfer_completed);
 	if (!priv->shared_host) {
 		if (priv->hws_ctpool)
 			mlx5_aso_push_wqe(priv->sh,
@@ -11574,6 +11578,60 @@ mlx5_hwq_ring_create(uint16_t port_id, uint32_t queue, uint32_t size, const char
 }
 
 static int
+flow_hw_queue_setup_rings(struct rte_eth_dev *dev,
+			  uint16_t queue,
+			  uint32_t queue_size,
+			  bool nt_mode)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	/* HWS queue info container must be already allocated. */
+	MLX5_ASSERT(priv->hw_q != NULL);
+
+	/* Notice ring name length is limited. */
+	priv->hw_q[queue].indir_cq = mlx5_hwq_ring_create
+		(dev->data->port_id, queue, queue_size, "indir_act_cq");
+	if (!priv->hw_q[queue].indir_cq) {
+		DRV_LOG(ERR, "port %u failed to allocate indir_act_cq ring for HWS",
+			dev->data->port_id);
+		return -ENOMEM;
+	}
+
+	priv->hw_q[queue].indir_iq = mlx5_hwq_ring_create
+		(dev->data->port_id, queue, queue_size, "indir_act_iq");
+	if (!priv->hw_q[queue].indir_iq) {
+		DRV_LOG(ERR, "port %u failed to allocate indir_act_iq ring for HWS",
+			dev->data->port_id);
+		return -ENOMEM;
+	}
+
+	/*
+	 * Sync flow API does not require rings used for table resize handling,
+	 * because these rings are only used through async flow APIs.
+	 */
+	if (nt_mode)
+		return 0;
+
+	priv->hw_q[queue].flow_transfer_pending = mlx5_hwq_ring_create
+		(dev->data->port_id, queue, queue_size, "tx_pending");
+	if (!priv->hw_q[queue].flow_transfer_pending) {
+		DRV_LOG(ERR, "port %u failed to allocate tx_pending ring for HWS",
+			dev->data->port_id);
+		return -ENOMEM;
+	}
+
+	priv->hw_q[queue].flow_transfer_completed = mlx5_hwq_ring_create
+		(dev->data->port_id, queue, queue_size, "tx_done");
+	if (!priv->hw_q[queue].flow_transfer_completed) {
+		DRV_LOG(ERR, "port %u failed to allocate tx_done ring for HWS",
+			dev->data->port_id);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+static int
 flow_hw_validate_attributes(const struct rte_flow_port_attr *port_attr,
 			    uint16_t nb_queue,
 			    const struct rte_flow_queue_attr *queue_attr[],
@@ -11740,22 +11798,8 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 		      &priv->hw_q[i].job[_queue_attr[i]->size];
 		for (j = 0; j < _queue_attr[i]->size; j++)
 			priv->hw_q[i].job[j] = &job[j];
-		/* Notice ring name length is limited. */
-		priv->hw_q[i].indir_cq = mlx5_hwq_ring_create
-			(dev->data->port_id, i, _queue_attr[i]->size, "indir_act_cq");
-		if (!priv->hw_q[i].indir_cq)
-			goto err;
-		priv->hw_q[i].indir_iq = mlx5_hwq_ring_create
-			(dev->data->port_id, i, _queue_attr[i]->size, "indir_act_iq");
-		if (!priv->hw_q[i].indir_iq)
-			goto err;
-		priv->hw_q[i].flow_transfer_pending = mlx5_hwq_ring_create
-			(dev->data->port_id, i, _queue_attr[i]->size, "tx_pending");
-		if (!priv->hw_q[i].flow_transfer_pending)
-			goto err;
-		priv->hw_q[i].flow_transfer_completed = mlx5_hwq_ring_create
-			(dev->data->port_id, i, _queue_attr[i]->size, "tx_done");
-		if (!priv->hw_q[i].flow_transfer_completed)
+
+		if (flow_hw_queue_setup_rings(dev, i, _queue_attr[i]->size, nt_mode) < 0)
 			goto err;
 	}
 	dr_ctx_attr.pd = priv->sh->cdev->pd;
@@ -15035,6 +15079,12 @@ flow_hw_update_resized(struct rte_eth_dev *dev, uint32_t queue,
 	};
 
 	MLX5_ASSERT(hw_flow->flags & MLX5_FLOW_HW_FLOW_FLAG_MATCHER_SELECTOR);
+	/*
+	 * Update resized can be called only through async flow API.
+	 * These rings are allocated if and only if async flow API was configured.
+	 */
+	MLX5_ASSERT(priv->hw_q[queue].flow_transfer_completed != NULL);
+	MLX5_ASSERT(priv->hw_q[queue].flow_transfer_pending != NULL);
 	/**
 	 * mlx5dr_matcher_resize_rule_move() accepts original table matcher -
 	 * the one that was used BEFORE table resize.
