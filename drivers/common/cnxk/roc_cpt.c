@@ -1275,8 +1275,8 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 	uint8_t egrp;
 	int i;
 
-	if (!plt_is_aligned(sa_cptr, 128)) {
-		plt_err("Context pointer should be 128B aligned");
+	if (!plt_is_aligned(sa_cptr, ROC_CPTR_ALIGN)) {
+		plt_err("Context pointer should be %dB aligned", ROC_CPTR_ALIGN);
 		return -EINVAL;
 	}
 

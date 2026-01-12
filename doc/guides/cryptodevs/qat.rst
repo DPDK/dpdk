@@ -519,7 +519,7 @@ If you are running on a kernel which includes a driver for your device, see
 
    For symmetric and asymmetric crypto services, ensure that `"asym;sym"` are enabled.
    For **out-of-tree drivers**, the configuration file for each instance can be found at:
-    /etc/<GEN>_dev<ID>.conf
+   /etc/<GEN>_dev<ID>.conf
 
 
 Installation using kernel.org driver

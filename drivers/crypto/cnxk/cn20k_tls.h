@@ -16,13 +16,18 @@
 /* Forward declaration */
 struct cn20k_sec_session;
 
-struct __rte_aligned(ROC_ALIGN) cn20k_tls_record
+struct __rte_aligned(ROC_CPTR_ALIGN) cn20k_tls_record
 {
 	union {
-		/** Read SA */
-		struct roc_ie_ow_tls_read_sa read_sa;
-		/** Write SA */
-		struct roc_ie_ow_tls_write_sa write_sa;
+		void *sa_ptr;
+		struct {
+			union {
+				/** Read SA */
+				struct roc_ie_ow_tls_read_sa *read_sa;
+				/** Write SA */
+				struct roc_ie_ow_tls_write_sa *write_sa;
+			};
+		};
 	};
 };
 
