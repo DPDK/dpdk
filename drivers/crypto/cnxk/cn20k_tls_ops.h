@@ -38,7 +38,11 @@ process_tls_write(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn20k
 	pad_len = (pad_bytes >> tls_opt.pad_shift) * tls_opt.enable_padding;
 
 #ifdef LA_IPSEC_DEBUG
-	write_sa = &sess->tls_rec.write_sa;
+	write_sa = sess->tls_rec.write_sa;
+	if (write_sa == NULL) {
+		return -EINVAL;
+	}
+
 	if (write_sa->w2.s.iv_at_cptr == ROC_IE_OW_TLS_IV_SRC_FROM_SA) {
 
 		uint8_t *iv = PLT_PTR_ADD(write_sa->cipher_key, 32);
