@@ -659,7 +659,7 @@ static int bnxt_stats_get_ext(struct rte_eth_dev *eth_dev,
 	num_q_stats = RTE_MIN(bp->rx_cp_nr_rings,
 			      (unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS);
 
-	for (i = 0; i < num_q_stats; i++) {
+	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 		struct bnxt_ring_stats_ext ring_stats = {0};
@@ -675,7 +675,8 @@ static int bnxt_stats_get_ext(struct rte_eth_dev *eth_dev,
 		if (unlikely(rc))
 			return rc;
 
-		bnxt_fill_rte_eth_stats_ext(bnxt_stats, &ring_stats, qstats, i, true);
+		bnxt_fill_rte_eth_stats_ext(bnxt_stats, &ring_stats,
+					    i < num_q_stats ? qstats : NULL, i, true);
 		bnxt_stats->rx_nombuf +=
 				rte_atomic_load_explicit(&rxq->rx_mbuf_alloc_fail,
 							 rte_memory_order_relaxed);
@@ -684,7 +685,7 @@ static int bnxt_stats_get_ext(struct rte_eth_dev *eth_dev,
 	num_q_stats = RTE_MIN(bp->tx_cp_nr_rings,
 			      (unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS);
 
-	for (i = 0; i < num_q_stats; i++) {
+	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
 		struct bnxt_tx_queue *txq = bp->tx_queues[i];
 		struct bnxt_cp_ring_info *cpr = txq->cp_ring;
 		struct bnxt_ring_stats_ext ring_stats = {0};
@@ -697,7 +698,8 @@ static int bnxt_stats_get_ext(struct rte_eth_dev *eth_dev,
 		if (unlikely(rc))
 			return rc;
 
-		bnxt_fill_rte_eth_stats_ext(bnxt_stats, &ring_stats, qstats, i, false);
+		bnxt_fill_rte_eth_stats_ext(bnxt_stats, &ring_stats,
+					    i < num_q_stats ? qstats : NULL, i, false);
 	}
 
 	return rc;
@@ -724,7 +726,7 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 	num_q_stats = RTE_MIN(bp->rx_cp_nr_rings,
 			      (unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS);
 
-	for (i = 0; i < num_q_stats; i++) {
+	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 		struct bnxt_ring_stats ring_stats = {0};
@@ -739,7 +741,8 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		if (unlikely(rc))
 			return rc;
 
-		bnxt_fill_rte_eth_stats(bnxt_stats, &ring_stats, qstats, i, true);
+		bnxt_fill_rte_eth_stats(bnxt_stats, &ring_stats,
+					i < num_q_stats ? qstats : NULL, i, true);
 		bnxt_stats->rx_nombuf +=
 				rte_atomic_load_explicit(&rxq->rx_mbuf_alloc_fail,
 							 rte_memory_order_relaxed);
@@ -748,7 +751,7 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 	num_q_stats = RTE_MIN(bp->tx_cp_nr_rings,
 			      (unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS);
 
-	for (i = 0; i < num_q_stats; i++) {
+	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
 		struct bnxt_tx_queue *txq = bp->tx_queues[i];
 		struct bnxt_cp_ring_info *cpr = txq->cp_ring;
 		struct bnxt_ring_stats ring_stats = {0};
@@ -761,7 +764,8 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		if (unlikely(rc))
 			return rc;
 
-		bnxt_fill_rte_eth_stats(bnxt_stats, &ring_stats, qstats, i, false);
+		bnxt_fill_rte_eth_stats(bnxt_stats, &ring_stats,
+					i < num_q_stats ? qstats : NULL, i, false);
 		bnxt_stats->oerrors +=
 				rte_atomic_load_explicit(&txq->tx_mbuf_drop,
 							 rte_memory_order_relaxed);
