@@ -28,3 +28,4 @@ sources = files(
         'thread.c',
         'tmgr.c',
 )
+cflags += no_shadow_cflag

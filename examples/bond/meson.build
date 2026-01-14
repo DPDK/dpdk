@@ -11,6 +11,7 @@ allow_experimental_apis = true
 sources = files(
         'main.c',
 )
+cflags += no_shadow_cflag
 
 cmd_h = custom_target('commands_hdr',
         output: 'commands.h',

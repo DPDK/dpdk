@@ -25,6 +25,7 @@ sources = files(
 )
 
 cflags += no_wvla_cflag
+cflags += no_shadow_cflag
 
 app_cflags = ['-Wno-address-of-packed-member']
 foreach flag:app_cflags

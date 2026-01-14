@@ -29,6 +29,7 @@ sources = files(
         'power_manager.c',
         'vm_power_cli.c',
 )
+cflags += no_shadow_cflag
 
 # If we're on X86, pull in the x86 code for the branch monitor algo.
 if dpdk_conf.has('RTE_ARCH_X86_64')
