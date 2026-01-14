@@ -916,7 +916,6 @@ args_parse(int argc, char **argv)
 			if (strcmp(lgopts[opt_idx].name,
 					"port-id") == 0) {
 				uint16_t port_idx = 0;
-				char *token;
 
 				token = strtok(optarg, ",");
 				while (token != NULL) {
