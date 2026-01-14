@@ -336,7 +336,7 @@ clb_pause(uint16_t port_id __rte_unused, uint16_t qidx __rte_unused,
 	struct queue_list_entry *queue_conf = arg;
 	struct pmd_core_cfg *lcore_conf;
 	const bool empty = nb_rx == 0;
-	uint32_t pause_duration = rte_power_pmd_mgmt_get_pause_duration();
+	const uint32_t duration = rte_power_pmd_mgmt_get_pause_duration();
 
 	lcore_conf = RTE_LCORE_VAR(lcore_cfgs);
 
@@ -356,11 +356,11 @@ clb_pause(uint16_t port_id __rte_unused, uint16_t qidx __rte_unused,
 		if (global_data.intrinsics_support.power_pause) {
 			const uint64_t cur = rte_rdtsc();
 			const uint64_t wait_tsc =
-					cur + global_data.tsc_per_us * pause_duration;
+				cur + global_data.tsc_per_us * duration;
 			rte_power_pause(wait_tsc);
 		} else {
 			uint64_t i;
-			for (i = 0; i < global_data.pause_per_us * pause_duration; i++)
+			for (i = 0; i < global_data.pause_per_us * duration; i++)
 				rte_pause();
 		}
 	}
