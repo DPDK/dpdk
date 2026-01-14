@@ -209,7 +209,7 @@ table_params_get(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
 	uint32_t key_size = 0, key_offset = 0, action_data_size = 0, i;
 
 	if (table->info.n_match_fields) {
-		uint32_t n_match_fields_em = 0, i;
+		uint32_t n_match_fields_em = 0;
 
 		/* Find first (smallest offset) and last (biggest offset) match fields. */
 		first = &table->mf[0];
@@ -854,22 +854,21 @@ selector_free(struct rte_swx_ctl_pipeline *ctl)
 
 	for (i = 0; i < ctl->info.n_selectors; i++) {
 		struct selector *s = &ctl->selectors[i];
-		uint32_t i;
 
 		/* selector_fields. */
 		free(s->selector_fields);
 
 		/* groups. */
 		if (s->groups)
-			for (i = 0; i < s->info.n_groups_max; i++)
-				selector_group_members_free(s, i);
+			for (uint32_t j = 0; j < s->info.n_groups_max; j++)
+				selector_group_members_free(s, j);
 
 		free(s->groups);
 
 		/* pending_groups. */
 		if (s->pending_groups)
-			for (i = 0; i < s->info.n_groups_max; i++)
-				selector_pending_group_members_free(s, i);
+			for (uint32_t j = 0; j < s->info.n_groups_max; j++)
+				selector_pending_group_members_free(s, j);
 
 		free(s->pending_groups);
 
