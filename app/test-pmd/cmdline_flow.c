@@ -13972,7 +13972,7 @@ cmd_set_raw_parsed(const struct buffer *in)
 	data_tail = data + ACTION_RAW_ENCAP_MAX_DATA;
 	for (i = n - 1 ; i >= 0; --i) {
 		const struct rte_flow_item_gtp *gtp;
-		const struct rte_flow_item_geneve_opt *opt;
+		const struct rte_flow_item_geneve_opt *geneve_opt;
 		struct rte_flow_item_ipv6_routing_ext *ext;
 
 		item = in->args.vc.pattern + i;
@@ -14044,16 +14044,16 @@ cmd_set_raw_parsed(const struct buffer *in)
 			size = sizeof(struct rte_geneve_hdr);
 			break;
 		case RTE_FLOW_ITEM_TYPE_GENEVE_OPT:
-			opt = (const struct rte_flow_item_geneve_opt *)
+			geneve_opt = (const struct rte_flow_item_geneve_opt *)
 								item->spec;
 			size = offsetof(struct rte_flow_item_geneve_opt,
 					option_len) + sizeof(uint8_t);
-			if (opt->option_len && opt->data) {
-				*total_size += opt->option_len *
+			if (geneve_opt->option_len && geneve_opt->data) {
+				*total_size += geneve_opt->option_len *
 					       sizeof(uint32_t);
 				rte_memcpy(data_tail - (*total_size),
-					   opt->data,
-					   opt->option_len * sizeof(uint32_t));
+					   geneve_opt->data,
+					   geneve_opt->option_len * sizeof(uint32_t));
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_L2TPV3OIP:
@@ -14103,7 +14103,7 @@ cmd_set_raw_parsed(const struct buffer *in)
 				goto error;
 			} else {
 				const struct rte_flow_item_gtp_psc
-					*opt = item->spec;
+					*gtp_opt = item->spec;
 				struct rte_gtp_psc_generic_hdr *hdr;
 				size_t hdr_size = RTE_ALIGN(sizeof(*hdr),
 							 sizeof(int32_t));
@@ -14111,7 +14111,7 @@ cmd_set_raw_parsed(const struct buffer *in)
 				*total_size += hdr_size;
 				hdr = (typeof(hdr))(data_tail - (*total_size));
 				memset(hdr, 0, hdr_size);
-				*hdr = opt->hdr;
+				*hdr = gtp_opt->hdr;
 				hdr->ext_hdr_len = 1;
 				gtp_psc = i;
 				size = 0;
@@ -14133,25 +14133,25 @@ cmd_set_raw_parsed(const struct buffer *in)
 			size = 0;
 			if (item->spec) {
 				const struct rte_flow_item_gre_opt
-					*opt = item->spec;
-				if (opt->checksum_rsvd.checksum) {
+					*gre_opt = item->spec;
+				if (gre_opt->checksum_rsvd.checksum) {
 					*total_size +=
-						sizeof(opt->checksum_rsvd);
+						sizeof(gre_opt->checksum_rsvd);
 					rte_memcpy(data_tail - (*total_size),
-						   &opt->checksum_rsvd,
-						   sizeof(opt->checksum_rsvd));
+						   &gre_opt->checksum_rsvd,
+						   sizeof(gre_opt->checksum_rsvd));
 				}
-				if (opt->key.key) {
-					*total_size += sizeof(opt->key.key);
+				if (gre_opt->key.key) {
+					*total_size += sizeof(gre_opt->key.key);
 					rte_memcpy(data_tail - (*total_size),
-						   &opt->key.key,
-						   sizeof(opt->key.key));
+						   &gre_opt->key.key,
+						   sizeof(gre_opt->key.key));
 				}
-				if (opt->sequence.sequence) {
-					*total_size += sizeof(opt->sequence.sequence);
+				if (gre_opt->sequence.sequence) {
+					*total_size += sizeof(gre_opt->sequence.sequence);
 					rte_memcpy(data_tail - (*total_size),
-						   &opt->sequence.sequence,
-						   sizeof(opt->sequence.sequence));
+						   &gre_opt->sequence.sequence,
+						   sizeof(gre_opt->sequence.sequence));
 				}
 			}
 			proto = 0x2F;

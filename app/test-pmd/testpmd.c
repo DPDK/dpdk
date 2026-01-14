@@ -4564,7 +4564,7 @@ main(int argc, char** argv)
 
 #ifdef RTE_LIB_LATENCYSTATS
 	if (latencystats_enabled != 0) {
-		int ret = rte_latencystats_init(1, NULL);
+		ret = rte_latencystats_init(1, NULL);
 		if (ret)
 			fprintf(stderr,
 				"Warning: latencystats init() returned error %d\n",

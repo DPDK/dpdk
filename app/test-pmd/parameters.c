@@ -769,42 +769,42 @@ parse_ringnuma_config(const char *q_arg)
 }
 
 static int
-parse_event_printing_config(const char *optarg, int enable)
+parse_event_printing_config(const char *event_arg, int enable)
 {
 	uint32_t mask = 0;
 
-	if (!strcmp(optarg, "unknown"))
+	if (!strcmp(event_arg, "unknown"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_UNKNOWN;
-	else if (!strcmp(optarg, "intr_lsc"))
+	else if (!strcmp(event_arg, "intr_lsc"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_INTR_LSC;
-	else if (!strcmp(optarg, "queue_state"))
+	else if (!strcmp(event_arg, "queue_state"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_QUEUE_STATE;
-	else if (!strcmp(optarg, "intr_reset"))
+	else if (!strcmp(event_arg, "intr_reset"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_INTR_RESET;
-	else if (!strcmp(optarg, "vf_mbox"))
+	else if (!strcmp(event_arg, "vf_mbox"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_VF_MBOX;
-	else if (!strcmp(optarg, "ipsec"))
+	else if (!strcmp(event_arg, "ipsec"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_IPSEC;
-	else if (!strcmp(optarg, "macsec"))
+	else if (!strcmp(event_arg, "macsec"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_MACSEC;
-	else if (!strcmp(optarg, "intr_rmv"))
+	else if (!strcmp(event_arg, "intr_rmv"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_INTR_RMV;
-	else if (!strcmp(optarg, "dev_probed"))
+	else if (!strcmp(event_arg, "dev_probed"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_NEW;
-	else if (!strcmp(optarg, "dev_released"))
+	else if (!strcmp(event_arg, "dev_released"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_DESTROY;
-	else if (!strcmp(optarg, "flow_aged"))
+	else if (!strcmp(event_arg, "flow_aged"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_FLOW_AGED;
-	else if (!strcmp(optarg, "err_recovering"))
+	else if (!strcmp(event_arg, "err_recovering"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_ERR_RECOVERING;
-	else if (!strcmp(optarg, "recovery_success"))
+	else if (!strcmp(event_arg, "recovery_success"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_RECOVERY_SUCCESS;
-	else if (!strcmp(optarg, "recovery_failed"))
+	else if (!strcmp(event_arg, "recovery_failed"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_RECOVERY_FAILED;
-	else if (!strcmp(optarg, "all"))
+	else if (!strcmp(event_arg, "all"))
 		mask = ~UINT32_C(0);
 	else {
-		fprintf(stderr, "Invalid event: %s\n", optarg);
+		fprintf(stderr, "Invalid event: %s\n", event_arg);
 		return -1;
 	}
 	if (enable)
@@ -968,11 +968,10 @@ launch_args_parse(int argc, char** argv)
 			break;
 		case TESTPMD_OPT_STATS_PERIOD_NUM: {
 			char *end = NULL;
-			unsigned int n;
 
 			n = strtoul(optarg, &end, 10);
 			if ((optarg[0] == '\0') || (end == NULL) ||
-					(*end != '\0'))
+					(*end != '\0') || n <= 0 || n >= UINT16_MAX)
 				rte_exit(EXIT_FAILURE, "Invalid stats-period value\n");
 
 			stats_period = n;
@@ -1311,7 +1310,6 @@ launch_args_parse(int argc, char** argv)
 			break;
 		case TESTPMD_OPT_HAIRPIN_MODE_NUM: {
 			char *end = NULL;
-			unsigned int n;
 
 			errno = 0;
 			n = strtoul(optarg, &end, 0);
