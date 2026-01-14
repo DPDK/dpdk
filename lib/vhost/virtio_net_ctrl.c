@@ -28,7 +28,7 @@ virtio_net_ctrl_pop(struct virtio_net *dev, struct vhost_virtqueue *cvq,
 		struct virtio_net_ctrl_elem *ctrl_elem)
 	__rte_shared_locks_required(&cvq->iotlb_lock)
 {
-	uint16_t avail_idx, desc_idx, n_descs = 0;
+	uint16_t avail_idx, desc_idx, n_descs = 0, nr_descs, cnt = 0;
 	uint64_t desc_len, desc_addr, desc_iova, data_len = 0;
 	uint8_t *ctrl_req;
 	struct vring_desc *descs;
@@ -59,12 +59,19 @@ virtio_net_ctrl_pop(struct virtio_net *dev, struct vhost_virtqueue *cvq,
 			goto err;
 		}
 
+		nr_descs = desc_len / sizeof(struct vring_desc);
 		desc_idx = 0;
 	} else {
 		descs = cvq->desc;
+		nr_descs = cvq->size;
 	}
 
 	while (1) {
+		if (unlikely(desc_idx >= nr_descs || cnt++ >= nr_descs)) {
+			VHOST_CONFIG_LOG(dev->ifname, ERR, "Invalid ctrl descriptor chain");
+			goto err;
+		}
+
 		desc_len = descs[desc_idx].len;
 		desc_iova = descs[desc_idx].addr;
 
@@ -142,12 +149,23 @@ virtio_net_ctrl_pop(struct virtio_net *dev, struct vhost_virtqueue *cvq,
 			goto free_err;
 		}
 
+		nr_descs = desc_len / sizeof(struct vring_desc);
 		desc_idx = 0;
 	} else {
 		descs = cvq->desc;
+		nr_descs = cvq->size;
 	}
 
-	while (!(descs[desc_idx].flags & VRING_DESC_F_WRITE)) {
+	cnt = 0;
+	while (1) {
+		if (unlikely(desc_idx >= nr_descs || cnt++ >= nr_descs)) {
+			VHOST_CONFIG_LOG(dev->ifname, ERR, "Invalid ctrl descriptor chain");
+			goto free_err;
+		}
+
+		if (descs[desc_idx].flags & VRING_DESC_F_WRITE)
+			break;
+
 		desc_len = descs[desc_idx].len;
 		desc_iova = descs[desc_idx].addr;
 
