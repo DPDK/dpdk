@@ -1166,12 +1166,10 @@ grind_next_buckets:
 		uint64_t buckets_mask_next = 0;
 
 		for ( ; buckets_mask; ) {
-			uint64_t pkt_mask;
 			uint32_t pkt_index;
 
 			pkt_index = rte_ctz64(buckets_mask);
-			pkt_mask = 1LLU << pkt_index;
-			buckets_mask &= ~pkt_mask;
+			buckets_mask &= ~(1LLU << pkt_index);
 
 			lookup_grinder(pkt_index, buckets, keys, pkts_mask_out,
 				entries, buckets_mask_next, f);
