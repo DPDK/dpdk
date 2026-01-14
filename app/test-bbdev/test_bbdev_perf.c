@@ -552,12 +552,11 @@ create_mempools(struct active_device *ad, int socket_id,
 			&test_vector.entries[DATA_HARQ_OUTPUT];
 
 	/* allocate ops mempool */
-	ops_pool_size = optimal_mempool_size(RTE_MAX(
+	ops_pool_size = optimal_mempool_size(RTE_MAX3(
 			/* Ops used plus 1 reference op */
-			RTE_MAX((unsigned int)(ad->nb_queues * num_ops + 1),
+			(unsigned int)(ad->nb_queues * num_ops + 1),
 			/* Minimal cache size plus 1 reference op */
-			(unsigned int)(1.5 * rte_lcore_count() *
-					OPS_CACHE_SIZE + 1)),
+			(unsigned int)(1.5 * rte_lcore_count() * OPS_CACHE_SIZE + 1),
 			OPS_POOL_SIZE_MIN));
 
 	if (org_op_type == RTE_BBDEV_OP_NONE)
