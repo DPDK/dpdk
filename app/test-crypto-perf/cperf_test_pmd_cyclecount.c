@@ -111,15 +111,13 @@ cperf_pmd_cyclecount_test_constructor(struct rte_mempool *sess_mp,
 	ctx->test_vector = test_vector;
 
 	/* IV goes at the end of the crypto operation */
-	uint16_t iv_offset = sizeof(struct rte_crypto_op) +
-			sizeof(struct rte_crypto_sym_op);
+	uint16_t iv_ofs = sizeof(struct rte_crypto_op) + sizeof(struct rte_crypto_sym_op);
 
 	if (*sess != NULL) {
 		ctx->sess = *sess;
 		ctx->sess_owner = false;
 	} else {
-		ctx->sess = op_fns->sess_create(sess_mp, dev_id, options, test_vector,
-			iv_offset);
+		ctx->sess = op_fns->sess_create(sess_mp, dev_id, options, test_vector, iv_ofs);
 		if (ctx->sess == NULL)
 			goto err;
 		*sess = ctx->sess;
