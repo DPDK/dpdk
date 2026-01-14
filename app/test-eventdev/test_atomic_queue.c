@@ -34,7 +34,7 @@ static inline void
 atomic_queue_process_stage_1(struct test_order *const t,
 		struct rte_event *const ev,
 		uint32_t nb_flows,
-		rte_spinlock_t *atomic_locks,
+		rte_spinlock_t *atomic_lks,
 		uint32_t *const expected_flow_seq,
 		RTE_ATOMIC(uint64_t) * const outstand_pkts,
 		uint32_t port)
@@ -42,7 +42,7 @@ atomic_queue_process_stage_1(struct test_order *const t,
 	const uint32_t flow = *order_mbuf_flow_id(t, ev->mbuf);
 	const uint32_t seq = *order_mbuf_seqn(t, ev->mbuf);
 
-	atomic_lock_verify(atomic_locks, 1, flow, nb_flows, t, port);
+	atomic_lock_verify(atomic_lks, 1, flow, nb_flows, t, port);
 
 	/* compare the seqn against expected value */
 	if (seq != expected_flow_seq[flow]) {
@@ -58,7 +58,7 @@ atomic_queue_process_stage_1(struct test_order *const t,
 
 	ev->op = RTE_EVENT_OP_RELEASE;
 
-	atomic_spinlock_unlock(atomic_locks, 1, flow, nb_flows);
+	atomic_spinlock_unlock(atomic_lks, 1, flow, nb_flows);
 }
 
 static int

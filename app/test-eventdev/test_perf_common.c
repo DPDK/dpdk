@@ -2131,12 +2131,10 @@ perf_cryptodev_destroy(struct evt_test *test, struct evt_options *opt)
 		void *sess;
 		struct prod_data *p = &t->prod[port];
 		uint32_t flow_id;
-		uint8_t cdev_id;
 
 		for (flow_id = 0; flow_id < t->nb_flows; flow_id++) {
 			sess = p->ca.crypto_sess[flow_id];
-			cdev_id = p->ca.cdev_id;
-			rte_cryptodev_sym_session_free(cdev_id, sess);
+			rte_cryptodev_sym_session_free(p->ca.cdev_id, sess);
 		}
 
 		rte_event_crypto_adapter_queue_pair_del(
