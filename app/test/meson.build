@@ -256,6 +256,7 @@ foreach d:optional_deps
 endforeach
 
 cflags += no_wvla_cflag
+cflags += no_shadow_cflag
 
 extra_flags = [
         # Strict-aliasing rules are violated by uint8_t[] to context size casts.
