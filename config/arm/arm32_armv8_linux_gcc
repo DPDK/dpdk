@@ -13,5 +13,8 @@ cpu_family = 'aarch32'
 cpu = 'armv8-a'
 endian = 'little'
 
+[built-in options]
+c_args = '-mfpu=fp-armv8'
+
 [properties]
 platform = 'generic_aarch32'
