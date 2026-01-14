@@ -1772,14 +1772,14 @@ emit_handler(struct thread *t)
 	if ((t->n_headers_out == 2) &&
 	    (h1->ptr + h1->n_bytes == t->ptr) &&
 	    (h0->ptr == h0->ptr0)) {
-		uint32_t offset;
+		uint32_t ofs;
 
 		TRACE("Emit handler: header encapsulation.\n");
 
-		offset = h0->n_bytes + h1->n_bytes;
-		memcpy(t->ptr - offset, h0->ptr, h0->n_bytes);
-		t->pkt.offset -= offset;
-		t->pkt.length += offset;
+		ofs = h0->n_bytes + h1->n_bytes;
+		memcpy(t->ptr - ofs, h0->ptr, h0->n_bytes);
+		t->pkt.offset -= ofs;
+		t->pkt.length += ofs;
 
 		return;
 	}
