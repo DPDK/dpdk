@@ -95,9 +95,10 @@ vduse_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm __rte_unuse
 
 	size = entry.last - entry.start + 1;
 	mmap_addr = mmap(0, size + entry.offset, entry.perm, MAP_SHARED, fd, 0);
-	if (!mmap_addr) {
+	if (mmap_addr == MAP_FAILED) {
 		VHOST_LOG_CONFIG(dev->ifname, ERR,
-				"Failed to mmap IOTLB entry for 0x%" PRIx64 "\n", iova);
+				"Failed to mmap IOTLB entry for 0x%" PRIx64 "\n" ": %s",
+				iova, strerror(errno));
 		ret = -1;
 		goto close_fd;
 	}
