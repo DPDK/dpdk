@@ -340,21 +340,21 @@ int
 handle_eal_info_request(const char *cmd, const char *params __rte_unused,
 		struct rte_tel_data *d)
 {
-	char **args;
+	char **out_args;
 	int used = 0;
 	int i = 0;
 
 	if (strcmp(cmd, EAL_PARAM_REQ) == 0)
-		args = eal_args;
+		out_args = eal_args;
 	else
-		args = eal_app_args;
+		out_args = eal_app_args;
 
 	rte_tel_data_start_array(d, RTE_TEL_STRING_VAL);
-	if (args == NULL || args[0] == NULL)
+	if (out_args == NULL || out_args[0] == NULL)
 		return 0;
 
-	for ( ; args[i] != NULL; i++)
-		used = rte_tel_data_add_array_string(d, args[i]);
+	for ( ; out_args[i] != NULL; i++)
+		used = rte_tel_data_add_array_string(d, out_args[i]);
 	return used;
 }
 
@@ -430,21 +430,21 @@ eal_clean_saved_args(void)
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
 static int
-eal_option_device_add(enum rte_devtype type, const char *optarg)
+eal_option_device_add(enum rte_devtype type, const char *arg)
 {
 	struct device_option *devopt;
-	size_t optlen;
+	size_t arglen;
 	int ret;
 
-	optlen = strlen(optarg) + 1;
-	devopt = calloc(1, sizeof(*devopt) + optlen);
+	arglen = strlen(arg) + 1;
+	devopt = calloc(1, sizeof(*devopt) + arglen);
 	if (devopt == NULL) {
 		EAL_LOG(ERR, "Unable to allocate device option");
 		return -ENOMEM;
 	}
 
 	devopt->type = type;
-	ret = strlcpy(devopt->arg, optarg, optlen);
+	ret = strlcpy(devopt->arg, arg, arglen);
 	if (ret < 0) {
 		EAL_LOG(ERR, "Unable to copy device option");
 		free(devopt);
