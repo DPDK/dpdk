@@ -4490,15 +4490,9 @@ ring_rxd_display_dword(union igb_ring_dword dword)
 
 static void
 ring_rx_descriptor_display(const struct rte_memzone *ring_mz,
-#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 			   portid_t port_id,
-#else
-			   __rte_unused portid_t port_id,
-#endif
 			   uint16_t desc_id)
 {
-	struct igb_ring_desc_16_bytes *ring =
-		(struct igb_ring_desc_16_bytes *)ring_mz->addr;
 #ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	int ret;
 	struct rte_eth_dev_info dev_info;
@@ -4528,12 +4522,15 @@ ring_rx_descriptor_display(const struct rte_memzone *ring_mz,
 	}
 #endif
 	/* 16 bytes RX descriptor */
+	struct igb_ring_desc_16_bytes *ring =
+		(struct igb_ring_desc_16_bytes *)ring_mz->addr;
 	ring[desc_id].lo_dword.dword =
 		rte_le_to_cpu_64(ring[desc_id].lo_dword.dword);
 	ring_rxd_display_dword(ring[desc_id].lo_dword);
 	ring[desc_id].hi_dword.dword =
 		rte_le_to_cpu_64(ring[desc_id].hi_dword.dword);
 	ring_rxd_display_dword(ring[desc_id].hi_dword);
+	RTE_SET_USED(port_id);
 }
 
 static void
@@ -4742,7 +4739,6 @@ port_rss_hash_conf_show(portid_t port_id, int show_rss_key, int show_rss_algo)
 {
 	struct rte_eth_rss_conf rss_conf = {0};
 	uint8_t rss_key[RSS_HASH_KEY_LENGTH];
-	uint64_t rss_hf;
 	uint8_t i;
 	int diag;
 	struct rte_eth_dev_info dev_info;
@@ -4783,8 +4779,7 @@ port_rss_hash_conf_show(portid_t port_id, int show_rss_key, int show_rss_algo)
 		}
 		return;
 	}
-	rss_hf = rss_conf.rss_hf;
-	if (rss_hf == 0) {
+	if (rss_conf.rss_hf == 0) {
 		printf("RSS disabled\n");
 		return;
 	}
@@ -4796,7 +4791,7 @@ port_rss_hash_conf_show(portid_t port_id, int show_rss_key, int show_rss_algo)
 	}
 
 	printf("RSS functions:\n");
-	rss_types_display(rss_hf, TESTPMD_RSS_TYPES_CHAR_NUM_PER_LINE);
+	rss_types_display(rss_conf.rss_hf, TESTPMD_RSS_TYPES_CHAR_NUM_PER_LINE);
 
 	if (!show_rss_key)
 		return;
