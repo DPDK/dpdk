@@ -794,9 +794,22 @@ __extension__ typedef uint64_t RTE_MARKER64[0];
  */
 #define RTE_MIN(a, b) \
 	__extension__ ({ \
-		typeof (a) _a = (a); \
-		typeof (b) _b = (b); \
-		_a < _b ? _a : _b; \
+		typeof (a) _a_min = (a); \
+		typeof (b) _b_min = (b); \
+		_a_min < _b_min ? _a_min : _b_min; \
+	})
+
+/**
+ * Macro to return the minimum of three numbers
+ */
+#define RTE_MIN3(a, b, c) \
+	__extension__ ({ \
+		typeof (a) _a_min3 = (a); \
+		typeof (b) _b_min3 = (b); \
+		typeof (c) _c_min3 = (c); \
+		_a_min3 < _b_min3 ? \
+			(_a_min3 < _c_min3 ? _a_min3 : _c_min3) : \
+			(_b_min3 < _c_min3 ? _b_min3 : _c_min3); \
 	})
 
 /**
@@ -814,9 +827,22 @@ __extension__ typedef uint64_t RTE_MARKER64[0];
  */
 #define RTE_MAX(a, b) \
 	__extension__ ({ \
-		typeof (a) _a = (a); \
-		typeof (b) _b = (b); \
-		_a > _b ? _a : _b; \
+		typeof (a) _a_max = (a); \
+		typeof (b) _b_max = (b); \
+		_a_max > _b_max ? _a_max : _b_max; \
+	})
+
+/**
+ * Macro to return the maximum of three numbers
+ */
+#define RTE_MAX3(a, b, c) \
+	__extension__ ({ \
+		typeof (a) _a_max3 = (a); \
+		typeof (b) _b_max3 = (b); \
+		typeof (c) _c_max3 = (c); \
+		_a_max3 > _b_max3 ? \
+			(_a_max3 > _c_max3 ? _a_max3 : _c_max3) : \
+			(_b_max3 > _c_max3 ? _b_max3 : _c_max3); \
 	})
 
 /**
