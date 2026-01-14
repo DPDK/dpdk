@@ -621,8 +621,6 @@ table_create(struct rte_swx_table_params *params,
 		return t;
 
 	TAILQ_FOREACH(entry, entries, node) {
-		int status;
-
 		status = table_add(t, entry);
 		if (status) {
 			table_free(t);
