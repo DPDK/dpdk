@@ -411,13 +411,13 @@ rte_swx_table_learner_lookup(void *table,
 		for (i = 0; i < TABLE_KEYS_PER_BUCKET; i++) {
 			uint64_t time = b->time[i];
 			uint32_t sig = b->sig[i];
-			uint8_t *key = table_bucket_key_get(t, b, i);
+			uint8_t *k = table_bucket_key_get(t, b, i);
 
 			time <<= 32;
 
 			if ((time > input_time) &&
 			    (sig == m->input_sig) &&
-			    t->params.keycmp_func(key, m->input_key, t->params.key_size)) {
+			    t->params.keycmp_func(k, m->input_key, t->params.key_size)) {
 				uint64_t *data = table_bucket_data_get(t, b, i);
 
 				/* Hit. */
