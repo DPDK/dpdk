@@ -1043,9 +1043,9 @@ free_unlock:
 	/* if we unmapped some memory, we need to do additional work for ASan */
 	if (unmapped) {
 		void *asan_end = RTE_PTR_ADD(asan_ptr, asan_data_len);
-		void *aligned_end = RTE_PTR_ADD(aligned_start, aligned_len);
 		void *aligned_trailer = RTE_PTR_SUB(aligned_start,
 				MALLOC_ELEM_TRAILER_LEN);
+		aligned_end = RTE_PTR_ADD(aligned_start, aligned_len);
 
 		/*
 		 * There was a memory area that was unmapped. This memory area
