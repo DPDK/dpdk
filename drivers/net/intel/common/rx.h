@@ -228,11 +228,11 @@ ci_rxq_mbuf_initializer(uint16_t port_id)
  * Individual drivers may have other further tests beyond this.
  */
 static inline bool
-ci_rxq_vec_capable(uint16_t nb_desc, uint16_t rx_free_thresh)
+ci_rxq_vec_capable(uint16_t nb_desc, uint16_t free_thresh)
 {
 	if (!rte_is_power_of_2(nb_desc) ||
-			rx_free_thresh < CI_RX_MAX_BURST ||
-			(nb_desc % rx_free_thresh) != 0)
+			free_thresh < CI_RX_MAX_BURST ||
+			(nb_desc % free_thresh) != 0)
 		return false;
 
 	return true;
