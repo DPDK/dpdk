@@ -879,12 +879,13 @@ ice_vsi_config_tc_queue_mapping(struct ice_vsi *vsi,
 	}
 
 	/* vector 0 is reserved and 1 vector for ctrl vsi */
-	if (vsi->adapter->hw.func_caps.common_cap.num_msix_vectors < 2)
+	if (vsi->adapter->hw.func_caps.common_cap.num_msix_vectors < 2) {
 		vsi->nb_qps = 0;
-	else
-		vsi->nb_qps = RTE_MIN
-			((uint16_t)vsi->adapter->hw.func_caps.common_cap.num_msix_vectors - 2,
-			RTE_MIN(vsi->nb_qps, ICE_MAX_Q_PER_TC));
+	} else {
+		vsi->nb_qps = RTE_MIN(vsi->nb_qps, ICE_MAX_Q_PER_TC);
+		vsi->nb_qps = RTE_MIN(vsi->nb_qps,
+			(uint16_t)vsi->adapter->hw.func_caps.common_cap.num_msix_vectors - 2);
+	}
 
 	/* nb_qps(hex)  -> fls */
 	/* 0000		-> 0 */
