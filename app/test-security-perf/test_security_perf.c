@@ -43,7 +43,7 @@ struct test_ctx {
 	bool is_inbound;
 };
 
-static struct test_ctx ctx;
+static struct test_ctx test_ctx;
 
 static int
 cryptodev_init(struct test_ctx *ctx, uint8_t nb_lcores)
@@ -355,7 +355,7 @@ test_security_session_perf(void *arg)
 		nb_sessions += (nb_sess_total - nb_sessions * nb_lcores);
 
 	ret = sec_conf_init(conf, &sess_conf, &ipsec_xform,
-			    &ctx.td[ctx.td_idx]);
+			    &test_ctx.td[test_ctx.td_idx]);
 	if (ret) {
 		RTE_LOG(ERR, USER1, "Could not initialize session conf\n");
 		return EXIT_FAILURE;
@@ -447,14 +447,14 @@ args_parse(int argc, char **argv)
 			if (strcmp(lgopts[opt_idx].name, "nb-sess") == 0) {
 				n = atoi(optarg);
 				if (n >= 0)
-					ctx.nb_sess = n;
+					test_ctx.nb_sess = n;
 				else
 					rte_exit(EXIT_FAILURE,
 						"nb-sess should be >= 0\n");
-				printf("nb-sess %d / ", ctx.nb_sess);
+				printf("nb-sess %d / ", test_ctx.nb_sess);
 			} else if (strcmp(lgopts[opt_idx].name, "inbound") ==
 				   0) {
-				ctx.is_inbound = true;
+				test_ctx.is_inbound = true;
 				printf("inbound / ");
 			}
 
@@ -482,7 +482,7 @@ main(int argc, char **argv)
 	unsigned long i;
 	int ret;
 
-	memset(&ctx, 0, sizeof(struct test_ctx));
+	memset(&test_ctx, 0, sizeof(struct test_ctx));
 	memset(&flags, 0, sizeof(flags));
 
 	ret = rte_eal_init(argc, argv);
@@ -498,18 +498,18 @@ main(int argc, char **argv)
 		return -EINVAL;
 	}
 
-	ctx.nb_sess = DEF_NB_SESSIONS + RTE_MEMPOOL_CACHE_MAX_SIZE * nb_lcores;
+	test_ctx.nb_sess = DEF_NB_SESSIONS + RTE_MEMPOOL_CACHE_MAX_SIZE * nb_lcores;
 
 	if (argc > 1)
 		args_parse(argc, argv);
 
-	ctx.nb_lcores = nb_lcores;
+	test_ctx.nb_lcores = nb_lcores;
 
-	ret = cryptodev_init(&ctx, nb_lcores);
+	ret = cryptodev_init(&test_ctx, nb_lcores);
 	if (ret)
 		goto exit;
 
-	ret = mempool_init(&ctx, nb_lcores);
+	ret = mempool_init(&test_ctx, nb_lcores);
 	if (ret)
 		goto cryptodev_fini;
 
@@ -521,19 +521,19 @@ main(int argc, char **argv)
 				      &flags,
 				      &td_outb[i],
 				      1);
-		if (ctx.is_inbound)
+		if (test_ctx.is_inbound)
 			test_ipsec_td_in_from_out(&td_outb[i], &td_inb[i]);
 	}
 
-	ctx.td = td_outb;
-	if (ctx.is_inbound)
-		ctx.td = td_inb;
+	test_ctx.td = td_outb;
+	if (test_ctx.is_inbound)
+		test_ctx.td = td_inb;
 
-	for (ctx.td_idx = 0; ctx.td_idx < RTE_DIM(sec_alg_list); ctx.td_idx++) {
+	for (test_ctx.td_idx = 0; test_ctx.td_idx < RTE_DIM(sec_alg_list); test_ctx.td_idx++) {
 
 		printf("\n\n    Algorithm combination:");
-		test_sec_alg_display(sec_alg_list[ctx.td_idx].param1,
-				     sec_alg_list[ctx.td_idx].param2);
+		test_sec_alg_display(sec_alg_list[test_ctx.td_idx].param1,
+				     sec_alg_list[test_ctx.td_idx].param2);
 		printf("    ----------------------");
 
 		printf("\n%20s%20s%20s%20s%20s%20s\n\n",
@@ -545,7 +545,7 @@ main(int argc, char **argv)
 		i = 0;
 		RTE_LCORE_FOREACH_WORKER(lcore_id) {
 			rte_eal_remote_launch(test_security_session_perf,
-					      &ctx.lconf[i],
+					      &test_ctx.lconf[i],
 					      lcore_id);
 			i++;
 		}
@@ -556,12 +556,12 @@ main(int argc, char **argv)
 
 	}
 
-	cryptodev_fini(&ctx);
-	mempool_fini(&ctx);
+	cryptodev_fini(&test_ctx);
+	mempool_fini(&test_ctx);
 
 	return EXIT_SUCCESS;
 cryptodev_fini:
-	cryptodev_fini(&ctx);
+	cryptodev_fini(&test_ctx);
 exit:
 	return EXIT_FAILURE;
 
