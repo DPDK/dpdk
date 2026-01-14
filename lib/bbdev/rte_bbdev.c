@@ -357,7 +357,7 @@ rte_bbdev_setup_queues(uint16_t dev_id, uint16_t num_queues, int socket_id)
 	if (dev->data->queues != NULL) {
 		VALID_FUNC_OR_RET_ERR(dev->dev_ops->queue_release, dev_id);
 		for (i = 0; i < dev->data->num_queues; i++) {
-			int ret = dev->dev_ops->queue_release(dev, i);
+			ret = dev->dev_ops->queue_release(dev, i);
 			if (ret < 0) {
 				rte_bbdev_log(ERR,
 						"Device %u queue %u release failed",
