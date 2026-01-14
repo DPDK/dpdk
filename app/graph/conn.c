@@ -20,12 +20,12 @@
 #define MSG_CMD_TOO_LONG "Command too long."
 
 static int
-data_event_handle(struct conn *conn, int fd_client)
+data_event_handle(struct conn *c, int fd_client)
 {
 	ssize_t len, i, rc = 0;
 
 	/* Read input message */
-	len = read(fd_client, conn->buf, conn->buf_size);
+	len = read(fd_client, c->buf, c->buf_size);
 	if (len == -1) {
 		if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
 			return 0;
@@ -38,37 +38,37 @@ data_event_handle(struct conn *conn, int fd_client)
 
 	/* Handle input messages */
 	for (i = 0; i < len; i++) {
-		if (conn->buf[i] == '\n') {
+		if (c->buf[i] == '\n') {
 			size_t n;
 
-			conn->msg_in[conn->msg_in_len] = 0;
-			conn->msg_out[0] = 0;
+			c->msg_in[c->msg_in_len] = 0;
+			c->msg_out[0] = 0;
 
-			conn->msg_handle(conn->msg_in, conn->msg_out, conn->msg_out_len_max,
-					 conn->msg_handle_arg);
+			c->msg_handle(c->msg_in, c->msg_out, c->msg_out_len_max,
+					 c->msg_handle_arg);
 
-			n = strlen(conn->msg_out);
+			n = strlen(c->msg_out);
 			if (n) {
-				rc = write(fd_client, conn->msg_out, n);
+				rc = write(fd_client, c->msg_out, n);
 				if (rc == -1)
 					goto exit;
 			}
 
-			conn->msg_in_len = 0;
-		} else if (conn->msg_in_len < conn->msg_in_len_max) {
-			conn->msg_in[conn->msg_in_len] = conn->buf[i];
-			conn->msg_in_len++;
+			c->msg_in_len = 0;
+		} else if (c->msg_in_len < c->msg_in_len_max) {
+			c->msg_in[c->msg_in_len] = c->buf[i];
+			c->msg_in_len++;
 		} else {
 			rc = write(fd_client, MSG_CMD_TOO_LONG, strlen(MSG_CMD_TOO_LONG));
 			if (rc == -1)
 				goto exit;
 
-			conn->msg_in_len = 0;
+			c->msg_in_len = 0;
 		}
 	}
 
 	/* Write prompt */
-	rc = write(fd_client, conn->prompt, strlen(conn->prompt));
+	rc = write(fd_client, c->prompt, strlen(c->prompt));
 	rc = (rc == -1) ? -1 : 0;
 
 exit:
@@ -76,11 +76,11 @@ exit:
 }
 
 static int
-control_event_handle(struct conn *conn, int fd_client)
+control_event_handle(struct conn *c, int fd_client)
 {
 	int rc;
 
-	rc = epoll_ctl(conn->fd_client_group, EPOLL_CTL_DEL, fd_client, NULL);
+	rc = epoll_ctl(c->fd_client_group, EPOLL_CTL_DEL, fd_client, NULL);
 	if (rc == -1)
 		goto exit;
 
@@ -99,7 +99,7 @@ conn_init(struct conn_params *p)
 {
 	int fd_server, fd_client_group, rc;
 	struct sockaddr_in server_address;
-	struct conn *conn = NULL;
+	struct conn *c = NULL;
 	int reuse = 1;
 
 	memset(&server_address, 0, sizeof(server_address));
@@ -115,20 +115,20 @@ conn_init(struct conn_params *p)
 		goto exit;
 
 	/* Memory allocation */
-	conn = calloc(1, sizeof(struct conn));
-	if (conn == NULL)
+	c = calloc(1, sizeof(struct conn));
+	if (c == NULL)
 		goto exit;
 
-	conn->welcome = calloc(1, CONN_WELCOME_LEN_MAX + 1);
-	conn->prompt = calloc(1, CONN_PROMPT_LEN_MAX + 1);
-	conn->buf = calloc(1, p->buf_size);
-	conn->msg_in = calloc(1, p->msg_in_len_max + 1);
-	conn->msg_out = calloc(1, p->msg_out_len_max + 1);
+	c->welcome = calloc(1, CONN_WELCOME_LEN_MAX + 1);
+	c->prompt = calloc(1, CONN_PROMPT_LEN_MAX + 1);
+	c->buf = calloc(1, p->buf_size);
+	c->msg_in = calloc(1, p->msg_in_len_max + 1);
+	c->msg_out = calloc(1, p->msg_out_len_max + 1);
 
-	if ((conn->welcome == NULL) || (conn->prompt == NULL) || (conn->buf == NULL) ||
-	    (conn->msg_in == NULL) || (conn->msg_out == NULL)) {
-		conn_free(conn);
-		conn = NULL;
+	if ((c->welcome == NULL) || (c->prompt == NULL) || (c->buf == NULL) ||
+	    (c->msg_in == NULL) || (c->msg_out == NULL)) {
+		conn_free(c);
+		c = NULL;
 		goto exit;
 	}
 
@@ -138,8 +138,8 @@ conn_init(struct conn_params *p)
 
 	fd_server = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
 	if (fd_server == -1) {
-		conn_free(conn);
-		conn = NULL;
+		conn_free(c);
+		c = NULL;
 		goto exit;
 	}
 
@@ -161,47 +161,47 @@ conn_init(struct conn_params *p)
 		goto free;
 
 	/* Fill in */
-	rte_strscpy(conn->welcome, p->welcome, CONN_WELCOME_LEN_MAX);
-	rte_strscpy(conn->prompt, p->prompt, CONN_PROMPT_LEN_MAX);
-	conn->buf_size = p->buf_size;
-	conn->msg_in_len_max = p->msg_in_len_max;
-	conn->msg_out_len_max = p->msg_out_len_max;
-	conn->msg_in_len = 0;
-	conn->fd_server = fd_server;
-	conn->fd_client_group = fd_client_group;
-	conn->msg_handle = p->msg_handle;
-	conn->msg_handle_arg = p->msg_handle_arg;
+	rte_strscpy(c->welcome, p->welcome, CONN_WELCOME_LEN_MAX);
+	rte_strscpy(c->prompt, p->prompt, CONN_PROMPT_LEN_MAX);
+	c->buf_size = p->buf_size;
+	c->msg_in_len_max = p->msg_in_len_max;
+	c->msg_out_len_max = p->msg_out_len_max;
+	c->msg_in_len = 0;
+	c->fd_server = fd_server;
+	c->fd_client_group = fd_client_group;
+	c->msg_handle = p->msg_handle;
+	c->msg_handle_arg = p->msg_handle_arg;
 
 exit:
-	return conn;
+	return c;
 free:
-	conn_free(conn);
+	conn_free(c);
 	close(fd_server);
-	conn = NULL;
-	return conn;
+	c = NULL;
+	return c;
 }
 
 void
-conn_free(struct conn *conn)
+conn_free(struct conn *c)
 {
-	if (conn == NULL)
+	if (c == NULL)
 		return;
 
-	if (conn->fd_client_group)
-		close(conn->fd_client_group);
+	if (c->fd_client_group)
+		close(c->fd_client_group);
 
-	if (conn->fd_server)
-		close(conn->fd_server);
+	if (c->fd_server)
+		close(c->fd_server);
 
-	free(conn->msg_out);
-	free(conn->msg_in);
-	free(conn->prompt);
-	free(conn->welcome);
-	free(conn);
+	free(c->msg_out);
+	free(c->msg_in);
+	free(c->prompt);
+	free(c->welcome);
+	free(c);
 }
 
 int
-conn_req_poll(struct conn *conn)
+conn_req_poll(struct conn *c)
 {
 	struct sockaddr_in client_address;
 	socklen_t client_address_length;
@@ -209,12 +209,12 @@ conn_req_poll(struct conn *conn)
 	int fd_client, rc;
 
 	/* Check input arguments */
-	if (conn == NULL)
+	if (c == NULL)
 		return -1;
 
 	/* Server socket */
 	client_address_length = sizeof(client_address);
-	fd_client = accept4(conn->fd_server, (struct sockaddr *)&client_address,
+	fd_client = accept4(c->fd_server, (struct sockaddr *)&client_address,
 			    &client_address_length, SOCK_NONBLOCK);
 	if (fd_client == -1) {
 		if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
@@ -227,20 +227,20 @@ conn_req_poll(struct conn *conn)
 	event.events = EPOLLIN | EPOLLRDHUP | EPOLLHUP;
 	event.data.fd = fd_client;
 
-	rc = epoll_ctl(conn->fd_client_group, EPOLL_CTL_ADD, fd_client, &event);
+	rc = epoll_ctl(c->fd_client_group, EPOLL_CTL_ADD, fd_client, &event);
 	if (rc == -1) {
 		close(fd_client);
 		goto exit;
 	}
 
 	/* Client */
-	rc = write(fd_client, conn->welcome, strlen(conn->welcome));
+	rc = write(fd_client, c->welcome, strlen(c->welcome));
 	if (rc == -1) {
 		close(fd_client);
 		goto exit;
 	}
 
-	rc = write(fd_client, conn->prompt, strlen(conn->prompt));
+	rc = write(fd_client, c->prompt, strlen(c->prompt));
 	if (rc == -1) {
 		close(fd_client);
 		goto exit;
@@ -253,17 +253,17 @@ exit:
 }
 
 int
-conn_msg_poll(struct conn *conn)
+conn_msg_poll(struct conn *c)
 {
 	int fd_client, rc, rc_data = 0, rc_control = 0;
 	struct epoll_event event;
 
 	/* Check input arguments */
-	if (conn == NULL)
+	if (c == NULL)
 		return -1;
 
 	/* Client group */
-	rc = epoll_wait(conn->fd_client_group, &event, 1, 0);
+	rc = epoll_wait(c->fd_client_group, &event, 1, 0);
 	if ((rc == -1) || rc == 0)
 		return rc;
 
@@ -271,11 +271,11 @@ conn_msg_poll(struct conn *conn)
 
 	/* Data available */
 	if (event.events & EPOLLIN)
-		rc_data = data_event_handle(conn, fd_client);
+		rc_data = data_event_handle(c, fd_client);
 
 	/* Control events */
 	if (event.events & (EPOLLRDHUP | EPOLLERR | EPOLLHUP))
-		rc_control = control_event_handle(conn, fd_client);
+		rc_control = control_event_handle(c, fd_client);
 
 	if (rc_data || rc_control)
 		return -1;
