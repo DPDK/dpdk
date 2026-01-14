@@ -180,7 +180,6 @@ crc32_eth_calc_vpclmulqdq(const uint8_t *data, uint32_t data_len, uint32_t crc,
 	__m512i temp, k;
 	__m512i qw0 = _mm512_set1_epi64(0), qw1, qw2, qw3;
 	__m512i fold0, fold1, fold2, fold3;
-	__mmask16 mask;
 	uint32_t n = 0;
 	int reduction = 0;
 
@@ -260,8 +259,7 @@ crc32_eth_calc_vpclmulqdq(const uint8_t *data, uint32_t data_len, uint32_t crc,
 			res = _mm_xor_si128(res, d);
 		} else {
 			res = _mm_cvtsi32_si128(crc);
-			mask = byte_len_to_mask_table[data_len];
-			d = _mm_maskz_loadu_epi8(mask, data);
+			d = _mm_maskz_loadu_epi8(byte_len_to_mask_table[data_len], data);
 			res = _mm_xor_si128(res, d);
 
 			if (data_len > 3) {
