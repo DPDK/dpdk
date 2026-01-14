@@ -1515,10 +1515,10 @@ static int
 header_build(struct rte_swx_pipeline *p)
 {
 	struct header *h;
-	uint32_t n_bytes = 0, i;
+	uint32_t total_bytes = 0, i;
 
 	TAILQ_FOREACH(h, &p->headers, node) {
-		n_bytes += h->st->n_bits / 8;
+		total_bytes += h->st->n_bits / 8;
 	}
 
 	for (i = 0; i < RTE_SWX_PIPELINE_THREADS_MAX; i++) {
@@ -1533,10 +1533,10 @@ header_build(struct rte_swx_pipeline *p)
 					sizeof(struct header_out_runtime));
 		CHECK(t->headers_out, ENOMEM);
 
-		t->header_storage = calloc(1, n_bytes);
+		t->header_storage = calloc(1, total_bytes);
 		CHECK(t->header_storage, ENOMEM);
 
-		t->header_out_storage = calloc(1, n_bytes);
+		t->header_out_storage = calloc(1, total_bytes);
 		CHECK(t->header_out_storage, ENOMEM);
 
 		TAILQ_FOREACH(h, &p->headers, node) {
@@ -14031,7 +14031,6 @@ instruction_group_list_create(struct rte_swx_pipeline *p)
 
 		for (i = 0; i < p->n_instructions; i++) {
 			struct instruction_data *data = &p->instruction_data[i];
-			struct instruction_group *g;
 			uint32_t j;
 
 			/* Continue when the current instruction is not a jump destination. */
@@ -14746,11 +14745,11 @@ rte_swx_pipeline_build_from_lib(struct rte_swx_pipeline **pipeline,
 
 	/* Action instructions. */
 	TAILQ_FOREACH(a, &p->actions, node) {
-		char name[RTE_SWX_NAME_SIZE * 2];
+		char action_name[RTE_SWX_NAME_SIZE * 2];
 
-		snprintf(name, sizeof(name), "action_%s_run", a->name);
+		snprintf(action_name, sizeof(action_name), "action_%s_run", a->name);
 
-		p->action_funcs[a->id] = dlsym(lib, name);
+		p->action_funcs[a->id] = dlsym(lib, action_name);
 		if (!p->action_funcs[a->id]) {
 			status = -EINVAL;
 			goto free;
@@ -14765,14 +14764,14 @@ rte_swx_pipeline_build_from_lib(struct rte_swx_pipeline **pipeline,
 	}
 
 	TAILQ_FOREACH(g, igl, node) {
-		char name[RTE_SWX_NAME_SIZE * 2];
+		char pipeline_name[RTE_SWX_NAME_SIZE * 2];
 
 		if (g->first_instr_id == g->last_instr_id)
 			continue;
 
-		snprintf(name, sizeof(name), "pipeline_func_%u", g->group_id);
+		snprintf(pipeline_name, sizeof(pipeline_name), "pipeline_func_%u", g->group_id);
 
-		g->func = dlsym(lib, name);
+		g->func = dlsym(lib, pipeline_name);
 		if (!g->func) {
 			status = -EINVAL;
 			goto free;
