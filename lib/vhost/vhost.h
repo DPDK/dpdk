@@ -360,8 +360,9 @@ struct vhost_virtqueue {
 #define VIRTIO_DEVICE_STATUS_DEV_NEED_RESET	0x40
 #define VIRTIO_DEVICE_STATUS_FAILED		0x80
 
-#define VHOST_MAX_VRING			0x100
 #define VHOST_MAX_QUEUE_PAIRS		0x80
+/* Max vring count: 2 per queue pair plus 1 control queue */
+#define VHOST_MAX_VRING                        (VHOST_MAX_QUEUE_PAIRS * 2 + 1)
 
 /* Declare IOMMU related bits for older kernels */
 #ifndef VIRTIO_F_IOMMU_PLATFORM
@@ -492,7 +493,7 @@ struct virtio_net {
 
 	int			extbuf;
 	int			linearbuf;
-	struct vhost_virtqueue	*virtqueue[VHOST_MAX_QUEUE_PAIRS * 2];
+	struct vhost_virtqueue	*virtqueue[VHOST_MAX_VRING];
 
 	rte_rwlock_t	iotlb_pending_lock;
 	struct vhost_iotlb_entry *iotlb_pool;
