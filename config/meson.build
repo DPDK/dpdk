@@ -329,6 +329,7 @@ global_cflags = [
         '-Wnested-externs',
         '-Wold-style-definition',
         '-Wpointer-arith',
+        '-Wshadow',
         '-Wsign-compare',
         '-Wstrict-prototypes',
         '-Wundef',
