@@ -24,6 +24,7 @@ sources = files(
 )
 
 cflags += no_wvla_cflag
+cflags += no_shadow_cflag
 
 cflags_options = [
         '-std=c11',

@@ -11,3 +11,5 @@ sources = files(
         'enet_uio.c',
         'enet_rxtx.c',
 )
+
+cflags += no_shadow_cflag

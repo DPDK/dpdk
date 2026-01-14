@@ -22,3 +22,6 @@ sources = files(
 if cc.has_argument('-Wno-format-nonliteral')
     cflags += '-Wno-format-nonliteral'
 endif
+
+# Suppress shadow warnings for this driver
+cflags += no_shadow_cflag

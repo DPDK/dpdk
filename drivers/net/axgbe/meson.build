@@ -15,7 +15,7 @@ sources = files(
         'axgbe_rxtx.c',
 )
 
-cflags += '-Wno-cast-qual'
+cflags += ['-Wno-cast-qual', no_shadow_cflag]
 
 if arch_subdir == 'x86'
     sources += files('axgbe_rxtx_vec_sse.c')

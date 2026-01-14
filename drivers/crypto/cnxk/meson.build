@@ -34,6 +34,7 @@ deps += ['bus_pci', 'common_cnxk', 'security', 'eventdev']
 includes += include_directories('../../../lib/net', '../../event/cnxk')
 
 cflags += no_wvla_cflag
+cflags += no_shadow_cflag
 
 if get_option('buildtype').contains('debug')
     cflags += [ '-DLA_IPSEC_DEBUG','-DCNXK_CRYPTODEV_DEBUG' ]

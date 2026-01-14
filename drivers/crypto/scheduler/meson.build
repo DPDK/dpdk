@@ -24,3 +24,4 @@ headers = files(
 )
 
 cflags += no_wvla_cflag
+cflags += no_shadow_cflag

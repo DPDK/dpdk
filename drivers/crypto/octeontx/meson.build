@@ -34,3 +34,4 @@ includes += include_directories('../../mempool/octeontx')
 includes += include_directories('../../net/octeontx')
 
 cflags += no_wvla_cflag
+cflags += no_shadow_cflag

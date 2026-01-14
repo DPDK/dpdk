@@ -13,6 +13,7 @@ if dpdk_conf.get('RTE_IOVA_IN_MBUF') == 0
 endif
 
 cflags += no_wvla_cflag
+cflags += no_shadow_cflag
 
 headers = files('rte_pmd_bnxt.h')
 cflags_options = [

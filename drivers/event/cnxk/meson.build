@@ -301,6 +301,7 @@ endif
 endif
 
 cflags += no_wvla_cflag
+cflags += no_shadow_cflag
 
 extra_flags = ['-flax-vector-conversions', '-Wno-strict-aliasing']
 if cc.get_id() == 'clang'

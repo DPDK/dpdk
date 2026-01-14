@@ -20,3 +20,6 @@ sources = files(
         'zxdh_mtr.c',
         'zxdh_flow.c',
 )
+
+# Suppress shadow warnings for this driver
+cflags += no_shadow_cflag

@@ -361,6 +361,11 @@ if cc.has_argument('-Wvla')
     endif
 endif
 
+no_shadow_cflag = []
+if cc.has_argument('-Wno-shadow')
+    no_shadow_cflag = '-Wno-shadow'
+endif
+
 foreach arg: global_cflags
     if cc.has_argument(arg)
         add_project_arguments(arg, language: 'c')

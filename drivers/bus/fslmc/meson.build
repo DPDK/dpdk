@@ -6,6 +6,8 @@ if not is_linux
     reason = 'only supported on Linux'
 endif
 
+cflags += no_shadow_cflag
+
 deps += ['common_dpaax', 'eventdev', 'kvargs']
 sources = files(
         'fslmc_bus.c',

@@ -90,6 +90,7 @@ if get_option('buildtype').contains('debug')
 else
     cflags += [ '-UPEDANTIC' ]
 endif
+cflags += no_shadow_cflag
 
 require_iova_in_mbuf = false
 

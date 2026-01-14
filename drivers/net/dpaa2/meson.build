@@ -29,3 +29,4 @@ includes += include_directories('base', 'mc')
 headers = files('rte_pmd_dpaa2.h')
 
 cflags += no_wvla_cflag
+cflags += no_shadow_cflag

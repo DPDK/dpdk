@@ -19,6 +19,8 @@ endif
 
 ext_deps += rtdep
 
+cflags += no_shadow_cflag
+
 subdir('base')
 
 deps += ['ethdev', 'rawdev', 'pci', 'bus_pci', 'kvargs',

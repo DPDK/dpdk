@@ -128,3 +128,6 @@ sources = files(
         'ntnic_ethdev.c',
         'rte_pmd_ntnic.c',
 )
+
+# Suppress shadow warnings for this driver due to extensive variable shadowing
+cflags += no_shadow_cflag

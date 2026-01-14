@@ -3,6 +3,8 @@
 
 deps += ['bus_vdev', 'ring', 'pci', 'bus_pci']
 
+cflags += no_shadow_cflag
+
 sources = files('rte_fpga_5gnr_fec.c')
 
 headers = files('rte_pmd_fpga_5gnr_fec.h')

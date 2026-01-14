@@ -18,4 +18,7 @@ if cc.has_argument('-Wno-pointer-arith')
     cflags += '-Wno-pointer-arith'
 endif
 
+# Suppress shadow warnings for this driver
+cflags += no_shadow_cflag
+
 includes += include_directories('base')

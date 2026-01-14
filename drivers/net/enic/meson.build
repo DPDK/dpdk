@@ -29,6 +29,8 @@ sources = files(
 deps += ['hash']
 includes += include_directories('base')
 
+cflags += no_shadow_cflag
+
 if dpdk_conf.has('RTE_ARCH_X86_64')
     cflags += '-DENIC_RXTX_VEC'
     sources_avx2 += files('enic_rxtx_vec_avx2.c')
