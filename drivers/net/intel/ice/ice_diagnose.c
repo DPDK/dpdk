@@ -641,7 +641,7 @@ void print_node(const struct rte_eth_dev_data *ethdata,
 	fprintf(stream, "\t\t\t\t<tr>\n");
 	fprintf(stream, "\t\t\t\t\t<td> priority mode</td>\n");
 	fprintf(stream, "\t\t\t\t\t<td>");
-	print_priority_mode(stream, ((data->data.generic >> 4) & 0x1) != 0);
+	print_priority_mode(stream, ((data->data.generic >> 4) & 0x1) == 0);
 	fprintf(stream,	"</td>\n");
 	fprintf(stream, "\t\t\t\t</tr>\n");
 
