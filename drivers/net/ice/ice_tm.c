@@ -816,8 +816,13 @@ commit_new_hierarchy(struct rte_eth_dev *dev)
 	uint16_t nodes_created_per_level[ICE_TM_MAX_LAYERS] = {0};
 	uint8_t q_lvl = ice_get_leaf_level(pf);
 	uint8_t qg_lvl = q_lvl - 1;
-
 	struct ice_sched_node *new_vsi_root = hw->vsi_ctx[pf->main_vsi->idx]->sched.vsi_node[0];
+
+	if (sw_root == NULL) {
+		PMD_DRV_LOG(ERR, "No root node defined in TM hierarchy");
+		return -1;
+	}
+
 	/* handle case where VSI node needs to move DOWN the hierarchy */
 	while (new_vsi_root->tx_sched_layer < new_root_level) {
 		if (new_vsi_root->num_children == 0)
