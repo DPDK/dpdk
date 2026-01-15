@@ -168,11 +168,37 @@ alloc_uvn_stat_pkt_drop_fail:
 	return ret;
 }
 
+static uint32_t nbl_dev_thread_hw_stats_task(void *param)
+{
+	struct rte_eth_dev *eth_dev = param;
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dev_net_mgt *net_dev = NBL_DEV_MGT_TO_NET_DEV(dev_mgt);
+	char unused[16];
+	ssize_t nr;
+
+	while (true) {
+		nr = read(net_dev->fd[0], &unused, sizeof(unused));
+		if (nr <= 0)
+			break;
+
+		nbl_dev_update_hw_stats(eth_dev);
+	}
+
+	return 0;
+}
+
 static void nbl_dev_update_hw_stats_handler(void *param)
 {
 	struct rte_eth_dev *eth_dev = param;
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dev_net_mgt *net_dev = NBL_DEV_MGT_TO_NET_DEV(dev_mgt);
+	char notify_byte = 0;
+	ssize_t nw;
 
-	nbl_dev_update_hw_stats(eth_dev);
+	nw = write(net_dev->fd[1], &notify_byte, 1);
+	RTE_SET_USED(nw);
 
 	rte_eal_alarm_set(NBL_ALARM_INTERNAL, nbl_dev_update_hw_stats_handler, eth_dev);
 }
@@ -186,6 +212,23 @@ static int nbl_dev_hw_stats_start(struct rte_eth_dev *eth_dev)
 	struct nbl_dev_net_mgt *net_dev = NBL_DEV_MGT_TO_NET_DEV(dev_mgt);
 	struct nbl_ustore_stats ustore_stats = {0};
 	int ret;
+
+	ret = pipe(net_dev->fd);
+	if (ret) {
+		NBL_LOG(ERR, "hw_stats pipe failed, ret %d", ret);
+		return ret;
+	}
+
+	ret = rte_thread_create_internal_control(&net_dev->tid, "nbl_hw_stats_thread",
+						 nbl_dev_thread_hw_stats_task, eth_dev);
+	if (ret) {
+		NBL_LOG(ERR, "create hw_stats thread failed, ret %d", ret);
+		close(net_dev->fd[0]);
+		close(net_dev->fd[1]);
+		net_dev->fd[0] = -1;
+		net_dev->fd[1] = -1;
+		return ret;
+	}
 
 	if (!common->is_vf) {
 		ret = disp_ops->get_ustore_total_pkt_drop_stats(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
@@ -261,7 +304,18 @@ static void nbl_dev_txrx_stop(struct rte_eth_dev *eth_dev)
 
 static int nbl_dev_hw_stats_stop(struct rte_eth_dev *eth_dev)
 {
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dev_net_mgt *net_dev = NBL_DEV_MGT_TO_NET_DEV(dev_mgt);
+
 	rte_eal_alarm_cancel(nbl_dev_update_hw_stats_handler, eth_dev);
+
+	/* closing pipe to cause hw_stats thread to exit */
+	close(net_dev->fd[0]);
+	close(net_dev->fd[1]);
+	net_dev->fd[0] = -1;
+	net_dev->fd[1] = -1;
+	rte_thread_join(net_dev->tid, NULL);
 
 	return 0;
 }

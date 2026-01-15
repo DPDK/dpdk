@@ -60,6 +60,8 @@ struct nbl_dev_net_mgt {
 	u8 rsv:6;
 	struct nbl_hw_stats hw_stats;
 	bool hw_stats_inited;
+	rte_thread_t tid;
+	int fd[2];
 };
 
 struct nbl_dev_mgt {
