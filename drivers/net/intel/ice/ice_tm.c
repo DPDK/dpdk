@@ -522,7 +522,8 @@ ice_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	tm_node->parent->children[tm_node->parent->reference_count++] = tm_node;
 	tm_node->params = *params;
 
-	if (tm_node->priority != 0)
+	/* Priority cannot be configured for the root level */
+	if (tm_node->priority != 0 && level_id == 0)
 		PMD_DRV_LOG(WARNING, "priority != 0 not supported in level %d", level_id);
 
 	if (tm_node->weight != 1 && level_id == 0)
