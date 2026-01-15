@@ -320,6 +320,9 @@ rte_net_skip_ip6_ext(uint16_t proto, const struct rte_mbuf *m, uint32_t *off,
 	return -1;
 }
 
+/* limit number of supported VLAN headers */
+#define RTE_NET_VLAN_MAX_DEPTH 8
+
 /* parse mbuf data to get packet type */
 RTE_EXPORT_SYMBOL(rte_net_get_ptype)
 uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
@@ -329,7 +332,7 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 	const struct rte_ether_hdr *eh;
 	struct rte_ether_hdr eh_copy;
 	uint32_t pkt_type = RTE_PTYPE_L2_ETHER;
-	uint32_t off = 0;
+	uint32_t off = 0, vlan_depth = 0;
 	uint16_t proto;
 	int ret;
 
@@ -349,30 +352,26 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4))
 		goto l3; /* fast path if packet is IPv4 */
 
-	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN)) {
+	while (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN) ||
+	       proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_QINQ)) {
 		const struct rte_vlan_hdr *vh;
 		struct rte_vlan_hdr vh_copy;
 
-		pkt_type = RTE_PTYPE_L2_ETHER_VLAN;
+		if (++vlan_depth > RTE_NET_VLAN_MAX_DEPTH)
+			return 0;
+		pkt_type |=
+			proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN) ?
+				 RTE_PTYPE_L2_ETHER_VLAN :
+				 RTE_PTYPE_L2_ETHER_QINQ;
 		vh = rte_pktmbuf_read(m, off, sizeof(*vh), &vh_copy);
 		if (unlikely(vh == NULL))
 			return pkt_type;
 		off += sizeof(*vh);
 		hdr_lens->l2_len += sizeof(*vh);
 		proto = vh->eth_proto;
-	} else if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_QINQ)) {
-		const struct rte_vlan_hdr *vh;
-		struct rte_vlan_hdr vh_copy;
+	}
 
-		pkt_type = RTE_PTYPE_L2_ETHER_QINQ;
-		vh = rte_pktmbuf_read(m, off + sizeof(*vh), sizeof(*vh),
-			&vh_copy);
-		if (unlikely(vh == NULL))
-			return pkt_type;
-		off += 2 * sizeof(*vh);
-		hdr_lens->l2_len += 2 * sizeof(*vh);
-		proto = vh->eth_proto;
-	} else if ((proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_MPLS)) ||
+	if ((proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_MPLS)) ||
 		(proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_MPLSM))) {
 		unsigned int i;
 		const struct rte_mpls_hdr *mh;
