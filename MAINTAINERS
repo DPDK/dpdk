@@ -277,7 +277,7 @@ F: lib/eal/include/rte_bitmap.h
 F: app/test/test_bitmap.c
 
 MCSlock
-M: Honnappa Nagarahalli <honnappa.nagarahalli@arm.com>
+M: Wathsala Vithanage <wathsala.vithanage@arm.com>
 F: lib/eal/include/rte_mcslock.h
 F: app/test/test_mcslock.c
 
@@ -412,8 +412,8 @@ F: app/test/test_mempool*
 F: app/test/test_func_reentrancy.c
 
 Ring queue
-M: Honnappa Nagarahalli <honnappa.nagarahalli@arm.com>
 M: Konstantin Ananyev <konstantin.v.ananyev@yandex.ru>
+M: Wathsala Vithanage <wathsala.vithanage@arm.com>
 F: lib/ring/
 F: doc/guides/prog_guide/ring_lib.rst
 F: app/test/test_ring*
