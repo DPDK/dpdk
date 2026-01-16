@@ -3658,13 +3658,14 @@ ixgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	hash_key = rss_conf->rss_key;
 	if (hash_key != NULL) {
 		/* Return RSS hash key */
-		for (i = 0; i < 10; i++) {
+		for (i = 0; i < IXGBE_HKEY_MAX_INDEX; i++) {
 			rss_key = IXGBE_READ_REG_ARRAY(hw, rssrk_reg, i);
 			hash_key[(i * 4)] = rss_key & 0x000000FF;
 			hash_key[(i * 4) + 1] = (rss_key >> 8) & 0x000000FF;
 			hash_key[(i * 4) + 2] = (rss_key >> 16) & 0x000000FF;
 			hash_key[(i * 4) + 3] = (rss_key >> 24) & 0x000000FF;
 		}
+		rss_conf->rss_key_len = IXGBE_HKEY_MAX_INDEX * sizeof(uint32_t);
 	}
 
 	if (!ixgbe_rss_enabled(hw)) { /* RSS is disabled */
