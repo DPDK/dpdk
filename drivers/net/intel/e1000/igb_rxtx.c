@@ -2035,13 +2035,14 @@ int eth_igb_rss_hash_conf_get(struct rte_eth_dev *dev,
 	hash_key = rss_conf->rss_key;
 	if (hash_key != NULL) {
 		/* Return RSS hash key */
-		for (i = 0; i < 10; i++) {
+		for (i = 0; i < IGB_HKEY_MAX_INDEX; i++) {
 			rss_key = E1000_READ_REG_ARRAY(hw, E1000_RSSRK(0), i);
 			hash_key[(i * 4)] = rss_key & 0x000000FF;
 			hash_key[(i * 4) + 1] = (rss_key >> 8) & 0x000000FF;
 			hash_key[(i * 4) + 2] = (rss_key >> 16) & 0x000000FF;
 			hash_key[(i * 4) + 3] = (rss_key >> 24) & 0x000000FF;
 		}
+		rss_conf->rss_key_len = IGB_HKEY_MAX_INDEX * sizeof(uint32_t);
 	}
 
 	/* Get RSS functions configured in MRQC register */

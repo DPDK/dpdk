@@ -2559,6 +2559,7 @@ eth_igc_rss_hash_conf_get(struct rte_eth_dev *dev,
 		/* read RSS key from register */
 		for (i = 0; i < IGC_HKEY_MAX_INDEX; i++)
 			hash_key[i] = E1000_READ_REG_LE_VALUE(hw, E1000_RSSRK(i));
+		rss_conf->rss_key_len = IGC_HKEY_MAX_INDEX * sizeof(uint32_t);
 	}
 
 	/* get RSS functions configured in MRQC register */
