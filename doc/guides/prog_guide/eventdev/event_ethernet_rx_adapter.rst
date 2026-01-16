@@ -63,7 +63,7 @@ expected to fill the ``struct rte_event_eth_rx_adapter_conf structure``
 passed to it.
 
 If the application desires to control the event buffer size at adapter level,
-it can use the ``rte_event_eth_rx_adapter_create_with_params()`` api. The event
+it can use the ``rte_event_eth_rx_adapter_create_with_params()`` API. The event
 buffer size is specified using ``struct rte_event_eth_rx_adapter_params::
 event_buf_size``. To configure the event buffer size at queue level, the boolean
 flag ``struct rte_event_eth_rx_adapter_params::use_queue_event_buf`` need to be
@@ -170,7 +170,7 @@ Querying Adapter Capabilities
 
 The ``rte_event_eth_rx_adapter_caps_get()`` function allows
 the application to query the adapter capabilities for an eventdev and ethdev
-combination. For e.g, if the ``RTE_EVENT_ETH_RX_ADAPTER_CAP_OVERRIDE_FLOW_ID``
+combination. For example, if the ``RTE_EVENT_ETH_RX_ADAPTER_CAP_OVERRIDE_FLOW_ID``
 is set, the application can override the adapter generated flow ID in the event
 using ``rx_queue_flags`` field in ``struct rte_event_eth_rx_adapter_queue_conf``
 which is passed as a parameter to the ``rte_event_eth_rx_adapter_queue_add()``
@@ -191,7 +191,7 @@ Configuring the Service Function
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If the adapter uses a service function, the application is required to assign
-a service core to the service function as show below.
+a service core to the service function as shown below.
 
 .. code-block:: c
 
@@ -216,7 +216,7 @@ service function if one exists.
 Getting Adapter Statistics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The  ``rte_event_eth_rx_adapter_stats_get()`` function reports counters defined
+The ``rte_event_eth_rx_adapter_stats_get()`` function reports counters defined
 in struct ``rte_event_eth_rx_adapter_stats``. The received packet and
 enqueued event counts are a sum of the counts from the eventdev PMD callbacks
 if the callback is supported, and the counts maintained by the service function,
@@ -248,7 +248,7 @@ adapter queue counters defined in struct ``rte_event_eth_rx_adapter_queue_stats`
 This function reports queue level stats only when queue level event buffer is
 used otherwise it returns -EINVAL.
 
-The ``rte_event_eth_rx_adapter_queue_stats_reset`` function can be used to
+The ``rte_event_eth_rx_adapter_queue_stats_reset()`` function can be used to
 reset queue level stats when queue level event buffer is in use.
 
 Getting Adapter Instance ID
@@ -294,7 +294,7 @@ monitor the buffer fill level and instruct the service function to selectively
 enqueue packets to the event device. The application may also use some other
 criteria to decide which packets should enter the event device even when
 the event buffer fill level is low. The
-``rte_event_eth_rx_adapter_cb_register()`` function allow the application
+``rte_event_eth_rx_adapter_cb_register()`` function allows the application
 to register a callback that selects which packets to enqueue to the event
 device.
 
@@ -330,14 +330,14 @@ A loop processing ``rte_event_vector`` containing mbufs is shown below.
         switch (ev.event_type) {
         case RTE_EVENT_TYPE_ETH_RX_ADAPTER_VECTOR:
         case RTE_EVENT_TYPE_ETHDEV_VECTOR:
-                struct rte_mbufs **mbufs;
+        struct rte_mbuf **mbufs;
 
-                mbufs = (struct rte_mbufs **)ev[i].vec->mbufs;
+                mbufs = (struct rte_mbuf **)ev[i].vec->mbufs;
                 for (i = 0; i < ev.vec->nb_elem; i++) {
                         /* Process each mbuf. */
                 }
         break;
-        case default:
+        default:
                 /* Handle other event_types. */
         }
 

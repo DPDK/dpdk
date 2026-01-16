@@ -24,7 +24,7 @@ and event driven programming models for packet processing, and applications are
 free to choose whatever model (or combination of the two) best suits their
 needs.
 
-Step-by-step instructions of the eventdev design is available in the `API
+Step-by-step instructions of the eventdev design are available in the `API
 Walk-through`_ section later in this document.
 
 Event struct
@@ -33,7 +33,7 @@ Event struct
 The eventdev API represents each event with a generic struct, which contains a
 payload and metadata required for scheduling by an eventdev.  The
 ``rte_event`` struct is a 16 byte C structure, defined in
-``libs/librte_eventdev/rte_eventdev.h``.
+``lib/eventdev/rte_eventdev.h``.
 
 Event Metadata
 ~~~~~~~~~~~~~~
@@ -67,8 +67,8 @@ the actual event being scheduled is. The payload is a union of the following:
 
 These four items in a union occupy the same 64 bits at the end of the rte_event
 structure. The application can utilize the 64 bits directly by accessing the
-u64 variable, while the event_ptr, mbuf, vec are provided as a convenience
-variables.  For example the mbuf pointer in the union can used to schedule a
+u64 variable, while the event_ptr, mbuf, vec are provided as convenience
+variables.  For example, the mbuf pointer in the union can be used to schedule a
 DPDK packet.
 
 Event Vector
@@ -320,8 +320,8 @@ can be achieved like this:
 Linking Queues to Ports with link profiles
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-An application can use link profiles if supported by the underlying event device to setup up
-multiple link profile per port and change them run time depending up on heuristic data.
+An application can use link profiles if supported by the underlying event device to set up
+multiple link profiles per port and change them at runtime depending on heuristic data.
 Using Link profiles can reduce the overhead of linking/unlinking and wait for unlinks in progress
 in fast-path and gives applications the ability to switch between preset profiles on the fly.
 
@@ -397,11 +397,11 @@ it will be treated as a no-op.
    // Disable pre-scheduling if thread is about to be scheduled out
    // and issue dequeue() to drain pending events.
 
-Application may  provide a hint to the eventdev PMD
+Application may provide a hint to the eventdev PMD
 to pre-schedule the next event without releasing the current flow context.
 Event device that support this feature advertises the capability
 via the ``RTE_EVENT_DEV_CAP_PRESCHEDULE_EXPLICIT`` flag.
-If pre-scheduling is already enabled at a event device or event port level
+If pre-scheduling is already enabled at an event device or event port level
 or if the capability is not supported then the hint is ignored.
 
 .. code-block:: c
@@ -412,8 +412,8 @@ Starting the EventDev
 ~~~~~~~~~~~~~~~~~~~~~
 
 A single function call tells the eventdev instance to start processing
-events. Note that all queues must be linked to for the instance to start, as
-if any queue is not linked to, enqueuing to that queue will cause the
+events. Note that all queues must be linked to at least one port for the instance to start, as
+if any queue is not linked, enqueuing to that queue will cause the
 application to backpressure and eventually stall due to no space in the
 eventdev.
 
@@ -572,5 +572,5 @@ The eventdev library allows an application to easily schedule events as it
 requires, either using a run-to-completion or pipeline processing model.  The
 queues and ports abstract the logical functionality of an eventdev, providing
 the application with a generic method to schedule events.  With the flexible
-PMD infrastructure applications benefit of improvements in existing eventdevs
+PMD infrastructure applications benefit from improvements in existing eventdevs
 and additions of new ones without modification.

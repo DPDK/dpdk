@@ -191,7 +191,7 @@ The event handler interface consists of two function pointers:
 
 An event handler registration is valid on all lcores.
 
-The functions pointed to by the match and process callbacks resides in
+The functions pointed to by the match and process callbacks reside in
 the application's domain logic, with one or more handlers per
 application module.
 
@@ -215,7 +215,7 @@ An event is routed to no more than one handler. Thus, if a match
 function returns true, no further match functions will be invoked for
 that event.
 
-Match functions must not depend on being invocated in any particular
+Match functions must not depend on being invoked in any particular
 order (e.g., in the handler registration order).
 
 Events failing to match any handler are dropped, and the
@@ -224,15 +224,15 @@ Events failing to match any handler are dropped, and the
 Event Delivery
 ^^^^^^^^^^^^^^
 
-The handler callbacks are invocated by the dispatcher's service
+The handler callbacks are invoked by the dispatcher's service
 function, upon the arrival of events to the event ports bound to the
 running service lcore.
 
 A particular event is delivered to at most one handler.
 
 The application must not depend on all match callback invocations for
-a particular event batch being made prior to any process calls are
-being made. For example, if the dispatcher dequeues two events from
+a particular event batch being made before any process calls are
+made. For example, if the dispatcher dequeues two events from
 the event device, it may choose to find out the destination for the
 first event, and deliver it, and then continue to find out the
 destination for the second, and then deliver that event as well. The

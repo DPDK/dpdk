@@ -36,7 +36,7 @@ RTE_EVENT_DMA_ADAPTER_OP_NEW mode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In the ``RTE_EVENT_DMA_ADAPTER_OP_NEW`` mode,
-application submits DMA operations directly to an DMA device.
+application submits DMA operations directly to a DMA device.
 The adapter then dequeues DMA completions from the DMA device
 and enqueues them as events to the event device.
 This mode does not ensure ingress ordering
@@ -230,7 +230,7 @@ Configuring service function
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If the adapter uses a service function, the application is required
-to assign a service core to the service function as show below.
+to assign a service core to the service function as shown below.
 
 .. code-block:: c
 

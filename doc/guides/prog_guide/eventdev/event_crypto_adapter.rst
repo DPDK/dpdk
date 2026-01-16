@@ -7,8 +7,8 @@ Event Crypto Adapter Library
 The DPDK :doc:`Eventdev library <eventdev>` provides event driven
 programming model with features to schedule events.
 The :doc:`../cryptodev_lib` provides an interface to
-the crypto poll mode drivers which supports different crypto operations.
-The Event Crypto Adapter is one of the adapter which is intended to
+the crypto poll mode drivers that support different crypto operations.
+The Event Crypto Adapter is one of the adapters that is intended to
 bridge between the event device and the crypto device.
 
 The packet flow from crypto device to the event device can be accomplished
@@ -115,7 +115,7 @@ Adapter can be started in ``RTE_EVENT_CRYPTO_ADAPTER_OP_NEW`` or
 
 If the application desires to have finer control of eventdev port allocation
 and setup, it can use the ``rte_event_crypto_adapter_create_ext()`` function.
-The ``rte_event_crypto_adapter_create_ext()`` function is passed as a callback
+The ``rte_event_crypto_adapter_create_ext()`` function is passed a callback
 function. The callback function is invoked if the adapter needs to use a
 service function and needs to create an event port for it. The callback is
 expected to fill the ``struct rte_event_crypto_adapter_conf`` structure
@@ -229,7 +229,7 @@ Configure the service function
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If the adapter uses a service function, the application is required to assign
-a service core to the service function as show below.
+a service core to the service function as shown below.
 
 .. code-block:: c
 
