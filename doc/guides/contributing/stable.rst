@@ -4,84 +4,76 @@
 DPDK Stable Releases and Long Term Support
 ==========================================
 
-This section sets out the guidelines for the DPDK Stable Releases and the DPDK
-Long Term Support releases (LTS).
+This section outlines the guidelines for DPDK Stable Releases and Long Term Support (LTS) releases.
 
 
 Introduction
 ------------
 
-The purpose of the DPDK Stable Releases is to maintain releases of DPDK with
-backported fixes over an extended period of time. This provides downstream
-consumers of DPDK with a stable target on which to base applications or
-packages.
+The purpose of DPDK Stable Releases is to maintain DPDK versions
+with backported fixes over an extended period.
+This allows downstream users to base applications or packages on a stable,
+well-maintained version of DPDK.
 
-The primary characteristics of stable releases is that they attempt to
-fix issues and not introduce any new regressions while keeping backwards
-compatibility with the initial release of the stable version.
+The primary goal of stable releases is to fix issues without introducing regressions,
+while preserving backward compatibility with the original version.
 
-The Long Term Support release (LTS) is a designation applied to a Stable
-Release to indicate longer term support.
+LTS (Long Term Support) is a designation given to specific stable releases
+to indicate extended support duration.
 
 
 Stable Releases
 ---------------
 
-Any release of DPDK can be designated as a Stable Release if a
-maintainer volunteers to maintain it and there is a commitment from major
-contributors to validate it before releases.
-If a version is to be a "Stable Release", it should be designated as such
-within one month of that version being initially released.
+Any DPDK release may become a Stable Release if a maintainer volunteers to support it
+and major contributors commit to validating it before each release.
+This designation should be made within one month of the version's initial release.
 
-A Stable Release is used to backport fixes from an ``N`` release back to an
-``N-1`` release, for example, from 16.11 to 16.07.
+Stable Releases are typically used to backport fixes
+from an ``N`` release to an ``N-1`` release, for example, from 16.11 to 16.07.
 
-The duration of a stable is one complete release cycle (4 months). It can be
-longer, up to 1 year, if a maintainer continues to support the stable branch,
-or if users supply backported fixes, however the explicit commitment should be
-for one release cycle.
-
-The release cadence is determined by the maintainer based on the number of
-bugfixes and the criticality of the bugs. Releases should be coordinated with
-the validation engineers to ensure that a tagged release has been tested.
+* The standard support duration is one full release cycle (4 months).
+* This may extend up to one year if the maintainer continues support
+  or if users provide backported fixes.
+* The maintainer determines the release cadence based on the volume and criticality of fixes.
+* Coordinate releases with validation engineers to ensure proper testing before tagging.
 
 
-LTS Release
------------
+LTS Releases
+------------
 
-A stable release can be designated as an LTS release based on community
-agreement and a commitment from a maintainer. The current policy is that each
-year's November (X.11) release will be maintained as an LTS for 3 years,
-however that is dependent on continued community support for validation.
+A Stable Release can be promoted to an LTS release through community agreement
+and a maintainer's commitment.
 
-After the X.11 release, an LTS branch will be created for it at
-https://git.dpdk.org/dpdk-stable where bugfixes will be backported to.
+* The current policy designates each November release (X.11) as an LTS
+  and maintains it for 3 years, contingent on community validation support.
+* After release, an LTS branch is created at https://git.dpdk.org/dpdk-stable
+  where bugfixes are backported.
+* An LTS release may align with the declaration of a new major ABI version.
+  See the :doc:`abi_policy` for more information.
 
-A LTS release may align with the declaration of a new major ABI version,
-please read the :doc:`abi_policy` for more information.
+Release Cadence:
 
-It is anticipated that there will be at least 3 releases per year of the LTS
-or approximately 1 every 4 months. This is done to align with the DPDK main
-branch releases so that fixes have already gone through validation as part of
-the DPDK main branch release validation. However, the cadence can be shorter or
-longer depending on the number and criticality of the backported
-fixes. Releases should be coordinated with the validation engineers to ensure
-that a tagged release has been tested.
+* At least three LTS updates per year (roughly one every four months).
+* Aligned with main DPDK releases to leverage shared validation.
+* Frequency may vary depending on the urgency and volume of fixes.
+* Coordinate validation with test engineers.
 
-For a list of the currently maintained stable/LTS branches please see
-the latest `stable roadmap <https://core.dpdk.org/roadmap/#stable>`_.
+For a list of the currently maintained stable/LTS branches,
+see the `stable roadmap <https://core.dpdk.org/roadmap/#stable>`_.
 
-At the end of the 3 years, a final X.11.N release will be made and at that
-point the LTS branch will no longer be maintained with no further releases.
+At the end of the 3-year period, a final X.11.N release is made,
+after which the LTS branch is no longer maintained.
 
 
-What changes should be backported
+What Changes Should Be Backported
 ---------------------------------
 
-Backporting should be limited to bug fixes. All patches accepted on the main
-branch with a Fixes: tag should be backported to the relevant stable/LTS
-branches, unless the submitter indicates otherwise. If there are exceptions,
-they will be discussed on the mailing lists.
+Limit backports to bug fixes.
+
+All patches accepted on the main branch with a ``Fixes:`` tag
+should be backported to the relevant stable/LTS branches,
+unless the submitter indicates otherwise.
 
 Fixes suitable for backport should have a ``Cc: stable@dpdk.org`` tag in the
 commit message body as follows::
@@ -95,49 +87,38 @@ commit message body as follows::
 
      Signed-off-by: Alex Smith <alex.smith@example.com>
 
-
 Fixes not suitable for backport should not include the ``Cc: stable@dpdk.org`` tag.
 
-To support the goal of stability and not introducing regressions,
-new code being introduced is limited to bug fixes.
 New features should not be backported to stable releases.
+In limited cases, a new feature may be acceptable if:
 
-In some limited cases, it may be acceptable to backport a new feature
-to a stable release. Some of the factors which impact the decision by
-stable maintainers are as follows:
+* It does not break API or ABI.
+* It preserves backward compatibility.
+* It targets the latest LTS release (to help with upgrade paths).
+* The proposer commits to testing the feature and monitoring regressions.
+* The proposer or their organization has a track record of validating stable releases.
+* It clearly does not impact existing functionality.
+* The change is minimally invasive and scoped.
+* It affects vendor-specific components rather than common ones.
+* There is a justifiable use case (a clear user need).
+* There is community consensus about the backport.
 
-* Does the feature break API/ABI?
-* Does the feature break backwards compatibility?
-* Is it for the latest LTS release (to avoid LTS upgrade issues)?
-* Is there a commitment from the proposer or affiliation to validate the feature
-  and check for regressions in related functionality?
-* Is there a track record of the proposer or affiliation validating stable releases?
-* Is it obvious that the feature will not impact existing functionality?
-* How intrusive is the code change?
-* What is the scope of the code change?
-* Does it impact common components or vendor specific?
-* Is there a justifiable use case (a clear user need)?
-* Is there a community consensus about the backport?
-
-Performance improvements are generally not considered to be fixes,
-but may be considered in some cases where:
+Performance improvements are generally not considered fixes,
+but may be considered in cases where:
 
 * It is fixing a performance regression that occurred previously.
 * An existing feature in LTS is not usable as intended without it.
 
 APIs marked as ``experimental`` are not considered part of the ABI version
-and can be changed without prior notice. This is necessary for the API to be
-improved and stabilized and become part of the ABI version in the future.
+and can be changed without prior notice in mainline development.
+However, in LTS releases, ``experimental`` APIs should not be changed,
+as compatibility with previous releases of an LTS version is paramount.
 
-However, in LTS releases ``experimental`` API should not be changed as there
-will not be a future ABI version on the branch and compatibility with previous
-release of an LTS version is of the highest importance.
 
 The Stable Mailing List
 -----------------------
 
-The Stable and LTS release are coordinated on the stable@dpdk.org mailing
-list.
+Stable and LTS releases are coordinated on the stable@dpdk.org mailing list.
 
 All fix patches to the main branch that are candidates for backporting
 should also be CCed to the `stable@dpdk.org <https://mails.dpdk.org/listinfo/stable>`_
@@ -147,7 +128,7 @@ mailing list.
 Releasing
 ---------
 
-A Stable Release will be released by:
+A Stable Release is made by:
 
 * Tagging the release with YY.MM.n (year, month, number).
 * Uploading a tarball of the release to dpdk.org.

@@ -15,19 +15,19 @@ System libraries usually adopt the familiar major and minor version naming
 convention, where major versions (e.g. ``librte_eal 21.x, 22.x``) are presumed
 to be ABI incompatible with each other and minor versions (e.g. ``librte_eal
 21.1, 21.2``) are presumed to be ABI compatible. A library's `soname
-<https://en.wikipedia.org/wiki/Soname>`_. is typically used to provide backward
+<https://en.wikipedia.org/wiki/Soname>`_ is typically used to provide backward
 compatibility information about a given library, describing the lowest common
 denominator ABI supported by the library. The soname or logical name for the
-library, is typically comprised of the library's name and major version e.g.
+library typically consists of the library's name and major version e.g.
 ``librte_eal.so.21``.
 
 During an application's build process, a library's soname is noted as a runtime
 dependency of the application. This information is then used by the `dynamic
 linker <https://en.wikipedia.org/wiki/Dynamic_linker>`_ when resolving the
-applications dependencies at runtime, to load a library supporting the correct
+application's dependencies at runtime, to load a library supporting the correct
 ABI version. The library loaded at runtime therefore, may be a minor revision
 supporting the same major ABI version (e.g. ``librte_eal.21.2``), as the library
-used to link the application (e.g ``librte_eal.21.0``).
+used to link the application (e.g. ``librte_eal.21.0``).
 
 .. _abi_major_versions:
 
@@ -35,7 +35,7 @@ Major ABI versions
 ------------------
 
 An ABI version change to a given library, especially in core libraries such as
-``librte_mbuf``, may cause an implicit ripple effect on the ABI of it's
+``librte_mbuf``, may cause an implicit ripple effect on the ABI of its
 consuming libraries, causing ABI breakages. There may however be no explicit
 reason to bump a dependent library's ABI version, as there may have been no
 obvious change to the dependent library's API, even though the library's ABI
@@ -45,11 +45,11 @@ This interdependence of DPDK libraries, means that ABI versioning of libraries
 is more manageable at a project level, with all project libraries sharing a
 **single ABI version**. In addition, the need to maintain a stable ABI for some
 number of releases as described in the section :doc:`abi_policy`, means
-that ABI version increments need to carefully planned and managed at a project
+that ABI version increments need to be carefully planned and managed at a project
 level.
 
 Major ABI versions are therefore declared typically aligned with an LTS release
-and is then supported some number of subsequent releases, shared across all
+and are then supported for some number of subsequent releases, shared across all
 libraries. This means that a single project level ABI version, reflected in all
 individual library's soname, library filenames and associated version maps
 persists over multiple releases.
@@ -126,7 +126,7 @@ Versioning Macros
 When a symbol is exported from a library to provide an API, it also provides a
 calling convention (ABI) that is embodied in its name, return type and
 arguments. Occasionally that function may need to change to accommodate new
-functionality or behavior. When that occurs, it is may be required to allow for
+functionality or behavior. When that occurs, it may be required to allow for
 backward compatibility for a time with older binaries that are dynamically
 linked to the DPDK.
 
@@ -138,16 +138,15 @@ library so that older binaries need not be immediately recompiled.
 The macros are:
 
 * ``RTE_VERSION_SYMBOL(ver, type, name, args)``: Creates a symbol version table
-  entry binding symbol ``<name>@DPDK_<ver>`` to the internal function name
-  ``<name>_v<ver>``.
+  entry binding symbol ``<n>@DPDK_<ver>`` to the internal function name ``<n>_v<ver>``.
 
 * ``RTE_DEFAULT_SYMBOL(ver, type, name, args)``: Creates a symbol version entry
-  instructing the linker to bind references to symbol ``<name>`` to the internal
-  symbol ``<name>_v<ver>``.
+  instructing the linker to bind references to symbol ``<n>``
+  to the internal symbol ``<n>_v<ver>``.
 
 * ``RTE_VERSION_EXPERIMENTAL_SYMBOL(type, name, args)``:  Similar to RTE_VERSION_SYMBOL
   but for experimental API symbols. The macro is used when a symbol matures
-  to become part of the stable ABI, to provide an alias to experimental
+  to become part of the stable ABI, to provide an alias to the experimental version
   until the next major ABI version.
 
 .. _abi_example_macro_usage:
@@ -275,7 +274,7 @@ in the ``meson.build`` file we add the following
 
    use_function_versioning = true
 
-at the start of the head of the file. This will indicate to the tool-chain to
+at the start of the file. This will indicate to the tool-chain to
 enable the function version macros when building.
 
 
@@ -335,7 +334,7 @@ and ``DPDK_22`` version nodes.
 
 .. code-block:: c
 
-   #include <rte_compat.h>;
+   #include <rte_compat.h>
 
    /*
     * Create an acl context object for apps to
@@ -356,7 +355,7 @@ and ``DPDK_22`` version nodes.
 Deprecating part of a public API
 ________________________________
 
-Lets assume that you've done the above updates, and in preparation for the next
+Let's assume that you've done the above updates, and in preparation for the next
 major ABI version you decide you would like to retire the old version of the
 function. After having gone through the ABI deprecation announcement process,
 removal is easy.

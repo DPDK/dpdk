@@ -7,8 +7,10 @@ DPDK Coding Style
 Description
 -----------
 
-This document specifies the preferred style for source files in the DPDK source tree.
-It is based on the Linux Kernel coding guidelines and the FreeBSD 7.2 Kernel Developer's Manual (see man style(9)), but was heavily modified for the needs of the DPDK.
+This document specifies the preferred style for source files in the DPDK source tree,
+based on the Linux Kernel coding guidelines
+and the FreeBSD 7.2 Kernel Developer's Manual (see man style(9)),
+but was heavily modified for the needs of the DPDK.
 
 General Guidelines
 ------------------
@@ -93,7 +95,7 @@ Example:
 Header File Guards
 ~~~~~~~~~~~~~~~~~~
 
-Headers should be protected against multiple inclusion with the usual:
+Protect headers against multiple inclusion with the usual:
 
 .. code-block:: c
 
@@ -291,7 +293,7 @@ Structure Declarations
 * In general, when declaring variables in new structures, declare them sorted by use, then by size (largest to smallest), and then in alphabetical order.
   Sorting by use means that commonly used variables are used together and that the structure layout makes logical sense.
   Ordering by size then ensures that as little padding is added to the structure as possible.
-* For existing structures, additions to structures should be added to the end so for backward compatibility reasons.
+* For existing structures, add new members to the end for backward compatibility.
 * Each structure element gets its own line.
 * Try to make the structure readable by aligning the member names using spaces as shown below.
 * Names following extremely long types, which therefore cannot be easily aligned with the rest, should be separated by a single space.
@@ -306,14 +308,15 @@ Structure Declarations
  };
 
 
-* Major structures should be declared at the top of the file in which they are used, or in separate header files if they are used in multiple source files.
+* Declare major structures at the top of the file where they are used,
+  or in separate header files if they are used in multiple source files.
 * Use of the structures should be by separate variable declarations and those declarations must be extern if they are declared in a header file.
 * Externally visible structure definitions should have the structure name prefixed by ``rte_`` to avoid namespace collisions.
 
 .. note::
 
-    Uses of ``bool`` in structures are not preferred as is wastes space and
-    it's also not clear as to what type size the bool is. A preferred use of
+    Avoid using ``bool`` in structures because it wastes space and
+    the type size is unclear. A preferred use of
     ``bool`` is mainly as a return type from functions that return true/false,
     and maybe local variable functions.
 
@@ -582,7 +585,7 @@ C Function Definition, Declaration and Use
 Prototypes
 ~~~~~~~~~~
 
-* It is recommended (and generally required by the compiler) that all non-static functions are prototyped somewhere.
+* Prototype all non-static functions (the compiler generally requires this).
 * Functions local to one source module should be declared static, and should not be prototyped unless absolutely necessary.
 * Functions used from other parts of code (external API) must be prototyped in the relevant include file.
 * Function prototypes should be listed in a logical order, preferably alphabetical unless there is a compelling reason to use a different ordering.
@@ -747,7 +750,7 @@ Static Variables and Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 * All functions and variables that are local to a file must be declared as ``static`` because it can often help the compiler to do some optimizations (such as, inlining the code).
-* Functions that should be inlined should be declared as ``static inline``
+* Declare functions that should be inlined as ``static inline``
   and can be defined in a .c or a .h file.
 
 .. note::
@@ -791,7 +794,7 @@ where outlining the function can reduce instruction-cache pressure on the hot pa
 Const Attribute
 ~~~~~~~~~~~~~~~
 
-The ``const`` attribute should be used as often as possible when a variable is read-only.
+Use the ``const`` attribute as often as possible when a variable is read-only.
 
 Inline ASM in C code
 ~~~~~~~~~~~~~~~~~~~~

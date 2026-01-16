@@ -37,7 +37,8 @@ The main directories that contain files related to documentation are shown below
        |-- ...
 
 
-The API documentation is built from `Doxygen <http://www.doxygen.nl>`_ comments in the header files.
+Doxygen comments in header files generate the API documentation.
+These are built from `Doxygen <http://www.doxygen.nl>`_ comments in the header files.
 These files are mainly in the ``lib/*`` directories although some of the Poll Mode Drivers in ``drivers/net``
 are also documented with Doxygen.
 
@@ -84,7 +85,7 @@ added to by the developer.
   The API documentation explains how to use the public DPDK functions.
   The `API index page <https://doc.dpdk.org/api/>`_ shows the generated API documentation with related groups of functions.
 
-  The API documentation should be updated via Doxygen comments when new functions are added.
+  Update API documentation via Doxygen comments when adding new functions.
 
 * **Getting Started Guides**
 
@@ -585,7 +586,7 @@ The following are some guidelines for use of Doxygen in the DPDK API documentati
   It isn't necessary to explicitly name each file since the configuration matches all ``rte_*.h`` files in the directory.
 
 * Use proper capitalization and punctuation in the Doxygen comments since they will become sentences in the documentation.
-  This in particular applies to single line comments, which is the case the is most often forgotten.
+  This applies particularly to single-line comments, which developers most often forget.
 
 * Use ``@`` style Doxygen commands instead of ``\`` style commands.
 
