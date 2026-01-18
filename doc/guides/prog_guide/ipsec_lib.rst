@@ -109,7 +109,7 @@ In that mode the library functions perform
   - generate SQN and IV
   - add outer IP header (tunnel mode) / update IP header (transport mode)
   - add ESP header and trailer, padding and IV data
-  - update *ol_flags* inside *struct  rte_mbuf* to indicate that
+  - update *ol_flags* inside *struct rte_mbuf* to indicate that
     inline-crypto processing has to be performed by HW on this packet
   - invoke *rte_security* device specific *set_pkt_metadata()* to associate
     security device specific data with the packet
@@ -126,7 +126,7 @@ In that mode the library functions perform
 
 * for outbound packets:
 
-  - update *ol_flags* inside *struct  rte_mbuf* to indicate that
+  - update *ol_flags* inside *struct rte_mbuf* to indicate that
     inline-crypto processing has to be performed by HW on this packet
   - invoke *rte_security* device specific *set_pkt_metadata()* to associate
     security device specific data with the packet

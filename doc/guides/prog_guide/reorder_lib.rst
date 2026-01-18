@@ -36,7 +36,7 @@ mbufs.
 Implementation Details
 ----------------------
 
-The reorder library is implemented as a pair of buffers, which referred to as
+The reorder library is implemented as a pair of buffers, which are referred to as
 the *Order* buffer and the *Ready* buffer.
 
 On an insert call, valid mbufs are inserted directly into the Order buffer and
@@ -62,7 +62,7 @@ be reported as late packets when they arrive. The process of moving packets
 to the Ready buffer continues beyond the minimum required until a gap,
 i.e. missing mbuf, in the Order buffer is encountered.
 
-When draining mbufs, the reorder buffer would return  mbufs in the Ready
+When draining mbufs, the reorder buffer would return mbufs in the Ready
 buffer first and then from the Order buffer until a gap is found (mbufs that
 have not arrived yet).
 

@@ -16,23 +16,23 @@ following set of commands::
 
 This will compile DPDK in the ``build`` subdirectory, and then install the
 resulting libraries, drivers and header files onto the system - generally
-in /usr/local. A package-config file, ``libdpdk.pc``,  for DPDK will also
+in /usr/local. A package-config file, ``libdpdk.pc``, for DPDK will also
 be installed to allow ease of compiling and linking with applications.
 
 After installation, to use DPDK, the necessary CFLAG and LDFLAG variables
-can be got from pkg-config::
+can be obtained from pkg-config::
 
 	pkg-config --cflags libdpdk
 	pkg-config --libs libdpdk
 
-More detail on each of these steps can be got from the following sections.
+More detail on each of these steps can be found in the following sections.
 
 
 Getting the Tools
 -----------------
 
 The ``meson`` tool is used to configure a DPDK build. On most Linux
-distributions this can be got using the local package management system,
+distributions this can be installed using the local package management system,
 e.g. ``dnf install meson`` or ``apt-get install meson``. If meson is not
 available as a suitable package, it can also be installed using the Python
 3 ``pip`` tool, e.g. ``pip3 install meson``. Version 0.57 or later of meson is
@@ -78,7 +78,7 @@ examples to build, are DPDK-specific. To have a list of all options
 available run ``meson configure`` in the build directory.
 
 Examples of adjusting the defaults when doing initial meson configuration.
-Project-specific options are passed used -Doption=value::
+Project-specific options are passed using -Doption=value::
 
 	# build with warnings as errors
 	meson setup --werror werrorbuild

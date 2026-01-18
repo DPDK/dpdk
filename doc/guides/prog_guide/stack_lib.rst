@@ -13,8 +13,8 @@ The stack library provides the following basic operations:
    user-specified socket, with either standard (lock-based) or lock-free
    behavior.
 
-*  Push and pop a burst of one or more stack objects (pointers). These function
-   are multi-threading safe.
+*  Push and pop a burst of one or more stack objects (pointers).
+   These functions are multi-thread safe.
 
 *  Free a previously created stack.
 
@@ -23,15 +23,15 @@ The stack library provides the following basic operations:
 *  Query a stack's current depth and number of free entries.
 
 Implementation
-~~~~~~~~~~~~~~
+--------------
 
 The library supports two types of stacks: standard (lock-based) and lock-free.
 Both types use the same set of interfaces, but their implementations differ.
 
 .. _Stack_Library_Std_Stack:
 
-Lock-based Stack
-----------------
+Lock-based stack
+~~~~~~~~~~~~~~~~
 
 The lock-based stack consists of a contiguous array of pointers, a current
 index, and a spinlock. Accesses to the stack are made multi-thread safe by the
@@ -39,13 +39,13 @@ spinlock.
 
 .. _Stack_Library_LF_Stack:
 
-Lock-free Stack
----------------
+Lock-free stack
+~~~~~~~~~~~~~~~
 
 The lock-free stack consists of a linked list of elements, each containing a
 data pointer and a next pointer, and an atomic stack depth counter. The
-lock-free property means that multiple threads can push and pop simultaneously,
-and one thread being preempted/delayed in a push or pop operation will not
+lock-free property means that multiple threads can push and pop simultaneously.
+One thread being preempted/delayed in a push or pop operation will not
 impede the forward progress of any other thread.
 
 The lock-free push operation enqueues a linked list of pointers by pointing the
@@ -65,15 +65,14 @@ allocated before stack pushes and freed after stack pops. Since the stack has a
 fixed maximum depth, these elements do not need to be dynamically created.
 
 The lock-free behavior is selected by passing the *RTE_STACK_F_LF* flag to
-rte_stack_create().
+``rte_stack_create()``.
 
-Preventing the ABA Problem
+Preventing the ABA problem
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To prevent the ABA problem, this algorithm stack uses a 128-bit
-compare-and-swap instruction to atomically update both the stack top pointer
-and a modification counter. The ABA problem can occur without a modification
-counter if, for example:
+To prevent the ABA problem, this algorithm uses a 128-bit compare-and-swap instruction
+to atomically update both the stack top pointer and a modification counter.
+The ABA problem can occur without a modification counter if, for example:
 
 #. Thread A reads head pointer X and stores the pointed-to list element.
 
@@ -83,7 +82,7 @@ counter if, for example:
 #. Thread A changes the head pointer with a compare-and-swap and succeeds.
 
 In this case thread A would not detect that the list had changed, and would
-both pop stale data and incorrect change the head pointer. By adding a
+both pop stale data and incorrectly change the head pointer. By adding a
 modification counter that is updated on every push and pop as part of the
 compare-and-swap, the algorithm can detect when the list changes even if the
 head pointer remains the same.

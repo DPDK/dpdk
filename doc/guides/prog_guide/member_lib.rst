@@ -31,7 +31,7 @@ is a fundamental data aggregation component that can be used in many network
 (and other) applications. It is a crucial structure to address performance and
 scalability issues of diverse network applications including overlay networks,
 data-centric networks, flow table summaries, network statistics and
-traffic monitoring. A set-summary is useful for applications who need to
+traffic monitoring. A set-summary is useful for applications that need to
 include a list of elements while a complete list requires too much space
 and/or too much processing cost. In these situations, the set-summary works as
 a lossy hash-based representation of a set of members. It can dramatically
@@ -46,7 +46,7 @@ probability.
 There are various usages for a Membership Library in a very
 large set of applications and workloads. Interested readers can refer to
 [Member-survey] for a survey of possible networking usages. The above figure
-provide a small set of examples of using the Membership Library:
+provides a small set of examples of using the Membership Library:
 
 * Sub-figure (a)
   depicts a distributed web cache architecture where a collection of proxies
@@ -65,7 +65,7 @@ provide a small set of examples of using the Membership Library:
   whether its id is a member of the set of visited nodes, and if it is, then a
   routing loop is detected.
 
-* Sub-Figure (c) presents another usage of the Membership
+* Sub-figure (c) presents another usage of the Membership
   Library to load-balance flows to worker threads with in-order guarantee where a
   set-summary is used to query if a packet belongs to an existing flow or a new
   flow. Packets belonging to a new flow are forwarded to the current least loaded
@@ -78,7 +78,7 @@ provide a small set of examples of using the Membership Library:
   element of a set against the other elements in a different set, a join is done
   on the summaries since they can efficiently encode members of a given set.
 
-Membership Library is a configurable library that is optimized to cover set
+The Membership Library is a configurable library that is optimized to cover set
 membership functionality for both a single set and multi-set scenarios. Two set-summary
 schemes are presented including (a) vector of Bloom Filters and (b) Hash-Table based
 set-summary schemes with and without false negative probability.
@@ -98,8 +98,8 @@ The BF is a method for representing a set of ``n`` elements (for example flow ke
 in network applications domain) to support membership queries. The idea of BF is
 to allocate a bit-vector ``v`` with ``m`` bits, which are initially all set to 0. Then
 it chooses ``k`` independent hash functions ``h1``, ``h2``, ... ``hk`` with hash values range from
-``0`` to ``m-1`` to perform hashing calculations on each element to be inserted. Every time when an
-element ``X`` being inserted into the set, the bits at positions ``h1(X)``, ``h2(X)``, ...
+``0`` to ``m-1`` to perform hashing calculations on each element to be inserted. Every time an
+element ``X`` is inserted into the set, the bits at positions ``h1(X)``, ``h2(X)``, ...
 ``hk(X)`` in ``v`` are set to 1 (any particular bit might be set to 1 multiple times
 for multiple different inserted elements). Given a query for any element ``Y``, the
 bits at positions ``h1(Y)``, ``h2(Y)``, ... ``hk(Y)`` are checked. If any of them is 0,
@@ -123,9 +123,9 @@ lookup with element comparison.
 
   Detecting Routing Loops Using BF
 
-BF is used for applications that need only one set, and the
+A BF is used for applications that need only one set, and the
 membership of elements is checked against the BF. The example discussed
-in the above figure is one example of potential applications that uses only one
+in the above figure is one example of potential applications that use only one
 set to capture the node IDs that have been visited so far by the packet. Each
 node will then check this embedded BF in the packet header for its own id, and
 if the BF indicates that the current node is definitely not in the set then a
@@ -272,7 +272,7 @@ The general input arguments used when creating the set-summary should include ``
 which is the name of the created set-summary, *type* which is one of the types
 supported by the library (e.g. ``RTE_MEMBER_TYPE_HT`` for HTSS or ``RTE_MEMBER_TYPE_VBF`` for vBF), and ``key_len``
 which is the length of the element/key. There are other parameters
-are only used for certain type of set-summary, or which have a slightly different meaning for different types of set-summary.
+that are only used for a certain type of set-summary, or that have a slightly different meaning for different types of set-summary.
 For example, ``num_keys`` parameter means the maximum number of entries for Hash table based set-summary.
 However, for bloom filter, this value means the expected number of keys that could be
 inserted into the bloom filter(s). The value is used to calculate the size of each
@@ -285,7 +285,7 @@ set-summary. For HTSS, another parameter ``is_cache`` is used to indicate
 if this set-summary is a cache (i.e. with false negative probability) or not.
 For vBF, extra parameters are needed. For example, ``num_set`` is the number of
 sets needed to initialize the vector bloom filters. This number is equal to the
-number of bloom filters will be created.
+number of bloom filters that will be created.
 ``false_pos_rate`` is the false positive rate. num_keys and false_pos_rate will be used to determine
 the number of hash functions and the bloom filter size.
 
@@ -338,11 +338,11 @@ element/key that needs to be looked up, ``max_match_per_key`` which is to indica
 the user expects to find for each key, and ``set_id`` which is used to return all
 target set ids where the key has matched, if any. The ``set_id`` array should be sized
 according to ``max_match_per_key``. For vBF, the maximum number of matches per key is equal
-to the number of sets. For HTSS, the maximum number of matches per key is equal to two time
+to the number of sets. For HTSS, the maximum number of matches per key is equal to two times the
 entry count per bucket. ``max_match_per_key`` should be equal or smaller than the maximum number of
 possible matches.
 
-The ``rte_membership_lookup_multi_bulk()`` function looks up a bulk of keys/elements in the
+The ``rte_member_lookup_multi_bulk()`` function looks up a bulk of keys/elements in the
 set-summary structure for multiple matches, each key lookup returns ALL the matches (possibly more
 than one) found for this key when it is matched against all target sets (cache mode HTSS
 matches at most one target set). The
@@ -362,7 +362,7 @@ possible matches, similar to ``rte_member_lookup_multi``.
 Set-summary Element Delete
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``rte_membership_delete()`` function deletes an element/key from a set-summary structure, if it fails
+The ``rte_member_delete()`` function deletes an element/key from a set-summary structure, if it fails
 an error is returned. The input arguments should include ``key`` which is a pointer to the
 element/key that needs to be deleted from the set-summary, and ``set_id``
 which is the set id associated with the key to delete. It is worth noting that current

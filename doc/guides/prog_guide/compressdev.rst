@@ -5,7 +5,7 @@ Compression Device Library
 ==========================
 
 The compression framework provides a generic set of APIs to perform compression services
-as well as to query and configure compression devices both physical(hardware) and virtual(software)
+as well as to query and configure compression devices both physical (hardware) and virtual (software)
 to perform those services. The framework currently only supports lossless compression schemes:
 Deflate and LZS.
 
@@ -17,7 +17,7 @@ Device Creation
 
 Physical compression devices are discovered during the bus probe of the EAL function
 which is executed at DPDK initialization, based on their unique device identifier.
-For e.g. PCI devices can be identified using PCI BDF (bus/bridge, device, function).
+For example, PCI devices can be identified using PCI BDF (bus/bridge, device, function).
 Specific physical compression devices, like other physical devices in DPDK can be
 listed using the EAL command line options.
 
@@ -113,7 +113,7 @@ acceleration and CPU features. List of compression device features can be seen i
 RTE_COMPDEV_FF_XXX macros.
 
 The algorithm features are features which the device supports per-algorithm,
-such as a stateful compression/decompression, checksums operation etc.
+such as a stateful compression/decompression, checksum operations etc.
 The list of algorithm features can be seen in the RTE_COMP_FF_XXX macros.
 
 Capabilities
@@ -488,7 +488,7 @@ with each chunk size of CHUNK_LEN, would look like:
 
     uint8_t cdev_id = rte_compressdev_get_dev_id(<PMD name>);
 
-    /* configure the  device. */
+    /* configure the device. */
     if (rte_compressdev_configure(cdev_id, &conf) < 0)
         rte_exit(EXIT_FAILURE, "Failed to configure compressdev %u", cdev_id);
 
@@ -592,7 +592,7 @@ on the device's hardware input queue, for virtual devices the processing of the
 operations is usually completed during the enqueue call to the compression
 device. The dequeue burst API will retrieve any processed operations available
 from the queue pair on the compression device, from physical devices this is usually
-directly from the devices processed queue, and for virtual device's from an
+directly from the device's processed queue, and for virtual devices from an
 ``rte_ring`` where processed operations are placed after being processed on the
 enqueue call.
 

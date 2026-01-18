@@ -120,7 +120,7 @@ crypto processing the packet is presented to the host as a regular Rx packet
 but all security protocol related headers are optionally removed from the
 packet. e.g. in the case of IPsec, the IPsec tunnel headers (if any),
 ESP/AH headers will be removed from the packet and the received packet
-will contains the decrypted packet only. The driver Rx path checks the
+will contain the decrypted packet only. The driver Rx path checks the
 descriptors and based on the crypto status sets additional flags in
 ``rte_mbuf.ol_flags`` field. The driver would also set device-specific
 metadata in ``RTE_SECURITY_DYNFIELD_NAME`` field.
@@ -696,7 +696,7 @@ Security Sessions are created to store the immutable fields of a particular Secu
 Association for a particular protocol which is defined by a security session
 configuration structure which is used in the operation processing of a packet flow.
 Sessions are used to manage protocol specific information as well as crypto parameters.
-Security sessions cache this immutable data in a optimal way for the underlying PMD
+Security sessions cache this immutable data in an optimal way for the underlying PMD
 and this allows further acceleration of the offload of Crypto workloads.
 
 The Security framework provides APIs to create and free sessions for crypto/ethernet

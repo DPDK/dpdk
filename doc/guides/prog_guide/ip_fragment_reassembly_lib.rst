@@ -18,12 +18,12 @@ For each fragment two new mbufs are created:
 *   Direct mbuf -- mbuf that will contain L3 header of the new fragment.
 
 *   Indirect mbuf -- mbuf that is attached to the mbuf with the original packet.
-    It's data field points to the start of the original packets data plus fragment offset.
+    Its data field points to the start of the original packets data plus fragment offset.
 
 Then L3 header is copied from the original mbuf into the 'direct' mbuf and updated to reflect new fragmented status.
 Note that for IPv4, header checksum is not recalculated and is set to zero.
 
-Finally 'direct' and 'indirect' mbufs for each fragment are linked together via mbuf's next filed to compose a packet for the new fragment.
+Finally 'direct' and 'indirect' mbufs for each fragment are linked together via mbuf's next field to compose a packet for the new fragment.
 
 The caller has an ability to explicitly specify which mempools should be used to allocate 'direct' and 'indirect' mbufs from.
 
@@ -41,7 +41,7 @@ Each IP packet is uniquely identified by triple <Source IP address>, <Destinatio
 
 Note that all update/lookup operations on Fragment Table are not thread safe.
 So if different execution contexts (threads/processes) will access the same table simultaneously,
-then some external syncing mechanism have to be provided.
+then some external syncing mechanism has to be provided.
 
 Each table entry can hold information about packets consisting of up to RTE_LIBRTE_IP_FRAG_MAX (by default: 8) fragments.
 
@@ -62,15 +62,16 @@ instead of reinserting existing keys into alternative locations, ip_frag_tbl_add
 Also, entries that resides in the table longer then <max_cycles> are considered as invalid,
 and could be removed/replaced by the new ones.
 
-Note that reassembly demands a lot of mbuf's to be allocated.
+Note that reassembly demands a lot of mbufs to be allocated.
 At any given time up to (2 \* bucket_entries \* RTE_LIBRTE_IP_FRAG_MAX \* <maximum number of mbufs per packet>)
 can be stored inside Fragment Table waiting for remaining fragments.
 
 Packet Reassembly
 ~~~~~~~~~~~~~~~~~
 
-Fragmented packets processing and reassembly is done by the rte_ipv4_frag_reassemble_packet()/rte_ipv6_frag_reassemble_packet.
-Functions. They either return a pointer to valid mbuf that contains reassembled packet,
+Fragmented packets processing and reassembly is done
+by the rte_ipv4_frag_reassemble_packet()/rte_ipv6_frag_reassemble_packet() functions.
+They either return a pointer to valid mbuf that contains reassembled packet,
 or NULL (if the packet can't be reassembled for some reason).
 
 These functions are responsible for:

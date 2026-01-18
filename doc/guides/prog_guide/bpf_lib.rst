@@ -4,9 +4,9 @@
 Berkeley Packet Filter (BPF) Library
 ====================================
 
-The DPDK provides an BPF library that gives the ability
+The DPDK provides a BPF library that gives the ability
 to load and execute Enhanced Berkeley Packet Filter (eBPF) bytecode within
-user-space dpdk application.
+user-space DPDK application.
 
 It supports basic set of features from eBPF spec.
 Please refer to the

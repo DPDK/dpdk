@@ -43,7 +43,8 @@ The disadvantages:
 
 *   Having many rings costs more in terms of memory than a linked list queue. An empty ring contains at least N objects.
 
-A simplified representation of a Ring is shown in with consumer and producer head and tail pointers to objects stored in the data structure.
+A simplified representation of a Ring is shown in the figure below,
+with consumer and producer head and tail pointers to objects stored in the data structure.
 
 .. figure:: img/ring1.*
 

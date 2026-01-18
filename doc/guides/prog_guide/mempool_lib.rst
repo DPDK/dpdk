@@ -33,7 +33,7 @@ but can be enabled by setting ``RTE_LIBRTE_MEMPOOL_STATS`` in ``config/rte_confi
 Memory Alignment Constraints on x86 architecture
 ------------------------------------------------
 
-Depending on hardware memory configuration on X86 architecture, performance can be greatly improved by adding a specific padding between objects.
+Depending on hardware memory configuration on x86 architecture, performance can be greatly improved by adding a specific padding between objects.
 The objective is to ensure that the beginning of each object starts on a different channel and rank in memory so that all channels are equally loaded.
 
 This is particularly true for packet buffers when doing L3 forwarding or flow classification.
@@ -59,7 +59,7 @@ Examples of alignment for different DIMM architectures are shown in
 In this case, the assumption is that a packet is 16 blocks of 64 bytes, which is not true.
 
 The Intel® 5520 chipset has three channels, so in most cases,
-no padding is required between objects (except for objects whose size are n x 3 x 64 bytes blocks).
+no padding is required between objects (except for objects whose size is n x 3 x 64 bytes blocks).
 
 .. _mempool_figure_memory_management2:
 
@@ -86,7 +86,7 @@ since each access requires a compare-and-set (CAS) operation.
 To avoid having too many access requests to the memory pool's ring,
 the memory pool allocator can maintain a per-core cache and do bulk requests to the memory pool's ring,
 via the cache with many fewer locks on the actual memory pool structure.
-In this way, each core has full access to its own cache (with locks) of free objects and
+In this way, each core has full access to its own cache (without locks) of free objects and
 only when the cache fills does the core need to shuffle some of the free objects back to the pools ring or
 obtain more objects when the cache is empty.
 
@@ -137,7 +137,7 @@ Legacy applications may continue to use the old ``rte_mempool_create()`` API
 call, which uses a ring based mempool handler by default. These applications
 will need to be modified to use a new mempool handler.
 
-For applications that use ``rte_pktmbuf_create()``, there is a config setting
+For applications that use ``rte_pktmbuf_pool_create()``, there is a config setting
 (``RTE_MBUF_DEFAULT_MEMPOOL_OPS``) that allows the application to make use of
 an alternative mempool handler.
 

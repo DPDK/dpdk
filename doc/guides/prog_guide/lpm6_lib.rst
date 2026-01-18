@@ -68,7 +68,7 @@ The main data structure is built using the following elements:
 
 *   A number of tables, configurable by the user through the API, with 2^8 entries
 
-The first table, called tbl24, is indexed using the first 24 bits of the IP address be looked up,
+The first table, called tbl24, is indexed using the first 24 bits of the IP address to be looked up,
 while the rest of the tables, called tbl8s,
 are indexed using the rest of the bytes of the IP address, in chunks of 8 bits.
 This means that depending on the outcome of trying to match the IP address of an incoming packet to the rule stored in the tbl24
@@ -103,7 +103,7 @@ The first field can either contain a number indicating the tbl8 in which the loo
 or the next hop itself if the longest prefix match has already been found.
 The depth or length of the rule is the number of bits of the rule that is stored in a specific entry.
 The flags are used to determine whether the entry/table is valid or not
-and whether the search process have finished or not respectively.
+and whether the search process has finished or not respectively.
 
 Both types of tables share the same structure.
 

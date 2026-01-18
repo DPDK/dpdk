@@ -82,7 +82,7 @@ An entry in tbl24 contains the following fields:
 The first field can either contain a number indicating the tbl8 in which the lookup process should continue
 or the next hop itself if the longest prefix match has already been found.
 The two flags are used to determine whether the entry is valid or not and
-whether the search process have finished or not respectively.
+whether the search process has finished or not respectively.
 The depth or length of the rule is the number of bits of the rule that is stored in a specific entry.
 
 An entry in a tbl8 contains the following fields:

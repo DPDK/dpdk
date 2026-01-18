@@ -50,7 +50,7 @@ Initialization and Core Launching
 Part of the initialization is done by the start function of glibc.
 A check is also performed at initialization time to ensure that the micro architecture type chosen in the config file is supported by the CPU.
 Then, the main() function is called. The core initialization and launch is done in rte_eal_init() (see the API documentation).
-It consist of calls to the pthread library (more specifically, pthread_self(), pthread_create(), and pthread_setaffinity_np()).
+It consists of calls to the pthread library (more specifically, pthread_self(), pthread_create(), and pthread_setaffinity_np()).
 
 .. figure:: img/linuxapp_launch.*
 
@@ -67,7 +67,7 @@ It consist of calls to the pthread library (more specifically, pthread_self(), p
 Shutdown and Cleanup
 ~~~~~~~~~~~~~~~~~~~~
 
-During the initialization of EAL resources such as hugepage backed memory can be
+During the initialization of EAL, resources such as hugepage backed memory can be
 allocated by core components.  The memory allocated during ``rte_eal_init()``
 can be released by calling the ``rte_eal_cleanup()`` function. Refer to the
 API documentation for details.

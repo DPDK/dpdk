@@ -84,7 +84,7 @@ using ``rte_metrics_get_names()``.
     rte_metrics_update_value(port_id, id_3, values[2]);
     rte_metrics_update_value(port_id, id_4, values[3]);
 
-if metrics were registered as a single set, they can either be updated
+If metrics were registered as a single set, they can either be updated
 individually using ``rte_metrics_update_value()``, or updated together
 using the ``rte_metrics_update_values()`` function:
 
@@ -105,7 +105,7 @@ Querying metrics
 ----------------
 
 Consumers can obtain metric values by querying the metrics library using
-the ``rte_metrics_get_values()`` function that return an array of
+the ``rte_metrics_get_values()`` function that returns an array of
 ``struct rte_metric_value``. Each entry within this array contains a metric
 value and its associated key. A key-name mapping can be obtained using the
 ``rte_metrics_get_names()`` function that returns an array of
@@ -118,6 +118,8 @@ print out all metrics for a given port:
         struct rte_metric_value *metrics;
         struct rte_metric_name *names;
         int len;
+        int ret;
+        int i;
 
         len = rte_metrics_get_names(NULL, 0);
         if (len < 0) {
@@ -129,7 +131,7 @@ print out all metrics for a given port:
             return;
         }
         metrics = malloc(sizeof(struct rte_metric_value) * len);
-        names =  malloc(sizeof(struct rte_metric_name) * len);
+        names = malloc(sizeof(struct rte_metric_name) * len);
         if (metrics == NULL || names == NULL) {
             printf("Cannot allocate memory\n");
             free(metrics);
@@ -152,7 +154,7 @@ print out all metrics for a given port:
     }
 
 
-Deinitialising the library
+Deinitializing the library
 --------------------------
 
 Once the library usage is done, it must be deinitialized by calling
@@ -161,7 +163,7 @@ during initialization.
 
 .. code-block:: c
 
-    err = rte_metrics_deinit(void);
+    err = rte_metrics_deinit();
 
 If the return value is negative, it means deinitialization failed.
 This function **must** be called from a primary process.
@@ -175,11 +177,11 @@ These statistics are reported via the metrics library using the
 following names:
 
     - ``mean_bits_in``: Average inbound bit-rate
-    - ``mean_bits_out``:  Average outbound bit-rate
+    - ``mean_bits_out``: Average outbound bit-rate
     - ``ewma_bits_in``: Average inbound bit-rate (EWMA smoothed)
-    - ``ewma_bits_out``:  Average outbound bit-rate (EWMA smoothed)
-    - ``peak_bits_in``:  Peak inbound bit-rate
-    - ``peak_bits_out``:  Peak outbound bit-rate
+    - ``ewma_bits_out``: Average outbound bit-rate (EWMA smoothed)
+    - ``peak_bits_in``: Peak inbound bit-rate
+    - ``peak_bits_out``: Peak outbound bit-rate
 
 Once initialised and clocked at the appropriate frequency, these
 statistics can be obtained by querying the metrics library.
@@ -241,8 +243,8 @@ the jitter in processing delay. These statistics are then reported
 via the metrics library using the following names:
 
     - ``min_latency_ns``: Minimum processing latency (nano-seconds)
-    - ``avg_latency_ns``:  Average  processing latency (nano-seconds)
-    - ``mac_latency_ns``:  Maximum  processing latency (nano-seconds)
+    - ``avg_latency_ns``: Average processing latency (nano-seconds)
+    - ``max_latency_ns``: Maximum processing latency (nano-seconds)
     - ``jitter_ns``: Variance in processing latency (nano-seconds)
 
 Once initialised and clocked at the appropriate frequency, these
@@ -255,8 +257,6 @@ Before the library can be used, it has to be initialised by calling
 ``rte_latencystats_init()``.
 
 .. code-block:: c
-
-    lcoreid_t latencystats_lcore_id = -1;
 
     int ret = rte_latencystats_init(1, NULL);
     if (ret)

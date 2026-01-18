@@ -108,9 +108,9 @@ parameters for socket selection and number of queue pairs.
 Configuration of Queue Pairs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Each Crypto devices queue pair is individually configured through the
+Each Crypto device's queue pair is individually configured through the
 ``rte_cryptodev_queue_pair_setup`` API.
-Each queue pairs resources may be allocated on a specified socket.
+Each queue pair's resources may be allocated on a specified socket.
 
 .. code-block:: c
 
@@ -127,14 +127,14 @@ Each queue pairs resources may be allocated on a specified socket.
 
 The field ``mp_session`` is used for creating temporary session to process
 the crypto operations in the session-less mode.
-They can be the same other different mempools. Please note not all Cryptodev
-PMDs supports session-less mode.
+They can be the same or different mempools.
+All cryptodev PMDs support session-less mode.
 
 
-Logical Cores, Memory and Queues Pair Relationships
+Logical Cores, Memory and Queue Pair Relationships
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The Crypto device Library as the Poll Mode Driver library support NUMA for when
+The Crypto device Library as the Poll Mode Driver library supports NUMA for when
 a processor’s logical cores and interfaces utilize its local memory. Therefore
 Crypto operations, and in the case of symmetric Crypto operations, the session
 and the mbuf being operated on, should be allocated from memory pools created
@@ -161,7 +161,7 @@ Device Features and Capabilities
 --------------------------------
 
 Crypto devices define their functionality through two mechanisms, global device
-features and algorithm capabilities. Global devices features identify device
+features and algorithm capabilities. Global device features identify device
 wide level features which are applicable to the whole device such as
 the device having hardware acceleration or supporting symmetric and/or asymmetric
 Crypto operations.
@@ -191,7 +191,7 @@ Device Operation Capabilities
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Crypto capabilities which identify particular algorithm which the Crypto PMD
-supports are  defined by the operation type, the operation transform, the
+supports are defined by the operation type, the operation transform, the
 transform identifier and then the particulars of the transform. For the full
 scope of the Crypto capability see the definition of the structure in the
 *DPDK API Reference*.
@@ -936,9 +936,9 @@ Session and Session Management
 
 Sessions are used in asymmetric cryptographic processing to store the immutable
 data defined in asymmetric cryptographic transform which is further used in the
-operation processing. Sessions typically stores information, such as, public
+operation processing. Sessions typically store information, such as, public
 and private key information or domain params or prime modulus data i.e. immutable
-across data sets. Crypto sessions cache this immutable data in a optimal way for the
+across data sets. Crypto sessions cache this immutable data in an optimal way for the
 underlying PMD and this allows further acceleration of the offload of Crypto workloads.
 
 Like symmetric, the Crypto device framework provides APIs to allocate and initialize
@@ -993,6 +993,7 @@ public generation. Also, currently API does not support chaining of symmetric an
 asymmetric crypto xforms.
 
 Each xform defines specific asymmetric crypto algo. Currently supported are:
+
 * RSA
 * Modular operations (Exponentiation and Inverse)
 * Diffie-Hellman

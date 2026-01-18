@@ -75,7 +75,7 @@ but it should only be *frequently* read from or written to by the *owner*.
 A thread is considered the owner of a particular lcore variable value instance
 if it has the lcore id associated with that instance.
 
-Non-owner accesses results in *false sharing*.
+Non-owner accesses result in *false sharing*.
 As long as non-owner accesses are rare,
 they will have only a very slight effect on performance.
 This property of lcore variables memory organization is intentional.

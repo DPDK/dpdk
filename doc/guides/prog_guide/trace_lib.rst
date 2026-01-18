@@ -14,29 +14,29 @@ When recording, specific instrumentation points placed in the software source
 code generate events that are saved on a giant tape: a trace file.
 The trace file then later can be opened in *trace viewers* to visualize and
 analyze the trace events with timestamps and multi-core views.
-Such a mechanism will be useful for resolving a wide range of problems such as
-multi-core synchronization issues, latency measurements, finding out the
-post analysis information like CPU idle time, etc that would otherwise be
-extremely challenging to get.
+This mechanism is useful for resolving a wide range of problems
+such as multi-core synchronization issues, latency measurements,
+and finding post analysis information like CPU idle time, etc.,
+that would otherwise be extremely challenging to gather.
 
 Tracing is often compared to *logging*. However, tracers and loggers are two
-different tools, serving two different purposes.
-Tracers are designed to record much lower-level events that occur much more
+different tools serving two different purposes.
+Tracers are designed to record much lower-level events that occur more
 frequently than log messages, often in the range of thousands per second, with
 very little execution overhead.
 Logging is more appropriate for a very high-level analysis of less frequent
 events: user accesses, exceptional conditions (errors and warnings, for
-example), database transactions, instant messaging communications, and such.
+example), database transactions, instant messaging communications, etc.
 Simply put, logging is one of the many use cases that can be satisfied with
 tracing.
 
 DPDK tracing library features
 -----------------------------
 
-- A framework to add tracepoints in control and fast path APIs with minimum
-  impact on performance.
+- Provides a framework to add tracepoints in control and fast path APIs
+  with minimal impact on performance.
   Typical trace overhead is ~20 cycles and instrumentation overhead is 1 cycle.
-- Enable and disable the tracepoints at runtime.
+- Enable and disable tracepoints at runtime.
 - Save the trace buffer to the filesystem at any point in time.
 - Support ``overwrite`` and ``discard`` trace mode operations.
 - String-based tracepoint object lookup.
@@ -47,8 +47,8 @@ DPDK tracing library features
   For detailed information, refer to
   `Common Trace Format <https://diamon.org/ctf/>`_.
 
-How to add a tracepoint?
-------------------------
+How to add a tracepoint
+-----------------------
 
 This section steps you through the details of adding a simple tracepoint.
 
@@ -67,14 +67,14 @@ Create the tracepoint header file
         rte_trace_point_emit_string(str);
  )
 
-The above macro creates ``app_trace_string`` tracepoint.
+The above macro creates the ``app_trace_string`` tracepoint.
 The user can choose any name for the tracepoint.
 However, when adding a tracepoint in the DPDK library, the
 ``rte_<library_name>_trace_[<domain>_]<name>`` naming convention must be
 followed.
 The examples are ``rte_eal_trace_generic_str``, ``rte_mempool_trace_create``.
 
-The ``RTE_TRACE_POINT`` macro expands from above definition as the following
+The ``RTE_TRACE_POINT`` macro expands from the above definition as the following
 function template:
 
 .. code-block:: c
@@ -103,7 +103,7 @@ Register the tracepoint
  RTE_TRACE_POINT_REGISTER(app_trace_string, app.trace.string)
 
 The above code snippet registers the ``app_trace_string`` tracepoint to
-trace library. Here, the ``my_tracepoint.h`` is the header file
+the trace library. Here, ``my_tracepoint.h`` is the header file
 that the user created in the first step :ref:`create_tracepoint_header_file`.
 
 The second argument for the ``RTE_TRACE_POINT_REGISTER`` is the name for the
@@ -122,10 +122,10 @@ convention.
 
    The ``RTE_TRACE_POINT_REGISTER`` defines the placeholder for the
    ``rte_trace_point_t`` tracepoint object.
-   For generic tracepoint or for tracepoint used in public header files,
+   For a generic tracepoint or for the tracepoint used in public header files,
    the user must export a ``__<trace_function_name>`` symbol
    in the library ``.map`` file for this tracepoint
-   to be used out of the library, in shared builds.
+   to be used out of the library in shared builds.
    For example, ``__app_trace_string`` will be the exported symbol in the
    above example.
 
@@ -136,24 +136,24 @@ In order to avoid performance impact in fast path code, the library introduced
 ``RTE_TRACE_POINT_FP``. When adding the tracepoint in fast path code,
 the user must use ``RTE_TRACE_POINT_FP`` instead of ``RTE_TRACE_POINT``.
 
-``RTE_TRACE_POINT_FP`` is compiled out by default and it can be enabled using
+``RTE_TRACE_POINT_FP`` is compiled out by default and can be enabled using
 the ``enable_trace_fp`` option for meson build.
 
 Event record mode
 -----------------
 
-Event record mode is an attribute of trace buffers. Trace library exposes the
+Event record mode is an attribute of trace buffers. The trace library exposes the
 following modes:
 
 Overwrite
-   When the trace buffer is full, new trace events overwrites the existing
+   When the trace buffer is full, new trace events overwrite the existing
    captured events in the trace buffer.
 Discard
-   When the trace buffer is full, new trace events will be discarded.
+   When the trace buffer is full, new trace events are discarded.
 
-The mode can be configured either using EAL command line parameter
-``--trace-mode`` on application boot up or use ``rte_trace_mode_set()`` API to
-configure at runtime.
+The mode can be configured either using the EAL command line parameter
+``--trace-mode`` on application boot up or by using the ``rte_trace_mode_set()``
+API at runtime.
 
 Trace file location
 -------------------
@@ -161,14 +161,14 @@ Trace file location
 On ``rte_trace_save()`` or ``rte_eal_cleanup()`` invocation, the library saves
 the trace buffers to the filesystem. By default, the trace files are stored in
 ``$HOME/dpdk-traces/rte-yyyy-mm-dd-[AP]M-hh-mm-ss/``.
-It can be overridden by the ``--trace-dir=<directory path>`` EAL command line
-option.
+This location can be overridden
+by the ``--trace-dir=<directory path>`` EAL command line option.
 
 For more information, refer to :doc:`/linux_gsg/linux_eal_parameters` for
 trace EAL command line options.
 
-View and analyze the recorded events
-------------------------------------
+View and analyze recorded events
+--------------------------------
 
 Once the trace directory is available, the user can view/inspect the recorded
 events.
@@ -176,7 +176,7 @@ events.
 There are many tools you can use to read DPDK traces:
 
 #. ``babeltrace`` is a command-line utility that converts trace formats; it
-   supports the format that DPDK trace library produces, CTF, as well as a
+   supports the format that the DPDK trace library produces, CTF, as well as a
    basic text output that can be grep'ed.
    The babeltrace command is part of the Open Source Babeltrace project.
 
@@ -195,37 +195,37 @@ to babeltrace with no options::
 all their events, merging them in chronological order.
 
 You can pipe the output of the babeltrace into a tool like grep(1) for further
-filtering. Below example grep the events for ``ethdev`` only::
+filtering. The example below greps the events for ``ethdev`` only::
 
     babeltrace /tmp/my-dpdk-trace | grep ethdev
 
 You can pipe the output of babeltrace into a tool like wc(1) to count the
-recorded events. Below example count the number of ``ethdev`` events::
+recorded events. The example below counts the number of ``ethdev`` events::
 
     babeltrace /tmp/my-dpdk-trace | grep ethdev | wc --lines
 
-Use the tracecompass GUI tool
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Use the Trace Compass GUI tool
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``Tracecompass`` is another tool to view/analyze the DPDK traces which gives
-a graphical view of events. Like ``babeltrace``, tracecompass also provides
-an interface to search for a particular event.
-To use ``tracecompass``, following are the minimum required steps:
+``Trace Compass`` is another tool to view/analyze the DPDK traces
+which gives a graphical view of events.
+Like ``babeltrace``, Trace Compass also provides an interface to search for a particular event.
+To use ``Trace Compass``, the following are the minimum required steps:
 
-- Install ``tracecompass`` to the localhost. Variants are available for Linux,
+- Install ``Trace Compass`` to the localhost. Variants are available for Linux,
   Windows, and OS-X.
-- Launch ``tracecompass`` which will open a graphical window with trace
+- Launch ``Trace Compass`` which will open a graphical window with trace
   management interfaces.
-- Open a trace using ``File->Open Trace`` option and select metadata file which
-  is to be viewed/analyzed.
+- Open a trace using the ``File->Open Trace`` option
+  and select the metadata file which will be viewed/analyzed.
 
-For more details, refer
+For more details, refer to
 `Trace Compass <https://www.eclipse.org/tracecompass/>`_.
 
 Quick start
 -----------
 
-This section steps you through the details of generating trace and viewing it.
+This section steps you through the details of generating the trace and viewing it.
 
 - Start the dpdk-test::
 
@@ -238,9 +238,8 @@ This section steps you through the details of generating trace and viewing it.
 Implementation details
 ----------------------
 
-As DPDK trace library is designed to generate traces that uses ``Common Trace
-Format (CTF)``. ``CTF`` specification consists of the following units to create
-a trace.
+The DPDK trace library is designed to generate traces that use ``Common Trace Format (CTF)``.
+The ``CTF`` specification consists of the following units to create a trace.
 
 - ``Stream`` Sequence of packets.
 - ``Packet`` Header and one or more events.
@@ -249,15 +248,16 @@ a trace.
 For detailed information, refer to
 `Common Trace Format <https://diamon.org/ctf/>`_.
 
-The implementation details broadly divided into the following areas:
+Implementation details are broadly divided into the following areas:
 
 Trace metadata creation
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Based on the ``CTF`` specification, one of a CTF trace's streams is mandatory:
-the metadata stream. It contains exactly what you would expect: data about the
-trace itself. The metadata stream contains a textual description of the binary
-layouts of all the other streams.
+Based on the ``CTF`` specification,
+one of the streams in a CTF trace is mandatory: the metadata stream.
+It contains exactly what you would expect: data about the trace itself.
+The metadata stream contains a textual description of
+the binary layouts of all the other streams.
 
 This description is written using the Trace Stream Description Language (TSDL),
 a declarative language that exists only in the realm of CTF.
@@ -270,18 +270,17 @@ The internal ``trace_metadata_create()`` function generates the metadata.
 Trace memory
 ~~~~~~~~~~~~
 
-The trace memory will be allocated through an internal function
-``__rte_trace_mem_per_thread_alloc()``. The trace memory will be allocated
-per thread to enable lock less trace-emit function.
+The trace memory is allocated through an internal function ``__rte_trace_mem_per_thread_alloc()``.
+The trace memory is allocated per thread to enable lockless trace-emit function.
 
-For non lcore threads, the trace memory is allocated on the first trace
+For non-lcore threads, the trace memory is allocated on the first trace
 emission.
 
-For lcore threads, if trace points are enabled through a EAL option, the trace
-memory is allocated when the threads are known of DPDK
-(``rte_eal_init`` for EAL lcores, ``rte_thread_register`` for non-EAL lcores).
+For lcore threads, if trace points are enabled through an EAL option, the trace
+memory is allocated when the threads are known to DPDK
+(``rte_eal_init()`` for EAL lcores, ``rte_thread_register()`` for non-EAL lcores).
 Otherwise, when trace points are enabled later in the life of the application,
-the behavior is the same as non lcore threads and the trace memory is allocated
+the behavior is the same as non-lcore threads and the trace memory is allocated
 on the first trace emission.
 
 Trace memory layout
@@ -340,7 +339,7 @@ trace.header
   | timestamp [47:0]     |
   +----------------------+
 
-The trace header is 64 bits, it consists of 48 bits of timestamp and 16 bits
+The trace header is 64 bits, consisting of a 48-bit timestamp and a 16-bit
 event ID.
 
 The ``packet.header`` and ``packet.context`` will be written in the slow path

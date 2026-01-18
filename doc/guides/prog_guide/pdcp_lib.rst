@@ -7,7 +7,7 @@ PDCP Protocol Processing Library
 DPDK provides a library for PDCP protocol processing.
 The library utilizes other DPDK libraries such as cryptodev, reorder, etc.,
 to provide the application with a transparent and
-high performant PDCP protocol processing library.
+high-performance PDCP protocol processing library.
 
 The library abstracts complete PDCP protocol processing conforming to
 `ETSI TS 138 323 V17.1.0 (2022-08)
@@ -32,27 +32,27 @@ to work with cryptodev irrespective of the protocol offload features supported.
 PDCP entity API
 ---------------
 
-PDCP library provides following control path API that is used to
+PDCP library provides the following control path APIs that are used to
 configure various PDCP entities:
 
 - ``rte_pdcp_entity_establish()``
 - ``rte_pdcp_entity_suspend()``
 - ``rte_pdcp_entity_release()``
 
-A PDCP entity would translate to one ``rte_cryptodev_sym_session`` or
+A PDCP entity translates to one ``rte_cryptodev_sym_session`` or
 ``rte_security_session`` based on the config.
 The sessions would be created/destroyed
 while corresponding PDCP entity operations are performed.
 
 When upper layers request a PDCP entity suspend (``rte_pdcp_entity_suspend()``),
-it would result in flushing out of all cached packets and
+it results in flushing out of all cached packets and
 internal state variables are updated as described in 5.1.4.
 
 When upper layers request a PDCP entity release (``rte_pdcp_entity_release()``),
-it would result in flushing out of all cached packets
+it results in flushing out of all cached packets
 and releasing of all memory associated with the entity.
-It would internally free any crypto/security sessions created.
-All procedures mentioned in 5.1.3 would be performed.
+It internally frees any crypto/security sessions created.
+All procedures mentioned in 5.1.3 are performed.
 
 PDCP PDU (Protocol Data Unit) API
 ---------------------------------
@@ -82,8 +82,8 @@ PDCP packet processing API for control PDU
 
 Control PDUs are used in PDCP as a communication channel
 between transmitting and receiving entities.
-When upper layer request for operations such as re-establishment,
-receiving PDCP entity need to prepare a status report
+When upper layers request operations such as re-establishment,
+the receiving PDCP entity needs to prepare a status report
 and send it to the other end.
 The API ``rte_pdcp_control_pdu_create()`` allows application to request the same.
 
@@ -97,13 +97,13 @@ Since cryptodev dequeue can return crypto operations
 belonging to multiple entities, ``rte_pdcp_pkt_crypto_group()``
 is added to help grouping crypto operations belonging to same PDCP entity.
 
-Lib PDCP would allow application to use same API sequence
+Lib PDCP allows the application to use the same API sequence
 while leveraging protocol offload features enabled by ``rte_security`` library.
 
-Lib PDCP would internally change the handles registered
+Lib PDCP internally changes the handles registered
 for ``pre_process`` and ``post_process`` based on features enabled in the entity.
 
-Lib PDCP would create the required sessions on the device
+Lib PDCP creates the required sessions on the device
 provided in entity to minimize the application requirements.
 Also, the ``rte_crypto_op`` allocation and free would also be done internally
 by lib PDCP to allow the library to create crypto ops as required for the input packets.

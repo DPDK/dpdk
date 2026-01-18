@@ -43,7 +43,7 @@ Apart from the basic methods explained above, the Hash Library API provides a fe
     the user to perform these operations faster, as the hash value is already computed.
 
 *   Add / lookup entry with key and data: A data is provided as input for add. Add allows the user to store
-    not only the key, but also the data which may be either a 8-byte integer or a pointer to external data (if data size is more than 8 bytes).
+    not only the key, but also the data which may be either an 8-byte integer or a pointer to external data (if data size is more than 8 bytes).
 
 *   Combination of the two options above: User can provide key, precomputed hash, and data.
 
@@ -201,7 +201,7 @@ if there is a new entry to be added which primary location coincides with their 
 being pushed to their alternative location.
 Therefore, as user adds more entries to the hash table, distribution of the hash values
 in the buckets will change, being most of them in their primary location and a few in
-their secondary location, which the later will increase, as table gets busier.
+their secondary location, which the latter will increase, as table gets busier.
 This information is quite useful, as performance may be lower as more entries
 are evicted to their secondary location.
 

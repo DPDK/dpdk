@@ -33,11 +33,11 @@ The operation of the distributor is as follows:
 
 #.  As workers request packets, the distributor takes packets from the set of packets passed in and distributes them to the workers.
     As it does so, it examines the "tag" -- stored in the RSS hash field in the mbuf -- for each packet
-    and records what tags are being processed by each  worker.
+    and records what tags are being processed by each worker.
 
 #.  If the next packet in the input set has a tag which is already being processed by a worker,
     then that packet will be queued up for processing by that worker
-    and given to it in preference to other packets when that work next makes a request for work.
+    and given to it in preference to other packets when that worker next makes a request for work.
     This ensures that no two packets with the same tag are processed in parallel,
     and that all packets with the same tag are processed in input order.
 
@@ -78,7 +78,7 @@ while allowing packet order within a packet flow -- identified by a tag -- to be
 
 
 The flush and clear_returns API calls, mentioned previously,
-are likely of less use that the process and returned_pkts APIS, and are principally provided to aid in unit testing of the library.
+are likely of less use than the process and returned_pkts APIs, and are principally provided to aid in unit testing of the library.
 Descriptions of these functions and their use can be found in the DPDK API Reference document.
 
 Worker Operation

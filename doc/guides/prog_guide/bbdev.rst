@@ -125,7 +125,7 @@ device, if supported by the driver. Should be called before starting the device.
 Queues Configuration
 ~~~~~~~~~~~~~~~~~~~~
 
-Each bbdev devices queue is individually configured through the
+Each bbdev device's queue is individually configured through the
 ``rte_bbdev_queue_configure()`` API.
 Each queue resources may be allocated on a specified socket.
 
@@ -168,7 +168,7 @@ Logical Cores, Memory and Queues Relationships
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The bbdev poll mode device driver library supports NUMA architecture, in which
-a processor's logical cores and interfaces utilize it's local memory. Therefore
+a processor's logical cores and interfaces utilize its local memory. Therefore
 with baseband operations, the mbuf being operated on should be allocated from memory
 pools created in the local memory. The buffers should, if possible, remain on
 the local processor to obtain the best performance results and buffer
@@ -1232,7 +1232,7 @@ The FFT parameters are set out in the table below.
 +-------------------------+--------------------------------------------------------------+
 |fp16_exp_adjust          |value added to FP16 exponent at conversion from INT16         |
 +-------------------------+--------------------------------------------------------------+
-|freq_resample_mode       |frequency ressampling mode (0:transparent, 1-2: resample)     |
+|freq_resample_mode       |frequency resampling mode (0:transparent, 1-2: resample)      |
 +-------------------------+--------------------------------------------------------------+
 | output_depadded_size    |output depadded size prior to frequency resampling            |
 +-------------------------+--------------------------------------------------------------+

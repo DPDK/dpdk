@@ -48,7 +48,7 @@ Currently the Link Bonding PMD library supports following modes of operation:
     packets in sequential order from the first available member device through
     the last. Packets are bulk dequeued from devices then serviced in a
     round-robin manner. This mode does not guarantee in order reception of
-    packets and down stream should be able to handle out of order packets.
+    packets and downstream should be able to handle out of order packets.
 
 *   **Active Backup (Mode 1):**
 

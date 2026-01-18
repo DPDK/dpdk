@@ -24,7 +24,7 @@ Next hop IDs are represented by ``uint64_t`` values.
 
    The API and implementation are very similar for IPv4 ``rte_rib`` API and IPv6 ``rte_rib6``
    API, therefore only the ``rte_rib`` API will be discussed here.
-   Everything within this document except for the size of the prefixes is applicable to  the
+   Everything within this document except for the size of the prefixes is applicable to the
    ``rte_rib6`` API.
 
 Internally RIB is represented as a binary tree as shown in :numref:`rib_figure_internals`:

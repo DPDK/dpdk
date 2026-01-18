@@ -4,7 +4,7 @@
 Packet (Mbuf) Library
 =====================
 
-The Packet (MBuf) library provides the ability to allocate and free buffers (mbufs)
+The Packet (Mbuf) library provides the ability to allocate and free buffers (mbufs)
 that may be used by the DPDK application to store message buffers.
 The message buffers are stored in a mempool, using the :doc:`mempool_lib`.
 
@@ -20,7 +20,8 @@ Design of Packet Buffers
 
 For the storage of the packet data (including protocol headers), two approaches were considered:
 
-#.  Embed metadata within a single memory buffer the structure followed by a fixed size area for the packet data.
+#.  Embed metadata within a single memory buffer,
+    with the structure followed by a fixed-size area for the packet data.
 
 #.  Use separate memory buffers for the metadata structure and for the packet data.
 
@@ -80,10 +81,10 @@ Allocating and Freeing mbufs
 ----------------------------
 
 Allocating a new mbuf requires the user to specify the mempool from which the mbuf should be taken.
-For any newly-allocated mbuf, it contains one segment, with a length of 0.
+Any newly-allocated mbuf contains one segment, with a length of 0.
 The offset to data is initialized to have some bytes of headroom in the buffer (RTE_PKTMBUF_HEADROOM).
 
-Freeing a mbuf means returning it into its original mempool.
+Freeing an mbuf means returning it into its original mempool.
 The content of an mbuf is not modified when it is stored in a pool (as a free mbuf).
 Fields initialized by the constructor do not need to be re-initialized at mbuf allocation.
 
@@ -94,17 +95,19 @@ Manipulating mbufs
 
 This library provides some functions for manipulating the data in a packet mbuf. For instance:
 
-    *  Get data length
+    *   Get data length
 
-    *  Get a pointer to the start of data
+    *   Get a pointer to the start of data
 
-    *  Prepend data before data
+    *   Prepend data before the payload
 
-    *   Append data after data
+    *   Append data after the payload
 
     *   Remove data at the beginning of the buffer (rte_pktmbuf_adj())
 
-    *   Remove data at the end of the buffer (rte_pktmbuf_trim()) Refer to the *DPDK API Reference* for details.
+    *   Remove data at the end of the buffer (rte_pktmbuf_trim())
+
+Refer to the *DPDK API Reference* for details.
 
 .. _mbuf_meta:
 
@@ -213,7 +216,7 @@ Dynamic fields and flags
 
 The size of the mbuf is constrained and limited;
 while the amount of metadata to save for each packet is quite unlimited.
-The most basic networking information already find their place
+The most basic networking information already finds its place
 in the existing mbuf fields and flags.
 
 If new features need to be added, the new fields and flags should fit
@@ -287,4 +290,4 @@ by the script ``dpdk-mbuf-history-parser.py``.
 Use Cases
 ---------
 
-All networking application should use mbufs to transport network packets.
+All networking applications should use mbufs to transport network packets.

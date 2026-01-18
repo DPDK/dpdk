@@ -6,19 +6,18 @@ Running DPDK Unit Tests with Meson
 
 This section describes how to run test cases with the DPDK meson build system.
 
-Steps to build and install DPDK using meson can be referred
-in :doc:`build-sdk-meson`
+For steps to build and install DPDK using meson, refer to :doc:`build-sdk-meson`.
 
 Grouping of test cases
 ----------------------
 
 Test cases have been classified into four different groups.
 
-* Fast tests.
-* Performance tests.
-* Driver tests.
+* Fast tests
+* Performance tests
+* Driver tests
 * Tests which produce lists of objects as output, and therefore that need
-  manual checking.
+  manual checking
 
 These tests can be run using the argument to ``meson test`` as
 ``--suite project_name:label``.

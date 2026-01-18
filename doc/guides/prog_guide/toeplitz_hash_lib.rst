@@ -40,7 +40,7 @@ The ``rte_softrss_be`` function is a faster implementation,
 but it expects ``rss_key`` to be converted to the host byte order.
 
 The last two functions are vectorized implementations using
-Galois Fields New Instructions. Could be used if ``rte_thash_gfni_supported`` is true.
+Galois Fields New Instructions. They can be used if ``rte_thash_gfni_supported`` is true.
 They expect the tuple to be in network byte order.
 
 ``rte_thash_gfni()`` calculates the hash value for a single tuple, and
@@ -306,7 +306,7 @@ collision. This is shown in the code below.
    uint32_t rev_hash = rte_softrss((uint32_t *)&rev_tuple, RTE_THASH_V4_L4_LEN, new_key);
 
    /* Get the adjustment bits for the src port to get a new port. */
-   uint32_t adj = rte_thash_get_compliment(h, rev_hash, orig_hash);
+   uint32_t adj = rte_thash_get_complement(h, rev_hash, orig_hash);
 
    /* Adjust the source port bits. */
    uint16_t new_sport = tuple.v4.sport ^ adj;

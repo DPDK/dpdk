@@ -12,7 +12,7 @@ the most typical of which is IPv4/IPv6 forwarding.
 
    The API and implementation are very similar for IPv4 ``rte_fib`` API and IPv6 ``rte_fib6``
    API, therefore only the ``rte_fib`` API will be discussed here.
-   Everything within this document except for the size of the prefixes is applicable to  the
+   Everything within this document except for the size of the prefixes is applicable to the
    ``rte_fib6`` API.
 
 

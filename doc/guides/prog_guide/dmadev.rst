@@ -5,7 +5,7 @@ Direct Memory Access (DMA) Device Library
 =========================================
 
 The DMA library provides a DMA device framework for management and provisioning
-of hardware and software DMA poll mode drivers, defining generic API which
+of hardware and software DMA poll mode drivers, defining generic APIs which
 support a number of different DMA operations.
 
 
@@ -142,7 +142,7 @@ The following example demonstrates the usage of enqueue and dequeue operations:
 Querying Device Statistics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The statistics from a dmadev device can be got via the statistics functions,
+The statistics from a dmadev device can be obtained via the statistics functions,
 i.e. ``rte_dma_stats_get()``. The statistics returned for each device instance are:
 
 * ``submitted``: The number of operations submitted to the device.
@@ -190,7 +190,7 @@ DMA devices used for inter-domain data transfer can be categorized as follows:
 - Class B: Only one endpoint requires a DMA device; the other does not.
 - Class C: Other device types not currently classified.
 
-Currently the necessary API for Class A DMA devices are available
+Currently the necessary APIs for Class A DMA devices are available
 for exchanging the handler details.
 Devices can create or join access groups using token-based authentication,
 ensuring that only authorized devices within the same group

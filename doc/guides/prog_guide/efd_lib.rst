@@ -100,7 +100,7 @@ are retrieved. The retrieved key(s) is matched with the input flow key
 and if there is a match the value (target id) is returned.
 
 The drawback of using a hash table for flow distribution/load balancing
-is the storage requirement, since the flow table need to store keys,
+is the storage requirement, since the flow table needs to store keys,
 signatures and target values. This doesn't allow this scheme to scale to
 millions of flow keys. Large tables will usually not fit in
 the CPU cache, and hence, the lookup performance is degraded because of
@@ -142,7 +142,7 @@ impossible, as a result EFD, as shown in :numref:`efd_figure_5`,
 breaks the problem into smaller pieces (divide and conquer).
 EFD divides the entire input key set into many small groups.
 Each group consists of approximately 20-28 keys (a configurable parameter
-for the library), then, for each small group, a brute force search to find
+for the library), then, for each small group, a brute force search is performed to find
 a hash function that produces the correct outputs for each key in the group.
 
 It should be mentioned that, since the online lookup table for EFD
@@ -160,7 +160,7 @@ Example of EFD Library Usage
 ----------------------------
 
 EFD can be used along the data path of many network functions and middleboxes.
-As previously mentioned, it can used as an index table for
+As previously mentioned, it can be used as an index table for
 <key,value> pairs, meta-data for objects, a flow-level load balancer, etc.
 :numref:`efd_figure_6` shows an example of using EFD as a flow-level load
 balancer, where flows are received at a front end server before being forwarded
@@ -298,7 +298,7 @@ stores two version of the <key,value> table:
 
 -  Offline Version (in memory): Only used for the insertion/update
    operation, which is less frequent than the lookup operation. In the
-   offline version the exact keys for each group is stored. When a new
+   offline version the exact keys for each group are stored. When a new
    key is added, the hash function is updated that will satisfy the
    value for the new key together with the all old keys already inserted
    in this group.

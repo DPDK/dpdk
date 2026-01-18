@@ -11,7 +11,7 @@ This section allows the developer to take these issues into account when buildin
 The run-time environment of the DPDK is typically a single thread per logical core.
 In some cases, it is not only multi-threaded, but multi-process.
 Typically, it is best to avoid sharing data structures between threads and/or processes where possible.
-Where this is not possible, then the execution blocks must access the data in a thread- safe manner.
+Where this is not possible, then the execution blocks must access the data in a thread-safe manner.
 Mechanisms such as atomics or locking can be used that will allow execution blocks to operate serially.
 However, this can have an effect on the performance of the application.
 

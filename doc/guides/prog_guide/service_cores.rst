@@ -4,12 +4,13 @@
 Service Cores
 =============
 
-DPDK has a concept known as service cores, which enables a dynamic way of
-performing work on DPDK lcores. Service core support is built into the EAL, and
-an API is provided to optionally allow applications to control how the service
-cores are used at runtime.
+DPDK has a concept known as service cores.
+Service cores enable a dynamic way of performing work on DPDK lcores.
+Service core support is built into the EAL.
+An API is provided to give you the option of allowing applications
+to control how the service cores are used at runtime.
 
-The service cores concept is built up out of services (components of DPDK that
+The service cores concept is built out of services (components of DPDK that
 require CPU cycles to operate) and service cores (DPDK lcores, tasked with
 running services). The power of the service core concept is that the mapping
 between service cores and services can be configured to abstract away the
@@ -18,24 +19,24 @@ difference between platforms and environments.
 For example, the Eventdev has hardware and software PMDs. Of these the software
 PMD requires an lcore to perform the scheduling operations, while the hardware
 PMD does not. With service cores, the application would not directly notice
-that the scheduling is done in software.
+that the scheduling is done in the software.
 
 For detailed information about the service core API, please refer to the docs.
 
 Service Core Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-There are two methods to having service cores in a DPDK application, either by
+There are two methods to having service cores in a DPDK application: either by
 using the service corelist, or by dynamically adding cores using the API.
-The simpler of the two is to pass the `-S` corelist argument to EAL, which will
-take any cores available in the main DPDK corelist, and if also set
-in the service corelist the cores become service-cores instead of DPDK
-application lcores.
+The simpler of the two is to pass the `-S` coremask argument to the EAL,
+which will take any cores available in the main DPDK coremask.
+If the bits are also set in the service coremask,
+the cores become service-cores instead of DPDK application lcores.
 
 Enabling Services on Cores
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Each registered service can be individually mapped to a service core, or set of
+Each registered service can be individually mapped to a service core, or a set of
 service cores. Enabling a service on a particular core means that the lcore in
 question will run the service. Disabling that core on the service stops the
 lcore in question from running the service.
@@ -48,8 +49,8 @@ function to run the service.
 Service Core Statistics
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-The service core library is capable of collecting runtime statistics like number
-of calls to a specific service, and number of cycles used by the service. The
+The service core library is capable of collecting runtime statistics like the number
+of calls to a specific service, and the number of cycles used by the service. The
 cycle count collection is dynamically configurable, allowing any application to
 profile the services running on the system at any time.
 
@@ -58,9 +59,9 @@ Service Core Tracing
 
 The service core library is instrumented with tracepoints using the DPDK Trace
 Library. These tracepoints allow you to track the service and logical cores
-state. To activate tracing when launching a DPDK program it is necessary to use the
+state. To activate tracing when launching a DPDK program, it is necessary to use the
 ``--trace`` option to specify a regular expression to select which tracepoints
-to enable. Here is an example if you want to only specify service core tracing::
+to enable. Here is an example if you want to specify only service core tracing::
 
   ./dpdk/examples/service_cores/build/service_cores --trace="lib.eal.thread*" --trace="lib.eal.service*"
 

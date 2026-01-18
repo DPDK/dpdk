@@ -88,7 +88,7 @@ Profiling on ARM64
 Using Linux perf
 ~~~~~~~~~~~~~~~~
 
-The ARM64 architecture provide performance counters to monitor events.  The
+The ARM64 architecture provides performance counters to monitor events.  The
 Linux ``perf`` tool can be used to profile and benchmark an application.  In
 addition to the standard events, ``perf`` can be used to profile arm64
 specific PMU (Performance Monitor Unit) events through raw events (``-e``

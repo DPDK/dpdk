@@ -32,7 +32,7 @@ over which packet classification will be performed.
 Though there are few restrictions on the rule fields layout:
 
 *  First field in the rule definition has to be one byte long.
-*  All subsequent fields has to be grouped into sets of 4 consecutive bytes.
+*  All subsequent fields have to be grouped into sets of 4 consecutive bytes.
 
 This is done mainly for performance reasons - search function processes the first input byte as part of the flow setup and then the inner loop of the search function is unrolled to process four input bytes at a time.
 
@@ -69,7 +69,7 @@ To define each field inside an AC rule, the following structure is used:
 
 *   input_index
     As mentioned above, all input fields, except the very first one, must be in groups of 4 consecutive bytes.
-    The input index specifies to which input group that field belongs to.
+    The input index specifies which input group that field belongs to.
 
 *   offset
     The offset field defines the offset for the field.
@@ -140,7 +140,7 @@ The following array of field definitions can be used:
         },
     };
 
-A typical example of such an IPv4 5-tuple rule is a follows:
+A typical example of such an IPv4 5-tuple rule is as follows:
 
 ::
 
@@ -209,7 +209,7 @@ The following array of field definitions can be used:
         },
     };
 
-A typical example of such an IPv6 2-tuple rule is a follows:
+A typical example of such an IPv6 2-tuple rule is as follows:
 
 ::
 
@@ -346,7 +346,7 @@ For example:
      * populated with rules AC context and cfg filled properly.
      */
 
-     /* try to build AC context, with RT structures less then 8MB. */
+     /* try to build AC context, with RT structures less than 8MB. */
      cfg.max_size = 0x800000;
      ret = rte_acl_build(acx, &cfg);
 

@@ -5,21 +5,21 @@ Argparse Library
 ================
 
 The argparse library provides argument parsing functionality,
-this library makes it easy to write user-friendly command-line program.
+this library makes it easy to write a user-friendly command-line program.
 
 Features and Capabilities
 -------------------------
 
-- Support parsing optional argument (which could take with no-value,
-  required-value and optional-value).
+- Support parsing optional argument (which could have no-value,
+  required-value or optional-value).
 
-- Support parsing positional argument (which must take with required-value).
+- Support parsing positional argument (which must have required-value).
 
 - Support getopt-style argument reordering for non-flag arguments as an alternative to positional arguments.
 
-- Support automatic generate usage information.
+- Support automatic generation of usage information.
 
-- Support issue errors when provide with invalid arguments.
+- Support issuing errors when provided with invalid arguments.
 
 - Support parsing argument by two ways:
 
@@ -126,15 +126,15 @@ the following two modes are supported (take above ``--ccc`` as an example):
 
 - The single mode: ``--ccc`` or ``-c``.
 
-- The kv mode: ``--ccc=123`` or ``-c=123`` or ``-c123```.
+- The kv mode: ``--ccc=123`` or ``-c=123`` or ``-c123``.
 
 For positional arguments which must take required-value,
-their values are parsing in the order defined.
+their values are parsed in the order defined.
 
 .. note::
 
    The compact mode is not supported.
-   Take above ``-a`` and ``-d`` as an example, don't support ``-ad`` input.
+   Take above ``-a`` and ``-d`` as an example, doesn't support ``-ad`` input.
 
 Parsing by autosave way
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -169,7 +169,7 @@ For arguments which are not flags (i.e. don't start with a hyphen '-'),
 there are two ways in which they can be handled by the library:
 
 #. Positional arguments: these are defined in the ``args`` array with a NULL ``short_name`` field,
-   and long_name field that does not start with a hyphen '-'.
+   and a ``long_name`` field that does not start with a hyphen '-'.
    They are parsed as required-value arguments.
 
 #. As ignored, or unhandled arguments: if the ``ignore_non_flag_args`` field in the ``rte_argparse`` object is set to true,
@@ -283,7 +283,7 @@ Parsing by callback way
 
 It could also choose to use callback to parse,
 just define a unique index for the argument
-and make the ``val_save`` field to be NULL also zero value-type.
+and make the ``val_saver`` field be NULL also zero value-type.
 
 In the example at the top of this section,
 the arguments ``--ddd``/``--eee``/``--fff`` and ``ppp`` all use this way.
@@ -311,7 +311,7 @@ Then the user input could contain multiple ``--xyz`` arguments.
 
 .. note::
 
-   The multiple times argument only support with optional argument
+   The multiple times argument is only supported with optional argument
    and must be parsed by callback way.
 
 Help and Usage Information

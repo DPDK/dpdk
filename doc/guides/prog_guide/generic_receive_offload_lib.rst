@@ -17,7 +17,7 @@ Overview
 --------
 
 In the GRO library, there are many GRO types which are defined by packet
-types. One GRO type is in charge of process one kind of packets. For
+types. One GRO type is in charge of processing one kind of packets. For
 example, TCP/IPv4 GRO processes TCP/IPv4 packets.
 
 Each GRO type has a reassembly function, which defines own algorithm and
@@ -47,7 +47,7 @@ Lightweight Mode API
 ~~~~~~~~~~~~~~~~~~~~
 
 The lightweight mode only has one function ``rte_gro_reassemble_burst()``,
-which process N packets at a time. Using the lightweight mode API to
+which processes N packets at a time. Using the lightweight mode API to
 merge packets is very simple. Calling ``rte_gro_reassemble_burst()`` is
 enough. The GROed packets are returned to applications as soon as it
 finishes.
@@ -69,7 +69,7 @@ Secondly, applications use ``rte_gro_reassemble()`` to merge packets.
 If input packets have invalid parameters, ``rte_gro_reassemble()``
 returns them to applications. For example, packets of unsupported GRO
 types or TCP SYN packets are returned. Otherwise, the input packets are
-either merged with the existed packets in the tables or inserted into the
+either merged with the existing packets in the tables or inserted into the
 tables. Finally, applications use ``rte_gro_timeout_flush()`` to flush
 packets from the tables, when they want to get the GROed packets.
 
@@ -98,7 +98,7 @@ challenges in the algorithm design:
 - packet reordering makes it hard to merge packets. For example, Linux
   GRO fails to merge packets when encounters packet reordering.
 
-The above two challenges require our algorithm is:
+The above two challenges require that our algorithm is:
 
 - lightweight enough to scale fast networking speed
 
@@ -114,13 +114,13 @@ key-based algorithm. Packets are classified into "flows" by some header
 fields (we call them as "key"). To process an input packet, the algorithm
 searches for a matched "flow" (i.e., the same value of key) for the
 packet first, then checks all packets in the "flow" and tries to find a
-"neighbor" for it. If find a "neighbor", merge the two packets together.
-If can't find a "neighbor", store the packet into its "flow". If can't
+"neighbor" for it. If it finds a "neighbor", merge the two packets together.
+If it cannot find a "neighbor", store the packet into its "flow". If it cannot
 find a matched "flow", insert a new "flow" and store the packet into the
 "flow".
 
 .. note::
-        Packets in the same "flow" that can't merge are always caused
+        Packets in the same "flow" that cannot merge are always caused
         by packet reordering.
 
 The key-based algorithm has two characters:
@@ -199,15 +199,15 @@ GRO Library Limitations
 - GRO library uses MBUF->l2_len/l3_len/l4_len/outer_l2_len/
   outer_l3_len/packet_type to get protocol headers for the
   input packet, rather than parsing the packet header. Therefore,
-  before call GRO APIs to merge packets, user applications
+  before calling GRO APIs to merge packets, user applications
   must set MBUF->l2_len/l3_len/l4_len/outer_l2_len/outer_l3_len/
   packet_type to the same values as the protocol headers of the
   packet.
 
-- GRO library doesn't support to process the packets with IPv4
+- GRO library doesn't support processing packets with IPv4
   Options or VLAN tagged.
 
-- GRO library just supports to process the packet organized
+- GRO library only supports processing packets organized
   in a single MBUF. If the input packet consists of multiple
   MBUFs (i.e. chained MBUFs), GRO reassembly behaviors are
   unknown.

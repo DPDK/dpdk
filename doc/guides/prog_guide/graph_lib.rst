@@ -37,7 +37,7 @@ Advantages of Graph architecture
   caches misses.
 - Exploits the probability that most packets will follow the same nodes in the
   graph.
-- Allow SIMD instructions for packet processing of the node.-
+- Allow SIMD instructions for packet processing of the node.
 - The modular scheme allows having reusable nodes for the consumers.
 - The modular scheme allows us to abstract the vendor HW specific
   optimizations as a node.
@@ -90,7 +90,7 @@ fini():
 ^^^^^^^
 
 The callback function will be invoked by ``rte_graph_destroy()`` on when a
-node gets detached to a graph.
+node gets detached from a graph.
 
 Node name:
 ^^^^^^^^^^
@@ -1089,16 +1089,15 @@ This node is an intermediate node that does udp destination port lookup for
 the received ipv4 packets and the result determines each packets next node.
 
 User registers a new node ``udp4_input`` into graph library during initialization
-and attach user specified node as edege to this node using
-``rte_node_udp4_usr_node_add()``, and create empty hash table with destination
-port and node id as its feilds.
+and attaches user specified node as edge to this node using ``rte_node_udp4_usr_node_add()``,
+and creates empty hash table with destination port and node id as its fields.
 
-After successful addition of user node as edege, edge id is returned to the user.
+After successful addition of user node as edge, edge id is returned to the user.
 
 User would register ``ip4_lookup`` table with specified ip address and 32 bit as mask
 for ip filtration using api ``rte_node_ip4_route_add()``.
 
-After graph is created user would update hash table with custom port with
+After graph is created user would update hash table with custom port
 and previously obtained edge id using API ``rte_node_udp4_dst_port_add()``.
 
 When packet is received lpm look up is performed if ip is matched the packet

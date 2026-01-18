@@ -23,8 +23,9 @@ Longest Prefix Match (LPM) and rings libraries are also provided.
 Sample applications are provided to help show the user how to use various features of the DPDK.
 
 The DPDK supports multiple programming models for packet processing.
-Mos of the sample applications use a polling mode for performance but
-some of the samples use interrupt driven model is useful for saving power
+Most of the sample applications use a polling mode for performance
+but some of the samples use an interrupt driven model
+that is useful for saving power
 but has additional performance overhead. If available, it is possible
 to use the DPDK with event based hardware support.
 
@@ -138,16 +139,16 @@ The library documentation is available in :doc:`timer_lib`.
 Ethernet* Poll Mode Driver Architecture
 ---------------------------------------
 
-The DPDK includes Poll Mode Drivers (PMDs) for 1 GbE, 10 GbE and 40GbE, and para virtualized virtio
+The DPDK includes Poll Mode Drivers (PMDs) for 1 GbE, 10 GbE and 40 GbE, and para virtualized virtio
 Ethernet controllers which are designed to work without asynchronous, interrupt-based signaling mechanisms.
 
 Packet Forwarding Algorithm Support
 -----------------------------------
 
-The DPDK includes Hash (librte_hash) and Longest Prefix Match (LPM,librte_lpm)
+The DPDK includes Hash (librte_hash) and Longest Prefix Match (LPM, librte_lpm)
 libraries to support the corresponding packet forwarding algorithms.
 
-See :doc:`hash_lib` and  :doc:`lpm_lib` for more information.
+See :doc:`hash_lib` and :doc:`lpm_lib` for more information.
 
 librte_net
 ----------

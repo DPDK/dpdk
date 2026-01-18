@@ -5,7 +5,7 @@ Vhost Library
 =============
 
 The vhost library implements a user space virtio net server allowing the user
-to manipulate the virtio ring directly. In another words, it allows the user
+to manipulate the virtio ring directly. In other words, it allows the user
 to fetch/put packets from/to the VM virtio net device. To achieve this, a
 vhost library should be able to:
 
@@ -73,7 +73,7 @@ The following is an overview of some key Vhost API functions:
     Enabling this flag forces vhost dequeue function to only provide linear
     pktmbuf (no multi-segmented pktmbuf).
 
-    The vhost library by default provides a single pktmbuf for given a
+    The vhost library by default provides a single pktmbuf for a given
     packet, but if for some reason the data doesn't fit into a single
     pktmbuf (e.g., TSO is enabled), the library will allocate additional
     pktmbufs from the same mempool and chain them together to create a
@@ -81,7 +81,7 @@ The following is an overview of some key Vhost API functions:
 
     However, the vhost application needs to support multi-segmented format.
     If the vhost application does not support that format and requires large
-    buffers to be dequeue, this flag should be enabled to force only linear
+    buffers to be dequeued, this flag should be enabled to force only linear
     buffers (see RTE_VHOST_USER_EXTBUF_SUPPORT) or drop the packet.
 
     It is disabled by default.
@@ -89,7 +89,7 @@ The following is an overview of some key Vhost API functions:
   - ``RTE_VHOST_USER_EXTBUF_SUPPORT``
 
     Enabling this flag allows vhost dequeue function to allocate and attach
-    an external buffer to a pktmbuf if the pkmbuf doesn't provide enough
+    an external buffer to a pktmbuf if the pktmbuf doesn't provide enough
     space to store all data.
 
     This is useful when the vhost application wants to support large packets
@@ -99,7 +99,7 @@ The following is an overview of some key Vhost API functions:
     rte_pktmbuf_attach_extbuf().
 
     See RTE_VHOST_USER_LINEARBUF_SUPPORT as well to disable multi-segmented
-    mbufs for application that doesn't support chained mbufs.
+    mbufs for applications that don't support chained mbufs.
 
     It is disabled by default.
 
@@ -137,7 +137,7 @@ The following is an overview of some key Vhost API functions:
   rte_vhost_stats_get() to collect statistics, and rte_vhost_stats_reset() to
   reset them.
 
-  It is disabled by default
+  It is disabled by default.
 
 * ``rte_vhost_driver_set_features(path, features)``
 
@@ -167,7 +167,7 @@ The following is an overview of some key Vhost API functions:
 
   * ``features_changed(int vid, uint64_t features)``
 
-    This callback is invoked when the features is changed. For example,
+    This callback is invoked when the features are changed. For example,
     ``VHOST_F_LOG_ALL`` will be set/cleared at the start/end of live
     migration, respectively.
 
@@ -200,7 +200,7 @@ The following is an overview of some key Vhost API functions:
 
 * ``rte_vhost_dequeue_burst(vid, queue_id, mbuf_pool, pkts, count)``
 
-  Receives (dequeues) ``count`` packets from guest, and stored them at ``pkts``.
+  Receives (dequeues) ``count`` packets from guest, and stores them in ``pkts``.
 
 * ``rte_vhost_crypto_create(vid, cryptodev_id, sess_mempool, socket_id)``
 
@@ -331,7 +331,7 @@ The following is an overview of some key Vhost API functions:
 
 * ``rte_vhost_async_dma_unconfigure(dma_id, vchan_id)``
 
-  Clean DMA vChannel finished to use. After this function is called,
+  Clean up a DMA vChannel after use is finished. After this function is called,
   the specified DMA vChannel should no longer be used by the Vhost library.
 
 * ``rte_vhost_notify_guest(int vid, uint16_t queue_id)``
@@ -360,7 +360,7 @@ vhost-user implementation has two options:
 * DPDK vhost-user acts as the client.
 
   Unlike the server mode, this mode doesn't create the socket file;
-  it just tries to connect to the server (which responses to create the
+  it just tries to connect to the server (which is responsible for creating the
   file instead).
 
   When the DPDK vhost-user application restarts, DPDK vhost-user will try to
@@ -469,7 +469,7 @@ Finally, a set of device ops is defined for device specific operations:
 
 * ``migration_done``
 
-  Called to allow the device to response to RARP sending.
+  Called to allow the device to respond to RARP sending.
 
 * ``get_vfio_group_fd``
 

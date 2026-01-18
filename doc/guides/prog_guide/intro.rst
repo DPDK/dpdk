@@ -19,7 +19,7 @@ The following is a list of DPDK documents in the suggested reading order:
 
 *   **Release Notes** : Provides release-specific information, including supported features,
     limitations, fixed issues, known issues and so on.
-    Also, provides the answers to frequently asked questions in FAQ format.
+    It also provides the answers to frequently asked questions in FAQ format.
 
 *   **Getting Started Guide** : Describes how to install and configure the DPDK software;
     designed to get users up and running quickly with the software.
@@ -31,7 +31,7 @@ The following is a list of DPDK documents in the suggested reading order:
 *   **Programmer's Guide** (this document): Describes:
 
     *   The software architecture and how to use it (through examples),
-        specifically in a Linux* application (linux) environment
+        specifically in a Linux* application (Linux) environment
 
     *   The content of the DPDK, the build system
         (including the commands that can be used in the root DPDK to build the development kit and an application)

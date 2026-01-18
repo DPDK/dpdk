@@ -7,7 +7,7 @@ Packet Capture Library
 The DPDK ``pdump`` library provides a framework
 for capturing packets within DPDK applications.
 It enables a **secondary process** to monitor packets
-being processed by both **primary** or **secondary** processes.
+being processed by both **primary** and **secondary** processes.
 
 
 Overview
@@ -74,7 +74,7 @@ The library exposes API for:
 .. function:: int rte_pdump_stats(uint16_t port_id, struct rte_dump_stats *stats)
 
    Reports the number of packets captured, filtered, and missed.
-   Packets maybe missed due to mbuf pool being exhausted or the ring being full.
+   Packets may be missed due to mbuf pool being exhausted or the ring being full.
 
 
 Operation
@@ -126,7 +126,7 @@ What is the performance impact of pdump?
 
 What happens if process does not call pdump init?
 
-   If application does not call ``rte_pdump_init``
+   If the application does not call ``rte_pdump_init``
    then the request to enable (in the capture command)
    will timeout and an error is returned.
 

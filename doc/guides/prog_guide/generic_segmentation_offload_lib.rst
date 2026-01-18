@@ -206,7 +206,7 @@ To segment an outgoing packet, an application must:
 
 #. Set the appropriate ol_flags in the mbuf.
 
-   - The GSO library use the value of an mbuf's ``ol_flags`` attribute to
+   - The GSO library uses the value of an mbuf's ``ol_flags`` attribute to
      determine how a packet should be segmented. It is the application's
      responsibility to ensure that these flags are set.
 

@@ -34,7 +34,7 @@ as well as providing libraries of reusable templates for the commonly used pipel
 
 The pipeline is constructed by connecting the set of input ports with the set of output ports
 through the set of tables in a tree-like topology.
-As result of lookup operation for the current packet in the current table,
+As a result of lookup operation for the current packet in the current table,
 one of the table entries (on lookup hit) or the default table entry (on lookup miss)
 provides the set of actions to be applied on the current packet,
 as well as the next hop for the packet, which can be either another table, an output port or packet drop.
@@ -107,7 +107,7 @@ Port Interface
 Each port is unidirectional, i.e. either input port or output port.
 Each input/output port is required to implement an abstract interface that
 defines the initialization and run-time operation of the port.
-The port abstract interface is described in.
+The port abstract interface is described below.
 
 .. table:: 20 Port Abstract Interface
 
@@ -1127,7 +1127,7 @@ Mechanisms to share the same table between multiple threads:
 
 #.  **Single writer thread performing table entry add/delete operations and multiple reader threads that perform table lookup operations with read-only access to the table entries.**
     The reader threads use the main table copy while the writer is updating the mirror copy.
-    Once the writer update is done, the writer can signal to the readers and busy wait until all readers swaps between the mirror copy (which now becomes the main copy) and
+    Once the writer update is done, the writer can signal to the readers and busy wait until all readers swap between the main copy (which now becomes the mirror copy) and
     the mirror copy (which now becomes the main copy).
 
 Interfacing with Accelerators

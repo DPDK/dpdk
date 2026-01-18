@@ -14,7 +14,7 @@ Design Principles
 
 The RegEx library follows the same basic principles as those used in DPDK's
 Ethernet Device framework and the Crypto framework. The RegEx framework provides
-a generic Crypto device framework which supports both physical (hardware)
+a generic RegEx device framework which supports both physical (hardware)
 and virtual (software) RegEx devices as well as a generic RegEx API which allows
 RegEx devices to be managed and configured and supports RegEx operations to be
 provisioned on RegEx poll mode driver.
@@ -29,7 +29,7 @@ Device Creation
 Physical RegEx devices are discovered during the PCI probe/enumeration of the
 EAL function which is executed at DPDK initialization, based on
 their PCI device identifier, each unique PCI BDF (bus/bridge, device,
-function). Specific physical ReEx devices, like other physical devices in DPDK
+function). Specific physical RegEx devices, like other physical devices in DPDK
 can be listed using the EAL command line options.
 
 
@@ -63,7 +63,7 @@ The rte_regexdev_configure API is used to configure a RegEx device.
                               const struct rte_regexdev_config *cfg);
 
 The ``rte_regexdev_config`` structure is used to pass the configuration
-parameters for the RegEx device for example  number of queue pairs, number of
+parameters for the RegEx device for example number of queue pairs, number of
 groups, max number of matches and so on.
 
 .. code-block:: c
@@ -117,13 +117,13 @@ Configuration of Rules Database
 
 Each Regex device should be configured with the rule database.
 There are two modes of setting the rule database, online or offline.
-The online mode means, that the rule database in being compiled by the
+The online mode means that the rule database is being compiled by the
 RegEx PMD while in the offline mode the rule database is compiled by external
 compiler, and is being loaded to the PMD as a buffer.
-The configuration mode is depended on the PMD capabilities.
+The configuration mode is dependent on the PMD capabilities.
 
 Online rule configuration is done using the following API functions:
-``rte_regexdev_rule_db_update`` which add / remove rules from the rules
+``rte_regexdev_rule_db_update`` which adds / removes rules from the rules
 precompiled list.
 
 Offline rule configuration can be done by adding a pointer to the compiled
@@ -134,7 +134,7 @@ rule database in the configuration step, or by using
 Configuration of Queue Pairs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Each RegEx device can be configured with number of queue pairs.
+Each RegEx device can be configured with a number of queue pairs.
 Each queue pair is configured using ``rte_regexdev_queue_pair_setup``
 
 
@@ -149,9 +149,9 @@ require global locks and hinder performance.
 Device Features and Capabilities
 --------------------------------
 
-RegEx devices may support different feature set.
-In order to get the supported PMD feature ``rte_regexdev_info_get``
-API which return the info of the device and it's supported features.
+RegEx devices may support different feature sets.
+In order to get the supported PMD features, use the ``rte_regexdev_info_get`` API
+which returns the info of the device and its supported features.
 
 
 Enqueue / Dequeue Burst APIs
@@ -165,10 +165,9 @@ The enqueue function returns the number of operations it actually enqueued for
 processing, a return value equal to ``nb_ops`` means that all packets have been
 enqueued.
 
-Data pointed in each op, should not be released until the dequeue of for that
-op.
+Data pointed to by each op should not be released until the dequeue for that op.
 
-The dequeue API uses the same format as the enqueue API of processed but
+The dequeue API uses the same format as the enqueue API but
 the ``nb_ops`` and ``ops`` parameters are now used to specify the max processed
 operations the user wishes to retrieve and the location in which to store them.
 The API call returns the actual number of processed operations returned, this

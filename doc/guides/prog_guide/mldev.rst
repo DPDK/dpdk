@@ -6,7 +6,7 @@ Machine Learning (ML) Device Library
 
 The Machine Learning (ML) Device library provides a Machine Learning device framework for the management and
 provisioning of hardware and software ML poll mode drivers,
-defining an API which support a number of ML operations
+defining an API which supports a number of ML operations
 including device handling and inference processing.
 The ML model creation and training is outside of the scope of this library.
 
@@ -14,7 +14,7 @@ The ML framework is built on the following model:
 
 .. figure:: img/mldev_flow.*
 
-   Work flow of inference on MLDEV
+   Workflow of inference on MLDEV
 
 ML Device
    A hardware or software-based implementation of ML device API
@@ -26,7 +26,7 @@ ML Model
    required to make predictions on live data.
    Once the model is created and trained outside of the DPDK scope,
    the model can be loaded via ``rte_ml_model_load()``
-   and then start it using ``rte_ml_model_start()`` API function.
+   and then started using ``rte_ml_model_start()`` API function.
    The ``rte_ml_model_params_update()`` can be used to update the model parameters
    such as weights and bias without unloading the model using ``rte_ml_model_unload()``.
 
@@ -77,9 +77,9 @@ Each device, whether virtual or physical is uniquely designated by two identifie
 Device Features and Capabilities
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-ML devices may support different feature set.
-In order to get the supported PMD feature ``rte_ml_dev_info_get()`` API
-which return the info of the device and its supported features.
+ML devices may support different feature sets.
+To get the supported PMD features, use the ``rte_ml_dev_info_get()`` API,
+which returns the info of the device and its supported features.
 
 
 Device Configuration
@@ -104,7 +104,7 @@ maximum size of model and so on.
 Configuration of Queue Pairs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Each ML device can be configured with number of queue pairs.
+Each ML device can be configured with a number of queue pairs.
 Each queue pair is configured using ``rte_ml_dev_queue_pair_setup()``
 
 
@@ -160,9 +160,9 @@ to specify the device queue pair to schedule the processing on.
 The ``nb_ops`` parameter is the number of operations to process
 which are supplied in the ``ops`` array of ``rte_ml_op`` structures.
 The enqueue function returns the number of operations it enqueued for processing,
-a return value equal to ``nb_ops`` means that all packets have been enqueued.
+a return value equal to ``nb_ops`` means that all operations have been enqueued.
 
-The dequeue API uses the same format as the enqueue API of processed
+The dequeue API uses the same format as the enqueue API,
 but the ``nb_ops`` and ``ops`` parameters are now used to specify
 the max processed operations the user wishes to retrieve
 and the location in which to store them.
@@ -191,7 +191,7 @@ from a higher precision type to a lower precision type and vice-versa.
 ML library provides the functions ``rte_ml_io_quantize()`` and ``rte_ml_io_dequantize()``
 to enable data type conversions.
 User needs to provide the address of the quantized and dequantized data buffers
-to the functions, along the number of the batches in the buffers.
+to the functions, along with the number of batches in the buffers.
 
 For quantization, the dequantized data is assumed to be
 of the type ``dtype`` provided by the ``rte_ml_model_info::input``

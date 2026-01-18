@@ -41,7 +41,7 @@ If you really need dynamic allocation in the data plane, it is better to use a m
 This API is provided by librte_mempool.
 This data structure provides several services that increase performance, such as memory alignment of objects,
 lockless access to objects, NUMA awareness, bulk get/put and per-lcore cache.
-The rte_malloc () function uses a similar concept to mempools.
+The rte_malloc() function uses a similar concept to mempools.
 
 Concurrent Access to the Same Memory Area
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
