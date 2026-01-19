@@ -218,7 +218,7 @@ fi
 if [ "$RUN_TESTS" = "true" ]; then
     failed=
     configure_coredump
-    sudo meson test -C build --suite fast-tests -t 3 || failed="true"
+    sudo meson test -C build --suite fast-tests -t 3 --no-stdsplit --print-errorlogs || failed="true"
     catch_coredump
     catch_ubsan DPDK:fast-tests build/meson-logs/testlog.txt
     check_traces
