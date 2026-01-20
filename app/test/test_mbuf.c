@@ -541,6 +541,26 @@ test_pktmbuf_copy(struct rte_mempool *pktmbuf_pool,
 
 	rte_pktmbuf_free(copy2);
 
+	/* test offset copy at the end */
+	copy2 = rte_pktmbuf_copy(copy, pktmbuf_pool,
+				 2 * sizeof(uint32_t), UINT32_MAX);
+	if (copy2 == NULL)
+		GOTO_FAIL("cannot copy at the end of the copy\n");
+
+	if (rte_pktmbuf_pkt_len(copy2) != 0)
+		GOTO_FAIL("copy at the end, length incorrect\n");
+
+	if (rte_pktmbuf_data_len(copy2) != 0)
+		GOTO_FAIL("copy at the end, data length incorrect\n");
+
+	rte_pktmbuf_free(copy2);
+
+	/* test offset copy past the end */
+	copy2 = rte_pktmbuf_copy(copy, pktmbuf_pool,
+				 2 * sizeof(uint32_t) + 1, UINT32_MAX);
+	if (copy2 != NULL)
+		GOTO_FAIL("can copy past the end of the copy\n");
+
 	/* test truncation copy */
 	copy2 = rte_pktmbuf_copy(copy, pktmbuf_pool,
 				 0, sizeof(uint32_t));
