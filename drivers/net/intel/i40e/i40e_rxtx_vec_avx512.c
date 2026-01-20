@@ -798,7 +798,7 @@ vtx(volatile struct i40e_tx_desc *txdp,
 	/* do any last ones */
 	while (nb_pkts) {
 		vtx1(txdp, *pkt, flags);
-		txdp++, pkt++, nb_pkts--;
+		txdp++; pkt++; nb_pkts--;
 	}
 }
 

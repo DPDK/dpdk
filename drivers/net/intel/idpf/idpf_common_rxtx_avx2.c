@@ -506,7 +506,7 @@ idpf_singleq_vtx(volatile struct idpf_base_tx_desc *txdp,
 	/* if unaligned on 32-bit boundary, do one to align */
 	if (((uintptr_t)txdp & 0x1F) != 0 && nb_pkts != 0) {
 		idpf_singleq_vtx1(txdp, *pkt, flags);
-		nb_pkts--, txdp++, pkt++;
+		nb_pkts--; txdp++; pkt++;
 	}
 
 	/* do two at a time while possible, in bursts */
@@ -547,7 +547,7 @@ idpf_singleq_vtx(volatile struct idpf_base_tx_desc *txdp,
 	/* do any last ones */
 	while (nb_pkts) {
 		idpf_singleq_vtx1(txdp, *pkt, flags);
-		txdp++, pkt++, nb_pkts--;
+		txdp++; pkt++; nb_pkts--;
 	}
 }
 
