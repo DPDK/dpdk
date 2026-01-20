@@ -482,6 +482,7 @@ mlx5_flex_translate_length(struct mlx5_hca_flex_attr *attr,
 		return rte_flow_error_set
 			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
 			 "not byte aligned header length field");
+	node->header_length_field_offset_mode = !attr->header_length_field_mode_wa;
 	switch (field->field_mode) {
 	case FIELD_MODE_DUMMY:
 		return rte_flow_error_set
@@ -572,7 +573,6 @@ mlx5_flex_translate_length(struct mlx5_hca_flex_attr *attr,
 		node->header_length_field_mask = mask;
 		node->header_length_field_shift = shift;
 		node->header_length_field_offset = offset;
-		node->header_length_field_offset_mode = !attr->header_length_field_mode_wa;
 		break;
 	}
 	case FIELD_MODE_BITMASK:
