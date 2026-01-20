@@ -1035,7 +1035,7 @@ ice_vtx(volatile struct ice_tx_desc *txdp, struct rte_mbuf **pkt,
 	/* do any last ones */
 	while (nb_pkts) {
 		ice_vtx1(txdp, *pkt, flags, do_offload);
-		txdp++, pkt++, nb_pkts--;
+		txdp++; pkt++; nb_pkts--;
 	}
 }
 

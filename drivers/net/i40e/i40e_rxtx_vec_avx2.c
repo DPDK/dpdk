@@ -708,7 +708,7 @@ vtx(volatile struct i40e_tx_desc *txdp,
 	/* if unaligned on 32-bit boundary, do one to align */
 	if (((uintptr_t)txdp & 0x1F) != 0 && nb_pkts != 0) {
 		vtx1(txdp, *pkt, flags);
-		nb_pkts--, txdp++, pkt++;
+		nb_pkts--; txdp++; pkt++;
 	}
 
 	/* do two at a time while possible, in bursts */
@@ -735,7 +735,7 @@ vtx(volatile struct i40e_tx_desc *txdp,
 	/* do any last ones */
 	while (nb_pkts) {
 		vtx1(txdp, *pkt, flags);
-		txdp++, pkt++, nb_pkts--;
+		txdp++; pkt++; nb_pkts--;
 	}
 }
 

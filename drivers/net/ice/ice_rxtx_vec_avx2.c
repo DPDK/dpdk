@@ -803,7 +803,7 @@ ice_vtx(volatile struct ice_tx_desc *txdp,
 	/* if unaligned on 32-bit boundary, do one to align */
 	if (((uintptr_t)txdp & 0x1F) != 0 && nb_pkts != 0) {
 		ice_vtx1(txdp, *pkt, flags, offload);
-		nb_pkts--, txdp++, pkt++;
+		nb_pkts--; txdp++; pkt++;
 	}
 
 	/* do two at a time while possible, in bursts */
@@ -848,7 +848,7 @@ ice_vtx(volatile struct ice_tx_desc *txdp,
 	/* do any last ones */
 	while (nb_pkts) {
 		ice_vtx1(txdp, *pkt, flags, offload);
-		txdp++, pkt++, nb_pkts--;
+		txdp++; pkt++; nb_pkts--;
 	}
 }
 
