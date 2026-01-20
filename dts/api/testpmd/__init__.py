@@ -227,7 +227,7 @@ class TestPmd(DPDKShell):
             InteractiveCommandExecutionError: If `verify` is :data:`True` and forwarding fails to
                 start or ports fail to come up.
         """
-        self.send_command(f"start tx_first {burst_num if burst_num is not None else ""}")
+        self.send_command(f"start tx_first {burst_num if burst_num is not None else ''}")
         if verify:
             # If forwarding was already started, sending "start" again should tell us
             start_cmd_output = self.send_command("start")
@@ -898,11 +898,11 @@ class TestPmd(DPDKShell):
             vlan_settings = self.show_port_info(port_id=port).vlan_offload
             if enable ^ (vlan_settings is not None and VLANOffloadFlag.QINQ_STRIP in vlan_settings):
                 self._logger.debug(
-                    f"Failed to {"enable" if enable else "disable"}"
+                    f"Failed to {'enable' if enable else 'disable'}"
                     f"QinQ strip on port {port}: \n{qinq_cmd_output}"
                 )
                 raise InteractiveCommandExecutionError(
-                    f"Failed to {"enable" if enable else "disable"} QinQ strip on port {port}"
+                    f"Failed to {'enable' if enable else 'disable'} QinQ strip on port {port}"
                 )
 
     def set_mac_address(self, port: int, mac_address: str, verify: bool = True) -> None:
@@ -1535,7 +1535,7 @@ class TestPmd(DPDKShell):
             InteractiveCommandExecutionError: If mbuf_fast_free could not be set successfully.
         """
         mbuf_output = self.send_command(
-            f"port config {port_id} tx_offload mbuf_fast_free {"on" if on else "off"}"
+            f"port config {port_id} tx_offload mbuf_fast_free {'on' if on else 'off'}"
         )
 
         if verify and "Error" in mbuf_output:
