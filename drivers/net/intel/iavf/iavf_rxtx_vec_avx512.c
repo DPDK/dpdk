@@ -1867,7 +1867,7 @@ iavf_vtx(volatile struct ci_tx_desc *txdp,
 	/* if unaligned on 32-bit boundary, do one to align */
 	if (((uintptr_t)txdp & 0x1F) != 0 && nb_pkts != 0) {
 		iavf_vtx1(txdp, *pkt, flags, offload, vlan_flag);
-		nb_pkts--, txdp++, pkt++;
+		nb_pkts--; txdp++; pkt++;
 	}
 
 	/* do 4 at a time while possible, in bursts */
@@ -1903,7 +1903,7 @@ iavf_vtx(volatile struct ci_tx_desc *txdp,
 	/* do any last ones */
 	while (nb_pkts) {
 		iavf_vtx1(txdp, *pkt, flags, offload, vlan_flag);
-		txdp++, pkt++, nb_pkts--;
+		txdp++; pkt++; nb_pkts--;
 	}
 }
 
@@ -2105,7 +2105,7 @@ ctx_vtx(volatile struct ci_tx_desc *txdp,
 	/* if unaligned on 32-bit boundary, do one to align */
 	if (((uintptr_t)txdp & 0x1F) != 0 && nb_pkts != 0) {
 		ctx_vtx1(txdp, *pkt, flags, offload, vlan_flag);
-		nb_pkts--, txdp++, pkt++;
+		nb_pkts--; txdp++; pkt++;
 	}
 
 	for (; nb_pkts > 1; txdp += 4, pkt += 2, nb_pkts -= 2) {
