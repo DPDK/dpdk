@@ -983,6 +983,7 @@ int
 mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hca_flex_attr *attr = &priv->sh->cdev->config.hca_attr.flex;
 	struct mlx5_ecpri_parser_profile *prf =	&priv->sh->ecpri_parser;
 	struct mlx5_devx_graph_node_attr node = {
 		.modify_field_select = 0,
@@ -996,6 +997,7 @@ mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 	}
 	node.header_length_mode = MLX5_GRAPH_NODE_LEN_FIXED;
+	node.header_length_field_offset_mode = !attr->header_length_field_mode_wa;
 	/* 8 bytes now: 4B common header + 4B message body header. */
 	node.header_length_base_value = 0x8;
 	/* After MAC layer: Ether / VLAN. */
@@ -1084,6 +1086,7 @@ mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev)
 		goto error;
 	}
 	node.header_length_mode = MLX5_GRAPH_NODE_LEN_FIELD;
+	node.header_length_field_offset_mode = !attr->header_length_field_mode_wa;
 	/* Srv6 first two DW are not counted in. */
 	node.header_length_base_value = 0x8;
 	/* The unit is uint64_t. */
