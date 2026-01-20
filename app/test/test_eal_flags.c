@@ -214,6 +214,8 @@ process_hugefiles(const char * prefix, enum hugepage_action action)
 			case HUGEPAGE_CHECK_EXISTS:
 				{
 					/* file exists, return */
+					printf("Hugepage file %s/%s exists, matching prefix %s\n",
+						hugedir, dirent->d_name, hugefile_prefix);
 					closedir(hugepage_dir);
 					result = 1;
 					goto end;
@@ -234,6 +236,7 @@ process_hugefiles(const char * prefix, enum hugepage_action action)
 						result = -1;
 						goto end;
 					}
+					printf("Deleted hugepage file %s\n", file_path);
 					result = 1;
 				}
 				break;
@@ -265,6 +268,8 @@ process_hugefiles(const char * prefix, enum hugepage_action action)
 						goto end;
 					}
 					result = 1;
+					printf("Hugepage file %s/%s is locked\n",
+						hugedir, dirent->d_name);
 					close(fd);
 				}
 				break;
