@@ -17,7 +17,6 @@
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_memory.h>
-#include <rte_memcpy.h>
 #include <rte_eal.h>
 #include <rte_launch.h>
 #include <rte_cycles.h>
@@ -151,9 +150,9 @@ get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t num_pools)
 		conf.pool_map[i].pools = (1UL << (i % num_pools));
 	}
 
-	(void)(rte_memcpy(eth_conf, &vmdq_conf_default, sizeof(*eth_conf)));
-	(void)(rte_memcpy(&eth_conf->rx_adv_conf.vmdq_rx_conf, &conf,
-		   sizeof(eth_conf->rx_adv_conf.vmdq_rx_conf)));
+	*eth_conf = vmdq_conf_default;
+	eth_conf->rx_adv_conf.vmdq_rx_conf = conf;
+
 	if (rss_enable) {
 		eth_conf->rxmode.mq_mode = RTE_ETH_MQ_RX_VMDQ_RSS;
 		eth_conf->rx_adv_conf.rss_conf.rss_hf = RTE_ETH_RSS_IP |

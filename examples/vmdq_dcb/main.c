@@ -17,7 +17,6 @@
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_memory.h>
-#include <rte_memcpy.h>
 #include <rte_eal.h>
 #include <rte_launch.h>
 #include <rte_cycles.h>
@@ -161,15 +160,13 @@ get_eth_conf(struct rte_eth_conf *eth_conf)
 		tx_conf.dcb_tc[i] = i % num_tcs;
 	}
 	dcb_conf.nb_tcs = (enum rte_eth_nb_tcs)num_tcs;
-	(void)(rte_memcpy(eth_conf, &vmdq_dcb_conf_default, sizeof(*eth_conf)));
-	(void)(rte_memcpy(&eth_conf->rx_adv_conf.vmdq_dcb_conf, &conf,
-			  sizeof(conf)));
-	(void)(rte_memcpy(&eth_conf->rx_adv_conf.dcb_rx_conf, &dcb_conf,
-			  sizeof(dcb_conf)));
-	(void)(rte_memcpy(&eth_conf->rx_adv_conf.vmdq_rx_conf, &vmdq_conf,
-			  sizeof(vmdq_conf)));
-	(void)(rte_memcpy(&eth_conf->tx_adv_conf.vmdq_dcb_tx_conf, &tx_conf,
-			  sizeof(tx_conf)));
+
+	*eth_conf = vmdq_dcb_conf_default;
+	eth_conf->rx_adv_conf.vmdq_dcb_conf = conf;
+	eth_conf->rx_adv_conf.dcb_rx_conf = dcb_conf;
+	eth_conf->rx_adv_conf.vmdq_rx_conf = vmdq_conf;
+	eth_conf->tx_adv_conf.vmdq_dcb_tx_conf = tx_conf;
+
 	if (rss_enable) {
 		eth_conf->rxmode.mq_mode = RTE_ETH_MQ_RX_VMDQ_DCB_RSS;
 		eth_conf->rx_adv_conf.rss_conf.rss_hf = RTE_ETH_RSS_IP |
