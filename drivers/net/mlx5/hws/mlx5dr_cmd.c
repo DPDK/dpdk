@@ -1013,8 +1013,8 @@ int mlx5dr_cmd_generate_wqe(struct ibv_context *ctx,
 			    struct mlx5dr_cmd_generate_wqe_attr *attr,
 			    struct mlx5_cqe64 *ret_cqe)
 {
-	uint32_t out[MLX5_ST_SZ_DW(generate_wqe_out)] = {0};
-	uint32_t in[MLX5_ST_SZ_DW(generate_wqe_in)] = {0};
+	MLX5DR_ASAN_ALIGN uint32_t out[MLX5_ST_SZ_DW(generate_wqe_out)] = {0};
+	MLX5DR_ASAN_ALIGN uint32_t in[MLX5_ST_SZ_DW(generate_wqe_in)] = {0};
 	uint8_t status;
 	void *ptr;
 	int ret;
