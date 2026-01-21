@@ -614,14 +614,14 @@ trie_modify(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 		if (parent != NULL) {
 			rte_rib6_get_nh(parent, &par_nh);
 			if (par_nh == next_hop)
-				return 0;
+				goto successfully_added;
 		}
 		ret = modify_dp(dp, rib, &ip_masked, depth, next_hop);
 		if (ret != 0) {
 			rte_rib6_remove(rib, &ip_masked, depth);
 			return ret;
 		}
-
+successfully_added:
 		dp->rsvd_tbl8s += depth_diff;
 		return 0;
 	case RTE_FIB6_DEL:
