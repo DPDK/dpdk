@@ -15,6 +15,7 @@
 #include <iavf_type.h>
 
 #include "iavf_log.h"
+#include "rte_pmd_iavf.h"
 
 #define IAVF_AQ_LEN               32
 #define IAVF_AQ_BUF_SZ            4096
@@ -257,6 +258,10 @@ struct iavf_info {
 
 	struct iavf_vsi vsi;
 	bool vf_reset;	/* true for VF reset pending, false for no VF reset */
+	iavf_pre_reset_cb_t pre_reset_cb; /* Pre reset callback function ptr */
+	iavf_post_reset_cb_t post_reset_cb; /* Post reset callback function ptr */
+	void *pre_reset_cb_arg; /* Pre reset callback argument */
+	void *post_reset_cb_arg; /* Post reset callback argument */
 	uint64_t flags;
 
 	uint8_t *rss_lut;

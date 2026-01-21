@@ -24,6 +24,11 @@
 extern "C" {
 #endif
 
+/** Callback function pointer for pre VF reset event */
+typedef void (*iavf_pre_reset_cb_t)(uint16_t port_id, void *arg);
+/** Callback function pointer for post VF reset event */
+typedef void (*iavf_post_reset_cb_t)(uint16_t port_id, int reset_state, void *arg);
+
 /**
  * The supported network flexible descriptor's extraction metadata format.
  */
@@ -108,6 +113,46 @@ extern uint64_t rte_pmd_ifd_dynflag_proto_xtr_ipsec_crypto_said_mask;
  */
 __rte_experimental
 int rte_pmd_iavf_reinit(uint16_t port);
+
+/**
+ * Register or unregister a pre reset event callback
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param pre_reset_cb
+ *   The callback function that will be invoked by the driver prior to a reset.
+ *   Pass NULL to unregister an existing callback.
+ * @param pre_reset_cb_arg
+ *   The argument passed to the callback function.
+ *   May be NULL when registering the callback if no argument is needed to the callback.
+ *   Must be NULL when unregistering the callback.
+ * @return
+ *   0 if successful, otherwise if a failure occurs.
+ */
+__rte_experimental
+int rte_pmd_iavf_register_pre_reset_cb(uint16_t port,
+					iavf_pre_reset_cb_t pre_reset_cb,
+					void *pre_reset_cb_arg);
+
+/**
+ * Register or unregister a post reset event callback
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param post_reset_cb
+ *   The callback function that will be invoked by the driver after a reset.
+ *   Pass NULL to unregister an existing callback.
+ * @param post_reset_cb_arg
+ *   The argument passed to the callback function.
+ *   May be NULL when registering the callback if no argument is needed to the callback.
+ *   Must be NULL when unregistering the callback.
+ * @return
+ *   0 if successful, otherwise if a failure occurs.
+ */
+__rte_experimental
+int rte_pmd_iavf_register_post_reset_cb(uint16_t port,
+					iavf_post_reset_cb_t post_reset_cb,
+					void *post_reset_cb_arg);
 
 /**
  * The mbuf dynamic field pointer for flexible descriptor's extraction metadata.

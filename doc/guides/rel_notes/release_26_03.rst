@@ -59,6 +59,10 @@ New Features
 
   * Added support for V4000 Krackan2e.
 
+* **Updated Intel iavf driver.**
+
+  * Added support for pre and post VF reset callbacks.
+
 
 Removed Items
 -------------

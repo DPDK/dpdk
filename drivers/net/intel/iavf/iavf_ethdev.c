@@ -3132,6 +3132,10 @@ iavf_handle_hw_reset(struct rte_eth_dev *dev, bool vf_initiated_reset)
 	vf->in_reset_recovery = true;
 	iavf_set_no_poll(adapter, false);
 
+	/* Call the pre reset callback */
+	if (vf->pre_reset_cb != NULL)
+		vf->pre_reset_cb(dev->data->port_id, vf->pre_reset_cb_arg);
+
 	ret = iavf_dev_reset(dev);
 	if (ret)
 		goto error;
@@ -3156,6 +3160,10 @@ iavf_handle_hw_reset(struct rte_eth_dev *dev, bool vf_initiated_reset)
 error:
 	PMD_DRV_LOG(DEBUG, "RESET recover with error code=%dn", ret);
 exit:
+	/* Call the post reset callback */
+	if (vf->post_reset_cb != NULL)
+		vf->post_reset_cb(dev->data->port_id, ret, vf->post_reset_cb_arg);
+
 	vf->in_reset_recovery = false;
 	iavf_set_no_poll(adapter, false);
 
@@ -3191,6 +3199,78 @@ rte_pmd_iavf_reinit(uint16_t port)
 	}
 
 	iavf_handle_hw_reset(dev, true);
+
+	return 0;
+}
+
+static int
+iavf_validate_reset_cb(uint16_t port, void *cb, void *cb_arg)
+{
+	struct rte_eth_dev *dev;
+	struct iavf_info *vf;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	if (cb == NULL && cb_arg != NULL) {
+		PMD_DRV_LOG(ERR, "Cannot unregister reset cb on port %u, arg must be NULL.", port);
+		return -EINVAL;
+	}
+
+	dev = &rte_eth_devices[port];
+	if (!is_iavf_supported(dev)) {
+		PMD_DRV_LOG(ERR, "Cannot modify reset cb, port %u not an IAVF device.", port);
+		return -ENOTSUP;
+	}
+
+	vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	if (vf->in_reset_recovery) {
+		PMD_DRV_LOG(ERR, "Cannot modify reset cb on port %u, VF is resetting.", port);
+		return -EBUSY;
+	}
+
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_iavf_register_pre_reset_cb, 26.03)
+int
+rte_pmd_iavf_register_pre_reset_cb(uint16_t port,
+				   iavf_pre_reset_cb_t pre_reset_cb,
+				   void *pre_reset_cb_arg)
+{
+	struct rte_eth_dev *dev;
+	struct iavf_info *vf;
+	int ret;
+
+	ret = iavf_validate_reset_cb(port, pre_reset_cb, pre_reset_cb_arg);
+	if (ret)
+		return ret;
+
+	dev = &rte_eth_devices[port];
+	vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	vf->pre_reset_cb = pre_reset_cb;
+	vf->pre_reset_cb_arg = pre_reset_cb_arg;
+
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_iavf_register_post_reset_cb, 26.03)
+int
+rte_pmd_iavf_register_post_reset_cb(uint16_t port,
+				    iavf_post_reset_cb_t post_reset_cb,
+				    void *post_reset_cb_arg)
+{
+	struct rte_eth_dev *dev;
+	struct iavf_info *vf;
+	int ret;
+
+	ret = iavf_validate_reset_cb(port, post_reset_cb, post_reset_cb_arg);
+	if (ret)
+		return ret;
+
+	dev = &rte_eth_devices[port];
+	vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	vf->post_reset_cb = post_reset_cb;
+	vf->post_reset_cb_arg = post_reset_cb_arg;
 
 	return 0;
 }
