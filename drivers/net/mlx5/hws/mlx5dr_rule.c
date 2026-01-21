@@ -470,7 +470,7 @@ static int mlx5dr_rule_create_hws(struct mlx5dr_rule *rule,
 	bool is_jumbo = mlx5dr_matcher_mt_is_jumbo(mt);
 	struct mlx5dr_matcher *matcher = rule->matcher;
 	struct mlx5dr_context *ctx = matcher->tbl->ctx;
-	struct mlx5dr_send_ste_attr ste_attr = {0};
+	MLX5DR_ASAN_ALIGN struct mlx5dr_send_ste_attr ste_attr = {0};
 	struct mlx5dr_send_ring_dep_wqe *dep_wqe;
 	struct mlx5dr_actions_wqe_setter *setter;
 	struct mlx5dr_actions_apply_data apply;
