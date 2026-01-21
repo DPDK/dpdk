@@ -16,7 +16,7 @@
 #endif
 
 #ifndef HAVE_MLX5DV_DR
-enum  mlx5dv_dr_domain_type { unused, };
+enum  mlx5dv_dr_domain_type { MLX5_UNUSED_DOMAIN_TYPE };
 struct mlx5dv_dr_domain;
 struct mlx5dv_dr_action;
 #endif
