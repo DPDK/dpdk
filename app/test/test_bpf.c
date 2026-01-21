@@ -3278,6 +3278,868 @@ test_bpf(void)
 
 REGISTER_FAST_TEST(bpf_autotest, true, true, test_bpf);
 
+/* Tests of BPF JIT stack alignment when calling external functions (xfuncs). */
+
+/* Function called from the BPF program in a test. */
+typedef uint64_t (*text_xfunc_t)(uint64_t argument);
+
+/* Call function from BPF program, verify that it incremented its argument. */
+static int
+call_from_bpf_test(text_xfunc_t xfunc)
+{
+	static const struct ebpf_insn ins[] = {
+		{
+			.code = (BPF_JMP | EBPF_CALL),
+			.imm = 0,  /* xsym #0 */
+		},
+		{
+			.code = (BPF_JMP | EBPF_EXIT),
+		},
+	};
+	const struct rte_bpf_xsym xsym[] = {
+		{
+			.name = "xfunc",
+			.type = RTE_BPF_XTYPE_FUNC,
+			.func = {
+				.val = (void *)xfunc,
+				.nb_args = 1,
+				.args = {
+					{
+						.type = RTE_BPF_ARG_RAW,
+						.size = sizeof(uint64_t),
+					},
+				},
+				.ret = {
+					.type = RTE_BPF_ARG_RAW,
+					.size = sizeof(uint64_t),
+				},
+			},
+		},
+	};
+	const struct rte_bpf_prm prm = {
+		.ins = ins,
+		.nb_ins = RTE_DIM(ins),
+		.xsym = xsym,
+		.nb_xsym = RTE_DIM(xsym),
+		.prog_arg = {
+			.type = RTE_BPF_ARG_RAW,
+			.size = sizeof(uint64_t),
+		},
+	};
+
+	struct rte_bpf_jit jit;
+
+	struct rte_bpf *const bpf = rte_bpf_load(&prm);
+	RTE_TEST_ASSERT_NOT_EQUAL(bpf, NULL,
+		"expect rte_bpf_load() != NULL");
+
+	RTE_TEST_ASSERT_SUCCESS(rte_bpf_get_jit(bpf, &jit),
+		"expect rte_bpf_get_jit() to succeed");
+
+	const text_xfunc_t jit_function = (void *)jit.func;
+	if (jit_function == NULL) {
+		rte_bpf_destroy(bpf);
+		return TEST_SKIPPED;
+	}
+
+	const uint64_t argument = 42;
+	const uint64_t result = jit_function(argument);
+	rte_bpf_destroy(bpf);
+
+	RTE_TEST_ASSERT_EQUAL(result, argument + 1,
+		"expect result == %ju, found %ju",
+		(uintmax_t)(argument + 1), (uintmax_t)result);
+
+	return TEST_SUCCESS;
+}
+
+/*
+ * Test alignment of a local variable.
+ *
+ * NOTE: May produce false negatives with sanitizers if they replace the stack.
+ */
+
+/* Copy of the pointer to max_align stack variable, volatile to thwart optimization. */
+static volatile uintptr_t stack_alignment_test_pointer;
+
+static uint64_t
+stack_alignment_xfunc(uint64_t argument)
+{
+	max_align_t max_align;
+	stack_alignment_test_pointer = (uintptr_t)&max_align;
+	return argument + 1;
+}
+
+static int
+test_stack_alignment(void)
+{
+	const int test_rc = call_from_bpf_test(stack_alignment_xfunc);
+	if (test_rc == TEST_SKIPPED)
+		return TEST_SKIPPED;
+
+	RTE_TEST_ASSERT_SUCCESS(test_rc,
+		"expect call_from_bpf_test(stack_alignment_xfunc) to succeed");
+
+	const uintptr_t test_offset = stack_alignment_test_pointer;
+	RTE_TEST_ASSERT_NOT_EQUAL(test_offset, 0, "expect test_pointer != 0");
+
+	const size_t test_alignment = test_offset % alignof(max_align_t);
+	RTE_TEST_ASSERT_EQUAL(test_alignment, 0,
+		"expect test_alignment == 0, found %zu", test_alignment);
+
+	return TEST_SUCCESS;
+}
+
+REGISTER_FAST_TEST(bpf_stack_alignment_autotest, NOHUGE_OK, ASAN_OK, test_stack_alignment);
+
+/*
+ * Test copying `__uint128_t`.
+ *
+ * This operation is used by some variations of `rte_memcpy`;
+ * it can also be produced by vectorizer in the compiler.
+ */
+
+#if defined(__SIZEOF_INT128__)
+
+static uint64_t
+stack_copy_uint128_xfunc(uint64_t argument)
+{
+	/* Pass addresses through volatiles to prevent compiler from optimizing it all out. */
+	char alignas(16) src_buffer[16];
+	char alignas(16) dst_buffer[16];
+	void *const src = (char *volatile)src_buffer;
+	void *const dst = (char *volatile)dst_buffer;
+	const size_t size = 16;
+
+	memset(src, 0x2a, size);
+	memset(dst, 0x55, size);
+	const int initial_memcmp_rc = memcmp(dst, src, size);
+
+	const __uint128_t *const src128 = (const __uint128_t *)src;
+	__uint128_t *const dst128 = (__uint128_t *)dst;
+	*dst128 = *src128;
+	const int memcmp_rc = memcmp(dst, src, size);
+
+	return argument + 1 + !initial_memcmp_rc + memcmp_rc;
+}
+
+static int
+test_stack_copy_uint128(void)
+{
+	const int test_rc = call_from_bpf_test(stack_copy_uint128_xfunc);
+	if (test_rc == TEST_SKIPPED)
+		return TEST_SKIPPED;
+
+	RTE_TEST_ASSERT_SUCCESS(test_rc,
+		"expect call_from_bpf_test(stack_copy_uint128_xfunc) to succeed");
+
+	return TEST_SUCCESS;
+}
+
+#else
+
+static int
+test_stack_copy_uint128(void)
+{
+	return TEST_SKIPPED;
+}
+
+#endif
+
+REGISTER_FAST_TEST(bpf_stack_copy_uint128_autotest, NOHUGE_OK, ASAN_OK, test_stack_copy_uint128);
+
+/*
+ * Test SSE2 load and store intrinsics.
+ *
+ * These intrinsics are used by e.g. lib/hash.
+ *
+ * Test both aligned and unaligned versions. Unaligned intrinsics may still fail
+ * when the stack is misaligned, since they only treat memory address as
+ * unaligned, not stack.
+ */
+
+#if defined(__SSE2__)
+
+static uint64_t
+stack_sse2_aligned_xfunc(uint64_t argument)
+{
+	/* Pass addresses through volatiles to prevent compiler from optimizing it all out. */
+	char alignas(16) src_buffer[16];
+	char alignas(16) dst_buffer[16];
+	void *const src = (char *volatile)src_buffer;
+	void *const dst = (char *volatile)dst_buffer;
+	const size_t size = 16;
+
+	memset(src, 0x2a, size);
+	memset(dst, 0x55, size);
+	const int initial_memcmp_rc = memcmp(dst, src, size);
+
+	const __m128i tmp = _mm_load_si128((const __m128i *)src);
+	_mm_store_si128((__m128i *)dst, tmp);
+	const int memcmp_rc = memcmp(dst, src, size);
+
+	return argument + 1 + !initial_memcmp_rc + memcmp_rc;
+}
+
+static uint64_t
+stack_sse2_unaligned_xfunc(uint64_t argument)
+{
+	/* Pass addresses through volatiles to prevent compiler from optimizing it all out. */
+	char alignas(16) src_buffer[17];
+	char alignas(16) dst_buffer[17];
+	void *const src = (char *volatile)src_buffer + 1;
+	void *const dst = (char *volatile)dst_buffer + 1;
+	const size_t size = 16;
+
+	memset(src, 0x2a, size);
+	memset(dst, 0x55, size);
+	const int initial_memcmp_rc = memcmp(dst, src, size);
+
+	const __m128i tmp = _mm_loadu_si128((const __m128i *)src);
+	_mm_storeu_si128((__m128i *)dst, tmp);
+	const int memcmp_rc = memcmp(dst, src, size);
+
+	return argument + 1 + !initial_memcmp_rc + memcmp_rc;
+}
+
+static int
+test_stack_sse2(void)
+{
+	int test_rc;
+
+	test_rc = call_from_bpf_test(stack_sse2_aligned_xfunc);
+	if (test_rc == TEST_SKIPPED)
+		return test_rc;
+	RTE_TEST_ASSERT_SUCCESS(test_rc,
+		"expect call_from_bpf_test(stack_sse2_aligned_xfunc) to succeed");
+
+	test_rc = call_from_bpf_test(stack_sse2_unaligned_xfunc);
+	if (test_rc == TEST_SKIPPED)
+		return test_rc;
+	RTE_TEST_ASSERT_SUCCESS(test_rc,
+		"expect call_from_bpf_test(stack_sse2_unaligned_xfunc) to succeed");
+
+	return TEST_SUCCESS;
+}
+
+#else
+
+static int
+test_stack_sse2(void)
+{
+	return TEST_SKIPPED;
+}
+
+#endif
+
+REGISTER_FAST_TEST(bpf_stack_sse2_autotest, NOHUGE_OK, ASAN_OK, test_stack_sse2);
+
+/*
+ * Run memcpy and rte_memcpy with various data sizes and offsets (unaligned and aligned).
+ *
+ * May produce false negatives even if BPF breaks stack alignment since
+ * compilers may realign the stack in the beginning of the function to use
+ * vector instructions with width larger than the default stack alignment.
+ * However, represents very important use case that was broken in practice.
+ *
+ * For the reason specified above test 16-byte fixed-width memcpy explicitly.
+ */
+
+static void *volatile stack_memcpy_dst;
+static const void *volatile stack_memcpy_src;
+static size_t volatile stack_memcpy_size;
+
+static uint64_t
+stack_memcpy16_xfunc(uint64_t argument)
+{
+	RTE_ASSERT(stack_memcpy_size == 16);
+	memcpy(stack_memcpy_dst, stack_memcpy_src, 16);
+	return argument + 1;
+}
+
+static uint64_t
+stack_rte_memcpy16_xfunc(uint64_t argument)
+{
+	RTE_ASSERT(stack_memcpy_size == 16);
+	rte_memcpy(stack_memcpy_dst, stack_memcpy_src, 16);
+	return argument + 1;
+}
+
+static uint64_t
+stack_memcpy_xfunc(uint64_t argument)
+{
+	memcpy(stack_memcpy_dst, stack_memcpy_src, stack_memcpy_size);
+	return argument + 1;
+}
+
+static uint64_t
+stack_rte_memcpy_xfunc(uint64_t argument)
+{
+	rte_memcpy(stack_memcpy_dst, stack_memcpy_src, stack_memcpy_size);
+	return argument + 1;
+}
+
+static int
+stack_memcpy_subtest(text_xfunc_t xfunc, size_t size, size_t src_offset, size_t dst_offset)
+{
+	stack_memcpy_size = size;
+
+	char *const src_buffer = malloc(size + src_offset);
+	char *const dst_buffer = malloc(size + dst_offset);
+
+	if (src_buffer == NULL || dst_buffer == NULL) {
+		free(dst_buffer);
+		free(src_buffer);
+		return TEST_FAILED;
+	}
+
+	memset(src_buffer + src_offset, 0x2a, size);
+	stack_memcpy_src = src_buffer + src_offset;
+
+	memset(dst_buffer + dst_offset, 0x55, size);
+	stack_memcpy_dst = dst_buffer + dst_offset;
+
+	const int initial_memcmp_rc = memcmp(stack_memcpy_dst, stack_memcpy_src, size);
+	const int test_rc = call_from_bpf_test(xfunc);
+	const int memcmp_rc = memcmp(stack_memcpy_dst, stack_memcpy_src, size);
+
+	free(dst_buffer);
+	free(src_buffer);
+
+	if (test_rc == TEST_SKIPPED)
+		return TEST_SKIPPED;
+
+	RTE_TEST_ASSERT_FAIL(initial_memcmp_rc, "expect memcmp() to fail initially");
+	RTE_TEST_ASSERT_SUCCESS(test_rc, "expect call_from_bpf_test(xfunc) to succeed");
+	RTE_TEST_ASSERT_SUCCESS(memcmp_rc, "expect memcmp() to succeed");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_stack_memcpy(void)
+{
+	for (int offsets = 0; offsets < 4; ++offsets) {
+		const bool src_offset = offsets & 1;
+		const bool dst_offset = offsets & 2;
+		int test_rc;
+
+		test_rc = stack_memcpy_subtest(stack_memcpy16_xfunc,
+			16, src_offset, dst_offset);
+		if (test_rc == TEST_SKIPPED)
+			return test_rc;
+		RTE_TEST_ASSERT_SUCCESS(test_rc,
+			"expect stack_memcpy_subtest(stack_memcpy16_xfunc, "
+				"16, %i, %i) to succeed",
+			src_offset, dst_offset);
+
+		test_rc = stack_memcpy_subtest(stack_rte_memcpy16_xfunc,
+			16, src_offset, dst_offset);
+		if (test_rc == TEST_SKIPPED)
+			return test_rc;
+		RTE_TEST_ASSERT_SUCCESS(test_rc,
+			"expect stack_memcpy_subtest(stack_rte_memcpy16_xfunc, "
+				"16, %i, %i) to succeed",
+			src_offset, dst_offset);
+
+		for (size_t size = 1; size <= 1024; size <<= 1) {
+			test_rc = stack_memcpy_subtest(stack_memcpy_xfunc,
+				size, src_offset, dst_offset);
+			if (test_rc == TEST_SKIPPED)
+				return test_rc;
+			RTE_TEST_ASSERT_SUCCESS(test_rc,
+				"expect stack_memcpy_subtest(stack_memcpy_xfunc, "
+					"%zu, %i, %i) to succeed",
+				size, src_offset, dst_offset);
+
+			test_rc = stack_memcpy_subtest(stack_rte_memcpy_xfunc,
+				size, src_offset, dst_offset);
+			if (test_rc == TEST_SKIPPED)
+				return test_rc;
+			RTE_TEST_ASSERT_SUCCESS(test_rc,
+				"expect stack_memcpy_subtest(stack_rte_memcpy_xfunc, "
+					"%zu, %i, %i) to succeed",
+				size, src_offset, dst_offset);
+		}
+	}
+	return TEST_SUCCESS;
+}
+
+REGISTER_FAST_TEST(bpf_stack_memcpy_autotest, NOHUGE_OK, ASAN_OK, test_stack_memcpy);
+
+#ifdef TEST_BPF_ELF_LOAD
+
+/*
+ * Helper function to write BPF object data to temporary file.
+ * Returns temp file path on success, NULL on failure.
+ * Caller must free the returned path and unlink the file.
+ */
+static char *
+create_temp_bpf_file(const uint8_t *data, size_t size, const char *name)
+{
+	char *tmpfile = NULL;
+	int fd;
+	ssize_t written;
+
+	if (asprintf(&tmpfile, "/tmp/dpdk_bpf_%s_XXXXXX.o", name) < 0) {
+		printf("%s@%d: asprintf failed: %s\n",
+		       __func__, __LINE__, strerror(errno));
+		return NULL;
+	}
+
+	/* Create and open temp file */
+	fd = mkstemps(tmpfile, strlen(".o"));
+	if (fd < 0) {
+		printf("%s@%d: mkstemps(%s) failed: %s\n",
+		       __func__, __LINE__, tmpfile, strerror(errno));
+		free(tmpfile);
+		return NULL;
+	}
+
+	/* Write BPF object data */
+	written = write(fd, data, size);
+	close(fd);
+
+	if (written != (ssize_t)size) {
+		printf("%s@%d: write failed: %s\n",
+		       __func__, __LINE__, strerror(errno));
+		unlink(tmpfile);
+		free(tmpfile);
+		return NULL;
+	}
+
+	return tmpfile;
+}
+
+#include "test_bpf_load.h"
+
+/*
+ * Test loading BPF program from an object file.
+ * This test uses same arguments as previous test_call1 example.
+ */
+static int
+test_bpf_elf_load(void)
+{
+	static const char test_section[] = "call1";
+	uint8_t tbuf[sizeof(struct dummy_vect8)];
+	const struct rte_bpf_xsym xsym[] = {
+		{
+			.name = RTE_STR(dummy_func1),
+			.type = RTE_BPF_XTYPE_FUNC,
+			.func = {
+				.val = (void *)dummy_func1,
+				.nb_args = 3,
+				.args = {
+					[0] = {
+						.type = RTE_BPF_ARG_PTR,
+						.size = sizeof(struct dummy_offset),
+					},
+					[1] = {
+						.type = RTE_BPF_ARG_PTR,
+						.size = sizeof(uint32_t),
+					},
+					[2] = {
+						.type = RTE_BPF_ARG_PTR,
+						.size = sizeof(uint64_t),
+					},
+				},
+			},
+		},
+	};
+	int ret;
+
+	/* Create temp file from embedded BPF object */
+	char *tmpfile = create_temp_bpf_file(app_test_bpf_load_o,
+					     app_test_bpf_load_o_len,
+					     "load");
+	if (tmpfile == NULL)
+		return -1;
+
+	/* Try to load BPF program from temp file */
+	const struct rte_bpf_prm prm = {
+		.xsym = xsym,
+		.nb_xsym = RTE_DIM(xsym),
+		.prog_arg = {
+			.type = RTE_BPF_ARG_PTR,
+			.size = sizeof(tbuf),
+		},
+	};
+
+	struct rte_bpf *bpf = rte_bpf_elf_load(&prm, tmpfile, test_section);
+	unlink(tmpfile);
+	free(tmpfile);
+
+	/* If libelf support is not available */
+	if (bpf == NULL && rte_errno == ENOTSUP)
+		return TEST_SKIPPED;
+
+	TEST_ASSERT(bpf != NULL, "failed to load BPF %d:%s", rte_errno, strerror(rte_errno));
+
+	/* Prepare test data */
+	struct dummy_vect8 *dv = (struct dummy_vect8 *)tbuf;
+
+	memset(dv, 0, sizeof(*dv));
+	dv->in[0].u64 = (int32_t)TEST_FILL_1;
+	dv->in[0].u32 = dv->in[0].u64;
+	dv->in[0].u16 = dv->in[0].u64;
+	dv->in[0].u8 = dv->in[0].u64;
+
+	/* Execute loaded BPF program */
+	uint64_t rc = rte_bpf_exec(bpf, tbuf);
+	ret = test_call1_check(rc, tbuf);
+	TEST_ASSERT(ret == 0, "test_call1_check failed: %d", ret);
+
+	/* Test JIT if available */
+	struct rte_bpf_jit jit;
+	ret = rte_bpf_get_jit(bpf, &jit);
+	TEST_ASSERT(ret == 0, "rte_bpf_get_jit failed: %d", ret);
+
+	if (jit.func != NULL) {
+		memset(dv, 0, sizeof(*dv));
+		dv->in[0].u64 = (int32_t)TEST_FILL_1;
+		dv->in[0].u32 = dv->in[0].u64;
+		dv->in[0].u16 = dv->in[0].u64;
+		dv->in[0].u8 = dv->in[0].u64;
+
+		rc = jit.func(tbuf);
+		ret = test_call1_check(rc, tbuf);
+		TEST_ASSERT(ret == 0, "jit test_call1_check failed: %d", ret);
+	}
+
+	rte_bpf_destroy(bpf);
+
+	printf("%s: ELF load test passed\n", __func__);
+	return TEST_SUCCESS;
+}
+
+#include <rte_ethdev.h>
+#include <rte_bpf_ethdev.h>
+#include <rte_bus_vdev.h>
+
+#include "test_bpf_filter.h"
+
+#define BPF_TEST_BURST		128
+#define BPF_TEST_POOLSIZE	256 /* at least 2x burst */
+#define BPF_TEST_PKT_LEN	64 /* Ether + IP + TCP */
+
+static int null_vdev_setup(const char *name, uint16_t *port, struct rte_mempool *pool)
+{
+	int ret;
+
+	/* Make a null device */
+	ret = rte_vdev_init(name, NULL);
+	TEST_ASSERT(ret == 0, "rte_vdev_init(%s) failed: %d", name, ret);
+
+	ret = rte_eth_dev_get_port_by_name(name, port);
+	TEST_ASSERT(ret == 0, "failed to get port id for %s: %d", name, ret);
+
+	struct rte_eth_conf conf = { };
+	ret = rte_eth_dev_configure(*port, 1, 1, &conf);
+	TEST_ASSERT(ret == 0, "failed to configure port %u: %d", *port, ret);
+
+	struct rte_eth_txconf txconf = { };
+	ret = rte_eth_tx_queue_setup(*port, 0, BPF_TEST_BURST, SOCKET_ID_ANY, &txconf);
+	TEST_ASSERT(ret == 0, "failed to setup tx queue port %u: %d", *port, ret);
+
+	struct rte_eth_rxconf rxconf = { };
+	ret = rte_eth_rx_queue_setup(*port, 0, BPF_TEST_BURST, SOCKET_ID_ANY,
+				     &rxconf, pool);
+	TEST_ASSERT(ret == 0, "failed to setup rx queue port %u: %d", *port, ret);
+
+	ret = rte_eth_dev_start(*port);
+	TEST_ASSERT(ret == 0, "failed to start port %u: %d", *port, ret);
+
+	return 0;
+}
+
+static unsigned int
+setup_mbufs(struct rte_mbuf *burst[], unsigned int n)
+{
+	struct rte_ether_hdr eh = {
+		.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4),
+	};
+	const struct rte_ipv4_hdr iph = {
+		.version_ihl = RTE_IPV4_VHL_DEF,
+		.total_length = rte_cpu_to_be_16(BPF_TEST_PKT_LEN - sizeof(eh)),
+		.time_to_live = IPDEFTTL,
+		.src_addr = rte_cpu_to_be_32(ip_src_addr),
+		.dst_addr = rte_cpu_to_be_32(ip_dst_addr),
+	};
+	unsigned int tcp_count = 0;
+
+	rte_eth_random_addr(eh.dst_addr.addr_bytes);
+
+	for (unsigned int i = 0; i < n; i++) {
+		struct rte_mbuf *mb = burst[i];
+
+		/* Setup Ethernet header */
+		*rte_pktmbuf_mtod(mb, struct rte_ether_hdr *) = eh;
+
+		/* Setup IP header */
+		struct rte_ipv4_hdr *ip
+			= rte_pktmbuf_mtod_offset(mb, struct rte_ipv4_hdr *, sizeof(eh));
+		*ip = iph;
+
+		if (rte_rand() & 1) {
+			struct rte_udp_hdr *udp
+				= rte_pktmbuf_mtod_offset(mb, struct rte_udp_hdr *,
+							  sizeof(eh) + sizeof(iph));
+
+			ip->next_proto_id = IPPROTO_UDP;
+			*udp = (struct rte_udp_hdr) {
+				.src_port = rte_cpu_to_be_16(9),	/* discard */
+				.dst_port = rte_cpu_to_be_16(9),	/* discard */
+				.dgram_len = BPF_TEST_PKT_LEN - sizeof(eh) - sizeof(iph),
+			};
+
+		} else {
+			struct rte_tcp_hdr *tcp
+				= rte_pktmbuf_mtod_offset(mb, struct rte_tcp_hdr *,
+							  sizeof(eh) + sizeof(iph));
+
+			ip->next_proto_id = IPPROTO_TCP;
+			*tcp = (struct rte_tcp_hdr) {
+				.src_port = rte_cpu_to_be_16(9),	/* discard */
+				.dst_port = rte_cpu_to_be_16(9),	/* discard */
+				.tcp_flags = RTE_TCP_RST_FLAG,
+			};
+			++tcp_count;
+		}
+	}
+
+	return tcp_count;
+}
+
+static int bpf_tx_test(uint16_t port, const char *tmpfile, struct rte_mempool *pool,
+		       const char *section, uint32_t flags)
+{
+	const struct rte_bpf_prm prm = {
+		.prog_arg = {
+			.type = RTE_BPF_ARG_PTR,
+			.size = sizeof(struct rte_mbuf),
+		},
+	};
+	int ret;
+
+	/* Try to load BPF TX program from temp file */
+	ret = rte_bpf_eth_tx_elf_load(port, 0, &prm, tmpfile, section, flags);
+	if (ret != 0) {
+		printf("%s@%d: failed to load BPF filter from file=%s error=%d:(%s)\n",
+		       __func__, __LINE__, tmpfile, rte_errno, rte_strerror(rte_errno));
+		return ret;
+	}
+
+	struct rte_mbuf *pkts[BPF_TEST_BURST] = { };
+	ret = rte_pktmbuf_alloc_bulk(pool, pkts, BPF_TEST_BURST);
+	TEST_ASSERT(ret == 0, "failed to allocate mbufs");
+
+	uint16_t expect = setup_mbufs(pkts, BPF_TEST_BURST);
+
+	uint16_t sent = rte_eth_tx_burst(port, 0, pkts, BPF_TEST_BURST);
+	TEST_ASSERT_EQUAL(sent, expect, "rte_eth_tx_burst returned: %u expected %u",
+			  sent, expect);
+
+	/* The unsent packets should be dropped */
+	rte_pktmbuf_free_bulk(pkts + sent, BPF_TEST_BURST - sent);
+
+	/* Pool should have same number of packets avail */
+	unsigned int avail = rte_mempool_avail_count(pool);
+	TEST_ASSERT_EQUAL(avail, BPF_TEST_POOLSIZE,
+			  "Mempool available %u != %u leaks?", avail, BPF_TEST_POOLSIZE);
+
+	rte_bpf_eth_tx_unload(port, 0);
+	return TEST_SUCCESS;
+}
+
+/* Test loading a transmit filter which only allows IPv4 packets */
+static int
+test_bpf_elf_tx_load(void)
+{
+	static const char null_dev[] = "net_null_bpf0";
+	char *tmpfile = NULL;
+	struct rte_mempool *mb_pool = NULL;
+	uint16_t port = UINT16_MAX;
+	int ret;
+
+	printf("%s start\n", __func__);
+
+	/* Make a pool for packets */
+	mb_pool = rte_pktmbuf_pool_create("bpf_tx_test_pool", BPF_TEST_POOLSIZE,
+					  0, 0, RTE_MBUF_DEFAULT_BUF_SIZE,
+					  SOCKET_ID_ANY);
+
+	ret = null_vdev_setup(null_dev, &port, mb_pool);
+	if (ret != 0)
+		goto fail;
+
+	/* Create temp file from embedded BPF object */
+	tmpfile = create_temp_bpf_file(app_test_bpf_filter_o, app_test_bpf_filter_o_len, "tx");
+	if (tmpfile == NULL)
+		goto fail;
+
+	/* Do test with VM */
+	ret = bpf_tx_test(port, tmpfile, mb_pool, "filter", 0);
+	if (ret != 0)
+		goto fail;
+
+	/* Repeat with JIT */
+	ret = bpf_tx_test(port, tmpfile, mb_pool, "filter", RTE_BPF_ETH_F_JIT);
+	if (ret == 0)
+		printf("%s: TX ELF load test passed\n", __func__);
+
+fail:
+	if (tmpfile) {
+		unlink(tmpfile);
+		free(tmpfile);
+	}
+
+	if (port != UINT16_MAX)
+		rte_vdev_uninit(null_dev);
+
+	rte_mempool_free(mb_pool);
+
+	if (ret == 0)
+		return TEST_SUCCESS;
+	else if (ret == -ENOTSUP)
+		return TEST_SKIPPED;
+	else
+		return TEST_FAILED;
+}
+
+/* Test loading a receive filter */
+static int bpf_rx_test(uint16_t port, const char *tmpfile, struct rte_mempool *pool,
+		       const char *section, uint32_t flags, uint16_t expected)
+{
+	struct rte_mbuf *pkts[BPF_TEST_BURST];
+	const struct rte_bpf_prm prm = {
+		.prog_arg = {
+			.type = RTE_BPF_ARG_PTR,
+			.size = sizeof(struct rte_mbuf),
+		},
+	};
+	int ret;
+
+	/* Load BPF program to drop all packets */
+	ret = rte_bpf_eth_rx_elf_load(port, 0, &prm, tmpfile, section, flags);
+	if (ret != 0) {
+		printf("%s@%d: failed to load BPF filter from file=%s error=%d:(%s)\n",
+		       __func__, __LINE__, tmpfile, rte_errno, rte_strerror(rte_errno));
+		return ret;
+	}
+
+	uint16_t rcvd = rte_eth_rx_burst(port, 0, pkts, BPF_TEST_BURST);
+	TEST_ASSERT_EQUAL(rcvd, expected,
+			  "rte_eth_rx_burst returned: %u expect: %u", rcvd, expected);
+
+	/* Drop the received packets */
+	rte_pktmbuf_free_bulk(pkts, rcvd);
+
+	rte_bpf_eth_rx_unload(port, 0);
+
+	/* Pool should now be full */
+	unsigned int avail = rte_mempool_avail_count(pool);
+	TEST_ASSERT_EQUAL(avail, BPF_TEST_POOLSIZE,
+			  "Mempool available %u != %u leaks?", avail, BPF_TEST_POOLSIZE);
+
+	return TEST_SUCCESS;
+}
+
+/* Test loading a receive filters, first with drop all and then with allow all packets */
+static int
+test_bpf_elf_rx_load(void)
+{
+	static const char null_dev[] = "net_null_bpf0";
+	struct rte_mempool *pool = NULL;
+	char *tmpfile = NULL;
+	uint16_t port;
+	int ret;
+
+	printf("%s start\n", __func__);
+
+	/* Make a pool for packets */
+	pool = rte_pktmbuf_pool_create("bpf_rx_test_pool", 2 * BPF_TEST_BURST,
+					  0, 0, RTE_MBUF_DEFAULT_BUF_SIZE,
+					  SOCKET_ID_ANY);
+	TEST_ASSERT(pool != NULL, "failed to create mempool");
+
+	ret = null_vdev_setup(null_dev, &port, pool);
+	if (ret != 0)
+		goto fail;
+
+	/* Create temp file from embedded BPF object */
+	tmpfile = create_temp_bpf_file(app_test_bpf_filter_o, app_test_bpf_filter_o_len, "rx");
+	if (tmpfile == NULL)
+		goto fail;
+
+	/* Do test with VM */
+	ret = bpf_rx_test(port, tmpfile, pool, "drop", 0, 0);
+	if (ret != 0)
+		goto fail;
+
+	/* Repeat with JIT */
+	ret = bpf_rx_test(port, tmpfile, pool, "drop", RTE_BPF_ETH_F_JIT, 0);
+	if (ret != 0)
+		goto fail;
+
+	/* Repeat with allow all */
+	ret = bpf_rx_test(port, tmpfile, pool, "allow", 0, BPF_TEST_BURST);
+	if (ret != 0)
+		goto fail;
+
+	/* Repeat with JIT */
+	ret = bpf_rx_test(port, tmpfile, pool, "allow", RTE_BPF_ETH_F_JIT, BPF_TEST_BURST);
+	if (ret != 0)
+		goto fail;
+
+	printf("%s: RX ELF load test passed\n", __func__);
+
+	/* The filter should free the mbufs */
+	unsigned int avail = rte_mempool_avail_count(pool);
+	TEST_ASSERT_EQUAL(avail, BPF_TEST_POOLSIZE,
+			  "Mempool available %u != %u leaks?", avail, BPF_TEST_POOLSIZE);
+
+fail:
+	if (tmpfile) {
+		unlink(tmpfile);
+		free(tmpfile);
+	}
+
+	if (port != UINT16_MAX)
+		rte_vdev_uninit(null_dev);
+
+	rte_mempool_free(pool);
+
+	return ret == 0 ? TEST_SUCCESS : TEST_FAILED;
+}
+
+
+static int
+test_bpf_elf(void)
+{
+	int ret;
+
+	ret = test_bpf_elf_load();
+	if (ret == TEST_SUCCESS)
+		ret = test_bpf_elf_tx_load();
+	if (ret == TEST_SUCCESS)
+		ret = test_bpf_elf_rx_load();
+
+	return ret;
+}
+
+#else
+
+static int
+test_bpf_elf(void)
+{
+	printf("BPF compile not supported, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#endif /* !TEST_BPF_ELF_LOAD */
+
+REGISTER_FAST_TEST(bpf_elf_autotest, NOHUGE_OK, ASAN_OK, test_bpf_elf);
+
 #ifndef RTE_HAS_LIBPCAP
 
 static int
