@@ -10,7 +10,6 @@
 #include <rte_malloc.h>
 #include <rte_cycles.h>
 #include <rte_ethdev.h>
-#include <rte_memcpy.h>
 #include <rte_byteorder.h>
 #include <rte_branch_prediction.h>
 

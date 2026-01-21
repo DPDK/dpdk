@@ -26,7 +26,6 @@
 #include <rte_log.h>
 #include <rte_debug.h>
 #include <rte_mempool.h>
-#include <rte_memcpy.h>
 #include <rte_mbuf.h>
 #include <rte_ether.h>
 #include <rte_interrupts.h>

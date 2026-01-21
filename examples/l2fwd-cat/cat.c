@@ -10,9 +10,9 @@
 #include <sched.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <rte_common.h>
-#include <rte_memcpy.h>
 
 #include <pqos.h>
 

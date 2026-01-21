@@ -24,7 +24,6 @@
 #include <rte_ring.h>
 #include <rte_log.h>
 #include <rte_mempool.h>
-#include <rte_memcpy.h>
 #include <rte_mbuf.h>
 #include <rte_interrupts.h>
 #include <rte_ether.h>

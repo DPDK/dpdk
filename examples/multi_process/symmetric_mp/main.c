@@ -37,7 +37,6 @@
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_mempool.h>
-#include <rte_memcpy.h>
 #include <rte_mbuf.h>
 #include <rte_string_fns.h>
 #include <rte_cycles.h>
