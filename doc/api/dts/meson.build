@@ -12,6 +12,9 @@ if python_ver_satisfied != 0
 endif
 
 extra_sphinx_args = ['-E', '-c', join_paths(doc_source_dir, 'guides')]
+if get_option('werror')
+    extra_sphinx_args += '-W'
+endif
 
 # DTS docs are generated inside main Doxygen docs build directory
 # DTS docs relies on main docs to install it so does not define install dir
