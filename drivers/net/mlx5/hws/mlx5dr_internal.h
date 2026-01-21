@@ -53,6 +53,12 @@
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #endif
 
+#ifdef RTE_MALLOC_ASAN
+#define MLX5DR_ASAN_ALIGN alignas(64)
+#else
+#define MLX5DR_ASAN_ALIGN
+#endif
+
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 /* Prevent double function name print when debug is set */
 #define DR_LOG DRV_LOG
