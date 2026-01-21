@@ -495,13 +495,14 @@ dir24_8_modify(struct rte_fib *fib, uint32_t ip, uint8_t depth,
 		if (parent != NULL) {
 			rte_rib_get_nh(parent, &par_nh);
 			if (par_nh == next_hop)
-				return 0;
+				goto successfully_added;
 		}
 		ret = modify_fib(dp, rib, ip, depth, next_hop);
 		if (ret != 0) {
 			rte_rib_remove(rib, ip, depth);
 			return ret;
 		}
+successfully_added:
 		if ((depth > 24) && (tmp == NULL))
 			dp->rsvd_tbl8s++;
 		return 0;
