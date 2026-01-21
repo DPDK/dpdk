@@ -93,6 +93,8 @@ enum {
 /*
  * callee saved registers list.
  * keep RBP as the last one.
+ * RBP is marked as used every time we have external calls
+ * since we need it to save RSP before stack realignment.
  */
 static const uint32_t save_regs[] = {RBX, R12, R13, R14, R15, RBP};
 
@@ -685,6 +687,8 @@ emit_call(struct bpf_jit_state *st, uintptr_t trg)
 	const uint8_t ops = 0xFF;
 	const uint8_t mods = 2;
 
+	/* Mark RBP as used to trigger stack realignment in prolog. */
+	USED(st->reguse, RBP);
 	emit_ld_imm64(st, RAX, trg, trg >> 32);
 	emit_bytes(st, &ops, sizeof(ops));
 	emit_modregrm(st, MOD_DIRECT, mods, RAX);
@@ -1220,6 +1224,16 @@ emit_prolog(struct bpf_jit_state *st, int32_t stack_size)
 	if (INUSE(st->reguse, RBP) != 0) {
 		emit_mov_reg(st, EBPF_ALU64 | EBPF_MOV | BPF_X, RSP, RBP);
 		emit_alu_imm(st, EBPF_ALU64 | BPF_SUB | BPF_K, RSP, stack_size);
+
+		/*
+		 * Align stack pointer appropriately for function calls.
+		 * We do not have direct access to function stack alignment
+		 * value (like gcc internal macro INCOMING_STACK_BOUNDARY),
+		 * but hopefully `alignof(max_align_t)` will always be greater.
+		 * Original stack pointer will be restored from rbp.
+		 */
+		emit_alu_imm(st, EBPF_ALU64 | BPF_AND | BPF_K, RSP,
+			-(uint32_t)alignof(max_align_t));
 	}
 }
 
