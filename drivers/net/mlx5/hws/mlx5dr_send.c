@@ -250,8 +250,8 @@ int mlx5dr_send_wqe_fw(struct ibv_context *ibv_ctx,
 {
 	bool has_range = send_wqe_range_data || send_wqe_range_tag;
 	bool has_match = send_wqe_match_data || send_wqe_match_tag;
-	struct mlx5dr_wqe_gta_data_seg_ste gta_wqe_data0 = {0};
-	struct mlx5dr_wqe_gta_data_seg_ste gta_wqe_data1 = {0};
+	MLX5DR_ASAN_ALIGN struct mlx5dr_wqe_gta_data_seg_ste gta_wqe_data0 = {0};
+	MLX5DR_ASAN_ALIGN struct mlx5dr_wqe_gta_data_seg_ste gta_wqe_data1 = {0};
 	struct mlx5dr_wqe_gta_ctrl_seg gta_wqe_ctrl = {0};
 	struct mlx5dr_cmd_generate_wqe_attr attr = {0};
 	struct mlx5dr_wqe_ctrl_seg wqe_ctrl = {0};
