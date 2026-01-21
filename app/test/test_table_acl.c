@@ -312,22 +312,6 @@ parse_cb_ipv4_rule_del(char *str, struct rte_table_acl_rule_delete_params *v)
 	return 0;
 }
 
-/*
- * The format for these rules DO NOT need the port ranges to be
- * separated by ' : ', just ':'. It's a lot more readable and
- * cleaner, IMO.
- */
-char lines[][128] = {
-	"@0.0.0.0/0 0.0.0.0/0 0:65535 0:65535 2/0xff", /* Protocol check */
-	"@192.168.3.1/32 0.0.0.0/0 0:65535 0:65535 0/0", /* Src IP checl */
-	"@0.0.0.0/0 10.4.4.1/32 0:65535 0:65535 0/0", /* dst IP check */
-	"@0.0.0.0/0 0.0.0.0/0 105:105 0:65535 0/0", /* src port check */
-	"@0.0.0.0/0 0.0.0.0/0 0:65535 206:206 0/0", /* dst port check */
-};
-
-char line[128];
-
-
 static int
 setup_acl_pipeline(void)
 {
@@ -342,6 +326,20 @@ setup_acl_pipeline(void)
 	struct rte_pipeline_table_acl_rule_delete_params *delete_params;
 	parse_5tuple parser;
 	char acl_name[64];
+
+	/*
+	 * The format for these rules DO NOT need the port ranges to be
+	 * separated by ' : ', just ':'. It's a lot more readable and
+	 * cleaner, IMO.
+	 */
+	static const char * const lines[] = {
+		"@0.0.0.0/0 0.0.0.0/0 0:65535 0:65535 2/0xff", /* Protocol check */
+		"@192.168.3.1/32 0.0.0.0/0 0:65535 0:65535 0/0", /* Src IP check */
+		"@0.0.0.0/0 10.4.4.1/32 0:65535 0:65535 0/0", /* dst IP check */
+		"@0.0.0.0/0 0.0.0.0/0 105:105 0:65535 0/0", /* src port check */
+		"@0.0.0.0/0 0.0.0.0/0 0:65535 206:206 0/0", /* dst port check */
+	};
+	char line[LINE_MAX];
 
 	/* Pipeline configuration */
 	p = rte_pipeline_create(&pipeline_params);
