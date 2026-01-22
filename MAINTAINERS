@@ -2010,6 +2010,7 @@ T: git://dpdk.org/next/dpdk-next-dts
 F: dts/
 F: buildtools/check-dts-requirements.py
 F: devtools/dts-check-format.sh
+F: devtools/dts-check-docstrings.py
 F: doc/guides/tools/dts.rst
 
 
