@@ -287,7 +287,7 @@ class TestDynamicQueueConf(TestSuite):
             * Set forward mode.
             * Send packets with different addresses and capture.
 
-        Verify
+        Verify:
             * Stopped queues don't handle traffic and doesn't block traffic on other queues.
         """
         self._stop_queues(True)
@@ -302,7 +302,7 @@ class TestDynamicQueueConf(TestSuite):
             * Set forward mode.
             * Send packets with different addresses and capture.
 
-        Verify
+        Verify:
             * Ring size of port queues can be configured at runtime.
         """
         self._modify_ring_size(True)
@@ -317,7 +317,7 @@ class TestDynamicQueueConf(TestSuite):
             * Set forward mode.
             * Send packets with different addresses and capture.
 
-        Verify
+        Verify:
             * Stopped queues don't handle traffic and doesn't block traffic on other queues.
         """
         self._stop_queues(False)
@@ -332,7 +332,7 @@ class TestDynamicQueueConf(TestSuite):
             * Set forward mode.
             * Send packets with different addresses and capture.
 
-        Verify
+        Verify:
             * Ring size of port queues can be configured at runtime.
         """
         self._modify_ring_size(False)
