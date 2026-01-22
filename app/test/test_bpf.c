@@ -3923,7 +3923,15 @@ test_stack_memcpy(void)
 
 REGISTER_FAST_TEST(bpf_stack_memcpy_autotest, NOHUGE_OK, ASAN_OK, test_stack_memcpy);
 
-#ifdef TEST_BPF_ELF_LOAD
+/*
+ * The BPF elf load test needs the BPF programs to be successfully
+ * compiled into generated file bpf_test.h. This means having
+ * clang with BPF target and xxd command to encode object.
+ *
+ * Test also needs the NULL PMD to be able to have something
+ * to insert filter onto.
+ */
+#if defined(TEST_BPF_ELF_LOAD) && defined(RTE_NET_NULL)
 
 /*
  * Helper function to write BPF object data to temporary file.
@@ -4388,11 +4396,11 @@ test_bpf_elf(void)
 static int
 test_bpf_elf(void)
 {
-	printf("BPF compile not supported, skipping test\n");
+	printf("BPF compile or NULL PMD not supported, skipping test\n");
 	return TEST_SKIPPED;
 }
 
-#endif /* !TEST_BPF_ELF_LOAD */
+#endif /* !(TEST_BPF_ELF_LOAD && RTE_NULL) */
 
 REGISTER_FAST_TEST(bpf_elf_autotest, NOHUGE_OK, ASAN_OK, test_bpf_elf);
 
