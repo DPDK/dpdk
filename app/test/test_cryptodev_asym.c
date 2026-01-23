@@ -139,6 +139,7 @@ queue_ops_rsa_sign_verify(void *sess)
 
 	/* Negative test */
 	result_op->asym->rsa.sign.data[0] ^= 0xff;
+	result_op->asym->rsa.sign.length = RTE_DIM(rsa_n);
 	if (rte_cryptodev_enqueue_burst(dev_id, 0, &result_op, 1) != 1) {
 		RTE_LOG(ERR, USER1, "Error sending packet for verify\n");
 		status = TEST_FAILED;
