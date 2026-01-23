@@ -9716,7 +9716,6 @@ test_pdcp_proto_SGL(int i, int oop,
 	int ret = TEST_SUCCESS;
 	int to_trn = 0;
 	int to_trn_tbl[16];
-	int segs = 1;
 	unsigned int trn_data = 0;
 	struct rte_cryptodev_info dev_info;
 	uint64_t feat_flags;
@@ -9785,7 +9784,6 @@ test_pdcp_proto_SGL(int i, int oop,
 	 */
 
 	while (trn_data < input_vec_len) {
-		++segs;
 		to_trn = (input_vec_len - trn_data < fragsz) ?
 				(input_vec_len - trn_data) : fragsz;
 
@@ -9793,6 +9791,7 @@ test_pdcp_proto_SGL(int i, int oop,
 
 		buf->next = rte_pktmbuf_alloc(ts_params->mbuf_pool);
 		buf = buf->next;
+		ut_params->ibuf->nb_segs++;
 
 		memset(rte_pktmbuf_mtod(buf, uint8_t *), 0,
 				rte_pktmbuf_tailroom(buf));
@@ -9802,6 +9801,7 @@ test_pdcp_proto_SGL(int i, int oop,
 			buf_oop->next =
 					rte_pktmbuf_alloc(ts_params->mbuf_pool);
 			buf_oop = buf_oop->next;
+			ut_params->obuf->nb_segs++;
 			memset(rte_pktmbuf_mtod(buf_oop, uint8_t *),
 					0, rte_pktmbuf_tailroom(buf_oop));
 			TEST_ASSERT_NOT_NULL(ut_params->obuf, "Output buffer not initialized");
@@ -9816,16 +9816,12 @@ test_pdcp_proto_SGL(int i, int oop,
 		trn_data += to_trn;
 	}
 
-	ut_params->ibuf->nb_segs = segs;
-
-	segs = 1;
 	if (fragsz_oop && oop) {
 		to_trn = 0;
 		ecx = 0;
 
 		trn_data = frag_size_oop;
 		while (trn_data < output_vec_len) {
-			++segs;
 			to_trn =
 				(output_vec_len - trn_data <
 						frag_size_oop) ?
@@ -9837,13 +9833,13 @@ test_pdcp_proto_SGL(int i, int oop,
 			buf_oop->next =
 				rte_pktmbuf_alloc(ts_params->mbuf_pool);
 			buf_oop = buf_oop->next;
+			ut_params->obuf->nb_segs++;
 			memset(rte_pktmbuf_mtod(buf_oop, uint8_t *),
 					0, rte_pktmbuf_tailroom(buf_oop));
 			TEST_ASSERT_NOT_NULL(rte_pktmbuf_append(ut_params->obuf, to_trn), "Failed to append to mbuf");
 
 			trn_data += to_trn;
 		}
-		ut_params->obuf->nb_segs = segs;
 	}
 
 	/* Setup Cipher Parameters */
@@ -15868,7 +15864,6 @@ test_AES_GMAC_authentication_SGL(const struct gmac_test_data *tdata,
 	uint64_t feature_flags;
 	unsigned int trn_data = 0;
 	void *digest_mem = NULL;
-	uint32_t segs = 1;
 	unsigned int to_trn = 0;
 	struct rte_mbuf *buf = NULL;
 	uint8_t *auth_tag, *plaintext;
@@ -15929,12 +15924,12 @@ test_AES_GMAC_authentication_SGL(const struct gmac_test_data *tdata,
 	 */
 
 	while (trn_data < tdata->plaintext.len) {
-		++segs;
 		to_trn = (tdata->plaintext.len - trn_data < fragsz) ?
 				(tdata->plaintext.len - trn_data) : fragsz;
 
 		buf->next = rte_pktmbuf_alloc(ts_params->mbuf_pool);
 		buf = buf->next;
+		ut_params->ibuf->nb_segs++;
 
 		memset(rte_pktmbuf_mtod(buf, uint8_t *), 0,
 				rte_pktmbuf_tailroom(buf));
@@ -15952,7 +15947,6 @@ test_AES_GMAC_authentication_SGL(const struct gmac_test_data *tdata,
 			TEST_ASSERT_NOT_NULL(digest_mem, "Failed to append digest data");
 		}
 	}
-	ut_params->ibuf->nb_segs = segs;
 
 	/*
 	 * Place digest at the end of the last buffer
@@ -17105,7 +17099,6 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 	int retval;
 	int to_trn = 0;
 	int to_trn_tbl[SGL_MAX_NO];
-	int segs = 1;
 	unsigned int trn_data = 0;
 	uint8_t *plaintext, *ciphertext, *auth_tag;
 	struct rte_cryptodev_info dev_info;
@@ -17230,7 +17223,6 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 	 */
 
 	while (trn_data < tdata->plaintext.len) {
-		++segs;
 		to_trn = (tdata->plaintext.len - trn_data < fragsz) ?
 				(tdata->plaintext.len - trn_data) : fragsz;
 
@@ -17238,6 +17230,7 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 
 		buf->next = rte_pktmbuf_alloc(ts_params->mbuf_pool);
 		buf = buf->next;
+		ut_params->ibuf->nb_segs++;
 
 		memset(rte_pktmbuf_mtod(buf, uint8_t *), 0,
 				rte_pktmbuf_tailroom(buf));
@@ -17247,6 +17240,7 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 			buf_last_oop = buf_oop->next =
 					rte_pktmbuf_alloc(ts_params->mbuf_pool);
 			buf_oop = buf_oop->next;
+			ut_params->obuf->nb_segs++;
 			memset(rte_pktmbuf_mtod(buf_oop, uint8_t *),
 					0, rte_pktmbuf_tailroom(buf_oop));
 			TEST_ASSERT_NOT_NULL(rte_pktmbuf_append(ut_params->obuf, to_trn), "Failed to append to mbuf");
@@ -17276,9 +17270,6 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 
 	uint64_t digest_phys = 0;
 
-	ut_params->ibuf->nb_segs = segs;
-
-	segs = 1;
 	if (fragsz_oop && oop) {
 		to_trn = 0;
 		ecx = 0;
@@ -17294,7 +17285,6 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 
 		trn_data = frag_size_oop;
 		while (trn_data < tdata->plaintext.len) {
-			++segs;
 			to_trn =
 				(tdata->plaintext.len - trn_data <
 						frag_size_oop) ?
@@ -17306,6 +17296,7 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 			buf_last_oop = buf_oop->next =
 					rte_pktmbuf_alloc(ts_params->mbuf_pool);
 			TEST_ASSERT_NOT_NULL(buf_oop->next, "Unexpected end of chain");
+			ut_params->obuf->nb_segs++;
 			buf_oop = buf_oop->next;
 			memset(rte_pktmbuf_mtod(buf_oop, uint8_t *),
 					0, rte_pktmbuf_tailroom(buf_oop));
@@ -17319,8 +17310,6 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 				TEST_ASSERT_NOT_NULL(digest_mem, "Failed to append auth tag");
 			}
 		}
-
-		ut_params->obuf->nb_segs = segs;
 	}
 
 	/*
