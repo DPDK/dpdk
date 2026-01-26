@@ -56,7 +56,7 @@ struct idxd_dmadev {
 	unsigned short batch_start; /* start+size == write pointer for hdls/desc */
 	unsigned short batch_size;
 
-	void *portal; /* address to write the batch descriptor */
+	volatile void *portal; /* address to write the batch descriptor */
 
 	struct idxd_completion *batch_comp_ring;
 	unsigned short *batch_idx_ring; /* store where each batch ends */
