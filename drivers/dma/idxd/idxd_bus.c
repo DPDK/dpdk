@@ -93,7 +93,7 @@ static int
 idxd_dev_close(struct rte_dma_dev *dev)
 {
 	struct idxd_dmadev *idxd = dev->data->dev_private;
-	munmap(idxd->portal, 0x1000);
+	munmap(RTE_CAST_PTR(void *, idxd->portal), 0x1000);
 	return 0;
 }
 
