@@ -1837,7 +1837,7 @@ add_edge(struct bpf_verifier *bvf, struct inst_node *node, uint32_t nidx)
 {
 	uint32_t ne;
 
-	if (nidx > bvf->prm->nb_ins) {
+	if (nidx >= bvf->prm->nb_ins) {
 		RTE_BPF_LOG_LINE(ERR,
 			"%s: program boundary violation at pc: %u, next pc: %u",
 			__func__, get_node_idx(bvf, node), nidx);
@@ -1896,14 +1896,20 @@ get_prev_node(struct bpf_verifier *bvf, struct inst_node *node)
  * Control Flow Graph (CFG).
  * Information collected at this path would be used later
  * to determine is there any loops, and/or unreachable instructions.
+ * PREREQUISITE: there is at least one node.
  */
 static void
 dfs(struct bpf_verifier *bvf)
 {
 	struct inst_node *next, *node;
 
-	node = bvf->in;
-	while (node != NULL) {
+	RTE_ASSERT(bvf->nb_nodes != 0);
+	/*
+	 * Since there is at least one node, node with index 0 always exists;
+	 * it is our program entry point.
+	 */
+	node = &bvf->in[0];
+	do {
 
 		if (node->colour == WHITE)
 			set_node_colour(bvf, node, GREY);
@@ -1933,7 +1939,7 @@ dfs(struct bpf_verifier *bvf)
 			}
 		} else
 			node = NULL;
-	}
+	} while (node != NULL);
 }
 
 /*
@@ -2071,6 +2077,12 @@ validate(struct bpf_verifier *bvf)
 
 	if (rc != 0)
 		return rc;
+
+	if (bvf->nb_nodes == 0) {
+		RTE_BPF_LOG_LINE(ERR, "%s(%p) the program is empty",
+			__func__, bvf);
+		return -EINVAL;
+	}
 
 	dfs(bvf);
 
