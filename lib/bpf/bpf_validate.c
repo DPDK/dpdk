@@ -64,7 +64,7 @@ struct inst_node {
 	uint8_t cur_edge:4;
 	uint8_t edge_type[MAX_EDGES];
 	uint32_t edge_dest[MAX_EDGES];
-	uint32_t prev_node;
+	struct inst_node *prev_node;
 	struct {
 		struct bpf_eval_state *cur;   /* save/restore for jcc targets */
 		struct bpf_eval_state *start;
@@ -1885,12 +1885,6 @@ set_edge_type(struct bpf_verifier *bvf, struct inst_node *node,
 	bvf->edge_type[type]++;
 }
 
-static struct inst_node *
-get_prev_node(struct bpf_verifier *bvf, struct inst_node *node)
-{
-	return  bvf->in + node->prev_node;
-}
-
 /*
  * Depth-First Search (DFS) through previously constructed
  * Control Flow Graph (CFG).
@@ -1926,7 +1920,7 @@ dfs(struct bpf_verifier *bvf)
 
 			if (next != NULL) {
 				/* proceed with next child */
-				next->prev_node = get_node_idx(bvf, node);
+				next->prev_node = node;
 				node = next;
 			} else {
 				/*
@@ -1935,7 +1929,7 @@ dfs(struct bpf_verifier *bvf)
 				 */
 				set_node_colour(bvf, node, BLACK);
 				node->cur_edge = 0;
-				node = get_prev_node(bvf, node);
+				node = node->prev_node;
 			}
 		} else
 			node = NULL;
@@ -2500,7 +2494,7 @@ evaluate(struct bpf_verifier *bvf)
 				next = NULL;
 				stats.nb_prune++;
 			} else {
-				next->prev_node = get_node_idx(bvf, node);
+				next->prev_node = node;
 				node = next;
 			}
 		} else {
@@ -2511,11 +2505,9 @@ evaluate(struct bpf_verifier *bvf)
 			 */
 			node->cur_edge = 0;
 			save_safe_eval_state(bvf, node);
-			node = get_prev_node(bvf, node);
+			node = node->prev_node;
 
-			/* finished */
-			if (node == bvf->in)
-				node = NULL;
+			/* first node will not have prev, signalling finish */
 		}
 	}
 

@@ -209,6 +209,86 @@ test_subtract_one(void)
 REGISTER_FAST_TEST(bpf_subtract_one_autotest, NOHUGE_OK, ASAN_OK, test_subtract_one);
 
 /*
+ * Conditionally jump over invalid operation as first instruction.
+ */
+static int
+test_jump_over_invalid_first(void)
+{
+	static const struct ebpf_insn ins[] = {
+		{
+			/* Jump over the next instruction for some r1. */
+			.code = (BPF_JMP | BPF_JEQ | BPF_K),
+			.dst_reg = EBPF_REG_1,
+			.imm = 42,
+			.off = 1,
+		},
+		{
+			/* Write 0xDEADBEEF to [r1 + INT16_MIN]. */
+			.code = (BPF_ST | BPF_MEM | EBPF_DW),
+			.dst_reg = EBPF_REG_1,
+			.off = INT16_MIN,
+			.imm = 0xDEADBEEF,
+		},
+		{
+			/* Set return value to the program argument. */
+			.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+			.src_reg = EBPF_REG_1,
+			.dst_reg = EBPF_REG_0,
+		},
+		{
+			.code = (BPF_JMP | EBPF_EXIT),
+		},
+	};
+	return bpf_load_test(RTE_DIM(ins), ins, EINVAL);
+}
+
+REGISTER_FAST_TEST(bpf_jump_over_invalid_first_autotest, NOHUGE_OK, ASAN_OK,
+	test_jump_over_invalid_first);
+
+/*
+ * Conditionally jump over invalid operation as non-first instruction.
+ */
+static int
+test_jump_over_invalid_non_first(void)
+{
+	static const struct ebpf_insn ins[] = {
+		{
+			/* Set return value to the program argument. */
+			.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+			.src_reg = EBPF_REG_1,
+			.dst_reg = EBPF_REG_0,
+		},
+		{
+			/* Jump over the next instruction for some r1. */
+			.code = (BPF_JMP | BPF_JEQ | BPF_K),
+			.dst_reg = EBPF_REG_1,
+			.imm = 42,
+			.off = 1,
+		},
+		{
+			/* Write 0xDEADBEEF to [r1 + INT16_MIN]. */
+			.code = (BPF_ST | BPF_MEM | EBPF_DW),
+			.dst_reg = EBPF_REG_1,
+			.off = INT16_MIN,
+			.imm = 0xDEADBEEF,
+		},
+		{
+			/* Set return value to the program argument. */
+			.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+			.src_reg = EBPF_REG_1,
+			.dst_reg = EBPF_REG_0,
+		},
+		{
+			.code = (BPF_JMP | EBPF_EXIT),
+		},
+	};
+	return bpf_load_test(RTE_DIM(ins), ins, EINVAL);
+}
+
+REGISTER_FAST_TEST(bpf_jump_over_invalid_non_first_autotest, NOHUGE_OK, ASAN_OK,
+	test_jump_over_invalid_non_first);
+
+/*
  * Basic functional tests for librte_bpf.
  * The main procedure - load eBPF program, execute it and
  * compare results with expected values.
