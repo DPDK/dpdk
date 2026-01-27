@@ -41,6 +41,8 @@ Supported authentication algorithms:
 * ``RTE_CRYPTO_AUTH_SHA256_HMAC``
 * ``RTE_CRYPTO_AUTH_SHA384_HMAC``
 * ``RTE_CRYPTO_AUTH_SHA512_HMAC``
+* ``RTE_CRYPTO_AUTH_SHAKE_128``
+* ``RTE_CRYPTO_AUTH_SHAKE_256``
 
 Supported AEAD algorithms:
 
