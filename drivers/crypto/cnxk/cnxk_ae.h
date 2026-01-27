@@ -1591,9 +1591,10 @@ cnxk_ae_dequeue_rsa_op(struct rte_crypto_op *cop, uint8_t *rptr,
 		break;
 	case RTE_CRYPTO_ASYM_OP_VERIFY:
 		if (rsa_ctx->padding.type == RTE_CRYPTO_RSA_PADDING_NONE) {
-			rsa->sign.length = rsa_ctx->n.length;
-			if (memcmp(rptr, rsa->message.data, rsa->message.length))
-				cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+			/* Application compares decrypted data with message for SW padding schemes
+			 */
+			rsa->cipher.length = rsa_ctx->n.length;
+			memcpy(rsa->cipher.data, rptr, rsa->cipher.length);
 		} else {
 			/* Get length of signed output */
 			rsa->sign.length = rte_cpu_to_be_16(*((uint16_t *)rptr));
