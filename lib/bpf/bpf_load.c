@@ -86,7 +86,7 @@ rte_bpf_load(const struct rte_bpf_prm *prm)
 	int32_t rc;
 	uint32_t i;
 
-	if (prm == NULL || prm->ins == NULL ||
+	if (prm == NULL || prm->ins == NULL || prm->nb_ins == 0 ||
 			(prm->nb_xsym != 0 && prm->xsym == NULL)) {
 		rte_errno = EINVAL;
 		return NULL;
