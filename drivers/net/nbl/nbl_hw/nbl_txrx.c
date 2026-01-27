@@ -511,7 +511,10 @@ nbl_res_txrx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, u16 nb_pkts, u
 			tx_extend_len = required_headroom + sizeof(struct rte_ether_hdr);
 		}
 
-		if (rte_pktmbuf_headroom(tx_pkt) >= required_headroom) {
+		if (rte_mbuf_refcnt_read(tx_pkt) == 1 &&
+		    RTE_MBUF_DIRECT(tx_pkt) &&
+		    tx_pkt->nb_segs == 1 &&
+		    rte_pktmbuf_headroom(tx_pkt) >= required_headroom) {
 			can_push = 1;
 			u = rte_pktmbuf_mtod_offset(tx_pkt, union nbl_tx_extend_head *,
 						    -required_headroom);
