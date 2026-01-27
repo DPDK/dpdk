@@ -44,19 +44,43 @@ static void nbl_res_txrx_stop_tx_ring(void *priv, u16 queue_idx)
 {
 	struct nbl_resource_mgt *res_mgt = (struct nbl_resource_mgt *)priv;
 	struct nbl_res_tx_ring *tx_ring = NBL_RES_MGT_TO_TX_RING(res_mgt, queue_idx);
-	int i;
+	struct nbl_tx_entry *tx_entry;
+	u16 i, free_cnt, free_mbuf_cnt;
 
 	if (!tx_ring)
 		return;
 
-	for (i = 0; i < tx_ring->nb_desc; i++) {
-		if (tx_ring->tx_entry[i].mbuf != NULL) {
-			rte_pktmbuf_free_seg(tx_ring->tx_entry[i].mbuf);
-			memset(&tx_ring->tx_entry[i], 0, sizeof(*tx_ring->tx_entry));
+	i = tx_ring->next_to_clean + 1 - NBL_TX_RS_THRESH;
+	free_cnt = tx_ring->vq_free_cnt;
+	tx_entry = &tx_ring->tx_entry[i];
+	free_mbuf_cnt = 0;
+
+	while (free_cnt < tx_ring->nb_desc) {
+		if (tx_entry->mbuf) {
+			free_mbuf_cnt++;
+			rte_pktmbuf_free_seg(tx_entry->mbuf);
 		}
+
+		i++;
+		tx_entry++;
+		free_cnt++;
+		if (i == tx_ring->nb_desc) {
+			i = 0;
+			tx_entry = &tx_ring->tx_entry[i];
+		}
+	}
+
+	NBL_LOG(DEBUG, "stop tx ring ntc %u, ntu %u, vq_free_cnt %u, mbuf free_cnt %u",
+		tx_ring->next_to_clean, tx_ring->next_to_use, tx_ring->vq_free_cnt, free_mbuf_cnt);
+
+	for (i = 0; i < tx_ring->nb_desc; i++) {
+		tx_ring->desc[i].addr = 0;
+		tx_ring->desc[i].len = 0;
+		tx_ring->desc[i].id = 0;
 		tx_ring->desc[i].flags = 0;
 	}
 
+	memset(tx_ring->tx_entry, 0, sizeof(*tx_entry) * tx_ring->nb_desc);
 	tx_ring->avail_used_flags = NBL_PACKED_DESC_F_AVAIL_BIT;
 	tx_ring->used_wrap_counter = 1;
 	tx_ring->next_to_clean = NBL_TX_RS_THRESH - 1;
@@ -208,25 +232,46 @@ alloc_tx_entry_failed:
 static void nbl_res_txrx_stop_rx_ring(void *priv, u16 queue_idx)
 {
 	struct nbl_resource_mgt *res_mgt = (struct nbl_resource_mgt *)priv;
-	struct nbl_res_rx_ring *rx_ring =
-			NBL_RES_MGT_TO_RX_RING(res_mgt, queue_idx);
-	u16 i;
+	struct nbl_res_rx_ring *rx_ring = NBL_RES_MGT_TO_RX_RING(res_mgt, queue_idx);
+	struct nbl_rx_entry *rx_buf;
+	u16 i, free_cnt, free_mbuf_cnt;
 
 	if (!rx_ring)
 		return;
+
+	i = rx_ring->next_to_clean;
+	free_cnt = rx_ring->vq_free_cnt;
+	free_mbuf_cnt = 0;
+
 	if (rx_ring->rx_entry != NULL) {
-		for (i = 0; i < rx_ring->nb_desc; i++) {
-			if (rx_ring->rx_entry[i].mbuf != NULL) {
-				rte_pktmbuf_free_seg(rx_ring->rx_entry[i].mbuf);
-				rx_ring->rx_entry[i].mbuf = NULL;
+		rx_buf = &rx_ring->rx_entry[i];
+		while (free_cnt < rx_ring->nb_desc) {
+			if (rx_buf->mbuf) {
+				free_mbuf_cnt++;
+				rte_pktmbuf_free_seg(rx_buf->mbuf);
 			}
-			rx_ring->desc[i].flags = 0;
+
+			i++;
+			rx_buf++;
+			free_cnt++;
+			if (i == rx_ring->nb_desc) {
+				i = 0;
+				rx_buf = &rx_ring->rx_entry[i];
+			}
 		}
 
-		for (i = rx_ring->nb_desc; i < rx_ring->nb_desc + NBL_DESC_PER_LOOP_VEC_MAX; i++)
+		memset(rx_ring->rx_entry, 0, sizeof(struct nbl_rx_entry) * rx_ring->nb_desc);
+
+		for (i = 0; i < rx_ring->nb_desc + NBL_DESC_PER_LOOP_VEC_MAX; i++) {
+			rx_ring->desc[i].addr = 0;
+			rx_ring->desc[i].len = 0;
+			rx_ring->desc[i].id = 0;
 			rx_ring->desc[i].flags = 0;
+		}
 	}
 
+	NBL_LOG(DEBUG, "stop rx ring ntc %u, ntu %u, vq_free_cnt %u, free_mbuf_cnt %u",
+		rx_ring->next_to_clean, rx_ring->next_to_use, rx_ring->vq_free_cnt, free_mbuf_cnt);
 	rx_ring->next_to_clean = 0;
 	rx_ring->next_to_use = 0;
 }

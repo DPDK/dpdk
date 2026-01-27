@@ -43,7 +43,7 @@ nbl_tx_free_bufs(struct nbl_res_tx_ring *txq)
 	if (!desc_is_used(&txq->desc[next_to_clean], txq->used_wrap_counter))
 		return 0;
 
-	n = 32;
+	n = NBL_TX_RS_THRESH;
 
 	 /* first buffer to free from S/W ring is at index
 	  * tx_next_dd - (tx_rs_thresh-1)
