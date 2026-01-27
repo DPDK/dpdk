@@ -28,7 +28,7 @@
 #define A64_ZR			31
 
 #define check_imm(n, val) (((val) >= 0) ? !!((val) >> (n)) : !!((~val) >> (n)))
-#define mask_imm(n, val) ((val) & ((1 << (n)) - 1))
+#define mask_imm(n, val) ((val) & (RTE_BIT32(n) - 1))
 
 struct ebpf_a64_map {
 	uint32_t off; /* eBPF to arm64 insn offset mapping for jump */
@@ -238,12 +238,12 @@ emit_add_sub_imm(struct a64_jit_ctx *ctx, bool is64, bool sub, uint8_t rd,
 	uint32_t insn, imm;
 
 	imm = mask_imm(12, imm12);
-	insn = (!!is64) << 31;
-	insn |= (!!sub) << 30;
+	insn = RTE_SHIFT_VAL32(is64, 31);
+	insn |= RTE_SHIFT_VAL32(sub, 30);
 	insn |= 0x11000000;
 	insn |= rd;
-	insn |= rn << 5;
-	insn |= imm << 10;
+	insn |= RTE_SHIFT_VAL32(rn, 5);
+	insn |= RTE_SHIFT_VAL32(imm, 10);
 
 	emit_insn(ctx, insn,
 		  check_reg(rd) || check_reg(rn) || check_imm(12, imm12));
@@ -279,16 +279,16 @@ emit_ls_pair_64(struct a64_jit_ctx *ctx, uint8_t rt, uint8_t rt2, uint8_t rn,
 {
 	uint32_t insn;
 
-	insn = (!!load) << 22;
-	insn |= (!!pre_index) << 24;
+	insn = RTE_SHIFT_VAL32(load, 22);
+	insn |= RTE_SHIFT_VAL32(pre_index, 24);
 	insn |= 0xa8800000;
 	insn |= rt;
-	insn |= rn << 5;
-	insn |= rt2 << 10;
+	insn |= RTE_SHIFT_VAL32(rn, 5);
+	insn |= RTE_SHIFT_VAL32(rt2, 10);
 	if (push)
-		insn |= 0x7e << 15; /* 0x7e means -2 with imm7 */
+		insn |= RTE_SHIFT_VAL32(0x7e, 15); /* 0x7e means -2 with imm7 */
 	else
-		insn |= 0x2 << 15;
+		insn |= RTE_SHIFT_VAL32(0x2, 15);
 
 	emit_insn(ctx, insn, check_reg(rn) || check_reg(rt) || check_reg(rt2));
 
@@ -317,11 +317,11 @@ mov_imm(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t type,
 {
 	uint32_t insn;
 
-	insn = (!!is64) << 31;
-	insn |= type << 29;
-	insn |= 0x25 << 23;
-	insn |= (shift/16) << 21;
-	insn |= imm16 << 5;
+	insn = RTE_SHIFT_VAL32(is64, 31);
+	insn |= RTE_SHIFT_VAL32(type, 29);
+	insn |= RTE_SHIFT_VAL32(0x25, 23);
+	insn |= RTE_SHIFT_VAL32(shift/16, 21);
+	insn |= RTE_SHIFT_VAL32(imm16, 5);
 	insn |= rd;
 
 	emit_insn(ctx, insn, check_reg(rd) || check_mov_hw(is64, shift));
@@ -334,7 +334,7 @@ emit_mov_imm32(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint32_t val)
 	uint16_t lower = val & 0xffff;
 
 	/* Positive number */
-	if ((val & 1UL << 31) == 0) {
+	if ((val & RTE_BIT32(31)) == 0) {
 		mov_imm(ctx, is64, rd, A64_MOVZ, lower, 0);
 		if (upper)
 			mov_imm(ctx, is64, rd, A64_MOVK, upper, 16);
@@ -393,21 +393,21 @@ emit_ls(struct a64_jit_ctx *ctx, uint8_t sz, uint8_t rt, uint8_t rn, uint8_t rm,
 {
 	uint32_t insn;
 
-	insn = 0x1c1 << 21;
+	insn = RTE_SHIFT_VAL32(0x1c1, 21);
 	if (load)
-		insn |= 1 << 22;
+		insn |= RTE_BIT32(22);
 	if (sz == BPF_B)
-		insn |= 0 << 30;
+		insn |= RTE_SHIFT_VAL32(0, 30);
 	else if (sz == BPF_H)
-		insn |= 1 << 30;
+		insn |= RTE_SHIFT_VAL32(1, 30);
 	else if (sz == BPF_W)
-		insn |= 2 << 30;
+		insn |= RTE_SHIFT_VAL32(2, 30);
 	else if (sz == EBPF_DW)
-		insn |= 3 << 30;
+		insn |= RTE_SHIFT_VAL32(3, 30);
 
-	insn |= rm << 16;
-	insn |= 0x1a << 10; /* LSL and S = 0 */
-	insn |= rn << 5;
+	insn |= RTE_SHIFT_VAL32(rm, 16);
+	insn |= RTE_SHIFT_VAL32(0x1a, 10); /* LSL and S = 0 */
+	insn |= RTE_SHIFT_VAL32(rn, 5);
 	insn |= rt;
 
 	emit_insn(ctx, insn, check_reg(rt) || check_reg(rn) || check_reg(rm) ||
@@ -436,10 +436,10 @@ emit_add_sub(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t rn,
 {
 	uint32_t insn;
 
-	insn = (!!is64) << 31;
-	insn |= op << 21; /* shift == 0 */
-	insn |= rm << 16;
-	insn |= rn << 5;
+	insn = RTE_SHIFT_VAL32(is64, 31);
+	insn |= RTE_SHIFT_VAL32(op, 21); /* shift == 0 */
+	insn |= RTE_SHIFT_VAL32(rm, 16);
+	insn |= RTE_SHIFT_VAL32(rn, 5);
 	insn |= rd;
 
 	emit_insn(ctx, insn, check_reg(rd) || check_reg(rm));
@@ -468,11 +468,11 @@ emit_mul(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t rm)
 {
 	uint32_t insn;
 
-	insn = (!!is64) << 31;
-	insn |= 0xd8 << 21;
-	insn |= rm << 16;
-	insn |= A64_ZR << 10;
-	insn |= rd << 5;
+	insn = RTE_SHIFT_VAL32(is64, 31);
+	insn |= RTE_SHIFT_VAL32(0xd8, 21);
+	insn |= RTE_SHIFT_VAL32(rm, 16);
+	insn |= RTE_SHIFT_VAL32(A64_ZR, 10);
+	insn |= RTE_SHIFT_VAL32(rd, 5);
 	insn |= rd;
 
 	emit_insn(ctx, insn, check_reg(rd) || check_reg(rm));
@@ -489,11 +489,11 @@ emit_data_process_two_src(struct a64_jit_ctx *ctx, bool is64, uint8_t rd,
 {
 	uint32_t insn;
 
-	insn = (!!is64) << 31;
-	insn |= 0xd6 << 21;
-	insn |= rm << 16;
-	insn |= op << 10;
-	insn |= rn << 5;
+	insn = RTE_SHIFT_VAL32(is64, 31);
+	insn |= RTE_SHIFT_VAL32(0xd6, 21);
+	insn |= RTE_SHIFT_VAL32(rm, 16);
+	insn |= RTE_SHIFT_VAL32(op, 10);
+	insn |= RTE_SHIFT_VAL32(rn, 5);
 	insn |= rd;
 
 	emit_insn(ctx, insn, check_reg(rd) || check_reg(rm));
@@ -532,14 +532,14 @@ emit_bitfield(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t rn,
 {
 	uint32_t insn;
 
-	insn = (!!is64) << 31;
+	insn = RTE_SHIFT_VAL32(is64, 31);
 	if (insn)
-		insn |= 1 << 22; /* Set N bit when is64 is set */
-	insn |= op << 29;
-	insn |= 0x26 << 23;
-	insn |= immr << 16;
-	insn |= imms << 10;
-	insn |= rn << 5;
+		insn |= RTE_BIT32(22); /* Set N bit when is64 is set */
+	insn |= RTE_SHIFT_VAL32(op, 29);
+	insn |= RTE_SHIFT_VAL32(0x26, 23);
+	insn |= RTE_SHIFT_VAL32(immr, 16);
+	insn |= RTE_SHIFT_VAL32(imms, 10);
+	insn |= RTE_SHIFT_VAL32(rn, 5);
 	insn |= rd;
 
 	emit_insn(ctx, insn, check_reg(rd) || check_reg(rn) ||
@@ -578,11 +578,11 @@ emit_logical(struct a64_jit_ctx *ctx, bool is64, uint8_t rd,
 {
 	uint32_t insn;
 
-	insn = (!!is64) << 31;
-	insn |= op << 29;
-	insn |= 0x50 << 21;
-	insn |= rm << 16;
-	insn |= rd << 5;
+	insn = RTE_SHIFT_VAL32(is64, 31);
+	insn |= RTE_SHIFT_VAL32(op, 29);
+	insn |= RTE_SHIFT_VAL32(0x50, 21);
+	insn |= RTE_SHIFT_VAL32(rm, 16);
+	insn |= RTE_SHIFT_VAL32(rd, 5);
 	insn |= rd;
 
 	emit_insn(ctx, insn, check_reg(rd) || check_reg(rm));
@@ -612,12 +612,12 @@ emit_msub(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t rn,
 {
 	uint32_t insn;
 
-	insn = (!!is64) << 31;
-	insn |= 0xd8 << 21;
-	insn |= rm << 16;
-	insn |= 0x1 << 15;
-	insn |= ra << 10;
-	insn |= rn << 5;
+	insn = RTE_SHIFT_VAL32(is64, 31);
+	insn |= RTE_SHIFT_VAL32(0xd8, 21);
+	insn |= RTE_SHIFT_VAL32(rm, 16);
+	insn |= RTE_SHIFT_VAL32(0x1, 15);
+	insn |= RTE_SHIFT_VAL32(ra, 10);
+	insn |= RTE_SHIFT_VAL32(rn, 5);
 	insn |= rd;
 
 	emit_insn(ctx, insn, check_reg(rd) || check_reg(rn) || check_reg(rm) ||
@@ -638,7 +638,7 @@ emit_blr(struct a64_jit_ctx *ctx, uint8_t rn)
 	uint32_t insn;
 
 	insn = 0xd63f0000;
-	insn |= rn << 5;
+	insn |= RTE_SHIFT_VAL32(rn, 5);
 
 	emit_insn(ctx, insn, check_reg(rn));
 }
@@ -669,22 +669,22 @@ emit_rev(struct a64_jit_ctx *ctx, uint8_t rd, int32_t imm)
 	uint32_t insn;
 
 	insn = 0xdac00000;
-	insn |= rd << 5;
+	insn |= RTE_SHIFT_VAL32(rd, 5);
 	insn |= rd;
 
 	switch (imm) {
 	case 16:
-		insn |= 1 << 10;
+		insn |= RTE_SHIFT_VAL32(1, 10);
 		emit_insn(ctx, insn, check_reg(rd));
 		emit_zero_extend(ctx, rd, 16);
 		break;
 	case 32:
-		insn |= 2 << 10;
+		insn |= RTE_SHIFT_VAL32(2, 10);
 		emit_insn(ctx, insn, check_reg(rd));
 		/* Upper 32 bits already cleared */
 		break;
 	case 64:
-		insn |= 3 << 10;
+		insn |= RTE_SHIFT_VAL32(3, 10);
 		emit_insn(ctx, insn, check_reg(rd));
 		break;
 	default:
@@ -933,9 +933,9 @@ emit_cbnz(struct a64_jit_ctx *ctx, bool is64, uint8_t rt, int32_t imm19)
 	uint32_t insn, imm;
 
 	imm = mask_imm(19, imm19);
-	insn = (!!is64) << 31;
-	insn |= 0x35 << 24;
-	insn |= imm << 5;
+	insn = RTE_SHIFT_VAL32(is64, 31);
+	insn |= RTE_SHIFT_VAL32(0x35, 24);
+	insn |= RTE_SHIFT_VAL32(imm, 5);
 	insn |= rt;
 
 	emit_insn(ctx, insn, check_reg(rt) || check_imm(19, imm19));
@@ -947,7 +947,7 @@ emit_b(struct a64_jit_ctx *ctx, int32_t imm26)
 	uint32_t insn, imm;
 
 	imm = mask_imm(26, imm26);
-	insn = 0x5 << 26;
+	insn = RTE_SHIFT_VAL32(0x5, 26);
 	insn |= imm;
 
 	emit_insn(ctx, insn, check_imm(26, imm26));
@@ -971,9 +971,9 @@ emit_stadd(struct a64_jit_ctx *ctx, bool is64, uint8_t rs, uint8_t rn)
 	uint32_t insn;
 
 	insn = 0xb820001f;
-	insn |= (!!is64) << 30;
-	insn |= rs << 16;
-	insn |= rn << 5;
+	insn |= RTE_SHIFT_VAL32(is64, 30);
+	insn |= RTE_SHIFT_VAL32(rs, 16);
+	insn |= RTE_SHIFT_VAL32(rn, 5);
 
 	emit_insn(ctx, insn, check_reg(rs) || check_reg(rn));
 }
@@ -998,8 +998,8 @@ emit_ldxr(struct a64_jit_ctx *ctx, bool is64, uint8_t rt, uint8_t rn)
 	uint32_t insn;
 
 	insn = 0x885f7c00;
-	insn |= (!!is64) << 30;
-	insn |= rn << 5;
+	insn |= RTE_SHIFT_VAL32(is64, 30);
+	insn |= RTE_SHIFT_VAL32(rn, 5);
 	insn |= rt;
 
 	emit_insn(ctx, insn, check_reg(rt) || check_reg(rn));
@@ -1012,9 +1012,9 @@ emit_stxr(struct a64_jit_ctx *ctx, bool is64, uint8_t rs, uint8_t rt,
 	uint32_t insn;
 
 	insn = 0x88007c00;
-	insn |= (!!is64) << 30;
-	insn |= rs << 16;
-	insn |= rn << 5;
+	insn |= RTE_SHIFT_VAL32(is64, 30);
+	insn |= RTE_SHIFT_VAL32(rs, 16);
+	insn |= RTE_SHIFT_VAL32(rn, 5);
 	insn |= rt;
 
 	emit_insn(ctx, insn, check_reg(rs) || check_reg(rt) || check_reg(rn));
@@ -1084,9 +1084,9 @@ emit_cmp_tst(struct a64_jit_ctx *ctx, bool is64, uint8_t rn, uint8_t rm,
 	uint32_t insn;
 
 	insn = opc;
-	insn |= (!!is64) << 31;
-	insn |= rm << 16;
-	insn |= rn << 5;
+	insn |= RTE_SHIFT_VAL32(is64, 31);
+	insn |= RTE_SHIFT_VAL32(rm, 16);
+	insn |= RTE_SHIFT_VAL32(rn, 5);
 
 	emit_insn(ctx, insn, check_reg(rn) || check_reg(rm));
 }
@@ -1109,8 +1109,8 @@ emit_b_cond(struct a64_jit_ctx *ctx, uint8_t cond, int32_t imm19)
 	uint32_t insn, imm;
 
 	imm = mask_imm(19, imm19);
-	insn = 0x15 << 26;
-	insn |= imm << 5;
+	insn = RTE_SHIFT_VAL32(0x15, 26);
+	insn |= RTE_SHIFT_VAL32(imm, 5);
 	insn |= cond;
 
 	emit_insn(ctx, insn, check_cond(cond) || check_imm(19, imm19));
@@ -1334,7 +1334,7 @@ emit(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
 			break;
 		/* dst = imm64 */
 		case (BPF_LD | BPF_IMM | EBPF_DW):
-			u64 = ((uint64_t)ins[1].imm << 32) | (uint32_t)imm;
+			u64 = RTE_SHIFT_VAL64(ins[1].imm, 32) | (uint32_t)imm;
 			emit_mov_imm(ctx, 1, dst, u64);
 			i++;
 			break;
