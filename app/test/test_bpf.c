@@ -153,6 +153,62 @@ test_minimal_working(void)
 REGISTER_FAST_TEST(bpf_minimal_working_autotest, NOHUGE_OK, ASAN_OK, test_minimal_working);
 
 /*
+ * Try and load valid BPF program adding one to the argument.
+ */
+static int
+test_add_one(void)
+{
+	static const struct ebpf_insn ins[] = {
+		{
+			/* Set return value to one. */
+			.code = (EBPF_ALU64 | EBPF_MOV | BPF_K),
+			.dst_reg = EBPF_REG_0,
+			.imm = 1,
+		},
+		{
+			/* Add program argument to the return value. */
+			.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
+			.src_reg = EBPF_REG_1,
+			.dst_reg = EBPF_REG_0,
+		},
+		{
+			.code = (BPF_JMP | EBPF_EXIT),
+		},
+	};
+	return bpf_load_test(RTE_DIM(ins), ins, 0);
+}
+
+REGISTER_FAST_TEST(bpf_add_one_autotest, NOHUGE_OK, ASAN_OK, test_add_one);
+
+/*
+ * Try and load valid BPF program subtracting one from the argument.
+ */
+static int
+test_subtract_one(void)
+{
+	static const struct ebpf_insn ins[] = {
+		{
+			/* Subtract one from the program argument. */
+			.code = (EBPF_ALU64 | BPF_SUB | BPF_K),
+			.dst_reg = EBPF_REG_1,
+			.imm = 1,
+		},
+		{
+			/* Set return value to the result. */
+			.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+			.src_reg = EBPF_REG_1,
+			.dst_reg = EBPF_REG_0,
+		},
+		{
+			.code = (BPF_JMP | EBPF_EXIT),
+		},
+	};
+	return bpf_load_test(RTE_DIM(ins), ins, 0);
+}
+
+REGISTER_FAST_TEST(bpf_subtract_one_autotest, NOHUGE_OK, ASAN_OK, test_subtract_one);
+
+/*
  * Basic functional tests for librte_bpf.
  * The main procedure - load eBPF program, execute it and
  * compare results with expected values.
