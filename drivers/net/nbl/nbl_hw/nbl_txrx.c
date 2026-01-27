@@ -69,9 +69,13 @@ static void nbl_res_txrx_release_tx_ring(void *priv, u16 queue_idx)
 	struct nbl_resource_mgt *res_mgt = (struct nbl_resource_mgt *)priv;
 	struct nbl_txrx_mgt *txrx_mgt = NBL_RES_MGT_TO_TXRX_MGT(res_mgt);
 	struct nbl_res_tx_ring *tx_ring = NBL_RES_MGT_TO_TX_RING(res_mgt, queue_idx);
+
 	if (!tx_ring)
 		return;
+
 	rte_free(tx_ring->tx_entry);
+	rte_memzone_free(tx_ring->net_hdr_mz);
+	rte_memzone_free(tx_ring->desc_mz);
 	rte_free(tx_ring);
 	txrx_mgt->tx_rings[queue_idx] = NULL;
 }
@@ -104,7 +108,7 @@ static int nbl_res_txrx_start_tx_ring(void *priv,
 
 	if (eth_dev->data->tx_queues[param->queue_idx] != NULL) {
 		NBL_LOG(WARNING, "re-setup an already allocated tx queue");
-		nbl_res_txrx_stop_tx_ring(priv, param->queue_idx);
+		nbl_res_txrx_release_tx_ring(priv, param->queue_idx);
 		eth_dev->data->tx_queues[param->queue_idx] = NULL;
 	}
 
@@ -173,6 +177,7 @@ static int nbl_res_txrx_start_tx_ring(void *priv,
 	tx_ring->next_to_use = 0;
 	tx_ring->desc = (struct nbl_packed_desc *)memzone->addr;
 	tx_ring->net_hdr_mz = net_hdr_mz;
+	tx_ring->desc_mz = memzone;
 	tx_ring->eth_dev = eth_dev;
 	tx_ring->dma_set_msb = common->dma_set_msb;
 	tx_ring->dma_limit_msb = common->dma_limit_msb;
@@ -226,6 +231,21 @@ static void nbl_res_txrx_stop_rx_ring(void *priv, u16 queue_idx)
 	rx_ring->next_to_use = 0;
 }
 
+static void nbl_res_txrx_release_rx_ring(void *priv, u16 queue_idx)
+{
+	struct nbl_resource_mgt *res_mgt = (struct nbl_resource_mgt *)priv;
+	struct nbl_txrx_mgt *txrx_mgt = NBL_RES_MGT_TO_TXRX_MGT(res_mgt);
+	struct nbl_res_rx_ring *rx_ring = NBL_RES_MGT_TO_RX_RING(res_mgt, queue_idx);
+
+	if (!rx_ring)
+		return;
+
+	rte_free(rx_ring->rx_entry);
+	rte_memzone_free(rx_ring->desc_mz);
+	rte_free(rx_ring);
+	txrx_mgt->rx_rings[queue_idx] = NULL;
+}
+
 static int nbl_res_txrx_start_rx_ring(void *priv,
 				      struct nbl_start_rx_ring_param *param,
 				      u64 *dma_addr)
@@ -244,7 +264,7 @@ static int nbl_res_txrx_start_rx_ring(void *priv,
 
 	if (eth_dev->data->rx_queues[param->queue_idx] != NULL) {
 		NBL_LOG(WARNING, "re-setup an already allocated rx queue");
-		nbl_res_txrx_stop_rx_ring(priv, param->queue_idx);
+		nbl_res_txrx_release_rx_ring(priv, param->queue_idx);
 		eth_dev->data->rx_queues[param->queue_idx] = NULL;
 	}
 
@@ -275,6 +295,7 @@ static int nbl_res_txrx_start_rx_ring(void *priv,
 
 	rx_ring->product = param->product;
 	rx_ring->mempool = param->mempool;
+	rx_ring->desc_mz = memzone;
 	rx_ring->nb_desc = param->nb_desc;
 	rx_ring->queue_id = param->queue_idx;
 	rx_ring->notify_qid =
@@ -374,20 +395,6 @@ static int nbl_res_alloc_rx_bufs(void *priv, u16 queue_idx)
 	rxq->buf_length = rxq->buf_length - RTE_PKTMBUF_HEADROOM;
 
 	return 0;
-}
-
-static void nbl_res_txrx_release_rx_ring(void *priv, u16 queue_idx)
-{
-	struct nbl_resource_mgt *res_mgt = (struct nbl_resource_mgt *)priv;
-	struct nbl_txrx_mgt *txrx_mgt = NBL_RES_MGT_TO_TXRX_MGT(res_mgt);
-	struct nbl_res_rx_ring *rx_ring =
-			NBL_RES_MGT_TO_RX_RING(res_mgt, queue_idx);
-	if (!rx_ring)
-		return;
-
-	rte_free(rx_ring->rx_entry);
-	rte_free(rx_ring);
-	txrx_mgt->rx_rings[queue_idx] = NULL;
 }
 
 static void nbl_res_txrx_update_rx_ring(void *priv, u16 index)
