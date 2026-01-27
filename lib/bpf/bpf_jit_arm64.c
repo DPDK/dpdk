@@ -12,7 +12,7 @@
 #include "bpf_impl.h"
 
 #define A64_REG_MASK(r)		((r) & 0x1f)
-#define A64_INVALID_OP_CODE	(0xffffffff)
+#define A64_INVALID_OP_CODE	(UINT32_C(0xffffffff))
 
 #define TMP_REG_1		(EBPF_REG_10 + 1)
 #define TMP_REG_2		(EBPF_REG_10 + 2)
@@ -228,7 +228,7 @@ emit_insn(struct a64_jit_ctx *ctx, uint32_t insn, int error)
 static void
 emit_ret(struct a64_jit_ctx *ctx)
 {
-	emit_insn(ctx, 0xd65f03c0, 0);
+	emit_insn(ctx, UINT32_C(0xd65f03c0), 0);
 }
 
 static void
@@ -240,7 +240,7 @@ emit_add_sub_imm(struct a64_jit_ctx *ctx, bool is64, bool sub, uint8_t rd,
 	imm = mask_imm(12, imm12);
 	insn = RTE_SHIFT_VAL32(is64, 31);
 	insn |= RTE_SHIFT_VAL32(sub, 30);
-	insn |= 0x11000000;
+	insn |= UINT32_C(0x11000000);
 	insn |= rd;
 	insn |= RTE_SHIFT_VAL32(rn, 5);
 	insn |= RTE_SHIFT_VAL32(imm, 10);
@@ -281,7 +281,7 @@ emit_ls_pair_64(struct a64_jit_ctx *ctx, uint8_t rt, uint8_t rt2, uint8_t rn,
 
 	insn = RTE_SHIFT_VAL32(load, 22);
 	insn |= RTE_SHIFT_VAL32(pre_index, 24);
-	insn |= 0xa8800000;
+	insn |= UINT32_C(0xa8800000);
 	insn |= rt;
 	insn |= RTE_SHIFT_VAL32(rn, 5);
 	insn |= RTE_SHIFT_VAL32(rt2, 10);
@@ -637,7 +637,7 @@ emit_blr(struct a64_jit_ctx *ctx, uint8_t rn)
 {
 	uint32_t insn;
 
-	insn = 0xd63f0000;
+	insn = UINT32_C(0xd63f0000);
 	insn |= RTE_SHIFT_VAL32(rn, 5);
 
 	emit_insn(ctx, insn, check_reg(rn));
@@ -668,7 +668,7 @@ emit_rev(struct a64_jit_ctx *ctx, uint8_t rd, int32_t imm)
 {
 	uint32_t insn;
 
-	insn = 0xdac00000;
+	insn = UINT32_C(0xdac00000);
 	insn |= RTE_SHIFT_VAL32(rd, 5);
 	insn |= rd;
 
@@ -970,7 +970,7 @@ emit_stadd(struct a64_jit_ctx *ctx, bool is64, uint8_t rs, uint8_t rn)
 {
 	uint32_t insn;
 
-	insn = 0xb820001f;
+	insn = UINT32_C(0xb820001f);
 	insn |= RTE_SHIFT_VAL32(is64, 30);
 	insn |= RTE_SHIFT_VAL32(rs, 16);
 	insn |= RTE_SHIFT_VAL32(rn, 5);
@@ -997,7 +997,7 @@ emit_ldxr(struct a64_jit_ctx *ctx, bool is64, uint8_t rt, uint8_t rn)
 {
 	uint32_t insn;
 
-	insn = 0x885f7c00;
+	insn = UINT32_C(0x885f7c00);
 	insn |= RTE_SHIFT_VAL32(is64, 30);
 	insn |= RTE_SHIFT_VAL32(rn, 5);
 	insn |= rt;
@@ -1011,7 +1011,7 @@ emit_stxr(struct a64_jit_ctx *ctx, bool is64, uint8_t rs, uint8_t rt,
 {
 	uint32_t insn;
 
-	insn = 0x88007c00;
+	insn = UINT32_C(0x88007c00);
 	insn |= RTE_SHIFT_VAL32(is64, 30);
 	insn |= RTE_SHIFT_VAL32(rs, 16);
 	insn |= RTE_SHIFT_VAL32(rn, 5);
@@ -1075,8 +1075,8 @@ emit_atomic(struct a64_jit_ctx *ctx, uint8_t op, uint8_t tmp1, uint8_t tmp2,
 	}
 }
 
-#define A64_CMP 0x6b00000f
-#define A64_TST 0x6a00000f
+#define A64_CMP (UINT32_C(0x6b00000f))
+#define A64_TST (UINT32_C(0x6a00000f))
 static void
 emit_cmp_tst(struct a64_jit_ctx *ctx, bool is64, uint8_t rn, uint8_t rm,
 	     uint32_t opc)
