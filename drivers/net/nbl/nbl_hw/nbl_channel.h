@@ -41,6 +41,14 @@ enum {
 	NBL_MB_TX_QID = 1,
 };
 
+enum {
+	NBL_MBX_STATUS_IDLE = 0,
+	NBL_MBX_STATUS_WAITING,
+	NBL_MBX_STATUS_ACKING,
+	NBL_MBX_STATUS_ACKED,
+	NBL_MBX_STATUS_TIMEOUT,
+};
+
 struct __rte_packed_begin nbl_chan_tx_desc {
 	uint16_t flags;
 	uint16_t srcid;
@@ -74,8 +82,7 @@ struct nbl_chan_ring {
 
 struct nbl_chan_waitqueue_head {
 	char *ack_data;
-	RTE_ATOMIC(int)
-		acked;
+	RTE_ATOMIC(int) status;
 	int ack_err;
 	uint16_t ack_data_len;
 	uint16_t msg_type;
