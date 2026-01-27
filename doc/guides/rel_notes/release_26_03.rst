@@ -73,6 +73,7 @@ New Features
 * **Updated openssl crypto driver.**
 
   * Added support for AES-XTS cipher algorithm.
+  * Added support for SHAKE-128 and SHAKE-256 authentication algorithms.
 
 
 Removed Items
