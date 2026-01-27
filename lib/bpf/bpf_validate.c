@@ -243,8 +243,8 @@ eval_add(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, uint64_t msk)
 
 	rv.u.min = (rd->u.min + rs->u.min) & msk;
 	rv.u.max = (rd->u.max + rs->u.max) & msk;
-	rv.s.min = (rd->s.min + rs->s.min) & msk;
-	rv.s.max = (rd->s.max + rs->s.max) & msk;
+	rv.s.min = ((uint64_t)rd->s.min + (uint64_t)rs->s.min) & msk;
+	rv.s.max = ((uint64_t)rd->s.max + (uint64_t)rs->s.max) & msk;
 
 	/*
 	 * if at least one of the operands is not constant,
@@ -272,8 +272,8 @@ eval_sub(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, uint64_t msk)
 
 	rv.u.min = (rd->u.min - rs->u.max) & msk;
 	rv.u.max = (rd->u.max - rs->u.min) & msk;
-	rv.s.min = (rd->s.min - rs->s.max) & msk;
-	rv.s.max = (rd->s.max - rs->s.min) & msk;
+	rv.s.min = ((uint64_t)rd->s.min - (uint64_t)rs->s.max) & msk;
+	rv.s.max = ((uint64_t)rd->s.max - (uint64_t)rs->s.min) & msk;
 
 	/*
 	 * if at least one of the operands is not constant,
