@@ -274,8 +274,8 @@ int nbl_dev_port_stop(struct rte_eth_dev *eth_dev)
 	rte_delay_ms(NBL_SAFE_THREADS_WAIT_TIME);
 
 	nbl_dev_hw_stats_stop(eth_dev);
-	nbl_clear_queues(eth_dev);
 	nbl_dev_txrx_stop(eth_dev);
+	nbl_clear_queues(eth_dev);
 	nbl_userdev_port_config(adapter, NBL_KERNEL_NETWORK);
 	return 0;
 }
