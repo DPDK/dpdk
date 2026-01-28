@@ -36,6 +36,10 @@ Supported Chipsets and NICs
 - Intel Ethernet Converged Network Adapter X540-T2
 - Intel Ethernet Converged Network Adapter X550-T1
 - Intel Ethernet Converged Network Adapter X550-T2
+- Intel Ethernet Controller E610
+- Intel Ethernet Converged Network Adapter E610-XT2
+- Intel Ethernet Converged Network Adapter E610-XT4
+- Intel Ethernet Converged Network Adapter E610-IT4
 
 Vector PMD for IXGBE
 --------------------
