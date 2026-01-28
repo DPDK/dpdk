@@ -47,15 +47,17 @@ Traffic metering determines the color for the current packet (green, yellow,
 red) based on the previous history for this flow as maintained by the MTR
 object. The policer can do nothing, override the color the packet or drop the
 packet. Statistics counters are maintained for MTR object, as configured.
+object. The policer can do nothing, override the color of the packet, or drop the
+packet. Statistics counters are maintained for each MTR object, as configured.
 
 The processing done for each input packet hitting an MTR object is:
 
 * Traffic metering: The packet is assigned a color (the meter output color)
   based on the previous traffic history reflected in the current state of the
   MTR object, according to the specific traffic metering algorithm. The
-  traffic metering algorithm can typically work in color aware mode, in which
+  traffic metering algorithm can typically work in color-aware mode, in which
   case the input packet already has an initial color (the input color), or in
-  color blind mode, which is equivalent to considering all input packets
+  color-blind mode, which is equivalent to considering all input packets
   initially colored as green.
 
 * There is a meter policy API to manage pre-defined policies for meter.
@@ -105,7 +107,7 @@ traffic meter and policing library.
 
    * Adding one (or multiple) actions of the type ``RTE_FLOW_ACTION_TYPE_METER``
      to the list of meter actions (``struct rte_mtr_meter_policy_params::actions``)
-     specified per color as show in :numref:`figure_rte_mtr_chaining`.
+     specified per color as shown in :numref:`figure_rte_mtr_chaining`.
 
 #. The ``rte_mtr_meter_profile_get()`` and ``rte_mtr_meter_policy_get()``
    API functions are available for getting the object pointers directly.
