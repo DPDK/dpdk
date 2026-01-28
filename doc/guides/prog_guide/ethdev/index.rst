@@ -8,8 +8,8 @@ Ethernet Device Library
     :maxdepth: 1
 
     ethdev
-    switch_representation
     flow_offload
-    traffic_metering_and_policing
-    traffic_management
     qos_framework
+    switch_representation
+    traffic_management
+    traffic_metering_and_policing
