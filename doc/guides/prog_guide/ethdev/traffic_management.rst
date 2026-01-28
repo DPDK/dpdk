@@ -17,7 +17,7 @@ Main features:
 
 * Part of DPDK rte_ethdev API
 * Capability query API per port, per hierarchy level and per hierarchy node
-* Scheduling algorithms: Strict Priority (SP), Weighed Fair Queuing (WFQ)
+* Scheduling algorithms: Strict Priority (SP), Weighted Fair Queuing (WFQ)
 * Traffic shaping: single/dual rate, private (per node) and
   shared (by multiple nodes) shapers
 * Congestion management for hierarchy leaf nodes: algorithms of tail drop, head
@@ -30,24 +30,24 @@ Main features:
 Capability API
 --------------
 
-The aim of these APIs is to advertise the capability information (i.e critical
+The aim of these APIs is to advertise the capability information (i.e., critical
 parameter values) that the TM implementation (HW/SW) is able to support for the
-application. The APIs supports the information disclosure at the TM level, at
+application. The APIs support the information disclosure at the TM level, at
 any hierarchical level of the TM and at any node level of the specific
-hierarchical level. Such information helps towards rapid understanding of
-whether a specific implementation does meet the needs to the user application.
+hierarchical level. Such information helps for rapid understanding of
+whether a specific implementation meets the needs of the user application.
 
 At the TM level, users can get high level idea with the help of various
 parameters such as maximum number of nodes, maximum number of hierarchical
 levels, maximum number of shapers, maximum number of private shapers, type of
-scheduling algorithm (Strict Priority, Weighted Fair Queuing , etc.), etc.,
+scheduling algorithm (Strict Priority, Weighted Fair Queuing, etc.), etc.,
 supported by the implementation.
 
 Likewise, users can query the capability of the TM at the hierarchical level to
 have more granular knowledge about the specific level. The various parameters
 such as maximum number of nodes at the level, maximum number of leaf/non-leaf
-nodes at the level, type of the shaper(dual rate, single rate) supported at
-the level if node is non-leaf type etc., are exposed as a result of
+nodes at the level, type of the shaper (dual rate, single rate) supported at
+the level if node is non-leaf type, etc., are exposed as a result of
 hierarchical level capability query.
 
 Finally, the node level capability API offers knowledge about the capability
@@ -66,7 +66,7 @@ level/position in the tree. The SP algorithm is used to schedule between
 sibling nodes with different priority, while WFQ is used to schedule between
 groups of siblings that have the same priority.
 
-Algorithms such as Weighed Round Robin (WRR), byte-level WRR, Deficit WRR
+Algorithms such as Weighted Round Robin (WRR), byte-level WRR, Deficit WRR
 (DWRR), etc are considered approximations of the ideal WFQ and are therefore
 assimilated to WFQ, although an associated implementation-dependent accuracy,
 performance and resource usage trade-off might exist.
@@ -109,15 +109,14 @@ They are made available for every leaf node in the hierarchy, subject to
 the specific implementation supporting them.
 On request of writing a new packet into the current queue while the queue is
 full, the Tail Drop algorithm drops the new packet while leaving the queue
-unmodified, as opposed to the Head Drop* algorithm, which drops the packet
+unmodified, as opposed to the Head Drop algorithm, which drops the packet
 at the head of the queue (the oldest packet waiting in the queue) and admits
 the new packet at the tail of the queue.
 
 The Random Early Detection (RED) algorithm works by proactively dropping more
 and more input packets as the queue occupancy builds up. When the queue is full
 or almost full, RED effectively works as Tail Drop. The Weighted RED (WRED)
-algorithm uses a separate set of RED thresholds for each packet color and uses
-separate set of RED thresholds for each packet color.
+algorithm uses a separate set of RED thresholds for each packet color.
 
 Each hierarchy leaf node with WRED enabled as its congestion management mode
 has zero or one private WRED context (only one leaf node using it) and/or zero,
@@ -144,7 +143,7 @@ The TM APIs have been provided to support various types of packet marking such
 as VLAN DEI packet marking (IEEE 802.1Q), IPv4/IPv6 ECN marking of TCP and SCTP
 packets (IETF RFC 3168) and IPv4/IPv6 DSCP packet marking (IETF RFC 2597).
 All VLAN frames of a given color get their DEI bit set if marking is enabled
-for this color. In case, when marking for a given color is not enabled, the
+for this color. When marking for a given color is not enabled, the
 DEI bit is left as is (either set or not).
 
 All IPv4/IPv6 packets of a given color with ECN set to 2’b01 or 2’b10 carrying
