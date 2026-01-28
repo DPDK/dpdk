@@ -19,7 +19,7 @@ managed by the host system and fully transparent to users and applications.
 
 On the other hand, applications typically found on hypervisors that process
 layer 2 (L2) traffic (such as OVS) need to steer traffic themselves
-according on their own criteria.
+according to their own criteria.
 
 Without a standard software interface to manage traffic steering rules
 between VFs, SFs, PFs and the various physical ports of a given device,
@@ -84,7 +84,7 @@ thought as a software "patch panel" front-end for applications.
 - Among other things, they can be used to assign MAC addresses to the
   resource they represent.
 
-- Applications can tell port representors apart from other physical of virtual
+- Applications can tell port representors apart from other physical or virtual
   port by checking the dev_flags field within their device information
   structure for the RTE_ETH_DEV_REPRESENTOR bit-field.
 
@@ -124,7 +124,7 @@ thought as a software "patch panel" front-end for applications.
 
 - For some PMDs, memory usage of representors is huge when number of
   representor grows, mbufs are allocated for each descriptor of Rx queue.
-  Polling large number of ports brings more CPU load, cache miss and
+  Polling a large number of ports brings more CPU load, cache miss and
   latency. Shared Rx queue can be used to share Rx queue between PF and
   representors among same Rx domain. ``RTE_ETH_DEV_CAPA_RXQ_SHARE`` in
   device info is used to indicate the capability. Setting non-zero share
