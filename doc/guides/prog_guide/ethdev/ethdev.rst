@@ -7,7 +7,7 @@ Poll Mode Driver
 The Data Plane Development Kit (DPDK) supports a wide range of Ethernet speeds,
 from 10 Megabits to 400 Gigabits, depending on hardware capability.
 
-DPDK's Poll Mode Drivers (PMDs) are high-performance, optimized drivers for various
+DPDK Poll Mode Drivers (PMDs) are high-performance, optimized drivers for various
 network interface cards that bypass the traditional kernel network stack to reduce
 latency and improve throughput. They access Rx and Tx descriptors directly in a polling
 mode without relying on interrupts (except for Link Status Change notifications), enabling
