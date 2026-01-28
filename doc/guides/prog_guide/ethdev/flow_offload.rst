@@ -109,7 +109,7 @@ However, ``rte_eth_dev_configure()`` may fail if any rules remain,
 so the application must flush them before attempting a reconfiguration.
 Keeping may be unsupported for some types of rule items and actions,
 as well as depending on the value of flow attributes transfer bit.
-A combination of a single an item or action type
+A combination of a single item or action type
 and a value of the transfer bit is called a rule feature.
 For example: a COUNT action with the transfer bit set.
 To test if rules with a particular feature are kept, the application must try
@@ -198,15 +198,15 @@ Attribute: Transfer
 ^^^^^^^^^^^^^^^^^^^
 
 Instead of simply matching the properties of traffic as it would appear on a
-given DPDK port ID, enabling this attribute transfers a flow rule to the
+given ethdev, enabling this attribute transfers a flow rule to the
 lowest possible level of any device endpoints found in the pattern.
 
 When supported, this effectively enables an application to reroute traffic
 not necessarily intended for it (e.g. coming from or addressed to different
 physical ports, VFs or applications) at the device level.
 
-In "transfer" flows, the use of `Attribute: Traffic direction`_ in not allowed.
-One may use `Item: PORT_REPRESENTOR`_ and `Item: REPRESENTED_PORT`_ instead.
+In "transfer" flows, the use of `Attribute: Traffic direction`_ is not allowed.
+Use `Item: PORT_REPRESENTOR`_ and `Item: REPRESENTED_PORT`_ instead.
 
 Pattern item
 ~~~~~~~~~~~~
@@ -535,11 +535,11 @@ Item: ``PORT_ID``
 ^^^^^^^^^^^^^^^^^
 
 This item is deprecated. Consider:
- - `Item: PORT_REPRESENTOR`_
- - `Item: REPRESENTED_PORT`_
 
-Matches traffic originating from (ingress) or going to (egress) a given DPDK
-port ID.
+- `Item: PORT_REPRESENTOR`_
+- `Item: REPRESENTED_PORT`_
+
+Matches traffic originating from (ingress) or going to (egress) a given ethdev.
 
 Normally only supported if the port ID in question is known by the
 underlying PMD and related to the device the flow rule is created against.
@@ -566,7 +566,7 @@ Item: ``MARK``
 Matches an arbitrary integer value which was set using the ``MARK`` action in
 a previously matched rule.
 
-This item can only specified once as a match criteria as the ``MARK`` action can
+This item can only be specified once as a match criteria as the ``MARK`` action can
 only be specified once in a flow action.
 
 Note the value of MARK field is arbitrary and application defined.
@@ -2058,11 +2058,11 @@ Action: ``PF``
 ^^^^^^^^^^^^^^
 
 This action is deprecated. Consider:
- - `Action: PORT_REPRESENTOR`_
- - `Action: REPRESENTED_PORT`_
 
-Directs matching traffic to the physical function (PF) of the current
-device.
+- `Action: PORT_REPRESENTOR`_
+- `Action: REPRESENTED_PORT`_
+
+Directs matching traffic to the physical function (PF) of the current device.
 
 - No configurable properties.
 
@@ -2080,8 +2080,9 @@ Action: ``VF``
 ^^^^^^^^^^^^^^
 
 This action is deprecated. Consider:
- - `Action: PORT_REPRESENTOR`_
- - `Action: REPRESENTED_PORT`_
+
+- `Action: PORT_REPRESENTOR`_
+- `Action: REPRESENTED_PORT`_
 
 Directs matching traffic to a given virtual function of the current device.
 
@@ -2105,8 +2106,9 @@ rule or if packets are not addressed to a VF in the first place.
 Action: ``PORT_ID``
 ^^^^^^^^^^^^^^^^^^^
 This action is deprecated. Consider:
- - `Action: PORT_REPRESENTOR`_
- - `Action: REPRESENTED_PORT`_
+
+- `Action: PORT_REPRESENTOR`_
+- `Action: REPRESENTED_PORT`_
 
 Directs matching traffic to a given DPDK port ID.
 
@@ -2336,8 +2338,8 @@ VXLAN tunnel as defined in the``rte_flow_action_vxlan_encap`` flow items
 definition.
 
 This action modifies the payload of matched flows. The flow definition specified
-in the ``rte_flow_action_tunnel_encap`` action structure must define a valid
-VLXAN network overlay which conforms with RFC 7348 (Virtual eXtensible Local
+in the ``rte_flow_action_vxlan_encap`` action structure must define a valid
+VXLAN network overlay which conforms with RFC 7348 (Virtual eXtensible Local
 Area Network (VXLAN): A Framework for Overlaying Virtualized Layer 2 Networks
 over Layer 3 Networks). The pattern must be terminated with the
 RTE_FLOW_ITEM_TYPE_END item type.
@@ -2391,7 +2393,7 @@ NVGRE tunnel as defined in the``rte_flow_action_tunnel_encap`` flow item
 definition.
 
 This action modifies the payload of matched flows. The flow definition specified
-in the ``rte_flow_action_tunnel_encap`` action structure must defined a valid
+in the ``rte_flow_action_tunnel_encap`` action structure must define a valid
 NVGRE network overlay which conforms with RFC 7637 (NVGRE: Network
 Virtualization Using Generic Routing Encapsulation). The pattern must be
 terminated with the RTE_FLOW_ITEM_TYPE_END item type.
@@ -2967,10 +2969,10 @@ The indirect action specified data (e.g. counter) can be queried by
    The following description of indirect action persistence
    is an experimental behavior that may change without a prior notice.
 
-If ``RTE_ETH_DEV_CAPA_FLOW_SHARED_OBJECT_KEEP`` is not advertised,
-indirect actions cannot be created until the device is started for the first time
-and cannot be kept when the device is stopped.
-However, PMD also does not flush them automatically on stop,
+If the ``RTE_ETH_DEV_CAPA_FLOW_SHARED_OBJECT_KEEP`` capability is not advertised,
+indirect actions cannot be created until the device starts for the first time
+and are not kept when the device is stopped.
+However, the PMD also does not flush them automatically on stop,
 so the application must call ``rte_flow_action_handle_destroy()``
 before stopping the device to ensure no indirect actions remain.
 
@@ -3010,7 +3012,7 @@ Indirect API creates a shared flow action with unique action handle.
 Flow rules can access the shared flow action and resources related to
 that action through the indirect action handle.
 In addition, the API allows to update existing shared flow action configuration.
-After the update completes, new action configuration
+After the update completes, the new action configuration
 is available to all flows that reference that shared action.
 
 Indirect actions list expands the indirect action API:
@@ -3020,7 +3022,7 @@ Indirect actions list expands the indirect action API:
   single action only.
   Input flow actions arranged in END terminated list.
 
-- Flow rule can provide rule specific configuration parameters to
+- Flow rules can provide rule-specific configuration parameters to
   existing shared handle.
   Updates of flow rule specific configuration will not change the base
   action configuration.
@@ -3834,8 +3836,8 @@ Group Miss Actions
 ~~~~~~~~~~~~~~~~~~
 
 In an application, many flow rules share common group attributes, meaning they can be grouped and
-classified together. A user can explicitly specify a set of actions performed on a packet when it
-did not match any flows rules in a group using the following API:
+classified together. A user can explicitly specify a set of actions performed on a packet when
+it did not match any flow rules in a group using the following API:
 
 .. code-block:: c
 
