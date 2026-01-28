@@ -543,6 +543,48 @@ init_mempools(unsigned int nb_mbuf)
 }
 
 static int
+create_ipsec_flow(uint16_t portid, void *ses, uint32_t spi)
+{
+	struct rte_flow_item_esp esp_spec;
+	struct rte_flow_action action[2];
+	struct rte_flow_item pattern[2];
+	struct rte_flow_attr attr = {0};
+	struct rte_flow_error err;
+	struct rte_flow *flow;
+	int ret;
+
+	esp_spec.hdr.spi = rte_cpu_to_be_32(spi);
+
+	pattern[0].type = RTE_FLOW_ITEM_TYPE_ESP;
+	pattern[0].spec = &esp_spec;
+	pattern[0].mask = &rte_flow_item_esp_mask;
+	pattern[0].last = NULL;
+	pattern[1].type = RTE_FLOW_ITEM_TYPE_END;
+
+	action[0].type = RTE_FLOW_ACTION_TYPE_SECURITY;
+	action[0].conf = ses;
+	action[1].type = RTE_FLOW_ACTION_TYPE_END;
+	action[1].conf = NULL;
+
+	attr.ingress = 1;
+
+	ret = rte_flow_validate(portid, &attr, pattern, action, &err);
+	if (ret) {
+		printf("\nValidate ESP flow failed, ret = %d\n", ret);
+		return -1;
+	}
+	flow = rte_flow_create(portid, &attr, pattern, action, &err);
+	if (flow == NULL) {
+		printf("\nESP flow rule create failed\n");
+		return -1;
+	}
+
+	default_flow[portid] = flow;
+
+	return 0;
+}
+
+static int
 create_default_flow(uint16_t portid)
 {
 	struct rte_flow_action action[2];
@@ -1373,7 +1415,15 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 	}
 
 	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
-		ret = create_default_flow(port_id);
+		if (flags->inb_oop) {
+			ret = create_ipsec_flow(port_id, ses, td->ipsec_xform.spi);
+			if (ret) {
+				/* Check with default flow rule */
+				printf("\nFailed to create ESP flow, try with default flow");
+				ret = create_default_flow(port_id);
+			}
+		} else
+			ret = create_default_flow(port_id);
 		if (ret)
 			goto out;
 	}
