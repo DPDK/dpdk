@@ -1141,6 +1141,13 @@ again:
 		count = --vhost_user.vsocket_cnt;
 		vhost_user.vsockets[i] = vhost_user.vsockets[count];
 		vhost_user.vsockets[count] = NULL;
+
+		/* Check if we need to destroy the vhost fdset */
+		if (vhost_user.vsocket_cnt == 0 && vhost_user.fdset != NULL) {
+			fdset_destroy(vhost_user.fdset);
+			vhost_user.fdset = NULL;
+		}
+
 		pthread_mutex_unlock(&vhost_user.mutex);
 		return 0;
 	}
