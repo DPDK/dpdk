@@ -658,8 +658,6 @@ mlx5_rx_queue_pre_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t *desc,
 			struct mlx5_rxq_ctrl **rxq_ctrl)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_priv *rxq;
-	bool empty;
 
 	if (*desc > mlx5_dev_get_max_wq_size(priv->sh)) {
 		DRV_LOG(ERR,
@@ -698,14 +696,6 @@ mlx5_rx_queue_pre_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t *desc,
 		if ((*rxq_ctrl)->obj != NULL)
 			/* Some port using shared Rx queue has been started. */
 			return 0;
-		/* Release all owner RxQ to reconfigure Shared RxQ. */
-		do {
-			rxq = LIST_FIRST(&(*rxq_ctrl)->owners);
-			LIST_REMOVE(rxq, owner_entry);
-			empty = LIST_EMPTY(&(*rxq_ctrl)->owners);
-			mlx5_rxq_release(ETH_DEV(rxq->priv), rxq->idx);
-		} while (!empty);
-		*rxq_ctrl = NULL;
 	}
 	return 0;
 }
@@ -779,10 +769,21 @@ mlx5_shared_rxq_match(struct mlx5_rxq_ctrl *rxq_ctrl, struct rte_eth_dev *dev,
 			dev->data->port_id, idx);
 		return false;
 	}
-	if (priv->mtu != rxq_ctrl->mtu) {
-		DRV_LOG(ERR, "port %u queue index %u failed to join shared group: mtu mismatch",
-			dev->data->port_id, idx);
-		return false;
+	if (dev->data->mtu != rxq_ctrl->mtu) {
+		/*
+		 * MTU mismatch is only a problem when the queue hasn't been started yet.
+		 * If rxq_ctrl->obj is NULL, the queue hardware objects haven't been created,
+		 * meaning we're in the initial configuration phase where MTU must match.
+		 * If obj != NULL, the queue is already running with its hardware configured,
+		 * and runtime MTU changes are safe as they only update software bookkeeping
+		 * without recreating hardware resources.
+		 */
+		if (rxq_ctrl->obj == NULL) {
+			DRV_LOG(DEBUG, "port %u queue index %u: mtu mismatch with existing shared rxq_ctrl "
+					"(port mtu=%u rxq_ctrl mtu=%u), reconfiguration needed",
+					dev->data->port_id, idx, dev->data->mtu, rxq_ctrl->mtu);
+			return false;
+		}
 	}
 	if (priv->dev_data->dev_conf.intr_conf.rxq !=
 	    spriv->dev_data->dev_conf.intr_conf.rxq) {
@@ -925,8 +926,57 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		if (rxq_ctrl != NULL &&
 		    !mlx5_shared_rxq_match(rxq_ctrl, dev, idx, desc, socket,
 					   conf, mp)) {
-			rte_errno = EINVAL;
-			return -rte_errno;
+			struct mlx5_rxq_priv *rxq_tmp;
+			bool empty;
+
+			/*
+			 * Configuration mismatch detected with existing shared RXQ.
+			 * We need to reconfigure, but only if it's safe to do so.
+			 *
+			 * First check: If hardware objects are allocated, the shared queue has
+			 * been started. Reconfiguration would require destroying and recreating
+			 * hardware resources, which cannot be done while the queue is active.
+			 * Return EBUSY to force caller to stop the queue first.
+			 */
+			if (rxq_ctrl->obj != NULL) {
+				DRV_LOG(ERR, "port %u queue index %u: cannot reconfigure shared RXQ while started",
+					dev->data->port_id, idx);
+				rte_errno = EBUSY;
+				return -rte_errno;
+			}
+
+			/*
+			 * Second check: Even if hardware objects aren't allocated yet,
+			 * verify that no owner port is actively using this queue.
+			 * refcnt == 1 means the queue exists but is idle (only setup reference).
+			 * refcnt > 1 means the queue is being used by flows or other components.
+			 * This prevents releasing a queue that other ports depend on.
+			 */
+			LIST_FOREACH(rxq_tmp, &rxq_ctrl->owners, owner_entry) {
+				if (rxq_tmp->refcnt > 1) {
+					DRV_LOG(ERR, "port %u queue index %u: cannot reconfigure shared RXQ "
+						"while other ports are running",
+						dev->data->port_id, idx);
+					rte_errno = EBUSY;
+					return -rte_errno;
+				}
+			}
+
+			/*
+			 * Safe to reconfigure: hardware not started and no active users.
+			 * Release all owner ports from the existing shared rxq_ctrl.
+			 * This will decrement references and eventually free the old rxq_ctrl.
+			 * Setting rxq_ctrl to NULL triggers creation of a new one below with
+			 * the updated configuration.
+			 */
+			do {
+				rxq_tmp = LIST_FIRST(&rxq_ctrl->owners);
+				LIST_REMOVE(rxq_tmp, owner_entry);
+				empty = LIST_EMPTY(&rxq_ctrl->owners);
+				mlx5_rxq_release(ETH_DEV(rxq_tmp->priv), rxq_tmp->idx);
+			} while (!empty);
+
+			rxq_ctrl = NULL;
 		}
 	} else {
 		res = mlx5_rx_queue_pre_setup(dev, idx, &desc, &rxq_ctrl);
@@ -1770,7 +1820,8 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	LIST_INIT(&tmpl->owners);
 	MLX5_ASSERT(n_seg && n_seg <= MLX5_MAX_RXQ_NSEG);
 	/*
-	 * Save the original MTU to check against for shared rx queues.
+	 * Save the current MTU to check against for shared rx queues.
+	 * Use dev->data->mtu which reflects the actual current MTU.
 	 */
 	tmpl->mtu = dev->data->mtu;
 	/*
