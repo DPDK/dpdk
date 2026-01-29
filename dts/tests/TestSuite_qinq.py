@@ -26,10 +26,11 @@ class TestQinq(TestSuite):
     """QinQ test suite.
 
     This suite consists of 2 test cases:
+
     1. QinQ Forwarding: Send a QinQ packet and verify the received packet contains
-        both QinQ/VLAN layers.
+    both QinQ/VLAN layers.
     2. QinQ Strip: Enable VLAN/QinQ stripping and verify sent packets are received with the
-        expected VLAN/QinQ layers.
+    expected VLAN/QinQ layers.
     """
 
     def _send_packet_and_verify(
