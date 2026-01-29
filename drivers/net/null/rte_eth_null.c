@@ -345,8 +345,8 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		pkts = rte_atomic_load_explicit(&q->tx_pkts, rte_memory_order_relaxed);
 		bytes = rte_atomic_load_explicit(&q->tx_bytes, rte_memory_order_relaxed);
 
-		stats->opackets = pkts;
-		stats->obytes = bytes;
+		stats->opackets += pkts;
+		stats->obytes += bytes;
 
 		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
 			qstats->q_opackets[i] = pkts;
