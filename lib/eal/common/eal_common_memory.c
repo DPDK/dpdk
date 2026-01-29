@@ -1153,8 +1153,9 @@ fail:
 #define EAL_MEMSEG_INFO_REQ		"/eal/memseg_info"
 #define EAL_ELEMENT_LIST_REQ		"/eal/mem_element_list"
 #define EAL_ELEMENT_INFO_REQ		"/eal/mem_element_info"
-#define ADDR_STR			15
 
+/* Address string is "0x" prefix + 16 hex digits + null */
+#define ADDR_STR			20
 
 /* Telemetry callback handler to return heap stats for requested heap id. */
 static int
