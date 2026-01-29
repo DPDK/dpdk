@@ -110,6 +110,7 @@ API Changes
   instead of silently truncating.
 
   * lpm: name must be less than RTE_LPM_NAMESIZE.
+  * hash: name parameter must be less than RTE_HASH_NAMESIZE.
 
 
 ABI Changes

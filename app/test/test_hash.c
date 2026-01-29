@@ -1120,6 +1120,14 @@ fbk_hash_unit_test(void)
 		.socket_id = RTE_MAX_NUMA_NODES + 1, /* invalid socket */
 	};
 
+	/* try and create hash with an excessively long name */
+	struct rte_fbk_hash_params invalid_params_long_name = {
+		.name = "four_byte_key_hash_name_length_32",
+		.entries = 4,
+		.entries_per_bucket = 2,
+		.socket_id = 0,
+	};
+
 	/* try to create two hashes with identical names
 	 * in this case, trying to create a second one will not
 	 * fail but will simply return pointer to the existing
@@ -1199,6 +1207,9 @@ fbk_hash_unit_test(void)
 	RETURN_IF_ERROR_FBK(handle != NULL, "fbk hash creation should have failed");
 
 	handle = rte_fbk_hash_create(&invalid_params_7);
+	RETURN_IF_ERROR_FBK(handle != NULL, "fbk hash creation should have failed");
+
+	handle = rte_fbk_hash_create(&invalid_params_long_name);
 	RETURN_IF_ERROR_FBK(handle != NULL, "fbk hash creation should have failed");
 
 	if (rte_eal_has_hugepages()) {
@@ -1436,6 +1447,16 @@ static int test_hash_creation_with_bad_parameters(void)
 	if (handle != NULL) {
 		rte_hash_free(handle);
 		printf("Impossible creating hash successfully with invalid socket\n");
+		return -1;
+	}
+
+	memcpy(&params, &ut_params, sizeof(params));
+	params.name = "hash_creation_with_too_long_name";
+	params.socket_id = SOCKET_ID_ANY;
+	handle = rte_hash_create(&params);
+	if (handle != NULL) {
+		rte_hash_free(handle);
+		printf("Impossible creating hash successfully with long name\n");
 		return -1;
 	}
 
