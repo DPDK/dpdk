@@ -679,7 +679,6 @@ mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 int
 mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
 	uint16_t kern_mtu = 0;
 	int ret;
 
@@ -688,7 +687,6 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		return ret;
 
 	if (kern_mtu == mtu) {
-		priv->mtu = mtu;
 		DRV_LOG(DEBUG, "port %u adapter MTU was already set to %u",
 			dev->data->port_id, mtu);
 		return 0;
@@ -702,7 +700,6 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	if (ret)
 		return ret;
 	if (kern_mtu == mtu) {
-		priv->mtu = mtu;
 		DRV_LOG(DEBUG, "port %u adapter MTU set to %u",
 			dev->data->port_id, mtu);
 		return 0;
