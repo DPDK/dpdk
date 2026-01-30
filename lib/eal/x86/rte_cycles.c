@@ -145,7 +145,7 @@ get_tsc_freq_arch(void)
 
 		/* EBX : TSC/Crystal ratio, ECX : Crystal Hz */
 		if (b && c)
-			return c * (b / a);
+			return (uint64_t)c * b / a;
 	}
 
 #ifdef RTE_TOOLCHAIN_MSVC
