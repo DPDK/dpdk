@@ -61,7 +61,8 @@ zxdh_dev_infos_get(struct rte_eth_dev *dev,
 	dev_info->rx_offload_capa |= (RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
 					RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
 					RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
-					RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM);
+					RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+					RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM);
 	dev_info->rx_offload_capa |= (RTE_ETH_RX_OFFLOAD_SCATTER);
 	dev_info->rx_offload_capa |=  RTE_ETH_RX_OFFLOAD_TCP_LRO;
 	dev_info->rx_offload_capa |=  RTE_ETH_RX_OFFLOAD_RSS_HASH;
@@ -75,15 +76,15 @@ zxdh_dev_infos_get(struct rte_eth_dev *dev,
 
 	dev_info->tx_offload_capa = (RTE_ETH_TX_OFFLOAD_MULTI_SEGS);
 	dev_info->tx_offload_capa |= (RTE_ETH_TX_OFFLOAD_TCP_TSO |
-					RTE_ETH_TX_OFFLOAD_UDP_TSO);
+					RTE_ETH_TX_OFFLOAD_UDP_TSO |
+					RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO);
 	dev_info->tx_offload_capa |= (RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
 					RTE_ETH_TX_OFFLOAD_QINQ_INSERT |
 					RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO);
 	dev_info->tx_offload_capa |= (RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
 					RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
 					RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
-					RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-					RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM);
+					RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM);
 
 	return 0;
 }
@@ -903,6 +904,7 @@ zxdh_rx_csum_lro_offload_configure(struct rte_eth_dev *dev)
 	uint32_t need_accelerator = rxmode->offloads & (RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
 		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
 		RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM |
 		RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
 		RTE_ETH_RX_OFFLOAD_TCP_LRO);
 	int ret;
@@ -917,6 +919,8 @@ zxdh_rx_csum_lro_offload_configure(struct rte_eth_dev *dev)
 		port_attr.tcp_udp_checksum_offload  =
 		(rxmode->offloads & (RTE_ETH_RX_OFFLOAD_UDP_CKSUM | RTE_ETH_RX_OFFLOAD_TCP_CKSUM))
 					? true : false;
+		port_attr.outer_udp_checksum_offload =
+			(rxmode->offloads & RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM) ? true : false;
 		port_attr.lro_offload =
 				(rxmode->offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) ? true : false;
 		port_attr.accelerator_offload_flag  = need_accelerator ? true : false;
@@ -957,6 +961,17 @@ zxdh_rx_csum_lro_offload_configure(struct rte_eth_dev *dev)
 		if (ret) {
 			PMD_DRV_LOG(ERR, "%s tcp_udp_checksum config failed to send msg", __func__);
 			return -1;
+		}
+
+		zxdh_msg_head_build(hw, ZXDH_PORT_ATTRS_SET, &msg_info);
+		attr_msg->mode = ZXDH_PORT_OUTER_UDP_CHECKSUM_OFFLOAD_FLAG;
+		attr_msg->value =
+			(rxmode->offloads & RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM) ? true : false;
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
+		if (ret) {
+			PMD_DRV_LOG(ERR,
+				"%s outer_udp_checksum offload failed to send msg", __func__);
+			return ret;
 		}
 
 		zxdh_msg_head_build(hw, ZXDH_PORT_ATTRS_SET, &msg_info);

@@ -41,7 +41,7 @@
 #define ZXDH_PCODE_NO_REASSMBLE_TCP_PKT_TYPE  0x0C
 
 /* Uplink pd header byte0~1 */
-#define ZXDH_MBUF_F_RX_OUTER_L4_CKSUM_GOOD               0x00080000
+#define ZXDH_MBUF_F_RX_OUTER_L4_CKSUM_BAD                0x00080000
 #define ZXDH_MBUF_F_RX_QINQ                              0x00100000
 #define ZXDH_MBUF_F_RX_SEC_OFFLOAD                       0x00200000
 #define ZXDH_MBUF_F_RX_QINQ_STRIPPED                     0x00400000
@@ -55,6 +55,8 @@
 #define ZXDH_MBUF_F_RX_OUTER_IP_CKSUM_BAD                0x20000000
 #define ZXDH_MBUF_F_RX_FDIR                              0x40000000
 #define ZXDH_MBUF_F_RX_RSS_HASH                          0x80000000
+#define ZXDH_MBUF_F_RX_INNER_IP_CKSUM_BAD                0x00020000
+#define ZXDH_MBUF_RX_CHECKSUM_BASED_OUTER                0x00010000
 
 /* Outer/Inner L2 type */
 #define ZXDH_PD_L2TYPE_MASK                              0xf000
@@ -642,10 +644,69 @@ zxdh_dequeue_burst_rx_packed(struct zxdh_virtqueue *vq,
 }
 
 static inline void
-zxdh_rx_update_mbuf(struct rte_mbuf *m, struct zxdh_net_hdr_ul *hdr)
+update_outer_rx_l4_csum(struct zxdh_hw *hw, struct zxdh_pi_hdr *pi_hdr,
+		struct zxdh_pd_hdr_ul *pd_hdr, struct rte_mbuf *m)
+{
+	uint32_t pd_pkt_flag = ntohl(pd_hdr->pkt_flag);
+	uint32_t packet_type = 0;
+	uint32_t idx = 0;
+	bool has_ip_verify = hw->eth_dev->data->dev_conf.rxmode.offloads &
+			RTE_ETH_RX_OFFLOAD_IPV4_CKSUM;
+	uint16_t pkt_type_in = rte_be_to_cpu_16(pd_hdr->pkt_type_in);
+
+	/* pi_hdr as outer csum and pd_hdr as inner csum */
+	if ((pd_pkt_flag & ZXDH_MBUF_RX_CHECKSUM_BASED_OUTER)) {
+		m->ol_flags &= ~RTE_MBUF_F_RX_L4_CKSUM_MASK;
+		m->ol_flags &= ~RTE_MBUF_F_RX_IP_CKSUM_MASK;
+
+		if (pi_hdr) {
+			uint16_t err_code = rte_be_to_cpu_16(pi_hdr->ul.err_code);
+			if (pi_hdr->pkt_flag_hi8 & ZXDH_RX_TCPUDP_CKSUM_VERIFY) {
+				if (err_code & ZXDH_UDP_CSUM_ERR)
+					m->ol_flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD;
+				else
+					m->ol_flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD;
+			}
+
+			if (pi_hdr->pkt_flag_hi8 & ZXDH_RX_IP_CKSUM_VERIFY) {
+				if (err_code & ZXDH_IPV4_CSUM_ERR)
+					m->ol_flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
+			}
+		}
+		if (pd_pkt_flag & ZXDH_MBUF_F_RX_INNER_IP_CKSUM_BAD) {
+			m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+		} else {
+			if (has_ip_verify) {
+				idx = (pkt_type_in >> 8)  & 0xF;
+				packet_type = zxdh_inner_l3_type[idx];
+				if (((packet_type & RTE_PTYPE_INNER_L3_MASK) ==
+						RTE_PTYPE_INNER_L3_IPV4) ||
+				((packet_type & RTE_PTYPE_INNER_L3_MASK) ==
+						RTE_PTYPE_INNER_L3_IPV4_EXT))
+					m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+			}
+		}
+
+	} else {
+		if ((m->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_BAD) ==
+				RTE_MBUF_F_RX_L4_CKSUM_BAD)
+			m->ol_flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_UNKNOWN;
+		else if ((m->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_GOOD) ==
+					RTE_MBUF_F_RX_L4_CKSUM_GOOD) {
+			if (pd_pkt_flag & ZXDH_MBUF_F_RX_OUTER_L4_CKSUM_BAD)
+				m->ol_flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD;
+			else
+				m->ol_flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD;
+		}
+	}
+}
+
+static inline void
+zxdh_rx_update_mbuf(struct zxdh_hw *hw, struct rte_mbuf *m, struct zxdh_net_hdr_ul *hdr)
 {
 	uint8_t has_pi = (uint64_t)(hdr->type_hdr.pd_len << 1) > ZXDH_UL_NOPI_HDR_SIZE_MAX;
 	struct zxdh_pd_hdr_ul *pd_hdr = has_pi ? &hdr->pipd_hdr_ul.pd_hdr : &hdr->pd_hdr;
+	struct zxdh_pi_hdr *pi_hdr = NULL;
 	uint32_t pkt_flag = ntohl(pd_hdr->pkt_flag);
 	uint32_t idx = 0;
 	uint32_t striped_vlan_tci = rte_be_to_cpu_32(pd_hdr->striped_vlan_tci);
@@ -704,35 +765,31 @@ zxdh_rx_update_mbuf(struct rte_mbuf *m, struct zxdh_net_hdr_ul *hdr)
 	/* checksum handle */
 	if (pkt_flag & ZXDH_MBUF_F_RX_OUTER_IP_CKSUM_BAD)
 		m->ol_flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
-	if (pkt_flag & ZXDH_MBUF_F_RX_OUTER_L4_CKSUM_GOOD)
-		m->ol_flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD;
 
 	if (has_pi) {
-		struct zxdh_pi_hdr *pi_hdr = &hdr->pipd_hdr_ul.pi_hdr;
-		uint16_t pkt_type_masked = pi_hdr->pkt_type & ZXDH_PCODE_MASK;
+		pi_hdr = &hdr->pipd_hdr_ul.pi_hdr;
 		uint16_t err_code = rte_be_to_cpu_16(pi_hdr->ul.err_code);
-
-		bool is_ip_pkt =
-				(pi_hdr->pkt_type == ZXDH_PCODE_IP_PKT_TYPE) ||
-				((pi_hdr->pkt_type & ZXDH_PI_L3TYPE_MASK) == ZXDH_PI_L3TYPE_IP);
-
-		bool is_l4_pkt =
-				(pkt_type_masked == ZXDH_PCODE_UDP_PKT_TYPE) ||
-				(pkt_type_masked == ZXDH_PCODE_NO_REASSMBLE_TCP_PKT_TYPE) ||
-				(pkt_type_masked == ZXDH_PCODE_TCP_PKT_TYPE);
-
-		if (is_ip_pkt && (pi_hdr->pkt_flag_hi8 & ZXDH_RX_IP_CKSUM_VERIFY)) {
-			if (err_code & ZXDH_IPV4_CSUM_ERR)
-				m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
-			else
-				m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+		if (pi_hdr->pkt_type == ZXDH_PCODE_IP_PKT_TYPE ||
+			((pi_hdr->pkt_type & ZXDH_PI_L3TYPE_MASK) == ZXDH_PI_L3TYPE_IP)) {
+			if (pi_hdr->pkt_flag_hi8 & ZXDH_RX_IP_CKSUM_VERIFY) {
+				if (err_code & ZXDH_IPV4_CSUM_ERR)
+					m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+				else
+					m->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+			}
 		}
 
-		if (is_l4_pkt && (pi_hdr->pkt_flag_hi8 & ZXDH_RX_TCPUDP_CKSUM_VERIFY)) {
-			if (err_code & (ZXDH_TCP_CSUM_ERR | ZXDH_UDP_CSUM_ERR))
-				m->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
-			else
-				m->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+		if (((pi_hdr->pkt_type & ZXDH_PCODE_MASK) == ZXDH_PCODE_UDP_PKT_TYPE) ||
+			((pi_hdr->pkt_type & ZXDH_PCODE_MASK) ==
+				ZXDH_PCODE_NO_REASSMBLE_TCP_PKT_TYPE) ||
+			((pi_hdr->pkt_type & ZXDH_PCODE_MASK) == ZXDH_PCODE_TCP_PKT_TYPE)) {
+			if (pi_hdr->pkt_flag_hi8 & ZXDH_RX_TCPUDP_CKSUM_VERIFY) {
+				if ((err_code & ZXDH_TCP_CSUM_ERR) ||
+					(err_code & ZXDH_UDP_CSUM_ERR))
+					m->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
+				else
+					m->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+			}
 		}
 
 		if (ntohl(pi_hdr->ul.lro_flag) & ZXDH_PI_LRO_FLAG)
@@ -759,6 +816,10 @@ zxdh_rx_update_mbuf(struct rte_mbuf *m, struct zxdh_net_hdr_ul *hdr)
 		m->packet_type |= zxdh_inner_l3_type[idx];
 		idx = (pkt_type_inner >> 4)  & 0xF;
 		m->packet_type |= zxdh_inner_l4_type[idx];
+
+		if (hw->eth_dev->data->dev_conf.rxmode.offloads &
+				RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM)
+			update_outer_rx_l4_csum(hw, pi_hdr, pd_hdr, m);
 	}
 }
 
@@ -833,7 +894,7 @@ zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxm->port = rxvq->port_id;
 
 		/* Update rte_mbuf according to pi/pd header */
-		zxdh_rx_update_mbuf(rxm, header);
+		zxdh_rx_update_mbuf(hw, rxm, header);
 		seg_res = seg_num - 1;
 		/* Merge remaining segments */
 		while (seg_res != 0 && i < (num - 1)) {

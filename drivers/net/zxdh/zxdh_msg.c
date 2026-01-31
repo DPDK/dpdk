@@ -1829,6 +1829,9 @@ zxdh_vf_port_attr_set(struct zxdh_hw *pf_hw, uint16_t vport,
 	case ZXDH_PORT_TCP_UDP_CHKSUM_FLAG:
 		port_attr.tcp_udp_checksum_offload = attr_msg->value;
 		break;
+	case ZXDH_PORT_OUTER_UDP_CHECKSUM_OFFLOAD_FLAG:
+		port_attr.outer_udp_checksum_offload = attr_msg->value;
+		break;
 	case ZXDH_PORT_ACCELERATOR_OFFLOAD_FLAG_FLAG:
 		port_attr.accelerator_offload_flag = attr_msg->value;
 		break;

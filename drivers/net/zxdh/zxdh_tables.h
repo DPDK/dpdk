@@ -76,6 +76,7 @@
 #define ZXDH_PORT_BUSINESS_VLAN_OFFLOAD_EN_FLAG   41
 #define ZXDH_PORT_RSS_EN_OFF_FLAG                 42
 #define ZXDH_PORT_MTU_OFFLOAD_EN_OFF_FLAG         43
+#define ZXDH_PORT_OUTER_UDP_CHECKSUM_OFFLOAD_FLAG 51
 
 #define ZXDH_MTU_STATS_EGRESS_BASE           0x8481
 #define ZXDH_MTU_STATS_INGRESS_BASE          0x8981
@@ -182,7 +183,9 @@ struct zxdh_port_attr_table {
 	uint16_t tpid;
 
 	uint16_t vhca : 10;
-	uint16_t rsv16_1 : 6;
+	uint16_t rsv16_1 : 2;
+	uint16_t outer_udp_checksum_offload : 1;
+	uint16_t rsv16_2 : 3;
 #else
 	uint8_t hw_bond_enable : 1;
 	uint8_t rdma_offload_enable: 1;
@@ -235,10 +238,11 @@ struct zxdh_port_attr_table {
 
 	uint8_t rss_hash_factor;
 
-	uint16_t tpid;
-
 	uint16_t vhca : 10;
-	uint16_t rsv16_1 : 6;
+	uint16_t rsv16_1 : 2;
+	uint16_t outer_udp_checksum_offload : 1;
+	uint16_t rsv16_2 : 3;
+	uint16_t tpid;
 #endif
 };
 
