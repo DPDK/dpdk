@@ -27,6 +27,18 @@
 #define ZXDH_RSS_HF  ((ZXDH_HF_MAC_VLAN_ETH | ZXDH_HF_F3_ETH | ZXDH_HF_F5_ETH))
 
 #define ZXDH_ETHER_MIN_MTU      68
+#define ZXDH_SPM_SPEED_1X_10M          RTE_BIT32(0)
+#define ZXDH_SPM_SPEED_1X_100M         RTE_BIT32(1)
+#define ZXDH_SPM_SPEED_1X_1G           RTE_BIT32(2)
+#define ZXDH_SPM_SPEED_1X_2DOT5G       RTE_BIT32(3)
+#define ZXDH_SPM_SPEED_1X_5G           RTE_BIT32(4)
+#define ZXDH_SPM_SPEED_1X_10G          RTE_BIT32(5)
+#define ZXDH_SPM_SPEED_1X_25G          RTE_BIT32(6)
+#define ZXDH_SPM_SPEED_1X_50G          RTE_BIT32(7)
+#define ZXDH_SPM_SPEED_2X_100G         RTE_BIT32(8)
+#define ZXDH_SPM_SPEED_4X_40G          RTE_BIT32(9)
+#define ZXDH_SPM_SPEED_4X_100G         RTE_BIT32(10)
+#define ZXDH_SPM_SPEED_4X_200G         RTE_BIT32(11)
 
 struct zxdh_np_stats_data {
 	uint64_t n_pkts_dropped;
@@ -144,5 +156,8 @@ int zxdh_dev_get_module_info(struct rte_eth_dev *dev, struct rte_eth_dev_module_
 int zxdh_dev_get_module_eeprom(struct rte_eth_dev *dev, struct rte_dev_eeprom_info *info);
 int zxdh_meter_ops_get(struct rte_eth_dev *dev, void *arg);
 uint16_t zxdh_hw_qid_to_logic_qid(struct rte_eth_dev *dev, uint16_t qid);
+int32_t zxdh_link_speed_set(struct rte_eth_dev *dev);
+void zxdh_speed_modes_get(struct rte_eth_dev *dev);
+int32_t zxdh_autoneg_stats_get(struct rte_eth_dev *dev);
 
 #endif /* ZXDH_ETHDEV_OPS_H */

@@ -2450,9 +2450,58 @@ msg_proc_end:
 	return ret;
 }
 
+static int vf_recv_link_state_msg(struct rte_eth_dev *dev, void *payload,
+		void *reply_body __rte_unused, uint16_t *reps_len)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	void *link_autoneg_addr = ZXDH_ADDR_OF(zxdh_link_state_msg, payload, autoneg_enable);
+
+	hw->autoneg = *(uint8_t *)link_autoneg_addr;
+	dev->data->dev_link.link_autoneg = hw->autoneg;
+	*reps_len = ZXDH_ST_SZ_BYTES(zxdh_link_state_msg);
+
+	return 0;
+}
+
+static int
+vf_recv_bar_msg(void *payload, uint16_t len, void *reps_buffer,
+	uint16_t *reps_len, void *eth_dev)
+{
+	struct zxdh_msg_info *msg_payload = (struct zxdh_msg_info *)payload;
+	uint16_t pcieid = msg_payload->msg_to_vf.pcieid;
+	uint16_t opcode = msg_payload->msg_to_vf.opcode;
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)eth_dev;
+	struct zxdh_ifc_msg_reply_body_bits *reply_body;
+	reply_body = (struct zxdh_ifc_msg_reply_body_bits *)
+		ZXDH_ADDR_OF(msg_reply_body, reps_buffer, flag);
+	int32_t ret = 0;
+
+	if (dev == NULL && sizeof(msg_payload) <= len) {
+		PMD_DRV_LOG(ERR, "param invalid, dev is NULL or msg_payload too long");
+		ret = -2;
+		return ret;
+	}
+
+	switch (opcode) {
+	case ZXDH_SET_VF_LINK_STATE:
+		PMD_DRV_LOG(DEBUG, "PF(pcieid:%d ) set VF's link state", pcieid);
+		vf_recv_link_state_msg(dev, &msg_payload->data, reps_buffer, reps_len);
+		reply_body->flag[0] = ZXDH_REPS_SUCC;
+		break;
+	default:
+		ZXDH_SET(msg_reply_body, reps_buffer, flag, ZXDH_REPS_INVALID);
+		PMD_DRV_LOG(ERR, "[VF GET MSG FROM PF]--unknown msg opcode:%d", opcode);
+		ret = -1;
+		break;
+	}
+	return ret;
+}
+
 void
 zxdh_msg_cb_reg(struct zxdh_hw *hw)
 {
 	if (hw->is_pf)
 		zxdh_bar_chan_msg_recv_register(ZXDH_MODULE_BAR_MSG_TO_PF, pf_recv_bar_msg);
+	else
+		zxdh_bar_chan_msg_recv_register(ZXDH_MODULE_BAR_MSG_TO_VF, vf_recv_bar_msg);
 }

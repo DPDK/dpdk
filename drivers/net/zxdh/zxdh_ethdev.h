@@ -125,7 +125,7 @@ struct zxdh_hw {
 	uint64_t host_features;
 	uint64_t guest_features;
 	uint32_t speed;
-	uint32_t speed_mode;
+	int32_t speed_mode;
 	uint32_t notify_off_multiplier;
 	union zxdh_virport_num vport;
 	uint16_t max_queue_pairs;
@@ -173,9 +173,10 @@ struct zxdh_hw {
 	struct zxdh_vlan_offload_cfg vlan_offload_cfg;
 	uint16_t queue_pool_count;
 	uint16_t queue_pool_start;
-	uint8_t dl_net_hdr_len;
 	uint16_t vxlan_fd_num;
-	uint8_t rsv1[1];
+	uint32_t support_speed_modes;
+	uint8_t dl_net_hdr_len;
+	uint8_t autoneg;
 
 	struct dh_flow_list dh_flow_list;
 };
