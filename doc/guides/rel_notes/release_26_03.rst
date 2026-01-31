@@ -73,6 +73,14 @@ New Features
   * Introduced ``rte_flow_parser`` as an optional library to convert the
     testpmd's ``flow`` CLI commands into ``rte_flow`` structures.
 
+* **Updated ZTE zxdh ethernet driver.**
+
+  * Added support for modify queue depth.
+  * Optimized alloc queue resources.
+  * Added support for set link speed and get autoneg status.
+  * Added support for primary/secondary process.
+  * Added support for GENEVE-TSO and tunnel packet Rx outer UDP chksum.
+
 
 Removed Items
 -------------
