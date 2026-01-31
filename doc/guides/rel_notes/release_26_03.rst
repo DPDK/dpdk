@@ -69,6 +69,7 @@ New Features
   * Optimized queue allocation resources.
   * Added support for setting link speed and getting auto-negotiation status.
   * Added support for secondary processes.
+  * Added support for GENEVE TSO and tunnel outer UDP Rx checksum.
 
 * **Added 256-NEA/NCA/NIA algorithms in cryptodev library.**
 
