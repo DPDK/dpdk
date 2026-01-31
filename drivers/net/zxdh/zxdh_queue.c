@@ -184,6 +184,41 @@ zxdh_check_mempool(struct rte_mempool *mp, uint16_t offset, uint16_t min_length)
 	return 0;
 }
 
+static unsigned int
+log2above(unsigned int v)
+{
+	if (v <= 1)
+		return 0;
+	return 32 - rte_clz32(v - 1);
+}
+
+static uint16_t zxdh_queue_desc_pre_setup(uint16_t desc)
+{
+	uint32_t nb_desc = desc;
+
+	if (desc < ZXDH_MIN_QUEUE_DEPTH) {
+		PMD_DRV_LOG(WARNING, "nb_desc(%u) < min queue depth (%u), turn to min queue depth",
+				desc, ZXDH_MIN_QUEUE_DEPTH);
+		return ZXDH_MIN_QUEUE_DEPTH;
+	}
+
+	if (desc > ZXDH_MAX_QUEUE_DEPTH) {
+		PMD_DRV_LOG(WARNING, "nb_desc(%u) > max queue depth (%d), turn to max queue depth",
+				desc, ZXDH_MAX_QUEUE_DEPTH);
+		return ZXDH_MAX_QUEUE_DEPTH;
+	}
+
+	if (!rte_is_power_of_2(desc)) {
+		nb_desc = 1 << log2above(desc);
+		if (nb_desc > ZXDH_MAX_QUEUE_DEPTH)
+			nb_desc = ZXDH_MAX_QUEUE_DEPTH;
+		PMD_DRV_LOG(WARNING, "nb_desc(%u) turn to the next power of two (%u)",
+			desc, nb_desc);
+	}
+
+	return nb_desc;
+}
+
 int32_t
 zxdh_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			uint16_t queue_idx,
@@ -193,35 +228,66 @@ zxdh_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			struct rte_mempool *mp)
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
-	uint16_t vtpci_logic_qidx = 2 * queue_idx + ZXDH_RQ_QUEUE_IDX;
-	struct zxdh_virtqueue *vq = hw->vqs[vtpci_logic_qidx];
-	int32_t ret = 0;
+	uint16_t valid_nb_desc = 0;
 
 	if (rx_conf->rx_deferred_start) {
 		PMD_RX_LOG(ERR, "Rx deferred start is not supported");
 		return -EINVAL;
 	}
-	uint16_t rx_free_thresh = rx_conf->rx_free_thresh;
+
+	valid_nb_desc = zxdh_queue_desc_pre_setup(nb_desc);
+	if (dev->data->nb_rx_queues != hw->rx_qnum ||
+		valid_nb_desc != hw->queue_conf->conf[queue_idx].rx_nb_desc) {
+		PMD_RX_LOG(DEBUG, "rx queue changed. rxq:[%d], hw->rxq:[%d], nb_desc:%d, hw->nb_desc:%d",
+			dev->data->nb_rx_queues, hw->rx_qnum, valid_nb_desc,
+			hw->queue_conf->conf[queue_idx].rx_nb_desc);
+		hw->queue_conf->queue_changed = 1;
+	}
+
+	rte_memcpy(&hw->queue_conf->conf[queue_idx].zxdh_rx_conf,
+		rx_conf, sizeof(struct rte_eth_rxconf));
+	hw->queue_conf->conf[queue_idx].rx_nb_desc = valid_nb_desc;
+	hw->queue_conf->conf[queue_idx].queue_mp = mp;
+
+	return 0;
+}
+
+int32_t
+zxdh_rx_queue_config(struct rte_eth_dev *dev, uint16_t queue_idx)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	uint16_t vtpci_logic_qidx = 2 * queue_idx + ZXDH_RQ_QUEUE_IDX;
+	struct zxdh_virtqueue *vq = hw->vqs[vtpci_logic_qidx];
+	struct rte_eth_rxconf *rx_conf;
+	uint16_t rx_free_thresh;
+	int32_t ret = 0;
+
+	if (!hw->queue_conf) {
+		PMD_RX_LOG(ERR, "rx queue config failed queue_conf is NULL, queue-idx:%d",
+				queue_idx);
+		return -EINVAL;
+	}
+
+	rx_conf = &hw->queue_conf->conf[queue_idx].zxdh_rx_conf;
+	rx_free_thresh = rx_conf->rx_free_thresh;
 
 	if (rx_free_thresh == 0)
 		rx_free_thresh = RTE_MIN(vq->vq_nentries / 4, ZXDH_RX_FREE_THRESH);
 
-	/* rx_free_thresh must be multiples of four. */
 	if (rx_free_thresh & 0x3) {
 		PMD_RX_LOG(ERR, "(rx_free_thresh=%u port=%u queue=%u)",
 			rx_free_thresh, dev->data->port_id, queue_idx);
 		return -EINVAL;
 	}
-	/* rx_free_thresh must be less than the number of RX entries */
 	if (rx_free_thresh >= vq->vq_nentries) {
 		PMD_RX_LOG(ERR, "RX entries (%u). (rx_free_thresh=%u port=%u queue=%u)",
 			vq->vq_nentries, rx_free_thresh, dev->data->port_id, queue_idx);
 		return -EINVAL;
 	}
-	vq->vq_free_thresh = rx_free_thresh;
-	nb_desc = ZXDH_QUEUE_DEPTH;
 
-	vq->vq_free_cnt = RTE_MIN(vq->vq_free_cnt, nb_desc);
+	vq->vq_free_thresh = rx_free_thresh;
+
+	vq->vq_free_cnt = RTE_MIN(vq->vq_free_cnt, hw->queue_conf->conf[queue_idx].rx_nb_desc);
 	struct zxdh_virtnet_rx *rxvq = &vq->rxq;
 
 	rxvq->queue_id = vtpci_logic_qidx;
@@ -231,6 +297,7 @@ zxdh_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	if (rx_conf->offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO)
 		mbuf_min_size = ZXDH_MBUF_SIZE_4K;
 
+	struct rte_mempool *mp = hw->queue_conf->conf[queue_idx].queue_mp;
 	ret = zxdh_check_mempool(mp, RTE_PKTMBUF_HEADROOM, mbuf_min_size);
 	if (ret != 0) {
 		PMD_RX_LOG(ERR,
@@ -238,6 +305,7 @@ zxdh_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 	rxvq->mpool = mp;
+
 	if (queue_idx < dev->data->nb_rx_queues)
 		dev->data->rx_queues[queue_idx] = rxvq;
 
@@ -251,21 +319,48 @@ zxdh_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			uint32_t socket_id __rte_unused,
 			const struct rte_eth_txconf *tx_conf)
 {
-	uint16_t vtpci_logic_qidx = 2 * queue_idx + ZXDH_TQ_QUEUE_IDX;
 	struct zxdh_hw *hw = dev->data->dev_private;
-	struct zxdh_virtqueue *vq = hw->vqs[vtpci_logic_qidx];
-	struct zxdh_virtnet_tx *txvq = NULL;
-	uint16_t tx_free_thresh = 0;
+	uint16_t valid_nb_desc = 0;
 
 	if (tx_conf->tx_deferred_start) {
 		PMD_TX_LOG(ERR, "Tx deferred start is not supported");
 		return -EINVAL;
 	}
 
-	nb_desc = ZXDH_QUEUE_DEPTH;
+	valid_nb_desc = zxdh_queue_desc_pre_setup(nb_desc);
+	if (dev->data->nb_tx_queues != hw->tx_qnum ||
+		valid_nb_desc != hw->queue_conf->conf[queue_idx].tx_nb_desc) {
+		PMD_TX_LOG(DEBUG, "tx queue changed. txq:[%d], hw->txq:[%d], nb_desc:%d, hw->nb_desc:%d",
+			dev->data->nb_tx_queues, hw->tx_qnum, valid_nb_desc,
+			hw->queue_conf->conf[queue_idx].tx_nb_desc);
+		hw->queue_conf->queue_changed = 1;
+	}
 
-	vq->vq_free_cnt = RTE_MIN(vq->vq_free_cnt, nb_desc);
+	rte_memcpy(&hw->queue_conf->conf[queue_idx].zxdh_tx_conf,
+		tx_conf, sizeof(struct rte_eth_txconf));
+	hw->queue_conf->conf[queue_idx].tx_nb_desc = valid_nb_desc;
 
+	return 0;
+}
+
+int32_t
+zxdh_tx_queue_config(struct rte_eth_dev *dev, uint16_t queue_idx)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_virtnet_tx *txvq = NULL;
+	uint16_t vtpci_logic_qidx = 2 * queue_idx + ZXDH_TQ_QUEUE_IDX;
+	struct zxdh_virtqueue *vq = hw->vqs[vtpci_logic_qidx];
+	uint16_t tx_free_thresh = 0;
+
+	if (!hw->queue_conf) {
+		PMD_TX_LOG(ERR, "tx queue config failed queue_conf is NULL, queue_idx:%d",
+				queue_idx);
+		return -EINVAL;
+	}
+
+	struct rte_eth_txconf *tx_conf = &hw->queue_conf->conf[queue_idx].zxdh_tx_conf;
+
+	vq->vq_free_cnt = RTE_MIN(vq->vq_free_cnt, hw->queue_conf->conf[queue_idx].tx_nb_desc);
 	txvq = &vq->txq;
 	txvq->queue_id = vtpci_logic_qidx;
 
@@ -273,15 +368,14 @@ zxdh_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	if (tx_free_thresh == 0)
 		tx_free_thresh = RTE_MIN(vq->vq_nentries / 4, ZXDH_TX_FREE_THRESH);
 
-	/* tx_free_thresh must be less than the number of TX entries minus 3 */
 	if (tx_free_thresh >= (vq->vq_nentries - 3)) {
-		PMD_TX_LOG(ERR, "TX entries - 3 (%u). (tx_free_thresh=%u port=%u queue=%u)",
-				vq->vq_nentries - 3, tx_free_thresh, dev->data->port_id, queue_idx);
+		PMD_TX_LOG(ERR, "tx_free_thresh must be less than the number of TX entries minus 3 (%u). (tx_free_thresh=%u port=%u queue=%u)",
+					vq->vq_nentries - 3,
+					tx_free_thresh, dev->data->port_id, queue_idx);
 		return -EINVAL;
 	}
 
 	vq->vq_free_thresh = tx_free_thresh;
-
 	if (queue_idx < dev->data->nb_tx_queues)
 		dev->data->tx_queues[queue_idx] = txvq;
 
@@ -337,18 +431,13 @@ int32_t zxdh_enqueue_recv_refill_packed(struct zxdh_virtqueue *vq,
 	return 0;
 }
 
-int32_t zxdh_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t logic_qidx)
+int32_t zxdh_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
+	uint16_t logic_qidx = ((queue_idx << 1) + ZXDH_RQ_QUEUE_IDX) % ZXDH_QUEUES_NUM_MAX;
 	struct zxdh_virtqueue *vq = hw->vqs[logic_qidx];
 	struct zxdh_virtnet_rx *rxvq = &vq->rxq;
-	uint16_t desc_idx;
 	int32_t error = 0;
-
-	/* Allocate blank mbufs for the each rx descriptor */
-	memset(&rxvq->fake_mbuf, 0, sizeof(rxvq->fake_mbuf));
-	for (desc_idx = 0; desc_idx < ZXDH_MBUF_BURST_SZ; desc_idx++)
-		vq->sw_ring[vq->vq_nentries + desc_idx] = &rxvq->fake_mbuf;
 
 	while (!zxdh_queue_full(vq)) {
 		struct rte_mbuf *new_pkts[ZXDH_MBUF_BURST_SZ];

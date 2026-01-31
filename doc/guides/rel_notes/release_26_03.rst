@@ -63,6 +63,10 @@ New Features
 
   * Added support for pre and post VF reset callbacks.
 
+* **Updated ZTE zxdh ethernet driver.**
+
+  * Added support for modifying queue depth.
+
 * **Added 256-NEA/NCA/NIA algorithms in cryptodev library.**
 
   Added support for following wireless algorithms:

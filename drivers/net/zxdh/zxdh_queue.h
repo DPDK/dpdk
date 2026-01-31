@@ -21,6 +21,14 @@ enum { ZXDH_VTNET_RQ = 0, ZXDH_VTNET_TQ = 1 };
 #define ZXDH_TQ_QUEUE_IDX                 1
 #define ZXDH_MAX_TX_INDIRECT              8
 
+#define ZXDH_MIN_QUEUE_DEPTH              512
+#define ZXDH_MAX_QUEUE_DEPTH              32768
+
+#define ZXDH_TX_FREE_THRESH               32
+#define ZXDH_RX_FREE_THRESH               32
+
+#define ZXDH_MBUF_SIZE_4K                 4096
+
 /* This marks a buffer as continuing via the next field. */
 #define ZXDH_VRING_DESC_F_NEXT                 1
 
@@ -424,5 +432,6 @@ int32_t zxdh_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t logic_q
 void zxdh_queue_rxvq_flush(struct zxdh_virtqueue *vq);
 int32_t zxdh_enqueue_recv_refill_packed(struct zxdh_virtqueue *vq,
 			struct rte_mbuf **cookie, uint16_t num);
-
+int32_t zxdh_tx_queue_config(struct rte_eth_dev *dev, uint16_t queue_idx);
+int32_t zxdh_rx_queue_config(struct rte_eth_dev *dev, uint16_t queue_idx);
 #endif /* ZXDH_QUEUE_H */

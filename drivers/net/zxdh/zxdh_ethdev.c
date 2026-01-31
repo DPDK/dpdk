@@ -641,7 +641,8 @@ zxdh_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_logic_qidx)
 	uint32_t vq_size = 0;
 	int32_t ret = 0;
 
-	if (hw->channel_context[vtpci_logic_qidx].valid == 0) {
+	if (vtpci_logic_qidx >= ZXDH_QUEUES_NUM_MAX ||
+		hw->channel_context[vtpci_logic_qidx].valid == 0) {
 		PMD_DRV_LOG(ERR, "lch %d is invalid", vtpci_logic_qidx);
 		return -EINVAL;
 	}
@@ -650,7 +651,10 @@ zxdh_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_logic_qidx)
 	PMD_DRV_LOG(DEBUG, "vtpci_logic_qidx :%d setting up physical queue: %u on NUMA node %d",
 			vtpci_logic_qidx, vtpci_phy_qidx, numa_node);
 
-	vq_size = ZXDH_QUEUE_DEPTH;
+	if (queue_type == ZXDH_VTNET_RQ)
+		vq_size = hw->queue_conf->conf[vtpci_logic_qidx >> 1].rx_nb_desc;
+	else
+		vq_size = hw->queue_conf->conf[vtpci_logic_qidx >> 1].tx_nb_desc;
 
 	if (ZXDH_VTPCI_OPS(hw)->set_queue_num != NULL)
 		ZXDH_VTPCI_OPS(hw)->set_queue_num(hw, vtpci_phy_qidx, vq_size);
@@ -980,12 +984,6 @@ zxdh_dev_conf_offload(struct rte_eth_dev *dev)
 		return ret;
 	}
 
-	ret = zxdh_rss_configure(dev);
-	if (ret) {
-		PMD_DRV_LOG(ERR, "rss configure failed");
-		return ret;
-	}
-
 	ret = zxdh_rx_csum_lro_offload_configure(dev);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "rx csum lro configure failed");
@@ -1081,52 +1079,6 @@ zxdh_dev_configure(struct rte_eth_dev *dev)
 	hw->has_tx_offload = zxdh_tx_offload_enabled(hw);
 	hw->has_rx_offload = zxdh_rx_offload_enabled(hw);
 
-	if (dev->data->nb_rx_queues == hw->rx_qnum &&
-			dev->data->nb_tx_queues == hw->tx_qnum) {
-		PMD_DRV_LOG(DEBUG, "The queue not need to change. queue_rx %d queue_tx %d",
-				hw->rx_qnum, hw->tx_qnum);
-		/*no queue changed */
-		goto end;
-	}
-
-	PMD_DRV_LOG(DEBUG, "queue changed need reset");
-	/* Reset the device although not necessary at startup */
-	zxdh_pci_reset(hw);
-
-	/* Tell the host we've noticed this device. */
-	zxdh_pci_set_status(hw, ZXDH_CONFIG_STATUS_ACK);
-
-	/* Tell the host we've known how to drive the device. */
-	zxdh_pci_set_status(hw, ZXDH_CONFIG_STATUS_DRIVER);
-	/* The queue needs to be released when reconfiguring*/
-	if (hw->vqs != NULL) {
-		zxdh_dev_free_mbufs(dev);
-		zxdh_free_queues(dev);
-	}
-
-	hw->rx_qnum = dev->data->nb_rx_queues;
-	hw->tx_qnum = dev->data->nb_tx_queues;
-	ret = zxdh_alloc_queues(dev);
-	if (ret < 0)
-		return ret;
-
-	zxdh_datach_set(dev);
-
-	if (zxdh_configure_intr(dev) < 0) {
-		PMD_DRV_LOG(ERR, "Failed to configure interrupt");
-		zxdh_free_queues(dev);
-		return -1;
-	}
-
-	ret = zxdh_rss_qid_config(dev);
-	if (ret) {
-		PMD_DRV_LOG(ERR, "Failed to configure base qid!");
-		return -1;
-	}
-
-	zxdh_pci_reinit_complete(hw);
-
-end:
 	zxdh_dev_conf_offload(dev);
 	zxdh_update_net_hdr_dl(hw);
 	return ret;
@@ -1264,6 +1216,9 @@ zxdh_priv_res_free(struct zxdh_hw *priv)
 
 	rte_free(priv->channel_context);
 	priv->channel_context = NULL;
+
+	rte_free(priv->queue_conf);
+	priv->queue_conf = NULL;
 }
 
 static int
@@ -1354,6 +1309,88 @@ zxdh_mac_config(struct rte_eth_dev *eth_dev)
 	return ret;
 }
 
+static int32_t zxdh_reconfig_queues(struct rte_eth_dev *dev)
+{
+	int32_t ret;
+	struct zxdh_hw *hw = dev->data->dev_private;
+
+	zxdh_pci_reset(hw);
+
+	/* Tell the host we've noticed this device. */
+	zxdh_pci_set_status(hw, ZXDH_CONFIG_STATUS_ACK);
+
+	/* Tell the host we've known how to drive the device. */
+	zxdh_pci_set_status(hw, ZXDH_CONFIG_STATUS_DRIVER);
+	/* The queue needs to be released when reconfiguring */
+	if (hw->vqs != NULL) {
+		zxdh_dev_free_mbufs(dev);
+		zxdh_free_queues(dev);
+	}
+
+	hw->rx_qnum = dev->data->nb_rx_queues;
+	hw->tx_qnum = dev->data->nb_tx_queues;
+	ret = zxdh_alloc_queues(dev);
+	if (ret < 0)
+		return ret;
+
+	zxdh_datach_set(dev);
+
+	if (zxdh_configure_intr(dev) < 0) {
+		PMD_DRV_LOG(ERR, "Failed to configure interrupt");
+		zxdh_free_queues(dev);
+		return -1;
+	}
+
+	zxdh_pci_reinit_complete(hw);
+	return 0;
+}
+
+static int32_t zxdh_config_queue(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	int32_t ret = 0, i = 0;
+
+	if (hw->queue_conf->queue_changed) {
+		ret = zxdh_reconfig_queues(dev);
+		if (ret)
+			return ret;
+
+		ret = zxdh_rss_qid_config(dev);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to configure base qid!");
+			return -1;
+		}
+
+		ret = zxdh_rss_configure(dev);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to config rss");
+			return -1;
+		}
+		hw->queue_conf->queue_changed = 0;
+	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		ret = zxdh_tx_queue_config(dev, i);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to config tx queue");
+			return ret;
+		}
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		ret = zxdh_rx_queue_config(dev, i);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to config rx queue");
+			return ret;
+		}
+		ret = zxdh_dev_rx_queue_setup_finish(dev, i);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
+}
+
 static int
 zxdh_dev_start(struct rte_eth_dev *dev)
 {
@@ -1363,12 +1400,9 @@ zxdh_dev_start(struct rte_eth_dev *dev)
 	uint16_t logic_qidx;
 	uint16_t i;
 
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		logic_qidx = 2 * i + ZXDH_RQ_QUEUE_IDX;
-		ret = zxdh_dev_rx_queue_setup_finish(dev, logic_qidx);
-		if (ret < 0)
-			return ret;
-	}
+	ret = zxdh_config_queue(dev);
+	if (ret)
+		return ret;
 
 	zxdh_set_rxtx_funcs(dev);
 	ret = zxdh_intr_enable(dev);
@@ -2081,6 +2115,13 @@ zxdh_priv_res_init(struct zxdh_hw *hw)
 		PMD_DRV_LOG(ERR, "Failed to allocate channel_context");
 		return -ENOMEM;
 	}
+
+	hw->queue_conf = rte_zmalloc("zxdh_queue_conf", sizeof(struct zxdh_queue_conf), 0);
+	if (hw->queue_conf == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to allocate queue conf");
+		return -ENOMEM;
+	}
+
 	return 0;
 }
 
