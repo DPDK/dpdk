@@ -354,76 +354,24 @@ zxdh_write_comm_reg(uint64_t pci_comm_cfg_baseaddr, uint32_t reg, uint32_t val)
 	*((volatile uint32_t *)(pci_comm_cfg_baseaddr + reg)) = val;
 }
 
-static int32_t
-zxdh_common_table_write(struct zxdh_hw *hw, uint8_t field,
-			void *buff, uint16_t buff_size)
-{
-	struct zxdh_pci_bar_msg desc;
-	struct zxdh_msg_recviver_mem msg_rsp;
-	int32_t ret = 0;
-
-	if (!hw->msg_chan_init) {
-		PMD_DRV_LOG(ERR, "Bar messages channel not initialized");
-		return -1;
-	}
-	if (buff_size != 0 && buff == NULL) {
-		PMD_DRV_LOG(ERR, "Buff is invalid");
-		return -1;
-	}
-
-	ret = zxdh_fill_common_msg(hw, &desc, ZXDH_COMMON_TABLE_WRITE,
-					field, buff, buff_size);
-
-	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Failed to fill common msg");
-		return ret;
-	}
-
-	ret = zxdh_send_command(hw, &desc, ZXDH_BAR_MODULE_TBL, &msg_rsp);
-	if (ret != 0)
-		goto free_msg_data;
-
-	ret = zxdh_common_rsp_check(&msg_rsp, NULL, 0);
-	if (ret != 0)
-		goto free_rsp_data;
-
-free_rsp_data:
-	rte_free(msg_rsp.recv_buffer);
-free_msg_data:
-	rte_free(desc.payload_addr);
-	return ret;
-}
-
 int32_t
-zxdh_datach_set(struct rte_eth_dev *dev)
+zxdh_datach_set(struct rte_eth_dev *dev, uint16_t ph_chno)
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
-	uint16_t nr_vq = hw->rx_qnum + hw->tx_qnum;
-	uint16_t buff_size = (nr_vq % ZXDH_QUEUES_NUM_MAX + 1) * sizeof(uint16_t);
-	int ret = 0;
-	uint16_t *pdata, i;
+	uint64_t addr, pcieid_addr;
 
-	void *buff = rte_zmalloc(NULL, buff_size, 0);
-
-	if (unlikely(buff == NULL)) {
-		PMD_DRV_LOG(ERR, "Failed to allocate buff");
+	if (ph_chno >= ZXDH_QUEUES_PCIEID_SIZE) {
+		PMD_DRV_LOG(ERR, "ph_chno is greater than %08x", ph_chno);
 		return -ENOMEM;
 	}
 
-	pdata = (uint16_t *)buff;
-	*pdata++ = nr_vq;
-	for (i = 0; i < hw->rx_qnum; i++)
-		*(pdata + i) = hw->channel_context[i * 2].ph_chno;
-	for (i = 0; i < hw->tx_qnum; i++)
-		*(pdata + hw->rx_qnum + i) = hw->channel_context[i * 2 + 1].ph_chno;
-	ret = zxdh_common_table_write(hw, ZXDH_COMMON_FIELD_DATACH, (void *)buff, buff_size);
-
-	if (ret != 0)
-		PMD_DRV_LOG(ERR, "Failed to setup data channel of common table. code:%d", ret);
-	hw->queue_set_flag = 1;
-	rte_free(buff);
-
-	return ret;
+	pcieid_addr =
+		*((volatile uint64_t *)(hw->bar_addr[ZXDH_BAR0_INDEX] + ZXDH_QUEUES_PCIEID_ADDR));
+	addr = hw->bar_addr[ZXDH_BAR0_INDEX] + pcieid_addr + (ph_chno << 1);
+	*((volatile uint16_t *)(addr)) = hw->pcie_id;
+	PMD_DRV_LOG(DEBUG, "addr %"PRIx64" pcie_id %04x, pcieid_addr %"PRIx64" lch %d",
+		addr, hw->pcie_id, pcieid_addr, ph_chno);
+	return 0;
 }
 
 bool

@@ -520,6 +520,9 @@ zxdh_get_available_channel(struct rte_eth_dev *dev, uint8_t queue_type)
 	uint32_t res_bit = (total_queue_num + inval_bit) % 32;
 	uint32_t vq_reg_num = (total_queue_num + inval_bit) / 32 + (res_bit ? 1 : 0);
 	int32_t ret = 0;
+	uint32_t addr = 0;
+	uint32_t var = 0;
+	int32_t ph_chno = 0;
 
 	ret = zxdh_timedlock(hw, 1000);
 	if (ret) {
@@ -528,15 +531,14 @@ zxdh_get_available_channel(struct rte_eth_dev *dev, uint8_t queue_type)
 	}
 
 	for (phy_vq_reg = 0; phy_vq_reg < vq_reg_num; phy_vq_reg++) {
-		uint32_t addr = ZXDH_QUERES_SHARE_BASE +
-		(phy_vq_reg + phy_vq_reg_oft) * sizeof(uint32_t);
-		uint32_t var = zxdh_read_bar_reg(dev, ZXDH_BAR0_INDEX, addr);
+		addr = ZXDH_QUERES_SHARE_BASE +
+			(phy_vq_reg + phy_vq_reg_oft) * sizeof(uint32_t);
+		var = zxdh_read_bar_reg(dev, ZXDH_BAR0_INDEX, addr);
 		if (phy_vq_reg == 0) {
 			for (j = (inval_bit + base); j < 32; j += 2) {
 				/* Got the available channel & update COI table */
 				if ((var & (1 << j)) == 0) {
 					var |= (1 << j);
-					zxdh_write_bar_reg(dev, ZXDH_BAR0_INDEX, addr, var);
 					done = 1;
 					break;
 				}
@@ -548,7 +550,6 @@ zxdh_get_available_channel(struct rte_eth_dev *dev, uint8_t queue_type)
 				/* Got the available channel & update COI table */
 				if ((var & (1 << j)) == 0) {
 					var |= (1 << j);
-					zxdh_write_bar_reg(dev, ZXDH_BAR0_INDEX, addr, var);
 					done = 1;
 					break;
 				}
@@ -560,7 +561,6 @@ zxdh_get_available_channel(struct rte_eth_dev *dev, uint8_t queue_type)
 				/* Got the available channel & update COI table */
 				if ((var & (1 << j)) == 0) {
 					var |= (1 << j);
-					zxdh_write_bar_reg(dev, ZXDH_BAR0_INDEX, addr, var);
 					done = 1;
 					break;
 				}
@@ -568,6 +568,16 @@ zxdh_get_available_channel(struct rte_eth_dev *dev, uint8_t queue_type)
 			if (done)
 				break;
 		}
+	}
+
+	if (done) {
+		ph_chno = (phy_vq_reg + phy_vq_reg_oft) * 32 + j;
+		if (zxdh_datach_set(dev, ph_chno) != 0) {
+			zxdh_release_lock(hw);
+			PMD_DRV_LOG(ERR, "zxdh_datach_set queue pcie addr failed");
+			return -1;
+		}
+		zxdh_write_bar_reg(dev, ZXDH_BAR0_INDEX, addr, var);
 	}
 
 	zxdh_release_lock(hw);
@@ -1332,8 +1342,6 @@ static int32_t zxdh_reconfig_queues(struct rte_eth_dev *dev)
 	ret = zxdh_alloc_queues(dev);
 	if (ret < 0)
 		return ret;
-
-	zxdh_datach_set(dev);
 
 	if (zxdh_configure_intr(dev) < 0) {
 		PMD_DRV_LOG(ERR, "Failed to configure interrupt");

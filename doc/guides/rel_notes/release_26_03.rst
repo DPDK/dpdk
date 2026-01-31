@@ -66,6 +66,7 @@ New Features
 * **Updated ZTE zxdh ethernet driver.**
 
   * Added support for modifying queue depth.
+  * Optimized queue allocation resources.
 
 * **Added 256-NEA/NCA/NIA algorithms in cryptodev library.**
 
