@@ -410,7 +410,6 @@ zxdh_queue_kick_prepare_packed(struct zxdh_virtqueue *vq)
 	return (flags != ZXDH_RING_EVENT_FLAGS_DISABLE);
 }
 
-extern struct zxdh_net_hdr_dl g_net_hdr_dl[RTE_MAX_ETHPORTS];
 
 struct rte_mbuf *zxdh_queue_detach_unused(struct zxdh_virtqueue *vq);
 int32_t zxdh_free_queues(struct rte_eth_dev *dev);

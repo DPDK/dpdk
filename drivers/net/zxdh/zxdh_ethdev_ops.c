@@ -1802,22 +1802,26 @@ zxdh_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 	struct zxdh_hw_mac_bytes mac_bytes = {0};
 	uint32_t i = 0;
 
-	zxdh_hw_vqm_stats_get(dev, ZXDH_VQM_DEV_STATS_GET,  &vqm_stats);
-	if (hw->is_pf)
-		zxdh_hw_mac_stats_get(dev, &mac_stats, &mac_bytes);
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		zxdh_hw_vqm_stats_get(dev, ZXDH_VQM_DEV_STATS_GET,  &vqm_stats);
+		if (hw->is_pf)
+			zxdh_hw_mac_stats_get(dev, &mac_stats, &mac_bytes);
 
-	zxdh_hw_np_stats_get(dev, &np_stats);
+		zxdh_hw_np_stats_get(dev, &np_stats);
 
-	stats->ipackets = vqm_stats.rx_total;
-	stats->opackets = vqm_stats.tx_total;
-	stats->ibytes = vqm_stats.rx_bytes;
-	stats->obytes = vqm_stats.tx_bytes;
-	stats->imissed = vqm_stats.rx_drop + mac_stats.rx_drop;
-	stats->ierrors = vqm_stats.rx_error + mac_stats.rx_error + np_stats.rx_mtu_drop_pkts;
-	stats->oerrors = vqm_stats.tx_error + mac_stats.tx_error + np_stats.tx_mtu_drop_pkts;
+		stats->ipackets = vqm_stats.rx_total;
+		stats->opackets = vqm_stats.tx_total;
+		stats->ibytes = vqm_stats.rx_bytes;
+		stats->obytes = vqm_stats.tx_bytes;
+		stats->imissed = vqm_stats.rx_drop + mac_stats.rx_drop;
+		stats->ierrors = vqm_stats.rx_error +
+			mac_stats.rx_error + np_stats.rx_mtu_drop_pkts;
+		stats->oerrors = vqm_stats.tx_error +
+			mac_stats.tx_error + np_stats.tx_mtu_drop_pkts;
 
-	if (hw->i_mtr_en || hw->e_mtr_en)
-		stats->imissed  += np_stats.rx_mtr_drop_pkts;
+		if (hw->i_mtr_en || hw->e_mtr_en)
+			stats->imissed  += np_stats.rx_mtr_drop_pkts;
+	}
 
 	stats->rx_nombuf = dev->data->rx_mbuf_alloc_failed;
 	for (i = 0; (i < dev->data->nb_rx_queues) && (i < RTE_ETHDEV_QUEUE_STAT_CNTRS); i++) {
@@ -2093,14 +2097,20 @@ zxdh_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats, uint3
 	uint32_t count = 0;
 	uint32_t t = 0;
 
-	if (hw->is_pf) {
+	if (hw->is_pf)
 		nstats += ZXDH_MAC_XSTATS + ZXDH_MAC_BYTES;
-		zxdh_hw_mac_stats_get(dev, &mac_stats, &mac_bytes);
-	}
+
 	if (n < nstats)
 		return nstats;
-	zxdh_hw_vqm_stats_get(dev, ZXDH_VQM_DEV_STATS_GET,  &vqm_stats);
-	zxdh_hw_np_stats_get(dev, &np_stats);
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		if (hw->is_pf)
+			zxdh_hw_mac_stats_get(dev, &mac_stats, &mac_bytes);
+
+		zxdh_hw_vqm_stats_get(dev, ZXDH_VQM_DEV_STATS_GET,  &vqm_stats);
+		zxdh_hw_np_stats_get(dev, &np_stats);
+	}
+
 	for (i = 0; i < ZXDH_NP_XSTATS; i++) {
 		xstats[count].value = *(uint64_t *)(((char *)&np_stats)
 						 + zxdh_np_stat_strings[i].offset);
@@ -2234,6 +2244,9 @@ zxdh_dev_fw_version_get(struct rte_eth_dev *dev,
 	void *flash_msg_addr = ZXDH_ADDR_OF(msg_reply_body, reply_body_addr, flash_msg);
 	char fw_ver[ZXDH_FWVERS_LEN] = {0};
 	uint32_t ret = 0;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -EPERM;
 
 	zxdh_agent_msg_build(hw, ZXDH_FLASH_FIR_VERSION_GET, &msg_info);
 

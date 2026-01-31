@@ -256,7 +256,7 @@ zxdh_xmit_fill_net_hdr(struct zxdh_virtqueue *vq, struct rte_mbuf *cookie,
 	struct zxdh_pi_hdr *pi_hdr = NULL;
 	struct zxdh_pd_hdr_dl *pd_hdr = NULL;
 	struct zxdh_hw *hw = vq->hw;
-	struct zxdh_net_hdr_dl *net_hdr_dl = &g_net_hdr_dl[hw->port_id];
+	struct zxdh_net_hdr_dl *net_hdr_dl = hw->net_hdr_dl;
 	uint8_t hdr_len = hw->dl_net_hdr_len;
 	uint32_t ol_flag = 0;
 
