@@ -65,6 +65,8 @@ enum zxdh_msix_status {
 #define ZXDH_CONFIG_STATUS_DEV_NEED_RESET  0x40
 #define ZXDH_CONFIG_STATUS_FAILED          0x80
 #define ZXDH_PCI_QUEUE_ADDR_SHIFT          12
+#define ZXDH_QUEUES_PCIEID_ADDR            0x1BF8
+#define ZXDH_QUEUES_PCIEID_SIZE            4096
 
 struct __rte_packed_begin zxdh_net_config {
 	/* The config defining mac address (if ZXDH_NET_F_MAC) */
