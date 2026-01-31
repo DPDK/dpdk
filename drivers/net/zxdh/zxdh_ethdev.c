@@ -1432,6 +1432,10 @@ zxdh_dev_start(struct rte_eth_dev *dev)
 		zxdh_queue_notify(vq);
 	}
 
+	if (hw->is_pf)
+		zxdh_link_speed_set(dev);
+	zxdh_autoneg_stats_get(dev);
+
 	hw->admin_status = RTE_ETH_LINK_UP;
 	zxdh_dev_link_update(dev, 0);
 
@@ -1603,6 +1607,8 @@ zxdh_agent_comm(struct rte_eth_dev *eth_dev, struct zxdh_hw *hw)
 		PMD_DRV_LOG(ERR, "Failed to get panel_id");
 		return -1;
 	}
+
+	zxdh_speed_modes_get(eth_dev);
 
 	if (hw->switchoffload)
 		hw->phyport = 9;

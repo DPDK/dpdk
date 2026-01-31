@@ -205,6 +205,8 @@ enum zxdh_module_id {
 enum zxdh_agent_msg_type {
 	ZXDH_MAC_STATS_GET = 10,
 	ZXDH_MAC_STATS_RESET,
+	ZXDH_MAC_PHYPORT_INIT,
+	ZXDH_MAC_SPEED_SET,
 	ZXDH_MAC_LINK_GET = 14,
 	ZXDH_MAC_MODULE_EEPROM_READ = 20,
 	ZXDH_VQM_DEV_STATS_GET = 21,
@@ -212,6 +214,7 @@ enum zxdh_agent_msg_type {
 	ZXDH_FLASH_FIR_VERSION_GET = 23,
 	ZXDH_VQM_QUEUE_STATS_GET = 24,
 	ZXDH_VQM_QUEUE_STATS_RESET,
+	ZXDH_MAC_AUTONEG_GET = 44,
 };
 
 enum zxdh_msg_type {
@@ -233,6 +236,7 @@ enum zxdh_msg_type {
 
 	ZXDH_PORT_ATTRS_SET = 25,
 	ZXDH_PORT_PROMISC_SET = 26,
+	ZXDH_SET_VF_LINK_STATE = 28,
 
 	ZXDH_GET_NP_STATS = 31,
 	ZXDH_PLCR_CAR_PROFILE_ID_ADD = 36,
@@ -408,6 +412,17 @@ struct zxdh_ifc_agent_mac_module_eeprom_msg_bits {
 	uint8_t data[ZXDH_MODULE_EEPROM_DATA_LEN * 8];
 };
 
+struct zxdh_ifc_zxdh_link_state_msg_bits {
+	uint8_t is_link_force_set[0x8];
+	uint8_t link_forced[0x8];
+	uint8_t link_up[0x8];
+	uint8_t speed[0x20];
+	uint8_t autoneg_enable[0x20];
+	uint8_t supported_speed_modes[0x20];
+	uint8_t advertising_speed_modes[0x20];
+	uint8_t duplex[0x8];
+};
+
 struct zxdh_flash_msg {
 	uint8_t firmware_version[ZXDH_FWVERS_LEN];
 };
@@ -454,6 +469,7 @@ struct zxdh_ifc_msg_reply_body_bits {
 		struct zxdh_ifc_mtr_profile_info_bits  mtr_profile_info;
 		struct zxdh_ifc_mtr_stats_bits hw_mtr_stats;
 		struct zxdh_flow_op_rsp  flow_rsp;
+		struct zxdh_ifc_zxdh_link_state_msg_bits link_state_msg;
 	};
 };
 
@@ -479,6 +495,11 @@ struct __rte_packed_begin zxdh_msg_head {
 	uint8_t msg_type;
 	uint16_t  vport;
 	uint16_t  vf_id;
+	uint16_t pcieid;
+} __rte_packed_end;
+
+struct __rte_packed_begin zxdh_msg_head_to_vf {
+	uint8_t opcode;
 	uint16_t pcieid;
 } __rte_packed_end;
 
@@ -521,7 +542,7 @@ struct zxdh_agent_msg_head {
 	uint8_t msg_type;
 	uint8_t panel_id;
 	uint8_t phyport;
-	uint8_t rsv;
+	uint8_t init;
 	uint16_t vf_id;
 	uint16_t pcie_id;
 };
@@ -570,6 +591,7 @@ struct zxdh_msg_info {
 		uint8_t head_len[ZXDH_MSG_HEAD_LEN];
 		struct zxdh_msg_head msg_head;
 		struct zxdh_agent_msg_head agent_msg_head;
+		struct zxdh_msg_head_to_vf msg_to_vf;
 	};
 	union {
 		uint8_t datainfo[ZXDH_MSG_REQ_BODY_MAX_LEN];
