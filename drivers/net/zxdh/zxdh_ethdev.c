@@ -23,7 +23,6 @@ struct zxdh_hw_internal zxdh_hw_internal[RTE_MAX_ETHPORTS];
 struct zxdh_dev_nic_shared_data dev_nic_sd[ZXDH_SLOT_MAX];
 static rte_spinlock_t zxdh_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
 struct zxdh_shared_data *zxdh_shared_data;
-struct zxdh_net_hdr_dl g_net_hdr_dl[RTE_MAX_ETHPORTS];
 struct zxdh_mtr_res g_mtr_res;
 
 #define ZXDH_INVALID_DTBQUE      0xFFFF
@@ -409,7 +408,7 @@ free_intr_vec:
 static void
 zxdh_update_net_hdr_dl(struct zxdh_hw *hw)
 {
-	struct zxdh_net_hdr_dl *net_hdr_dl = &g_net_hdr_dl[hw->port_id];
+	struct zxdh_net_hdr_dl *net_hdr_dl = hw->net_hdr_dl;
 	memset(net_hdr_dl, 0, ZXDH_DL_NET_HDR_SIZE);
 
 	if (zxdh_tx_offload_enabled(hw)) {
@@ -1229,6 +1228,9 @@ zxdh_priv_res_free(struct zxdh_hw *priv)
 
 	rte_free(priv->queue_conf);
 	priv->queue_conf = NULL;
+
+	rte_free(priv->net_hdr_dl);
+	priv->net_hdr_dl = NULL;
 }
 
 static int
@@ -1553,6 +1555,16 @@ static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.dev_supported_ptypes_get = zxdh_dev_supported_ptypes_get,
 	.mtr_ops_get			 = zxdh_meter_ops_get,
 	.flow_ops_get			 = zxdh_flow_ops_get,
+};
+
+const struct eth_dev_ops zxdh_eth_dev_secondary_ops = {
+	.dev_infos_get			 = zxdh_dev_infos_get,
+	.stats_get				 = zxdh_dev_stats_get,
+	.xstats_get				 = zxdh_dev_xstats_get,
+	.xstats_get_names		 = zxdh_dev_xstats_get_names,
+	.rxq_info_get			 = zxdh_rxq_info_get,
+	.txq_info_get			 = zxdh_txq_info_get,
+	.dev_supported_ptypes_get = zxdh_dev_supported_ptypes_get,
 };
 
 static int32_t
@@ -2136,6 +2148,13 @@ zxdh_priv_res_init(struct zxdh_hw *hw)
 		return -ENOMEM;
 	}
 
+	hw->net_hdr_dl = rte_zmalloc("zxdh_net_hdr_dl", sizeof(struct zxdh_net_hdr_dl), 0);
+	if (hw->net_hdr_dl == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to allocate %zu bytes store queue conf",
+					sizeof(struct zxdh_net_hdr_dl));
+		return -ENOMEM;
+	}
+
 	return 0;
 }
 
@@ -2172,6 +2191,12 @@ zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 	int ret = 0;
 
 	eth_dev->dev_ops = &zxdh_eth_dev_ops;
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		eth_dev->dev_ops = &zxdh_eth_dev_secondary_ops;
+		ZXDH_VTPCI_OPS(hw) = &zxdh_dev_pci_ops;
+		return 0;
+	}
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("zxdh_mac",

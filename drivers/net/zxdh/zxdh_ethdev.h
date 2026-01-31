@@ -120,6 +120,7 @@ struct zxdh_hw {
 	struct zxdh_dev_nic_shared_data *dev_nic_sd;
 	struct vfinfo *vfinfo;
 	struct zxdh_queue_conf *queue_conf;
+	struct zxdh_net_hdr_dl *net_hdr_dl;
 
 	uint64_t bar_addr[ZXDH_NUM_BARS];
 	uint64_t host_features;

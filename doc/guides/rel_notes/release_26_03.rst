@@ -68,6 +68,7 @@ New Features
   * Added support for modifying queue depth.
   * Optimized queue allocation resources.
   * Added support for setting link speed and getting auto-negotiation status.
+  * Added support for secondary processes.
 
 * **Added 256-NEA/NCA/NIA algorithms in cryptodev library.**
 
