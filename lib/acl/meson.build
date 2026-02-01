@@ -25,4 +25,6 @@ elif dpdk_conf.has('RTE_ARCH_ARM')
     sources += files('acl_run_neon.c')
 elif dpdk_conf.has('RTE_ARCH_PPC_64')
     sources += files('acl_run_altivec.c')
+elif dpdk_conf.has('RTE_ARCH_RISCV') and dpdk_conf.has('RTE_RISCV_FEATURE_V')
+    sources += files('acl_run_rvv.c')
 endif

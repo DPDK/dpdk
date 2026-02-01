@@ -94,6 +94,18 @@ rte_acl_classify_altivec(__rte_unused const struct rte_acl_ctx *ctx,
 }
 #endif
 
+#ifndef RTE_RISCV_FEATURE_V
+int
+rte_acl_classify_rvv(__rte_unused const struct rte_acl_ctx *ctx,
+	__rte_unused const uint8_t **data,
+	__rte_unused uint32_t *results,
+	__rte_unused uint32_t num,
+	__rte_unused uint32_t categories)
+{
+	return -ENOTSUP;
+}
+#endif
+
 static const rte_acl_classify_t classify_fns[] = {
 	[RTE_ACL_CLASSIFY_DEFAULT] = rte_acl_classify_scalar,
 	[RTE_ACL_CLASSIFY_SCALAR] = rte_acl_classify_scalar,
@@ -103,6 +115,7 @@ static const rte_acl_classify_t classify_fns[] = {
 	[RTE_ACL_CLASSIFY_ALTIVEC] = rte_acl_classify_altivec,
 	[RTE_ACL_CLASSIFY_AVX512X16] = rte_acl_classify_avx512x16,
 	[RTE_ACL_CLASSIFY_AVX512X32] = rte_acl_classify_avx512x32,
+	[RTE_ACL_CLASSIFY_RVV] = rte_acl_classify_rvv,
 };
 
 /*
@@ -201,6 +214,23 @@ acl_check_alg_x86(enum rte_acl_classify_alg alg)
 
 	return -EINVAL;
 }
+/*
+ * Helper function for acl_check_alg.
+ * Check support for x86 specific classify methods.
+ */
+static int
+acl_check_alg_rvv(enum rte_acl_classify_alg alg)
+{
+	if (alg == RTE_ACL_CLASSIFY_RVV) {
+#ifdef RTE_RISCV_FEATURE_V
+		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128)
+			return 0;
+#endif
+		return -ENOTSUP;
+	}
+
+	return -EINVAL;
+}
 
 /*
  * Check if input alg is supported by given platform/binary.
@@ -221,6 +251,8 @@ acl_check_alg(enum rte_acl_classify_alg alg)
 	case RTE_ACL_CLASSIFY_AVX2:
 	case RTE_ACL_CLASSIFY_SSE:
 		return acl_check_alg_x86(alg);
+	case RTE_ACL_CLASSIFY_RVV:
+		return acl_check_alg_rvv(alg);
 	/* scalar method is supported on all platforms */
 	case RTE_ACL_CLASSIFY_SCALAR:
 		return 0;
@@ -249,6 +281,8 @@ acl_get_best_alg(void)
 		RTE_ACL_CLASSIFY_AVX512X16,
 		RTE_ACL_CLASSIFY_AVX2,
 		RTE_ACL_CLASSIFY_SSE,
+#elif defined(RTE_RISCV_FEATURE_V)
+		RTE_ACL_CLASSIFY_RVV,
 #endif
 		RTE_ACL_CLASSIFY_SCALAR,
 	};

@@ -64,6 +64,10 @@ struct acl_algorithms acl_alg[] = {
 		.name = "avx512x32",
 		.alg = RTE_ACL_CLASSIFY_AVX512X32,
 	},
+	{
+		.name = "rvv",
+		.alg = RTE_ACL_CLASSIFY_RVV,
+	},
 };
 
 struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
