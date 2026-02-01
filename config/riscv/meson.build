@@ -146,6 +146,7 @@ if (riscv_extension_macros and
                 int main(void) { size_t vl = __riscv_vsetvl_e32m1(1); }''', args: machine_args))
             message('Compiling with the V extension')
             machine_args += ['-DRTE_RISCV_FEATURE_V']
+            dpdk_flags += [['RTE_RISCV_FEATURE_V', 1],]
         endif
     else
         warning('Detected V extension but cannot use because intrinsics are not available (present in GCC 14.1.0+ and Clang 18.1.0+)')

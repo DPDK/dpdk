@@ -97,6 +97,10 @@ static const struct acl_alg acl_alg[] = {
 		.name = "avx512x32",
 		.alg = RTE_ACL_CLASSIFY_AVX512X32,
 	},
+	{
+		.name = "rvv",
+		.alg = RTE_ACL_CLASSIFY_RVV,
+	},
 };
 
 static struct {

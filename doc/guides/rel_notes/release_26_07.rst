@@ -66,6 +66,7 @@ New Features
 * **Added RISC-V vector paths.**
 
   * Increased the default SIMD bitwidth to allow using the vector extension.
+  * Added vectorized ACL which can process up to 8 flows in parallel.
   * Added vectorized IPv4 LPM lookup for the node library.
 
 * **Added peek style API for staged-ordered ring (``rte_soring``).**
