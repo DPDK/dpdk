@@ -13,6 +13,7 @@
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
 #include <rte_ethdev.h>
+#include <rte_time.h>
 
 #include "nfb.h"
 
@@ -202,15 +203,15 @@ nfb_eth_ndp_rx(void *queue,
 			if (nfb_timestamp_dynfield_offset >= 0) {
 				rte_mbuf_timestamp_t timestamp;
 
-				/* nanoseconds */
+				/* seconds */
 				timestamp =
 					rte_le_to_cpu_32(*((uint32_t *)
-					(packets[i].header + 4)));
-				timestamp <<= 32;
-				/* seconds */
-				timestamp |=
-					rte_le_to_cpu_32(*((uint32_t *)
 					(packets[i].header + 8)));
+				timestamp *= NSEC_PER_SEC;
+				/* nanoseconds */
+				timestamp +=
+					rte_le_to_cpu_32(*((uint32_t *)
+					(packets[i].header + 4)));
 				*nfb_timestamp_dynfield(mbuf) = timestamp;
 				mbuf->ol_flags |= nfb_timestamp_rx_dynflag;
 			}
