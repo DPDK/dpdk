@@ -446,7 +446,9 @@ M: Ori Kam <orika@nvidia.com>
 T: git://dpdk.org/next/dpdk-next-net
 F: app/test-pmd/cmdline_flow.c
 F: doc/guides/prog_guide/ethdev/flow_offload.rst
+F: doc/guides/prog_guide/flow_parser_lib.rst
 F: lib/ethdev/rte_flow*
+F: lib/flow_parser/
 
 Traffic Management API
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>

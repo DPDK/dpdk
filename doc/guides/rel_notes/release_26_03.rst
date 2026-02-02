@@ -68,6 +68,11 @@ New Features
   * Added new APIs to convert between RSS type names and values.
   * Added new API call to obtain the global RSS string table.
 
+* **Added experimental flow parser library.**
+
+  * Introduced ``rte_flow_parser`` as an optional library to convert the
+    testpmd's ``flow`` CLI commands into ``rte_flow`` structures.
+
 
 Removed Items
 -------------

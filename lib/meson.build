@@ -68,6 +68,7 @@ libraries = [
         'pipeline',
         'graph',
         'node',
+        'flow_parser',
 ]
 
 always_enable = [
@@ -75,6 +76,7 @@ always_enable = [
         'cmdline',
         'eal',
         'ethdev',
+        'flow_parser',
         'hash',
         'kvargs',
         'log',
