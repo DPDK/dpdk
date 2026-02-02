@@ -63,6 +63,11 @@ New Features
 
   * Added support for pre and post VF reset callbacks.
 
+* **Added experimental RSS type helper APIs in ethdev.**
+
+  * Added new APIs to convert between RSS type names and values.
+  * Added new API call to obtain the global RSS string table.
+
 
 Removed Items
 -------------
