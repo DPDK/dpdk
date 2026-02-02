@@ -59,6 +59,10 @@ New Features
 
   * Added support for V4000 Krackan2e.
 
+* **Updated CESNET nfb ethernet driver.**
+
+  * The timestamp value has been updated to make it usable.
+
 * **Updated Intel iavf driver.**
 
   * Added support for pre and post VF reset callbacks.
