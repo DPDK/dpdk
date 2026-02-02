@@ -237,11 +237,13 @@ static int
 nfb_eth_dev_info(struct rte_eth_dev *dev,
 	struct rte_eth_dev_info *dev_info)
 {
+	struct pmd_internals *internals = dev->data->dev_private;
+
 	dev_info->max_mac_addrs = nfb_eth_get_max_mac_address_count(dev);
 
 	dev_info->max_rx_pktlen = (uint32_t)-1;
-	dev_info->max_rx_queues = dev->data->nb_rx_queues;
-	dev_info->max_tx_queues = dev->data->nb_tx_queues;
+	dev_info->max_rx_queues = internals->max_rx_queues;
+	dev_info->max_tx_queues = internals->max_tx_queues;
 	dev_info->speed_capa = RTE_ETH_LINK_SPEED_100G;
 	dev_info->rx_offload_capa =
 		RTE_ETH_RX_OFFLOAD_TIMESTAMP;
@@ -538,11 +540,11 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 		NFB_LOG(ERR, "nfb_open(): failed to open %s", nfb_dev);
 		return -EINVAL;
 	}
-	data->nb_rx_queues = ndp_get_rx_queue_available_count(internals->nfb);
-	data->nb_tx_queues = ndp_get_tx_queue_available_count(internals->nfb);
+	internals->max_rx_queues = ndp_get_rx_queue_available_count(internals->nfb);
+	internals->max_tx_queues = ndp_get_tx_queue_available_count(internals->nfb);
 
 	NFB_LOG(INFO, "Available NDP queues RX: %u TX: %u",
-		data->nb_rx_queues, data->nb_tx_queues);
+		internals->max_rx_queues, internals->max_tx_queues);
 
 	nfb_nc_rxmac_init(internals->nfb,
 		internals->rxmac,
