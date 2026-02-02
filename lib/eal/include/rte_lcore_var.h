@@ -202,7 +202,7 @@ rte_lcore_var_lcore(unsigned int lcore_id, void *handle)
 __rte_experimental
 void *
 rte_lcore_var_alloc(size_t size, size_t align)
-	__rte_alloc_size(1) __rte_alloc_align(2);
+	__rte_alloc_align(2);
 
 #ifdef __cplusplus
 }
