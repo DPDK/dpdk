@@ -36,6 +36,7 @@
 #include <rte_string_fns.h>
 #include <rte_devargs.h>
 #include <rte_flow.h>
+#include <rte_flow_parser_private.h>
 #ifdef RTE_LIB_GRO
 #include <rte_gro.h>
 #endif
@@ -2357,7 +2358,7 @@ cmd_config_rss_parsed(void *parsed_result,
 	} else if (!strcmp(res->value, "none")) {
 		rss_conf.rss_hf = 0;
 	} else {
-		rss_conf.rss_hf = str_to_rsstypes(res->value);
+		rss_conf.rss_hf = rte_eth_rss_type_from_str(res->value);
 		if (rss_conf.rss_hf == 0) {
 			fprintf(stderr, "Unknown parameter\n");
 			return;
@@ -9453,6 +9454,9 @@ do { \
 
 /* Generic flow interface command. */
 extern cmdline_parse_inst_t cmd_flow;
+extern cmdline_parse_inst_t cmd_set_raw;
+extern cmdline_parse_inst_t cmd_show_set_raw;
+extern cmdline_parse_inst_t cmd_show_set_raw_all;
 
 /* *** ADD/REMOVE A MULTICAST MAC ADDRESS TO/FROM A PORT *** */
 struct cmd_mcast_addr_result {
@@ -10351,6 +10355,8 @@ static void cmd_set_vxlan_parsed(void *parsed_result,
 	__rte_unused void *data)
 {
 	struct cmd_set_vxlan_result *res = parsed_result;
+	struct rte_flow_parser_vxlan_encap_conf *vxlan_conf =
+		rte_flow_parser_vxlan_encap_conf();
 	union {
 		uint32_t vxlan_id;
 		uint8_t vni[4];
@@ -10358,39 +10364,40 @@ static void cmd_set_vxlan_parsed(void *parsed_result,
 		.vxlan_id = rte_cpu_to_be_32(res->vni) & RTE_BE32(0x00ffffff),
 	};
 
-	vxlan_encap_conf.select_tos_ttl = 0;
+	if (vxlan_conf == NULL)
+		return;
+
+	vxlan_conf->select_tos_ttl = 0;
 	if (strcmp(res->vxlan, "vxlan") == 0)
-		vxlan_encap_conf.select_vlan = 0;
+		vxlan_conf->select_vlan = 0;
 	else if (strcmp(res->vxlan, "vxlan-with-vlan") == 0)
-		vxlan_encap_conf.select_vlan = 1;
+		vxlan_conf->select_vlan = 1;
 	else if (strcmp(res->vxlan, "vxlan-tos-ttl") == 0) {
-		vxlan_encap_conf.select_vlan = 0;
-		vxlan_encap_conf.select_tos_ttl = 1;
+		vxlan_conf->select_vlan = 0;
+		vxlan_conf->select_tos_ttl = 1;
 	}
 	if (strcmp(res->ip_version, "ipv4") == 0)
-		vxlan_encap_conf.select_ipv4 = 1;
+		vxlan_conf->select_ipv4 = 1;
 	else if (strcmp(res->ip_version, "ipv6") == 0)
-		vxlan_encap_conf.select_ipv4 = 0;
+		vxlan_conf->select_ipv4 = 0;
 	else
 		return;
-	rte_memcpy(vxlan_encap_conf.vni, &id.vni[1], 3);
-	vxlan_encap_conf.udp_src = rte_cpu_to_be_16(res->udp_src);
-	vxlan_encap_conf.udp_dst = rte_cpu_to_be_16(res->udp_dst);
-	vxlan_encap_conf.ip_tos = res->tos;
-	vxlan_encap_conf.ip_ttl = res->ttl;
-	if (vxlan_encap_conf.select_ipv4) {
-		IPV4_ADDR_TO_UINT(res->ip_src, vxlan_encap_conf.ipv4_src);
-		IPV4_ADDR_TO_UINT(res->ip_dst, vxlan_encap_conf.ipv4_dst);
+	memcpy(vxlan_conf->vni, &id.vni[1], sizeof(vxlan_conf->vni));
+	vxlan_conf->udp_src = rte_cpu_to_be_16(res->udp_src);
+	vxlan_conf->udp_dst = rte_cpu_to_be_16(res->udp_dst);
+	vxlan_conf->ip_tos = res->tos;
+	vxlan_conf->ip_ttl = res->ttl;
+	if (vxlan_conf->select_ipv4) {
+		IPV4_ADDR_TO_UINT(res->ip_src, vxlan_conf->ipv4_src);
+		IPV4_ADDR_TO_UINT(res->ip_dst, vxlan_conf->ipv4_dst);
 	} else {
-		IPV6_ADDR_TO_ARRAY(res->ip_src, vxlan_encap_conf.ipv6_src);
-		IPV6_ADDR_TO_ARRAY(res->ip_dst, vxlan_encap_conf.ipv6_dst);
+		IPV6_ADDR_TO_ARRAY(res->ip_src, vxlan_conf->ipv6_src);
+		IPV6_ADDR_TO_ARRAY(res->ip_dst, vxlan_conf->ipv6_dst);
 	}
-	if (vxlan_encap_conf.select_vlan)
-		vxlan_encap_conf.vlan_tci = rte_cpu_to_be_16(res->tci);
-	rte_memcpy(vxlan_encap_conf.eth_src, res->eth_src.addr_bytes,
-		   RTE_ETHER_ADDR_LEN);
-	rte_memcpy(vxlan_encap_conf.eth_dst, res->eth_dst.addr_bytes,
-		   RTE_ETHER_ADDR_LEN);
+	if (vxlan_conf->select_vlan)
+		vxlan_conf->vlan_tci = rte_cpu_to_be_16(res->tci);
+	rte_ether_addr_copy(&res->eth_src, &vxlan_conf->eth_src);
+	rte_ether_addr_copy(&res->eth_dst, &vxlan_conf->eth_dst);
 }
 
 static cmdline_parse_inst_t cmd_set_vxlan = {
@@ -10551,6 +10558,8 @@ static void cmd_set_nvgre_parsed(void *parsed_result,
 	__rte_unused void *data)
 {
 	struct cmd_set_nvgre_result *res = parsed_result;
+	struct rte_flow_parser_nvgre_encap_conf *nvgre_conf =
+		rte_flow_parser_nvgre_encap_conf();
 	union {
 		uint32_t nvgre_tni;
 		uint8_t tni[4];
@@ -10558,30 +10567,31 @@ static void cmd_set_nvgre_parsed(void *parsed_result,
 		.nvgre_tni = rte_cpu_to_be_32(res->tni) & RTE_BE32(0x00ffffff),
 	};
 
+	if (nvgre_conf == NULL)
+		return;
+
 	if (strcmp(res->nvgre, "nvgre") == 0)
-		nvgre_encap_conf.select_vlan = 0;
+		nvgre_conf->select_vlan = 0;
 	else if (strcmp(res->nvgre, "nvgre-with-vlan") == 0)
-		nvgre_encap_conf.select_vlan = 1;
+		nvgre_conf->select_vlan = 1;
 	if (strcmp(res->ip_version, "ipv4") == 0)
-		nvgre_encap_conf.select_ipv4 = 1;
+		nvgre_conf->select_ipv4 = 1;
 	else if (strcmp(res->ip_version, "ipv6") == 0)
-		nvgre_encap_conf.select_ipv4 = 0;
+		nvgre_conf->select_ipv4 = 0;
 	else
 		return;
-	rte_memcpy(nvgre_encap_conf.tni, &id.tni[1], 3);
-	if (nvgre_encap_conf.select_ipv4) {
-		IPV4_ADDR_TO_UINT(res->ip_src, nvgre_encap_conf.ipv4_src);
-		IPV4_ADDR_TO_UINT(res->ip_dst, nvgre_encap_conf.ipv4_dst);
+	memcpy(nvgre_conf->tni, &id.tni[1], sizeof(nvgre_conf->tni));
+	if (nvgre_conf->select_ipv4) {
+		IPV4_ADDR_TO_UINT(res->ip_src, nvgre_conf->ipv4_src);
+		IPV4_ADDR_TO_UINT(res->ip_dst, nvgre_conf->ipv4_dst);
 	} else {
-		IPV6_ADDR_TO_ARRAY(res->ip_src, nvgre_encap_conf.ipv6_src);
-		IPV6_ADDR_TO_ARRAY(res->ip_dst, nvgre_encap_conf.ipv6_dst);
+		IPV6_ADDR_TO_ARRAY(res->ip_src, nvgre_conf->ipv6_src);
+		IPV6_ADDR_TO_ARRAY(res->ip_dst, nvgre_conf->ipv6_dst);
 	}
-	if (nvgre_encap_conf.select_vlan)
-		nvgre_encap_conf.vlan_tci = rte_cpu_to_be_16(res->tci);
-	rte_memcpy(nvgre_encap_conf.eth_src, res->eth_src.addr_bytes,
-		   RTE_ETHER_ADDR_LEN);
-	rte_memcpy(nvgre_encap_conf.eth_dst, res->eth_dst.addr_bytes,
-		   RTE_ETHER_ADDR_LEN);
+	if (nvgre_conf->select_vlan)
+		nvgre_conf->vlan_tci = rte_cpu_to_be_16(res->tci);
+	rte_ether_addr_copy(&res->eth_src, &nvgre_conf->eth_src);
+	rte_ether_addr_copy(&res->eth_dst, &nvgre_conf->eth_dst);
 }
 
 static cmdline_parse_inst_t cmd_set_nvgre = {
@@ -10682,23 +10692,26 @@ static void cmd_set_l2_encap_parsed(void *parsed_result,
 	__rte_unused void *data)
 {
 	struct cmd_set_l2_encap_result *res = parsed_result;
+	struct rte_flow_parser_l2_encap_conf *l2_conf =
+		rte_flow_parser_l2_encap_conf();
+
+	if (l2_conf == NULL)
+		return;
 
 	if (strcmp(res->l2_encap, "l2_encap") == 0)
-		l2_encap_conf.select_vlan = 0;
+		l2_conf->select_vlan = 0;
 	else if (strcmp(res->l2_encap, "l2_encap-with-vlan") == 0)
-		l2_encap_conf.select_vlan = 1;
+		l2_conf->select_vlan = 1;
 	if (strcmp(res->ip_version, "ipv4") == 0)
-		l2_encap_conf.select_ipv4 = 1;
+		l2_conf->select_ipv4 = 1;
 	else if (strcmp(res->ip_version, "ipv6") == 0)
-		l2_encap_conf.select_ipv4 = 0;
+		l2_conf->select_ipv4 = 0;
 	else
 		return;
-	if (l2_encap_conf.select_vlan)
-		l2_encap_conf.vlan_tci = rte_cpu_to_be_16(res->tci);
-	rte_memcpy(l2_encap_conf.eth_src, res->eth_src.addr_bytes,
-		   RTE_ETHER_ADDR_LEN);
-	rte_memcpy(l2_encap_conf.eth_dst, res->eth_dst.addr_bytes,
-		   RTE_ETHER_ADDR_LEN);
+	if (l2_conf->select_vlan)
+		l2_conf->vlan_tci = rte_cpu_to_be_16(res->tci);
+	rte_ether_addr_copy(&res->eth_src, &l2_conf->eth_src);
+	rte_ether_addr_copy(&res->eth_dst, &l2_conf->eth_dst);
 }
 
 static cmdline_parse_inst_t cmd_set_l2_encap = {
@@ -10761,11 +10774,16 @@ static void cmd_set_l2_decap_parsed(void *parsed_result,
 	__rte_unused void *data)
 {
 	struct cmd_set_l2_decap_result *res = parsed_result;
+	struct rte_flow_parser_l2_decap_conf *l2_conf =
+		rte_flow_parser_l2_decap_conf();
+
+	if (l2_conf == NULL)
+		return;
 
 	if (strcmp(res->l2_decap, "l2_decap") == 0)
-		l2_decap_conf.select_vlan = 0;
+		l2_conf->select_vlan = 0;
 	else if (strcmp(res->l2_decap, "l2_decap-with-vlan") == 0)
-		l2_decap_conf.select_vlan = 1;
+		l2_conf->select_vlan = 1;
 }
 
 static cmdline_parse_inst_t cmd_set_l2_decap = {
@@ -10860,6 +10878,8 @@ static void cmd_set_mplsogre_encap_parsed(void *parsed_result,
 	__rte_unused void *data)
 {
 	struct cmd_set_mplsogre_encap_result *res = parsed_result;
+	struct rte_flow_parser_mplsogre_encap_conf *mplsogre_conf =
+		rte_flow_parser_mplsogre_encap_conf();
 	union {
 		uint32_t mplsogre_label;
 		uint8_t label[4];
@@ -10867,30 +10887,33 @@ static void cmd_set_mplsogre_encap_parsed(void *parsed_result,
 		.mplsogre_label = rte_cpu_to_be_32(res->label<<12),
 	};
 
+	if (mplsogre_conf == NULL)
+		return;
+
 	if (strcmp(res->mplsogre, "mplsogre_encap") == 0)
-		mplsogre_encap_conf.select_vlan = 0;
+		mplsogre_conf->select_vlan = 0;
 	else if (strcmp(res->mplsogre, "mplsogre_encap-with-vlan") == 0)
-		mplsogre_encap_conf.select_vlan = 1;
+		mplsogre_conf->select_vlan = 1;
 	if (strcmp(res->ip_version, "ipv4") == 0)
-		mplsogre_encap_conf.select_ipv4 = 1;
+		mplsogre_conf->select_ipv4 = 1;
 	else if (strcmp(res->ip_version, "ipv6") == 0)
-		mplsogre_encap_conf.select_ipv4 = 0;
+		mplsogre_conf->select_ipv4 = 0;
 	else
 		return;
-	rte_memcpy(mplsogre_encap_conf.label, &id.label, 3);
-	if (mplsogre_encap_conf.select_ipv4) {
-		IPV4_ADDR_TO_UINT(res->ip_src, mplsogre_encap_conf.ipv4_src);
-		IPV4_ADDR_TO_UINT(res->ip_dst, mplsogre_encap_conf.ipv4_dst);
+	memcpy(mplsogre_conf->label, &id.label, sizeof(mplsogre_conf->label));
+	if (mplsogre_conf->select_ipv4) {
+		IPV4_ADDR_TO_UINT(res->ip_src, mplsogre_conf->ipv4_src);
+		IPV4_ADDR_TO_UINT(res->ip_dst, mplsogre_conf->ipv4_dst);
 	} else {
-		IPV6_ADDR_TO_ARRAY(res->ip_src, mplsogre_encap_conf.ipv6_src);
-		IPV6_ADDR_TO_ARRAY(res->ip_dst, mplsogre_encap_conf.ipv6_dst);
+		IPV6_ADDR_TO_ARRAY(res->ip_src, mplsogre_conf->ipv6_src);
+		IPV6_ADDR_TO_ARRAY(res->ip_dst, mplsogre_conf->ipv6_dst);
 	}
-	if (mplsogre_encap_conf.select_vlan)
-		mplsogre_encap_conf.vlan_tci = rte_cpu_to_be_16(res->tci);
-	rte_memcpy(mplsogre_encap_conf.eth_src, res->eth_src.addr_bytes,
-		   RTE_ETHER_ADDR_LEN);
-	rte_memcpy(mplsogre_encap_conf.eth_dst, res->eth_dst.addr_bytes,
-		   RTE_ETHER_ADDR_LEN);
+	if (mplsogre_conf->select_vlan)
+		mplsogre_conf->vlan_tci = rte_cpu_to_be_16(res->tci);
+	memcpy(mplsogre_conf->eth_src, res->eth_src.addr_bytes,
+	       RTE_ETHER_ADDR_LEN);
+	memcpy(mplsogre_conf->eth_dst, res->eth_dst.addr_bytes,
+	       RTE_ETHER_ADDR_LEN);
 }
 
 static cmdline_parse_inst_t cmd_set_mplsogre_encap = {
@@ -10975,15 +10998,20 @@ static void cmd_set_mplsogre_decap_parsed(void *parsed_result,
 	__rte_unused void *data)
 {
 	struct cmd_set_mplsogre_decap_result *res = parsed_result;
+	struct rte_flow_parser_mplsogre_decap_conf *mplsogre_conf =
+		rte_flow_parser_mplsogre_decap_conf();
+
+	if (mplsogre_conf == NULL)
+		return;
 
 	if (strcmp(res->mplsogre, "mplsogre_decap") == 0)
-		mplsogre_decap_conf.select_vlan = 0;
+		mplsogre_conf->select_vlan = 0;
 	else if (strcmp(res->mplsogre, "mplsogre_decap-with-vlan") == 0)
-		mplsogre_decap_conf.select_vlan = 1;
+		mplsogre_conf->select_vlan = 1;
 	if (strcmp(res->ip_version, "ipv4") == 0)
-		mplsogre_decap_conf.select_ipv4 = 1;
+		mplsogre_conf->select_ipv4 = 1;
 	else if (strcmp(res->ip_version, "ipv6") == 0)
-		mplsogre_decap_conf.select_ipv4 = 0;
+		mplsogre_conf->select_ipv4 = 0;
 }
 
 static cmdline_parse_inst_t cmd_set_mplsogre_decap = {
@@ -11096,6 +11124,8 @@ static void cmd_set_mplsoudp_encap_parsed(void *parsed_result,
 	__rte_unused void *data)
 {
 	struct cmd_set_mplsoudp_encap_result *res = parsed_result;
+	struct rte_flow_parser_mplsoudp_encap_conf *mplsoudp_conf =
+		rte_flow_parser_mplsoudp_encap_conf();
 	union {
 		uint32_t mplsoudp_label;
 		uint8_t label[4];
@@ -11103,32 +11133,35 @@ static void cmd_set_mplsoudp_encap_parsed(void *parsed_result,
 		.mplsoudp_label = rte_cpu_to_be_32(res->label<<12),
 	};
 
+	if (mplsoudp_conf == NULL)
+		return;
+
 	if (strcmp(res->mplsoudp, "mplsoudp_encap") == 0)
-		mplsoudp_encap_conf.select_vlan = 0;
+		mplsoudp_conf->select_vlan = 0;
 	else if (strcmp(res->mplsoudp, "mplsoudp_encap-with-vlan") == 0)
-		mplsoudp_encap_conf.select_vlan = 1;
+		mplsoudp_conf->select_vlan = 1;
 	if (strcmp(res->ip_version, "ipv4") == 0)
-		mplsoudp_encap_conf.select_ipv4 = 1;
+		mplsoudp_conf->select_ipv4 = 1;
 	else if (strcmp(res->ip_version, "ipv6") == 0)
-		mplsoudp_encap_conf.select_ipv4 = 0;
+		mplsoudp_conf->select_ipv4 = 0;
 	else
 		return;
-	rte_memcpy(mplsoudp_encap_conf.label, &id.label, 3);
-	mplsoudp_encap_conf.udp_src = rte_cpu_to_be_16(res->udp_src);
-	mplsoudp_encap_conf.udp_dst = rte_cpu_to_be_16(res->udp_dst);
-	if (mplsoudp_encap_conf.select_ipv4) {
-		IPV4_ADDR_TO_UINT(res->ip_src, mplsoudp_encap_conf.ipv4_src);
-		IPV4_ADDR_TO_UINT(res->ip_dst, mplsoudp_encap_conf.ipv4_dst);
+	memcpy(mplsoudp_conf->label, &id.label, sizeof(mplsoudp_conf->label));
+	mplsoudp_conf->udp_src = rte_cpu_to_be_16(res->udp_src);
+	mplsoudp_conf->udp_dst = rte_cpu_to_be_16(res->udp_dst);
+	if (mplsoudp_conf->select_ipv4) {
+		IPV4_ADDR_TO_UINT(res->ip_src, mplsoudp_conf->ipv4_src);
+		IPV4_ADDR_TO_UINT(res->ip_dst, mplsoudp_conf->ipv4_dst);
 	} else {
-		IPV6_ADDR_TO_ARRAY(res->ip_src, mplsoudp_encap_conf.ipv6_src);
-		IPV6_ADDR_TO_ARRAY(res->ip_dst, mplsoudp_encap_conf.ipv6_dst);
+		IPV6_ADDR_TO_ARRAY(res->ip_src, mplsoudp_conf->ipv6_src);
+		IPV6_ADDR_TO_ARRAY(res->ip_dst, mplsoudp_conf->ipv6_dst);
 	}
-	if (mplsoudp_encap_conf.select_vlan)
-		mplsoudp_encap_conf.vlan_tci = rte_cpu_to_be_16(res->tci);
-	rte_memcpy(mplsoudp_encap_conf.eth_src, res->eth_src.addr_bytes,
-		   RTE_ETHER_ADDR_LEN);
-	rte_memcpy(mplsoudp_encap_conf.eth_dst, res->eth_dst.addr_bytes,
-		   RTE_ETHER_ADDR_LEN);
+	if (mplsoudp_conf->select_vlan)
+		mplsoudp_conf->vlan_tci = rte_cpu_to_be_16(res->tci);
+	memcpy(mplsoudp_conf->eth_src, res->eth_src.addr_bytes,
+	       RTE_ETHER_ADDR_LEN);
+	memcpy(mplsoudp_conf->eth_dst, res->eth_dst.addr_bytes,
+	       RTE_ETHER_ADDR_LEN);
 }
 
 static cmdline_parse_inst_t cmd_set_mplsoudp_encap = {
@@ -11222,15 +11255,20 @@ static void cmd_set_mplsoudp_decap_parsed(void *parsed_result,
 	__rte_unused void *data)
 {
 	struct cmd_set_mplsoudp_decap_result *res = parsed_result;
+	struct rte_flow_parser_mplsoudp_decap_conf *mplsoudp_conf =
+		rte_flow_parser_mplsoudp_decap_conf();
+
+	if (mplsoudp_conf == NULL)
+		return;
 
 	if (strcmp(res->mplsoudp, "mplsoudp_decap") == 0)
-		mplsoudp_decap_conf.select_vlan = 0;
+		mplsoudp_conf->select_vlan = 0;
 	else if (strcmp(res->mplsoudp, "mplsoudp_decap-with-vlan") == 0)
-		mplsoudp_decap_conf.select_vlan = 1;
+		mplsoudp_conf->select_vlan = 1;
 	if (strcmp(res->ip_version, "ipv4") == 0)
-		mplsoudp_decap_conf.select_ipv4 = 1;
+		mplsoudp_conf->select_ipv4 = 1;
 	else if (strcmp(res->ip_version, "ipv6") == 0)
-		mplsoudp_decap_conf.select_ipv4 = 0;
+		mplsoudp_conf->select_ipv4 = 0;
 }
 
 static cmdline_parse_inst_t cmd_set_mplsoudp_decap = {
@@ -11409,25 +11447,26 @@ static void cmd_set_conntrack_common_parsed(void *parsed_result,
 	__rte_unused void *data)
 {
 	struct cmd_set_conntrack_common_result *res = parsed_result;
+	struct rte_flow_action_conntrack *ct = rte_flow_parser_conntrack_context();
 
 	/* No need to swap to big endian. */
-	conntrack_context.peer_port = res->peer_port;
-	conntrack_context.is_original_dir = res->is_original;
-	conntrack_context.enable = res->en;
-	conntrack_context.live_connection = res->is_live;
-	conntrack_context.selective_ack = res->s_ack;
-	conntrack_context.challenge_ack_passed = res->c_ack;
-	conntrack_context.last_direction = res->ld;
-	conntrack_context.liberal_mode = res->lb;
-	conntrack_context.state = (enum rte_flow_conntrack_state)res->stat;
-	conntrack_context.max_ack_window = res->factor;
-	conntrack_context.retransmission_limit = res->re_num;
-	conntrack_context.last_window = res->lw;
-	conntrack_context.last_index =
+	ct->peer_port = res->peer_port;
+	ct->is_original_dir = res->is_original;
+	ct->enable = res->en;
+	ct->live_connection = res->is_live;
+	ct->selective_ack = res->s_ack;
+	ct->challenge_ack_passed = res->c_ack;
+	ct->last_direction = res->ld;
+	ct->liberal_mode = res->lb;
+	ct->state = (enum rte_flow_conntrack_state)res->stat;
+	ct->max_ack_window = res->factor;
+	ct->retransmission_limit = res->re_num;
+	ct->last_window = res->lw;
+	ct->last_index =
 		(enum rte_flow_conntrack_tcp_last_index)res->li;
-	conntrack_context.last_seq = res->ls;
-	conntrack_context.last_ack = res->la;
-	conntrack_context.last_end = res->le;
+	ct->last_seq = res->ls;
+	ct->last_ack = res->la;
+	ct->last_end = res->le;
 }
 
 static cmdline_parse_inst_t cmd_set_conntrack_common = {
@@ -11558,12 +11597,13 @@ static void cmd_set_conntrack_dir_parsed(void *parsed_result,
 	__rte_unused void *data)
 {
 	struct cmd_set_conntrack_dir_result *res = parsed_result;
+	struct rte_flow_action_conntrack *ct = rte_flow_parser_conntrack_context();
 	struct rte_flow_tcp_dir_param *dir = NULL;
 
 	if (strcmp(res->dir, "orig") == 0)
-		dir = &conntrack_context.original_dir;
+		dir = &ct->original_dir;
 	else if (strcmp(res->dir, "rply") == 0)
-		dir = &conntrack_context.reply_dir;
+		dir = &ct->reply_dir;
 	else
 		return;
 	dir->scale = res->factor;
@@ -14339,6 +14379,9 @@ init_cmdline(void)
 	struct testpmd_driver_commands *c;
 	unsigned int count;
 	unsigned int i;
+
+	/* dynamic flow/set tokens managed by librte_flow_parser. */
+	rte_flow_parser_cmdline_register(&cmd_flow, &cmd_set_raw);
 
 	/* initialize non-constant commands */
 	cmd_set_fwd_mode_init();

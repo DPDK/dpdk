@@ -7,13 +7,14 @@ sources = files(
         '5tswap.c',
         'cmdline.c',
         'cmdline_cman.c',
-        'cmdline_flow.c',
         'cmdline_mtr.c',
         'cmdline_tm.c',
         'cmd_flex_item.c',
         'config.c',
         'csumonly.c',
         'flowgen.c',
+        'flow_parser.c',
+        'flow_parser_cli.c',
         'hairpin.c',
         'icmpecho.c',
         'ieee1588fwd.c',
@@ -34,7 +35,7 @@ if dpdk_conf.has('RTE_HAS_JANSSON')
     ext_deps += jansson_dep
 endif
 
-deps += ['ethdev', 'cmdline', 'pci']
+deps += ['ethdev', 'cmdline', 'pci', 'flow_parser']
 if dpdk_conf.has('RTE_CRYPTO_SCHEDULER')
     deps += 'crypto_scheduler'
 endif

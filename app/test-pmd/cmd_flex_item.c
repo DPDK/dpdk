@@ -15,6 +15,7 @@
 #include <cmdline_parse_string.h>
 #include <cmdline_parse_num.h>
 #include <rte_flow.h>
+#include <rte_flow_parser_private.h>
 
 #include "testpmd.h"
 
@@ -126,39 +127,43 @@ enum flex_link_type {
 static int
 flex_link_item_parse(const char *src, struct rte_flow_item *item)
 {
-#define  FLEX_PARSE_DATA_SIZE 1024
-
-	int ret;
-	uint8_t *ptr, data[FLEX_PARSE_DATA_SIZE] = {0,};
+	uint8_t *ptr;
 	char flow_rule[256];
-	struct rte_flow_attr *attr;
-	struct rte_flow_item *pattern;
-	struct rte_flow_action *actions;
+	uint8_t outbuf[4096];
+	struct rte_flow_parser_output *out = (void *)outbuf;
+	int ret;
 
 	sprintf(flow_rule,
 		"flow create 0 pattern %s / end actions drop / end", src);
-	src = flow_rule;
-	ret = flow_parse(src, (void *)data, sizeof(data),
-			 &attr, &pattern, &actions);
+	memset(outbuf, 0, sizeof(outbuf));
+	ret = rte_flow_parser_parse(flow_rule, out, sizeof(outbuf));
 	if (ret)
 		return ret;
-	item->type = pattern->type;
-	ret = rte_flow_conv(RTE_FLOW_CONV_OP_ITEM_MASK, NULL, 0, item, NULL);
-	if ((ret > 0) && pattern->spec) {
+	if (out->command != RTE_FLOW_PARSER_CMD_CREATE)
+		return -EINVAL;
+
+	if (out->args.vc.pattern == NULL || out->args.vc.pattern_n == 0)
+		return -EINVAL;
+
+	item->type = out->args.vc.pattern[0].type;
+	if (out->args.vc.pattern[0].spec) {
 		ptr = (void *)(uintptr_t)item->spec;
-		memcpy(ptr, pattern->spec, ret);
+		memcpy(ptr, out->args.vc.pattern[0].spec,
+		       FLEX_MAX_FLOW_PATTERN_LENGTH);
 	} else {
 		item->spec = NULL;
 	}
-	if ((ret > 0) && pattern->mask) {
+	if (out->args.vc.pattern[0].mask) {
 		ptr = (void *)(uintptr_t)item->mask;
-		memcpy(ptr, pattern->mask, ret);
+		memcpy(ptr, out->args.vc.pattern[0].mask,
+		       FLEX_MAX_FLOW_PATTERN_LENGTH);
 	} else {
 		item->mask = NULL;
 	}
-	if ((ret > 0) && pattern->last) {
+	if (out->args.vc.pattern[0].last) {
 		ptr = (void *)(uintptr_t)item->last;
-		memcpy(ptr, pattern->last, ret);
+		memcpy(ptr, out->args.vc.pattern[0].last,
+		       FLEX_MAX_FLOW_PATTERN_LENGTH);
 	} else {
 		item->last = NULL;
 	}
