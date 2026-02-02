@@ -48,6 +48,9 @@ struct pmd_internals {
 	struct nc_rxmac *rxmac[RTE_MAX_NC_RXMAC];
 	struct nc_txmac *txmac[RTE_MAX_NC_TXMAC];
 	struct nfb_device *nfb;
+
+	uint16_t max_rx_queues;
+	uint16_t max_tx_queues;
 };
 
 #endif /* _NFB_H_ */
