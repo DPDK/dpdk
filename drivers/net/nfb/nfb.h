@@ -47,6 +47,9 @@ struct pmd_internals {
 
 	char             nfb_dev[PATH_MAX];
 	struct nfb_device *nfb;
+
+	uint16_t max_rx_queues;
+	uint16_t max_tx_queues;
 };
 
 #endif /* _NFB_H_ */
