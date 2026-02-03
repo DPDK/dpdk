@@ -63,6 +63,13 @@ New Features
 
   * Added support for pre and post VF reset callbacks.
 
+* **Updated cryptodev library to support 256-NEA/NCA/NIA algorithms**
+
+  Added support for following wireless algorithms -
+  * NEA4, NIA4, NCA4: Snow 5G confidentiality, integrity and AEAD modes.
+  * NEA5, NIA5, NCA5: AES 256 confidentiality, integrity and AEAD modes.
+  * NEA6, NIA6, NCA6: ZUC 256 confidentiality, integrity and AEAD modes.
+
 
 Removed Items
 -------------
