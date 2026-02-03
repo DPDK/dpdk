@@ -3276,6 +3276,13 @@ remove_invalid_ports(void)
 }
 
 static void
+port_free_job_list(portid_t pi)
+{
+	struct rte_port *port = &ports[pi];
+	free(port->job_list);
+}
+
+static void
 flush_port_owned_resources(portid_t pi)
 {
 	mcast_addr_pool_destroy(pi);
@@ -3285,6 +3292,7 @@ flush_port_owned_resources(portid_t pi)
 	port_flow_actions_template_flush(pi);
 	port_flex_item_flush(pi);
 	port_action_handle_flush(pi);
+	port_free_job_list(pi);
 }
 
 static void
