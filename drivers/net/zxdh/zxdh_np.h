@@ -94,6 +94,7 @@
 #define ZXDH_DTB_TAB_ACK_SUCCESS_MASK            (0xff)
 #define ZXDH_DTB_TAB_ACK_FAILED_MASK             (0x1)
 #define ZXDH_DTB_TAB_ACK_CHECK_VALUE             (0x12345678)
+#define ZXDH_DTB_SPACE_LEFT_MASK                 (0x3F)
 
 #define ZXDH_DTB_TAB_ACK_VLD_SHIFT               (104)
 #define ZXDH_DTB_TAB_ACK_STATUS_SHIFT            (96)
@@ -321,6 +322,8 @@
 #define ZXDH_RC_DTB_DUMP_SIZE_SMALL             (ZXDH_RC_DTB_BASE | 0x16)
 #define ZXDH_RC_DTB_SEARCH_VPORT_QUEUE_ZERO     (ZXDH_RC_DTB_BASE | 0x17)
 #define ZXDH_RC_DTB_QUEUE_NOT_ENABLE            (ZXDH_RC_DTB_BASE | 0x18)
+#define ZXDH_RC_DTB_OVER_TIME                   (ZXDH_RC_DTB_BASE | 0x19)
+#define ZXDH_RC_DTB_BAR_ABNORMAL                (ZXDH_RC_DTB_BASE | 0x1a)
 
 #define ZXDH_RC_CTRLCH_BASE                     (0xf00)
 #define ZXDH_RC_CTRLCH_MSG_LEN_ZERO             (ZXDH_RC_CTRLCH_BASE | 0x0)
