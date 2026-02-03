@@ -4242,10 +4242,6 @@ zxdh_np_online_uninit(uint32_t dev_id,
 	if (rc != 0)
 		PMD_DRV_LOG(ERR, "dtb release port name %s queue id %u", port_name, queue_id);
 
-	rc = zxdh_np_soft_res_uninstall(dev_id);
-	if (rc != 0)
-		PMD_DRV_LOG(ERR, "zxdh_np_soft_res_uninstall failed");
-
 	return 0;
 }
 
