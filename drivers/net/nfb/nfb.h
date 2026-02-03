@@ -39,6 +39,10 @@
 /* Device arguments */
 static const char * const VALID_KEYS[] = {NULL};
 
+/*
+ * Handles obtained from the libnfb: each process must use own instance.
+ * Stored inside dev->process_private.
+ */
 struct pmd_internals {
 	uint16_t         max_rxmac;
 	uint16_t         max_txmac;
@@ -47,7 +51,13 @@ struct pmd_internals {
 
 	char             nfb_dev[PATH_MAX];
 	struct nfb_device *nfb;
+};
 
+/*
+ * Common data, single instance usable in all processes.
+ * Inited in the RTE_PROC_PRIMARY, stored in dev->data->dev_private.
+ */
+struct pmd_priv {
 	uint16_t max_rx_queues;
 	uint16_t max_tx_queues;
 };
