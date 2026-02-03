@@ -48,6 +48,7 @@
 #include "test_cryptodev_hmac_test_vectors.h"
 #include "test_cryptodev_mixed_test_vectors.h"
 #include "test_cryptodev_sm4_test_vectors.h"
+#include "test_cryptodev_nxan_test_vectors.h"
 #ifdef RTE_LIB_SECURITY
 #include "test_cryptodev_security_ipsec.h"
 #include "test_cryptodev_security_ipsec_test_vectors.h"
@@ -19882,6 +19883,583 @@ static struct unit_test_suite cryptodev_sm4_gcm_testsuite  = {
 };
 
 static int
+nxan_testsuite_setup(enum rte_crypto_sym_xform_type xform_type)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_SNOW5G_NEA4,
+		RTE_CRYPTO_CIPHER_AES_NEA5,
+		RTE_CRYPTO_CIPHER_ZUC_NEA6
+	};
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_SNOW5G_NIA4,
+		RTE_CRYPTO_AUTH_AES_NIA5,
+		RTE_CRYPTO_AUTH_ZUC_NIA6
+	};
+	const enum rte_crypto_aead_algorithm aeads[] = {
+		RTE_CRYPTO_AEAD_SNOW5G_NCA4,
+		RTE_CRYPTO_AEAD_AES_NCA5,
+		RTE_CRYPTO_AEAD_ZUC_NCA6
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
+			!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag requirements for NxA4/5/6 "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if ((xform_type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+		check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0) ||
+		(xform_type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+		check_auth_capabilities_supported(auths, RTE_DIM(auths)) != 0) ||
+		(xform_type == RTE_CRYPTO_SYM_XFORM_AEAD &&
+		check_aead_capabilities_supported(aeads, RTE_DIM(aeads)) != 0)) {
+		RTE_LOG(INFO, USER1, "Capability requirements for NxA4/5/6 "
+				"testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+nea_testsuite_setup(void)
+{
+	return nxan_testsuite_setup(RTE_CRYPTO_SYM_XFORM_CIPHER);
+}
+
+static int
+nia_testsuite_setup(void)
+{
+	return nxan_testsuite_setup(RTE_CRYPTO_SYM_XFORM_AUTH);
+}
+
+static int
+nca_testsuite_setup(void)
+{
+	return nxan_testsuite_setup(RTE_CRYPTO_SYM_XFORM_AEAD);
+}
+
+static int
+test_NEA_helper(
+	const struct nxa_256_test_data *tdata,
+	enum rte_crypto_cipher_operation op)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	int retval;
+	uint8_t *input, *output;
+	uint32_t pad_len;
+	uint32_t len;
+	bool is_enc = (op == RTE_CRYPTO_CIPHER_OP_ENCRYPT);
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return TEST_SKIPPED;
+
+	/* Create session */
+	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
+					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+					tdata->cipher_algo, tdata->key, 32, 16);
+	if (retval != 0)
+		return retval;
+
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+	/* Clear mbuf payload */
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+	       rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	len = ceil_byte_length(tdata->msg_size);
+	/* Append data which is padded to a multiple */
+	/* of the algorithms block size */
+	pad_len = RTE_ALIGN_CEIL(len, 8);
+	input = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+				pad_len);
+	memcpy(input, is_enc ? tdata->plaintext : tdata->ciphertext, len);
+	debug_hexdump(stdout, "input:", input, len);
+
+	/* Create operation */
+	retval = create_wireless_algo_cipher_operation(tdata->iv,
+				16, RTE_ALIGN_CEIL(tdata->msg_size, 8), 0);
+	if (retval != 0)
+		return retval;
+
+	if (global_api_test_type == CRYPTODEV_RAW_API_TEST) {
+		retval = process_sym_raw_dp_op(ts_params->valid_devs[0], 0, ut_params->op, 1, 0, 1,
+					       16);
+		if (retval != TEST_SUCCESS)
+			return retval;
+	} else
+		ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+				ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
+
+	ut_params->obuf = ut_params->op->sym->m_dst;
+	if (ut_params->obuf)
+		output = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
+	else
+		output = input;
+
+	debug_hexdump(stdout, "output:", output, len);
+	const uint8_t *reference_output =
+		is_enc ? tdata->ciphertext : tdata->plaintext;
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+		output,
+		reference_output,
+		tdata->msg_size,
+		"Output data not as expected");
+	return 0;
+}
+
+static int
+test_NIA_helper(const void *td)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	const struct nxa_256_test_data *tdata = td;
+
+	int retval;
+	uint32_t plaintext_pad_len;
+	uint32_t plaintext_len;
+	uint8_t *plaintext;
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return TEST_SKIPPED;
+
+	/* Create auth session */
+	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
+				tdata->key, 32,
+				16, tdata->tag_size >> 3,
+				RTE_CRYPTO_AUTH_OP_VERIFY,
+				tdata->auth_algo);
+	if (retval != 0)
+		return retval;
+	/* alloc mbuf and set payload */
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+	rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	plaintext_len = ceil_byte_length(tdata->msg_size);
+	/* Append data which is padded to a multiple */
+	/* of the algorithms block size */
+	plaintext_pad_len = RTE_ALIGN_CEIL(plaintext_len, 8);
+	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+				plaintext_pad_len);
+	memcpy(plaintext, tdata->plaintext, plaintext_len);
+
+	/* Create auth operation */
+	retval = create_wireless_algo_hash_operation(tdata->tag,
+			tdata->tag_size >> 3,
+			tdata->iv, 16,
+			plaintext_pad_len,
+			RTE_CRYPTO_AUTH_OP_VERIFY,
+			tdata->msg_size,
+			0);
+	if (retval != 0)
+		return retval;
+
+	if (global_api_test_type == CRYPTODEV_RAW_API_TEST) {
+		retval = process_sym_raw_dp_op(ts_params->valid_devs[0], 0, ut_params->op, 0, 1, 1,
+					       0);
+		if (retval != TEST_SUCCESS)
+			return retval;
+	} else
+		ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+				ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "Crypto request failed");
+	ut_params->obuf = ut_params->op->sym->m_src;
+	ut_params->digest = rte_pktmbuf_mtod_offset(ut_params->obuf,
+						    uint8_t *,
+						    plaintext_pad_len);
+
+	/* Validate obuf */
+	if (ut_params->op->status == RTE_CRYPTO_OP_STATUS_SUCCESS)
+		return 0;
+	else
+		return -1;
+
+	return 0;
+}
+
+static int
+test_NCA_helper(
+	const struct nxa_256_test_data *tdata,
+	enum rte_crypto_cipher_operation op)
+{
+	struct aead_test_data aead_tdata = {
+		.algo = tdata->aead_algo,
+		.key = {
+			.len = 32,
+		},
+		.iv = {
+			.len = 16,
+		},
+		.aad = {
+			.data = (uint8_t *)(uintptr_t)tdata->aad,
+			.len = tdata->aad_size >> 3,
+		},
+		.plaintext = {
+			.len = tdata->msg_size >> 3,
+		},
+		.ciphertext = {
+			.len = tdata->msg_size >> 3,
+		},
+		.auth_tag = {
+			.len = tdata->tag_size >> 3,
+		},
+	};
+
+	memcpy(aead_tdata.key.data, tdata->key, 32);
+	memcpy(aead_tdata.iv.data, tdata->iv, 16);
+	memcpy(aead_tdata.plaintext.data, tdata->plaintext,
+		tdata->msg_size >> 3);
+	memcpy(aead_tdata.ciphertext.data, tdata->ciphertext,
+		tdata->msg_size >> 3);
+	memcpy(aead_tdata.auth_tag.data, tdata->tag,
+		tdata->tag_size >> 3);
+
+	if (op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
+		return test_authenticated_encryption_helper(&aead_tdata, false);
+	else
+		return test_authenticated_decryption_helper(&aead_tdata, false);
+}
+
+
+static int test_case_NEA_encrypt(const void *tdata)
+{
+	return test_NEA_helper(tdata, RTE_CRYPTO_CIPHER_OP_ENCRYPT);
+}
+
+static int test_case_NEA_decrypt(const void *tdata)
+{
+	return test_NEA_helper(tdata, RTE_CRYPTO_CIPHER_OP_DECRYPT);
+}
+
+static struct unit_test_suite cryptodev_256_NEA4_testsuite  = {
+	.suite_name = "256 NEA4 (SNOW 5G) Test Suite",
+	.setup = nea_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_encrypt, &nea4_test_1),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_decrypt, &nea4_test_1),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_encrypt, &nea4_test_2),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_decrypt, &nea4_test_2),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_encrypt, &nea4_test_3),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_decrypt, &nea4_test_3),
+
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_256_NEA5_testsuite  = {
+	.suite_name = "256 NEA5 (AES 256) Test Suite",
+	.setup = nea_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_encrypt, &nea5_test_1),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_decrypt, &nea5_test_1),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_encrypt, &nea5_test_2),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_decrypt, &nea5_test_2),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_encrypt, &nea5_test_3),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_decrypt, &nea5_test_3),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_encrypt, &nea5_test_4),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_decrypt, &nea5_test_4),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_encrypt, &nea5_test_5),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_decrypt, &nea5_test_5),
+
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_256_NEA6_testsuite  = {
+	.suite_name = "256 NEA6 (ZUC 256) Test Suite",
+	.setup = nea_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_encrypt, &nea6_test_1),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_decrypt, &nea6_test_1),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_encrypt, &nea6_test_2),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_decrypt, &nea6_test_2),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_encrypt, &nea6_test_3),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_decrypt, &nea6_test_3),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_encrypt, &nea6_test_4),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_decrypt, &nea6_test_4),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_encrypt, &nea6_test_5),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_decrypt, &nea6_test_5),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_encrypt, &nea6_test_6),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_decrypt, &nea6_test_6),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_encrypt, &nea6_test_7),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NEA_decrypt, &nea6_test_7),
+
+		TEST_CASES_END()
+	}
+};
+
+
+static struct unit_test_suite cryptodev_256_NIA4_testsuite  = {
+	.suite_name = "256 NIA4 (SNOW 5G) Test Suite",
+	.setup = nia_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia4_test_1),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia4_test_2),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia4_test_3),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia4_test_4),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia4_test_5),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia4_test_6),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia4_test_7),
+
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_256_NIA5_testsuite  = {
+	.suite_name = "256 NIA5 (AES 256) Test Suite",
+	.setup = nia_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia5_test_1),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia5_test_2),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia5_test_3),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia5_test_4),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia5_test_5),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia5_test_6),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia5_test_7),
+
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_256_NIA6_testsuite  = {
+	.suite_name = "256 NIA6 (ZUC 256) Test Suite",
+	.setup = nia_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia6_test_1),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia6_test_2),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia6_test_3),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia6_test_4),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia6_test_5),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia6_test_6),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_NIA_helper, &nia6_test_7),
+
+		TEST_CASES_END()
+	}
+};
+
+
+static int test_case_NCA_encrypt(const void *tdata)
+{
+	return test_NCA_helper(tdata, RTE_CRYPTO_CIPHER_OP_ENCRYPT);
+}
+
+static int test_case_NCA_decrypt(const void *tdata)
+{
+	return test_NCA_helper(tdata, RTE_CRYPTO_CIPHER_OP_DECRYPT);
+}
+
+static struct unit_test_suite cryptodev_256_NCA4_testsuite  = {
+	.suite_name = "256 NCA4 (SNOW 5G) Test Suite",
+	.setup = nca_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca4_test_1),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca4_test_1),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca4_test_2),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca4_test_2),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca4_test_3),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca4_test_3),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca4_test_4),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca4_test_4),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca4_test_5),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca4_test_5),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca4_test_6),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca4_test_6),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca4_test_7),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca4_test_7),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca4_test_8),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca4_test_8),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca4_test_9),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca4_test_9),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca4_test_10),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca4_test_10),
+
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_256_NCA5_testsuite  = {
+	.suite_name = "256 NCA5 (AES 256) Test Suite",
+	.setup = nca_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca5_test_1),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca5_test_1),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca5_test_2),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca5_test_2),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca5_test_3),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca5_test_3),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca5_test_4),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca5_test_4),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca5_test_5),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca5_test_5),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca5_test_6),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca5_test_6),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca5_test_7),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca5_test_7),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca5_test_8),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca5_test_8),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca5_test_9),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca5_test_9),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca5_test_10),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca5_test_10),
+
+		TEST_CASES_END()
+	}
+};
+
+static struct unit_test_suite cryptodev_256_NCA6_testsuite  = {
+	.suite_name = "256 NCA6 (ZUC 256) Test Suite",
+	.setup = nca_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca6_test_1),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca6_test_1),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca6_test_2),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca6_test_2),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca6_test_3),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca6_test_3),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca6_test_4),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca6_test_4),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca6_test_5),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca6_test_5),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca6_test_6),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca6_test_6),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca6_test_7),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca6_test_7),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca6_test_8),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca6_test_8),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca6_test_9),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca6_test_9),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_encrypt, &nca6_test_10),
+		TEST_CASE_WITH_DATA(ut_setup, ut_teardown,
+			test_case_NCA_decrypt, &nca6_test_10),
+
+		TEST_CASES_END()
+	}
+};
+
+static int
 run_cryptodev_testsuite(const char *pmd_name)
 {
 	uint8_t ret, j, i = 0, blk_start_idx = 0;
@@ -19914,6 +20492,15 @@ run_cryptodev_testsuite(const char *pmd_name)
 		&cryptodev_negative_hmac_sha1_testsuite,
 		&cryptodev_gen_testsuite,
 		&cryptodev_sm4_gcm_testsuite,
+		&cryptodev_256_NEA4_testsuite,
+		&cryptodev_256_NEA5_testsuite,
+		&cryptodev_256_NEA6_testsuite,
+		&cryptodev_256_NIA4_testsuite,
+		&cryptodev_256_NIA5_testsuite,
+		&cryptodev_256_NIA6_testsuite,
+		&cryptodev_256_NCA4_testsuite,
+		&cryptodev_256_NCA5_testsuite,
+		&cryptodev_256_NCA6_testsuite,
 #ifdef RTE_LIB_SECURITY
 		&ipsec_proto_testsuite,
 		&pdcp_proto_testsuite,
