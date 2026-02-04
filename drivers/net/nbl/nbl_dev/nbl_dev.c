@@ -18,10 +18,10 @@ int nbl_dev_configure(struct rte_eth_dev *eth_dev)
 	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
 	int ret;
 
-	NBL_LOG(DEBUG, "Begin to configure the device, state: %d", adapter->state);
-
 	if (dev_data == NULL || adapter == NULL)
 		return -EINVAL;
+
+	NBL_LOG(DEBUG, "Begin to configure the device, state: %d", adapter->state);
 
 	if (rx_mq_mode != RTE_ETH_MQ_RX_NONE && rx_mq_mode != RTE_ETH_MQ_RX_RSS) {
 		NBL_LOG(ERR, "Rx mq mode %d is not supported", rx_mq_mode);
