@@ -1493,7 +1493,12 @@ bnxt_receive_function(struct rte_eth_dev *eth_dev)
 		bp->flags |= BNXT_FLAG_RX_VECTOR_PKT_MODE;
 		if (bnxt_compressed_rx_cqe_mode_enabled(bp))
 			return bnxt_crx_pkts_vec_avx2;
-		return bnxt_recv_pkts_vec_avx2;
+		if (BNXT_TRUFLOW_EN(bp) && bnxt_ulp_explicit_mark_enabled(bp))
+			goto use_scalar_rx;
+		if (BNXT_CHIP_P7(bp))
+			return bnxt_recv_pkts_vec_avx2_v3;
+		else
+			return bnxt_recv_pkts_vec_avx2;
 	}
 #endif
 	if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
