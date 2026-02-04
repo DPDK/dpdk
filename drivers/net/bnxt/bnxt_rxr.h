@@ -165,6 +165,8 @@ int bnxt_rxq_vec_setup(struct bnxt_rx_queue *rxq);
 #if defined(RTE_ARCH_X86)
 uint16_t bnxt_recv_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 				 uint16_t nb_pkts);
+uint16_t bnxt_recv_pkts_vec_avx2_v3(void *rx_queue, struct rte_mbuf **rx_pkts,
+				    uint16_t nb_pkts);
 uint16_t bnxt_crx_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 				uint16_t nb_pkts);
 #endif
