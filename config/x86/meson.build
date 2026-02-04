@@ -68,7 +68,7 @@ if is_linux or cc.get_id() == 'gcc'
 endif
 
 avx512_march_flag = ['-march=x86-64-v4']
-if not cc.has_argument(avx512_march_flag)
+if not cc.has_multi_arguments(avx512_march_flag)
     avx512_march_flag = ['-march=skylake-avx512']
 endif
 # workaround for older compilers, e.g. GCC 8.5 on RHEL 8.
@@ -99,9 +99,9 @@ if (binutils_ok and cc.has_multi_arguments(avx512_march_flag)
     endif
 endif
 if developer_mode and meson.version().version_compare('>=0.60.2')
-    message('Extra C flags needed for AVX2 output: @0@'.format(cc_avx2_flags))
+    message('Extra C flags needed for AVX2 output: [@0@]'.format(','.join(cc_avx2_flags)))
     if cc_has_avx512
-        message('Extra C flags needed for AVX512 output: @0@'.format(cc_avx512_flags))
+        message('Extra C flags needed for AVX512 output: [@0@]'.format(','.join(cc_avx512_flags)))
     endif
 endif
 
