@@ -36,7 +36,7 @@ static int nbl_chan_init_tx_queue(union nbl_chan_info *chan_info)
 		goto req_wait_queue_failed;
 	}
 
-	size = chan_info->mailbox.num_txq_entries * chan_info->mailbox.txq_buf_size;
+	size = (u64)chan_info->mailbox.num_txq_entries * (u64)chan_info->mailbox.txq_buf_size;
 	txq->buf = nbl_alloc_dma_mem(&txq->buf_mem, size);
 	if (!txq->buf) {
 		NBL_LOG(ERR, "Allocate memory for chan tx buffer arrays failed");
@@ -66,7 +66,7 @@ static int nbl_chan_init_rx_queue(union nbl_chan_info *chan_info)
 		return -ENOMEM;
 	}
 
-	size = chan_info->mailbox.num_rxq_entries * chan_info->mailbox.rxq_buf_size;
+	size = (u64)chan_info->mailbox.num_rxq_entries * (u64)chan_info->mailbox.rxq_buf_size;
 	rxq->buf = nbl_alloc_dma_mem(&rxq->buf_mem, size);
 	if (!rxq->buf) {
 		NBL_LOG(ERR, "Allocate memory for chan rx buffer arrays failed");
@@ -163,7 +163,7 @@ static int nbl_chan_prepare_rx_bufs(struct nbl_channel_mgt *chan_mgt,
 	desc = rxq->desc;
 	for (i = 0; i < chan_info->mailbox.num_rxq_entries - 1; i++) {
 		desc[i].flags = NBL_CHAN_RX_DESC_AVAIL;
-		desc[i].buf_addr = rxq->buf_mem.pa + i * chan_info->mailbox.rxq_buf_size;
+		desc[i].buf_addr = rxq->buf_mem.pa + (u64)i * (u64)chan_info->mailbox.rxq_buf_size;
 		desc[i].buf_len = chan_info->mailbox.rxq_buf_size;
 	}
 
@@ -324,7 +324,8 @@ static void nbl_chan_advance_rx_ring(struct nbl_channel_mgt *chan_mgt,
 	rx_desc = NBL_CHAN_RX_DESC(rxq, next_to_use);
 
 	rx_desc->flags = NBL_CHAN_RX_DESC_AVAIL;
-	rx_desc->buf_addr = rxq->buf_mem.pa + chan_info->mailbox.rxq_buf_size * next_to_use;
+	rx_desc->buf_addr = rxq->buf_mem.pa +
+				(u64)chan_info->mailbox.rxq_buf_size * (u64)next_to_use;
 	rx_desc->buf_len = chan_info->mailbox.rxq_buf_size;
 
 	rte_wmb();
@@ -347,7 +348,7 @@ static void nbl_chan_clean_queue(void *priv)
 
 	next_to_clean = rxq->next_to_clean;
 	rx_desc = NBL_CHAN_RX_DESC(rxq, next_to_clean);
-	data = (u8 *)rxq->buf + next_to_clean * chan_info->mailbox.rxq_buf_size;
+	data = (u8 *)rxq->buf + (u64)next_to_clean * (u64)chan_info->mailbox.rxq_buf_size;
 	while (rx_desc->flags & NBL_CHAN_RX_DESC_USED) {
 		rte_rmb();
 		nbl_chan_recv_msg(chan_mgt, data);
@@ -358,7 +359,7 @@ static void nbl_chan_clean_queue(void *priv)
 		if (next_to_clean == chan_info->mailbox.num_rxq_entries)
 			next_to_clean = 0;
 		rx_desc = NBL_CHAN_RX_DESC(rxq, next_to_clean);
-		data = (u8 *)rxq->buf + next_to_clean * chan_info->mailbox.rxq_buf_size;
+		data = (u8 *)rxq->buf + (u64)next_to_clean * (u64)chan_info->mailbox.rxq_buf_size;
 	}
 	rxq->next_to_clean = next_to_clean;
 }
@@ -376,8 +377,8 @@ static uint16_t nbl_chan_update_txqueue(union nbl_chan_info *chan_info,
 
 	txq = &chan_info->mailbox.txq;
 	next_to_use = txq->next_to_use;
-	va = (u8 *)txq->buf + next_to_use * chan_info->mailbox.txq_buf_size;
-	pa = txq->buf_mem.pa + next_to_use * chan_info->mailbox.txq_buf_size;
+	va = (u8 *)txq->buf + (u64)next_to_use * (u64)chan_info->mailbox.txq_buf_size;
+	pa = txq->buf_mem.pa + (u64)next_to_use * (u64)chan_info->mailbox.txq_buf_size;
 	tx_desc = NBL_CHAN_TX_DESC(txq, next_to_use);
 
 	tx_desc->dstid = dstid;
