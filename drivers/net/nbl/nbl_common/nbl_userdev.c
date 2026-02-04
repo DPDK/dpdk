@@ -724,17 +724,19 @@ mmap:
 	}
 
 	common->eventfd = fd;
-	ioctl(common->devfd, NBL_DEV_USER_GET_BAR_SIZE, &bar_size);
-
-	if (!ret) {
-		pci_dev->mem_resource[0].addr = nbl_userdev_mmap(common->devfd, 0, bar_size);
-		pci_dev->mem_resource[0].phys_addr = 0;
-		pci_dev->mem_resource[0].len = bar_size;
-		pci_dev->mem_resource[2].addr = 0;
-
-		common->ifindex = nbl_userdev_get_ifindex(common->devfd);
-		common->nl_socket_route = nbl_userdev_nl_init(NETLINK_ROUTE);
+	ret = ioctl(common->devfd, NBL_DEV_USER_GET_BAR_SIZE, &bar_size);
+	if (ret) {
+		NBL_LOG(ERR, "nbl userdev get bar size failed");
+		goto close_eventfd;
 	}
+
+	pci_dev->mem_resource[0].addr = nbl_userdev_mmap(common->devfd, 0, bar_size);
+	pci_dev->mem_resource[0].phys_addr = 0;
+	pci_dev->mem_resource[0].len = bar_size;
+	pci_dev->mem_resource[2].addr = 0;
+
+	common->ifindex = nbl_userdev_get_ifindex(common->devfd);
+	common->nl_socket_route = nbl_userdev_nl_init(NETLINK_ROUTE);
 
 	return ret;
 
@@ -753,12 +755,15 @@ void nbl_pci_unmap_device(struct nbl_adapter *adapter)
 {
 	struct rte_pci_device *pci_dev = adapter->pci_dev;
 	struct nbl_common_info *common = &adapter->common;
+	int ret;
 
 	if (NBL_IS_NOT_COEXISTENCE(common))
 		return rte_pci_unmap_device(pci_dev);
 
 	rte_mem_unmap(pci_dev->mem_resource[0].addr, pci_dev->mem_resource[0].len);
-	ioctl(common->devfd, NBL_DEV_USER_CLEAR_EVENTFD, 0);
+	ret = ioctl(common->devfd, NBL_DEV_USER_CLEAR_EVENTFD, 0);
+	if (ret)
+		NBL_LOG(ERR, "nbl userdev set clear eventfd failed, ret: %d", ret);
 	close(common->eventfd);
 	close(common->nl_socket_route);
 
