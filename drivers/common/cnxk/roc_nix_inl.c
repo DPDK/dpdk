@@ -583,7 +583,7 @@ nix_inl_reass_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 	uint64_t sa_idx_w, lenm1_max;
 	uint64_t res_addr_offset = 0;
 	uint64_t def_cptq = 0;
-	size_t inb_sa_sz = 1;
+	size_t inb_sa_sz = ROC_NIX_INL_OW_IPSEC_INB_SA_SZ;
 	uint8_t profile_id;
 	struct mbox *mbox;
 	void *sa;
