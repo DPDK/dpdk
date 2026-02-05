@@ -249,7 +249,7 @@ __rte_soring_stage_move_head(struct soring_stage_headtail *d,
 	return n;
 }
 
-static __rte_always_inline uint32_t
+static inline uint32_t
 soring_enqueue(struct rte_soring *r, const void *objs,
 	const void *meta, uint32_t n, enum rte_ring_queue_behavior behavior,
 	uint32_t *free_space)
@@ -278,7 +278,7 @@ soring_enqueue(struct rte_soring *r, const void *objs,
 	return n;
 }
 
-static __rte_always_inline uint32_t
+static inline uint32_t
 soring_dequeue(struct rte_soring *r, void *objs, void *meta,
 	uint32_t num, enum rte_ring_queue_behavior behavior,
 	uint32_t *available)
