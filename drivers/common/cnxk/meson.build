@@ -94,7 +94,6 @@ sources += files('cnxk_telemetry_bphy.c',
                  'cnxk_telemetry_sso.c',
 )
 
-cflags += no_wvla_cflag
 cflags += no_shadow_cflag
 
 if meson.is_cross_build()
