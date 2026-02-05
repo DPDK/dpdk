@@ -119,7 +119,7 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 	FILE *f_base = NULL, *f_base_min = NULL, *f_base_max = NULL,
 	     *f_min = NULL, *f_max = NULL;
 	uint32_t base_ratio, base_min_ratio, base_max_ratio;
-	uint64_t max_non_turbo;
+	uint64_t max_non_turbo = 0;
 	int ret;
 
 	/* open all files we expect to have open */
