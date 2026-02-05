@@ -325,6 +325,7 @@ jobs:
         config:
           - image: fedora:43
             compiler: gcc
+            checks: minsize
           - image: fedora:43
             compiler: clang
 
@@ -362,6 +363,7 @@ jobs:
         echo CCACHE_DIR=/root/.ccache >> ~/env
         echo DEF_LIB=${{ matrix.config.library }} >> ~/env
         echo STDATOMIC=false >> ~/env
+        echo BUILD_MINSIZE=${{ contains(matrix.config.checks, 'minsize') }} >> ~/env
     - name: Load the cached image
       run: |
         docker load -i ~/.image/${{ matrix.config.image }}.tar

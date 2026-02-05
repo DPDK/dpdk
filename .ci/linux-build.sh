@@ -85,6 +85,8 @@ buildtype=debugoptimized
 
 if [ "$BUILD_DEBUG" = "true" ]; then
     buildtype=debug
+elif [ "$BUILD_MINSIZE" = "true" ]; then
+    buildtype=minsize
 fi
 
 if [ "$BUILD_DOCS" = "true" ]; then
