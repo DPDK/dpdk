@@ -128,7 +128,6 @@ else
 fi
 OPTS="$OPTS -Dlibdir=lib"
 
-buildtype=debugoptimized
 sanitizer=
 if [ "$ASAN" = "true" ]; then
     sanitizer=${sanitizer:+$sanitizer,}address
