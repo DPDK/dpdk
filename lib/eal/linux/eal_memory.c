@@ -436,8 +436,9 @@ find_numasocket(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 	unsigned i, hp_count = 0;
 	uint64_t virt_addr;
 	char buf[BUFSIZ];
-	char hugedir_str[PATH_MAX];
+	char *hugedir_str;
 	FILE *f;
+	int ret;
 
 	f = fopen("/proc/self/numa_maps", "r");
 	if (f == NULL) {
@@ -446,8 +447,15 @@ find_numasocket(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 		return 0;
 	}
 
-	snprintf(hugedir_str, sizeof(hugedir_str),
-			"%s/%s", hpi->hugedir, eal_get_hugefile_prefix());
+	ret = asprintf(&hugedir_str, "%s/%s",
+			hpi->hugedir, eal_get_hugefile_prefix());
+	if (ret < 0) {
+		EAL_LOG(ERR, "%s(): failed to store hugepage path", __func__);
+		hugedir_str = NULL;
+		goto error;
+	}
+
+	ret = -1;
 
 	/* parse numa map */
 	while (fgets(buf, sizeof(buf), f) != NULL) {
@@ -503,12 +511,11 @@ find_numasocket(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 	if (hp_count < hpi->num_pages[0])
 		goto error;
 
-	fclose(f);
-	return 0;
-
+	ret = 0;
 error:
+	free(hugedir_str);
 	fclose(f);
-	return -1;
+	return ret;
 }
 
 static int
