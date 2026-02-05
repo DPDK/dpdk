@@ -1578,7 +1578,7 @@ struct rte_eth_conf {
 };
 
 /**
- * Rx offload capabilities of a device.
+ * Rx offload capabilities/configuration of a device or queue.
  */
 #define RTE_ETH_RX_OFFLOAD_VLAN_STRIP       RTE_BIT64(0)
 #define RTE_ETH_RX_OFFLOAD_IPV4_CKSUM       RTE_BIT64(1)
@@ -1613,12 +1613,12 @@ struct rte_eth_conf {
 			     RTE_ETH_RX_OFFLOAD_QINQ_STRIP)
 
 /*
- * If new Rx offload capabilities are defined, they also must be
+ * If new Rx offloads are defined, they also must be
  * mentioned in rte_rx_offload_names in rte_ethdev.c file.
  */
 
 /**
- * Tx offload capabilities of a device.
+ * Tx offload capabilities/configuration of a device or queue.
  */
 #define RTE_ETH_TX_OFFLOAD_VLAN_INSERT      RTE_BIT64(0)
 #define RTE_ETH_TX_OFFLOAD_IPV4_CKSUM       RTE_BIT64(1)
@@ -1639,39 +1639,39 @@ struct rte_eth_conf {
  * Tx queue without SW lock.
  */
 #define RTE_ETH_TX_OFFLOAD_MT_LOCKFREE      RTE_BIT64(14)
-/** Device supports multi segment send. */
+/** Multi segment send. */
 #define RTE_ETH_TX_OFFLOAD_MULTI_SEGS       RTE_BIT64(15)
 /**
- * Device supports optimization for fast release of mbufs.
+ * Optimization for fast release of mbufs.
  * When set application must guarantee that per-queue all mbufs come from the same mempool,
- * are direct, have refcnt=1, next=NULL and nb_segs=1, as done by rte_pktmbuf_prefree_seg().
+ * have refcnt=1, and are direct.
  *
  * @see rte_mbuf_raw_free_bulk()
  */
 #define RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE   RTE_BIT64(16)
 #define RTE_ETH_TX_OFFLOAD_SECURITY         RTE_BIT64(17)
 /**
- * Device supports generic UDP tunneled packet TSO.
+ * Generic UDP tunneled packet TSO.
  * Application must set RTE_MBUF_F_TX_TUNNEL_UDP and other mbuf fields required
  * for tunnel TSO.
  */
 #define RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO      RTE_BIT64(18)
 /**
- * Device supports generic IP tunneled packet TSO.
+ * Generic IP tunneled packet TSO.
  * Application must set RTE_MBUF_F_TX_TUNNEL_IP and other mbuf fields required
  * for tunnel TSO.
  */
 #define RTE_ETH_TX_OFFLOAD_IP_TNL_TSO       RTE_BIT64(19)
-/** Device supports outer UDP checksum */
+/** Outer UDP checksum. Used for tunneling packet. */
 #define RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM  RTE_BIT64(20)
 /**
- * Device sends on time read from RTE_MBUF_DYNFIELD_TIMESTAMP_NAME
+ * Send on time read from RTE_MBUF_DYNFIELD_TIMESTAMP_NAME
  * if RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME is set in ol_flags.
  * The mbuf field and flag are registered when the offload is configured.
  */
 #define RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP RTE_BIT64(21)
 /*
- * If new Tx offload capabilities are defined, they also must be
+ * If new Tx offloads are defined, they also must be
  * mentioned in rte_tx_offload_names in rte_ethdev.c file.
  */
 
