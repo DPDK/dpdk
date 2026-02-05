@@ -1903,6 +1903,7 @@ F: doc/guides/howto/telemetry.rst
 
 BPF
 M: Konstantin Ananyev <konstantin.v.ananyev@yandex.ru>
+M: Marat Khalili <marat.khalili@huawei.com>
 F: lib/bpf/
 F: examples/bpf/
 F: app/test/test_bpf.c
