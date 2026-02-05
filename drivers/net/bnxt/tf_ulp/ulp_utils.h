@@ -1106,6 +1106,8 @@ ulp_blob_append(struct ulp_blob *dst, struct ulp_blob *src,
 	uint8_t bluff;
 	uint8_t *src_buf = ulp_blob_data_get(src, &num);
 
+	if (unlikely(src_buf == NULL))
+		return -EINVAL;
 	if (unlikely((src_offset + src_len) > num))
 		return -EINVAL;
 
