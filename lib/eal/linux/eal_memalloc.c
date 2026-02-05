@@ -1447,8 +1447,13 @@ secondary_msl_create_walk(const struct rte_memseg_list *msl,
 	local_msl = &local_memsegs[msl_idx];
 
 	/* create distinct fbarrays for each secondary */
-	snprintf(name, RTE_FBARRAY_NAME_LEN, "%s_%i",
+	ret = snprintf(name, RTE_FBARRAY_NAME_LEN, "%s_%i",
 		primary_msl->memseg_arr.name, getpid());
+	if (ret >= RTE_FBARRAY_NAME_LEN) {
+		EAL_LOG(ERR, "fbarray name %s_%i is too long",
+				primary_msl->memseg_arr.name, getpid());
+		return -1;
+	}
 
 	ret = rte_fbarray_init(&local_msl->memseg_arr, name,
 		primary_msl->memseg_arr.len,
