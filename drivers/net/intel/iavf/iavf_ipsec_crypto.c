@@ -1644,7 +1644,7 @@ iavf_ipsec_crypto_supported(struct iavf_adapter *adapter)
 	/** Capability check for IPsec Crypto */
 	if (resources && (resources->vf_cap_flags &
 		VIRTCHNL_VF_OFFLOAD_INLINE_IPSEC_CRYPTO)) {
-		struct virtchnl_ipsec_status status;
+		struct virtchnl_ipsec_status status = {0};
 		int rc = iavf_ipsec_crypto_status_get(adapter, &status);
 		if (rc == 0 && status.status == INLINE_IPSEC_STATUS_AVAILABLE)
 			crypto_supported = true;
