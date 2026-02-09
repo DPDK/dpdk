@@ -389,7 +389,7 @@ mlx5_glue_constructor(void)
 		goto glue_error;
 #endif
 
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	/* Glue structure must not contain any NULL pointers. */
 	{
 		unsigned int i;

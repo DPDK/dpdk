@@ -1854,7 +1854,7 @@ mlx5_unlock_physical_device(void)
 static void
 mlx5_physical_device_destroy(struct mlx5_physical_device *phdev)
 {
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	/* Check the object presence in the list. */
 	struct mlx5_physical_device *lphdev;
 
@@ -2106,7 +2106,7 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 	int i = 0;
 
 	pthread_mutex_lock(&mlx5_dev_ctx_list_mutex);
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	/* Check the object presence in the list. */
 	struct mlx5_dev_ctx_shared *lctx;
 

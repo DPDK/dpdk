@@ -80,7 +80,7 @@ mlx5_txq_free_elts(struct mlx5_txq_ctrl *txq_ctrl)
 
 		MLX5_ASSERT(elt != NULL);
 		rte_pktmbuf_free_seg(elt);
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 		/* Poisoning. */
 		memset(&(*elts)[elts_tail & elts_m],
 		       0x77,

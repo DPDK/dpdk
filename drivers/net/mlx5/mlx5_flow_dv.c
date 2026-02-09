@@ -9241,7 +9241,7 @@ flow_dv_prepare(struct rte_eth_dev *dev,
 	return dev_flow;
 }
 
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 /**
  * Sanity check for match mask and value. Similar to check_valid_spec() in
  * kernel driver. If unmasked bit is present in value, it returns failure.
@@ -14547,7 +14547,7 @@ flow_dv_translate_items_geneve_opt_nta(struct rte_eth_dev *dev,
 	const struct rte_flow_item_geneve_opt *geneve_opt_m = items->mask;
 	void *geneve_parser;
 	struct mlx5_priv *priv = dev->data->dev_private;
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	struct mlx5_geneve_tlv_option *option;
 #endif
 
@@ -14567,7 +14567,7 @@ flow_dv_translate_items_geneve_opt_nta(struct rte_eth_dev *dev,
 			return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM, items,
 				" GENEVE OPT parser creation failed ");
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	} else {
 		/* Check if option exist in current parser. */
 		option = mlx5_geneve_tlv_option_get(priv,
@@ -14974,7 +14974,7 @@ flow_dv_translate_items_sws(struct rte_eth_dev *dev,
 	}
 	dev_flow->handle->vf_vlan.tag = wks.vlan_tag;
 	matcher->priority = wks.priority;
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	MLX5_ASSERT(!flow_dv_check_valid_spec(match_mask, match_value));
 #endif
 	/*

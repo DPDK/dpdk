@@ -377,7 +377,7 @@ check_again:
 		if (lc)
 			memcpy(p->trunks, lc->trunks, trunk_idx *
 		       sizeof(struct mlx5_indexed_trunk *));
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 		memset(RTE_PTR_ADD(p->trunks, trunk_idx * sizeof(void *)), 0,
 			n_grow * sizeof(void *));
 #endif

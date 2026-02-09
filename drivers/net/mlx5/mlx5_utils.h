@@ -183,7 +183,7 @@ typedef int32_t (*mlx5_l3t_alloc_callback_fn)(void *ctx,
 #define TRUNK_MAX_IDX ((1 << TRUNK_IDX_BITS) - 1)
 #define TRUNK_INVALID TRUNK_MAX_IDX
 #define MLX5_IPOOL_DEFAULT_TRUNK_SIZE (1 << (28 - TRUNK_IDX_BITS))
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 #define POOL_DEBUG 1
 #endif
 

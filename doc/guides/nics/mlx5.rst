@@ -4432,7 +4432,7 @@ Steps to enable Tx datapath tracing:
    .. code-block:: console
 
       meson configure --buildtype=debug -Denable_trace_fp=true
-         -Dc_args='-DRTE_LIBRTE_MLX5_DEBUG -DRTE_ENABLE_ASSERT -DALLOW_EXPERIMENTAL_API' build
+         -Dc_args='-DRTE_PMD_MLX5_DEBUG -DRTE_ENABLE_ASSERT -DALLOW_EXPERIMENTAL_API' build
 
 #. Configure the NIC
 

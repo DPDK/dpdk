@@ -1607,7 +1607,7 @@ err_secondary:
 	DRV_LOG(INFO,
 		"port %u MAC address is " RTE_ETHER_ADDR_PRT_FMT,
 		eth_dev->data->port_id, RTE_ETHER_ADDR_BYTES(&mac));
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	{
 		char ifname[MLX5_NAMESIZE];
 
