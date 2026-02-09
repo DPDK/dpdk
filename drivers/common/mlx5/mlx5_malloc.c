@@ -19,7 +19,7 @@ struct mlx5_sys_mem {
 	uint32_t reserve:30; /* Reserve. */
 	RTE_ATOMIC(struct rte_memseg_list *) last_msl;
 	/* last allocated rte memory memseg list. */
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	uint64_t malloc_sys;
 	/* Memory allocated from system count. */
 	uint64_t malloc_rte;
@@ -43,7 +43,7 @@ struct mlx5_sys_mem {
 static struct mlx5_sys_mem mlx5_sys_mem = {
 	.init = 0,
 	.enable = 0,
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	.malloc_sys = 0,
 	.malloc_rte = 0,
 	.realloc_sys = 0,
@@ -99,7 +99,7 @@ mlx5_mem_update_msl(void *addr)
 		rte_atomic_store_explicit(&mlx5_sys_mem.last_msl,
 			rte_mem_virt2memseg_list(addr),
 			rte_memory_order_relaxed);
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 		rte_atomic_fetch_add_explicit(&mlx5_sys_mem.msl_update, 1,
 				   rte_memory_order_relaxed);
 #endif
@@ -126,7 +126,7 @@ mlx5_mem_is_rte(void *addr)
 	    rte_atomic_load_explicit(&mlx5_sys_mem.last_msl, rte_memory_order_relaxed))) {
 		if (!rte_mem_virt2memseg_list(addr))
 			return false;
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 		rte_atomic_fetch_add_explicit(&mlx5_sys_mem.msl_miss, 1, rte_memory_order_relaxed);
 #endif
 	}
@@ -198,7 +198,7 @@ mlx5_malloc(uint32_t flags, size_t size, unsigned int align, int socket)
 			}
 		}
 		mlx5_mem_update_msl(addr);
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 		if (addr)
 			rte_atomic_fetch_add_explicit(&mlx5_sys_mem.malloc_rte, 1,
 					   rte_memory_order_relaxed);
@@ -212,7 +212,7 @@ mlx5_malloc(uint32_t flags, size_t size, unsigned int align, int socket)
 		addr = calloc(1, size);
 	else
 		addr = malloc(size);
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	if (addr)
 		rte_atomic_fetch_add_explicit(&mlx5_sys_mem.malloc_sys, 1,
 				   rte_memory_order_relaxed);
@@ -247,7 +247,7 @@ mlx5_realloc(void *addr, uint32_t flags, size_t size, unsigned int align,
 	if (rte_mem) {
 		new_addr = rte_realloc_socket(addr, size, align, socket);
 		mlx5_mem_update_msl(new_addr);
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 		if (new_addr)
 			rte_atomic_fetch_add_explicit(&mlx5_sys_mem.realloc_rte, 1,
 					   rte_memory_order_relaxed);
@@ -260,7 +260,7 @@ mlx5_realloc(void *addr, uint32_t flags, size_t size, unsigned int align,
 		return NULL;
 	}
 	new_addr = realloc(addr, size);
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	if (new_addr)
 		rte_atomic_fetch_add_explicit(&mlx5_sys_mem.realloc_sys, 1,
 				   rte_memory_order_relaxed);
@@ -275,13 +275,13 @@ mlx5_free(void *addr)
 	if (addr == NULL)
 		return;
 	if (!mlx5_mem_is_rte(addr)) {
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 		rte_atomic_fetch_add_explicit(&mlx5_sys_mem.free_sys, 1,
 				   rte_memory_order_relaxed);
 #endif
 		mlx5_os_free(addr);
 	} else {
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 		rte_atomic_fetch_add_explicit(&mlx5_sys_mem.free_rte, 1,
 				   rte_memory_order_relaxed);
 #endif
@@ -293,7 +293,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(mlx5_memory_stat_dump)
 void
 mlx5_memory_stat_dump(void)
 {
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	DRV_LOG(INFO, "System memory malloc:%"PRIi64", realloc:%"PRIi64","
 		" free:%"PRIi64"\nRTE memory malloc:%"PRIi64","
 		" realloc:%"PRIi64", free:%"PRIi64"\nMSL miss:%"PRIi64","

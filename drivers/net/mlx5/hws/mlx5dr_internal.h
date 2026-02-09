@@ -59,7 +59,8 @@
 #define MLX5DR_ASAN_ALIGN
 #endif
 
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
+
 /* Prevent double function name print when debug is set */
 #define DR_LOG DRV_LOG
 #else

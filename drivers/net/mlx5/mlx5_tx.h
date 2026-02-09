@@ -154,7 +154,7 @@ struct __rte_cache_aligned mlx5_txq_data {
 	struct mlx5_mr_ctrl mr_ctrl; /* MR control descriptor. */
 	struct mlx5_wqe *wqes; /* Work queue. */
 	struct mlx5_wqe *wqes_end; /* Work queue array limit. */
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	uint32_t *fcqs; /* Free completion queue (debug extended). */
 #else
 	uint16_t *fcqs; /* Free completion queue. */
@@ -763,7 +763,7 @@ mlx5_tx_request_completion(struct mlx5_txq_data *__rte_restrict txq,
 		last->cseg.flags = RTE_BE32(MLX5_COMP_ALWAYS <<
 					    MLX5_COMP_MODE_OFFSET);
 		/* Save elts_head in dedicated free on completion queue. */
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 		txq->fcqs[txq->cq_pi++ & txq->cqe_m] = head |
 			  (last->cseg.opcode >> 8) << 16;
 #else
@@ -808,7 +808,7 @@ mlx5_tx_request_completion_trace(struct mlx5_txq_data *__rte_restrict txq,
 			txq->elts_comp = head;
 		}
 		/* Completion request flag was set on cseg constructing. */
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 		txq->fcqs[txq->cq_pi++ & txq->cqe_m] = head |
 			  (wqe->cseg.opcode >> 8) << 16;
 #else

@@ -74,7 +74,7 @@ pmd_drv_log_basename(const char *s)
 			RTE_FMT_HEAD(__VA_ARGS__,), \
 		RTE_FMT_TAIL(__VA_ARGS__,)))
 
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 
 #define PMD_DRV_LOG__(level, type, name, ...) \
 	PMD_DRV_LOG___(level, type, name, "%s:%u: %s(): " __VA_ARGS__)
@@ -86,28 +86,28 @@ pmd_drv_log_basename(const char *s)
 		__func__, \
 		__VA_ARGS__)
 
-#else /* RTE_LIBRTE_MLX5_DEBUG */
+#else /* RTE_PMD_MLX5_DEBUG */
 #define PMD_DRV_LOG__(level, type, name, ...) \
 	PMD_DRV_LOG___(level, type, name, __VA_ARGS__)
 #define PMD_DRV_LOG_(level, type, name, s, ...) \
 	PMD_DRV_LOG__(level, type, name, s "\n", __VA_ARGS__)
 
-#endif /* RTE_LIBRTE_MLX5_DEBUG */
+#endif /* RTE_PMD_MLX5_DEBUG */
 
 /* claim_zero() does not perform any check when debugging is disabled. */
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 
 #define MLX5_ASSERT(exp) RTE_VERIFY(exp)
 #define claim_zero(...) MLX5_ASSERT((__VA_ARGS__) == 0)
 #define claim_nonzero(...) MLX5_ASSERT((__VA_ARGS__) != 0)
 
-#else /* RTE_LIBRTE_MLX5_DEBUG */
+#else /* RTE_PMD_MLX5_DEBUG */
 
 #define MLX5_ASSERT(exp) RTE_ASSERT(exp)
 #define claim_zero(...) (__VA_ARGS__)
 #define claim_nonzero(...) (__VA_ARGS__)
 
-#endif /* RTE_LIBRTE_MLX5_DEBUG */
+#endif /* RTE_PMD_MLX5_DEBUG */
 
 /**
  * Returns true if debug mode is enabled for fast path operations.
@@ -115,7 +115,7 @@ pmd_drv_log_basename(const char *s)
 static inline bool
 mlx5_fp_debug_enabled(void)
 {
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	return true;
 #else
 	return false;

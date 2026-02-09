@@ -482,7 +482,7 @@ mlx5_nl_mac_addr_cb(struct nlmsghdr *nh, void *arg)
 				rte_errno = ENOMEM;
 				return -rte_errno;
 			}
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 			char m[RTE_ETHER_ADDR_FMT_SIZE];
 
 			rte_ether_format_addr(m, RTE_ETHER_ADDR_FMT_SIZE,
@@ -612,7 +612,7 @@ mlx5_nl_mac_addr_modify(int nlsk_fd, unsigned int iface_idx,
 		goto error;
 	return 0;
 error:
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	{
 		char m[RTE_ETHER_ADDR_FMT_SIZE];
 

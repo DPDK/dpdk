@@ -272,7 +272,7 @@ mlx5_mr_btree_free(struct mlx5_mr_btree *bt)
 void
 mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused)
 {
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	uint32_t idx;
 	struct mr_cache_entry *lkp_tbl;
 
@@ -1319,7 +1319,7 @@ mlx5_free_mr_by_addr(struct mlx5_mr_share_cache *share_cache,
 void
 mlx5_mr_dump_cache(struct mlx5_mr_share_cache *share_cache __rte_unused)
 {
-#ifdef RTE_LIBRTE_MLX5_DEBUG
+#ifdef RTE_PMD_MLX5_DEBUG
 	struct mlx5_mr *mr;
 	int mr_n = 0;
 	int chunk_n = 0;

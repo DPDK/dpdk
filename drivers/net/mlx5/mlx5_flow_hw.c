@@ -17568,7 +17568,7 @@ flow_hw_async_op_validate(struct rte_eth_dev *dev,
 /**
  * Validate user input for rte_flow_async_create() implementation.
  *
- * If RTE_LIBRTE_MLX5_DEBUG macro is not defined, this function is a no-op.
+ * If RTE_PMD_MLX5_DEBUG macro is not defined, this function is a no-op.
  *
  * @param[in] dev
  *   Pointer to the rte_eth_dev structure.
@@ -17630,7 +17630,7 @@ flow_hw_async_create_validate(struct rte_eth_dev *dev,
 /**
  * Validate user input for rte_flow_async_update() implementation.
  *
- * If RTE_LIBRTE_MLX5_DEBUG macro is not defined, this function is a no-op.
+ * If RTE_PMD_MLX5_DEBUG macro is not defined, this function is a no-op.
  *
  * @param[in] dev
  *   Pointer to the rte_eth_dev structure.
@@ -17669,7 +17669,7 @@ flow_hw_async_update_validate(struct rte_eth_dev *dev,
 /**
  * Validate user input for rte_flow_async_destroy() implementation.
  *
- * If RTE_LIBRTE_MLX5_DEBUG macro is not defined, this function is a no-op.
+ * If RTE_PMD_MLX5_DEBUG macro is not defined, this function is a no-op.
  *
  * @param[in] dev
  *   Pointer to the rte_eth_dev structure.
