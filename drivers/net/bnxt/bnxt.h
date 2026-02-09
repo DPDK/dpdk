@@ -1253,6 +1253,7 @@ extern int bnxt_logtype_driver;
 #define BNXT_LINK_SPEEDS_V2(bp) (((bp)->link_info) && (((bp)->link_info->support_speeds_v2) || \
 						       BNXT_LINK_SPEEDS_V2_VF((bp))))
 #define BNXT_MAX_SPEED_LANES 8
+#define BNXT_SUPPORTS_TPA(bp)  (!BNXT_CHIP_P5_P7(bp) || (bp)->max_tpa_v2)
 extern const struct rte_flow_ops bnxt_ulp_rte_flow_ops;
 int32_t bnxt_ulp_port_init(struct bnxt *bp);
 void bnxt_ulp_port_deinit(struct bnxt *bp);
