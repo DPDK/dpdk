@@ -38,7 +38,8 @@ uint64_t bnxt_get_rx_port_offloads(struct bnxt *bp)
 				    RTE_ETH_RX_OFFLOAD_VLAN_EXTEND);
 
 
-	if (!bnxt_compressed_rx_cqe_mode_enabled(bp))
+	if (!bnxt_compressed_rx_cqe_mode_enabled(bp) &&
+	    BNXT_SUPPORTS_TPA(bp))
 		rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TCP_LRO;
 	if (bp->flags & BNXT_FLAG_PTP_SUPPORTED)
 		rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
