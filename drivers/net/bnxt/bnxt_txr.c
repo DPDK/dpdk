@@ -510,11 +510,48 @@ ret:
 	return rc;
 }
 
+static void bnxt_tx_coal_cmp_fast(struct bnxt_tx_queue *txq, int nr_cons)
+{
+	struct bnxt_tx_ring_info *txr = txq->tx_ring;
+	struct bnxt_ring *ring = txr->tx_ring_struct;
+	struct rte_mbuf **free = txq->free;
+	uint16_t raw_cons = txr->tx_raw_cons;
+	unsigned int blk = 0;
+	int cons, bds;
+
+	for (cons = 0; cons < nr_cons; cons++) {
+		struct rte_mbuf **tx_buf;
+		unsigned short nr_bds;
+
+		tx_buf = &txr->tx_buf_ring[RING_IDX(ring, raw_cons)];
+		nr_bds = (*tx_buf)->nb_segs +
+			 bnxt_xmit_need_long_bd(*tx_buf, txq);
+		for (bds = 0; bds < nr_bds; bds++) {
+			if (*tx_buf) {
+				free[blk++] = *tx_buf;
+				/*
+				 * Each BD also tracks a consumer index.
+				 * Update cons, otherwise it will fall behind.
+				 */
+				cons++;
+				*tx_buf = NULL;
+			}
+			raw_cons = RING_NEXT(raw_cons);
+			tx_buf = &txr->tx_buf_ring[RING_IDX(ring, raw_cons)];
+		}
+	}
+	if (blk)
+		rte_mempool_put_bulk(free[0]->pool, (void *)free, blk);
+
+	txr->tx_raw_cons = raw_cons;
+}
+
 /*
  * Transmit completion function for use when RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE
  * is enabled.
  */
-static void bnxt_tx_cmp_fast(struct bnxt_tx_queue *txq, int nr_pkts)
+static void bnxt_tx_cmp_fast(struct bnxt_tx_queue *txq, int nb_tx,
+			      bool tx_coal_cmp)
 {
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
 	struct bnxt_ring *ring = txr->tx_ring_struct;
@@ -523,7 +560,10 @@ static void bnxt_tx_cmp_fast(struct bnxt_tx_queue *txq, int nr_pkts)
 	unsigned int blk = 0;
 	int i, j;
 
-	for (i = 0; i < nr_pkts; i++) {
+	if (tx_coal_cmp)
+		return bnxt_tx_coal_cmp_fast(txq, nb_tx);
+
+	for (i = 0; i < nb_tx; i++) {
 		struct rte_mbuf **tx_buf;
 		unsigned short nr_bds;
 
@@ -546,7 +586,72 @@ static void bnxt_tx_cmp_fast(struct bnxt_tx_queue *txq, int nr_pkts)
 	txr->tx_raw_cons = raw_cons;
 }
 
-static void bnxt_tx_cmp(struct bnxt_tx_queue *txq, int nr_pkts)
+static void bnxt_tx_coal_cmp(struct bnxt_tx_queue *txq, int nr_cons)
+{
+	struct bnxt_tx_ring_info *txr = txq->tx_ring;
+	struct bnxt_ring *ring = txr->tx_ring_struct;
+	struct rte_mempool *pool = NULL;
+	struct rte_mbuf **free = txq->free;
+	uint16_t raw_cons = txr->tx_raw_cons;
+	unsigned int blk = 0;
+	int cons, bds;
+
+	for (cons = 0; cons < nr_cons; cons++) {
+		struct rte_mbuf *mbuf;
+		struct rte_mbuf **tx_buf;
+		unsigned short nr_bds;
+
+		tx_buf = &txr->tx_buf_ring[RING_IDX(ring, raw_cons)];
+		nr_bds = txr->nr_bds[RING_IDX(ring, raw_cons)];
+		/* Clear the now stale number of buffer descriptors */
+		txr->nr_bds[RING_IDX(ring, raw_cons)] = 0;
+
+		for (bds = 0; bds < nr_bds; bds++) {
+			mbuf = *tx_buf;
+			*tx_buf = NULL;
+			raw_cons = RING_NEXT(raw_cons);
+			/*
+			 * Each BD also tracks a consumer index. So update the cons.
+			 * Otherwise the cons will fall behind.
+			 */
+			cons++;
+			tx_buf = &txr->tx_buf_ring[RING_IDX(ring, raw_cons)];
+			if (!mbuf)	/* long_bd's tx_buf ? */
+				continue;
+
+			mbuf = rte_pktmbuf_prefree_seg(mbuf);
+			if (unlikely(!mbuf))
+				continue;
+
+			/* EW - no need to unmap DMA memory? */
+
+			if (likely(mbuf->pool == pool)) {
+				/* Add mbuf to the bulk free array */
+				free[blk++] = mbuf;
+			} else {
+				/* Found an mbuf from a different pool. Free
+				 * mbufs accumulated so far to the previous
+				 * pool
+				 */
+				if (likely(pool != NULL))
+					rte_mempool_put_bulk(pool,
+							     (void *)free,
+							     blk);
+
+				/* Start accumulating mbufs in a new pool */
+				free[0] = mbuf;
+				pool = mbuf->pool;
+				blk = 1;
+			}
+		}
+	}
+	if (blk)
+		rte_mempool_put_bulk(pool, (void *)free, blk);
+
+	txr->tx_raw_cons = raw_cons;
+}
+
+static void bnxt_tx_cmp(struct bnxt_tx_queue *txq, int nb_tx, bool tx_coal_cmp)
 {
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
 	struct bnxt_ring *ring = txr->tx_ring_struct;
@@ -556,13 +661,19 @@ static void bnxt_tx_cmp(struct bnxt_tx_queue *txq, int nr_pkts)
 	unsigned int blk = 0;
 	int i, j;
 
-	for (i = 0; i < nr_pkts; i++) {
+	if (tx_coal_cmp)
+		return bnxt_tx_coal_cmp(txq, nb_tx);
+
+	for (i = 0; i < nb_tx; i++) {
 		struct rte_mbuf *mbuf;
 		struct rte_mbuf **tx_buf;
 		unsigned short nr_bds;
 
 		tx_buf = &txr->tx_buf_ring[RING_IDX(ring, raw_cons)];
 		nr_bds = txr->nr_bds[RING_IDX(ring, raw_cons)];
+		/* Clear the now stale number of buffer descriptors */
+		txr->nr_bds[RING_IDX(ring, raw_cons)] = 0;
+
 		for (j = 0; j < nr_bds; j++) {
 			mbuf = *tx_buf;
 			*tx_buf = NULL;
@@ -630,6 +741,8 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 	struct bnxt_cp_ring_info *cpr = txq->cp_ring;
 	uint32_t raw_cons = cpr->cp_raw_cons;
 	struct bnxt_ring *cp_ring_struct;
+	uint32_t tx_ring_mask;
+	bool tx_coal_cmp = false;
 	struct tx_cmpl *txcmp;
 
 	if (bnxt_tx_bds_in_hw(txq) < txq->tx_free_thresh)
@@ -637,6 +750,7 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 
 	cp_ring_struct = cpr->cp_ring_struct;
 	ring_mask = cp_ring_struct->ring_mask;
+	tx_ring_mask = txq->tx_ring->tx_ring_struct->ring_mask;
 
 	do {
 		cons = RING_CMPL(ring_mask, raw_cons);
@@ -644,6 +758,16 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 
 		if (!bnxt_cpr_cmp_valid(txcmp, raw_cons, ring_mask + 1))
 			break;
+
+		if (CMP_TYPE(txcmp) == CMPL_BASE_TYPE_TX_L2_COAL) {
+			struct tx_cmpl_coal *txcmp_c = (struct tx_cmpl_coal *)txcmp;
+
+			nb_tx_pkts = (rte_le_to_cpu_32(txcmp_c->sq_cons_idx) -
+				      (txq->tx_ring->tx_raw_cons & tx_ring_mask)) & tx_ring_mask;
+			raw_cons = NEXT_RAW_CMP(raw_cons);
+			tx_coal_cmp = true;
+			break;
+		}
 
 		opaque = rte_le_to_cpu_32(txcmp->opaque);
 
@@ -660,9 +784,9 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 
 	if (nb_tx_pkts) {
 		if (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
-			bnxt_tx_cmp_fast(txq, nb_tx_pkts);
+			bnxt_tx_cmp_fast(txq, nb_tx_pkts, tx_coal_cmp);
 		else
-			bnxt_tx_cmp(txq, nb_tx_pkts);
+			bnxt_tx_cmp(txq, nb_tx_pkts, tx_coal_cmp);
 		cpr->cp_raw_cons = raw_cons;
 		bnxt_db_cq(cpr);
 	}
