@@ -27,7 +27,7 @@
 extern int mlx4_logtype;
 #define RTE_LOGTYPE_MLX4 mlx4_logtype
 
-#ifdef RTE_LIBRTE_MLX4_DEBUG
+#ifdef RTE_PMD_MLX4_DEBUG
 
 /*
  * When debugging is enabled (MLX4_DEBUG is defined), file, line and function
@@ -53,7 +53,7 @@ pmd_drv_log_basename(const char *s)
 #define MLX4_ASSERT(exp) RTE_VERIFY(exp)
 #define claim_zero(...) MLX4_ASSERT((__VA_ARGS__) == 0)
 
-#else /* RTE_LIBRTE_MLX4_DEBUG */
+#else /* RTE_PMD_MLX4_DEBUG */
 
 /*
  * Like MLX4_ASSERT(), claim_zero() does not perform
@@ -65,7 +65,7 @@ pmd_drv_log_basename(const char *s)
 #define MLX4_ASSERT(exp) RTE_ASSERT(exp)
 #define claim_zero(...) (__VA_ARGS__)
 
-#endif /* RTE_LIBRTE_MLX4_DEBUG */
+#endif /* RTE_PMD_MLX4_DEBUG */
 
 #define DEBUG(...) PMD_DRV_LOG(DEBUG, __VA_ARGS__)
 #define INFO(...) PMD_DRV_LOG(INFO, __VA_ARGS__)

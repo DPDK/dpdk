@@ -320,7 +320,7 @@ mlx4_txq_complete(struct txq *txq, const unsigned int elts_m,
 		if (unlikely(!!(cqe->owner_sr_opcode & MLX4_CQE_OWNER_MASK) ^
 		    !!(cons_index & cq->cqe_cnt)))
 			break;
-#ifdef RTE_LIBRTE_MLX4_DEBUG
+#ifdef RTE_PMD_MLX4_DEBUG
 		/*
 		 * Make sure we read the CQE after we read the ownership bit.
 		 */
@@ -335,7 +335,7 @@ mlx4_txq_complete(struct txq *txq, const unsigned int elts_m,
 			      cqe_err->syndrome);
 			break;
 		}
-#endif /* RTE_LIBRTE_MLX4_DEBUG */
+#endif /* RTE_PMD_MLX4_DEBUG */
 		cons_index++;
 	} while (1);
 	completed = (cons_index - cq->cons_index) * txq->elts_comp_cd_init;
@@ -487,14 +487,14 @@ mlx4_tx_burst_fill_tso_dsegs(struct rte_mbuf *buf,
 				((uintptr_t)dseg & (MLX4_TXBB_SIZE - 1))) >>
 			       MLX4_SEG_SHIFT;
 		switch (nb_segs_txbb) {
-#ifdef RTE_LIBRTE_MLX4_DEBUG
+#ifdef RTE_PMD_MLX4_DEBUG
 		default:
 			/* Should never happen. */
 			rte_panic("%p: Invalid number of SGEs(%d) for a TXBB",
 			(void *)txq, nb_segs_txbb);
 			/* rte_panic never returns. */
 			break;
-#endif /* RTE_LIBRTE_MLX4_DEBUG */
+#endif /* RTE_PMD_MLX4_DEBUG */
 		case 4:
 			/* Memory region key for this memory pool. */
 			lkey = mlx4_tx_mb2mr(txq, sbuf);

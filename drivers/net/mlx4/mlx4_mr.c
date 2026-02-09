@@ -241,7 +241,7 @@ mlx4_mr_btree_free(struct mlx4_mr_btree *bt)
 	memset(bt, 0, sizeof(*bt));
 }
 
-#ifdef RTE_LIBRTE_MLX4_DEBUG
+#ifdef RTE_PMD_MLX4_DEBUG
 /**
  * Dump all the entries in a B-tree
  *
@@ -956,7 +956,7 @@ mlx4_mr_mem_event_free_cb(struct rte_eth_dev *dev, const void *addr, size_t len)
 		      priv->mr.dev_gen);
 	}
 	rte_rwlock_write_unlock(&priv->mr.rwlock);
-#ifdef RTE_LIBRTE_MLX4_DEBUG
+#ifdef RTE_PMD_MLX4_DEBUG
 	if (rebuild)
 		mlx4_mr_dump_dev(dev);
 #endif
@@ -1374,7 +1374,7 @@ mlx4_mr_update_mp(struct rte_eth_dev *dev, struct mlx4_mr_ctrl *mr_ctrl,
 	return data.ret;
 }
 
-#ifdef RTE_LIBRTE_MLX4_DEBUG
+#ifdef RTE_PMD_MLX4_DEBUG
 /**
  * Dump all the created MRs and the global cache entries.
  *
@@ -1434,7 +1434,7 @@ mlx4_mr_release(struct rte_eth_dev *dev)
 	rte_rwlock_write_lock(&mlx4_shared_data->mem_event_rwlock);
 	LIST_REMOVE(priv, mem_event_cb);
 	rte_rwlock_write_unlock(&mlx4_shared_data->mem_event_rwlock);
-#ifdef RTE_LIBRTE_MLX4_DEBUG
+#ifdef RTE_PMD_MLX4_DEBUG
 	mlx4_mr_dump_dev(dev);
 #endif
 	rte_rwlock_write_lock(&priv->mr.rwlock);
