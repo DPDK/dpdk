@@ -477,7 +477,7 @@ __rte_internal
 void mlx5_translate_port_name(const char *port_name_in,
 			      struct mlx5_switch_info *port_info_out);
 void mlx5_glue_constructor(void);
-extern uint8_t haswell_broadwell_cpu;
+extern uint8_t mlx5_haswell_broadwell_cpu;
 
 __rte_internal
 void mlx5_common_init(void);

@@ -994,7 +994,7 @@ mlx5_os_wrapped_mkey_create(void *ctx, void *pd, uint32_t pdn, void *addr,
 	struct mlx5_devx_obj *mkey;
 	struct ibv_mr *ibv_mr = mlx5_glue->reg_mr(pd, addr, length,
 						  IBV_ACCESS_LOCAL_WRITE |
-						  (haswell_broadwell_cpu ? 0 :
+						  (mlx5_haswell_broadwell_cpu ? 0 :
 						  IBV_ACCESS_RELAXED_ORDERING));
 
 	if (!ibv_mr) {

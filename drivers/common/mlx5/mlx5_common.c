@@ -21,8 +21,8 @@
 #include "mlx5_common_defs.h"
 #include "mlx5_common_private.h"
 
-RTE_EXPORT_INTERNAL_SYMBOL(haswell_broadwell_cpu)
-uint8_t haswell_broadwell_cpu;
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_haswell_broadwell_cpu)
+uint8_t mlx5_haswell_broadwell_cpu;
 
 /* Driver type key for new device global syntax. */
 #define MLX5_DRIVER_KEY "driver"
@@ -1273,7 +1273,7 @@ mlx5_common_init(void)
 
 /**
  * This function is responsible of initializing the variable
- *  haswell_broadwell_cpu by checking if the cpu is intel
+ *  mlx5_haswell_broadwell_cpu by checking if the cpu is intel
  *  and reading the data returned from mlx5_cpu_id().
  *  since haswell and broadwell cpus don't have improved performance
  *  when using relaxed ordering we want to check the cpu type before
@@ -1299,7 +1299,7 @@ RTE_INIT_PRIO(mlx5_is_haswell_broadwell_cpu, LOG)
 	vendor = ebx;
 	max_level = eax;
 	if (max_level < 1) {
-		haswell_broadwell_cpu = 0;
+		mlx5_haswell_broadwell_cpu = 0;
 		return;
 	}
 	mlx5_cpu_id(1, &eax, &ebx, &ecx, &edx);
@@ -1314,18 +1314,18 @@ RTE_INIT_PRIO(mlx5_is_haswell_broadwell_cpu, LOG)
 		if (brand_id == 0 && family == 0x6) {
 			for (i = 0; i < RTE_DIM(broadwell_models); i++)
 				if (model == broadwell_models[i]) {
-					haswell_broadwell_cpu = 1;
+					mlx5_haswell_broadwell_cpu = 1;
 					return;
 				}
 			for (i = 0; i < RTE_DIM(haswell_models); i++)
 				if (model == haswell_models[i]) {
-					haswell_broadwell_cpu = 1;
+					mlx5_haswell_broadwell_cpu = 1;
 					return;
 				}
 		}
 	}
 #endif
-	haswell_broadwell_cpu = 0;
+	mlx5_haswell_broadwell_cpu = 0;
 }
 
 /**

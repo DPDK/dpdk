@@ -176,7 +176,7 @@ struct mlx5_nl_mac_addr {
 	int mac_n; /**< Number of addresses in the array. */
 };
 
-RTE_ATOMIC(uint32_t) atomic_sn;
+static RTE_ATOMIC(uint32_t) atomic_sn;
 
 /* Generate Netlink sequence number. */
 #define MLX5_NL_SN_GENERATE (rte_atomic_fetch_add_explicit(&atomic_sn, 1, \

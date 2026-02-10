@@ -402,7 +402,7 @@ mlx5_os_reg_mr(void *pd,
 	mkey_attr.size = length;
 	mkey_attr.umem_id = ((struct mlx5_devx_umem *)(obj))->umem_id;
 	mkey_attr.pd = mlx5_pd->pdn;
-	if (!haswell_broadwell_cpu) {
+	if (!mlx5_haswell_broadwell_cpu) {
 		mkey_attr.relaxed_ordering_write = attr.relaxed_ordering_write;
 		mkey_attr.relaxed_ordering_read = attr.relaxed_ordering_read;
 	}
