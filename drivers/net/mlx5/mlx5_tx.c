@@ -131,7 +131,7 @@ mlx5_tx_error_cqe_handle(struct mlx5_txq_data *__rte_restrict txq,
 			return -1;
 		}
 		/* Release all the remaining buffers. */
-		txq_free_elts(txq_ctrl);
+		mlx5_txq_free_elts(txq_ctrl);
 	}
 	return 0;
 }
@@ -292,7 +292,7 @@ mlx5_tx_descriptor_status(void *tx_queue, uint16_t offset)
  * supported offloads set. The array is used to select the Tx burst
  * function for specified offloads set at Tx queue configuration time.
  */
-const struct {
+static const struct {
 	eth_tx_burst_t func;
 	unsigned int olx;
 } txoff_func[] = {

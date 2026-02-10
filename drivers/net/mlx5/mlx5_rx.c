@@ -618,7 +618,7 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec,
 		}
 		/* Try to find the actual cq_ci in hardware for shared queue. */
 		if (rxq->shared)
-			rxq_sync_cq(rxq);
+			mlx5_rxq_sync_cq(rxq);
 		rxq->err_state = MLX5_RXQ_ERR_STATE_NEED_READY;
 		/* Fall-through */
 	case MLX5_RXQ_ERR_STATE_NEED_READY:
@@ -1708,7 +1708,7 @@ mlx5_rx_queue_lwm_set(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	}
 	rxq_data = &rxq->ctrl->rxq;
 	/* Ensure the Rq is created by devx. */
-	if (priv->obj_ops.rxq_obj_new != devx_obj_ops.rxq_obj_new) {
+	if (priv->obj_ops.rxq_obj_new != mlx5_devx_obj_ops.rxq_obj_new) {
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}

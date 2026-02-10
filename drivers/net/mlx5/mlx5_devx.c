@@ -1733,7 +1733,7 @@ mlx5_txq_devx_obj_release(struct mlx5_txq_obj *txq_obj)
 	}
 }
 
-struct mlx5_obj_ops devx_obj_ops = {
+struct mlx5_obj_ops mlx5_devx_obj_ops = {
 	.rxq_obj_modify_vlan_strip = mlx5_rxq_obj_modify_rq_vlan_strip,
 	.rxq_obj_modify_counter_set_id = mlx5_rxq_obj_modify_counter,
 	.rxq_obj_new = mlx5_rxq_devx_obj_new,

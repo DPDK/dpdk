@@ -742,10 +742,10 @@ int mlx5dr_rule_create_root_no_comp(struct mlx5dr_rule *rule,
 
 	flow_attr.tbl_type = rule->matcher->tbl->type;
 
-	ret = flow_dv_translate_items_hws(items, &flow_attr, value->match_buf,
-					  MLX5_SET_MATCHER_HS_V, NULL,
-					  &match_criteria,
-					  &error);
+	ret = mlx5_flow_dv_translate_items_hws(items, &flow_attr, value->match_buf,
+					       MLX5_SET_MATCHER_HS_V, NULL,
+					       &match_criteria,
+					       &error);
 	if (ret) {
 		DR_LOG(ERR, "Failed to convert items to PRM [%s]", error.message);
 		goto free_value;

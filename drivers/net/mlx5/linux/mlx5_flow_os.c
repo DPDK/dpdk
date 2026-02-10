@@ -73,7 +73,7 @@ mlx5_flow_os_workspace_gc_release(void)
 		struct mlx5_flow_workspace *wks = gc_head;
 
 		gc_head = wks->gc;
-		flow_release_workspace(wks);
+		mlx5_flow_release_workspace(wks);
 	}
 }
 

@@ -4,7 +4,7 @@
 
 #include "mlx5dr_internal.h"
 
-uint32_t dr_ste_crc_tab32[] = {
+static const uint32_t dr_ste_crc_tab32[] = {
 	0x0, 0x77073096, 0xee0e612c, 0x990951ba, 0x76dc419, 0x706af48f,
 	0xe963a535, 0x9e6495a3, 0xedb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
 	0x9b64c2b, 0x7eb17cbd, 0xe7b82d07, 0x90bf1d91, 0x1db71064, 0x6ab020f2,
@@ -51,7 +51,7 @@ uint32_t dr_ste_crc_tab32[] = {
 };
 
 /* CRC table for the CRC-16, the polynome is 0x100b */
-uint16_t dr_crc_inner_crc_tab16[] = {
+static const uint16_t dr_crc_inner_crc_tab16[] = {
 	0x0000, 0x100B, 0x2016, 0x301D, 0x402C, 0x5027, 0x603A, 0x7031,
 	0x8058, 0x9053, 0xA04E, 0xB045, 0xC074, 0xD07F, 0xE062, 0xF069,
 	0x10BB, 0x00B0, 0x30AD, 0x20A6, 0x5097, 0x409C, 0x7081, 0x608A,
@@ -96,7 +96,7 @@ uint32_t mlx5dr_crc32_calc(uint8_t *p, size_t len)
 	return rte_be_to_cpu_32(crc);
 }
 
-uint16_t mlx5dr_crc16_calc(uint8_t *p, size_t len, uint16_t crc_tab16[])
+uint16_t mlx5dr_crc16_calc(uint8_t *p, size_t len, const uint16_t crc_tab16[])
 {
 	uint16_t crc = 0;
 

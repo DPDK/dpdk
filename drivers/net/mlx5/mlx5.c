@@ -2214,11 +2214,11 @@ mlx5_alloc_hw_group_hash_list(struct mlx5_priv *priv)
 	sh->groups = mlx5_hlist_create
 			(s, MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE,
 			 false, true, sh,
-			 flow_hw_grp_create_cb,
-			 flow_hw_grp_match_cb,
-			 flow_hw_grp_remove_cb,
-			 flow_hw_grp_clone_cb,
-			 flow_hw_grp_clone_free_cb);
+			 mlx5_flow_hw_grp_create_cb,
+			 mlx5_flow_hw_grp_match_cb,
+			 mlx5_flow_hw_grp_remove_cb,
+			 mlx5_flow_hw_grp_clone_cb,
+			 mlx5_flow_hw_grp_clone_free_cb);
 	if (!sh->groups) {
 		DRV_LOG(ERR, "flow groups with hash creation failed.");
 		err = ENOMEM;
@@ -2256,11 +2256,11 @@ mlx5_alloc_table_hash_list(struct mlx5_priv *priv __rte_unused)
 	snprintf(s, sizeof(s), "%s_flow_table", priv->sh->ibdev_name);
 	sh->flow_tbls = mlx5_hlist_create(s, MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE,
 					  false, true, sh,
-					  flow_dv_tbl_create_cb,
-					  flow_dv_tbl_match_cb,
-					  flow_dv_tbl_remove_cb,
-					  flow_dv_tbl_clone_cb,
-					  flow_dv_tbl_clone_free_cb);
+					  mlx5_flow_dv_tbl_create_cb,
+					  mlx5_flow_dv_tbl_match_cb,
+					  mlx5_flow_dv_tbl_remove_cb,
+					  mlx5_flow_dv_tbl_clone_cb,
+					  mlx5_flow_dv_tbl_clone_free_cb);
 	if (!sh->flow_tbls) {
 		DRV_LOG(ERR, "flow tables with hash creation failed.");
 		err = ENOMEM;
@@ -2275,11 +2275,11 @@ mlx5_alloc_table_hash_list(struct mlx5_priv *priv __rte_unused)
 	 * because DV expect to see them even if they cannot be created by
 	 * RDMA-CORE.
 	 */
-	if (!flow_dv_tbl_resource_get(dev, 0, 0, 0, 0,
+	if (!mlx5_flow_dv_tbl_resource_get(dev, 0, 0, 0, 0,
 		NULL, 0, 1, 0, &error) ||
-	    !flow_dv_tbl_resource_get(dev, 0, 1, 0, 0,
+	    !mlx5_flow_dv_tbl_resource_get(dev, 0, 1, 0, 0,
 		NULL, 0, 1, 0, &error) ||
-	    !flow_dv_tbl_resource_get(dev, 0, 0, 1, 0,
+	    !mlx5_flow_dv_tbl_resource_get(dev, 0, 0, 1, 0,
 		NULL, 0, 1, 0, &error)) {
 		err = ENOMEM;
 		goto error;
@@ -2475,10 +2475,10 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	mlx5_indirect_list_handles_release(dev);
 #ifdef HAVE_MLX5_HWS_SUPPORT
 	mlx5_nta_sample_context_free(dev);
-	flow_hw_destroy_vport_action(dev);
+	mlx5_flow_hw_destroy_vport_action(dev);
 	/* dr context will be closed after mlx5_os_free_shared_dr. */
-	flow_hw_resource_release(dev);
-	flow_hw_clear_port_info(dev);
+	mlx5_flow_hw_resource_release(dev);
+	mlx5_flow_hw_clear_port_info(dev);
 	if (priv->tlv_options != NULL) {
 		/* Free the GENEVE TLV parser resource. */
 		claim_zero(mlx5_geneve_tlv_options_destroy(priv->tlv_options, sh->phdev));

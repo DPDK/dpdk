@@ -32,7 +32,7 @@ struct registered_cb {
 	const void *opaque;
 };
 
-LIST_HEAD(, registered_cb) cb_list_head = LIST_HEAD_INITIALIZER(cb_list_head);
+static LIST_HEAD(, registered_cb) cb_list_head = LIST_HEAD_INITIALIZER(cb_list_head);
 
 static const char *
 generate_rx_queue_info(struct mlx5_rxq_priv *rxq)

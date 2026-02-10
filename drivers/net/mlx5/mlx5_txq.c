@@ -40,7 +40,7 @@
  *   Pointer to TX queue structure.
  */
 void
-txq_alloc_elts(struct mlx5_txq_ctrl *txq_ctrl)
+mlx5_txq_alloc_elts(struct mlx5_txq_ctrl *txq_ctrl)
 {
 	const unsigned int elts_n = 1 << txq_ctrl->txq.elts_n;
 	unsigned int i;
@@ -61,7 +61,7 @@ txq_alloc_elts(struct mlx5_txq_ctrl *txq_ctrl)
  *   Pointer to TX queue structure.
  */
 void
-txq_free_elts(struct mlx5_txq_ctrl *txq_ctrl)
+mlx5_txq_free_elts(struct mlx5_txq_ctrl *txq_ctrl)
 {
 	const uint16_t elts_n = 1 << txq_ctrl->txq.elts_n;
 	const uint16_t elts_m = elts_n - 1;
@@ -206,7 +206,7 @@ mlx5_tx_queue_stop_primary(struct rte_eth_dev *dev, uint16_t idx)
 	/* Handle all send completions. */
 	txq_sync_cq(txq);
 	/* Free elts stored in the SQ. */
-	txq_free_elts(txq_ctrl);
+	mlx5_txq_free_elts(txq_ctrl);
 	/* Prevent writing new pkts to SQ by setting no free WQE.*/
 	txq->wqe_ci = txq->wqe_s;
 	txq->wqe_pi = 0;
@@ -1349,7 +1349,7 @@ mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx)
 			mlx5_free(txq_ctrl->txq.fcqs);
 			txq_ctrl->txq.fcqs = NULL;
 		}
-		txq_free_elts(txq_ctrl);
+		mlx5_txq_free_elts(txq_ctrl);
 		dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
 	if (!rte_atomic_load_explicit(&txq_ctrl->refcnt, rte_memory_order_relaxed)) {

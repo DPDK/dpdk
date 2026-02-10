@@ -23,8 +23,8 @@
 #define MLX5_SOCKET_PATH "/var/tmp/dpdk_net_mlx5_%d"
 #define MLX5_ALL_PORT_IDS 0xffff
 
-int server_socket = -1; /* Unix socket for primary process. */
-struct rte_intr_handle *server_intr_handle; /* Interrupt handler. */
+static int server_socket = -1; /* Unix socket for primary process. */
+static struct rte_intr_handle *server_intr_handle; /* Interrupt handler. */
 
 /**
  * Handle server pmd socket interrupts.

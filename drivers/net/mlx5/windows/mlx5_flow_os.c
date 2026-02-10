@@ -303,7 +303,7 @@ mlx5_clear_thread_list(void)
 			} else if (temp == curr) {
 				curr = prev;
 			}
-			flow_release_workspace(temp->mlx5_ws);
+			mlx5_flow_release_workspace(temp->mlx5_ws);
 			CloseHandle(temp->thread_handle);
 			free(temp);
 			if (prev)
@@ -326,7 +326,7 @@ mlx5_flow_os_release_workspace(void)
 	mlx5_clear_thread_list();
 	if (first) {
 		MLX5_ASSERT(!first->next);
-		flow_release_workspace(first->mlx5_ws);
+		mlx5_flow_release_workspace(first->mlx5_ws);
 		free(first);
 	}
 	rte_thread_key_delete(ws_tls_index);

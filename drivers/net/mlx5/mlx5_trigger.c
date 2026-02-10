@@ -68,7 +68,7 @@ mlx5_txq_start(struct rte_eth_dev *dev)
 				continue;
 			}
 			if (!txq_ctrl->is_hairpin)
-				txq_alloc_elts(txq_ctrl);
+				mlx5_txq_alloc_elts(txq_ctrl);
 			MLX5_ASSERT(!txq_ctrl->obj);
 			txq_ctrl->obj = mlx5_malloc_numa_tolerant(flags,
 								  sizeof(struct mlx5_txq_obj),
@@ -185,7 +185,7 @@ mlx5_rxq_ctrl_prepare(struct rte_eth_dev *dev, struct mlx5_rxq_ctrl *rxq_ctrl,
 		 */
 		if (mlx5_rxq_mempool_register(rxq_ctrl) < 0)
 			return -rte_errno;
-		ret = rxq_alloc_elts(rxq_ctrl);
+		ret = mlx5_rxq_alloc_elts(rxq_ctrl);
 		if (ret)
 			return ret;
 	}
@@ -1268,7 +1268,7 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 			goto continue_dev_start;
 		/*If previous configuration does not exist. */
 		if (!(priv->dr_ctx)) {
-			ret = flow_hw_init(dev, &error);
+			ret = mlx5_flow_hw_init(dev, &error);
 			if (ret) {
 				DRV_LOG(ERR, "Failed to start port %u %s: %s",
 					dev->data->port_id, dev->data->name,
@@ -1406,7 +1406,7 @@ continue_dev_start:
 	}
 #ifdef HAVE_MLX5_HWS_SUPPORT
 	if (priv->sh->config.dv_flow_en == 2) {
-		ret = flow_hw_table_update(dev, NULL);
+		ret = mlx5_flow_hw_table_update(dev, NULL);
 		if (ret) {
 			DRV_LOG(ERR, "port %u failed to update HWS tables",
 				dev->data->port_id);

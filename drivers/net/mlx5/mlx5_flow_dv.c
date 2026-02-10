@@ -111,7 +111,7 @@ flow_dv_jump_tbl_resource_release(struct rte_eth_dev *dev,
 /**
  * Initialize flow attributes structure according to flow items' types.
  *
- * flow_dv_validate() avoids multiple L3/L4 layers cases other than tunnel
+ * mlx5_flow_dv_validate() avoids multiple L3/L4 layers cases other than tunnel
  * mode. For tunnel mode, the items to be modified are the outermost ones.
  *
  * @param[in] item
@@ -217,7 +217,7 @@ flow_dv_attr_init(const struct rte_flow_item *item, union flow_dv_attr *attr,
 	attr->valid = 1;
 }
 
-struct field_modify_info modify_eth[] = {
+static struct field_modify_info modify_eth[] = {
 	{4,  0, MLX5_MODI_OUT_DMAC_47_16},
 	{2,  4, MLX5_MODI_OUT_DMAC_15_0},
 	{4,  6, MLX5_MODI_OUT_SMAC_47_16},
@@ -225,13 +225,13 @@ struct field_modify_info modify_eth[] = {
 	{0, 0, 0},
 };
 
-struct field_modify_info modify_vlan_out_first_vid[] = {
+static struct field_modify_info modify_vlan_out_first_vid[] = {
 	/* Size in bits !!! */
 	{12, 0, MLX5_MODI_OUT_FIRST_VID},
 	{0, 0, 0},
 };
 
-struct field_modify_info modify_ipv4[] = {
+static struct field_modify_info modify_ipv4[] = {
 	{1,  1, MLX5_MODI_OUT_IP_DSCP},
 	{1,  8, MLX5_MODI_OUT_IPV4_TTL},
 	{4, 12, MLX5_MODI_OUT_SIPV4},
@@ -239,7 +239,7 @@ struct field_modify_info modify_ipv4[] = {
 	{0, 0, 0},
 };
 
-struct field_modify_info modify_ipv6[] = {
+static struct field_modify_info modify_ipv6[] = {
 	{1,  0, MLX5_MODI_OUT_IP_DSCP},
 	{1,  7, MLX5_MODI_OUT_IPV6_HOPLIMIT},
 	{4,  8, MLX5_MODI_OUT_SIPV6_127_96},
@@ -253,18 +253,18 @@ struct field_modify_info modify_ipv6[] = {
 	{0, 0, 0},
 };
 
-struct field_modify_info modify_ipv6_traffic_class[] = {
+static struct field_modify_info modify_ipv6_traffic_class[] = {
 	{1,  0, MLX5_MODI_OUT_IPV6_TRAFFIC_CLASS},
 	{0, 0, 0},
 };
 
-struct field_modify_info modify_udp[] = {
+static struct field_modify_info modify_udp[] = {
 	{2, 0, MLX5_MODI_OUT_UDP_SPORT},
 	{2, 2, MLX5_MODI_OUT_UDP_DPORT},
 	{0, 0, 0},
 };
 
-struct field_modify_info modify_tcp[] = {
+static struct field_modify_info modify_tcp[] = {
 	{2, 0, MLX5_MODI_OUT_TCP_SPORT},
 	{2, 2, MLX5_MODI_OUT_TCP_DPORT},
 	{4, 4, MLX5_MODI_OUT_TCP_SEQ_NUM},
@@ -405,11 +405,11 @@ mlx5_update_vlan_vid_pcp(const struct rte_flow_action *action,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-flow_dv_convert_modify_action(struct rte_flow_item *item,
-			      struct field_modify_info *field,
-			      struct field_modify_info *dest,
-			      struct mlx5_flow_dv_modify_hdr_resource *resource,
-			      uint32_t type, struct rte_flow_error *error)
+mlx5_flow_dv_convert_modify_action(struct rte_flow_item *item,
+				   struct field_modify_info *field,
+				   struct field_modify_info *dest,
+				   struct mlx5_flow_dv_modify_hdr_resource *resource,
+				   uint32_t type, struct rte_flow_error *error)
 {
 	uint32_t i = resource->actions_num;
 	struct mlx5_modification_cmd *actions = resource->actions;
@@ -557,8 +557,8 @@ flow_dv_convert_action_modify_ipv4
 	}
 	item.spec = &ipv4;
 	item.mask = &ipv4_mask;
-	return flow_dv_convert_modify_action(&item, modify_ipv4, NULL, resource,
-					     MLX5_MODIFICATION_TYPE_SET, error);
+	return mlx5_flow_dv_convert_modify_action(&item, modify_ipv4, NULL, resource,
+						  MLX5_MODIFICATION_TYPE_SET, error);
 }
 
 /**
@@ -603,8 +603,8 @@ flow_dv_convert_action_modify_ipv6
 	}
 	item.spec = &ipv6;
 	item.mask = &ipv6_mask;
-	return flow_dv_convert_modify_action(&item, modify_ipv6, NULL, resource,
-					     MLX5_MODIFICATION_TYPE_SET, error);
+	return mlx5_flow_dv_convert_modify_action(&item, modify_ipv6, NULL, resource,
+						  MLX5_MODIFICATION_TYPE_SET, error);
 }
 
 /**
@@ -649,8 +649,8 @@ flow_dv_convert_action_modify_mac
 	}
 	item.spec = &eth;
 	item.mask = &eth_mask;
-	return flow_dv_convert_modify_action(&item, modify_eth, NULL, resource,
-					     MLX5_MODIFICATION_TYPE_SET, error);
+	return mlx5_flow_dv_convert_modify_action(&item, modify_eth, NULL, resource,
+						  MLX5_MODIFICATION_TYPE_SET, error);
 }
 
 /**
@@ -769,8 +769,8 @@ flow_dv_convert_action_modify_tp
 		item.mask = &tcp_mask;
 		field = modify_tcp;
 	}
-	return flow_dv_convert_modify_action(&item, field, NULL, resource,
-					     MLX5_MODIFICATION_TYPE_SET, error);
+	return mlx5_flow_dv_convert_modify_action(&item, field, NULL, resource,
+						  MLX5_MODIFICATION_TYPE_SET, error);
 }
 
 /**
@@ -833,8 +833,8 @@ flow_dv_convert_action_modify_ttl
 		item.mask = &ipv6_mask;
 		field = modify_ipv6;
 	}
-	return flow_dv_convert_modify_action(&item, field, NULL, resource,
-					     MLX5_MODIFICATION_TYPE_SET, error);
+	return mlx5_flow_dv_convert_modify_action(&item, field, NULL, resource,
+						  MLX5_MODIFICATION_TYPE_SET, error);
 }
 
 /**
@@ -894,8 +894,8 @@ flow_dv_convert_action_modify_dec_ttl
 		item.mask = &ipv6_mask;
 		field = modify_ipv6;
 	}
-	return flow_dv_convert_modify_action(&item, field, NULL, resource,
-					     MLX5_MODIFICATION_TYPE_ADD, error);
+	return mlx5_flow_dv_convert_modify_action(&item, field, NULL, resource,
+						  MLX5_MODIFICATION_TYPE_ADD, error);
 }
 
 /**
@@ -939,8 +939,8 @@ flow_dv_convert_action_modify_tcp_seq
 	item.type = RTE_FLOW_ITEM_TYPE_TCP;
 	item.spec = &tcp;
 	item.mask = &tcp_mask;
-	return flow_dv_convert_modify_action(&item, modify_tcp, NULL, resource,
-					     MLX5_MODIFICATION_TYPE_ADD, error);
+	return mlx5_flow_dv_convert_modify_action(&item, modify_tcp, NULL, resource,
+						  MLX5_MODIFICATION_TYPE_ADD, error);
 }
 
 /**
@@ -984,11 +984,11 @@ flow_dv_convert_action_modify_tcp_ack
 	item.type = RTE_FLOW_ITEM_TYPE_TCP;
 	item.spec = &tcp;
 	item.mask = &tcp_mask;
-	return flow_dv_convert_modify_action(&item, modify_tcp, NULL, resource,
-					     MLX5_MODIFICATION_TYPE_ADD, error);
+	return mlx5_flow_dv_convert_modify_action(&item, modify_tcp, NULL, resource,
+						  MLX5_MODIFICATION_TYPE_ADD, error);
 }
 
-enum mlx5_modification_field reg_to_field[] = {
+enum mlx5_modification_field mlx5_reg_to_field[] = {
 	[REG_NON] = MLX5_MODI_OUT_NONE,
 	[REG_A] = MLX5_MODI_META_DATA_REG_A,
 	[REG_B] = MLX5_MODI_META_DATA_REG_B,
@@ -1006,7 +1006,7 @@ enum mlx5_modification_field reg_to_field[] = {
 	[REG_C_11] = MLX5_MODI_META_REG_C_11,
 };
 
-const size_t mlx5_mod_reg_size = RTE_DIM(reg_to_field);
+const size_t mlx5_mod_reg_size = RTE_DIM(mlx5_reg_to_field);
 
 /**
  * Convert register set to DV specification.
@@ -1036,10 +1036,10 @@ flow_dv_convert_action_set_reg
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "too many items to modify");
 	MLX5_ASSERT(conf->id != REG_NON);
-	MLX5_ASSERT(conf->id < (enum modify_reg)RTE_DIM(reg_to_field));
+	MLX5_ASSERT(conf->id < (enum modify_reg)RTE_DIM(mlx5_reg_to_field));
 	actions[i] = (struct mlx5_modification_cmd) {
 		.action_type = MLX5_MODIFICATION_TYPE_SET,
-		.field = reg_to_field[conf->id],
+		.field = mlx5_reg_to_field[conf->id],
 		.offset = conf->offset,
 		.length = conf->length,
 	};
@@ -1088,12 +1088,15 @@ flow_dv_convert_action_set_tag
 	if (ret < 0)
 		return ret;
 	MLX5_ASSERT(ret != REG_NON);
-	MLX5_ASSERT((unsigned int)ret < RTE_DIM(reg_to_field));
-	reg_type = reg_to_field[ret];
+	if ((unsigned int)ret >= RTE_DIM(mlx5_reg_to_field))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "invalid register index");
+	reg_type = mlx5_reg_to_field[ret];
 	MLX5_ASSERT(reg_type > 0);
 	reg_c_x[0] = (struct field_modify_info){4, 0, reg_type};
-	return flow_dv_convert_modify_action(&item, reg_c_x, NULL, resource,
-					     MLX5_MODIFICATION_TYPE_SET, error);
+	return mlx5_flow_dv_convert_modify_action(&item, reg_c_x, NULL, resource,
+						  MLX5_MODIFICATION_TYPE_SET, error);
 }
 
 /**
@@ -1124,12 +1127,12 @@ flow_dv_convert_action_copy_mreg(struct rte_eth_dev *dev,
 		.mask = &mask,
 	};
 	struct field_modify_info reg_src[] = {
-		{4, 0, reg_to_field[conf->src]},
+		{4, 0, mlx5_reg_to_field[conf->src]},
 		{0, 0, 0},
 	};
 	struct field_modify_info reg_dst = {
 		.offset = 0,
-		.id = reg_to_field[conf->dst],
+		.id = mlx5_reg_to_field[conf->dst],
 	};
 	/* Adjust reg_c[0] usage according to reported mask. */
 	if (conf->dst == REG_C_0 || conf->src == REG_C_0) {
@@ -1148,10 +1151,10 @@ flow_dv_convert_action_copy_mreg(struct rte_eth_dev *dev,
 			mask = rte_cpu_to_be_32(reg_c0);
 		}
 	}
-	return flow_dv_convert_modify_action(&item,
-					     reg_src, &reg_dst, res,
-					     MLX5_MODIFICATION_TYPE_COPY,
-					     error);
+	return mlx5_flow_dv_convert_modify_action(&item,
+						  reg_src, &reg_dst, res,
+						  MLX5_MODIFICATION_TYPE_COPY,
+						  error);
 }
 
 /**
@@ -1206,9 +1209,9 @@ flow_dv_convert_action_mark(struct rte_eth_dev *dev,
 		mask = rte_cpu_to_be_32(mask) & msk_c0;
 		mask = rte_cpu_to_be_32(mask << shl_c0);
 	}
-	reg_c_x[0] = (struct field_modify_info){4, 0, reg_to_field[reg]};
-	return flow_dv_convert_modify_action(&item, reg_c_x, NULL, resource,
-					     MLX5_MODIFICATION_TYPE_SET, error);
+	reg_c_x[0] = (struct field_modify_info){4, 0, mlx5_reg_to_field[reg]};
+	return mlx5_flow_dv_convert_modify_action(&item, reg_c_x, NULL, resource,
+						  MLX5_MODIFICATION_TYPE_SET, error);
 }
 
 /**
@@ -1292,10 +1295,10 @@ flow_dv_convert_action_set_meta
 		mask = rte_cpu_to_be_32(mask) & msk_c0;
 		mask = rte_cpu_to_be_32(mask << shl_c0);
 	}
-	reg_c_x[0] = (struct field_modify_info){4, 0, reg_to_field[reg]};
+	reg_c_x[0] = (struct field_modify_info){4, 0, mlx5_reg_to_field[reg]};
 	/* The routine expects parameters in memory as big-endian ones. */
-	return flow_dv_convert_modify_action(&item, reg_c_x, NULL, resource,
-					     MLX5_MODIFICATION_TYPE_SET, error);
+	return mlx5_flow_dv_convert_modify_action(&item, reg_c_x, NULL, resource,
+						  MLX5_MODIFICATION_TYPE_SET, error);
 }
 
 /**
@@ -1329,8 +1332,8 @@ flow_dv_convert_action_modify_ipv4_dscp
 	ipv4_mask.hdr.type_of_service = RTE_IPV4_HDR_DSCP_MASK >> 2;
 	item.spec = &ipv4;
 	item.mask = &ipv4_mask;
-	return flow_dv_convert_modify_action(&item, modify_ipv4, NULL, resource,
-					     MLX5_MODIFICATION_TYPE_SET, error);
+	return mlx5_flow_dv_convert_modify_action(&item, modify_ipv4, NULL, resource,
+						  MLX5_MODIFICATION_TYPE_SET, error);
 }
 
 /**
@@ -1379,8 +1382,8 @@ flow_dv_convert_action_modify_ipv6_dscp
 		modify_info = modify_ipv6_traffic_class;
 	else
 		modify_info = modify_ipv6;
-	return flow_dv_convert_modify_action(&item, modify_info, NULL, resource,
-					     MLX5_MODIFICATION_TYPE_SET, error);
+	return mlx5_flow_dv_convert_modify_action(&item, modify_info, NULL, resource,
+						  MLX5_MODIFICATION_TYPE_SET, error);
 }
 
 int
@@ -2111,23 +2114,23 @@ mlx5_flow_field_id_to_modify_info
 			int reg;
 
 			off_be = (tag_index == RTE_PMD_MLX5_LINEAR_HASH_TAG_INDEX) ?
-				 16 - (data->offset + width) + 16 : data->offset;
+				16 - (data->offset + width) + 16 : data->offset;
 			if (priv->sh->config.dv_flow_en == 2)
 				reg = flow_hw_get_reg_id(dev,
-							 RTE_FLOW_ITEM_TYPE_TAG,
-							 tag_index);
+							RTE_FLOW_ITEM_TYPE_TAG,
+							tag_index);
 			else
 				reg = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG,
-							   tag_index, error);
+							tag_index, error);
 			if (reg < 0)
 				return;
 			MLX5_ASSERT(reg != REG_NON);
-			MLX5_ASSERT((unsigned int)reg < RTE_DIM(reg_to_field));
+			if ((unsigned int)reg >= RTE_DIM(mlx5_reg_to_field))
+				return;
 			info[idx] = (struct field_modify_info){4, 0,
-						reg_to_field[reg]};
+						mlx5_reg_to_field[reg]};
 			if (mask)
-				mask[idx] = flow_modify_info_mask_32
-					(width, off_be);
+				mask[idx] = flow_modify_info_mask_32(width, off_be);
 			else
 				info[idx].offset = off_be;
 		}
@@ -2143,9 +2146,9 @@ mlx5_flow_field_id_to_modify_info
 			if (reg < 0)
 				return;
 			MLX5_ASSERT(reg != REG_NON);
-			MLX5_ASSERT((unsigned int)reg < RTE_DIM(reg_to_field));
+			MLX5_ASSERT((unsigned int)reg < RTE_DIM(mlx5_reg_to_field));
 			info[idx] = (struct field_modify_info){4, 0,
-						reg_to_field[reg]};
+						mlx5_reg_to_field[reg]};
 			if (mask)
 				mask[idx] = flow_modify_info_mask_32_masked
 					(width, data->offset, mark_mask);
@@ -2163,9 +2166,9 @@ mlx5_flow_field_id_to_modify_info
 			if (reg < 0)
 				return;
 			MLX5_ASSERT(reg != REG_NON);
-			MLX5_ASSERT((unsigned int)reg < RTE_DIM(reg_to_field));
+			MLX5_ASSERT((unsigned int)reg < RTE_DIM(mlx5_reg_to_field));
 			info[idx] = (struct field_modify_info){4, 0,
-						reg_to_field[reg]};
+						mlx5_reg_to_field[reg]};
 			if (mask)
 				mask[idx] = flow_modify_info_mask_32_masked
 					(width, data->offset, meta_mask);
@@ -2216,8 +2219,8 @@ mlx5_flow_field_id_to_modify_info
 			RTE_SET_USED(meta_count);
 			MLX5_ASSERT(data->offset + width <= meta_count);
 			MLX5_ASSERT(reg != REG_NON);
-			MLX5_ASSERT(reg < RTE_DIM(reg_to_field));
-			info[idx] = (struct field_modify_info){4, 0, reg_to_field[reg]};
+			MLX5_ASSERT(reg < RTE_DIM(mlx5_reg_to_field));
+			info[idx] = (struct field_modify_info){4, 0, mlx5_reg_to_field[reg]};
 			if (mask)
 				mask[idx] = flow_modify_info_mask_32_masked
 					(width, data->offset, meta_mask);
@@ -2234,16 +2237,17 @@ mlx5_flow_field_id_to_modify_info
 			if (priv->sh->config.dv_flow_en == 2)
 				reg = flow_hw_get_reg_id
 					(dev,
-					 RTE_FLOW_ITEM_TYPE_METER_COLOR, 0);
+					RTE_FLOW_ITEM_TYPE_METER_COLOR, 0);
 			else
 				reg = mlx5_flow_get_reg_id(dev, MLX5_MTR_COLOR,
-						       0, error);
+						0, error);
 			if (reg < 0)
 				return;
 			MLX5_ASSERT(reg != REG_NON);
-			MLX5_ASSERT((unsigned int)reg < RTE_DIM(reg_to_field));
+			if ((unsigned int)reg >= RTE_DIM(mlx5_reg_to_field))
+				return;
 			info[idx] = (struct field_modify_info){4, 0,
-						reg_to_field[reg]};
+						mlx5_reg_to_field[reg]};
 			if (mask)
 				mask[idx] = flow_modify_info_mask_32_masked
 					(width, data->offset, color_mask);
@@ -2392,7 +2396,7 @@ flow_dv_convert_action_modify_field
 						  attr, error);
 	}
 	item.mask = &mask;
-	return flow_dv_convert_modify_action(&item,
+	return mlx5_flow_dv_convert_modify_action(&item,
 			field, dcopy, resource, type, error);
 }
 
@@ -4305,8 +4309,8 @@ flow_dv_validate_item_aggr_affinity(struct rte_eth_dev *dev,
 }
 
 int
-flow_encap_decap_match_cb(void *tool_ctx __rte_unused,
-			     struct mlx5_list_entry *entry, void *cb_ctx)
+mlx5_flow_encap_decap_match_cb(void *tool_ctx __rte_unused,
+			       struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_encap_decap_resource *ctx_resource = ctx->data;
@@ -4326,7 +4330,7 @@ flow_encap_decap_match_cb(void *tool_ctx __rte_unused,
 }
 
 struct mlx5_list_entry *
-flow_encap_decap_create_cb(void *tool_ctx, void *cb_ctx)
+mlx5_flow_encap_decap_create_cb(void *tool_ctx, void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -4383,12 +4387,13 @@ flow_encap_decap_create_cb(void *tool_ctx, void *cb_ctx)
 }
 
 struct mlx5_list_entry *
-flow_encap_decap_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
-			     void *cb_ctx)
+mlx5_flow_encap_decap_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
+			       void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_encap_decap_resource *cache_resource;
+	struct mlx5_flow_dv_encap_decap_resource *old_resource;
 	uint32_t idx;
 
 	cache_resource = mlx5_ipool_malloc(sh->ipool[MLX5_IPOOL_DECAP_ENCAP],
@@ -4399,13 +4404,14 @@ flow_encap_decap_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
 				   "cannot allocate resource memory");
 		return NULL;
 	}
-	memcpy(cache_resource, oentry, sizeof(*cache_resource));
+	old_resource = container_of(oentry, typeof(*old_resource), entry);
+	memcpy(cache_resource, old_resource, sizeof(*cache_resource));
 	cache_resource->idx = idx;
 	return &cache_resource->entry;
 }
 
 void
-flow_encap_decap_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+mlx5_flow_encap_decap_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_encap_decap_resource *res =
@@ -4415,11 +4421,11 @@ flow_encap_decap_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 }
 
 int
-__flow_encap_decap_resource_register(struct rte_eth_dev *dev,
-			 struct mlx5_flow_dv_encap_decap_resource *resource,
-			 bool is_root,
-			 struct mlx5_flow_dv_encap_decap_resource **encap_decap,
-			 struct rte_flow_error *error)
+mlx5_flow_encap_decap_resource_register(struct rte_eth_dev *dev,
+					struct mlx5_flow_dv_encap_decap_resource *resource,
+					bool is_root,
+					struct mlx5_flow_dv_encap_decap_resource **encap_decap,
+					struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
@@ -4457,11 +4463,11 @@ __flow_encap_decap_resource_register(struct rte_eth_dev *dev,
 				"encaps_decaps",
 				MLX5_FLOW_ENCAP_DECAP_HTABLE_SZ,
 				true, true, sh,
-				flow_encap_decap_create_cb,
-				flow_encap_decap_match_cb,
-				flow_encap_decap_remove_cb,
-				flow_encap_decap_clone_cb,
-				flow_encap_decap_clone_free_cb,
+				mlx5_flow_encap_decap_create_cb,
+				mlx5_flow_encap_decap_match_cb,
+				mlx5_flow_encap_decap_remove_cb,
+				mlx5_flow_encap_decap_clone_cb,
+				mlx5_flow_encap_decap_clone_free_cb,
 				error);
 	if (unlikely(!encaps_decaps))
 		return -rte_errno;
@@ -4503,8 +4509,8 @@ flow_dv_encap_decap_resource_register
 	int ret;
 
 	resource->flags = dev_flow->dv.group ? 0 : 1;
-	ret = __flow_encap_decap_resource_register(dev, resource, !!dev_flow->dv.group,
-		&dev_flow->dv.encap_decap, error);
+	ret = mlx5_flow_encap_decap_resource_register(dev, resource, !!dev_flow->dv.group,
+						      &dev_flow->dv.encap_decap, error);
 	if (ret)
 		return ret;
 	dev_flow->handle->dvh.rix_encap_decap = dev_flow->dv.encap_decap->idx;
@@ -4544,8 +4550,8 @@ flow_dv_jump_tbl_resource_register
 }
 
 int
-flow_dv_port_id_match_cb(void *tool_ctx __rte_unused,
-			 struct mlx5_list_entry *entry, void *cb_ctx)
+mlx5_flow_dv_port_id_match_cb(void *tool_ctx __rte_unused,
+			      struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_port_id_action_resource *ref = ctx->data;
@@ -4556,7 +4562,7 @@ flow_dv_port_id_match_cb(void *tool_ctx __rte_unused,
 }
 
 struct mlx5_list_entry *
-flow_dv_port_id_create_cb(void *tool_ctx, void *cb_ctx)
+mlx5_flow_dv_port_id_create_cb(void *tool_ctx, void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -4589,13 +4595,14 @@ flow_dv_port_id_create_cb(void *tool_ctx, void *cb_ctx)
 }
 
 struct mlx5_list_entry *
-flow_dv_port_id_clone_cb(void *tool_ctx,
-			 struct mlx5_list_entry *entry __rte_unused,
-			 void *cb_ctx)
+mlx5_flow_dv_port_id_clone_cb(void *tool_ctx,
+			      struct mlx5_list_entry *entry __rte_unused,
+			      void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_port_id_action_resource *resource;
+	struct mlx5_flow_dv_port_id_action_resource *old_resource;
 	uint32_t idx;
 
 	resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_PORT_ID], &idx);
@@ -4605,13 +4612,14 @@ flow_dv_port_id_clone_cb(void *tool_ctx,
 				   "cannot allocate port_id action memory");
 		return NULL;
 	}
-	memcpy(resource, entry, sizeof(*resource));
+	old_resource = container_of(entry, typeof(*old_resource), entry);
+	memcpy(resource, old_resource, sizeof(*old_resource));
 	resource->idx = idx;
 	return &resource->entry;
 }
 
 void
-flow_dv_port_id_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+mlx5_flow_dv_port_id_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_port_id_action_resource *resource =
@@ -4660,8 +4668,8 @@ flow_dv_port_id_action_resource_register
 }
 
 int
-flow_dv_push_vlan_match_cb(void *tool_ctx __rte_unused,
-			   struct mlx5_list_entry *entry, void *cb_ctx)
+mlx5_flow_dv_push_vlan_match_cb(void *tool_ctx __rte_unused,
+				struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_push_vlan_action_resource *ref = ctx->data;
@@ -4672,7 +4680,7 @@ flow_dv_push_vlan_match_cb(void *tool_ctx __rte_unused,
 }
 
 struct mlx5_list_entry *
-flow_dv_push_vlan_create_cb(void *tool_ctx, void *cb_ctx)
+mlx5_flow_dv_push_vlan_create_cb(void *tool_ctx, void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -4711,13 +4719,14 @@ flow_dv_push_vlan_create_cb(void *tool_ctx, void *cb_ctx)
 }
 
 struct mlx5_list_entry *
-flow_dv_push_vlan_clone_cb(void *tool_ctx,
-			   struct mlx5_list_entry *entry __rte_unused,
-			   void *cb_ctx)
+mlx5_flow_dv_push_vlan_clone_cb(void *tool_ctx,
+				struct mlx5_list_entry *entry __rte_unused,
+				void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_push_vlan_action_resource *resource;
+	struct mlx5_flow_dv_push_vlan_action_resource *old_resource;
 	uint32_t idx;
 
 	resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_PUSH_VLAN], &idx);
@@ -4727,13 +4736,14 @@ flow_dv_push_vlan_clone_cb(void *tool_ctx,
 				   "cannot allocate push_vlan action memory");
 		return NULL;
 	}
-	memcpy(resource, entry, sizeof(*resource));
+	old_resource = container_of(entry, typeof(*old_resource), entry);
+	memcpy(resource, old_resource, sizeof(*old_resource));
 	resource->idx = idx;
 	return &resource->entry;
 }
 
 void
-flow_dv_push_vlan_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+mlx5_flow_dv_push_vlan_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_push_vlan_action_resource *resource =
@@ -4792,7 +4802,7 @@ flow_dv_push_vlan_action_resource_register
  *   sizeof struct item_type, 0 if void or irrelevant.
  */
 size_t
-flow_dv_get_item_hdr_len(const enum rte_flow_item_type item_type)
+mlx5_flow_dv_get_item_hdr_len(const enum rte_flow_item_type item_type)
 {
 	size_t retval;
 
@@ -4858,8 +4868,8 @@ flow_dv_get_item_hdr_len(const enum rte_flow_item_type item_type)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
-			   size_t *size, struct rte_flow_error *error)
+mlx5_flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
+				size_t *size, struct rte_flow_error *error)
 {
 	struct rte_ether_hdr *eth = NULL;
 	struct rte_vlan_hdr *vlan = NULL;
@@ -4877,7 +4887,7 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL, "invalid empty data");
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
-		len = flow_dv_get_item_hdr_len(items->type);
+		len = mlx5_flow_dv_get_item_hdr_len(items->type);
 		if (len + temp_size > MLX5_ENCAP_MAX_LEN)
 			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -5108,8 +5118,8 @@ flow_dv_create_action_l2_encap(struct rte_eth_dev *dev,
 			encap_data =
 				((const struct rte_flow_action_nvgre_encap *)
 						action->conf)->definition;
-		if (flow_dv_convert_encap_data(encap_data, res.buf,
-					       &res.size, error))
+		if (mlx5_flow_dv_convert_encap_data(encap_data, res.buf,
+						    &res.size, error))
 			return -rte_errno;
 	}
 	if (flow_dv_zero_encap_udp_csum(res.buf, error))
@@ -5621,7 +5631,7 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 			return rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
 					"destination offset is too big");
-		ret = flow_validate_modify_field_level(dst_data, error);
+		ret = mlx5_flow_validate_modify_field_level(dst_data, error);
 		if (ret)
 			return ret;
 		if (dst_data->tag_index &&
@@ -5652,7 +5662,7 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 			return rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
 					"source offset is too big");
-		ret = flow_validate_modify_field_level(src_data, error);
+		ret = mlx5_flow_validate_modify_field_level(src_data, error);
 		if (ret)
 			return ret;
 		if (src_data->tag_index &&
@@ -6194,8 +6204,8 @@ flow_dv_validate_action_modify_ipv6_dscp(const uint64_t action_flags,
 }
 
 int
-flow_modify_match_cb(void *tool_ctx __rte_unused,
-			struct mlx5_list_entry *entry, void *cb_ctx)
+mlx5_flow_modify_match_cb(void *tool_ctx __rte_unused,
+			  struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_modify_hdr_resource *ref = ctx->data;
@@ -6250,7 +6260,7 @@ flow_dv_modify_ipool_get(struct mlx5_dev_ctx_shared *sh, uint8_t index)
 }
 
 struct mlx5_list_entry *
-flow_modify_create_cb(void *tool_ctx, void *cb_ctx)
+mlx5_flow_modify_create_cb(void *tool_ctx, void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -6317,8 +6327,8 @@ flow_modify_create_cb(void *tool_ctx, void *cb_ctx)
 }
 
 struct mlx5_list_entry *
-flow_modify_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
-			void *cb_ctx)
+mlx5_flow_modify_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
+			  void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -6341,7 +6351,7 @@ flow_modify_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
 }
 
 void
-flow_modify_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+mlx5_flow_modify_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_modify_hdr_resource *res =
@@ -6610,10 +6620,10 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 }
 
 int
-__flow_modify_hdr_resource_register(struct rte_eth_dev *dev,
-			struct mlx5_flow_dv_modify_hdr_resource *resource,
-			struct mlx5_flow_dv_modify_hdr_resource **modify,
-			struct rte_flow_error *error)
+mlx5_flow_modify_hdr_resource_register(struct rte_eth_dev *dev,
+				       struct mlx5_flow_dv_modify_hdr_resource *resource,
+				       struct mlx5_flow_dv_modify_hdr_resource **modify,
+				       struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
@@ -6633,11 +6643,11 @@ __flow_modify_hdr_resource_register(struct rte_eth_dev *dev,
 				"hdr_modify",
 				MLX5_FLOW_HDR_MODIFY_HTABLE_SZ,
 				true, false, sh,
-				flow_modify_create_cb,
-				flow_modify_match_cb,
-				flow_modify_remove_cb,
-				flow_modify_clone_cb,
-				flow_modify_clone_free_cb,
+				mlx5_flow_modify_create_cb,
+				mlx5_flow_modify_match_cb,
+				mlx5_flow_modify_remove_cb,
+				mlx5_flow_modify_clone_cb,
+				mlx5_flow_modify_clone_free_cb,
 				error);
 	if (unlikely(!modify_cmds))
 		return -rte_errno;
@@ -6677,8 +6687,8 @@ flow_dv_modify_hdr_resource_register
 			 struct rte_flow_error *error)
 {
 	resource->root = !dev_flow->dv.group;
-	return __flow_modify_hdr_resource_register(dev, resource,
-		&dev_flow->handle->dvh.modify_hdr, error);
+	return mlx5_flow_modify_hdr_resource_register(dev, resource,
+						      &dev_flow->handle->dvh.modify_hdr, error);
 }
 
 /**
@@ -7753,10 +7763,10 @@ const struct rte_flow_item_tcp nic_tcp_mask = {
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
-		 const struct rte_flow_item items[],
-		 const struct rte_flow_action actions[],
-		 bool external, int hairpin, struct rte_flow_error *error)
+mlx5_flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
+		      const struct rte_flow_item items[],
+		      const struct rte_flow_action actions[],
+		      bool external, int hairpin, struct rte_flow_error *error)
 {
 	int ret;
 	uint64_t aso_mask, action_flags = 0;
@@ -11709,11 +11719,12 @@ __flow_dv_adjust_buf_size(size_t *size, uint8_t match_criteria)
 }
 
 struct mlx5_list_entry *
-flow_matcher_clone_cb(void *tool_ctx __rte_unused,
-			 struct mlx5_list_entry *entry, void *cb_ctx)
+mlx5_flow_matcher_clone_cb(void *tool_ctx __rte_unused,
+			   struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_matcher *ref = ctx->data;
+	struct mlx5_flow_dv_matcher *old_resource;
 	struct mlx5_flow_tbl_data_entry *tbl = container_of(ref->tbl,
 							    typeof(*tbl), tbl);
 	struct mlx5_flow_dv_matcher *resource = mlx5_malloc(MLX5_MEM_ANY,
@@ -11726,20 +11737,21 @@ flow_matcher_clone_cb(void *tool_ctx __rte_unused,
 				   "cannot create matcher");
 		return NULL;
 	}
-	memcpy(resource, entry, sizeof(*resource));
+	old_resource = container_of(entry, typeof(*old_resource), entry);
+	memcpy(resource, old_resource, sizeof(*resource));
 	resource->tbl = &tbl->tbl;
 	return &resource->entry;
 }
 
 void
-flow_matcher_clone_free_cb(void *tool_ctx __rte_unused,
-			     struct mlx5_list_entry *entry)
+mlx5_flow_matcher_clone_free_cb(void *tool_ctx __rte_unused,
+				struct mlx5_list_entry *entry)
 {
 	mlx5_free(entry);
 }
 
 struct mlx5_list_entry *
-flow_dv_tbl_create_cb(void *tool_ctx, void *cb_ctx)
+mlx5_flow_dv_tbl_create_cb(void *tool_ctx, void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -11805,11 +11817,11 @@ flow_dv_tbl_create_cb(void *tool_ctx, void *cb_ctx)
 	      key.is_fdb ? "FDB" : "NIC", key.is_egress ? "egress" : "ingress",
 	      key.level, key.id);
 	tbl_data->matchers = mlx5_list_create(matcher_name, sh, true,
-					      flow_matcher_create_cb,
-					      flow_matcher_match_cb,
-					      flow_matcher_remove_cb,
-					      flow_matcher_clone_cb,
-					      flow_matcher_clone_free_cb);
+					      mlx5_flow_matcher_create_cb,
+					      mlx5_flow_matcher_match_cb,
+					      mlx5_flow_matcher_remove_cb,
+					      mlx5_flow_matcher_clone_cb,
+					      mlx5_flow_matcher_clone_free_cb);
 	if (!tbl_data->matchers) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -11824,8 +11836,8 @@ flow_dv_tbl_create_cb(void *tool_ctx, void *cb_ctx)
 }
 
 int
-flow_dv_tbl_match_cb(void *tool_ctx __rte_unused, struct mlx5_list_entry *entry,
-		     void *cb_ctx)
+mlx5_flow_dv_tbl_match_cb(void *tool_ctx __rte_unused, struct mlx5_list_entry *entry,
+			  void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_tbl_data_entry *tbl_data =
@@ -11840,14 +11852,15 @@ flow_dv_tbl_match_cb(void *tool_ctx __rte_unused, struct mlx5_list_entry *entry,
 }
 
 struct mlx5_list_entry *
-flow_dv_tbl_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
-		      void *cb_ctx)
+mlx5_flow_dv_tbl_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
+			  void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_tbl_data_entry *tbl_data;
 	struct rte_flow_error *error = ctx->error;
 	uint32_t idx = 0;
+	struct mlx5_flow_tbl_data_entry *old_resource;
 
 	tbl_data = mlx5_ipool_malloc(sh->ipool[MLX5_IPOOL_JUMP], &idx);
 	if (!tbl_data) {
@@ -11857,13 +11870,14 @@ flow_dv_tbl_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
 				   "cannot allocate flow table data entry");
 		return NULL;
 	}
-	memcpy(tbl_data, oentry, sizeof(*tbl_data));
+	old_resource = container_of(oentry, typeof(*old_resource), entry);
+	memcpy(tbl_data, old_resource, sizeof(*tbl_data));
 	tbl_data->idx = idx;
 	return &tbl_data->entry;
 }
 
 void
-flow_dv_tbl_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+mlx5_flow_dv_tbl_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_tbl_data_entry *tbl_data =
@@ -11894,14 +11908,14 @@ flow_dv_tbl_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
  *   Returns tables resource based on the index, NULL in case of failed.
  */
 struct mlx5_flow_tbl_resource *
-flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
-			 uint32_t table_level, uint8_t egress,
-			 uint8_t transfer,
-			 bool external,
-			 const struct mlx5_flow_tunnel *tunnel,
-			 uint32_t group_id, uint8_t dummy,
-			 uint32_t table_id,
-			 struct rte_flow_error *error)
+mlx5_flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
+			      uint32_t table_level, uint8_t egress,
+			      uint8_t transfer,
+			      bool external,
+			      const struct mlx5_flow_tunnel *tunnel,
+			      uint32_t group_id, uint8_t dummy,
+			      uint32_t table_id,
+			      struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	union mlx5_flow_tbl_key table_key = {
@@ -11944,7 +11958,7 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 }
 
 void
-flow_dv_tbl_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+mlx5_flow_dv_tbl_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_tbl_data_entry *tbl_data =
@@ -12000,8 +12014,8 @@ flow_dv_tbl_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
  *   Returns 0 if table was released, else return 1;
  */
 int
-flow_dv_tbl_resource_release(struct mlx5_dev_ctx_shared *sh,
-			     struct mlx5_flow_tbl_resource *tbl)
+mlx5_flow_dv_tbl_resource_release(struct mlx5_dev_ctx_shared *sh,
+				  struct mlx5_flow_tbl_resource *tbl)
 {
 	struct mlx5_flow_tbl_data_entry *tbl_data =
 		container_of(tbl, struct mlx5_flow_tbl_data_entry, tbl);
@@ -12012,7 +12026,7 @@ flow_dv_tbl_resource_release(struct mlx5_dev_ctx_shared *sh,
 }
 
 int
-flow_matcher_match_cb(void *tool_ctx __rte_unused,
+mlx5_flow_matcher_match_cb(void *tool_ctx __rte_unused,
 			 struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -12027,7 +12041,7 @@ flow_matcher_match_cb(void *tool_ctx __rte_unused,
 }
 
 struct mlx5_list_entry *
-flow_matcher_create_cb(void *tool_ctx, void *cb_ctx)
+mlx5_flow_matcher_create_cb(void *tool_ctx, void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -12074,18 +12088,20 @@ flow_matcher_create_cb(void *tool_ctx, void *cb_ctx)
 	} else {
 #ifdef HAVE_MLX5_HWS_SUPPORT
 		items = *((const struct rte_flow_item **)(ctx->data2));
+		if (!items)
+			goto error;
 		resource->matcher_object = mlx5dr_bwc_matcher_create
 				(resource->group->tbl, resource->priority, items);
-		if (!resource->matcher_object) {
-			mlx5_free(resource);
-			return NULL;
-		}
+		if (!resource->matcher_object)
+			goto error;
 #else
-		mlx5_free(resource);
-		return NULL;
+		goto error;
 #endif
 	}
 	return &resource->entry;
+error:
+	mlx5_free(resource);
+	return NULL;
 }
 
 /**
@@ -12126,17 +12142,17 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 	 * tunnel offload API requires this registration for cases when
 	 * tunnel match rule was inserted before tunnel set rule.
 	 */
-	tbl = flow_dv_tbl_resource_get(dev, key->level,
-				       key->is_egress, key->is_fdb,
-				       dev_flow->external, tunnel,
-				       group_id, 0, key->id, error);
+	tbl = mlx5_flow_dv_tbl_resource_get(dev, key->level,
+					    key->is_egress, key->is_fdb,
+					    dev_flow->external, tunnel,
+					    group_id, 0, key->id, error);
 	if (!tbl)
 		return -rte_errno;	/* No need to refill the error info */
 	tbl_data = container_of(tbl, struct mlx5_flow_tbl_data_entry, tbl);
 	ref->tbl = tbl;
 	entry = mlx5_list_register(tbl_data->matchers, &ctx);
 	if (!entry) {
-		flow_dv_tbl_resource_release(MLX5_SH(dev), tbl);
+		mlx5_flow_dv_tbl_resource_release(MLX5_SH(dev), tbl);
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "cannot allocate ref memory");
@@ -12147,7 +12163,7 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 }
 
 struct mlx5_list_entry *
-flow_dv_tag_create_cb(void *tool_ctx, void *cb_ctx)
+mlx5_flow_dv_tag_create_cb(void *tool_ctx, void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -12177,7 +12193,7 @@ flow_dv_tag_create_cb(void *tool_ctx, void *cb_ctx)
 }
 
 int
-flow_dv_tag_match_cb(void *tool_ctx __rte_unused, struct mlx5_list_entry *entry,
+mlx5_flow_dv_tag_match_cb(void *tool_ctx __rte_unused, struct mlx5_list_entry *entry,
 		     void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -12188,12 +12204,13 @@ flow_dv_tag_match_cb(void *tool_ctx __rte_unused, struct mlx5_list_entry *entry,
 }
 
 struct mlx5_list_entry *
-flow_dv_tag_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
+mlx5_flow_dv_tag_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
 		     void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_tag_resource *entry;
+	struct mlx5_flow_dv_tag_resource *old_entry;
 	uint32_t idx = 0;
 
 	entry = mlx5_ipool_malloc(sh->ipool[MLX5_IPOOL_TAG], &idx);
@@ -12203,13 +12220,14 @@ flow_dv_tag_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
 				   "cannot allocate tag resource memory");
 		return NULL;
 	}
-	memcpy(entry, oentry, sizeof(*entry));
+	old_entry = container_of(oentry, typeof(*old_entry), entry);
+	memcpy(entry, old_entry, sizeof(*entry));
 	entry->idx = idx;
 	return &entry->entry;
 }
 
 void
-flow_dv_tag_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+mlx5_flow_dv_tag_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_tag_resource *tag =
@@ -12253,11 +12271,11 @@ flow_dv_tag_resource_register
 				      "tags",
 				      MLX5_TAGS_HLIST_ARRAY_SIZE,
 				      false, false, priv->sh,
-				      flow_dv_tag_create_cb,
-				      flow_dv_tag_match_cb,
-				      flow_dv_tag_remove_cb,
-				      flow_dv_tag_clone_cb,
-				      flow_dv_tag_clone_free_cb,
+				      mlx5_flow_dv_tag_create_cb,
+				      mlx5_flow_dv_tag_match_cb,
+				      mlx5_flow_dv_tag_remove_cb,
+				      mlx5_flow_dv_tag_clone_cb,
+				      mlx5_flow_dv_tag_clone_free_cb,
 				      error);
 	if (unlikely(!tag_table))
 		return -rte_errno;
@@ -12273,7 +12291,7 @@ flow_dv_tag_resource_register
 }
 
 void
-flow_dv_tag_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+mlx5_flow_dv_tag_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_tag_resource *tag =
@@ -12513,9 +12531,9 @@ flow_dv_translate_item_sq(void *key,
  *   Pointer to the RSS hash fields.
  */
 void
-flow_dv_hashfields_set(uint64_t item_flags,
-		       struct mlx5_flow_rss_desc *rss_desc,
-		       uint64_t *hash_fields)
+mlx5_flow_dv_hashfields_set(uint64_t item_flags,
+			    struct mlx5_flow_rss_desc *rss_desc,
+			    uint64_t *hash_fields)
 {
 	uint64_t items = item_flags;
 	uint64_t fields = 0;
@@ -12642,8 +12660,7 @@ flow_dv_sample_sub_actions_release(struct rte_eth_dev *dev,
 		act_res->rix_hrxq = 0;
 	}
 	if (act_res->rix_encap_decap) {
-		flow_encap_decap_resource_release(dev,
-						     act_res->rix_encap_decap);
+		mlx5_flow_encap_decap_resource_release(dev, act_res->rix_encap_decap);
 		act_res->rix_encap_decap = 0;
 	}
 	if (act_res->rix_port_id_action) {
@@ -12662,8 +12679,8 @@ flow_dv_sample_sub_actions_release(struct rte_eth_dev *dev,
 }
 
 int
-flow_dv_sample_match_cb(void *tool_ctx __rte_unused,
-			struct mlx5_list_entry *entry, void *cb_ctx)
+mlx5_flow_dv_sample_match_cb(void *tool_ctx __rte_unused,
+			     struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct rte_eth_dev *dev = ctx->dev;
@@ -12691,7 +12708,7 @@ flow_dv_sample_match_cb(void *tool_ctx __rte_unused,
 }
 
 struct mlx5_list_entry *
-flow_dv_sample_create_cb(void *tool_ctx __rte_unused, void *cb_ctx)
+mlx5_flow_dv_sample_create_cb(void *tool_ctx __rte_unused, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct rte_eth_dev *dev = ctx->dev;
@@ -12724,9 +12741,9 @@ flow_dv_sample_create_cb(void *tool_ctx __rte_unused, void *cb_ctx)
 		is_transfer = 1;
 	else if (ctx_resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_TX)
 		is_egress = 1;
-	tbl = flow_dv_tbl_resource_get(dev, next_ft_id,
-					is_egress, is_transfer,
-					true, NULL, 0, 0, 0, error);
+	tbl = mlx5_flow_dv_tbl_resource_get(dev, next_ft_id,
+					    is_egress, is_transfer,
+					    true, NULL, 0, 0, 0, error);
 	if (!tbl) {
 		rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -12770,21 +12787,21 @@ error:
 		flow_dv_sample_sub_actions_release(dev,
 						   &resource->sample_idx);
 	if (resource->normal_path_tbl)
-		flow_dv_tbl_resource_release(MLX5_SH(dev),
-				resource->normal_path_tbl);
+		mlx5_flow_dv_tbl_resource_release(MLX5_SH(dev), resource->normal_path_tbl);
 	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_SAMPLE], idx);
 	return NULL;
 
 }
 
 struct mlx5_list_entry *
-flow_dv_sample_clone_cb(void *tool_ctx __rte_unused,
-			 struct mlx5_list_entry *entry __rte_unused,
-			 void *cb_ctx)
+mlx5_flow_dv_sample_clone_cb(void *tool_ctx __rte_unused,
+			     struct mlx5_list_entry *entry __rte_unused,
+			     void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct rte_eth_dev *dev = ctx->dev;
 	struct mlx5_flow_dv_sample_resource *resource;
+	struct mlx5_flow_dv_sample_resource *old_resource;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	uint32_t idx = 0;
@@ -12792,20 +12809,21 @@ flow_dv_sample_clone_cb(void *tool_ctx __rte_unused,
 	resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_SAMPLE], &idx);
 	if (!resource) {
 		rte_flow_error_set(ctx->error, ENOMEM,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL,
-					  "cannot allocate resource memory");
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "cannot allocate resource memory");
 		return NULL;
 	}
-	memcpy(resource, entry, sizeof(*resource));
+	old_resource = container_of(entry, typeof(*old_resource), entry);
+	memcpy(resource, old_resource, sizeof(*resource));
 	resource->idx = idx;
 	resource->dev = dev;
 	return &resource->entry;
 }
 
 void
-flow_dv_sample_clone_free_cb(void *tool_ctx __rte_unused,
-			     struct mlx5_list_entry *entry)
+mlx5_flow_dv_sample_clone_free_cb(void *tool_ctx __rte_unused,
+				  struct mlx5_list_entry *entry)
 {
 	struct mlx5_flow_dv_sample_resource *resource =
 				  container_of(entry, typeof(*resource), entry);
@@ -12855,8 +12873,8 @@ flow_dv_sample_resource_register(struct rte_eth_dev *dev,
 }
 
 int
-flow_dv_dest_array_match_cb(void *tool_ctx __rte_unused,
-			    struct mlx5_list_entry *entry, void *cb_ctx)
+mlx5_flow_dv_dest_array_match_cb(void *tool_ctx __rte_unused,
+				 struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_dest_array_resource *ctx_resource = ctx->data;
@@ -12884,7 +12902,7 @@ flow_dv_dest_array_match_cb(void *tool_ctx __rte_unused,
 }
 
 struct mlx5_list_entry *
-flow_dv_dest_array_create_cb(void *tool_ctx __rte_unused, void *cb_ctx)
+mlx5_flow_dv_dest_array_create_cb(void *tool_ctx __rte_unused, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct rte_eth_dev *dev = ctx->dev;
@@ -12989,9 +13007,9 @@ error:
 }
 
 struct mlx5_list_entry *
-flow_dv_dest_array_clone_cb(void *tool_ctx __rte_unused,
-			    struct mlx5_list_entry *entry __rte_unused,
-			    void *cb_ctx)
+mlx5_flow_dv_dest_array_clone_cb(void *tool_ctx __rte_unused,
+				 struct mlx5_list_entry *entry __rte_unused,
+				 void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct rte_eth_dev *dev = ctx->dev;
@@ -13017,8 +13035,8 @@ flow_dv_dest_array_clone_cb(void *tool_ctx __rte_unused,
 }
 
 void
-flow_dv_dest_array_clone_free_cb(void *tool_ctx __rte_unused,
-				 struct mlx5_list_entry *entry)
+mlx5_flow_dv_dest_array_clone_free_cb(void *tool_ctx __rte_unused,
+				      struct mlx5_list_entry *entry)
 {
 	struct mlx5_flow_dv_dest_array_resource *resource =
 			container_of(entry, typeof(*resource), entry);
@@ -13163,15 +13181,15 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 			       rss->queue_num * sizeof(uint16_t));
 			rss_desc->queue_num = rss->queue_num;
 			/* NULL RSS key indicates default RSS key. */
-			rss_key = !rss->key ? rss_hash_default_key : rss->key;
+			rss_key = !rss->key ? mlx5_rss_hash_default_key : rss->key;
 			memcpy(rss_desc->key, rss_key, MLX5_RSS_HASH_KEY_LEN);
 			/*
 			 * rss->level and rss.types should be set in advance
 			 * when expanding items for RSS.
 			 */
-			flow_dv_hashfields_set(dev_flow->handle->layers,
-					       rss_desc,
-					       &dev_flow->hash_fields);
+			mlx5_flow_dv_hashfields_set(dev_flow->handle->layers,
+						    rss_desc,
+						    &dev_flow->hash_fields);
 			hrxq = flow_dv_hrxq_prepare(dev, dev_flow,
 						    rss_desc, &hrxq_idx);
 			if (!hrxq)
@@ -13353,8 +13371,8 @@ flow_dv_translate_action_send_to_kernel(struct rte_eth_dev *dev,
 				   "required priority is not available");
 		return NULL;
 	}
-	tbl = flow_dv_tbl_resource_get(dev, 0, attr->egress, attr->transfer, false, NULL, 0, 0, 0,
-				       error);
+	tbl = mlx5_flow_dv_tbl_resource_get(dev, 0, attr->egress, attr->transfer,
+					    false, NULL, 0, 0, 0, error);
 	if (!tbl) {
 		rte_flow_error_set(error, ENODATA,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -13374,7 +13392,7 @@ flow_dv_translate_action_send_to_kernel(struct rte_eth_dev *dev,
 	sh->send_to_kernel_action[ft_type].tbl = tbl;
 	return action;
 err:
-	flow_dv_tbl_resource_release(sh, tbl);
+	mlx5_flow_dv_tbl_resource_release(sh, tbl);
 	return NULL;
 }
 
@@ -13541,7 +13559,7 @@ flow_dv_aso_age_release(struct rte_eth_dev *dev, uint32_t age_idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_age_mng *mng = priv->sh->aso_age_mng;
-	struct mlx5_aso_age_action *age = flow_aso_age_get_by_idx(dev, age_idx);
+	struct mlx5_aso_age_action *age = mlx5_flow_aso_age_get_by_idx(dev, age_idx);
 	uint32_t ret = rte_atomic_fetch_sub_explicit(&age->refcnt, 1, rte_memory_order_relaxed) - 1;
 
 	if (!ret) {
@@ -13743,7 +13761,7 @@ flow_dv_aso_age_params_init(struct rte_eth_dev *dev,
 {
 	struct mlx5_aso_age_action *aso_age;
 
-	aso_age = flow_aso_age_get_by_idx(dev, age_idx);
+	aso_age = mlx5_flow_aso_age_get_by_idx(dev, age_idx);
 	MLX5_ASSERT(aso_age);
 	aso_age->age_params.context = context;
 	aso_age->age_params.timeout = timeout;
@@ -14647,12 +14665,12 @@ flow_dv_translate_items_nta(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-__flow_dv_translate_items_hws(const struct rte_flow_item *items,
-			    struct mlx5_flow_attr *attr, void *key,
-			    uint32_t key_type, uint64_t *item_flags,
-			    uint8_t *match_criteria,
-			    bool nt_flow,
-			    struct rte_flow_error *error)
+mlx5_flow_dv_translate_items_hws_impl(const struct rte_flow_item *items,
+				      struct mlx5_flow_attr *attr, void *key,
+				      uint32_t key_type, uint64_t *item_flags,
+				      uint8_t *match_criteria,
+				      bool nt_flow,
+				      struct rte_flow_error *error)
 {
 	struct mlx5_flow_workspace *flow_wks = mlx5_flow_push_thread_workspace();
 	struct mlx5_flow_rss_desc rss_desc = { .level = attr->rss_level };
@@ -14702,28 +14720,31 @@ __flow_dv_translate_items_hws(const struct rte_flow_item *items,
 						      key_type);
 	}
 	if (wks.item_flags & MLX5_FLOW_LAYER_VXLAN_GPE) {
-		flow_dv_translate_item_vxlan_gpe(key,
-						 wks.tunnel_item,
-						 wks.item_flags,
-						 key_type);
+		if (wks.tunnel_item)
+			flow_dv_translate_item_vxlan_gpe(key,
+							 wks.tunnel_item,
+							 wks.item_flags,
+							 key_type);
 	} else if (wks.item_flags & MLX5_FLOW_LAYER_GENEVE) {
-		flow_dv_translate_item_geneve(key,
-					      wks.tunnel_item,
-					      wks.item_flags,
-					      key_type);
+		if (wks.tunnel_item)
+			flow_dv_translate_item_geneve(key,
+						      wks.tunnel_item,
+						      wks.item_flags,
+						      key_type);
 	} else if (wks.item_flags & MLX5_FLOW_LAYER_GRE) {
-		if (wks.tunnel_item->type == RTE_FLOW_ITEM_TYPE_GRE) {
+		if (wks.tunnel_item && wks.tunnel_item->type == RTE_FLOW_ITEM_TYPE_GRE) {
 			flow_dv_translate_item_gre(key,
 						   wks.tunnel_item,
 						   wks.item_flags,
 						   key_type);
-		} else if (wks.tunnel_item->type == RTE_FLOW_ITEM_TYPE_GRE_OPTION) {
+		} else if (wks.tunnel_item &&
+			   wks.tunnel_item->type == RTE_FLOW_ITEM_TYPE_GRE_OPTION) {
 			flow_dv_translate_item_gre_option(key,
 							  wks.tunnel_item,
 							  wks.gre_item,
 							  wks.item_flags,
 							  key_type);
-		} else if (wks.tunnel_item->type == RTE_FLOW_ITEM_TYPE_NVGRE) {
+		} else if (wks.tunnel_item && wks.tunnel_item->type == RTE_FLOW_ITEM_TYPE_NVGRE) {
 			flow_dv_translate_item_nvgre(key,
 						     wks.tunnel_item,
 						     wks.item_flags,
@@ -14763,14 +14784,14 @@ exit:
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-flow_dv_translate_items_hws(const struct rte_flow_item *items,
-			    struct mlx5_flow_attr *attr, void *key,
-			    uint32_t key_type, uint64_t *item_flags,
-			    uint8_t *match_criteria,
-			    struct rte_flow_error *error)
+mlx5_flow_dv_translate_items_hws(const struct rte_flow_item *items,
+				 struct mlx5_flow_attr *attr, void *key,
+				 uint32_t key_type, uint64_t *item_flags,
+				 uint8_t *match_criteria,
+				 struct rte_flow_error *error)
 {
-	return __flow_dv_translate_items_hws(items, attr, key, key_type, item_flags, match_criteria,
-					     false, error);
+	return mlx5_flow_dv_translate_items_hws_impl(items, attr, key, key_type, item_flags,
+						     match_criteria, false, error);
 }
 
 /**
@@ -15252,7 +15273,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			       rss->queue_num * sizeof(uint16_t));
 			rss_desc->queue_num = rss->queue_num;
 			/* NULL RSS key indicates default RSS key. */
-			rss_key = !rss->key ? rss_hash_default_key : rss->key;
+			rss_key = !rss->key ? mlx5_rss_hash_default_key : rss->key;
 			memcpy(rss_desc->key, rss_key, MLX5_RSS_HASH_KEY_LEN);
 			/*
 			 * rss->level and rss.types should be set in advance
@@ -15265,7 +15286,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_AGE:
 			owner_idx = (uint32_t)(uintptr_t)action->conf;
-			age_act = flow_aso_age_get_by_idx(dev, owner_idx);
+			age_act = mlx5_flow_aso_age_get_by_idx(dev, owner_idx);
 			if (flow->age == 0) {
 				flow->age = owner_idx;
 				rte_atomic_fetch_add_explicit(&age_act->refcnt, 1,
@@ -15450,11 +15471,11 @@ flow_dv_translate(struct rte_eth_dev *dev,
 						       &grp_info, error);
 			if (ret)
 				return ret;
-			tbl = flow_dv_tbl_resource_get(dev, table, attr->egress,
-						       attr->transfer,
-						       !!dev_flow->external,
-						       tunnel, jump_group, 0,
-						       0, error);
+			tbl = mlx5_flow_dv_tbl_resource_get(dev, table, attr->egress,
+							    attr->transfer,
+							    dev_flow->external,
+							    tunnel, jump_group, 0,
+							    0, error);
 			if (!tbl)
 				return rte_flow_error_set
 						(error, errno,
@@ -15463,7 +15484,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 						 "cannot create jump action.");
 			if (flow_dv_jump_tbl_resource_register
 			    (dev, tbl, dev_flow, error)) {
-				flow_dv_tbl_resource_release(MLX5_SH(dev), tbl);
+				mlx5_flow_dv_tbl_resource_release(MLX5_SH(dev), tbl);
 				return rte_flow_error_set
 						(error, errno,
 						 RTE_FLOW_ERROR_TYPE_ACTION,
@@ -15688,8 +15709,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 						     (dev_flow->flow_idx),
 						     non_shared_age->timeout);
 				}
-				age_act = flow_aso_age_get_by_idx(dev,
-								  flow->age);
+				age_act = mlx5_flow_aso_age_get_by_idx(dev, flow->age);
 				dev_flow->dv.actions[age_act_pos] =
 							     age_act->dr_action;
 			}
@@ -15720,9 +15740,9 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		return -rte_errno;
 	if (action_flags & MLX5_FLOW_ACTION_RSS) {
 		dev_flow->symmetric_hash_function = rss_desc->symmetric_hash_function;
-		flow_dv_hashfields_set(dev_flow->handle->layers,
-				       rss_desc,
-				       &dev_flow->hash_fields);
+		mlx5_flow_dv_hashfields_set(dev_flow->handle->layers,
+					    rss_desc,
+					    &dev_flow->hash_fields);
 	}
 	/* If has RSS action in the sample action, the Sample/Mirror resource
 	 * should be registered after the hash filed be update.
@@ -16019,15 +16039,22 @@ __flow_dv_action_rss_hrxq_set(struct mlx5_shared_action_rss *action,
  *   Valid hash RX queue index, otherwise 0.
  */
 uint32_t
-flow_dv_action_rss_hrxq_lookup(struct rte_eth_dev *dev, uint32_t idx,
-			       const uint64_t hash_fields)
+mlx5_flow_dv_action_rss_hrxq_lookup(struct rte_eth_dev *dev, uint32_t idx,
+				    const uint64_t hash_fields)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_shared_action_rss *shared_rss =
 	    mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS], idx);
-	const uint32_t *hrxqs = shared_rss->hrxq;
+	const uint32_t *hrxqs;
 	uint32_t selectors = 0;
 	int ret;
+
+	if (!shared_rss) {
+		DRV_LOG(ERR, "port %u cannot get RSS action: rss_act_idx=%u",
+			dev->data->port_id, idx);
+		return 0;
+	}
+	hrxqs = shared_rss->hrxq;
 
 	ret = rx_hash_calc_selector(hash_fields, &selectors);
 	if (ret < 0) {
@@ -16124,9 +16151,9 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			struct mlx5_hrxq *hrxq = NULL;
 			uint32_t hrxq_idx;
 
-			hrxq_idx = flow_dv_action_rss_hrxq_lookup(dev,
-						rss_desc->shared_rss,
-						dev_flow->hash_fields);
+			hrxq_idx = mlx5_flow_dv_action_rss_hrxq_lookup(dev,
+								       rss_desc->shared_rss,
+								       dev_flow->hash_fields);
 			if (hrxq_idx)
 				hrxq = mlx5_ipool_get
 					(priv->sh->ipool[MLX5_IPOOL_HRXQ],
@@ -16198,8 +16225,8 @@ error:
 }
 
 void
-flow_matcher_remove_cb(void *tool_ctx __rte_unused,
-			  struct mlx5_list_entry *entry)
+mlx5_flow_matcher_remove_cb(void *tool_ctx __rte_unused,
+			    struct mlx5_list_entry *entry)
 {
 	struct mlx5_flow_dv_matcher *resource = container_of(entry,
 							     typeof(*resource),
@@ -16238,12 +16265,12 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
 
 	MLX5_ASSERT(matcher->matcher_object);
 	ret = mlx5_list_unregister(tbl->matchers, &matcher->entry);
-	flow_dv_tbl_resource_release(MLX5_SH(dev), &tbl->tbl);
+	mlx5_flow_dv_tbl_resource_release(MLX5_SH(dev), &tbl->tbl);
 	return ret;
 }
 
 void
-flow_encap_decap_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+mlx5_flow_encap_decap_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_encap_decap_resource *res =
@@ -16270,8 +16297,8 @@ flow_encap_decap_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
  *   1 while a reference on it exists, 0 when freed.
  */
 int
-flow_encap_decap_resource_release(struct rte_eth_dev *dev,
-				     uint32_t encap_decap_idx)
+mlx5_flow_encap_decap_resource_release(struct rte_eth_dev *dev,
+				       uint32_t encap_decap_idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_dv_encap_decap_resource *resource;
@@ -16306,11 +16333,11 @@ flow_dv_jump_tbl_resource_release(struct rte_eth_dev *dev,
 				  rix_jump);
 	if (!tbl_data)
 		return 0;
-	return flow_dv_tbl_resource_release(MLX5_SH(dev), &tbl_data->tbl);
+	return mlx5_flow_dv_tbl_resource_release(MLX5_SH(dev), &tbl_data->tbl);
 }
 
 void
-flow_modify_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+mlx5_flow_modify_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_flow_dv_modify_hdr_resource *res =
 		container_of(entry, typeof(*res), entry);
@@ -16348,7 +16375,7 @@ flow_dv_modify_hdr_resource_release(struct rte_eth_dev *dev,
 }
 
 void
-flow_dv_port_id_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+mlx5_flow_dv_port_id_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_port_id_action_resource *resource =
@@ -16404,7 +16431,7 @@ flow_dv_shared_rss_action_release(struct rte_eth_dev *dev, uint32_t srss)
 }
 
 void
-flow_dv_push_vlan_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+mlx5_flow_dv_push_vlan_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_push_vlan_action_resource *resource =
@@ -16464,8 +16491,7 @@ flow_dv_fate_resource_release(struct rte_eth_dev *dev,
 		flow_dv_jump_tbl_resource_release(dev, handle->rix_jump);
 		break;
 	case MLX5_FLOW_FATE_PORT_ID:
-		flow_dv_port_id_action_resource_release(dev,
-				handle->rix_port_id_action);
+		flow_dv_port_id_action_resource_release(dev, handle->rix_port_id_action);
 		break;
 	case MLX5_FLOW_FATE_SEND_TO_KERNEL:
 		/* In case of send_to_kernel action the actual release of
@@ -16481,7 +16507,7 @@ flow_dv_fate_resource_release(struct rte_eth_dev *dev,
 }
 
 void
-flow_dv_sample_remove_cb(void *tool_ctx __rte_unused,
+mlx5_flow_dv_sample_remove_cb(void *tool_ctx __rte_unused,
 			 struct mlx5_list_entry *entry)
 {
 	struct mlx5_flow_dv_sample_resource *resource = container_of(entry,
@@ -16494,8 +16520,7 @@ flow_dv_sample_remove_cb(void *tool_ctx __rte_unused,
 		claim_zero(mlx5_flow_os_destroy_flow_action
 						      (resource->verbs_action));
 	if (resource->normal_path_tbl)
-		flow_dv_tbl_resource_release(MLX5_SH(dev),
-					     resource->normal_path_tbl);
+		mlx5_flow_dv_tbl_resource_release(MLX5_SH(dev), resource->normal_path_tbl);
 	flow_dv_sample_sub_actions_release(dev, &resource->sample_idx);
 	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_SAMPLE], resource->idx);
 	DRV_LOG(DEBUG, "sample resource %p: removed", (void *)resource);
@@ -16529,7 +16554,7 @@ flow_dv_sample_resource_release(struct rte_eth_dev *dev,
 }
 
 void
-flow_dv_dest_array_remove_cb(void *tool_ctx __rte_unused,
+mlx5_flow_dv_dest_array_remove_cb(void *tool_ctx __rte_unused,
 			     struct mlx5_list_entry *entry)
 {
 	struct mlx5_flow_dv_dest_array_resource *resource =
@@ -16655,7 +16680,7 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		flow->counter = 0;
 	}
 	if (flow->meter) {
-		fm = flow_dv_meter_find_by_idx(priv, flow->meter);
+		fm = mlx5_flow_dv_meter_find_by_idx(priv, flow->meter);
 		if (fm)
 			mlx5_flow_meter_detach(priv, fm);
 		flow->meter = 0;
@@ -16690,8 +16715,8 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		if (dev_handle->dvh.rix_dest_array)
 			flow_dv_dest_array_resource_release(dev, dev_handle);
 		if (dev_handle->dvh.rix_encap_decap)
-			flow_encap_decap_resource_release(dev,
-				dev_handle->dvh.rix_encap_decap);
+			mlx5_flow_encap_decap_resource_release(dev,
+							       dev_handle->dvh.rix_encap_decap);
 		if (dev_handle->dvh.modify_hdr)
 			flow_dv_modify_hdr_resource_release(dev, dev_handle);
 		if (dev_handle->dvh.rix_push_vlan)
@@ -16845,7 +16870,7 @@ filter_tcp_types(uint64_t rss_types, uint64_t *hash_fields)
  *   void
  */
 void
-flow_dv_action_rss_l34_hash_adjust(uint64_t orig_rss_types,
+mlx5_flow_dv_action_rss_l34_hash_adjust(uint64_t orig_rss_types,
 				   uint64_t *hash_field)
 {
 	uint64_t hash_field_protos = *hash_field & ~IBV_RX_HASH_INNER;
@@ -16916,7 +16941,7 @@ __flow_dv_action_rss_setup(struct rte_eth_dev *dev,
 		uint64_t hash_fields = mlx5_rss_hash_fields[i];
 		int tunnel = 0;
 
-		flow_dv_action_rss_l34_hash_adjust(shared_rss->origin.types,
+		mlx5_flow_dv_action_rss_l34_hash_adjust(shared_rss->origin.types,
 						   &hash_fields);
 		if (shared_rss->origin.level > 1) {
 			hash_fields |= IBV_RX_HASH_INNER;
@@ -16996,7 +17021,7 @@ __flow_dv_action_rss_create(struct rte_eth_dev *dev,
 	/* RSS type 0 indicates default RSS type (RTE_ETH_RSS_IP). */
 	origin->types = !rss->types ? RTE_ETH_RSS_IP : rss->types;
 	/* NULL RSS key indicates default RSS key. */
-	rss_key = !rss->key ? rss_hash_default_key : rss->key;
+	rss_key = !rss->key ? mlx5_rss_hash_default_key : rss->key;
 	memcpy(shared_rss->key, rss_key, MLX5_RSS_HASH_KEY_LEN);
 	origin->key = &shared_rss->key[0];
 	origin->key_len = MLX5_RSS_HASH_KEY_LEN;
@@ -17103,10 +17128,10 @@ __flow_dv_action_rss_release(struct rte_eth_dev *dev, uint32_t idx,
  *   rte_errno is set.
  */
 struct rte_flow_action_handle *
-flow_dv_action_create(struct rte_eth_dev *dev,
-		      const struct rte_flow_indir_action_conf *conf,
-		      const struct rte_flow_action *action,
-		      struct rte_flow_error *err)
+mlx5_flow_dv_action_create(struct rte_eth_dev *dev,
+			   const struct rte_flow_indir_action_conf *conf,
+			   const struct rte_flow_action *action,
+			   struct rte_flow_error *err)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	uint32_t age_idx = 0;
@@ -17175,9 +17200,9 @@ flow_dv_action_create(struct rte_eth_dev *dev,
  *   0 on success, otherwise negative errno value.
  */
 int
-flow_dv_action_destroy(struct rte_eth_dev *dev,
-		       struct rte_flow_action_handle *handle,
-		       struct rte_flow_error *error)
+mlx5_flow_dv_action_destroy(struct rte_eth_dev *dev,
+			    struct rte_flow_action_handle *handle,
+			    struct rte_flow_error *error)
 {
 	uint32_t act_idx = (uint32_t)(uintptr_t)handle;
 	uint32_t type = act_idx >> MLX5_INDIRECT_ACTION_TYPE_OFFSET;
@@ -17386,10 +17411,10 @@ __flow_dv_action_ct_update(struct rte_eth_dev *dev, uint32_t idx,
  *   0 on success, otherwise negative errno value.
  */
 int
-flow_dv_action_update(struct rte_eth_dev *dev,
-			struct rte_flow_action_handle *handle,
-			const void *update,
-			struct rte_flow_error *err)
+mlx5_flow_dv_action_update(struct rte_eth_dev *dev,
+			   struct rte_flow_action_handle *handle,
+			   const void *update,
+			   struct rte_flow_error *err)
 {
 	uint32_t act_idx = (uint32_t)(uintptr_t)handle;
 	uint32_t type = act_idx >> MLX5_INDIRECT_ACTION_TYPE_OFFSET;
@@ -17458,14 +17483,12 @@ __flow_dv_destroy_sub_policy_rules(struct rte_eth_dev *dev,
 			sub_policy->rix_hrxq[i] = 0;
 		}
 		if (sub_policy->jump_tbl[i]) {
-			flow_dv_tbl_resource_release(MLX5_SH(dev),
-						     sub_policy->jump_tbl[i]);
+			mlx5_flow_dv_tbl_resource_release(MLX5_SH(dev), sub_policy->jump_tbl[i]);
 			sub_policy->jump_tbl[i] = NULL;
 		}
 	}
 	if (sub_policy->tbl_rsc) {
-		flow_dv_tbl_resource_release(MLX5_SH(dev),
-					     sub_policy->tbl_rsc);
+		mlx5_flow_dv_tbl_resource_release(MLX5_SH(dev), sub_policy->tbl_rsc);
 		sub_policy->tbl_rsc = NULL;
 	}
 }
@@ -17736,10 +17759,12 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 				 */
 				if (!mtrmng->drop_tbl[domain]) {
 					mtrmng->drop_tbl[domain] =
-					flow_dv_tbl_resource_get(dev,
-					MLX5_FLOW_TABLE_LEVEL_METER,
-					egress, transfer, false, NULL, 0,
-					0, MLX5_MTR_TABLE_ID_DROP, &flow_err);
+					mlx5_flow_dv_tbl_resource_get(dev,
+								      MLX5_FLOW_TABLE_LEVEL_METER,
+								      egress, transfer, false,
+								      NULL, 0,
+								      0, MLX5_MTR_TABLE_ID_DROP,
+								      &flow_err);
 					if (!mtrmng->drop_tbl[domain])
 						return -rte_mtr_error_set
 					(error, ENOTSUP,
@@ -17901,12 +17926,11 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 					NULL, "cannot setup "
 					"policy jump action");
 				sub_policy->jump_tbl[i] =
-				flow_dv_tbl_resource_get(dev,
-					table, egress,
-					transfer,
-					!!dev_flow.external,
-					NULL, jump_group, 0,
-					0, &flow_err);
+				mlx5_flow_dv_tbl_resource_get(dev,
+							      table, egress,
+							      transfer, !!dev_flow.external,
+							      NULL, jump_group, 0,
+							      0, &flow_err);
 				if
 				(!sub_policy->jump_tbl[i])
 					return  -rte_mtr_error_set(error,
@@ -18136,9 +18160,9 @@ flow_dv_query_count(struct rte_eth_dev *dev, uint32_t cnt_idx, void *data,
 }
 
 int
-flow_dv_action_query(struct rte_eth_dev *dev,
-		     const struct rte_flow_action_handle *handle, void *data,
-		     struct rte_flow_error *error)
+mlx5_flow_dv_action_query(struct rte_eth_dev *dev,
+			  const struct rte_flow_action_handle *handle, void *data,
+			  struct rte_flow_error *error)
 {
 	struct mlx5_age_param *age_param;
 	struct rte_flow_query_age *resp;
@@ -18152,7 +18176,7 @@ flow_dv_action_query(struct rte_eth_dev *dev,
 
 	switch (type) {
 	case MLX5_INDIRECT_ACTION_TYPE_AGE:
-		age_param = &flow_aso_age_get_by_idx(dev, idx)->age_params;
+		age_param = &mlx5_flow_aso_age_get_by_idx(dev, idx)->age_params;
 		resp = data;
 		resp->aged = rte_atomic_load_explicit(&age_param->state,
 					      rte_memory_order_relaxed) == AGE_TMOUT ?
@@ -18221,7 +18245,7 @@ flow_dv_query_age(struct rte_eth_dev *dev, struct rte_flow *flow,
 
 	if (flow->age) {
 		struct mlx5_aso_age_action *act =
-				     flow_aso_age_get_by_idx(dev, flow->age);
+				     mlx5_flow_aso_age_get_by_idx(dev, flow->age);
 
 		age_param = &act->age_params;
 	} else if (flow->counter) {
@@ -18346,8 +18370,7 @@ flow_dv_destroy_mtr_drop_tbls(struct rte_eth_dev *dev)
 			}
 		}
 		if (mtrmng->drop_tbl[i]) {
-			flow_dv_tbl_resource_release(MLX5_SH(dev),
-				mtrmng->drop_tbl[i]);
+			mlx5_flow_dv_tbl_resource_release(MLX5_SH(dev), mtrmng->drop_tbl[i]);
 			mtrmng->drop_tbl[i] = NULL;
 		}
 	}
@@ -18536,10 +18559,11 @@ __flow_dv_create_domain_policy_rules(struct rte_eth_dev *dev,
 		return -1;
 	/* Create policy table with POLICY level. */
 	if (!sub_policy->tbl_rsc)
-		sub_policy->tbl_rsc = flow_dv_tbl_resource_get(dev,
-				MLX5_FLOW_TABLE_LEVEL_POLICY,
-				egress, transfer, false, NULL, 0, 0,
-				sub_policy->idx, &flow_err);
+		sub_policy->tbl_rsc = mlx5_flow_dv_tbl_resource_get(dev,
+								    MLX5_FLOW_TABLE_LEVEL_POLICY,
+								    egress, transfer, false,
+								    NULL, 0, 0,
+								    sub_policy->idx, &flow_err);
 	if (!sub_policy->tbl_rsc) {
 		DRV_LOG(ERR,
 			"Failed to create meter sub policy table.");
@@ -18842,10 +18866,10 @@ __flow_dv_create_domain_def_policy(struct rte_eth_dev *dev, uint32_t domain)
 		}
 		mtrmng->def_policy[domain] = def_policy;
 		/* Create the meter suffix table with SUFFIX level. */
-		jump_tbl = flow_dv_tbl_resource_get(dev,
-				MLX5_FLOW_TABLE_LEVEL_METER,
-				egress, transfer, false, NULL, 0,
-				0, MLX5_MTR_TABLE_ID_SUFFIX, &error);
+		jump_tbl = mlx5_flow_dv_tbl_resource_get(dev,
+							 MLX5_FLOW_TABLE_LEVEL_METER,
+							 egress, transfer, false, NULL, 0,
+							 0, MLX5_MTR_TABLE_ID_SUFFIX, &error);
 		if (!jump_tbl) {
 			DRV_LOG(ERR,
 				"Failed to create meter suffix table.");
@@ -18864,10 +18888,10 @@ __flow_dv_create_domain_def_policy(struct rte_eth_dev *dev, uint32_t domain)
 		 * resource getting is just to update the reference count for
 		 * the releasing stage.
 		 */
-		jump_tbl = flow_dv_tbl_resource_get(dev,
-				MLX5_FLOW_TABLE_LEVEL_METER,
-				egress, transfer, false, NULL, 0,
-				0, MLX5_MTR_TABLE_ID_SUFFIX, &error);
+		jump_tbl = mlx5_flow_dv_tbl_resource_get(dev,
+							 MLX5_FLOW_TABLE_LEVEL_METER,
+							 egress, transfer, false, NULL, 0,
+							 0, MLX5_MTR_TABLE_ID_SUFFIX, &error);
 		if (!jump_tbl) {
 			DRV_LOG(ERR,
 				"Failed to get meter suffix table.");
@@ -18882,10 +18906,10 @@ __flow_dv_create_domain_def_policy(struct rte_eth_dev *dev, uint32_t domain)
 		acts[RTE_COLOR_YELLOW].actions_n = 1;
 		/* Create jump action to the drop table. */
 		if (!mtrmng->drop_tbl[domain]) {
-			mtrmng->drop_tbl[domain] = flow_dv_tbl_resource_get
-				(dev, MLX5_FLOW_TABLE_LEVEL_METER,
-				 egress, transfer, false, NULL, 0,
-				 0, MLX5_MTR_TABLE_ID_DROP, &error);
+			mtrmng->drop_tbl[domain] = mlx5_flow_dv_tbl_resource_get
+							(dev, MLX5_FLOW_TABLE_LEVEL_METER,
+							 egress, transfer, false, NULL, 0,
+							 0, MLX5_MTR_TABLE_ID_DROP, &error);
 			if (!mtrmng->drop_tbl[domain]) {
 				DRV_LOG(ERR, "Failed to create meter "
 					"drop table for default policy.");
@@ -19008,10 +19032,10 @@ flow_dv_create_mtr_tbls(struct rte_eth_dev *dev,
 		transfer = (domain == MLX5_MTR_DOMAIN_TRANSFER) ? 1 : 0;
 		/* Create the drop table with METER DROP level. */
 		if (!mtrmng->drop_tbl[domain]) {
-			mtrmng->drop_tbl[domain] = flow_dv_tbl_resource_get(dev,
-					MLX5_FLOW_TABLE_LEVEL_METER,
-					egress, transfer, false, NULL, 0,
-					0, MLX5_MTR_TABLE_ID_DROP, &error);
+			mtrmng->drop_tbl[domain] = mlx5_flow_dv_tbl_resource_get(dev,
+							MLX5_FLOW_TABLE_LEVEL_METER,
+							egress, transfer, false, NULL, 0,
+							0, MLX5_MTR_TABLE_ID_DROP, &error);
 			if (!mtrmng->drop_tbl[domain]) {
 				DRV_LOG(ERR, "Failed to create meter drop table.");
 				goto policy_error;
@@ -19210,7 +19234,7 @@ __flow_dv_meter_get_rss_sub_policy(struct rte_eth_dev *dev,
 					wks->mark = 1;
 				dh.fate_action = MLX5_FLOW_FATE_QUEUE;
 				dh.rix_hrxq = hrxq_idx[i];
-				flow_drv_rxq_flags_set(dev, &dh);
+				mlx5_flow_drv_rxq_flags_set(dev, &dh);
 			}
 		}
 	}
@@ -19717,8 +19741,8 @@ mlx5_flow_discover_dr_action_support(struct rte_eth_dev *dev)
 	void *flow = NULL;
 	int ret = -1;
 
-	tbl = flow_dv_tbl_resource_get(dev, 0, 0, 0, false, NULL,
-					0, 0, 0, NULL);
+	tbl = mlx5_flow_dv_tbl_resource_get(dev, 0, 0, 0, false, NULL,
+					    0, 0, 0, NULL);
 	if (!tbl)
 		goto err;
 	dv_attr.match_criteria_enable = flow_dv_matcher_enable(mask.buf);
@@ -19748,7 +19772,7 @@ err:
 	if (matcher)
 		claim_zero(mlx5_flow_os_destroy_flow_matcher(matcher));
 	if (tbl)
-		flow_dv_tbl_resource_release(MLX5_SH(dev), tbl);
+		mlx5_flow_dv_tbl_resource_release(MLX5_SH(dev), tbl);
 	return ret;
 }
 
@@ -19789,8 +19813,8 @@ mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev)
 	void *flow = NULL;
 	int ret = -1;
 
-	tbl = flow_dv_tbl_resource_get(dev, 0, 1, 0, false, NULL,
-					0, 0, 0, NULL);
+	tbl = mlx5_flow_dv_tbl_resource_get(dev, 0, 1, 0, false, NULL,
+					    0, 0, 0, NULL);
 	if (!tbl)
 		goto err;
 	dcs = mlx5_devx_cmd_flow_counter_alloc(priv->sh->cdev->ctx, 0x4);
@@ -19835,7 +19859,7 @@ err:
 	if (matcher)
 		claim_zero(mlx5_flow_os_destroy_flow_matcher(matcher));
 	if (tbl)
-		flow_dv_tbl_resource_release(MLX5_SH(dev), tbl);
+		mlx5_flow_dv_tbl_resource_release(MLX5_SH(dev), tbl);
 	if (dcs)
 		claim_zero(mlx5_devx_cmd_destroy(dcs));
 	return ret;
@@ -19974,10 +19998,10 @@ flow_dv_counter_allocate(struct rte_eth_dev *dev)
  *   0 on success, otherwise negative errno value.
  */
 int
-flow_dv_action_validate(struct rte_eth_dev *dev,
-			const struct rte_flow_indir_action_conf *conf,
-			const struct rte_flow_action *action,
-			struct rte_flow_error *err)
+mlx5_flow_dv_action_validate(struct rte_eth_dev *dev,
+			     const struct rte_flow_indir_action_conf *conf,
+			     const struct rte_flow_action *action,
+			     struct rte_flow_error *err)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	/* called from RTE API */
@@ -19988,9 +20012,9 @@ flow_dv_action_validate(struct rte_eth_dev *dev,
 		/*
 		 * priv->obj_ops is set according to driver capabilities.
 		 * When DevX capabilities are
-		 * sufficient, it is set to devx_obj_ops.
-		 * Otherwise, it is set to ibv_obj_ops.
-		 * ibv_obj_ops doesn't support ind_table_modify operation.
+		 * sufficient, it is set to mlx5_devx_obj_ops.
+		 * Otherwise, it is set to mlx5_ibv_obj_ops.
+		 * mlx5_ibv_obj_ops doesn't support ind_table_modify operation.
 		 * In this case the indirect RSS action can't be used.
 		 */
 		if (priv->obj_ops.ind_table_modify == NULL)
@@ -20051,8 +20075,8 @@ flow_dv_mtr_policy_rss_compare(const struct rte_flow_action_rss *r1,
 	      (r2->types == 0 || r2->types == RTE_ETH_RSS_IP)))
 		return 1;
 	if (r1->key || r2->key) {
-		const void *key1 = r1->key ? r1->key : rss_hash_default_key;
-		const void *key2 = r2->key ? r2->key : rss_hash_default_key;
+		const void *key1 = r1->key ? r1->key : mlx5_rss_hash_default_key;
+		const void *key2 = r2->key ? r2->key : mlx5_rss_hash_default_key;
 
 		if (memcmp(key1, key2, MLX5_RSS_HASH_KEY_LEN))
 			return 1;
@@ -20651,9 +20675,9 @@ flow_dv_discover_priorities(struct rte_eth_dev *dev,
 }
 
 const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
-	.list_create = flow_legacy_list_create,
-	.list_destroy = flow_legacy_list_destroy,
-	.validate = flow_dv_validate,
+	.list_create = mlx5_flow_legacy_list_create,
+	.list_destroy = mlx5_flow_legacy_list_destroy,
+	.validate = mlx5_flow_dv_validate,
 	.prepare = flow_dv_prepare,
 	.translate = flow_dv_translate,
 	.apply = flow_dv_apply,
@@ -20679,15 +20703,15 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.counter_free = flow_dv_counter_free,
 	.counter_query = flow_dv_counter_query,
 	.get_aged_flows = flow_dv_get_aged_flows,
-	.action_validate = flow_dv_action_validate,
-	.action_create = flow_dv_action_create,
-	.action_destroy = flow_dv_action_destroy,
-	.action_update = flow_dv_action_update,
-	.action_query = flow_dv_action_query,
+	.action_validate = mlx5_flow_dv_action_validate,
+	.action_create = mlx5_flow_dv_action_create,
+	.action_destroy = mlx5_flow_dv_action_destroy,
+	.action_update = mlx5_flow_dv_action_update,
+	.action_query = mlx5_flow_dv_action_query,
 	.sync_domain = flow_dv_sync_domain,
 	.discover_priorities = flow_dv_discover_priorities,
-	.item_create = flow_dv_item_create,
-	.item_release = flow_dv_item_release,
+	.item_create = mlx5_flow_dv_item_create,
+	.item_release = mlx5_flow_dv_item_release,
 };
 
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */

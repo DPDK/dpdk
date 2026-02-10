@@ -1115,7 +1115,7 @@ flow_verbs_translate_action_rss(struct mlx5_flow_rss_desc *rss_desc,
 	memcpy(rss_desc->queue, rss->queue, rss->queue_num * sizeof(uint16_t));
 	rss_desc->queue_num = rss->queue_num;
 	/* NULL RSS key indicates default RSS key. */
-	rss_key = !rss->key ? rss_hash_default_key : rss->key;
+	rss_key = !rss->key ? mlx5_rss_hash_default_key : rss->key;
 	memcpy(rss_desc->key, rss_key, MLX5_RSS_HASH_KEY_LEN);
 	/*
 	 * rss->level and rss.types should be set in advance when expanding
@@ -2184,8 +2184,8 @@ flow_verbs_sync_domain(struct rte_eth_dev *dev, uint32_t domains,
 }
 
 const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops = {
-	.list_create = flow_legacy_list_create,
-	.list_destroy = flow_legacy_list_destroy,
+	.list_create = mlx5_flow_legacy_list_create,
+	.list_destroy = mlx5_flow_legacy_list_destroy,
 	.validate = flow_verbs_validate,
 	.prepare = flow_verbs_prepare,
 	.translate = flow_verbs_translate,
@@ -2195,8 +2195,8 @@ const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops = {
 	.query = flow_verbs_query,
 	.sync_domain = flow_verbs_sync_domain,
 	.discover_priorities = flow_verbs_discover_priorities,
-	.get_aged_flows = flow_null_get_aged_flows,
-	.counter_alloc = flow_null_counter_allocate,
-	.counter_free = flow_null_counter_free,
-	.counter_query = flow_null_counter_query,
+	.get_aged_flows = mlx5_flow_null_get_aged_flows,
+	.counter_alloc = mlx5_flow_null_counter_allocate,
+	.counter_free = mlx5_flow_null_counter_free,
+	.counter_query = mlx5_flow_null_counter_query,
 };

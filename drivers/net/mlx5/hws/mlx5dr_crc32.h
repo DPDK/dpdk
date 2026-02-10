@@ -13,6 +13,6 @@ uint32_t mlx5dr_crc32_calc(uint8_t *p, size_t len);
 /* Standard CRC16 calculation using the crc_tab16 param to indicate
  * the pre-calculated polynome hash values.
  */
-uint16_t mlx5dr_crc16_calc(uint8_t *p, size_t len, uint16_t crc_tab16[]);
+uint16_t mlx5dr_crc16_calc(uint8_t *p, size_t len, const uint16_t crc_tab16[]);
 
 #endif /* MLX5DR_CRC32_C_ */

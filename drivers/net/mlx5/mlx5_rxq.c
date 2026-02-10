@@ -35,7 +35,7 @@
 
 
 /* Default RSS hash key also used for ConnectX-3. */
-uint8_t rss_hash_default_key[] = {
+uint8_t mlx5_rss_hash_default_key[] = {
 	0x2c, 0xc6, 0x81, 0xd1,
 	0x5b, 0xdb, 0xf4, 0xf7,
 	0xfc, 0xa2, 0x83, 0x19,
@@ -50,7 +50,7 @@ uint8_t rss_hash_default_key[] = {
 
 /* Length of the default RSS hash key. */
 static_assert(MLX5_RSS_HASH_KEY_LEN ==
-	      (unsigned int)sizeof(rss_hash_default_key),
+	      (unsigned int)sizeof(mlx5_rss_hash_default_key),
 	      "wrong RSS default key size.");
 
 /**
@@ -245,7 +245,7 @@ error:
  *   0 on success, negative errno value on failure.
  */
 int
-rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl)
+mlx5_rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
 	int ret = 0;
 
@@ -422,7 +422,7 @@ mlx5_rxq_releasable(struct rte_eth_dev *dev, uint16_t idx)
 
 /* Fetches and drops all SW-owned and error CQEs to synchronize CQ. */
 void
-rxq_sync_cq(struct mlx5_rxq_data *rxq)
+mlx5_rxq_sync_cq(struct mlx5_rxq_data *rxq)
 {
 	const uint16_t cqe_n = 1 << rxq->cqe_n;
 	const uint16_t cqe_mask = cqe_n - 1;
@@ -494,7 +494,7 @@ mlx5_rx_queue_stop_primary(struct rte_eth_dev *dev, uint16_t idx)
 		return ret;
 	}
 	/* Remove all processes CQEs. */
-	rxq_sync_cq(&rxq_ctrl->rxq);
+	mlx5_rxq_sync_cq(&rxq_ctrl->rxq);
 	/* Free all involved mbufs. */
 	rxq_free_elts(rxq_ctrl);
 	/* Set the actual queue state. */
@@ -573,7 +573,7 @@ mlx5_rx_queue_start_primary(struct rte_eth_dev *dev, uint16_t idx)
 	MLX5_ASSERT(rxq != NULL && rxq->ctrl != NULL);
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	/* Allocate needed buffers. */
-	ret = rxq_alloc_elts(rxq->ctrl);
+	ret = mlx5_rxq_alloc_elts(rxq->ctrl);
 	if (ret) {
 		DRV_LOG(ERR, "Cannot reallocate buffers for Rx WQ");
 		rte_errno = errno;
@@ -899,7 +899,7 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			rte_errno = EINVAL;
 			return -rte_errno;
 		}
-		if (priv->obj_ops.rxq_obj_new != devx_obj_ops.rxq_obj_new) {
+		if (priv->obj_ops.rxq_obj_new != mlx5_devx_obj_ops.rxq_obj_new) {
 			DRV_LOG(ERR, "port %u queue index %u shared Rx queue needs DevX api",
 				     dev->data->port_id, idx);
 			rte_errno = EINVAL;

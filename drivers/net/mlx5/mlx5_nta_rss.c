@@ -63,10 +63,10 @@ mlx5_nta_ptype_rss_flow_create(struct mlx5_nta_rss_ctx *ctx,
 #endif
 	ptype_spec->packet_type = ptype;
 	rss_conf->types = rss_type;
-	ret = flow_hw_create_flow(ctx->dev, MLX5_FLOW_TYPE_GEN, ctx->attr,
-				  ctx->pattern, ctx->actions,
-				  MLX5_FLOW_ITEM_PTYPE, MLX5_FLOW_ACTION_RSS,
-				  ctx->external, &flow, ctx->error);
+	ret = mlx5_flow_hw_create_flow(ctx->dev, MLX5_FLOW_TYPE_GEN, ctx->attr,
+				       ctx->pattern, ctx->actions,
+				       MLX5_FLOW_ITEM_PTYPE, MLX5_FLOW_ACTION_RSS,
+				       ctx->external, &flow, ctx->error);
 	if (ret == 0) {
 		SLIST_INSERT_HEAD(ctx->head, flow, nt2hws->next);
 		if (dbg_log) {
@@ -113,8 +113,8 @@ mlx5_hw_rss_expand_l3(struct mlx5_nta_rss_ctx *rss_ctx)
 	return SLIST_FIRST(rss_ctx->head);
 
 error:
-	flow_hw_list_destroy(rss_ctx->dev, rss_ctx->flow_type,
-			     (uintptr_t)SLIST_FIRST(rss_ctx->head));
+	mlx5_flow_hw_list_destroy(rss_ctx->dev, rss_ctx->flow_type,
+				  (uintptr_t)SLIST_FIRST(rss_ctx->head));
 	return NULL;
 }
 
@@ -165,8 +165,8 @@ mlx5_nta_rss_expand_l3_l4(struct mlx5_nta_rss_ctx *rss_ctx,
 	}
 	return;
 error:
-	flow_hw_list_destroy(rss_ctx->dev, rss_ctx->flow_type,
-			     (uintptr_t)SLIST_FIRST(rss_ctx->head));
+	mlx5_flow_hw_list_destroy(rss_ctx->dev, rss_ctx->flow_type,
+				  (uintptr_t)SLIST_FIRST(rss_ctx->head));
 }
 
 /*
@@ -301,9 +301,9 @@ mlx5_hw_rss_ptype_create_miss_flow(struct rte_eth_dev *dev,
 		[MLX5_RSS_PTYPE_ACTION_INDEX + 1] = { .type = RTE_FLOW_ACTION_TYPE_END }
 	};
 
-	ret = flow_hw_create_flow(dev, MLX5_FLOW_TYPE_GEN, &miss_attr,
-				  miss_pattern, miss_actions, 0,
-				  MLX5_FLOW_ACTION_RSS, external, &flow, error);
+	ret = mlx5_flow_hw_create_flow(dev, MLX5_FLOW_TYPE_GEN, &miss_attr,
+				       miss_pattern, miss_actions, 0,
+				       MLX5_FLOW_ACTION_RSS, external, &flow, error);
 	return ret == 0 ? flow : NULL;
 }
 
@@ -347,15 +347,15 @@ mlx5_hw_rss_ptype_create_base_flow(struct rte_eth_dev *dev,
 	} while (actions[i++].type != RTE_FLOW_ACTION_TYPE_END);
 	action_flags &= ~MLX5_FLOW_ACTION_RSS;
 	action_flags |= MLX5_FLOW_ACTION_JUMP;
-	ret = flow_hw_create_flow(dev, flow_type, attr, pattern, actions,
-				  item_flags, action_flags, external, &flow, error);
+	ret = mlx5_flow_hw_create_flow(dev, flow_type, attr, pattern, actions,
+				       item_flags, action_flags, external, &flow, error);
 	return ret == 0 ? flow : NULL;
 }
 
 const struct rte_flow_action_rss *
-flow_nta_locate_rss(struct rte_eth_dev *dev,
-		    const struct rte_flow_action actions[],
-		    struct rte_flow_error *error)
+mlx5_flow_nta_locate_rss(struct rte_eth_dev *dev,
+			 const struct rte_flow_action actions[],
+			 struct rte_flow_error *error)
 {
 	const struct rte_flow_action *a;
 	const struct rte_flow_action_rss *rss_conf = NULL;
@@ -459,8 +459,8 @@ flow_nta_create_single(struct rte_eth_dev *dev,
 		_actions = actions;
 	}
 end:
-	ret = flow_hw_create_flow(dev, flow_type, attr, items, _actions,
-				  item_flags, action_flags, external, &flow, error);
+	ret = mlx5_flow_hw_create_flow(dev, flow_type, attr, items, _actions,
+				       item_flags, action_flags, external, &flow, error);
 	return ret == 0 ? flow : NULL;
 }
 
@@ -477,14 +477,14 @@ end:
 				  RTE_PTYPE_INNER_L4_TCP | RTE_PTYPE_INNER_L4_UDP)
 
 struct rte_flow_hw *
-flow_nta_handle_rss(struct rte_eth_dev *dev,
-		    const struct rte_flow_attr *attr,
-		    const struct rte_flow_item items[],
-		    const struct rte_flow_action actions[],
-		    const struct rte_flow_action_rss *rss_conf,
-		    uint64_t item_flags, uint64_t action_flags,
-		    bool external, enum mlx5_flow_type flow_type,
-		    struct rte_flow_error *error)
+mlx5_flow_nta_handle_rss(struct rte_eth_dev *dev,
+			 const struct rte_flow_attr *attr,
+			 const struct rte_flow_item items[],
+			 const struct rte_flow_action actions[],
+			 const struct rte_flow_action_rss *rss_conf,
+			 uint64_t item_flags, uint64_t action_flags,
+			 bool external, enum mlx5_flow_type flow_type,
+			 struct rte_flow_error *error)
 {
 	struct rte_flow_hw *rss_base = NULL, *rss_next = NULL, *rss_miss = NULL;
 	struct rte_flow_action_rss ptype_rss_conf = *rss_conf;
@@ -625,9 +625,9 @@ flow_nta_handle_rss(struct rte_eth_dev *dev,
 
 error:
 	if (rss_miss)
-		flow_hw_list_destroy(dev, flow_type, (uintptr_t)rss_miss);
+		mlx5_flow_hw_list_destroy(dev, flow_type, (uintptr_t)rss_miss);
 	if (rss_next)
-		flow_hw_list_destroy(dev, flow_type, (uintptr_t)rss_next);
+		mlx5_flow_hw_list_destroy(dev, flow_type, (uintptr_t)rss_next);
 	mlx5_hw_release_rss_ptype_group(dev, ptype_attr.group);
 	return NULL;
 }

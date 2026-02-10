@@ -14,6 +14,6 @@ void mlx5_txq_devx_obj_release(struct mlx5_txq_obj *txq_obj);
 int mlx5_devx_modify_rq(struct mlx5_rxq_priv *rxq, uint8_t type);
 int mlx5_devx_extq_port_validate(uint16_t port_id);
 
-extern struct mlx5_obj_ops devx_obj_ops;
+extern struct mlx5_obj_ops mlx5_devx_obj_ops;
 
 #endif /* RTE_PMD_MLX5_DEVX_H_ */

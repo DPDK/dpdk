@@ -2663,7 +2663,7 @@ mlx5dr_definer_get_ecpri_parser_byte_off_from_ctx(void *dr_ctx, uint32_t *byte_o
 	struct mlx5_ecpri_parser_profile *ecp;
 	uint32_t i;
 
-	ecp = flow_hw_get_ecpri_parser_profile(dr_ctx);
+	ecp = mlx5_flow_hw_get_ecpri_parser_profile(dr_ctx);
 	if (!ecp)
 		return UINT32_MAX;
 	for (i = 0; i < ecp->num; i++)

@@ -103,7 +103,7 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	memcpy(priv->rss_conf.rss_key,
 	       use_app_rss_key ?
 	       dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key :
-	       rss_hash_default_key,
+	       mlx5_rss_hash_default_key,
 	       MLX5_RSS_HASH_KEY_LEN);
 	priv->rss_conf.rss_key_len = MLX5_RSS_HASH_KEY_LEN;
 	priv->rss_conf.rss_hf = dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
@@ -397,7 +397,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->rx_desc_lim.nb_max = max_wqe;
 	info->tx_desc_lim.nb_max = max_wqe;
 	if (priv->sh->cdev->config.hca_attr.mem_rq_rmp &&
-	    priv->obj_ops.rxq_obj_new == devx_obj_ops.rxq_obj_new)
+	    priv->obj_ops.rxq_obj_new == mlx5_devx_obj_ops.rxq_obj_new)
 		info->dev_capa |= RTE_ETH_DEV_CAPA_RXQ_SHARE;
 	info->switch_info.name = dev->data->name;
 	info->switch_info.domain_id = priv->domain_id;

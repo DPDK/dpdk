@@ -26,7 +26,7 @@ release_chained_flows(struct rte_eth_dev *dev, struct mlx5_flow_head *flow_head,
 
 	if (flow) {
 		flow->nt2hws->chaned_flow = 0;
-		flow_hw_list_destroy(dev, type, (uintptr_t)flow);
+		mlx5_flow_hw_list_destroy(dev, type, (uintptr_t)flow);
 	}
 }
 
@@ -613,18 +613,18 @@ create_mirror_aux_flows(struct rte_eth_dev *dev,
 	if (qrss_action != NULL && qrss_action->type == RTE_FLOW_ACTION_TYPE_RSS)
 		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 			"RSS action is not supported in sample action");
-	ret = flow_hw_create_flow(dev, type, &suffix_attr,
-				  secondary_pattern, suffix_actions,
-				  MLX5_FLOW_LAYER_OUTER_L2, suffix_action_flags,
-				  true, &suffix_flow, error);
+	ret = mlx5_flow_hw_create_flow(dev, type, &suffix_attr,
+				       secondary_pattern, suffix_actions,
+				       MLX5_FLOW_LAYER_OUTER_L2, suffix_action_flags,
+				       true, &suffix_flow, error);
 	if (ret != 0)
 		return ret;
-	ret = flow_hw_create_flow(dev, type, &sample_attr,
-				  secondary_pattern, sample_actions,
-				  MLX5_FLOW_LAYER_OUTER_L2, sample_action_flags,
-				  true, &sample_flow, error);
+	ret = mlx5_flow_hw_create_flow(dev, type, &sample_attr,
+				       secondary_pattern, sample_actions,
+				       MLX5_FLOW_LAYER_OUTER_L2, sample_action_flags,
+				       true, &sample_flow, error);
 	if (ret != 0) {
-		flow_hw_destroy(dev, suffix_flow);
+		mlx5_flow_hw_destroy(dev, suffix_flow);
 		return ret;
 	}
 	suffix_flow->nt2hws->chaned_flow = 1;
@@ -673,8 +673,8 @@ create_sample_flow(struct rte_eth_dev *dev,
 
 	if (random_mask > UINT16_MAX)
 		return NULL;
-	flow_hw_create_flow(dev, type, &sample_attr, sample_pattern, sample_actions,
-			    0, 0, true, &sample_flow, error);
+	mlx5_flow_hw_create_flow(dev, type, &sample_attr, sample_pattern, sample_actions,
+				 0, 0, true, &sample_flow, error);
 	return sample_flow;
 }
 
@@ -768,8 +768,8 @@ mlx5_nta_create_sample_flow(struct rte_eth_dev *dev,
 			.type = RTE_FLOW_ACTION_TYPE_JUMP,
 			.conf = &(struct rte_flow_action_jump) { .group = sample_group }
 		});
-	ret = flow_hw_create_flow(dev, type, attr, pattern, prefix_actions,
-				  item_flags, action_flags, true, &base_flow, error);
+	ret = mlx5_flow_hw_create_flow(dev, type, attr, pattern, prefix_actions,
+				       item_flags, action_flags, true, &base_flow, error);
 	if (ret != 0)
 		goto error;
 	SLIST_INSERT_HEAD(flow_head, base_flow, nt2hws->next);
@@ -819,9 +819,9 @@ mlx5_nta_create_mirror_flow(struct rte_eth_dev *dev,
 			.type = (enum rte_flow_action_type)MLX5_RTE_FLOW_ACTION_TYPE_MIRROR,
 			.conf = mirror_entry_to_mirror_action(mirror_entry)
 		});
-	ret = flow_hw_create_flow(dev, type, attr, pattern, prefix_actions,
-				  item_flags, action_flags,
-				  true, &base_flow, error);
+	ret = mlx5_flow_hw_create_flow(dev, type, attr, pattern, prefix_actions,
+				       item_flags, action_flags,
+				       true, &base_flow, error);
 	if (ret != 0)
 		goto error;
 	SLIST_INSERT_HEAD(flow_head, base_flow, nt2hws->next);

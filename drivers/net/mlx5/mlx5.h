@@ -2526,8 +2526,8 @@ int mlx5_counter_query(struct rte_eth_dev *dev, uint32_t cnt,
 		    bool clear, uint64_t *pkts, uint64_t *bytes, void **action);
 int mlx5_flow_dev_dump(struct rte_eth_dev *dev, struct rte_flow *flow,
 			FILE *file, struct rte_flow_error *error);
-int save_dump_file(const unsigned char *data, uint32_t size,
-		uint32_t type, uint64_t id, void *arg, FILE *file);
+int mlx5_save_dump_file(const unsigned char *data, uint32_t size,
+			uint32_t type, uint64_t id, void *arg, FILE *file);
 int mlx5_flow_query_counter(struct rte_eth_dev *dev, struct rte_flow *flow,
 	struct rte_flow_query_count *count, struct rte_flow_error *error);
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
@@ -2575,7 +2575,7 @@ int mlx5_flow_meter_ops_get(struct rte_eth_dev *dev, void *arg);
 struct mlx5_flow_meter_info *mlx5_flow_meter_find(struct mlx5_priv *priv,
 		uint32_t meter_id, uint32_t *mtr_idx);
 struct mlx5_flow_meter_info *
-flow_dv_meter_find_by_idx(struct mlx5_priv *priv, uint32_t idx);
+mlx5_flow_dv_meter_find_by_idx(struct mlx5_priv *priv, uint32_t idx);
 int mlx5_flow_meter_attach(struct mlx5_priv *priv,
 			   struct mlx5_flow_meter_info *fm,
 			   const struct rte_flow_attr *attr,
@@ -2708,12 +2708,12 @@ mlx5_aso_cqe_err_handle(struct mlx5_aso_sq *sq);
 /* mlx5_flow_flex.c */
 
 struct rte_flow_item_flex_handle *
-flow_dv_item_create(struct rte_eth_dev *dev,
-		    const struct rte_flow_item_flex_conf *conf,
-		    struct rte_flow_error *error);
-int flow_dv_item_release(struct rte_eth_dev *dev,
-		    const struct rte_flow_item_flex_handle *flex_handle,
-		    struct rte_flow_error *error);
+mlx5_flow_dv_item_create(struct rte_eth_dev *dev,
+			 const struct rte_flow_item_flex_conf *conf,
+			 struct rte_flow_error *error);
+int mlx5_flow_dv_item_release(struct rte_eth_dev *dev,
+			      const struct rte_flow_item_flex_handle *flex_handle,
+			      struct rte_flow_error *error);
 int mlx5_flex_item_port_init(struct rte_eth_dev *dev);
 void mlx5_flex_item_port_cleanup(struct rte_eth_dev *dev);
 void mlx5_flex_flow_translate_item(struct rte_eth_dev *dev, void *matcher,

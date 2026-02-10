@@ -1350,11 +1350,11 @@ static int mlx5dr_matcher_init_root(struct mlx5dr_matcher *matcher)
 	flow_attr.tbl_type = type;
 
 	/* On root table matcher, only a single match template is supported */
-	ret = flow_dv_translate_items_hws(matcher->mt[0].items,
-					  &flow_attr, mask->match_buf,
-					  MLX5_SET_MATCHER_HS_M, NULL,
-					  &match_criteria,
-					  &rte_error);
+	ret = mlx5_flow_dv_translate_items_hws(matcher->mt[0].items,
+					       &flow_attr, mask->match_buf,
+					       MLX5_SET_MATCHER_HS_M, NULL,
+					       &match_criteria,
+					       &rte_error);
 	if (ret) {
 		DR_LOG(ERR, "Failed to convert items to PRM [%s]", rte_error.message);
 		goto free_mask;

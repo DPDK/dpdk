@@ -594,7 +594,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		}
 	}
 	if (sh->cdev->config.devx) {
-		priv->obj_ops = devx_obj_ops;
+		priv->obj_ops = mlx5_devx_obj_ops;
 	} else {
 		DRV_LOG(ERR, "Windows flow must be DevX.");
 		err = ENOTSUP;
