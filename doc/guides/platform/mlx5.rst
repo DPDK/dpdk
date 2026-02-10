@@ -710,6 +710,7 @@ and below are the arguments supported by the common mlx5 layer.
   File descriptor of ``ibv_context`` created outside the PMD.
   PMD will use this FD to import remote CTX. The ``cmd_fd`` is obtained from
   the ``ibv_context->cmd_fd`` member, which must be dup'd before being passed.
+  The PMD closes the duplicated FD when the device is closed.
   This parameter is valid only if ``pd_handle`` parameter is specified.
 
   By default, the PMD will create a new ``ibv_context``.
