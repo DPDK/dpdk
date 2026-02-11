@@ -833,21 +833,39 @@ idpf_set_rx_function(struct rte_eth_dev *dev)
 
 }
 
+static bool
+idpf_tx_simple_allowed(struct rte_eth_dev *dev)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct ci_tx_queue *txq;
+
+	if (vport->txq_model != VIRTCHNL2_QUEUE_MODEL_SINGLE)
+		return false;
+
+	for (int i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if (txq == NULL)
+			continue;
+		if (txq->offloads != (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) ||
+				txq->tx_rs_thresh < IDPF_VPMD_TX_MAX_BURST)
+			return false;
+	}
+	return true;
+}
+
 void
 idpf_set_tx_function(struct rte_eth_dev *dev)
 {
 	struct idpf_vport *vport = dev->data->dev_private;
-#ifdef RTE_ARCH_X86
-#ifdef CC_AVX512_SUPPORT
 	struct ci_tx_queue *txq;
 	int i;
-#endif /* CC_AVX512_SUPPORT */
-#endif /* RTE_ARCH_X86 */
 	struct idpf_adapter *ad = vport->adapter;
+	bool simple_allowed = idpf_tx_simple_allowed(dev);
 	struct ci_tx_path_features req_features = {
 		.tx_offloads = dev->data->dev_conf.txmode.offloads,
 		.simd_width = RTE_VECT_SIMD_DISABLED,
-		.single_queue = (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE)
+		.single_queue = (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE),
+		.simple_tx = simple_allowed
 	};
 
 	/* The primary process selects the tx path for all processes. */
@@ -863,6 +881,16 @@ idpf_set_tx_function(struct rte_eth_dev *dev)
 					&idpf_tx_path_infos[0],
 					IDPF_TX_MAX,
 					IDPF_TX_DEFAULT);
+
+	/* Set use_vec_entry for single queue mode - only IDPF_TX_SINGLEQ uses regular entries */
+	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
+		for (i = 0; i < dev->data->nb_tx_queues; i++) {
+			txq = dev->data->tx_queues[i];
+			if (txq == NULL)
+				continue;
+			txq->use_vec_entry = (ad->tx_func_type != IDPF_TX_SINGLEQ);
+		}
+	}
 
 out:
 	dev->tx_pkt_burst = idpf_tx_path_infos[ad->tx_func_type].pkt_burst;
