@@ -22,33 +22,25 @@
 static __rte_always_inline int
 ci_tx_xmit_cleanup(struct ci_tx_queue *txq)
 {
-	struct ci_tx_entry *sw_ring = txq->sw_ring;
 	volatile struct ci_tx_desc *txd = txq->ci_tx_ring;
-	uint16_t last_desc_cleaned = txq->last_desc_cleaned;
-	uint16_t nb_tx_desc = txq->nb_tx_desc;
-	uint16_t desc_to_clean_to;
-	uint16_t nb_tx_to_clean;
+	const uint16_t last_desc_cleaned = txq->last_desc_cleaned;
+	const uint16_t nb_tx_desc = txq->nb_tx_desc;
 
-	/* Determine the last descriptor needing to be cleaned */
-	desc_to_clean_to = (uint16_t)(last_desc_cleaned + txq->tx_rs_thresh);
-	if (desc_to_clean_to >= nb_tx_desc)
-		desc_to_clean_to = (uint16_t)(desc_to_clean_to - nb_tx_desc);
+	/* Calculate where the next descriptor write-back will occur */
+	const uint16_t rs_idx = (last_desc_cleaned == nb_tx_desc - 1) ?
+			0 :
+			(last_desc_cleaned + 1) >> txq->log2_rs_thresh;
+	uint16_t desc_to_clean_to = (rs_idx << txq->log2_rs_thresh) + (txq->tx_rs_thresh - 1);
 
-	/* Check if descriptor is done */
-	desc_to_clean_to = sw_ring[desc_to_clean_to].last_id;
-	if ((txd[desc_to_clean_to].cmd_type_offset_bsz & rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M)) !=
-			rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE))
+	/* Check if descriptor is done  */
+	if ((txd[txq->rs_last_id[rs_idx]].cmd_type_offset_bsz &
+			rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M)) !=
+				rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE))
 		return -1;
-
-	/* Figure out how many descriptors will be cleaned */
-	if (last_desc_cleaned > desc_to_clean_to)
-		nb_tx_to_clean = (uint16_t)((nb_tx_desc - last_desc_cleaned) + desc_to_clean_to);
-	else
-		nb_tx_to_clean = (uint16_t)(desc_to_clean_to - last_desc_cleaned);
 
 	/* Update the txq to reflect the last descriptor that was cleaned */
 	txq->last_desc_cleaned = desc_to_clean_to;
-	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + nb_tx_to_clean);
+	txq->nb_tx_free += txq->tx_rs_thresh;
 
 	return 0;
 }
@@ -219,6 +211,7 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 		uint16_t nb_ipsec = 0;
 		uint64_t ipsec_qw0 = 0, ipsec_qw1 = 0;
 		uint64_t cd_qw0 = 0, cd_qw1 = 0;
+		uint16_t pkt_rs_idx;
 		tx_pkt = *tx_pkts++;
 
 		ol_flags = tx_pkt->ol_flags;
@@ -262,6 +255,9 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 		if (tx_last >= txq->nb_tx_desc)
 			tx_last = (uint16_t)(tx_last - txq->nb_tx_desc);
 
+		/* Track the RS threshold bucket at packet start */
+		pkt_rs_idx = (uint16_t)(tx_id >> txq->log2_rs_thresh);
+
 		if (nb_used > txq->nb_tx_free) {
 			if (ci_tx_xmit_cleanup(txq) != 0) {
 				if (nb_tx == 0)
@@ -302,10 +298,7 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 
 			if (txe->mbuf)
 				rte_pktmbuf_free_seg(txe->mbuf);
-			*txe = (struct ci_tx_entry){
-				.mbuf = tx_pkt, .last_id = tx_last, .next_id = tx_id
-			};
-
+			txe->mbuf = tx_pkt;
 			/* Setup TX Descriptor */
 			td_cmd |= CI_TX_DESC_CMD_EOP;
 			const uint64_t cmd_type_offset_bsz = CI_TX_DESC_DTYPE_DATA |
@@ -332,7 +325,6 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 
 			write_txd(ctx_txd, cd_qw0, cd_qw1);
 
-			txe->last_id = tx_last;
 			tx_id = txe->next_id;
 			txe = txn;
 		}
@@ -351,7 +343,6 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 			ipsec_txd[0] = ipsec_qw0;
 			ipsec_txd[1] = ipsec_qw1;
 
-			txe->last_id = tx_last;
 			tx_id = txe->next_id;
 			txe = txn;
 		}
@@ -387,7 +378,6 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 				buf_dma_addr += CI_MAX_DATA_PER_TXD;
 				slen -= CI_MAX_DATA_PER_TXD;
 
-				txe->last_id = tx_last;
 				tx_id = txe->next_id;
 				txe = txn;
 				txd = &ci_tx_ring[tx_id];
@@ -405,7 +395,6 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 				((uint64_t)td_tag << CI_TXD_QW1_L2TAG1_S);
 			write_txd(txd, buf_dma_addr, cmd_type_offset_bsz);
 
-			txe->last_id = tx_last;
 			tx_id = txe->next_id;
 			txe = txn;
 			m_seg = m_seg->next;
@@ -414,13 +403,22 @@ end_pkt:
 		txq->nb_tx_used = (uint16_t)(txq->nb_tx_used + nb_used);
 		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_used);
 
-		/* set RS bit on the last descriptor of one packet */
-		if (txq->nb_tx_used >= txq->tx_rs_thresh) {
+		/* Check if packet crosses into a new RS threshold bucket.
+		 * The RS bit is set on the last descriptor when we move from one bucket to another.
+		 * For example, with tx_rs_thresh=32 and a 5-descriptor packet using slots 30-34:
+		 *   - pkt_rs_idx = 30 >> 5 = 0 (started in bucket 0)
+		 *   - tx_last = 34, so 35 >> 5 = 1 (next packet is in bucket 1)
+		 *   - Since 0 != 1, set RS bit on descriptor 34, and record rs_last_id[0] = 34
+		 */
+		uint16_t next_rs_idx = ((tx_last + 1) >> txq->log2_rs_thresh);
+
+		if (next_rs_idx != pkt_rs_idx) {
+			/* Packet crossed into a new bucket - set RS bit on last descriptor */
 			txd->cmd_type_offset_bsz |=
 					rte_cpu_to_le_64(CI_TX_DESC_CMD_RS << CI_TXD_QW1_CMD_S);
 
-			/* Update txq RS bit counters */
-			txq->nb_tx_used = 0;
+			/* Record the last descriptor ID for the bucket we're leaving */
+			txq->rs_last_id[pkt_rs_idx] = tx_last;
 		}
 
 		if (ts_fns != NULL)

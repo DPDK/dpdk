@@ -134,6 +134,8 @@ struct ci_tx_queue {
 		struct ci_tx_entry *sw_ring; /* virtual address of SW ring */
 		struct ci_tx_entry_vec *sw_ring_vec;
 	};
+	/* Scalar TX path: Array tracking last_id at each RS threshold boundary */
+	uint16_t *rs_last_id;
 	uint16_t nb_tx_desc;           /* number of TX descriptors */
 	uint16_t tx_tail; /* current value of tail register */
 	uint16_t nb_tx_used; /* number of TX desc used since RS bit set */
@@ -147,6 +149,8 @@ struct ci_tx_queue {
 	uint16_t tx_free_thresh;
 	/* Number of TX descriptors to use before RS bit is set. */
 	uint16_t tx_rs_thresh;
+	/* Scalar TX path: log2 of tx_rs_thresh for efficient bit operations */
+	uint8_t log2_rs_thresh;
 	uint16_t port_id;  /* Device port identifier. */
 	uint16_t queue_id; /* TX queue index. */
 	uint16_t reg_idx;

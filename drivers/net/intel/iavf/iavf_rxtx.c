@@ -25,6 +25,7 @@
 #include <rte_ip.h>
 #include <rte_net.h>
 #include <rte_vect.h>
+#include <rte_bitops.h>
 #include <rte_vxlan.h>
 #include <rte_gtp.h>
 #include <rte_geneve.h>
@@ -192,6 +193,11 @@ check_tx_thresh(uint16_t nb_desc, uint16_t tx_rs_thresh,
 		PMD_INIT_LOG(ERR, "tx_rs_thresh (%u) must be a divisor of the "
 			     "number of TX descriptors (%u).",
 			     tx_rs_thresh, nb_desc);
+		return -EINVAL;
+	}
+	if (!rte_is_power_of_2(tx_rs_thresh)) {
+		PMD_INIT_LOG(ERR, "tx_rs_thresh must be a power of 2. (tx_rs_thresh=%u)",
+			     tx_rs_thresh);
 		return -EINVAL;
 	}
 
@@ -801,6 +807,7 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	txq->nb_tx_desc = nb_desc;
 	txq->tx_rs_thresh = tx_rs_thresh;
+	txq->log2_rs_thresh = rte_log2_u32(tx_rs_thresh);
 	txq->tx_free_thresh = tx_free_thresh;
 	txq->queue_id = queue_idx;
 	txq->port_id = dev->data->port_id;
@@ -822,6 +829,17 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 				   socket_id);
 	if (!txq->sw_ring) {
 		PMD_INIT_LOG(ERR, "Failed to allocate memory for SW TX ring");
+		rte_free(txq);
+		return -ENOMEM;
+	}
+
+	/* Allocate RS last_id tracking array */
+	uint16_t num_rs_buckets = nb_desc / tx_rs_thresh;
+	txq->rs_last_id = rte_zmalloc_socket(NULL, sizeof(txq->rs_last_id[0]) * num_rs_buckets,
+			RTE_CACHE_LINE_SIZE, socket_id);
+	if (txq->rs_last_id == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate memory for RS last_id array");
+		rte_free(txq->sw_ring);
 		rte_free(txq);
 		return -ENOMEM;
 	}
@@ -1050,6 +1068,7 @@ iavf_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 
 	ci_txq_release_all_mbufs(q, q->use_ctx);
 	rte_free(q->sw_ring);
+	rte_free(q->rs_last_id);
 	rte_memzone_free(q->mz);
 	rte_free(q);
 }

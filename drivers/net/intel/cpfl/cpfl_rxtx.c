@@ -5,6 +5,7 @@
 #include <ethdev_driver.h>
 #include <rte_net.h>
 #include <rte_vect.h>
+#include <rte_bitops.h>
 
 #include "cpfl_ethdev.h"
 #include "cpfl_rxtx.h"
@@ -330,6 +331,7 @@ cpfl_tx_queue_release(void *txq)
 
 	ci_txq_release_all_mbufs(q, q->vector_tx);
 	rte_free(q->sw_ring);
+	rte_free(q->rs_last_id);
 	rte_memzone_free(q->mz);
 	rte_free(cpfl_txq);
 }
@@ -572,6 +574,7 @@ cpfl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	txq->nb_tx_desc = nb_desc;
 	txq->tx_rs_thresh = tx_rs_thresh;
+	txq->log2_rs_thresh = rte_log2_u32(tx_rs_thresh);
 	txq->tx_free_thresh = tx_free_thresh;
 	txq->queue_id = vport->chunks_info.tx_start_qid + queue_idx;
 	txq->port_id = dev->data->port_id;
@@ -605,6 +608,17 @@ cpfl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		goto err_sw_ring_alloc;
 	}
 
+	/* Allocate RS last_id tracking array */
+	uint16_t num_rs_buckets = nb_desc / tx_rs_thresh;
+	txq->rs_last_id = rte_zmalloc_socket("cpfl tx rs_last_id",
+			sizeof(txq->rs_last_id[0]) * num_rs_buckets,
+			RTE_CACHE_LINE_SIZE, socket_id);
+	if (txq->rs_last_id == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate memory for RS last_id array");
+		ret = -ENOMEM;
+		goto err_rs_last_id_alloc;
+	}
+
 	if (!is_splitq) {
 		txq->ci_tx_ring = mz->addr;
 		idpf_qc_single_tx_queue_reset(txq);
@@ -628,6 +642,8 @@ cpfl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	return 0;
 
 err_complq_setup:
+	rte_free(txq->rs_last_id);
+err_rs_last_id_alloc:
 	rte_free(txq->sw_ring);
 err_sw_ring_alloc:
 	cpfl_dma_zone_release(mz);

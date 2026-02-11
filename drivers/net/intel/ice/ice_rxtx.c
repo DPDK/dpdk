@@ -5,6 +5,7 @@
 #include <ethdev_driver.h>
 #include <rte_net.h>
 #include <rte_vect.h>
+#include <rte_bitops.h>
 
 #include "ice_rxtx.h"
 #include "ice_rxtx_vec_common.h"
@@ -1589,6 +1590,13 @@ ice_tx_queue_setup(struct rte_eth_dev *dev,
 			     (int)queue_idx);
 		return -EINVAL;
 	}
+	if (!rte_is_power_of_2(tx_rs_thresh)) {
+		PMD_INIT_LOG(ERR, "tx_rs_thresh must be a power of 2. (tx_rs_thresh=%u port=%d queue=%d)",
+			     (unsigned int)tx_rs_thresh,
+			     (int)dev->data->port_id,
+			     (int)queue_idx);
+		return -EINVAL;
+	}
 	if (tx_rs_thresh > 1 && tx_conf->tx_thresh.wthresh != 0) {
 		PMD_INIT_LOG(ERR, "TX WTHRESH must be set to 0 if "
 			     "tx_rs_thresh is greater than 1. "
@@ -1631,6 +1639,7 @@ ice_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->mz = tz;
 	txq->nb_tx_desc = nb_desc;
 	txq->tx_rs_thresh = tx_rs_thresh;
+	txq->log2_rs_thresh = rte_log2_u32(tx_rs_thresh);
 	txq->tx_free_thresh = tx_free_thresh;
 	txq->queue_id = queue_idx;
 
@@ -1654,6 +1663,16 @@ ice_tx_queue_setup(struct rte_eth_dev *dev,
 	if (!txq->sw_ring) {
 		ice_tx_queue_release(txq);
 		PMD_INIT_LOG(ERR, "Failed to allocate memory for SW TX ring");
+		return -ENOMEM;
+	}
+
+	/* Allocate RS last_id tracking array */
+	uint16_t num_rs_buckets = nb_desc / tx_rs_thresh;
+	txq->rs_last_id = rte_zmalloc_socket(NULL, sizeof(txq->rs_last_id[0]) * num_rs_buckets,
+			RTE_CACHE_LINE_SIZE, socket_id);
+	if (txq->rs_last_id == NULL) {
+		ice_tx_queue_release(txq);
+		PMD_INIT_LOG(ERR, "Failed to allocate memory for RS last_id array");
 		return -ENOMEM;
 	}
 
@@ -1729,6 +1748,7 @@ ice_tx_queue_release(void *txq)
 
 	ci_txq_release_all_mbufs(q, false);
 	rte_free(q->sw_ring);
+	rte_free(q->rs_last_id);
 	if (q->tsq) {
 		rte_memzone_free(q->tsq->ts_mz);
 		rte_free(q->tsq);

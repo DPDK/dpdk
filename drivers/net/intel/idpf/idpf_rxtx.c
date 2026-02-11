@@ -447,6 +447,7 @@ idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	txq->nb_tx_desc = nb_desc;
 	txq->tx_rs_thresh = tx_rs_thresh;
+	txq->log2_rs_thresh = rte_log2_u32(tx_rs_thresh);
 	txq->tx_free_thresh = tx_free_thresh;
 	txq->queue_id = vport->chunks_info.tx_start_qid + queue_idx;
 	txq->port_id = dev->data->port_id;
@@ -480,6 +481,15 @@ idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		goto err_sw_ring_alloc;
 	}
 
+	txq->rs_last_id = rte_zmalloc_socket("idpf tx rs_last_id",
+			sizeof(txq->rs_last_id[0]) * (nb_desc >> txq->log2_rs_thresh),
+			RTE_CACHE_LINE_SIZE, socket_id);
+	if (txq->rs_last_id == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate memory for TX RS tracking");
+		ret = -ENOMEM;
+		goto err_rs_last_id_alloc;
+	}
+
 	if (!is_splitq) {
 		txq->ci_tx_ring = mz->addr;
 		idpf_qc_single_tx_queue_reset(txq);
@@ -502,6 +512,8 @@ idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	return 0;
 
 err_complq_setup:
+	rte_free(txq->rs_last_id);
+err_rs_last_id_alloc:
 	rte_free(txq->sw_ring);
 err_sw_ring_alloc:
 	idpf_dma_zone_release(mz);

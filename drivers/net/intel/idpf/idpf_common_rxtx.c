@@ -5,6 +5,7 @@
 #include <eal_export.h>
 #include <rte_mbuf_dyn.h>
 #include <rte_errno.h>
+#include <rte_bitops.h>
 
 #include "idpf_common_rxtx.h"
 #include "idpf_common_device.h"
@@ -71,6 +72,11 @@ idpf_qc_tx_thresh_check(uint16_t nb_desc, uint16_t tx_rs_thresh,
 		DRV_LOG(ERR, "tx_rs_thresh (%u) must be a divisor of the "
 			"number of TX descriptors (%u).",
 			tx_rs_thresh, nb_desc);
+		return -EINVAL;
+	}
+	if (!rte_is_power_of_2(tx_rs_thresh)) {
+		DRV_LOG(ERR, "tx_rs_thresh must be a power of 2. (tx_rs_thresh=%u)",
+			tx_rs_thresh);
 		return -EINVAL;
 	}
 
@@ -333,6 +339,7 @@ idpf_qc_tx_queue_release(void *txq)
 	}
 
 	ci_txq_release_all_mbufs(q, false);
+	rte_free(q->rs_last_id);
 	rte_free(q->sw_ring);
 	rte_memzone_free(q->mz);
 	rte_free(q);
