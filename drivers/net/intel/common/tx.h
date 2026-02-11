@@ -70,6 +70,12 @@ enum ci_tx_l2tag1_field {
 /* Common maximum data per TX descriptor */
 #define CI_MAX_DATA_PER_TXD     (CI_TXD_QW1_TX_BUF_SZ_M >> CI_TXD_QW1_TX_BUF_SZ_S)
 
+/* Common TX maximum burst size for chunked transmission in simple paths */
+#define CI_TX_MAX_BURST 32
+
+/* Common TX descriptor command flags for simple transmit */
+#define CI_TX_DESC_CMD_DEFAULT (CI_TX_DESC_CMD_ICRC | CI_TX_DESC_CMD_EOP)
+
 /* Checksum offload mask to identify packets requesting offload */
 #define CI_TX_CKSUM_OFFLOAD_MASK (RTE_MBUF_F_TX_IP_CKSUM |		 \
 				   RTE_MBUF_F_TX_L4_MASK |		 \

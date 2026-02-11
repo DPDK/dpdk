@@ -46,8 +46,6 @@
 
 #define ICE_SUPPORT_CHAIN_NUM 5
 
-#define ICE_TD_CMD                      CI_TX_DESC_CMD_EOP
-
 #define ICE_VPMD_RX_BURST            CI_VPMD_RX_BURST
 #define ICE_VPMD_TX_BURST            32
 #define ICE_VPMD_RXQ_REARM_THRESH    CI_VPMD_RX_REARM_THRESH

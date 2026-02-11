@@ -12,6 +12,66 @@
 /* depends on common Tx definitions. */
 #include "tx.h"
 
+/* Populate 4 descriptors with data from 4 mbufs */
+static inline void
+ci_tx_fill_hw_ring_tx4(volatile struct ci_tx_desc *txdp, struct rte_mbuf **pkts)
+{
+	uint64_t dma_addr;
+	uint32_t i;
+
+	for (i = 0; i < 4; i++, txdp++, pkts++) {
+		dma_addr = rte_mbuf_data_iova(*pkts);
+		txdp->buffer_addr = rte_cpu_to_le_64(dma_addr);
+		txdp->cmd_type_offset_bsz =
+			rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DATA |
+				((uint64_t)CI_TX_DESC_CMD_DEFAULT << CI_TXD_QW1_CMD_S) |
+				((uint64_t)(*pkts)->data_len << CI_TXD_QW1_TX_BUF_SZ_S));
+	}
+}
+
+/* Populate 1 descriptor with data from 1 mbuf */
+static inline void
+ci_tx_fill_hw_ring_tx1(volatile struct ci_tx_desc *txdp, struct rte_mbuf **pkts)
+{
+	uint64_t dma_addr;
+
+	dma_addr = rte_mbuf_data_iova(*pkts);
+	txdp->buffer_addr = rte_cpu_to_le_64(dma_addr);
+	txdp->cmd_type_offset_bsz =
+		rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DATA |
+			((uint64_t)CI_TX_DESC_CMD_DEFAULT << CI_TXD_QW1_CMD_S) |
+			((uint64_t)(*pkts)->data_len << CI_TXD_QW1_TX_BUF_SZ_S));
+}
+
+/* Fill hardware descriptor ring with mbuf data */
+static inline void
+ci_tx_fill_hw_ring(struct ci_tx_queue *txq, struct rte_mbuf **pkts,
+		   uint16_t nb_pkts)
+{
+	volatile struct ci_tx_desc *txdp = &txq->ci_tx_ring[txq->tx_tail];
+	struct ci_tx_entry *txep = &txq->sw_ring[txq->tx_tail];
+	const int N_PER_LOOP = 4;
+	const int N_PER_LOOP_MASK = N_PER_LOOP - 1;
+	int mainpart, leftover;
+	int i, j;
+
+	mainpart = nb_pkts & ((uint32_t)~N_PER_LOOP_MASK);
+	leftover = nb_pkts & ((uint32_t)N_PER_LOOP_MASK);
+	for (i = 0; i < mainpart; i += N_PER_LOOP) {
+		for (j = 0; j < N_PER_LOOP; ++j)
+			(txep + i + j)->mbuf = *(pkts + i + j);
+		ci_tx_fill_hw_ring_tx4(txdp + i, pkts + i);
+	}
+
+	if (unlikely(leftover > 0)) {
+		for (i = 0; i < leftover; ++i) {
+			(txep + mainpart + i)->mbuf = *(pkts + mainpart + i);
+			ci_tx_fill_hw_ring_tx1(txdp + mainpart + i,
+					       pkts + mainpart + i);
+		}
+	}
+}
+
 /*
  * Common transmit descriptor cleanup function for Intel drivers.
  *

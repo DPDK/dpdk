@@ -47,9 +47,6 @@
 #define I40E_RX_DESC_EXT_STATUS_FLEXBL_MASK   0x03
 #define I40E_RX_DESC_EXT_STATUS_FLEXBL_FLEX   0x01
 
-#define I40E_TD_CMD (CI_TX_DESC_CMD_ICRC |\
-		     CI_TX_DESC_CMD_EOP)
-
 enum i40e_header_split_mode {
 	i40e_header_split_none = 0,
 	i40e_header_split_enabled = 1,
