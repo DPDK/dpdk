@@ -134,6 +134,24 @@ typedef uint16_t (*ci_get_ctx_desc_fn)(uint64_t ol_flags, const struct rte_mbuf 
 		const union ci_tx_offload *tx_offload, const struct ci_tx_queue *txq,
 		uint64_t *qw0, uint64_t *qw1);
 
+/* gets IPsec descriptor information and returns number of descriptors needed (0 or 1) */
+typedef uint16_t (*get_ipsec_desc_t)(const struct rte_mbuf *mbuf,
+		const struct ci_tx_queue *txq,
+		void **ipsec_metadata,
+		uint64_t *qw0,
+		uint64_t *qw1);
+/* calculates segment length for IPsec + TSO combinations */
+typedef uint16_t (*calc_ipsec_segment_len_t)(const struct rte_mbuf *mb_seg,
+		uint64_t ol_flags,
+		const void *ipsec_metadata,
+		uint16_t tlen);
+
+/** IPsec descriptor operations for drivers that support inline IPsec crypto. */
+struct ci_ipsec_ops {
+	get_ipsec_desc_t get_ipsec_desc;
+	calc_ipsec_segment_len_t calc_segment_len;
+};
+
 /* gets current timestamp tail index */
 typedef uint16_t (*get_ts_tail_t)(struct ci_tx_queue *txq);
 /* writes a timestamp descriptor and returns new tail index */
@@ -153,6 +171,7 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 	     struct rte_mbuf **tx_pkts,
 	     uint16_t nb_pkts,
 	     ci_get_ctx_desc_fn get_ctx_desc,
+	     const struct ci_ipsec_ops *ipsec_ops,
 	     const struct ci_timestamp_queue_fns *ts_fns)
 {
 	volatile struct ci_tx_desc *ci_tx_ring;
@@ -189,6 +208,9 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 		(void)ci_tx_xmit_cleanup(txq);
 
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
+		void *ipsec_md = NULL;
+		uint16_t nb_ipsec = 0;
+		uint64_t ipsec_qw0 = 0, ipsec_qw1 = 0;
 		uint64_t cd_qw0 = 0, cd_qw1 = 0;
 		tx_pkt = *tx_pkts++;
 
@@ -210,17 +232,22 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 		/* Calculate the number of context descriptors needed. */
 		nb_ctx = get_ctx_desc(ol_flags, tx_pkt, &tx_offload, txq, &cd_qw0, &cd_qw1);
 
+		/* Get IPsec descriptor information if IPsec ops provided */
+		if (ipsec_ops != NULL)
+			nb_ipsec = ipsec_ops->get_ipsec_desc(tx_pkt, txq, &ipsec_md,
+					&ipsec_qw0, &ipsec_qw1);
+
 		/* The number of descriptors that must be allocated for
 		 * a packet equals to the number of the segments of that
-		 * packet plus the number of context descriptor if needed.
+		 * packet plus the number of context and IPsec descriptors if needed.
 		 * Recalculate the needed tx descs when TSO enabled in case
 		 * the mbuf data size exceeds max data size that hw allows
 		 * per tx desc.
 		 */
 		if (ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG))
-			nb_used = (uint16_t)(ci_calc_pkt_desc(tx_pkt) + nb_ctx);
+			nb_used = (uint16_t)(ci_calc_pkt_desc(tx_pkt) + nb_ctx + nb_ipsec);
 		else
-			nb_used = (uint16_t)(tx_pkt->nb_segs + nb_ctx);
+			nb_used = (uint16_t)(tx_pkt->nb_segs + nb_ctx + nb_ipsec);
 		tx_last = (uint16_t)(tx_id + nb_used - 1);
 
 		/* Circular ring */
@@ -273,6 +300,26 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 			tx_id = txe->next_id;
 			txe = txn;
 		}
+
+		if (ipsec_ops != NULL && nb_ipsec > 0) {
+			/* Setup TX IPsec descriptor if required */
+			uint64_t *ipsec_txd = RTE_CAST_PTR(uint64_t *, &ci_tx_ring[tx_id]);
+
+			txn = &sw_ring[txe->next_id];
+			RTE_MBUF_PREFETCH_TO_FREE(txn->mbuf);
+			if (txe->mbuf) {
+				rte_pktmbuf_free_seg(txe->mbuf);
+				txe->mbuf = NULL;
+			}
+
+			ipsec_txd[0] = ipsec_qw0;
+			ipsec_txd[1] = ipsec_qw1;
+
+			txe->last_id = tx_last;
+			tx_id = txe->next_id;
+			txe = txn;
+		}
+
 		m_seg = tx_pkt;
 
 		do {
@@ -284,7 +331,12 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 			txe->mbuf = m_seg;
 
 			/* Setup TX Descriptor */
-			slen = m_seg->data_len;
+			/* Calculate segment length, using IPsec callback if provided */
+			if (ipsec_ops != NULL)
+				slen = ipsec_ops->calc_segment_len(m_seg, ol_flags, ipsec_md, 0);
+			else
+				slen = m_seg->data_len;
+
 			buf_dma_addr = rte_mbuf_data_iova(m_seg);
 
 			while ((ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)) &&
