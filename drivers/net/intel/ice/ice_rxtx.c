@@ -13,12 +13,6 @@
 #include "../common/rx_vec_x86.h"
 #endif
 
-#define ICE_TX_CKSUM_OFFLOAD_MASK (RTE_MBUF_F_TX_IP_CKSUM |		 \
-		RTE_MBUF_F_TX_L4_MASK |		 \
-		RTE_MBUF_F_TX_TCP_SEG |		 \
-		RTE_MBUF_F_TX_UDP_SEG |		 \
-		RTE_MBUF_F_TX_OUTER_IP_CKSUM)
-
 /**
  * The mbuf dynamic field pointer for protocol extraction metadata.
  */
@@ -3214,7 +3208,7 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/* Enable checksum offloading */
-		if (ol_flags & ICE_TX_CKSUM_OFFLOAD_MASK)
+		if (ol_flags & CI_TX_CKSUM_OFFLOAD_MASK)
 			ice_txd_enable_checksum(ol_flags, &td_cmd,
 						&td_offset, tx_offload);
 

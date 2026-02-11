@@ -53,6 +53,14 @@
 /* Common maximum data per TX descriptor */
 #define CI_MAX_DATA_PER_TXD     (CI_TXD_QW1_TX_BUF_SZ_M >> CI_TXD_QW1_TX_BUF_SZ_S)
 
+/* Checksum offload mask to identify packets requesting offload */
+#define CI_TX_CKSUM_OFFLOAD_MASK (RTE_MBUF_F_TX_IP_CKSUM |		 \
+				   RTE_MBUF_F_TX_L4_MASK |		 \
+				   RTE_MBUF_F_TX_TCP_SEG |		 \
+				   RTE_MBUF_F_TX_UDP_SEG |		 \
+				   RTE_MBUF_F_TX_OUTER_IP_CKSUM |	 \
+				   RTE_MBUF_F_TX_OUTER_UDP_CKSUM)
+
 /**
  * Common TX offload union for Intel drivers.
  * Supports both basic offloads (l2_len, l3_len, l4_len, tso_segsz) and

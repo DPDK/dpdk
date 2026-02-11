@@ -53,11 +53,6 @@
 #define I40E_TX_IEEE1588_TMST 0
 #endif
 
-#define I40E_TX_CKSUM_OFFLOAD_MASK (RTE_MBUF_F_TX_IP_CKSUM |		 \
-		RTE_MBUF_F_TX_L4_MASK |		 \
-		RTE_MBUF_F_TX_TCP_SEG |		 \
-		RTE_MBUF_F_TX_OUTER_IP_CKSUM)
-
 #define I40E_TX_OFFLOAD_MASK (RTE_MBUF_F_TX_OUTER_IPV4 |	\
 		RTE_MBUF_F_TX_OUTER_IPV6 |	\
 		RTE_MBUF_F_TX_IPV4 |		\
@@ -1171,7 +1166,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		td_cmd |= CI_TX_DESC_CMD_ICRC;
 
 		/* Enable checksum offloading */
-		if (ol_flags & I40E_TX_CKSUM_OFFLOAD_MASK)
+		if (ol_flags & CI_TX_CKSUM_OFFLOAD_MASK)
 			i40e_txd_enable_checksum(ol_flags, &td_cmd,
 						 &td_offset, tx_offload);
 
