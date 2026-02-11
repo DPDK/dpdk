@@ -377,4 +377,9 @@ ci_tx_path_select(const struct ci_tx_path_features *req_features,
 	return idx;
 }
 
+/* include the scalar functions at the end, so they can use the common definitions.
+ * This is done so drivers can use all functions just by including tx.h
+ */
+#include "tx_scalar.h"
+
 #endif /* _COMMON_INTEL_TX_H_ */
