@@ -364,6 +364,10 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 				txn = &sw_ring[txe->next_id];
 			}
 
+			/* fill the last descriptor with End of Packet (EOP) bit */
+			if (m_seg->next == NULL)
+				td_cmd |= CI_TX_DESC_CMD_EOP;
+
 			txd->buffer_addr = rte_cpu_to_le_64(buf_dma_addr);
 			txd->cmd_type_offset_bsz = rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DATA |
 				((uint64_t)td_cmd << CI_TXD_QW1_CMD_S) |
@@ -376,21 +380,17 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 			txe = txn;
 			m_seg = m_seg->next;
 		} while (m_seg);
-
-		/* fill the last descriptor with End of Packet (EOP) bit */
-		td_cmd |= CI_TX_DESC_CMD_EOP;
 		txq->nb_tx_used = (uint16_t)(txq->nb_tx_used + nb_used);
 		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_used);
 
 		/* set RS bit on the last descriptor of one packet */
 		if (txq->nb_tx_used >= txq->tx_rs_thresh) {
-			td_cmd |= CI_TX_DESC_CMD_RS;
+			txd->cmd_type_offset_bsz |=
+					rte_cpu_to_le_64(CI_TX_DESC_CMD_RS << CI_TXD_QW1_CMD_S);
 
 			/* Update txq RS bit counters */
 			txq->nb_tx_used = 0;
 		}
-		txd->cmd_type_offset_bsz |=
-				rte_cpu_to_le_64(((uint64_t)td_cmd) << CI_TXD_QW1_CMD_S);
 
 		if (ts_fns != NULL)
 			ts_id = ts_fns->write_ts_desc(txq, tx_pkt, tx_id, ts_id);
