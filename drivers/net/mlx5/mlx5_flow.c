@@ -1898,6 +1898,7 @@ mlx5_flow_rxq_dynf_set(struct rte_eth_dev *dev)
 				data->flow_meta_port_mask = priv->sh->dv_meta_mask;
 			}
 		}
+		data->mark = !!priv->mark_enabled;
 		data->mark_flag = mark_flag;
 	}
 }
