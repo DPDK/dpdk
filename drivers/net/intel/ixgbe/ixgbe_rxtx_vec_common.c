@@ -47,7 +47,6 @@ ixgbe_reset_tx_queue_vec(struct ci_tx_queue *txq)
 	txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 
 	txq->tx_tail = 0;
-	txq->nb_tx_used = 0;
 	/*
 	 * Always allow 1 descriptor to be un-allocated to avoid
 	 * a H/W race condition

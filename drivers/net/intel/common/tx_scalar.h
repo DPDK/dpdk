@@ -400,7 +400,6 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 			m_seg = m_seg->next;
 		} while (m_seg);
 end_pkt:
-		txq->nb_tx_used = (uint16_t)(txq->nb_tx_used + nb_used);
 		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_used);
 
 		/* Check if packet crosses into a new RS threshold bucket.

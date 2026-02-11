@@ -414,7 +414,6 @@ reset_tx_queue(struct ci_tx_queue *txq)
 	}
 
 	txq->tx_tail = 0;
-	txq->nb_tx_used = 0;
 
 	txq->last_desc_cleaned = txq->nb_tx_desc - 1;
 	txq->nb_tx_free = txq->nb_tx_desc - 1;

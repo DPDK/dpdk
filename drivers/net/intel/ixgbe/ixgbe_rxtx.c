@@ -708,12 +708,6 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 */
 		nb_used = (uint16_t)(tx_pkt->nb_segs + new_ctx);
 
-		if (txp != NULL &&
-				nb_used + txq->nb_tx_used >= txq->tx_rs_thresh)
-			/* set RS on the previous packet in the burst */
-			txp->read.cmd_type_len |=
-				rte_cpu_to_le_32(IXGBE_TXD_CMD_RS);
-
 		/*
 		 * The number of descriptors that must be allocated for a
 		 * packet is the number of segments of that packet, plus 1
@@ -912,7 +906,6 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * The last packet data descriptor needs End Of Packet (EOP)
 		 */
 		cmd_type_len |= IXGBE_TXD_CMD_EOP;
-		txq->nb_tx_used = (uint16_t)(txq->nb_tx_used + nb_used);
 		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_used);
 
 		/*
@@ -2551,7 +2544,6 @@ ixgbe_reset_tx_queue(struct ci_tx_queue *txq)
 	txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 
 	txq->tx_tail = 0;
-	txq->nb_tx_used = 0;
 	/*
 	 * Always allow 1 descriptor to be un-allocated to avoid
 	 * a H/W race condition

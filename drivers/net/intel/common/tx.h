@@ -138,7 +138,6 @@ struct ci_tx_queue {
 	uint16_t *rs_last_id;
 	uint16_t nb_tx_desc;           /* number of TX descriptors */
 	uint16_t tx_tail; /* current value of tail register */
-	uint16_t nb_tx_used; /* number of TX desc used since RS bit set */
 	/* index to last TX descriptor to have been cleaned */
 	uint16_t last_desc_cleaned;
 	/* Total number of TX descriptors ready to be allocated. */

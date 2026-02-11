@@ -224,7 +224,6 @@ idpf_qc_split_tx_descq_reset(struct ci_tx_queue *txq)
 	}
 
 	txq->tx_tail = 0;
-	txq->nb_tx_used = 0;
 
 	/* Use this as next to clean for split desc queue */
 	txq->last_desc_cleaned = 0;
@@ -284,7 +283,6 @@ idpf_qc_single_tx_queue_reset(struct ci_tx_queue *txq)
 	}
 
 	txq->tx_tail = 0;
-	txq->nb_tx_used = 0;
 
 	txq->last_desc_cleaned = txq->nb_tx_desc - 1;
 	txq->nb_tx_free = txq->nb_tx_desc - 1;
@@ -992,12 +990,12 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		txd->qw1.cmd_dtype |= IDPF_TXD_FLEX_FLOW_CMD_EOP;
 
 		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_used);
-		txq->nb_tx_used = (uint16_t)(txq->nb_tx_used + nb_used);
+		txq->rs_compl_count += nb_used;
 
-		if (txq->nb_tx_used >= 32) {
+		if (txq->rs_compl_count >= 32) {
 			txd->qw1.cmd_dtype |= IDPF_TXD_FLEX_FLOW_CMD_RE;
 			/* Update txq RE bit counters */
-			txq->nb_tx_used = 0;
+			txq->rs_compl_count = 0;
 		}
 	}
 
