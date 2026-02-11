@@ -3129,47 +3129,6 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	return ci_xmit_pkts(txq, tx_pkts, nb_pkts, CI_VLAN_IN_L2TAG1, get_context_desc, NULL, NULL);
 }
 
-static __rte_always_inline int
-ice_tx_free_bufs(struct ci_tx_queue *txq)
-{
-	struct ci_tx_entry *txep;
-	uint16_t i;
-
-	if ((txq->ci_tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
-	     rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M)) !=
-	    rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE))
-		return 0;
-
-	txep = &txq->sw_ring[txq->tx_next_dd - (txq->tx_rs_thresh - 1)];
-
-	struct rte_mempool *fast_free_mp =
-			likely(txq->fast_free_mp != (void *)UINTPTR_MAX) ?
-			txq->fast_free_mp :
-			(txq->fast_free_mp = txep[0].mbuf->pool);
-
-	if (fast_free_mp != NULL) {
-		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
-			rte_mempool_put(fast_free_mp, txep->mbuf);
-			txep->mbuf = NULL;
-		}
-	} else {
-		for (i = 0; i < txq->tx_rs_thresh; i++)
-			rte_prefetch0((txep + i)->mbuf);
-
-		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
-			rte_pktmbuf_free_seg(txep->mbuf);
-			txep->mbuf = NULL;
-		}
-	}
-
-	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + txq->tx_rs_thresh);
-	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + txq->tx_rs_thresh);
-	if (txq->tx_next_dd >= txq->nb_tx_desc)
-		txq->tx_next_dd = (uint16_t)(txq->tx_rs_thresh - 1);
-
-	return txq->tx_rs_thresh;
-}
-
 static int
 ice_tx_done_cleanup_full(struct ci_tx_queue *txq,
 			uint32_t free_cnt)
@@ -3259,7 +3218,7 @@ ice_tx_done_cleanup_simple(struct ci_tx_queue *txq,
 		if (txq->nb_tx_desc - txq->nb_tx_free < txq->tx_rs_thresh)
 			break;
 
-		n = ice_tx_free_bufs(txq);
+		n = ci_tx_free_bufs(txq);
 
 		if (n == 0)
 			break;
@@ -3300,7 +3259,7 @@ tx_xmit_pkts(struct ci_tx_queue *txq,
 	 * descriptor, free the associated buffer.
 	 */
 	if (txq->nb_tx_free < txq->tx_free_thresh)
-		ice_tx_free_bufs(txq);
+		ci_tx_free_bufs(txq);
 
 	/* Use available descriptor only */
 	nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);

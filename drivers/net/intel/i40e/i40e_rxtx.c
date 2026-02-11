@@ -1010,65 +1010,6 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			get_context_desc, NULL, NULL);
 }
 
-static __rte_always_inline int
-i40e_tx_free_bufs(struct ci_tx_queue *txq)
-{
-	struct ci_tx_entry *txep;
-	const uint16_t tx_rs_thresh = txq->tx_rs_thresh;
-	uint16_t i, j;
-	struct rte_mbuf *free[I40E_TX_MAX_FREE_BUF_SZ];
-	const uint16_t k = RTE_ALIGN_FLOOR(tx_rs_thresh, I40E_TX_MAX_FREE_BUF_SZ);
-	const uint16_t m = tx_rs_thresh % I40E_TX_MAX_FREE_BUF_SZ;
-
-	if ((txq->ci_tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
-			rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M)) !=
-			rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE))
-		return 0;
-
-	txep = &txq->sw_ring[txq->tx_next_dd - (tx_rs_thresh - 1)];
-
-	struct rte_mempool *fast_free_mp =
-			likely(txq->fast_free_mp != (void *)UINTPTR_MAX) ?
-			txq->fast_free_mp :
-			(txq->fast_free_mp = txep[0].mbuf->pool);
-
-	if (fast_free_mp != NULL) {
-		if (k) {
-			for (j = 0; j != k; j += I40E_TX_MAX_FREE_BUF_SZ) {
-				for (i = 0; i < I40E_TX_MAX_FREE_BUF_SZ; ++i, ++txep) {
-					free[i] = txep->mbuf;
-					txep->mbuf = NULL;
-				}
-				rte_mbuf_raw_free_bulk(fast_free_mp, free,
-						I40E_TX_MAX_FREE_BUF_SZ);
-			}
-		}
-
-		if (m) {
-			for (i = 0; i < m; ++i, ++txep) {
-				free[i] = txep->mbuf;
-				txep->mbuf = NULL;
-			}
-			rte_mbuf_raw_free_bulk(fast_free_mp, free, m);
-		}
-	} else {
-		for (i = 0; i < tx_rs_thresh; i++)
-			rte_prefetch0((txep + i)->mbuf);
-
-		for (i = 0; i < tx_rs_thresh; ++i, ++txep) {
-			rte_pktmbuf_free_seg(txep->mbuf);
-			txep->mbuf = NULL;
-		}
-	}
-
-	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + tx_rs_thresh);
-	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + tx_rs_thresh);
-	if (txq->tx_next_dd >= txq->nb_tx_desc)
-		txq->tx_next_dd = (uint16_t)(tx_rs_thresh - 1);
-
-	return tx_rs_thresh;
-}
-
 static inline uint16_t
 tx_xmit_pkts(struct ci_tx_queue *txq,
 	     struct rte_mbuf **tx_pkts,
@@ -1083,7 +1024,7 @@ tx_xmit_pkts(struct ci_tx_queue *txq,
 	 * descriptor, free the associated buffer.
 	 */
 	if (txq->nb_tx_free < txq->tx_free_thresh)
-		i40e_tx_free_bufs(txq);
+		ci_tx_free_bufs(txq);
 
 	/* Use available descriptor only */
 	nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
@@ -2508,7 +2449,7 @@ i40e_tx_done_cleanup_simple(struct ci_tx_queue *txq,
 		if (txq->nb_tx_desc - txq->nb_tx_free < txq->tx_rs_thresh)
 			break;
 
-		n = i40e_tx_free_bufs(txq);
+		n = ci_tx_free_bufs(txq);
 
 		if (n == 0)
 			break;

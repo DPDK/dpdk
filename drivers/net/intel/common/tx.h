@@ -73,6 +73,9 @@ enum ci_tx_l2tag1_field {
 /* Common TX maximum burst size for chunked transmission in simple paths */
 #define CI_TX_MAX_BURST 32
 
+/* Common TX maximum free buffer size for batched bulk freeing */
+#define CI_TX_MAX_FREE_BUF_SZ 64
+
 /* Common TX descriptor command flags for simple transmit */
 #define CI_TX_DESC_CMD_DEFAULT (CI_TX_DESC_CMD_ICRC | CI_TX_DESC_CMD_EOP)
 

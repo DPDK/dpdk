@@ -72,6 +72,64 @@ ci_tx_fill_hw_ring(struct ci_tx_queue *txq, struct rte_mbuf **pkts,
 	}
 }
 
+/* Free transmitted mbufs from descriptor ring with bulk freeing for Tx simple path */
+static __rte_always_inline int
+ci_tx_free_bufs(struct ci_tx_queue *txq)
+{
+	const uint16_t rs_thresh = txq->tx_rs_thresh;
+	const uint16_t k = RTE_ALIGN_FLOOR(rs_thresh, CI_TX_MAX_FREE_BUF_SZ);
+	const uint16_t m = rs_thresh % CI_TX_MAX_FREE_BUF_SZ;
+	struct rte_mbuf *free[CI_TX_MAX_FREE_BUF_SZ];
+	struct ci_tx_entry *txep;
+
+	if ((txq->ci_tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
+			rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M)) !=
+			rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE))
+		return 0;
+
+	txep = &txq->sw_ring[txq->tx_next_dd - (rs_thresh - 1)];
+
+	struct rte_mempool *fast_free_mp =
+			likely(txq->fast_free_mp != (void *)UINTPTR_MAX) ?
+				txq->fast_free_mp :
+				(txq->fast_free_mp = txep[0].mbuf->pool);
+
+	if (fast_free_mp) {
+		if (k) {
+			for (uint16_t j = 0; j != k; j += CI_TX_MAX_FREE_BUF_SZ) {
+				for (uint16_t i = 0; i < CI_TX_MAX_FREE_BUF_SZ; ++i, ++txep) {
+					free[i] = txep->mbuf;
+					txep->mbuf = NULL;
+				}
+				rte_mbuf_raw_free_bulk(fast_free_mp, free, CI_TX_MAX_FREE_BUF_SZ);
+			}
+		}
+
+		if (m) {
+			for (uint16_t i = 0; i < m; ++i, ++txep) {
+				free[i] = txep->mbuf;
+				txep->mbuf = NULL;
+			}
+			rte_mbuf_raw_free_bulk(fast_free_mp, free, m);
+		}
+	} else {
+		for (uint16_t i = 0; i < rs_thresh; ++i, ++txep)
+			rte_prefetch0((txep + i)->mbuf);
+
+		for (uint16_t i = 0; i < rs_thresh; ++i, ++txep) {
+			rte_pktmbuf_free_seg(txep->mbuf);
+			txep->mbuf = NULL;
+		}
+	}
+
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + rs_thresh);
+	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + rs_thresh);
+	if (txq->tx_next_dd >= txq->nb_tx_desc)
+		txq->tx_next_dd = (uint16_t)(rs_thresh - 1);
+
+	return rs_thresh;
+}
+
 /*
  * Common transmit descriptor cleanup function for Intel drivers.
  *
