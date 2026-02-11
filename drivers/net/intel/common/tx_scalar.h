@@ -218,7 +218,8 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 		ol_flags = tx_pkt->ol_flags;
 		td_cmd = CI_TX_DESC_CMD_ICRC;
 		td_tag = 0;
-		l2_len = ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK ?
+		l2_len = (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK &&
+					!(ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD)) ?
 				tx_pkt->outer_l2_len : tx_pkt->l2_len;
 		td_offset = (l2_len >> 1) << CI_TX_DESC_LEN_MACLEN_S;
 
