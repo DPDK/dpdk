@@ -41,10 +41,7 @@ typedef void (*ice_tx_release_mbufs_t)(struct ci_tx_queue *txq);
 
 struct ci_tx_queue {
 	union { /* TX ring virtual address */
-		volatile struct ci_tx_desc *i40e_tx_ring;
-		volatile struct ci_tx_desc *iavf_tx_ring;
-		volatile struct ci_tx_desc *ice_tx_ring;
-		volatile struct ci_tx_desc *idpf_tx_ring;
+		volatile struct ci_tx_desc *ci_tx_ring;
 		volatile union ixgbe_adv_tx_desc *ixgbe_tx_ring;
 	};
 	volatile uint8_t *qtx_tail;               /* register address of tail */

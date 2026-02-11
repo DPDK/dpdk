@@ -11,7 +11,7 @@
 static inline int
 ice_tx_desc_done(struct ci_tx_queue *txq, uint16_t idx)
 {
-	return (txq->ice_tx_ring[idx].cmd_type_offset_bsz &
+	return (txq->ci_tx_ring[idx].cmd_type_offset_bsz &
 			rte_cpu_to_le_64(ICE_TXD_QW1_DTYPE_M)) ==
 				rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DESC_DONE);
 }

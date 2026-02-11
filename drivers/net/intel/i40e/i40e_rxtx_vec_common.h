@@ -15,7 +15,7 @@
 static inline int
 i40e_tx_desc_done(struct ci_tx_queue *txq, uint16_t idx)
 {
-	return (txq->i40e_tx_ring[idx].cmd_type_offset_bsz &
+	return (txq->ci_tx_ring[idx].cmd_type_offset_bsz &
 			rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) ==
 				rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE);
 }
