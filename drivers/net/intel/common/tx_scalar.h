@@ -12,35 +12,17 @@
 /* depends on common Tx definitions. */
 #include "tx.h"
 
-/* Populate 4 descriptors with data from 4 mbufs */
 static inline void
-ci_tx_fill_hw_ring_tx4(volatile struct ci_tx_desc *txdp, struct rte_mbuf **pkts)
+write_txd(volatile void *txd, uint64_t qw0, uint64_t qw1)
 {
-	uint64_t dma_addr;
-	uint32_t i;
-
-	for (i = 0; i < 4; i++, txdp++, pkts++) {
-		dma_addr = rte_mbuf_data_iova(*pkts);
-		txdp->buffer_addr = rte_cpu_to_le_64(dma_addr);
-		txdp->cmd_type_offset_bsz =
-			rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DATA |
-				((uint64_t)CI_TX_DESC_CMD_DEFAULT << CI_TXD_QW1_CMD_S) |
-				((uint64_t)(*pkts)->data_len << CI_TXD_QW1_TX_BUF_SZ_S));
-	}
-}
-
-/* Populate 1 descriptor with data from 1 mbuf */
-static inline void
-ci_tx_fill_hw_ring_tx1(volatile struct ci_tx_desc *txdp, struct rte_mbuf **pkts)
-{
-	uint64_t dma_addr;
-
-	dma_addr = rte_mbuf_data_iova(*pkts);
-	txdp->buffer_addr = rte_cpu_to_le_64(dma_addr);
-	txdp->cmd_type_offset_bsz =
-		rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DATA |
-			((uint64_t)CI_TX_DESC_CMD_DEFAULT << CI_TXD_QW1_CMD_S) |
-			((uint64_t)(*pkts)->data_len << CI_TXD_QW1_TX_BUF_SZ_S));
+	/* we use an aligned structure and cast away the volatile to allow the compiler
+	 * to opportunistically optimize the two 64-bit writes as a single 128-bit write.
+	 */
+	struct __rte_aligned(16) txdesc {
+		uint64_t qw0, qw1;
+	} *txdesc = RTE_CAST_PTR(struct txdesc *, txd);
+	txdesc->qw0 = rte_cpu_to_le_64(qw0);
+	txdesc->qw1 = rte_cpu_to_le_64(qw1);
 }
 
 /* Fill hardware descriptor ring with mbuf data */
@@ -60,14 +42,22 @@ ci_tx_fill_hw_ring(struct ci_tx_queue *txq, struct rte_mbuf **pkts,
 	for (i = 0; i < mainpart; i += N_PER_LOOP) {
 		for (j = 0; j < N_PER_LOOP; ++j)
 			(txep + i + j)->mbuf = *(pkts + i + j);
-		ci_tx_fill_hw_ring_tx4(txdp + i, pkts + i);
+		for (j = 0; j < N_PER_LOOP; ++j)
+			write_txd(txdp + i + j, rte_mbuf_data_iova(*(pkts + i + j)),
+				CI_TX_DESC_DTYPE_DATA |
+				((uint64_t)CI_TX_DESC_CMD_DEFAULT << CI_TXD_QW1_CMD_S) |
+				((uint64_t)(*(pkts + i + j))->data_len << CI_TXD_QW1_TX_BUF_SZ_S));
 	}
 
 	if (unlikely(leftover > 0)) {
 		for (i = 0; i < leftover; ++i) {
-			(txep + mainpart + i)->mbuf = *(pkts + mainpart + i);
-			ci_tx_fill_hw_ring_tx1(txdp + mainpart + i,
-					       pkts + mainpart + i);
+			uint16_t idx = mainpart + i;
+			(txep + idx)->mbuf = *(pkts + idx);
+			write_txd(txdp + idx, rte_mbuf_data_iova(*(pkts + idx)),
+				CI_TX_DESC_DTYPE_DATA |
+				((uint64_t)CI_TX_DESC_CMD_DEFAULT << CI_TXD_QW1_CMD_S) |
+				((uint64_t)(*(pkts + idx))->data_len << CI_TXD_QW1_TX_BUF_SZ_S));
+
 		}
 	}
 }
@@ -355,19 +345,6 @@ struct ci_timestamp_queue_fns {
 	write_ts_desc_t write_ts_desc;
 	write_ts_tail_t write_ts_tail;
 };
-
-static inline void
-write_txd(volatile void *txd, uint64_t qw0, uint64_t qw1)
-{
-	/* we use an aligned structure and cast away the volatile to allow the compiler
-	 * to opportunistically optimize the two 64-bit writes as a single 128-bit write.
-	 */
-	struct __rte_aligned(16) txdesc {
-		uint64_t qw0, qw1;
-	} *txdesc = RTE_CAST_PTR(struct txdesc *, txd);
-	txdesc->qw0 = rte_cpu_to_le_64(qw0);
-	txdesc->qw1 = rte_cpu_to_le_64(qw1);
-}
 
 static inline uint16_t
 ci_xmit_pkts(struct ci_tx_queue *txq,
