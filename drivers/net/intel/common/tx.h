@@ -45,6 +45,23 @@
 #define CI_TX_CTX_DESC_TSYN             0x02
 #define CI_TX_CTX_DESC_IL2TAG2          0x04
 
+/**
+ * L2TAG1 Field Source Selection
+ * Specifies which mbuf VLAN field to use for the L2TAG1 field in data descriptors.
+ * Context descriptor VLAN handling (L2TAG2) is managed by driver-specific callbacks.
+ */
+enum ci_tx_l2tag1_field {
+	/** For VLAN (not QinQ), use L2Tag1 field in data desc */
+	CI_VLAN_IN_L2TAG1,
+
+	/** For VLAN (not QinQ), use L2Tag2 field in ctx desc.
+	 * NOTE: When set, drivers must set the VLAN tag in the context
+	 * descriptor callback function, rather than relying on the
+	 * common Tx code to insert it.
+	 */
+	CI_VLAN_IN_L2TAG2,
+};
+
 /* Common TX Descriptor Length Field Shifts */
 #define CI_TX_DESC_LEN_MACLEN_S         0  /* 7 BITS */
 #define CI_TX_DESC_LEN_IPLEN_S          7  /* 7 BITS */
