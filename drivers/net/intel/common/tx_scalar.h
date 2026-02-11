@@ -25,6 +25,20 @@ write_txd(volatile void *txd, uint64_t qw0, uint64_t qw1)
 	txdesc->qw1 = rte_cpu_to_le_64(qw1);
 }
 
+static __rte_always_inline int
+ci_tx_desc_done_simple(struct ci_tx_queue *txq, uint16_t idx)
+{
+	return (txq->ci_tx_ring[idx].cmd_type_offset_bsz & rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M)) ==
+			rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE);
+}
+
+/* Free transmitted mbufs using vector-style cleanup */
+static __rte_always_inline int
+ci_tx_free_bufs_simple(struct ci_tx_queue *txq)
+{
+	return ci_tx_free_bufs_vec(txq, ci_tx_desc_done_simple, false);
+}
+
 /* Fill hardware descriptor ring with mbuf data (simple path) */
 static inline void
 ci_tx_fill_hw_ring_simple(volatile struct ci_tx_desc *txdp, struct rte_mbuf **pkts,
@@ -56,64 +70,6 @@ ci_tx_fill_hw_ring_simple(volatile struct ci_tx_desc *txdp, struct rte_mbuf **pk
 	}
 }
 
-/* Free transmitted mbufs from descriptor ring with bulk freeing for Tx simple path */
-static __rte_always_inline int
-ci_tx_free_bufs(struct ci_tx_queue *txq)
-{
-	const uint16_t rs_thresh = txq->tx_rs_thresh;
-	const uint16_t k = RTE_ALIGN_FLOOR(rs_thresh, CI_TX_MAX_FREE_BUF_SZ);
-	const uint16_t m = rs_thresh % CI_TX_MAX_FREE_BUF_SZ;
-	struct rte_mbuf *free[CI_TX_MAX_FREE_BUF_SZ];
-	struct ci_tx_entry_vec *txep;
-
-	if ((txq->ci_tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
-			rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M)) !=
-			rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE))
-		return 0;
-
-	txep = &txq->sw_ring_vec[txq->tx_next_dd - (rs_thresh - 1)];
-
-	struct rte_mempool *fast_free_mp =
-			likely(txq->fast_free_mp != (void *)UINTPTR_MAX) ?
-				txq->fast_free_mp :
-				(txq->fast_free_mp = txep[0].mbuf->pool);
-
-	if (fast_free_mp) {
-		if (k) {
-			for (uint16_t j = 0; j != k; j += CI_TX_MAX_FREE_BUF_SZ) {
-				for (uint16_t i = 0; i < CI_TX_MAX_FREE_BUF_SZ; ++i, ++txep) {
-					free[i] = txep->mbuf;
-					txep->mbuf = NULL;
-				}
-				rte_mbuf_raw_free_bulk(fast_free_mp, free, CI_TX_MAX_FREE_BUF_SZ);
-			}
-		}
-
-		if (m) {
-			for (uint16_t i = 0; i < m; ++i, ++txep) {
-				free[i] = txep->mbuf;
-				txep->mbuf = NULL;
-			}
-			rte_mbuf_raw_free_bulk(fast_free_mp, free, m);
-		}
-	} else {
-		for (uint16_t i = 0; i < rs_thresh; ++i, ++txep)
-			rte_prefetch0((txep + i)->mbuf);
-
-		for (uint16_t i = 0; i < rs_thresh; ++i, ++txep) {
-			rte_pktmbuf_free_seg(txep->mbuf);
-			txep->mbuf = NULL;
-		}
-	}
-
-	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + rs_thresh);
-	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + rs_thresh);
-	if (txq->tx_next_dd >= txq->nb_tx_desc)
-		txq->tx_next_dd = (uint16_t)(rs_thresh - 1);
-
-	return rs_thresh;
-}
-
 /* Simple burst transmit for descriptor-based simple Tx path
  *
  * Transmits a burst of packets by filling hardware descriptors with mbuf
@@ -139,7 +95,7 @@ ci_xmit_burst_simple(struct ci_tx_queue *txq,
 	 * descriptor, free the associated buffer.
 	 */
 	if (txq->nb_tx_free < txq->tx_free_thresh)
-		ci_tx_free_bufs(txq);
+		ci_tx_free_bufs_simple(txq);
 
 	/* Use available descriptor only */
 	nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
