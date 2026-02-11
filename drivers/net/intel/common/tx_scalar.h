@@ -25,13 +25,11 @@ write_txd(volatile void *txd, uint64_t qw0, uint64_t qw1)
 	txdesc->qw1 = rte_cpu_to_le_64(qw1);
 }
 
-/* Fill hardware descriptor ring with mbuf data */
+/* Fill hardware descriptor ring with mbuf data (simple path) */
 static inline void
-ci_tx_fill_hw_ring(struct ci_tx_queue *txq, struct rte_mbuf **pkts,
-		   uint16_t nb_pkts)
+ci_tx_fill_hw_ring_simple(volatile struct ci_tx_desc *txdp, struct rte_mbuf **pkts,
+			  uint16_t nb_pkts)
 {
-	volatile struct ci_tx_desc *txdp = &txq->ci_tx_ring[txq->tx_tail];
-	struct ci_tx_entry *txep = &txq->sw_ring[txq->tx_tail];
 	const int N_PER_LOOP = 4;
 	const int N_PER_LOOP_MASK = N_PER_LOOP - 1;
 	int mainpart, leftover;
@@ -40,8 +38,6 @@ ci_tx_fill_hw_ring(struct ci_tx_queue *txq, struct rte_mbuf **pkts,
 	mainpart = nb_pkts & ((uint32_t)~N_PER_LOOP_MASK);
 	leftover = nb_pkts & ((uint32_t)N_PER_LOOP_MASK);
 	for (i = 0; i < mainpart; i += N_PER_LOOP) {
-		for (j = 0; j < N_PER_LOOP; ++j)
-			(txep + i + j)->mbuf = *(pkts + i + j);
 		for (j = 0; j < N_PER_LOOP; ++j)
 			write_txd(txdp + i + j, rte_mbuf_data_iova(*(pkts + i + j)),
 				CI_TX_DESC_DTYPE_DATA |
@@ -52,12 +48,10 @@ ci_tx_fill_hw_ring(struct ci_tx_queue *txq, struct rte_mbuf **pkts,
 	if (unlikely(leftover > 0)) {
 		for (i = 0; i < leftover; ++i) {
 			uint16_t idx = mainpart + i;
-			(txep + idx)->mbuf = *(pkts + idx);
 			write_txd(txdp + idx, rte_mbuf_data_iova(*(pkts + idx)),
 				CI_TX_DESC_DTYPE_DATA |
 				((uint64_t)CI_TX_DESC_CMD_DEFAULT << CI_TXD_QW1_CMD_S) |
 				((uint64_t)(*(pkts + idx))->data_len << CI_TXD_QW1_TX_BUF_SZ_S));
-
 		}
 	}
 }
@@ -134,6 +128,9 @@ ci_xmit_burst_simple(struct ci_tx_queue *txq,
 		     uint16_t nb_pkts)
 {
 	volatile struct ci_tx_desc *txr = txq->ci_tx_ring;
+	volatile struct ci_tx_desc *txdp;
+	struct ci_tx_entry *txep;
+	uint16_t tx_id;
 	uint16_t n = 0;
 
 	/**
@@ -149,23 +146,41 @@ ci_xmit_burst_simple(struct ci_tx_queue *txq,
 	if (unlikely(!nb_pkts))
 		return 0;
 
+	tx_id = txq->tx_tail;
+	txdp = &txr[tx_id];
+	txep = &txq->sw_ring[tx_id];
+
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
-	if ((txq->tx_tail + nb_pkts) > txq->nb_tx_desc) {
-		n = (uint16_t)(txq->nb_tx_desc - txq->tx_tail);
-		ci_tx_fill_hw_ring(txq, tx_pkts, n);
+
+	if ((tx_id + nb_pkts) > txq->nb_tx_desc) {
+		n = (uint16_t)(txq->nb_tx_desc - tx_id);
+
+		/* Store mbufs in backlog */
+		ci_tx_backlog_entry(txep, tx_pkts, n);
+
+		/* Write descriptors to HW ring */
+		ci_tx_fill_hw_ring_simple(txdp, tx_pkts, n);
+
 		txr[txq->tx_next_rs].cmd_type_offset_bsz |=
 			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) <<
 					  CI_TXD_QW1_CMD_S);
 		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
-		txq->tx_tail = 0;
+
+		tx_id = 0;
+		txdp = &txr[tx_id];
+		txep = &txq->sw_ring[tx_id];
 	}
 
-	/* Fill hardware descriptor ring with mbuf data */
-	ci_tx_fill_hw_ring(txq, tx_pkts + n, (uint16_t)(nb_pkts - n));
-	txq->tx_tail = (uint16_t)(txq->tx_tail + (nb_pkts - n));
+	/* Store remaining mbufs in backlog */
+	ci_tx_backlog_entry(txep, tx_pkts + n, (uint16_t)(nb_pkts - n));
+
+	/* Write remaining descriptors to HW ring */
+	ci_tx_fill_hw_ring_simple(txdp, tx_pkts + n, (uint16_t)(nb_pkts - n));
+
+	tx_id = (uint16_t)(tx_id + (nb_pkts - n));
 
 	/* Determine if RS bit needs to be set */
-	if (txq->tx_tail > txq->tx_next_rs) {
+	if (tx_id > txq->tx_next_rs) {
 		txr[txq->tx_next_rs].cmd_type_offset_bsz |=
 			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) <<
 					  CI_TXD_QW1_CMD_S);
@@ -175,11 +190,10 @@ ci_xmit_burst_simple(struct ci_tx_queue *txq,
 			txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 	}
 
-	if (txq->tx_tail >= txq->nb_tx_desc)
-		txq->tx_tail = 0;
+	txq->tx_tail = tx_id;
 
 	/* Update the tx tail register */
-	rte_write32_wc((uint32_t)txq->tx_tail, txq->qtx_tail);
+	rte_write32_wc((uint32_t)tx_id, txq->qtx_tail);
 
 	return nb_pkts;
 }
