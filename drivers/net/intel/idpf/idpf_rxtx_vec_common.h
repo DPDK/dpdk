@@ -32,8 +32,8 @@ idpf_tx_desc_done(struct ci_tx_queue *txq, uint16_t idx)
 		return 1;
 
 	return (txq->ci_tx_ring[idx].cmd_type_offset_bsz &
-			rte_cpu_to_le_64(IDPF_TXD_QW1_DTYPE_M)) ==
-				rte_cpu_to_le_64(IDPF_TX_DESC_DTYPE_DESC_DONE);
+			rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M)) ==
+				rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE);
 }
 
 static inline int

@@ -12,8 +12,8 @@ static inline int
 ice_tx_desc_done(struct ci_tx_queue *txq, uint16_t idx)
 {
 	return (txq->ci_tx_ring[idx].cmd_type_offset_bsz &
-			rte_cpu_to_le_64(ICE_TXD_QW1_DTYPE_M)) ==
-				rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DESC_DONE);
+			rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M)) ==
+				rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE);
 }
 
 static inline void
@@ -124,53 +124,52 @@ ice_txd_enable_offload(struct rte_mbuf *tx_pkt,
 	/* Tx Checksum Offload */
 	/* SET MACLEN */
 	td_offset |= (tx_pkt->l2_len >> 1) <<
-		ICE_TX_DESC_LEN_MACLEN_S;
+		CI_TX_DESC_LEN_MACLEN_S;
 
 	/* Enable L3 checksum offload */
 	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
-		td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4_CSUM;
+		td_cmd |= CI_TX_DESC_CMD_IIPT_IPV4_CSUM;
 		td_offset |= (tx_pkt->l3_len >> 2) <<
-			ICE_TX_DESC_LEN_IPLEN_S;
+			CI_TX_DESC_LEN_IPLEN_S;
 	} else if (ol_flags & RTE_MBUF_F_TX_IPV4) {
-		td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4;
+		td_cmd |= CI_TX_DESC_CMD_IIPT_IPV4;
 		td_offset |= (tx_pkt->l3_len >> 2) <<
-			ICE_TX_DESC_LEN_IPLEN_S;
+			CI_TX_DESC_LEN_IPLEN_S;
 	} else if (ol_flags & RTE_MBUF_F_TX_IPV6) {
-		td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV6;
+		td_cmd |= CI_TX_DESC_CMD_IIPT_IPV6;
 		td_offset |= (tx_pkt->l3_len >> 2) <<
-			ICE_TX_DESC_LEN_IPLEN_S;
+			CI_TX_DESC_LEN_IPLEN_S;
 	}
 
 	/* Enable L4 checksum offloads */
 	switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
 	case RTE_MBUF_F_TX_TCP_CKSUM:
-		td_cmd |= ICE_TX_DESC_CMD_L4T_EOFT_TCP;
+		td_cmd |= CI_TX_DESC_CMD_L4T_EOFT_TCP;
 		td_offset |= (sizeof(struct rte_tcp_hdr) >> 2) <<
-			ICE_TX_DESC_LEN_L4_LEN_S;
+			CI_TX_DESC_LEN_L4_LEN_S;
 		break;
 	case RTE_MBUF_F_TX_SCTP_CKSUM:
-		td_cmd |= ICE_TX_DESC_CMD_L4T_EOFT_SCTP;
+		td_cmd |= CI_TX_DESC_CMD_L4T_EOFT_SCTP;
 		td_offset |= (sizeof(struct rte_sctp_hdr) >> 2) <<
-			ICE_TX_DESC_LEN_L4_LEN_S;
+			CI_TX_DESC_LEN_L4_LEN_S;
 		break;
 	case RTE_MBUF_F_TX_UDP_CKSUM:
-		td_cmd |= ICE_TX_DESC_CMD_L4T_EOFT_UDP;
+		td_cmd |= CI_TX_DESC_CMD_L4T_EOFT_UDP;
 		td_offset |= (sizeof(struct rte_udp_hdr) >> 2) <<
-			ICE_TX_DESC_LEN_L4_LEN_S;
+			CI_TX_DESC_LEN_L4_LEN_S;
 		break;
 	default:
 		break;
 	}
 
-	*txd_hi |= ((uint64_t)td_offset) << ICE_TXD_QW1_OFFSET_S;
+	*txd_hi |= ((uint64_t)td_offset) << CI_TXD_QW1_OFFSET_S;
 
-	/* Tx VLAN insertion Offload */
+	/* Tx VLAN/QINQ insertion Offload */
 	if (ol_flags & RTE_MBUF_F_TX_VLAN) {
-		td_cmd |= ICE_TX_DESC_CMD_IL2TAG1;
-		*txd_hi |= ((uint64_t)tx_pkt->vlan_tci <<
-				ICE_TXD_QW1_L2TAG1_S);
+		td_cmd |= CI_TX_DESC_CMD_IL2TAG1;
+		*txd_hi |= ((uint64_t)tx_pkt->vlan_tci << CI_TXD_QW1_L2TAG1_S);
 	}
 
-	*txd_hi |= ((uint64_t)td_cmd) << ICE_TXD_QW1_CMD_S;
+	*txd_hi |= ((uint64_t)td_cmd) << CI_TXD_QW1_CMD_S;
 }
 #endif

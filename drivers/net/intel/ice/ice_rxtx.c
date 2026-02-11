@@ -1124,7 +1124,7 @@ ice_reset_tx_queue(struct ci_tx_queue *txq)
 		volatile struct ci_tx_desc *txd = &txq->ci_tx_ring[i];
 
 		txd->cmd_type_offset_bsz =
-			rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DESC_DONE);
+			rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE);
 		txe[i].mbuf =  NULL;
 		txe[i].last_id = i;
 		txe[prev].next_id = i;
@@ -2556,9 +2556,8 @@ ice_tx_descriptor_status(void *tx_queue, uint16_t offset)
 	}
 
 	status = &txq->ci_tx_ring[desc].cmd_type_offset_bsz;
-	mask = rte_cpu_to_le_64(ICE_TXD_QW1_DTYPE_M);
-	expect = rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DESC_DONE <<
-				  ICE_TXD_QW1_DTYPE_S);
+	mask = rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M);
+	expect = rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE << CI_TXD_QW1_DTYPE_S);
 	if ((*status & mask) == expect)
 		return RTE_ETH_TX_DESC_DONE;
 
@@ -2904,7 +2903,7 @@ ice_recv_pkts(void *rx_queue,
 
 static inline void
 ice_parse_tunneling_params(uint64_t ol_flags,
-			    union ice_tx_offload tx_offload,
+			    union ci_tx_offload tx_offload,
 			    uint32_t *cd_tunneling)
 {
 	/* EIPT: External (outer) IP header type */
@@ -2965,58 +2964,58 @@ static inline void
 ice_txd_enable_checksum(uint64_t ol_flags,
 			uint32_t *td_cmd,
 			uint32_t *td_offset,
-			union ice_tx_offload tx_offload)
+			union ci_tx_offload tx_offload)
 {
 	/* Set MACLEN */
 	if (!(ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK))
 		*td_offset |= (tx_offload.l2_len >> 1)
-			<< ICE_TX_DESC_LEN_MACLEN_S;
+			<< CI_TX_DESC_LEN_MACLEN_S;
 
 	/* Enable L3 checksum offloads */
 	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
-		*td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4_CSUM;
+		*td_cmd |= CI_TX_DESC_CMD_IIPT_IPV4_CSUM;
 		*td_offset |= (tx_offload.l3_len >> 2) <<
-			ICE_TX_DESC_LEN_IPLEN_S;
+			CI_TX_DESC_LEN_IPLEN_S;
 	} else if (ol_flags & RTE_MBUF_F_TX_IPV4) {
-		*td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4;
+		*td_cmd |= CI_TX_DESC_CMD_IIPT_IPV4;
 		*td_offset |= (tx_offload.l3_len >> 2) <<
-			ICE_TX_DESC_LEN_IPLEN_S;
+			CI_TX_DESC_LEN_IPLEN_S;
 	} else if (ol_flags & RTE_MBUF_F_TX_IPV6) {
-		*td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV6;
+		*td_cmd |= CI_TX_DESC_CMD_IIPT_IPV6;
 		*td_offset |= (tx_offload.l3_len >> 2) <<
-			ICE_TX_DESC_LEN_IPLEN_S;
+			CI_TX_DESC_LEN_IPLEN_S;
 	}
 
 	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
-		*td_cmd |= ICE_TX_DESC_CMD_L4T_EOFT_TCP;
+		*td_cmd |= CI_TX_DESC_CMD_L4T_EOFT_TCP;
 		*td_offset |= (tx_offload.l4_len >> 2) <<
-			      ICE_TX_DESC_LEN_L4_LEN_S;
+			      CI_TX_DESC_LEN_L4_LEN_S;
 		return;
 	}
 
 	if (ol_flags & RTE_MBUF_F_TX_UDP_SEG) {
-		*td_cmd |= ICE_TX_DESC_CMD_L4T_EOFT_UDP;
+		*td_cmd |= CI_TX_DESC_CMD_L4T_EOFT_UDP;
 		*td_offset |= (tx_offload.l4_len >> 2) <<
-			      ICE_TX_DESC_LEN_L4_LEN_S;
+			      CI_TX_DESC_LEN_L4_LEN_S;
 		return;
 	}
 
 	/* Enable L4 checksum offloads */
 	switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
 	case RTE_MBUF_F_TX_TCP_CKSUM:
-		*td_cmd |= ICE_TX_DESC_CMD_L4T_EOFT_TCP;
+		*td_cmd |= CI_TX_DESC_CMD_L4T_EOFT_TCP;
 		*td_offset |= (sizeof(struct rte_tcp_hdr) >> 2) <<
-			      ICE_TX_DESC_LEN_L4_LEN_S;
+			      CI_TX_DESC_LEN_L4_LEN_S;
 		break;
 	case RTE_MBUF_F_TX_SCTP_CKSUM:
-		*td_cmd |= ICE_TX_DESC_CMD_L4T_EOFT_SCTP;
+		*td_cmd |= CI_TX_DESC_CMD_L4T_EOFT_SCTP;
 		*td_offset |= (sizeof(struct rte_sctp_hdr) >> 2) <<
-			      ICE_TX_DESC_LEN_L4_LEN_S;
+			      CI_TX_DESC_LEN_L4_LEN_S;
 		break;
 	case RTE_MBUF_F_TX_UDP_CKSUM:
-		*td_cmd |= ICE_TX_DESC_CMD_L4T_EOFT_UDP;
+		*td_cmd |= CI_TX_DESC_CMD_L4T_EOFT_UDP;
 		*td_offset |= (sizeof(struct rte_udp_hdr) >> 2) <<
-			      ICE_TX_DESC_LEN_L4_LEN_S;
+			      CI_TX_DESC_LEN_L4_LEN_S;
 		break;
 	default:
 		break;
@@ -3030,11 +3029,11 @@ ice_build_ctob(uint32_t td_cmd,
 	       uint16_t size,
 	       uint32_t td_tag)
 {
-	return rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DATA |
-				((uint64_t)td_cmd << ICE_TXD_QW1_CMD_S) |
-				((uint64_t)td_offset << ICE_TXD_QW1_OFFSET_S) |
-				((uint64_t)size << ICE_TXD_QW1_TX_BUF_SZ_S) |
-				((uint64_t)td_tag << ICE_TXD_QW1_L2TAG1_S));
+	return rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DATA |
+				((uint64_t)td_cmd << CI_TXD_QW1_CMD_S) |
+				((uint64_t)td_offset << CI_TXD_QW1_OFFSET_S) |
+				((uint64_t)size << CI_TXD_QW1_TX_BUF_SZ_S) |
+				((uint64_t)td_tag << CI_TXD_QW1_L2TAG1_S));
 }
 
 /* Check if the context descriptor is needed for TX offloading */
@@ -3053,7 +3052,7 @@ ice_calc_context_desc(uint64_t flags)
 
 /* set ice TSO context descriptor */
 static inline uint64_t
-ice_set_tso_ctx(struct rte_mbuf *mbuf, union ice_tx_offload tx_offload)
+ice_set_tso_ctx(struct rte_mbuf *mbuf, union ci_tx_offload tx_offload)
 {
 	uint64_t ctx_desc = 0;
 	uint32_t cd_cmd, hdr_len, cd_tso_len;
@@ -3067,18 +3066,15 @@ ice_set_tso_ctx(struct rte_mbuf *mbuf, union ice_tx_offload tx_offload)
 	hdr_len += (mbuf->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) ?
 		   tx_offload.outer_l2_len + tx_offload.outer_l3_len : 0;
 
-	cd_cmd = ICE_TX_CTX_DESC_TSO;
+	cd_cmd = CI_TX_CTX_DESC_TSO;
 	cd_tso_len = mbuf->pkt_len - hdr_len;
-	ctx_desc |= ((uint64_t)cd_cmd << ICE_TXD_CTX_QW1_CMD_S) |
+	ctx_desc |= ((uint64_t)cd_cmd << CI_TXD_QW1_CMD_S) |
 		    ((uint64_t)cd_tso_len << ICE_TXD_CTX_QW1_TSO_LEN_S) |
 		    ((uint64_t)mbuf->tso_segsz << ICE_TXD_CTX_QW1_MSS_S);
 
 	return ctx_desc;
 }
 
-/* HW requires that TX buffer size ranges from 1B up to (16K-1)B. */
-#define ICE_MAX_DATA_PER_TXD \
-	(ICE_TXD_QW1_TX_BUF_SZ_M >> ICE_TXD_QW1_TX_BUF_SZ_S)
 /* Calculate the number of TX descriptors needed for each pkt */
 static inline uint16_t
 ice_calc_pkt_desc(struct rte_mbuf *tx_pkt)
@@ -3087,7 +3083,7 @@ ice_calc_pkt_desc(struct rte_mbuf *tx_pkt)
 	uint16_t count = 0;
 
 	while (txd != NULL) {
-		count += DIV_ROUND_UP(txd->data_len, ICE_MAX_DATA_PER_TXD);
+		count += DIV_ROUND_UP(txd->data_len, CI_MAX_DATA_PER_TXD);
 		txd = txd->next;
 	}
 
@@ -3117,7 +3113,7 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint16_t slen;
 	uint64_t buf_dma_addr;
 	uint64_t ol_flags;
-	union ice_tx_offload tx_offload = {0};
+	union ci_tx_offload tx_offload = {0};
 
 	txq = tx_queue;
 	sw_ring = txq->sw_ring;
@@ -3185,7 +3181,7 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Descriptor based VLAN insertion */
 		if (ol_flags & (RTE_MBUF_F_TX_VLAN | RTE_MBUF_F_TX_QINQ)) {
-			td_cmd |= ICE_TX_DESC_CMD_IL2TAG1;
+			td_cmd |= CI_TX_DESC_CMD_IL2TAG1;
 			td_tag = tx_pkt->vlan_tci;
 		}
 
@@ -3193,7 +3189,7 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		cd_tunneling_params = 0;
 		if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
 			td_offset |= (tx_offload.outer_l2_len >> 1)
-				<< ICE_TX_DESC_LEN_MACLEN_S;
+				<< CI_TX_DESC_LEN_MACLEN_S;
 			ice_parse_tunneling_params(ol_flags, tx_offload,
 						   &cd_tunneling_params);
 		}
@@ -3223,8 +3219,8 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 					ice_set_tso_ctx(tx_pkt, tx_offload);
 			else if (ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST)
 				cd_type_cmd_tso_mss |=
-					((uint64_t)ICE_TX_CTX_DESC_TSYN <<
-					ICE_TXD_CTX_QW1_CMD_S) |
+					((uint64_t)CI_TX_CTX_DESC_TSYN <<
+					CI_TXD_QW1_CMD_S) |
 					 (((uint64_t)txq->ice_vsi->adapter->ptp_tx_index <<
 					 ICE_TXD_CTX_QW1_TSYN_S) & ICE_TXD_CTX_QW1_TSYN_M);
 
@@ -3235,8 +3231,8 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			if (ol_flags & RTE_MBUF_F_TX_QINQ) {
 				cd_l2tag2 = tx_pkt->vlan_tci_outer;
 				cd_type_cmd_tso_mss |=
-					((uint64_t)ICE_TX_CTX_DESC_IL2TAG2 <<
-					 ICE_TXD_CTX_QW1_CMD_S);
+					((uint64_t)CI_TX_CTX_DESC_IL2TAG2 <<
+					 CI_TXD_QW1_CMD_S);
 			}
 			ctx_txd->l2tag2 = rte_cpu_to_le_16(cd_l2tag2);
 			ctx_txd->qw1 =
@@ -3261,18 +3257,16 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			buf_dma_addr = rte_mbuf_data_iova(m_seg);
 
 			while ((ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)) &&
-				unlikely(slen > ICE_MAX_DATA_PER_TXD)) {
+					unlikely(slen > CI_MAX_DATA_PER_TXD)) {
 				txd->buffer_addr = rte_cpu_to_le_64(buf_dma_addr);
-				txd->cmd_type_offset_bsz =
-				rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DATA |
-				((uint64_t)td_cmd << ICE_TXD_QW1_CMD_S) |
-				((uint64_t)td_offset << ICE_TXD_QW1_OFFSET_S) |
-				((uint64_t)ICE_MAX_DATA_PER_TXD <<
-				 ICE_TXD_QW1_TX_BUF_SZ_S) |
-				((uint64_t)td_tag << ICE_TXD_QW1_L2TAG1_S));
+				txd->cmd_type_offset_bsz = rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DATA |
+					((uint64_t)td_cmd << CI_TXD_QW1_CMD_S) |
+					((uint64_t)td_offset << CI_TXD_QW1_OFFSET_S) |
+					((uint64_t)CI_MAX_DATA_PER_TXD << CI_TXD_QW1_TX_BUF_SZ_S) |
+					((uint64_t)td_tag << CI_TXD_QW1_L2TAG1_S));
 
-				buf_dma_addr += ICE_MAX_DATA_PER_TXD;
-				slen -= ICE_MAX_DATA_PER_TXD;
+				buf_dma_addr += CI_MAX_DATA_PER_TXD;
+				slen -= CI_MAX_DATA_PER_TXD;
 
 				txe->last_id = tx_last;
 				tx_id = txe->next_id;
@@ -3282,12 +3276,11 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			}
 
 			txd->buffer_addr = rte_cpu_to_le_64(buf_dma_addr);
-			txd->cmd_type_offset_bsz =
-				rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DATA |
-				((uint64_t)td_cmd << ICE_TXD_QW1_CMD_S) |
-				((uint64_t)td_offset << ICE_TXD_QW1_OFFSET_S) |
-				((uint64_t)slen << ICE_TXD_QW1_TX_BUF_SZ_S) |
-				((uint64_t)td_tag << ICE_TXD_QW1_L2TAG1_S));
+			txd->cmd_type_offset_bsz = rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DATA |
+				((uint64_t)td_cmd << CI_TXD_QW1_CMD_S) |
+				((uint64_t)td_offset << CI_TXD_QW1_OFFSET_S) |
+				((uint64_t)slen << CI_TXD_QW1_TX_BUF_SZ_S) |
+				((uint64_t)td_tag << CI_TXD_QW1_L2TAG1_S));
 
 			txe->last_id = tx_last;
 			tx_id = txe->next_id;
@@ -3296,7 +3289,7 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		} while (m_seg);
 
 		/* fill the last descriptor with End of Packet (EOP) bit */
-		td_cmd |= ICE_TX_DESC_CMD_EOP;
+		td_cmd |= CI_TX_DESC_CMD_EOP;
 		txq->nb_tx_used = (uint16_t)(txq->nb_tx_used + nb_used);
 		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_used);
 
@@ -3307,14 +3300,13 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				   "%4u (port=%d queue=%d)",
 				   tx_last, txq->port_id, txq->queue_id);
 
-			td_cmd |= ICE_TX_DESC_CMD_RS;
+			td_cmd |= CI_TX_DESC_CMD_RS;
 
 			/* Update txq RS bit counters */
 			txq->nb_tx_used = 0;
 		}
 		txd->cmd_type_offset_bsz |=
-			rte_cpu_to_le_64(((uint64_t)td_cmd) <<
-					 ICE_TXD_QW1_CMD_S);
+			rte_cpu_to_le_64(((uint64_t)td_cmd) << CI_TXD_QW1_CMD_S);
 
 		if (txq->tsq != NULL && txq->tsq->ts_flag > 0) {
 			uint64_t txtime = *RTE_MBUF_DYNFIELD(tx_pkt,
@@ -3361,8 +3353,8 @@ ice_tx_free_bufs(struct ci_tx_queue *txq)
 	uint16_t i;
 
 	if ((txq->ci_tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
-	     rte_cpu_to_le_64(ICE_TXD_QW1_DTYPE_M)) !=
-	    rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DESC_DONE))
+	     rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M)) !=
+	    rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE))
 		return 0;
 
 	txep = &txq->sw_ring[txq->tx_next_dd - (txq->tx_rs_thresh - 1)];
@@ -3598,8 +3590,7 @@ tx_xmit_pkts(struct ci_tx_queue *txq,
 		n = (uint16_t)(txq->nb_tx_desc - txq->tx_tail);
 		ice_tx_fill_hw_ring(txq, tx_pkts, n);
 		txr[txq->tx_next_rs].cmd_type_offset_bsz |=
-			rte_cpu_to_le_64(((uint64_t)ICE_TX_DESC_CMD_RS) <<
-					 ICE_TXD_QW1_CMD_S);
+			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) << CI_TXD_QW1_CMD_S);
 		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 		txq->tx_tail = 0;
 	}
@@ -3611,8 +3602,7 @@ tx_xmit_pkts(struct ci_tx_queue *txq,
 	/* Determine if RS bit needs to be set */
 	if (txq->tx_tail > txq->tx_next_rs) {
 		txr[txq->tx_next_rs].cmd_type_offset_bsz |=
-			rte_cpu_to_le_64(((uint64_t)ICE_TX_DESC_CMD_RS) <<
-					 ICE_TXD_QW1_CMD_S);
+			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) << CI_TXD_QW1_CMD_S);
 		txq->tx_next_rs =
 			(uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
 		if (txq->tx_next_rs >= txq->nb_tx_desc)
@@ -4843,9 +4833,9 @@ ice_fdir_programming(struct ice_pf *pf, struct ice_fltr_desc *fdir_desc)
 
 	txdp = &txq->ci_tx_ring[txq->tx_tail + 1];
 	txdp->buffer_addr = rte_cpu_to_le_64(pf->fdir.dma_addr);
-	td_cmd = ICE_TX_DESC_CMD_EOP |
-		ICE_TX_DESC_CMD_RS  |
-		ICE_TX_DESC_CMD_DUMMY;
+	td_cmd = CI_TX_DESC_CMD_EOP |
+		CI_TX_DESC_CMD_RS  |
+		CI_TX_DESC_CMD_DUMMY;
 
 	txdp->cmd_type_offset_bsz =
 		ice_build_ctob(td_cmd, 0, ICE_FDIR_PKT_LEN, 0);
@@ -4856,9 +4846,8 @@ ice_fdir_programming(struct ice_pf *pf, struct ice_fltr_desc *fdir_desc)
 	/* Update the tx tail register */
 	ICE_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
 	for (i = 0; i < ICE_FDIR_MAX_WAIT_US; i++) {
-		if ((txdp->cmd_type_offset_bsz &
-		     rte_cpu_to_le_64(ICE_TXD_QW1_DTYPE_M)) ==
-		    rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DESC_DONE))
+		if ((txdp->cmd_type_offset_bsz & rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M)) ==
+		    rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE))
 			break;
 		rte_delay_us(1);
 	}

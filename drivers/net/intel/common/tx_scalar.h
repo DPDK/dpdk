@@ -33,10 +33,10 @@ ci_tx_xmit_cleanup(struct ci_tx_queue *txq)
 	if (desc_to_clean_to >= nb_tx_desc)
 		desc_to_clean_to = (uint16_t)(desc_to_clean_to - nb_tx_desc);
 
-	/* Check if descriptor is done - all drivers use 0xF as done value in bits 3:0 */
+	/* Check if descriptor is done */
 	desc_to_clean_to = sw_ring[desc_to_clean_to].last_id;
-	if ((txd[desc_to_clean_to].cmd_type_offset_bsz & rte_cpu_to_le_64(0x0FUL)) !=
-			rte_cpu_to_le_64(0x0FUL))
+	if ((txd[desc_to_clean_to].cmd_type_offset_bsz & rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M)) !=
+			rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE))
 		return -1;
 
 	/* Figure out how many descriptors will be cleaned */

@@ -406,7 +406,7 @@ reset_tx_queue(struct ci_tx_queue *txq)
 	prev = (uint16_t)(txq->nb_tx_desc - 1);
 	for (i = 0; i < txq->nb_tx_desc; i++) {
 		txq->ci_tx_ring[i].cmd_type_offset_bsz =
-			rte_cpu_to_le_64(IAVF_TX_DESC_DTYPE_DESC_DONE);
+			rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE);
 		txe[i].mbuf =  NULL;
 		txe[i].last_id = i;
 		txe[prev].next_id = i;

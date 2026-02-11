@@ -850,10 +850,9 @@ static __rte_always_inline void
 ice_vtx1(volatile struct ci_tx_desc *txdp,
 	 struct rte_mbuf *pkt, uint64_t flags, bool do_offload)
 {
-	uint64_t high_qw =
-		(ICE_TX_DESC_DTYPE_DATA |
-		 ((uint64_t)flags  << ICE_TXD_QW1_CMD_S) |
-		 ((uint64_t)pkt->data_len << ICE_TXD_QW1_TX_BUF_SZ_S));
+	uint64_t high_qw = (CI_TX_DESC_DTYPE_DATA |
+		 ((uint64_t)flags << CI_TXD_QW1_CMD_S) |
+		 ((uint64_t)pkt->data_len << CI_TXD_QW1_TX_BUF_SZ_S));
 
 	if (do_offload)
 		ice_txd_enable_offload(pkt, &high_qw);
@@ -866,32 +865,23 @@ static __rte_always_inline void
 ice_vtx(volatile struct ci_tx_desc *txdp, struct rte_mbuf **pkt,
 	uint16_t nb_pkts,  uint64_t flags, bool do_offload)
 {
-	const uint64_t hi_qw_tmpl = (ICE_TX_DESC_DTYPE_DATA |
-			((uint64_t)flags  << ICE_TXD_QW1_CMD_S));
+	const uint64_t hi_qw_tmpl = (CI_TX_DESC_DTYPE_DATA | (flags << CI_TXD_QW1_CMD_S));
 
 	for (; nb_pkts > 3; txdp += 4, pkt += 4, nb_pkts -= 4) {
-		uint64_t hi_qw3 =
-			hi_qw_tmpl |
-			((uint64_t)pkt[3]->data_len <<
-			 ICE_TXD_QW1_TX_BUF_SZ_S);
+		uint64_t hi_qw3 = hi_qw_tmpl |
+			((uint64_t)pkt[3]->data_len << CI_TXD_QW1_TX_BUF_SZ_S);
 		if (do_offload)
 			ice_txd_enable_offload(pkt[3], &hi_qw3);
-		uint64_t hi_qw2 =
-			hi_qw_tmpl |
-			((uint64_t)pkt[2]->data_len <<
-			 ICE_TXD_QW1_TX_BUF_SZ_S);
+		uint64_t hi_qw2 = hi_qw_tmpl |
+			((uint64_t)pkt[2]->data_len << CI_TXD_QW1_TX_BUF_SZ_S);
 		if (do_offload)
 			ice_txd_enable_offload(pkt[2], &hi_qw2);
-		uint64_t hi_qw1 =
-			hi_qw_tmpl |
-			((uint64_t)pkt[1]->data_len <<
-			 ICE_TXD_QW1_TX_BUF_SZ_S);
+		uint64_t hi_qw1 = hi_qw_tmpl |
+			((uint64_t)pkt[1]->data_len << CI_TXD_QW1_TX_BUF_SZ_S);
 		if (do_offload)
 			ice_txd_enable_offload(pkt[1], &hi_qw1);
-		uint64_t hi_qw0 =
-			hi_qw_tmpl |
-			((uint64_t)pkt[0]->data_len <<
-			 ICE_TXD_QW1_TX_BUF_SZ_S);
+		uint64_t hi_qw0 = hi_qw_tmpl |
+			((uint64_t)pkt[0]->data_len << CI_TXD_QW1_TX_BUF_SZ_S);
 		if (do_offload)
 			ice_txd_enable_offload(pkt[0], &hi_qw0);
 
@@ -920,7 +910,7 @@ ice_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct ci_tx_entry_vec *txep;
 	uint16_t n, nb_commit, tx_id;
 	uint64_t flags = ICE_TD_CMD;
-	uint64_t rs = ICE_TX_DESC_CMD_RS | ICE_TD_CMD;
+	uint64_t rs = CI_TX_DESC_CMD_RS | ICE_TD_CMD;
 
 	/* cross rx_thresh boundary is not allowed */
 	nb_pkts = RTE_MIN(nb_pkts, txq->tx_rs_thresh);
@@ -966,8 +956,7 @@ ice_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	tx_id = (uint16_t)(tx_id + nb_commit);
 	if (tx_id > txq->tx_next_rs) {
 		txq->ci_tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
-			rte_cpu_to_le_64(((uint64_t)ICE_TX_DESC_CMD_RS) <<
-					 ICE_TXD_QW1_CMD_S);
+			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) << CI_TXD_QW1_CMD_S);
 		txq->tx_next_rs =
 			(uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
 	}

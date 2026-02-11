@@ -274,7 +274,7 @@ reset_tx_queue(struct ci_tx_queue *txq)
 	prev = (uint16_t)(txq->nb_tx_desc - 1);
 	for (i = 0; i < txq->nb_tx_desc; i++) {
 		txq->ci_tx_ring[i].cmd_type_offset_bsz =
-			rte_cpu_to_le_64(IAVF_TX_DESC_DTYPE_DESC_DONE);
+			rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE);
 		txe[i].mbuf =  NULL;
 		txe[i].last_id = i;
 		txe[prev].next_id = i;
@@ -2351,12 +2351,12 @@ iavf_fill_ctx_desc_cmd_field(volatile uint64_t *field, struct rte_mbuf *m,
 
 	/* TSO enabled */
 	if (m->ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG))
-		cmd = IAVF_TX_CTX_DESC_TSO << IAVF_TXD_CTX_QW1_CMD_SHIFT;
+		cmd = CI_TX_CTX_DESC_TSO << IAVF_TXD_CTX_QW1_CMD_SHIFT;
 
 	if ((m->ol_flags & RTE_MBUF_F_TX_VLAN &&
 			vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) ||
 			m->ol_flags & RTE_MBUF_F_TX_QINQ) {
-		cmd |= IAVF_TX_CTX_DESC_IL2TAG2
+		cmd |= CI_TX_CTX_DESC_IL2TAG2
 			<< IAVF_TXD_CTX_QW1_CMD_SHIFT;
 	}
 
@@ -2577,20 +2577,20 @@ iavf_build_data_desc_cmd_offset_fields(volatile uint64_t *qw1,
 	uint64_t offset = 0;
 	uint64_t l2tag1 = 0;
 
-	*qw1 = IAVF_TX_DESC_DTYPE_DATA;
+	*qw1 = CI_TX_DESC_DTYPE_DATA;
 
-	command = (uint64_t)IAVF_TX_DESC_CMD_ICRC;
+	command = (uint64_t)CI_TX_DESC_CMD_ICRC;
 
 	/* Descriptor based VLAN insertion */
 	if ((vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1) &&
 			m->ol_flags & RTE_MBUF_F_TX_VLAN) {
-		command |= (uint64_t)IAVF_TX_DESC_CMD_IL2TAG1;
+		command |= (uint64_t)CI_TX_DESC_CMD_IL2TAG1;
 		l2tag1 |= m->vlan_tci;
 	}
 
 	/* Descriptor based QinQ insertion. vlan_flag specifies outer tag location. */
 	if (m->ol_flags & RTE_MBUF_F_TX_QINQ) {
-		command |= (uint64_t)IAVF_TX_DESC_CMD_IL2TAG1;
+		command |= (uint64_t)CI_TX_DESC_CMD_IL2TAG1;
 		l2tag1 = vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1 ? m->vlan_tci_outer :
 									m->vlan_tci;
 	}
@@ -2603,32 +2603,32 @@ iavf_build_data_desc_cmd_offset_fields(volatile uint64_t *qw1,
 	if (m->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK &&
 			!(m->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD))
 		offset |= (m->outer_l2_len >> 1)
-			<< IAVF_TX_DESC_LENGTH_MACLEN_SHIFT;
+			<< CI_TX_DESC_LEN_MACLEN_S;
 	else
 		offset |= (m->l2_len >> 1)
-			<< IAVF_TX_DESC_LENGTH_MACLEN_SHIFT;
+			<< CI_TX_DESC_LEN_MACLEN_S;
 
 	/* Enable L3 checksum offloading inner */
 	if (m->ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
 		if (m->ol_flags & RTE_MBUF_F_TX_IPV4) {
-			command |= IAVF_TX_DESC_CMD_IIPT_IPV4_CSUM;
-			offset |= (m->l3_len >> 2) << IAVF_TX_DESC_LENGTH_IPLEN_SHIFT;
+			command |= CI_TX_DESC_CMD_IIPT_IPV4_CSUM;
+			offset |= (m->l3_len >> 2) << CI_TX_DESC_LEN_IPLEN_S;
 		}
 	} else if (m->ol_flags & RTE_MBUF_F_TX_IPV4) {
-		command |= IAVF_TX_DESC_CMD_IIPT_IPV4;
-		offset |= (m->l3_len >> 2) << IAVF_TX_DESC_LENGTH_IPLEN_SHIFT;
+		command |= CI_TX_DESC_CMD_IIPT_IPV4;
+		offset |= (m->l3_len >> 2) << CI_TX_DESC_LEN_IPLEN_S;
 	} else if (m->ol_flags & RTE_MBUF_F_TX_IPV6) {
-		command |= IAVF_TX_DESC_CMD_IIPT_IPV6;
-		offset |= (m->l3_len >> 2) << IAVF_TX_DESC_LENGTH_IPLEN_SHIFT;
+		command |= CI_TX_DESC_CMD_IIPT_IPV6;
+		offset |= (m->l3_len >> 2) << CI_TX_DESC_LEN_IPLEN_S;
 	}
 
 	if (m->ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)) {
 		if (m->ol_flags & RTE_MBUF_F_TX_TCP_SEG)
-			command |= IAVF_TX_DESC_CMD_L4T_EOFT_TCP;
+			command |= CI_TX_DESC_CMD_L4T_EOFT_TCP;
 		else
-			command |= IAVF_TX_DESC_CMD_L4T_EOFT_UDP;
+			command |= CI_TX_DESC_CMD_L4T_EOFT_UDP;
 		offset |= (m->l4_len >> 2) <<
-			      IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+			      CI_TX_DESC_LEN_L4_LEN_S;
 
 		*qw1 = rte_cpu_to_le_64((((uint64_t)command <<
 			IAVF_TXD_DATA_QW1_CMD_SHIFT) & IAVF_TXD_DATA_QW1_CMD_MASK) |
@@ -2642,19 +2642,19 @@ iavf_build_data_desc_cmd_offset_fields(volatile uint64_t *qw1,
 	/* Enable L4 checksum offloads */
 	switch (m->ol_flags & RTE_MBUF_F_TX_L4_MASK) {
 	case RTE_MBUF_F_TX_TCP_CKSUM:
-		command |= IAVF_TX_DESC_CMD_L4T_EOFT_TCP;
+		command |= CI_TX_DESC_CMD_L4T_EOFT_TCP;
 		offset |= (sizeof(struct rte_tcp_hdr) >> 2) <<
-				IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+				CI_TX_DESC_LEN_L4_LEN_S;
 		break;
 	case RTE_MBUF_F_TX_SCTP_CKSUM:
-		command |= IAVF_TX_DESC_CMD_L4T_EOFT_SCTP;
+		command |= CI_TX_DESC_CMD_L4T_EOFT_SCTP;
 		offset |= (sizeof(struct rte_sctp_hdr) >> 2) <<
-				IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+				CI_TX_DESC_LEN_L4_LEN_S;
 		break;
 	case RTE_MBUF_F_TX_UDP_CKSUM:
-		command |= IAVF_TX_DESC_CMD_L4T_EOFT_UDP;
+		command |= CI_TX_DESC_CMD_L4T_EOFT_UDP;
 		offset |= (sizeof(struct rte_udp_hdr) >> 2) <<
-				IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+				CI_TX_DESC_LEN_L4_LEN_S;
 		break;
 	}
 
@@ -2674,8 +2674,7 @@ iavf_calc_pkt_desc(struct rte_mbuf *tx_pkt)
 	uint16_t count = 0;
 
 	while (txd != NULL) {
-		count += (txd->data_len + IAVF_MAX_DATA_PER_TXD - 1) /
-			IAVF_MAX_DATA_PER_TXD;
+		count += (txd->data_len + CI_MAX_DATA_PER_TXD - 1) / CI_MAX_DATA_PER_TXD;
 		txd = txd->next;
 	}
 
@@ -2881,14 +2880,14 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			buf_dma_addr = rte_mbuf_data_iova(mb_seg);
 			while ((mb_seg->ol_flags & (RTE_MBUF_F_TX_TCP_SEG |
 					RTE_MBUF_F_TX_UDP_SEG)) &&
-					unlikely(slen > IAVF_MAX_DATA_PER_TXD)) {
+					unlikely(slen > CI_MAX_DATA_PER_TXD)) {
 				iavf_fill_data_desc(ddesc, ddesc_template,
-					IAVF_MAX_DATA_PER_TXD, buf_dma_addr);
+					CI_MAX_DATA_PER_TXD, buf_dma_addr);
 
 				IAVF_DUMP_TX_DESC(txq, ddesc, desc_idx);
 
-				buf_dma_addr += IAVF_MAX_DATA_PER_TXD;
-				slen -= IAVF_MAX_DATA_PER_TXD;
+				buf_dma_addr += CI_MAX_DATA_PER_TXD;
+				slen -= CI_MAX_DATA_PER_TXD;
 
 				txe->last_id = desc_idx_last;
 				desc_idx = txe->next_id;
@@ -2909,7 +2908,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		} while (mb_seg);
 
 		/* The last packet data descriptor needs End Of Packet (EOP) */
-		ddesc_cmd = IAVF_TX_DESC_CMD_EOP;
+		ddesc_cmd = CI_TX_DESC_CMD_EOP;
 
 		txq->nb_tx_used = (uint16_t)(txq->nb_tx_used + nb_desc_required);
 		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_desc_required);
@@ -2919,7 +2918,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				   "%4u (port=%d queue=%d)",
 				   desc_idx_last, txq->port_id, txq->queue_id);
 
-			ddesc_cmd |= IAVF_TX_DESC_CMD_RS;
+			ddesc_cmd |= CI_TX_DESC_CMD_RS;
 
 			/* Update txq RS bit counters */
 			txq->nb_tx_used = 0;
@@ -4423,9 +4422,8 @@ iavf_dev_tx_desc_status(void *tx_queue, uint16_t offset)
 	}
 
 	status = &txq->ci_tx_ring[desc].cmd_type_offset_bsz;
-	mask = rte_le_to_cpu_64(IAVF_TXD_QW1_DTYPE_MASK);
-	expect = rte_cpu_to_le_64(
-		 IAVF_TX_DESC_DTYPE_DESC_DONE << IAVF_TXD_QW1_DTYPE_SHIFT);
+	mask = rte_le_to_cpu_64(CI_TXD_QW1_DTYPE_M);
+	expect = rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE << CI_TXD_QW1_DTYPE_S);
 	if ((*status & mask) == expect)
 		return RTE_ETH_TX_DESC_DONE;
 

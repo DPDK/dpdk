@@ -46,7 +46,7 @@
 
 #define ICE_SUPPORT_CHAIN_NUM 5
 
-#define ICE_TD_CMD                      ICE_TX_DESC_CMD_EOP
+#define ICE_TD_CMD                      CI_TX_DESC_CMD_EOP
 
 #define ICE_VPMD_RX_BURST            CI_VPMD_RX_BURST
 #define ICE_VPMD_TX_BURST            32
@@ -167,19 +167,6 @@ struct ice_txtime {
 	int ts_offset; /* dynamic mbuf Tx timestamp field offset */
 	uint64_t ts_flag; /* dynamic mbuf Tx timestamp flag */
 	const struct rte_memzone *ts_mz;
-};
-
-/* Offload features */
-union ice_tx_offload {
-	uint64_t data;
-	struct {
-		uint64_t l2_len:7; /* L2 (MAC) Header Length. */
-		uint64_t l3_len:9; /* L3 (IP) Header Length. */
-		uint64_t l4_len:8; /* L4 Header Length. */
-		uint64_t tso_segsz:16; /* TCP TSO segment size */
-		uint64_t outer_l2_len:8; /* outer L2 Header Length */
-		uint64_t outer_l3_len:16; /* outer L3 Header Length */
-	};
 };
 
 /* Rx Flex Descriptor for Comms Package Profile

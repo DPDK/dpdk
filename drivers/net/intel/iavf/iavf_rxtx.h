@@ -162,10 +162,6 @@
 #define IAVF_TX_OFFLOAD_NOTSUP_MASK \
 		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ IAVF_TX_OFFLOAD_MASK)
 
-/* HW requires that TX buffer size ranges from 1B up to (16K-1)B. */
-#define IAVF_MAX_DATA_PER_TXD \
-	(IAVF_TXD_QW1_TX_BUF_SZ_MASK >> IAVF_TXD_QW1_TX_BUF_SZ_SHIFT)
-
 #define IAVF_TX_LLDP_DYNFIELD "intel_pmd_dynfield_tx_lldp"
 #define IAVF_CHECK_TX_LLDP(m) \
 	((rte_pmd_iavf_tx_lldp_dynfield_offset > 0) && \
@@ -193,18 +189,6 @@ struct iavf_txq_ops {
 struct iavf_rx_queue_stats {
 	uint64_t reserved;
 	struct iavf_ipsec_crypto_stats ipsec_crypto;
-};
-
-/* Offload features */
-union iavf_tx_offload {
-	uint64_t data;
-	struct {
-		uint64_t l2_len:7; /* L2 (MAC) Header Length. */
-		uint64_t l3_len:9; /* L3 (IP) Header Length. */
-		uint64_t l4_len:8; /* L4 Header Length. */
-		uint64_t tso_segsz:16; /* TCP TSO segment size */
-		/* uint64_t unused : 24; */
-	};
 };
 
 /* Rx Flex Descriptor
@@ -409,7 +393,7 @@ enum iavf_rx_flex_desc_ipsec_crypto_status {
 
 
 #define IAVF_TXD_DATA_QW1_DTYPE_SHIFT	(0)
-#define IAVF_TXD_DATA_QW1_DTYPE_MASK	(0xFUL << IAVF_TXD_QW1_DTYPE_SHIFT)
+#define IAVF_TXD_DATA_QW1_DTYPE_MASK	(0xFUL << CI_TXD_QW1_DTYPE_S)
 
 #define IAVF_TXD_DATA_QW1_CMD_SHIFT	(4)
 #define IAVF_TXD_DATA_QW1_CMD_MASK	(0x3FFUL << IAVF_TXD_DATA_QW1_CMD_SHIFT)
@@ -686,7 +670,7 @@ void iavf_dump_tx_descriptor(const struct ci_tx_queue *txq,
 		rte_le_to_cpu_64(tx_desc->cmd_type_offset_bsz &
 			rte_cpu_to_le_64(IAVF_TXD_DATA_QW1_DTYPE_MASK));
 	switch (type) {
-	case IAVF_TX_DESC_DTYPE_DATA:
+	case CI_TX_DESC_DTYPE_DATA:
 		name = "Tx_data_desc";
 		break;
 	case IAVF_TX_DESC_DTYPE_CONTEXT:

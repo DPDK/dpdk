@@ -752,9 +752,9 @@ i40e_recv_scattered_pkts_vec_avx512(void *rx_queue,
 static inline void
 vtx1(volatile struct ci_tx_desc *txdp, struct rte_mbuf *pkt, uint64_t flags)
 {
-	uint64_t high_qw = (I40E_TX_DESC_DTYPE_DATA |
-		((uint64_t)flags  << I40E_TXD_QW1_CMD_SHIFT) |
-		((uint64_t)pkt->data_len << I40E_TXD_QW1_TX_BUF_SZ_SHIFT));
+	uint64_t high_qw = (CI_TX_DESC_DTYPE_DATA |
+		((uint64_t)flags << CI_TXD_QW1_CMD_S) |
+		((uint64_t)pkt->data_len << CI_TXD_QW1_TX_BUF_SZ_S));
 
 	__m128i descriptor = _mm_set_epi64x(high_qw,
 				pkt->buf_iova + pkt->data_off);
@@ -765,26 +765,17 @@ static inline void
 vtx(volatile struct ci_tx_desc *txdp,
 	struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags)
 {
-	const uint64_t hi_qw_tmpl = (I40E_TX_DESC_DTYPE_DATA |
-			((uint64_t)flags  << I40E_TXD_QW1_CMD_SHIFT));
+	const uint64_t hi_qw_tmpl = (CI_TX_DESC_DTYPE_DATA | (flags << CI_TXD_QW1_CMD_S));
 
 	for (; nb_pkts > 3; txdp += 4, pkt += 4, nb_pkts -= 4) {
-		uint64_t hi_qw3 =
-			hi_qw_tmpl |
-			((uint64_t)pkt[3]->data_len <<
-			 I40E_TXD_QW1_TX_BUF_SZ_SHIFT);
-		uint64_t hi_qw2 =
-			hi_qw_tmpl |
-			((uint64_t)pkt[2]->data_len <<
-			 I40E_TXD_QW1_TX_BUF_SZ_SHIFT);
-		uint64_t hi_qw1 =
-			hi_qw_tmpl |
-			((uint64_t)pkt[1]->data_len <<
-			 I40E_TXD_QW1_TX_BUF_SZ_SHIFT);
-		uint64_t hi_qw0 =
-			hi_qw_tmpl |
-			((uint64_t)pkt[0]->data_len <<
-			 I40E_TXD_QW1_TX_BUF_SZ_SHIFT);
+		uint64_t hi_qw3 = hi_qw_tmpl |
+			((uint64_t)pkt[3]->data_len << CI_TXD_QW1_TX_BUF_SZ_S);
+		uint64_t hi_qw2 = hi_qw_tmpl |
+			((uint64_t)pkt[2]->data_len << CI_TXD_QW1_TX_BUF_SZ_S);
+		uint64_t hi_qw1 = hi_qw_tmpl |
+			((uint64_t)pkt[1]->data_len << CI_TXD_QW1_TX_BUF_SZ_S);
+		uint64_t hi_qw0 = hi_qw_tmpl |
+			((uint64_t)pkt[0]->data_len << CI_TXD_QW1_TX_BUF_SZ_S);
 
 		__m512i desc0_3 =
 			_mm512_set_epi64
@@ -811,7 +802,7 @@ i40e_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct ci_tx_entry_vec *txep;
 	uint16_t n, nb_commit, tx_id;
 	uint64_t flags = I40E_TD_CMD;
-	uint64_t rs = I40E_TX_DESC_CMD_RS | I40E_TD_CMD;
+	uint64_t rs = CI_TX_DESC_CMD_RS | I40E_TD_CMD;
 
 	if (txq->nb_tx_free < txq->tx_free_thresh)
 		ci_tx_free_bufs_vec(txq, i40e_tx_desc_done, false);
@@ -854,8 +845,7 @@ i40e_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	tx_id = (uint16_t)(tx_id + nb_commit);
 	if (tx_id > txq->tx_next_rs) {
 		txq->ci_tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
-			rte_cpu_to_le_64(((uint64_t)I40E_TX_DESC_CMD_RS) <<
-						I40E_TXD_QW1_CMD_SHIFT);
+			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) << CI_TXD_QW1_CMD_S);
 		txq->tx_next_rs =
 			(uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
 	}

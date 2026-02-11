@@ -169,18 +169,6 @@ struct idpf_rx_queue {
 	uint32_t hw_register_set;
 };
 
-/* Offload features */
-union idpf_tx_offload {
-	uint64_t data;
-	struct {
-		uint64_t l2_len:7; /* L2 (MAC) Header Length. */
-		uint64_t l3_len:9; /* L3 (IP) Header Length. */
-		uint64_t l4_len:8; /* L4 Header Length. */
-		uint64_t tso_segsz:16; /* TCP TSO segment size */
-		/* uint64_t unused : 24; */
-	};
-};
-
 union idpf_tx_desc {
 	struct ci_tx_desc *tx_ring;
 	struct idpf_flex_tx_sched_desc *desc_ring;

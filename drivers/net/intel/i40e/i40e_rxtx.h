@@ -47,8 +47,8 @@
 #define I40E_RX_DESC_EXT_STATUS_FLEXBL_MASK   0x03
 #define I40E_RX_DESC_EXT_STATUS_FLEXBL_FLEX   0x01
 
-#define I40E_TD_CMD (I40E_TX_DESC_CMD_ICRC |\
-		     I40E_TX_DESC_CMD_EOP)
+#define I40E_TD_CMD (CI_TX_DESC_CMD_ICRC |\
+		     CI_TX_DESC_CMD_EOP)
 
 enum i40e_header_split_mode {
 	i40e_header_split_none = 0,
@@ -109,19 +109,6 @@ enum i40e_header_split_mode {
 		RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
 
 #define I40E_TX_VECTOR_OFFLOADS RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE
-
-/** Offload features */
-union i40e_tx_offload {
-	uint64_t data;
-	struct {
-		uint64_t l2_len:7; /**< L2 (MAC) Header Length. */
-		uint64_t l3_len:9; /**< L3 (IP) Header Length. */
-		uint64_t l4_len:8; /**< L4 Header Length. */
-		uint64_t tso_segsz:16; /**< TCP TSO segment size */
-		uint64_t outer_l2_len:8; /**< outer L2 Header Length */
-		uint64_t outer_l3_len:16; /**< outer L3 Header Length */
-	};
-};
 
 int i40e_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int i40e_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);

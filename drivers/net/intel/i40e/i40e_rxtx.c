@@ -45,7 +45,7 @@
 /* Base address of the HW descriptor ring should be 128B aligned. */
 #define I40E_RING_BASE_ALIGN	128
 
-#define I40E_TXD_CMD (I40E_TX_DESC_CMD_EOP | I40E_TX_DESC_CMD_RS)
+#define I40E_TXD_CMD (CI_TX_DESC_CMD_EOP | CI_TX_DESC_CMD_RS)
 
 #ifdef RTE_LIBRTE_IEEE1588
 #define I40E_TX_IEEE1588_TMST RTE_MBUF_F_TX_IEEE1588_TMST
@@ -260,7 +260,7 @@ i40e_rxd_build_fdir(volatile union ci_rx_desc *rxdp, struct rte_mbuf *mb)
 
 static inline void
 i40e_parse_tunneling_params(uint64_t ol_flags,
-			    union i40e_tx_offload tx_offload,
+			    union ci_tx_offload tx_offload,
 			    uint32_t *cd_tunneling)
 {
 	/* EIPT: External (outer) IP header type */
@@ -319,51 +319,51 @@ static inline void
 i40e_txd_enable_checksum(uint64_t ol_flags,
 			uint32_t *td_cmd,
 			uint32_t *td_offset,
-			union i40e_tx_offload tx_offload)
+			union ci_tx_offload tx_offload)
 {
 	/* Set MACLEN */
 	if (!(ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK))
 		*td_offset |= (tx_offload.l2_len >> 1)
-			<< I40E_TX_DESC_LENGTH_MACLEN_SHIFT;
+			<< CI_TX_DESC_LEN_MACLEN_S;
 
 	/* Enable L3 checksum offloads */
 	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
-		*td_cmd |= I40E_TX_DESC_CMD_IIPT_IPV4_CSUM;
+		*td_cmd |= CI_TX_DESC_CMD_IIPT_IPV4_CSUM;
 		*td_offset |= (tx_offload.l3_len >> 2)
-				<< I40E_TX_DESC_LENGTH_IPLEN_SHIFT;
+				<< CI_TX_DESC_LEN_IPLEN_S;
 	} else if (ol_flags & RTE_MBUF_F_TX_IPV4) {
-		*td_cmd |= I40E_TX_DESC_CMD_IIPT_IPV4;
+		*td_cmd |= CI_TX_DESC_CMD_IIPT_IPV4;
 		*td_offset |= (tx_offload.l3_len >> 2)
-				<< I40E_TX_DESC_LENGTH_IPLEN_SHIFT;
+				<< CI_TX_DESC_LEN_IPLEN_S;
 	} else if (ol_flags & RTE_MBUF_F_TX_IPV6) {
-		*td_cmd |= I40E_TX_DESC_CMD_IIPT_IPV6;
+		*td_cmd |= CI_TX_DESC_CMD_IIPT_IPV6;
 		*td_offset |= (tx_offload.l3_len >> 2)
-				<< I40E_TX_DESC_LENGTH_IPLEN_SHIFT;
+				<< CI_TX_DESC_LEN_IPLEN_S;
 	}
 
 	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
-		*td_cmd |= I40E_TX_DESC_CMD_L4T_EOFT_TCP;
+		*td_cmd |= CI_TX_DESC_CMD_L4T_EOFT_TCP;
 		*td_offset |= (tx_offload.l4_len >> 2)
-			<< I40E_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+			<< CI_TX_DESC_LEN_L4_LEN_S;
 		return;
 	}
 
 	/* Enable L4 checksum offloads */
 	switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
 	case RTE_MBUF_F_TX_TCP_CKSUM:
-		*td_cmd |= I40E_TX_DESC_CMD_L4T_EOFT_TCP;
+		*td_cmd |= CI_TX_DESC_CMD_L4T_EOFT_TCP;
 		*td_offset |= (sizeof(struct rte_tcp_hdr) >> 2) <<
-				I40E_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+				CI_TX_DESC_LEN_L4_LEN_S;
 		break;
 	case RTE_MBUF_F_TX_SCTP_CKSUM:
-		*td_cmd |= I40E_TX_DESC_CMD_L4T_EOFT_SCTP;
+		*td_cmd |= CI_TX_DESC_CMD_L4T_EOFT_SCTP;
 		*td_offset |= (sizeof(struct rte_sctp_hdr) >> 2) <<
-				I40E_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+				CI_TX_DESC_LEN_L4_LEN_S;
 		break;
 	case RTE_MBUF_F_TX_UDP_CKSUM:
-		*td_cmd |= I40E_TX_DESC_CMD_L4T_EOFT_UDP;
+		*td_cmd |= CI_TX_DESC_CMD_L4T_EOFT_UDP;
 		*td_offset |= (sizeof(struct rte_udp_hdr) >> 2) <<
-				I40E_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+				CI_TX_DESC_LEN_L4_LEN_S;
 		break;
 	default:
 		break;
@@ -377,11 +377,11 @@ i40e_build_ctob(uint32_t td_cmd,
 		unsigned int size,
 		uint32_t td_tag)
 {
-	return rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DATA |
-			((uint64_t)td_cmd  << I40E_TXD_QW1_CMD_SHIFT) |
-			((uint64_t)td_offset << I40E_TXD_QW1_OFFSET_SHIFT) |
-			((uint64_t)size  << I40E_TXD_QW1_TX_BUF_SZ_SHIFT) |
-			((uint64_t)td_tag  << I40E_TXD_QW1_L2TAG1_SHIFT));
+	return rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DATA |
+			((uint64_t)td_cmd  << CI_TXD_QW1_CMD_S) |
+			((uint64_t)td_offset << CI_TXD_QW1_OFFSET_S) |
+			((uint64_t)size  << CI_TXD_QW1_TX_BUF_SZ_S) |
+			((uint64_t)td_tag  << CI_TXD_QW1_L2TAG1_S));
 }
 
 static inline int
@@ -1004,7 +1004,7 @@ i40e_calc_context_desc(uint64_t flags)
 
 /* set i40e TSO context descriptor */
 static inline uint64_t
-i40e_set_tso_ctx(struct rte_mbuf *mbuf, union i40e_tx_offload tx_offload)
+i40e_set_tso_ctx(struct rte_mbuf *mbuf, union ci_tx_offload tx_offload)
 {
 	uint64_t ctx_desc = 0;
 	uint32_t cd_cmd, hdr_len, cd_tso_len;
@@ -1029,9 +1029,6 @@ i40e_set_tso_ctx(struct rte_mbuf *mbuf, union i40e_tx_offload tx_offload)
 	return ctx_desc;
 }
 
-/* HW requires that Tx buffer size ranges from 1B up to (16K-1)B. */
-#define I40E_MAX_DATA_PER_TXD \
-	(I40E_TXD_QW1_TX_BUF_SZ_MASK >> I40E_TXD_QW1_TX_BUF_SZ_SHIFT)
 /* Calculate the number of TX descriptors needed for each pkt */
 static inline uint16_t
 i40e_calc_pkt_desc(struct rte_mbuf *tx_pkt)
@@ -1040,7 +1037,7 @@ i40e_calc_pkt_desc(struct rte_mbuf *tx_pkt)
 	uint16_t count = 0;
 
 	while (txd != NULL) {
-		count += DIV_ROUND_UP(txd->data_len, I40E_MAX_DATA_PER_TXD);
+		count += DIV_ROUND_UP(txd->data_len, CI_MAX_DATA_PER_TXD);
 		txd = txd->next;
 	}
 
@@ -1069,7 +1066,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint16_t tx_last;
 	uint16_t slen;
 	uint64_t buf_dma_addr;
-	union i40e_tx_offload tx_offload = {0};
+	union ci_tx_offload tx_offload = {0};
 
 	txq = tx_queue;
 	sw_ring = txq->sw_ring;
@@ -1138,18 +1135,18 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Descriptor based VLAN insertion */
 		if (ol_flags & (RTE_MBUF_F_TX_VLAN | RTE_MBUF_F_TX_QINQ)) {
-			td_cmd |= I40E_TX_DESC_CMD_IL2TAG1;
+			td_cmd |= CI_TX_DESC_CMD_IL2TAG1;
 			td_tag = tx_pkt->vlan_tci;
 		}
 
 		/* Always enable CRC offload insertion */
-		td_cmd |= I40E_TX_DESC_CMD_ICRC;
+		td_cmd |= CI_TX_DESC_CMD_ICRC;
 
 		/* Fill in tunneling parameters if necessary */
 		cd_tunneling_params = 0;
 		if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
 			td_offset |= (tx_offload.outer_l2_len >> 1)
-					<< I40E_TX_DESC_LENGTH_MACLEN_SHIFT;
+					<< CI_TX_DESC_LEN_MACLEN_S;
 			i40e_parse_tunneling_params(ol_flags, tx_offload,
 						    &cd_tunneling_params);
 		}
@@ -1229,16 +1226,16 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			buf_dma_addr = rte_mbuf_data_iova(m_seg);
 
 			while ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) &&
-				unlikely(slen > I40E_MAX_DATA_PER_TXD)) {
+				unlikely(slen > CI_MAX_DATA_PER_TXD)) {
 				txd->buffer_addr =
 					rte_cpu_to_le_64(buf_dma_addr);
 				txd->cmd_type_offset_bsz =
 					i40e_build_ctob(td_cmd,
-					td_offset, I40E_MAX_DATA_PER_TXD,
+					td_offset, CI_MAX_DATA_PER_TXD,
 					td_tag);
 
-				buf_dma_addr += I40E_MAX_DATA_PER_TXD;
-				slen -= I40E_MAX_DATA_PER_TXD;
+				buf_dma_addr += CI_MAX_DATA_PER_TXD;
+				slen -= CI_MAX_DATA_PER_TXD;
 
 				txe->last_id = tx_last;
 				tx_id = txe->next_id;
@@ -1265,7 +1262,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		} while (m_seg != NULL);
 
 		/* The last packet data descriptor needs End Of Packet (EOP) */
-		td_cmd |= I40E_TX_DESC_CMD_EOP;
+		td_cmd |= CI_TX_DESC_CMD_EOP;
 		txq->nb_tx_used = (uint16_t)(txq->nb_tx_used + nb_used);
 		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_used);
 
@@ -1275,15 +1272,14 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				   "%4u (port=%d queue=%d)",
 				   tx_last, txq->port_id, txq->queue_id);
 
-			td_cmd |= I40E_TX_DESC_CMD_RS;
+			td_cmd |= CI_TX_DESC_CMD_RS;
 
 			/* Update txq RS bit counters */
 			txq->nb_tx_used = 0;
 		}
 
 		txd->cmd_type_offset_bsz |=
-			rte_cpu_to_le_64(((uint64_t)td_cmd) <<
-					I40E_TXD_QW1_CMD_SHIFT);
+			rte_cpu_to_le_64(((uint64_t)td_cmd) << CI_TXD_QW1_CMD_S);
 	}
 
 end_of_tx:
@@ -1309,8 +1305,8 @@ i40e_tx_free_bufs(struct ci_tx_queue *txq)
 	const uint16_t m = tx_rs_thresh % I40E_TX_MAX_FREE_BUF_SZ;
 
 	if ((txq->ci_tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
-			rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) !=
-			rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE))
+			rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M)) !=
+			rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE))
 		return 0;
 
 	txep = &txq->sw_ring[txq->tx_next_dd - (tx_rs_thresh - 1)];
@@ -1441,8 +1437,7 @@ tx_xmit_pkts(struct ci_tx_queue *txq,
 		n = (uint16_t)(txq->nb_tx_desc - txq->tx_tail);
 		i40e_tx_fill_hw_ring(txq, tx_pkts, n);
 		txr[txq->tx_next_rs].cmd_type_offset_bsz |=
-			rte_cpu_to_le_64(((uint64_t)I40E_TX_DESC_CMD_RS) <<
-						I40E_TXD_QW1_CMD_SHIFT);
+			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) << CI_TXD_QW1_CMD_S);
 		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 		txq->tx_tail = 0;
 	}
@@ -1454,8 +1449,7 @@ tx_xmit_pkts(struct ci_tx_queue *txq,
 	/* Determine if RS bit needs to be set */
 	if (txq->tx_tail > txq->tx_next_rs) {
 		txr[txq->tx_next_rs].cmd_type_offset_bsz |=
-			rte_cpu_to_le_64(((uint64_t)I40E_TX_DESC_CMD_RS) <<
-						I40E_TXD_QW1_CMD_SHIFT);
+			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) << CI_TXD_QW1_CMD_S);
 		txq->tx_next_rs =
 			(uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
 		if (txq->tx_next_rs >= txq->nb_tx_desc)
@@ -2383,9 +2377,9 @@ i40e_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
 	}
 
 	status = &txq->ci_tx_ring[desc].cmd_type_offset_bsz;
-	mask = rte_le_to_cpu_64(I40E_TXD_QW1_DTYPE_MASK);
+	mask = rte_le_to_cpu_64(CI_TXD_QW1_DTYPE_M);
 	expect = rte_cpu_to_le_64(
-		I40E_TX_DESC_DTYPE_DESC_DONE << I40E_TXD_QW1_DTYPE_SHIFT);
+		CI_TX_DESC_DTYPE_DESC_DONE << CI_TXD_QW1_DTYPE_S);
 	if ((*status & mask) == expect)
 		return RTE_ETH_TX_DESC_DONE;
 
@@ -2883,7 +2877,7 @@ i40e_reset_tx_queue(struct ci_tx_queue *txq)
 		volatile struct ci_tx_desc *txd = &txq->ci_tx_ring[i];
 
 		txd->cmd_type_offset_bsz =
-			rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE);
+			rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE);
 		txe[i].mbuf =  NULL;
 		txe[i].last_id = i;
 		txe[prev].next_id = i;

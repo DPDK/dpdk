@@ -1633,10 +1633,9 @@ static __rte_always_inline void
 iavf_vtx1(volatile struct ci_tx_desc *txdp,
 	  struct rte_mbuf *pkt, uint64_t flags, bool offload, uint8_t vlan_flag)
 {
-	uint64_t high_qw =
-		(IAVF_TX_DESC_DTYPE_DATA |
-		 ((uint64_t)flags  << IAVF_TXD_QW1_CMD_SHIFT) |
-		 ((uint64_t)pkt->data_len << IAVF_TXD_QW1_TX_BUF_SZ_SHIFT));
+	uint64_t high_qw = (CI_TX_DESC_DTYPE_DATA |
+		 ((uint64_t)flags << CI_TXD_QW1_CMD_S) |
+		 ((uint64_t)pkt->data_len << CI_TXD_QW1_TX_BUF_SZ_S));
 	if (offload)
 		iavf_txd_enable_offload(pkt, &high_qw, vlan_flag);
 
@@ -1649,8 +1648,7 @@ static __rte_always_inline void
 iavf_vtx(volatile struct ci_tx_desc *txdp,
 	 struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags, bool offload, uint8_t vlan_flag)
 {
-	const uint64_t hi_qw_tmpl = (IAVF_TX_DESC_DTYPE_DATA |
-			((uint64_t)flags  << IAVF_TXD_QW1_CMD_SHIFT));
+	const uint64_t hi_qw_tmpl = (CI_TX_DESC_DTYPE_DATA | (flags << CI_TXD_QW1_CMD_S));
 
 	/* if unaligned on 32-bit boundary, do one to align */
 	if (((uintptr_t)txdp & 0x1F) != 0 && nb_pkts != 0) {
@@ -1660,28 +1658,20 @@ iavf_vtx(volatile struct ci_tx_desc *txdp,
 
 	/* do two at a time while possible, in bursts */
 	for (; nb_pkts > 3; txdp += 4, pkt += 4, nb_pkts -= 4) {
-		uint64_t hi_qw3 =
-			hi_qw_tmpl |
-			((uint64_t)pkt[3]->data_len <<
-			 IAVF_TXD_QW1_TX_BUF_SZ_SHIFT);
+		uint64_t hi_qw3 = hi_qw_tmpl |
+			((uint64_t)pkt[3]->data_len << CI_TXD_QW1_TX_BUF_SZ_S);
 		if (offload)
 			iavf_txd_enable_offload(pkt[3], &hi_qw3, vlan_flag);
-		uint64_t hi_qw2 =
-			hi_qw_tmpl |
-			((uint64_t)pkt[2]->data_len <<
-			 IAVF_TXD_QW1_TX_BUF_SZ_SHIFT);
+		uint64_t hi_qw2 = hi_qw_tmpl |
+			((uint64_t)pkt[2]->data_len << CI_TXD_QW1_TX_BUF_SZ_S);
 		if (offload)
 			iavf_txd_enable_offload(pkt[2], &hi_qw2, vlan_flag);
-		uint64_t hi_qw1 =
-			hi_qw_tmpl |
-			((uint64_t)pkt[1]->data_len <<
-			 IAVF_TXD_QW1_TX_BUF_SZ_SHIFT);
+		uint64_t hi_qw1 = hi_qw_tmpl |
+			((uint64_t)pkt[1]->data_len << CI_TXD_QW1_TX_BUF_SZ_S);
 		if (offload)
 			iavf_txd_enable_offload(pkt[1], &hi_qw1, vlan_flag);
-		uint64_t hi_qw0 =
-			hi_qw_tmpl |
-			((uint64_t)pkt[0]->data_len <<
-			 IAVF_TXD_QW1_TX_BUF_SZ_SHIFT);
+		uint64_t hi_qw0 = hi_qw_tmpl |
+			((uint64_t)pkt[0]->data_len << CI_TXD_QW1_TX_BUF_SZ_S);
 		if (offload)
 			iavf_txd_enable_offload(pkt[0], &hi_qw0, vlan_flag);
 
@@ -1717,8 +1707,8 @@ iavf_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct ci_tx_entry_vec *txep;
 	uint16_t n, nb_commit, tx_id;
 	/* bit2 is reserved and must be set to 1 according to Spec */
-	uint64_t flags = IAVF_TX_DESC_CMD_EOP | IAVF_TX_DESC_CMD_ICRC;
-	uint64_t rs = IAVF_TX_DESC_CMD_RS | flags;
+	uint64_t flags = CI_TX_DESC_CMD_EOP | CI_TX_DESC_CMD_ICRC;
+	uint64_t rs = CI_TX_DESC_CMD_RS | flags;
 
 	if (txq->nb_tx_free < txq->tx_free_thresh)
 		ci_tx_free_bufs_vec(txq, iavf_tx_desc_done, false);
@@ -1761,8 +1751,7 @@ iavf_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 	tx_id = (uint16_t)(tx_id + nb_commit);
 	if (tx_id > txq->tx_next_rs) {
 		txq->ci_tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
-			rte_cpu_to_le_64(((uint64_t)IAVF_TX_DESC_CMD_RS) <<
-					 IAVF_TXD_QW1_CMD_SHIFT);
+			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) << CI_TXD_QW1_CMD_S);
 		txq->tx_next_rs =
 			(uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
 	}

@@ -10,6 +10,66 @@
 #include <rte_ethdev.h>
 #include <rte_vect.h>
 
+/* Common TX Descriptor QW1 Field Definitions */
+#define CI_TXD_QW1_DTYPE_S      0
+#define CI_TXD_QW1_DTYPE_M      (0xFUL << CI_TXD_QW1_DTYPE_S)
+#define CI_TXD_QW1_CMD_S        4
+#define CI_TXD_QW1_CMD_M        (0xFFFUL << CI_TXD_QW1_CMD_S)
+#define CI_TXD_QW1_OFFSET_S     16
+#define CI_TXD_QW1_OFFSET_M     (0x3FFFFULL << CI_TXD_QW1_OFFSET_S)
+#define CI_TXD_QW1_TX_BUF_SZ_S  34
+#define CI_TXD_QW1_TX_BUF_SZ_M  (0x3FFFULL << CI_TXD_QW1_TX_BUF_SZ_S)
+#define CI_TXD_QW1_L2TAG1_S     48
+#define CI_TXD_QW1_L2TAG1_M     (0xFFFFULL << CI_TXD_QW1_L2TAG1_S)
+
+/* Common Descriptor Types */
+#define CI_TX_DESC_DTYPE_DATA           0x0
+#define CI_TX_DESC_DTYPE_CTX            0x1
+#define CI_TX_DESC_DTYPE_DESC_DONE      0xF
+
+/* Common TX Descriptor Command Flags */
+#define CI_TX_DESC_CMD_EOP              0x0001
+#define CI_TX_DESC_CMD_RS               0x0002
+#define CI_TX_DESC_CMD_ICRC             0x0004
+#define CI_TX_DESC_CMD_IL2TAG1          0x0008
+#define CI_TX_DESC_CMD_DUMMY            0x0010
+#define CI_TX_DESC_CMD_IIPT_IPV6        0x0020
+#define CI_TX_DESC_CMD_IIPT_IPV4        0x0040
+#define CI_TX_DESC_CMD_IIPT_IPV4_CSUM   0x0060
+#define CI_TX_DESC_CMD_L4T_EOFT_TCP     0x0100
+#define CI_TX_DESC_CMD_L4T_EOFT_SCTP    0x0200
+#define CI_TX_DESC_CMD_L4T_EOFT_UDP     0x0300
+
+/* Common TX Context Descriptor Commands */
+#define CI_TX_CTX_DESC_TSO              0x01
+#define CI_TX_CTX_DESC_TSYN             0x02
+#define CI_TX_CTX_DESC_IL2TAG2          0x04
+
+/* Common TX Descriptor Length Field Shifts */
+#define CI_TX_DESC_LEN_MACLEN_S         0  /* 7 BITS */
+#define CI_TX_DESC_LEN_IPLEN_S          7  /* 7 BITS */
+#define CI_TX_DESC_LEN_L4_LEN_S         14 /* 4 BITS */
+
+/* Common maximum data per TX descriptor */
+#define CI_MAX_DATA_PER_TXD     (CI_TXD_QW1_TX_BUF_SZ_M >> CI_TXD_QW1_TX_BUF_SZ_S)
+
+/**
+ * Common TX offload union for Intel drivers.
+ * Supports both basic offloads (l2_len, l3_len, l4_len, tso_segsz) and
+ * extended offloads (outer_l2_len, outer_l3_len) for tunneling support.
+ */
+union ci_tx_offload {
+	uint64_t data;
+	struct {
+		uint64_t l2_len:7;        /**< L2 (MAC) Header Length. */
+		uint64_t l3_len:9;        /**< L3 (IP) Header Length. */
+		uint64_t l4_len:8;        /**< L4 Header Length. */
+		uint64_t tso_segsz:16;    /**< TCP TSO segment size */
+		uint64_t outer_l2_len:8;  /**< outer L2 Header Length */
+		uint64_t outer_l3_len:16; /**< outer L3 Header Length */
+	};
+};
+
 /*
  * Structure of a 16-byte Tx descriptor common across i40e, ice, iavf and idpf drivers
  */

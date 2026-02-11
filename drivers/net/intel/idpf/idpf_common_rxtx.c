@@ -271,7 +271,7 @@ idpf_qc_single_tx_queue_reset(struct ci_tx_queue *txq)
 	prev = (uint16_t)(txq->nb_tx_desc - 1);
 	for (i = 0; i < txq->nb_tx_desc; i++) {
 		txq->ci_tx_ring[i].cmd_type_offset_bsz =
-			rte_cpu_to_le_64(IDPF_TX_DESC_DTYPE_DESC_DONE);
+			rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE);
 		txe[i].mbuf =  NULL;
 		txe[i].last_id = i;
 		txe[prev].next_id = i;
@@ -849,7 +849,7 @@ idpf_calc_context_desc(uint64_t flags)
  */
 static inline void
 idpf_set_splitq_tso_ctx(struct rte_mbuf *mbuf,
-			union idpf_tx_offload tx_offload,
+			union ci_tx_offload tx_offload,
 			volatile union idpf_flex_tx_ctx_desc *ctx_desc)
 {
 	uint16_t cmd_dtype;
@@ -887,7 +887,7 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	volatile struct idpf_flex_tx_sched_desc *txr;
 	volatile struct idpf_flex_tx_sched_desc *txd;
 	struct ci_tx_entry *sw_ring;
-	union idpf_tx_offload tx_offload = {0};
+	union ci_tx_offload tx_offload = {0};
 	struct ci_tx_entry *txe, *txn;
 	uint16_t nb_used, tx_id, sw_id;
 	struct rte_mbuf *tx_pkt;
@@ -1334,7 +1334,7 @@ idpf_dp_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	volatile struct ci_tx_desc *txd;
 	volatile struct ci_tx_desc *txr;
-	union idpf_tx_offload tx_offload = {0};
+	union ci_tx_offload tx_offload = {0};
 	struct ci_tx_entry *txe, *txn;
 	struct ci_tx_entry *sw_ring;
 	struct ci_tx_queue *txq;
@@ -1452,10 +1452,10 @@ idpf_dp_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			slen = m_seg->data_len;
 			buf_dma_addr = rte_mbuf_data_iova(m_seg);
 			txd->buffer_addr = rte_cpu_to_le_64(buf_dma_addr);
-			txd->cmd_type_offset_bsz = rte_cpu_to_le_64(IDPF_TX_DESC_DTYPE_DATA |
-				((uint64_t)td_cmd  << IDPF_TXD_QW1_CMD_S) |
-				((uint64_t)td_offset << IDPF_TXD_QW1_OFFSET_S) |
-				((uint64_t)slen << IDPF_TXD_QW1_TX_BUF_SZ_S));
+			txd->cmd_type_offset_bsz = rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DATA |
+				((uint64_t)td_cmd  << CI_TXD_QW1_CMD_S) |
+				((uint64_t)td_offset << CI_TXD_QW1_OFFSET_S) |
+				((uint64_t)slen << CI_TXD_QW1_TX_BUF_SZ_S));
 
 			txe->last_id = tx_last;
 			tx_id = txe->next_id;
@@ -1464,7 +1464,7 @@ idpf_dp_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		} while (m_seg);
 
 		/* The last packet data descriptor needs End Of Packet (EOP) */
-		td_cmd |= IDPF_TX_DESC_CMD_EOP;
+		td_cmd |= CI_TX_DESC_CMD_EOP;
 		txq->nb_tx_used = (uint16_t)(txq->nb_tx_used + nb_used);
 		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_used);
 
@@ -1473,13 +1473,13 @@ idpf_dp_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			       "%4u (port=%d queue=%d)",
 			       tx_last, txq->port_id, txq->queue_id);
 
-			td_cmd |= IDPF_TX_DESC_CMD_RS;
+			td_cmd |= CI_TX_DESC_CMD_RS;
 
 			/* Update txq RS bit counters */
 			txq->nb_tx_used = 0;
 		}
 
-		txd->cmd_type_offset_bsz |= rte_cpu_to_le_16(td_cmd << IDPF_TXD_QW1_CMD_S);
+		txd->cmd_type_offset_bsz |= rte_cpu_to_le_16(td_cmd << CI_TXD_QW1_CMD_S);
 	}
 
 end_of_tx:

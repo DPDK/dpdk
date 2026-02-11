@@ -449,9 +449,9 @@ static inline void
 vtx1(volatile struct ci_tx_desc *txdp,
 	struct rte_mbuf *pkt, uint64_t flags)
 {
-	uint64_t high_qw = (I40E_TX_DESC_DTYPE_DATA |
-		((uint64_t)flags  << I40E_TXD_QW1_CMD_SHIFT) |
-		((uint64_t)pkt->data_len << I40E_TXD_QW1_TX_BUF_SZ_SHIFT));
+	uint64_t high_qw = (CI_TX_DESC_DTYPE_DATA |
+		((uint64_t)flags << CI_TXD_QW1_CMD_S) |
+		((uint64_t)pkt->data_len << CI_TXD_QW1_TX_BUF_SZ_S));
 
 	__vector unsigned long descriptor = (__vector unsigned long){
 		pkt->buf_iova + pkt->data_off, high_qw};
@@ -477,7 +477,7 @@ i40e_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct ci_tx_entry_vec *txep;
 	uint16_t n, nb_commit, tx_id;
 	uint64_t flags = I40E_TD_CMD;
-	uint64_t rs = I40E_TX_DESC_CMD_RS | I40E_TD_CMD;
+	uint64_t rs = CI_TX_DESC_CMD_RS | I40E_TD_CMD;
 	int i;
 
 	if (txq->nb_tx_free < txq->tx_free_thresh)
@@ -520,8 +520,7 @@ i40e_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	tx_id = (uint16_t)(tx_id + nb_commit);
 	if (tx_id > txq->tx_next_rs) {
 		txq->ci_tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
-			rte_cpu_to_le_64(((uint64_t)I40E_TX_DESC_CMD_RS) <<
-						I40E_TXD_QW1_CMD_SHIFT);
+			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) << CI_TXD_QW1_CMD_S);
 		txq->tx_next_rs =
 			(uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
 	}
