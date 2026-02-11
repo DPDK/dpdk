@@ -681,7 +681,7 @@ i40e_recv_scattered_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 
 static inline void
-vtx1(volatile struct i40e_tx_desc *txdp,
+vtx1(volatile struct ci_tx_desc *txdp,
 		struct rte_mbuf *pkt, uint64_t flags)
 {
 	uint64_t high_qw = (I40E_TX_DESC_DTYPE_DATA |
@@ -694,7 +694,7 @@ vtx1(volatile struct i40e_tx_desc *txdp,
 }
 
 static inline void
-vtx(volatile struct i40e_tx_desc *txdp,
+vtx(volatile struct ci_tx_desc *txdp,
 		struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags)
 {
 	const uint64_t hi_qw_tmpl = (I40E_TX_DESC_DTYPE_DATA |
@@ -739,7 +739,7 @@ i40e_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 			  uint16_t nb_pkts)
 {
 	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
-	volatile struct i40e_tx_desc *txdp;
+	volatile struct ci_tx_desc *txdp;
 	struct ci_tx_entry_vec *txep;
 	uint16_t n, nb_commit, tx_id;
 	uint64_t flags = I40E_TD_CMD;

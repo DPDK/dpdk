@@ -182,7 +182,7 @@ union idpf_tx_offload {
 };
 
 union idpf_tx_desc {
-	struct idpf_base_tx_desc *tx_ring;
+	struct ci_tx_desc *tx_ring;
 	struct idpf_flex_tx_sched_desc *desc_ring;
 	struct idpf_splitq_tx_compl_desc *compl_ring;
 };

@@ -1377,7 +1377,7 @@ i40e_find_available_buffer(struct rte_eth_dev *dev)
 	 */
 	if (fdir_info->txq_available_buf_count <= 0) {
 		uint16_t tmp_tail;
-		volatile struct i40e_tx_desc *tmp_txdp;
+		volatile struct ci_tx_desc *tmp_txdp;
 
 		tmp_tail = txq->tx_tail;
 		tmp_txdp = &txq->i40e_tx_ring[tmp_tail + 1];
@@ -1628,7 +1628,7 @@ i40e_flow_fdir_filter_programming(struct i40e_pf *pf,
 	struct ci_tx_queue *txq = pf->fdir.txq;
 	struct ci_rx_queue *rxq = pf->fdir.rxq;
 	const struct i40e_fdir_action *fdir_action = &filter->action;
-	volatile struct i40e_tx_desc *txdp;
+	volatile struct ci_tx_desc *txdp;
 	volatile struct i40e_filter_program_desc *fdirdp;
 	uint32_t td_cmd;
 	uint16_t vsi_id;

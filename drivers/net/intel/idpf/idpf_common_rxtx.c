@@ -264,13 +264,13 @@ idpf_qc_single_tx_queue_reset(struct ci_tx_queue *txq)
 	}
 
 	txe = txq->sw_ring;
-	size = sizeof(struct idpf_base_tx_desc) * txq->nb_tx_desc;
+	size = sizeof(struct ci_tx_desc) * txq->nb_tx_desc;
 	for (i = 0; i < size; i++)
 		((volatile char *)txq->idpf_tx_ring)[i] = 0;
 
 	prev = (uint16_t)(txq->nb_tx_desc - 1);
 	for (i = 0; i < txq->nb_tx_desc; i++) {
-		txq->idpf_tx_ring[i].qw1 =
+		txq->idpf_tx_ring[i].cmd_type_offset_bsz =
 			rte_cpu_to_le_64(IDPF_TX_DESC_DTYPE_DESC_DONE);
 		txe[i].mbuf =  NULL;
 		txe[i].last_id = i;
@@ -1335,14 +1335,14 @@ idpf_xmit_cleanup(struct ci_tx_queue *txq)
 	uint16_t desc_to_clean_to;
 	uint16_t nb_tx_to_clean;
 
-	volatile struct idpf_base_tx_desc *txd = txq->idpf_tx_ring;
+	volatile struct ci_tx_desc *txd = txq->idpf_tx_ring;
 
 	desc_to_clean_to = (uint16_t)(last_desc_cleaned + txq->tx_rs_thresh);
 	if (desc_to_clean_to >= nb_tx_desc)
 		desc_to_clean_to = (uint16_t)(desc_to_clean_to - nb_tx_desc);
 
 	desc_to_clean_to = sw_ring[desc_to_clean_to].last_id;
-	if ((txd[desc_to_clean_to].qw1 &
+	if ((txd[desc_to_clean_to].cmd_type_offset_bsz &
 	     rte_cpu_to_le_64(IDPF_TXD_QW1_DTYPE_M)) !=
 	    rte_cpu_to_le_64(IDPF_TX_DESC_DTYPE_DESC_DONE)) {
 		TX_LOG(DEBUG, "TX descriptor %4u is not done "
@@ -1358,7 +1358,7 @@ idpf_xmit_cleanup(struct ci_tx_queue *txq)
 		nb_tx_to_clean = (uint16_t)(desc_to_clean_to -
 					    last_desc_cleaned);
 
-	txd[desc_to_clean_to].qw1 = 0;
+	txd[desc_to_clean_to].cmd_type_offset_bsz = 0;
 
 	txq->last_desc_cleaned = desc_to_clean_to;
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + nb_tx_to_clean);
@@ -1372,8 +1372,8 @@ uint16_t
 idpf_dp_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			  uint16_t nb_pkts)
 {
-	volatile struct idpf_base_tx_desc *txd;
-	volatile struct idpf_base_tx_desc *txr;
+	volatile struct ci_tx_desc *txd;
+	volatile struct ci_tx_desc *txr;
 	union idpf_tx_offload tx_offload = {0};
 	struct ci_tx_entry *txe, *txn;
 	struct ci_tx_entry *sw_ring;
@@ -1491,8 +1491,8 @@ idpf_dp_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			/* Setup TX Descriptor */
 			slen = m_seg->data_len;
 			buf_dma_addr = rte_mbuf_data_iova(m_seg);
-			txd->buf_addr = rte_cpu_to_le_64(buf_dma_addr);
-			txd->qw1 = rte_cpu_to_le_64(IDPF_TX_DESC_DTYPE_DATA |
+			txd->buffer_addr = rte_cpu_to_le_64(buf_dma_addr);
+			txd->cmd_type_offset_bsz = rte_cpu_to_le_64(IDPF_TX_DESC_DTYPE_DATA |
 				((uint64_t)td_cmd  << IDPF_TXD_QW1_CMD_S) |
 				((uint64_t)td_offset << IDPF_TXD_QW1_OFFSET_S) |
 				((uint64_t)slen << IDPF_TXD_QW1_TX_BUF_SZ_S));
@@ -1519,7 +1519,7 @@ idpf_dp_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			txq->nb_tx_used = 0;
 		}
 
-		txd->qw1 |= rte_cpu_to_le_16(td_cmd << IDPF_TXD_QW1_CMD_S);
+		txd->cmd_type_offset_bsz |= rte_cpu_to_le_16(td_cmd << IDPF_TXD_QW1_CMD_S);
 	}
 
 end_of_tx:

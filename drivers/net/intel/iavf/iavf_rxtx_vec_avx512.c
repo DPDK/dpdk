@@ -1840,7 +1840,7 @@ tx_backlog_entry_avx512(struct ci_tx_entry_vec *txep,
 }
 
 static __rte_always_inline void
-iavf_vtx1(volatile struct iavf_tx_desc *txdp,
+iavf_vtx1(volatile struct ci_tx_desc *txdp,
 	  struct rte_mbuf *pkt, uint64_t flags,
 	  bool offload, uint8_t vlan_flag)
 {
@@ -1859,7 +1859,7 @@ iavf_vtx1(volatile struct iavf_tx_desc *txdp,
 #define IAVF_TX_LEN_MASK 0xAA
 #define IAVF_TX_OFF_MASK 0x55
 static __rte_always_inline void
-iavf_vtx(volatile struct iavf_tx_desc *txdp,
+iavf_vtx(volatile struct ci_tx_desc *txdp,
 		struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags,
 		bool offload, uint8_t vlan_flag)
 {
@@ -2068,7 +2068,7 @@ iavf_fill_ctx_desc_tunnelling_field(volatile uint64_t *qw0,
 }
 
 static __rte_always_inline void
-ctx_vtx1(volatile struct iavf_tx_desc *txdp, struct rte_mbuf *pkt,
+ctx_vtx1(volatile struct ci_tx_desc *txdp, struct rte_mbuf *pkt,
 		uint64_t flags, bool offload, uint8_t vlan_flag)
 {
 	uint64_t high_ctx_qw = IAVF_TX_DESC_DTYPE_CONTEXT;
@@ -2106,7 +2106,7 @@ ctx_vtx1(volatile struct iavf_tx_desc *txdp, struct rte_mbuf *pkt,
 }
 
 static __rte_always_inline void
-ctx_vtx(volatile struct iavf_tx_desc *txdp,
+ctx_vtx(volatile struct ci_tx_desc *txdp,
 		struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags,
 		bool offload, uint8_t vlan_flag)
 {
@@ -2203,7 +2203,7 @@ iavf_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 				 uint16_t nb_pkts, bool offload)
 {
 	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
-	volatile struct iavf_tx_desc *txdp;
+	volatile struct ci_tx_desc *txdp;
 	struct ci_tx_entry_vec *txep;
 	uint16_t n, nb_commit, tx_id;
 	/* bit2 is reserved and must be set to 1 according to Spec */
@@ -2271,7 +2271,7 @@ iavf_xmit_fixed_burst_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 				 uint16_t nb_pkts, bool offload)
 {
 	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
-	volatile struct iavf_tx_desc *txdp;
+	volatile struct ci_tx_desc *txdp;
 	struct ci_tx_entry_vec *txep;
 	uint16_t n, nb_commit, nb_mbuf, tx_id;
 	/* bit2 is reserved and must be set to 1 according to Spec */

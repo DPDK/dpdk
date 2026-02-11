@@ -678,7 +678,7 @@ void iavf_dump_tx_descriptor(const struct ci_tx_queue *txq,
 			    const volatile void *desc, uint16_t tx_id)
 {
 	const char *name;
-	const volatile struct iavf_tx_desc *tx_desc = desc;
+	const volatile struct ci_tx_desc *tx_desc = desc;
 	enum iavf_tx_desc_dtype_value type;
 
 

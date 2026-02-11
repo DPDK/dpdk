@@ -1115,13 +1115,13 @@ ice_reset_tx_queue(struct ci_tx_queue *txq)
 	}
 
 	txe = txq->sw_ring;
-	size = sizeof(struct ice_tx_desc) * txq->nb_tx_desc;
+	size = sizeof(struct ci_tx_desc) * txq->nb_tx_desc;
 	for (i = 0; i < size; i++)
 		((volatile char *)txq->ice_tx_ring)[i] = 0;
 
 	prev = (uint16_t)(txq->nb_tx_desc - 1);
 	for (i = 0; i < txq->nb_tx_desc; i++) {
-		volatile struct ice_tx_desc *txd = &txq->ice_tx_ring[i];
+		volatile struct ci_tx_desc *txd = &txq->ice_tx_ring[i];
 
 		txd->cmd_type_offset_bsz =
 			rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DESC_DONE);
@@ -1623,7 +1623,7 @@ ice_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	/* Allocate TX hardware ring descriptors. */
-	ring_size = sizeof(struct ice_tx_desc) * ICE_MAX_NUM_DESC_BY_MAC(hw);
+	ring_size = sizeof(struct ci_tx_desc) * ICE_MAX_NUM_DESC_BY_MAC(hw);
 	ring_size = RTE_ALIGN(ring_size, ICE_DMA_MEM_ALIGN);
 	tz = rte_eth_dma_zone_reserve(dev, "ice_tx_ring", queue_idx,
 				      ring_size, ICE_RING_BASE_ALIGN,
@@ -2619,7 +2619,7 @@ ice_fdir_setup_tx_resources(struct ice_pf *pf)
 	}
 
 	/* Allocate TX hardware ring descriptors. */
-	ring_size = sizeof(struct ice_tx_desc) * ICE_FDIR_NUM_TX_DESC;
+	ring_size = sizeof(struct ci_tx_desc) * ICE_FDIR_NUM_TX_DESC;
 	ring_size = RTE_ALIGN(ring_size, ICE_DMA_MEM_ALIGN);
 
 	tz = rte_eth_dma_zone_reserve(dev, "fdir_tx_ring",
@@ -2638,7 +2638,7 @@ ice_fdir_setup_tx_resources(struct ice_pf *pf)
 	txq->ice_vsi = pf->fdir.fdir_vsi;
 
 	txq->tx_ring_dma = tz->iova;
-	txq->ice_tx_ring = (struct ice_tx_desc *)tz->addr;
+	txq->ice_tx_ring = (struct ci_tx_desc *)tz->addr;
 	/*
 	 * don't need to allocate software ring and reset for the fdir
 	 * program queue just set the queue has been configured.
@@ -3027,7 +3027,7 @@ static inline int
 ice_xmit_cleanup(struct ci_tx_queue *txq)
 {
 	struct ci_tx_entry *sw_ring = txq->sw_ring;
-	volatile struct ice_tx_desc *txd = txq->ice_tx_ring;
+	volatile struct ci_tx_desc *txd = txq->ice_tx_ring;
 	uint16_t last_desc_cleaned = txq->last_desc_cleaned;
 	uint16_t nb_tx_desc = txq->nb_tx_desc;
 	uint16_t desc_to_clean_to;
@@ -3148,8 +3148,8 @@ uint16_t
 ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct ci_tx_queue *txq;
-	volatile struct ice_tx_desc *ice_tx_ring;
-	volatile struct ice_tx_desc *txd;
+	volatile struct ci_tx_desc *ice_tx_ring;
+	volatile struct ci_tx_desc *txd;
 	struct ci_tx_entry *sw_ring;
 	struct ci_tx_entry *txe, *txn;
 	struct rte_mbuf *tx_pkt;
@@ -3312,7 +3312,7 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 			while ((ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)) &&
 				unlikely(slen > ICE_MAX_DATA_PER_TXD)) {
-				txd->buf_addr = rte_cpu_to_le_64(buf_dma_addr);
+				txd->buffer_addr = rte_cpu_to_le_64(buf_dma_addr);
 				txd->cmd_type_offset_bsz =
 				rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DATA |
 				((uint64_t)td_cmd << ICE_TXD_QW1_CMD_S) |
@@ -3331,7 +3331,7 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				txn = &sw_ring[txe->next_id];
 			}
 
-			txd->buf_addr = rte_cpu_to_le_64(buf_dma_addr);
+			txd->buffer_addr = rte_cpu_to_le_64(buf_dma_addr);
 			txd->cmd_type_offset_bsz =
 				rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DATA |
 				((uint64_t)td_cmd << ICE_TXD_QW1_CMD_S) |
@@ -3563,14 +3563,14 @@ ice_tx_done_cleanup(void *txq, uint32_t free_cnt)
 
 /* Populate 4 descriptors with data from 4 mbufs */
 static inline void
-tx4(volatile struct ice_tx_desc *txdp, struct rte_mbuf **pkts)
+tx4(volatile struct ci_tx_desc *txdp, struct rte_mbuf **pkts)
 {
 	uint64_t dma_addr;
 	uint32_t i;
 
 	for (i = 0; i < 4; i++, txdp++, pkts++) {
 		dma_addr = rte_mbuf_data_iova(*pkts);
-		txdp->buf_addr = rte_cpu_to_le_64(dma_addr);
+		txdp->buffer_addr = rte_cpu_to_le_64(dma_addr);
 		txdp->cmd_type_offset_bsz =
 			ice_build_ctob((uint32_t)ICE_TD_CMD, 0,
 				       (*pkts)->data_len, 0);
@@ -3579,12 +3579,12 @@ tx4(volatile struct ice_tx_desc *txdp, struct rte_mbuf **pkts)
 
 /* Populate 1 descriptor with data from 1 mbuf */
 static inline void
-tx1(volatile struct ice_tx_desc *txdp, struct rte_mbuf **pkts)
+tx1(volatile struct ci_tx_desc *txdp, struct rte_mbuf **pkts)
 {
 	uint64_t dma_addr;
 
 	dma_addr = rte_mbuf_data_iova(*pkts);
-	txdp->buf_addr = rte_cpu_to_le_64(dma_addr);
+	txdp->buffer_addr = rte_cpu_to_le_64(dma_addr);
 	txdp->cmd_type_offset_bsz =
 		ice_build_ctob((uint32_t)ICE_TD_CMD, 0,
 			       (*pkts)->data_len, 0);
@@ -3594,7 +3594,7 @@ static inline void
 ice_tx_fill_hw_ring(struct ci_tx_queue *txq, struct rte_mbuf **pkts,
 		    uint16_t nb_pkts)
 {
-	volatile struct ice_tx_desc *txdp = &txq->ice_tx_ring[txq->tx_tail];
+	volatile struct ci_tx_desc *txdp = &txq->ice_tx_ring[txq->tx_tail];
 	struct ci_tx_entry *txep = &txq->sw_ring[txq->tx_tail];
 	const int N_PER_LOOP = 4;
 	const int N_PER_LOOP_MASK = N_PER_LOOP - 1;
@@ -3627,7 +3627,7 @@ tx_xmit_pkts(struct ci_tx_queue *txq,
 	     struct rte_mbuf **tx_pkts,
 	     uint16_t nb_pkts)
 {
-	volatile struct ice_tx_desc *txr = txq->ice_tx_ring;
+	volatile struct ci_tx_desc *txr = txq->ice_tx_ring;
 	uint16_t n = 0;
 
 	/**
@@ -4882,7 +4882,7 @@ ice_fdir_programming(struct ice_pf *pf, struct ice_fltr_desc *fdir_desc)
 	struct ci_tx_queue *txq = pf->fdir.txq;
 	struct ci_rx_queue *rxq = pf->fdir.rxq;
 	volatile struct ice_fltr_desc *fdirdp;
-	volatile struct ice_tx_desc *txdp;
+	volatile struct ci_tx_desc *txdp;
 	uint32_t td_cmd;
 	uint16_t i;
 
@@ -4892,7 +4892,7 @@ ice_fdir_programming(struct ice_pf *pf, struct ice_fltr_desc *fdir_desc)
 	fdirdp->dtype_cmd_vsi_fdid = fdir_desc->dtype_cmd_vsi_fdid;
 
 	txdp = &txq->ice_tx_ring[txq->tx_tail + 1];
-	txdp->buf_addr = rte_cpu_to_le_64(pf->fdir.dma_addr);
+	txdp->buffer_addr = rte_cpu_to_le_64(pf->fdir.dma_addr);
 	td_cmd = ICE_TX_DESC_CMD_EOP |
 		ICE_TX_DESC_CMD_RS  |
 		ICE_TX_DESC_CMD_DUMMY;

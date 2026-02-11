@@ -267,7 +267,7 @@ reset_tx_queue(struct ci_tx_queue *txq)
 	}
 
 	txe = txq->sw_ring;
-	size = sizeof(struct iavf_tx_desc) * txq->nb_tx_desc;
+	size = sizeof(struct ci_tx_desc) * txq->nb_tx_desc;
 	for (i = 0; i < size; i++)
 		((volatile char *)txq->iavf_tx_ring)[i] = 0;
 
@@ -827,7 +827,7 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	/* Allocate TX hardware ring descriptors. */
-	ring_size = sizeof(struct iavf_tx_desc) * IAVF_MAX_RING_DESC;
+	ring_size = sizeof(struct ci_tx_desc) * IAVF_MAX_RING_DESC;
 	ring_size = RTE_ALIGN(ring_size, IAVF_DMA_MEM_ALIGN);
 	mz = rte_eth_dma_zone_reserve(dev, "iavf_tx_ring", queue_idx,
 				      ring_size, IAVF_RING_BASE_ALIGN,
@@ -839,7 +839,7 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 	txq->tx_ring_dma = mz->iova;
-	txq->iavf_tx_ring = (struct iavf_tx_desc *)mz->addr;
+	txq->iavf_tx_ring = (struct ci_tx_desc *)mz->addr;
 
 	txq->mz = mz;
 	reset_tx_queue(txq);
@@ -2333,7 +2333,7 @@ iavf_xmit_cleanup(struct ci_tx_queue *txq)
 	uint16_t desc_to_clean_to;
 	uint16_t nb_tx_to_clean;
 
-	volatile struct iavf_tx_desc *txd = txq->iavf_tx_ring;
+	volatile struct ci_tx_desc *txd = txq->iavf_tx_ring;
 
 	desc_to_clean_to = (uint16_t)(last_desc_cleaned + txq->tx_rs_thresh);
 	if (desc_to_clean_to >= nb_tx_desc)
@@ -2723,7 +2723,7 @@ iavf_calc_pkt_desc(struct rte_mbuf *tx_pkt)
 }
 
 static inline void
-iavf_fill_data_desc(volatile struct iavf_tx_desc *desc,
+iavf_fill_data_desc(volatile struct ci_tx_desc *desc,
 	uint64_t desc_template,	uint16_t buffsz,
 	uint64_t buffer_addr)
 {
@@ -2756,7 +2756,7 @@ uint16_t
 iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct ci_tx_queue *txq = tx_queue;
-	volatile struct iavf_tx_desc *txr = txq->iavf_tx_ring;
+	volatile struct ci_tx_desc *txr = txq->iavf_tx_ring;
 	struct ci_tx_entry *txe_ring = txq->sw_ring;
 	struct ci_tx_entry *txe, *txn;
 	struct rte_mbuf *mb, *mb_seg;
@@ -2774,7 +2774,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	txe = &txe_ring[desc_idx];
 
 	for (idx = 0; idx < nb_pkts; idx++) {
-		volatile struct iavf_tx_desc *ddesc;
+		volatile struct ci_tx_desc *ddesc;
 		struct iavf_ipsec_crypto_pkt_metadata *ipsec_md;
 
 		uint16_t nb_desc_ctx, nb_desc_ipsec;
@@ -2895,7 +2895,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		mb_seg = mb;
 
 		do {
-			ddesc = (volatile struct iavf_tx_desc *)
+			ddesc = (volatile struct ci_tx_desc *)
 					&txr[desc_idx];
 
 			txn = &txe_ring[txe->next_id];

@@ -10,6 +10,14 @@
 #include <rte_ethdev.h>
 #include <rte_vect.h>
 
+/*
+ * Structure of a 16-byte Tx descriptor common across i40e, ice, iavf and idpf drivers
+ */
+struct ci_tx_desc {
+	uint64_t buffer_addr; /* Address of descriptor's data buf */
+	uint64_t cmd_type_offset_bsz;
+};
+
 /* forward declaration of the common intel (ci) queue structure */
 struct ci_tx_queue;
 
@@ -33,10 +41,10 @@ typedef void (*ice_tx_release_mbufs_t)(struct ci_tx_queue *txq);
 
 struct ci_tx_queue {
 	union { /* TX ring virtual address */
-		volatile struct i40e_tx_desc *i40e_tx_ring;
-		volatile struct iavf_tx_desc *iavf_tx_ring;
-		volatile struct ice_tx_desc *ice_tx_ring;
-		volatile struct idpf_base_tx_desc *idpf_tx_ring;
+		volatile struct ci_tx_desc *i40e_tx_ring;
+		volatile struct ci_tx_desc *iavf_tx_ring;
+		volatile struct ci_tx_desc *ice_tx_ring;
+		volatile struct ci_tx_desc *idpf_tx_ring;
 		volatile union ixgbe_adv_tx_desc *ixgbe_tx_ring;
 	};
 	volatile uint8_t *qtx_tail;               /* register address of tail */

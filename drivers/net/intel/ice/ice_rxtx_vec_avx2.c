@@ -774,7 +774,7 @@ ice_recv_scattered_pkts_vec_avx2_offload(void *rx_queue,
 }
 
 static __rte_always_inline void
-ice_vtx1(volatile struct ice_tx_desc *txdp,
+ice_vtx1(volatile struct ci_tx_desc *txdp,
 	 struct rte_mbuf *pkt, uint64_t flags, bool offload)
 {
 	uint64_t high_qw =
@@ -789,7 +789,7 @@ ice_vtx1(volatile struct ice_tx_desc *txdp,
 }
 
 static __rte_always_inline void
-ice_vtx(volatile struct ice_tx_desc *txdp,
+ice_vtx(volatile struct ci_tx_desc *txdp,
 	struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags, bool offload)
 {
 	const uint64_t hi_qw_tmpl = (ICE_TX_DESC_DTYPE_DATA |
@@ -852,7 +852,7 @@ ice_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 			      uint16_t nb_pkts, bool offload)
 {
 	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
-	volatile struct ice_tx_desc *txdp;
+	volatile struct ci_tx_desc *txdp;
 	struct ci_tx_entry_vec *txep;
 	uint16_t n, nb_commit, tx_id;
 	uint64_t flags = ICE_TD_CMD;
