@@ -64,14 +64,14 @@ ci_tx_free_bufs(struct ci_tx_queue *txq)
 	const uint16_t k = RTE_ALIGN_FLOOR(rs_thresh, CI_TX_MAX_FREE_BUF_SZ);
 	const uint16_t m = rs_thresh % CI_TX_MAX_FREE_BUF_SZ;
 	struct rte_mbuf *free[CI_TX_MAX_FREE_BUF_SZ];
-	struct ci_tx_entry *txep;
+	struct ci_tx_entry_vec *txep;
 
 	if ((txq->ci_tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
 			rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M)) !=
 			rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE))
 		return 0;
 
-	txep = &txq->sw_ring[txq->tx_next_dd - (rs_thresh - 1)];
+	txep = &txq->sw_ring_vec[txq->tx_next_dd - (rs_thresh - 1)];
 
 	struct rte_mempool *fast_free_mp =
 			likely(txq->fast_free_mp != (void *)UINTPTR_MAX) ?
@@ -129,7 +129,7 @@ ci_xmit_burst_simple(struct ci_tx_queue *txq,
 {
 	volatile struct ci_tx_desc *txr = txq->ci_tx_ring;
 	volatile struct ci_tx_desc *txdp;
-	struct ci_tx_entry *txep;
+	struct ci_tx_entry_vec *txep;
 	uint16_t tx_id;
 	uint16_t n = 0;
 
@@ -148,7 +148,7 @@ ci_xmit_burst_simple(struct ci_tx_queue *txq,
 
 	tx_id = txq->tx_tail;
 	txdp = &txr[tx_id];
-	txep = &txq->sw_ring[tx_id];
+	txep = &txq->sw_ring_vec[tx_id];
 
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
 
@@ -156,7 +156,7 @@ ci_xmit_burst_simple(struct ci_tx_queue *txq,
 		n = (uint16_t)(txq->nb_tx_desc - tx_id);
 
 		/* Store mbufs in backlog */
-		ci_tx_backlog_entry(txep, tx_pkts, n);
+		ci_tx_backlog_entry_vec(txep, tx_pkts, n);
 
 		/* Write descriptors to HW ring */
 		ci_tx_fill_hw_ring_simple(txdp, tx_pkts, n);
@@ -168,11 +168,11 @@ ci_xmit_burst_simple(struct ci_tx_queue *txq,
 
 		tx_id = 0;
 		txdp = &txr[tx_id];
-		txep = &txq->sw_ring[tx_id];
+		txep = &txq->sw_ring_vec[tx_id];
 	}
 
 	/* Store remaining mbufs in backlog */
-	ci_tx_backlog_entry(txep, tx_pkts + n, (uint16_t)(nb_pkts - n));
+	ci_tx_backlog_entry_vec(txep, tx_pkts + n, (uint16_t)(nb_pkts - n));
 
 	/* Write remaining descriptors to HW ring */
 	ci_tx_fill_hw_ring_simple(txdp, tx_pkts + n, (uint16_t)(nb_pkts - n));

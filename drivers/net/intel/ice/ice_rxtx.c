@@ -882,7 +882,7 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		}
 
 	/* record what kind of descriptor cleanup we need on teardown */
-	txq->vector_tx = ad->tx_vec_allowed;
+	txq->use_vec_entry = ad->tx_vec_allowed || ad->tx_simple_allowed;
 
 	if (txq->tsq != NULL && txq->tsq->ts_flag > 0) {
 		struct ice_aqc_set_txtime_qgrp *ts_elem;

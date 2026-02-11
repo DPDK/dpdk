@@ -1365,6 +1365,6 @@ idpf_qc_tx_vec_avx512_setup(struct ci_tx_queue *txq)
 	if (!txq)
 		return 0;
 
-	txq->vector_tx = true;
+	txq->use_vec_entry = true;
 	return 0;
 }

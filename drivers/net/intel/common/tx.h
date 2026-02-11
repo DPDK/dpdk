@@ -173,7 +173,7 @@ struct ci_tx_queue {
 	rte_iova_t tx_ring_dma;        /* TX ring DMA address */
 	bool tx_deferred_start; /* don't start this queue in dev start */
 	bool q_set;             /* indicate if tx queue has been configured */
-	bool vector_tx;         /* port is using vector TX */
+	bool use_vec_entry;     /* use sw_ring_vec (true for vector and simple paths) */
 	union {                  /* the VSI this queue belongs to */
 		struct i40e_vsi *i40e_vsi;
 		struct iavf_vsi *iavf_vsi;
@@ -361,7 +361,8 @@ ci_txq_release_all_mbufs(struct ci_tx_queue *txq, bool use_ctx)
 	if (unlikely(!txq || !txq->sw_ring))
 		return;
 
-	if (!txq->vector_tx) {
+	if (!txq->use_vec_entry) {
+		/* Regular scalar path uses sw_ring with ci_tx_entry */
 		for (uint16_t i = 0; i < txq->nb_tx_desc; i++) {
 			if (txq->sw_ring[i].mbuf != NULL) {
 				rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
@@ -372,6 +373,7 @@ ci_txq_release_all_mbufs(struct ci_tx_queue *txq, bool use_ctx)
 	}
 
 	/**
+	 *  Vector and simple paths use sw_ring_vec (ci_tx_entry_vec).
 	 *  vPMD tx will not set sw_ring's mbuf to NULL after free,
 	 *  so determining buffers to free is a little more complex.
 	 */

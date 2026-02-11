@@ -1803,7 +1803,7 @@ iavf_xmit_pkts_vec_avx2_offload(void *tx_queue, struct rte_mbuf **tx_pkts,
 int __rte_cold
 iavf_txq_vec_setup(struct ci_tx_queue *txq)
 {
-	txq->vector_tx = true;
+	txq->use_vec_entry = true;
 	return 0;
 }
 

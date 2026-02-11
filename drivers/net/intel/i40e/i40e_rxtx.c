@@ -1451,7 +1451,7 @@ i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		PMD_DRV_LOG(WARNING, "TX queue %u is deferred start",
 			    tx_queue_id);
 
-	txq->vector_tx = ad->tx_vec_allowed;
+	txq->use_vec_entry = ad->tx_vec_allowed || ad->tx_simple_allowed;
 
 	/*
 	 * tx_queue_id is queue id application refers to, while

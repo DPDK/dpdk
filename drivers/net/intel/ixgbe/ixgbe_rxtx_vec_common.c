@@ -111,7 +111,7 @@ ixgbe_txq_vec_setup(struct ci_tx_queue *txq)
 	/* leave the first one for overflow */
 	txq->sw_ring_vec = txq->sw_ring_vec + 1;
 	txq->ops = &vec_txq_ops;
-	txq->vector_tx = 1;
+	txq->use_vec_entry = true;
 
 	return 0;
 }
