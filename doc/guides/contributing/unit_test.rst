@@ -98,7 +98,6 @@ The unit test app can accept test suite names via command line arguments::
    EAL: Detected static linkage of DPDK
    EAL: Multi-process socket /run/user/26934/dpdk/rte/mp_socket
    EAL: Selected IOVA mode 'VA'
-   TELEMETRY: No legacy callbacks, legacy socket not created
    APP: HPET is not enabled, using TSC as default timer
    RTE>>version_autotest
    Version string: 'DPDK 21.08.0-rc0'
@@ -189,9 +188,11 @@ There are two important functions for interacting with the test harness:
       The test is automatically added to the Meson test suite `<MESON_SUITE>` by this macro.
       Examples would be ``REGISTER_DRIVER_TEST``, or ``REGISTER_PERF_TEST``.
       **NOTE:** The ``REGISTER_FAST_TEST`` macro is slightly different,
-      in that it takes two additional parameters,
-      specifying whether the test can be run using ``--no-huge``,
-      and whether the test can be run using Address Sanitization (ASAN)
+      in that it takes two additional parameters before the function name:
+      the hugepage requirement (``NOHUGE_OK`` if the test can run without hugepages,
+      or ``NOHUGE_SKIP`` if hugepages are required),
+      and Address Sanitizer compatibility (``ASAN_OK`` if the test can run with ASan enabled,
+      or ``ASAN_SKIP`` if it cannot).
 
    ``unit_test_suite_runner(struct unit_test_suite *)``
       Returns a runner for a full test suite object,
@@ -319,7 +320,7 @@ of the unit test suite structure, for example:
        return ret;
    }
 
-   REGISTER_FAST_TEST(example_autotest, true /*no-huge*/, false /*ASan*/, example_tests);
+   REGISTER_FAST_TEST(example_autotest, NOHUGE_OK, ASAN_OK, example_tests);
 
 
 Designing a test

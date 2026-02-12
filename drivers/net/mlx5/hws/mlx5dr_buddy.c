@@ -147,6 +147,7 @@ void mlx5dr_buddy_cleanup(struct mlx5dr_buddy_mem *buddy)
 
 	simple_free(buddy->num_free);
 	simple_free(buddy->bits);
+	simple_free(buddy);
 }
 
 int mlx5dr_buddy_alloc_mem(struct mlx5dr_buddy_mem *buddy, int order)
@@ -197,4 +198,3 @@ void mlx5dr_buddy_free_mem(struct mlx5dr_buddy_mem *buddy, uint32_t seg, int ord
 
 	++buddy->num_free[order];
 }
-

@@ -318,8 +318,8 @@ create_default_flow(const struct mcs_test_vector *td, uint16_t portid,
 	struct rte_flow *flow;
 	struct rte_flow_item_eth eth = { .hdr.ether_type = 0, };
 	static const struct rte_flow_item_eth eth_mask = {
-		.hdr.dst_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
-		.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.hdr.dst_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+		.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 		.hdr.ether_type = RTE_BE16(0x0000),
 	};
 
@@ -2358,6 +2358,7 @@ ut_teardown_inline_macsec(void)
 static int
 inline_macsec_testsuite_setup(void)
 {
+	struct rte_eth_dev_info dev_info;
 	uint16_t nb_rxd;
 	uint16_t nb_txd;
 	uint16_t nb_ports;
@@ -2400,6 +2401,19 @@ inline_macsec_testsuite_setup(void)
 
 	/* configuring port 0 for the test is enough */
 	port_id = 0;
+	if (rte_eth_dev_info_get(port_id, &dev_info)) {
+		printf("Failed to get devinfo");
+		return -1;
+	}
+
+	if ((dev_info.rx_offload_capa & RTE_ETH_RX_OFFLOAD_MACSEC_STRIP) !=
+				RTE_ETH_RX_OFFLOAD_MACSEC_STRIP ||
+	    (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MACSEC_INSERT) !=
+				RTE_ETH_TX_OFFLOAD_MACSEC_INSERT) {
+		printf("Device does not support MACsec\n");
+		return TEST_SKIPPED;
+	}
+
 	/* port configure */
 	ret = rte_eth_dev_configure(port_id, nb_rx_queue,
 				    nb_tx_queue, &port_conf);
@@ -2570,4 +2584,4 @@ test_inline_macsec(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(inline_macsec_autotest, test_inline_macsec);
+REGISTER_DRIVER_TEST(inline_macsec_autotest, test_inline_macsec);

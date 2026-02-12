@@ -1,14 +1,12 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-.. _Mbuf_Library:
+Packet (Mbuf) Library
+=====================
 
-Mbuf Library
-============
-
-The mbuf library provides the ability to allocate and free buffers (mbufs)
+The Packet (MBuf) library provides the ability to allocate and free buffers (mbufs)
 that may be used by the DPDK application to store message buffers.
-The message buffers are stored in a mempool, using the :ref:`Mempool Library <Mempool_Library>`.
+The message buffers are stored in a mempool, using the :doc:`mempool_lib`.
 
 A rte_mbuf struct generally carries network packet buffers, but it can actually
 be any data (control data, events, ...).
@@ -64,7 +62,7 @@ The Buffer Manager implements a fairly standard set of buffer access functions t
 Buffers Stored in Memory Pools
 ------------------------------
 
-The Buffer Manager uses the :ref:`Mempool Library <Mempool_Library>` to allocate buffers.
+The Buffer Manager uses the :doc:`mempool_lib` to allocate buffers.
 Therefore, it ensures that the packet header is interleaved optimally across the channels and ranks for L3 processing.
 An mbuf contains a field indicating the pool that it originated from.
 When calling rte_pktmbuf_free(m), the mbuf returns to its original pool.
@@ -107,11 +105,13 @@ This library provides some functions for manipulating the data in a packet mbuf.
 
     *   Remove data at the end of the buffer (rte_pktmbuf_trim()) Refer to the *DPDK API Reference* for details.
 
+.. _mbuf_meta:
+
 Meta Information
 ----------------
 
 Some information is retrieved by the network driver and stored in an mbuf to make processing easier.
-For instance, the VLAN, the RSS hash result (see :ref:`Poll Mode Driver <Poll_Mode_Driver>`)
+For instance, the VLAN, the RSS hash result
 and a flag indicating that the checksum was computed by hardware.
 
 An mbuf also contains the input port (where it comes from), and the number of segment mbufs in the chain.
@@ -134,7 +134,7 @@ a vxlan-encapsulated tcp packet:
 
     mb->l2_len = len(out_eth)
     mb->l3_len = len(out_ip)
-    mb->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CSUM
+    mb->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM
     set out_ip checksum to 0 in the packet
 
   This is supported on hardware advertising RTE_ETH_TX_OFFLOAD_IPV4_CKSUM.
@@ -143,7 +143,7 @@ a vxlan-encapsulated tcp packet:
 
     mb->l2_len = len(out_eth)
     mb->l3_len = len(out_ip)
-    mb->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CSUM | RTE_MBUF_F_TX_UDP_CKSUM
+    mb->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_UDP_CKSUM
     set out_ip checksum to 0 in the packet
     set out_udp checksum to pseudo header using rte_ipv4_phdr_cksum()
 
@@ -154,7 +154,7 @@ a vxlan-encapsulated tcp packet:
 
     mb->l2_len = len(out_eth + out_ip + out_udp + vxlan + in_eth)
     mb->l3_len = len(in_ip)
-    mb->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CSUM
+    mb->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM
     set in_ip checksum to 0 in the packet
 
   This is similar to case 1), but l2_len is different. It is supported
@@ -165,7 +165,7 @@ a vxlan-encapsulated tcp packet:
 
     mb->l2_len = len(out_eth + out_ip + out_udp + vxlan + in_eth)
     mb->l3_len = len(in_ip)
-    mb->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CSUM | RTE_MBUF_F_TX_TCP_CKSUM
+    mb->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_TCP_CKSUM
     set in_ip checksum to 0 in the packet
     set in_tcp checksum to pseudo header using rte_ipv4_phdr_cksum()
 
@@ -266,8 +266,22 @@ can be found in several of the sample applications, for example, the IPv4 Multic
 Debug
 -----
 
-In debug mode, the functions of the mbuf library perform sanity checks before any operation (such as, buffer corruption,
-bad type, and so on).
+When ``RTE_LIBRTE_MBUF_DEBUG`` is enabled at compilation,
+some major mbuf operations (clone, copy, freeing)
+perform sanity checks (such as buffer corruption, bad type, and so on).
+
+When ``RTE_ENABLE_ASSERT`` is enabled,
+more basic checks are done in many functions.
+
+When ``RTE_MBUF_HISTORY_DEBUG`` is enabled,
+the mbuf lifecycle is tracked.
+More marks can be added by the application
+by calling functions like ``rte_mbuf_history_mark_bulk()``.
+Then the history can be stored in a file
+by calling functions like ``rte_mbuf_history_dump_all()``.
+The dump file will be easier to read after being processed
+by the script ``dpdk-mbuf-history-parser.py``.
+
 
 Use Cases
 ---------

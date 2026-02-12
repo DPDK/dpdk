@@ -22,87 +22,7 @@ test_power(void)
 
 #else
 
-#include <rte_power.h>
-
-static int
-check_function_ptrs(void)
-{
-	enum power_management_env env = rte_power_get_env();
-
-	const bool not_null_expected = !(env == PM_ENV_NOT_SET);
-
-	const char *inject_not_string1 = not_null_expected ? " not" : "";
-	const char *inject_not_string2 = not_null_expected ? "" : " not";
-
-	if ((rte_power_freqs == NULL) == not_null_expected) {
-		printf("rte_power_freqs should%s be NULL, environment has%s been "
-				"initialised\n", inject_not_string1,
-					inject_not_string2);
-		return -1;
-	}
-	if ((rte_power_get_freq == NULL) == not_null_expected) {
-		printf("rte_power_get_freq should%s be NULL, environment has%s been "
-				"initialised\n", inject_not_string1,
-					inject_not_string2);
-		return -1;
-	}
-	if ((rte_power_set_freq == NULL) == not_null_expected) {
-		printf("rte_power_set_freq should%s be NULL, environment has%s been "
-				"initialised\n", inject_not_string1,
-				inject_not_string2);
-		return -1;
-	}
-	if ((rte_power_freq_up == NULL) == not_null_expected) {
-		printf("rte_power_freq_up should%s be NULL, environment has%s been "
-				"initialised\n", inject_not_string1,
-				inject_not_string2);
-		return -1;
-	}
-	if ((rte_power_freq_down == NULL) == not_null_expected) {
-		printf("rte_power_freq_down should%s be NULL, environment has%s been "
-				"initialised\n", inject_not_string1,
-				inject_not_string2);
-		return -1;
-	}
-	if ((rte_power_freq_max == NULL) == not_null_expected) {
-		printf("rte_power_freq_max should%s be NULL, environment has%s been "
-				"initialised\n", inject_not_string1,
-				inject_not_string2);
-		return -1;
-	}
-	if ((rte_power_freq_min == NULL) == not_null_expected) {
-		printf("rte_power_freq_min should%s be NULL, environment has%s been "
-				"initialised\n", inject_not_string1,
-				inject_not_string2);
-		return -1;
-	}
-	if ((rte_power_turbo_status == NULL) == not_null_expected) {
-		printf("rte_power_turbo_status should%s be NULL, environment has%s been "
-				"initialised\n", inject_not_string1,
-				inject_not_string2);
-		return -1;
-	}
-	if ((rte_power_freq_enable_turbo == NULL) == not_null_expected) {
-		printf("rte_power_freq_enable_turbo should%s be NULL, environment has%s been "
-				"initialised\n", inject_not_string1,
-				inject_not_string2);
-		return -1;
-	}
-	if ((rte_power_freq_disable_turbo == NULL) == not_null_expected) {
-		printf("rte_power_freq_disable_turbo should%s be NULL, environment has%s been "
-				"initialised\n", inject_not_string1,
-				inject_not_string2);
-		return -1;
-	}
-	if ((rte_power_get_capabilities == NULL) == not_null_expected) {
-		printf("rte_power_get_capabilities should%s be NULL, environment has%s been "
-				"initialised\n", inject_not_string1,
-				inject_not_string2);
-		return -1;
-	}
-
-	return 0;
-}
+#include <rte_power_cpufreq.h>
 
 static int
 test_power(void)
@@ -123,10 +43,6 @@ test_power(void)
 		printf("Unexpectedly got a valid environment configuration\n");
 		return -1;
 	}
-
-	/* Verify that function pointers are NULL */
-	if (check_function_ptrs() < 0)
-		goto fail_all;
 
 	rte_power_unset_env();
 
@@ -154,23 +70,12 @@ test_power(void)
 			return -1;
 		}
 
-		/* Verify that function pointers are NOT NULL */
-		if (check_function_ptrs() < 0)
-			goto fail_all;
-
 		rte_power_unset_env();
-
-		/* Verify that function pointers are NULL */
-		if (check_function_ptrs() < 0)
-			goto fail_all;
 
 	}
 
 	return 0;
-fail_all:
-	rte_power_unset_env();
-	return -1;
 }
 #endif
 
-REGISTER_FAST_TEST(power_autotest, true, true, test_power);
+REGISTER_FAST_TEST(power_autotest, NOHUGE_OK, ASAN_OK, test_power);

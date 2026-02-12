@@ -14,6 +14,8 @@
 #include "cmdline_private.h"
 #include "cmdline_rdline.h"
 
+#include <eal_export.h>
+
 static void rdline_puts(struct rdline *rdl, const char *buf);
 static void rdline_miniprintf(struct rdline *rdl,
 			      const char *buf, unsigned int val);
@@ -52,6 +54,7 @@ rdline_init(struct rdline *rdl,
 	return cirbuf_init(&rdl->history, rdl->history_buf, 0, RDLINE_HISTORY_BUF_SIZE);
 }
 
+RTE_EXPORT_SYMBOL(rdline_new)
 struct rdline *
 rdline_new(rdline_write_char_t *write_char,
 	   rdline_validate_t *validate,
@@ -68,12 +71,14 @@ rdline_new(rdline_write_char_t *write_char,
 	return rdl;
 }
 
+RTE_EXPORT_SYMBOL(rdline_free)
 void
 rdline_free(struct rdline *rdl)
 {
 	free(rdl);
 }
 
+RTE_EXPORT_SYMBOL(rdline_newline)
 void
 rdline_newline(struct rdline *rdl, const char *prompt)
 {
@@ -98,6 +103,7 @@ rdline_newline(struct rdline *rdl, const char *prompt)
 	rdl->history_cur_line = -1;
 }
 
+RTE_EXPORT_SYMBOL(rdline_stop)
 void
 rdline_stop(struct rdline *rdl)
 {
@@ -106,6 +112,7 @@ rdline_stop(struct rdline *rdl)
 	rdl->status = RDLINE_INIT;
 }
 
+RTE_EXPORT_SYMBOL(rdline_quit)
 void
 rdline_quit(struct rdline *rdl)
 {
@@ -114,6 +121,7 @@ rdline_quit(struct rdline *rdl)
 	rdl->status = RDLINE_EXITED;
 }
 
+RTE_EXPORT_SYMBOL(rdline_restart)
 void
 rdline_restart(struct rdline *rdl)
 {
@@ -122,6 +130,7 @@ rdline_restart(struct rdline *rdl)
 	rdl->status = RDLINE_RUNNING;
 }
 
+RTE_EXPORT_SYMBOL(rdline_reset)
 void
 rdline_reset(struct rdline *rdl)
 {
@@ -136,6 +145,7 @@ rdline_reset(struct rdline *rdl)
 	rdl->history_cur_line = -1;
 }
 
+RTE_EXPORT_SYMBOL(rdline_get_buffer)
 const char *
 rdline_get_buffer(struct rdline *rdl)
 {
@@ -172,6 +182,7 @@ display_right_buffer(struct rdline *rdl, int force)
 				  CIRBUF_GET_LEN(&rdl->right));
 }
 
+RTE_EXPORT_SYMBOL(rdline_redisplay)
 void
 rdline_redisplay(struct rdline *rdl)
 {
@@ -190,6 +201,7 @@ rdline_redisplay(struct rdline *rdl)
 	display_right_buffer(rdl, 1);
 }
 
+RTE_EXPORT_SYMBOL(rdline_char_in)
 int
 rdline_char_in(struct rdline *rdl, char c)
 {
@@ -561,6 +573,7 @@ rdline_get_history_size(struct rdline * rdl)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rdline_get_history_item)
 char *
 rdline_get_history_item(struct rdline * rdl, unsigned int idx)
 {
@@ -587,18 +600,21 @@ rdline_get_history_item(struct rdline * rdl, unsigned int idx)
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rdline_get_history_buffer_size)
 size_t
 rdline_get_history_buffer_size(struct rdline *rdl)
 {
 	return sizeof(rdl->history_buf);
 }
 
+RTE_EXPORT_SYMBOL(rdline_get_opaque)
 void *
 rdline_get_opaque(struct rdline *rdl)
 {
 	return rdl != NULL ? rdl->opaque : NULL;
 }
 
+RTE_EXPORT_SYMBOL(rdline_add_history)
 int
 rdline_add_history(struct rdline * rdl, const char * buf)
 {
@@ -628,6 +644,7 @@ rdline_add_history(struct rdline * rdl, const char * buf)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rdline_clear_history)
 void
 rdline_clear_history(struct rdline * rdl)
 {

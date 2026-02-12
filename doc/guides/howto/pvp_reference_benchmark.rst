@@ -122,7 +122,7 @@ Testpmd launch
 
    .. code-block:: console
 
-      <build_dir>/app/dpdk-testpmd -l 0,2,3,4,5 --socket-mem=1024 -n 4 \
+      <build_dir>/app/dpdk-testpmd -l 0,2,3,4,5 --numa-mem=1024 \
           --vdev 'net_vhost0,iface=/tmp/vhost-user1' \
           --vdev 'net_vhost1,iface=/tmp/vhost-user2' -- \
           --portmask=f -i --rxq=1 --txq=1 \
@@ -332,7 +332,7 @@ Start testpmd:
 
    .. code-block:: console
 
-      <build_dir>/app/dpdk-testpmd -l 0,1,2 --socket-mem 1024 -n 4 \
+      <build_dir>/app/dpdk-testpmd -l 0,1,2 --numa-mem 1024 \
           --proc-type auto --file-prefix pg -- \
           --portmask=3 --forward-mode=macswap --port-topology=chained \
           --disable-rss -i --rxq=1 --txq=1 \

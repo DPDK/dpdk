@@ -10,10 +10,16 @@
 
 typedef enum roc_eswitch_repte_notify_msg_type {
 	ROC_ESWITCH_REPTE_STATE = 0,
+	ROC_ESWITCH_LINK_STATE,
 	ROC_ESWITCH_REPTE_MTU,
 } roc_eswitch_repte_notify_msg_type_t;
 
 struct roc_eswitch_repte_state {
+	bool enable;
+	uint16_t hw_func;
+};
+
+struct roc_eswitch_link_state {
 	bool enable;
 	uint16_t hw_func;
 };
@@ -28,6 +34,7 @@ struct roc_eswitch_repte_notify_msg {
 	roc_eswitch_repte_notify_msg_type_t type;
 	union {
 		struct roc_eswitch_repte_state state;
+		struct roc_eswitch_link_state link;
 		struct roc_eswitch_repte_mtu mtu;
 	};
 };
@@ -35,6 +42,9 @@ struct roc_eswitch_repte_notify_msg {
 /* Process representee notification callback */
 typedef int (*process_repte_notify_t)(void *roc_nix,
 				      struct roc_eswitch_repte_notify_msg *notify_msg);
+
+/* Generic */
+int __roc_api roc_eswitch_is_repte_pfs_vf(uint16_t rep_pffunc, uint16_t pf_pffunc);
 
 /* NPC */
 int __roc_api roc_eswitch_npc_mcam_rx_rule(struct roc_npc *roc_npc, struct roc_npc_flow *flow,

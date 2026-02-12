@@ -467,9 +467,63 @@ sfc_ev_link_change(void *arg, efx_link_mode_t link_mode)
 {
 	struct sfc_evq *evq = arg;
 	struct sfc_adapter *sa = evq->sa;
-	struct rte_eth_link new_link;
+	struct rte_eth_link new_link = {0};
 
-	sfc_port_link_mode_to_info(link_mode, &new_link);
+	if (sa->link_ev_need_poll) {
+		efx_link_mode_t new_mode;
+		bool poll_done = false;
+
+		/*
+		 * The event provides only the general status. When the link is
+		 * up, poll the port to get the speed, but it is not compulsory.
+		 */
+		if (link_mode != EFX_LINK_DOWN) {
+			int ret = 0;
+
+			if (sfc_adapter_trylock(sa)) {
+				/* Never poll when the adaptor is going down. */
+				if (sa->state == SFC_ETHDEV_STARTED) {
+					ret = efx_port_poll(sa->nic, &new_mode);
+					poll_done = true;
+				}
+
+				sfc_adapter_unlock(sa);
+			}
+
+			if (ret != 0) {
+				sfc_warn(sa, "port poll failed on link event");
+				poll_done = false;
+			}
+		}
+
+		if (poll_done) {
+			link_mode = new_mode;
+			goto decode_comprehensive;
+		}
+
+		new_link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+		new_link.link_autoneg = RTE_ETH_LINK_AUTONEG;
+
+		if (link_mode == EFX_LINK_DOWN) {
+			new_link.link_speed  = RTE_ETH_SPEED_NUM_NONE;
+			new_link.link_status = RTE_ETH_LINK_DOWN;
+		} else {
+			new_link.link_speed  = RTE_ETH_SPEED_NUM_UNKNOWN;
+			new_link.link_status = RTE_ETH_LINK_UP;
+		}
+
+		goto set;
+	}
+
+decode_comprehensive:
+	/*
+	 * Reading 'sa->port.phy_adv_cap' without acquiring adaptor lock may
+	 * render autonegotiation status inaccurate, but that's not critical,
+	 * as it's unlikely to happen often and may be a practical trade-off.
+	 */
+	sfc_port_link_mode_to_info(link_mode, sa->port.phy_adv_cap, &new_link);
+
+set:
 	if (rte_eth_linkstatus_set(sa->eth_dev, &new_link) == 0)
 		evq->sa->port.lsc_seq++;
 

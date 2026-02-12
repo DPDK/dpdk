@@ -52,7 +52,7 @@ struct rte_rcu_qsbr_dq {
  */
 typedef struct {
 	uint64_t token;  /**< Token */
-	uint8_t elem[0]; /**< Pointer to user element */
-} __attribute__((__may_alias__)) __rte_rcu_qsbr_dq_elem_t;
+	uint8_t elem[]; /**< Pointer to user element */
+} __rte_may_alias __rte_rcu_qsbr_dq_elem_t;
 
 #endif /* _RTE_RCU_QSBR_PVT_H_ */

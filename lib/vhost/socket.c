@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#include <eal_export.h>
 #include <rte_thread.h>
 #include <rte_log.h>
 
@@ -45,6 +46,7 @@ struct vhost_user_socket {
 	bool async_copy;
 	bool net_compliant_ol_flags;
 	bool stats_enabled;
+	bool async_connect;
 
 	/*
 	 * The "supported_features" indicates the feature bits the
@@ -76,26 +78,19 @@ struct vhost_user_connection {
 #define MAX_VHOST_SOCKET 1024
 struct vhost_user {
 	struct vhost_user_socket *vsockets[MAX_VHOST_SOCKET];
-	struct fdset fdset;
+	struct fdset *fdset;
 	int vsocket_cnt;
 	pthread_mutex_t mutex;
 };
 
 #define MAX_VIRTIO_BACKLOG 128
 
-static void vhost_user_server_new_connection(int fd, void *data, int *remove);
-static void vhost_user_read_cb(int fd, void *dat, int *remove);
+static void vhost_user_server_new_connection(int fd, void *data, int *close);
+static void vhost_user_read_cb(int fd, void *dat, int *close);
 static int create_unix_socket(struct vhost_user_socket *vsocket);
 static int vhost_user_start_client(struct vhost_user_socket *vsocket);
 
 static struct vhost_user vhost_user = {
-	.fdset = {
-		.fd = { [0 ... MAX_FDS - 1] = {-1, NULL, NULL, NULL, 0} },
-		.fd_mutex = PTHREAD_MUTEX_INITIALIZER,
-		.fd_pooling_mutex = PTHREAD_MUTEX_INITIALIZER,
-		.sync_mutex = PTHREAD_MUTEX_INITIALIZER,
-		.num = 0
-	},
 	.vsocket_cnt = 0,
 	.mutex = PTHREAD_MUTEX_INITIALIZER,
 };
@@ -268,7 +263,7 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 	conn->connfd = fd;
 	conn->vsocket = vsocket;
 	conn->vid = vid;
-	ret = fdset_add(&vhost_user.fdset, fd, vhost_user_read_cb,
+	ret = fdset_add(vhost_user.fdset, fd, vhost_user_read_cb,
 			NULL, conn);
 	if (ret < 0) {
 		VHOST_CONFIG_LOG(vsocket->path, ERR,
@@ -285,7 +280,6 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 	TAILQ_INSERT_TAIL(&vsocket->conn_list, conn, next);
 	pthread_mutex_unlock(&vsocket->conn_mutex);
 
-	fdset_pipe_notify(&vhost_user.fdset);
 	return;
 
 err_cleanup:
@@ -297,7 +291,7 @@ err:
 
 /* call back when there is new vhost-user connection from client  */
 static void
-vhost_user_server_new_connection(int fd, void *dat, int *remove __rte_unused)
+vhost_user_server_new_connection(int fd, void *dat, int *close __rte_unused)
 {
 	struct vhost_user_socket *vsocket = dat;
 
@@ -310,7 +304,7 @@ vhost_user_server_new_connection(int fd, void *dat, int *remove __rte_unused)
 }
 
 static void
-vhost_user_read_cb(int connfd, void *dat, int *remove)
+vhost_user_read_cb(int connfd, void *dat, int *close)
 {
 	struct vhost_user_connection *conn = dat;
 	struct vhost_user_socket *vsocket = conn->vsocket;
@@ -320,8 +314,7 @@ vhost_user_read_cb(int connfd, void *dat, int *remove)
 	if (ret < 0) {
 		struct virtio_net *dev = get_device(conn->vid);
 
-		close(connfd);
-		*remove = 1;
+		*close = 1;
 
 		if (dev)
 			vhost_destroy_device_notify(dev);
@@ -366,8 +359,7 @@ create_unix_socket(struct vhost_user_socket *vsocket)
 
 	memset(un, 0, sizeof(*un));
 	un->sun_family = AF_UNIX;
-	strncpy(un->sun_path, vsocket->path, sizeof(un->sun_path));
-	un->sun_path[sizeof(un->sun_path) - 1] = '\0';
+	strlcpy(un->sun_path, vsocket->path, sizeof(un->sun_path));
 
 	vsocket->socket_fd = fd;
 	return 0;
@@ -402,7 +394,7 @@ vhost_user_start_server(struct vhost_user_socket *vsocket)
 	if (ret < 0)
 		goto err;
 
-	ret = fdset_add(&vhost_user.fdset, fd, vhost_user_server_new_connection,
+	ret = fdset_add(vhost_user.fdset, fd, vhost_user_server_new_connection,
 		  NULL, vsocket);
 	if (ret < 0) {
 		VHOST_CONFIG_LOG(path, ERR, "failed to add listen fd %d to vhost server fdset",
@@ -505,11 +497,7 @@ vhost_user_reconnect_init(void)
 {
 	int ret;
 
-	ret = pthread_mutex_init(&reconn_list.mutex, NULL);
-	if (ret < 0) {
-		VHOST_CONFIG_LOG("thread", ERR, "%s: failed to initialize mutex", __func__);
-		return ret;
-	}
+	pthread_mutex_init(&reconn_list.mutex, NULL);
 	TAILQ_INIT(&reconn_list.head);
 
 	ret = rte_thread_create_internal_control(&reconn_tid, "vhost-reco",
@@ -533,21 +521,23 @@ vhost_user_start_client(struct vhost_user_socket *vsocket)
 	const char *path = vsocket->path;
 	struct vhost_user_reconnect *reconn;
 
-	ret = vhost_user_connect_nonblock(vsocket->path, fd, (struct sockaddr *)&vsocket->un,
-					  sizeof(vsocket->un));
-	if (ret == 0) {
-		vhost_user_add_connection(fd, vsocket);
-		return 0;
+	if (!vsocket->async_connect || !vsocket->reconnect) {
+		ret = vhost_user_connect_nonblock(vsocket->path, fd,
+			(struct sockaddr *)&vsocket->un, sizeof(vsocket->un));
+		if (ret == 0) {
+			vhost_user_add_connection(fd, vsocket);
+			return 0;
+		}
+
+		VHOST_CONFIG_LOG(path, WARNING, "failed to connect: %s", strerror(errno));
+
+		if (ret == -2 || !vsocket->reconnect) {
+			close(fd);
+			return -1;
+		}
+
+		VHOST_CONFIG_LOG(path, INFO, "reconnecting...");
 	}
-
-	VHOST_CONFIG_LOG(path, WARNING, "failed to connect: %s", strerror(errno));
-
-	if (ret == -2 || !vsocket->reconnect) {
-		close(fd);
-		return -1;
-	}
-
-	VHOST_CONFIG_LOG(path, INFO, "reconnecting...");
 	reconn = malloc(sizeof(*reconn));
 	if (reconn == NULL) {
 		VHOST_CONFIG_LOG(path, ERR, "failed to allocate memory for reconnect");
@@ -582,6 +572,7 @@ find_vhost_user_socket(const char *path)
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_driver_attach_vdpa_device)
 int
 rte_vhost_driver_attach_vdpa_device(const char *path,
 		struct rte_vdpa_device *dev)
@@ -600,6 +591,7 @@ rte_vhost_driver_attach_vdpa_device(const char *path,
 	return vsocket ? 0 : -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_driver_detach_vdpa_device)
 int
 rte_vhost_driver_detach_vdpa_device(const char *path)
 {
@@ -614,6 +606,7 @@ rte_vhost_driver_detach_vdpa_device(const char *path)
 	return vsocket ? 0 : -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_driver_get_vdpa_device)
 struct rte_vdpa_device *
 rte_vhost_driver_get_vdpa_device(const char *path)
 {
@@ -629,6 +622,7 @@ rte_vhost_driver_get_vdpa_device(const char *path)
 	return dev;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_driver_get_vdpa_dev_type)
 int
 rte_vhost_driver_get_vdpa_dev_type(const char *path, uint32_t *type)
 {
@@ -657,6 +651,7 @@ unlock_exit:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_driver_disable_features)
 int
 rte_vhost_driver_disable_features(const char *path, uint64_t features)
 {
@@ -677,6 +672,7 @@ rte_vhost_driver_disable_features(const char *path, uint64_t features)
 	return vsocket ? 0 : -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_driver_enable_features)
 int
 rte_vhost_driver_enable_features(const char *path, uint64_t features)
 {
@@ -700,6 +696,7 @@ rte_vhost_driver_enable_features(const char *path, uint64_t features)
 	return vsocket ? 0 : -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_driver_set_features)
 int
 rte_vhost_driver_set_features(const char *path, uint64_t features)
 {
@@ -721,6 +718,7 @@ rte_vhost_driver_set_features(const char *path, uint64_t features)
 	return vsocket ? 0 : -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_driver_get_features)
 int
 rte_vhost_driver_get_features(const char *path, uint64_t *features)
 {
@@ -756,6 +754,7 @@ unlock_exit:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_driver_set_protocol_features)
 int
 rte_vhost_driver_set_protocol_features(const char *path,
 		uint64_t protocol_features)
@@ -770,6 +769,7 @@ rte_vhost_driver_set_protocol_features(const char *path,
 	return vsocket ? 0 : -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_driver_get_protocol_features)
 int
 rte_vhost_driver_get_protocol_features(const char *path,
 		uint64_t *protocol_features)
@@ -808,6 +808,7 @@ unlock_exit:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_driver_get_queue_num)
 int
 rte_vhost_driver_get_queue_num(const char *path, uint32_t *queue_num)
 {
@@ -843,24 +844,38 @@ unlock_exit:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_driver_set_max_queue_num)
 int
 rte_vhost_driver_set_max_queue_num(const char *path, uint32_t max_queue_pairs)
 {
 	struct vhost_user_socket *vsocket;
 	int ret = 0;
 
+	pthread_mutex_lock(&vhost_user.mutex);
+	vsocket = find_vhost_user_socket(path);
+	if (!vsocket) {
+		VHOST_CONFIG_LOG(path, ERR, "socket file is not registered yet.");
+		ret = -1;
+		goto unlock_exit;
+	}
+
+	/*
+	 * This is only useful for VDUSE for which number of virtqueues is set
+	 * by the backend. For Vhost-user, the number of virtqueues is defined
+	 * by the frontend.
+	 */
+	if (!vsocket->is_vduse) {
+		VHOST_CONFIG_LOG(path, DEBUG,
+				"Keeping %u max queue pairs for Vhost-user backend",
+				VHOST_MAX_QUEUE_PAIRS);
+		goto unlock_exit;
+	}
+
 	VHOST_CONFIG_LOG(path, INFO, "Setting max queue pairs to %u", max_queue_pairs);
 
 	if (max_queue_pairs > VHOST_MAX_QUEUE_PAIRS) {
 		VHOST_CONFIG_LOG(path, ERR, "Library only supports up to %u queue pairs",
 				VHOST_MAX_QUEUE_PAIRS);
-		return -1;
-	}
-
-	pthread_mutex_lock(&vhost_user.mutex);
-	vsocket = find_vhost_user_socket(path);
-	if (!vsocket) {
-		VHOST_CONFIG_LOG(path, ERR, "socket file is not registered yet.");
 		ret = -1;
 		goto unlock_exit;
 	}
@@ -887,10 +902,10 @@ vhost_user_socket_mem_free(struct vhost_user_socket *vsocket)
  * (the default case), or client (when RTE_VHOST_USER_CLIENT) flag
  * is set.
  */
+RTE_EXPORT_SYMBOL(rte_vhost_driver_register)
 int
 rte_vhost_driver_register(const char *path, uint64_t flags)
 {
-	int ret = -1;
 	struct vhost_user_socket *vsocket;
 
 	if (!path)
@@ -914,11 +929,7 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 		goto out;
 	}
 	TAILQ_INIT(&vsocket->conn_list);
-	ret = pthread_mutex_init(&vsocket->conn_mutex, NULL);
-	if (ret) {
-		VHOST_CONFIG_LOG(path, ERR, "failed to init connection mutex");
-		goto out_free;
-	}
+	pthread_mutex_init(&vsocket->conn_mutex, NULL);
 
 	if (!strncmp("/dev/vduse/", path, strlen("/dev/vduse/")))
 		vsocket->is_vduse = true;
@@ -930,6 +941,7 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	vsocket->async_copy = flags & RTE_VHOST_USER_ASYNC_COPY;
 	vsocket->net_compliant_ol_flags = flags & RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS;
 	vsocket->stats_enabled = flags & RTE_VHOST_USER_NET_STATS_ENABLE;
+	vsocket->async_connect = flags & RTE_VHOST_USER_ASYNC_CONNECT;
 	if (vsocket->is_vduse)
 		vsocket->iommu_support = true;
 	else
@@ -997,7 +1009,6 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	} else {
 #ifndef RTE_LIBRTE_VHOST_POSTCOPY
 		VHOST_CONFIG_LOG(path, ERR, "Postcopy requested but not compiled");
-		ret = -1;
 		goto out_mutex;
 #endif
 	}
@@ -1012,26 +1023,22 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 		} else {
 			vsocket->is_server = true;
 		}
-		ret = create_unix_socket(vsocket);
-		if (ret < 0)
+		if (create_unix_socket(vsocket) < 0)
 			goto out_mutex;
 	}
 
 	vhost_user.vsockets[vhost_user.vsocket_cnt++] = vsocket;
 
 	pthread_mutex_unlock(&vhost_user.mutex);
-	return ret;
+	return 0;
 
 out_mutex:
 	if (pthread_mutex_destroy(&vsocket->conn_mutex)) {
 		VHOST_CONFIG_LOG(path, ERR, "failed to destroy connection mutex");
 	}
-out_free:
-	vhost_user_socket_mem_free(vsocket);
 out:
 	pthread_mutex_unlock(&vhost_user.mutex);
-
-	return ret;
+	return -1;
 }
 
 static bool
@@ -1061,6 +1068,7 @@ vhost_user_remove_reconnect(struct vhost_user_socket *vsocket)
 /**
  * Unregister the specified vhost socket
  */
+RTE_EXPORT_SYMBOL(rte_vhost_driver_unregister)
 int
 rte_vhost_driver_unregister(const char *path)
 {
@@ -1087,7 +1095,7 @@ again:
 			 * mutex lock, and try again since the r/wcb
 			 * may use the mutex lock.
 			 */
-			if (fdset_try_del(&vhost_user.fdset, vsocket->socket_fd) == -1) {
+			if (fdset_try_del(vhost_user.fdset, vsocket->socket_fd) == -1) {
 				pthread_mutex_unlock(&vhost_user.mutex);
 				goto again;
 			}
@@ -1107,7 +1115,7 @@ again:
 			 * try again since the r/wcb may use the
 			 * conn_mutex and mutex locks.
 			 */
-			if (fdset_try_del(&vhost_user.fdset,
+			if (fdset_try_del(vhost_user.fdset,
 					  conn->connfd) == -1) {
 				pthread_mutex_unlock(&vsocket->conn_mutex);
 				pthread_mutex_unlock(&vhost_user.mutex);
@@ -1144,6 +1152,7 @@ again:
 /*
  * Register ops so that we can add/remove device to data core.
  */
+RTE_EXPORT_SYMBOL(rte_vhost_driver_callback_register)
 int
 rte_vhost_driver_callback_register(const char *path,
 	struct rte_vhost_device_ops const * const ops)
@@ -1171,11 +1180,11 @@ vhost_driver_callback_get(const char *path)
 	return vsocket ? vsocket->notify_ops : NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_driver_start)
 int
 rte_vhost_driver_start(const char *path)
 {
 	struct vhost_user_socket *vsocket;
-	static rte_thread_t fdset_tid;
 
 	pthread_mutex_lock(&vhost_user.mutex);
 	vsocket = find_vhost_user_socket(path);
@@ -1185,23 +1194,13 @@ rte_vhost_driver_start(const char *path)
 		return -1;
 
 	if (vsocket->is_vduse)
-		return vduse_device_create(path, vsocket->net_compliant_ol_flags);
+		return vduse_device_create(path, vsocket->net_compliant_ol_flags,
+			vsocket->extbuf, vsocket->linearbuf);
 
-	if (fdset_tid.opaque_id == 0) {
-		/**
-		 * create a pipe which will be waited by poll and notified to
-		 * rebuild the wait list of poll.
-		 */
-		if (fdset_pipe_init(&vhost_user.fdset) < 0) {
-			VHOST_CONFIG_LOG(path, ERR, "failed to create pipe for vhost fdset");
-			return -1;
-		}
-
-		int ret = rte_thread_create_internal_control(&fdset_tid,
-				"vhost-evt", fdset_event_dispatch, &vhost_user.fdset);
-		if (ret != 0) {
-			VHOST_CONFIG_LOG(path, ERR, "failed to create fdset handling thread");
-			fdset_pipe_uninit(&vhost_user.fdset);
+	if (vhost_user.fdset == NULL) {
+		vhost_user.fdset = fdset_init("vhost-evt");
+		if (vhost_user.fdset == NULL) {
+			VHOST_CONFIG_LOG(path, ERR, "failed to init Vhost-user fdset");
 			return -1;
 		}
 	}

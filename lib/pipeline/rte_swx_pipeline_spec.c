@@ -2985,7 +2985,7 @@ pipeline_spec_parse(FILE *spec,
 			}
 
 			s->structs = new_structs;
-			memcpy(&s->structs[s->n_structs], &struct_spec, sizeof(struct struct_spec));
+			s->structs[s->n_structs] = struct_spec;
 			s->n_structs++;
 			memset(&struct_spec, 0, sizeof(struct struct_spec));
 
@@ -3022,7 +3022,7 @@ pipeline_spec_parse(FILE *spec,
 			}
 
 			s->actions = new_actions;
-			memcpy(&s->actions[s->n_actions], &action_spec, sizeof(struct action_spec));
+			s->actions[s->n_actions] = action_spec;
 			s->n_actions++;
 			memset(&action_spec, 0, sizeof(struct action_spec));
 
@@ -3059,7 +3059,7 @@ pipeline_spec_parse(FILE *spec,
 			}
 
 			s->tables = new_tables;
-			memcpy(&s->tables[s->n_tables], &table_spec, sizeof(struct table_spec));
+			s->tables[s->n_tables] = table_spec;
 			s->n_tables++;
 			memset(&table_spec, 0, sizeof(struct table_spec));
 
@@ -3096,9 +3096,7 @@ pipeline_spec_parse(FILE *spec,
 			}
 
 			s->selectors = new_selectors;
-			memcpy(&s->selectors[s->n_selectors],
-			       &selector_spec,
-			       sizeof(struct selector_spec));
+			s->selectors[s->n_selectors] = selector_spec;
 			s->n_selectors++;
 			memset(&selector_spec, 0, sizeof(struct selector_spec));
 
@@ -3135,9 +3133,7 @@ pipeline_spec_parse(FILE *spec,
 			}
 
 			s->learners = new_learners;
-			memcpy(&s->learners[s->n_learners],
-			       &learner_spec,
-			       sizeof(struct learner_spec));
+			s->learners[s->n_learners] = learner_spec;
 			s->n_learners++;
 			memset(&learner_spec, 0, sizeof(struct learner_spec));
 
@@ -3173,7 +3169,7 @@ pipeline_spec_parse(FILE *spec,
 			}
 
 			s->apply = new_apply;
-			memcpy(&s->apply[s->n_apply], &apply_spec, sizeof(struct apply_spec));
+			s->apply[s->n_apply] = apply_spec;
 			s->n_apply++;
 			memset(&apply_spec, 0, sizeof(struct apply_spec));
 
@@ -3205,7 +3201,7 @@ pipeline_spec_parse(FILE *spec,
 			}
 
 			s->extobjs = new_extobjs;
-			memcpy(&s->extobjs[s->n_extobjs], &extobj_spec, sizeof(struct extobj_spec));
+			s->extobjs[s->n_extobjs] = extobj_spec;
 			s->n_extobjs++;
 			memset(&extobj_spec, 0, sizeof(struct extobj_spec));
 
@@ -3252,7 +3248,7 @@ pipeline_spec_parse(FILE *spec,
 			}
 
 			s->headers = new_headers;
-			memcpy(&s->headers[s->n_headers], &header_spec, sizeof(struct header_spec));
+			s->headers[s->n_headers] = header_spec;
 			s->n_headers++;
 			memset(&header_spec, 0, sizeof(struct header_spec));
 
@@ -3284,9 +3280,7 @@ pipeline_spec_parse(FILE *spec,
 			}
 
 			s->metadata = new_metadata;
-			memcpy(&s->metadata[s->n_metadata],
-			       &metadata_spec,
-			       sizeof(struct metadata_spec));
+			s->metadata[s->n_metadata] = metadata_spec;
 			s->n_metadata++;
 			memset(&metadata_spec, 0, sizeof(struct metadata_spec));
 
@@ -3378,9 +3372,7 @@ pipeline_spec_parse(FILE *spec,
 			}
 
 			s->regarrays = new_regarrays;
-			memcpy(&s->regarrays[s->n_regarrays],
-			       &regarray_spec,
-			       sizeof(struct regarray_spec));
+			s->regarrays[s->n_regarrays] = regarray_spec;
 			s->n_regarrays++;
 			memset(&regarray_spec, 0, sizeof(struct regarray_spec));
 
@@ -3412,9 +3404,7 @@ pipeline_spec_parse(FILE *spec,
 			}
 
 			s->metarrays = new_metarrays;
-			memcpy(&s->metarrays[s->n_metarrays],
-			       &metarray_spec,
-			       sizeof(struct metarray_spec));
+			s->metarrays[s->n_metarrays] = metarray_spec;
 			s->n_metarrays++;
 			memset(&metarray_spec, 0, sizeof(struct metarray_spec));
 
@@ -3446,9 +3436,7 @@ pipeline_spec_parse(FILE *spec,
 			}
 
 			s->rss = new_rss;
-			memcpy(&s->rss[s->n_rss],
-			       &rss_spec,
-			       sizeof(struct rss_spec));
+			s->rss[s->n_rss] = rss_spec;
 			s->n_rss++;
 			memset(&rss_spec, 0, sizeof(struct rss_spec));
 

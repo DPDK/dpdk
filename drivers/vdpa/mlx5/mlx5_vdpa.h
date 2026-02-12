@@ -38,7 +38,6 @@
 #define VIRTIO_F_RING_PACKED 34
 #endif
 
-#define MLX5_VDPA_DEFAULT_TIMER_DELAY_US 0u
 #define MLX5_VDPA_DEFAULT_TIMER_STEP_US 1u
 
 struct mlx5_vdpa_cq {
@@ -90,13 +89,13 @@ enum mlx5_vdpa_task_type {
 };
 
 /* Generic task information and size must be multiple of 4B. */
-struct mlx5_vdpa_task {
+struct __rte_aligned(4) __rte_packed_begin mlx5_vdpa_task {
 	struct mlx5_vdpa_priv *priv;
 	enum mlx5_vdpa_task_type type;
-	uint32_t *remaining_cnt;
-	uint32_t *err_cnt;
+	RTE_ATOMIC(uint32_t) *remaining_cnt;
+	RTE_ATOMIC(uint32_t) *err_cnt;
 	uint32_t idx;
-} __rte_packed __rte_aligned(4);
+} __rte_packed_end;
 
 /* Generic mlx5_vdpa_c_thread information. */
 struct mlx5_vdpa_c_thread {
@@ -107,7 +106,7 @@ struct mlx5_vdpa_c_thread {
 
 struct mlx5_vdpa_conf_thread_mng {
 	void *initializer_priv;
-	uint32_t refcnt;
+	RTE_ATOMIC(uint32_t) refcnt;
 	uint32_t max_thrds;
 	pthread_mutex_t cthrd_lock;
 	struct mlx5_vdpa_c_thread cthrd[MLX5_VDPA_MAX_C_THRD];
@@ -212,7 +211,7 @@ struct mlx5_vdpa_priv {
 	uint64_t features; /* Negotiated features. */
 	uint16_t log_max_rqt_size;
 	uint16_t last_c_thrd_idx;
-	uint16_t dev_close_progress;
+	RTE_ATOMIC(uint16_t) dev_close_progress;
 	uint16_t num_mrs; /* Number of memory regions. */
 	struct mlx5_vdpa_steer steer;
 	struct mlx5dv_var *var;
@@ -581,13 +580,13 @@ bool
 mlx5_vdpa_task_add(struct mlx5_vdpa_priv *priv,
 		uint32_t thrd_idx,
 		enum mlx5_vdpa_task_type task_type,
-		uint32_t *remaining_cnt, uint32_t *err_cnt,
+		RTE_ATOMIC(uint32_t) *remaining_cnt, RTE_ATOMIC(uint32_t) *err_cnt,
 		void **task_data, uint32_t num);
 int
 mlx5_vdpa_register_mr(struct mlx5_vdpa_priv *priv, uint32_t idx);
 bool
-mlx5_vdpa_c_thread_wait_bulk_tasks_done(uint32_t *remaining_cnt,
-		uint32_t *err_cnt, uint32_t sleep_time);
+mlx5_vdpa_c_thread_wait_bulk_tasks_done(RTE_ATOMIC(uint32_t) *remaining_cnt,
+		RTE_ATOMIC(uint32_t) *err_cnt, uint32_t sleep_time);
 int
 mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index, bool reg_kick);
 void

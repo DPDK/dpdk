@@ -31,7 +31,6 @@ struct qat_service qat_service[QAT_MAX_SERVICES];
 /* per-process array of device data */
 struct qat_device_info qat_pci_devs[RTE_PMD_QAT_MAX_PCI_DEVICES];
 static int qat_nb_pci_devices;
-int qat_legacy_capa;
 
 /*
  * The set of PCI devices this driver supports
@@ -174,7 +173,7 @@ wireless_slice_support(uint16_t pci_dev_id)
  * other than the equals sign is ignored. It will not work with other conversion
  * functions like strt*.
  */
-char *qat_dev_cmdline_get_val(struct qat_pci_device *qat_dev,
+const char *qat_dev_cmdline_get_val(struct qat_pci_device *qat_dev,
 	const char *key)
 {
 	if (qat_dev->command_line == NULL)
@@ -186,8 +185,9 @@ char *qat_dev_cmdline_get_val(struct qat_pci_device *qat_dev,
 
 static int cmdline_validate(const char *arg)
 {
+	const char *eq_sign = strchr(arg, '=');
 	int i, len;
-	char *eq_sign = strchr(arg, '=');
+
 	/* Check for the equal sign */
 	if (eq_sign == NULL) {
 		QAT_LOG(ERR, "malformed string, no equals sign, %s", arg);
@@ -230,6 +230,7 @@ qat_dev_parse_command_line(struct qat_pci_device *qat_dev,
 	len = strlen(devargs->drv_str);
 	if (len == 0)
 		return 0;
+	++len;
 	/* Allocate per-device command line */
 	qat_dev->command_line = rte_malloc(NULL, len, 0);
 	if (qat_dev->command_line == NULL) {
@@ -263,7 +264,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 	struct rte_mem_resource *mem_resource;
 	const struct rte_memzone *qat_dev_mz;
 	int qat_dev_size, extra_size;
-	char *cmdline = NULL;
+	const char *cmdline = NULL;
 
 	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
 	snprintf(name+strlen(name), QAT_DEV_NAME_MAX_LEN-strlen(name), "_qat");
@@ -331,7 +332,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 	qat_pci_devs[qat_dev_id].pci_dev = pci_dev;
 
 	if (wireless_slice_support(pci_dev->id.device_id))
-		qat_dev->has_wireless_slice = 1;
+		qat_dev->options.has_wireless_slice = 1;
 
 	ops_hw = qat_dev_hw_spec[qat_dev->qat_dev_gen];
 	NOT_NULL(ops_hw->qat_dev_get_misc_bar, goto error,
@@ -352,7 +353,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 	/* Parse the arguments */
 	cmdline = qat_dev_cmdline_get_val(qat_dev, QAT_LEGACY_CAPA);
 	if (cmdline)
-		qat_legacy_capa = atoi(cmdline);
+		qat_dev->options.legacy_alg = atoi(cmdline);
 
 	if (qat_read_qp_config(qat_dev)) {
 		QAT_LOG(ERR,
@@ -372,9 +373,9 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 	NOT_NULL(ops_hw->qat_dev_get_slice_map, goto error,
 		"QAT internal error! Read slice function not set, gen : %d",
 		qat_dev_gen);
-	if (ops_hw->qat_dev_get_slice_map(&qat_dev->slice_map, pci_dev) < 0) {
-		RTE_LOG(ERR, EAL,
-			"Cannot read slice configuration\n");
+	if (ops_hw->qat_dev_get_slice_map(&qat_dev->options.slice_map, pci_dev) < 0) {
+		QAT_LOG(ERR,
+			"Cannot read slice configuration");
 		goto error;
 	}
 	rte_spinlock_init(&qat_dev->arb_csr_lock);
@@ -391,11 +392,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 	return qat_dev;
 error:
 	rte_free(qat_dev->command_line);
-	if (rte_memzone_free(qat_dev_mz)) {
-		QAT_LOG(DEBUG,
-			"QAT internal error! Trying to free already allocated memzone: %s",
-			qat_dev_mz->name);
-	}
+	rte_memzone_free(qat_dev_mz);
 	return NULL;
 }
 

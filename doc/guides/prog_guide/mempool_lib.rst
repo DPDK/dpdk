@@ -1,10 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-.. _Mempool_Library:
-
-Mempool Library
-===============
+Memory Pool Library
+===================
 
 A memory pool is an allocator of a fixed-sized object.
 In the DPDK, it is identified by name and uses a mempool handler to store free objects.
@@ -12,7 +10,7 @@ The default mempool handler is ring based.
 It provides some other optional services such as a per-core object cache and
 an alignment helper to ensure that objects are padded to spread them equally on all DRAM or DDR3 channels.
 
-This library is used by the :ref:`Mbuf Library <Mbuf_Library>`.
+This library is used by the :doc:`mbuf_lib`.
 
 Cookies
 -------
@@ -47,9 +45,6 @@ The physical layout of the DRAM chips on the DIMM itself does not necessarily re
 
 When running an application, the EAL command line options provide the ability to add the number of memory channels and ranks.
 
-.. note::
-
-    The command line must always have the number of memory channels specified for the processor.
 
 Examples of alignment for different DIMM architectures are shown in
 :numref:`figure_memory-management` and :numref:`figure_memory-management2`.
@@ -74,6 +69,15 @@ no padding is required between objects (except for objects whose size are n x 3 
 
 
 When creating a new pool, the user can specify to use this feature or not.
+
+.. note::
+
+   This feature is not present for Arm systems.
+   Modern Arm Interconnects choose the SN-F (memory channel)
+   using a hash of memory address bits.
+   As a result, the load is distributed evenly in all cases,
+   including the above described, rendering this feature unnecessary.
+
 
 .. _mempool_local_cache:
 
@@ -155,8 +159,5 @@ Use Cases
 All allocations that require a high level of performance should use a pool-based memory allocator.
 Below are some examples:
 
-*   :ref:`Mbuf Library <Mbuf_Library>`
-
-*   :ref:`Environment Abstraction Layer <Environment_Abstraction_Layer>` , for logging service
-
+*   :doc:`mbuf_lib`
 *   Any application that needs to allocate fixed-sized objects in the data plane and that will be continuously utilized by the system.

@@ -23,6 +23,7 @@ sources = files(
         'rte_fbk_hash.c',
         'rte_thash.c',
         'rte_thash_gfni.c',
+        'rte_thash_gf2_poly_math.c',
 )
 
 deps += ['net']

@@ -3,9 +3,88 @@
  */
 #include <cnxk_ethdev.h>
 
+#include <rte_bitops.h>
+#include <eal_export.h>
 #include <rte_eventdev.h>
+#include <rte_pmd_cnxk.h>
+
+static const uint32_t cnxk_mac_modes[CGX_MODE_MAX + 1] = {
+	[CGX_MODE_SGMII] = RTE_ETH_LINK_SPEED_1G,
+	[CGX_MODE_1000_BASEX] = RTE_ETH_LINK_SPEED_1G,
+	[CGX_MODE_QSGMII] = RTE_ETH_LINK_SPEED_1G,
+	[CGX_MODE_10G_C2C] = RTE_ETH_LINK_SPEED_10G,
+	[CGX_MODE_10G_C2M] = RTE_ETH_LINK_SPEED_10G,
+	[CGX_MODE_10G_KR] = RTE_ETH_LINK_SPEED_10G,
+	[CGX_MODE_20G_C2C] = RTE_ETH_LINK_SPEED_20G,
+	[CGX_MODE_25G_C2C] = RTE_ETH_LINK_SPEED_25G,
+	[CGX_MODE_25G_C2M] = RTE_ETH_LINK_SPEED_25G,
+	[CGX_MODE_25G_2_C2C] = RTE_ETH_LINK_SPEED_25G,
+	[CGX_MODE_25G_CR] = RTE_ETH_LINK_SPEED_25G,
+	[CGX_MODE_25G_KR] = RTE_ETH_LINK_SPEED_25G,
+	[CGX_MODE_40G_C2C] = RTE_ETH_LINK_SPEED_40G,
+	[CGX_MODE_40G_C2M] = RTE_ETH_LINK_SPEED_40G,
+	[CGX_MODE_40G_CR4] = RTE_ETH_LINK_SPEED_40G,
+	[CGX_MODE_40G_KR4] = RTE_ETH_LINK_SPEED_40G,
+	[CGX_MODE_40GAUI_C2C] = RTE_ETH_LINK_SPEED_40G,
+	[CGX_MODE_50G_C2C] = RTE_ETH_LINK_SPEED_50G,
+	[CGX_MODE_50G_C2M] = RTE_ETH_LINK_SPEED_50G,
+	[CGX_MODE_50G_4_C2C] = RTE_ETH_LINK_SPEED_50G,
+	[CGX_MODE_50G_CR] = RTE_ETH_LINK_SPEED_50G,
+	[CGX_MODE_50G_KR] = RTE_ETH_LINK_SPEED_50G,
+	[CGX_MODE_80GAUI_C2C] = 0, /* No define for 80G */
+	[CGX_MODE_100G_C2C] = RTE_ETH_LINK_SPEED_100G,
+	[CGX_MODE_100G_C2M] = RTE_ETH_LINK_SPEED_100G,
+	[CGX_MODE_100G_CR4] = RTE_ETH_LINK_SPEED_100G,
+	[CGX_MODE_100G_KR4] = RTE_ETH_LINK_SPEED_100G,
+	[CGX_MODE_LAUI_2_C2C_BIT] = RTE_ETH_LINK_SPEED_50G,
+	[CGX_MODE_LAUI_2_C2M_BIT] = RTE_ETH_LINK_SPEED_50G,
+	[CGX_MODE_50GBASE_CR2_C_BIT] = RTE_ETH_LINK_SPEED_50G,
+	[CGX_MODE_50GBASE_KR2_C_BIT] = RTE_ETH_LINK_SPEED_50G,
+	[CGX_MODE_100GAUI_2_C2C_BIT] = RTE_ETH_LINK_SPEED_100G,
+	[CGX_MODE_100GAUI_2_C2M_BIT] = RTE_ETH_LINK_SPEED_100G,
+	[CGX_MODE_100GBASE_CR2_BIT] = RTE_ETH_LINK_SPEED_100G,
+	[CGX_MODE_100GBASE_KR2_BIT] = RTE_ETH_LINK_SPEED_100G,
+	[CGX_MODE_SFI_1G_BIT] = RTE_ETH_LINK_SPEED_1G,
+	[CGX_MODE_25GBASE_CR_C_BIT] = RTE_ETH_LINK_SPEED_25G,
+	[CGX_MODE_25GBASE_KR_C_BIT] = RTE_ETH_LINK_SPEED_25G,
+	[ETH_MODE_SGMII_10M_BIT] = RTE_ETH_LINK_SPEED_10M | RTE_ETH_LINK_SPEED_10M_HD,
+	[ETH_MODE_SGMII_100M_BIT] = RTE_ETH_LINK_SPEED_100M | RTE_ETH_LINK_SPEED_100M_HD,
+	[40] = 0,
+	[41] = 0,
+	[ETH_MODE_2500_BASEX_BIT] = RTE_ETH_LINK_SPEED_2_5G,
+	[ETH_MODE_5000_BASEX_BIT] = RTE_ETH_LINK_SPEED_5G,
+	[ETH_MODE_O_USGMII_BIT] = RTE_ETH_LINK_SPEED_100M,
+	[ETH_MODE_Q_USGMII_BIT] = RTE_ETH_LINK_SPEED_1G,
+	[ETH_MODE_2_5G_USXGMII_BIT] = RTE_ETH_LINK_SPEED_2_5G,
+	[ETH_MODE_5G_USXGMII_BIT] = RTE_ETH_LINK_SPEED_5G,
+	[ETH_MODE_10G_SXGMII_BIT] = RTE_ETH_LINK_SPEED_10G,
+	[ETH_MODE_10G_DXGMII_BIT] = RTE_ETH_LINK_SPEED_10G,
+	[ETH_MODE_10G_QXGMII_BIT] = RTE_ETH_LINK_SPEED_10G,
+};
+
+static const uint8_t cnxk_port_type[] = {
+	[CGX_PORT_TP] = RTE_ETH_LINK_CONNECTOR_TP,
+	[CGX_PORT_AUI] = RTE_ETH_LINK_CONNECTOR_AUI,
+	[CGX_PORT_MII] = RTE_ETH_LINK_CONNECTOR_MII,
+	[CGX_PORT_FIBRE] = RTE_ETH_LINK_CONNECTOR_FIBER,
+	[CGX_PORT_BNC] = RTE_ETH_LINK_CONNECTOR_BNC,
+	[CGX_PORT_DA] = RTE_ETH_LINK_CONNECTOR_DAC,
+	[CGX_PORT_NONE] = RTE_ETH_LINK_CONNECTOR_NONE,
+	[CGX_PORT_OTHER] = RTE_ETH_LINK_CONNECTOR_OTHER,
+};
+
+cnxk_ethdev_rx_offload_cb_t cnxk_ethdev_rx_offload_cb;
 
 #define CNXK_NIX_CQ_INL_CLAMP_MAX (64UL * 1024UL)
+
+#define NIX_TM_DFLT_RR_WT 71
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_model_str_get, 23.11)
+const char *
+rte_pmd_cnxk_model_str_get(void)
+{
+	return roc_model->name;
+}
 
 static inline uint64_t
 nix_get_rx_offload_capa(struct cnxk_eth_dev *dev)
@@ -29,14 +108,36 @@ nix_get_tx_offload_capa(struct cnxk_eth_dev *dev)
 static inline uint32_t
 nix_get_speed_capa(struct cnxk_eth_dev *dev)
 {
+	struct roc_nix_mac_fwdata fwdata;
+	struct rte_eth_link link;
 	uint32_t speed_capa;
+	uint8_t mode;
+	int rc;
 
 	/* Auto negotiation disabled */
 	speed_capa = RTE_ETH_LINK_SPEED_FIXED;
 	if (!roc_nix_is_vf_or_sdp(&dev->nix) && !roc_nix_is_lbk(&dev->nix)) {
-		speed_capa |= RTE_ETH_LINK_SPEED_1G | RTE_ETH_LINK_SPEED_10G |
-			      RTE_ETH_LINK_SPEED_25G | RTE_ETH_LINK_SPEED_40G |
-			      RTE_ETH_LINK_SPEED_50G | RTE_ETH_LINK_SPEED_100G;
+		memset(&fwdata, 0, sizeof(fwdata));
+		rc = roc_nix_mac_fwdata_get(&dev->nix, &fwdata);
+		if (rc) {
+			plt_err("Failed to get MAC firmware data");
+			return 0;
+		}
+
+		if (fwdata.supported_an)
+			speed_capa = 0;
+
+		/* Translate advertised modes to speed_capa */
+		for (mode = 0; mode < CGX_MODE_MAX; mode++) {
+			if (fwdata.supported_link_modes & BIT_ULL(mode))
+				speed_capa |= cnxk_mac_modes[mode];
+		}
+		dev->link_type = cnxk_port_type[(uint8_t)fwdata.port_type];
+
+		/* Set link type at init */
+		memset(&link, 0, sizeof(link));
+		link.link_connector = dev->link_type;
+		rte_eth_linkstatus_set(dev->eth_dev, &link);
 	}
 
 	return speed_capa;
@@ -76,6 +177,14 @@ nix_inl_cq_sz_clamp_up(struct roc_nix *nix, struct rte_mempool *mp,
 	return nb_desc;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(cnxk_ethdev_rx_offload_cb_register)
+void
+cnxk_ethdev_rx_offload_cb_register(cnxk_ethdev_rx_offload_cb_t cb)
+{
+	cnxk_ethdev_rx_offload_cb = cb;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(cnxk_nix_inb_mode_set)
 int
 cnxk_nix_inb_mode_set(struct cnxk_eth_dev *dev, bool use_inl_dev)
 {
@@ -105,6 +214,11 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 		nix->ipsec_in_min_spi = dev->inb.no_inl_dev ? dev->inb.min_spi : 0;
 		nix->ipsec_in_max_spi = dev->inb.no_inl_dev ? dev->inb.max_spi : 1;
 
+		/* Enable custom meta aura when multi-chan is used */
+		if (nix->local_meta_aura_ena && roc_nix_inl_dev_is_multi_channel() &&
+		    !dev->inb.custom_meta_aura_dis)
+			nix->custom_meta_aura_ena = true;
+
 		/* Setup Inline Inbound */
 		rc = roc_nix_inl_inb_init(nix);
 		if (rc) {
@@ -128,6 +242,7 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 			rc = -ENOMEM;
 			goto cleanup;
 		}
+		dev->inb.inl_dev_q = roc_nix_inl_dev_qptr_get(0);
 	}
 
 	if (dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY ||
@@ -543,6 +658,7 @@ cnxk_nix_tx_queue_release(struct rte_eth_dev *eth_dev, uint16_t qid)
 	struct cnxk_eth_txq_sp *txq_sp;
 	struct cnxk_eth_dev *dev;
 	struct roc_nix_sq *sq;
+	struct roc_nix_cq *cq;
 	int rc;
 
 	if (!txq)
@@ -551,11 +667,19 @@ cnxk_nix_tx_queue_release(struct rte_eth_dev *eth_dev, uint16_t qid)
 	txq_sp = cnxk_eth_txq_to_sp(txq);
 
 	dev = txq_sp->dev;
+	sq = &dev->sqs[qid];
 
 	plt_nix_dbg("Releasing txq %u", qid);
 
+	if (dev->nix.tx_compl_ena) {
+		/* Cleanup ROC CQ */
+		cq = &dev->cqs[sq->cqid];
+		rc = roc_nix_cq_fini(cq);
+		if (rc)
+			plt_err("Failed to cleanup cq, rc=%d", rc);
+	}
+
 	/* Cleanup ROC SQ */
-	sq = &dev->sqs[qid];
 	rc = roc_nix_sq_fini(sq);
 	if (rc)
 		plt_err("Failed to cleanup sq, rc=%d", rc);
@@ -582,7 +706,7 @@ cnxk_nix_process_rx_conf(const struct rte_eth_rxconf *rx_conf,
 	}
 
 	if (mp == NULL || mp[0] == NULL || mp[1] == NULL) {
-		plt_err("invalid memory pools\n");
+		plt_err("invalid memory pools");
 		return -EINVAL;
 	}
 
@@ -610,7 +734,7 @@ cnxk_nix_process_rx_conf(const struct rte_eth_rxconf *rx_conf,
 		return -EINVAL;
 	}
 
-	plt_info("spb_pool:%s lpb_pool:%s lpb_len:%u spb_len:%u\n", (*spb_pool)->name,
+	plt_info("spb_pool:%s lpb_pool:%s lpb_len:%u spb_len:%u", (*spb_pool)->name,
 		 (*lpb_pool)->name, (*lpb_pool)->elt_size, (*spb_pool)->elt_size);
 
 	return 0;
@@ -626,6 +750,7 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	struct roc_nix *nix = &dev->nix;
 	struct cnxk_eth_rxq_sp *rxq_sp;
 	struct rte_mempool_ops *ops;
+	uint32_t desc_cnt = nb_desc;
 	const char *platform_ops;
 	struct roc_nix_rq *rq;
 	struct roc_nix_cq *cq;
@@ -680,6 +805,10 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	 */
 	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
 		nb_desc = nix_inl_cq_sz_clamp_up(nix, lpb_pool, nb_desc);
+
+	/* Double the CQ descriptors */
+	if (nix->force_tail_drop)
+		nb_desc = 2 * RTE_MAX(nb_desc, (uint32_t)4096);
 
 	/* Setup ROC CQ */
 	cq = &dev->cqs[qid];
@@ -747,7 +876,7 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	rxq_sp->qconf.conf.rx = *rx_conf;
 	/* Queue config should reflect global offloads */
 	rxq_sp->qconf.conf.rx.offloads = dev->rx_offloads;
-	rxq_sp->qconf.nb_desc = nb_desc;
+	rxq_sp->qconf.nb_desc = desc_cnt;
 	rxq_sp->qconf.mp = lpb_pool;
 	rxq_sp->tc = 0;
 	rxq_sp->tx_pause = (dev->fc_cfg.mode == RTE_ETH_FC_FULL ||
@@ -911,6 +1040,12 @@ cnxk_rss_ethdev_to_nix(struct cnxk_eth_dev *dev, uint64_t ethdev_rss,
 
 	if (ethdev_rss & RTE_ETH_RSS_GTPU)
 		flowkey_cfg |= FLOW_KEY_TYPE_GTPU;
+
+	if (ethdev_rss & RTE_ETH_RSS_ESP)
+		flowkey_cfg |= FLOW_KEY_TYPE_ESP;
+
+	if (ethdev_rss & RTE_ETH_RSS_IB_BTH)
+		flowkey_cfg |= FLOW_KEY_TYPE_ROCEV2;
 
 	return flowkey_cfg;
 }
@@ -1200,8 +1335,8 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 	uint16_t nb_rxq, nb_txq, nb_cq;
 	struct rte_ether_addr *ea;
 	uint64_t rx_cfg;
+	int rc, i;
 	void *qs;
-	int rc;
 
 	rc = -EINVAL;
 
@@ -1256,10 +1391,19 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		roc_nix_tm_fini(nix);
 		nix_rxchan_cfg_disable(dev);
 		roc_nix_lf_free(nix);
+
+		/* Reset to invalid */
+		for (i = 0; i < dev->max_mac_entries; i++)
+			dev->dmac_idx_map[i] = CNXK_NIX_DMAC_IDX_INVALID;
+
+		dev->dmac_filter_count = 1;
 	}
 
 	dev->rx_offloads = rxmode->offloads;
 	dev->tx_offloads = txmode->offloads;
+
+	if (nix->custom_inb_sa)
+		dev->rx_offloads |= RTE_ETH_RX_OFFLOAD_SECURITY;
 
 	/* Prepare rx cfg */
 	rx_cfg = ROC_NIX_LF_RX_CFG_DIS_APAD;
@@ -1384,6 +1528,13 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		goto free_nix_lf;
 	}
 
+	/* Overwrite default RSS setup if requested by user */
+	rc = cnxk_nix_rss_hash_update(eth_dev, &conf->rx_adv_conf.rss_conf);
+	if (rc) {
+		plt_err("Failed to configure rss rc=%d", rc);
+		goto free_nix_lf;
+	}
+
 	/* Init the default TM scheduler hierarchy */
 	rc = roc_nix_tm_init(nix);
 	if (rc) {
@@ -1397,7 +1548,10 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		goto free_nix_lf;
 	}
 
-	rc = roc_nix_tm_hierarchy_enable(nix, ROC_NIX_TM_DEFAULT, false);
+	if (roc_nix_is_sdp(&dev->nix) && nb_txq > 1)
+		rc = roc_nix_tm_hierarchy_enable(nix, ROC_NIX_TM_SDP, false);
+	else
+		rc = roc_nix_tm_hierarchy_enable(nix, ROC_NIX_TM_DEFAULT, false);
 	if (rc) {
 		plt_err("Failed to enable default tm hierarchy, rc=%d", rc);
 		goto tm_fini;
@@ -1488,6 +1642,11 @@ skip_lbk_setup:
 		    " rx_offloads=0x%" PRIx64 " tx_offloads=0x%" PRIx64 "",
 		    eth_dev->data->port_id, ea_fmt, nb_rxq, nb_txq,
 		    dev->rx_offloads, dev->tx_offloads);
+
+	/* Configure link parameters */
+	rc = cnxk_nix_link_info_configure(eth_dev);
+	if (rc)
+		plt_warn("Unable to configure requested link attributes, rc=%d continue...", rc);
 
 	/* All good */
 	dev->configured = 1;
@@ -1611,17 +1770,25 @@ cnxk_nix_dev_stop(struct rte_eth_dev *eth_dev)
 	int count, i, j, rc;
 	void *rxq;
 
-	/* Disable all the NPC entries */
-	rc = roc_npc_mcam_enable_all_entries(&dev->npc, 0);
-	if (rc)
-		return rc;
+	/* In case of Inline IPSec, will need to avoid disabling the MCAM rules and NPC Rx
+	 * in this routine to continue processing of second pass inflight packets if any.
+	 * Drop of second pass packets will leak first pass buffers on some platforms
+	 * due to hardware limitations.
+	 */
+	if (roc_feature_nix_has_second_pass_drop() ||
+	    !(dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)) {
+		/* Disable all the NPC entries */
+		rc = roc_npc_mcam_enable_all_entries(&dev->npc, 0);
+		if (rc)
+			return rc;
+
+		/* Disable Rx via NPC */
+		roc_nix_npc_rx_ena_dis(&dev->nix, false);
+	}
 
 	/* Stop link change events */
 	if (!roc_nix_is_vf_or_sdp(&dev->nix))
 		roc_nix_mac_link_event_start_stop(&dev->nix, false);
-
-	/* Disable Rx via NPC */
-	roc_nix_npc_rx_ena_dis(&dev->nix, false);
 
 	roc_nix_inl_outb_soft_exp_poll_switch(&dev->nix, false);
 
@@ -1650,6 +1817,7 @@ cnxk_nix_dev_stop(struct rte_eth_dev *eth_dev)
 
 	/* Bring down link status internally */
 	memset(&link, 0, sizeof(link));
+	link.link_connector = dev->link_type;
 	rte_eth_linkstatus_set(eth_dev, &link);
 
 	return 0;
@@ -1729,7 +1897,7 @@ cnxk_nix_dev_start(struct rte_eth_dev *eth_dev)
 	else
 		cnxk_eth_dev_ops.timesync_disable(eth_dev);
 
-	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP || dev->ptp_en) {
 		rc = rte_mbuf_dyn_rx_timestamp_register
 			(&dev->tstamp.tstamp_dynfield_offset,
 			 &dev->tstamp.rx_tstamp_dynflag);
@@ -1843,7 +2011,7 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	struct rte_security_ctx *sec_ctx;
 	struct roc_nix *nix = &dev->nix;
 	struct rte_pci_device *pci_dev;
-	int rc, max_entries;
+	int rc, max_entries, i;
 
 	eth_dev->dev_ops = &cnxk_eth_dev_ops;
 	eth_dev->rx_queue_count = cnxk_nix_rx_queue_count;
@@ -1877,8 +2045,13 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	nix->pci_dev = pci_dev;
 	nix->hw_vlan_ins = true;
 	nix->port_id = eth_dev->data->port_id;
-	if (roc_feature_nix_has_own_meta_aura())
+	/* For better performance set default VF root schedule weight */
+	nix->root_sched_weight = NIX_TM_DFLT_RR_WT;
+
+	/* Skip meta aura for cn20k */
+	if (roc_feature_nix_has_own_meta_aura() && !roc_feature_nix_has_second_pass_drop())
 		nix->local_meta_aura_ena = true;
+
 	rc = roc_nix_dev_init(nix);
 	if (rc) {
 		plt_err("Failed to initialize roc nix rc=%d", rc);
@@ -1940,6 +2113,17 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 		goto free_mac_addrs;
 	}
 
+	dev->dmac_addrs = rte_malloc("dmac_addrs", max_entries * RTE_ETHER_ADDR_LEN, 0);
+	if (dev->dmac_addrs == NULL) {
+		plt_err("Failed to allocate memory for dmac addresses");
+		rc = -ENOMEM;
+		goto free_mac_addrs;
+	}
+
+	/* Reset to invalid */
+	for (i = 0; i < max_entries; i++)
+		dev->dmac_idx_map[i] = CNXK_NIX_DMAC_IDX_INVALID;
+
 	dev->max_mac_entries = max_entries;
 	dev->dmac_filter_count = 1;
 
@@ -1967,7 +2151,7 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	if (rc)
 		goto free_mac_addrs;
 
-	if (roc_feature_nix_has_macsec()) {
+	if (roc_feature_nix_has_macsec() && roc_mcs_is_supported()) {
 		rc = cnxk_mcs_dev_init(dev, 0);
 		if (rc) {
 			plt_err("Failed to init MCS");
@@ -1998,6 +2182,8 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 free_mac_addrs:
 	rte_free(eth_dev->data->mac_addrs);
+	rte_free(dev->dmac_addrs);
+	dev->dmac_addrs = NULL;
 	rte_free(dev->dmac_idx_map);
 dev_fini:
 	roc_nix_dev_fini(nix);
@@ -2030,6 +2216,11 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 
 	/* Clear the flag since we are closing down */
 	dev->configured = 0;
+
+	/* Disable all the NPC entries */
+	rc = roc_npc_mcam_enable_all_entries(&dev->npc, 0);
+	if (rc)
+		return rc;
 
 	roc_nix_npc_rx_ena_dis(nix, false);
 
@@ -2092,7 +2283,7 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 	}
 	eth_dev->data->nb_rx_queues = 0;
 
-	if (roc_feature_nix_has_macsec())
+	if (roc_feature_nix_has_macsec() && roc_mcs_is_supported())
 		cnxk_mcs_dev_fini(dev);
 
 	/* Free security resources */
@@ -2123,6 +2314,9 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 
 	rte_free(dev->dmac_idx_map);
 	dev->dmac_idx_map = NULL;
+
+	rte_free(dev->dmac_addrs);
+	dev->dmac_addrs = NULL;
 
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;

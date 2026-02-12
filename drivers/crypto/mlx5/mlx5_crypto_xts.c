@@ -363,7 +363,7 @@ static __rte_noinline void
 mlx5_crypto_xts_cqe_err_handle(struct mlx5_crypto_qp *qp, struct rte_crypto_op *op)
 {
 	const uint32_t idx = qp->ci & (qp->entries_n - 1);
-	volatile struct mlx5_err_cqe *cqe = (volatile struct mlx5_err_cqe *)
+	volatile struct mlx5_error_cqe *cqe = (volatile struct mlx5_error_cqe *)
 							&qp->cq_obj.cqes[idx];
 
 	op->status = RTE_CRYPTO_OP_STATUS_ERROR;
@@ -485,7 +485,7 @@ mlx5_crypto_xts_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	alloc_size = RTE_ALIGN(alloc_size, RTE_CACHE_LINE_SIZE);
 	alloc_size += (sizeof(struct rte_crypto_op *) +
 		       sizeof(struct mlx5_devx_obj *)) *
-		       RTE_BIT32(log_nb_desc);
+		       (size_t)RTE_BIT32(log_nb_desc);
 	qp = rte_zmalloc_socket(__func__, alloc_size, RTE_CACHE_LINE_SIZE,
 				socket_id);
 	if (qp == NULL) {
@@ -529,7 +529,7 @@ mlx5_crypto_xts_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		goto error;
 	qp->mkey = (struct mlx5_devx_obj **)RTE_ALIGN((uintptr_t)(qp + 1),
 							   RTE_CACHE_LINE_SIZE);
-	qp->ops = (struct rte_crypto_op **)(qp->mkey + RTE_BIT32(log_nb_desc));
+	qp->ops = (struct rte_crypto_op **)(qp->mkey + (size_t)RTE_BIT32(log_nb_desc));
 	qp->entries_n = 1 << log_nb_desc;
 	if (mlx5_crypto_indirect_mkeys_prepare(priv, qp, &mkey_attr,
 					       mlx5_crypto_gcm_mkey_klm_update)) {

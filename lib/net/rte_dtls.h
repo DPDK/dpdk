@@ -13,10 +13,6 @@
 
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define RTE_DTLS_TYPE_INVALID               0 /**< Invalid DTLS message type. */
 #define RTE_DTLS_TYPE_CHANGE_CIPHER_SPEC   20 /**< Change cipher spec message. */
 #define RTE_DTLS_TYPE_ALERT                21 /**< Alert message. */
@@ -34,7 +30,7 @@ extern "C" {
  * DTLS Header
  */
 __extension__
-struct rte_dtls_hdr {
+struct __rte_packed_begin rte_dtls_hdr {
 	/** Content type of DTLS packet. Defined as RTE_DTLS_TYPE_*. */
 	uint8_t type;
 	/** DTLS Version defined as RTE_DTLS_VERSION*. */
@@ -52,10 +48,6 @@ struct rte_dtls_hdr {
 #endif
 	/** The length (in bytes) of the following DTLS packet. */
 	rte_be16_t length;
-} __rte_packed;
-
-#ifdef __cplusplus
-}
-#endif
+} __rte_packed_end;
 
 #endif /* RTE_DTLS_H */

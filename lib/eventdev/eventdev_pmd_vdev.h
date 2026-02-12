@@ -5,10 +5,6 @@
 #ifndef _RTE_EVENTDEV_PMD_VDEV_H_
 #define _RTE_EVENTDEV_PMD_VDEV_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /** @file
  * RTE Eventdev VDEV PMD APIs
  *
@@ -26,6 +22,10 @@ extern "C" {
 #include <bus_vdev_driver.h>
 
 #include "eventdev_pmd.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @internal

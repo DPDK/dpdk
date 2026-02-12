@@ -318,6 +318,19 @@ struct rte_ml_dev_qp_conf {
 };
 
 /**
+ * Get the number of queue pairs on a specific ML device.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ *
+ * @return
+ *   - The number of configured queue pairs.
+ */
+__rte_experimental
+uint16_t
+rte_ml_dev_queue_pair_count(int16_t dev_id);
+
+/**
  * Set up a queue pair for a device. This should only be called when the device is stopped.
  *
  * @param dev_id
@@ -934,9 +947,13 @@ struct rte_ml_io_info {
 	 * @see enum rte_ml_io_type
 	 */
 	uint64_t nb_elements;
-	/** Number of elements in tensor */
+	/**< Number of elements in tensor */
 	uint64_t size;
-	/** Size of tensor in bytes */
+	/**< Size of tensor in bytes */
+	float scale;
+	/**< Scale factor */
+	int64_t zero_point;
+	/**< Zero point */
 };
 
 /** Model information structure */
@@ -1012,6 +1029,468 @@ int
 rte_ml_model_params_update(int16_t dev_id, uint16_t model_id, void *buffer);
 
 /* IO operations */
+
+/**
+ * Convert a buffer containing numbers in single precision floating format (float32) to signed 8-bit
+ * integer format (INT8).
+ *
+ * @param[in] fp32
+ *      Input buffer containing float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[out] i8
+ *      Output buffer to store INT8 numbers. Size of buffer is equal to (nb_elements * 1) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ * @param[in] scale
+ *      Scale factor for conversion.
+ * @param[in] zero_point
+ *      Zero point for conversion.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_float32_to_int8(const void *fp32, void *i8, uint64_t nb_elements, float scale,
+			  int8_t zero_point);
+
+/**
+ * Convert a buffer containing numbers in signed 8-bit integer format (INT8) to single precision
+ * floating format (float32).
+ *
+ * @param[in] i8
+ *      Input buffer containing INT8 numbers. Size of buffer is equal to (nb_elements * 1) bytes.
+ * @param[out] fp32
+ *      Output buffer to store float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ * @param[in] scale
+ *      Scale factor for conversion.
+ * @param[in] zero_point
+ *      Zero point for conversion.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_int8_to_float32(const void *i8, void *fp32, uint64_t nb_elements, float scale,
+			  int8_t zero_point);
+
+/**
+ * Convert a buffer containing numbers in single precision floating format (float32) to unsigned
+ * 8-bit integer format (UINT8).
+ *
+ * @param[in] fp32
+ *      Input buffer containing float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[out] ui8
+ *      Output buffer to store UINT8 numbers. Size of buffer is equal to (nb_elements * 1) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ * @param[in] scale
+ *      Scale factor for conversion.
+ * @param[in] zero_point
+ *      Zero point for conversion.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_float32_to_uint8(const void *fp32, void *ui8, uint64_t nb_elements, float scale,
+			   uint8_t zero_point);
+
+/**
+ * Convert a buffer containing numbers in unsigned 8-bit integer format (UINT8) to single precision
+ * floating format (float32).
+ *
+ * @param[in] ui8
+ *      Input buffer containing UINT8 numbers. Size of buffer is equal to (nb_elements * 1) bytes.
+ * @param[out] fp32
+ *      Output buffer to store float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ * @param[in] scale
+ *      Scale factor for conversion.
+ * @param[in] zero_point
+ *      Zero point for conversion.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_uint8_to_float32(const void *ui8, void *fp32, uint64_t nb_elements, float scale,
+			   uint8_t zero_point);
+
+/**
+ * Convert a buffer containing numbers in single precision floating format (float32) to signed
+ * 16-bit integer format (INT16).
+ *
+ * @param[in] fp32
+ *      Input buffer containing float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[out] i16
+ *      Output buffer to store INT16 numbers. Size of buffer is equal to (nb_elements * 2) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ * @param[in] scale
+ *      Scale factor for conversion.
+ * @param[in] zero_point
+ *      Zero point for conversion.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_float32_to_int16(const void *fp32, void *i16, uint64_t nb_elements, float scale,
+			   int16_t zero_point);
+
+/**
+ * Convert a buffer containing numbers in signed 16-bit integer format (INT16) to single precision
+ * floating format (float32).
+ *
+ * @param[in] i16
+ *      Input buffer containing INT16 numbers. Size of buffer is equal to (nb_elements * 2) bytes.
+ * @param[out] fp32
+ *      Output buffer to store float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ * @param[in] scale
+ *      Scale factor for conversion.
+ * @param[in] zero_point
+ *      Zero point for conversion.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_int16_to_float32(const void *i16, void *fp32, uint64_t nb_elements, float scale,
+			   int16_t zero_point);
+
+/**
+ * Convert a buffer containing numbers in single precision floating format (float32) to unsigned
+ * 16-bit integer format (UINT16).
+ *
+ * @param[in] fp32
+ *      Input buffer containing float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[out] ui16
+ *      Output buffer to store UINT16 numbers. Size of buffer is equal to (nb_elements * 2) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ * @param[in] scale
+ *      Scale factor for conversion.
+ * @param[in] zero_point
+ *      Zero point for conversion.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_float32_to_uint16(const void *fp32, void *ui16, uint64_t nb_elements, float scale,
+			    uint16_t zero_point);
+
+/**
+ * Convert a buffer containing numbers in unsigned 16-bit integer format (UINT16) to single
+ * precision floating format (float32).
+ *
+ * @param[in] ui16
+ *      Input buffer containing UINT16 numbers. Size of buffer is equal to (nb_elements * 2) bytes.
+ * @param[out] fp32
+ *      Output buffer to store float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ * @param[in] scale
+ *      Scale factor for conversion.
+ * @param[in] zero_point
+ *      Zero point for conversion.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_uint16_to_float32(const void *ui16, void *fp32, uint64_t nb_elements, float scale,
+			    uint16_t zero_point);
+
+/**
+ * Convert a buffer containing numbers in single precision floating format (float32) to signed
+ * 32-bit integer format (INT32).
+ *
+ * @param[in] fp32
+ *      Input buffer containing float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[out] i32
+ *      Output buffer to store INT32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ * @param[in] scale
+ *      Scale factor for conversion.
+ * @param[in] zero_point
+ *      Zero point for conversion.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_float32_to_int32(const void *fp32, void *i32, uint64_t nb_elements, float scale,
+			   int32_t zero_point);
+
+/**
+ * Convert a buffer containing numbers in signed 32-bit integer format (INT32) to single precision
+ * floating format (float32).
+ *
+ * @param[in] i32
+ *      Input buffer containing INT32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[out] fp32
+ *      Output buffer to store float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ * @param[in] scale
+ *      Scale factor for conversion.
+ * @param[in] zero_point
+ *      Zero point for conversion.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+
+__rte_experimental
+int
+rte_ml_io_int32_to_float32(const void *i32, void *fp32, uint64_t nb_elements, float scale,
+			   int32_t zero_point);
+
+/**
+ * Convert a buffer containing numbers in single precision floating format (float32) to unsigned
+ * 32-bit integer format (UINT32).
+ *
+ * @param[in] fp32
+ *      Input buffer containing float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[out] ui32
+ *      Output buffer to store UINT32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ * @param[in] scale
+ *      Scale factor for conversion.
+ * @param[in] zero_point
+ *      Zero point for conversion.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_float32_to_uint32(const void *fp32, void *ui32, uint64_t nb_elements, float scale,
+			    uint32_t zero_point);
+
+/**
+ * Convert a buffer containing numbers in unsigned 32-bit integer format (UINT32) to single
+ * precision floating format (float32).
+ *
+ * @param[in] ui32
+ *      Input buffer containing UINT32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[out] fp32
+ *      Output buffer to store float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ * @param[in] scale
+ *      Scale factor for conversion.
+ * @param[in] zero_point
+ *      Zero point for conversion.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_uint32_to_float32(const void *ui32, void *fp32, uint64_t nb_elements, float scale,
+			    uint32_t zero_point);
+
+/**
+ * Convert a buffer containing numbers in single precision floating format (float32) to signed
+ * 64-bit integer format (INT64).
+ *
+ * @param[in] fp32
+ *      Input buffer containing float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[out] i64
+ *      Output buffer to store INT64 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ * @param[in] scale
+ *      Scale factor for conversion.
+ * @param[in] zero_point
+ *      Zero point for conversion.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_float32_to_int64(const void *fp32, void *i64, uint64_t nb_elements, float scale,
+			   int64_t zero_point);
+
+/**
+ * Convert a buffer containing numbers in signed 64-bit integer format (INT64) to single precision
+ * floating format (float32).
+ *
+ * @param[in] i64
+ *      Input buffer containing INT64 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[out] fp32
+ *      Output buffer to store float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ * @param[in] scale
+ *      Scale factor for conversion.
+ * @param[in] zero_point
+ *      Zero point for conversion.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_int64_to_float32(const void *i64, void *fp32, uint64_t nb_elements, float scale,
+			   int64_t zero_point);
+
+/**
+ * Convert a buffer containing numbers in single precision floating format (float32) to unsigned
+ * 64-bit integer format (UINT64).
+ *
+ * @param[in] fp32
+ *      Input buffer containing float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[out] ui64
+ *      Output buffer to store UINT64 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ * @param[in] scale
+ *      Scale factor for conversion.
+ * @param[in] zero_point
+ *      Zero point for conversion.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_float32_to_uint64(const void *fp32, void *ui64, uint64_t nb_elements, float scale,
+			    uint64_t zero_point);
+
+/**
+ * Convert a buffer containing numbers in unsigned 64-bit integer format (UINT64) to single
+ *precision floating format (float32).
+ *
+ * @param[in] ui64
+ *      Input buffer containing UINT64 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[out] fp32
+ *      Output buffer to store float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ * @param[in] scale
+ *      Scale factor for conversion.
+ * @param[in] zero_point
+ *      Zero point for conversion.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_uint64_to_float32(const void *ui64, void *fp32, uint64_t nb_elements, float scale,
+			    uint64_t zero_point);
+
+/**
+ * Convert a buffer containing numbers in single precision floating format (float32) to half
+ * precision floating point format (FP16).
+ *
+ * @param[in] fp32
+ *      Input buffer containing float32 numbers. Size of buffer is equal to (nb_elements *4) bytes.
+ * @param[out] fp16
+ *      Output buffer to store float16 numbers. Size of buffer is equal to (nb_elements * 2) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_float32_to_float16(const void *fp32, void *fp16, uint64_t nb_elements);
+
+/**
+ * Convert a buffer containing numbers in half precision floating format (FP16) to single precision
+ * floating point format (float32).
+ *
+ * @param[in] fp16
+ *      Input buffer containing float16 numbers. Size of buffer is equal to (nb_elements * 2) bytes.
+ * @param[out] fp32
+ *      Output buffer to store float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_float16_to_float32(const void *fp16, void *fp32, uint64_t nb_elements);
+
+/**
+ * Convert a buffer containing numbers in single precision floating format (float32) to brain
+ * floating point format (bfloat16).
+ *
+ * @param[in] fp32
+ *      Input buffer containing float32 numbers. Size of buffer is equal to (nb_elements *4) bytes.
+ * @param[out] bf16
+ *      Output buffer to store bfloat16 numbers. Size of buffer is equal to (nb_elements * 2) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_float32_to_bfloat16(const void *fp32, void *bf16, uint64_t nb_elements);
+
+/**
+ * Convert a buffer containing numbers in brain floating point format (bfloat16) to single precision
+ * floating point format (float32).
+ *
+ * @param[in] bf16
+ *      Input buffer containing bfloat16 numbers. Size of buffer is equal to (nb_elements * 2)
+ * bytes.
+ * @param[out] fp32
+ *      Output buffer to store float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[in] nb_elements
+ *      Number of elements in the buffer.
+ *
+ * @return
+ *      - 0, Success.
+ *      - < 0, Error code on failure.
+ */
+__rte_experimental
+int
+rte_ml_io_bfloat16_to_float32(const void *bf16, void *fp32, uint64_t nb_elements);
 
 /**
  * Quantize input data.

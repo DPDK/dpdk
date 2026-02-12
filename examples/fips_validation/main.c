@@ -882,8 +882,8 @@ get_hash_oid(enum rte_crypto_auth_algorithm hash, uint8_t *buf)
 	uint8_t id_sha1[] = {0x30, 0x21, 0x30, 0x09, 0x06, 0x05,
 				0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x05,
 				0x00, 0x04, 0x14};
-	uint8_t *id = NULL;
-	int id_len = 0;
+	const uint8_t *id;
+	size_t id_len;
 
 	switch (hash) {
 	case RTE_CRYPTO_AUTH_SHA1:
@@ -907,12 +907,10 @@ get_hash_oid(enum rte_crypto_auth_algorithm hash, uint8_t *buf)
 		id_len = sizeof(id_sha512);
 		break;
 	default:
-		id_len = -1;
-		break;
+		return -1;
 	}
 
-	if (id != NULL)
-		rte_memcpy(buf, id, id_len);
+	memcpy(buf, id, id_len);
 
 	return id_len;
 }
@@ -926,31 +924,7 @@ prepare_rsa_op(void)
 	__rte_crypto_op_reset(env.op, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
 
 	asym = env.op->asym;
-	asym->rsa.padding.type = info.interim_info.rsa_data.padding;
-	asym->rsa.padding.hash = info.interim_info.rsa_data.auth;
-
 	if (env.digest) {
-		if (asym->rsa.padding.type == RTE_CRYPTO_RSA_PADDING_PKCS1_5) {
-			int b_len = 0;
-			uint8_t b[32];
-
-			b_len = get_hash_oid(asym->rsa.padding.hash, b);
-			if (b_len < 0) {
-				RTE_LOG(ERR, USER1, "Failed to get digest info for hash %d\n",
-					asym->rsa.padding.hash);
-				return -EINVAL;
-			}
-
-			if (b_len) {
-				msg.len = env.digest_len + b_len;
-				msg.val = rte_zmalloc(NULL, msg.len, 0);
-				rte_memcpy(msg.val, b, b_len);
-				rte_memcpy(msg.val + b_len, env.digest, env.digest_len);
-				rte_free(env.digest);
-				env.digest = msg.val;
-				env.digest_len = msg.len;
-			}
-		}
 		msg.val = env.digest;
 		msg.len = env.digest_len;
 	} else {
@@ -1042,6 +1016,64 @@ prepare_ecdsa_op(void)
 }
 
 static int
+prepare_eddsa_op(void)
+{
+	struct rte_crypto_asym_op *asym;
+	struct fips_val msg;
+
+	__rte_crypto_op_reset(env.op, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+
+	asym = env.op->asym;
+	if (env.digest) {
+		msg.val = env.digest;
+		msg.len = env.digest_len;
+	} else {
+		msg.val = vec.pt.val;
+		msg.len = vec.pt.len;
+	}
+
+	if (info.op == FIPS_TEST_ASYM_SIGGEN) {
+		asym->eddsa.op_type = RTE_CRYPTO_ASYM_OP_SIGN;
+		asym->eddsa.message.data = msg.val;
+		asym->eddsa.message.length = msg.len;
+		asym->eddsa.context.data = vec.eddsa.ctx.val;
+		asym->eddsa.context.length = vec.eddsa.ctx.len;
+
+		rte_free(vec.eddsa.sign.val);
+
+		vec.eddsa.sign.len = info.interim_info.eddsa_data.curve_len;
+		vec.eddsa.sign.val = rte_zmalloc(NULL, vec.eddsa.sign.len, 0);
+
+		asym->eddsa.sign.data = vec.eddsa.sign.val;
+		asym->eddsa.sign.length = 0;
+	} else if (info.op == FIPS_TEST_ASYM_SIGVER) {
+		asym->eddsa.op_type = RTE_CRYPTO_ASYM_OP_VERIFY;
+		asym->eddsa.message.data = msg.val;
+		asym->eddsa.message.length = msg.len;
+		asym->eddsa.sign.data = vec.eddsa.sign.val;
+		asym->eddsa.sign.length = vec.eddsa.sign.len;
+	} else {
+		RTE_LOG(ERR, USER1, "Invalid op %d\n", info.op);
+		return -EINVAL;
+	}
+
+	if (info.interim_info.eddsa_data.curve_id == RTE_CRYPTO_EC_GROUP_ED25519) {
+		asym->eddsa.instance = RTE_CRYPTO_EDCURVE_25519;
+		if (info.interim_info.eddsa_data.prehash)
+			asym->eddsa.instance = RTE_CRYPTO_EDCURVE_25519PH;
+		if (vec.eddsa.ctx.len > 0)
+			asym->eddsa.instance = RTE_CRYPTO_EDCURVE_25519CTX;
+	} else {
+		asym->eddsa.instance = RTE_CRYPTO_EDCURVE_448;
+		if (info.interim_info.eddsa_data.prehash)
+			asym->eddsa.instance = RTE_CRYPTO_EDCURVE_448PH;
+	}
+	rte_crypto_op_attach_asym_session(env.op, env.asym.sess);
+
+	return 0;
+}
+
+static int
 prepare_ecfpm_op(void)
 {
 	struct rte_crypto_asym_op *asym;
@@ -1066,6 +1098,31 @@ prepare_ecfpm_op(void)
 	asym->ecpm.r.x.length = 0;
 	asym->ecpm.r.y.data = vec.ecdsa.qy.val;
 	asym->ecpm.r.y.length = 0;
+
+	rte_crypto_op_attach_asym_session(env.op, env.asym.sess);
+
+	return 0;
+}
+
+static int
+prepare_edfpm_op(void)
+{
+	struct rte_crypto_asym_op *asym;
+
+	__rte_crypto_op_reset(env.op, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+
+	asym = env.op->asym;
+	asym->ecpm.scalar.data = vec.eddsa.pkey.val;
+	asym->ecpm.scalar.length = vec.eddsa.pkey.len;
+
+	rte_free(vec.eddsa.q.val);
+
+	vec.eddsa.q.len = info.interim_info.eddsa_data.curve_len;
+	vec.eddsa.q.val = rte_zmalloc(NULL, vec.eddsa.q.len, 0);
+
+	asym->ecpm.r.x.data = vec.eddsa.q.val;
+	asym->ecpm.r.x.length = 0;
+	asym->flags |= RTE_CRYPTO_ASYM_FLAG_PUB_KEY_COMPRESSED;
 
 	rte_crypto_op_attach_asym_session(env.op, env.asym.sess);
 
@@ -1536,6 +1593,34 @@ prepare_rsa_xform(struct rte_crypto_asym_xform *xform)
 	xform->rsa.e.length = vec.rsa.e.len;
 	xform->rsa.n.data = vec.rsa.n.val;
 	xform->rsa.n.length = vec.rsa.n.len;
+
+	xform->rsa.padding.type = info.interim_info.rsa_data.padding;
+	xform->rsa.padding.hash = info.interim_info.rsa_data.auth;
+	if (env.digest) {
+		if (xform->rsa.padding.type == RTE_CRYPTO_RSA_PADDING_PKCS1_5) {
+			struct fips_val msg;
+			int b_len = 0;
+			uint8_t b[32];
+
+			b_len = get_hash_oid(xform->rsa.padding.hash, b);
+			if (b_len < 0) {
+				RTE_LOG(ERR, USER1, "Failed to get digest info for hash %d\n",
+					xform->rsa.padding.hash);
+				return -EINVAL;
+			}
+
+			if (b_len) {
+				msg.len = env.digest_len + b_len;
+				msg.val = rte_zmalloc(NULL, msg.len, 0);
+				memcpy(msg.val, b, b_len);
+				memcpy(msg.val + b_len, env.digest, env.digest_len);
+				rte_free(env.digest);
+				env.digest = msg.val;
+				env.digest_len = msg.len;
+			}
+		}
+	}
+
 	return 0;
 }
 
@@ -1590,6 +1675,56 @@ prepare_ecdsa_xform(struct rte_crypto_asym_xform *xform)
 }
 
 static int
+prepare_eddsa_xform(struct rte_crypto_asym_xform *xform)
+{
+	const struct rte_cryptodev_asymmetric_xform_capability *cap;
+	struct rte_cryptodev_asym_capability_idx cap_idx;
+
+	xform->xform_type = RTE_CRYPTO_ASYM_XFORM_EDDSA;
+	xform->next = NULL;
+
+	cap_idx.type = xform->xform_type;
+	cap = rte_cryptodev_asym_capability_get(env.dev_id, &cap_idx);
+	if (!cap) {
+		RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
+				env.dev_id);
+		return -EINVAL;
+	}
+
+	switch (info.op) {
+	case FIPS_TEST_ASYM_SIGGEN:
+		if (!rte_cryptodev_asym_xform_capability_check_optype(cap,
+			RTE_CRYPTO_ASYM_OP_SIGN)) {
+			RTE_LOG(ERR, USER1, "PMD %s xform_op %u\n",
+				info.device_name, RTE_CRYPTO_ASYM_OP_SIGN);
+			return -EPERM;
+		}
+
+		xform->ec.pkey.data = vec.eddsa.pkey.val;
+		xform->ec.pkey.length = vec.eddsa.pkey.len;
+		xform->ec.q.x.data = vec.eddsa.q.val;
+		xform->ec.q.x.length = vec.eddsa.q.len;
+		break;
+	case FIPS_TEST_ASYM_SIGVER:
+		if (!rte_cryptodev_asym_xform_capability_check_optype(cap,
+			RTE_CRYPTO_ASYM_OP_VERIFY)) {
+			RTE_LOG(ERR, USER1, "PMD %s xform_op %u\n",
+				info.device_name, RTE_CRYPTO_ASYM_OP_VERIFY);
+			return -EPERM;
+		}
+
+		xform->ec.q.x.data = vec.eddsa.q.val;
+		xform->ec.q.x.length = vec.eddsa.q.len;
+		break;
+	default:
+		break;
+	}
+
+	xform->ec.curve_id = info.interim_info.eddsa_data.curve_id;
+	return 0;
+}
+
+static int
 prepare_ecfpm_xform(struct rte_crypto_asym_xform *xform)
 {
 	const struct rte_cryptodev_asymmetric_xform_capability *cap;
@@ -1607,6 +1742,27 @@ prepare_ecfpm_xform(struct rte_crypto_asym_xform *xform)
 	}
 
 	xform->ec.curve_id = info.interim_info.ecdsa_data.curve_id;
+	return 0;
+}
+
+static int
+prepare_edfpm_xform(struct rte_crypto_asym_xform *xform)
+{
+	const struct rte_cryptodev_asymmetric_xform_capability *cap;
+	struct rte_cryptodev_asym_capability_idx cap_idx;
+
+	xform->xform_type = RTE_CRYPTO_ASYM_XFORM_ECFPM;
+	xform->next = NULL;
+
+	cap_idx.type = xform->xform_type;
+	cap = rte_cryptodev_asym_capability_get(env.dev_id, &cap_idx);
+	if (!cap) {
+		RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
+				env.dev_id);
+		return -EINVAL;
+	}
+
+	xform->ec.curve_id = info.interim_info.eddsa_data.curve_id;
 	return 0;
 }
 
@@ -1709,7 +1865,9 @@ fips_run_asym_test(void)
 	struct rte_crypto_op *deqd_op;
 	int ret;
 
-	if (info.op == FIPS_TEST_ASYM_KEYGEN && info.algo != FIPS_TEST_ALGO_ECDSA) {
+	if (info.op == FIPS_TEST_ASYM_KEYGEN &&
+		(info.algo != FIPS_TEST_ALGO_ECDSA &&
+		 info.algo != FIPS_TEST_ALGO_EDDSA)) {
 		RTE_SET_USED(asym);
 		ret = 0;
 		goto exit;
@@ -1758,53 +1916,141 @@ fips_run_test(void)
 {
 	int ret;
 
-	env.op = env.sym.op;
-	if (env.is_asym_test) {
-		if (info.op == FIPS_TEST_ASYM_KEYGEN &&
-			info.algo == FIPS_TEST_ALGO_ECDSA) {
-			env.op = env.asym.op;
+	env.op = NULL;
+	if (!env.is_asym_test) {
+		env.op = env.sym.op;
+		return fips_run_sym_test();
+	}
+
+	if (info.op == FIPS_TEST_ASYM_KEYGEN) {
+		if (info.algo == FIPS_TEST_ALGO_ECDSA) {
 			test_ops.prepare_asym_xform = prepare_ecfpm_xform;
 			test_ops.prepare_asym_op = prepare_ecfpm_op;
+			info.interim_info.ecdsa_data.pubkey_gen = 0;
+
+		} else if (info.algo == FIPS_TEST_ALGO_EDDSA) {
+			test_ops.prepare_asym_xform = prepare_edfpm_xform;
+			test_ops.prepare_asym_op = prepare_edfpm_op;
+			info.interim_info.eddsa_data.pubkey_gen = 0;
+		}
+
+		env.op = env.asym.op;
+		return fips_run_asym_test();
+	}
+
+	if (info.algo == FIPS_TEST_ALGO_ECDSA ||
+	    info.algo == FIPS_TEST_ALGO_RSA) {
+		vec.cipher_auth.digest.len =
+			parse_test_sha_hash_size(info.interim_info.ecdsa_data.auth);
+		test_ops.prepare_sym_xform = prepare_sha_xform;
+		test_ops.prepare_sym_op = prepare_auth_op;
+
+		env.op = env.sym.op;
+		ret = fips_run_sym_test();
+		if (ret < 0)
+			return ret;
+	}
+
+	env.op = env.asym.op;
+	if (info.op == FIPS_TEST_ASYM_SIGGEN) {
+		fips_prepare_asym_xform_t old_xform;
+		fips_prepare_op_t old_op;
+
+		old_xform = test_ops.prepare_asym_xform;
+		old_op = test_ops.prepare_asym_op;
+
+		if (info.algo == FIPS_TEST_ALGO_ECDSA &&
+		    info.interim_info.ecdsa_data.pubkey_gen == 1) {
+			info.op = FIPS_TEST_ASYM_KEYGEN;
+			test_ops.prepare_asym_xform = prepare_ecfpm_xform;
+			test_ops.prepare_asym_op = prepare_ecfpm_op;
+
 			ret = fips_run_asym_test();
 			if (ret < 0)
 				return ret;
 
+			info.post_interim_writeback(NULL);
 			info.interim_info.ecdsa_data.pubkey_gen = 0;
-			return ret;
+
+		} else if (info.algo == FIPS_TEST_ALGO_EDDSA &&
+				   info.interim_info.eddsa_data.pubkey_gen == 1) {
+			info.op = FIPS_TEST_ASYM_KEYGEN;
+			test_ops.prepare_asym_xform = prepare_edfpm_xform;
+			test_ops.prepare_asym_op = prepare_edfpm_op;
+
+			const struct rte_cryptodev_asymmetric_xform_capability *cap;
+			struct rte_cryptodev_asym_capability_idx cap_idx;
+
+			cap_idx.type = RTE_CRYPTO_ASYM_XFORM_EDDSA;
+			cap = rte_cryptodev_asym_capability_get(env.dev_id, &cap_idx);
+			if (!cap) {
+				RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
+						env.dev_id);
+				return -EINVAL;
+			}
+
+			if (cap->op_types & (1 << RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE)) {
+				ret = fips_run_asym_test();
+				if (ret < 0)
+					return ret;
+			} else {
+				/* Below is only a workaround by using known keys. */
+				struct rte_crypto_asym_xform xform = {0};
+
+				prepare_edfpm_xform(&xform);
+				prepare_edfpm_op();
+				uint8_t pkey25519[] = {
+					0x83, 0x3f, 0xe6, 0x24, 0x09, 0x23, 0x7b, 0x9d,
+					0x62, 0xec, 0x77, 0x58, 0x75, 0x20, 0x91, 0x1e,
+					0x9a, 0x75, 0x9c, 0xec, 0x1d, 0x19, 0x75, 0x5b,
+					0x7d, 0xa9, 0x01, 0xb9, 0x6d, 0xca, 0x3d, 0x42
+				};
+				uint8_t q25519[] = {
+					0xec, 0x17, 0x2b, 0x93, 0xad, 0x5e, 0x56, 0x3b,
+					0xf4, 0x93, 0x2c, 0x70, 0xe1, 0x24, 0x50, 0x34,
+					0xc3, 0x54, 0x67, 0xef, 0x2e, 0xfd, 0x4d, 0x64,
+					0xeb, 0xf8, 0x19, 0x68, 0x34, 0x67, 0xe2, 0xbf
+				};
+				uint8_t pkey448[] = {
+					0xd6, 0x5d, 0xf3, 0x41, 0xad, 0x13, 0xe0, 0x08,
+					0x56, 0x76, 0x88, 0xba, 0xed, 0xda, 0x8e, 0x9d,
+					0xcd, 0xc1, 0x7d, 0xc0, 0x24, 0x97, 0x4e, 0xa5,
+					0xb4, 0x22, 0x7b, 0x65, 0x30, 0xe3, 0x39, 0xbf,
+					0xf2, 0x1f, 0x99, 0xe6, 0x8c, 0xa6, 0x96, 0x8f,
+					0x3c, 0xca, 0x6d, 0xfe, 0x0f, 0xb9, 0xf4, 0xfa,
+					0xb4, 0xfa, 0x13, 0x5d, 0x55, 0x42, 0xea, 0x3f,
+					0x01
+				};
+				uint8_t q448[] = {
+					0xdf, 0x97, 0x05, 0xf5, 0x8e, 0xdb, 0xab, 0x80,
+					0x2c, 0x7f, 0x83, 0x63, 0xcf, 0xe5, 0x56, 0x0a,
+					0xb1, 0xc6, 0x13, 0x2c, 0x20, 0xa9, 0xf1, 0xdd,
+					0x16, 0x34, 0x83, 0xa2, 0x6f, 0x8a, 0xc5, 0x3a,
+					0x39, 0xd6, 0x80, 0x8b, 0xf4, 0xa1, 0xdf, 0xbd,
+					0x26, 0x1b, 0x09, 0x9b, 0xb0, 0x3b, 0x3f, 0xb5,
+					0x09, 0x06, 0xcb, 0x28, 0xbd, 0x8a, 0x08, 0x1f,
+					0x00
+				};
+				if (info.interim_info.eddsa_data.curve_id ==
+					RTE_CRYPTO_EC_GROUP_ED25519) {
+					memcpy(vec.eddsa.pkey.val, pkey25519, RTE_DIM(pkey25519));
+					vec.eddsa.pkey.len = 32;
+					memcpy(vec.eddsa.q.val, q25519, RTE_DIM(q25519));
+					vec.eddsa.q.len = 32;
+				} else {
+					memcpy(vec.eddsa.pkey.val, pkey448, RTE_DIM(pkey448));
+					vec.eddsa.pkey.len = 32;
+					memcpy(vec.eddsa.q.val, q448, RTE_DIM(q448));
+					vec.eddsa.q.len = 32;
+				}
+			}
+			info.post_interim_writeback(NULL);
+			info.interim_info.eddsa_data.pubkey_gen = 0;
+
 		}
 
-		vec.cipher_auth.digest.len = parse_test_sha_hash_size(
-						info.interim_info.rsa_data.auth);
-		test_ops.prepare_sym_xform = prepare_sha_xform;
-		test_ops.prepare_sym_op = prepare_auth_op;
-		ret = fips_run_sym_test();
-		if (ret < 0)
-			return ret;
-	} else {
-		return fips_run_sym_test();
-	}
-
-	env.op = env.asym.op;
-	if (info.op == FIPS_TEST_ASYM_SIGGEN &&
-		info.algo == FIPS_TEST_ALGO_ECDSA &&
-		info.interim_info.ecdsa_data.pubkey_gen == 1) {
-		fips_prepare_asym_xform_t ecdsa_xform;
-		fips_prepare_op_t ecdsa_op;
-
-		ecdsa_xform = test_ops.prepare_asym_xform;
-		ecdsa_op = test_ops.prepare_asym_op;
-		info.op = FIPS_TEST_ASYM_KEYGEN;
-		test_ops.prepare_asym_xform = prepare_ecfpm_xform;
-		test_ops.prepare_asym_op = prepare_ecfpm_op;
-		ret = fips_run_asym_test();
-		if (ret < 0)
-			return ret;
-
-		info.post_interim_writeback(NULL);
-		info.interim_info.ecdsa_data.pubkey_gen = 0;
-
-		test_ops.prepare_asym_xform = ecdsa_xform;
-		test_ops.prepare_asym_op = ecdsa_op;
+		test_ops.prepare_asym_xform = old_xform;
+		test_ops.prepare_asym_op = old_op;
 		info.op = FIPS_TEST_ASYM_SIGGEN;
 		ret = fips_run_asym_test();
 	} else {
@@ -2536,6 +2782,17 @@ init_test_ops(void)
 			test_ops.test = fips_generic_test;
 		}
 		break;
+	case FIPS_TEST_ALGO_EDDSA:
+		if (info.op == FIPS_TEST_ASYM_KEYGEN) {
+			test_ops.prepare_asym_op = prepare_edfpm_op;
+			test_ops.prepare_asym_xform = prepare_edfpm_xform;
+			test_ops.test = fips_generic_test;
+		} else {
+			test_ops.prepare_asym_op = prepare_eddsa_op;
+			test_ops.prepare_asym_xform = prepare_eddsa_xform;
+			test_ops.test = fips_generic_test;
+		}
+		break;
 	default:
 		if (strstr(info.file_name, "TECB") ||
 				strstr(info.file_name, "TCBC")) {
@@ -2718,6 +2975,9 @@ fips_test_one_test_group(void)
 		break;
 	case FIPS_TEST_ALGO_ECDSA:
 		ret = parse_test_ecdsa_json_init();
+		break;
+	case FIPS_TEST_ALGO_EDDSA:
+		ret = parse_test_eddsa_json_init();
 		break;
 	default:
 		return -EINVAL;

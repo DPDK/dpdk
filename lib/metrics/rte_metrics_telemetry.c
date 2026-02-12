@@ -3,6 +3,7 @@
  */
 
 #include <ethdev_driver.h>
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #ifdef RTE_LIB_TELEMETRY
 #include <telemetry_internal.h>
@@ -71,6 +72,7 @@ free_xstats:
 	return ret;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_metrics_tel_reg_all_ethdev, 20.05)
 int32_t
 rte_metrics_tel_reg_all_ethdev(int *metrics_register_done, int *reg_index_list)
 {
@@ -225,6 +227,7 @@ fail:
 	return ret;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_metrics_tel_encode_json_format, 20.05)
 int32_t
 rte_metrics_tel_encode_json_format(struct telemetry_encode_param *ep,
 		char **json_buffer)
@@ -278,6 +281,7 @@ rte_metrics_tel_encode_json_format(struct telemetry_encode_param *ep,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_metrics_tel_get_ports_stats_json, 20.05)
 int32_t
 rte_metrics_tel_get_ports_stats_json(struct telemetry_encode_param *ep,
 		int *reg_index, char **json_buffer)
@@ -308,6 +312,7 @@ rte_metrics_tel_get_ports_stats_json(struct telemetry_encode_param *ep,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_metrics_tel_get_port_stats_ids, 20.05)
 int32_t
 rte_metrics_tel_get_port_stats_ids(struct telemetry_encode_param *ep)
 {
@@ -374,6 +379,7 @@ rte_metrics_tel_stat_names_to_ids(const char * const *stat_names,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_metrics_tel_extract_data, 20.05)
 int32_t
 rte_metrics_tel_extract_data(struct telemetry_encode_param *ep, json_t *data)
 {
@@ -544,6 +550,7 @@ RTE_INIT(metrics_ctor)
 
 #else /* !RTE_HAS_JANSSON */
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_metrics_tel_reg_all_ethdev, 20.05)
 int32_t
 rte_metrics_tel_reg_all_ethdev(int *metrics_register_done, int *reg_index_list)
 {
@@ -553,6 +560,7 @@ rte_metrics_tel_reg_all_ethdev(int *metrics_register_done, int *reg_index_list)
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_metrics_tel_encode_json_format, 20.05)
 int32_t
 rte_metrics_tel_encode_json_format(struct telemetry_encode_param *ep,
 	char **json_buffer)
@@ -563,6 +571,7 @@ rte_metrics_tel_encode_json_format(struct telemetry_encode_param *ep,
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_metrics_tel_get_ports_stats_json, 20.05)
 int32_t
 rte_metrics_tel_get_ports_stats_json(struct telemetry_encode_param *ep,
 	int *reg_index, char **json_buffer)
@@ -574,6 +583,7 @@ rte_metrics_tel_get_ports_stats_json(struct telemetry_encode_param *ep,
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_metrics_tel_get_port_stats_ids, 20.05)
 int32_t
 rte_metrics_tel_get_port_stats_ids(struct telemetry_encode_param *ep)
 {
@@ -582,6 +592,7 @@ rte_metrics_tel_get_port_stats_ids(struct telemetry_encode_param *ep)
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_metrics_tel_extract_data, 20.05)
 int32_t
 rte_metrics_tel_extract_data(struct telemetry_encode_param *ep, json_t *data)
 {
@@ -591,6 +602,7 @@ rte_metrics_tel_extract_data(struct telemetry_encode_param *ep, json_t *data)
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_metrics_tel_get_global_stats, 20.05)
 int32_t
 rte_metrics_tel_get_global_stats(struct telemetry_encode_param *ep)
 {

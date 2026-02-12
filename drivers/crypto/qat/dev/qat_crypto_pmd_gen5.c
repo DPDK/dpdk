@@ -113,11 +113,11 @@ static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen5[] = {
 		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
 	QAT_SYM_CIPHER_CAP(ZUC_EEA3,
 		CAP_SET(block_size, 16),
-		CAP_RNG(key_size, 16, 32, 16), CAP_RNG(iv_size, 16, 25, 1)),
+		CAP_RNG(key_size, 16, 16, 0), CAP_RNG(iv_size, 16, 16, 0)),
 	QAT_SYM_AUTH_CAP(ZUC_EIA3,
 		CAP_SET(block_size, 16),
-		CAP_RNG(key_size, 16, 32, 16), CAP_RNG(digest_size, 4, 16, 4),
-		CAP_RNG_ZERO(aad_size), CAP_RNG(iv_size, 16, 25, 1)),
+		CAP_RNG(key_size, 16, 16, 0), CAP_RNG(digest_size, 4, 16, 4),
+		CAP_RNG_ZERO(aad_size), CAP_RNG(iv_size, 16, 16, 0)),
 	QAT_SYM_CIPHER_CAP(SNOW3G_UEA2,
 		CAP_SET(block_size, 16),
 		CAP_RNG(key_size, 16, 16, 0), CAP_RNG(iv_size, 16, 16, 0)),
@@ -127,32 +127,6 @@ static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen5[] = {
 		CAP_RNG_ZERO(aad_size), CAP_RNG(iv_size, 16, 16, 0)),
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
-
-static int
-check_cipher_capa(const struct rte_cryptodev_capabilities *cap,
-		enum rte_crypto_cipher_algorithm algo)
-{
-	if (cap->op != RTE_CRYPTO_OP_TYPE_SYMMETRIC)
-		return 0;
-	if (cap->sym.xform_type != RTE_CRYPTO_SYM_XFORM_CIPHER)
-		return 0;
-	if (cap->sym.cipher.algo != algo)
-		return 0;
-	return 1;
-}
-
-static int
-check_auth_capa(const struct rte_cryptodev_capabilities *cap,
-		enum rte_crypto_auth_algorithm algo)
-{
-	if (cap->op != RTE_CRYPTO_OP_TYPE_SYMMETRIC)
-		return 0;
-	if (cap->sym.xform_type != RTE_CRYPTO_SYM_XFORM_AUTH)
-		return 0;
-	if (cap->sym.auth.algo != algo)
-		return 0;
-	return 1;
-}
 
 static int
 qat_sym_crypto_cap_get_gen5(struct qat_cryptodev_private *internals,
@@ -167,7 +141,7 @@ qat_sym_crypto_cap_get_gen5(struct qat_cryptodev_private *internals,
 	legacy_capa_num = legacy_size/sizeof(struct rte_cryptodev_capabilities);
 	capa_num = RTE_DIM(qat_sym_crypto_caps_gen5);
 
-	if (unlikely(qat_legacy_capa))
+	if (unlikely(internals->qat_dev->options.legacy_alg))
 		size = size + legacy_size;
 
 	internals->capa_mz = rte_memzone_lookup(capa_memz_name);
@@ -187,7 +161,7 @@ qat_sym_crypto_cap_get_gen5(struct qat_cryptodev_private *internals,
 
 	struct rte_cryptodev_capabilities *capabilities;
 
-	if (unlikely(qat_legacy_capa)) {
+	if (unlikely(internals->qat_dev->options.legacy_alg)) {
 		capabilities = qat_sym_crypto_legacy_caps_gen5;
 		memcpy(addr, capabilities, legacy_size);
 		addr += legacy_capa_num;
@@ -195,14 +169,6 @@ qat_sym_crypto_cap_get_gen5(struct qat_cryptodev_private *internals,
 	capabilities = qat_sym_crypto_caps_gen5;
 
 	for (i = 0; i < capa_num; i++, iter++) {
-		if (slice_map & ICP_ACCEL_MASK_ZUC_256_SLICE && (
-			check_auth_capa(&capabilities[iter],
-				RTE_CRYPTO_AUTH_ZUC_EIA3) ||
-			check_cipher_capa(&capabilities[iter],
-				RTE_CRYPTO_CIPHER_ZUC_EEA3))) {
-			continue;
-		}
-
 		memcpy(addr + curr_capa, capabilities + iter,
 			sizeof(struct rte_cryptodev_capabilities));
 		curr_capa++;
@@ -233,15 +199,8 @@ qat_sym_crypto_set_session_gen5(void *cdev, void *session)
 				(ctx->qat_cipher_alg ==
 				ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2 ||
 				ctx->qat_cipher_alg ==
-				ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3 ||
-				ctx->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_ZUC_256)) {
+				ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3)) {
 			qat_sym_session_set_ext_hash_flags_gen2(ctx, 0);
-		} else if ((ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_ZUC_256_MAC_32 ||
-				ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_ZUC_256_MAC_64 ||
-				ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_ZUC_256_MAC_128) &&
-				ctx->qat_cipher_alg != ICP_QAT_HW_CIPHER_ALGO_ZUC_256) {
-			qat_sym_session_set_ext_hash_flags_gen2(ctx,
-					1 << ICP_QAT_FW_AUTH_HDR_FLAG_ZUC_EIA3_BITPOS);
 		}
 
 		ret = 0;

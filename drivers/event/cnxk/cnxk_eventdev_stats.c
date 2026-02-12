@@ -2,6 +2,8 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include "roc_api.h"
+
 #include "cnxk_eventdev.h"
 #include "cnxk_eventdev_dp.h"
 

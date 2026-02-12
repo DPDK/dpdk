@@ -141,3 +141,13 @@ The user can specify below argument in devargs.
     A non-zero value tells netvsc to attach external buffers to mbuf on
     receiving packets, thus avoid copying memory. Use of external buffers
     requires the application is able to read data from external mbuf.
+
+#. ``numa_aware``:
+   The numa_aware is used to configure if netvsc driver should be NUMA aware.
+   The default value is 0 (meaning the netvsc driver is not NUMA aware).
+   When used with a VF device,
+   the VF device's NUMA node may not be the same as netvsc's NUMA node.
+   The application generally runs with better performance
+   if all the device queues are allocated on VF's NUMA node,
+   as the VF carries most of the data packets.
+   Setting this value to 1 makes netvsc driver NUMA aware.

@@ -213,7 +213,7 @@ DEFAULT_DRIVERS = {
         key=bytes(
             (
                 # fmt: off
-                # rss_intel_key, see drivers/net/ixgbe/ixgbe_rxtx.c
+                # rss_intel_key, see drivers/net/intel/ixgbe/ixgbe_rxtx.c
                 0x6d, 0x5a, 0x56, 0xda, 0x25, 0x5b, 0x0e, 0xc2,
                 0x41, 0x67, 0x25, 0x3d, 0x43, 0xa3, 0x8f, 0xb0,
                 0xd0, 0xca, 0x2b, 0xcb, 0xae, 0x7b, 0x30, 0xb4,
@@ -228,7 +228,7 @@ DEFAULT_DRIVERS = {
         key=bytes(
             (
                 # fmt: off
-                # rss_key_default, see drivers/net/i40e/i40e_ethdev.c
+                # rss_key_default, see drivers/net/intel/i40e/i40e_ethdev.c
                 # i40e is the only driver that takes 52 bytes keys
                 0x44, 0x39, 0x79, 0x6b, 0xb5, 0x4c, 0x50, 0x23,
                 0xb6, 0x75, 0xea, 0x5b, 0x12, 0x4f, 0x9f, 0x30,

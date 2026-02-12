@@ -11,9 +11,11 @@
 enum octep_pfvf_mbox_version {
 	OTX_EP_MBOX_VERSION_V0,
 	OTX_EP_MBOX_VERSION_V1,
+	OTX_EP_MBOX_VERSION_V2,
+	OTX_EP_MBOX_VERSION_V3,
 };
 
-#define OTX_EP_MBOX_VERSION_CURRENT OTX_EP_MBOX_VERSION_V1
+#define OTX_EP_MBOX_VERSION_CURRENT OTX_EP_MBOX_VERSION_V3
 
 enum otx_ep_mbox_opcode {
 	OTX_EP_MBOX_CMD_VERSION,
@@ -27,6 +29,10 @@ enum otx_ep_mbox_opcode {
 	OTX_EP_MBOX_CMD_GET_LINK_STATUS,
 	OTX_EP_MBOX_CMD_GET_MTU,
 	OTX_EP_MBOX_CMD_DEV_REMOVE,
+	OTX_EP_MBOX_CMD_GET_FW_INFO,
+	OTX_EP_MBOX_CMD_SET_OFFLOADS,
+	OTX_EP_MBOX_NOTIF_LINK_STATUS,
+	OTX_EP_MBOX_NOTIF_PF_FLR,
 	OTX_EP_MBOX_CMD_MAX,
 };
 
@@ -63,14 +69,14 @@ enum otx_ep_link_autoneg {
 	OTX_EP_LINK_AUTONEG,
 };
 
-#define OTX_EP_MBOX_TIMEOUT_MS     1200
+#define OTX_EP_MBOX_TIMEOUT_MS     2500
 #define OTX_EP_MBOX_MAX_RETRIES    2
 #define OTX_EP_MBOX_MAX_DATA_SIZE  6
 #define OTX_EP_MBOX_MAX_DATA_BUF_SIZE 256
 #define OTX_EP_MBOX_MORE_FRAG_FLAG 1
 #define OTX_EP_MBOX_WRITE_WAIT_TIME msecs_to_jiffies(1)
 
-union otx_ep_mbox_word {
+union __rte_packed_begin otx_ep_mbox_word {
 	uint64_t u64;
 	struct {
 		uint64_t opcode:8;
@@ -121,7 +127,7 @@ union otx_ep_mbox_word {
 		uint64_t status:1;
 		uint64_t rsvd:53;
 	} s_link_status;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Hardware interface link state information. */
 struct otx_ep_iface_link_info {
@@ -165,6 +171,7 @@ int otx_ep_mbox_get_link_info(struct rte_eth_dev *eth_dev, struct rte_eth_link *
 void otx_ep_mbox_enable_interrupt(struct otx_ep_device *otx_ep);
 void otx_ep_mbox_disable_interrupt(struct otx_ep_device *otx_ep);
 int otx_ep_mbox_get_max_pkt_len(struct rte_eth_dev *eth_dev);
-int otx_ep_mbox_version_check(struct rte_eth_dev *eth_dev);
 int otx_ep_mbox_send_dev_exit(struct rte_eth_dev *eth_dev);
+int otx_ep_mbox_init(struct rte_eth_dev *eth_dev);
+void otx_ep_mbox_uninit(struct rte_eth_dev *eth_dev);
 #endif

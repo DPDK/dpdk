@@ -30,11 +30,11 @@ signal_handler(int signum)
 }
 
 static inline void
-evt_options_dump_all(struct evt_test *test, struct evt_options *opts)
+evt_options_dump_all(struct evt_test *t, struct evt_options *opts)
 {
 	evt_options_dump(opts);
-	if (test->ops.opt_dump)
-		test->ops.opt_dump(opts);
+	if (t->ops.opt_dump)
+		t->ops.opt_dump(opts);
 }
 
 int

@@ -3,6 +3,7 @@
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
 
 [tool.poetry]
+package-mode = false
 name = "dts"
 version = "0.1.0"
 description = "DPDK Test Suite."
@@ -13,41 +14,52 @@ authors = [
     "Jeremy Spewock <jspewock@iol.unh.edu>"
 ]
 maintainers = [
-    "Lijuan Tu <lijuan.tu@intel.com>",
     "Juraj Linkeš <juraj.linkes@pantheon.tech>"
 ]
 documentation = "https://doc.dpdk.org/guides/tools/dts.html"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-warlock = "^2.0.1"
 PyYAML = "^6.0"
-types-PyYAML = "^6.0.8"
-fabric = "^2.7.1"
-scapy = "^2.5.0"
-pydocstyle = "6.1.1"
+fabric = "^3.2"
+scapy = "^2.6.1"
+typing-extensions = "^4.11.0"
+aenum = "^3.1.15"
+pydantic = "^2.9.2"
 
 [tool.poetry.group.dev.dependencies]
-mypy = "^0.961"
-black = "^22.6.0"
-isort = "^5.10.1"
-pylama = "^8.4.1"
-pyflakes = "^2.5.0"
+mypy = "^1.13.0"
 toml = "^0.10.2"
+ruff = "^0.8.1"
+types-paramiko = "^3.5.0.20240928"
+types-invoke = "^2.0.0.10"
+types-pyyaml = "^6.0.12.20240917"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.pylama]
-linters = "mccabe,pycodestyle,pydocstyle,pyflakes"
-format = "pylint"
-max_line_length = 100
+[tool.ruff]
+target-version = "py310"
+line-length = 100
 
-[tool.pylama.linter.pycodestyle]
-ignore = "E203,W503"
+[tool.ruff.format]
+docstring-code-format = true
 
-[tool.pylama.linter.pydocstyle]
+[tool.ruff.lint]
+select = [
+    "F",      # pyflakes
+    "E", "W", # pycodestyle
+    "D",      # pydocstyle
+    "C90",    # mccabe
+    "I",      # isort
+    # pydoclint
+    "DOC202", "DOC402", "DOC403", "DOC501"
+]
+preview = true # enable to get early access to pydoclint rules
+explicit-preview-rules = true # enable ONLY the explicitly selected preview rules
+
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.mypy]
@@ -55,11 +67,3 @@ python_version = "3.10"
 enable_error_code = ["ignore-without-code"]
 show_error_codes = true
 warn_unused_ignores = true
-
-[tool.isort]
-profile = "black"
-
-[tool.black]
-target-version = ['py310']
-include = '\.pyi?$'
-line-length = 100

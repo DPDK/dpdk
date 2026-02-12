@@ -55,5 +55,4 @@ for details.
 
 Limitations or Known issues
 ---------------------------
-Build with ICC is not supported yet.
 X86-32, Power8, ARMv7 and BSD are not supported yet.

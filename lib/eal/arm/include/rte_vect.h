@@ -67,47 +67,14 @@ vaddvq_u16(uint16x8_t a)
 
 #endif
 
-#if (defined(RTE_ARCH_ARM) && defined(RTE_ARCH_32)) || \
-(defined(RTE_ARCH_ARM64) && RTE_CC_IS_GNU && (GCC_VERSION < 70000))
-/* NEON intrinsic vcopyq_laneq_u32() is not supported in ARMv7-A(AArch32)
- * On AArch64, this intrinsic is supported since GCC version 7.
- */
+#if defined(RTE_ARCH_ARM) && defined(RTE_ARCH_32)
+/* NEON intrinsic vcopyq_laneq_u32() is not supported in ARMv7-A(AArch32) */
 static inline uint32x4_t
 vcopyq_laneq_u32(uint32x4_t a, const int lane_a,
 		 uint32x4_t b, const int lane_b)
 {
 	return vsetq_lane_u32(vgetq_lane_u32(b, lane_b), a, lane_a);
 }
-#endif
-
-#if defined(RTE_ARCH_ARM64)
-#if RTE_CC_IS_GNU && (GCC_VERSION < 70000)
-
-/* NEON intrinsic vreinterpretq_u64_p128() is supported since GCC version 7 */
-static inline uint64x2_t
-vreinterpretq_u64_p128(poly128_t x)
-{
-	return (uint64x2_t)x;
-}
-
-/* NEON intrinsic vreinterpretq_p64_u64() is supported since GCC version 7 */
-static inline poly64x2_t
-vreinterpretq_p64_u64(uint64x2_t x)
-{
-	return (poly64x2_t)x;
-}
-
-/* NEON intrinsic vgetq_lane_p64() is supported since GCC version 7 */
-static inline poly64_t
-vgetq_lane_p64(poly64x2_t x, const int lane)
-{
-	RTE_ASSERT(lane >= 0 && lane <= 1);
-
-	poly64_t *p = (poly64_t *)&x;
-
-	return p[lane];
-}
-#endif
 #endif
 
 /*

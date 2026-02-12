@@ -1102,4 +1102,20 @@ NIX_RX_FASTPATH_MODES
 #define NIX_RX_RECV_VEC_MSEG(fn, flags)                                        \
 	NIX_RX_RECV_VEC(fn, flags | NIX_RX_MULTI_SEG_F)
 
+uint16_t __rte_noinline __rte_hot cn9k_nix_recv_pkts_all_offload(void *rx_queue,
+								 struct rte_mbuf **rx_pkts,
+								 uint16_t pkts);
+
+uint16_t __rte_noinline __rte_hot cn9k_nix_recv_pkts_vec_all_offload(void *rx_queue,
+								     struct rte_mbuf **rx_pkts,
+								     uint16_t pkts);
+
+uint16_t __rte_noinline __rte_hot cn9k_nix_recv_pkts_all_offload_tst(void *rx_queue,
+								     struct rte_mbuf **rx_pkts,
+								     uint16_t pkts);
+
+uint16_t __rte_noinline __rte_hot cn9k_nix_recv_pkts_vec_all_offload_tst(void *rx_queue,
+									 struct rte_mbuf **rx_pkts,
+									 uint16_t pkts);
+
 #endif /* __CN9K_RX_H__ */

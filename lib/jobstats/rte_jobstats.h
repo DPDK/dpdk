@@ -2,8 +2,8 @@
  * Copyright(c) 2015 Intel Corporation
  */
 
-#ifndef JOBSTATS_H_
-#define JOBSTATS_H_
+#ifndef RTE_JOBSTATS_H
+#define RTE_JOBSTATS_H
 
 #include <stdint.h>
 
@@ -303,4 +303,4 @@ rte_jobstats_reset(struct rte_jobstats *job);
 }
 #endif
 
-#endif /* JOBSTATS_H_ */
+#endif /* RTE_JOBSTATS_H */

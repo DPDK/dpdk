@@ -9,11 +9,12 @@
 #include <rte_common.h>
 #include <rte_bitops.h>
 #include <rte_hexdump.h>
+#include <rte_random.h>
 #include <rte_pause.h>
 
 #include "test.h"
 
-#define MAX_NUM 1 << 20
+#define MAX_NUM (1 << 20)
 
 #define FAIL(x)\
 	{printf(x "() test failed!\n");\
@@ -218,19 +219,21 @@ test_align(void)
 		}
 	}
 
-	for (p = 1; p <= MAX_NUM / 2; p++) {
-		for (i = 1; i <= MAX_NUM / 2; i++) {
-			val = RTE_ALIGN_MUL_CEIL(i, p);
-			if (val % p != 0 || val < i)
-				FAIL_ALIGN("RTE_ALIGN_MUL_CEIL", i, p);
-			val = RTE_ALIGN_MUL_FLOOR(i, p);
-			if (val % p != 0 || val > i)
-				FAIL_ALIGN("RTE_ALIGN_MUL_FLOOR", i, p);
-			val = RTE_ALIGN_MUL_NEAR(i, p);
-			if (val % p != 0 || ((val != RTE_ALIGN_MUL_CEIL(i, p))
-				& (val != RTE_ALIGN_MUL_FLOOR(i, p))))
-				FAIL_ALIGN("RTE_ALIGN_MUL_NEAR", i, p);
-		}
+	/* testing the whole space of 2^20^2 takes too long. */
+	for (j = 1; j <= MAX_NUM ; j++) {
+		i = rte_rand_max(MAX_NUM - 1) + 1;
+		p = rte_rand_max(MAX_NUM - 1) + 1;
+
+		val = RTE_ALIGN_MUL_CEIL(i, p);
+		if (val % p != 0 || val < i)
+			FAIL_ALIGN("RTE_ALIGN_MUL_CEIL", i, p);
+		val = RTE_ALIGN_MUL_FLOOR(i, p);
+		if (val % p != 0 || val > i)
+			FAIL_ALIGN("RTE_ALIGN_MUL_FLOOR", i, p);
+		val = RTE_ALIGN_MUL_NEAR(i, p);
+		if (val % p != 0 || ((val != RTE_ALIGN_MUL_CEIL(i, p))
+				     & (val != RTE_ALIGN_MUL_FLOOR(i, p))))
+			FAIL_ALIGN("RTE_ALIGN_MUL_NEAR", i, p);
 	}
 
 	return 0;
@@ -351,4 +354,4 @@ test_common(void)
 	return ret;
 }
 
-REGISTER_FAST_TEST(common_autotest, true, true, test_common);
+REGISTER_FAST_TEST(common_autotest, NOHUGE_OK, ASAN_OK, test_common);

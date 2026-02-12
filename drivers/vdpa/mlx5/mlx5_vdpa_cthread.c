@@ -48,7 +48,7 @@ bool
 mlx5_vdpa_task_add(struct mlx5_vdpa_priv *priv,
 		uint32_t thrd_idx,
 		enum mlx5_vdpa_task_type task_type,
-		uint32_t *remaining_cnt, uint32_t *err_cnt,
+		RTE_ATOMIC(uint32_t) *remaining_cnt, RTE_ATOMIC(uint32_t) *err_cnt,
 		void **task_data, uint32_t num)
 {
 	struct rte_ring *rng = conf_thread_mng.cthrd[thrd_idx].rng;
@@ -70,8 +70,8 @@ mlx5_vdpa_task_add(struct mlx5_vdpa_priv *priv,
 		return -1;
 	for (i = 0 ; i < num; i++)
 		if (task[i].remaining_cnt)
-			__atomic_fetch_add(task[i].remaining_cnt, 1,
-				__ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(task[i].remaining_cnt, 1,
+				rte_memory_order_relaxed);
 	/* wake up conf thread. */
 	pthread_mutex_lock(&conf_thread_mng.cthrd_lock);
 	pthread_cond_signal(&conf_thread_mng.cthrd[thrd_idx].c_cond);
@@ -80,16 +80,16 @@ mlx5_vdpa_task_add(struct mlx5_vdpa_priv *priv,
 }
 
 bool
-mlx5_vdpa_c_thread_wait_bulk_tasks_done(uint32_t *remaining_cnt,
-		uint32_t *err_cnt, uint32_t sleep_time)
+mlx5_vdpa_c_thread_wait_bulk_tasks_done(RTE_ATOMIC(uint32_t) *remaining_cnt,
+		RTE_ATOMIC(uint32_t) *err_cnt, uint32_t sleep_time)
 {
 	/* Check and wait all tasks done. */
-	while (__atomic_load_n(remaining_cnt,
-		__ATOMIC_RELAXED) != 0) {
+	while (rte_atomic_load_explicit(remaining_cnt,
+		rte_memory_order_relaxed) != 0) {
 		rte_delay_us_sleep(sleep_time);
 	}
-	if (__atomic_load_n(err_cnt,
-		__ATOMIC_RELAXED)) {
+	if (rte_atomic_load_explicit(err_cnt,
+		rte_memory_order_relaxed)) {
 		DRV_LOG(ERR, "Tasks done with error.");
 		return true;
 	}
@@ -137,8 +137,8 @@ mlx5_vdpa_c_thread_handle(void *arg)
 			if (ret) {
 				DRV_LOG(ERR,
 				"Failed to register mr %d.", task.idx);
-				__atomic_fetch_add(task.err_cnt, 1,
-				__ATOMIC_RELAXED);
+				rte_atomic_fetch_add_explicit(task.err_cnt, 1,
+				rte_memory_order_relaxed);
 			}
 			break;
 		case MLX5_VDPA_TASK_SETUP_VIRTQ:
@@ -149,8 +149,8 @@ mlx5_vdpa_c_thread_handle(void *arg)
 			if (ret) {
 				DRV_LOG(ERR,
 					"Failed to setup virtq %d.", task.idx);
-				__atomic_fetch_add(
-					task.err_cnt, 1, __ATOMIC_RELAXED);
+				rte_atomic_fetch_add_explicit(
+					task.err_cnt, 1, rte_memory_order_relaxed);
 			}
 			virtq->enable = 1;
 			pthread_mutex_unlock(&virtq->virtq_lock);
@@ -164,9 +164,9 @@ mlx5_vdpa_c_thread_handle(void *arg)
 				DRV_LOG(ERR,
 				"Failed to stop virtq %d.",
 				task.idx);
-				__atomic_fetch_add(
+				rte_atomic_fetch_add_explicit(
 					task.err_cnt, 1,
-					__ATOMIC_RELAXED);
+					rte_memory_order_relaxed);
 				pthread_mutex_unlock(&virtq->virtq_lock);
 				break;
 			}
@@ -176,9 +176,9 @@ mlx5_vdpa_c_thread_handle(void *arg)
 				DRV_LOG(ERR,
 		"Failed to get negotiated features virtq %d.",
 				task.idx);
-				__atomic_fetch_add(
+				rte_atomic_fetch_add_explicit(
 					task.err_cnt, 1,
-					__ATOMIC_RELAXED);
+					rte_memory_order_relaxed);
 				pthread_mutex_unlock(&virtq->virtq_lock);
 				break;
 			}
@@ -200,9 +200,9 @@ mlx5_vdpa_c_thread_handle(void *arg)
 			if (!priv->connected)
 				mlx5_vdpa_dev_cache_clean(priv);
 			priv->vid = 0;
-			__atomic_store_n(
+			rte_atomic_store_explicit(
 				&priv->dev_close_progress, 0,
-				__ATOMIC_RELAXED);
+				rte_memory_order_relaxed);
 			break;
 		case MLX5_VDPA_TASK_PREPARE_VIRTQ:
 			ret = mlx5_vdpa_virtq_single_resource_prepare(
@@ -211,9 +211,9 @@ mlx5_vdpa_c_thread_handle(void *arg)
 				DRV_LOG(ERR,
 				"Failed to prepare virtq %d.",
 				task.idx);
-				__atomic_fetch_add(
+				rte_atomic_fetch_add_explicit(
 				task.err_cnt, 1,
-				__ATOMIC_RELAXED);
+				rte_memory_order_relaxed);
 			}
 			break;
 		default:
@@ -222,8 +222,8 @@ mlx5_vdpa_c_thread_handle(void *arg)
 			break;
 		}
 		if (task.remaining_cnt)
-			__atomic_fetch_sub(task.remaining_cnt,
-			1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_sub_explicit(task.remaining_cnt,
+			1, rte_memory_order_relaxed);
 	}
 	return 0;
 }

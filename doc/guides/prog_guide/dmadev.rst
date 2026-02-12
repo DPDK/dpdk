@@ -1,8 +1,8 @@
 .. SPDX-License-Identifier: BSD-3-Clause
    Copyright 2021 HiSilicon Limited
 
-DMA Device Library
-==================
+Direct Memory Access (DMA) Device Library
+=========================================
 
 The DMA library provides a DMA device framework for management and provisioning
 of hardware and software DMA poll mode drivers, defining generic API which
@@ -108,6 +108,38 @@ completed operations along with the status of each operation (filled into the
 completed operation's ``ring_idx`` which could help user track operations within
 their own application-defined rings.
 
+Alternatively, if the DMA device supports enqueue and dequeue operations,
+as indicated by ``RTE_DMA_CAPA_OPS_ENQ_DEQ`` capability in ``rte_dma_info::dev_capa``,
+the application can utilize the ``rte_dma_enqueue_ops`` and ``rte_dma_dequeue_ops`` API.
+To enable this, the DMA device must be configured in operations mode
+by setting ``RTE_DMA_CFG_FLAG_ENQ_DEQ`` flag in ``rte_dma_config::flags``.
+
+The following example demonstrates the usage of enqueue and dequeue operations:
+
+.. code-block:: C
+
+   struct rte_dma_op *op;
+
+   op = rte_zmalloc(sizeof(struct rte_dma_op) + (sizeof(struct rte_dma_sge) * 2), 0);
+
+   op->src_dst_seg[0].addr = src_addr;
+   op->src_dst_seg[0].length = src_len;
+   op->src_dst_seg[1].addr = dst_addr;
+   op->src_dst_seg[1].length = dst_len;
+
+   ret = rte_dma_enqueue_ops(dev_id, &op, 1);
+   if (ret < 0) {
+       PRINT_ERR("Failed to enqueue DMA op\n");
+       return -1;
+   }
+
+   op = NULL;
+   ret = rte_dma_dequeue_ops(dev_id, &op, 1);
+   if (ret < 0) {
+       PRINT_ERR("Failed to dequeue DMA op\n");
+       return -1;
+   }
+
 
 Querying Device Statistics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -142,3 +174,79 @@ are shown below.
 
 For more information on how to use the Telemetry interface, see
 the :doc:`../howto/telemetry`.
+
+
+Inter-domain DMA Transfers
+--------------------------
+
+The inter-domain DMA feature enables DMA devices to perform data transfers
+across different processes and OS domains.
+This is achieved by configuring virtual channels (vchans)
+using ``src_handler`` and ``dst_handler`` fields,
+which represent the source and destination endpoints for inter-domain DMA operations.
+Handler information is exchanged between devices based on their DMA class type.
+
+DMA devices used for inter-domain data transfer can be categorized as follows:
+
+- Class A: Both endpoints require a DMA device for data transfer (e.g., Marvell DMA devices).
+- Class B: Only one endpoint requires a DMA device; the other does not.
+- Class C: Other device types not currently classified.
+
+Currently the necessary API for Class A DMA devices are available
+for exchanging the handler details.
+Devices can create or join access groups using token-based authentication,
+ensuring that only authorized devices within the same group
+can perform DMA transfers across processes or OS domains.
+
+Below is the API usage flow
+for setting up the access pair group for DMA between process#1 and process#2.
+
+Each process must generate a unique ``domain_id`` to represent its identity
+(e.g., a process-specific or OS-specific domain identifier).
+
+
+Process#1 (Group Creator)
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Generates a unique ``token`` that will be used to secure the access pair group.
+
+* Calls ``rte_dma_access_pair_group_create`` to establish a new access pair group.
+
+* Shares the ``group_id``, ``token`` and its ``domain_id`` details with Process#2
+  via IPC or sideband communication channel.
+
+
+Process#2 (Group Joiner)
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Receives the ``group_id``, ``token`` and Process#1's ``domain_id``.
+
+* Passes ``group_id``, ``token`` and its own ``domain_id``
+  to ``rte_dma_access_pair_group_join`` to join the access group.
+
+* Shares its ``domain_id`` details with Process#1
+  via IPC or sideband communication channel.
+
+
+Both Processes
+~~~~~~~~~~~~~~
+
+* Each process retrieves the ``handler`` information
+  associated with its own or the peer's ``domain_id``
+  using ``rte_dma_access_pair_group_handler_get``.
+
+* Use these ``handler`` details to setup the virtual channel configuration.
+
+* Perform the inter-domain DMA transfers as required.
+
+
+Process#2 (when finished)
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Calls ``rte_dma_access_pair_group_leave`` to exit the group.
+
+
+Process#1 (final cleanup)
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Calls ``rte_dma_access_pair_group_destroy`` to destroy the group.

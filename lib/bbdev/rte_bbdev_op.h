@@ -11,10 +11,6 @@
  * Defines wireless base band layer 1 operations and capabilities
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_compat.h>
@@ -22,6 +18,10 @@ extern "C" {
 #include <rte_mbuf.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Number of columns in sub-block interleaver (36.212, section 5.1.4.1.1) */
 #define RTE_BBDEV_TURBO_C_SUBBLOCK (32)
@@ -562,6 +562,10 @@ struct rte_bbdev_op_ldpc_dec {
 		/** Struct which stores Transport Block specific parameters */
 		struct rte_bbdev_op_dec_ldpc_tb_params tb_params;
 	};
+	/** Optional k0 Rate matching starting position, overrides rv_index when non null
+	 *  [3GPP TS38.212, section 5.4.2.1]
+	 */
+	uint16_t k0;
 };
 /* >8 End of structure rte_bbdev_op_ldpc_dec. */
 
@@ -1159,7 +1163,6 @@ rte_bbdev_fft_op_alloc_bulk(struct rte_mempool *mempool,
  *   - 0 on success.
  *   - EINVAL if invalid mempool is provided.
  */
-__rte_experimental
 static inline int
 rte_bbdev_mldts_op_alloc_bulk(struct rte_mempool *mempool,
 		struct rte_bbdev_mldts_op **ops, uint16_t num_ops)
@@ -1236,7 +1239,6 @@ rte_bbdev_fft_op_free_bulk(struct rte_bbdev_fft_op **ops, unsigned int num_ops)
  * @param num_ops
  *   Number of structures
  */
-__rte_experimental
 static inline void
 rte_bbdev_mldts_op_free_bulk(struct rte_bbdev_mldts_op **ops, unsigned int num_ops)
 {

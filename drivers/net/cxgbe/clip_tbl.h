@@ -13,7 +13,7 @@ struct clip_entry {
 	enum filter_type type;       /* entry type */
 	u32 addr[4];                 /* IPV4 or IPV6 address */
 	rte_spinlock_t lock;         /* entry lock */
-	u32 refcnt;                  /* entry reference count */
+	RTE_ATOMIC(u32) refcnt;                  /* entry reference count */
 };
 
 struct clip_tbl {

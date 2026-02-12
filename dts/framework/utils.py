@@ -2,6 +2,7 @@
 # Copyright(c) 2010-2014 Intel Corporation
 # Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2022-2023 University of New Hampshire
+# Copyright(c) 2024 Arm Limited
 
 """Various utility classes and functions.
 
@@ -13,19 +14,30 @@ Attributes:
     REGEX_FOR_PCI_ADDRESS: The regex representing a PCI address, e.g. ``0000:00:08.0``.
 """
 
-import atexit
+import fnmatch
 import json
 import os
-import subprocess
-from enum import Enum
+import random
+import tarfile
+from enum import Enum, Flag
 from pathlib import Path
-from subprocess import SubprocessError
+from typing import Any, Callable
 
-from scapy.packet import Packet  # type: ignore[import]
+from scapy.layers.inet import IP, TCP, UDP, Ether
+from scapy.packet import Packet
 
-from .exception import ConfigurationError
+from .exception import InternalError
 
-REGEX_FOR_PCI_ADDRESS: str = "/[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}.[0-9]{1}/"
+REGEX_FOR_PCI_ADDRESS: str = r"[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}.[0-9]{1}"
+_REGEX_FOR_COLON_OR_HYPHEN_SEP_MAC: str = r"(?:[\da-fA-F]{2}[:-]){5}[\da-fA-F]{2}"
+_REGEX_FOR_DOT_SEP_MAC: str = r"(?:[\da-fA-F]{4}.){2}[\da-fA-F]{4}"
+REGEX_FOR_MAC_ADDRESS: str = rf"{_REGEX_FOR_COLON_OR_HYPHEN_SEP_MAC}|{_REGEX_FOR_DOT_SEP_MAC}"
+REGEX_FOR_IDENTIFIER: str = r"\w+(?:[\w -]*\w+)?"
+REGEX_FOR_PORT_LINK: str = (
+    rf"(?:(sut|tg)\.)?({REGEX_FOR_IDENTIFIER})"  # left side
+    r"\s+<->\s+"
+    rf"(?:(sut|tg)\.)?({REGEX_FOR_IDENTIFIER})"  # right side
+)
 
 
 def expand_range(range_str: str) -> list[int]:
@@ -82,7 +94,7 @@ class StrEnum(Enum):
         return self.name
 
 
-class MesonArgs(object):
+class MesonArgs:
     """Aggregate the arguments needed to build DPDK."""
 
     _default_library: str
@@ -99,7 +111,7 @@ class MesonArgs(object):
         Example:
             ::
 
-                meson_args = MesonArgs(enable_kmods=True).
+                meson_args = MesonArgs(check_includes=True).
         """
         self._default_library = f"--default-library={default_library}" if default_library else ""
         self._dpdk_args = " ".join(
@@ -114,13 +126,17 @@ class MesonArgs(object):
         return " ".join(f"{self._default_library} {self._dpdk_args}".split())
 
 
-class _TarCompressionFormat(StrEnum):
+class TarCompressionFormat(StrEnum):
     """Compression formats that tar can use.
 
     Enum names are the shell compression commands
     and Enum values are the associated file extensions.
+
+    The 'none' member represents no compression, only archiving with tar.
+    Its value is set to 'tar' to indicate that the file is an uncompressed tar archive.
     """
 
+    none = "tar"
     gzip = "gz"
     compress = "Z"
     bzip2 = "bz2"
@@ -130,108 +146,158 @@ class _TarCompressionFormat(StrEnum):
     xz = "xz"
     zstd = "zst"
 
+    @property
+    def extension(self) -> str:
+        """Return the extension associated with the compression format.
 
-class DPDKGitTarball(object):
-    """Compressed tarball of DPDK from the repository.
+        If the compression format is 'none', the extension will be in the format 'tar'.
+        For other compression formats, the extension will be in the format
+        'tar.{compression format}'.
+        """
+        return f"{self.value}" if self == self.none else f"{type(self).none.value}.{self.value}"
 
-    The class supports the :class:`os.PathLike` protocol,
-    which is used to get the Path of the tarball::
 
-        from pathlib import Path
-        tarball = DPDKGitTarball("HEAD", "output")
-        tarball_path = Path(tarball)
+def convert_to_list_of_string(value: Any | list[Any]) -> list[str]:
+    """Convert the input to the list of strings."""
+    return list(map(str, value) if isinstance(value, list) else str(value))
+
+
+def create_tarball(
+    dir_path: Path,
+    compress_format: TarCompressionFormat = TarCompressionFormat.none,
+    exclude: Any | list[Any] | None = None,
+) -> Path:
+    """Create a tarball from the contents of the specified directory.
+
+    This method creates a tarball containing all files and directories within `dir_path`.
+    The tarball will be saved in the directory of `dir_path` and will be named based on `dir_path`.
+
+    Args:
+        dir_path: The directory path.
+        compress_format: The compression format to use. Defaults to no compression.
+        exclude: Patterns for files or directories to exclude from the tarball.
+                These patterns are used with `fnmatch.fnmatch` to filter out files.
+
+    Returns:
+        The path to the created tarball.
     """
 
-    _git_ref: str
-    _tar_compression_format: _TarCompressionFormat
-    _tarball_dir: Path
-    _tarball_name: str
-    _tarball_path: Path | None
-
-    def __init__(
-        self,
-        git_ref: str,
-        output_dir: str,
-        tar_compression_format: _TarCompressionFormat = _TarCompressionFormat.xz,
-    ):
-        """Create the tarball during initialization.
-
-        The DPDK version is specified with `git_ref`. The tarball will be compressed with
-        `tar_compression_format`, which must be supported by the DTS execution environment.
-        The resulting tarball will be put into `output_dir`.
+    def create_filter_function(
+        exclude_patterns: str | list[str] | None,
+    ) -> Callable | None:
+        """Create a filter function based on the provided exclude patterns.
 
         Args:
-            git_ref: A git commit ID, tag ID or tree ID.
-            output_dir: The directory where to put the resulting tarball.
-            tar_compression_format: The compression format to use.
+            exclude_patterns: Patterns for files or directories to exclude from the tarball.
+                These patterns are used with `fnmatch.fnmatch` to filter out files.
+
+        Returns:
+            The filter function that excludes files based on the patterns.
         """
-        self._git_ref = git_ref
-        self._tar_compression_format = tar_compression_format
+        if exclude_patterns:
+            exclude_patterns = convert_to_list_of_string(exclude_patterns)
 
-        self._tarball_dir = Path(output_dir, "tarball")
+            def filter_func(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo | None:
+                file_name = os.path.basename(tarinfo.name)
+                if any(fnmatch.fnmatch(file_name, pattern) for pattern in exclude_patterns):
+                    return None
+                return tarinfo
 
-        self._get_commit_id()
-        self._create_tarball_dir()
-
-        self._tarball_name = (
-            f"dpdk-tarball-{self._git_ref}.tar.{self._tar_compression_format.value}"
-        )
-        self._tarball_path = self._check_tarball_path()
-        if not self._tarball_path:
-            self._create_tarball()
-
-    def _get_commit_id(self) -> None:
-        result = subprocess.run(
-            ["git", "rev-parse", "--verify", self._git_ref],
-            text=True,
-            capture_output=True,
-        )
-        if result.returncode != 0:
-            raise ConfigurationError(
-                f"{self._git_ref} is neither a path to an existing DPDK "
-                "archive nor a valid git reference.\n"
-                f"Command: {result.args}\n"
-                f"Stdout: {result.stdout}\n"
-                f"Stderr: {result.stderr}"
-            )
-        self._git_ref = result.stdout.strip()
-
-    def _create_tarball_dir(self) -> None:
-        os.makedirs(self._tarball_dir, exist_ok=True)
-
-    def _check_tarball_path(self) -> Path | None:
-        if self._tarball_name in os.listdir(self._tarball_dir):
-            return Path(self._tarball_dir, self._tarball_name)
+            return filter_func
         return None
 
-    def _create_tarball(self) -> None:
-        self._tarball_path = Path(self._tarball_dir, self._tarball_name)
+    target_tarball_path = dir_path.with_suffix(f".{compress_format.extension}")
+    with tarfile.open(target_tarball_path, f"w:{compress_format.value}") as tar:
+        tar.add(dir_path, arcname=dir_path.name, filter=create_filter_function(exclude))
 
-        atexit.register(self._delete_tarball)
+    return target_tarball_path
 
-        result = subprocess.run(
-            'git -C "$(git rev-parse --show-toplevel)" archive '
-            f'{self._git_ref} --prefix="dpdk-tarball-{self._git_ref + os.sep}" | '
-            f"{self._tar_compression_format} > {Path(self._tarball_path.absolute())}",
-            shell=True,
-            text=True,
-            capture_output=True,
-        )
 
-        if result.returncode != 0:
-            raise SubprocessError(
-                f"Git archive creation failed with exit code {result.returncode}.\n"
-                f"Command: {result.args}\n"
-                f"Stdout: {result.stdout}\n"
-                f"Stderr: {result.stderr}"
-            )
+def extract_tarball(tar_path: str | Path) -> None:
+    """Extract the contents of a tarball.
 
-        atexit.unregister(self._delete_tarball)
+    The tarball will be extracted in the same path as `tar_path` parent path.
 
-    def _delete_tarball(self) -> None:
-        if self._tarball_path and os.path.exists(self._tarball_path):
-            os.remove(self._tarball_path)
+    Args:
+        tar_path: The path to the tarball file to extract.
+    """
+    with tarfile.open(tar_path, "r") as tar:
+        tar.extractall(path=Path(tar_path).parent)
 
-    def __fspath__(self) -> str:
-        """The os.PathLike protocol implementation."""
-        return str(self._tarball_path)
+
+class PacketProtocols(Flag):
+    """Flag specifying which protocols to use for packet generation."""
+
+    #:
+    IP = 1
+    #:
+    TCP = 2 | IP
+    #:
+    UDP = 4 | IP
+    #:
+    ALL = TCP | UDP
+
+
+def generate_random_packets(
+    number_of: int,
+    payload_size: int = 1500,
+    protocols: PacketProtocols = PacketProtocols.ALL,
+    ports_range: range = range(1024, 49152),
+    mtu: int = 1500,
+) -> list[Packet]:
+    """Generate a number of random packets.
+
+    The payload of the packets will consist of random bytes. If `payload_size` is too big, then the
+    maximum payload size allowed for the specific packet type is used. The size is calculated based
+    on the specified `mtu`, therefore it is essential that `mtu` is set correctly to match the MTU
+    of the port that will send out the generated packets.
+
+    If `protocols` has any L4 protocol enabled then all the packets are generated with any of
+    the specified L4 protocols chosen at random. If only :attr:`~PacketProtocols.IP` is set, then
+    only L3 packets are generated.
+
+    If L4 packets will be generated, then the TCP/UDP ports to be used will be chosen at random from
+    `ports_range`.
+
+    Args:
+        number_of: The number of packets to generate.
+        payload_size: The packet payload size to generate, capped based on `mtu`.
+        protocols: The protocols to use for the generated packets.
+        ports_range: The range of L4 port numbers to use. Used only if `protocols` has L4 protocols.
+        mtu: The MTU of the NIC port that will send out the generated packets.
+
+    Raises:
+        InternalError: If the `payload_size` is invalid.
+
+    Returns:
+        A list containing the randomly generated packets.
+    """
+    if payload_size < 0:
+        raise InternalError(f"An invalid payload_size of {payload_size} was given.")
+
+    l4_factories: list[type[Packet]] = []
+    if protocols & PacketProtocols.TCP:
+        l4_factories.append(TCP)
+    if protocols & PacketProtocols.UDP:
+        l4_factories.append(UDP)
+
+    def _make_packet() -> Packet:
+        packet = Ether()
+
+        if protocols & PacketProtocols.IP:
+            packet /= IP()
+
+        if len(l4_factories) > 0:
+            src_port, dst_port = random.choices(ports_range, k=2)
+            packet /= random.choice(l4_factories)(sport=src_port, dport=dst_port)
+
+        max_payload_size = mtu - len(packet)
+        usable_payload_size = payload_size if payload_size < max_payload_size else max_payload_size
+        return packet / random.randbytes(usable_payload_size)
+
+    return [_make_packet() for _ in range(number_of)]
+
+
+def to_pascal_case(text: str) -> str:
+    """Convert `text` from snake_case to PascalCase."""
+    return "".join([seg.capitalize() for seg in text.split("_")])

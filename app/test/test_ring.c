@@ -505,6 +505,13 @@ test_ring_negative_tests(void)
 	struct rte_ring *rt = NULL;
 	unsigned int i;
 
+	/* Test zero size ring */
+	rp = test_ring_create("test_zero_size_ring", -1, 0, SOCKET_ID_ANY, 0);
+	if (rp != NULL) {
+		printf("Test failed to detect zero size ring\n");
+		goto test_fail;
+	}
+
 	/* Test with esize not a multiple of 4 */
 	rp = test_ring_create("test_bad_element_size", 23,
 				RING_SIZE + 1, SOCKET_ID_ANY, 0);
@@ -1241,4 +1248,4 @@ test_fail:
 	return -1;
 }
 
-REGISTER_FAST_TEST(ring_autotest, true, true, test_ring);
+REGISTER_FAST_TEST(ring_autotest, NOHUGE_OK, ASAN_OK, test_ring);

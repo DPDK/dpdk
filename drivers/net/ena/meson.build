@@ -17,3 +17,5 @@ sources = files(
 deps += ['timer']
 
 includes += include_directories('base', 'base/ena_defs')
+
+cflags += no_shadow_cflag

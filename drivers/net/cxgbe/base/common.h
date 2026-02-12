@@ -428,7 +428,7 @@ static inline unsigned int core_ticks_to_us(const struct adapter *adapter,
 int t4_wr_mbox_meat_timeout(struct adapter *adap, int mbox, const void *cmd,
 			    int size, void *rpl, bool sleep_ok, int timeout);
 int t4_wr_mbox_meat(struct adapter *adap, int mbox,
-		    const void __attribute__((__may_alias__)) *cmd, int size,
+		    const void __rte_may_alias *cmd, int size,
 		    void *rpl, bool sleep_ok);
 
 static inline int t4_wr_mbox_timeout(struct adapter *adap, int mbox,

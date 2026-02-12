@@ -72,7 +72,11 @@ ext_deps += dlpack_dep
 ext_deps += dmlc_dep
 ext_deps += tvm_dep
 ext_deps += tvmdp_dep
-ext_deps += cc.find_library('stdc++', required: true)
+stdcpp_dep = cc.find_library('stdc++', required: true)
+if not cc.links(min_c_code, dependencies: stdcpp_dep)
+    error('broken dependency, "libstdc++"')
+endif
+ext_deps += stdcpp_dep
 
 deps += ['bus_vdev']
 

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016 NXP
+ *   Copyright 2016,2020-2023 NXP
  *
  */
 
@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
@@ -28,18 +29,30 @@
 #include "portal/dpaa2_hw_pvt.h"
 #include "portal/dpaa2_hw_dpio.h"
 
-
 TAILQ_HEAD(dpbp_dev_list, dpaa2_dpbp_dev);
 static struct dpbp_dev_list dpbp_dev_list
 	= TAILQ_HEAD_INITIALIZER(dpbp_dev_list); /*!< DPBP device list */
 
+static struct dpaa2_dpbp_dev *get_dpbp_from_id(uint32_t dpbp_id)
+{
+	struct dpaa2_dpbp_dev *dpbp_dev = NULL;
+
+	/* Get DPBP dev handle from list using index */
+	TAILQ_FOREACH(dpbp_dev, &dpbp_dev_list, next) {
+		if (dpbp_dev->dpbp_id == dpbp_id)
+			break;
+	}
+
+	return dpbp_dev;
+}
+
 static int
 dpaa2_create_dpbp_device(int vdev_fd __rte_unused,
-			 struct vfio_device_info *obj_info __rte_unused,
-			 int dpbp_id)
+	struct vfio_device_info *obj_info __rte_unused,
+	struct rte_dpaa2_device *obj)
 {
 	struct dpaa2_dpbp_dev *dpbp_node;
-	int ret;
+	int ret, dpbp_id = obj->object_id;
 	static int register_once;
 
 	/* Allocate DPAA2 dpbp handle */
@@ -83,6 +96,7 @@ dpaa2_create_dpbp_device(int vdev_fd __rte_unused,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_alloc_dpbp_dev)
 struct dpaa2_dpbp_dev *dpaa2_alloc_dpbp_dev(void)
 {
 	struct dpaa2_dpbp_dev *dpbp_dev = NULL;
@@ -96,6 +110,7 @@ struct dpaa2_dpbp_dev *dpaa2_alloc_dpbp_dev(void)
 	return dpbp_dev;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_free_dpbp_dev)
 void dpaa2_free_dpbp_dev(struct dpaa2_dpbp_dev *dpbp)
 {
 	struct dpaa2_dpbp_dev *dpbp_dev = NULL;
@@ -109,6 +124,7 @@ void dpaa2_free_dpbp_dev(struct dpaa2_dpbp_dev *dpbp)
 	}
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_dpbp_supported)
 int dpaa2_dpbp_supported(void)
 {
 	if (TAILQ_EMPTY(&dpbp_dev_list))
@@ -116,9 +132,25 @@ int dpaa2_dpbp_supported(void)
 	return 0;
 }
 
+static void
+dpaa2_close_dpbp_device(int object_id)
+{
+	struct dpaa2_dpbp_dev *dpbp_dev = NULL;
+
+	dpbp_dev = get_dpbp_from_id((uint32_t)object_id);
+
+	if (dpbp_dev) {
+		dpaa2_free_dpbp_dev(dpbp_dev);
+		dpbp_close(&dpbp_dev->dpbp, CMD_PRI_LOW, dpbp_dev->token);
+		TAILQ_REMOVE(&dpbp_dev_list, dpbp_dev, next);
+		rte_free(dpbp_dev);
+	}
+}
+
 static struct rte_dpaa2_object rte_dpaa2_dpbp_obj = {
 	.dev_type = DPAA2_BPOOL,
 	.create = dpaa2_create_dpbp_device,
+	.close = dpaa2_close_dpbp_device,
 };
 
 RTE_PMD_REGISTER_DPAA2_OBJECT(dpbp, rte_dpaa2_dpbp_obj);

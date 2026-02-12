@@ -8,7 +8,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include <tmmintrin.h>
+#include <rte_vect.h>
 
 #include <rte_byteorder.h>
 #include <rte_branch_prediction.h>

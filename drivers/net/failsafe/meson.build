@@ -7,6 +7,8 @@ if is_windows
     subdir_done()
 endif
 
+cflags += no_wvla_cflag
+cflags += no_shadow_cflag
 cflags += '-D_DEFAULT_SOURCE'
 cflags += '-D_XOPEN_SOURCE=700'
 cflags += '-pedantic'

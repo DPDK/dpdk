@@ -18,27 +18,27 @@
 
 #define __iomem
 
-#define pr_err(y, args...) dev_err(0, y, ##args)
-#define pr_warn(y, args...) dev_warning(0, y, ##args)
+#define pr_err(y, ...) dev_err(0, y, ##__VA_ARGS__)
+#define pr_warn(y, ...) dev_warning(0, y, ##__VA_ARGS__)
 #define BUG() pr_err("BUG at %s:%d", __func__, __LINE__)
 
 #define VNIC_ALIGN(x, a)         __ALIGN_MASK(x, (typeof(x))(a)-1)
 #define __ALIGN_MASK(x, mask)    (((x)+(mask))&~(mask))
 
 extern int enic_pmd_logtype;
+#define RTE_LOGTYPE_ENIC_PMD enic_pmd_logtype
 
-#define dev_printk(level, fmt, args...)	\
+#define dev_printk(level, fmt, ...)	\
 	rte_log(RTE_LOG_ ## level, enic_pmd_logtype, \
-		"PMD: rte_enic_pmd: " fmt, ##args)
+		"PMD: rte_enic_pmd: " fmt, ##__VA_ARGS__)
 
-#define dev_err(x, args...) dev_printk(ERR, args)
-#define dev_info(x, args...) dev_printk(INFO,  args)
-#define dev_warning(x, args...) dev_printk(WARNING, args)
-#define dev_debug(x, args...) dev_printk(DEBUG, args)
+#define dev_err(x, ...) dev_printk(ERR, __VA_ARGS__)
+#define dev_info(x, ...) dev_printk(INFO, __VA_ARGS__)
+#define dev_warning(x, ...) dev_printk(WARNING, __VA_ARGS__)
+#define dev_debug(x, ...) dev_printk(DEBUG, __VA_ARGS__)
 
-#define ENICPMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, enic_pmd_logtype, \
-		"%s " fmt "\n", __func__, ##args)
+#define ENICPMD_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, ENIC_PMD, "%s ", __func__, __VA_ARGS__)
 #define ENICPMD_FUNC_TRACE() ENICPMD_LOG(DEBUG, ">>")
 
 typedef         unsigned long long  dma_addr_t;

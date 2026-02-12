@@ -37,7 +37,7 @@ struct ml_core_args {
 	uint64_t end_cycles;
 };
 
-struct test_inference {
+struct __rte_cache_aligned test_inference {
 	/* common data */
 	struct test_common cmn;
 
@@ -59,7 +59,7 @@ struct test_inference {
 	struct rte_ml_dev_xstats_map *xstats_map;
 	uint64_t *xstats_values;
 	int xstats_size;
-} __rte_cache_aligned;
+};
 
 bool test_inference_cap_check(struct ml_options *opt);
 int test_inference_opt_check(struct ml_options *opt);

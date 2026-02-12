@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2020-2021 NXP
+ * Copyright 2020-2024 NXP
  */
 
 #ifndef __ENETFEC_ETHDEV_H__
@@ -20,20 +20,65 @@
 #define OPT_FRAME_SIZE		(PKT_MAX_BUF_SIZE << 16)
 #define ENETFEC_MAX_RX_PKT_LEN	3000
 
+#define ENETFEC_NAME_PMD                net_enetfec
+
+/* eth name size */
+#define ENETFEC_ETH_NAMESIZE            20
+#define ENETFEC_MAC_SHIFT               16
+/* mac addr reset */
+#define ENETFEC_MAC_RESET		0xFFFFFFFF
+
+/* FEC receive acceleration */
+#define ENETFEC_RACC_IPDIS              RTE_BIT32(1)
+#define ENETFEC_RACC_PRODIS             RTE_BIT32(2)
+#define ENETFEC_RACC_SHIFT16            RTE_BIT32(7)
+#define ENETFEC_RACC_OPTIONS            (ENETFEC_RACC_IPDIS | \
+					ENETFEC_RACC_PRODIS)
+
+#define ENETFEC_PAUSE_FLAG_AUTONEG      0x1
+#define ENETFEC_PAUSE_FLAG_ENABLE       0x2
+
+/* Pause frame field and FIFO threshold */
+#define ENETFEC_FCE                     RTE_BIT32(5)
+#define ENETFEC_RSEM_V                  0x84
+#define ENETFEC_RSFL_V                  16
+#define ENETFEC_RAEM_V                  0x8
+#define ENETFEC_RAFL_V                  0x8
+#define ENETFEC_OPD_V                   0xFFF0
+
+/* Extended buffer descriptor */
+#define ENETFEC_EXTENDED_BD             0
+#define NUM_OF_BD_QUEUES                6
+
 #define __iomem
 #if defined(RTE_ARCH_ARM)
 #if defined(RTE_ARCH_64)
-#define dcbf(p) { asm volatile("dc cvac, %0" : : "r"(p) : "memory"); }
-#define dcbf_64(p) dcbf(p)
+/* Flush */
+#define dccvac(p) { asm volatile("dc cvac, %0" : : "r"(p) : "memory"); }
+#define dccvac_64(p) dccvac(p)
+/* Invalidate(Not working on A35 core) */
+#define dcivac(p) { asm volatile("dc ivac, %0" : : "r"(p) : "memory"); }
+#define dcivac_64(p) dcivac(p)
+/* Flush and Invalidate */
+#define dccivac(p) { asm volatile("dc civac, %0" : : "r"(p) : "memory"); }
+#define dccivac_64(p) dccivac(p)
 
 #else /* RTE_ARCH_32 */
-#define dcbf(p) RTE_SET_USED(p)
-#define dcbf_64(p) dcbf(p)
+#define dccvac(p) RTE_SET_USED(p)
+#define dccvac_64(p) dccvac(p)
+#define dcivac(p) RTE_SET_USED(p)
+#define dcivac_64(p) dcivac(p)
+#define dccivac(p) RTE_SET_USED(p)
+#define dccivac_64(p) dccivac(p)
 #endif
 
 #else
-#define dcbf(p) RTE_SET_USED(p)
-#define dcbf_64(p) dcbf(p)
+#define dccvac(p) RTE_SET_USED(p)
+#define dccvac_64(p) dccvac(p)
+#define dcivac(p) RTE_SET_USED(p)
+#define dcivac_64(p) dcivac(p)
+#define dccivac(p) RTE_SET_USED(p)
+#define dccivac_64(p) dccivac(p)
 #endif
 
 /*
@@ -123,12 +168,6 @@ bufdesc *enet_get_nextdesc(struct bufdesc *bdp, struct bufdesc_prop *bd)
 {
 	return (bdp >= bd->last) ? bd->base
 		: (struct bufdesc *)(((uintptr_t)bdp) + bd->d_size);
-}
-
-static inline int
-fls64(unsigned long word)
-{
-	return (64 - __builtin_clzl(word)) - 1;
 }
 
 static inline struct

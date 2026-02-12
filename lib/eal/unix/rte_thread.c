@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_errno.h>
 #include <rte_log.h>
 #include <rte_thread.h>
@@ -19,6 +20,7 @@ struct eal_tls_key {
 	pthread_key_t thread_index;
 };
 
+#ifndef RTE_EAL_PTHREAD_ATTR_SETAFFINITY_NP
 struct thread_start_context {
 	rte_thread_func thread_func;
 	void *thread_args;
@@ -28,6 +30,7 @@ struct thread_start_context {
 	int wrapper_ret;
 	bool wrapper_done;
 };
+#endif
 
 static int
 thread_map_priority_to_os_value(enum rte_thread_priority eal_pri, int *os_pri,
@@ -88,6 +91,7 @@ thread_map_os_priority_to_eal_priority(int policy, int os_pri,
 	return 0;
 }
 
+#ifndef RTE_EAL_PTHREAD_ATTR_SETAFFINITY_NP
 static void *
 thread_start_wrapper(void *arg)
 {
@@ -113,7 +117,9 @@ thread_start_wrapper(void *arg)
 
 	return (void *)(uintptr_t)thread_func(thread_args);
 }
+#endif
 
+RTE_EXPORT_SYMBOL(rte_thread_create)
 int
 rte_thread_create(rte_thread_t *thread_id,
 		const rte_thread_attr_t *thread_attr,
@@ -126,6 +132,7 @@ rte_thread_create(rte_thread_t *thread_id,
 		.sched_priority = 0,
 	};
 	int policy = SCHED_OTHER;
+#ifndef RTE_EAL_PTHREAD_ATTR_SETAFFINITY_NP
 	struct thread_start_context ctx = {
 		.thread_func = thread_func,
 		.thread_args = args,
@@ -134,6 +141,7 @@ rte_thread_create(rte_thread_t *thread_id,
 		.wrapper_mutex = PTHREAD_MUTEX_INITIALIZER,
 		.wrapper_cond = PTHREAD_COND_INITIALIZER,
 	};
+#endif
 
 	if (thread_attr != NULL) {
 		ret = pthread_attr_init(&attr);
@@ -144,6 +152,16 @@ rte_thread_create(rte_thread_t *thread_id,
 
 		attrp = &attr;
 
+#ifdef RTE_EAL_PTHREAD_ATTR_SETAFFINITY_NP
+		if (CPU_COUNT(&thread_attr->cpuset) > 0) {
+			ret = pthread_attr_setaffinity_np(attrp, sizeof(thread_attr->cpuset),
+				&thread_attr->cpuset);
+			if (ret != 0) {
+				EAL_LOG(DEBUG, "pthread_attr_setaffinity_np failed");
+				goto cleanup;
+			}
+		}
+#endif
 		/*
 		 * Set the inherit scheduler parameter to explicit,
 		 * otherwise the priority attribute is ignored.
@@ -178,6 +196,14 @@ rte_thread_create(rte_thread_t *thread_id,
 		}
 	}
 
+#ifdef RTE_EAL_PTHREAD_ATTR_SETAFFINITY_NP
+	ret = pthread_create((pthread_t *)&thread_id->opaque_id, attrp,
+		(void *)(void *)thread_func, args);
+	if (ret != 0) {
+		EAL_LOG(DEBUG, "pthread_create failed");
+		goto cleanup;
+	}
+#else /* !RTE_EAL_PTHREAD_ATTR_SETAFFINITY_NP */
 	ret = pthread_create((pthread_t *)&thread_id->opaque_id, attrp,
 		thread_start_wrapper, &ctx);
 	if (ret != 0) {
@@ -193,6 +219,7 @@ rte_thread_create(rte_thread_t *thread_id,
 
 	if (ret != 0)
 		rte_thread_join(*thread_id, NULL);
+#endif /* RTE_EAL_PTHREAD_ATTR_SETAFFINITY_NP */
 
 cleanup:
 	if (attrp != NULL)
@@ -201,6 +228,7 @@ cleanup:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_join)
 int
 rte_thread_join(rte_thread_t thread_id, uint32_t *value_ptr)
 {
@@ -223,18 +251,21 @@ rte_thread_join(rte_thread_t thread_id, uint32_t *value_ptr)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_detach)
 int
 rte_thread_detach(rte_thread_t thread_id)
 {
 	return pthread_detach((pthread_t)thread_id.opaque_id);
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_equal)
 int
 rte_thread_equal(rte_thread_t t1, rte_thread_t t2)
 {
 	return pthread_equal((pthread_t)t1.opaque_id, (pthread_t)t2.opaque_id);
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_self)
 rte_thread_t
 rte_thread_self(void)
 {
@@ -247,6 +278,7 @@ rte_thread_self(void)
 	return thread_id;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_get_priority)
 int
 rte_thread_get_priority(rte_thread_t thread_id,
 	enum rte_thread_priority *priority)
@@ -269,6 +301,7 @@ cleanup:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_set_priority)
 int
 rte_thread_set_priority(rte_thread_t thread_id,
 	enum rte_thread_priority priority)
@@ -290,6 +323,7 @@ rte_thread_set_priority(rte_thread_t thread_id,
 		&param);
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_key_create)
 int
 rte_thread_key_create(rte_thread_key *key, void (*destructor)(void *))
 {
@@ -312,6 +346,7 @@ rte_thread_key_create(rte_thread_key *key, void (*destructor)(void *))
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_key_delete)
 int
 rte_thread_key_delete(rte_thread_key key)
 {
@@ -334,6 +369,7 @@ rte_thread_key_delete(rte_thread_key key)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_value_set)
 int
 rte_thread_value_set(rte_thread_key key, const void *value)
 {
@@ -354,6 +390,7 @@ rte_thread_value_set(rte_thread_key key, const void *value)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_value_get)
 void *
 rte_thread_value_get(rte_thread_key key)
 {
@@ -365,6 +402,7 @@ rte_thread_value_get(rte_thread_key key)
 	return pthread_getspecific(key->thread_index);
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_set_affinity_by_id)
 int
 rte_thread_set_affinity_by_id(rte_thread_t thread_id,
 		const rte_cpuset_t *cpuset)
@@ -373,6 +411,7 @@ rte_thread_set_affinity_by_id(rte_thread_t thread_id,
 		sizeof(*cpuset), cpuset);
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_get_affinity_by_id)
 int
 rte_thread_get_affinity_by_id(rte_thread_t thread_id,
 		rte_cpuset_t *cpuset)

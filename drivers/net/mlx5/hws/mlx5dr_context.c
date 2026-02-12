@@ -19,7 +19,26 @@ uint8_t mlx5dr_context_get_reparse_mode(struct mlx5dr_context *ctx)
 	return MLX5_IFC_RTC_REPARSE_ALWAYS;
 }
 
-static int mlx5dr_context_pools_init(struct mlx5dr_context *ctx)
+void mlx5dr_context_set_pool_tbl_attr(struct mlx5dr_pool_attr *attr,
+				      enum mlx5dr_table_type table_type)
+{
+	attr->table_type = table_type;
+
+	switch (table_type) {
+	case MLX5DR_TABLE_TYPE_FDB_TX:
+		attr->opt_type = MLX5DR_POOL_OPTIMIZE_ORIG;
+		break;
+	case MLX5DR_TABLE_TYPE_FDB_RX:
+		attr->opt_type = MLX5DR_POOL_OPTIMIZE_MIRROR;
+		break;
+	default:
+		attr->opt_type = MLX5DR_POOL_OPTIMIZE_NONE;
+		break;
+	}
+}
+
+static int mlx5dr_context_pools_init(struct mlx5dr_context *ctx,
+				     struct mlx5dr_context_attr *attr)
 {
 	struct mlx5dr_pool_attr pool_attr = {0};
 	uint8_t max_log_sz;
@@ -34,11 +53,14 @@ static int mlx5dr_context_pools_init(struct mlx5dr_context *ctx)
 	/* Create an STC pool per FT type */
 	pool_attr.pool_type = MLX5DR_POOL_TYPE_STC;
 	pool_attr.flags = MLX5DR_POOL_FLAGS_FOR_STC_POOL;
-	max_log_sz = RTE_MIN(MLX5DR_POOL_STC_LOG_SZ, ctx->caps->stc_alloc_log_max);
+	if (!attr->initial_log_stc_memory)
+		attr->initial_log_stc_memory = MLX5DR_POOL_STC_LOG_SZ;
+	max_log_sz = RTE_MIN(attr->initial_log_stc_memory, ctx->caps->stc_alloc_log_max);
 	pool_attr.alloc_log_sz = RTE_MAX(max_log_sz, ctx->caps->stc_alloc_log_gran);
 
 	for (i = 0; i < MLX5DR_TABLE_TYPE_MAX; i++) {
-		pool_attr.table_type = i;
+		mlx5dr_context_set_pool_tbl_attr(&pool_attr,
+						 (enum mlx5dr_table_type)i);
 		ctx->stc_pool[i] = mlx5dr_pool_create(ctx, &pool_attr);
 		if (!ctx->stc_pool[i]) {
 			DR_LOG(ERR, "Failed to allocate STC pool [%d]", i);
@@ -118,6 +140,23 @@ static int mlx5dr_context_uninit_pd(struct mlx5dr_context *ctx)
 	return 0;
 }
 
+bool mlx5dr_context_cap_stc(struct mlx5dr_context *ctx, uint32_t bit)
+{
+	uint32_t test_bit = bit;
+
+	if (bit >= MLX5_IFC_STC_ACTION_TYPE_BIT_64_INDEX)
+		test_bit -= MLX5_IFC_STC_ACTION_TYPE_BIT_64_INDEX;
+
+	switch (bit) {
+	case MLX5_IFC_STC_ACTION_TYPE_JUMP_FLOW_TABLE_FDB_RX_BIT_INDEX:
+		return ctx->caps->stc_action_type_127_64 & (0x1ull << test_bit);
+	default:
+		break;
+	}
+
+	return false;
+}
+
 static void mlx5dr_context_check_hws_supp(struct mlx5dr_context *ctx)
 {
 	struct mlx5dr_cmd_query_caps *caps = ctx->caps;
@@ -172,9 +211,12 @@ static int mlx5dr_context_init_hws(struct mlx5dr_context *ctx,
 	if (ret)
 		return ret;
 
-	ret = mlx5dr_context_pools_init(ctx);
+	ret = mlx5dr_context_pools_init(ctx, attr);
 	if (ret)
 		goto uninit_pd;
+
+	if (attr->bwc)
+		ctx->flags |= MLX5DR_CONTEXT_FLAG_BWC_SUPPORT;
 
 	ret = mlx5dr_send_queues_open(ctx, attr->queues, attr->queue_size);
 	if (ret)
@@ -263,6 +305,7 @@ struct mlx5dr_context *mlx5dr_context_open(struct ibv_context *ibv_ctx,
 free_caps:
 	simple_free(ctx->caps);
 free_ctx:
+	pthread_spin_destroy(&ctx->ctrl_lock);
 	simple_free(ctx);
 	return NULL;
 }

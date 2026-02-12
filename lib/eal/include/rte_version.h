@@ -10,12 +10,12 @@
 #ifndef _RTE_VERSION_H_
 #define _RTE_VERSION_H_
 
+#include <string.h>
+#include <stdio.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <string.h>
-#include <stdio.h>
 
 /**
  * Macro to compute a version number usable for comparisons

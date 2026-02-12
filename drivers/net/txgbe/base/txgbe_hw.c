@@ -11,6 +11,8 @@
 #include "txgbe_eeprom.h"
 #include "txgbe_mng.h"
 #include "txgbe_hw.h"
+#include "txgbe_aml.h"
+#include "txgbe_aml40.h"
 
 #define TXGBE_RAPTOR_MAX_TX_QUEUES 128
 #define TXGBE_RAPTOR_MAX_RX_QUEUES 128
@@ -18,6 +20,7 @@
 #define TXGBE_RAPTOR_MC_TBL_SIZE   128
 #define TXGBE_RAPTOR_VFT_TBL_SIZE  128
 #define TXGBE_RAPTOR_RX_PB_SIZE	  512 /*KB*/
+#define TXGBE_AML_RX_PB_SIZE	  768
 
 static s32 txgbe_setup_copper_link_raptor(struct txgbe_hw *hw,
 					 u32 speed,
@@ -26,6 +29,56 @@ static s32 txgbe_setup_copper_link_raptor(struct txgbe_hw *hw,
 static s32 txgbe_mta_vector(struct txgbe_hw *hw, u8 *mc_addr);
 static s32 txgbe_get_san_mac_addr_offset(struct txgbe_hw *hw,
 					 u16 *san_mac_offset);
+
+static s32 txgbe_is_lldp(struct txgbe_hw *hw)
+{
+	u32 tmp = 0, lldp_flash_data = 0, i;
+	s32 err = 0;
+
+	if ((hw->fw_version & TXGBE_FW_MASK) >= TXGBE_FW_GET_LLDP) {
+		err = txgbe_hic_get_lldp(hw);
+		if (err == 0)
+			return 0;
+	}
+
+	for (i = 0; i < 1024; i++) {
+		err = txgbe_flash_read_dword(hw, TXGBE_LLDP_REG + i * 4, &tmp);
+		if (err)
+			return err;
+
+		if (tmp == BIT_MASK32)
+			break;
+		lldp_flash_data = tmp;
+	}
+
+	if (lldp_flash_data & MS(hw->bus.lan_id, 1))
+		hw->lldp_enabled = true;
+	else
+		hw->lldp_enabled = false;
+
+	return 0;
+}
+
+static void txgbe_disable_lldp(struct txgbe_hw *hw)
+{
+	s32 status = 0;
+
+	if ((hw->fw_version & TXGBE_FW_MASK) < TXGBE_FW_SUPPORT_LLDP)
+		return;
+
+	status = txgbe_is_lldp(hw);
+	if (status) {
+		PMD_INIT_LOG(INFO, "Can not get LLDP status.");
+	} else if (hw->lldp_enabled) {
+		status = txgbe_hic_set_lldp(hw, false);
+		if (!status)
+			PMD_INIT_LOG(INFO,
+				"LLDP detected on port %d, turn it off by default.",
+				hw->port_id);
+		else
+			PMD_INIT_LOG(INFO, "Can not set LLDP status.");
+	}
+}
 
 /**
  * txgbe_device_supports_autoneg_fc - Check if device supports autonegotiation
@@ -90,6 +143,10 @@ s32 txgbe_setup_fc(struct txgbe_hw *hw)
 	u16 reg_cu = 0;
 	u32 value = 0;
 	u64 reg_bp = 0;
+
+	/* amlite-to-do */
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40)
+		return 0;
 
 	/* Validate the requested mode */
 	if (hw->fc.strict_ieee && hw->fc.requested_mode == txgbe_fc_rx_pause) {
@@ -176,6 +233,15 @@ s32 txgbe_setup_fc(struct txgbe_hw *hw)
 				      TXGBE_MD_DEV_AUTO_NEG, reg_cu);
 	}
 
+	/*
+	 * Reconfig mac ctrl frame fwd rule to make sure it still
+	 * working after port stop/start.
+	 */
+	wr32m(hw, TXGBE_MACRXFLT, TXGBE_MACRXFLT_CTL_MASK,
+	      (hw->fc.mac_ctrl_frame_fwd ?
+	       TXGBE_MACRXFLT_CTL_NOPS : TXGBE_MACRXFLT_CTL_DROP));
+	txgbe_flush(hw);
+
 	DEBUGOUT("Set up FC; reg = 0x%08X", reg);
 out:
 	return err;
@@ -213,7 +279,9 @@ s32 txgbe_start_hw(struct txgbe_hw *hw)
 
 	/* Cache bit indicating need for crosstalk fix */
 	switch (hw->mac.type) {
-	case txgbe_mac_raptor:
+	case txgbe_mac_sp:
+	case txgbe_mac_aml:
+	case txgbe_mac_aml40:
 		hw->mac.get_device_caps(hw, &device_caps);
 		if (device_caps & TXGBE_DEVICE_CAPS_NO_CROSSTALK_WR)
 			hw->need_crosstalk_fix = false;
@@ -271,6 +339,11 @@ s32 txgbe_init_hw(struct txgbe_hw *hw)
 
 	/* Get firmware version */
 	hw->phy.get_fw_version(hw, &hw->fw_version);
+
+	txgbe_disable_lldp(hw);
+
+	/* Init fec mode to 'AUTO' */
+	hw->fec_mode = TXGBE_PHY_FEC_AUTO;
 
 	/* Reset the hardware */
 	status = hw->mac.reset_hw(hw);
@@ -462,7 +535,7 @@ void txgbe_set_lan_id_multi_port(struct txgbe_hw *hw)
  **/
 s32 txgbe_stop_hw(struct txgbe_hw *hw)
 {
-	u32 reg_val;
+	s32 status = 0;
 	u16 i;
 
 	/*
@@ -484,16 +557,26 @@ s32 txgbe_stop_hw(struct txgbe_hw *hw)
 	wr32(hw, TXGBE_ICR(0), TXGBE_ICR_MASK);
 	wr32(hw, TXGBE_ICR(1), TXGBE_ICR_MASK);
 
-	/* Disable the transmit unit.  Each queue must be disabled. */
-	for (i = 0; i < hw->mac.max_tx_queues; i++)
-		wr32(hw, TXGBE_TXCFG(i), TXGBE_TXCFG_FLUSH);
+	wr32(hw, TXGBE_BMECTL, 0x3);
 
 	/* Disable the receive unit by stopping each queue */
-	for (i = 0; i < hw->mac.max_rx_queues; i++) {
-		reg_val = rd32(hw, TXGBE_RXCFG(i));
-		reg_val &= ~TXGBE_RXCFG_ENA;
-		wr32(hw, TXGBE_RXCFG(i), reg_val);
-	}
+	for (i = 0; i < hw->mac.max_rx_queues; i++)
+		wr32(hw, TXGBE_RXCFG(i), 0);
+
+	/* flush all queues disables */
+	txgbe_flush(hw);
+	msec_delay(2);
+
+	/* Prevent the PCI-E bus from hanging by disabling PCI-E master
+	 * access and verify no pending requests
+	 */
+	status = txgbe_set_pcie_master(hw, false);
+	if (status)
+		return status;
+
+	/* Disable the transmit unit.  Each queue must be disabled. */
+	for (i = 0; i < hw->mac.max_tx_queues; i++)
+		wr32(hw, TXGBE_TXCFG(i), 0);
 
 	/* flush all queues disables */
 	txgbe_flush(hw);
@@ -1174,6 +1257,38 @@ out:
 	}
 }
 
+s32 txgbe_set_pcie_master(struct txgbe_hw *hw, bool enable)
+{
+	struct rte_pci_device *pci_dev = (struct rte_pci_device *)hw->back;
+	s32 status = 0;
+	u32 i;
+
+	if (rte_pci_set_bus_master(pci_dev, enable) < 0) {
+		DEBUGOUT("Cannot configure PCI bus master.");
+		return -1;
+	}
+
+	if (enable)
+		goto out;
+
+	/* Exit if master requests are blocked */
+	if (!(rd32(hw, TXGBE_BMEPEND)))
+		goto out;
+
+	/* Poll for master request bit to clear */
+	for (i = 0; i < TXGBE_PCI_MASTER_DISABLE_TIMEOUT; i++) {
+		usec_delay(100);
+		if (!(rd32(hw, TXGBE_BMEPEND)))
+			goto out;
+	}
+
+	DEBUGOUT("PCIe transaction pending bit also did not clear.");
+	status = TXGBE_ERR_MASTER_REQUESTS_PENDING;
+
+out:
+	return status;
+}
+
 /**
  *  txgbe_acquire_swfw_sync - Acquire SWFW semaphore
  *  @hw: pointer to hardware structure
@@ -1812,7 +1927,7 @@ static bool txgbe_need_crosstalk_fix(struct txgbe_hw *hw)
  *
  *  Reads the links register to determine if link is up and the current speed
  **/
-s32 txgbe_check_mac_link(struct txgbe_hw *hw, u32 *speed,
+s32 txgbe_check_mac_link_sp(struct txgbe_hw *hw, u32 *speed,
 				 bool *link_up, bool link_up_wait_to_complete)
 {
 	u32 links_reg, links_orig;
@@ -1825,7 +1940,7 @@ s32 txgbe_check_mac_link(struct txgbe_hw *hw, u32 *speed,
 		u32 sfp_cage_full;
 
 		switch (hw->mac.type) {
-		case txgbe_mac_raptor:
+		case txgbe_mac_sp:
 			sfp_cage_full = !rd32m(hw, TXGBE_GPIODATA,
 					TXGBE_GPIOBIT_2);
 			break;
@@ -2012,9 +2127,7 @@ void txgbe_set_pba(struct txgbe_hw *hw, int num_pb, u32 headroom,
 	u32 rxpktsize, txpktsize, txpbthresh;
 
 	UNREFERENCED_PARAMETER(hw);
-
-	/* Reserve headroom */
-	pbsize -= headroom;
+	UNREFERENCED_PARAMETER(headroom);
 
 	if (!num_pb)
 		num_pb = 1;
@@ -2107,27 +2220,56 @@ void txgbe_clear_tx_pending(struct txgbe_hw *hw)
  *
  *  Returns the thermal sensor data structure
  **/
+#define PHYINIT_TIMEOUT 1000
 s32 txgbe_get_thermal_sensor_data(struct txgbe_hw *hw)
 {
 	struct txgbe_thermal_sensor_data *data = &hw->mac.thermal_sensor_data;
 	s64 tsv;
 	u32 ts_stat;
+	u32 data_code;
+	int temp_data, temp_fraction;
+	int i = 0;
 
 	/* Only support thermal sensors attached to physical port 0 */
 	if (hw->bus.lan_id != 0)
 		return TXGBE_NOT_IMPLEMENTED;
 
-	ts_stat = rd32(hw, TXGBE_TSSTAT);
-	tsv = (s64)TXGBE_TSSTAT_DATA(ts_stat);
-	tsv = tsv > 1200 ? tsv : 1200;
-	tsv = -(48380 << 8) / 1000
-		+ tsv * (31020 << 8) / 100000
-		- tsv * tsv * (18201 << 8) / 100000000
-		+ tsv * tsv * tsv * (81542 << 8) / 1000000000000
-		- tsv * tsv * tsv * tsv * (16743 << 8) / 1000000000000000;
-	tsv >>= 8;
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40) {
+		wr32(hw, TXGBE_AML_TS_ENA, 0x0001);
 
-	data->sensor[0].temp = (s16)tsv;
+		while (1) {
+			data_code = rd32(hw, TXGBE_AML_TS_STS);
+			if ((data_code & TXGBE_AML_TS_STS_VLD) != 0)
+				break;
+			msleep(1);
+			if (i++ > PHYINIT_TIMEOUT) {
+				PMD_DRV_LOG(ERR, "ERROR: Wait 0x1033c Timeout!!!");
+				return -1;
+			}
+		}
+
+		data_code = data_code & 0xFFF;
+		temp_data = 419400 + 2205 * (data_code * 1000 / 4094 - 500);
+
+		/* Change double Temperature to int */
+		tsv = temp_data / 10000;
+		temp_fraction = temp_data - (tsv * 10000);
+		if (temp_fraction >= 5000)
+			tsv += 1;
+		data->sensor[0].temp = (s16)tsv;
+	} else {
+		ts_stat = rd32(hw, TXGBE_TSSTAT);
+		tsv = (s64)TXGBE_TSSTAT_DATA(ts_stat);
+		tsv = tsv > 1200 ? tsv : 1200;
+		tsv = -(48380 << 8) / 1000
+			+ tsv * (31020 << 8) / 100000
+			- tsv * tsv * (18201 << 8) / 100000000
+			+ tsv * tsv * tsv * (81542 << 8) / 1000000000000
+			- tsv * tsv * tsv * tsv * (16743 << 8) / 1000000000000000;
+		tsv >>= 8;
+
+		data->sensor[0].temp = (s16)tsv;
+	}
 
 	return 0;
 }
@@ -2148,16 +2290,32 @@ s32 txgbe_init_thermal_sensor_thresh(struct txgbe_hw *hw)
 	if (hw->bus.lan_id != 0)
 		return TXGBE_NOT_IMPLEMENTED;
 
-	wr32(hw, TXGBE_TSCTRL, TXGBE_TSCTRL_EVALMD);
-	wr32(hw, TXGBE_TSINTR,
-		TXGBE_TSINTR_AEN | TXGBE_TSINTR_DEN);
-	wr32(hw, TXGBE_TSEN, TXGBE_TSEN_ENA);
-
-
 	data->sensor[0].alarm_thresh = 100;
-	wr32(hw, TXGBE_TSATHRE, 677);
 	data->sensor[0].dalarm_thresh = 90;
-	wr32(hw, TXGBE_TSDTHRE, 614);
+
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40) {
+		wr32(hw, TXGBE_AML_TS_ENA, 0x0);
+		wr32(hw, TXGBE_AML_INTR_RAW_LO, TXGBE_AML_INTR_CL_LO);
+		wr32(hw, TXGBE_AML_INTR_RAW_HI, TXGBE_AML_INTR_CL_HI);
+
+		wr32(hw, TXGBE_AML_INTR_HIGH_EN, TXGBE_AML_INTR_EN_HI);
+		wr32(hw, TXGBE_AML_INTR_LOW_EN, TXGBE_AML_INTR_EN_LO);
+
+		wr32m(hw, TXGBE_AML_TS_CTL1, TXGBE_AML_EVAL_MODE_MASK, 0x10);
+		wr32m(hw, TXGBE_AML_TS_CTL1, TXGBE_AML_ALARM_THRE_MASK, 0x186a0000);
+		wr32m(hw, TXGBE_AML_TS_CTL1, TXGBE_AML_DALARM_THRE_MASK, 0x16f60);
+		wr32(hw, TXGBE_AML_TS_ENA, 0x1);
+	} else {
+		wr32(hw, TXGBE_TSCTRL, TXGBE_TSCTRL_EVALMD);
+		wr32(hw, TXGBE_TSINTR,
+			 TXGBE_TSINTR_AEN | TXGBE_TSINTR_DEN);
+		wr32(hw, TXGBE_TSEN, TXGBE_TSEN_ENA);
+
+		data->sensor[0].alarm_thresh = 100;
+		wr32(hw, TXGBE_TSATHRE, 677);
+		data->sensor[0].dalarm_thresh = 90;
+		wr32(hw, TXGBE_TSDTHRE, 614);
+	}
 
 	return 0;
 }
@@ -2365,7 +2523,7 @@ out:
  **/
 s32 txgbe_init_shared_code(struct txgbe_hw *hw)
 {
-	s32 status;
+	s32 status = 0;
 
 	/*
 	 * Set the mac type
@@ -2374,10 +2532,17 @@ s32 txgbe_init_shared_code(struct txgbe_hw *hw)
 
 	txgbe_init_ops_dummy(hw);
 	switch (hw->mac.type) {
-	case txgbe_mac_raptor:
-		status = txgbe_init_ops_pf(hw);
+	case txgbe_mac_sp:
+		txgbe_init_ops_sp(hw);
 		break;
-	case txgbe_mac_raptor_vf:
+	case txgbe_mac_aml:
+		txgbe_init_ops_aml(hw);
+		break;
+	case txgbe_mac_aml40:
+		txgbe_init_ops_aml40(hw);
+		break;
+	case txgbe_mac_sp_vf:
+	case txgbe_mac_aml_vf:
 		status = txgbe_init_ops_vf(hw);
 		break;
 	default:
@@ -2389,6 +2554,29 @@ s32 txgbe_init_shared_code(struct txgbe_hw *hw)
 	hw->bus.set_lan_id(hw);
 
 	return status;
+}
+
+bool txgbe_is_pf(struct txgbe_hw *hw)
+{
+	switch (hw->mac.type) {
+	case txgbe_mac_sp:
+	case txgbe_mac_aml:
+	case txgbe_mac_aml40:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool txgbe_is_vf(struct txgbe_hw *hw)
+{
+	switch (hw->mac.type) {
+	case txgbe_mac_sp_vf:
+	case txgbe_mac_aml_vf:
+		return true;
+	default:
+		return false;
+	}
 }
 
 /**
@@ -2410,12 +2598,27 @@ s32 txgbe_set_mac_type(struct txgbe_hw *hw)
 	switch (hw->device_id) {
 	case TXGBE_DEV_ID_SP1000:
 	case TXGBE_DEV_ID_WX1820:
-		hw->mac.type = txgbe_mac_raptor;
+		hw->mac.type = txgbe_mac_sp;
+		break;
+	case TXGBE_DEV_ID_AML:
+	case TXGBE_DEV_ID_AML5025:
+	case TXGBE_DEV_ID_AML5125:
+		hw->mac.type = txgbe_mac_aml;
+		break;
+	case TXGBE_DEV_ID_AML5040:
+	case TXGBE_DEV_ID_AML5140:
+		hw->mac.type = txgbe_mac_aml40;
 		break;
 	case TXGBE_DEV_ID_SP1000_VF:
 	case TXGBE_DEV_ID_WX1820_VF:
 		hw->phy.media_type = txgbe_media_type_virtual;
-		hw->mac.type = txgbe_mac_raptor_vf;
+		hw->mac.type = txgbe_mac_sp_vf;
+		break;
+	case TXGBE_DEV_ID_AML_VF:
+	case TXGBE_DEV_ID_AML5024_VF:
+	case TXGBE_DEV_ID_AML5124_VF:
+		hw->phy.media_type = txgbe_media_type_virtual;
+		hw->mac.type = txgbe_mac_aml_vf;
 		break;
 	default:
 		err = TXGBE_ERR_DEVICE_NOT_SUPPORTED;
@@ -2428,7 +2631,7 @@ s32 txgbe_set_mac_type(struct txgbe_hw *hw)
 	return err;
 }
 
-void txgbe_init_mac_link_ops(struct txgbe_hw *hw)
+void txgbe_init_mac_link_ops_sp(struct txgbe_hw *hw)
 {
 	struct txgbe_mac_info *mac = &hw->mac;
 
@@ -2488,7 +2691,7 @@ s32 txgbe_init_phy_raptor(struct txgbe_hw *hw)
 		goto init_phy_ops_out;
 
 	/* Setup function pointers based on detected SFP module and speeds */
-	txgbe_init_mac_link_ops(hw);
+	hw->mac.init_mac_link_ops(hw);
 
 	/* If copper media, overwrite with copper function pointers */
 	if (phy->media_type == txgbe_media_type_copper) {
@@ -2523,7 +2726,7 @@ s32 txgbe_setup_sfp_modules(struct txgbe_hw *hw)
 	if (hw->phy.sfp_type == txgbe_sfp_type_unknown)
 		return 0;
 
-	txgbe_init_mac_link_ops(hw);
+	hw->mac.init_mac_link_ops(hw);
 
 	/* PHY config will finish before releasing the semaphore */
 	err = hw->mac.acquire_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
@@ -2626,9 +2829,9 @@ out:
  * 1. to be sector address, when implemented erase sector command
  * 2. to be flash address when implemented read, write flash address
  *
- * Return 0 on success, return 1 on failure.
+ * Return 0 on success, return TXGBE_ERR_TIMEOUT on failure.
  */
-u32 txgbe_fmgr_cmd_op(struct txgbe_hw *hw, u32 cmd, u32 cmd_addr)
+s32 txgbe_fmgr_cmd_op(struct txgbe_hw *hw, u32 cmd, u32 cmd_addr)
 {
 	u32 cmd_val, i;
 
@@ -2643,32 +2846,34 @@ u32 txgbe_fmgr_cmd_op(struct txgbe_hw *hw, u32 cmd, u32 cmd_addr)
 	}
 
 	if (i == TXGBE_SPI_TIMEOUT)
-		return 1;
+		return TXGBE_ERR_TIMEOUT;
 
 	return 0;
 }
 
-u32 txgbe_flash_read_dword(struct txgbe_hw *hw, u32 addr)
+s32 txgbe_flash_read_dword(struct txgbe_hw *hw, u32 addr, u32 *data)
 {
-	u32 status;
+	s32 status;
 
 	status = txgbe_fmgr_cmd_op(hw, 1, addr);
-	if (status == 0x1) {
+	if (status < 0) {
 		DEBUGOUT("Read flash timeout.");
 		return status;
 	}
 
-	return rd32(hw, TXGBE_SPIDAT);
+	*data = rd32(hw, TXGBE_SPIDAT);
+
+	return 0;
 }
 
 /**
- *  txgbe_init_ops_pf - Inits func ptrs and MAC type
+ *  txgbe_init_ops_generic - Inits func ptrs and MAC type
  *  @hw: pointer to hardware structure
  *
  *  Initialize the function pointers and assign the MAC type.
  *  Does not touch the hardware.
  **/
-s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
+s32 txgbe_init_ops_generic(struct txgbe_hw *hw)
 {
 	struct txgbe_bus_info *bus = &hw->bus;
 	struct txgbe_mac_info *mac = &hw->mac;
@@ -2680,7 +2885,6 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	bus->set_lan_id = txgbe_set_lan_id_multi_port;
 
 	/* PHY */
-	phy->get_media_type = txgbe_get_media_type_raptor;
 	phy->identify = txgbe_identify_phy;
 	phy->init = txgbe_init_phy_raptor;
 	phy->read_reg = txgbe_read_phy_reg;
@@ -2700,6 +2904,7 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	phy->write_i2c_byte_unlocked = txgbe_write_i2c_byte_unlocked;
 	phy->check_overtemp = txgbe_check_overtemp;
 	phy->reset = txgbe_reset_phy;
+	phy->set_link_hostif = txgbe_hic_ephy_set_link;
 
 	/* MAC */
 	mac->init_hw = txgbe_init_hw;
@@ -2748,8 +2953,6 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	mac->fc_autoneg = txgbe_fc_autoneg;
 
 	/* Link */
-	mac->get_link_capabilities = txgbe_get_link_capabilities_raptor;
-	mac->check_link = txgbe_check_mac_link;
 	mac->setup_pba = txgbe_set_pba;
 
 	/* Manageability interface */
@@ -2785,18 +2988,41 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	mac->max_rx_queues	= TXGBE_RAPTOR_MAX_RX_QUEUES;
 	mac->max_tx_queues	= TXGBE_RAPTOR_MAX_TX_QUEUES;
 
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40)
+		mac->rx_pb_size = TXGBE_AML_RX_PB_SIZE;
+
 	return 0;
 }
 
+void txgbe_init_ops_sp(struct txgbe_hw *hw)
+{
+	struct txgbe_mac_info *mac = &hw->mac;
+	struct txgbe_phy_info *phy = &hw->phy;
+	struct txgbe_mbx_info *mbx = &hw->mbx;
+
+	txgbe_init_ops_generic(hw);
+
+	/* PHY */
+	phy->get_media_type = txgbe_get_media_type_sp;
+
+	/* LINK */
+	mac->init_mac_link_ops = txgbe_init_mac_link_ops_sp;
+	mac->get_link_capabilities = txgbe_get_link_capabilities_sp;
+	mac->check_link = txgbe_check_mac_link_sp;
+
+	/* FW interaction */
+	mbx->host_interface_command = txgbe_host_interface_command_sp;
+}
+
 /**
- *  txgbe_get_link_capabilities_raptor - Determines link capabilities
+ *  txgbe_get_link_capabilities_sp - Determines link capabilities
  *  @hw: pointer to hardware structure
  *  @speed: pointer to link speed
  *  @autoneg: true when autoneg or autotry is enabled
  *
  *  Determines the link capabilities by reading the AUTOC register.
  **/
-s32 txgbe_get_link_capabilities_raptor(struct txgbe_hw *hw,
+s32 txgbe_get_link_capabilities_sp(struct txgbe_hw *hw,
 				      u32 *speed,
 				      bool *autoneg)
 {
@@ -2897,12 +3123,12 @@ s32 txgbe_get_link_capabilities_raptor(struct txgbe_hw *hw,
 }
 
 /**
- *  txgbe_get_media_type_raptor - Get media type
+ *  txgbe_get_media_type_sp - Get media type
  *  @hw: pointer to hardware structure
  *
  *  Returns the media type (fiber, copper, backplane)
  **/
-u32 txgbe_get_media_type_raptor(struct txgbe_hw *hw)
+u32 txgbe_get_media_type_sp(struct txgbe_hw *hw)
 {
 	u32 media_type;
 
@@ -3002,12 +3228,28 @@ void txgbe_disable_tx_laser_multispeed_fiber(struct txgbe_hw *hw)
 {
 	u32 esdp_reg = rd32(hw, TXGBE_GPIODATA);
 
-	if (txgbe_close_notify(hw))
-		txgbe_led_off(hw, TXGBE_LEDCTL_UP | TXGBE_LEDCTL_10G |
-				TXGBE_LEDCTL_1G | TXGBE_LEDCTL_ACTIVE);
+	if (txgbe_close_notify(hw)) {
+		/* over write led when ifconfig down */
+		if (hw->mac.type == txgbe_mac_aml40) {
+			txgbe_led_off(hw, TXGBE_LEDCTL_UP | TXGBE_AMLITE_LED_LINK_40G |
+					TXGBE_AMLITE_LED_LINK_ACTIVE);
+		} else if  (hw->mac.type == txgbe_mac_aml)
+			txgbe_led_off(hw, TXGBE_LEDCTL_UP | TXGBE_AMLITE_LED_LINK_25G |
+					TXGBE_AMLITE_LED_LINK_10G | TXGBE_AMLITE_LED_LINK_ACTIVE);
+		else
+			txgbe_led_off(hw, TXGBE_LEDCTL_UP | TXGBE_LEDCTL_10G |
+					TXGBE_LEDCTL_1G | TXGBE_LEDCTL_ACTIVE);
+	}
 
 	/* Disable Tx laser; allow 100us to go dark per spec */
-	esdp_reg |= (TXGBE_GPIOBIT_0 | TXGBE_GPIOBIT_1);
+	if (hw->mac.type == txgbe_mac_aml40) {
+		wr32m(hw, TXGBE_GPIODIR, TXGBE_GPIOBIT_1, TXGBE_GPIOBIT_1);
+		esdp_reg &= ~TXGBE_GPIOBIT_1;
+	} else if (hw->mac.type == txgbe_mac_aml) {
+		esdp_reg |= TXGBE_GPIOBIT_1;
+	} else {
+		esdp_reg |= (TXGBE_GPIOBIT_0 | TXGBE_GPIOBIT_1);
+	}
 	wr32(hw, TXGBE_GPIODATA, esdp_reg);
 	txgbe_flush(hw);
 	usec_delay(100);
@@ -3029,7 +3271,12 @@ void txgbe_enable_tx_laser_multispeed_fiber(struct txgbe_hw *hw)
 		wr32(hw, TXGBE_LEDCTL, 0);
 
 	/* Enable Tx laser; allow 100ms to light up */
-	esdp_reg &= ~(TXGBE_GPIOBIT_0 | TXGBE_GPIOBIT_1);
+	if (hw->mac.type == txgbe_mac_aml40) {
+		wr32m(hw, TXGBE_GPIODIR, TXGBE_GPIOBIT_1, TXGBE_GPIOBIT_1);
+		esdp_reg |= TXGBE_GPIOBIT_1;
+	} else {
+		esdp_reg &= ~(TXGBE_GPIOBIT_0 | TXGBE_GPIOBIT_1);
+	}
 	wr32(hw, TXGBE_GPIODATA, esdp_reg);
 	txgbe_flush(hw);
 	msec_delay(100);
@@ -3069,6 +3316,9 @@ void txgbe_set_hard_rate_select_speed(struct txgbe_hw *hw,
 	u32 esdp_reg = rd32(hw, TXGBE_GPIODATA);
 
 	switch (speed) {
+	case TXGBE_LINK_SPEED_25GB_FULL:
+		/* amlite-to-do */
+		break;
 	case TXGBE_LINK_SPEED_10GB_FULL:
 		esdp_reg |= (TXGBE_GPIOBIT_4 | TXGBE_GPIOBIT_5);
 		break;
@@ -3334,18 +3584,79 @@ txgbe_check_flash_load(struct txgbe_hw *hw, u32 check_bit)
 	return err;
 }
 
+int txgbe_reconfig_mac(struct txgbe_hw *hw)
+{
+	u32 mac_wdg_timeout;
+	u32 mac_flow_ctrl;
+
+	mac_wdg_timeout = rd32(hw, TXGBE_MAC_WDG_TIMEOUT);
+	mac_flow_ctrl = rd32(hw, TXGBE_RXFCCFG);
+
+	if (hw->bus.lan_id == 0)
+		wr32(hw, TXGBE_RST, TXGBE_RST_MAC_LAN_0);
+	else if (hw->bus.lan_id == 1)
+		wr32(hw, TXGBE_RST, TXGBE_RST_MAC_LAN_1);
+
+	/* wait for mac reset complete */
+	usec_delay(1500);
+	wr32m(hw, TXGBE_MAC_MISC_CTL, TXGBE_MAC_MISC_LINK_STS_MOD,
+		TXGBE_LINK_BOTH_PCS_MAC);
+
+	/* receive packets that size > 2048 */
+	wr32m(hw, TXGBE_MACRXCFG,
+		TXGBE_MACRXCFG_JUMBO, TXGBE_MACRXCFG_JUMBO);
+
+	/* clear counters on read */
+	wr32m(hw, TXGBE_MACCNTCTL,
+		TXGBE_MACCNTCTL_RC, TXGBE_MACCNTCTL_RC);
+
+	wr32m(hw, TXGBE_RXFCCFG,
+		TXGBE_RXFCCFG_FC, TXGBE_RXFCCFG_FC);
+
+	wr32(hw, TXGBE_MACRXFLT, TXGBE_MACRXFLT_PROMISC);
+
+	wr32(hw, TXGBE_MAC_WDG_TIMEOUT, mac_wdg_timeout);
+	wr32(hw, TXGBE_RXFCCFG, mac_flow_ctrl);
+
+	return 0;
+}
+
 static void
 txgbe_reset_misc(struct txgbe_hw *hw)
 {
 	int i;
 	u32 value;
+	int err = 0;
+	u32 speed;
 
 	wr32(hw, TXGBE_ISBADDRL, hw->isb_dma & 0x00000000FFFFFFFF);
 	wr32(hw, TXGBE_ISBADDRH, hw->isb_dma >> 32);
 
-	value = rd32_epcs(hw, SR_XS_PCS_CTRL2);
-	if ((value & 0x3) != SR_PCS_CTRL2_TYPE_SEL_X)
-		hw->link_status = TXGBE_LINK_STATUS_NONE;
+	if (hw->mac.type == txgbe_mac_aml) {
+		if ((rd32(hw, TXGBE_EPHY_STAT) & TXGBE_EPHY_STAT_PPL_LOCK)
+						!= TXGBE_EPHY_STAT_PPL_LOCK) {
+			speed = TXGBE_LINK_SPEED_25GB_FULL
+			      | TXGBE_LINK_SPEED_10GB_FULL;
+			err = hw->mac.setup_link(hw, speed, false);
+			if (err) {
+				DEBUGOUT("setup phy failed");
+				return;
+			}
+		}
+	} else if (hw->mac.type == txgbe_mac_aml40) {
+		if (!(rd32(hw, TXGBE_EPHY_STAT) & TXGBE_EPHY_STAT_PPL_LOCK)) {
+			speed = TXGBE_LINK_SPEED_40GB_FULL;
+			err = hw->mac.setup_link(hw, speed, false);
+			if (err) {
+				DEBUGOUT("setup phy failed");
+				return;
+			}
+		}
+	} else {
+		value = rd32_epcs(hw, SR_XS_PCS_CTRL2);
+		if ((value & 0x3) != SR_PCS_CTRL2_TYPE_SEL_X)
+			hw->link_status = TXGBE_LINK_STATUS_NONE;
+	}
 
 	/* receive packets that size > 2048 */
 	wr32m(hw, TXGBE_MACRXCFG,
@@ -3408,7 +3719,7 @@ txgbe_reset_misc(struct txgbe_hw *hw)
 s32 txgbe_reset_hw(struct txgbe_hw *hw)
 {
 	s32 status;
-	u32 autoc;
+	u32 autoc = 0;
 
 	/* Call adapter stop to disable tx/rx and clear interrupts */
 	status = hw->mac.stop_hw(hw);
@@ -3435,8 +3746,10 @@ s32 txgbe_reset_hw(struct txgbe_hw *hw)
 	if (!hw->phy.reset_disable)
 		hw->phy.reset(hw);
 
-	/* remember AUTOC from before we reset */
-	autoc = hw->mac.autoc_read(hw);
+	if (hw->mac.type == txgbe_mac_sp) {
+		/* remember AUTOC from before we reset */
+		autoc = hw->mac.autoc_read(hw);
+	}
 
 mac_reset_top:
 	/* Do LAN reset, the MNG domain will not be reset. */
@@ -3468,16 +3781,28 @@ mac_reset_top:
 		goto mac_reset_top;
 	}
 
-	/*
-	 * Store the original AUTOC/AUTOC2 values if they have not been
-	 * stored off yet.  Otherwise restore the stored original
-	 * values since the reset operation sets back to defaults.
-	 */
-	if (!hw->mac.orig_link_settings_stored) {
-		hw->mac.orig_autoc = hw->mac.autoc_read(hw);
-		hw->mac.orig_link_settings_stored = true;
+	/* amlite TODO*/
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40) {
+		wr32(hw, TXGBE_LINKUP_FILTER, 30);
+		wr32m(hw, TXGBE_MAC_MISC_CTL, TXGBE_MAC_MISC_LINK_STS_MOD,
+			  TXGBE_LINK_BOTH_PCS_MAC);
+		/* amlite: bme */
+		wr32(hw, TXGBE_PX_PF_BME, TXGBE_PX_PF_BME_EN);
+		/* amlite: rdm_rsc_ctl_free_ctl set to 1 */
+		wr32m(hw, TXGBE_RDM_RSC_CTL, TXGBE_RDM_RSC_CTL_FREE_CTL,
+			  TXGBE_RDM_RSC_CTL_FREE_CTL);
 	} else {
-		hw->mac.orig_autoc = autoc;
+		/*
+		 * Store the original AUTOC/AUTOC2 values if they have not been
+		 * stored off yet.  Otherwise restore the stored original
+		 * values since the reset operation sets back to defaults.
+		 */
+		if (!hw->mac.orig_link_settings_stored) {
+			hw->mac.orig_autoc = hw->mac.autoc_read(hw);
+			hw->mac.orig_link_settings_stored = true;
+		} else {
+			hw->mac.orig_autoc = autoc;
+		}
 	}
 
 	if (hw->phy.ffe_set) {
@@ -3485,7 +3810,8 @@ mac_reset_top:
 		msec_delay(50);
 
 		/* A temporary solution to set phy */
-		txgbe_set_phy_temp(hw);
+		if (hw->mac.type == txgbe_mac_sp)
+			txgbe_set_phy_temp(hw);
 	}
 
 	/* Store the permanent mac address */
@@ -3736,3 +4062,37 @@ s32 txgbe_reset_pipeline_raptor(struct txgbe_hw *hw)
 	return err;
 }
 
+s32 txgbe_e56_check_phy_link(struct txgbe_hw *hw, u32 *speed,
+				bool *link_up)
+{
+	u32 rdata = 0;
+	u32 links_reg = 0;
+
+	/* must read it twice because the state may
+	 * not be correct the first time you read it
+	 */
+	rdata = rd32_epcs(hw, 0x30001);
+	rdata = rd32_epcs(hw, 0x30001);
+
+	if (rdata & TXGBE_AML_PHY_LINK_UP)
+		*link_up = true;
+	else
+		*link_up = false;
+
+	links_reg = rd32(hw, TXGBE_PORTSTAT);
+	if (*link_up) {
+		if ((links_reg & TXGBE_CFG_PORT_ST_AML_LINK_40G) ==
+				TXGBE_CFG_PORT_ST_AML_LINK_40G)
+			*speed = TXGBE_LINK_SPEED_40GB_FULL;
+		else if ((links_reg & TXGBE_CFG_PORT_ST_AML_LINK_25G) ==
+				TXGBE_CFG_PORT_ST_AML_LINK_25G)
+			*speed = TXGBE_LINK_SPEED_25GB_FULL;
+		else if ((links_reg & TXGBE_CFG_PORT_ST_AML_LINK_10G) ==
+				TXGBE_CFG_PORT_ST_AML_LINK_10G)
+			*speed = TXGBE_LINK_SPEED_10GB_FULL;
+	} else {
+		*speed = TXGBE_LINK_SPEED_UNKNOWN;
+	}
+
+	return 0;
+}

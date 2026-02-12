@@ -15,6 +15,7 @@
 #include <rte_log.h>
 #include <rte_spinlock.h>
 
+#include <eal_export.h>
 #include "eal_filesystem.h"
 #include "eal_private.h"
 
@@ -117,9 +118,11 @@ find_next_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 {
 	const struct used_mask *msk = get_used_mask(arr->data, arr->elt_sz,
 			arr->len);
-	unsigned int msk_idx, lookahead_idx, first, first_mod;
+	unsigned int msk_idx, first, first_mod;
 	unsigned int last, last_mod;
-	uint64_t last_msk, ignore_msk;
+	uint64_t last_msk, first_msk;
+	unsigned int run_start, left = 0;
+	bool run_started = false;
 
 	/*
 	 * mask only has granularity of MASK_ALIGN, but start may not be aligned
@@ -128,7 +131,7 @@ find_next_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 	 */
 	first = MASK_LEN_TO_IDX(start);
 	first_mod = MASK_LEN_TO_MOD(start);
-	ignore_msk = ~((1ULL << first_mod) - 1);
+	first_msk = ~((1ULL << first_mod) - 1);
 
 	/* array length may not be aligned, so calculate ignore mask for last
 	 * mask index.
@@ -137,123 +140,120 @@ find_next_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 	last_mod = MASK_LEN_TO_MOD(arr->len);
 	last_msk = ~(UINT64_MAX << last_mod);
 
+	left = n;
+
 	for (msk_idx = first; msk_idx < msk->n_masks; msk_idx++) {
-		uint64_t cur_msk, lookahead_msk;
-		unsigned int run_start, clz, left;
-		bool found = false;
+		unsigned int s_idx, clz, need;
+		uint64_t cur_msk, tmp_msk;
+
 		/*
-		 * The process of getting n consecutive bits for arbitrary n is
-		 * a bit involved, but here it is in a nutshell:
+		 * In order to find N consecutive bits for arbitrary N, we need
+		 * to be aware of the following:
 		 *
-		 *  1. let n be the number of consecutive bits we're looking for
-		 *  2. check if n can fit in one mask, and if so, do n-1
-		 *     rshift-ands to see if there is an appropriate run inside
-		 *     our current mask
-		 *    2a. if we found a run, bail out early
-		 *    2b. if we didn't find a run, proceed
-		 *  3. invert the mask and count leading zeroes (that is, count
-		 *     how many consecutive set bits we had starting from the
-		 *     end of current mask) as k
-		 *    3a. if k is 0, continue to next mask
-		 *    3b. if k is not 0, we have a potential run
-		 *  4. to satisfy our requirements, next mask must have n-k
-		 *     consecutive set bits right at the start, so we will do
-		 *     (n-k-1) rshift-ands and check if first bit is set.
+		 *  1. To find N number of consecutive bits within a mask, we
+		 *     need to do N-1 rshift-ands and see if we still have set
+		 *     bits anywhere in the mask
+		 *  2. N may be larger than mask size, in which case we need to
+		 *     do a search in multiple consecutive masks
+		 *  3. For multi-mask search to be meaningful, we need to anchor
+		 *     our searches, i.e. first we find a run of M bits at the
+		 *     end of current mask, then we look for N-M bits at the
+		 *     beginning of next mask (or multiple masks)
 		 *
-		 * Step 4 will need to be repeated if (n-k) > MASK_ALIGN until
-		 * we either run out of masks, lose the run, or find what we
-		 * were looking for.
+		 * With all of the above, the algorithm looks as follows:
+		 *
+		 *  1. let N be the number of consecutive bits we're looking for
+		 *  2. if we already started a run, check if we can continue it
+		 *     by looking for remainder of N at the beginning of current
+		 *     mask
+		 *  3. if we lost a run or if we never had a run, we look for N
+		 *     bits anywhere within the current mask (up to mask size,
+		 *     we can finish this run in the next mask if N > mask size)
+		 *  4. if we didn't find anything up to this point, check if any
+		 *     topmost bits of the mask are set (meaning we can start a
+		 *     run and finish it in the next mask)
+		 *  5. at any point in steps 2-4, we may do an early exit due to
+		 *     finding what we were looking for, or continue searching
+		 *     further
 		 */
 		cur_msk = msk->data[msk_idx];
-		left = n;
 
 		/* if we're looking for free spaces, invert the mask */
 		if (!used)
 			cur_msk = ~cur_msk;
 
-		/* combine current ignore mask with last index ignore mask */
+		/* first and last mask may not be aligned */
+		if (msk_idx == first)
+			cur_msk &= first_msk;
 		if (msk_idx == last)
-			ignore_msk |= last_msk;
+			cur_msk &= last_msk;
 
-		/* if we have an ignore mask, ignore once */
-		if (ignore_msk) {
-			cur_msk &= ignore_msk;
-			ignore_msk = 0;
-		}
-
-		/* if n can fit in within a single mask, do a search */
-		if (n <= MASK_ALIGN) {
-			uint64_t tmp_msk = cur_msk;
-			unsigned int s_idx;
-			for (s_idx = 0; s_idx < n - 1; s_idx++)
-				tmp_msk &= tmp_msk >> 1ULL;
-			/* we found what we were looking for */
-			if (tmp_msk != 0) {
-				run_start = rte_ctz64(tmp_msk);
-				return MASK_GET_IDX(msk_idx, run_start);
-			}
-		}
-
-		/*
-		 * we didn't find our run within the mask, or n > MASK_ALIGN,
-		 * so we're going for plan B.
-		 */
-
-		/* count leading zeroes on inverted mask */
-		if (~cur_msk == 0)
-			clz = sizeof(cur_msk) * 8;
-		else
-			clz = rte_clz64(~cur_msk);
-
-		/* if there aren't any runs at the end either, just continue */
-		if (clz == 0)
-			continue;
-
-		/* we have a partial run at the end, so try looking ahead */
-		run_start = MASK_ALIGN - clz;
-		left -= clz;
-
-		for (lookahead_idx = msk_idx + 1; lookahead_idx < msk->n_masks;
-				lookahead_idx++) {
-			unsigned int s_idx, need;
-			lookahead_msk = msk->data[lookahead_idx];
-
-			/* if we're looking for free space, invert the mask */
-			if (!used)
-				lookahead_msk = ~lookahead_msk;
-
+		/* do we have an active previous run? */
+		if (run_started) {
 			/* figure out how many consecutive bits we need here */
 			need = RTE_MIN(left, MASK_ALIGN);
 
+			/* see if we get a run of needed length */
+			tmp_msk = cur_msk;
 			for (s_idx = 0; s_idx < need - 1; s_idx++)
-				lookahead_msk &= lookahead_msk >> 1ULL;
+				tmp_msk &= tmp_msk >> 1ULL;
 
-			/* if first bit is not set, we've lost the run */
-			if ((lookahead_msk & 1) == 0) {
-				/*
-				 * we've scanned this far, so we know there are
-				 * no runs in the space we've lookahead-scanned
-				 * as well, so skip that on next iteration.
-				 */
-				ignore_msk = ~((1ULL << need) - 1);
-				msk_idx = lookahead_idx;
-				break;
+			/* if first bit is set, we keep the run */
+			if (tmp_msk & 1) {
+				left -= need;
+
+				/* did we find what we were looking for? */
+				if (left == 0)
+					return run_start;
+
+				/* keep looking */
+				continue;
 			}
-
-			left -= need;
-
-			/* check if we've found what we were looking for */
-			if (left == 0) {
-				found = true;
-				break;
-			}
+			/* we lost the run, reset */
+			run_started = false;
+			left = n;
 		}
 
-		/* we didn't find anything, so continue */
-		if (!found)
+		/* if we're here, we either lost the run or never had it */
+
+		/* figure out how many consecutive bits we need here */
+		need = RTE_MIN(left, MASK_ALIGN);
+
+		/* do a search */
+		tmp_msk = cur_msk;
+		for (s_idx = 0; s_idx < need - 1; s_idx++)
+			tmp_msk &= tmp_msk >> 1ULL;
+
+		/* have we found something? */
+		if (tmp_msk != 0) {
+			/* figure out where the run started */
+			run_start = MASK_GET_IDX(msk_idx, rte_ctz64(tmp_msk));
+			run_started = true;
+			left -= need;
+
+			/* do we need to look further? */
+			if (left == 0)
+				return run_start;
+
+			/* we need to keep looking */
+			continue;
+		}
+
+		/* we didn't find our run within current mask, go for plan B. */
+
+		/* count leading zeroes on inverted mask */
+		clz = rte_clz64(~cur_msk);
+
+		/* if there aren't any set bits at the end, just continue */
+		if (clz == 0)
 			continue;
 
-		return MASK_GET_IDX(msk_idx, run_start);
+		/* we have a partial run at the end */
+		run_start = MASK_GET_IDX(msk_idx, MASK_ALIGN - clz);
+		run_started = true;
+		left -= clz;
+
+		/* we'll figure this out in the next iteration */
 	}
 	/* we didn't find anything */
 	rte_errno = used ? ENOENT : ENOSPC;
@@ -383,158 +383,143 @@ find_prev_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 {
 	const struct used_mask *msk = get_used_mask(arr->data, arr->elt_sz,
 			arr->len);
-	unsigned int msk_idx, lookbehind_idx, first, first_mod;
-	uint64_t ignore_msk;
+	/* we're going backwards so we need negative space */
+	int64_t msk_idx;
+	unsigned int first, first_mod;
+	uint64_t first_msk;
+	unsigned int run_end, left;
+	bool run_started = false;
 
 	/*
 	 * mask only has granularity of MASK_ALIGN, but start may not be aligned
 	 * on that boundary, so construct a special mask to exclude anything we
-	 * don't want to see to avoid confusing ctz.
+	 * don't want to see to avoid confusing clz. this "first" mask is
+	 * actually our last because we're going backwards, so no second mask
+	 * is required like in find_next_n case.
 	 */
 	first = MASK_LEN_TO_IDX(start);
 	first_mod = MASK_LEN_TO_MOD(start);
 	/* we're going backwards, so mask must start from the top */
-	ignore_msk = first_mod == MASK_ALIGN - 1 ?
+	first_msk = first_mod == MASK_ALIGN - 1 ?
 				UINT64_MAX : /* prevent overflow */
 				~(UINT64_MAX << (first_mod + 1));
 
+	left = n;
+
 	/* go backwards, include zero */
-	msk_idx = first;
-	do {
-		uint64_t cur_msk, lookbehind_msk;
-		unsigned int run_start, run_end, ctz, left;
-		bool found = false;
+	for (msk_idx = first; msk_idx >= 0; msk_idx--) {
+		unsigned int s_idx, ctz, need;
+		uint64_t cur_msk, tmp_msk;
+
 		/*
-		 * The process of getting n consecutive bits from the top for
-		 * arbitrary n is a bit involved, but here it is in a nutshell:
+		 * In order to find N consecutive bits for arbitrary N, we need
+		 * to be aware of the following:
 		 *
-		 *  1. let n be the number of consecutive bits we're looking for
-		 *  2. check if n can fit in one mask, and if so, do n-1
-		 *     lshift-ands to see if there is an appropriate run inside
-		 *     our current mask
-		 *    2a. if we found a run, bail out early
-		 *    2b. if we didn't find a run, proceed
-		 *  3. invert the mask and count trailing zeroes (that is, count
-		 *     how many consecutive set bits we had starting from the
-		 *     start of current mask) as k
-		 *    3a. if k is 0, continue to next mask
-		 *    3b. if k is not 0, we have a potential run
-		 *  4. to satisfy our requirements, next mask must have n-k
-		 *     consecutive set bits at the end, so we will do (n-k-1)
-		 *     lshift-ands and check if last bit is set.
+		 *  1. To find N number of consecutive bits within a mask, we
+		 *     need to do N-1 lshift-ands and see if we still have set
+		 *     bits anywhere in the mask
+		 *  2. N may be larger than mask size, in which case we need to
+		 *     do a search in multiple consecutive masks
+		 *  3. For multi-mask search to be meaningful, we need to anchor
+		 *     our searches, i.e. first we find a run of M bits at the
+		 *     beginning of current mask, then we look for N-M bits at
+		 *     the end of previous mask (or multiple masks)
 		 *
-		 * Step 4 will need to be repeated if (n-k) > MASK_ALIGN until
-		 * we either run out of masks, lose the run, or find what we
-		 * were looking for.
+		 * With all of the above, the algorithm looks as follows:
+		 *
+		 *  1. let N be the number of consecutive bits we're looking for
+		 *  2. if we already started a run, check if we can continue it
+		 *     by looking for remainder of N at the end of current mask
+		 *  3. if we lost a run or if we never had a run, we look for N
+		 *     bits anywhere within the current mask (up to mask size,
+		 *     we can finish this run in the previous mask if N > mask
+		 *     size)
+		 *  4. if we didn't find anything up to this point, check if any
+		 *     first bits of the mask are set (meaning we can start a
+		 *     run and finish it in the previous mask)
+		 *  5. at any point in steps 2-4, we may do an early exit due to
+		 *     finding what we were looking for, or continue searching
+		 *     further
 		 */
 		cur_msk = msk->data[msk_idx];
-		left = n;
 
 		/* if we're looking for free spaces, invert the mask */
 		if (!used)
 			cur_msk = ~cur_msk;
 
-		/* if we have an ignore mask, ignore once */
-		if (ignore_msk) {
-			cur_msk &= ignore_msk;
-			ignore_msk = 0;
-		}
+		/* first mask may not be aligned */
+		if (msk_idx == first)
+			cur_msk &= first_msk;
 
-		/* if n can fit in within a single mask, do a search */
-		if (n <= MASK_ALIGN) {
-			uint64_t tmp_msk = cur_msk;
-			unsigned int s_idx;
-			for (s_idx = 0; s_idx < n - 1; s_idx++)
-				tmp_msk &= tmp_msk << 1ULL;
-			/* we found what we were looking for */
-			if (tmp_msk != 0) {
-				/* clz will give us offset from end of mask, and
-				 * we only get the end of our run, not start,
-				 * so adjust result to point to where start
-				 * would have been.
-				 */
-				run_start = MASK_ALIGN -
-						rte_clz64(tmp_msk) - n;
-				return MASK_GET_IDX(msk_idx, run_start);
-			}
-		}
-
-		/*
-		 * we didn't find our run within the mask, or n > MASK_ALIGN,
-		 * so we're going for plan B.
-		 */
-
-		/* count trailing zeroes on inverted mask */
-		if (~cur_msk == 0)
-			ctz = sizeof(cur_msk) * 8;
-		else
-			ctz = rte_ctz64(~cur_msk);
-
-		/* if there aren't any runs at the start either, just
-		 * continue
-		 */
-		if (ctz == 0)
-			continue;
-
-		/* we have a partial run at the start, so try looking behind */
-		run_end = MASK_GET_IDX(msk_idx, ctz);
-		left -= ctz;
-
-		/* go backwards, include zero */
-		lookbehind_idx = msk_idx - 1;
-
-		/* we can't lookbehind as we've run out of masks, so stop */
-		if (msk_idx == 0)
-			break;
-
-		do {
-			const uint64_t last_bit = 1ULL << (MASK_ALIGN - 1);
-			unsigned int s_idx, need;
-
-			lookbehind_msk = msk->data[lookbehind_idx];
-
-			/* if we're looking for free space, invert the mask */
-			if (!used)
-				lookbehind_msk = ~lookbehind_msk;
+		/* do we have an active previous run? */
+		if (run_started) {
+			uint64_t last_bit = 0x1ULL << (MASK_ALIGN - 1);
 
 			/* figure out how many consecutive bits we need here */
 			need = RTE_MIN(left, MASK_ALIGN);
 
+			/* see if we get a run of needed length */
+			tmp_msk = cur_msk;
 			for (s_idx = 0; s_idx < need - 1; s_idx++)
-				lookbehind_msk &= lookbehind_msk << 1ULL;
+				tmp_msk &= tmp_msk << 1ULL;
 
-			/* if last bit is not set, we've lost the run */
-			if ((lookbehind_msk & last_bit) == 0) {
-				/*
-				 * we've scanned this far, so we know there are
-				 * no runs in the space we've lookbehind-scanned
-				 * as well, so skip that on next iteration.
-				 */
-				ignore_msk = UINT64_MAX << need;
-				msk_idx = lookbehind_idx;
-				break;
+			/* if last bit is set, we keep the run */
+			if (tmp_msk & last_bit) {
+				left -= need;
+
+				/* did we find what we were looking for? */
+				if (left == 0)
+					return run_end - n;
+
+				/* keep looking */
+				continue;
 			}
+			/* we lost the run, reset */
+			run_started = false;
+			left = n;
+		}
 
+		/* if we're here, we either lost the run or never had it */
+
+		/* figure out how many consecutive bits we need here */
+		need = RTE_MIN(left, MASK_ALIGN);
+
+		/* do a search */
+		tmp_msk = cur_msk;
+		for (s_idx = 0; s_idx < need - 1; s_idx++)
+			tmp_msk &= tmp_msk << 1ULL;
+
+		/* have we found something? */
+		if (tmp_msk != 0) {
+			/* figure out where the run started */
+			run_end = MASK_GET_IDX(msk_idx, MASK_ALIGN - rte_clz64(tmp_msk));
+			run_started = true;
 			left -= need;
 
-			/* check if we've found what we were looking for */
-			if (left == 0) {
-				found = true;
-				break;
-			}
-		} while ((lookbehind_idx--) != 0); /* decrement after check to
-						    * include zero
-						    */
+			/* do we need to look further? */
+			if (left == 0)
+				return run_end - n;
 
-		/* we didn't find anything, so continue */
-		if (!found)
+			/* we need to keep looking */
+			continue;
+		}
+
+		/* we didn't find our run within current mask, go for plan B. */
+
+		/* count trailing zeroes on inverted mask */
+		ctz = rte_ctz64(~cur_msk);
+
+		/* if there aren't any set bits at the beginning, just continue */
+		if (ctz == 0)
 			continue;
 
-		/* we've found what we were looking for, but we only know where
-		 * the run ended, so calculate start position.
-		 */
-		return run_end - n;
-	} while (msk_idx-- != 0); /* decrement after check to include zero */
+		/* we have a partial run at the beginning */
+		run_end = MASK_GET_IDX(msk_idx, ctz);
+		run_started = true;
+		left -= ctz;
+
+		/* we'll figure this out in the next iteration */
+	}
 	/* we didn't find anything */
 	rte_errno = used ? ENOENT : ENOSPC;
 	return -1;
@@ -701,6 +686,7 @@ fully_validate(const char *name, unsigned int elt_sz, unsigned int len)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_init)
 int
 rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
 		unsigned int elt_sz)
@@ -827,6 +813,7 @@ fail:
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_attach)
 int
 rte_fbarray_attach(struct rte_fbarray *arr)
 {
@@ -915,6 +902,7 @@ fail:
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_detach)
 int
 rte_fbarray_detach(struct rte_fbarray *arr)
 {
@@ -968,6 +956,7 @@ out:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_destroy)
 int
 rte_fbarray_destroy(struct rte_fbarray *arr)
 {
@@ -1054,6 +1043,7 @@ out:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_get)
 void *
 rte_fbarray_get(const struct rte_fbarray *arr, unsigned int idx)
 {
@@ -1073,18 +1063,21 @@ rte_fbarray_get(const struct rte_fbarray *arr, unsigned int idx)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_set_used)
 int
 rte_fbarray_set_used(struct rte_fbarray *arr, unsigned int idx)
 {
 	return set_used(arr, idx, true);
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_set_free)
 int
 rte_fbarray_set_free(struct rte_fbarray *arr, unsigned int idx)
 {
 	return set_used(arr, idx, false);
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_is_used)
 int
 rte_fbarray_is_used(struct rte_fbarray *arr, unsigned int idx)
 {
@@ -1154,24 +1147,28 @@ out:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_next_free)
 int
 rte_fbarray_find_next_free(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find(arr, start, true, false);
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_next_used)
 int
 rte_fbarray_find_next_used(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find(arr, start, true, true);
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_prev_free)
 int
 rte_fbarray_find_prev_free(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find(arr, start, false, false);
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_prev_used)
 int
 rte_fbarray_find_prev_used(struct rte_fbarray *arr, unsigned int start)
 {
@@ -1230,6 +1227,7 @@ out:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_next_n_free)
 int
 rte_fbarray_find_next_n_free(struct rte_fbarray *arr, unsigned int start,
 		unsigned int n)
@@ -1237,6 +1235,7 @@ rte_fbarray_find_next_n_free(struct rte_fbarray *arr, unsigned int start,
 	return fbarray_find_n(arr, start, n, true, false);
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_next_n_used)
 int
 rte_fbarray_find_next_n_used(struct rte_fbarray *arr, unsigned int start,
 		unsigned int n)
@@ -1244,6 +1243,7 @@ rte_fbarray_find_next_n_used(struct rte_fbarray *arr, unsigned int start,
 	return fbarray_find_n(arr, start, n, true, true);
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_prev_n_free)
 int
 rte_fbarray_find_prev_n_free(struct rte_fbarray *arr, unsigned int start,
 		unsigned int n)
@@ -1251,6 +1251,7 @@ rte_fbarray_find_prev_n_free(struct rte_fbarray *arr, unsigned int start,
 	return fbarray_find_n(arr, start, n, false, false);
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_prev_n_used)
 int
 rte_fbarray_find_prev_n_used(struct rte_fbarray *arr, unsigned int start,
 		unsigned int n)
@@ -1394,24 +1395,28 @@ fbarray_find_biggest(struct rte_fbarray *arr, unsigned int start, bool used,
 	return biggest_idx;
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_biggest_free)
 int
 rte_fbarray_find_biggest_free(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find_biggest(arr, start, false, false);
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_biggest_used)
 int
 rte_fbarray_find_biggest_used(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find_biggest(arr, start, true, false);
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_rev_biggest_free)
 int
 rte_fbarray_find_rev_biggest_free(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find_biggest(arr, start, false, true);
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_rev_biggest_used)
 int
 rte_fbarray_find_rev_biggest_used(struct rte_fbarray *arr, unsigned int start)
 {
@@ -1419,30 +1424,35 @@ rte_fbarray_find_rev_biggest_used(struct rte_fbarray *arr, unsigned int start)
 }
 
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_contig_free)
 int
 rte_fbarray_find_contig_free(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find_contig(arr, start, true, false);
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_contig_used)
 int
 rte_fbarray_find_contig_used(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find_contig(arr, start, true, true);
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_rev_contig_free)
 int
 rte_fbarray_find_rev_contig_free(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find_contig(arr, start, false, false);
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_rev_contig_used)
 int
 rte_fbarray_find_rev_contig_used(struct rte_fbarray *arr, unsigned int start)
 {
 	return fbarray_find_contig(arr, start, false, true);
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_find_idx)
 int
 rte_fbarray_find_idx(const struct rte_fbarray *arr, const void *elt)
 {
@@ -1469,6 +1479,7 @@ rte_fbarray_find_idx(const struct rte_fbarray *arr, const void *elt)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_fbarray_dump_metadata)
 void
 rte_fbarray_dump_metadata(struct rte_fbarray *arr, FILE *f)
 {

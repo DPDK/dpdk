@@ -113,5 +113,4 @@ test_cksum_perf(void)
 	return TEST_SUCCESS;
 }
 
-
-REGISTER_TEST_COMMAND(cksum_perf_autotest, test_cksum_perf);
+REGISTER_PERF_TEST(cksum_perf_autotest, test_cksum_perf);

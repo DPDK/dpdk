@@ -87,9 +87,9 @@ eth_virtio_pci_init(struct rte_eth_dev *eth_dev)
 	} else {
 		VTPCI_DEV(hw) = pci_dev;
 		if (dev->modern)
-			VIRTIO_OPS(hw) = &modern_ops;
+			VIRTIO_OPS(hw) = &virtio_modern_ops;
 		else
-			VIRTIO_OPS(hw) = &legacy_ops;
+			VIRTIO_OPS(hw) = &virtio_legacy_ops;
 
 		ret = virtio_remap_pci(RTE_ETH_DEV_TO_PCI(eth_dev), dev);
 		if (ret < 0) {
@@ -239,4 +239,4 @@ RTE_INIT(rte_virtio_net_pci_pmd_init)
 
 RTE_PMD_REGISTER_PCI_TABLE(net_virtio, pci_id_virtio_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_virtio, "* igb_uio | uio_pci_generic | vfio-pci");
-RTE_PMD_EXPORT_NAME(net_virtio, __COUNTER__);
+RTE_PMD_EXPORT_NAME(net_virtio);

@@ -10,6 +10,7 @@
 #endif
 #include <unistd.h>
 
+#include <eal_export.h>
 #include <rte_cycles.h>
 #include <rte_thread.h>
 #include <rte_common.h>
@@ -1190,7 +1191,6 @@ rxa_intr_thread(void *arg)
 static inline bool
 rxa_intr_ring_dequeue(struct event_eth_rx_adapter *rx_adapter)
 {
-	uint32_t n;
 	uint32_t nb_rx = 0;
 	int rxq_empty;
 	struct eth_event_enqueue_buffer *buf;
@@ -1259,9 +1259,9 @@ rxa_intr_ring_dequeue(struct event_eth_rx_adapter *rx_adapter)
 		if (rxa_shared_intr(dev_info, queue)) {
 			uint16_t i;
 			uint16_t nb_queues;
+			uint32_t n = 0;
 
 			nb_queues = dev_info->dev->data->nb_rx_queues;
-			n = 0;
 			for (i = dev_info->next_q_idx; i < nb_queues; i++) {
 				uint8_t enq_buffer_full;
 
@@ -1288,7 +1288,7 @@ rxa_intr_ring_dequeue(struct event_eth_rx_adapter *rx_adapter)
 						RTE_MAX_RXTX_INTR_VEC_ID - 1 :
 						0;
 		} else {
-			n = rxa_eth_rx(rx_adapter, port, queue, nb_rx,
+			uint32_t n = rxa_eth_rx(rx_adapter, port, queue, nb_rx,
 				rx_adapter->max_nb_rx,
 				&rxq_empty, buf, stats);
 			rx_adapter->qd_valid = !rxq_empty;
@@ -2299,7 +2299,7 @@ rxa_sw_add(struct event_eth_rx_adapter *rx_adapter, uint16_t eth_dev_id,
 			for (i = 0; i < dev_info->dev->data->nb_rx_queues; i++)
 				dev_info->intr_queue[i] = i;
 		} else {
-			if (!rxa_intr_queue(dev_info, rx_queue_id))
+			if (!rxa_intr_queue(dev_info, rx_queue_id) && nb_rx_intr > 0)
 				dev_info->intr_queue[nb_rx_intr - 1] =
 					rx_queue_id;
 		}
@@ -2362,10 +2362,8 @@ rxa_ctrl(uint8_t id, int start)
 		dev_info->dev_rx_started = start;
 		if (dev_info->internal_event_port == 0)
 			continue;
-		start ? (*dev->dev_ops->eth_rx_adapter_start)(dev,
-						&rte_eth_devices[i]) :
-			(*dev->dev_ops->eth_rx_adapter_stop)(dev,
-						&rte_eth_devices[i]);
+		start ? dev->dev_ops->eth_rx_adapter_start(dev, &rte_eth_devices[i]) :
+			dev->dev_ops->eth_rx_adapter_stop(dev, &rte_eth_devices[i]);
 	}
 
 	if (use_service) {
@@ -2520,6 +2518,7 @@ rxa_config_params_validate(struct rte_event_eth_rx_adapter_params *rxa_params,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_create_ext)
 int
 rte_event_eth_rx_adapter_create_ext(uint8_t id, uint8_t dev_id,
 				rte_event_eth_rx_adapter_conf_cb conf_cb,
@@ -2534,6 +2533,7 @@ rte_event_eth_rx_adapter_create_ext(uint8_t id, uint8_t dev_id,
 	return rxa_create(id, dev_id, &rxa_params, conf_cb, conf_arg);
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_create_with_params)
 int
 rte_event_eth_rx_adapter_create_with_params(uint8_t id, uint8_t dev_id,
 			struct rte_event_port_conf *port_config,
@@ -2566,6 +2566,7 @@ rte_event_eth_rx_adapter_create_with_params(uint8_t id, uint8_t dev_id,
 	return ret;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_eth_rx_adapter_create_ext_with_params, 23.11)
 int
 rte_event_eth_rx_adapter_create_ext_with_params(uint8_t id, uint8_t dev_id,
 			rte_event_eth_rx_adapter_conf_cb conf_cb,
@@ -2582,6 +2583,7 @@ rte_event_eth_rx_adapter_create_ext_with_params(uint8_t id, uint8_t dev_id,
 	return rxa_create(id, dev_id, &temp_params, conf_cb, conf_arg);
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_create)
 int
 rte_event_eth_rx_adapter_create(uint8_t id, uint8_t dev_id,
 		struct rte_event_port_conf *port_config)
@@ -2607,6 +2609,7 @@ rte_event_eth_rx_adapter_create(uint8_t id, uint8_t dev_id,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_free)
 int
 rte_event_eth_rx_adapter_free(uint8_t id)
 {
@@ -2639,6 +2642,7 @@ rte_event_eth_rx_adapter_free(uint8_t id)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_queue_add)
 int
 rte_event_eth_rx_adapter_queue_add(uint8_t id,
 		uint16_t eth_dev_id,
@@ -2749,7 +2753,7 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 	dev_info = &rx_adapter->eth_devices[eth_dev_id];
 
 	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT) {
-		if (*dev->dev_ops->eth_rx_adapter_queue_add == NULL)
+		if (dev->dev_ops->eth_rx_adapter_queue_add == NULL)
 			return -ENOTSUP;
 		if (dev_info->rx_queue == NULL) {
 			dev_info->rx_queue =
@@ -2761,9 +2765,8 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 				return -ENOMEM;
 		}
 
-		ret = (*dev->dev_ops->eth_rx_adapter_queue_add)(dev,
-				&rte_eth_devices[eth_dev_id],
-				rx_queue_id, queue_conf);
+		ret = dev->dev_ops->eth_rx_adapter_queue_add(dev, &rte_eth_devices[eth_dev_id],
+							     rx_queue_id, queue_conf);
 		if (ret == 0) {
 			dev_info->internal_event_port = 1;
 			rxa_update_queue(rx_adapter,
@@ -2793,6 +2796,167 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_eth_rx_adapter_queues_add, 25.03)
+int
+rte_event_eth_rx_adapter_queues_add(uint8_t id, uint16_t eth_dev_id, int32_t rx_queue_id[],
+				    const struct rte_event_eth_rx_adapter_queue_conf queue_conf[],
+				    uint16_t nb_rx_queues)
+{
+	struct rte_event_eth_rx_adapter_vector_limits limits;
+	struct event_eth_rx_adapter *rx_adapter;
+	struct eth_device_info *dev_info;
+	struct rte_eventdev *dev;
+	uint32_t cap, i;
+	int ret;
+
+	if (rxa_memzone_lookup())
+		return -ENOMEM;
+
+	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(eth_dev_id, -EINVAL);
+
+	rx_adapter = rxa_id_to_adapter(id);
+	if ((rx_adapter == NULL) || (queue_conf == NULL))
+		return -EINVAL;
+
+	if (nb_rx_queues && rx_queue_id == NULL)
+		return -EINVAL;
+
+	if (nb_rx_queues > rte_eth_devices[eth_dev_id].data->nb_rx_queues) {
+		RTE_EDEV_LOG_ERR("Invalid number of rx queues %" PRIu16, nb_rx_queues);
+		return -EINVAL;
+	}
+
+	ret = rte_event_eth_rx_adapter_caps_get(rx_adapter->eventdev_id, eth_dev_id, &cap);
+	if (ret) {
+		RTE_EDEV_LOG_ERR("Failed to get adapter caps edev %" PRIu8 "eth port %" PRIu16, id,
+				 eth_dev_id);
+		return ret;
+	}
+
+	if ((cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ) == 0) {
+		for (i = 1; i < nb_rx_queues; i++) {
+			if (queue_conf[i].ev.queue_id != queue_conf[0].ev.queue_id) {
+				RTE_EDEV_LOG_ERR("Rx queues can only be connected to single "
+						 "event queue, eth port: %" PRIu16
+						 " adapter id: %" PRIu8,
+						 eth_dev_id, id);
+				return -EINVAL;
+			}
+		}
+	}
+
+	for (i = 0; i < (nb_rx_queues ? nb_rx_queues : 1); i++) {
+		const struct rte_event_eth_rx_adapter_queue_conf *conf;
+
+		conf = &queue_conf[i];
+		if ((cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_OVERRIDE_FLOW_ID) == 0 &&
+		    (conf->rx_queue_flags & RTE_EVENT_ETH_RX_ADAPTER_QUEUE_FLOW_ID_VALID)) {
+			RTE_EDEV_LOG_ERR("Flow ID override is not supported in queue_conf[%" PRIu32
+					 "], eth port: %" PRIu16 " adapter id: %" PRIu8,
+					 i, eth_dev_id, id);
+			return -EINVAL;
+		}
+
+		if (conf->rx_queue_flags & RTE_EVENT_ETH_RX_ADAPTER_QUEUE_EVENT_VECTOR) {
+			if ((cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_EVENT_VECTOR) == 0) {
+				RTE_EDEV_LOG_ERR(
+					"Event vectorization is unsupported in queue_conf[%" PRIu32
+					"], eth port: %" PRIu16 " adapter id: %" PRIu8,
+					i, eth_dev_id, id);
+				return -EINVAL;
+			}
+
+			ret = rte_event_eth_rx_adapter_vector_limits_get(rx_adapter->eventdev_id,
+									 eth_dev_id, &limits);
+			if (ret < 0) {
+				RTE_EDEV_LOG_ERR("Failed to get event device vector limits,"
+						 " eth port: %" PRIu16 " adapter id: %" PRIu8,
+						 eth_dev_id, id);
+				return -EINVAL;
+			}
+
+			if (conf->vector_sz < limits.min_sz || conf->vector_sz > limits.max_sz ||
+			    conf->vector_timeout_ns < limits.min_timeout_ns ||
+			    conf->vector_timeout_ns > limits.max_timeout_ns ||
+			    conf->vector_mp == NULL) {
+				RTE_EDEV_LOG_ERR(
+					"Invalid event vector configuration in queue_conf[%" PRIu32
+					"], eth port: %" PRIu16 " adapter id: %" PRIu8,
+					i, eth_dev_id, id);
+				return -EINVAL;
+			}
+
+			if (conf->vector_mp->elt_size < (sizeof(struct rte_event_vector) +
+							 (sizeof(uintptr_t) * conf->vector_sz))) {
+				RTE_EDEV_LOG_ERR(
+					"Invalid event vector configuration in queue_conf[%" PRIu32
+					"], eth port: %" PRIu16 " adapter id: %" PRIu8,
+					i, eth_dev_id, id);
+				return -EINVAL;
+			}
+		}
+
+		if ((rx_adapter->use_queue_event_buf && conf->event_buf_size == 0) ||
+		    (!rx_adapter->use_queue_event_buf && conf->event_buf_size != 0)) {
+			RTE_EDEV_LOG_ERR("Invalid Event buffer size in queue_conf[%" PRIu32 "]", i);
+			return -EINVAL;
+		}
+	}
+
+	dev = &rte_eventdevs[rx_adapter->eventdev_id];
+	dev_info = &rx_adapter->eth_devices[eth_dev_id];
+
+	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT) {
+		if (dev->dev_ops->eth_rx_adapter_queues_add == NULL)
+			return -ENOTSUP;
+
+		if (dev_info->rx_queue == NULL) {
+			dev_info->rx_queue =
+				rte_zmalloc_socket(rx_adapter->mem_name,
+						   dev_info->dev->data->nb_rx_queues *
+							   sizeof(struct eth_rx_queue_info),
+						   0, rx_adapter->socket_id);
+			if (dev_info->rx_queue == NULL)
+				return -ENOMEM;
+		}
+
+		ret = dev->dev_ops->eth_rx_adapter_queues_add(
+			dev, &rte_eth_devices[eth_dev_id], rx_queue_id, queue_conf, nb_rx_queues);
+		if (ret == 0) {
+			dev_info->internal_event_port = 1;
+
+			if (nb_rx_queues == 0)
+				rxa_update_queue(rx_adapter, dev_info, -1, 1);
+
+			for (i = 0; i < nb_rx_queues; i++)
+				rxa_update_queue(rx_adapter, dev_info, rx_queue_id[i], 1);
+		}
+	} else {
+		rte_spinlock_lock(&rx_adapter->rx_lock);
+		dev_info->internal_event_port = 0;
+		ret = rxa_init_service(rx_adapter, id);
+		if (ret == 0) {
+			uint32_t service_id = rx_adapter->service_id;
+
+			if (nb_rx_queues == 0)
+				ret = rxa_sw_add(rx_adapter, eth_dev_id, -1, &queue_conf[0]);
+
+			for (i = 0; i < nb_rx_queues; i++)
+				ret = rxa_sw_add(rx_adapter, eth_dev_id, rx_queue_id[i],
+						 &queue_conf[i]);
+
+			rte_service_component_runstate_set(service_id,
+							   rxa_sw_adapter_queue_count(rx_adapter));
+		}
+		rte_spinlock_unlock(&rx_adapter->rx_lock);
+	}
+
+	rte_eventdev_trace_eth_rx_adapter_queues_add(id, eth_dev_id, nb_rx_queues, rx_queue_id,
+						     queue_conf, ret);
+	return ret;
+}
+
 static int
 rxa_sw_vector_limits(struct rte_event_eth_rx_adapter_vector_limits *limits)
 {
@@ -2804,6 +2968,7 @@ rxa_sw_vector_limits(struct rte_event_eth_rx_adapter_vector_limits *limits)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_queue_del)
 int
 rte_event_eth_rx_adapter_queue_del(uint8_t id, uint16_t eth_dev_id,
 				int32_t rx_queue_id)
@@ -2847,11 +3012,10 @@ rte_event_eth_rx_adapter_queue_del(uint8_t id, uint16_t eth_dev_id,
 	dev_info = &rx_adapter->eth_devices[eth_dev_id];
 
 	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT) {
-		if (*dev->dev_ops->eth_rx_adapter_queue_del == NULL)
+		if (dev->dev_ops->eth_rx_adapter_queue_del == NULL)
 			return -ENOTSUP;
-		ret = (*dev->dev_ops->eth_rx_adapter_queue_del)(dev,
-						&rte_eth_devices[eth_dev_id],
-						rx_queue_id);
+		ret = dev->dev_ops->eth_rx_adapter_queue_del(dev, &rte_eth_devices[eth_dev_id],
+							     rx_queue_id);
 		if (ret == 0) {
 			rxa_update_queue(rx_adapter,
 					&rx_adapter->eth_devices[eth_dev_id],
@@ -2933,6 +3097,7 @@ unlock_ret:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_vector_limits_get)
 int
 rte_event_eth_rx_adapter_vector_limits_get(
 	uint8_t dev_id, uint16_t eth_port_id,
@@ -2959,10 +3124,11 @@ rte_event_eth_rx_adapter_vector_limits_get(
 	}
 
 	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT) {
-		if (*dev->dev_ops->eth_rx_adapter_vector_limits_get == NULL)
+		if (dev->dev_ops->eth_rx_adapter_vector_limits_get == NULL)
 			return -ENOTSUP;
-		ret = dev->dev_ops->eth_rx_adapter_vector_limits_get(
-			dev, &rte_eth_devices[eth_port_id], limits);
+		ret = dev->dev_ops->eth_rx_adapter_vector_limits_get(dev,
+								     &rte_eth_devices[eth_port_id],
+								     limits);
 	} else {
 		ret = rxa_sw_vector_limits(limits);
 	}
@@ -2973,6 +3139,7 @@ rte_event_eth_rx_adapter_vector_limits_get(
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_start)
 int
 rte_event_eth_rx_adapter_start(uint8_t id)
 {
@@ -2980,6 +3147,7 @@ rte_event_eth_rx_adapter_start(uint8_t id)
 	return rxa_ctrl(id, 1);
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_stop)
 int
 rte_event_eth_rx_adapter_stop(uint8_t id)
 {
@@ -2996,6 +3164,7 @@ rxa_queue_stats_reset(struct eth_rx_queue_info *queue_info)
 	memset(q_stats, 0, sizeof(*q_stats));
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_stats_get)
 int
 rte_event_eth_rx_adapter_stats_get(uint8_t id,
 			       struct rte_event_eth_rx_adapter_stats *stats)
@@ -3051,11 +3220,10 @@ rte_event_eth_rx_adapter_stats_get(uint8_t id,
 		}
 
 		if (dev_info->internal_event_port == 0 ||
-			dev->dev_ops->eth_rx_adapter_stats_get == NULL)
+		    dev->dev_ops->eth_rx_adapter_stats_get == NULL)
 			continue;
-		ret = (*dev->dev_ops->eth_rx_adapter_stats_get)(dev,
-						&rte_eth_devices[i],
-						&dev_stats);
+		ret = dev->dev_ops->eth_rx_adapter_stats_get(dev, &rte_eth_devices[i],
+							     &dev_stats);
 		if (ret)
 			continue;
 		dev_stats_sum.rx_packets += dev_stats.rx_packets;
@@ -3071,6 +3239,7 @@ rte_event_eth_rx_adapter_stats_get(uint8_t id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_queue_stats_get)
 int
 rte_event_eth_rx_adapter_queue_stats_get(uint8_t id,
 		uint16_t eth_dev_id,
@@ -3127,7 +3296,7 @@ rte_event_eth_rx_adapter_queue_stats_get(uint8_t id,
 
 	dev = &rte_eventdevs[rx_adapter->eventdev_id];
 	if (dev->dev_ops->eth_rx_adapter_queue_stats_get != NULL) {
-		return (*dev->dev_ops->eth_rx_adapter_queue_stats_get)(dev,
+		return dev->dev_ops->eth_rx_adapter_queue_stats_get(dev,
 						&rte_eth_devices[eth_dev_id],
 						rx_queue_id, stats);
 	}
@@ -3135,6 +3304,7 @@ rte_event_eth_rx_adapter_queue_stats_get(uint8_t id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_stats_reset)
 int
 rte_event_eth_rx_adapter_stats_reset(uint8_t id)
 {
@@ -3172,10 +3342,9 @@ rte_event_eth_rx_adapter_stats_reset(uint8_t id)
 		}
 
 		if (dev_info->internal_event_port == 0 ||
-			dev->dev_ops->eth_rx_adapter_stats_reset == NULL)
+		    dev->dev_ops->eth_rx_adapter_stats_reset == NULL)
 			continue;
-		(*dev->dev_ops->eth_rx_adapter_stats_reset)(dev,
-							&rte_eth_devices[i]);
+		dev->dev_ops->eth_rx_adapter_stats_reset(dev, &rte_eth_devices[i]);
 	}
 
 	memset(&rx_adapter->stats, 0, sizeof(rx_adapter->stats));
@@ -3183,6 +3352,7 @@ rte_event_eth_rx_adapter_stats_reset(uint8_t id)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_queue_stats_reset)
 int
 rte_event_eth_rx_adapter_queue_stats_reset(uint8_t id,
 		uint16_t eth_dev_id,
@@ -3229,7 +3399,7 @@ rte_event_eth_rx_adapter_queue_stats_reset(uint8_t id,
 
 	dev = &rte_eventdevs[rx_adapter->eventdev_id];
 	if (dev->dev_ops->eth_rx_adapter_queue_stats_reset != NULL) {
-		return (*dev->dev_ops->eth_rx_adapter_queue_stats_reset)(dev,
+		return dev->dev_ops->eth_rx_adapter_queue_stats_reset(dev,
 						&rte_eth_devices[eth_dev_id],
 						rx_queue_id);
 	}
@@ -3237,6 +3407,7 @@ rte_event_eth_rx_adapter_queue_stats_reset(uint8_t id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_service_id_get)
 int
 rte_event_eth_rx_adapter_service_id_get(uint8_t id, uint32_t *service_id)
 {
@@ -3259,6 +3430,7 @@ rte_event_eth_rx_adapter_service_id_get(uint8_t id, uint32_t *service_id)
 	return rx_adapter->service_inited ? 0 : -ESRCH;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_event_port_get)
 int
 rte_event_eth_rx_adapter_event_port_get(uint8_t id, uint8_t *event_port_id)
 {
@@ -3281,6 +3453,7 @@ rte_event_eth_rx_adapter_event_port_get(uint8_t id, uint8_t *event_port_id)
 	return rx_adapter->service_inited ? 0 : -ESRCH;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_cb_register)
 int
 rte_event_eth_rx_adapter_cb_register(uint8_t id,
 					uint16_t eth_dev_id,
@@ -3329,6 +3502,7 @@ rte_event_eth_rx_adapter_cb_register(uint8_t id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_queue_conf_get)
 int
 rte_event_eth_rx_adapter_queue_conf_get(uint8_t id,
 			uint16_t eth_dev_id,
@@ -3396,10 +3570,9 @@ rte_event_eth_rx_adapter_queue_conf_get(uint8_t id,
 
 	dev = &rte_eventdevs[rx_adapter->eventdev_id];
 	if (dev->dev_ops->eth_rx_adapter_queue_conf_get != NULL) {
-		ret = (*dev->dev_ops->eth_rx_adapter_queue_conf_get)(dev,
-						&rte_eth_devices[eth_dev_id],
-						rx_queue_id,
-						queue_conf);
+		ret = dev->dev_ops->eth_rx_adapter_queue_conf_get(dev,
+								  &rte_eth_devices[eth_dev_id],
+								  rx_queue_id, queue_conf);
 		return ret;
 	}
 
@@ -3431,6 +3604,7 @@ rxa_is_queue_added(struct event_eth_rx_adapter *rx_adapter,
 #define rxa_dev_instance_get(rx_adapter) \
 		rxa_evdev((rx_adapter))->dev_ops->eth_rx_adapter_instance_get
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_instance_get)
 int
 rte_event_eth_rx_adapter_instance_get(uint16_t eth_dev_id,
 				      uint16_t rx_queue_id,
@@ -3509,6 +3683,7 @@ rxa_caps_check(struct event_eth_rx_adapter *rxa)
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_eth_rx_adapter_runtime_params_init, 23.03)
 int
 rte_event_eth_rx_adapter_runtime_params_init(
 		struct rte_event_eth_rx_adapter_runtime_params *params)
@@ -3522,6 +3697,7 @@ rte_event_eth_rx_adapter_runtime_params_init(
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_eth_rx_adapter_runtime_params_set, 23.03)
 int
 rte_event_eth_rx_adapter_runtime_params_set(uint8_t id,
 		struct rte_event_eth_rx_adapter_runtime_params *params)
@@ -3550,6 +3726,7 @@ rte_event_eth_rx_adapter_runtime_params_set(uint8_t id,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_eth_rx_adapter_runtime_params_get, 23.03)
 int
 rte_event_eth_rx_adapter_runtime_params_get(uint8_t id,
 		struct rte_event_eth_rx_adapter_runtime_params *params)

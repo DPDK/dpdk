@@ -47,7 +47,7 @@ void bnxt_rep_tx_queue_release_op(struct rte_eth_dev *dev, uint16_t queue_idx);
 int  bnxt_rep_dev_stop_op(struct rte_eth_dev *eth_dev);
 int bnxt_rep_dev_close_op(struct rte_eth_dev *eth_dev);
 int bnxt_rep_stats_get_op(struct rte_eth_dev *eth_dev,
-			     struct rte_eth_stats *stats);
+			     struct rte_eth_stats *stats, struct eth_queue_stats *qstats);
 int bnxt_rep_stats_reset_op(struct rte_eth_dev *eth_dev);
 int bnxt_rep_stop_all(struct bnxt *bp);
 #endif /* _BNXT_REPS_H_ */

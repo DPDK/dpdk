@@ -19,13 +19,22 @@ extern struct
 bnxt_ulp_mapper_key_info ulp_wh_plus_class_key_info_list[];
 
 extern struct
+bnxt_ulp_mapper_field_info ulp_wh_plus_class_key_ext_list[];
+
+extern struct
 bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[];
 
 extern struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[];
 
+extern struct
+bnxt_ulp_mapper_cond_list_info ulp_wh_plus_class_cond_oper_list[];
+
 extern struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[];
 
 extern struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[];
+
+extern struct
+bnxt_ulp_mapper_field_info ulp_wh_plus_act_key_ext_list[];
 
 extern struct
 bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[];
@@ -35,6 +44,9 @@ bnxt_ulp_mapper_cond_info ulp_wh_plus_class_cond_list[];
 
 extern struct
 bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[];
+
+extern struct
+bnxt_ulp_mapper_cond_list_info ulp_wh_plus_act_cond_oper_list[];
 
 extern struct bnxt_ulp_mapper_key_info ulp_wh_plus_act_key_info_list[];
 
@@ -70,6 +82,9 @@ bnxt_ulp_mapper_cond_info ulp_stingray_class_cond_list[];
 extern struct
 bnxt_ulp_mapper_cond_info ulp_stingray_act_cond_list[];
 
+extern struct
+bnxt_ulp_mapper_cond_list_info ulp_stingray_act_cond_oper_list[];
+
 /* Thor template table declarations */
 extern struct bnxt_ulp_mapper_tmpl_info ulp_thor_class_tmpl_list[];
 
@@ -79,9 +94,15 @@ extern struct
 bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[];
 
 extern struct
+bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[];
+
+extern struct
 bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[];
 
 extern struct bnxt_ulp_mapper_ident_info ulp_thor_class_ident_list[];
+
+extern struct
+bnxt_ulp_mapper_cond_list_info ulp_thor_class_cond_oper_list[];
 
 extern struct bnxt_ulp_mapper_tmpl_info ulp_thor_act_tmpl_list[];
 
@@ -92,6 +113,9 @@ extern struct bnxt_ulp_mapper_key_info ulp_thor_act_key_info_list[];
 extern struct bnxt_ulp_mapper_ident_info ulp_thor_act_ident_list[];
 
 extern struct
+bnxt_ulp_mapper_field_info ulp_thor_act_key_ext_list[];
+
+extern struct
 bnxt_ulp_mapper_field_info ulp_thor_act_result_field_list[];
 
 extern struct
@@ -100,13 +124,61 @@ bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[];
 extern struct
 bnxt_ulp_mapper_cond_info ulp_thor_act_cond_list[];
 
+extern struct
+bnxt_ulp_mapper_cond_list_info ulp_thor_act_cond_oper_list[];
+
 extern struct bnxt_ulp_mapper_key_info ulp_wh_plus_act_key_info_list[];
 
 extern struct bnxt_ulp_mapper_ident_info ulp_wh_plus_act_ident_list[];
 
 /* Global declarations */
 extern uint8_t ulp_glb_field_tbl[];
+extern uint32_t ulp_glb_app_sig_tbl[];
 
 extern struct
 bnxt_ulp_shared_act_info ulp_shared_act_info[];
+
+/* Thor2 template table declarations */
+extern struct bnxt_ulp_mapper_tmpl_info ulp_thor2_class_tmpl_list[];
+
+extern struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[];
+
+extern struct
+bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[];
+
+extern struct
+bnxt_ulp_mapper_field_info ulp_thor2_class_key_ext_list[];
+
+extern struct
+bnxt_ulp_mapper_field_info ulp_thor2_class_result_field_list[];
+
+extern struct bnxt_ulp_mapper_ident_info ulp_thor2_class_ident_list[];
+
+extern struct
+bnxt_ulp_mapper_cond_list_info ulp_thor2_class_cond_oper_list[];
+
+extern struct bnxt_ulp_mapper_tmpl_info ulp_thor2_act_tmpl_list[];
+
+extern struct bnxt_ulp_mapper_tbl_info ulp_thor2_act_tbl_list[];
+
+extern struct
+bnxt_ulp_mapper_key_info ulp_thor2_act_key_info_list[];
+
+extern struct
+bnxt_ulp_mapper_field_info ulp_thor2_act_key_ext_list[];
+
+extern struct
+bnxt_ulp_mapper_field_info ulp_thor2_act_result_field_list[];
+
+extern struct bnxt_ulp_mapper_ident_info ulp_thor2_act_ident_list[];
+
+extern struct
+bnxt_ulp_mapper_cond_info ulp_thor2_class_cond_list[];
+
+extern struct
+bnxt_ulp_mapper_cond_info ulp_thor2_act_cond_list[];
+
+extern struct
+bnxt_ulp_mapper_cond_list_info ulp_thor2_act_cond_oper_list[];
+
 #endif

@@ -82,7 +82,7 @@ test_lpm6_perf(void)
 	begin = rte_rdtsc();
 
 	for (i = 0; i < NUM_ROUTE_ENTRIES; i++) {
-		if (rte_lpm6_add(lpm, large_route_table[i].ip,
+		if (rte_lpm6_add(lpm, &large_route_table[i].ip,
 				large_route_table[i].depth, next_hop_add) == 0)
 			status++;
 	}
@@ -101,7 +101,7 @@ test_lpm6_perf(void)
 		begin = rte_rdtsc();
 
 		for (j = 0; j < NUM_IPS_ENTRIES; j ++) {
-			if (rte_lpm6_lookup(lpm, large_ips_table[j].ip,
+			if (rte_lpm6_lookup(lpm, &large_ips_table[j].ip,
 					&next_hop_return) != 0)
 				count++;
 		}
@@ -117,11 +117,11 @@ test_lpm6_perf(void)
 	total_time = 0;
 	count = 0;
 
-	uint8_t ip_batch[NUM_IPS_ENTRIES][16];
+	struct rte_ipv6_addr ip_batch[NUM_IPS_ENTRIES];
 	int32_t next_hops[NUM_IPS_ENTRIES];
 
 	for (i = 0; i < NUM_IPS_ENTRIES; i++)
-		memcpy(ip_batch[i], large_ips_table[i].ip, 16);
+		ip_batch[i] = large_ips_table[i].ip;
 
 	for (i = 0; i < ITERATIONS; i ++) {
 
@@ -144,7 +144,7 @@ test_lpm6_perf(void)
 
 	for (i = 0; i < NUM_ROUTE_ENTRIES; i++) {
 		/* rte_lpm_delete(lpm, ip, depth) */
-		status += rte_lpm6_delete(lpm, large_route_table[i].ip,
+		status += rte_lpm6_delete(lpm, &large_route_table[i].ip,
 				large_route_table[i].depth);
 	}
 

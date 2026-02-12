@@ -11,11 +11,12 @@
  * RTE definitions for Data Compression Service
  */
 
+#include <rte_common.h>
+#include <rte_mbuf.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_mbuf.h>
 
 /**
  * compression service feature flags
@@ -100,6 +101,10 @@ enum rte_comp_op_status {
 	 * is not an error case. Output data up to op.produced can be used and
 	 * next op in the stream should continue on from op.consumed+1.
 	 */
+	RTE_COMP_OP_STATUS_CHECKSUM_VALIDATION_FAILED,
+	/**< Checksum validation failed. Either calculated does checksum not match
+	 * the one provided or there was an error calculating the checksum
+	 */
 };
 
 /** Compression Algorithms */
@@ -165,6 +170,10 @@ enum rte_comp_checksum_type {
 	/**< Generates a xxHash-32 checksum, as used by LZ4.
 	 * https://github.com/Cyan4973/xxHash/blob/dev/doc/xxhash_spec.md
 	 */
+	RTE_COMP_CHECKSUM_3GPP_PDCP_UDC,
+	/**< Generates checksum as defined under Uplink Data Compression
+	 * checksum as defined in the 3GPP PDCP specification
+	 */
 };
 
 /** Compression Huffman Type - used by DEFLATE algorithm */
@@ -227,6 +236,18 @@ enum rte_comp_op_type {
 struct rte_comp_deflate_params {
 	enum rte_comp_huffman huffman;
 	/**< Compression huffman encoding type */
+	uint8_t *dictionary;
+	/**< Pointer to memory containing dictionary to be used for deflate operations */
+	uint16_t dictionary_len;
+	/**< Length of dictionary to be used */
+};
+
+/** Parameters specific to the inflate algorithm */
+struct rte_comp_inflate_params {
+	uint8_t *dictionary;
+	/**< Pointer to memory containing dictionary to be used for inflate operations */
+	uint16_t dictionary_len;
+	/**< Length of dictionary to be used */
 };
 
 /**
@@ -320,6 +341,8 @@ struct rte_comp_decompress_xform {
 	 * setup of stream or private_xform should fail.
 	 */
 	union {
+		struct rte_comp_inflate_params inflate;
+		/**< Parameters specific to the deflate algorithm */
 		struct rte_comp_lz4_params lz4;
 		/**< Parameters specific to the LZ4 algorithm */
 	}; /**< Algorithm specific parameters */
@@ -481,6 +504,18 @@ struct __rte_cache_aligned rte_comp_op {
 };
 
 /**
+ * Free operation structure
+ * If operation has been allocate from a rte_mempool, then the operation will
+ * be returned to the mempool.
+ *
+ * @param op
+ *   Compress operation pointer allocated from rte_comp_op_alloc()
+ *   If op is NULL, no operation is performed.
+ */
+void
+rte_comp_op_free(struct rte_comp_op *op);
+
+/**
  * Creates an operation pool
  *
  * @param name
@@ -501,7 +536,8 @@ struct __rte_cache_aligned rte_comp_op {
 struct rte_mempool *
 rte_comp_op_pool_create(const char *name,
 		unsigned int nb_elts, unsigned int cache_size,
-		uint16_t user_size, int socket_id);
+		uint16_t user_size, int socket_id)
+	__rte_malloc __rte_dealloc(rte_comp_op_free, 1);
 
 /**
  * Allocate an operation from a mempool with default parameters set
@@ -532,18 +568,6 @@ rte_comp_op_alloc(struct rte_mempool *mempool);
 int
 rte_comp_op_bulk_alloc(struct rte_mempool *mempool,
 		struct rte_comp_op **ops, uint16_t nb_ops);
-
-/**
- * Free operation structure
- * If operation has been allocate from a rte_mempool, then the operation will
- * be returned to the mempool.
- *
- * @param op
- *   Compress operation pointer allocated from rte_comp_op_alloc()
- *   If op is NULL, no operation is performed.
- */
-void
-rte_comp_op_free(struct rte_comp_op *op);
 
 /**
  * Bulk free operation structures

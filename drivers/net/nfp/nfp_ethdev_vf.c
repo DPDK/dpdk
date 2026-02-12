@@ -14,6 +14,7 @@
 
 #include "nfp_logs.h"
 #include "nfp_net_common.h"
+#include "nfp_rxtx_vec.h"
 
 #define NFP_VF_DRIVER_NAME net_nfp_vf
 
@@ -50,7 +51,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 
 			if (dev->data->nb_rx_queues > 1) {
 				PMD_INIT_LOG(ERR, "PMD rx interrupt only "
-						"supports 1 queue with UIO");
+						"supports 1 queue with UIO.");
 				return -EIO;
 			}
 		}
@@ -75,7 +76,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 	dev_conf = &dev->data->dev_conf;
 	rxmode = &dev_conf->rxmode;
 
-	if ((rxmode->mq_mode & RTE_ETH_MQ_RX_RSS) != 0) {
+	if ((rxmode->offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH) != 0) {
 		nfp_net_rss_config_default(dev);
 		update |= NFP_NET_CFG_UPDATE_RSS;
 		new_ctrl |= nfp_net_cfg_ctrl_rss(hw->cap);
@@ -162,14 +163,17 @@ nfp_netvf_close(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *net_hw;
 	struct rte_pci_device *pci_dev;
+	struct nfp_net_hw_priv *hw_priv;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
 	net_hw = dev->data->dev_private;
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	hw_priv = dev->process_private;
 
 	rte_free(net_hw->eth_xstats_base);
+	rte_free(hw_priv);
 
 	/*
 	 * We assume that the DPDK application is stopping all the
@@ -228,20 +232,22 @@ static const struct eth_dev_ops nfp_netvf_eth_dev_ops = {
 	.tx_queue_release       = nfp_net_tx_queue_release,
 	.rx_queue_intr_enable   = nfp_rx_queue_intr_enable,
 	.rx_queue_intr_disable  = nfp_rx_queue_intr_disable,
+	.rx_burst_mode_get      = nfp_net_rx_burst_mode_get,
+	.tx_burst_mode_get      = nfp_net_tx_burst_mode_get,
 };
 
 static inline void
-nfp_netvf_ethdev_ops_mount(struct nfp_net_hw *hw,
+nfp_netvf_ethdev_ops_mount(struct nfp_pf_dev *pf_dev,
 		struct rte_eth_dev *eth_dev)
 {
-	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
+	if (pf_dev->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
 		eth_dev->tx_pkt_burst = nfp_net_nfd3_xmit_pkts;
 	else
-		eth_dev->tx_pkt_burst = nfp_net_nfdk_xmit_pkts;
+		nfp_net_nfdk_xmit_pkts_set(eth_dev);
 
 	eth_dev->dev_ops = &nfp_netvf_eth_dev_ops;
 	eth_dev->rx_queue_count = nfp_net_rx_queue_count;
-	eth_dev->rx_pkt_burst = &nfp_net_recv_pkts;
+	nfp_net_recv_pkts_set(eth_dev);
 }
 
 static int
@@ -252,9 +258,11 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	uint32_t start_q;
 	struct nfp_hw *hw;
 	struct nfp_net_hw *net_hw;
+	struct nfp_pf_dev *pf_dev;
 	uint64_t tx_bar_off = 0;
 	uint64_t rx_bar_off = 0;
 	struct rte_pci_device *pci_dev;
+	struct nfp_net_hw_priv *hw_priv;
 	const struct nfp_dev_info *dev_info;
 
 	port = eth_dev->data->port_id;
@@ -262,40 +270,73 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	dev_info = nfp_dev_info_get(pci_dev->id.device_id);
 	if (dev_info == NULL) {
-		PMD_INIT_LOG(ERR, "Not supported device ID");
+		PMD_INIT_LOG(ERR, "Not supported device ID.");
 		return -ENODEV;
 	}
 
 	net_hw = eth_dev->data->dev_private;
-	net_hw->dev_info = dev_info;
 	hw = &net_hw->super;
 
 	hw->ctrl_bar = pci_dev->mem_resource[0].addr;
 	if (hw->ctrl_bar == NULL) {
-		PMD_DRV_LOG(ERR, "hw->super.ctrl_bar is NULL. BAR0 not configured");
+		PMD_DRV_LOG(ERR, "The hw->super.ctrl_bar is NULL. BAR0 not configured.");
 		return -ENODEV;
 	}
 
-	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
+	pf_dev = rte_zmalloc(NULL, sizeof(*pf_dev), 0);
+	if (pf_dev == NULL) {
+		PMD_INIT_LOG(ERR, "Can not allocate memory for the PF device.");
+		return -ENOMEM;
+	}
 
-	err = nfp_net_common_init(pci_dev, net_hw);
+	pf_dev->pci_dev = pci_dev;
+
+	/* Check the version from firmware */
+	if (!nfp_net_version_check(hw, pf_dev)) {
+		err = -EINVAL;
+		goto pf_dev_free;
+	}
+
+	/* Set the ctrl bar size */
+	nfp_net_ctrl_bar_size_set(pf_dev);
+
+	PMD_INIT_LOG(DEBUG, "Ctrl bar: %p.", hw->ctrl_bar);
+
+	err = nfp_net_common_init(pf_dev, net_hw);
 	if (err != 0)
-		return err;
+		goto pf_dev_free;
 
-	nfp_netvf_ethdev_ops_mount(net_hw, eth_dev);
+	nfp_netvf_ethdev_ops_mount(pf_dev, eth_dev);
+
+	hw_priv = rte_zmalloc(NULL, sizeof(*hw_priv), 0);
+	if (hw_priv == NULL) {
+		PMD_INIT_LOG(ERR, "Can not alloc memory for hw priv data.");
+		err = -ENOMEM;
+		goto hw_priv_free;
+	}
+
+	hw_priv->dev_info = dev_info;
+	hw_priv->pf_dev = pf_dev;
+
+	if (!nfp_net_recv_pkt_meta_check_register(hw_priv)) {
+		PMD_INIT_LOG(ERR, "VF register meta check function failed.");
+		err = -EINVAL;
+		goto hw_priv_free;
+	}
+
+	eth_dev->process_private = hw_priv;
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	rte_eth_copy_pci_info(eth_dev, pci_dev);
-
-	net_hw->eth_xstats_base = rte_malloc("rte_eth_xstat",
-			sizeof(struct rte_eth_xstat) * nfp_net_xstats_size(eth_dev), 0);
+	net_hw->eth_xstats_base = rte_calloc("rte_eth_xstat",
+			nfp_net_xstats_size(eth_dev), sizeof(struct rte_eth_xstat), 0);
 	if (net_hw->eth_xstats_base == NULL) {
 		PMD_INIT_LOG(ERR, "No memory for xstats base values on device %s!",
 				pci_dev->device.name);
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto hw_priv_free;
 	}
 
 	/* Work out where in the BAR the queues start. */
@@ -307,7 +348,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	net_hw->tx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + tx_bar_off;
 	net_hw->rx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + rx_bar_off;
 
-	PMD_INIT_LOG(DEBUG, "ctrl_bar: %p, tx_bar: %p, rx_bar: %p",
+	PMD_INIT_LOG(DEBUG, "The ctrl_bar: %p, tx_bar: %p, rx_bar: %p.",
 			hw->ctrl_bar, net_hw->tx_bar, net_hw->rx_bar);
 
 	nfp_net_cfg_queue_setup(net_hw);
@@ -317,7 +358,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	if ((hw->cap & NFP_NET_CFG_CTRL_LSO2) != 0)
 		hw->cap &= ~NFP_NET_CFG_CTRL_TXVLAN;
 
-	nfp_net_log_device_information(net_hw);
+	nfp_net_log_device_information(net_hw, pf_dev);
 
 	/* Initializing spinlock for reconfigs */
 	rte_spinlock_init(&hw->reconfig_lock);
@@ -325,14 +366,14 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	/* Allocating memory for mac addr */
 	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to space for MAC address");
+		PMD_INIT_LOG(ERR, "Failed to space for MAC address.");
 		err = -ENOMEM;
 		goto free_xstats;
 	}
 
 	nfp_read_mac(hw);
 	if (rte_is_valid_assigned_ether_addr(&hw->mac_addr) == 0) {
-		PMD_INIT_LOG(INFO, "Using random mac address for port %hu", port);
+		PMD_INIT_LOG(INFO, "Using random mac address for port %hu.", port);
 		/* Using random mac addresses for VFs */
 		rte_eth_random_addr(&hw->mac_addr.addr_bytes[0]);
 		nfp_write_mac(hw, &hw->mac_addr.addr_bytes[0]);
@@ -346,7 +387,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
-	PMD_INIT_LOG(INFO, "port %hu VendorID=%#x DeviceID=%#x "
+	PMD_INIT_LOG(INFO, "Port %hu VendorID=%#x DeviceID=%#x "
 			"mac=" RTE_ETHER_ADDR_PRT_FMT,
 			port, pci_dev->id.vendor_id,
 			pci_dev->id.device_id,
@@ -366,6 +407,10 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 free_xstats:
 	rte_free(net_hw->eth_xstats_base);
+hw_priv_free:
+	rte_free(hw_priv);
+pf_dev_free:
+	rte_free(pf_dev);
 
 	return err;
 }

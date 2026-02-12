@@ -1537,8 +1537,8 @@ bnx2x_set_q_rx_mode(struct bnx2x_softc *sc, uint8_t cl_id,
 
 	ramrod_param.rdata = BNX2X_SP(sc, rx_mode_rdata);
 	ramrod_param.rdata_mapping =
-	    (rte_iova_t)BNX2X_SP_MAPPING(sc, rx_mode_rdata),
-	    rte_bit_relaxed_set32(ECORE_FILTER_RX_MODE_PENDING, &sc->sp_state);
+		(rte_iova_t)BNX2X_SP_MAPPING(sc, rx_mode_rdata);
+	rte_bit_relaxed_set32(ECORE_FILTER_RX_MODE_PENDING, &sc->sp_state);
 
 	ramrod_param.ramrod_flags = ramrod_flags;
 	ramrod_param.rx_mode_flags = rx_mode_flags;
@@ -1623,16 +1623,12 @@ static int bnx2x_nic_unload_no_mcp(struct bnx2x_softc *sc)
 }
 
 /* request unload mode from the MCP: COMMON, PORT or FUNCTION */
-static uint32_t bnx2x_send_unload_req(struct bnx2x_softc *sc, int unload_mode)
+static uint32_t bnx2x_send_unload_req(struct bnx2x_softc *sc, int unload_mode __rte_unused)
 {
 	uint32_t reset_code = 0;
 
 	/* Select the UNLOAD request mode */
-	if (unload_mode == UNLOAD_NORMAL) {
-		reset_code = DRV_MSG_CODE_UNLOAD_REQ_WOL_DIS;
-	} else {
-		reset_code = DRV_MSG_CODE_UNLOAD_REQ_WOL_DIS;
-	}
+	reset_code = DRV_MSG_CODE_UNLOAD_REQ_WOL_DIS;
 
 	/* Send the request to the MCP */
 	if (!BNX2X_NOMCP(sc)) {
@@ -8124,7 +8120,7 @@ static int bnx2x_get_shmem_info(struct bnx2x_softc *sc)
 	val = sc->devinfo.bc_ver >> 8;
 	if (val < BNX2X_BC_VER) {
 		/* for now only warn later we might need to enforce this */
-		PMD_DRV_LOG(NOTICE, sc, "This driver needs bc_ver %X but found %X, please upgrade BC\n",
+		PMD_DRV_LOG(NOTICE, sc, "This driver needs bc_ver %X but found %X, please upgrade BC",
 			    BNX2X_BC_VER, val);
 	}
 	sc->link_params.feature_config_flags |=
@@ -9489,16 +9485,16 @@ static int bnx2x_prev_unload(struct bnx2x_softc *sc)
 	hw_lock_val = (REG_RD(sc, hw_lock_reg));
 	if (hw_lock_val) {
 		if (hw_lock_val & HW_LOCK_RESOURCE_NVRAM) {
-			PMD_DRV_LOG(DEBUG, sc, "Releasing previously held NVRAM lock\n");
+			PMD_DRV_LOG(DEBUG, sc, "Releasing previously held NVRAM lock");
 			REG_WR(sc, MCP_REG_MCPR_NVM_SW_ARB,
 			       (MCPR_NVM_SW_ARB_ARB_REQ_CLR1 << SC_PORT(sc)));
 		}
-		PMD_DRV_LOG(DEBUG, sc, "Releasing previously held HW lock\n");
+		PMD_DRV_LOG(DEBUG, sc, "Releasing previously held HW lock");
 		REG_WR(sc, hw_lock_reg, 0xffffffff);
 	}
 
 	if (MCPR_ACCESS_LOCK_LOCK & REG_RD(sc, MCP_REG_MCPR_ACCESS_LOCK)) {
-		PMD_DRV_LOG(DEBUG, sc, "Releasing previously held ALR\n");
+		PMD_DRV_LOG(DEBUG, sc, "Releasing previously held ALR");
 		REG_WR(sc, MCP_REG_MCPR_ACCESS_LOCK, 0);
 	}
 
@@ -10331,12 +10327,13 @@ static int bnx2x_init_hw_common(struct bnx2x_softc *sc)
 	REG_WR(sc, PXP2_REG_RD_DISABLE_INPUTS, 0);
 
 	if (!CHIP_IS_E1x(sc)) {
-		int factor = 0;
+		int factor = CHIP_REV_IS_EMUL(sc) ? 1000 :
+				(CHIP_REV_IS_FPGA(sc) ? 400 : 0);
 
 		ecore_init_block(sc, BLOCK_PGLUE_B, PHASE_COMMON);
 		ecore_init_block(sc, BLOCK_ATC, PHASE_COMMON);
 
-/* let the HW do it's magic... */
+		/* let the HW do it's magic... */
 		do {
 			DELAY(200000);
 			val = REG_RD(sc, ATC_REG_ATC_INIT_DONE);
@@ -11189,11 +11186,9 @@ static int bnx2x_init_hw_func(struct bnx2x_softc *sc)
 /* Turn on a single ISR mode in IGU if driver is going to use
  * INT#x or MSI
  */
-		if ((sc->interrupt_mode != INTR_MODE_MSIX)
-		    || (sc->interrupt_mode != INTR_MODE_SINGLE_MSIX)) {
+		if (sc->interrupt_mode == INTR_MODE_INTX ||
+		    sc->interrupt_mode == INTR_MODE_MSI)
 			pf_conf |= IGU_PF_CONF_SINGLE_ISR_EN;
-		}
-
 /*
  * Timers workaround bug: function init part.
  * Need to wait 20msec after initializing ILT,

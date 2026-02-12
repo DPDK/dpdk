@@ -1418,4 +1418,4 @@ test_fail:
 	return -1;
 }
 
-REGISTER_FAST_TEST(rcu_qsbr_autotest, true, true, test_rcu_qsbr_main);
+REGISTER_FAST_TEST(rcu_qsbr_autotest, NOHUGE_OK, ASAN_OK, test_rcu_qsbr_main);

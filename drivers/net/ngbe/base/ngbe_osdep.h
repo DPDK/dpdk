@@ -55,7 +55,7 @@
 /* Bunch of defines for shared code bogosity */
 
 static inline void UNREFERENCED(const char *a __rte_unused, ...) {}
-#define UNREFERENCED_PARAMETER(args...) UNREFERENCED("", ##args)
+#define UNREFERENCED_PARAMETER(...) UNREFERENCED("", ##__VA_ARGS__)
 
 #define STATIC static
 

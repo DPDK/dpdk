@@ -2,11 +2,19 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
+
+#ifndef LINE_MAX
+#define LINE_MAX 2048
+#endif
+
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_common.h>
 #include <rte_log.h>
@@ -105,6 +113,9 @@ static int
 _add_entry(struct rte_cfgfile_section *section, const char *entryname,
 		const char *entryvalue)
 {
+	if (strlen(entryname) >= CFG_NAME_LEN || strlen(entryvalue) >= CFG_VALUE_LEN)
+		return -ENAMETOOLONG;
+
 	/* resize entry structure if we don't have room for more entries */
 	if (section->num_entries == section->allocated_entries) {
 		struct rte_cfgfile_entry *n_entries = realloc(
@@ -158,6 +169,7 @@ rte_cfgfile_check_params(const struct rte_cfgfile_parameters *params)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_load)
 struct rte_cfgfile *
 rte_cfgfile_load(const char *filename, int flags)
 {
@@ -165,11 +177,16 @@ rte_cfgfile_load(const char *filename, int flags)
 					    &default_cfgfile_params);
 }
 
+/* Need enough space for largest name and value */
+static_assert(CFG_NAME_LEN + CFG_VALUE_LEN + 4 < LINE_MAX,
+	"not enough space for cfgfile name/value");
+
+RTE_EXPORT_SYMBOL(rte_cfgfile_load_with_params)
 struct rte_cfgfile *
 rte_cfgfile_load_with_params(const char *filename, int flags,
 			     const struct rte_cfgfile_parameters *params)
 {
-	char buffer[CFG_NAME_LEN + CFG_VALUE_LEN + 4];
+	char buffer[LINE_MAX];
 	int lineno = 0;
 	struct rte_cfgfile *cfg;
 
@@ -216,7 +233,13 @@ rte_cfgfile_load_with_params(const char *filename, int flags,
 			*end = '\0';
 			_strip(&buffer[1], end - &buffer[1]);
 
-			rte_cfgfile_add_section(cfg, &buffer[1]);
+			int ret = rte_cfgfile_add_section(cfg, &buffer[1]);
+			if (ret != 0) {
+				CFG_LOG(ERR,
+					"line %d - add section failed: %s",
+					lineno, strerror(-ret));
+				goto error1;
+			}
 		} else {
 			/* key and value line */
 			char *split[2] = {NULL};
@@ -257,8 +280,13 @@ rte_cfgfile_load_with_params(const char *filename, int flags,
 			if (cfg->num_sections == 0)
 				goto error1;
 
-			_add_entry(&cfg->sections[cfg->num_sections - 1],
-					split[0], split[1]);
+			int ret = _add_entry(&cfg->sections[cfg->num_sections - 1],
+					     split[0], split[1]);
+			if (ret != 0) {
+				CFG_LOG(ERR,
+					"line %d - add entry failed: %s", lineno, strerror(-ret));
+				goto error1;
+			}
 		}
 	}
 	fclose(f);
@@ -269,6 +297,7 @@ error1:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_create)
 struct rte_cfgfile *
 rte_cfgfile_create(int flags)
 {
@@ -325,6 +354,7 @@ error1:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_add_section)
 int
 rte_cfgfile_add_section(struct rte_cfgfile *cfg, const char *sectionname)
 {
@@ -335,6 +365,9 @@ rte_cfgfile_add_section(struct rte_cfgfile *cfg, const char *sectionname)
 
 	if (sectionname == NULL)
 		return -EINVAL;
+
+	if (strlen(sectionname) >= CFG_NAME_LEN)
+		return -ENAMETOOLONG;
 
 	/* resize overall struct if we don't have room for more	sections */
 	if (cfg->num_sections == cfg->allocated_sections) {
@@ -366,12 +399,11 @@ rte_cfgfile_add_section(struct rte_cfgfile *cfg, const char *sectionname)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_add_entry)
 int rte_cfgfile_add_entry(struct rte_cfgfile *cfg,
 		const char *sectionname, const char *entryname,
 		const char *entryvalue)
 {
-	int ret;
-
 	if ((cfg == NULL) || (sectionname == NULL) || (entryname == NULL)
 			|| (entryvalue == NULL))
 		return -EINVAL;
@@ -385,11 +417,10 @@ int rte_cfgfile_add_entry(struct rte_cfgfile *cfg,
 	if (curr_section == NULL)
 		return -EINVAL;
 
-	ret = _add_entry(curr_section, entryname, entryvalue);
-
-	return ret;
+	return _add_entry(curr_section, entryname, entryvalue);
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_set_entry)
 int rte_cfgfile_set_entry(struct rte_cfgfile *cfg, const char *sectionname,
 		const char *entryname, const char *entryvalue)
 {
@@ -418,6 +449,7 @@ int rte_cfgfile_set_entry(struct rte_cfgfile *cfg, const char *sectionname,
 	return -EINVAL;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_save)
 int rte_cfgfile_save(struct rte_cfgfile *cfg, const char *filename)
 {
 	int i, j;
@@ -442,6 +474,7 @@ int rte_cfgfile_save(struct rte_cfgfile *cfg, const char *filename)
 	return fclose(f);
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_close)
 int rte_cfgfile_close(struct rte_cfgfile *cfg)
 {
 	int i;
@@ -465,12 +498,17 @@ int rte_cfgfile_close(struct rte_cfgfile *cfg)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_num_sections)
 int
 rte_cfgfile_num_sections(struct rte_cfgfile *cfg, const char *sectionname,
-size_t length)
+	size_t length)
 {
-	int i;
 	int num_sections = 0;
+	int i;
+
+	if (sectionname == NULL)
+		return cfg->num_sections;
+
 	for (i = 0; i < cfg->num_sections; i++) {
 		if (strncmp(cfg->sections[i].name, sectionname, length) == 0)
 			num_sections++;
@@ -478,6 +516,7 @@ size_t length)
 	return num_sections;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_sections)
 int
 rte_cfgfile_sections(struct rte_cfgfile *cfg, char *sections[],
 	int max_sections)
@@ -490,12 +529,14 @@ rte_cfgfile_sections(struct rte_cfgfile *cfg, char *sections[],
 	return i;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_has_section)
 int
 rte_cfgfile_has_section(struct rte_cfgfile *cfg, const char *sectionname)
 {
 	return _get_section(cfg, sectionname) != NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_section_num_entries)
 int
 rte_cfgfile_section_num_entries(struct rte_cfgfile *cfg,
 	const char *sectionname)
@@ -506,6 +547,7 @@ rte_cfgfile_section_num_entries(struct rte_cfgfile *cfg,
 	return s->num_entries;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_section_num_entries_by_index)
 int
 rte_cfgfile_section_num_entries_by_index(struct rte_cfgfile *cfg,
 	char *sectionname, int index)
@@ -518,6 +560,7 @@ rte_cfgfile_section_num_entries_by_index(struct rte_cfgfile *cfg,
 	strlcpy(sectionname, sect->name, CFG_NAME_LEN);
 	return sect->num_entries;
 }
+RTE_EXPORT_SYMBOL(rte_cfgfile_section_entries)
 int
 rte_cfgfile_section_entries(struct rte_cfgfile *cfg, const char *sectionname,
 		struct rte_cfgfile_entry *entries, int max_entries)
@@ -531,6 +574,7 @@ rte_cfgfile_section_entries(struct rte_cfgfile *cfg, const char *sectionname,
 	return i;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_section_entries_by_index)
 int
 rte_cfgfile_section_entries_by_index(struct rte_cfgfile *cfg, int index,
 		char *sectionname,
@@ -548,6 +592,7 @@ rte_cfgfile_section_entries_by_index(struct rte_cfgfile *cfg, int index,
 	return i;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_get_entry)
 const char *
 rte_cfgfile_get_entry(struct rte_cfgfile *cfg, const char *sectionname,
 		const char *entryname)
@@ -563,6 +608,7 @@ rte_cfgfile_get_entry(struct rte_cfgfile *cfg, const char *sectionname,
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_has_entry)
 int
 rte_cfgfile_has_entry(struct rte_cfgfile *cfg, const char *sectionname,
 		const char *entryname)

@@ -36,6 +36,9 @@ Cipher algorithms:
 * RTE_CRYPTO_CIPHER_ZUC_EEA3
 * RTE_CRYPTO_CIPHER_SNOW3G_UEA2
 * RTE_CRYPTO_CIPHER_KASUMI_F8
+* RTE_CRYPTO_CIPHER_SM4_CBC
+* RTE_CRYPTO_CIPHER_SM4_ECB
+* RTE_CRYPTO_CIPHER_SM4_CTR
 
 Hash algorithms:
 
@@ -56,12 +59,15 @@ Hash algorithms:
 * RTE_CRYPTO_AUTH_ZUC_EIA3
 * RTE_CRYPTO_AUTH_SNOW3G_UIA2
 * RTE_CRYPTO_AUTH_KASUMI_F9
+* RTE_CRYPTO_AUTH_SM3
+* RTE_CRYPTO_AUTH_SM3 HMAC
 
 AEAD algorithms:
 
 * RTE_CRYPTO_AEAD_AES_CCM
 * RTE_CRYPTO_AEAD_AES_GCM
 * RTE_CRYPTO_AEAD_CHACHA20_POLY1305
+* RTE_CRYPTO_AEAD_SM4_GCM
 
 Protocol offloads:
 
@@ -132,7 +138,8 @@ and the Multi-Buffer library version supported by them:
    DPDK version    Multi-buffer library version
    ==============  ============================
    20.11 - 21.08   0.53 - 1.3
-   21.11+          1.0  - 1.5
+   21.11 - 24.07   1.0  - 1.5
+   24.11+          1.4  - 1.5
    ==============  ============================
 
 Initialization
@@ -161,7 +168,7 @@ Example:
 
 .. code-block:: console
 
-    ./dpdk-l2fwd-crypto -l 1 -n 4 --vdev="crypto_aesni_mb,socket_id=0,max_nb_sessions=128" \
+    ./dpdk-l2fwd-crypto -l 1 --vdev="crypto_aesni_mb,socket_id=0,max_nb_sessions=128" \
     -- -p 1 --cdev SW --chain CIPHER_HASH --cipher_algo "aes-cbc" --auth_algo "sha1-hmac"
 
 Extra notes

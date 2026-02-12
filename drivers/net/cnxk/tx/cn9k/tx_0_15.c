@@ -5,7 +5,11 @@
 #include "cn9k_ethdev.h"
 #include "cn9k_tx.h"
 
+#if !defined(CNXK_DIS_TMPLT_FUNC)
+
 #define T(name, sz, flags) NIX_TX_XMIT(cn9k_nix_xmit_pkts_##name, sz, flags)
 
 NIX_TX_FASTPATH_MODES_0_15
 #undef T
+
+#endif

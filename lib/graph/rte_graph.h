@@ -22,6 +22,7 @@
 #include <stdio.h>
 
 #include <rte_common.h>
+#include <rte_compat.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,6 +30,7 @@ extern "C" {
 
 #define RTE_GRAPH_NAMESIZE 64 /**< Max length of graph name. */
 #define RTE_NODE_NAMESIZE 64  /**< Max length of node name. */
+#define RTE_NODE_XSTAT_DESC_SIZE 64  /**< Max length of node xstat description. */
 #define RTE_GRAPH_PCAP_FILE_SZ 64 /**< Max length of pcap file name. */
 #define RTE_GRAPH_OFF_INVALID UINT32_MAX /**< Invalid graph offset. */
 #define RTE_NODE_ID_INVALID UINT32_MAX   /**< Invalid node id. */
@@ -149,6 +151,16 @@ typedef int (*rte_graph_cluster_stats_cb_t)(bool is_first, bool is_last,
 	     void *cookie, const struct rte_graph_cluster_node_stats *stats);
 
 /**
+ * Graph dispatch enqueue notification callback.
+ *
+ * @param graph
+ *   Current graph.
+ * @param cb_priv
+ *   Opaque argument given to the callback.
+ */
+typedef void (*packets_enqueued_cb)(struct rte_graph *graph, uint64_t cb_priv);
+
+/**
  * Structure to hold configuration parameters for creating the graph.
  *
  * @see rte_graph_create()
@@ -170,6 +182,8 @@ struct rte_graph_param {
 		struct {
 			uint32_t wq_size_max; /**< Maximum size of workqueue for dispatch model. */
 			uint32_t mp_capacity; /**< Capacity of memory pool for dispatch model. */
+			packets_enqueued_cb notify_cb;
+			uint64_t cb_priv;
 		} dispatch;
 	};
 };
@@ -221,6 +235,10 @@ struct __rte_cache_aligned rte_graph_cluster_node_stats {
 	};
 
 	uint64_t realloc_count; /**< Realloc count. */
+
+	uint8_t xstat_cntrs;			      /**< Number of Node xstat counters. */
+	char (*xstat_desc)[RTE_NODE_XSTAT_DESC_SIZE]; /**< Names of the Node xstat counters. */
+	uint64_t *xstat_count;			      /**< Total stat count per each xstat. */
 
 	rte_node_t id;	/**< Node identifier of stats. */
 	uint64_t hz;	/**< Cycles per seconds. */
@@ -461,6 +479,15 @@ void rte_graph_cluster_stats_get(struct rte_graph_cluster_stats *stat,
 void rte_graph_cluster_stats_reset(struct rte_graph_cluster_stats *stat);
 
 /**
+ * Structure defines the number of xstats a given node has and each xstat
+ * description.
+ */
+struct rte_node_xstats {
+	uint16_t nb_xstats;			     /**< Number of xstats. */
+	char xstat_desc[][RTE_NODE_XSTAT_DESC_SIZE]; /**< Names of xstats. */
+};
+
+/**
  * Structure defines the node registration parameters.
  *
  * @see __rte_node_register(), RTE_NODE_REGISTER()
@@ -472,6 +499,7 @@ struct rte_node_register {
 	rte_node_process_t process; /**< Node process function. */
 	rte_node_init_t init;       /**< Node init function. */
 	rte_node_fini_t fini;       /**< Node fini function. */
+	struct rte_node_xstats *xstats; /**< Node specific xstats. */
 	rte_node_t id;		    /**< Node Identifier. */
 	rte_node_t parent_id;       /**< Identifier of parent node. */
 	rte_edge_t nb_edges;        /**< Number of edges from this node. */
@@ -645,6 +673,20 @@ rte_node_is_invalid(rte_node_t id)
 {
 	return (id == RTE_NODE_ID_INVALID);
 }
+
+/**
+ * Release the memory allocated for a node created using RTE_NODE_REGISTER or rte_node_clone,
+ * if it is not linked to any graphs.
+ *
+ * @param id
+ *   Node id to check.
+ *
+ * @return
+ *   - 0: Success.
+ *   -<0: Failure.
+ */
+__rte_experimental
+int rte_node_free(rte_node_t id);
 
 /**
  * Test the validity of edge id.

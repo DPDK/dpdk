@@ -49,13 +49,10 @@
 #define NETVSC_MAX_ROUTE_LINE_SIZE 300
 
 RTE_LOG_REGISTER_DEFAULT(vdev_netvsc_logtype, NOTICE);
+#define RTE_LOGTYPE_VDEV_NETVSC vdev_netvsc_logtype
 
 #define DRV_LOG(level, ...) \
-	rte_log(RTE_LOG_ ## level, \
-		vdev_netvsc_logtype, \
-		RTE_FMT(VDEV_NETVSC_DRIVER_NAME ": " \
-			RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
-		RTE_FMT_TAIL(__VA_ARGS__,)))
+	RTE_LOG_LINE(level, VDEV_NETVSC, __VA_ARGS__)
 
 /** Context structure for a vdev_netvsc instance. */
 struct vdev_netvsc_ctx {

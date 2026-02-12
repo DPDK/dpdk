@@ -155,12 +155,12 @@ struct sge_eth_rx_stats {	/* Ethernet rx queue statistics */
 	u64 rx_drops;		/* # of packets dropped due to no mem */
 };
 
-struct sge_eth_rxq {                /* a SW Ethernet Rx queue */
+struct __rte_cache_aligned sge_eth_rxq {                /* a SW Ethernet Rx queue */
 	unsigned int flags;         /* flags for state of the queue */
 	struct sge_rspq rspq;
 	struct sge_fl fl;
 	struct sge_eth_rx_stats stats;
-} __rte_cache_aligned;
+};
 
 /*
  * Currently there are two types of coalesce WR. Type 0 needs 48 bytes per
@@ -252,7 +252,7 @@ struct sge_eth_tx_stats {	/* Ethernet tx queue statistics */
 	u64 coal_pkts;          /* # of coalesced packets */
 };
 
-struct sge_eth_txq {                   /* state for an SGE Ethernet Tx queue */
+struct __rte_cache_aligned sge_eth_txq {                   /* state for an SGE Ethernet Tx queue */
 	struct sge_txq q;
 	struct rte_eth_dev *eth_dev;   /* port that this queue belongs to */
 	struct rte_eth_dev_data *data;
@@ -260,21 +260,21 @@ struct sge_eth_txq {                   /* state for an SGE Ethernet Tx queue */
 	rte_spinlock_t txq_lock;
 
 	unsigned int flags;            /* flags for state of the queue */
-} __rte_cache_aligned;
+};
 
-struct sge_ctrl_txq {                /* State for an SGE control Tx queue */
+struct __rte_cache_aligned sge_ctrl_txq {                /* State for an SGE control Tx queue */
 	struct sge_txq q;            /* txq */
 	struct adapter *adapter;     /* adapter associated with this queue */
 	rte_spinlock_t ctrlq_lock;   /* control queue lock */
 	u8 full;                     /* the Tx ring is full */
 	u64 txp;                     /* number of transmits */
 	struct rte_mempool *mb_pool; /* mempool to generate ctrl pkts */
-} __rte_cache_aligned;
+};
 
 struct sge {
 	struct sge_eth_txq *ethtxq;
 	struct sge_eth_rxq *ethrxq;
-	struct sge_rspq fw_evtq __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct sge_rspq fw_evtq;
 	struct sge_ctrl_txq ctrlq[MAX_CTRL_QUEUES];
 
 	u16 max_ethqsets;           /* # of available Ethernet queue sets */
@@ -512,14 +512,15 @@ static inline void t4_write_reg64(struct adapter *adapter, u32 reg_addr,
 }
 
 #define PCI_CAP_ID_EXP          RTE_PCI_CAP_ID_EXP
-#define PCI_EXP_DEVCTL          0x0008  /* Device control */
-#define PCI_EXP_DEVCTL2         40      /* Device Control 2 */
-#define PCI_EXP_DEVCTL_EXT_TAG  0x0100  /* Extended Tag Field Enable */
-#define PCI_EXP_DEVCTL_PAYLOAD  0x00E0  /* Max payload */
-#define PCI_CAP_ID_VPD          0x03    /* Vital Product Data */
-#define PCI_VPD_ADDR            2       /* Address to access (15 bits!) */
-#define PCI_VPD_ADDR_F          0x8000  /* Write 0, 1 indicates completion */
-#define PCI_VPD_DATA            4       /* 32-bits of data returned here */
+#define PCI_EXP_DEVCTL          RTE_PCI_EXP_DEVCTL
+#define PCI_EXP_DEVCTL_EXT_TAG  RTE_PCI_EXP_DEVCTL_EXT_TAG
+#define PCI_EXP_DEVCTL_PAYLOAD  RTE_PCI_EXP_DEVCTL_PAYLOAD
+#define PCI_EXP_DEVCTL2         RTE_PCI_EXP_DEVCTL2
+
+#define PCI_CAP_ID_VPD          RTE_PCI_CAP_ID_VPD
+#define PCI_VPD_ADDR            RTE_PCI_VPD_ADDR
+#define PCI_VPD_ADDR_F          RTE_PCI_VPD_ADDR_F
+#define PCI_VPD_DATA            RTE_PCI_VPD_DATA
 
 /**
  * t4_os_pci_write_cfg4 - 32-bit write to PCI config space

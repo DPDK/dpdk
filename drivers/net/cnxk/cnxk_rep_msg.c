@@ -116,7 +116,7 @@ open_socket_ctrl_channel(void)
 
 	sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sock_fd < 0) {
-		RTE_LOG(ERR, EAL, "failed to create unix socket\n");
+		plt_err("Failed to create unix socket");
 		return -1;
 	}
 
@@ -369,12 +369,12 @@ notify_rep_dev_ready(cnxk_rep_msg_ready_data_t *rdata, void *data,
 
 	memset(rep_id_arr, 0, RTE_MAX_ETHPORTS * sizeof(uint64_t));
 	/* For ready state */
-	if ((rdata->nb_ports / 2) > eswitch_dev->repr_cnt.nb_repr_probed) {
+	if (rdata->nb_ports > eswitch_dev->repr_cnt.nb_repr_probed) {
 		rc = CNXK_REP_CTRL_MSG_NACK_INV_REP_CNT;
 		goto fail;
 	}
 
-	for (i = 0; i < rdata->nb_ports / 2; i++) {
+	for (i = 0; i < rdata->nb_ports; i++) {
 		rep_id = UINT16_MAX;
 		rc = cnxk_rep_state_update(eswitch_dev, rdata->data[i], &rep_id);
 		if (rc) {
@@ -475,7 +475,7 @@ notify_rep_dev_exit(cnxk_rep_msg_exit_data_t *edata, void *data)
 		rc = -EINVAL;
 		goto fail;
 	}
-	if ((edata->nb_ports / 2) > eswitch_dev->repr_cnt.nb_repr_probed) {
+	if (edata->nb_ports > eswitch_dev->repr_cnt.nb_repr_probed) {
 		rc = CNXK_REP_CTRL_MSG_NACK_INV_REP_CNT;
 		goto fail;
 	}

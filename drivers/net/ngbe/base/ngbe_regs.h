@@ -452,6 +452,8 @@
 #define   NGBE_RACTL_RSSMASK		MS(16, 0xFFFF)
 #define   NGBE_RACTL_RSSIPV4TCP		MS(16, 0x1)
 #define   NGBE_RACTL_RSSIPV4		MS(17, 0x1)
+#define   NGBE_RACTL_RSSIPV4SCTP	MS(18, 0x1)
+#define   NGBE_RACTL_RSSIPV6SCTP	MS(19, 0x1)
 #define   NGBE_RACTL_RSSIPV6		MS(20, 0x1)
 #define   NGBE_RACTL_RSSIPV6TCP		MS(21, 0x1)
 #define   NGBE_RACTL_RSSIPV4UDP		MS(22, 0x1)
@@ -711,6 +713,8 @@ enum ngbe_5tuple_protocol {
 #define   NGBE_MACRXFLT_CTL_NOFT       LS(2, 6, 0x3)
 #define   NGBE_MACRXFLT_CTL_PASS       LS(3, 6, 0x3)
 #define   NGBE_MACRXFLT_RXALL          MS(31, 0x1)
+
+#define NGBE_MAC_WDG_TIMEOUT           0x01100C
 
 /******************************************************************************
  * Statistic Registers
@@ -1256,6 +1260,8 @@ enum ngbe_5tuple_protocol {
 #define   NGBE_MDIOMODE_PRT2CL22	MS(2, 0x1)
 #define   NGBE_MDIOMODE_PRT1CL22	MS(1, 0x1)
 #define   NGBE_MDIOMODE_PRT0CL22	MS(0, 0x1)
+
+#define NGBE_LLDP_REG			0x0F1000
 
 #define NVM_OROM_OFFSET		0x17
 #define NVM_OROM_BLK_LOW	0x83

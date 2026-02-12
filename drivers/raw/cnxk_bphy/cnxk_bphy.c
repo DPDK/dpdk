@@ -332,7 +332,7 @@ bphy_rawdev_probe(struct rte_pci_driver *pci_drv,
 		return 0;
 
 	if (!pci_dev->mem_resource[0].addr) {
-		CNXK_BPHY_LOG(ERR, "BARs have invalid values: BAR0 %p\n BAR2 %p",
+		CNXK_BPHY_LOG(ERR, "BARs have invalid values: BAR0 %p BAR2 %p",
 			      pci_dev->mem_resource[0].addr, pci_dev->mem_resource[2].addr);
 		return -ENODEV;
 	}

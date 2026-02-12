@@ -10,6 +10,7 @@
 #include <sys/queue.h>
 #include <sys/mman.h>
 
+#include <eal_export.h>
 #include <rte_log.h>
 #include <rte_eal.h>
 #include <rte_tailq.h>
@@ -108,7 +109,7 @@ vmbus_probe_one_driver(struct rte_vmbus_driver *dr,
 	/* no initialization when marked as blocked, return without error */
 	if (dev->device.devargs != NULL &&
 		dev->device.devargs->policy == RTE_DEV_BLOCKED) {
-		VMBUS_LOG(INFO, "  Device is blocked, not initializing\n");
+		VMBUS_LOG(INFO, "  Device is blocked, not initializing");
 		return 1;
 	}
 
@@ -191,6 +192,7 @@ vmbus_ignore_device(struct rte_vmbus_device *dev)
  * all registered drivers that have a matching entry in its id_table
  * for discovered devices.
  */
+RTE_EXPORT_SYMBOL(rte_vmbus_probe)
 int
 rte_vmbus_probe(void)
 {
@@ -238,6 +240,7 @@ rte_vmbus_cleanup(void)
 
 		dev->driver = NULL;
 		dev->device.driver = NULL;
+		TAILQ_REMOVE(&rte_vmbus_bus.device_list, dev, next);
 		free(dev);
 	}
 
@@ -279,6 +282,7 @@ vmbus_devargs_lookup(struct rte_vmbus_device *dev)
 }
 
 /* register vmbus driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_vmbus_register)
 void
 rte_vmbus_register(struct rte_vmbus_driver *driver)
 {
@@ -289,6 +293,7 @@ rte_vmbus_register(struct rte_vmbus_driver *driver)
 }
 
 /* unregister vmbus driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_vmbus_unregister)
 void
 rte_vmbus_unregister(struct rte_vmbus_driver *driver)
 {

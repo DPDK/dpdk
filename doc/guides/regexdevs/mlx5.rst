@@ -6,16 +6,8 @@
 NVIDIA MLX5 RegEx Driver
 ========================
 
-.. note::
-
-   NVIDIA acquired Mellanox Technologies in 2020.
-   The DPDK documentation and code might still include instances
-   of or references to Mellanox trademarks (like BlueField and ConnectX)
-   that are now NVIDIA trademarks.
-
-The mlx5 RegEx (Regular Expression) driver library
-(**librte_regex_mlx5**) provides support for **NVIDIA BlueField-2**,
-and **NVIDIA BlueField-3** families of 25/50/100/200 Gb/s adapters.
+The mlx5 RegEx (Regular Expression) driver (``librte_regex_mlx5``)
+provides support for NVIDIA DPU device family.
 
 Design
 ------
@@ -39,11 +31,11 @@ See :ref:`mlx5 common compilation <mlx5_common_compilation>`,
 and :ref:`mlx5 common driver options <mlx5_common_driver_options>`.
 
 
-Supported NICs
---------------
+Supported Devices
+-----------------
 
-* NVIDIA\ |reg| BlueField-2 SmartNIC
-* NVIDIA\ |reg| BlueField-3 SmartNIC
+* NVIDIA\ |reg| BlueField-2 DPU
+* NVIDIA\ |reg| BlueField-3 DPU/SuperNIC
 
 Prerequisites
 -------------

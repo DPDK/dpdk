@@ -156,7 +156,7 @@
 #define SDP_VF_R_OUT_INT_LEVELS_TIMET (32)
 
 /* SDP Instruction Header */
-struct sdp_instr_ih {
+struct __plt_packed_begin sdp_instr_ih {
 	/* Data Len */
 	uint64_t tlen : 16;
 
@@ -177,6 +177,6 @@ struct sdp_instr_ih {
 
 	/* Reserved2 */
 	uint64_t rsvd2 : 1;
-} __plt_packed;
+} __plt_packed_end;
 
 #endif /* __SDP_HW_H_  */

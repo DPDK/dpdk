@@ -162,4 +162,4 @@ test_net_ether(void)
 	return 0;
 }
 
-REGISTER_FAST_TEST(net_ether_autotest, true, true, test_net_ether);
+REGISTER_FAST_TEST(net_ether_autotest, NOHUGE_OK, ASAN_OK, test_net_ether);

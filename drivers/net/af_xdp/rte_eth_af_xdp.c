@@ -63,10 +63,10 @@
 #endif
 
 RTE_LOG_REGISTER_DEFAULT(af_xdp_logtype, NOTICE);
+#define RTE_LOGTYPE_NET_AF_XDP af_xdp_logtype
 
-#define AF_XDP_LOG(level, fmt, args...)			\
-	rte_log(RTE_LOG_ ## level, af_xdp_logtype,	\
-		"%s(): " fmt, __func__, ##args)
+#define AF_XDP_LOG_LINE(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, NET_AF_XDP, "%s(): ", __func__, __VA_ARGS__)
 
 #define ETH_AF_XDP_FRAME_SIZE		2048
 #define ETH_AF_XDP_NUM_BUFFERS		4096
@@ -83,12 +83,14 @@ RTE_LOG_REGISTER_DEFAULT(af_xdp_logtype, NOTICE);
 
 #define ETH_AF_XDP_MP_KEY "afxdp_mp_send_fds"
 
+#define DP_BASE_PATH			"/tmp/afxdp_dp"
+#define DP_UDS_SOCK             "afxdp.sock"
+#define DP_XSK_MAP				"xsks_map"
 #define MAX_LONG_OPT_SZ			64
 #define UDS_MAX_FD_NUM			2
 #define UDS_MAX_CMD_LEN			64
 #define UDS_MAX_CMD_RESP		128
 #define UDS_XSK_MAP_FD_MSG		"/xsk_map_fd"
-#define UDS_SOCK			"/tmp/afxdp.sock"
 #define UDS_CONNECT_MSG			"/connect"
 #define UDS_HOST_OK_MSG			"/host_ok"
 #define UDS_HOST_NAK_MSG		"/host_nak"
@@ -116,14 +118,14 @@ struct xsk_umem_info {
 	const struct rte_memzone *mz;
 	struct rte_mempool *mb_pool;
 	void *buffer;
-	uint8_t refcnt;
+	RTE_ATOMIC(uint8_t) refcnt;
 	uint32_t max_xsks;
 };
 
 struct rx_stats {
 	uint64_t rx_pkts;
 	uint64_t rx_bytes;
-	uint64_t rx_dropped;
+	uint64_t imissed_offset;
 };
 
 struct pkt_rx_queue {
@@ -131,6 +133,7 @@ struct pkt_rx_queue {
 	struct xsk_umem_info *umem;
 	struct xsk_socket *xsk;
 	struct rte_mempool *mb_pool;
+	uint16_t port;
 
 	struct rx_stats stats;
 
@@ -165,12 +168,15 @@ struct pmd_internals {
 	int start_queue_idx;
 	int queue_cnt;
 	int max_queue_cnt;
-	int combined_queue_cnt;
+	int configured_queue_cnt;
+	uint32_t mode_flag;
 	bool shared_umem;
 	char prog_path[PATH_MAX];
 	bool custom_prog_configured;
 	bool force_copy;
 	bool use_cni;
+	bool use_pinned_map;
+	char dp_path[PATH_MAX];
 	struct bpf_map *map;
 
 	struct rte_ether_addr eth_addr;
@@ -191,6 +197,28 @@ struct pmd_process_private {
 #define ETH_AF_XDP_BUDGET_ARG			"busy_budget"
 #define ETH_AF_XDP_FORCE_COPY_ARG		"force_copy"
 #define ETH_AF_XDP_USE_CNI_ARG			"use_cni"
+#define ETH_AF_XDP_USE_PINNED_MAP_ARG	"use_pinned_map"
+#define ETH_AF_XDP_DP_PATH_ARG			"dp_path"
+#define ETH_AF_XDP_MODE_ARG				"mode"
+
+/* Define different modes for af_xdp prog to attach */
+#define ETH_AF_XDP_DRV_MODE_ARG			"drv"
+#define ETH_AF_XDP_SKB_MODE_ARG			"skb"
+#define ETH_AF_XDP_HW_MODE_ARG			"hw"
+#define ETH_AF_XDP_NUM_MODE_ARG			3
+
+static const char * const mode_arguments[] = {
+	ETH_AF_XDP_DRV_MODE_ARG,
+	ETH_AF_XDP_SKB_MODE_ARG,
+	ETH_AF_XDP_HW_MODE_ARG,
+	NULL
+};
+
+static const unsigned int mode_flags[] = {
+	XDP_FLAGS_DRV_MODE,
+	XDP_FLAGS_SKB_MODE,
+	XDP_FLAGS_HW_MODE
+};
 
 static const char * const valid_arguments[] = {
 	ETH_AF_XDP_IFACE_ARG,
@@ -201,6 +229,9 @@ static const char * const valid_arguments[] = {
 	ETH_AF_XDP_BUDGET_ARG,
 	ETH_AF_XDP_FORCE_COPY_ARG,
 	ETH_AF_XDP_USE_CNI_ARG,
+	ETH_AF_XDP_USE_PINNED_MAP_ARG,
+	ETH_AF_XDP_DP_PATH_ARG,
+	ETH_AF_XDP_MODE_ARG,
 	NULL
 };
 
@@ -234,7 +265,7 @@ reserve_fill_queue_zc(struct xsk_umem_info *umem, uint16_t reserve_size,
 	if (unlikely(!xsk_ring_prod__reserve(fq, reserve_size, &idx))) {
 		for (i = 0; i < reserve_size; i++)
 			rte_pktmbuf_free(bufs[i]);
-		AF_XDP_LOG(DEBUG, "Failed to reserve enough fq descs.\n");
+		AF_XDP_LOG_LINE(DEBUG, "Failed to reserve enough fq descs.");
 		return -1;
 	}
 
@@ -264,12 +295,12 @@ reserve_fill_queue_cp(struct xsk_umem_info *umem, uint16_t reserve_size,
 
 	if (rte_ring_dequeue_bulk(umem->buf_ring, addrs, reserve_size, NULL)
 		    != reserve_size) {
-		AF_XDP_LOG(DEBUG, "Failed to get enough buffers for fq.\n");
+		AF_XDP_LOG_LINE(DEBUG, "Failed to get enough buffers for fq.");
 		return -1;
 	}
 
 	if (unlikely(!xsk_ring_prod__reserve(fq, reserve_size, &idx))) {
-		AF_XDP_LOG(DEBUG, "Failed to reserve enough fq descs.\n");
+		AF_XDP_LOG_LINE(DEBUG, "Failed to reserve enough fq descs.");
 		rte_ring_enqueue_bulk(umem->buf_ring, addrs,
 				reserve_size, NULL);
 		return -1;
@@ -311,6 +342,7 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	unsigned long rx_bytes = 0;
 	int i;
 	struct rte_mbuf *fq_bufs[ETH_AF_XDP_RX_BATCH_SIZE];
+	struct rte_eth_dev *dev = &rte_eth_devices[rxq->port];
 
 	nb_pkts = xsk_ring_cons__peek(rx, nb_pkts, &idx_rx);
 
@@ -332,12 +364,14 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 	/* allocate bufs for fill queue replenishment after rx */
 	if (rte_pktmbuf_alloc_bulk(umem->mb_pool, fq_bufs, nb_pkts)) {
-		AF_XDP_LOG(DEBUG,
-			"Failed to get enough buffers for fq.\n");
+		AF_XDP_LOG_LINE(DEBUG,
+			"Failed to get enough buffers for fq.");
 		/* rollback cached_cons which is added by
 		 * xsk_ring_cons__peek
 		 */
 		rx->cached_cons -= nb_pkts;
+		dev->data->rx_mbuf_alloc_failed += nb_pkts;
+
 		return 0;
 	}
 
@@ -360,6 +394,7 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		bufs[i]->data_off = offset - sizeof(struct rte_mbuf) -
 			rte_pktmbuf_priv_size(umem->mb_pool) -
 			umem->mb_pool->header_size;
+		bufs[i]->port = rxq->port;
 
 		rte_pktmbuf_pkt_len(bufs[i]) = len;
 		rte_pktmbuf_data_len(bufs[i]) = len;
@@ -388,6 +423,7 @@ af_xdp_rx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	int i;
 	uint32_t free_thresh = fq->size >> 1;
 	struct rte_mbuf *mbufs[ETH_AF_XDP_RX_BATCH_SIZE];
+	struct rte_eth_dev *dev = &rte_eth_devices[rxq->port];
 
 	if (xsk_prod_nb_free(fq, free_thresh) >= free_thresh)
 		(void)reserve_fill_queue(umem, nb_pkts, NULL, fq);
@@ -406,6 +442,7 @@ af_xdp_rx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		 * xsk_ring_cons__peek
 		 */
 		rx->cached_cons -= nb_pkts;
+		dev->data->rx_mbuf_alloc_failed += nb_pkts;
 		return 0;
 	}
 
@@ -426,6 +463,7 @@ af_xdp_rx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		rte_pktmbuf_data_len(mbufs[i]) = len;
 		rx_bytes += len;
 		bufs[i] = mbufs[i];
+		bufs[i]->port = rxq->port;
 	}
 
 	xsk_ring_cons__release(rx, nb_pkts);
@@ -520,21 +558,49 @@ kick_tx(struct pkt_tx_queue *txq, struct xsk_ring_cons *cq)
 		}
 }
 
+static inline struct xdp_desc *
+reserve_and_fill(struct pkt_tx_queue *txq, struct rte_mbuf *mbuf,
+		 struct xsk_umem_info *umem, void **pkt_ptr)
+{
+	struct xdp_desc *desc = NULL;
+	uint64_t addr, offset;
+	uint32_t idx_tx;
+
+	if (!xsk_ring_prod__reserve(&txq->tx, 1, &idx_tx))
+		goto out;
+
+	desc = xsk_ring_prod__tx_desc(&txq->tx, idx_tx);
+	desc->len = mbuf->pkt_len;
+
+	addr = (uint64_t)mbuf - (uint64_t)umem->buffer
+		- umem->mb_pool->header_size;
+	offset = rte_pktmbuf_mtod(mbuf, uint64_t) - (uint64_t)mbuf
+		+ umem->mb_pool->header_size;
+
+	if (pkt_ptr)
+		*pkt_ptr = xsk_umem__get_data(umem->buffer, addr + offset);
+
+	offset = offset << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+	desc->addr = addr | offset;
+
+out:
+	return desc;
+}
+
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
 static uint16_t
 af_xdp_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	struct pkt_tx_queue *txq = queue;
 	struct xsk_umem_info *umem = txq->umem;
-	struct rte_mbuf *mbuf;
+	struct rte_mbuf *mbuf, *local_mbuf = NULL;
 	unsigned long tx_bytes = 0;
 	int i;
-	uint32_t idx_tx;
 	uint16_t count = 0;
 	struct xdp_desc *desc;
-	uint64_t addr, offset;
 	struct xsk_ring_cons *cq = &txq->pair->cq;
 	uint32_t free_thresh = cq->size >> 1;
+	void *pkt;
 
 	if (xsk_cons_nb_avail(cq, free_thresh) >= free_thresh)
 		pull_umem_cq(umem, XSK_RING_CONS__DEFAULT_NUM_DESCS, cq);
@@ -542,54 +608,35 @@ af_xdp_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	for (i = 0; i < nb_pkts; i++) {
 		mbuf = bufs[i];
 
-		if (mbuf->pool == umem->mb_pool) {
-			if (!xsk_ring_prod__reserve(&txq->tx, 1, &idx_tx)) {
+		if (RTE_MBUF_DIRECT(mbuf) && mbuf->pool == umem->mb_pool) {
+			desc = reserve_and_fill(txq, mbuf, umem, NULL);
+			if (!desc) {
 				kick_tx(txq, cq);
-				if (!xsk_ring_prod__reserve(&txq->tx, 1,
-							    &idx_tx))
+				desc = reserve_and_fill(txq, mbuf, umem, NULL);
+				if (!desc)
 					goto out;
 			}
-			desc = xsk_ring_prod__tx_desc(&txq->tx, idx_tx);
-			desc->len = mbuf->pkt_len;
-			addr = (uint64_t)mbuf - (uint64_t)umem->buffer -
-					umem->mb_pool->header_size;
-			offset = rte_pktmbuf_mtod(mbuf, uint64_t) -
-					(uint64_t)mbuf +
-					umem->mb_pool->header_size;
-			offset = offset << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
-			desc->addr = addr | offset;
+
+			tx_bytes += desc->len;
 			count++;
 		} else {
-			struct rte_mbuf *local_mbuf =
-					rte_pktmbuf_alloc(umem->mb_pool);
-			void *pkt;
-
-			if (local_mbuf == NULL)
+			local_mbuf = rte_pktmbuf_alloc(umem->mb_pool);
+			if (!local_mbuf)
 				goto out;
 
-			if (!xsk_ring_prod__reserve(&txq->tx, 1, &idx_tx)) {
+			desc = reserve_and_fill(txq, local_mbuf, umem, &pkt);
+			if (!desc) {
 				rte_pktmbuf_free(local_mbuf);
 				goto out;
 			}
 
-			desc = xsk_ring_prod__tx_desc(&txq->tx, idx_tx);
 			desc->len = mbuf->pkt_len;
-
-			addr = (uint64_t)local_mbuf - (uint64_t)umem->buffer -
-					umem->mb_pool->header_size;
-			offset = rte_pktmbuf_mtod(local_mbuf, uint64_t) -
-					(uint64_t)local_mbuf +
-					umem->mb_pool->header_size;
-			pkt = xsk_umem__get_data(umem->buffer, addr + offset);
-			offset = offset << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
-			desc->addr = addr | offset;
 			rte_memcpy(pkt, rte_pktmbuf_mtod(mbuf, void *),
-					desc->len);
+				   desc->len);
 			rte_pktmbuf_free(mbuf);
+			tx_bytes += desc->len;
 			count++;
 		}
-
-		tx_bytes += mbuf->pkt_len;
 	}
 
 out:
@@ -845,7 +892,8 @@ eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 }
 
 static int
-eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
 	struct pmd_process_private *process_private = dev->process_private;
@@ -854,33 +902,44 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	struct pkt_tx_queue *txq;
 	socklen_t optlen;
 	int i, ret, fd;
+	unsigned long ipackets = 0, ibytes = 0, opackets = 0, obytes = 0;
+	unsigned long oerrors = 0, imissed = 0;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		optlen = sizeof(struct xdp_statistics);
 		rxq = &internals->rx_queues[i];
 		txq = rxq->pair;
-		stats->q_ipackets[i] = rxq->stats.rx_pkts;
-		stats->q_ibytes[i] = rxq->stats.rx_bytes;
 
-		stats->q_opackets[i] = txq->stats.tx_pkts;
-		stats->q_obytes[i] = txq->stats.tx_bytes;
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_ipackets[i] = rxq->stats.rx_pkts;
+			qstats->q_ibytes[i] = rxq->stats.rx_bytes;
+			qstats->q_opackets[i] = txq->stats.tx_pkts;
+			qstats->q_obytes[i] = txq->stats.tx_bytes;
+			qstats->q_errors[i] = 0; /* Not used */
+		}
 
-		stats->ipackets += stats->q_ipackets[i];
-		stats->ibytes += stats->q_ibytes[i];
-		stats->imissed += rxq->stats.rx_dropped;
-		stats->oerrors += txq->stats.tx_dropped;
+		ipackets += rxq->stats.rx_pkts;
+		ibytes += rxq->stats.rx_bytes;
+		oerrors += txq->stats.tx_dropped;
 		fd = process_private->rxq_xsk_fds[i];
 		ret = fd >= 0 ? getsockopt(fd, SOL_XDP, XDP_STATISTICS,
 					   &xdp_stats, &optlen) : -1;
 		if (ret != 0) {
-			AF_XDP_LOG(ERR, "getsockopt() failed for XDP_STATISTICS.\n");
+			AF_XDP_LOG_LINE(ERR, "getsockopt() failed for XDP_STATISTICS.");
 			return -1;
 		}
-		stats->imissed += xdp_stats.rx_dropped;
+		imissed += xdp_stats.rx_dropped - rxq->stats.imissed_offset;
 
-		stats->opackets += stats->q_opackets[i];
-		stats->obytes += stats->q_obytes[i];
+		opackets += txq->stats.tx_pkts;
+		obytes += txq->stats.tx_bytes;
 	}
+
+	stats->ipackets = ipackets;
+	stats->ibytes = ibytes;
+	stats->opackets = opackets;
+	stats->obytes = obytes;
+	stats->oerrors = oerrors;
+	stats->imissed = imissed;
 
 	return 0;
 }
@@ -889,13 +948,25 @@ static int
 eth_stats_reset(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
-	int i;
+	struct pmd_process_private *process_private = dev->process_private;
+	struct xdp_statistics xdp_stats;
+	socklen_t optlen;
+	int i, ret, fd;
 
 	for (i = 0; i < internals->queue_cnt; i++) {
 		memset(&internals->rx_queues[i].stats, 0,
 					sizeof(struct rx_stats));
 		memset(&internals->tx_queues[i].stats, 0,
 					sizeof(struct tx_stats));
+		fd = process_private->rxq_xsk_fds[i];
+		optlen = sizeof(struct xdp_statistics);
+		ret = fd >= 0 ? getsockopt(fd, SOL_XDP, XDP_STATISTICS,
+					   &xdp_stats, &optlen) : -1;
+		if (ret != 0) {
+			AF_XDP_LOG_LINE(ERR, "getsockopt() failed for XDP_STATISTICS.");
+			return -1;
+		}
+		internals->rx_queues[i].stats.imissed_offset = xdp_stats.rx_dropped;
 	}
 
 	return 0;
@@ -914,17 +985,17 @@ remove_xdp_program(struct pmd_internals *internals)
 	uint32_t curr_prog_id = 0;
 	int ret;
 
-	ret = bpf_xdp_query_id(internals->if_index, XDP_FLAGS_UPDATE_IF_NOEXIST,
+	ret = bpf_xdp_query_id(internals->if_index, internals->mode_flag,
 			       &curr_prog_id);
 	if (ret != 0) {
-		AF_XDP_LOG(ERR, "bpf_xdp_query_id failed\n");
+		AF_XDP_LOG_LINE(ERR, "bpf_xdp_query_id failed");
 		return ret;
 	}
 
-	ret = bpf_xdp_detach(internals->if_index, XDP_FLAGS_UPDATE_IF_NOEXIST,
+	ret = bpf_xdp_detach(internals->if_index, internals->mode_flag,
 			     NULL);
 	if (ret != 0)
-		AF_XDP_LOG(ERR, "bpf_xdp_detach failed\n");
+		AF_XDP_LOG_LINE(ERR, "bpf_xdp_detach failed");
 	return ret;
 }
 
@@ -942,16 +1013,16 @@ remove_xdp_program(struct pmd_internals *internals)
 	int ret;
 
 	ret = bpf_get_link_xdp_id(internals->if_index, &curr_prog_id,
-				  XDP_FLAGS_UPDATE_IF_NOEXIST);
+				  internals->mode_flag);
 	if (ret != 0) {
-		AF_XDP_LOG(ERR, "bpf_get_link_xdp_id failed\n");
+		AF_XDP_LOG_LINE(ERR, "bpf_get_link_xdp_id failed");
 		return ret;
 	}
 
 	ret = bpf_set_link_xdp_fd(internals->if_index, -1,
-				  XDP_FLAGS_UPDATE_IF_NOEXIST);
+				  internals->mode_flag);
 	if (ret != 0)
-		AF_XDP_LOG(ERR, "bpf_set_link_xdp_fd failed\n");
+		AF_XDP_LOG_LINE(ERR, "bpf_set_link_xdp_fd failed");
 	return ret;
 }
 
@@ -986,7 +1057,7 @@ eth_dev_close(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		goto out;
 
-	AF_XDP_LOG(INFO, "Closing AF_XDP ethdev on numa socket %u\n",
+	AF_XDP_LOG_LINE(INFO, "Closing AF_XDP ethdev on numa socket %u",
 		rte_socket_id());
 
 	for (i = 0; i < internals->queue_cnt; i++) {
@@ -995,7 +1066,8 @@ eth_dev_close(struct rte_eth_dev *dev)
 			break;
 		xsk_socket__delete(rxq->xsk);
 
-		if (__atomic_fetch_sub(&rxq->umem->refcnt, 1, __ATOMIC_ACQUIRE) - 1 == 0)
+		if (rte_atomic_fetch_sub_explicit(&rxq->umem->refcnt, 1,
+				rte_memory_order_acquire) - 1 == 0)
 			xdp_umem_destroy(rxq->umem);
 
 		/* free pkt_tx_queue */
@@ -1010,7 +1082,7 @@ eth_dev_close(struct rte_eth_dev *dev)
 	dev->data->mac_addrs = NULL;
 
 	if (remove_xdp_program(internals) != 0)
-		AF_XDP_LOG(ERR, "Error while removing XDP program.\n");
+		AF_XDP_LOG_LINE(ERR, "Error while removing XDP program.");
 
 	if (internals->shared_umem) {
 		struct internal_list *list;
@@ -1039,19 +1111,6 @@ eth_link_update(struct rte_eth_dev *dev __rte_unused,
 }
 
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
-static inline uintptr_t get_base_addr(struct rte_mempool *mp, uint64_t *align)
-{
-	struct rte_mempool_memhdr *memhdr;
-	uintptr_t memhdr_addr, aligned_addr;
-
-	memhdr = STAILQ_FIRST(&mp->mem_list);
-	memhdr_addr = (uintptr_t)memhdr->addr;
-	aligned_addr = memhdr_addr & ~(getpagesize() - 1);
-	*align = memhdr_addr - aligned_addr;
-
-	return aligned_addr;
-}
-
 /* Check if the netdev,qid context already exists */
 static inline bool
 ctx_exists(struct pkt_rx_queue *rxq, const char *ifname,
@@ -1061,7 +1120,7 @@ ctx_exists(struct pkt_rx_queue *rxq, const char *ifname,
 
 	if (rxq->xsk_queue_idx == list_rxq->xsk_queue_idx &&
 			!strncmp(ifname, list_ifname, IFNAMSIZ)) {
-		AF_XDP_LOG(ERR, "ctx %s,%i already exists, cannot share umem\n",
+		AF_XDP_LOG_LINE(ERR, "ctx %s,%i already exists, cannot share umem",
 					ifname, rxq->xsk_queue_idx);
 		exists = true;
 	}
@@ -1097,8 +1156,8 @@ get_shared_umem(struct pkt_rx_queue *rxq, const char *ifname,
 					ret = -1;
 					goto out;
 				}
-				if (__atomic_load_n(&internals->rx_queues[i].umem->refcnt,
-						    __ATOMIC_ACQUIRE)) {
+				if (rte_atomic_load_explicit(&internals->rx_queues[i].umem->refcnt,
+						    rte_memory_order_acquire)) {
 					*umem = internals->rx_queues[i].umem;
 					goto out;
 				}
@@ -1122,20 +1181,21 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 		.fill_size = ETH_AF_XDP_DFLT_NUM_DESCS * 2,
 		.comp_size = ETH_AF_XDP_DFLT_NUM_DESCS,
 		.flags = XDP_UMEM_UNALIGNED_CHUNK_FLAG};
-	void *base_addr = NULL;
 	struct rte_mempool *mb_pool = rxq->mb_pool;
-	uint64_t umem_size, align = 0;
+	void *aligned_addr;
+	uint64_t umem_size;
+	struct rte_mempool_mem_range_info range;
 
 	if (internals->shared_umem) {
 		if (get_shared_umem(rxq, internals->if_name, &umem) < 0)
 			return NULL;
 
 		if (umem != NULL &&
-			__atomic_load_n(&umem->refcnt, __ATOMIC_ACQUIRE) <
+			rte_atomic_load_explicit(&umem->refcnt, rte_memory_order_acquire) <
 					umem->max_xsks) {
-			AF_XDP_LOG(INFO, "%s,qid%i sharing UMEM\n",
+			AF_XDP_LOG_LINE(INFO, "%s,qid%i sharing UMEM",
 					internals->if_name, rxq->xsk_queue_idx);
-			__atomic_fetch_add(&umem->refcnt, 1, __ATOMIC_ACQUIRE);
+			rte_atomic_fetch_add_explicit(&umem->refcnt, 1, rte_memory_order_acquire);
 		}
 	}
 
@@ -1151,33 +1211,43 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 		umem = rte_zmalloc_socket("umem", sizeof(*umem), 0,
 					  rte_socket_id());
 		if (umem == NULL) {
-			AF_XDP_LOG(ERR, "Failed to allocate umem info\n");
+			AF_XDP_LOG_LINE(ERR, "Failed to allocate umem info");
 			return NULL;
 		}
 
 		umem->mb_pool = mb_pool;
-		base_addr = (void *)get_base_addr(mb_pool, &align);
-		umem_size = (uint64_t)mb_pool->populated_size *
-				(uint64_t)usr_config.frame_size +
-				align;
-
-		ret = xsk_umem__create(&umem->umem, base_addr, umem_size,
+		ret = rte_mempool_get_mem_range(mb_pool, &range);
+		if (ret < 0) {
+			AF_XDP_LOG_LINE(ERR, "Failed(%d) to get range from mempool", ret);
+			goto err;
+		}
+		if (!range.is_contiguous) {
+			AF_XDP_LOG_LINE(ERR, "Can't mapped to umem as mempool is not contiguous");
+			goto err;
+		}
+		/*
+		 * umem requires the memory area be page aligned, safe to map with a large area as
+		 * the memory pointer for each XSK TX/RX descriptor is derived from mbuf data area.
+		 */
+		aligned_addr = (void *)RTE_ALIGN_FLOOR((uintptr_t)range.start, getpagesize());
+		umem_size = range.length + RTE_PTR_DIFF(range.start, aligned_addr);
+		ret = xsk_umem__create(&umem->umem, aligned_addr, umem_size,
 				&rxq->fq, &rxq->cq, &usr_config);
 		if (ret) {
-			AF_XDP_LOG(ERR, "Failed to create umem [%d]: [%s]\n",
+			AF_XDP_LOG_LINE(ERR, "Failed to create umem [%d]: [%s]",
 				   errno, strerror(errno));
 			goto err;
 		}
-		umem->buffer = base_addr;
+		umem->buffer = aligned_addr;
 
 		if (internals->shared_umem) {
 			umem->max_xsks = mb_pool->populated_size /
 						ETH_AF_XDP_NUM_BUFFERS;
-			AF_XDP_LOG(INFO, "Max xsks for UMEM %s: %u\n",
+			AF_XDP_LOG_LINE(INFO, "Max xsks for UMEM %s: %u",
 						mb_pool->name, umem->max_xsks);
 		}
 
-		__atomic_store_n(&umem->refcnt, 1, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&umem->refcnt, 1, rte_memory_order_release);
 	}
 
 	return umem;
@@ -1205,7 +1275,7 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 
 	umem = rte_zmalloc_socket("umem", sizeof(*umem), 0, rte_socket_id());
 	if (umem == NULL) {
-		AF_XDP_LOG(ERR, "Failed to allocate umem info\n");
+		AF_XDP_LOG_LINE(ERR, "Failed to allocate umem info");
 		return NULL;
 	}
 
@@ -1216,7 +1286,7 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 					 rte_socket_id(),
 					 0x0);
 	if (umem->buf_ring == NULL) {
-		AF_XDP_LOG(ERR, "Failed to create rte_ring\n");
+		AF_XDP_LOG_LINE(ERR, "Failed to create rte_ring");
 		goto err;
 	}
 
@@ -1231,7 +1301,7 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 			rte_socket_id(), RTE_MEMZONE_IOVA_CONTIG,
 			getpagesize());
 	if (mz == NULL) {
-		AF_XDP_LOG(ERR, "Failed to reserve memzone for af_xdp umem.\n");
+		AF_XDP_LOG_LINE(ERR, "Failed to reserve memzone for af_xdp umem.");
 		goto err;
 	}
 	umem->mz = mz;
@@ -1242,7 +1312,7 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 			       &usr_config);
 
 	if (ret) {
-		AF_XDP_LOG(ERR, "Failed to create umem\n");
+		AF_XDP_LOG_LINE(ERR, "Failed to create umem");
 		goto err;
 	}
 
@@ -1255,14 +1325,29 @@ err:
 #endif
 
 static int
-load_custom_xdp_prog(const char *prog_path, int if_index, struct bpf_map **map)
+get_pinned_map(const char *dp_path, int *map_fd)
+{
+	*map_fd  = bpf_obj_get(dp_path);
+	if (!*map_fd) {
+		AF_XDP_LOG_LINE(ERR, "Failed to find xsks_map in %s", dp_path);
+		return -1;
+	}
+
+	AF_XDP_LOG_LINE(INFO, "Successfully retrieved map %s with fd %d",
+				dp_path, *map_fd);
+
+	return 0;
+}
+
+static int
+load_custom_xdp_prog(const char *prog_path, int if_index, struct bpf_map **map, uint32_t mode_flag)
 {
 	int ret, prog_fd;
 	struct bpf_object *obj;
 
 	prog_fd = load_program(prog_path, &obj);
 	if (prog_fd < 0) {
-		AF_XDP_LOG(ERR, "Failed to load program %s\n", prog_path);
+		AF_XDP_LOG_LINE(ERR, "Failed to load program %s", prog_path);
 		return -1;
 	}
 
@@ -1272,20 +1357,20 @@ load_custom_xdp_prog(const char *prog_path, int if_index, struct bpf_map **map)
 	 */
 	*map = bpf_object__find_map_by_name(obj, "xsks_map");
 	if (!*map) {
-		AF_XDP_LOG(ERR, "Failed to find xsks_map in %s\n", prog_path);
+		AF_XDP_LOG_LINE(ERR, "Failed to find xsks_map in %s", prog_path);
 		return -1;
 	}
 
 	/* Link the program with the given network device */
 	ret = link_xdp_prog_with_dev(if_index, prog_fd,
-					XDP_FLAGS_UPDATE_IF_NOEXIST);
+					mode_flag);
 	if (ret) {
-		AF_XDP_LOG(ERR, "Failed to set prog fd %d on interface\n",
+		AF_XDP_LOG_LINE(ERR, "Failed to set prog fd %d on interface",
 				prog_fd);
 		return -1;
 	}
 
-	AF_XDP_LOG(INFO, "Successfully loaded XDP program %s with fd %d\n",
+	AF_XDP_LOG_LINE(INFO, "Successfully loaded XDP program %s with fd %d",
 				prog_path, prog_fd);
 
 	return 0;
@@ -1302,7 +1387,7 @@ configure_preferred_busy_poll(struct pkt_rx_queue *rxq)
 	ret = setsockopt(fd, SOL_SOCKET, SO_PREFER_BUSY_POLL,
 			(void *)&sock_opt, sizeof(sock_opt));
 	if (ret < 0) {
-		AF_XDP_LOG(DEBUG, "Failed to set SO_PREFER_BUSY_POLL\n");
+		AF_XDP_LOG_LINE(DEBUG, "Failed to set SO_PREFER_BUSY_POLL");
 		goto err_prefer;
 	}
 
@@ -1310,7 +1395,7 @@ configure_preferred_busy_poll(struct pkt_rx_queue *rxq)
 	ret = setsockopt(fd, SOL_SOCKET, SO_BUSY_POLL, (void *)&sock_opt,
 			sizeof(sock_opt));
 	if (ret < 0) {
-		AF_XDP_LOG(DEBUG, "Failed to set SO_BUSY_POLL\n");
+		AF_XDP_LOG_LINE(DEBUG, "Failed to set SO_BUSY_POLL");
 		goto err_timeout;
 	}
 
@@ -1318,9 +1403,9 @@ configure_preferred_busy_poll(struct pkt_rx_queue *rxq)
 	ret = setsockopt(fd, SOL_SOCKET, SO_BUSY_POLL_BUDGET,
 			(void *)&sock_opt, sizeof(sock_opt));
 	if (ret < 0) {
-		AF_XDP_LOG(DEBUG, "Failed to set SO_BUSY_POLL_BUDGET\n");
+		AF_XDP_LOG_LINE(DEBUG, "Failed to set SO_BUSY_POLL_BUDGET");
 	} else {
-		AF_XDP_LOG(INFO, "Busy polling budget set to: %u\n",
+		AF_XDP_LOG_LINE(INFO, "Busy polling budget set to: %u",
 					rxq->busy_budget);
 		return 0;
 	}
@@ -1332,7 +1417,7 @@ configure_preferred_busy_poll(struct pkt_rx_queue *rxq)
 	ret = setsockopt(fd, SOL_SOCKET, SO_BUSY_POLL, (void *)&sock_opt,
 			sizeof(sock_opt));
 	if (ret < 0) {
-		AF_XDP_LOG(ERR, "Failed to unset SO_BUSY_POLL\n");
+		AF_XDP_LOG_LINE(ERR, "Failed to unset SO_BUSY_POLL");
 		return -1;
 	}
 
@@ -1341,7 +1426,7 @@ err_timeout:
 	ret = setsockopt(fd, SOL_SOCKET, SO_PREFER_BUSY_POLL,
 			(void *)&sock_opt, sizeof(sock_opt));
 	if (ret < 0) {
-		AF_XDP_LOG(ERR, "Failed to unset SO_PREFER_BUSY_POLL\n");
+		AF_XDP_LOG_LINE(ERR, "Failed to unset SO_PREFER_BUSY_POLL");
 		return -1;
 	}
 
@@ -1351,22 +1436,22 @@ err_prefer:
 }
 
 static int
-init_uds_sock(struct sockaddr_un *server)
+init_uds_sock(struct sockaddr_un *server, const char *dp_path)
 {
 	int sock;
 
 	sock = socket(AF_UNIX, SOCK_SEQPACKET, 0);
 	if (sock < 0) {
-		AF_XDP_LOG(ERR, "Failed to opening stream socket\n");
+		AF_XDP_LOG_LINE(ERR, "Failed to opening stream socket");
 		return -1;
 	}
 
 	server->sun_family = AF_UNIX;
-	strlcpy(server->sun_path, UDS_SOCK, sizeof(server->sun_path));
+	strlcpy(server->sun_path, dp_path, sizeof(server->sun_path));
 
 	if (connect(sock, (struct sockaddr *)server, sizeof(struct sockaddr_un)) < 0) {
 		close(sock);
-		AF_XDP_LOG(ERR, "Error connecting stream socket errno = [%d]: [%s]\n",
+		AF_XDP_LOG_LINE(ERR, "Error connecting stream socket errno = [%d]: [%s]",
 			   errno, strerror(errno));
 		return -1;
 	}
@@ -1382,7 +1467,7 @@ struct msg_internal {
 };
 
 static int
-send_msg(int sock, char *request, int *fd)
+send_msg(int sock, char *request, int *fd, const char *dp_path)
 {
 	int snd;
 	struct iovec iov;
@@ -1393,7 +1478,7 @@ send_msg(int sock, char *request, int *fd)
 
 	memset(&dst, 0, sizeof(dst));
 	dst.sun_family = AF_UNIX;
-	strlcpy(dst.sun_path, UDS_SOCK, sizeof(dst.sun_path));
+	strlcpy(dst.sun_path, dp_path, sizeof(dst.sun_path));
 
 	/* Initialize message header structure */
 	memset(&msgh, 0, sizeof(msgh));
@@ -1451,7 +1536,7 @@ read_msg(int sock, char *response, struct sockaddr_un *s, int *fd)
 		return 0;
 
 	if (msglen < 0) {
-		AF_XDP_LOG(ERR, "recvmsg failed, %s\n", strerror(errno));
+		AF_XDP_LOG_LINE(ERR, "recvmsg failed, %s", strerror(errno));
 		return -1;
 	}
 
@@ -1470,12 +1555,12 @@ read_msg(int sock, char *response, struct sockaddr_un *s, int *fd)
 }
 
 static int
-make_request_cni(int sock, struct sockaddr_un *server, char *request,
-		 int *req_fd, char *response, int *out_fd)
+make_request_dp(int sock, struct sockaddr_un *server, char *request,
+		 int *req_fd, char *response, int *out_fd, const char *dp_path)
 {
 	int rval;
 
-	AF_XDP_LOG(DEBUG, "Request: [%s]\n", request);
+	AF_XDP_LOG_LINE(DEBUG, "Request: [%s]", request);
 
 	/* if no file descriptor to send then directly write to socket.
 	 * else use sendmsg() to send the file descriptor.
@@ -1483,19 +1568,19 @@ make_request_cni(int sock, struct sockaddr_un *server, char *request,
 	if (req_fd == NULL)
 		rval = write(sock, request, strlen(request));
 	else
-		rval = send_msg(sock, request, req_fd);
+		rval = send_msg(sock, request, req_fd, dp_path);
 
 	if (rval < 0) {
-		AF_XDP_LOG(ERR, "Write error %s\n", strerror(errno));
+		AF_XDP_LOG_LINE(ERR, "Write error %s", strerror(errno));
 		return -1;
 	}
 
 	rval = read_msg(sock, response, server, out_fd);
 	if (rval <= 0) {
-		AF_XDP_LOG(ERR, "Read error %d\n", rval);
+		AF_XDP_LOG_LINE(ERR, "Read error %d", rval);
 		return -1;
 	}
-	AF_XDP_LOG(DEBUG, "Response: [%s]\n", request);
+	AF_XDP_LOG_LINE(DEBUG, "Response: [%s]", request);
 
 	return 0;
 }
@@ -1507,7 +1592,7 @@ check_response(char *response, char *exp_resp, long size)
 }
 
 static int
-get_cni_fd(char *if_name)
+uds_get_xskmap_fd(char *if_name, const char *dp_path)
 {
 	char request[UDS_MAX_CMD_LEN], response[UDS_MAX_CMD_RESP];
 	char hostname[MAX_LONG_OPT_SZ], exp_resp[UDS_MAX_CMD_RESP];
@@ -1520,42 +1605,42 @@ get_cni_fd(char *if_name)
 		return -1;
 
 	memset(&server, 0, sizeof(server));
-	sock = init_uds_sock(&server);
+	sock = init_uds_sock(&server, dp_path);
 	if (sock < 0)
 		return -1;
 
-	/* Initiates handshake to CNI send: /connect,hostname */
+	/* Initiates handshake to the AF_XDP Device Plugin send: /connect,hostname */
 	snprintf(request, sizeof(request), "%s,%s", UDS_CONNECT_MSG, hostname);
 	memset(response, 0, sizeof(response));
-	if (make_request_cni(sock, &server, request, NULL, response, &out_fd) < 0) {
-		AF_XDP_LOG(ERR, "Error in processing cmd [%s]\n", request);
+	if (make_request_dp(sock, &server, request, NULL, response, &out_fd, dp_path) < 0) {
+		AF_XDP_LOG_LINE(ERR, "Error in processing cmd [%s]", request);
 		goto err_close;
 	}
 
 	/* Expect /host_ok */
 	strlcpy(exp_resp, UDS_HOST_OK_MSG, UDS_MAX_CMD_LEN);
 	if (check_response(response, exp_resp, strlen(exp_resp)) < 0) {
-		AF_XDP_LOG(ERR, "Unexpected response [%s]\n", response);
+		AF_XDP_LOG_LINE(ERR, "Unexpected response [%s]", response);
 		goto err_close;
 	}
 	/* Request for "/version" */
 	strlcpy(request, UDS_VERSION_MSG, UDS_MAX_CMD_LEN);
 	memset(response, 0, sizeof(response));
-	if (make_request_cni(sock, &server, request, NULL, response, &out_fd) < 0) {
-		AF_XDP_LOG(ERR, "Error in processing cmd [%s]\n", request);
+	if (make_request_dp(sock, &server, request, NULL, response, &out_fd, dp_path) < 0) {
+		AF_XDP_LOG_LINE(ERR, "Error in processing cmd [%s]", request);
 		goto err_close;
 	}
 
 	/* Request for file descriptor for netdev name*/
 	snprintf(request, sizeof(request), "%s,%s", UDS_XSK_MAP_FD_MSG, if_name);
 	memset(response, 0, sizeof(response));
-	if (make_request_cni(sock, &server, request, NULL, response, &out_fd) < 0) {
-		AF_XDP_LOG(ERR, "Error in processing cmd [%s]\n", request);
+	if (make_request_dp(sock, &server, request, NULL, response, &out_fd, dp_path) < 0) {
+		AF_XDP_LOG_LINE(ERR, "Error in processing cmd [%s]", request);
 		goto err_close;
 	}
 
 	if (out_fd < 0) {
-		AF_XDP_LOG(ERR, "Error in processing cmd [%s]\n", request);
+		AF_XDP_LOG_LINE(ERR, "Error in processing cmd [%s]", request);
 		goto err_close;
 	}
 
@@ -1564,22 +1649,22 @@ get_cni_fd(char *if_name)
 	/* Expect fd_ack with file descriptor */
 	strlcpy(exp_resp, UDS_FD_ACK_MSG, UDS_MAX_CMD_LEN);
 	if (check_response(response, exp_resp, strlen(exp_resp)) < 0) {
-		AF_XDP_LOG(ERR, "Unexpected response [%s]\n", response);
+		AF_XDP_LOG_LINE(ERR, "Unexpected response [%s]", response);
 		goto err_close;
 	}
 
 	/* Initiate close connection */
 	strlcpy(request, UDS_FIN_MSG, UDS_MAX_CMD_LEN);
 	memset(response, 0, sizeof(response));
-	if (make_request_cni(sock, &server, request, NULL, response, &out_fd) < 0) {
-		AF_XDP_LOG(ERR, "Error in processing cmd [%s]\n", request);
+	if (make_request_dp(sock, &server, request, NULL, response, &out_fd, dp_path) < 0) {
+		AF_XDP_LOG_LINE(ERR, "Error in processing cmd [%s]", request);
 		goto err_close;
 	}
 
 	/* Connection close */
 	strlcpy(exp_resp, UDS_FIN_ACK_MSG, UDS_MAX_CMD_LEN);
 	if (check_response(response, exp_resp, strlen(exp_resp)) < 0) {
-		AF_XDP_LOG(ERR, "Unexpected response [%s]\n", response);
+		AF_XDP_LOG_LINE(ERR, "Unexpected response [%s]", response);
 		goto err_close;
 	}
 	close(sock);
@@ -1606,12 +1691,13 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	if (rxq->umem == NULL)
 		return -ENOMEM;
 	txq->umem = rxq->umem;
-	reserve_before = __atomic_load_n(&rxq->umem->refcnt, __ATOMIC_ACQUIRE) <= 1;
+	reserve_before = rte_atomic_load_explicit(&rxq->umem->refcnt,
+			rte_memory_order_acquire) <= 1;
 
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
 	ret = rte_pktmbuf_alloc_bulk(rxq->umem->mb_pool, fq_bufs, reserve_size);
 	if (ret) {
-		AF_XDP_LOG(DEBUG, "Failed to get enough buffers for fq.\n");
+		AF_XDP_LOG_LINE(DEBUG, "Failed to get enough buffers for fq.");
 		goto out_umem;
 	}
 #endif
@@ -1620,7 +1706,7 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	if (reserve_before) {
 		ret = reserve_fill_queue(rxq->umem, reserve_size, fq_bufs, &rxq->fq);
 		if (ret) {
-			AF_XDP_LOG(ERR, "Failed to reserve fill queue.\n");
+			AF_XDP_LOG_LINE(ERR, "Failed to reserve fill queue.");
 			goto out_umem;
 		}
 	}
@@ -1628,7 +1714,7 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	cfg.rx_size = ring_size;
 	cfg.tx_size = ring_size;
 	cfg.libbpf_flags = 0;
-	cfg.xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST;
+	cfg.xdp_flags = internals->mode_flag;
 	cfg.bind_flags = 0;
 
 	/* Force AF_XDP socket into copy mode when users want it */
@@ -1640,16 +1726,16 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 #endif
 
 	/* Disable libbpf from loading XDP program */
-	if (internals->use_cni)
+	if (internals->use_cni || internals->use_pinned_map)
 		cfg.libbpf_flags |= XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
 
 	if (strnlen(internals->prog_path, PATH_MAX)) {
 		if (!internals->custom_prog_configured) {
 			ret = load_custom_xdp_prog(internals->prog_path,
 							internals->if_index,
-							&internals->map);
+							&internals->map, internals->mode_flag);
 			if (ret) {
-				AF_XDP_LOG(ERR, "Failed to load custom XDP program %s\n",
+				AF_XDP_LOG_LINE(ERR, "Failed to load custom XDP program %s",
 						internals->prog_path);
 				goto out_umem;
 			}
@@ -1668,7 +1754,7 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 				&txq->tx, &cfg);
 
 	if (ret) {
-		AF_XDP_LOG(ERR, "Failed to create xsk socket.\n");
+		AF_XDP_LOG_LINE(ERR, "Failed to create xsk socket.");
 		goto out_umem;
 	}
 
@@ -1676,7 +1762,7 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 		/* reserve fill queue of queues sharing UMEM */
 		ret = reserve_fill_queue(rxq->umem, reserve_size, fq_bufs, &rxq->fq);
 		if (ret) {
-			AF_XDP_LOG(ERR, "Failed to reserve fill queue.\n");
+			AF_XDP_LOG_LINE(ERR, "Failed to reserve fill queue.");
 			goto out_xsk;
 		}
 	}
@@ -1689,31 +1775,40 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 		err = bpf_map_update_elem(bpf_map__fd(internals->map),
 					  &rxq->xsk_queue_idx, &fd, 0);
 		if (err) {
-			AF_XDP_LOG(ERR, "Failed to insert xsk in map.\n");
+			AF_XDP_LOG_LINE(ERR, "Failed to insert xsk in map.");
 			goto out_xsk;
 		}
 	}
 
-	if (internals->use_cni) {
-		int err, fd, map_fd;
+	if (internals->use_cni || internals->use_pinned_map) {
+		int err, map_fd;
 
-		/* get socket fd from CNI plugin */
-		map_fd = get_cni_fd(internals->if_name);
-		if (map_fd < 0) {
-			AF_XDP_LOG(ERR, "Failed to receive CNI plugin fd\n");
-			goto out_xsk;
+		if (internals->use_cni) {
+			/* get socket fd from AF_XDP Device Plugin */
+			map_fd = uds_get_xskmap_fd(internals->if_name, internals->dp_path);
+			if (map_fd < 0) {
+				AF_XDP_LOG_LINE(ERR, "Failed to receive xskmap fd from AF_XDP Device Plugin");
+				goto out_xsk;
+			}
+		} else {
+			/* get socket fd from AF_XDP plugin */
+			err = get_pinned_map(internals->dp_path, &map_fd);
+			if (err < 0 || map_fd < 0) {
+				AF_XDP_LOG_LINE(ERR, "Failed to retrieve pinned map fd");
+				goto out_xsk;
+			}
 		}
-		/* get socket fd */
-		fd = xsk_socket__fd(rxq->xsk);
-		err = bpf_map_update_elem(map_fd, &rxq->xsk_queue_idx, &fd, 0);
+
+		err = update_xskmap(rxq->xsk, map_fd, rxq->xsk_queue_idx);
 		if (err) {
-			AF_XDP_LOG(ERR, "Failed to insert unprivileged xsk in map.\n");
+			AF_XDP_LOG_LINE(ERR, "Failed to insert xsk in map.");
 			goto out_xsk;
 		}
+
 	} else if (rxq->busy_budget) {
 		ret = configure_preferred_busy_poll(rxq);
 		if (ret) {
-			AF_XDP_LOG(ERR, "Failed configure busy polling.\n");
+			AF_XDP_LOG_LINE(ERR, "Failed configure busy polling.");
 			goto out_xsk;
 		}
 	}
@@ -1723,7 +1818,7 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 out_xsk:
 	xsk_socket__delete(rxq->xsk);
 out_umem:
-	if (__atomic_fetch_sub(&rxq->umem->refcnt, 1, __ATOMIC_ACQUIRE) - 1 == 0)
+	if (rte_atomic_fetch_sub_explicit(&rxq->umem->refcnt, 1, rte_memory_order_acquire) - 1 == 0)
 		xdp_umem_destroy(rxq->umem);
 
 	return ret;
@@ -1744,7 +1839,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 
 	rxq = &internals->rx_queues[rx_queue_id];
 
-	AF_XDP_LOG(INFO, "Set up rx queue, rx queue id: %d, xsk queue id: %d\n",
+	AF_XDP_LOG_LINE(INFO, "Set up rx queue, rx queue id: %d, xsk queue id: %d",
 		   rx_queue_id, rxq->xsk_queue_idx);
 
 #ifndef XDP_UMEM_UNALIGNED_CHUNK_FLAG
@@ -1756,7 +1851,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 	data_size = ETH_AF_XDP_FRAME_SIZE;
 
 	if (data_size > buf_size) {
-		AF_XDP_LOG(ERR, "%s: %d bytes will not fit in mbuf (%d bytes)\n",
+		AF_XDP_LOG_LINE(ERR, "%s: %d bytes will not fit in mbuf (%d bytes)",
 			dev->device->name, data_size, buf_size);
 		ret = -ENOMEM;
 		goto err;
@@ -1766,18 +1861,20 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->mb_pool = mb_pool;
 
 	if (xsk_configure(internals, rxq, nb_rx_desc)) {
-		AF_XDP_LOG(ERR, "Failed to configure xdp socket\n");
+		AF_XDP_LOG_LINE(ERR, "Failed to configure xdp socket");
 		ret = -EINVAL;
 		goto err;
 	}
 
 	if (!rxq->busy_budget)
-		AF_XDP_LOG(DEBUG, "Preferred busy polling not enabled\n");
+		AF_XDP_LOG_LINE(DEBUG, "Preferred busy polling not enabled");
 
 	rxq->fds[0].fd = xsk_socket__fd(rxq->xsk);
 	rxq->fds[0].events = POLLIN;
 
 	process_private->rxq_xsk_fds[rx_queue_id] = rxq->fds[0].fd;
+
+	rxq->port = dev->data->port_id;
 
 	dev->data->rx_queues[rx_queue_id] = rxq;
 	return 0;
@@ -1881,13 +1978,13 @@ static const struct eth_dev_ops ops = {
 	.get_monitor_addr = eth_get_monitor_addr,
 };
 
-/* CNI option works in unprivileged container environment
- * and ethernet device functionality will be reduced. So
- * additional customiszed eth_dev_ops struct is needed
- * for cni. Promiscuous enable and disable functionality
- * is removed.
+/* AF_XDP Device Plugin option works in unprivileged
+ * container environments and ethernet device functionality
+ * will be reduced. So additional customised eth_dev_ops
+ * struct is needed for the Device Plugin. Promiscuous
+ * enable and disable functionality is removed.
  **/
-static const struct eth_dev_ops ops_cni = {
+static const struct eth_dev_ops ops_afxdp_dp = {
 	.dev_start = eth_dev_start,
 	.dev_stop = eth_dev_stop,
 	.dev_close = eth_dev_close,
@@ -1912,7 +2009,7 @@ parse_budget_arg(const char *key __rte_unused,
 
 	*i = strtol(value, &end, 10);
 	if (*i < 0 || *i > UINT16_MAX) {
-		AF_XDP_LOG(ERR, "Invalid busy_budget %i, must be >= 0 and <= %u\n",
+		AF_XDP_LOG_LINE(ERR, "Invalid busy_budget %i, must be >= 0 and <= %u",
 				*i, UINT16_MAX);
 		return -EINVAL;
 	}
@@ -1930,7 +2027,7 @@ parse_integer_arg(const char *key __rte_unused,
 
 	*i = strtol(value, &end, 10);
 	if (*i < 0) {
-		AF_XDP_LOG(ERR, "Argument has to be positive.\n");
+		AF_XDP_LOG_LINE(ERR, "Argument has to be positive.");
 		return -EINVAL;
 	}
 
@@ -1945,7 +2042,7 @@ parse_name_arg(const char *key __rte_unused,
 	char *name = extra_args;
 
 	if (strnlen(value, IFNAMSIZ) > IFNAMSIZ - 1) {
-		AF_XDP_LOG(ERR, "Invalid name %s, should be less than %u bytes.\n",
+		AF_XDP_LOG_LINE(ERR, "Invalid name %s, should be less than %u bytes.",
 			   value, IFNAMSIZ);
 		return -EINVAL;
 	}
@@ -1953,6 +2050,25 @@ parse_name_arg(const char *key __rte_unused,
 	strlcpy(name, value, IFNAMSIZ);
 
 	return 0;
+}
+
+/** parse name argument */
+static int
+parse_mode_arg(const char *key __rte_unused,
+	       const char *value, void *extra_args)
+{
+	unsigned int *mode = extra_args;
+	unsigned int i;
+
+	for (i = 0; i < ETH_AF_XDP_NUM_MODE_ARG; i++) {
+		if (strcmp(value, mode_arguments[i]) == 0) {
+			*mode |= mode_flags[i];
+			return 0;
+		}
+	}
+
+	AF_XDP_LOG_LINE(ERR, "Invalid af_xdp mode, choose correct mode to attach af_xdp program.");
+	return -EINVAL;
 }
 
 /** parse xdp prog argument */
@@ -1963,13 +2079,13 @@ parse_prog_arg(const char *key __rte_unused,
 	char *path = extra_args;
 
 	if (strnlen(value, PATH_MAX) == PATH_MAX) {
-		AF_XDP_LOG(ERR, "Invalid path %s, should be less than %u bytes.\n",
+		AF_XDP_LOG_LINE(ERR, "Invalid path %s, should be less than %u bytes.",
 			   value, PATH_MAX);
 		return -EINVAL;
 	}
 
 	if (access(value, F_OK) != 0) {
-		AF_XDP_LOG(ERR, "Error accessing %s: %s\n",
+		AF_XDP_LOG_LINE(ERR, "Error accessing %s: %s",
 			   value, strerror(errno));
 		return -EINVAL;
 	}
@@ -1981,11 +2097,11 @@ parse_prog_arg(const char *key __rte_unused,
 
 static int
 xdp_get_channels_info(const char *if_name, int *max_queues,
-				int *combined_queues)
+				int *configured_queues)
 {
 	struct ethtool_channels channels;
 	struct ifreq ifr;
-	int fd, ret;
+	int fd, ret, rxtx_q_count;
 
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (fd < 0)
@@ -2004,15 +2120,23 @@ xdp_get_channels_info(const char *if_name, int *max_queues,
 		}
 	}
 
-	if (channels.max_combined == 0 || errno == EOPNOTSUPP) {
+	/* For drivers with rx/tx queue configured */
+	rxtx_q_count = RTE_MIN(channels.rx_count, channels.tx_count);
+
+	if ((channels.max_combined == 0 && rxtx_q_count == 0) || errno == EOPNOTSUPP) {
 		/* If the device says it has no channels, then all traffic
 		 * is sent to a single stream, so max queues = 1.
 		 */
 		*max_queues = 1;
-		*combined_queues = 1;
-	} else {
+		*configured_queues = 1;
+	} else if (channels.max_combined > 0) {
 		*max_queues = channels.max_combined;
-		*combined_queues = channels.combined_count;
+		*configured_queues = channels.combined_count;
+		AF_XDP_LOG_LINE(INFO, "Using Combined queues configuration");
+	} else {
+		*max_queues = RTE_MIN(channels.max_rx, channels.max_tx);
+		*configured_queues = rxtx_q_count;
+		AF_XDP_LOG_LINE(INFO, "Using Rx/Tx queues configuration");
 	}
 
  out:
@@ -2023,7 +2147,8 @@ xdp_get_channels_info(const char *if_name, int *max_queues,
 static int
 parse_parameters(struct rte_kvargs *kvlist, char *if_name, int *start_queue,
 		 int *queue_cnt, int *shared_umem, char *prog_path,
-		 int *busy_budget, int *force_copy, int *use_cni)
+		 int *busy_budget, int *force_copy, int *use_cni,
+		 int *use_pinned_map, char *dp_path, uint32_t *xdp_mode)
 {
 	int ret;
 
@@ -2069,6 +2194,23 @@ parse_parameters(struct rte_kvargs *kvlist, char *if_name, int *start_queue,
 	if (ret < 0)
 		goto free_kvlist;
 
+	ret = rte_kvargs_process(kvlist, ETH_AF_XDP_USE_PINNED_MAP_ARG,
+				 &parse_integer_arg, use_pinned_map);
+	if (ret < 0)
+		goto free_kvlist;
+
+	ret = rte_kvargs_process(kvlist, ETH_AF_XDP_DP_PATH_ARG,
+				 &parse_prog_arg, dp_path);
+
+	if (ret < 0)
+		goto free_kvlist;
+
+	ret = rte_kvargs_process(kvlist, ETH_AF_XDP_MODE_ARG,
+				 &parse_mode_arg, xdp_mode);
+
+	if (ret < 0)
+		goto free_kvlist;
+
 free_kvlist:
 	rte_kvargs_free(kvlist);
 	return ret;
@@ -2108,7 +2250,7 @@ static struct rte_eth_dev *
 init_internals(struct rte_vdev_device *dev, const char *if_name,
 	       int start_queue_idx, int queue_cnt, int shared_umem,
 	       const char *prog_path, int busy_budget, int force_copy,
-	       int use_cni)
+	       int use_cni, int use_pinned_map, const char *dp_path, uint32_t xdp_mode)
 {
 	const char *name = rte_vdev_device_name(dev);
 	const unsigned int numa_node = dev->device.numa_node;
@@ -2130,25 +2272,28 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 
 #ifndef ETH_AF_XDP_SHARED_UMEM
 	if (shared_umem) {
-		AF_XDP_LOG(ERR, "Shared UMEM feature not available. "
-				"Check kernel and libbpf version\n");
+		AF_XDP_LOG_LINE(ERR, "Shared UMEM feature not available. "
+				"Check kernel and libbpf version");
 		goto err_free_internals;
 	}
 #endif
 	internals->shared_umem = shared_umem;
 	internals->force_copy = force_copy;
 	internals->use_cni = use_cni;
+	internals->use_pinned_map = use_pinned_map;
+	internals->mode_flag = XDP_FLAGS_UPDATE_IF_NOEXIST | xdp_mode;
+	strlcpy(internals->dp_path, dp_path, PATH_MAX);
 
 	if (xdp_get_channels_info(if_name, &internals->max_queue_cnt,
-				  &internals->combined_queue_cnt)) {
-		AF_XDP_LOG(ERR, "Failed to get channel info of interface: %s\n",
+				  &internals->configured_queue_cnt)) {
+		AF_XDP_LOG_LINE(ERR, "Failed to get channel info of interface: %s",
 				if_name);
 		goto err_free_internals;
 	}
 
-	if (queue_cnt > internals->combined_queue_cnt) {
-		AF_XDP_LOG(ERR, "Specified queue count %d is larger than combined queue count %d.\n",
-				queue_cnt, internals->combined_queue_cnt);
+	if (queue_cnt > internals->configured_queue_cnt) {
+		AF_XDP_LOG_LINE(ERR, "Specified queue count %d is larger than configured queue count %d.",
+				queue_cnt, internals->configured_queue_cnt);
 		goto err_free_internals;
 	}
 
@@ -2156,7 +2301,7 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 					sizeof(struct pkt_rx_queue) * queue_cnt,
 					0, numa_node);
 	if (internals->rx_queues == NULL) {
-		AF_XDP_LOG(ERR, "Failed to allocate memory for rx queues.\n");
+		AF_XDP_LOG_LINE(ERR, "Failed to allocate memory for rx queues.");
 		goto err_free_internals;
 	}
 
@@ -2164,7 +2309,7 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 					sizeof(struct pkt_tx_queue) * queue_cnt,
 					0, numa_node);
 	if (internals->tx_queues == NULL) {
-		AF_XDP_LOG(ERR, "Failed to allocate memory for tx queues.\n");
+		AF_XDP_LOG_LINE(ERR, "Failed to allocate memory for tx queues.");
 		goto err_free_rx;
 	}
 	for (i = 0; i < queue_cnt; i++) {
@@ -2184,7 +2329,7 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 		rte_zmalloc_socket(name, sizeof(struct pmd_process_private),
 				   RTE_CACHE_LINE_SIZE, numa_node);
 	if (process_private == NULL) {
-		AF_XDP_LOG(ERR, "Failed to alloc memory for process private\n");
+		AF_XDP_LOG_LINE(ERR, "Failed to alloc memory for process private");
 		goto err_free_tx;
 	}
 
@@ -2196,10 +2341,10 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 	eth_dev->data->dev_link = pmd_link;
 	eth_dev->data->mac_addrs = &internals->eth_addr;
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
-	if (!internals->use_cni)
+	if (!internals->use_cni && !internals->use_pinned_map)
 		eth_dev->dev_ops = &ops;
 	else
-		eth_dev->dev_ops = &ops_cni;
+		eth_dev->dev_ops = &ops_afxdp_dp;
 
 	eth_dev->rx_pkt_burst = eth_af_xdp_rx;
 	eth_dev->tx_pkt_burst = eth_af_xdp_tx;
@@ -2209,7 +2354,7 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 		process_private->rxq_xsk_fds[i] = -1;
 
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
-	AF_XDP_LOG(INFO, "Zero copy between umem and mbuf enabled.\n");
+	AF_XDP_LOG_LINE(INFO, "Zero copy between umem and mbuf enabled.");
 #endif
 
 	return eth_dev;
@@ -2244,17 +2389,17 @@ afxdp_mp_request_fds(const char *name, struct rte_eth_dev *dev)
 	request.len_param = sizeof(*request_param);
 
 	/* Send the request and receive the reply */
-	AF_XDP_LOG(DEBUG, "Sending multi-process IPC request for %s\n", name);
+	AF_XDP_LOG_LINE(DEBUG, "Sending multi-process IPC request for %s", name);
 	ret = rte_mp_request_sync(&request, &replies, &timeout);
 	if (ret < 0 || replies.nb_received != 1) {
-		AF_XDP_LOG(ERR, "Failed to request fds from primary: %d\n",
+		AF_XDP_LOG_LINE(ERR, "Failed to request fds from primary: %d",
 			   rte_errno);
 		return -1;
 	}
 	reply = replies.msgs;
-	AF_XDP_LOG(DEBUG, "Received multi-process IPC reply for %s\n", name);
+	AF_XDP_LOG_LINE(DEBUG, "Received multi-process IPC reply for %s", name);
 	if (dev->data->nb_rx_queues != reply->num_fds) {
-		AF_XDP_LOG(ERR, "Incorrect number of fds received: %d != %d\n",
+		AF_XDP_LOG_LINE(ERR, "Incorrect number of fds received: %d != %d",
 			   reply->num_fds, dev->data->nb_rx_queues);
 		return -EINVAL;
 	}
@@ -2280,13 +2425,13 @@ afxdp_mp_send_fds(const struct rte_mp_msg *request, const void *peer)
 	const char *request_name = request_param->port_name;
 	int i;
 
-	AF_XDP_LOG(DEBUG, "Received multi-process IPC request for %s\n",
+	AF_XDP_LOG_LINE(DEBUG, "Received multi-process IPC request for %s",
 		   request_name);
 
 	/* Find the requested port */
 	dev = rte_eth_dev_get_by_name(request_name);
 	if (!dev) {
-		AF_XDP_LOG(ERR, "Failed to get port id for %s\n", request_name);
+		AF_XDP_LOG_LINE(ERR, "Failed to get port id for %s", request_name);
 		return -1;
 	}
 	process_private = dev->process_private;
@@ -2294,7 +2439,7 @@ afxdp_mp_send_fds(const struct rte_mp_msg *request, const void *peer)
 	/* Populate the reply with the xsk fd for each queue */
 	reply.num_fds = 0;
 	if (dev->data->nb_rx_queues > RTE_MP_MAX_FD_NUM) {
-		AF_XDP_LOG(ERR, "Number of rx queues (%d) exceeds max number of fds (%d)\n",
+		AF_XDP_LOG_LINE(ERR, "Number of rx queues (%d) exceeds max number of fds (%d)",
 			   dev->data->nb_rx_queues, RTE_MP_MAX_FD_NUM);
 		return -EINVAL;
 	}
@@ -2307,10 +2452,10 @@ afxdp_mp_send_fds(const struct rte_mp_msg *request, const void *peer)
 	strlcpy(reply_param->port_name, request_name,
 		sizeof(reply_param->port_name));
 	reply.len_param = sizeof(*reply_param);
-	AF_XDP_LOG(DEBUG, "Sending multi-process IPC reply for %s\n",
+	AF_XDP_LOG_LINE(DEBUG, "Sending multi-process IPC reply for %s",
 		   reply_param->port_name);
 	if (rte_mp_reply(&reply, peer) < 0) {
-		AF_XDP_LOG(ERR, "Failed to reply to multi-process IPC request\n");
+		AF_XDP_LOG_LINE(ERR, "Failed to reply to multi-process IPC request");
 		return -1;
 	}
 	return 0;
@@ -2328,15 +2473,18 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	int busy_budget = -1, ret;
 	int force_copy = 0;
 	int use_cni = 0;
+	int use_pinned_map = 0;
+	uint32_t xdp_mode = 0;
+	char dp_path[PATH_MAX] = {'\0'};
 	struct rte_eth_dev *eth_dev = NULL;
 	const char *name = rte_vdev_device_name(dev);
 
-	AF_XDP_LOG(INFO, "Initializing pmd_af_xdp for %s\n", name);
+	AF_XDP_LOG_LINE(INFO, "Initializing pmd_af_xdp for %s", name);
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (eth_dev == NULL) {
-			AF_XDP_LOG(ERR, "Failed to probe %s\n", name);
+			AF_XDP_LOG_LINE(ERR, "Failed to probe %s", name);
 			return -EINVAL;
 		}
 		eth_dev->dev_ops = &ops;
@@ -2349,8 +2497,8 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 					   RTE_CACHE_LINE_SIZE,
 					   eth_dev->device->numa_node);
 		if (eth_dev->process_private == NULL) {
-			AF_XDP_LOG(ERR,
-				"Failed to alloc memory for process private\n");
+			AF_XDP_LOG_LINE(ERR,
+				"Failed to alloc memory for process private");
 			return -ENOMEM;
 		}
 
@@ -2364,31 +2512,59 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 
 	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev), valid_arguments);
 	if (kvlist == NULL) {
-		AF_XDP_LOG(ERR, "Invalid kvargs key\n");
+		AF_XDP_LOG_LINE(ERR, "Invalid kvargs key");
 		return -EINVAL;
 	}
 
 	if (parse_parameters(kvlist, if_name, &xsk_start_queue_idx,
 			     &xsk_queue_cnt, &shared_umem, prog_path,
-			     &busy_budget, &force_copy, &use_cni) < 0) {
-		AF_XDP_LOG(ERR, "Invalid kvargs value\n");
+			     &busy_budget, &force_copy, &use_cni, &use_pinned_map,
+			     dp_path, &xdp_mode) < 0) {
+		AF_XDP_LOG_LINE(ERR, "Invalid kvargs value");
 		return -EINVAL;
 	}
 
-	if (use_cni && busy_budget > 0) {
-		AF_XDP_LOG(ERR, "When '%s' parameter is used, '%s' parameter is not valid\n",
-			ETH_AF_XDP_USE_CNI_ARG, ETH_AF_XDP_BUDGET_ARG);
+	if (use_cni && use_pinned_map) {
+		AF_XDP_LOG_LINE(ERR, "When '%s' parameter is used, '%s' parameter is not valid",
+			ETH_AF_XDP_USE_CNI_ARG, ETH_AF_XDP_USE_PINNED_MAP_ARG);
 		return -EINVAL;
 	}
 
-	if (use_cni && strnlen(prog_path, PATH_MAX)) {
-		AF_XDP_LOG(ERR, "When '%s' parameter is used, '%s' parameter is not valid\n",
-			ETH_AF_XDP_USE_CNI_ARG, ETH_AF_XDP_PROG_ARG);
-			return -EINVAL;
+	if ((use_cni || use_pinned_map) && busy_budget > 0) {
+		AF_XDP_LOG_LINE(ERR, "When '%s' or '%s' parameter is used, '%s' parameter is not valid",
+			ETH_AF_XDP_USE_CNI_ARG, ETH_AF_XDP_USE_PINNED_MAP_ARG,
+			ETH_AF_XDP_BUDGET_ARG);
+		return -EINVAL;
+	}
+
+	if ((use_cni || use_pinned_map) && strnlen(prog_path, PATH_MAX)) {
+		AF_XDP_LOG_LINE(ERR, "When '%s' or '%s' parameter is used, '%s' parameter is not valid",
+			ETH_AF_XDP_USE_CNI_ARG, ETH_AF_XDP_USE_PINNED_MAP_ARG,
+			ETH_AF_XDP_PROG_ARG);
+		return -EINVAL;
+	}
+
+	if (use_cni && !strnlen(dp_path, PATH_MAX)) {
+		snprintf(dp_path, sizeof(dp_path), "%s/%s/%s", DP_BASE_PATH, if_name, DP_UDS_SOCK);
+		AF_XDP_LOG_LINE(INFO, "'%s' parameter not provided, setting value to '%s'",
+			ETH_AF_XDP_DP_PATH_ARG, dp_path);
+	}
+
+	if (use_pinned_map && !strnlen(dp_path, PATH_MAX)) {
+		snprintf(dp_path, sizeof(dp_path), "%s/%s/%s", DP_BASE_PATH, if_name, DP_XSK_MAP);
+		AF_XDP_LOG_LINE(INFO, "'%s' parameter not provided, setting value to '%s'",
+			ETH_AF_XDP_DP_PATH_ARG, dp_path);
+	}
+
+	if ((!use_cni && !use_pinned_map) && strnlen(dp_path, PATH_MAX)) {
+		AF_XDP_LOG_LINE(ERR, "'%s' parameter is set, but '%s' or '%s' were not enabled",
+			ETH_AF_XDP_DP_PATH_ARG, ETH_AF_XDP_USE_CNI_ARG,
+			ETH_AF_XDP_USE_PINNED_MAP_ARG);
+		return -EINVAL;
 	}
 
 	if (strlen(if_name) == 0) {
-		AF_XDP_LOG(ERR, "Network interface must be specified\n");
+		AF_XDP_LOG_LINE(ERR, "Network interface must be specified");
 		return -EINVAL;
 	}
 
@@ -2410,9 +2586,10 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 
 	eth_dev = init_internals(dev, if_name, xsk_start_queue_idx,
 				 xsk_queue_cnt, shared_umem, prog_path,
-				 busy_budget, force_copy, use_cni);
+				 busy_budget, force_copy, use_cni, use_pinned_map,
+				 dp_path, xdp_mode);
 	if (eth_dev == NULL) {
-		AF_XDP_LOG(ERR, "Failed to init internals\n");
+		AF_XDP_LOG_LINE(ERR, "Failed to init internals");
 		return -1;
 	}
 
@@ -2420,7 +2597,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	if (!afxdp_dev_count) {
 		ret = rte_mp_action_register(ETH_AF_XDP_MP_KEY, afxdp_mp_send_fds);
 		if (ret < 0 && rte_errno != ENOTSUP) {
-			AF_XDP_LOG(ERR, "%s: Failed to register multi-process IPC callback: %s\n",
+			AF_XDP_LOG_LINE(ERR, "%s: Failed to register multi-process IPC callback: %s",
 				   name, strerror(rte_errno));
 			return -1;
 		}
@@ -2437,7 +2614,7 @@ rte_pmd_af_xdp_remove(struct rte_vdev_device *dev)
 {
 	struct rte_eth_dev *eth_dev = NULL;
 
-	AF_XDP_LOG(INFO, "Removing AF_XDP ethdev on numa socket %u\n",
+	AF_XDP_LOG_LINE(INFO, "Removing AF_XDP ethdev on numa socket %u",
 		rte_socket_id());
 
 	if (dev == NULL)
@@ -2471,4 +2648,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_af_xdp,
 			      "xdp_prog=<string> "
 			      "busy_budget=<int> "
 			      "force_copy=<int> "
-			      "use_cni=<int> ");
+			      "use_cni=<int> "
+			      "use_pinned_map=<int> "
+			      "dp_path=<string> "
+			      "mode=<string> ");

@@ -47,7 +47,7 @@
 #define RTE_PTYPE_INNER_L3_NONE         0
 #define RTE_PTYPE_INNER_L4_NONE         0
 
-static u32 txgbe_ptype_lookup[TXGBE_PTID_MAX] __rte_cache_aligned = {
+static alignas(RTE_CACHE_LINE_SIZE) u32 txgbe_ptype_lookup[TXGBE_PTID_MAX] = {
 	/* L2:0-3 L3:4-7 L4:8-11 TUN:12-15 EL2:16-19 EL3:20-23 EL2:24-27 */
 	/* L2: ETH */
 	TPTE(0x10, ETHER,          NONE, NONE, NONE, NONE, NONE, NONE),
@@ -393,8 +393,8 @@ u8 txgbe_encode_ptype(u32 ptype)
  * Use 2 different table for normal packet and tunnel packet
  * to save the space.
  */
-const u32
-txgbe_ptype_table[TXGBE_PTID_MAX] __rte_cache_aligned = {
+const alignas(RTE_CACHE_LINE_SIZE) u32
+txgbe_ptype_table[TXGBE_PTID_MAX] = {
 	[TXGBE_PT_ETHER] = RTE_PTYPE_L2_ETHER,
 	[TXGBE_PT_IPV4] = RTE_PTYPE_L2_ETHER |
 		RTE_PTYPE_L3_IPV4,
@@ -478,8 +478,8 @@ txgbe_ptype_table[TXGBE_PTID_MAX] __rte_cache_aligned = {
 		RTE_PTYPE_INNER_L3_IPV6_EXT | RTE_PTYPE_INNER_L4_SCTP,
 };
 
-const u32
-txgbe_ptype_table_tn[TXGBE_PTID_MAX] __rte_cache_aligned = {
+const alignas(RTE_CACHE_LINE_SIZE) u32
+txgbe_ptype_table_tn[TXGBE_PTID_MAX] = {
 	[TXGBE_PT_NVGRE] = RTE_PTYPE_L2_ETHER |
 		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
 		RTE_PTYPE_INNER_L2_ETHER,

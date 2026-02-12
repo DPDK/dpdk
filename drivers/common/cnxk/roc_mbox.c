@@ -46,18 +46,52 @@ mbox_reset(struct mbox *mbox, int devid)
 	rx_hdr->num_msgs = 0;
 }
 
-int
-mbox_init(struct mbox *mbox, uintptr_t hwbase, uintptr_t reg_base,
-	  int direction, int ndevs, uint64_t intr_offset)
+static int
+cn20k_mbox_setup(struct mbox *mbox, int direction)
 {
-	struct mbox_dev *mdev;
-	char *var, *var_to;
-	int devid;
+	switch (direction) {
+	case MBOX_DIR_AFPF:
+		mbox->trigger = RVU_MBOX_AF_AFPFX_TRIGX(1);
+		mbox->tr_shift = 4;
+		break;
+	case MBOX_DIR_AFPF_UP:
+		mbox->trigger = RVU_MBOX_AF_AFPFX_TRIGX(0);
+		mbox->tr_shift = 4;
+		break;
+	case MBOX_DIR_PFAF:
+		mbox->trigger = RVU_MBOX_PF_PFAF_TRIGX(0);
+		mbox->tr_shift = 0;
+		break;
+	case MBOX_DIR_PFAF_UP:
+		mbox->trigger = RVU_MBOX_PF_PFAF_TRIGX(1);
+		mbox->tr_shift = 0;
+		break;
+	case MBOX_DIR_PFVF:
+		mbox->trigger = RVU_MBOX_PF_VFX_PFVF_TRIGX(1);
+		mbox->tr_shift = 4;
+		break;
+	case MBOX_DIR_PFVF_UP:
+		mbox->trigger = RVU_MBOX_PF_VFX_PFVF_TRIGX(0);
+		mbox->tr_shift = 4;
+		break;
+	case MBOX_DIR_VFPF:
+		mbox->trigger = RVU_MBOX_VF_VFPF_TRIGX(0);
+		mbox->tr_shift = 0;
+		break;
+	case MBOX_DIR_VFPF_UP:
+		mbox->trigger = RVU_MBOX_VF_VFPF_TRIGX(1);
+		mbox->tr_shift = 0;
+		break;
+	default:
+		return -ENODEV;
+	}
 
-	mbox->intr_offset = intr_offset;
-	mbox->reg_base = reg_base;
-	mbox->hwbase = hwbase;
+	return 0;
+}
 
+static int
+mbox_setup(struct mbox *mbox, uintptr_t reg_base, int direction, int ndevs, uint64_t intr_offset)
+{
 	switch (direction) {
 	case MBOX_DIR_AFPF:
 	case MBOX_DIR_PFVF:
@@ -91,6 +125,18 @@ mbox_init(struct mbox *mbox, uintptr_t hwbase, uintptr_t reg_base,
 		return -ENODEV;
 	}
 
+	mbox->intr_offset = intr_offset;
+	mbox->dev = plt_zmalloc(ndevs * sizeof(struct mbox_dev), ROC_ALIGN);
+	if (!mbox->dev) {
+		mbox_fini(mbox);
+		return -ENOMEM;
+	}
+	mbox->ndevs = ndevs;
+
+	mbox->reg_base = reg_base;
+	if (roc_model_is_cn20k())
+		return cn20k_mbox_setup(mbox, direction);
+
 	switch (direction) {
 	case MBOX_DIR_AFPF:
 	case MBOX_DIR_AFPF_UP:
@@ -116,12 +162,24 @@ mbox_init(struct mbox *mbox, uintptr_t hwbase, uintptr_t reg_base,
 		return -ENODEV;
 	}
 
-	mbox->dev = plt_zmalloc(ndevs * sizeof(struct mbox_dev), ROC_ALIGN);
-	if (!mbox->dev) {
-		mbox_fini(mbox);
-		return -ENOMEM;
+	return 0;
+}
+
+int
+mbox_init(struct mbox *mbox, uintptr_t hwbase, uintptr_t reg_base, int direction, int ndevs,
+	  uint64_t intr_offset)
+{
+	struct mbox_dev *mdev;
+	char *var, *var_to;
+	int devid, rc;
+
+	rc = mbox_setup(mbox, reg_base, direction, ndevs, intr_offset);
+	if (rc) {
+		plt_err("Failed to setup the mailbox");
+		return rc;
 	}
-	mbox->ndevs = ndevs;
+
+	mbox->hwbase = hwbase;
 	for (devid = 0; devid < ndevs; devid++) {
 		mdev = &mbox->dev[devid];
 		mdev->mbase = (void *)(mbox->hwbase + (devid * MBOX_SIZE));

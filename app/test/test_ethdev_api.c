@@ -185,4 +185,4 @@ test_ethdev_api(void)
 /* TODO: Make part of the fast test suite, `REGISTER_FAST_TEST()`,
  *       when all drivers complies to the queue state requirement
  */
-REGISTER_TEST_COMMAND(ethdev_api, test_ethdev_api);
+REGISTER_DRIVER_TEST(ethdev_api, test_ethdev_api);

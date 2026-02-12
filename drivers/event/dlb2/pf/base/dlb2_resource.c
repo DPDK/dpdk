@@ -841,7 +841,7 @@ dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type)
 
 	dlb2_dev->enqueue_four = dlb2_movdir64b;
 
-	DLB2_LOG_INFO(" for %s: cpu core used in pp profiling: %d\n",
+	DLB2_HW_INFO(hw, " for %s: cpu core used in pp profiling: %d\n",
 		      is_ldb ? "LDB" : "DIR", cpu);
 
 	memset(cos_cycles, 0, num_sort * sizeof(struct dlb2_pp_thread_data));
@@ -854,7 +854,7 @@ dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type)
 
 		err = rte_thread_attr_init(&th_attr);
 		if (err != 0) {
-			DLB2_LOG_ERR(": thread attribute failed! err=%d", err);
+			DLB2_HW_ERR(hw, ": thread attribute failed! err=%d\n", err);
 			return;
 		}
 		CPU_SET(cpu, &th_attr.cpuset);
@@ -862,7 +862,7 @@ dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type)
 		err = rte_thread_create(&thread, &th_attr,
 				&dlb2_pp_profile_func, &dlb2_thread_data[i]);
 		if (err) {
-			DLB2_LOG_ERR(": thread creation failed! err=%d", err);
+			DLB2_HW_ERR(hw, ": thread creation failed! err=%d\n", err);
 			return;
 		}
 
@@ -871,7 +871,7 @@ dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type)
 
 		err = rte_thread_join(thread, NULL);
 		if (err) {
-			DLB2_LOG_ERR(": thread join failed! err=%d", err);
+			DLB2_HW_ERR(hw, ": thread join failed! err=%d\n", err);
 			return;
 		}
 
@@ -911,7 +911,7 @@ dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type)
 
 	for (i = 0; i < num_ports; i++) {
 		port_allocations[i] = dlb2_thread_data[i].pp;
-		DLB2_LOG_INFO(": pp %d cycles %d", port_allocations[i],
+		DLB2_HW_INFO(hw, ": pp %d cycles %d\n", port_allocations[i],
 			      dlb2_thread_data[i].cycles);
 	}
 
@@ -922,28 +922,29 @@ dlb2_resource_probe(struct dlb2_hw *hw, const void *probe_args)
 {
 	const struct dlb2_devargs *args = (const struct dlb2_devargs *)probe_args;
 	const char *mask = args ? args->producer_coremask : NULL;
-	int cpu = 0, cnt = 0, cores[RTE_MAX_LCORE], i;
+	int cpu = 0, cnt = 0, i, set_count = 0;
+	rte_cpuset_t cpuset;
 
 	if (args) {
 		mask = (const char *)args->producer_coremask;
 	}
 
-	if (mask && rte_eal_parse_coremask(mask, cores)) {
-		DLB2_LOG_ERR(": Invalid producer coremask=%s", mask);
+	if (mask && rte_eal_parse_coremask(mask, &cpuset, true)) {
+		DLB2_HW_ERR(hw, ": Invalid producer coremask=%s\n", mask);
 		return -1;
 	}
 
 	hw->num_prod_cores = 0;
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
-		bool is_pcore = (mask && cores[i] != -1);
+		bool is_pcore = (mask && CPU_ISSET(i, &cpuset));
 
 		if (rte_lcore_is_enabled(i)) {
 			if (is_pcore) {
 				/*
 				 * Populate the producer cores from parsed
-				 * coremask
+				 * coremask using the set_count as index.
 				 */
-				hw->prod_core_list[cores[i]] = i;
+				hw->prod_core_list[set_count++] = i;
 				hw->num_prod_cores++;
 
 			} else if ((++cnt == DLB2_EAL_PROBE_CORE ||
@@ -956,7 +957,7 @@ dlb2_resource_probe(struct dlb2_hw *hw, const void *probe_args)
 				break;
 			}
 		} else if (is_pcore) {
-			DLB2_LOG_ERR("Producer coremask(%s) must be a subset of EAL coremask",
+			DLB2_HW_ERR(hw, "Producer coremask(%s) must be a subset of EAL coremask\n",
 				     mask);
 			return -1;
 		}
@@ -4599,7 +4600,7 @@ dlb2_verify_create_ldb_port_args(struct dlb2_hw *hw,
 		return -EINVAL;
 	}
 
-	DLB2_LOG_INFO(": LDB: cos=%d port:%d\n", id, port->id.phys_id);
+	DLB2_HW_INFO(hw, ": LDB: cos=%d port:%d\n", id, port->id.phys_id);
 
 	/* Check cache-line alignment */
 	if ((cq_dma_base & 0x3F) != 0) {
@@ -4826,7 +4827,7 @@ dlb2_verify_create_dir_port_args(struct dlb2_hw *hw,
 			resp->status = DLB2_ST_DIR_PORTS_UNAVAILABLE;
 			return -EINVAL;
 		}
-		DLB2_LOG_INFO(": DIR: port:%d is_producer=%d\n",
+		DLB2_HW_INFO(hw, ": DIR: port:%d is_producer=%d\n",
 			      pq->id.phys_id, args->is_producer);
 
 	}
@@ -5443,6 +5444,35 @@ dlb2_get_domain_used_ldb_port(u32 id,
 	struct dlb2_ldb_port *port;
 	int i;
 	RTE_SET_USED(iter);
+
+	if (id >= DLB2_MAX_NUM_LDB_PORTS)
+		return NULL;
+
+	for (i = 0; i < DLB2_NUM_COS_DOMAINS; i++) {
+		DLB2_DOM_LIST_FOR(domain->used_ldb_ports[i], port, iter) {
+			if ((!vdev_req && port->id.phys_id == id) ||
+			    (vdev_req && port->id.virt_id == id))
+				return port;
+		}
+
+		DLB2_DOM_LIST_FOR(domain->avail_ldb_ports[i], port, iter) {
+			if ((!vdev_req && port->id.phys_id == id) ||
+			    (vdev_req && port->id.virt_id == id))
+				return port;
+		}
+	}
+
+	return NULL;
+}
+
+static struct dlb2_ldb_port *
+dlb2_get_domain_ldb_port(u32 id,
+			 bool vdev_req,
+			 struct dlb2_hw_domain *domain)
+{
+	struct dlb2_list_entry *iter;
+	struct dlb2_ldb_port *port;
+	int i;
 
 	if (id >= DLB2_MAX_NUM_LDB_PORTS)
 		return NULL;
@@ -6745,6 +6775,51 @@ int dlb2_hw_enable_cq_weight(struct dlb2_hw *hw,
 	DLB2_BITS_SET(reg, args->limit, DLB2_LSP_CFG_CQ_LDB_WU_LIMIT_LIMIT);
 
 	DLB2_CSR_WR(hw, DLB2_LSP_CFG_CQ_LDB_WU_LIMIT(port->id.phys_id), reg);
+
+	resp->status = 0;
+
+	return 0;
+}
+
+int dlb2_hw_set_cq_inflight_ctrl(struct dlb2_hw *hw, u32 domain_id,
+			struct dlb2_cq_inflight_ctrl_args *args,
+			struct dlb2_cmd_response *resp, bool vdev_req,
+			unsigned int vdev_id)
+{
+	struct dlb2_hw_domain *domain;
+	struct dlb2_ldb_port *port;
+	u32 reg = 0;
+	int id;
+
+	domain = dlb2_get_domain_from_id(hw, domain_id, vdev_req, vdev_id);
+	if (!domain) {
+		DLB2_HW_ERR(hw,
+			    "[%s():%d] Internal error: domain not found",
+			    __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	id = args->port_id;
+
+	port = dlb2_get_domain_ldb_port(id, vdev_req, domain);
+	if (!port) {
+		DLB2_HW_ERR(hw,
+			    "[%s():%d] Internal error: port not found",
+			    __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	DLB2_BITS_SET(reg, args->enable,
+		      DLB2_LSP_CFG_CTRL_GENERAL_0_ENAB_IF_THRESH_V2_5);
+	DLB2_CSR_WR(hw, DLB2_V2_5LSP_CFG_CTRL_GENERAL_0, reg);
+
+	if (args->enable) {
+		reg = 0;
+		DLB2_BITS_SET(reg, args->threshold,
+			      DLB2_LSP_CQ_LDB_INFL_THRESH_THRESH);
+		DLB2_CSR_WR(hw, DLB2_LSP_CQ_LDB_INFL_THRESH(port->id.phys_id),
+			    reg);
+	}
 
 	resp->status = 0;
 

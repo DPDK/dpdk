@@ -133,7 +133,7 @@ This section demonstrates how to setup and run ``testpmd`` in Linux.
 
    .. code-block:: console
 
-      ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 -- -i
+      ./<build_dir>/app/dpdk-testpmd -l 0-3 -- -i
 
    Successful execution will show initialization messages from EAL, PMD and
    testpmd application. A prompt will be displayed at the end for user commands

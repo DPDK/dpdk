@@ -40,12 +40,12 @@ struct ree_rule_db_entry {
 	uint64_t	value;
 };
 
-struct ree_rule_db {
+struct __rte_packed_begin ree_rule_db {
 	uint32_t version;
 	uint32_t revision;
 	uint32_t number_of_entries;
 	struct ree_rule_db_entry entries[];
-} __rte_packed;
+} __rte_packed_end;
 
 static void
 qp_memzone_name_get(char *name, int size, int dev_id, int qp_id)
@@ -192,7 +192,7 @@ ree_dev_register(const char *name)
 {
 	struct rte_regexdev *dev;
 
-	cn9k_ree_dbg("Creating regexdev %s\n", name);
+	cn9k_ree_dbg("Creating regexdev %s", name);
 
 	/* allocate device structure */
 	dev = rte_regexdev_register(name);

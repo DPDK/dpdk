@@ -1,5 +1,4 @@
-/*
- * SPDX-License-Identifier: BSD-3-Clause
+/* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2014 Intel Corporation
  * Copyright 2017 Cavium, Inc.
  */
@@ -504,6 +503,12 @@ setup_eventdev_worker_tx_enq(struct worker_data *worker_data)
 			config.nb_event_port_enqueue_depth)
 		config.nb_event_port_enqueue_depth =
 				dev_info.max_event_port_enqueue_depth;
+
+	if (dev_info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE)
+		config.preschedule_type = RTE_EVENT_PRESCHEDULE;
+
+	if (dev_info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE)
+		config.preschedule_type = RTE_EVENT_PRESCHEDULE_ADAPTIVE;
 
 	ret = rte_event_dev_configure(dev_id, &config);
 	if (ret < 0) {

@@ -10,6 +10,12 @@
 /* Header removal size limited to 128B (64 words) */
 #define MLX5DR_ACTION_REMOVE_HEADER_MAX_SIZE 128
 
+static struct mlx5dr_devx_obj *
+mlx5dr_action_get_stc_obj_by_tbl_type(enum mlx5dr_table_type table_type,
+				      struct mlx5dr_pool *stc_pool,
+				      struct mlx5dr_pool_chunk *stc,
+				      bool is_mirror);
+
 /* This is the maximum allowed action order for each table type:
  *	 TX: POP_VLAN, CTR, ASO_METER, AS_CT, PUSH_VLAN, MODIFY, ENCAP, Term
  *	 RX: TAG, DECAP, POP_VLAN, CTR, ASO_METER, ASO_CT, PUSH_VLAN, MODIFY,
@@ -42,7 +48,8 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_TIR) |
 		BIT(MLX5DR_ACTION_TYP_DROP) |
 		BIT(MLX5DR_ACTION_TYP_DEST_ROOT) |
-		BIT(MLX5DR_ACTION_TYP_DEST_ARRAY),
+		BIT(MLX5DR_ACTION_TYP_DEST_ARRAY) |
+		BIT(MLX5DR_ACTION_TYP_JUMP_TO_MATCHER),
 		BIT(MLX5DR_ACTION_TYP_LAST),
 	},
 	[MLX5DR_TABLE_TYPE_NIC_TX] = {
@@ -62,7 +69,8 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_TBL) |
 		BIT(MLX5DR_ACTION_TYP_MISS) |
 		BIT(MLX5DR_ACTION_TYP_DROP) |
-		BIT(MLX5DR_ACTION_TYP_DEST_ROOT),
+		BIT(MLX5DR_ACTION_TYP_DEST_ROOT) |
+		BIT(MLX5DR_ACTION_TYP_JUMP_TO_MATCHER),
 		BIT(MLX5DR_ACTION_TYP_LAST),
 	},
 	[MLX5DR_TABLE_TYPE_FDB] = {
@@ -73,6 +81,7 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_POP_VLAN),
 		BIT(MLX5DR_ACTION_TYP_POP_VLAN),
 		BIT(MLX5DR_ACTION_TYP_CTR),
+		BIT(MLX5DR_ACTION_TYP_TAG),
 		BIT(MLX5DR_ACTION_TYP_ASO_METER),
 		BIT(MLX5DR_ACTION_TYP_ASO_CT),
 		BIT(MLX5DR_ACTION_TYP_PUSH_VLAN),
@@ -85,10 +94,12 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3),
 		BIT(MLX5DR_ACTION_TYP_TBL) |
 		BIT(MLX5DR_ACTION_TYP_MISS) |
+		BIT(MLX5DR_ACTION_TYP_TIR) |
 		BIT(MLX5DR_ACTION_TYP_VPORT) |
 		BIT(MLX5DR_ACTION_TYP_DROP) |
 		BIT(MLX5DR_ACTION_TYP_DEST_ROOT) |
-		BIT(MLX5DR_ACTION_TYP_DEST_ARRAY),
+		BIT(MLX5DR_ACTION_TYP_DEST_ARRAY) |
+		BIT(MLX5DR_ACTION_TYP_JUMP_TO_MATCHER),
 		BIT(MLX5DR_ACTION_TYP_LAST),
 	},
 };
@@ -217,8 +228,47 @@ static int mlx5dr_action_get_shared_stc(struct mlx5dr_action *action,
 		}
 	}
 
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_RX) {
+		ret = mlx5dr_action_get_shared_stc_nic(ctx, stc_type,
+						       MLX5DR_TABLE_TYPE_FDB_RX);
+		if (ret) {
+			DR_LOG(ERR, "Failed to allocate FDB_RX shared STCs (type: %d)",
+			       stc_type);
+			goto clean_nic_fdb_stc;
+		}
+	}
+
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_TX) {
+		ret = mlx5dr_action_get_shared_stc_nic(ctx, stc_type,
+						       MLX5DR_TABLE_TYPE_FDB_TX);
+		if (ret) {
+			DR_LOG(ERR, "Failed to allocate FDB_TX shared STCs (type: %d)",
+			       stc_type);
+			goto clean_nic_fdb_rx_stc;
+		}
+	}
+
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED) {
+		ret = mlx5dr_action_get_shared_stc_nic(ctx, stc_type,
+						       MLX5DR_TABLE_TYPE_FDB_UNIFIED);
+		if (ret) {
+			DR_LOG(ERR, "Failed to allocate FDB_UNIFIED shared STCs (type: %d)",
+			       stc_type);
+			goto clean_nic_fdb_tx_stc;
+		}
+	}
+
 	return 0;
 
+clean_nic_fdb_tx_stc:
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_TX)
+		mlx5dr_action_put_shared_stc_nic(ctx, stc_type, MLX5DR_TABLE_TYPE_FDB_TX);
+clean_nic_fdb_rx_stc:
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_RX)
+		mlx5dr_action_put_shared_stc_nic(ctx, stc_type, MLX5DR_TABLE_TYPE_FDB_RX);
+clean_nic_fdb_stc:
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB)
+		mlx5dr_action_put_shared_stc_nic(ctx, stc_type, MLX5DR_TABLE_TYPE_FDB);
 clean_nic_tx_stc:
 	if (action->flags & MLX5DR_ACTION_FLAG_HWS_TX)
 		mlx5dr_action_put_shared_stc_nic(ctx, stc_type, MLX5DR_TABLE_TYPE_NIC_TX);
@@ -247,6 +297,71 @@ static void mlx5dr_action_put_shared_stc(struct mlx5dr_action *action,
 
 	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB)
 		mlx5dr_action_put_shared_stc_nic(ctx, stc_type, MLX5DR_TABLE_TYPE_FDB);
+
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_RX)
+		mlx5dr_action_put_shared_stc_nic(ctx, stc_type, MLX5DR_TABLE_TYPE_FDB_RX);
+
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_TX)
+		mlx5dr_action_put_shared_stc_nic(ctx, stc_type, MLX5DR_TABLE_TYPE_FDB_TX);
+
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED)
+		mlx5dr_action_put_shared_stc_nic(ctx, stc_type, MLX5DR_TABLE_TYPE_FDB_UNIFIED);
+}
+
+static void
+mlx5dr_action_create_nat64_zero_all_addr(uint8_t **action_ptr, bool is_v4_to_v6)
+{
+	if (is_v4_to_v6) {
+		MLX5_SET(set_action_in, *action_ptr, action_type, MLX5_MODIFICATION_TYPE_SET);
+		MLX5_SET(set_action_in, *action_ptr, field, MLX5_MODI_OUT_SIPV4);
+		MLX5_SET(set_action_in, *action_ptr, data, 0);
+		*action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+
+		MLX5_SET(set_action_in, *action_ptr, action_type, MLX5_MODIFICATION_TYPE_SET);
+		MLX5_SET(set_action_in, *action_ptr, field, MLX5_MODI_OUT_DIPV4);
+		MLX5_SET(set_action_in, *action_ptr, data, 0);
+		*action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+	} else {
+		MLX5_SET(set_action_in, *action_ptr, action_type, MLX5_MODIFICATION_TYPE_SET);
+		MLX5_SET(set_action_in, *action_ptr, field, MLX5_MODI_OUT_SIPV6_127_96);
+		MLX5_SET(set_action_in, *action_ptr, data, 0);
+		*action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+
+		MLX5_SET(set_action_in, *action_ptr, action_type, MLX5_MODIFICATION_TYPE_SET);
+		MLX5_SET(set_action_in, *action_ptr, field, MLX5_MODI_OUT_SIPV6_95_64);
+		MLX5_SET(set_action_in, *action_ptr, data, 0);
+		*action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+
+		MLX5_SET(set_action_in, *action_ptr, action_type, MLX5_MODIFICATION_TYPE_SET);
+		MLX5_SET(set_action_in, *action_ptr, field, MLX5_MODI_OUT_SIPV6_63_32);
+		MLX5_SET(set_action_in, *action_ptr, data, 0);
+		*action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+
+		MLX5_SET(set_action_in, *action_ptr, action_type, MLX5_MODIFICATION_TYPE_SET);
+		MLX5_SET(set_action_in, *action_ptr, field, MLX5_MODI_OUT_SIPV6_31_0);
+		MLX5_SET(set_action_in, *action_ptr, data, 0);
+		*action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+
+		MLX5_SET(set_action_in, *action_ptr, action_type, MLX5_MODIFICATION_TYPE_SET);
+		MLX5_SET(set_action_in, *action_ptr, field, MLX5_MODI_OUT_DIPV6_127_96);
+		MLX5_SET(set_action_in, *action_ptr, data, 0);
+		*action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+
+		MLX5_SET(set_action_in, *action_ptr, action_type, MLX5_MODIFICATION_TYPE_SET);
+		MLX5_SET(set_action_in, *action_ptr, field, MLX5_MODI_OUT_DIPV6_95_64);
+		MLX5_SET(set_action_in, *action_ptr, data, 0);
+		*action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+
+		MLX5_SET(set_action_in, *action_ptr, action_type, MLX5_MODIFICATION_TYPE_SET);
+		MLX5_SET(set_action_in, *action_ptr, field, MLX5_MODI_OUT_DIPV6_63_32);
+		MLX5_SET(set_action_in, *action_ptr, data, 0);
+		*action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+
+		MLX5_SET(set_action_in, *action_ptr, action_type, MLX5_MODIFICATION_TYPE_SET);
+		MLX5_SET(set_action_in, *action_ptr, field, MLX5_MODI_OUT_DIPV6_31_0);
+		MLX5_SET(set_action_in, *action_ptr, data, 0);
+		*action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+	}
 }
 
 static struct mlx5dr_action *
@@ -259,21 +374,27 @@ mlx5dr_action_create_nat64_copy_state(struct mlx5dr_context *ctx,
 	struct mlx5dr_action *action;
 	uint32_t packet_len_field;
 	uint8_t *action_ptr;
-	uint32_t ttl_field;
+	uint32_t tos_field;
+	uint32_t tos_size;
 	uint32_t src_addr;
 	uint32_t dst_addr;
 	bool is_v4_to_v6;
+	uint32_t ecn;
 
 	is_v4_to_v6 = attr->flags & MLX5DR_ACTION_NAT64_V4_TO_V6;
 
 	if (is_v4_to_v6) {
 		packet_len_field = MLX5_MODI_OUT_IPV4_TOTAL_LEN;
-		ttl_field = MLX5_MODI_OUT_IPV4_TTL;
+		tos_field = MLX5_MODI_OUT_IP_DSCP;
+		tos_size = 6;
+		ecn = MLX5_MODI_OUT_IP_ECN;
 		src_addr = MLX5_MODI_OUT_SIPV4;
 		dst_addr = MLX5_MODI_OUT_DIPV4;
 	} else {
 		packet_len_field = MLX5_MODI_OUT_IPV6_PAYLOAD_LEN;
-		ttl_field = MLX5_MODI_OUT_IPV6_HOPLIMIT;
+		tos_field = MLX5_MODI_OUT_IPV6_TRAFFIC_CLASS;
+		tos_size = 8;
+		ecn = 0;
 		src_addr = MLX5_MODI_OUT_SIPV6_31_0;
 		dst_addr = MLX5_MODI_OUT_DIPV6_31_0;
 	}
@@ -296,7 +417,7 @@ mlx5dr_action_create_nat64_copy_state(struct mlx5dr_context *ctx,
 	}
 
 	/* | 8 bit - 8 bit     - 16 bit     |
-	 * | ttl   - protocol  - packet-len |
+	 * | TOS   - protocol  - packet-len |
 	 */
 	MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_COPY);
 	MLX5_SET(copy_action_in, action_ptr, src_field, packet_len_field);
@@ -321,25 +442,28 @@ mlx5dr_action_create_nat64_copy_state(struct mlx5dr_context *ctx,
 	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
 
 	MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_COPY);
-	MLX5_SET(copy_action_in, action_ptr, src_field, ttl_field);
+	MLX5_SET(copy_action_in, action_ptr, src_field, tos_field);
 	MLX5_SET(copy_action_in, action_ptr, dst_field,
 		 attr->registers[MLX5DR_ACTION_NAT64_REG_CONTROL]);
 	MLX5_SET(copy_action_in, action_ptr, dst_offset, 24);
-	MLX5_SET(copy_action_in, action_ptr, length, 8);
+	MLX5_SET(copy_action_in, action_ptr, length, tos_size);
 	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
-
-	/* set sip and dip to 0, in order to have new csum */
-	if (is_v4_to_v6) {
-		MLX5_SET(set_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_SET);
-		MLX5_SET(set_action_in, action_ptr, field, MLX5_MODI_OUT_SIPV4);
-		MLX5_SET(set_action_in, action_ptr, data, 0);
+	/* in ipv4 TOS = {dscp (6bits) - ecn (2bits) }*/
+	if (ecn) {
+		MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_NOP);
 		action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
 
-		MLX5_SET(set_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_SET);
-		MLX5_SET(set_action_in, action_ptr, field, MLX5_MODI_OUT_DIPV4);
-		MLX5_SET(set_action_in, action_ptr, data, 0);
+		MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_COPY);
+		MLX5_SET(copy_action_in, action_ptr, src_field, ecn);
+		MLX5_SET(copy_action_in, action_ptr, dst_field,
+			attr->registers[MLX5DR_ACTION_NAT64_REG_CONTROL]);
+		MLX5_SET(copy_action_in, action_ptr, dst_offset, 24 + tos_size);
+		MLX5_SET(copy_action_in, action_ptr, length, MLX5DR_ACTION_NAT64_ECN_SIZE);
 		action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
 	}
+
+	/* set sip and dip to 0, in order to have new csum */
+	mlx5dr_action_create_nat64_zero_all_addr(&action_ptr, is_v4_to_v6);
 
 	pat[0].data = modify_action_data;
 	pat[0].sz = (action_ptr - (uint8_t *)modify_action_data);
@@ -383,9 +507,14 @@ mlx5dr_action_create_nat64_repalce_state(struct mlx5dr_context *ctx,
 		memcpy(address_prefix, nat64_well_known_pref,
 		       MLX5DR_ACTION_NAT64_HEADER_MINUS_ONE * sizeof(uint32_t));
 	} else {
+		/* In order to fix HW csum issue, make the prefix ready */
+		uint32_t ipv4_pref[] = {0x0, 0xffba0000, 0x0, 0x0, 0x0};
+
 		header_size_in_dw = MLX5DR_ACTION_NAT64_IPV4_HEADER;
 		ip_ver = MLX5DR_ACTION_NAT64_IPV4_VER;
 		eth_type = RTE_ETHER_TYPE_IPV4;
+		memcpy(address_prefix, ipv4_pref,
+		       MLX5DR_ACTION_NAT64_IPV4_HEADER * sizeof(uint32_t));
 	}
 
 	memset(modify_action_data, 0, sizeof(modify_action_data));
@@ -442,53 +571,17 @@ mlx5dr_action_create_nat64_repalce_state(struct mlx5dr_context *ctx,
 }
 
 static struct mlx5dr_action *
-mlx5dr_action_create_nat64_copy_back_state(struct mlx5dr_context *ctx,
-					   struct mlx5dr_action_nat64_attr *attr,
-					   uint32_t flags)
+mlx5dr_action_create_nat64_copy_proto_state(struct mlx5dr_context *ctx,
+					    struct mlx5dr_action_nat64_attr *attr,
+					    uint32_t flags)
 {
 	__be64 modify_action_data[MLX5DR_ACTION_NAT64_MAX_MODIFY_ACTIONS];
 	struct mlx5dr_action_mh_pattern pat[2];
 	struct mlx5dr_action *action;
-	uint32_t packet_len_field;
-	uint32_t packet_len_add;
 	uint8_t *action_ptr;
-	uint32_t ttl_field;
-	uint32_t src_addr;
-	uint32_t dst_addr;
-	bool is_v4_to_v6;
-
-	is_v4_to_v6 = attr->flags & MLX5DR_ACTION_NAT64_V4_TO_V6;
-
-	if (is_v4_to_v6) {
-		packet_len_field = MLX5_MODI_OUT_IPV6_PAYLOAD_LEN;
-		 /* 2' comp to 20, to get -20 in add operation */
-		packet_len_add = MLX5DR_ACTION_NAT64_DEC_20;
-		ttl_field = MLX5_MODI_OUT_IPV6_HOPLIMIT;
-		src_addr = MLX5_MODI_OUT_SIPV6_31_0;
-		dst_addr = MLX5_MODI_OUT_DIPV6_31_0;
-	} else {
-		packet_len_field = MLX5_MODI_OUT_IPV4_TOTAL_LEN;
-		/* ipv4 len is including 20 bytes of the header, so add 20 over ipv6 len */
-		packet_len_add = MLX5DR_ACTION_NAT64_ADD_20;
-		ttl_field = MLX5_MODI_OUT_IPV4_TTL;
-		src_addr = MLX5_MODI_OUT_SIPV4;
-		dst_addr = MLX5_MODI_OUT_DIPV4;
-	}
 
 	memset(modify_action_data, 0, sizeof(modify_action_data));
 	action_ptr = (uint8_t *)modify_action_data;
-
-	MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_COPY);
-	MLX5_SET(copy_action_in, action_ptr, src_field,
-		 attr->registers[MLX5DR_ACTION_NAT64_REG_CONTROL]);
-	MLX5_SET(copy_action_in, action_ptr, dst_field,
-		 packet_len_field);
-	MLX5_SET(copy_action_in, action_ptr, src_offset, 32);
-	MLX5_SET(copy_action_in, action_ptr, length, 16);
-	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
-
-	MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_NOP);
-	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
 
 	MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_COPY);
 	MLX5_SET(copy_action_in, action_ptr, src_field,
@@ -503,13 +596,103 @@ mlx5dr_action_create_nat64_copy_back_state(struct mlx5dr_context *ctx,
 	MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_NOP);
 	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
 
+	pat[0].data = modify_action_data;
+	pat[0].sz = action_ptr - (uint8_t *)modify_action_data;
+
+	action = mlx5dr_action_create_modify_header_reparse(ctx, 1, pat, 0, flags,
+							    MLX5DR_ACTION_STC_REPARSE_ON);
+	if (!action) {
+		DR_LOG(ERR, "Failed to create action: action_sz: %zu, flags: 0x%x\n",
+		       pat[0].sz, flags);
+		return NULL;
+	}
+
+	return action;
+}
+
+static struct mlx5dr_action *
+mlx5dr_action_create_nat64_copy_back_state(struct mlx5dr_context *ctx,
+					   struct mlx5dr_action_nat64_attr *attr,
+					   uint32_t flags)
+{
+	__be64 modify_action_data[MLX5DR_ACTION_NAT64_MAX_MODIFY_ACTIONS];
+	struct mlx5dr_action_mh_pattern pat[2];
+	struct mlx5dr_action *action;
+	uint32_t packet_len_field;
+	uint32_t packet_len_add;
+	uint8_t *action_ptr;
+	uint32_t tos_field;
+	uint32_t ttl_field;
+	uint32_t tos_size;
+	uint32_t src_addr;
+	uint32_t dst_addr;
+	bool is_v4_to_v6;
+	uint32_t ecn;
+
+	is_v4_to_v6 = attr->flags & MLX5DR_ACTION_NAT64_V4_TO_V6;
+
+	if (is_v4_to_v6) {
+		packet_len_field = MLX5_MODI_OUT_IPV6_PAYLOAD_LEN;
+		 /* 2' comp to 20, to get -20 in add operation */
+		packet_len_add = MLX5DR_ACTION_NAT64_DEC_20;
+		ttl_field = MLX5_MODI_OUT_IPV6_HOPLIMIT;
+		src_addr = MLX5_MODI_OUT_SIPV6_31_0;
+		dst_addr = MLX5_MODI_OUT_DIPV6_31_0;
+		tos_field = MLX5_MODI_OUT_IPV6_TRAFFIC_CLASS;
+		tos_size = 8;
+		ecn = 0;
+	} else {
+		packet_len_field = MLX5_MODI_OUT_IPV4_TOTAL_LEN;
+		/* ipv4 len is including 20 bytes of the header, so add 20 over ipv6 len */
+		packet_len_add = MLX5DR_ACTION_NAT64_ADD_20;
+		ttl_field = MLX5_MODI_OUT_IPV4_TTL;
+		src_addr = MLX5_MODI_OUT_SIPV4;
+		dst_addr = MLX5_MODI_OUT_DIPV4;
+		tos_field = MLX5_MODI_OUT_IP_DSCP;
+		tos_size = 6;
+		ecn = MLX5_MODI_OUT_IP_ECN;
+	}
+
+	memset(modify_action_data, 0, sizeof(modify_action_data));
+	action_ptr = (uint8_t *)modify_action_data;
+
 	MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_COPY);
 	MLX5_SET(copy_action_in, action_ptr, src_field,
 		 attr->registers[MLX5DR_ACTION_NAT64_REG_CONTROL]);
-	MLX5_SET(copy_action_in, action_ptr, dst_field, ttl_field);
-	MLX5_SET(copy_action_in, action_ptr, src_offset, 24);
-	MLX5_SET(copy_action_in, action_ptr, length, 8);
+	MLX5_SET(copy_action_in, action_ptr, dst_field,
+		 packet_len_field);
+	MLX5_SET(copy_action_in, action_ptr, src_offset, 32);
+	MLX5_SET(copy_action_in, action_ptr, length, 16);
 	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+
+	MLX5_SET(set_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_SET);
+	MLX5_SET(set_action_in, action_ptr, field, ttl_field);
+	MLX5_SET(set_action_in, action_ptr, length, 8);
+	MLX5_SET(set_action_in, action_ptr, data, MLX5DR_ACTION_NAT64_TTL_DEFAULT_VAL);
+	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+
+	/* copy TOS */
+	MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_COPY);
+	MLX5_SET(copy_action_in, action_ptr, src_field,
+		 attr->registers[MLX5DR_ACTION_NAT64_REG_CONTROL]);
+	MLX5_SET(copy_action_in, action_ptr, dst_field, tos_field);
+	MLX5_SET(copy_action_in, action_ptr, src_offset, 24 + (ecn ?
+							       MLX5DR_ACTION_NAT64_ECN_SIZE : 0));
+	MLX5_SET(copy_action_in, action_ptr, length, tos_size);
+	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+
+	if (ecn) {
+		MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_NOP);
+		action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+
+		MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_COPY);
+		MLX5_SET(copy_action_in, action_ptr, src_field,
+			attr->registers[MLX5DR_ACTION_NAT64_REG_CONTROL]);
+		MLX5_SET(copy_action_in, action_ptr, dst_field, ecn);
+		MLX5_SET(copy_action_in, action_ptr, src_offset, 24);
+		MLX5_SET(copy_action_in, action_ptr, length, MLX5DR_ACTION_NAT64_ECN_SIZE);
+		action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+	}
 
 	MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_NOP);
 	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
@@ -562,13 +745,36 @@ static void mlx5dr_action_print_combo(enum mlx5dr_action_type *user_actions)
 	}
 }
 
+static const uint32_t *
+mlx5dr_action_get_order_entry(enum mlx5dr_table_type table_type)
+{
+	switch (table_type) {
+	case MLX5DR_TABLE_TYPE_NIC_RX:
+		return action_order_arr[MLX5DR_TABLE_TYPE_NIC_RX];
+	case MLX5DR_TABLE_TYPE_NIC_TX:
+		return action_order_arr[MLX5DR_TABLE_TYPE_NIC_TX];
+	case MLX5DR_TABLE_TYPE_FDB:
+	case MLX5DR_TABLE_TYPE_FDB_RX:
+	case MLX5DR_TABLE_TYPE_FDB_TX:
+	case MLX5DR_TABLE_TYPE_FDB_UNIFIED:
+		return action_order_arr[MLX5DR_TABLE_TYPE_FDB];
+	default:
+		assert(0);
+		DR_LOG(ERR, "no such type: %d", table_type);
+		return NULL;
+	}
+}
+
 bool mlx5dr_action_check_combo(enum mlx5dr_action_type *user_actions,
 			       enum mlx5dr_table_type table_type)
 {
-	const uint32_t *order_arr = action_order_arr[table_type];
+	const uint32_t *order_arr = mlx5dr_action_get_order_entry(table_type);
 	uint8_t order_idx = 0;
 	uint8_t user_idx = 0;
 	bool valid_combo;
+
+	if (!order_arr)
+		return false;
 
 	while (order_arr[order_idx] != BIT(MLX5DR_ACTION_TYP_LAST)) {
 		/* User action order validated move to next user action */
@@ -599,6 +805,9 @@ int mlx5dr_action_root_build_attr(struct mlx5dr_rule_action rule_actions[],
 
 		switch (action->type) {
 		case MLX5DR_ACTION_TYP_TBL:
+			attr[i].type = MLX5DV_FLOW_ACTION_DEST_DEVX;
+			attr[i].obj = action->dest_tbl.devx_obj->obj;
+			break;
 		case MLX5DR_ACTION_TYP_TIR:
 			attr[i].type = MLX5DV_FLOW_ACTION_DEST_DEVX;
 			attr[i].obj = action->devx_obj;
@@ -623,16 +832,11 @@ int mlx5dr_action_root_build_attr(struct mlx5dr_rule_action rule_actions[],
 			attr[i].type = MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
 			attr[i].action = action->flow_action;
 			break;
-#ifdef HAVE_IBV_FLOW_DEVX_COUNTERS
+#ifdef HAVE_MLX5DV_FLOW_ACTION_COUNTERS_DEVX_WITH_OFFSET
 		case MLX5DR_ACTION_TYP_CTR:
-			attr[i].type = MLX5DV_FLOW_ACTION_COUNTERS_DEVX;
-			attr[i].obj = action->devx_obj;
-
-			if (rule_actions[i].counter.offset) {
-				DR_LOG(ERR, "Counter offset not supported over root");
-				rte_errno = ENOTSUP;
-				return rte_errno;
-			}
+			attr[i].type = MLX5DV_FLOW_ACTION_COUNTERS_DEVX_WITH_OFFSET;
+			attr[i].bulk_obj.obj = action->devx_obj;
+			attr[i].bulk_obj.offset = rule_actions[i].counter.offset;
 			break;
 #endif
 		default:
@@ -660,26 +864,34 @@ mlx5dr_action_fixup_stc_attr(struct mlx5dr_context *ctx,
 
 	switch (stc_attr->action_type) {
 	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_STE_TABLE:
-		if (!is_mirror)
-			devx_obj = mlx5dr_pool_chunk_get_base_devx_obj(stc_attr->ste_table.ste_pool,
-								       &stc_attr->ste_table.ste);
-		else
-			devx_obj =
-			mlx5dr_pool_chunk_get_base_devx_obj_mirror(stc_attr->ste_table.ste_pool,
-								   &stc_attr->ste_table.ste);
+		devx_obj = mlx5dr_action_get_stc_obj_by_tbl_type(table_type,
+								 stc_attr->ste_table.ste_pool,
+								 &stc_attr->ste_table.ste,
+								 is_mirror);
 
 		*fixup_stc_attr = *stc_attr;
 		fixup_stc_attr->ste_table.ste_obj_id = devx_obj->id;
 		use_fixup = true;
 		break;
 
+	case MLX5_IFC_STC_ACTION_TYPE_TAG:
+		if (fw_tbl_type == FS_FT_FDB_TX) {
+			fixup_stc_attr->action_type = MLX5_IFC_STC_ACTION_TYPE_NOP;
+			fixup_stc_attr->action_offset = MLX5DR_ACTION_OFFSET_DW5;
+			fixup_stc_attr->stc_offset = stc_attr->stc_offset;
+			use_fixup = true;
+		}
+		break;
+
 	case MLX5_IFC_STC_ACTION_TYPE_ALLOW:
-		if (fw_tbl_type == FS_FT_FDB_TX || fw_tbl_type == FS_FT_FDB_RX) {
+		if (mlx5dr_table_is_fw_fdb_any(fw_tbl_type)) {
 			fixup_stc_attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_VPORT;
 			fixup_stc_attr->action_offset = stc_attr->action_offset;
 			fixup_stc_attr->stc_offset = stc_attr->stc_offset;
 			fixup_stc_attr->vport.esw_owner_vhca_id = ctx->caps->vhca_id;
 			fixup_stc_attr->vport.vport_num = ctx->caps->eswitch_manager_vport_number;
+			fixup_stc_attr->vport.eswitch_owner_vhca_id_valid =
+				ctx->caps->merged_eswitch;
 			use_fixup = true;
 		}
 		break;
@@ -688,18 +900,15 @@ mlx5dr_action_fixup_stc_attr(struct mlx5dr_context *ctx,
 		if (stc_attr->vport.vport_num != WIRE_PORT)
 			break;
 
-		if (fw_tbl_type == FS_FT_FDB_RX) {
-			/* The FW doesn't allow to go back to wire in RX, so change it to DROP */
-			fixup_stc_attr->action_type = MLX5_IFC_STC_ACTION_TYPE_DROP;
-			fixup_stc_attr->action_offset = MLX5DR_ACTION_OFFSET_HIT;
-			fixup_stc_attr->stc_offset = stc_attr->stc_offset;
-		} else if (fw_tbl_type == FS_FT_FDB_TX) {
-			/*The FW doesn't allow to go to wire in the TX by JUMP_TO_VPORT*/
+		if (mlx5dr_table_is_fw_fdb_any(fw_tbl_type)) {
+			/* The FW doesn't allow to go to wire in the TX/RX by JUMP_TO_VPORT */
 			fixup_stc_attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_UPLINK;
 			fixup_stc_attr->action_offset = stc_attr->action_offset;
 			fixup_stc_attr->stc_offset = stc_attr->stc_offset;
 			fixup_stc_attr->vport.vport_num = 0;
 			fixup_stc_attr->vport.esw_owner_vhca_id = stc_attr->vport.esw_owner_vhca_id;
+			fixup_stc_attr->vport.eswitch_owner_vhca_id_valid =
+				stc_attr->vport.eswitch_owner_vhca_id_valid;
 		}
 		use_fixup = true;
 		break;
@@ -719,6 +928,19 @@ mlx5dr_action_fixup_stc_attr(struct mlx5dr_context *ctx,
 	return use_fixup;
 }
 
+static struct mlx5dr_devx_obj *
+mlx5dr_action_get_stc_obj_by_tbl_type(enum mlx5dr_table_type table_type,
+				      struct mlx5dr_pool *stc_pool,
+				      struct mlx5dr_pool_chunk *stc,
+				      bool is_mirror)
+{
+	if (table_type == MLX5DR_TABLE_TYPE_FDB_TX ||
+	    (is_mirror && table_type == MLX5DR_TABLE_TYPE_FDB)) /* Optimized ORIG in FDB_TX */
+		return mlx5dr_pool_chunk_get_base_devx_obj_mirror(stc_pool, stc);
+	else
+		return mlx5dr_pool_chunk_get_base_devx_obj(stc_pool, stc);
+}
+
 int mlx5dr_action_alloc_single_stc(struct mlx5dr_context *ctx,
 				   struct mlx5dr_cmd_stc_modify_attr *stc_attr,
 				   uint32_t table_type,
@@ -728,6 +950,7 @@ int mlx5dr_action_alloc_single_stc(struct mlx5dr_context *ctx,
 	struct mlx5dr_pool *stc_pool = ctx->stc_pool[table_type];
 	struct mlx5dr_cmd_stc_modify_attr fixup_stc_attr = {0};
 	struct mlx5dr_devx_obj *devx_obj_0;
+	enum mlx5dr_table_type type;
 	bool use_fixup;
 	int ret;
 
@@ -743,10 +966,13 @@ int mlx5dr_action_alloc_single_stc(struct mlx5dr_context *ctx,
 	if (!mlx5dr_context_cap_dynamic_reparse(ctx))
 		stc_attr->reparse_mode = MLX5_IFC_STC_REPARSE_IGNORE;
 
-	devx_obj_0 = mlx5dr_pool_chunk_get_base_devx_obj(stc_pool, stc);
+	type = (enum mlx5dr_table_type)table_type;
+	devx_obj_0 = mlx5dr_action_get_stc_obj_by_tbl_type(type, stc_pool, stc, false);
 
 	/* According to table/action limitation change the stc_attr */
-	use_fixup = mlx5dr_action_fixup_stc_attr(ctx, stc_attr, &fixup_stc_attr, table_type, false);
+	use_fixup = mlx5dr_action_fixup_stc_attr(ctx, stc_attr, &fixup_stc_attr,
+						 (enum mlx5dr_table_type)table_type,
+						 (table_type == MLX5DR_TABLE_TYPE_FDB_TX));
 	ret = mlx5dr_cmd_stc_modify(devx_obj_0, use_fixup ? &fixup_stc_attr : stc_attr);
 	if (ret) {
 		DR_LOG(ERR, "Failed to modify STC action_type %d tbl_type %d",
@@ -790,12 +1016,15 @@ void mlx5dr_action_free_single_stc(struct mlx5dr_context *ctx,
 	struct mlx5dr_pool *stc_pool = ctx->stc_pool[table_type];
 	struct mlx5dr_cmd_stc_modify_attr stc_attr = {0};
 	struct mlx5dr_devx_obj *devx_obj;
+	enum mlx5dr_table_type type;
 
 	/* Modify the STC not to point to an object */
 	stc_attr.action_type = MLX5_IFC_STC_ACTION_TYPE_DROP;
 	stc_attr.action_offset = MLX5DR_ACTION_OFFSET_HIT;
 	stc_attr.stc_offset = stc->offset;
-	devx_obj = mlx5dr_pool_chunk_get_base_devx_obj(stc_pool, stc);
+	type = (enum mlx5dr_table_type)table_type;
+	devx_obj = mlx5dr_action_get_stc_obj_by_tbl_type(type, stc_pool, stc, false);
+
 	mlx5dr_cmd_stc_modify(devx_obj, &stc_attr);
 
 	if (table_type == MLX5DR_TABLE_TYPE_FDB) {
@@ -877,6 +1106,17 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 		}
 		break;
 	case MLX5DR_ACTION_TYP_TBL:
+		attr->action_offset = MLX5DR_ACTION_OFFSET_HIT;
+		attr->dest_table_id = obj->id;
+		/* Only for unified FDB Rx case */
+		if (mlx5dr_context_cap_stc(action->ctx,
+		    MLX5_IFC_STC_ACTION_TYPE_JUMP_FLOW_TABLE_FDB_RX_BIT_INDEX) &&
+		    action->dest_tbl.type == MLX5DR_TABLE_TYPE_FDB_RX)
+			attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FLOW_TABLE_FDB_RX;
+		else
+			attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FT;
+
+		break;
 	case MLX5DR_ACTION_TYP_DEST_ARRAY:
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FT;
 		attr->action_offset = MLX5DR_ACTION_OFFSET_HIT;
@@ -930,6 +1170,7 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_VPORT;
 		attr->vport.vport_num = action->vport.vport_num;
 		attr->vport.esw_owner_vhca_id =	action->vport.esw_owner_vhca_id;
+		attr->vport.eswitch_owner_vhca_id_valid = action->ctx->caps->merged_eswitch;
 		break;
 	case MLX5DR_ACTION_TYP_POP_VLAN:
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_REMOVE_WORDS;
@@ -962,6 +1203,13 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 		}
 		attr->action_offset = MLX5DR_ACTION_OFFSET_DW5;
 		attr->reparse_mode = MLX5_IFC_STC_REPARSE_ALWAYS;
+		break;
+	case MLX5DR_ACTION_TYP_JUMP_TO_MATCHER:
+		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_STE_TABLE;
+		attr->action_offset = MLX5DR_ACTION_OFFSET_HIT;
+		attr->ste_table.ste = action->jump_to_matcher.matcher->match_ste.ste;
+		attr->ste_table.ste_pool = action->jump_to_matcher.matcher->match_ste.pool;
+		attr->ste_table.match_definer_id = action->ctx->caps->trivial_match_definer;
 		break;
 	default:
 		DR_LOG(ERR, "Invalid action type %d", action->type);
@@ -997,7 +1245,7 @@ mlx5dr_action_create_stcs(struct mlx5dr_action *action,
 						     MLX5DR_TABLE_TYPE_NIC_TX,
 						     &action->stc[MLX5DR_TABLE_TYPE_NIC_TX]);
 		if (ret)
-			goto free_nic_rx_stc;
+			goto free_stcs_rx;
 	}
 
 	/* Allocate STC for FDB */
@@ -1006,22 +1254,59 @@ mlx5dr_action_create_stcs(struct mlx5dr_action *action,
 						     MLX5DR_TABLE_TYPE_FDB,
 						     &action->stc[MLX5DR_TABLE_TYPE_FDB]);
 		if (ret)
-			goto free_nic_tx_stc;
+			goto free_stcs_tx;
+	}
+
+	/* Allocate STC for FDB-RX */
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_RX) {
+		ret = mlx5dr_action_alloc_single_stc(ctx, &stc_attr,
+						     MLX5DR_TABLE_TYPE_FDB_RX,
+						     &action->stc[MLX5DR_TABLE_TYPE_FDB_RX]);
+		if (ret)
+			goto free_stcs_fdb;
+	}
+
+	/* Allocate STC for FDB-TX */
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_TX) {
+		ret = mlx5dr_action_alloc_single_stc(ctx, &stc_attr,
+						     MLX5DR_TABLE_TYPE_FDB_TX,
+						     &action->stc[MLX5DR_TABLE_TYPE_FDB_TX]);
+		if (ret)
+			goto free_stcs_fdb_rx;
+	}
+
+	/* Allocate STC for FDB Unified */
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED) {
+		ret = mlx5dr_action_alloc_single_stc(ctx, &stc_attr,
+						     MLX5DR_TABLE_TYPE_FDB_UNIFIED,
+						     &action->stc[MLX5DR_TABLE_TYPE_FDB_UNIFIED]);
+		if (ret)
+			goto free_stcs_fdb_tx;
 	}
 
 	pthread_spin_unlock(&ctx->ctrl_lock);
 
 	return 0;
 
-free_nic_tx_stc:
+free_stcs_fdb_tx:
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_TX)
+		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_FDB_TX,
+					      &action->stc[MLX5DR_TABLE_TYPE_FDB_TX]);
+free_stcs_fdb_rx:
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_RX)
+		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_FDB_RX,
+					      &action->stc[MLX5DR_TABLE_TYPE_FDB_RX]);
+free_stcs_fdb:
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB)
+		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_FDB,
+					      &action->stc[MLX5DR_TABLE_TYPE_FDB]);
+free_stcs_tx:
 	if (action->flags & MLX5DR_ACTION_FLAG_HWS_TX)
-		mlx5dr_action_free_single_stc(ctx,
-					      MLX5DR_TABLE_TYPE_NIC_TX,
+		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_NIC_TX,
 					      &action->stc[MLX5DR_TABLE_TYPE_NIC_TX]);
-free_nic_rx_stc:
+free_stcs_rx:
 	if (action->flags & MLX5DR_ACTION_FLAG_HWS_RX)
-		mlx5dr_action_free_single_stc(ctx,
-					      MLX5DR_TABLE_TYPE_NIC_RX,
+		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_NIC_RX,
 					      &action->stc[MLX5DR_TABLE_TYPE_NIC_RX]);
 out_err:
 	pthread_spin_unlock(&ctx->ctrl_lock);
@@ -1048,6 +1333,18 @@ mlx5dr_action_destroy_stcs(struct mlx5dr_action *action)
 		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_FDB,
 					      &action->stc[MLX5DR_TABLE_TYPE_FDB]);
 
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_RX)
+		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_FDB_RX,
+					      &action->stc[MLX5DR_TABLE_TYPE_FDB_RX]);
+
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_TX)
+		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_FDB_TX,
+					      &action->stc[MLX5DR_TABLE_TYPE_FDB_TX]);
+
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED)
+		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_FDB_UNIFIED,
+					      &action->stc[MLX5DR_TABLE_TYPE_FDB_UNIFIED]);
+
 	pthread_spin_unlock(&ctx->ctrl_lock);
 }
 
@@ -1064,7 +1361,10 @@ mlx5dr_action_is_hws_flags(uint32_t flags)
 {
 	return flags & (MLX5DR_ACTION_FLAG_HWS_RX |
 			MLX5DR_ACTION_FLAG_HWS_TX |
-			MLX5DR_ACTION_FLAG_HWS_FDB);
+			MLX5DR_ACTION_FLAG_HWS_FDB |
+			MLX5DR_ACTION_FLAG_HWS_FDB_RX |
+			MLX5DR_ACTION_FLAG_HWS_FDB_TX |
+			MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED);
 }
 
 static struct mlx5dr_action *
@@ -1139,17 +1439,19 @@ mlx5dr_action_create_dest_table(struct mlx5dr_context *ctx,
 	if (!action)
 		return NULL;
 
+	action->dest_tbl.type = tbl->type;
+
 	if (mlx5dr_action_is_root_flags(flags)) {
 		if (mlx5dr_context_shared_gvmi_used(ctx))
-			action->devx_obj = tbl->local_ft->obj;
+			action->dest_tbl.devx_obj = tbl->local_ft;
 		else
-			action->devx_obj = tbl->ft->obj;
+			action->dest_tbl.devx_obj = tbl->ft;
 	} else {
+		action->dest_tbl.devx_obj = tbl->ft;
+
 		ret = mlx5dr_action_create_stcs(action, tbl->ft);
 		if (ret)
 			goto free_action;
-
-		action->devx_dest.devx_obj = tbl->ft;
 	}
 
 	return action;
@@ -1202,9 +1504,13 @@ mlx5dr_action_create_dest_tir(struct mlx5dr_context *ctx,
 		return NULL;
 	}
 
-	if ((flags & MLX5DR_ACTION_FLAG_ROOT_FDB) ||
-	    (flags & MLX5DR_ACTION_FLAG_HWS_FDB && !ctx->caps->fdb_tir_stc)) {
-		DR_LOG(ERR, "TIR action not support on FDB");
+	if ((flags & (MLX5DR_ACTION_FLAG_ROOT_FDB |
+		      MLX5DR_ACTION_FLAG_HWS_FDB_TX |
+		      MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED)) ||
+	    ((flags & (MLX5DR_ACTION_FLAG_HWS_FDB |
+		       MLX5DR_ACTION_FLAG_HWS_FDB_RX)) &&
+	    !ctx->caps->fdb_tir_stc)) {
+		DR_LOG(ERR, "TIR action not support on FDB or FDB_TX or UNIFIED");
 		rte_errno = ENOTSUP;
 		return NULL;
 	}
@@ -1302,6 +1608,12 @@ mlx5dr_action_create_tag(struct mlx5dr_context *ctx,
 	struct mlx5dr_action *action;
 	int ret;
 
+	if (flags & (MLX5DR_ACTION_FLAG_HWS_FDB_TX | MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED)) {
+		DR_LOG(ERR, "TAG action not supported for UNIFIED or FDB_TX");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
 	action = mlx5dr_action_create_generic(ctx, flags, MLX5DR_ACTION_TYP_TAG);
 	if (!action)
 		return NULL;
@@ -1317,6 +1629,13 @@ mlx5dr_action_create_tag(struct mlx5dr_context *ctx,
 free_action:
 	simple_free(action);
 	return NULL;
+}
+
+struct mlx5dr_action *
+mlx5dr_action_create_last(struct mlx5dr_context *ctx,
+			  uint32_t flags)
+{
+	return mlx5dr_action_create_generic(ctx, flags, MLX5DR_ACTION_TYP_LAST);
 }
 
 static struct mlx5dr_action *
@@ -1388,6 +1707,13 @@ mlx5dr_action_create_counter(struct mlx5dr_context *ctx,
 		return NULL;
 	}
 
+	if (mlx5dr_action_is_root_flags(flags) &&
+	    !mlx5dr_action_counter_root_is_supported()) {
+		DR_LOG(ERR, "Counter action is not supported on root");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
 	action = mlx5dr_action_create_generic(ctx, flags, MLX5DR_ACTION_TYP_CTR);
 	if (!action)
 		return NULL;
@@ -1422,6 +1748,14 @@ static int mlx5dr_action_create_dest_vport_hws(struct mlx5dr_context *ctx,
 	action->vport.vport_num = vport_caps.vport_num;
 	action->vport.esw_owner_vhca_id = vport_caps.esw_owner_vhca_id;
 
+	if (!ctx->caps->merged_eswitch &&
+	    action->vport.esw_owner_vhca_id != ctx->caps->vhca_id) {
+		DR_LOG(ERR, "Not merged-eswitch (%d), not allowed to send to other vhca_id (%d)",
+		       ctx->caps->vhca_id, action->vport.esw_owner_vhca_id);
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
 	ret = mlx5dr_action_create_stcs(action, NULL);
 	if (ret) {
 		DR_LOG(ERR, "Failed creating stc for port %d", ib_port_num);
@@ -1439,7 +1773,9 @@ mlx5dr_action_create_dest_vport(struct mlx5dr_context *ctx,
 	struct mlx5dr_action *action;
 	int ret;
 
-	if (!(flags & MLX5DR_ACTION_FLAG_HWS_FDB)) {
+	if (!(flags & (MLX5DR_ACTION_FLAG_HWS_FDB | MLX5DR_ACTION_FLAG_HWS_FDB_RX |
+		       MLX5DR_ACTION_FLAG_HWS_FDB_TX |
+		       MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED))) {
 		DR_LOG(ERR, "Vport action is supported for FDB only");
 		rte_errno = EINVAL;
 		return NULL;
@@ -1556,19 +1892,67 @@ mlx5dr_action_conv_reformat_to_verbs(uint32_t action_type,
 }
 
 static int
-mlx5dr_action_conv_flags_to_ft_type(uint32_t flags, enum mlx5dv_flow_table_type *ft_type)
+mlx5dr_action_conv_root_flags_to_dv_ft(uint32_t flags,
+				       enum mlx5dv_flow_table_type *ft_type)
 {
-	if (flags & (MLX5DR_ACTION_FLAG_ROOT_RX | MLX5DR_ACTION_FLAG_HWS_RX)) {
+	uint8_t is_rx, is_tx, is_fdb;
+
+	is_rx = !!(flags & MLX5DR_ACTION_FLAG_ROOT_RX);
+	is_tx = !!(flags & MLX5DR_ACTION_FLAG_ROOT_TX);
+	is_fdb = !!(flags & MLX5DR_ACTION_FLAG_ROOT_FDB);
+
+	if (is_rx + is_tx + is_fdb != 1) {
+		DR_LOG(ERR, "Root action flags must be converted to a single ft type");
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+
+	if (is_rx) {
 		*ft_type = MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
-	} else if (flags & (MLX5DR_ACTION_FLAG_ROOT_TX | MLX5DR_ACTION_FLAG_HWS_TX)) {
+	} else if (is_tx) {
 		*ft_type = MLX5DV_FLOW_TABLE_TYPE_NIC_TX;
 #ifdef HAVE_MLX5DV_FLOW_MATCHER_FT_TYPE
-	} else if (flags & (MLX5DR_ACTION_FLAG_ROOT_FDB | MLX5DR_ACTION_FLAG_HWS_FDB)) {
+	} else if (is_fdb) {
 		*ft_type = MLX5DV_FLOW_TABLE_TYPE_FDB;
 #endif
 	} else {
 		rte_errno = ENOTSUP;
-		return 1;
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+static int
+mlx5dr_action_conv_hws_flags_to_dv_ft(uint32_t flags,
+				     enum mlx5dv_flow_table_type *ft_type)
+{
+	uint8_t is_rx, is_tx, is_fdb;
+
+	is_rx = !!(flags & MLX5DR_ACTION_FLAG_HWS_RX);
+	is_tx = !!(flags & MLX5DR_ACTION_FLAG_HWS_TX);
+	is_fdb = !!(flags & (MLX5DR_ACTION_FLAG_HWS_FDB |
+			     MLX5DR_ACTION_FLAG_HWS_FDB_RX |
+			     MLX5DR_ACTION_FLAG_HWS_FDB_TX |
+			     MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED));
+
+	if (is_rx + is_tx + is_fdb != 1) {
+		DR_LOG(ERR, "Action flags must be converted to a single ft type");
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+
+	if (is_rx) {
+		*ft_type = MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
+	} else if (is_tx) {
+		*ft_type = MLX5DV_FLOW_TABLE_TYPE_NIC_TX;
+#ifdef HAVE_MLX5DV_FLOW_MATCHER_FT_TYPE
+	} else if (is_fdb) {
+		*ft_type = MLX5DV_FLOW_TABLE_TYPE_FDB;
+#endif
+	} else {
+		rte_errno = ENOTSUP;
+		return -rte_errno;
 	}
 
 	return 0;
@@ -1585,9 +1969,9 @@ mlx5dr_action_create_reformat_root(struct mlx5dr_action *action,
 	int ret;
 
 	/* Convert action to FT type and verbs reformat type */
-	ret = mlx5dr_action_conv_flags_to_ft_type(action->flags, &ft_type);
+	ret = mlx5dr_action_conv_root_flags_to_dv_ft(action->flags, &ft_type);
 	if (ret)
-		return rte_errno;
+		return ret;
 
 	ret = mlx5dr_action_conv_reformat_to_verbs(action->type, &verb_reformat_type);
 	if (ret)
@@ -1801,6 +2185,7 @@ mlx5dr_action_handle_tunnel_l3_to_l2(struct mlx5dr_action *action,
 
 		action[i].modify_header.max_num_of_actions = num_of_actions;
 		action[i].modify_header.num_of_actions = num_of_actions;
+		action[i].modify_header.num_of_patterns = num_of_hdrs;
 		action[i].modify_header.arg_obj = arg_obj;
 		action[i].modify_header.pat_obj = pat_obj;
 		action[i].modify_header.require_reparse =
@@ -1925,9 +2310,9 @@ mlx5dr_action_create_modify_header_root(struct mlx5dr_action *action,
 	struct ibv_context *local_ibv_ctx;
 	int ret;
 
-	ret = mlx5dr_action_conv_flags_to_ft_type(action->flags, &ft_type);
+	ret = mlx5dr_action_conv_root_flags_to_dv_ft(action->flags, &ft_type);
 	if (ret)
-		return rte_errno;
+		return ret;
 
 	local_ibv_ctx = mlx5dr_context_get_local_ibv(action->ctx);
 
@@ -2031,7 +2416,7 @@ free_stc_and_pat:
 	return rte_errno;
 }
 
-static struct mlx5dr_action *
+struct mlx5dr_action *
 mlx5dr_action_create_modify_header_reparse(struct mlx5dr_context *ctx,
 					   uint8_t num_of_patterns,
 					   struct mlx5dr_action_mh_pattern *patterns,
@@ -2167,11 +2552,21 @@ mlx5dr_action_create_dest_array(struct mlx5dr_context *ctx,
 		return NULL;
 	}
 
-	if (flags == (MLX5DR_ACTION_FLAG_HWS_RX | MLX5DR_ACTION_FLAG_SHARED)) {
+	if (!(flags & MLX5DR_ACTION_FLAG_SHARED)) {
+		DR_LOG(ERR, "Action flags not supported, should include SHARED");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
+	flags = flags & ~MLX5DR_ACTION_FLAG_SHARED;
+
+	if (flags == MLX5DR_ACTION_FLAG_HWS_RX) {
 		ft_attr.type = FS_FT_NIC_RX;
 		ft_attr.level = MLX5_IFC_MULTI_PATH_FT_MAX_LEVEL - 1;
 		table_type = MLX5DR_TABLE_TYPE_NIC_RX;
-	} else if (flags == (MLX5DR_ACTION_FLAG_HWS_FDB | MLX5DR_ACTION_FLAG_SHARED)) {
+	} else if (flags & (MLX5DR_ACTION_FLAG_HWS_FDB | MLX5DR_ACTION_FLAG_HWS_FDB_RX |
+			    MLX5DR_ACTION_FLAG_HWS_FDB_TX |
+			    MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED)) {
 		ft_attr.type = FS_FT_FDB;
 		ft_attr.level = ctx->caps->fdb_ft.max_level - 1;
 		table_type = MLX5DR_TABLE_TYPE_FDB;
@@ -2208,12 +2603,12 @@ mlx5dr_action_create_dest_array(struct mlx5dr_context *ctx,
 			case MLX5DR_ACTION_TYP_TBL:
 				dest_list[i].destination_type =
 					MLX5_FLOW_DESTINATION_TYPE_FLOW_TABLE;
-				dest_list[i].destination_id = dests[i].dest->devx_dest.devx_obj->id;
+				dest_list[i].destination_id = dests[i].dest->dest_tbl.devx_obj->id;
 				fte_attr.action_flags |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
 				fte_attr.ignore_flow_level = 1;
 				break;
 			case MLX5DR_ACTION_TYP_MISS:
-				if (table_type != MLX5DR_TABLE_TYPE_FDB) {
+				if (!mlx5dr_table_is_fdb_any(table_type)) {
 					DR_LOG(ERR, "Miss action supported for FDB only");
 					rte_errno = ENOTSUP;
 					goto free_dest_list;
@@ -2237,6 +2632,10 @@ mlx5dr_action_create_dest_array(struct mlx5dr_context *ctx,
 			case MLX5DR_ACTION_TYP_TIR:
 				dest_list[i].destination_type = MLX5_FLOW_DESTINATION_TYPE_TIR;
 				dest_list[i].destination_id = dests[i].dest->devx_dest.devx_obj->id;
+				fte_attr.action_flags |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
+				break;
+			case MLX5DR_ACTION_TYP_DROP:
+				dest_list[i].destination_type = MLX5_FLOW_DESTINATION_TYPE_NOP;
 				fte_attr.action_flags |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
 				break;
 			case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2:
@@ -2317,7 +2716,7 @@ mlx5dr_action_create_dest_root(struct mlx5dr_context *ctx,
 		return NULL;
 	}
 
-	if (mlx5dr_action_conv_flags_to_ft_type(flags, &attr.ft_type))
+	if (mlx5dr_action_conv_hws_flags_to_dv_ft(flags, &attr.ft_type))
 		return NULL;
 
 	attr.priority = priority;
@@ -2907,23 +3306,81 @@ mlx5dr_action_create_nat64(struct mlx5dr_context *ctx,
 		DR_LOG(ERR, "Nat64 failed creating replace state");
 		goto free_copy;
 	}
+	action->nat64.stages[MLX5DR_ACTION_NAT64_STAGE_COPY_PROTOCOL] =
+		mlx5dr_action_create_nat64_copy_proto_state(ctx, attr, flags);
+	if (!action->nat64.stages[MLX5DR_ACTION_NAT64_STAGE_COPY_PROTOCOL]) {
+		DR_LOG(ERR, "Nat64 failed creating copy protocol state");
+		goto free_replace;
+	}
 
 	action->nat64.stages[MLX5DR_ACTION_NAT64_STAGE_COPYBACK] =
 		mlx5dr_action_create_nat64_copy_back_state(ctx, attr, flags);
 	if (!action->nat64.stages[MLX5DR_ACTION_NAT64_STAGE_COPYBACK]) {
 		DR_LOG(ERR, "Nat64 failed creating copyback state");
-		goto free_replace;
+		goto free_copy_proto;
 	}
 
 	return action;
 
-
+free_copy_proto:
+	mlx5dr_action_destroy(action->nat64.stages[MLX5DR_ACTION_NAT64_STAGE_COPY_PROTOCOL]);
 free_replace:
 	mlx5dr_action_destroy(action->nat64.stages[MLX5DR_ACTION_NAT64_STAGE_REPLACE]);
 free_copy:
 	mlx5dr_action_destroy(action->nat64.stages[MLX5DR_ACTION_NAT64_STAGE_COPY]);
 free_action:
 	simple_free(action);
+	return NULL;
+}
+
+struct mlx5dr_action *
+mlx5dr_action_create_jump_to_matcher(struct mlx5dr_context *ctx,
+				     struct mlx5dr_action_jump_to_matcher_attr *attr,
+				     uint32_t flags)
+{
+	struct mlx5dr_matcher *matcher = attr->matcher;
+	struct mlx5dr_matcher_attr *m_attr;
+	struct mlx5dr_action *action;
+
+	if (attr->type != MLX5DR_ACTION_JUMP_TO_MATCHER_BY_INDEX) {
+		DR_LOG(ERR, "Only jump to matcher by index is supported");
+		goto enotsup;
+	}
+
+	if (mlx5dr_action_is_root_flags(flags)) {
+		DR_LOG(ERR, "Action flags must be only non root (HWS)");
+		goto enotsup;
+	}
+
+	if (mlx5dr_table_is_root(matcher->tbl)) {
+		DR_LOG(ERR, "Root matcher cannot be set as destination");
+		goto enotsup;
+	}
+
+	m_attr = &matcher->attr;
+
+	if (!(matcher->flags & MLX5DR_MATCHER_FLAGS_STE_ARRAY) &&
+	    (m_attr->resizable || m_attr->table.sz_col_log || m_attr->table.sz_row_log)) {
+		DR_LOG(ERR, "Only STE array or matcher of size 1 can be set as destination");
+		goto enotsup;
+	}
+
+	action = mlx5dr_action_create_generic(ctx, flags, MLX5DR_ACTION_TYP_JUMP_TO_MATCHER);
+	if (!action)
+		return NULL;
+
+	action->jump_to_matcher.matcher = matcher;
+
+	if (mlx5dr_action_create_stcs(action, NULL)) {
+		DR_LOG(ERR, "Failed to create action jump to matcher STC");
+		simple_free(action);
+		return NULL;
+	}
+
+	return action;
+
+enotsup:
+	rte_errno = ENOTSUP;
 	return NULL;
 }
 
@@ -2948,6 +3405,8 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 	case MLX5DR_ACTION_TYP_ASO_CT:
 	case MLX5DR_ACTION_TYP_PUSH_VLAN:
 	case MLX5DR_ACTION_TYP_REMOVE_HEADER:
+	case MLX5DR_ACTION_TYP_VPORT:
+	case MLX5DR_ACTION_TYP_JUMP_TO_MATCHER:
 		mlx5dr_action_destroy_stcs(action);
 		break;
 	case MLX5DR_ACTION_TYP_DEST_ROOT:
@@ -3005,6 +3464,11 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 		for (i = 0; i < MLX5DR_ACTION_NAT64_STAGES; i++)
 			mlx5dr_action_destroy(action->nat64.stages[i]);
 		break;
+	case MLX5DR_ACTION_TYP_LAST:
+		break;
+	default:
+		DR_LOG(ERR, "Not supported action type: %d", action->type);
+		assert(false);
 	}
 }
 
@@ -3462,6 +3926,19 @@ mlx5dr_action_setter_default_hit(struct mlx5dr_actions_apply_data *apply,
 }
 
 static void
+mlx5dr_action_setter_hit_matcher(struct mlx5dr_actions_apply_data *apply,
+				 struct mlx5dr_actions_wqe_setter *setter)
+{
+	struct mlx5dr_rule_action *rule_action;
+
+	rule_action = &apply->rule_action[setter->idx_hit];
+
+	apply->wqe_data[MLX5DR_ACTION_OFFSET_HIT_LSB] =
+		htobe32(rule_action->jump_to_matcher.offset << 6);
+	mlx5dr_action_apply_stc(apply, MLX5DR_ACTION_STC_IDX_HIT, setter->idx_hit);
+}
+
+static void
 mlx5dr_action_setter_hit_next_action(struct mlx5dr_actions_apply_data *apply,
 				     __rte_unused struct mlx5dr_actions_wqe_setter *setter)
 {
@@ -3806,6 +4283,12 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 				/* The stage indicates which modify-header to push */
 				setter->stage_idx = j;
 			}
+			break;
+
+		case MLX5DR_ACTION_TYP_JUMP_TO_MATCHER:
+			last_setter->flags |= ASF_HIT;
+			last_setter->set_hit = &mlx5dr_action_setter_hit_matcher;
+			last_setter->idx_hit = i;
 			break;
 
 		default:

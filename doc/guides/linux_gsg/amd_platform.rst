@@ -22,7 +22,9 @@ Tuning Guides for AMD EPYC SoC
 
 #. `GENOA <https://www.amd.com/content/dam/amd/en/documents/epyc-technical-docs/tuning-guides/58017-amd-epyc-9004-tg-data-plane-dpdk.pdf>`_
 
-#. `BERGAMO|SIENNA <https://www.amd.com/content/dam/amd/en/documents/epyc-technical-docs/tuning-guides/58310_amd-epyc-8004-tg-data-plane-dpdk.pdf>`_
+#. `BERGAMO|SIENA <https://www.amd.com/content/dam/amd/en/documents/epyc-technical-docs/tuning-guides/58310_amd-epyc-8004-tg-data-plane-dpdk.pdf>`_
+
+#. `TURIN <https://www.amd.com/content/dam/amd/en/documents/epyc-technical-docs/tuning-guides/58468_amd-epyc-9005-tg-data-plane-dpdk.pdf>`_
 
 
 General Requirements
@@ -71,3 +73,58 @@ Compiler
 --------
 
 Refer to the `Compiler Flags` in tuning guide for recommended version and `-march` flags.
+
+
+Max LCores
+----------
+
+Refer to the `Compilation` in tuning guide for allowing more threads to run as DPDK `lcores`.
+
+
+Power
+-----
+
+Core
+~~~~
+
+AMD EPYC SoC supports CPU power functions via ``rte_power`` API from `23.11 LTS` onwards.
+These are tested and validated on MILAN, GENOA, BERGAMO, SIENA and TURIN
+using Linux kernel `6.4` and above with ``amd_pstate`` power driver in ``passive`` mode.
+
+.. note::
+
+   * Power libraries are supported on Linux only.
+   * DPDK uncore support on Linux is work in progress.
+
+Uncore
+~~~~~~
+
+AMD EPYC SoC support UNCORE power functions via ``rte_power_uncore`` from `25.03` onwards.
+These are tested and validated on GENOA, SIENA and TURIN.
+Please refer the tuning guides to enable ``HSMP`` and DPDK power management guide.
+
+
+NIC
+---
+
+To use Solarflare x4 on AMD EPYC TURIN, please ensure the following
+
+#. Upgrade Linux or distro version to 6.13 or higher.
+
+#. Disable PCIe power option via ``vfio-pci.disable_idle_d3=1`` in GRUB.
+
+#. Enable the hardware with out-of-tree sfc (contact Solarflare) Linux kernel driver first;
+   then bind with ``vfio-pci`` next.
+
+#. Please use PMD args ``fw_variant=ultra-low-latency,perf_profile=throughput``.
+
+To use Solarflare x2 on AMD EPYC TURIN, please ensure the following
+
+#. Upgrade Linux or distro version to 6.13 or higher.
+
+#. Disable PCIe power option via ``vfio-pci.disable_idle_d3=1`` in GRUB.
+
+#. Enable the hardware with ``sfc`` Linux Kernel Driver first;
+   then bind with ``vfio-pci`` next.
+
+#. Please use PMD args ``fw_variant=ultra-low-latency,perf_profile=throughput``.

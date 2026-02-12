@@ -17,20 +17,18 @@ Other API and ABI deprecation notices are to be posted below.
 Deprecation Notices
 -------------------
 
-* build: The ``enable_kmods`` option is deprecated and will be removed in a future release.
-  Setting/clearing the option has no impact on the build.
-  Instead, kernel modules will be always built for OS's where out-of-tree kernel modules
-  are required for DPDK operation.
-  Currently, this means that modules will only be built for FreeBSD.
-  No modules are shipped with DPDK for either Linux or Windows.
-
 * kvargs: The function ``rte_kvargs_process`` will get a new parameter
   for returning key match count. It will ease handling of no-match case.
 
-* telemetry: The functions ``rte_tel_data_add_array_u64`` and ``rte_tel_data_add_dict_u64``,
-  used by telemetry callbacks for adding unsigned integer values to be returned to the user,
-  are renamed to ``rte_tel_data_add_array_uint`` and ``rte_tel_data_add_dict_uint`` respectively.
-  As such, the old function names are deprecated and will be removed in a future release.
+* eal: The ``-c <coremask>`` commandline parameter is deprecated
+  and will be removed in a future release.
+  Use the ``-l <corelist>`` or ``--lcores=<corelist>`` parameters instead
+  to specify the cores to be used when running a DPDK application.
+
+* eal: The ``-s <service-coremask>`` commandline parameter is deprecated
+  and will be removed in a future release.
+  Use the ``-S <service-corelist>`` parameter instead
+  to specify the cores to be used for background services in DPDK.
 
 * rte_atomicNN_xxx: These APIs do not take memory order parameter. This does
   not allow for writing optimized code for all the CPU architectures supported
@@ -60,6 +58,21 @@ Deprecation Notices
   Need to identify this kind of usages and fix in 20.11, otherwise this blocks
   us extending existing enum/define.
   One solution can be using a fixed size array instead of ``.*MAX.*`` value.
+
+* net, ethdev: The flow item ``RTE_FLOW_ITEM_TYPE_VXLAN_GPE``
+  is replaced with ``RTE_FLOW_ITEM_TYPE_VXLAN``.
+  The struct ``rte_flow_item_vxlan_gpe`` and its mask ``rte_flow_item_vxlan_gpe_mask``
+  are replaced with ``rte_flow_item_vxlan`` and ``rte_flow_item_vxlan_mask``.
+  The flow item ``RTE_FLOW_ITEM_TYPE_VXLAN_GPE``,
+  the structs ``rte_flow_item_vxlan_gpe``, ``rte_flow_item_vxlan_gpe_mask``,
+  and the header struct ``rte_vxlan_gpe_hdr`` with the macro ``RTE_ETHER_VXLAN_GPE_HLEN``
+  will be removed in DPDK 25.11.
+
+* ethdev: The queue stats mapping functions
+  ``rte_eth_dev_set_tx_queue_stats_mapping`` and ``rte_eth_dev_set_rx_queue_stats_mapping``
+  are deprecated and will be removed in a future release.
+  Following the removal of queue statistics from the main ethdev statistics structure,
+  these functions are no longer needed.
 
 * ethdev: The flow API matching pattern structures, ``struct rte_flow_item_*``,
   should start with relevant protocol header structure from lib/net/.
@@ -91,13 +104,6 @@ Deprecation Notices
   - ``rte_flow_item_pppoe``
   - ``rte_flow_item_pppoe_proto_id``
 
-* ethdev: Queue specific stats fields will be removed from ``struct rte_eth_stats``.
-  Mentioned fields are: ``q_ipackets``, ``q_opackets``, ``q_ibytes``, ``q_obytes``,
-  ``q_errors``.
-  Instead queue stats will be received via xstats API. Current method support
-  will be limited to maximum 256 queues.
-  Also compile time flag ``RTE_ETHDEV_QUEUE_STAT_CNTRS`` will be removed.
-
 * ethdev: Flow actions ``PF`` and ``VF`` have been deprecated since DPDK 21.11
   and are yet to be removed. That still has not happened because there are net
   drivers which support combined use of either action ``PF`` or action ``VF``
@@ -115,24 +121,6 @@ Deprecation Notices
   The legacy actions should be removed
   once ``MODIFY_FIELD`` alternative is implemented in drivers.
 
-* cryptodev: The function ``rte_cryptodev_cb_fn`` will be updated
-  to have another parameter ``qp_id`` to return the queue pair ID
-  which got error interrupt to the application,
-  so that application can reset that particular queue pair.
-
-* cryptodev: The Intel IPsec Multi-Buffer version will be bumped
-  to a minimum version of v1.4.
-  This will effect the KASUMI, SNOW3G, ZUC, AESNI GCM, AESNI MB and CHACHAPOLY
-  SW PMDs.
-
-* eventdev: The single-event (non-burst) enqueue and dequeue operations,
-  used by static inline burst enqueue and dequeue functions in ``rte_eventdev.h``,
-  will be removed in DPDK 23.11.
-  This simplification includes changing the layout and potentially also
-  the size of the public ``rte_event_fp_ops`` struct, breaking the ABI.
-  Since these functions are not called directly by the application,
-  the API remains unaffected.
-
 * pipeline: The pipeline library legacy API (functions rte_pipeline_*)
   will be deprecated and subsequently removed in DPDK 24.11 release.
   Before this, the new pipeline library API (functions rte_swx_pipeline_*)
@@ -147,3 +135,7 @@ Deprecation Notices
   will be deprecated and subsequently removed in DPDK 24.11 release.
   Before this, the new port library API (functions rte_swx_port_*)
   will gradually transition from experimental to stable status.
+
+* bus/vmbus: Starting DPDK 25.11, all the vmbus API defined in
+  ``drivers/bus/vmbus/rte_bus_vmbus.h`` will become internal to DPDK.
+  Those API functions are used internally by DPDK core and netvsc PMD.

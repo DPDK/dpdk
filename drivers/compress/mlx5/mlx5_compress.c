@@ -602,7 +602,7 @@ mlx5_compress_dump_err_objs(volatile uint32_t *cqe, volatile uint32_t *wqe,
 	size_t i;
 
 	DRV_LOG(ERR, "Error cqe:");
-	for (i = 0; i < sizeof(struct mlx5_err_cqe) >> 2; i += 4)
+	for (i = 0; i < sizeof(struct mlx5_error_cqe) >> 2; i += 4)
 		DRV_LOG(ERR, "%08X %08X %08X %08X", cqe[i], cqe[i + 1],
 			cqe[i + 2], cqe[i + 3]);
 	DRV_LOG(ERR, "\nError wqe:");
@@ -620,7 +620,7 @@ mlx5_compress_cqe_err_handle(struct mlx5_compress_qp *qp,
 			     struct rte_comp_op *op)
 {
 	const uint32_t idx = qp->ci & (qp->entries_n - 1);
-	volatile struct mlx5_err_cqe *cqe = (volatile struct mlx5_err_cqe *)
+	volatile struct mlx5_error_cqe *cqe = (volatile struct mlx5_error_cqe *)
 							      &qp->cq.cqes[idx];
 	volatile struct mlx5_gga_wqe *wqes = (volatile struct mlx5_gga_wqe *)
 								    qp->qp.wqes;
@@ -913,6 +913,10 @@ static const struct rte_pci_id mlx5_compress_pci_id_map[] = {
 				PCI_DEVICE_ID_MELLANOX_BLUEFIELD3)
 	},
 	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
+				PCI_DEVICE_ID_MELLANOX_CONNECTXVF)
+	},
+	{
 		.vendor_id = 0
 	}
 };
@@ -933,6 +937,6 @@ RTE_INIT(rte_mlx5_compress_init)
 }
 
 RTE_LOG_REGISTER_DEFAULT(mlx5_compress_logtype, NOTICE)
-RTE_PMD_EXPORT_NAME(MLX5_COMPRESS_DRIVER_NAME, __COUNTER__);
+RTE_PMD_EXPORT_NAME(MLX5_COMPRESS_DRIVER_NAME);
 RTE_PMD_REGISTER_PCI_TABLE(MLX5_COMPRESS_DRIVER_NAME, mlx5_compress_pci_id_map);
 RTE_PMD_REGISTER_KMOD_DEP(MLX5_COMPRESS_DRIVER_NAME, "* ib_uverbs & mlx5_core & mlx5_ib");

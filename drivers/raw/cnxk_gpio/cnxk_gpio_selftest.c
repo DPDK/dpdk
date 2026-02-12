@@ -3,96 +3,33 @@
  */
 
 #include <fcntl.h>
+#include <linux/gpio.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 #include <rte_cycles.h>
+#include <rte_io.h>
 #include <rte_rawdev.h>
 #include <rte_rawdev_pmd.h>
-#include <rte_service.h>
 
 #include "cnxk_gpio.h"
 #include "rte_pmd_cnxk_gpio.h"
 
-#define CNXK_GPIO_BUFSZ 128
-
-#define OTX_IOC_MAGIC 0xF2
-#define OTX_IOC_TRIGGER_GPIO_HANDLER                                           \
-	_IO(OTX_IOC_MAGIC, 3)
-
-static int fd;
-
-static int
-cnxk_gpio_attr_exists(const char *attr)
-{
-	struct stat st;
-
-	return !stat(attr, &st);
-}
-
-static int
-cnxk_gpio_read_attr(char *attr, char *val)
-{
-	FILE *fp;
-	int ret;
-
-	fp = fopen(attr, "r");
-	if (!fp)
-		return -errno;
-
-	ret = fscanf(fp, "%s", val);
-	if (ret < 0)
-		return -errno;
-	if (ret != 1)
-		return -EIO;
-
-	ret = fclose(fp);
-	if (ret)
-		return -errno;
-
-	return 0;
-}
-
-#define CNXK_GPIO_ERR_STR(err, str, ...) do {                                  \
-	if (err) {                                                             \
-		CNXK_GPIO_LOG(ERR, "%s:%d: " str " (%d)", __func__, __LINE__, \
-			##__VA_ARGS__, err);                                   \
-		goto out;                                                      \
-	}                                                                      \
+#define CNXK_GPIO_ERR_STR(err, str, ...) do {                                                      \
+	if (err) {                                                                                 \
+		CNXK_GPIO_LOG(ERR, "%s:%d: " str " (%d)", __func__, __LINE__, ##__VA_ARGS__, err); \
+		goto out;                                                                          \
+	}                                                                                          \
 } while (0)
 
 static int
-cnxk_gpio_validate_attr(char *attr, const char *expected)
+cnxk_gpio_test_input(uint16_t dev_id, int gpio)
 {
-	char buf[CNXK_GPIO_BUFSZ];
 	int ret;
-
-	ret = cnxk_gpio_read_attr(attr, buf);
-	if (ret)
-		return ret;
-
-	if (strncmp(buf, expected, sizeof(buf)))
-		return -EIO;
-
-	return 0;
-}
-
-#define CNXK_GPIO_PATH_FMT "/sys/class/gpio/gpio%d"
-
-static int
-cnxk_gpio_test_input(uint16_t dev_id, int base, int gpio)
-{
-	char buf[CNXK_GPIO_BUFSZ];
-	int ret, n;
-
-	n = snprintf(buf, sizeof(buf), CNXK_GPIO_PATH_FMT, base + gpio);
-	snprintf(buf + n, sizeof(buf) - n, "/direction");
 
 	ret = rte_pmd_gpio_set_pin_dir(dev_id, gpio, CNXK_GPIO_PIN_DIR_IN);
 	CNXK_GPIO_ERR_STR(ret, "failed to set dir to input");
-	ret = cnxk_gpio_validate_attr(buf, "in");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
 
 	ret = rte_pmd_gpio_set_pin_value(dev_id, gpio, 1) |
 	      rte_pmd_gpio_set_pin_value(dev_id, gpio, 0);
@@ -101,29 +38,17 @@ cnxk_gpio_test_input(uint16_t dev_id, int base, int gpio)
 		CNXK_GPIO_ERR_STR(ret, "input pin overwritten");
 	}
 
-	snprintf(buf + n, sizeof(buf) - n, "/edge");
-
-	ret = rte_pmd_gpio_set_pin_edge(dev_id, gpio,
-					CNXK_GPIO_PIN_EDGE_FALLING);
+	ret = rte_pmd_gpio_set_pin_edge(dev_id, gpio, CNXK_GPIO_PIN_EDGE_FALLING);
 	CNXK_GPIO_ERR_STR(ret, "failed to set edge to falling");
-	ret = cnxk_gpio_validate_attr(buf, "falling");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
 
-	ret = rte_pmd_gpio_set_pin_edge(dev_id, gpio,
-					CNXK_GPIO_PIN_EDGE_RISING);
+	ret = rte_pmd_gpio_set_pin_edge(dev_id, gpio, CNXK_GPIO_PIN_EDGE_RISING);
 	CNXK_GPIO_ERR_STR(ret, "failed to change edge to rising");
-	ret = cnxk_gpio_validate_attr(buf, "rising");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
 
 	ret = rte_pmd_gpio_set_pin_edge(dev_id, gpio, CNXK_GPIO_PIN_EDGE_BOTH);
 	CNXK_GPIO_ERR_STR(ret, "failed to change edge to both");
-	ret = cnxk_gpio_validate_attr(buf, "both");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
 
 	ret = rte_pmd_gpio_set_pin_edge(dev_id, gpio, CNXK_GPIO_PIN_EDGE_NONE);
 	CNXK_GPIO_ERR_STR(ret, "failed to set edge to none");
-	ret = cnxk_gpio_validate_attr(buf, "none");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
 
 	/*
 	 * calling this makes sure kernel driver switches off inverted
@@ -135,44 +60,41 @@ out:
 	return ret;
 }
 
-static int
-cnxk_gpio_trigger_irq(int gpio)
-{
-	int ret;
-
-	ret = ioctl(fd, OTX_IOC_TRIGGER_GPIO_HANDLER, gpio);
-
-	return ret == -1 ? -errno : 0;
-}
+static uint32_t triggered;
 
 static void
-cnxk_gpio_irq_handler(int gpio, void *data)
+cnxk_gpio_irq_handler(struct gpio_v2_line_event *event, void *data)
 {
-	*(int *)data = gpio;
+	RTE_SET_USED(event);
+	RTE_SET_USED(data);
+
+#ifdef CNXK_GPIO_V2_PRESENT
+	int gpio = (int)(size_t)data;
+
+	if ((int)event->offset != gpio)
+		CNXK_GPIO_LOG(ERR, "event from gpio%d instead of gpio%d", event->offset, gpio);
+#endif
+
+	rte_write32(1, &triggered);
 }
 
 static int
 cnxk_gpio_test_irq(uint16_t dev_id, int gpio)
 {
-	int irq_data, ret;
+	int ret;
 
 	ret = rte_pmd_gpio_set_pin_dir(dev_id, gpio, CNXK_GPIO_PIN_DIR_IN);
 	CNXK_GPIO_ERR_STR(ret, "failed to set dir to input");
 
-	irq_data = 0;
-	ret = rte_pmd_gpio_register_irq(dev_id, gpio, rte_lcore_id(),
-					cnxk_gpio_irq_handler, &irq_data);
+	ret = rte_pmd_gpio_register_irq2(dev_id, gpio, cnxk_gpio_irq_handler, (int *)(size_t)gpio);
 	CNXK_GPIO_ERR_STR(ret, "failed to register irq handler");
 
-	ret = rte_pmd_gpio_enable_interrupt(dev_id, gpio,
-					    CNXK_GPIO_PIN_EDGE_RISING);
+	ret = rte_pmd_gpio_enable_interrupt(dev_id, gpio, CNXK_GPIO_PIN_EDGE_RISING);
 	CNXK_GPIO_ERR_STR(ret, "failed to enable interrupt");
 
-	ret = cnxk_gpio_trigger_irq(gpio);
-	CNXK_GPIO_ERR_STR(ret, "failed to trigger irq");
-	rte_delay_ms(1);
-	ret = *(volatile int *)&irq_data == gpio ? 0 : -EIO;
-	CNXK_GPIO_ERR_STR(ret, "failed to test irq");
+	rte_delay_ms(2);
+	rte_read32(&triggered);
+	CNXK_GPIO_ERR_STR(!triggered, "failed to trigger irq");
 
 	ret = rte_pmd_gpio_disable_interrupt(dev_id, gpio);
 	CNXK_GPIO_ERR_STR(ret, "failed to disable interrupt");
@@ -187,24 +109,15 @@ out:
 }
 
 static int
-cnxk_gpio_test_output(uint16_t dev_id, int base, int gpio)
+cnxk_gpio_test_output(uint16_t dev_id, int gpio)
 {
-	char buf[CNXK_GPIO_BUFSZ];
-	int ret, val, n;
+	int ret, val;
 
-	n = snprintf(buf, sizeof(buf), CNXK_GPIO_PATH_FMT, base + gpio);
-
-	snprintf(buf + n, sizeof(buf) - n, "/direction");
 	ret = rte_pmd_gpio_set_pin_dir(dev_id, gpio, CNXK_GPIO_PIN_DIR_OUT);
 	CNXK_GPIO_ERR_STR(ret, "failed to set dir to out");
-	ret = cnxk_gpio_validate_attr(buf, "out");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
 
-	snprintf(buf + n, sizeof(buf) - n, "/value");
 	ret = rte_pmd_gpio_set_pin_value(dev_id, gpio, 0);
 	CNXK_GPIO_ERR_STR(ret, "failed to set value to 0");
-	ret = cnxk_gpio_validate_attr(buf, "0");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
 	ret = rte_pmd_gpio_get_pin_value(dev_id, gpio, &val);
 	CNXK_GPIO_ERR_STR(ret, "failed to read value");
 	if (val)
@@ -213,64 +126,41 @@ cnxk_gpio_test_output(uint16_t dev_id, int base, int gpio)
 
 	ret = rte_pmd_gpio_set_pin_value(dev_id, gpio, 1);
 	CNXK_GPIO_ERR_STR(ret, "failed to set value to 1");
-	ret = cnxk_gpio_validate_attr(buf, "1");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
 	ret = rte_pmd_gpio_get_pin_value(dev_id, gpio, &val);
 	CNXK_GPIO_ERR_STR(ret, "failed to read value");
 	if (val != 1)
 		ret = -EIO;
 	CNXK_GPIO_ERR_STR(ret, "read %d instead of 1", val);
 
-	snprintf(buf + n, sizeof(buf) - n, "/direction");
 	ret = rte_pmd_gpio_set_pin_dir(dev_id, gpio, CNXK_GPIO_PIN_DIR_LOW);
 	CNXK_GPIO_ERR_STR(ret, "failed to set dir to low");
-	ret = cnxk_gpio_validate_attr(buf, "out");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
-	snprintf(buf + n, sizeof(buf) - n, "/value");
-	ret = cnxk_gpio_validate_attr(buf, "0");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
 
-	snprintf(buf + n, sizeof(buf) - n, "/direction");
 	ret = rte_pmd_gpio_set_pin_dir(dev_id, gpio, CNXK_GPIO_PIN_DIR_HIGH);
 	CNXK_GPIO_ERR_STR(ret, "failed to set dir to high");
-	ret = cnxk_gpio_validate_attr(buf, "out");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
-	snprintf(buf + n, sizeof(buf) - n, "/value");
-	ret = cnxk_gpio_validate_attr(buf, "1");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
+	ret = rte_pmd_gpio_get_pin_value(dev_id, gpio, &val);
+	CNXK_GPIO_ERR_STR(ret, "failed to read value");
+	if (val != 1)
+		ret = -EIO;
+	CNXK_GPIO_ERR_STR(ret, "read %d instead of 1", val);
 
-	snprintf(buf + n, sizeof(buf) - n, "/edge");
-	ret = rte_pmd_gpio_set_pin_edge(dev_id, gpio,
-					CNXK_GPIO_PIN_EDGE_FALLING);
+	ret = rte_pmd_gpio_set_pin_edge(dev_id, gpio, CNXK_GPIO_PIN_EDGE_FALLING);
 	ret = ret == 0 ? -EIO : 0;
 	CNXK_GPIO_ERR_STR(ret, "changed edge to falling");
-	ret = cnxk_gpio_validate_attr(buf, "none");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
 
-	ret = rte_pmd_gpio_set_pin_edge(dev_id, gpio,
-					CNXK_GPIO_PIN_EDGE_RISING);
+	ret = rte_pmd_gpio_set_pin_edge(dev_id, gpio, CNXK_GPIO_PIN_EDGE_RISING);
 	ret = ret == 0 ? -EIO : 0;
 	CNXK_GPIO_ERR_STR(ret, "changed edge to rising");
-	ret = cnxk_gpio_validate_attr(buf, "none");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
 
 	ret = rte_pmd_gpio_set_pin_edge(dev_id, gpio, CNXK_GPIO_PIN_EDGE_BOTH);
 	ret = ret == 0 ? -EIO : 0;
 	CNXK_GPIO_ERR_STR(ret, "changed edge to both");
-	ret = cnxk_gpio_validate_attr(buf, "none");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
 
 	/* this one should succeed */
 	ret = rte_pmd_gpio_set_pin_edge(dev_id, gpio, CNXK_GPIO_PIN_EDGE_NONE);
 	CNXK_GPIO_ERR_STR(ret, "failed to change edge to none");
-	ret = cnxk_gpio_validate_attr(buf, "none");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
 
-	snprintf(buf + n, sizeof(buf) - n, "/active_low");
 	ret = rte_pmd_gpio_set_pin_active_low(dev_id, gpio, 1);
 	CNXK_GPIO_ERR_STR(ret, "failed to set active_low to 1");
-	ret = cnxk_gpio_validate_attr(buf, "1");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
 
 	ret = rte_pmd_gpio_get_pin_active_low(dev_id, gpio, &val);
 	CNXK_GPIO_ERR_STR(ret, "failed to read active_low");
@@ -278,23 +168,24 @@ cnxk_gpio_test_output(uint16_t dev_id, int base, int gpio)
 		ret = -EIO;
 	CNXK_GPIO_ERR_STR(ret, "read %d instead of 1", val);
 
-	snprintf(buf + n, sizeof(buf) - n, "/value");
 	ret = rte_pmd_gpio_set_pin_value(dev_id, gpio, 1);
 	CNXK_GPIO_ERR_STR(ret, "failed to set value to 1");
-	ret = cnxk_gpio_validate_attr(buf, "1");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
+	ret = rte_pmd_gpio_get_pin_value(dev_id, gpio, &val);
+	CNXK_GPIO_ERR_STR(ret, "failed to read value");
+	if (val != 1)
+		ret = -EIO;
+	CNXK_GPIO_ERR_STR(ret, "read %d instead of 1", val);
 
 	ret = rte_pmd_gpio_set_pin_value(dev_id, gpio, 0);
 	CNXK_GPIO_ERR_STR(ret, "failed to set value to 0");
-	ret = cnxk_gpio_validate_attr(buf, "0");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
+	ret = rte_pmd_gpio_get_pin_value(dev_id, gpio, &val);
+	CNXK_GPIO_ERR_STR(ret, "failed to read value");
+	if (val != 0)
+		ret = -EIO;
+	CNXK_GPIO_ERR_STR(ret, "read %d instead of 0", val);
 
-	snprintf(buf + n, sizeof(buf) - n, "/active_low");
 	ret = rte_pmd_gpio_set_pin_active_low(dev_id, gpio, 0);
 	CNXK_GPIO_ERR_STR(ret, "failed to set active_low to 0");
-	ret = cnxk_gpio_validate_attr(buf, "0");
-	CNXK_GPIO_ERR_STR(ret, "failed to validate %s", buf);
-
 out:
 	return ret;
 }
@@ -303,17 +194,13 @@ int
 cnxk_gpio_selftest(uint16_t dev_id)
 {
 	struct cnxk_gpio_queue_conf conf;
-	struct cnxk_gpiochip *gpiochip;
-	char buf[CNXK_GPIO_BUFSZ];
 	struct rte_rawdev *rawdev;
 	unsigned int queues, i;
-	struct cnxk_gpio *gpio;
 	int ret, ret2;
 
 	rawdev = rte_rawdev_pmd_get_named_dev("cnxk_gpio");
 	if (!rawdev)
 		return -ENODEV;
-	gpiochip = rawdev->dev_private;
 
 	queues = rte_rawdev_queue_count(dev_id);
 	if (queues == 0)
@@ -322,10 +209,6 @@ cnxk_gpio_selftest(uint16_t dev_id)
 	ret = rte_rawdev_start(dev_id);
 	if (ret)
 		return ret;
-
-	fd = open("/dev/otx-gpio-ctr", O_RDWR | O_SYNC);
-	if (fd < 0)
-		return -errno;
 
 	for (i = 0; i < queues; i++) {
 		ret = rte_rawdev_queue_conf_get(dev_id, i, &conf, sizeof(conf));
@@ -349,15 +232,7 @@ cnxk_gpio_selftest(uint16_t dev_id)
 			goto out;
 		}
 
-		gpio = gpiochip->gpios[conf.gpio];
-		snprintf(buf, sizeof(buf), CNXK_GPIO_PATH_FMT, gpio->num);
-		if (!cnxk_gpio_attr_exists(buf)) {
-			CNXK_GPIO_LOG(ERR, "%s does not exist", buf);
-			ret = -ENOENT;
-			goto release;
-		}
-
-		ret = cnxk_gpio_test_input(dev_id, gpiochip->base, conf.gpio);
+		ret = cnxk_gpio_test_input(dev_id, conf.gpio);
 		if (ret)
 			goto release;
 
@@ -365,19 +240,13 @@ cnxk_gpio_selftest(uint16_t dev_id)
 		if (ret)
 			goto release;
 
-		ret = cnxk_gpio_test_output(dev_id, gpiochip->base, conf.gpio);
+		ret = cnxk_gpio_test_output(dev_id, conf.gpio);
 release:
 		ret2 = ret;
 		ret = rte_rawdev_queue_release(dev_id, i);
 		if (ret) {
 			CNXK_GPIO_LOG(ERR, "failed to release queue (%d)",
 				ret);
-			break;
-		}
-
-		if (cnxk_gpio_attr_exists(buf)) {
-			CNXK_GPIO_LOG(ERR, "%s still exists", buf);
-			ret = -EIO;
 			break;
 		}
 
@@ -388,7 +257,6 @@ release:
 	}
 
 out:
-	close(fd);
 	rte_rawdev_stop(dev_id);
 
 	return ret;

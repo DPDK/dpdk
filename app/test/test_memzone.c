@@ -872,7 +872,7 @@ test_memzone_free(void)
 {
 	const struct rte_memzone **mz;
 	int i;
-	char name[20];
+	char name[RTE_MEMZONE_NAMESIZE];
 	int rc = -1;
 
 	mz = rte_calloc("memzone_test", rte_memzone_max_get() + 1,
@@ -1162,4 +1162,4 @@ test_memzone(void)
 	return 0;
 }
 
-REGISTER_FAST_TEST(memzone_autotest, false, true, test_memzone);
+REGISTER_FAST_TEST(memzone_autotest, NOHUGE_SKIP, ASAN_OK, test_memzone);

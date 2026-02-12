@@ -26,9 +26,9 @@ struct virtio_net_ctrl_elem {
 static int
 virtio_net_ctrl_pop(struct virtio_net *dev, struct vhost_virtqueue *cvq,
 		struct virtio_net_ctrl_elem *ctrl_elem)
-	__rte_shared_locks_required(&cvq->iotlb_lock)
+	__rte_requires_shared_capability(&cvq->iotlb_lock)
 {
-	uint16_t avail_idx, desc_idx, n_descs = 0;
+	uint16_t avail_idx, desc_idx, n_descs = 0, nr_descs, cnt = 0;
 	uint64_t desc_len, desc_addr, desc_iova, data_len = 0;
 	uint8_t *ctrl_req;
 	struct vring_desc *descs;
@@ -40,7 +40,7 @@ virtio_net_ctrl_pop(struct virtio_net *dev, struct vhost_virtqueue *cvq,
 		return 0;
 	}
 
-	desc_idx = cvq->avail->ring[cvq->last_avail_idx];
+	desc_idx = cvq->avail->ring[cvq->last_avail_idx & (cvq->size - 1)];
 	if (desc_idx >= cvq->size) {
 		VHOST_CONFIG_LOG(dev->ifname, ERR, "Out of range desc index, dropping");
 		goto err;
@@ -59,12 +59,19 @@ virtio_net_ctrl_pop(struct virtio_net *dev, struct vhost_virtqueue *cvq,
 			goto err;
 		}
 
+		nr_descs = desc_len / sizeof(struct vring_desc);
 		desc_idx = 0;
 	} else {
 		descs = cvq->desc;
+		nr_descs = cvq->size;
 	}
 
 	while (1) {
+		if (unlikely(desc_idx >= nr_descs || cnt++ >= nr_descs)) {
+			VHOST_CONFIG_LOG(dev->ifname, ERR, "Invalid ctrl descriptor chain");
+			goto err;
+		}
+
 		desc_len = descs[desc_idx].len;
 		desc_iova = descs[desc_idx].addr;
 
@@ -142,12 +149,23 @@ virtio_net_ctrl_pop(struct virtio_net *dev, struct vhost_virtqueue *cvq,
 			goto free_err;
 		}
 
+		nr_descs = desc_len / sizeof(struct vring_desc);
 		desc_idx = 0;
 	} else {
 		descs = cvq->desc;
+		nr_descs = cvq->size;
 	}
 
-	while (!(descs[desc_idx].flags & VRING_DESC_F_WRITE)) {
+	cnt = 0;
+	while (1) {
+		if (unlikely(desc_idx >= nr_descs || cnt++ >= nr_descs)) {
+			VHOST_CONFIG_LOG(dev->ifname, ERR, "Invalid ctrl descriptor chain");
+			goto free_err;
+		}
+
+		if (descs[desc_idx].flags & VRING_DESC_F_WRITE)
+			break;
+
 		desc_len = descs[desc_idx].len;
 		desc_iova = descs[desc_idx].addr;
 
@@ -167,8 +185,7 @@ virtio_net_ctrl_pop(struct virtio_net *dev, struct vhost_virtqueue *cvq,
 	}
 
 	cvq->last_avail_idx++;
-	if (cvq->last_avail_idx >= cvq->size)
-		cvq->last_avail_idx -= cvq->size;
+	vhost_virtqueue_reconnect_log_split(cvq);
 
 	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX))
 		vhost_avail_event(cvq) = cvq->last_avail_idx;
@@ -179,8 +196,7 @@ free_err:
 	free(ctrl_elem->ctrl_req);
 err:
 	cvq->last_avail_idx++;
-	if (cvq->last_avail_idx >= cvq->size)
-		cvq->last_avail_idx -= cvq->size;
+	vhost_virtqueue_reconnect_log_split(cvq);
 
 	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX))
 		vhost_avail_event(cvq) = cvq->last_avail_idx;
@@ -229,13 +245,11 @@ virtio_net_ctrl_push(struct virtio_net *dev, struct virtio_net_ctrl_elem *ctrl_e
 	struct vhost_virtqueue *cvq = dev->cvq;
 	struct vring_used_elem *used_elem;
 
-	used_elem = &cvq->used->ring[cvq->last_used_idx];
+	used_elem = &cvq->used->ring[cvq->last_used_idx & (cvq->size - 1)];
 	used_elem->id = ctrl_elem->head_idx;
-	used_elem->len = ctrl_elem->n_descs;
+	used_elem->len = sizeof(*ctrl_elem->desc_ack);
 
 	cvq->last_used_idx++;
-	if (cvq->last_used_idx >= cvq->size)
-		cvq->last_used_idx -= cvq->size;
 
 	rte_atomic_store_explicit((unsigned short __rte_atomic *)&cvq->used->idx,
 		cvq->last_used_idx, rte_memory_order_release);

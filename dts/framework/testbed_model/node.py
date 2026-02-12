@@ -2,6 +2,7 @@
 # Copyright(c) 2010-2014 Intel Corporation
 # Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2022-2023 University of New Hampshire
+# Copyright(c) 2024 Arm Limited
 
 """Common functionality for node management.
 
@@ -12,34 +13,24 @@ to be extended by subclasses with features specific to each node type.
 The :func:`~Node.skip_setup` decorator can be used without subclassing.
 """
 
-from abc import ABC
-from ipaddress import IPv4Interface, IPv6Interface
-from typing import Any, Callable, Type, Union
+from functools import cached_property
+from pathlib import PurePath
+from typing import Literal, TypeAlias
 
-from framework.config import (
+from framework.config.node import (
     OS,
-    BuildTargetConfiguration,
-    ExecutionConfiguration,
     NodeConfiguration,
 )
-from framework.exception import ConfigurationError
+from framework.exception import ConfigurationError, InternalError
 from framework.logger import DTSLogger, get_dts_logger
-from framework.settings import SETTINGS
 
-from .cpu import (
-    LogicalCore,
-    LogicalCoreCount,
-    LogicalCoreList,
-    LogicalCoreListFilter,
-    lcore_filter,
-)
+from .cpu import Architecture, LogicalCore
 from .linux_session import LinuxSession
-from .os_session import InteractiveShellType, OSSession
+from .os_session import OSSession, OSSessionInfo
 from .port import Port
-from .virtual_device import VirtualDevice
 
 
-class Node(ABC):
+class Node:
     """The base class for node management.
 
     It shouldn't be instantiated, but rather subclassed.
@@ -55,20 +46,21 @@ class Node(ABC):
         lcores: The list of logical cores that DTS can use on the node.
             It's derived from logical cores present on the node and the test run configuration.
         ports: The ports of this node specified in the test run configuration.
-        virtual_devices: The virtual devices used on the node.
     """
 
     main_session: OSSession
     config: NodeConfiguration
     name: str
+    arch: Architecture
     lcores: list[LogicalCore]
     ports: list[Port]
     _logger: DTSLogger
     _other_sessions: list[OSSession]
-    _execution_config: ExecutionConfiguration
-    virtual_devices: list[VirtualDevice]
+    _node_info: OSSessionInfo | None
+    _compiler_version: str | None
+    _setup: bool
 
-    def __init__(self, node_config: NodeConfiguration):
+    def __init__(self, node_config: NodeConfiguration) -> None:
         """Connect to the node and gather info during initialization.
 
         Extra gathered information:
@@ -84,90 +76,45 @@ class Node(ABC):
         self.name = node_config.name
         self._logger = get_dts_logger(self.name)
         self.main_session = create_session(self.config, self.name, self._logger)
-
+        self.arch = Architecture(self.main_session.get_arch_info())
         self._logger.info(f"Connected to node: {self.name}")
-
         self._get_remote_cpus()
-        # filter the node lcores according to the test run configuration
-        self.lcores = LogicalCoreListFilter(
-            self.lcores, LogicalCoreList(self.config.lcores)
-        ).filter()
-
         self._other_sessions = []
-        self.virtual_devices = []
-        self._init_ports()
+        self._setup = False
+        self.ports = [Port(self, port_config) for port_config in self.config.ports]
+        self._logger.info(f"Created node: {self.name}")
 
-    def _init_ports(self) -> None:
-        self.ports = [Port(self.name, port_config) for port_config in self.config.ports]
-        self.main_session.update_ports(self.ports)
-        for port in self.ports:
-            self.configure_port_state(port)
+    def setup(self) -> None:
+        """Node setup."""
+        if self._setup:
+            return
 
-    def set_up_execution(self, execution_config: ExecutionConfiguration) -> None:
-        """Execution setup steps.
-
-        Configure hugepages and call :meth:`_set_up_execution` where
-        the rest of the configuration steps (if any) are implemented.
-
-        Args:
-            execution_config: The execution test run configuration according to which
-                the setup steps will be taken.
-        """
         self._setup_hugepages()
-        self._set_up_execution(execution_config)
-        self._execution_config = execution_config
-        for vdev in execution_config.vdevs:
-            self.virtual_devices.append(VirtualDevice(vdev))
+        self.tmp_dir = self.main_session.create_tmp_dir()
+        self._setup = True
 
-    def _set_up_execution(self, execution_config: ExecutionConfiguration) -> None:
-        """Optional additional execution setup steps for subclasses.
+    def teardown(self) -> None:
+        """Node teardown."""
+        if not self._setup:
+            return
 
-        Subclasses should override this if they need to add additional execution setup steps.
+        self.main_session.remove_remote_dir(self.tmp_dir)
+        del self.tmp_dir
+        self._setup = False
+
+    @cached_property
+    def tmp_dir(self) -> PurePath:
+        """Path to the temporary directory.
+
+        Raises:
+            InternalError: If called before the node has been setup.
         """
+        raise InternalError("Temporary directory requested before setup.")
 
-    def tear_down_execution(self) -> None:
-        """Execution teardown steps.
-
-        There are currently no common execution teardown steps common to all DTS node types.
-        """
-        self.virtual_devices = []
-        self._tear_down_execution()
-
-    def _tear_down_execution(self) -> None:
-        """Optional additional execution teardown steps for subclasses.
-
-        Subclasses should override this if they need to add additional execution teardown steps.
-        """
-
-    def set_up_build_target(self, build_target_config: BuildTargetConfiguration) -> None:
-        """Build target setup steps.
-
-        There are currently no common build target setup steps common to all DTS node types.
-
-        Args:
-            build_target_config: The build target test run configuration according to which
-                the setup steps will be taken.
-        """
-        self._set_up_build_target(build_target_config)
-
-    def _set_up_build_target(self, build_target_config: BuildTargetConfiguration) -> None:
-        """Optional additional build target setup steps for subclasses.
-
-        Subclasses should override this if they need to add additional build target setup steps.
-        """
-
-    def tear_down_build_target(self) -> None:
-        """Build target teardown steps.
-
-        There are currently no common build target teardown steps common to all DTS node types.
-        """
-        self._tear_down_build_target()
-
-    def _tear_down_build_target(self) -> None:
-        """Optional additional build target teardown steps for subclasses.
-
-        Subclasses should override this if they need to add additional build target teardown steps.
-        """
+    @cached_property
+    def ports_by_name(self) -> dict[str, Port]:
+        """Ports mapped by the name assigned at configuration."""
+        return {port.name: port for port in self.ports}
 
     def create_session(self, name: str) -> OSSession:
         """Create and return a new OS-aware remote session.
@@ -194,70 +141,32 @@ class Node(ABC):
         self._other_sessions.append(connection)
         return connection
 
-    def create_interactive_shell(
-        self,
-        shell_cls: Type[InteractiveShellType],
-        timeout: float = SETTINGS.timeout,
-        privileged: bool = False,
-        app_args: str = "",
-    ) -> InteractiveShellType:
-        """Factory for interactive session handlers.
-
-        Instantiate `shell_cls` according to the remote OS specifics.
-
-        Args:
-            shell_cls: The class of the shell.
-            timeout: Timeout for reading output from the SSH channel. If you are reading from
-                the buffer and don't receive any data within the timeout it will throw an error.
-            privileged: Whether to run the shell with administrative privileges.
-            app_args: The arguments to be passed to the application.
-
-        Returns:
-            An instance of the desired interactive application shell.
-        """
-        if not shell_cls.dpdk_app:
-            shell_cls.path = self.main_session.join_remote_path(shell_cls.path)
-
-        return self.main_session.create_interactive_shell(
-            shell_cls,
-            timeout,
-            privileged,
-            app_args,
-        )
-
-    def filter_lcores(
-        self,
-        filter_specifier: LogicalCoreCount | LogicalCoreList,
-        ascending: bool = True,
-    ) -> list[LogicalCore]:
-        """Filter the node's logical cores that DTS can use.
-
-        Logical cores that DTS can use are the ones that are present on the node, but filtered
-        according to the test run configuration. The `filter_specifier` will filter cores from
-        those logical cores.
-
-        Args:
-            filter_specifier: Two different filters can be used, one that specifies the number
-                of logical cores per core, cores per socket and the number of sockets,
-                and another one that specifies a logical core list.
-            ascending: If :data:`True`, use cores with the lowest numerical id first and continue
-                in ascending order. If :data:`False`, start with the highest id and continue
-                in descending order. This ordering affects which sockets to consider first as well.
-
-        Returns:
-            The filtered logical cores.
-        """
-        self._logger.debug(f"Filtering {filter_specifier} from {self.lcores}.")
-        return lcore_filter(
-            self.lcores,
-            filter_specifier,
-            ascending,
-        ).filter()
-
     def _get_remote_cpus(self) -> None:
         """Scan CPUs in the remote OS and store a list of LogicalCores."""
         self._logger.info("Getting CPU information.")
-        self.lcores = self.main_session.get_remote_cpus(self.config.use_first_core)
+        self.lcores = self.main_session.get_remote_cpus()
+
+    @cached_property
+    def node_info(self) -> OSSessionInfo:
+        """Additional node information."""
+        return self.main_session.get_node_info()
+
+    @property
+    def compiler_version(self) -> str | None:
+        """The node's compiler version."""
+        if self._compiler_version is None:
+            self._logger.warning("The `compiler_version` is None because a pre-built DPDK is used.")
+
+        return self._compiler_version
+
+    @compiler_version.setter
+    def compiler_version(self, value: str) -> None:
+        """Set the `compiler_version` used on the SUT node.
+
+        Args:
+            value: The node's compiler version.
+        """
+        self._compiler_version = value
 
     def _setup_hugepages(self) -> None:
         """Setup hugepages on the node.
@@ -266,32 +175,10 @@ class Node(ABC):
         """
         if self.config.hugepages:
             self.main_session.setup_hugepages(
-                self.config.hugepages.amount, self.config.hugepages.force_first_numa
+                self.config.hugepages.number_of,
+                self.main_session.hugepage_size,
+                self.config.hugepages.force_first_numa,
             )
-
-    def configure_port_state(self, port: Port, enable: bool = True) -> None:
-        """Enable/disable `port`.
-
-        Args:
-            port: The port to enable/disable.
-            enable: :data:`True` to enable, :data:`False` to disable.
-        """
-        self.main_session.configure_port_state(port, enable)
-
-    def configure_port_ip_address(
-        self,
-        address: Union[IPv4Interface, IPv6Interface],
-        port: Port,
-        delete: bool = False,
-    ) -> None:
-        """Add an IP address to `port` on this node.
-
-        Args:
-            address: The IP address with mask in CIDR format. Can be either IPv4 or IPv6.
-            port: The port to which to add the address.
-            delete: If :data:`True`, will delete the address from the port instead of adding it.
-        """
-        self.main_session.configure_port_ip_address(address, port, delete)
 
     def close(self) -> None:
         """Close all connections and free other resources."""
@@ -299,18 +186,6 @@ class Node(ABC):
             self.main_session.close()
         for session in self._other_sessions:
             session.close()
-
-    @staticmethod
-    def skip_setup(func: Callable[..., Any]) -> Callable[..., Any]:
-        """Skip the decorated function.
-
-        The :option:`--skip-setup` command line argument and the :envvar:`DTS_SKIP_SETUP`
-        environment variable enable the decorator.
-        """
-        if SETTINGS.skip_setup:
-            return lambda *args: None
-        else:
-            return func
 
 
 def create_session(node_config: NodeConfiguration, name: str, logger: DTSLogger) -> OSSession:
@@ -320,9 +195,49 @@ def create_session(node_config: NodeConfiguration, name: str, logger: DTSLogger)
         node_config: The test run configuration of the node to connect to.
         name: The name of the session.
         logger: The logger instance this session will use.
+
+    Raises:
+        ConfigurationError: If the node's OS is unsupported.
     """
     match node_config.os:
         case OS.linux:
             return LinuxSession(node_config, name, logger)
         case _:
             raise ConfigurationError(f"Unsupported OS {node_config.os}")
+
+
+LocalNodeIdentifier: TypeAlias = Literal["local"]
+"""Local node identifier for testbed model."""
+
+RemoteNodeIdentifier: TypeAlias = Literal["sut", "tg"]
+"""Remote node identifiers for testbed model."""
+
+NodeIdentifier: TypeAlias = Literal["local", "sut", "tg"]
+"""Node identifiers for testbed model."""
+
+
+def get_node(node_identifier: NodeIdentifier) -> Node | None:
+    """Get the node based on the identifier.
+
+    Args:
+        node_identifier: The identifier of the node.
+
+    Returns:
+        The node object corresponding to the identifier, or :data:`None` if the identifier is
+            "local".
+
+    Raises:
+        InternalError: If the node identifier is unknown.
+    """
+    if node_identifier == "local":
+        return None
+
+    from framework.context import get_ctx
+
+    ctx = get_ctx()
+    if node_identifier == "sut":
+        return ctx.sut_node
+    elif node_identifier == "tg":
+        return ctx.tg_node
+    else:
+        raise InternalError(f"Unknown node identifier: {node_identifier}")

@@ -149,6 +149,7 @@ Queue start/stop
 ----------------
 
 Supports starting/stopping a specific Rx/Tx queue of a port.
+This is required for use deferred start configuration option.
 
 * **[implements] eth_dev_ops**: ``rx_queue_start``, ``rx_queue_stop``, ``tx_queue_start``,
   ``tx_queue_stop``.
@@ -677,10 +678,12 @@ Supports IEEE1588/802.1AS timestamping.
 
 * **[implements] eth_dev_ops**: ``timesync_enable``, ``timesync_disable``
   ``timesync_read_rx_timestamp``, ``timesync_read_tx_timestamp``,
-  ``timesync_adjust_time``, ``timesync_read_time``, ``timesync_write_time``.
+  ``timesync_adjust_time``, ``timesync_adjust_freq``,
+  ``timesync_read_time``, ``timesync_write_time``.
 * **[related]    API**: ``rte_eth_timesync_enable()``, ``rte_eth_timesync_disable()``,
   ``rte_eth_timesync_read_rx_timestamp()``,
   ``rte_eth_timesync_read_tx_timestamp``, ``rte_eth_timesync_adjust_time()``,
+  ``rte_eth_timesync_adjust_freq()``,
   ``rte_eth_timesync_read_time()``, ``rte_eth_timesync_write_time()``.
 
 
@@ -727,12 +730,30 @@ Basic stats
 Support basic statistics such as: ipackets, opackets, ibytes, obytes,
 imissed, ierrors, oerrors, rx_nombuf.
 
-And per queue stats: q_ipackets, q_opackets, q_ibytes, q_obytes, q_errors.
-
 These apply to all drivers.
 
 * **[implements] eth_dev_ops**: ``stats_get``, ``stats_reset``.
 * **[related]    API**: ``rte_eth_stats_get``, ``rte_eth_stats_reset()``.
+
+
+.. _nic_features_stats_per_queue:
+
+Stats per queue
+---------------
+
+Supports per queue stats: q_ipackets, q_opackets, q_ibytes, q_obytes, q_errors.
+Statistics only supplied for first ``RTE_ETHDEV_QUEUE_STAT_CNTRS`` (16) queues.
+If driver does not support this feature the per queue stats will be zero.
+
+* **[implements] eth_dev_ops**: ``stats_get``, ``stats_reset``.
+* **[related]    API**: ``rte_eth_stats_get``, ``rte_eth_stats_reset()``.
+
+May also support configuring per-queue stat counter mapping.
+Used by some drivers to workaround HW limitations.
+
+* **[implements] eth_dev_ops**: ``queue_stats_mapping_set``.
+* **[related]    API**: ``rte_eth_dev_set_rx_queue_stats_mapping()``,
+  ``rte_eth_dev_set_tx_queue_stats_mapping()``.
 
 
 .. _nic_features_extended_stats:
@@ -747,18 +768,6 @@ Supports Extended Statistics, changes from driver to driver.
 * **[related]    API**: ``rte_eth_xstats_get()``, ``rte_eth_xstats_reset()``,
   ``rte_eth_xstats_get_names``, ``rte_eth_xstats_get_by_id()``,
   ``rte_eth_xstats_get_names_by_id()``, ``rte_eth_xstats_get_id_by_name()``.
-
-
-.. _nic_features_stats_per_queue:
-
-Stats per queue
----------------
-
-Supports configuring per-queue stat counter mapping.
-
-* **[implements] eth_dev_ops**: ``queue_stats_mapping_set``.
-* **[related]    API**: ``rte_eth_dev_set_rx_queue_stats_mapping()``,
-  ``rte_eth_dev_set_tx_queue_stats_mapping()``.
 
 
 .. _nic_features_congestion_management:

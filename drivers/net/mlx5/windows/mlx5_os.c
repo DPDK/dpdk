@@ -35,7 +35,7 @@ static const char *MZ_MLX5_PMD_SHARED_DATA = "mlx5_pmd_shared_data";
 static rte_spinlock_t mlx5_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
 
 /* rte flow indexed pool configuration. */
-static struct mlx5_indexed_pool_config icfg[] = {
+static const struct mlx5_indexed_pool_config default_icfg[] = {
 	{
 		.size = sizeof(struct rte_flow),
 		.trunk_size = 64,
@@ -78,7 +78,7 @@ mlx5_queue_counter_id_prepare(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	void *ctx = priv->sh->cdev->ctx;
 
-	priv->q_counters = mlx5_devx_cmd_queue_counter_alloc(ctx);
+	priv->q_counters = mlx5_devx_cmd_queue_counter_alloc(ctx, NULL);
 	if (!priv->q_counters) {
 		DRV_LOG(ERR, "Port %d queue counter object cannot be created "
 			"by DevX - imissed counter will be unavailable",
@@ -352,7 +352,9 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	int own_domain_id = 0;
 	uint16_t port_id;
 	int i;
+	struct mlx5_indexed_pool_config icfg[RTE_DIM(default_icfg)];
 
+	memcpy(icfg, default_icfg, sizeof(icfg));
 	/* Build device name. */
 	strlcpy(name, dpdk_dev->name, sizeof(name));
 	/* check if the device is already spawned */
@@ -475,6 +477,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	eth_dev->data->mac_addrs = priv->mac;
 	eth_dev->device = dpdk_dev;
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
+	/* Fetch minimum and maximum allowed MTU from the device. */
+	mlx5_get_mtu_bounds(eth_dev, &priv->min_mtu, &priv->max_mtu);
 	/* Configure the first MAC address by default. */
 	if (mlx5_get_mac(eth_dev, &mac.addr_bytes)) {
 		DRV_LOG(ERR,
@@ -505,6 +509,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		err = rte_errno;
 		goto error;
 	}
+	eth_dev->data->mtu = priv->mtu;
 	DRV_LOG(DEBUG, "port %u MTU is %u.", eth_dev->data->port_id,
 		priv->mtu);
 	/* Initialize burst functions to prevent crashes before link-up. */
@@ -518,9 +523,11 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	claim_zero(mlx5_mac_addr_add(eth_dev, &mac, 0, 0));
 	priv->ctrl_flows = 0;
 	TAILQ_INIT(&priv->flow_meters);
-	priv->mtr_profile_tbl = mlx5_l3t_create(MLX5_L3T_TYPE_PTR);
-	if (!priv->mtr_profile_tbl)
-		goto error;
+	if (priv->mtr_en) {
+		priv->mtr_profile_tbl = mlx5_l3t_create(MLX5_L3T_TYPE_PTR);
+		if (!priv->mtr_profile_tbl)
+			goto error;
+	}
 	/* Bring Ethernet device up. */
 	DRV_LOG(DEBUG, "port %u forcing Ethernet interface up.",
 		eth_dev->data->port_id);
@@ -538,6 +545,10 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		icfg[i].release_mem_en = !!sh->config.reclaim_mode;
 		if (sh->config.reclaim_mode)
 			icfg[i].per_core_cache = 0;
+#ifdef HAVE_MLX5_HWS_SUPPORT
+		if (priv->sh->config.dv_flow_en == 2)
+			icfg[i].size = sizeof(struct rte_flow_hw) + sizeof(struct rte_flow_nt2hws);
+#endif
 		priv->flows[i] = mlx5_ipool_create(&icfg[i]);
 		if (!priv->flows[i])
 			goto error;
@@ -593,6 +604,9 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	}
 	mlx5_flow_counter_mode_config(eth_dev);
 	mlx5_queue_counter_id_prepare(eth_dev);
+	rte_spinlock_init(&priv->hw_ctrl_lock);
+	LIST_INIT(&priv->hw_ctrl_flows);
+	LIST_INIT(&priv->hw_ext_ctrl_flows);
 	return eth_dev;
 error:
 	if (priv) {

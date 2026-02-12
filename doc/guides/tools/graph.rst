@@ -31,10 +31,9 @@ Following are the EAL command-line options that can be used in conjunction
 with the ``dpdk-graph`` application.
 See the DPDK Getting Started Guides for more information on these options.
 
-``-c <COREMASK>`` or ``-l <CORELIST>``
+``-l <CORELIST>``
 
-   Set the hexadecimal bit mask of the cores to run on.
-   The CORELIST is a list of cores to be used.
+   List the set of cores to be used.
 
 Application Options
 ~~~~~~~~~~~~~~~~~~~
@@ -61,6 +60,11 @@ Following are the application command-line options:
 
    Enable graph statistics printing on console.
    By default, graph statistics are disabled.
+
+``--enable-graph-feature-arc``
+
+   Enable feature arc functionality in graph nodes.
+   By default, feature arc is disabled.
 
 ``--help``
 
@@ -90,21 +94,21 @@ For H/W devices
 
 .. code-block:: console
 
-   ./dpdk-graph -c 0xff -a 0002:02:00.0 -a 0002:03:00.0 --
+   ./dpdk-graph -l 0-7 -a 0002:02:00.0 -a 0002:03:00.0 --
                 -s <dpdk_root_dir>/app/graph/examples/l3fwd.cli
 
-   ./dpdk-graph -c 0xff -a 0002:02:00.0 -a 0002:03:00.0 --
+   ./dpdk-graph -l 0-7 -a 0002:02:00.0 -a 0002:03:00.0 --
                 -s <dpdk_root_dir>/app/graph/examples/l2fwd.cli
 
 For net_pcapX devices
 
 .. code-block:: console
 
-   ./dpdk-graph -c 0xff --vdev=net_pcap0,rx_pcap=in_net_pcap0.pcap,tx_pcap=out_net_pcap1.pcap
+   ./dpdk-graph -l 0-7 --vdev=net_pcap0,rx_pcap=in_net_pcap0.pcap,tx_pcap=out_net_pcap1.pcap
                         --vdev=net_pcap1,rx_pcap=in_net_pcap1.pcap,tx_pcap=out_net_pcap0.pcap
                         -- -s <dpdk_root_dir>/app/graph/examples/l3fwd_pcap.cli
 
-   ./dpdk-graph -c 0xff --vdev=net_pcap0,rx_pcap=in_net_pcap0.pcap,tx_pcap=out_net_pcap1.pcap
+   ./dpdk-graph -l 0-7 --vdev=net_pcap0,rx_pcap=in_net_pcap0.pcap,tx_pcap=out_net_pcap1.pcap
                         --vdev=net_pcap1,rx_pcap=in_net_pcap1.pcap,tx_pcap=out_net_pcap0.pcap
                         -- -s <dpdk_root_dir>/app/graph/examples/l2fwd_pcap.cli
 
@@ -235,19 +239,27 @@ file to express the requested use case configuration.
    |                                      | | message.                        |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
    | | ipv4_lookup route add ipv4 <ip>    | | Command to add a route into     | :ref:`3 <scopes>` |    Yes   |
-   | |  netmask <mask> via <ip>           | | ``ipv4_lookup`` LPM table. It is|                   |          |
-   |                                      | | needed if user wishes to route  |                   |          |
-   |                                      | | the packets based on LPM lookup |                   |          |
-   |                                      | | table.                          |                   |          |
+   | |  netmask <mask> via <ip>           | | ``ipv4_lookup`` LPM table or    |                   |          |
+   |                                      | | FIB. It is needed if user wishes|                   |          |
+   |                                      | | to route the packets based on   |                   |          |
+   |                                      | | LPM lookup table or FIB.        |                   |          |
+   +--------------------------------------+-----------------------------------+-------------------+----------+
+   | | ipv4_lookup mode <lpm|fib>         | | Command to set ipv4 lookup mode | :ref:`1 <scopes>` |    Yes   |
+   |                                      | | to either LPM or FIB. By default|                   |          |
+   |                                      | | the lookup mode is LPM.         |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
    | help ipv4_lookup                     | | Command to dump ``ipv4_lookup`` | :ref:`2 <scopes>` |    Yes   |
    |                                      | | help message.                   |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
    | | ipv6_lookup route add ipv6 <ip>    | | Command to add a route into     | :ref:`3 <scopes>` |    Yes   |
-   | |  netmask <mask> via <ip>           | | ``ipv6_lookup`` LPM table. It is|                   |          |
-   |                                      | | needed if user wishes to route  |                   |          |
-   |                                      | | the packets based on LPM6 lookup|                   |          |
-   |                                      | | table.                          |                   |          |
+   | |  netmask <mask> via <ip>           | | ``ipv6_lookup`` LPM table or.   |                   |          |
+   |                                      | | FIB. It is needed if user wishes|                   |          |
+   |                                      | | to route the packets based on   |                   |          |
+   |                                      | | LPM6 lookup table or FIB.       |                   |          |
+   +--------------------------------------+-----------------------------------+-------------------+----------+
+   | | ipv6_lookup mode <lpm|fib>         | | Command to set ipv6 lookup mode | :ref:`1 <scopes>` |    Yes   |
+   |                                      | | to either LPM or FIB. By default|                   |          |
+   |                                      | | the lookup mode is LPM.         |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
    | help ipv6_lookup                     | | Command to dump ``ipv6_lookup`` | :ref:`2 <scopes>` |    Yes   |
    |                                      | | help message.                   |                   |          |
@@ -272,6 +284,18 @@ file to express the requested use case configuration.
    +--------------------------------------+-----------------------------------+-------------------+----------+
    | help ethdev_rx                       | | Command to dump ethdev_rx help  | :ref:`2 <scopes>` |    Yes   |
    |                                      | | message.                        |                   |          |
+   +--------------------------------------+-----------------------------------+-------------------+----------+
+   | help feature                         | | Command to dump feature arc     | :ref:`2 <scopes>` |    Yes   |
+   |                                      | | help message.                   |                   |          |
+   +--------------------------------------+-----------------------------------+-------------------+----------+
+   | feature arcs                         | | Command to dump all created     | :ref:`2 <scopes>` |    Yes   |
+   |                                      | | feature arcs                    |                   |          |
+   +--------------------------------------+-----------------------------------+-------------------+----------+
+   | | feature enable <arc name>          | | Enable <feature name> of <arc   | :ref:`2 <scopes>` |    Yes   |
+   | | <feature name> <interface index>   | | name> on an interface.          |                   |          |
+   +--------------------------------------+-----------------------------------+-------------------+----------+
+   | | feature disable <arc name>         | | Disable <feature name> of <arc  | :ref:`2 <scopes>` |    Yes   |
+   | | <feature name> <interface index>   | | name> on an interface.          |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
 
 .. _scopes:

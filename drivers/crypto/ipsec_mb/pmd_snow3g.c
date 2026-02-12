@@ -186,7 +186,7 @@ process_snow3g_cipher_op_bit(struct ipsec_mb_qp *qp,
 	src = rte_pktmbuf_mtod(op->sym->m_src, uint8_t *);
 	if (op->sym->m_dst == NULL) {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-		IPSEC_MB_LOG(ERR, "bit-level in-place not supported\n");
+		IPSEC_MB_LOG(ERR, "bit-level in-place not supported");
 		return 0;
 	}
 	length_in_bits = op->sym->cipher.data.length;
@@ -269,8 +269,8 @@ process_snow3g_hash_op(struct ipsec_mb_qp *qp, struct rte_crypto_op **ops,
 					&session->pKeySched_hash,
 					iv, src, length_in_bits, dst);
 			/* Verify digest. */
-			if (memcmp(dst, ops[i]->sym->auth.digest.data,
-					SNOW3G_DIGEST_LENGTH) != 0)
+			if (!rte_memeq_timingsafe(dst, ops[i]->sym->auth.digest.data,
+					SNOW3G_DIGEST_LENGTH))
 				ops[i]->status =
 					RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 		} else {
@@ -317,7 +317,7 @@ process_ops(struct rte_crypto_op **ops, struct snow3g_session *session,
 			IPSEC_MB_LOG(ERR,
 				"PMD supports only contiguous mbufs, "
 				"op (%p) provides noncontiguous mbuf as "
-				"source/destination buffer.\n", ops[i]);
+				"source/destination buffer.", ops[i]);
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 			return 0;
 		}

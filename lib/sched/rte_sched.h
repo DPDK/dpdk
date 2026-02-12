@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_SCHED_H__
 #define __INCLUDE_RTE_SCHED_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Hierarchical Scheduler
@@ -55,12 +51,17 @@ extern "C" {
  *	    queues within same pipe lowest priority traffic class (best-effort).
  */
 
+#include <rte_common.h>
 #include <rte_mbuf.h>
 #include <rte_meter.h>
 
 /** Congestion Management */
 #include "rte_red.h"
 #include "rte_pie.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Maximum number of queues per pipe.
  * Note that the multiple queues (power of 2) can only be assigned to
@@ -310,16 +311,7 @@ struct rte_sched_port_params {
  * Configuration
  */
 
-/**
- * Hierarchical scheduler port configuration
- *
- * @param params
- *   Port scheduler configuration parameter structure
- * @return
- *   Handle to port scheduler instance upon success or NULL otherwise.
- */
-struct rte_sched_port *
-rte_sched_port_config(struct rte_sched_port_params *params);
+struct rte_sched_port;
 
 /**
  * Hierarchical scheduler port free
@@ -330,6 +322,18 @@ rte_sched_port_config(struct rte_sched_port_params *params);
  */
 void
 rte_sched_port_free(struct rte_sched_port *port);
+
+/**
+ * Hierarchical scheduler port configuration
+ *
+ * @param params
+ *   Port scheduler configuration parameter structure
+ * @return
+ *   Handle to port scheduler instance upon success or NULL otherwise.
+ */
+struct rte_sched_port *
+rte_sched_port_config(struct rte_sched_port_params *params)
+	__rte_malloc __rte_dealloc(rte_sched_port_free, 1);
 
 /**
  * Hierarchical scheduler pipe profile add

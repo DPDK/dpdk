@@ -19,15 +19,10 @@
 #include "mlx5_crypto.h"
 
 #define MLX5_CRYPTO_DRIVER_NAME crypto_mlx5
-#define MLX5_CRYPTO_LOG_NAME pmd.crypto.mlx5
 #define MLX5_CRYPTO_MAX_QPS 128
-#define MLX5_CRYPTO_MAX_SEGS 56
 
 #define MLX5_CRYPTO_FEATURE_FLAGS(wrapped_mode) \
 	(RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO | RTE_CRYPTODEV_FF_HW_ACCELERATED | \
-	 RTE_CRYPTODEV_FF_IN_PLACE_SGL | RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT | \
-	 RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT | \
-	 RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT | \
 	 RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT | \
 	 (wrapped_mode ? RTE_CRYPTODEV_FF_CIPHER_WRAPPED_KEY : 0) | \
 	 RTE_CRYPTODEV_FF_CIPHER_MULTIPLE_DATA_UNITS)
@@ -60,6 +55,13 @@ mlx5_crypto_dev_infos_get(struct rte_cryptodev *dev,
 		dev_info->driver_id = mlx5_crypto_driver_id;
 		dev_info->feature_flags =
 			MLX5_CRYPTO_FEATURE_FLAGS(priv->is_wrapped_mode);
+		if (!mlx5_crypto_is_ipsec_opt(priv))
+			dev_info->feature_flags |=
+				RTE_CRYPTODEV_FF_IN_PLACE_SGL |
+				RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT |
+				RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
+				RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT;
+
 		dev_info->capabilities = priv->caps;
 		dev_info->max_nb_queue_pairs = MLX5_CRYPTO_MAX_QPS;
 		if (priv->caps->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AEAD) {
@@ -249,6 +251,16 @@ mlx5_crypto_args_check_handler(const char *key, const char *val, void *opaque)
 		fclose(file);
 		devarg_prms->login_devarg = true;
 		return 0;
+	} else if (strcmp(key, "crypto_mode") == 0) {
+		if (strcmp(val, "full_capable") == 0) {
+			devarg_prms->crypto_mode = MLX5_CRYPTO_FULL_CAPABLE;
+		} else if (strcmp(val, "ipsec_opt") == 0) {
+			devarg_prms->crypto_mode = MLX5_CRYPTO_IPSEC_OPT;
+		} else {
+			DRV_LOG(ERR, "Invalid crypto mode: %s", val);
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
 	}
 	errno = 0;
 	tmp = strtoul(val, NULL, 0);
@@ -294,6 +306,7 @@ mlx5_crypto_parse_devargs(struct mlx5_kvargs_ctrl *mkvlist,
 		"max_segs_num",
 		"wcs_file",
 		"algo",
+		"crypto_mode",
 		NULL,
 	};
 
@@ -379,6 +392,7 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev,
 	priv->crypto_dev = crypto_dev;
 	priv->is_wrapped_mode = wrapped_mode;
 	priv->max_segs_num = devarg_prms.max_segs_num;
+	priv->crypto_mode = devarg_prms.crypto_mode;
 	/* Init and override AES-GCM configuration. */
 	if (devarg_prms.is_aes_gcm) {
 		ret = mlx5_crypto_gcm_init(priv);
@@ -470,6 +484,18 @@ static const struct rte_pci_id mlx5_crypto_pci_id_map[] = {
 					PCI_DEVICE_ID_MELLANOX_CONNECTXVF)
 		},
 		{
+			RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
+					PCI_DEVICE_ID_MELLANOX_CONNECTX8)
+		},
+		{
+			RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
+					PCI_DEVICE_ID_MELLANOX_CONNECTX9)
+		},
+		{
+			RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
+					PCI_DEVICE_ID_MELLANOX_BLUEFIELD4)
+		},
+		{
 			.vendor_id = 0
 		}
 };
@@ -494,6 +520,6 @@ RTE_PMD_REGISTER_CRYPTO_DRIVER(mlx5_cryptodev_driver, mlx5_drv,
 			       mlx5_crypto_driver_id);
 
 RTE_LOG_REGISTER_DEFAULT(mlx5_crypto_logtype, NOTICE)
-RTE_PMD_EXPORT_NAME(MLX5_CRYPTO_DRIVER_NAME, __COUNTER__);
+RTE_PMD_EXPORT_NAME(MLX5_CRYPTO_DRIVER_NAME);
 RTE_PMD_REGISTER_PCI_TABLE(MLX5_CRYPTO_DRIVER_NAME, mlx5_crypto_pci_id_map);
 RTE_PMD_REGISTER_KMOD_DEP(MLX5_CRYPTO_DRIVER_NAME, "* ib_uverbs & mlx5_core & mlx5_ib");

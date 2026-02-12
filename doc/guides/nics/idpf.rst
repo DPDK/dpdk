@@ -33,6 +33,10 @@ Here is the suggested matching list which has been tested and verified.
    +------------+---------------+------------------+
    |    23.11   |    0.0.720    |       1.0        |
    +------------+---------------+------------------+
+   |    24.11   |    0.0.754    |       1.6        |
+   +------------+---------------+------------------+
+   |    25.07   |    0.0.772    |       2.0        |
+   +------------+---------------+------------------+
 
 
 Configuration
@@ -93,9 +97,11 @@ The paths are chosen based on 2 conditions:
 
 - ``CPU``
 
-  On the x86 platform, the driver checks if the CPU supports AVX512.
-  If the CPU supports AVX512 and EAL argument ``--force-max-simd-bitwidth``
-  is set to 512, AVX512 paths will be chosen.
+  On the x86 platform, the driver checks if the CPU supports AVX instruction set.
+  If the CPU supports AVX512 and EAL argument ``--force-max-simd-bitwidth`` is set to 512,
+  the AVX512 paths will be chosen.
+  Otherwise, if ``--force-max-simd-bitwidth`` is set to 256, AVX2 paths will be chosen.
+  (Note that 256 is the default bitwidth if no specific value is provided.)
 
 - ``Offload features``
 

@@ -18,11 +18,11 @@
  * cryptographic co-processor (crypto), etc.
  */
 
+#include <rte_dev.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_dev.h>
 
 /** Double linked list of classes */
 RTE_TAILQ_HEAD(rte_class_list, rte_class);

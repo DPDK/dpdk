@@ -72,11 +72,10 @@ cnxk_ep_rx_refill(struct otx_ep_droq *droq)
 		desc_refilled = count;
 		count = droq->read_idx;
 		rc = cnxk_ep_rx_refill_mbuf(droq, count);
-		if (unlikely(rc)) {
+		if (unlikely(rc))
 			droq->stats.rx_alloc_failure++;
-			return;
-		}
-		desc_refilled += count;
+		else
+			desc_refilled += count;
 	}
 
 	/* Flush the droq descriptor data to memory to be sure
@@ -98,7 +97,7 @@ cnxk_ep_check_rx_ism_mem(void *rx_queue)
 	 * This adds an extra local variable, but almost halves the
 	 * number of PCIe writes.
 	 */
-	val = __atomic_load_n(droq->pkts_sent_ism, __ATOMIC_RELAXED);
+	val = rte_atomic_load_explicit(droq->pkts_sent_ism, rte_memory_order_relaxed);
 
 	new_pkts = val - droq->pkts_sent_prev;
 	droq->pkts_sent_prev = val;
@@ -111,7 +110,8 @@ cnxk_ep_check_rx_ism_mem(void *rx_queue)
 		rte_mb();
 
 		rte_write64(OTX2_SDP_REQUEST_ISM, droq->pkts_sent_reg);
-		while (__atomic_load_n(droq->pkts_sent_ism, __ATOMIC_RELAXED) >= val) {
+		while (rte_atomic_load_explicit(droq->pkts_sent_ism,
+				rte_memory_order_relaxed) >= val) {
 			rte_write64(OTX2_SDP_REQUEST_ISM, droq->pkts_sent_reg);
 			rte_mb();
 		}

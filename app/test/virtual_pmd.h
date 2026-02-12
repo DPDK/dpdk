@@ -5,11 +5,11 @@
 #ifndef __VIRTUAL_ETHDEV_H_
 #define __VIRTUAL_ETHDEV_H_
 
+#include <rte_ether.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_ether.h>
 
 int
 virtual_ethdev_init(void);

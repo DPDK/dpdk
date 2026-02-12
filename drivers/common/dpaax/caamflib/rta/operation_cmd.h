@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
  * Copyright 2016,2019-2021 NXP
@@ -6,10 +6,6 @@
 
 #ifndef __RTA_OPERATION_CMD_H__
 #define __RTA_OPERATION_CMD_H__
-
-#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 70000)
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#endif
 
 extern enum rta_sec_era rta_sec_era;
 

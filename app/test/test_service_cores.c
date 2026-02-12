@@ -3,11 +3,12 @@
  */
 
 #include <rte_common.h>
-#include <rte_hexdump.h>
-#include <rte_mbuf.h>
-#include <rte_malloc.h>
-#include <rte_memcpy.h>
 #include <rte_cycles.h>
+#include <rte_hexdump.h>
+#include <rte_malloc.h>
+#include <rte_mbuf.h>
+#include <rte_memcpy.h>
+#include <rte_random.h>
 
 #include <rte_service.h>
 #include <rte_service_component.h>
@@ -16,8 +17,10 @@
 
 /* used as the service core ID */
 static uint32_t slcore_id;
-/* used as timestamp to detect if a service core is running */
-static uint64_t service_tick;
+/* track service call count */
+static uint64_t service_calls;
+static uint64_t service_idle_calls;
+static uint64_t service_error_calls;
 /* used as a flag to check if a function was run */
 static uint32_t service_remote_launch_flag;
 
@@ -46,9 +49,27 @@ testsuite_teardown(void)
 static int32_t dummy_cb(void *args)
 {
 	RTE_SET_USED(args);
-	service_tick++;
+	int32_t rc;
+
+	service_calls++;
+
+	switch (rte_rand_max(3)) {
+	case 0:
+		rc = 0;
+		break;
+	case 1:
+		service_idle_calls++;
+		rc = -EAGAIN;
+		break;
+	default:
+		service_error_calls++;
+		rc = -ENOENT;
+		break;
+	}
+
 	rte_delay_ms(SERVICE_DELAY);
-	return 0;
+
+	return rc;
 }
 
 static int32_t dummy_mt_unsafe_cb(void *args)
@@ -59,15 +80,15 @@ static int32_t dummy_mt_unsafe_cb(void *args)
 	 * test, because two threads are concurrently in a non-MT safe callback.
 	 */
 	uint32_t *test_params = args;
-	uint32_t *lock = &test_params[0];
+	RTE_ATOMIC(uint32_t) *lock = (uint32_t __rte_atomic *)&test_params[0];
 	uint32_t *pass_test = &test_params[1];
 	uint32_t exp = 0;
-	int lock_taken = __atomic_compare_exchange_n(lock, &exp, 1, 0,
-					__ATOMIC_RELAXED, __ATOMIC_RELAXED);
+	int lock_taken = rte_atomic_compare_exchange_strong_explicit(lock, &exp, 1,
+					rte_memory_order_relaxed, rte_memory_order_relaxed);
 	if (lock_taken) {
 		/* delay with the lock held */
 		rte_delay_ms(250);
-		__atomic_store_n(lock, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(lock, 0, rte_memory_order_relaxed);
 	} else {
 		/* 2nd thread will fail to take lock, so clear pass flag */
 		*pass_test = 0;
@@ -86,15 +107,15 @@ static int32_t dummy_mt_safe_cb(void *args)
 	 *    that 2 threads are running the callback at the same time: MT safe
 	 */
 	uint32_t *test_params = args;
-	uint32_t *lock = &test_params[0];
+	RTE_ATOMIC(uint32_t) *lock = (uint32_t __rte_atomic *)&test_params[0];
 	uint32_t *pass_test = &test_params[1];
 	uint32_t exp = 0;
-	int lock_taken = __atomic_compare_exchange_n(lock, &exp, 1, 0,
-					__ATOMIC_RELAXED, __ATOMIC_RELAXED);
+	int lock_taken = rte_atomic_compare_exchange_strong_explicit(lock, &exp, 1,
+					rte_memory_order_relaxed, rte_memory_order_relaxed);
 	if (lock_taken) {
 		/* delay with the lock held */
 		rte_delay_ms(250);
-		__atomic_store_n(lock, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(lock, 0, rte_memory_order_relaxed);
 	} else {
 		/* 2nd thread will fail to take lock, so set pass flag */
 		*pass_test = 1;
@@ -120,6 +141,10 @@ unregister_all(void)
 
 	rte_service_lcore_reset_all();
 	rte_eal_mp_wait_lcore();
+
+	service_calls = 0;
+	service_idle_calls = 0;
+	service_error_calls = 0;
 
 	return TEST_SUCCESS;
 }
@@ -295,12 +320,19 @@ service_attr_get(void)
 			"Valid attr_get() call didn't return success");
 	TEST_ASSERT_EQUAL(0, attr_value,
 			"attr_get() call didn't set correct cycles (zero)");
-	/* check correct call count */
+	/* check correct call counts */
 	const int attr_calls = RTE_SERVICE_ATTR_CALL_COUNT;
 	TEST_ASSERT_EQUAL(0, rte_service_attr_get(id, attr_calls, &attr_value),
 			"Valid attr_get() call didn't return success");
-	TEST_ASSERT_EQUAL(0, attr_value,
-			"attr_get() call didn't get call count (zero)");
+	TEST_ASSERT_EQUAL(0, attr_value, "Call count was not zero");
+	const int attr_idle_calls = RTE_SERVICE_ATTR_IDLE_CALL_COUNT;
+	TEST_ASSERT_EQUAL(0, rte_service_attr_get(id, attr_idle_calls, &attr_value),
+			"Valid attr_get() call didn't return success");
+	TEST_ASSERT_EQUAL(0, attr_value, "Idle call count was not zero");
+	const int attr_error_calls = RTE_SERVICE_ATTR_ERROR_CALL_COUNT;
+	TEST_ASSERT_EQUAL(0, rte_service_attr_get(id, attr_error_calls, &attr_value),
+			"Valid attr_get() call didn't return success");
+	TEST_ASSERT_EQUAL(0, attr_value, "Error call count was not zero");
 
 	/* Call service to increment cycle count */
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_add(slcore_id),
@@ -331,8 +363,13 @@ service_attr_get(void)
 
 	TEST_ASSERT_EQUAL(0, rte_service_attr_get(id, attr_calls, &attr_value),
 			"Valid attr_get() call didn't return success");
-	TEST_ASSERT_EQUAL(1, (attr_value > 0),
-			"attr_get() call didn't get call count (zero)");
+	TEST_ASSERT_EQUAL(service_calls, attr_value, "Unexpected call count");
+	TEST_ASSERT_EQUAL(0, rte_service_attr_get(id, attr_idle_calls, &attr_value),
+			"Valid attr_get() call didn't return success");
+	TEST_ASSERT_EQUAL(service_idle_calls, attr_value, "Unexpected idle call count");
+	TEST_ASSERT_EQUAL(0, rte_service_attr_get(id, attr_error_calls, &attr_value),
+			"Valid attr_get() call didn't return success");
+	TEST_ASSERT_EQUAL(service_error_calls, attr_value, "Unexpected error call count");
 
 	TEST_ASSERT_EQUAL(0, rte_service_attr_reset_all(id),
 			"Valid attr_reset_all() return success");
@@ -341,11 +378,16 @@ service_attr_get(void)
 			"Valid attr_get() call didn't return success");
 	TEST_ASSERT_EQUAL(0, attr_value,
 			"attr_get() call didn't set correct cycles (zero)");
-	/* ensure call count > zero */
+	/* ensure call counts are zero */
 	TEST_ASSERT_EQUAL(0, rte_service_attr_get(id, attr_calls, &attr_value),
 			"Valid attr_get() call didn't return success");
-	TEST_ASSERT_EQUAL(0, (attr_value > 0),
-			"attr_get() call didn't get call count (zero)");
+	TEST_ASSERT_EQUAL(0, attr_value, "Call count was not reset");
+	TEST_ASSERT_EQUAL(0, rte_service_attr_get(id, attr_idle_calls, &attr_value),
+			"Valid attr_get() call didn't return success");
+	TEST_ASSERT_EQUAL(0, attr_value, "Idle call count was not reset");
+	TEST_ASSERT_EQUAL(0, rte_service_attr_get(id, attr_error_calls, &attr_value),
+			"Valid attr_get() call didn't return success");
+	TEST_ASSERT_EQUAL(0, attr_value, "Error call count was not reset");
 
 	return unregister_all();
 }
@@ -533,10 +575,10 @@ service_lcore_en_dis_able(void)
 static int
 service_lcore_running_check(void)
 {
-	uint64_t tick = service_tick;
+	uint64_t calls = service_calls;
 	rte_delay_ms(SERVICE_DELAY * 100);
-	/* if (tick != service_tick) we know the lcore as polled the service */
-	return tick != service_tick;
+	bool service_polled = calls != service_calls;
+	return service_polled;
 }
 
 static int
@@ -561,9 +603,8 @@ service_lcore_add_del(void)
 			"Service core count not equal to one");
 
 	/* retrieve core list, checking lcore ids */
-	const uint32_t size = 4;
-	uint32_t service_core_ids[size];
-	int32_t n = rte_service_lcore_list(service_core_ids, size);
+	uint32_t service_core_ids[4];
+	int32_t n = rte_service_lcore_list(service_core_ids, RTE_DIM(service_core_ids));
 	TEST_ASSERT_EQUAL(1, n, "Service core list return should equal 1");
 	TEST_ASSERT_EQUAL(slcore_id, service_core_ids[0],
 				"Service core list lcore must equal slcore_id");
@@ -589,7 +630,7 @@ service_lcore_add_del(void)
 			cores_at_this_point);
 
 	/* check longer service core list */
-	n = rte_service_lcore_list(service_core_ids, size);
+	n = rte_service_lcore_list(service_core_ids, RTE_DIM(service_core_ids));
 	TEST_ASSERT_EQUAL(3, n, "Service core list return should equal 3");
 	TEST_ASSERT_EQUAL(slcore_id, service_core_ids[0],
 				"Service core list[0] lcore must equal 1");
@@ -607,7 +648,7 @@ service_lcore_add_del(void)
 			"Service core add did not return zero");
 	TEST_ASSERT_EQUAL(1, rte_service_lcore_count(),
 			"Service core count not equal to one");
-	n = rte_service_lcore_list(service_core_ids, size);
+	n = rte_service_lcore_list(service_core_ids, RTE_DIM(service_core_ids));
 	TEST_ASSERT_EQUAL(1, n, "Service core list return should equal one");
 	TEST_ASSERT_EQUAL(slcore_id, service_core_ids[0],
 				"Service core list[0] lcore must equal %d",
@@ -748,15 +789,15 @@ delay_as_a_mt_safe_service(void *args)
 
 	/* retrieve done flag and lock to add/sub */
 	uint32_t *done = &params[0];
-	uint32_t *lock = &params[1];
+	RTE_ATOMIC(uint32_t) *lock = (uint32_t __rte_atomic *)&params[1];
 
 	while (!*done) {
-		__atomic_fetch_add(lock, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(lock, 1, rte_memory_order_relaxed);
 		rte_delay_us(500);
-		if (__atomic_load_n(lock, __ATOMIC_RELAXED) > 1)
+		if (rte_atomic_load_explicit(lock, rte_memory_order_relaxed) > 1)
 			/* pass: second core has simultaneously incremented */
 			*done = 1;
-		__atomic_fetch_sub(lock, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_sub_explicit(lock, 1, rte_memory_order_relaxed);
 	}
 
 	return 0;
@@ -1040,7 +1081,7 @@ test_service_common(void)
 	return unit_test_suite_runner(&service_tests);
 }
 
-REGISTER_FAST_TEST(service_autotest, true, true, test_service_common);
+REGISTER_FAST_TEST(service_autotest, NOHUGE_OK, ASAN_OK, test_service_common);
 
 static struct unit_test_suite service_perf_tests  = {
 	.suite_name = "service core performance test suite",

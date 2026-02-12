@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR LGPL-2.1)
+/* SPDX-License-Identifier: BSD-3-Clause OR LGPL-2.1
  * Copyright(c) 2010-2013 Intel Corporation.
  * Copyright(c) 2014-2017 Wind River Systems, Inc.
  */
@@ -60,7 +60,7 @@ enum rte_avp_req_id {
 /*
  * Structure for AVP queue configuration query request/result
  */
-struct rte_avp_device_config {
+struct __rte_packed_begin rte_avp_device_config {
 	uint64_t device_id;	/**< Unique system identifier */
 	uint32_t driver_type; /**< Device Driver type */
 	uint32_t driver_version; /**< Device Driver version */
@@ -68,12 +68,12 @@ struct rte_avp_device_config {
 	uint16_t num_tx_queues;	/**< Number of active transmit queues */
 	uint16_t num_rx_queues;	/**< Number of active receive queues */
 	uint8_t if_up; /**< 1: interface up, 0: interface down */
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Structure for AVP request.
  */
-struct rte_avp_request {
+struct __rte_packed_begin rte_avp_request {
 	uint32_t req_id; /**< Request id */
 	union {
 		uint32_t new_mtu; /**< New MTU */
@@ -81,7 +81,7 @@ struct rte_avp_request {
 	struct rte_avp_device_config config; /**< Queue configuration */
 	};
 	int32_t result;	/**< Result for processing request */
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * FIFO struct mapped in a shared memory. It describes a circular buffer FIFO
@@ -100,7 +100,7 @@ struct rte_avp_fifo {
 /*
  * AVP packet buffer header used to define the exchange of packet data.
  */
-struct rte_avp_desc {
+struct __rte_cache_aligned __rte_packed_begin rte_avp_desc {
 	uint64_t pad0;
 	void *pkt_mbuf; /**< Reference to packet mbuf */
 	uint8_t pad1[14];
@@ -114,7 +114,7 @@ struct rte_avp_desc {
 	uint32_t pad3;
 	uint16_t vlan_tci; /**< VLAN Tag Control Identifier (CPU order). */
 	uint32_t pad4;
-} __rte_packed __rte_cache_aligned;
+} __rte_packed_end;
 
 
 /**{ AVP device features */

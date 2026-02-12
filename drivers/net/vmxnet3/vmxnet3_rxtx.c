@@ -1055,7 +1055,7 @@ rcd_done:
 	return nb_rx;
 }
 
-uint32_t
+int
 vmxnet3_dev_rx_queue_count(void *rx_queue)
 {
 	const vmxnet3_rx_queue_t *rxq;
@@ -1341,7 +1341,7 @@ vmxnet3_dev_rxtx_init(struct rte_eth_dev *dev)
 			/* Zero number of descriptors in the configuration of the RX queue */
 			if (ret == 0) {
 				PMD_INIT_LOG(ERR,
-					"Invalid configuration in Rx queue: %d, buffers ring: %d\n",
+					"Invalid configuration in Rx queue: %d, buffers ring: %d",
 					i, j);
 				return -EINVAL;
 			}

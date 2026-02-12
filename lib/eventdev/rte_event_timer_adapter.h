@@ -107,13 +107,13 @@
  * All these use cases require high resolution and low time drift.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 
 #include "rte_eventdev.h"
 #include "rte_eventdev_trace_fp.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Timer adapter clock source
@@ -566,7 +566,7 @@ struct __rte_cache_aligned rte_event_timer_adapter {
  * Before calling this function, the application allocates
  * ``struct rte_event_timer`` objects from mempool or huge page backed
  * application buffers of desired size. On successful allocation,
- * application updates the `struct rte_event_timer`` attributes such as
+ * application updates the ``struct rte_event_timer`` attributes such as
  * expiry event attributes, timeout ticks from now.
  * This function submits the event timer arm requests to the event timer adapter
  * and on expiry, the events will be injected to designated event queue.

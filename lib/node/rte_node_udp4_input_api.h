@@ -14,16 +14,15 @@
  *
  * This API allows to control path functions of udp4_* nodes
  * like udp4_input.
- *
  */
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_common.h>
 #include <rte_compat.h>
 
 #include "rte_graph.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 /**
  * UDP4 lookup next nodes.
  */

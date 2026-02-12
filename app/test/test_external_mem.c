@@ -587,4 +587,4 @@ test_external_mem(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(external_mem_autotest, test_external_mem);
+REGISTER_FAST_TEST(external_mem_autotest, NOHUGE_SKIP, ASAN_OK, test_external_mem);

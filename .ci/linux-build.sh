@@ -44,6 +44,21 @@ catch_coredump() {
     return 1
 }
 
+catch_ubsan() {
+    [ "$UBSAN" = "true" ] || return 0
+    grep -q UndefinedBehaviorSanitizer $2 2>/dev/null || return 0
+    grep -E "($1|UndefinedBehaviorSanitizer)" $2
+    return 1
+}
+
+check_traces() {
+    which babeltrace >/dev/null || return 0
+    for file in $(sudo find $HOME -name metadata); do
+        ! sudo babeltrace $(dirname $file) >/dev/null 2>&1 || continue
+        sudo babeltrace $(dirname $file)
+    done
+}
+
 cross_file=
 
 if [ "$AARCH64" = "true" ]; then
@@ -70,6 +85,8 @@ buildtype=debugoptimized
 
 if [ "$BUILD_DEBUG" = "true" ]; then
     buildtype=debug
+elif [ "$BUILD_MINSIZE" = "true" ]; then
+    buildtype=minsize
 fi
 
 if [ "$BUILD_DOCS" = "true" ]; then
@@ -92,11 +109,15 @@ fi
 
 OPTS="$OPTS -Dplatform=generic"
 OPTS="$OPTS -Ddefault_library=$DEF_LIB"
-OPTS="$OPTS -Dbuildtype=$buildtype"
 if [ "$STDATOMIC" = "true" ]; then
-	OPTS="$OPTS -Denable_stdatomic=true"
+    OPTS="$OPTS -Denable_stdatomic=true"
 else
-	OPTS="$OPTS -Dcheck_includes=true"
+    OPTS="$OPTS -Dcheck_includes=true"
+    if [ "${CC%%clang}" != "$CC" ]; then
+        export CXX=clang++
+    else
+        export CXX=g++
+    fi
 fi
 if [ "$MINI" = "true" ]; then
     OPTS="$OPTS -Denable_drivers=net/null"
@@ -109,13 +130,38 @@ else
 fi
 OPTS="$OPTS -Dlibdir=lib"
 
+sanitizer=
 if [ "$ASAN" = "true" ]; then
-    OPTS="$OPTS -Db_sanitize=address"
+    sanitizer=${sanitizer:+$sanitizer,}address
+fi
+
+if [ "$UBSAN" = "true" ]; then
+    sanitizer=${sanitizer:+$sanitizer,}undefined
+    if [ "$RUN_TESTS" = "true" ]; then
+        # UBSan takes too much memory with -O2
+        buildtype=plain
+        # Only enable test binaries
+        OPTS="$OPTS -Denable_apps=test,test-pmd"
+        # Restrict drivers to a minimum set for now
+        OPTS="$OPTS -Denable_drivers=net/null"
+        # There are still known issues in various libraries, disable them for now
+        OPTS="$OPTS -Ddisable_libs=acl,bpf,distributor,member,ptr_compress,table"
+        # No examples are run
+        OPTS="$OPTS -Dexamples="
+        # The UBSan target takes a good amount of time and headers coverage is done in other
+        # targets already.
+        OPTS="$OPTS -Dcheck_includes=false"
+    fi
+fi
+
+if [ -n "$sanitizer" ]; then
+    OPTS="$OPTS -Db_sanitize=$sanitizer"
     if [ "${CC%%clang}" != "$CC" ]; then
         OPTS="$OPTS -Db_lundef=false"
     fi
 fi
 
+OPTS="$OPTS -Dbuildtype=$buildtype"
 OPTS="$OPTS -Dwerror=true"
 
 if [ -d build ]; then
@@ -133,6 +179,8 @@ if [ -z "$cross_file" ]; then
     configure_coredump
     devtools/test-null.sh || failed="true"
     catch_coredump
+    catch_ubsan DPDK:fast-tests build/meson-logs/testlog.txt
+    check_traces
     [ "$failed" != "true" ]
 fi
 
@@ -147,8 +195,6 @@ if [ "$ABI_CHECKS" = "true" ]; then
     fi
 
     export PATH=$(pwd)/libabigail/bin:$PATH
-
-    REF_GIT_REPO=${REF_GIT_REPO:-https://dpdk.org/git/dpdk}
 
     if [ "$(cat reference/VERSION 2>/dev/null)" != "$REF_GIT_TAG" ]; then
         rm -rf reference
@@ -173,8 +219,10 @@ fi
 if [ "$RUN_TESTS" = "true" ]; then
     failed=
     configure_coredump
-    sudo meson test -C build --suite fast-tests -t 3 || failed="true"
+    sudo meson test -C build --suite fast-tests -t 3 --no-stdsplit --print-errorlogs || failed="true"
     catch_coredump
+    catch_ubsan DPDK:fast-tests build/meson-logs/testlog.txt
+    check_traces
     [ "$failed" != "true" ]
 fi
 

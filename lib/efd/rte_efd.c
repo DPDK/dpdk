@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_cpuflags.h>
 #include <rte_string_fns.h>
 #include <rte_log.h>
@@ -25,6 +26,7 @@
 
 #include "rte_efd.h"
 #if defined(RTE_ARCH_X86)
+#include "rte_efd_x86.h"
 #elif defined(RTE_ARCH_ARM64)
 #include "rte_efd_arm64.h"
 #endif
@@ -212,7 +214,7 @@ struct efd_offline_chunk_rules {
 struct efd_online_group_entry {
 	efd_hashfunc_t hash_idx[RTE_EFD_VALUE_NUM_BITS];
 	efd_lookuptbl_t lookup_table[RTE_EFD_VALUE_NUM_BITS];
-} __rte_packed;
+};
 
 /**
  * A single chunk record, containing EFD_TARGET_CHUNK_NUM_RULES rules.
@@ -228,7 +230,7 @@ struct efd_online_chunk {
 
 	struct efd_online_group_entry groups[EFD_CHUNK_NUM_GROUPS];
 	/**< Array of all the groups in the chunk. */
-} __rte_packed;
+};
 
 /**
  * EFD table structure
@@ -496,6 +498,7 @@ efd_search_hash(struct rte_efd_table * const table,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_efd_create)
 struct rte_efd_table *
 rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
 		uint64_t online_cpu_socket_bitmask, uint8_t offline_cpu_socket)
@@ -514,13 +517,20 @@ rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
 	efd_list = RTE_TAILQ_CAST(rte_efd_tailq.head, rte_efd_list);
 
 	if (online_cpu_socket_bitmask == 0) {
-		EFD_LOG(ERR, "At least one CPU socket must be enabled "
-				"in the bitmask");
+		EFD_LOG(ERR, "At least one CPU socket must be enabled in the bitmask");
+		rte_errno = EINVAL;
 		return NULL;
 	}
 
 	if (max_num_rules == 0) {
 		EFD_LOG(ERR, "Max num rules must be higher than 0");
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	if (strlen(name) >= RTE_EFD_NAMESIZE) {
+		EFD_LOG(ERR, "Name is too long");
+		rte_errno = ENAMETOOLONG;
 		return NULL;
 	}
 
@@ -695,12 +705,15 @@ rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
 	TAILQ_INSERT_TAIL(efd_list, te, next);
 	rte_mcfg_tailq_write_unlock();
 
-	snprintf(ring_name, sizeof(ring_name), "HT_%s", table->name);
+	if (snprintf(ring_name, sizeof(ring_name), "HT_%s", table->name)
+			>= (int)sizeof(ring_name))
+		EFD_LOG(NOTICE, "EFD ring name truncated to '%s'", ring_name);
+
 	/* Create ring (Dummy slot index is not enqueued) */
 	r = rte_ring_create(ring_name, rte_align32pow2(table->max_num_rules),
 			offline_cpu_socket, 0);
 	if (r == NULL) {
-		EFD_LOG(ERR, "memory allocation failed");
+		EFD_LOG(ERR, "ring creation failed: %s", rte_strerror(rte_errno));
 		rte_efd_free(table);
 		return NULL;
 	}
@@ -720,6 +733,7 @@ error_unlock_exit:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_efd_find_existing)
 struct rte_efd_table *
 rte_efd_find_existing(const char *name)
 {
@@ -746,6 +760,7 @@ rte_efd_find_existing(const char *name)
 	return table;
 }
 
+RTE_EXPORT_SYMBOL(rte_efd_free)
 void
 rte_efd_free(struct rte_efd_table *table)
 {
@@ -1162,6 +1177,7 @@ next_choice:
 	return RTE_EFD_UPDATE_FAILED;
 }
 
+RTE_EXPORT_SYMBOL(rte_efd_update)
 int
 rte_efd_update(struct rte_efd_table * const table, const unsigned int socket_id,
 		const void *key, const efd_value_t value)
@@ -1185,6 +1201,7 @@ rte_efd_update(struct rte_efd_table * const table, const unsigned int socket_id,
 	return status;
 }
 
+RTE_EXPORT_SYMBOL(rte_efd_delete)
 int
 rte_efd_delete(struct rte_efd_table * const table, const unsigned int socket_id,
 		const void *key, efd_value_t * const prev_value)
@@ -1273,7 +1290,7 @@ efd_lookup_internal(const struct efd_online_group_entry * const group,
 
 	switch (lookup_fn) {
 
-#if defined(RTE_ARCH_X86) && defined(CC_SUPPORT_AVX2)
+#if defined(RTE_ARCH_X86)
 	case EFD_LOOKUP_AVX2:
 		return efd_lookup_internal_avx2(group->hash_idx,
 					group->lookup_table,
@@ -1301,6 +1318,7 @@ efd_lookup_internal(const struct efd_online_group_entry * const group,
 	return value;
 }
 
+RTE_EXPORT_SYMBOL(rte_efd_lookup)
 efd_value_t
 rte_efd_lookup(const struct rte_efd_table * const table,
 		const unsigned int socket_id, const void *key)
@@ -1322,6 +1340,7 @@ rte_efd_lookup(const struct rte_efd_table * const table,
 			table->lookup_fn);
 }
 
+RTE_EXPORT_SYMBOL(rte_efd_lookup_bulk)
 void rte_efd_lookup_bulk(const struct rte_efd_table * const table,
 		const unsigned int socket_id, const int num_keys,
 		const void **key_list, efd_value_t * const value_list)

@@ -71,11 +71,11 @@ qat_sym_init_op_cookie(void *op_cookie)
 
 static __rte_always_inline int
 qat_sym_build_request(void *in_op, uint8_t *out_msg,
-		void *op_cookie, uint64_t *opaque, enum qat_device_gen dev_gen)
+		void *op_cookie, struct qat_qp *qp)
 {
 	struct rte_crypto_op *op = (struct rte_crypto_op *)in_op;
-	uintptr_t sess = (uintptr_t)opaque[0];
-	uintptr_t build_request_p = (uintptr_t)opaque[1];
+	uintptr_t sess = (uintptr_t)qp->opaque[0];
+	uintptr_t build_request_p = (uintptr_t)qp->opaque[1];
 	qat_sym_build_request_t build_request = (void *)build_request_p;
 	struct qat_sym_session *ctx = NULL;
 	enum rte_proc_type_t proc_type = rte_eal_process_type();
@@ -92,7 +92,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			cdev = rte_cryptodev_pmd_get_dev(ctx->dev_id);
 			internals = cdev->data->dev_private;
 
-			if (internals->qat_dev->qat_dev_gen != dev_gen) {
+			if (internals->qat_dev->qat_dev_gen != qp->qat_dev_gen) {
 				op->status =
 					RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 				return -EINVAL;
@@ -100,7 +100,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 
 			if (unlikely(ctx->build_request[proc_type] == NULL)) {
 				int ret =
-				qat_sym_gen_dev_ops[dev_gen].set_session(
+				qat_sym_gen_dev_ops[qp->qat_dev_gen].set_session(
 					(void *)cdev, (void *)ctx);
 				if (ret < 0) {
 					op->status =
@@ -110,8 +110,8 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			}
 
 			build_request = ctx->build_request[proc_type];
-			opaque[0] = (uintptr_t)ctx;
-			opaque[1] = (uintptr_t)build_request;
+			qp->opaque[0] = (uintptr_t)ctx;
+			qp->opaque[1] = (uintptr_t)build_request;
 		}
 	} else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
 		ctx = SECURITY_GET_SESS_PRIV(op->sym->session);
@@ -145,7 +145,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			cdev = rte_cryptodev_pmd_get_dev(ctx->dev_id);
 			internals = cdev->data->dev_private;
 
-			if (internals->qat_dev->qat_dev_gen != dev_gen) {
+			if (internals->qat_dev->qat_dev_gen != qp->qat_dev_gen) {
 				op->status =
 					RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 				return -EINVAL;
@@ -153,7 +153,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 
 			if (unlikely(ctx->build_request[proc_type] == NULL)) {
 				int ret =
-				qat_sym_gen_dev_ops[dev_gen].set_session(
+				qat_sym_gen_dev_ops[qp->qat_dev_gen].set_session(
 					(void *)cdev, (void *)sess);
 				if (ret < 0) {
 					op->status =
@@ -164,8 +164,8 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 
 			sess = (uintptr_t)op->sym->session;
 			build_request = ctx->build_request[proc_type];
-			opaque[0] = sess;
-			opaque[1] = (uintptr_t)build_request;
+			qp->opaque[0] = sess;
+			qp->opaque[1] = (uintptr_t)build_request;
 		}
 	} else { /* RTE_CRYPTO_OP_SESSIONLESS */
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
@@ -217,7 +217,7 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev)
 	const struct qat_crypto_gen_dev_ops *gen_dev_ops =
 		&qat_sym_gen_dev_ops[qat_pci_dev->qat_dev_gen];
 	uint16_t sub_id = qat_dev_instance->pci_dev->id.subsystem_device_id;
-	char *cmdline = NULL;
+	const char *cmdline = NULL;
 
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "sym");
@@ -291,7 +291,7 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev)
 		}
 
 		cryptodev->feature_flags |= RTE_CRYPTODEV_FF_SECURITY;
-		QAT_LOG(INFO, "Device %s rte_security support ensabled", name);
+		QAT_LOG(INFO, "Device %s rte_security support enabled", name);
 	} else {
 		QAT_LOG(INFO, "Device %s rte_security support disabled", name);
 	}
@@ -317,7 +317,7 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev)
 		internals->cipher_crc_offload_enable = atoi(cmdline);
 
 	if (gen_dev_ops->get_capabilities(internals,
-			capa_memz_name, qat_pci_dev->slice_map) < 0) {
+			capa_memz_name, qat_pci_dev->options.slice_map) < 0) {
 		QAT_LOG(ERR,
 			"Device cannot obtain capabilities, destroying PMD for %s",
 			name);

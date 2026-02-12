@@ -15,7 +15,6 @@
 #include "bus_platform_driver.h"
 
 extern struct rte_platform_bus platform_bus;
-extern int platform_bus_logtype;
 
 /* Platform bus iterators. */
 #define FOREACH_DEVICE_ON_PLATFORM_BUS(p) \
@@ -33,10 +32,10 @@ struct rte_platform_bus {
 	RTE_TAILQ_HEAD(, rte_platform_driver) driver_list; /* List of bus drivers */
 };
 
-#define PLATFORM_LOG(level, ...) \
-	rte_log(RTE_LOG_ ## level, platform_bus_logtype, \
-		RTE_FMT("platform bus: " RTE_FMT_HEAD(__VA_ARGS__,), \
-			RTE_FMT_TAIL(__VA_ARGS__,)))
+extern int platform_bus_logtype;
+#define RTE_LOGTYPE_PLATFORM_BUS platform_bus_logtype
+#define PLATFORM_LOG_LINE(level, ...) \
+	RTE_LOG_LINE(level, PLATFORM_BUS, __VA_ARGS__)
 
 /*
  * Iterate registered platform devices and find one that matches provided string.

@@ -646,6 +646,20 @@ enum vnic_devcmd_cmd {
 	 *	   bit 2: 64 bytes
 	 */
 	CMD_CQ_ENTRY_SIZE_SET = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 90),
+
+	/*
+	 * enable/disable wq/rq queue pair of qp_type on a PF/VF.
+	 * in: (u32) a0 = wq/rq qp_type
+	 * in: (u32) a0 = enable(1)/disable(0)
+	 */
+	CMD_QP_TYPE_SET = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 97),
+
+	/*
+	 * SRIOV vic stats get
+	 * in: (u64) a0 = host buffer addr for stats dump
+	 * in  (u32) a1 = length of the buffer
+	 */
+	CMD_SRIOV_STATS_GET = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 98),
 };
 
 /* Modes for exchanging advanced filter capabilities. The modes supported by
@@ -784,13 +798,13 @@ struct vnic_devcmd_provinfo {
 			     FILTER_FIELD_USNIC_PROTO | \
 			     FILTER_FIELD_USNIC_ID)
 
-struct filter_usnic_id {
+struct __rte_packed_begin filter_usnic_id {
 	uint32_t flags;
 	uint16_t vlan;
 	uint16_t ethtype;
 	uint8_t proto_version;
 	uint32_t usnic_id;
-} __rte_packed;
+} __rte_packed_end;
 
 #define FILTER_FIELD_5TUP_PROTO  FILTER_FIELD_VALID(1)
 #define FILTER_FIELD_5TUP_SRC_AD FILTER_FIELD_VALID(2)
@@ -812,14 +826,14 @@ enum protocol_e {
 	PROTO_IPV6 = 3
 };
 
-struct filter_ipv4_5tuple {
+struct __rte_packed_begin filter_ipv4_5tuple {
 	uint32_t flags;
 	uint32_t protocol;
 	uint32_t src_addr;
 	uint32_t dst_addr;
 	uint16_t src_port;
 	uint16_t dst_port;
-} __rte_packed;
+} __rte_packed_end;
 
 #define FILTER_FIELD_VMQ_VLAN   FILTER_FIELD_VALID(1)
 #define FILTER_FIELD_VMQ_MAC    FILTER_FIELD_VALID(2)
@@ -829,11 +843,11 @@ struct filter_ipv4_5tuple {
 
 #define FILTER_FIELDS_NVGRE    FILTER_FIELD_VMQ_MAC
 
-struct filter_mac_vlan {
+struct __rte_packed_begin filter_mac_vlan {
 	uint32_t flags;
 	uint16_t vlan;
 	uint8_t mac_addr[6];
-} __rte_packed;
+} __rte_packed_end;
 
 #define FILTER_FIELD_VLAN_IP_3TUP_VLAN      FILTER_FIELD_VALID(1)
 #define FILTER_FIELD_VLAN_IP_3TUP_L3_PROTO  FILTER_FIELD_VALID(2)
@@ -847,7 +861,7 @@ struct filter_mac_vlan {
 				    FILTER_FIELD_VLAN_IP_3TUP_L4_PROTO | \
 				    FILTER_FIELD_VLAN_IP_3TUP_DST_PT)
 
-struct filter_vlan_ip_3tuple {
+struct __rte_packed_begin filter_vlan_ip_3tuple {
 	uint32_t flags;
 	uint16_t vlan;
 	uint16_t l3_protocol;
@@ -857,7 +871,7 @@ struct filter_vlan_ip_3tuple {
 	} u;
 	uint32_t l4_protocol;
 	uint16_t dst_port;
-} __rte_packed;
+} __rte_packed_end;
 
 #define FILTER_GENERIC_1_BYTES 64
 
@@ -884,19 +898,19 @@ enum filter_generic_1_layer {
  * Version 1 of generic filter specification
  * position is only 16 bits, reserving positions > 64k to be used by firmware
  */
-struct filter_generic_1 {
+struct __rte_packed_begin filter_generic_1 {
 	uint16_t position;       /* lower position comes first */
 	uint32_t mask_flags;
 	uint32_t val_flags;
 	uint16_t mask_vlan;
 	uint16_t val_vlan;
-	struct {
+	struct __rte_packed_begin {
 		uint8_t mask[FILTER_GENERIC_1_KEY_LEN]; /* 0 bit means
 							 * " don't care"
 							 */
 		uint8_t val[FILTER_GENERIC_1_KEY_LEN];
-	} __rte_packed layer[FILTER_GENERIC_1_NUM_LAYERS];
-} __rte_packed;
+	} __rte_packed_end layer[FILTER_GENERIC_1_NUM_LAYERS];
+} __rte_packed_end;
 
 /* Specifies the filter_action type. */
 enum {
@@ -905,12 +919,12 @@ enum {
 	FILTER_ACTION_MAX
 };
 
-struct filter_action {
+struct __rte_packed_begin filter_action {
 	uint32_t type;
 	union {
 		uint32_t rq_idx;
 	} u;
-} __rte_packed;
+} __rte_packed_end;
 
 #define FILTER_ACTION_RQ_STEERING_FLAG	(1 << 0)
 #define FILTER_ACTION_FILTER_ID_FLAG	(1 << 1)
@@ -923,13 +937,13 @@ struct filter_action {
 /* Version 2 of filter action must be a strict extension of struct
  * filter_action where the first fields exactly match in size and meaning.
  */
-struct filter_action_v2 {
+struct __rte_packed_begin filter_action_v2 {
 	uint32_t type;
 	uint32_t rq_idx;
 	uint32_t flags;               /* use FILTER_ACTION_XXX_FLAG defines */
 	uint16_t filter_id;
 	uint8_t reserved[32];         /* for future expansion */
-} __rte_packed;
+} __rte_packed_end;
 
 /* Specifies the filter type. */
 enum filter_type {
@@ -959,7 +973,7 @@ enum filter_type {
 					FILTER_USNIC_IP_FLAG | \
 					FILTER_DPDK_1_FLAG)
 
-struct filter {
+struct __rte_packed_begin filter {
 	uint32_t type;
 	union {
 		struct filter_usnic_id usnic;
@@ -967,7 +981,7 @@ struct filter {
 		struct filter_mac_vlan mac_vlan;
 		struct filter_vlan_ip_3tuple vlan_3tuple;
 	} u;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * This is a strict superset of "struct filter" and exists only
@@ -978,7 +992,7 @@ struct filter {
  * the TLV size instead of sizeof (struct fiter_v2) to guard against future
  * growth.
  */
-struct filter_v2 {
+struct __rte_packed_begin filter_v2 {
 	uint32_t type;
 	union {
 		struct filter_usnic_id usnic;
@@ -987,7 +1001,7 @@ struct filter_v2 {
 		struct filter_vlan_ip_3tuple vlan_3tuple;
 		struct filter_generic_1 generic_1;
 	} u;
-} __rte_packed;
+} __rte_packed_end;
 
 enum {
 	CLSF_TLV_FILTER = 0,
@@ -1193,5 +1207,40 @@ typedef enum {
 #define VNIC_RQ_CQ_ENTRY_SIZE_16_CAPABLE	(1 << VNIC_RQ_CQ_ENTRY_SIZE_16)
 #define VNIC_RQ_CQ_ENTRY_SIZE_32_CAPABLE	(1 << VNIC_RQ_CQ_ENTRY_SIZE_32)
 #define VNIC_RQ_CQ_ENTRY_SIZE_64_CAPABLE	(1 << VNIC_RQ_CQ_ENTRY_SIZE_64)
+
+/* CMD_QP_TYPE_SET */
+#define QP_TYPE_ADMIN   0
+
+struct vnic_sriov_stats {
+	uint32_t ver;
+	uint8_t sriov_vlan_membership_cap;   /* sriov support vlan-membership */
+	uint8_t sriov_vlan_membership_enabled; /* Default is disabled (0) */
+	uint8_t sriov_rss_vf_full_cap;	     /* sriov VFs support full rss */
+	uint8_t sriov_host_rx_stats;	     /* host does rx stats */
+
+	/* IGx/EGx classifier TCAM
+	 */
+	uint32_t ig_classifier0_tcam_cfg;    /* IG0 TCAM config entries */
+	uint32_t ig_classifier0_tcam_free;   /* IG0 TCAM free count */
+	uint32_t eg_classifier0_tcam_cfg;    /* EG0 TCAM config entries */
+	uint32_t eg_classifier0_tcam_free;   /* EG0 TCAM free count */
+
+	uint32_t ig_classifier1_tcam_cfg;    /* IG1 TCAM config entries */
+	uint32_t ig_classifier1_tcam_free;   /* IG1 TCAM free count */
+	uint32_t eg_classifier1_tcam_cfg;    /* EG1 TCAM config entries */
+	uint32_t eg_classifier1_tcam_free;   /* EG1 TCAM free count */
+
+	/* IGx/EGx flow table entries
+	 */
+	uint32_t sriov_ig_flow_table_cfg;    /* sriov IG FTE config */
+	uint32_t sriov_ig_flow_table_free;   /* sriov IG FTE free */
+	uint32_t sriov_eg_flow_table_cfg;    /* sriov EG FTE config */
+	uint32_t sriov_eg_flow_table_free;   /* sriov EG FTE free */
+
+	uint8_t admin_qp_ready[32];	     /* admin_qp ready bits (256) */
+	uint16_t vf_index;		     /* VF index or SRIOV_PF_IDX */
+	uint16_t reserved1;
+	uint32_t reserved2[256 - 23];
+};
 
 #endif /* _VNIC_DEVCMD_H_ */

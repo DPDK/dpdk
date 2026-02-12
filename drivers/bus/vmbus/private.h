@@ -34,9 +34,9 @@ extern struct rte_vmbus_bus rte_vmbus_bus;
 	RTE_TAILQ_FOREACH(p, &(rte_vmbus_bus.driver_list), next)
 
 extern int vmbus_logtype_bus;
-#define VMBUS_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, vmbus_logtype_bus, "%s(): " fmt "\n", \
-		__func__, ##args)
+#define RTE_LOGTYPE_VMBUS_BUS vmbus_logtype_bus
+#define VMBUS_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, VMBUS_BUS, "%s(): ", __func__, __VA_ARGS__)
 
 struct vmbus_br {
 	struct vmbus_bufring *vbr;
@@ -110,7 +110,7 @@ void vmbus_insert_device(struct rte_vmbus_device *exist_vmbus_dev,
 			 struct rte_vmbus_device *new_vmbus_dev);
 void vmbus_remove_device(struct rte_vmbus_device *vmbus_device);
 
-void vmbus_uio_irq_control(struct rte_vmbus_device *dev, int32_t onoff);
+void vmbus_uio_irq_control(const struct rte_vmbus_device *dev, int32_t onoff);
 int vmbus_uio_irq_read(struct rte_vmbus_device *dev);
 
 int vmbus_uio_map_resource(struct rte_vmbus_device *dev);

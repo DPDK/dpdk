@@ -6,9 +6,9 @@ PROJECT_NUMBER          = @VERSION@
 USE_MDFILE_AS_MAINPAGE  = @TOPDIR@/doc/api/doxy-api-index.md
 INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/drivers/bus/vdev \
+                          @TOPDIR@/drivers/common/dpaax \
                           @TOPDIR@/drivers/crypto/cnxk \
                           @TOPDIR@/drivers/crypto/scheduler \
-                          @TOPDIR@/drivers/dma/dpaa2 \
                           @TOPDIR@/drivers/event/dlb2 \
                           @TOPDIR@/drivers/event/cnxk \
                           @TOPDIR@/drivers/mempool/cnxk \
@@ -19,9 +19,9 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/drivers/net/cnxk \
                           @TOPDIR@/drivers/net/dpaa \
                           @TOPDIR@/drivers/net/dpaa2 \
-                          @TOPDIR@/drivers/net/i40e \
-                          @TOPDIR@/drivers/net/iavf \
-                          @TOPDIR@/drivers/net/ixgbe \
+                          @TOPDIR@/drivers/net/intel/i40e \
+                          @TOPDIR@/drivers/net/intel/iavf \
+                          @TOPDIR@/drivers/net/intel/ixgbe \
                           @TOPDIR@/drivers/net/mlx5 \
                           @TOPDIR@/drivers/net/softnic \
                           @TOPDIR@/drivers/raw/dpaa2_cmdif \
@@ -69,8 +69,10 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/lib/pdcp \
                           @TOPDIR@/lib/pdump \
                           @TOPDIR@/lib/pipeline \
+                          @TOPDIR@/lib/pmu \
                           @TOPDIR@/lib/port \
                           @TOPDIR@/lib/power \
+                          @TOPDIR@/lib/ptr_compress \
                           @TOPDIR@/lib/rawdev \
                           @TOPDIR@/lib/rcu \
                           @TOPDIR@/lib/regexdev \
@@ -90,7 +92,6 @@ FILE_PATTERNS           = rte_*.h \
 PREDEFINED              = __DOXYGEN__ \
                           RTE_ATOMIC \
                           RTE_HAS_CPUSET \
-                          VFIO_PRESENT \
                           __rte_lockable= \
                           __rte_guarded_by(x)= \
                           __rte_exclusive_locks_required(x)= \
@@ -102,6 +103,18 @@ PREDEFINED              = __DOXYGEN__ \
                           __rte_shared_trylock_function(x)= \
                           __rte_assert_shared_lock(x)= \
                           __rte_unlock_function(x)= \
+                          __rte_capability(x)= \
+                          __rte_requires_capability(x)= \
+                          __rte_acquire_capability(x)= \
+                          __rte_try_acquire_capability(x)= \
+                          __rte_release_capability(x)= \
+                          __rte_assert_capability(x)= \
+                          __rte_requires_shared_capability(x)= \
+                          __rte_acquire_shared_capability(x)= \
+                          __rte_try_acquire_shared_capability(x)= \
+                          __rte_release_shared_capability(x)= \
+                          __rte_assert_shared_capability(x)= \
+                          __rte_exclude_capability(x)= \
                           __attribute__(x)=
 
 OPTIMIZE_OUTPUT_FOR_C   = YES
@@ -122,6 +135,8 @@ HTML_EXTRA_STYLESHEET   = @TOPDIR@/doc/api/custom.css
 SEARCHENGINE            = YES
 SORT_MEMBER_DOCS        = NO
 SOURCE_BROWSER          = YES
+
+ALIASES                 = "dts_api_main_page=@DTS_API_MAIN_PAGE@"
 
 EXAMPLE_PATH            = @TOPDIR@/examples
 EXAMPLE_PATTERNS        = *.c

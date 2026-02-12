@@ -59,9 +59,10 @@ extern RTE_DEFINE_PER_LCORE(IMB_MGR *, mb_mgr);
 
 /** PMD LOGTYPE DRIVER, common to all PMDs */
 extern int ipsec_mb_logtype_driver;
-#define IPSEC_MB_LOG(level, fmt, ...)                                         \
-	rte_log(RTE_LOG_##level, ipsec_mb_logtype_driver,                     \
-		"%s() line %u: " fmt "\n", __func__, __LINE__, ##__VA_ARGS__)
+#define RTE_LOGTYPE_IPSEC_MB ipsec_mb_logtype_driver
+#define IPSEC_MB_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, IPSEC_MB, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 /** All supported device types */
 enum ipsec_mb_pmd_types {
@@ -125,7 +126,7 @@ struct ipsec_mb_dev_private {
 	/**< PMD  type */
 	uint32_t max_nb_queue_pairs;
 	/**< Max number of queue pairs supported by device */
-	__extension__ uint8_t priv[];
+	uint8_t priv[];
 };
 
 /** IPSEC Multi buffer queue pair common queue pair data for all PMDs */
@@ -198,7 +199,7 @@ alloc_init_mb_mgr(void)
 	IMB_MGR *mb_mgr = alloc_mb_mgr(0);
 
 	if (unlikely(mb_mgr == NULL)) {
-		IPSEC_MB_LOG(ERR, "Failed to allocate IMB_MGR data\n");
+		IPSEC_MB_LOG(ERR, "Failed to allocate IMB_MGR data");
 		return NULL;
 	}
 

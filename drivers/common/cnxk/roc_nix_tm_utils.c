@@ -582,8 +582,8 @@ nix_tm_topology_reg_prep(struct nix *nix, struct nix_tm_node *node,
 
 		/* Configure TL4 to send to SDP channel instead of CGX/LBK */
 		if (nix->sdp_link) {
-			relchan = nix->tx_chan_base & 0xff;
-			plt_tm_dbg("relchan=%u schq=%u tx_chan_cnt=%u\n", relchan, schq,
+			relchan = (nix->tx_chan_base & 0xff) + node->rel_chan;
+			plt_tm_dbg("relchan=%u schq=%u tx_chan_cnt=%u", relchan, schq,
 				   nix->tx_chan_cnt);
 			reg[k] = NIX_AF_TL4X_SDP_LINK_CFG(schq);
 			regval[k] = BIT_ULL(12);

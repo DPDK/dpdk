@@ -264,11 +264,10 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 
 {
 	struct ipsec_test_data *td;
-	int i;
 
 	memset(td_array, 0, nb_td * sizeof(*td));
 
-	for (i = 0; i < nb_td; i++) {
+	for (int i = 0; i < nb_td; i++) {
 		td = &td_array[i];
 
 		/* Prepare fields based on param */
@@ -339,7 +338,6 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 			struct rte_tcp_hdr *tcp;
 			int64_t payload_len;
 			uint8_t *data;
-			int64_t i;
 
 			payload_len = RTE_MIN(flags->plaintext_len, IPSEC_TEXT_MAX_LEN);
 			payload_len -= sizeof(struct rte_ipv6_hdr);
@@ -355,8 +353,8 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 			/* TCP */
 			tcp = (struct rte_tcp_hdr *)(ip6 + 1);
 			data = (uint8_t *)(tcp + 1);
-			for (i = 0; i < payload_len; i++)
-				data[i] = i;
+			for (int64_t j = 0; j < payload_len; j++)
+				data[j] = j;
 			tcp->cksum = 0;
 			tcp->cksum = rte_ipv6_udptcp_cksum(ip6, tcp);
 			td->input_text.len = payload_len + sizeof(struct rte_ipv6_hdr) +
@@ -366,7 +364,6 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 			struct rte_tcp_hdr *tcp;
 			int64_t payload_len;
 			uint8_t *data;
-			int64_t i;
 
 			payload_len = RTE_MIN(flags->plaintext_len, IPSEC_TEXT_MAX_LEN);
 			payload_len -= sizeof(struct rte_ipv4_hdr);
@@ -384,8 +381,8 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 			/* TCP */
 			tcp = (struct rte_tcp_hdr *)(ip + 1);
 			data = (uint8_t *)(tcp + 1);
-			for (i = 0; i < payload_len; i++)
-				data[i] = i;
+			for (int64_t j = 0; j < payload_len; j++)
+				data[j] = j;
 			tcp->cksum = 0;
 			tcp->cksum = rte_ipv4_udptcp_cksum(ip, tcp);
 			td->input_text.len = payload_len + sizeof(struct rte_ipv4_hdr) +
@@ -916,6 +913,7 @@ test_ipsec_post_process(const struct rte_mbuf *m, const struct ipsec_test_data *
 		seg = seg->next;
 	}
 	len = RTE_MIN(len, data_len);
+	TEST_ASSERT(len <= IPSEC_TEXT_MAX_LEN, "Invalid packet length: %u", len);
 	/* Copy mbuf payload to continuous buffer */
 	output = rte_pktmbuf_read(m, 0, len, output_text);
 	if (output != output_text)
@@ -1103,9 +1101,12 @@ test_ipsec_stats_verify(void *ctx,
 			enum rte_security_ipsec_sa_direction dir)
 {
 	struct rte_security_stats stats = {0};
-	int ret = TEST_SUCCESS;
+	int retries = 0, ret = TEST_SUCCESS;
 
 	if (flags->stats_success) {
+stats_get:
+		ret = TEST_SUCCESS;
+
 		if (rte_security_session_stats_get(ctx, sess, &stats) < 0)
 			return TEST_FAILED;
 
@@ -1117,6 +1118,12 @@ test_ipsec_stats_verify(void *ctx,
 			if (stats.ipsec.ipackets != 1 ||
 			    stats.ipsec.ierrors != 0)
 				ret = TEST_FAILED;
+		}
+
+		if (ret == TEST_FAILED && retries < TEST_STATS_RETRIES) {
+			retries++;
+			rte_delay_ms(1);
+			goto stats_get;
 		}
 	}
 

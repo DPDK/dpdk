@@ -1,8 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-.. _Multi-process_Support:
-
 Multi-process Support
 =====================
 
@@ -129,7 +127,7 @@ allocate more memory than they need. However if ``--legacy-mem`` is used, DPDK
 will attempt to preallocate all memory it can get to, and memory use must be
 explicitly limited. This is done by passing the ``-m`` flag to each process to
 specify how much hugepage memory, in megabytes, each process can use (or passing
-``--socket-mem`` to specify how much hugepage memory on each socket each process
+``--numa-mem`` to specify how much hugepage memory on each socket each process
 can use).
 
 .. note::
@@ -168,7 +166,7 @@ Some of these are documented below:
     so it is recommended that it be disabled only when absolutely necessary,
     and only when the implications of this change have been understood.
 
-*   All DPDK processes running as a single application and using shared memory must have distinct coremask/corelist arguments.
+*   All DPDK processes running as a single application and using shared memory must have distinct corelist arguments.
     It is not possible to have a primary and secondary instance, or two secondary instances,
     using any of the same logical cores.
     Attempting to do so can cause corruption of memory pool caches, among other issues.

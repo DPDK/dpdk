@@ -22,6 +22,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 		struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
+	uint16_t data_len;
 	uint64_t dma_addr;
 	uint16_t avail = 0;
 	struct rte_mbuf *mb;
@@ -38,7 +39,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 		 * DPDK just checks the queue is lower than max queues
 		 * enabled. But the queue needs to be configured.
 		 */
-		PMD_RX_LOG(ERR, "RX Bad queue");
+		PMD_RX_LOG(ERR, "RX Bad queue.");
 		return 0;
 	}
 
@@ -46,7 +47,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 	while (avail < nb_pkts) {
 		rxb = &rxq->rxbufs[rxq->rd_p];
 		if (unlikely(rxb == NULL)) {
-			PMD_RX_LOG(ERR, "rxb does not exist!");
+			PMD_RX_LOG(ERR, "The rxb does not exist!");
 			break;
 		}
 
@@ -66,7 +67,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 		 */
 		new_mb = rte_pktmbuf_alloc(rxq->mem_pool);
 		if (unlikely(new_mb == NULL)) {
-			PMD_RX_LOG(ERR, "RX mbuf alloc failed port_id=%u queue_id=%hu",
+			PMD_RX_LOG(ERR, "RX mbuf alloc failed port_id=%u queue_id=%hu.",
 					rxq->port_id, rxq->qidx);
 			nfp_net_mbuf_alloc_failed(rxq);
 			break;
@@ -78,9 +79,10 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 		 */
 		mb = rxb->mbuf;
 		rxb->mbuf = new_mb;
+		data_len = rte_le_to_cpu_16(rxds->rxd.data_len);
 
 		/* Size of this segment */
-		mb->data_len = rxds->rxd.data_len - NFP_DESC_META_LEN(rxds);
+		mb->data_len = data_len - NFP_DESC_META_LEN(rxds);
 		/* Size of the whole packet. We just support 1 segment */
 		mb->pkt_len = mb->data_len;
 
@@ -90,7 +92,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 			 * responsibility of avoiding it. But we have
 			 * to give some info about the error.
 			 */
-			PMD_RX_LOG(ERR, "mbuf overflow likely due to the RX offset.");
+			PMD_RX_LOG(ERR, "The mbuf overflow likely due to the RX offset.");
 			rte_pktmbuf_free(mb);
 			break;
 		}
@@ -111,10 +113,10 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 		/* Now resetting and updating the descriptor */
 		rxds->vals[0] = 0;
 		rxds->vals[1] = 0;
-		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(new_mb));
+		dma_addr = rte_mbuf_data_iova_default(new_mb);
 		rxds->fld.dd = 0;
-		rxds->fld.dma_addr_hi = (dma_addr >> 32) & 0xffff;
-		rxds->fld.dma_addr_lo = dma_addr & 0xffffffff;
+		rxds->fld.dma_addr_hi = rte_cpu_to_le_16((dma_addr >> 32) & 0xffff);
+		rxds->fld.dma_addr_lo = rte_cpu_to_le_32(dma_addr & 0xffffffff);
 		nb_hold++;
 
 		rxq->rd_p++;
@@ -133,7 +135,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 	 */
 	rte_wmb();
 	if (nb_hold >= rxq->rx_free_thresh) {
-		PMD_RX_LOG(DEBUG, "port=%hu queue=%hu nb_hold=%hu avail=%hu",
+		PMD_RX_LOG(DEBUG, "The port=%hu queue=%hu nb_hold=%hu avail=%hu.",
 				rxq->port_id, rxq->qidx, nb_hold, avail);
 		nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, nb_hold);
 		nb_hold = 0;
@@ -153,12 +155,10 @@ nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 	uint32_t free_descs;
 	struct rte_mbuf **lmbuf;
 	struct nfp_net_txq *txq;
-	struct nfp_net_hw *ctrl_hw;
 	struct rte_eth_dev *ctrl_dev;
 	struct nfp_net_nfd3_tx_desc *txds;
 
-	ctrl_hw = app_fw_flower->ctrl_hw;
-	ctrl_dev = ctrl_hw->eth_dev;
+	ctrl_dev = app_fw_flower->ctrl_ethdev;
 
 	/* Flower ctrl vNIC only has a single tx queue */
 	txq = ctrl_dev->data->tx_queues[0];
@@ -167,7 +167,7 @@ nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 		 * DPDK just checks the queue is lower than max queues
 		 * enabled. But the queue needs to be configured.
 		 */
-		PMD_TX_LOG(ERR, "ctrl dev TX Bad queue");
+		PMD_TX_LOG(ERR, "Ctrl dev TX Bad queue.");
 		goto xmit_end;
 	}
 
@@ -182,7 +182,7 @@ nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 
 	free_descs = nfp_net_nfd3_free_tx_desc(txq);
 	if (unlikely(free_descs == 0)) {
-		PMD_TX_LOG(ERR, "ctrl dev no free descs");
+		PMD_TX_LOG(ERR, "Ctrl dev no free descs.");
 		goto xmit_end;
 	}
 
@@ -194,10 +194,10 @@ nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 	*lmbuf = mbuf;
 	dma_addr = rte_mbuf_data_iova(mbuf);
 
-	txds->data_len = mbuf->pkt_len;
+	txds->data_len = rte_cpu_to_le_16(mbuf->pkt_len);
 	txds->dma_len = txds->data_len;
 	txds->dma_addr_hi = (dma_addr >> 32) & 0xff;
-	txds->dma_addr_lo = (dma_addr & 0xffffffff);
+	txds->dma_addr_lo = rte_cpu_to_le_32(dma_addr & 0xffffffff);
 	txds->offset_eop = FLOWER_PKT_DATA_OFFSET | NFD3_DESC_TX_EOP;
 
 	txq->wr_p++;
@@ -232,13 +232,13 @@ nfp_flower_ctrl_vnic_nfdk_xmit(struct nfp_app_fw_flower *app_fw_flower,
 	struct rte_eth_dev *ctrl_dev;
 	struct nfp_net_nfdk_tx_desc *ktxds;
 
-	ctrl_dev = app_fw_flower->ctrl_hw->eth_dev;
+	ctrl_dev = app_fw_flower->ctrl_ethdev;
 
 	/* Flower ctrl vNIC only has a single tx queue */
 	txq = ctrl_dev->data->tx_queues[0];
 
 	if (unlikely(mbuf->nb_segs > 1)) {
-		PMD_TX_LOG(ERR, "Multisegment packet not supported");
+		PMD_TX_LOG(ERR, "Multisegment packet not supported.");
 		return 0;
 	}
 
@@ -248,7 +248,7 @@ nfp_flower_ctrl_vnic_nfdk_xmit(struct nfp_app_fw_flower *app_fw_flower,
 
 	free_descs = nfp_net_nfdk_free_tx_desc(txq);
 	if (unlikely(free_descs < NFDK_TX_DESC_PER_SIMPLE_PKT)) {
-		PMD_TX_LOG(ERR, "ctrl dev no free descs");
+		PMD_TX_LOG(ERR, "Ctrl dev no free descs.");
 		return 0;
 	}
 
@@ -325,7 +325,7 @@ nfp_flower_ctrl_vnic_nfdk_xmit(struct nfp_app_fw_flower *app_fw_flower,
 	used_descs = ktxds - txq->ktxds - txq->wr_p;
 	if (RTE_ALIGN_FLOOR(txq->wr_p, NFDK_TX_DESC_BLOCK_CNT) !=
 			RTE_ALIGN_FLOOR(txq->wr_p + used_descs - 1, NFDK_TX_DESC_BLOCK_CNT)) {
-		PMD_TX_LOG(INFO, "Used descs cross block boundary");
+		PMD_TX_LOG(INFO, "Used descs cross block boundary.");
 		return 0;
 	}
 
@@ -345,15 +345,15 @@ nfp_flower_ctrl_vnic_nfdk_xmit(struct nfp_app_fw_flower *app_fw_flower,
 }
 
 void
-nfp_flower_ctrl_vnic_xmit_register(struct nfp_app_fw_flower *app_fw_flower)
+nfp_flower_ctrl_vnic_xmit_register(struct nfp_pf_dev *pf_dev)
 {
-	struct nfp_net_hw *hw;
 	struct nfp_flower_nfd_func *nfd_func;
+	struct nfp_app_fw_flower *app_fw_flower;
 
-	hw = app_fw_flower->pf_hw;
+	app_fw_flower = pf_dev->app_fw_priv;
 	nfd_func = &app_fw_flower->nfd_func;
 
-	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
+	if (pf_dev->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
 		nfd_func->ctrl_vnic_xmit_t = nfp_flower_ctrl_vnic_nfd3_xmit;
 	else
 		nfd_func->ctrl_vnic_xmit_t = nfp_flower_ctrl_vnic_nfdk_xmit;
@@ -417,43 +417,71 @@ nfp_flower_cmsg_rx_qos_stats(struct nfp_mtr_priv *mtr_priv,
 }
 
 static int
-nfp_flower_cmsg_port_mod_rx(struct nfp_app_fw_flower *app_fw_flower,
+nfp_flower_cmsg_port_mod_rx(struct nfp_net_hw_priv *hw_priv,
 		struct rte_mbuf *pkt_burst)
 {
 	uint32_t port;
+	uint32_t index;
+	uint16_t link_status;
+	struct rte_eth_dev *eth_dev;
 	struct nfp_flower_representor *repr;
 	struct nfp_flower_cmsg_port_mod *msg;
+	struct nfp_app_fw_flower *app_fw_flower;
 
+	app_fw_flower = hw_priv->pf_dev->app_fw_priv;
 	msg = rte_pktmbuf_mtod_offset(pkt_burst, struct nfp_flower_cmsg_port_mod *,
 			NFP_FLOWER_CMSG_HLEN);
 	port = rte_be_to_cpu_32(msg->portnum);
 
 	switch (NFP_FLOWER_CMSG_PORT_TYPE(port)) {
 	case NFP_FLOWER_CMSG_PORT_TYPE_PHYS_PORT:
-		repr = app_fw_flower->phy_reprs[NFP_FLOWER_CMSG_PORT_PHYS_PORT_NUM(port)];
+		index = NFP_FLOWER_CMSG_PORT_PHYS_PORT_NUM(port);
+		repr = app_fw_flower->phy_reprs[index];
 		break;
 	case NFP_FLOWER_CMSG_PORT_TYPE_PCIE_PORT:
-		if (NFP_FLOWER_CMSG_PORT_VNIC_TYPE(port) == NFP_FLOWER_CMSG_PORT_VNIC_TYPE_VF)
-			repr =  app_fw_flower->vf_reprs[NFP_FLOWER_CMSG_PORT_VNIC(port)];
-		else
+		index = NFP_FLOWER_CMSG_PORT_VNIC_OFFSET(port, hw_priv->pf_dev->vf_base_id);
+		if (NFP_FLOWER_CMSG_PORT_VNIC_TYPE(port) == NFP_FLOWER_CMSG_PORT_VNIC_TYPE_VF) {
+			repr = app_fw_flower->vf_reprs[index];
+		} else {
+			if (hw_priv->pf_dev->multi_pf.enabled)
+				return 0;
+
 			repr = app_fw_flower->pf_repr;
+		}
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "ctrl msg for unknown port %#x", port);
+		PMD_DRV_LOG(ERR, "Ctrl msg for unknown port %#x.", port);
+		return -EINVAL;
+	}
+
+	if (repr == NULL) {
+		PMD_DRV_LOG(ERR, "Can not get 'repr' for port %#x.", port);
 		return -EINVAL;
 	}
 
 	repr->link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+
+	link_status = repr->link.link_status;
 	if ((msg->info & NFP_FLOWER_CMSG_PORT_MOD_INFO_LINK) != 0)
 		repr->link.link_status = RTE_ETH_LINK_UP;
 	else
 		repr->link.link_status = RTE_ETH_LINK_DOWN;
 
+	if (link_status != repr->link.link_status) {
+		eth_dev = rte_eth_dev_get_by_name(repr->name);
+		if (eth_dev == NULL) {
+			PMD_DRV_LOG(ERR, "Can not get 'eth_dev' by name %s.", repr->name);
+			return -EINVAL;
+		}
+
+		nfp_flower_repr_link_update(eth_dev, 0);
+	}
+
 	return 0;
 }
 
 static void
-nfp_flower_cmsg_rx(struct nfp_app_fw_flower *app_fw_flower,
+nfp_flower_cmsg_rx(struct nfp_net_hw_priv *hw_priv,
 		struct rte_mbuf **pkts_burst,
 		uint16_t count)
 {
@@ -464,7 +492,9 @@ nfp_flower_cmsg_rx(struct nfp_app_fw_flower *app_fw_flower,
 	struct nfp_mtr_priv *mtr_priv;
 	struct nfp_flow_priv *flow_priv;
 	struct nfp_flower_cmsg_hdr *cmsg_hdr;
+	struct nfp_app_fw_flower *app_fw_flower;
 
+	app_fw_flower = hw_priv->pf_dev->app_fw_priv;
 	mtr_priv = app_fw_flower->mtr_priv;
 	flow_priv = app_fw_flower->flow_priv;
 
@@ -496,7 +526,7 @@ nfp_flower_cmsg_rx(struct nfp_app_fw_flower *app_fw_flower,
 			nfp_flower_cmsg_rx_qos_stats(mtr_priv, pkts_burst[i]);
 		} else if (cmsg_hdr->type == NFP_FLOWER_CMSG_TYPE_PORT_MOD) {
 			/* Handle changes to port configuration/status */
-			nfp_flower_cmsg_port_mod_rx(app_fw_flower, pkts_burst[i]);
+			nfp_flower_cmsg_port_mod_rx(hw_priv, pkts_burst[i]);
 		}
 
 		rte_pktmbuf_free(pkts_burst[i]);
@@ -504,14 +534,16 @@ nfp_flower_cmsg_rx(struct nfp_app_fw_flower *app_fw_flower,
 }
 
 void
-nfp_flower_ctrl_vnic_process(struct nfp_app_fw_flower *app_fw_flower)
+nfp_flower_ctrl_vnic_process(struct nfp_net_hw_priv *hw_priv)
 {
 	uint16_t count;
 	struct nfp_net_rxq *rxq;
 	struct rte_eth_dev *ctrl_eth_dev;
+	struct nfp_app_fw_flower *app_fw_flower;
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 
-	ctrl_eth_dev = app_fw_flower->ctrl_hw->eth_dev;
+	app_fw_flower = hw_priv->pf_dev->app_fw_priv;
+	ctrl_eth_dev = app_fw_flower->ctrl_ethdev;
 
 	/* Ctrl vNIC only has a single Rx queue */
 	rxq = ctrl_eth_dev->data->rx_queues[0];
@@ -519,6 +551,6 @@ nfp_flower_ctrl_vnic_process(struct nfp_app_fw_flower *app_fw_flower)
 	if (count != 0) {
 		app_fw_flower->ctrl_vnic_rx_count += count;
 		/* Process cmsgs here */
-		nfp_flower_cmsg_rx(app_fw_flower, pkts_burst, count);
+		nfp_flower_cmsg_rx(hw_priv, pkts_burst, count);
 	}
 }

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2022 University of New Hampshire
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
+# Copyright(c) 2025 Arm Limited
 
 """NIC port model.
 
@@ -8,86 +9,144 @@ Basic port information, such as location (the port are identified by their PCI a
 drivers and address.
 """
 
+from functools import cached_property
+from typing import TYPE_CHECKING, Any, Final, Literal, NamedTuple
 
-from dataclasses import dataclass
+from framework.config.node import PortConfig
+from framework.exception import InternalError
 
-from framework.config import PortConfig
+if TYPE_CHECKING:
+    from .node import Node
+
+DriverKind = Literal["kernel", "dpdk"]
+"""The driver kind."""
 
 
-@dataclass(slots=True, frozen=True)
-class PortIdentifier:
-    """The port identifier.
+class PortInfo(NamedTuple):
+    """Port information.
 
     Attributes:
-        node: The node where the port resides.
-        pci: The PCI address of the port on `node`.
+        mac_address: The MAC address of the port.
+        logical_name: The logical name of the port.
+        driver: The name of the port's driver.
     """
 
-    node: str
-    pci: str
+    mac_address: str
+    logical_name: str
+    driver: str
+    is_link_up: bool
 
 
-@dataclass(slots=True)
 class Port:
     """Physical port on a node.
 
-    The ports are identified by the node they're on and their PCI addresses. The port on the other
-    side of the connection is also captured here.
-    Each port is serviced by a driver, which may be different for the operating system (`os_driver`)
-    and for DPDK (`os_driver_for_dpdk`). For some devices, they are the same, e.g.: ``mlx5_core``.
-
     Attributes:
-        identifier: The PCI address of the port on a node.
-        os_driver: The operating system driver name when the operating system controls the port,
-            e.g.: ``i40e``.
-        os_driver_for_dpdk: The operating system driver name for use with DPDK, e.g.: ``vfio-pci``.
-        peer: The identifier of a port this port is connected with.
-            The `peer` is on a different node.
-        mac_address: The MAC address of the port.
-        logical_name: The logical name of the port. Must be discovered.
+        node: The port's node.
+        config: The port's configuration.
     """
 
-    identifier: PortIdentifier
-    os_driver: str
-    os_driver_for_dpdk: str
-    peer: PortIdentifier
-    mac_address: str = ""
-    logical_name: str = ""
+    node: Final["Node"]
+    config: Final[PortConfig]
+    _original_driver: str | None
 
-    def __init__(self, node_name: str, config: PortConfig):
-        """Initialize the port from `node_name` and `config`.
+    def __init__(self, node: "Node", config: PortConfig) -> None:
+        """Initialize the port from `node` and `config`.
 
         Args:
-            node_name: The name of the port's node.
+            node: The port's node.
             config: The test run configuration of the port.
         """
-        self.identifier = PortIdentifier(
-            node=node_name,
-            pci=config.pci,
-        )
-        self.os_driver = config.os_driver
-        self.os_driver_for_dpdk = config.os_driver_for_dpdk
-        self.peer = PortIdentifier(node=config.peer_node, pci=config.peer_pci)
+        self.node = node
+        self.config = config
+        self._original_driver = None
+
+    def driver_by_kind(self, kind: DriverKind) -> str:
+        """Retrieve the driver name by kind.
+
+        Raises:
+            InternalError: If the given `kind` is invalid.
+        """
+        match kind:
+            case "dpdk":
+                return self.config.os_driver_for_dpdk
+            case "kernel":
+                return self.config.os_driver
+            case _:
+                msg = f"Invalid driver kind `{kind}` given."
+                raise InternalError(msg)
 
     @property
-    def node(self) -> str:
-        """The node where the port resides."""
-        return self.identifier.node
+    def name(self) -> str:
+        """The name of the port."""
+        return self.config.name
 
     @property
     def pci(self) -> str:
         """The PCI address of the port."""
-        return self.identifier.pci
+        return self.config.pci
 
+    @property
+    def info(self) -> PortInfo:
+        """The port's current system information.
 
-@dataclass(slots=True, frozen=True)
-class PortLink:
-    """The physical, cabled connection between the ports.
+        When this is accessed for the first time, the port's original driver is stored.
+        """
+        info = self.node.main_session.get_port_info(self.pci)
 
-    Attributes:
-        sut_port: The port on the SUT node connected to `tg_port`.
-        tg_port: The port on the TG node connected to `sut_port`.
-    """
+        if self._original_driver is None:
+            self._original_driver = info.driver
 
-    sut_port: Port
-    tg_port: Port
+        return info
+
+    @cached_property
+    def mac_address(self) -> str:
+        """The MAC address of the port."""
+        return self.info.mac_address
+
+    @cached_property
+    def logical_name(self) -> str:
+        """The logical name of the port."""
+        return self.info.logical_name
+
+    @property
+    def is_link_up(self) -> bool:
+        """Is the port link up?"""
+        return self.info.is_link_up
+
+    @property
+    def current_driver(self) -> str:
+        """The current driver of the port."""
+        return self.info.driver
+
+    @property
+    def original_driver(self) -> str | None:
+        """The original driver of the port prior to DTS startup."""
+        return self._original_driver
+
+    @property
+    def bound_for_dpdk(self) -> bool:
+        """Is the port bound to the driver for DPDK?"""
+        return self.current_driver == self.config.os_driver_for_dpdk
+
+    @property
+    def bound_for_kernel(self) -> bool:
+        """Is the port bound to the driver for the kernel?"""
+        return self.current_driver == self.config.os_driver
+
+    def configure_mtu(self, mtu: int) -> None:
+        """Configure the port's MTU value.
+
+        Args:
+            mtu: Desired MTU value.
+        """
+        return self.node.main_session.configure_port_mtu(mtu, self)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to a dictionary."""
+        return {
+            "node_name": self.node.name,
+            "name": self.name,
+            "pci": self.pci,
+            "mac_address": self.mac_address,
+            "logical_name": self.logical_name,
+        }

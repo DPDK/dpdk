@@ -36,6 +36,7 @@
 #include <rte_errno.h>
 #include <rte_ip.h>
 #include <rte_net.h>
+#include <rte_vect.h>
 
 #include "txgbe_logs.h"
 #include "base/txgbe.h"
@@ -73,19 +74,6 @@ static const u64 TXGBE_TX_OFFLOAD_MASK = (RTE_MBUF_F_TX_IP_CKSUM |
  */
 #define rte_txgbe_prefetch(p)   rte_prefetch0(p)
 
-static int
-txgbe_is_vf(struct rte_eth_dev *dev)
-{
-	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
-
-	switch (hw->mac.type) {
-	case txgbe_mac_raptor_vf:
-		return 1;
-	default:
-		return 0;
-	}
-}
-
 /*********************************************************************
  *
  *  TX functions
@@ -104,14 +92,29 @@ txgbe_tx_free_bufs(struct txgbe_tx_queue *txq)
 	int i, nb_free = 0;
 	struct rte_mbuf *m, *free[RTE_TXGBE_TX_MAX_FREE_BUF_SZ];
 
-	/* check DD bit on threshold descriptor */
-	status = txq->tx_ring[txq->tx_next_dd].dw3;
-	if (!(status & rte_cpu_to_le_32(TXGBE_TXD_DD))) {
-		if (txq->nb_tx_free >> 1 < txq->tx_free_thresh)
-			txgbe_set32_masked(txq->tdc_reg_addr,
-				TXGBE_TXCFG_FLUSH, TXGBE_TXCFG_FLUSH);
-		return 0;
+	if (txq->headwb_mem) {
+		uint16_t tx_last_dd = txq->nb_tx_desc +
+				      txq->tx_next_dd - txq->tx_free_thresh;
+		if (tx_last_dd >= txq->nb_tx_desc)
+			tx_last_dd -= txq->nb_tx_desc;
+
+		volatile uint16_t head = (uint16_t)*txq->headwb_mem;
+
+		if (txq->tx_next_dd > head && head > tx_last_dd)
+			return 0;
+		else if (tx_last_dd > txq->tx_next_dd &&
+				(head > tx_last_dd || head < txq->tx_next_dd))
+			return 0;
+	} else {
+		/* check DD bit on threshold descriptor */
+		status = txq->tx_ring[txq->tx_next_dd].dw3;
+		if (!(status & rte_cpu_to_le_32(TXGBE_TXD_DD))) {
+			if (txq->nb_tx_free >> 1 < txq->tx_free_thresh)
+				txgbe_set32_masked(txq->tdc_reg_addr,
+					TXGBE_TXCFG_FLUSH, TXGBE_TXCFG_FLUSH);
+			return 0;
 	}
+}
 
 	/*
 	 * first buffer to free from S/W ring is at index
@@ -159,6 +162,8 @@ tx4(volatile struct txgbe_tx_desc *txdp, struct rte_mbuf **pkts)
 	for (i = 0; i < 4; ++i, ++txdp, ++pkts) {
 		buf_dma_addr = rte_mbuf_data_iova(*pkts);
 		pkt_len = (*pkts)->data_len;
+		if (pkt_len < RTE_ETHER_HDR_LEN)
+			pkt_len = TXGBE_FRAME_SIZE_DFT;
 
 		/* write data to descriptor */
 		txdp->qw0 = rte_cpu_to_le_64(buf_dma_addr);
@@ -179,6 +184,8 @@ tx1(volatile struct txgbe_tx_desc *txdp, struct rte_mbuf **pkts)
 
 	buf_dma_addr = rte_mbuf_data_iova(*pkts);
 	pkt_len = (*pkts)->data_len;
+	if (pkt_len < RTE_ETHER_HDR_LEN)
+		pkt_len = TXGBE_FRAME_SIZE_DFT;
 
 	/* write data to descriptor */
 	txdp->qw0 = cpu_to_le64(buf_dma_addr);
@@ -308,6 +315,27 @@ txgbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 		nb_tx = (uint16_t)(nb_tx + ret);
 		nb_pkts = (uint16_t)(nb_pkts - ret);
 		if (ret < n)
+			break;
+	}
+
+	return nb_tx;
+}
+
+static uint16_t
+txgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+		    uint16_t nb_pkts)
+{
+	struct txgbe_tx_queue *txq = (struct txgbe_tx_queue *)tx_queue;
+	uint16_t nb_tx = 0;
+
+	while (nb_pkts) {
+		uint16_t ret, num;
+
+		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_free_thresh);
+		ret = txgbe_xmit_fixed_burst_vec(tx_queue, &tx_pkts[nb_tx], num);
+		nb_tx += ret;
+		nb_pkts -= ret;
+		if (ret < num)
 			break;
 	}
 
@@ -564,26 +592,17 @@ tx_desc_ol_flags_to_ptype(uint64_t oflags)
 	switch (oflags & RTE_MBUF_F_TX_TUNNEL_MASK) {
 	case RTE_MBUF_F_TX_TUNNEL_VXLAN:
 	case RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE:
-		ptype |= RTE_PTYPE_L2_ETHER |
-			 RTE_PTYPE_L3_IPV4 |
-			 RTE_PTYPE_TUNNEL_GRENAT;
+		ptype |= RTE_PTYPE_TUNNEL_GRENAT;
 		break;
 	case RTE_MBUF_F_TX_TUNNEL_GRE:
-		ptype |= RTE_PTYPE_L2_ETHER |
-			 RTE_PTYPE_L3_IPV4 |
-			 RTE_PTYPE_TUNNEL_GRE;
+		ptype |= RTE_PTYPE_TUNNEL_GRE;
 		break;
 	case RTE_MBUF_F_TX_TUNNEL_GENEVE:
-		ptype |= RTE_PTYPE_L2_ETHER |
-			 RTE_PTYPE_L3_IPV4 |
-			 RTE_PTYPE_TUNNEL_GENEVE;
-		ptype |= RTE_PTYPE_INNER_L2_ETHER;
+		ptype |= RTE_PTYPE_TUNNEL_GENEVE;
 		break;
 	case RTE_MBUF_F_TX_TUNNEL_IPIP:
 	case RTE_MBUF_F_TX_TUNNEL_IP:
-		ptype |= RTE_PTYPE_L2_ETHER |
-			 RTE_PTYPE_L3_IPV4 |
-			 RTE_PTYPE_TUNNEL_IP;
+		ptype |= RTE_PTYPE_TUNNEL_IP;
 		break;
 	}
 
@@ -624,17 +643,28 @@ txgbe_xmit_cleanup(struct txgbe_tx_queue *txq)
 	/* Check to make sure the last descriptor to clean is done */
 	desc_to_clean_to = sw_ring[desc_to_clean_to].last_id;
 	status = txr[desc_to_clean_to].dw3;
-	if (!(status & rte_cpu_to_le_32(TXGBE_TXD_DD))) {
-		PMD_TX_FREE_LOG(DEBUG,
-				"TX descriptor %4u is not done"
-				"(port=%d queue=%d)",
-				desc_to_clean_to,
-				txq->port_id, txq->queue_id);
-		if (txq->nb_tx_free >> 1 < txq->tx_free_thresh)
-			txgbe_set32_masked(txq->tdc_reg_addr,
-				TXGBE_TXCFG_FLUSH, TXGBE_TXCFG_FLUSH);
-		/* Failed to clean any descriptors, better luck next time */
-		return -(1);
+
+	if (txq->headwb_mem) {
+		u32 head = *txq->headwb_mem;
+
+		PMD_TX_FREE_LOG(DEBUG, "queue[%02d]: headwb_mem = %03d, desc_to_clean_to = %03d",
+				txq->reg_idx, head, desc_to_clean_to);
+		/* we have caught up to head, no work left to do */
+		if (desc_to_clean_to == head)
+			return -(1);
+	} else {
+		if (!(status & rte_cpu_to_le_32(TXGBE_TXD_DD))) {
+			PMD_TX_FREE_LOG(DEBUG,
+					"TX descriptor %4u is not done"
+					"(port=%d queue=%d)",
+					desc_to_clean_to,
+					txq->port_id, txq->queue_id);
+			if (txq->nb_tx_free >> 1 < txq->tx_free_thresh)
+				txgbe_set32_masked(txq->tdc_reg_addr,
+					TXGBE_TXCFG_FLUSH, TXGBE_TXCFG_FLUSH);
+			/* Failed to clean any descriptors, better luck next time */
+			return -(1);
+		}
 	}
 
 	/* Figure out how many descriptors will be cleaned */
@@ -667,11 +697,20 @@ txgbe_xmit_cleanup(struct txgbe_tx_queue *txq)
 	return 0;
 }
 
+#define GRE_CHECKSUM_PRESENT	0x8000
+#define GRE_KEY_PRESENT		0x2000
+#define GRE_SEQUENCE_PRESENT	0x1000
+#define GRE_EXT_LEN		4
+#define GRE_SUPPORTED_FIELDS	(GRE_CHECKSUM_PRESENT | GRE_KEY_PRESENT |\
+				 GRE_SEQUENCE_PRESENT)
+
 static inline uint8_t
 txgbe_get_tun_len(struct rte_mbuf *mbuf)
 {
 	struct txgbe_genevehdr genevehdr;
 	const struct txgbe_genevehdr *gh;
+	const struct txgbe_grehdr *grh;
+	struct txgbe_grehdr grehdr;
 	uint8_t tun_len;
 
 	switch (mbuf->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
@@ -684,11 +723,16 @@ txgbe_get_tun_len(struct rte_mbuf *mbuf)
 			+ sizeof(struct txgbe_vxlanhdr);
 		break;
 	case RTE_MBUF_F_TX_TUNNEL_GRE:
-		tun_len = sizeof(struct txgbe_nvgrehdr);
+		tun_len = sizeof(struct txgbe_grehdr);
+		grh = rte_pktmbuf_read(mbuf,
+			mbuf->outer_l2_len + mbuf->outer_l3_len,
+			sizeof(grehdr), &grehdr);
+		if (grh->flags & rte_cpu_to_be_16(GRE_SUPPORTED_FIELDS))
+			tun_len += GRE_EXT_LEN;
 		break;
 	case RTE_MBUF_F_TX_TUNNEL_GENEVE:
-		gh = rte_pktmbuf_read(mbuf,
-			mbuf->outer_l2_len + mbuf->outer_l3_len,
+		gh = rte_pktmbuf_read(mbuf, mbuf->outer_l2_len +
+			mbuf->outer_l3_len + sizeof(struct txgbe_udphdr),
 			sizeof(genevehdr), &genevehdr);
 		tun_len = sizeof(struct txgbe_udphdr)
 			+ sizeof(struct txgbe_genevehdr)
@@ -701,30 +745,113 @@ txgbe_get_tun_len(struct rte_mbuf *mbuf)
 	return tun_len;
 }
 
-static inline uint8_t
-txgbe_parse_tun_ptid(struct rte_mbuf *tx_pkt)
+static inline void
+txgbe_fix_offload_len(union txgbe_tx_offload *ol)
 {
-	uint64_t l2_vxlan, l2_vxlan_mac, l2_vxlan_mac_vlan;
-	uint64_t l2_gre, l2_gre_mac, l2_gre_mac_vlan;
+	uint8_t ptid = ol->ptid;
+
+	if (ptid & TXGBE_PTID_PKT_TUN) {
+		if (ol->outer_l2_len == 0)
+			ol->outer_l2_len = sizeof(struct rte_ether_hdr);
+		if (ol->outer_l3_len == 0) {
+			if (ptid & TXGBE_PTID_TUN_IPV6)
+				ol->outer_l3_len = sizeof(struct rte_ipv6_hdr);
+			else
+				ol->outer_l3_len = sizeof(struct rte_ipv4_hdr);
+		}
+		if ((ptid & 0xF) == 0) {
+			ol->l3_len = 0;
+			ol->l4_len = 0;
+		} else {
+			goto inner;
+		}
+	}
+
+	if ((ptid & 0xF0) == TXGBE_PTID_PKT_MAC) {
+		if (ol->l2_len == 0)
+			ol->l2_len = sizeof(struct rte_ether_hdr);
+		ol->l3_len = 0;
+		ol->l4_len = 0;
+	} else if ((ptid & 0xF0) == TXGBE_PTID_PKT_IP) {
+		if (ol->l2_len == 0)
+			ol->l2_len = sizeof(struct rte_ether_hdr);
+inner:
+		if (ol->l3_len == 0) {
+			if (ptid & TXGBE_PTID_PKT_IPV6)
+				ol->l3_len = sizeof(struct rte_ipv6_hdr);
+			else
+				ol->l3_len = sizeof(struct rte_ipv4_hdr);
+		}
+		switch (ptid & 0x7) {
+		case 0x1:
+		case 0x2:
+			ol->l4_len = 0;
+			break;
+		case 0x3:
+			if (ol->l4_len == 0)
+				ol->l4_len =  sizeof(struct rte_udp_hdr);
+			break;
+		case 0x4:
+			if (ol->l4_len == 0)
+				ol->l4_len =  sizeof(struct rte_tcp_hdr);
+			break;
+		case 0x5:
+			if (ol->l4_len == 0)
+				ol->l4_len =  sizeof(struct rte_sctp_hdr);
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+static inline uint8_t
+txgbe_parse_tun_ptid(struct rte_mbuf *tx_pkt, uint8_t tun_len)
+{
+	uint64_t inner_l2_len;
 	uint8_t ptid = 0;
 
-	l2_vxlan = sizeof(struct txgbe_udphdr) + sizeof(struct txgbe_vxlanhdr);
-	l2_vxlan_mac = l2_vxlan + sizeof(struct rte_ether_hdr);
-	l2_vxlan_mac_vlan = l2_vxlan_mac + sizeof(struct rte_vlan_hdr);
+	inner_l2_len = tx_pkt->l2_len - tun_len;
 
-	l2_gre = sizeof(struct txgbe_grehdr);
-	l2_gre_mac = l2_gre + sizeof(struct rte_ether_hdr);
-	l2_gre_mac_vlan = l2_gre_mac + sizeof(struct rte_vlan_hdr);
-
-	if (tx_pkt->l2_len == l2_vxlan || tx_pkt->l2_len == l2_gre)
+	switch (inner_l2_len) {
+	case 0:
 		ptid = TXGBE_PTID_TUN_EIG;
-	else if (tx_pkt->l2_len == l2_vxlan_mac || tx_pkt->l2_len == l2_gre_mac)
+		break;
+	case sizeof(struct rte_ether_hdr):
 		ptid = TXGBE_PTID_TUN_EIGM;
-	else if (tx_pkt->l2_len == l2_vxlan_mac_vlan ||
-			tx_pkt->l2_len == l2_gre_mac_vlan)
+		break;
+	case sizeof(struct rte_ether_hdr) + sizeof(struct rte_vlan_hdr):
 		ptid = TXGBE_PTID_TUN_EIGMV;
+		break;
+	default:
+		ptid = TXGBE_PTID_TUN_EI;
+	}
 
 	return ptid;
+}
+
+static inline bool
+txgbe_check_pkt_err(struct rte_mbuf *tx_pkt)
+{
+	uint32_t total_len = 0, nb_seg = 0;
+	struct rte_mbuf *mseg;
+
+	mseg = tx_pkt;
+	do {
+		if (mseg->data_len == 0)
+			return true;
+		total_len += mseg->data_len;
+		nb_seg++;
+		mseg = mseg->next;
+	} while (mseg != NULL);
+
+	if (tx_pkt->pkt_len != total_len || tx_pkt->pkt_len == 0)
+		return true;
+
+	if (tx_pkt->nb_segs != nb_seg || tx_pkt->nb_segs > 64)
+		return true;
+
+	return false;
 }
 
 uint16_t
@@ -756,9 +883,12 @@ txgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint8_t use_ipsec;
 #endif
 
+	txq = tx_queue;
+	if (txq->resetting)
+		return 0;
+
 	tx_offload.data[0] = 0;
 	tx_offload.data[1] = 0;
-	txq = tx_queue;
 	sw_ring = txq->sw_ring;
 	txr     = txq->tx_ring;
 	tx_id   = txq->tx_tail;
@@ -774,6 +904,12 @@ txgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
 		new_ctx = 0;
 		tx_pkt = *tx_pkts++;
+		if (txgbe_check_pkt_err(tx_pkt)) {
+			rte_pktmbuf_free(tx_pkt);
+			txq->desc_error++;
+			continue;
+		}
+
 		pkt_len = tx_pkt->pkt_len;
 
 		/*
@@ -789,8 +925,6 @@ txgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_ol_req = ol_flags & TXGBE_TX_OFFLOAD_MASK;
 		if (tx_ol_req) {
 			tx_offload.ptid = tx_desc_ol_flags_to_ptid(tx_ol_req);
-			if (tx_offload.ptid & TXGBE_PTID_PKT_TUN)
-				tx_offload.ptid |= txgbe_parse_tun_ptid(tx_pkt);
 			tx_offload.l2_len = tx_pkt->l2_len;
 			tx_offload.l3_len = tx_pkt->l3_len;
 			tx_offload.l4_len = tx_pkt->l4_len;
@@ -799,6 +933,10 @@ txgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			tx_offload.outer_l2_len = tx_pkt->outer_l2_len;
 			tx_offload.outer_l3_len = tx_pkt->outer_l3_len;
 			tx_offload.outer_tun_len = txgbe_get_tun_len(tx_pkt);
+			if (tx_offload.ptid & TXGBE_PTID_PKT_TUN)
+				tx_offload.ptid |= txgbe_parse_tun_ptid(tx_pkt,
+							tx_offload.outer_tun_len);
+			txgbe_fix_offload_len(&tx_offload);
 
 #ifdef RTE_LIB_SECURITY
 			if (use_ipsec) {
@@ -1107,7 +1245,7 @@ txgbe_rxd_pkt_info_to_pkt_type(uint32_t pkt_info, uint16_t ptid_mask)
 static inline uint64_t
 txgbe_rxd_pkt_info_to_pkt_flags(uint32_t pkt_info)
 {
-	static uint64_t ip_rss_types_map[16] __rte_cache_aligned = {
+	static alignas(RTE_CACHE_LINE_SIZE) uint64_t ip_rss_types_map[16] = {
 		0, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
 		0, RTE_MBUF_F_RX_RSS_HASH, 0, RTE_MBUF_F_RX_RSS_HASH,
 		RTE_MBUF_F_RX_RSS_HASH, 0, 0, 0,
@@ -1151,7 +1289,7 @@ rx_desc_status_to_pkt_flags(uint32_t rx_status, uint64_t vlan_flags)
 }
 
 static inline uint64_t
-rx_desc_error_to_pkt_flags(uint32_t rx_status)
+rx_desc_error_to_pkt_flags(uint32_t rx_status, struct txgbe_rx_queue *rxq)
 {
 	uint64_t pkt_flags = 0;
 
@@ -1159,16 +1297,19 @@ rx_desc_error_to_pkt_flags(uint32_t rx_status)
 	if (rx_status & TXGBE_RXD_STAT_IPCS) {
 		pkt_flags |= (rx_status & TXGBE_RXD_ERR_IPCS
 				? RTE_MBUF_F_RX_IP_CKSUM_BAD : RTE_MBUF_F_RX_IP_CKSUM_GOOD);
+		rxq->csum_err += !!(rx_status & TXGBE_RXD_ERR_IPCS);
 	}
 
 	if (rx_status & TXGBE_RXD_STAT_L4CS) {
 		pkt_flags |= (rx_status & TXGBE_RXD_ERR_L4CS
 				? RTE_MBUF_F_RX_L4_CKSUM_BAD : RTE_MBUF_F_RX_L4_CKSUM_GOOD);
+		rxq->csum_err += !!(rx_status & TXGBE_RXD_ERR_L4CS);
 	}
 
 	if (rx_status & TXGBE_RXD_STAT_EIPCS &&
 	    rx_status & TXGBE_RXD_ERR_EIPCS) {
 		pkt_flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
+		rxq->csum_err += !!(rx_status & TXGBE_RXD_ERR_EIPCS);
 	}
 
 #ifdef RTE_LIB_SECURITY
@@ -1250,7 +1391,7 @@ txgbe_rx_scan_hw_ring(struct txgbe_rx_queue *rxq)
 			/* convert descriptor fields to rte mbuf flags */
 			pkt_flags = rx_desc_status_to_pkt_flags(s[j],
 					rxq->vlan_flags);
-			pkt_flags |= rx_desc_error_to_pkt_flags(s[j]);
+			pkt_flags |= rx_desc_error_to_pkt_flags(s[j], rxq);
 			pkt_flags |=
 				txgbe_rxd_pkt_info_to_pkt_flags(pkt_info[j]);
 			mb->ol_flags = pkt_flags;
@@ -1589,7 +1730,7 @@ txgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		pkt_flags = rx_desc_status_to_pkt_flags(staterr,
 					rxq->vlan_flags);
-		pkt_flags |= rx_desc_error_to_pkt_flags(staterr);
+		pkt_flags |= rx_desc_error_to_pkt_flags(staterr, rxq);
 		pkt_flags |= txgbe_rxd_pkt_info_to_pkt_flags(pkt_info);
 		rxm->ol_flags = pkt_flags;
 		rxm->packet_type = txgbe_rxd_pkt_info_to_pkt_type(pkt_info,
@@ -1665,8 +1806,10 @@ txgbe_fill_cluster_head_buf(struct rte_mbuf *head, struct txgbe_rx_desc *desc,
 	head->vlan_tci = rte_le_to_cpu_16(desc->qw1.hi.tag);
 	pkt_info = rte_le_to_cpu_32(desc->qw0.dw0);
 	pkt_flags = rx_desc_status_to_pkt_flags(staterr, rxq->vlan_flags);
-	pkt_flags |= rx_desc_error_to_pkt_flags(staterr);
+	pkt_flags |= rx_desc_error_to_pkt_flags(staterr, rxq);
 	pkt_flags |= txgbe_rxd_pkt_info_to_pkt_flags(pkt_info);
+	if (TXGBE_RXD_RSCCNT(desc->qw0.dw0))
+		pkt_flags |= RTE_MBUF_F_RX_LRO;
 	head->ol_flags = pkt_flags;
 	head->packet_type = txgbe_rxd_pkt_info_to_pkt_type(pkt_info,
 						rxq->pkt_type_mask);
@@ -1984,7 +2127,7 @@ txgbe_get_rx_port_offloads(struct rte_eth_dev *dev)
 		   RTE_ETH_RX_OFFLOAD_RSS_HASH |
 		   RTE_ETH_RX_OFFLOAD_SCATTER;
 
-	if (!txgbe_is_vf(dev))
+	if (!txgbe_is_vf(hw))
 		offloads |= (RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
 			     RTE_ETH_RX_OFFLOAD_QINQ_STRIP |
 			     RTE_ETH_RX_OFFLOAD_VLAN_EXTEND);
@@ -1993,10 +2136,10 @@ txgbe_get_rx_port_offloads(struct rte_eth_dev *dev)
 	 * RSC is only supported by PF devices in a non-SR-IOV
 	 * mode.
 	 */
-	if (hw->mac.type == txgbe_mac_raptor && !sriov->active)
+	if (txgbe_is_pf(hw) && !sriov->active)
 		offloads |= RTE_ETH_RX_OFFLOAD_TCP_LRO;
 
-	if (hw->mac.type == txgbe_mac_raptor)
+	if (txgbe_is_pf(hw))
 		offloads |= RTE_ETH_RX_OFFLOAD_MACSEC_STRIP;
 
 	offloads |= RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM;
@@ -2130,6 +2273,9 @@ txgbe_tx_queue_release(struct txgbe_tx_queue *txq)
 	if (txq != NULL && txq->ops != NULL) {
 		txq->ops->release_mbufs(txq);
 		txq->ops->free_swring(txq);
+		rte_memzone_free(txq->mz);
+		if (txq->headwb_mem)
+			rte_memzone_free(txq->headwb);
 		rte_free(txq);
 	}
 }
@@ -2198,8 +2344,16 @@ txgbe_set_tx_function(struct rte_eth_dev *dev, struct txgbe_tx_queue *txq)
 #endif
 			txq->tx_free_thresh >= RTE_PMD_TXGBE_TX_MAX_BURST) {
 		PMD_INIT_LOG(DEBUG, "Using simple tx code path");
-		dev->tx_pkt_burst = txgbe_xmit_pkts_simple;
-		dev->tx_pkt_prepare = NULL;
+		dev->tx_pkt_prepare = rte_eth_tx_pkt_prepare_dummy;
+		if (txq->tx_free_thresh <= RTE_TXGBE_TX_MAX_FREE_BUF_SZ &&
+				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128 &&
+				(rte_eal_process_type() != RTE_PROC_PRIMARY ||
+					txgbe_txq_vec_setup(txq) == 0)) {
+			PMD_INIT_LOG(DEBUG, "Vector tx enabled.");
+			dev->tx_pkt_burst = txgbe_xmit_pkts_vec;
+		} else {
+			dev->tx_pkt_burst = txgbe_xmit_pkts_simple;
+		}
 	} else {
 		PMD_INIT_LOG(DEBUG, "Using full-featured tx code path");
 		PMD_INIT_LOG(DEBUG,
@@ -2226,6 +2380,7 @@ uint64_t
 txgbe_get_tx_port_offloads(struct rte_eth_dev *dev)
 {
 	uint64_t tx_offload_capa;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 
 	tx_offload_capa =
 		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
@@ -2243,19 +2398,55 @@ txgbe_get_tx_port_offloads(struct rte_eth_dev *dev)
 		RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO	|
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
-	if (!txgbe_is_vf(dev))
+	if (!txgbe_is_vf(hw))
 		tx_offload_capa |= RTE_ETH_TX_OFFLOAD_QINQ_INSERT;
 
 	tx_offload_capa |= RTE_ETH_TX_OFFLOAD_MACSEC_INSERT;
 
-	tx_offload_capa |= RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-			   RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM;
+	tx_offload_capa |= RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 
 #ifdef RTE_LIB_SECURITY
 	if (dev->security_ctx)
 		tx_offload_capa |= RTE_ETH_TX_OFFLOAD_SECURITY;
 #endif
 	return tx_offload_capa;
+}
+
+static int
+txgbe_setup_headwb_resources(struct rte_eth_dev *dev,
+					void *tx_queue,
+					unsigned int socket_id)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	const struct rte_memzone *headwb;
+	struct txgbe_tx_queue *txq = tx_queue;
+	u8 i, headwb_size = 0;
+
+	if (hw->mac.type != txgbe_mac_aml && hw->mac.type != txgbe_mac_aml40) {
+		txq->headwb_mem = NULL;
+		return 0;
+	}
+
+	headwb_size = hw->devarg.tx_headwb_size;
+	headwb = rte_eth_dma_zone_reserve(dev, "tx_headwb_mem", txq->queue_id,
+			sizeof(u32) * headwb_size,
+			TXGBE_ALIGN, socket_id);
+
+	if (headwb == NULL) {
+		DEBUGOUT("Fail to setup headwb resources: no mem");
+		txgbe_tx_queue_release(txq);
+		return -ENOMEM;
+	}
+
+	txq->headwb = headwb;
+	txq->headwb_dma = TMZ_PADDR(headwb);
+	txq->headwb_mem = (uint32_t *)TMZ_VADDR(headwb);
+
+	/* Zero out headwb_mem memory */
+	for (i = 0; i < headwb_size; i++)
+		txq->headwb_mem[i] = 0;
+
+	return 0;
 }
 
 int __rte_cold
@@ -2270,6 +2461,7 @@ txgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	struct txgbe_hw     *hw;
 	uint16_t tx_free_thresh;
 	uint64_t offloads;
+	s32 err = 0;
 
 	PMD_INIT_FUNC_TRACE();
 	hw = TXGBE_DEV_HW(dev);
@@ -2328,19 +2520,16 @@ txgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	if (txq == NULL)
 		return -ENOMEM;
 
-	/*
-	 * Allocate TX ring hardware descriptors. A memzone large enough to
-	 * handle the maximum ring size is allocated in order to allow for
-	 * resizing in later calls to the queue setup function.
-	 */
+	/* Allocate TX ring hardware descriptors. */
 	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
-			sizeof(struct txgbe_tx_desc) * TXGBE_RING_DESC_MAX,
+			sizeof(struct txgbe_tx_desc) * nb_desc,
 			TXGBE_ALIGN, socket_id);
 	if (tz == NULL) {
 		txgbe_tx_queue_release(txq);
 		return -ENOMEM;
 	}
 
+	txq->mz = tz;
 	txq->nb_tx_desc = nb_desc;
 	txq->tx_free_thresh = tx_free_thresh;
 	txq->pthresh = tx_conf->tx_thresh.pthresh;
@@ -2361,7 +2550,7 @@ txgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	/* Modification to set tail pointer for virtual function
 	 * if vf is detected.
 	 */
-	if (hw->mac.type == txgbe_mac_raptor_vf) {
+	if (txgbe_is_vf(hw)) {
 		txq->tdt_reg_addr = TXGBE_REG_ADDR(hw, TXGBE_TXWP(queue_idx));
 		txq->tdc_reg_addr = TXGBE_REG_ADDR(hw, TXGBE_TXCFG(queue_idx));
 	} else {
@@ -2388,11 +2577,15 @@ txgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	/* set up scalar TX function as appropriate */
 	txgbe_set_tx_function(dev, txq);
 
+	if (hw->devarg.tx_headwb)
+		err = txgbe_setup_headwb_resources(dev, txq, socket_id);
+
 	txq->ops->reset(txq);
+	txq->desc_error = 0;
 
 	dev->data->tx_queues[queue_idx] = txq;
 
-	return 0;
+	return err;
 }
 
 /**
@@ -2424,6 +2617,12 @@ static void __rte_cold
 txgbe_rx_queue_release_mbufs(struct txgbe_rx_queue *rxq)
 {
 	unsigned int i;
+
+	/* SSE Vector driver has a different way of releasing mbufs. */
+	if (rxq->rx_using_sse) {
+		txgbe_rx_queue_release_mbufs_vec(rxq);
+		return;
+	}
 
 	if (rxq->sw_ring != NULL) {
 		for (i = 0; i < rxq->nb_rx_desc; i++) {
@@ -2458,6 +2657,7 @@ txgbe_rx_queue_release(struct txgbe_rx_queue *rxq)
 		txgbe_rx_queue_release_mbufs(rxq);
 		rte_free(rxq->sw_ring);
 		rte_free(rxq->sw_sc_ring);
+		rte_memzone_free(rxq->mz);
 		rte_free(rxq);
 	}
 }
@@ -2551,8 +2751,15 @@ txgbe_reset_rx_queue(struct txgbe_adapter *adapter, struct txgbe_rx_queue *rxq)
 	rxq->rx_free_trigger = (uint16_t)(rxq->rx_free_thresh - 1);
 	rxq->rx_tail = 0;
 	rxq->nb_rx_hold = 0;
+	rxq->csum_err = 0;
+	rte_pktmbuf_free(rxq->pkt_first_seg);
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
+
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
+	rxq->rxrearm_start = 0;
+	rxq->rxrearm_nb = 0;
+#endif
 }
 
 int __rte_cold
@@ -2569,6 +2776,7 @@ txgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	uint16_t len;
 	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
 	uint64_t offloads;
+	uint32_t size;
 
 	PMD_INIT_FUNC_TRACE();
 	hw = TXGBE_DEV_HW(dev);
@@ -2619,27 +2827,25 @@ txgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	 */
 	rxq->pkt_type_mask = TXGBE_PTID_MASK;
 
-	/*
-	 * Allocate RX ring hardware descriptors. A memzone large enough to
-	 * handle the maximum ring size is allocated in order to allow for
-	 * resizing in later calls to the queue setup function.
-	 */
+	/* Allocate RX ring hardware descriptors. */
+	size = (nb_desc + RTE_PMD_TXGBE_RX_MAX_BURST) * sizeof(struct txgbe_rx_desc);
 	rz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx,
-				      RX_RING_SZ, TXGBE_ALIGN, socket_id);
+				      size, TXGBE_ALIGN, socket_id);
 	if (rz == NULL) {
 		txgbe_rx_queue_release(rxq);
 		return -ENOMEM;
 	}
 
+	rxq->mz = rz;
 	/*
 	 * Zero init all the descriptors in the ring.
 	 */
-	memset(rz->addr, 0, RX_RING_SZ);
+	memset(rz->addr, 0, size);
 
 	/*
 	 * Modified to setup VFRDT for Virtual Function
 	 */
-	if (hw->mac.type == txgbe_mac_raptor_vf) {
+	if (txgbe_is_vf(hw)) {
 		rxq->rdt_reg_addr =
 			TXGBE_REG_ADDR(hw, TXGBE_RXWP(queue_idx));
 		rxq->rdh_reg_addr =
@@ -2706,6 +2912,16 @@ txgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		     rxq->sw_ring, rxq->sw_sc_ring, rxq->rx_ring,
 		     rxq->rx_ring_phys_addr);
 
+	if (!rte_is_power_of_2(nb_desc)) {
+		PMD_INIT_LOG(DEBUG, "queue[%d] doesn't meet Vector Rx "
+				    "preconditions - canceling the feature for "
+				    "the whole port[%d]",
+			     rxq->queue_id, rxq->port_id);
+		adapter->rx_vec_allowed = false;
+	} else {
+		txgbe_rxq_vec_setup(rxq);
+	}
+
 	dev->data->rx_queues[queue_idx] = rxq;
 
 	txgbe_reset_rx_queue(adapter, rxq);
@@ -2713,7 +2929,7 @@ txgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
-uint32_t
+int
 txgbe_dev_rx_queue_count(void *rx_queue)
 {
 #define TXGBE_RXQ_SCAN_INTERVAL 4
@@ -2747,7 +2963,12 @@ txgbe_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 	if (unlikely(offset >= rxq->nb_rx_desc))
 		return -EINVAL;
 
-	nb_hold = rxq->nb_rx_hold;
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
+	if (rxq->rx_using_sse)
+		nb_hold = rxq->rxrearm_nb;
+	else
+#endif
+		nb_hold = rxq->nb_rx_hold;
 	if (offset >= rxq->nb_rx_desc - nb_hold)
 		return RTE_ETH_RX_DESC_UNAVAIL;
 
@@ -2870,7 +3091,7 @@ txgbe_rss_disable(struct rte_eth_dev *dev)
 	struct txgbe_hw *hw;
 
 	hw = TXGBE_DEV_HW(dev);
-	if (hw->mac.type == txgbe_mac_raptor_vf)
+	if (txgbe_is_vf(hw))
 		wr32m(hw, TXGBE_VFPLCFG, TXGBE_VFPLCFG_RSSENA, 0);
 	else
 		wr32m(hw, TXGBE_RACTL, TXGBE_RACTL_RSSENA, 0);
@@ -2887,7 +3108,7 @@ txgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 	uint64_t rss_hf;
 	uint16_t i;
 
-	if (!txgbe_rss_update_sp(hw->mac.type)) {
+	if (!txgbe_rss_update(hw->mac.type)) {
 		PMD_DRV_LOG(ERR, "RSS hash update is not supported on this "
 			"NIC.");
 		return -ENOTSUP;
@@ -2907,7 +3128,7 @@ txgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 
 	/* Set configured hashing protocols */
 	rss_hf = rss_conf->rss_hf & TXGBE_RSS_OFFLOAD_ALL;
-	if (hw->mac.type == txgbe_mac_raptor_vf) {
+	if (txgbe_is_vf(hw)) {
 		mrqc = rd32(hw, TXGBE_VFPLCFG);
 		mrqc &= ~TXGBE_VFPLCFG_RSSMASK;
 		if (rss_hf & RTE_ETH_RSS_IPV4)
@@ -2925,6 +3146,10 @@ txgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 		if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP ||
 		    rss_hf & RTE_ETH_RSS_IPV6_UDP_EX)
 			mrqc |= TXGBE_VFPLCFG_RSSIPV6UDP;
+		if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_SCTP)
+			mrqc |= TXGBE_VFPLCFG_RSSIPV4SCTP;
+		if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
+			mrqc |= TXGBE_VFPLCFG_RSSIPV6SCTP;
 
 		if (rss_hf)
 			mrqc |= TXGBE_VFPLCFG_RSSENA;
@@ -2955,6 +3180,10 @@ txgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 		if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP ||
 		    rss_hf & RTE_ETH_RSS_IPV6_UDP_EX)
 			mrqc |= TXGBE_RACTL_RSSIPV6UDP;
+		if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_SCTP)
+			mrqc |= TXGBE_RACTL_RSSIPV4SCTP;
+		if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
+			mrqc |= TXGBE_RACTL_RSSIPV6SCTP;
 
 		if (rss_hf)
 			mrqc |= TXGBE_RACTL_RSSENA;
@@ -2991,7 +3220,7 @@ txgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	}
 
 	rss_hf = 0;
-	if (hw->mac.type == txgbe_mac_raptor_vf) {
+	if (txgbe_is_vf(hw)) {
 		mrqc = rd32(hw, TXGBE_VFPLCFG);
 		if (mrqc & TXGBE_VFPLCFG_RSSIPV4)
 			rss_hf |= RTE_ETH_RSS_IPV4;
@@ -3008,6 +3237,10 @@ txgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 		if (mrqc & TXGBE_VFPLCFG_RSSIPV6UDP)
 			rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP |
 				  RTE_ETH_RSS_IPV6_UDP_EX;
+		if (mrqc & TXGBE_VFPLCFG_RSSIPV4SCTP)
+			rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_SCTP;
+		if (mrqc & TXGBE_VFPLCFG_RSSIPV6SCTP)
+			rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_SCTP;
 		if (!(mrqc & TXGBE_VFPLCFG_RSSENA))
 			rss_hf = 0;
 	} else {
@@ -3027,6 +3260,10 @@ txgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 		if (mrqc & TXGBE_RACTL_RSSIPV6UDP)
 			rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP |
 				  RTE_ETH_RSS_IPV6_UDP_EX;
+		if (mrqc & TXGBE_RACTL_RSSIPV4SCTP)
+			rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_SCTP;
+		if (mrqc & TXGBE_RACTL_RSSIPV6SCTP)
+			rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_SCTP;
 		if (!(mrqc & TXGBE_RACTL_RSSENA))
 			rss_hf = 0;
 	}
@@ -3444,7 +3681,9 @@ txgbe_dcb_hw_arbite_tx_config(struct txgbe_hw *hw, uint16_t *refill,
 		uint16_t *max, uint8_t *bwg_id, uint8_t *tsa, uint8_t *map)
 {
 	switch (hw->mac.type) {
-	case txgbe_mac_raptor:
+	case txgbe_mac_sp:
+	case txgbe_mac_aml:
+	case txgbe_mac_aml40:
 		txgbe_dcb_config_tx_desc_arbiter_raptor(hw, refill,
 							max, bwg_id, tsa);
 		txgbe_dcb_config_tx_data_arbiter_raptor(hw, refill,
@@ -4216,8 +4455,22 @@ txgbe_set_rsc(struct rte_eth_dev *dev)
 void __rte_cold
 txgbe_set_rx_function(struct rte_eth_dev *dev)
 {
-	uint16_t i;
+	uint16_t i, rx_using_sse;
 	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
+
+	/*
+	 * In order to allow Vector Rx there are a few configuration
+	 * conditions to be met and Rx Bulk Allocation should be allowed.
+	 */
+	if (txgbe_rx_vec_dev_conf_condition_check(dev) ||
+	    !adapter->rx_bulk_alloc_allowed ||
+			rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_128) {
+		PMD_INIT_LOG(DEBUG, "Port[%d] doesn't meet Vector Rx "
+				    "preconditions",
+			     dev->data->port_id);
+
+		adapter->rx_vec_allowed = false;
+	}
 
 	/*
 	 * Initialize the appropriate LRO callback.
@@ -4241,7 +4494,12 @@ txgbe_set_rx_function(struct rte_eth_dev *dev)
 		 * Set the non-LRO scattered callback: there are bulk and
 		 * single allocation versions.
 		 */
-		if (adapter->rx_bulk_alloc_allowed) {
+		if (adapter->rx_vec_allowed) {
+			PMD_INIT_LOG(DEBUG, "Using Vector Scattered Rx "
+					    "callback (port=%d).",
+				     dev->data->port_id);
+			dev->rx_pkt_burst = txgbe_recv_scattered_pkts_vec;
+		} else if (adapter->rx_bulk_alloc_allowed) {
 			PMD_INIT_LOG(DEBUG, "Using a Scattered with bulk "
 					   "allocation callback (port=%d).",
 				     dev->data->port_id);
@@ -4259,9 +4517,16 @@ txgbe_set_rx_function(struct rte_eth_dev *dev)
 	 * Below we set "simple" callbacks according to port/queues parameters.
 	 * If parameters allow we are going to choose between the following
 	 * callbacks:
+	 *    - Vector
 	 *    - Bulk Allocation
 	 *    - Single buffer allocation (the simplest one)
 	 */
+	} else if (adapter->rx_vec_allowed) {
+		PMD_INIT_LOG(DEBUG, "Vector rx enabled, please make sure RX "
+				    "burst size no less than %d (port=%d).",
+			     RTE_TXGBE_DESCS_PER_LOOP,
+			     dev->data->port_id);
+		dev->rx_pkt_burst = txgbe_recv_pkts_vec;
 	} else if (adapter->rx_bulk_alloc_allowed) {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
 				    "satisfied. Rx Burst Bulk Alloc function "
@@ -4278,14 +4543,18 @@ txgbe_set_rx_function(struct rte_eth_dev *dev)
 		dev->rx_pkt_burst = txgbe_recv_pkts;
 	}
 
-#ifdef RTE_LIB_SECURITY
+	rx_using_sse = (dev->rx_pkt_burst == txgbe_recv_scattered_pkts_vec ||
+			dev->rx_pkt_burst == txgbe_recv_pkts_vec);
+
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct txgbe_rx_queue *rxq = dev->data->rx_queues[i];
 
+		rxq->rx_using_sse = rx_using_sse;
+#ifdef RTE_LIB_SECURITY
 		rxq->using_ipsec = !!(dev->data->dev_conf.rxmode.offloads &
 				RTE_ETH_RX_OFFLOAD_SECURITY);
-	}
 #endif
+	}
 }
 
 /*
@@ -4342,7 +4611,7 @@ txgbe_dev_rx_init(struct rte_eth_dev *dev)
 	 * If loopback mode is configured, set LPBK bit.
 	 */
 	hlreg0 = rd32(hw, TXGBE_PSRCTL);
-	if (hw->mac.type == txgbe_mac_raptor &&
+	if (txgbe_is_pf(hw) &&
 	    dev->data->dev_conf.lpbk_mode)
 		hlreg0 |= TXGBE_PSRCTL_LBENA;
 	else
@@ -4395,6 +4664,17 @@ txgbe_dev_rx_init(struct rte_eth_dev *dev)
 		buf_size = ROUND_DOWN(buf_size, 0x1 << 10);
 		srrctl |= TXGBE_RXCFG_PKTLEN(buf_size);
 
+		if ((hw->mac.type == txgbe_mac_aml ||
+		     hw->mac.type == txgbe_mac_aml40) && hw->devarg.rx_desc_merge == 1) {
+			srrctl |= TXGBE_RXCFG_DESC_MERGE;
+
+			wr32(hw, TXGBE_RDM_DCACHE_CTL, TXGBE_RDM_DCACHE_CTL_EN);
+			wr32m(hw, TXGBE_RDM_RSC_CTL, TXGBE_RDM_RSC_CTL_FREE_CTL,
+							 TXGBE_RDM_RSC_CTL_FREE_CTL);
+			wr32m(hw, TXGBE_RDM_RSC_CTL, TXGBE_RDM_RSC_CTL_FREE_CNT_DIS,
+							 ~TXGBE_RDM_RSC_CTL_FREE_CNT_DIS);
+		}
+
 		wr32(hw, TXGBE_RXCFG(rxq->reg_idx), srrctl);
 
 		/* It adds dual VLAN length for supporting dual VLAN */
@@ -4427,7 +4707,7 @@ txgbe_dev_rx_init(struct rte_eth_dev *dev)
 
 	wr32(hw, TXGBE_PSRCTL, rxcsum);
 
-	if (hw->mac.type == txgbe_mac_raptor) {
+	if (txgbe_is_pf(hw)) {
 		rdrxctl = rd32(hw, TXGBE_SECRXCTL);
 		if (rx_conf->offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 			rdrxctl &= ~TXGBE_SECRXCTL_CRCSTRIP;
@@ -4473,7 +4753,29 @@ txgbe_dev_tx_init(struct rte_eth_dev *dev)
 		/* Setup the HW Tx Head and TX Tail descriptor pointers */
 		wr32(hw, TXGBE_TXRP(txq->reg_idx), 0);
 		wr32(hw, TXGBE_TXWP(txq->reg_idx), 0);
+
+		if ((hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40) &&
+		     hw->devarg.tx_headwb) {
+			uint32_t txdctl;
+
+			wr32(hw, TXGBE_PX_TR_HEAD_ADDRL(txq->reg_idx),
+				(uint32_t)(txq->headwb_dma & BIT_MASK32));
+			wr32(hw, TXGBE_PX_TR_HEAD_ADDRH(txq->reg_idx),
+				(uint32_t)(txq->headwb_dma >> 32));
+			if (hw->devarg.tx_headwb_size == 16)
+				txdctl = TXGBE_PX_TR_CFG_HEAD_WB |
+					 TXGBE_PX_TR_CFG_HEAD_WB_64BYTE;
+			else
+				txdctl = TXGBE_PX_TR_CFG_HEAD_WB;
+			wr32m(hw, TXGBE_TXCFG(txq->reg_idx),
+				TXGBE_PX_TR_CFG_HEAD_WB_MASK, txdctl);
+		}
 	}
+
+#ifndef RTE_LIB_SECURITY
+	for (i = 0; i < 4; i++)
+		wr32(hw, TXGBE_TDM_DESC_CHK(i), 0xFFFFFFFF);
+#endif
 
 	/* Device configured with multiple TX queues. */
 	txgbe_dev_mq_tx_configure(dev);
@@ -4512,11 +4814,18 @@ txgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
 		/* Setup Transmit Threshold Registers */
-		wr32m(hw, TXGBE_TXCFG(txq->reg_idx),
-		      TXGBE_TXCFG_HTHRESH_MASK |
-		      TXGBE_TXCFG_WTHRESH_MASK,
-		      TXGBE_TXCFG_HTHRESH(txq->hthresh) |
-		      TXGBE_TXCFG_WTHRESH(txq->wthresh));
+		if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40)
+			wr32m(hw, TXGBE_TXCFG(txq->reg_idx),
+			      TXGBE_TXCFG_HTHRESH_MASK |
+			      TXGBE_TXCFG_WTHRESH_MASK_AML,
+			      TXGBE_TXCFG_HTHRESH(txq->hthresh) |
+			      TXGBE_TXCFG_WTHRESH_AML(txq->wthresh));
+		else
+			wr32m(hw, TXGBE_TXCFG(txq->reg_idx),
+			      TXGBE_TXCFG_HTHRESH_MASK |
+			      TXGBE_TXCFG_WTHRESH_MASK,
+			      TXGBE_TXCFG_HTHRESH(txq->hthresh) |
+			      TXGBE_TXCFG_WTHRESH(txq->wthresh));
 	}
 
 	dmatxctl = rd32(hw, TXGBE_DMATXCTRL);
@@ -4541,13 +4850,20 @@ txgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 		}
 	}
 
+	/* enable mac transmitter */
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40) {
+		wr32(hw, TXGBE_SECTXCTL, 0);
+		wr32m(hw, TXGBE_MACTXCFG,
+			  TXGBE_MACTXCFG_TXE, TXGBE_MACTXCFG_TXE);
+	}
+
 	/* Enable Receive engine */
 	rxctrl = rd32(hw, TXGBE_PBRXCTL);
 	rxctrl |= TXGBE_PBRXCTL_ENA;
 	hw->mac.enable_rx_dma(hw, rxctrl);
 
 	/* If loopback mode is enabled, set up the link accordingly */
-	if (hw->mac.type == txgbe_mac_raptor &&
+	if (txgbe_is_pf(hw) &&
 	    dev->data->dev_conf.lpbk_mode)
 		txgbe_setup_loopback_link_raptor(hw);
 
@@ -4711,6 +5027,7 @@ txgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	rte_wmb();
 	wr32(hw, TXGBE_TXWP(txq->reg_idx), txq->tx_tail);
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+	txq->resetting = false;
 
 	return 0;
 }
@@ -4766,6 +5083,39 @@ txgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
+}
+
+void
+txgbe_tx_queue_clear_error(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_tx_queue *txq;
+	u32 i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if (!txq->resetting)
+			continue;
+
+		/* Increase the count of Tx desc error since
+		 * it causes the queue reset.
+		 */
+		txq->desc_error++;
+		txgbe_dev_save_tx_queue(hw, i);
+
+		/* tx ring reset */
+		wr32(hw, TXGBE_TDM_DESC_NONFATAL(i / 32),
+			TXGBE_TDM_DESC_MASK(i % 32));
+
+		if (txq->ops != NULL) {
+			txq->ops->release_mbufs(txq);
+			txq->ops->reset(txq);
+		}
+
+		txgbe_dev_store_tx_queue(hw, i);
+		txgbe_dev_tx_queue_start(dev, i);
+	}
 }
 
 void
@@ -4905,7 +5255,7 @@ txgbevf_dev_rx_init(struct rte_eth_dev *dev)
 		 */
 		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
 			RTE_PKTMBUF_HEADROOM);
-		buf_size = ROUND_UP(buf_size, 1 << 10);
+		buf_size = ROUND_DOWN(buf_size, 1 << 10);
 		srrctl |= TXGBE_RXCFG_PKTLEN(buf_size);
 
 		/*
@@ -5069,6 +5419,7 @@ txgbe_config_rss_filter(struct rte_eth_dev *dev,
 	uint32_t reta;
 	uint16_t i;
 	uint16_t j;
+	uint16_t queue;
 	struct rte_eth_rss_conf rss_conf = {
 		.rss_key = conf->conf.key_len ?
 			(void *)(uintptr_t)conf->conf.key : NULL,
@@ -5101,7 +5452,12 @@ txgbe_config_rss_filter(struct rte_eth_dev *dev,
 	for (i = 0, j = 0; i < RTE_ETH_RSS_RETA_SIZE_128; i++, j++) {
 		if (j == conf->conf.queue_num)
 			j = 0;
-		reta = (reta >> 8) | LS32(conf->conf.queue[j], 24, 0xFF);
+		if (RTE_ETH_DEV_SRIOV(dev).active)
+			queue = RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx +
+				conf->conf.queue[j];
+		else
+			queue = conf->conf.queue[j];
+		reta = (reta >> 8) | LS32(queue, 24, 0xFF);
 		if ((i & 3) == 3)
 			wr32at(hw, TXGBE_REG_RSSTBL, i >> 2, reta);
 	}
@@ -5122,3 +5478,56 @@ txgbe_config_rss_filter(struct rte_eth_dev *dev,
 
 	return 0;
 }
+
+/* Stubs needed for linkage when RTE_ARCH_PPC_64, RTE_ARCH_RISCV or
+ * RTE_ARCH_LOONGARCH is set.
+ */
+#if defined(RTE_ARCH_PPC_64) || defined(RTE_ARCH_RISCV) || \
+	defined(RTE_ARCH_LOONGARCH)
+int
+txgbe_rx_vec_dev_conf_condition_check(__rte_unused struct rte_eth_dev *dev)
+{
+	return -1;
+}
+
+uint16_t
+txgbe_recv_pkts_vec(__rte_unused void *rx_queue,
+		    __rte_unused struct rte_mbuf **rx_pkts,
+		    __rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
+uint16_t
+txgbe_recv_scattered_pkts_vec(__rte_unused void *rx_queue,
+			      __rte_unused struct rte_mbuf **rx_pkts,
+			      __rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
+int
+txgbe_rxq_vec_setup(__rte_unused struct txgbe_rx_queue *rxq)
+{
+	return -1;
+}
+
+uint16_t
+txgbe_xmit_fixed_burst_vec(__rte_unused void *tx_queue,
+			   __rte_unused struct rte_mbuf **tx_pkts,
+			   __rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
+int
+txgbe_txq_vec_setup(__rte_unused struct txgbe_tx_queue *txq)
+{
+	return -1;
+}
+
+void
+txgbe_rx_queue_release_mbufs_vec(__rte_unused struct txgbe_rx_queue *rxq)
+{
+}
+#endif

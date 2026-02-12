@@ -13,9 +13,9 @@
 #include <netcope/txmac.h>
 
 extern int nfb_logtype;
-#define NFB_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, nfb_logtype, "%s(): " fmt "\n", \
-		__func__, ## args)
+#define RTE_LOGTYPE_NFB nfb_logtype
+#define NFB_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, NFB, "%s(): ", __func__, __VA_ARGS__)
 
 #include "nfb_rx.h"
 #include "nfb_tx.h"
@@ -41,13 +41,25 @@ extern int nfb_logtype;
 
 #define RTE_NFB_DRIVER_NAME net_nfb
 
-
+/*
+ * Handles obtained from the libnfb: each process must use own instance.
+ * Stored inside dev->process_private.
+ */
 struct pmd_internals {
 	uint16_t         max_rxmac;
 	uint16_t         max_txmac;
 	struct nc_rxmac *rxmac[RTE_MAX_NC_RXMAC];
 	struct nc_txmac *txmac[RTE_MAX_NC_TXMAC];
 	struct nfb_device *nfb;
+};
+
+/*
+ * Common data, single instance usable in all processes.
+ * Inited in the RTE_PROC_PRIMARY, stored in dev->data->dev_private.
+ */
+struct pmd_priv {
+	uint16_t max_rx_queues;
+	uint16_t max_tx_queues;
 };
 
 #endif /* _NFB_H_ */

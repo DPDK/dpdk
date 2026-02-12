@@ -11,24 +11,34 @@ static void mlx5dr_rule_skip(struct mlx5dr_matcher *matcher,
 {
 	const struct flow_hw_port_info *vport;
 	const struct rte_flow_item_ethdev *v;
+	enum mlx5dr_table_type type;
 
-	/* Flow_src is the 1st priority */
+	/* By default FDB rules are added to both RX and TX */
+	*skip_rx = false;
+	*skip_tx = false;
+
+	type = matcher->tbl->type;
+	if (type == MLX5DR_TABLE_TYPE_FDB_RX || type == MLX5DR_TABLE_TYPE_FDB_UNIFIED) {
+		*skip_tx = true;
+		return;
+	} else if (type == MLX5DR_TABLE_TYPE_FDB_TX) {
+		*skip_rx = true;
+		return;
+	}
+
+	/* Flow_src is the 1st priority after table type */
 	if (matcher->attr.optimize_flow_src) {
 		*skip_tx = matcher->attr.optimize_flow_src == MLX5DR_MATCHER_FLOW_SRC_WIRE;
 		*skip_rx = matcher->attr.optimize_flow_src == MLX5DR_MATCHER_FLOW_SRC_VPORT;
 		return;
 	}
 
-	/* By default FDB rules are added to both RX and TX */
-	*skip_rx = false;
-	*skip_tx = false;
-
 	if (unlikely(mlx5dr_matcher_is_insert_by_idx(matcher)))
 		return;
 
 	if (mt->item_flags & MLX5_FLOW_ITEM_REPRESENTED_PORT) {
 		v = items[mt->vport_item_id].spec;
-		vport = flow_hw_conv_port_id(v->port_id);
+		vport = flow_hw_conv_port_id(matcher->tbl->ctx, v->port_id);
 		if (unlikely(!vport)) {
 			DR_LOG(ERR, "Fail to map port ID %d, ignoring", v->port_id);
 			return;
@@ -88,6 +98,9 @@ static void mlx5dr_rule_init_dep_wqe(struct mlx5dr_send_ring_dep_wqe *dep_wqe,
 		break;
 
 	case MLX5DR_TABLE_TYPE_FDB:
+	case MLX5DR_TABLE_TYPE_FDB_RX:
+	case MLX5DR_TABLE_TYPE_FDB_TX:
+	case MLX5DR_TABLE_TYPE_FDB_UNIFIED:
 		mlx5dr_rule_skip(matcher, mt, items, &skip_rx, &skip_tx);
 
 		if (!skip_rx) {
@@ -157,6 +170,9 @@ static void
 mlx5dr_rule_save_resize_info(struct mlx5dr_rule *rule,
 			     struct mlx5dr_send_ste_attr *ste_attr)
 {
+	if (likely(!mlx5dr_matcher_is_resizable(rule->matcher)))
+		return;
+
 	rule->resize_info = simple_calloc(1, sizeof(*rule->resize_info));
 	if (unlikely(!rule->resize_info)) {
 		assert(rule->resize_info);
@@ -168,14 +184,16 @@ mlx5dr_rule_save_resize_info(struct mlx5dr_rule *rule,
 	memcpy(rule->resize_info->data_seg, ste_attr->wqe_data,
 	       sizeof(rule->resize_info->data_seg));
 
+	rule->resize_info->max_stes = rule->matcher->action_ste.max_stes;
 	rule->resize_info->action_ste_pool = rule->matcher->action_ste.max_stes ?
 					     rule->matcher->action_ste.pool :
 					     NULL;
 }
 
-static void mlx5dr_rule_clear_resize_info(struct mlx5dr_rule *rule)
+void mlx5dr_rule_clear_resize_info(struct mlx5dr_rule *rule)
 {
-	if (rule->resize_info) {
+	if (unlikely(mlx5dr_matcher_is_resizable(rule->matcher) &&
+		     rule->resize_info)) {
 		simple_free(rule->resize_info);
 		rule->resize_info = NULL;
 	}
@@ -195,8 +213,13 @@ mlx5dr_rule_save_delete_info(struct mlx5dr_rule *rule,
 		rule->tag_ptr = simple_calloc(2, sizeof(*rule->tag_ptr));
 		assert(rule->tag_ptr);
 
-		src_tag = (uint8_t *)ste_attr->wqe_data->tag;
-		memcpy(rule->tag_ptr[0].match, src_tag, MLX5DR_MATCH_TAG_SZ);
+		if (is_jumbo)
+			memcpy(rule->tag_ptr[0].jumbo, ste_attr->wqe_data->action,
+			       MLX5DR_JUMBO_TAG_SZ);
+		else
+			memcpy(rule->tag_ptr[0].match, ste_attr->wqe_data->tag,
+			       MLX5DR_MATCH_TAG_SZ);
+
 		rule->tag_ptr[1].reserved[0] = ste_attr->send_attr.match_definer_id;
 
 		/* Save range definer id and tag for delete */
@@ -215,8 +238,6 @@ mlx5dr_rule_save_delete_info(struct mlx5dr_rule *rule,
 			memcpy(&rule->tag.match, ste_attr->wqe_data->tag, MLX5DR_MATCH_TAG_SZ);
 		return;
 	}
-
-	mlx5dr_rule_save_resize_info(rule, ste_attr);
 }
 
 static void
@@ -224,11 +245,6 @@ mlx5dr_rule_clear_delete_info(struct mlx5dr_rule *rule)
 {
 	if (unlikely(mlx5dr_matcher_req_fw_wqe(rule->matcher))) {
 		simple_free(rule->tag_ptr);
-		return;
-	}
-
-	if (unlikely(mlx5dr_matcher_is_resizable(rule->matcher))) {
-		mlx5dr_rule_clear_resize_info(rule);
 		return;
 	}
 }
@@ -283,19 +299,26 @@ void mlx5dr_rule_free_action_ste_idx(struct mlx5dr_rule *rule)
 {
 	struct mlx5dr_matcher *matcher = rule->matcher;
 	struct mlx5dr_pool *pool;
+	uint8_t max_stes;
 
 	if (rule->action_ste_idx > -1 &&
 	    !matcher->attr.optimize_using_rule_idx &&
 	    !mlx5dr_matcher_is_insert_by_idx(matcher)) {
 		struct mlx5dr_pool_chunk ste = {0};
 
+		if (unlikely(mlx5dr_matcher_is_resizable(matcher))) {
+			/* Free the original action pool if rule was resized */
+			max_stes = rule->resize_info->max_stes;
+			pool = rule->resize_info->action_ste_pool;
+		} else {
+			max_stes = matcher->action_ste.max_stes;
+			pool = matcher->action_ste.pool;
+		}
+
 		/* This release is safe only when the rule match part was deleted */
-		ste.order = rte_log2_u32(matcher->action_ste.max_stes);
+		ste.order = rte_log2_u32(max_stes);
 		ste.offset = rule->action_ste_idx;
 
-		/* Free the original action pool if rule was resized */
-		pool = mlx5dr_matcher_is_resizable(matcher) ? rule->resize_info->action_ste_pool :
-							      matcher->action_ste.pool;
 		mlx5dr_pool_chunk_free(pool, &ste);
 	}
 }
@@ -437,9 +460,7 @@ static int mlx5dr_rule_create_hws_fw_wqe(struct mlx5dr_rule *rule,
 	/* Send WQEs to FW */
 	mlx5dr_send_stes_fw(queue, &ste_attr);
 
-	/* Backup TAG on the rule for deletion, and save ctrl/data
-	 * segments to be used when resizing the matcher.
-	 */
+	/* Backup TAG on the rule for deletion */
 	mlx5dr_rule_save_delete_info(rule, &ste_attr);
 	mlx5dr_send_engine_inc_rule(queue);
 
@@ -531,7 +552,7 @@ static int mlx5dr_rule_create_hws(struct mlx5dr_rule *rule,
 			 * will always match and perform the specified actions, which
 			 * makes the tag irrelevant.
 			 */
-			if (likely(!mlx5dr_matcher_is_insert_by_idx(matcher) && !is_update))
+			if (likely(!mlx5dr_matcher_is_always_hit(matcher) && !is_update))
 				mlx5dr_definer_create_tag(items, mt->fc, mt->fc_sz,
 							  (uint8_t *)dep_wqe->wqe_data.action);
 			else if (unlikely(is_update))
@@ -564,8 +585,10 @@ static int mlx5dr_rule_create_hws(struct mlx5dr_rule *rule,
 	/* Backup TAG on the rule for deletion and resize info for
 	 * moving rules to a new matcher, only after insertion.
 	 */
-	if (!is_update)
+	if (!is_update) {
 		mlx5dr_rule_save_delete_info(rule, &ste_attr);
+		mlx5dr_rule_save_resize_info(rule, &ste_attr);
+	}
 
 	mlx5dr_send_engine_inc_rule(queue);
 
@@ -590,8 +613,11 @@ static void mlx5dr_rule_destroy_failed_hws(struct mlx5dr_rule *rule,
 	/* Rule failed now we can safely release action STEs */
 	mlx5dr_rule_free_action_ste_idx(rule);
 
-	/* Clear complex tag or info that was saved for matcher resizing */
+	/* Clear complex tag */
 	mlx5dr_rule_clear_delete_info(rule);
+
+	/* Clear info that was saved for resizing */
+	mlx5dr_rule_clear_resize_info(rule);
 
 	/* If a rule that was indicated as burst (need to trigger HW) has failed
 	 * insertion we won't ring the HW as nothing is being written to the WQ.
@@ -625,6 +651,7 @@ static int mlx5dr_rule_destroy_hws(struct mlx5dr_rule *rule,
 
 	/* Rule is not completed yet */
 	if (rule->status == MLX5DR_RULE_STATUS_CREATING) {
+		DR_LOG(NOTICE, "Cannot destroy, rule creation still in progress");
 		rte_errno = EBUSY;
 		return rte_errno;
 	}
@@ -675,38 +702,25 @@ static int mlx5dr_rule_destroy_hws(struct mlx5dr_rule *rule,
 	return 0;
 }
 
-static int mlx5dr_rule_create_root(struct mlx5dr_rule *rule,
-				   struct mlx5dr_rule_attr *rule_attr,
-				   const struct rte_flow_item items[],
-				   uint8_t at_idx,
-				   struct mlx5dr_rule_action rule_actions[])
+int mlx5dr_rule_create_root_no_comp(struct mlx5dr_rule *rule,
+				    const struct rte_flow_item items[],
+				    uint8_t num_actions,
+				    struct mlx5dr_rule_action rule_actions[])
 {
 	struct mlx5dv_flow_matcher *dv_matcher = rule->matcher->dv_matcher;
-	uint8_t num_actions = rule->matcher->at[at_idx].num_actions;
 	struct mlx5dr_context *ctx = rule->matcher->tbl->ctx;
 	struct mlx5dv_flow_match_parameters *value;
 	struct mlx5_flow_attr flow_attr = {0};
 	struct mlx5dv_flow_action_attr *attr;
-	const struct rte_flow_item *cur_item;
 	struct rte_flow_error error;
 	uint8_t match_criteria;
 	int ret;
 
-	/* We need the port id in case of matching representor */
-	cur_item = items;
-	while (cur_item->type != RTE_FLOW_ITEM_TYPE_END) {
-		if (cur_item->type == RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR ||
-		    cur_item->type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT) {
-			ret = flow_hw_get_port_id_from_ctx(rule->matcher->tbl->ctx,
-							   &flow_attr.port_id);
-			if (ret) {
-				DR_LOG(ERR, "Failed to get port id for dev %s",
-				       rule->matcher->tbl->ctx->ibv_ctx->device->name);
-				rte_errno = EINVAL;
-				return rte_errno;
-			}
-		}
-		++cur_item;
+	ret = flow_hw_get_port_id_from_ctx(ctx, &flow_attr.port_id);
+	if (ret) {
+		DR_LOG(ERR, "Failed to get port id for dev %s", ctx->ibv_ctx->device->name);
+		rte_errno = EINVAL;
+		return rte_errno;
 	}
 
 	attr = simple_calloc(num_actions, sizeof(*attr));
@@ -745,9 +759,6 @@ static int mlx5dr_rule_create_root(struct mlx5dr_rule *rule,
 						    num_actions,
 						    attr);
 
-	mlx5dr_rule_gen_comp(&ctx->send_queue[rule_attr->queue_id], rule, !rule->flow,
-			     rule_attr->user_data, MLX5DR_RULE_STATUS_CREATED);
-
 	simple_free(value);
 	simple_free(attr);
 
@@ -758,17 +769,44 @@ free_value:
 free_attr:
 	simple_free(attr);
 
-	return -rte_errno;
+	return rte_errno;
+}
+
+static int mlx5dr_rule_create_root(struct mlx5dr_rule *rule,
+				   struct mlx5dr_rule_attr *rule_attr,
+				   const struct rte_flow_item items[],
+				   uint8_t num_actions,
+				   struct mlx5dr_rule_action rule_actions[])
+{
+	struct mlx5dr_context *ctx = rule->matcher->tbl->ctx;
+	int ret;
+
+	ret = mlx5dr_rule_create_root_no_comp(rule, items,
+					      num_actions, rule_actions);
+	if (ret)
+		return rte_errno;
+
+	mlx5dr_rule_gen_comp(&ctx->send_queue[rule_attr->queue_id], rule, !rule->flow,
+			     rule_attr->user_data, MLX5DR_RULE_STATUS_CREATED);
+
+	return 0;
+}
+
+int mlx5dr_rule_destroy_root_no_comp(struct mlx5dr_rule *rule)
+{
+	if (rule->flow)
+		return ibv_destroy_flow(rule->flow);
+
+	return 0;
 }
 
 static int mlx5dr_rule_destroy_root(struct mlx5dr_rule *rule,
 				    struct mlx5dr_rule_attr *attr)
 {
 	struct mlx5dr_context *ctx = rule->matcher->tbl->ctx;
-	int err = 0;
+	int err;
 
-	if (rule->flow)
-		err = ibv_destroy_flow(rule->flow);
+	err = mlx5dr_rule_destroy_root_no_comp(rule);
 
 	mlx5dr_rule_gen_comp(&ctx->send_queue[attr->queue_id], rule, err,
 			     attr->user_data, MLX5DR_RULE_STATUS_DELETED);
@@ -782,12 +820,14 @@ static int mlx5dr_rule_enqueue_precheck(struct mlx5dr_rule *rule,
 	struct mlx5dr_context *ctx = rule->matcher->tbl->ctx;
 
 	if (unlikely(!attr->user_data)) {
+		DR_LOG(DEBUG, "User data must be provided for rule operations");
 		rte_errno = EINVAL;
 		return rte_errno;
 	}
 
 	/* Check if there is room in queue */
 	if (unlikely(mlx5dr_send_engine_full(&ctx->send_queue[attr->queue_id]))) {
+		DR_LOG(NOTICE, "No room in queue[%d]", attr->queue_id);
 		rte_errno = EBUSY;
 		return rte_errno;
 	}
@@ -799,6 +839,7 @@ static int mlx5dr_rule_enqueue_precheck_move(struct mlx5dr_rule *rule,
 					     struct mlx5dr_rule_attr *attr)
 {
 	if (unlikely(rule->status != MLX5DR_RULE_STATUS_CREATED)) {
+		DR_LOG(DEBUG, "Cannot move, rule status is invalid");
 		rte_errno = EINVAL;
 		return rte_errno;
 	}
@@ -811,6 +852,7 @@ static int mlx5dr_rule_enqueue_precheck_create(struct mlx5dr_rule *rule,
 {
 	if (unlikely(mlx5dr_matcher_is_in_resize(rule->matcher))) {
 		/* Matcher in resize - new rules are not allowed */
+		DR_LOG(NOTICE, "Resizing in progress, cannot create rule");
 		rte_errno = EAGAIN;
 		return rte_errno;
 	}
@@ -965,7 +1007,7 @@ int mlx5dr_rule_create(struct mlx5dr_matcher *matcher,
 		ret = mlx5dr_rule_create_root(rule_handle,
 					      attr,
 					      items,
-					      at_idx,
+					      matcher->at[at_idx].num_actions,
 					      rule_actions);
 	else
 		ret = mlx5dr_rule_create_hws(rule_handle,
@@ -1042,8 +1084,9 @@ int mlx5dr_rule_hash_calculate(struct mlx5dr_matcher *matcher,
 
 	if (mlx5dr_matcher_req_fw_wqe(matcher) ||
 	    mlx5dr_table_is_root(matcher->tbl) ||
-	    matcher->tbl->ctx->caps->access_index_mode == MLX5DR_MATCHER_INSERT_BY_HASH ||
+	    matcher->attr.distribute_mode != MLX5DR_MATCHER_DISTRIBUTE_BY_HASH ||
 	    matcher->tbl->ctx->caps->flow_table_hash_type != MLX5_FLOW_TABLE_HASH_TYPE_CRC32) {
+		DR_LOG(DEBUG, "Matcher is not supported");
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}

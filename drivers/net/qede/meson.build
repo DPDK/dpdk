@@ -8,7 +8,6 @@ if is_windows
 endif
 
 subdir('base')
-objs = [base_objs]
 
 sources = files(
         'qede_debug.c',
@@ -23,3 +22,6 @@ sources = files(
 if cc.has_argument('-Wno-format-nonliteral')
     cflags += '-Wno-format-nonliteral'
 endif
+
+# Suppress shadow warnings for this driver
+cflags += no_shadow_cflag

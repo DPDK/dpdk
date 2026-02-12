@@ -35,12 +35,10 @@ foreach flag: extra_flags
 endforeach
 
 subdir('base')
-objs = [base_objs]
 
 deps += ['bus_pci']
 sources = files(
         'sfc_efx.c',
         'sfc_efx_mcdi.c',
+        'sfc_base_symbols.c',
 )
-
-includes += include_directories('base')

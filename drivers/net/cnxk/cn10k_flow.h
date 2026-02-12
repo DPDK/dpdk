@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(C) 2020 Marvell.
+ * Copyright(C) 2024 Marvell.
  */
-#ifndef __CN10K_RTE_FLOW_H__
-#define __CN10K_RTE_FLOW_H__
+#ifndef __CN10K_FLOW_H__
+#define __CN10K_FLOW_H__
 
 #include <rte_flow_driver.h>
 
@@ -16,6 +16,6 @@ int cn10k_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 int cn10k_flow_info_get(struct rte_eth_dev *dev, struct rte_flow_port_info *port_info,
 			struct rte_flow_queue_info *queue_info, struct rte_flow_error *err);
 
-#define CN10K_NPC_COUNTERS_MAX 512
+#define CNXK_NPC_COUNTERS_MAX 512
 
-#endif /* __CN10K_RTE_FLOW_H__ */
+#endif /* __CN10K_FLOW_H__ */

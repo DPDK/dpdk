@@ -18,6 +18,8 @@
 #include <rte_random.h>
 #include <rte_test.h>
 
+#include "roc_api.h"
+
 #include "cnxk_eventdev.h"
 #include "cnxk_eventdev_dp.h"
 
@@ -63,7 +65,7 @@ seqn_list_update(int val)
 		return -1;
 
 	seqn_list[seqn_list_index++] = val;
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 	return 0;
 }
 
@@ -82,7 +84,7 @@ seqn_list_check(int limit)
 }
 
 struct test_core_param {
-	uint32_t *total_events;
+	uint32_t __rte_atomic *total_events;
 	uint64_t dequeue_tmo_ticks;
 	uint8_t port;
 	uint8_t sched_type;
@@ -540,13 +542,13 @@ static int
 worker_multi_port_fn(void *arg)
 {
 	struct test_core_param *param = arg;
-	uint32_t *total_events = param->total_events;
+	uint32_t __rte_atomic *total_events = param->total_events;
 	uint8_t port = param->port;
 	uint16_t valid_event;
 	struct rte_event ev;
 	int ret;
 
-	while (__atomic_load_n(total_events, __ATOMIC_RELAXED) > 0) {
+	while (rte_atomic_load_explicit(total_events, rte_memory_order_relaxed) > 0) {
 		valid_event = rte_event_dequeue_burst(evdev, port, &ev, 1, 0);
 		if (!valid_event)
 			continue;
@@ -554,30 +556,30 @@ worker_multi_port_fn(void *arg)
 		ret = validate_event(&ev);
 		RTE_TEST_ASSERT_SUCCESS(ret, "Failed to validate event");
 		rte_pktmbuf_free(ev.mbuf);
-		__atomic_fetch_sub(total_events, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_sub_explicit(total_events, 1, rte_memory_order_relaxed);
 	}
 
 	return 0;
 }
 
 static inline int
-wait_workers_to_join(const uint32_t *count)
+wait_workers_to_join(const uint32_t __rte_atomic *count)
 {
 	uint64_t cycles, print_cycles;
 
 	cycles = rte_get_timer_cycles();
 	print_cycles = cycles;
-	while (__atomic_load_n(count, __ATOMIC_RELAXED)) {
+	while (rte_atomic_load_explicit(count, rte_memory_order_relaxed)) {
 		uint64_t new_cycles = rte_get_timer_cycles();
 
 		if (new_cycles - print_cycles > rte_get_timer_hz()) {
 			plt_info("Events %d",
-				 __atomic_load_n(count, __ATOMIC_RELAXED));
+				 rte_atomic_load_explicit(count, rte_memory_order_relaxed));
 			print_cycles = new_cycles;
 		}
 		if (new_cycles - cycles > rte_get_timer_hz() * 10000000000) {
 			plt_err("No schedules for seconds, deadlock (%d)",
-				__atomic_load_n(count, __ATOMIC_RELAXED));
+				rte_atomic_load_explicit(count, rte_memory_order_relaxed));
 			rte_event_dev_dump(evdev, stdout);
 			cycles = new_cycles;
 			return -1;
@@ -593,7 +595,7 @@ launch_workers_and_wait(int (*main_thread)(void *),
 			int (*worker_thread)(void *), uint32_t total_events,
 			uint8_t nb_workers, uint8_t sched_type)
 {
-	uint32_t atomic_total_events;
+	uint32_t __rte_atomic atomic_total_events;
 	struct test_core_param *param;
 	uint64_t dequeue_tmo_ticks;
 	uint8_t port = 0;
@@ -603,7 +605,7 @@ launch_workers_and_wait(int (*main_thread)(void *),
 	if (!nb_workers)
 		return 0;
 
-	__atomic_store_n(&atomic_total_events, total_events, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&atomic_total_events, total_events, rte_memory_order_relaxed);
 	seqn_list_init();
 
 	param = malloc(sizeof(struct test_core_param) * nb_workers);
@@ -640,7 +642,7 @@ launch_workers_and_wait(int (*main_thread)(void *),
 		param[port].sched_type = sched_type;
 		param[port].port = port;
 		param[port].dequeue_tmo_ticks = dequeue_tmo_ticks;
-		rte_atomic_thread_fence(__ATOMIC_RELEASE);
+		rte_atomic_thread_fence(rte_memory_order_release);
 		w_lcore = rte_get_next_lcore(w_lcore, 1, 0);
 		if (w_lcore == RTE_MAX_LCORE) {
 			plt_err("Failed to get next available lcore");
@@ -651,7 +653,7 @@ launch_workers_and_wait(int (*main_thread)(void *),
 		rte_eal_remote_launch(worker_thread, &param[port], w_lcore);
 	}
 
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 	ret = wait_workers_to_join(&atomic_total_events);
 	free(param);
 
@@ -890,13 +892,13 @@ worker_flow_based_pipeline(void *arg)
 {
 	struct test_core_param *param = arg;
 	uint64_t dequeue_tmo_ticks = param->dequeue_tmo_ticks;
-	uint32_t *total_events = param->total_events;
+	uint32_t __rte_atomic *total_events = param->total_events;
 	uint8_t new_sched_type = param->sched_type;
 	uint8_t port = param->port;
 	uint16_t valid_event;
 	struct rte_event ev;
 
-	while (__atomic_load_n(total_events, __ATOMIC_RELAXED) > 0) {
+	while (rte_atomic_load_explicit(total_events, rte_memory_order_relaxed) > 0) {
 		valid_event = rte_event_dequeue_burst(evdev, port, &ev, 1,
 						      dequeue_tmo_ticks);
 		if (!valid_event)
@@ -916,8 +918,8 @@ worker_flow_based_pipeline(void *arg)
 
 			if (seqn_list_update(seqn) == 0) {
 				rte_pktmbuf_free(ev.mbuf);
-				__atomic_fetch_sub(total_events, 1,
-						   __ATOMIC_RELAXED);
+				rte_atomic_fetch_sub_explicit(total_events, 1,
+							      rte_memory_order_relaxed);
 			} else {
 				plt_err("Failed to update seqn_list");
 				return -1;
@@ -1046,13 +1048,13 @@ worker_group_based_pipeline(void *arg)
 {
 	struct test_core_param *param = arg;
 	uint64_t dequeue_tmo_ticks = param->dequeue_tmo_ticks;
-	uint32_t *total_events = param->total_events;
+	uint32_t __rte_atomic *total_events = param->total_events;
 	uint8_t new_sched_type = param->sched_type;
 	uint8_t port = param->port;
 	uint16_t valid_event;
 	struct rte_event ev;
 
-	while (__atomic_load_n(total_events, __ATOMIC_RELAXED) > 0) {
+	while (rte_atomic_load_explicit(total_events, rte_memory_order_relaxed) > 0) {
 		valid_event = rte_event_dequeue_burst(evdev, port, &ev, 1,
 						      dequeue_tmo_ticks);
 		if (!valid_event)
@@ -1072,8 +1074,8 @@ worker_group_based_pipeline(void *arg)
 
 			if (seqn_list_update(seqn) == 0) {
 				rte_pktmbuf_free(ev.mbuf);
-				__atomic_fetch_sub(total_events, 1,
-						   __ATOMIC_RELAXED);
+				rte_atomic_fetch_sub_explicit(total_events, 1,
+							      rte_memory_order_relaxed);
 			} else {
 				plt_err("Failed to update seqn_list");
 				return -1;
@@ -1205,19 +1207,19 @@ static int
 worker_flow_based_pipeline_max_stages_rand_sched_type(void *arg)
 {
 	struct test_core_param *param = arg;
-	uint32_t *total_events = param->total_events;
+	uint32_t __rte_atomic *total_events = param->total_events;
 	uint8_t port = param->port;
 	uint16_t valid_event;
 	struct rte_event ev;
 
-	while (__atomic_load_n(total_events, __ATOMIC_RELAXED) > 0) {
+	while (rte_atomic_load_explicit(total_events, rte_memory_order_relaxed) > 0) {
 		valid_event = rte_event_dequeue_burst(evdev, port, &ev, 1, 0);
 		if (!valid_event)
 			continue;
 
 		if (ev.sub_event_type == MAX_STAGES) { /* last stage */
 			rte_pktmbuf_free(ev.mbuf);
-			__atomic_fetch_sub(total_events, 1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_sub_explicit(total_events, 1, rte_memory_order_relaxed);
 		} else {
 			ev.event_type = RTE_EVENT_TYPE_CPU;
 			ev.sub_event_type++;
@@ -1284,16 +1286,16 @@ worker_queue_based_pipeline_max_stages_rand_sched_type(void *arg)
 				       &queue_count),
 		"Queue count get failed");
 	uint8_t nr_queues = queue_count;
-	uint32_t *total_events = param->total_events;
+	uint32_t __rte_atomic *total_events = param->total_events;
 
-	while (__atomic_load_n(total_events, __ATOMIC_RELAXED) > 0) {
+	while (rte_atomic_load_explicit(total_events, rte_memory_order_relaxed) > 0) {
 		valid_event = rte_event_dequeue_burst(evdev, port, &ev, 1, 0);
 		if (!valid_event)
 			continue;
 
 		if (ev.queue_id == nr_queues - 1) { /* last stage */
 			rte_pktmbuf_free(ev.mbuf);
-			__atomic_fetch_sub(total_events, 1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_sub_explicit(total_events, 1, rte_memory_order_relaxed);
 		} else {
 			ev.event_type = RTE_EVENT_TYPE_CPU;
 			ev.queue_id++;
@@ -1329,16 +1331,16 @@ worker_mixed_pipeline_max_stages_rand_sched_type(void *arg)
 				       &queue_count),
 		"Queue count get failed");
 	uint8_t nr_queues = queue_count;
-	uint32_t *total_events = param->total_events;
+	uint32_t __rte_atomic *total_events = param->total_events;
 
-	while (__atomic_load_n(total_events, __ATOMIC_RELAXED) > 0) {
+	while (rte_atomic_load_explicit(total_events, rte_memory_order_relaxed) > 0) {
 		valid_event = rte_event_dequeue_burst(evdev, port, &ev, 1, 0);
 		if (!valid_event)
 			continue;
 
 		if (ev.queue_id == nr_queues - 1) { /* Last stage */
 			rte_pktmbuf_free(ev.mbuf);
-			__atomic_fetch_sub(total_events, 1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_sub_explicit(total_events, 1, rte_memory_order_relaxed);
 		} else {
 			ev.event_type = RTE_EVENT_TYPE_CPU;
 			ev.queue_id++;
@@ -1564,17 +1566,17 @@ cnxk_sso_selftest(const char *dev_name)
 			return rc;
 	}
 
-	if (roc_model_runtime_is_cn10k()) {
-		printf("Verifying CN10K workslot getwork mode none\n");
-		dev->gw_mode = CN10K_GW_MODE_NONE;
+	if (roc_model_runtime_is_cn10k() || roc_model_runtime_is_cn20k()) {
+		printf("Verifying %s workslot getwork mode none\n", dev_name);
+		dev->gw_mode = CNXK_GW_MODE_NONE;
 		if (cnxk_sso_testsuite_run(dev_name))
 			return rc;
-		printf("Verifying CN10K workslot getwork mode prefetch\n");
-		dev->gw_mode = CN10K_GW_MODE_PREF;
+		printf("Verifying %s workslot getwork mode prefetch\n", dev_name);
+		dev->gw_mode = CNXK_GW_MODE_PREF;
 		if (cnxk_sso_testsuite_run(dev_name))
 			return rc;
-		printf("Verifying CN10K workslot getwork mode smart prefetch\n");
-		dev->gw_mode = CN10K_GW_MODE_PREF_WFE;
+		printf("Verifying %s workslot getwork mode smart prefetch\n", dev_name);
+		dev->gw_mode = CNXK_GW_MODE_PREF_WFE;
 		if (cnxk_sso_testsuite_run(dev_name))
 			return rc;
 	}

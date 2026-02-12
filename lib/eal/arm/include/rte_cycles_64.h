@@ -6,11 +6,11 @@
 #ifndef _RTE_CYCLES_ARM64_H_
 #define _RTE_CYCLES_ARM64_H_
 
+#include "generic/rte_cycles.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "generic/rte_cycles.h"
 
 /** Read generic counter frequency */
 static __rte_always_inline uint64_t

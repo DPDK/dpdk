@@ -94,6 +94,8 @@
 #define K0_2_2 25 /* K0 fraction numerator for rv 2 and BG 2 */
 #define K0_3_1 56 /* K0 fraction numerator for rv 3 and BG 1 */
 #define K0_3_2 43 /* K0 fraction numerator for rv 3 and BG 2 */
+#define NUM_SC_PER_RB (12) /* Number of subcarriers in a RB in 3GPP. */
+#define BITS_PER_LLR  (8)  /* Number of bits in a LLR. */
 
 #define HARQ_MEM_TOLERANCE 256
 static struct test_bbdev_vector test_vector;
@@ -106,6 +108,10 @@ static int ldpc_llr_decimals;
 static int ldpc_llr_size;
 /* Keep track of the LDPC decoder device capability flag */
 static uint32_t ldpc_cap_flags;
+/* FFT window width predefined on device and on vector. */
+static int fft_window_width_dev;
+
+bool dump_ops = true;
 
 /* Represents tested active devices */
 static struct active_device {
@@ -144,7 +150,7 @@ struct test_op_params {
 	uint16_t num_to_process;
 	uint16_t num_lcores;
 	int vector_mask;
-	uint16_t sync;
+	RTE_ATOMIC(uint16_t) sync;
 	struct test_buffers q_bufs[RTE_MAX_NUMA_NODES][MAX_QUEUES];
 };
 
@@ -159,9 +165,9 @@ struct thread_params {
 	uint8_t iter_count;
 	double iter_average;
 	double bler;
-	uint16_t nb_dequeued;
-	int16_t processing_status;
-	uint16_t burst_sz;
+	RTE_ATOMIC(uint16_t) nb_dequeued;
+	RTE_ATOMIC(int16_t) processing_status;
+	RTE_ATOMIC(uint16_t) burst_sz;
 	struct test_op_params *op_params;
 	struct rte_bbdev_dec_op *dec_ops[MAX_BURST];
 	struct rte_bbdev_enc_op *enc_ops[MAX_BURST];
@@ -546,12 +552,11 @@ create_mempools(struct active_device *ad, int socket_id,
 			&test_vector.entries[DATA_HARQ_OUTPUT];
 
 	/* allocate ops mempool */
-	ops_pool_size = optimal_mempool_size(RTE_MAX(
+	ops_pool_size = optimal_mempool_size(RTE_MAX3(
 			/* Ops used plus 1 reference op */
-			RTE_MAX((unsigned int)(ad->nb_queues * num_ops + 1),
+			(unsigned int)(ad->nb_queues * num_ops + 1),
 			/* Minimal cache size plus 1 reference op */
-			(unsigned int)(1.5 * rte_lcore_count() *
-					OPS_CACHE_SIZE + 1)),
+			(unsigned int)(1.5 * rte_lcore_count() * OPS_CACHE_SIZE + 1),
 			OPS_POOL_SIZE_MIN));
 
 	if (org_op_type == RTE_BBDEV_OP_NONE)
@@ -881,6 +886,13 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 	rte_bbdev_info_get(dev_id, info);
 	if (info->drv.device_status == RTE_BBDEV_DEV_FATAL_ERR)
 		printf("Device Status %s\n", rte_bbdev_device_status_str(info->drv.device_status));
+	if (info->drv.fft_window_width != NULL)
+		fft_window_width_dev = info->drv.fft_window_width[0];
+	else
+		fft_window_width_dev = 0;
+	if (fft_window_width_dev != 0)
+		printf("  FFT Window0 width %d\n", fft_window_width_dev);
+
 	nb_queues = RTE_MIN(rte_lcore_count(), info->drv.max_num_queues);
 	nb_queues = RTE_MIN(nb_queues, (unsigned int) MAX_QUEUES);
 
@@ -1557,12 +1569,13 @@ maxstar(double A, double B)
 static void
 gen_qm8_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 {
-	int qm = 8;
-	int qam = 256;
+#define QM 8
+#define QAM 256
+
 	int m, k;
-	double I, Q, p0, p1, llr_, b[qm], log_syml_prob[qam];
+	double I, Q, p0, p1, llr_, b[QM], log_syml_prob[QAM];
 	/* 5.1.4 of TS38.211 */
-	const double symbols_I[256] = {
+	const double symbols_I[QAM] = {
 			5, 5, 7, 7, 5, 5, 7, 7, 3, 3, 1, 1, 3, 3, 1, 1, 5,
 			5, 7, 7, 5, 5, 7, 7, 3, 3, 1, 1, 3, 3, 1, 1, 11,
 			11, 9, 9, 11, 11, 9, 9, 13, 13, 15, 15, 13, 13,
@@ -1583,7 +1596,7 @@ gen_qm8_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 			-9, -9, -11, -11, -9, -9, -13, -13, -15, -15, -13,
 			-13, -15, -15, -11, -11, -9, -9, -11, -11, -9, -9,
 			-13, -13, -15, -15, -13, -13, -15, -15};
-	const double symbols_Q[256] = {
+	const double symbols_Q[QAM] = {
 			5, 7, 5, 7, 3, 1, 3, 1, 5, 7, 5, 7, 3, 1, 3, 1, 11,
 			9, 11, 9, 13, 15, 13, 15, 11, 9, 11, 9, 13, 15, 13,
 			15, 5, 7, 5, 7, 3, 1, 3, 1, 5, 7, 5, 7, 3, 1, 3, 1,
@@ -1606,8 +1619,8 @@ gen_qm8_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 			-13, -15, -11, -9, -11, -9, -13, -15, -13, -15};
 	/* Average constellation point energy */
 	N0 *= 170.0;
-	for (k = 0; k < qm; k++)
-		b[k] = llrs[qm * i + k] < 0 ? 1.0 : 0.0;
+	for (k = 0; k < QM; k++)
+		b[k] = llrs[QM * i + k] < 0 ? 1.0 : 0.0;
 	/* 5.1.4 of TS38.211 */
 	I = (1 - 2 * b[0]) * (8 - (1 - 2 * b[2]) *
 			(4 - (1 - 2 * b[4]) * (2 - (1 - 2 * b[6]))));
@@ -1620,16 +1633,16 @@ gen_qm8_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 	 * Calculate the log of the probability that each of
 	 * the constellation points was transmitted
 	 */
-	for (m = 0; m < qam; m++)
+	for (m = 0; m < QAM; m++)
 		log_syml_prob[m] = -(pow(I - symbols_I[m], 2.0)
 				+ pow(Q - symbols_Q[m], 2.0)) / N0;
 	/* Calculate an LLR for each of the k_64QAM bits in the set */
-	for (k = 0; k < qm; k++) {
+	for (k = 0; k < QM; k++) {
 		p0 = -999999;
 		p1 = -999999;
 		/* For each constellation point */
-		for (m = 0; m < qam; m++) {
-			if ((m >> (qm - k - 1)) & 1)
+		for (m = 0; m < QAM; m++) {
+			if ((m >> (QM - k - 1)) & 1)
 				p1 = maxstar(p1, log_syml_prob[m]);
 			else
 				p0 = maxstar(p0, log_syml_prob[m]);
@@ -1642,8 +1655,10 @@ gen_qm8_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 			llr_ = llr_max;
 		if (llr_ < -llr_max)
 			llr_ = -llr_max;
-		llrs[qm * i + k] = (int8_t) llr_;
+		llrs[QM * i + k] = (int8_t) llr_;
 	}
+#undef QM
+#undef QAM
 }
 
 
@@ -1654,18 +1669,19 @@ gen_qm8_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 static void
 gen_qm6_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 {
-	int qm = 6;
-	int qam = 64;
+#define QM 6
+#define QAM 64
+
 	int m, k;
-	double I, Q, p0, p1, llr_, b[qm], log_syml_prob[qam];
+	double I, Q, p0, p1, llr_, b[QM], log_syml_prob[QAM];
 	/* 5.1.4 of TS38.211 */
-	const double symbols_I[64] = {
+	const double symbols_I[QAM] = {
 			3, 3, 1, 1, 3, 3, 1, 1, 5, 5, 7, 7, 5, 5, 7, 7,
 			3, 3, 1, 1, 3, 3, 1, 1, 5, 5, 7, 7, 5, 5, 7, 7,
 			-3, -3, -1, -1, -3, -3, -1, -1, -5, -5, -7, -7,
 			-5, -5, -7, -7, -3, -3, -1, -1, -3, -3, -1, -1,
 			-5, -5, -7, -7, -5, -5, -7, -7};
-	const double symbols_Q[64] = {
+	const double symbols_Q[QAM] = {
 			3, 1, 3, 1, 5, 7, 5, 7, 3, 1, 3, 1, 5, 7, 5, 7,
 			-3, -1, -3, -1, -5, -7, -5, -7, -3, -1, -3, -1,
 			-5, -7, -5, -7, 3, 1, 3, 1, 5, 7, 5, 7, 3, 1, 3, 1,
@@ -1673,8 +1689,8 @@ gen_qm6_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 			-3, -1, -3, -1, -5, -7, -5, -7};
 	/* Average constellation point energy */
 	N0 *= 42.0;
-	for (k = 0; k < qm; k++)
-		b[k] = llrs[qm * i + k] < 0 ? 1.0 : 0.0;
+	for (k = 0; k < QM; k++)
+		b[k] = llrs[QM * i + k] < 0 ? 1.0 : 0.0;
 	/* 5.1.4 of TS38.211 */
 	I = (1 - 2 * b[0])*(4 - (1 - 2 * b[2]) * (2 - (1 - 2 * b[4])));
 	Q = (1 - 2 * b[1])*(4 - (1 - 2 * b[3]) * (2 - (1 - 2 * b[5])));
@@ -1685,16 +1701,16 @@ gen_qm6_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 	 * Calculate the log of the probability that each of
 	 * the constellation points was transmitted
 	 */
-	for (m = 0; m < qam; m++)
+	for (m = 0; m < QAM; m++)
 		log_syml_prob[m] = -(pow(I - symbols_I[m], 2.0)
 				+ pow(Q - symbols_Q[m], 2.0)) / N0;
 	/* Calculate an LLR for each of the k_64QAM bits in the set */
-	for (k = 0; k < qm; k++) {
+	for (k = 0; k < QM; k++) {
 		p0 = -999999;
 		p1 = -999999;
 		/* For each constellation point */
-		for (m = 0; m < qam; m++) {
-			if ((m >> (qm - k - 1)) & 1)
+		for (m = 0; m < QAM; m++) {
+			if ((m >> (QM - k - 1)) & 1)
 				p1 = maxstar(p1, log_syml_prob[m]);
 			else
 				p0 = maxstar(p0, log_syml_prob[m]);
@@ -1707,8 +1723,10 @@ gen_qm6_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 			llr_ = llr_max;
 		if (llr_ < -llr_max)
 			llr_ = -llr_max;
-		llrs[qm * i + k] = (int8_t) llr_;
+		llrs[QM * i + k] = (int8_t) llr_;
 	}
+#undef QM
+#undef QAM
 }
 
 /*
@@ -1718,19 +1736,20 @@ gen_qm6_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 static void
 gen_qm4_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 {
-	int qm = 4;
-	int qam = 16;
+#define QM 4
+#define QAM 16
+
 	int m, k;
-	double I, Q, p0, p1, llr_, b[qm], log_syml_prob[qam];
+	double I, Q, p0, p1, llr_, b[QM], log_syml_prob[QAM];
 	/* 5.1.4 of TS38.211 */
-	const double symbols_I[16] = {1, 1, 3, 3, 1, 1, 3, 3,
+	const double symbols_I[QAM] = {1, 1, 3, 3, 1, 1, 3, 3,
 			-1, -1, -3, -3, -1, -1, -3, -3};
-	const double symbols_Q[16] = {1, 3, 1, 3, -1, -3, -1, -3,
+	const double symbols_Q[QAM] = {1, 3, 1, 3, -1, -3, -1, -3,
 			1, 3, 1, 3, -1, -3, -1, -3};
 	/* Average constellation point energy */
 	N0 *= 10.0;
-	for (k = 0; k < qm; k++)
-		b[k] = llrs[qm * i + k] < 0 ? 1.0 : 0.0;
+	for (k = 0; k < QM; k++)
+		b[k] = llrs[QM * i + k] < 0 ? 1.0 : 0.0;
 	/* 5.1.4 of TS38.211 */
 	I = (1 - 2 * b[0]) * (2 - (1 - 2 * b[2]));
 	Q = (1 - 2 * b[1]) * (2 - (1 - 2 * b[3]));
@@ -1741,16 +1760,16 @@ gen_qm4_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 	 * Calculate the log of the probability that each of
 	 * the constellation points was transmitted
 	 */
-	for (m = 0; m < qam; m++)
+	for (m = 0; m < QAM; m++)
 		log_syml_prob[m] = -(pow(I - symbols_I[m], 2.0)
 				+ pow(Q - symbols_Q[m], 2.0)) / N0;
 	/* Calculate an LLR for each of the k_64QAM bits in the set */
-	for (k = 0; k < qm; k++) {
+	for (k = 0; k < QM; k++) {
 		p0 = -999999;
 		p1 = -999999;
 		/* For each constellation point */
-		for (m = 0; m < qam; m++) {
-			if ((m >> (qm - k - 1)) & 1)
+		for (m = 0; m < QAM; m++) {
+			if ((m >> (QM - k - 1)) & 1)
 				p1 = maxstar(p1, log_syml_prob[m]);
 			else
 				p0 = maxstar(p0, log_syml_prob[m]);
@@ -1763,8 +1782,10 @@ gen_qm4_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 			llr_ = llr_max;
 		if (llr_ < -llr_max)
 			llr_ = -llr_max;
-		llrs[qm * i + k] = (int8_t) llr_;
+		llrs[QM * i + k] = (int8_t) llr_;
 	}
+#undef QM
+#undef QAM
 }
 
 static void
@@ -1912,6 +1933,7 @@ copy_reference_ldpc_dec_op(struct rte_bbdev_dec_op **ops, unsigned int n,
 		ops[i]->ldpc_dec.n_cb = ldpc_dec->n_cb;
 		ops[i]->ldpc_dec.iter_max = ldpc_dec->iter_max;
 		ops[i]->ldpc_dec.rv_index = ldpc_dec->rv_index;
+		ops[i]->ldpc_dec.k0 = ldpc_dec->k0;
 		ops[i]->ldpc_dec.op_flags = ldpc_dec->op_flags;
 		ops[i]->ldpc_dec.code_block_mode = ldpc_dec->code_block_mode;
 
@@ -2131,7 +2153,8 @@ validate_op_chain(struct rte_bbdev_op_data *op,
 		uint16_t data_len = rte_pktmbuf_data_len(m) - offset;
 		total_data_size += orig_op->segments[i].length;
 
-		if (orig_op->segments[i].length > RTE_BBDEV_LDPC_E_MAX_MBUF)
+		if ((orig_op->segments[i].length + RTE_PKTMBUF_HEADROOM)
+				> RTE_BBDEV_LDPC_E_MAX_MBUF)
 			ignore_mbuf = true;
 		if (!ignore_mbuf)
 			TEST_ASSERT(orig_op->segments[i].length == data_len,
@@ -2159,8 +2182,10 @@ validate_op_chain(struct rte_bbdev_op_data *op,
  * As per definition in 3GPP 38.212 Table 5.4.2.1-2
  */
 static inline uint16_t
-get_k0(uint16_t n_cb, uint16_t z_c, uint8_t bg, uint8_t rv_index)
+get_k0(uint16_t n_cb, uint16_t z_c, uint8_t bg, uint8_t rv_index, uint16_t k0)
 {
+	if (k0 > 0)
+		return k0;
 	if (rv_index == 0)
 		return 0;
 	uint16_t n = (bg == 1 ? N_ZC_1 : N_ZC_2) * z_c;
@@ -2190,7 +2215,7 @@ compute_harq_len(struct rte_bbdev_op_ldpc_dec *ops_ld)
 {
 	uint16_t k0 = 0;
 	uint8_t max_rv = (ops_ld->rv_index == 1) ? 3 : ops_ld->rv_index;
-	k0 = get_k0(ops_ld->n_cb, ops_ld->z_c, ops_ld->basegraph, max_rv);
+	k0 = get_k0(ops_ld->n_cb, ops_ld->z_c, ops_ld->basegraph, max_rv, ops_ld->k0);
 	/* Compute RM out size and number of rows */
 	uint16_t parity_offset = (ops_ld->basegraph == 1 ? 20 : 8)
 			* ops_ld->z_c - ops_ld->n_filler;
@@ -2582,7 +2607,8 @@ validate_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n,
 }
 
 static inline int
-validate_op_fft_chain(struct rte_bbdev_op_data *op, struct op_data_entries *orig_op)
+validate_op_fft_chain(struct rte_bbdev_op_data *op, struct op_data_entries *orig_op,
+		bool skip_validate_output)
 {
 	struct rte_mbuf *m = op->data;
 	uint8_t i, nb_dst_segments = orig_op->nb_segments;
@@ -2612,7 +2638,57 @@ validate_op_fft_chain(struct rte_bbdev_op_data *op, struct op_data_entries *orig
 			abs_delt = delt > 0 ? delt : -delt;
 			error_num += (abs_delt > thres_hold ? 1 : 0);
 		}
-		if (error_num > 0) {
+		if ((error_num > 0) && !skip_validate_output) {
+			rte_memdump(stdout, "Buffer A", ref_out, data_len);
+			rte_memdump(stdout, "Buffer B", op_out, data_len);
+			TEST_ASSERT(error_num == 0,
+				"FFT Output are not matched total (%u) errors (%u)",
+				data_len_iq, error_num);
+		}
+
+		m = m->next;
+	}
+
+	return TEST_SUCCESS;
+}
+
+static inline int
+validate_op_fft_meas_chain(struct rte_bbdev_op_data *op, struct op_data_entries *orig_op,
+		bool skip_validate_output)
+{
+	struct rte_mbuf *m = op->data;
+	uint8_t i, nb_dst_segments = orig_op->nb_segments;
+	double thres_hold = 1.0;
+	uint32_t j, data_len_iq, error_num;
+	int32_t *ref_out, *op_out;
+	double estSNR, refSNR, delt, abs_delt;
+
+	TEST_ASSERT(nb_dst_segments == m->nb_segs,
+			"Number of segments differ in original (%u) and filled (%u) op fft",
+			nb_dst_segments, m->nb_segs);
+
+	/* Due to size limitation of mbuf, FFT doesn't use real mbuf. */
+	for (i = 0; i < nb_dst_segments; ++i) {
+		uint16_t offset = (i == 0) ? op->offset : 0;
+		uint32_t data_len = op->length;
+
+		TEST_ASSERT(orig_op->segments[i].length == data_len,
+				"Length of segment differ in original (%u) and filled (%u) op fft",
+				orig_op->segments[i].length, data_len);
+
+		/* Divided by 4 to get the number of 32 bits data. */
+		data_len_iq = data_len >> 2;
+		ref_out = (int32_t *)(orig_op->segments[i].addr);
+		op_out = rte_pktmbuf_mtod_offset(m, int32_t *, offset);
+		error_num = 0;
+		for (j = 0; j < data_len_iq; j++) {
+			estSNR = 10*log10(op_out[j]);
+			refSNR = 10*log10(ref_out[j]);
+			delt = refSNR - estSNR;
+			abs_delt = delt > 0 ? delt : -delt;
+			error_num += (abs_delt > thres_hold ? 1 : 0);
+		}
+		if ((error_num > 0) && !skip_validate_output) {
 			rte_memdump(stdout, "Buffer A", ref_out, data_len);
 			rte_memdump(stdout, "Buffer B", op_out, data_len);
 			TEST_ASSERT(error_num == 0,
@@ -2685,16 +2761,24 @@ validate_fft_op(struct rte_bbdev_fft_op **ops, const uint16_t n,
 	int ret;
 	struct op_data_entries *fft_data_orig = &test_vector.entries[DATA_HARD_OUTPUT];
 	struct op_data_entries *fft_pwr_orig = &test_vector.entries[DATA_SOFT_OUTPUT];
+	bool skip_validate_output = false;
+
+	if ((test_vector.fft_window_width_vec > 0) &&
+			(test_vector.fft_window_width_vec != fft_window_width_dev)) {
+		printf("The vector FFT width doesn't match with device - skip %d %d\n",
+				test_vector.fft_window_width_vec, fft_window_width_dev);
+		skip_validate_output = true;
+	}
 
 	for (i = 0; i < n; ++i) {
 		ret = check_fft_status_and_ordering(ops[i], i, ref_op->status);
 		TEST_ASSERT_SUCCESS(ret, "Checking status and ordering for FFT failed");
 		TEST_ASSERT_SUCCESS(validate_op_fft_chain(
-				&ops[i]->fft.base_output, fft_data_orig),
+				&ops[i]->fft.base_output, fft_data_orig, skip_validate_output),
 				"FFT Output buffers (op=%u) are not matched", i);
 		if (check_bit(ops[i]->fft.op_flags, RTE_BBDEV_FFT_POWER_MEAS))
-			TEST_ASSERT_SUCCESS(validate_op_fft_chain(
-				&ops[i]->fft.power_meas_output, fft_pwr_orig),
+			TEST_ASSERT_SUCCESS(validate_op_fft_meas_chain(
+				&ops[i]->fft.power_meas_output, fft_pwr_orig, skip_validate_output),
 				"FFT Power Output buffers (op=%u) are not matched", i);
 	}
 
@@ -2895,8 +2979,14 @@ calc_fft_size(struct rte_bbdev_fft_op *op)
 static uint32_t
 calc_mldts_size(struct rte_bbdev_mldts_op *op)
 {
-	uint32_t output_size;
-	output_size = op->mldts.num_layers * op->mldts.num_rbs * op->mldts.c_rep;
+	uint32_t output_size = 0;
+	uint16_t i;
+
+	for (i = 0; i < op->mldts.num_layers; i++)
+		output_size += op->mldts.q_m[i];
+
+	output_size *= NUM_SC_PER_RB * BITS_PER_LLR * op->mldts.num_rbs * (op->mldts.c_rep + 1);
+
 	return output_size;
 }
 
@@ -3028,6 +3118,20 @@ run_test_case_on_device(test_case_function *test_case_func, uint8_t dev_id,
 
 	/* Run test case function */
 	t_ret = test_case_func(ad, op_params);
+
+	if (dump_ops) {
+		/* Dump queue information in local file. */
+		static FILE *fd;
+		fd = fopen("./dump_bbdev_queue_ops.txt", "w");
+		if (fd == NULL) {
+			printf("Open dump file error.\n");
+			return -1;
+		}
+		rte_bbdev_queue_ops_dump(ad->dev_id, ad->queue_ids[i], fd);
+		fclose(fd);
+		/* Run it once only. */
+		dump_ops = false;
+	}
 
 	/* Free active device resources and return */
 	free_buffers(ad, op_params);
@@ -3195,56 +3299,64 @@ dequeue_event_callback(uint16_t dev_id,
 	}
 
 	if (unlikely(event != RTE_BBDEV_EVENT_DEQUEUE)) {
-		__atomic_store_n(&tp->processing_status, TEST_FAILED, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&tp->processing_status, TEST_FAILED,
+				rte_memory_order_relaxed);
 		printf(
 			"Dequeue interrupt handler called for incorrect event!\n");
 		return;
 	}
 
-	burst_sz = __atomic_load_n(&tp->burst_sz, __ATOMIC_RELAXED);
+	burst_sz = rte_atomic_load_explicit(&tp->burst_sz, rte_memory_order_relaxed);
 	num_ops = tp->op_params->num_to_process;
 
 	if (test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC)
 		deq = rte_bbdev_dequeue_dec_ops(dev_id, queue_id,
 				&tp->dec_ops[
-					__atomic_load_n(&tp->nb_dequeued, __ATOMIC_RELAXED)],
+					rte_atomic_load_explicit(&tp->nb_dequeued,
+							rte_memory_order_relaxed)],
 				burst_sz);
 	else if (test_vector.op_type == RTE_BBDEV_OP_LDPC_DEC)
 		deq = rte_bbdev_dequeue_ldpc_dec_ops(dev_id, queue_id,
 				&tp->dec_ops[
-					__atomic_load_n(&tp->nb_dequeued, __ATOMIC_RELAXED)],
+					rte_atomic_load_explicit(&tp->nb_dequeued,
+							rte_memory_order_relaxed)],
 				burst_sz);
 	else if (test_vector.op_type == RTE_BBDEV_OP_LDPC_ENC)
 		deq = rte_bbdev_dequeue_ldpc_enc_ops(dev_id, queue_id,
 				&tp->enc_ops[
-					__atomic_load_n(&tp->nb_dequeued, __ATOMIC_RELAXED)],
+					rte_atomic_load_explicit(&tp->nb_dequeued,
+							rte_memory_order_relaxed)],
 				burst_sz);
 	else if (test_vector.op_type == RTE_BBDEV_OP_FFT)
 		deq = rte_bbdev_dequeue_fft_ops(dev_id, queue_id,
 				&tp->fft_ops[
-					__atomic_load_n(&tp->nb_dequeued, __ATOMIC_RELAXED)],
+					rte_atomic_load_explicit(&tp->nb_dequeued,
+							rte_memory_order_relaxed)],
 				burst_sz);
 	else if (test_vector.op_type == RTE_BBDEV_OP_MLDTS)
 		deq = rte_bbdev_dequeue_mldts_ops(dev_id, queue_id,
 				&tp->mldts_ops[
-					__atomic_load_n(&tp->nb_dequeued, __ATOMIC_RELAXED)],
+					rte_atomic_load_explicit(&tp->nb_dequeued,
+							rte_memory_order_relaxed)],
 				burst_sz);
 	else /*RTE_BBDEV_OP_TURBO_ENC*/
 		deq = rte_bbdev_dequeue_enc_ops(dev_id, queue_id,
 				&tp->enc_ops[
-					__atomic_load_n(&tp->nb_dequeued, __ATOMIC_RELAXED)],
+					rte_atomic_load_explicit(&tp->nb_dequeued,
+							rte_memory_order_relaxed)],
 				burst_sz);
 
 	if (deq < burst_sz) {
 		printf(
 			"After receiving the interrupt all operations should be dequeued. Expected: %u, got: %u\n",
 			burst_sz, deq);
-		__atomic_store_n(&tp->processing_status, TEST_FAILED, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&tp->processing_status, TEST_FAILED,
+				rte_memory_order_relaxed);
 		return;
 	}
 
-	if (__atomic_load_n(&tp->nb_dequeued, __ATOMIC_RELAXED) + deq < num_ops) {
-		__atomic_fetch_add(&tp->nb_dequeued, deq, __ATOMIC_RELAXED);
+	if (rte_atomic_load_explicit(&tp->nb_dequeued, rte_memory_order_relaxed) + deq < num_ops) {
+		rte_atomic_fetch_add_explicit(&tp->nb_dequeued, deq, rte_memory_order_relaxed);
 		return;
 	}
 
@@ -3288,7 +3400,8 @@ dequeue_event_callback(uint16_t dev_id,
 
 	if (ret) {
 		printf("Buffers validation failed\n");
-		__atomic_store_n(&tp->processing_status, TEST_FAILED, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&tp->processing_status, TEST_FAILED,
+				rte_memory_order_relaxed);
 	}
 
 	switch (test_vector.op_type) {
@@ -3315,7 +3428,8 @@ dequeue_event_callback(uint16_t dev_id,
 		break;
 	default:
 		printf("Unknown op type: %d\n", test_vector.op_type);
-		__atomic_store_n(&tp->processing_status, TEST_FAILED, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&tp->processing_status, TEST_FAILED,
+				rte_memory_order_relaxed);
 		return;
 	}
 
@@ -3324,7 +3438,7 @@ dequeue_event_callback(uint16_t dev_id,
 	tp->mbps += (((double)(num_ops * tb_len_bits)) / 1000000.0) /
 			((double)total_time / (double)rte_get_tsc_hz());
 
-	__atomic_fetch_add(&tp->nb_dequeued, deq, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&tp->nb_dequeued, deq, rte_memory_order_relaxed);
 }
 
 static int
@@ -3335,7 +3449,7 @@ throughput_intr_lcore_ldpc_dec(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_to_process = tp->op_params->num_to_process;
-	struct rte_bbdev_dec_op *ops[num_to_process];
+	struct rte_bbdev_dec_op **ops = alloca(sizeof(struct rte_bbdev_dec_op *) * num_to_process);
 	struct test_buffers *bufs = NULL;
 	struct rte_bbdev_info info;
 	int ret, i, j;
@@ -3362,10 +3476,11 @@ throughput_intr_lcore_ldpc_dec(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	__atomic_store_n(&tp->processing_status, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&tp->processing_status, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 
-	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->op_params->sync, SYNC_START,
+			rte_memory_order_relaxed);
 
 	ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops,
 				num_to_process);
@@ -3399,6 +3514,16 @@ throughput_intr_lcore_ldpc_dec(void *arg)
 			if (unlikely(num_to_process - enqueued < num_to_enq))
 				num_to_enq = num_to_process - enqueued;
 
+			/* Write to thread burst_sz current number of enqueued
+			 * descriptors. It ensures that proper number of
+			 * descriptors will be dequeued in callback
+			 * function - needed for last batch in case where
+			 * the number of operations is not a multiple of
+			 * burst size.
+			 */
+			rte_atomic_store_explicit(&tp->burst_sz, num_to_enq,
+					rte_memory_order_relaxed);
+
 			enq = 0;
 			do {
 				enq += rte_bbdev_enqueue_ldpc_dec_ops(
@@ -3408,23 +3533,19 @@ throughput_intr_lcore_ldpc_dec(void *arg)
 			} while (unlikely(num_to_enq != enq));
 			enqueued += enq;
 
-			/* Write to thread burst_sz current number of enqueued
-			 * descriptors. It ensures that proper number of
-			 * descriptors will be dequeued in callback
-			 * function - needed for last batch in case where
-			 * the number of operations is not a multiple of
-			 * burst size.
-			 */
-			__atomic_store_n(&tp->burst_sz, num_to_enq, __ATOMIC_RELAXED);
-
 			/* Wait until processing of previous batch is
 			 * completed
 			 */
-			rte_wait_until_equal_16(&tp->nb_dequeued, enqueued, __ATOMIC_RELAXED);
+			rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->nb_dequeued, enqueued,
+					rte_memory_order_relaxed);
 		}
 		if (j != TEST_REPETITIONS - 1)
-			__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 	}
+
+	TEST_ASSERT_SUCCESS(rte_bbdev_queue_intr_disable(tp->dev_id, queue_id),
+			"Failed to disable interrupts for dev: %u, queue_id: %u",
+			tp->dev_id, queue_id);
 
 	return TEST_SUCCESS;
 }
@@ -3437,7 +3558,7 @@ throughput_intr_lcore_dec(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_to_process = tp->op_params->num_to_process;
-	struct rte_bbdev_dec_op *ops[num_to_process];
+	struct rte_bbdev_dec_op **ops = alloca(sizeof(struct rte_bbdev_dec_op *) * num_to_process);
 	struct test_buffers *bufs = NULL;
 	struct rte_bbdev_info info;
 	struct rte_bbdev_dec_op *ref_op = tp->op_params->ref_dec_op;
@@ -3459,10 +3580,11 @@ throughput_intr_lcore_dec(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	__atomic_store_n(&tp->processing_status, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&tp->processing_status, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 
-	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->op_params->sync, SYNC_START,
+			rte_memory_order_relaxed);
 
 	ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops,
 				num_to_process);
@@ -3491,6 +3613,16 @@ throughput_intr_lcore_dec(void *arg)
 			if (unlikely(num_to_process - enqueued < num_to_enq))
 				num_to_enq = num_to_process - enqueued;
 
+			/* Write to thread burst_sz current number of enqueued
+			 * descriptors. It ensures that proper number of
+			 * descriptors will be dequeued in callback
+			 * function - needed for last batch in case where
+			 * the number of operations is not a multiple of
+			 * burst size.
+			 */
+			rte_atomic_store_explicit(&tp->burst_sz, num_to_enq,
+					rte_memory_order_relaxed);
+
 			enq = 0;
 			do {
 				enq += rte_bbdev_enqueue_dec_ops(tp->dev_id,
@@ -3499,23 +3631,19 @@ throughput_intr_lcore_dec(void *arg)
 			} while (unlikely(num_to_enq != enq));
 			enqueued += enq;
 
-			/* Write to thread burst_sz current number of enqueued
-			 * descriptors. It ensures that proper number of
-			 * descriptors will be dequeued in callback
-			 * function - needed for last batch in case where
-			 * the number of operations is not a multiple of
-			 * burst size.
-			 */
-			__atomic_store_n(&tp->burst_sz, num_to_enq, __ATOMIC_RELAXED);
-
 			/* Wait until processing of previous batch is
 			 * completed
 			 */
-			rte_wait_until_equal_16(&tp->nb_dequeued, enqueued, __ATOMIC_RELAXED);
+			rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->nb_dequeued, enqueued,
+					rte_memory_order_relaxed);
 		}
 		if (j != TEST_REPETITIONS - 1)
-			__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 	}
+
+	TEST_ASSERT_SUCCESS(rte_bbdev_queue_intr_disable(tp->dev_id, queue_id),
+			"Failed to disable interrupts for dev: %u, queue_id: %u",
+			tp->dev_id, queue_id);
 
 	return TEST_SUCCESS;
 }
@@ -3528,7 +3656,7 @@ throughput_intr_lcore_enc(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_to_process = tp->op_params->num_to_process;
-	struct rte_bbdev_enc_op *ops[num_to_process];
+	struct rte_bbdev_enc_op **ops = alloca(sizeof(struct rte_bbdev_enc_op *) * num_to_process);
 	struct test_buffers *bufs = NULL;
 	struct rte_bbdev_info info;
 	int ret, i, j;
@@ -3549,10 +3677,11 @@ throughput_intr_lcore_enc(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	__atomic_store_n(&tp->processing_status, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&tp->processing_status, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 
-	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->op_params->sync, SYNC_START,
+			rte_memory_order_relaxed);
 
 	ret = rte_bbdev_enc_op_alloc_bulk(tp->op_params->mp, ops,
 			num_to_process);
@@ -3577,6 +3706,16 @@ throughput_intr_lcore_enc(void *arg)
 			if (unlikely(num_to_process - enqueued < num_to_enq))
 				num_to_enq = num_to_process - enqueued;
 
+			/* Write to thread burst_sz current number of enqueued
+			 * descriptors. It ensures that proper number of
+			 * descriptors will be dequeued in callback
+			 * function - needed for last batch in case where
+			 * the number of operations is not a multiple of
+			 * burst size.
+			 */
+			rte_atomic_store_explicit(&tp->burst_sz, num_to_enq,
+					rte_memory_order_relaxed);
+
 			enq = 0;
 			do {
 				enq += rte_bbdev_enqueue_enc_ops(tp->dev_id,
@@ -3585,23 +3724,19 @@ throughput_intr_lcore_enc(void *arg)
 			} while (unlikely(enq != num_to_enq));
 			enqueued += enq;
 
-			/* Write to thread burst_sz current number of enqueued
-			 * descriptors. It ensures that proper number of
-			 * descriptors will be dequeued in callback
-			 * function - needed for last batch in case where
-			 * the number of operations is not a multiple of
-			 * burst size.
-			 */
-			__atomic_store_n(&tp->burst_sz, num_to_enq, __ATOMIC_RELAXED);
-
 			/* Wait until processing of previous batch is
 			 * completed
 			 */
-			rte_wait_until_equal_16(&tp->nb_dequeued, enqueued, __ATOMIC_RELAXED);
+			rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->nb_dequeued, enqueued,
+					rte_memory_order_relaxed);
 		}
 		if (j != TEST_REPETITIONS - 1)
-			__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 	}
+
+	TEST_ASSERT_SUCCESS(rte_bbdev_queue_intr_disable(tp->dev_id, queue_id),
+			"Failed to disable interrupts for dev: %u, queue_id: %u",
+			tp->dev_id, queue_id);
 
 	return TEST_SUCCESS;
 }
@@ -3615,7 +3750,7 @@ throughput_intr_lcore_ldpc_enc(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_to_process = tp->op_params->num_to_process;
-	struct rte_bbdev_enc_op *ops[num_to_process];
+	struct rte_bbdev_enc_op **ops = alloca(sizeof(struct rte_bbdev_enc_op *) * num_to_process);
 	struct test_buffers *bufs = NULL;
 	struct rte_bbdev_info info;
 	int ret, i, j;
@@ -3636,10 +3771,11 @@ throughput_intr_lcore_ldpc_enc(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	__atomic_store_n(&tp->processing_status, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&tp->processing_status, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 
-	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->op_params->sync, SYNC_START,
+			rte_memory_order_relaxed);
 
 	ret = rte_bbdev_enc_op_alloc_bulk(tp->op_params->mp, ops,
 			num_to_process);
@@ -3665,6 +3801,16 @@ throughput_intr_lcore_ldpc_enc(void *arg)
 			if (unlikely(num_to_process - enqueued < num_to_enq))
 				num_to_enq = num_to_process - enqueued;
 
+			/* Write to thread burst_sz current number of enqueued
+			 * descriptors. It ensures that proper number of
+			 * descriptors will be dequeued in callback
+			 * function - needed for last batch in case where
+			 * the number of operations is not a multiple of
+			 * burst size.
+			 */
+			rte_atomic_store_explicit(&tp->burst_sz, num_to_enq,
+					rte_memory_order_relaxed);
+
 			enq = 0;
 			do {
 				enq += rte_bbdev_enqueue_ldpc_enc_ops(
@@ -3674,23 +3820,19 @@ throughput_intr_lcore_ldpc_enc(void *arg)
 			} while (unlikely(enq != num_to_enq));
 			enqueued += enq;
 
-			/* Write to thread burst_sz current number of enqueued
-			 * descriptors. It ensures that proper number of
-			 * descriptors will be dequeued in callback
-			 * function - needed for last batch in case where
-			 * the number of operations is not a multiple of
-			 * burst size.
-			 */
-			__atomic_store_n(&tp->burst_sz, num_to_enq, __ATOMIC_RELAXED);
-
 			/* Wait until processing of previous batch is
 			 * completed
 			 */
-			rte_wait_until_equal_16(&tp->nb_dequeued, enqueued, __ATOMIC_RELAXED);
+			rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->nb_dequeued, enqueued,
+					rte_memory_order_relaxed);
 		}
 		if (j != TEST_REPETITIONS - 1)
-			__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 	}
+
+	TEST_ASSERT_SUCCESS(rte_bbdev_queue_intr_disable(tp->dev_id, queue_id),
+			"Failed to disable interrupts for dev: %u, queue_id: %u",
+			tp->dev_id, queue_id);
 
 	return TEST_SUCCESS;
 }
@@ -3704,7 +3846,7 @@ throughput_intr_lcore_fft(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_to_process = tp->op_params->num_to_process;
-	struct rte_bbdev_fft_op *ops[num_to_process];
+	struct rte_bbdev_fft_op **ops = alloca(sizeof(struct rte_bbdev_fft_op *) * num_to_process);
 	struct test_buffers *bufs = NULL;
 	struct rte_bbdev_info info;
 	int ret, i, j;
@@ -3725,10 +3867,11 @@ throughput_intr_lcore_fft(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	__atomic_store_n(&tp->processing_status, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&tp->processing_status, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 
-	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->op_params->sync, SYNC_START,
+			rte_memory_order_relaxed);
 
 	ret = rte_bbdev_fft_op_alloc_bulk(tp->op_params->mp, ops,
 			num_to_process);
@@ -3754,6 +3897,16 @@ throughput_intr_lcore_fft(void *arg)
 			if (unlikely(num_to_process - enqueued < num_to_enq))
 				num_to_enq = num_to_process - enqueued;
 
+			/* Write to thread burst_sz current number of enqueued
+			 * descriptors. It ensures that proper number of
+			 * descriptors will be dequeued in callback
+			 * function - needed for last batch in case where
+			 * the number of operations is not a multiple of
+			 * burst size.
+			 */
+			rte_atomic_store_explicit(&tp->burst_sz, num_to_enq,
+					rte_memory_order_relaxed);
+
 			enq = 0;
 			do {
 				enq += rte_bbdev_enqueue_fft_ops(tp->dev_id,
@@ -3762,23 +3915,19 @@ throughput_intr_lcore_fft(void *arg)
 			} while (unlikely(enq != num_to_enq));
 			enqueued += enq;
 
-			/* Write to thread burst_sz current number of enqueued
-			 * descriptors. It ensures that proper number of
-			 * descriptors will be dequeued in callback
-			 * function - needed for last batch in case where
-			 * the number of operations is not a multiple of
-			 * burst size.
-			 */
-			__atomic_store_n(&tp->burst_sz, num_to_enq, __ATOMIC_RELAXED);
-
 			/* Wait until processing of previous batch is
 			 * completed
 			 */
-			rte_wait_until_equal_16(&tp->nb_dequeued, enqueued, __ATOMIC_RELAXED);
+			rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->nb_dequeued, enqueued,
+					rte_memory_order_relaxed);
 		}
 		if (j != TEST_REPETITIONS - 1)
-			__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 	}
+
+	TEST_ASSERT_SUCCESS(rte_bbdev_queue_intr_disable(tp->dev_id, queue_id),
+			"Failed to disable interrupts for dev: %u, queue_id: %u",
+			tp->dev_id, queue_id);
 
 	return TEST_SUCCESS;
 }
@@ -3791,7 +3940,8 @@ throughput_intr_lcore_mldts(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_to_process = tp->op_params->num_to_process;
-	struct rte_bbdev_mldts_op *ops[num_to_process];
+	struct rte_bbdev_mldts_op **ops =
+			alloca(sizeof(struct rte_bbdev_mldts_op *) * num_to_process);
 	struct test_buffers *bufs = NULL;
 	struct rte_bbdev_info info;
 	int ret, i, j;
@@ -3811,10 +3961,11 @@ throughput_intr_lcore_mldts(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	__atomic_store_n(&tp->processing_status, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&tp->processing_status, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 
-	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->op_params->sync, SYNC_START,
+			rte_memory_order_relaxed);
 
 	ret = rte_bbdev_mldts_op_alloc_bulk(tp->op_params->mp, ops, num_to_process);
 	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_to_process);
@@ -3837,13 +3988,6 @@ throughput_intr_lcore_mldts(void *arg)
 			if (unlikely(num_to_process - enqueued < num_to_enq))
 				num_to_enq = num_to_process - enqueued;
 
-			enq = 0;
-			do {
-				enq += rte_bbdev_enqueue_mldts_ops(tp->dev_id,
-						queue_id, &ops[enqueued], num_to_enq);
-			} while (unlikely(enq != num_to_enq));
-			enqueued += enq;
-
 			/* Write to thread burst_sz current number of enqueued
 			 * descriptors. It ensures that proper number of
 			 * descriptors will be dequeued in callback
@@ -3851,16 +3995,29 @@ throughput_intr_lcore_mldts(void *arg)
 			 * the number of operations is not a multiple of
 			 * burst size.
 			 */
-			__atomic_store_n(&tp->burst_sz, num_to_enq, __ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&tp->burst_sz, num_to_enq,
+					rte_memory_order_relaxed);
+
+			enq = 0;
+			do {
+				enq += rte_bbdev_enqueue_mldts_ops(tp->dev_id,
+						queue_id, &ops[enqueued], num_to_enq);
+			} while (unlikely(enq != num_to_enq));
+			enqueued += enq;
 
 			/* Wait until processing of previous batch is
 			 * completed
 			 */
-			rte_wait_until_equal_16(&tp->nb_dequeued, enqueued, __ATOMIC_RELAXED);
+			rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->nb_dequeued, enqueued,
+					rte_memory_order_relaxed);
 		}
 		if (j != TEST_REPETITIONS - 1)
-			__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 	}
+
+	TEST_ASSERT_SUCCESS(rte_bbdev_queue_intr_disable(tp->dev_id, queue_id),
+			"Failed to disable interrupts for dev: %u, queue_id: %u",
+			tp->dev_id, queue_id);
 
 	return TEST_SUCCESS;
 }
@@ -3874,8 +4031,8 @@ throughput_pmd_lcore_dec(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_ops = tp->op_params->num_to_process;
-	struct rte_bbdev_dec_op *ops_enq[num_ops];
-	struct rte_bbdev_dec_op *ops_deq[num_ops];
+	struct rte_bbdev_dec_op **ops_enq = alloca(sizeof(struct rte_bbdev_dec_op *) * num_ops);
+	struct rte_bbdev_dec_op **ops_deq = alloca(sizeof(struct rte_bbdev_dec_op *) * num_ops);
 	struct rte_bbdev_dec_op *ref_op = tp->op_params->ref_dec_op;
 	struct test_buffers *bufs = NULL;
 	int i, j, ret;
@@ -3894,7 +4051,8 @@ throughput_pmd_lcore_dec(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->op_params->sync, SYNC_START,
+			rte_memory_order_relaxed);
 
 	ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops_enq, num_ops);
 	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
@@ -3986,8 +4144,8 @@ bler_pmd_lcore_ldpc_dec(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_ops = tp->op_params->num_to_process;
-	struct rte_bbdev_dec_op *ops_enq[num_ops];
-	struct rte_bbdev_dec_op *ops_deq[num_ops];
+	struct rte_bbdev_dec_op **ops_enq = alloca(sizeof(struct rte_bbdev_dec_op *) * num_ops);
+	struct rte_bbdev_dec_op **ops_deq = alloca(sizeof(struct rte_bbdev_dec_op *) * num_ops);
 	struct rte_bbdev_dec_op *ref_op = tp->op_params->ref_dec_op;
 	struct test_buffers *bufs = NULL;
 	int i, j, ret;
@@ -4013,7 +4171,8 @@ bler_pmd_lcore_ldpc_dec(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->op_params->sync, SYNC_START,
+			rte_memory_order_relaxed);
 
 	ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops_enq, num_ops);
 	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
@@ -4128,8 +4287,8 @@ bler_pmd_lcore_turbo_dec(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_ops = tp->op_params->num_to_process;
-	struct rte_bbdev_dec_op *ops_enq[num_ops];
-	struct rte_bbdev_dec_op *ops_deq[num_ops];
+	struct rte_bbdev_dec_op **ops_enq = alloca(sizeof(struct rte_bbdev_dec_op *) * num_ops);
+	struct rte_bbdev_dec_op **ops_deq = alloca(sizeof(struct rte_bbdev_dec_op *) * num_ops);
 	struct rte_bbdev_dec_op *ref_op = tp->op_params->ref_dec_op;
 	struct test_buffers *bufs = NULL;
 	int i, j, ret;
@@ -4148,7 +4307,8 @@ bler_pmd_lcore_turbo_dec(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->op_params->sync, SYNC_START,
+			rte_memory_order_relaxed);
 
 	ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops_enq, num_ops);
 	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
@@ -4246,8 +4406,8 @@ throughput_pmd_lcore_ldpc_dec(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_ops = tp->op_params->num_to_process;
-	struct rte_bbdev_dec_op *ops_enq[num_ops];
-	struct rte_bbdev_dec_op *ops_deq[num_ops];
+	struct rte_bbdev_dec_op **ops_enq = alloca(sizeof(struct rte_bbdev_dec_op *) * num_ops);
+	struct rte_bbdev_dec_op **ops_deq = alloca(sizeof(struct rte_bbdev_dec_op *) * num_ops);
 	struct rte_bbdev_dec_op *ref_op = tp->op_params->ref_dec_op;
 	struct test_buffers *bufs = NULL;
 	int i, j, ret;
@@ -4271,7 +4431,8 @@ throughput_pmd_lcore_ldpc_dec(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->op_params->sync, SYNC_START,
+			rte_memory_order_relaxed);
 
 	ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops_enq, num_ops);
 	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
@@ -4383,8 +4544,8 @@ throughput_pmd_lcore_enc(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_ops = tp->op_params->num_to_process;
-	struct rte_bbdev_enc_op *ops_enq[num_ops];
-	struct rte_bbdev_enc_op *ops_deq[num_ops];
+	struct rte_bbdev_enc_op **ops_enq = alloca(sizeof(struct rte_bbdev_enc_op *) * num_ops);
+	struct rte_bbdev_enc_op **ops_deq = alloca(sizeof(struct rte_bbdev_enc_op *) * num_ops);
 	struct rte_bbdev_enc_op *ref_op = tp->op_params->ref_enc_op;
 	struct test_buffers *bufs = NULL;
 	int i, j, ret;
@@ -4402,7 +4563,8 @@ throughput_pmd_lcore_enc(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->op_params->sync, SYNC_START,
+			rte_memory_order_relaxed);
 
 	ret = rte_bbdev_enc_op_alloc_bulk(tp->op_params->mp, ops_enq,
 			num_ops);
@@ -4484,8 +4646,8 @@ throughput_pmd_lcore_ldpc_enc(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_ops = tp->op_params->num_to_process;
-	struct rte_bbdev_enc_op *ops_enq[num_ops];
-	struct rte_bbdev_enc_op *ops_deq[num_ops];
+	struct rte_bbdev_enc_op **ops_enq = alloca(sizeof(struct rte_bbdev_enc_op *) * num_ops);
+	struct rte_bbdev_enc_op **ops_deq = alloca(sizeof(struct rte_bbdev_enc_op *) * num_ops);
 	struct rte_bbdev_enc_op *ref_op = tp->op_params->ref_enc_op;
 	struct test_buffers *bufs = NULL;
 	int i, j, ret;
@@ -4503,7 +4665,8 @@ throughput_pmd_lcore_ldpc_enc(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->op_params->sync, SYNC_START,
+			rte_memory_order_relaxed);
 
 	ret = rte_bbdev_enc_op_alloc_bulk(tp->op_params->mp, ops_enq,
 			num_ops);
@@ -4585,8 +4748,8 @@ throughput_pmd_lcore_fft(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_ops = tp->op_params->num_to_process;
-	struct rte_bbdev_fft_op *ops_enq[num_ops];
-	struct rte_bbdev_fft_op *ops_deq[num_ops];
+	struct rte_bbdev_fft_op **ops_enq = alloca(sizeof(struct rte_bbdev_fft_op *) * num_ops);
+	struct rte_bbdev_fft_op **ops_deq = alloca(sizeof(struct rte_bbdev_fft_op *) * num_ops);
 	struct rte_bbdev_fft_op *ref_op = tp->op_params->ref_fft_op;
 	struct test_buffers *bufs = NULL;
 	int i, j, ret;
@@ -4604,7 +4767,8 @@ throughput_pmd_lcore_fft(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->op_params->sync, SYNC_START,
+			rte_memory_order_relaxed);
 
 	ret = rte_bbdev_fft_op_alloc_bulk(tp->op_params->mp, ops_enq, num_ops);
 	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
@@ -4684,8 +4848,8 @@ throughput_pmd_lcore_mldts(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_ops = tp->op_params->num_to_process;
-	struct rte_bbdev_mldts_op *ops_enq[num_ops];
-	struct rte_bbdev_mldts_op *ops_deq[num_ops];
+	struct rte_bbdev_mldts_op **ops_enq = alloca(sizeof(struct rte_bbdev_mldts_op *) * num_ops);
+	struct rte_bbdev_mldts_op **ops_deq = alloca(sizeof(struct rte_bbdev_mldts_op *) * num_ops);
 	struct rte_bbdev_mldts_op *ref_op = tp->op_params->ref_mldts_op;
 	struct test_buffers *bufs = NULL;
 	int i, j, ret;
@@ -4702,7 +4866,8 @@ throughput_pmd_lcore_mldts(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tp->op_params->sync, SYNC_START,
+			rte_memory_order_relaxed);
 
 	ret = rte_bbdev_mldts_op_alloc_bulk(tp->op_params->mp, ops_enq, num_ops);
 	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
@@ -4898,7 +5063,7 @@ bler_test(struct active_device *ad,
 	else
 		return TEST_SKIPPED;
 
-	__atomic_store_n(&op_params->sync, SYNC_WAIT, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&op_params->sync, SYNC_WAIT, rte_memory_order_relaxed);
 
 	/* Main core is set at first entry */
 	t_params[0].dev_id = ad->dev_id;
@@ -4921,7 +5086,7 @@ bler_test(struct active_device *ad,
 				&t_params[used_cores++], lcore_id);
 	}
 
-	__atomic_store_n(&op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&op_params->sync, SYNC_START, rte_memory_order_relaxed);
 	ret = bler_function(&t_params[0]);
 
 	/* Main core is always used */
@@ -5024,7 +5189,7 @@ throughput_test(struct active_device *ad,
 			throughput_function = throughput_pmd_lcore_enc;
 	}
 
-	__atomic_store_n(&op_params->sync, SYNC_WAIT, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&op_params->sync, SYNC_WAIT, rte_memory_order_relaxed);
 
 	/* Main core is set at first entry */
 	t_params[0].dev_id = ad->dev_id;
@@ -5047,7 +5212,7 @@ throughput_test(struct active_device *ad,
 				&t_params[used_cores++], lcore_id);
 	}
 
-	__atomic_store_n(&op_params->sync, SYNC_START, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&op_params->sync, SYNC_START, rte_memory_order_relaxed);
 	ret = throughput_function(&t_params[0]);
 
 	/* Main core is always used */
@@ -5077,29 +5242,30 @@ throughput_test(struct active_device *ad,
 	 * Wait for main lcore operations.
 	 */
 	tp = &t_params[0];
-	while ((__atomic_load_n(&tp->nb_dequeued, __ATOMIC_RELAXED) <
+	while ((rte_atomic_load_explicit(&tp->nb_dequeued, rte_memory_order_relaxed) <
 		op_params->num_to_process) &&
-		(__atomic_load_n(&tp->processing_status, __ATOMIC_RELAXED) !=
+		(rte_atomic_load_explicit(&tp->processing_status, rte_memory_order_relaxed) !=
 		TEST_FAILED))
 		rte_pause();
 
 	tp->ops_per_sec /= TEST_REPETITIONS;
 	tp->mbps /= TEST_REPETITIONS;
-	ret |= (int)__atomic_load_n(&tp->processing_status, __ATOMIC_RELAXED);
+	ret |= (int)rte_atomic_load_explicit(&tp->processing_status, rte_memory_order_relaxed);
 
 	/* Wait for worker lcores operations */
 	for (used_cores = 1; used_cores < num_lcores; used_cores++) {
 		tp = &t_params[used_cores];
 
-		while ((__atomic_load_n(&tp->nb_dequeued, __ATOMIC_RELAXED) <
+		while ((rte_atomic_load_explicit(&tp->nb_dequeued, rte_memory_order_relaxed) <
 			op_params->num_to_process) &&
-			(__atomic_load_n(&tp->processing_status, __ATOMIC_RELAXED) !=
-			TEST_FAILED))
+			(rte_atomic_load_explicit(&tp->processing_status,
+					rte_memory_order_relaxed) != TEST_FAILED))
 			rte_pause();
 
 		tp->ops_per_sec /= TEST_REPETITIONS;
 		tp->mbps /= TEST_REPETITIONS;
-		ret |= (int)__atomic_load_n(&tp->processing_status, __ATOMIC_RELAXED);
+		ret |= (int)rte_atomic_load_explicit(&tp->processing_status,
+				rte_memory_order_relaxed);
 	}
 
 	/* Print throughput if test passed */
@@ -5702,6 +5868,7 @@ get_bbdev_queue_stats(uint16_t dev_id, uint16_t queue_id,
 	stats->enqueue_warn_count = q_stats->enqueue_warn_count;
 	stats->dequeue_warn_count = q_stats->dequeue_warn_count;
 	stats->acc_offload_cycles = q_stats->acc_offload_cycles;
+	stats->enqueue_depth_avail = q_stats->enqueue_depth_avail;
 
 	return 0;
 }

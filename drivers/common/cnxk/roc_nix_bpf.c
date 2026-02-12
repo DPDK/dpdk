@@ -547,9 +547,9 @@ roc_nix_bpf_config(struct roc_nix *roc_nix, uint16_t id,
 {
 	uint64_t exponent_p = 0, mantissa_p = 0, div_exp_p = 0;
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	volatile struct nix_band_prof_s *prof, *prof_mask;
 	struct dev *dev = &nix->dev;
 	struct mbox *mbox = dev->mbox;
-	struct nix_cn10k_aq_enq_req *aq;
 	uint32_t policer_timeunit;
 	uint8_t level_idx;
 	int rc;
@@ -568,103 +568,122 @@ roc_nix_bpf_config(struct roc_nix *roc_nix, uint16_t id,
 	if (level_idx == ROC_NIX_BPF_LEVEL_IDX_INVALID)
 		return NIX_ERR_PARAM;
 
-	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox_get(mbox));
-	if (aq == NULL) {
-		rc = -ENOSPC;
-		goto exit;
+	if (roc_model_is_cn10k()) {
+		struct nix_cn10k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox_get(mbox));
+		if (aq == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+		aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14) | id;
+		aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+		aq->op = NIX_AQ_INSTOP_WRITE;
+		prof = &aq->prof;
+		prof_mask = &aq->prof_mask;
+	} else {
+		struct nix_cn20k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn20k_aq_enq(mbox_get(mbox));
+		if (aq == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+		aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14) | id;
+		aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+		aq->op = NIX_AQ_INSTOP_WRITE;
+		prof = &aq->prof;
+		prof_mask = &aq->prof_mask;
 	}
-	aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14) | id;
-	aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
-	aq->op = NIX_AQ_INSTOP_WRITE;
 
-	aq->prof.adjust_exponent = NIX_BPF_DEFAULT_ADJUST_EXPONENT;
-	aq->prof.adjust_mantissa = NIX_BPF_DEFAULT_ADJUST_MANTISSA;
+	prof->adjust_exponent = NIX_BPF_DEFAULT_ADJUST_EXPONENT;
+	prof->adjust_mantissa = NIX_BPF_DEFAULT_ADJUST_MANTISSA;
 	if (cfg->lmode == ROC_NIX_BPF_LMODE_BYTE)
-		aq->prof.adjust_mantissa = NIX_BPF_DEFAULT_ADJUST_MANTISSA / 2;
+		prof->adjust_mantissa = NIX_BPF_DEFAULT_ADJUST_MANTISSA / 2;
 
-	aq->prof_mask.adjust_exponent = ~(aq->prof_mask.adjust_exponent);
-	aq->prof_mask.adjust_mantissa = ~(aq->prof_mask.adjust_mantissa);
+	prof_mask->adjust_exponent = ~(prof_mask->adjust_exponent);
+	prof_mask->adjust_mantissa = ~(prof_mask->adjust_mantissa);
 
 	switch (cfg->alg) {
 	case ROC_NIX_BPF_ALGO_2697:
 		meter_rate_to_nix(cfg->algo2697.cir, &exponent_p, &mantissa_p,
 				  &div_exp_p, policer_timeunit);
-		aq->prof.cir_mantissa = mantissa_p;
-		aq->prof.cir_exponent = exponent_p;
+		prof->cir_mantissa = mantissa_p;
+		prof->cir_exponent = exponent_p;
 
 		meter_burst_to_nix(cfg->algo2697.cbs, &exponent_p, &mantissa_p);
-		aq->prof.cbs_mantissa = mantissa_p;
-		aq->prof.cbs_exponent = exponent_p;
+		prof->cbs_mantissa = mantissa_p;
+		prof->cbs_exponent = exponent_p;
 
 		meter_burst_to_nix(cfg->algo2697.ebs, &exponent_p, &mantissa_p);
-		aq->prof.pebs_mantissa = mantissa_p;
-		aq->prof.pebs_exponent = exponent_p;
+		prof->pebs_mantissa = mantissa_p;
+		prof->pebs_exponent = exponent_p;
 
-		aq->prof_mask.cir_mantissa = ~(aq->prof_mask.cir_mantissa);
-		aq->prof_mask.cbs_mantissa = ~(aq->prof_mask.cbs_mantissa);
-		aq->prof_mask.pebs_mantissa = ~(aq->prof_mask.pebs_mantissa);
-		aq->prof_mask.cir_exponent = ~(aq->prof_mask.cir_exponent);
-		aq->prof_mask.cbs_exponent = ~(aq->prof_mask.cbs_exponent);
-		aq->prof_mask.pebs_exponent = ~(aq->prof_mask.pebs_exponent);
+		prof_mask->cir_mantissa = ~(prof_mask->cir_mantissa);
+		prof_mask->cbs_mantissa = ~(prof_mask->cbs_mantissa);
+		prof_mask->pebs_mantissa = ~(prof_mask->pebs_mantissa);
+		prof_mask->cir_exponent = ~(prof_mask->cir_exponent);
+		prof_mask->cbs_exponent = ~(prof_mask->cbs_exponent);
+		prof_mask->pebs_exponent = ~(prof_mask->pebs_exponent);
 		break;
 
 	case ROC_NIX_BPF_ALGO_2698:
 		meter_rate_to_nix(cfg->algo2698.cir, &exponent_p, &mantissa_p,
 				  &div_exp_p, policer_timeunit);
-		aq->prof.cir_mantissa = mantissa_p;
-		aq->prof.cir_exponent = exponent_p;
+		prof->cir_mantissa = mantissa_p;
+		prof->cir_exponent = exponent_p;
 
 		meter_rate_to_nix(cfg->algo2698.pir, &exponent_p, &mantissa_p,
 				  &div_exp_p, policer_timeunit);
-		aq->prof.peir_mantissa = mantissa_p;
-		aq->prof.peir_exponent = exponent_p;
+		prof->peir_mantissa = mantissa_p;
+		prof->peir_exponent = exponent_p;
 
 		meter_burst_to_nix(cfg->algo2698.cbs, &exponent_p, &mantissa_p);
-		aq->prof.cbs_mantissa = mantissa_p;
-		aq->prof.cbs_exponent = exponent_p;
+		prof->cbs_mantissa = mantissa_p;
+		prof->cbs_exponent = exponent_p;
 
 		meter_burst_to_nix(cfg->algo2698.pbs, &exponent_p, &mantissa_p);
-		aq->prof.pebs_mantissa = mantissa_p;
-		aq->prof.pebs_exponent = exponent_p;
+		prof->pebs_mantissa = mantissa_p;
+		prof->pebs_exponent = exponent_p;
 
-		aq->prof_mask.cir_mantissa = ~(aq->prof_mask.cir_mantissa);
-		aq->prof_mask.peir_mantissa = ~(aq->prof_mask.peir_mantissa);
-		aq->prof_mask.cbs_mantissa = ~(aq->prof_mask.cbs_mantissa);
-		aq->prof_mask.pebs_mantissa = ~(aq->prof_mask.pebs_mantissa);
-		aq->prof_mask.cir_exponent = ~(aq->prof_mask.cir_exponent);
-		aq->prof_mask.peir_exponent = ~(aq->prof_mask.peir_exponent);
-		aq->prof_mask.cbs_exponent = ~(aq->prof_mask.cbs_exponent);
-		aq->prof_mask.pebs_exponent = ~(aq->prof_mask.pebs_exponent);
+		prof_mask->cir_mantissa = ~(prof_mask->cir_mantissa);
+		prof_mask->peir_mantissa = ~(prof_mask->peir_mantissa);
+		prof_mask->cbs_mantissa = ~(prof_mask->cbs_mantissa);
+		prof_mask->pebs_mantissa = ~(prof_mask->pebs_mantissa);
+		prof_mask->cir_exponent = ~(prof_mask->cir_exponent);
+		prof_mask->peir_exponent = ~(prof_mask->peir_exponent);
+		prof_mask->cbs_exponent = ~(prof_mask->cbs_exponent);
+		prof_mask->pebs_exponent = ~(prof_mask->pebs_exponent);
 		break;
 
 	case ROC_NIX_BPF_ALGO_4115:
 		meter_rate_to_nix(cfg->algo4115.cir, &exponent_p, &mantissa_p,
 				  &div_exp_p, policer_timeunit);
-		aq->prof.cir_mantissa = mantissa_p;
-		aq->prof.cir_exponent = exponent_p;
+		prof->cir_mantissa = mantissa_p;
+		prof->cir_exponent = exponent_p;
 
 		meter_rate_to_nix(cfg->algo4115.eir, &exponent_p, &mantissa_p,
 				  &div_exp_p, policer_timeunit);
-		aq->prof.peir_mantissa = mantissa_p;
-		aq->prof.peir_exponent = exponent_p;
+		prof->peir_mantissa = mantissa_p;
+		prof->peir_exponent = exponent_p;
 
 		meter_burst_to_nix(cfg->algo4115.cbs, &exponent_p, &mantissa_p);
-		aq->prof.cbs_mantissa = mantissa_p;
-		aq->prof.cbs_exponent = exponent_p;
+		prof->cbs_mantissa = mantissa_p;
+		prof->cbs_exponent = exponent_p;
 
 		meter_burst_to_nix(cfg->algo4115.ebs, &exponent_p, &mantissa_p);
-		aq->prof.pebs_mantissa = mantissa_p;
-		aq->prof.pebs_exponent = exponent_p;
+		prof->pebs_mantissa = mantissa_p;
+		prof->pebs_exponent = exponent_p;
 
-		aq->prof_mask.cir_mantissa = ~(aq->prof_mask.cir_mantissa);
-		aq->prof_mask.peir_mantissa = ~(aq->prof_mask.peir_mantissa);
-		aq->prof_mask.cbs_mantissa = ~(aq->prof_mask.cbs_mantissa);
-		aq->prof_mask.pebs_mantissa = ~(aq->prof_mask.pebs_mantissa);
+		prof_mask->cir_mantissa = ~(prof_mask->cir_mantissa);
+		prof_mask->peir_mantissa = ~(prof_mask->peir_mantissa);
+		prof_mask->cbs_mantissa = ~(prof_mask->cbs_mantissa);
+		prof_mask->pebs_mantissa = ~(prof_mask->pebs_mantissa);
 
-		aq->prof_mask.cir_exponent = ~(aq->prof_mask.cir_exponent);
-		aq->prof_mask.peir_exponent = ~(aq->prof_mask.peir_exponent);
-		aq->prof_mask.cbs_exponent = ~(aq->prof_mask.cbs_exponent);
-		aq->prof_mask.pebs_exponent = ~(aq->prof_mask.pebs_exponent);
+		prof_mask->cir_exponent = ~(prof_mask->cir_exponent);
+		prof_mask->peir_exponent = ~(prof_mask->peir_exponent);
+		prof_mask->cbs_exponent = ~(prof_mask->cbs_exponent);
+		prof_mask->pebs_exponent = ~(prof_mask->pebs_exponent);
 		break;
 
 	default:
@@ -672,23 +691,23 @@ roc_nix_bpf_config(struct roc_nix *roc_nix, uint16_t id,
 		goto exit;
 	}
 
-	aq->prof.lmode = cfg->lmode;
-	aq->prof.icolor = cfg->icolor;
-	aq->prof.meter_algo = cfg->alg;
-	aq->prof.pc_mode = cfg->pc_mode;
-	aq->prof.tnl_ena = cfg->tnl_ena;
-	aq->prof.gc_action = cfg->action[ROC_NIX_BPF_COLOR_GREEN];
-	aq->prof.yc_action = cfg->action[ROC_NIX_BPF_COLOR_YELLOW];
-	aq->prof.rc_action = cfg->action[ROC_NIX_BPF_COLOR_RED];
+	prof->lmode = cfg->lmode;
+	prof->icolor = cfg->icolor;
+	prof->meter_algo = cfg->alg;
+	prof->pc_mode = cfg->pc_mode;
+	prof->tnl_ena = cfg->tnl_ena;
+	prof->gc_action = cfg->action[ROC_NIX_BPF_COLOR_GREEN];
+	prof->yc_action = cfg->action[ROC_NIX_BPF_COLOR_YELLOW];
+	prof->rc_action = cfg->action[ROC_NIX_BPF_COLOR_RED];
 
-	aq->prof_mask.lmode = ~(aq->prof_mask.lmode);
-	aq->prof_mask.icolor = ~(aq->prof_mask.icolor);
-	aq->prof_mask.meter_algo = ~(aq->prof_mask.meter_algo);
-	aq->prof_mask.pc_mode = ~(aq->prof_mask.pc_mode);
-	aq->prof_mask.tnl_ena = ~(aq->prof_mask.tnl_ena);
-	aq->prof_mask.gc_action = ~(aq->prof_mask.gc_action);
-	aq->prof_mask.yc_action = ~(aq->prof_mask.yc_action);
-	aq->prof_mask.rc_action = ~(aq->prof_mask.rc_action);
+	prof_mask->lmode = ~(prof_mask->lmode);
+	prof_mask->icolor = ~(prof_mask->icolor);
+	prof_mask->meter_algo = ~(prof_mask->meter_algo);
+	prof_mask->pc_mode = ~(prof_mask->pc_mode);
+	prof_mask->tnl_ena = ~(prof_mask->tnl_ena);
+	prof_mask->gc_action = ~(prof_mask->gc_action);
+	prof_mask->yc_action = ~(prof_mask->yc_action);
+	prof_mask->rc_action = ~(prof_mask->rc_action);
 
 	rc = mbox_process(mbox);
 exit:
@@ -703,7 +722,6 @@ roc_nix_bpf_ena_dis(struct roc_nix *roc_nix, uint16_t id, struct roc_nix_rq *rq,
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct dev *dev = &nix->dev;
 	struct mbox *mbox = mbox_get(dev->mbox);
-	struct nix_cn10k_aq_enq_req *aq;
 	int rc;
 
 	if (roc_model_is_cn9k()) {
@@ -716,25 +734,53 @@ roc_nix_bpf_ena_dis(struct roc_nix *roc_nix, uint16_t id, struct roc_nix_rq *rq,
 		goto exit;
 	}
 
-	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
-	if (aq == NULL) {
-		rc = -ENOSPC;
-		goto exit;
-	}
-	aq->qidx = rq->qid;
-	aq->ctype = NIX_AQ_CTYPE_RQ;
-	aq->op = NIX_AQ_INSTOP_WRITE;
+	if (roc_model_is_cn10k()) {
+		struct nix_cn10k_aq_enq_req *aq;
 
-	aq->rq.policer_ena = enable;
-	aq->rq_mask.policer_ena = ~(aq->rq_mask.policer_ena);
-	if (enable) {
-		aq->rq.band_prof_id = id;
-		aq->rq_mask.band_prof_id = ~(aq->rq_mask.band_prof_id);
-	}
+		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (aq == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+		aq->qidx = rq->qid;
+		aq->ctype = NIX_AQ_CTYPE_RQ;
+		aq->op = NIX_AQ_INSTOP_WRITE;
 
-	rc = mbox_process(mbox);
-	if (rc)
-		goto exit;
+		aq->rq.policer_ena = enable;
+		aq->rq_mask.policer_ena = ~(aq->rq_mask.policer_ena);
+		if (enable) {
+			aq->rq.band_prof_id = id;
+			aq->rq_mask.band_prof_id = ~(aq->rq_mask.band_prof_id);
+		}
+
+		rc = mbox_process(mbox);
+		if (rc)
+			goto exit;
+	} else {
+		struct nix_cn20k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
+		if (aq == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+		aq->qidx = rq->qid;
+		aq->ctype = NIX_AQ_CTYPE_RQ;
+		aq->op = NIX_AQ_INSTOP_WRITE;
+
+		aq->rq.policer_ena = enable;
+		aq->rq_mask.policer_ena = ~(aq->rq_mask.policer_ena);
+		if (enable) {
+			aq->rq.band_prof_id_l = id & 0x3FF;
+			aq->rq.band_prof_id_h = (id >> 10) & 0xF;
+			aq->rq_mask.band_prof_id_l = ~(aq->rq_mask.band_prof_id_l);
+			aq->rq_mask.band_prof_id_h = ~(aq->rq_mask.band_prof_id_h);
+		}
+
+		rc = mbox_process(mbox);
+		if (rc)
+			goto exit;
+	}
 
 	rq->bpf_id = id;
 
@@ -750,8 +796,7 @@ roc_nix_bpf_dump(struct roc_nix *roc_nix, uint16_t id,
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct dev *dev = &nix->dev;
 	struct mbox *mbox = mbox_get(dev->mbox);
-	struct nix_cn10k_aq_enq_rsp *rsp;
-	struct nix_cn10k_aq_enq_req *aq;
+	volatile struct nix_band_prof_s *prof;
 	uint8_t level_idx;
 	int rc;
 
@@ -765,19 +810,42 @@ roc_nix_bpf_dump(struct roc_nix *roc_nix, uint16_t id,
 		rc = NIX_ERR_PARAM;
 		goto exit;
 	}
+	if (roc_model_is_cn10k()) {
+		struct nix_cn10k_aq_enq_rsp *rsp;
+		struct nix_cn10k_aq_enq_req *aq;
 
-	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
-	if (aq == NULL) {
-		rc = -ENOSPC;
-		goto exit;
+		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (aq == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+		aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14 | id);
+		aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+		aq->op = NIX_AQ_INSTOP_READ;
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			goto exit;
+		prof = &rsp->prof;
+	} else {
+		struct nix_cn20k_aq_enq_rsp *rsp;
+		struct nix_cn20k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
+		if (aq == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+		aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14 | id);
+		aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+		aq->op = NIX_AQ_INSTOP_READ;
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			goto exit;
+		prof = &rsp->prof;
 	}
-	aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14 | id);
-	aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
-	aq->op = NIX_AQ_INSTOP_READ;
-	rc = mbox_process_msg(mbox, (void *)&rsp);
 	if (!rc) {
 		plt_dump("============= band prof id =%d ===============", id);
-		nix_lf_bpf_dump(&rsp->prof);
+		nix_lf_bpf_dump(prof);
 	}
 exit:
 	mbox_put(mbox);
@@ -792,7 +860,6 @@ roc_nix_bpf_pre_color_tbl_setup(struct roc_nix *roc_nix, uint16_t id,
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct dev *dev = &nix->dev;
 	struct mbox *mbox = dev->mbox;
-	struct nix_cn10k_aq_enq_req *aq;
 	uint8_t pc_mode, tn_ena;
 	uint8_t level_idx;
 	int rc;
@@ -856,21 +923,43 @@ roc_nix_bpf_pre_color_tbl_setup(struct roc_nix *roc_nix, uint16_t id,
 		goto exit;
 	}
 
-	/* Update corresponding bandwidth profile too */
-	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox_get(mbox));
-	if (aq == NULL) {
-		rc = -ENOSPC;
-		goto exit;
-	}
-	aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14) | id;
-	aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
-	aq->op = NIX_AQ_INSTOP_WRITE;
-	aq->prof.pc_mode = pc_mode;
-	aq->prof.tnl_ena = tn_ena;
-	aq->prof_mask.pc_mode = ~(aq->prof_mask.pc_mode);
-	aq->prof_mask.tnl_ena = ~(aq->prof_mask.tnl_ena);
+	if (roc_model_is_cn10k()) {
+		struct nix_cn10k_aq_enq_req *aq;
 
-	rc = mbox_process(mbox);
+		/* Update corresponding bandwidth profile too */
+		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox_get(mbox));
+		if (aq == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+		aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14) | id;
+		aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+		aq->op = NIX_AQ_INSTOP_WRITE;
+		aq->prof.pc_mode = pc_mode;
+		aq->prof.tnl_ena = tn_ena;
+		aq->prof_mask.pc_mode = ~(aq->prof_mask.pc_mode);
+		aq->prof_mask.tnl_ena = ~(aq->prof_mask.tnl_ena);
+
+		rc = mbox_process(mbox);
+	} else {
+		struct nix_cn20k_aq_enq_req *aq;
+
+		/* Update corresponding bandwidth profile too */
+		aq = mbox_alloc_msg_nix_cn20k_aq_enq(mbox_get(mbox));
+		if (aq == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+		aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14) | id;
+		aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+		aq->op = NIX_AQ_INSTOP_WRITE;
+		aq->prof.pc_mode = pc_mode;
+		aq->prof.tnl_ena = tn_ena;
+		aq->prof_mask.pc_mode = ~(aq->prof_mask.pc_mode);
+		aq->prof_mask.tnl_ena = ~(aq->prof_mask.tnl_ena);
+
+		rc = mbox_process(mbox);
+	}
 
 exit:
 	mbox_put(mbox);
@@ -883,9 +972,9 @@ roc_nix_bpf_connect(struct roc_nix *roc_nix,
 		    uint16_t dst_id)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	volatile struct nix_band_prof_s *prof, *prof_mask;
 	struct dev *dev = &nix->dev;
 	struct mbox *mbox = mbox_get(dev->mbox);
-	struct nix_cn10k_aq_enq_req *aq;
 	uint8_t level_idx;
 	int rc;
 
@@ -900,23 +989,42 @@ roc_nix_bpf_connect(struct roc_nix *roc_nix,
 		goto exit;
 	}
 
-	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
-	if (aq == NULL) {
-		rc = -ENOSPC;
-		goto exit;
+	if (roc_model_is_cn10k()) {
+		struct nix_cn10k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (aq == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+		aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14) | src_id;
+		aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+		aq->op = NIX_AQ_INSTOP_WRITE;
+		prof = &aq->prof;
+		prof_mask = &aq->prof_mask;
+	} else {
+		struct nix_cn20k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
+		if (aq == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+		aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14) | src_id;
+		aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+		aq->op = NIX_AQ_INSTOP_WRITE;
+		prof = &aq->prof;
+		prof_mask = &aq->prof_mask;
 	}
-	aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14) | src_id;
-	aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
-	aq->op = NIX_AQ_INSTOP_WRITE;
 
 	if (dst_id == ROC_NIX_BPF_ID_INVALID) {
-		aq->prof.hl_en = false;
-		aq->prof_mask.hl_en = ~(aq->prof_mask.hl_en);
+		prof->hl_en = false;
+		prof_mask->hl_en = ~(prof_mask->hl_en);
 	} else {
-		aq->prof.hl_en = true;
-		aq->prof.band_prof_id = dst_id;
-		aq->prof_mask.hl_en = ~(aq->prof_mask.hl_en);
-		aq->prof_mask.band_prof_id = ~(aq->prof_mask.band_prof_id);
+		prof->hl_en = true;
+		prof->band_prof_id = dst_id;
+		prof_mask->hl_en = ~(prof_mask->hl_en);
+		prof_mask->band_prof_id = ~(prof_mask->band_prof_id);
 	}
 
 	rc = mbox_process(mbox);
@@ -937,8 +1045,7 @@ roc_nix_bpf_stats_read(struct roc_nix *roc_nix, uint16_t id, uint64_t mask,
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct dev *dev = &nix->dev;
 	struct mbox *mbox = mbox_get(dev->mbox);
-	struct nix_cn10k_aq_enq_rsp *rsp;
-	struct nix_cn10k_aq_enq_req *aq;
+	volatile struct nix_band_prof_s *prof;
 	uint8_t level_idx;
 	int rc;
 
@@ -953,17 +1060,39 @@ roc_nix_bpf_stats_read(struct roc_nix *roc_nix, uint16_t id, uint64_t mask,
 		goto exit;
 	}
 
-	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
-	if (aq == NULL) {
-		rc = -ENOSPC;
-		goto exit;
+	if (roc_model_is_cn10k()) {
+		struct nix_cn10k_aq_enq_rsp *rsp;
+		struct nix_cn10k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (aq == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+		aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14 | id);
+		aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+		aq->op = NIX_AQ_INSTOP_READ;
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			goto exit;
+		prof = &rsp->prof;
+	} else {
+		struct nix_cn20k_aq_enq_rsp *rsp;
+		struct nix_cn20k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
+		if (aq == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+		aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14 | id);
+		aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+		aq->op = NIX_AQ_INSTOP_READ;
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			goto exit;
+		prof = &rsp->prof;
 	}
-	aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14 | id);
-	aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
-	aq->op = NIX_AQ_INSTOP_READ;
-	rc = mbox_process_msg(mbox, (void *)&rsp);
-	if (rc)
-		goto exit;
 
 	green_pkt_pass =
 		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_GREEN_PKT_F_PASS);
@@ -991,40 +1120,40 @@ roc_nix_bpf_stats_read(struct roc_nix *roc_nix, uint16_t id, uint64_t mask,
 		roc_nix_bpf_stats_to_idx(mask & ROC_NIX_BPF_RED_OCTS_F_DROP);
 
 	if (green_pkt_pass != ROC_NIX_BPF_STATS_MAX)
-		stats[green_pkt_pass] = rsp->prof.green_pkt_pass;
+		stats[green_pkt_pass] = prof->green_pkt_pass;
 
 	if (green_octs_pass != ROC_NIX_BPF_STATS_MAX)
-		stats[green_octs_pass] = rsp->prof.green_octs_pass;
+		stats[green_octs_pass] = prof->green_octs_pass;
 
 	if (green_pkt_drop != ROC_NIX_BPF_STATS_MAX)
-		stats[green_pkt_drop] = rsp->prof.green_pkt_drop;
+		stats[green_pkt_drop] = prof->green_pkt_drop;
 
 	if (green_octs_drop != ROC_NIX_BPF_STATS_MAX)
-		stats[green_octs_drop] = rsp->prof.green_octs_pass;
+		stats[green_octs_drop] = prof->green_octs_pass;
 
 	if (yellow_pkt_pass != ROC_NIX_BPF_STATS_MAX)
-		stats[yellow_pkt_pass] = rsp->prof.yellow_pkt_pass;
+		stats[yellow_pkt_pass] = prof->yellow_pkt_pass;
 
 	if (yellow_octs_pass != ROC_NIX_BPF_STATS_MAX)
-		stats[yellow_octs_pass] = rsp->prof.yellow_octs_pass;
+		stats[yellow_octs_pass] = prof->yellow_octs_pass;
 
 	if (yellow_pkt_drop != ROC_NIX_BPF_STATS_MAX)
-		stats[yellow_pkt_drop] = rsp->prof.yellow_pkt_drop;
+		stats[yellow_pkt_drop] = prof->yellow_pkt_drop;
 
 	if (yellow_octs_drop != ROC_NIX_BPF_STATS_MAX)
-		stats[yellow_octs_drop] = rsp->prof.yellow_octs_drop;
+		stats[yellow_octs_drop] = prof->yellow_octs_drop;
 
 	if (red_pkt_pass != ROC_NIX_BPF_STATS_MAX)
-		stats[red_pkt_pass] = rsp->prof.red_pkt_pass;
+		stats[red_pkt_pass] = prof->red_pkt_pass;
 
 	if (red_octs_pass != ROC_NIX_BPF_STATS_MAX)
-		stats[red_octs_pass] = rsp->prof.red_octs_pass;
+		stats[red_octs_pass] = prof->red_octs_pass;
 
 	if (red_pkt_drop != ROC_NIX_BPF_STATS_MAX)
-		stats[red_pkt_drop] = rsp->prof.red_pkt_drop;
+		stats[red_pkt_drop] = prof->red_pkt_drop;
 
 	if (red_octs_drop != ROC_NIX_BPF_STATS_MAX)
-		stats[red_octs_drop] = rsp->prof.red_octs_drop;
+		stats[red_octs_drop] = prof->red_octs_drop;
 
 	rc = 0;
 exit:
@@ -1037,9 +1166,9 @@ roc_nix_bpf_stats_reset(struct roc_nix *roc_nix, uint16_t id, uint64_t mask,
 			enum roc_nix_bpf_level_flag lvl_flag)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	volatile struct nix_band_prof_s *prof, *prof_mask;
 	struct dev *dev = &nix->dev;
 	struct mbox *mbox = mbox_get(dev->mbox);
-	struct nix_cn10k_aq_enq_req *aq;
 	uint8_t level_idx;
 	int rc;
 
@@ -1054,68 +1183,81 @@ roc_nix_bpf_stats_reset(struct roc_nix *roc_nix, uint16_t id, uint64_t mask,
 		goto exit;
 	}
 
-	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
-	if (aq == NULL) {
-		rc = -ENOSPC;
-		goto exit;
+	if (roc_model_is_cn10k()) {
+		struct nix_cn10k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (aq == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+		aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14 | id);
+		aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+		aq->op = NIX_AQ_INSTOP_WRITE;
+		prof = &aq->prof;
+		prof_mask = &aq->prof_mask;
+	} else {
+		struct nix_cn20k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
+		if (aq == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+		aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14 | id);
+		aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
+		aq->op = NIX_AQ_INSTOP_WRITE;
+		prof = &aq->prof;
+		prof_mask = &aq->prof_mask;
 	}
-	aq->qidx = (sw_to_hw_lvl_map[level_idx] << 14 | id);
-	aq->ctype = NIX_AQ_CTYPE_BAND_PROF;
-	aq->op = NIX_AQ_INSTOP_WRITE;
 
 	if (mask & ROC_NIX_BPF_GREEN_PKT_F_PASS) {
-		aq->prof.green_pkt_pass = 0;
-		aq->prof_mask.green_pkt_pass = ~(aq->prof_mask.green_pkt_pass);
+		prof->green_pkt_pass = 0;
+		prof_mask->green_pkt_pass = ~(prof_mask->green_pkt_pass);
 	}
 	if (mask & ROC_NIX_BPF_GREEN_OCTS_F_PASS) {
-		aq->prof.green_octs_pass = 0;
-		aq->prof_mask.green_octs_pass =
-			~(aq->prof_mask.green_octs_pass);
+		prof->green_octs_pass = 0;
+		prof_mask->green_octs_pass = ~(prof_mask->green_octs_pass);
 	}
 	if (mask & ROC_NIX_BPF_GREEN_PKT_F_DROP) {
-		aq->prof.green_pkt_drop = 0;
-		aq->prof_mask.green_pkt_drop = ~(aq->prof_mask.green_pkt_drop);
+		prof->green_pkt_drop = 0;
+		prof_mask->green_pkt_drop = ~(prof_mask->green_pkt_drop);
 	}
 	if (mask & ROC_NIX_BPF_GREEN_OCTS_F_DROP) {
-		aq->prof.green_octs_drop = 0;
-		aq->prof_mask.green_octs_drop =
-			~(aq->prof_mask.green_octs_drop);
+		prof->green_octs_drop = 0;
+		prof_mask->green_octs_drop = ~(prof_mask->green_octs_drop);
 	}
 	if (mask & ROC_NIX_BPF_YELLOW_PKT_F_PASS) {
-		aq->prof.yellow_pkt_pass = 0;
-		aq->prof_mask.yellow_pkt_pass =
-			~(aq->prof_mask.yellow_pkt_pass);
+		prof->yellow_pkt_pass = 0;
+		prof_mask->yellow_pkt_pass = ~(prof_mask->yellow_pkt_pass);
 	}
 	if (mask & ROC_NIX_BPF_YELLOW_OCTS_F_PASS) {
-		aq->prof.yellow_octs_pass = 0;
-		aq->prof_mask.yellow_octs_pass =
-			~(aq->prof_mask.yellow_octs_pass);
+		prof->yellow_octs_pass = 0;
+		prof_mask->yellow_octs_pass = ~(prof_mask->yellow_octs_pass);
 	}
 	if (mask & ROC_NIX_BPF_YELLOW_PKT_F_DROP) {
-		aq->prof.yellow_pkt_drop = 0;
-		aq->prof_mask.yellow_pkt_drop =
-			~(aq->prof_mask.yellow_pkt_drop);
+		prof->yellow_pkt_drop = 0;
+		prof_mask->yellow_pkt_drop = ~(prof_mask->yellow_pkt_drop);
 	}
 	if (mask & ROC_NIX_BPF_YELLOW_OCTS_F_DROP) {
-		aq->prof.yellow_octs_drop = 0;
-		aq->prof_mask.yellow_octs_drop =
-			~(aq->prof_mask.yellow_octs_drop);
+		prof->yellow_octs_drop = 0;
+		prof_mask->yellow_octs_drop = ~(prof_mask->yellow_octs_drop);
 	}
 	if (mask & ROC_NIX_BPF_RED_PKT_F_PASS) {
-		aq->prof.red_pkt_pass = 0;
-		aq->prof_mask.red_pkt_pass = ~(aq->prof_mask.red_pkt_pass);
+		prof->red_pkt_pass = 0;
+		prof_mask->red_pkt_pass = ~(prof_mask->red_pkt_pass);
 	}
 	if (mask & ROC_NIX_BPF_RED_OCTS_F_PASS) {
-		aq->prof.red_octs_pass = 0;
-		aq->prof_mask.red_octs_pass = ~(aq->prof_mask.red_octs_pass);
+		prof->red_octs_pass = 0;
+		prof_mask->red_octs_pass = ~(prof_mask->red_octs_pass);
 	}
 	if (mask & ROC_NIX_BPF_RED_PKT_F_DROP) {
-		aq->prof.red_pkt_drop = 0;
-		aq->prof_mask.red_pkt_drop = ~(aq->prof_mask.red_pkt_drop);
+		prof->red_pkt_drop = 0;
+		prof_mask->red_pkt_drop = ~(prof_mask->red_pkt_drop);
 	}
 	if (mask & ROC_NIX_BPF_RED_OCTS_F_DROP) {
-		aq->prof.red_octs_drop = 0;
-		aq->prof_mask.red_octs_drop = ~(aq->prof_mask.red_octs_drop);
+		prof->red_octs_drop = 0;
+		prof_mask->red_octs_drop = ~(prof_mask->red_octs_drop);
 	}
 
 	rc = mbox_process(mbox);

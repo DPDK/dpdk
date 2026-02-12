@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <eal_export.h>
 #include <rte_bitops.h>
 #include <rte_common.h>
 #include <rte_devargs.h>
@@ -59,13 +60,13 @@ static const char *const uacce_params_keys[] = {
 		RTE_TAILQ_FOREACH(p, &uacce_bus.driver_list, next)
 
 extern int uacce_bus_logtype;
-#define UACCE_BUS_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, uacce_bus_logtype, "uacce: " fmt "\n", \
-		##args)
-#define UACCE_BUS_ERR(fmt, args...) UACCE_BUS_LOG(ERR, fmt, ##args)
-#define UACCE_BUS_WARN(fmt, args...) UACCE_BUS_LOG(WARNING, fmt, ##args)
-#define UACCE_BUS_INFO(fmt, args...) UACCE_BUS_LOG(INFO, fmt, ##args)
-#define UACCE_BUS_DEBUG(fmt, args...) UACCE_BUS_LOG(DEBUG, fmt, ##args)
+#define RTE_LOGTYPE_UACCE_BUS uacce_bus_logtype
+#define UACCE_BUS_LOG(level, ...) \
+	RTE_LOG_LINE(level, UACCE_BUS, __VA_ARGS__)
+#define UACCE_BUS_ERR(fmt, ...) UACCE_BUS_LOG(ERR, fmt, ##__VA_ARGS__)
+#define UACCE_BUS_WARN(fmt, ...) UACCE_BUS_LOG(WARNING, fmt, ##__VA_ARGS__)
+#define UACCE_BUS_INFO(fmt, ...) UACCE_BUS_LOG(INFO, fmt, ##__VA_ARGS__)
+#define UACCE_BUS_DEBUG(fmt, ...) UACCE_BUS_LOG(DEBUG, fmt, ##__VA_ARGS__)
 
 
 static struct rte_devargs *
@@ -327,8 +328,8 @@ static bool
 uacce_match(const struct rte_uacce_driver *dr, const struct rte_uacce_device *dev)
 {
 	const struct rte_uacce_id *id_table;
+	const char *map;
 	uint32_t len;
-	char *map;
 
 	for (id_table = dr->id_table; id_table->dev_api != NULL; id_table++) {
 		if (strcmp(id_table->dev_api, dev->api) != 0)
@@ -454,7 +455,7 @@ uacce_cleanup(void)
 		dev->device.driver = NULL;
 
 free:
-		memset(dev, 0, sizeof(*dev));
+		TAILQ_REMOVE(&uacce_bus.device_list, dev, next);
 		free(dev);
 	}
 
@@ -582,6 +583,7 @@ uacce_dev_iterate(const void *start, const char *str,
 	return dev;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_uacce_avail_queues)
 int
 rte_uacce_avail_queues(struct rte_uacce_device *dev)
 {
@@ -595,6 +597,7 @@ rte_uacce_avail_queues(struct rte_uacce_device *dev)
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_uacce_queue_alloc)
 int
 rte_uacce_queue_alloc(struct rte_uacce_device *dev, struct rte_uacce_qcontex *qctx)
 {
@@ -609,6 +612,7 @@ rte_uacce_queue_alloc(struct rte_uacce_device *dev, struct rte_uacce_qcontex *qc
 	return -EIO;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_uacce_queue_free)
 void
 rte_uacce_queue_free(struct rte_uacce_qcontex *qctx)
 {
@@ -618,6 +622,7 @@ rte_uacce_queue_free(struct rte_uacce_qcontex *qctx)
 	qctx->fd = -1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_uacce_queue_start)
 int
 rte_uacce_queue_start(struct rte_uacce_qcontex *qctx)
 {
@@ -625,6 +630,7 @@ rte_uacce_queue_start(struct rte_uacce_qcontex *qctx)
 	return ioctl(qctx->fd, UACCE_CMD_START_Q);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_uacce_queue_ioctl)
 int
 rte_uacce_queue_ioctl(struct rte_uacce_qcontex *qctx, unsigned long cmd, void *arg)
 {
@@ -634,6 +640,7 @@ rte_uacce_queue_ioctl(struct rte_uacce_qcontex *qctx, unsigned long cmd, void *a
 	return ioctl(qctx->fd, cmd, arg);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_uacce_queue_mmap)
 void *
 rte_uacce_queue_mmap(struct rte_uacce_qcontex *qctx, enum rte_uacce_qfrt qfrt)
 {
@@ -659,6 +666,7 @@ rte_uacce_queue_mmap(struct rte_uacce_qcontex *qctx, enum rte_uacce_qfrt qfrt)
 	return addr;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_uacce_queue_unmap)
 void
 rte_uacce_queue_unmap(struct rte_uacce_qcontex *qctx, enum rte_uacce_qfrt qfrt)
 {
@@ -668,6 +676,7 @@ rte_uacce_queue_unmap(struct rte_uacce_qcontex *qctx, enum rte_uacce_qfrt qfrt)
 	}
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_uacce_register)
 void
 rte_uacce_register(struct rte_uacce_driver *driver)
 {
@@ -675,6 +684,7 @@ rte_uacce_register(struct rte_uacce_driver *driver)
 	driver->bus = &uacce_bus;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_uacce_unregister)
 void
 rte_uacce_unregister(struct rte_uacce_driver *driver)
 {

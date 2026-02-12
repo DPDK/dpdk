@@ -5,6 +5,10 @@
 #ifndef _RTE_MEMCPY_H_
 #define _RTE_MEMCPY_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file
  *
@@ -112,5 +116,9 @@ static void *
 rte_memcpy(void *dst, const void *src, size_t n);
 
 #endif /* __DOXYGEN__ */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_MEMCPY_H_ */

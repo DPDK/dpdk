@@ -54,7 +54,7 @@ can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.5.zi
 
 For Arm system, ARM64 port of the multi-buffer library can be downloaded from
 `<https://gitlab.arm.com/arm-reference-solutions/ipsec-mb/-/tree/main/>`_. The
-latest version of the library supported by this PMD is tagged as SECLIB-IPSEC-2024.03.12.
+latest version of the library supported by this PMD is tagged as SECLIB-IPSEC-2024.07.08.
 
 After downloading the library, the user needs to unpack and compile it
 on their system before building DPDK:
@@ -89,7 +89,8 @@ and the external crypto libraries supported by them:
    DPDK version   Crypto library version
    =============  ================================
    20.02 - 21.08  Multi-buffer library 0.53 - 1.3
-   21.11+         Multi-buffer library 1.0  - 1.5
+   21.11 - 24.07  Multi-buffer library 1.0  - 1.5
+   24.11+         Multi-buffer library 1.4  - 1.5
    =============  ================================
 
 Initialization
@@ -118,5 +119,5 @@ Example:
 
 .. code-block:: console
 
-    ./dpdk-l2fwd-crypto -l 1 -n 4 --vdev="crypto_snow3g,socket_id=0,max_nb_sessions=128" \
+    ./dpdk-l2fwd-crypto -l 1 --vdev="crypto_snow3g,socket_id=0,max_nb_sessions=128" \
     -- -p 1 --cdev SW --chain CIPHER_ONLY --cipher_algo "snow3g-uea2"

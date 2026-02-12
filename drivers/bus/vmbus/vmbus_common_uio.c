@@ -86,8 +86,11 @@ vmbus_uio_map_secondary(struct rte_vmbus_device *dev)
 		return -1;
 	}
 
-	/* fd is not needed in secondary process, close it */
-	close(fd);
+	if (rte_intr_fd_set(dev->intr_handle, fd))
+		return -1;
+
+	if (rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_UIO_INTX))
+		return -1;
 
 	/* Create and map primary channel */
 	if (vmbus_chan_create(dev, dev->relid, 0,
@@ -201,7 +204,7 @@ vmbus_uio_map_resource(struct rte_vmbus_device *dev)
 	}
 
 	dev->int_page = (uint32_t *)((char *)uio_res->maps[HV_INT_PAGE_MAP].addr
-				     + (rte_mem_page_size() >> 1));
+				     + (HYPERV_PAGE_SIZE >> 1));
 	dev->monitor_page = uio_res->maps[HV_MON_PAGE_MAP].addr;
 	return 0;
 }
@@ -256,7 +259,7 @@ vmbus_uio_unmap_resource(struct rte_vmbus_device *dev)
 	/* free uio resource */
 	rte_free(uio_res);
 
-	/* close fd if in primary process */
+	/* close fd */
 	if (rte_intr_fd_get(dev->intr_handle) >= 0)
 		close(rte_intr_fd_get(dev->intr_handle));
 

@@ -142,7 +142,7 @@ otx_ep_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 	iq->inst_cnt_reg = (uint8_t *)otx_ep->hw_addr +
 			   OTX_EP_R_IN_CNTS(iq_no);
 
-	otx_ep_dbg("InstQ[%d]:dbell reg @ 0x%p inst_cnt_reg @ 0x%p\n",
+	otx_ep_dbg("InstQ[%d]:dbell reg @ 0x%p inst_cnt_reg @ 0x%p",
 		     iq_no, iq->doorbell_reg, iq->inst_cnt_reg);
 
 	loop = OTX_EP_BUSY_LOOP_COUNT;
@@ -220,14 +220,14 @@ otx_ep_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 	}
 	if (loop < 0)
 		return -EIO;
-	otx_ep_dbg("OTX_EP_R[%d]_credit:%x\n", oq_no,
+	otx_ep_dbg("OTX_EP_R[%d]_credit:%x", oq_no,
 		     rte_read32(droq->pkts_credit_reg));
 
 	/* Clear the OQ_OUT_CNTS doorbell  */
 	reg_val = rte_read32(droq->pkts_sent_reg);
 	rte_write32((uint32_t)reg_val, droq->pkts_sent_reg);
 
-	otx_ep_dbg("OTX_EP_R[%d]_sent: %x\n", oq_no,
+	otx_ep_dbg("OTX_EP_R[%d]_sent: %x", oq_no,
 		     rte_read32(droq->pkts_sent_reg));
 
 	loop = OTX_EP_BUSY_LOOP_COUNT;
@@ -259,7 +259,7 @@ otx_ep_enable_iq(struct otx_ep_device *otx_ep, uint32_t q_no)
 	}
 
 	if (loop < 0) {
-		otx_ep_err("dbell reset failed\n");
+		otx_ep_err("dbell reset failed");
 		return -EIO;
 	}
 
@@ -269,7 +269,7 @@ otx_ep_enable_iq(struct otx_ep_device *otx_ep, uint32_t q_no)
 
 	otx_ep_write64(reg_val, otx_ep->hw_addr, OTX_EP_R_IN_ENABLE(q_no));
 
-	otx_ep_info("IQ[%d] enable done\n", q_no);
+	otx_ep_info("IQ[%d] enable done", q_no);
 
 	return 0;
 }
@@ -290,7 +290,7 @@ otx_ep_enable_oq(struct otx_ep_device *otx_ep, uint32_t q_no)
 		rte_delay_ms(1);
 	}
 	if (loop < 0) {
-		otx_ep_err("dbell reset failed\n");
+		otx_ep_err("dbell reset failed");
 		return -EIO;
 	}
 
@@ -299,7 +299,7 @@ otx_ep_enable_oq(struct otx_ep_device *otx_ep, uint32_t q_no)
 	reg_val |= 0x1ull;
 	otx_ep_write64(reg_val, otx_ep->hw_addr, OTX_EP_R_OUT_ENABLE(q_no));
 
-	otx_ep_info("OQ[%d] enable done\n", q_no);
+	otx_ep_info("OQ[%d] enable done", q_no);
 
 	return 0;
 }
@@ -402,19 +402,21 @@ otx_ep_vf_setup_device(struct otx_ep_device *otx_ep)
 	if (otx_ep->conf == NULL) {
 		otx_ep->conf = otx_ep_get_defconf(otx_ep);
 		if (otx_ep->conf == NULL) {
-			otx_ep_err("OTX_EP VF default config not found\n");
+			otx_ep_err("OTX_EP VF default config not found");
 			return -ENOENT;
 		}
-		otx_ep_info("Default config is used\n");
+		otx_ep_info("Default config is used");
 	}
 
 	/* Get IOQs (RPVF] count */
 	reg_val = rte_read64(otx_ep->hw_addr + OTX_EP_R_IN_CONTROL(0));
+	if (reg_val == UINT64_MAX)
+		return -ENODEV;
 
 	otx_ep->sriov_info.rings_per_vf = ((reg_val >> OTX_EP_R_IN_CTL_RPVF_POS)
 					  & OTX_EP_R_IN_CTL_RPVF_MASK);
 
-	otx_ep_info("OTX_EP RPVF: %d\n", otx_ep->sriov_info.rings_per_vf);
+	otx_ep_info("OTX_EP RPVF: %d", otx_ep->sriov_info.rings_per_vf);
 
 	otx_ep->fn_list.setup_iq_regs       = otx_ep_setup_iq_regs;
 	otx_ep->fn_list.setup_oq_regs       = otx_ep_setup_oq_regs;

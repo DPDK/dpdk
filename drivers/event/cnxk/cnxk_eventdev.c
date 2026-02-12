@@ -2,7 +2,7 @@
  * Copyright(C) 2021 Marvell.
  */
 
-#include "roc_npa.h"
+#include "roc_api.h"
 
 #include "cnxk_eventdev.h"
 #include "cnxk_eventdev_dp.h"
@@ -47,7 +47,7 @@ cnxk_sso_xaq_allocate(struct cnxk_sso_evdev *dev)
 	if (dev->num_events > 0)
 		xae_cnt = dev->num_events;
 	else
-		xae_cnt = dev->sso.iue;
+		xae_cnt = dev->sso.feat.iue;
 
 	if (dev->xae_cnt)
 		xae_cnt += dev->xae_cnt;
@@ -121,8 +121,8 @@ cnxk_setup_event_ports(const struct rte_eventdev *event_dev,
 	return 0;
 hws_fini:
 	for (i = i - 1; i >= 0; i--) {
-		event_dev->data->ports[i] = NULL;
 		rte_free(cnxk_sso_hws_get_cookie(event_dev->data->ports[i]));
+		event_dev->data->ports[i] = NULL;
 	}
 	return -ENOMEM;
 }
@@ -624,10 +624,8 @@ cnxk_sso_parse_devargs(struct cnxk_sso_evdev *dev, struct rte_devargs *devargs)
 			   &dev->force_ena_bp);
 	rte_kvargs_process(kvlist, CN9K_SSO_SINGLE_WS, &parse_kvargs_flag,
 			   &single_ws);
-	rte_kvargs_process(kvlist, CN10K_SSO_GW_MODE, &parse_kvargs_value,
-			   &dev->gw_mode);
-	rte_kvargs_process(kvlist, CN10K_SSO_STASH,
-			   &parse_sso_kvargs_stash_dict, dev);
+	rte_kvargs_process(kvlist, CNXK_SSO_STASH, &parse_sso_kvargs_stash_dict,
+			   dev);
 	dev->dual_ws = !single_ws;
 	rte_kvargs_free(kvlist);
 }

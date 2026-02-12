@@ -38,6 +38,7 @@
 #define EVT_PROD_DMADEV          ("prod_type_dmadev")
 #define EVT_PROD_TIMERDEV        ("prod_type_timerdev")
 #define EVT_PROD_TIMERDEV_BURST  ("prod_type_timerdev_burst")
+#define EVT_PROD_VECTOR          ("prod_type_vector")
 #define EVT_DMA_ADPTR_MODE       ("dma_adptr_mode")
 #define EVT_CRYPTO_ADPTR_MODE	 ("crypto_adptr_mode")
 #define EVT_CRYPTO_OP_TYPE	 ("crypto_op_type")
@@ -59,6 +60,7 @@
 #define EVT_PER_PORT_POOL	 ("per_port_pool")
 #define EVT_TX_FIRST		 ("tx_first")
 #define EVT_TX_PKT_SZ		 ("tx_pkt_sz")
+#define EVT_PRESCHEDULE          ("preschedule")
 #define EVT_HELP                 ("help")
 
 void evt_options_default(struct evt_options *opt);

@@ -20,11 +20,12 @@ struct cn9k_eth_txq {
 	int16_t nb_sqb_bufs_adj;
 	rte_iova_t cpt_io_addr;
 	uint64_t sa_base;
-	uint64_t *cpt_fc;
+	uint64_t __rte_atomic *cpt_fc;
 	uint16_t cpt_desc;
 	uint64_t mark_flag : 8;
 	uint64_t mark_fmt : 48;
 	struct cnxk_eth_txq_comp tx_compl;
+	uint16_t tx_offload_flags;
 } __plt_cache_aligned;
 
 struct cn9k_eth_rxq {
@@ -85,7 +86,7 @@ struct cn9k_outb_priv_data {
 	uint8_t iv_dbg[ROC_IE_ON_MAX_IV_LEN];
 };
 
-struct cn9k_sec_sess_priv {
+struct __rte_packed_begin cn9k_sec_sess_priv {
 	union {
 		struct {
 			uint32_t sa_idx;
@@ -98,7 +99,7 @@ struct cn9k_sec_sess_priv {
 
 		uint64_t u64;
 	};
-} __rte_packed;
+} __rte_packed_end;
 
 /* Rx and Tx routines */
 void cn9k_eth_set_rx_function(struct rte_eth_dev *eth_dev);

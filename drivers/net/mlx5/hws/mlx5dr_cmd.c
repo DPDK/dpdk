@@ -239,6 +239,10 @@ mlx5dr_cmd_set_fte(struct ibv_context *ctx,
 						 dest->ext_reformat->id);
 				}
 				break;
+			case MLX5_FLOW_DESTINATION_TYPE_NOP:
+				MLX5_SET(dest_format, in_dests, destination_type,
+					 dest->destination_type);
+				break;
 			default:
 				rte_errno = EOPNOTSUPP;
 				goto free_devx;
@@ -328,14 +332,14 @@ void mlx5dr_cmd_set_attr_connect_miss_tbl(struct mlx5dr_context *ctx,
 {
 	struct mlx5dr_devx_obj *default_miss_tbl;
 
-	if (type != MLX5DR_TABLE_TYPE_FDB && !mlx5dr_context_shared_gvmi_used(ctx))
+	if (!mlx5dr_table_is_fdb_any(type) && !mlx5dr_context_shared_gvmi_used(ctx))
 		return;
 
 	ft_attr->modify_fs = MLX5_IFC_MODIFY_FLOW_TABLE_MISS_ACTION;
 	ft_attr->type = fw_ft_type;
 	ft_attr->table_miss_action = MLX5_IFC_MODIFY_FLOW_TABLE_MISS_ACTION_GOTO_TBL;
 
-	if (type == MLX5DR_TABLE_TYPE_FDB) {
+	if (mlx5dr_table_is_fdb_any(type)) {
 		default_miss_tbl = ctx->common_res[type].default_miss->ft;
 		if (!default_miss_tbl) {
 			assert(false);
@@ -466,6 +470,7 @@ mlx5dr_cmd_stc_modify_set_stc_param(struct mlx5dr_cmd_stc_modify_attr *stc_attr,
 		MLX5_SET(stc_ste_param_tir, stc_param, tirn, stc_attr->dest_tir_num);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FT:
+	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FLOW_TABLE_FDB_RX:
 		MLX5_SET(stc_ste_param_table, stc_param, table_id, stc_attr->dest_table_id);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_ACC_MODIFY_LIST:
@@ -515,7 +520,8 @@ mlx5dr_cmd_stc_modify_set_stc_param(struct mlx5dr_cmd_stc_modify_attr *stc_attr,
 			 stc_attr->vport.vport_num);
 		MLX5_SET(stc_ste_param_vport, stc_param, eswitch_owner_vhca_id,
 			 stc_attr->vport.esw_owner_vhca_id);
-		MLX5_SET(stc_ste_param_vport, stc_param, eswitch_owner_vhca_id_valid, 1);
+		MLX5_SET(stc_ste_param_vport, stc_param, eswitch_owner_vhca_id_valid,
+			 stc_attr->vport.eswitch_owner_vhca_id_valid);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_DROP:
 	case MLX5_IFC_STC_ACTION_TYPE_NOP:
@@ -1032,7 +1038,8 @@ int mlx5dr_cmd_generate_wqe(struct ibv_context *ctx,
 
 	ret = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
 	if (ret) {
-		DR_LOG(ERR, "Failed to write GTA WQE using FW");
+		DR_LOG(ERR, "Failed to write GTA WQE using FW (syndrome: %#x)",
+		       mlx5dr_cmd_get_syndrome(out));
 		rte_errno = errno;
 		return rte_errno;
 	}
@@ -1274,6 +1281,18 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 		caps->fdb_tir_stc = MLX5_GET(query_hca_cap_out, out,
 					     capability.wqe_based_flow_table_cap.
 					     fdb_jump_to_tir_stc);
+
+		caps->fdb_unified_en = MLX5_GET(query_hca_cap_out, out,
+						capability.wqe_based_flow_table_cap.
+						fdb_unified_en);
+
+		caps->stc_action_type_63_0 = MLX5_GET64(query_hca_cap_out,
+							out,
+					capability.wqe_based_flow_table_cap.stc_action_type_63_0);
+
+		caps->stc_action_type_127_64 = MLX5_GET64(query_hca_cap_out,
+							  out,
+					capability.wqe_based_flow_table_cap.stc_action_type_127_64);
 	}
 
 	if (caps->eswitch_manager) {
@@ -1344,12 +1363,10 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 	strlcpy(caps->fw_ver, attr_ex.orig_attr.fw_ver, sizeof(caps->fw_ver));
 
 	port_info = flow_hw_get_wire_port(ctx);
-	if (port_info) {
-		caps->wire_regc = port_info->regc_value;
+	if (port_info)
 		caps->wire_regc_mask = port_info->regc_mask;
-	} else {
+	else
 		DR_LOG(INFO, "Failed to query wire port regc value");
-	}
 
 	return ret;
 }
@@ -1373,11 +1390,6 @@ int mlx5dr_cmd_query_ib_port(struct ibv_context *ctx,
 
 	vport_caps->vport_num = port_info.vport_id;
 	vport_caps->esw_owner_vhca_id = port_info.esw_owner_vhca_id;
-
-	if (port_info.query_flags & MLX5_PORT_QUERY_REG_C0) {
-		vport_caps->metadata_c = port_info.vport_meta_tag;
-		vport_caps->metadata_c_mask = port_info.vport_meta_mask;
-	}
 
 	return 0;
 }

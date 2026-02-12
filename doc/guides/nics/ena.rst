@@ -32,6 +32,7 @@ Supported features
 * Watchdog (requires handling of timers in the application)
 * Device reset upon failure
 * Rx interrupts
+* Rx HW packet timestamping
 
 Overview
 --------
@@ -54,6 +55,9 @@ Receive-side scaling (RSS) is supported for multi-core scaling.
 
 Some of the ENA devices support a working mode called Low-latency
 Queue (LLQ), which saves several more microseconds.
+
+Rx hardware timestamping is available in the ENA driver
+on platforms that support this feature.
 
 Management Interface
 --------------------
@@ -107,15 +111,18 @@ Configuration
 Runtime Configuration
 ^^^^^^^^^^^^^^^^^^^^^
 
-   * **large_llq_hdr** (default 0)
+   * **llq_policy** (default 1)
 
-     Enables or disables usage of large LLQ headers. This option will have
-     effect only if the device also supports large LLQ headers. Otherwise, the
-     default value will be used.
+     Controls whether use device recommended header policy or override it:
 
-   * **normal_llq_hdr** (default 0)
+     0 - Disable LLQ (Use with extreme caution as it leads to a huge performance
+     degradation on AWS instances built with Nitro v4 onwards).
 
-     Enforce normal LLQ policy.
+     1 - Accept device recommended LLQ policy (Default).
+
+     2 - Enforce normal LLQ policy.
+
+     3 - Enforce large LLQ policy.
 
    * **miss_txc_to** (default 5)
 
@@ -126,15 +133,6 @@ Runtime Configuration
      timer service. Setting this parameter to 0 disables this feature. Maximum
      allowed value is 60 seconds.
 
-   * **enable_llq** (default 1)
-
-     Determines whenever the driver should use the LLQ (if it's available) or
-     not.
-
-     **NOTE: On the 6th generation AWS instances disabling LLQ may lead to a
-     huge performance degradation. In general disabling LLQ is highly not
-     recommended!**
-
    * **control_poll_interval** (default 0)
 
      Enable polling-based functionality of the admin queues,
@@ -142,11 +140,22 @@ Runtime Configuration
 
      0 - Disable (Admin queue will work in interrupt mode).
 
-     [1..1000] - Number of milliseconds to wait between periodic inspection of the admin queues.
+     [500..1000] - Time in milliseconds to wait between periodic checks of the admin queues.
+     If a value outside this range is specified, the driver will automatically adjust it
+     to fit within the valid range.
 
      **A non-zero value for this devarg is mandatory for control path functionality
      when binding ports to uio_pci_generic kernel module which lacks interrupt support.**
 
+   * **enable_frag_bypass** (default 0)
+
+     Enable fragment bypass mode for egress packets.
+     This mode bypasses the PPS limit enforced by EC2 for fragmented egress packets on every ENI.
+     Note that enabling it might negatively impact network performance.
+
+     0 - Disabled (Default).
+
+     1 - Enabled.
 
 ENA Configuration Parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -23,18 +23,15 @@
 #define RX_DESC_DEFAULT 1024
 #define TX_DESC_DEFAULT 1024
 
-#define MAX_PKT_BURST     32
+#define DEFAULT_PKT_BURST 32
+#define MAX_PKT_BURST 512
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
 
-#define MEMPOOL_CACHE_SIZE 256
+#define MEMPOOL_CACHE_SIZE RTE_MEMPOOL_CACHE_MAX_SIZE
 #define MAX_RX_QUEUE_PER_LCORE 16
 
 #define VECTOR_SIZE_DEFAULT   MAX_PKT_BURST
 #define VECTOR_TMO_NS_DEFAULT 1E6 /* 1ms */
-/*
- * Try to avoid TX buffering if we have at least MAX_TX_BURST packets to send.
- */
-#define	MAX_TX_BURST	  (MAX_PKT_BURST / 2)
 
 #define NB_SOCKETS        8
 
@@ -72,12 +69,12 @@ struct mbuf_table {
 	struct rte_mbuf *m_table[MAX_PKT_BURST];
 };
 
-struct lcore_rx_queue {
+struct __rte_cache_aligned lcore_rx_queue {
 	uint16_t port_id;
-	uint8_t queue_id;
-} __rte_cache_aligned;
+	uint16_t queue_id;
+};
 
-struct lcore_conf {
+struct __rte_cache_aligned lcore_conf {
 	uint16_t n_rx_queue;
 	struct lcore_rx_queue rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
 	uint16_t n_tx_port;
@@ -86,7 +83,7 @@ struct lcore_conf {
 	struct mbuf_table tx_mbufs[RTE_MAX_ETHPORTS];
 	void *ipv4_lookup_struct;
 	void *ipv6_lookup_struct;
-} __rte_cache_aligned;
+};
 
 extern volatile bool force_quit;
 
@@ -114,6 +111,9 @@ extern struct parm_cfg parm_config;
 extern struct acl_algorithms acl_alg[];
 
 extern uint32_t max_pkt_len;
+
+extern uint32_t rx_burst_size;
+extern uint32_t mb_mempool_cache_size;
 
 /* Send burst of packets on an output interface */
 static inline int
@@ -148,8 +148,8 @@ send_single_packet(struct lcore_conf *qconf,
 	len++;
 
 	/* enough pkts to be sent */
-	if (unlikely(len == MAX_PKT_BURST)) {
-		send_burst(qconf, MAX_PKT_BURST, port);
+	if (unlikely(len == rx_burst_size)) {
+		send_burst(qconf, rx_burst_size, port);
 		len = 0;
 	}
 

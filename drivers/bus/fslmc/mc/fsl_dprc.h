@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
  * Copyright 2016-2021 NXP
@@ -37,6 +37,7 @@ struct dprc_endpoint {
 	uint16_t if_id;
 };
 
+__rte_internal
 int dprc_get_connection(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,

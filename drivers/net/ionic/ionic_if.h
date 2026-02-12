@@ -379,7 +379,7 @@ enum ionic_lif_state {
  * @queue_count:    Queue counts per queue-type
  */
 union ionic_lif_config {
-	struct {
+	struct __rte_packed_begin {
 		u8     state;
 		u8     rsvd[3];
 		char   name[IONIC_IFNAMSIZ];
@@ -388,7 +388,7 @@ union ionic_lif_config {
 		__le16 vlan;
 		__le64 features;
 		__le32 queue_count[IONIC_QTYPE_MAX];
-	} __rte_packed;
+	} __rte_packed_end;
 	__le32 words[64];
 };
 
@@ -425,10 +425,10 @@ union ionic_lif_config {
  *     @eq_qtype:        RDMA Event Qtype
  */
 union ionic_lif_identity {
-	struct {
+	struct __rte_packed_begin {
 		__le64 capabilities;
 
-		struct {
+		struct __rte_packed_begin {
 			u8 version;
 			u8 rsvd[3];
 			__le32 max_ucast_filters;
@@ -438,9 +438,9 @@ union ionic_lif_identity {
 			__le32 max_mtu;
 			u8 rsvd2[106];
 			union ionic_lif_config config;
-		} __rte_packed eth;
+		} __rte_packed_end eth;
 
-		struct {
+		struct __rte_packed_begin {
 			u8 version;
 			u8 qp_opcodes;
 			u8 admin_opcodes;
@@ -460,8 +460,8 @@ union ionic_lif_identity {
 			struct ionic_lif_logical_qtype rq_qtype;
 			struct ionic_lif_logical_qtype cq_qtype;
 			struct ionic_lif_logical_qtype eq_qtype;
-		} __rte_packed rdma;
-	} __rte_packed;
+		} __rte_packed_end rdma;
+	} __rte_packed_end;
 	__le32 words[478];
 };
 
@@ -584,7 +584,7 @@ union ionic_q_identity {
  * @cq_ring_base: Completion queue ring base address
  * @sg_ring_base: Scatter/Gather ring base address
  */
-struct ionic_q_init_cmd {
+struct __rte_packed_begin ionic_q_init_cmd {
 	u8     opcode;
 	u8     rsvd;
 	__le16 lif_index;
@@ -607,7 +607,7 @@ struct ionic_q_init_cmd {
 	__le64 cq_ring_base;
 	__le64 sg_ring_base;
 	u8     rsvd2[20];
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * struct ionic_q_init_comp - Queue init command completion
@@ -1236,7 +1236,7 @@ union ionic_port_config {
  * @fec_type:           fec type (enum ionic_port_fec_type)
  * @xcvr:               transceiver status
  */
-struct ionic_port_status {
+struct __rte_packed_begin ionic_port_status {
 	__le32 id;
 	__le32 speed;
 	u8     status;
@@ -1244,7 +1244,7 @@ struct ionic_port_status {
 	u8     fec_type;
 	u8     rsvd[48];
 	struct ionic_xcvr_status  xcvr;
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * struct ionic_port_identify_cmd - Port identify command
@@ -1414,7 +1414,7 @@ struct ionic_port_getattr_cmd {
 struct ionic_port_getattr_comp {
 	u8     status;
 	u8     rsvd[3];
-	union {
+	union __rte_packed_begin {
 		u8      state;
 		__le32  speed;
 		__le32  mtu;
@@ -1423,7 +1423,7 @@ struct ionic_port_getattr_comp {
 		u8      pause_type;
 		u8      loopback_mode;
 		u8      rsvd2[11];
-	} __rte_packed;
+	} __rte_packed_end;
 	u8     color;
 };
 
@@ -1489,12 +1489,12 @@ struct ionic_dev_setattr_cmd {
 	u8     opcode;
 	u8     attr;
 	__le16 rsvd;
-	union {
+	union __rte_packed_begin {
 		u8      state;
 		char    name[IONIC_IFNAMSIZ];
 		__le64  features;
 		u8      rsvd2[60];
-	} __rte_packed;
+	} __rte_packed_end;
 };
 
 /**
@@ -1506,10 +1506,10 @@ struct ionic_dev_setattr_cmd {
 struct ionic_dev_setattr_comp {
 	u8     status;
 	u8     rsvd[3];
-	union {
+	union __rte_packed_begin {
 		__le64  features;
 		u8      rsvd2[11];
-	} __rte_packed;
+	} __rte_packed_end;
 	u8     color;
 };
 
@@ -1533,10 +1533,10 @@ struct ionic_dev_getattr_cmd {
 struct ionic_dev_getattr_comp {
 	u8     status;
 	u8     rsvd[3];
-	union {
+	union __rte_packed_begin {
 		__le64  features;
 		u8      rsvd2[11];
-	} __rte_packed;
+	} __rte_packed_end;
 	u8     color;
 };
 
@@ -1594,7 +1594,7 @@ struct ionic_lif_setattr_cmd {
 	u8     opcode;
 	u8     attr;
 	__le16 index;
-	union {
+	union __rte_packed_begin {
 		u8      state;
 		char    name[IONIC_IFNAMSIZ];
 		__le32  mtu;
@@ -1608,7 +1608,7 @@ struct ionic_lif_setattr_cmd {
 		} rss;
 		u8      stats_ctl;
 		u8      rsvd[60];
-	} __rte_packed;
+	} __rte_packed_end;
 };
 
 /**
@@ -1622,10 +1622,10 @@ struct ionic_lif_setattr_comp {
 	u8     status;
 	u8     rsvd;
 	__le16 comp_index;
-	union {
+	union __rte_packed_begin {
 		__le64  features;
 		u8      rsvd2[11];
-	} __rte_packed;
+	} __rte_packed_end;
 	u8     color;
 };
 
@@ -1657,13 +1657,13 @@ struct ionic_lif_getattr_comp {
 	u8     status;
 	u8     rsvd;
 	__le16 comp_index;
-	union {
+	union __rte_packed_begin {
 		u8      state;
 		__le32  mtu;
 		u8      mac[6];
 		__le64  features;
 		u8      rsvd2[11];
-	} __rte_packed;
+	} __rte_packed_end;
 	u8     color;
 };
 
@@ -1811,7 +1811,7 @@ struct ionic_vf_setattr_cmd {
 	u8     opcode;
 	u8     attr;
 	__le16 vf_index;
-	union {
+	union __rte_packed_begin {
 		u8     macaddr[6];
 		__le16 vlanid;
 		__le32 maxrate;
@@ -1820,7 +1820,7 @@ struct ionic_vf_setattr_cmd {
 		u8     linkstate;
 		__le64 stats_pa;
 		u8     pad[60];
-	} __rte_packed;
+	} __rte_packed_end;
 };
 
 struct ionic_vf_setattr_comp {
@@ -1849,7 +1849,7 @@ struct ionic_vf_getattr_comp {
 	u8     status;
 	u8     attr;
 	__le16 vf_index;
-	union {
+	union __rte_packed_begin {
 		u8     macaddr[6];
 		__le16 vlanid;
 		__le32 maxrate;
@@ -1858,7 +1858,7 @@ struct ionic_vf_getattr_comp {
 		u8     linkstate;
 		__le64 stats_pa;
 		u8     pad[11];
-	} __rte_packed;
+	} __rte_packed_end;
 	u8     color;
 };
 
@@ -1953,7 +1953,7 @@ enum ionic_qos_sched_type {
  * @ip_dscp:		IP dscp values
  */
 union ionic_qos_config {
-	struct {
+	struct __rte_packed_begin {
 #define IONIC_QOS_CONFIG_F_ENABLE		BIT(0)
 #define IONIC_QOS_CONFIG_F_NO_DROP		BIT(1)
 /* Used to rewrite PCP or DSCP value. */
@@ -1988,7 +1988,7 @@ union ionic_qos_config {
 				u8      ip_dscp[IONIC_QOS_DSCP_MAX];
 			};
 		};
-	} __rte_packed;
+	} __rte_packed_end;
 	__le32  words[64];
 };
 
@@ -2785,14 +2785,14 @@ union ionic_dev_info_regs {
  * @data:            Opcode-specific side-data
  */
 union ionic_dev_cmd_regs {
-	struct {
+	struct __rte_packed_begin {
 		u32                   doorbell;
 		u32                   done;
 		union ionic_dev_cmd         cmd;
 		union ionic_dev_cmd_comp    comp;
 		u8                    rsvd[48];
 		u32                   data[478];
-	} __rte_packed;
+	} __rte_packed_end;
 	u32 words[512];
 };
 
@@ -2802,10 +2802,10 @@ union ionic_dev_cmd_regs {
  * @devcmd:          Device command registers
  */
 union ionic_dev_regs {
-	struct {
+	struct __rte_packed_begin {
 		union ionic_dev_info_regs info;
 		union ionic_dev_cmd_regs  devcmd;
-	} __rte_packed;
+	} __rte_packed_end;
 	__le32 words[1024];
 };
 

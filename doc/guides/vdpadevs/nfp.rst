@@ -19,6 +19,17 @@ device will be probed by net/nfp driver and will used as a VF net device.
 
 This PMD uses (common/nfp) code to access the device firmware.
 
+Software Live Migration
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Now the NFP vDPA driver only supports software assisted live migration mode.
+In this mode, the driver will setup a software relay thread
+when live migration happens,
+this thread will help device to log dirty pages.
+Although this mode does not require hardware
+to implement a dirty page logging function block,
+it will consume percentage of CPU resource depending on the network throughput.
+
 Per-Device Parameters
 ~~~~~~~~~~~~~~~~~~~~~
 

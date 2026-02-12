@@ -31,6 +31,7 @@
 #include <rte_launch.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
+#include <rte_eal_paging.h>
 #include <rte_errno.h>
 #include <rte_lcore.h>
 #include <rte_service_component.h>
@@ -43,8 +44,10 @@
 #include <rte_vfio.h>
 
 #include <telemetry_internal.h>
+#include <eal_export.h>
 #include "eal_private.h"
 #include "eal_thread.h"
+#include "eal_lcore_var.h"
 #include "eal_internal_cfg.h"
 #include "eal_filesystem.h"
 #include "eal_hugepages.h"
@@ -56,9 +59,6 @@
 #include "log_internal.h"
 
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
-
-#define SOCKET_MEM_STRLEN (RTE_MAX_NUMA_NODES * 10)
-
 #define KERNEL_IOMMU_GROUPS_PATH "/sys/kernel/iommu_groups"
 
 /* define fd variable here, because file needs to be kept open for the
@@ -76,6 +76,7 @@ static struct flock wr_lock = {
 struct lcore_config lcore_config[RTE_MAX_LCORE];
 
 /* used by rte_rdtsc() */
+RTE_EXPORT_SYMBOL(rte_cycles_vmware_tsc_map)
 int rte_cycles_vmware_tsc_map;
 
 
@@ -176,7 +177,7 @@ static int
 rte_eal_config_create(void)
 {
 	struct rte_config *config = rte_eal_get_configuration();
-	size_t page_sz = sysconf(_SC_PAGE_SIZE);
+	size_t page_sz = rte_mem_page_size();
 	size_t cfg_len = sizeof(*config->mem_config);
 	size_t cfg_len_aligned = RTE_ALIGN(cfg_len, page_sz);
 	void *rte_mem_cfg_addr, *mapped_mem_cfg_addr;
@@ -328,9 +329,8 @@ rte_eal_config_reattach(void)
 	if (mem_config == MAP_FAILED || mem_config != rte_mem_cfg_addr) {
 		if (mem_config != MAP_FAILED) {
 			/* errno is stale, don't use */
-			EAL_LOG(ERR, "Cannot mmap memory for rte_config at [%p], got [%p]"
-				" - please use '--" OPT_BASE_VIRTADDR
-				"' option", rte_mem_cfg_addr, mem_config);
+			EAL_LOG(ERR, "Cannot mmap memory for rte_config at [%p], got [%p] - please use '--base-virtaddr' option",
+				 rte_mem_cfg_addr, mem_config);
 			munmap(mem_config, sizeof(struct rte_mem_config));
 			return -1;
 		}
@@ -434,395 +434,6 @@ eal_hugedirs_unlock(void)
 	}
 }
 
-/* display usage */
-static void
-eal_usage(const char *prgname)
-{
-	rte_usage_hook_t hook = eal_get_application_usage_hook();
-
-	printf("\nUsage: %s ", prgname);
-	eal_common_usage();
-	printf("EAL Linux options:\n"
-	       "  --"OPT_SOCKET_MEM"        Memory to allocate on sockets (comma separated values)\n"
-	       "  --"OPT_SOCKET_LIMIT"      Limit memory allocation on sockets (comma separated values)\n"
-	       "  --"OPT_HUGE_DIR"          Directory where hugetlbfs is mounted\n"
-	       "  --"OPT_FILE_PREFIX"       Prefix for hugepage filenames\n"
-	       "  --"OPT_CREATE_UIO_DEV"    Create /dev/uioX (usually done by hotplug)\n"
-	       "  --"OPT_VFIO_INTR"         Interrupt mode for VFIO (legacy|msi|msix)\n"
-	       "  --"OPT_VFIO_VF_TOKEN"     VF token (UUID) shared between SR-IOV PF and VFs\n"
-	       "  --"OPT_LEGACY_MEM"        Legacy memory mode (no dynamic allocation, contiguous segments)\n"
-	       "  --"OPT_SINGLE_FILE_SEGMENTS" Put all hugepage memory in single files\n"
-	       "  --"OPT_MATCH_ALLOCATIONS" Free hugepages exactly as allocated\n"
-	       "  --"OPT_HUGE_WORKER_STACK"[=size]\n"
-	       "                      Allocate worker thread stacks from hugepage memory.\n"
-	       "                      Size is in units of kbytes and defaults to system\n"
-	       "                      thread stack size if not specified.\n"
-	       "\n");
-	/* Allow the application to print its usage message too if hook is set */
-	if (hook) {
-		printf("===== Application Usage =====\n\n");
-		(hook)(prgname);
-	}
-}
-
-static int
-eal_parse_socket_arg(char *strval, volatile uint64_t *socket_arg)
-{
-	char * arg[RTE_MAX_NUMA_NODES];
-	char *end;
-	int arg_num, i, len;
-
-	len = strnlen(strval, SOCKET_MEM_STRLEN);
-	if (len == SOCKET_MEM_STRLEN) {
-		EAL_LOG(ERR, "--socket-mem is too long");
-		return -1;
-	}
-
-	/* all other error cases will be caught later */
-	if (!isdigit(strval[len-1]))
-		return -1;
-
-	/* split the optarg into separate socket values */
-	arg_num = rte_strsplit(strval, len,
-			arg, RTE_MAX_NUMA_NODES, ',');
-
-	/* if split failed, or 0 arguments */
-	if (arg_num <= 0)
-		return -1;
-
-	/* parse each defined socket option */
-	errno = 0;
-	for (i = 0; i < arg_num; i++) {
-		uint64_t val;
-		end = NULL;
-		val = strtoull(arg[i], &end, 10);
-
-		/* check for invalid input */
-		if ((errno != 0)  ||
-				(arg[i][0] == '\0') || (end == NULL) || (*end != '\0'))
-			return -1;
-		val <<= 20;
-		socket_arg[i] = val;
-	}
-
-	return 0;
-}
-
-static int
-eal_parse_vfio_intr(const char *mode)
-{
-	struct internal_config *internal_conf =
-		eal_get_internal_configuration();
-	unsigned i;
-	static struct {
-		const char *name;
-		enum rte_intr_mode value;
-	} map[] = {
-		{ "legacy", RTE_INTR_MODE_LEGACY },
-		{ "msi", RTE_INTR_MODE_MSI },
-		{ "msix", RTE_INTR_MODE_MSIX },
-	};
-
-	for (i = 0; i < RTE_DIM(map); i++) {
-		if (!strcmp(mode, map[i].name)) {
-			internal_conf->vfio_intr_mode = map[i].value;
-			return 0;
-		}
-	}
-	return -1;
-}
-
-static int
-eal_parse_vfio_vf_token(const char *vf_token)
-{
-	struct internal_config *cfg = eal_get_internal_configuration();
-	rte_uuid_t uuid;
-
-	if (!rte_uuid_parse(vf_token, uuid)) {
-		rte_uuid_copy(cfg->vfio_vf_token, uuid);
-		return 0;
-	}
-
-	return -1;
-}
-
-/* Parse the arguments for --log-level only */
-static void
-eal_log_level_parse(int argc, char **argv)
-{
-	int opt;
-	char **argvopt;
-	int option_index;
-	const int old_optind = optind;
-	const int old_optopt = optopt;
-	char * const old_optarg = optarg;
-	struct internal_config *internal_conf =
-		eal_get_internal_configuration();
-
-	argvopt = argv;
-	optind = 1;
-
-	while ((opt = getopt_long(argc, argvopt, eal_short_options,
-				  eal_long_options, &option_index)) != EOF) {
-
-		int ret;
-
-		/* getopt is not happy, stop right now */
-		if (opt == '?')
-			break;
-
-		ret = (opt == OPT_LOG_LEVEL_NUM) ?
-			eal_parse_common_option(opt, optarg, internal_conf) : 0;
-
-		/* common parser is not happy */
-		if (ret < 0)
-			break;
-	}
-
-	/* restore getopt lib */
-	optind = old_optind;
-	optopt = old_optopt;
-	optarg = old_optarg;
-}
-
-static int
-eal_parse_huge_worker_stack(const char *arg)
-{
-	struct internal_config *cfg = eal_get_internal_configuration();
-
-	if (arg == NULL || arg[0] == '\0') {
-		pthread_attr_t attr;
-		int ret;
-
-		if (pthread_attr_init(&attr) != 0) {
-			EAL_LOG(ERR, "Could not retrieve default stack size");
-			return -1;
-		}
-		ret = pthread_attr_getstacksize(&attr, &cfg->huge_worker_stack_size);
-		pthread_attr_destroy(&attr);
-		if (ret != 0) {
-			EAL_LOG(ERR, "Could not retrieve default stack size");
-			return -1;
-		}
-	} else {
-		unsigned long stack_size;
-		char *end;
-
-		errno = 0;
-		stack_size = strtoul(arg, &end, 10);
-		if (errno || end == NULL || stack_size == 0 ||
-				stack_size >= (size_t)-1 / 1024)
-			return -1;
-
-		cfg->huge_worker_stack_size = stack_size * 1024;
-	}
-
-	EAL_LOG(DEBUG, "Each worker thread will use %zu kB of DPDK memory as stack",
-		cfg->huge_worker_stack_size / 1024);
-	return 0;
-}
-
-/* Parse the argument given in the command line of the application */
-static int
-eal_parse_args(int argc, char **argv)
-{
-	int opt, ret;
-	char **argvopt;
-	int option_index;
-	char *prgname = argv[0];
-	const int old_optind = optind;
-	const int old_optopt = optopt;
-	char * const old_optarg = optarg;
-	struct internal_config *internal_conf =
-		eal_get_internal_configuration();
-
-	argvopt = argv;
-	optind = 1;
-
-	while ((opt = getopt_long(argc, argvopt, eal_short_options,
-				  eal_long_options, &option_index)) != EOF) {
-
-		/* getopt didn't recognise the option */
-		if (opt == '?') {
-			eal_usage(prgname);
-			ret = -1;
-			goto out;
-		}
-
-		/* eal_log_level_parse() already handled this option */
-		if (opt == OPT_LOG_LEVEL_NUM)
-			continue;
-
-		ret = eal_parse_common_option(opt, optarg, internal_conf);
-		/* common parser is not happy */
-		if (ret < 0) {
-			eal_usage(prgname);
-			ret = -1;
-			goto out;
-		}
-		/* common parser handled this option */
-		if (ret == 0)
-			continue;
-
-		switch (opt) {
-		case OPT_HELP_NUM:
-			eal_usage(prgname);
-			exit(EXIT_SUCCESS);
-
-		case OPT_HUGE_DIR_NUM:
-		{
-			char *hdir = strdup(optarg);
-			if (hdir == NULL)
-				EAL_LOG(ERR, "Could not store hugepage directory");
-			else {
-				/* free old hugepage dir */
-				free(internal_conf->hugepage_dir);
-				internal_conf->hugepage_dir = hdir;
-			}
-			break;
-		}
-		case OPT_FILE_PREFIX_NUM:
-		{
-			char *prefix = strdup(optarg);
-			if (prefix == NULL)
-				EAL_LOG(ERR, "Could not store file prefix");
-			else {
-				/* free old prefix */
-				free(internal_conf->hugefile_prefix);
-				internal_conf->hugefile_prefix = prefix;
-			}
-			break;
-		}
-		case OPT_SOCKET_MEM_NUM:
-			if (eal_parse_socket_arg(optarg,
-					internal_conf->socket_mem) < 0) {
-				EAL_LOG(ERR, "invalid parameters for --"
-						OPT_SOCKET_MEM);
-				eal_usage(prgname);
-				ret = -1;
-				goto out;
-			}
-			internal_conf->force_sockets = 1;
-			break;
-
-		case OPT_SOCKET_LIMIT_NUM:
-			if (eal_parse_socket_arg(optarg,
-					internal_conf->socket_limit) < 0) {
-				EAL_LOG(ERR, "invalid parameters for --"
-						OPT_SOCKET_LIMIT);
-				eal_usage(prgname);
-				ret = -1;
-				goto out;
-			}
-			internal_conf->force_socket_limits = 1;
-			break;
-
-		case OPT_VFIO_INTR_NUM:
-			if (eal_parse_vfio_intr(optarg) < 0) {
-				EAL_LOG(ERR, "invalid parameters for --"
-						OPT_VFIO_INTR);
-				eal_usage(prgname);
-				ret = -1;
-				goto out;
-			}
-			break;
-
-		case OPT_VFIO_VF_TOKEN_NUM:
-			if (eal_parse_vfio_vf_token(optarg) < 0) {
-				EAL_LOG(ERR, "invalid parameters for --"
-						OPT_VFIO_VF_TOKEN);
-				eal_usage(prgname);
-				ret = -1;
-				goto out;
-			}
-			break;
-
-		case OPT_CREATE_UIO_DEV_NUM:
-			internal_conf->create_uio_dev = 1;
-			break;
-
-		case OPT_MBUF_POOL_OPS_NAME_NUM:
-		{
-			char *ops_name = strdup(optarg);
-			if (ops_name == NULL)
-				EAL_LOG(ERR, "Could not store mbuf pool ops name");
-			else {
-				/* free old ops name */
-				free(internal_conf->user_mbuf_pool_ops_name);
-
-				internal_conf->user_mbuf_pool_ops_name =
-						ops_name;
-			}
-			break;
-		}
-		case OPT_MATCH_ALLOCATIONS_NUM:
-			internal_conf->match_allocations = 1;
-			break;
-
-		case OPT_HUGE_WORKER_STACK_NUM:
-			if (eal_parse_huge_worker_stack(optarg) < 0) {
-				EAL_LOG(ERR, "invalid parameter for --"
-					OPT_HUGE_WORKER_STACK);
-				eal_usage(prgname);
-				ret = -1;
-				goto out;
-			}
-			break;
-
-		default:
-			if (opt < OPT_LONG_MIN_NUM && isprint(opt)) {
-				EAL_LOG(ERR, "Option %c is not supported "
-					"on Linux", opt);
-			} else if (opt >= OPT_LONG_MIN_NUM &&
-				   opt < OPT_LONG_MAX_NUM) {
-				EAL_LOG(ERR, "Option %s is not supported "
-					"on Linux",
-					eal_long_options[option_index].name);
-			} else {
-				EAL_LOG(ERR, "Option %d is not supported "
-					"on Linux", opt);
-			}
-			eal_usage(prgname);
-			ret = -1;
-			goto out;
-		}
-	}
-
-	/* create runtime data directory. In no_shconf mode, skip any errors */
-	if (eal_create_runtime_dir() < 0) {
-		if (internal_conf->no_shconf == 0) {
-			EAL_LOG(ERR, "Cannot create runtime directory");
-			ret = -1;
-			goto out;
-		} else
-			EAL_LOG(WARNING, "No DPDK runtime directory created");
-	}
-
-	if (eal_adjust_config(internal_conf) != 0) {
-		ret = -1;
-		goto out;
-	}
-
-	/* sanity checks */
-	if (eal_check_common_options(internal_conf) != 0) {
-		eal_usage(prgname);
-		ret = -1;
-		goto out;
-	}
-
-	if (optind >= 0)
-		argv[optind-1] = prgname;
-	ret = optind-1;
-
-out:
-	/* restore getopt lib */
-	optind = old_optind;
-	optopt = old_optopt;
-	optarg = old_optarg;
-
-	return ret;
-}
-
 static int
 check_socket(const struct rte_memseg_list *msl, void *arg)
 {
@@ -857,6 +468,7 @@ sync_func(__rte_unused void *arg)
  * iopl() call is mostly for the i386 architecture. For other architectures,
  * return -1 to indicate IO privilege can't be changed in this way.
  */
+RTE_EXPORT_SYMBOL(rte_eal_iopl_init)
 int
 rte_eal_iopl_init(void)
 {
@@ -867,20 +479,9 @@ rte_eal_iopl_init(void)
 	return 0;
 }
 
-#ifdef VFIO_PRESENT
-static int rte_eal_vfio_setup(void)
-{
-	if (rte_vfio_enable("vfio"))
-		return -1;
-
-	return 0;
-}
-#endif
-
 static void rte_eal_init_alert(const char *msg)
 {
-	fprintf(stderr, "EAL: FATAL: %s\n", msg);
-	EAL_LOG(ERR, "%s", msg);
+	EAL_LOG(ALERT, "%s", msg);
 }
 
 /*
@@ -963,6 +564,7 @@ out:
 }
 
 /* Launch threads, called at application init(). */
+RTE_EXPORT_SYMBOL(rte_eal_init)
 int
 rte_eal_init(int argc, char **argv)
 {
@@ -976,13 +578,7 @@ rte_eal_init(int argc, char **argv)
 	struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 
-	/* checks if the machine is adequate */
-	if (!rte_cpu_is_supported()) {
-		rte_eal_init_alert("unsupported cpu type.");
-		rte_errno = ENOTSUP;
-		return -1;
-	}
-
+	/* first check if we have been run before */
 	if (!rte_atomic_compare_exchange_strong_explicit(&run_once, &has_run, 1,
 					rte_memory_order_relaxed, rte_memory_order_relaxed)) {
 		rte_eal_init_alert("already called initialization.");
@@ -990,61 +586,84 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	eal_reset_internal_config(internal_conf);
-
-	/* set log level as early as possible */
-	eal_log_level_parse(argc, argv);
-
 	/* clone argv to report out later in telemetry */
 	eal_save_args(argc, argv);
+
+	fctret = eal_collate_args(argc, argv);
+	if (fctret < 0) {
+		rte_eal_init_alert("Invalid command line arguments.");
+		rte_errno = EINVAL;
+		goto err_out;
+	}
+
+	/* setup log as early as possible */
+	if (eal_parse_log_options() < 0) {
+		rte_eal_init_alert("invalid log arguments.");
+		rte_errno = EINVAL;
+		goto err_out;
+	}
+
+	eal_log_init(program_invocation_short_name);
+
+	/* checks if the machine is adequate */
+	if (!rte_cpu_is_supported()) {
+		rte_eal_init_alert("unsupported cpu type.");
+		rte_errno = ENOTSUP;
+		goto err_out;
+	}
+
+	/* verify if DPDK supported on architecture MMU */
+	if (!eal_mmu_supported()) {
+		rte_eal_init_alert("unsupported MMU type.");
+		rte_errno = ENOTSUP;
+		goto err_out;
+	}
+
+	eal_reset_internal_config(internal_conf);
 
 	if (rte_eal_cpu_init() < 0) {
 		rte_eal_init_alert("Cannot detect lcores.");
 		rte_errno = ENOTSUP;
-		return -1;
+		goto err_out;
 	}
 
-	fctret = eal_parse_args(argc, argv);
-	if (fctret < 0) {
-		rte_eal_init_alert("Invalid 'command line' arguments.");
+	if (eal_parse_args() < 0) {
+		rte_eal_init_alert("Error parsing command line arguments.");
 		rte_errno = EINVAL;
-		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
-		return -1;
+		goto err_out;
 	}
 
 	if (eal_plugins_init() < 0) {
 		rte_eal_init_alert("Cannot init plugins");
 		rte_errno = EINVAL;
-		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
-		return -1;
+		goto err_out;
 	}
 
 	if (eal_trace_init() < 0) {
 		rte_eal_init_alert("Cannot init trace");
 		rte_errno = EFAULT;
-		return -1;
+		goto err_out;
 	}
 
 	if (eal_option_device_parse()) {
 		rte_errno = ENODEV;
-		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
-		return -1;
+		goto err_out;
 	}
 
 	if (rte_config_init() < 0) {
 		rte_eal_init_alert("Cannot init config");
-		return -1;
+		goto err_out;
 	}
 
 	if (rte_eal_intr_init() < 0) {
 		rte_eal_init_alert("Cannot init interrupt-handling thread");
-		return -1;
+		goto err_out;
 	}
 
 	if (rte_eal_alarm_init() < 0) {
 		rte_eal_init_alert("Cannot init alarm");
 		/* rte_eal_alarm_init sets rte_errno on failure. */
-		return -1;
+		goto err_out;
 	}
 
 	/* Put mp channel init before bus scan so that we can init the vdev
@@ -1054,23 +673,25 @@ rte_eal_init(int argc, char **argv)
 		rte_eal_init_alert("failed to init mp channel");
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 			rte_errno = EFAULT;
-			return -1;
+			goto err_out;
 		}
 	}
 
 	if (rte_bus_scan()) {
 		rte_eal_init_alert("Cannot scan the buses for devices");
 		rte_errno = ENODEV;
-		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
-		return -1;
+		goto err_out;
 	}
 
 	phys_addrs = rte_eal_using_phys_addrs() != 0;
 
+	/* Always call rte_bus_get_iommu_class() to trigger DMA mask detection and validation */
+	enum rte_iova_mode bus_iova_mode = rte_bus_get_iommu_class();
+
 	/* if no EAL option "--iova-mode=<pa|va>", use bus IOVA scheme */
 	if (internal_conf->iova_mode == RTE_IOVA_DC) {
 		/* autodetect the IOVA mapping mode */
-		enum rte_iova_mode iova_mode = rte_bus_get_iommu_class();
+		enum rte_iova_mode iova_mode = bus_iova_mode;
 
 		if (iova_mode == RTE_IOVA_DC) {
 			EAL_LOG(DEBUG, "Buses did not request a specific IOVA mode.");
@@ -1105,13 +726,13 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_iova_mode() == RTE_IOVA_PA && !phys_addrs) {
 		rte_eal_init_alert("Cannot use IOVA as 'PA' since physical addresses are not available");
 		rte_errno = EINVAL;
-		return -1;
+		goto err_out;
 	}
 
 	if (rte_eal_iova_mode() == RTE_IOVA_PA && !RTE_IOVA_IN_MBUF) {
 		rte_eal_init_alert("Cannot use IOVA as 'PA' as it is disabled during build");
 		rte_errno = EINVAL;
-		return -1;
+		goto err_out;
 	}
 
 	EAL_LOG(INFO, "Selected IOVA mode '%s'",
@@ -1125,12 +746,11 @@ rte_eal_init(int argc, char **argv)
 		if (ret < 0) {
 			rte_eal_init_alert("Cannot get hugepage information.");
 			rte_errno = EACCES;
-			rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
-			return -1;
+			goto err_out;
 		}
 	}
 
-	if (internal_conf->memory == 0 && internal_conf->force_sockets == 0) {
+	if (internal_conf->memory == 0 && internal_conf->force_numa == 0) {
 		if (internal_conf->no_hugetlbfs)
 			internal_conf->memory = MEMSIZE_IF_NO_HUGE_PAGE;
 	}
@@ -1146,22 +766,11 @@ rte_eal_init(int argc, char **argv)
 #endif
 	}
 
-	if (eal_log_init(program_invocation_short_name,
-			 internal_conf->syslog_facility) < 0) {
-		rte_eal_init_alert("Cannot init logging.");
-		rte_errno = ENOMEM;
-		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
-		return -1;
-	}
-
-#ifdef VFIO_PRESENT
-	if (rte_eal_vfio_setup() < 0) {
+	if (rte_vfio_enable("vfio")) {
 		rte_eal_init_alert("Cannot init VFIO");
 		rte_errno = EAGAIN;
-		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
-		return -1;
+		goto err_out;
 	}
-#endif
 	/* in secondary processes, memory init may allocate additional fbarrays
 	 * not present in primary processes, so to avoid any potential issues,
 	 * initialize memzones first.
@@ -1169,7 +778,7 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_memzone_init() < 0) {
 		rte_eal_init_alert("Cannot init memzone");
 		rte_errno = ENODEV;
-		return -1;
+		goto err_out;
 	}
 
 	rte_mcfg_mem_read_lock();
@@ -1178,7 +787,7 @@ rte_eal_init(int argc, char **argv)
 		rte_mcfg_mem_read_unlock();
 		rte_eal_init_alert("Cannot init memory");
 		rte_errno = ENOMEM;
-		return -1;
+		goto err_out;
 	}
 
 	/* the directories are locked during eal_hugepage_info_init */
@@ -1188,7 +797,7 @@ rte_eal_init(int argc, char **argv)
 		rte_mcfg_mem_read_unlock();
 		rte_eal_init_alert("Cannot init malloc heap");
 		rte_errno = ENODEV;
-		return -1;
+		goto err_out;
 	}
 
 	rte_mcfg_mem_read_unlock();
@@ -1196,26 +805,28 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_malloc_heap_populate() < 0) {
 		rte_eal_init_alert("Cannot init malloc heap");
 		rte_errno = ENODEV;
-		return -1;
+		goto err_out;
 	}
 
 	/* register multi-process action callbacks for hotplug after memory init */
 	if (eal_mp_dev_hotplug_init() < 0) {
 		rte_eal_init_alert("failed to register mp callback for hotplug");
-		return -1;
+		goto err_out;
 	}
 
 	if (rte_eal_tailqs_init() < 0) {
 		rte_eal_init_alert("Cannot init tail queues for objects");
 		rte_errno = EFAULT;
-		return -1;
+		goto err_out;
 	}
 
 	if (rte_eal_timer_init() < 0) {
 		rte_eal_init_alert("Cannot init HPET or TSC timers");
 		rte_errno = ENOTSUP;
-		return -1;
+		goto err_out;
 	}
+
+	eal_rand_init();
 
 	eal_check_mem_on_local_socket();
 
@@ -1223,7 +834,7 @@ rte_eal_init(int argc, char **argv)
 			&lcore_config[config->main_lcore].cpuset) != 0) {
 		rte_eal_init_alert("Cannot set affinity");
 		rte_errno = EINVAL;
-		return -1;
+		goto err_out;
 	}
 	__rte_thread_init(config->main_lcore,
 		&lcore_config[config->main_lcore].cpuset);
@@ -1252,8 +863,10 @@ rte_eal_init(int argc, char **argv)
 			rte_panic("Cannot create thread\n");
 
 		/* Set thread_name for aid in debugging. */
-		snprintf(thread_name, sizeof(thread_name),
-			"dpdk-worker%d", i);
+		ret = snprintf(thread_name, sizeof(thread_name), "dpdk-worker%d", i);
+		if (ret >= RTE_THREAD_NAME_SIZE)
+			EAL_LOG(INFO, "Worker thread name %s truncated", thread_name);
+
 		rte_thread_set_name(lcore_config[i].thread_id, thread_name);
 
 		ret = rte_thread_set_affinity_by_id(lcore_config[i].thread_id,
@@ -1274,21 +887,15 @@ rte_eal_init(int argc, char **argv)
 	if (ret) {
 		rte_eal_init_alert("rte_service_init() failed");
 		rte_errno = -ret;
-		return -1;
+		goto err_out;
 	}
 
 	/* Probe all the buses and devices/drivers on them */
 	if (rte_bus_probe()) {
 		rte_eal_init_alert("Cannot probe devices");
 		rte_errno = ENOTSUP;
-		return -1;
+		goto err_out;
 	}
-
-#ifdef VFIO_PRESENT
-	/* Register mp action after probe() so that we got enough info */
-	if (rte_vfio_is_enabled("vfio") && vfio_mp_sync_setup() < 0)
-		return -1;
-#endif
 
 	/* initialize default service/lcore mappings and start running. Ignore
 	 * -ENOTSUP, as it indicates no service coremask passed to EAL.
@@ -1296,7 +903,7 @@ rte_eal_init(int argc, char **argv)
 	ret = rte_service_start_with_defaults();
 	if (ret < 0 && ret != -ENOTSUP) {
 		rte_errno = -ret;
-		return -1;
+		goto err_out;
 	}
 
 	/*
@@ -1311,18 +918,23 @@ rte_eal_init(int argc, char **argv)
 	 */
 	if (!internal_conf->no_shconf && eal_clean_runtime_dir() < 0) {
 		rte_eal_init_alert("Cannot clear runtime directory");
-		return -1;
+		goto err_out;
 	}
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY && !internal_conf->no_telemetry) {
 		if (rte_telemetry_init(rte_eal_get_runtime_dir(),
 				rte_version(),
 				&internal_conf->ctrl_cpuset) != 0)
-			return -1;
+			goto err_out;
 	}
 
 	eal_mcfg_complete();
 
 	return fctret;
+
+err_out:
+	rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
+	eal_clean_saved_args();
+	return -1;
 }
 
 static int
@@ -1342,6 +954,7 @@ mark_freeable(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_cleanup)
 int
 rte_eal_cleanup(void)
 {
@@ -1366,23 +979,23 @@ rte_eal_cleanup(void)
 		rte_memseg_walk(mark_freeable, NULL);
 
 	rte_service_finalize();
-#ifdef VFIO_PRESENT
-	vfio_mp_sync_cleanup();
-#endif
-	rte_mp_channel_cleanup();
 	eal_bus_cleanup();
+	vfio_mp_sync_cleanup();
+	rte_mp_channel_cleanup();
+	rte_eal_alarm_cleanup();
 	rte_trace_save();
 	eal_trace_fini();
 	eal_mp_dev_hotplug_cleanup();
-	rte_eal_alarm_cleanup();
 	/* after this point, any DPDK pointers will become dangling */
 	rte_eal_memory_detach();
 	rte_eal_malloc_heap_cleanup();
 	eal_cleanup_config(internal_conf);
+	eal_lcore_var_cleanup();
 	rte_eal_log_cleanup();
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_create_uio_dev)
 int rte_eal_create_uio_dev(void)
 {
 	const struct internal_config *internal_conf =
@@ -1391,6 +1004,7 @@ int rte_eal_create_uio_dev(void)
 	return internal_conf->create_uio_dev;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_vfio_intr_mode)
 enum rte_intr_mode
 rte_eal_vfio_intr_mode(void)
 {
@@ -1400,6 +1014,7 @@ rte_eal_vfio_intr_mode(void)
 	return internal_conf->vfio_intr_mode;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_vfio_get_vf_token)
 void
 rte_eal_vfio_get_vf_token(rte_uuid_t vf_token)
 {

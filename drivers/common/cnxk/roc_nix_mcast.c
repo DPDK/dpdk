@@ -19,7 +19,7 @@ roc_nix_mcast_mcam_entry_alloc(struct roc_nix *roc_nix, uint16_t nb_entries,
 	req = mbox_alloc_msg_npc_mcam_alloc_entry(mbox);
 	if (req == NULL)
 		goto exit;
-	req->priority = priority;
+	req->ref_priority = priority;
 	req->count = nb_entries;
 
 	rc = mbox_process_msg(mbox, (void *)&rsp);
@@ -56,24 +56,38 @@ exit:
 }
 
 int
-roc_nix_mcast_mcam_entry_write(struct roc_nix *roc_nix,
-			       struct mcam_entry *entry, uint32_t index,
-			       uint8_t intf, uint64_t action)
+roc_nix_mcast_mcam_entry_write(struct roc_nix *roc_nix, void *entry, uint32_t index, uint8_t intf,
+			       uint64_t action)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct dev *dev = &nix->dev;
 	struct mbox *mbox = mbox_get(dev->mbox);
-	struct npc_mcam_write_entry_req *req;
 	int rc = -ENOSPC;
 
-	req = mbox_alloc_msg_npc_mcam_write_entry(mbox);
-	if (req == NULL)
-		goto exit;
-	req->entry = index;
-	req->intf = intf;
-	req->enable_entry = true;
-	mbox_memcpy(&req->entry_data, entry, sizeof(struct mcam_entry));
-	req->entry_data.action = action;
+	if (roc_model_is_cn20k()) {
+		struct npc_cn20k_mcam_write_entry_req *req;
+
+		req = mbox_alloc_msg_npc_cn20k_mcam_write_entry(mbox);
+		if (req == NULL)
+			goto exit;
+		req->entry = index;
+		req->intf = intf;
+		req->enable_entry = true;
+		mbox_memcpy(&req->entry_data, entry, sizeof(struct cn20k_mcam_entry));
+		req->entry_data.action = action;
+
+	} else {
+		struct npc_mcam_write_entry_req *req;
+
+		req = mbox_alloc_msg_npc_mcam_write_entry(mbox);
+		if (req == NULL)
+			goto exit;
+		req->entry = index;
+		req->intf = intf;
+		req->enable_entry = true;
+		mbox_memcpy(&req->entry_data, entry, sizeof(struct mcam_entry));
+		req->entry_data.action = action;
+	}
 
 	rc = mbox_process(mbox);
 exit:

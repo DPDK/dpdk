@@ -133,6 +133,21 @@ exit:
 	return rc;
 }
 
+static void
+npc_age_wait_until(struct roc_npc_flow_age *flow_age)
+{
+#define NPC_AGE_WAIT_TIMEOUT_MS 1000
+#define NPC_AGE_WAIT_TIMEOUT_US (NPC_AGE_WAIT_TIMEOUT_MS * NPC_AGE_WAIT_TIMEOUT_MS)
+	uint64_t timeout = 0;
+	uint64_t sleep = 10 * NPC_AGE_WAIT_TIMEOUT_MS;
+
+	do {
+		plt_delay_us(sleep);
+		timeout += sleep;
+	} while (!flow_age->aged_flows_get_thread_exit &&
+		 (timeout < ((uint64_t)flow_age->aging_poll_freq * NPC_AGE_WAIT_TIMEOUT_US)));
+}
+
 uint32_t
 npc_aged_flows_get(void *args)
 {
@@ -197,7 +212,7 @@ npc_aged_flows_get(void *args)
 		plt_seqcount_write_end(&flow_age->seq_cnt);
 
 lbl_sleep:
-		sleep(flow_age->aging_poll_freq);
+		npc_age_wait_until(flow_age);
 	}
 
 	return 0;
@@ -303,9 +318,11 @@ npc_aging_ctrl_thread_destroy(struct roc_npc *roc_npc)
 	struct roc_npc_flow_age *flow_age;
 
 	flow_age = &roc_npc->flow_age;
-	flow_age->aged_flows_get_thread_exit = true;
-	plt_thread_join(flow_age->aged_flows_poll_thread, NULL);
-	npc_aged_flows_bitmap_free(roc_npc);
+	if (plt_thread_is_valid(flow_age->aged_flows_poll_thread)) {
+		flow_age->aged_flows_get_thread_exit = true;
+		plt_thread_join(flow_age->aged_flows_poll_thread, NULL);
+		npc_aged_flows_bitmap_free(roc_npc);
+	}
 }
 
 void *

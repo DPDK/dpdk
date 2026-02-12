@@ -9,9 +9,9 @@ cryptographic operations to cryptographic accelerator units on the
 **Marvell OCTEON cnxk** SoC family.
 
 The cnxk crypto PMD code is organized into different sets of files.
-The file names starting with cn9k and cn10k provides support for CN9XX
-and CN10XX respectively. The common code between the SoCs is present
-in file names starting with cnxk.
+The file names starting with cn9k, cn10k and cn20k provides support
+for CN9XX, CN10XX and CN20XX respectively.
+The common code between the SoCs is present in file names starting with cnxk.
 
 More information about OCTEON cnxk SoCs may be obtained from `<https://www.marvell.com>`_
 
@@ -20,6 +20,7 @@ Supported OCTEON cnxk SoCs
 
 - CN9XX
 - CN10XX
+- CN20XX
 
 Features
 --------
@@ -144,7 +145,7 @@ Bind the CPT VF device to the vfio_pci driver:
 
       Refer to :ref:`linux_gsg_hugepages` for more details.
 
-``CN10K Initialization``
+``CN10K/CN20K Initialization``
 
 List the CPT PF devices available on cn10k platform:
 
@@ -199,6 +200,17 @@ Runtime Config Options
    With the above configuration, QP 20 will be used by the device for Rx injection
    in security in fallback mechanism scenario.
 
+- ``Context ilen value`` (default ``0``)
+
+  Initial context fetch length value for CPT context.
+
+  For example::
+
+      -a 0002:20:00.1,ctx_ilen=4
+
+  With the above configuration, CPT initial context fetch size
+  will be set to ``4+1`` 128 bytes blocks.
+
 Debugging Options
 -----------------
 
@@ -209,7 +221,7 @@ Debugging Options
     +---+------------+-------------------------------------------------------+
     | # | Component  | EAL log command                                       |
     +===+============+=======================================================+
-    | 1 | CPT        | --log-level='pmd\.crypto\.cnxk,8'                     |
+    | 1 | CPT        | --log-level='pmd\.common\.cnxk\.crypto,8'             |
     +---+------------+-------------------------------------------------------+
 
 Testing
@@ -232,6 +244,13 @@ running the test application:
     ./dpdk-test
     RTE>>cryptodev_cn10k_autotest
 
+``CN20K``
+
+.. code-block:: console
+
+    ./dpdk-test
+    RTE>>cryptodev_cn20k_autotest
+
 The asymmetric crypto operations on OCTEON cnxk crypto PMD may be verified by
 running the test application:
 
@@ -249,6 +268,13 @@ running the test application:
     ./dpdk-test
     RTE>>cryptodev_cn10k_asym_autotest
 
+``CN20K``
+
+.. code-block:: console
+
+    ./dpdk-test
+    RTE>>cryptodev_cn20k_asym_autotest
+
 Lookaside IPsec Support
 -----------------------
 
@@ -265,6 +291,7 @@ Supported OCTEON cnxk SoCs
 
 - CN9XX
 - CN10XX
+- CN20XX
 
 CN9XX Features supported
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -301,8 +328,8 @@ Auth algorithms
 * AES-XCBC-96
 * AES-GMAC
 
-CN10XX Features supported
-~~~~~~~~~~~~~~~~~~~~~~~~~
+CN10XX/CN20XX Features supported
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 * IPv4
 * ESP

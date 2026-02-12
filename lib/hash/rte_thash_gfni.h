@@ -5,10 +5,6 @@
 #ifndef _RTE_THASH_GFNI_H_
 #define _RTE_THASH_GFNI_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_compat.h>
 #include <rte_log.h>
 
@@ -16,6 +12,10 @@ extern "C" {
 
 #include <rte_thash_x86_gfni.h>
 
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 /**
@@ -71,7 +71,7 @@ static inline void
 rte_thash_gfni_bulk(const uint64_t *mtrx, int len, uint8_t *tuple[],
 	uint32_t val[], uint32_t num)
 {
-	return rte_thash_gfni_bulk_stub(mtrx, len, tuple, val, num);
+	rte_thash_gfni_bulk_stub(mtrx, len, tuple, val, num);
 }
 
 #endif /* RTE_THASH_GFNI_DEFINED */

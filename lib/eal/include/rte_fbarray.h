@@ -30,13 +30,13 @@
  * another process is using ``rte_fbarray``.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdio.h>
 
 #include <rte_rwlock.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_FBARRAY_NAME_LEN 64
 

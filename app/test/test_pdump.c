@@ -173,26 +173,20 @@ int
 run_pdump_server_tests(void)
 {
 	int ret = 0;
-	char coremask[10];
+	char core_str[10];
+	const char *prefix;
 
-#ifdef RTE_EXEC_ENV_LINUX
-	char tmp[PATH_MAX] = { 0 };
-	char prefix[PATH_MAX] = { 0 };
-
-	get_current_prefix(tmp, sizeof(tmp));
-	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
-#else
-	const char *prefix = "";
-#endif
+	prefix = file_prefix_arg();
+	if (prefix == NULL)
+		return -1;
 
 	/* good case, using secondary */
 	const char *const argv1[] = {
-		prgname, "-c", coremask, "--proc-type=secondary",
+		prgname, "-l", core_str, "--proc-type=secondary",
 		prefix
 	};
 
-	snprintf(coremask, sizeof(coremask), "%x",
-		 (1 << rte_get_main_lcore()));
+	snprintf(core_str, sizeof(core_str), "%u", rte_get_main_lcore());
 
 	ret = test_pdump_init();
 	ret |= launch_p(argv1);
@@ -219,4 +213,4 @@ test_pdump(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(pdump_autotest, true, false, test_pdump);
+REGISTER_FAST_TEST(pdump_autotest, NOHUGE_OK, ASAN_SKIP, test_pdump);

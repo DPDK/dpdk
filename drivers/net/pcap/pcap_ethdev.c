@@ -274,7 +274,7 @@ static uint16_t
 eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	unsigned int i;
-	struct pcap_pkthdr header;
+	struct pcap_pkthdr *header;
 	struct pmd_process_private *pp;
 	const u_char *packet;
 	struct rte_mbuf *mbuf;
@@ -294,9 +294,13 @@ eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	 */
 	for (i = 0; i < nb_pkts; i++) {
 		/* Get the next PCAP packet */
-		packet = pcap_next(pcap, &header);
-		if (unlikely(packet == NULL))
+		int ret = pcap_next_ex(pcap, &header, &packet);
+		if (ret != 1) {
+			if (ret == PCAP_ERROR)
+				pcap_q->rx_stat.err_pkts++;
+
 			break;
+		}
 
 		mbuf = rte_pktmbuf_alloc(pcap_q->mb_pool);
 		if (unlikely(mbuf == NULL)) {
@@ -304,33 +308,30 @@ eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			break;
 		}
 
-		if (header.caplen <= rte_pktmbuf_tailroom(mbuf)) {
+		uint32_t len = header->caplen;
+		if (len <= rte_pktmbuf_tailroom(mbuf)) {
 			/* pcap packet will fit in the mbuf, can copy it */
-			rte_memcpy(rte_pktmbuf_mtod(mbuf, void *), packet,
-					header.caplen);
-			mbuf->data_len = (uint16_t)header.caplen;
+			rte_memcpy(rte_pktmbuf_mtod(mbuf, void *), packet, len);
+			mbuf->data_len = len;
 		} else {
 			/* Try read jumbo frame into multi mbufs. */
 			if (unlikely(eth_pcap_rx_jumbo(pcap_q->mb_pool,
-						       mbuf,
-						       packet,
-						       header.caplen) == -1)) {
+						       mbuf, packet, len) == -1)) {
 				pcap_q->rx_stat.err_pkts++;
 				rte_pktmbuf_free(mbuf);
 				break;
 			}
 		}
 
-		mbuf->pkt_len = (uint16_t)header.caplen;
-		*RTE_MBUF_DYNFIELD(mbuf, timestamp_dynfield_offset,
-			rte_mbuf_timestamp_t *) =
-				(uint64_t)header.ts.tv_sec * 1000000 +
-				header.ts.tv_usec;
+		mbuf->pkt_len = len;
+		uint64_t us = (uint64_t)header->ts.tv_sec * US_PER_S + header->ts.tv_usec;
+
+		*RTE_MBUF_DYNFIELD(mbuf, timestamp_dynfield_offset, rte_mbuf_timestamp_t *) = us;
 		mbuf->ol_flags |= timestamp_rx_dynflag;
 		mbuf->port = pcap_q->port_id;
 		bufs[num_rx] = mbuf;
 		num_rx++;
-		rx_bytes += header.caplen;
+		rx_bytes += len;
 	}
 	pcap_q->rx_stat.pkts += num_rx;
 	pcap_q->rx_stat.bytes += rx_bytes;
@@ -519,6 +520,12 @@ open_iface_live(const char *iface, pcap_t **pcap) {
 
 	if (*pcap == NULL) {
 		PMD_LOG(ERR, "Couldn't open %s: %s", iface, errbuf);
+		return -1;
+	}
+
+	if (pcap_setnonblock(*pcap, 1, errbuf)) {
+		PMD_LOG(ERR, "Couldn't set non-blocking on %s: %s", iface, errbuf);
+		pcap_close(*pcap);
 		return -1;
 	}
 
@@ -743,7 +750,8 @@ eth_dev_info(struct rte_eth_dev *dev,
 }
 
 static int
-eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+	      struct eth_queue_stats *qstats)
 {
 	unsigned int i;
 	unsigned long rx_packets_total = 0, rx_bytes_total = 0;
@@ -755,21 +763,25 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
 			i < dev->data->nb_rx_queues; i++) {
-		stats->q_ipackets[i] = internal->rx_queue[i].rx_stat.pkts;
-		stats->q_ibytes[i] = internal->rx_queue[i].rx_stat.bytes;
+		if (qstats != NULL) {
+			qstats->q_ipackets[i] = internal->rx_queue[i].rx_stat.pkts;
+			qstats->q_ibytes[i] = internal->rx_queue[i].rx_stat.bytes;
+		}
 		rx_nombuf_total += internal->rx_queue[i].rx_stat.rx_nombuf;
 		rx_err_total += internal->rx_queue[i].rx_stat.err_pkts;
-		rx_packets_total += stats->q_ipackets[i];
-		rx_bytes_total += stats->q_ibytes[i];
+		rx_packets_total += internal->rx_queue[i].rx_stat.pkts;
+		rx_bytes_total += internal->rx_queue[i].rx_stat.bytes;
 		rx_missed_total += queue_missed_stat_get(dev, i);
 	}
 
 	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
 			i < dev->data->nb_tx_queues; i++) {
-		stats->q_opackets[i] = internal->tx_queue[i].tx_stat.pkts;
-		stats->q_obytes[i] = internal->tx_queue[i].tx_stat.bytes;
-		tx_packets_total += stats->q_opackets[i];
-		tx_bytes_total += stats->q_obytes[i];
+		if (qstats != NULL) {
+			qstats->q_opackets[i] = internal->tx_queue[i].tx_stat.pkts;
+			qstats->q_obytes[i] = internal->tx_queue[i].tx_stat.bytes;
+		}
+		tx_packets_total += internal->tx_queue[i].tx_stat.pkts;
+		tx_bytes_total += internal->tx_queue[i].tx_stat.bytes;
 		tx_packets_err_total += internal->tx_queue[i].tx_stat.err_pkts;
 	}
 
@@ -1093,11 +1105,11 @@ set_iface_direction(const char *iface, pcap_t *pcap,
 {
 	const char *direction_str = (direction == PCAP_D_IN) ? "IN" : "OUT";
 	if (pcap_setdirection(pcap, direction) < 0) {
-		PMD_LOG(ERR, "Setting %s pcap direction %s failed - %s\n",
+		PMD_LOG(ERR, "Setting %s pcap direction %s failed - %s",
 				iface, direction_str, pcap_geterr(pcap));
 		return -1;
 	}
-	PMD_LOG(INFO, "Setting %s pcap direction %s\n",
+	PMD_LOG(INFO, "Setting %s pcap direction %s",
 			iface, direction_str);
 	return 0;
 }

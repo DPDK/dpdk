@@ -7,7 +7,7 @@ FAQ
 This document contains some Frequently Asked Questions that arise when working with DPDK.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     :numbered:
 
     faq

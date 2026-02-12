@@ -1,7 +1,7 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2017-2022 NXP
+ * Copyright 2017-2022, 2025 NXP
  *
  */
 
@@ -31,6 +31,29 @@ static __thread struct qm_portal_config qpcfg;
 static __thread struct dpaa_ioctl_portal_map map = {
 	.type = dpaa_portal_qman
 };
+
+#define REG_ERR_IER 0x0e04
+#define QM_EIRQ_IESI 0x00000004
+
+static void dpaa_qm_iesr_irq_control(void)
+{
+	char *env = getenv("DPAA_QMAN_IESR_ISR_DISABLE");
+	uint32_t val;
+
+	if (!qman_ccsr_map) {
+		pr_err("qman CCSR not mapped!\n");
+		return;
+	}
+
+	val = in_be32((void *)((uintptr_t)qman_ccsr_map + REG_ERR_IER));
+
+	if (!env || atoi(env) == 0)
+		val = val | QM_EIRQ_IESI;
+	else
+		val = val & (~((uint32_t)QM_EIRQ_IESI));
+
+	out_be32((void *)((uintptr_t)qman_ccsr_map + REG_ERR_IER), val);
+}
 
 u16 dpaa_get_qm_channel_caam(void)
 {
@@ -228,8 +251,6 @@ int fsl_qman_fq_portal_destroy(struct qman_portal *qp)
 	if (ret)
 		pr_err("qman_free_global_portal() (%d)\n", ret);
 
-	kfree(qp);
-
 	process_portal_irq_unmap(cfg->irq);
 
 	addr.cena = cfg->addr_virt[DPAA_PORTAL_CE];
@@ -344,6 +365,8 @@ int qman_global_init(void)
 		pr_err("Can not map qman ccsr base\n");
 		return -EINVAL;
 	}
+
+	dpaa_qm_iesr_irq_control();
 
 	clk = of_get_property(dt_node, "clock-frequency", NULL);
 	if (!clk)

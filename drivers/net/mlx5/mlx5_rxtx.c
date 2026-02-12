@@ -32,7 +32,7 @@ static_assert(MLX5_CQE_STATUS_HW_OWN < 0, "Must be negative value");
 static_assert(MLX5_CQE_STATUS_SW_OWN < 0, "Must be negative value");
 static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 		(sizeof(uint16_t) +
-		 sizeof(rte_v128u32_t)),
+		MLX5_SIZE_MOV16),
 		"invalid Ethernet Segment data size");
 static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 		(sizeof(uint16_t) +
@@ -41,7 +41,7 @@ static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 		"invalid Ethernet Segment data size");
 static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 		(sizeof(uint16_t) +
-		 sizeof(rte_v128u32_t)),
+		MLX5_SIZE_MOV16),
 		"invalid Ethernet Segment data size");
 static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 		(sizeof(uint16_t) +
@@ -50,7 +50,7 @@ static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 		"invalid Ethernet Segment data size");
 static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 		(sizeof(uint16_t) +
-		 sizeof(rte_v128u32_t)),
+		MLX5_SIZE_MOV16),
 		"invalid Ethernet Segment data size");
 static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 		(sizeof(uint16_t) +
@@ -77,12 +77,12 @@ static_assert(MLX5_WQE_DSEG_SIZE == MLX5_WSEG_SIZE,
 static_assert(MLX5_WQE_SIZE == 4 * MLX5_WSEG_SIZE,
 		"invalid WQE size");
 
-uint32_t mlx5_ptype_table[] __rte_cache_aligned = {
+alignas(RTE_CACHE_LINE_SIZE) uint32_t mlx5_ptype_table[] = {
 	[0xff] = RTE_PTYPE_ALL_MASK, /* Last entry for errored packet. */
 };
 
-uint8_t mlx5_cksum_table[1 << 10] __rte_cache_aligned;
-uint8_t mlx5_swp_types_table[1 << 10] __rte_cache_aligned;
+alignas(RTE_CACHE_LINE_SIZE) uint8_t mlx5_cksum_table[1 << 10];
+alignas(RTE_CACHE_LINE_SIZE) uint8_t mlx5_swp_types_table[1 << 10];
 
 uint64_t rte_net_mlx5_dynf_inline_mask;
 
@@ -118,7 +118,23 @@ mlx5_set_ptype_table(void)
 	/* Fragmented */
 	(*p)[0x21] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
 		     RTE_PTYPE_L4_FRAG;
+	(*p)[0x25] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0x29] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0x2d] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0x31] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
 	(*p)[0x22] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0x26] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0x2a] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0x2e] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0x32] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
 		     RTE_PTYPE_L4_FRAG;
 	/* TCP */
 	(*p)[0x05] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
@@ -145,7 +161,23 @@ mlx5_set_ptype_table(void)
 		     RTE_PTYPE_L4_NONFRAG;
 	(*p)[0xa1] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
 		     RTE_PTYPE_L4_FRAG;
+	(*p)[0xa5] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0xa9] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0xad] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0xb1] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
 	(*p)[0xa2] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0xa6] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0xaa] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0xae] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0xb2] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
 		     RTE_PTYPE_L4_FRAG;
 	(*p)[0x85] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
 		     RTE_PTYPE_L4_TCP;
@@ -182,13 +214,61 @@ mlx5_set_ptype_table(void)
 	(*p)[0x61] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
 		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
 		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0x65] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0x69] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0x6d] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0x71] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
 	(*p)[0x62] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0x66] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0x6a] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0x6e] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0x72] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
 		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
 		     RTE_PTYPE_INNER_L4_FRAG;
 	(*p)[0xe1] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
 		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
 		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0xe5] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0xe9] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0xed] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0xf1] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
 	(*p)[0xe2] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0xe6] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0xea] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0xee] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0xf2] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
 		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
 		     RTE_PTYPE_INNER_L4_FRAG;
 	/* Tunneled - TCP */
@@ -351,6 +431,30 @@ mlx5_dump_debug_information(const char *fname, const char *hex_title,
 		fprintf(fd, "%s", (const char *)buf);
 	fprintf(fd, "\n\n\n");
 	fclose(fd);
+}
+
+/**
+ * Dump information to a logfile
+ *
+ * @param fd
+ *   File descriptor to logfile. File descriptor open/close is managed by caller.
+ * @param title
+ *   If not NULL this string is printed as a header to the output
+ *   and the output will be in hexadecimal view.
+ * @param buf
+ *   This is the buffer address to print out.
+ * @param len
+ *   The number of bytes to dump out.
+ */
+void
+mlx5_dump_to_file(FILE *fd, const char *title,
+			    const void *buf, unsigned int len)
+{
+	if (title)
+		rte_hexdump(fd, title, buf, len);
+	else
+		fprintf(fd, "%s", (const char *)buf);
+	fprintf(fd, "\n\n\n");
 }
 
 /**

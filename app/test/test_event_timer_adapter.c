@@ -2036,4 +2036,4 @@ test_event_timer_adapter_func(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(event_timer_adapter_test, test_event_timer_adapter_func);
+REGISTER_DRIVER_TEST(event_timer_adapter_test, test_event_timer_adapter_func);

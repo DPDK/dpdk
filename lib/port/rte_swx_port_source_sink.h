@@ -4,16 +4,16 @@
 #ifndef __INCLUDE_RTE_SWX_PORT_SOURCE_SINK_H__
 #define __INCLUDE_RTE_SWX_PORT_SOURCE_SINK_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX Source and Sink Ports
  */
 
 #include "rte_swx_port.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Maximum number of packets to read from the PCAP file. */
 #ifndef RTE_SWX_PORT_SOURCE_PKTS_MAX

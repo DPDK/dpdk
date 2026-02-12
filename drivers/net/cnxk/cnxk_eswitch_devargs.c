@@ -26,7 +26,7 @@ populate_repr_hw_info(struct cnxk_eswitch_dev *eswitch_dev, struct rte_eth_devar
 
 	if (eth_da->type != RTE_ETH_REPRESENTOR_VF && eth_da->type != RTE_ETH_REPRESENTOR_PF &&
 	    eth_da->type != RTE_ETH_REPRESENTOR_SF) {
-		plt_err("unsupported representor type %d\n", eth_da->type);
+		plt_err("unsupported representor type %d", eth_da->type);
 		return -ENOTSUP;
 	}
 

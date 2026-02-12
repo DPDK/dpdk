@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_eal.h>
 #include <rte_string_fns.h>
@@ -23,10 +24,12 @@
 
 #define IONIC_MDEV_UNK      "mdev_unknown"
 #define IONIC_MNIC          "cpu_mnic"
+#define IONIC_MCRYPT        "cpu_mcrypt"
 
 #define IONIC_MAX_NAME_LEN  20
 #define IONIC_MAX_MNETS     5
-#define IONIC_MAX_DEVICES   (IONIC_MAX_MNETS)
+#define IONIC_MAX_MCPTS     1
+#define IONIC_MAX_DEVICES   (IONIC_MAX_MNETS + IONIC_MAX_MCPTS)
 #define IONIC_MAX_U16_IDX   0xFFFF
 #define IONIC_UIO_MAX_TRIES 32
 
@@ -49,6 +52,7 @@ struct ionic_map_tbl ionic_mdev_map[IONIC_MAX_DEVICES] = {
 	{ "net_ionic2", 2, IONIC_MAX_U16_IDX, IONIC_MDEV_UNK },
 	{ "net_ionic3", 3, IONIC_MAX_U16_IDX, IONIC_MDEV_UNK },
 	{ "net_ionic4", 4, IONIC_MAX_U16_IDX, IONIC_MDEV_UNK },
+	{ "crypto_ionic0", 5, IONIC_MAX_U16_IDX, IONIC_MDEV_UNK },
 };
 
 struct uio_name {
@@ -100,6 +104,7 @@ uio_get_idx_for_devname(struct uio_name *name_cache, char *devname)
 	return -1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(ionic_uio_scan_mnet_devices)
 void
 ionic_uio_scan_mnet_devices(void)
 {
@@ -129,6 +134,50 @@ ionic_uio_scan_mnet_devices(void)
 			/* Look for a matching mnic */
 			snprintf(devname, IONIC_MAX_NAME_LEN,
 				IONIC_MNIC "%d", mdev_idx);
+			uio_idx = uio_get_idx_for_devname(name_cache, devname);
+			if (uio_idx >= 0) {
+				map = &ionic_mdev_map[i];
+				map->uio_idx = (uint16_t)uio_idx;
+				strlcpy(map->mdev_name, devname,
+					IONIC_MAX_NAME_LEN);
+				done = true;
+			}
+
+			mdev_idx++;
+		}
+	}
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(ionic_uio_scan_mcrypt_devices)
+void
+ionic_uio_scan_mcrypt_devices(void)
+{
+	struct ionic_map_tbl *map;
+	char devname[IONIC_MAX_NAME_LEN];
+	struct uio_name name_cache[IONIC_MAX_DEVICES];
+	bool done;
+	int mdev_idx = 0;
+	int uio_idx;
+	int i;
+	static bool scan_done;
+
+	if (scan_done)
+		return;
+
+	scan_done = true;
+
+	uio_fill_name_cache(name_cache, IONIC_MCRYPT);
+
+	for (i = IONIC_MAX_MNETS; i < IONIC_MAX_DEVICES; i++) {
+		done = false;
+
+		while (!done) {
+			if (mdev_idx > IONIC_MAX_MDEV_SCAN)
+				break;
+
+			/* Look for a matching mcrypt */
+			snprintf(devname, IONIC_MAX_NAME_LEN,
+				IONIC_MCRYPT "%d", mdev_idx);
 			uio_idx = uio_get_idx_for_devname(name_cache, devname);
 			if (uio_idx >= 0) {
 				map = &ionic_mdev_map[i];
@@ -255,6 +304,7 @@ uio_get_map_res_addr(int uio_idx, int size, int res_idx)
 	return addr;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(ionic_uio_get_rsrc)
 void
 ionic_uio_get_rsrc(const char *name, int idx, struct ionic_dev_bar *bar)
 {
@@ -273,6 +323,7 @@ ionic_uio_get_rsrc(const char *name, int idx, struct ionic_dev_bar *bar)
 	bar->vaddr = ((char *)bar->vaddr) + offs;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(ionic_uio_rel_rsrc)
 void
 ionic_uio_rel_rsrc(const char *name, int idx, struct ionic_dev_bar *bar)
 {

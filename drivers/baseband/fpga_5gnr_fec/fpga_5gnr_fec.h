@@ -11,17 +11,18 @@
 #include "agx100_pmd.h"
 #include "vc_5gnr_pmd.h"
 
+extern int fpga_5gnr_fec_logtype;
+#define RTE_LOGTYPE_FPGA_5GNR_FEC fpga_5gnr_fec_logtype
+
 /* Helper macro for logging */
-#define rte_bbdev_log(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, fpga_5gnr_fec_logtype, fmt "\n", \
-		##__VA_ARGS__)
+#define rte_bbdev_log(level, ...) \
+	RTE_LOG_LINE(level, FPGA_5GNR_FEC, __VA_ARGS__)
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
-#define rte_bbdev_log_debug(fmt, ...) \
-		rte_bbdev_log(DEBUG, "fpga_5gnr_fec: " fmt, \
-		##__VA_ARGS__)
+#define rte_bbdev_log_debug(...) \
+	rte_bbdev_log(DEBUG, __VA_ARGS__)
 #else
-#define rte_bbdev_log_debug(fmt, ...)
+#define rte_bbdev_log_debug(...)
 #endif
 
 /* FPGA 5GNR FEC driver names */
@@ -88,7 +89,7 @@ enum {
 };
 
 /* FPGA 5GNR Ring Control Register. */
-struct __rte_packed fpga_5gnr_ring_ctrl_reg {
+struct __rte_packed_begin fpga_5gnr_ring_ctrl_reg {
 	uint64_t ring_base_addr;
 	uint64_t ring_head_addr;
 	uint16_t ring_size:11;
@@ -106,7 +107,7 @@ struct __rte_packed fpga_5gnr_ring_ctrl_reg {
 	uint16_t rsrvd3;
 	uint16_t head_point;
 	uint16_t rsrvd4;
-};
+} __rte_packed_end;
 
 /* Private data structure for each FPGA 5GNR device. */
 struct fpga_5gnr_fec_device {

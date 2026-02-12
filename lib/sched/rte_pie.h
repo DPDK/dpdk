@@ -5,10 +5,6 @@
 #ifndef __RTE_PIE_H_INCLUDED__
 #define __RTE_PIE_H_INCLUDED__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * Proportional Integral controller Enhanced (PIE)
@@ -19,6 +15,10 @@ extern "C" {
 #include <rte_random.h>
 #include <rte_debug.h>
 #include <rte_cycles.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_DQ_THRESHOLD   16384   /**< Queue length threshold (2^14)
 				     * to start measurement cycle (bytes)

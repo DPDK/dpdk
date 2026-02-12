@@ -15,8 +15,44 @@
 #include <rte_graph_worker.h>
 #include <rte_lcore.h>
 #include <rte_node_eth_api.h>
+#include <rte_node_ip4_api.h>
+#include <rte_node_ip6_api.h>
+#include <rte_node_pkt_cls_api.h>
 
 #include "module_api.h"
+
+static int
+setup_fib(int socket)
+{
+	struct rte_fib_conf conf;
+
+#define FIB_MAX_ROUTES (UINT16_MAX)
+#define FIB_NUM_TBL8   (UINT16_MAX / 2)
+	conf.type = RTE_FIB_DIR24_8;
+	conf.max_routes = FIB_MAX_ROUTES;
+	conf.rib_ext_sz = 0;
+	conf.dir24_8.nh_sz = RTE_FIB_DIR24_8_4B;
+	conf.dir24_8.num_tbl8 = FIB_NUM_TBL8;
+	conf.flags = 0;
+
+	return rte_node_ip4_fib_create(socket, &conf);
+}
+
+static int
+setup_fib6(int socket)
+{
+	struct rte_fib6_conf conf;
+
+#define FIB6_MAX_ROUTES (UINT16_MAX)
+#define FIB6_NUM_TBL8   (UINT16_MAX / 2)
+	conf.type = RTE_FIB6_TRIE;
+	conf.max_routes = FIB6_MAX_ROUTES;
+	conf.rib_ext_sz = 0;
+	conf.trie.nh_sz = RTE_FIB6_TRIE_4B;
+	conf.trie.num_tbl8 = FIB6_NUM_TBL8;
+
+	return rte_node_ip6_fib_create(socket, &conf);
+}
 
 static int
 l3fwd_pattern_configure(void)
@@ -53,6 +89,26 @@ l3fwd_pattern_configure(void)
 	graph_conf.num_pkt_to_capture = pcap_pkts_count;
 	graph_conf.pcap_filename = strdup(pcap_file);
 
+	if (ip4_lookup_m == IP4_LOOKUP_FIB) {
+		const char *fib_n = "ip4_lookup_fib";
+		const char *lpm_n = "ip4_lookup";
+		rte_node_t pkt_cls;
+
+		pkt_cls = rte_node_from_name("pkt_cls");
+		rte_node_edge_update(pkt_cls, RTE_NODE_PKT_CLS_NEXT_IP4_LOOKUP, &fib_n, 1);
+		rte_node_edge_update(pkt_cls, RTE_NODE_PKT_CLS_NEXT_IP4_LOOKUP_FIB, &lpm_n, 1);
+	}
+
+	if (ip6_lookup_m == IP6_LOOKUP_FIB) {
+		const char *fib6_n = "ip6_lookup_fib";
+		const char *lpm6_n = "ip6_lookup";
+		rte_node_t pkt_cls;
+
+		pkt_cls = rte_node_from_name("pkt_cls");
+		rte_node_edge_update(pkt_cls, RTE_NODE_PKT_CLS_NEXT_IP6_LOOKUP, &fib6_n, 1);
+		rte_node_edge_update(pkt_cls, RTE_NODE_PKT_CLS_NEXT_IP6_LOOKUP_FIB, &lpm6_n, 1);
+	}
+
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		rte_graph_t graph_id;
 		rte_edge_t i;
@@ -77,6 +133,20 @@ l3fwd_pattern_configure(void)
 
 		snprintf(qconf->name, sizeof(qconf->name), "worker_%u",
 				lcore_id);
+
+		if (ip4_lookup_m == IP4_LOOKUP_FIB) {
+			rc = setup_fib(graph_conf.socket_id);
+			if (rc < 0)
+				rte_exit(EXIT_FAILURE, "Unable to setup fib for socket %u\n",
+						graph_conf.socket_id);
+		}
+
+		if (ip6_lookup_m == IP6_LOOKUP_FIB) {
+			rc = setup_fib6(graph_conf.socket_id);
+			if (rc < 0)
+				rte_exit(EXIT_FAILURE, "Unable to setup fib6 for socket %u\n",
+						graph_conf.socket_id);
+		}
 
 		graph_id = rte_graph_create(qconf->name, &graph_conf);
 		if (graph_id == RTE_GRAPH_ID_INVALID)

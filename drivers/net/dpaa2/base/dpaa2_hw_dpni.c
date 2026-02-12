@@ -1,13 +1,14 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2021 NXP
+ *   Copyright 2016-2021,2023-2025 NXP
  *
  */
 
 #include <time.h>
 #include <net/if.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
@@ -28,10 +29,10 @@ dpaa2_distset_to_dpkg_profile_cfg(
 		uint64_t req_dist_set,
 		struct dpkg_profile_cfg *kg_cfg);
 
+RTE_EXPORT_SYMBOL(rte_pmd_dpaa2_set_custom_hash)
 int
 rte_pmd_dpaa2_set_custom_hash(uint16_t port_id,
-			      uint16_t offset,
-			      uint8_t size)
+	uint16_t offset, uint8_t size)
 {
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[port_id];
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
@@ -52,13 +53,14 @@ rte_pmd_dpaa2_set_custom_hash(uint16_t port_id,
 		return -EINVAL;
 	}
 
-	p_params = rte_zmalloc(
-		NULL, DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
+	p_params = rte_zmalloc(NULL,
+		DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
 	if (!p_params) {
 		DPAA2_PMD_ERR("Unable to allocate flow-dist parameters");
 		return -ENOMEM;
 	}
 
+	memset(&kg_cfg, 0, sizeof(struct dpkg_profile_cfg));
 	kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_DATA;
 	kg_cfg.extracts[0].extract.from_data.offset = offset;
 	kg_cfg.extracts[0].extract.from_data.size = size;
@@ -73,17 +75,23 @@ rte_pmd_dpaa2_set_custom_hash(uint16_t port_id,
 	}
 
 	memset(&tc_cfg, 0, sizeof(struct dpni_rx_tc_dist_cfg));
-	tc_cfg.key_cfg_iova = (size_t)(DPAA2_VADDR_TO_IOVA(p_params));
+	tc_cfg.key_cfg_iova = DPAA2_VADDR_TO_IOVA_AND_CHECK(p_params,
+		DIST_PARAM_IOVA_SIZE);
+	if (tc_cfg.key_cfg_iova == RTE_BAD_IOVA) {
+		DPAA2_PMD_ERR("%s: No IOMMU map for key cfg(%p)",
+			__func__, p_params);
+		rte_free(p_params);
+		return -ENOBUFS;
+	}
+
 	tc_cfg.dist_size = eth_dev->data->nb_rx_queues;
 	tc_cfg.dist_mode = DPNI_DIST_MODE_HASH;
 
 	ret = dpni_set_rx_tc_dist(dpni, CMD_PRI_LOW, priv->token, tc_index,
-				  &tc_cfg);
+			&tc_cfg);
 	rte_free(p_params);
 	if (ret) {
-		DPAA2_PMD_ERR(
-			     "Setting distribution for Rx failed with err: %d",
-			     ret);
+		DPAA2_PMD_ERR("Set RX TC dist failed(err=%d)", ret);
 		return ret;
 	}
 
@@ -115,8 +123,8 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 	if (tc_dist_queues > priv->dist_queues)
 		tc_dist_queues = priv->dist_queues;
 
-	p_params = rte_malloc(
-		NULL, DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
+	p_params = rte_malloc(NULL,
+		DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
 	if (!p_params) {
 		DPAA2_PMD_ERR("Unable to allocate flow-dist parameters");
 		return -ENOMEM;
@@ -133,7 +141,15 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 		return ret;
 	}
 
-	tc_cfg.key_cfg_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(p_params));
+	tc_cfg.key_cfg_iova = DPAA2_VADDR_TO_IOVA_AND_CHECK(p_params,
+		DIST_PARAM_IOVA_SIZE);
+	if (tc_cfg.key_cfg_iova == RTE_BAD_IOVA) {
+		DPAA2_PMD_ERR("%s: No IOMMU map for key cfg(%p)",
+			__func__, p_params);
+		rte_free(p_params);
+		return -ENOBUFS;
+	}
+
 	tc_cfg.dist_size = tc_dist_queues;
 	tc_cfg.enable = true;
 	tc_cfg.tc = tc_index;
@@ -148,17 +164,15 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 	ret = dpni_set_rx_hash_dist(dpni, CMD_PRI_LOW, priv->token, &tc_cfg);
 	rte_free(p_params);
 	if (ret) {
-		DPAA2_PMD_ERR(
-			     "Setting distribution for Rx failed with err: %d",
-			     ret);
+		DPAA2_PMD_ERR("RX Hash dist for failed(err=%d)", ret);
 		return ret;
 	}
 
 	return 0;
 }
 
-int dpaa2_remove_flow_dist(
-	struct rte_eth_dev *eth_dev,
+int
+dpaa2_remove_flow_dist(struct rte_eth_dev *eth_dev,
 	uint8_t tc_index)
 {
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
@@ -168,8 +182,8 @@ int dpaa2_remove_flow_dist(
 	void *p_params;
 	int ret;
 
-	p_params = rte_malloc(
-		NULL, DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
+	p_params = rte_malloc(NULL,
+		DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
 	if (!p_params) {
 		DPAA2_PMD_ERR("Unable to allocate flow-dist parameters");
 		return -ENOMEM;
@@ -177,7 +191,15 @@ int dpaa2_remove_flow_dist(
 
 	memset(&tc_cfg, 0, sizeof(struct dpni_rx_dist_cfg));
 	tc_cfg.dist_size = 0;
-	tc_cfg.key_cfg_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(p_params));
+	tc_cfg.key_cfg_iova = DPAA2_VADDR_TO_IOVA_AND_CHECK(p_params,
+		DIST_PARAM_IOVA_SIZE);
+	if (tc_cfg.key_cfg_iova == RTE_BAD_IOVA) {
+		DPAA2_PMD_ERR("%s: No IOMMU map for key cfg(%p)",
+			__func__, p_params);
+		rte_free(p_params);
+		return -ENOBUFS;
+	}
+
 	tc_cfg.enable = true;
 	tc_cfg.tc = tc_index;
 
@@ -194,9 +216,7 @@ int dpaa2_remove_flow_dist(
 			&tc_cfg);
 	rte_free(p_params);
 	if (ret)
-		DPAA2_PMD_ERR(
-			     "Setting distribution for Rx failed with err: %d",
-			     ret);
+		DPAA2_PMD_ERR("RX hash dist failed(err=%d)", ret);
 	return ret;
 }
 
@@ -473,7 +493,21 @@ dpaa2_attach_bp_list(struct dpaa2_dev_priv *priv,
 	 */
 
 	/* ... rx buffer layout ... */
-	tot_size = RTE_PKTMBUF_HEADROOM;
+	if (priv->flags & DPAA2_TX_DYNAMIC_CONF_ENABLE) {
+		int out_min_hdr_room, in_min_hdr_room;
+		/** Additional headroom layout for IPSec with TX configure
+		 * dynamic enabled.
+		 */
+		in_min_hdr_room = DPAA2_RX_MIN_FD_OFFSET +
+			DPAA2_SEC_SIMPLE_FD_IB_MIN;
+		out_min_hdr_room = DPAA2_DYN_TX_MIN_FD_OFFSET +
+			DPAA2_SEC_SIMPLE_FD_OB_MIN;
+		tot_size = RTE_MAX(in_min_hdr_room, out_min_hdr_room);
+		if (tot_size < RTE_PKTMBUF_HEADROOM)
+			tot_size = RTE_PKTMBUF_HEADROOM;
+	} else {
+		tot_size = RTE_PKTMBUF_HEADROOM;
+	}
 	tot_size = RTE_ALIGN_CEIL(tot_size, DPAA2_PACKET_LAYOUT_ALIGN);
 
 	memset(&layout, 0, sizeof(struct dpni_buffer_layout));

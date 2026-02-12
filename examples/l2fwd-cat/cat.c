@@ -314,8 +314,7 @@ parse_l3ca(const char *l3ca)
 		if (cmask != 0 && is_contiguous(cmask) == 0)
 			goto err;
 
-		rte_memcpy(&m_config[idx].cpumask,
-			&cpuset, sizeof(rte_cpuset_t));
+		m_config[idx].cpumask = cpuset;
 
 		if (cmask != 0) {
 			m_config[idx].cdp = 1;

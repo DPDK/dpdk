@@ -326,4 +326,4 @@ test_metrics(void)
 	return unit_test_suite_runner(&metrics_testsuite);
 }
 
-REGISTER_FAST_TEST(metrics_autotest, true, true, test_metrics);
+REGISTER_FAST_TEST(metrics_autotest, NOHUGE_OK, ASAN_OK, test_metrics);

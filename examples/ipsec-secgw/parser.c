@@ -75,7 +75,7 @@ parse_ipv4_addr(const char *token, struct in_addr *ipv4, uint32_t *mask)
 }
 
 int
-parse_ipv6_addr(const char *token, struct in6_addr *ipv6, uint32_t *mask)
+parse_ipv6_addr(const char *token, struct rte_ipv6_addr *ipv6, uint32_t *mask)
 {
 	char ip_str[256] = {0};
 	char *pch;

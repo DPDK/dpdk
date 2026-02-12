@@ -25,7 +25,7 @@ struct ip4_route {
 };
 
 struct ip6_route {
-	uint8_t ip[16];
+	struct rte_ipv6_addr ip;
 	uint8_t depth;
 	uint8_t if_out;
 };
@@ -89,7 +89,7 @@ parse_rt_tokens(char **tokens, uint32_t n_tokens,
 					(uint32_t)ip.s_addr);
 				route_ipv4->depth = (uint8_t)depth;
 			} else {
-				struct in6_addr ip;
+				struct rte_ipv6_addr ip;
 				uint32_t depth;
 
 				APP_CHECK(parse_ipv6_addr(tokens[ti],
@@ -99,7 +99,7 @@ parse_rt_tokens(char **tokens, uint32_t n_tokens,
 					tokens[ti]);
 				if (status->status < 0)
 					return;
-				memcpy(route_ipv6->ip, ip.s6_addr, 16);
+				route_ipv6->ip = ip;
 				route_ipv6->depth = (uint8_t)depth;
 			}
 		}
@@ -183,7 +183,7 @@ rt_init(struct socket_ctx *ctx, int32_t socket_id)
 
 	/* populate the LPM table */
 	for (i = 0; i < nb_rt_ip6; i++) {
-		ret = rte_lpm6_add(lpm6, rt_ip6[i].ip, rt_ip6[i].depth,
+		ret = rte_lpm6_add(lpm6, &rt_ip6[i].ip, rt_ip6[i].depth,
 				rt_ip6[i].if_out);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Fail to add entry num %u to %s "
@@ -191,14 +191,14 @@ rt_init(struct socket_ctx *ctx, int32_t socket_id)
 
 		printf("LPM6: Adding route "
 			" %hx:%hx:%hx:%hx:%hx:%hx:%hx:%hx/%hhx (%hhx)\n",
-			(uint16_t)((rt_ip6[i].ip[0] << 8) | rt_ip6[i].ip[1]),
-			(uint16_t)((rt_ip6[i].ip[2] << 8) | rt_ip6[i].ip[3]),
-			(uint16_t)((rt_ip6[i].ip[4] << 8) | rt_ip6[i].ip[5]),
-			(uint16_t)((rt_ip6[i].ip[6] << 8) | rt_ip6[i].ip[7]),
-			(uint16_t)((rt_ip6[i].ip[8] << 8) | rt_ip6[i].ip[9]),
-			(uint16_t)((rt_ip6[i].ip[10] << 8) | rt_ip6[i].ip[11]),
-			(uint16_t)((rt_ip6[i].ip[12] << 8) | rt_ip6[i].ip[13]),
-			(uint16_t)((rt_ip6[i].ip[14] << 8) | rt_ip6[i].ip[15]),
+			(uint16_t)((rt_ip6[i].ip.a[0] << 8) | rt_ip6[i].ip.a[1]),
+			(uint16_t)((rt_ip6[i].ip.a[2] << 8) | rt_ip6[i].ip.a[3]),
+			(uint16_t)((rt_ip6[i].ip.a[4] << 8) | rt_ip6[i].ip.a[5]),
+			(uint16_t)((rt_ip6[i].ip.a[6] << 8) | rt_ip6[i].ip.a[7]),
+			(uint16_t)((rt_ip6[i].ip.a[8] << 8) | rt_ip6[i].ip.a[9]),
+			(uint16_t)((rt_ip6[i].ip.a[10] << 8) | rt_ip6[i].ip.a[11]),
+			(uint16_t)((rt_ip6[i].ip.a[12] << 8) | rt_ip6[i].ip.a[13]),
+			(uint16_t)((rt_ip6[i].ip.a[14] << 8) | rt_ip6[i].ip.a[15]),
 			rt_ip6[i].depth, rt_ip6[i].if_out);
 	}
 

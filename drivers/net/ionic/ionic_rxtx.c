@@ -26,38 +26,40 @@
 #include "ionic_logs.h"
 
 static void
-ionic_empty_array(void **array, uint32_t cnt, uint16_t idx)
+ionic_empty_array(void **array, uint32_t free_idx, uint32_t zero_idx)
 {
 	uint32_t i;
 
-	for (i = idx; i < cnt; i++)
+	for (i = 0; i < free_idx; i++)
 		if (array[i])
 			rte_pktmbuf_free_seg(array[i]);
 
-	memset(array, 0, sizeof(void *) * cnt);
+	memset(array, 0, sizeof(void *) * zero_idx);
 }
 
 static void __rte_cold
 ionic_tx_empty(struct ionic_tx_qcq *txq)
 {
 	struct ionic_queue *q = &txq->qcq.q;
+	uint32_t info_len = q->num_descs * q->num_segs;
 
-	ionic_empty_array(q->info, q->num_descs * q->num_segs, 0);
+	ionic_empty_array(q->info, info_len, info_len);
 }
 
 static void __rte_cold
 ionic_rx_empty(struct ionic_rx_qcq *rxq)
 {
 	struct ionic_queue *q = &rxq->qcq.q;
+	uint32_t info_len = q->num_descs * q->num_segs;
 
 	/*
 	 * Walk the full info array so that the clean up includes any
 	 * fragments that were left dangling for later reuse
 	 */
-	ionic_empty_array(q->info, q->num_descs * q->num_segs, 0);
+	ionic_empty_array(q->info, info_len, info_len);
 
-	ionic_empty_array((void **)rxq->mbs,
-			IONIC_MBUF_BULK_ALLOC, rxq->mb_idx);
+	ionic_empty_array((void **)rxq->mbs, rxq->mb_idx,
+			IONIC_MBUF_BULK_ALLOC);
 	rxq->mb_idx = 0;
 }
 
@@ -607,8 +609,7 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 }
 
 #define IONIC_CSUM_FLAG_MASK (IONIC_RXQ_COMP_CSUM_F_VLAN - 1)
-const uint64_t ionic_csum_flags[IONIC_CSUM_FLAG_MASK]
-		__rte_cache_aligned = {
+const alignas(RTE_CACHE_LINE_SIZE) uint64_t ionic_csum_flags[IONIC_CSUM_FLAG_MASK] = {
 	/* IP_BAD set */
 	[IONIC_RXQ_COMP_CSUM_F_IP_BAD] = RTE_MBUF_F_RX_IP_CKSUM_BAD,
 	[IONIC_RXQ_COMP_CSUM_F_IP_BAD | IONIC_RXQ_COMP_CSUM_F_TCP_OK] =
@@ -637,8 +638,7 @@ const uint64_t ionic_csum_flags[IONIC_CSUM_FLAG_MASK]
 };
 
 /* RTE_PTYPE_UNKNOWN is 0x0 */
-const uint32_t ionic_ptype_table[IONIC_RXQ_COMP_PKT_TYPE_MASK]
-		__rte_cache_aligned = {
+const alignas(RTE_CACHE_LINE_SIZE) uint32_t ionic_ptype_table[IONIC_RXQ_COMP_PKT_TYPE_MASK] = {
 	[IONIC_PKT_TYPE_NON_IP]   = RTE_PTYPE_UNKNOWN,
 	[IONIC_PKT_TYPE_IPV4]     = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4,
 	[IONIC_PKT_TYPE_IPV4_TCP] =

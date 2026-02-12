@@ -12,17 +12,17 @@
 
 #include "test.h"
 
-struct data {
+struct __rte_cache_aligned data {
 	rte_seqlock_t lock;
 
 	uint64_t a;
-	uint64_t b __rte_cache_aligned;
-	uint64_t c __rte_cache_aligned;
-} __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint64_t b;
+	alignas(RTE_CACHE_LINE_SIZE) uint64_t c;
+};
 
 struct reader {
 	struct data *data;
-	uint8_t stop;
+	RTE_ATOMIC(uint8_t) stop;
 };
 
 #define WRITER_RUNTIME 2.0 /* s */
@@ -79,7 +79,7 @@ reader_run(void *arg)
 	struct reader *r = arg;
 	int rc = TEST_SUCCESS;
 
-	while (__atomic_load_n(&r->stop, __ATOMIC_RELAXED) == 0 &&
+	while (rte_atomic_load_explicit(&r->stop, rte_memory_order_relaxed) == 0 &&
 			rc == TEST_SUCCESS) {
 		struct data *data = r->data;
 		bool interrupted;
@@ -115,7 +115,7 @@ reader_run(void *arg)
 static void
 reader_stop(struct reader *reader)
 {
-	__atomic_store_n(&reader->stop, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&reader->stop, 1, rte_memory_order_relaxed);
 }
 
 #define NUM_WRITERS 2 /* main lcore + one worker */
@@ -187,4 +187,4 @@ test_seqlock(void)
 	return rc;
 }
 
-REGISTER_FAST_TEST(seqlock_autotest, true, true, test_seqlock);
+REGISTER_FAST_TEST(seqlock_autotest, NOHUGE_OK, ASAN_OK, test_seqlock);

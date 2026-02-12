@@ -870,8 +870,7 @@ ml_inference_iomem_setup(struct ml_test *test, struct ml_options *opt, uint16_t 
 	return 0;
 
 error:
-	if (mz != NULL)
-		rte_memzone_free(mz);
+	rte_memzone_free(mz);
 
 	if (t->model[fid].io_pool != NULL) {
 		rte_mempool_free(t->model[fid].io_pool);
@@ -895,8 +894,7 @@ ml_inference_iomem_destroy(struct ml_test *test, struct ml_options *opt, uint16_
 	/* release user data memzone */
 	sprintf(mz_name, "ml_user_data_%d", fid);
 	mz = rte_memzone_lookup(mz_name);
-	if (mz != NULL)
-		rte_memzone_free(mz);
+	rte_memzone_free(mz);
 
 	/* destroy io pool */
 	sprintf(mp_name, "ml_io_pool_%d", fid);

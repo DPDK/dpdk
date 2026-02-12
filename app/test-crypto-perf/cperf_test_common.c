@@ -149,11 +149,11 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 	int ret;
 
 	/* Calculate the object size */
-	uint16_t crypto_op_size = sizeof(struct rte_crypto_op) +
-		sizeof(struct rte_crypto_sym_op);
+	uint16_t crypto_op_size = sizeof(struct rte_crypto_op);
 	uint16_t crypto_op_private_size;
 
-	if (options->op_type == CPERF_ASYM_MODEX) {
+	if (cperf_is_asym_test(options)) {
+		crypto_op_size += sizeof(struct rte_crypto_asym_op);
 		snprintf(pool_name, RTE_MEMPOOL_NAMESIZE, "perf_asym_op_pool%u",
 			 rte_socket_id());
 		*pool = rte_crypto_op_pool_create(
@@ -169,6 +169,8 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 		rte_mempool_obj_iter(*pool, mempool_asym_obj_init, NULL);
 		return 0;
 	}
+
+	crypto_op_size += sizeof(struct rte_crypto_sym_op);
 
 	/*
 	 * If doing AES-CCM, IV field needs to be 16 bytes long,
@@ -298,4 +300,21 @@ cperf_mbuf_set(struct rte_mbuf *mbuf,
 		test_data += segment_sz;
 		mbuf = mbuf->next;
 	}
+}
+
+bool
+cperf_is_asym_test(const struct cperf_options *options)
+{
+	if (options->op_type == CPERF_ASYM_MODEX ||
+	    options->op_type == CPERF_ASYM_RSA ||
+	    options->op_type == CPERF_ASYM_SECP192R1 ||
+	    options->op_type == CPERF_ASYM_SECP224R1 ||
+	    options->op_type == CPERF_ASYM_SECP256R1 ||
+	    options->op_type == CPERF_ASYM_SECP384R1 ||
+	    options->op_type == CPERF_ASYM_SECP521R1 ||
+	    options->op_type == CPERF_ASYM_ED25519 ||
+	    options->op_type == CPERF_ASYM_SM2)
+		return true;
+
+	return false;
 }

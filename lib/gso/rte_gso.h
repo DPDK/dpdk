@@ -10,12 +10,12 @@
  * Interface to GSO library
  */
 
+#include <stdint.h>
+#include <rte_mbuf.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
-#include <rte_mbuf.h>
 
 /* Minimum GSO segment size for TCP based packets. */
 #define RTE_GSO_SEG_SIZE_MIN (sizeof(struct rte_ether_hdr) + \

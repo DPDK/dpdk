@@ -358,11 +358,35 @@ nix_q_ctx_get(struct dev *dev, uint8_t ctype, uint16_t qid, __io void **ctx_p)
 			*ctx_p = &rsp->sq;
 		else
 			*ctx_p = &rsp->cq;
-	} else {
+	} else if (roc_model_is_cn10k()) {
 		struct nix_cn10k_aq_enq_rsp *rsp;
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (!aq) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+
+		aq->qidx = qid;
+		aq->ctype = ctype;
+		aq->op = NIX_AQ_INSTOP_READ;
+
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			goto exit;
+
+		if (ctype == NIX_AQ_CTYPE_RQ)
+			*ctx_p = &rsp->rq;
+		else if (ctype == NIX_AQ_CTYPE_SQ)
+			*ctx_p = &rsp->sq;
+		else
+			*ctx_p = &rsp->cq;
+	} else {
+		struct nix_cn20k_aq_enq_rsp *rsp;
+		struct nix_cn20k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
 		if (!aq) {
 			rc = -ENOSPC;
 			goto exit;
@@ -452,7 +476,69 @@ nix_cn9k_lf_sq_dump(__io struct nix_sq_ctx_s *ctx, uint32_t *sqb_aura_p, FILE *f
 }
 
 static inline void
-nix_lf_sq_dump(__io struct nix_cn10k_sq_ctx_s *ctx, uint32_t *sqb_aura_p, FILE *file)
+nix_cn10k_lf_sq_dump(__io struct nix_cn10k_sq_ctx_s *ctx, uint32_t *sqb_aura_p, FILE *file)
+{
+	nix_dump(file, "W0: sqe_way_mask \t\t%d\nW0: cq \t\t\t\t%d",
+		 ctx->sqe_way_mask, ctx->cq);
+	nix_dump(file, "W0: sdp_mcast \t\t\t%d\nW0: substream \t\t\t0x%03x",
+		 ctx->sdp_mcast, ctx->substream);
+	nix_dump(file, "W0: qint_idx \t\t\t%d\nW0: ena \t\t\t%d\n", ctx->qint_idx,
+		 ctx->ena);
+
+	nix_dump(file, "W1: sqb_count \t\t\t%d\nW1: default_chan \t\t%d",
+		 ctx->sqb_count, ctx->default_chan);
+	nix_dump(file, "W1: smq_rr_weight \t\t%d\nW1: sso_ena \t\t\t%d",
+		 ctx->smq_rr_weight, ctx->sso_ena);
+	nix_dump(file, "W1: xoff \t\t\t%d\nW1: cq_ena \t\t\t%d\nW1: smq\t\t\t\t%d\n",
+		 ctx->xoff, ctx->cq_ena, ctx->smq);
+
+	nix_dump(file, "W2: sqe_stype \t\t\t%d\nW2: sq_int_ena \t\t\t%d",
+		 ctx->sqe_stype, ctx->sq_int_ena);
+	nix_dump(file, "W2: sq_int  \t\t\t%d\nW2: sqb_aura \t\t\t%d", ctx->sq_int,
+		 ctx->sqb_aura);
+	nix_dump(file, "W2: smq_rr_count[ub:lb] \t\t%x:%x\n", ctx->smq_rr_count_ub,
+		 ctx->smq_rr_count_lb);
+
+	nix_dump(file, "W3: smq_next_sq_vld\t\t%d\nW3: smq_pend\t\t\t%d",
+		 ctx->smq_next_sq_vld, ctx->smq_pend);
+	nix_dump(file, "W3: smenq_next_sqb_vld  \t%d\nW3: head_offset\t\t\t%d",
+		 ctx->smenq_next_sqb_vld, ctx->head_offset);
+	nix_dump(file, "W3: smenq_offset\t\t%d\nW3: tail_offset \t\t%d",
+		 ctx->smenq_offset, ctx->tail_offset);
+	nix_dump(file, "W3: smq_lso_segnum \t\t%d\nW3: smq_next_sq \t\t%d",
+		 ctx->smq_lso_segnum, ctx->smq_next_sq);
+	nix_dump(file, "W3: mnq_dis \t\t\t%d\nW3: lmt_dis \t\t\t%d", ctx->mnq_dis,
+		 ctx->lmt_dis);
+	nix_dump(file, "W3: cq_limit\t\t\t%d\nW3: max_sqe_size\t\t%d\n",
+		 ctx->cq_limit, ctx->max_sqe_size);
+
+	nix_dump(file, "W4: next_sqb \t\t\t0x%" PRIx64 "", ctx->next_sqb);
+	nix_dump(file, "W5: tail_sqb \t\t\t0x%" PRIx64 "", ctx->tail_sqb);
+	nix_dump(file, "W6: smenq_sqb \t\t\t0x%" PRIx64 "", ctx->smenq_sqb);
+	nix_dump(file, "W7: smenq_next_sqb \t\t0x%" PRIx64 "", ctx->smenq_next_sqb);
+	nix_dump(file, "W8: head_sqb \t\t\t0x%" PRIx64 "", ctx->head_sqb);
+
+	nix_dump(file, "W9: vfi_lso_vld \t\t%d\nW9: vfi_lso_vlan1_ins_ena\t%d", ctx->vfi_lso_vld,
+		 ctx->vfi_lso_vlan1_ins_ena);
+	nix_dump(file, "W9: vfi_lso_vlan0_ins_ena\t%d\nW9: vfi_lso_mps\t\t\t%d",
+		 ctx->vfi_lso_vlan0_ins_ena, ctx->vfi_lso_mps);
+	nix_dump(file, "W9: vfi_lso_sb \t\t\t%d\nW9: vfi_lso_sizem1\t\t%d", ctx->vfi_lso_sb,
+		 ctx->vfi_lso_sizem1);
+	nix_dump(file, "W9: vfi_lso_total\t\t%d", ctx->vfi_lso_total);
+
+	nix_dump(file, "W10: scm_lso_rem \t\t0x%" PRIx64 "", (uint64_t)ctx->scm_lso_rem);
+	nix_dump(file, "W11: octs \t\t\t0x%" PRIx64 "", (uint64_t)ctx->octs);
+	nix_dump(file, "W12: pkts \t\t\t0x%" PRIx64 "", (uint64_t)ctx->pkts);
+	nix_dump(file, "W13: aged_drop_pkts \t\t\t0x%" PRIx64 "", (uint64_t)ctx->aged_drop_pkts);
+	nix_dump(file, "W13: aged_drop_octs \t\t\t0x%" PRIx64 "", (uint64_t)ctx->aged_drop_octs);
+	nix_dump(file, "W14: dropped_octs \t\t0x%" PRIx64 "", (uint64_t)ctx->drop_octs);
+	nix_dump(file, "W15: dropped_pkts \t\t0x%" PRIx64 "", (uint64_t)ctx->drop_pkts);
+
+	*sqb_aura_p = ctx->sqb_aura;
+}
+
+static inline void
+nix_lf_sq_dump(__io struct nix_cn20k_sq_ctx_s *ctx, uint32_t *sqb_aura_p, FILE *file)
 {
 	nix_dump(file, "W0: sqe_way_mask \t\t%d\nW0: cq \t\t\t\t%d",
 		 ctx->sqe_way_mask, ctx->cq);
@@ -574,7 +660,7 @@ nix_cn9k_lf_rq_dump(__io struct nix_rq_ctx_s *ctx, FILE *file)
 }
 
 void
-nix_lf_rq_dump(__io struct nix_cn10k_rq_ctx_s *ctx, FILE *file)
+nix_cn10k_lf_rq_dump(__io struct nix_cn10k_rq_ctx_s *ctx, FILE *file)
 {
 	nix_dump(file, "W0: wqe_aura \t\t\t%d\nW0: len_ol3_dis \t\t\t%d",
 		 ctx->wqe_aura, ctx->len_ol3_dis);
@@ -649,6 +735,124 @@ nix_lf_rq_dump(__io struct nix_cn10k_rq_ctx_s *ctx, FILE *file)
 	nix_dump(file, "W10: re_pkts \t\t\t0x%" PRIx64 "\n", (uint64_t)ctx->re_pkts);
 }
 
+void
+nix_lf_rq_dump(__io struct nix_cn20k_rq_ctx_s *ctx, FILE *file)
+{
+	nix_dump(file, "W0: wqe_aura \t\t\t%d\nW0: len_ol3_dis \t\t\t%d",
+		 ctx->wqe_aura, ctx->len_ol3_dis);
+	nix_dump(file, "W0: len_ol4_dis \t\t\t%d\nW0: len_il3_dis \t\t\t%d",
+		 ctx->len_ol4_dis, ctx->len_il3_dis);
+	nix_dump(file, "W0: len_il4_dis \t\t\t%d\nW0: csum_ol4_dis \t\t\t%d",
+		 ctx->len_il4_dis, ctx->csum_ol4_dis);
+	nix_dump(file, "W0: csum_il4_dis \t\t\t%d\nW0: lenerr_dis \t\t\t%d",
+		 ctx->csum_il4_dis, ctx->lenerr_dis);
+	nix_dump(file, "W0: port_ol4_dis \t\t\t%d\nW0: port_il4_dis\t\t\t%d",
+		 ctx->port_ol4_dis, ctx->port_il4_dis);
+	nix_dump(file, "W0: cq \t\t\t\t%d\nW0: ena_wqwd \t\t\t%d", ctx->cq,
+		 ctx->ena_wqwd);
+	nix_dump(file, "W0: ipsech_ena \t\t\t%d\nW0: sso_ena \t\t\t%d",
+		 ctx->ipsech_ena, ctx->sso_ena);
+	nix_dump(file, "W0: ena \t\t\t%d\n", ctx->ena);
+
+	nix_dump(file, "W1: chi_ena \t\t%d\nW1: ipsecd_drop_en \t\t%d", ctx->chi_ena,
+		 ctx->ipsecd_drop_en);
+	nix_dump(file, "W1: pb_stashing \t\t\t%d", ctx->pb_stashing);
+	nix_dump(file, "W1: lpb_drop_ena \t\t%d\nW1: spb_drop_ena \t\t%d",
+		 ctx->lpb_drop_ena, ctx->spb_drop_ena);
+	nix_dump(file, "W1: xqe_drop_ena \t\t%d\nW1: wqe_caching \t\t%d",
+		 ctx->xqe_drop_ena, ctx->wqe_caching);
+	nix_dump(file, "W1: pb_caching \t\t\t%d\nW1: sso_tt \t\t\t%d",
+		 ctx->pb_caching, ctx->sso_tt);
+	nix_dump(file, "W1: sso_grp \t\t\t%d\nW1: lpb_aura \t\t\t%d", ctx->sso_grp,
+		 ctx->lpb_aura);
+	nix_dump(file, "W1: spb_aura \t\t\t%d\n", ctx->spb_aura);
+
+	nix_dump(file, "W2: xqe_hdr_split \t\t%d\nW2: xqe_imm_copy \t\t%d",
+		 ctx->xqe_hdr_split, ctx->xqe_imm_copy);
+	nix_dump(file, "W2: band_prof_id\t\t0x%" PRIx64 "\n",
+		 (uint64_t)((ctx->band_prof_id_h << 10) | ctx->band_prof_id_l));
+	nix_dump(file, "W2: xqe_imm_size \t\t%d\nW2: later_skip \t\t\t%d",
+		 ctx->xqe_imm_size, ctx->later_skip);
+	nix_dump(file, "W2: sso_bp_ena\t\t%d\n", ctx->sso_bp_ena);
+	nix_dump(file, "W2: first_skip \t\t\t%d\nW2: lpb_sizem1 \t\t\t%d",
+		 ctx->first_skip, ctx->lpb_sizem1);
+	nix_dump(file, "W2: spb_ena \t\t\t%d\nW2: spb_high_sizem1 \t\t\t%d", ctx->spb_ena,
+		 ctx->spb_high_sizem1);
+	nix_dump(file, "W2: wqe_skip \t\t\t%d", ctx->wqe_skip);
+	nix_dump(file, "W2: spb_sizem1 \t\t\t%d\nW2: policer_ena \t\t\t%d",
+		 ctx->spb_sizem1, ctx->policer_ena);
+	nix_dump(file, "W2: sso_fc_ena \t\t\t%d\n", ctx->sso_fc_ena);
+
+	nix_dump(file, "W3: spb_pool_pass \t\t%d\nW3: spb_pool_drop \t\t%d",
+		 ctx->spb_pool_pass, ctx->spb_pool_drop);
+	nix_dump(file, "W3: spb_aura_pass \t\t%d\nW3: spb_aura_drop \t\t%d",
+		 ctx->spb_aura_pass, ctx->spb_aura_drop);
+	nix_dump(file, "W3: wqe_pool_pass \t\t%d\nW3: wqe_pool_drop \t\t%d",
+		 ctx->wqe_pool_pass, ctx->wqe_pool_drop);
+	nix_dump(file, "W3: xqe_pass \t\t\t%d\nW3: xqe_drop \t\t\t%d\n",
+		 ctx->xqe_pass, ctx->xqe_drop);
+
+	nix_dump(file, "W4: qint_idx \t\t\t%d\nW4: rq_int_ena \t\t\t%d",
+		 ctx->qint_idx, ctx->rq_int_ena);
+	nix_dump(file, "W4: rq_int \t\t\t%d\nW4: lpb_pool_pass \t\t%d", ctx->rq_int,
+		 ctx->lpb_pool_pass);
+	nix_dump(file, "W4: lpb_pool_drop \t\t%d\nW4: lpb_aura_pass \t\t%d",
+		 ctx->lpb_pool_drop, ctx->lpb_aura_pass);
+	nix_dump(file, "W4: lpb_aura_drop \t\t%d\n", ctx->lpb_aura_drop);
+
+	nix_dump(file, "W5: flow_tagw \t\t\t%d\nW5: bad_utag \t\t\t%d",
+		 ctx->flow_tagw, ctx->bad_utag);
+	nix_dump(file, "W5: good_utag \t\t\t%d\nW5: ltag \t\t\t%d\n", ctx->good_utag,
+		 ctx->ltag);
+
+	nix_dump(file, "W6: octs \t\t\t0x%" PRIx64 "", (uint64_t)ctx->octs);
+	nix_dump(file, "W7: pkts \t\t\t0x%" PRIx64 "", (uint64_t)ctx->pkts);
+	nix_dump(file, "W8: drop_octs \t\t\t0x%" PRIx64 "", (uint64_t)ctx->drop_octs);
+	nix_dump(file, "W9: drop_pkts \t\t\t0x%" PRIx64 "", (uint64_t)ctx->drop_pkts);
+	nix_dump(file, "W10: re_pkts \t\t\t0x%" PRIx64 "\n", (uint64_t)ctx->re_pkts);
+}
+
+static inline void
+nix_cn20k_lf_cq_dump(__io struct nix_cn20k_cq_ctx_s *ctx, FILE *file)
+{
+	nix_dump(file, "W0: base \t\t\t0x%" PRIx64 "\n", ctx->base);
+
+	nix_dump(file, "W1: wrptr \t\t\t%" PRIx64 "", (uint64_t)ctx->wrptr);
+	nix_dump(file, "W1: avg_con \t\t\t%d\nW1: cint_idx \t\t\t%d", ctx->avg_con,
+		 ctx->cint_idx);
+	nix_dump(file, "W1: cq_err \t\t\t%d\nW1: qint_idx \t\t\t%d", ctx->cq_err,
+		 ctx->qint_idx);
+	nix_dump(file, "W1: bpid  \t\t\t%d\nW1: bp_ena \t\t\t%d\n", ctx->bpid,
+		 ctx->bp_ena);
+	nix_dump(file,
+		 "W1: lbpid_high \t\t\t0x%03x\nW1: lbpid_med \t\t\t0x%03x\n"
+		 "W1: lbpid_low \t\t\t0x%03x\n(W1: lbpid) \t\t\t0x%03x\n",
+		 ctx->lbpid_high, ctx->lbpid_med, ctx->lbpid_low, (unsigned int)
+		 (ctx->lbpid_high << 6 | ctx->lbpid_med << 3 | ctx->lbpid_low));
+	nix_dump(file, "W1: lbp_ena \t\t\t\t%d\n", ctx->lbp_ena);
+
+	nix_dump(file, "W2: update_time \t\t%d\nW2: avg_level \t\t\t%d",
+		 ctx->update_time, ctx->avg_level);
+	nix_dump(file, "W2: head \t\t\t%d\nW2: tail \t\t\t%d\n", ctx->head,
+		 ctx->tail);
+
+	nix_dump(file, "W3: cq_err_int_ena \t\t%d\nW3: cq_err_int \t\t\t%d",
+		 ctx->cq_err_int_ena, ctx->cq_err_int);
+	nix_dump(file, "W3: qsize \t\t\t%d\nW3: stashing \t\t\t%d", ctx->qsize,
+		 ctx->stashing);
+	nix_dump(file, "W3: caching \t\t\t%d\nW3: lbp_frac \t\t\t%d", ctx->caching, ctx->lbp_frac);
+	nix_dump(file, "W3: stash_thresh \t\t\t%d\nW3: msh_valid\t\t\t%d", ctx->stash_thresh,
+		 ctx->msh_valid);
+	nix_dump(file, "W3: msh_dst \t\t\t0x%03x\nW3: cpt_drop_err_en \t\t\t%d\n",
+		 ctx->msh_dst, ctx->cpt_drop_err_en);
+	nix_dump(file, "W3: ena \t\t\t%d\n", ctx->ena);
+	nix_dump(file, "W3: drop_ena \t\t\t%d\nW3: drop \t\t\t%d", ctx->drop_ena,
+		 ctx->drop);
+	nix_dump(file, "W3: bp \t\t\t\t%d\n", ctx->bp);
+	nix_dump(file, "W4: lbpid_ext \t\t\t%d\nW3: bpid_ext \t\t\t%d", ctx->lbpid_ext,
+		 ctx->bpid_ext);
+}
+
 static inline void
 nix_lf_cq_dump(__io struct nix_cq_ctx_s *ctx, FILE *file)
 {
@@ -690,6 +894,7 @@ int
 roc_nix_queues_ctx_dump(struct roc_nix *roc_nix, FILE *file)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct npa_cn20k_aq_enq_req *npa_aq_cn20k;
 	int rc = -1, q, rq = nix->nb_rx_queues;
 	struct npa_aq_enq_rsp *npa_rsp;
 	struct npa_aq_enq_req *npa_aq;
@@ -712,7 +917,10 @@ roc_nix_queues_ctx_dump(struct roc_nix *roc_nix, FILE *file)
 		}
 		nix_dump(file, "============== port=%d cq=%d ===============",
 			 roc_nix->port_id, q);
-		nix_lf_cq_dump(ctx, file);
+		if (roc_model_is_cn20k())
+			nix_cn20k_lf_cq_dump(ctx, file);
+		else
+			nix_lf_cq_dump(ctx, file);
 	}
 
 	for (q = 0; q < rq; q++) {
@@ -725,6 +933,8 @@ roc_nix_queues_ctx_dump(struct roc_nix *roc_nix, FILE *file)
 			 roc_nix->port_id, q);
 		if (roc_model_is_cn9k())
 			nix_cn9k_lf_rq_dump(ctx, file);
+		else if (roc_model_is_cn10k())
+			nix_cn10k_lf_rq_dump(ctx, file);
 		else
 			nix_lf_rq_dump(ctx, file);
 	}
@@ -750,6 +960,8 @@ roc_nix_queues_ctx_dump(struct roc_nix *roc_nix, FILE *file)
 			 inl_rq->qid);
 		if (roc_model_is_cn9k())
 			nix_cn9k_lf_rq_dump(ctx, file);
+		else if (roc_model_is_cn10k())
+			nix_cn10k_lf_rq_dump(ctx, file);
 		else
 			nix_lf_rq_dump(ctx, file);
 	}
@@ -764,6 +976,8 @@ roc_nix_queues_ctx_dump(struct roc_nix *roc_nix, FILE *file)
 			 roc_nix->port_id, q);
 		if (roc_model_is_cn9k())
 			nix_cn9k_lf_sq_dump(ctx, &sqb_aura, file);
+		else if (roc_model_is_cn10k())
+			nix_cn10k_lf_sq_dump(ctx, &sqb_aura, file);
 		else
 			nix_lf_sq_dump(ctx, &sqb_aura, file);
 
@@ -772,8 +986,12 @@ roc_nix_queues_ctx_dump(struct roc_nix *roc_nix, FILE *file)
 			continue;
 		}
 
-		/* Dump SQB Aura minimal info */
-		npa_aq = mbox_alloc_msg_npa_aq_enq(mbox_get(npa_lf->mbox));
+		if (roc_model_is_cn20k()) {
+			npa_aq_cn20k = mbox_alloc_msg_npa_cn20k_aq_enq(mbox_get(npa_lf->mbox));
+			npa_aq = (struct npa_aq_enq_req *)npa_aq_cn20k; /* Common fields */
+		} else {
+			npa_aq = mbox_alloc_msg_npa_aq_enq(mbox_get(npa_lf->mbox));
+		}
 		if (npa_aq == NULL) {
 			rc = -ENOSPC;
 			mbox_put(npa_lf->mbox);
@@ -1292,8 +1510,8 @@ roc_nix_dump(struct roc_nix *roc_nix, FILE *file)
 	nix_dump(file, "  \ttx_pause = %d", nix->tx_pause);
 	nix_dump(file, "  \tinl_inb_ena = %d", nix->inl_inb_ena);
 	nix_dump(file, "  \tinl_outb_ena = %d", nix->inl_outb_ena);
-	nix_dump(file, "  \tinb_sa_base = 0x%p", nix->inb_sa_base);
-	nix_dump(file, "  \tinb_sa_sz = %" PRIu64, nix->inb_sa_sz);
+	nix_dump(file, "  \tinb_sa_base = 0x%p", nix->inb_sa_base[nix->ipsec_prof_id]);
+	nix_dump(file, "  \tinb_sa_sz = %" PRIu64, nix->inb_sa_sz[nix->ipsec_prof_id]);
 	nix_dump(file, "  \toutb_sa_base = 0x%p", nix->outb_sa_base);
 	nix_dump(file, "  \toutb_sa_sz = %" PRIu64, nix->outb_sa_sz);
 	nix_dump(file, "  \toutb_err_sso_pffunc = 0x%x", nix->outb_err_sso_pffunc);
@@ -1336,8 +1554,8 @@ roc_nix_inl_dev_dump(struct roc_nix_inl_dev *roc_inl_dev, FILE *file)
 	nix_dump(file, "  \tssow_msixoff = %d", inl_dev->ssow_msixoff);
 	nix_dump(file, "  \tnix_cints = %d", inl_dev->cints);
 	nix_dump(file, "  \tnix_qints = %d", inl_dev->qints);
-	nix_dump(file, "  \tinb_sa_base = 0x%p", inl_dev->inb_sa_base);
-	nix_dump(file, "  \tinb_sa_sz = %d", inl_dev->inb_sa_sz);
+	nix_dump(file, "  \tinb_sa_base = 0x%p", inl_dev->inb_sa_base[inl_dev->ipsec_prof_id]);
+	nix_dump(file, "  \tinb_sa_sz = %d", inl_dev->inb_sa_sz[inl_dev->ipsec_prof_id]);
 	nix_dump(file, "  \txaq_buf_size = %u", inl_dev->xaq_buf_size);
 	nix_dump(file, "  \txae_waes = %u", inl_dev->xae_waes);
 	nix_dump(file, "  \tiue = %u", inl_dev->iue);
@@ -1475,8 +1693,19 @@ roc_nix_sq_desc_dump(struct roc_nix *roc_nix, uint16_t q, uint16_t offset, uint1
 		tail_sqb = (void *)ctx->tail_sqb;
 		head_off = ctx->head_offset;
 		tail_off = ctx->tail_offset;
-	} else {
+	} else if (roc_model_is_cn10k()) {
 		volatile struct nix_cn10k_sq_ctx_s *ctx = (struct nix_cn10k_sq_ctx_s *)dat;
+
+		if (ctx->mnq_dis || ctx->lmt_dis)
+			full = 1;
+
+		count = ctx->sqb_count;
+		sqb_buf = (void *)ctx->head_sqb;
+		tail_sqb = (void *)ctx->tail_sqb;
+		head_off = ctx->head_offset;
+		tail_off = ctx->tail_offset;
+	} else {
+		volatile struct nix_cn20k_sq_ctx_s *ctx = (struct nix_cn20k_sq_ctx_s *)dat;
 
 		if (ctx->mnq_dis || ctx->lmt_dis)
 			full = 1;

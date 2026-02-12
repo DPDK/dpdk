@@ -1,7 +1,7 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2017-2019 NXP
+ * Copyright 2017-2021, 2024 NXP
  *
  */
 #ifndef __FSL_DPCON_H
@@ -28,6 +28,7 @@ int dpcon_open(struct fsl_mc_io *mc_io,
 	       int dpcon_id,
 	       uint16_t *token);
 
+__rte_internal
 int dpcon_close(struct fsl_mc_io *mc_io,
 		uint32_t cmd_flags,
 		uint16_t token);
@@ -51,10 +52,12 @@ int dpcon_destroy(struct fsl_mc_io *mc_io,
 		  uint32_t cmd_flags,
 		  uint32_t obj_id);
 
+__rte_internal
 int dpcon_enable(struct fsl_mc_io *mc_io,
 		 uint32_t cmd_flags,
 		 uint16_t token);
 
+__rte_internal
 int dpcon_disable(struct fsl_mc_io *mc_io,
 		  uint32_t cmd_flags,
 		  uint16_t token);
@@ -64,6 +67,7 @@ int dpcon_is_enabled(struct fsl_mc_io *mc_io,
 		     uint16_t token,
 		     int *en);
 
+__rte_internal
 int dpcon_reset(struct fsl_mc_io *mc_io,
 		uint32_t cmd_flags,
 		uint16_t token);

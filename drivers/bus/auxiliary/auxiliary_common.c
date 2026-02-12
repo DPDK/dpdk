@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/queue.h>
+#include <eal_export.h>
 #include <rte_errno.h>
 #include <rte_interrupts.h>
 #include <rte_log.h>
@@ -36,12 +37,13 @@ auxiliary_devargs_lookup(const char *name)
 	return NULL;
 }
 
+#ifndef AUXILIARY_OS_SUPPORTED
 /*
  * Test whether the auxiliary device exist.
  *
  * Stub for OS not supporting auxiliary bus.
  */
-__rte_weak bool
+bool
 auxiliary_dev_exists(const char *name)
 {
 	RTE_SET_USED(name);
@@ -53,11 +55,12 @@ auxiliary_dev_exists(const char *name)
  *
  * Stub for OS not supporting auxiliary bus.
  */
-__rte_weak int
+int
 auxiliary_scan(void)
 {
 	return 0;
 }
+#endif /* AUXILIARY_OS_SUPPORTED */
 
 /*
  * Update a device's devargs being scanned.
@@ -106,10 +109,10 @@ rte_auxiliary_probe_one_driver(struct rte_auxiliary_driver *drv,
 	}
 
 	if (dev->device.numa_node < 0 && rte_socket_count() > 1)
-		RTE_LOG(INFO, EAL, "Device %s is not NUMA-aware\n", dev->name);
+		AUXILIARY_LOG(INFO, "Device %s is not NUMA-aware", dev->name);
 
 	if (rte_dev_is_probed(&dev->device)) {
-		RTE_LOG(DEBUG, EAL, "Device %s is already probed on auxiliary bus\n",
+		AUXILIARY_LOG(DEBUG, "Device %s is already probed on auxiliary bus",
 			dev->device.name);
 		return -EEXIST;
 	}
@@ -160,6 +163,8 @@ rte_auxiliary_driver_remove_dev(struct rte_auxiliary_device *dev)
 		return -EINVAL;
 
 	drv = dev->driver;
+	if (drv == NULL)
+		return 0;
 
 	AUXILIARY_LOG(DEBUG, "Driver %s remove auxiliary device %s on NUMA node %i",
 		      drv->driver.name, dev->name, dev->device.numa_node);
@@ -256,6 +261,7 @@ auxiliary_parse(const char *name, void *addr)
 }
 
 /* Register a driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_auxiliary_register)
 void
 rte_auxiliary_register(struct rte_auxiliary_driver *driver)
 {
@@ -263,6 +269,7 @@ rte_auxiliary_register(struct rte_auxiliary_driver *driver)
 }
 
 /* Unregister a driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_auxiliary_unregister)
 void
 rte_auxiliary_unregister(struct rte_auxiliary_driver *driver)
 {

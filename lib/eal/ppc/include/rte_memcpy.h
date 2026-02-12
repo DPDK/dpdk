@@ -1,5 +1,4 @@
-/*
- * SPDX-License-Identifier: BSD-3-Clause
+/* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (C) IBM Corporation 2014,2021
  */
 
@@ -12,11 +11,11 @@
 #include "rte_altivec.h"
 #include "rte_common.h"
 
+#include "generic/rte_memcpy.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "generic/rte_memcpy.h"
 
 #if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 90000)
 #pragma GCC diagnostic push

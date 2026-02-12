@@ -104,4 +104,3 @@ rte_to_gve_rss_hf(uint64_t rte_rss_hf, struct gve_rss_config *gve_rss_conf);
  */
 void
 gve_to_rte_rss_hf(uint16_t gve_rss_types, struct rte_eth_rss_conf *rss_conf);
-

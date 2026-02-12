@@ -41,6 +41,7 @@
 /* EAL defines */
 #define RTE_CACHE_GUARD_LINES 1
 #define RTE_MAX_HEAPS 32
+#define RTE_MAX_LCORE_VAR 131072
 #define RTE_MAX_MEMSEG_LISTS 128
 #define RTE_MAX_MEMSEG_PER_LIST 8192
 #define RTE_MAX_MEM_MB_PER_LIST 32768
@@ -49,6 +50,7 @@
 #define RTE_MAX_TAILQ 32
 #define RTE_LOG_DP_LEVEL RTE_LOG_INFO
 #define RTE_MAX_VFIO_CONTAINERS 64
+#define RTE_TRACE 1
 
 /* bsd module defines */
 #define RTE_CONTIGMEM_MAX_NUM_BUFS 64
@@ -62,10 +64,10 @@
 
 /* mbuf defines */
 #define RTE_MBUF_DEFAULT_MEMPOOL_OPS "ring_mp_mc"
+/* RTE_MBUF_HISTORY_DEBUG is not set */
 
 /* ether defines */
 #define RTE_MAX_QUEUES_PER_PORT 1024
-#define RTE_ETHDEV_QUEUE_STAT_CNTRS 16 /* max 256 */
 #define RTE_ETHDEV_RXTX_CALLBACKS 1
 #define RTE_MAX_MULTI_HOST_CTRLS 4
 
@@ -90,6 +92,7 @@
 #define RTE_EVENT_CRYPTO_ADAPTER_MAX_INSTANCE 32
 #define RTE_EVENT_ETH_TX_ADAPTER_MAX_INSTANCE 32
 #define RTE_EVENT_DMA_ADAPTER_MAX_INSTANCE 32
+#define RTE_EVENT_VECTOR_ADAPTER_MAX_INSTANCE_PER_QUEUE 32
 
 /* rawdev defines */
 #define RTE_RAWDEV_MAX_DEVS 64
@@ -117,6 +120,10 @@
 #define RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS 16
 #define RTE_PMD_QAT_COMP_IM_BUFFER_SIZE 65536
 
+/* ZSDA device */
+/* Max. number of ZSDA devices which can be attached */
+#define RTE_PMD_ZSDA_MAX_PCI_DEVICES 256
+
 /* virtio crypto defines */
 #define RTE_MAX_VIRTIO_CRYPTO 32
 
@@ -131,7 +138,7 @@
 
 /* i40e defines */
 #define RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC 1
-// RTE_LIBRTE_I40E_16BYTE_RX_DESC is not set
+/* RTE_NET_INTEL_USE_16BYTE_DESC is not set */
 #define RTE_LIBRTE_I40E_QUEUE_NUM_PER_PF 64
 #define RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF 4
 #define RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM 4

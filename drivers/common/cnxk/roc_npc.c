@@ -5,6 +5,22 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+uint8_t
+roc_npc_get_key_type(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	return npc_get_key_type(npc, flow);
+}
+
+uint8_t
+roc_npc_kex_key_type_config_get(struct roc_npc *roc_npc)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	return npc_kex_key_type_config_get(npc);
+}
+
 int
 roc_npc_mark_actions_get(struct roc_npc *roc_npc)
 {
@@ -101,6 +117,14 @@ roc_npc_mcam_read_counter(struct roc_npc *roc_npc, uint32_t ctr_id, uint64_t *co
 }
 
 int
+roc_npc_mcam_get_stats(struct roc_npc *roc_npc, struct roc_npc_flow *flow, uint64_t *count)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	return npc_mcam_get_stats(npc->mbox, flow, count);
+}
+
+int
 roc_npc_mcam_clear_counter(struct roc_npc *roc_npc, uint32_t ctr_id)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
@@ -189,10 +213,30 @@ roc_npc_mcam_enable_all_entries(struct roc_npc *roc_npc, bool enable)
 	return npc_flow_enable_all_entries(npc, enable);
 }
 
+void
+roc_npc_defrag_mcam_banks(struct roc_npc *roc_npc)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+	struct mbox *mbox = mbox_get(npc->mbox);
+	struct npc_mcam_defrag_req *req;
+	struct npc_mcam_defrag_rsp *rsp;
+	int rc = 0;
+
+	req = (struct npc_mcam_defrag_req *)mbox_alloc_msg_npc_defrag(mbox);
+	if (req == NULL)
+		goto exit;
+
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		plt_err("Error when defragmenting MCAM banks.");
+
+exit:
+	mbox_put(mbox);
+}
+
 int
 roc_npc_mcam_alloc_entry(struct roc_npc *roc_npc, struct roc_npc_flow *mcam,
-			 struct roc_npc_flow *ref_mcam, int prio,
-			 int *resp_count)
+			 struct roc_npc_flow *ref_mcam, int prio, int *resp_count)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 
@@ -221,7 +265,9 @@ roc_npc_get_low_priority_mcam(struct roc_npc *roc_npc)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 
-	if (roc_model_is_cn10k())
+	if (roc_model_is_cn20k())
+		return (npc->mcam_entries - NPC_MCAME_RESVD_10XX - 1);
+	else if (roc_model_is_cn10k())
 		return (npc->mcam_entries - NPC_MCAME_RESVD_10XX - 1);
 	else if (roc_model_is_cn98xx())
 		return (npc->mcam_entries - NPC_MCAME_RESVD_98XX - 1);
@@ -235,7 +281,9 @@ npc_mcam_tot_entries(void)
 	/* FIXME: change to reading in AF from NPC_AF_CONST1/2
 	 * MCAM_BANK_DEPTH(_EXT) * MCAM_BANKS
 	 */
-	if (roc_model_is_cn10k() || roc_model_is_cn98xx())
+	if (roc_model_is_cn20k())
+		return 2 * 8192; /* MCAM_BANKS = 2, BANK_DEPTH_EXT = 8192 */
+	else if (roc_model_is_cn10k() || roc_model_is_cn98xx())
 		return 16 * 1024; /* MCAM_BANKS = 4, BANK_DEPTH_EXT = 4096 */
 	else
 		return 4 * 1024; /* MCAM_BANKS = 4, BANK_DEPTH_EXT = 1024 */
@@ -311,6 +359,7 @@ roc_npc_init(struct roc_npc *roc_npc)
 
 	npc->mcam_entries = npc_mcam_tot_entries() >> npc->keyw[NPC_MCAM_RX];
 	nix->exact_match_ena = npc->exact_match_ena;
+	roc_npc->max_entries = npc->mcam_entries;
 
 	/* Free, free_rev, live and live_rev entries */
 	bmap_sz = plt_bitmap_get_memory_footprint(npc->mcam_entries);
@@ -388,6 +437,9 @@ roc_npc_fini(struct roc_npc *roc_npc)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	int rc;
+
+	if (!roc_npc->flow_age.aged_flows_get_thread_exit)
+		npc_aging_ctrl_thread_destroy(roc_npc);
 
 	rc = npc_flow_free_all_resources(npc);
 	if (rc) {
@@ -547,20 +599,20 @@ roc_npc_process_sample_action(struct roc_npc *roc_npc,
 static int
 npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		  const struct roc_npc_action actions[], struct roc_npc_flow *flow,
-		  uint16_t dst_pf_func)
+		  uint16_t dst_pf_func, uint64_t npc_default_action)
 {
+	bool vlan_insert_action = false, npc_action_set = false;
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	const struct roc_npc_action *sec_action = NULL;
 	const struct roc_npc_action_sample *act_sample;
+	struct roc_nix *roc_nix = roc_npc->roc_nix;
 	const struct roc_npc_action_mark *act_mark;
 	const struct roc_npc_action_meter *act_mtr;
 	const struct roc_npc_action_queue *act_q;
 	const struct roc_npc_action_vf *vf_act;
-	bool vlan_insert_action = false;
 	uint8_t has_spi_to_sa_act = 0;
 	int sel_act, req_act = 0;
 	uint16_t pf_func, vf_id;
-	struct roc_nix *roc_nix;
 	int errcode = 0;
 	int mark = 0;
 	int rq = 0;
@@ -614,7 +666,10 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		case ROC_NPC_ACTION_TYPE_VF:
 			vf_act = (const struct roc_npc_action_vf *)actions->conf;
 			req_act |= ROC_NPC_ACTION_TYPE_VF;
-			vf_id = vf_act->id & RVU_PFVF_FUNC_MASK;
+			if (roc_model_is_cn20k())
+				vf_id = vf_act->id & RVU_PFVF_FUNC_MASK_CN20K;
+			else
+				vf_id = vf_act->id & RVU_PFVF_FUNC_MASK;
 			pf_func &= (0xfc00);
 			pf_func = (pf_func | (vf_id + 1));
 			break;
@@ -852,7 +907,8 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	} else if (req_act & (ROC_NPC_ACTION_TYPE_PF | ROC_NPC_ACTION_TYPE_VF)) {
 		/* Check if any other action is set */
 		if ((req_act == ROC_NPC_ACTION_TYPE_PF) || (req_act == ROC_NPC_ACTION_TYPE_VF)) {
-			flow->npc_action = NIX_RX_ACTIONOP_DEFAULT;
+			flow->npc_action = npc_default_action;
+			npc_action_set = true;
 		} else {
 			flow->npc_action = NIX_RX_ACTIONOP_UCAST;
 			if (req_act & ROC_NPC_ACTION_TYPE_QUEUE)
@@ -866,8 +922,15 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	} else if (req_act & ROC_NPC_ACTION_TYPE_RSS) {
 		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
 	} else if (req_act & ROC_NPC_ACTION_TYPE_SEC) {
-		flow->npc_action = NIX_RX_ACTIONOP_UCAST_IPSEC;
-		flow->npc_action |= (uint64_t)rq << 20;
+		if (roc_model_is_cn20k()) {
+			flow->npc_action = NIX_RX_ACTIONOP_UCAST_CPT;
+			flow->npc_action |= (uint64_t)rq << 20;
+			flow->npc_action2 =
+				roc_nix_inl_inb_ipsec_profile_id_get(roc_nix, true) << 8;
+		} else {
+			flow->npc_action = NIX_RX_ACTIONOP_UCAST_IPSEC;
+			flow->npc_action |= (uint64_t)rq << 20;
+		}
 	} else if (req_act & (ROC_NPC_ACTION_TYPE_FLAG | ROC_NPC_ACTION_TYPE_MARK)) {
 		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
 	} else if (req_act & ROC_NPC_ACTION_TYPE_COUNT) {
@@ -882,15 +945,16 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		goto err_exit;
 	}
 
-	if (req_act & ROC_NPC_ACTION_TYPE_SAMPLE)
-		flow->npc_action = NIX_RX_ACTIONOP_MCAST;
+	if (!npc_action_set) {
+		if (req_act & ROC_NPC_ACTION_TYPE_SAMPLE)
+			flow->npc_action = NIX_RX_ACTIONOP_MCAST;
 
-	if (mark)
-		flow->npc_action |= (uint64_t)mark << 40;
+		if (mark)
+			flow->npc_action |= (uint64_t)mark << 40;
 
-	/* Ideally AF must ensure that correct pf_func is set */
-	flow->npc_action |= (uint64_t)pf_func << 4;
-
+		/* Ideally AF must ensure that correct pf_func is set */
+		flow->npc_action |= (uint64_t)pf_func << 4;
+	}
 done:
 	return 0;
 
@@ -933,10 +997,11 @@ npc_parse_pattern(struct npc *npc, const struct roc_npc_item_info pattern[],
 	pst->mcam_data = (uint8_t *)flow->mcam_data;
 	pst->mcam_mask = (uint8_t *)flow->mcam_mask;
 
-	while (pattern->type != ROC_NPC_ITEM_TYPE_END &&
-	       layer < PLT_DIM(parse_stage_funcs)) {
+	while (pattern->type != ROC_NPC_ITEM_TYPE_END && layer < PLT_DIM(parse_stage_funcs)) {
 		/* Skip place-holders */
 		pattern = npc_parse_skip_void_and_any_items(pattern);
+		if (pattern->type == ROC_NPC_ITEM_TYPE_END)
+			break;
 
 		pst->pattern = pattern;
 		rc = parse_stage_funcs[layer](pst);
@@ -1009,7 +1074,8 @@ npc_parse_rule(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		return err;
 
 	/* Check action */
-	err = npc_parse_actions(roc_npc, attr, actions, flow, pst->dst_pf_func);
+	err = npc_parse_actions(roc_npc, attr, actions, flow, pst->dst_pf_func,
+				pst->npc_default_action);
 	if (err)
 		return err;
 	return 0;
@@ -1047,9 +1113,9 @@ npc_rss_free_grp_get(struct npc *npc, uint32_t *pos)
 }
 
 int
-npc_rss_action_configure(struct roc_npc *roc_npc,
-			 const struct roc_npc_action_rss *rss, uint8_t *alg_idx,
-			 uint32_t *rss_grp, uint32_t mcam_id)
+npc_rss_action_configure(struct roc_npc *roc_npc, const struct roc_npc_action_rss *rss,
+			 uint8_t *alg_idx, uint32_t *rss_grp, uint32_t mcam_id,
+			 uint16_t rss_repte_pf_func)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	struct roc_nix *roc_nix = roc_npc->roc_nix;
@@ -1092,7 +1158,7 @@ npc_rss_action_configure(struct roc_npc *roc_npc,
 	if (rc < 0 || rss_grp_idx == 0)
 		return -ENOSPC;
 
-	for (i = 0; i < rss->queue_num; i++) {
+	for (i = 0; (i < rss->queue_num) && !rss_repte_pf_func; i++) {
 		if (rss->queue[i] >= nix->nb_rx_queues) {
 			plt_err("queue id > max number of queues");
 			return -EINVAL;
@@ -1120,10 +1186,9 @@ npc_rss_action_configure(struct roc_npc *roc_npc,
 
 	rem = nix->reta_sz % rss->queue_num;
 	if (rem)
-		memcpy(&reta[i * rss->queue_num], rss->queue,
-		       rem * sizeof(uint16_t));
+		memcpy(&reta[i * rss->queue_num], rss->queue, rem * sizeof(uint16_t));
 
-	rc = roc_nix_rss_reta_set(roc_nix, *rss_grp, reta);
+	rc = nix_rss_reta_pffunc_set(roc_nix, *rss_grp, reta, rss_repte_pf_func);
 	if (rc) {
 		plt_err("Failed to init rss table rc = %d", rc);
 		return rc;
@@ -1131,8 +1196,8 @@ npc_rss_action_configure(struct roc_npc *roc_npc,
 
 	flowkey_cfg = roc_npc->flowkey_cfg_state;
 
-	rc = roc_nix_rss_flowkey_set(roc_nix, &flowkey_algx, flowkey_cfg,
-				     *rss_grp, mcam_id);
+	rc = nix_rss_flowkey_pffunc_set(roc_nix, &flowkey_algx, flowkey_cfg, *rss_grp, mcam_id,
+					rss_repte_pf_func);
 	if (rc) {
 		plt_err("Failed to set rss hash function rc = %d", rc);
 		return rc;
@@ -1164,7 +1229,8 @@ npc_rss_action_program(struct roc_npc *roc_npc,
 	for (; actions->type != ROC_NPC_ACTION_TYPE_END; actions++) {
 		if (actions->type == ROC_NPC_ACTION_TYPE_RSS) {
 			rss = (const struct roc_npc_action_rss *)actions->conf;
-			rc = npc_rss_action_configure(npc, rss, &alg_idx, &rss_grp, flow->mcam_id);
+			rc = npc_rss_action_configure(npc, rss, &alg_idx, &rss_grp, flow->mcam_id,
+						      actions->rss_repte_pf_func);
 			if (rc)
 				return rc;
 
@@ -1531,7 +1597,7 @@ npc_inline_dev_ipsec_action_free(struct npc *npc, struct roc_npc_flow *flow)
 	inl_dev = idev->nix_inl_dev;
 
 	if (flow->nix_intf == NIX_INTF_RX && inl_dev && inl_dev->ipsec_index &&
-	    ((flow->npc_action & 0xF) == NIX_RX_ACTIONOP_UCAST_IPSEC)) {
+	    roc_npc_action_is_rx_inline(flow->npc_action)) {
 		inl_dev->curr_ipsec_idx--;
 		inl_dev->ipsec_index[inl_dev->curr_ipsec_idx] = flow->mcam_id;
 		flow->enable = 0;
@@ -1580,7 +1646,7 @@ roc_npc_sdp_channel_get(struct roc_npc *roc_npc, uint16_t *chan_base, uint16_t *
 struct roc_npc_flow *
 roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		    const struct roc_npc_item_info pattern[], const struct roc_npc_action actions[],
-		    uint16_t dst_pf_func, int *errcode)
+		    uint16_t dst_pf_func, uint64_t npc_default_action, int *errcode)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	uint16_t sdp_chan_base = 0, sdp_chan_mask = 0;
@@ -1630,6 +1696,7 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	}
 
 	parse_state.dst_pf_func = dst_pf_func;
+	parse_state.npc_default_action = npc_default_action;
 
 	rc = npc_parse_rule(roc_npc, attr, pattern, actions, flow, &parse_state);
 	if (rc != 0) {
@@ -1672,6 +1739,7 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		goto set_rss_failed;
 	}
 	roc_npc->rep_npc = NULL;
+	roc_npc->rep_act_pf_func = 0;
 
 	if (flow->has_age_action)
 		npc_age_flow_list_entry_add(roc_npc, flow);
@@ -1694,6 +1762,7 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 
 set_rss_failed:
 	roc_npc->rep_npc = NULL;
+	roc_npc->rep_act_pf_func = 0;
 	if (flow->use_pre_alloc == 0) {
 		rc = roc_npc_mcam_free_entry(roc_npc, flow->mcam_id);
 		if (rc != 0) {
@@ -1706,6 +1775,7 @@ set_rss_failed:
 	}
 err_exit:
 	roc_npc->rep_npc = NULL;
+	roc_npc->rep_act_pf_func = 0;
 	plt_free(flow);
 	return NULL;
 }
@@ -1810,8 +1880,7 @@ roc_npc_flow_destroy(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 	if (flow->has_age_action)
 		npc_age_flow_list_entry_delete(roc_npc, flow);
 
-	if (roc_npc->flow_age.age_flow_refcnt == 0 &&
-		plt_thread_is_valid(roc_npc->flow_age.aged_flows_poll_thread))
+	if (roc_npc->flow_age.age_flow_refcnt == 0)
 		npc_aging_ctrl_thread_destroy(roc_npc);
 
 done:
@@ -1848,9 +1917,7 @@ roc_npc_flow_dump(FILE *file, struct roc_npc *roc_npc, int rep_port_id)
 int
 roc_npc_mcam_merge_base_steering_rule(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 {
-	struct npc_mcam_read_base_rule_rsp *base_rule_rsp;
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
-	struct mcam_entry *base_entry;
 	struct mbox *mbox = mbox_get(npc->mbox);
 	int idx, rc;
 
@@ -1859,19 +1926,63 @@ roc_npc_mcam_merge_base_steering_rule(struct roc_npc *roc_npc, struct roc_npc_fl
 		goto exit;
 	}
 
-	(void)mbox_alloc_msg_npc_read_base_steer_rule(mbox);
+	if (roc_model_is_cn20k()) {
+		struct npc_cn20k_mcam_read_base_rule_rsp *base_rule_rsp;
+		struct cn20k_mcam_entry *base_entry;
+
+		(void)mbox_alloc_msg_npc_cn20k_read_base_steer_rule(mbox);
+		rc = mbox_process_msg(mbox, (void *)&base_rule_rsp);
+		if (rc) {
+			plt_err("Failed to fetch VF's base MCAM entry");
+			goto exit;
+		}
+		base_entry = &base_rule_rsp->entry;
+		for (idx = 0; idx < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; idx++) {
+			flow->mcam_data[idx] |= base_entry->kw[idx];
+			flow->mcam_mask[idx] |= base_entry->kw_mask[idx];
+		}
+
+	} else {
+		struct npc_mcam_read_base_rule_rsp *base_rule_rsp;
+		struct mcam_entry *base_entry;
+
+		(void)mbox_alloc_msg_npc_read_base_steer_rule(mbox);
+		rc = mbox_process_msg(mbox, (void *)&base_rule_rsp);
+		if (rc) {
+			plt_err("Failed to fetch VF's base MCAM entry");
+			goto exit;
+		}
+		base_entry = &base_rule_rsp->entry_data;
+		for (idx = 0; idx < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; idx++) {
+			flow->mcam_data[idx] |= base_entry->kw[idx];
+			flow->mcam_mask[idx] |= base_entry->kw_mask[idx];
+		}
+	}
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+int
+roc_npc_mcam_default_rule_action_get(struct roc_npc *roc_npc, uint64_t *action)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+	struct mbox *mbox = mbox_get(npc->mbox);
+	int rc;
+
+	struct npc_mcam_read_base_rule_rsp *base_rule_rsp;
+	struct mcam_entry *base_entry;
+
+	(void)mbox_alloc_msg_npc_read_default_rule(mbox);
 	rc = mbox_process_msg(mbox, (void *)&base_rule_rsp);
 	if (rc) {
-		plt_err("Failed to fetch VF's base MCAM entry");
+		plt_err("Failed to fetch default MCAM entry");
 		goto exit;
 	}
 	base_entry = &base_rule_rsp->entry_data;
-	for (idx = 0; idx < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; idx++) {
-		flow->mcam_data[idx] |= base_entry->kw[idx];
-		flow->mcam_mask[idx] |= base_entry->kw_mask[idx];
-	}
 
-	rc = 0;
+	*action = base_entry->action;
 exit:
 	mbox_put(mbox);
 	return rc;

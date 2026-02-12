@@ -42,7 +42,7 @@ struct lcore_option {
 	uint16_t qid;
 };
 
-struct vhost_crypto_info {
+struct __rte_cache_aligned vhost_crypto_info {
 	int vids[MAX_NB_SOCKETS];
 	uint32_t nb_vids;
 	struct rte_mempool *sess_pool;
@@ -51,7 +51,7 @@ struct vhost_crypto_info {
 	uint32_t qid;
 	uint32_t nb_inflight_ops;
 	volatile uint32_t initialized[MAX_NB_SOCKETS];
-} __rte_cache_aligned;
+};
 
 struct vhost_crypto_options {
 	struct lcore_option los[MAX_NB_WORKER_CORES];
@@ -59,6 +59,7 @@ struct vhost_crypto_options {
 	uint32_t nb_los;
 	uint32_t zero_copy;
 	uint32_t guest_polling;
+	bool asymmetric_crypto;
 } options;
 
 enum {
@@ -70,6 +71,8 @@ enum {
 	OPT_ZERO_COPY_NUM,
 #define OPT_POLLING         "guest-polling"
 	OPT_POLLING_NUM,
+#define OPT_ASYM            "asymmetric-crypto"
+	OPT_ASYM_NUM,
 };
 
 #define NB_SOCKET_FIELDS	(2)
@@ -202,9 +205,10 @@ vhost_crypto_usage(const char *prgname)
 		"  --%s <lcore>,SOCKET-FILE-PATH\n"
 		"  --%s (lcore,cdev_id,queue_id)[,(lcore,cdev_id,queue_id)]\n"
 		"  --%s: zero copy\n"
-		"  --%s: guest polling\n",
+		"  --%s: guest polling\n"
+		"  --%s: asymmetric crypto\n",
 		prgname, OPT_SOCKET_FILE, OPT_CONFIG,
-		OPT_ZERO_COPY, OPT_POLLING);
+		OPT_ZERO_COPY, OPT_POLLING, OPT_ASYM);
 }
 
 static int
@@ -223,6 +227,8 @@ vhost_crypto_parse_args(int argc, char **argv)
 				NULL, OPT_ZERO_COPY_NUM},
 		{OPT_POLLING, no_argument,
 				NULL, OPT_POLLING_NUM},
+		{OPT_ASYM, no_argument,
+				NULL, OPT_ASYM_NUM},
 		{NULL, 0, 0, 0}
 	};
 
@@ -260,6 +266,10 @@ vhost_crypto_parse_args(int argc, char **argv)
 
 		case OPT_POLLING_NUM:
 			options.guest_polling = 1;
+			break;
+
+		case OPT_ASYM_NUM:
+			options.asymmetric_crypto = true;
 			break;
 
 		default:
@@ -362,8 +372,8 @@ destroy_device(int vid)
 }
 
 static const struct rte_vhost_device_ops virtio_crypto_device_ops = {
-	.new_device =  new_device,
-	.destroy_device = destroy_device,
+	.new_connection =  new_device,
+	.destroy_connection = destroy_device,
 };
 
 static int
@@ -376,6 +386,7 @@ vhost_crypto_worker(void *arg)
 	int callfds[VIRTIO_CRYPTO_MAX_NUM_BURST_VQS];
 	uint32_t lcore_id = rte_lcore_id();
 	uint32_t burst_size = MAX_PKT_BURST;
+	enum rte_crypto_op_type cop_type;
 	uint32_t i, j, k;
 	uint32_t to_fetch, fetched;
 
@@ -383,9 +394,13 @@ vhost_crypto_worker(void *arg)
 
 	RTE_LOG(INFO, USER1, "Processing on Core %u started\n", lcore_id);
 
+	cop_type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
+	if (options.asymmetric_crypto)
+		cop_type = RTE_CRYPTO_OP_TYPE_ASYMMETRIC;
+
 	for (i = 0; i < NB_VIRTIO_QUEUES; i++) {
 		if (rte_crypto_op_bulk_alloc(info->cop_pool,
-				RTE_CRYPTO_OP_TYPE_SYMMETRIC, ops[i],
+				cop_type, ops[i],
 				burst_size) < burst_size) {
 			RTE_LOG(ERR, USER1, "Failed to alloc cops\n");
 			ret = -1;
@@ -411,12 +426,11 @@ vhost_crypto_worker(void *arg)
 						fetched);
 				if (unlikely(rte_crypto_op_bulk_alloc(
 						info->cop_pool,
-						RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+						cop_type,
 						ops[j], fetched) < fetched)) {
 					RTE_LOG(ERR, USER1, "Failed realloc\n");
 					return -1;
 				}
-
 				fetched = rte_cryptodev_dequeue_burst(
 						info->cid, info->qid,
 						ops_deq[j], RTE_MIN(burst_size,
@@ -477,6 +491,7 @@ main(int argc, char *argv[])
 	struct rte_cryptodev_qp_conf qp_conf;
 	struct rte_cryptodev_config config;
 	struct rte_cryptodev_info dev_info;
+	enum rte_crypto_op_type cop_type;
 	char name[128];
 	uint32_t i, j, lcore;
 	int ret;
@@ -539,12 +554,21 @@ main(int argc, char *argv[])
 			goto error_exit;
 		}
 
-		snprintf(name, 127, "SESS_POOL_%u", lo->lcore_id);
-		info->sess_pool = rte_cryptodev_sym_session_pool_create(name,
-				SESSION_MAP_ENTRIES,
-				rte_cryptodev_sym_get_private_session_size(
-				info->cid), 0, 0,
-				rte_lcore_to_socket_id(lo->lcore_id));
+		if (!options.asymmetric_crypto) {
+			snprintf(name, 127, "SYM_SESS_POOL_%u", lo->lcore_id);
+			info->sess_pool = rte_cryptodev_sym_session_pool_create(name,
+					SESSION_MAP_ENTRIES,
+					rte_cryptodev_sym_get_private_session_size(
+					info->cid), 0, 0,
+					rte_lcore_to_socket_id(lo->lcore_id));
+			cop_type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
+		} else {
+			snprintf(name, 127, "ASYM_SESS_POOL_%u", lo->lcore_id);
+			info->sess_pool = rte_cryptodev_asym_session_pool_create(name,
+					SESSION_MAP_ENTRIES, 0, 64,
+					rte_lcore_to_socket_id(lo->lcore_id));
+			cop_type = RTE_CRYPTO_OP_TYPE_ASYMMETRIC;
+		}
 
 		if (!info->sess_pool) {
 			RTE_LOG(ERR, USER1, "Failed to create mempool");
@@ -553,7 +577,7 @@ main(int argc, char *argv[])
 
 		snprintf(name, 127, "COPPOOL_%u", lo->lcore_id);
 		info->cop_pool = rte_crypto_op_pool_create(name,
-				RTE_CRYPTO_OP_TYPE_SYMMETRIC, NB_MEMPOOL_OBJS,
+				cop_type, NB_MEMPOOL_OBJS,
 				NB_CACHE_OBJS, VHOST_CRYPTO_MAX_IV_LEN,
 				rte_lcore_to_socket_id(lo->lcore_id));
 
@@ -567,6 +591,8 @@ main(int argc, char *argv[])
 
 		qp_conf.nb_descriptors = NB_CRYPTO_DESCRIPTORS;
 		qp_conf.mp_session = info->sess_pool;
+		if (options.asymmetric_crypto)
+			qp_conf.mp_session = NULL;
 
 		for (j = 0; j < dev_info.max_nb_queue_pairs; j++) {
 			ret = rte_cryptodev_queue_pair_setup(info->cid, j,

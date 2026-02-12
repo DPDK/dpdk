@@ -56,6 +56,7 @@ In this release, the virtio PMD provides the basic functionality of packet recep
     command line. Note that, mac/vlan filter is best effort: unwanted packets could still arrive.
 
 *   "RTE_PKTMBUF_HEADROOM" should be defined
+    no less than "sizeof(struct virtio_net_hdr_hash_report)", which is 20 bytes when using hash report or
     no less than "sizeof(struct virtio_net_hdr_mrg_rxbuf)", which is 12 bytes when mergeable or
     "VIRTIO_F_VERSION_1" is set.
     no less than "sizeof(struct virtio_net_hdr)", which is 10 bytes, when using non-mergeable.
@@ -67,6 +68,8 @@ In this release, the virtio PMD provides the basic functionality of packet recep
 *   Virtio supports Rx interrupt (so far, only support 1:1 mapping for queue/interrupt).
 
 *   Virtio supports software vlan stripping and inserting.
+
+*   Virtio supports hash report feature in packed queue mode.
 
 *   Virtio supports using port IO to get PCI resource when UIO module is not available.
 
@@ -183,7 +186,7 @@ There is no vector callbacks for packed virtqueue for now.
 Example of using the vector version of the virtio poll mode driver in
 ``testpmd``::
 
-   dpdk-testpmd -l 0-2 -n 4 -- -i --rxq=1 --txq=1 --nb-cores=1
+   dpdk-testpmd -l 0-2 -- -i --rxq=1 --txq=1 --nb-cores=1
 
 In-order callbacks only work on simulated virtio user vdev.
 

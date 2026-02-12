@@ -92,7 +92,7 @@ runtest(const void *args)
 	printf("DMA Dev %d: Running %s Tests %s\n", dev_id, printable,
 			check_err_stats ? " " : "(errors expected)");
 	for (i = 0; i < iterations; i++) {
-		if (test_fn(dev_id, vchan) < 0)
+		if (test_fn(dev_id, vchan) != 0)
 			return -1;
 
 		rte_dma_stats_get(dev_id, 0, &stats);
@@ -417,9 +417,12 @@ test_enqueue_sg_copies(int16_t dev_id, uint16_t vchan)
 			dst_len = len / n_dst;
 			src_len = len / n_src;
 
-			struct rte_dma_sge sg_src[n_sge], sg_dst[n_sge];
-			struct rte_mbuf *src[n_sge], *dst[n_sge];
-			char *src_data[n_sge], *dst_data[n_sge];
+			struct rte_dma_sge *sg_src = alloca(sizeof(struct rte_dma_sge) * n_sge);
+			struct rte_dma_sge *sg_dst = alloca(sizeof(struct rte_dma_sge) * n_sge);
+			struct rte_mbuf **src = alloca(sizeof(struct rte_mbuf *) * n_sge);
+			struct rte_mbuf **dst = alloca(sizeof(struct rte_mbuf *) * n_sge);
+			char **src_data = alloca(sizeof(char *) * n_sge);
+			char **dst_data = alloca(sizeof(char *) * n_sge);
 
 			for (i = 0 ; i < len; i++)
 				orig_src[i] = rte_rand() & 0xFF;
@@ -509,6 +512,65 @@ test_enqueue_sg_copies(int16_t dev_id, uint16_t vchan)
 		}
 	}
 	return 0;
+}
+
+static int
+test_single_sva_copy(int16_t dev_id, uint16_t vchan, const char *mem_src,
+		     char *src, char *dst, uint32_t len)
+{
+	uint16_t i, id;
+	int ret;
+
+	for (i = 0; i < len; i++)
+		src[i] = rte_rand() & 0xFF;
+
+	ret = rte_dma_copy(dev_id, vchan, (rte_iova_t)src, (rte_iova_t)dst,
+			len, RTE_DMA_OP_FLAG_SUBMIT);
+	if (ret != id_count)
+		ERR_RETURN("Error with %s rte_dma_copy, got %d expected %u\n",
+			mem_src, ret, id_count);
+
+	await_hw(dev_id, vchan);
+
+	id = ~id_count;
+	if (rte_dma_completed(dev_id, vchan, 1, &id, NULL) != 1)
+		ERR_RETURN("Error with %s rte_dma_completed\n", mem_src);
+	if (id != id_count)
+		ERR_RETURN("Error with %s rte_dma_completed: incorrect job id received, %u [expected %u]\n",
+			mem_src, id, id_count);
+	id_count++;
+
+	for (i = 0; i < len; i++)
+		if (dst[i] != src[i])
+			ERR_RETURN("Error with %s data mismatch at char %u [Got %02x not %02x]\n",
+				mem_src, i, dst[i], src[i]);
+
+	return 0;
+}
+
+static int
+test_enqueue_sva_copies(int16_t dev_id, uint16_t vchan)
+{
+	char src[COPY_LEN], dst[COPY_LEN];
+	char *src_data, *dst_data;
+	int ret;
+
+	/* test copy between buffer which malloced by libc. */
+	src_data = malloc(COPY_LEN);
+	dst_data = malloc(COPY_LEN);
+	if (src_data == NULL || dst_data == NULL) {
+		free(src_data);
+		free(dst_data);
+		ERR_RETURN("Error with malloc copy buffer!\n");
+	}
+	ret = test_single_sva_copy(dev_id, vchan, "libc", src_data, dst_data, COPY_LEN);
+	free(src_data);
+	free(dst_data);
+	if (ret != 0)
+		return ret;
+
+	/* test copy between buffer which belong stack. */
+	return test_single_sva_copy(dev_id, vchan, "stack", src, dst, COPY_LEN);
 }
 
 /* Failure handling test cases - global macros and variables for those tests*/
@@ -1050,12 +1112,168 @@ prepare_m2d_auto_free(int16_t dev_id, uint16_t vchan)
 }
 
 static int
+test_enq_deq_ops(int16_t dev_id, uint16_t vchan)
+{
+#define BURST_SIZE 16
+#define ROUNDS	   2E7
+#define CPY_LEN	   64
+	struct rte_mempool *ops_pool, *pkt_pool;
+	struct rte_mbuf *mbufs[BURST_SIZE * 2];
+	struct rte_dma_op *ops[BURST_SIZE];
+	uint64_t enq_lat, deq_lat, start;
+	int ret, i, j, enq, deq, n, max;
+	struct rte_dma_sge ssg, dsg;
+	struct rte_dma_info info;
+	uint64_t tenq, tdeq;
+
+	memset(&info, 0, sizeof(info));
+	ret = rte_dma_info_get(dev_id, &info);
+	if (ret != 0)
+		ERR_RETURN("Error with rte_dma_info_get()\n");
+
+	pkt_pool = rte_pktmbuf_pool_create("pkt_pool", info.max_desc * 2, 0, 0,
+					   CPY_LEN + RTE_PKTMBUF_HEADROOM, rte_socket_id());
+	if (pkt_pool == NULL)
+		ERR_RETURN("Error creating pkt pool\n");
+
+	ops_pool = rte_mempool_create("ops_pool", info.max_desc,
+				      sizeof(struct rte_dma_op) + (sizeof(struct rte_dma_sge) * 2),
+				      0, 0, NULL, NULL, NULL, NULL, rte_socket_id(), 0);
+	if (ops_pool == NULL)
+		ERR_RETURN("Error creating ops pool\n");
+
+	max = info.max_desc - BURST_SIZE;
+	tenq = 0;
+	tdeq = 0;
+	enq_lat = 0;
+	deq_lat = 0;
+
+	for (i = 0; i < ROUNDS / max; i++) {
+		n = 0;
+		while (n != max) {
+			if (rte_mempool_get_bulk(ops_pool, (void **)ops, BURST_SIZE) != 0)
+				continue;
+
+			if (rte_pktmbuf_alloc_bulk(pkt_pool, mbufs, BURST_SIZE * 2) != 0)
+				ERR_RETURN("Error allocating mbufs %d\n", n);
+
+			for (j = 0; j < BURST_SIZE; j++) {
+				ops[j]->src_dst_seg[0].addr = rte_pktmbuf_iova(mbufs[j]);
+				ops[j]->src_dst_seg[1].addr =
+					rte_pktmbuf_iova(mbufs[j + BURST_SIZE]);
+				ops[j]->src_dst_seg[0].length = CPY_LEN;
+				ops[j]->src_dst_seg[1].length = CPY_LEN;
+
+				ops[j]->nb_src = 1;
+				ops[j]->nb_dst = 1;
+				ops[j]->user_meta = (uint64_t)mbufs[j];
+				ops[j]->event_meta = (uint64_t)mbufs[j + BURST_SIZE];
+
+				memset((void *)(uintptr_t)ops[j]->src_dst_seg[0].addr,
+				       rte_rand() & 0xFF, CPY_LEN);
+				memset((void *)(uintptr_t)ops[j]->src_dst_seg[1].addr, 0, CPY_LEN);
+			}
+
+			start = rte_rdtsc_precise();
+			enq = rte_dma_enqueue_ops(dev_id, vchan, ops, BURST_SIZE);
+			while (enq != BURST_SIZE) {
+				enq += rte_dma_enqueue_ops(dev_id, vchan, ops + enq,
+							   BURST_SIZE - enq);
+			}
+
+			enq_lat += rte_rdtsc_precise() - start;
+			n += enq;
+		}
+		tenq += n;
+
+		memset(ops, 0, sizeof(ops));
+		n = 0;
+		while (n != max) {
+			start = rte_rdtsc_precise();
+			deq = rte_dma_dequeue_ops(dev_id, vchan, ops, BURST_SIZE);
+			while (deq != BURST_SIZE) {
+				deq += rte_dma_dequeue_ops(dev_id, vchan, ops + deq,
+							   BURST_SIZE - deq);
+			}
+			n += deq;
+			deq_lat += rte_rdtsc_precise() - start;
+
+			for (j = 0; j < deq; j++) {
+				/* check the data is correct */
+				ssg = ops[j]->src_dst_seg[0];
+				dsg = ops[j]->src_dst_seg[1];
+				if (memcmp((void *)(uintptr_t)ssg.addr, (void *)(uintptr_t)dsg.addr,
+					   ssg.length) != 0)
+					ERR_RETURN("Error with copy operation\n");
+				rte_pktmbuf_free((struct rte_mbuf *)(uintptr_t)ops[j]->user_meta);
+				rte_pktmbuf_free((struct rte_mbuf *)(uintptr_t)ops[j]->event_meta);
+			}
+			rte_mempool_put_bulk(ops_pool, (void **)ops, BURST_SIZE);
+		}
+		tdeq += n;
+
+		printf("\rEnqueued %" PRIu64 " Latency %.3f Dequeued %" PRIu64 " Latency %.3f",
+		       tenq, (double)enq_lat / tenq, tdeq, (double)deq_lat / tdeq);
+	}
+	printf("\n");
+
+	rte_mempool_free(pkt_pool);
+	rte_mempool_free(ops_pool);
+
+	return 0;
+}
+
+static int
+prepare_enq_deq_ops(int16_t dev_id, uint16_t vchan)
+{
+	const struct rte_dma_conf conf = {.nb_vchans = 1, .flags = RTE_DMA_CFG_FLAG_ENQ_DEQ};
+	struct rte_dma_vchan_conf qconf;
+	struct rte_dma_info info;
+
+	memset(&qconf, 0, sizeof(qconf));
+	memset(&info, 0, sizeof(info));
+
+	int ret = rte_dma_info_get(dev_id, &info);
+	if (ret != 0)
+		ERR_RETURN("Error with rte_dma_info_get()\n");
+
+	qconf.direction = RTE_DMA_DIR_MEM_TO_MEM;
+	qconf.nb_desc = info.max_desc;
+
+	if (rte_dma_stop(dev_id) < 0)
+		ERR_RETURN("Error stopping device %u\n", dev_id);
+	if (rte_dma_configure(dev_id, &conf) != 0)
+		ERR_RETURN("Error with rte_dma_configure()\n");
+	if (rte_dma_vchan_setup(dev_id, vchan, &qconf) < 0)
+		ERR_RETURN("Error with queue configuration\n");
+	if (rte_dma_start(dev_id) != 0)
+		ERR_RETURN("Error with rte_dma_start()\n");
+
+	return 0;
+}
+
+static int
 test_dmadev_sg_copy_setup(void)
 {
 	int ret = TEST_SUCCESS;
 
 	if ((info.dev_capa & RTE_DMA_CAPA_OPS_COPY_SG) == 0)
 		return TEST_SKIPPED;
+
+	return ret;
+}
+
+static int
+test_dmadev_sva_setup(void)
+{
+	int ret = TEST_SUCCESS;
+
+	if ((info.dev_capa & RTE_DMA_CAPA_SVA) == 0) {
+		RTE_LOG(ERR, USER1,
+			"DMA Dev %u: device does not support SVA, skipping SVA tests\n",
+			test_dev_id);
+		ret = TEST_SKIPPED;
+	}
 
 	return ret;
 }
@@ -1127,12 +1345,26 @@ test_dmadev_autofree_setup(void)
 }
 
 static int
+test_dmadev_enq_deq_setup(void)
+{
+	int ret = TEST_SKIPPED;
+
+	if ((info.dev_capa & RTE_DMA_CAPA_OPS_ENQ_DEQ)) {
+		if (prepare_enq_deq_ops(test_dev_id, vchan) != 0)
+			return ret;
+		ret = TEST_SUCCESS;
+	}
+
+	return ret;
+}
+
+static int
 test_dmadev_setup(void)
 {
 	int16_t dev_id = test_dev_id;
 	struct rte_dma_stats stats;
 	const struct rte_dma_conf conf = { .nb_vchans = 1};
-	const struct rte_dma_vchan_conf qconf = {
+	struct rte_dma_vchan_conf qconf = {
 			.direction = RTE_DMA_DIR_MEM_TO_MEM,
 			.nb_desc = TEST_RINGSIZE,
 	};
@@ -1148,6 +1380,10 @@ test_dmadev_setup(void)
 	if (rte_dma_configure(dev_id, &conf) != 0)
 		ERR_RETURN("Error with rte_dma_configure()\n");
 
+	if (qconf.nb_desc < info.min_desc)
+		qconf.nb_desc = info.min_desc;
+	if (qconf.nb_desc > info.max_desc)
+		qconf.nb_desc = info.max_desc;
 	if (rte_dma_vchan_setup(dev_id, vchan, &qconf) < 0)
 		ERR_RETURN("Error with queue configuration\n");
 
@@ -1202,22 +1438,26 @@ test_dmadev_instance(int16_t dev_id)
 	enum {
 		  TEST_COPY = 0,
 		  TEST_COPY_SG,
+		  TEST_SVA_COPY,
 		  TEST_START,
 		  TEST_BURST,
 		  TEST_ERR,
 		  TEST_FILL,
 		  TEST_M2D,
+		  TEST_ENQ_DEQ,
 		  TEST_END
 	};
 
 	static struct runtest_param param[] = {
 		{"copy", test_enqueue_copies, 640},
 		{"sg_copy", test_enqueue_sg_copies, 1},
+		{"sva_copy", test_enqueue_sva_copies, 1},
 		{"stop_start", test_stop_start, 1},
 		{"burst_capacity", test_burst_capacity, 1},
 		{"error_handling", test_completion_handling, 1},
 		{"fill", test_enqueue_fill, 1},
 		{"m2d_auto_free", test_m2d_auto_free, 128},
+		{"dma_enq_deq", test_enq_deq_ops, 1},
 	};
 
 	static struct unit_test_suite ts = {
@@ -1231,6 +1471,9 @@ test_dmadev_instance(int16_t dev_id)
 			TEST_CASE_NAMED_WITH_DATA("sg_copy",
 				test_dmadev_sg_copy_setup, NULL,
 				runtest, &param[TEST_COPY_SG]),
+			TEST_CASE_NAMED_WITH_DATA("sva_copy",
+				test_dmadev_sva_setup, NULL,
+				runtest, &param[TEST_SVA_COPY]),
 			TEST_CASE_NAMED_WITH_DATA("stop_start",
 				NULL, NULL,
 				runtest, &param[TEST_START]),
@@ -1246,6 +1489,9 @@ test_dmadev_instance(int16_t dev_id)
 			TEST_CASE_NAMED_WITH_DATA("m2d_autofree",
 				test_dmadev_autofree_setup, NULL,
 				runtest, &param[TEST_M2D]),
+			TEST_CASE_NAMED_WITH_DATA("dma_enq_deq",
+				test_dmadev_enq_deq_setup, NULL,
+				runtest, &param[TEST_ENQ_DEQ]),
 			TEST_CASES_END()
 		}
 	};

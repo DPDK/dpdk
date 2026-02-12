@@ -56,7 +56,7 @@ mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN])
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[MLX5_NAMESIZE])
+mlx5_get_ifname(const struct rte_eth_dev *dev, char ifname[MLX5_NAMESIZE])
 {
 	struct mlx5_priv *priv;
 	mlx5_context_st *context_obj;
@@ -67,8 +67,36 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[MLX5_NAMESIZE])
 	}
 	priv = dev->data->dev_private;
 	context_obj = (mlx5_context_st *)priv->sh->cdev->ctx;
-	strncpy(*ifname, context_obj->mlx5_dev.name, MLX5_NAMESIZE);
+	strncpy(ifname, context_obj->mlx5_dev.name, MLX5_NAMESIZE);
 	return 0;
+}
+
+/**
+ * Get device minimum and maximum allowed MTU.
+ *
+ * Windows API does not expose minimum and maximum allowed MTU.
+ * In this case, this just returns (-ENOTSUP) to allow platform-independent code
+ * to fallback to default values.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[out] min_mtu
+ *   Minimum MTU value output buffer.
+ * @param[out] max_mtu
+ *   Maximum MTU value output buffer.
+ *
+ * @return
+ *   (-ENOTSUP) - not supported on Windows
+ */
+int
+mlx5_os_get_mtu_bounds(struct rte_eth_dev *dev, uint16_t *min_mtu, uint16_t *max_mtu)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(min_mtu);
+	RTE_SET_USED(max_mtu);
+
+	rte_errno = ENOTSUP;
+	return -rte_errno;
 }
 
 /**
@@ -283,11 +311,11 @@ mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	dev_link.link_duplex = 1;
 	if (dev->data->dev_link.link_speed != dev_link.link_speed ||
 	    dev->data->dev_link.link_duplex != dev_link.link_duplex ||
-	    dev->data->dev_link.link_autoneg != dev_link.link_autoneg ||
 	    dev->data->dev_link.link_status != dev_link.link_status)
 		ret = 1;
 	else
 		ret = 0;
+	dev_link.link_autoneg = dev->data->dev_link.link_autoneg;
 	dev->data->dev_link = dev_link;
 	return ret;
 }

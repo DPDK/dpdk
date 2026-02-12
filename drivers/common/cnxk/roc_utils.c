@@ -17,11 +17,13 @@ roc_error_msg_get(int errorcode)
 	case NPC_ERR_PARAM:
 	case SSO_ERR_PARAM:
 	case MCS_ERR_PARAM:
+	case RVU_ERR_PARAM:
 	case UTIL_ERR_PARAM:
 		err_msg = "Invalid parameter";
 		break;
 	case NIX_ERR_NO_MEM:
 	case NPC_ERR_NO_MEM:
+	case RVU_ERR_NO_MEM:
 		err_msg = "Out of memory";
 		break;
 	case NIX_ERR_INVALID_RANGE:

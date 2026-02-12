@@ -86,14 +86,34 @@ parse_uint(uint64_t *value, const char *str)
 }
 
 static int
+validate_input_color_table_entries(char *str)
+{
+	char *saveptr;
+	char *token = strtok_r(str, PARSE_DELIMITER, &saveptr);
+	for (int i = 0; token != NULL; i++) {
+		if (i > ((MAX_DSCP_TABLE_ENTRIES + MAX_VLAN_TABLE_ENTRIES) - 1))
+			return -1;
+		token = strtok_r(NULL, PARSE_DELIMITER, &saveptr);
+	}
+	return 0;
+}
+
+static int
 parse_input_color_table_entries(char *str, enum rte_color **dscp_table,
 	enum rte_color **vlan_table)
 {
 	enum rte_color *vlan, *dscp;
-	char *token;
+	char *token, *saveptr;
+	char *temp_str = strdup(str);
 	int i = 0;
 
-	token = strtok_r(str, PARSE_DELIMITER, &str);
+	if (validate_input_color_table_entries(temp_str)) {
+		free(temp_str);
+		return -1;
+	}
+	free(temp_str);
+
+	token = strtok_r(str, PARSE_DELIMITER, &saveptr);
 	if (token == NULL)
 		return 0;
 
@@ -117,7 +137,7 @@ parse_input_color_table_entries(char *str, enum rte_color **dscp_table,
 		if (i == MAX_DSCP_TABLE_ENTRIES)
 			break;
 
-		token = strtok_r(str, PARSE_DELIMITER, &str);
+		token = strtok_r(NULL, PARSE_DELIMITER, &saveptr);
 		if (token == NULL) {
 			free(dscp);
 			return -1;
@@ -126,7 +146,7 @@ parse_input_color_table_entries(char *str, enum rte_color **dscp_table,
 
 	*dscp_table = dscp;
 
-	token = strtok_r(str, PARSE_DELIMITER, &str);
+	token = strtok_r(NULL, PARSE_DELIMITER, &saveptr);
 	if (token == NULL)
 		return 0;
 
@@ -154,7 +174,7 @@ parse_input_color_table_entries(char *str, enum rte_color **dscp_table,
 		if (i == MAX_VLAN_TABLE_ENTRIES)
 			break;
 
-		token = strtok_r(str, PARSE_DELIMITER, &str);
+		token = strtok_r(NULL, PARSE_DELIMITER, &saveptr);
 		if (token == NULL) {
 			free(vlan);
 			free(*dscp_table);

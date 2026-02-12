@@ -224,10 +224,10 @@ ifcvf_enable_mq(struct ifcvf_hw *hw)
 	if (mq_cfg) {
 		if (hw->device_type == IFCVF_BLK) {
 			*(u32 *)mq_cfg = nr_queue;
-			RTE_LOG(INFO, IFCVF_VDPA, "%d queues are enabled\n", nr_queue);
+			RTE_LOG_LINE(INFO, IFCVF_VDPA, "%d queues are enabled", nr_queue);
 		} else {
 			*(u32 *)mq_cfg = nr_queue / 2;
-			RTE_LOG(INFO, IFCVF_VDPA, "%d queue pairs are enabled\n",
+			RTE_LOG_LINE(INFO, IFCVF_VDPA, "%d queue pairs are enabled",
 				nr_queue / 2);
 		}
 	}
@@ -246,7 +246,7 @@ ifcvf_enable_vring_hw(struct ifcvf_hw *hw, int i)
 
 	cfg = hw->common_cfg;
 	if (!cfg) {
-		RTE_LOG(ERR, IFCVF_VDPA, "common_cfg in HW is NULL.\n");
+		RTE_LOG_LINE(ERR, IFCVF_VDPA, "common_cfg in HW is NULL.");
 		return -1;
 	}
 
@@ -258,7 +258,7 @@ ifcvf_enable_vring_hw(struct ifcvf_hw *hw, int i)
 		IFCVF_WRITE_REG16(i + 1, &cfg->queue_msix_vector);
 		msix_vector = IFCVF_READ_REG16(&cfg->queue_msix_vector);
 		if (msix_vector == IFCVF_MSI_NO_VECTOR) {
-			RTE_LOG(ERR, IFCVF_VDPA, "queue %d, msix vec alloc failed\n",
+			RTE_LOG_LINE(ERR, IFCVF_VDPA, "queue %d, msix vec alloc failed",
 				i);
 			return -1;
 		}
@@ -307,7 +307,7 @@ ifcvf_disable_vring_hw(struct ifcvf_hw *hw, int i)
 
 	cfg = hw->common_cfg;
 	if (!cfg) {
-		RTE_LOG(ERR, IFCVF_VDPA, "common_cfg in HW is NULL.\n");
+		RTE_LOG_LINE(ERR, IFCVF_VDPA, "common_cfg in HW is NULL.");
 		return;
 	}
 

@@ -16,6 +16,7 @@
 #include <ethdev_driver.h>
 #include <rte_ether.h>
 #include <rte_gso.h>
+
 #include "tap_log.h"
 
 #ifdef IFF_MULTI_QUEUE
@@ -70,24 +71,23 @@ struct pmd_internals {
 	char remote_iface[RTE_ETH_NAME_MAX_LEN]; /* Remote netdevice name */
 	char name[RTE_ETH_NAME_MAX_LEN];  /* Internal Tap device name */
 	int type;                         /* Type field - TUN|TAP */
+	int persist;			  /* 1 if keep link up, else 0 */
 	struct rte_ether_addr eth_addr;   /* Mac address of the device port */
-	struct ifreq remote_initial_flags;/* Remote netdevice flags on init */
+	unsigned int remote_initial_flags;/* Remote netdevice flags on init */
 	int remote_if_index;              /* remote netdevice IF_INDEX */
 	int if_index;                     /* IF_INDEX for the port */
-	int ioctl_sock;                   /* socket for ioctl calls */
 	int nlsk_fd;                      /* Netlink socket fd */
+
+#ifdef HAVE_TCA_FLOWER
 	int flow_isolate;                 /* 1 if flow isolation is enabled */
-	int flower_support;               /* 1 if kernel supports, else 0 */
-	int flower_vlan_support;          /* 1 if kernel supports, else 0 */
-	int rss_enabled;                  /* 1 if RSS is enabled, else 0 */
-	int persist;			  /* 1 if keep link up, else 0 */
-	/* implicit rules set when RSS is enabled */
-	int map_fd;                       /* BPF RSS map fd */
-	int bpf_fd[RTE_PMD_TAP_MAX_QUEUES];/* List of bpf fds per queue */
-	LIST_HEAD(tap_rss_flows, rte_flow) rss_flows;
+
+	struct tap_rss *rss;		  /* BPF program */
+
 	LIST_HEAD(tap_flows, rte_flow) flows;        /* rte_flow rules */
 	/* implicit rte_flow rules set when a remote device is active */
 	LIST_HEAD(tap_implicit_flows, rte_flow) implicit_flows;
+#endif
+
 	struct rx_queue rxq[RTE_PMD_TAP_MAX_QUEUES]; /* List of RX queues */
 	struct tx_queue txq[RTE_PMD_TAP_MAX_QUEUES]; /* List of TX queues */
 	struct rte_intr_handle *intr_handle;         /* LSC interrupt handle. */
@@ -96,8 +96,7 @@ struct pmd_internals {
 };
 
 struct pmd_process_private {
-	int rxq_fds[RTE_PMD_TAP_MAX_QUEUES];
-	int txq_fds[RTE_PMD_TAP_MAX_QUEUES];
+	int fds[RTE_PMD_TAP_MAX_QUEUES];
 };
 
 /* tap_intr.c */

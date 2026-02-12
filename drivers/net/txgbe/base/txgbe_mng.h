@@ -13,6 +13,7 @@
 #define TXGBE_PMMBX_BSIZE       (TXGBE_PMMBX_QSIZE * 4)
 #define TXGBE_PMMBX_DATA_SIZE   (TXGBE_PMMBX_BSIZE - FW_NVM_DATA_OFFSET * 4)
 #define TXGBE_HI_COMMAND_TIMEOUT        5000 /* Process HI command limit */
+#define TXGBE_HI_COMMAND_TIMEOUT_SHORT  500 /* Process HI command limit */
 #define TXGBE_HI_FLASH_ERASE_TIMEOUT    5000 /* Process Erase command limit */
 #define TXGBE_HI_FLASH_UPDATE_TIMEOUT   5000 /* Process Update command limit */
 #define TXGBE_HI_FLASH_VERIFY_TIMEOUT   60000 /* Process Apply command limit */
@@ -53,9 +54,20 @@
 #define FW_PHY_TOKEN_RETRIES ((FW_PHY_TOKEN_WAIT * 1000) / FW_PHY_TOKEN_DELAY)
 #define FW_DW_OPEN_NOTIFY               0xE9
 #define FW_DW_CLOSE_NOTIFY              0xEA
+#define FW_LLDP_GET_CMD                 0xF2
+#define FW_LLDP_SET_CMD_OFF             0xF1
+#define FW_LLDP_SET_CMD_ON              0xF0
+#define FW_PHY_CONFIG_READ_CMD          0xc0
+#define FW_PHY_CONFIG_LINK_CMD          0xc1
+#define FW_PHY_CONFIG_FC_CMD            0xc2
+#define FW_PHY_CONFIG_POWER_CMD         0xc3
+#define FW_PHY_CONFIG_RESET_CMD         0xc4
+#define FW_READ_SFP_INFO_CMD            0xc5
 
 #define TXGBE_CHECKSUM_CAP_ST_PASS      0x80658383
 #define TXGBE_CHECKSUM_CAP_ST_FAIL      0x70657376
+
+#define TXGBE_HIC_HDR_INDEX_MAX         255
 
 /* Host Interface Command Structures */
 struct txgbe_hic_hdr {
@@ -65,26 +77,44 @@ struct txgbe_hic_hdr {
 		u8 cmd_resv;
 		u8 ret_status;
 	} cmd_or_resp;
-	u8 checksum;
+	union {
+		u8 checksum;
+		u8 index;
+	};
 };
 
 struct txgbe_hic_hdr2_req {
 	u8 cmd;
 	u8 buf_lenh;
 	u8 buf_lenl;
-	u8 checksum;
+	union {
+		u8 checksum;
+		u8 index;
+	};
 };
 
 struct txgbe_hic_hdr2_rsp {
 	u8 cmd;
 	u8 buf_lenl;
 	u8 buf_lenh_status;     /* 7-5: high bits of buf_len, 4-0: status */
-	u8 checksum;
+	union {
+		u8 checksum;
+		u8 index;
+	};
 };
 
 union txgbe_hic_hdr2 {
 	struct txgbe_hic_hdr2_req req;
 	struct txgbe_hic_hdr2_rsp rsp;
+};
+
+struct txgbe_hic_ephy_setlink {
+	struct txgbe_hic_hdr hdr;
+	u8 speed;
+	u8 duplex;
+	u8 autoneg;
+	u8 fec_mode;
+	u8 resv[4];
 };
 
 struct txgbe_hic_drv_info {
@@ -171,6 +201,17 @@ struct txgbe_hic_upg_verify {
 	u32 action_flag;
 };
 
+struct txgbe_hic_write_lldp {
+	struct txgbe_hic_hdr hdr;
+	u8 func;
+	u8 pad2;
+	u16 pad3;
+};
+
+s32 txgbe_host_interface_command_sp(struct txgbe_hw *hw, u32 *buffer,
+				u32 length, u32 timeout, bool return_data);
+s32 txgbe_host_interface_command_aml(struct txgbe_hw *hw, u32 *buffer,
+				u32 length, u32 timeout, bool return_data);
 s32 txgbe_hic_sr_read(struct txgbe_hw *hw, u32 addr, u8 *buf, int len);
 s32 txgbe_hic_sr_write(struct txgbe_hw *hw, u32 addr, u8 *buf, int len);
 s32 txgbe_close_notify(struct txgbe_hw *hw);
@@ -181,4 +222,8 @@ s32 txgbe_hic_set_drv_ver(struct txgbe_hw *hw, u8 maj, u8 min, u8 build,
 s32 txgbe_hic_reset(struct txgbe_hw *hw);
 bool txgbe_mng_present(struct txgbe_hw *hw);
 bool txgbe_mng_enabled(struct txgbe_hw *hw);
+s32 txgbe_hic_get_lldp(struct txgbe_hw *hw);
+s32 txgbe_hic_set_lldp(struct txgbe_hw *hw, bool on);
+s32 txgbe_hic_ephy_set_link(struct txgbe_hw *hw, u8 speed, u8 autoneg, u8 duplex);
+
 #endif /* _TXGBE_MNG_H_ */

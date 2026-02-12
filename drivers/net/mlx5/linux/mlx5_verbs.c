@@ -397,7 +397,13 @@ mlx5_rxq_ibv_obj_new(struct mlx5_rxq_priv *rxq)
 	rxq_data->wqes = rwq.buf;
 	rxq_data->rq_db = rwq.dbrec;
 	rxq_data->cq_arm_sn = 0;
-	mlx5_rxq_initialize(rxq_data);
+	ret = mlx5_rxq_initialize(rxq_data);
+	if (ret) {
+		DRV_LOG(ERR, "Port %u Rx queue %u RQ initialization failure.",
+			priv->dev_data->port_id, rxq->idx);
+		rte_errno = ENOMEM;
+		goto error;
+	}
 	rxq_data->cq_ci = 0;
 	priv->dev_data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	rxq_ctrl->wqn = ((struct ibv_wq *)(tmpl->wq))->wq_num;
@@ -877,7 +883,7 @@ mlx5_txq_ibv_qp_create(struct rte_eth_dev *dev, uint16_t idx)
 	 * dev_cap.max_sge limit and will still work properly.
 	 */
 	qp_attr.cap.max_send_sge = 1;
-	qp_attr.qp_type = IBV_QPT_RAW_PACKET,
+	qp_attr.qp_type = IBV_QPT_RAW_PACKET;
 	/* Do *NOT* enable this, completions events are managed per Tx burst. */
 	qp_attr.sq_sig_all = 0;
 	qp_attr.pd = priv->sh->cdev->pd;
@@ -1117,7 +1123,7 @@ mlx5_rxq_ibv_obj_dummy_lb_create(struct rte_eth_dev *dev)
 		return 0;
 	}
 	/* Only need to check refcnt, 0 after "sh" is allocated. */
-	if (!!(__atomic_fetch_add(&sh->self_lb.refcnt, 1, __ATOMIC_RELAXED))) {
+	if (!!(rte_atomic_fetch_add_explicit(&sh->self_lb.refcnt, 1, rte_memory_order_relaxed))) {
 		MLX5_ASSERT(sh->self_lb.ibv_cq && sh->self_lb.qp);
 		priv->lb_used = 1;
 		return 0;
@@ -1163,7 +1169,7 @@ error:
 		claim_zero(mlx5_glue->destroy_cq(sh->self_lb.ibv_cq));
 		sh->self_lb.ibv_cq = NULL;
 	}
-	__atomic_fetch_sub(&sh->self_lb.refcnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_sub_explicit(&sh->self_lb.refcnt, 1, rte_memory_order_relaxed);
 	return -rte_errno;
 #else
 	RTE_SET_USED(dev);
@@ -1186,8 +1192,9 @@ mlx5_rxq_ibv_obj_dummy_lb_release(struct rte_eth_dev *dev)
 
 	if (!priv->lb_used)
 		return;
-	MLX5_ASSERT(__atomic_load_n(&sh->self_lb.refcnt, __ATOMIC_RELAXED));
-	if (!(__atomic_fetch_sub(&sh->self_lb.refcnt, 1, __ATOMIC_RELAXED) - 1)) {
+	MLX5_ASSERT(rte_atomic_load_explicit(&sh->self_lb.refcnt, rte_memory_order_relaxed));
+	if (!(rte_atomic_fetch_sub_explicit(&sh->self_lb.refcnt, 1,
+			rte_memory_order_relaxed) - 1)) {
 		if (sh->self_lb.qp) {
 			claim_zero(mlx5_glue->destroy_qp(sh->self_lb.qp));
 			sh->self_lb.qp = NULL;

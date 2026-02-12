@@ -7,7 +7,7 @@ Platform Specific Guides
 The following are platform specific guides and setup information.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     :numbered:
 
     bluefield

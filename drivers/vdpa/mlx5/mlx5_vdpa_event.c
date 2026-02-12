@@ -686,4 +686,3 @@ error:
 	mlx5_vdpa_event_qp_destroy(eqp);
 	return -1;
 }
-

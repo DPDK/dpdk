@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <wchar.h>
 
+#include <eal_export.h>
 #include <rte_eal.h>
 #include <rte_common.h>
 #include <rte_errno.h>
@@ -181,6 +182,7 @@ thread_func_wrapper(void *arg)
 	return (DWORD)ctx.thread_func(ctx.routine_args);
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_create)
 int
 rte_thread_create(rte_thread_t *thread_id,
 		  const rte_thread_attr_t *thread_attr,
@@ -258,6 +260,7 @@ cleanup:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_join)
 int
 rte_thread_join(rte_thread_t thread_id, uint32_t *value_ptr)
 {
@@ -298,6 +301,7 @@ cleanup:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_detach)
 int
 rte_thread_detach(rte_thread_t thread_id)
 {
@@ -307,12 +311,14 @@ rte_thread_detach(rte_thread_t thread_id)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_equal)
 int
 rte_thread_equal(rte_thread_t t1, rte_thread_t t2)
 {
 	return t1.opaque_id == t2.opaque_id;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_self)
 rte_thread_t
 rte_thread_self(void)
 {
@@ -323,6 +329,7 @@ rte_thread_self(void)
 	return thread_id;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_set_name)
 void
 rte_thread_set_name(rte_thread_t thread_id, const char *thread_name)
 {
@@ -364,6 +371,7 @@ cleanup:
 		EAL_LOG(DEBUG, "Failed to set thread name");
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_get_priority)
 int
 rte_thread_get_priority(rte_thread_t thread_id,
 	enum rte_thread_priority *priority)
@@ -403,6 +411,7 @@ cleanup:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_set_priority)
 int
 rte_thread_set_priority(rte_thread_t thread_id,
 			enum rte_thread_priority priority)
@@ -441,6 +450,7 @@ cleanup:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_key_create)
 int
 rte_thread_key_create(rte_thread_key *key,
 		__rte_unused void (*destructor)(void *))
@@ -461,6 +471,7 @@ rte_thread_key_create(rte_thread_key *key,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_key_delete)
 int
 rte_thread_key_delete(rte_thread_key key)
 {
@@ -479,6 +490,7 @@ rte_thread_key_delete(rte_thread_key key)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_value_set)
 int
 rte_thread_value_set(rte_thread_key key, const void *value)
 {
@@ -499,6 +511,7 @@ rte_thread_value_set(rte_thread_key key, const void *value)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_value_get)
 void *
 rte_thread_value_get(rte_thread_key key)
 {
@@ -518,6 +531,7 @@ rte_thread_value_get(rte_thread_key key)
 	return output;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_set_affinity_by_id)
 int
 rte_thread_set_affinity_by_id(rte_thread_t thread_id,
 		const rte_cpuset_t *cpuset)
@@ -558,6 +572,7 @@ cleanup:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_get_affinity_by_id)
 int
 rte_thread_get_affinity_by_id(rte_thread_t thread_id,
 		rte_cpuset_t *cpuset)

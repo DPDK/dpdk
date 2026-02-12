@@ -36,7 +36,7 @@ struct nfp_ct_flow_entry {
 	LIST_ENTRY(nfp_ct_flow_entry) post_ct_list;
 	LIST_HEAD(, nfp_ct_merge_entry) children;
 	enum ct_entry_type type;
-	struct nfp_flower_representor *repr;
+	struct rte_eth_dev *dev;
 	struct nfp_ct_zone_entry *ze;
 	struct nfp_initial_flow rule;
 	struct nfp_fl_stats stats;
@@ -133,7 +133,7 @@ nfp_ct_merge_table_search(struct nfp_ct_zone_entry *ze,
 	hash_key = rte_jhash(hash_data, hash_len, ze->priv->hash_seed);
 	index = rte_hash_lookup_data(ze->ct_merge_table, &hash_key, (void **)&m_ent);
 	if (index < 0) {
-		PMD_DRV_LOG(DEBUG, "Data NOT found in the ct_merge table");
+		PMD_DRV_LOG(DEBUG, "Data NOT found in the ct_merge table.");
 		return NULL;
 	}
 
@@ -150,7 +150,7 @@ nfp_ct_merge_table_add(struct nfp_ct_zone_entry *ze,
 	hash_key = rte_jhash(merge_entry, sizeof(uint64_t) * 2, ze->priv->hash_seed);
 	ret = rte_hash_add_key_data(ze->ct_merge_table, &hash_key, merge_entry);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Add to ct_merge table failed");
+		PMD_DRV_LOG(ERR, "Add to ct_merge table failed.");
 		return false;
 	}
 
@@ -167,7 +167,7 @@ nfp_ct_merge_table_delete(struct nfp_ct_zone_entry *ze,
 	hash_key = rte_jhash(m_ent, sizeof(uint64_t) * 2, ze->priv->hash_seed);
 	ret = rte_hash_del_key(ze->ct_merge_table, &hash_key);
 	if (ret < 0)
-		PMD_DRV_LOG(ERR, "Delete from ct_merge table failed, ret=%d", ret);
+		PMD_DRV_LOG(ERR, "Delete from ct_merge table failed, ret=%d.", ret);
 }
 
 static void
@@ -197,7 +197,7 @@ nfp_ct_map_table_search(struct nfp_flow_priv *priv,
 	hash_key = rte_jhash(hash_data, hash_len, priv->hash_seed);
 	index = rte_hash_lookup_data(priv->ct_map_table, &hash_key, (void **)&me);
 	if (index < 0) {
-		PMD_DRV_LOG(DEBUG, "Data NOT found in the ct_map table");
+		PMD_DRV_LOG(DEBUG, "Data NOT found in the ct_map table.");
 		return NULL;
 	}
 
@@ -214,7 +214,7 @@ nfp_ct_map_table_add(struct nfp_flow_priv *priv,
 	hash_key = rte_jhash(me, sizeof(uint64_t), priv->hash_seed);
 	ret = rte_hash_add_key_data(priv->ct_map_table, &hash_key, me);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Add to ct_map table failed");
+		PMD_DRV_LOG(ERR, "Add to ct_map table failed.");
 		return false;
 	}
 
@@ -231,7 +231,7 @@ nfp_ct_map_table_delete(struct nfp_flow_priv *priv,
 	hash_key = rte_jhash(me, sizeof(uint64_t), priv->hash_seed);
 	ret = rte_hash_del_key(priv->ct_map_table, &hash_key);
 	if (ret < 0)
-		PMD_DRV_LOG(ERR, "Delete form ct_map table failed");
+		PMD_DRV_LOG(ERR, "Delete form ct_map table failed.");
 }
 
 static void
@@ -331,7 +331,7 @@ nfp_flow_item_conf_size_get(enum rte_flow_item_type type,
 		len = sizeof(struct rte_flow_item_geneve);
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "Unsupported item type: %d", type);
+		PMD_DRV_LOG(ERR, "Unsupported item type: %d.", type);
 		*size = 0;
 		return false;
 	}
@@ -351,13 +351,13 @@ nfp_ct_flow_item_copy_real(const void *src,
 
 	ret = nfp_flow_item_conf_size_get(type, &len);
 	if (!ret) {
-		PMD_DRV_LOG(ERR, "Get flow item conf size failed");
+		PMD_DRV_LOG(ERR, "Get flow item conf size failed.");
 		return NULL;
 	}
 
 	dst = rte_zmalloc("flow_item", len, 0);
 	if (dst == NULL) {
-		PMD_DRV_LOG(ERR, "Malloc memory for ct item failed");
+		PMD_DRV_LOG(ERR, "Malloc memory for ct item failed.");
 		return NULL;
 	}
 
@@ -375,7 +375,7 @@ nfp_ct_flow_item_copy(const struct rte_flow_item *src,
 	if (src->spec != NULL) {
 		dst->spec = nfp_ct_flow_item_copy_real(src->spec, src->type);
 		if (dst->spec == NULL) {
-			PMD_DRV_LOG(ERR, "Copy spec of ct item failed");
+			PMD_DRV_LOG(ERR, "Copy spec of ct item failed.");
 			goto end;
 		}
 	}
@@ -383,7 +383,7 @@ nfp_ct_flow_item_copy(const struct rte_flow_item *src,
 	if (src->mask != NULL) {
 		dst->mask = nfp_ct_flow_item_copy_real(src->mask, src->type);
 		if (dst->mask == NULL) {
-			PMD_DRV_LOG(ERR, "Copy mask of ct item failed");
+			PMD_DRV_LOG(ERR, "Copy mask of ct item failed.");
 			goto free_spec;
 		}
 	}
@@ -391,7 +391,7 @@ nfp_ct_flow_item_copy(const struct rte_flow_item *src,
 	if (src->last != NULL) {
 		dst->last = nfp_ct_flow_item_copy_real(src->last, src->type);
 		if (dst->last == NULL) {
-			PMD_DRV_LOG(ERR, "Copy last of ct item failed");
+			PMD_DRV_LOG(ERR, "Copy last of ct item failed.");
 			goto free_mask;
 		}
 	}
@@ -417,7 +417,7 @@ nfp_ct_flow_items_copy(const struct rte_flow_item *src,
 	for (loop = 0; loop < item_cnt; ++loop) {
 		ret = nfp_ct_flow_item_copy(src + loop, dst + loop);
 		if (!ret) {
-			PMD_DRV_LOG(ERR, "Copy ct item failed");
+			PMD_DRV_LOG(ERR, "Copy ct item failed.");
 			nfp_ct_flow_items_free(dst, loop);
 			return false;
 		}
@@ -490,7 +490,7 @@ nfp_ct_flow_action_free(struct rte_flow_action *action)
 		func = nfp_ct_flow_action_free_raw;
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
+		PMD_DRV_LOG(ERR, "Unsupported action type: %d.", action->type);
 		break;
 	}
 
@@ -517,14 +517,14 @@ nfp_ct_flow_action_copy_real(const void *src,
 
 	dst = rte_zmalloc("flow_action", len, 0);
 	if (dst == NULL) {
-		PMD_DRV_LOG(ERR, "Malloc memory for ct action failed");
+		PMD_DRV_LOG(ERR, "Malloc memory for ct action failed.");
 		return NULL;
 	}
 
 	if (func != NULL) {
 		ret = func(src, dst);
 		if (!ret) {
-			PMD_DRV_LOG(ERR, "Copy ct action failed");
+			PMD_DRV_LOG(ERR, "Copy ct action failed.");
 			return NULL;
 		}
 
@@ -559,7 +559,7 @@ nfp_ct_flow_action_copy_raw(const void *src,
 	raw_dst->data = nfp_ct_flow_action_copy_real(raw_src->data,
 			raw_src->size, NULL);
 	if (raw_dst->data == NULL) {
-		PMD_DRV_LOG(ERR, "Copy ct action process failed");
+		PMD_DRV_LOG(ERR, "Copy ct action process failed.");
 		return false;
 	}
 
@@ -625,13 +625,13 @@ nfp_ct_flow_action_copy(const struct rte_flow_action *src,
 		func = nfp_ct_flow_action_copy_raw;
 		break;
 	default:
-		PMD_DRV_LOG(DEBUG, "Unsupported action type: %d", src->type);
+		PMD_DRV_LOG(DEBUG, "Unsupported action type: %d.", src->type);
 		return false;
 	}
 
 	dst->conf = nfp_ct_flow_action_copy_real(src->conf, len, func);
 	if (dst->conf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Copy ct action process failed");
+		PMD_DRV_LOG(DEBUG, "Copy ct action process failed.");
 		return false;
 	}
 
@@ -649,7 +649,7 @@ nfp_ct_flow_actions_copy(const struct rte_flow_action *src,
 	for (loop = 0; loop < action_cnt; ++loop) {
 		ret = nfp_ct_flow_action_copy(src + loop, dst + loop);
 		if (!ret) {
-			PMD_DRV_LOG(DEBUG, "Copy ct action failed");
+			PMD_DRV_LOG(DEBUG, "Copy ct action failed.");
 			nfp_ct_flow_actions_free(dst, loop);
 			return false;
 		}
@@ -660,7 +660,7 @@ nfp_ct_flow_actions_copy(const struct rte_flow_action *src,
 
 static struct nfp_ct_flow_entry *
 nfp_ct_flow_entry_get(struct nfp_ct_zone_entry *ze,
-		struct nfp_flower_representor *repr,
+		struct rte_eth_dev *dev,
 		const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
 		uint64_t cookie)
@@ -672,15 +672,16 @@ nfp_ct_flow_entry_get(struct nfp_ct_zone_entry *ze,
 	struct nfp_flow_priv *priv;
 	struct nfp_ct_map_entry *me;
 	struct nfp_ct_flow_entry *fe;
+	struct nfp_flower_representor *repr;
 
 	fe = rte_zmalloc("ct_flow_entry", sizeof(*fe), 0);
 	if (fe == NULL) {
-		PMD_DRV_LOG(ERR, "Could not alloc ct_flow entry");
+		PMD_DRV_LOG(ERR, "Could not alloc ct_flow entry.");
 		return NULL;
 	}
 
 	fe->ze = ze;
-	fe->repr = repr;
+	fe->dev = dev;
 	fe->cookie = cookie;
 	LIST_INIT(&fe->children);
 
@@ -692,28 +693,28 @@ nfp_ct_flow_entry_get(struct nfp_ct_zone_entry *ze,
 	fe->rule.items = rte_zmalloc("ct_flow_item",
 			sizeof(struct rte_flow_item) * item_cnt, 0);
 	if (fe->rule.items == NULL) {
-		PMD_DRV_LOG(ERR, "Could not alloc ct flow items");
+		PMD_DRV_LOG(ERR, "Could not alloc ct flow items.");
 		goto free_flow_entry;
 	}
 
 	fe->rule.actions = rte_zmalloc("ct_flow_action",
 			sizeof(struct rte_flow_action) * action_cnt, 0);
 	if (fe->rule.actions == NULL) {
-		PMD_DRV_LOG(ERR, "Could not alloc ct flow actions");
+		PMD_DRV_LOG(ERR, "Could not alloc ct flow actions.");
 		goto free_flow_item;
 	}
 
 	/* Deep copy of items */
 	ret = nfp_ct_flow_items_copy(items, fe->rule.items, item_cnt);
 	if (!ret) {
-		PMD_DRV_LOG(ERR, "Could not deep copy ct flow items");
+		PMD_DRV_LOG(ERR, "Could not deep copy ct flow items.");
 		goto free_flow_action;
 	}
 
 	/* Deep copy of actions */
 	ret = nfp_ct_flow_actions_copy(actions, fe->rule.actions, action_cnt);
 	if (!ret) {
-		PMD_DRV_LOG(ERR, "Could not deep copy ct flow actions");
+		PMD_DRV_LOG(ERR, "Could not deep copy ct flow actions.");
 		goto free_copied_items;
 	}
 
@@ -723,17 +724,18 @@ nfp_ct_flow_entry_get(struct nfp_ct_zone_entry *ze,
 	/* Now add a ct map entry */
 	me = rte_zmalloc("ct_map_entry", sizeof(*me), 0);
 	if (me == NULL) {
-		PMD_DRV_LOG(ERR, "Malloc memory for ct map entry failed");
+		PMD_DRV_LOG(ERR, "Malloc memory for ct map entry failed.");
 		goto free_copied_actions;
 	}
 
 	me->cookie = fe->cookie;
 	me->fe = fe;
 
+	repr = dev->data->dev_private;
 	priv = repr->app_fw_flower->flow_priv;
 	ret = nfp_ct_map_table_add(priv, me);
 	if (!ret) {
-		PMD_DRV_LOG(ERR, "Add into ct map table failed");
+		PMD_DRV_LOG(ERR, "Add into ct map table failed.");
 		goto free_map_entry;
 	}
 
@@ -816,7 +818,7 @@ nfp_ct_zone_table_search(struct nfp_flow_priv *priv,
 	hash_key = rte_jhash(hash_data, hash_len, priv->hash_seed);
 	index = rte_hash_lookup_data(priv->ct_zone_table, &hash_key, (void **)&ze);
 	if (index < 0) {
-		PMD_DRV_LOG(DEBUG, "Data NOT found in the ct_zone table");
+		PMD_DRV_LOG(DEBUG, "Data NOT found in the ct_zone table.");
 		return NULL;
 	}
 
@@ -833,7 +835,7 @@ nfp_ct_zone_table_add(struct nfp_flow_priv *priv,
 	hash_key = rte_jhash(ze, sizeof(uint32_t), priv->hash_seed);
 	ret = rte_hash_add_key_data(priv->ct_zone_table, &hash_key, ze);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Add to the ct_zone table failed");
+		PMD_DRV_LOG(ERR, "Add to the ct_zone table failed.");
 		return false;
 	}
 
@@ -850,7 +852,7 @@ nfp_ct_zone_table_delete(struct nfp_flow_priv *priv,
 	hash_key = rte_jhash(ze, sizeof(uint32_t), priv->hash_seed);
 	ret = rte_hash_del_key(priv->ct_zone_table, &hash_key);
 	if (ret < 0)
-		PMD_DRV_LOG(ERR, "Delete from the ct_zone table failed");
+		PMD_DRV_LOG(ERR, "Delete from the ct_zone table failed.");
 }
 
 static bool
@@ -878,7 +880,7 @@ nfp_ct_zone_entry_init(struct nfp_ct_zone_entry *ze,
 	ct_merge_hash_params.hash_func_init_val = priv->hash_seed;
 	ze->ct_merge_table = rte_hash_create(&ct_merge_hash_params);
 	if (ze->ct_merge_table == NULL) {
-		PMD_DRV_LOG(ERR, "ct merge table creation failed");
+		PMD_DRV_LOG(ERR, "CT merge table creation failed.");
 		return false;
 	}
 
@@ -923,13 +925,13 @@ nfp_ct_zone_entry_get(struct nfp_flow_priv *priv,
 
 		ze = rte_zmalloc("ct_zone_wc", sizeof(*ze), 0);
 		if (ze == NULL) {
-			PMD_DRV_LOG(ERR, "Could not alloc ct_zone_wc entry");
+			PMD_DRV_LOG(ERR, "Could not alloc ct_zone_wc entry.");
 			return NULL;
 		}
 
 		is_ok = nfp_ct_zone_entry_init(ze, priv, zone, true);
 		if (!is_ok) {
-			PMD_DRV_LOG(ERR, "Init ct zone wc entry failed");
+			PMD_DRV_LOG(ERR, "Init ct zone wc entry failed.");
 			goto free_ct_zone_entry;
 		}
 
@@ -941,19 +943,19 @@ nfp_ct_zone_entry_get(struct nfp_flow_priv *priv,
 
 		ze = rte_zmalloc("ct_zone_entry", sizeof(*ze), 0);
 		if (ze == NULL) {
-			PMD_DRV_LOG(ERR, "Could not alloc ct_zone entry");
+			PMD_DRV_LOG(ERR, "Could not alloc ct_zone entry.");
 			return NULL;
 		}
 
 		is_ok = nfp_ct_zone_entry_init(ze, priv, zone, false);
 		if (!is_ok) {
-			PMD_DRV_LOG(ERR, "Init ct zone entry failed");
+			PMD_DRV_LOG(ERR, "Init ct zone entry failed.");
 			goto free_ct_zone_entry;
 		}
 
 		is_ok = nfp_ct_zone_table_add(priv, ze);
 		if (!is_ok) {
-			PMD_DRV_LOG(ERR, "Add into ct zone table failed");
+			PMD_DRV_LOG(ERR, "Add into ct zone table failed.");
 			goto free_ct_zone_entry;
 		}
 	}
@@ -979,7 +981,7 @@ nfp_ct_zone_entry_free(struct nfp_ct_zone_entry *ze,
 }
 
 static int
-nfp_ct_offload_add(struct nfp_flower_representor *repr,
+nfp_ct_offload_add(struct rte_eth_dev *dev,
 		struct nfp_ct_merge_entry *merge_entry)
 {
 	int ret;
@@ -987,12 +989,13 @@ nfp_ct_offload_add(struct nfp_flower_representor *repr,
 	struct rte_flow *nfp_flow;
 	struct nfp_flow_priv *priv;
 	const struct rte_flow_item *items;
+	struct nfp_flower_representor *repr;
 	const struct rte_flow_action *actions;
 
 	cookie = rte_rand();
 	items = merge_entry->rule.items;
 	actions = merge_entry->rule.actions;
-	nfp_flow = nfp_flow_process(repr, items, actions, false, cookie, true, true);
+	nfp_flow = nfp_flow_process(dev, items, actions, false, cookie, true, true);
 	if (nfp_flow == NULL) {
 		PMD_DRV_LOG(ERR, "Process the merged flow rule failed.");
 		return -EINVAL;
@@ -1001,6 +1004,7 @@ nfp_ct_offload_add(struct nfp_flower_representor *repr,
 	merge_entry->ctx_id = rte_be_to_cpu_32(nfp_flow->payload.meta->host_ctx_id);
 
 	/* Add the flow to hardware */
+	repr = dev->data->dev_private;
 	priv = repr->app_fw_flower->flow_priv;
 	ret = nfp_flower_cmsg_flow_add(repr->app_fw_flower, nfp_flow);
 	if (ret != 0) {
@@ -1020,7 +1024,7 @@ nfp_ct_offload_add(struct nfp_flower_representor *repr,
 	return 0;
 
 flow_teardown:
-	nfp_flow_teardown(priv, nfp_flow, false);
+	nfp_flow_teardown(repr->app_fw_flower, nfp_flow, false);
 	nfp_flow_free(nfp_flow);
 
 	return ret;
@@ -1042,7 +1046,7 @@ nfp_ct_offload_del(struct rte_eth_dev *dev,
 			if (m_ent->compiled_rule != NULL) {
 				ret = nfp_flow_destroy(dev, m_ent->compiled_rule, error);
 				if (ret != 0) {
-					PMD_DRV_LOG(ERR, "Could not alloc ct_flow_item");
+					PMD_DRV_LOG(ERR, "Could not alloc ct_flow_item.");
 					return -EINVAL;
 				}
 				m_ent->compiled_rule = NULL;
@@ -1058,7 +1062,7 @@ nfp_ct_offload_del(struct rte_eth_dev *dev,
 			if (m_ent->compiled_rule != NULL) {
 				ret = nfp_flow_destroy(dev, m_ent->compiled_rule, error);
 				if (ret != 0) {
-					PMD_DRV_LOG(ERR, "Could not alloc ct_flow_item");
+					PMD_DRV_LOG(ERR, "Could not alloc ct_flow_item.");
 					return -EINVAL;
 				}
 				m_ent->compiled_rule = NULL;
@@ -1436,13 +1440,14 @@ nfp_ct_do_flow_merge(struct nfp_ct_zone_entry *ze,
 		struct nfp_ct_flow_entry *pre_ct_entry,
 		struct nfp_ct_flow_entry *post_ct_entry)
 {
+	int err;
 	bool ret;
 	uint64_t new_cookie[2];
 	uint8_t cnt_same_item = 0;
 	uint8_t cnt_same_action = 0;
 	struct nfp_ct_merge_entry *merge_entry;
 
-	if (pre_ct_entry->repr != post_ct_entry->repr)
+	if (pre_ct_entry->dev != post_ct_entry->dev)
 		return true;
 
 	ret = nfp_ct_merge_items_check(pre_ct_entry->rule.items,
@@ -1463,7 +1468,7 @@ nfp_ct_do_flow_merge(struct nfp_ct_zone_entry *ze,
 
 	merge_entry = rte_zmalloc("ct_merge_entry", sizeof(*merge_entry), 0);
 	if (merge_entry == NULL) {
-		PMD_DRV_LOG(ERR, "Malloc memory for ct merge entry failed");
+		PMD_DRV_LOG(ERR, "Malloc memory for ct merge entry failed.");
 		return false;
 	}
 
@@ -1479,14 +1484,14 @@ nfp_ct_do_flow_merge(struct nfp_ct_zone_entry *ze,
 	merge_entry->rule.items = rte_zmalloc("ct_flow_item",
 			sizeof(struct rte_flow_item) * merge_entry->rule.items_cnt, 0);
 	if (merge_entry->rule.items == NULL) {
-		PMD_DRV_LOG(ERR, "Could not alloc items for merged flow");
+		PMD_DRV_LOG(ERR, "Could not alloc items for merged flow.");
 		goto merge_exit;
 	}
 
 	merge_entry->rule.actions = rte_zmalloc("ct_flow_action",
 			sizeof(struct rte_flow_action) * merge_entry->rule.actions_cnt, 0);
 	if (merge_entry->rule.actions == NULL) {
-		PMD_DRV_LOG(ERR, "Could not alloc actions for merged flow");
+		PMD_DRV_LOG(ERR, "Could not alloc actions for merged flow.");
 		goto free_items;
 	}
 
@@ -1499,14 +1504,15 @@ nfp_ct_do_flow_merge(struct nfp_ct_zone_entry *ze,
 
 	ret = nfp_ct_merge_table_add(ze, merge_entry);
 	if (!ret) {
-		PMD_DRV_LOG(ERR, "Add into ct merge table failed");
+		PMD_DRV_LOG(ERR, "Add into ct merge table failed.");
 		goto free_actions;
 	}
 
 	/* Send to firmware */
-	ret = nfp_ct_offload_add(pre_ct_entry->repr, merge_entry);
-	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Send the merged flow to firmware failed");
+	err = nfp_ct_offload_add(pre_ct_entry->dev, merge_entry);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Send the merged flow to firmware failed.");
+		ret = false;
 		goto merge_table_del;
 	}
 
@@ -1538,7 +1544,7 @@ nfp_ct_merge_flow_entries(struct nfp_ct_flow_entry *fe,
 		LIST_FOREACH(fe_tmp, &ze_src->post_ct_list, post_ct_list) {
 			ret = nfp_ct_do_flow_merge(ze_dst, fe, fe_tmp);
 			if (!ret) {
-				PMD_DRV_LOG(ERR, "Merge for ct pre flow failed");
+				PMD_DRV_LOG(ERR, "Merge for ct pre flow failed.");
 				return false;
 			}
 		}
@@ -1546,7 +1552,7 @@ nfp_ct_merge_flow_entries(struct nfp_ct_flow_entry *fe,
 		LIST_FOREACH(fe_tmp, &ze_src->pre_ct_list, pre_ct_list) {
 			ret = nfp_ct_do_flow_merge(ze_dst, fe_tmp, fe);
 			if (!ret) {
-				PMD_DRV_LOG(ERR, "Merge for ct post flow failed");
+				PMD_DRV_LOG(ERR, "Merge for ct post flow failed.");
 				return false;
 			}
 		}
@@ -1557,7 +1563,7 @@ nfp_ct_merge_flow_entries(struct nfp_ct_flow_entry *fe,
 
 static bool
 nfp_flow_handle_pre_ct(const struct rte_flow_item *ct_item,
-		struct nfp_flower_representor *representor,
+		struct rte_eth_dev *dev,
 		const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
 		uint64_t cookie)
@@ -1567,18 +1573,20 @@ nfp_flow_handle_pre_ct(const struct rte_flow_item *ct_item,
 	struct nfp_ct_zone_entry *ze;
 	struct nfp_ct_flow_entry *fe;
 	const struct ct_data *ct = ct_item->spec;
+	struct nfp_flower_representor *representor;
 
+	representor = dev->data->dev_private;
 	priv = representor->app_fw_flower->flow_priv;
 	ze = nfp_ct_zone_entry_get(priv, ct->ct_zone, false);
 	if (ze == NULL) {
-		PMD_DRV_LOG(ERR, "Could not get ct zone entry");
+		PMD_DRV_LOG(ERR, "Could not get ct zone entry.");
 		return false;
 	}
 
 	/* Add entry to pre_ct_list */
-	fe = nfp_ct_flow_entry_get(ze, representor, items, actions, cookie);
+	fe = nfp_ct_flow_entry_get(ze, dev, items, actions, cookie);
 	if (fe == NULL) {
-		PMD_DRV_LOG(ERR, "Could not get ct flow entry");
+		PMD_DRV_LOG(ERR, "Could not get ct flow entry.");
 		goto ct_zone_entry_free;
 	}
 
@@ -1587,7 +1595,7 @@ nfp_flow_handle_pre_ct(const struct rte_flow_item *ct_item,
 
 	ret = nfp_ct_merge_flow_entries(fe, ze, ze);
 	if (!ret) {
-		PMD_DRV_LOG(ERR, "Merge ct flow entries failed");
+		PMD_DRV_LOG(ERR, "Merge ct flow entries failed.");
 		goto ct_flow_entry_free;
 	}
 
@@ -1595,7 +1603,7 @@ nfp_flow_handle_pre_ct(const struct rte_flow_item *ct_item,
 	if (priv->ct_zone_wc != NULL) {
 		ret = nfp_ct_merge_flow_entries(fe, priv->ct_zone_wc, ze);
 		if (!ret) {
-			PMD_DRV_LOG(ERR, "Merge ct flow entries wildcast failed");
+			PMD_DRV_LOG(ERR, "Merge ct flow entries wildcast failed.");
 			goto ct_flow_entry_free;
 		}
 	}
@@ -1613,7 +1621,7 @@ ct_zone_entry_free:
 
 static bool
 nfp_flow_handle_post_ct(const struct rte_flow_item *ct_item,
-		struct nfp_flower_representor *representor,
+		struct rte_eth_dev *dev,
 		const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
 		uint64_t cookie)
@@ -1626,27 +1634,29 @@ nfp_flow_handle_post_ct(const struct rte_flow_item *ct_item,
 	struct nfp_flow_priv *priv;
 	struct nfp_ct_zone_entry *ze;
 	struct nfp_ct_flow_entry *fe;
+	struct nfp_flower_representor *representor;
 	const struct ct_data *ct = ct_item->spec;
 	const struct ct_data *ct_mask = ct_item->mask;
 
 	if (ct_mask->ct_zone == 0) {
 		wildcard = true;
 	} else if (ct_mask->ct_zone != UINT16_MAX) {
-		PMD_DRV_LOG(ERR, "Partially wildcard ct_zone is not supported");
+		PMD_DRV_LOG(ERR, "Partially wildcard ct_zone is not supported.");
 		return false;
 	}
 
+	representor = dev->data->dev_private;
 	priv = representor->app_fw_flower->flow_priv;
 	ze = nfp_ct_zone_entry_get(priv, ct->ct_zone, wildcard);
 	if (ze == NULL) {
-		PMD_DRV_LOG(ERR, "Could not get ct zone entry");
+		PMD_DRV_LOG(ERR, "Could not get ct zone entry.");
 		return false;
 	}
 
 	/* Add entry to post_ct_list */
-	fe = nfp_ct_flow_entry_get(ze, representor, items, actions, cookie);
+	fe = nfp_ct_flow_entry_get(ze, dev, items, actions, cookie);
 	if (fe == NULL) {
-		PMD_DRV_LOG(ERR, "Could not get ct flow entry");
+		PMD_DRV_LOG(ERR, "Could not get ct flow entry.");
 		goto ct_zone_entry_free;
 	}
 
@@ -1658,7 +1668,7 @@ nfp_flow_handle_post_ct(const struct rte_flow_item *ct_item,
 			ze = (struct nfp_ct_zone_entry *)next_data;
 			ret = nfp_ct_merge_flow_entries(fe, ze, ze);
 			if (!ret) {
-				PMD_DRV_LOG(ERR, "Merge ct flow entries wildcast failed");
+				PMD_DRV_LOG(ERR, "Merge ct flow entries wildcast failed.");
 				break;
 			}
 		}
@@ -1681,7 +1691,7 @@ ct_zone_entry_free:
 }
 
 struct rte_flow *
-nfp_ct_flow_setup(struct nfp_flower_representor *representor,
+nfp_ct_flow_setup(struct rte_eth_dev *dev,
 		const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
 		const struct rte_flow_item *ct_item,
@@ -1696,29 +1706,29 @@ nfp_ct_flow_setup(struct nfp_flower_representor *representor,
 	ct = ct_item->spec;
 
 	if (is_ct_commit_flow(ct)) {
-		return nfp_flow_process(representor, &items[1], actions,
+		return nfp_flow_process(dev, &items[1], actions,
 				validate_flag, cookie, false, false);
 	}
 
 	if (is_post_ct_flow(ct)) {
-		if (nfp_flow_handle_post_ct(ct_item, representor, &items[1],
+		if (nfp_flow_handle_post_ct(ct_item, dev, &items[1],
 				actions, cookie)) {
-			return nfp_flow_process(representor, &items[1], actions,
+			return nfp_flow_process(dev, &items[1], actions,
 					validate_flag, cookie, false, false);
 		}
 
-		PMD_DRV_LOG(ERR, "Handle nfp post ct flow failed.");
+		PMD_DRV_LOG(ERR, "Handle NFP post ct flow failed.");
 		return NULL;
 	}
 
 	if (is_pre_ct_flow(ct, actions)) {
-		if (nfp_flow_handle_pre_ct(ct_item, representor, &items[1],
+		if (nfp_flow_handle_pre_ct(ct_item, dev, &items[1],
 				actions, cookie)) {
-			return nfp_flow_process(representor, &items[1], actions,
+			return nfp_flow_process(dev, &items[1], actions,
 					validate_flag, cookie, false, false);
 		}
 
-		PMD_DRV_LOG(ERR, "Handle nfp pre ct flow failed.");
+		PMD_DRV_LOG(ERR, "Handle NFP pre ct flow failed.");
 		return NULL;
 	}
 

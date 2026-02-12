@@ -81,7 +81,7 @@ enum vhost_user_request {
 	VHOST_USER_GET_STATUS = 40,
 };
 
-struct vhost_user_msg {
+struct __rte_packed_begin vhost_user_msg {
 	enum vhost_user_request request;
 
 #define VHOST_USER_VERSION_MASK     0x3
@@ -97,7 +97,7 @@ struct vhost_user_msg {
 		struct vhost_vring_addr addr;
 		struct vhost_memory memory;
 	} payload;
-} __rte_packed;
+} __rte_packed_end;
 
 #define VHOST_USER_HDR_SIZE offsetof(struct vhost_user_msg, payload.u64)
 #define VHOST_USER_PAYLOAD_SIZE \
@@ -128,7 +128,8 @@ vhost_user_write(int fd, struct vhost_user_msg *msg, int *fds, int fd_num)
 	cmsg->cmsg_len = CMSG_LEN(fd_size);
 	cmsg->cmsg_level = SOL_SOCKET;
 	cmsg->cmsg_type = SCM_RIGHTS;
-	memcpy(CMSG_DATA(cmsg), fds, fd_size);
+	if (fd_size > 0)
+		memcpy(CMSG_DATA(cmsg), fds, fd_size);
 
 	do {
 		r = sendmsg(fd, &msgh, 0);

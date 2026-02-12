@@ -58,19 +58,19 @@ struct send_thread_args {
 };
 
 volatile struct app_stats {
-	struct {
+	alignas(RTE_CACHE_LINE_SIZE) struct {
 		uint64_t rx_pkts;
 		uint64_t enqueue_pkts;
 		uint64_t enqueue_failed_pkts;
-	} rx __rte_cache_aligned;
+	} rx;
 
-	struct {
+	alignas(RTE_CACHE_LINE_SIZE) struct {
 		uint64_t dequeue_pkts;
 		uint64_t enqueue_pkts;
 		uint64_t enqueue_failed_pkts;
-	} wkr __rte_cache_aligned;
+	} wkr;
 
-	struct {
+	alignas(RTE_CACHE_LINE_SIZE) struct {
 		uint64_t dequeue_pkts;
 		/* Too early pkts transmitted directly w/o reordering */
 		uint64_t early_pkts_txtd_woro;
@@ -78,15 +78,15 @@ volatile struct app_stats {
 		uint64_t early_pkts_tx_failed_woro;
 		uint64_t ro_tx_pkts;
 		uint64_t ro_tx_failed_pkts;
-	} tx __rte_cache_aligned;
+	} tx;
 } app_stats;
 
 /* per worker lcore stats */
-struct wkr_stats_per {
+struct __rte_cache_aligned wkr_stats_per {
 		uint64_t deq_pkts;
 		uint64_t enq_pkts;
 		uint64_t enq_failed_pkts;
-} __rte_cache_aligned;
+};
 
 static struct wkr_stats_per wkr_stats[RTE_MAX_LCORE] = { {0} };
 /**

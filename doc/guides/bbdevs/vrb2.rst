@@ -29,6 +29,9 @@ These hardware blocks provide the following features exposed by the PMD:
 - LDPC Decode in the Uplink (5GNR)
 - Turbo Encode in the Downlink (4G)
 - Turbo Decode in the Uplink (4G)
+- Support for code block level processing
+- Support for transport block level processing for the LDPC encode processing
+  including code block concatenation.
 - FFT processing
 - MLD-TS processing
 - Single Root I/O Virtualization (SR-IOV) with 16 Virtual Functions (VFs) per Physical Function (PF)
@@ -175,4 +178,4 @@ Specifically for the bbdev Intel vRAN Boost v2 PMD, the command below can be use
 .. code-block:: console
 
    pf_bb_config VRB2 -c ./vrb2/vrb2_config_vf_5g.cfg
-   test-bbdev.py -e="-c 0xff0 -a${VF_PCI_ADDR}" -c validation -n 64 -b 64 -l 1 -v ./ldpc_dec_default.data
+   test-bbdev.py -e="-l 4-11 -a${VF_PCI_ADDR}" -c validation -n 64 -b 64 -l 1 -v ./ldpc_dec_default.data

@@ -11,6 +11,7 @@
  * EAL Configuration API
  */
 
+#include <stdalign.h>
 #include <stdint.h>
 #include <time.h>
 
@@ -155,14 +156,14 @@ int rte_eal_primary_proc_alive(const char *config_file_path);
  */
 bool rte_mp_disable(void);
 
-#define RTE_MP_MAX_FD_NUM	8    /* The max amount of fds */
+#define RTE_MP_MAX_FD_NUM	253  /* The max amount of fds (see SCM_MAX_FD) */
 #define RTE_MP_MAX_NAME_LEN	64   /* The max length of action name */
 #define RTE_MP_MAX_PARAM_LEN	256  /* The max length of param */
 struct rte_mp_msg {
 	char name[RTE_MP_MAX_NAME_LEN];
 	int len_param;
 	int num_fds;
-	uint8_t param[RTE_MP_MAX_PARAM_LEN];
+	alignas(8) uint8_t param[RTE_MP_MAX_PARAM_LEN];
 	int fds[RTE_MP_MAX_FD_NUM];
 };
 
@@ -491,24 +492,58 @@ const char *
 rte_eal_get_runtime_dir(void);
 
 /**
- * Convert a string describing a mask of core ids into an array of core ids.
+ * @internal
+ * Iterate to the next driver path.
  *
- * On success, the passed array is filled with the orders of the core ids
- * present in the mask (-1 indicating that a core id is absent).
- * For example, passing a 0xa coremask results in cores[1] = 0, cores[3] = 1,
- * and the rest of the array is set to -1.
+ * This function iterates through the list of dynamically loaded drivers,
+ * or driver paths that were specified via -d or --driver-path command-line
+ * options during EAL initialization.
  *
- * @param coremask
- *   A string describing a mask of core ids.
- * @param cores
- *   An array where to store the core ids orders.
- *   This array must be at least RTE_MAX_LCORE large.
+ * @param start
+ *   Starting iteration point. The iteration will start at the first driver path if NULL.
+ * @param cmdline_only
+ *   If true, only iterate paths from command line (-d flags).
+ *   If false, iterate all paths including those expanded from directories.
+ *
  * @return
- *   0 on success, -1 if the string content was invalid.
+ *   Next driver path string, NULL if there is none.
  */
 __rte_internal
-int
-rte_eal_parse_coremask(const char *coremask, int *cores);
+const char *
+rte_eal_driver_path_next(const char *start, bool cmdline_only);
+
+/**
+ * @internal
+ * Iterate over all driver paths.
+ *
+ * This macro provides a convenient way to iterate through all driver paths
+ * that were loaded via -d flags during EAL initialization.
+ *
+ * @param path
+ *   Iterator variable of type const char *
+ * @param cmdline_only
+ *   If true, only iterate paths from command line (-d flags).
+ *   If false, iterate all paths including those expanded from directories.
+ */
+#define RTE_EAL_DRIVER_PATH_FOREACH(path, cmdline_only) \
+	for (path = rte_eal_driver_path_next(NULL, cmdline_only); \
+	     path != NULL; \
+	     path = rte_eal_driver_path_next(path, cmdline_only))
+
+/**
+ * @internal
+ * Get count of driver paths.
+ *
+ * @param cmdline_only
+ *   If true, only count paths from command line (-d flags).
+ *   If false, count all paths including those expanded from directories.
+ *
+ * @return
+ *   Number of driver paths.
+ */
+__rte_internal
+unsigned int
+rte_eal_driver_path_count(bool cmdline_only);
 
 #ifdef __cplusplus
 }

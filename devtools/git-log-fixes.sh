@@ -68,7 +68,7 @@ origin_version () # <origin_hash> ...
 {
 	for origin in $* ; do
 		# check hash is valid
-		git rev-parse -q --verify $1 >&- || continue
+		git rev-parse -q --verify $origin >&- || continue
 		# get version of this bug origin
 		local origver=$(commit_version $origin)
 		local roothashes="$(origin_filter $origin)"
@@ -84,31 +84,21 @@ origin_version () # <origin_hash> ...
 	done | sort -uV | head -n1
 }
 
-# print a marker for stable tag presence
-stable_tag () # <hash>
+# print a marker for pattern presence in the commit message
+git_log_mark () # <hash> <pattern> <marker>
 {
-	if git log --format='%b' -1 $1 | grep -qi '^Cc: *stable@dpdk.org' ; then
-		echo 'S'
+	if git log --format='%b' -1 $1 | grep -qi "$2" ; then
+		echo "$3"
 	else
 		echo '-'
 	fi
 }
 
-# print a marker for fixes tag presence
-fixes_tag () # <hash>
-{
-        if git log --format='%b' -1 $1 | grep -qi '^Fixes: *' ; then
-                echo 'F'
-        else
-                echo '-'
-        fi
-}
-
 git log --oneline --reverse $range |
 while read id headline ; do
 	origins=$(origin_filter $id)
-	stable=$(stable_tag $id)
-	fixes=$(fixes_tag $id)
+	stable=$(git_log_mark $id '^Cc: *stable@dpdk.org' 'S')
+	fixes=$(git_log_mark $id '^Fixes:' 'F')
 	[ "$stable" = "S" ] || [ "$fixes" = "F" ] || [ -n "$origins" ] || continue
 	version=$(commit_version $id)
 	if [ -n "$origins" ] ; then

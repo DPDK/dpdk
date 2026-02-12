@@ -275,8 +275,8 @@ and v6 is a tuple for IPv6:
 
     struct rte_ipsec_sadv6_key {
         uint32_t spi;
-        uint8_t dip[16];
-        uint8_t sip[16];
+        struct rte_ipv6_addr dip;
+        struct rte_ipv6_addr sip;
     };
 
 As an example, lookup related code could look like that:
@@ -323,11 +323,20 @@ Supported features
 
 Telemetry support
 ------------------
+
 Telemetry support implements SA details and IPsec packet add data counters
 statistics. Per SA telemetry statistics can be enabled using
 ``rte_ipsec_telemetry_sa_add`` and disabled using
 ``rte_ipsec_telemetry_sa_del``. Note that these calls are not thread safe.
 
+Stateless IPsec packet processing
+---------------------------------
+
+Support for stateless IPsec packet processing allows use of custom
+sequence number to be used for IPsec outbound processing.
+
+``rte_ipsec_pkt_stateless_prepare()`` takes as input the state parameter
+from the application and prepares the packet for IPsec processing.
 
 Limitations
 -----------

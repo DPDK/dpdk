@@ -38,7 +38,7 @@ of the L2 forwarding application.
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``l2fwd_keep_alive`` sub-directory.
 
@@ -56,7 +56,7 @@ where,
 
 * ``p PORTMASK``: A hexadecimal bitmask of the ports to configure
 
-* ``q NQ``: A number of queues (=ports) per lcore (default is 1)
+* ``q NQ``: Maximum number of queues per lcore (default is 1)
 
 * ``K PERIOD``: Heartbeat check period in ms(5ms default; 86400 max)
 
@@ -68,7 +68,7 @@ To run the application in linux environment with 4 lcores, 16 ports
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l2fwd-keepalive -l 0-3 -n 4 -- -q 8 -p ffff -K 10
+    ./<build_dir>/examples/dpdk-l2fwd-keepalive -l 0-3 -- -q 8 -p ffff -K 10
 
 Refer to the *DPDK Getting Started Guide* for general information on
 running applications and the Environment Abstraction Layer (EAL)
@@ -78,7 +78,7 @@ options.
 Explanation
 -----------
 
-The following sections provide some explanation of the
+The following sections provide explanation of the
 Keep-Alive/'Liveliness' conceptual scheme. As mentioned in the
 overview section, the initialization and run-time paths are very
 similar to those of the :doc:`l2_forward_real_virtual`.
@@ -89,10 +89,10 @@ The Keep-Alive/'Liveliness' conceptual scheme:
 
 * DPDK Cores respond to the keep-alive agent.
 
-* If keep-alive agent detects time-outs, it notifies the
+* If a keep-alive agent detects time-outs, it notifies the
   fault management entity through a callback function.
 
-The following sections provide some explanation of the code aspects
+The following sections provide explanation of the code aspects
 that are specific to the Keep Alive sample application.
 
 The keepalive functionality is initialized with a struct
@@ -114,7 +114,7 @@ is configured to run every check_period milliseconds.
     :end-before: >8 End of issuing the pings keepalive_dispatch_pings().
     :dedent: 2
 
-The rest of the initialization and run-time path follows
+The rest of the initialization and run-time paths follow
 the same paths as the L2 forwarding application. The only
 addition to the main processing loop is the mark alive
 functionality and the example random failures.

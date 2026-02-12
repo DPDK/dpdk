@@ -8,6 +8,8 @@
 
 #include <stdint.h>
 
+#include <rte_bitops.h>
+
 #define DIV_ROUND_UP(n, d)             (((n) + (d) - 1) / (d))
 
 #define DMA_BIT_MASK(n)    ((1ULL << (n)) - 1)
@@ -21,7 +23,7 @@
 #define GENMASK_ULL(h, l) \
 	((~0ULL << (l)) & (~0ULL >> (BITS_PER_LONG_LONG - (h) - 1)))
 
-#define __bf_shf(x) (__builtin_ffsll(x) - 1)
+#define __bf_shf(x) rte_bsf64(x)
 
 #define FIELD_GET(_mask, _reg) \
 	(__extension__ ({ \

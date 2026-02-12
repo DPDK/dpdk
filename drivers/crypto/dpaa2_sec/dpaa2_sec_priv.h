@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016,2020-2023 NXP
+ *   Copyright 2016,2020-2024 NXP
  *
  */
 
@@ -20,8 +20,6 @@ extern uint8_t cryptodev_driver_id;
 #define FLE_POOL_BUF_SIZE	256
 #define FLE_POOL_CACHE_SIZE	512
 #define FLE_SG_MEM_SIZE(num)	(FLE_POOL_BUF_SIZE + ((num) * 32))
-#define SEC_FLC_DHR_OUTBOUND	-114
-#define SEC_FLC_DHR_INBOUND	0
 
 #define MAX_QUEUES		64
 #define MAX_DESC_SIZE		64
@@ -227,6 +225,27 @@ typedef struct dpaa2_sec_session_entry {
 
 static const struct rte_cryptodev_capabilities dpaa2_sec_capabilities[] = {
 	/* Symmetric capabilities */
+	{	/* NULL (AUTH) */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_NULL,
+				.block_size = 1,
+				.key_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.iv_size = { 0 }
+			}, },
+		}, },
+	},
 	{	/* MD5 */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -551,6 +570,26 @@ static const struct rte_cryptodev_capabilities dpaa2_sec_capabilities[] = {
 				.aad_size = { 0 },
 				.iv_size = { 0 }
 			}, }
+		}, }
+	},
+	{	/* NULL (CIPHER) */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_NULL,
+				.block_size = 1,
+				.key_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				}
+			}, },
 		}, }
 	},
 	{	/* AES CBC */

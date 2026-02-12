@@ -593,4 +593,4 @@ test_pmd_ring(void)
 	return unit_test_suite_runner(&test_pmd_ring_suite);
 }
 
-REGISTER_FAST_TEST(ring_pmd_autotest, true, true, test_pmd_ring);
+REGISTER_FAST_TEST(ring_pmd_autotest, NOHUGE_OK, ASAN_OK, test_pmd_ring);

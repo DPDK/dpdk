@@ -173,7 +173,7 @@ sw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 			dev->data->socket_id,
 			RING_F_SP_ENQ | RING_F_SC_DEQ | RING_F_EXACT_SZ);
 	if (p->rx_worker_ring == NULL) {
-		SW_LOG_ERR("Error creating RX worker ring for port %d\n",
+		SW_LOG_ERR("Error creating RX worker ring for port %d",
 				port_id);
 		return -1;
 	}
@@ -193,7 +193,7 @@ sw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 			RING_F_SP_ENQ | RING_F_SC_DEQ | RING_F_EXACT_SZ);
 	if (p->cq_worker_ring == NULL) {
 		rte_event_ring_free(p->rx_worker_ring);
-		SW_LOG_ERR("Error creating CQ worker ring for port %d\n",
+		SW_LOG_ERR("Error creating CQ worker ring for port %d",
 				port_id);
 		return -1;
 	}
@@ -228,9 +228,7 @@ qid_init(struct sw_evdev *sw, unsigned int idx, int type,
 		const struct rte_event_queue_conf *queue_conf)
 {
 	unsigned int i;
-	int dev_id = sw->data->dev_id;
 	int socket_id = sw->data->socket_id;
-	char buf[IQ_ROB_NAMESIZE];
 	struct sw_qid *qid = &sw->qids[idx];
 
 	/* Initialize the FID structures to no pinning (-1), and zero packets */
@@ -255,17 +253,16 @@ qid_init(struct sw_evdev *sw, unsigned int idx, int type,
 
 		if (!window_size) {
 			SW_LOG_DBG(
-				"invalid reorder_window_size for ordered queue\n"
+				"invalid reorder_window_size for ordered queue"
 				);
 			goto cleanup;
 		}
 
-		snprintf(buf, sizeof(buf), "sw%d_iq_%d_rob", dev_id, i);
-		qid->reorder_buffer = rte_zmalloc_socket(buf,
+		qid->reorder_buffer = rte_zmalloc_socket(NULL,
 				window_size * sizeof(qid->reorder_buffer[0]),
 				0, socket_id);
 		if (!qid->reorder_buffer) {
-			SW_LOG_DBG("reorder_buffer malloc failed\n");
+			SW_LOG_DBG("reorder_buffer malloc failed");
 			goto cleanup;
 		}
 
@@ -337,7 +334,7 @@ sw_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
 		type = SW_SCHED_TYPE_DIRECT;
 	} else if (RTE_EVENT_QUEUE_CFG_ALL_TYPES
 			& conf->event_queue_cfg) {
-		SW_LOG_ERR("QUEUE_CFG_ALL_TYPES not supported\n");
+		SW_LOG_ERR("QUEUE_CFG_ALL_TYPES not supported");
 		return -ENOTSUP;
 	}
 
@@ -775,7 +772,7 @@ sw_start(struct rte_eventdev *dev)
 
 	/* check a service core is mapped to this service */
 	if (!rte_service_runstate_get(sw->service_id)) {
-		SW_LOG_ERR("Warning: No Service core enabled on service %s\n",
+		SW_LOG_ERR("Warning: No Service core enabled on service %s",
 				sw->service_name);
 		return -ENOENT;
 	}
@@ -783,7 +780,7 @@ sw_start(struct rte_eventdev *dev)
 	/* check all ports are set up */
 	for (i = 0; i < sw->port_count; i++)
 		if (sw->ports[i].rx_worker_ring == NULL) {
-			SW_LOG_ERR("Port %d not configured\n", i);
+			SW_LOG_ERR("Port %d not configured", i);
 			return -ESTALE;
 		}
 
@@ -791,7 +788,7 @@ sw_start(struct rte_eventdev *dev)
 	for (i = 0; i < sw->qid_count; i++)
 		if (!sw->qids[i].initialized ||
 		    sw->qids[i].cq_num_mapped_cqs == 0) {
-			SW_LOG_ERR("Queue %d not configured\n", i);
+			SW_LOG_ERR("Queue %d not configured", i);
 			return -ENOLINK;
 		}
 
@@ -1003,7 +1000,7 @@ sw_probe(struct rte_vdev_device *vdev)
 
 		if (!kvlist) {
 			SW_LOG_INFO(
-				"Ignoring unsupported parameters when creating device '%s'\n",
+				"Ignoring unsupported parameters when creating device '%s'",
 				name);
 		} else {
 			int ret = rte_kvargs_process(kvlist, NUMA_NODE_ARG,
@@ -1073,7 +1070,7 @@ sw_probe(struct rte_vdev_device *vdev)
 	SW_LOG_INFO(
 			"Creating eventdev sw device %s, numa_node=%d, "
 			"sched_quanta=%d, credit_quanta=%d "
-			"min_burst=%d, deq_burst=%d, refill_once=%d\n",
+			"min_burst=%d, deq_burst=%d, refill_once=%d",
 			name, socket_id, sched_quanta, credit_quanta,
 			min_burst_size, deq_burst_size, refill_once);
 
@@ -1084,11 +1081,9 @@ sw_probe(struct rte_vdev_device *vdev)
 		return -EFAULT;
 	}
 	dev->dev_ops = &evdev_sw_ops;
-	dev->enqueue = sw_event_enqueue;
 	dev->enqueue_burst = sw_event_enqueue_burst;
 	dev->enqueue_new_burst = sw_event_enqueue_burst;
 	dev->enqueue_forward_burst = sw_event_enqueue_burst;
-	dev->dequeue = sw_event_dequeue;
 	dev->dequeue_burst = sw_event_dequeue_burst;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -1137,7 +1132,7 @@ sw_remove(struct rte_vdev_device *vdev)
 	if (name == NULL)
 		return -EINVAL;
 
-	SW_LOG_INFO("Closing eventdev sw device %s\n", name);
+	SW_LOG_INFO("Closing eventdev sw device %s", name);
 
 	return rte_event_pmd_vdev_uninit(name);
 }

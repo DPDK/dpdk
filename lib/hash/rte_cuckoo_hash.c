@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_prefetch.h>
@@ -32,6 +33,24 @@ RTE_LOG_REGISTER_DEFAULT(hash_logtype, INFO);
 	RTE_LOG_LINE(level, HASH, "" __VA_ARGS__)
 
 #include "rte_cuckoo_hash.h"
+
+/* Enum used to select the implementation of the signature comparison function to use
+ * eg: a system supporting SVE might want to use a NEON or scalar implementation.
+ */
+enum rte_hash_sig_compare_function {
+	RTE_HASH_COMPARE_SCALAR = 0,
+	RTE_HASH_COMPARE_SSE,
+	RTE_HASH_COMPARE_NEON,
+	RTE_HASH_COMPARE_SVE,
+};
+
+#if defined(__ARM_NEON)
+#include "compare_signatures_arm.h"
+#elif defined(__SSE2__)
+#include "compare_signatures_x86.h"
+#else
+#include "compare_signatures_generic.h"
+#endif
 
 /* Mask of all flags supported by this version */
 #define RTE_HASH_EXTRA_FLAGS_MASK (RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT | \
@@ -58,6 +77,7 @@ struct __rte_hash_rcu_dq_entry {
 	uint32_t ext_bkt_idx;
 };
 
+RTE_EXPORT_SYMBOL(rte_hash_find_existing)
 struct rte_hash *
 rte_hash_find_existing(const char *name)
 {
@@ -90,6 +110,7 @@ rte_hash_get_last_bkt(struct rte_hash_bucket *lst_bkt)
 	return lst_bkt;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_set_cmp_func)
 void rte_hash_set_cmp_func(struct rte_hash *h, rte_hash_cmp_eq_t func)
 {
 	h->cmp_jump_table_idx = KEY_CUSTOM;
@@ -135,6 +156,7 @@ get_alt_bucket_index(const struct rte_hash *h,
 	return (cur_bkt_idx ^ sig) & h->bucket_bitmask;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_create)
 struct rte_hash *
 rte_hash_create(const struct rte_hash_parameters *params)
 {
@@ -148,7 +170,6 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	void *buckets = NULL;
 	void *buckets_ext = NULL;
 	char ring_name[RTE_RING_NAMESIZE];
-	char ext_ring_name[RTE_RING_NAMESIZE];
 	unsigned num_key_slots;
 	unsigned int hw_trans_mem_support = 0, use_local_cache = 0;
 	unsigned int ext_table_support = 0;
@@ -166,22 +187,44 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	hash_list = RTE_TAILQ_CAST(rte_hash_tailq.head, rte_hash_list);
 
 	if (params == NULL) {
+		rte_errno = EINVAL;
 		HASH_LOG(ERR, "%s has no parameters", __func__);
 		return NULL;
 	}
 
 	/* Check for valid parameters */
 	if ((params->entries > RTE_HASH_ENTRIES_MAX) ||
-			(params->entries < RTE_HASH_BUCKET_ENTRIES) ||
-			(params->key_len == 0)) {
+			(params->entries < RTE_HASH_BUCKET_ENTRIES)) {
 		rte_errno = EINVAL;
-		HASH_LOG(ERR, "%s has invalid parameters", __func__);
+		HASH_LOG(ERR, "%s() entries (%u) must be in range [%d, %d] inclusive",
+			__func__, params->entries, RTE_HASH_BUCKET_ENTRIES,
+			RTE_HASH_ENTRIES_MAX);
+		return NULL;
+	}
+
+	if (params->key_len == 0) {
+		rte_errno = EINVAL;
+		HASH_LOG(ERR, "%s() key_len must be greater than 0", __func__);
 		return NULL;
 	}
 
 	if (params->extra_flag & ~RTE_HASH_EXTRA_FLAGS_MASK) {
 		rte_errno = EINVAL;
 		HASH_LOG(ERR, "%s: unsupported extra flags", __func__);
+		return NULL;
+	}
+
+	if (params->name == NULL) {
+		rte_errno = EINVAL;
+		HASH_LOG(ERR, "%s() has invalid parameters, name can't be NULL",
+			__func__);
+		return NULL;
+	}
+
+	if (strlen(params->name) >= RTE_HASH_NAMESIZE) {
+		rte_errno = ENAMETOOLONG;
+		HASH_LOG(ERR, "%s() name '%s' exceeds maximum length %d",
+			__func__, params->name, RTE_HASH_NAMESIZE);
 		return NULL;
 	}
 
@@ -235,12 +278,16 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	else
 		num_key_slots = params->entries + 1;
 
-	snprintf(ring_name, sizeof(ring_name), "HT_%s", params->name);
+	/* Ring name may get truncated, conflict detected on ring creation */
+	if (snprintf(ring_name, sizeof(ring_name), "HT_%s", params->name)
+			>= (int)sizeof(ring_name))
+		HASH_LOG(NOTICE, "ring name truncated to '%s'", ring_name);
+
 	/* Create ring (Dummy slot index is not enqueued) */
 	r = rte_ring_create_elem(ring_name, sizeof(uint32_t),
 			rte_align32pow2(num_key_slots), params->socket_id, 0);
 	if (r == NULL) {
-		HASH_LOG(ERR, "memory allocation failed");
+		HASH_LOG(ERR, "ring creation failed: %s", rte_strerror(rte_errno));
 		goto err;
 	}
 
@@ -249,20 +296,25 @@ rte_hash_create(const struct rte_hash_parameters *params)
 
 	/* Create ring for extendable buckets. */
 	if (ext_table_support) {
-		snprintf(ext_ring_name, sizeof(ext_ring_name), "HT_EXT_%s",
-								params->name);
+		char ext_ring_name[RTE_RING_NAMESIZE];
+
+		if (snprintf(ext_ring_name, sizeof(ext_ring_name), "HT_EXT_%s", params->name)
+				>= (int)sizeof(ext_ring_name))
+			HASH_LOG(NOTICE, "external ring name truncated to '%s'", ext_ring_name);
+
 		r_ext = rte_ring_create_elem(ext_ring_name, sizeof(uint32_t),
 				rte_align32pow2(num_buckets + 1),
 				params->socket_id, 0);
-
 		if (r_ext == NULL) {
-			HASH_LOG(ERR, "ext buckets memory allocation "
-								"failed");
+			HASH_LOG(ERR, "ext buckets ring create failed: %s",
+				rte_strerror(rte_errno));
 			goto err;
 		}
 	}
 
-	snprintf(hash_name, sizeof(hash_name), "HT_%s", params->name);
+	if (snprintf(hash_name, sizeof(hash_name), "HT_%s", params->name)
+			>= (int)sizeof(hash_name))
+		HASH_LOG(NOTICE, "%s() hash name truncated to '%s'", __func__, hash_name);
 
 	rte_mcfg_tailq_write_lock();
 
@@ -442,8 +494,13 @@ rte_hash_create(const struct rte_hash_parameters *params)
 		h->sig_cmp_fn = RTE_HASH_COMPARE_SSE;
 	else
 #elif defined(RTE_ARCH_ARM64)
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON))
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON)) {
 		h->sig_cmp_fn = RTE_HASH_COMPARE_NEON;
+#if defined(RTE_HAS_SVE_ACLE)
+		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SVE))
+			h->sig_cmp_fn = RTE_HASH_COMPARE_SVE;
+#endif
+	}
 	else
 #endif
 		h->sig_cmp_fn = RTE_HASH_COMPARE_SCALAR;
@@ -481,11 +538,12 @@ err:
 	rte_free(buckets);
 	rte_free(buckets_ext);
 	rte_free(k);
-	rte_free(tbl_chng_cnt);
+	rte_free((void *)(uintptr_t)tbl_chng_cnt);
 	rte_free(ext_bkt_to_free);
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_free)
 void
 rte_hash_free(struct rte_hash *h)
 {
@@ -526,13 +584,14 @@ rte_hash_free(struct rte_hash *h)
 	rte_free(h->key_store);
 	rte_free(h->buckets);
 	rte_free(h->buckets_ext);
-	rte_free(h->tbl_chng_cnt);
+	rte_free((void *)(uintptr_t)h->tbl_chng_cnt);
 	rte_free(h->ext_bkt_to_free);
 	rte_free(h->hash_rcu_cfg);
 	rte_free(h);
 	rte_free(te);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_hash)
 hash_sig_t
 rte_hash_hash(const struct rte_hash *h, const void *key)
 {
@@ -540,6 +599,7 @@ rte_hash_hash(const struct rte_hash *h, const void *key)
 	return h->hash_func(key, h->key_len, h->hash_func_init_val);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_max_key_id)
 int32_t
 rte_hash_max_key_id(const struct rte_hash *h)
 {
@@ -555,6 +615,7 @@ rte_hash_max_key_id(const struct rte_hash *h)
 		return h->entries;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_count)
 int32_t
 rte_hash_count(const struct rte_hash *h)
 {
@@ -582,7 +643,7 @@ rte_hash_count(const struct rte_hash *h)
 /* Read write locks implemented using rte_rwlock */
 static inline void
 __hash_rw_writer_lock(const struct rte_hash *h)
-	__rte_exclusive_lock_function(&h->readwrite_lock)
+	__rte_acquire_capability(&h->readwrite_lock)
 	__rte_no_thread_safety_analysis
 {
 	if (h->writer_takes_lock && h->hw_trans_mem_support)
@@ -593,7 +654,7 @@ __hash_rw_writer_lock(const struct rte_hash *h)
 
 static inline void
 __hash_rw_reader_lock(const struct rte_hash *h)
-	__rte_shared_lock_function(&h->readwrite_lock)
+	__rte_acquire_shared_capability(&h->readwrite_lock)
 	__rte_no_thread_safety_analysis
 {
 	if (h->readwrite_concur_support && h->hw_trans_mem_support)
@@ -604,7 +665,7 @@ __hash_rw_reader_lock(const struct rte_hash *h)
 
 static inline void
 __hash_rw_writer_unlock(const struct rte_hash *h)
-	__rte_unlock_function(&h->readwrite_lock)
+	__rte_release_capability(&h->readwrite_lock)
 	__rte_no_thread_safety_analysis
 {
 	if (h->writer_takes_lock && h->hw_trans_mem_support)
@@ -615,7 +676,7 @@ __hash_rw_writer_unlock(const struct rte_hash *h)
 
 static inline void
 __hash_rw_reader_unlock(const struct rte_hash *h)
-	__rte_unlock_function(&h->readwrite_lock)
+	__rte_release_shared_capability(&h->readwrite_lock)
 	__rte_no_thread_safety_analysis
 {
 	if (h->readwrite_concur_support && h->hw_trans_mem_support)
@@ -624,6 +685,7 @@ __hash_rw_reader_unlock(const struct rte_hash *h)
 		rte_rwlock_read_unlock(h->readwrite_lock);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_reset)
 void
 rte_hash_reset(struct rte_hash *h)
 {
@@ -1207,6 +1269,7 @@ failure:
 
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_add_key_with_hash)
 int32_t
 rte_hash_add_key_with_hash(const struct rte_hash *h,
 			const void *key, hash_sig_t sig)
@@ -1215,6 +1278,7 @@ rte_hash_add_key_with_hash(const struct rte_hash *h,
 	return __rte_hash_add_key_with_hash(h, key, sig, 0);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_add_key)
 int32_t
 rte_hash_add_key(const struct rte_hash *h, const void *key)
 {
@@ -1222,6 +1286,7 @@ rte_hash_add_key(const struct rte_hash *h, const void *key)
 	return __rte_hash_add_key_with_hash(h, key, rte_hash_hash(h, key), 0);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_add_key_with_hash_data)
 int
 rte_hash_add_key_with_hash_data(const struct rte_hash *h,
 			const void *key, hash_sig_t sig, void *data)
@@ -1236,6 +1301,7 @@ rte_hash_add_key_with_hash_data(const struct rte_hash *h,
 		return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_add_key_data)
 int
 rte_hash_add_key_data(const struct rte_hash *h, const void *key, void *data)
 {
@@ -1429,6 +1495,7 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 		return __rte_hash_lookup_with_hash_l(h, key, sig, data);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_with_hash)
 int32_t
 rte_hash_lookup_with_hash(const struct rte_hash *h,
 			const void *key, hash_sig_t sig)
@@ -1437,6 +1504,7 @@ rte_hash_lookup_with_hash(const struct rte_hash *h,
 	return __rte_hash_lookup_with_hash(h, key, sig, NULL);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup)
 int32_t
 rte_hash_lookup(const struct rte_hash *h, const void *key)
 {
@@ -1444,6 +1512,7 @@ rte_hash_lookup(const struct rte_hash *h, const void *key)
 	return __rte_hash_lookup_with_hash(h, key, rte_hash_hash(h, key), NULL);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_with_hash_data)
 int
 rte_hash_lookup_with_hash_data(const struct rte_hash *h,
 			const void *key, hash_sig_t sig, void **data)
@@ -1452,6 +1521,7 @@ rte_hash_lookup_with_hash_data(const struct rte_hash *h,
 	return __rte_hash_lookup_with_hash(h, key, sig, data);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_data)
 int
 rte_hash_lookup_data(const struct rte_hash *h, const void *key, void **data)
 {
@@ -1519,6 +1589,7 @@ __hash_rcu_qsbr_free_resource(void *p, void *e, unsigned int n)
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_rcu_qsbr_add)
 int
 rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg)
 {
@@ -1550,13 +1621,15 @@ rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg)
 		/* No other things to do. */
 	} else if (cfg->mode == RTE_HASH_QSBR_MODE_DQ) {
 		/* Init QSBR defer queue. */
-		snprintf(rcu_dq_name, sizeof(rcu_dq_name),
-					"HASH_RCU_%s", h->name);
+		if (snprintf(rcu_dq_name, sizeof(rcu_dq_name), "HASH_RCU_%s", h->name)
+				>= (int)sizeof(rcu_dq_name))
+			HASH_LOG(NOTICE, "HASH defer queue name truncated to: %s", rcu_dq_name);
 		params.name = rcu_dq_name;
 		params.size = cfg->dq_size;
 		if (params.size == 0)
 			params.size = total_entries;
 		params.trigger_reclaim_limit = cfg->trigger_reclaim_limit;
+		params.max_reclaim_size = cfg->max_reclaim_size;
 		if (params.max_reclaim_size == 0)
 			params.max_reclaim_size = RTE_HASH_RCU_DQ_RECLAIM_MAX;
 		params.esize = sizeof(struct __rte_hash_rcu_dq_entry);
@@ -1566,7 +1639,8 @@ rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg)
 		h->dq = rte_rcu_qsbr_dq_create(&params);
 		if (h->dq == NULL) {
 			rte_free(hash_rcu_cfg);
-			HASH_LOG(ERR, "HASH defer queue creation failed");
+			HASH_LOG(ERR, "HASH defer queue creation failed: %s",
+				rte_strerror(rte_errno));
 			return 1;
 		}
 	} else {
@@ -1584,6 +1658,28 @@ rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg)
 	hash_rcu_cfg->key_data_ptr = cfg->key_data_ptr;
 
 	h->hash_rcu_cfg = hash_rcu_cfg;
+
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_hash_rcu_qsbr_dq_reclaim, 24.07)
+int rte_hash_rcu_qsbr_dq_reclaim(struct rte_hash *h, unsigned int *freed, unsigned int *pending,
+				 unsigned int *available)
+{
+	int ret;
+
+	if (h == NULL || h->hash_rcu_cfg == NULL) {
+		HASH_LOG(ERR, "Invalid input parameter");
+		rte_errno = EINVAL;
+		return 1;
+	}
+
+	ret = rte_rcu_qsbr_dq_reclaim(h->dq, h->hash_rcu_cfg->max_reclaim_size, freed, pending,
+				      available);
+	if (ret != 0) {
+		HASH_LOG(ERR, "%s: could not reclaim the defer queue in hash table", __func__);
+		return 1;
+	}
 
 	return 0;
 }
@@ -1791,6 +1887,7 @@ return_key:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_del_key_with_hash)
 int32_t
 rte_hash_del_key_with_hash(const struct rte_hash *h,
 			const void *key, hash_sig_t sig)
@@ -1799,6 +1896,7 @@ rte_hash_del_key_with_hash(const struct rte_hash *h,
 	return __rte_hash_del_key_with_hash(h, key, sig);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_del_key)
 int32_t
 rte_hash_del_key(const struct rte_hash *h, const void *key)
 {
@@ -1806,6 +1904,7 @@ rte_hash_del_key(const struct rte_hash *h, const void *key)
 	return __rte_hash_del_key_with_hash(h, key, rte_hash_hash(h, key));
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_get_key_with_position)
 int
 rte_hash_get_key_with_position(const struct rte_hash *h, const int32_t position,
 			       void **key)
@@ -1826,6 +1925,7 @@ rte_hash_get_key_with_position(const struct rte_hash *h, const int32_t position,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_free_key_with_position)
 int
 rte_hash_free_key_with_position(const struct rte_hash *h,
 				const int32_t position)
@@ -1858,63 +1958,6 @@ rte_hash_free_key_with_position(const struct rte_hash *h,
 }
 
 static inline void
-compare_signatures(uint32_t *prim_hash_matches, uint32_t *sec_hash_matches,
-			const struct rte_hash_bucket *prim_bkt,
-			const struct rte_hash_bucket *sec_bkt,
-			uint16_t sig,
-			enum rte_hash_sig_compare_function sig_cmp_fn)
-{
-	unsigned int i;
-
-	/* For match mask the first bit of every two bits indicates the match */
-	switch (sig_cmp_fn) {
-#if defined(__SSE2__)
-	case RTE_HASH_COMPARE_SSE:
-		/* Compare all signatures in the bucket */
-		*prim_hash_matches = _mm_movemask_epi8(_mm_cmpeq_epi16(
-				_mm_load_si128(
-					(__m128i const *)prim_bkt->sig_current),
-				_mm_set1_epi16(sig)));
-		/* Extract the even-index bits only */
-		*prim_hash_matches &= 0x5555;
-		/* Compare all signatures in the bucket */
-		*sec_hash_matches = _mm_movemask_epi8(_mm_cmpeq_epi16(
-				_mm_load_si128(
-					(__m128i const *)sec_bkt->sig_current),
-				_mm_set1_epi16(sig)));
-		/* Extract the even-index bits only */
-		*sec_hash_matches &= 0x5555;
-		break;
-#elif defined(__ARM_NEON)
-	case RTE_HASH_COMPARE_NEON: {
-		uint16x8_t vmat, vsig, x;
-		int16x8_t shift = {-15, -13, -11, -9, -7, -5, -3, -1};
-
-		vsig = vld1q_dup_u16((uint16_t const *)&sig);
-		/* Compare all signatures in the primary bucket */
-		vmat = vceqq_u16(vsig,
-			vld1q_u16((uint16_t const *)prim_bkt->sig_current));
-		x = vshlq_u16(vandq_u16(vmat, vdupq_n_u16(0x8000)), shift);
-		*prim_hash_matches = (uint32_t)(vaddvq_u16(x));
-		/* Compare all signatures in the secondary bucket */
-		vmat = vceqq_u16(vsig,
-			vld1q_u16((uint16_t const *)sec_bkt->sig_current));
-		x = vshlq_u16(vandq_u16(vmat, vdupq_n_u16(0x8000)), shift);
-		*sec_hash_matches = (uint32_t)(vaddvq_u16(x));
-		}
-		break;
-#endif
-	default:
-		for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-			*prim_hash_matches |=
-				((sig == prim_bkt->sig_current[i]) << (i << 1));
-			*sec_hash_matches |=
-				((sig == sec_bkt->sig_current[i]) << (i << 1));
-		}
-	}
-}
-
-static inline void
 __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 		const struct rte_hash_bucket **primary_bkt,
 		const struct rte_hash_bucket **secondary_bkt,
@@ -1924,22 +1967,41 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 	uint64_t hits = 0;
 	int32_t i;
 	int32_t ret;
-	uint32_t prim_hitmask[RTE_HASH_LOOKUP_BULK_MAX] = {0};
-	uint32_t sec_hitmask[RTE_HASH_LOOKUP_BULK_MAX] = {0};
 	struct rte_hash_bucket *cur_bkt, *next_bkt;
+
+#if DENSE_HASH_BULK_LOOKUP
+	const int hitmask_padding = 0;
+	uint16_t hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+#else
+	const int hitmask_padding = 1;
+	uint32_t prim_hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+	uint32_t sec_hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+#endif
 
 	__hash_rw_reader_lock(h);
 
 	/* Compare signatures and prefetch key slot of first hit */
 	for (i = 0; i < num_keys; i++) {
-		compare_signatures(&prim_hitmask[i], &sec_hitmask[i],
+#if DENSE_HASH_BULK_LOOKUP
+		uint16_t *hitmask = &hitmask_buffer[i];
+		compare_signatures_dense(hitmask,
+			primary_bkt[i]->sig_current,
+			secondary_bkt[i]->sig_current,
+			sig[i], h->sig_cmp_fn);
+		const unsigned int prim_hitmask = *(uint8_t *)(hitmask);
+		const unsigned int sec_hitmask = *((uint8_t *)(hitmask)+1);
+#else
+		compare_signatures_sparse(&prim_hitmask_buffer[i], &sec_hitmask_buffer[i],
 			primary_bkt[i], secondary_bkt[i],
 			sig[i], h->sig_cmp_fn);
+		const unsigned int prim_hitmask = prim_hitmask_buffer[i];
+		const unsigned int sec_hitmask = sec_hitmask_buffer[i];
+#endif
 
-		if (prim_hitmask[i]) {
+		if (prim_hitmask) {
 			uint32_t first_hit =
-					rte_ctz32(prim_hitmask[i])
-					>> 1;
+					rte_ctz32(prim_hitmask)
+					>> hitmask_padding;
 			uint32_t key_idx =
 				primary_bkt[i]->key_idx[first_hit];
 			const struct rte_hash_key *key_slot =
@@ -1950,10 +2012,10 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 			continue;
 		}
 
-		if (sec_hitmask[i]) {
+		if (sec_hitmask) {
 			uint32_t first_hit =
-					rte_ctz32(sec_hitmask[i])
-					>> 1;
+					rte_ctz32(sec_hitmask)
+					>> hitmask_padding;
 			uint32_t key_idx =
 				secondary_bkt[i]->key_idx[first_hit];
 			const struct rte_hash_key *key_slot =
@@ -1967,10 +2029,18 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 	/* Compare keys, first hits in primary first */
 	for (i = 0; i < num_keys; i++) {
 		positions[i] = -ENOENT;
-		while (prim_hitmask[i]) {
+#if DENSE_HASH_BULK_LOOKUP
+		uint16_t *hitmask = &hitmask_buffer[i];
+		unsigned int prim_hitmask = *(uint8_t *)(hitmask);
+		unsigned int sec_hitmask = *((uint8_t *)(hitmask)+1);
+#else
+		unsigned int prim_hitmask = prim_hitmask_buffer[i];
+		unsigned int sec_hitmask = sec_hitmask_buffer[i];
+#endif
+		while (prim_hitmask) {
 			uint32_t hit_index =
-					rte_ctz32(prim_hitmask[i])
-					>> 1;
+					rte_ctz32(prim_hitmask)
+					>> hitmask_padding;
 			uint32_t key_idx =
 				primary_bkt[i]->key_idx[hit_index];
 			const struct rte_hash_key *key_slot =
@@ -1992,13 +2062,13 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 				positions[i] = key_idx - 1;
 				goto next_key;
 			}
-			prim_hitmask[i] &= ~(3ULL << (hit_index << 1));
+			prim_hitmask &= ~(1 << (hit_index << hitmask_padding));
 		}
 
-		while (sec_hitmask[i]) {
+		while (sec_hitmask) {
 			uint32_t hit_index =
-					rte_ctz32(sec_hitmask[i])
-					>> 1;
+					rte_ctz32(sec_hitmask)
+					>> hitmask_padding;
 			uint32_t key_idx =
 				secondary_bkt[i]->key_idx[hit_index];
 			const struct rte_hash_key *key_slot =
@@ -2021,7 +2091,7 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 				positions[i] = key_idx - 1;
 				goto next_key;
 			}
-			sec_hitmask[i] &= ~(3ULL << (hit_index << 1));
+			sec_hitmask &= ~(1 << (hit_index << hitmask_padding));
 		}
 next_key:
 		continue;
@@ -2071,10 +2141,19 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 	uint64_t hits = 0;
 	int32_t i;
 	int32_t ret;
-	uint32_t prim_hitmask[RTE_HASH_LOOKUP_BULK_MAX] = {0};
-	uint32_t sec_hitmask[RTE_HASH_LOOKUP_BULK_MAX] = {0};
 	struct rte_hash_bucket *cur_bkt, *next_bkt;
 	uint32_t cnt_b, cnt_a;
+
+#if DENSE_HASH_BULK_LOOKUP
+	const int hitmask_padding = 0;
+	uint16_t hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+	static_assert(sizeof(*hitmask_buffer)*8/2 == RTE_HASH_BUCKET_ENTRIES,
+	"The hitmask must be exactly wide enough to accept the whole hitmask chen it is dense");
+#else
+	const int hitmask_padding = 1;
+	uint32_t prim_hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+	uint32_t sec_hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+#endif
 
 	for (i = 0; i < num_keys; i++)
 		positions[i] = -ENOENT;
@@ -2089,14 +2168,26 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 
 		/* Compare signatures and prefetch key slot of first hit */
 		for (i = 0; i < num_keys; i++) {
-			compare_signatures(&prim_hitmask[i], &sec_hitmask[i],
+#if DENSE_HASH_BULK_LOOKUP
+			uint16_t *hitmask = &hitmask_buffer[i];
+			compare_signatures_dense(hitmask,
+				primary_bkt[i]->sig_current,
+				secondary_bkt[i]->sig_current,
+				sig[i], h->sig_cmp_fn);
+			const unsigned int prim_hitmask = *(uint8_t *)(hitmask);
+			const unsigned int sec_hitmask = *((uint8_t *)(hitmask)+1);
+#else
+			compare_signatures_sparse(&prim_hitmask_buffer[i], &sec_hitmask_buffer[i],
 				primary_bkt[i], secondary_bkt[i],
 				sig[i], h->sig_cmp_fn);
+			const unsigned int prim_hitmask = prim_hitmask_buffer[i];
+			const unsigned int sec_hitmask = sec_hitmask_buffer[i];
+#endif
 
-			if (prim_hitmask[i]) {
+			if (prim_hitmask) {
 				uint32_t first_hit =
-						rte_ctz32(prim_hitmask[i])
-						>> 1;
+						rte_ctz32(prim_hitmask)
+						>> hitmask_padding;
 				uint32_t key_idx =
 					primary_bkt[i]->key_idx[first_hit];
 				const struct rte_hash_key *key_slot =
@@ -2107,10 +2198,10 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 				continue;
 			}
 
-			if (sec_hitmask[i]) {
+			if (sec_hitmask) {
 				uint32_t first_hit =
-						rte_ctz32(sec_hitmask[i])
-						>> 1;
+						rte_ctz32(sec_hitmask)
+						>> hitmask_padding;
 				uint32_t key_idx =
 					secondary_bkt[i]->key_idx[first_hit];
 				const struct rte_hash_key *key_slot =
@@ -2123,10 +2214,18 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 
 		/* Compare keys, first hits in primary first */
 		for (i = 0; i < num_keys; i++) {
-			while (prim_hitmask[i]) {
+#if DENSE_HASH_BULK_LOOKUP
+			uint16_t *hitmask = &hitmask_buffer[i];
+			unsigned int prim_hitmask = *(uint8_t *)(hitmask);
+			unsigned int sec_hitmask = *((uint8_t *)(hitmask)+1);
+#else
+			unsigned int prim_hitmask = prim_hitmask_buffer[i];
+			unsigned int sec_hitmask = sec_hitmask_buffer[i];
+#endif
+			while (prim_hitmask) {
 				uint32_t hit_index =
-						rte_ctz32(prim_hitmask[i])
-						>> 1;
+						rte_ctz32(prim_hitmask)
+						>> hitmask_padding;
 				uint32_t key_idx =
 				rte_atomic_load_explicit(
 					&primary_bkt[i]->key_idx[hit_index],
@@ -2152,13 +2251,13 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 					positions[i] = key_idx - 1;
 					goto next_key;
 				}
-				prim_hitmask[i] &= ~(3ULL << (hit_index << 1));
+				prim_hitmask &= ~(1 << (hit_index << hitmask_padding));
 			}
 
-			while (sec_hitmask[i]) {
+			while (sec_hitmask) {
 				uint32_t hit_index =
-						rte_ctz32(sec_hitmask[i])
-						>> 1;
+						rte_ctz32(sec_hitmask)
+						>> hitmask_padding;
 				uint32_t key_idx =
 				rte_atomic_load_explicit(
 					&secondary_bkt[i]->key_idx[hit_index],
@@ -2185,7 +2284,7 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 					positions[i] = key_idx - 1;
 					goto next_key;
 				}
-				sec_hitmask[i] &= ~(3ULL << (hit_index << 1));
+				sec_hitmask &= ~(1 << (hit_index << hitmask_padding));
 			}
 next_key:
 			continue;
@@ -2339,6 +2438,7 @@ __rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 					 hit_mask, data);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_bulk)
 int
 rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 		      uint32_t num_keys, int32_t *positions)
@@ -2351,6 +2451,7 @@ rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_bulk_data)
 int
 rte_hash_lookup_bulk_data(const struct rte_hash *h, const void **keys,
 		      uint32_t num_keys, uint64_t *hit_mask, void *data[])
@@ -2359,7 +2460,7 @@ rte_hash_lookup_bulk_data(const struct rte_hash *h, const void **keys,
 			(num_keys > RTE_HASH_LOOKUP_BULK_MAX) ||
 			(hit_mask == NULL)), -EINVAL);
 
-	int32_t positions[num_keys];
+	int32_t positions[RTE_HASH_LOOKUP_BULK_MAX];
 
 	__rte_hash_lookup_bulk(h, keys, num_keys, positions, hit_mask, data);
 
@@ -2451,6 +2552,7 @@ __rte_hash_lookup_with_hash_bulk(const struct rte_hash *h, const void **keys,
 				num_keys, positions, hit_mask, data);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_with_hash_bulk)
 int
 rte_hash_lookup_with_hash_bulk(const struct rte_hash *h, const void **keys,
 		hash_sig_t *sig, uint32_t num_keys, int32_t *positions)
@@ -2465,6 +2567,7 @@ rte_hash_lookup_with_hash_bulk(const struct rte_hash *h, const void **keys,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_with_hash_bulk_data)
 int
 rte_hash_lookup_with_hash_bulk_data(const struct rte_hash *h,
 		const void **keys, hash_sig_t *sig,
@@ -2475,7 +2578,7 @@ rte_hash_lookup_with_hash_bulk_data(const struct rte_hash *h,
 			(num_keys > RTE_HASH_LOOKUP_BULK_MAX) ||
 			(hit_mask == NULL)), -EINVAL);
 
-	int32_t positions[num_keys];
+	int32_t positions[RTE_HASH_LOOKUP_BULK_MAX];
 
 	__rte_hash_lookup_with_hash_bulk(h, keys, sig, num_keys,
 			positions, hit_mask, data);
@@ -2484,6 +2587,7 @@ rte_hash_lookup_with_hash_bulk_data(const struct rte_hash *h,
 	return rte_popcount64(*hit_mask);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_iterate)
 int32_t
 rte_hash_iterate(const struct rte_hash *h, const void **key, void **data, uint32_t *next)
 {

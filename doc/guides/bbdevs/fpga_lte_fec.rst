@@ -15,6 +15,7 @@ FPGA LTE FEC PMD supports the following features:
 
 - Turbo Encode in the DL with total throughput of 4.5 Gbits/s
 - Turbo Decode in the UL with total throughput of 1.5 Gbits/s assuming 8 decoder iterations
+- Support for code block level processing
 - 8 VFs per PF (physical device)
 - Maximum of 32 UL queues per VF
 - Maximum of 32 DL queues per VF
@@ -211,4 +212,4 @@ Specifically for the BBDEV FPGA LTE FEC PMD, the command below can be used:
 .. code-block:: console
 
   ./pf_bb_config FPGA_LTE -c fpga_lte/fpga_lte_config_vf.cfg
-  ./test-bbdev.py -e="-c 0xff0 -a${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./turbo_dec_default.data
+  ./test-bbdev.py -e="-l 4-11 -a${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./turbo_dec_default.data

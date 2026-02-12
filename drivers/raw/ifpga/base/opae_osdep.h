@@ -54,14 +54,14 @@ struct uuid {
 #define SET_FIELD(m, v) (((v) << (__builtin_ffsll(m) - 1)) & (m))
 #define GET_FIELD(m, v) (((v) & (m)) >> (__builtin_ffsll(m) - 1))
 
-#define dev_err(x, args...) dev_printf(ERR, args)
-#define dev_info(x, args...) dev_printf(INFO, args)
-#define dev_warn(x, args...) dev_printf(WARNING, args)
-#define dev_debug(x, args...) dev_printf(DEBUG, args)
+#define dev_err(x, ...) dev_printf(ERR, __VA_ARGS__)
+#define dev_info(x, ...) dev_printf(INFO, __VA_ARGS__)
+#define dev_warn(x, ...) dev_printf(WARNING, __VA_ARGS__)
+#define dev_debug(x, ...) dev_printf(DEBUG, __VA_ARGS__)
 
-#define pr_err(y, args...) dev_err(0, y, ##args)
-#define pr_warn(y, args...) dev_warn(0, y, ##args)
-#define pr_info(y, args...) dev_info(0, y, ##args)
+#define pr_err(y, ...) dev_err(0, y, ##__VA_ARGS__)
+#define pr_warn(y, ...) dev_warn(0, y, ##__VA_ARGS__)
+#define pr_info(y, ...) dev_info(0, y, ##__VA_ARGS__)
 
 #ifndef WARN_ON
 #define WARN_ON(x) do { \
@@ -80,13 +80,13 @@ struct uuid {
 #define time_before(a, b)	time_after(b, a)
 #define opae_memset(a, b, c)    memset((a), (b), (c))
 
-#define readx_poll_timeout(op, val, cond, invl, timeout, args...) \
+#define readx_poll_timeout(op, val, cond, invl, timeout, ...)         \
 __extension__ ({                                                      \
 	unsigned long __wait = 0;                                     \
 	unsigned long __invl = (invl);                                \
 	unsigned long __timeout = (timeout);                          \
 	for (; __wait <= __timeout; __wait += __invl) {               \
-		(val) = op(args);                                         \
+		(val) = op(__VA_ARGS__);                                  \
 		if (cond)                                                 \
 			break;                                                \
 		udelay(__invl);                                           \

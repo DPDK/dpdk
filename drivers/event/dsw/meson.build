@@ -2,6 +2,7 @@
 # Copyright(c) 2018 Ericsson AB
 
 deps += ['bus_vdev']
+cflags += no_wvla_cflag
 if cc.has_argument('-Wno-format-nonliteral')
     cflags += '-Wno-format-nonliteral'
 endif

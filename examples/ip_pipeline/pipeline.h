@@ -218,8 +218,8 @@ struct table_rule_match_acl {
 		} ipv4;
 
 		struct {
-			uint8_t sa[16];
-			uint8_t da[16];
+			struct rte_ipv6_addr sa;
+			struct rte_ipv6_addr da;
 		} ipv6;
 	};
 
@@ -255,7 +255,7 @@ struct table_rule_match_lpm {
 
 	union {
 		uint32_t ipv4;
-		uint8_t ipv6[16];
+		struct rte_ipv6_addr ipv6;
 	};
 
 	uint8_t depth;

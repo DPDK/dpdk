@@ -9,9 +9,9 @@
 /**< ISA-L comp PMD device name */
 
 extern int isal_logtype_driver;
-#define ISAL_PMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, isal_logtype_driver, "%s(): "fmt "\n", \
-			__func__, ##args)
+#define RTE_LOGTYPE_ISAL_DRIVER isal_logtype_driver
+#define ISAL_PMD_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, ISAL_DRIVER, "%s(): ", __func__, __VA_ARGS__)
 
 /* private data structure for each ISA-L compression device */
 struct isal_comp_private {
@@ -19,7 +19,7 @@ struct isal_comp_private {
 };
 
 /** ISA-L queue pair */
-struct isal_comp_qp {
+struct __rte_cache_aligned isal_comp_qp {
 	/* Queue Pair Identifier */
 	uint16_t id;
 	/* Unique Queue Pair Name */
@@ -34,17 +34,17 @@ struct isal_comp_qp {
 	struct inflate_state *state;
 	/* Number of free elements on ring */
 	uint16_t num_free_elements;
-} __rte_cache_aligned;
+};
 
 /** ISA-L private xform structure */
-struct isal_priv_xform {
+struct __rte_cache_aligned isal_priv_xform {
 	enum rte_comp_xform_type type;
 	union {
 		struct rte_comp_compress_xform compress;
 		struct rte_comp_decompress_xform decompress;
 	};
 	uint32_t level_buffer_size;
-} __rte_cache_aligned;
+};
 
 /** Set and validate NULL comp private xform parameters */
 extern int

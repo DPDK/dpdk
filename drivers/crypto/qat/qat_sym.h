@@ -103,10 +103,10 @@
 
 struct qat_sym_session;
 
-struct qat_sym_sgl {
+struct __rte_cache_aligned __rte_packed_begin qat_sym_sgl {
 	qat_sgl_hdr;
 	struct qat_flat_buf buffers[QAT_SYM_SGL_MAX_NUMBER];
-} __rte_packed __rte_cache_aligned;
+} __rte_packed_end;
 
 struct qat_sym_op_cookie {
 	struct qat_sym_sgl qat_sgl_src;
@@ -116,8 +116,8 @@ struct qat_sym_op_cookie {
 	union {
 		/* Used for Single-Pass AES-GMAC only */
 		struct {
-			struct icp_qat_hw_cipher_algo_blk cd_cipher
-					__rte_packed __rte_cache_aligned;
+			alignas(RTE_CACHE_LINE_SIZE) struct __rte_packed_begin
+				icp_qat_hw_cipher_algo_blk cd_cipher __rte_packed_end;
 			phys_addr_t cd_phys_addr;
 		} spc_gmac;
 	} opt;
@@ -267,8 +267,7 @@ qat_crc_verify(struct qat_sym_session *ctx, struct rte_crypto_op *op)
 		crc_data = rte_pktmbuf_mtod_offset(sym_op->m_src, uint8_t *,
 				crc_data_ofs);
 
-		crc = rte_net_crc_calc(crc_data, crc_data_len,
-				RTE_NET_CRC32_ETH);
+		crc = rte_net_crc_calc(ctx->crc, crc_data, crc_data_len);
 
 		if (crc != *(uint32_t *)(crc_data + crc_data_len))
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
@@ -291,8 +290,7 @@ qat_crc_generate(struct qat_sym_session *ctx,
 		crc_data = rte_pktmbuf_mtod_offset(sym_op->m_src, uint8_t *,
 				sym_op->auth.data.offset);
 		crc = (uint32_t *)(crc_data + crc_data_len);
-		*crc = rte_net_crc_calc(crc_data, crc_data_len,
-				RTE_NET_CRC32_ETH);
+		*crc = rte_net_crc_calc(ctx->crc, crc_data, crc_data_len);
 	}
 }
 

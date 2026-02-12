@@ -49,7 +49,7 @@ enum {
 };
 
 /* AGX100 TX Slice Descriptor. */
-struct __rte_packed agx100_input_slice_desc {
+struct __rte_packed_begin agx100_input_slice_desc {
 	uint32_t input_start_addr_lo;
 	uint32_t input_start_addr_hi;
 	uint32_t input_slice_length:21,
@@ -58,10 +58,10 @@ struct __rte_packed agx100_input_slice_desc {
 		start_of_pkt:1;
 	uint32_t input_slice_time_stamp:31,
 		input_c:1;
-};
+} __rte_packed_end;
 
 /* AGX100 RX Slice Descriptor. */
-struct __rte_packed agx100_output_slice_desc {
+struct __rte_packed_begin agx100_output_slice_desc {
 	uint32_t output_start_addr_lo;
 	uint32_t output_start_addr_hi;
 	uint32_t output_slice_length:21,
@@ -70,10 +70,10 @@ struct __rte_packed agx100_output_slice_desc {
 		start_of_pkt:1;
 	uint32_t output_slice_time_stamp:31,
 		output_c:1;
-};
+} __rte_packed_end;
 
 /* AGX100 DL DMA Encoding Request Descriptor. */
-struct __rte_packed agx100_dma_enc_desc {
+struct __rte_packed_begin agx100_dma_enc_desc {
 	uint32_t done:1, /**< 0: not completed 1: completed. */
 		rsrvd0:17,
 		error_msg:2,
@@ -161,10 +161,10 @@ struct __rte_packed agx100_dma_enc_desc {
 		uint8_t sw_ctxt[AGX100_RING_DESC_LEN_UNIT_BYTES *
 					(AGX100_RING_DESC_ENTRY_LENGTH - 1)];
 	};
-};
+} __rte_packed_end;
 
 /* AGX100 UL DMA Decoding Request Descriptor. */
-struct __rte_packed agx100_dma_dec_desc {
+struct __rte_packed_begin agx100_dma_dec_desc {
 	uint32_t done:1, /**< 0: not completed 1: completed. */
 		tb_crc_pass:1, /**< 0: doesn't pass 1: pass. */
 		cb_crc_all_pass:1, /**< 0: doesn't pass 1: pass. */
@@ -262,7 +262,7 @@ struct __rte_packed agx100_dma_dec_desc {
 		uint8_t sw_ctxt[AGX100_RING_DESC_LEN_UNIT_BYTES *
 					(AGX100_RING_DESC_ENTRY_LENGTH - 1)];
 	};
-};
+} __rte_packed_end;
 
 /* AGX100 DMA Descriptor. */
 union agx100_dma_desc {

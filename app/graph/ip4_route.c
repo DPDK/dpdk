@@ -18,7 +18,12 @@
 static const char
 cmd_ipv4_lookup_help[] = "ipv4_lookup route add ipv4 <ip> netmask <mask> via <ip>";
 
+static const char
+cmd_ipv4_lookup_mode_help[] = "ipv4_lookup mode <lpm|fib>";
+
 struct ip4_route route4 = TAILQ_HEAD_INITIALIZER(route4);
+
+enum ip4_lookup_mode ip4_lookup_m = IP4_LOOKUP_LPM;
 
 void
 route_ip4_list_clean(void)
@@ -62,6 +67,7 @@ route4_rewirte_table_update(struct route_ipv4_config *ipv4route)
 {
 	uint8_t depth;
 	int portid;
+	int rc;
 
 	portid = ethdev_portid_by_ip4(ipv4route->via, ipv4route->netmask);
 	if (portid < 0) {
@@ -71,8 +77,14 @@ route4_rewirte_table_update(struct route_ipv4_config *ipv4route)
 
 	depth = convert_netmask_to_depth(ipv4route->netmask);
 
-	return rte_node_ip4_route_add(ipv4route->ip, depth, portid,
-			RTE_NODE_IP4_LOOKUP_NEXT_REWRITE);
+	if (ip4_lookup_m == IP4_LOOKUP_FIB)
+		rc = rte_node_ip4_fib_route_add(ipv4route->ip, depth, portid,
+				RTE_NODE_IP4_LOOKUP_NEXT_REWRITE);
+	else
+		rc = rte_node_ip4_route_add(ipv4route->ip, depth, portid,
+				RTE_NODE_IP4_LOOKUP_NEXT_REWRITE);
+
+	return rc;
 }
 
 static int
@@ -134,9 +146,9 @@ cmd_help_ipv4_lookup_parsed(__rte_unused void *parsed_result, __rte_unused struc
 
 	len = strlen(conn->msg_out);
 	conn->msg_out += len;
-	snprintf(conn->msg_out, conn->msg_out_len_max, "\n%s\n%s\n",
+	snprintf(conn->msg_out, conn->msg_out_len_max, "\n%s\n%s\n%s\n",
 		 "--------------------------- ipv4_lookup command help ---------------------------",
-		 cmd_ipv4_lookup_help);
+		 cmd_ipv4_lookup_help, cmd_ipv4_lookup_mode_help);
 
 	len = strlen(conn->msg_out);
 	conn->msg_out_len_max -= len;
@@ -156,5 +168,19 @@ cmd_ipv4_lookup_route_add_ipv4_parsed(void *parsed_result, __rte_unused struct c
 
 	rc = route_ip4_add(&config);
 	if (rc < 0)
+		printf(MSG_CMD_FAIL, res->ipv4_lookup);
+}
+
+void
+cmd_ipv4_lookup_mode_parsed(void *parsed_result, __rte_unused struct cmdline *cl,
+			    void *data __rte_unused)
+{
+	struct cmd_ipv4_lookup_mode_result *res = parsed_result;
+
+	if (!strcmp(res->lkup_mode, "lpm"))
+		ip4_lookup_m = IP4_LOOKUP_LPM;
+	else if (!strcmp(res->lkup_mode, "fib"))
+		ip4_lookup_m = IP4_LOOKUP_FIB;
+	else
 		printf(MSG_CMD_FAIL, res->ipv4_lookup);
 }

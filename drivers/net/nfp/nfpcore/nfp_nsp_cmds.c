@@ -36,7 +36,7 @@ nfp_nsp_identify(struct nfp_nsp *nsp)
 	memset(ni, 0, sizeof(*ni));
 	ret = nfp_nsp_read_identify(nsp, ni, sizeof(*ni));
 	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "reading bsp version failed %d", ret);
+		PMD_DRV_LOG(ERR, "Reading BSP version failed %d.", ret);
 		goto exit_free;
 	}
 

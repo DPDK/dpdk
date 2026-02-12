@@ -334,4 +334,24 @@ get_sm2_ecdsa_verify_function(void)
 	return qat_function;
 }
 
+static struct qat_asym_function
+get_sm2_encryption_function(void)
+{
+	struct qat_asym_function qat_function = {
+		PKE_ECSM2_ENCRYPTION, 32
+	};
+
+	return qat_function;
+}
+
+static struct qat_asym_function
+get_sm2_decryption_function(void)
+{
+	struct qat_asym_function qat_function = {
+		PKE_ECSM2_DECRYPTION, 32
+	};
+
+	return qat_function;
+}
+
 #endif

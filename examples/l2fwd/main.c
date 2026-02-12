@@ -69,10 +69,10 @@ static uint32_t l2fwd_enabled_port_mask = 0;
 /* list of enabled ports */
 static uint32_t l2fwd_dst_ports[RTE_MAX_ETHPORTS];
 
-struct port_pair_params {
+struct __rte_cache_aligned port_pair_params {
 #define NUM_PORTS	2
 	uint16_t port[NUM_PORTS];
-} __rte_cache_aligned;
+};
 
 static struct port_pair_params port_pair_params_array[RTE_MAX_ETHPORTS / 2];
 static struct port_pair_params *port_pair_params;
@@ -83,10 +83,10 @@ static unsigned int l2fwd_rx_queue_per_lcore = 1;
 #define MAX_RX_QUEUE_PER_LCORE 16
 #define MAX_TX_QUEUE_PER_PORT 16
 /* List of queues to be polled for a given lcore. 8< */
-struct lcore_queue_conf {
+struct __rte_cache_aligned lcore_queue_conf {
 	unsigned n_rx_port;
 	unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
-} __rte_cache_aligned;
+};
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 /* >8 End of list of queues to be polled for a given lcore. */
 
@@ -101,11 +101,11 @@ static struct rte_eth_conf port_conf = {
 struct rte_mempool * l2fwd_pktmbuf_pool = NULL;
 
 /* Per-port statistics struct */
-struct l2fwd_port_statistics {
+struct __rte_cache_aligned l2fwd_port_statistics {
 	uint64_t tx;
 	uint64_t rx;
 	uint64_t dropped;
-} __rte_cache_aligned;
+};
 struct l2fwd_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 
 #define MAX_TIMER_PERIOD 86400 /* 1 day max */

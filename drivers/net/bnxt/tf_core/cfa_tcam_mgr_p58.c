@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2021-2023 Broadcom
+ * Copyright(c) 2021-2024 Broadcom
  * All rights reserved.
  */
 
@@ -12,6 +12,7 @@
 #include "tfp.h"
 #include "assert.h"
 #include "tf_util.h"
+#include "tf_session.h"
 
 /*
  * Sizings of the TCAMs on P5
@@ -126,93 +127,65 @@
  * Array sizes have 1 added to avoid zero length arrays.
  */
 
-static struct cfa_tcam_mgr_table_rows_1
-	cfa_tcam_mgr_table_rows_L2_CTXT_TCAM_RX[TF_TCAM_MAX_SESSIONS][L2_CTXT_TCAM_RX_NUM_ROWS + 1];
-static struct cfa_tcam_mgr_table_rows_1
-	cfa_tcam_mgr_table_rows_L2_CTXT_TCAM_TX[TF_TCAM_MAX_SESSIONS][L2_CTXT_TCAM_TX_NUM_ROWS + 1];
-static struct cfa_tcam_mgr_table_rows_1
-	cfa_tcam_mgr_table_rows_PROF_TCAM_RX[TF_TCAM_MAX_SESSIONS][PROF_TCAM_RX_NUM_ROWS + 1];
-static struct cfa_tcam_mgr_table_rows_1
-	cfa_tcam_mgr_table_rows_PROF_TCAM_TX[TF_TCAM_MAX_SESSIONS][PROF_TCAM_TX_NUM_ROWS + 1];
-static struct cfa_tcam_mgr_table_rows_4
-	cfa_tcam_mgr_table_rows_WC_TCAM_RX[TF_TCAM_MAX_SESSIONS][WC_TCAM_RX_NUM_ROWS + 1];
-static struct cfa_tcam_mgr_table_rows_4
-	cfa_tcam_mgr_table_rows_WC_TCAM_TX[TF_TCAM_MAX_SESSIONS][WC_TCAM_TX_NUM_ROWS + 1];
-static struct cfa_tcam_mgr_table_rows_1
-	cfa_tcam_mgr_table_rows_SP_TCAM_RX[TF_TCAM_MAX_SESSIONS][SP_TCAM_RX_NUM_ROWS + 1];
-static struct cfa_tcam_mgr_table_rows_1
-	cfa_tcam_mgr_table_rows_SP_TCAM_TX[TF_TCAM_MAX_SESSIONS][SP_TCAM_TX_NUM_ROWS + 1];
-static struct cfa_tcam_mgr_table_rows_1
-	cfa_tcam_mgr_table_rows_CT_RULE_TCAM_RX[TF_TCAM_MAX_SESSIONS][CT_RULE_TCAM_RX_NUM_ROWS + 1];
-static struct cfa_tcam_mgr_table_rows_1
-	cfa_tcam_mgr_table_rows_CT_RULE_TCAM_TX[TF_TCAM_MAX_SESSIONS][CT_RULE_TCAM_TX_NUM_ROWS + 1];
-static struct cfa_tcam_mgr_table_rows_1
-	cfa_tcam_mgr_table_rows_VEB_TCAM_RX[TF_TCAM_MAX_SESSIONS][VEB_TCAM_RX_NUM_ROWS + 1];
-static struct cfa_tcam_mgr_table_rows_1
-	cfa_tcam_mgr_table_rows_VEB_TCAM_TX[TF_TCAM_MAX_SESSIONS][VEB_TCAM_TX_NUM_ROWS + 1];
-static struct cfa_tcam_mgr_table_rows_4
-	cfa_tcam_mgr_table_rows_WC_TCAM_RX_HIGH[TF_TCAM_MAX_SESSIONS][WC_TCAM_RX_NUM_ROWS + 1];
-static struct cfa_tcam_mgr_table_rows_4
-	cfa_tcam_mgr_table_rows_WC_TCAM_RX_LOW[TF_TCAM_MAX_SESSIONS][WC_TCAM_RX_NUM_ROWS + 1];
-static struct cfa_tcam_mgr_table_rows_4
-	cfa_tcam_mgr_table_rows_WC_TCAM_TX_HIGH[TF_TCAM_MAX_SESSIONS][WC_TCAM_TX_NUM_ROWS + 1];
-static struct cfa_tcam_mgr_table_rows_4
-	cfa_tcam_mgr_table_rows_WC_TCAM_TX_LOW[TF_TCAM_MAX_SESSIONS][WC_TCAM_TX_NUM_ROWS + 1];
+struct cfa_tcam_mgr_table_rows_p58 {
+	struct cfa_tcam_mgr_table_rows_1
+		table_rows_L2_CTXT_TCAM_RX[L2_CTXT_TCAM_RX_NUM_ROWS + 1];
+	struct cfa_tcam_mgr_table_rows_1
+		table_rows_L2_CTXT_TCAM_TX[L2_CTXT_TCAM_TX_NUM_ROWS + 1];
+	struct cfa_tcam_mgr_table_rows_1
+		table_rows_PROF_TCAM_RX[PROF_TCAM_RX_NUM_ROWS + 1];
+	struct cfa_tcam_mgr_table_rows_1
+		table_rows_PROF_TCAM_TX[PROF_TCAM_TX_NUM_ROWS + 1];
+	struct cfa_tcam_mgr_table_rows_4
+		table_rows_WC_TCAM_RX[WC_TCAM_RX_NUM_ROWS + 1];
+	struct cfa_tcam_mgr_table_rows_4
+		table_rows_WC_TCAM_TX[WC_TCAM_TX_NUM_ROWS + 1];
+	struct cfa_tcam_mgr_table_rows_1
+		table_rows_SP_TCAM_RX[SP_TCAM_RX_NUM_ROWS + 1];
+	struct cfa_tcam_mgr_table_rows_1
+		table_rows_SP_TCAM_TX[SP_TCAM_TX_NUM_ROWS + 1];
+	struct cfa_tcam_mgr_table_rows_1
+		table_rows_CT_RULE_TCAM_RX[CT_RULE_TCAM_RX_NUM_ROWS + 1];
+	struct cfa_tcam_mgr_table_rows_1
+		table_rows_CT_RULE_TCAM_TX[CT_RULE_TCAM_TX_NUM_ROWS + 1];
+	struct cfa_tcam_mgr_table_rows_1
+		table_rows_VEB_TCAM_RX[VEB_TCAM_RX_NUM_ROWS + 1];
+	struct cfa_tcam_mgr_table_rows_1
+		table_rows_VEB_TCAM_TX[VEB_TCAM_TX_NUM_ROWS + 1];
+	struct cfa_tcam_mgr_table_rows_4
+		table_rows_WC_TCAM_RX_HIGH[WC_TCAM_RX_NUM_ROWS + 1];
+	struct cfa_tcam_mgr_table_rows_4
+		table_rows_WC_TCAM_RX_LOW[WC_TCAM_RX_NUM_ROWS + 1];
+	struct cfa_tcam_mgr_table_rows_4
+		table_rows_WC_TCAM_TX_HIGH[WC_TCAM_TX_NUM_ROWS + 1];
+	struct cfa_tcam_mgr_table_rows_4
+		table_rows_WC_TCAM_TX_LOW[WC_TCAM_TX_NUM_ROWS + 1];
+};
 
 struct cfa_tcam_mgr_table_data
 cfa_tcam_mgr_tables_p58[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 	{				/* RX */
-		{			/* High AFM */
-			.max_slices  = L2_CTXT_TCAM_RX_MAX_SLICES,
-			.row_width   = L2_CTXT_TCAM_RX_ROW_WIDTH,
-			.num_rows    = 0,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = L2_CTXT_TCAM_RX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_HIGH,
-		},
-		{			/* High APPS */
+		{
 			.max_slices  = L2_CTXT_TCAM_RX_MAX_SLICES,
 			.row_width   = L2_CTXT_TCAM_RX_ROW_WIDTH,
 			.num_rows    = L2_CTXT_TCAM_RX_NUM_ROWS,
 			.start_row   = 0,
-			.end_row     = (L2_CTXT_TCAM_RX_NUM_ROWS / 2) - 1,
+			.end_row     = L2_CTXT_TCAM_RX_APP_HI_END,
 			.max_entries = (L2_CTXT_TCAM_RX_MAX_ENTRIES / 2),
 			.result_size = L2_CTXT_TCAM_RX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_HIGH,
 		},
-		{			/* Low AFM */
-			.max_slices  = L2_CTXT_TCAM_RX_MAX_SLICES,
-			.row_width   = L2_CTXT_TCAM_RX_ROW_WIDTH,
-			.num_rows    = 0,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = L2_CTXT_TCAM_RX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_LOW,
-		},
-		{			/* Low APPS */
+		{
 			.max_slices  = L2_CTXT_TCAM_RX_MAX_SLICES,
 			.row_width   = L2_CTXT_TCAM_RX_ROW_WIDTH,
 			.num_rows    = L2_CTXT_TCAM_RX_NUM_ROWS,
-			.start_row   = (L2_CTXT_TCAM_RX_NUM_ROWS / 2),
+			.start_row   = L2_CTXT_TCAM_RX_APP_LO_START,
 			.end_row     = L2_CTXT_TCAM_RX_NUM_ROWS - 1,
 			.max_entries = (L2_CTXT_TCAM_RX_MAX_ENTRIES / 2),
 			.result_size = L2_CTXT_TCAM_RX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_LOW,
 		},
-		{			/* AFM */
-			.max_slices  = PROF_TCAM_RX_MAX_SLICES,
-			.row_width   = PROF_TCAM_RX_ROW_WIDTH,
-			.num_rows    = 0,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = PROF_TCAM_RX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P58_PROF_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = PROF_TCAM_RX_MAX_SLICES,
 			.row_width   = PROF_TCAM_RX_ROW_WIDTH,
 			.num_rows    = PROF_TCAM_RX_NUM_ROWS,
@@ -222,17 +195,7 @@ cfa_tcam_mgr_tables_p58[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = PROF_TCAM_RX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P58_PROF_TCAM,
 		},
-		{			/* AFM */
-			.max_slices  = WC_TCAM_RX_MAX_SLICES,
-			.row_width   = WC_TCAM_RX_ROW_WIDTH,
-			.num_rows    = WC_TCAM_RX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = WC_TCAM_RX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P58_WC_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = WC_TCAM_RX_MAX_SLICES,
 			.row_width   = WC_TCAM_RX_ROW_WIDTH,
 			.num_rows    = WC_TCAM_RX_NUM_ROWS,
@@ -242,16 +205,7 @@ cfa_tcam_mgr_tables_p58[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = WC_TCAM_RX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P58_WC_TCAM,
 		},
-		{			/* AFM */
-			.max_slices  = SP_TCAM_RX_MAX_SLICES,
-			.row_width   = SP_TCAM_RX_ROW_WIDTH,
-			.num_rows    = 0,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = SP_TCAM_RX_RESULT_SIZE,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = SP_TCAM_RX_MAX_SLICES,
 			.row_width   = SP_TCAM_RX_ROW_WIDTH,
 			.num_rows    = SP_TCAM_RX_NUM_ROWS,
@@ -260,45 +214,27 @@ cfa_tcam_mgr_tables_p58[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.max_entries = SP_TCAM_RX_MAX_ENTRIES,
 			.result_size = SP_TCAM_RX_RESULT_SIZE,
 		},
-		{			/* AFM */
-			.max_slices  = CT_RULE_TCAM_RX_MAX_SLICES,
-			.row_width   = CT_RULE_TCAM_RX_ROW_WIDTH,
-			.num_rows    = CT_RULE_TCAM_RX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = CT_RULE_TCAM_RX_RESULT_SIZE,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = CT_RULE_TCAM_RX_MAX_SLICES,
 			.row_width   = CT_RULE_TCAM_RX_ROW_WIDTH,
 			.num_rows    = CT_RULE_TCAM_RX_NUM_ROWS,
 			.start_row   = 0,
 #if CT_RULE_TCAM_RX_NUM_ROWS > 0
-			.end_row     = CT_RULE_TCAM_RX_NUM_ROWS - 1,
+			.end_row     =
+				TCAM_SET_END_ROW(CT_RULE_TCAM_RX_NUM_ROWS),
 #else
 			.end_row     = CT_RULE_TCAM_RX_NUM_ROWS,
 #endif
 			.max_entries = CT_RULE_TCAM_RX_MAX_ENTRIES,
 			.result_size = CT_RULE_TCAM_RX_RESULT_SIZE,
 		},
-		{			/* AFM */
-			.max_slices  = VEB_TCAM_RX_MAX_SLICES,
-			.row_width   = VEB_TCAM_RX_ROW_WIDTH,
-			.num_rows    = VEB_TCAM_RX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = VEB_TCAM_RX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P58_VEB_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = VEB_TCAM_RX_MAX_SLICES,
 			.row_width   = VEB_TCAM_RX_ROW_WIDTH,
 			.num_rows    = VEB_TCAM_RX_NUM_ROWS,
 			.start_row   = 0,
 #if VEB_TCAM_RX_NUM_ROWS > 0
-			.end_row     = VEB_TCAM_RX_NUM_ROWS - 1,
+			.end_row     = TCAM_SET_END_ROW(VEB_TCAM_RX_NUM_ROWS),
 #else
 			.end_row     = VEB_TCAM_RX_NUM_ROWS,
 #endif
@@ -306,17 +242,7 @@ cfa_tcam_mgr_tables_p58[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = VEB_TCAM_RX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P58_VEB_TCAM,
 		},
-		{			/* AFM */
-			.max_slices  = WC_TCAM_RX_MAX_SLICES,
-			.row_width   = WC_TCAM_RX_ROW_WIDTH,
-			.num_rows    = WC_TCAM_RX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = WC_TCAM_RX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P58_WC_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = WC_TCAM_RX_MAX_SLICES,
 			.row_width   = WC_TCAM_RX_ROW_WIDTH,
 			.num_rows    = WC_TCAM_RX_NUM_ROWS,
@@ -326,17 +252,7 @@ cfa_tcam_mgr_tables_p58[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = WC_TCAM_RX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P58_WC_TCAM,
 		},
-		{			/* AFM */
-			.max_slices  = WC_TCAM_RX_MAX_SLICES,
-			.row_width   = WC_TCAM_RX_ROW_WIDTH,
-			.num_rows    = WC_TCAM_RX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = WC_TCAM_RX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P58_WC_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = WC_TCAM_RX_MAX_SLICES,
 			.row_width   = WC_TCAM_RX_ROW_WIDTH,
 			.num_rows    = WC_TCAM_RX_NUM_ROWS,
@@ -348,57 +264,27 @@ cfa_tcam_mgr_tables_p58[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 		},
 	},
 	{				/* TX */
-		{			/* AFM */
+		{
 			.max_slices  = L2_CTXT_TCAM_TX_MAX_SLICES,
 			.row_width   = L2_CTXT_TCAM_TX_ROW_WIDTH,
 			.num_rows    = L2_CTXT_TCAM_TX_NUM_ROWS,
 			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = L2_CTXT_TCAM_TX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_HIGH,
-		},
-		{			/* APPS */
-			.max_slices  = L2_CTXT_TCAM_TX_MAX_SLICES,
-			.row_width   = L2_CTXT_TCAM_TX_ROW_WIDTH,
-			.num_rows    = L2_CTXT_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = (L2_CTXT_TCAM_TX_NUM_ROWS / 2) - 1,
+			.end_row     = L2_CTXT_TCAM_TX_APP_HI_END,
 			.max_entries = (L2_CTXT_TCAM_TX_MAX_ENTRIES / 2),
 			.result_size = L2_CTXT_TCAM_TX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_HIGH,
 		},
-		{			/* AFM */
+		{
 			.max_slices  = L2_CTXT_TCAM_TX_MAX_SLICES,
 			.row_width   = L2_CTXT_TCAM_TX_ROW_WIDTH,
 			.num_rows    = L2_CTXT_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = L2_CTXT_TCAM_TX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_LOW,
-		},
-		{			/* APPS */
-			.max_slices  = L2_CTXT_TCAM_TX_MAX_SLICES,
-			.row_width   = L2_CTXT_TCAM_TX_ROW_WIDTH,
-			.num_rows    = L2_CTXT_TCAM_TX_NUM_ROWS,
-			.start_row   = (L2_CTXT_TCAM_TX_NUM_ROWS / 2),
+			.start_row   = L2_CTXT_TCAM_TX_APP_LO_START,
 			.end_row     = L2_CTXT_TCAM_TX_NUM_ROWS - 1,
 			.max_entries = (L2_CTXT_TCAM_TX_MAX_ENTRIES / 2),
 			.result_size = L2_CTXT_TCAM_TX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_LOW,
 		},
-		{			/* AFM */
-			.max_slices  = PROF_TCAM_TX_MAX_SLICES,
-			.row_width   = PROF_TCAM_TX_ROW_WIDTH,
-			.num_rows    = PROF_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = PROF_TCAM_TX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P58_PROF_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = PROF_TCAM_TX_MAX_SLICES,
 			.row_width   = PROF_TCAM_TX_ROW_WIDTH,
 			.num_rows    = PROF_TCAM_TX_NUM_ROWS,
@@ -408,17 +294,7 @@ cfa_tcam_mgr_tables_p58[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = PROF_TCAM_TX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P58_PROF_TCAM,
 		},
-		{			/* AFM */
-			.max_slices  = WC_TCAM_TX_MAX_SLICES,
-			.row_width   = WC_TCAM_TX_ROW_WIDTH,
-			.num_rows    = WC_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = WC_TCAM_TX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P58_WC_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = WC_TCAM_TX_MAX_SLICES,
 			.row_width   = WC_TCAM_TX_ROW_WIDTH,
 			.num_rows    = WC_TCAM_TX_NUM_ROWS,
@@ -428,16 +304,7 @@ cfa_tcam_mgr_tables_p58[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = WC_TCAM_TX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P58_WC_TCAM,
 		},
-		{			/* AFM */
-			.max_slices  = SP_TCAM_TX_MAX_SLICES,
-			.row_width   = SP_TCAM_TX_ROW_WIDTH,
-			.num_rows    = SP_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = SP_TCAM_TX_RESULT_SIZE,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = SP_TCAM_TX_MAX_SLICES,
 			.row_width   = SP_TCAM_TX_ROW_WIDTH,
 			.num_rows    = SP_TCAM_TX_NUM_ROWS,
@@ -446,39 +313,21 @@ cfa_tcam_mgr_tables_p58[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.max_entries = SP_TCAM_TX_MAX_ENTRIES,
 			.result_size = SP_TCAM_TX_RESULT_SIZE,
 		},
-		{			/* AFM */
-			.max_slices  = CT_RULE_TCAM_TX_MAX_SLICES,
-			.row_width   = CT_RULE_TCAM_TX_ROW_WIDTH,
-			.num_rows    = CT_RULE_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = CT_RULE_TCAM_RX_RESULT_SIZE,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = CT_RULE_TCAM_TX_MAX_SLICES,
 			.row_width   = CT_RULE_TCAM_TX_ROW_WIDTH,
 			.num_rows    = CT_RULE_TCAM_TX_NUM_ROWS,
 			.start_row   = 0,
 #if CT_RULE_TCAM_TX_NUM_ROWS > 0
-			.end_row     = CT_RULE_TCAM_TX_NUM_ROWS - 1,
+			.end_row     =
+				TCAM_SET_END_ROW(CT_RULE_TCAM_TX_NUM_ROWS),
 #else
 			.end_row     = CT_RULE_TCAM_TX_NUM_ROWS,
 #endif
 			.max_entries = CT_RULE_TCAM_TX_MAX_ENTRIES,
 			.result_size = CT_RULE_TCAM_RX_RESULT_SIZE,
 		},
-		{			/* AFM */
-			.max_slices  = VEB_TCAM_TX_MAX_SLICES,
-			.row_width   = VEB_TCAM_TX_ROW_WIDTH,
-			.num_rows    = VEB_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = VEB_TCAM_RX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P58_VEB_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = VEB_TCAM_TX_MAX_SLICES,
 			.row_width   = VEB_TCAM_TX_ROW_WIDTH,
 			.num_rows    = VEB_TCAM_TX_NUM_ROWS,
@@ -488,17 +337,7 @@ cfa_tcam_mgr_tables_p58[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = VEB_TCAM_RX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P58_VEB_TCAM,
 		},
-		{			/* AFM */
-			.max_slices  = WC_TCAM_TX_MAX_SLICES,
-			.row_width   = WC_TCAM_TX_ROW_WIDTH,
-			.num_rows    = WC_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = WC_TCAM_TX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P58_WC_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = WC_TCAM_TX_MAX_SLICES,
 			.row_width   = WC_TCAM_TX_ROW_WIDTH,
 			.num_rows    = WC_TCAM_TX_NUM_ROWS,
@@ -508,17 +347,7 @@ cfa_tcam_mgr_tables_p58[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = WC_TCAM_TX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P58_WC_TCAM,
 		},
-		{			/* AFM */
-			.max_slices  = WC_TCAM_TX_MAX_SLICES,
-			.row_width   = WC_TCAM_TX_ROW_WIDTH,
-			.num_rows    = WC_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = WC_TCAM_TX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P58_WC_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = WC_TCAM_TX_MAX_SLICES,
 			.row_width   = WC_TCAM_TX_ROW_WIDTH,
 			.num_rows    = WC_TCAM_TX_NUM_ROWS,
@@ -531,227 +360,238 @@ cfa_tcam_mgr_tables_p58[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 	},
 };
 
-static struct cfa_tcam_mgr_entry_data entry_data_p58[TF_TCAM_MAX_SESSIONS][TF_TCAM_MAX_ENTRIES];
+static int cfa_tcam_mgr_row_data_alloc(struct cfa_tcam_mgr_data *tcam_mgr_data);
+static void cfa_tcam_mgr_row_data_free(struct cfa_tcam_mgr_data *tcam_mgr_data);
 
-static struct sbmp session_bmp_p58[TF_TCAM_MAX_SESSIONS][TF_TCAM_MAX_ENTRIES];
-
-int
-cfa_tcam_mgr_sess_table_get_p58(int sess_idx, struct sbmp **session_bmp)
+static void cfa_tcam_mgr_data_free(struct tf_session *tfs)
 {
-	*session_bmp = session_bmp_p58[sess_idx];
-	return 0;
+	struct cfa_tcam_mgr_data *tcam_mgr_data = tfs->tcam_mgr_handle;
+
+	if (!tcam_mgr_data)
+		return;
+
+	tfp_free(tcam_mgr_data->table_rows);
+	tfp_free(tcam_mgr_data->entry_data);
+	tfp_free(tcam_mgr_data->logical_id_bmp);
+	cfa_tcam_mgr_row_data_free(tcam_mgr_data);
+
+	tfp_free(tcam_mgr_data);
+	tfs->tcam_mgr_handle = NULL;
 }
 
 int
-cfa_tcam_mgr_init_p58(int sess_idx, struct cfa_tcam_mgr_entry_data **global_entry_data)
+cfa_tcam_mgr_init_p58(struct tf *tfp)
 {
-	int max_row_width = 0;
+	struct cfa_tcam_mgr_table_rows_p58 *table_rows;
+	struct cfa_tcam_mgr_data *tcam_mgr_data;
+	struct tfp_calloc_parms cparms;
 	int max_result_size = 0;
+	struct tf_session *tfs;
+	int max_row_width = 0;
 	int dir, type;
+	int rc;
 
-	*global_entry_data = entry_data_p58[sess_idx];
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
 
-	memcpy(&cfa_tcam_mgr_tables[sess_idx],
+	cparms.nitems = 1;
+	cparms.size = sizeof(struct cfa_tcam_mgr_data);
+	cparms.alignment = 0;
+	rc = tfp_calloc(&cparms);
+	if (rc) {
+		/* Log error */
+		TFP_DRV_LOG(ERR,
+			    "Failed to allocate block, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+	tcam_mgr_data = (struct cfa_tcam_mgr_data *)cparms.mem_va;
+	tfs->tcam_mgr_handle = tcam_mgr_data;
+
+	cparms.nitems = 1;
+	cparms.size = sizeof(struct cfa_tcam_mgr_table_rows_p58);
+	cparms.alignment = 0;
+	rc = tfp_calloc(&cparms);
+	if (rc) {
+		/* Log error */
+		TFP_DRV_LOG(ERR,
+			    "Failed to allocate block, rc:%s\n",
+			    strerror(-rc));
+		tfp_free(tfs->tcam_mgr_handle);
+		tfs->tcam_mgr_handle = NULL;
+		return rc;
+	}
+	table_rows = (struct cfa_tcam_mgr_table_rows_p58 *)cparms.mem_va;
+	tcam_mgr_data->table_rows = table_rows;
+
+	cparms.nitems = TF_TCAM_MAX_ENTRIES;
+	cparms.size = sizeof(struct cfa_tcam_mgr_entry_data);
+	cparms.alignment = 0;
+	rc = tfp_calloc(&cparms);
+	if (rc) {
+		/* Log error */
+		TFP_DRV_LOG(ERR,
+			    "Failed to allocate block, rc:%s\n",
+			    strerror(-rc));
+		goto fail;
+	}
+	tcam_mgr_data->entry_data =
+			(struct cfa_tcam_mgr_entry_data *)cparms.mem_va;
+
+	rc = cfa_tcam_mgr_row_data_alloc(tcam_mgr_data);
+	if (rc)
+		goto fail;
+
+	memcpy(tcam_mgr_data->cfa_tcam_mgr_tables,
 	       &cfa_tcam_mgr_tables_p58,
-	       sizeof(cfa_tcam_mgr_tables[sess_idx]));
+	       sizeof(tcam_mgr_data->cfa_tcam_mgr_tables));
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
+		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_L2_CTXT_TCAM_RX[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_L2_CTXT_TCAM_RX[sess_idx];
+		&table_rows->table_rows_L2_CTXT_TCAM_RX[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
+		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_L2_CTXT_TCAM_TX[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_L2_CTXT_TCAM_TX[sess_idx];
+		&table_rows->table_rows_L2_CTXT_TCAM_TX[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
+		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_L2_CTXT_TCAM_RX[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_L2_CTXT_TCAM_RX[sess_idx];
+		&table_rows->table_rows_L2_CTXT_TCAM_RX[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
+		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_L2_CTXT_TCAM_TX[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_L2_CTXT_TCAM_TX[sess_idx];
+		&table_rows->table_rows_L2_CTXT_TCAM_TX[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
+		[CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_PROF_TCAM_RX[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_PROF_TCAM_RX[sess_idx];
+		&table_rows->table_rows_PROF_TCAM_RX[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
+		[CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_PROF_TCAM_TX[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_PROF_TCAM_TX[sess_idx];
+		&table_rows->table_rows_PROF_TCAM_TX[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
+		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_WC_TCAM_RX[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_WC_TCAM_RX[sess_idx];
+		&table_rows->table_rows_WC_TCAM_RX[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
+		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_WC_TCAM_TX[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_WC_TCAM_TX[sess_idx];
+		&table_rows->table_rows_WC_TCAM_TX[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_SP_TCAM_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
+		[CFA_TCAM_MGR_TBL_TYPE_SP_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_SP_TCAM_RX[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_SP_TCAM_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_SP_TCAM_RX[sess_idx];
+		&table_rows->table_rows_SP_TCAM_RX[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_SP_TCAM_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
+		[CFA_TCAM_MGR_TBL_TYPE_SP_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_SP_TCAM_TX[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_SP_TCAM_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_SP_TCAM_TX[sess_idx];
+		&table_rows->table_rows_SP_TCAM_TX[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
+		[CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_CT_RULE_TCAM_RX[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_CT_RULE_TCAM_RX[sess_idx];
+		&table_rows->table_rows_CT_RULE_TCAM_RX[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
+		[CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_CT_RULE_TCAM_TX[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_CT_RULE_TCAM_TX[sess_idx];
+		&table_rows->table_rows_CT_RULE_TCAM_TX[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
+		[CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_VEB_TCAM_RX[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_VEB_TCAM_RX[sess_idx];
+		&table_rows->table_rows_VEB_TCAM_RX[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
+		[CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_VEB_TCAM_TX[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_VEB_TCAM_TX[sess_idx];
+		&table_rows->table_rows_VEB_TCAM_TX[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
+		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_WC_TCAM_RX_HIGH[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_WC_TCAM_RX_HIGH[sess_idx];
+		&table_rows->table_rows_WC_TCAM_RX_HIGH[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
+		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_WC_TCAM_TX_HIGH[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_WC_TCAM_TX_HIGH[sess_idx];
+		&table_rows->table_rows_WC_TCAM_TX_HIGH[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
+		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_WC_TCAM_RX_LOW[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_WC_TCAM_RX_LOW[sess_idx];
+		&table_rows->table_rows_WC_TCAM_RX_LOW[0];
 
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_AFM].tcam_rows =
+	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
+		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_WC_TCAM_TX_LOW[sess_idx];
-	cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&cfa_tcam_mgr_table_rows_WC_TCAM_TX_LOW[sess_idx];
+		&table_rows->table_rows_WC_TCAM_TX_LOW[0];
+
 
 	for (dir = 0; dir < TF_DIR_MAX; dir++) {
 		for (type = 0; type < CFA_TCAM_MGR_TBL_TYPE_MAX; type++) {
-			if (cfa_tcam_mgr_tables[sess_idx][dir][type].row_width >
+			if (tcam_mgr_data->cfa_tcam_mgr_tables[dir]
+							[type].row_width >
 			    max_row_width)
 				max_row_width =
-				       cfa_tcam_mgr_tables[sess_idx][dir][type].row_width;
-			if (cfa_tcam_mgr_tables[sess_idx][dir][type].result_size >
+				       tcam_mgr_data->cfa_tcam_mgr_tables[dir]
+							[type].row_width;
+			if (tcam_mgr_data->cfa_tcam_mgr_tables[dir]
+							[type].result_size >
 			    max_result_size)
 				max_result_size =
-				     cfa_tcam_mgr_tables[sess_idx][dir][type].result_size;
+				     tcam_mgr_data->cfa_tcam_mgr_tables[dir]
+							[type].result_size;
 		}
 	}
 
 	if (max_row_width != MAX_ROW_WIDTH) {
-		CFA_TCAM_MGR_LOG(ERR,
-				 "MAX_ROW_WIDTH (%d) does not match actual "
-				 "value (%d).\n",
-				 MAX_ROW_WIDTH,
-				 max_row_width);
-		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
+		TFP_DRV_LOG(ERR,
+			    "MAX_ROW_WIDTH:%d does not match actual val:%d\n",
+			    MAX_ROW_WIDTH, max_row_width);
+		rc = -EINVAL;
+		goto fail;
 	}
 	if (max_result_size != MAX_RESULT_SIZE) {
-		CFA_TCAM_MGR_LOG(ERR,
-				 "MAX_RESULT_SIZE (%d) does not match actual "
-				 "value (%d).\n",
-				 MAX_RESULT_SIZE,
-				 max_result_size);
-		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
+		TFP_DRV_LOG(ERR,
+			    "MAX_RESULT_SIZE:%d does not match actual val:%d\n",
+			    MAX_RESULT_SIZE, max_result_size);
+		rc = -EINVAL;
+		goto fail;
 	}
+
 	return 0;
+
+fail:
+	cfa_tcam_mgr_data_free(tfs);
+	return rc;
+}
+
+void cfa_tcam_mgr_uninit_p58(struct tf *tfp)
+{
+	struct tf_session *tfs;
+	int rc;
+
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return;
+
+	cfa_tcam_mgr_data_free(tfs);
 }
 
 /* HW OP declarations begin here */
 
-struct cfa_tcam_mgr_TCAM_row_data {
+struct cfa_tcam_mgr_tcam_row_data {
 	int key_size;
 	int result_size;
 	uint8_t key[MAX_ROW_WIDTH];
@@ -778,134 +618,182 @@ struct cfa_tcam_mgr_TCAM_row_data {
 	(CT_RULE_TCAM_TX_MAX_SLICES * CT_RULE_TCAM_TX_NUM_ROWS)
 #define VEB_TX_MAX_ROWS	    (VEB_TCAM_TX_MAX_SLICES * VEB_TCAM_TX_NUM_ROWS)
 
-static int cfa_tcam_mgr_max_rows[TF_TCAM_TBL_TYPE_MAX] = {
-	L2_CTXT_RX_MAX_ROWS,
-	L2_CTXT_RX_MAX_ROWS,
-	PROF_RX_MAX_ROWS,
-	WC_RX_MAX_ROWS,
-	SP_RX_MAX_ROWS,
-	CT_RULE_RX_MAX_ROWS,
-	VEB_RX_MAX_ROWS,
-	WC_RX_MAX_ROWS,
-	WC_RX_MAX_ROWS
+struct cfa_tcam_mgr_rx_row_data {
+	struct cfa_tcam_mgr_tcam_row_data
+		cfa_tcam_mgr_L2_CTXT_TCAM_RX_row_data[L2_CTXT_RX_MAX_ROWS + 1];
+	struct cfa_tcam_mgr_tcam_row_data
+		cfa_tcam_mgr_PROF_TCAM_RX_row_data[PROF_RX_MAX_ROWS + 1];
+	struct cfa_tcam_mgr_tcam_row_data
+		cfa_tcam_mgr_WC_TCAM_RX_row_data[WC_TX_MAX_ROWS + 1];
+	struct cfa_tcam_mgr_tcam_row_data
+		cfa_tcam_mgr_SP_TCAM_RX_row_data[SP_RX_MAX_ROWS + 1];
+	struct cfa_tcam_mgr_tcam_row_data
+		cfa_tcam_mgr_CT_RULE_TCAM_RX_row_data[CT_RULE_RX_MAX_ROWS + 1];
+	struct cfa_tcam_mgr_tcam_row_data
+		cfa_tcam_mgr_VEB_TCAM_RX_row_data[VEB_RX_MAX_ROWS + 1];
 };
 
-static struct cfa_tcam_mgr_TCAM_row_data
-	cfa_tcam_mgr_L2_CTXT_TCAM_RX_row_data[TF_TCAM_MAX_SESSIONS][L2_CTXT_RX_MAX_ROWS];
-static struct cfa_tcam_mgr_TCAM_row_data
-	cfa_tcam_mgr_PROF_TCAM_RX_row_data[TF_TCAM_MAX_SESSIONS][PROF_RX_MAX_ROWS];
-static struct cfa_tcam_mgr_TCAM_row_data
-	cfa_tcam_mgr_WC_TCAM_RX_row_data[TF_TCAM_MAX_SESSIONS][WC_RX_MAX_ROWS];
-static struct cfa_tcam_mgr_TCAM_row_data
-	cfa_tcam_mgr_SP_TCAM_RX_row_data[TF_TCAM_MAX_SESSIONS][SP_RX_MAX_ROWS];
-static struct cfa_tcam_mgr_TCAM_row_data
-	cfa_tcam_mgr_CT_RULE_TCAM_RX_row_data[TF_TCAM_MAX_SESSIONS][CT_RULE_RX_MAX_ROWS];
-static struct cfa_tcam_mgr_TCAM_row_data
-	cfa_tcam_mgr_VEB_TCAM_RX_row_data[TF_TCAM_MAX_SESSIONS][VEB_RX_MAX_ROWS];
-static struct cfa_tcam_mgr_TCAM_row_data
-	cfa_tcam_mgr_WC_TCAM_RX_row_data[TF_TCAM_MAX_SESSIONS][WC_RX_MAX_ROWS];
-
-static struct cfa_tcam_mgr_TCAM_row_data
-	cfa_tcam_mgr_L2_CTXT_TCAM_TX_row_data[TF_TCAM_MAX_SESSIONS][L2_CTXT_TX_MAX_ROWS];
-static struct cfa_tcam_mgr_TCAM_row_data
-	cfa_tcam_mgr_PROF_TCAM_TX_row_data[TF_TCAM_MAX_SESSIONS][PROF_TX_MAX_ROWS];
-static struct cfa_tcam_mgr_TCAM_row_data
-	cfa_tcam_mgr_WC_TCAM_TX_row_data[TF_TCAM_MAX_SESSIONS][WC_TX_MAX_ROWS];
-static struct cfa_tcam_mgr_TCAM_row_data
-	cfa_tcam_mgr_SP_TCAM_TX_row_data[TF_TCAM_MAX_SESSIONS][SP_TX_MAX_ROWS];
-static struct cfa_tcam_mgr_TCAM_row_data
-	cfa_tcam_mgr_CT_RULE_TCAM_TX_row_data[TF_TCAM_MAX_SESSIONS][CT_RULE_TX_MAX_ROWS];
-static struct cfa_tcam_mgr_TCAM_row_data
-	cfa_tcam_mgr_VEB_TCAM_TX_row_data[TF_TCAM_MAX_SESSIONS][VEB_TX_MAX_ROWS];
-static struct cfa_tcam_mgr_TCAM_row_data
-	cfa_tcam_mgr_WC_TCAM_TX_row_data[TF_TCAM_MAX_SESSIONS][WC_TX_MAX_ROWS];
-
-static struct cfa_tcam_mgr_TCAM_row_data *
-row_tables[TF_DIR_MAX][TF_TCAM_TBL_TYPE_MAX] = {
-	{
-		cfa_tcam_mgr_L2_CTXT_TCAM_RX_row_data[0],
-		cfa_tcam_mgr_L2_CTXT_TCAM_RX_row_data[0],
-		cfa_tcam_mgr_PROF_TCAM_RX_row_data[0],
-		cfa_tcam_mgr_WC_TCAM_RX_row_data[0],
-		cfa_tcam_mgr_SP_TCAM_RX_row_data[0],
-		cfa_tcam_mgr_CT_RULE_TCAM_RX_row_data[0],
-		cfa_tcam_mgr_VEB_TCAM_RX_row_data[0],
-		cfa_tcam_mgr_WC_TCAM_RX_row_data[0],
-		cfa_tcam_mgr_WC_TCAM_RX_row_data[0],
-	},
-	{
-		cfa_tcam_mgr_L2_CTXT_TCAM_TX_row_data[0],
-		cfa_tcam_mgr_L2_CTXT_TCAM_TX_row_data[0],
-		cfa_tcam_mgr_PROF_TCAM_TX_row_data[0],
-		cfa_tcam_mgr_WC_TCAM_TX_row_data[0],
-		cfa_tcam_mgr_SP_TCAM_TX_row_data[0],
-		cfa_tcam_mgr_CT_RULE_TCAM_TX_row_data[0],
-		cfa_tcam_mgr_VEB_TCAM_TX_row_data[0],
-		cfa_tcam_mgr_WC_TCAM_TX_row_data[0],
-		cfa_tcam_mgr_WC_TCAM_TX_row_data[0],
-	}
+struct cfa_tcam_mgr_tx_row_data {
+	struct cfa_tcam_mgr_tcam_row_data
+		cfa_tcam_mgr_L2_CTXT_TCAM_TX_row_data[L2_CTXT_TX_MAX_ROWS + 1];
+	struct cfa_tcam_mgr_tcam_row_data
+		cfa_tcam_mgr_PROF_TCAM_TX_row_data[PROF_TX_MAX_ROWS + 1];
+	struct cfa_tcam_mgr_tcam_row_data
+		cfa_tcam_mgr_WC_TCAM_TX_row_data[WC_TX_MAX_ROWS + 1];
+	struct cfa_tcam_mgr_tcam_row_data
+		cfa_tcam_mgr_SP_TCAM_TX_row_data[SP_TX_MAX_ROWS + 1];
+	struct cfa_tcam_mgr_tcam_row_data
+		cfa_tcam_mgr_CT_RULE_TCAM_TX_row_data[CT_RULE_TX_MAX_ROWS + 1];
+	struct cfa_tcam_mgr_tcam_row_data
+		cfa_tcam_mgr_VEB_TCAM_TX_row_data[VEB_TX_MAX_ROWS + 1];
 };
 
-static int cfa_tcam_mgr_get_max_rows(enum tf_tcam_tbl_type type)
+#define TF_TCAM_L2_CTX_HI	TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH
+#define TF_TCAM_L2_CTX_LO	TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW
+#define TF_TCAM_PROF		TF_TCAM_TBL_TYPE_PROF_TCAM
+#define	TF_TCAM_WC		TF_TCAM_TBL_TYPE_WC_TCAM
+#define	TF_TCAM_SP		TF_TCAM_TBL_TYPE_SP_TCAM
+#define	TF_TCAM_CT		TF_TCAM_TBL_TYPE_CT_RULE_TCAM
+#define	TF_TCAM_VEB		TF_TCAM_TBL_TYPE_VEB_TCAM
+#define	TF_TCAM_WC_HI		TF_TCAM_TBL_TYPE_WC_TCAM_HIGH
+#define	TF_TCAM_WC_LO		TF_TCAM_TBL_TYPE_WC_TCAM_LOW
+
+static int cfa_tcam_mgr_row_data_alloc(struct cfa_tcam_mgr_data *tcam_mgr_data)
 {
-	if (type >= TF_TCAM_TBL_TYPE_MAX)
-		assert(0);
-	else
-		return cfa_tcam_mgr_max_rows[type];
+	struct cfa_tcam_mgr_rx_row_data *rx_row_data;
+	struct cfa_tcam_mgr_tx_row_data *tx_row_data;
+	struct tfp_calloc_parms cparms;
+	int rc;
+
+	cparms.nitems = 1;
+	cparms.size = sizeof(struct cfa_tcam_mgr_rx_row_data);
+	cparms.alignment = 0;
+	rc = tfp_calloc(&cparms);
+	if (rc) {
+		/* Log error */
+		TFP_DRV_LOG(ERR,
+			    "Failed to allocate rx_row_data, rc:%s\n",
+			    strerror(-rc));
+		return -ENOMEM;
+	}
+
+	rx_row_data = (struct cfa_tcam_mgr_rx_row_data *)cparms.mem_va;
+
+	cparms.nitems = 1;
+	cparms.size = sizeof(struct cfa_tcam_mgr_tx_row_data);
+	cparms.alignment = 0;
+	rc = tfp_calloc(&cparms);
+	if (rc) {
+		/* Log error */
+		TFP_DRV_LOG(ERR,
+			    "Failed to allocate tx_row_data, rc:%s\n",
+			    strerror(-rc));
+		tfp_free(rx_row_data);
+		return -ENOMEM;
+	}
+
+	tx_row_data = (struct cfa_tcam_mgr_tx_row_data *)cparms.mem_va;
+
+	tcam_mgr_data->rx_row_data = rx_row_data;
+	tcam_mgr_data->tx_row_data = tx_row_data;
+
+	tcam_mgr_data->row_tables[TF_DIR_RX][TF_TCAM_L2_CTX_HI] =
+		&rx_row_data->cfa_tcam_mgr_L2_CTXT_TCAM_RX_row_data[0];
+	tcam_mgr_data->row_tables[TF_DIR_RX][TF_TCAM_L2_CTX_LO] =
+		&rx_row_data->cfa_tcam_mgr_L2_CTXT_TCAM_RX_row_data[0];
+	tcam_mgr_data->row_tables[TF_DIR_RX][TF_TCAM_PROF] =
+		&rx_row_data->cfa_tcam_mgr_PROF_TCAM_RX_row_data[0];
+	tcam_mgr_data->row_tables[TF_DIR_RX][TF_TCAM_WC] =
+		&rx_row_data->cfa_tcam_mgr_WC_TCAM_RX_row_data[0];
+	tcam_mgr_data->row_tables[TF_DIR_RX][TF_TCAM_SP] =
+		&rx_row_data->cfa_tcam_mgr_SP_TCAM_RX_row_data[0];
+	tcam_mgr_data->row_tables[TF_DIR_RX][TF_TCAM_CT] =
+		&rx_row_data->cfa_tcam_mgr_CT_RULE_TCAM_RX_row_data[0];
+	tcam_mgr_data->row_tables[TF_DIR_RX][TF_TCAM_VEB] =
+		&rx_row_data->cfa_tcam_mgr_VEB_TCAM_RX_row_data[0];
+	tcam_mgr_data->row_tables[TF_DIR_RX][TF_TCAM_WC_HI] =
+		&rx_row_data->cfa_tcam_mgr_WC_TCAM_RX_row_data[0];
+	tcam_mgr_data->row_tables[TF_DIR_RX][TF_TCAM_WC_LO] =
+		&rx_row_data->cfa_tcam_mgr_WC_TCAM_RX_row_data[0];
+
+	tcam_mgr_data->row_tables[TF_DIR_TX][TF_TCAM_L2_CTX_HI] =
+		&tx_row_data->cfa_tcam_mgr_L2_CTXT_TCAM_TX_row_data[0];
+	tcam_mgr_data->row_tables[TF_DIR_TX][TF_TCAM_L2_CTX_LO] =
+		&tx_row_data->cfa_tcam_mgr_L2_CTXT_TCAM_TX_row_data[0];
+	tcam_mgr_data->row_tables[TF_DIR_TX][TF_TCAM_PROF] =
+		&tx_row_data->cfa_tcam_mgr_PROF_TCAM_TX_row_data[0];
+	tcam_mgr_data->row_tables[TF_DIR_TX][TF_TCAM_WC] =
+		&tx_row_data->cfa_tcam_mgr_WC_TCAM_TX_row_data[0];
+	tcam_mgr_data->row_tables[TF_DIR_TX][TF_TCAM_SP] =
+		&tx_row_data->cfa_tcam_mgr_SP_TCAM_TX_row_data[0];
+	tcam_mgr_data->row_tables[TF_DIR_TX][TF_TCAM_CT] =
+		&tx_row_data->cfa_tcam_mgr_CT_RULE_TCAM_TX_row_data[0];
+	tcam_mgr_data->row_tables[TF_DIR_TX][TF_TCAM_VEB] =
+		&tx_row_data->cfa_tcam_mgr_VEB_TCAM_TX_row_data[0];
+	tcam_mgr_data->row_tables[TF_DIR_TX][TF_TCAM_WC_HI] =
+		&tx_row_data->cfa_tcam_mgr_WC_TCAM_TX_row_data[0];
+	tcam_mgr_data->row_tables[TF_DIR_TX][TF_TCAM_WC_LO] =
+		&tx_row_data->cfa_tcam_mgr_WC_TCAM_TX_row_data[0];
+
+	return 0;
 }
 
-static int cfa_tcam_mgr_hwop_set(int sess_idx,
+static void cfa_tcam_mgr_row_data_free(struct cfa_tcam_mgr_data
+				       *tcam_mgr_data)
+{
+	tfp_free(tcam_mgr_data->rx_row_data);
+	tfp_free(tcam_mgr_data->tx_row_data);
+}
+
+static int cfa_tcam_mgr_hwop_set(struct cfa_tcam_mgr_data *tcam_mgr_data,
 				 struct cfa_tcam_mgr_set_parms *parms, int row,
 				 int slice, int max_slices)
 {
-	struct cfa_tcam_mgr_TCAM_row_data *this_table;
-	struct cfa_tcam_mgr_TCAM_row_data *this_row;
-	this_table = row_tables[parms->dir]
+	struct cfa_tcam_mgr_tcam_row_data *this_table;
+	struct cfa_tcam_mgr_tcam_row_data *this_row;
+
+	this_table = tcam_mgr_data->row_tables[parms->dir]
 		[cfa_tcam_mgr_get_phys_table_type(parms->type)];
-	this_table += (sess_idx *
-		       cfa_tcam_mgr_get_max_rows(cfa_tcam_mgr_get_phys_table_type(parms->type)));
 	this_row   = &this_table[row * max_slices + slice];
 	this_row->key_size = parms->key_size;
 	memcpy(&this_row->key, parms->key, parms->key_size);
 	memcpy(&this_row->mask, parms->mask, parms->key_size);
 	this_row->result_size = parms->result_size;
-	if (parms->result != ((void *)0))
+	if (parms->result)
 		memcpy(&this_row->result, parms->result, parms->result_size);
 	return 0;
 };
 
-static int cfa_tcam_mgr_hwop_get(int sess_idx,
+static int cfa_tcam_mgr_hwop_get(struct cfa_tcam_mgr_data *tcam_mgr_data,
 				 struct cfa_tcam_mgr_get_parms *parms, int row,
 				 int slice, int max_slices)
 {
-	struct cfa_tcam_mgr_TCAM_row_data *this_table;
-	struct cfa_tcam_mgr_TCAM_row_data *this_row;
-	this_table = row_tables[parms->dir]
+	struct cfa_tcam_mgr_tcam_row_data *this_table;
+	struct cfa_tcam_mgr_tcam_row_data *this_row;
+
+	this_table = tcam_mgr_data->row_tables[parms->dir]
 		[cfa_tcam_mgr_get_phys_table_type(parms->type)];
-	this_table += (sess_idx *
-		       cfa_tcam_mgr_get_max_rows(cfa_tcam_mgr_get_phys_table_type(parms->type)));
 	this_row   = &this_table[row * max_slices + slice];
 	parms->key_size = this_row->key_size;
 	parms->result_size = this_row->result_size;
-	if (parms->key != ((void *)0))
+	if (parms->key)
 		memcpy(parms->key, &this_row->key, parms->key_size);
-	if (parms->mask != ((void *)0))
+	if (parms->mask)
 		memcpy(parms->mask, &this_row->mask, parms->key_size);
-	if (parms->result != ((void *)0))
+	if (parms->result)
 		memcpy(parms->result, &this_row->result, parms->result_size);
 	return 0;
 };
 
-static int cfa_tcam_mgr_hwop_free(int sess_idx,
+static int cfa_tcam_mgr_hwop_free(struct cfa_tcam_mgr_data *tcam_mgr_data,
 				  struct cfa_tcam_mgr_free_parms *parms,
 				  int row, int slice, int max_slices)
 {
-	struct cfa_tcam_mgr_TCAM_row_data *this_table;
-	struct cfa_tcam_mgr_TCAM_row_data *this_row;
-	this_table = row_tables[parms->dir]
+	struct cfa_tcam_mgr_tcam_row_data *this_table;
+	struct cfa_tcam_mgr_tcam_row_data *this_row;
+
+	this_table = tcam_mgr_data->row_tables[parms->dir]
 		[cfa_tcam_mgr_get_phys_table_type(parms->type)];
-	this_table += (sess_idx *
-		       cfa_tcam_mgr_get_max_rows(cfa_tcam_mgr_get_phys_table_type(parms->type)));
 	this_row   = &this_table[row * max_slices + slice];
 	memset(&this_row->key, 0, sizeof(this_row->key));
 	memset(&this_row->mask, 0, sizeof(this_row->mask));

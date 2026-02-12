@@ -325,12 +325,24 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts,
 	/* Not to cross queue end. */
 	pkts_n = RTE_MIN(pkts_n, q_n - elts_idx);
 	pkts_n = RTE_MIN(pkts_n, q_n - cq_idx);
+	/* Not to move past the allocated mbufs. */
+	pkts_n = RTE_MIN(pkts_n, RTE_ALIGN_FLOOR(rxq->rq_ci - rxq->rq_pi,
+						MLX5_VPMD_DESCS_PER_LOOP));
 	if (!pkts_n) {
 		*no_cq = !rcvd_pkt;
 		return rcvd_pkt;
 	}
 	/* At this point, there shouldn't be any remaining packets. */
 	MLX5_ASSERT(rxq->decompressed == 0);
+	/* Go directly to unzipping in case the first CQE is compressed. */
+	if (rxq->cqe_comp_layout) {
+		ret = check_cqe_iteration(cq, rxq->cqe_n, rxq->cq_ci);
+		if (ret == MLX5_CQE_STATUS_SW_OWN &&
+		    (MLX5_CQE_FORMAT(cq->op_own) == MLX5_COMPRESSED)) {
+			comp_idx = 0;
+			goto decompress;
+		}
+	}
 	/* Process all the CQEs */
 	nocmp_n = rxq_cq_process_v(rxq, cq, elts, pkts, pkts_n, err, &comp_idx);
 	/* If no new CQE seen, return without updating cq_db. */
@@ -345,18 +357,23 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts,
 	rcvd_pkt += nocmp_n;
 	/* Copy title packet for future compressed sessions. */
 	if (rxq->cqe_comp_layout) {
-		next = &(*rxq->cqes)[rxq->cq_ci & q_mask];
-		ret = check_cqe_iteration(next,	rxq->cqe_n, rxq->cq_ci);
-		if (ret != MLX5_CQE_STATUS_SW_OWN ||
-		    MLX5_CQE_FORMAT(next->op_own) == MLX5_COMPRESSED)
-			rte_memcpy(&rxq->title_pkt, elts[nocmp_n - 1],
-				   sizeof(struct rte_mbuf));
+		ret = check_cqe_iteration(cq, rxq->cqe_n, rxq->cq_ci);
+		if (ret == MLX5_CQE_STATUS_SW_OWN &&
+		    (MLX5_CQE_FORMAT(cq->op_own) != MLX5_COMPRESSED)) {
+			next = &(*rxq->cqes)[rxq->cq_ci & q_mask];
+			ret = check_cqe_iteration(next,	rxq->cqe_n, rxq->cq_ci);
+			if (MLX5_CQE_FORMAT(next->op_own) == MLX5_COMPRESSED ||
+			    ret != MLX5_CQE_STATUS_SW_OWN)
+				rte_memcpy(&rxq->title_pkt, elts[nocmp_n - 1],
+					   sizeof(struct rte_mbuf));
+		}
 	}
+decompress:
 	/* Decompress the last CQE if compressed. */
 	if (comp_idx < MLX5_VPMD_DESCS_PER_LOOP) {
 		MLX5_ASSERT(comp_idx == (nocmp_n % MLX5_VPMD_DESCS_PER_LOOP));
 		rxq->decompressed = rxq_cq_decompress_v(rxq, &cq[nocmp_n],
-							&elts[nocmp_n]);
+							&elts[nocmp_n], true);
 		rxq->cq_ci += rxq->decompressed;
 		/* Return more packets if needed. */
 		if (nocmp_n < pkts_n) {
@@ -482,6 +499,15 @@ rxq_burst_mprq_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts,
 	}
 	/* At this point, there shouldn't be any remaining packets. */
 	MLX5_ASSERT(rxq->decompressed == 0);
+	/* Go directly to unzipping in case the first CQE is compressed. */
+	if (rxq->cqe_comp_layout) {
+		ret = check_cqe_iteration(cq, rxq->cqe_n, rxq->cq_ci);
+		if (ret == MLX5_CQE_STATUS_SW_OWN &&
+		    (MLX5_CQE_FORMAT(cq->op_own) == MLX5_COMPRESSED)) {
+			comp_idx = 0;
+			goto decompress;
+		}
+	}
 	/* Process all the CQEs */
 	nocmp_n = rxq_cq_process_v(rxq, cq, elts, pkts, pkts_n, err, &comp_idx);
 	/* If no new CQE seen, return without updating cq_db. */
@@ -495,18 +521,23 @@ rxq_burst_mprq_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts,
 	rcvd_pkt += cp_pkt;
 	/* Copy title packet for future compressed sessions. */
 	if (rxq->cqe_comp_layout) {
-		next = &(*rxq->cqes)[rxq->cq_ci & q_mask];
-		ret = check_cqe_iteration(next,	rxq->cqe_n, rxq->cq_ci);
-		if (ret != MLX5_CQE_STATUS_SW_OWN ||
-		    MLX5_CQE_FORMAT(next->op_own) == MLX5_COMPRESSED)
-			rte_memcpy(&rxq->title_pkt, elts[nocmp_n - 1],
-				   sizeof(struct rte_mbuf));
+		ret = check_cqe_iteration(cq, rxq->cqe_n, rxq->cq_ci);
+		if (ret == MLX5_CQE_STATUS_SW_OWN &&
+		    (MLX5_CQE_FORMAT(cq->op_own) != MLX5_COMPRESSED)) {
+			next = &(*rxq->cqes)[rxq->cq_ci & q_mask];
+			ret = check_cqe_iteration(next,	rxq->cqe_n, rxq->cq_ci);
+			if (MLX5_CQE_FORMAT(next->op_own) == MLX5_COMPRESSED ||
+			    ret != MLX5_CQE_STATUS_SW_OWN)
+				rte_memcpy(&rxq->title_pkt, elts[nocmp_n - 1],
+					   sizeof(struct rte_mbuf));
+		}
 	}
+decompress:
 	/* Decompress the last CQE if compressed. */
 	if (comp_idx < MLX5_VPMD_DESCS_PER_LOOP) {
 		MLX5_ASSERT(comp_idx == (nocmp_n % MLX5_VPMD_DESCS_PER_LOOP));
 		rxq->decompressed = rxq_cq_decompress_v(rxq, &cq[nocmp_n],
-							&elts[nocmp_n]);
+							&elts[nocmp_n], false);
 		/* Return more packets if needed. */
 		if (nocmp_n < pkts_n) {
 			uint16_t n = rxq->decompressed;

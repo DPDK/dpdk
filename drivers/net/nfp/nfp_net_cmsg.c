@@ -36,8 +36,9 @@ nfp_net_cmsg_xmit(struct nfp_net_hw *hw,
 {
 	int ret;
 	uint32_t i;
+	uint32_t data_num = msg_size / sizeof(uint32_t);
 
-	for (i = 0; i < msg_size; i++)
+	for (i = 0; i < data_num; i++)
 		nn_cfg_writel(&hw->super, NFP_NET_CFG_MBOX_VAL + 4 * i, *((uint32_t *)cmsg + i));
 
 	ret = nfp_net_mbox_reconfig(hw, NFP_NET_CFG_MBOX_CMD_FLOW_STEER);
@@ -45,19 +46,19 @@ nfp_net_cmsg_xmit(struct nfp_net_hw *hw,
 	case NFP_NET_CFG_MBOX_RET_FS_OK:
 		break;
 	case NFP_NET_CFG_MBOX_RET_FS_ERR_NO_SPACE:
-		PMD_DRV_LOG(ERR, "Not enough space for cmd %u", cmsg->cmd);
+		PMD_DRV_LOG(ERR, "Not enough space for cmd %u.", cmsg->cmd);
 		ret = -ENOSPC;
 		break;
 	case NFP_NET_CFG_MBOX_RET_FS_ERR_MASK_FULL:
-		PMD_DRV_LOG(ERR, "The mask table is full for cmd %u", cmsg->cmd);
+		PMD_DRV_LOG(ERR, "The mask table is full for cmd %u.", cmsg->cmd);
 		ret = -EXFULL;
 		break;
 	case NFP_NET_CFG_MBOX_RET_FS_ERR_CMD_INVALID:
-		PMD_DRV_LOG(ERR, "The mbox cmd %u invalid", cmsg->cmd);
+		PMD_DRV_LOG(ERR, "The mbox cmd %u invalid.", cmsg->cmd);
 		ret = -EINVAL;
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "Unrecognized mbox cmd %u", cmsg->cmd);
+		PMD_DRV_LOG(ERR, "Unrecognized mbox cmd %u.", cmsg->cmd);
 		ret = -EINVAL;
 		break;
 	}

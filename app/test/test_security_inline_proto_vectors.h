@@ -519,10 +519,12 @@ test_vector_payload_populate(struct ip_reassembly_test_packet *pkt,
 			if (extra_data_sum) {
 				proto = hdr->proto;
 				p += sizeof(struct rte_ipv6_hdr);
-				while (proto != IPPROTO_FRAGMENT &&
-				       (proto = rte_ipv6_get_next_ext(p, proto, &ext_len) >= 0))
+				while (proto != IPPROTO_FRAGMENT) {
+					proto = rte_ipv6_get_next_ext(p, proto, &ext_len);
+					if (proto < 0)
+						break;
 					p += ext_len;
-
+				}
 				/* Found fragment header, update the frag offset */
 				if (proto == IPPROTO_FRAGMENT) {
 					frag_ext = (struct rte_ipv6_fragment_ext *)p;

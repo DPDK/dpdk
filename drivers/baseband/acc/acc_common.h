@@ -7,6 +7,7 @@
 
 #include <bus_pci_driver.h>
 #include "rte_acc_common_cfg.h"
+#include "vrb_trace.h"
 
 /* Values used in filling in descriptors */
 #define ACC_DMA_DESC_TYPE           2
@@ -95,8 +96,8 @@
 #define ACC_COMPANION_PTRS             8
 #define ACC_FCW_VER                    2
 #define ACC_MUX_5GDL_DESC              6
-#define ACC_CMP_ENC_SIZE               20
-#define ACC_CMP_DEC_SIZE               24
+#define ACC_CMP_ENC_SIZE               (sizeof(struct rte_bbdev_op_ldpc_enc) - ACC_ENC_OFFSET)
+#define ACC_CMP_DEC_SIZE               (sizeof(struct rte_bbdev_op_ldpc_dec) - ACC_DEC_OFFSET)
 #define ACC_ENC_OFFSET                (32)
 #define ACC_DEC_OFFSET                (80)
 #define ACC_LIMIT_DL_MUX_BITS          534
@@ -106,7 +107,7 @@
 #define ACC_MAX_FCW_SIZE              128
 #define ACC_IQ_SIZE                    4
 
-#define ACC_FCW_FFT_BLEN_3             28
+#define ACC_FCW_FFT_BLEN_VRB2         128
 
 /* Constants from K0 computation from 3GPP 38.212 Table 5.4.2.1-2 */
 #define ACC_N_ZC_1 66 /* N = 66 Zc for BG 1 */
@@ -149,16 +150,18 @@
 #define VRB2_VF_ID_SHIFT     6
 
 #define ACC_MAX_FFT_WIN      16
+#define ACC_MAX_RING_BUFFER  64
+#define VRB2_MAX_Q_PER_OP 256
 
 extern int acc_common_logtype;
+#define RTE_LOGTYPE_ACC_COMMON acc_common_logtype
 
 /* Helper macro for logging */
-#define rte_acc_log(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, acc_common_logtype, fmt "\n", \
-		##__VA_ARGS__)
+#define rte_acc_log(level, ...) \
+	RTE_LOG_LINE(level, ACC_COMMON, __VA_ARGS__)
 
 /* ACC100 DMA Descriptor triplet */
-struct acc_dma_triplet {
+struct __rte_packed_begin acc_dma_triplet {
 	uint64_t address;
 	uint32_t blen:20,
 		res0:4,
@@ -166,7 +169,7 @@ struct acc_dma_triplet {
 		dma_ext:1,
 		res1:2,
 		blkid:4;
-} __rte_packed;
+} __rte_packed_end;
 
 
 /* ACC100 Queue Manager Enqueue PCI Register */
@@ -181,7 +184,7 @@ union acc_enqueue_reg_fmt {
 };
 
 /* FEC 4G Uplink Frame Control Word */
-struct __rte_packed acc_fcw_td {
+struct __rte_packed_begin acc_fcw_td {
 	uint8_t fcw_ver:4,
 		num_maps:4; /* Unused in ACC100 */
 	uint8_t filler:6, /* Unused in ACC100 */
@@ -218,10 +221,10 @@ struct __rte_packed acc_fcw_td {
 				rsrvd4:10;
 		};
 	};
-};
+} __rte_packed_end;
 
 /* FEC 4G Downlink Frame Control Word */
-struct __rte_packed acc_fcw_te {
+struct __rte_packed_begin acc_fcw_te {
 	uint16_t k_neg;
 	uint16_t k_pos;
 	uint8_t c_neg;
@@ -249,10 +252,10 @@ struct __rte_packed acc_fcw_te {
 	uint8_t code_block_mode:1,
 		rsrvd8:7;
 	uint64_t rsrvd9;
-};
+} __rte_packed_end;
 
 /* FEC 5GNR Downlink Frame Control Word */
-struct __rte_packed acc_fcw_le {
+struct __rte_packed_begin acc_fcw_le {
 	uint32_t FCWversion:4,
 		qm:4,
 		nfiller:11,
@@ -277,10 +280,10 @@ struct __rte_packed acc_fcw_le {
 	uint32_t res6;
 	uint32_t res7;
 	uint32_t res8;
-};
+} __rte_packed_end;
 
 /* FEC 5GNR Uplink Frame Control Word */
-struct __rte_packed acc_fcw_ld {
+struct __rte_packed_begin acc_fcw_ld {
 	uint32_t FCWversion:4,
 		qm:4,
 		nfiller:11,
@@ -324,10 +327,10 @@ struct __rte_packed acc_fcw_ld {
 		tb_crc_select:2, /* Not supported in ACC100 */
 		dec_llrclip:2,  /* Not supported in VRB1 */
 		tb_trailer_size:20; /* Not supported in ACC100 */
-};
+} __rte_packed_end;
 
 /* FFT Frame Control Word */
-struct __rte_packed acc_fcw_fft {
+struct __rte_packed_begin acc_fcw_fft {
 	uint32_t in_frame_size:16,
 		leading_pad_size:16;
 	uint32_t out_frame_size:16,
@@ -349,10 +352,10 @@ struct __rte_packed acc_fcw_fft {
 		power_shift:4,
 		power_en:1,
 		res:19;
-};
+} __rte_packed_end;
 
 /* FFT Frame Control Word. */
-struct __rte_packed acc_fcw_fft_3 {
+struct __rte_packed_begin acc_fcw_fft_3 {
 	uint32_t in_frame_size:16,
 		leading_pad_size:16;
 	uint32_t out_frame_size:16,
@@ -379,11 +382,11 @@ struct __rte_packed acc_fcw_fft_3 {
 	uint16_t cs_theta_0[ACC_MAX_CS];
 	uint32_t cs_theta_d[ACC_MAX_CS];
 	int8_t cs_time_offset[ACC_MAX_CS];
-};
+} __rte_packed_end;
 
 
 /* MLD-TS Frame Control Word */
-struct __rte_packed acc_fcw_mldts {
+struct __rte_packed_begin acc_fcw_mldts {
 	uint32_t fcw_version:4,
 		res0:12,
 		nrb:13, /* 1 to 1925 */
@@ -407,7 +410,7 @@ struct __rte_packed acc_fcw_mldts {
 	uint32_t pad2;
 	uint32_t pad3;
 	uint32_t pad4;
-};
+} __rte_packed_end;
 
 /* DMA Response Descriptor */
 union acc_dma_rsp_desc {
@@ -433,7 +436,7 @@ union acc_dma_rsp_desc {
 };
 
 /* DMA Request Descriptor */
-struct __rte_packed acc_dma_req_desc {
+struct __rte_packed_begin acc_dma_req_desc {
 	union {
 		struct{
 			uint32_t type:4,
@@ -494,7 +497,7 @@ struct __rte_packed acc_dma_req_desc {
 		};
 		uint64_t pad3[ACC_DMA_DESC_PADDINGS]; /* pad to 64 bits */
 	};
-};
+} __rte_packed_end;
 
 /* ACC100 DMA Descriptor */
 union acc_dma_desc {
@@ -504,7 +507,7 @@ union acc_dma_desc {
 };
 
 /* Union describing Info Ring entry */
-union acc_info_ring_data {
+union __rte_packed_begin acc_info_ring_data {
 	uint32_t val;
 	struct {
 		union {
@@ -532,25 +535,25 @@ union acc_info_ring_data {
 		uint32_t loop_vrb2: 1;
 		uint32_t valid_vrb2: 1;
 	};
-} __rte_packed;
+} __rte_packed_end;
 
-struct __rte_packed acc_pad_ptr {
+struct __rte_packed_begin acc_pad_ptr {
 	void *op_addr;
 	uint64_t pad1;  /* pad to 64 bits */
-};
+} __rte_packed_end;
 
-struct __rte_packed acc_ptrs {
+struct __rte_packed_begin acc_ptrs {
 	struct acc_pad_ptr ptr[ACC_COMPANION_PTRS];
-};
+} __rte_packed_end;
 
 /* Union describing Info Ring entry */
-union acc_harq_layout_data {
+union __rte_packed_begin acc_harq_layout_data {
 	uint32_t val;
 	struct {
 		uint16_t offset;
 		uint16_t size0;
 	};
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * Structure with details about RTE_BBDEV_EVENT_DEQUEUE event. It's passed to
@@ -581,6 +584,9 @@ struct acc_device {
 	void *sw_rings_base;  /* Base addr of un-aligned memory for sw rings */
 	void *sw_rings;  /* 64MBs of 64MB aligned memory for sw rings */
 	rte_iova_t sw_rings_iova;  /* IOVA address of sw_rings */
+	void *sw_rings_array[ACC_MAX_RING_BUFFER];  /* Array of aligned memory for sw rings. */
+	rte_iova_t sw_rings_iova_array[ACC_MAX_RING_BUFFER];  /* Array of sw_rings IOVA. */
+	uint32_t queue_index[ACC_MAX_RING_BUFFER]; /* Tracking queue index per ring buffer. */
 	/* Virtual address of the info memory routed to the this function under
 	 * operation, whether it is PF or VF.
 	 * HW may DMA information data at this location asynchronously
@@ -647,6 +653,57 @@ struct __rte_cache_aligned acc_queue {
 	int8_t *derm_buffer; /* interim buffer for de-rm in SDK */
 	struct acc_device *d;
 };
+
+/* These strings for rte_trace must be limited to RTE_TRACE_EMIT_STRING_LEN_MAX. */
+static const char * const acc_error_string[] = {
+	"Warn: HARQ offset unexpected.",
+	"HARQ in/output is not defined.",
+	"Mismatch related to Mbuf data.",
+	"Soft output is not defined.",
+	"Device incompatible cap.",
+	"HARQ cannot be appended.",
+	"Undefined error message.",
+};
+
+/* Matching indexes for acc_error_string. */
+enum acc_error_enum {
+	ACC_ERR_HARQ_UNEXPECTED,
+	ACC_ERR_REJ_HARQ,
+	ACC_ERR_REJ_MBUF,
+	ACC_ERR_REJ_SOFT,
+	ACC_ERR_REJ_CAP,
+	ACC_ERR_REJ_HARQ_OUT,
+	ACC_ERR_MAX
+};
+
+/**
+ * @brief Report error both through RTE logging and into trace point.
+ *
+ * This function is used to log an error for a specific ACC queue and operation.
+ *
+ * @param q   Pointer to the ACC queue.
+ * @param op  Pointer to the operation.
+ * @param fmt Format string for the error message.
+ * @param ... Additional arguments for the format string.
+ */
+__rte_format_printf(4, 5)
+static inline void
+acc_error_log(struct acc_queue *q, void *op, uint8_t acc_error_idx, const char *fmt, ...)
+{
+	va_list args;
+	RTE_SET_USED(op);
+	va_start(args, fmt);
+	rte_vlog(RTE_LOG_ERR, acc_common_logtype, fmt, args);
+
+	if (acc_error_idx > ACC_ERR_MAX)
+		acc_error_idx = ACC_ERR_MAX;
+
+	rte_bbdev_vrb_trace_error(0, rte_bbdev_op_type_str(q->op_type),
+			acc_error_string[acc_error_idx]);
+	rte_bbdev_ops_trace(op, q->op_type);
+
+	va_end(args);
+}
 
 /* Write to MMIO register address */
 static inline void
@@ -762,6 +819,7 @@ alloc_sw_rings_min_mem(struct rte_bbdev *dev, struct acc_device *d,
 	int i = 0;
 	uint32_t q_sw_ring_size = ACC_MAX_QUEUE_DEPTH * get_desc_len();
 	uint32_t dev_sw_ring_size = q_sw_ring_size * num_queues;
+	uint32_t alignment = q_sw_ring_size * rte_align32pow2(num_queues);
 	/* Free first in case this is a reconfiguration */
 	rte_free(d->sw_rings_base);
 
@@ -769,12 +827,12 @@ alloc_sw_rings_min_mem(struct rte_bbdev *dev, struct acc_device *d,
 	while (i < ACC_SW_RING_MEM_ALLOC_ATTEMPTS) {
 		/*
 		 * sw_ring allocated memory is guaranteed to be aligned to
-		 * q_sw_ring_size at the condition that the requested size is
-		 * less than the page size
+		 * the variable 'alignment' at the condition that the requested
+		 * size is less than the page size
 		 */
 		sw_rings_base = rte_zmalloc_socket(
 				dev->device->driver->name,
-				dev_sw_ring_size, q_sw_ring_size, socket);
+				dev_sw_ring_size, alignment, socket);
 
 		if (sw_rings_base == NULL) {
 			rte_acc_log(ERR,
@@ -789,7 +847,7 @@ alloc_sw_rings_min_mem(struct rte_bbdev *dev, struct acc_device *d,
 				sw_rings_base, ACC_SIZE_64MBYTE);
 		next_64mb_align_addr_iova = sw_rings_base_iova +
 				next_64mb_align_offset;
-		sw_ring_iova_end_addr = sw_rings_base_iova + dev_sw_ring_size;
+		sw_ring_iova_end_addr = sw_rings_base_iova + dev_sw_ring_size - 1;
 
 		/* Check if the end of the sw ring memory block is before the
 		 * start of next 64MB aligned mem address
@@ -982,8 +1040,10 @@ acc_fcw_te_fill(const struct rte_bbdev_enc_op *op, struct acc_fcw_te *fcw)
  * Starting position of different redundancy versions, k0
  */
 static inline uint16_t
-get_k0(uint16_t n_cb, uint16_t z_c, uint8_t bg, uint8_t rv_index)
+get_k0(uint16_t n_cb, uint16_t z_c, uint8_t bg, uint8_t rv_index, uint16_t k0)
 {
+	if (k0 > 0)
+		return k0;
 	if (rv_index == 0)
 		return 0;
 	uint16_t n = (bg == 1 ? ACC_N_ZC_1 : ACC_N_ZC_2) * z_c;
@@ -1020,7 +1080,7 @@ acc_fcw_le_fill(const struct rte_bbdev_enc_op *op,
 	fcw->Zc = op->ldpc_enc.z_c;
 	fcw->ncb = op->ldpc_enc.n_cb;
 	fcw->k0 = get_k0(fcw->ncb, fcw->Zc, op->ldpc_enc.basegraph,
-			op->ldpc_enc.rv_index);
+			op->ldpc_enc.rv_index, 0);
 	fcw->rm_e = (default_e == 0) ? op->ldpc_enc.cb_params.e : default_e;
 	fcw->crc_select = check_bit(op->ldpc_enc.op_flags,
 			RTE_BBDEV_LDPC_CRC_24B_ATTACH);
@@ -1112,6 +1172,9 @@ acc_dma_enqueue(struct acc_queue *q, uint16_t n,
 				req_elem_addr,
 				(void *)q->mmio_reg_enqueue);
 
+		q->aq_enqueued++;
+		q->sw_ring_head += enq_batch_size;
+
 		rte_wmb();
 
 		/* Start time measurement for enqueue function offload. */
@@ -1122,8 +1185,6 @@ acc_dma_enqueue(struct acc_queue *q, uint16_t n,
 
 		queue_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
 
-		q->aq_enqueued++;
-		q->sw_ring_head += enq_batch_size;
 		n -= enq_batch_size;
 
 	} while (n);
@@ -1502,6 +1563,10 @@ acc_enqueue_status(struct rte_bbdev_queue_data *q_data,
 {
 	q_data->enqueue_status = status;
 	q_data->queue_stats.enqueue_status_count[status]++;
+	struct acc_queue *q = q_data->queue_private;
+
+	rte_bbdev_vrb_trace_queue_error(q->qgrp_id, q->aq_id,
+			rte_bbdev_enqueue_status_str(status));
 
 	rte_acc_log(WARNING, "Enqueue Status: %s %#"PRIx64"",
 			rte_bbdev_enqueue_status_str(status),
@@ -1552,6 +1617,24 @@ acc_aq_avail(struct rte_bbdev_queue_data *q_data, uint16_t num_ops)
 	if (aq_avail <= 0)
 		acc_enqueue_queue_full(q_data);
 	return aq_avail;
+}
+
+/* Update queue stats during enqueue. */
+static inline void
+acc_update_qstat_enqueue(struct rte_bbdev_queue_data *q_data,
+		uint16_t enq_count, uint16_t enq_err_count)
+{
+	q_data->queue_stats.enqueued_count += enq_count;
+	q_data->queue_stats.enqueue_err_count += enq_err_count;
+	q_data->queue_stats.enqueue_depth_avail = acc_aq_avail(q_data, 0);
+}
+
+/* Update queue stats during dequeue. */
+static inline void
+acc_update_qstat_dequeue(struct rte_bbdev_queue_data *q_data, uint16_t deq_count)
+{
+	q_data->queue_stats.dequeued_count += deq_count;
+	q_data->queue_stats.enqueue_depth_avail = acc_aq_avail(q_data, 0);
 }
 
 /* Calculates number of CBs in processed encoder TB based on 'r' and input

@@ -8,6 +8,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <eal_trace_internal.h>
 #include <rte_log.h>
 #include <rte_memory.h>
@@ -25,6 +26,7 @@
 /* Default count used until rte_memzone_max_set() is called */
 #define DEFAULT_MAX_MEMZONE_COUNT 2560
 
+RTE_EXPORT_SYMBOL(rte_memzone_max_set)
 int
 rte_memzone_max_set(size_t max)
 {
@@ -46,6 +48,7 @@ rte_memzone_max_set(size_t max)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_memzone_max_get)
 size_t
 rte_memzone_max_get(void)
 {
@@ -191,14 +194,12 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	if (len == 0 && bound == 0) {
 		/* no size constraints were placed, so use malloc elem len */
 		requested_len = 0;
-		mz_addr = malloc_heap_alloc_biggest(NULL, socket_id, flags,
-				align, contig);
+		mz_addr = malloc_heap_alloc_biggest(socket_id, flags, align, contig);
 	} else {
 		if (len == 0)
 			requested_len = bound;
 		/* allocate memory on heap */
-		mz_addr = malloc_heap_alloc(NULL, requested_len, socket_id,
-				flags, align, bound, contig);
+		mz_addr = malloc_heap_alloc(requested_len, socket_id, flags, align, bound, contig);
 	}
 	if (mz_addr == NULL) {
 		rte_errno = ENOMEM;
@@ -265,6 +266,7 @@ rte_memzone_reserve_thread_safe(const char *name, size_t len, int socket_id,
  * specified alignment and boundary). If the allocation cannot be done,
  * return NULL.
  */
+RTE_EXPORT_SYMBOL(rte_memzone_reserve_bounded)
 const struct rte_memzone *
 rte_memzone_reserve_bounded(const char *name, size_t len, int socket_id,
 			    unsigned flags, unsigned align, unsigned bound)
@@ -277,6 +279,7 @@ rte_memzone_reserve_bounded(const char *name, size_t len, int socket_id,
  * Return a pointer to a correctly filled memzone descriptor (with a
  * specified alignment). If the allocation cannot be done, return NULL.
  */
+RTE_EXPORT_SYMBOL(rte_memzone_reserve_aligned)
 const struct rte_memzone *
 rte_memzone_reserve_aligned(const char *name, size_t len, int socket_id,
 			    unsigned flags, unsigned align)
@@ -289,6 +292,7 @@ rte_memzone_reserve_aligned(const char *name, size_t len, int socket_id,
  * Return a pointer to a correctly filled memzone descriptor. If the
  * allocation cannot be done, return NULL.
  */
+RTE_EXPORT_SYMBOL(rte_memzone_reserve)
 const struct rte_memzone *
 rte_memzone_reserve(const char *name, size_t len, int socket_id,
 		    unsigned flags)
@@ -297,6 +301,7 @@ rte_memzone_reserve(const char *name, size_t len, int socket_id,
 					       flags, RTE_CACHE_LINE_SIZE, 0);
 }
 
+RTE_EXPORT_SYMBOL(rte_memzone_free)
 int
 rte_memzone_free(const struct rte_memzone *mz)
 {
@@ -333,15 +338,17 @@ rte_memzone_free(const struct rte_memzone *mz)
 
 	rte_rwlock_write_unlock(&mcfg->mlock);
 
+	rte_eal_trace_memzone_free(name, addr, ret);
+
 	rte_free(addr);
 
-	rte_eal_trace_memzone_free(name, addr, ret);
 	return ret;
 }
 
 /*
  * Lookup for the memzone identified by the given name
  */
+RTE_EXPORT_SYMBOL(rte_memzone_lookup)
 const struct rte_memzone *
 rte_memzone_lookup(const char *name)
 {
@@ -360,18 +367,25 @@ rte_memzone_lookup(const char *name)
 	return memzone;
 }
 
+struct memzone_info {
+	FILE *f;
+	uint64_t total_size;
+};
+
 static void
 dump_memzone(const struct rte_memzone *mz, void *arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	struct rte_memseg_list *msl = NULL;
+	struct memzone_info *info = arg;
 	void *cur_addr, *mz_end;
 	struct rte_memseg *ms;
 	int mz_idx, ms_idx;
+	FILE *f = info->f;
 	size_t page_sz;
-	FILE *f = arg;
 
 	mz_idx = rte_fbarray_find_idx(&mcfg->memzones, mz);
+	info->total_size += mz->len;
 
 	fprintf(f, "Zone %u: name:<%s>, len:0x%zx, virt:%p, "
 				"socket_id:%"PRId32", flags:%"PRIx32"\n",
@@ -411,10 +425,15 @@ dump_memzone(const struct rte_memzone *mz, void *arg)
 }
 
 /* Dump all reserved memory zones on console */
+RTE_EXPORT_SYMBOL(rte_memzone_dump)
 void
 rte_memzone_dump(FILE *f)
 {
-	rte_memzone_walk(dump_memzone, f);
+	struct memzone_info info = { .f = f };
+
+	rte_memzone_walk(dump_memzone, &info);
+	fprintf(f, "Total Memory Zones size = %"PRIu64"M\n",
+		info.total_size / (1024 * 1024));
 }
 
 /*
@@ -448,6 +467,7 @@ rte_eal_memzone_init(void)
 }
 
 /* Walk all reserved memory zones */
+RTE_EXPORT_SYMBOL(rte_memzone_walk)
 void rte_memzone_walk(void (*func)(const struct rte_memzone *, void *),
 		      void *arg)
 {

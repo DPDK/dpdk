@@ -1,10 +1,10 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright (c) 2022 Marvell.
 
-Machine Learning Device Library
-===============================
+Machine Learning (ML) Device Library
+====================================
 
-The MLDEV library provides a Machine Learning device framework for the management and
+The Machine Learning (ML) Device library provides a Machine Learning device framework for the management and
 provisioning of hardware and software ML poll mode drivers,
 defining an API which support a number of ML operations
 including device handling and inference processing.

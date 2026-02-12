@@ -289,7 +289,8 @@ nicvf_dev_get_regs(struct rte_eth_dev *dev, struct rte_dev_reg_info *regs)
 }
 
 static int
-nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		    struct eth_queue_stats *qstats)
 {
 	uint16_t qidx;
 	struct nicvf_hw_rx_qstats rx_qstats;
@@ -309,8 +310,10 @@ nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			break;
 
 		nicvf_hw_get_rx_qstats(nic, &rx_qstats, qidx);
-		stats->q_ibytes[qidx] = rx_qstats.q_rx_bytes;
-		stats->q_ipackets[qidx] = rx_qstats.q_rx_packets;
+		if (qstats != NULL) {
+			qstats->q_ibytes[qidx] = rx_qstats.q_rx_bytes;
+			qstats->q_ipackets[qidx] = rx_qstats.q_rx_packets;
+		}
 	}
 
 	/* TX queue indices for the first VF */
@@ -322,8 +325,10 @@ nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			break;
 
 		nicvf_hw_get_tx_qstats(nic, &tx_qstats, qidx);
-		stats->q_obytes[qidx] = tx_qstats.q_tx_bytes;
-		stats->q_opackets[qidx] = tx_qstats.q_tx_packets;
+		if (qstats != NULL) {
+			qstats->q_obytes[qidx] = tx_qstats.q_tx_bytes;
+			qstats->q_opackets[qidx] = tx_qstats.q_tx_packets;
+		}
 	}
 
 	for (i = 0; i < nic->sqs_count; i++) {
@@ -342,8 +347,10 @@ nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 			nicvf_hw_get_rx_qstats(snic, &rx_qstats,
 					       qidx % MAX_RCV_QUEUES_PER_QS);
-			stats->q_ibytes[qidx] = rx_qstats.q_rx_bytes;
-			stats->q_ipackets[qidx] = rx_qstats.q_rx_packets;
+			if (qstats != NULL) {
+				qstats->q_ibytes[qidx] = rx_qstats.q_rx_bytes;
+				qstats->q_ipackets[qidx] = rx_qstats.q_rx_packets;
+			}
 		}
 
 		/* TX queue indices for a secondary VF */
@@ -355,8 +362,10 @@ nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 			nicvf_hw_get_tx_qstats(snic, &tx_qstats,
 					       qidx % MAX_SND_QUEUES_PER_QS);
-			stats->q_obytes[qidx] = tx_qstats.q_tx_bytes;
-			stats->q_opackets[qidx] = tx_qstats.q_tx_packets;
+			if (qstats != NULL) {
+				qstats->q_obytes[qidx] = tx_qstats.q_tx_bytes;
+				qstats->q_opackets[qidx] = tx_qstats.q_tx_packets;
+			}
 		}
 	}
 
@@ -1814,7 +1823,7 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 	/* Apply new link configurations if changed */
 	ret = nicvf_apply_link_speed(dev);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to set link configuration\n");
+		PMD_INIT_LOG(ERR, "Failed to set link configuration");
 		return ret;
 	}
 

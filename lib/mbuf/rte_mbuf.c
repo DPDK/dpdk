@@ -9,9 +9,9 @@
 #include <inttypes.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_debug.h>
 #include <rte_common.h>
-#include <rte_log.h>
 #include <rte_branch_prediction.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
@@ -29,6 +29,7 @@ RTE_LOG_REGISTER_DEFAULT(mbuf_logtype, INFO);
  * rte_mempool_create(), or called directly if using
  * rte_mempool_create_empty()/rte_mempool_populate()
  */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_pool_init)
 void
 rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg)
 {
@@ -39,6 +40,8 @@ rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg)
 	RTE_ASSERT(mp->private_data_size >=
 		   sizeof(struct rte_pktmbuf_pool_private));
 	RTE_ASSERT(mp->elt_size >= sizeof(struct rte_mbuf));
+
+	rte_mbuf_history_init();
 
 	/* if no structure is provided, assume no mbuf private area */
 	user_mbp_priv = opaque_arg;
@@ -69,6 +72,7 @@ rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg)
  * rte_mempool_obj_iter() or rte_mempool_create().
  * Set the fields of a packet mbuf to their default values.
  */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_init)
 void
 rte_pktmbuf_init(struct rte_mempool *mp,
 		 __rte_unused void *opaque_arg,
@@ -219,6 +223,7 @@ __rte_pktmbuf_init_extmem(struct rte_mempool *mp,
 }
 
 /* Helper to create a mbuf pool with given mempool ops name*/
+RTE_EXPORT_SYMBOL(rte_pktmbuf_pool_create_by_ops)
 struct rte_mempool *
 rte_pktmbuf_pool_create_by_ops(const char *name, unsigned int n,
 	unsigned int cache_size, uint16_t priv_size, uint16_t data_room_size,
@@ -271,6 +276,7 @@ rte_pktmbuf_pool_create_by_ops(const char *name, unsigned int n,
 }
 
 /* helper to create a mbuf pool */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_pool_create)
 struct rte_mempool *
 rte_pktmbuf_pool_create(const char *name, unsigned int n,
 	unsigned int cache_size, uint16_t priv_size, uint16_t data_room_size,
@@ -281,6 +287,7 @@ rte_pktmbuf_pool_create(const char *name, unsigned int n,
 }
 
 /* Helper to create a mbuf pool with pinned external data buffers. */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_pool_create_extbuf)
 struct rte_mempool *
 rte_pktmbuf_pool_create_extbuf(const char *name, unsigned int n,
 	unsigned int cache_size, uint16_t priv_size,
@@ -367,7 +374,69 @@ rte_pktmbuf_pool_create_extbuf(const char *name, unsigned int n,
 	return mp;
 }
 
+/* do some sanity checks on a reinitialized mbuf: panic if it fails */
+RTE_EXPORT_SYMBOL(rte_mbuf_raw_sanity_check)
+void
+rte_mbuf_raw_sanity_check(const struct rte_mbuf *m, const struct rte_mempool *mp)
+{
+	const char *reason;
+
+	if (rte_mbuf_raw_check(m, mp, &reason))
+		rte_panic("%s\n", reason);
+}
+
+RTE_EXPORT_SYMBOL(rte_mbuf_raw_check)
+int rte_mbuf_raw_check(const struct rte_mbuf *m, const struct rte_mempool *mp,
+		   const char **reason)
+{
+	/* check sanity */
+	if (rte_mbuf_check(m, 0, reason) == -1)
+		return -1;
+
+	/* check initialized */
+	if (rte_mbuf_refcnt_read(m) != 1) {
+		*reason = "uninitialized ref cnt";
+		return -1;
+	}
+	if (m->next != NULL) {
+		*reason = "uninitialized next ptr";
+		return -1;
+	}
+	if (m->nb_segs != 1) {
+		*reason = "uninitialized nb_segs";
+		return -1;
+	}
+	if (RTE_MBUF_CLONED(m)) {
+		*reason = "cloned";
+		return -1;
+	}
+	if (RTE_MBUF_HAS_EXTBUF(m)) {
+		if (!RTE_MBUF_HAS_PINNED_EXTBUF(m)) {
+			*reason = "external buffer not pinned";
+			return -1;
+		}
+
+		uint16_t cnt = rte_mbuf_ext_refcnt_read(m->shinfo);
+		if ((cnt == 0) || (cnt == UINT16_MAX)) {
+			*reason = "pinned external buffer bad ref cnt";
+			return -1;
+		}
+		if (cnt != 1) {
+			*reason = "pinned external buffer uninitialized ref cnt";
+			return -1;
+		}
+	}
+
+	if (mp != NULL && m->pool != mp) {
+		*reason = "wrong mbuf pool";
+		return -1;
+	}
+
+	return 0;
+}
+
 /* do some sanity checks on a mbuf: panic if it fails */
+RTE_EXPORT_SYMBOL(rte_mbuf_sanity_check)
 void
 rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header)
 {
@@ -377,6 +446,7 @@ rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header)
 		rte_panic("%s\n", reason);
 }
 
+RTE_EXPORT_SYMBOL(rte_mbuf_check)
 int rte_mbuf_check(const struct rte_mbuf *m, int is_header,
 		   const char **reason)
 {
@@ -486,10 +556,13 @@ __rte_pktmbuf_free_seg_via_array(struct rte_mbuf *m,
 #define RTE_PKTMBUF_FREE_PENDING_SZ 64
 
 /* Free a bulk of packet mbufs back into their original mempools. */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_free_bulk)
 void rte_pktmbuf_free_bulk(struct rte_mbuf **mbufs, unsigned int count)
 {
 	struct rte_mbuf *m, *m_next, *pending[RTE_PKTMBUF_FREE_PENDING_SZ];
 	unsigned int idx, nb_pending = 0;
+
+	rte_mbuf_history_mark_bulk(mbufs, count, RTE_MBUF_HISTORY_OP_LIB_FREE);
 
 	for (idx = 0; idx < count; idx++) {
 		m = mbufs[idx];
@@ -512,6 +585,7 @@ void rte_pktmbuf_free_bulk(struct rte_mbuf **mbufs, unsigned int count)
 }
 
 /* Creates a shallow copy of mbuf */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_clone)
 struct rte_mbuf *
 rte_pktmbuf_clone(struct rte_mbuf *md, struct rte_mempool *mp)
 {
@@ -551,6 +625,7 @@ rte_pktmbuf_clone(struct rte_mbuf *md, struct rte_mempool *mp)
 }
 
 /* convert multi-segment mbuf to single mbuf */
+RTE_EXPORT_SYMBOL(__rte_pktmbuf_linearize)
 int
 __rte_pktmbuf_linearize(struct rte_mbuf *mbuf)
 {
@@ -588,6 +663,7 @@ __rte_pktmbuf_linearize(struct rte_mbuf *mbuf)
 }
 
 /* Create a deep copy of mbuf */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_copy)
 struct rte_mbuf *
 rte_pktmbuf_copy(const struct rte_mbuf *m, struct rte_mempool *mp,
 		 uint32_t off, uint32_t len)
@@ -599,7 +675,7 @@ rte_pktmbuf_copy(const struct rte_mbuf *m, struct rte_mempool *mp,
 	__rte_mbuf_sanity_check(m, 1);
 
 	/* check for request to copy at offset past end of mbuf */
-	if (unlikely(off >= m->pkt_len))
+	if (unlikely(off > m->pkt_len))
 		return NULL;
 
 	mc = rte_pktmbuf_alloc(mp);
@@ -612,8 +688,12 @@ rte_pktmbuf_copy(const struct rte_mbuf *m, struct rte_mempool *mp,
 
 	__rte_pktmbuf_copy_hdr(mc, m);
 
-	/* copied mbuf is not indirect or external */
-	mc->ol_flags = m->ol_flags & ~(RTE_MBUF_F_INDIRECT|RTE_MBUF_F_EXTERNAL);
+	/*
+	 * copy flags except indirect and external,
+	 * while preserving flags of newly allocated mbuf
+	 * (specifically RTE_MBUF_F_EXTERNAL if using pinned external buffer)
+	 */
+	mc->ol_flags |= m->ol_flags & ~(RTE_MBUF_F_INDIRECT | RTE_MBUF_F_EXTERNAL);
 
 	prev = &mc->next;
 	m_last = mc;
@@ -665,6 +745,7 @@ rte_pktmbuf_copy(const struct rte_mbuf *m, struct rte_mempool *mp,
 }
 
 /* dump a mbuf on console */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_dump)
 void
 rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 {
@@ -707,6 +788,7 @@ rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 }
 
 /* read len data bytes in a mbuf at specified offset (internal) */
+RTE_EXPORT_SYMBOL(__rte_pktmbuf_read)
 const void *__rte_pktmbuf_read(const struct rte_mbuf *m, uint32_t off,
 	uint32_t len, void *buf)
 {
@@ -744,6 +826,7 @@ const void *__rte_pktmbuf_read(const struct rte_mbuf *m, uint32_t off,
  * Get the name of a RX offload flag. Must be kept synchronized with flag
  * definitions in rte_mbuf.h.
  */
+RTE_EXPORT_SYMBOL(rte_get_rx_ol_flag_name)
 const char *rte_get_rx_ol_flag_name(uint64_t mask)
 {
 	switch (mask) {
@@ -783,6 +866,7 @@ struct flag_mask {
 };
 
 /* write the list of rx ol flags in buffer buf */
+RTE_EXPORT_SYMBOL(rte_get_rx_ol_flag_list)
 int
 rte_get_rx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
 {
@@ -849,6 +933,7 @@ rte_get_rx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
  * Get the name of a TX offload flag. Must be kept synchronized with flag
  * definitions in rte_mbuf.h.
  */
+RTE_EXPORT_SYMBOL(rte_get_tx_ol_flag_name)
 const char *rte_get_tx_ol_flag_name(uint64_t mask)
 {
 	switch (mask) {
@@ -883,6 +968,7 @@ const char *rte_get_tx_ol_flag_name(uint64_t mask)
 }
 
 /* write the list of tx ol flags in buffer buf */
+RTE_EXPORT_SYMBOL(rte_get_tx_ol_flag_list)
 int
 rte_get_tx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
 {

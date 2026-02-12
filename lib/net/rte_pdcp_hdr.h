@@ -16,10 +16,6 @@
 
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * 4.3.1
  *
@@ -60,7 +56,7 @@ enum rte_pdcp_pdu_type {
  * 6.2.2.1 Data PDU for SRBs
  */
 __extension__
-struct rte_pdcp_cp_data_pdu_sn_12_hdr {
+struct __rte_packed_begin rte_pdcp_cp_data_pdu_sn_12_hdr {
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 	uint8_t sn_11_8 : 4;	/**< Sequence number bits 8-11 */
 	uint8_t r : 4;		/**< Reserved */
@@ -69,13 +65,13 @@ struct rte_pdcp_cp_data_pdu_sn_12_hdr {
 	uint8_t sn_11_8 : 4;	/**< Sequence number bits 8-11 */
 #endif
 	uint8_t sn_7_0;		/**< Sequence number bits 0-7 */
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * 6.2.2.2 Data PDU for DRBs and MRBs with 12 bits PDCP SN
  */
 __extension__
-struct rte_pdcp_up_data_pdu_sn_12_hdr {
+struct __rte_packed_begin rte_pdcp_up_data_pdu_sn_12_hdr {
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 	uint8_t sn_11_8 : 4;	/**< Sequence number bits 8-11 */
 	uint8_t r : 3;		/**< Reserved */
@@ -86,13 +82,13 @@ struct rte_pdcp_up_data_pdu_sn_12_hdr {
 	uint8_t sn_11_8 : 4;	/**< Sequence number bits 8-11 */
 #endif
 	uint8_t sn_7_0;		/**< Sequence number bits 0-7 */
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * 6.2.2.3 Data PDU for DRBs and MRBs with 18 bits PDCP SN
  */
 __extension__
-struct rte_pdcp_up_data_pdu_sn_18_hdr {
+struct __rte_packed_begin rte_pdcp_up_data_pdu_sn_18_hdr {
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 	uint8_t sn_17_16 : 2;	/**< Sequence number bits 16-17 */
 	uint8_t r : 5;		/**< Reserved */
@@ -104,13 +100,13 @@ struct rte_pdcp_up_data_pdu_sn_18_hdr {
 #endif
 	uint8_t sn_15_8;	/**< Sequence number bits 8-15 */
 	uint8_t sn_7_0;		/**< Sequence number bits 0-7 */
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * 6.2.3.1 Control PDU for PDCP status report
  */
 __extension__
-struct rte_pdcp_up_ctrl_pdu_hdr {
+struct __rte_packed_begin rte_pdcp_up_ctrl_pdu_hdr {
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 	uint8_t r : 4;		/**< Reserved */
 	uint8_t pdu_type : 3;	/**< Control PDU type */
@@ -138,10 +134,6 @@ struct rte_pdcp_up_ctrl_pdu_hdr {
 	 * in the Bitmap is 1.
 	 */
 	uint8_t bitmap[];
-} __rte_packed;
-
-#ifdef __cplusplus
-}
-#endif
+} __rte_packed_end;
 
 #endif /* RTE_PDCP_HDR_H */

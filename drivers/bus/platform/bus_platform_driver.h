@@ -10,18 +10,18 @@
  * Platform bus interface.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stddef.h>
 #include <stdint.h>
 
 #include <dev_driver.h>
 #include <rte_common.h>
+#include <rte_compat.h>
 #include <rte_dev.h>
 #include <rte_os.h>
-#include <rte_vfio.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Forward declarations */
 struct rte_platform_bus;
@@ -138,13 +138,11 @@ RTE_INIT(pdrvinitfn_ ##nm) \
 	(platform_drv).driver.alias = pdrvinit_ ## nm ## _alias; \
 	rte_platform_register(&(platform_drv)); \
 } \
-RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
+RTE_PMD_EXPORT_NAME(nm)
 
 /** Helper for setting platform driver alias. */
 #define RTE_PMD_REGISTER_ALIAS(nm, alias) \
 static const char *pdrvinit_ ## nm ## _alias = RTE_STR(alias)
-
-#ifdef VFIO_PRESENT
 
 /**
  * Register a platform device driver.
@@ -169,22 +167,6 @@ void rte_platform_register(struct rte_platform_driver *pdrv);
  */
 __rte_internal
 void rte_platform_unregister(struct rte_platform_driver *pdrv);
-
-#else
-
-__rte_internal
-static inline void
-rte_platform_register(struct rte_platform_driver *pdrv __rte_unused)
-{
-}
-
-__rte_internal
-static inline void
-rte_platform_unregister(struct rte_platform_driver *pdrv __rte_unused)
-{
-}
-
-#endif /* VFIO_PRESENT */
 
 #ifdef __cplusplus
 }

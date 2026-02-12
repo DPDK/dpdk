@@ -249,4 +249,4 @@ test_bitratestats(void)
 {
 	return unit_test_suite_runner(&bitratestats_testsuite);
 }
-REGISTER_FAST_TEST(bitratestats_autotest, true, true, test_bitratestats);
+REGISTER_FAST_TEST(bitratestats_autotest, NOHUGE_OK, ASAN_OK, test_bitratestats);

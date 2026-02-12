@@ -33,6 +33,13 @@ exclude() # <pattern>
 				tr '\n' '|' | sed 's,.$,\n,')
 			exceptions='RTE_FLOW_ACTION_TYPE_SHARED'
 			grep -vE "$filter" | grep -vE $exceptions;;
+		dpaa2)
+			filter=$(sed -n "/$1/{N;/Skip this/P;}" \
+				$dir/dpaa2_flow.c |
+				grep -wo "$1[[:alnum:]_]*" | sort -u |
+				tr '\n' '|' | sed 's,.$,\n,')
+			[ "$1" = 'RTE_FLOW_ITEM_TYPE_' -a -z "$filter" ] && cat ||
+			grep -vE "$filter";;
 		*) cat
 	esac
 }

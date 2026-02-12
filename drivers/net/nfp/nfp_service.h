@@ -10,7 +10,6 @@
 
 struct nfp_service_info {
 	uint32_t id;
-	uint32_t lcore;
 };
 
 int nfp_service_disable(struct nfp_service_info *info);

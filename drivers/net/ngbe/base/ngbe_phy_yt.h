@@ -9,6 +9,7 @@
 
 #define NGBE_PHYID_YT8521		0x00000110U
 #define NGBE_PHYID_YT8531		0x4F51E910U
+#define NGBE_PHYID_SK21101		0x00782010U
 
 /* Common EXT */
 #define YT_SMI_PHY			0xA000
@@ -32,6 +33,8 @@
 #define YT_MISC				0xA006
 #define   YT_MISC_FIBER_PRIO		MS16(8, 0x1) /* 0 for UTP */
 #define   YT_MISC_RESV			MS16(0, 0x1)
+#define YT_SPEC_CONF			0xA023
+#define   YT_SPEC_CONF_8531SH_CA	0x4031
 
 /* SDS EXT */
 #define YT_AUTO				0xA5

@@ -83,6 +83,8 @@ void sfc_kvargs_cleanup(struct sfc_adapter *sa);
 
 int sfc_kvargs_process(struct sfc_adapter *sa, const char *key_match,
 		       arg_handler_t handler, void *opaque_arg);
+int sfc_kvargs_process_opt(struct sfc_adapter *sa, const char *key_match,
+			   arg_handler_t handler, void *opaque_arg);
 
 int sfc_kvarg_bool_handler(const char *key, const char *value_str,
 			   void *opaque);

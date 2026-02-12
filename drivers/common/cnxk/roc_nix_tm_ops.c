@@ -8,6 +8,7 @@
 int
 roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 {
+	struct npa_cn20k_aq_enq_req *req_cn20k;
 	struct npa_aq_enq_req *req;
 	struct npa_aq_enq_rsp *rsp;
 	uint64_t aura_handle;
@@ -18,6 +19,12 @@ roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 	plt_tm_dbg("Setting SQ %u SQB aura FC to %s", sq->qid,
 		   enable ? "enable" : "disable");
 
+	/* For cn20K, enable/disable SQ count updates if the SQ count pointer
+	 * was allocated based on the enable field.
+	 */
+	if (sq->sq_cnt_ptr)
+		return roc_nix_sq_cnt_update(sq, enable);
+
 	lf = idev_npa_obj_get();
 	if (!lf)
 		return NPA_ERR_DEVICE_NOT_BOUNDED;
@@ -25,7 +32,12 @@ roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 	mbox = mbox_get(lf->mbox);
 	/* Set/clear sqb aura fc_ena */
 	aura_handle = sq->aura_handle;
-	req = mbox_alloc_msg_npa_aq_enq(mbox);
+	if (roc_model_is_cn20k()) {
+		req_cn20k = mbox_alloc_msg_npa_cn20k_aq_enq(mbox);
+		req = (struct npa_aq_enq_req *)req_cn20k;
+	} else {
+		req = mbox_alloc_msg_npa_aq_enq(mbox);
+	}
 	if (req == NULL)
 		goto exit;
 
@@ -52,7 +64,12 @@ roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 
 	/* Read back npa aura ctx */
 	if (enable) {
-		req = mbox_alloc_msg_npa_aq_enq(mbox);
+		if (roc_model_is_cn20k()) {
+			req_cn20k = mbox_alloc_msg_npa_cn20k_aq_enq(mbox);
+			req = (struct npa_aq_enq_req *)req_cn20k;
+		} else {
+			req = mbox_alloc_msg_npa_aq_enq(mbox);
+		}
 		if (req == NULL) {
 			rc = -ENOSPC;
 			goto exit;
@@ -504,7 +521,7 @@ roc_nix_tm_hierarchy_disable(struct roc_nix *roc_nix)
 		/* Wait for sq entries to be flushed */
 		rc = roc_nix_tm_sq_flush_spin(sq);
 		if (rc) {
-			plt_err("Failed to drain sq, rc=%d\n", rc);
+			plt_err("Failed to drain sq, rc=%d", rc);
 			goto cleanup;
 		}
 	}
@@ -543,7 +560,7 @@ roc_nix_tm_hierarchy_disable(struct roc_nix *roc_nix)
 		tail_off = (val >> 28) & 0x3F;
 
 		if (sqb_cnt > 1 || head_off != tail_off ||
-		    (*(uint64_t *)sq->fc != sq->aura_sqb_bufs))
+		    (!sq->sq_cnt_ptr && (*(uint64_t *)sq->fc != sq->aura_sqb_bufs)))
 			plt_err("Failed to gracefully flush sq %u", sq->qid);
 	}
 
@@ -607,6 +624,13 @@ roc_nix_tm_hierarchy_xmit_enable(struct roc_nix *roc_nix, enum roc_nix_tm_tree t
 		sq_id = node->id;
 		sq = nix->sqs[sq_id];
 
+		if (!sq) {
+			plt_err("nb_rxq %d nb_txq %d sq_id %d lvl %d", nix->nb_rx_queues,
+				nix->nb_tx_queues, sq_id, node->lvl);
+			roc_nix_tm_dump(roc_nix, NULL);
+			roc_nix_dump(roc_nix, NULL);
+			return NIX_ERR_TM_INVALID_NODE;
+		}
 		rc = roc_nix_sq_ena_dis(sq, true);
 		if (rc) {
 			plt_err("TM sw xon failed on SQ %u, rc=%d", node->id,
@@ -1024,7 +1048,10 @@ roc_nix_tm_init(struct roc_nix *roc_nix)
 	}
 
 	/* Prepare default tree */
-	rc = nix_tm_prepare_default_tree(roc_nix);
+	if (roc_nix_is_sdp(roc_nix) && (nix->nb_tx_queues > 1))
+		rc = roc_nix_tm_sdp_prepare_tree(roc_nix);
+	else
+		rc = nix_tm_prepare_default_tree(roc_nix);
 	if (rc) {
 		plt_err("failed to prepare default tm tree, rc=%d", rc);
 		return rc;
@@ -1283,15 +1310,19 @@ roc_nix_tm_rsrc_max(bool pf, uint16_t schq[ROC_TM_LVL_MAX])
 
 		switch (hw_lvl) {
 		case NIX_TXSCH_LVL_SMQ:
-			max = (roc_model_is_cn9k() ?
-					     NIX_CN9K_TXSCH_LVL_SMQ_MAX :
-					     NIX_TXSCH_LVL_SMQ_MAX);
+			max = (roc_model_is_cn9k() ? NIX_CN9K_TXSCH_LVL_SMQ_MAX :
+				(roc_model_is_cn10k() ? NIX_CN10K_TXSCH_LVL_SMQ_MAX :
+				 NIX_TXSCH_LVL_SMQ_MAX));
 			break;
 		case NIX_TXSCH_LVL_TL4:
-			max = NIX_TXSCH_LVL_TL4_MAX;
+			max = (roc_model_is_cn9k() ? NIX_CN9K_TXSCH_LVL_TL4_MAX :
+				(roc_model_is_cn10k() ? NIX_CN10K_TXSCH_LVL_TL4_MAX :
+							NIX_TXSCH_LVL_TL4_MAX));
 			break;
 		case NIX_TXSCH_LVL_TL3:
-			max = NIX_TXSCH_LVL_TL3_MAX;
+			max = (roc_model_is_cn9k() ? NIX_CN9K_TXSCH_LVL_TL3_MAX :
+				(roc_model_is_cn10k() ? NIX_CN10K_TXSCH_LVL_TL3_MAX :
+							NIX_TXSCH_LVL_TL3_MAX));
 			break;
 		case NIX_TXSCH_LVL_TL2:
 			max = pf ? NIX_TXSCH_LVL_TL2_MAX : 1;

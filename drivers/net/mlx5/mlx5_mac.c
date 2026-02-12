@@ -25,15 +25,25 @@
  *   Pointer to Ethernet device structure.
  * @param index
  *   MAC address index.
+ * @param addr
+ *   If MAC address is actually removed, it will be stored here if pointer is not a NULL.
+ *
+ * @return
+ *   True if there was a MAC address under given index.
  */
-static void
-mlx5_internal_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
+static bool
+mlx5_internal_mac_addr_remove(struct rte_eth_dev *dev,
+			      uint32_t index,
+			      struct rte_ether_addr *addr)
 {
 	MLX5_ASSERT(index < MLX5_MAX_MAC_ADDRESSES);
 	if (rte_is_zero_ether_addr(&dev->data->mac_addrs[index]))
-		return;
+		return false;
 	mlx5_os_mac_addr_remove(dev, index);
+	if (addr != NULL)
+		*addr = dev->data->mac_addrs[index];
 	memset(&dev->data->mac_addrs[index], 0, sizeof(struct rte_ether_addr));
+	return true;
 }
 
 /**
@@ -91,15 +101,15 @@ mlx5_internal_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 void
 mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
+	struct rte_ether_addr addr = { 0 };
 	int ret;
 
 	if (index >= MLX5_MAX_UC_MAC_ADDRESSES)
 		return;
-	mlx5_internal_mac_addr_remove(dev, index);
-	if (!dev->data->promiscuous) {
-		ret = mlx5_traffic_restart(dev);
+	if (mlx5_internal_mac_addr_remove(dev, index, &addr)) {
+		ret = mlx5_traffic_mac_remove(dev, &addr);
 		if (ret)
-			DRV_LOG(ERR, "port %u cannot restart traffic: %s",
+			DRV_LOG(ERR, "port %u cannot update control flow rules: %s",
 				dev->data->port_id, strerror(rte_errno));
 	}
 }
@@ -132,9 +142,7 @@ mlx5_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 	ret = mlx5_internal_mac_addr_add(dev, mac, index);
 	if (ret < 0)
 		return ret;
-	if (!dev->data->promiscuous)
-		return mlx5_traffic_restart(dev);
-	return 0;
+	return mlx5_traffic_mac_add(dev, mac);
 }
 
 /**
@@ -154,6 +162,12 @@ mlx5_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 	uint16_t port_id;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_priv *pf_priv;
+	struct rte_ether_addr old_mac_addr = dev->data->mac_addrs[0];
+	int ret;
+
+	/* ethdev does not check if new default address is the same as the old one. */
+	if (rte_is_same_ether_addr(mac_addr, &old_mac_addr))
+		return 0;
 
 	/*
 	 * Configuring the VF instead of its representor,
@@ -188,7 +202,10 @@ mlx5_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 
 	DRV_LOG(DEBUG, "port %u setting primary MAC address",
 		dev->data->port_id);
-	return mlx5_mac_addr_add(dev, mac_addr, 0, 0);
+	ret = mlx5_mac_addr_add(dev, mac_addr, 0, 0);
+	if (ret)
+		return ret;
+	return mlx5_traffic_mac_remove(dev, &old_mac_addr);
 }
 
 /**
@@ -208,7 +225,7 @@ mlx5_set_mc_addr_list(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 	for (i = MLX5_MAX_UC_MAC_ADDRESSES; i != MLX5_MAX_MAC_ADDRESSES; ++i)
-		mlx5_internal_mac_addr_remove(dev, i);
+		mlx5_internal_mac_addr_remove(dev, i, NULL);
 	i = MLX5_MAX_UC_MAC_ADDRESSES;
 	while (nb_mc_addr--) {
 		ret = mlx5_internal_mac_addr_add(dev, mc_addr_set++, i++);

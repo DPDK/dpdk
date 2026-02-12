@@ -9,10 +9,14 @@
 #include <string.h>
 #include <errno.h>
 
+#include <eal_export.h>
+#include <rte_bitops.h>
 #include <rte_string_fns.h>
+
 #include "cmdline_parse.h"
 #include "cmdline_parse_portlist.h"
 
+RTE_EXPORT_SYMBOL(cmdline_token_portlist_ops)
 struct cmdline_token_ops cmdline_token_portlist_ops = {
 	.parse = cmdline_parse_portlist,
 	.complete_get_nb = NULL,
@@ -24,22 +28,20 @@ static void
 parse_set_list(cmdline_portlist_t *pl, size_t low, size_t high)
 {
 	do {
-		pl->map |= (1 << low++);
+		pl->map |= RTE_BIT32(low);
+		low++;
 	} while (low <= high);
 }
 
 static int
 parse_ports(cmdline_portlist_t *pl, const char *str)
 {
+	const char *first = str;
 	size_t ps, pe;
-	const char *first, *last;
 	char *end;
 
-	for (first = str, last = first;
-	    first != NULL && last != NULL;
-	    first = last + 1) {
-
-		last = strchr(first, ',');
+	while (first != NULL) {
+		const char *last = strchr(first, ',');
 
 		errno = 0;
 		ps = strtoul(first, &end, 10);
@@ -63,11 +65,13 @@ parse_ports(cmdline_portlist_t *pl, const char *str)
 			return -1;
 
 		parse_set_list(pl, ps, pe);
+		first = (last == NULL ? NULL : last + 1);
 	}
 
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(cmdline_parse_portlist)
 int
 cmdline_parse_portlist(__rte_unused cmdline_parse_token_hdr_t *tk,
 	const char *buf, void *res, unsigned ressize)
@@ -104,6 +108,7 @@ cmdline_parse_portlist(__rte_unused cmdline_parse_token_hdr_t *tk,
 	return token_len;
 }
 
+RTE_EXPORT_SYMBOL(cmdline_get_help_portlist)
 int
 cmdline_get_help_portlist(__rte_unused cmdline_parse_token_hdr_t *tk,
 		char *dstbuf, unsigned int size)

@@ -3,6 +3,8 @@
  * All rights reserved.
  */
 
+#include <uapi/linux/vfio.h>
+
 #include <pthread.h>
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
@@ -11,6 +13,8 @@
 #include <nfp_common_pci.h>
 #include <nfp_dev.h>
 #include <rte_vfio.h>
+#include <rte_eal_paging.h>
+#include <rte_malloc.h>
 #include <vdpa_driver.h>
 
 #include "nfp_vdpa_core.h"
@@ -20,6 +24,11 @@
 
 #define MSIX_IRQ_SET_BUF_LEN (sizeof(struct vfio_irq_set) + \
 		sizeof(int) * (NFP_VDPA_MAX_QUEUES * 2 + 1))
+
+#define NFP_VDPA_USED_RING_LEN(size) \
+		((size) * sizeof(struct vring_used_elem) + sizeof(struct vring_used))
+
+#define EPOLL_DATA_INTR        1
 
 struct nfp_vdpa_dev {
 	struct rte_pci_device *pci_dev;
@@ -127,7 +136,7 @@ nfp_vdpa_vfio_setup(struct nfp_vdpa_dev *device)
 	if (device->vfio_group_fd < 0)
 		goto container_destroy;
 
-	DRV_VDPA_LOG(DEBUG, "container_fd=%d, group_fd=%d,\n",
+	DRV_VDPA_LOG(DEBUG, "The container_fd=%d, group_fd=%d.",
 			device->vfio_container_fd, device->vfio_group_fd);
 
 	ret = rte_pci_map_device(pci_dev);
@@ -171,7 +180,7 @@ nfp_vdpa_dma_do_unmap(struct rte_vhost_memory *mem,
 				region->size);
 		if (ret < 0) {
 			/* Here should not return, even error happened. */
-			DRV_VDPA_LOG(ERR, "DMA unmap failed. Times: %u", i);
+			DRV_VDPA_LOG(ERR, "DMA unmap failed. Times: %u.", i);
 		}
 	}
 
@@ -218,7 +227,7 @@ nfp_vdpa_dma_map(struct nfp_vdpa_dev *device,
 	}
 
 	vfio_container_fd = device->vfio_container_fd;
-	DRV_VDPA_LOG(DEBUG, "vfio_container_fd %d", vfio_container_fd);
+	DRV_VDPA_LOG(DEBUG, "The vfio_container_fd %d.", vfio_container_fd);
 
 	if (do_map)
 		ret = nfp_vdpa_dma_do_map(mem, mem->nregions, vfio_container_fd);
@@ -261,15 +270,85 @@ nfp_vdpa_qva_to_gpa(int vid,
 	return gpa;
 }
 
+static void
+nfp_vdpa_relay_vring_free(struct nfp_vdpa_dev *device,
+		uint16_t vring_index)
+{
+	uint16_t i;
+	uint64_t size;
+	struct rte_vhost_vring vring;
+	uint64_t m_vring_iova = NFP_VDPA_RELAY_VRING;
+
+	for (i = 0; i < vring_index; i++) {
+		rte_vhost_get_vhost_vring(device->vid, i, &vring);
+
+		size = RTE_ALIGN_CEIL(vring_size(vring.size, rte_mem_page_size()),
+				rte_mem_page_size());
+		rte_vfio_container_dma_unmap(device->vfio_container_fd,
+				(uint64_t)(uintptr_t)device->hw.m_vring[i].desc,
+				m_vring_iova, size);
+
+		rte_free(device->hw.m_vring[i].desc);
+		m_vring_iova += size;
+	}
+}
+
 static int
-nfp_vdpa_start(struct nfp_vdpa_dev *device)
+nfp_vdpa_relay_vring_alloc(struct nfp_vdpa_dev *device)
+{
+	int ret;
+	uint16_t i;
+	uint64_t size;
+	void *vring_buf;
+	uint64_t page_size;
+	struct rte_vhost_vring vring;
+	struct nfp_vdpa_hw *vdpa_hw = &device->hw;
+	uint64_t m_vring_iova = NFP_VDPA_RELAY_VRING;
+
+	page_size = rte_mem_page_size();
+
+	for (i = 0; i < vdpa_hw->nr_vring; i++) {
+		rte_vhost_get_vhost_vring(device->vid, i, &vring);
+
+		size = RTE_ALIGN_CEIL(vring_size(vring.size, page_size), page_size);
+		vring_buf = rte_zmalloc("nfp_vdpa_relay", size, page_size);
+		if (vring_buf == NULL)
+			goto vring_free_all;
+
+		vring_init(&vdpa_hw->m_vring[i], vring.size, vring_buf, page_size);
+
+		ret = rte_vfio_container_dma_map(device->vfio_container_fd,
+				(uint64_t)(uintptr_t)vring_buf, m_vring_iova, size);
+		if (ret != 0) {
+			DRV_VDPA_LOG(ERR, "vDPA vring relay dma map failed.");
+			goto vring_free_one;
+		}
+
+		m_vring_iova += size;
+	}
+
+	return 0;
+
+vring_free_one:
+	rte_free(device->hw.m_vring[i].desc);
+vring_free_all:
+	nfp_vdpa_relay_vring_free(device, i);
+
+	return -ENOSPC;
+}
+
+static int
+nfp_vdpa_start(struct nfp_vdpa_dev *device,
+		bool relay)
 {
 	int ret;
 	int vid;
 	uint16_t i;
 	uint64_t gpa;
+	uint16_t size;
 	struct rte_vhost_vring vring;
 	struct nfp_vdpa_hw *vdpa_hw = &device->hw;
+	uint64_t m_vring_iova = NFP_VDPA_RELAY_VRING;
 
 	vid = device->vid;
 	vdpa_hw->nr_vring = rte_vhost_get_vring_num(vid);
@@ -278,15 +357,21 @@ nfp_vdpa_start(struct nfp_vdpa_dev *device)
 	if (ret != 0)
 		return ret;
 
+	if (relay) {
+		ret = nfp_vdpa_relay_vring_alloc(device);
+		if (ret != 0)
+			return ret;
+	}
+
 	for (i = 0; i < vdpa_hw->nr_vring; i++) {
 		ret = rte_vhost_get_vhost_vring(vid, i, &vring);
 		if (ret != 0)
-			return ret;
+			goto relay_vring_free;
 
 		gpa = nfp_vdpa_qva_to_gpa(vid, (uint64_t)(uintptr_t)vring.desc);
 		if (gpa == 0) {
 			DRV_VDPA_LOG(ERR, "Fail to get GPA for descriptor ring.");
-			return -1;
+			goto relay_vring_free;
 		}
 
 		vdpa_hw->vring[i].desc = gpa;
@@ -294,33 +379,107 @@ nfp_vdpa_start(struct nfp_vdpa_dev *device)
 		gpa = nfp_vdpa_qva_to_gpa(vid, (uint64_t)(uintptr_t)vring.avail);
 		if (gpa == 0) {
 			DRV_VDPA_LOG(ERR, "Fail to get GPA for available ring.");
-			return -1;
+			goto relay_vring_free;
 		}
 
 		vdpa_hw->vring[i].avail = gpa;
 
-		gpa = nfp_vdpa_qva_to_gpa(vid, (uint64_t)(uintptr_t)vring.used);
-		if (gpa == 0) {
-			DRV_VDPA_LOG(ERR, "Fail to get GPA for used ring.");
-			return -1;
+		/* Direct I/O for Tx queue, relay for Rx queue */
+		if (relay && ((i & 1) == 0)) {
+			vdpa_hw->vring[i].used = m_vring_iova +
+					(char *)vdpa_hw->m_vring[i].used -
+					(char *)vdpa_hw->m_vring[i].desc;
+
+			ret = rte_vhost_get_vring_base(vid, i,
+					&vdpa_hw->m_vring[i].avail->idx,
+					&vdpa_hw->m_vring[i].used->idx);
+			if (ret != 0)
+				goto relay_vring_free;
+		} else {
+			gpa = nfp_vdpa_qva_to_gpa(vid, (uint64_t)(uintptr_t)vring.used);
+			if (gpa == 0) {
+				DRV_VDPA_LOG(ERR, "Fail to get GPA for used ring.");
+				goto relay_vring_free;
+			}
+
+			vdpa_hw->vring[i].used = gpa;
 		}
 
-		vdpa_hw->vring[i].used = gpa;
-
 		vdpa_hw->vring[i].size = vring.size;
+
+		if (relay) {
+			size = RTE_ALIGN_CEIL(vring_size(vring.size,
+					rte_mem_page_size()), rte_mem_page_size());
+			m_vring_iova += size;
+		}
 
 		ret = rte_vhost_get_vring_base(vid, i,
 				&vdpa_hw->vring[i].last_avail_idx,
 				&vdpa_hw->vring[i].last_used_idx);
 		if (ret != 0)
-			return ret;
+			goto relay_vring_free;
 	}
 
-	return nfp_vdpa_hw_start(&device->hw, vid);
+	if (relay)
+		return nfp_vdpa_relay_hw_start(&device->hw, vid);
+	else
+		return nfp_vdpa_hw_start(&device->hw, vid);
+
+relay_vring_free:
+	if (relay)
+		nfp_vdpa_relay_vring_free(device, vdpa_hw->nr_vring);
+
+	return -EFAULT;
 }
 
 static void
-nfp_vdpa_stop(struct nfp_vdpa_dev *device)
+nfp_vdpa_update_used_ring(struct nfp_vdpa_dev *dev,
+		uint16_t qid)
+{
+	rte_vdpa_relay_vring_used(dev->vid, qid, &dev->hw.m_vring[qid]);
+	rte_vhost_vring_call(dev->vid, qid);
+}
+
+static void
+nfp_vdpa_relay_stop(struct nfp_vdpa_dev *device)
+{
+	int vid;
+	uint32_t i;
+	uint64_t len;
+	struct rte_vhost_vring vring;
+	struct nfp_vdpa_hw *vdpa_hw = &device->hw;
+
+	nfp_vdpa_hw_stop(vdpa_hw);
+
+	vid = device->vid;
+	for (i = 0; i < vdpa_hw->nr_vring; i++) {
+		/* Synchronize remaining new used entries if any */
+		if ((i & 1) == 0)
+			nfp_vdpa_update_used_ring(device, i);
+
+		rte_vhost_get_vhost_vring(vid, i, &vring);
+		len = NFP_VDPA_USED_RING_LEN(vring.size);
+		vdpa_hw->vring[i].last_avail_idx = vring.avail->idx;
+		vdpa_hw->vring[i].last_used_idx = vring.used->idx;
+
+		rte_vhost_set_vring_base(vid, i,
+				vdpa_hw->vring[i].last_avail_idx,
+				vdpa_hw->vring[i].last_used_idx);
+
+		rte_vhost_log_used_vring(vid, i, 0, len);
+
+		if (vring.used->idx != vring.avail->idx)
+			rte_atomic_store_explicit(
+					(unsigned short __rte_atomic *)&vring.used->idx,
+					vring.avail->idx, rte_memory_order_release);
+	}
+
+	nfp_vdpa_relay_vring_free(device, vdpa_hw->nr_vring);
+}
+
+static void
+nfp_vdpa_stop(struct nfp_vdpa_dev *device,
+		bool relay)
 {
 	int vid;
 	uint32_t i;
@@ -329,15 +488,21 @@ nfp_vdpa_stop(struct nfp_vdpa_dev *device)
 	nfp_vdpa_hw_stop(vdpa_hw);
 
 	vid = device->vid;
-	for (i = 0; i < vdpa_hw->nr_vring; i++)
-		rte_vhost_set_vring_base(vid, i,
-				vdpa_hw->vring[i].last_avail_idx,
-				vdpa_hw->vring[i].last_used_idx);
+	if (relay)
+		nfp_vdpa_relay_stop(device);
+	else
+		for (i = 0; i < vdpa_hw->nr_vring; i++)
+			rte_vhost_set_vring_base(vid, i,
+					vdpa_hw->vring[i].last_avail_idx,
+					vdpa_hw->vring[i].last_used_idx);
+
 }
 
 static int
-nfp_vdpa_enable_vfio_intr(struct nfp_vdpa_dev *device)
+nfp_vdpa_enable_vfio_intr(struct nfp_vdpa_dev *device,
+		bool relay)
 {
+	int fd;
 	int ret;
 	uint16_t i;
 	int *fd_ptr;
@@ -364,6 +529,19 @@ nfp_vdpa_enable_vfio_intr(struct nfp_vdpa_dev *device)
 	for (i = 0; i < nr_vring; i++) {
 		rte_vhost_get_vhost_vring(device->vid, i, &vring);
 		fd_ptr[RTE_INTR_VEC_RXTX_OFFSET + i] = vring.callfd;
+	}
+
+	if (relay) {
+		for (i = 0; i < nr_vring; i += 2) {
+			fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+			if (fd < 0) {
+				DRV_VDPA_LOG(ERR, "Can't setup eventfd.");
+				return -EINVAL;
+			}
+
+			device->intr_fd[i] = fd;
+			fd_ptr[RTE_INTR_VEC_RXTX_OFFSET + i] = fd;
+		}
 	}
 
 	ret = ioctl(device->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
@@ -411,7 +589,7 @@ nfp_vdpa_read_kickfd(int kickfd)
 
 		if (errno != EINTR && errno != EWOULDBLOCK &&
 				errno != EAGAIN) {
-			DRV_VDPA_LOG(ERR, "Error reading kickfd");
+			DRV_VDPA_LOG(ERR, "Error reading kickfd.");
 			break;
 		}
 	}
@@ -433,7 +611,7 @@ nfp_vdpa_notify_epoll_ctl(uint32_t queue_num,
 		ev.data.u64 = qid | (uint64_t)vring.kickfd << 32;
 		ret = epoll_ctl(device->epoll_fd, EPOLL_CTL_ADD, vring.kickfd, &ev);
 		if (ret < 0) {
-			DRV_VDPA_LOG(ERR, "Epoll add error for queue %d", qid);
+			DRV_VDPA_LOG(ERR, "Epoll add error for queue %d.", qid);
 			return ret;
 		}
 	}
@@ -457,7 +635,7 @@ nfp_vdpa_notify_epoll_wait(uint32_t queue_num,
 			if (errno == EINTR)
 				continue;
 
-			DRV_VDPA_LOG(ERR, "Epoll wait fail");
+			DRV_VDPA_LOG(ERR, "Epoll wait fail.");
 			return -EACCES;
 		}
 
@@ -483,7 +661,7 @@ nfp_vdpa_notify_relay(void *arg)
 
 	epoll_fd = epoll_create(NFP_VDPA_MAX_QUEUES * 2);
 	if (epoll_fd < 0) {
-		DRV_VDPA_LOG(ERR, "failed to create epoll instance.");
+		DRV_VDPA_LOG(ERR, "Failed to create epoll instance.");
 		return 1;
 	}
 
@@ -556,11 +734,11 @@ update_datapath(struct nfp_vdpa_dev *device)
 		if (ret != 0)
 			goto unlock_exit;
 
-		ret = nfp_vdpa_enable_vfio_intr(device);
+		ret = nfp_vdpa_enable_vfio_intr(device, false);
 		if (ret != 0)
 			goto dma_map_rollback;
 
-		ret = nfp_vdpa_start(device);
+		ret = nfp_vdpa_start(device, false);
 		if (ret != 0)
 			goto disable_vfio_intr;
 
@@ -576,7 +754,7 @@ update_datapath(struct nfp_vdpa_dev *device)
 					rte_memory_order_relaxed) != 0))) {
 		nfp_vdpa_unset_notify_relay(device);
 
-		nfp_vdpa_stop(device);
+		nfp_vdpa_stop(device, false);
 
 		ret = nfp_vdpa_disable_vfio_intr(device);
 		if (ret != 0)
@@ -593,13 +771,189 @@ update_datapath(struct nfp_vdpa_dev *device)
 	return 0;
 
 vdpa_stop:
-	nfp_vdpa_stop(device);
+	nfp_vdpa_stop(device, false);
 disable_vfio_intr:
 	nfp_vdpa_disable_vfio_intr(device);
 dma_map_rollback:
 	nfp_vdpa_dma_map(device, false);
 unlock_exit:
 	rte_spinlock_unlock(&device->lock);
+	return ret;
+}
+
+static int
+nfp_vdpa_vring_epoll_ctl(uint32_t queue_num,
+		struct nfp_vdpa_dev *device)
+{
+	int ret;
+	uint32_t qid;
+	struct epoll_event ev;
+	struct rte_vhost_vring vring;
+
+	for (qid = 0; qid < queue_num; qid++) {
+		ev.events = EPOLLIN | EPOLLPRI;
+		rte_vhost_get_vhost_vring(device->vid, qid, &vring);
+		ev.data.u64 = qid << 1 | (uint64_t)vring.kickfd << 32;
+		ret = epoll_ctl(device->epoll_fd, EPOLL_CTL_ADD, vring.kickfd, &ev);
+		if (ret < 0) {
+			DRV_VDPA_LOG(ERR, "Epoll add error for queue %u.", qid);
+			return ret;
+		}
+	}
+
+	/* vDPA driver interrupt */
+	for (qid = 0; qid < queue_num; qid += 2) {
+		ev.events = EPOLLIN | EPOLLPRI;
+		/* Leave a flag to mark it's for interrupt */
+		ev.data.u64 = EPOLL_DATA_INTR | qid << 1 |
+				(uint64_t)device->intr_fd[qid] << 32;
+		ret = epoll_ctl(device->epoll_fd, EPOLL_CTL_ADD,
+				device->intr_fd[qid], &ev);
+		if (ret < 0) {
+			DRV_VDPA_LOG(ERR, "Epoll add error for queue %u.", qid);
+			return ret;
+		}
+
+		nfp_vdpa_update_used_ring(device, qid);
+	}
+
+	return 0;
+}
+
+static int
+nfp_vdpa_vring_epoll_wait(uint32_t queue_num,
+		struct nfp_vdpa_dev *device)
+{
+	int i;
+	int fds;
+	int kickfd;
+	uint32_t qid;
+	struct epoll_event events[NFP_VDPA_MAX_QUEUES * 2];
+
+	for (;;) {
+		fds = epoll_wait(device->epoll_fd, events, queue_num * 2, -1);
+		if (fds < 0) {
+			if (errno == EINTR)
+				continue;
+
+			DRV_VDPA_LOG(ERR, "Epoll wait fail.");
+			return -EACCES;
+		}
+
+		for (i = 0; i < fds; i++) {
+			qid = events[i].data.u32 >> 1;
+			kickfd = (uint32_t)(events[i].data.u64 >> 32);
+
+			nfp_vdpa_read_kickfd(kickfd);
+			if ((events[i].data.u32 & EPOLL_DATA_INTR) != 0) {
+				nfp_vdpa_update_used_ring(device, qid);
+				nfp_vdpa_irq_unmask(&device->hw);
+			} else {
+				nfp_vdpa_notify_queue(&device->hw, qid);
+			}
+		}
+	}
+
+	return 0;
+}
+
+static uint32_t
+nfp_vdpa_vring_relay(void *arg)
+{
+	int ret;
+	int epoll_fd;
+	uint16_t queue_id;
+	uint32_t queue_num;
+	struct nfp_vdpa_dev *device = arg;
+
+	epoll_fd = epoll_create(NFP_VDPA_MAX_QUEUES * 2);
+	if (epoll_fd < 0) {
+		DRV_VDPA_LOG(ERR, "failed to create epoll instance.");
+		return 1;
+	}
+
+	device->epoll_fd = epoll_fd;
+
+	queue_num = rte_vhost_get_vring_num(device->vid);
+
+	ret = nfp_vdpa_vring_epoll_ctl(queue_num, device);
+	if (ret != 0)
+		goto notify_exit;
+
+	/* Start relay with a first kick */
+	for (queue_id = 0; queue_id < queue_num; queue_id++)
+		nfp_vdpa_notify_queue(&device->hw, queue_id);
+
+	ret = nfp_vdpa_vring_epoll_wait(queue_num, device);
+	if (ret != 0)
+		goto notify_exit;
+
+	return 0;
+
+notify_exit:
+	close(device->epoll_fd);
+	device->epoll_fd = -1;
+
+	return 1;
+}
+
+static int
+nfp_vdpa_setup_vring_relay(struct nfp_vdpa_dev *device)
+{
+	int ret;
+	char name[RTE_THREAD_INTERNAL_NAME_SIZE];
+
+	snprintf(name, sizeof(name), "nfp_vring%d", device->vid);
+	ret = rte_thread_create_internal_control(&device->tid, name,
+			nfp_vdpa_vring_relay, (void *)device);
+	if (ret != 0) {
+		DRV_VDPA_LOG(ERR, "Failed to create vring relay pthread.");
+		return -EPERM;
+	}
+
+	return 0;
+}
+
+static int
+nfp_vdpa_sw_fallback(struct nfp_vdpa_dev *device)
+{
+	int ret;
+	int vid = device->vid;
+
+	/* Stop the direct IO data path */
+	nfp_vdpa_unset_notify_relay(device);
+	nfp_vdpa_disable_vfio_intr(device);
+
+	ret = rte_vhost_host_notifier_ctrl(vid, RTE_VHOST_QUEUE_ALL, false);
+	if ((ret != 0) && (ret != -ENOTSUP)) {
+		DRV_VDPA_LOG(ERR, "Unset the host notifier failed.");
+		goto error;
+	}
+
+	/* Setup interrupt for vring relay */
+	ret = nfp_vdpa_enable_vfio_intr(device, true);
+	if (ret != 0)
+		goto error;
+
+	/* Config the VF */
+	ret = nfp_vdpa_start(device, true);
+	if (ret != 0)
+		goto unset_intr;
+
+	/* Setup vring relay thread */
+	ret = nfp_vdpa_setup_vring_relay(device);
+	if (ret != 0)
+		goto stop_vf;
+
+	device->hw.sw_fallback_running = true;
+
+	return 0;
+
+stop_vf:
+	nfp_vdpa_stop(device, true);
+unset_intr:
+	nfp_vdpa_disable_vfio_intr(device);
+error:
 	return ret;
 }
 
@@ -614,7 +968,7 @@ nfp_vdpa_dev_config(int vid)
 	vdev = rte_vhost_get_vdpa_device(vid);
 	node = nfp_vdpa_find_node_by_vdev(vdev);
 	if (node == NULL) {
-		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p.", vdev);
 		return -ENODEV;
 	}
 
@@ -641,13 +995,32 @@ nfp_vdpa_dev_close(int vid)
 	vdev = rte_vhost_get_vdpa_device(vid);
 	node = nfp_vdpa_find_node_by_vdev(vdev);
 	if (node == NULL) {
-		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p.", vdev);
 		return -ENODEV;
 	}
 
 	device = node->device;
-	rte_atomic_store_explicit(&device->dev_attached, 0, rte_memory_order_relaxed);
-	update_datapath(device);
+	if (device->hw.sw_fallback_running) {
+		/* Reset VF */
+		nfp_vdpa_stop(device, true);
+
+		/* Remove interrupt setting */
+		nfp_vdpa_disable_vfio_intr(device);
+
+		/* Unset DMA map for guest memory */
+		nfp_vdpa_dma_map(device, false);
+
+		device->hw.sw_fallback_running = false;
+
+		rte_atomic_store_explicit(&device->dev_attached, 0,
+				rte_memory_order_relaxed);
+		rte_atomic_store_explicit(&device->running, 0,
+				rte_memory_order_relaxed);
+	} else {
+		rte_atomic_store_explicit(&device->dev_attached, 0,
+				rte_memory_order_relaxed);
+		update_datapath(device);
+	}
 
 	return 0;
 }
@@ -661,7 +1034,7 @@ nfp_vdpa_get_vfio_group_fd(int vid)
 	vdev = rte_vhost_get_vdpa_device(vid);
 	node = nfp_vdpa_find_node_by_vdev(vdev);
 	if (node == NULL) {
-		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p.", vdev);
 		return -ENODEV;
 	}
 
@@ -677,7 +1050,7 @@ nfp_vdpa_get_vfio_device_fd(int vid)
 	vdev = rte_vhost_get_vdpa_device(vid);
 	node = nfp_vdpa_find_node_by_vdev(vdev);
 	if (node == NULL) {
-		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p.", vdev);
 		return -ENODEV;
 	}
 
@@ -728,7 +1101,7 @@ nfp_vdpa_get_queue_num(struct rte_vdpa_device *vdev,
 
 	node = nfp_vdpa_find_node_by_vdev(vdev);
 	if (node == NULL) {
-		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p.", vdev);
 		return -ENODEV;
 	}
 
@@ -770,7 +1143,35 @@ nfp_vdpa_get_protocol_features(struct rte_vdpa_device *vdev __rte_unused,
 static int
 nfp_vdpa_set_features(int32_t vid)
 {
-	DRV_VDPA_LOG(DEBUG, "Start vid=%d", vid);
+	int ret;
+	uint64_t features = 0;
+	struct nfp_vdpa_dev *device;
+	struct rte_vdpa_device *vdev;
+	struct nfp_vdpa_dev_node *node;
+
+	DRV_VDPA_LOG(DEBUG, "Start vid=%d.", vid);
+
+	vdev = rte_vhost_get_vdpa_device(vid);
+	node = nfp_vdpa_find_node_by_vdev(vdev);
+	if (node == NULL) {
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p.", vdev);
+		return -ENODEV;
+	}
+
+	rte_vhost_get_negotiated_features(vid, &features);
+
+	if (RTE_VHOST_NEED_LOG(features) == 0)
+		return 0;
+
+	device = node->device;
+	if (device->hw.sw_lm) {
+		ret = nfp_vdpa_sw_fallback(device);
+		if (ret != 0) {
+			DRV_VDPA_LOG(ERR, "Software fallback start failed.");
+			return -1;
+		}
+	}
+
 	return 0;
 }
 
@@ -779,7 +1180,7 @@ nfp_vdpa_set_vring_state(int vid,
 		int vring,
 		int state)
 {
-	DRV_VDPA_LOG(DEBUG, "Start vid=%d, vring=%d, state=%d", vid, vring, state);
+	DRV_VDPA_LOG(DEBUG, "Start vid=%d, vring=%d, state=%d.", vid, vring, state);
 	return 0;
 }
 
@@ -828,7 +1229,7 @@ nfp_vdpa_pci_probe(struct rte_pci_device *pci_dev)
 
 	device->vdev = rte_vdpa_register_device(&pci_dev->device, &nfp_vdpa_ops);
 	if (device->vdev == NULL) {
-		DRV_VDPA_LOG(ERR, "Failed to register device %s", pci_dev->name);
+		DRV_VDPA_LOG(ERR, "Failed to register device %s.", pci_dev->name);
 		goto vfio_teardown;
 	}
 
@@ -864,7 +1265,7 @@ nfp_vdpa_pci_remove(struct rte_pci_device *pci_dev)
 
 	node = nfp_vdpa_find_node_by_pdev(pci_dev);
 	if (node == NULL) {
-		DRV_VDPA_LOG(ERR, "Invalid device: %s", pci_dev->name);
+		DRV_VDPA_LOG(ERR, "Invalid device: %s.", pci_dev->name);
 		return -ENODEV;
 	}
 

@@ -43,7 +43,7 @@ New Features
   higher-level than the legacy filtering framework, which it encompasses and
   supersedes (including all functions and filter types) .
 
-  See the :doc:`../prog_guide/rte_flow` documentation for more information.
+  See the :doc:`../prog_guide/ethdev/flow_offload` documentation for more information.
 
 * **Added firmware version get API.**
 
@@ -215,7 +215,7 @@ New Features
   therefore, it can better fit in CPU cache and scale to millions of flow
   keys.
 
-  See the :ref:`Elastic Flow Distributor Library <Efd_Library>` documentation in
+  See the :doc:`../prog_guide/efd_lib` documentation in
   the Programmers Guide document, for more information.
 
 

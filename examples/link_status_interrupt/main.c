@@ -66,11 +66,11 @@ static unsigned lsi_dst_ports[RTE_MAX_ETHPORTS] = {0};
 #define MAX_RX_QUEUE_PER_LCORE 16
 #define MAX_TX_QUEUE_PER_PORT 16
 /* List of queues must be polled for a give lcore. 8< */
-struct lcore_queue_conf {
+struct __rte_cache_aligned lcore_queue_conf {
 	unsigned n_rx_port;
 	unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
 	unsigned tx_queue_id;
-} __rte_cache_aligned;
+};
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 /* >8 End of list of queues to be polled. */
 
@@ -90,11 +90,11 @@ static struct rte_eth_conf port_conf = {
 struct rte_mempool * lsi_pktmbuf_pool = NULL;
 
 /* Per-port statistics struct */
-struct lsi_port_statistics {
+struct __rte_cache_aligned lsi_port_statistics {
 	uint64_t tx;
 	uint64_t rx;
 	uint64_t dropped;
-} __rte_cache_aligned;
+};
 struct lsi_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 
 /* A tsc-based timer responsible for triggering statistics printout */

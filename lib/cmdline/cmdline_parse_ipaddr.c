@@ -9,11 +9,13 @@
 #include <string.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_string_fns.h>
 
 #include "cmdline_parse.h"
 #include "cmdline_parse_ipaddr.h"
 
+RTE_EXPORT_SYMBOL(cmdline_token_ipaddr_ops)
 struct cmdline_token_ops cmdline_token_ipaddr_ops = {
 	.parse = cmdline_parse_ipaddr,
 	.complete_get_nb = NULL,
@@ -24,6 +26,7 @@ struct cmdline_token_ops cmdline_token_ipaddr_ops = {
 #define PREFIXMAX 128
 #define V4PREFIXMAX 32
 
+RTE_EXPORT_SYMBOL(cmdline_parse_ipaddr)
 int
 cmdline_parse_ipaddr(cmdline_parse_token_hdr_t *tk, const char *buf, void *res,
 	unsigned ressize)
@@ -90,6 +93,7 @@ cmdline_parse_ipaddr(cmdline_parse_token_hdr_t *tk, const char *buf, void *res,
 
 }
 
+RTE_EXPORT_SYMBOL(cmdline_get_help_ipaddr)
 int cmdline_get_help_ipaddr(cmdline_parse_token_hdr_t *tk, char *dstbuf,
 			    unsigned int size)
 {

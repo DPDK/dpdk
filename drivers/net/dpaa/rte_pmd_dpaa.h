@@ -5,6 +5,8 @@
 #ifndef _PMD_DPAA_H_
 #define _PMD_DPAA_H_
 
+#include <stdint.h>
+
 /**
  * @file rte_pmd_dpaa.h
  *

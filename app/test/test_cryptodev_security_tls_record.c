@@ -215,6 +215,13 @@ test_tls_record_td_update(struct tls_record_test_data td_inb[],
 		if (flags->pkt_corruption)
 			td_inb[i].input_text.data[0] = ~td_inb[i].input_text.data[0];
 
+		/* Corrupt a byte in the last but one block */
+		if (flags->padding_corruption) {
+			int offset = td_inb[i].input_text.len - TLS_RECORD_PAD_CORRUPT_OFFSET;
+
+			td_inb[i].input_text.data[offset] = ~td_inb[i].input_text.data[offset];
+		}
+
 		/* Clear outbound specific flags */
 		td_inb[i].tls_record_xform.options.iv_gen_disable = 0;
 	}

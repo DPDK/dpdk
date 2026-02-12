@@ -63,4 +63,4 @@ test_byteorder(void)
 	return 0;
 }
 
-REGISTER_FAST_TEST(byteorder_autotest, true, true, test_byteorder);
+REGISTER_FAST_TEST(byteorder_autotest, NOHUGE_OK, ASAN_OK, test_byteorder);

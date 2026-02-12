@@ -68,11 +68,13 @@ struct internal_config {
 	 */
 	volatile unsigned create_uio_dev; /**< true to create /dev/uioX devices */
 	volatile enum rte_proc_type_t process_type; /**< multi-process proc type */
-	/** true to try allocating memory on specific sockets */
-	volatile unsigned force_sockets;
-	volatile uint64_t socket_mem[RTE_MAX_NUMA_NODES]; /**< amount of memory per socket */
-	volatile unsigned force_socket_limits;
-	volatile uint64_t socket_limit[RTE_MAX_NUMA_NODES]; /**< limit amount of memory per socket */
+	/** true to try allocating memory on specific NUMA nodes */
+	volatile unsigned force_numa;
+	/** amount of memory per NUMA node */
+	volatile uint64_t numa_mem[RTE_MAX_NUMA_NODES];
+	volatile unsigned force_numa_limits;
+	/** limit amount of memory per NUMA node */
+	volatile uint64_t numa_limit[RTE_MAX_NUMA_NODES];
 	uintptr_t base_virtaddr;          /**< base address to try and reserve memory from */
 	volatile unsigned legacy_mem;
 	/**< true to enable legacy memory behavior (no dynamic allocation,
@@ -84,7 +86,6 @@ struct internal_config {
 	/**< true if storing all pages within single files (per-page-size,
 	 * per-node) non-legacy mode only.
 	 */
-	volatile int syslog_facility;	  /**< facility passed to openlog() */
 	/** default interrupt mode for VFIO */
 	volatile enum rte_intr_mode vfio_intr_mode;
 	/** the shared VF token for VFIO-PCI bound PF and VFs devices */

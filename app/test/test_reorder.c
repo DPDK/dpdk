@@ -130,11 +130,12 @@ test_reorder_free(void)
 static int
 test_reorder_insert(void)
 {
+#define INSERT_NUM_BUFS 7u
+
 	struct rte_reorder_buffer *b = NULL;
 	struct rte_mempool *p = test_params->p;
 	const unsigned int size = 4;
-	const unsigned int num_bufs = 7;
-	struct rte_mbuf *bufs[num_bufs];
+	struct rte_mbuf *bufs[INSERT_NUM_BUFS];
 	int ret = 0;
 	unsigned i;
 
@@ -146,7 +147,7 @@ test_reorder_insert(void)
 	b = rte_reorder_create("test_insert", rte_socket_id(), size);
 	TEST_ASSERT_NOT_NULL(b, "Failed to create reorder buffer");
 
-	for (i = 0; i < num_bufs; i++) {
+	for (i = 0; i < INSERT_NUM_BUFS; i++) {
 		bufs[i] = rte_pktmbuf_alloc(p);
 		TEST_ASSERT_NOT_NULL(bufs[i], "Packet allocation failed\n");
 		*rte_reorder_seqn(bufs[i]) = i;
@@ -207,26 +208,27 @@ test_reorder_insert(void)
 	ret = 0;
 exit:
 	rte_reorder_free(b);
-	for (i = 0; i < num_bufs; i++) {
+	for (i = 0; i < INSERT_NUM_BUFS; i++)
 		rte_pktmbuf_free(bufs[i]);
-	}
+
 	return ret;
 }
 
 static int
 test_reorder_drain(void)
 {
+#define DRAIN_NUM_BUFS 8u
+
 	struct rte_reorder_buffer *b = NULL;
 	struct rte_mempool *p = test_params->p;
 	const unsigned int size = 4;
-	const unsigned int num_bufs = 8;
-	struct rte_mbuf *bufs[num_bufs];
-	struct rte_mbuf *robufs[num_bufs];
+	struct rte_mbuf *bufs[DRAIN_NUM_BUFS];
+	struct rte_mbuf *robufs[DRAIN_NUM_BUFS];
 	int ret = 0;
 	unsigned i, cnt;
 
 	/* initialize all robufs to NULL */
-	for (i = 0; i < num_bufs; i++)
+	for (i = 0; i < DRAIN_NUM_BUFS; i++)
 		robufs[i] = NULL;
 
 	/* This would create a reorder buffer instance consisting of:
@@ -246,7 +248,7 @@ test_reorder_drain(void)
 		goto exit;
 	}
 
-	for (i = 0; i < num_bufs; i++) {
+	for (i = 0; i < DRAIN_NUM_BUFS; i++) {
 		bufs[i] = rte_pktmbuf_alloc(p);
 		TEST_ASSERT_NOT_NULL(bufs[i], "Packet allocation failed\n");
 		*rte_reorder_seqn(bufs[i]) = i;
@@ -320,7 +322,7 @@ test_reorder_drain(void)
 	ret = 0;
 exit:
 	rte_reorder_free(b);
-	for (i = 0; i < num_bufs; i++) {
+	for (i = 0; i < DRAIN_NUM_BUFS; i++) {
 		rte_pktmbuf_free(bufs[i]);
 		rte_pktmbuf_free(robufs[i]);
 	}
@@ -337,15 +339,16 @@ buffer_to_reorder_move(struct rte_mbuf **mbuf, struct rte_reorder_buffer *b)
 static int
 test_reorder_drain_up_to_seqn(void)
 {
+#define DRAIN_TO_NUM_BUFS 10u
+
 	struct rte_mempool *p = test_params->p;
 	struct rte_reorder_buffer *b = NULL;
-	const unsigned int num_bufs = 10;
 	const unsigned int size = 4;
 	unsigned int i, cnt;
 	int ret = 0;
 
-	struct rte_mbuf *bufs[num_bufs];
-	struct rte_mbuf *robufs[num_bufs];
+	struct rte_mbuf *bufs[DRAIN_TO_NUM_BUFS];
+	struct rte_mbuf *robufs[DRAIN_TO_NUM_BUFS];
 
 	/* initialize all robufs to NULL */
 	memset(robufs, 0, sizeof(robufs));
@@ -358,7 +361,7 @@ test_reorder_drain_up_to_seqn(void)
 	b = rte_reorder_create("test_drain_up_to_seqn", rte_socket_id(), size);
 	TEST_ASSERT_NOT_NULL(b, "Failed to create reorder buffer");
 
-	for (i = 0; i < num_bufs; i++) {
+	for (i = 0; i < DRAIN_TO_NUM_BUFS; i++) {
 		bufs[i] = rte_pktmbuf_alloc(p);
 		TEST_ASSERT_NOT_NULL(bufs[i], "Packet allocation failed\n");
 		*rte_reorder_seqn(bufs[i]) = i;
@@ -372,7 +375,7 @@ test_reorder_drain_up_to_seqn(void)
 	buffer_to_reorder_move(&bufs[2], b);
 	buffer_to_reorder_move(&bufs[3], b);
 	/* Draining 1, 2 */
-	cnt = rte_reorder_drain_up_to_seqn(b, robufs, num_bufs, 3);
+	cnt = rte_reorder_drain_up_to_seqn(b, robufs, DRAIN_TO_NUM_BUFS, 3);
 	if (cnt != 2) {
 		printf("%s:%d:%d: number of expected packets not drained\n",
 				__func__, __LINE__, cnt);
@@ -396,7 +399,7 @@ test_reorder_drain_up_to_seqn(void)
 	buffer_to_reorder_move(&bufs[8], b);
 
 	/* Drain 3 and 5 */
-	cnt = rte_reorder_drain_up_to_seqn(b, robufs, num_bufs, 6);
+	cnt = rte_reorder_drain_up_to_seqn(b, robufs, DRAIN_TO_NUM_BUFS, 6);
 	if (cnt != 2) {
 		printf("%s:%d:%d: number of expected packets not drained\n",
 				__func__, __LINE__, cnt);
@@ -410,7 +413,7 @@ test_reorder_drain_up_to_seqn(void)
 	ret = 0;
 exit:
 	rte_reorder_free(b);
-	for (i = 0; i < num_bufs; i++) {
+	for (i = 0; i < DRAIN_TO_NUM_BUFS; i++) {
 		rte_pktmbuf_free(bufs[i]);
 		rte_pktmbuf_free(robufs[i]);
 	}
@@ -420,14 +423,15 @@ exit:
 static int
 test_reorder_set_seqn(void)
 {
+#define SET_SEQN_NUM_BUFS 7u
+
 	struct rte_mempool *p = test_params->p;
 	struct rte_reorder_buffer *b = NULL;
-	const unsigned int num_bufs = 7;
 	const unsigned int size = 4;
 	unsigned int i;
 	int ret = 0;
 
-	struct rte_mbuf *bufs[num_bufs];
+	struct rte_mbuf *bufs[SET_SEQN_NUM_BUFS];
 
 	/* This would create a reorder buffer instance consisting of:
 	 * reorder_seq = 0
@@ -437,7 +441,7 @@ test_reorder_set_seqn(void)
 	b = rte_reorder_create("test_min_seqn_set", rte_socket_id(), size);
 	TEST_ASSERT_NOT_NULL(b, "Failed to create reorder buffer");
 
-	for (i = 0; i < num_bufs; i++) {
+	for (i = 0; i < SET_SEQN_NUM_BUFS; i++) {
 		bufs[i] = rte_pktmbuf_alloc(p);
 		if (bufs[i] == NULL) {
 			printf("Packet allocation failed\n");
@@ -479,7 +483,7 @@ test_reorder_set_seqn(void)
 	ret = 0;
 exit:
 	rte_reorder_free(b);
-	for (i = 0; i < num_bufs; i++)
+	for (i = 0; i < SET_SEQN_NUM_BUFS; i++)
 		rte_pktmbuf_free(bufs[i]);
 
 	return ret;
@@ -548,4 +552,4 @@ test_reorder(void)
 }
 
 
-REGISTER_FAST_TEST(reorder_autotest, true, true, test_reorder);
+REGISTER_FAST_TEST(reorder_autotest, NOHUGE_OK, ASAN_OK, test_reorder);

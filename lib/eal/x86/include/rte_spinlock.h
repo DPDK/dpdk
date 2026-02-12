@@ -5,17 +5,16 @@
 #ifndef _RTE_SPINLOCK_X86_64_H_
 #define _RTE_SPINLOCK_X86_64_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "generic/rte_spinlock.h"
 #include "rte_rtm.h"
-#include "rte_cpuflags.h"
 #include "rte_branch_prediction.h"
 #include "rte_common.h"
 #include "rte_pause.h"
 #include "rte_cycles.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_RTM_MAX_RETRIES (20)
 #define RTE_XABORT_LOCK_BUSY (0xff)
@@ -181,7 +180,6 @@ rte_spinlock_recursive_trylock_tm(rte_spinlock_recursive_t *slr)
 
 	return rte_spinlock_recursive_trylock(slr);
 }
-
 
 #ifdef __cplusplus
 }

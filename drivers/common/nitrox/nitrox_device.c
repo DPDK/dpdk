@@ -2,12 +2,11 @@
  * Copyright(C) 2019 Marvell International Ltd.
  */
 
+#include <eal_export.h>
 #include <rte_malloc.h>
 
 #include "nitrox_device.h"
 #include "nitrox_hal.h"
-#include "nitrox_sym.h"
-#include "nitrox_comp.h"
 
 #define PCI_VENDOR_ID_CAVIUM	0x177d
 #define NITROX_V_PCI_VF_DEV_ID	0x13
@@ -63,11 +62,22 @@ ndev_release(struct nitrox_device *ndev)
 	rte_free(ndev);
 }
 
+TAILQ_HEAD(ndrv_list, nitrox_driver);
+static struct ndrv_list ndrv_list = TAILQ_HEAD_INITIALIZER(ndrv_list);
+
+RTE_EXPORT_INTERNAL_SYMBOL(nitrox_register_driver)
+void
+nitrox_register_driver(struct nitrox_driver *ndrv)
+{
+	TAILQ_INSERT_TAIL(&ndrv_list, ndrv, next);
+}
+
 static int
 nitrox_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_device *pdev)
 {
 	struct nitrox_device *ndev;
+	struct nitrox_driver *ndrv;
 	int err = -1;
 
 	/* Nitrox CSR space */
@@ -79,19 +89,21 @@ nitrox_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		return -ENOMEM;
 
 	ndev_init(ndev, pdev);
-	err = nitrox_sym_pmd_create(ndev);
-	if (err)
-		goto sym_pmd_err;
-
-	err = nitrox_comp_pmd_create(ndev);
-	if (err)
-		goto comp_pmd_err;
+	TAILQ_FOREACH(ndrv, &ndrv_list, next) {
+		err = ndrv->create(ndev);
+		if (err)
+			goto drv_err;
+	}
 
 	return 0;
 
-comp_pmd_err:
-	nitrox_sym_pmd_destroy(ndev);
-sym_pmd_err:
+drv_err:
+	ndrv = TAILQ_PREV(ndrv, ndrv_list, next);
+	while (ndrv != NULL) {
+		ndrv->destroy(ndev);
+		ndrv = TAILQ_PREV(ndrv, ndrv_list, next);
+	}
+
 	ndev_release(ndev);
 	return err;
 }
@@ -100,19 +112,18 @@ static int
 nitrox_pci_remove(struct rte_pci_device *pdev)
 {
 	struct nitrox_device *ndev;
+	struct nitrox_driver *ndrv;
 	int err;
 
 	ndev = find_ndev(pdev);
 	if (!ndev)
 		return -ENODEV;
 
-	err = nitrox_sym_pmd_destroy(ndev);
-	if (err)
-		return err;
-
-	err = nitrox_comp_pmd_destroy(ndev);
-	if (err)
-		return err;
+	TAILQ_FOREACH(ndrv, &ndrv_list, next) {
+		err = ndrv->destroy(ndev);
+		if (err)
+			return err;
+	}
 
 	ndev_release(ndev);
 	return 0;
@@ -132,34 +143,6 @@ static struct rte_pci_driver nitrox_pmd = {
 	.probe          = nitrox_pci_probe,
 	.remove         = nitrox_pci_remove,
 };
-
-__rte_weak int
-nitrox_sym_pmd_create(struct nitrox_device *ndev)
-{
-	RTE_SET_USED(ndev);
-	return 0;
-}
-
-__rte_weak int
-nitrox_sym_pmd_destroy(struct nitrox_device *ndev)
-{
-	RTE_SET_USED(ndev);
-	return 0;
-}
-
-__rte_weak int
-nitrox_comp_pmd_create(struct nitrox_device *ndev)
-{
-	RTE_SET_USED(ndev);
-	return 0;
-}
-
-__rte_weak int
-nitrox_comp_pmd_destroy(struct nitrox_device *ndev)
-{
-	RTE_SET_USED(ndev);
-	return 0;
-}
 
 RTE_PMD_REGISTER_PCI(nitrox, nitrox_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(nitrox, pci_id_nitrox_map);

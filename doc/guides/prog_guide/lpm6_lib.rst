@@ -1,8 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-LPM6 Library
-============
+Longest Prefix Match 6 (LPM6) Library
+=====================================
 
 The LPM6 (LPM for IPv6) library component implements the Longest Prefix Match (LPM) table search method for 128-bit keys
 that is typically used to find the best match route in IPv6 forwarding applications.

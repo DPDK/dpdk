@@ -42,8 +42,7 @@ typedef int (*qat_dev_get_extra_size_t)(void);
 typedef int (*qat_dev_get_slice_map_t)(uint32_t *map,
 		const struct rte_pci_device *pci_dev);
 
-extern int qat_legacy_capa;
-char *qat_dev_cmdline_get_val(struct qat_pci_device *qat_dev, const char *key);
+const char *qat_dev_cmdline_get_val(struct qat_pci_device *qat_dev, const char *key);
 
 struct qat_dev_hw_spec_funcs {
 	qat_dev_reset_ring_pairs_t	qat_dev_reset_ring_pairs;
@@ -122,14 +121,12 @@ struct qat_pci_device {
 	/**< Address of misc bar */
 	void *dev_private;
 	/**< Per generation specific information */
-	uint32_t slice_map;
-	/**< Map of the crypto and compression slices */
-	uint16_t has_wireless_slice;
-	/**< Wireless Slices supported */
 	char *command_line;
 	/**< Map of the crypto and compression slices */
 	void *pmd[QAT_MAX_SERVICES];
 	/**< link back to pmd private data */
+	struct qat_options options;
+	/**< qat device options */
 };
 
 struct qat_gen_hw_data {

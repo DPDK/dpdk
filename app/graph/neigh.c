@@ -62,12 +62,12 @@ find_neigh4_entry(uint32_t ip, uint64_t mac)
 }
 
 static struct neigh_ipv6_config *
-find_neigh6_entry(uint8_t *ip, uint64_t mac)
+find_neigh6_entry(struct rte_ipv6_addr *ip, uint64_t mac)
 {
 	struct neigh_ipv6_config *v6_config;
 
 	TAILQ_FOREACH(v6_config, &neigh6, next) {
-		if (!(memcmp(v6_config->ip, ip, 16)) && (v6_config->mac == mac))
+		if (rte_ipv6_addr_eq(&v6_config->ip, ip) && v6_config->mac == mac)
 			return v6_config;
 	}
 	return NULL;
@@ -82,7 +82,7 @@ ip6_rewrite_node_add(struct neigh_ipv6_config *v6_config)
 	int16_t portid = 0;
 	int rc;
 
-	portid = ethdev_portid_by_ip6(v6_config->ip, NULL);
+	portid = ethdev_portid_by_ip6(&v6_config->ip, NULL);
 	if (portid < 0) {
 		printf("Invalid portid found to add neigh\n");
 		return -EINVAL;
@@ -170,11 +170,10 @@ free:
 }
 
 static int
-neigh_ip6_add(uint8_t *ip, uint64_t mac)
+neigh_ip6_add(struct rte_ipv6_addr *ip, uint64_t mac)
 {
 	struct neigh_ipv6_config *v6_config;
 	int rc = -EINVAL;
-	int j;
 
 	v6_config = find_neigh6_entry(ip, mac);
 
@@ -184,9 +183,7 @@ neigh_ip6_add(uint8_t *ip, uint64_t mac)
 			return -ENOMEM;
 	}
 
-	for (j = 0; j < ETHDEV_IPV6_ADDR_LEN; j++)
-		v6_config->ip[j] = ip[j];
-
+	v6_config->ip = *ip;
 	v6_config->mac = mac;
 	v6_config->is_used = true;
 
@@ -261,19 +258,15 @@ cmd_neigh_add_ipv6_parsed(void *parsed_result, __rte_unused struct cmdline *cl,
 			  void *data __rte_unused)
 {
 	struct cmd_neigh_add_ipv6_result *res = parsed_result;
-	uint8_t ip[ETHDEV_IPV6_ADDR_LEN];
-	int rc = -EINVAL, i;
+	int rc = -EINVAL;
 	uint64_t mac;
-
-	for (i = 0; i < ETHDEV_IPV6_ADDR_LEN; i++)
-		ip[i] = res->ip.addr.ipv6.s6_addr[i];
 
 	if (parser_mac_read(&mac, res->mac)) {
 		printf(MSG_ARG_INVALID, "mac");
 		return;
 	}
 
-	rc = neigh_ip6_add(ip, mac);
+	rc = neigh_ip6_add(&res->ip.addr.ipv6, mac);
 	if (rc < 0)
 		printf(MSG_CMD_FAIL, res->neigh);
 }

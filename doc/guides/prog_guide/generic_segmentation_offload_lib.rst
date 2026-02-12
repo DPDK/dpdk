@@ -1,8 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2017 Intel Corporation.
 
-Generic Segmentation Offload Library
-====================================
+Generic Segmentation Offload (GSO) Library
+==========================================
 
 Overview
 --------

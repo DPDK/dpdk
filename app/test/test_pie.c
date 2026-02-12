@@ -41,11 +41,6 @@ test_pie_all(void)
 
 #include <rte_pie.h>
 
-#ifdef __INTEL_COMPILER
-#pragma warning(disable:2259)       /* conversion may lose significant bits */
-#pragma warning(disable:181)        /* Arg incompatible with format string */
-#endif
-
 /**< structures for testing rte_pie performance and function */
 struct test_rte_pie_config {        /**< Test structure for RTE_PIE config */
 	struct rte_pie_config *pconfig; /**< RTE_PIE configuration parameters */
@@ -1087,6 +1082,6 @@ test_pie_all(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_FAST_TEST(pie_autotest, true, true, test_pie);
+REGISTER_FAST_TEST(pie_autotest, NOHUGE_OK, ASAN_OK, test_pie);
 REGISTER_PERF_TEST(pie_perf, test_pie_perf);
 REGISTER_PERF_TEST(pie_all, test_pie_all);

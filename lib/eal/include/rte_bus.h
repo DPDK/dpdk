@@ -14,13 +14,13 @@
  * over the devices and drivers in EAL.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdio.h>
 
 #include <rte_eal.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct rte_bus;
 struct rte_device;

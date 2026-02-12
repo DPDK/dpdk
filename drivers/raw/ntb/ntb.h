@@ -8,10 +8,10 @@
 #include <stdbool.h>
 
 extern int ntb_logtype;
+#define RTE_LOGTYPE_NTB ntb_logtype
 
-#define NTB_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, ntb_logtype,	"%s(): " fmt "\n", \
-		__func__, ##args)
+#define NTB_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, NTB, "%s(): ", __func__, __VA_ARGS__)
 
 /* Vendor ID */
 #define NTB_INTEL_VENDOR_ID         0x8086
@@ -186,9 +186,9 @@ struct ntb_tx_queue {
 };
 
 struct ntb_header {
-	uint16_t avail_cnt __rte_cache_aligned;
-	uint16_t used_cnt __rte_cache_aligned;
-	struct ntb_desc desc_ring[] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint16_t avail_cnt;
+	alignas(RTE_CACHE_LINE_SIZE) uint16_t used_cnt;
+	alignas(RTE_CACHE_LINE_SIZE) struct ntb_desc desc_ring[];
 };
 
 /* ntb private data. */

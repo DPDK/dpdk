@@ -34,10 +34,10 @@
 #define PMD_BOND_XMIT_POLICY_LAYER34_KVARG	("l34")
 
 extern int bond_logtype;
+#define RTE_LOGTYPE_BOND bond_logtype
 
-#define RTE_BOND_LOG(lvl, msg, ...)		\
-	rte_log(RTE_LOG_ ## lvl, bond_logtype, \
-		"%s(%d) - " msg "\n", __func__, __LINE__, ##__VA_ARGS__)
+#define RTE_BOND_LOG(lvl, ...) \
+	RTE_LOG_LINE_PREFIX(lvl, BOND, "%s(%d) - ", __func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 #define BONDING_MODE_INVALID 0xFF
 

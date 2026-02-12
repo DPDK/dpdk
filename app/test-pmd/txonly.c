@@ -106,8 +106,6 @@ setup_pkt_udp_ip_headers(struct rte_ipv4_hdr *ip_hdr,
 			 struct rte_udp_hdr *udp_hdr,
 			 uint16_t pkt_data_len)
 {
-	uint16_t *ptr16;
-	uint32_t ip_cksum;
 	uint16_t pkt_len;
 
 	/*
@@ -136,25 +134,7 @@ setup_pkt_udp_ip_headers(struct rte_ipv4_hdr *ip_hdr,
 	/*
 	 * Compute IP header checksum.
 	 */
-	ptr16 = (unaligned_uint16_t*) ip_hdr;
-	ip_cksum = 0;
-	ip_cksum += ptr16[0]; ip_cksum += ptr16[1];
-	ip_cksum += ptr16[2]; ip_cksum += ptr16[3];
-	ip_cksum += ptr16[4];
-	ip_cksum += ptr16[6]; ip_cksum += ptr16[7];
-	ip_cksum += ptr16[8]; ip_cksum += ptr16[9];
-
-	/*
-	 * Reduce 32 bit checksum to 16 bits and complement it.
-	 */
-	ip_cksum = ((ip_cksum & 0xFFFF0000) >> 16) +
-		(ip_cksum & 0x0000FFFF);
-	if (ip_cksum > 65535)
-		ip_cksum -= 65535;
-	ip_cksum = (~ip_cksum) & 0x0000FFFF;
-	if (ip_cksum == 0)
-		ip_cksum = 0xFFFF;
-	ip_hdr->hdr_checksum = (uint16_t) ip_cksum;
+	ip_hdr->hdr_checksum = rte_ipv4_cksum_simple(ip_hdr);
 }
 
 static inline void
@@ -354,6 +334,10 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		ol_flags |= RTE_MBUF_F_TX_QINQ;
 	if (tx_offloads & RTE_ETH_TX_OFFLOAD_MACSEC_INSERT)
 		ol_flags |= RTE_MBUF_F_TX_MACSEC;
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM)
+		ol_flags |= RTE_MBUF_F_TX_IP_CKSUM;
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM)
+		ol_flags |= RTE_MBUF_F_TX_UDP_CKSUM;
 
 	/*
 	 * Initialize Ethernet header.

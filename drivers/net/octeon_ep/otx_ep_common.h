@@ -67,20 +67,17 @@
 #define OTX_EP_MAX_IOQS_PER_VF 8
 #define OTX_CUST_DATA_LEN 0
 
-#define otx_ep_info(fmt, args...)				\
-	rte_log(RTE_LOG_INFO, otx_net_ep_logtype,		\
-		"%s():%u " fmt "\n",				\
-		__func__, __LINE__, ##args)
+#define otx_ep_info(...) \
+	RTE_LOG_LINE_PREFIX(INFO, OTX_NET_EP, "%s():%u ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
-#define otx_ep_err(fmt, args...)				\
-	rte_log(RTE_LOG_ERR, otx_net_ep_logtype,		\
-		"%s():%u " fmt "\n",				\
-		__func__, __LINE__, ##args)
+#define otx_ep_err(...) \
+	RTE_LOG_LINE_PREFIX(ERR, OTX_NET_EP, "%s():%u ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
-#define otx_ep_dbg(fmt, args...)				\
-	rte_log(RTE_LOG_DEBUG, otx_net_ep_logtype,		\
-		"%s():%u " fmt "\n",				\
-		__func__, __LINE__, ##args)
+#define otx_ep_dbg(...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, OTX_NET_EP, "%s():%u ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 /* IO Access */
 #define oct_ep_read64(addr) rte_read64_relaxed((void *)(addr))
@@ -120,7 +117,7 @@ union otx_ep_instr_irh {
 	{\
 	typeof(value) val = (value); \
 	typeof(reg_off) off = (reg_off); \
-	otx_ep_dbg("octeon_write_csr64: reg: 0x%08lx val: 0x%016llx\n", \
+	otx_ep_dbg("octeon_write_csr64: reg: 0x%08lx val: 0x%016llx", \
 		   (unsigned long)off, (unsigned long long)val); \
 	rte_write64(val, ((base_addr) + off)); \
 	}
@@ -218,7 +215,7 @@ struct otx_ep_iq_config {
  */
 struct otx_ep_instr_queue {
 	/* Location in memory updated by SDP ISM */
-	uint32_t *inst_cnt_ism;
+	RTE_ATOMIC(uint32_t) *inst_cnt_ism;
 	struct rte_mbuf **mbuf_list;
 	/* Pointer to the Virtual Base addr of the input ring. */
 	uint8_t *base_addr;
@@ -413,7 +410,7 @@ struct otx_ep_droq {
 	uint8_t ism_ena;
 
 	/* Pointer to host memory copy of output packet count, set by ISM */
-	uint32_t *pkts_sent_ism;
+	RTE_ATOMIC(uint32_t) *pkts_sent_ism;
 	uint32_t pkts_sent_prev;
 
 	/* Statistics for this DROQ. */
@@ -592,6 +589,7 @@ int otx_ep_delete_oqs(struct otx_ep_device *otx_ep, uint32_t oq_no);
 #define OTX_EP_CLEAR_ISIZE_BSIZE 0x7FFFFFULL
 #define OTX_EP_CLEAR_OUT_INT_LVLS 0x3FFFFFFFFFFFFFULL
 #define OTX_EP_CLEAR_IN_INT_LVLS 0xFFFFFFFF
+#define OTX_EP_CLEAR_INSTR_DBELL 0xFFFFFFFF
 #define OTX_EP_CLEAR_SDP_IN_INT_LVLS 0x3FFFFFFFFFFFFFUL
 #define OTX_EP_DROQ_BUFSZ_MASK 0xFFFF
 #define OTX_EP_CLEAR_SLIST_DBELL 0xFFFFFFFF

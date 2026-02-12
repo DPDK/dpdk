@@ -4,6 +4,7 @@
  */
 #include <stddef.h>
 
+#include <eal_export.h>
 #include <rte_eal_memconfig.h>
 #include <rte_eal_paging.h>
 #include <rte_errno.h>
@@ -35,7 +36,7 @@ struct mlx5_range {
 /** Memory region for a mempool. */
 struct mlx5_mempool_mr {
 	struct mlx5_pmd_mr pmd_mr;
-	uint32_t refcnt; /**< Number of mempools sharing this MR. */
+	RTE_ATOMIC(uint32_t) refcnt; /**< Number of mempools sharing this MR. */
 };
 
 /* Mempool registration. */
@@ -51,16 +52,17 @@ struct mlx5_mempool_reg {
 	bool is_extmem;
 };
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_mprq_buf_free_cb)
 void
 mlx5_mprq_buf_free_cb(void *addr __rte_unused, void *opaque)
 {
 	struct mlx5_mprq_buf *buf = opaque;
 
-	if (__atomic_load_n(&buf->refcnt, __ATOMIC_RELAXED) == 1) {
+	if (rte_atomic_load_explicit(&buf->refcnt, rte_memory_order_relaxed) == 1) {
 		rte_mempool_put(buf->mp, buf);
-	} else if (unlikely(__atomic_fetch_sub(&buf->refcnt, 1,
-					       __ATOMIC_RELAXED) - 1 == 0)) {
-		__atomic_store_n(&buf->refcnt, 1, __ATOMIC_RELAXED);
+	} else if (unlikely(rte_atomic_fetch_sub_explicit(&buf->refcnt, 1,
+					       rte_memory_order_relaxed) - 1 == 0)) {
+		rte_atomic_store_explicit(&buf->refcnt, 1, rte_memory_order_relaxed);
 		rte_mempool_put(buf->mp, buf);
 	}
 }
@@ -249,6 +251,7 @@ mlx5_mr_btree_init(struct mlx5_mr_btree *bt, int n, int socket)
  * @param bt
  *   Pointer to B-tree structure.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_mr_btree_free)
 void
 mlx5_mr_btree_free(struct mlx5_mr_btree *bt)
 {
@@ -299,6 +302,7 @@ mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused)
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_mr_ctrl_init)
 int
 mlx5_mr_ctrl_init(struct mlx5_mr_ctrl *mr_ctrl, uint32_t *dev_gen_ptr,
 		  int socket)
@@ -965,6 +969,7 @@ err_nolock:
  * @return
  *   Searched LKey on success, UINT32_MAX on failure and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_mr_create)
 uint32_t
 mlx5_mr_create(struct mlx5_common_device *cdev,
 	       struct mlx5_mr_share_cache *share_cache,
@@ -1059,6 +1064,7 @@ mr_lookup_caches(struct mlx5_mr_ctrl *mr_ctrl,
  * @return
  *   Searched LKey on success, UINT32_MAX on no match.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_mr_addr2mr_bh)
 uint32_t
 mlx5_mr_addr2mr_bh(struct mlx5_mr_ctrl *mr_ctrl, uintptr_t addr)
 {
@@ -1149,6 +1155,7 @@ mlx5_mr_create_cache(struct mlx5_mr_share_cache *share_cache, int socket)
  * @param mr_ctrl
  *   Pointer to per-queue MR local cache.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_mr_flush_local_cache)
 void
 mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl)
 {
@@ -1650,7 +1657,7 @@ mlx5_mempool_reg_attach(struct mlx5_mempool_reg *mpr)
 	unsigned int i;
 
 	for (i = 0; i < mpr->mrs_n; i++)
-		__atomic_fetch_add(&mpr->mrs[i].refcnt, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&mpr->mrs[i].refcnt, 1, rte_memory_order_relaxed);
 }
 
 /**
@@ -1665,8 +1672,8 @@ mlx5_mempool_reg_detach(struct mlx5_mempool_reg *mpr)
 	bool ret = false;
 
 	for (i = 0; i < mpr->mrs_n; i++)
-		ret |= __atomic_fetch_sub(&mpr->mrs[i].refcnt, 1,
-					  __ATOMIC_RELAXED) - 1 == 0;
+		ret |= rte_atomic_fetch_sub_explicit(&mpr->mrs[i].refcnt, 1,
+					  rte_memory_order_relaxed) - 1 == 0;
 	return ret;
 }
 
@@ -1710,18 +1717,24 @@ mlx5_mr_mempool_register_primary(struct mlx5_mr_share_cache *share_cache,
 	 * hugepage can be shared across mempools that also fit in it.
 	 */
 	if (share_hugepage) {
+		struct mlx5_mempool_mr *gc_mrs = NULL;
+
 		rte_rwlock_write_lock(&share_cache->rwlock);
 		LIST_FOREACH(mpr, &share_cache->mempool_reg_list, next) {
 			if (mpr->mrs[0].pmd_mr.addr == (void *)ranges[0].start)
 				break;
 		}
 		if (mpr != NULL) {
+			/* Releasing MRs here can create a dead-lock on share_cache->rwlock */
+			gc_mrs = new_mpr->mrs;
 			new_mpr->mrs = mpr->mrs;
 			mlx5_mempool_reg_attach(new_mpr);
 			LIST_INSERT_HEAD(&share_cache->mempool_reg_list,
 					 new_mpr, next);
 		}
 		rte_rwlock_write_unlock(&share_cache->rwlock);
+		if (gc_mrs != NULL)
+			mlx5_free(gc_mrs);
 		if (mpr != NULL) {
 			DRV_LOG(DEBUG, "Shared MR %#x in PD %p for mempool %s with mempool %s",
 				mpr->mrs[0].pmd_mr.lkey, pd, mp->name,
@@ -1803,6 +1816,7 @@ mlx5_mr_mempool_register_secondary(struct mlx5_common_device *cdev,
  * @return
  *   0 on success, (-1) on failure and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_mr_mempool_register)
 int
 mlx5_mr_mempool_register(struct mlx5_common_device *cdev,
 			 struct rte_mempool *mp, bool is_extmem)
@@ -1868,6 +1882,7 @@ mlx5_mr_mempool_unregister_secondary(struct mlx5_common_device *cdev,
  * @return
  *   0 on success, (-1) on failure and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_mr_mempool_unregister)
 int
 mlx5_mr_mempool_unregister(struct mlx5_common_device *cdev,
 			   struct rte_mempool *mp)
@@ -1979,6 +1994,7 @@ mlx5_lookup_mempool_regs(struct mlx5_mr_ctrl *mr_ctrl,
  * @return
  *  0 on success, (-1) on failure and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_mr_mempool_populate_cache)
 int
 mlx5_mr_mempool_populate_cache(struct mlx5_mr_ctrl *mr_ctrl,
 			       struct rte_mempool *mp)
@@ -2038,6 +2054,7 @@ mlx5_mr_mempool_populate_cache(struct mlx5_mr_ctrl *mr_ctrl,
  * @return
  *   MR lkey on success, UINT32_MAX on failure.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_mr_mempool2mr_bh)
 uint32_t
 mlx5_mr_mempool2mr_bh(struct mlx5_mr_ctrl *mr_ctrl,
 		      struct rte_mempool *mp, uintptr_t addr)
@@ -2064,6 +2081,7 @@ mlx5_mr_mempool2mr_bh(struct mlx5_mr_ctrl *mr_ctrl,
 	return lkey;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_mr_mb2mr_bh)
 uint32_t
 mlx5_mr_mb2mr_bh(struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mb)
 {

@@ -5,7 +5,7 @@ Network Interface Controller Drivers
 ====================================
 
 .. toctree::
-    :maxdepth: 3
+    :maxdepth: 1
     :numbered:
 
     overview
@@ -27,12 +27,14 @@ Network Interface Controller Drivers
     e1000em
     ena
     enetc
+    enetc4
     enetfec
     enic
     fail_safe
     fm10k
     gve
     hinic
+    hinic3
     hns3
     i40e
     ice
@@ -49,16 +51,21 @@ Network Interface Controller Drivers
     mlx5
     mvneta
     mvpp2
+    nbl
     netvsc
     nfb
     nfp
     ngbe
+    ntnic
     null
     octeon_ep
     octeontx
-    pcap_ring
+    pcap
     pfe
     qede
+    r8169
+    ring
+    rnp
     sfc_efx
     softnic
     tap
@@ -68,3 +75,5 @@ Network Interface Controller Drivers
     vhost
     virtio
     vmxnet3
+    xsc
+    zxdh

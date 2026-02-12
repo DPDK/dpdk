@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_errno.h>
 #include <rte_common.h>
 #include <rte_string_fns.h>
@@ -55,6 +56,7 @@ struct rte_metrics_data_s {
 	rte_spinlock_t lock;
 };
 
+RTE_EXPORT_SYMBOL(rte_metrics_init)
 int
 rte_metrics_init(int socket_id)
 {
@@ -80,6 +82,7 @@ rte_metrics_init(int socket_id)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_metrics_deinit)
 int
 rte_metrics_deinit(void)
 {
@@ -103,6 +106,7 @@ rte_metrics_deinit(void)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_metrics_reg_name)
 int
 rte_metrics_reg_name(const char *name)
 {
@@ -111,6 +115,7 @@ rte_metrics_reg_name(const char *name)
 	return rte_metrics_reg_names(list_names, 1);
 }
 
+RTE_EXPORT_SYMBOL(rte_metrics_reg_names)
 int
 rte_metrics_reg_names(const char * const *names, uint16_t cnt_names)
 {
@@ -157,12 +162,14 @@ rte_metrics_reg_names(const char * const *names, uint16_t cnt_names)
 	return idx_base;
 }
 
+RTE_EXPORT_SYMBOL(rte_metrics_update_value)
 int
 rte_metrics_update_value(int port_id, uint16_t key, const uint64_t value)
 {
 	return rte_metrics_update_values(port_id, key, &value, 1);
 }
 
+RTE_EXPORT_SYMBOL(rte_metrics_update_values)
 int
 rte_metrics_update_values(int port_id,
 	uint16_t key,
@@ -225,6 +232,7 @@ rte_metrics_update_values(int port_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_metrics_get_names)
 int
 rte_metrics_get_names(struct rte_metric_name *names,
 	uint16_t capacity)
@@ -256,6 +264,7 @@ rte_metrics_get_names(struct rte_metric_name *names,
 	return return_value;
 }
 
+RTE_EXPORT_SYMBOL(rte_metrics_get_values)
 int
 rte_metrics_get_values(int port_id,
 	struct rte_metric_value *values,

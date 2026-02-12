@@ -1,5 +1,5 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
- * Copyright 2019-2021 NXP
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
+ * Copyright 2019-2024 NXP
  */
 #include <fsl_mc_sys.h>
 #include <fsl_mc_cmd.h>
@@ -327,6 +327,42 @@ int dprtc_set_clock_offset(struct fsl_mc_io *mc_io,
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dprtc_get_clock_offset() - Gets the clock's offset
+ * (usually relative to another clock).
+ *
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPRTC object
+ * @offset:	Returned clock offset (in nanoseconds).
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dprtc_get_clock_offset(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t token,
+			   int64_t *offset)
+{
+	struct dprtc_rsp_get_clock_offset *rsp_params;
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPRTC_CMDID_GET_CLOCK_OFFSET,
+					  cmd_flags,
+					  token);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	rsp_params = (struct dprtc_rsp_get_clock_offset *)cmd.params;
+	*offset = le64_to_cpu(rsp_params->offset);
+
+	return 0;
 }
 
 /**

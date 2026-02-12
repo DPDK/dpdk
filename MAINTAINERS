@@ -28,8 +28,7 @@ M: David Marchand <david.marchand@redhat.com>
 T: git://dpdk.org/dpdk
 
 Next-net Tree
-M: Ferruh Yigit <ferruh.yigit@amd.com>
-M: Andrew Rybchenko <andrew.rybchenko@oktetlabs.ru>
+M: Stephen Hemminger <stephen@networkplumber.org>
 T: git://dpdk.org/next/dpdk-next-net
 
 Next-net-brcm Tree
@@ -37,6 +36,7 @@ M: Ajit Khaparde <ajit.khaparde@broadcom.com>
 T: git://dpdk.org/next/dpdk-next-net-brcm
 
 Next-net-intel Tree
+M: Bruce Richardson <bruce.richardson@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 
 Next-net-mrvl Tree
@@ -64,10 +64,14 @@ Next-baseband Tree
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
 T: git://dpdk.org/next/dpdk-next-baseband
 
+Next-dts Tree
+M: Luca Vizzarro <luca.vizzarro@arm.com>
+M: Patrick Robb <probb@iol.unh.edu>
+T: git://dpdk.org/next/dpdk-next-dts
+
 Stable Branches
 M: Luca Boccassi <bluca@debian.org>
 M: Kevin Traynor <ktraynor@redhat.com>
-M: Christian Ehrhardt <christian.ehrhardt@canonical.com>
 M: Xueming Li <xuemingl@nvidia.com>
 T: git://dpdk.org/dpdk-stable
 
@@ -90,22 +94,26 @@ F: devtools/check-maintainers.sh
 F: devtools/check-forbidden-tokens.awk
 F: devtools/check-git-log.sh
 F: devtools/check-spdx-tag.sh
-F: devtools/check-symbol-change.sh
-F: devtools/check-symbol-maps.sh
+F: devtools/check-symbol-change.py
 F: devtools/checkpatches.sh
 F: devtools/get-maintainer.sh
 F: devtools/git-log-fixes.sh
 F: devtools/load-devel-config
+F: devtools/mailmap-ctl.py
 F: devtools/parse-flow-support.sh
 F: devtools/process-iwyu.py
-F: devtools/update-abi.sh
 F: devtools/update-patches.py
-F: devtools/update_version_map_abi.py
 F: devtools/libabigail.abignore
 F: devtools/words-case.txt
 F: license/
 F: .editorconfig
 F: .mailmap
+
+Linux kernel uAPI headers
+M: Maxime Coquelin <maxime.coquelin@redhat.com>
+F: devtools/linux-uapi.sh
+F: doc/guides/contributing/linux_uapi.rst
+F: kernel/linux/uapi/
 
 Build System
 M: Bruce Richardson <bruce.richardson@intel.com>
@@ -116,7 +124,9 @@ F: config/
 F: buildtools/check-symbols.sh
 F: buildtools/chkincs/
 F: buildtools/call-sphinx-build.py
+F: buildtools/gen-version-map.py
 F: buildtools/get-cpu-count.py
+F: buildtools/get-min-meson-version.py
 F: buildtools/get-numa-count.py
 F: buildtools/list-dir-globs.py
 F: buildtools/map-list-symbol.sh
@@ -128,7 +138,6 @@ F: devtools/check-meson.py
 
 Public CI
 M: Aaron Conole <aconole@redhat.com>
-M: Michael Santana <maicolgabriel@hotmail.com>
 F: .github/workflows/build.yml
 F: .ci/
 
@@ -152,7 +161,6 @@ EAL API and common code
 F: lib/eal/common/
 F: lib/eal/unix/
 F: lib/eal/include/
-F: lib/eal/version.map
 F: doc/guides/prog_guide/env_abstraction_layer.rst
 F: app/test/test_alarm.c
 F: app/test/test_atomic.c
@@ -180,6 +188,7 @@ F: app/test/test_threads.c
 F: app/test/test_version.c
 
 Logging
+M: Stephen Hemminger <stephen@networkplumber.org>
 F: lib/log/
 F: doc/guides/prog_guide/log_lib.rst
 F: app/test/test_logs.c
@@ -214,6 +223,13 @@ F: app/test/test_malloc_perf.c
 F: app/test/test_memory.c
 F: app/test/test_memzone.c
 
+Lcore Variables
+M: Mattias Rönnblom <mattias.ronnblom@ericsson.com>
+F: lib/eal/include/rte_lcore_var.h
+F: lib/eal/common/eal_common_lcore_var.c
+F: app/test/test_lcore_var*
+F: doc/guides/prog_guide/lcore_var.rst
+
 Interrupt Subsystem
 M: Harman Kalra <hkalra@marvell.com>
 F: lib/eal/include/rte_epoll.h
@@ -236,7 +252,6 @@ F: examples/multi_process/
 F: doc/guides/sample_app_ug/multi_process.rst
 
 Service Cores
-M: Harry van Haaren <harry.van.haaren@intel.com>
 F: lib/eal/include/rte_service.h
 F: lib/eal/include/rte_service_component.h
 F: lib/eal/common/rte_service.c
@@ -246,9 +261,15 @@ F: examples/service_cores/
 F: doc/guides/sample_app_ug/service_cores.rst
 
 Bitops
-M: Joyce Kong <joyce.kong@arm.com>
+M: Jack Bond-Preston <jack.bond-preston@foss.arm.com>
 F: lib/eal/include/rte_bitops.h
 F: app/test/test_bitops.c
+
+Bitset
+M: Mattias Rönnblom <mattias.ronnblom@ericsson.com>
+F: lib/eal/include/rte_bitset.h
+F: lib/eal/common/rte_bitset.c
+F: app/test/test_bitset.c
 
 Bitmap
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
@@ -256,7 +277,7 @@ F: lib/eal/include/rte_bitmap.h
 F: app/test/test_bitmap.c
 
 MCSlock
-M: Honnappa Nagarahalli <honnappa.nagarahalli@arm.com>
+M: Wathsala Vithanage <wathsala.vithanage@arm.com>
 F: lib/eal/include/rte_mcslock.h
 F: app/test/test_mcslock.c
 
@@ -267,7 +288,7 @@ F: lib/eal/include/rte_seqlock.h
 F: app/test/test_seqlock.c
 
 Ticketlock
-M: Joyce Kong <joyce.kong@arm.com>
+M: Jack Bond-Preston <jack.bond-preston@foss.arm.com>
 F: lib/eal/include/rte_ticketlock.h
 F: app/test/test_ticketlock.c
 
@@ -278,13 +299,13 @@ F: lib/eal/common/rte_random.c
 F: app/test/test_rand_perf.c
 
 ARM v7
-M: Ruifeng Wang <ruifeng.wang@arm.com>
+M: Wathsala Vithanage <wathsala.vithanage@arm.com>
 F: config/arm/
 F: lib/eal/arm/
 X: lib/eal/arm/include/*_64.h
 
 ARM v8
-M: Ruifeng Wang <ruifeng.wang@arm.com>
+M: Wathsala Vithanage <wathsala.vithanage@arm.com>
 F: config/arm/
 F: doc/guides/linux_gsg/cross_build_dpdk_for_arm64.rst
 F: lib/eal/arm/
@@ -297,13 +318,13 @@ F: examples/*/*_neon.*
 F: examples/common/neon/
 
 LoongArch
-M: Min Zhou <zhoumin@loongson.cn>
+M: Bibo Mao <maobibo@loongson.cn>
 F: config/loongarch/
 F: doc/guides/linux_gsg/cross_build_dpdk_for_loongarch.rst
 F: lib/eal/loongarch/
 
 IBM POWER (alpha)
-M: David Christensen <drc@linux.vnet.ibm.com>
+M: David Christensen <drc@linux.ibm.com>
 F: config/ppc/
 F: lib/eal/ppc/
 F: lib/*/*_altivec*
@@ -313,10 +334,12 @@ F: examples/*/*_altivec.*
 F: examples/common/altivec/
 
 RISC-V
-M: Stanislaw Kardach <stanislaw.kardach@gmail.com>
+M: Stanisław Kardach <stanislaw.kardach@gmail.com>
 F: config/riscv/
 F: doc/guides/linux_gsg/cross_build_dpdk_for_riscv.rst
 F: lib/eal/riscv/
+M: Sun Yuechi <sunyuechi@iscas.ac.cn>
+F: lib/**/*rvv*
 
 Intel x86
 M: Bruce Richardson <bruce.richardson@intel.com>
@@ -366,10 +389,7 @@ F: kernel/freebsd/nic_uio/
 
 Windows support
 M: Dmitry Kozlyuk <dmitry.kozliuk@gmail.com>
-M: Tyler Retzlaff <roretzla@linux.microsoft.com>
-M: Pallavi Kadam <pallavi.kadam@intel.com>
 F: lib/eal/windows/
-F: buildtools/map_to_win.py
 F: doc/guides/windows_gsg/
 
 Windows memory allocation
@@ -392,11 +412,12 @@ F: app/test/test_mempool*
 F: app/test/test_func_reentrancy.c
 
 Ring queue
-M: Honnappa Nagarahalli <honnappa.nagarahalli@arm.com>
 M: Konstantin Ananyev <konstantin.v.ananyev@yandex.ru>
+M: Wathsala Vithanage <wathsala.vithanage@arm.com>
 F: lib/ring/
 F: doc/guides/prog_guide/ring_lib.rst
 F: app/test/test_ring*
+F: app/test/test_soring*
 F: app/test/test_func_reentrancy.c
 
 Stack
@@ -406,39 +427,39 @@ F: app/test/test_stack*
 F: doc/guides/prog_guide/stack_lib.rst
 
 Packet buffer
+M: Morten Brørup <mb@smartsharesystems.com>
 F: lib/mbuf/
 F: doc/guides/prog_guide/mbuf_lib.rst
 F: app/test/test_mbuf.c
 
 Ethernet API
 M: Thomas Monjalon <thomas@monjalon.net>
-M: Ferruh Yigit <ferruh.yigit@amd.com>
 M: Andrew Rybchenko <andrew.rybchenko@oktetlabs.ru>
 T: git://dpdk.org/next/dpdk-next-net
 F: lib/ethdev/
 F: app/test/test_ethdev*
 F: devtools/test-null.sh
-F: doc/guides/prog_guide/switch_representation.rst
+F: doc/guides/prog_guide/ethdev/switch_representation.rst
 
 Flow API
 M: Ori Kam <orika@nvidia.com>
 T: git://dpdk.org/next/dpdk-next-net
 F: app/test-pmd/cmdline_flow.c
-F: doc/guides/prog_guide/rte_flow.rst
+F: doc/guides/prog_guide/ethdev/flow_offload.rst
 F: lib/ethdev/rte_flow*
 
 Traffic Management API
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 T: git://dpdk.org/next/dpdk-next-net
 F: lib/ethdev/rte_tm*
-F: doc/guides/prog_guide/traffic_management.rst
+F: doc/guides/prog_guide/ethdev/traffic_management.rst
 F: app/test-pmd/cmdline_tm.*
 
 Traffic Metering and Policing API - EXPERIMENTAL
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 T: git://dpdk.org/next/dpdk-next-net
 F: lib/ethdev/rte_mtr*
-F: doc/guides/prog_guide/traffic_metering_and_policing.rst
+F: doc/guides/prog_guide/ethdev/traffic_metering_and_policing.rst
 F: app/test-pmd/cmdline_mtr.*
 
 Baseband API
@@ -467,6 +488,7 @@ M: Anoob Joseph <anoobj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/security/
 F: doc/guides/prog_guide/rte_security.rst
+F: doc/guides/howto/security.rst
 F: app/test/test_security*
 
 Compression API
@@ -515,7 +537,7 @@ Eventdev API
 M: Jerin Jacob <jerinj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/eventdev/
-F: doc/guides/prog_guide/eventdev.rst
+F: doc/guides/prog_guide/eventdev/eventdev.rst
 F: drivers/event/skeleton/
 F: app/test/test_eventdev.c
 F: examples/l3fwd/l3fwd_event*
@@ -525,35 +547,42 @@ M: Naga Harish K S V <s.v.naga.harish.k@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/eventdev/*eth_rx_adapter*
 F: app/test/test_event_eth_rx_adapter.c
-F: doc/guides/prog_guide/event_ethernet_rx_adapter.rst
+F: doc/guides/prog_guide/eventdev/event_ethernet_rx_adapter.rst
 
 Eventdev Ethdev Tx Adapter API
 M: Naga Harish K S V <s.v.naga.harish.k@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/eventdev/*eth_tx_adapter*
 F: app/test/test_event_eth_tx_adapter.c
-F: doc/guides/prog_guide/event_ethernet_tx_adapter.rst
+F: doc/guides/prog_guide/eventdev/event_ethernet_tx_adapter.rst
 
 Eventdev Timer Adapter API
 M: Erik Gabriel Carrillo <erik.g.carrillo@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/eventdev/*timer_adapter*
 F: app/test/test_event_timer_adapter.c
-F: doc/guides/prog_guide/event_timer_adapter.rst
+F: doc/guides/prog_guide/eventdev/event_timer_adapter.rst
 
 Eventdev Crypto Adapter API
 M: Abhinandan Gujjar <abhinandan.gujjar@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/eventdev/*crypto_adapter*
 F: app/test/test_event_crypto_adapter.c
-F: doc/guides/prog_guide/event_crypto_adapter.rst
+F: doc/guides/prog_guide/eventdev/event_crypto_adapter.rst
 
 Eventdev DMA Adapter API
 M: Amit Prakash Shukla <amitprakashs@marvell.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/eventdev/*dma_adapter*
 F: app/test/test_event_dma_adapter.c
-F: doc/guides/prog_guide/event_dma_adapter.rst
+F: doc/guides/prog_guide/eventdev/event_dma_adapter.rst
+
+Eventdev Vector Adapter API - EXPERIMENTAL
+M: Pavan Nikhilesh <pbhagavatula@marvell.com>
+T: git://dpdk.org/next/dpdk-next-eventdev
+F: lib/eventdev/*vector_adapter*
+F: app/test/test_event_vector_adapter.c
+F: doc/guides/prog_guide/eventdev/event_vector_adapter.rst
 
 Raw device API
 M: Sachin Saxena <sachin.saxena@oss.nxp.com>
@@ -594,7 +623,7 @@ M: Xueming Li <xuemingl@nvidia.com>
 F: drivers/bus/auxiliary/
 
 Intel FPGA bus
-M: Rosen Xu <rosen.xu@intel.com>
+M: Rosen Xu <rosen.xu@altera.com>
 F: drivers/bus/ifpga/
 
 NXP buses
@@ -623,6 +652,7 @@ F: app/test/test_vdev.c
 
 VMBUS bus driver
 M: Long Li <longli@microsoft.com>
+M: Wei Hu <weh@microsoft.com>
 F: drivers/bus/vmbus/
 
 
@@ -647,6 +677,7 @@ F: doc/guides/nics/features/afpacket.ini
 
 Linux AF_XDP
 M: Ciara Loftus <ciara.loftus@intel.com>
+M: Maryam Tahhan <mtahhan@redhat.com>
 F: drivers/net/af_xdp/
 F: doc/guides/nics/af_xdp.rst
 F: doc/guides/nics/features/af_xdp.ini
@@ -690,8 +721,8 @@ F: doc/guides/nics/ark.rst
 F: doc/guides/nics/features/ark.ini
 
 Broadcom bnxt
+M: Kishore Padmanabha <kishore.padmanabha@broadcom.com>
 M: Ajit Khaparde <ajit.khaparde@broadcom.com>
-M: Somnath Kotur <somnath.kotur@broadcom.com>
 T: git://dpdk.org/next/dpdk-next-net-brcm
 F: drivers/net/bnxt/
 F: doc/guides/nics/bnxt.rst
@@ -715,7 +746,7 @@ F: doc/guides/nics/octeontx.rst
 F: doc/guides/nics/features/octeontx.ini
 
 Chelsio cxgbe
-M: Rahul Lakkireddy <rahul.lakkireddy@chelsio.com>
+M: Potnuri Bharat Teja <bharat@chelsio.com>
 F: drivers/net/cxgbe/
 F: doc/guides/nics/cxgbe.rst
 F: doc/guides/nics/features/cxgbe.ini
@@ -729,15 +760,14 @@ F: doc/guides/nics/features/enic.ini
 
 Google Virtual Ethernet
 M: Jeroen de Borst <jeroendb@google.com>
-M: Rushil Gupta <rushilg@google.com>
 M: Joshua Washington <joshwash@google.com>
 F: drivers/net/gve/
 F: doc/guides/nics/gve.rst
 F: doc/guides/nics/features/gve.ini
 
 Hisilicon hns3
-M: Jie Hai <haijie1@huawei.com>
-M: Yisen Zhuang <yisen.zhuang@huawei.com>
+M: Xingui Yang <yangxingui@huawei.com>
+M: Chengwen Feng <fengchengwen@huawei.com>
 F: drivers/net/hns3/
 F: doc/guides/nics/hns3.rst
 F: doc/guides/nics/features/hns3.ini
@@ -745,78 +775,87 @@ F: doc/guides/nics/features/hns3.ini
 Huawei hinic
 M: Ziyang Xuan <xuanziyang2@huawei.com>
 M: Xiaoyun Wang <cloud.wangxiaoyun@huawei.com>
-M: Guoyang Zhou <zhouguoyang@huawei.com>
 F: drivers/net/hinic/
 F: doc/guides/nics/hinic.rst
 F: doc/guides/nics/features/hinic.ini
 
+Huawei hinic3
+M: Feifei Wang <wangfeifei40@huawei.com>
+F: drivers/net/hinic3/
+F: doc/guides/nics/hinic3.rst
+F: doc/guides/nics/features/hinic3.ini
+
+Intel Network Common Code
+M: Bruce Richardson <bruce.richardson@intel.com>
+T: git://dpdk.org/next/dpdk-next-net-intel
+F: drivers/net/intel/common/
+
 Intel e1000
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/e1000/
+F: drivers/net/intel/e1000/
 F: doc/guides/nics/e1000em.rst
 F: doc/guides/nics/intel_vf.rst
 F: doc/guides/nics/features/e1000.ini
 F: doc/guides/nics/features/igb*.ini
+F: doc/guides/nics/features/igc.ini
+F: doc/guides/nics/igc.rst
 
 Intel ixgbe
+M: Anatoly Burakov <anatoly.burakov@intel.com>
+M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/ixgbe/
+F: drivers/net/intel/ixgbe/
 F: doc/guides/nics/ixgbe.rst
 F: doc/guides/nics/intel_vf.rst
 F: doc/guides/nics/features/ixgbe*.ini
 
 Intel i40e
-M: Yuying Zhang <Yuying.Zhang@intel.com>
+M: Bruce Richardson <bruce.richardson@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/i40e/
+F: drivers/net/intel/i40e/
 F: doc/guides/nics/i40e.rst
 F: doc/guides/nics/intel_vf.rst
 F: doc/guides/nics/features/i40e*.ini
 
 Intel fm10k
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/fm10k/
+F: drivers/net/intel/fm10k/
 F: doc/guides/nics/fm10k.rst
 F: doc/guides/nics/features/fm10k*.ini
 
 Intel iavf
-M: Jingjing Wu <jingjing.wu@intel.com>
+M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/iavf/
-F: drivers/common/iavf/
+F: drivers/net/intel/iavf/
 F: doc/guides/nics/features/iavf*.ini
 
 Intel ice
+M: Bruce Richardson <bruce.richardson@intel.com>
+M: Anatoly Burakov <anatoly.burakov@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/ice/
+F: drivers/net/intel/ice/
 F: doc/guides/nics/ice.rst
 F: doc/guides/nics/features/ice.ini
 
 Intel idpf
 M: Jingjing Wu <jingjing.wu@intel.com>
+M: Praveen Shetty <praveen.shetty@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/idpf/
-F: drivers/common/idpf/
+F: drivers/net/intel/idpf/
 F: doc/guides/nics/idpf.rst
 F: doc/guides/nics/features/idpf.ini
 
 Intel cpfl - EXPERIMENTAL
-M: Yuying Zhang <yuying.zhang@intel.com>
+M: Praveen Shetty <praveen.shetty@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/cpfl/
+F: drivers/net/intel/cpfl/
 F: doc/guides/nics/cpfl.rst
 F: doc/guides/nics/features/cpfl.ini
 
-Intel igc
-T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/igc/
-F: doc/guides/nics/igc.rst
-F: doc/guides/nics/features/igc.ini
-
 Intel ipn3ke
-M: Rosen Xu <rosen.xu@intel.com>
+M: Rosen Xu <rosen.xu@altera.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/ipn3ke/
+F: drivers/net/intel/ipn3ke/
 F: doc/guides/nics/ipn3ke.rst
 F: doc/guides/nics/features/ipn3ke.ini
 
@@ -856,6 +895,13 @@ F: drivers/net/octeon_ep/
 F: doc/guides/nics/features/octeon_ep.ini
 F: doc/guides/nics/octeon_ep.rst
 
+Napatech ntnic
+M: Christian Koue Muf <ckm@napatech.com>
+M: Serhii Iliushyk <sil-plv@napatech.com>
+F: drivers/net/ntnic/
+F: doc/guides/nics/ntnic.rst
+F: doc/guides/nics/features/ntnic.ini
+
 NVIDIA mlx4
 M: Matan Azrad <matan@nvidia.com>
 M: Viacheslav Ovsiienko <viacheslavo@nvidia.com>
@@ -867,6 +913,7 @@ F: doc/guides/nics/features/mlx4.ini
 NVIDIA mlx5
 M: Dariusz Sosnowski <dsosnowski@nvidia.com>
 M: Viacheslav Ovsiienko <viacheslavo@nvidia.com>
+M: Bing Zhao <bingz@nvidia.com>
 M: Ori Kam <orika@nvidia.com>
 M: Suanming Mou <suanmingm@nvidia.com>
 M: Matan Azrad <matan@nvidia.com>
@@ -881,6 +928,7 @@ F: doc/guides/nics/features/mlx5.ini
 
 Microsoft mana
 M: Long Li <longli@microsoft.com>
+M: Wei Hu <weh@microsoft.com>
 F: drivers/net/mana/
 F: doc/guides/nics/mana.rst
 F: doc/guides/nics/features/mana.ini
@@ -892,6 +940,7 @@ F: doc/guides/nics/vdev_netvsc.rst
 
 Microsoft Hyper-V netvsc
 M: Long Li <longli@microsoft.com>
+M: Wei Hu <weh@microsoft.com>
 F: drivers/net/netvsc/
 F: doc/guides/nics/netvsc.rst
 F: doc/guides/nics/features/netvsc.ini
@@ -928,9 +977,12 @@ F: doc/guides/nics/features/dpaa2.ini
 NXP enetc
 M: Gagandeep Singh <g.singh@nxp.com>
 M: Sachin Saxena <sachin.saxena@oss.nxp.com>
+M: Vanshika Shukla <vanshika.shukla@nxp.com>
 F: drivers/net/enetc/
 F: doc/guides/nics/enetc.rst
+F: doc/guides/nics/enetc4.rst
 F: doc/guides/nics/features/enetc.ini
+F: doc/guides/nics/features/enetc4.ini
 
 NXP enetfec - EXPERIMENTAL
 M: Apeksha Gupta <apeksha.gupta@nxp.com>
@@ -960,6 +1012,30 @@ F: drivers/net/qede/
 F: doc/guides/nics/qede.rst
 F: doc/guides/nics/features/qede*.ini
 
+Mucse rnp
+M: Wenbo Cao <caowenbo@mucse.com>
+F: drivers/net/rnp/
+F: doc/guides/nics/rnp.rst
+F: doc/guides/nics/features/rnp.ini
+
+Nebulamatrix nbl
+M: Dimon Zhao <dimon.zhao@nebula-matrix.com>
+M: Kyo Liu <kyo.liu@nebula-matrix.com>
+M: Leon Yu <leon.yu@nebula-matrix.com>
+M: Sam Chen <sam.chen@nebula-matrix.com>
+F: drivers/net/nbl/
+F: doc/guides/nics/nbl.rst
+F: doc/guides/nics/features/nbl.ini
+
+Realtek r8169
+M: Howard Wang <howard_wang@realsil.com.cn>
+M: Chunhao Lin <hau@realtek.com>
+M: Xing Wang <xing_wang@realsil.com.cn>
+M: Javen Xu <javen_xu@realsil.com.cn>
+F: drivers/net/r8169/
+F: doc/guides/nics/r8169.rst
+F: doc/guides/nics/features/r8169.ini
+
 Solarflare sfc_efx
 M: Andrew Rybchenko <andrew.rybchenko@oktetlabs.ru>
 F: drivers/common/sfc_efx/
@@ -969,19 +1045,30 @@ F: doc/guides/nics/features/sfc.ini
 
 Wangxun ngbe
 M: Jiawen Wu <jiawenwu@trustnetic.com>
+M: Zaiyu Wang <zaiyuwang@trustnetic.com>
 F: drivers/net/ngbe/
 F: doc/guides/nics/ngbe.rst
 F: doc/guides/nics/features/ngbe.ini
 
 Wangxun txgbe
 M: Jiawen Wu <jiawenwu@trustnetic.com>
-M: Jian Wang <jianwang@trustnetic.com>
+M: Zaiyu Wang <zaiyuwang@trustnetic.com>
 F: drivers/net/txgbe/
 F: doc/guides/nics/txgbe.rst
 F: doc/guides/nics/features/txgbe.ini
 
+Yunsilicon xsc
+M: Renyong Wan <wanry@yunsilicon.com>
+M: Na Na <nana@yunsilicon.com>
+M: Rong Qian <qianr@yunsilicon.com>
+M: Xiaoxiong Zhang <zhangxx@yunsilicon.com>
+M: Dongwei Xu <xudw@yunsilicon.com>
+F: drivers/net/xsc/
+F: doc/guides/nics/xsc.rst
+F: doc/guides/nics/features/xsc.ini
+
 VMware vmxnet3
-M: Jochen Behrens <jbehrens@vmware.com>
+M: Jochen Behrens <jochen.behrens@broadcom.com>
 F: drivers/net/vmxnet3/
 F: doc/guides/nics/vmxnet3.rst
 F: doc/guides/nics/features/vmxnet3.ini
@@ -1022,6 +1109,13 @@ M: Matt Peters <matt.peters@windriver.com>
 F: drivers/net/avp/
 F: doc/guides/nics/avp.rst
 F: doc/guides/nics/features/avp.ini
+
+ZTE zxdh
+M: Junlong Wang <wang.junlong1@zte.com.cn>
+M: Lijie Shan <shan.lijie@zte.com.cn>
+F: drivers/net/zxdh/
+F: doc/guides/nics/zxdh.rst
+F: doc/guides/nics/features/zxdh.ini
 
 PCAP PMD
 F: drivers/net/pcap/
@@ -1075,15 +1169,21 @@ F: drivers/crypto/ccp/
 F: doc/guides/cryptodevs/ccp.rst
 F: doc/guides/cryptodevs/features/ccp.ini
 
+AMD Pensando ionic crypto
+M: Andrew Boyer <andrew.boyer@amd.com>
+F: drivers/crypto/ionic/
+F: drivers/common/ionic/
+F: doc/guides/cryptodevs/ionic.rst
+F: doc/guides/cryptodevs/features/ionic.ini
+
 ARMv8 Crypto
-M: Ruifeng Wang <ruifeng.wang@arm.com>
+M: Jack Bond-Preston <jack.bond-preston@foss.arm.com>
 F: drivers/crypto/armv8/
 F: doc/guides/cryptodevs/armv8.rst
 F: doc/guides/cryptodevs/features/armv8.ini
 
 Broadcom FlexSparc
 M: Ajit Khaparde <ajit.khaparde@broadcom.com>
-M: Raveendra Padasalagi <raveendra.padasalagi@broadcom.com>
 M: Vikas Gupta <vikas.gupta@broadcom.com>
 F: drivers/crypto/bcmfs/
 F: doc/guides/cryptodevs/bcmfs.rst
@@ -1200,6 +1300,12 @@ F: drivers/crypto/virtio/
 F: doc/guides/cryptodevs/virtio.rst
 F: doc/guides/cryptodevs/features/virtio.ini
 
+ZTE Storage Data Accelerator (ZSDA)
+M: Hanxiao Li <li.hanxiao@zte.com.cn>
+F: drivers/crypto/zsda/
+F: doc/guides/cryptodevs/zsda.rst
+F: doc/guides/cryptodevs/features/zsda.ini
+
 
 Compression Drivers
 -------------------
@@ -1211,6 +1317,12 @@ M: Ashish Gupta <ashish.gupta@marvell.com>
 F: drivers/compress/octeontx/
 F: doc/guides/compressdevs/octeontx.rst
 F: doc/guides/compressdevs/features/octeontx.ini
+
+HiSilicon UADK compress
+M: Zhangfei Gao <zhangfei.gao@linaro.org>
+F: drivers/compress/uadk/
+F: doc/guides/compressdevs/uadk.rst
+F: doc/guides/compressdevs/features/uadk.ini
 
 Intel QuickAssist
 M: Kai Ji <kai.ji@intel.com>
@@ -1241,6 +1353,13 @@ F: drivers/compress/zlib/
 F: doc/guides/compressdevs/zlib.rst
 F: doc/guides/compressdevs/features/zlib.ini
 
+ZTE Storage Data Accelerator (ZSDA)
+M: Hanxiao Li <li.hanxiao@zte.com.cn>
+F: drivers/common/zsda/
+F: drivers/compress/zsda/
+F: doc/guides/compressdevs/zsda.rst
+F: doc/guides/compressdevs/features/zsda.ini
+
 
 DMAdev Drivers
 --------------
@@ -1257,16 +1376,28 @@ M: Conor Walsh <conor.walsh@intel.com>
 F: drivers/dma/ioat/
 F: doc/guides/dmadevs/ioat.rst
 
-HiSilicon DMA
+HiSilicon PCIEP DMA
 M: Chengwen Feng <fengchengwen@huawei.com>
-F: drivers/dma/hisilicon/
-F: doc/guides/dmadevs/hisilicon.rst
+F: drivers/dma/hisi_pciep/
+F: doc/guides/dmadevs/hisi_pciep.rst
+
+HiSilicon Accelerator DMA
+M: Chengwen Feng <fengchengwen@huawei.com>
+F: drivers/dma/hisi_acc/
+F: doc/guides/dmadevs/hisi_acc.rst
 
 Marvell CNXK DPI DMA
 M: Vamsi Attunuru <vattunuru@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/dma/cnxk/
 F: doc/guides/dmadevs/cnxk.rst
+
+Marvell Odyssey ODM DMA
+M: Gowrishankar Muthukrishnan <gmuthukrishn@marvell.com>
+M: Vidya Sagar Velumuri <vvelumuri@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
+F: drivers/dma/odm/
+F: doc/guides/dmadevs/odm.rst
 
 NXP DPAA DMA
 M: Gagandeep Singh <g.singh@nxp.com>
@@ -1355,7 +1486,7 @@ M: Pavan Nikhilesh <pbhagavatula@marvell.com>
 F: drivers/event/octeontx/timvf_*
 
 Intel DLB2
-M: Abdullah Sevincer <abdullah.sevincer@intel.com>
+M: Tirthendu Sarkar <tirthendu.sarkar@intel.com>
 F: drivers/event/dlb2/
 F: doc/guides/eventdevs/dlb2.rst
 
@@ -1378,7 +1509,6 @@ F: drivers/event/dpaa2/
 F: doc/guides/eventdevs/dpaa2.rst
 
 Software Eventdev PMD
-M: Harry van Haaren <harry.van.haaren@intel.com>
 F: drivers/event/sw/
 F: doc/guides/eventdevs/sw.rst
 F: examples/eventdev_pipeline/
@@ -1446,7 +1576,7 @@ Rawdev Drivers
 --------------
 
 Intel FPGA
-M: Rosen Xu <rosen.xu@intel.com>
+M: Rosen Xu <rosen.xu@altera.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/raw/ifpga/
 F: doc/guides/rawdevs/ifpga.rst
@@ -1465,6 +1595,12 @@ T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: doc/guides/rawdevs/cnxk_gpio.rst
 F: drivers/raw/cnxk_gpio/
 
+Marvell CNXK RVU LF
+M: Akhil Goyal <gakhil@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
+F: drivers/raw/cnxk_rvu_lf/
+F: doc/guides/rawdevs/cnxk_rvu_lf.rst
+
 NTB
 M: Jingjing Wu <jingjing.wu@intel.com>
 F: drivers/raw/ntb/
@@ -1477,6 +1613,11 @@ M: Gagandeep Singh <g.singh@nxp.com>
 F: drivers/raw/dpaa2_cmdif/
 F: doc/guides/rawdevs/dpaa2_cmdif.rst
 
+ZTE GDTC
+M: Yong Zhang <zhang.yong25@zte.com.cn>
+F: drivers/raw/gdtc/
+F: doc/guides/rawdevs/gdtc.rst
+
 
 Packet processing
 -----------------
@@ -1486,6 +1627,7 @@ F: lib/net/
 F: app/test/test_cksum.c
 F: app/test/test_cksum_perf.c
 F: app/test/test_net_ether.c
+F: app/test/test_net_ip6.c
 
 Packet CRC
 M: Jasvinder Singh <jasvinder.singh@intel.com>
@@ -1552,7 +1694,7 @@ F: doc/guides/sample_app_ug/packet_ordering.rst
 Hierarchical scheduler
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 F: lib/sched/
-F: doc/guides/prog_guide/qos_framework.rst
+F: doc/guides/prog_guide/ethdev/qos_framework.rst
 F: app/test/test_pie.c
 F: app/test/test_red.c
 F: app/test/test_sched.c
@@ -1693,12 +1835,19 @@ M: Chenbo Xia <chenbox@nvidia.com>
 M: Gaetan Rivet <grive@u256.net>
 F: lib/pci/
 
+Pointer Compression
+M: Paul Szczepanek <paul.szczepanek@arm.com>
+F: lib/ptr_compress/
+F: app/test/test_ptr_compress.c
+F: doc/guides/prog_guide/ptr_compress_lib.rst
+
 Power management
 M: Anatoly Burakov <anatoly.burakov@intel.com>
 M: David Hunt <david.hunt@intel.com>
 M: Sivaprasad Tummala <sivaprasad.tummala@amd.com>
 F: lib/power/
 F: doc/guides/prog_guide/power_man.rst
+F: drivers/power/
 F: app/test/test_power*
 F: examples/l3fwd-power/
 F: doc/guides/sample_app_ug/l3_forward_power_man.rst
@@ -1717,7 +1866,12 @@ Dispatcher - EXPERIMENTAL
 M: Mattias Rönnblom <mattias.ronnblom@ericsson.com>
 F: lib/dispatcher/
 F: app/test/test_dispatcher.c
-F: doc/guides/prog_guide/dispatcher_lib.rst
+F: doc/guides/prog_guide/eventdev/dispatcher_lib.rst
+
+PMU - EXPERIMENTAL
+M: Tomasz Duszynski <tduszynski@marvell.com>
+F: lib/pmu/
+F: app/test/test_pmu.c
 
 Job statistics
 F: lib/jobstats/
@@ -1739,7 +1893,7 @@ F: lib/latencystats/
 F: app/test/test_latencystats.c
 
 Telemetry
-M: Ciara Power <ciara.power@intel.com>
+M: Bruce Richardson <bruce.richardson@intel.com>
 F: lib/telemetry/
 F: doc/guides/prog_guide/telemetry_lib.rst
 F: app/test/test_telemetry*
@@ -1752,6 +1906,7 @@ M: Konstantin Ananyev <konstantin.v.ananyev@yandex.ru>
 F: lib/bpf/
 F: examples/bpf/
 F: app/test/test_bpf.c
+F: app/test/bpf/
 F: app/test-pmd/bpf_cmd.*
 F: doc/guides/prog_guide/bpf_lib.rst
 
@@ -1780,14 +1935,13 @@ F: app/test/commands.c
 F: app/test/packet_burst_generator.c
 F: app/test/packet_burst_generator.h
 F: app/test/process.h
-F: app/test/resource.*
 F: app/test/test.c
 F: app/test/test.h
 F: app/test/test_pmd_perf.c
-F: app/test/test_resource.c
 F: app/test/virtual_pmd.c
 F: app/test/virtual_pmd.h
 F: buildtools/has-hugepages.py
+F: buildtools/gen-header.py
 F: buildtools/get-test-suites.py
 
 Sample packet helper functions for unit test
@@ -1797,7 +1951,6 @@ F: app/test/sample_packet_forward.h
 
 Networking drivers testing tool
 M: Aman Singh <aman.deep.singh@intel.com>
-M: Yuying Zhang <yuying.zhang@intel.com>
 T: git://dpdk.org/next/dpdk-next-net
 F: app/test-pmd/
 F: doc/guides/testpmd_app_ug/
@@ -1825,7 +1978,7 @@ F: app/test-compress-perf/
 F: doc/guides/tools/comp_perf.rst
 
 Crypto performance test application
-M: Ciara Power <ciara.power@intel.com>
+M: Kai Ji <kai.ji@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: app/test-crypto-perf/
 F: doc/guides/tools/cryptoperf.rst
@@ -1851,9 +2004,11 @@ F: app/proc-info/
 F: doc/guides/tools/proc_info.rst
 
 DTS
-M: Lijuan Tu <lijuan.tu@intel.com>
-M: Juraj Linkeš <juraj.linkes@pantheon.tech>
+M: Luca Vizzarro <luca.vizzarro@arm.com>
+M: Patrick Robb <probb@iol.unh.edu>
+T: git://dpdk.org/next/dpdk-next-dts
 F: dts/
+F: buildtools/check-dts-requirements.py
 F: devtools/dts-check-format.sh
 F: doc/guides/tools/dts.rst
 
@@ -1866,7 +2021,6 @@ F: examples/ethtool/
 F: doc/guides/sample_app_ug/ethtool.rst
 
 FIPS validation example
-M: Brian Dooley <brian.dooley@intel.com>
 M: Gowrishankar Muthukrishnan <gmuthukrishn@marvell.com>
 F: examples/fips_validation/
 F: doc/guides/sample_app_ug/fips_validation.rst

@@ -8,7 +8,7 @@
 #define CN10K_SSO_DEFAULT_STASH_OFFSET -1
 #define CN10K_SSO_DEFAULT_STASH_LENGTH 2
 
-struct cn10k_sso_hws {
+struct __rte_cache_aligned cn10k_sso_hws {
 	uint64_t base;
 	uint32_t gw_wdata;
 	void *lookup_mem;
@@ -19,15 +19,16 @@ struct cn10k_sso_hws {
 	struct cnxk_timesync_info **tstamp;
 	uint64_t meta_aura;
 	/* Add Work Fastpath data */
-	int64_t *fc_mem __rte_cache_aligned;
-	int64_t *fc_cache_space;
+	alignas(RTE_CACHE_LINE_SIZE) int64_t __rte_atomic *fc_mem;
+	int64_t __rte_atomic *fc_cache_space;
 	uintptr_t aw_lmt;
 	uintptr_t grp_base;
+	uint16_t xae_waes;
 	int32_t xaq_lmt;
 	/* Tx Fastpath data */
-	uintptr_t lmt_base __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uintptr_t lmt_base;
 	uint64_t lso_tun_fmt;
 	uint8_t tx_adptr_data[];
-} __rte_cache_aligned;
+};
 
 #endif /* __CN10K_EVENTDEV_H__ */

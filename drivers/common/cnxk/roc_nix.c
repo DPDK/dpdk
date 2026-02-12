@@ -120,6 +120,11 @@ roc_nix_lf_inl_ipsec_cfg(struct roc_nix *roc_nix, struct roc_nix_ipsec_cfg *cfg,
 		lf_cfg->ipsec_cfg0.sa_pow2_size = plt_log2_u32(cfg->sa_size);
 		lf_cfg->ipsec_cfg0.tag_const = cfg->tag_const;
 		lf_cfg->ipsec_cfg0.tt = cfg->tt;
+		if (cfg->res_addr_offset) {
+			lf_cfg->ipsec_cfg0_ext.res_addr_offset_valid = 1;
+			lf_cfg->ipsec_cfg0_ext.res_addr_offset =
+				(cfg->res_addr_offset & 0x80) | abs(cfg->res_addr_offset);
+		}
 	} else {
 		lf_cfg->enable = 0;
 	}
@@ -398,15 +403,22 @@ sdp_lbk_id_update(struct plt_pci_device *pci_dev, struct nix *nix)
 uint64_t
 nix_get_blkaddr(struct dev *dev)
 {
+	uint64_t blkaddr;
 	uint64_t reg;
 
 	/* Reading the discovery register to know which NIX is the LF
 	 * attached to.
 	 */
-	reg = plt_read64(dev->bar2 +
-			 RVU_PF_BLOCK_ADDRX_DISC(RVU_BLOCK_ADDR_NIX0));
-
-	return reg & 0x1FFULL ? RVU_BLOCK_ADDR_NIX0 : RVU_BLOCK_ADDR_NIX1;
+	if (roc_model_is_cn9k() || roc_model_is_cn10k()) {
+		reg = plt_read64(dev->bar2 + RVU_PF_BLOCK_ADDRX_DISC(RVU_BLOCK_ADDR_NIX0));
+		blkaddr = reg & 0x1FFULL ? RVU_BLOCK_ADDR_NIX0 : RVU_BLOCK_ADDR_NIX1;
+	} else {
+		reg = plt_read64(dev->bar2 + RVU_PF_DISC);
+		blkaddr = reg & BIT_ULL(RVU_BLOCK_ADDR_NIX0) ? RVU_BLOCK_ADDR_NIX0 :
+			RVU_BLOCK_ADDR_NIX1;
+		blkaddr = RVU_BLOCK_ADDR_NIX0;
+	}
+	return blkaddr;
 }
 
 int

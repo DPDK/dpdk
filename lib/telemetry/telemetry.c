@@ -15,6 +15,7 @@
 
 /* we won't link against libbsd, so just always use DPDKs-specific strlcpy */
 #undef RTE_USE_LIBBSD
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_common.h>
 #include <rte_spinlock.h>
@@ -37,6 +38,8 @@ client_handler(void *socket);
 struct cmd_callback {
 	char cmd[MAX_CMD_LEN];
 	telemetry_cb fn;
+	telemetry_arg_cb fn_arg;
+	void *arg;
 	char help[RTE_TEL_MAX_STRING_LEN];
 };
 
@@ -44,7 +47,7 @@ struct cmd_callback {
 struct socket {
 	int sock;
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)];
-	handler fn;
+	telemetry_sock_handler fn;
 	RTE_ATOMIC(uint16_t) *num_clients;
 };
 static struct socket v2_socket; /* socket for v2 telemetry */
@@ -68,14 +71,15 @@ static rte_spinlock_t callback_sl = RTE_SPINLOCK_INITIALIZER;
 static RTE_ATOMIC(uint16_t) v2_clients;
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-int
-rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help)
+static int
+register_cmd(const char *cmd, const char *help,
+	     telemetry_cb fn, telemetry_arg_cb fn_arg, void *arg)
 {
 	struct cmd_callback *new_callbacks;
 	const char *cmdp = cmd;
 	int i = 0;
 
-	if (strlen(cmd) >= MAX_CMD_LEN || fn == NULL || cmd[0] != '/'
+	if (strlen(cmd) >= MAX_CMD_LEN || (fn == NULL && fn_arg == NULL) || cmd[0] != '/'
 			|| strlen(help) >= RTE_TEL_MAX_STRING_LEN)
 		return -EINVAL;
 
@@ -102,11 +106,27 @@ rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help)
 
 	strlcpy(callbacks[i].cmd, cmd, MAX_CMD_LEN);
 	callbacks[i].fn = fn;
+	callbacks[i].fn_arg = fn_arg;
+	callbacks[i].arg = arg;
 	strlcpy(callbacks[i].help, help, RTE_TEL_MAX_STRING_LEN);
 	num_callbacks++;
 	rte_spinlock_unlock(&callback_sl);
 
 	return 0;
+}
+
+RTE_EXPORT_SYMBOL(rte_telemetry_register_cmd)
+int
+rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help)
+{
+	return register_cmd(cmd, help, fn, NULL, NULL);
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_telemetry_register_cmd_arg, 24.11)
+int
+rte_telemetry_register_cmd_arg(const char *cmd, telemetry_arg_cb fn, void *arg, const char *help)
+{
+	return register_cmd(cmd, help, NULL, fn, arg);
 }
 
 #ifndef RTE_EXEC_ENV_WINDOWS
@@ -345,21 +365,26 @@ output_json(const char *cmd, const struct rte_tel_data *d, int s)
 	used += prefix_used;
 	used += strlcat(out_buf + used, "}", sizeof(out_buf) - used);
 	if (write(s, out_buf, used) < 0)
-		perror("Error writing to socket");
+		TMTY_LOG_LINE(ERR, "Error writing to socket: %s", strerror(errno));
 }
 
 static void
-perform_command(telemetry_cb fn, const char *cmd, const char *param, int s)
+perform_command(const struct cmd_callback *cb, const char *cmd, const char *param, int s)
 {
 	struct rte_tel_data data = {0};
+	int ret;
 
-	int ret = fn(cmd, param, &data);
+	if (cb->fn_arg != NULL)
+		ret = cb->fn_arg(cmd, param, cb->arg, &data);
+	else
+		ret = cb->fn(cmd, param, &data);
+
 	if (ret < 0) {
 		char out_buf[MAX_CMD_LEN + 10];
 		int used = snprintf(out_buf, sizeof(out_buf), "{\"%.*s\":null}",
 				MAX_CMD_LEN, cmd ? cmd : "none");
 		if (write(s, out_buf, used) < 0)
-			perror("Error writing to socket");
+			TMTY_LOG_LINE(ERR, "Error writing to socket: %s", strerror(errno));
 		return;
 	}
 	output_json(cmd, &data, s);
@@ -382,7 +407,7 @@ client_handler(void *sock_id)
 			"{\"version\":\"%s\",\"pid\":%d,\"max_output_len\":%d}",
 			telemetry_version, getpid(), MAX_OUTPUT_LEN);
 	if (write(s, info_str, strlen(info_str)) < 0) {
-		TMTY_LOG_LINE(ERR, "Socket write base info to client failed");
+		TMTY_LOG_LINE(DEBUG, "Socket write base info to client failed");
 		goto exit;
 	}
 
@@ -392,19 +417,19 @@ client_handler(void *sock_id)
 		buffer[bytes] = 0;
 		const char *cmd = strtok(buffer, ",");
 		const char *param = strtok(NULL, "\0");
-		telemetry_cb fn = unknown_command;
+		struct cmd_callback cb = {.fn = unknown_command};
 		int i;
 
 		if (cmd && strlen(cmd) < MAX_CMD_LEN) {
 			rte_spinlock_lock(&callback_sl);
 			for (i = 0; i < num_callbacks; i++)
 				if (strcmp(cmd, callbacks[i].cmd) == 0) {
-					fn = callbacks[i].fn;
+					cb = callbacks[i];
 					break;
 				}
 			rte_spinlock_unlock(&callback_sl);
 		}
-		perform_command(fn, cmd, param, s);
+		perform_command(&cb, cmd, param, s);
 
 		bytes = read(s, buffer, sizeof(buffer) - 1);
 	}
@@ -541,7 +566,7 @@ telemetry_legacy_init(void)
 	int rc;
 
 	if (num_legacy_callbacks == 1) {
-		TMTY_LOG_LINE(WARNING, "No legacy callbacks, legacy socket not created");
+		TMTY_LOG_LINE(DEBUG, "No legacy callbacks, legacy socket not created");
 		return -1;
 	}
 
@@ -630,6 +655,7 @@ telemetry_v2_init(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_telemetry_init)
 int32_t
 rte_telemetry_init(const char *runtime_dir, const char *rte_version, rte_cpuset_t *cpuset)
 {

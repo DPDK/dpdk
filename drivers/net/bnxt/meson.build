@@ -12,9 +12,12 @@ if dpdk_conf.get('RTE_IOVA_IN_MBUF') == 0
     subdir_done()
 endif
 
+cflags += no_wvla_cflag
+cflags += no_shadow_cflag
+
 headers = files('rte_pmd_bnxt.h')
 cflags_options = [
-        '-DSUPPORT_CFA_HW_ALL=1',
+        '-DSUPPORT_CFA_HW_P70=1',
 ]
 
 foreach option:cflags_options
@@ -34,6 +37,7 @@ sources = files(
         'bnxt_flow.c',
         'bnxt_hwrm.c',
         'bnxt_irq.c',
+        'bnxt_mpc.c',
         'bnxt_ring.c',
         'bnxt_rxq.c',
         'bnxt_rxr.c',
@@ -49,19 +53,13 @@ sources = files(
 #Add the subdirectories that need to be compiled
 subdir('tf_ulp')
 subdir('tf_core')
+subdir('tf_core/v3')
 subdir('hcapi/cfa')
+subdir('hcapi/cfa_v3')
 
 if arch_subdir == 'x86'
     sources += files('bnxt_rxtx_vec_sse.c')
-    # build AVX2 code with instruction set explicitly enabled for runtime selection
-    bnxt_avx2_lib = static_library('bnxt_avx2_lib',
-            'bnxt_rxtx_vec_avx2.c',
-            dependencies: [static_rte_ethdev,
-                static_rte_bus_pci,
-                static_rte_kvargs, static_rte_hash],
-            include_directories: includes,
-            c_args: [cflags, '-mavx2'])
-     objs += bnxt_avx2_lib.extract_objects('bnxt_rxtx_vec_avx2.c')
+    sources_avx2 += files('bnxt_rxtx_vec_avx2.c')
 elif arch_subdir == 'arm' and dpdk_conf.get('RTE_ARCH_64')
     sources += files('bnxt_rxtx_vec_neon.c')
 endif

@@ -9,10 +9,10 @@ RTE_LOG_REGISTER_SUFFIX(otx_logtype_timvf, timer, NOTICE);
 
 static struct rte_eventdev *event_dev;
 
-struct __rte_packed timvf_mbox_dev_info {
+struct __rte_packed_begin timvf_mbox_dev_info {
 	uint64_t ring_active[4];
 	uint64_t clk_freq;
-};
+} __rte_packed_end;
 
 /* Response messages */
 enum {
@@ -196,7 +196,7 @@ timvf_ring_start(const struct rte_event_timer_adapter *adptr)
 	timr->tck_int = NSEC2CLK(timr->tck_nsec, rte_get_timer_hz());
 	timr->fast_div = rte_reciprocal_value_u64(timr->tck_int);
 	timvf_log_info("nb_bkts %d min_ns %"PRIu64" min_cyc %"PRIu64""
-			" maxtmo %"PRIu64"\n",
+			" maxtmo %"PRIu64,
 			timr->nb_bkts, timr->tck_nsec, interval,
 			timr->max_tout);
 

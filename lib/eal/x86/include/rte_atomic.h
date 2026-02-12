@@ -5,10 +5,6 @@
 #ifndef _RTE_ATOMIC_X86_H_
 #define _RTE_ATOMIC_X86_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <rte_common.h>
 #include <rte_config.h>
@@ -30,6 +26,10 @@ extern "C" {
 #define rte_smp_wmb() rte_compiler_barrier()
 
 #define rte_smp_rmb() rte_compiler_barrier()
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * From Intel Software Development Manual; Vol 3;
@@ -99,9 +99,17 @@ rte_atomic_thread_fence(rte_memory_order memorder)
 		__rte_atomic_thread_fence(memorder);
 }
 
+#ifdef __cplusplus
+}
+#endif
+
 #ifndef RTE_TOOLCHAIN_MSVC
 
 /*------------------------- 16 bit atomic operations -------------------------*/
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef RTE_FORCE_INTRINSICS
 static inline int
@@ -273,6 +281,11 @@ static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v)
 			);
 	return ret != 0;
 }
+
+#endif /* !RTE_FORCE_INTRINSICS */
+
+#ifdef __cplusplus
+}
 #endif
 
 #ifdef RTE_ARCH_I686
@@ -281,10 +294,6 @@ static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v)
 #include "rte_atomic_64.h"
 #endif
 
-#endif
-
-#ifdef __cplusplus
-}
-#endif
+#endif /* !RTE_TOOLCHAIN_MSVC */
 
 #endif /* _RTE_ATOMIC_X86_H_ */

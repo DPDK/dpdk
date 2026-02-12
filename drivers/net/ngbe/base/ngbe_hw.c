@@ -9,6 +9,57 @@
 #include "ngbe_eeprom.h"
 #include "ngbe_mng.h"
 #include "ngbe_hw.h"
+#include "ngbe_vf.h"
+
+static s32 ngbe_is_lldp(struct ngbe_hw *hw)
+{
+	u32 tmp = 0, lldp_flash_data = 0, i;
+	s32 err = 0;
+
+	if ((hw->eeprom_id & NGBE_FW_MASK) >= NGBE_FW_GET_LLDP) {
+		err = ngbe_hic_get_lldp(hw);
+		if (err == 0)
+			return 0;
+	}
+
+	for (i = 0; i < 1024; i++) {
+		err = ngbe_flash_read_dword(hw, NGBE_LLDP_REG + i * 4, &tmp);
+		if (err)
+			return err;
+
+		if (tmp == BIT_MASK32)
+			break;
+		lldp_flash_data = tmp;
+	}
+
+	if (lldp_flash_data & MS(hw->bus.lan_id, 1))
+		hw->lldp_enabled = true;
+	else
+		hw->lldp_enabled = false;
+
+	return 0;
+}
+
+static void ngbe_disable_lldp(struct ngbe_hw *hw)
+{
+	s32 err = 0;
+
+	if ((hw->eeprom_id & NGBE_FW_MASK) < NGBE_FW_SUPPORT_LLDP)
+		return;
+
+	err = ngbe_is_lldp(hw);
+	if (err) {
+		PMD_INIT_LOG(INFO, "Can not get LLDP status.");
+	} else if (hw->lldp_enabled) {
+		err = ngbe_hic_set_lldp(hw, false);
+		if (!err)
+			PMD_INIT_LOG(INFO,
+				"LLDP detected on port %d, turn it off by default.",
+				hw->port_id);
+		else
+			PMD_INIT_LOG(INFO, "Can not set LLDP status.");
+	}
+}
 
 /**
  *  ngbe_start_hw - Prepare hardware for Tx/Rx
@@ -55,6 +106,7 @@ s32 ngbe_init_hw(struct ngbe_hw *hw)
 
 	ngbe_read_efuse(hw);
 	ngbe_save_eeprom_version(hw);
+	ngbe_disable_lldp(hw);
 
 	/* Reset the hardware */
 	status = hw->mac.reset_hw(hw);
@@ -172,6 +224,10 @@ s32 ngbe_reset_hw_em(struct ngbe_hw *hw)
 
 	ngbe_reset_misc_em(hw);
 	hw->mac.clear_hw_cntrs(hw);
+
+	if (!(((hw->sub_device_id & NGBE_OEM_MASK) == NGBE_RGMII_FPGA) ||
+			hw->ncsi_enabled || hw->wol_enabled))
+		hw->phy.set_phy_power(hw, false);
 
 	msec_delay(50);
 
@@ -809,6 +865,15 @@ s32 ngbe_setup_fc_em(struct ngbe_hw *hw)
 		goto out;
 	}
 
+	/*
+	 * Reconfig mac ctrl frame fwd rule to make sure it still
+	 * working after port stop/start.
+	 */
+	wr32m(hw, NGBE_MACRXFLT, NGBE_MACRXFLT_CTL_MASK,
+	      (hw->fc.mac_ctrl_frame_fwd ?
+	       NGBE_MACRXFLT_CTL_NOPS : NGBE_MACRXFLT_CTL_DROP));
+	ngbe_flush(hw);
+
 	err = hw->phy.set_pause_adv(hw, reg_cu);
 
 out:
@@ -1064,7 +1129,7 @@ s32 ngbe_set_pcie_master(struct ngbe_hw *hw, bool enable)
 	u32 i;
 
 	if (rte_pci_set_bus_master(pci_dev, enable) < 0) {
-		DEBUGOUT("Cannot configure PCI bus master\n");
+		DEBUGOUT("Cannot configure PCI bus master");
 		return -1;
 	}
 
@@ -1706,7 +1771,8 @@ void ngbe_disable_rx(struct ngbe_hw *hw)
 	}
 
 	wr32m(hw, NGBE_PBRXCTL, NGBE_PBRXCTL_ENA, 0);
-	wr32m(hw, NGBE_MACRXCFG, NGBE_MACRXCFG_ENA, 0);
+	if (!(hw->ncsi_enabled || hw->wol_enabled))
+		wr32m(hw, NGBE_MACRXCFG, NGBE_MACRXCFG_ENA, 0);
 }
 
 void ngbe_enable_rx(struct ngbe_hw *hw)
@@ -1811,9 +1877,9 @@ s32 ngbe_enable_rx_dma(struct ngbe_hw *hw, u32 regval)
  * 1. to be sector address, when implemented erase sector command
  * 2. to be flash address when implemented read, write flash address
  *
- * Return 0 on success, return 1 on failure.
+ * Return 0 on success, return NGBE_ERR_TIMEOUT on failure.
  */
-u32 ngbe_fmgr_cmd_op(struct ngbe_hw *hw, u32 cmd, u32 cmd_addr)
+s32 ngbe_fmgr_cmd_op(struct ngbe_hw *hw, u32 cmd, u32 cmd_addr)
 {
 	u32 cmd_val, i;
 
@@ -1827,33 +1893,35 @@ u32 ngbe_fmgr_cmd_op(struct ngbe_hw *hw, u32 cmd, u32 cmd_addr)
 		usec_delay(10);
 	}
 	if (i == NGBE_SPI_TIMEOUT)
-		return 1;
+		return NGBE_ERR_TIMEOUT;
 
 	return 0;
 }
 
-u32 ngbe_flash_read_dword(struct ngbe_hw *hw, u32 addr)
+s32 ngbe_flash_read_dword(struct ngbe_hw *hw, u32 addr, u32 *data)
 {
-	u32 status;
+	s32 status;
 
 	status = ngbe_fmgr_cmd_op(hw, 1, addr);
-	if (status == 0x1) {
+	if (status < 0) {
 		DEBUGOUT("Read flash timeout.");
 		return status;
 	}
 
-	return rd32(hw, NGBE_SPIDAT);
+	*data = rd32(hw, NGBE_SPIDAT);
+
+	return 0;
 }
 
 void ngbe_read_efuse(struct ngbe_hw *hw)
 {
-	u32 efuse[2];
+	u32 efuse[2] = {0, 0};
 	u8 lan_id = hw->bus.lan_id;
 
-	efuse[0] = ngbe_flash_read_dword(hw, 0xfe010 + lan_id * 8);
-	efuse[1] = ngbe_flash_read_dword(hw, 0xfe010 + lan_id * 8 + 4);
+	ngbe_flash_read_dword(hw, 0xfe010 + lan_id * 8, &efuse[0]);
+	ngbe_flash_read_dword(hw, 0xfe010 + lan_id * 8 + 4, &efuse[1]);
 
-	DEBUGOUT("port %d efuse[0] = %08x, efuse[1] = %08x\n",
+	DEBUGOUT("port %d efuse[0] = %08x, efuse[1] = %08x",
 		lan_id, efuse[0], efuse[1]);
 
 	hw->gphy_efuse[0] = efuse[0];
@@ -1863,6 +1931,8 @@ void ngbe_read_efuse(struct ngbe_hw *hw)
 void ngbe_map_device_id(struct ngbe_hw *hw)
 {
 	u16 oem = hw->sub_system_id & NGBE_OEM_MASK;
+	u16 ncsi = hw->sub_system_id & NGBE_NCSI_SUP_MASK;
+	u16 wol = hw->sub_system_id & NGBE_WOL_SUP_MASK;
 
 	hw->is_pf = true;
 
@@ -1922,6 +1992,10 @@ void ngbe_map_device_id(struct ngbe_hw *hw)
 			oem == NGBE_INTERNAL_YT8521S_SFP_GPIO ||
 			oem == NGBE_LY_YT8521S_SFP)
 		hw->gpio_ctl = true;
+
+	hw->wol_enabled = (wol == NGBE_WOL_SUP_MASK) ? true : false;
+	hw->ncsi_enabled = (ncsi == NGBE_NCSI_SUP_MASK ||
+			   oem == NGBE_OCP_CARD) ? true : false;
 }
 
 /**
@@ -2051,6 +2125,9 @@ s32 ngbe_init_shared_code(struct ngbe_hw *hw)
 	case ngbe_mac_em:
 		ngbe_init_ops_pf(hw);
 		break;
+	case ngbe_mac_em_vf:
+		ngbe_init_ops_vf(hw);
+		break;
 	default:
 		status = NGBE_ERR_DEVICE_NOT_SUPPORTED;
 		break;
@@ -2062,3 +2139,23 @@ s32 ngbe_init_shared_code(struct ngbe_hw *hw)
 	return status;
 }
 
+void ngbe_set_ncsi_status(struct ngbe_hw *hw)
+{
+	u16 ncsi_pin = 0;
+	s32 err = 0;
+
+	/* need to check ncsi pin status for oem ncsi card */
+	if (hw->ncsi_enabled || hw->wol_enabled)
+		return;
+
+	err = hw->rom.readw_buffer(hw, FW_READ_SHADOW_RAM_GPIO, 1, &ncsi_pin);
+	if (err) {
+		DEBUGOUT("get ncsi pin status failed");
+		return;
+	}
+
+	if (ncsi_pin == 1) {
+		hw->ncsi_enabled = true;
+		hw->wol_enabled = true;
+	}
+}

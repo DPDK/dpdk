@@ -8,7 +8,7 @@
 
 allow_experimental_apis = true
 librt = cc.find_library('rt', required: false)
-if not librt.found()
+if not librt.found() or not cc.links(min_c_code, dependencies: librt)
     build = false
     subdir_done()
 endif
@@ -19,3 +19,4 @@ sources = files(
         'main.c',
         'shm.c',
 )
+cflags += no_shadow_cflag

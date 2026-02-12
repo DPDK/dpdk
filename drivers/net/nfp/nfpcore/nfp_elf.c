@@ -627,7 +627,7 @@ nfp_elf_populate_fw_mip(struct nfp_elf *ectx,
 	first_entry = rte_le_to_cpu_32(mip->first_entry);
 
 	if (mip->signature != NFP_MIP_SIGNATURE) {
-		PMD_DRV_LOG(ERR, "Incorrect MIP signature %#08x",
+		PMD_DRV_LOG(ERR, "Incorrect MIP signature %#08x.",
 				rte_le_to_cpu_32(mip->signature));
 		return -EINVAL;
 	}
@@ -1066,7 +1066,7 @@ nfp_elf_get_fw_version(uint32_t *fw_version,
 	struct nfp_elf *elf;
 
 	if (rte_firmware_read(fw_name, &fw_buf, &fsize) != 0) {
-		PMD_DRV_LOG(ERR, "firmware %s not found!", fw_name);
+		PMD_DRV_LOG(ERR, "Firmware %s not found!", fw_name);
 		return -ENOENT;
 	}
 
@@ -1083,4 +1083,3 @@ nfp_elf_get_fw_version(uint32_t *fw_version,
 	free(fw_buf);
 	return 0;
 }
-

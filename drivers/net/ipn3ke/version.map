@@ -1,9 +1,0 @@
-DPDK_24 {
-	local: *;
-};
-
-INTERNAL {
-	global:
-
-	ipn3ke_bridge_func;
-};

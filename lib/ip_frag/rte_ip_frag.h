@@ -12,10 +12,6 @@
  * Implementation of IP packet fragmentation and reassembly.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <stdio.h>
 
@@ -24,6 +20,10 @@ extern "C" {
 #include <rte_memory.h>
 #include <rte_ip.h>
 #include <rte_byteorder.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct rte_mbuf;
 

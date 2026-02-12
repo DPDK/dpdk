@@ -3,6 +3,7 @@
  */
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_ip_frag.h>
 #include <rte_cycles.h>
 #include <rte_log.h>
@@ -314,6 +315,7 @@ rte_port_ras_writer_stats_read(void *port,
 /*
  * Summary of port operations
  */
+RTE_EXPORT_SYMBOL(rte_port_ring_writer_ipv4_ras_ops)
 struct rte_port_out_ops rte_port_ring_writer_ipv4_ras_ops = {
 	.f_create = rte_port_ring_writer_ipv4_ras_create,
 	.f_free = rte_port_ring_writer_ras_free,
@@ -323,6 +325,7 @@ struct rte_port_out_ops rte_port_ring_writer_ipv4_ras_ops = {
 	.f_stats = rte_port_ras_writer_stats_read,
 };
 
+RTE_EXPORT_SYMBOL(rte_port_ring_writer_ipv6_ras_ops)
 struct rte_port_out_ops rte_port_ring_writer_ipv6_ras_ops = {
 	.f_create = rte_port_ring_writer_ipv6_ras_create,
 	.f_free = rte_port_ring_writer_ras_free,

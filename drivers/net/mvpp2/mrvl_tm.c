@@ -380,7 +380,7 @@ mrvl_shaper_profile_from_id(struct mrvl_priv *priv, uint32_t shaper_profile_id)
  */
 static int
 mrvl_shaper_profile_add(struct rte_eth_dev *dev, uint32_t shaper_profile_id,
-			struct rte_tm_shaper_params *params,
+			const struct rte_tm_shaper_params *params,
 			struct rte_tm_error *error)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
@@ -496,7 +496,7 @@ mrvl_shaper_profile_delete(struct rte_eth_dev *dev, uint32_t shaper_profile_id,
 static int
 mrvl_node_check_params(struct rte_eth_dev *dev, uint32_t node_id,
 		       uint32_t priority, uint32_t weight, uint32_t level_id,
-		       struct rte_tm_node_params *params,
+		       const struct rte_tm_node_params *params,
 		       struct rte_tm_error *error)
 {
 	if (node_id == RTE_TM_NODE_ID_NULL)
@@ -602,7 +602,7 @@ mrvl_node_check_params(struct rte_eth_dev *dev, uint32_t node_id,
 static int
 mrvl_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	      uint32_t parent_node_id, uint32_t priority, uint32_t weight,
-	      uint32_t level_id, struct rte_tm_node_params *params,
+	      uint32_t level_id, const struct rte_tm_node_params *params,
 	      struct rte_tm_error *error)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;

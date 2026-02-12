@@ -15,7 +15,9 @@ Contributor's Guidelines
     documentation
     unit_test
     new_library
+    new_driver
     patches
+    linux_uapi
     vulnerability
     stable
     cheatsheet

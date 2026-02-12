@@ -20,6 +20,7 @@ foreach env, id:exec_envs
     dpdk_conf.set10('RTE_EXEC_ENV_IS_' + env.to_upper(), (exec_env == env))
 endforeach
 dpdk_conf.set('RTE_EXEC_ENV', exec_envs[exec_env])
+dpdk_conf.set_quoted('RTE_EXEC_ENV_NAME', exec_env)
 dpdk_conf.set('RTE_EXEC_ENV_' + exec_env.to_upper(), 1)
 
 # MS linker requires special treatment.
@@ -95,10 +96,12 @@ eal_pmd_path = join_paths(get_option('prefix'), driver_install_path)
 # e.g. ixgbe depends on librte_bus_pci. This means that the bus drivers need
 # to be in the library path, so symlink the drivers from the main lib directory.
 if not is_windows
-    meson.add_install_script('../buildtools/symlink-drivers-solibs.sh',
-            get_option('libdir'), pmd_subdir_opt)
-elif meson.version().version_compare('>=0.55.0')
-    # 0.55.0 is required to use external program with add_install_script
+    # skip symlink-drivers-solibs.sh execution on no sub directory
+    if pmd_subdir_opt != '' and pmd_subdir_opt != '.'
+        meson.add_install_script('../buildtools/symlink-drivers-solibs.sh',
+                get_option('libdir'), pmd_subdir_opt)
+    endif
+else
     meson.add_install_script(py3,
             files('../buildtools/symlink-drivers-solibs.py'),
             get_option('libdir'), pmd_subdir_opt, get_option('bindir'))
@@ -206,7 +209,8 @@ if not is_windows
 endif
 
 # on some OS, maths functions are in a separate library
-if cc.find_library('m', required : false).found()
+math_dep = cc.find_library('m', required : false)
+if math_dep.found() and cc.links(min_c_code, dependencies: math_dep)
     # some libs depend on maths lib
     add_project_link_arguments('-lm', language: 'c')
     dpdk_extra_ldflags += '-lm'
@@ -227,13 +231,13 @@ endif
 # check for libraries used in multiple places in DPDK
 has_libnuma = false
 find_libnuma = true
-if meson.is_cross_build() and not meson.get_cross_property('numa', true)
+if meson.is_cross_build() and not meson.get_external_property('numa', true)
     # don't look for libnuma if explicitly disabled in cross build
     find_libnuma = false
 endif
 if find_libnuma
     numa_dep = cc.find_library('numa', required: false)
-    if numa_dep.found() and cc.has_header('numaif.h')
+    if numa_dep.found() and cc.has_header('numaif.h') and cc.links(min_c_code, dependencies: numa_dep)
         dpdk_conf.set10('RTE_HAS_LIBNUMA', true)
         has_libnuma = true
         add_project_link_arguments('-lnuma', language: 'c')
@@ -243,7 +247,7 @@ endif
 
 has_libfdt = false
 fdt_dep = cc.find_library('fdt', required: false)
-if fdt_dep.found() and cc.has_header('fdt.h')
+if fdt_dep.found() and cc.has_header('fdt.h') and cc.links(min_c_code, dependencies: fdt_dep)
     dpdk_conf.set10('RTE_HAS_LIBFDT', true)
     has_libfdt = true
     add_project_link_arguments('-lfdt', language: 'c')
@@ -251,7 +255,7 @@ if fdt_dep.found() and cc.has_header('fdt.h')
 endif
 
 libexecinfo = cc.find_library('execinfo', required: false)
-if libexecinfo.found()
+if libexecinfo.found() and cc.links(min_c_code, dependencies: libexecinfo)
     add_project_link_arguments('-lexecinfo', language: 'c')
     dpdk_extra_ldflags += '-lexecinfo'
 endif
@@ -286,7 +290,8 @@ if not pcap_dep.found()
     # pcap got a pkg-config file only in 1.9.0
     pcap_dep = cc.find_library(pcap_lib, required: false)
 endif
-if pcap_dep.found() and cc.has_header('pcap.h', dependencies: pcap_dep)
+if (pcap_dep.found() and cc.has_header('pcap.h', dependencies: pcap_dep)
+        and cc.links(min_c_code, dependencies: pcap_dep))
     dpdk_conf.set('RTE_HAS_LIBPCAP', 1)
     dpdk_extra_ldflags += '-l@0@'.format(pcap_lib)
 endif
@@ -294,6 +299,9 @@ endif
 # for clang 32-bit compiles we need libatomic for 64-bit atomic ops
 if cc.get_id() == 'clang' and dpdk_conf.get('RTE_ARCH_64') == false
     atomic_dep = cc.find_library('atomic', required: true)
+    if not cc.links(min_c_code, dependencies: atomic_dep)
+        error('broken dependency, "libatomic"')
+    endif
     add_project_link_arguments('-latomic', language: 'c')
     dpdk_extra_ldflags += '-latomic'
 endif
@@ -308,9 +316,10 @@ endif
 # enable extra warnings and disable any unwanted warnings
 # -Wall is added by default at warning level 1, and -Wextra
 # at warning level 2 (DPDK default)
-warning_flags = [
+global_cflags = [
         # additional warnings in alphabetical order
         '-Wcast-qual',
+        '-Wcomma',
         '-Wdeprecated',
         '-Wformat',
         '-Wformat-nonliteral',
@@ -320,31 +329,45 @@ warning_flags = [
         '-Wnested-externs',
         '-Wold-style-definition',
         '-Wpointer-arith',
+        '-Wshadow',
         '-Wsign-compare',
         '-Wstrict-prototypes',
         '-Wundef',
         '-Wwrite-strings',
 
         # globally disabled warnings
-        '-Wno-address-of-packed-member',
         '-Wno-packed-not-aligned',
         '-Wno-missing-field-initializers',
+
+        # guarantee that all non-initialized parts of structure/union are zero
+        '-fzero-init-padding-bits=all',
 ]
-if cc.get_id() == 'gcc' and cc.version().version_compare('>=10.0')
-# FIXME: Bugzilla 396
-    warning_flags += '-Wno-zero-length-bounds'
-endif
+
 if not dpdk_conf.get('RTE_ARCH_64')
 # for 32-bit, don't warn about casting a 32-bit pointer to 64-bit int - it's fine!!
-    warning_flags += '-Wno-pointer-to-int-cast'
+    global_cflags += '-Wno-pointer-to-int-cast'
 endif
 if cc.get_id() == 'intel'
     warning_ids = [181, 188, 2203, 2279, 2557, 3179, 3656]
     foreach i:warning_ids
-        warning_flags += '-diag-disable=@0@'.format(i)
+        global_cflags += '-diag-disable=@0@'.format(i)
     endforeach
 endif
-foreach arg: warning_flags
+
+no_wvla_cflag = []
+if cc.has_argument('-Wvla')
+    add_project_arguments('-Wvla', language: 'c')
+    if not is_windows
+        no_wvla_cflag = '-Wno-vla'
+    endif
+endif
+
+no_shadow_cflag = []
+if cc.has_argument('-Wno-shadow')
+    no_shadow_cflag = '-Wno-shadow'
+endif
+
+foreach arg: global_cflags
     if cc.has_argument(arg)
         add_project_arguments(arg, language: 'c')
     endif
@@ -377,12 +400,12 @@ dpdk_conf.set('RTE_COMPILE_TIME_CPUFLAGS', ','.join(compile_time_cpuflags))
 # apply cross-specific options
 if meson.is_cross_build()
     # configure RTE_MAX_LCORE and RTE_MAX_NUMA_NODES from cross file
-    cross_max_lcores = meson.get_cross_property('max_lcores', 0)
+    cross_max_lcores = meson.get_external_property('max_lcores', 0)
     if cross_max_lcores != 0
         message('Setting RTE_MAX_LCORE from cross file')
         dpdk_conf.set('RTE_MAX_LCORE', cross_max_lcores)
     endif
-    cross_max_numa_nodes = meson.get_cross_property('max_numa_nodes', 0)
+    cross_max_numa_nodes = meson.get_external_property('max_numa_nodes', 0)
     if cross_max_numa_nodes != 0
         message('Setting RTE_MAX_NUMA_NODES from cross file')
         dpdk_conf.set('RTE_MAX_NUMA_NODES', cross_max_numa_nodes)
@@ -446,11 +469,7 @@ endif
 # set the install path for the drivers
 dpdk_conf.set_quoted('RTE_EAL_PMD_PATH', eal_pmd_path)
 
-install_headers(['rte_config.h'],
-        subdir: get_option('include_subdir_arch'))
-
-# enable VFIO only if it is linux OS
-dpdk_conf.set('RTE_EAL_VFIO', is_linux)
+dpdk_arch_headers += files('rte_config.h')
 
 # specify -D_GNU_SOURCE unconditionally
 add_project_arguments('-D_GNU_SOURCE', language: 'c')
@@ -482,14 +501,9 @@ if get_option('b_lto')
     else
         error('compiler does not support fat LTO objects - please turn LTO off')
     endif
-    # workaround for gcc bug 81440
-    if cc.get_id() == 'gcc' and cc.version().version_compare('<8.0')
-        add_project_arguments('-Wno-lto-type-mismatch', language: 'c')
-        add_project_link_arguments('-Wno-lto-type-mismatch', language: 'c')
-    endif
 endif
 
-if get_option('b_sanitize') == 'address' or get_option('b_sanitize') == 'address,undefined'
+if get_option('b_sanitize').contains('address')
     if is_windows
         error('ASan is not supported on windows')
     endif
@@ -506,6 +520,22 @@ if get_option('b_sanitize') == 'address' or get_option('b_sanitize') == 'address
 
     if is_linux and dpdk_conf.get('RTE_ARCH_64')
         dpdk_conf.set10('RTE_MALLOC_ASAN', true)
+    endif
+endif
+
+if get_option('b_sanitize').contains('undefined')
+    if is_windows
+        error('UBSan is not supported on windows')
+    endif
+
+    if cc.get_id() == 'gcc'
+        ubsan_dep = cc.find_library('ubsan', required: true)
+        if (not cc.links('int main(int argc, char *argv[]) { return 0; }',
+                dependencies: ubsan_dep))
+            error('broken dependency, "libubsan"')
+        endif
+        add_project_link_arguments('-lubsan', language: 'c')
+        dpdk_extra_ldflags += '-lubsan'
     endif
 endif
 

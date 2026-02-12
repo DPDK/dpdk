@@ -5,6 +5,7 @@
 
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_memzone.h>
 #include <rte_string_fns.h>
 
@@ -13,12 +14,14 @@
 #include "rte_regexdev_driver.h"
 
 static const char *MZ_RTE_REGEXDEV_DATA = "rte_regexdev_data";
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regex_devices, 22.03)
 struct rte_regexdev rte_regex_devices[RTE_MAX_REGEXDEV_DEVS];
 /* Shared memory between primary and secondary processes. */
 static struct {
 	struct rte_regexdev_data data[RTE_MAX_REGEXDEV_DEVS];
 } *rte_regexdev_shared_data;
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_logtype, 22.03)
 RTE_LOG_REGISTER_DEFAULT(rte_regexdev_logtype, INFO);
 
 static uint16_t
@@ -89,6 +92,7 @@ regexdev_check_name(const char *name)
 
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_regexdev_register)
 struct rte_regexdev *
 rte_regexdev_register(const char *name)
 {
@@ -126,12 +130,14 @@ rte_regexdev_register(const char *name)
 	return dev;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_regexdev_unregister)
 void
 rte_regexdev_unregister(struct rte_regexdev *dev)
 {
 	dev->state = RTE_REGEXDEV_UNUSED;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_regexdev_get_device_by_name)
 struct rte_regexdev *
 rte_regexdev_get_device_by_name(const char *name)
 {
@@ -140,6 +146,7 @@ rte_regexdev_get_device_by_name(const char *name)
 	return regexdev_allocated(name);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_count, 20.08)
 uint8_t
 rte_regexdev_count(void)
 {
@@ -153,6 +160,7 @@ rte_regexdev_count(void)
 	return count;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_get_dev_id, 20.08)
 int
 rte_regexdev_get_dev_id(const char *name)
 {
@@ -171,6 +179,7 @@ rte_regexdev_get_dev_id(const char *name)
 	return id;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_is_valid_dev, 22.03)
 int
 rte_regexdev_is_valid_dev(uint16_t dev_id)
 {
@@ -189,18 +198,20 @@ regexdev_info_get(uint8_t dev_id, struct rte_regexdev_info *dev_info)
 	if (dev_info == NULL)
 		return -EINVAL;
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_info_get == NULL)
+	if (dev->dev_ops->dev_info_get == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->dev_info_get)(dev, dev_info);
+	return dev->dev_ops->dev_info_get(dev, dev_info);
 
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_info_get, 20.08)
 int
 rte_regexdev_info_get(uint8_t dev_id, struct rte_regexdev_info *dev_info)
 {
 	return regexdev_info_get(dev_id, dev_info);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_configure, 20.08)
 int
 rte_regexdev_configure(uint8_t dev_id, const struct rte_regexdev_config *cfg)
 {
@@ -212,7 +223,7 @@ rte_regexdev_configure(uint8_t dev_id, const struct rte_regexdev_config *cfg)
 	if (cfg == NULL)
 		return -EINVAL;
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_configure == NULL)
+	if (dev->dev_ops->dev_configure == NULL)
 		return -ENOTSUP;
 	if (dev->data->dev_started) {
 		RTE_REGEXDEV_LOG_LINE
@@ -289,12 +300,13 @@ rte_regexdev_configure(uint8_t dev_id, const struct rte_regexdev_config *cfg)
 				 dev_info.max_rules_per_group);
 		return -EINVAL;
 	}
-	ret = (*dev->dev_ops->dev_configure)(dev, cfg);
+	ret = dev->dev_ops->dev_configure(dev, cfg);
 	if (ret == 0)
 		dev->data->dev_conf = *cfg;
 	return ret;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_queue_pair_setup, 20.08)
 int
 rte_regexdev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 			   const struct rte_regexdev_qp_conf *qp_conf)
@@ -303,7 +315,7 @@ rte_regexdev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_qp_setup == NULL)
+	if (dev->dev_ops->dev_qp_setup == NULL)
 		return -ENOTSUP;
 	if (dev->data->dev_started) {
 		RTE_REGEXDEV_LOG_LINE
@@ -324,9 +336,10 @@ rte_regexdev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 			 dev_id);
 		return -EBUSY;
 	}
-	return (*dev->dev_ops->dev_qp_setup)(dev, queue_pair_id, qp_conf);
+	return dev->dev_ops->dev_qp_setup(dev, queue_pair_id, qp_conf);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_start, 20.08)
 int
 rte_regexdev_start(uint8_t dev_id)
 {
@@ -335,14 +348,15 @@ rte_regexdev_start(uint8_t dev_id)
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_start == NULL)
+	if (dev->dev_ops->dev_start == NULL)
 		return -ENOTSUP;
-	ret = (*dev->dev_ops->dev_start)(dev);
+	ret = dev->dev_ops->dev_start(dev);
 	if (ret == 0)
 		dev->data->dev_started = 1;
 	return ret;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_stop, 20.08)
 int
 rte_regexdev_stop(uint8_t dev_id)
 {
@@ -350,13 +364,14 @@ rte_regexdev_stop(uint8_t dev_id)
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_stop == NULL)
+	if (dev->dev_ops->dev_stop == NULL)
 		return -ENOTSUP;
-	(*dev->dev_ops->dev_stop)(dev);
+	dev->dev_ops->dev_stop(dev);
 	dev->data->dev_started = 0;
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_close, 20.08)
 int
 rte_regexdev_close(uint8_t dev_id)
 {
@@ -364,14 +379,15 @@ rte_regexdev_close(uint8_t dev_id)
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_close == NULL)
+	if (dev->dev_ops->dev_close == NULL)
 		return -ENOTSUP;
-	(*dev->dev_ops->dev_close)(dev);
+	dev->dev_ops->dev_close(dev);
 	dev->data->dev_started = 0;
 	dev->state = RTE_REGEXDEV_UNUSED;
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_attr_get, 20.08)
 int
 rte_regexdev_attr_get(uint8_t dev_id, enum rte_regexdev_attr_id attr_id,
 		      void *attr_value)
@@ -380,16 +396,17 @@ rte_regexdev_attr_get(uint8_t dev_id, enum rte_regexdev_attr_id attr_id,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_attr_get == NULL)
+	if (dev->dev_ops->dev_attr_get == NULL)
 		return -ENOTSUP;
 	if (attr_value == NULL) {
 		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d attribute value can't be NULL",
 				 dev_id);
 		return -EINVAL;
 	}
-	return (*dev->dev_ops->dev_attr_get)(dev, attr_id, attr_value);
+	return dev->dev_ops->dev_attr_get(dev, attr_id, attr_value);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_attr_set, 20.08)
 int
 rte_regexdev_attr_set(uint8_t dev_id, enum rte_regexdev_attr_id attr_id,
 		      const void *attr_value)
@@ -398,16 +415,17 @@ rte_regexdev_attr_set(uint8_t dev_id, enum rte_regexdev_attr_id attr_id,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_attr_set == NULL)
+	if (dev->dev_ops->dev_attr_set == NULL)
 		return -ENOTSUP;
 	if (attr_value == NULL) {
 		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d attribute value can't be NULL",
 				 dev_id);
 		return -EINVAL;
 	}
-	return (*dev->dev_ops->dev_attr_set)(dev, attr_id, attr_value);
+	return dev->dev_ops->dev_attr_set(dev, attr_id, attr_value);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_rule_db_update, 20.08)
 int
 rte_regexdev_rule_db_update(uint8_t dev_id,
 			    const struct rte_regexdev_rule *rules,
@@ -417,16 +435,17 @@ rte_regexdev_rule_db_update(uint8_t dev_id,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_rule_db_update == NULL)
+	if (dev->dev_ops->dev_rule_db_update == NULL)
 		return -ENOTSUP;
 	if (rules == NULL) {
 		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d rules can't be NULL",
 				 dev_id);
 		return -EINVAL;
 	}
-	return (*dev->dev_ops->dev_rule_db_update)(dev, rules, nb_rules);
+	return dev->dev_ops->dev_rule_db_update(dev, rules, nb_rules);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_rule_db_compile_activate, 20.08)
 int
 rte_regexdev_rule_db_compile_activate(uint8_t dev_id)
 {
@@ -434,11 +453,12 @@ rte_regexdev_rule_db_compile_activate(uint8_t dev_id)
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_rule_db_compile_activate == NULL)
+	if (dev->dev_ops->dev_rule_db_compile_activate == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->dev_rule_db_compile_activate)(dev);
+	return dev->dev_ops->dev_rule_db_compile_activate(dev);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_rule_db_import, 20.08)
 int
 rte_regexdev_rule_db_import(uint8_t dev_id, const char *rule_db,
 			    uint32_t rule_db_len)
@@ -447,16 +467,17 @@ rte_regexdev_rule_db_import(uint8_t dev_id, const char *rule_db,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_db_import == NULL)
+	if (dev->dev_ops->dev_db_import == NULL)
 		return -ENOTSUP;
 	if (rule_db == NULL) {
 		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d rules can't be NULL",
 				 dev_id);
 		return -EINVAL;
 	}
-	return (*dev->dev_ops->dev_db_import)(dev, rule_db, rule_db_len);
+	return dev->dev_ops->dev_db_import(dev, rule_db, rule_db_len);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_rule_db_export, 20.08)
 int
 rte_regexdev_rule_db_export(uint8_t dev_id, char *rule_db)
 {
@@ -464,11 +485,12 @@ rte_regexdev_rule_db_export(uint8_t dev_id, char *rule_db)
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_db_export == NULL)
+	if (dev->dev_ops->dev_db_export == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->dev_db_export)(dev, rule_db);
+	return dev->dev_ops->dev_db_export(dev, rule_db);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_xstats_names_get, 20.08)
 int
 rte_regexdev_xstats_names_get(uint8_t dev_id,
 			      struct rte_regexdev_xstats_map *xstats_map)
@@ -477,16 +499,17 @@ rte_regexdev_xstats_names_get(uint8_t dev_id,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_xstats_names_get == NULL)
+	if (dev->dev_ops->dev_xstats_names_get == NULL)
 		return -ENOTSUP;
 	if (xstats_map == NULL) {
 		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d xstats map can't be NULL",
 				 dev_id);
 		return -EINVAL;
 	}
-	return (*dev->dev_ops->dev_xstats_names_get)(dev, xstats_map);
+	return dev->dev_ops->dev_xstats_names_get(dev, xstats_map);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_xstats_get, 20.08)
 int
 rte_regexdev_xstats_get(uint8_t dev_id, const uint16_t *ids,
 			uint64_t *values, uint16_t n)
@@ -495,7 +518,7 @@ rte_regexdev_xstats_get(uint8_t dev_id, const uint16_t *ids,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_xstats_get == NULL)
+	if (dev->dev_ops->dev_xstats_get == NULL)
 		return -ENOTSUP;
 	if (ids == NULL) {
 		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d ids can't be NULL", dev_id);
@@ -505,9 +528,10 @@ rte_regexdev_xstats_get(uint8_t dev_id, const uint16_t *ids,
 		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d values can't be NULL", dev_id);
 		return -EINVAL;
 	}
-	return (*dev->dev_ops->dev_xstats_get)(dev, ids, values, n);
+	return dev->dev_ops->dev_xstats_get(dev, ids, values, n);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_xstats_by_name_get, 20.08)
 int
 rte_regexdev_xstats_by_name_get(uint8_t dev_id, const char *name,
 				uint16_t *id, uint64_t *value)
@@ -516,7 +540,7 @@ rte_regexdev_xstats_by_name_get(uint8_t dev_id, const char *name,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_xstats_by_name_get == NULL)
+	if (dev->dev_ops->dev_xstats_by_name_get == NULL)
 		return -ENOTSUP;
 	if (name == NULL) {
 		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d name can't be NULL", dev_id);
@@ -530,9 +554,10 @@ rte_regexdev_xstats_by_name_get(uint8_t dev_id, const char *name,
 		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d value can't be NULL", dev_id);
 		return -EINVAL;
 	}
-	return (*dev->dev_ops->dev_xstats_by_name_get)(dev, name, id, value);
+	return dev->dev_ops->dev_xstats_by_name_get(dev, name, id, value);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_xstats_reset, 20.08)
 int
 rte_regexdev_xstats_reset(uint8_t dev_id, const uint16_t *ids,
 			  uint16_t nb_ids)
@@ -541,15 +566,16 @@ rte_regexdev_xstats_reset(uint8_t dev_id, const uint16_t *ids,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_xstats_reset == NULL)
+	if (dev->dev_ops->dev_xstats_reset == NULL)
 		return -ENOTSUP;
 	if (ids == NULL) {
 		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d ids can't be NULL", dev_id);
 		return -EINVAL;
 	}
-	return (*dev->dev_ops->dev_xstats_reset)(dev, ids, nb_ids);
+	return dev->dev_ops->dev_xstats_reset(dev, ids, nb_ids);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_selftest, 20.08)
 int
 rte_regexdev_selftest(uint8_t dev_id)
 {
@@ -557,11 +583,12 @@ rte_regexdev_selftest(uint8_t dev_id)
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_selftest == NULL)
+	if (dev->dev_ops->dev_selftest == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->dev_selftest)(dev);
+	return dev->dev_ops->dev_selftest(dev);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_regexdev_dump, 20.08)
 int
 rte_regexdev_dump(uint8_t dev_id, FILE *f)
 {
@@ -569,11 +596,11 @@ rte_regexdev_dump(uint8_t dev_id, FILE *f)
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	if (*dev->dev_ops->dev_dump == NULL)
+	if (dev->dev_ops->dev_dump == NULL)
 		return -ENOTSUP;
 	if (f == NULL) {
 		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d file can't be NULL", dev_id);
 		return -EINVAL;
 	}
-	return (*dev->dev_ops->dev_dump)(dev, f);
+	return dev->dev_ops->dev_dump(dev, f);
 }

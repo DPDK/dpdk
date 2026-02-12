@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2023 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -197,6 +197,11 @@ tf_session_create(struct tf *tfp,
 		parms->open_cfg->shared_session_creator = true;
 	}
 
+#ifdef TF_FLOW_SCALE_QUERY
+	/* Reset the resource usage buffer before binding a device */
+	tf_resc_usage_reset(tfp, parms->open_cfg->device_type);
+#endif /* TF_FLOW_SCALE_QUERY */
+
 	rc = tf_dev_bind(tfp,
 			 parms->open_cfg->device_type,
 			 &parms->open_cfg->resources,
@@ -215,6 +220,11 @@ tf_session_create(struct tf *tfp,
 	}
 
 	session->dev_init = true;
+
+#ifdef TF_FLOW_SCALE_QUERY
+	/* Sync the initial resource usage with firmware */
+	tf_resc_usage_update_all(parms->open_cfg->bp);
+#endif /* TF_FLOW_SCALE_QUERY */
 
 	return 0;
 

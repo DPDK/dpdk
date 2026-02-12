@@ -1,14 +1,9 @@
-
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
 #ifndef __INCLUDE_RTE_METER_H__
 #define __INCLUDE_RTE_METER_H__
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * @file
@@ -21,6 +16,10 @@ extern "C" {
  */
 
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * Application Programmer's Interface (API)

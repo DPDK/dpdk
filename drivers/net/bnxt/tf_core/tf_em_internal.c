@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2023 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -56,8 +56,8 @@ tf_em_insert_int_entry(struct tf *tfp,
 	pool = (struct dpool *)tfs->em_pool[parms->dir];
 	index = dpool_alloc(pool, TF_SESSION_EM_ENTRY_SIZE, 0);
 	if (index == DP_INVALID_INDEX) {
-		PMD_DRV_LOG(ERR,
-			    "%s, EM entry index allocation failed\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "%s, EM entry index allocation failed",
 			    tf_dir_2_str(parms->dir));
 		return -1;
 	}
@@ -293,6 +293,13 @@ tf_em_int_bind(struct tf *tfp,
 			/* Logging handled in tf_create_em_pool */
 			if (rc)
 				return rc;
+
+#ifdef TF_FLOW_SCALE_QUERY
+			/* Initialize the usage state buffer for EM */
+			tf_em_usage_init(tfp,
+					 i,
+					 iparms.info->entry.stride);
+#endif /* TF_FLOW_SCALE_QUERY */
 		}
 
 		if (rc) {

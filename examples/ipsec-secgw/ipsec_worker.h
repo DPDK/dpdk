@@ -37,11 +37,11 @@ struct route_table {
 /*
  * Conf required by event mode worker with tx internal port
  */
-struct lcore_conf_ev_tx_int_port_wrkr {
+struct __rte_cache_aligned lcore_conf_ev_tx_int_port_wrkr {
 	struct ipsec_ctx inbound;
 	struct ipsec_ctx outbound;
 	struct route_table rt;
-} __rte_cache_aligned;
+};
 
 void ipsec_poll_mode_worker(void);
 void ipsec_poll_mode_wrkr_inl_pr(void);
@@ -560,7 +560,7 @@ static __rte_always_inline void
 route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint32_t nb_pkts)
 {
 	int32_t hop[MAX_PKT_BURST * 2];
-	uint8_t dst_ip[MAX_PKT_BURST * 2][16];
+	struct rte_ipv6_addr dst_ip[MAX_PKT_BURST * 2];
 	struct rte_ether_hdr *ethhdr;
 	uint8_t *ip6_dst;
 	uint32_t pkt_hop = 0;
@@ -586,7 +586,7 @@ route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint32_t nb_pkts)
 			offset = offsetof(struct ip6_hdr, ip6_dst);
 			ip6_dst = rte_pktmbuf_mtod_offset(pkt, uint8_t *,
 					offset);
-			memcpy(&dst_ip[lpm_pkts][0], ip6_dst, 16);
+			memcpy(&dst_ip[lpm_pkts], ip6_dst, 16);
 			lpm_pkts++;
 		}
 	}

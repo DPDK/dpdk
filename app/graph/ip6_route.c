@@ -11,6 +11,7 @@
 #include <cmdline_socket.h>
 
 #include <rte_node_ip6_api.h>
+#include <rte_ip6.h>
 
 #include "module_api.h"
 #include "route_priv.h"
@@ -18,7 +19,12 @@
 static const char
 cmd_ipv6_lookup_help[] = "ipv6_lookup route add ipv6 <ip> netmask <mask> via <ip>";
 
+static const char
+cmd_ipv6_lookup_mode_help[] = "ipv6_lookup mode <lpm|fib>";
+
 struct ip6_route route6 = TAILQ_HEAD_INITIALIZER(route6);
+
+enum ip6_lookup_mode ip6_lookup_m = IP6_LOOKUP_LPM;
 
 void
 route_ip6_list_clean(void)
@@ -43,40 +49,28 @@ find_route6_entry(struct route_ipv6_config *route)
 	return NULL;
 }
 
-static uint8_t
-convert_ip6_netmask_to_depth(uint8_t *netmask)
-{
-	uint8_t setbits = 0;
-	uint8_t mask;
-	int i;
-
-	for (i = 0; i < ETHDEV_IPV6_ADDR_LEN; i++) {
-		mask = netmask[i];
-		while (mask & 0x80) {
-			mask = mask << 1;
-			setbits++;
-		}
-	}
-
-	return setbits;
-}
-
 static int
 route6_rewirte_table_update(struct route_ipv6_config *ipv6route)
 {
 	uint8_t depth;
 	int portid;
+	int rc;
 
-	portid = ethdev_portid_by_ip6(ipv6route->gateway, ipv6route->mask);
+	portid = ethdev_portid_by_ip6(&ipv6route->gateway, &ipv6route->mask);
 	if (portid < 0) {
 		printf("Invalid portid found to install the route\n");
 		return portid;
 	}
-	depth = convert_ip6_netmask_to_depth(ipv6route->mask);
+	depth = rte_ipv6_mask_depth(&ipv6route->mask);
 
-	return rte_node_ip6_route_add(ipv6route->ip, depth, portid,
-			RTE_NODE_IP6_LOOKUP_NEXT_REWRITE);
+	if (ip6_lookup_m == IP6_LOOKUP_FIB)
+		rc = rte_node_ip6_fib_route_add(&ipv6route->ip, depth, portid,
+				RTE_NODE_IP6_LOOKUP_NEXT_REWRITE);
+	else
+		rc = rte_node_ip6_route_add(&ipv6route->ip, depth, portid,
+				RTE_NODE_IP6_LOOKUP_NEXT_REWRITE);
 
+	return rc;
 }
 
 static int
@@ -84,7 +78,6 @@ route_ip6_add(struct route_ipv6_config *route)
 {
 	struct route_ipv6_config *ipv6route;
 	int rc = -EINVAL;
-	int j;
 
 	ipv6route = find_route6_entry(route);
 	if (!ipv6route) {
@@ -95,11 +88,9 @@ route_ip6_add(struct route_ipv6_config *route)
 		return 0;
 	}
 
-	for (j = 0; j < ETHDEV_IPV6_ADDR_LEN; j++) {
-		ipv6route->ip[j] = route->ip[j];
-		ipv6route->mask[j] = route->mask[j];
-		ipv6route->gateway[j] = route->gateway[j];
-	}
+	ipv6route->ip = route->ip;
+	ipv6route->mask = route->mask;
+	ipv6route->gateway = route->gateway;
 	ipv6route->is_used = true;
 
 	if (!graph_status_get())
@@ -140,9 +131,9 @@ cmd_help_ipv6_lookup_parsed(__rte_unused void *parsed_result, __rte_unused struc
 
 	len = strlen(conn->msg_out);
 	conn->msg_out += len;
-	snprintf(conn->msg_out, conn->msg_out_len_max, "\n%s\n%s\n",
+	snprintf(conn->msg_out, conn->msg_out_len_max, "\n%s\n%s\n%s\n",
 		 "--------------------------- ipv6_lookup command help ---------------------------",
-		 cmd_ipv6_lookup_help);
+		 cmd_ipv6_lookup_help, cmd_ipv6_lookup_mode_help);
 
 	len = strlen(conn->msg_out);
 	conn->msg_out_len_max -= len;
@@ -153,19 +144,28 @@ cmd_ipv6_lookup_route_add_ipv6_parsed(void *parsed_result, __rte_unused struct c
 				      void *data __rte_unused)
 {
 	struct cmd_ipv6_lookup_route_add_ipv6_result *res = parsed_result;
-	struct route_ipv6_config config;
-	int rc = -EINVAL, i;
-
-	for (i = 0; i < ETHDEV_IPV6_ADDR_LEN; i++)
-		config.ip[i] = res->ip.addr.ipv6.s6_addr[i];
-
-	for (i = 0; i < ETHDEV_IPV6_ADDR_LEN; i++)
-		config.mask[i] = res->mask.addr.ipv6.s6_addr[i];
-
-	for (i = 0; i < ETHDEV_IPV6_ADDR_LEN; i++)
-		config.gateway[i] = res->via_ip.addr.ipv6.s6_addr[i];
+	struct route_ipv6_config config = {
+		.ip = res->ip.addr.ipv6,
+		.mask = res->mask.addr.ipv6,
+		.gateway = res->via_ip.addr.ipv6,
+	};
+	int rc;
 
 	rc = route_ip6_add(&config);
 	if (rc)
+		printf(MSG_CMD_FAIL, res->ipv6_lookup);
+}
+
+void
+cmd_ipv6_lookup_mode_parsed(void *parsed_result, __rte_unused struct cmdline *cl,
+			    void *data __rte_unused)
+{
+	struct cmd_ipv6_lookup_mode_result *res = parsed_result;
+
+	if (!strcmp(res->lkup_mode, "lpm"))
+		ip6_lookup_m = IP6_LOOKUP_LPM;
+	else if (!strcmp(res->lkup_mode, "fib"))
+		ip6_lookup_m = IP6_LOOKUP_FIB;
+	else
 		printf(MSG_CMD_FAIL, res->ipv6_lookup);
 }

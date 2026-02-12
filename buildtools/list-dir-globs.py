@@ -15,6 +15,6 @@ root = os.path.join(os.getenv('MESON_SOURCE_ROOT', '.'),
 
 for path in sys.argv[1].split(','):
     if path:
-        for p in iglob(os.path.join(root, path)):
+        for p in iglob(os.path.join(root, path), recursive=True):
             if os.path.isdir(p):
                 print(os.path.relpath(p, start=root).replace('\\', '/'))

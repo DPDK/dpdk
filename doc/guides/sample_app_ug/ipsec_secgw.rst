@@ -270,7 +270,7 @@ The mapping of lcores to port/queues is similar to other l3fwd applications.
 
 For example, given the following command line to run application in poll mode::
 
-    ./<build_dir>/examples/dpdk-ipsec-secgw -l 20,21 -n 4 --socket-mem 0,2048       \
+    ./<build_dir>/examples/dpdk-ipsec-secgw -l 20,21 --numa-mem 0,2048       \
            --vdev "crypto_null" -- -p 0xf -P -u 0x3             \
            --config="(0,0,20),(1,0,20),(2,0,21),(3,0,21)"       \
            -f /path/to/config_file --transfer-mode poll         \
@@ -281,7 +281,7 @@ where each option means:
 
 *   The ``-n`` option sets memory 4 channels.
 
-*   The ``--socket-mem`` to use 2GB on socket 1.
+*   The ``--numa-mem`` to use 2GB on socket 1.
 
 *   The ``--vdev "crypto_null"`` option creates virtual NULL cryptodev PMD.
 
@@ -322,14 +322,14 @@ where each option means:
 Similarly for example, given the following command line to run application in
 event app mode::
 
-    ./<build_dir>/examples/dpdk-ipsec-secgw -c 0x3 -- -P -p 0x3 -u 0x1       \
+    ./<build_dir>/examples/dpdk-ipsec-secgw -l 0,1 -- -P -p 0x3 -u 0x1       \
            -f /path/to/config_file --transfer-mode event \
            --event-schedule-type parallel --event-vector --vector-size 32    \
            --vector-tmo 102400                           \
 
 where each option means:
 
-*   The ``-c`` option selects cores 0 and 1 to run on.
+*   The ``-l`` option selects cores 0 and 1 to run on.
 
 *   The ``-P`` option enables promiscuous mode.
 
@@ -368,7 +368,7 @@ For example, something like the following command line:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-ipsec-secgw -l 20,21 -n 4 --socket-mem 0,2048 \
+    ./<build_dir>/examples/dpdk-ipsec-secgw -l 20,21 --numa-mem 0,2048 \
             -a 81:00.0 -a 81:00.1 -a 81:00.2 -a 81:00.3 \
             --vdev "crypto_aesni_mb" --vdev "crypto_null" \
 	    -- \
@@ -576,6 +576,7 @@ where each options means:
    * *aes-128-ctr*: AES-CTR 128-bit algorithm
    * *3des-cbc*: 3DES-CBC 192-bit algorithm
    * *des-cbc*: DES-CBC 64-bit algorithm
+   * *sm4-cbc*: SM4-CBC 128-bit algorithm
 
  * Syntax: *cipher_algo <your algorithm>*
 
@@ -605,6 +606,7 @@ where each options means:
     * *sha1-hmac*: HMAC SHA1 algorithm
     * *sha256-hmac*: HMAC SHA256 algorithm
     * *aes-xcbc-mac*: AES XCBC MAC algorithm
+    * *sm3-hmac*: HMAC SM3 algorithm
 
 ``<auth_key>``
 
@@ -819,6 +821,13 @@ Example SA rules:
     mode ipv6-tunnel \
     src 1111:1111:1111:1111:1111:1111:1111:5555 \
     dst 2222:2222:2222:2222:2222:2222:2222:5555
+
+    sa out 30 cipher_algo sm4-cbc \
+    cipher_key 01:23:45:67:89:ab:cd:ef:fe:dc:ba:98:76:54:32:10 \
+    auth_algo sm3-hmac \
+    auth_key 01:23:45:67:89:ab:cd:ef:fe:dc:ba:98:76:54:32:10:11:22:33:44 \
+    mode ipv4-tunnel \
+    src 172.16.1.5 dst 172.16.2.5
 
     sa in 105 aead_algo aes-128-gcm \
     aead_key de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \

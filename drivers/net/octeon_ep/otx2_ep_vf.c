@@ -37,7 +37,7 @@ otx2_vf_reset_iq(struct otx_ep_device *otx_ep, int q_no)
 				  SDP_VF_R_IN_INSTR_DBELL(q_no));
 	}
 	if (loop < 0) {
-		otx_ep_err("%s: doorbell init retry limit exceeded.\n", __func__);
+		otx_ep_err("%s: doorbell init retry limit exceeded.", __func__);
 		return -EIO;
 	}
 
@@ -48,7 +48,7 @@ otx2_vf_reset_iq(struct otx_ep_device *otx_ep, int q_no)
 		rte_delay_ms(1);
 	} while ((d64 & ~SDP_VF_R_IN_CNTS_OUT_INT) != 0 && loop--);
 	if (loop < 0) {
-		otx_ep_err("%s: in_cnts init retry limit exceeded.\n", __func__);
+		otx_ep_err("%s: in_cnts init retry limit exceeded.", __func__);
 		return -EIO;
 	}
 
@@ -81,7 +81,7 @@ otx2_vf_reset_oq(struct otx_ep_device *otx_ep, int q_no)
 				  SDP_VF_R_OUT_SLIST_DBELL(q_no));
 	}
 	if (loop < 0) {
-		otx_ep_err("%s: doorbell init retry limit exceeded.\n", __func__);
+		otx_ep_err("%s: doorbell init retry limit exceeded.", __func__);
 		return -EIO;
 	}
 
@@ -109,7 +109,7 @@ otx2_vf_reset_oq(struct otx_ep_device *otx_ep, int q_no)
 		rte_delay_ms(1);
 	} while ((d64 & ~SDP_VF_R_OUT_CNTS_IN_INT) != 0 && loop--);
 	if (loop < 0) {
-		otx_ep_err("%s: out_cnts init retry limit exceeded.\n", __func__);
+		otx_ep_err("%s: out_cnts init retry limit exceeded.", __func__);
 		return -EIO;
 	}
 
@@ -252,7 +252,7 @@ otx2_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 	}
 
 	if (loop < 0) {
-		otx_ep_err("IDLE bit is not set\n");
+		otx_ep_err("IDLE bit is not set");
 		return -EIO;
 	}
 
@@ -283,7 +283,19 @@ otx2_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 	} while (reg_val != 0 && loop--);
 
 	if (loop < 0) {
-		otx_ep_err("INST CNT REGISTER is not zero\n");
+		otx_ep_err("INST CNT REGISTER is not zero");
+		return -EIO;
+	}
+
+	/* Clear the IQ doorbell  */
+	loop = OTX_EP_BUSY_LOOP_COUNT;
+	while ((rte_read64(iq->doorbell_reg) != 0ull) && loop--) {
+		rte_write32(OTX_EP_CLEAR_INSTR_DBELL, iq->doorbell_reg);
+		rte_delay_ms(1);
+	}
+
+	if (loop < 0) {
+		otx_ep_err("INSTR DBELL is not zero");
 		return -EIO;
 	}
 
@@ -300,10 +312,10 @@ otx2_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 	oct_ep_write64(ism_addr, (uint8_t *)otx_ep->hw_addr +
 		    SDP_VF_R_IN_CNTS_ISM(iq_no));
 	iq->inst_cnt_ism =
-		(uint32_t *)((uint8_t *)otx_ep->ism_buffer_mz->addr
+		(uint32_t __rte_atomic *)((uint8_t *)otx_ep->ism_buffer_mz->addr
 			     + OTX2_EP_IQ_ISM_OFFSET(iq_no));
 	otx_ep_err("SDP_R[%d] INST Q ISM virt: %p, dma: 0x%x", iq_no,
-		   (void *)iq->inst_cnt_ism,
+		   (void *)(uintptr_t)iq->inst_cnt_ism,
 		   (unsigned int)ism_addr);
 	*iq->inst_cnt_ism = 0;
 	iq->inst_cnt_prev = 0;
@@ -332,7 +344,7 @@ otx2_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 	}
 
 	if (loop < 0) {
-		otx_ep_err("OUT CNT REGISTER value is zero\n");
+		otx_ep_err("OUT CNT REGISTER value is zero");
 		return -EIO;
 	}
 
@@ -368,7 +380,7 @@ otx2_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 	}
 
 	if (loop < 0) {
-		otx_ep_err("Packets credit register value is not cleared\n");
+		otx_ep_err("Packets credit register value is not cleared");
 		return -EIO;
 	}
 	otx_ep_dbg("SDP_R[%d]_credit:%x", oq_no, rte_read32(droq->pkts_credit_reg));
@@ -386,10 +398,10 @@ otx2_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 	oct_ep_write64(ism_addr, (uint8_t *)otx_ep->hw_addr +
 		    SDP_VF_R_OUT_CNTS_ISM(oq_no));
 	droq->pkts_sent_ism =
-		(uint32_t *)((uint8_t *)otx_ep->ism_buffer_mz->addr
+		(uint32_t __rte_atomic *)((uint8_t *)otx_ep->ism_buffer_mz->addr
 			     + OTX2_EP_OQ_ISM_OFFSET(oq_no));
-	otx_ep_err("SDP_R[%d] OQ ISM virt: %p, dma: 0x%x", oq_no,
-		   (void *)droq->pkts_sent_ism,
+	otx_ep_dbg("SDP_R[%d] OQ ISM virt: %p, dma: 0x%x", oq_no,
+		   (void *)(uintptr_t)droq->pkts_sent_ism,
 		   (unsigned int)ism_addr);
 	*droq->pkts_sent_ism = 0;
 	droq->pkts_sent_prev = 0;
@@ -411,23 +423,7 @@ otx2_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 static int
 otx2_vf_enable_iq(struct otx_ep_device *otx_ep, uint32_t q_no)
 {
-	int loop = SDP_VF_BUSY_LOOP_COUNT;
 	uint64_t reg_val = 0ull;
-
-	/* Resetting doorbells during IQ enabling also to handle abrupt
-	 * guest reboot. IQ reset does not clear the doorbells.
-	 */
-	oct_ep_write64(0xFFFFFFFF, otx_ep->hw_addr + SDP_VF_R_IN_INSTR_DBELL(q_no));
-
-	while (((oct_ep_read64(otx_ep->hw_addr +
-		 SDP_VF_R_IN_INSTR_DBELL(q_no))) != 0ull) && loop--) {
-		rte_delay_ms(1);
-	}
-
-	if (loop < 0) {
-		otx_ep_err("INSTR DBELL not coming back to 0\n");
-		return -EIO;
-	}
 
 	reg_val = oct_ep_read64(otx_ep->hw_addr + SDP_VF_R_IN_ENABLE(q_no));
 	reg_val |= 0x1ull;
@@ -587,6 +583,8 @@ otx2_ep_vf_setup_device(struct otx_ep_device *otx_ep)
 
 	/* Get IOQs (RPVF] count */
 	reg_val = oct_ep_read64(otx_ep->hw_addr + SDP_VF_R_IN_CONTROL(0));
+	if (reg_val == UINT64_MAX)
+		return -ENODEV;
 
 	otx_ep->sriov_info.rings_per_vf = ((reg_val >> SDP_VF_R_IN_CTL_RPVF_POS)
 					  & SDP_VF_R_IN_CTL_RPVF_MASK);

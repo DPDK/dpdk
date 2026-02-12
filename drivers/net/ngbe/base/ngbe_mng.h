@@ -27,6 +27,11 @@
 #define FW_NVM_DATA_OFFSET              3
 #define FW_EEPROM_CHECK_STATUS		0xE9
 #define FW_PHY_LED_CONF			0xF1
+#define FW_READ_SHADOW_RAM_GPIO         0xB4
+#define FW_LLDP_GET_CMD                 0xF5
+#define FW_LLDP_SET_CMD_OFF             0xF3
+#define FW_LLDP_SET_CMD_ON              0xF2
+#define FW_CEM_CMD_RESERVED             0X0
 
 #define FW_CHECKSUM_CAP_ST_PASS	0x80658383
 #define FW_CHECKSUM_CAP_ST_FAIL	0x70657376
@@ -96,6 +101,13 @@ struct ngbe_hic_write_pcie {
 	u32 data;
 };
 
+struct ngbe_hic_write_lldp {
+	struct ngbe_hic_hdr hdr;
+	u8 func;
+	u8 pad2;
+	u16 pad3;
+};
+
 s32 ngbe_hic_sr_read(struct ngbe_hw *hw, u32 addr, u8 *buf, int len);
 s32 ngbe_hic_sr_write(struct ngbe_hw *hw, u32 addr, u8 *buf, int len);
 s32 ngbe_hic_pcie_read(struct ngbe_hw *hw, u16 addr, u32 *buf, int len);
@@ -103,5 +115,7 @@ s32 ngbe_hic_pcie_write(struct ngbe_hw *hw, u16 addr, u32 *buf, int len);
 
 s32 ngbe_hic_check_cap(struct ngbe_hw *hw);
 s32 ngbe_phy_led_oem_chk(struct ngbe_hw *hw, u32 *data);
+s32 ngbe_hic_get_lldp(struct ngbe_hw *hw);
+s32 ngbe_hic_set_lldp(struct ngbe_hw *hw, bool on);
 
 #endif /* _NGBE_MNG_H_ */

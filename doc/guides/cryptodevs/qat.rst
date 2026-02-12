@@ -501,6 +501,32 @@ If you are running on a kernel which includes a driver for your device, see
    The actual crypto services enabled on the system depend
    on QAT driver capabilities and hardware slice configuration.
 
+.. note::
+
+   With the introduction of QAT Generation 4,
+   the in-tree drivers are available within the mainline Linux kernel.
+   Out-of-tree (OOT) drivers for QAT Gen 4 are currently in sustaining mode,
+   meaning they will only receive maintenance updates without new feature development.
+   Future generations of QAT will be supported with in-tree drivers exclusively.
+
+.. note::
+
+   For **in-tree drivers**, when multiple QAT instances are available,
+   each instance is assigned a different crypto service by default (asym;sym or dc).
+   The available crypto queue pair request will return zero
+   if the corresponding service is not enabled.
+
+   To verify the device configuration, run::
+
+      cat /sys/bus/pci/devices/<BDF>/qat/cfg_services
+
+   For symmetric and asymmetric crypto services, ensure that `"asym;sym"` are enabled.
+
+   For **out-of-tree drivers**, the configuration file for each instance can be found at::
+
+      /etc/<GEN>_dev<ID>.conf
+
+
 Installation using kernel.org driver
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

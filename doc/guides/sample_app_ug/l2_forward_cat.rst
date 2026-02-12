@@ -4,19 +4,24 @@
 L2 Forwarding Sample Application with Cache Allocation Technology (CAT)
 =======================================================================
 
-Basic Forwarding sample application is a simple *skeleton* example of
-a forwarding application. It has been extended to make use of CAT via extended
-command line options and linking against the libpqos library.
+The basic forwarding sample application is a *skeleton* example
+of a forwarding application.
+It has been extended to make use of CAT
+via extended command line options and linking against the libpqos library.
 
-It is intended as a demonstration of the basic components of a DPDK forwarding
-application and use of the libpqos library to program CAT.
-For more detailed implementations see the L2 and L3 forwarding
-sample applications.
+Overview
+--------
+
+This app is intended as a demonstration of the basic components
+of a DPDK forwarding application
+and use of the libpqos library to the program CAT.
+For more detailed implementations, see the L2 and L3 forwarding sample applications.
 
 CAT and Code Data Prioritization (CDP) features allow management of the CPU's
 last level cache. CAT introduces classes of service (COS) that are essentially
 bitmasks. In current CAT implementations, a bit in a COS bitmask corresponds to
 one cache way in last level cache.
+
 A CPU core is always assigned to one of the CAT classes.
 By programming CPU core assignment and COS bitmasks, applications can be given
 exclusive, shared, or mixed access to the CPU's last level cache.
@@ -29,7 +34,7 @@ By default, after reset, all CPU cores are assigned to COS 0 and all classes
 are programmed to allow fill into all cache ways.
 CDP is off by default.
 
-For more information about CAT please see:
+For more information about CAT, please see:
 
 * https://github.com/01org/intel-cmt-cat
 
@@ -39,6 +44,7 @@ White paper demonstrating example use case:
 
 Compiling the Application
 -------------------------
+
 .. note::
 
     Requires ``libpqos`` from Intel's
@@ -49,7 +55,6 @@ Compiling the Application
 
     * https://github.com/01org/intel-cmt-cat
 
-
 To compile the application, export the path to PQoS lib:
 
 .. code-block:: console
@@ -57,7 +62,7 @@ To compile the application, export the path to PQoS lib:
    export CFLAGS=-I/path/to/intel-cmt-cat/include
    export LDFLAGS=-L/path/to/intel-cmt-cat/lib
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``l2fwd-cat`` sub-directory.
 
@@ -69,15 +74,15 @@ To run the example in a ``linux`` environment and enable CAT on cpus 0-2:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l2fwd-cat -l 1 -n 4 -- --l3ca="0x3@(0-2)"
+    ./<build_dir>/examples/dpdk-l2fwd-cat -l 1 -- --l3ca="0x3@(0-2)"
 
-or to enable CAT and CDP on cpus 1,3:
+Or to enable CAT and CDP on cpus 1,3:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l2fwd-cat -l 1 -n 4 -- --l3ca="(0x00C00,0x00300)@(1,3)"
+    ./<build_dir>/examples/dpdk-l2fwd-cat -l 1 -- --l3ca="(0x00C00,0x00300)@(1,3)"
 
-If CDP is not supported it will fail with following error message:
+If CDP is not supported, it will fail with following error message:
 
 .. code-block:: console
 
@@ -191,8 +196,9 @@ function. The value returned is the number of parsed arguments:
 ``cat_init()`` is a wrapper function which parses the command, validates
 the requested parameters and configures CAT accordingly.
 
-Parsing of command line arguments is done in ``parse_args(...)``.
-libpqos is then initialized with the ``pqos_init(...)`` call. Next, libpqos is
+The parsing of command line arguments is done in ``parse_args(...)``.
+Libpqos is then initialized with the ``pqos_init(...)`` call.
+Next, libpqos is
 queried for system CPU information and L3CA capabilities via
 ``pqos_cap_get(...)`` and ``pqos_cap_get_type(..., PQOS_CAP_TYPE_L3CA, ...)``
 calls. When all capability and topology information is collected, the requested

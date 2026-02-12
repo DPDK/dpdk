@@ -5,6 +5,9 @@
 #include <cnxk_rep.h>
 
 #define IS_REP_BIT 7
+
+#define TNL_DCP_MATCH_ID 5
+#define NRML_MATCH_ID	 1
 const struct cnxk_rte_flow_term_info term[] = {
 	[RTE_FLOW_ITEM_TYPE_ETH] = {ROC_NPC_ITEM_TYPE_ETH, sizeof(struct rte_flow_item_eth)},
 	[RTE_FLOW_ITEM_TYPE_VLAN] = {ROC_NPC_ITEM_TYPE_VLAN, sizeof(struct rte_flow_item_vlan)},
@@ -188,11 +191,95 @@ roc_npc_parse_sample_subaction(struct rte_eth_dev *eth_dev, const struct rte_flo
 }
 
 static int
+append_mark_action(struct roc_npc_action *in_actions, uint8_t has_tunnel_pattern,
+		   uint64_t *free_allocs, int *act_cnt)
+{
+	struct rte_flow_action_mark *act_mark;
+	int i = *act_cnt, j = 0;
+
+	/* Add Mark action */
+	i++;
+	act_mark = plt_zmalloc(sizeof(struct rte_flow_action_mark), 0);
+	if (!act_mark) {
+		plt_err("Error allocation memory");
+		return -ENOMEM;
+	}
+
+	while (free_allocs[j] != 0)
+		j++;
+	free_allocs[j] = (uint64_t)act_mark;
+	/* Mark ID format: (tunnel type - VxLAN, Geneve << 6) | Tunnel decap */
+	act_mark->id =
+		has_tunnel_pattern ? ((has_tunnel_pattern << 6) | TNL_DCP_MATCH_ID) : NRML_MATCH_ID;
+	in_actions[i].type = ROC_NPC_ACTION_TYPE_MARK;
+	in_actions[i].conf = (struct rte_flow_action_mark *)act_mark;
+
+	plt_rep_dbg("Assigned mark ID %x", act_mark->id);
+
+	*act_cnt = i;
+
+	return 0;
+}
+
+static int
+append_rss_action(struct cnxk_eth_dev *dev, struct roc_npc_action *in_actions, uint16_t nb_rxq,
+		  uint32_t *flowkey_cfg, uint64_t *free_allocs, uint16_t rss_repte_pf_func,
+		  int *act_cnt)
+{
+	struct roc_npc_action_rss *rss_conf;
+	int i = *act_cnt, j = 0, l, rc = 0;
+	uint16_t *queue_arr;
+
+	rss_conf = plt_zmalloc(sizeof(struct roc_npc_action_rss), 0);
+	if (!rss_conf) {
+		plt_err("Failed to allocate memory for rss conf");
+		rc = -ENOMEM;
+		goto fail;
+	}
+
+	/* Add RSS action */
+	rss_conf->queue_num = nb_rxq;
+	queue_arr = calloc(1, rss_conf->queue_num * sizeof(uint16_t));
+	if (!queue_arr) {
+		plt_err("Failed to allocate memory for rss queue");
+		rc = -ENOMEM;
+		goto free_rss;
+	}
+
+	for (l = 0; l < nb_rxq; l++)
+		queue_arr[l] = l;
+	rss_conf->queue = queue_arr;
+	rss_conf->key = NULL;
+	rss_conf->types = RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP;
+
+	i++;
+
+	in_actions[i].type = ROC_NPC_ACTION_TYPE_RSS;
+	in_actions[i].conf = (struct roc_npc_action_rss *)rss_conf;
+	in_actions[i].rss_repte_pf_func = rss_repte_pf_func;
+
+	npc_rss_flowkey_get(dev, &in_actions[i], flowkey_cfg,
+			    RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP);
+
+	*act_cnt = i;
+
+	while (free_allocs[j] != 0)
+		j++;
+	free_allocs[j] = (uint64_t)rss_conf;
+
+	return 0;
+free_rss:
+	rte_free(rss_conf);
+fail:
+	return rc;
+}
+
+static int
 representor_rep_portid_action(struct roc_npc_action *in_actions, struct rte_eth_dev *eth_dev,
 			      struct rte_eth_dev *portid_eth_dev,
 			      enum rte_flow_action_type act_type, uint8_t rep_pattern,
-			      uint16_t *dst_pf_func, bool is_rep, uint64_t *free_allocs,
-			      int *act_cnt)
+			      uint16_t *dst_pf_func, bool is_rep, uint8_t has_tunnel_pattern,
+			      uint64_t *free_allocs, int *act_cnt, uint32_t *flowkey_cfg)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct rte_eth_dev *rep_eth_dev = portid_eth_dev;
@@ -203,7 +290,7 @@ representor_rep_portid_action(struct roc_npc_action *in_actions, struct rte_eth_
 	struct cnxk_rep_dev *rep_dev;
 	struct roc_npc *npc;
 	uint16_t vlan_tci;
-	int j = 0;
+	int j = 0, rc;
 
 	/* For inserting an action in the list */
 	int i = *act_cnt;
@@ -322,6 +409,24 @@ representor_rep_portid_action(struct roc_npc_action *in_actions, struct rte_eth_
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_PORT_ID;
 			npc->rep_act_pf_func = rep_dev->hw_func;
 			*dst_pf_func = rep_dev->hw_func;
+
+			/* Append a mark action - needed to identify the flow */
+			rc = append_mark_action(in_actions, has_tunnel_pattern, free_allocs, &i);
+			if (rc)
+				return rc;
+			/* Append RSS action if representee has RSS enabled */
+			if (rep_dev->nb_rxq > 1) {
+				/* PF can install rule for only its VF acting as representee */
+				if (rep_dev->hw_func &&
+				    roc_eswitch_is_repte_pfs_vf(rep_dev->hw_func,
+							roc_nix_get_pf_func(npc->roc_nix))) {
+					rc = append_rss_action(dev, in_actions, rep_dev->nb_rxq,
+							       flowkey_cfg, free_allocs,
+							       rep_dev->hw_func, &i);
+					if (rc)
+						return rc;
+				}
+			}
 		}
 	}
 done:
@@ -336,34 +441,21 @@ representor_portid_action(struct roc_npc_action *in_actions, struct rte_eth_dev 
 			  int *act_cnt)
 {
 	struct rte_eth_dev *rep_eth_dev = portid_eth_dev;
-	struct rte_flow_action_mark *act_mark;
 	struct cnxk_rep_dev *rep_dev;
 	/* For inserting an action in the list */
-	int i = *act_cnt, j = 0;
+	int i = *act_cnt, rc;
 
 	rep_dev = cnxk_rep_pmd_priv(rep_eth_dev);
 
 	*dst_pf_func = rep_dev->hw_func;
 
-	/* Add Mark action */
-	i++;
-	act_mark = plt_zmalloc(sizeof(struct rte_flow_action_mark), 0);
-	if (!act_mark) {
-		plt_err("Error allocation memory");
-		return -ENOMEM;
-	}
-
-	while (free_allocs[j] != 0)
-		j++;
-	free_allocs[j] = (uint64_t)act_mark;
-	/* Mark ID format: (tunnel type - VxLAN, Geneve << 6) | Tunnel decap */
-	act_mark->id = has_tunnel_pattern ? ((has_tunnel_pattern << 6) | 5) : 1;
-	in_actions[i].type = ROC_NPC_ACTION_TYPE_MARK;
-	in_actions[i].conf = (struct rte_flow_action_mark *)act_mark;
+	rc = append_mark_action(in_actions, has_tunnel_pattern, free_allocs, &i);
+	if (rc)
+		return rc;
 
 	*act_cnt = i;
-	plt_rep_dbg("Rep port %d ID %d mark ID is %d rep_dev->hw_func 0x%x", rep_dev->port_id,
-		    rep_dev->rep_id, act_mark->id, rep_dev->hw_func);
+	plt_rep_dbg("Rep port %d ID %d rep_dev->hw_func 0x%x", rep_dev->port_id, rep_dev->rep_id,
+		    rep_dev->hw_func);
 
 	return 0;
 }
@@ -372,8 +464,8 @@ static int
 cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 		 const struct rte_flow_action actions[], struct roc_npc_action in_actions[],
 		 struct roc_npc_action_sample *in_sample_actions, uint32_t *flowkey_cfg,
-		 uint16_t *dst_pf_func, uint8_t has_tunnel_pattern, bool is_rep,
-		 uint8_t rep_pattern, uint64_t *free_allocs)
+		 uint16_t *dst_pf_func, uint64_t *npc_default_action, uint8_t has_tunnel_pattern,
+		 bool is_rep, uint8_t rep_pattern, uint64_t *free_allocs)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	const struct rte_flow_action_queue *act_q = NULL;
@@ -440,8 +532,9 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 			if (cnxk_ethdev_is_representor(if_name)) {
 				if (representor_rep_portid_action(in_actions, eth_dev,
 								  portid_eth_dev, actions->type,
-								  rep_pattern, dst_pf_func, is_rep,
-								  free_allocs, &i)) {
+								  rep_pattern, dst_pf_func,
+								  is_rep, has_tunnel_pattern,
+								  free_allocs, &i, flowkey_cfg)) {
 					plt_err("Representor port action set failed");
 					goto err_exit;
 				}
@@ -491,6 +584,8 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 				}
 
 				hw_dst = portid_eth_dev->data->dev_private;
+				roc_npc_mcam_default_rule_action_get(&hw_dst->npc,
+								     npc_default_action);
 				roc_npc_dst = &hw_dst->npc;
 				*dst_pf_func = roc_npc_dst->pf_func;
 			}
@@ -509,6 +604,7 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 			rc = npc_rss_action_validate(eth_dev, attr, actions);
 			if (rc)
 				goto err_exit;
+
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_RSS;
 			in_actions[i].conf = actions->conf;
 			npc_rss_flowkey_get(dev, &in_actions[i], flowkey_cfg,
@@ -707,7 +803,7 @@ cnxk_map_flow_data(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr
 		   struct roc_npc_attr *in_attr, struct roc_npc_item_info in_pattern[],
 		   struct roc_npc_action in_actions[],
 		   struct roc_npc_action_sample *in_sample_actions, uint32_t *flowkey_cfg,
-		   uint16_t *dst_pf_func, bool is_rep, uint64_t *free_allocs)
+		   uint16_t *dst_pf_func, uint64_t *def_action, bool is_rep, uint64_t *free_allocs)
 {
 	uint8_t has_tunnel_pattern = 0, rep_pattern = 0;
 	int rc;
@@ -745,7 +841,8 @@ cnxk_map_flow_data(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr
 	}
 
 	return cnxk_map_actions(eth_dev, attr, actions, in_actions, in_sample_actions, flowkey_cfg,
-				dst_pf_func, has_tunnel_pattern, is_rep, rep_pattern, free_allocs);
+				dst_pf_func, def_action, has_tunnel_pattern, is_rep, rep_pattern,
+				free_allocs);
 }
 
 int
@@ -757,14 +854,15 @@ cnxk_flow_validate_common(struct rte_eth_dev *eth_dev, const struct rte_flow_att
 	struct roc_npc_item_info in_pattern[ROC_NPC_ITEM_TYPE_END + 1];
 	struct roc_npc_action in_actions[ROC_NPC_MAX_ACTION_COUNT];
 	struct roc_npc_action_sample in_sample_action;
+	uint64_t npc_default_action = 0;
 	struct cnxk_rep_dev *rep_dev;
 	struct roc_npc_attr in_attr;
 	uint64_t *free_allocs, sz;
 	struct cnxk_eth_dev *dev;
 	struct roc_npc_flow flow;
-	uint32_t flowkey_cfg = 0;
 	uint16_t dst_pf_func = 0;
-	struct roc_npc *npc;
+	uint32_t flowkey_cfg = 0;
+	struct roc_npc *npc = 0;
 	int rc, j;
 
 	/* is_rep set for operation performed via representor ports */
@@ -792,7 +890,8 @@ cnxk_flow_validate_common(struct rte_eth_dev *eth_dev, const struct rte_flow_att
 		return -ENOMEM;
 	}
 	rc = cnxk_map_flow_data(eth_dev, attr, pattern, actions, &in_attr, in_pattern, in_actions,
-				&in_sample_action, &flowkey_cfg, &dst_pf_func, is_rep, free_allocs);
+				&in_sample_action, &flowkey_cfg, &dst_pf_func, &npc_default_action,
+				is_rep, free_allocs);
 	if (rc) {
 		rte_flow_error_set(error, 0, RTE_FLOW_ERROR_TYPE_ACTION_NUM, NULL,
 				   "Failed to map flow data");
@@ -829,16 +928,17 @@ cnxk_flow_create_common(struct rte_eth_dev *eth_dev, const struct rte_flow_attr 
 			const struct rte_flow_action actions[], struct rte_flow_error *error,
 			bool is_rep)
 {
-	struct roc_npc_item_info in_pattern[ROC_NPC_ITEM_TYPE_END + 1];
-	struct roc_npc_action in_actions[ROC_NPC_MAX_ACTION_COUNT];
+	struct roc_npc_item_info in_pattern[ROC_NPC_ITEM_TYPE_END + 1] = {0};
+	struct roc_npc_action in_actions[ROC_NPC_MAX_ACTION_COUNT] = {0};
 	struct roc_npc_action_sample in_sample_action;
 	struct cnxk_rep_dev *rep_dev = NULL;
 	struct roc_npc_flow *flow = NULL;
 	struct cnxk_eth_dev *dev = NULL;
+	uint64_t npc_default_action = 0;
 	struct roc_npc_attr in_attr;
+	struct roc_npc *npc = NULL;
 	uint64_t *free_allocs, sz;
 	uint16_t dst_pf_func = 0;
-	struct roc_npc *npc;
 	int errcode = 0;
 	int rc, j;
 
@@ -861,15 +961,16 @@ cnxk_flow_create_common(struct rte_eth_dev *eth_dev, const struct rte_flow_attr 
 	memset(&in_sample_action, 0, sizeof(in_sample_action));
 	memset(&in_attr, 0, sizeof(struct roc_npc_attr));
 	rc = cnxk_map_flow_data(eth_dev, attr, pattern, actions, &in_attr, in_pattern, in_actions,
-				&in_sample_action, &npc->flowkey_cfg_state, &dst_pf_func, is_rep,
-				free_allocs);
+				&in_sample_action, &npc->flowkey_cfg_state, &dst_pf_func,
+				&npc_default_action, is_rep, free_allocs);
 	if (rc) {
 		rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_ACTION_NUM, NULL,
 				   "Failed to map flow data");
 		goto clean;
 	}
 
-	flow = roc_npc_flow_create(npc, &in_attr, in_pattern, in_actions, dst_pf_func, &errcode);
+	flow = roc_npc_flow_create(npc, &in_attr, in_pattern, in_actions, dst_pf_func,
+				   npc_default_action, &errcode);
 	if (errcode != 0) {
 		rte_flow_error_set(error, errcode, errcode, NULL, roc_error_msg_get(errcode));
 		goto clean;
@@ -882,14 +983,6 @@ clean:
 	plt_free(free_allocs);
 
 	return flow;
-}
-
-struct roc_npc_flow *
-cnxk_flow_create(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
-		 const struct rte_flow_item pattern[], const struct rte_flow_action actions[],
-		 struct rte_flow_error *error)
-{
-	return cnxk_flow_create_common(eth_dev, attr, pattern, actions, error, false);
 }
 
 int
@@ -990,10 +1083,14 @@ cnxk_flow_query_common(struct rte_eth_dev *eth_dev, struct rte_flow *flow,
 		npc = &rep_dev->parent_dev->npc;
 	}
 
-	if (in_flow->use_pre_alloc)
+	if (in_flow->use_pre_alloc) {
 		rc = roc_npc_inl_mcam_read_counter(in_flow->ctr_id, &query->hits);
-	else
-		rc = roc_npc_mcam_read_counter(npc, in_flow->ctr_id, &query->hits);
+	} else {
+		if (roc_model_is_cn20k())
+			rc = roc_npc_mcam_get_stats(npc, in_flow, &query->hits);
+		else
+			rc = roc_npc_mcam_read_counter(npc, in_flow->ctr_id, &query->hits);
+	}
 	if (rc != 0) {
 		errcode = EIO;
 		errmsg = "Error reading flow counter";
@@ -1067,11 +1164,8 @@ cnxk_flow_dev_dump_common(struct rte_eth_dev *eth_dev, struct rte_flow *flow, FI
 	}
 
 	if (flow != NULL) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_HANDLE,
-				   NULL,
-				   "Invalid argument");
-		return -EINVAL;
+		roc_npc_flow_mcam_dump(file, npc, (struct roc_npc_flow *)flow);
+		return 0;
 	}
 
 	roc_npc_flow_dump(file, npc, -1);

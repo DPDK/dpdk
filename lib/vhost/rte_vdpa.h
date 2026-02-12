@@ -5,10 +5,6 @@
 #ifndef _RTE_VDPA_H_
 #define _RTE_VDPA_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  *
@@ -16,6 +12,10 @@ extern "C" {
  */
 
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Maximum name length for statistics counters */
 #define RTE_VDPA_STATS_NAME_SIZE 64
@@ -107,23 +107,6 @@ rte_vdpa_get_features(struct rte_vdpa_device *dev, uint64_t *features);
  */
 int
 rte_vdpa_get_protocol_features(struct rte_vdpa_device *dev, uint64_t *features);
-
-/**
- * Synchronize the used ring from mediated ring to guest, log dirty
- * page for each writeable buffer, caller should handle the used
- * ring logging before device stop.
- *
- * @param vid
- *  vhost device id
- * @param qid
- *  vhost queue id
- * @param vring_m
- *  mediated virtio ring pointer
- * @return
- *  number of synced used entries on success, -1 on failure
- */
-int
-rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m);
 
 /**
  * Retrieve names of statistics of a vDPA device.

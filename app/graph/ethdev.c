@@ -124,30 +124,19 @@ ethdev_portid_by_ip4(uint32_t ip, uint32_t mask)
 }
 
 int16_t
-ethdev_portid_by_ip6(uint8_t *ip, uint8_t *mask)
+ethdev_portid_by_ip6(struct rte_ipv6_addr *ip, struct rte_ipv6_addr *mask)
 {
-	int portid = -EINVAL;
 	struct ethdev *port;
-	int j;
 
 	TAILQ_FOREACH(port, &eth_node, next) {
-		for (j = 0; j < ETHDEV_IPV6_ADDR_LEN; j++) {
-			if (mask == NULL) {
-				if ((port->ip6_addr.ip[j] & port->ip6_addr.mask[j]) !=
-				    (ip[j] & port->ip6_addr.mask[j]))
-					break;
-
-			} else {
-				if ((port->ip6_addr.ip[j] & port->ip6_addr.mask[j]) !=
-				    (ip[j] & mask[j]))
-					break;
-			}
-		}
-		if (j == ETHDEV_IPV6_ADDR_LEN)
+		uint8_t depth = rte_ipv6_mask_depth(&port->ip6_addr.mask);
+		if (mask != NULL)
+			depth = RTE_MAX(depth, rte_ipv6_mask_depth(mask));
+		if (rte_ipv6_addr_eq_prefix(&port->ip6_addr.ip, ip, depth))
 			return port->config.port_id;
 	}
 
-	return portid;
+	return -EINVAL;
 }
 
 void
@@ -219,10 +208,22 @@ ethdev_show(const char *name)
 	if (rc < 0)
 		return rc;
 
-	rte_eth_dev_info_get(port_id, &info);
-	rte_eth_stats_get(port_id, &stats);
-	rte_eth_macaddr_get(port_id, &addr);
-	rte_eth_link_get(port_id, &link);
+	rc = rte_eth_dev_info_get(port_id, &info);
+	if (rc < 0)
+		return rc;
+
+	rc = rte_eth_link_get(port_id, &link);
+	if (rc < 0)
+		return rc;
+
+	rc = rte_eth_stats_get(port_id, &stats);
+	if (rc < 0)
+		return rc;
+
+	rc = rte_eth_macaddr_get(port_id, &addr);
+	if (rc < 0)
+		return rc;
+
 	rte_eth_dev_get_mtu(port_id, &mtu);
 
 	length = strlen(conn->msg_out);
@@ -285,7 +286,7 @@ ethdev_ip6_addr_add(const char *name, struct ipv6_addr_config *config)
 {
 	struct ethdev *eth_hdl;
 	uint16_t portid = 0;
-	int rc, i;
+	int rc;
 
 	rc = rte_eth_dev_get_port_by_name(name, &portid);
 	if (rc < 0)
@@ -294,10 +295,8 @@ ethdev_ip6_addr_add(const char *name, struct ipv6_addr_config *config)
 	eth_hdl = ethdev_port_by_id(portid);
 
 	if (eth_hdl) {
-		for (i = 0; i < ETHDEV_IPV6_ADDR_LEN; i++) {
-			eth_hdl->ip6_addr.ip[i] = config->ip[i];
-			eth_hdl->ip6_addr.mask[i] = config->mask[i];
-		}
+		eth_hdl->ip6_addr.ip = config->ip;
+		eth_hdl->ip6_addr.mask = config->mask;
 		return 0;
 	}
 	rc = -EINVAL;
@@ -423,7 +422,7 @@ ethdev_process(const char *name, struct ethdev_config *params)
 	}
 
 	/* Port */
-	memcpy(&port_conf, &port_conf_default, sizeof(struct rte_eth_conf));
+	port_conf = port_conf_default;
 	if (rss) {
 		uint64_t rss_hf = RTE_ETH_RSS_IP | RTE_ETH_RSS_TCP | RTE_ETH_RSS_UDP;
 
@@ -623,14 +622,11 @@ cmd_ethdev_dev_ip6_addr_add_parsed(void *parsed_result, __rte_unused struct cmdl
 				   void *data __rte_unused)
 {
 	struct cmd_ethdev_dev_ip6_addr_add_result *res = parsed_result;
-	struct ipv6_addr_config config;
-	int rc = -EINVAL, i;
-
-	for (i = 0; i < ETHDEV_IPV6_ADDR_LEN; i++)
-		config.ip[i] = res->ip.addr.ipv6.s6_addr[i];
-
-	for (i = 0; i < ETHDEV_IPV6_ADDR_LEN; i++)
-		config.mask[i] = res->mask.addr.ipv6.s6_addr[i];
+	struct ipv6_addr_config config = {
+		.ip = res->ip.addr.ipv6,
+		.mask = res->mask.addr.ipv6,
+	};
+	int rc;
 
 	rc = ethdev_ip6_addr_add(res->dev, &config);
 	if (rc < 0)

@@ -17,12 +17,3 @@ This package defines the testbed elements DTS works with:
 DTS needs to be able to connect to nodes and understand some of the hardware present on these nodes
 to properly build and test DPDK.
 """
-
-# pylama:ignore=W0611
-
-from .cpu import LogicalCoreCount, LogicalCoreCountFilter, LogicalCoreList
-from .node import Node
-from .port import Port, PortLink
-from .sut_node import SutNode
-from .tg_node import TGNode
-from .virtual_device import VirtualDevice

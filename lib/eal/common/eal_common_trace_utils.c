@@ -11,6 +11,7 @@
 #include <rte_errno.h>
 #include <rte_string_fns.h>
 
+#include <eal_export.h>
 #include "eal_filesystem.h"
 #include "eal_private.h"
 #include "eal_trace.h"
@@ -409,6 +410,7 @@ trace_mem_save(struct trace *trace, struct __rte_trace_header *hdr,
 	return rc;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_trace_save, 20.05)
 int
 rte_trace_save(void)
 {

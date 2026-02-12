@@ -683,7 +683,7 @@ int hinic_get_pause_info(void *hwdev, struct nic_pause_config *nic_pause)
 				     &pause_info, sizeof(pause_info),
 				     &pause_info, &out_size);
 	if (err || !out_size || pause_info.mgmt_msg_head.status) {
-		PMD_DRV_LOG(ERR, "Failed to get pause info, err: %d, status: 0x%x, out size: 0x%x\n",
+		PMD_DRV_LOG(ERR, "Failed to get pause info, err: %d, status: 0x%x, out size: 0x%x",
 			err, pause_info.mgmt_msg_head.status, out_size);
 		return -EIO;
 	}
@@ -1332,7 +1332,7 @@ int hinic_get_mgmt_version(void *hwdev, char *fw)
 				     &fw_ver, sizeof(fw_ver), &fw_ver,
 				     &out_size);
 	if (err || !out_size || fw_ver.mgmt_msg_head.status) {
-		PMD_DRV_LOG(ERR, "Failed to get mgmt version, err: %d, status: 0x%x, out size: 0x%x\n",
+		PMD_DRV_LOG(ERR, "Failed to get mgmt version, err: %d, status: 0x%x, out size: 0x%x",
 			err, fw_ver.mgmt_msg_head.status, out_size);
 		return -EIO;
 	}
@@ -1767,7 +1767,7 @@ int hinic_set_fdir_filter(void *hwdev, u8 filter_type, u8 qid, u8 type_enable,
 			&port_filer_cmd, &out_size);
 	if (err || !out_size || port_filer_cmd.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Set port Q filter failed, err: %d, status: 0x%x, out size: 0x%x, type: 0x%x,"
-			" enable: 0x%x, qid: 0x%x, filter_type_enable: 0x%x\n",
+			" enable: 0x%x, qid: 0x%x, filter_type_enable: 0x%x",
 			err, port_filer_cmd.mgmt_msg_head.status, out_size,
 			filter_type, enable, qid, type_enable);
 		return -EIO;
@@ -1819,7 +1819,7 @@ int hinic_set_normal_filter(void *hwdev, u8 qid, u8 normal_type_enable,
 			&port_filer_cmd, &out_size);
 	if (err || !out_size || port_filer_cmd.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Set normal filter failed, err: %d, status: 0x%x, out size: 0x%x, fdir_flag: 0x%x,"
-			" enable: 0x%x, qid: 0x%x, normal_type_enable: 0x%x, key:0x%x\n",
+			" enable: 0x%x, qid: 0x%x, normal_type_enable: 0x%x, key:0x%x",
 			err, port_filer_cmd.mgmt_msg_head.status, out_size,
 			flag, enable, qid, normal_type_enable, key);
 		return -EIO;
@@ -2115,5 +2115,3 @@ int hinic_set_fdir_tcam_rule_filter(void *hwdev, bool enable)
 
 	return err;
 }
-
-

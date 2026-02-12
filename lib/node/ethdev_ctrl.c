@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#include <eal_export.h>
 #include <rte_ethdev.h>
 #include <rte_graph.h>
 
@@ -14,16 +15,19 @@
 #include "ethdev_tx_priv.h"
 #include "ip4_rewrite_priv.h"
 #include "ip6_rewrite_priv.h"
+#include "interface_tx_feature_priv.h"
 #include "node_private.h"
 
 static struct ethdev_ctrl {
 	uint16_t nb_graphs;
 } ctrl;
 
+RTE_EXPORT_SYMBOL(rte_node_eth_config)
 int
 rte_node_eth_config(struct rte_node_ethdev_config *conf, uint16_t nb_confs,
 		    uint16_t nb_graphs)
 {
+	struct rte_node_register *if_tx_feature_node;
 	struct rte_node_register *ip4_rewrite_node;
 	struct rte_node_register *ip6_rewrite_node;
 	struct ethdev_tx_node_main *tx_node_data;
@@ -35,6 +39,7 @@ rte_node_eth_config(struct rte_node_ethdev_config *conf, uint16_t nb_confs,
 	int i, j, rc;
 	uint32_t id;
 
+	if_tx_feature_node = if_tx_feature_node_get();
 	ip4_rewrite_node = ip4_rewrite_node_get();
 	ip6_rewrite_node = ip6_rewrite_node_get();
 	tx_node_data = ethdev_tx_node_data_get();
@@ -125,12 +130,18 @@ rte_node_eth_config(struct rte_node_ethdev_config *conf, uint16_t nb_confs,
 		if (rc < 0)
 			return rc;
 
+		/* Add this tx port node to if_tx_feature_node */
+		rte_node_edge_update(if_tx_feature_node->id, RTE_EDGE_ID_INVALID,
+				     &next_nodes, 1);
+		rc = if_tx_feature_node_set_next(port_id,
+						 rte_node_edge_count(if_tx_feature_node->id) - 1);
 	}
 
 	ctrl.nb_graphs = nb_graphs;
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_node_ethdev_rx_next_update, 24.03)
 int
 rte_node_ethdev_rx_next_update(rte_node_t id, const char *edge_name)
 {

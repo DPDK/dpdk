@@ -4,6 +4,7 @@
 
 #include <io.h>
 
+#include <eal_export.h>
 #include <rte_atomic.h>
 #include <rte_debug.h>
 #include <rte_launch.h>
@@ -71,6 +72,7 @@ eal_thread_ack_command(void)
 }
 
 /* get current thread ID */
+RTE_EXPORT_SYMBOL(rte_sys_gettid)
 int
 rte_sys_gettid(void)
 {

@@ -185,7 +185,7 @@ scheduler_session_size_get(struct scheduler_ctx *sched_ctx,
 		uint8_t session_type)
 {
 	uint8_t i = 0;
-	uint32_t max_priv_sess_size = 0;
+	uint32_t max_priv_sess_size = sizeof(struct scheduler_session_ctx);
 
 	/* Check what is the maximum private session size for all workers */
 	for (i = 0; i < sched_ctx->nb_workers; i++) {
@@ -195,10 +195,9 @@ scheduler_session_size_get(struct scheduler_ctx *sched_ctx,
 		uint32_t priv_sess_size = 0;
 
 		if (session_type == RTE_CRYPTO_OP_WITH_SESSION) {
-			priv_sess_size =
-				(*dev->dev_ops->sym_session_get_size)(dev);
+			priv_sess_size = dev->dev_ops->sym_session_get_size(dev);
 		} else {
-			priv_sess_size = (*sec_ctx->ops->session_get_size)(dev);
+			priv_sess_size = sec_ctx->ops->session_get_size(dev);
 		}
 
 		max_priv_sess_size = RTE_MAX(max_priv_sess_size, priv_sess_size);
@@ -355,22 +354,22 @@ scheduler_pmd_start(struct rte_cryptodev *dev)
 		return -1;
 	}
 
-	if (*sched_ctx->ops.worker_attach == NULL)
+	if (sched_ctx->ops.worker_attach == NULL)
 		return -ENOTSUP;
 
 	for (i = 0; i < sched_ctx->nb_workers; i++) {
 		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
 
-		if ((*sched_ctx->ops.worker_attach)(dev, worker_dev_id) < 0) {
+		if (sched_ctx->ops.worker_attach(dev, worker_dev_id) < 0) {
 			CR_SCHED_LOG(ERR, "Failed to attach worker");
 			return -ENOTSUP;
 		}
 	}
 
-	if (*sched_ctx->ops.scheduler_start == NULL)
+	if (sched_ctx->ops.scheduler_start == NULL)
 		return -ENOTSUP;
 
-	if ((*sched_ctx->ops.scheduler_start)(dev) < 0) {
+	if (sched_ctx->ops.scheduler_start(dev) < 0) {
 		CR_SCHED_LOG(ERR, "Scheduler start failed");
 		return -1;
 	}
@@ -406,14 +405,14 @@ scheduler_pmd_stop(struct rte_cryptodev *dev)
 		rte_cryptodev_stop(worker_dev_id);
 	}
 
-	if (*sched_ctx->ops.scheduler_stop)
-		(*sched_ctx->ops.scheduler_stop)(dev);
+	if (sched_ctx->ops.scheduler_stop)
+		sched_ctx->ops.scheduler_stop(dev);
 
 	for (i = 0; i < sched_ctx->nb_workers; i++) {
 		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
 
-		if (*sched_ctx->ops.worker_detach)
-			(*sched_ctx->ops.worker_detach)(dev, worker_dev_id);
+		if (sched_ctx->ops.worker_detach)
+			sched_ctx->ops.worker_detach(dev, worker_dev_id);
 	}
 }
 
@@ -631,8 +630,8 @@ scheduler_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		return ret;
 	}
 
-	if (*sched_ctx->ops.config_queue_pair) {
-		if ((*sched_ctx->ops.config_queue_pair)(dev, qp_id) < 0) {
+	if (sched_ctx->ops.config_queue_pair) {
+		if (sched_ctx->ops.config_queue_pair(dev, qp_id) < 0) {
 			CR_SCHED_LOG(ERR, "Unable to configure queue pair");
 			return -1;
 		}

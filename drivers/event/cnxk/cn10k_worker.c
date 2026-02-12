@@ -2,6 +2,8 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include "roc_api.h"
+
 #include "cn10k_worker.h"
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
@@ -16,7 +18,7 @@ cn10k_sso_hws_new_event(struct cn10k_sso_hws *ws, const struct rte_event *ev)
 	const uint64_t event_ptr = ev->u64;
 	const uint16_t grp = ev->queue_id;
 
-	rte_atomic_thread_fence(__ATOMIC_ACQ_REL);
+	rte_atomic_thread_fence(rte_memory_order_acq_rel);
 	if (ws->xaq_lmt <= *ws->fc_mem)
 		return 0;
 
@@ -80,8 +82,8 @@ cn10k_sso_hws_forward_event(struct cn10k_sso_hws *ws,
 static inline int32_t
 sso_read_xaq_space(struct cn10k_sso_hws *ws)
 {
-	return (ws->xaq_lmt - __atomic_load_n(ws->fc_mem, __ATOMIC_RELAXED)) *
-	       ROC_SSO_XAE_PER_XAQ;
+	return (ws->xaq_lmt - rte_atomic_load_explicit(ws->fc_mem, rte_memory_order_relaxed)) *
+		ws->xae_waes;
 }
 
 static inline void
@@ -90,47 +92,22 @@ sso_lmt_aw_wait_fc(struct cn10k_sso_hws *ws, int64_t req)
 	int64_t cached, refill;
 
 retry:
-	while (__atomic_load_n(ws->fc_cache_space, __ATOMIC_RELAXED) < 0)
+	while (rte_atomic_load_explicit(ws->fc_cache_space, rte_memory_order_relaxed) < 0)
 		;
 
-	cached = __atomic_fetch_sub(ws->fc_cache_space, req, __ATOMIC_ACQUIRE) - req;
+	cached = rte_atomic_fetch_sub_explicit(ws->fc_cache_space, req, rte_memory_order_acquire) -
+		 req;
 	/* Check if there is enough space, else update and retry. */
 	if (cached < 0) {
 		/* Check if we have space else retry. */
 		do {
 			refill = sso_read_xaq_space(ws);
 		} while (refill <= 0);
-		__atomic_compare_exchange(ws->fc_cache_space, &cached, &refill,
-					  0, __ATOMIC_RELEASE,
-					  __ATOMIC_RELAXED);
+		rte_atomic_compare_exchange_strong_explicit(ws->fc_cache_space, &cached, refill,
+							    rte_memory_order_release,
+							    rte_memory_order_relaxed);
 		goto retry;
 	}
-}
-
-uint16_t __rte_hot
-cn10k_sso_hws_enq(void *port, const struct rte_event *ev)
-{
-	struct cn10k_sso_hws *ws = port;
-
-	switch (ev->op) {
-	case RTE_EVENT_OP_NEW:
-		return cn10k_sso_hws_new_event(ws, ev);
-	case RTE_EVENT_OP_FORWARD:
-		cn10k_sso_hws_forward_event(ws, ev);
-		break;
-	case RTE_EVENT_OP_RELEASE:
-		if (ws->swtag_req) {
-			cnxk_sso_hws_desched(ev->u64, ws->base);
-			ws->swtag_req = 0;
-			break;
-		}
-		cnxk_sso_hws_swtag_flush(ws->base);
-		break;
-	default:
-		return 0;
-	}
-
-	return 1;
 }
 
 #define VECTOR_SIZE_BITS	     0xFFFFFFFFFFF80000ULL
@@ -384,8 +361,29 @@ uint16_t __rte_hot
 cn10k_sso_hws_enq_burst(void *port, const struct rte_event ev[],
 			uint16_t nb_events)
 {
+	struct cn10k_sso_hws *ws = port;
+
 	RTE_SET_USED(nb_events);
-	return cn10k_sso_hws_enq(port, ev);
+
+	switch (ev->op) {
+	case RTE_EVENT_OP_NEW:
+		return cn10k_sso_hws_new_event(ws, ev);
+	case RTE_EVENT_OP_FORWARD:
+		cn10k_sso_hws_forward_event(ws, ev);
+		break;
+	case RTE_EVENT_OP_RELEASE:
+		if (ws->swtag_req) {
+			cnxk_sso_hws_desched(ev->u64, ws->base);
+			ws->swtag_req = 0;
+			break;
+		}
+		cnxk_sso_hws_swtag_flush(ws->base);
+		break;
+	default:
+		return 0;
+	}
+
+	return 1;
 }
 
 uint16_t __rte_hot
@@ -398,7 +396,7 @@ cn10k_sso_hws_enq_new_burst(void *port, const struct rte_event ev[],
 	int32_t space;
 
 	/* Do a common back-pressure check and return */
-	space = sso_read_xaq_space(ws) - ROC_SSO_XAE_PER_XAQ;
+	space = sso_read_xaq_space(ws) - ws->xae_waes;
 	if (space <= 0)
 		return 0;
 	nb_events = space < nb_events ? space : nb_events;
@@ -439,6 +437,27 @@ cn10k_sso_hws_profile_switch(void *port, uint8_t profile)
 
 	ws->gw_wdata &= ~(0xFFUL);
 	ws->gw_wdata |= (profile + 1);
+
+	return 0;
+}
+
+int __rte_hot
+cn10k_sso_hws_preschedule_modify(void *port, enum rte_event_dev_preschedule_type type)
+{
+	struct cn10k_sso_hws *ws = port;
+
+	ws->gw_wdata &= ~(BIT(19) | BIT(20));
+	switch (type) {
+	default:
+	case RTE_EVENT_PRESCHEDULE_NONE:
+		break;
+	case RTE_EVENT_PRESCHEDULE:
+		ws->gw_wdata |= BIT(19);
+		break;
+	case RTE_EVENT_PRESCHEDULE_ADAPTIVE:
+		ws->gw_wdata |= BIT(19) | BIT(20);
+		break;
+	}
 
 	return 0;
 }

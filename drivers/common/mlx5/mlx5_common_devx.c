@@ -3,6 +3,7 @@
  */
 #include <stdint.h>
 
+#include <eal_export.h>
 #include <rte_errno.h>
 #include <rte_common.h>
 #include <rte_eal_paging.h>
@@ -23,11 +24,14 @@
  * @param[in] cq
  *   DevX CQ to destroy.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cq_destroy)
 void
 mlx5_devx_cq_destroy(struct mlx5_devx_cq *cq)
 {
 	if (cq->cq)
 		claim_zero(mlx5_devx_cmd_destroy(cq->cq));
+	if (cq->consec)
+		return;
 	if (cq->umem_obj)
 		claim_zero(mlx5_os_umem_dereg(cq->umem_obj));
 	if (cq->umem_buf)
@@ -77,6 +81,7 @@ mlx5_cq_init(struct mlx5_devx_cq *cq_obj, uint16_t cq_size)
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cq_create)
 int
 mlx5_devx_cq_create(void *ctx, struct mlx5_devx_cq *cq_obj, uint16_t log_desc_n,
 		    struct mlx5_devx_cq_attr *attr, int socket)
@@ -90,6 +95,8 @@ mlx5_devx_cq_create(void *ctx, struct mlx5_devx_cq *cq_obj, uint16_t log_desc_n,
 	uint32_t eqn;
 	uint32_t num_of_cqes = RTE_BIT32(log_desc_n);
 	int ret;
+	uint32_t umem_offset, umem_id;
+	uint16_t act_log_size = log_desc_n;
 
 	if (page_size == (size_t)-1 || alignment == (size_t)-1) {
 		DRV_LOG(ERR, "Failed to get page_size.");
@@ -105,32 +112,50 @@ mlx5_devx_cq_create(void *ctx, struct mlx5_devx_cq *cq_obj, uint16_t log_desc_n,
 	}
 	/* Allocate memory buffer for CQEs and doorbell record. */
 	umem_size = sizeof(struct mlx5_cqe) * num_of_cqes;
-	umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
-	umem_size += MLX5_DBR_SIZE;
-	umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
-			       alignment, socket);
-	if (!umem_buf) {
-		DRV_LOG(ERR, "Failed to allocate memory for CQ.");
-		rte_errno = ENOMEM;
-		return -rte_errno;
-	}
-	/* Register allocated buffer in user space with DevX. */
-	umem_obj = mlx5_os_umem_reg(ctx, (void *)(uintptr_t)umem_buf, umem_size,
-				    IBV_ACCESS_LOCAL_WRITE);
-	if (!umem_obj) {
-		DRV_LOG(ERR, "Failed to register umem for CQ.");
-		rte_errno = errno;
-		goto error;
+	if (!attr->q_len) {
+		umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
+		umem_size += MLX5_DBR_SIZE;
+		umem_buf = mlx5_malloc_numa_tolerant(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
+						     alignment, socket);
+		if (!umem_buf) {
+			DRV_LOG(ERR, "Failed to allocate memory for CQ.");
+			rte_errno = ENOMEM;
+			return -rte_errno;
+		}
+		/* Register allocated buffer in user space with DevX. */
+		umem_obj = mlx5_os_umem_reg(ctx, (void *)(uintptr_t)umem_buf, umem_size,
+					    IBV_ACCESS_LOCAL_WRITE);
+		if (!umem_obj) {
+			DRV_LOG(ERR, "Failed to register umem for CQ.");
+			rte_errno = errno;
+			goto error;
+		}
+		umem_offset = 0;
+		umem_id = mlx5_os_get_umem_id(umem_obj);
+	} else {
+		if (umem_size != attr->q_len) {
+			DRV_LOG(ERR, "Mismatch between saved length and calc length"
+				" of CQ %u-%u, using saved length.",
+				umem_size, attr->q_len);
+			/* saved length is a power of 2. */
+			act_log_size =
+				(uint16_t)rte_log2_u32(attr->q_len / sizeof(struct mlx5_cqe));
+		}
+		umem_buf = attr->umem;
+		umem_offset = attr->q_off;
+		umem_dbrec = attr->db_off;
+		umem_id = mlx5_os_get_umem_id(attr->umem_obj);
+
 	}
 	/* Fill attributes for CQ object creation. */
 	attr->q_umem_valid = 1;
-	attr->q_umem_id = mlx5_os_get_umem_id(umem_obj);
-	attr->q_umem_offset = 0;
+	attr->q_umem_id = umem_id;
+	attr->q_umem_offset = umem_offset;
 	attr->db_umem_valid = 1;
-	attr->db_umem_id = attr->q_umem_id;
+	attr->db_umem_id = umem_id;
 	attr->db_umem_offset = umem_dbrec;
 	attr->eqn = eqn;
-	attr->log_cq_size = log_desc_n;
+	attr->log_cq_size = act_log_size;
 	attr->log_page_size = rte_log2_u32(page_size);
 	/* Create completion queue object with DevX. */
 	cq = mlx5_devx_cmd_create_cq(ctx, attr);
@@ -139,19 +164,29 @@ mlx5_devx_cq_create(void *ctx, struct mlx5_devx_cq *cq_obj, uint16_t log_desc_n,
 		rte_errno  = ENOMEM;
 		goto error;
 	}
-	cq_obj->umem_buf = umem_buf;
-	cq_obj->umem_obj = umem_obj;
+	if (!attr->q_len) {
+		cq_obj->umem_buf = umem_buf;
+		cq_obj->umem_obj = umem_obj;
+		cq_obj->db_rec = RTE_PTR_ADD(cq_obj->umem_buf, umem_dbrec);
+		cq_obj->consec = false;
+	} else {
+		cq_obj->umem_buf = RTE_PTR_ADD(umem_buf, umem_offset);
+		cq_obj->umem_obj = attr->umem_obj;
+		cq_obj->db_rec = RTE_PTR_ADD(umem_buf, umem_dbrec);
+		cq_obj->consec = true;
+	}
 	cq_obj->cq = cq;
-	cq_obj->db_rec = RTE_PTR_ADD(cq_obj->umem_buf, umem_dbrec);
 	/* Mark all CQEs initially as invalid. */
 	mlx5_cq_init(cq_obj, num_of_cqes);
 	return 0;
 error:
 	ret = rte_errno;
-	if (umem_obj)
-		claim_zero(mlx5_os_umem_dereg(umem_obj));
-	if (umem_buf)
-		mlx5_free((void *)(uintptr_t)umem_buf);
+	if (!attr->q_len) {
+		if (umem_obj)
+			claim_zero(mlx5_os_umem_dereg(umem_obj));
+		if (umem_buf)
+			mlx5_free((void *)(uintptr_t)umem_buf);
+	}
 	rte_errno = ret;
 	return -rte_errno;
 }
@@ -162,11 +197,14 @@ error:
  * @param[in] sq
  *   DevX SQ to destroy.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_sq_destroy)
 void
 mlx5_devx_sq_destroy(struct mlx5_devx_sq *sq)
 {
 	if (sq->sq)
 		claim_zero(mlx5_devx_cmd_destroy(sq->sq));
+	if (sq->consec)
+		return;
 	if (sq->umem_obj)
 		claim_zero(mlx5_os_umem_dereg(sq->umem_obj));
 	if (sq->umem_buf)
@@ -204,6 +242,7 @@ mlx5_devx_sq_destroy(struct mlx5_devx_sq *sq)
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_sq_create)
 int
 mlx5_devx_sq_create(void *ctx, struct mlx5_devx_sq *sq_obj, uint16_t log_wqbb_n,
 		    struct mlx5_devx_create_sq_attr *attr, int socket)
@@ -215,6 +254,8 @@ mlx5_devx_sq_create(void *ctx, struct mlx5_devx_sq *sq_obj, uint16_t log_wqbb_n,
 	uint32_t umem_size, umem_dbrec;
 	uint32_t num_of_wqbbs = RTE_BIT32(log_wqbb_n);
 	int ret;
+	uint32_t umem_offset, umem_id;
+	uint16_t act_log_size = log_wqbb_n;
 
 	if (alignment == (size_t)-1) {
 		DRV_LOG(ERR, "Failed to get WQE buf alignment.");
@@ -223,33 +264,50 @@ mlx5_devx_sq_create(void *ctx, struct mlx5_devx_sq *sq_obj, uint16_t log_wqbb_n,
 	}
 	/* Allocate memory buffer for WQEs and doorbell record. */
 	umem_size = MLX5_WQE_SIZE * num_of_wqbbs;
-	umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
-	umem_size += MLX5_DBR_SIZE;
-	umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
-			       alignment, socket);
-	if (!umem_buf) {
-		DRV_LOG(ERR, "Failed to allocate memory for SQ.");
-		rte_errno = ENOMEM;
-		return -rte_errno;
-	}
-	/* Register allocated buffer in user space with DevX. */
-	umem_obj = mlx5_os_umem_reg(ctx, (void *)(uintptr_t)umem_buf, umem_size,
-				    IBV_ACCESS_LOCAL_WRITE);
-	if (!umem_obj) {
-		DRV_LOG(ERR, "Failed to register umem for SQ.");
-		rte_errno = errno;
-		goto error;
+	if (!attr->q_len) {
+		umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
+		umem_size += MLX5_DBR_SIZE;
+		umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
+				       alignment, socket);
+		if (!umem_buf) {
+			DRV_LOG(ERR, "Failed to allocate memory for SQ.");
+				rte_errno = ENOMEM;
+				return -rte_errno;
+		}
+		/* Register allocated buffer in user space with DevX. */
+		umem_obj = mlx5_os_umem_reg(ctx, (void *)(uintptr_t)umem_buf, umem_size,
+					    IBV_ACCESS_LOCAL_WRITE);
+		if (!umem_obj) {
+			DRV_LOG(ERR, "Failed to register umem for SQ.");
+			rte_errno = errno;
+			goto error;
+		}
+		umem_offset = 0;
+		umem_id = mlx5_os_get_umem_id(umem_obj);
+	} else {
+		if (umem_size != attr->q_len) {
+			DRV_LOG(WARNING, "Mismatch between saved length and calc length"
+				" of WQ %u-%u, using saved length.",
+				umem_size, attr->q_len);
+			/* saved length is a power of 2. */
+			act_log_size = (uint16_t)rte_log2_u32(attr->q_len / MLX5_WQE_SIZE);
+		}
+		umem_buf = attr->umem;
+		umem_offset = attr->q_off;
+		umem_dbrec = attr->db_off;
+		umem_id = mlx5_os_get_umem_id(attr->umem_obj);
+
 	}
 	/* Fill attributes for SQ object creation. */
 	attr->wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC;
 	attr->wq_attr.wq_umem_valid = 1;
-	attr->wq_attr.wq_umem_id = mlx5_os_get_umem_id(umem_obj);
-	attr->wq_attr.wq_umem_offset = 0;
+	attr->wq_attr.wq_umem_id = umem_id;
+	attr->wq_attr.wq_umem_offset = umem_offset;
 	attr->wq_attr.dbr_umem_valid = 1;
-	attr->wq_attr.dbr_umem_id = attr->wq_attr.wq_umem_id;
+	attr->wq_attr.dbr_umem_id = umem_id;
 	attr->wq_attr.dbr_addr = umem_dbrec;
 	attr->wq_attr.log_wq_stride = rte_log2_u32(MLX5_WQE_SIZE);
-	attr->wq_attr.log_wq_sz = log_wqbb_n;
+	attr->wq_attr.log_wq_sz = act_log_size;
 	attr->wq_attr.log_wq_pg_sz = MLX5_LOG_PAGE_SIZE;
 	/* Create send queue object with DevX. */
 	sq = mlx5_devx_cmd_create_sq(ctx, attr);
@@ -258,17 +316,27 @@ mlx5_devx_sq_create(void *ctx, struct mlx5_devx_sq *sq_obj, uint16_t log_wqbb_n,
 		rte_errno = ENOMEM;
 		goto error;
 	}
-	sq_obj->umem_buf = umem_buf;
-	sq_obj->umem_obj = umem_obj;
+	if (!attr->q_len) {
+		sq_obj->umem_buf = umem_buf;
+		sq_obj->umem_obj = umem_obj;
+		sq_obj->db_rec = RTE_PTR_ADD(sq_obj->umem_buf, umem_dbrec);
+		sq_obj->consec = false;
+	} else {
+		sq_obj->umem_buf = RTE_PTR_ADD(umem_buf, attr->q_off);
+		sq_obj->umem_obj = attr->umem_obj;
+		sq_obj->db_rec = RTE_PTR_ADD(umem_buf, attr->db_off);
+		sq_obj->consec = true;
+	}
 	sq_obj->sq = sq;
-	sq_obj->db_rec = RTE_PTR_ADD(sq_obj->umem_buf, umem_dbrec);
 	return 0;
 error:
 	ret = rte_errno;
-	if (umem_obj)
-		claim_zero(mlx5_os_umem_dereg(umem_obj));
-	if (umem_buf)
-		mlx5_free((void *)(uintptr_t)umem_buf);
+	if (!attr->q_len) {
+		if (umem_obj)
+			claim_zero(mlx5_os_umem_dereg(umem_obj));
+		if (umem_buf)
+			mlx5_free((void *)(uintptr_t)umem_buf);
+	}
 	rte_errno = ret;
 	return -rte_errno;
 }
@@ -312,6 +380,7 @@ mlx5_devx_rmp_destroy(struct mlx5_devx_rmp *rmp)
  * @param[in] qp
  *   DevX QP to destroy.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_qp_destroy)
 void
 mlx5_devx_qp_destroy(struct mlx5_devx_qp *qp)
 {
@@ -350,6 +419,7 @@ mlx5_devx_qp_destroy(struct mlx5_devx_qp *qp)
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_qp_create)
 int
 mlx5_devx_qp_create(void *ctx, struct mlx5_devx_qp *qp_obj, uint32_t queue_size,
 		    struct mlx5_devx_qp_attr *attr, int socket)
@@ -420,6 +490,7 @@ error:
  * @param[in] rq
  *   DevX RQ to destroy.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_rq_destroy)
 void
 mlx5_devx_rq_destroy(struct mlx5_devx_rq *rq)
 {
@@ -476,8 +547,8 @@ mlx5_devx_wq_init(void *ctx, uint32_t wqe_size, uint16_t log_wqbb_n, int socket,
 	umem_size = wqe_size * (1 << log_wqbb_n);
 	umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
 	umem_size += MLX5_DBR_SIZE;
-	umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
-			       alignment, socket);
+	umem_buf = mlx5_malloc_numa_tolerant(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
+					     alignment, socket);
 	if (!umem_buf) {
 		DRV_LOG(ERR, "Failed to allocate memory for RQ.");
 		rte_errno = ENOMEM;
@@ -695,6 +766,7 @@ error:
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_rq_create)
 int
 mlx5_devx_rq_create(void *ctx, struct mlx5_devx_rq *rq_obj,
 		    uint32_t wqe_size, uint16_t log_wqbb_n,
@@ -718,6 +790,7 @@ mlx5_devx_rq_create(void *ctx, struct mlx5_devx_rq *rq_obj,
  * @return
  *	 0 on success, a negative errno value otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_qp2rts)
 int
 mlx5_devx_qp2rts(struct mlx5_devx_qp *qp, uint32_t remote_qp_id)
 {

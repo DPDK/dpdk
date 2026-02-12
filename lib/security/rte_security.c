@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 
+#include <eal_export.h>
 #include <rte_cryptodev.h>
 #include <dev_driver.h>
 #include <rte_telemetry.h>
@@ -30,9 +31,12 @@
 #define RTE_SECURITY_DYNFIELD_NAME "rte_security_dynfield_metadata"
 #define RTE_SECURITY_OOP_DYNFIELD_NAME "rte_security_oop_dynfield_metadata"
 
+RTE_EXPORT_SYMBOL(rte_security_dynfield_offset)
 int rte_security_dynfield_offset = -1;
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_security_oop_dynfield_offset, 23.11)
 int rte_security_oop_dynfield_offset = -1;
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_security_dynfield_register)
 int
 rte_security_dynfield_register(void)
 {
@@ -46,6 +50,7 @@ rte_security_dynfield_register(void)
 	return rte_security_dynfield_offset;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_security_oop_dynfield_register)
 int
 rte_security_oop_dynfield_register(void)
 {
@@ -60,6 +65,7 @@ rte_security_oop_dynfield_register(void)
 	return rte_security_oop_dynfield_offset;
 }
 
+RTE_EXPORT_SYMBOL(rte_security_session_create)
 void *
 rte_security_session_create(void *ctx,
 			    struct rte_security_session_conf *conf,
@@ -94,6 +100,7 @@ rte_security_session_create(void *ctx,
 	return (void *)sess;
 }
 
+RTE_EXPORT_SYMBOL(rte_security_session_update)
 int
 rte_security_session_update(void *ctx, void *sess, struct rte_security_session_conf *conf)
 {
@@ -107,6 +114,7 @@ rte_security_session_update(void *ctx, void *sess, struct rte_security_session_c
 	return instance->ops->session_update(instance->device, sess, conf);
 }
 
+RTE_EXPORT_SYMBOL(rte_security_session_get_size)
 unsigned int
 rte_security_session_get_size(void *ctx)
 {
@@ -118,6 +126,7 @@ rte_security_session_get_size(void *ctx)
 			instance->ops->session_get_size(instance->device));
 }
 
+RTE_EXPORT_SYMBOL(rte_security_session_stats_get)
 int
 rte_security_session_stats_get(void *ctx, void *sess, struct rte_security_stats *stats)
 {
@@ -131,6 +140,7 @@ rte_security_session_stats_get(void *ctx, void *sess, struct rte_security_stats 
 	return instance->ops->session_stats_get(instance->device, sess, stats);
 }
 
+RTE_EXPORT_SYMBOL(rte_security_session_destroy)
 int
 rte_security_session_destroy(void *ctx, void *sess)
 {
@@ -153,6 +163,7 @@ rte_security_session_destroy(void *ctx, void *sess)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_security_macsec_sc_create)
 int
 rte_security_macsec_sc_create(void *ctx, struct rte_security_macsec_sc *conf)
 {
@@ -169,6 +180,7 @@ rte_security_macsec_sc_create(void *ctx, struct rte_security_macsec_sc *conf)
 	return sc_id;
 }
 
+RTE_EXPORT_SYMBOL(rte_security_macsec_sa_create)
 int
 rte_security_macsec_sa_create(void *ctx, struct rte_security_macsec_sa *conf)
 {
@@ -185,6 +197,7 @@ rte_security_macsec_sa_create(void *ctx, struct rte_security_macsec_sa *conf)
 	return sa_id;
 }
 
+RTE_EXPORT_SYMBOL(rte_security_macsec_sc_destroy)
 int
 rte_security_macsec_sc_destroy(void *ctx, uint16_t sc_id,
 			       enum rte_security_macsec_direction dir)
@@ -204,6 +217,7 @@ rte_security_macsec_sc_destroy(void *ctx, uint16_t sc_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_security_macsec_sa_destroy)
 int
 rte_security_macsec_sa_destroy(void *ctx, uint16_t sa_id,
 			       enum rte_security_macsec_direction dir)
@@ -223,6 +237,7 @@ rte_security_macsec_sa_destroy(void *ctx, uint16_t sa_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_security_macsec_sc_stats_get)
 int
 rte_security_macsec_sc_stats_get(void *ctx, uint16_t sc_id,
 				 enum rte_security_macsec_direction dir,
@@ -236,6 +251,7 @@ rte_security_macsec_sc_stats_get(void *ctx, uint16_t sc_id,
 	return instance->ops->macsec_sc_stats_get(instance->device, sc_id, dir, stats);
 }
 
+RTE_EXPORT_SYMBOL(rte_security_macsec_sa_stats_get)
 int
 rte_security_macsec_sa_stats_get(void *ctx, uint16_t sa_id,
 				 enum rte_security_macsec_direction dir,
@@ -249,6 +265,7 @@ rte_security_macsec_sa_stats_get(void *ctx, uint16_t sa_id,
 	return instance->ops->macsec_sa_stats_get(instance->device, sa_id, dir, stats);
 }
 
+RTE_EXPORT_SYMBOL(__rte_security_set_pkt_metadata)
 int
 __rte_security_set_pkt_metadata(void *ctx, void *sess, struct rte_mbuf *m, void *params)
 {
@@ -258,12 +275,12 @@ __rte_security_set_pkt_metadata(void *ctx, void *sess, struct rte_mbuf *m, void 
 	RTE_PTR_OR_ERR_RET(instance, -EINVAL);
 	RTE_PTR_OR_ERR_RET(instance->ops, -EINVAL);
 #endif
-	if (*instance->ops->set_pkt_metadata == NULL)
+	if (instance->ops->set_pkt_metadata == NULL)
 		return -ENOTSUP;
-	return instance->ops->set_pkt_metadata(instance->device,
-					       sess, m, params);
+	return instance->ops->set_pkt_metadata(instance->device, sess, m, params);
 }
 
+RTE_EXPORT_SYMBOL(rte_security_capabilities_get)
 const struct rte_security_capability *
 rte_security_capabilities_get(void *ctx)
 {
@@ -274,6 +291,7 @@ rte_security_capabilities_get(void *ctx)
 	return instance->ops->capabilities_get(instance->device);
 }
 
+RTE_EXPORT_SYMBOL(rte_security_capability_get)
 const struct rte_security_capability *
 rte_security_capability_get(void *ctx, struct rte_security_capability_idx *idx)
 {
@@ -326,6 +344,7 @@ rte_security_capability_get(void *ctx, struct rte_security_capability_idx *idx)
 	return NULL;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_security_rx_inject_configure, 23.11)
 int
 rte_security_rx_inject_configure(void *ctx, uint16_t port_id, bool enable)
 {
@@ -338,6 +357,7 @@ rte_security_rx_inject_configure(void *ctx, uint16_t port_id, bool enable)
 	return instance->ops->rx_inject_configure(instance->device, port_id, enable);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_security_inb_pkt_rx_inject, 23.11)
 uint16_t
 rte_security_inb_pkt_rx_inject(void *ctx, struct rte_mbuf **pkts, void **sess,
 			       uint16_t nb_pkts)

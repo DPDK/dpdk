@@ -18,7 +18,7 @@ struct app_mbuf_array {
 #define APP_MAX_PORTS 4
 #endif
 
-struct app_params {
+struct __rte_cache_aligned app_params {
 	/* CPU cores */
 	uint32_t core_rx;
 	uint32_t core_worker;
@@ -56,7 +56,7 @@ struct app_params {
 
 	/* App behavior */
 	uint32_t pipeline_type;
-} __rte_cache_aligned;
+};
 
 extern struct app_params app;
 

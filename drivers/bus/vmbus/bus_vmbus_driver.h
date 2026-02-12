@@ -6,16 +6,22 @@
 #ifndef BUS_VMBUS_DRIVER_H
 #define BUS_VMBUS_DRIVER_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_bus_vmbus.h>
 #include <rte_compat.h>
 #include <dev_driver.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define HYPERV_PAGE_SHIFT 12
+#define HYPERV_PAGE_SIZE (1 << HYPERV_PAGE_SHIFT)
+#define HYPERV_PAGE_MASK (HYPERV_PAGE_SIZE - 1)
+
 struct vmbus_channel;
 struct vmbus_mon_page;
+
+#define NETVSC_ARG_NUMA_AWARE "numa_aware"
 
 /** Maximum number of VMBUS resources. */
 enum hv_uio_map {
@@ -97,7 +103,7 @@ void rte_vmbus_unregister(struct rte_vmbus_driver *driver);
 		(vmbus_drv).driver.name = RTE_STR(nm);	\
 		rte_vmbus_register(&vmbus_drv);		\
 	}						\
-	RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
+	RTE_PMD_EXPORT_NAME(nm)
 
 #ifdef __cplusplus
 }

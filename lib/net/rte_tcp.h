@@ -18,14 +18,10 @@
 
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * TCP Header
  */
-struct rte_tcp_hdr {
+struct __rte_packed_begin rte_tcp_hdr {
 	rte_be16_t src_port; /**< TCP source port. */
 	rte_be16_t dst_port; /**< TCP destination port. */
 	rte_be32_t sent_seq; /**< TX data sequence number. */
@@ -35,7 +31,7 @@ struct rte_tcp_hdr {
 	rte_be16_t rx_win;   /**< RX flow control window. */
 	rte_be16_t cksum;    /**< TCP checksum. */
 	rte_be16_t tcp_urp;  /**< TCP urgent pointer, if any. */
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * TCP Flags
@@ -48,9 +44,5 @@ struct rte_tcp_hdr {
 #define RTE_TCP_RST_FLAG 0x04 /**< Reset the connection */
 #define RTE_TCP_SYN_FLAG 0x02 /**< Synchronize sequence numbers */
 #define RTE_TCP_FIN_FLAG 0x01 /**< No more data from sender */
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_TCP_H_ */

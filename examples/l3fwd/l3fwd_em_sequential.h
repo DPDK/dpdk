@@ -79,7 +79,7 @@ l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 			uint16_t portid, struct lcore_conf *qconf)
 {
 	int32_t i, j;
-	uint16_t dst_port[MAX_PKT_BURST];
+	uint16_t dst_port[SENDM_PORT_OVERHEAD(MAX_PKT_BURST)];
 
 	if (nb_rx > 0) {
 		rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[0],

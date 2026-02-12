@@ -112,16 +112,16 @@ mlx5_vlan_vmwa_init(struct rte_eth_dev *dev, uint32_t ifindex)
 	/* Check whether there is desired virtual environment */
 	hv_type = rte_hypervisor_get();
 	switch (hv_type) {
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_X86_64)
+	/* Always misdetected on ARM archs, let's ignore this */
 	case RTE_HYPERVISOR_UNKNOWN:
+#endif
 	case RTE_HYPERVISOR_VMWARE:
-		/*
-		 * The "white list" of configurations
-		 * to engage the workaround.
-		 */
+		/* The list of configurations to engage the workaround. */
 		break;
 	default:
 		/*
-		 * The configuration is not found in the "white list".
+		 * The configuration is not found in the list.
 		 * We should not engage the VLAN workaround.
 		 */
 		return NULL;

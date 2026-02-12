@@ -52,10 +52,10 @@ struct nfp_net_cmsg_match_v4 {
 	uint32_t src_ipv4_mask;
 	uint32_t dst_ipv4;
 	uint32_t dst_ipv4_mask;
-	uint16_t src_port;
 	uint16_t src_port_mask;
-	uint16_t dst_port;
+	uint16_t src_port;
 	uint16_t dst_port_mask;
+	uint16_t dst_port;
 };
 
 /**
@@ -144,7 +144,7 @@ struct nfp_net_cmsg_action {
 	uint16_t action;
 	uint8_t queue;
 	uint8_t spare;
-	uint16_t mark_id;
+	uint32_t mark_id;
 };
 
 enum nfp_net_cfg_mbox_cmd {

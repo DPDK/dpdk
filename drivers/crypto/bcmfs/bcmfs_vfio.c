@@ -3,6 +3,8 @@
  * All rights reserved.
  */
 
+#include <uapi/linux/vfio.h>
+
 #include <errno.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
@@ -13,7 +15,6 @@
 #include "bcmfs_logs.h"
 #include "bcmfs_vfio.h"
 
-#ifdef VFIO_PRESENT
 static int
 vfio_map_dev_obj(const char *path, const char *dev_obj,
 		 uint32_t *size, void **addr, int *dev_fd)
@@ -93,15 +94,3 @@ bcmfs_release_vfio(struct bcmfs_device *dev)
 		return;
 	}
 }
-#else
-int
-bcmfs_attach_vfio(struct bcmfs_device *dev __rte_unused)
-{
-	return -1;
-}
-
-void
-bcmfs_release_vfio(struct bcmfs_device *dev __rte_unused)
-{
-}
-#endif

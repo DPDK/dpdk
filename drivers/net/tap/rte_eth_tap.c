@@ -15,16 +15,14 @@
 #include <rte_net.h>
 #include <rte_debug.h>
 #include <rte_ip.h>
-#include <rte_string_fns.h>
 #include <rte_ethdev.h>
 #include <rte_errno.h>
 #include <rte_cycles.h>
 
+#include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/socket.h>
 #include <sys/ioctl.h>
-#include <sys/utsname.h>
 #include <sys/mman.h>
 #include <errno.h>
 #include <signal.h>
@@ -33,12 +31,10 @@
 #include <stdlib.h>
 #include <sys/uio.h>
 #include <unistd.h>
-#include <arpa/inet.h>
 #include <net/if.h>
 #include <linux/if_tun.h>
-#include <linux/if_ether.h>
+#include <linux/sched.h>
 #include <fcntl.h>
-#include <ctype.h>
 
 #include <tap_rss.h>
 #include <rte_eth_tap.h>
@@ -70,6 +66,8 @@
 /* IPC key for queue fds sync */
 #define TAP_MP_KEY "tap_mp_sync_queues"
 #define TAP_MP_REQ_START_RXTX "tap_mp_req_start_rxtx"
+
+static_assert(RTE_PMD_TAP_MAX_QUEUES <= RTE_MP_MAX_FD_NUM, "TAP max queues exceeds MP fd limit");
 
 #define TAP_IOV_DEFAULT_MAX 1024
 
@@ -114,18 +112,10 @@ tap_trigger_cb(int sig __rte_unused)
 	tap_trigger = (tap_trigger + 1) | 0x80000000;
 }
 
-/* Specifies on what netdevices the ioctl should be applied */
-enum ioctl_mode {
-	LOCAL_AND_REMOTE,
-	LOCAL_ONLY,
-	REMOTE_ONLY,
-};
-
 /* Message header to synchronize queues via IPC */
 struct ipc_queues {
 	char port_name[RTE_DEV_NAME_MAX_LEN];
-	int rxq_count;
-	int txq_count;
+	int q_count;
 	/*
 	 * The file descriptors are in the dedicated part
 	 * of the Unix message to be translated by the kernel.
@@ -231,9 +221,8 @@ tun_alloc(struct pmd_internals *pmd, int is_keepalive, int persistent)
 
 	flags = fcntl(fd, F_GETFL);
 	if (flags == -1) {
-		TAP_LOG(WARNING,
-			"Unable to get %s current flags\n",
-			ifr.ifr_name);
+		TAP_LOG(WARNING, "Unable to get %s current flags: %s",
+			ifr.ifr_name, strerror(errno));
 		goto error;
 	}
 
@@ -275,7 +264,7 @@ tun_alloc(struct pmd_internals *pmd, int is_keepalive, int persistent)
 
 		if (sigaction(signo, &sa, NULL) == -1) {
 			TAP_LOG(WARNING,
-				"Unable to set rt-signal %d handler\n", signo);
+				"Unable to set rt-signal %d handler", signo);
 			goto error;
 		}
 
@@ -286,11 +275,11 @@ tun_alloc(struct pmd_internals *pmd, int is_keepalive, int persistent)
 	}
 
 	if (signo == SIGRTMAX) {
-		TAP_LOG(WARNING, "All rt-signals are in use\n");
+		TAP_LOG(WARNING, "All rt-signals are in use");
 
 		/* Disable trigger globally in case of error */
 		tap_trigger = 0;
-		TAP_LOG(NOTICE, "No Rx trigger signal available\n");
+		TAP_LOG(NOTICE, "No Rx trigger signal available");
 	} else {
 		/* Enable signal on file descriptor */
 		if (fcntl(fd, F_SETSIG, signo) < 0) {
@@ -446,7 +435,7 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		uint16_t data_off = rte_pktmbuf_headroom(mbuf);
 		int len;
 
-		len = readv(process_private->rxq_fds[rxq->queue_id],
+		len = readv(process_private->fds[rxq->queue_id],
 			*rxq->iovecs,
 			1 + (rxq->rxmode->offloads & RTE_ETH_RX_OFFLOAD_SCATTER ?
 			     rxq->nb_rx_desc : 1));
@@ -643,7 +632,7 @@ skip_l4_cksum:
 		}
 
 		/* copy the tx frame data */
-		n = writev(process_private->txq_fds[txq->queue_id], iovecs, k);
+		n = writev(process_private->fds[txq->queue_id], iovecs, k);
 		if (n <= 0)
 			return -1;
 
@@ -756,102 +745,36 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	return num_tx;
 }
 
-static const char *
-tap_ioctl_req2str(unsigned long request)
-{
-	switch (request) {
-	case SIOCSIFFLAGS:
-		return "SIOCSIFFLAGS";
-	case SIOCGIFFLAGS:
-		return "SIOCGIFFLAGS";
-	case SIOCGIFHWADDR:
-		return "SIOCGIFHWADDR";
-	case SIOCSIFHWADDR:
-		return "SIOCSIFHWADDR";
-	case SIOCSIFMTU:
-		return "SIOCSIFMTU";
-	}
-	return "UNKNOWN";
-}
-
-static int
-tap_ioctl(struct pmd_internals *pmd, unsigned long request,
-	  struct ifreq *ifr, int set, enum ioctl_mode mode)
-{
-	short req_flags = ifr->ifr_flags;
-	int remote = pmd->remote_if_index &&
-		(mode == REMOTE_ONLY || mode == LOCAL_AND_REMOTE);
-
-	if (!pmd->remote_if_index && mode == REMOTE_ONLY)
-		return 0;
-	/*
-	 * If there is a remote netdevice, apply ioctl on it, then apply it on
-	 * the tap netdevice.
-	 */
-apply:
-	if (remote)
-		strlcpy(ifr->ifr_name, pmd->remote_iface, IFNAMSIZ);
-	else if (mode == LOCAL_ONLY || mode == LOCAL_AND_REMOTE)
-		strlcpy(ifr->ifr_name, pmd->name, IFNAMSIZ);
-	switch (request) {
-	case SIOCSIFFLAGS:
-		/* fetch current flags to leave other flags untouched */
-		if (ioctl(pmd->ioctl_sock, SIOCGIFFLAGS, ifr) < 0)
-			goto error;
-		if (set)
-			ifr->ifr_flags |= req_flags;
-		else
-			ifr->ifr_flags &= ~req_flags;
-		break;
-	case SIOCGIFFLAGS:
-	case SIOCGIFHWADDR:
-	case SIOCSIFHWADDR:
-	case SIOCSIFMTU:
-		break;
-	default:
-		TAP_LOG(WARNING, "%s: ioctl() called with wrong arg",
-			pmd->name);
-		return -EINVAL;
-	}
-	if (ioctl(pmd->ioctl_sock, request, ifr) < 0)
-		goto error;
-	if (remote-- && mode == LOCAL_AND_REMOTE)
-		goto apply;
-	return 0;
-
-error:
-	TAP_LOG(DEBUG, "%s(%s) failed: %s(%d)", ifr->ifr_name,
-		tap_ioctl_req2str(request), strerror(errno), errno);
-	return -errno;
-}
-
 static int
 tap_link_set_down(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
-	struct ifreq ifr = { .ifr_flags = IFF_UP };
 
 	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
-	return tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_ONLY);
+	return tap_nl_set_flags(pmd->nlsk_fd, pmd->if_index, IFF_UP, 0);
 }
 
 static int
 tap_link_set_up(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
-	struct ifreq ifr = { .ifr_flags = IFF_UP };
+	int ret;
 
 	dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
-	return tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
+	ret = tap_nl_set_flags(pmd->nlsk_fd, pmd->if_index, IFF_UP, 1);
+	if (ret < 0)
+		return ret;
+	if (pmd->remote_if_index)
+		return tap_nl_set_flags(pmd->nlsk_fd, pmd->remote_if_index, IFF_UP, 1);
+	return 0;
 }
 
-static int
+static void
 tap_mp_req_on_rxtx(struct rte_eth_dev *dev)
 {
 	struct rte_mp_msg msg;
 	struct ipc_queues *request_param = (struct ipc_queues *)msg.param;
 	int err;
-	int fd_iterator = 0;
 	struct pmd_process_private *process_private = dev->process_private;
 	int i;
 
@@ -859,25 +782,19 @@ tap_mp_req_on_rxtx(struct rte_eth_dev *dev)
 	strlcpy(msg.name, TAP_MP_REQ_START_RXTX, sizeof(msg.name));
 	strlcpy(request_param->port_name, dev->data->name, sizeof(request_param->port_name));
 	msg.len_param = sizeof(*request_param);
-	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		msg.fds[fd_iterator++] = process_private->txq_fds[i];
-		msg.num_fds++;
-		request_param->txq_count++;
-	}
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		msg.fds[fd_iterator++] = process_private->rxq_fds[i];
-		msg.num_fds++;
-		request_param->rxq_count++;
-	}
+
+	/* rx and tx share file descriptors and nb_tx_queues == nb_rx_queues */
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		msg.fds[i] = process_private->fds[i];
+
+	request_param->q_count = dev->data->nb_rx_queues;
+	msg.num_fds = dev->data->nb_rx_queues;
 
 	err = rte_mp_sendmsg(&msg);
-	if (err < 0) {
+	if (err < 0 && rte_errno != ENOTSUP) {
 		TAP_LOG(ERR, "Failed to send start req to secondary %d",
 			rte_errno);
-		return -1;
 	}
-
-	return 0;
 }
 
 static int
@@ -893,8 +810,10 @@ tap_dev_start(struct rte_eth_dev *dev)
 		return err;
 
 	err = tap_link_set_up(dev);
-	if (err)
+	if (err) {
+		tap_intr_handle_set(dev, 0);
 		return err;
+	}
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
@@ -910,8 +829,6 @@ tap_mp_req_start_rxtx(const struct rte_mp_msg *request, __rte_unused const void 
 	struct rte_eth_dev *dev;
 	const struct ipc_queues *request_param =
 		(const struct ipc_queues *)request->param;
-	int fd_iterator;
-	int queue;
 	struct pmd_process_private *process_private;
 
 	dev = rte_eth_dev_get_by_name(request_param->port_name);
@@ -920,14 +837,13 @@ tap_mp_req_start_rxtx(const struct rte_mp_msg *request, __rte_unused const void 
 			request_param->port_name);
 		return -1;
 	}
+
 	process_private = dev->process_private;
-	fd_iterator = 0;
-	TAP_LOG(DEBUG, "tap_attach rx_q:%d tx_q:%d\n", request_param->rxq_count,
-		request_param->txq_count);
-	for (queue = 0; queue < request_param->txq_count; queue++)
-		process_private->txq_fds[queue] = request->fds[fd_iterator++];
-	for (queue = 0; queue < request_param->rxq_count; queue++)
-		process_private->rxq_fds[queue] = request->fds[fd_iterator++];
+	TAP_LOG(DEBUG, "tap_attach q:%d", request_param->q_count);
+
+	for (int q = 0; q < request_param->q_count; q++)
+		process_private->fds[q] = request->fds[q];
+
 
 	return 0;
 }
@@ -957,22 +873,6 @@ tap_dev_configure(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
 
-	if (dev->data->nb_rx_queues > RTE_PMD_TAP_MAX_QUEUES) {
-		TAP_LOG(ERR,
-			"%s: number of rx queues %d exceeds max num of queues %d",
-			dev->device->name,
-			dev->data->nb_rx_queues,
-			RTE_PMD_TAP_MAX_QUEUES);
-		return -1;
-	}
-	if (dev->data->nb_tx_queues > RTE_PMD_TAP_MAX_QUEUES) {
-		TAP_LOG(ERR,
-			"%s: number of tx queues %d exceeds max num of queues %d",
-			dev->device->name,
-			dev->data->nb_tx_queues,
-			RTE_PMD_TAP_MAX_QUEUES);
-		return -1;
-	}
 	if (dev->data->nb_rx_queues != dev->data->nb_tx_queues) {
 		TAP_LOG(ERR,
 			"%s: number of rx queues %d must be equal to number of tx queues %d",
@@ -1053,7 +953,8 @@ tap_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 }
 
 static int
-tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats)
+tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats,
+	      struct eth_queue_stats *qstats)
 {
 	unsigned int i, imax;
 	unsigned long rx_total = 0, tx_total = 0, tx_err_total = 0;
@@ -1065,10 +966,12 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats)
 	imax = (dev->data->nb_rx_queues < RTE_ETHDEV_QUEUE_STAT_CNTRS) ?
 		dev->data->nb_rx_queues : RTE_ETHDEV_QUEUE_STAT_CNTRS;
 	for (i = 0; i < imax; i++) {
-		tap_stats->q_ipackets[i] = pmd->rxq[i].stats.ipackets;
-		tap_stats->q_ibytes[i] = pmd->rxq[i].stats.ibytes;
-		rx_total += tap_stats->q_ipackets[i];
-		rx_bytes_total += tap_stats->q_ibytes[i];
+		if (qstats != NULL) {
+			qstats->q_ipackets[i] = pmd->rxq[i].stats.ipackets;
+			qstats->q_ibytes[i] = pmd->rxq[i].stats.ibytes;
+		}
+		rx_total += pmd->rxq[i].stats.ipackets;
+		rx_bytes_total += pmd->rxq[i].stats.ibytes;
 		rx_nombuf += pmd->rxq[i].stats.rx_nombuf;
 		ierrors += pmd->rxq[i].stats.ierrors;
 	}
@@ -1078,11 +981,13 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats)
 		dev->data->nb_tx_queues : RTE_ETHDEV_QUEUE_STAT_CNTRS;
 
 	for (i = 0; i < imax; i++) {
-		tap_stats->q_opackets[i] = pmd->txq[i].stats.opackets;
-		tap_stats->q_obytes[i] = pmd->txq[i].stats.obytes;
-		tx_total += tap_stats->q_opackets[i];
+		if (qstats != NULL) {
+			qstats->q_opackets[i] = pmd->txq[i].stats.opackets;
+			qstats->q_obytes[i] = pmd->txq[i].stats.obytes;
+		}
+		tx_total += pmd->txq[i].stats.opackets;
+		tx_bytes_total += pmd->txq[i].stats.obytes;
 		tx_err_total += pmd->txq[i].stats.errs;
-		tx_bytes_total += tap_stats->q_obytes[i];
 	}
 
 	tap_stats->ipackets = rx_total;
@@ -1115,16 +1020,25 @@ tap_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void
+tap_queue_close(struct pmd_process_private *process_private, uint16_t qid)
+{
+	if (process_private->fds[qid] != -1) {
+		close(process_private->fds[qid]);
+		process_private->fds[qid] = -1;
+	}
+}
+
 static int
 tap_dev_close(struct rte_eth_dev *dev)
 {
 	int i;
 	struct pmd_internals *internals = dev->data->dev_private;
 	struct pmd_process_private *process_private = dev->process_private;
-	struct rx_queue *rxq;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		rte_free(dev->process_private);
+		free(dev->process_private);
+		dev->process_private = NULL;
 		if (tap_devices_count == 1)
 			rte_mp_action_unregister(TAP_MP_REQ_START_RXTX);
 		tap_devices_count--;
@@ -1133,36 +1047,32 @@ tap_dev_close(struct rte_eth_dev *dev)
 
 	if (!internals->persist)
 		tap_link_set_down(dev);
+
+#ifdef HAVE_TCA_FLOWER
 	if (internals->nlsk_fd != -1) {
 		tap_flow_flush(dev, NULL);
 		tap_flow_implicit_flush(internals, NULL);
-		tap_nl_final(internals->nlsk_fd);
-		internals->nlsk_fd = -1;
+		tap_flow_bpf_destroy(internals);
 	}
+#endif
 
 	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
-		if (process_private->rxq_fds[i] != -1) {
-			rxq = &internals->rxq[i];
-			close(process_private->rxq_fds[i]);
-			process_private->rxq_fds[i] = -1;
-			tap_rxq_pool_free(rxq->pool);
-			rte_free(rxq->iovecs);
-			rxq->pool = NULL;
-			rxq->iovecs = NULL;
-		}
-		if (process_private->txq_fds[i] != -1) {
-			close(process_private->txq_fds[i]);
-			process_private->txq_fds[i] = -1;
-		}
+		struct rx_queue *rxq = &internals->rxq[i];
+
+		tap_queue_close(process_private, i);
+
+		tap_rxq_pool_free(rxq->pool);
+		rte_free(rxq->iovecs);
+		rxq->pool = NULL;
+		rxq->iovecs = NULL;
 	}
 
 	if (internals->remote_if_index) {
 		/* Restore initial remote state */
-		int ret = ioctl(internals->ioctl_sock, SIOCSIFFLAGS,
-				&internals->remote_initial_flags);
+		int ret = tap_nl_set_flags(internals->nlsk_fd, internals->remote_if_index,
+					   internals->remote_initial_flags, 1);
 		if (ret)
 			TAP_LOG(ERR, "restore remote state failed: %d", ret);
-
 	}
 
 	rte_mempool_free(internals->gso_ctx_mp);
@@ -1182,11 +1092,13 @@ tap_dev_close(struct rte_eth_dev *dev)
 
 	rte_intr_instance_free(internals->intr_handle);
 
-	if (internals->ioctl_sock != -1) {
-		close(internals->ioctl_sock);
-		internals->ioctl_sock = -1;
+	if (internals->nlsk_fd != -1) {
+		tap_nl_final(internals->nlsk_fd);
+		internals->nlsk_fd = -1;
 	}
-	rte_free(dev->process_private);
+	free(dev->process_private);
+	dev->process_private = NULL;
+
 	if (tap_devices_count == 1)
 		rte_mp_action_unregister(TAP_MP_KEY);
 	tap_devices_count--;
@@ -1206,15 +1118,16 @@ tap_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 
 	if (!rxq)
 		return;
+
 	process_private = rte_eth_devices[rxq->in_port].process_private;
-	if (process_private->rxq_fds[rxq->queue_id] != -1) {
-		close(process_private->rxq_fds[rxq->queue_id]);
-		process_private->rxq_fds[rxq->queue_id] = -1;
-		tap_rxq_pool_free(rxq->pool);
-		rte_free(rxq->iovecs);
-		rxq->pool = NULL;
-		rxq->iovecs = NULL;
-	}
+
+	tap_rxq_pool_free(rxq->pool);
+	rte_free(rxq->iovecs);
+	rxq->pool = NULL;
+	rxq->iovecs = NULL;
+
+	if (dev->data->tx_queues[qid] == NULL)
+		tap_queue_close(process_private, qid);
 }
 
 static void
@@ -1225,12 +1138,10 @@ tap_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 
 	if (!txq)
 		return;
-	process_private = rte_eth_devices[txq->out_port].process_private;
 
-	if (process_private->txq_fds[txq->queue_id] != -1) {
-		close(process_private->txq_fds[txq->queue_id]);
-		process_private->txq_fds[txq->queue_id] = -1;
-	}
+	process_private = rte_eth_devices[txq->out_port].process_private;
+	if (dev->data->rx_queues[qid] == NULL)
+		tap_queue_close(process_private, qid);
 }
 
 static int
@@ -1238,21 +1149,22 @@ tap_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 {
 	struct rte_eth_link *dev_link = &dev->data->dev_link;
 	struct pmd_internals *pmd = dev->data->dev_private;
-	struct ifreq ifr = { .ifr_flags = 0 };
+	unsigned int flags = 0;
 
 	if (pmd->remote_if_index) {
-		tap_ioctl(pmd, SIOCGIFFLAGS, &ifr, 0, REMOTE_ONLY);
-		if (!(ifr.ifr_flags & IFF_UP) ||
-		    !(ifr.ifr_flags & IFF_RUNNING)) {
-			dev_link->link_status = RTE_ETH_LINK_DOWN;
-			return 0;
+		if (tap_nl_get_flags(pmd->nlsk_fd, pmd->remote_if_index, &flags) == 0) {
+			if (!(flags & IFF_UP) || !(flags & IFF_RUNNING)) {
+				dev_link->link_status = RTE_ETH_LINK_DOWN;
+				return 0;
+			}
 		}
 	}
-	tap_ioctl(pmd, SIOCGIFFLAGS, &ifr, 0, LOCAL_ONLY);
-	dev_link->link_status =
-		((ifr.ifr_flags & IFF_UP) && (ifr.ifr_flags & IFF_RUNNING) ?
-		 RTE_ETH_LINK_UP :
-		 RTE_ETH_LINK_DOWN);
+	if (tap_nl_get_flags(pmd->nlsk_fd, pmd->if_index, &flags) == 0) {
+		if ((flags & IFF_UP) && (flags & IFF_RUNNING))
+			dev_link->link_status = RTE_ETH_LINK_UP;
+		else
+			dev_link->link_status = RTE_ETH_LINK_DOWN;
+	}
 	return 0;
 }
 
@@ -1260,19 +1172,28 @@ static int
 tap_promisc_enable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
-	struct ifreq ifr = { .ifr_flags = IFF_PROMISC };
 	int ret;
 
-	ret = tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
+	ret = tap_nl_set_flags(pmd->nlsk_fd, pmd->if_index, IFF_PROMISC, 1);
 	if (ret != 0)
 		return ret;
 
+	if (pmd->remote_if_index) {
+		ret = tap_nl_set_flags(pmd->nlsk_fd, pmd->remote_if_index, IFF_PROMISC, 1);
+		if (ret != 0)
+			return ret;
+	}
+
+#ifdef HAVE_TCA_FLOWER
 	if (pmd->remote_if_index && !pmd->flow_isolate) {
 		dev->data->promiscuous = 1;
 		ret = tap_flow_implicit_create(pmd, TAP_REMOTE_PROMISC);
 		if (ret != 0) {
 			/* Rollback promisc flag */
-			tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_AND_REMOTE);
+			tap_nl_set_flags(pmd->nlsk_fd, pmd->if_index, IFF_PROMISC, 0);
+			if (pmd->remote_if_index)
+				tap_nl_set_flags(pmd->nlsk_fd, pmd->remote_if_index,
+						 IFF_PROMISC, 0);
 			/*
 			 * rte_eth_dev_promiscuous_enable() rollback
 			 * dev->data->promiscuous in the case of failure.
@@ -1280,7 +1201,7 @@ tap_promisc_enable(struct rte_eth_dev *dev)
 			return ret;
 		}
 	}
-
+#endif
 	return 0;
 }
 
@@ -1288,19 +1209,28 @@ static int
 tap_promisc_disable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
-	struct ifreq ifr = { .ifr_flags = IFF_PROMISC };
 	int ret;
 
-	ret = tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_AND_REMOTE);
+	ret = tap_nl_set_flags(pmd->nlsk_fd, pmd->if_index, IFF_PROMISC, 0);
 	if (ret != 0)
 		return ret;
 
+	if (pmd->remote_if_index) {
+		ret = tap_nl_set_flags(pmd->nlsk_fd, pmd->remote_if_index, IFF_PROMISC, 0);
+		if (ret != 0)
+			return ret;
+	}
+
+#ifdef HAVE_TCA_FLOWER
 	if (pmd->remote_if_index && !pmd->flow_isolate) {
 		dev->data->promiscuous = 0;
 		ret = tap_flow_implicit_destroy(pmd, TAP_REMOTE_PROMISC);
 		if (ret != 0) {
 			/* Rollback promisc flag */
-			tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
+			tap_nl_set_flags(pmd->nlsk_fd, pmd->if_index, IFF_PROMISC, 1);
+			if (pmd->remote_if_index)
+				tap_nl_set_flags(pmd->nlsk_fd, pmd->remote_if_index,
+						 IFF_PROMISC, 1);
 			/*
 			 * rte_eth_dev_promiscuous_disable() rollback
 			 * dev->data->promiscuous in the case of failure.
@@ -1308,6 +1238,7 @@ tap_promisc_disable(struct rte_eth_dev *dev)
 			return ret;
 		}
 	}
+#endif
 
 	return 0;
 }
@@ -1316,19 +1247,28 @@ static int
 tap_allmulti_enable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
-	struct ifreq ifr = { .ifr_flags = IFF_ALLMULTI };
 	int ret;
 
-	ret = tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
+	ret = tap_nl_set_flags(pmd->nlsk_fd, pmd->if_index, IFF_ALLMULTI, 1);
 	if (ret != 0)
 		return ret;
 
+	if (pmd->remote_if_index) {
+		ret = tap_nl_set_flags(pmd->nlsk_fd, pmd->remote_if_index, IFF_ALLMULTI, 1);
+		if (ret != 0)
+			return ret;
+	}
+
+#ifdef HAVE_TCA_FLOWER
 	if (pmd->remote_if_index && !pmd->flow_isolate) {
 		dev->data->all_multicast = 1;
 		ret = tap_flow_implicit_create(pmd, TAP_REMOTE_ALLMULTI);
 		if (ret != 0) {
 			/* Rollback allmulti flag */
-			tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_AND_REMOTE);
+			tap_nl_set_flags(pmd->nlsk_fd, pmd->if_index, IFF_ALLMULTI, 0);
+			if (pmd->remote_if_index)
+				tap_nl_set_flags(pmd->nlsk_fd, pmd->remote_if_index,
+						 IFF_ALLMULTI, 0);
 			/*
 			 * rte_eth_dev_allmulticast_enable() rollback
 			 * dev->data->all_multicast in the case of failure.
@@ -1336,6 +1276,7 @@ tap_allmulti_enable(struct rte_eth_dev *dev)
 			return ret;
 		}
 	}
+#endif
 
 	return 0;
 }
@@ -1344,19 +1285,28 @@ static int
 tap_allmulti_disable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
-	struct ifreq ifr = { .ifr_flags = IFF_ALLMULTI };
 	int ret;
 
-	ret = tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_AND_REMOTE);
+	ret = tap_nl_set_flags(pmd->nlsk_fd, pmd->if_index, IFF_ALLMULTI, 0);
 	if (ret != 0)
 		return ret;
 
+	if (pmd->remote_if_index) {
+		ret = tap_nl_set_flags(pmd->nlsk_fd, pmd->remote_if_index, IFF_ALLMULTI, 0);
+		if (ret != 0)
+			return ret;
+	}
+
+#ifdef HAVE_TCA_FLOWER
 	if (pmd->remote_if_index && !pmd->flow_isolate) {
 		dev->data->all_multicast = 0;
 		ret = tap_flow_implicit_destroy(pmd, TAP_REMOTE_ALLMULTI);
 		if (ret != 0) {
 			/* Rollback allmulti flag */
-			tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
+			tap_nl_set_flags(pmd->nlsk_fd, pmd->if_index, IFF_ALLMULTI, 1);
+			if (pmd->remote_if_index)
+				tap_nl_set_flags(pmd->nlsk_fd, pmd->remote_if_index,
+						 IFF_ALLMULTI, 1);
 			/*
 			 * rte_eth_dev_allmulticast_disable() rollback
 			 * dev->data->all_multicast in the case of failure.
@@ -1364,6 +1314,7 @@ tap_allmulti_disable(struct rte_eth_dev *dev)
 			return ret;
 		}
 	}
+#endif
 
 	return 0;
 }
@@ -1372,8 +1323,8 @@ static int
 tap_mac_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
-	enum ioctl_mode mode = LOCAL_ONLY;
-	struct ifreq ifr;
+	struct rte_ether_addr current_mac;
+	bool set_remote = false;
 	int ret;
 
 	if (pmd->type == ETH_TUNTAP_TYPE_TUN) {
@@ -1388,27 +1339,34 @@ tap_mac_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 		return -EINVAL;
 	}
 	/* Check the actual current MAC address on the tap netdevice */
-	ret = tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, LOCAL_ONLY);
+	ret = tap_nl_get_mac(pmd->nlsk_fd, pmd->if_index, &current_mac);
 	if (ret < 0)
 		return ret;
-	if (rte_is_same_ether_addr(
-			(struct rte_ether_addr *)&ifr.ifr_hwaddr.sa_data,
-			mac_addr))
+	if (rte_is_same_ether_addr(&current_mac, mac_addr))
 		return 0;
+
 	/* Check the current MAC address on the remote */
-	ret = tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, REMOTE_ONLY);
+	if (pmd->remote_if_index) {
+		ret = tap_nl_get_mac(pmd->nlsk_fd, pmd->remote_if_index, &current_mac);
+		if (ret < 0)
+			return ret;
+		if (!rte_is_same_ether_addr(&current_mac, mac_addr))
+			set_remote = true;
+	}
+
+	ret = tap_nl_set_mac(pmd->nlsk_fd, pmd->if_index, mac_addr);
 	if (ret < 0)
 		return ret;
-	if (!rte_is_same_ether_addr(
-			(struct rte_ether_addr *)&ifr.ifr_hwaddr.sa_data,
-			mac_addr))
-		mode = LOCAL_AND_REMOTE;
-	ifr.ifr_hwaddr.sa_family = AF_LOCAL;
-	rte_memcpy(ifr.ifr_hwaddr.sa_data, mac_addr, RTE_ETHER_ADDR_LEN);
-	ret = tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 1, mode);
-	if (ret < 0)
-		return ret;
-	rte_memcpy(&pmd->eth_addr, mac_addr, RTE_ETHER_ADDR_LEN);
+
+	if (set_remote) {
+		ret = tap_nl_set_mac(pmd->nlsk_fd, pmd->remote_if_index, mac_addr);
+		if (ret < 0)
+			return ret;
+	}
+
+	rte_ether_addr_copy(mac_addr, &pmd->eth_addr);
+
+#ifdef HAVE_TCA_FLOWER
 	if (pmd->remote_if_index && !pmd->flow_isolate) {
 		/* Replace MAC redirection rule after a MAC change */
 		ret = tap_flow_implicit_destroy(pmd, TAP_REMOTE_LOCAL_MAC);
@@ -1426,7 +1384,24 @@ tap_mac_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 			return ret;
 		}
 	}
+#endif
 
+	return 0;
+}
+
+static int tap_carrier_set(struct pmd_internals *pmd, int carrier)
+{
+#ifdef TUNSETCARRIER
+	int ret = ioctl(pmd->ka_fd, TUNSETCARRIER, &carrier);
+	if (ret < 0) {
+		TAP_LOG(ERR, "%s: ioctl(TUNSETCARRIER) failed: %s",
+			pmd->name, strerror(errno));
+		return ret;
+	}
+#else
+	(void)pmd;
+	(void)carrier;
+#endif
 	return 0;
 }
 
@@ -1451,7 +1426,7 @@ tap_gso_ctx_setup(struct rte_gso_ctx *gso_ctx, struct rte_eth_dev *dev)
 		if (ret < 0 || ret >= (int)sizeof(pool_name)) {
 			TAP_LOG(ERR,
 				"%s: failed to create mbuf pool name for device %s,"
-				"device name too long or output error, ret: %d\n",
+				"device name too long or output error, ret: %d",
 				pmd->name, dev->device->name, ret);
 			return -ENAMETOOLONG;
 		}
@@ -1461,7 +1436,7 @@ tap_gso_ctx_setup(struct rte_gso_ctx *gso_ctx, struct rte_eth_dev *dev)
 			SOCKET_ID_ANY);
 		if (!pmd->gso_ctx_mp) {
 			TAP_LOG(ERR,
-				"%s: failed to create mbuf pool for device %s\n",
+				"%s: failed to create mbuf pool for device %s",
 				pmd->name, dev->device->name);
 			return -1;
 		}
@@ -1482,52 +1457,31 @@ tap_setup_queue(struct rte_eth_dev *dev,
 		uint16_t qid,
 		int is_rx)
 {
-	int ret;
-	int *fd;
-	int *other_fd;
-	const char *dir;
+	int fd, ret;
 	struct pmd_internals *pmd = dev->data->dev_private;
 	struct pmd_process_private *process_private = dev->process_private;
 	struct rx_queue *rx = &internals->rxq[qid];
 	struct tx_queue *tx = &internals->txq[qid];
-	struct rte_gso_ctx *gso_ctx;
+	struct rte_gso_ctx *gso_ctx = is_rx ? NULL : &tx->gso_ctx;
+	const char *dir = is_rx ? "rx" : "tx";
 
-	if (is_rx) {
-		fd = &process_private->rxq_fds[qid];
-		other_fd = &process_private->txq_fds[qid];
-		dir = "rx";
-		gso_ctx = NULL;
-	} else {
-		fd = &process_private->txq_fds[qid];
-		other_fd = &process_private->rxq_fds[qid];
-		dir = "tx";
-		gso_ctx = &tx->gso_ctx;
-	}
-	if (*fd != -1) {
+	fd = process_private->fds[qid];
+	if (fd != -1) {
 		/* fd for this queue already exists */
 		TAP_LOG(DEBUG, "%s: fd %d for %s queue qid %d exists",
-			pmd->name, *fd, dir, qid);
+			pmd->name, fd, dir, qid);
 		gso_ctx = NULL;
-	} else if (*other_fd != -1) {
-		/* Only other_fd exists. dup it */
-		*fd = dup(*other_fd);
-		if (*fd < 0) {
-			*fd = -1;
-			TAP_LOG(ERR, "%s: dup() failed.", pmd->name);
-			return -1;
-		}
-		TAP_LOG(DEBUG, "%s: dup fd %d for %s queue qid %d (%d)",
-			pmd->name, *other_fd, dir, qid, *fd);
 	} else {
-		/* Both RX and TX fds do not exist (equal -1). Create fd */
-		*fd = tun_alloc(pmd, 0, 0);
-		if (*fd < 0) {
-			*fd = -1; /* restore original value */
+		fd = tun_alloc(pmd, 0, 0);
+		if (fd < 0) {
 			TAP_LOG(ERR, "%s: tun_alloc() failed.", pmd->name);
 			return -1;
 		}
+
 		TAP_LOG(DEBUG, "%s: add %s queue for qid %d fd %d",
-			pmd->name, dir, qid, *fd);
+			pmd->name, dir, qid, fd);
+
+		process_private->fds[qid] = fd;
 	}
 
 	tx->mtu = &dev->data->mtu;
@@ -1540,7 +1494,7 @@ tap_setup_queue(struct rte_eth_dev *dev,
 
 	tx->type = pmd->type;
 
-	return *fd;
+	return fd;
 }
 
 static int
@@ -1618,9 +1572,14 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 		tmp = &(*tmp)->next;
 	}
 
+	/* set carrier after creating at least one rxq */
+	ret = tap_carrier_set(internals, 1);
+	if (ret < 0)
+		goto error;
+
 	TAP_LOG(DEBUG, "  RX TUNTAP device name %s, qid %d on fd %d",
 		internals->name, rx_queue_id,
-		process_private->rxq_fds[rx_queue_id]);
+		process_private->fds[rx_queue_id]);
 
 	return 0;
 
@@ -1664,7 +1623,7 @@ tap_tx_queue_setup(struct rte_eth_dev *dev,
 	TAP_LOG(DEBUG,
 		"  TX TUNTAP device name %s, qid %d on fd %d csum %s",
 		internals->name, tx_queue_id,
-		process_private->txq_fds[tx_queue_id],
+		process_private->fds[tx_queue_id],
 		txq->csum ? "on" : "off");
 
 	return 0;
@@ -1674,9 +1633,16 @@ static int
 tap_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
-	struct ifreq ifr = { .ifr_mtu = mtu };
+	int ret;
 
-	return tap_ioctl(pmd, SIOCSIFMTU, &ifr, 1, LOCAL_AND_REMOTE);
+	ret = tap_nl_set_mtu(pmd->nlsk_fd, pmd->if_index, mtu);
+	if (ret < 0)
+		return ret;
+
+	if (pmd->remote_if_index)
+		return tap_nl_set_mtu(pmd->nlsk_fd, pmd->remote_if_index, mtu);
+
+	return 0;
 }
 
 static int
@@ -1691,17 +1657,122 @@ tap_set_mc_addr_list(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
+static void tap_dev_intr_handler(void *cb_arg);
+static int tap_lsc_intr_handle_set(struct rte_eth_dev *dev, int set);
+
+static int
+tap_netns_change(struct rte_eth_dev *dev)
+{
+	struct pmd_internals *pmd = dev->data->dev_private;
+#ifdef TUNGETDEVNETNS
+	int netns_fd, orig_netns_fd, new_nlsk_fd;
+
+	netns_fd = ioctl(pmd->ka_fd, TUNGETDEVNETNS);
+	if (netns_fd < 0) {
+		TAP_LOG(INFO, "%s: interface deleted", pmd->name);
+		return 0;
+	}
+
+	/* Interface was moved to another namespace */
+	pmd->if_index = 0;
+
+	/* Save current namespace */
+	orig_netns_fd = open("/proc/self/ns/net", O_RDONLY);
+	if (orig_netns_fd < 0) {
+		TAP_LOG(ERR, "%s: failed to open original netns: %s",
+			pmd->name, strerror(errno));
+		close(netns_fd);
+		return -1;
+	}
+
+	/* Switch to new namespace */
+	if (setns(netns_fd, CLONE_NEWNET) < 0) {
+		TAP_LOG(ERR, "%s: failed to enter new netns: %s",
+			pmd->name, strerror(errno));
+		close(netns_fd);
+		close(orig_netns_fd);
+		return -1;
+	}
+
+	/*
+	 * Update ifindex by querying interface name.
+	 * The interface now has a new ifindex in the new namespace.
+	 */
+	pmd->if_index = if_nametoindex(pmd->name);
+
+	/* Recreate netlink socket in new namespace */
+	new_nlsk_fd = tap_nl_init(0);
+
+	/* Recreate LSC interrupt netlink socket in new namespace */
+	rte_intr_callback_unregister_pending(pmd->intr_handle, tap_dev_intr_handler, dev, NULL);
+	if (tap_lsc_intr_handle_set(dev, 1) < 0)
+		TAP_LOG(WARNING, "%s: failed to recreate LSC interrupt socket",
+			pmd->name);
+
+	/* Force carrier back after switching netns */
+	tap_carrier_set(pmd, 1);
+
+	/* Switch back to original namespace */
+	if (setns(orig_netns_fd, CLONE_NEWNET) < 0)
+		TAP_LOG(ERR, "%s: failed to return to original netns: %s",
+			pmd->name, strerror(errno));
+
+	close(orig_netns_fd);
+	close(netns_fd);
+
+	if (pmd->if_index == 0) {
+		TAP_LOG(WARNING, "%s: interface moved to another namespace, "
+			"failed to get new ifindex",
+			pmd->name);
+		if (new_nlsk_fd >= 0)
+			close(new_nlsk_fd);
+		return -1;
+	}
+
+	if (new_nlsk_fd < 0) {
+		TAP_LOG(WARNING, "%s: failed to recreate netlink socket in new namespace",
+			pmd->name);
+		return -1;
+	}
+
+	/* Close old netlink socket and replace with new one */
+	if (pmd->nlsk_fd >= 0)
+		tap_nl_final(pmd->nlsk_fd);
+	pmd->nlsk_fd = new_nlsk_fd;
+
+	TAP_LOG(INFO, "%s: interface moved to another namespace, new ifindex: %u",
+		pmd->name, pmd->if_index);
+#else
+	TAP_LOG(WARNING, "%s: interface deleted or moved to another namespace",
+		pmd->name);
+#endif
+
+	return 0;
+}
+
 static int
 tap_nl_msg_handler(struct nlmsghdr *nh, void *arg)
 {
 	struct rte_eth_dev *dev = arg;
 	struct pmd_internals *pmd = dev->data->dev_private;
 	struct ifinfomsg *info = NLMSG_DATA(nh);
+	int is_local = (info->ifi_index == pmd->if_index);
+	int is_remote = (info->ifi_index == pmd->remote_if_index);
 
-	if (nh->nlmsg_type != RTM_NEWLINK ||
-	    (info->ifi_index != pmd->if_index &&
-	     info->ifi_index != pmd->remote_if_index))
+	/* Ignore messages not for our interfaces */
+	if (!is_local && !is_remote)
 		return 0;
+
+	if (nh->nlmsg_type == RTM_DELLINK && is_local) {
+		/*
+		 * RTM_DELLINK may indicate the interface was moved to another
+		 * network namespace. Check if the device still exists by
+		 * querying its namespace via the keep-alive fd.
+		 */
+		int ret = tap_netns_change(dev);
+		if (ret < 0)
+			return ret;
+	}
 	return tap_link_update(dev, 0);
 }
 
@@ -1730,6 +1801,12 @@ tap_lsc_intr_handle_set(struct rte_eth_dev *dev, int set)
 		return 0;
 	}
 	if (set) {
+		/*
+		 * Subscribe to RTMGRP_LINK to receive RTM_NEWLINK (link state
+		 * changes) events. Also receives RTM_DELLINK events which are
+		 * used for namespace change detection when TUNGETDEVNETNS is
+		 * available.
+		 */
 		rte_intr_fd_set(pmd->intr_handle, tap_nl_init(RTMGRP_LINK));
 		if (unlikely(rte_intr_fd_get(pmd->intr_handle) == -1))
 			return -EBADF;
@@ -1921,7 +1998,9 @@ static const struct eth_dev_ops ops = {
 	.stats_reset            = tap_stats_reset,
 	.dev_supported_ptypes_get = tap_dev_supported_ptypes_get,
 	.rss_hash_update        = tap_rss_hash_update,
+#ifdef HAVE_TCA_FLOWER
 	.flow_ops_get           = tap_dev_flow_ops_get,
+#endif
 };
 
 static int
@@ -1935,7 +2014,6 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	struct pmd_process_private *process_private;
 	const char *tuntap_name = tuntap_types[type];
 	struct rte_eth_dev_data *data;
-	struct ifreq ifr;
 	int i;
 
 	TAP_LOG(DEBUG, "%s device on numa %u", tuntap_name, rte_socket_id());
@@ -1947,14 +2025,13 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 		goto error_exit_nodev;
 	}
 
-	process_private = (struct pmd_process_private *)
-		rte_zmalloc_socket(tap_name, sizeof(struct pmd_process_private),
-			RTE_CACHE_LINE_SIZE, dev->device->numa_node);
-
+	process_private = malloc(sizeof(struct pmd_process_private));
 	if (process_private == NULL) {
 		TAP_LOG(ERR, "Failed to alloc memory for process private");
 		return -1;
 	}
+	memset(process_private, 0, sizeof(struct pmd_process_private));
+
 	pmd = dev->data->dev_private;
 	dev->process_private = process_private;
 	pmd->dev = dev;
@@ -1963,14 +2040,6 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	pmd->ka_fd = -1;
 	pmd->nlsk_fd = -1;
 	pmd->gso_ctx_mp = NULL;
-
-	pmd->ioctl_sock = socket(AF_INET, SOCK_DGRAM, 0);
-	if (pmd->ioctl_sock == -1) {
-		TAP_LOG(ERR,
-			"%s Unable to get a socket for management: %s",
-			tuntap_name, strerror(errno));
-		goto error_exit;
-	}
 
 	/* Allocate interrupt instance */
 	pmd->intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
@@ -2001,16 +2070,15 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	dev->intr_handle = pmd->intr_handle;
 
 	/* Presetup the fds to -1 as being not valid */
-	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
-		process_private->rxq_fds[i] = -1;
-		process_private->txq_fds[i] = -1;
-	}
+	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++)
+		process_private->fds[i] = -1;
+
 
 	if (pmd->type == ETH_TUNTAP_TYPE_TAP) {
 		if (rte_is_zero_ether_addr(mac_addr))
 			rte_eth_random_addr((uint8_t *)&pmd->eth_addr);
 		else
-			rte_memcpy(&pmd->eth_addr, mac_addr, sizeof(*mac_addr));
+			rte_ether_addr_copy(mac_addr, &pmd->eth_addr);
 	}
 
 	/*
@@ -2026,41 +2094,40 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	}
 	TAP_LOG(DEBUG, "allocated %s", pmd->name);
 
-	ifr.ifr_mtu = dev->data->mtu;
-	if (tap_ioctl(pmd, SIOCSIFMTU, &ifr, 1, LOCAL_AND_REMOTE) < 0)
+	/*
+	 * Create netlink socket for interface control.
+	 * Netlink provides ifindex-based operations and is namespace-safe.
+	 */
+	pmd->nlsk_fd = tap_nl_init(0);
+	if (pmd->nlsk_fd == -1) {
+		TAP_LOG(ERR, "%s: failed to create netlink socket.", pmd->name);
+		goto error_exit;
+	}
+
+	pmd->if_index = if_nametoindex(pmd->name);
+	if (!pmd->if_index) {
+		TAP_LOG(ERR, "%s: failed to get if_index.", pmd->name);
+		goto error_exit;
+	}
+
+	if (tap_nl_set_mtu(pmd->nlsk_fd, pmd->if_index, dev->data->mtu) < 0)
 		goto error_exit;
 
 	if (pmd->type == ETH_TUNTAP_TYPE_TAP) {
-		memset(&ifr, 0, sizeof(struct ifreq));
-		ifr.ifr_hwaddr.sa_family = AF_LOCAL;
-		rte_memcpy(ifr.ifr_hwaddr.sa_data, &pmd->eth_addr,
-				RTE_ETHER_ADDR_LEN);
-		if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 0, LOCAL_ONLY) < 0)
+		if (tap_nl_set_mac(pmd->nlsk_fd, pmd->if_index, &pmd->eth_addr) < 0)
 			goto error_exit;
 	}
 
 	/* Make network device persist after application exit */
 	pmd->persist = persist;
 
+#ifdef HAVE_TCA_FLOWER
 	/*
 	 * Set up everything related to rte_flow:
-	 * - netlink socket
-	 * - tap / remote if_index
 	 * - mandatory QDISCs
 	 * - rte_flow actual/implicit lists
 	 * - implicit rules
 	 */
-	pmd->nlsk_fd = tap_nl_init(0);
-	if (pmd->nlsk_fd == -1) {
-		TAP_LOG(WARNING, "%s: failed to create netlink socket.",
-			pmd->name);
-		goto disable_rte_flow;
-	}
-	pmd->if_index = if_nametoindex(pmd->name);
-	if (!pmd->if_index) {
-		TAP_LOG(ERR, "%s: failed to get if_index.", pmd->name);
-		goto disable_rte_flow;
-	}
 	if (qdisc_create_multiq(pmd->nlsk_fd, pmd->if_index) < 0) {
 		TAP_LOG(ERR, "%s: failed to create multiq qdisc.",
 			pmd->name);
@@ -2071,6 +2138,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 			pmd->name);
 		goto disable_rte_flow;
 	}
+
 	LIST_INIT(&pmd->flows);
 
 	if (strlen(remote_iface)) {
@@ -2083,19 +2151,19 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 		strlcpy(pmd->remote_iface, remote_iface, RTE_ETH_NAME_MAX_LEN);
 
 		/* Save state of remote device */
-		tap_ioctl(pmd, SIOCGIFFLAGS, &pmd->remote_initial_flags, 0, REMOTE_ONLY);
+		if (tap_nl_get_flags(pmd->nlsk_fd, pmd->remote_if_index,
+					  &pmd->remote_initial_flags) < 0)
+			pmd->remote_initial_flags = 0;
 
 		/* Replicate remote MAC address */
-		if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, REMOTE_ONLY) < 0) {
+		if (tap_nl_get_mac(pmd->nlsk_fd, pmd->remote_if_index, &pmd->eth_addr) < 0) {
 			TAP_LOG(ERR, "%s: failed to get %s MAC address.",
 				pmd->name, pmd->remote_iface);
 			goto error_remote;
 		}
-		rte_memcpy(&pmd->eth_addr, ifr.ifr_hwaddr.sa_data,
-			   RTE_ETHER_ADDR_LEN);
-		/* The desired MAC is already in ifreq after SIOCGIFHWADDR. */
-		if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 0, LOCAL_ONLY) < 0) {
-			TAP_LOG(ERR, "%s: failed to get %s MAC address.",
+
+		if (tap_nl_set_mac(pmd->nlsk_fd, pmd->if_index, &pmd->eth_addr) < 0) {
+			TAP_LOG(ERR, "%s: failed to set %s MAC address.",
 				pmd->name, remote_iface);
 			goto error_remote;
 		}
@@ -2123,6 +2191,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 			goto error_remote;
 		}
 	}
+#endif
 
 	rte_eth_dev_probing_finish(dev);
 	return 0;
@@ -2137,18 +2206,18 @@ disable_rte_flow:
 	rte_eth_dev_probing_finish(dev);
 	return 0;
 
+#ifdef HAVE_TCA_FLOWER
 error_remote:
 	TAP_LOG(ERR, " Can't set up remote feature: %s(%d)",
 		strerror(errno), errno);
 	tap_flow_implicit_flush(pmd, NULL);
+#endif
 
 error_exit:
 	if (pmd->nlsk_fd != -1)
 		close(pmd->nlsk_fd);
 	if (pmd->ka_fd != -1)
 		close(pmd->ka_fd);
-	if (pmd->ioctl_sock != -1)
-		close(pmd->ioctl_sock);
 	/* mac_addrs must not be freed alone because part of dev_private */
 	dev->data->mac_addrs = NULL;
 	rte_intr_instance_free(pmd->intr_handle);
@@ -2294,7 +2363,7 @@ rte_pmd_tun_probe(struct rte_vdev_device *dev)
 		kvlist = rte_kvargs_parse(params, valid_arguments);
 		if (kvlist) {
 			if (rte_kvargs_count(kvlist, ETH_TAP_IFACE_ARG) == 1) {
-				ret = rte_kvargs_process(kvlist,
+				ret = rte_kvargs_process_opt(kvlist,
 					ETH_TAP_IFACE_ARG,
 					&set_interface_name,
 					tun_name);
@@ -2332,7 +2401,6 @@ tap_mp_attach_queues(const char *port_name, struct rte_eth_dev *dev)
 	struct ipc_queues *request_param = (struct ipc_queues *)request.param;
 	struct ipc_queues *reply_param;
 	struct pmd_process_private *process_private = dev->process_private;
-	int queue, fd_iterator;
 
 	/* Prepare the request */
 	memset(&request, 0, sizeof(request));
@@ -2352,18 +2420,17 @@ tap_mp_attach_queues(const char *port_name, struct rte_eth_dev *dev)
 	TAP_LOG(DEBUG, "Received IPC reply for %s", reply_param->port_name);
 
 	/* Attach the queues from received file descriptors */
-	if (reply_param->rxq_count + reply_param->txq_count != reply->num_fds) {
+	if (reply_param->q_count != reply->num_fds) {
 		TAP_LOG(ERR, "Unexpected number of fds received");
 		return -1;
 	}
 
-	dev->data->nb_rx_queues = reply_param->rxq_count;
-	dev->data->nb_tx_queues = reply_param->txq_count;
-	fd_iterator = 0;
-	for (queue = 0; queue < reply_param->rxq_count; queue++)
-		process_private->rxq_fds[queue] = reply->fds[fd_iterator++];
-	for (queue = 0; queue < reply_param->txq_count; queue++)
-		process_private->txq_fds[queue] = reply->fds[fd_iterator++];
+	dev->data->nb_rx_queues = reply_param->q_count;
+	dev->data->nb_tx_queues = reply_param->q_count;
+
+	for (int q = 0; q < reply_param->q_count; q++)
+		process_private->fds[q] = reply->fds[q];
+
 	free(reply);
 	return 0;
 }
@@ -2393,25 +2460,20 @@ tap_mp_sync_queues(const struct rte_mp_msg *request, const void *peer)
 
 	/* Fill file descriptors for all queues */
 	reply.num_fds = 0;
-	reply_param->rxq_count = 0;
-	if (dev->data->nb_rx_queues + dev->data->nb_tx_queues >
-			RTE_MP_MAX_FD_NUM){
-		TAP_LOG(ERR, "Number of rx/tx queues exceeds max number of fds");
+	reply_param->q_count = 0;
+
+	RTE_ASSERT(dev->data->nb_rx_queues == dev->data->nb_tx_queues);
+
+	if (dev->data->nb_rx_queues > RTE_PMD_TAP_MAX_QUEUES) {
+		TAP_LOG(ERR, "Number of rx/tx queues %u exceeds max number of fds %u",
+			dev->data->nb_rx_queues, RTE_PMD_TAP_MAX_QUEUES);
 		return -1;
 	}
 
 	for (queue = 0; queue < dev->data->nb_rx_queues; queue++) {
-		reply.fds[reply.num_fds++] = process_private->rxq_fds[queue];
-		reply_param->rxq_count++;
+		reply.fds[reply.num_fds++] = process_private->fds[queue];
+		reply_param->q_count++;
 	}
-	RTE_ASSERT(reply_param->rxq_count == dev->data->nb_rx_queues);
-
-	reply_param->txq_count = 0;
-	for (queue = 0; queue < dev->data->nb_tx_queues; queue++) {
-		reply.fds[reply.num_fds++] = process_private->txq_fds[queue];
-		reply_param->txq_count++;
-	}
-	RTE_ASSERT(reply_param->txq_count == dev->data->nb_tx_queues);
 
 	/* Send reply */
 	strlcpy(reply.name, request->name, sizeof(reply.name));
@@ -2458,16 +2520,13 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 			TAP_LOG(ERR, "Primary process is missing");
 			return -1;
 		}
-		eth_dev->process_private = (struct pmd_process_private *)
-			rte_zmalloc_socket(name,
-				sizeof(struct pmd_process_private),
-				RTE_CACHE_LINE_SIZE,
-				eth_dev->device->numa_node);
+		eth_dev->process_private = malloc(sizeof(struct pmd_process_private));
 		if (eth_dev->process_private == NULL) {
 			TAP_LOG(ERR,
 				"Failed to alloc memory for process private");
 			return -1;
 		}
+		memset(eth_dev->process_private, 0, sizeof(struct pmd_process_private));
 
 		ret = tap_mp_attach_queues(name, eth_dev);
 		if (ret != 0)
@@ -2498,10 +2557,10 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 		kvlist = rte_kvargs_parse(params, valid_arguments);
 		if (kvlist) {
 			if (rte_kvargs_count(kvlist, ETH_TAP_IFACE_ARG) == 1) {
-				ret = rte_kvargs_process(kvlist,
-							 ETH_TAP_IFACE_ARG,
-							 &set_interface_name,
-							 tap_name);
+				ret = rte_kvargs_process_opt(kvlist,
+							     ETH_TAP_IFACE_ARG,
+							     &set_interface_name,
+							     tap_name);
 				if (ret == -1)
 					goto leave;
 			}

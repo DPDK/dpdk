@@ -1,0 +1,1347 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright 2025 Nebulamatrix Technology Co., Ltd.
+ */
+
+#include "nbl_dev.h"
+
+static int nbl_dev_port_configure(struct nbl_adapter *adapter)
+{
+	adapter->state = NBL_ETHDEV_CONFIGURED;
+
+	return 0;
+}
+
+int nbl_dev_configure(struct rte_eth_dev *eth_dev)
+{
+	struct rte_eth_dev_data *dev_data = eth_dev->data;
+	enum rte_eth_rx_mq_mode rx_mq_mode = eth_dev->data->dev_conf.rxmode.mq_mode;
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	int ret;
+
+	if (dev_data == NULL || adapter == NULL)
+		return -EINVAL;
+
+	NBL_LOG(DEBUG, "Begin to configure the device, state: %d", adapter->state);
+
+	if (rx_mq_mode != RTE_ETH_MQ_RX_NONE && rx_mq_mode != RTE_ETH_MQ_RX_RSS) {
+		NBL_LOG(ERR, "Rx mq mode %d is not supported", rx_mq_mode);
+		return -ENOTSUP;
+	}
+
+	dev_data->dev_conf.intr_conf.lsc = 0;
+
+	switch (adapter->state) {
+	case NBL_ETHDEV_CONFIGURED:
+	case NBL_ETHDEV_INITIALIZED:
+		ret = nbl_dev_port_configure(adapter);
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+
+	NBL_LOG(DEBUG, "configure the device done %d", ret);
+	return ret;
+}
+
+static int nbl_dev_txrx_start(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dev_ring_mgt *ring_mgt = &dev_mgt->net_dev->ring_mgt;
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_txrx_queue_param param = {0};
+	struct nbl_dev_ring *ring;
+	int ret = 0;
+	int i;
+
+	eth_dev->data->scattered_rx = 0;
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		ring = &ring_mgt->tx_rings[i];
+		param.desc_num = ring->desc_num;
+		param.vsi_id = dev_mgt->net_dev->vsi_id;
+		param.dma = ring->dma;
+		param.local_queue_id = i + ring_mgt->queue_offset;
+		param.intr_en = 0;
+		param.intr_mask = 0;
+		param.extend_header = 1;
+		param.split = 0;
+
+		ret = disp_ops->setup_queue(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), &param, true);
+		if (ret) {
+			NBL_LOG(ERR, "setup_tx_queue failed %d", ret);
+			return ret;
+		}
+
+		ring->global_queue_id =
+			disp_ops->get_vsi_global_qid(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+						     param.vsi_id, param.local_queue_id);
+		eth_dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		ring = &ring_mgt->rx_rings[i];
+		param.desc_num = ring->desc_num;
+		param.vsi_id = dev_mgt->net_dev->vsi_id;
+		param.dma = ring->dma;
+		param.local_queue_id = i + ring_mgt->queue_offset;
+		param.intr_en = 0;
+		param.intr_mask = 0;
+		param.half_offload_en = 0;
+		param.extend_header = 1;
+		param.split = 0;
+		param.rxcsum = 1;
+
+		ret = disp_ops->setup_queue(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), &param, false);
+		if (ret) {
+			NBL_LOG(ERR, "setup_rx_queue failed %d", ret);
+			return ret;
+		}
+
+		ret = disp_ops->alloc_rx_bufs(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), i);
+		if (ret) {
+			NBL_LOG(ERR, "alloc_rx_bufs failed %d", ret);
+			return ret;
+		}
+
+		ring->global_queue_id =
+			disp_ops->get_vsi_global_qid(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+						     param.vsi_id, param.local_queue_id);
+		disp_ops->update_rx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), i);
+		eth_dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
+	ret = disp_ops->cfg_dsch(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), dev_mgt->net_dev->vsi_id, true);
+	if (ret) {
+		NBL_LOG(ERR, "cfg_dsch failed %d", ret);
+		goto cfg_dsch_fail;
+	}
+	ret = disp_ops->setup_cqs(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+				  dev_mgt->net_dev->vsi_id, eth_dev->data->nb_rx_queues, true);
+	if (ret)
+		goto setup_cqs_fail;
+
+	return ret;
+
+setup_cqs_fail:
+	disp_ops->cfg_dsch(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), dev_mgt->net_dev->vsi_id, false);
+cfg_dsch_fail:
+	disp_ops->remove_all_queues(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+				    dev_mgt->net_dev->vsi_id);
+
+	return ret;
+}
+
+static int nbl_dev_update_hw_stats(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_dev_net_mgt *net_dev = NBL_DEV_MGT_TO_NET_DEV(dev_mgt);
+	u32 *uvn_stat_pkt_drop;
+	int i = 0;
+	int ret = 0;
+
+	if (!net_dev->hw_stats_inited)
+		return 0;
+	uvn_stat_pkt_drop = calloc(eth_dev->data->nb_rx_queues, sizeof(*uvn_stat_pkt_drop));
+	if (!uvn_stat_pkt_drop) {
+		ret = -ENOMEM;
+		goto alloc_uvn_stat_pkt_drop_fail;
+	}
+	ret = disp_ops->get_uvn_pkt_drop_stats(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+					       net_dev->vsi_id,
+					       eth_dev->data->nb_rx_queues, uvn_stat_pkt_drop);
+	if (ret)
+		goto get_uvn_pkt_drop_stats_fail;
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		net_dev->hw_stats.total_uvn_stat_pkt_drop[i] += uvn_stat_pkt_drop[i];
+	free(uvn_stat_pkt_drop);
+	uvn_stat_pkt_drop = NULL;
+
+	return 0;
+
+get_uvn_pkt_drop_stats_fail:
+	free(uvn_stat_pkt_drop);
+	uvn_stat_pkt_drop = NULL;
+alloc_uvn_stat_pkt_drop_fail:
+	return ret;
+}
+
+static uint32_t nbl_dev_thread_hw_stats_task(void *param)
+{
+	struct rte_eth_dev *eth_dev = param;
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dev_net_mgt *net_dev = NBL_DEV_MGT_TO_NET_DEV(dev_mgt);
+	char unused[16];
+	ssize_t nr;
+
+	while (true) {
+		nr = read(net_dev->fd[0], &unused, sizeof(unused));
+		if (nr <= 0)
+			break;
+
+		nbl_dev_update_hw_stats(eth_dev);
+	}
+
+	return 0;
+}
+
+static void nbl_dev_update_hw_stats_handler(void *param)
+{
+	struct rte_eth_dev *eth_dev = param;
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dev_net_mgt *net_dev = NBL_DEV_MGT_TO_NET_DEV(dev_mgt);
+	char notify_byte = 0;
+	ssize_t nw;
+
+	nw = write(net_dev->fd[1], &notify_byte, 1);
+	RTE_SET_USED(nw);
+
+	rte_eal_alarm_set(NBL_ALARM_INTERNAL, nbl_dev_update_hw_stats_handler, eth_dev);
+}
+
+static int nbl_dev_hw_stats_start(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_common_info *common = NBL_ADAPTER_TO_COMMON(adapter);
+	struct nbl_dev_net_mgt *net_dev = NBL_DEV_MGT_TO_NET_DEV(dev_mgt);
+	struct nbl_ustore_stats ustore_stats = {0};
+	int ret;
+
+	ret = pipe(net_dev->fd);
+	if (ret) {
+		NBL_LOG(ERR, "hw_stats pipe failed, ret %d", ret);
+		return ret;
+	}
+
+	ret = rte_thread_create_internal_control(&net_dev->tid, "nbl_hw_stats_thread",
+						 nbl_dev_thread_hw_stats_task, eth_dev);
+	if (ret) {
+		NBL_LOG(ERR, "create hw_stats thread failed, ret %d", ret);
+		close(net_dev->fd[0]);
+		close(net_dev->fd[1]);
+		net_dev->fd[0] = -1;
+		net_dev->fd[1] = -1;
+		return ret;
+	}
+
+	if (!common->is_vf) {
+		ret = disp_ops->get_ustore_total_pkt_drop_stats(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+						common->eth_id, &ustore_stats);
+		if (ret) {
+			net_dev->hw_stats_inited = false;
+			return 0;
+		}
+		net_dev->hw_stats_inited = true;
+		net_dev->hw_stats.start_ustore_stats->rx_drop_packets =
+			ustore_stats.rx_drop_packets;
+		net_dev->hw_stats.start_ustore_stats->rx_trun_packets =
+			ustore_stats.rx_trun_packets;
+	}
+
+	rte_eal_alarm_set(NBL_ALARM_INTERNAL, nbl_dev_update_hw_stats_handler, eth_dev);
+
+	return 0;
+}
+
+int nbl_dev_port_start(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_common_info *common = NBL_ADAPTER_TO_COMMON(adapter);
+	int ret;
+
+	if (adapter == NULL)
+		return -EINVAL;
+
+	ret = nbl_userdev_port_config(adapter, NBL_USER_NETWORK);
+	if (ret)
+		return ret;
+
+	ret = nbl_dev_txrx_start(eth_dev);
+	if (ret) {
+		NBL_LOG(ERR, "dev_txrx_start failed %d", ret);
+		nbl_userdev_port_config(adapter, NBL_KERNEL_NETWORK);
+		return ret;
+	}
+
+	ret = nbl_dev_hw_stats_start(eth_dev);
+	if (ret)
+		return ret;
+
+	common->pf_start = 1;
+	return 0;
+}
+
+static void nbl_clear_queues(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	int i;
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		disp_ops->stop_tx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), i);
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		disp_ops->stop_rx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), i);
+}
+
+static void nbl_dev_txrx_stop(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+
+	disp_ops->cfg_dsch(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), dev_mgt->net_dev->vsi_id, false);
+	disp_ops->remove_cqs(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), dev_mgt->net_dev->vsi_id);
+	disp_ops->remove_all_queues(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), dev_mgt->net_dev->vsi_id);
+}
+
+static int nbl_dev_hw_stats_stop(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dev_net_mgt *net_dev = NBL_DEV_MGT_TO_NET_DEV(dev_mgt);
+
+	rte_eal_alarm_cancel(nbl_dev_update_hw_stats_handler, eth_dev);
+
+	/* closing pipe to cause hw_stats thread to exit */
+	close(net_dev->fd[0]);
+	close(net_dev->fd[1]);
+	net_dev->fd[0] = -1;
+	net_dev->fd[1] = -1;
+	rte_thread_join(net_dev->tid, NULL);
+
+	return 0;
+}
+
+int nbl_dev_port_stop(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_common_info *common = NBL_ADAPTER_TO_COMMON(adapter);
+	common->pf_start = 0;
+	rte_delay_ms(NBL_SAFE_THREADS_WAIT_TIME);
+
+	nbl_dev_hw_stats_stop(eth_dev);
+	nbl_dev_txrx_stop(eth_dev);
+	nbl_clear_queues(eth_dev);
+	nbl_userdev_port_config(adapter, NBL_KERNEL_NETWORK);
+	return 0;
+}
+
+static void nbl_release_queues(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	int i;
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		disp_ops->release_tx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), i);
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		disp_ops->release_rx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), i);
+}
+
+int nbl_dev_port_close(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_common_info *common = NBL_ADAPTER_TO_COMMON(adapter);
+
+	/* pf may not start, so no queue need release */
+	if (common->pf_start)
+		nbl_release_queues(eth_dev);
+
+	return 0;
+}
+
+int nbl_tx_queue_setup(struct rte_eth_dev *eth_dev, u16 queue_idx,
+		       u16 nb_desc, unsigned int socket_id, const struct rte_eth_txconf *conf)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_dev_ring_mgt *ring_mgt = &dev_mgt->net_dev->ring_mgt;
+	struct nbl_dev_ring *tx_ring = &ring_mgt->tx_rings[queue_idx];
+	struct nbl_start_tx_ring_param param = { 0 };
+	int ret;
+
+	param.queue_idx = queue_idx;
+	param.nb_desc = nb_desc;
+	param.socket_id = socket_id;
+	param.conf = conf;
+	param.product = adapter->caps.product_type;
+	param.bond_broadcast_check = NULL;
+	ret =  disp_ops->start_tx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), &param, &tx_ring->dma);
+	if (ret) {
+		NBL_LOG(ERR, "start_tx_ring failed %d", ret);
+		return ret;
+	}
+
+	tx_ring->desc_num = nb_desc;
+
+	return ret;
+}
+
+int nbl_rx_queue_setup(struct rte_eth_dev *eth_dev, u16 queue_idx,
+		       u16 nb_desc, unsigned int socket_id,
+		       const struct rte_eth_rxconf *conf, struct rte_mempool *mempool)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_dev_ring_mgt *ring_mgt = &dev_mgt->net_dev->ring_mgt;
+	struct nbl_dev_ring *rx_ring = &ring_mgt->rx_rings[queue_idx];
+	struct nbl_start_rx_ring_param param = { 0 };
+	int ret;
+
+	param.queue_idx = queue_idx;
+	param.nb_desc = nb_desc;
+	param.socket_id = socket_id;
+	param.conf = conf;
+	param.mempool = mempool;
+	param.product = adapter->caps.product_type;
+	ret =  disp_ops->start_rx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), &param, &rx_ring->dma);
+	if (ret) {
+		NBL_LOG(ERR, "start_rx_ring failed %d", ret);
+		return ret;
+	}
+
+	rx_ring->desc_num = nb_desc;
+
+	return ret;
+}
+
+void nbl_tx_queues_release(struct rte_eth_dev *eth_dev, uint16_t queue_id)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+
+	disp_ops->release_tx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), queue_id);
+}
+
+void nbl_rx_queues_release(struct rte_eth_dev *eth_dev, uint16_t queue_id)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+
+	disp_ops->release_rx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), queue_id);
+}
+
+int nbl_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *dev_info)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dev_ring_mgt *ring_mgt = &dev_mgt->net_dev->ring_mgt;
+	struct nbl_common_info *common = NBL_DEV_MGT_TO_COMMON(dev_mgt);
+	struct nbl_board_port_info *board_info = &dev_mgt->common->board_info;
+	u8 speed_mode = board_info->speed;
+
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
+	dev_info->max_mtu = NBL_MAX_JUMBO_FRAME_SIZE - NBL_ETH_OVERHEAD;
+	dev_info->max_rx_pktlen = NBL_FRAME_SIZE_MAX;
+	dev_info->max_mac_addrs = dev_mgt->net_dev->max_mac_num;
+	dev_info->max_rx_queues = ring_mgt->rx_ring_num;
+	dev_info->max_tx_queues = ring_mgt->tx_ring_num;
+	dev_info->min_rx_bufsize = NBL_DEV_MIN_RX_BUFSIZE;
+	dev_info->flow_type_rss_offloads = NBL_RSS_OFFLOAD_TYPE;
+	dev_info->hash_key_size = NBL_EPRO_RSS_SK_SIZE;
+	dev_info->tx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = 32768,
+		.nb_min = 128,
+		.nb_align = 1,
+		.nb_seg_max = 128,
+		.nb_mtu_seg_max = 128,
+	};
+	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = 32768,
+		.nb_min = 128,
+		.nb_align = 1,
+		.nb_seg_max = 128,
+		.nb_mtu_seg_max = 128,
+	};
+	dev_info->default_rxportconf.nb_queues = ring_mgt->rx_ring_num;
+	dev_info->default_txportconf.nb_queues = ring_mgt->tx_ring_num;
+	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_SCATTER;
+	if (!common->is_vf) {
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
+	}
+	switch (speed_mode) {
+	case NBL_FW_PORT_SPEED_100G:
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_100G;
+		/* FALLTHROUGH */
+	case NBL_FW_PORT_SPEED_50G:
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_50G;
+		/* FALLTHROUGH */
+	case NBL_FW_PORT_SPEED_25G:
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_25G;
+		/* FALLTHROUGH */
+	case NBL_FW_PORT_SPEED_10G:
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_10G;
+		break;
+	default:
+		dev_info->speed_capa = RTE_ETH_LINK_SPEED_25G;
+	}
+
+	return 0;
+}
+
+int nbl_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete __rte_unused)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct rte_eth_link link = { 0 };
+
+	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	link.link_status = !!dev_mgt->net_dev->eth_link_info.link_status;
+	if (link.link_status)
+		link.link_speed = dev_mgt->net_dev->eth_link_info.link_speed;
+
+	return rte_eth_linkstatus_set(eth_dev, &link);
+}
+
+int nbl_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats,
+		  struct eth_queue_stats *qstats)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_common_info *common = NBL_DEV_MGT_TO_COMMON(dev_mgt);
+	struct nbl_dev_net_mgt *net_dev = NBL_DEV_MGT_TO_NET_DEV(dev_mgt);
+	struct nbl_ustore_stats ustore_stats = {0};
+	int i = 0;
+	int ret = 0;
+
+	ret = disp_ops->get_stats(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), rte_stats, qstats);
+	if (ret)
+		goto get_stats_fail;
+
+	if (!net_dev->hw_stats_inited)
+		return 0;
+
+	rte_eal_alarm_cancel(nbl_dev_update_hw_stats_handler, eth_dev);
+	ret = nbl_dev_update_hw_stats(eth_dev);
+	if (ret)
+		goto update_hw_stats_fail;
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		if (qstats && i < RTE_ETHDEV_QUEUE_STAT_CNTRS)
+			qstats->q_errors[i] = net_dev->hw_stats.total_uvn_stat_pkt_drop[i];
+		rte_stats->imissed += net_dev->hw_stats.total_uvn_stat_pkt_drop[i];
+	}
+
+	if (!common->is_vf) {
+		ret = disp_ops->get_ustore_total_pkt_drop_stats(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+								common->eth_id, &ustore_stats);
+		if (ret)
+			goto get_ustore_total_pkt_drop_stats_fail;
+		rte_stats->imissed += ustore_stats.rx_drop_packets -
+					net_dev->hw_stats.start_ustore_stats->rx_drop_packets;
+		rte_stats->imissed += ustore_stats.rx_trun_packets -
+					net_dev->hw_stats.start_ustore_stats->rx_trun_packets;
+	}
+
+	rte_eal_alarm_set(NBL_ALARM_INTERNAL, nbl_dev_update_hw_stats_handler, eth_dev);
+
+	return 0;
+
+get_ustore_total_pkt_drop_stats_fail:
+update_hw_stats_fail:
+	rte_eal_alarm_set(NBL_ALARM_INTERNAL, nbl_dev_update_hw_stats_handler, eth_dev);
+get_stats_fail:
+	return ret;
+}
+
+int nbl_stats_reset(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_common_info *common = NBL_DEV_MGT_TO_COMMON(dev_mgt);
+	struct nbl_dev_net_mgt *net_dev = NBL_DEV_MGT_TO_NET_DEV(dev_mgt);
+	u32 *uvn_stat_pkt_drop;
+	struct nbl_ustore_stats ustore_stats = {0};
+	int i = 0;
+	int ret = 0;
+
+	ret = disp_ops->reset_stats(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt));
+
+	if (!net_dev->hw_stats_inited || ret)
+		return ret;
+
+	rte_eal_alarm_cancel(nbl_dev_update_hw_stats_handler, eth_dev);
+
+	uvn_stat_pkt_drop = calloc(eth_dev->data->nb_rx_queues, sizeof(*uvn_stat_pkt_drop));
+	if (!uvn_stat_pkt_drop) {
+		ret = -ENOMEM;
+		goto alloc_uvn_stat_pkt_drop_fail;
+	}
+	ret = disp_ops->get_uvn_pkt_drop_stats(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+					       net_dev->vsi_id,
+					       eth_dev->data->nb_rx_queues, uvn_stat_pkt_drop);
+	if (ret)
+		goto get_uvn_pkt_drop_stats_fail;
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		net_dev->hw_stats.total_uvn_stat_pkt_drop[i] = 0;
+	if (!common->is_vf) {
+		ret = disp_ops->get_ustore_total_pkt_drop_stats(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+								common->eth_id, &ustore_stats);
+		if (ret)
+			goto get_ustore_total_pkt_drop_stats_fail;
+		net_dev->hw_stats.start_ustore_stats->rx_drop_packets =
+			ustore_stats.rx_drop_packets;
+		net_dev->hw_stats.start_ustore_stats->rx_trun_packets =
+			ustore_stats.rx_trun_packets;
+	}
+	free(uvn_stat_pkt_drop);
+	uvn_stat_pkt_drop = NULL;
+
+	rte_eal_alarm_set(NBL_ALARM_INTERNAL, nbl_dev_update_hw_stats_handler, eth_dev);
+
+	return 0;
+
+get_ustore_total_pkt_drop_stats_fail:
+get_uvn_pkt_drop_stats_fail:
+	free(uvn_stat_pkt_drop);
+	uvn_stat_pkt_drop = NULL;
+alloc_uvn_stat_pkt_drop_fail:
+	rte_eal_alarm_set(NBL_ALARM_INTERNAL, nbl_dev_update_hw_stats_handler, eth_dev);
+	return ret;
+}
+
+static int nbl_dev_update_hw_xstats(struct nbl_dev_mgt *dev_mgt, struct rte_eth_xstat *xstats,
+				    u16 need_xstats_cnt, u16 *xstats_cnt)
+{
+	struct nbl_dev_net_mgt *net_dev = dev_mgt->net_dev;
+	struct nbl_common_info *common = NBL_DEV_MGT_TO_COMMON(dev_mgt);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	int i;
+	u16 count = *xstats_cnt;
+
+	disp_ops->get_private_stat_data(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+					common->eth_id, net_dev->hw_xstats,
+					net_dev->hw_xstats_size);
+	for (i = 0; i < need_xstats_cnt; i++) {
+		xstats[count].value = net_dev->hw_xstats[i] - dev_mgt->net_dev->hw_xstats_offset[i];
+		xstats[count].id = count;
+		count++;
+	}
+
+	*xstats_cnt = count;
+	return 0;
+}
+
+int nbl_xstats_get(struct rte_eth_dev *eth_dev, struct rte_eth_xstat *xstats, unsigned int limit)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_common_info *common = NBL_DEV_MGT_TO_COMMON(dev_mgt);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	int ret = 0;
+	u16 txrx_xstats_cnt = 0, hw_xstats_cnt = 0, xstats_cnt = 0, need_xstats_cnt = 0;
+
+	if (!xstats)
+		return 0;
+
+	ret = disp_ops->get_txrx_xstats_cnt(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), &txrx_xstats_cnt);
+	if (!common->is_vf)
+		ret |= disp_ops->get_hw_xstats_cnt(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+						   &hw_xstats_cnt);
+	if (ret)
+		return -EIO;
+
+	if (txrx_xstats_cnt) {
+		if (limit <= txrx_xstats_cnt) {
+			need_xstats_cnt = limit;
+			ret = disp_ops->get_txrx_xstats(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+							xstats, need_xstats_cnt, &xstats_cnt);
+			need_xstats_cnt = 0;
+		} else {
+			need_xstats_cnt = txrx_xstats_cnt;
+			ret = disp_ops->get_txrx_xstats(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+							xstats, need_xstats_cnt, &xstats_cnt);
+			need_xstats_cnt = limit - txrx_xstats_cnt;
+		}
+	}
+	if (ret)
+		return -EIO;
+
+	if (hw_xstats_cnt && need_xstats_cnt) {
+		if (need_xstats_cnt > hw_xstats_cnt)
+			return -EINVAL;
+		ret |= nbl_dev_update_hw_xstats(dev_mgt, xstats, need_xstats_cnt, &xstats_cnt);
+	}
+	if (ret)
+		return -EIO;
+
+	return xstats_cnt;
+}
+
+int nbl_xstats_get_names(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_xstat_name *xstats_names,
+			 unsigned int limit)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_common_info *common = NBL_DEV_MGT_TO_COMMON(dev_mgt);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	u16 txrx_xstats_cnt = 0, hw_xstats_cnt = 0, xstats_cnt = 0, need_xstats_cnt = 0;
+	int ret = 0;
+
+	ret = disp_ops->get_txrx_xstats_cnt(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), &txrx_xstats_cnt);
+	if (!common->is_vf)
+		ret |= disp_ops->get_hw_xstats_cnt(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+							&hw_xstats_cnt);
+	if (ret)
+		return -EIO;
+
+	if (!xstats_names)
+		return txrx_xstats_cnt + hw_xstats_cnt;
+
+	if (txrx_xstats_cnt) {
+		if (limit <= txrx_xstats_cnt) {
+			need_xstats_cnt = limit;
+			ret = disp_ops->get_txrx_xstats_names(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+					xstats_names, need_xstats_cnt, &xstats_cnt);
+			need_xstats_cnt = 0;
+		} else {
+			need_xstats_cnt = txrx_xstats_cnt;
+			ret = disp_ops->get_txrx_xstats_names(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+					xstats_names, need_xstats_cnt, &xstats_cnt);
+			need_xstats_cnt = limit - txrx_xstats_cnt;
+		}
+	}
+	if (ret)
+		return -EIO;
+
+	if (hw_xstats_cnt && need_xstats_cnt) {
+		if (need_xstats_cnt > hw_xstats_cnt)
+			return -EINVAL;
+		ret |= disp_ops->get_hw_xstats_names(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+						     xstats_names, need_xstats_cnt, &xstats_cnt);
+	}
+	if (ret)
+		return -EIO;
+
+	return xstats_cnt;
+}
+
+int nbl_xstats_reset(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_common_info *common = NBL_DEV_MGT_TO_COMMON(dev_mgt);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_dev_net_mgt *net_dev = dev_mgt->net_dev;
+
+	if (!common->is_vf) {
+		disp_ops->get_private_stat_data(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+						dev_mgt->common->eth_id,
+						net_dev->hw_xstats_offset, net_dev->hw_xstats_size);
+	}
+
+	nbl_stats_reset(eth_dev);
+	return 0;
+}
+
+int nbl_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
+{
+	struct rte_eth_dev_data *dev_data = eth_dev->data;
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	uint32_t frame_size = mtu + NBL_ETH_OVERHEAD;
+	int ret;
+
+	/* mtu setting is forbidden if port is start */
+	if (dev_data->dev_started) {
+		NBL_LOG(ERR, "port %d must be stopped before configuration", dev_data->port_id);
+		return -EBUSY;
+	}
+
+	dev_data->dev_conf.rxmode.mtu = frame_size;
+	ret = disp_ops->set_mtu(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), dev_mgt->net_dev->vsi_id, mtu);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+int nbl_promiscuous_enable(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_common_info *common = &adapter->common;
+
+	if (!common->is_vf) {
+		disp_ops->set_promisc_mode(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+					   dev_mgt->net_dev->vsi_id, 1);
+		dev_mgt->net_dev->promisc = 1;
+	} else {
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
+int nbl_promiscuous_disable(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_common_info *common = &adapter->common;
+
+	if (!common->is_vf) {
+		disp_ops->set_promisc_mode(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+					   dev_mgt->net_dev->vsi_id, 0);
+		dev_mgt->net_dev->promisc = 0;
+	} else {
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
+int nbl_vlan_offload_set(__rte_unused struct rte_eth_dev *dev, __rte_unused int mask)
+{
+	/*
+	 * No hardware or state change needed since
+	 * receive does VLAN in software based on rxmode.offload
+	 */
+	return 0;
+}
+
+static int nbl_dev_setup_chan_queue(struct nbl_adapter *adapter)
+{
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	const struct nbl_channel_ops *chan_ops = NBL_DEV_MGT_TO_CHAN_OPS(dev_mgt);
+	int ret = 0;
+
+	ret = chan_ops->setup_queue(NBL_DEV_MGT_TO_CHAN_PRIV(dev_mgt));
+
+	return ret;
+}
+
+static int nbl_dev_teardown_chan_queue(struct nbl_adapter *adapter)
+{
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	const struct nbl_channel_ops *chan_ops = NBL_DEV_MGT_TO_CHAN_OPS(dev_mgt);
+	int ret = 0;
+
+	ret = chan_ops->teardown_queue(NBL_DEV_MGT_TO_CHAN_PRIV(dev_mgt));
+
+	return ret;
+}
+
+static int nbl_dev_leonis_init(void *adapter)
+{
+	return nbl_dev_setup_chan_queue((struct nbl_adapter *)adapter);
+}
+
+static void nbl_dev_leonis_uninit(void *adapter)
+{
+	nbl_dev_teardown_chan_queue((struct nbl_adapter *)adapter);
+}
+
+static void nbl_dev_mailbox_interrupt_handler(void *cn_arg)
+{
+	struct nbl_dev_mgt *dev_mgt = (struct nbl_dev_mgt *)cn_arg;
+	const struct nbl_channel_ops *chan_ops = NBL_DEV_MGT_TO_CHAN_OPS(dev_mgt);
+
+	chan_ops->notify_interrupt(NBL_DEV_MGT_TO_CHAN_PRIV(dev_mgt));
+}
+
+static int nbl_dev_common_start(struct nbl_dev_mgt *dev_mgt)
+{
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	const struct nbl_channel_ops *chan_ops = NBL_DEV_MGT_TO_CHAN_OPS(dev_mgt);
+	struct nbl_dev_net_mgt *net_dev = NBL_DEV_MGT_TO_NET_DEV(dev_mgt);
+	struct nbl_common_info *common = NBL_DEV_MGT_TO_COMMON(dev_mgt);
+	struct nbl_board_port_info *board_info;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(net_dev->eth_dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+	u8 *mac;
+	int ret;
+	u16 priv_cnt = 0;
+
+	board_info = &common->board_info;
+	disp_ops->get_board_info(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), board_info);
+	mac = net_dev->eth_dev->data->mac_addrs->addr_bytes;
+
+	disp_ops->clear_flow(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), net_dev->vsi_id);
+
+	if (NBL_IS_NOT_COEXISTENCE(common)) {
+		ret = disp_ops->configure_msix_map(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), 0, 1, 0);
+		if (ret)
+			goto configure_msix_map_failed;
+
+		ret = disp_ops->enable_mailbox_irq(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), 0, true);
+		if (ret)
+			goto enable_mailbox_irq_failed;
+
+		chan_ops->set_queue_state(NBL_DEV_MGT_TO_CHAN_PRIV(dev_mgt),
+					  NBL_CHAN_INTERRUPT_READY, true);
+
+		ret = rte_intr_callback_register(intr_handle,
+						 nbl_dev_mailbox_interrupt_handler, dev_mgt);
+		if (ret) {
+			NBL_LOG(ERR, "mailbox interrupt handler register failed %d", ret);
+			goto rte_intr_callback_register_failed;
+		}
+
+		ret = rte_intr_enable(intr_handle);
+		if (ret) {
+			NBL_LOG(ERR, "rte_intr_enable failed %d", ret);
+			goto rte_intr_enable_failed;
+		}
+
+		ret = disp_ops->add_macvlan(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+					    mac, 0, net_dev->vsi_id);
+		if (ret)
+			goto add_macvlan_failed;
+
+		ret = disp_ops->add_multi_rule(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), net_dev->vsi_id);
+		if (ret)
+			goto add_multi_rule_failed;
+	}
+
+	net_dev->hw_xstats_offset = NULL;
+	if (!dev_mgt->common->is_vf)
+		disp_ops->get_hw_xstats_cnt(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), &priv_cnt);
+	if (priv_cnt) {
+		net_dev->hw_xstats_offset = rte_zmalloc("nbl_xstats_cnt",
+							priv_cnt * sizeof(u64), 0);
+		net_dev->hw_xstats_size = priv_cnt * sizeof(u64);
+		if (!net_dev->hw_xstats_offset) {
+			ret = -ENOMEM;
+			goto alloc_xstats_offset_failed;
+		}
+		disp_ops->get_private_stat_data(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+						dev_mgt->common->eth_id,
+						net_dev->hw_xstats_offset, net_dev->hw_xstats_size);
+
+		net_dev->hw_xstats = calloc(1, net_dev->hw_xstats_size);
+		if (!net_dev->hw_xstats) {
+			ret = -ENOMEM;
+			goto alloc_hw_xstats_failed;
+		}
+	}
+
+	return 0;
+
+alloc_hw_xstats_failed:
+	rte_free(net_dev->hw_xstats_offset);
+alloc_xstats_offset_failed:
+add_multi_rule_failed:
+	if (NBL_IS_NOT_COEXISTENCE(common))
+		disp_ops->del_macvlan(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), mac, 0, net_dev->vsi_id);
+add_macvlan_failed:
+	if (NBL_IS_NOT_COEXISTENCE(common))
+		rte_intr_disable(intr_handle);
+rte_intr_enable_failed:
+	if (NBL_IS_NOT_COEXISTENCE(common))
+		rte_intr_callback_unregister(intr_handle,
+					     nbl_dev_mailbox_interrupt_handler, dev_mgt);
+rte_intr_callback_register_failed:
+	if (NBL_IS_NOT_COEXISTENCE(common)) {
+		chan_ops->set_queue_state(NBL_DEV_MGT_TO_CHAN_PRIV(dev_mgt),
+					  NBL_CHAN_INTERRUPT_READY, false);
+		disp_ops->enable_mailbox_irq(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), 0, false);
+	}
+enable_mailbox_irq_failed:
+	if (NBL_IS_NOT_COEXISTENCE(common))
+		disp_ops->destroy_msix_map(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt));
+configure_msix_map_failed:
+	return ret;
+}
+
+static int nbl_dev_leonis_start(void *p)
+{
+	struct nbl_adapter *adapter = (struct nbl_adapter *)p;
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	int ret = 0;
+
+	dev_mgt->common = NBL_ADAPTER_TO_COMMON(adapter);
+	ret = nbl_dev_common_start(dev_mgt);
+	if (ret)
+		return ret;
+
+	disp_ops->get_link_state(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+				 dev_mgt->net_dev->eth_id,
+				 &dev_mgt->net_dev->eth_link_info);
+	return 0;
+}
+
+static void nbl_dev_leonis_stop(void *p)
+{
+	struct nbl_adapter *adapter = (struct nbl_adapter *)p;
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dev_net_mgt *net_dev = NBL_DEV_MGT_TO_NET_DEV(dev_mgt);
+	const struct nbl_common_info *common = NBL_DEV_MGT_TO_COMMON(dev_mgt);
+	const struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	const struct nbl_channel_ops *chan_ops = NBL_DEV_MGT_TO_CHAN_OPS(dev_mgt);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(net_dev->eth_dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+	u8 *mac;
+
+	free(net_dev->hw_xstats);
+	rte_free(net_dev->hw_xstats_offset);
+
+	mac = net_dev->eth_dev->data->mac_addrs->addr_bytes;
+	if (NBL_IS_NOT_COEXISTENCE(common)) {
+		rte_intr_disable(intr_handle);
+		rte_intr_callback_unregister(intr_handle,
+					     nbl_dev_mailbox_interrupt_handler, dev_mgt);
+		chan_ops->set_queue_state(NBL_DEV_MGT_TO_CHAN_PRIV(dev_mgt),
+					  NBL_CHAN_INTERRUPT_READY, false);
+		/* wake up pipe read in nbl_chan_thread_polling_task */
+		chan_ops->notify_interrupt(NBL_DEV_MGT_TO_CHAN_PRIV(dev_mgt));
+		disp_ops->enable_mailbox_irq(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), 0, false);
+		disp_ops->destroy_msix_map(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt));
+		disp_ops->del_multi_rule(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), net_dev->vsi_id);
+		disp_ops->del_macvlan(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), mac, 0, net_dev->vsi_id);
+	}
+}
+
+static void nbl_dev_remove_ops(struct nbl_dev_ops_tbl **dev_ops_tbl)
+{
+	free(*dev_ops_tbl);
+	*dev_ops_tbl = NULL;
+}
+
+static int nbl_dev_setup_ops(struct nbl_dev_ops_tbl **dev_ops_tbl,
+			     struct nbl_adapter *adapter)
+{
+	*dev_ops_tbl = calloc(1, sizeof(struct nbl_dev_ops_tbl));
+	if (!*dev_ops_tbl)
+		return -ENOMEM;
+
+	NBL_DEV_OPS_TBL_TO_OPS(*dev_ops_tbl) = NULL;
+	NBL_DEV_OPS_TBL_TO_PRIV(*dev_ops_tbl) = adapter;
+
+	return 0;
+}
+
+static int nbl_dev_setup_rings(struct nbl_dev_ring_mgt *ring_mgt)
+{
+	int i;
+	u8 ring_num = ring_mgt->rx_ring_num;
+
+	ring_num = ring_mgt->rx_ring_num;
+	ring_mgt->rx_rings = rte_calloc("nbl_dev_rxring", ring_num,
+					sizeof(*ring_mgt->rx_rings), 0);
+	if (!ring_mgt->rx_rings)
+		return -ENOMEM;
+
+	for (i = 0; i < ring_num; i++)
+		ring_mgt->rx_rings[i].index = i;
+
+	ring_num = ring_mgt->tx_ring_num;
+	ring_mgt->tx_rings = rte_calloc("nbl_dev_txring", ring_num,
+					sizeof(*ring_mgt->tx_rings), 0);
+	if (!ring_mgt->tx_rings) {
+		rte_free(ring_mgt->rx_rings);
+		ring_mgt->rx_rings = NULL;
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < ring_num; i++)
+		ring_mgt->tx_rings[i].index = i;
+
+	return 0;
+}
+
+static void nbl_dev_remove_rings(struct nbl_dev_ring_mgt *ring_mgt)
+{
+	rte_free(ring_mgt->rx_rings);
+	ring_mgt->rx_rings = NULL;
+
+	rte_free(ring_mgt->tx_rings);
+	ring_mgt->tx_rings = NULL;
+}
+
+static void nbl_dev_remove_net_dev(struct nbl_dev_mgt *dev_mgt)
+{
+	struct nbl_dev_net_mgt *net_dev = NBL_DEV_MGT_TO_NET_DEV(dev_mgt);
+	struct nbl_dev_ring_mgt *ring_mgt = &net_dev->ring_mgt;
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_common_info *common = NBL_DEV_MGT_TO_COMMON(dev_mgt);
+
+	if (!common->is_vf) {
+		rte_free(net_dev->hw_stats.start_ustore_stats);
+		net_dev->hw_stats.start_ustore_stats = NULL;
+	}
+	rte_free(net_dev->hw_stats.total_uvn_stat_pkt_drop);
+	net_dev->hw_stats.total_uvn_stat_pkt_drop = NULL;
+
+	disp_ops->remove_rss(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), net_dev->vsi_id);
+	disp_ops->remove_q2vsi(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), net_dev->vsi_id);
+	disp_ops->free_txrx_queues(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), net_dev->vsi_id);
+	disp_ops->remove_rings(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt));
+	nbl_dev_remove_rings(ring_mgt);
+	disp_ops->unregister_net(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt));
+
+	rte_free(net_dev);
+	NBL_DEV_MGT_TO_NET_DEV(dev_mgt) = NULL;
+}
+
+static int nbl_dev_setup_net_dev(struct nbl_dev_mgt *dev_mgt,
+				 const struct rte_eth_dev *eth_dev,
+				 struct nbl_common_info *common)
+{
+	struct nbl_dev_net_mgt *net_dev;
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_register_net_param register_param = { 0 };
+	struct nbl_register_net_result register_result = { 0 };
+	struct nbl_dev_ring_mgt *ring_mgt;
+	const struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	int ret = 0;
+
+	net_dev = rte_zmalloc("nbl_dev_net", sizeof(struct nbl_dev_net_mgt), 0);
+	if (!net_dev)
+		return -ENOMEM;
+
+	NBL_DEV_MGT_TO_NET_DEV(dev_mgt) = net_dev;
+	NBL_DEV_MGT_TO_ETH_DEV(dev_mgt) = eth_dev;
+	ring_mgt = &net_dev->ring_mgt;
+
+	register_param.pf_bar_start = pci_dev->mem_resource[0].phys_addr;
+	ret = disp_ops->register_net(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+				     &register_param, &register_result);
+	if (ret)
+		goto register_net_failed;
+
+	ring_mgt->tx_ring_num = register_result.tx_queue_num;
+	ring_mgt->rx_ring_num = register_result.rx_queue_num;
+	ring_mgt->queue_offset = register_result.queue_offset;
+
+	net_dev->vsi_id = disp_ops->get_vsi_id(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt));
+	disp_ops->get_eth_id(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), net_dev->vsi_id,
+			     &net_dev->eth_mode, &net_dev->eth_id);
+	net_dev->trust = register_result.trusted;
+
+	if (net_dev->eth_mode == NBL_TWO_ETHERNET_PORT)
+		net_dev->max_mac_num = NBL_TWO_ETHERNET_MAX_MAC_NUM;
+	else if (net_dev->eth_mode == NBL_FOUR_ETHERNET_PORT)
+		net_dev->max_mac_num = NBL_FOUR_ETHERNET_MAX_MAC_NUM;
+
+	common->vsi_id = net_dev->vsi_id;
+	common->eth_id = net_dev->eth_id;
+	rte_ether_addr_copy((struct rte_ether_addr *)register_result.mac,
+			    (struct rte_ether_addr *)common->mac);
+
+	disp_ops->clear_queues(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), net_dev->vsi_id);
+	disp_ops->register_vsi2q(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), NBL_VSI_DATA, net_dev->vsi_id,
+				 register_result.queue_offset, ring_mgt->tx_ring_num);
+	ret = nbl_dev_setup_rings(ring_mgt);
+	if (ret)
+		goto setup_rings_failed;
+
+	ret = disp_ops->alloc_rings(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+				    register_result.tx_queue_num,
+				    register_result.rx_queue_num,
+				    register_result.queue_offset);
+	if (ret) {
+		NBL_LOG(ERR, "alloc_rings failed ret %d", ret);
+		goto alloc_rings_failed;
+	}
+
+	ret = disp_ops->alloc_txrx_queues(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+					  net_dev->vsi_id,
+					  register_result.tx_queue_num);
+	if (ret) {
+		NBL_LOG(ERR, "alloc_txrx_queues failed ret %d", ret);
+		goto alloc_txrx_queues_failed;
+	}
+
+	ret = disp_ops->setup_q2vsi(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), net_dev->vsi_id);
+	if (ret) {
+		NBL_LOG(ERR, "setup_q2vsi failed ret %d", ret);
+		goto setup_q2vsi_failed;
+	}
+
+	ret = disp_ops->setup_rss(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), net_dev->vsi_id);
+
+	net_dev->hw_stats.total_uvn_stat_pkt_drop =
+		rte_zmalloc("nbl_total_uvn_stat_pkt_drop",
+			    sizeof(u64) * (ring_mgt->rx_ring_num), 0);
+	if (!net_dev->hw_stats.total_uvn_stat_pkt_drop) {
+		ret = -ENOMEM;
+		goto alloc_total_uvn_stat_pkt_drop_fail;
+	}
+	if (!common->is_vf) {
+		net_dev->hw_stats.start_ustore_stats =
+			rte_zmalloc("nbl_start_ustore_stats", sizeof(struct nbl_ustore_stats), 0);
+		if (!net_dev->hw_stats.start_ustore_stats) {
+			ret = -ENOMEM;
+			goto alloc_start_ustore_stats_fail;
+		}
+	}
+
+	return ret;
+
+alloc_start_ustore_stats_fail:
+	rte_free(net_dev->hw_stats.total_uvn_stat_pkt_drop);
+alloc_total_uvn_stat_pkt_drop_fail:
+setup_q2vsi_failed:
+	disp_ops->free_txrx_queues(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+				   net_dev->vsi_id);
+alloc_txrx_queues_failed:
+	disp_ops->remove_rings(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt));
+alloc_rings_failed:
+	nbl_dev_remove_rings(ring_mgt);
+setup_rings_failed:
+	disp_ops->unregister_net(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt));
+register_net_failed:
+	rte_free(net_dev);
+
+	return ret;
+}
+
+int nbl_dev_init(void *p, struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = (struct nbl_adapter *)p;
+	struct nbl_dev_mgt **dev_mgt;
+	struct nbl_dev_ops_tbl **dev_ops_tbl;
+	struct nbl_channel_ops_tbl *chan_ops_tbl;
+	struct nbl_dispatch_ops_tbl *dispatch_ops_tbl;
+	const struct nbl_product_dev_ops *product_dev_ops = NULL;
+	struct nbl_common_info *common = NULL;
+	struct nbl_dispatch_ops *disp_ops;
+	int ret = 0;
+
+	dev_mgt = (struct nbl_dev_mgt **)&NBL_ADAPTER_TO_DEV_MGT(adapter);
+	dev_ops_tbl = &NBL_ADAPTER_TO_DEV_OPS_TBL(adapter);
+	chan_ops_tbl = NBL_ADAPTER_TO_CHAN_OPS_TBL(adapter);
+	dispatch_ops_tbl = NBL_ADAPTER_TO_DISP_OPS_TBL(adapter);
+	common = NBL_ADAPTER_TO_COMMON(adapter);
+	product_dev_ops = nbl_dev_get_product_ops(adapter->caps.product_type);
+
+	*dev_mgt = rte_zmalloc("nbl_dev_mgt", sizeof(struct nbl_dev_mgt), 0);
+	if (*dev_mgt == NULL) {
+		NBL_LOG(ERR, "Failed to allocate nbl_dev_mgt memory");
+		return -ENOMEM;
+	}
+
+	NBL_DEV_MGT_TO_CHAN_OPS_TBL(*dev_mgt) = chan_ops_tbl;
+	NBL_DEV_MGT_TO_DISP_OPS_TBL(*dev_mgt) = dispatch_ops_tbl;
+	disp_ops = NBL_DEV_MGT_TO_DISP_OPS(*dev_mgt);
+
+	if (product_dev_ops->dev_init)
+		ret = product_dev_ops->dev_init(adapter);
+
+	if (ret)
+		goto init_dev_failed;
+
+	ret = nbl_dev_setup_ops(dev_ops_tbl, adapter);
+	if (ret)
+		goto set_ops_failed;
+
+	ret = nbl_dev_setup_net_dev(*dev_mgt, eth_dev, common);
+	if (ret)
+		goto setup_net_dev_failed;
+
+	eth_dev->data->mac_addrs =
+		rte_zmalloc("nbl", RTE_ETHER_ADDR_LEN * (*dev_mgt)->net_dev->max_mac_num, 0);
+	if (!eth_dev->data->mac_addrs) {
+		NBL_LOG(ERR, "allocate memory to store mac addr failed");
+		ret = -ENOMEM;
+		goto alloc_mac_addrs_failed;
+	}
+	disp_ops->get_mac_addr(NBL_DEV_MGT_TO_DISP_PRIV(*dev_mgt),
+			       eth_dev->data->mac_addrs[0].addr_bytes);
+
+	adapter->state = NBL_ETHDEV_INITIALIZED;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
+	disp_ops->get_resource_pt_ops(NBL_DEV_MGT_TO_DISP_PRIV(*dev_mgt),
+				      &(*dev_mgt)->pt_ops, 0);
+
+	eth_dev->tx_pkt_burst = (*dev_mgt)->pt_ops.tx_pkt_burst;
+	eth_dev->rx_pkt_burst = (*dev_mgt)->pt_ops.rx_pkt_burst;
+
+	return 0;
+
+alloc_mac_addrs_failed:
+	nbl_dev_remove_net_dev(*dev_mgt);
+setup_net_dev_failed:
+	nbl_dev_remove_ops(dev_ops_tbl);
+set_ops_failed:
+	if (product_dev_ops->dev_uninit)
+		product_dev_ops->dev_uninit(adapter);
+init_dev_failed:
+	rte_free(*dev_mgt);
+	*dev_mgt = NULL;
+	return ret;
+}
+
+void nbl_dev_remove(void *p)
+{
+	struct nbl_adapter *adapter = (struct nbl_adapter *)p;
+	struct nbl_dev_mgt **dev_mgt;
+	struct nbl_dev_ops_tbl **dev_ops_tbl;
+	const struct nbl_product_dev_ops *product_dev_ops = NULL;
+	const struct rte_eth_dev *eth_dev;
+
+	dev_mgt = (struct nbl_dev_mgt **)&NBL_ADAPTER_TO_DEV_MGT(adapter);
+	dev_ops_tbl = &NBL_ADAPTER_TO_DEV_OPS_TBL(adapter);
+	product_dev_ops = nbl_dev_get_product_ops(adapter->caps.product_type);
+	eth_dev = (*dev_mgt)->net_dev->eth_dev;
+
+	rte_free(eth_dev->data->mac_addrs);
+	eth_dev->data->mac_addrs = NULL;
+
+	nbl_dev_remove_net_dev(*dev_mgt);
+	nbl_dev_remove_ops(dev_ops_tbl);
+	if (product_dev_ops->dev_uninit)
+		product_dev_ops->dev_uninit(adapter);
+
+	rte_free(*dev_mgt);
+	*dev_mgt = NULL;
+}
+
+void nbl_dev_stop(void *p)
+{
+	struct nbl_adapter *adapter = (struct nbl_adapter *)p;
+	const struct nbl_product_dev_ops *product_dev_ops = NULL;
+
+	product_dev_ops = nbl_dev_get_product_ops(adapter->caps.product_type);
+	if (product_dev_ops->dev_stop)
+		return product_dev_ops->dev_stop(p);
+}
+
+int nbl_dev_start(void *p)
+{
+	struct nbl_adapter *adapter = (struct nbl_adapter *)p;
+	const struct nbl_product_dev_ops *product_dev_ops = NULL;
+
+	product_dev_ops = nbl_dev_get_product_ops(adapter->caps.product_type);
+	if (product_dev_ops->dev_start)
+		return product_dev_ops->dev_start(p);
+	return 0;
+}
+
+const struct nbl_product_dev_ops nbl_product_dev_ops[NBL_PRODUCT_MAX] = {
+	[NBL_LEONIS_TYPE] = {
+		.dev_init	= nbl_dev_leonis_init,
+		.dev_uninit	= nbl_dev_leonis_uninit,
+		.dev_start	= nbl_dev_leonis_start,
+		.dev_stop	= nbl_dev_leonis_stop,
+	},
+};
+
+const struct nbl_product_dev_ops *nbl_dev_get_product_ops(enum nbl_product_type product_type)
+{
+	RTE_ASSERT(product_type < NBL_PRODUCT_MAX);
+	return &nbl_product_dev_ops[product_type];
+}

@@ -111,6 +111,20 @@ Test steps
       RTE>>cryptodev_uadk_autotest
       RTE>>quit
 
+As a reference, the following table shows a mapping between the past DPDK versions
+and the UADK library version supported by them:
+
+.. _table_uadk_crypto_pmd_versions:
+
+.. table:: DPDK and external UADK library version compatibility
+
+   ==============  ============================
+   DPDK version    UADK library version
+   ==============  ============================
+   22.11 - 25.03   2.4 - 2.8
+   25.07+          2.9.1
+   ==============  ============================
+
 
 Initialization
 --------------

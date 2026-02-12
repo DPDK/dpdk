@@ -22,8 +22,8 @@
 struct rte_lpm *lpm;
 static struct rte_rcu_qsbr *rv;
 static volatile uint8_t writer_done;
-static volatile uint32_t thr_id;
-static uint64_t gwrite_cycles;
+static volatile RTE_ATOMIC(uint32_t) thr_id;
+static RTE_ATOMIC(uint64_t) gwrite_cycles;
 static uint32_t num_writers;
 
 /* LPM APIs are not thread safe, use spinlock */
@@ -362,7 +362,7 @@ alloc_thread_id(void)
 {
 	uint32_t tmp_thr_id;
 
-	tmp_thr_id = __atomic_fetch_add(&thr_id, 1, __ATOMIC_RELAXED);
+	tmp_thr_id = rte_atomic_fetch_add_explicit(&thr_id, 1, rte_memory_order_relaxed);
 	if (tmp_thr_id >= RTE_MAX_LCORE)
 		printf("Invalid thread id %u\n", tmp_thr_id);
 
@@ -470,7 +470,7 @@ test_lpm_rcu_qsbr_writer(void *arg)
 
 	total_cycles = rte_rdtsc_precise() - begin;
 
-	__atomic_fetch_add(&gwrite_cycles, total_cycles, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&gwrite_cycles, total_cycles, rte_memory_order_relaxed);
 
 	return 0;
 
@@ -540,9 +540,9 @@ test_lpm_rcu_perf_multi_writer(uint8_t use_rcu)
 			reader_f = test_lpm_reader;
 
 		writer_done = 0;
-		__atomic_store_n(&gwrite_cycles, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&gwrite_cycles, 0, rte_memory_order_relaxed);
 
-		__atomic_store_n(&thr_id, 0, __ATOMIC_SEQ_CST);
+		rte_atomic_store_explicit(&thr_id, 0, rte_memory_order_seq_cst);
 
 		/* Launch reader threads */
 		for (i = j; i < num_cores; i++)
@@ -563,7 +563,7 @@ test_lpm_rcu_perf_multi_writer(uint8_t use_rcu)
 		printf("Total LPM Adds: %d\n", TOTAL_WRITES);
 		printf("Total LPM Deletes: %d\n", TOTAL_WRITES);
 		printf("Average LPM Add/Del: %"PRIu64" cycles\n",
-			__atomic_load_n(&gwrite_cycles, __ATOMIC_RELAXED)
+			rte_atomic_load_explicit(&gwrite_cycles, rte_memory_order_relaxed)
 			/ TOTAL_WRITES);
 
 		writer_done = 1;

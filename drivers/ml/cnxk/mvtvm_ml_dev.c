@@ -63,7 +63,7 @@ mvtvm_mldev_parse_devargs(const char *args, struct mvtvm_ml_dev *mvtvm_mldev)
 
 	kvlist = rte_kvargs_parse(args, valid_args);
 	if (kvlist == NULL) {
-		plt_err("Error parsing %s devargs\n", "MLDEV_NAME_MVTVM_PMD");
+		plt_err("Error parsing %s devargs", "MLDEV_NAME_MVTVM_PMD");
 		return -EINVAL;
 	}
 
@@ -71,7 +71,7 @@ mvtvm_mldev_parse_devargs(const char *args, struct mvtvm_ml_dev *mvtvm_mldev)
 		ret = rte_kvargs_process(kvlist, MVTVM_ML_DEV_MAX_QPS, &parse_uint_arg,
 					 &mvtvm_mldev->max_nb_qpairs);
 		if (ret < 0) {
-			plt_err("Error processing arguments, key = %s\n", MVTVM_ML_DEV_MAX_QPS);
+			plt_err("Error processing arguments, key = %s", MVTVM_ML_DEV_MAX_QPS);
 			ret = -EINVAL;
 			goto exit;
 		}
@@ -82,7 +82,7 @@ mvtvm_mldev_parse_devargs(const char *args, struct mvtvm_ml_dev *mvtvm_mldev)
 		ret = rte_kvargs_process(kvlist, MVTVM_ML_DEV_CACHE_MODEL_DATA, &parse_integer_arg,
 					 &mvtvm_mldev->cache_model_data);
 		if (ret < 0) {
-			plt_err("Error processing arguments, key = %s\n",
+			plt_err("Error processing arguments, key = %s",
 				MVTVM_ML_DEV_CACHE_MODEL_DATA);
 			ret = -EINVAL;
 			goto exit;
@@ -99,7 +99,7 @@ check_args:
 		mvtvm_mldev->cache_model_data = CN10K_ML_DEV_CACHE_MODEL_DATA_DEFAULT;
 	} else {
 		if ((mvtvm_mldev->cache_model_data < 0) || (mvtvm_mldev->cache_model_data > 1)) {
-			plt_err("Invalid argument, %s = %d\n", MVTVM_ML_DEV_CACHE_MODEL_DATA,
+			plt_err("Invalid argument, %s = %d", MVTVM_ML_DEV_CACHE_MODEL_DATA,
 				mvtvm_mldev->cache_model_data);
 			ret = -EINVAL;
 			goto exit;

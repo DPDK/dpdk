@@ -1,16 +1,14 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017-2019 Intel Corporation
 
-if is_ms_compiler
-    subdir_done()
-endif
-
 disable_apps = ',' + get_option('disable_apps')
 disable_apps = run_command(list_dir_globs, disable_apps, check: true).stdout().split()
 
 enable_apps = ',' + get_option('enable_apps')
 enable_apps = run_command(list_dir_globs, enable_apps, check: true).stdout().split()
+require_apps = true
 if enable_apps.length() == 0
+    require_apps = false
     enable_apps = run_command(list_dir_globs, '*', check: true).stdout().split()
 endif
 
@@ -53,6 +51,7 @@ foreach app:apps
     build = true
     reason = '<unknown reason>' # set if build == false to explain
     sources = []
+    resources = []
     includes = []
     cflags = default_cflags
     ldflags = default_ldflags
@@ -74,6 +73,10 @@ foreach app:apps
 
     if build
         subdir(name)
+        if not build and require_apps
+            error('Cannot build explicitly requested app "@0@".\n'.format(name)
+                  + '\tReason: ' + reason)
+        endif
     endif
 
     if build
@@ -84,6 +87,10 @@ foreach app:apps
                 build = false
                 reason = 'missing internal dependency, "@0@"'.format(d)
                 message('Missing dependency "@0@" for app "@1@"'.format(d, name))
+                if require_apps
+                    error('Cannot build explicitly requested app "@0@".\n'.format(name)
+                          + '\tPlease add missing dependency "@0@" to "enable_libs" option'.format(d))
+                endif
                 break
             endif
             dep_objs += [get_variable(var_name)]
@@ -105,7 +112,7 @@ foreach app:apps
     endif
 
     exec = executable('dpdk-' + name,
-            sources,
+            [ sources, resources ],
             c_args: cflags,
             link_args: ldflags,
             link_whole: link_libs,

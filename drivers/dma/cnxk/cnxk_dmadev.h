@@ -28,8 +28,10 @@
 						((s).var - 1))
 #define CNXK_DPI_MAX_DESC		    32768
 #define CNXK_DPI_MIN_DESC		    2
-#define CNXK_DPI_MAX_VCHANS_PER_QUEUE	    4
+#define CN10K_DPI_MAX_PRI		    2
+#define CNXK_DPI_MAX_VCHANS_PER_QUEUE	    128
 #define CNXK_DPI_QUEUE_BUF_SIZE		    16256
+#define CNXK_DPI_QUEUE_BUF_SIZE_V2	    130944
 #define CNXK_DPI_POOL_MAX_CACHE_SZ	    (16)
 #define CNXK_DPI_DW_PER_SINGLE_CMD	    8
 #define CNXK_DPI_HDR_LEN		    4
@@ -37,16 +39,11 @@
 #define CNXK_DPI_MAX_CMD_SZ		    CNXK_DPI_CMD_LEN(CNXK_DPI_MAX_POINTER,		\
 							     CNXK_DPI_MAX_POINTER)
 #define CNXK_DPI_CHUNKS_FROM_DESC(cz, desc) (((desc) / (((cz) / 8) / CNXK_DPI_MAX_CMD_SZ)) + 1)
-
+#define CNXK_DPI_COMPL_OFFSET		    ROC_CACHE_LINE_SZ
 /* Set Completion data to 0xFF when request submitted,
  * upon successful request completion engine reset to completion status
  */
 #define CNXK_DPI_REQ_CDATA 0xFF
-
-/* Set Completion data to 0xDEADBEEF when request submitted for SSO.
- * This helps differentiate if the dequeue is called after cnxk enueue.
- */
-#define CNXK_DPI_REQ_SSO_CDATA    0xDEADBEEF
 
 union cnxk_dpi_instr_cmd {
 	uint64_t u;
@@ -91,35 +88,21 @@ union cnxk_dpi_instr_cmd {
 	} cn10k;
 };
 
-struct cnxk_dpi_compl_s {
-	uint64_t cdata;
-	void *op;
-	uint16_t dev_id;
-	uint16_t vchan;
-	uint32_t wqecs;
-};
-
 struct cnxk_dpi_cdesc_data_s {
-	struct cnxk_dpi_compl_s **compl_ptr;
 	uint16_t max_cnt;
 	uint16_t head;
 	uint16_t tail;
-};
-
-struct cnxk_dma_adapter_info {
-	bool enabled;               /* Set if vchan queue is added to dma adapter. */
-	struct rte_mempool *req_mp; /* DMA inflight request mempool. */
+	uint8_t *compl_ptr;
+	struct rte_dma_op **ops;
 };
 
 struct cnxk_dpi_conf {
 	union cnxk_dpi_instr_cmd cmd;
 	struct cnxk_dpi_cdesc_data_s c_desc;
-	uint16_t pnum_words;
-	uint16_t pending;
 	uint16_t desc_idx;
 	struct rte_dma_stats stats;
 	uint64_t completed_offset;
-	struct cnxk_dma_adapter_info adapter_info;
+	bool adapter_enabled;
 };
 
 struct cnxk_dpi_vf_s {
@@ -127,6 +110,7 @@ struct cnxk_dpi_vf_s {
 	uint64_t *chunk_base;
 	uint16_t chunk_head;
 	uint16_t chunk_size_m1;
+	uint16_t total_pnum_words;
 	struct rte_mempool *chunk_pool;
 	struct cnxk_dpi_conf conf[CNXK_DPI_MAX_VCHANS_PER_QUEUE];
 	RTE_ATOMIC(rte_mcslock_t *) mcs_lock;
@@ -148,5 +132,11 @@ int cn10k_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iov
 int cn10k_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge *src,
 			 const struct rte_dma_sge *dst, uint16_t nb_src, uint16_t nb_dst,
 			 uint64_t flags);
+uint16_t cnxk_dma_ops_enqueue(void *dev_private, uint16_t vchan, struct rte_dma_op **ops,
+			      uint16_t nb_ops);
+uint16_t cn10k_dma_ops_enqueue(void *dev_private, uint16_t vchan, struct rte_dma_op **ops,
+			       uint16_t nb_ops);
+uint16_t cnxk_dma_ops_dequeue(void *dev_private, uint16_t vchan, struct rte_dma_op **ops,
+			      uint16_t nb_ops);
 
 #endif

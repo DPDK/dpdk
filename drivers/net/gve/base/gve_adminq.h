@@ -110,6 +110,21 @@ struct gve_device_option_dqo_rda {
 
 GVE_CHECK_STRUCT_LEN(8, gve_device_option_dqo_rda);
 
+struct gve_ring_size_bound {
+	__be16 rx;
+	__be16 tx;
+};
+
+GVE_CHECK_STRUCT_LEN(4, gve_ring_size_bound);
+
+struct gve_device_option_modify_ring {
+	__be32 supported_features_mask;
+	struct gve_ring_size_bound max_ring_size;
+	struct gve_ring_size_bound min_ring_size;
+};
+
+GVE_CHECK_STRUCT_LEN(12, gve_device_option_modify_ring);
+
 struct gve_device_option_jumbo_frames {
 	__be32 supported_features_mask;
 	__be16 max_mtu;
@@ -131,6 +146,7 @@ enum gve_dev_opt_id {
 	GVE_DEV_OPT_ID_GQI_RDA = 0x2,
 	GVE_DEV_OPT_ID_GQI_QPL = 0x3,
 	GVE_DEV_OPT_ID_DQO_RDA = 0x4,
+	GVE_DEV_OPT_ID_MODIFY_RING = 0x6,
 	GVE_DEV_OPT_ID_JUMBO_FRAMES = 0x8,
 };
 
@@ -139,10 +155,12 @@ enum gve_dev_opt_req_feat_mask {
 	GVE_DEV_OPT_REQ_FEAT_MASK_GQI_RDA = 0x0,
 	GVE_DEV_OPT_REQ_FEAT_MASK_GQI_QPL = 0x0,
 	GVE_DEV_OPT_REQ_FEAT_MASK_DQO_RDA = 0x0,
+	GVE_DEV_OPT_REQ_FEAT_MASK_MODIFY_RING = 0x0,
 	GVE_DEV_OPT_REQ_FEAT_MASK_JUMBO_FRAMES = 0x0,
 };
 
 enum gve_sup_feature_mask {
+	GVE_SUP_MODIFY_RING_MASK = 1 << 0,
 	GVE_SUP_JUMBO_FRAMES_MASK = 1 << 2,
 };
 

@@ -5,13 +5,6 @@
 NVIDIA MLX4 Ethernet Driver
 ===========================
 
-.. note::
-
-   NVIDIA acquired Mellanox Technologies in 2020.
-   The DPDK documentation and code might still include instances
-   of or references to Mellanox trademarks (like BlueField and ConnectX)
-   that are now NVIDIA trademarks.
-
 The MLX4 poll mode driver library (**librte_net_mlx4**) implements support
 for **NVIDIA ConnectX-3** and **NVIDIA ConnectX-3 Pro** 10/40 Gbps adapters
 as well as their virtual functions (VF) in SR-IOV context.
@@ -274,9 +267,8 @@ Installing NVIDIA MLNX_OFED
 
         connectx_port_config
 
-#. Continue with :ref:`section 2 of the Quick Start Guide <QSG_2>`.
+#. Continue with :ref:`section 2 of the Quick Start Guide <mlx4_QSG_2>`.
 
-.. _qsg:
 
 Quick Start Guide
 -----------------
@@ -293,7 +285,7 @@ Quick Start Guide
         to Ethernet using connectx_port_config tool provided by it.
         :ref:`OFED_as_a_fallback`:
 
-.. _QSG_2:
+.. _mlx4_QSG_2:
 
 #. In case of bare metal or hypervisor, configure optimized steering mode
    by adding the following line to ``/etc/modprobe.d/mlx4_core.conf``::
@@ -364,7 +356,7 @@ Performance tuning
 
 #. To minimize overhead of searching Memory Regions:
 
-   - '--socket-mem' is recommended to pin memory by predictable amount.
+   - '--numa-mem' is recommended to pin memory by predictable amount.
    - Configure per-lcore cache when creating Mempools for packet buffer.
    - Refrain from dynamically allocating/freeing memory in run-time.
 
@@ -428,7 +420,7 @@ devices managed by librte_net_mlx4.
 
 #. Start testpmd with basic parameters::
 
-      dpdk-testpmd -l 8-15 -n 4 -a 0000:83:00.0 -a 0000:84:00.0 -- --rxq=2 --txq=2 -i
+      dpdk-testpmd -l 8-15 -a 0000:83:00.0 -a 0000:84:00.0 -- --rxq=2 --txq=2 -i
 
    Example output::
 

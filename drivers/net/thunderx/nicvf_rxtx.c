@@ -76,7 +76,7 @@ nicvf_single_pool_free_xmited_buffers(struct nicvf_txq *sq)
 	uint32_t curr_head;
 	uint32_t head = sq->head;
 	struct rte_mbuf **txbuffs = sq->txbuffs;
-	void *obj_p[NICVF_MAX_TX_FREE_THRESH] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) void *obj_p[NICVF_MAX_TX_FREE_THRESH];
 
 	curr_head = nicvf_addr_read(sq->sq_head) >> 4;
 	while (head != curr_head) {
@@ -239,7 +239,7 @@ nicvf_xmit_pkts_multiseg(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return i;
 }
 
-static const uint32_t ptype_table[16][16] __rte_cache_aligned = {
+static const alignas(RTE_CACHE_LINE_SIZE) uint32_t ptype_table[16][16] = {
 	[L3_NONE][L4_NONE] = RTE_PTYPE_UNKNOWN,
 	[L3_NONE][L4_IPSEC_ESP] = RTE_PTYPE_UNKNOWN,
 	[L3_NONE][L4_IPFRAG] = RTE_PTYPE_L4_FRAG,
@@ -342,7 +342,7 @@ nicvf_rx_classify_pkt(cqe_rx_word0_t cqe_rx_w0)
 static inline uint64_t __rte_hot
 nicvf_set_olflags(const cqe_rx_word0_t cqe_rx_w0)
 {
-	static const uint64_t flag_table[3] __rte_cache_aligned = {
+	static const alignas(RTE_CACHE_LINE_SIZE) uint64_t flag_table[3] = {
 		RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD,
 		RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN,
 		RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
@@ -363,7 +363,7 @@ nicvf_fill_rbdr(struct nicvf_rxq *rxq, int to_fill)
 	struct rbdr_entry_t *desc = rbdr->desc;
 	uint32_t qlen_mask = rbdr->qlen_mask;
 	uintptr_t door = rbdr->rbdr_door;
-	void *obj_p[NICVF_MAX_RX_FREE_THRESH] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) void *obj_p[NICVF_MAX_RX_FREE_THRESH];
 
 	if (unlikely(rte_mempool_get_bulk(rxq->pool, obj_p, to_fill) < 0)) {
 		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
@@ -374,8 +374,8 @@ nicvf_fill_rbdr(struct nicvf_rxq *rxq, int to_fill)
 	NICVF_RX_ASSERT((unsigned int)to_fill <= (qlen_mask -
 		(nicvf_addr_read(rbdr->rbdr_status) & NICVF_RBDR_COUNT_MASK)));
 
-	next_tail = __atomic_fetch_add(&rbdr->next_tail, to_fill,
-					__ATOMIC_ACQUIRE);
+	next_tail = rte_atomic_fetch_add_explicit(&rbdr->next_tail, to_fill,
+					rte_memory_order_acquire);
 	ltail = next_tail;
 	for (i = 0; i < to_fill; i++) {
 		struct rbdr_entry_t *entry = desc + (ltail & qlen_mask);
@@ -385,9 +385,10 @@ nicvf_fill_rbdr(struct nicvf_rxq *rxq, int to_fill)
 		ltail++;
 	}
 
-	rte_wait_until_equal_32(&rbdr->tail, next_tail, __ATOMIC_RELAXED);
+	rte_wait_until_equal_32((uint32_t *)(uintptr_t)&rbdr->tail, next_tail,
+			rte_memory_order_relaxed);
 
-	__atomic_store_n(&rbdr->tail, ltail, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&rbdr->tail, ltail, rte_memory_order_release);
 	nicvf_addr_write(door, to_fill);
 	return to_fill;
 }
@@ -648,7 +649,7 @@ nicvf_recv_pkts_multiseg_cksum_vlan_strip(void *rx_queue,
 			NICVF_RX_OFFLOAD_CKSUM | NICVF_RX_OFFLOAD_VLAN_STRIP);
 }
 
-uint32_t
+int
 nicvf_dev_rx_queue_count(void *rx_queue)
 {
 	struct nicvf_rxq *rxq;

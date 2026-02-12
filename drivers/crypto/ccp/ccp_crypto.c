@@ -1829,7 +1829,7 @@ ccp_perform_sha3_hmac(struct rte_crypto_op *op,
 	append_ptr = (uint8_t *)rte_pktmbuf_append(op->sym->m_src,
 						session->auth.ctx_len);
 	if (!append_ptr) {
-		CCP_LOG_ERR("CCP MBUF append failed\n");
+		CCP_LOG_ERR("CCP MBUF append failed");
 		return -1;
 	}
 	dest_addr = (phys_addr_t)rte_mem_virt2iova((void *)append_ptr);
@@ -1966,7 +1966,7 @@ ccp_perform_sha3(struct rte_crypto_op *op,
 	append_ptr = (uint8_t *)rte_pktmbuf_append(op->sym->m_src,
 						session->auth.ctx_len);
 	if (!append_ptr) {
-		CCP_LOG_ERR("CCP MBUF append failed\n");
+		CCP_LOG_ERR("CCP MBUF append failed");
 		return -1;
 	}
 	dest_addr = (phys_addr_t)rte_mem_virt2iova((void *)append_ptr);

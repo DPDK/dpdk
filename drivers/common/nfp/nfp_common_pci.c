@@ -7,6 +7,7 @@
 
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_class.h>
 #include <rte_devargs.h>
 #include <rte_kvargs.h>
@@ -170,10 +171,8 @@ nfp_parse_class_options(const struct rte_devargs *devargs)
 	if (kvargs == NULL)
 		return dev_class;
 
-	if (rte_kvargs_count(kvargs, RTE_DEVARGS_KEY_CLASS) != 0) {
-		rte_kvargs_process(kvargs, RTE_DEVARGS_KEY_CLASS,
-				nfp_kvarg_dev_class_handler, &dev_class);
-	}
+	rte_kvargs_process_opt(kvargs, RTE_DEVARGS_KEY_CLASS,
+			       nfp_kvarg_dev_class_handler, &dev_class);
 
 	rte_kvargs_free(kvargs);
 
@@ -193,7 +192,7 @@ nfp_drivers_probe(struct rte_pci_device *pci_dev,
 
 		ret = driver->probe(pci_dev);
 		if (ret < 0) {
-			PMD_DRV_LOG(ERR, "Failed to load driver %s", driver->name);
+			PMD_DRV_LOG(ERR, "Failed to load driver %s.", driver->name);
 			return ret;
 		}
 	}
@@ -208,11 +207,11 @@ nfp_common_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	enum nfp_class class;
 	struct rte_device *eal_dev = &pci_dev->device;
 
-	PMD_DRV_LOG(INFO, "probe device %s.", eal_dev->name);
+	PMD_DRV_LOG(INFO, "Probe device %s.", eal_dev->name);
 
 	class = nfp_parse_class_options(eal_dev->devargs);
 	if (class == NFP_CLASS_INVALID) {
-		PMD_DRV_LOG(ERR, "Unsupported nfp class type: %s",
+		PMD_DRV_LOG(ERR, "Unsupported nfp class type: %s.",
 				eal_dev->devargs->args);
 		return -ENOTSUP;
 	}
@@ -259,6 +258,7 @@ nfp_common_init(void)
 	nfp_common_initialized = true;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(nfp_class_driver_register)
 void
 nfp_class_driver_register(struct nfp_class_driver *driver)
 {

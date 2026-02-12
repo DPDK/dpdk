@@ -51,7 +51,7 @@ typedef int (*rte_tm_node_capabilities_get_t)(struct rte_eth_dev *dev,
 /** @internal Traffic manager WRED profile add */
 typedef int (*rte_tm_wred_profile_add_t)(struct rte_eth_dev *dev,
 	uint32_t wred_profile_id,
-	struct rte_tm_wred_params *profile,
+	const struct rte_tm_wred_params *profile,
 	struct rte_tm_error *error);
 
 /** @internal Traffic manager WRED profile delete */
@@ -75,7 +75,7 @@ typedef int (*rte_tm_shared_wred_context_delete_t)(
 /** @internal Traffic manager shaper profile add */
 typedef int (*rte_tm_shaper_profile_add_t)(struct rte_eth_dev *dev,
 	uint32_t shaper_profile_id,
-	struct rte_tm_shaper_params *profile,
+	const struct rte_tm_shaper_params *profile,
 	struct rte_tm_error *error);
 
 /** @internal Traffic manager shaper profile delete */
@@ -101,7 +101,7 @@ typedef int (*rte_tm_node_add_t)(struct rte_eth_dev *dev,
 	uint32_t priority,
 	uint32_t weight,
 	uint32_t level_id,
-	struct rte_tm_node_params *params,
+	const struct rte_tm_node_params *params,
 	struct rte_tm_error *error);
 
 /** @internal Traffic manager node delete */
@@ -117,6 +117,16 @@ typedef int (*rte_tm_node_suspend_t)(struct rte_eth_dev *dev,
 /** @internal Traffic manager node resume */
 typedef int (*rte_tm_node_resume_t)(struct rte_eth_dev *dev,
 	uint32_t node_id,
+	struct rte_tm_error *error);
+
+/** @internal Traffic manager node query */
+typedef int (*rte_tm_node_query_t)(const struct rte_eth_dev *dev,
+	uint32_t node_id,
+	uint32_t *parent_node_id,
+	uint32_t *priority,
+	uint32_t *weight,
+	uint32_t *level_id,
+	struct rte_tm_node_params *params,
 	struct rte_tm_error *error);
 
 /** @internal Traffic manager hierarchy commit */
@@ -248,6 +258,8 @@ struct rte_tm_ops {
 	rte_tm_node_suspend_t node_suspend;
 	/** Traffic manager node resume */
 	rte_tm_node_resume_t node_resume;
+	/** Traffic manager node query */
+	rte_tm_node_query_t node_query;
 	/** Traffic manager hierarchy commit */
 	rte_tm_hierarchy_commit_t hierarchy_commit;
 

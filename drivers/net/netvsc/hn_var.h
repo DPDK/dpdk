@@ -31,10 +31,6 @@
 
 #define HN_RX_EXTMBUF_ENABLE	0
 
-#ifndef PAGE_MASK
-#define PAGE_MASK (rte_mem_page_size() - 1)
-#endif
-
 struct hn_data;
 struct hn_txdesc;
 
@@ -94,12 +90,12 @@ struct hn_rx_queue {
 
 
 /* multi-packet data from host */
-struct hn_rx_bufinfo {
+struct __rte_cache_aligned hn_rx_bufinfo {
 	struct vmbus_channel *chan;
 	struct hn_rx_queue *rxq;
 	uint64_t	xactid;
 	struct rte_mbuf_ext_shared_info shinfo;
-} __rte_cache_aligned;
+};
 
 #define HN_INVALID_PORT	UINT16_MAX
 
@@ -184,7 +180,6 @@ struct hn_data {
 
 	rte_spinlock_t	hotadd_lock;
 	LIST_HEAD(hotadd_list, hv_hotadd_context) hotadd_list;
-	char		*vf_devargs;
 };
 
 static inline struct vmbus_channel *
@@ -224,7 +219,7 @@ int	hn_dev_rx_queue_setup(struct rte_eth_dev *dev,
 void	hn_dev_rx_queue_info(struct rte_eth_dev *dev, uint16_t queue_id,
 			     struct rte_eth_rxq_info *qinfo);
 void	hn_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
-uint32_t hn_dev_rx_queue_count(void *rx_queue);
+int	hn_dev_rx_queue_count(void *rx_queue);
 int	hn_dev_rx_queue_status(void *rxq, uint16_t offset);
 void	hn_dev_free_queues(struct rte_eth_dev *dev);
 
@@ -274,7 +269,8 @@ int	hn_vf_rx_queue_setup(struct rte_eth_dev *dev,
 			     struct rte_mempool *mp);
 void	hn_vf_rx_queue_release(struct hn_data *hv, uint16_t queue_id);
 
-int	hn_vf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
+int	hn_vf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+			struct eth_queue_stats *qstats);
 int	hn_vf_stats_reset(struct rte_eth_dev *dev);
 int	hn_vf_xstats_get_names(struct rte_eth_dev *dev,
 			       struct rte_eth_xstat_name *xstats_names,

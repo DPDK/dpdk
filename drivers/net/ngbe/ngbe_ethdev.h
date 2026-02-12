@@ -32,6 +32,7 @@
 
 #define NGBE_QUEUE_ITR_INTERVAL_DEFAULT	500 /* 500us */
 
+#define NGBE_MAX_MTU		9414
 /* The overhead from MTU to max frame size. */
 #define NGBE_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
 
@@ -39,9 +40,11 @@
 	RTE_ETH_RSS_IPV4 | \
 	RTE_ETH_RSS_NONFRAG_IPV4_TCP | \
 	RTE_ETH_RSS_NONFRAG_IPV4_UDP | \
+	RTE_ETH_RSS_NONFRAG_IPV4_SCTP | \
 	RTE_ETH_RSS_IPV6 | \
 	RTE_ETH_RSS_NONFRAG_IPV6_TCP | \
 	RTE_ETH_RSS_NONFRAG_IPV6_UDP | \
+	RTE_ETH_RSS_NONFRAG_IPV6_SCTP | \
 	RTE_ETH_RSS_IPV6_EX | \
 	RTE_ETH_RSS_IPV6_TCP_EX | \
 	RTE_ETH_RSS_IPV6_UDP_EX)
@@ -130,6 +133,7 @@ struct ngbe_adapter {
 	struct ngbe_vf_info        *vfdata;
 	struct ngbe_uta_info       uta_info;
 	bool                       rx_bulk_alloc_allowed;
+	bool                       rx_vec_allowed;
 	struct rte_timecounter     systime_tc;
 	struct rte_timecounter     rx_tstamp_tc;
 	struct rte_timecounter     tx_tstamp_tc;
@@ -202,7 +206,7 @@ int  ngbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		uint16_t nb_tx_desc, unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
 
-uint32_t ngbe_dev_rx_queue_count(void *rx_queue);
+int ngbe_dev_rx_queue_count(void *rx_queue);
 
 int ngbe_dev_rx_descriptor_status(void *rx_queue, uint16_t offset);
 int ngbe_dev_tx_descriptor_status(void *tx_queue, uint16_t offset);
@@ -238,6 +242,12 @@ ngbe_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 int
 ngbe_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 		      struct rte_eth_burst_mode *mode);
+
+int ngbevf_dev_rx_init(struct rte_eth_dev *dev);
+
+void ngbevf_dev_tx_init(struct rte_eth_dev *dev);
+
+void ngbevf_dev_rxtx_start(struct rte_eth_dev *dev);
 
 uint16_t ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);

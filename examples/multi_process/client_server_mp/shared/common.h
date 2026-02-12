@@ -18,14 +18,14 @@
  * themselves are written by the clients, so we have a distinct set, on different
  * cache lines for each client to use.
  */
-struct rx_stats{
+struct __rte_cache_aligned rx_stats {
 	uint64_t rx[RTE_MAX_ETHPORTS];
-} __rte_cache_aligned;
+};
 
-struct tx_stats{
+struct __rte_cache_aligned tx_stats {
 	uint64_t tx[RTE_MAX_ETHPORTS];
 	uint64_t tx_drop[RTE_MAX_ETHPORTS];
-} __rte_cache_aligned;
+};
 
 struct port_info {
 	uint16_t num_ports;

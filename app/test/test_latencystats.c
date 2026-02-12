@@ -14,18 +14,19 @@
 #include "sample_packet_forward.h"
 #include "test.h"
 
-#define NUM_STATS 4
+#define NUM_STATS 5
 #define LATENCY_NUM_PACKETS 10
 #define QUEUE_ID 0
 
 static uint16_t portid;
 static struct rte_ring *ring;
 
-static struct rte_metric_name lat_stats_strings[] = {
+static struct rte_metric_name lat_stats_strings[NUM_STATS] = {
 	{"min_latency_ns"},
 	{"avg_latency_ns"},
 	{"max_latency_ns"},
 	{"jitter_ns"},
+	{"samples"},
 };
 
 /* Test case for latency init with metrics init */
@@ -70,13 +71,9 @@ static int test_latency_uninit(void)
 /* Test case to get names of latency stats */
 static int test_latencystats_get_names(void)
 {
-	int ret = 0, i = 0;
-	int size = 0;
-	struct rte_metric_name names[NUM_STATS];
-
-	size_t m_size = sizeof(struct rte_metric_name);
-	for (i = 0; i < NUM_STATS; i++)
-		memset(&names[i], 0, m_size);
+	int ret, i;
+	uint16_t size;
+	struct rte_metric_name names[NUM_STATS] = { };
 
 	/* Success Test: Valid names and size */
 	size = NUM_STATS;
@@ -106,13 +103,9 @@ static int test_latencystats_get_names(void)
 /* Test case to get latency stats values */
 static int test_latencystats_get(void)
 {
-	int ret = 0, i = 0;
-	int size = 0;
-	struct rte_metric_value values[NUM_STATS];
-
-	size_t v_size = sizeof(struct rte_metric_value);
-	for (i = 0; i < NUM_STATS; i++)
-		memset(&values[i], 0, v_size);
+	int ret;
+	uint16_t size;
+	struct rte_metric_value values[NUM_STATS] = { };
 
 	/* Success Test: Valid values and valid size */
 	size = NUM_STATS;
@@ -149,10 +142,14 @@ static void test_latency_ring_free(void)
 
 static int test_latency_packet_forward(void)
 {
+	unsigned int i;
 	int ret;
 	struct rte_mbuf *pbuf[LATENCY_NUM_PACKETS] = { };
 	struct rte_mempool *mp;
 	char poolname[] = "mbuf_pool";
+	uint64_t end_cycles;
+	struct rte_metric_value values[NUM_STATS] = { };
+	struct rte_metric_name names[NUM_STATS] = { };
 
 	ret = test_get_mbuf_from_pool(&mp, pbuf, poolname);
 	if (ret < 0) {
@@ -166,9 +163,41 @@ static int test_latency_packet_forward(void)
 		return TEST_FAILED;
 	}
 
-	ret = test_packet_forward(pbuf, portid, QUEUE_ID);
-	if (ret < 0)
-		printf("send pkts Failed\n");
+	ret = rte_latencystats_get_names(names, NUM_STATS);
+	TEST_ASSERT((ret == NUM_STATS), "Test Failed to get metrics names");
+
+	ret = rte_latencystats_get(values, NUM_STATS);
+	TEST_ASSERT(ret == NUM_STATS, "Test failed to get results before forwarding");
+	TEST_ASSERT(values[4].value == 0, "Samples not zero at start of test");
+
+	/*
+	 * Want test to run long enough to collect sufficient samples
+	 * but not so long that scheduler decides to reschedule it (1000 hz).
+	 */
+	end_cycles = rte_rdtsc() + rte_get_tsc_hz() / 2000;
+	do {
+		ret = test_packet_forward(pbuf, portid, QUEUE_ID);
+		if (ret < 0)
+			printf("send pkts Failed\n");
+	} while (rte_rdtsc() < end_cycles);
+
+	ret = rte_latencystats_get(values, NUM_STATS);
+	TEST_ASSERT(ret == NUM_STATS, "Test failed to get results after forwarding");
+
+	for (i = 0; i < NUM_STATS; i++) {
+		uint16_t k = values[i].key;
+
+		printf("%s = %"PRIu64"\n",
+		       names[k].name, values[i].value);
+	}
+
+	TEST_ASSERT(values[4].value > 0, "No samples taken");
+	TEST_ASSERT(values[0].value > 0, "Min latency should not be zero");
+	TEST_ASSERT(values[1].value > 0, "Avg latency should not be zero");
+	TEST_ASSERT(values[2].value > 0, "Max latency should not be zero");
+	TEST_ASSERT(values[0].value < values[1].value, "Min latency > Avg latency");
+	TEST_ASSERT(values[0].value < values[2].value, "Min latency > Max latency");
+	TEST_ASSERT(values[1].value < values[2].value, "Avg latency > Max latency");
 
 	rte_eth_dev_stop(portid);
 	test_put_mbuf_to_pool(mp, pbuf);
@@ -188,21 +217,22 @@ unit_test_suite latencystats_testsuite = {
 		 */
 		TEST_CASE_ST(NULL, NULL, test_latency_init),
 
-		/* Test Case 2: Do packet forwarding for metrics
+		/* Test Case 2: To check whether latency stats names
+		 * are retrieved
+		 */
+		TEST_CASE_ST(NULL, NULL, test_latencystats_get_names),
+
+		/* Test Case 3: To check whether latency stats
+		 * values are retrieved
+		 */
+		TEST_CASE_ST(NULL, NULL, test_latencystats_get),
+
+		/* Test Case 4: Do packet forwarding for metrics
 		 * calculation and check the latency metrics values
 		 * are updated
 		 */
 		TEST_CASE_ST(test_latency_packet_forward, NULL,
 				test_latency_update),
-		/* Test Case 3: To check whether latency stats names
-		 * are retrieved
-		 */
-		TEST_CASE_ST(NULL, NULL, test_latencystats_get_names),
-
-		/* Test Case 4: To check whether latency stats
-		 * values are retrieved
-		 */
-		TEST_CASE_ST(NULL, NULL, test_latencystats_get),
 
 		/* Test Case 5: To check uninit of latency test */
 		TEST_CASE_ST(NULL, NULL, test_latency_uninit),
@@ -216,4 +246,4 @@ static int test_latencystats(void)
 	return unit_test_suite_runner(&latencystats_testsuite);
 }
 
-REGISTER_FAST_TEST(latencystats_autotest, true, true, test_latencystats);
+REGISTER_FAST_TEST(latencystats_autotest, NOHUGE_OK, ASAN_OK, test_latencystats);

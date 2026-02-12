@@ -2,6 +2,7 @@
  * Copyright 2019 Mellanox Technologies, Ltd
  */
 
+#include <eal_export.h>
 #include <rte_malloc.h>
 #include <rte_hash_crc.h>
 #include <rte_errno.h>
@@ -26,6 +27,7 @@ mlx5_list_init(struct mlx5_list_inconst *l_inconst,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_list_create)
 struct mlx5_list *
 mlx5_list_create(const char *name, void *ctx, bool lcores_share,
 		 mlx5_list_create_cb cb_create,
@@ -81,14 +83,14 @@ __list_lookup(struct mlx5_list_inconst *l_inconst,
 	while (entry != NULL) {
 		if (l_const->cb_match(l_const->ctx, entry, ctx) == 0) {
 			if (reuse) {
-				ret = __atomic_fetch_add(&entry->ref_cnt, 1,
-							 __ATOMIC_RELAXED);
+				ret = rte_atomic_fetch_add_explicit(&entry->ref_cnt, 1,
+							 rte_memory_order_relaxed);
 				DRV_LOG(DEBUG, "mlx5 list %s entry %p ref: %u.",
 					l_const->name, (void *)entry,
 					entry->ref_cnt);
 			} else if (lcore_index < MLX5_LIST_GLOBAL) {
-				ret = __atomic_load_n(&entry->ref_cnt,
-						      __ATOMIC_RELAXED);
+				ret = rte_atomic_load_explicit(&entry->ref_cnt,
+						      rte_memory_order_relaxed);
 			}
 			if (likely(ret != 0 || lcore_index == MLX5_LIST_GLOBAL))
 				return entry;
@@ -120,6 +122,7 @@ _mlx5_list_lookup(struct mlx5_list_inconst *l_inconst,
 	return entry;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_list_lookup)
 struct mlx5_list_entry *
 mlx5_list_lookup(struct mlx5_list *list, void *ctx)
 {
@@ -151,13 +154,13 @@ __list_cache_clean(struct mlx5_list_inconst *l_inconst,
 {
 	struct mlx5_list_cache *c = l_inconst->cache[lcore_index];
 	struct mlx5_list_entry *entry = LIST_FIRST(&c->h);
-	uint32_t inv_cnt = __atomic_exchange_n(&c->inv_cnt, 0,
-					       __ATOMIC_RELAXED);
+	uint32_t inv_cnt = rte_atomic_exchange_explicit(&c->inv_cnt, 0,
+					       rte_memory_order_relaxed);
 
 	while (inv_cnt != 0 && entry != NULL) {
 		struct mlx5_list_entry *nentry = LIST_NEXT(entry, next);
 
-		if (__atomic_load_n(&entry->ref_cnt, __ATOMIC_RELAXED) == 0) {
+		if (rte_atomic_load_explicit(&entry->ref_cnt, rte_memory_order_relaxed) == 0) {
 			LIST_REMOVE(entry, next);
 			if (l_const->lcores_share)
 				l_const->cb_clone_free(l_const->ctx, entry);
@@ -217,7 +220,7 @@ _mlx5_list_register(struct mlx5_list_inconst *l_inconst,
 		entry->lcore_idx = (uint32_t)lcore_index;
 		LIST_INSERT_HEAD(&l_inconst->cache[lcore_index]->h,
 				 entry, next);
-		__atomic_fetch_add(&l_inconst->count, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&l_inconst->count, 1, rte_memory_order_relaxed);
 		DRV_LOG(DEBUG, "MLX5 list %s c%d entry %p new: %u.",
 			l_const->name, lcore_index,
 			(void *)entry, entry->ref_cnt);
@@ -254,12 +257,13 @@ _mlx5_list_register(struct mlx5_list_inconst *l_inconst,
 	l_inconst->gen_cnt++;
 	rte_rwlock_write_unlock(&l_inconst->lock);
 	LIST_INSERT_HEAD(&l_inconst->cache[lcore_index]->h, local_entry, next);
-	__atomic_fetch_add(&l_inconst->count, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&l_inconst->count, 1, rte_memory_order_relaxed);
 	DRV_LOG(DEBUG, "mlx5 list %s entry %p new: %u.", l_const->name,
 		(void *)entry, entry->ref_cnt);
 	return local_entry;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_list_register)
 struct mlx5_list_entry *
 mlx5_list_register(struct mlx5_list *list, void *ctx)
 {
@@ -285,7 +289,7 @@ _mlx5_list_unregister(struct mlx5_list_inconst *l_inconst,
 {
 	struct mlx5_list_entry *gentry = entry->gentry;
 
-	if (__atomic_fetch_sub(&entry->ref_cnt, 1, __ATOMIC_RELAXED) - 1 != 0)
+	if (rte_atomic_fetch_sub_explicit(&entry->ref_cnt, 1, rte_memory_order_relaxed) - 1 != 0)
 		return 1;
 	if (entry->lcore_idx == (uint32_t)lcore_idx) {
 		LIST_REMOVE(entry, next);
@@ -294,23 +298,23 @@ _mlx5_list_unregister(struct mlx5_list_inconst *l_inconst,
 		else
 			l_const->cb_remove(l_const->ctx, entry);
 	} else {
-		__atomic_fetch_add(&l_inconst->cache[entry->lcore_idx]->inv_cnt,
-				   1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&l_inconst->cache[entry->lcore_idx]->inv_cnt,
+				   1, rte_memory_order_relaxed);
 	}
 	if (!l_const->lcores_share) {
-		__atomic_fetch_sub(&l_inconst->count, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_sub_explicit(&l_inconst->count, 1, rte_memory_order_relaxed);
 		DRV_LOG(DEBUG, "mlx5 list %s entry %p removed.",
 			l_const->name, (void *)entry);
 		return 0;
 	}
-	if (__atomic_fetch_sub(&gentry->ref_cnt, 1, __ATOMIC_RELAXED) - 1 != 0)
+	if (rte_atomic_fetch_sub_explicit(&gentry->ref_cnt, 1, rte_memory_order_relaxed) - 1 != 0)
 		return 1;
 	rte_rwlock_write_lock(&l_inconst->lock);
 	if (likely(gentry->ref_cnt == 0)) {
 		LIST_REMOVE(gentry, next);
 		rte_rwlock_write_unlock(&l_inconst->lock);
 		l_const->cb_remove(l_const->ctx, gentry);
-		__atomic_fetch_sub(&l_inconst->count, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_sub_explicit(&l_inconst->count, 1, rte_memory_order_relaxed);
 		DRV_LOG(DEBUG, "mlx5 list %s entry %p removed.",
 			l_const->name, (void *)gentry);
 		return 0;
@@ -319,6 +323,7 @@ _mlx5_list_unregister(struct mlx5_list_inconst *l_inconst,
 	return 1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_list_unregister)
 int
 mlx5_list_unregister(struct mlx5_list *list,
 		      struct mlx5_list_entry *entry)
@@ -366,6 +371,7 @@ mlx5_list_uninit(struct mlx5_list_inconst *l_inconst,
 	}
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_list_destroy)
 void
 mlx5_list_destroy(struct mlx5_list *list)
 {
@@ -373,15 +379,17 @@ mlx5_list_destroy(struct mlx5_list *list)
 	mlx5_free(list);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_list_get_entry_num)
 uint32_t
 mlx5_list_get_entry_num(struct mlx5_list *list)
 {
 	MLX5_ASSERT(list);
-	return __atomic_load_n(&list->l_inconst.count, __ATOMIC_RELAXED);
+	return rte_atomic_load_explicit(&list->l_inconst.count, rte_memory_order_relaxed);
 }
 
 /********************* Hash List **********************/
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_hlist_create)
 struct mlx5_hlist *
 mlx5_hlist_create(const char *name, uint32_t size, bool direct_key,
 		  bool lcores_share, void *ctx, mlx5_list_create_cb cb_create,
@@ -447,6 +455,7 @@ mlx5_hlist_create(const char *name, uint32_t size, bool direct_key,
 }
 
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_hlist_lookup)
 struct mlx5_list_entry *
 mlx5_hlist_lookup(struct mlx5_hlist *h, uint64_t key, void *ctx)
 {
@@ -459,6 +468,7 @@ mlx5_hlist_lookup(struct mlx5_hlist *h, uint64_t key, void *ctx)
 	return _mlx5_list_lookup(&h->buckets[idx].l, &h->l_const, ctx);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_hlist_register)
 struct mlx5_list_entry*
 mlx5_hlist_register(struct mlx5_hlist *h, uint64_t key, void *ctx)
 {
@@ -487,6 +497,7 @@ mlx5_hlist_register(struct mlx5_hlist *h, uint64_t key, void *ctx)
 	return entry;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_hlist_unregister)
 int
 mlx5_hlist_unregister(struct mlx5_hlist *h, struct mlx5_list_entry *entry)
 {
@@ -505,6 +516,7 @@ mlx5_hlist_unregister(struct mlx5_hlist *h, struct mlx5_list_entry *entry)
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_hlist_destroy)
 void
 mlx5_hlist_destroy(struct mlx5_hlist *h)
 {

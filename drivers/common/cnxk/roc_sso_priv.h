@@ -13,6 +13,10 @@ struct sso_rsrc {
 struct sso {
 	struct plt_pci_device *pci_dev;
 	struct dev dev;
+	/* EVA memory area */
+	uintptr_t agg_mem[MAX_RVU_BLKLF_CNT];
+	uint32_t agg_used[MAX_RVU_BLKLF_CNT];
+	uint32_t agg_cnt[MAX_RVU_BLKLF_CNT];
 	/* Interrupt handler args. */
 	struct sso_rsrc hws_rsrc[MAX_RVU_BLKLF_CNT];
 	struct sso_rsrc hwgrp_rsrc[MAX_RVU_BLKLF_CNT];

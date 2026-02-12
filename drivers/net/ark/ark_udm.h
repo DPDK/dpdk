@@ -18,12 +18,12 @@
 /* Meta data structure passed from FPGA, must match layout in FPGA
  * -- 32 bytes
  */
-struct ark_rx_meta {
+struct __rte_packed_begin ark_rx_meta {
 	uint32_t user_meta[5];	/* user defined based on fpga code */
 	uint32_t pkt_len32;
 	uint8_t  reserved[6];
 	uint16_t pkt_len;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * UDM hardware structures

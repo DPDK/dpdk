@@ -25,6 +25,7 @@
 #endif
 
 extern int mlx4_logtype;
+#define RTE_LOGTYPE_MLX4 mlx4_logtype
 
 #ifdef RTE_LIBRTE_MLX4_DEBUG
 
@@ -46,12 +47,9 @@ pmd_drv_log_basename(const char *s)
 }
 
 #define PMD_DRV_LOG(level, ...) \
-	rte_log(RTE_LOG_ ## level, mlx4_logtype, \
-		RTE_FMT("%s:%u: %s(): " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
-			pmd_drv_log_basename(__FILE__), \
-			__LINE__, \
-			__func__, \
-			RTE_FMT_TAIL(__VA_ARGS__,)))
+	RTE_LOG_LINE_PREFIX(level, MLX4, "%s:%u: %s(): ", \
+		pmd_drv_log_basename(__FILE__) RTE_LOG_COMMA __LINE__ RTE_LOG_COMMA __func__, \
+		__VA_ARGS__)
 #define MLX4_ASSERT(exp) RTE_VERIFY(exp)
 #define claim_zero(...) MLX4_ASSERT((__VA_ARGS__) == 0)
 
@@ -63,10 +61,7 @@ pmd_drv_log_basename(const char *s)
  */
 
 #define PMD_DRV_LOG(level, ...) \
-	rte_log(RTE_LOG_ ## level, mlx4_logtype, \
-		RTE_FMT(MLX4_DRIVER_NAME ": " \
-			RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
-		RTE_FMT_TAIL(__VA_ARGS__,)))
+	RTE_LOG_LINE(level, MLX4, MLX4_DRIVER_NAME ": " __VA_ARGS__)
 #define MLX4_ASSERT(exp) RTE_ASSERT(exp)
 #define claim_zero(...) (__VA_ARGS__)
 

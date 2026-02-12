@@ -1,5 +1,5 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
- * Copyright 2019-2021 NXP
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
+ * Copyright 2019-2024 NXP
  */
 #ifndef __FSL_DPRTC_H
 #define __FSL_DPRTC_H
@@ -10,6 +10,38 @@
  */
 
 struct fsl_mc_io;
+
+/**
+ * Number of irq's
+ */
+#define DPRTC_MAX_IRQ_NUM			1
+#define DPRTC_IRQ_INDEX				0
+
+/**
+ * Interrupt event masks:
+ */
+
+/**
+ * Interrupt event mask indicating alarm event had occurred
+ */
+#define DPRTC_EVENT_ALARM			0x40000000
+/**
+ * Interrupt event mask indicating periodic pulse 1 event had occurred
+ */
+#define DPRTC_EVENT_PPS				0x08000000
+/**
+ * Interrupt event mask indicating periodic pulse 2 event had occurred
+ */
+#define DPRTC_EVENT_PPS2            0x04000000
+/**
+ * Interrupt event mask indicating External trigger 1 new timestamp sample event had occurred
+ */
+#define DPRTC_EVENT_ETS1			0x00800000
+/**
+ * Interrupt event mask indicating External trigger 2 new timestamp sample event had occurred
+ */
+#define DPRTC_EVENT_ETS2			0x00400000
+
 
 int dprtc_open(struct fsl_mc_io *mc_io,
 	       uint32_t cmd_flags,
@@ -60,6 +92,11 @@ int dprtc_set_clock_offset(struct fsl_mc_io *mc_io,
 			   uint32_t cmd_flags,
 			   uint16_t token,
 			   int64_t offset);
+
+int dprtc_get_clock_offset(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t token,
+			   int64_t *offset);
 
 int dprtc_set_freq_compensation(struct fsl_mc_io *mc_io,
 		  uint32_t cmd_flags,

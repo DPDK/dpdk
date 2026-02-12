@@ -166,7 +166,7 @@ hns3_tm_shaper_profile_search(struct rte_eth_dev *dev,
 
 static int
 hns3_tm_shaper_profile_param_check(struct rte_eth_dev *dev,
-				   struct rte_tm_shaper_params *profile,
+				   const struct rte_tm_shaper_params *profile,
 				   struct rte_tm_error *error)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -220,7 +220,7 @@ hns3_tm_shaper_profile_param_check(struct rte_eth_dev *dev,
 static int
 hns3_tm_shaper_profile_add(struct rte_eth_dev *dev,
 			   uint32_t shaper_profile_id,
-			   struct rte_tm_shaper_params *profile,
+			   const struct rte_tm_shaper_params *profile,
 			   struct rte_tm_error *error)
 {
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -329,7 +329,7 @@ hns3_tm_node_search(struct rte_eth_dev *dev,
 
 static int
 hns3_tm_nonleaf_node_param_check(struct rte_eth_dev *dev,
-				 struct rte_tm_node_params *params,
+				 const struct rte_tm_node_params *params,
 				 struct rte_tm_error *error)
 {
 	struct hns3_tm_shaper_profile *shaper_profile;
@@ -364,7 +364,7 @@ hns3_tm_nonleaf_node_param_check(struct rte_eth_dev *dev,
 
 static int
 hns3_tm_leaf_node_param_check(struct rte_eth_dev *dev __rte_unused,
-			      struct rte_tm_node_params *params,
+			      const struct rte_tm_node_params *params,
 			      struct rte_tm_error *error)
 
 {
@@ -408,7 +408,7 @@ hns3_tm_leaf_node_param_check(struct rte_eth_dev *dev __rte_unused,
 static int
 hns3_tm_node_param_check(struct rte_eth_dev *dev, uint32_t node_id,
 			 uint32_t priority, uint32_t weight,
-			 struct rte_tm_node_params *params,
+			 const struct rte_tm_node_params *params,
 			 struct rte_tm_error *error)
 {
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -457,7 +457,7 @@ hns3_tm_node_param_check(struct rte_eth_dev *dev, uint32_t node_id,
 
 static int
 hns3_tm_port_node_add(struct rte_eth_dev *dev, uint32_t node_id,
-		      uint32_t level_id, struct rte_tm_node_params *params,
+		      uint32_t level_id, const struct rte_tm_node_params *params,
 		      struct rte_tm_error *error)
 {
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -503,7 +503,7 @@ hns3_tm_port_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 static int
 hns3_tm_tc_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		    uint32_t level_id, struct hns3_tm_node *parent_node,
-		    struct rte_tm_node_params *params,
+		    const struct rte_tm_node_params *params,
 		    struct rte_tm_error *error)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -519,13 +519,13 @@ hns3_tm_tc_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 
 	if (node_id >= pf->tm_conf.nb_nodes_max - 1 ||
 	    node_id < pf->tm_conf.nb_leaf_nodes_max ||
-	    hns3_tm_calc_node_tc_no(&pf->tm_conf, node_id) >= hw->num_tc) {
+	    hns3_tm_calc_node_tc_no(&pf->tm_conf, node_id) >= hw->dcb_info.num_tc) {
 		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
 		error->message = "invalid tc node ID";
 		return -EINVAL;
 	}
 
-	if (pf->tm_conf.nb_tc_node >= hw->num_tc) {
+	if (pf->tm_conf.nb_tc_node >= hw->dcb_info.num_tc) {
 		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
 		error->message = "too many TCs";
 		return -EINVAL;
@@ -554,7 +554,7 @@ hns3_tm_tc_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 static int
 hns3_tm_queue_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		       uint32_t level_id, struct hns3_tm_node *parent_node,
-		       struct rte_tm_node_params *params,
+		       const struct rte_tm_node_params *params,
 		       struct rte_tm_error *error)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -601,7 +601,7 @@ static int
 hns3_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		 uint32_t parent_node_id, uint32_t priority,
 		 uint32_t weight, uint32_t level_id,
-		 struct rte_tm_node_params *params,
+		 const struct rte_tm_node_params *params,
 		 struct rte_tm_error *error)
 {
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -974,7 +974,7 @@ hns3_tm_configure_check(struct hns3_hw *hw, struct rte_tm_error *error)
 		}
 
 		if (hns3_tm_calc_node_tc_no(tm_conf, tm_node->id) >=
-			hw->num_tc) {
+			hw->dcb_info.num_tc) {
 			error->type = RTE_TM_ERROR_TYPE_NODE_ID;
 			error->message = "node's TC not exist";
 			return false;
@@ -1051,7 +1051,7 @@ hns3_tm_hierarchy_commit(struct rte_eth_dev *dev,
 	if (error == NULL)
 		return -EINVAL;
 
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed)) {
 		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 		error->message = "device is resetting";
 		/* don't goto fail_clear, user may try later */
@@ -1141,7 +1141,7 @@ hns3_tm_node_shaper_update(struct rte_eth_dev *dev,
 	if (error == NULL)
 		return -EINVAL;
 
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed)) {
 		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 		error->message = "device is resetting";
 		return -EBUSY;
@@ -1198,7 +1198,7 @@ hns3_tm_capabilities_get_wrap(struct rte_eth_dev *dev,
 static int
 hns3_tm_shaper_profile_add_wrap(struct rte_eth_dev *dev,
 				uint32_t shaper_profile_id,
-				struct rte_tm_shaper_params *profile,
+				const struct rte_tm_shaper_params *profile,
 				struct rte_tm_error *error)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1230,7 +1230,7 @@ static int
 hns3_tm_node_add_wrap(struct rte_eth_dev *dev, uint32_t node_id,
 		      uint32_t parent_node_id, uint32_t priority,
 		      uint32_t weight, uint32_t level_id,
-		      struct rte_tm_node_params *params,
+		      const struct rte_tm_node_params *params,
 		      struct rte_tm_error *error)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);

@@ -73,15 +73,15 @@ struct skeldma_hw {
 	struct rte_ring *desc_completed;
 
 	/* Cache delimiter for dataplane API's operation data */
-	char cache1 __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) char cache1;
 	uint16_t ridx;  /* ring idx */
 	uint16_t last_ridx;
 	uint64_t submitted_count;
 
 	/* Cache delimiter for cpuwork thread's operation data */
-	char cache2 __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) char cache2;
 	volatile uint32_t zero_req_count;
-	uint64_t completed_count;
+	RTE_ATOMIC(uint64_t) completed_count;
 };
 
 #endif /* SKELETON_DMADEV_H */

@@ -20,6 +20,7 @@
 
 #include <rte_common.h>
 #include <rte_meter.h>
+#include <rte_compat.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -1347,7 +1348,7 @@ rte_tm_node_capabilities_get(uint16_t port_id,
 int
 rte_tm_wred_profile_add(uint16_t port_id,
 	uint32_t wred_profile_id,
-	struct rte_tm_wred_params *profile,
+	const struct rte_tm_wred_params *profile,
 	struct rte_tm_error *error);
 
 /**
@@ -1449,7 +1450,7 @@ rte_tm_shared_wred_context_delete(uint16_t port_id,
 int
 rte_tm_shaper_profile_add(uint16_t port_id,
 	uint32_t shaper_profile_id,
-	struct rte_tm_shaper_params *profile,
+	const struct rte_tm_shaper_params *profile,
 	struct rte_tm_error *error);
 
 /**
@@ -1596,6 +1597,55 @@ rte_tm_node_add(uint16_t port_id,
 	uint32_t priority,
 	uint32_t weight,
 	uint32_t level_id,
+	const struct rte_tm_node_params *params,
+	struct rte_tm_error *error);
+
+/**
+ * Return information about a traffic management node
+ *
+ * Return information about a hierarchy node, using the same format of parameters
+ * as was passed to the rte_rm_node_add() function.
+ * Each of the "out" parameters pointers (except error) may be passed as NULL if the
+ * information is not needed by the caller. For example, to one may check if a node id
+ * is in use by:
+ *
+ *  struct rte_tm_error error;
+ *  int ret = rte_tm_node_query(port, node_id, NULL, NULL, NULL, NULL, NULL, &error);
+ *  if (ret == ENOENT) ...
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] node_id
+ *   Node ID. Should be a valid node id.
+ * @param[out] parent_node_id
+ *   Parent node ID.
+ * @param[out] priority
+ *   Node priority. The highest node priority is zero. Used by the SP algorithm
+ *   running on the parent of the current node for scheduling this child node.
+ * @param[out] weight
+ *   Node weight. The node weight is relative to the weight sum of all siblings
+ *   that have the same priority. The lowest weight is one. Used by the WFQ
+ *   algorithm running on the parent of the current node for scheduling this
+ *   child node.
+ * @param[out] level_id
+ *   The node level in the scheduler hierarchy.
+ * @param[out] params
+ *   Node parameters, as would be used when creating the node.
+ * @param[out] error
+ *   Error details. Filled in only on error. Must not be NULL.
+ * @return
+ *   0 on success, non-zero error code otherwise.
+ *   -EINVAL - port or node id value is invalid
+ *   -ENOENT - no node exists with the provided id on the provided port
+ */
+__rte_experimental
+int
+rte_tm_node_query(uint16_t port_id,
+	uint32_t node_id,
+	uint32_t *parent_node_id,
+	uint32_t *priority,
+	uint32_t *weight,
+	uint32_t *level_id,
 	struct rte_tm_node_params *params,
 	struct rte_tm_error *error);
 

@@ -1,8 +1,0 @@
-DPDK_24 {
-	global:
-
-	rte_pmd_softnic_manage;
-	rte_pmd_softnic_run;
-
-	local: *;
-};

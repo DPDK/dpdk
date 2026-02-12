@@ -7,15 +7,15 @@
  * DPDK RTE LCore Keepalive Monitor.
  */
 
-#ifndef _KEEPALIVE_H_
-#define _KEEPALIVE_H_
+#ifndef RTE_KEEPALIVE_H
+#define RTE_KEEPALIVE_H
+
+#include <rte_config.h>
+#include <rte_memory.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_config.h>
-#include <rte_memory.h>
 
 #ifndef RTE_KEEPALIVE_MAXCORES
 /**
@@ -146,4 +146,4 @@ rte_keepalive_register_relay_callback(struct rte_keepalive *keepcfg,
 }
 #endif
 
-#endif /* _KEEPALIVE_H_ */
+#endif /* RTE_KEEPALIVE_H */

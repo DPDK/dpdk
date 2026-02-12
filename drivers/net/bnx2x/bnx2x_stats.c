@@ -73,9 +73,6 @@ bnx2x_storm_stats_post(struct bnx2x_softc *sc)
 	int rc;
 
 	if (!sc->stats_pending) {
-		if (sc->stats_pending)
-			return;
-
 		sc->fw_stats_req->hdr.drv_stats_counter =
 			htole16(sc->stats_counter++);
 
@@ -808,7 +805,7 @@ bnx2x_hw_stats_update(struct bnx2x_softc *sc)
 				  etherstatspktsover1522octets);
 	}
 
-	memcpy(old, new, sizeof(struct nig_stats));
+	*old = *new;
 
 	memcpy(RTE_PTR_ADD(estats, offsetof(struct bnx2x_eth_stats, rx_stat_ifhcinbadoctets_hi)),
 	       &pstats->mac_stx[1], sizeof(struct mac_stx));

@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 
+#include <eal_export.h>
 #include <rte_cycles.h>
 #include <rte_debug.h>
 #include <rte_ethdev.h>
@@ -120,12 +121,14 @@ ip4_reassembly_node_process(struct rte_graph *graph, struct rte_node *node, void
 		rte_node_next_stream_put(graph, node, RTE_NODE_IP4_REASSEMBLY_NEXT_PKT_DROP,
 					 dr->cnt);
 		idx += dr->cnt;
+		NODE_INCREMENT_XSTAT_ID(node, 0, dr->cnt, dr->cnt);
 		dr->cnt = 0;
 	}
 
 	return idx;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_node_ip4_reassembly_configure, 23.11)
 int
 rte_node_ip4_reassembly_configure(struct rte_node_ip4_reassembly_cfg *cfg, uint16_t cnt)
 {
@@ -156,7 +159,7 @@ ip4_reassembly_node_init(const struct rte_graph *graph, struct rte_node *node)
 	while (elem) {
 		if (elem->node_id == node->id) {
 			/* Update node specific context */
-			memcpy(ctx, &elem->ctx, sizeof(ip4_reassembly_ctx_t));
+			*ctx = elem->ctx;
 			break;
 		}
 		elem = elem->next;
@@ -165,11 +168,19 @@ ip4_reassembly_node_init(const struct rte_graph *graph, struct rte_node *node)
 	return 0;
 }
 
+static struct rte_node_xstats ip4_reassembly_xstats = {
+	.nb_xstats = 1,
+	.xstat_desc = {
+		[0] = "ip4_reassembly_error",
+	},
+};
+
 static struct rte_node_register ip4_reassembly_node = {
 	.process = ip4_reassembly_node_process,
 	.name = "ip4_reassembly",
 
 	.init = ip4_reassembly_node_init,
+	.xstats = &ip4_reassembly_xstats,
 
 	.nb_edges = RTE_NODE_IP4_REASSEMBLY_NEXT_PKT_DROP + 1,
 	.next_nodes = {

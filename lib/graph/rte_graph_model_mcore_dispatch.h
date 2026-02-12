@@ -12,16 +12,16 @@
  * dispatch model.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_errno.h>
 #include <rte_mempool.h>
 #include <rte_memzone.h>
 #include <rte_ring.h>
 
 #include "rte_graph_worker_common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_GRAPH_SCHED_WQ_SIZE_MULTIPLIER  8
 #define RTE_GRAPH_SCHED_WQ_SIZE(nb_nodes)   \
@@ -100,7 +100,7 @@ rte_graph_walk_mcore_dispatch(struct rte_graph *graph)
 		node = (struct rte_node *)RTE_PTR_ADD(graph, cir_start[(int32_t)head++]);
 
 		/* skip the src nodes which not bind with current worker */
-		if ((int32_t)head < 0 && node->dispatch.lcore_id != graph->dispatch.lcore_id)
+		if ((int32_t)head < 1 && node->dispatch.lcore_id != graph->dispatch.lcore_id)
 			continue;
 
 		/* Schedule the node until all task/objs are done */

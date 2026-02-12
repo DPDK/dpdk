@@ -31,7 +31,7 @@ If I execute "l2fwd -l 0-3 -m 64 -n 3 -- -p 3", I get the following output, indi
 I have set up a total of 1024 Hugepages (that is, allocated 512 2M pages to each NUMA node).
 
 The -m command line parameter does not guarantee that huge pages will be reserved on specific sockets. Therefore, allocated huge pages may not be on socket 0.
-To request memory to be reserved on a specific socket, please use the --socket-mem command-line parameter instead of -m.
+To request memory to be reserved on a specific socket, please use the --numa-mem command-line parameter instead of -m.
 
 
 I am running a 32-bit DPDK application on a NUMA system, and sometimes the application initializes fine but cannot allocate memory. Why is that happening?
@@ -47,14 +47,12 @@ therefore all the hugepages are allocated on the wrong socket.
 To avoid this scenario, either lower the amount of hugepage memory available to 1 GB size (or less), or run the application with taskset
 affinitizing the application to a would-be main core.
 
-For example, if your EAL coremask is 0xff0, the main core will usually be the first core in the coremask (0x10); this is what you have to supply to taskset::
+For example, if your EAL core list is '4-11', the main core will usually be the first core in the list (core 4); this is what you have to supply to taskset::
 
-   taskset 0x10 ./l2fwd -l 4-11 -n 2
-
-.. Note: Instead of '-c 0xff0' use the '-l 4-11' as a cleaner way to define lcores.
+   taskset -c 4 ./l2fwd -l 4-11 -n 2
 
 In this way, the hugepages have a greater chance of being allocated to the correct socket.
-Additionally, a ``--socket-mem`` option could be used to ensure the availability of memory for each socket, so that if hugepages were allocated on
+Additionally, a ``--numa-mem`` option could be used to ensure the availability of memory for each socket, so that if hugepages were allocated on
 the wrong socket, the application simply will not start.
 
 
@@ -167,7 +165,7 @@ Can I split packet RX to use DPDK and have an application's higher order functio
 ----------------------------------------------------------------------------------------------------------------
 
 The DPDK's lcore threads are Linux pthreads bound onto specific cores. Configure the DPDK to do work on the same
-cores and run the application's other work on other cores using the DPDK's "coremask" setting to specify which
+cores and run the application's other work on other cores using the DPDK's "core list" (-l/--lcores) setting to specify which
 cores it should launch itself on.
 
 
@@ -186,7 +184,7 @@ I350 has RSS support and 8 queue pairs can be used in RSS mode. It should work w
 How can hugepage-backed memory be shared among multiple processes?
 ------------------------------------------------------------------
 
-See the Primary and Secondary examples in the :ref:`multi-process sample application <multi_process_app>`.
+See the Primary and Secondary examples in the :doc:`../sample_app_ug/multi_process`.
 
 
 Why can't my application receive packets on my system with UEFI Secure Boot enabled?

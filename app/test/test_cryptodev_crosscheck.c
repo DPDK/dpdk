@@ -894,7 +894,7 @@ static int
 crosscheck_with_profile_run(const struct crosscheck_test_profile *profile)
 {
 	struct crosscheck_testsuite_params *ts_params = &testsuite_params;
-	uint8_t input_text[profile->input_buf_len];
+	uint8_t *input_text = alloca(profile->input_buf_len);
 	uint16_t output_len, encrypted_len;
 	uint8_t encrypted_text[MBUF_SIZE];
 	uint8_t output_text[MBUF_SIZE];
@@ -1047,4 +1047,4 @@ exit:
 	return ret;
 }
 
-REGISTER_TEST_COMMAND(cryptodev_crosscheck, test_crosscheck);
+REGISTER_DRIVER_TEST(cryptodev_crosscheck, test_crosscheck);

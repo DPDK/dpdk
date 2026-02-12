@@ -1,7 +1,7 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2018-2021 NXP
+ * Copyright 2018-2023 NXP
  *
  */
 #ifndef _FSL_DPDMUX_CMD_H
@@ -9,7 +9,7 @@
 
 /* DPDMUX Version */
 #define DPDMUX_VER_MAJOR		6
-#define DPDMUX_VER_MINOR		9
+#define DPDMUX_VER_MINOR		10
 
 #define DPDMUX_CMD_BASE_VERSION		1
 #define DPDMUX_CMD_VERSION_2		2
@@ -63,7 +63,16 @@
 
 #define DPDMUX_CMDID_SET_RESETABLE		DPDMUX_CMD(0x0ba)
 #define DPDMUX_CMDID_GET_RESETABLE		DPDMUX_CMD(0x0bb)
+
+#define DPDMUX_CMDID_IF_SET_TAILDROP		DPDMUX_CMD(0x0bc)
+#define DPDMUX_CMDID_IF_GET_TAILDROP		DPDMUX_CMD(0x0bd)
+
+#define DPDMUX_CMDID_DUMP_TABLE           DPDMUX_CMD(0x0be)
+
 #define DPDMUX_CMDID_SET_ERRORS_BEHAVIOR	DPDMUX_CMD(0x0bf)
+
+#define DPDMUX_CMDID_SET_SP_PROFILE			DPDMUX_CMD(0x0c0)
+#define DPDMUX_CMDID_SP_ENABLE				DPDMUX_CMD(0x0c1)
 
 #define DPDMUX_MASK(field)        \
 	GENMASK(DPDMUX_##field##_SHIFT + DPDMUX_##field##_SIZE - 1, \
@@ -241,7 +250,7 @@ struct dpdmux_cmd_remove_custom_cls_entry {
 };
 
 #define DPDMUX_SKIP_RESET_FLAGS_SHIFT    0
-#define DPDMUX_SKIP_RESET_FLAGS_SIZE     3
+#define DPDMUX_SKIP_RESET_FLAGS_SIZE     4
 
 struct dpdmux_cmd_set_skip_reset_flags {
 	uint8_t skip_reset_flags;
@@ -251,6 +260,61 @@ struct dpdmux_rsp_get_skip_reset_flags {
 	uint8_t skip_reset_flags;
 };
 
+struct dpdmux_cmd_set_taildrop {
+	uint32_t	pad1;
+	uint16_t	if_id;
+	uint16_t	pad2;
+	uint16_t	oal_en;
+	uint8_t		units;
+	uint8_t		pad3;
+	uint32_t	threshold;
+};
+
+struct dpdmux_cmd_get_taildrop {
+	uint32_t	pad1;
+	uint16_t	if_id;
+};
+
+struct dpdmux_rsp_get_taildrop {
+	uint16_t	pad1;
+	uint16_t	pad2;
+	uint16_t	if_id;
+	uint16_t	pad3;
+	uint16_t	oal_en;
+	uint8_t		units;
+	uint8_t		pad4;
+	uint32_t	threshold;
+};
+
+struct dpdmux_cmd_dump_table {
+	uint16_t table_type;
+	uint16_t table_index;
+	uint32_t pad0;
+	uint64_t iova_addr;
+	uint32_t iova_size;
+};
+
+struct dpdmux_rsp_dump_table {
+	uint16_t num_entries;
+};
+
+struct dpdmux_dump_table_header {
+	uint16_t table_type;
+	uint16_t table_num_entries;
+	uint16_t table_max_entries;
+	uint8_t default_action;
+	uint8_t match_type;
+	uint8_t reserved[24];
+};
+
+struct dpdmux_dump_table_entry {
+	uint8_t key[DPDMUX_MAX_KEY_SIZE];
+	uint8_t mask[DPDMUX_MAX_KEY_SIZE];
+	uint8_t key_action;
+	uint16_t result[3];
+	uint8_t reserved[21];
+};
+
 #define DPDMUX_ERROR_ACTION_SHIFT		0
 #define DPDMUX_ERROR_ACTION_SIZE		4
 
@@ -258,6 +322,19 @@ struct dpdmux_cmd_set_errors_behavior {
 	uint32_t errors;
 	uint16_t flags;
 	uint16_t if_id;
+};
+
+#define MAX_SP_PROFILE_ID_SIZE	8
+
+struct dpdmux_cmd_set_sp_profile {
+	uint8_t sp_profile[MAX_SP_PROFILE_ID_SIZE];
+	uint8_t type;
+};
+
+struct dpdmux_cmd_sp_enable {
+	uint16_t if_id;
+	uint8_t type;
+	uint8_t en;
 };
 
 #pragma pack(pop)

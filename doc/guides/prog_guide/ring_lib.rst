@@ -1,8 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-.. _Ring_Library:
-
 Ring Library
 ============
 
@@ -492,6 +490,203 @@ Following is an example of usage:
 
 Note that between ``_start_`` and ``_finish_`` no other thread can proceed
 with enqueue(/dequeue) operation till ``_finish_`` completes.
+
+
+Staged Ordered Ring API
+-----------------------
+
+Staged-Ordered-Ring (SORING) API provides a SW abstraction for *ordered* queues
+with multiple processing *stages*.
+It is based on conventional DPDK ``rte_ring`` API,
+re-uses many of its concepts, and even substantial part of its code.
+It can be viewed as an "extension" of ``rte_ring`` functionality.
+
+In particular, main SORING properties:
+
+* circular ring buffer with fixed size objects and related metadata.
+* producer, consumer plus multiple processing stages in between.
+* allows to split objects processing into multiple stages.
+* objects remain in the same ring while moving from one stage to the other,
+  initial order is preserved, no extra copying needed.
+* preserves the ingress order of objects within the queue across multiple stages.
+* each stage (and producer/consumer) can be served by single and/or multiple threads.
+* number of stages, size and number of objects and their metadata in the ring
+  are configurable at ring initialization time.
+
+Data-Path API
+~~~~~~~~~~~~~
+
+SORING data-path API provided four main operations:
+
+* ``enqueue``/``dequeue`` works in the same manner as for conventional ``rte_ring``,
+  all ``rte_ring`` synchronization types are supported.
+
+* ``acquire``/``release`` - for each stage there is an ``acquire`` (start)
+  and ``release`` (finish) operation.
+  After some objects are ``acquired`` - given thread can safely assume that
+  it has exclusive possession of these objects till ``release`` for them is invoked.
+  Note that right now user has to release exactly the same number of objects
+  that was acquired before.
+  After objects are ``released``, given thread loses its possession on them,
+  and they can be either acquired by next stage or dequeued
+  by the consumer (in case of last stage).
+
+A simplified representation of a SORING with two stages is shown below.
+On that picture ``obj5`` and ``obj4`` elements are acquired by stage 0,
+``obj2`` and ``obj3`` are acquired by stage 1,
+while ``obj1`` was already released by stage 1 and is ready to be consumed.
+
+.. _figure_soring1:
+
+.. figure:: img/soring-pic1.*
+
+Along with traditional flavor there are enhanced versions for
+all these data-path operations: ``enqueux``/``dequeux``/``acquirx``/``releasx``.
+All enhanced versions take as extra parameter a pointer to an array of metadata values.
+At initialization user can request within the ``soring`` supplementary
+and optional array of metadata associated with each object in the ``soring``.
+While ``soring`` element size is configurable and user can specify it big enough
+to hold both object and its metadata together,
+for performance reasons it might be plausible to access them as separate arrays.
+Note that users are free to mix and match both versions of data-path API
+in a way they like.
+As an example, possible usage scenario when such separation helps:
+
+.. code-block:: c
+
+   /*
+    * use pointer to mbuf as soring element, while tx_state as a metadata.
+    * In this example we use a soring with just one stage.
+    */
+    union tx_state {
+        /* negative values for error */
+        int32_t rc;
+        /* otherwise contain valid Tx port and queue IDs*/
+        struct {
+            uint16_t port_id;
+            uint16_t queue_id;
+        } tx;
+    };
+    struct rte_soring *soring;
+
+producer/consumer part:
+
+.. code-block:: c
+
+   struct rte_mbuf *pkts[MAX_PKT_BURST];
+   union tx_state txst[MAX_PKT_BURST];
+   ...
+   /* enqueue - writes to soring objects array no need to update metadata */
+   uint32_t num = MAX_PKT_BURST;
+   num = rte_soring_enqueue_burst(soring, pkts, num, NULL);
+   ....
+   /* dequeux - reads both packets and related tx_state */
+   uint32_t num = MAX_PKT_BURST;
+   num = rte_soring_dequeux_burst(soring, pkts, txst, num, NULL);
+
+   /*
+    * Tx packets out, or drop in case of error.
+    * Note that we don't need to dereference the soring objects itself
+    * to make a decision.
+    */
+   uint32_t i, j, k, n;
+   struct rte_mbuf *dr[MAX_PKT_BURST];
+
+   k = 0;
+   for (i = 0; i != num; i++) {
+       /* packet processing reports an error */
+       if (txst[i].rc < 0)
+           dr[k++] = pkts[i];
+       /* valid packet, send it out */
+       else {
+           /* group consecutive packets with the same port and queue IDs */
+           for (j = i + 1; j < num; j++)
+               if (txst[j].rc != txst[i].rc)
+                   break;
+
+           n = rte_eth_tx_burst(txst[i].tx.port_id, txst[i].tx.queue_id,
+                                pkts + i, j - i);
+           if (i + n != j) {
+               /* decide with unsent packets if any */
+           }
+       }
+   }
+   /* drop erroneous packets */
+   if (k != 0)
+       rte_pktmbuf_free_bulk(dr, k);
+
+acquire/release part:
+
+.. code-block:: c
+
+   uint32_t ftoken;
+   struct rte_mbuf *pkts[MAX_PKT_BURST];
+   union tx_state txst[MAX_PKT_BURST];
+   ...
+   /* acquire - grab some packets to process */
+   uint32_t num = MAX_PKT_BURST;
+   num = rte_soring_acquire_burst(soring, pkts, 0, num, &ftoken, NULL);
+
+   /* process packets, fill txst[] for each */
+   do_process_packets(pkts, txst, num);
+
+   /*
+    * release - assuming that do_process_packets() didn't change
+    * contents of pkts[], we need to update soring metadata array only.
+    */
+   rte_soring_releasx(soring, NULL, txst, 0, num, ftoken);
+
+Use Cases
+~~~~~~~~~
+
+Expected use-cases include applications that use pipeline model
+(probably with multiple stages) for packet processing,
+when preserving incoming packet order is important.
+I.E.: IPsec processing, etc.
+
+SORING internals
+~~~~~~~~~~~~~~~~
+
+* In addition to accessible by the user array of objects (and metadata),
+  ``soring`` also contains an internal array of states.
+  Each ``state[]`` corresponds to exactly one object within the soring.
+  That ``state[]`` array is used by ``acquire``/``release``/``dequeue`` operations
+  to store internal information and should not be accessed by the user directly.
+
+* At ``acquire``, soring  moves stage's head
+  (in a same way as ``rte_ring`` ``move_head`` does),
+  plus it saves in ``state[stage.old_head]`` information
+  about how many elements were acquired, acquired head position,
+  and special flag value to indicate that given elements are acquired
+  (``SORING_ST_START``).
+  Note that ``acquire`` returns an opaque ``ftoken`` value
+  that user has to provide for ``release`` function.
+
+* ``release`` extracts old head value from provided by user ``ftoken``
+  and checks that corresponding ``state[]`` entry contains expected values
+  (mostly for sanity purposes).
+  Then it marks this ``state[]`` entry with ``SORING_ST_FINISH`` flag
+  to indicate that given subset of objects was released.
+  After that, it checks does stage's old ``head`` value
+  equals to its current ``tail`` value.
+  If so, then it performs ``finalize`` operation,
+  otherwise ``release`` just returns.
+
+* As ``state[]`` is shared by all threads,
+  some other thread can perform ``finalize`` operation for given stage.
+  That allows ``release`` to avoid excessive waits on the ``tail`` value.
+  Main purpose of ``finalize`` operation is to walk through ``state[]`` array
+  from current stage's ``tail`` position up to its ``head``,
+  check ``state[]`` and move stage ``tail`` through elements
+  that are already released (in ``SORING_ST_FINISH`` state).
+  Along with that, corresponding ``state[]`` entries are reset back to zero.
+  Note that ``finalize`` for given stage can be called from multiple places:
+  from ``release`` for that stage or from ``acquire`` for next stage,
+  or even from consumer's ``dequeue`` - in case given stage is the last one.
+  So ``finalize`` has to be MT-safe and inside it we have to guarantee that
+  at any given moment only one thread can update stage's ``tail``
+  and reset corresponding ``state[]`` entries.
+
 
 References
 ----------

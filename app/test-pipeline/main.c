@@ -89,7 +89,6 @@ main(int argc, char **argv)
 	/* Close ports */
 	for (i = 0; i < app.n_ports; i++) {
 		uint16_t port;
-		int ret;
 
 		port = app.ports[i];
 		printf("Closing port %d...", port);

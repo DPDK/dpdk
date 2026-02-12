@@ -5,16 +5,13 @@
 #ifndef _RTE_OS_H_
 #define _RTE_OS_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * This header should contain any definition
  * which is not supported natively or named differently in FreeBSD.
  */
 
 #include <pthread_np.h>
+#include <stdlib.h>            /* Declares alloca() */
 #include <sys/queue.h>
 
 /* These macros are compatible with system's sys/queue.h. */
@@ -77,9 +74,5 @@ typedef cpuset_t rte_cpuset_t;
 } while (0)
 
 #endif /* RTE_EAL_FREEBSD_CPUSET_LEGACY */
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_OS_H_ */

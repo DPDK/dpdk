@@ -56,7 +56,7 @@ To run the example in a Linux environment:
 
 .. code-block:: console
 
-    user@target:~$ ./<build_dir>/examples/dpdk-vmdq -l 0-3 -n 4 -- -p 0x3 --nb-pools 16
+    user@target:~$ ./<build_dir>/examples/dpdk-vmdq -l 0-3 -- -p 0x3 --nb-pools 16
 
 Refer to the *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.

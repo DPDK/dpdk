@@ -31,7 +31,7 @@
 
 static rte_pflock_t sl;
 static rte_pflock_t sl_tab[RTE_MAX_LCORE];
-static uint32_t synchro;
+static RTE_ATOMIC(uint32_t) synchro;
 
 static int
 test_pflock_per_core(__rte_unused void *arg)
@@ -69,7 +69,8 @@ load_loop_fn(void *arg)
 
 	/* wait synchro for workers */
 	if (lcore != rte_get_main_lcore())
-		rte_wait_until_equal_32(&synchro, 1, __ATOMIC_RELAXED);
+		rte_wait_until_equal_32((uint32_t *)(uintptr_t)&synchro, 1,
+				rte_memory_order_relaxed);
 
 	begin = rte_rdtsc_precise();
 	while (lcount < MAX_LOOP) {
@@ -99,7 +100,7 @@ test_pflock_perf(void)
 	const unsigned int lcore = rte_lcore_id();
 
 	printf("\nTest with no lock on single core...\n");
-	__atomic_store_n(&synchro, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&synchro, 1, rte_memory_order_relaxed);
 	load_loop_fn(&lock);
 	printf("Core [%u] Cost Time = %"PRIu64" us\n",
 			lcore, time_count[lcore]);
@@ -107,7 +108,7 @@ test_pflock_perf(void)
 
 	printf("\nTest with phase-fair lock on single core...\n");
 	lock = 1;
-	__atomic_store_n(&synchro, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&synchro, 1, rte_memory_order_relaxed);
 	load_loop_fn(&lock);
 	printf("Core [%u] Cost Time = %"PRIu64" us\n",
 			lcore, time_count[lcore]);
@@ -116,12 +117,12 @@ test_pflock_perf(void)
 	printf("\nPhase-fair test on %u cores...\n", rte_lcore_count());
 
 	/* clear synchro and start workers */
-	__atomic_store_n(&synchro, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&synchro, 0, rte_memory_order_relaxed);
 	if (rte_eal_mp_remote_launch(load_loop_fn, &lock, SKIP_MAIN) < 0)
 		return -1;
 
 	/* start synchro and launch test on main */
-	__atomic_store_n(&synchro, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&synchro, 1, rte_memory_order_relaxed);
 	load_loop_fn(&lock);
 
 	rte_eal_mp_wait_lcore();
@@ -193,4 +194,4 @@ test_pflock(void)
 	return 0;
 }
 
-REGISTER_FAST_TEST(pflock_autotest, true, true, test_pflock);
+REGISTER_FAST_TEST(pflock_autotest, NOHUGE_OK, ASAN_OK, test_pflock);

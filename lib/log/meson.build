@@ -4,6 +4,16 @@
 includes += global_inc
 sources = files(
         'log.c',
-        'log_' + exec_env + '.c',
+        'log_color.c',
+        'log_timestamp.c',
 )
+
+if not is_windows
+    sources += files('log_syslog.c')
+endif
+
+if is_linux
+    sources += files('log_journal.c')
+endif
+
 headers = files('rte_log.h')

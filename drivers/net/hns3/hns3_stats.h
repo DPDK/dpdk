@@ -151,7 +151,8 @@ struct hns3_reset_stats;
 struct hns3_hw;
 
 int hns3_stats_get(struct rte_eth_dev *eth_dev,
-		   struct rte_eth_stats *rte_stats);
+		   struct rte_eth_stats *rte_stats,
+		   struct eth_queue_stats *qstats);
 int hns3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 			unsigned int n);
 int hns3_dev_xstats_reset(struct rte_eth_dev *dev);

@@ -9,8 +9,8 @@
 #include <rte_log.h>
 
 extern int nfp_logtype_common;
-#define PMD_DRV_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, nfp_logtype_common, \
-			"%s(): " fmt "\n", __func__, ## args)
+#define RTE_LOGTYPE_NFP_COMMON nfp_logtype_common
+#define PMD_DRV_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, NFP_COMMON, "%s(): ", __func__, __VA_ARGS__)
 
 #endif/* __NFP_COMMON_LOG_H__ */

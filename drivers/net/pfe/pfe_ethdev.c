@@ -161,7 +161,7 @@ pfe_recv_pkts_on_intr(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		writel(readl(HIF_INT_ENABLE) | HIF_RXPKT_INT, HIF_INT_ENABLE);
 		ret = epoll_wait(priv->pfe->hif.epoll_fd, &epoll_ev, 1, ticks);
 		if (ret < 0 && errno != EINTR)
-			PFE_PMD_ERR("epoll_wait fails with %d\n", errno);
+			PFE_PMD_ERR("epoll_wait fails with %d", errno);
 	}
 
 	return work_done;
@@ -338,9 +338,9 @@ pfe_eth_open_cdev(struct pfe_eth_priv_s *priv)
 
 	pfe_cdev_fd = open(PFE_CDEV_PATH, O_RDONLY);
 	if (pfe_cdev_fd < 0) {
-		PFE_PMD_WARN("Unable to open PFE device file (%s).\n",
+		PFE_PMD_WARN("Unable to open PFE device file (%s).",
 			     PFE_CDEV_PATH);
-		PFE_PMD_WARN("Link status update will not be available.\n");
+		PFE_PMD_WARN("Link status update will not be available.");
 		priv->link_fd = PFE_CDEV_INVALID_FD;
 		return -1;
 	}
@@ -583,16 +583,16 @@ pfe_eth_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 
 		ret = ioctl(priv->link_fd, ioctl_cmd, &lstatus);
 		if (ret != 0) {
-			PFE_PMD_ERR("Unable to fetch link status (ioctl)\n");
+			PFE_PMD_ERR("Unable to fetch link status (ioctl)");
 			return -1;
 		}
-		PFE_PMD_DEBUG("Fetched link state (%d) for dev %d.\n",
+		PFE_PMD_DEBUG("Fetched link state (%d) for dev %d.",
 			      lstatus, priv->id);
 	}
 
 	if (old.link_status == lstatus) {
 		/* no change in status */
-		PFE_PMD_DEBUG("No change in link status; Not updating.\n");
+		PFE_PMD_DEBUG("No change in link status; Not updating.");
 		return -1;
 	}
 
@@ -603,7 +603,7 @@ pfe_eth_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 
 	pfe_eth_atomic_write_link_status(dev, &link);
 
-	PFE_PMD_INFO("Port (%d) link is %s\n", dev->data->port_id,
+	PFE_PMD_INFO("Port (%d) link is %s", dev->data->port_id,
 		     link.link_status ? "up" : "down");
 
 	return 0;
@@ -713,7 +713,8 @@ pfe_dev_set_mac_addr(struct rte_eth_dev *dev,
 
 static int
 pfe_stats_get(struct rte_eth_dev *dev,
-	      struct rte_eth_stats *stats)
+	      struct rte_eth_stats *stats,
+	      struct eth_queue_stats *qstats __rte_unused)
 {
 	struct pfe_eth_priv_s *priv = dev->data->dev_private;
 	struct rte_eth_stats *eth_stats = &priv->stats;
@@ -993,24 +994,24 @@ pmd_pfe_probe(struct rte_vdev_device *vdev)
 
 	addr = of_get_address(np, 0, &cbus_size, NULL);
 	if (!addr) {
-		PFE_PMD_ERR("of_get_address cannot return qman address\n");
+		PFE_PMD_ERR("of_get_address cannot return qman address");
 		goto err;
 	}
 	cbus_addr = of_translate_address(np, addr);
 	if (!cbus_addr) {
-		PFE_PMD_ERR("of_translate_address failed\n");
+		PFE_PMD_ERR("of_translate_address failed");
 		goto err;
 	}
 
 	addr = of_get_address(np, 1, &ddr_size, NULL);
 	if (!addr) {
-		PFE_PMD_ERR("of_get_address cannot return qman address\n");
+		PFE_PMD_ERR("of_get_address cannot return qman address");
 		goto err;
 	}
 
 	g_pfe->ddr_phys_baseaddr = of_translate_address(np, addr);
 	if (!g_pfe->ddr_phys_baseaddr) {
-		PFE_PMD_ERR("of_translate_address failed\n");
+		PFE_PMD_ERR("of_translate_address failed");
 		goto err;
 	}
 

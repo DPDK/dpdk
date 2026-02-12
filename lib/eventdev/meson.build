@@ -7,6 +7,8 @@ if is_windows
     subdir_done()
 endif
 
+cflags += no_wvla_cflag
+
 sources = files(
         'eventdev_private.c',
         'eventdev_trace_points.c',
@@ -16,6 +18,7 @@ sources = files(
         'rte_event_eth_tx_adapter.c',
         'rte_event_ring.c',
         'rte_event_timer_adapter.c',
+        'rte_event_vector_adapter.c',
         'rte_eventdev.c',
 )
 headers = files(
@@ -25,6 +28,7 @@ headers = files(
         'rte_event_eth_tx_adapter.h',
         'rte_event_ring.h',
         'rte_event_timer_adapter.h',
+        'rte_event_vector_adapter.h',
         'rte_eventdev.h',
         'rte_eventdev_trace_fp.h',
 )
@@ -36,6 +40,7 @@ driver_sdk_headers += files(
         'eventdev_pmd_pci.h',
         'eventdev_pmd_vdev.h',
         'event_timer_adapter_pmd.h',
+        'event_vector_adapter_pmd.h',
 )
 
 deps += ['ring', 'ethdev', 'hash', 'mempool', 'mbuf', 'timer', 'cryptodev', 'dmadev']

@@ -6,46 +6,15 @@
 #include "nfp_nfdk.h"
 
 #include <bus_pci_driver.h>
-#include <nfp_platform.h>
 #include <rte_malloc.h>
 
 #include "../flower/nfp_flower.h"
 #include "../nfp_logs.h"
 #include "../nfp_net_meta.h"
+#include "../nfp_rxtx_vec.h"
+#include "nfp_nfdk_vec.h"
 
 #define NFDK_TX_DESC_GATHER_MAX         17
-
-/* Set TX CSUM offload flags in TX descriptor of nfdk */
-static uint64_t
-nfp_net_nfdk_tx_cksum(struct nfp_net_txq *txq,
-		struct rte_mbuf *mb,
-		uint64_t flags)
-{
-	uint64_t ol_flags;
-	struct nfp_net_hw *hw = txq->hw;
-
-	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_TXCSUM) == 0)
-		return flags;
-
-	ol_flags = mb->ol_flags;
-
-	/* Set L4 csum offload if TSO/UFO enabled. */
-	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0 ||
-			(ol_flags & RTE_MBUF_F_TX_UDP_SEG) != 0)
-		flags |= NFDK_DESC_TX_L4_CSUM;
-
-	if ((ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) != 0)
-		flags |= NFDK_DESC_TX_ENCAP;
-
-	/* IPv6 does not need checksum */
-	if ((ol_flags & RTE_MBUF_F_TX_IP_CKSUM) != 0)
-		flags |= NFDK_DESC_TX_L3_CSUM;
-
-	if ((ol_flags & RTE_MBUF_F_TX_L4_MASK) != 0)
-		flags |= NFDK_DESC_TX_L4_CSUM;
-
-	return flags;
-}
 
 /* Set TX descriptor for TSO of nfdk */
 static uint64_t
@@ -98,14 +67,6 @@ nfp_flower_nfdk_pkt_add_metadata(struct rte_mbuf *mbuf,
 	*(rte_be32_t *)meta_offset = rte_cpu_to_be_32(port_id);
 
 	return FLOWER_PKT_DATA_OFFSET;
-}
-
-static inline uint16_t
-nfp_net_nfdk_headlen_to_segs(uint16_t headlen)
-{
-	/* First descriptor fits less data, so adjust for that */
-	return DIV_ROUND_UP(headlen + NFDK_TX_MAX_DATA_PER_DESC - NFDK_TX_MAX_DATA_PER_HEAD,
-			NFDK_TX_MAX_DATA_PER_DESC);
 }
 
 static inline void
@@ -170,7 +131,7 @@ close_block:
 	return nop_slots;
 }
 
-static int
+int
 nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
 		struct nfp_net_txq *txq,
 		uint64_t *metadata)
@@ -180,7 +141,6 @@ nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
 	uint32_t meta_type;
 	struct nfp_net_hw *hw;
 	uint32_t header_offset;
-	uint8_t vlan_layer = 0;
 	uint8_t ipsec_layer = 0;
 	struct nfp_net_meta_raw meta_data;
 
@@ -223,12 +183,7 @@ nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
 			meta += NFP_NET_META_FIELD_SIZE) {
 		switch (meta_type & NFP_NET_META_FIELD_MASK) {
 		case NFP_NET_META_VLAN:
-			if (vlan_layer > 0) {
-				PMD_DRV_LOG(ERR, "At most 1 layers of vlan is supported");
-				return -EINVAL;
-			}
 			nfp_net_meta_set_vlan(&meta_data, pkt, layer);
-			vlan_layer++;
 			break;
 		case NFP_NET_META_IPSEC:
 			if (ipsec_layer > 2) {
@@ -240,7 +195,7 @@ nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
 			ipsec_layer++;
 			break;
 		default:
-			PMD_DRV_LOG(ERR, "The metadata type not supported");
+			PMD_DRV_LOG(ERR, "The metadata type not supported.");
 			return -ENOTSUP;
 		}
 
@@ -281,7 +236,7 @@ nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
 	txq = tx_queue;
 	hw = txq->hw;
 
-	PMD_TX_LOG(DEBUG, "working for queue %hu at pos %d and %hu packets",
+	PMD_TX_LOG(DEBUG, "Working for queue %hu at pos %d and %hu packets.",
 			txq->qidx, txq->wr_p, nb_pkts);
 
 	if (nfp_net_nfdk_free_tx_desc(txq) < NFDK_TX_DESC_PER_SIMPLE_PKT * nb_pkts ||
@@ -292,7 +247,7 @@ nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
 	if (unlikely(free_descs == 0))
 		return 0;
 
-	PMD_TX_LOG(DEBUG, "queue: %hu. Sending %hu packets", txq->qidx, nb_pkts);
+	PMD_TX_LOG(DEBUG, "Queue: %hu. Sending %hu packets.", txq->qidx, nb_pkts);
 
 	/* Sending packets */
 	while (npkts < nb_pkts && free_descs > 0) {
@@ -334,7 +289,7 @@ nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
 
 		if (unlikely(pkt->nb_segs > 1 &&
 				(hw->super.ctrl & NFP_NET_CFG_CTRL_GATHER) == 0)) {
-			PMD_TX_LOG(ERR, "Multisegment packet not supported");
+			PMD_TX_LOG(ERR, "Multisegment packet not supported.");
 			goto xmit_end;
 		}
 
@@ -426,7 +381,7 @@ nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
 		if (RTE_ALIGN_FLOOR(txq->wr_p, NFDK_TX_DESC_BLOCK_CNT) !=
 				RTE_ALIGN_FLOOR(txq->wr_p + used_descs - 1,
 						NFDK_TX_DESC_BLOCK_CNT)) {
-			PMD_TX_LOG(INFO, "Used descs cross block boundary");
+			PMD_TX_LOG(INFO, "Used descs cross block boundary.");
 			goto xmit_end;
 		}
 
@@ -464,17 +419,19 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 	uint16_t tx_free_thresh;
 	struct nfp_net_txq *txq;
 	const struct rte_memzone *tz;
+	struct nfp_net_hw_priv *hw_priv;
 
 	hw = nfp_net_get_hw(dev);
+	hw_priv = dev->process_private;
 
-	nfp_net_tx_desc_limits(hw, &min_tx_desc, &max_tx_desc);
+	nfp_net_tx_desc_limits(hw_priv, &min_tx_desc, &max_tx_desc);
 
 	/* Validating number of descriptors */
 	tx_desc_sz = nb_desc * sizeof(struct nfp_net_nfdk_tx_desc);
 	if ((NFDK_TX_DESC_PER_SIMPLE_PKT * tx_desc_sz) % NFP_ALIGN_RING_DESC != 0 ||
 			(NFDK_TX_DESC_PER_SIMPLE_PKT * nb_desc) % NFDK_TX_DESC_BLOCK_CNT != 0 ||
 			nb_desc > max_tx_desc || nb_desc < min_tx_desc) {
-		PMD_DRV_LOG(ERR, "Wrong nb_desc value");
+		PMD_DRV_LOG(ERR, "Wrong nb_desc value.");
 		return -EINVAL;
 	}
 
@@ -482,7 +439,7 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 	if (tx_free_thresh == 0)
 		tx_free_thresh = DEFAULT_TX_FREE_THRESH;
 	if (tx_free_thresh > nb_desc) {
-		PMD_DRV_LOG(ERR, "tx_free_thresh must be less than the number of TX "
+		PMD_DRV_LOG(ERR, "The tx_free_thresh must be less than the number of TX "
 				"descriptors. (tx_free_thresh=%u port=%d queue=%d)",
 				tx_free_thresh, dev->data->port_id, queue_idx);
 		return -EINVAL;
@@ -493,7 +450,7 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 	 * calling nfp_net_stop().
 	 */
 	if (dev->data->tx_queues[queue_idx] != NULL) {
-		PMD_TX_LOG(DEBUG, "Freeing memory prior to re-allocation %d",
+		PMD_TX_LOG(DEBUG, "Freeing memory prior to re-allocation %d.",
 				queue_idx);
 		nfp_net_tx_queue_release(dev, queue_idx);
 		dev->data->tx_queues[queue_idx] = NULL;
@@ -503,7 +460,7 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 	txq = rte_zmalloc_socket("ethdev TX queue", sizeof(struct nfp_net_txq),
 			RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq == NULL) {
-		PMD_DRV_LOG(ERR, "Error allocating tx dma");
+		PMD_DRV_LOG(ERR, "Error allocating tx dma.");
 		return -ENOMEM;
 	}
 
@@ -517,7 +474,7 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx, size,
 			NFP_MEMZONE_ALIGN, socket_id);
 	if (tz == NULL) {
-		PMD_DRV_LOG(ERR, "Error allocating tx dma");
+		PMD_DRV_LOG(ERR, "Error allocating tx dma.");
 		nfp_net_tx_queue_release(dev, queue_idx);
 		return -ENOMEM;
 	}
@@ -544,10 +501,19 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
+	if (hw->txrwb_mz != NULL) {
+		txq->txrwb = (uint64_t *)hw->txrwb_mz->addr + queue_idx;
+		txq->txrwb_dma = (uint64_t)hw->txrwb_mz->iova +
+				queue_idx * sizeof(uint64_t);
+		nn_cfg_writeq(&hw->super, NFP_NET_CFG_TXR_WB_ADDR(queue_idx), txq->txrwb_dma);
+	}
+
 	nfp_net_reset_tx_queue(txq);
 
 	dev->data->tx_queues[queue_idx] = txq;
 	txq->hw = hw;
+	txq->hw_priv = dev->process_private;
+	txq->simple_always = true;
 
 	/*
 	 * Telling the HW about the physical address of the TX ring and number
@@ -557,4 +523,13 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 	nn_cfg_writeb(&hw->super, NFP_NET_CFG_TXR_SZ(queue_idx), rte_log2_u32(txq->tx_count));
 
 	return 0;
+}
+
+void
+nfp_net_nfdk_xmit_pkts_set(struct rte_eth_dev *eth_dev)
+{
+	if (nfp_net_get_avx2_supported())
+		eth_dev->tx_pkt_burst = nfp_net_nfdk_vec_avx2_xmit_pkts;
+	else
+		eth_dev->tx_pkt_burst = nfp_net_nfdk_xmit_pkts;
 }

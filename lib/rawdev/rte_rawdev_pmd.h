@@ -13,10 +13,6 @@
  * any application.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <string.h>
 
 #include <dev_driver.h>
@@ -25,6 +21,10 @@ extern "C" {
 #include <rte_common.h>
 
 #include "rte_rawdev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 extern int librawdev_logtype;
 #define RTE_LOGTYPE_RAWDEV librawdev_logtype
@@ -98,6 +98,30 @@ rte_rawdev_pmd_get_named_dev(const char *name)
 		   (strcmp(dev->name, name) == 0))
 			return dev;
 	}
+
+	return NULL;
+}
+
+/**
+ * Get the rte_rawdev structure device pointer for given device ID.
+ *
+ * @param dev_id
+ *   raw device index.
+ *
+ * @return
+ *   - The rte_rawdev structure pointer for the given device ID.
+ */
+static inline struct rte_rawdev *
+rte_rawdev_pmd_get_dev(uint8_t dev_id)
+{
+	struct rte_rawdev *dev;
+
+	if (dev_id >= RTE_RAWDEV_MAX_DEVS)
+		return NULL;
+
+	dev = &rte_rawdevs[dev_id];
+	if (dev->attached == RTE_RAWDEV_ATTACHED)
+		return dev;
 
 	return NULL;
 }
@@ -482,7 +506,7 @@ typedef int (*rawdev_firmware_version_get_t)(struct rte_rawdev *dev,
  *   >0, ~0: for successful load
  *   <0: for failure
  *
- * @see Application may use 'firmware_version_get` for ascertaining successful
+ * @see Application may use `firmware_version_get` for ascertaining successful
  * load
  */
 typedef int (*rawdev_firmware_load_t)(struct rte_rawdev *dev,

@@ -116,6 +116,10 @@ ip4_lookup_node_process_vec(struct rte_graph *graph, struct rte_node *node,
 		priv01.u16[4] = result.u16[2];
 		priv23.u16[0] = result.u16[4];
 		priv23.u16[4] = result.u16[6];
+		NODE_INCREMENT_XSTAT_ID(node, 0, result.u16[1] == (drop_nh >> 16), 1);
+		NODE_INCREMENT_XSTAT_ID(node, 0, result.u16[3] == (drop_nh >> 16), 1);
+		NODE_INCREMENT_XSTAT_ID(node, 0, result.u16[5] == (drop_nh >> 16), 1);
+		NODE_INCREMENT_XSTAT_ID(node, 0, result.u16[7] == (drop_nh >> 16), 1);
 
 		node_mbuf_priv1(mbuf0, dyn)->u = priv01.u64[0];
 		node_mbuf_priv1(mbuf1, dyn)->u = priv01.u64[1];
@@ -202,6 +206,7 @@ ip4_lookup_node_process_vec(struct rte_graph *graph, struct rte_node *node,
 				    &next_hop);
 		next_hop = (rc == 0) ? next_hop : drop_nh;
 
+		NODE_INCREMENT_XSTAT_ID(node, 0, rc != 0, 1);
 		node_mbuf_priv1(mbuf0, dyn)->nh = (uint16_t)next_hop;
 		next_hop = next_hop >> 16;
 		next0 = (uint16_t)next_hop;

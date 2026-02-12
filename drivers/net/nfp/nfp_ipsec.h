@@ -142,7 +142,7 @@ struct nfp_ipsec_msg {
 	};
 };
 
-struct nfp_ipsec_session {
+struct __rte_cache_aligned nfp_ipsec_session {
 	/** Opaque user defined data */
 	void *user_data;
 	/** NFP sa_entries database parameter index */
@@ -155,7 +155,7 @@ struct nfp_ipsec_session {
 	struct rte_security_ipsec_xform ipsec;
 	/** Security session action type */
 	enum rte_security_session_action_type action;
-} __rte_cache_aligned;
+};
 
 struct nfp_net_ipsec_data {
 	int pkt_dynfield_offset;

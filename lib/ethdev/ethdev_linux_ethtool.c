@@ -2,6 +2,7 @@
  * Copyright (c) 2024 NVIDIA Corporation & Affiliates
  */
 
+#include <eal_export.h>
 #include <rte_bitops.h>
 
 #include "rte_ethdev.h"
@@ -15,9 +16,11 @@
  * and allows to compile with new bits included even on an old kernel.
  *
  * The array below is built from bit definitions with this shell command:
- *   sed -rn 's;.*(ETHTOOL_LINK_MODE_)([0-9]+)([0-9a-zA-Z_]*).*= *([0-9]*).*;'\
- *           '[\4] = \2, /\* \1\2\3 *\/;p' /usr/include/linux/ethtool.h |
- *   awk '/_Half_/{$3=$3+1","}1'
+ *   sed -rn \
+ *     's;.*(ETHTOOL_LINK_MODE_)([0-9]+)([0-9a-zA-Z_]*).*= *([0-9]*).*;[\4] \2 \1\2\3;p' \
+ *     /usr/include/linux/ethtool.h |
+ *   awk '/_Half_/{$2=$2+1}1' |
+ *   awk '{printf "\t%5s = %7s, /\* %s *\/\n", $1, $2, $3}'
  */
 static const uint32_t link_modes[] = {
 	  [0] =      11, /* ETHTOOL_LINK_MODE_10baseT_Half_BIT */
@@ -109,10 +112,29 @@ static const uint32_t link_modes[] = {
 	 [99] =      10, /* ETHTOOL_LINK_MODE_10baseT1S_Full_BIT */
 	[100] =      11, /* ETHTOOL_LINK_MODE_10baseT1S_Half_BIT */
 	[101] =      11, /* ETHTOOL_LINK_MODE_10baseT1S_P2MP_Half_BIT */
+	[102] =      10, /* ETHTOOL_LINK_MODE_10baseT1BRR_Full_BIT */
+	[103] =  200000, /* ETHTOOL_LINK_MODE_200000baseCR_Full_BIT */
+	[104] =  200000, /* ETHTOOL_LINK_MODE_200000baseKR_Full_BIT */
+	[105] =  200000, /* ETHTOOL_LINK_MODE_200000baseDR_Full_BIT */
+	[106] =  200000, /* ETHTOOL_LINK_MODE_200000baseDR_2_Full_BIT */
+	[107] =  200000, /* ETHTOOL_LINK_MODE_200000baseSR_Full_BIT */
+	[108] =  200000, /* ETHTOOL_LINK_MODE_200000baseVR_Full_BIT */
+	[109] =  400000, /* ETHTOOL_LINK_MODE_400000baseCR2_Full_BIT */
+	[110] =  400000, /* ETHTOOL_LINK_MODE_400000baseKR2_Full_BIT */
+	[111] =  400000, /* ETHTOOL_LINK_MODE_400000baseDR2_Full_BIT */
+	[112] =  400000, /* ETHTOOL_LINK_MODE_400000baseDR2_2_Full_BIT */
+	[113] =  400000, /* ETHTOOL_LINK_MODE_400000baseSR2_Full_BIT */
+	[114] =  400000, /* ETHTOOL_LINK_MODE_400000baseVR2_Full_BIT */
+	[115] =  800000, /* ETHTOOL_LINK_MODE_800000baseCR4_Full_BIT */
+	[116] =  800000, /* ETHTOOL_LINK_MODE_800000baseKR4_Full_BIT */
+	[117] =  800000, /* ETHTOOL_LINK_MODE_800000baseDR4_Full_BIT */
+	[118] =  800000, /* ETHTOOL_LINK_MODE_800000baseDR4_2_Full_BIT */
+	[119] =  800000, /* ETHTOOL_LINK_MODE_800000baseSR4_Full_BIT */
+	[120] =  800000, /* ETHTOOL_LINK_MODE_800000baseVR4_Full_BIT */
 };
 
-uint32_t
-rte_eth_link_speed_ethtool(enum ethtool_link_mode_bit_indices bit)
+static uint32_t
+eth_link_speed_ethtool(enum ethtool_link_mode_bit_indices bit)
 {
 	uint32_t speed;
 	int duplex;
@@ -134,6 +156,7 @@ rte_eth_link_speed_ethtool(enum ethtool_link_mode_bit_indices bit)
 	return rte_eth_speed_bitflag(speed, duplex);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_eth_link_speed_glink)
 uint32_t
 rte_eth_link_speed_glink(const uint32_t *bitmap, int8_t nwords)
 {
@@ -147,13 +170,14 @@ rte_eth_link_speed_glink(const uint32_t *bitmap, int8_t nwords)
 		for (bit = 0; bit < 32; bit++) {
 			if ((bitmap[word] & RTE_BIT32(bit)) == 0)
 				continue;
-			ethdev_bitmap |= rte_eth_link_speed_ethtool(word * 32 + bit);
+			ethdev_bitmap |= eth_link_speed_ethtool(word * 32 + bit);
 		}
 	}
 
 	return ethdev_bitmap;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_eth_link_speed_gset)
 uint32_t
 rte_eth_link_speed_gset(uint32_t legacy_bitmap)
 {

@@ -623,7 +623,7 @@ hns3_set_rss_size(struct hns3_hw *hw, uint16_t nb_rx_q)
 	uint16_t used_rx_queues;
 	uint16_t i;
 
-	rx_qnum_per_tc = nb_rx_q / hw->num_tc;
+	rx_qnum_per_tc = nb_rx_q / hw->dcb_info.num_tc;
 	if (rx_qnum_per_tc > hw->rss_size_max) {
 		hns3_err(hw, "rx queue number of per tc (%u) is greater than "
 			 "value (%u) hardware supported.",
@@ -631,11 +631,11 @@ hns3_set_rss_size(struct hns3_hw *hw, uint16_t nb_rx_q)
 		return -EINVAL;
 	}
 
-	used_rx_queues = hw->num_tc * rx_qnum_per_tc;
+	used_rx_queues = hw->dcb_info.num_tc * rx_qnum_per_tc;
 	if (used_rx_queues != nb_rx_q) {
 		hns3_err(hw, "rx queue number (%u) configured must be an "
 			 "integral multiple of valid tc number (%u).",
-			 nb_rx_q, hw->num_tc);
+			 nb_rx_q, hw->dcb_info.num_tc);
 		return -EINVAL;
 	}
 	hw->alloc_rss_size = rx_qnum_per_tc;
@@ -648,7 +648,7 @@ hns3_set_rss_size(struct hns3_hw *hw, uint16_t nb_rx_q)
 	 * and configured directly to the hardware in the RESET_STAGE_RESTORE
 	 * stage of the reset process.
 	 */
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED) == 0) {
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed) == 0) {
 		for (i = 0; i < hw->rss_ind_tbl_size; i++)
 			rss_cfg->rss_indirection_tbl[i] =
 							i % hw->alloc_rss_size;
@@ -665,12 +665,12 @@ hns3_tc_queue_mapping_cfg(struct hns3_hw *hw, uint16_t nb_tx_q)
 	uint16_t tx_qnum_per_tc;
 	uint8_t i;
 
-	tx_qnum_per_tc = nb_tx_q / hw->num_tc;
-	used_tx_queues = hw->num_tc * tx_qnum_per_tc;
+	tx_qnum_per_tc = nb_tx_q / hw->dcb_info.num_tc;
+	used_tx_queues = hw->dcb_info.num_tc * tx_qnum_per_tc;
 	if (used_tx_queues != nb_tx_q) {
 		hns3_err(hw, "tx queue number (%u) configured must be an "
 			 "integral multiple of valid tc number (%u).",
-			 nb_tx_q, hw->num_tc);
+			 nb_tx_q, hw->dcb_info.num_tc);
 		return -EINVAL;
 	}
 
@@ -678,7 +678,7 @@ hns3_tc_queue_mapping_cfg(struct hns3_hw *hw, uint16_t nb_tx_q)
 	hw->tx_qnum_per_tc = tx_qnum_per_tc;
 	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
 		tc_queue = &hw->tc_queue[i];
-		if (hw->hw_tc_map & BIT(i) && i < hw->num_tc) {
+		if (hw->dcb_info.hw_tc_map & BIT(i) && i < hw->dcb_info.num_tc) {
 			tc_queue->enable = true;
 			tc_queue->tqp_offset = i * hw->tx_qnum_per_tc;
 			tc_queue->tqp_count = hw->tx_qnum_per_tc;
@@ -720,15 +720,15 @@ hns3_queue_to_tc_mapping(struct hns3_hw *hw, uint16_t nb_rx_q, uint16_t nb_tx_q)
 {
 	int ret;
 
-	if (nb_rx_q < hw->num_tc) {
+	if (nb_rx_q < hw->dcb_info.num_tc) {
 		hns3_err(hw, "number of Rx queues(%u) is less than number of TC(%u).",
-			 nb_rx_q, hw->num_tc);
+			 nb_rx_q, hw->dcb_info.num_tc);
 		return -EINVAL;
 	}
 
-	if (nb_tx_q < hw->num_tc) {
+	if (nb_tx_q < hw->dcb_info.num_tc) {
 		hns3_err(hw, "number of Tx queues(%u) is less than number of TC(%u).",
-			 nb_tx_q, hw->num_tc);
+			 nb_tx_q, hw->dcb_info.num_tc);
 		return -EINVAL;
 	}
 
@@ -737,15 +737,6 @@ hns3_queue_to_tc_mapping(struct hns3_hw *hw, uint16_t nb_rx_q, uint16_t nb_tx_q)
 		return ret;
 
 	return hns3_tc_queue_mapping_cfg(hw, nb_tx_q);
-}
-
-static int
-hns3_dcb_update_tc_queue_mapping(struct hns3_hw *hw, uint16_t nb_rx_q,
-				 uint16_t nb_tx_q)
-{
-	hw->num_tc = hw->dcb_info.num_tc;
-
-	return hns3_queue_to_tc_mapping(hw, nb_rx_q, nb_tx_q);
 }
 
 int
@@ -771,7 +762,7 @@ hns3_dcb_info_init(struct hns3_hw *hw)
 		if (i != 0)
 			continue;
 
-		hw->dcb_info.pg_info[i].tc_bit_map = hw->hw_tc_map;
+		hw->dcb_info.pg_info[i].tc_bit_map = hw->dcb_info.hw_tc_map;
 		for (k = 0; k < hw->dcb_info.num_tc; k++)
 			hw->dcb_info.pg_info[i].tc_dwrr[k] = BW_MAX_PERCENT;
 	}
@@ -1028,7 +1019,7 @@ hns3_q_to_qs_map(struct hns3_hw *hw)
 	uint32_t i, j;
 	int ret;
 
-	for (i = 0; i < hw->num_tc; i++) {
+	for (i = 0; i < hw->dcb_info.num_tc; i++) {
 		tc_queue = &hw->tc_queue[i];
 		for (j = 0; j < tc_queue->tqp_count; j++) {
 			q_id = tc_queue->tqp_offset + j;
@@ -1053,7 +1044,7 @@ hns3_pri_q_qs_cfg(struct hns3_hw *hw)
 		return -EINVAL;
 
 	/* Cfg qs -> pri mapping */
-	for (i = 0; i < hw->num_tc; i++) {
+	for (i = 0; i < hw->dcb_info.num_tc; i++) {
 		ret = hns3_qs_to_pri_map_cfg(hw, i, i);
 		if (ret) {
 			hns3_err(hw, "qs_to_pri mapping fail: %d", ret);
@@ -1404,15 +1395,14 @@ static int
 hns3_dcb_info_cfg(struct hns3_adapter *hns)
 {
 	struct rte_eth_dcb_rx_conf *dcb_rx_conf;
-	struct hns3_pf *pf = &hns->pf;
 	struct hns3_hw *hw = &hns->hw;
 	uint8_t tc_bw, bw_rest;
 	uint8_t i, j;
 	int ret;
 
 	dcb_rx_conf = &hw->data->dev_conf.rx_adv_conf.dcb_rx_conf;
-	pf->local_max_tc = (uint8_t)dcb_rx_conf->nb_tcs;
-	pf->pfc_max = (uint8_t)dcb_rx_conf->nb_tcs;
+	hw->dcb_info.local_max_tc = (uint8_t)dcb_rx_conf->nb_tcs;
+	hw->dcb_info.pfc_max = (uint8_t)dcb_rx_conf->nb_tcs;
 
 	/* Config pg0 */
 	memset(hw->dcb_info.pg_info, 0,
@@ -1421,7 +1411,7 @@ hns3_dcb_info_cfg(struct hns3_adapter *hns)
 	hw->dcb_info.pg_info[0].pg_id = 0;
 	hw->dcb_info.pg_info[0].pg_sch_mode = HNS3_SCH_MODE_DWRR;
 	hw->dcb_info.pg_info[0].bw_limit = hw->max_tm_rate;
-	hw->dcb_info.pg_info[0].tc_bit_map = hw->hw_tc_map;
+	hw->dcb_info.pg_info[0].tc_bit_map = hw->dcb_info.hw_tc_map;
 
 	/* Each tc has same bw for valid tc by default */
 	tc_bw = BW_MAX_PERCENT / hw->dcb_info.num_tc;
@@ -1448,8 +1438,8 @@ hns3_dcb_info_cfg(struct hns3_adapter *hns)
 	for (i = 0; i < HNS3_MAX_USER_PRIO; i++)
 		hw->dcb_info.prio_tc[i] = dcb_rx_conf->dcb_tc[i];
 
-	ret = hns3_dcb_update_tc_queue_mapping(hw, hw->data->nb_rx_queues,
-					       hw->data->nb_tx_queues);
+	ret = hns3_queue_to_tc_mapping(hw, hw->data->nb_rx_queues,
+				       hw->data->nb_tx_queues);
 	if (ret)
 		hns3_err(hw, "update tc queue mapping failed, ret = %d.", ret);
 
@@ -1491,7 +1481,7 @@ hns3_dcb_info_update(struct hns3_adapter *hns, uint8_t num_tc)
 		bit_map = 1;
 		hw->dcb_info.num_tc = 1;
 	}
-	hw->hw_tc_map = bit_map;
+	hw->dcb_info.hw_tc_map = bit_map;
 
 	return hns3_dcb_info_cfg(hns);
 }
@@ -1635,8 +1625,7 @@ hns3_dcb_init(struct hns3_hw *hw)
 		 */
 		default_tqp_num = RTE_MIN(hw->rss_size_max,
 					  hw->tqps_num / hw->dcb_info.num_tc);
-		ret = hns3_dcb_update_tc_queue_mapping(hw, default_tqp_num,
-						       default_tqp_num);
+		ret = hns3_queue_to_tc_mapping(hw, default_tqp_num, default_tqp_num);
 		if (ret) {
 			hns3_err(hw,
 				 "update tc queue mapping failed, ret = %d.",
@@ -1673,7 +1662,7 @@ hns3_update_queue_map_configure(struct hns3_adapter *hns)
 	if ((uint32_t)mq_mode & RTE_ETH_MQ_RX_DCB_FLAG)
 		return 0;
 
-	ret = hns3_dcb_update_tc_queue_mapping(hw, nb_rx_q, nb_tx_q);
+	ret = hns3_queue_to_tc_mapping(hw, nb_rx_q, nb_tx_q);
 	if (ret) {
 		hns3_err(hw, "failed to update tc queue mapping, ret = %d.",
 			 ret);
@@ -1810,4 +1799,110 @@ setup_fc_fail:
 	pf->pause_time = pause_time;
 
 	return ret;
+}
+
+int
+hns3_get_dcb_info(struct rte_eth_dev *dev, struct rte_eth_dcb_info *dcb_info)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	enum rte_eth_rx_mq_mode mq_mode = dev->data->dev_conf.rxmode.mq_mode;
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	int i;
+
+	if (hns->is_vf && !hns3_dev_get_support(hw, VF_MULTI_TCS))
+		return -ENOTSUP;
+
+	rte_spinlock_lock(&hw->lock);
+	if ((uint32_t)mq_mode & RTE_ETH_MQ_RX_DCB_FLAG)
+		dcb_info->nb_tcs = hw->dcb_info.local_max_tc;
+	else
+		dcb_info->nb_tcs = 1;
+
+	for (i = 0; i < HNS3_MAX_USER_PRIO; i++)
+		dcb_info->prio_tc[i] = hw->dcb_info.prio_tc[i];
+	for (i = 0; i < dcb_info->nb_tcs; i++)
+		dcb_info->tc_bws[i] = hw->dcb_info.pg_info[0].tc_dwrr[i];
+
+	for (i = 0; i < hw->dcb_info.num_tc; i++) {
+		dcb_info->tc_queue.tc_rxq[0][i].base = hw->alloc_rss_size * i;
+		dcb_info->tc_queue.tc_txq[0][i].base =
+						hw->tc_queue[i].tqp_offset;
+		dcb_info->tc_queue.tc_rxq[0][i].nb_queue = hw->alloc_rss_size;
+		dcb_info->tc_queue.tc_txq[0][i].nb_queue =
+						hw->tc_queue[i].tqp_count;
+	}
+	rte_spinlock_unlock(&hw->lock);
+
+	return 0;
+}
+
+int
+hns3_check_dev_mq_mode(struct rte_eth_dev *dev)
+{
+	enum rte_eth_rx_mq_mode rx_mq_mode = dev->data->dev_conf.rxmode.mq_mode;
+	enum rte_eth_tx_mq_mode tx_mq_mode = dev->data->dev_conf.txmode.mq_mode;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	struct rte_eth_dcb_rx_conf *dcb_rx_conf;
+	struct rte_eth_dcb_tx_conf *dcb_tx_conf;
+	uint8_t num_tc;
+	int max_tc = 0;
+	int i;
+
+	if (((uint32_t)rx_mq_mode & RTE_ETH_MQ_RX_VMDQ_FLAG) ||
+	    (tx_mq_mode == RTE_ETH_MQ_TX_VMDQ_DCB ||
+	     tx_mq_mode == RTE_ETH_MQ_TX_VMDQ_ONLY)) {
+		hns3_err(hw, "VMDQ is not supported, rx_mq_mode = %d, tx_mq_mode = %d.",
+			 rx_mq_mode, tx_mq_mode);
+		return -EOPNOTSUPP;
+	}
+
+	dcb_rx_conf = &dev->data->dev_conf.rx_adv_conf.dcb_rx_conf;
+	dcb_tx_conf = &dev->data->dev_conf.tx_adv_conf.dcb_tx_conf;
+	if ((uint32_t)rx_mq_mode & RTE_ETH_MQ_RX_DCB_FLAG) {
+		if (dcb_rx_conf->nb_tcs > hw->dcb_info.tc_max) {
+			hns3_err(hw, "nb_tcs(%u) > max_tc(%u) driver supported.",
+				 dcb_rx_conf->nb_tcs, hw->dcb_info.tc_max);
+			return -EINVAL;
+		}
+
+		/*
+		 * The PF driver supports only four or eight TCs. But the
+		 * number of TCs supported by the VF driver is flexible,
+		 * therefore, only the number of TCs in the PF is verified.
+		 */
+		if (!hns->is_vf && !(dcb_rx_conf->nb_tcs == HNS3_4_TCS ||
+				     dcb_rx_conf->nb_tcs == HNS3_8_TCS)) {
+			hns3_err(hw, "on RTE_ETH_MQ_RX_DCB_RSS mode, "
+				 "nb_tcs(%d) != %d or %d in rx direction.",
+				 dcb_rx_conf->nb_tcs, HNS3_4_TCS, HNS3_8_TCS);
+			return -EINVAL;
+		}
+
+		if (dcb_rx_conf->nb_tcs != dcb_tx_conf->nb_tcs) {
+			hns3_err(hw, "num_tcs(%d) of tx is not equal to rx(%d)",
+				 dcb_tx_conf->nb_tcs, dcb_rx_conf->nb_tcs);
+			return -EINVAL;
+		}
+
+		for (i = 0; i < HNS3_MAX_USER_PRIO; i++) {
+			if (dcb_rx_conf->dcb_tc[i] != dcb_tx_conf->dcb_tc[i]) {
+				hns3_err(hw, "dcb_tc[%d] = %u in rx direction, "
+					 "is not equal to one in tx direction.",
+					 i, dcb_rx_conf->dcb_tc[i]);
+				return -EINVAL;
+			}
+			if (dcb_rx_conf->dcb_tc[i] > max_tc)
+				max_tc = dcb_rx_conf->dcb_tc[i];
+		}
+
+		num_tc = max_tc + 1;
+		if (num_tc > dcb_rx_conf->nb_tcs) {
+			hns3_err(hw, "max num_tc(%u) mapped > nb_tcs(%u)",
+				 num_tc, dcb_rx_conf->nb_tcs);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
 }

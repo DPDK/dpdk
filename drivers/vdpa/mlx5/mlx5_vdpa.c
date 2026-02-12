@@ -261,8 +261,8 @@ mlx5_vdpa_wait_dev_close_tasks_done(struct mlx5_vdpa_priv *priv)
 	uint32_t timeout = 0;
 
 	/* Check and wait all close tasks done. */
-	while (__atomic_load_n(&priv->dev_close_progress,
-		__ATOMIC_RELAXED) != 0 && timeout < 1000) {
+	while (rte_atomic_load_explicit(&priv->dev_close_progress,
+		rte_memory_order_relaxed) != 0 && timeout < 1000) {
 		rte_delay_us_sleep(10000);
 		timeout++;
 	}
@@ -294,8 +294,8 @@ _internal_mlx5_vdpa_dev_close(struct mlx5_vdpa_priv *priv,
 			priv->last_c_thrd_idx = 0;
 		else
 			priv->last_c_thrd_idx++;
-		__atomic_store_n(&priv->dev_close_progress,
-			1, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&priv->dev_close_progress,
+			1, rte_memory_order_relaxed);
 		if (mlx5_vdpa_task_add(priv,
 			priv->last_c_thrd_idx,
 			MLX5_VDPA_TASK_DEV_CLOSE_NOWAIT,
@@ -319,8 +319,8 @@ single_thrd:
 	if (!priv->connected)
 		mlx5_vdpa_dev_cache_clean(priv);
 	priv->vid = 0;
-	__atomic_store_n(&priv->dev_close_progress, 0,
-		__ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&priv->dev_close_progress, 0,
+		rte_memory_order_relaxed);
 	priv->state = MLX5_VDPA_STATE_PROBED;
 	DRV_LOG(INFO, "vDPA device %d was closed.", vid);
 	return ret;
@@ -664,7 +664,9 @@ mlx5_vdpa_prepare_virtq_destroy(struct mlx5_vdpa_priv *priv)
 static int
 mlx5_vdpa_virtq_resource_prepare(struct mlx5_vdpa_priv *priv)
 {
-	uint32_t remaining_cnt = 0, err_cnt = 0, task_num = 0;
+	RTE_ATOMIC(uint32_t) remaining_cnt = 0;
+	RTE_ATOMIC(uint32_t) err_cnt = 0;
+	uint32_t task_num = 0;
 	uint32_t max_queues, index, thrd_idx, data[1];
 	struct mlx5_vdpa_virtq *virtq;
 
@@ -847,8 +849,8 @@ mlx5_vdpa_dev_probe(struct mlx5_common_device *cdev,
 		if (conf_thread_mng.initializer_priv == priv)
 			if (mlx5_vdpa_mult_threads_create())
 				goto error;
-		__atomic_fetch_add(&conf_thread_mng.refcnt, 1,
-			__ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&conf_thread_mng.refcnt, 1,
+			rte_memory_order_relaxed);
 	}
 	if (mlx5_vdpa_create_dev_resources(priv))
 		goto error;
@@ -937,8 +939,8 @@ mlx5_vdpa_dev_release(struct mlx5_vdpa_priv *priv)
 	if (priv->vdev)
 		rte_vdpa_unregister_device(priv->vdev);
 	if (priv->use_c_thread)
-		if (__atomic_fetch_sub(&conf_thread_mng.refcnt,
-			1, __ATOMIC_RELAXED) == 1)
+		if (rte_atomic_fetch_sub_explicit(&conf_thread_mng.refcnt,
+			1, rte_memory_order_relaxed) == 1)
 			mlx5_vdpa_mult_threads_destroy(true);
 	rte_free(priv);
 }
@@ -1001,6 +1003,6 @@ RTE_INIT(rte_mlx5_vdpa_init)
 		mlx5_class_driver_register(&mlx5_vdpa_driver);
 }
 
-RTE_PMD_EXPORT_NAME(MLX5_VDPA_DRIVER_NAME, __COUNTER__);
+RTE_PMD_EXPORT_NAME(MLX5_VDPA_DRIVER_NAME);
 RTE_PMD_REGISTER_PCI_TABLE(MLX5_VDPA_DRIVER_NAME, mlx5_vdpa_pci_id_map);
 RTE_PMD_REGISTER_KMOD_DEP(MLX5_VDPA_DRIVER_NAME, "* ib_uverbs & mlx5_core & mlx5_ib");

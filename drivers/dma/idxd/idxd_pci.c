@@ -11,11 +11,23 @@
 
 #define IDXD_VENDOR_ID		0x8086
 #define IDXD_DEVICE_ID_SPR	0x0B25
+#define IDXD_DEVICE_ID_GNRD	0x11FB
+#define IDXD_DEVICE_ID_DMR	0x1212
+
+#define DEVICE_VERSION_1	0x100
+#define DEVICE_VERSION_2	0x200
+/*
+ * Set bits for Traffic Class A & B
+ * TC-A (Bits 2:0) and TC-B (Bits 5:3)
+ */
+#define IDXD_SET_TC_A_B		0x9
 
 #define IDXD_PMD_DMADEV_NAME_PCI dmadev_idxd_pci
 
 const struct rte_pci_id pci_id_idxd_map[] = {
 	{ RTE_PCI_DEVICE(IDXD_VENDOR_ID, IDXD_DEVICE_ID_SPR) },
+	{ RTE_PCI_DEVICE(IDXD_VENDOR_ID, IDXD_DEVICE_ID_GNRD) },
+	{ RTE_PCI_DEVICE(IDXD_VENDOR_ID, IDXD_DEVICE_ID_DMR) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
@@ -136,7 +148,8 @@ idxd_pci_dev_close(struct rte_dma_dev *dev)
 	 * the PCI struct
 	 */
 	/* NOTE: review for potential ordering optimization */
-	is_last_wq = (__atomic_fetch_sub(&idxd->u.pci->ref_count, 1, __ATOMIC_SEQ_CST) == 1);
+	is_last_wq = (rte_atomic_fetch_sub_explicit(&idxd->u.pci->ref_count, 1,
+			rte_memory_order_seq_cst) == 1);
 	if (is_last_wq) {
 		/* disable the device */
 		err_code = idxd_pci_dev_command(idxd, idxd_disable_dev);
@@ -176,6 +189,7 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_dmadev *idxd,
 	uint16_t grp_offset, wq_offset; /* how far into bar0 the regs are */
 	uint16_t wq_size, total_wq_size;
 	uint8_t lg2_max_batch, lg2_max_copy_size;
+	uint32_t version;
 	unsigned int i, err_code;
 
 	pci = rte_malloc(NULL, sizeof(*pci), 0);
@@ -189,6 +203,7 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_dmadev *idxd,
 
 	/* assign the bar registers, and then configure device */
 	pci->regs = dev->mem_resource[0].addr;
+	version = pci->regs->version;
 	grp_offset = (uint16_t)pci->regs->offsets[0];
 	pci->grp_regs = RTE_PTR_ADD(pci->regs, grp_offset * 0x100);
 	wq_offset = (uint16_t)(pci->regs->offsets[0] >> 16);
@@ -233,6 +248,8 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_dmadev *idxd,
 	for (i = 0; i < nb_groups; i++) {
 		pci->grp_regs[i].grpengcfg = 0;
 		pci->grp_regs[i].grpwqcfg[0] = 0;
+		if (version <= DEVICE_VERSION_2)
+			pci->grp_regs[i].grpflags |= IDXD_SET_TC_A_B;
 	}
 	for (i = 0; i < nb_wqs; i++)
 		idxd_get_wq_cfg(pci, i)[0] = 0;
@@ -277,6 +294,7 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_dmadev *idxd,
 				(lg2_max_batch << WQ_BATCH_SZ_SHIFT);
 	}
 
+	IDXD_PMD_DEBUG("    Device Version: %"PRIx32, version);
 	/* dump the group configuration to output */
 	for (i = 0; i < nb_groups; i++) {
 		IDXD_PMD_DEBUG("## Group %d", i);
@@ -300,7 +318,7 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_dmadev *idxd,
 	return nb_wqs;
 
 err:
-	free(pci);
+	rte_free(pci);
 	return err_code;
 }
 
@@ -323,22 +341,22 @@ idxd_dmadev_probe_pci(struct rte_pci_driver *drv, struct rte_pci_device *dev)
 
 		/* look up queue 0 to get the PCI structure */
 		snprintf(qname, sizeof(qname), "%s-q0", name);
-		IDXD_PMD_INFO("Looking up %s\n", qname);
+		IDXD_PMD_INFO("Looking up %s", qname);
 		ret = idxd_dmadev_create(qname, &dev->device, NULL, &idxd_pci_ops);
 		if (ret != 0) {
 			IDXD_PMD_ERR("Failed to create dmadev %s", name);
 			return ret;
 		}
 		qid = rte_dma_get_dev_id_by_name(qname);
-		max_qid = __atomic_load_n(
+		max_qid = rte_atomic_load_explicit(
 			&((struct idxd_dmadev *)rte_dma_fp_objs[qid].dev_private)->u.pci->ref_count,
-			__ATOMIC_SEQ_CST);
+			rte_memory_order_seq_cst);
 
 		/* we have queue 0 done, now configure the rest of the queues */
 		for (qid = 1; qid < max_qid; qid++) {
 			/* add the queue number to each device name */
 			snprintf(qname, sizeof(qname), "%s-q%d", name, qid);
-			IDXD_PMD_INFO("Looking up %s\n", qname);
+			IDXD_PMD_INFO("Looking up %s", qname);
 			ret = idxd_dmadev_create(qname, &dev->device, NULL, &idxd_pci_ops);
 			if (ret != 0) {
 				IDXD_PMD_ERR("Failed to create dmadev %s", name);
@@ -364,7 +382,7 @@ idxd_dmadev_probe_pci(struct rte_pci_driver *drv, struct rte_pci_device *dev)
 		return ret;
 	}
 	if (idxd.u.pci->portals == NULL) {
-		IDXD_PMD_ERR("Error, invalid portal assigned during initialization\n");
+		IDXD_PMD_ERR("Error, invalid portal assigned during initialization");
 		free(idxd.u.pci);
 		return -EINVAL;
 	}
@@ -389,7 +407,7 @@ idxd_dmadev_probe_pci(struct rte_pci_driver *drv, struct rte_pci_device *dev)
 				free(idxd.u.pci);
 			return ret;
 		}
-		__atomic_fetch_add(&idxd.u.pci->ref_count, 1, __ATOMIC_SEQ_CST);
+		rte_atomic_fetch_add_explicit(&idxd.u.pci->ref_count, 1, rte_memory_order_seq_cst);
 	}
 
 	return 0;

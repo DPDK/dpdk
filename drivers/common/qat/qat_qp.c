@@ -267,7 +267,7 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 	if (qat_qp_check_queue_alignment(queue->base_phys_addr,
 			queue_size_bytes)) {
 		QAT_LOG(ERR, "Invalid alignment on queue create "
-					" 0x%"PRIx64"\n",
+					" 0x%"PRIx64,
 					queue->base_phys_addr);
 		ret = -EFAULT;
 		goto queue_create_err;
@@ -634,7 +634,7 @@ qat_enqueue_op_burst(void *qp, qat_op_build_request_t op_build_request,
 	while (nb_ops_sent != nb_ops_possible) {
 		ret = op_build_request(*ops, base_addr + tail,
 				tmp_qp->op_cookies[tail >> queue->trailz],
-				tmp_qp->opaque, tmp_qp->qat_dev_gen);
+				tmp_qp);
 
 		if (ret != 0) {
 			tmp_qp->stats.enqueue_err_count++;
@@ -944,11 +944,3 @@ qat_cq_get_fw_cipher_crc_cap(struct qat_qp *qp)
 	return ret;
 }
 #endif
-
-__rte_weak int
-qat_comp_process_response(void **op __rte_unused, uint8_t *resp __rte_unused,
-			  void *op_cookie __rte_unused,
-			  uint64_t *dequeue_err_count __rte_unused)
-{
-	return  0;
-}

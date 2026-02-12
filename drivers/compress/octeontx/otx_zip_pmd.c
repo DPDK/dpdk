@@ -161,7 +161,7 @@ zip_set_stream_parameters(struct rte_compressdev *dev,
 			 */
 
 		} else {
-			ZIP_PMD_ERR("\nxform type not supported");
+			ZIP_PMD_ERR("xform type not supported");
 			ret = -1;
 			goto err;
 		}
@@ -479,8 +479,6 @@ zip_pmd_stream_free(struct rte_compressdev *dev, void *stream)
 				(void *)&(z_stream->bufs[0]),
 				(MAX_BUFS_PER_STREAM * ZIP_BURST_SIZE));
 
-	/* Zero out the whole structure */
-	memset(stream, 0, sizeof(struct zip_stream));
 	rte_free(stream);
 
 	return 0;
@@ -527,7 +525,7 @@ zip_pmd_enqueue_burst(void *queue_pair,
 	}
 
 	qp->enqed = enqd;
-	ZIP_PMD_LOG(DEBUG, "ops_enqd[nb_ops:%d]:%d\n", nb_ops, enqd);
+	ZIP_PMD_LOG(DEBUG, "ops_enqd[nb_ops:%d]:%d", nb_ops, enqd);
 
 	return enqd;
 }
@@ -563,7 +561,7 @@ zip_pmd_dequeue_burst(void *queue_pair,
 			op->status = RTE_COMP_OP_STATUS_SUCCESS;
 		} else {
 			/* FATAL error cannot do anything */
-			ZIP_PMD_ERR("operation failed with error code:%d\n",
+			ZIP_PMD_ERR("operation failed with error code:%d",
 				zresult->s.compcode);
 			if (zresult->s.compcode == ZIP_COMP_E_DSTOP)
 				op->status = RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
@@ -571,7 +569,7 @@ zip_pmd_dequeue_burst(void *queue_pair,
 				op->status = RTE_COMP_OP_STATUS_ERROR;
 		}
 
-		ZIP_PMD_LOG(DEBUG, "written %d\n", zresult->s.totalbyteswritten);
+		ZIP_PMD_LOG(DEBUG, "written %d", zresult->s.totalbyteswritten);
 
 		/* Update op stats */
 		switch (op->status) {
@@ -582,7 +580,7 @@ zip_pmd_dequeue_burst(void *queue_pair,
 			op->produced = zresult->s.totalbyteswritten;
 			break;
 		default:
-			ZIP_PMD_ERR("stats not updated for status:%d\n",
+			ZIP_PMD_ERR("stats not updated for status:%d",
 				    op->status);
 			break;
 		}
@@ -598,7 +596,7 @@ zip_pmd_dequeue_burst(void *queue_pair,
 			rte_mempool_put(qp->vf->sg_mp, qp->s_info);
 	}
 
-	ZIP_PMD_LOG(DEBUG, "ops_deqd[nb_ops:%d]: %d\n", nb_ops, nb_dequeued);
+	ZIP_PMD_LOG(DEBUG, "ops_deqd[nb_ops:%d]: %d", nb_ops, nb_dequeued);
 	return nb_dequeued;
 }
 
@@ -676,7 +674,7 @@ zip_pci_remove(struct rte_pci_device *pci_dev)
 	char compressdev_name[RTE_COMPRESSDEV_NAME_MAX_LEN];
 
 	if (pci_dev == NULL) {
-		ZIP_PMD_ERR(" Invalid PCI Device\n");
+		ZIP_PMD_ERR(" Invalid PCI Device");
 		return -EINVAL;
 	}
 	rte_pci_device_name(&pci_dev->addr, compressdev_name,

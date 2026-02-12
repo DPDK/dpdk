@@ -12,7 +12,7 @@ if get_option('werror')
     extra_sphinx_args += '-W'
 endif
 
-htmldir = join_paths(get_option('datadir'), 'doc', 'dpdk')
+htmldir = join_paths(get_option('datadir'), 'doc', 'dpdk', 'guides')
 html_guides = custom_target('html_guides',
         input: files('index.rst'),
         output: 'html',
@@ -22,9 +22,8 @@ html_guides = custom_target('html_guides',
         depfile: '.html.d',
         build_by_default: get_option('enable_docs'),
         install: get_option('enable_docs'),
+        install_tag: 'doc',
         install_dir: htmldir)
-
-install_data(files('custom.css'), install_dir: join_paths(htmldir,'_static', 'css'))
 
 doc_targets += html_guides
 doc_target_names += 'HTML_Guides'

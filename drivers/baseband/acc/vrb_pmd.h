@@ -13,16 +13,14 @@
 #include "vrb_cfg.h"
 
 /* Helper macro for logging */
-#define rte_bbdev_log(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, vrb_logtype, fmt "\n", \
-		##__VA_ARGS__)
+#define rte_bbdev_log(level, ...) \
+	RTE_LOG_LINE(level, VRB, __VA_ARGS__)
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
-#define rte_bbdev_log_debug(fmt, ...) \
-		rte_bbdev_log(DEBUG, "vrb_pmd: " fmt, \
-		##__VA_ARGS__)
+#define rte_bbdev_log_debug(...) \
+	rte_bbdev_log(DEBUG, __VA_ARGS__)
 #else
-#define rte_bbdev_log_debug(fmt, ...)
+#define rte_bbdev_log_debug(...)
 #endif
 
 /* VRB1 PF and VF driver names */

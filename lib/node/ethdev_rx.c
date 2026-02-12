@@ -186,7 +186,7 @@ ethdev_rx_node_init(const struct rte_graph *graph, struct rte_node *node)
 	while (elem) {
 		if (elem->nid == node->id) {
 			/* Update node specific context */
-			memcpy(ctx, &elem->ctx, sizeof(ethdev_rx_node_ctx_t));
+			*ctx = elem->ctx;
 			break;
 		}
 		elem = elem->next;

@@ -30,10 +30,10 @@ These hardware blocks provide the following features exposed by the PMD:
 - LDPC Decode in the Uplink (5GNR)
 - Turbo Encode in the Downlink (4G)
 - Turbo Decode in the Uplink (4G)
+- Support for code block level processing
 - FFT processing
 - Single Root I/O Virtualization (SR-IOV) with 16 Virtual Functions (VFs) per Physical Function (PF)
 - Maximum of 256 queues per VF
-- Message Signaled Interrupts (MSIs)
 
 The Intel vRAN Boost v1.0 PMD supports the following bbdev capabilities:
 
@@ -57,14 +57,12 @@ The Intel vRAN Boost v1.0 PMD supports the following bbdev capabilities:
 * For the turbo encode operation:
    - ``RTE_BBDEV_TURBO_CRC_24B_ATTACH``: set to attach CRC24B to CB(s).
    - ``RTE_BBDEV_TURBO_RATE_MATCH``: if set then do not do Rate Match bypass.
-   - ``RTE_BBDEV_TURBO_ENC_INTERRUPTS``: set for encoder dequeue interrupts.
    - ``RTE_BBDEV_TURBO_RV_INDEX_BYPASS``: set to bypass RV index.
    - ``RTE_BBDEV_TURBO_ENC_SCATTER_GATHER``: supports scatter-gather for input/output data.
 
 * For the turbo decode operation:
    - ``RTE_BBDEV_TURBO_CRC_TYPE_24B``: check CRC24B from CB(s).
    - ``RTE_BBDEV_TURBO_SUBBLOCK_DEINTERLEAVE``: perform subblock de-interleave.
-   - ``RTE_BBDEV_TURBO_DEC_INTERRUPTS``: set for decoder dequeue interrupts.
    - ``RTE_BBDEV_TURBO_NEG_LLR_1_BIT_IN``: set if negative LLR input is supported.
    - ``RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP``: keep CRC24B bits appended while decoding.
    - ``RTE_BBDEV_TURBO_DEC_CRC_24B_DROP``: option to drop the code block CRC after decoding.
@@ -166,4 +164,4 @@ Specifically for the bbdev Intel vRAN Boost v1 PMD, the command below can be use
 .. code-block:: console
 
    pf_bb_config ACC200 -c ./acc200/acc200_config_vf_5g.cfg
-   test-bbdev.py -e="-c 0xff0 -a${VF_PCI_ADDR}" -c validation -n 64 -b 64 -l 1 -v ./ldpc_dec_default.data
+   test-bbdev.py -e="-l 4-11 -a${VF_PCI_ADDR}" -c validation -n 64 -b 64 -l 1 -v ./ldpc_dec_default.data

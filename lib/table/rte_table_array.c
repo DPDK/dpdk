@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
@@ -40,7 +41,7 @@ struct __rte_cache_aligned rte_table_array {
 	uint32_t entry_pos_mask;
 
 	/* Internal table */
-	alignas(RTE_CACHE_LINE_SIZE) uint8_t array[0];
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t array[];
 };
 
 static void *
@@ -196,6 +197,7 @@ rte_table_array_stats_read(void *table, struct rte_table_stats *stats, int clear
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_table_array_ops)
 struct rte_table_ops rte_table_array_ops = {
 	.f_create = rte_table_array_create,
 	.f_free = rte_table_array_free,

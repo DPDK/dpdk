@@ -50,25 +50,21 @@ struct test_info {
 static int
 timer_secondary_spawn_wait(unsigned int lcore)
 {
-	char coremask[10];
-#ifdef RTE_EXEC_ENV_LINUXAPP
-	char tmp[PATH_MAX] = {0};
-	char prefix[PATH_MAX] = {0};
+	char core_str[10];
+	const char *prefix;
 
-	get_current_prefix(tmp, sizeof(tmp));
+	prefix = file_prefix_arg();
+	if (prefix == NULL)
+		return -1;
 
-	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
-#else
-	const char *prefix = "";
-#endif
 	char const *argv[] = {
 		prgname,
-		"-c", coremask,
+		"-l", core_str,
 		"--proc-type=secondary",
 		prefix
 	};
 
-	snprintf(coremask, sizeof(coremask), "%x", (1 << lcore));
+	snprintf(core_str, sizeof(core_str), "%u", lcore);
 
 	return launch_proc(argv);
 }
@@ -160,11 +156,12 @@ test_timer_secondary(void)
 		TEST_ASSERT_SUCCESS(ret, "Failed to launch timer manage loop");
 
 		ret = timer_secondary_spawn_wait(*sec_lcorep);
-		TEST_ASSERT_SUCCESS(ret, "Secondary process execution failed");
+		/* must set exit flag even on error case, so check ret later */
 
-		rte_delay_ms(2000);
-
+		rte_delay_ms(500);
 		test_info->exit_flag = 1;
+
+		TEST_ASSERT_SUCCESS(ret, "Secondary process execution failed");
 		rte_eal_wait_lcore(*mgr_lcorep);
 
 #ifdef RTE_LIBRTE_TIMER_DEBUG
@@ -189,8 +186,8 @@ test_timer_secondary(void)
 
 			rte_timer_init(tim);
 
-			/* generate timeouts between 10 and 160 ms */
-			timeout_ms = ((rte_rand() & 0xF) + 1) * 10;
+			/* generate timeouts between 10 and 80 ms */
+			timeout_ms = ((rte_rand() & 0x7) + 1) * 10;
 			ticks = timeout_ms * rte_get_timer_hz() / MSECPERSEC;
 
 			ret = rte_timer_alt_reset(test_info->timer_data_id,
@@ -224,4 +221,4 @@ test_timer_secondary(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(timer_secondary_autotest, test_timer_secondary);
+REGISTER_FAST_TEST(timer_secondary_autotest, NOHUGE_SKIP, ASAN_SKIP, test_timer_secondary);

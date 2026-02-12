@@ -1,8 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright 2017,2020-2021 NXP
 
-
-
 Security Library
 ================
 
@@ -10,9 +8,9 @@ The security library provides a framework for management and provisioning
 of security protocol operations offloaded to hardware based devices. The
 library defines generic APIs to create and free security sessions which can
 support full protocol offload as well as inline crypto operation with
-NIC or crypto devices. The framework currently only supports the IPsec, PDCP
-and DOCSIS protocols and associated operations, other protocols will be added
-in the future.
+NIC or crypto devices.
+
+The security protocols are discussed in the :doc:`../howto/security` guide.
 
 Design Principles
 -----------------

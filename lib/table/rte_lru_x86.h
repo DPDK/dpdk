@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_LRU_X86_H__
 #define __INCLUDE_RTE_LRU_X86_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_config.h>
@@ -54,9 +50,9 @@ do {									\
 	/* Find the minimum value (first zero word, if it's in there) */\
 	__m128i d = _mm_minpos_epu16(c);				\
 	/* Second word is the index to found word (first word is the value) */\
-	unsigned int pos = _mm_extract_epi16(d, 1);			\
+	unsigned int _pos = _mm_extract_epi16(d, 1);			\
 	/* move the recently used location to top of list */		\
-	__m128i k = _mm_shuffle_epi8(b, *((__m128i *) &masks[2 * pos]));\
+	__m128i k = _mm_shuffle_epi8(b, *((__m128i *) &masks[2 * _pos]));\
 	/* Finally, update the original list with the reordered data */	\
 	bucket->lru_list = _mm_extract_epi64(k, 0);			\
 	/* Phwew! */							\
@@ -95,10 +91,6 @@ do {									\
 	bucket->lru_list = _mm_extract_epi64(lru, 0) | orvals[mru_val];	\
 } while (0)
 
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif

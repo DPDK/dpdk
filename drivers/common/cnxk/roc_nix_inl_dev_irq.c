@@ -32,7 +32,7 @@ again:
 	/* Do we have any work? */
 	if (work) {
 		if (inl_dev->work_cb)
-			inl_dev->work_cb(gw.u64, inl_dev->cb_args, false);
+			inl_dev->work_cb(gw.u64, inl_dev->cb_args, NIX_INL_SSO, NULL, false);
 		else
 			plt_warn("Undelivered inl dev work gw0: %p gw1: %p",
 				 (void *)gw.u64[0], (void *)gw.u64[1]);
@@ -43,6 +43,60 @@ again:
 
 	inl_dev->sso_work_cnt += cnt;
 	plt_atomic_thread_fence(__ATOMIC_ACQ_REL);
+}
+
+static void
+nix_inl_cpt_cq_cb(struct roc_cpt_lf *lf)
+{
+	struct roc_nix *roc_nix = (struct roc_nix *)lf->dev->roc_nix;
+	struct idev_cfg *idev = idev_get_cfg();
+	uint32_t port_id = roc_nix->port_id;
+	struct nix_inl_dev *inl_dev = NULL;
+	struct roc_ow_ipsec_outb_sa *sa;
+	union cpt_lf_cq_base cq_base;
+	union cpt_lf_cq_ptr cq_ptr;
+	struct cpt_cq_s *cq_s;
+	uint8_t fmt_msk = 0x3;
+	uint64_t nq_ptr;
+	uint32_t count;
+	uint64_t i;
+
+	if (idev)
+		inl_dev = idev->nix_inl_dev;
+
+	if (!inl_dev) {
+		plt_nix_dbg("Inline Device could not be detected");
+		return;
+	}
+
+	cq_base.u = plt_read64(lf->rbase + CPT_LF_CQ_BASE);
+	cq_ptr.u = plt_read64(lf->rbase + CPT_LF_CQ_PTR);
+	count = cq_ptr.s.count;
+
+	nq_ptr = (((cq_base.s.addr << 7)) + ((cq_ptr.s.nq_ptr - count) << 5));
+	cq_s = (struct cpt_cq_s *)nq_ptr;
+
+	for (i = 0; i < count; i++) {
+		if (cq_s->w0.s.uc_compcode && cq_s->w0.s.compcode) {
+			switch (cq_s->w2.s.fmt & fmt_msk) {
+			case WQE_PTR_CPTR:
+				sa = (struct roc_ow_ipsec_outb_sa *)cq_s->w1.esn;
+				break;
+			case CPTR_WQE_PTR:
+				sa = (struct roc_ow_ipsec_outb_sa *)cq_s->w3.comp_ptr;
+				break;
+			default:
+				plt_err("Invalid event Received ");
+				goto done;
+			}
+			uint64_t tmp = ~(uint32_t)0x0;
+			inl_dev->work_cb(&tmp, sa, NIX_INL_CPT_CQ, (void *)cq_s, port_id);
+		}
+done:
+		cq_s = cq_s + 1;
+	}
+	/* Acknowledge the number of completed requests */
+	plt_write64(count, lf->rbase + CPT_LF_DONE_ACK);
 }
 
 static int
@@ -100,6 +154,25 @@ nix_inl_sso_hws_irq(void *param)
 
 	/* Clear interrupt */
 	plt_write64(intr, ssow_base + SSOW_LF_GWS_INT);
+}
+
+void
+nix_inl_cpt_done_irq(void *param)
+{
+	struct roc_cpt_lf *lf = param;
+	uint64_t done_wait;
+	uint64_t intr;
+
+	/* Read the number of completed requests */
+	intr = plt_read64(lf->rbase + CPT_LF_DONE);
+	if (intr == 0)
+		return;
+
+	done_wait = plt_read64(lf->rbase + CPT_LF_DONE_WAIT);
+
+	nix_inl_cpt_cq_cb(lf);
+
+	plt_write64(done_wait, lf->rbase + CPT_LF_DONE_WAIT);
 }
 
 int

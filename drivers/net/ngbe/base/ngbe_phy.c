@@ -182,6 +182,7 @@ s32 ngbe_get_phy_type_from_id(struct ngbe_hw *hw)
 		break;
 	case NGBE_PHYID_YT8521:
 	case NGBE_PHYID_YT8531:
+	case NGBE_PHYID_SK21101:
 		if (hw->phy.media_type == ngbe_media_type_fiber)
 			hw->phy.type = ngbe_phy_yt8521s_sfi;
 		else
@@ -208,6 +209,9 @@ s32 ngbe_reset_phy(struct ngbe_hw *hw)
 		err = ngbe_identify_phy(hw);
 
 	if (err != 0 || hw->phy.type == ngbe_phy_none)
+		return err;
+
+	if (hw->ncsi_enabled)
 		return err;
 
 	/* Don't reset PHY if it's shut down due to overtemp. */
@@ -428,7 +432,9 @@ s32 ngbe_init_phy(struct ngbe_hw *hw)
 		break;
 	}
 
+	if (hw->wol_enabled || hw->ncsi_enabled)
+		hw->phy.reset_disable = true;
+
 init_phy_ops_out:
 	return err;
 }
-

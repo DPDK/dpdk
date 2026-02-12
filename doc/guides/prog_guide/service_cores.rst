@@ -26,10 +26,10 @@ Service Core Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 There are two methods to having service cores in a DPDK application, either by
-using the service coremask, or by dynamically adding cores using the API.
-The simpler of the two is to pass the `-s` coremask argument to EAL, which will
-take any cores available in the main DPDK coremask, and if the bits are also set
-in the service coremask the cores become service-cores instead of DPDK
+using the service corelist, or by dynamically adding cores using the API.
+The simpler of the two is to pass the `-S` corelist argument to EAL, which will
+take any cores available in the main DPDK corelist, and if also set
+in the service corelist the cores become service-cores instead of DPDK
 application lcores.
 
 Enabling Services on Cores

@@ -108,6 +108,8 @@ Currently the following targets are supported:
 
 * Generic rv64gc ISA: ``config/riscv/riscv64_linux_gcc``
 
+* RV64GCV ISA: ``config/riscv/riscv64_rv64gcv_linux_gcc``
+
 * SiFive U740 SoC: ``config/riscv/riscv64_sifive_u740_linux_gcc``
 
 To add a new target support, ``config/riscv/meson.build`` has to be modified by

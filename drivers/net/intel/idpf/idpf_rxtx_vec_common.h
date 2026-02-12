@@ -1,0 +1,133 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(c) 2022 Intel Corporation
+ */
+
+#ifndef _IDPF_RXTX_VEC_COMMON_H_
+#define _IDPF_RXTX_VEC_COMMON_H_
+#include <stdint.h>
+#include <ethdev_driver.h>
+#include <rte_malloc.h>
+
+#include "idpf_ethdev.h"
+#include "idpf_rxtx.h"
+#include "../common/rx.h"
+#ifdef RTE_ARCH_X86
+#include "../common/rx_vec_x86.h"
+#endif
+
+#define IDPF_SCALAR_PATH		0
+#define IDPF_VECTOR_PATH		1
+#define IDPF_RX_NO_VECTOR_FLAGS (		\
+		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |	\
+		RTE_ETH_RX_OFFLOAD_UDP_CKSUM |	\
+		RTE_ETH_RX_OFFLOAD_TCP_CKSUM |	\
+		RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |	\
+		RTE_ETH_RX_OFFLOAD_TIMESTAMP)
+
+static inline int
+idpf_tx_desc_done(struct ci_tx_queue *txq, uint16_t idx)
+{
+/* Check if the queue is using the splitq model */
+	if (txq->complq != NULL)
+		return 1;
+
+	return (txq->idpf_tx_ring[idx].qw1 &
+			rte_cpu_to_le_64(IDPF_TXD_QW1_DTYPE_M)) ==
+				rte_cpu_to_le_64(IDPF_TX_DESC_DTYPE_DESC_DONE);
+}
+
+static inline int
+idpf_rx_vec_queue_default(struct idpf_rx_queue *rxq)
+{
+	if (rxq == NULL)
+		return IDPF_SCALAR_PATH;
+
+	if (rte_is_power_of_2(rxq->nb_rx_desc) == 0)
+		return IDPF_SCALAR_PATH;
+
+	if (rxq->rx_free_thresh < IDPF_VPMD_RX_MAX_BURST)
+		return IDPF_SCALAR_PATH;
+
+	if ((rxq->nb_rx_desc % rxq->rx_free_thresh) != 0)
+		return IDPF_SCALAR_PATH;
+
+	if ((rxq->offloads & IDPF_RX_NO_VECTOR_FLAGS) != 0)
+		return IDPF_SCALAR_PATH;
+
+	return IDPF_VECTOR_PATH;
+}
+
+static inline int
+idpf_tx_vec_queue_default(struct ci_tx_queue *txq)
+{
+	if (txq == NULL)
+		return IDPF_SCALAR_PATH;
+
+	if (txq->tx_rs_thresh < IDPF_VPMD_TX_MAX_BURST ||
+	    (txq->tx_rs_thresh & 3) != 0)
+		return IDPF_SCALAR_PATH;
+
+	return IDPF_VECTOR_PATH;
+}
+
+static inline int
+idpf_rx_splitq_vec_default(struct idpf_rx_queue *rxq)
+{
+	if (rxq->bufq2->rx_buf_len < rxq->max_pkt_len)
+		return IDPF_SCALAR_PATH;
+
+	return IDPF_VECTOR_PATH;
+}
+
+static inline int
+idpf_rx_vec_dev_check_default(struct rte_eth_dev *dev)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_rx_queue *rxq;
+	int i, default_ret, splitq_ret, ret = IDPF_SCALAR_PATH;
+
+	if (dev->data->scattered_rx)
+		return IDPF_SCALAR_PATH;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		default_ret = idpf_rx_vec_queue_default(rxq);
+		if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT) {
+			splitq_ret = idpf_rx_splitq_vec_default(rxq);
+			ret = splitq_ret && default_ret;
+		} else {
+			ret = default_ret;
+		}
+		if (ret == IDPF_SCALAR_PATH)
+			return IDPF_SCALAR_PATH;
+	}
+
+	return IDPF_VECTOR_PATH;
+}
+
+static inline int
+idpf_tx_vec_dev_check_default(struct rte_eth_dev *dev)
+{
+	int i;
+	struct ci_tx_queue *txq;
+	int ret = 0;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		ret = idpf_tx_vec_queue_default(txq);
+		if (ret == IDPF_SCALAR_PATH)
+			return IDPF_SCALAR_PATH;
+	}
+
+	return IDPF_VECTOR_PATH;
+}
+
+#ifdef RTE_ARCH_X86
+static inline enum rte_vect_max_simd
+idpf_get_max_simd_bitwidth(void)
+{
+	return ci_get_x86_max_simd_bitwidth();
+}
+#endif
+
+#endif /*_IDPF_RXTX_VEC_COMMON_H_*/

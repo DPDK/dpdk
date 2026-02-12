@@ -280,4 +280,3 @@ s32 txgbe_dcb_config_tc_stats_raptor(struct txgbe_hw *hw,
 
 	return 0;
 }
-

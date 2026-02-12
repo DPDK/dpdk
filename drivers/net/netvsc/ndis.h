@@ -42,11 +42,11 @@
 #define	NDIS_OBJTYPE_RSS_PARAMS		0x89
 #define	NDIS_OBJTYPE_OFFLOAD		0xa7
 
-struct ndis_object_hdr {
+struct __rte_packed_begin ndis_object_hdr {
 	uint8_t			ndis_type;	/* NDIS_OBJTYPE_ */
 	uint8_t			ndis_rev;	/* type specific */
 	uint16_t		ndis_size;	/* incl. this hdr */
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * OID_TCP_OFFLOAD_PARAMETERS
@@ -117,7 +117,7 @@ struct ndis_offload_params {
  * OID_GEN_RECEIVE_SCALE_CAPABILITIES
  * ndis_type: NDIS_OBJTYPE_RSS_CAPS
  */
-struct ndis_rss_caps {
+struct __rte_packed_begin ndis_rss_caps {
 	struct ndis_object_hdr		ndis_hdr;
 	uint32_t			ndis_caps;	/* NDIS_RSS_CAP_ */
 	uint32_t			ndis_nmsi;	/* # of MSIs */
@@ -125,7 +125,7 @@ struct ndis_rss_caps {
 	/* NDIS >= 6.30 */
 	uint16_t			ndis_nind;	/* # of indtbl ent. */
 	uint16_t			ndis_pad;
-} __rte_packed;
+} __rte_packed_end;
 
 #define	NDIS_RSS_CAPS_SIZE		\
 	offsetof(struct ndis_rss_caps, ndis_pad)

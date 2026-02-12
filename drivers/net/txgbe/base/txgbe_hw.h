@@ -40,6 +40,7 @@ s32 txgbe_setup_fc(struct txgbe_hw *hw);
 s32 txgbe_validate_mac_addr(u8 *mac_addr);
 s32 txgbe_acquire_swfw_sync(struct txgbe_hw *hw, u32 mask);
 void txgbe_release_swfw_sync(struct txgbe_hw *hw, u32 mask);
+s32 txgbe_set_pcie_master(struct txgbe_hw *hw, bool enable);
 
 s32 txgbe_get_san_mac_addr(struct txgbe_hw *hw, u8 *san_mac_addr);
 s32 txgbe_set_san_mac_addr(struct txgbe_hw *hw, u8 *san_mac_addr);
@@ -55,7 +56,7 @@ s32 txgbe_set_vlvf(struct txgbe_hw *hw, u32 vlan, u32 vind,
 s32 txgbe_clear_vfta(struct txgbe_hw *hw);
 s32 txgbe_find_vlvf_slot(struct txgbe_hw *hw, u32 vlan, bool vlvf_bypass);
 
-s32 txgbe_check_mac_link(struct txgbe_hw *hw,
+s32 txgbe_check_mac_link_sp(struct txgbe_hw *hw,
 			       u32 *speed,
 			       bool *link_up, bool link_up_wait_to_complete);
 
@@ -84,11 +85,14 @@ void txgbe_set_mta(struct txgbe_hw *hw, u8 *mc_addr);
 s32 txgbe_negotiate_fc(struct txgbe_hw *hw, u32 adv_reg, u32 lp_reg,
 			u32 adv_sym, u32 adv_asm, u32 lp_sym, u32 lp_asm);
 s32 txgbe_init_shared_code(struct txgbe_hw *hw);
+bool txgbe_is_pf(struct txgbe_hw *hw);
+bool txgbe_is_vf(struct txgbe_hw *hw);
 s32 txgbe_set_mac_type(struct txgbe_hw *hw);
-s32 txgbe_init_ops_pf(struct txgbe_hw *hw);
-s32 txgbe_get_link_capabilities_raptor(struct txgbe_hw *hw,
+s32 txgbe_init_ops_generic(struct txgbe_hw *hw);
+void txgbe_init_ops_sp(struct txgbe_hw *hw);
+s32 txgbe_get_link_capabilities_sp(struct txgbe_hw *hw,
 				      u32 *speed, bool *autoneg);
-u32 txgbe_get_media_type_raptor(struct txgbe_hw *hw);
+u32 txgbe_get_media_type_sp(struct txgbe_hw *hw);
 void txgbe_disable_tx_laser_multispeed_fiber(struct txgbe_hw *hw);
 void txgbe_enable_tx_laser_multispeed_fiber(struct txgbe_hw *hw);
 void txgbe_flap_tx_laser_multispeed_fiber(struct txgbe_hw *hw);
@@ -102,7 +106,8 @@ s32 txgbe_start_mac_link_raptor(struct txgbe_hw *hw,
 s32 txgbe_setup_mac_link(struct txgbe_hw *hw, u32 speed,
 			       bool autoneg_wait_to_complete);
 s32 txgbe_setup_sfp_modules(struct txgbe_hw *hw);
-void txgbe_init_mac_link_ops(struct txgbe_hw *hw);
+void txgbe_init_mac_link_ops_sp(struct txgbe_hw *hw);
+int txgbe_reconfig_mac(struct txgbe_hw *hw);
 s32 txgbe_reset_hw(struct txgbe_hw *hw);
 s32 txgbe_start_hw_raptor(struct txgbe_hw *hw);
 s32 txgbe_init_phy_raptor(struct txgbe_hw *hw);
@@ -111,6 +116,8 @@ s32 txgbe_prot_autoc_read_raptor(struct txgbe_hw *hw, bool *locked, u64 *value);
 s32 txgbe_prot_autoc_write_raptor(struct txgbe_hw *hw, bool locked, u64 value);
 s32 txgbe_reinit_fdir_tables(struct txgbe_hw *hw);
 bool txgbe_verify_lesm_fw_enabled_raptor(struct txgbe_hw *hw);
-u32 txgbe_fmgr_cmd_op(struct txgbe_hw *hw, u32 cmd, u32 cmd_addr);
-u32 txgbe_flash_read_dword(struct txgbe_hw *hw, u32 addr);
+s32 txgbe_fmgr_cmd_op(struct txgbe_hw *hw, u32 cmd, u32 cmd_addr);
+s32 txgbe_flash_read_dword(struct txgbe_hw *hw, u32 addr, u32 *data);
+s32 txgbe_e56_check_phy_link(struct txgbe_hw *hw, u32 *speed,
+				bool *link_up);
 #endif /* _TXGBE_HW_H_ */

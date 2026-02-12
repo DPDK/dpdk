@@ -1,14 +1,9 @@
-/*
- * SPDX-License-Identifier: BSD-3-Clause
+/* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (C) IBM Corporation 2014.
  */
 
 #ifndef _RTE_CYCLES_PPC_64_H_
 #define _RTE_CYCLES_PPC_64_H_
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #include <features.h>
 #ifdef __GLIBC__
@@ -19,6 +14,10 @@ extern "C" {
 
 #include <rte_byteorder.h>
 #include <rte_common.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Read the time base register.

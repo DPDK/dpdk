@@ -32,7 +32,7 @@
 #define NIX_AF_RX_CFG			(0xd0ull)
 #define NIX_AF_AVG_DELAY		(0xe0ull)
 #define NIX_AF_CINT_DELAY		(0xf0ull)
-#define NIX_AF_VWQE_TIMER		(0xf8ull) /* [CN10K, .) */
+#define NIX_AF_VWQE_TIMER		(0xf8ull) /* [CN10K, CN20K) */
 #define NIX_AF_RX_MCAST_BASE		(0x100ull)
 #define NIX_AF_RX_MCAST_CFG		(0x110ull)
 #define NIX_AF_RX_MCAST_BUF_BASE	(0x120ull)
@@ -82,9 +82,11 @@
 #define NIX_AF_RX_DEF_IIP6_DSCP		(0x2f0ull) /* [CN10K, .) */
 #define NIX_AF_RX_DEF_OIP6_DSCP		(0x2f8ull) /* [CN10K, .) */
 #define NIX_AF_RX_IPSEC_GEN_CFG		(0x300ull)
-#define NIX_AF_RX_IPSEC_VWQE_GEN_CFG	(0x310ull) /* [CN10K, .) */
-#define NIX_AF_RX_CPTX_INST_QSEL(a)	(0x320ull | (uint64_t)(a) << 3)
-#define NIX_AF_RX_CPTX_CREDIT(a)	(0x360ull | (uint64_t)(a) << 3)
+#define NIX_AF_RX_IPSEC_VWQE_GEN_CFG	(0x310ull) /* [CN10K, CN20K) */
+#define NIX_AF_RX_CPTX_INST_QSEL(a)	(0x340ull | (uint64_t)(a) << 16) /* [CN20K, .) */
+#define NIX_AF_RX_CPTX_CREDIT(a)	(0x380ull | (uint64_t)(a) << 16) /* [CN20K, .) */
+#define NIX_AF_CN9K_RX_CPTX_INST_QSEL(a)(0x320ull | (uint64_t)(a) << 3) /* [CN9K, CN20K) */
+#define NIX_AF_CN9K_RX_CPTX_CREDIT(a)	(0x360ull | (uint64_t)(a) << 3) /* [CN9K, CN20K) */
 #define NIX_AF_NDC_RX_SYNC		(0x3e0ull)
 #define NIX_AF_NDC_TX_SYNC		(0x3f0ull)
 #define NIX_AF_AQ_CFG			(0x400ull)
@@ -100,12 +102,14 @@
 #define NIX_AF_RX_LINKX_CFG(a)		(0x540ull | (uint64_t)(a) << 16)
 #define NIX_AF_RX_SW_SYNC		(0x550ull)
 #define NIX_AF_RX_LINKX_WRR_CFG(a)	(0x560ull | (uint64_t)(a) << 16)
+#define NIX_AF_RQM_ECO                  (0x5a0ull)
 #define NIX_AF_SEB_CFG			(0x5f0ull) /* [CN10K, .) */
 #define NIX_AF_EXPR_TX_FIFO_STATUS	(0x640ull) /* [CN9K, CN10K) */
 #define NIX_AF_NORM_TX_FIFO_STATUS	(0x648ull)
 #define NIX_AF_SDP_TX_FIFO_STATUS	(0x650ull)
 #define NIX_AF_TX_NPC_CAPTURE_CONFIG	(0x660ull)
 #define NIX_AF_TX_NPC_CAPTURE_INFO	(0x668ull)
+#define NIX_AF_SEB_COALESCE_DBGX(a)             (0x670ull | (uint64_t)(a) << 3)
 #define NIX_AF_TX_NPC_CAPTURE_RESPX(a)	(0x680ull | (uint64_t)(a) << 3)
 #define NIX_AF_SEB_ACTIVE_CYCLES_PCX(a) (0x6c0ull | (uint64_t)(a) << 3)
 #define NIX_AF_SMQX_CFG(a)		(0x700ull | (uint64_t)(a) << 16)
@@ -115,6 +119,7 @@
 #define NIX_AF_SMQX_NXT_HEAD(a)		(0x740ull | (uint64_t)(a) << 16)
 #define NIX_AF_SQM_ACTIVE_CYCLES_PC	(0x770ull)
 #define NIX_AF_SQM_SCLK_CNT		(0x780ull) /* [CN10K, .) */
+#define NIX_AF_DWRR_MTUX(a)             (0x790ull | (uint64_t)(a) << 16)
 #define NIX_AF_DWRR_SDP_MTU		(0x790ull) /* [CN10K, .) */
 #define NIX_AF_DWRR_RPM_MTU		(0x7a0ull) /* [CN10K, .) */
 #define NIX_AF_PSE_CHANNEL_LEVEL	(0x800ull)
@@ -131,6 +136,7 @@
 #define NIX_AF_TX_LINKX_HW_XOFF(a)	(0xa30ull | (uint64_t)(a) << 16)
 #define NIX_AF_SDP_LINK_CREDIT		(0xa40ull)
 #define NIX_AF_SDP_LINK_CDT_ADJ		(0xa50ull) /* [CN10K, .) */
+#define NIX_AF_LINK_CDT_ADJ_ERR		(0xaa0ull) /* [CN10K, .) */
 /* [CN9K, CN10K) */
 #define NIX_AF_SDP_SW_XOFFX(a)	    (0xa60ull | (uint64_t)(a) << 3)
 #define NIX_AF_SDP_HW_XOFFX(a)	    (0xac0ull | (uint64_t)(a) << 3)
@@ -226,7 +232,7 @@
 #define NIX_AF_TL4X_CIR(a)		 (0x1220ull | (uint64_t)(a) << 16)
 #define NIX_AF_TL4X_PIR(a)		 (0x1230ull | (uint64_t)(a) << 16)
 #define NIX_AF_TL4X_SCHED_STATE(a)	 (0x1240ull | (uint64_t)(a) << 16)
-#define NIX_AF_TL4X_SHAPE_STATE(a)	 (0x1250ull | (uint64_t)(a) << 16)
+#define NIX_AF_TL4X_SHAPE_STATE_PIR(a)	 (0x1250ull | (uint64_t)(a) << 16)
 #define NIX_AF_TL4X_SW_XOFF(a)		 (0x1270ull | (uint64_t)(a) << 16)
 #define NIX_AF_TL4X_TOPOLOGY(a)		 (0x1280ull | (uint64_t)(a) << 16)
 #define NIX_AF_TL4X_PARENT(a)		 (0x1288ull | (uint64_t)(a) << 16)
@@ -272,6 +278,18 @@
 #define NIX_AF_CINT_TIMERX(a)	    (0x1a40ull | (uint64_t)(a) << 18)
 #define NIX_AF_LSO_FORMATX_FIELDX(a, b)                                        \
 	(0x1b00ull | (uint64_t)(a) << 16 | (uint64_t)(b) << 3)
+/* [CN10K, .) */
+#define NIX_AF_SPI_TO_SA_KEYX_WAYX(a, b)    (0x1c00ull | (uint64_t)(a) << 16 | (uint64_t)(b) << 3)
+#define NIX_AF_SPI_TO_SA_VALUEX_WAYX(a, b)  (0x1c40ull | (uint64_t)(a) << 16 | (uint64_t)(b) << 3)
+#define NIX_AF_SPI_TO_SA_CFG		    (0x1c80ull)
+#define NIX_AF_SPI_TO_SA_CFG1		    (0x1c88ull)
+#define NIX_AF_SPI_TO_SA_HASH_KEY	    (0x1c90ull)
+#define NIX_AF_SPI_TO_SA_HASH_VALUE	    (0x1ca0ull)
+/* CN20K, .) */
+#define NIX_AF_RX_IPSEC_VLAN_CFGX(a)	    (0x1d00ull | (uint64_t)(a) << 3)
+#define NIX_AF_RX_IPSEC_QMAPX_DSCPX(a, b)   (0x1e00ull | (uint64_t)(a) << 6 | (uint64_t)(b) << 3)
+#define NIX_AF_RX_SSO_GRPX_BP_CFG(a)	    (0x2000ull | (uint64_t)(a) << 3)
+#define NIX_AF_RX_SSO_GRPX_BP_LEVEL(a)	    (0x3000ull | (uint64_t)(a) << 3)
 #define NIX_AF_LFX_CFG(a) (0x4000ull | (uint64_t)(a) << 17)
 /* [CN10K, .) */
 #define NIX_AF_LINKX_CFG(a)		 (0x4010ull | (uint64_t)(a) << 17)
@@ -348,6 +366,7 @@
 #define NIX_LF_TX_STATX(a)	 (0x300ull | (uint64_t)(a) << 3)
 #define NIX_LF_RX_STATX(a)	 (0x400ull | (uint64_t)(a) << 3)
 #define NIX_LF_OP_SENDX(a)	 (0x800ull | (uint64_t)(a) << 3)
+#define NIX_LF_PTP_CLOCK	 (0x8f8ull) /* [CN20K, .) */
 #define NIX_LF_RQ_OP_INT	 (0x900ull)
 #define NIX_LF_RQ_OP_OCTS	 (0x910ull)
 #define NIX_LF_RQ_OP_PKTS	 (0x920ull)
@@ -355,7 +374,7 @@
 #define NIX_LF_RQ_OP_DROP_PKTS	 (0x940ull)
 #define NIX_LF_RQ_OP_RE_PKTS	 (0x950ull)
 #define NIX_LF_OP_IPSEC_DYNO_CNT (0x980ull)
-#define NIX_LF_OP_VWQE_FLUSH	 (0x9a0ull) /* [CN10K, .) */
+#define NIX_LF_OP_VWQE_FLUSH	 (0x9a0ull) /* [CN10K, CN20K) */
 #define NIX_LF_PL_OP_BAND_PROF	 (0x9c0ull) /* [CN10K, .) */
 #define NIX_LF_SQ_OP_INT	 (0xa00ull)
 #define NIX_LF_SQ_OP_OCTS	 (0xa10ull)
@@ -368,6 +387,9 @@
 #define NIX_LF_CQ_OP_INT	 (0xb00ull)
 #define NIX_LF_CQ_OP_DOOR	 (0xb30ull)
 #define NIX_LF_CQ_OP_STATUS	 (0xb40ull)
+#define NIX_LF_SSO_BP_OP_DOOR	 (0xb50ull) /* [CN20K, .) */
+#define NIX_LF_SSO_BP_OP_LEVEL	 (0xb58ull) /* [CN20K, .) */
+#define NIX_LF_SSO_BP_OP_INT	 (0xb60ull) /* [CN20K, .) */
 #define NIX_LF_QINTX_CNT(a)	 (0xc00ull | (uint64_t)(a) << 12)
 #define NIX_LF_QINTX_INT(a)	 (0xc10ull | (uint64_t)(a) << 12)
 #define NIX_LF_QINTX_ENA_W1S(a)	 (0xc20ull | (uint64_t)(a) << 12)
@@ -388,6 +410,8 @@
 #define NIX_LF_RX_OIP_COLOR_CONV_HI  (0x4788ull) /* [CN10K, .) */
 
 /* Enum offsets */
+
+#define NIX_SSOERRINT_DOOR_ERR	(0x0ull) /*[CN20K, .) */
 
 #define NIX_STAT_LF_TX_TX_UCAST (0x0ull)
 #define NIX_STAT_LF_TX_TX_BCAST (0x1ull)
@@ -572,6 +596,7 @@
 #define NIX_SEND_STATUS_NPC_VTAG_SIZE_ERR  (0x26ull)
 #define NIX_SEND_STATUS_SEND_MEM_FAULT	   (0x27ull)
 #define NIX_SEND_STATUS_SEND_STATS_ERR	   (0x28ull)
+#define NIX_SEND_STATUS_SEND_HDR_DROP	   (0x29ull) /* [CN20K, .) */
 
 #define NIX_SENDSTATSALG_NOP			     (0x0ull)
 #define NIX_SENDSTATSALG_ADD_PKT_CNT		     (0x1ull)
@@ -606,6 +631,7 @@
 #define NIX_SUBDC_WORK		(0x7ull)
 #define NIX_SUBDC_SG2		(0x8ull) /* [CN10K, .) */
 #define NIX_SUBDC_AGE_AND_STATS (0x9ull) /* [CN10K, .) */
+#define NIX_SUBDC_COMPID	(0xaull) /* [CN20K, .) */
 #define NIX_SUBDC_SOD		(0xfull)
 
 #define NIX_STYPE_STF (0x0ull)
@@ -619,6 +645,7 @@
 #define NIX_RX_ACTIONOP_RSS	     (0x4ull)
 #define NIX_RX_ACTIONOP_PF_FUNC_DROP (0x5ull)
 #define NIX_RX_ACTIONOP_MIRROR	     (0x6ull)
+#define NIX_RX_ACTIONOP_UCAST_CPT    (0x7ull)
 #define NIX_RX_ACTIONOP_DEFAULT	     (0xfull)
 
 #define NIX_RX_VTAGACTION_VTAG0_RELPTR (0x0ull)
@@ -644,6 +671,18 @@
 #define NIX_LSOALG_ADD_PAYLEN (0x2ull)
 #define NIX_LSOALG_ADD_OFFSET (0x3ull)
 #define NIX_LSOALG_TCP_FLAGS  (0x4ull)
+#define NIX_LSOALG_ALT_FLAGS  (0x5ull) /* [CN20K, .) */
+
+#define NIX_METER_CFG_RFC_2698 (0x0ull) /* [CN20K, .) */
+#define NIX_METER_CFG_RFC_2697 (0x1ull) /* [CN20K, .) */
+#define NIX_METER_CFG_RFC_4115 (0x2ull) /* [CN20K, .) */
+
+#define NIX_NDC_RX_PORT_AQ	(0x0ull)
+#define NIX_NDC_RX_PORT_C	(0x1ull)
+#define NIX_NDC_RX_PORT_CINT	(0x2ull)
+#define NIX_NDC_RX_PORT_MC	(0x3ull)
+#define NIX_NDC_RX_PORT_PKT	(0x4ull)
+#define NIX_NDC_RX_PORT_RQ	(0x5ull)
 
 #define NIX_MNQERR_SQ_CTX_FAULT	    (0x0ull)
 #define NIX_MNQERR_SQ_CTX_POISON    (0x1ull)
@@ -732,12 +771,14 @@
 #define NIX_RX_PERRCODE_IL4_PORT       (0x23ull)
 
 #define NIX_SA_ALG_NON_MS     (0x0ull) /* [CN10K, .) */
-#define NIX_SA_ALG_MS_CISCO   (0x1ull) /* [CN10K, .) */
-#define NIX_SA_ALG_MS_VIPTELA (0x2ull) /* [CN10K, .) */
+#define NIX_SA_ALG_MS_31_28   (0x1ull) /* [CN10K, .) */
+#define NIX_SA_ALG_MS_27_25   (0x2ull) /* [CN10K, .) */
+#define NIX_SA_ALG_MS_28_25   (0x3ull) /* [CN10K, .) */
 
 #define NIX_SENDCRCALG_CRC32  (0x0ull)
 #define NIX_SENDCRCALG_CRC32C (0x1ull)
 #define NIX_SENDCRCALG_ONES16 (0x2ull)
+#define NIX_SENDCRCALG_INVCRC (0x3ull) /* [CN10K, .) */
 
 #define NIX_SENDL3TYPE_NONE	 (0x0ull)
 #define NIX_SENDL3TYPE_IP4	 (0x2ull)
@@ -761,7 +802,7 @@
 #define NIX_XQE_TYPE_RX_IPSECS (0x2ull)
 #define NIX_XQE_TYPE_RX_IPSECH (0x3ull)
 #define NIX_XQE_TYPE_RX_IPSECD (0x4ull)
-#define NIX_XQE_TYPE_RX_VWQE   (0x5ull) /* [CN10K, .) */
+#define NIX_XQE_TYPE_RX_VWQE   (0x5ull) /* [CN10K, CN20K) */
 #define NIX_XQE_TYPE_RES_6     (0x6ull)
 #define NIX_XQE_TYPE_RES_7     (0x7ull)
 #define NIX_XQE_TYPE_SEND      (0x8ull)
@@ -825,6 +866,11 @@
 #define NIX_AQ_CTYPE_DYNO      (0x5ull)
 #define NIX_AQ_CTYPE_BAND_PROF (0x6ull) /* [CN10K, .) */
 
+#define NIX_CQERRINT_DOOR_ERR  (0x0ull)
+#define NIX_CQERRINT_WR_FULL   (0x1ull)
+#define NIX_CQERRINT_CQE_FAULT (0x2ull)
+#define NIX_CQERRINT_CPT_DROP  (0x3ull) /* [CN10KB, .) */
+
 #define NIX_COLORRESULT_GREEN	 (0x0ull)
 #define NIX_COLORRESULT_YELLOW	 (0x1ull)
 #define NIX_COLORRESULT_RED_SEND (0x2ull)
@@ -846,11 +892,6 @@
 #define NIX_CHAN_RPMX_LMACX_CHX(a, b, c)                                       \
 	(0x800ull | ((uint64_t)(a) << 8) | ((uint64_t)(b) << 4) | (uint64_t)(c))
 
-/* The mask is to extract lower 10-bits of channel number
- * which CPT will pass to X2P.
- */
-#define NIX_CHAN_CPT_X2P_MASK (0x3ffull)
-
 #define NIX_INTF_SDP  (0x4ull)
 #define NIX_INTF_CGX0 (0x0ull) /* [CN9K, CN10K) */
 #define NIX_INTF_CGX1 (0x1ull) /* [CN9K, CN10K) */
@@ -860,11 +901,6 @@
 #define NIX_INTF_RPM2 (0x2ull) /* [CN10K, .) */
 #define NIX_INTF_LBK0 (0x3ull)
 #define NIX_INTF_CPT0 (0x5ull) /* [CN10K, .) */
-
-#define NIX_CQERRINT_DOOR_ERR  (0x0ull)
-#define NIX_CQERRINT_WR_FULL   (0x1ull)
-#define NIX_CQERRINT_CQE_FAULT (0x2ull)
-#define NIX_CQERRINT_CPT_DROP  (0x3ull) /* [CN10KB, .) */
 
 #define NIX_LINK_SDP (0xdull) /* [CN10K, .) */
 #define NIX_LINK_CPT (0xeull) /* [CN10K, .) */
@@ -894,7 +930,7 @@ struct nix_age_and_send_stats_s {
 	uint64_t threshold : 29;
 	uint64_t latency_drop : 1;
 	uint64_t aging : 1;
-	uint64_t wmem : 1;
+	uint64_t coas_en : 1;
 	uint64_t ooffset : 12;
 	uint64_t ioffset : 12;
 	uint64_t sel : 1;
@@ -907,8 +943,8 @@ struct nix_age_and_send_stats_s {
 struct nix_aq_inst_s {
 	uint64_t op : 4;
 	uint64_t ctype : 4;
-	uint64_t lf : 7;
-	uint64_t rsvd_23_15 : 9;
+	uint64_t lf : 9;
+	uint64_t rsvd_23_17 : 7;
 	uint64_t cindex : 20;
 	uint64_t rsvd_62_44 : 19;
 	uint64_t doneint : 1;
@@ -927,7 +963,7 @@ struct nix_aq_res_s {
 
 /* NIX bandwidth profile structure */
 struct nix_band_prof_s {
-	uint64_t pc_mode : 2;
+	uint64_t pc_mode : 2; /* W0 */
 	uint64_t icolor : 2;
 	uint64_t tnl_ena : 1;
 	uint64_t rsvd_7_5 : 3;
@@ -942,7 +978,7 @@ struct nix_band_prof_s {
 	uint64_t peir_mantissa : 8;
 	uint64_t pebs_mantissa : 8;
 	uint64_t cir_mantissa : 8;
-	uint64_t cbs_mantissa : 8;
+	uint64_t cbs_mantissa : 8; /* W1 */
 	uint64_t lmode : 1;
 	uint64_t l_sellect : 3;
 	uint64_t rdiv : 4;
@@ -953,37 +989,37 @@ struct nix_band_prof_s {
 	uint64_t yc_action : 2;
 	uint64_t rc_action : 2;
 	uint64_t meter_algo : 2;
-	uint64_t band_prof_id : 7;
-	uint64_t rsvd_118_111 : 8;
+	uint64_t band_prof_id : 11;
+	uint64_t rsvd_118_115 : 4;
 	uint64_t hl_en : 1;
 	uint64_t rsvd_127_120 : 8;
-	uint64_t ts : 48;
+	uint64_t ts : 48; /* W2 */
 	uint64_t rsvd_191_176 : 16;
-	uint64_t pe_accum : 32;
+	uint64_t pe_accum : 32; /* W3 */
 	uint64_t c_accum : 32;
-	uint64_t green_pkt_pass : 48;
+	uint64_t green_pkt_pass : 48; /* W4 */
 	uint64_t rsvd_319_304 : 16;
-	uint64_t yellow_pkt_pass : 48;
+	uint64_t yellow_pkt_pass : 48; /* W5 */
 	uint64_t rsvd_383_368 : 16;
-	uint64_t red_pkt_pass : 48;
+	uint64_t red_pkt_pass : 48; /* W6 */
 	uint64_t rsvd_447_432 : 16;
-	uint64_t green_octs_pass : 48;
+	uint64_t green_octs_pass : 48; /* W7 */
 	uint64_t rsvd_511_496 : 16;
-	uint64_t yellow_octs_pass : 48;
+	uint64_t yellow_octs_pass : 48; /* W8 */
 	uint64_t rsvd_575_560 : 16;
-	uint64_t red_octs_pass : 48;
+	uint64_t red_octs_pass : 48; /* W9 */
 	uint64_t rsvd_639_624 : 16;
-	uint64_t green_pkt_drop : 48;
+	uint64_t green_pkt_drop : 48; /* W10 */
 	uint64_t rsvd_703_688 : 16;
-	uint64_t yellow_pkt_drop : 48;
+	uint64_t yellow_pkt_drop : 48; /* W11 */
 	uint64_t rsvd_767_752 : 16;
-	uint64_t red_pkt_drop : 48;
+	uint64_t red_pkt_drop : 48; /* W12 */
 	uint64_t rsvd_831_816 : 16;
-	uint64_t green_octs_drop : 48;
+	uint64_t green_octs_drop : 48; /* W13 */
 	uint64_t rsvd_895_880 : 16;
-	uint64_t yellow_octs_drop : 48;
+	uint64_t yellow_octs_drop : 48; /* W14 */
 	uint64_t rsvd_959_944 : 16;
-	uint64_t red_octs_drop : 48;
+	uint64_t red_octs_drop : 48; /* W15 */
 	uint64_t rsvd_1023_1008 : 16;
 };
 
@@ -1005,9 +1041,53 @@ struct nix_cint_hw_s {
 struct nix_cqe_hdr_s {
 	uint64_t tag : 32;
 	uint64_t q : 20;
-	uint64_t rsvd_57_52 : 6;
+	uint64_t long_send_comp : 1;
+	uint64_t rsvd_57_53 : 5;
 	uint64_t node : 2;
 	uint64_t cqe_type : 4;
+};
+
+/* [CN20K, .) NIX Completion queue context structure */
+struct nix_cn20k_cq_ctx_s {
+	uint64_t base : 64; /* W0 */
+	uint64_t lbp_ena : 1; /* W1 */
+	uint64_t lbpid_low : 3;
+	uint64_t bp_ena : 1;
+	uint64_t lbpid_med : 3;
+	uint64_t bpid : 9;
+	uint64_t lbpid_high : 3;
+	uint64_t qint_idx : 7;
+	uint64_t cq_err : 1;
+	uint64_t cint_idx : 7;
+	uint64_t avg_con : 9;
+	uint64_t wrptr : 20;
+	uint64_t tail : 20; /* W2 */
+	uint64_t head : 20;
+	uint64_t avg_level : 8;
+	uint64_t update_time : 16;
+	uint64_t bp : 8; /* W3 */
+	uint64_t drop : 8;
+	uint64_t drop_ena : 1;
+	uint64_t ena : 1;
+	uint64_t cpt_drop_err_en  : 1;
+	uint64_t reserved_211_211 : 1;
+	uint64_t msh_dst : 11;
+	uint64_t msh_valid : 1;
+	uint64_t stash_thresh : 4;
+	uint64_t lbp_frac : 4;
+	uint64_t caching : 1;
+	uint64_t stashing : 1;
+	uint64_t reserved_234_235 : 2;
+	uint64_t qsize : 4;
+	uint64_t cq_err_int : 8;
+	uint64_t cq_err_int_ena   : 8;
+	uint64_t bpid_ext : 2; /* W4 */
+	uint64_t reserved_258_259 : 2;
+	uint64_t lbpid_ext : 2;
+	uint64_t reserved_262_319 : 58;
+	uint64_t reserved_320_383 : 64; /* W5 */
+	uint64_t reserved_384_447 : 64; /* W6 */
+	uint64_t reserved_448_511 : 64; /* W7 */
 };
 
 /* NIX completion queue context structure */
@@ -1081,6 +1161,184 @@ struct nix_qint_hw_s {
 	uint32_t count : 22;
 	uint32_t rsvd_30_22 : 9;
 	uint32_t ena : 1;
+};
+
+/* [CN20K, .) NIX receive queue context structure */
+struct nix_cn20k_rq_ctx_hw_s {
+	uint64_t ena : 1; /* W0 */
+	uint64_t sso_ena : 1;
+	uint64_t ipsech_ena : 1;
+	uint64_t ena_wqwd : 1;
+	uint64_t cq : 20;
+	uint64_t rsvd_34_24 : 11;
+	uint64_t port_il4_dis : 1;
+	uint64_t port_ol4_dis : 1;
+	uint64_t lenerr_dis : 1;
+	uint64_t csum_il4_dis : 1;
+	uint64_t csum_ol4_dis : 1;
+	uint64_t len_il4_dis : 1;
+	uint64_t len_il3_dis : 1;
+	uint64_t len_ol4_dis : 1;
+	uint64_t len_ol3_dis : 1;
+	uint64_t wqe_aura : 20;
+	uint64_t spb_aura : 20; /* W1 */
+	uint64_t lpb_aura : 20;
+	uint64_t sso_grp : 10;
+	uint64_t sso_tt : 2;
+	uint64_t pb_caching : 2;
+	uint64_t wqe_caching : 1;
+	uint64_t xqe_drop_ena : 1;
+	uint64_t spb_drop_ena : 1;
+	uint64_t lpb_drop_ena : 1;
+	uint64_t pb_stashing : 1;
+	uint64_t ipsecd_drop_en : 1;
+	uint64_t chi_ena : 1;
+	uint64_t rsvd_127_125 : 3;
+	uint64_t band_prof_id_l : 10; /* W2 */
+	uint64_t sso_drop_ena : 1;
+	uint64_t policer_ena : 1;
+	uint64_t spb_sizem1 : 6;
+	uint64_t wqe_skip : 2;
+	uint64_t spb_high_sizem1 : 3;
+	uint64_t spb_ena : 1;
+	uint64_t lpb_sizem1 : 12;
+	uint64_t first_skip : 7;
+	uint64_t sso_bp_ena : 1;
+	uint64_t later_skip : 6;
+	uint64_t xqe_imm_size : 6;
+	uint64_t band_prof_id_h : 4;
+	uint64_t rsvd_189_188 : 2;
+	uint64_t xqe_imm_copy : 1;
+	uint64_t xqe_hdr_split : 1;
+	uint64_t xqe_drop : 8; /* W3 */
+	uint64_t xqe_pass : 8;
+	uint64_t wqe_pool_drop : 8;
+	uint64_t wqe_pool_pass : 8;
+	uint64_t spb_aura_drop : 8;
+	uint64_t spb_aura_pass : 8;
+	uint64_t spb_pool_drop : 8;
+	uint64_t spb_pool_pass : 8;
+	uint64_t lpb_aura_drop : 8; /* W4 */
+	uint64_t lpb_aura_pass : 8;
+	uint64_t lpb_pool_drop : 8;
+	uint64_t lpb_pool_pass : 8;
+	uint64_t rsvd_319_288 : 32;
+	uint64_t ltag : 24; /* W5 */
+	uint64_t good_utag : 8;
+	uint64_t bad_utag : 8;
+	uint64_t flow_tagw : 6;
+	uint64_t rsvd_366  : 1;
+	uint64_t rsvd_367  : 1;
+	uint64_t rsvd_375_368 : 8;
+	uint64_t rsvd_379_376 : 4;
+	uint64_t rsvd_381_380 : 2;
+	uint64_t rsvd_383_382 : 2;
+	uint64_t octs : 48; /* W6 */
+	uint64_t rsvd_447_432 : 16;
+	uint64_t pkts : 48; /* W7 */
+	uint64_t rsvd_511_496 : 16;
+	uint64_t drop_octs : 48; /* W8 */
+	uint64_t rsvd_575_560 : 16;
+	uint64_t drop_pkts : 48; /* W9 */
+	uint64_t rsvd_639_624 : 16;
+	uint64_t re_pkts : 48; /* W10 */
+	uint64_t rsvd_702_688 : 15;
+	uint64_t ena_copy : 1;
+	uint64_t rsvd_739_704 : 36; /* W11 */
+	uint64_t rq_int : 8;
+	uint64_t rq_int_ena : 8;
+	uint64_t qint_idx : 7;
+	uint64_t rsvd_767_763 : 5;
+	uint64_t rsvd_831_768 : 64;  /* W12 */
+	uint64_t rsvd_895_832 : 64;  /* W13 */
+	uint64_t rsvd_959_896 : 64;  /* W14 */
+	uint64_t rsvd_1023_960 : 64; /* W15 */
+};
+
+/* [CN20K, .) NIX Receive queue context structure */
+struct nix_cn20k_rq_ctx_s {
+	uint64_t ena : 1; /* W0 */
+	uint64_t sso_ena : 1;
+	uint64_t ipsech_ena : 1;
+	uint64_t ena_wqwd : 1;
+	uint64_t cq : 20;
+	uint64_t reserved_24_34 : 11;
+	uint64_t port_il4_dis : 1;
+	uint64_t port_ol4_dis : 1;
+	uint64_t lenerr_dis : 1;
+	uint64_t csum_il4_dis : 1;
+	uint64_t csum_ol4_dis : 1;
+	uint64_t len_il4_dis : 1;
+	uint64_t len_il3_dis : 1;
+	uint64_t len_ol4_dis : 1;
+	uint64_t len_ol3_dis : 1;
+	uint64_t wqe_aura : 20;
+	uint64_t spb_aura : 20; /* W1 */
+	uint64_t lpb_aura : 20;
+	uint64_t sso_grp : 10;
+	uint64_t sso_tt : 2;
+	uint64_t pb_caching : 2;
+	uint64_t wqe_caching : 1;
+	uint64_t xqe_drop_ena : 1;
+	uint64_t spb_drop_ena : 1;
+	uint64_t lpb_drop_ena : 1;
+	uint64_t pb_stashing : 1;
+	uint64_t ipsecd_drop_en : 1;
+	uint64_t chi_ena : 1;
+	uint64_t reserved_125_127 : 3;
+	uint64_t band_prof_id_l : 10; /* W2 */
+	uint64_t sso_fc_ena : 1;
+	uint64_t policer_ena : 1;
+	uint64_t spb_sizem1 : 6;
+	uint64_t wqe_skip : 2;
+	uint64_t spb_high_sizem1 : 3;
+	uint64_t spb_ena : 1;
+	uint64_t lpb_sizem1 : 12;
+	uint64_t first_skip : 7;
+	uint64_t sso_bp_ena : 1;
+	uint64_t later_skip : 6;
+	uint64_t xqe_imm_size : 6;
+	uint64_t band_prof_id_h : 4;
+	uint64_t reserved_188_189 : 2;
+	uint64_t xqe_imm_copy : 1;
+	uint64_t xqe_hdr_split : 1;
+	uint64_t xqe_drop : 8; /* W3 */
+	uint64_t xqe_pass : 8;
+	uint64_t wqe_pool_drop : 8;
+	uint64_t wqe_pool_pass : 8;
+	uint64_t spb_aura_drop : 8;
+	uint64_t spb_aura_pass : 8;
+	uint64_t spb_pool_drop : 8;
+	uint64_t spb_pool_pass : 8;
+	uint64_t lpb_aura_drop : 8; /* W4 */
+	uint64_t lpb_aura_pass : 8;
+	uint64_t lpb_pool_drop : 8;
+	uint64_t lpb_pool_pass : 8;
+	uint64_t reserved_288_291 : 4;
+	uint64_t rq_int : 8;
+	uint64_t rq_int_ena : 8;
+	uint64_t qint_idx : 7;
+	uint64_t reserved_315_319 : 5;
+	uint64_t ltag : 24; /* W5 */
+	uint64_t good_utag : 8;
+	uint64_t bad_utag : 8;
+	uint64_t flow_tagw : 6;
+	uint64_t reserved_366_383 : 18;
+	uint64_t octs : 48; /* W6 */
+	uint64_t reserved_432_447 : 16;
+	uint64_t pkts : 48; /* W7 */
+	uint64_t reserved_496_511 : 16;
+	uint64_t drop_octs : 48; /* W8 */
+	uint64_t reserved_560_575 : 16;
+	uint64_t drop_pkts : 48; /* W9 */
+	uint64_t reserved_624_639 : 16;
+	uint64_t re_pkts : 48; /* W10 */
+	uint64_t reserved_688_703 : 16;
+	uint64_t reserved_704_767 : 64; /* W11 */
+	uint64_t reserved_768_831 : 64; /* W12 */
+	uint64_t reserved_832_895 : 64; /* W13 */
+	uint64_t reserved_896_959 : 64; /* W14 */
+	uint64_t reserved_960_1023 : 64; /* W15 */
 };
 
 /* [CN10K, .) NIX receive queue context structure */
@@ -1421,6 +1679,15 @@ struct nix_rx_action_s {
 	uint64_t rsvd_63_61 : 3;
 };
 
+/* NIX receive action structure */
+struct nix_rx_action2_s {
+	uint64_t ipsec_qsel                  :  3;
+	uint64_t ipsec_qidx                  :  4;
+	uint64_t reserved_7_7                :  1;
+	uint64_t inline_profile_id           :  4;
+	uint64_t reserved_12_63              : 52;
+
+};
 /* NIX receive immediate sub descriptor structure */
 struct nix_rx_imm_s {
 	uint64_t size : 16;
@@ -1493,13 +1760,13 @@ union nix_rx_parse_u {
 		uint64_t lhptr : 8;
 		uint64_t vtag0_ptr : 8;
 		uint64_t vtag1_ptr : 8;
-		uint64_t flow_key_alg : 5;
-		uint64_t rsvd_341 : 1;
+		uint64_t flow_key_alg : 6;
 		uint64_t rsvd_349_342 : 8;
 		uint64_t rsvd_353_350 : 4;
 		uint64_t rsvd_359_354 : 6;
 		uint64_t color : 2;
-		uint64_t rsvd_381_362 : 20;
+		uint64_t mcs_mdata    : 14;
+		uint64_t rsvd_381_376 : 6;
 		uint64_t rsvd_382 : 1;
 		uint64_t rsvd_383 : 1;
 		uint64_t rsvd_447_384 : 64; /* W6 */
@@ -1652,7 +1919,9 @@ union nix_send_ext_w1_u {
 		uint64_t vlan0_ins_ena : 1;
 		uint64_t vlan1_ins_ena : 1;
 		uint64_t init_color : 2;
-		uint64_t rsvd_127_116 : 12;
+		uint64_t flow_id       : 7;
+		uint64_t flow_override : 1;
+		uint64_t rsvd_127_124 : 4;
 	};
 	struct {
 		uint64_t vlan0_ins_ptr : 8;
@@ -1675,7 +1944,7 @@ union nix_send_hdr_w0_u {
 	uint64_t u;
 	struct {
 		uint64_t total : 18;
-		uint64_t rsvd_18 : 1;
+		uint64_t cpt_error : 1;
 		uint64_t df : 1;
 		uint64_t aura : 20;
 		uint64_t sizem1 : 3;
@@ -1718,7 +1987,8 @@ struct nix_send_jump_s {
 	uint64_t rsvd_13_7 : 7;
 	uint64_t ld_type : 2;
 	uint64_t aura : 20;
-	uint64_t rsvd_58_36 : 23;
+	uint64_t refcnt_en  : 1;
+	uint64_t rsvd_58_37 : 22;
 	uint64_t f : 1;
 	uint64_t subdc : 4;
 	uint64_t addr : 64; /* W1 */
@@ -1729,7 +1999,10 @@ union nix_send_mem_w0_u {
 	uint64_t u;
 	struct {
 		uint64_t offset : 16;
-		uint64_t rsvd_51_16 : 36;
+		uint64_t base_ns     : 32;
+		uint64_t step_type   : 1;
+		uint64_t rsvd_50_49  : 2;
+		uint64_t coas_en     : 1;
 		uint64_t per_lso_seg : 1;
 		uint64_t wmem : 1;
 		uint64_t dsz : 2;
@@ -1760,7 +2033,8 @@ union nix_send_sg2_s {
 		uint64_t i1 : 1;
 		uint64_t fabs : 1;
 		uint64_t foff : 8;
-		uint64_t rsvd_57_46 : 12;
+		uint64_t refcnt_en1 : 1;
+		uint64_t rsvd_57_47 : 11;
 		uint64_t ld_type : 2;
 		uint64_t subdc : 4;
 	};
@@ -1773,7 +2047,10 @@ union nix_send_sg_s {
 		uint64_t seg2_size : 16;
 		uint64_t seg3_size : 16;
 		uint64_t segs : 2;
-		uint64_t rsvd_54_50 : 5;
+		uint64_t rsvd_51_50 : 2;
+		uint64_t refcnt_en1 : 1;
+		uint64_t refcnt_en2 : 1;
+		uint64_t refcnt_en3 : 1;
 		uint64_t i1 : 1;
 		uint64_t i2 : 1;
 		uint64_t i3 : 1;
@@ -1790,6 +2067,138 @@ struct nix_send_work_s {
 	uint64_t rsvd_59_44 : 16;
 	uint64_t subdc : 4;
 	uint64_t addr : 64; /* W1 */
+};
+
+/* [CN20K, .) NIX sq context hardware structure */
+struct nix_cn20k_sq_ctx_hw_s {
+	uint64_t ena : 1;
+	uint64_t substream : 20;
+	uint64_t max_sqe_size : 2;
+	uint64_t sqe_way_mask : 16;
+	uint64_t sqb_aura : 20;
+	uint64_t gbl_rsvd1 : 5;
+	uint64_t cq_id : 20; /* W1 */
+	uint64_t cq_ena : 1;
+	uint64_t qint_idx : 6;
+	uint64_t gbl_rsvd2 : 1;
+	uint64_t sq_int : 8;
+	uint64_t sq_int_ena : 8;
+	uint64_t xoff : 1;
+	uint64_t sqe_stype : 2;
+	uint64_t gbl_rsvd : 17;
+	uint64_t head_sqb : 64; /* W2 */
+	uint64_t head_offset : 6; /* W3 */
+	uint64_t sqb_dequeue_count : 16;
+	uint64_t default_chan : 12;
+	uint64_t sdp_mcast : 1;
+	uint64_t sso_ena : 1;
+	uint64_t dse_rsvd1 : 10;
+	uint64_t update_sq_count : 2;
+	uint64_t seb_count : 16;
+	uint64_t sqb_enqueue_count : 16; /* W4 */
+	uint64_t tail_offset : 6;
+	uint64_t lmt_dis : 1;
+	uint64_t smq_rr_weight : 14;
+	uint64_t dnq_rsvd1 : 4;
+	uint64_t sq_count_iova_lo : 23;
+	uint64_t tail_sqb : 64; /* W5 */
+	uint64_t next_sqb : 64; /* W6 */
+	uint64_t smq : 11;	/* W7 */
+	uint64_t smq_pend : 1;
+	uint64_t smq_next_sq : 20;
+	uint64_t smq_next_sq_vld : 1;
+	uint64_t mnq_dis : 1;
+	uint64_t scm1_rsvd2 : 7;
+	uint64_t sq_count_iova_hi : 23;
+	uint64_t smenq_sqb : 64;   /* W8 */
+	uint64_t smenq_offset : 6; /* W9 */
+	uint64_t cq_limit : 8;
+	uint64_t smq_rr_count : 32;
+	uint64_t scm_lso_rem : 18;
+	uint64_t smq_lso_segnum : 8; /* W10 */
+	uint64_t vfi_lso_total : 18;
+	uint64_t vfi_lso_sizem1 : 3;
+	uint64_t vfi_lso_sb : 8;
+	uint64_t vfi_lso_mps : 14;
+	uint64_t vfi_lso_vlan0_ins_ena : 1;
+	uint64_t vfi_lso_vlan1_ins_ena : 1;
+	uint64_t vfi_lso_vld : 1;
+	uint64_t smenq_next_sqb_vld : 1;
+	uint64_t scm_dq_rsvd1 : 9;
+	uint64_t smenq_next_sqb : 64; /* W11 */
+	uint64_t age_drop_octs : 32;  /* W12 */
+	uint64_t age_drop_pkts : 32;
+	uint64_t drop_pkts : 48; /* W13 */
+	uint64_t drop_octs_lsw : 16;
+	uint64_t drop_octs_msw : 32; /* W14 */
+	uint64_t pkts_lsw : 32;
+	uint64_t pkts_msw : 16; /* W15 */
+	uint64_t octs : 48;
+};
+
+/* [CN20K, .) NIX Send queue context structure */
+struct nix_cn20k_sq_ctx_s {
+	uint64_t ena : 1; /* W0 */
+	uint64_t qint_idx : 6;
+	uint64_t substream : 20;
+	uint64_t sdp_mcast :  1;
+	uint64_t cq : 20;
+	uint64_t sqe_way_mask : 16;
+	uint64_t smq : 11; /* W1 */
+	uint64_t cq_ena : 1;
+	uint64_t xoff : 1;
+	uint64_t sso_ena : 1;
+	uint64_t smq_rr_weight : 14;
+	uint64_t default_chan : 12;
+	uint64_t sqb_count : 16;
+	uint64_t reserved_120_120 : 1;
+	uint64_t smq_rr_count_lb : 7;
+	uint64_t smq_rr_count_ub : 25; /* W2 */
+	uint64_t sqb_aura : 20;
+	uint64_t sq_int : 8;
+	uint64_t sq_int_ena : 8;
+	uint64_t sqe_stype : 2;
+	uint64_t reserved_191_191 : 1;
+	uint64_t max_sqe_size : 2; /* W3 */
+	uint64_t cq_limit : 8;
+	uint64_t lmt_dis : 1;
+	uint64_t mnq_dis : 1;
+	uint64_t smq_next_sq : 20;
+	uint64_t smq_lso_segnum : 8;
+	uint64_t tail_offset : 6;
+	uint64_t smenq_offset : 6;
+	uint64_t head_offset : 6;
+	uint64_t smenq_next_sqb_vld : 1;
+	uint64_t smq_pend : 1;
+	uint64_t smq_next_sq_vld : 1;
+	uint64_t update_sq_count : 2;
+	uint64_t reserved_255_255 : 1;
+	uint64_t next_sqb : 64;	       /* W4 */
+	uint64_t tail_sqb : 64;	       /* W5 */
+	uint64_t smenq_sqb : 64;       /* W6 */
+	uint64_t smenq_next_sqb : 64;  /* W7 */
+	uint64_t head_sqb : 64;	       /* W8 */
+	uint64_t reserved_576_583 : 8; /* W9 */
+	uint64_t vfi_lso_total : 18;
+	uint64_t vfi_lso_sizem1 : 3;
+	uint64_t vfi_lso_sb : 8;
+	uint64_t vfi_lso_mps : 14;
+	uint64_t vfi_lso_vlan0_ins_ena : 1;
+	uint64_t vfi_lso_vlan1_ins_ena : 1;
+	uint64_t vfi_lso_vld : 1;
+	uint64_t reserved_630_639 : 10;
+	uint64_t scm_lso_rem : 18; /* W10 */
+	uint64_t sq_count_iova : 46;
+	uint64_t octs : 48; /* W11 */
+	uint64_t reserved_752_767 : 16;
+	uint64_t pkts : 48; /* W12 */
+	uint64_t reserved_816_831 : 16;
+	uint64_t aged_drop_octs : 32; /* W13 */
+	uint64_t aged_drop_pkts : 32;
+	uint64_t drop_octs : 48; /* W14 */
+	uint64_t reserved_944_959 : 16;
+	uint64_t drop_pkts : 48; /* W15 */
+	uint64_t seb_count : 16;
 };
 
 /* [CN10K, .) NIX sq context hardware structure */
@@ -2104,18 +2513,44 @@ struct nix_lso_format {
 	uint64_t sizem1 : 2;
 	uint64_t rsvd_14_15 : 2;
 	uint64_t alg : 3;
-	uint64_t rsvd_19_63 : 45;
+	uint64_t alt_flags : 1;
+	uint64_t alt_flags_index : 2;
+	uint64_t shift : 3;
+	uint64_t rsvd_25_63 : 39;
 };
 
-#define NIX_LSO_FIELD_MAX      (8)
-#define NIX_LSO_FIELD_ALG_MASK GENMASK(18, 16)
-#define NIX_LSO_FIELD_SZ_MASK  GENMASK(13, 12)
-#define NIX_LSO_FIELD_LY_MASK  GENMASK(9, 8)
-#define NIX_LSO_FIELD_OFF_MASK GENMASK(7, 0)
+/* NIX LSO ALT_FLAGS field structure */
+typedef union nix_lso_alt_flg_format {
+	uint64_t u[2];
 
-#define NIX_LSO_FIELD_MASK                                                     \
-	(NIX_LSO_FIELD_OFF_MASK | NIX_LSO_FIELD_LY_MASK |                      \
-	 NIX_LSO_FIELD_SZ_MASK | NIX_LSO_FIELD_ALG_MASK)
+	struct nix_lso_alt_flg_cfg {
+		/* NIX_AF_LSO_ALT_FLAGS_CFG */
+		uint64_t alt_msf_set : 16;
+		uint64_t alt_msf_mask : 16;
+		uint64_t alt_fsf_set : 16;
+		uint64_t alt_fsf_mask : 16;
+
+		/* NIX_AF_LSO_ALT_FLAGS_CFG1 */
+		uint64_t alt_lsf_set : 16;
+		uint64_t alt_lsf_mask : 16;
+		uint64_t alt_ssf_set : 16;
+		uint64_t alt_ssf_mask : 16;
+	} s;
+} nix_lso_alt_flg_format_t;
+
+#define NIX_LSO_FIELD_MAX	       (8)
+#define NIX_LSO_FIELD_SHIFT_MASK       GENMASK(24, 22)
+#define NIX_LSO_FIELD_ALT_FLG_IDX_MASK GENMASK(21, 20)
+#define NIX_LSO_FIELD_ALT_FLG_MASK     BIT_ULL(19)
+#define NIX_LSO_FIELD_ALG_MASK	       GENMASK(18, 16)
+#define NIX_LSO_FIELD_SZ_MASK	       GENMASK(13, 12)
+#define NIX_LSO_FIELD_LY_MASK	       GENMASK(9, 8)
+#define NIX_LSO_FIELD_OFF_MASK	       GENMASK(7, 0)
+
+#define NIX_LSO_FIELD_MASK                                                                         \
+	(NIX_LSO_FIELD_OFF_MASK | NIX_LSO_FIELD_LY_MASK | NIX_LSO_FIELD_SZ_MASK |                  \
+	 NIX_LSO_FIELD_ALG_MASK | NIX_LSO_FIELD_ALT_FLG_MASK | NIX_LSO_FIELD_ALT_FLG_IDX_MASK |    \
+	 NIX_LSO_FIELD_SHIFT_MASK)
 
 #define NIX_CN9K_MAX_HW_FRS 9212UL
 #define NIX_LBK_MAX_HW_FRS  65535UL
@@ -2234,17 +2669,24 @@ struct nix_lso_format {
 #define NIX_CN9K_TM_RR_QUANTUM_MAX (BIT_ULL(24) - 1)
 #define NIX_TM_RR_WEIGHT_MAX	   (BIT_ULL(14) - 1)
 
-/* [CN9K, CN10K) */
+/* [CN9K, .) */
+#define NIX_TXSCH_LVL_TL1_MAX 28
+#define NIX_TXSCH_LVL_TL2_MAX 256
+
+/* CN9K */
+#define NIX_CN9K_TXSCH_LVL_TL3_MAX 256
+#define NIX_CN9K_TXSCH_LVL_TL4_MAX 512
 #define NIX_CN9K_TXSCH_LVL_SMQ_MAX 512
 
-/* [CN10K, .) */
-#define NIX_TXSCH_LVL_SMQ_MAX 832
+/* CN10K */
+#define NIX_CN10K_TXSCH_LVL_TL3_MAX 256
+#define NIX_CN10K_TXSCH_LVL_TL4_MAX 512
+#define NIX_CN10K_TXSCH_LVL_SMQ_MAX 832
 
-/* [CN9K, .) */
-#define NIX_TXSCH_LVL_TL4_MAX 512
-#define NIX_TXSCH_LVL_TL3_MAX 256
-#define NIX_TXSCH_LVL_TL2_MAX 256
-#define NIX_TXSCH_LVL_TL1_MAX 28
+/* [CN20K, .) */
+#define NIX_TXSCH_LVL_TL3_MAX 512
+#define NIX_TXSCH_LVL_TL4_MAX 1280
+#define NIX_TXSCH_LVL_SMQ_MAX 2048
 
 #define NIX_CQ_OP_STAT_OP_ERR 63
 #define NIX_CQ_OP_STAT_CQ_ERR 46
@@ -2255,7 +2697,7 @@ struct nix_lso_format {
 #define NIX_LSO_SEG_MAX 256
 #define NIX_LSO_MPS_MAX (BIT_ULL(14) - 1)
 
-/* Software defined LSO base format IDX */
+/* Kernel defined LSO base format IDX */
 #define NIX_LSO_FORMAT_IDX_TSOV4 0
 #define NIX_LSO_FORMAT_IDX_TSOV6 1
 
@@ -2264,5 +2706,92 @@ struct nix_lso_format {
 #define NIX_SENDSTATALG_SEL_MASK  0x8
 #define NIX_SENDSTAT_IOFFSET_MASK 0xFFF
 #define NIX_SENDSTAT_OOFFSET_MASK 0xFFF
+
+/* The mask is to extract lower 11-bits of channel number
+ * which CPT will pass to X2P.
+ */
+#define NIX_CHAN_CPT_X2P_MASK (0x7ffull)
+
+/* CGX lmac types defined by firmware */
+enum cgx_lmac_type {
+	CGX_LMAC_TYPE_SGMII = 0,
+	CGX_LMAC_TYPE_XAUI = 1,
+	CGX_LMAC_TYPE_RXAUI = 2,
+	CGX_LMAC_TYPE_10G_R = 3,
+	CGX_LMAC_TYPE_40G_R = 4,
+	CGX_LMAC_TYPE_QSGMII = 6,
+	CGX_LMAC_TYPE_25G_R = 7,
+	CGX_LMAC_TYPE_50G_R = 8,
+	CGX_LMAC_TYPE_100G_R = 9,
+	CGX_LMAC_TYPE_USXGMII = 10,
+	CGX_LMAC_TYPE_USGMII = 11,
+	CGX_LMAC_TYPE_MAX,
+};
+
+/* CGX modes defined by firmware */
+enum cgx_mode {
+	CGX_MODE_SGMII,
+	CGX_MODE_1000_BASEX,
+	CGX_MODE_QSGMII,
+	CGX_MODE_10G_C2C,
+	CGX_MODE_10G_C2M,
+	CGX_MODE_10G_KR,
+	CGX_MODE_20G_C2C,
+	CGX_MODE_25G_C2C,
+	CGX_MODE_25G_C2M,
+	CGX_MODE_25G_2_C2C,
+	CGX_MODE_25G_CR,
+	CGX_MODE_25G_KR,
+	CGX_MODE_40G_C2C,
+	CGX_MODE_40G_C2M,
+	CGX_MODE_40G_CR4,
+	CGX_MODE_40G_KR4,
+	CGX_MODE_40GAUI_C2C,
+	CGX_MODE_50G_C2C,
+	CGX_MODE_50G_C2M,
+	CGX_MODE_50G_4_C2C,
+	CGX_MODE_50G_CR,
+	CGX_MODE_50G_KR,
+	CGX_MODE_80GAUI_C2C,
+	CGX_MODE_100G_C2C,
+	CGX_MODE_100G_C2M,
+	CGX_MODE_100G_CR4,
+	CGX_MODE_100G_KR4,
+	CGX_MODE_LAUI_2_C2C_BIT,
+	CGX_MODE_LAUI_2_C2M_BIT,
+	CGX_MODE_50GBASE_CR2_C_BIT,
+	CGX_MODE_50GBASE_KR2_C_BIT, /* = 30 */
+	CGX_MODE_100GAUI_2_C2C_BIT,
+	CGX_MODE_100GAUI_2_C2M_BIT,
+	CGX_MODE_100GBASE_CR2_BIT,
+	CGX_MODE_100GBASE_KR2_BIT,
+	CGX_MODE_SFI_1G_BIT,
+	CGX_MODE_25GBASE_CR_C_BIT,
+	CGX_MODE_25GBASE_KR_C_BIT,
+	ETH_MODE_SGMII_10M_BIT,
+	ETH_MODE_SGMII_100M_BIT,      /* = 39 */
+	ETH_MODE_2500_BASEX_BIT = 42, /* Mode group 1 */
+	ETH_MODE_5000_BASEX_BIT,
+	ETH_MODE_O_USGMII_BIT,
+	ETH_MODE_Q_USGMII_BIT,
+	ETH_MODE_2_5G_USXGMII_BIT,
+	ETH_MODE_5G_USXGMII_BIT,
+	ETH_MODE_10G_SXGMII_BIT,
+	ETH_MODE_10G_DXGMII_BIT,
+	ETH_MODE_10G_QXGMII_BIT,
+	CGX_MODE_MAX /* = 51 */
+};
+
+/* CGX Port types from kernel */
+enum cgx_port_type {
+	CGX_PORT_TP = 0x0,
+	CGX_PORT_AUI,
+	CGX_PORT_MII,
+	CGX_PORT_FIBRE,
+	CGX_PORT_BNC,
+	CGX_PORT_DA,
+	CGX_PORT_NONE = 0xef,
+	CGX_PORT_OTHER = 0xff,
+};
 
 #endif /* __NIX_HW_H__ */

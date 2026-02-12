@@ -669,6 +669,12 @@ eh_initialize_eventdev(struct eventmode_conf *em_conf)
 		eventdev_conf.nb_event_port_enqueue_depth =
 				evdev_default_conf.max_event_port_enqueue_depth;
 
+		if (evdev_default_conf.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE)
+			eventdev_conf.preschedule_type = RTE_EVENT_PRESCHEDULE;
+
+		if (evdev_default_conf.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE)
+			eventdev_conf.preschedule_type = RTE_EVENT_PRESCHEDULE_ADAPTIVE;
+
 		/* Configure event device */
 		ret = rte_event_dev_configure(eventdev_id, &eventdev_conf);
 		if (ret < 0) {
@@ -881,7 +887,7 @@ eh_initialize_crypto_adapter(struct eventmode_conf *em_conf)
 		}
 
 		/* Add crypto queue pairs to event crypto adapter */
-		ret = rte_event_crypto_adapter_queue_pair_add(cdev_id, eventdev_id,
+		ret = rte_event_crypto_adapter_queue_pair_add(eventdev_id, cdev_id,
 				-1, /* adds all the pre configured queue pairs to the instance */
 				&queue_conf);
 		if (ret < 0) {

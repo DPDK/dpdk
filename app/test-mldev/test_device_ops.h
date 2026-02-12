@@ -9,9 +9,9 @@
 
 #include "test_common.h"
 
-struct test_device {
+struct __rte_cache_aligned test_device {
 	/* common data */
 	struct test_common cmn;
-} __rte_cache_aligned;
+};
 
 #endif /* TEST_DEVICE_OPS_H */

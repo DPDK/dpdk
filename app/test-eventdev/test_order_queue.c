@@ -28,7 +28,7 @@ order_queue_worker(void *arg, const bool flow_id_cap)
 		uint16_t event = rte_event_dequeue_burst(dev_id, port,
 					&ev, 1, 0);
 		if (!event) {
-			if (__atomic_load_n(outstand_pkts, __ATOMIC_RELAXED) <= 0)
+			if (rte_atomic_load_explicit(outstand_pkts, rte_memory_order_relaxed) <= 0)
 				break;
 			rte_pause();
 			continue;
@@ -64,7 +64,7 @@ order_queue_worker_burst(void *arg, const bool flow_id_cap)
 				BURST_SIZE, 0);
 
 		if (nb_rx == 0) {
-			if (__atomic_load_n(outstand_pkts, __ATOMIC_RELAXED) <= 0)
+			if (rte_atomic_load_explicit(outstand_pkts, rte_memory_order_relaxed) <= 0)
 				break;
 			rte_pause();
 			continue;

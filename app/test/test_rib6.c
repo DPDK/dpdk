@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <rte_ip.h>
+#include <rte_ip6.h>
 #include <rte_rib6.h>
 
 #include "test.h"
@@ -118,14 +118,14 @@ test_insert_invalid(void)
 	struct rte_rib6 *rib = NULL;
 	struct rte_rib6_node *node, *node1;
 	struct rte_rib6_conf config;
-	uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE] = {0};
+	struct rte_ipv6_addr ip = {0};
 	uint8_t depth = 24;
 
 	config.max_nodes = MAX_RULES;
 	config.ext_sz = 0;
 
 	/* rte_rib6_insert: rib == NULL */
-	node = rte_rib6_insert(NULL, ip, depth);
+	node = rte_rib6_insert(NULL, &ip, depth);
 	RTE_TEST_ASSERT(node == NULL,
 		"Call succeeded with invalid parameters\n");
 
@@ -134,14 +134,14 @@ test_insert_invalid(void)
 	RTE_TEST_ASSERT(rib != NULL, "Failed to create RIB\n");
 
 	/* rte_rib6_insert: depth > MAX_DEPTH */
-	node = rte_rib6_insert(rib, ip, MAX_DEPTH + 1);
+	node = rte_rib6_insert(rib, &ip, MAX_DEPTH + 1);
 	RTE_TEST_ASSERT(node == NULL,
 		"Call succeeded with invalid parameters\n");
 
 	/* insert the same ip/depth twice*/
-	node = rte_rib6_insert(rib, ip, depth);
+	node = rte_rib6_insert(rib, &ip, depth);
 	RTE_TEST_ASSERT(node != NULL, "Failed to insert rule\n");
-	node1 = rte_rib6_insert(rib, ip, depth);
+	node1 = rte_rib6_insert(rib, &ip, depth);
 	RTE_TEST_ASSERT(node1 == NULL,
 		"Call succeeded with invalid parameters\n");
 
@@ -162,9 +162,8 @@ test_get_fn(void)
 	struct rte_rib6_node *node;
 	struct rte_rib6_conf config;
 	void *ext;
-	uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE] = {192, 0, 2, 0, 0, 0, 0, 0,
-						0, 0, 0, 0, 0, 0, 0, 0};
-	uint8_t ip_ret[RTE_RIB6_IPV6_ADDR_SIZE];
+	struct rte_ipv6_addr ip = RTE_IPV6(0xc000, 0x0200, 0, 0, 0, 0, 0, 0);
+	struct rte_ipv6_addr ip_ret;
 	uint64_t nh_set = 10;
 	uint64_t nh_ret;
 	uint8_t depth = 24;
@@ -177,11 +176,11 @@ test_get_fn(void)
 	rib = rte_rib6_create(__func__, SOCKET_ID_ANY, &config);
 	RTE_TEST_ASSERT(rib != NULL, "Failed to create RIB\n");
 
-	node = rte_rib6_insert(rib, ip, depth);
+	node = rte_rib6_insert(rib, &ip, depth);
 	RTE_TEST_ASSERT(node != NULL, "Failed to insert rule\n");
 
 	/* test rte_rib6_get_ip() with incorrect args */
-	ret = rte_rib6_get_ip(NULL, ip_ret);
+	ret = rte_rib6_get_ip(NULL, &ip_ret);
 	RTE_TEST_ASSERT(ret < 0,
 		"Call succeeded with invalid parameters\n");
 	ret = rte_rib6_get_ip(node, NULL);
@@ -215,8 +214,8 @@ test_get_fn(void)
 		"Call succeeded with invalid parameters\n");
 
 	/* check the return values */
-	ret = rte_rib6_get_ip(node, ip_ret);
-	RTE_TEST_ASSERT((ret == 0) && (rte_rib6_is_equal(ip_ret, ip)),
+	ret = rte_rib6_get_ip(node, &ip_ret);
+	RTE_TEST_ASSERT((ret == 0) && (rte_ipv6_addr_eq(&ip_ret, &ip)),
 		"Failed to get proper node ip\n");
 	ret = rte_rib6_get_depth(node, &depth_ret);
 	RTE_TEST_ASSERT((ret == 0) && (depth_ret == depth),
@@ -243,8 +242,7 @@ test_basic(void)
 	struct rte_rib6_node *node;
 	struct rte_rib6_conf config;
 
-	uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE] = {192, 0, 2, 0, 0, 0, 0, 0,
-						0, 0, 0, 0, 0, 0, 0, 0};
+	struct rte_ipv6_addr ip = RTE_IPV6(0xc000, 0x0200, 0, 0, 0, 0, 0, 0);
 	uint64_t next_hop_add = 10;
 	uint64_t next_hop_return;
 	uint8_t depth = 24;
@@ -256,21 +254,21 @@ test_basic(void)
 	rib = rte_rib6_create(__func__, SOCKET_ID_ANY, &config);
 	RTE_TEST_ASSERT(rib != NULL, "Failed to create RIB\n");
 
-	node = rte_rib6_insert(rib, ip, depth);
+	node = rte_rib6_insert(rib, &ip, depth);
 	RTE_TEST_ASSERT(node != NULL, "Failed to insert rule\n");
 
 	status = rte_rib6_set_nh(node, next_hop_add);
 	RTE_TEST_ASSERT(status == 0,
 		"Failed to set rte_rib_node field\n");
 
-	node = rte_rib6_lookup(rib, ip);
+	node = rte_rib6_lookup(rib, &ip);
 	RTE_TEST_ASSERT(node != NULL, "Failed to lookup\n");
 
 	status = rte_rib6_get_nh(node, &next_hop_return);
 	RTE_TEST_ASSERT((status == 0) && (next_hop_add == next_hop_return),
 		"Failed to get proper nexthop\n");
 
-	node = rte_rib6_lookup_exact(rib, ip, depth);
+	node = rte_rib6_lookup_exact(rib, &ip, depth);
 	RTE_TEST_ASSERT(node != NULL,
 		"Failed to lookup\n");
 
@@ -278,12 +276,12 @@ test_basic(void)
 	RTE_TEST_ASSERT((status == 0) && (next_hop_add == next_hop_return),
 		"Failed to get proper nexthop\n");
 
-	rte_rib6_remove(rib, ip, depth);
+	rte_rib6_remove(rib, &ip, depth);
 
-	node = rte_rib6_lookup(rib, ip);
+	node = rte_rib6_lookup(rib, &ip);
 	RTE_TEST_ASSERT(node == NULL,
 		"Lookup returns non existent rule\n");
-	node = rte_rib6_lookup_exact(rib, ip, depth);
+	node = rte_rib6_lookup_exact(rib, &ip, depth);
 	RTE_TEST_ASSERT(node == NULL,
 		"Lookup returns non existent rule\n");
 
@@ -299,12 +297,9 @@ test_tree_traversal(void)
 	struct rte_rib6_node *node;
 	struct rte_rib6_conf config;
 
-	uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE] = {10, 0, 2, 130, 0, 0, 0, 0,
-						0, 0, 0, 0, 0, 0, 0, 0};
-	uint8_t ip1[RTE_RIB6_IPV6_ADDR_SIZE] = {10, 0, 2, 0, 0, 0, 0, 0,
-						0, 0, 0, 0, 0, 0, 0, 0};
-	uint8_t ip2[RTE_RIB6_IPV6_ADDR_SIZE] = {10, 0, 2, 130, 0, 0, 0, 0,
-						0, 0, 0, 0, 0, 0, 0, 80};
+	struct rte_ipv6_addr ip = RTE_IPV6(0x0a00, 0x0282, 0, 0, 0, 0, 0, 0);
+	struct rte_ipv6_addr ip1 = RTE_IPV6(0x0a00, 0x0200, 0, 0, 0, 0, 0, 0);
+	struct rte_ipv6_addr ip2 = RTE_IPV6(0x0a00, 0x0282, 0, 0, 0, 0, 0, 0x0050);
 	uint8_t depth = 126;
 
 	config.max_nodes = MAX_RULES;
@@ -313,13 +308,13 @@ test_tree_traversal(void)
 	rib = rte_rib6_create(__func__, SOCKET_ID_ANY, &config);
 	RTE_TEST_ASSERT(rib != NULL, "Failed to create RIB\n");
 
-	node = rte_rib6_insert(rib, ip1, depth);
+	node = rte_rib6_insert(rib, &ip1, depth);
 	RTE_TEST_ASSERT(node != NULL, "Failed to insert rule\n");
-	node = rte_rib6_insert(rib, ip2, depth);
+	node = rte_rib6_insert(rib, &ip2, depth);
 	RTE_TEST_ASSERT(node != NULL, "Failed to insert rule\n");
 
 	node = NULL;
-	node = rte_rib6_get_nxt(rib, ip, 32, node, RTE_RIB6_GET_NXT_ALL);
+	node = rte_rib6_get_nxt(rib, &ip, 32, node, RTE_RIB6_GET_NXT_ALL);
 	RTE_TEST_ASSERT(node != NULL, "Failed to get rib_node\n");
 
 	rte_rib6_free(rib);
@@ -367,5 +362,5 @@ test_slow_rib6(void)
 	return unit_test_suite_runner(&rib6_slow_tests);
 }
 
-REGISTER_FAST_TEST(rib6_autotest, true, true, test_rib6);
+REGISTER_FAST_TEST(rib6_autotest, NOHUGE_OK, ASAN_OK, test_rib6);
 REGISTER_PERF_TEST(rib6_slow_autotest, test_slow_rib6);

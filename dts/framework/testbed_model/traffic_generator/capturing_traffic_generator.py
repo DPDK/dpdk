@@ -13,10 +13,10 @@ import uuid
 from abc import abstractmethod
 from dataclasses import dataclass
 
-import scapy.utils  # type: ignore[import]
-from scapy.packet import Packet  # type: ignore[import]
+import scapy.utils
+from scapy.packet import Packet
 
-from framework.settings import SETTINGS
+from api.artifact import Artifact
 from framework.testbed_model.port import Port
 from framework.utils import get_packet_summaries
 
@@ -34,10 +34,12 @@ class PacketFilteringConfig:
     Attributes:
         no_lldp: If :data:`True`, LLDP packets will be filtered out when capturing.
         no_arp: If :data:`True`, ARP packets will be filtered out when capturing.
+        no_icmp: If :data:`True`, ICMP packets will be filtered out when capturing.
     """
 
     no_lldp: bool = True
     no_arp: bool = True
+    no_icmp: bool = True
 
 
 class CapturingTrafficGenerator(TrafficGenerator):
@@ -63,36 +65,39 @@ class CapturingTrafficGenerator(TrafficGenerator):
         """This traffic generator can capture traffic."""
         return True
 
-    def send_packet_and_capture(
-        self,
-        packet: Packet,
-        send_port: Port,
-        receive_port: Port,
-        filter_config: PacketFilteringConfig,
-        duration: float,
-        capture_name: str = _get_default_capture_name(),
-    ) -> list[Packet]:
-        """Send `packet` and capture received traffic.
+    def send_packet(self, packet: Packet, port: Port) -> None:
+        """Send `packet` and block until it is fully sent.
 
-        Send `packet` on `send_port` and then return all traffic captured
-        on `receive_port` for the given `duration`.
-
-        The captured traffic is recorded in the `capture_name`.pcap file.
+        Send `packet` on `port`, then wait until `packet` is fully sent.
 
         Args:
             packet: The packet to send.
-            send_port: The egress port on the TG node.
-            receive_port: The ingress port in the TG node.
-            filter_config: Filters to apply when capturing packets.
-            duration: Capture traffic for this amount of time after sending the packet.
-            capture_name: The name of the .pcap file where to store the capture.
-
-        Returns:
-             The received packets. May be empty if no packets are captured.
+            port: The egress port on the TG node.
         """
-        return self.send_packets_and_capture(
-            [packet], send_port, receive_port, filter_config, duration, capture_name
-        )
+        self.send_packets([packet], port)
+
+    def send_packets(self, packets: list[Packet], port: Port) -> None:
+        """Send `packets` and block until they are fully sent.
+
+        Send `packets` on `port`, then wait until `packets` are fully sent.
+
+        Args:
+            packets: The packets to send.
+            port: The egress port on the TG node.
+        """
+        self._logger.info(f"Sending packet{'s' if len(packets) > 1 else ''}.")
+        self._logger.debug(get_packet_summaries(packets))
+        self._send_packets(packets, port)
+
+    @abstractmethod
+    def _send_packets(self, packets: list[Packet], port: Port) -> None:
+        """The implementation of :method:`send_packets`.
+
+        The subclasses must implement this method which sends `packets` on `port`.
+        The method should block until all `packets` are fully sent.
+
+        What fully sent means is defined by the traffic generator.
+        """
 
     def send_packets_and_capture(
         self,
@@ -101,7 +106,7 @@ class CapturingTrafficGenerator(TrafficGenerator):
         receive_port: Port,
         filter_config: PacketFilteringConfig,
         duration: float,
-        capture_name: str = _get_default_capture_name(),
+        capture_name: str = "",
     ) -> list[Packet]:
         """Send `packets` and capture received traffic.
 
@@ -135,6 +140,9 @@ class CapturingTrafficGenerator(TrafficGenerator):
             duration,
         )
 
+        if not capture_name:
+            capture_name = _get_default_capture_name()
+
         self._logger.debug(f"Received packets: {get_packet_summaries(received_packets)}")
         self._write_capture_from_packets(capture_name, received_packets)
         return received_packets
@@ -157,6 +165,7 @@ class CapturingTrafficGenerator(TrafficGenerator):
         """
 
     def _write_capture_from_packets(self, capture_name: str, packets: list[Packet]) -> None:
-        file_name = f"{SETTINGS.output_dir}/{capture_name}.pcap"
-        self._logger.debug(f"Writing packets to {file_name}.")
-        scapy.utils.wrpcap(file_name, packets)
+        artifact = Artifact("local", f"{capture_name}.pcap")
+        self._logger.debug(f"Writing packets to {artifact.local_path}.")
+        with artifact.open("wb") as file:
+            scapy.utils.wrpcap(file, packets)

@@ -153,8 +153,7 @@ static const struct {
 	  BIT_ULL(HNS3_RSS_FIELD_IPV4_SCTP_EN_IP_S) |
 	  BIT_ULL(HNS3_RSS_FIELD_IPV4_SCTP_EN_IP_D) |
 	  BIT_ULL(HNS3_RSS_FIELD_IPV4_SCTP_EN_SCTP_S) |
-	  BIT_ULL(HNS3_RSS_FIELD_IPV4_SCTP_EN_SCTP_D) |
-	  BIT_ULL(HNS3_RSS_FIELD_IPV4_SCTP_EN_SCTP_VER),
+	  BIT_ULL(HNS3_RSS_FIELD_IPV4_SCTP_EN_SCTP_D),
 	  HNS3_RSS_TUPLE_IPV4_SCTP_M },
 
 	/* IPV6-FRAG */
@@ -274,8 +273,7 @@ static const struct {
 	  BIT_ULL(HNS3_RSS_FIELD_IPV6_SCTP_EN_IP_S) |
 	  BIT_ULL(HNS3_RSS_FIELD_IPV6_SCTP_EN_IP_D) |
 	  BIT_ULL(HNS3_RSS_FIELD_IPV6_SCTP_EN_SCTP_D) |
-	  BIT_ULL(HNS3_RSS_FIELD_IPV6_SCTP_EN_SCTP_S) |
-	  BIT_ULL(HNS3_RSS_FIELD_IPV6_SCTP_EN_SCTP_VER),
+	  BIT_ULL(HNS3_RSS_FIELD_IPV6_SCTP_EN_SCTP_S),
 	  HNS3_RSS_TUPLE_IPV6_SCTP_M },
 };
 
@@ -942,13 +940,13 @@ hns3_set_rss_tc_mode_entry(struct hns3_hw *hw, uint8_t *tc_valid,
 			 * has to enable the unused TC by using TC0 queue
 			 * mapping configuration.
 			 */
-			tc_valid[i] = (hw->hw_tc_map & BIT(i)) ?
-					!!(hw->hw_tc_map & BIT(i)) : 1;
+			tc_valid[i] = (hw->dcb_info.hw_tc_map & BIT(i)) ?
+					!!(hw->dcb_info.hw_tc_map & BIT(i)) : 1;
 			tc_size[i] = roundup_size;
-			tc_offset[i] = (hw->hw_tc_map & BIT(i)) ?
+			tc_offset[i] = (hw->dcb_info.hw_tc_map & BIT(i)) ?
 					rss_size * i : 0;
 		} else {
-			tc_valid[i] = !!(hw->hw_tc_map & BIT(i));
+			tc_valid[i] = !!(hw->dcb_info.hw_tc_map & BIT(i));
 			tc_size[i] = tc_valid[i] ? roundup_size : 0;
 			tc_offset[i] = tc_valid[i] ? rss_size * i : 0;
 		}

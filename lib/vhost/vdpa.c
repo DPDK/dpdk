@@ -11,6 +11,7 @@
 #include <sys/queue.h>
 
 #include <dev_driver.h>
+#include <eal_export.h>
 #include <rte_class.h>
 #include <rte_malloc.h>
 #include <rte_spinlock.h>
@@ -32,7 +33,7 @@ static struct vdpa_device_list * const vdpa_device_list
 
 static struct rte_vdpa_device *
 __vdpa_find_device_by_name(const char *name)
-	__rte_exclusive_locks_required(&vdpa_device_list_lock)
+	__rte_requires_capability(&vdpa_device_list_lock)
 {
 	struct rte_vdpa_device *dev, *ret = NULL;
 
@@ -49,6 +50,7 @@ __vdpa_find_device_by_name(const char *name)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_vdpa_find_device_by_name)
 struct rte_vdpa_device *
 rte_vdpa_find_device_by_name(const char *name)
 {
@@ -61,6 +63,7 @@ rte_vdpa_find_device_by_name(const char *name)
 	return dev;
 }
 
+RTE_EXPORT_SYMBOL(rte_vdpa_get_rte_device)
 struct rte_device *
 rte_vdpa_get_rte_device(struct rte_vdpa_device *vdpa_dev)
 {
@@ -70,6 +73,7 @@ rte_vdpa_get_rte_device(struct rte_vdpa_device *vdpa_dev)
 	return vdpa_dev->device;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_vdpa_register_device)
 struct rte_vdpa_device *
 rte_vdpa_register_device(struct rte_device *rte_dev,
 		struct rte_vdpa_dev_ops *ops)
@@ -125,6 +129,7 @@ out_unlock:
 	return dev;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_vdpa_unregister_device)
 int
 rte_vdpa_unregister_device(struct rte_vdpa_device *dev)
 {
@@ -146,6 +151,7 @@ rte_vdpa_unregister_device(struct rte_vdpa_device *dev)
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_vdpa_relay_vring_used)
 int
 rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 {
@@ -174,6 +180,7 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 	idx = vq->used->idx;
 	idx_m = s_vring->used->idx;
 	ret = (uint16_t)(idx_m - idx);
+	vq->used->flags = s_vring->used->flags;
 
 	while (idx != idx_m) {
 		/* copy used entry, used ring logging is not covered here */
@@ -256,6 +263,7 @@ fail:
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_vdpa_get_queue_num)
 int
 rte_vdpa_get_queue_num(struct rte_vdpa_device *dev, uint32_t *queue_num)
 {
@@ -265,6 +273,7 @@ rte_vdpa_get_queue_num(struct rte_vdpa_device *dev, uint32_t *queue_num)
 	return dev->ops->get_queue_num(dev, queue_num);
 }
 
+RTE_EXPORT_SYMBOL(rte_vdpa_get_features)
 int
 rte_vdpa_get_features(struct rte_vdpa_device *dev, uint64_t *features)
 {
@@ -274,6 +283,7 @@ rte_vdpa_get_features(struct rte_vdpa_device *dev, uint64_t *features)
 	return dev->ops->get_features(dev, features);
 }
 
+RTE_EXPORT_SYMBOL(rte_vdpa_get_protocol_features)
 int
 rte_vdpa_get_protocol_features(struct rte_vdpa_device *dev, uint64_t *features)
 {
@@ -284,6 +294,7 @@ rte_vdpa_get_protocol_features(struct rte_vdpa_device *dev, uint64_t *features)
 	return dev->ops->get_protocol_features(dev, features);
 }
 
+RTE_EXPORT_SYMBOL(rte_vdpa_get_stats_names)
 int
 rte_vdpa_get_stats_names(struct rte_vdpa_device *dev,
 		struct rte_vdpa_stat_name *stats_names,
@@ -298,6 +309,7 @@ rte_vdpa_get_stats_names(struct rte_vdpa_device *dev,
 	return dev->ops->get_stats_names(dev, stats_names, size);
 }
 
+RTE_EXPORT_SYMBOL(rte_vdpa_get_stats)
 int
 rte_vdpa_get_stats(struct rte_vdpa_device *dev, uint16_t qid,
 		struct rte_vdpa_stat *stats, unsigned int n)
@@ -311,6 +323,7 @@ rte_vdpa_get_stats(struct rte_vdpa_device *dev, uint16_t qid,
 	return dev->ops->get_stats(dev, qid, stats, n);
 }
 
+RTE_EXPORT_SYMBOL(rte_vdpa_reset_stats)
 int
 rte_vdpa_reset_stats(struct rte_vdpa_device *dev, uint16_t qid)
 {

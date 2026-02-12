@@ -37,8 +37,11 @@ import sys
 from pathlib import Path
 from typing import Iterable, Iterator, List, Union
 
-import elftools
-from elftools.elf.elffile import ELFError, ELFFile
+if os.name == "nt":
+    import pefile
+else:
+    import elftools
+    from elftools.elf.elffile import ELFError, ELFFile
 
 
 # ----------------------------------------------------------------------------
@@ -114,18 +117,23 @@ def parse_pmdinfo(paths: Iterable[Path], search_plugins: bool) -> List[dict]:
         A list of DPDK drivers info dictionaries.
     """
     binaries = set(paths)
-    for p in paths:
-        binaries.update(get_needed_libs(p))
-    if search_plugins:
-        # cast to list to avoid errors with update while iterating
-        binaries.update(list(get_plugin_libs(binaries)))
+
+    if os.name == "nt":
+        section_name = ".rdata"
+    else:
+        section_name = ".rodata"
+        for p in paths:
+            binaries.update(get_needed_libs(p))
+        if search_plugins:
+            # cast to list to avoid errors with update while iterating
+            binaries.update(list(get_plugin_libs(binaries)))
 
     drivers = []
 
     for b in binaries:
         logging.debug("analyzing %s", b)
         try:
-            for s in get_elf_strings(b, ".rodata", "PMD_INFO_STRING="):
+            for s in get_section_strings(b, section_name, "PMD_INFO_STRING="):
                 try:
                     info = json.loads(s)
                     scrub_pci_ids(info)
@@ -233,7 +241,8 @@ def elftools_version():
     return (int(match[1]), int(match[2]))
 
 
-ELFTOOLS_VERSION = elftools_version()
+if os.name != "nt":
+    ELFTOOLS_VERSION = elftools_version()
 
 
 def from_elftools(s: Union[bytes, str]) -> str:
@@ -267,6 +276,30 @@ def get_elf_strings(path: Path, section: str, prefix: str) -> Iterator[str]:
         if not sec:
             return
         yield from find_strings(sec.data(), prefix)
+
+
+# ----------------------------------------------------------------------------
+def get_pe_strings(path: Path, section: str, prefix: str) -> Iterator[str]:
+    """
+    Extract strings from a named PE section in a file.
+    """
+    pe = pefile.PE(path)
+    for sec in pe.sections:
+        section_name = sec.Name.decode().strip("\x00")
+        if section_name != section:
+            continue
+        yield from find_strings(sec.get_data(), prefix)
+
+
+# ----------------------------------------------------------------------------
+def get_section_strings(path: Path, section: str, prefix: str) -> Iterator[str]:
+    """
+    Extract strings from a named section in an ELF or PE file.
+    """
+    if os.name == "nt":
+        yield from get_pe_strings(path, section, prefix)
+    else:
+        yield from get_elf_strings(path, section, prefix)
 
 
 # ----------------------------------------------------------------------------

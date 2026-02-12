@@ -21,13 +21,13 @@ enum batch_op_status {
 struct batch_op_mem {
 	unsigned int sz;
 	enum batch_op_status status;
-	uint64_t objs[BATCH_ALLOC_SZ] __rte_aligned(ROC_ALIGN);
+	alignas(ROC_ALIGN) uint64_t objs[BATCH_ALLOC_SZ];
 };
 
 struct batch_op_data {
 	uint64_t lmt_addr;
 	uint32_t max_async_batch;
-	struct batch_op_mem mem[RTE_MAX_LCORE] __rte_aligned(ROC_ALIGN);
+	alignas(ROC_ALIGN) struct batch_op_mem mem[RTE_MAX_LCORE];
 };
 
 static struct batch_op_data **batch_op_data_tbl;

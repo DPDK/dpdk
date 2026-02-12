@@ -1,7 +1,7 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016-2017 NXP
+ * Copyright 2016-2023 NXP
  *
  */
 #ifndef __FSL_DPIO_H
@@ -87,10 +87,29 @@ int dpio_set_stashing_destination(struct fsl_mc_io *mc_io,
 				  uint16_t token,
 				  uint8_t sdest);
 
+__rte_internal
 int dpio_get_stashing_destination(struct fsl_mc_io *mc_io,
 				  uint32_t cmd_flags,
 				  uint16_t token,
 				  uint8_t *sdest);
+
+__rte_internal
+int dpio_set_stashing_destination_by_core_id(struct fsl_mc_io *mc_io,
+				  uint32_t cmd_flags,
+				  uint16_t token,
+				  uint8_t core_id);
+
+__rte_internal
+int dpio_set_stashing_destination_source(struct fsl_mc_io *mc_io,
+				  uint32_t cmd_flags,
+				  uint16_t token,
+				  uint8_t ss);
+
+__rte_internal
+int dpio_get_stashing_destination_source(struct fsl_mc_io *mc_io,
+				  uint32_t cmd_flags,
+				  uint16_t token,
+				  uint8_t *ss);
 
 __rte_internal
 int dpio_add_static_dequeue_channel(struct fsl_mc_io *mc_io,

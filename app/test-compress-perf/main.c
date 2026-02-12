@@ -53,33 +53,33 @@ static const struct cperf_test cperf_testmap[] = {
 static struct comp_test_data *test_data;
 
 static int
-comp_perf_check_capabilities(struct comp_test_data *test_data, uint8_t cdev_id)
+comp_perf_check_capabilities(struct comp_test_data *td, uint8_t cdev_id)
 {
 	const struct rte_compressdev_capabilities *cap;
 
-	cap = rte_compressdev_capability_get(cdev_id, test_data->test_algo);
+	cap = rte_compressdev_capability_get(cdev_id, td->test_algo);
 
 	if (cap == NULL) {
 		RTE_LOG(ERR, USER1,
 			"Compress device does not support %u algorithm\n",
-			test_data->test_algo);
+			td->test_algo);
 		return -1;
 	}
 
 	uint64_t comp_flags = cap->comp_feature_flags;
 
 	/* Algorithm type */
-	switch (test_data->test_algo) {
+	switch (td->test_algo) {
 	case RTE_COMP_ALGO_DEFLATE:
 		/* Huffman encoding */
-		if (test_data->huffman_enc == RTE_COMP_HUFFMAN_FIXED &&
+		if (td->huffman_enc == RTE_COMP_HUFFMAN_FIXED &&
 		    (comp_flags & RTE_COMP_FF_HUFFMAN_FIXED) == 0) {
 			RTE_LOG(ERR, USER1,
 				"Compress device does not supported Fixed Huffman\n");
 			return -1;
 		}
 
-		if (test_data->huffman_enc == RTE_COMP_HUFFMAN_DYNAMIC &&
+		if (td->huffman_enc == RTE_COMP_HUFFMAN_DYNAMIC &&
 		    (comp_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0) {
 			RTE_LOG(ERR, USER1,
 				"Compress device does not supported Dynamic Huffman\n");
@@ -88,14 +88,14 @@ comp_perf_check_capabilities(struct comp_test_data *test_data, uint8_t cdev_id)
 		break;
 	case RTE_COMP_ALGO_LZ4:
 		/* LZ4 flags */
-		if ((test_data->lz4_flags & RTE_COMP_LZ4_FLAG_BLOCK_CHECKSUM) &&
+		if ((td->lz4_flags & RTE_COMP_LZ4_FLAG_BLOCK_CHECKSUM) &&
 		    (comp_flags & RTE_COMP_FF_LZ4_BLOCK_WITH_CHECKSUM) == 0) {
 			RTE_LOG(ERR, USER1,
 				"Compress device does not support LZ4 block with checksum\n");
 			return -1;
 		}
 
-		if ((test_data->lz4_flags &
+		if ((td->lz4_flags &
 		     RTE_COMP_LZ4_FLAG_BLOCK_INDEPENDENCE) &&
 		    (comp_flags & RTE_COMP_FF_LZ4_BLOCK_INDEPENDENCE) == 0) {
 			RTE_LOG(ERR, USER1,
@@ -111,8 +111,8 @@ comp_perf_check_capabilities(struct comp_test_data *test_data, uint8_t cdev_id)
 	}
 
 	/* Window size */
-	if (test_data->window_sz != -1) {
-		if (param_range_check(test_data->window_sz, &cap->window_size)
+	if (td->window_sz != -1) {
+		if (param_range_check(td->window_sz, &cap->window_size)
 				< 0) {
 			RTE_LOG(ERR, USER1,
 				"Compress device does not support "
@@ -121,18 +121,18 @@ comp_perf_check_capabilities(struct comp_test_data *test_data, uint8_t cdev_id)
 		}
 	} else
 		/* Set window size to PMD maximum if none was specified */
-		test_data->window_sz = cap->window_size.max;
+		td->window_sz = cap->window_size.max;
 
 	/* Check if chained mbufs is supported */
-	if (test_data->max_sgl_segs > 1  &&
+	if (td->max_sgl_segs > 1  &&
 			(comp_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) == 0) {
 		RTE_LOG(INFO, USER1, "Compress device does not support "
 				"chained mbufs. Max SGL segments set to 1\n");
-		test_data->max_sgl_segs = 1;
+		td->max_sgl_segs = 1;
 	}
 
 	/* Level 0 support */
-	if (test_data->level_lst.min == 0 &&
+	if (td->level_lst.min == 0 &&
 			(comp_flags & RTE_COMP_FF_NONCOMPRESSED_BLOCKS) == 0) {
 		RTE_LOG(ERR, USER1, "Compress device does not support "
 				"level 0 (no compression)\n");
@@ -143,19 +143,19 @@ comp_perf_check_capabilities(struct comp_test_data *test_data, uint8_t cdev_id)
 }
 
 static int
-comp_perf_initialize_compressdev(struct comp_test_data *test_data,
+comp_perf_initialize_compressdev(struct comp_test_data *td,
 				 uint8_t *enabled_cdevs)
 {
 	uint8_t enabled_cdev_count, nb_lcores, cdev_id;
 	unsigned int i, j;
 	int ret;
 
-	enabled_cdev_count = rte_compressdev_devices_get(test_data->driver_name,
+	enabled_cdev_count = rte_compressdev_devices_get(td->driver_name,
 			enabled_cdevs, RTE_COMPRESS_MAX_DEVS);
 	if (enabled_cdev_count == 0) {
 		RTE_LOG(ERR, USER1, "No compress devices type %s available,"
 				    " please check the list of specified devices in EAL section\n",
-				test_data->driver_name);
+				td->driver_name);
 		return -EINVAL;
 	}
 
@@ -186,13 +186,13 @@ comp_perf_initialize_compressdev(struct comp_test_data *test_data,
 	 * 2 queue pairs will be set up per device but one queue pair
 	 * will left unused in the last one device
 	 */
-	test_data->nb_qps = (nb_lcores % enabled_cdev_count) ?
+	td->nb_qps = (nb_lcores % enabled_cdev_count) ?
 				(nb_lcores / enabled_cdev_count) + 1 :
 				nb_lcores / enabled_cdev_count;
 
 	for (i = 0; i < enabled_cdev_count &&
 			i < RTE_COMPRESS_MAX_DEVS; i++,
-					nb_lcores -= test_data->nb_qps) {
+					nb_lcores -= td->nb_qps) {
 		cdev_id = enabled_cdevs[i];
 
 		struct rte_compressdev_info cdev_info;
@@ -200,7 +200,7 @@ comp_perf_initialize_compressdev(struct comp_test_data *test_data,
 
 		rte_compressdev_info_get(cdev_id, &cdev_info);
 		if (cdev_info.max_nb_queue_pairs &&
-			test_data->nb_qps > cdev_info.max_nb_queue_pairs) {
+			td->nb_qps > cdev_info.max_nb_queue_pairs) {
 			RTE_LOG(ERR, USER1,
 				"Number of needed queue pairs is higher "
 				"than the maximum number of queue pairs "
@@ -211,25 +211,25 @@ comp_perf_initialize_compressdev(struct comp_test_data *test_data,
 			return -EINVAL;
 		}
 
-		if (comp_perf_check_capabilities(test_data, cdev_id) < 0)
+		if (comp_perf_check_capabilities(td, cdev_id) < 0)
 			return -EINVAL;
 
 		/* Configure compressdev */
 		struct rte_compressdev_config config = {
 			.socket_id = socket_id,
-			.nb_queue_pairs = nb_lcores > test_data->nb_qps
-					? test_data->nb_qps : nb_lcores,
+			.nb_queue_pairs = nb_lcores > td->nb_qps
+					? td->nb_qps : nb_lcores,
 			.max_nb_priv_xforms = NUM_MAX_XFORMS,
 			.max_nb_streams = 0
 		};
-		test_data->nb_qps = config.nb_queue_pairs;
+		td->nb_qps = config.nb_queue_pairs;
 
 		if (rte_compressdev_configure(cdev_id, &config) < 0) {
 			RTE_LOG(ERR, USER1, "Device configuration failed\n");
 			return -EINVAL;
 		}
 
-		for (j = 0; j < test_data->nb_qps; j++) {
+		for (j = 0; j < td->nb_qps; j++) {
 			ret = rte_compressdev_queue_pair_setup(cdev_id, j,
 					NUM_MAX_INFLIGHT_OPS, socket_id);
 			if (ret < 0) {
@@ -253,10 +253,12 @@ comp_perf_initialize_compressdev(struct comp_test_data *test_data,
 }
 
 static int
-comp_perf_dump_input_data(struct comp_test_data *test_data)
+comp_perf_dump_input_data(struct comp_test_data *td)
 {
-	FILE *f = fopen(test_data->input_file, "r");
+	FILE *f = fopen(td->input_file, "r");
 	int ret = -1;
+	size_t actual_file_sz, remaining_data;
+	uint8_t *data = NULL;
 
 	if (f == NULL) {
 		RTE_LOG(ERR, USER1, "Input file could not be opened\n");
@@ -267,39 +269,39 @@ comp_perf_dump_input_data(struct comp_test_data *test_data)
 		RTE_LOG(ERR, USER1, "Size of input could not be calculated\n");
 		goto end;
 	}
-	size_t actual_file_sz = ftell(f);
+	actual_file_sz = ftell(f);
 	/* If extended input data size has not been set,
 	 * input data size = file size
 	 */
 
-	if (test_data->input_data_sz == 0)
-		test_data->input_data_sz = actual_file_sz;
+	if (td->input_data_sz == 0)
+		td->input_data_sz = actual_file_sz;
 
-	if (test_data->input_data_sz <= 0 || actual_file_sz <= 0 ||
+	if (td->input_data_sz <= 0 || actual_file_sz <= 0 ||
 			fseek(f, 0, SEEK_SET) != 0) {
 		RTE_LOG(ERR, USER1, "Size of input could not be calculated\n");
 		goto end;
 	}
 
-	if (!(test_data->test_op & COMPRESS) &&
-	    test_data->input_data_sz >
-	    (size_t) test_data->seg_sz * (size_t) test_data->max_sgl_segs) {
+	if (!(td->test_op & COMPRESS) &&
+	    td->input_data_sz >
+	    (size_t) td->seg_sz * (size_t) td->max_sgl_segs) {
 		RTE_LOG(ERR, USER1,
 			"Size of input must be less than total segments\n");
 		goto end;
 	}
 
-	test_data->input_data = rte_zmalloc_socket(NULL,
-				test_data->input_data_sz, 0, rte_socket_id());
+	td->input_data = rte_zmalloc_socket(NULL,
+				td->input_data_sz, 0, rte_socket_id());
 
-	if (test_data->input_data == NULL) {
+	if (td->input_data == NULL) {
 		RTE_LOG(ERR, USER1, "Memory to hold the data from the input "
 				"file could not be allocated\n");
 		goto end;
 	}
 
-	size_t remaining_data = test_data->input_data_sz;
-	uint8_t *data = test_data->input_data;
+	remaining_data = td->input_data_sz;
+	data = td->input_data;
 
 	while (remaining_data > 0) {
 		size_t data_to_read = RTE_MIN(remaining_data, actual_file_sz);
@@ -318,20 +320,110 @@ comp_perf_dump_input_data(struct comp_test_data *test_data)
 	}
 
 	printf("\n");
-	if (test_data->input_data_sz > actual_file_sz)
+	if (td->input_data_sz > actual_file_sz)
 		RTE_LOG(INFO, USER1,
 		  "%zu bytes read from file %s, extending the file %.2f times\n",
-			test_data->input_data_sz, test_data->input_file,
-			(double)test_data->input_data_sz/actual_file_sz);
+			td->input_data_sz, td->input_file,
+			(double)td->input_data_sz/actual_file_sz);
 	else
 		RTE_LOG(INFO, USER1,
 			"%zu bytes read from file %s\n",
-			test_data->input_data_sz, test_data->input_file);
+			td->input_data_sz, td->input_file);
 
 	ret = 0;
 
 end:
 	fclose(f);
+	return ret;
+}
+
+static int
+comp_perf_dump_dictionary_data(struct comp_test_data *td)
+{
+	FILE *f = fopen(td->dictionary_file, "r");
+	int ret = -1;
+
+	if (f == NULL) {
+		RTE_LOG(ERR, USER1, "Dictionary file not specified\n");
+		td->dictionary_data_sz = 0;
+		td->dictionary_data = NULL;
+		ret = 0;
+		goto end;
+	}
+
+	if (fseek(f, 0, SEEK_END) != 0) {
+		RTE_LOG(ERR, USER1, "Size of input could not be calculated\n");
+		goto end;
+	}
+	long file_sz = ftell(f);
+	/* If extended input data size has not been set,
+	 * input data size = file size
+	 */
+
+	if (file_sz < 0) {
+		RTE_LOG(ERR, USER1, "Actual file size could not be determined\n");
+		goto end;
+	}
+
+	size_t actual_file_sz = (size_t)file_sz;
+
+	if (td->dictionary_data_sz == 0)
+		td->dictionary_data_sz = actual_file_sz;
+
+	if (fseek(f, 0, SEEK_SET) != 0) {
+		RTE_LOG(ERR, USER1, "Size of input could not be calculated\n");
+		goto end;
+	}
+
+	td->dictionary_data = rte_zmalloc_socket(NULL,
+				td->dictionary_data_sz, 0, rte_socket_id());
+
+	if (td->dictionary_data == NULL) {
+		RTE_LOG(ERR, USER1, "Memory to hold the data from the dictionary "
+				"file could not be allocated\n");
+		goto end;
+	}
+
+	size_t remaining_data = td->dictionary_data_sz;
+	uint8_t *data = td->dictionary_data;
+
+	while (remaining_data > 0) {
+		size_t data_to_read = RTE_MIN(remaining_data, actual_file_sz);
+
+		if (fread(data, data_to_read, 1, f) != 1) {
+			RTE_LOG(ERR, USER1, "Input file could not be read\n");
+			if (td->dictionary_data)
+				rte_free(td->dictionary_data);
+			goto end;
+		}
+		if (fseek(f, 0, SEEK_SET) != 0) {
+			RTE_LOG(ERR, USER1,
+				"Size of input could not be calculated\n");
+			if (td->dictionary_data)
+				rte_free(td->dictionary_data);
+			goto end;
+		}
+		remaining_data -= data_to_read;
+		data += data_to_read;
+	}
+
+	printf("\n");
+	if (td->dictionary_data_sz > actual_file_sz)
+		RTE_LOG(INFO, USER1,
+		  "%zu bytes read from file %s, extending the file %.2f times\n",
+			td->dictionary_data_sz, td->dictionary_file,
+			(double)td->dictionary_data_sz/actual_file_sz);
+	else
+		RTE_LOG(INFO, USER1,
+			"%zu bytes read from file %s\n",
+			td->dictionary_data_sz, td->dictionary_file);
+
+	ret = 0;
+
+end:
+	if (f)
+		fclose(f);
+
 	return ret;
 }
 
@@ -407,6 +499,13 @@ main(int argc, char **argv)
 	}
 
 	test_data->cleanup = ST_INPUT_DATA;
+	if (comp_perf_dump_dictionary_data(test_data) < 0) {
+		ret = EXIT_FAILURE;
+		goto end;
+	}
+
+	test_data->cleanup = ST_DICTIONARY_DATA;
+
 
 	if (test_data->level_lst.inc != 0)
 		test_data->level = test_data->level_lst.min;
@@ -496,6 +595,9 @@ end:
 			i++;
 		}
 		/* fallthrough */
+	case ST_DICTIONARY_DATA:
+		rte_free(test_data->dictionary_data);
+		/* fallthrough */
 	case ST_INPUT_DATA:
 		rte_free(test_data->input_data);
 		/* fallthrough */
@@ -520,66 +622,4 @@ end:
 		break;
 	}
 	return ret;
-}
-
-__rte_weak void *
-cperf_cyclecount_test_constructor(uint8_t dev_id __rte_unused,
-				 uint16_t qp_id __rte_unused,
-				 struct comp_test_data *options __rte_unused)
-{
-	RTE_LOG(INFO, USER1, "Cycle count test is not supported yet\n");
-	return NULL;
-}
-
-__rte_weak void
-cperf_cyclecount_test_destructor(void *arg __rte_unused)
-{
-	RTE_LOG(INFO, USER1, "Something wrong happened!!!\n");
-}
-
-__rte_weak int
-cperf_cyclecount_test_runner(void *test_ctx __rte_unused)
-{
-	return 0;
-}
-
-__rte_weak void *
-cperf_throughput_test_constructor(uint8_t dev_id __rte_unused,
-				 uint16_t qp_id __rte_unused,
-				 struct comp_test_data *options __rte_unused)
-{
-	RTE_LOG(INFO, USER1, "Benchmark test is not supported yet\n");
-	return NULL;
-}
-
-__rte_weak void
-cperf_throughput_test_destructor(void *arg __rte_unused)
-{
-
-}
-
-__rte_weak int
-cperf_throughput_test_runner(void *test_ctx __rte_unused)
-{
-	return 0;
-}
-__rte_weak void *
-cperf_verify_test_constructor(uint8_t dev_id __rte_unused,
-				 uint16_t qp_id __rte_unused,
-				 struct comp_test_data *options __rte_unused)
-{
-	RTE_LOG(INFO, USER1, "Verify test is not supported yet\n");
-	return NULL;
-}
-
-__rte_weak void
-cperf_verify_test_destructor(void *arg __rte_unused)
-{
-
-}
-
-__rte_weak int
-cperf_verify_test_runner(void *test_ctx __rte_unused)
-{
-	return 0;
 }

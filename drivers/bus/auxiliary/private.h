@@ -14,11 +14,10 @@
 #include "bus_auxiliary_driver.h"
 
 extern int auxiliary_bus_logtype;
+#define RTE_LOGTYPE_AUXILIARY_BUS auxiliary_bus_logtype
 
 #define AUXILIARY_LOG(level, ...) \
-	rte_log(RTE_LOG_ ## level, auxiliary_bus_logtype, \
-		RTE_FMT("auxiliary bus: " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
-			RTE_FMT_TAIL(__VA_ARGS__,)))
+	RTE_LOG_LINE(level, AUXILIARY_BUS, __VA_ARGS__)
 
 /*
  * Structure describing the auxiliary bus

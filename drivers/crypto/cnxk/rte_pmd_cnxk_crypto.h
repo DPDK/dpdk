@@ -11,7 +11,123 @@
 #ifndef _PMD_CNXK_CRYPTO_H_
 #define _PMD_CNXK_CRYPTO_H_
 
+#include <stdbool.h>
 #include <stdint.h>
+
+#include <rte_compat.h>
+#include <rte_crypto.h>
+#include <rte_security.h>
+
+#define AE_EC_DATA_MAX 66
+
+/**
+ * Enumerates supported elliptic curves
+ */
+typedef enum {
+	RTE_PMD_CNXK_AE_EC_ID_P192 = 0,
+	RTE_PMD_CNXK_AE_EC_ID_P224 = 1,
+	RTE_PMD_CNXK_AE_EC_ID_P256 = 2,
+	RTE_PMD_CNXK_AE_EC_ID_P384 = 3,
+	RTE_PMD_CNXK_AE_EC_ID_P521 = 4,
+	RTE_PMD_CNXK_AE_EC_ID_P160 = 5,
+	RTE_PMD_CNXK_AE_EC_ID_P320 = 6,
+	RTE_PMD_CNXK_AE_EC_ID_P512 = 7,
+	RTE_PMD_CNXK_AE_EC_ID_SM2 = 8,
+	RTE_PMD_CNXK_AE_EC_ID_ED25519 = 9,
+	RTE_PMD_CNXK_AE_EC_ID_ED448 = 10,
+	RTE_PMD_CNXK_AE_EC_ID_PMAX
+} rte_pmd_cnxk_ae_ec_id;
+
+/* Forward declarations */
+
+/**
+ * @brief Crypto CNXK PMD QPTR opaque pointer.
+ *
+ * This structure represents the queue pair structure that would be the input to APIs that use
+ * hardware queues.
+ */
+struct rte_pmd_cnxk_crypto_qptr;
+
+/**
+ * @brief Crypto CNXK PMD CPTR opaque pointer.
+ *
+ * This structure represents the context pointer that would be used to store the hardware context.
+ */
+struct rte_pmd_cnxk_crypto_cptr;
+
+/**
+ *
+ * @brief Crypto CNXK queue pair stats.
+ *
+ * This structure represents the queue pair stats retrieved from CPT HW queue.
+ */
+struct rte_pmd_cnxk_crypto_qp_stats {
+	/** Packet counter of the packets that used CPT context cache and was encrypted */
+	uint64_t ctx_enc_pkts;
+	/** Byte counter of the packets that used CPT context cache and was encrypted */
+	uint64_t ctx_enc_bytes;
+	/** Packet counter of the packets that used CPT context cache and was decrypted */
+	uint64_t ctx_dec_pkts;
+	/** Byte counter of the packets that used CPT context cache and was decrypted */
+	uint64_t ctx_dec_bytes;
+};
+
+/**
+ * @brief Crypto CNXK PMD session structure.
+ *
+ * This structure represents the session structure that would be used to store the session
+ * information.
+ */
+struct rte_pmd_cnxk_crypto_sess {
+	/** Crypto type (symmetric or asymmetric). */
+	enum rte_crypto_op_type op_type;
+	/** Session type (Crypto or security). */
+	enum rte_crypto_op_sess_type sess_type;
+	/** Session pointer. */
+	union {
+		/** Security session pointer. */
+		struct rte_security_session *sec_sess;
+		/** Crypto symmetric session pointer. */
+		struct rte_cryptodev_sym_session *crypto_sym_sess;
+		/** Crypto asymmetric session pointer */
+		struct rte_cryptodev_asym_session *crypto_asym_sess;
+	};
+};
+
+/**
+ * @brief AE EC (Elliptic Curve) group parameters structure.
+ *
+ * This structure holds the parameters for an elliptic curve group used in
+ * AE (Asymmetric Encryption) operations. It contains the prime, order,
+ * and curve constants (consta and constb), each represented as a byte array
+ * with an associated length. The maximum length is set to accommodate the
+ * largest supported curve (e.g., P521).
+ */
+struct rte_pmd_cnxk_crypto_ae_ec_group_params {
+	struct {
+		/* P521 maximum length */
+		uint8_t data[AE_EC_DATA_MAX];
+		unsigned int length;
+	} prime;
+
+	struct {
+		/* P521 maximum length */
+		uint8_t data[AE_EC_DATA_MAX];
+		unsigned int length;
+	} order;
+
+	struct {
+		/* P521 maximum length */
+		uint8_t data[AE_EC_DATA_MAX];
+		unsigned int length;
+	} consta;
+
+	struct {
+		/* P521 maximum length */
+		uint8_t data[AE_EC_DATA_MAX];
+		unsigned int length;
+	} constb;
+};
 
 /**
  * Get queue pointer of a specific queue in a cryptodev.
@@ -21,9 +137,11 @@
  * @param qp_id
  *   Index of the queue pair.
  * @return
- *   Pointer to queue pair structure that would be the input to submit APIs.
+ *   - On success, pointer to queue pair structure that would be the input to submit APIs.
+ *   - NULL on error.
  */
-void *rte_pmd_cnxk_crypto_qptr_get(uint8_t dev_id, uint16_t qp_id);
+__rte_experimental
+struct rte_pmd_cnxk_crypto_qptr *rte_pmd_cnxk_crypto_qptr_get(uint8_t dev_id, uint16_t qp_id);
 
 /**
  * Submit CPT instruction (cpt_inst_s) to hardware (CPT).
@@ -41,6 +159,156 @@ void *rte_pmd_cnxk_crypto_qptr_get(uint8_t dev_id, uint16_t qp_id);
  * @param nb_inst
  *   Number of instructions.
  */
-void rte_pmd_cnxk_crypto_submit(void *qptr, void *inst, uint16_t nb_inst);
+__rte_experimental
+void rte_pmd_cnxk_crypto_submit(struct rte_pmd_cnxk_crypto_qptr *qptr, void *inst,
+				uint16_t nb_inst);
+
+/**
+ * Flush the CPTR from CPT CTX cache.
+ *
+ * This API must be called only after the cryptodev and queue pair is configured and is started.
+ *
+ * @param qptr
+ *   Pointer obtained with ``rte_pmd_cnxk_crypto_qptr_get``.
+ * @param cptr
+ *   Pointer obtained with ``rte_pmd_cnxk_crypto_cptr_get`` or any valid CPTR address that can be
+ *   used with CPT CTX cache.
+ * @param invalidate
+ *   If true, invalidate the CTX cache entry. If false, flush the CTX cache entry.
+ * @return
+ *   - 0 on success.
+ *   - Negative value on error.
+ *     - -EINVAL if the input parameters are invalid.
+ *     - -ENOTSUP if the operation is not supported.
+ *     - -EAGAIN if the operation is not successful.
+ *     - -EFAULT if the operation failed.
+ */
+__rte_experimental
+int rte_pmd_cnxk_crypto_cptr_flush(struct rte_pmd_cnxk_crypto_qptr *qptr,
+				   struct rte_pmd_cnxk_crypto_cptr *cptr,
+				   bool invalidate);
+
+/**
+ * Get the HW CPTR pointer from the rte_crypto/rte_security session.
+ *
+ * @param rte_sess
+ *   Pointer to the structure holding rte_cryptodev or rte_security session.
+ * @return
+ *   - On success, pointer to the HW CPTR.
+ *   - NULL on error.
+ */
+__rte_experimental
+struct rte_pmd_cnxk_crypto_cptr *rte_pmd_cnxk_crypto_cptr_get(
+	struct rte_pmd_cnxk_crypto_sess *rte_sess);
+
+/**
+ * Read HW context (CPTR).
+ *
+ * @param qptr
+ *   Pointer obtained with ``rte_pmd_cnxk_crypto_qptr_get``.
+ * @param cptr
+ *   Pointer obtained with ``rte_pmd_cnxk_crypto_cptr_get`` or any valid CPTR address that can be
+ *   used with CPT CTX cache.
+ * @param[out] data
+ *   Destination pointer to copy CPTR context for application.
+ * @param len
+ *   Length of CPTR context to copy into data parameter.
+ *
+ * @return
+ *   - 0 On success.
+ *   - Negative value on error.
+ *     - -EINVAL if the input parameters are invalid.
+ *     - -ENOTSUP if the operation is not supported.
+ *     - -EAGAIN if the operation is not successful.
+ *     - -EFAULT if the operation failed.
+ */
+__rte_experimental
+int rte_pmd_cnxk_crypto_cptr_read(struct rte_pmd_cnxk_crypto_qptr *qptr,
+				  struct rte_pmd_cnxk_crypto_cptr *cptr, void *data,
+				  uint32_t len);
+
+/**
+ * Write HW context (CPTR).
+ *
+ * @param qptr
+ *  Pointer obtained with ``rte_pmd_cnxk_crypto_qptr_get``.
+ * @param cptr
+ *  Pointer obtained with ``rte_pmd_cnxk_crypto_cptr_get`` or any valid CPTR address that can be
+ *  used with CPT CTX cache.
+ * @param data
+ *  Source pointer to copy CPTR context from application.
+ * @param len
+ *  Length of CPTR context to copy from data parameter.
+ *
+ * @return
+ *   - 0 On success.
+ *   - Negative value on error.
+ *     - -EINVAL if the input parameters are invalid.
+ *     - -ENOTSUP if the operation is not supported.
+ *     - -EAGAIN if the operation is not successful.
+ *     - -EFAULT if the operation failed.
+ */
+__rte_experimental
+int rte_pmd_cnxk_crypto_cptr_write(struct rte_pmd_cnxk_crypto_qptr *qptr,
+				   struct rte_pmd_cnxk_crypto_cptr *cptr, void *data,
+				   uint32_t len);
+
+/**
+ * Get the HW Queue Pair (LF) stats.
+ *
+ * @param qptr
+ *  Pointer obtained with ``rte_pmd_cnxk_crypto_qptr_get``.
+ * @param[out] stats
+ *  Pointer to the structure where stats will be copied.
+ *
+ * @return
+ *   - 0 On success.
+ *   - Negative value on error.
+ *     - -EINVAL if the input parameters are invalid.
+ */
+__rte_experimental
+int rte_pmd_cnxk_crypto_qp_stats_get(struct rte_pmd_cnxk_crypto_qptr *qptr,
+				     struct rte_pmd_cnxk_crypto_qp_stats *stats);
+
+/**
+ * Retrieves the addresses of the AE FPM (Finite Precision Math) tables.
+ *
+ * This API should be called only after the cryptodev device has been
+ * successfully configured. The returned pointer reference memory that is
+ * valid as long as the device remains configured and is not destroyed or
+ * reconfigured. If the device is reconfigured or destroyed, the memory
+ * referenced by the returned pointer becomes invalid and must not be used.
+ *
+ * @param dev_id
+ *   Device identifier of cryptodev device.
+ * @return
+ *   - On success pointer to the AE FPM table addresses.
+ *   - NULL on error.
+ */
+__rte_experimental
+const uint64_t *rte_pmd_cnxk_ae_fpm_table_get(uint8_t dev_id);
+
+/**
+ * Retrieves the addresses of the AE EC group table.
+ *
+ * This API should be called only after the cryptodev device has been
+ * successfully configured. The returned pointer reference memory that is
+ * valid as long as the device remains configured and is not destroyed or
+ * reconfigured. If the device is reconfigured or destroyed, the memory
+ * referenced by the returned pointer becomes invalid and must not be used.
+ *
+ * @param dev_id
+ *   Device identifier of cryptodev device.
+ * @param nb_max_entries
+ *   Pointer to store the maximum number of entries in the EC group table.
+ *   This value is set by the function to indicate how many entries can be
+ *   retrieved from the table.
+ * @return
+ *   - On success, pointer to the AE EC group table structure address.
+ *   - NULL on error.
+ */
+__rte_experimental
+const struct rte_pmd_cnxk_crypto_ae_ec_group_params **
+rte_pmd_cnxk_ae_ec_grp_table_get(uint8_t dev_id, uint16_t *nb_max_entries);
 
 #endif /* _PMD_CNXK_CRYPTO_H_ */

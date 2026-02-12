@@ -15,10 +15,11 @@
 #define PER_WORKER_BUFF_SIZE			(256)
 
 extern int scheduler_logtype_driver;
+#define RTE_LOGTYPE_SCHEDULER_DRIVER scheduler_logtype_driver
 
-#define CR_SCHED_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, scheduler_logtype_driver,		\
-			"%s() line %u: "fmt "\n", __func__, __LINE__, ##args)
+#define CR_SCHED_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, SCHEDULER_DRIVER, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 struct scheduler_worker {
 	uint8_t dev_id;
@@ -27,7 +28,7 @@ struct scheduler_worker {
 	uint8_t driver_id;
 };
 
-struct scheduler_ctx {
+struct __rte_cache_aligned scheduler_ctx {
 	void *private_ctx;
 	/**< private scheduler context pointer */
 
@@ -55,15 +56,15 @@ struct scheduler_ctx {
 
 	char *init_worker_names[RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS];
 	int nb_init_workers;
-} __rte_cache_aligned;
+};
 
-struct scheduler_qp_ctx {
+struct __rte_cache_aligned scheduler_qp_ctx {
 	void *private_qp_ctx;
 
 	uint32_t max_nb_objs;
 
 	struct rte_ring *order_ring;
-} __rte_cache_aligned;
+};
 
 struct scheduler_session_ctx {
 	uint32_t ref_cnt;

@@ -28,18 +28,18 @@ struct hinic_rq_ctrl {
 	u32	ctrl_fmt;
 };
 
+#if defined(RTE_ARCH_ARM64)
+struct __rte_cache_aligned hinic_rq_cqe {
+#else
 struct hinic_rq_cqe {
-	u32 status;
+#endif
+	RTE_ATOMIC(u32) status;
 	u32 vlan_len;
 	u32 offload_type;
 	u32 rss_hash;
 
 	u32 rsvd[4];
-#if defined(RTE_ARCH_ARM64)
-} __rte_cache_aligned;
-#else
 };
-#endif
 
 struct hinic_rq_cqe_sect {
 	struct hinic_sge	sge;

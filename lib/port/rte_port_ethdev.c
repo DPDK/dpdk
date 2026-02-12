@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdint.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
 #include <rte_malloc.h>
@@ -500,6 +501,7 @@ static int rte_port_ethdev_writer_nodrop_stats_read(void *port,
 /*
  * Summary of port operations
  */
+RTE_EXPORT_SYMBOL(rte_port_ethdev_reader_ops)
 struct rte_port_in_ops rte_port_ethdev_reader_ops = {
 	.f_create = rte_port_ethdev_reader_create,
 	.f_free = rte_port_ethdev_reader_free,
@@ -507,6 +509,7 @@ struct rte_port_in_ops rte_port_ethdev_reader_ops = {
 	.f_stats = rte_port_ethdev_reader_stats_read,
 };
 
+RTE_EXPORT_SYMBOL(rte_port_ethdev_writer_ops)
 struct rte_port_out_ops rte_port_ethdev_writer_ops = {
 	.f_create = rte_port_ethdev_writer_create,
 	.f_free = rte_port_ethdev_writer_free,
@@ -516,6 +519,7 @@ struct rte_port_out_ops rte_port_ethdev_writer_ops = {
 	.f_stats = rte_port_ethdev_writer_stats_read,
 };
 
+RTE_EXPORT_SYMBOL(rte_port_ethdev_writer_nodrop_ops)
 struct rte_port_out_ops rte_port_ethdev_writer_nodrop_ops = {
 	.f_create = rte_port_ethdev_writer_nodrop_create,
 	.f_free = rte_port_ethdev_writer_nodrop_free,

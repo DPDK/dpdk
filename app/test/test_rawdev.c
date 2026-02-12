@@ -25,11 +25,18 @@ test_rawdev_selftests(void)
 static int
 test_rawdev_selftest_impl(const char *pmd, const char *opts)
 {
-	int ret;
+	int dev_id, ret;
 
 	printf("\n### Test rawdev infrastructure using skeleton driver\n");
 	rte_vdev_init(pmd, opts);
-	ret = rte_rawdev_selftest(rte_rawdev_get_dev_id(pmd));
+	dev_id = rte_rawdev_get_dev_id(pmd);
+	if (dev_id < 0) {
+		printf("Failed to get dev_id for %s\n", pmd);
+		ret = dev_id;
+		goto exit;
+	}
+	ret = rte_rawdev_selftest(dev_id);
+exit:
 	rte_vdev_uninit(pmd);
 	return ret;
 }
@@ -67,4 +74,4 @@ test_rawdev_selftests(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_FAST_TEST(rawdev_autotest, true, true, test_rawdev_selftests);
+REGISTER_FAST_TEST(rawdev_autotest, NOHUGE_OK, ASAN_OK, test_rawdev_selftests);

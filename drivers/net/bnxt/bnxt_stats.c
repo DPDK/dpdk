@@ -561,84 +561,95 @@ void bnxt_free_stats(struct bnxt *bp)
 
 static void bnxt_fill_rte_eth_stats_ext(struct rte_eth_stats *stats,
 					struct bnxt_ring_stats_ext *ring_stats,
+					struct eth_queue_stats *qstats,
 					unsigned int i, bool rx)
 {
 	if (rx) {
-		stats->q_ipackets[i] = ring_stats->rx_ucast_pkts;
-		stats->q_ipackets[i] += ring_stats->rx_mcast_pkts;
-		stats->q_ipackets[i] += ring_stats->rx_bcast_pkts;
+		uint64_t ipackets = ring_stats->rx_ucast_pkts +
+				ring_stats->rx_mcast_pkts +
+				ring_stats->rx_bcast_pkts;
+		uint64_t ibytes = ring_stats->rx_ucast_bytes +
+				ring_stats->rx_mcast_bytes +
+				ring_stats->rx_bcast_bytes;
+		uint64_t ierrors = ring_stats->rx_discard_pkts +
+				ring_stats->rx_error_pkts;
 
-		stats->ipackets += stats->q_ipackets[i];
-
-		stats->q_ibytes[i] = ring_stats->rx_ucast_bytes;
-		stats->q_ibytes[i] += ring_stats->rx_mcast_bytes;
-		stats->q_ibytes[i] += ring_stats->rx_bcast_bytes;
-
-		stats->ibytes += stats->q_ibytes[i];
-
-		stats->q_errors[i] = ring_stats->rx_discard_pkts;
-		stats->q_errors[i] += ring_stats->rx_error_pkts;
-
+		stats->ipackets += ipackets;
+		stats->ibytes += ibytes;
 		stats->imissed += ring_stats->rx_discard_pkts;
 		stats->ierrors += ring_stats->rx_error_pkts;
+
+		if (qstats) {
+			qstats->q_ipackets[i] = ipackets;
+			qstats->q_ibytes[i] = ibytes;
+			qstats->q_errors[i] = ierrors;
+		}
 	} else {
-		stats->q_opackets[i] = ring_stats->tx_ucast_pkts;
-		stats->q_opackets[i] += ring_stats->tx_mcast_pkts;
-		stats->q_opackets[i] += ring_stats->tx_bcast_pkts;
+		uint64_t opackets = ring_stats->tx_ucast_pkts +
+				ring_stats->tx_mcast_pkts +
+				ring_stats->tx_bcast_pkts;
+		uint64_t obytes = ring_stats->tx_ucast_bytes +
+				ring_stats->tx_mcast_bytes +
+				ring_stats->tx_bcast_bytes;
 
-		stats->opackets += stats->q_opackets[i];
-
-		stats->q_obytes[i] = ring_stats->tx_ucast_bytes;
-		stats->q_obytes[i] += ring_stats->tx_mcast_bytes;
-		stats->q_obytes[i] += ring_stats->tx_bcast_bytes;
-
-		stats->obytes += stats->q_obytes[i];
-
+		stats->opackets += opackets;
+		stats->obytes += obytes;
 		stats->oerrors += ring_stats->tx_discard_pkts;
+
+		if (qstats) {
+			qstats->q_opackets[i] = opackets;
+			qstats->q_obytes[i] = obytes;
+		}
 	}
 }
 
 static void bnxt_fill_rte_eth_stats(struct rte_eth_stats *stats,
 				    struct bnxt_ring_stats *ring_stats,
+				    struct eth_queue_stats *qstats,
 				    unsigned int i, bool rx)
 {
 	if (rx) {
-		stats->q_ipackets[i] = ring_stats->rx_ucast_pkts;
-		stats->q_ipackets[i] += ring_stats->rx_mcast_pkts;
-		stats->q_ipackets[i] += ring_stats->rx_bcast_pkts;
+		uint64_t ipackets = ring_stats->rx_ucast_pkts +
+				ring_stats->rx_mcast_pkts +
+				ring_stats->rx_bcast_pkts;
+		uint64_t ibytes = ring_stats->rx_ucast_bytes +
+				ring_stats->rx_mcast_bytes +
+				ring_stats->rx_bcast_bytes;
+		uint64_t ierrors = ring_stats->rx_discard_pkts +
+				ring_stats->rx_error_pkts;
 
-		stats->ipackets += stats->q_ipackets[i];
-
-		stats->q_ibytes[i] = ring_stats->rx_ucast_bytes;
-		stats->q_ibytes[i] += ring_stats->rx_mcast_bytes;
-		stats->q_ibytes[i] += ring_stats->rx_bcast_bytes;
-
-		stats->ibytes += stats->q_ibytes[i];
-
-		stats->q_errors[i] = ring_stats->rx_discard_pkts;
-		stats->q_errors[i] += ring_stats->rx_error_pkts;
-
+		stats->ipackets += ipackets;
+		stats->ibytes += ibytes;
 		stats->imissed += ring_stats->rx_discard_pkts;
 		stats->ierrors += ring_stats->rx_error_pkts;
+
+		if (qstats) {
+			qstats->q_ipackets[i] = ipackets;
+			qstats->q_ibytes[i] = ibytes;
+			qstats->q_errors[i] = ierrors;
+		}
 	} else {
-		stats->q_opackets[i] = ring_stats->tx_ucast_pkts;
-		stats->q_opackets[i] += ring_stats->tx_mcast_pkts;
-		stats->q_opackets[i] += ring_stats->tx_bcast_pkts;
+		uint64_t opackets = ring_stats->tx_ucast_pkts +
+				ring_stats->tx_mcast_pkts +
+				ring_stats->tx_bcast_pkts;
+		uint64_t obytes = ring_stats->tx_ucast_bytes +
+				ring_stats->tx_mcast_bytes +
+				ring_stats->tx_bcast_bytes;
 
-		stats->opackets += stats->q_opackets[i];
-
-		stats->q_obytes[i] = ring_stats->tx_ucast_bytes;
-		stats->q_obytes[i] += ring_stats->tx_mcast_bytes;
-		stats->q_obytes[i] += ring_stats->tx_bcast_bytes;
-
-		stats->obytes += stats->q_obytes[i];
-
+		stats->opackets += opackets;
+		stats->obytes += obytes;
 		stats->oerrors += ring_stats->tx_discard_pkts;
+
+		if (qstats) {
+			qstats->q_opackets[i] = opackets;
+			qstats->q_obytes[i] = obytes;
+		}
 	}
 }
 
 static int bnxt_stats_get_ext(struct rte_eth_dev *eth_dev,
-				 struct rte_eth_stats *bnxt_stats)
+				 struct rte_eth_stats *bnxt_stats,
+				 struct eth_queue_stats *qstats)
 {
 	int rc = 0;
 	unsigned int i;
@@ -648,7 +659,7 @@ static int bnxt_stats_get_ext(struct rte_eth_dev *eth_dev,
 	num_q_stats = RTE_MIN(bp->rx_cp_nr_rings,
 			      (unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS);
 
-	for (i = 0; i < num_q_stats; i++) {
+	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 		struct bnxt_ring_stats_ext ring_stats = {0};
@@ -656,20 +667,25 @@ static int bnxt_stats_get_ext(struct rte_eth_dev *eth_dev,
 		if (!rxq->rx_started)
 			continue;
 
+		if (cpr->hw_stats_ctx_id == HWRM_NA_SIGNATURE)
+			continue;
+
 		rc = bnxt_hwrm_ring_stats_ext(bp, cpr->hw_stats_ctx_id, i,
 					      &ring_stats, true);
 		if (unlikely(rc))
 			return rc;
 
-		bnxt_fill_rte_eth_stats_ext(bnxt_stats, &ring_stats, i, true);
+		bnxt_fill_rte_eth_stats_ext(bnxt_stats, &ring_stats,
+					    i < num_q_stats ? qstats : NULL, i, true);
 		bnxt_stats->rx_nombuf +=
-				__atomic_load_n(&rxq->rx_mbuf_alloc_fail, __ATOMIC_RELAXED);
+				rte_atomic_load_explicit(&rxq->rx_mbuf_alloc_fail,
+							 rte_memory_order_relaxed);
 	}
 
 	num_q_stats = RTE_MIN(bp->tx_cp_nr_rings,
 			      (unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS);
 
-	for (i = 0; i < num_q_stats; i++) {
+	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
 		struct bnxt_tx_queue *txq = bp->tx_queues[i];
 		struct bnxt_cp_ring_info *cpr = txq->cp_ring;
 		struct bnxt_ring_stats_ext ring_stats = {0};
@@ -682,14 +698,15 @@ static int bnxt_stats_get_ext(struct rte_eth_dev *eth_dev,
 		if (unlikely(rc))
 			return rc;
 
-		bnxt_fill_rte_eth_stats_ext(bnxt_stats, &ring_stats, i, false);
+		bnxt_fill_rte_eth_stats_ext(bnxt_stats, &ring_stats,
+					    i < num_q_stats ? qstats : NULL, i, false);
 	}
 
 	return rc;
 }
 
 int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
-		      struct rte_eth_stats *bnxt_stats)
+		      struct rte_eth_stats *bnxt_stats, struct eth_queue_stats *qstats)
 {
 	int rc = 0;
 	unsigned int i;
@@ -704,17 +721,19 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		return -EIO;
 
 	if (BNXT_TPA_V2_P7(bp))
-		return bnxt_stats_get_ext(eth_dev, bnxt_stats);
+		return bnxt_stats_get_ext(eth_dev, bnxt_stats, qstats);
 
 	num_q_stats = RTE_MIN(bp->rx_cp_nr_rings,
 			      (unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS);
 
-	for (i = 0; i < num_q_stats; i++) {
+	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 		struct bnxt_ring_stats ring_stats = {0};
 
 		if (!rxq->rx_started)
+			continue;
+		if (cpr->hw_stats_ctx_id == HWRM_NA_SIGNATURE)
 			continue;
 
 		rc = bnxt_hwrm_ring_stats(bp, cpr->hw_stats_ctx_id, i,
@@ -722,15 +741,17 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		if (unlikely(rc))
 			return rc;
 
-		bnxt_fill_rte_eth_stats(bnxt_stats, &ring_stats, i, true);
+		bnxt_fill_rte_eth_stats(bnxt_stats, &ring_stats,
+					i < num_q_stats ? qstats : NULL, i, true);
 		bnxt_stats->rx_nombuf +=
-				__atomic_load_n(&rxq->rx_mbuf_alloc_fail, __ATOMIC_RELAXED);
+				rte_atomic_load_explicit(&rxq->rx_mbuf_alloc_fail,
+							 rte_memory_order_relaxed);
 	}
 
 	num_q_stats = RTE_MIN(bp->tx_cp_nr_rings,
 			      (unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS);
 
-	for (i = 0; i < num_q_stats; i++) {
+	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
 		struct bnxt_tx_queue *txq = bp->tx_queues[i];
 		struct bnxt_cp_ring_info *cpr = txq->cp_ring;
 		struct bnxt_ring_stats ring_stats = {0};
@@ -743,7 +764,11 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		if (unlikely(rc))
 			return rc;
 
-		bnxt_fill_rte_eth_stats(bnxt_stats, &ring_stats, i, false);
+		bnxt_fill_rte_eth_stats(bnxt_stats, &ring_stats,
+					i < num_q_stats ? qstats : NULL, i, false);
+		bnxt_stats->oerrors +=
+				rte_atomic_load_explicit(&txq->tx_mbuf_drop,
+							 rte_memory_order_relaxed);
 	}
 
 	return rc;
@@ -779,7 +804,7 @@ int bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 		return ret;
 
 	if (!eth_dev->data->dev_started) {
-		PMD_DRV_LOG(ERR, "Device Initialization not complete!\n");
+		PMD_DRV_LOG_LINE(ERR, "Device Initialization not complete!");
 		return -EINVAL;
 	}
 
@@ -788,6 +813,12 @@ int bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 
 		rxq->rx_mbuf_alloc_fail = 0;
+	}
+
+	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
+		struct bnxt_tx_queue *txq = bp->tx_queues[i];
+
+		txq->tx_mbuf_drop = 0;
 	}
 
 	bnxt_clear_prev_stat(bp);
@@ -1178,13 +1209,13 @@ int bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev)
 
 	if (BNXT_VF(bp) || !BNXT_SINGLE_PF(bp) ||
 	    !(bp->flags & BNXT_FLAG_PORT_STATS)) {
-		PMD_DRV_LOG(ERR, "Operation not supported\n");
+		PMD_DRV_LOG_LINE(ERR, "Operation not supported");
 		return -ENOTSUP;
 	}
 
 	ret = bnxt_hwrm_port_clr_stats(bp);
 	if (ret != 0)
-		PMD_DRV_LOG(ERR, "Failed to reset xstats: %s\n",
+		PMD_DRV_LOG_LINE(ERR, "Failed to reset xstats: %s",
 			    strerror(-ret));
 
 	bnxt_clear_prev_stat(bp);

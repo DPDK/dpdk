@@ -76,7 +76,7 @@ the number of channels and the way the memory is distributed across the channels
 Each channel has a bandwidth limit,
 meaning that if all memory access operations are done on the first channel only, there is a potential bottleneck.
 
-By default, the  :ref:`Mempool Library <Mempool_Library>` spreads the addresses of objects among memory channels.
+By default, the :doc:`mempool_lib` spreads the addresses of objects among memory channels.
 
 Locking memory pages
 ~~~~~~~~~~~~~~~~~~~~
@@ -247,7 +247,7 @@ However, this technique is not always efficient; it depends on many factors incl
 Branch Prediction
 ~~~~~~~~~~~~~~~~~
 
-The Intel® C/C++ Compiler (icc)/gcc built-in helper functions likely() and unlikely()
+The gcc built-in helper functions likely() and unlikely()
 allow the developer to indicate if a code branch is likely to be taken or not.
 For instance:
 

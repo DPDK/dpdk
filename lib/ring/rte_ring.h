@@ -34,12 +34,13 @@
  * for more information.
  */
 
+#include <rte_common.h>
+#include <rte_ring_core.h>
+#include <rte_ring_elem.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_ring_core.h>
-#include <rte_ring_elem.h>
 
 /**
  * Calculate the memory size needed for a ring
@@ -120,6 +121,15 @@ int rte_ring_init(struct rte_ring *r, const char *name, unsigned int count,
 	unsigned int flags);
 
 /**
+ * De-allocate all memory used by the ring.
+ *
+ * @param r
+ *   Ring to free.
+ *   If NULL then, the function does nothing.
+ */
+void rte_ring_free(struct rte_ring *r);
+
+/**
  * Create a new ring named *name* in memory.
  *
  * This function uses ``memzone_reserve()`` to allocate memory. Then it
@@ -183,16 +193,8 @@ int rte_ring_init(struct rte_ring *r, const char *name, unsigned int count,
  *    - ENOMEM - no appropriate memory area found in which to create memzone
  */
 struct rte_ring *rte_ring_create(const char *name, unsigned int count,
-				 int socket_id, unsigned int flags);
-
-/**
- * De-allocate all memory used by the ring.
- *
- * @param r
- *   Ring to free.
- *   If NULL then, the function does nothing.
- */
-void rte_ring_free(struct rte_ring *r);
+				 int socket_id, unsigned int flags)
+	__rte_malloc __rte_dealloc(rte_ring_free, 1);
 
 /**
  * Dump the status of the ring to a file.
@@ -203,6 +205,24 @@ void rte_ring_free(struct rte_ring *r);
  *   A pointer to the ring structure.
  */
 void rte_ring_dump(FILE *f, const struct rte_ring *r);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Dump the status of a headtail to a file.
+ *
+ * @param f
+ *   A pointer to a file for output
+ * @param prefix
+ *   A string to prefix each output line with
+ * @param r
+ *   A pointer to a ring headtail structure.
+ */
+__rte_experimental
+void
+rte_ring_headtail_dump(FILE *f, const char *prefix,
+		const struct rte_ring_headtail *r);
 
 /**
  * Enqueue several objects on the ring (multi-producers safe).

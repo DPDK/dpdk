@@ -93,6 +93,7 @@
 #include "roc_ie.h"
 #include "roc_ie_on.h"
 #include "roc_ie_ot.h"
+#include "roc_ie_ow.h"
 #include "roc_se.h"
 
 /* DPI */
@@ -119,5 +120,8 @@
 
 /* Eswitch */
 #include "roc_eswitch.h"
+
+/* RVU LF */
+#include "roc_rvu_lf.h"
 
 #endif /* _ROC_API_H_ */

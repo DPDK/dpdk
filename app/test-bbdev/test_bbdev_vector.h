@@ -34,6 +34,7 @@ enum {
 	TEST_BBDEV_VF_CODE_BLOCK_MODE = (1ULL << 23),
 	TEST_BBDEV_VF_OP_FLAGS = (1ULL << 24),
 	TEST_BBDEV_VF_EXPECTED_STATUS = (1ULL << 25),
+	TEST_BBDEV_VF_K0 = (1ULL << 26),
 };
 
 enum op_data_type {
@@ -69,6 +70,8 @@ struct test_bbdev_vector {
 	};
 	/* Additional storage for op data entries */
 	struct op_data_entries entries[DATA_NUM_TYPES];
+	/* Vector FFT window width assumption. */
+	uint16_t fft_window_width_vec;
 };
 
 /* fills test vector parameters based on test file */

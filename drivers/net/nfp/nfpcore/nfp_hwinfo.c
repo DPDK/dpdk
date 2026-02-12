@@ -110,12 +110,12 @@ nfp_hwinfo_db_walk(struct nfp_hwinfo *hwinfo,
 			key = val + strlen(val) + 1) {
 		val = key + strlen(key) + 1;
 		if (val >= end) {
-			PMD_DRV_LOG(ERR, "Bad HWINFO - overflowing value");
+			PMD_DRV_LOG(ERR, "Bad HWINFO - overflowing value.");
 			return -EINVAL;
 		}
 
 		if (val + strlen(val) + 1 > end) {
-			PMD_DRV_LOG(ERR, "Bad HWINFO - overflowing value");
+			PMD_DRV_LOG(ERR, "Bad HWINFO - overflowing value.");
 			return -EINVAL;
 		}
 	}
@@ -133,7 +133,7 @@ nfp_hwinfo_db_validate(struct nfp_hwinfo *db,
 
 	size = db->size;
 	if (size > len) {
-		PMD_DRV_LOG(ERR, "Unsupported hwinfo size %u > %u", size, len);
+		PMD_DRV_LOG(ERR, "Unsupported hwinfo size %u > %u.", size, len);
 		return -EINVAL;
 	}
 
@@ -141,7 +141,7 @@ nfp_hwinfo_db_validate(struct nfp_hwinfo *db,
 	new_crc = nfp_crc32_posix((char *)db, size);
 	crc = (uint32_t *)(db->start + size);
 	if (new_crc != *crc) {
-		PMD_DRV_LOG(ERR, "CRC mismatch, calculated %#x, expected %#x",
+		PMD_DRV_LOG(ERR, "CRC mismatch, calculated %#x, expected %#x.",
 				new_crc, *crc);
 		return -EINVAL;
 	}
@@ -162,7 +162,7 @@ nfp_hwinfo_try_fetch(struct nfp_cpp *cpp,
 
 	res = nfp_resource_acquire(cpp, NFP_RESOURCE_NFP_HWINFO);
 	if (res == NULL) {
-		PMD_DRV_LOG(ERR, "HWInfo - acquire resource failed");
+		PMD_DRV_LOG(ERR, "HWInfo - acquire resource failed.");
 		return NULL;
 	}
 
@@ -181,7 +181,7 @@ nfp_hwinfo_try_fetch(struct nfp_cpp *cpp,
 
 	err = nfp_cpp_read(cpp, cpp_id, cpp_addr, db, *cpp_size);
 	if (err != (int)*cpp_size) {
-		PMD_DRV_LOG(ERR, "HWInfo - CPP read error %d", err);
+		PMD_DRV_LOG(ERR, "HWInfo - CPP read error %d.", err);
 		goto exit_free;
 	}
 
@@ -190,7 +190,7 @@ nfp_hwinfo_try_fetch(struct nfp_cpp *cpp,
 		goto exit_free;
 
 	if (header->version != NFP_HWINFO_VERSION_2) {
-		PMD_DRV_LOG(ERR, "Unknown HWInfo version: %#08x",
+		PMD_DRV_LOG(ERR, "Unknown HWInfo version: %#08x.",
 				header->version);
 		goto exit_free;
 	}
@@ -223,7 +223,7 @@ nfp_hwinfo_fetch(struct nfp_cpp *cpp,
 
 		nanosleep(&wait, NULL);
 		if (count++ > 200) {    /* 10ms * 200 = 2s */
-			PMD_DRV_LOG(ERR, "NFP access error");
+			PMD_DRV_LOG(ERR, "NFP access error.");
 			return NULL;
 		}
 	}

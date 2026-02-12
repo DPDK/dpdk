@@ -10,8 +10,14 @@
 
 #include <bus_driver.h>
 #include <bus_pci_driver.h>
+#include <rte_log.h>
 #include <rte_os_shim.h>
 #include <rte_pci.h>
+
+extern int pci_bus_logtype;
+#define RTE_LOGTYPE_PCI_BUS pci_bus_logtype
+#define PCI_LOG(level, ...) \
+	RTE_LOG_LINE(level, PCI_BUS, "" __VA_ARGS__)
 
 #define RTE_MAX_PCI_REGIONS    9
 

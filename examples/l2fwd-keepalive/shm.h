@@ -14,6 +14,9 @@
 #include <sys/stat.h>
 #include <semaphore.h>
 #include <rte_keepalive.h>
+#include <rte_log.h>
+
+#define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
 
 /**
  * Keepalive SHM structure.

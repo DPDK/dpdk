@@ -616,7 +616,7 @@ idxd_dmadev_create(const char *name, struct rte_device *dev,
 			sizeof(idxd->batch_comp_ring[0]))	* (idxd->max_batches + 1),
 			sizeof(idxd->batch_comp_ring[0]), dev->numa_node);
 	if (idxd->batch_comp_ring == NULL) {
-		IDXD_PMD_ERR("Unable to reserve memory for batch data\n");
+		IDXD_PMD_ERR("Unable to reserve memory for batch data");
 		ret = -ENOMEM;
 		goto cleanup;
 	}

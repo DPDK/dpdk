@@ -156,6 +156,9 @@ test_cpuflags(void)
 
 	printf("Check for SVEBF16:\t");
 	CHECK_FOR_FLAG(RTE_CPUFLAG_SVEBF16);
+
+	printf("Check for WFXT:\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_WFXT);
 #endif
 
 #if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
@@ -324,4 +327,4 @@ test_cpuflags(void)
 	return 0;
 }
 
-REGISTER_FAST_TEST(cpuflags_autotest, true, true, test_cpuflags);
+REGISTER_FAST_TEST(cpuflags_autotest, NOHUGE_OK, ASAN_OK, test_cpuflags);

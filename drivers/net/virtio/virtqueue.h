@@ -37,7 +37,7 @@ static inline void
 virtio_mb(uint8_t weak_barriers)
 {
 	if (weak_barriers)
-		rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
+		rte_atomic_thread_fence(rte_memory_order_seq_cst);
 	else
 		rte_mb();
 }
@@ -46,7 +46,7 @@ static inline void
 virtio_rmb(uint8_t weak_barriers)
 {
 	if (weak_barriers)
-		rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 	else
 		rte_io_rmb();
 }
@@ -55,7 +55,7 @@ static inline void
 virtio_wmb(uint8_t weak_barriers)
 {
 	if (weak_barriers)
-		rte_atomic_thread_fence(__ATOMIC_RELEASE);
+		rte_atomic_thread_fence(rte_memory_order_release);
 	else
 		rte_io_wmb();
 }
@@ -67,12 +67,12 @@ virtqueue_fetch_flags_packed(struct vring_packed_desc *dp,
 	uint16_t flags;
 
 	if (weak_barriers) {
-/* x86 prefers to using rte_io_rmb over __atomic_load_n as it reports
+/* x86 prefers to using rte_io_rmb over rte_atomic_load_explicit as it reports
  * a better perf(~1.5%), which comes from the saved branch by the compiler.
  * The if and else branch are identical  on the platforms except Arm.
  */
 #ifdef RTE_ARCH_ARM
-		flags = __atomic_load_n(&dp->flags, __ATOMIC_ACQUIRE);
+		flags = rte_atomic_load_explicit(&dp->flags, rte_memory_order_acquire);
 #else
 		flags = dp->flags;
 		rte_io_rmb();
@@ -90,12 +90,12 @@ virtqueue_store_flags_packed(struct vring_packed_desc *dp,
 			      uint16_t flags, uint8_t weak_barriers)
 {
 	if (weak_barriers) {
-/* x86 prefers to using rte_io_wmb over __atomic_store_n as it reports
+/* x86 prefers to using rte_io_wmb over rte_atomic_store_explicit as it reports
  * a better perf(~1.5%), which comes from the saved branch by the compiler.
  * The if and else branch are identical on the platforms except Arm.
  */
 #ifdef RTE_ARCH_ARM
-		__atomic_store_n(&dp->flags, flags, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&dp->flags, flags, rte_memory_order_release);
 #else
 		rte_io_wmb();
 		dp->flags = flags;
@@ -144,7 +144,6 @@ virtqueue_store_flags_packed(struct vring_packed_desc *dp,
 
 #define VTNET_SQ_RQ_QUEUE_IDX 0
 #define VTNET_SQ_TQ_QUEUE_IDX 1
-#define VTNET_SQ_CQ_QUEUE_IDX 2
 
 enum { VTNET_RQ = 0, VTNET_TQ = 1, VTNET_CQ = 2 };
 /**
@@ -257,15 +256,36 @@ struct virtio_net_hdr_mrg_rxbuf {
 	uint16_t num_buffers; /**< Number of merged rx buffers */
 };
 
+/**
+ * This is the version of the header to use when the HASH_REPORT
+ * feature has been negotiated.
+ */
+struct virtio_net_hdr_hash_report {
+	struct virtio_net_hdr_mrg_rxbuf hdr;
+	uint32_t hash_value;
+#define VIRTIO_NET_HASH_REPORT_NONE	0
+#define VIRTIO_NET_HASH_REPORT_IPV4	1
+#define VIRTIO_NET_HASH_REPORT_TCPV4	2
+#define VIRTIO_NET_HASH_REPORT_UDPV4	3
+#define VIRTIO_NET_HASH_REPORT_IPV6	4
+#define VIRTIO_NET_HASH_REPORT_TCPV6	5
+#define VIRTIO_NET_HASH_REPORT_UDPV6	6
+#define VIRTIO_NET_HASH_REPORT_IPV6_EX	7
+#define VIRTIO_NET_HASH_REPORT_TCPV6_EX	8
+#define VIRTIO_NET_HASH_REPORT_UDPV6_EX	9
+	uint16_t hash_report;
+	uint16_t pad_reserved;
+};
+
 /* Region reserved to allow for transmit header and indirect ring */
 #define VIRTIO_MAX_TX_INDIRECT 8
 struct virtio_tx_region {
 	struct virtio_net_hdr_mrg_rxbuf tx_hdr;
-	union {
+	union __rte_aligned(16) {
 		struct vring_desc tx_indir[VIRTIO_MAX_TX_INDIRECT];
 		struct vring_packed_desc
 			tx_packed_indir[VIRTIO_MAX_TX_INDIRECT];
-	} __rte_aligned(16);
+	};
 };
 
 static inline int
@@ -425,7 +445,7 @@ virtqueue_nused(const struct virtqueue *vq)
 
 	if (vq->hw->weak_barriers) {
 	/**
-	 * x86 prefers to using rte_smp_rmb over __atomic_load_n as it
+	 * x86 prefers to using rte_smp_rmb over rte_atomic_load_explicit as it
 	 * reports a slightly better perf, which comes from the saved
 	 * branch by the compiler.
 	 * The if and else branches are identical with the smp and io
@@ -435,8 +455,8 @@ virtqueue_nused(const struct virtqueue *vq)
 		idx = vq->vq_split.ring.used->idx;
 		rte_smp_rmb();
 #else
-		idx = __atomic_load_n(&(vq)->vq_split.ring.used->idx,
-				__ATOMIC_ACQUIRE);
+		idx = rte_atomic_load_explicit(&(vq)->vq_split.ring.used->idx,
+				rte_memory_order_acquire);
 #endif
 	} else {
 		idx = vq->vq_split.ring.used->idx;
@@ -454,7 +474,7 @@ static inline void
 vq_update_avail_idx(struct virtqueue *vq)
 {
 	if (vq->hw->weak_barriers) {
-	/* x86 prefers to using rte_smp_wmb over __atomic_store_n as
+	/* x86 prefers to using rte_smp_wmb over rte_atomic_store_explicit as
 	 * it reports a slightly better perf, which comes from the
 	 * saved branch by the compiler.
 	 * The if and else branches are identical with the smp and
@@ -464,8 +484,8 @@ vq_update_avail_idx(struct virtqueue *vq)
 		rte_smp_wmb();
 		vq->vq_split.ring.avail->idx = vq->vq_avail_idx;
 #else
-		__atomic_store_n(&vq->vq_split.ring.avail->idx,
-				 vq->vq_avail_idx, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&vq->vq_split.ring.avail->idx,
+				 vq->vq_avail_idx, rte_memory_order_release);
 #endif
 	} else {
 		rte_io_wmb();
@@ -528,8 +548,8 @@ virtqueue_notify(struct virtqueue *vq)
 #ifdef RTE_LIBRTE_VIRTIO_DEBUG_DUMP
 #define VIRTQUEUE_DUMP(vq) do { \
 	uint16_t used_idx, nused; \
-	used_idx = __atomic_load_n(&(vq)->vq_split.ring.used->idx, \
-				   __ATOMIC_RELAXED); \
+	used_idx = rte_atomic_load_explicit(&(vq)->vq_split.ring.used->idx, \
+				   rte_memory_order_relaxed); \
 	nused = (uint16_t)(used_idx - (vq)->vq_used_cons_idx); \
 	if (virtio_with_packed_queue((vq)->hw)) { \
 		PMD_INIT_LOG(DEBUG, \
@@ -546,7 +566,7 @@ virtqueue_notify(struct virtqueue *vq)
 	  " avail.flags=0x%x; used.flags=0x%x", \
 	  (vq)->vq_nentries, (vq)->vq_free_cnt, nused, (vq)->vq_desc_head_idx, \
 	  (vq)->vq_split.ring.avail->idx, (vq)->vq_used_cons_idx, \
-	  __atomic_load_n(&(vq)->vq_split.ring.used->idx, __ATOMIC_RELAXED), \
+	  rte_atomic_load_explicit(&(vq)->vq_split.ring.used->idx, rte_memory_order_relaxed), \
 	  (vq)->vq_split.ring.avail->flags, (vq)->vq_split.ring.used->flags); \
 } while (0)
 #else

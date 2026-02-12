@@ -7,6 +7,14 @@ if is_windows
     subdir_done()
 endif
 
+cflags += no_wvla_cflag
+
+if arch_subdir == 'x86' and dpdk_conf.get('RTE_ARCH_32')
+    build = false
+    reason = 'not supported on 32-bit x86'
+    subdir_done()
+endif
+
 sources = files('bpf.c',
         'bpf_dump.c',
         'bpf_exec.c',

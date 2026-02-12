@@ -3,27 +3,28 @@
  */
 
 #include <math.h>
+#include <eal_export.h>
 #include "rte_red.h"
 #include <rte_random.h>
 #include <rte_common.h>
 
-#ifdef __INTEL_COMPILER
-#pragma warning(disable:2259) /* conversion may lose significant bits */
-#endif
-
 static int rte_red_init_done = 0;     /**< Flag to indicate that global initialisation is done */
+RTE_EXPORT_SYMBOL(rte_red_rand_val)
 uint32_t rte_red_rand_val = 0;        /**< Random value cache */
+RTE_EXPORT_SYMBOL(rte_red_rand_seed)
 uint32_t rte_red_rand_seed = 0;       /**< Seed for random number generation */
 
 /**
  * table[i] = log2(1-Wq) * Scale * -1
  *       Wq = 1/(2^i)
  */
+RTE_EXPORT_SYMBOL(rte_red_log2_1_minus_Wq)
 uint16_t rte_red_log2_1_minus_Wq[RTE_RED_WQ_LOG2_NUM];
 
 /**
  * table[i] = 2^(i/16) * Scale
  */
+RTE_EXPORT_SYMBOL(rte_red_pow2_frac_inv)
 uint16_t rte_red_pow2_frac_inv[16];
 
 /**
@@ -68,6 +69,7 @@ __rte_red_init_tables(void)
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_red_rt_data_init)
 int
 rte_red_rt_data_init(struct rte_red *red)
 {
@@ -80,6 +82,7 @@ rte_red_rt_data_init(struct rte_red *red)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_red_config_init)
 int
 rte_red_config_init(struct rte_red_config *red_cfg,
 	const uint16_t wq_log2,

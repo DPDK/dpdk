@@ -4,6 +4,12 @@
 Ethtool Sample Application
 ==========================
 
+This chapter describes the Ethtool sample application
+that is part of the Data Plane Development Kit (DPDK).
+
+Overview
+--------
+
 The Ethtool sample application shows an implementation of an
 ethtool-like API and provides a console environment that allows
 its use to query and change Ethernet card parameters. The sample
@@ -30,17 +36,14 @@ Refer to the *DPDK Getting Started Guide* for general information on
 running applications and the Environment Abstraction Layer (EAL)
 options.
 
-Using the application
----------------------
-
 The application is console-driven using the cmdline DPDK interface:
 
 .. code-block:: console
 
         EthApp>
 
-From this interface the available commands and descriptions of what
-they do as follows:
+From this interface, the available commands and descriptions
+of what they do are as follows:
 
 * ``drvinfo``: Print driver info
 * ``eeprom``: Dump EEPROM to file
@@ -80,7 +83,7 @@ Ethtool Shell
 ~~~~~~~~~~~~~
 
 The foreground part of the Ethtool sample is a console-based
-interface that accepts commands as described in `using the
+interface that accepts commands as described in `running the
 application`_. Individual call-back functions handle the detail
 associated with each command, which make use of the functions
 defined in the `Ethtool interface`_ to the DPDK functions.

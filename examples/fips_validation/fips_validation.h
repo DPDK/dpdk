@@ -14,7 +14,7 @@
 
 #define ERR_MSG_SIZE		128
 #define MAX_CASE_LINE		15
-#define MAX_LINE_CHAR		204800 /*< max number of characters per line */
+#define MAX_LINE_CHAR		204800 /* max number of characters per line */
 #define MAX_NB_TESTS		10240
 #define DEF_MBUF_SEG_SIZE	(UINT16_MAX - sizeof(struct rte_mbuf) - \
 				RTE_PKTMBUF_HEADROOM)
@@ -46,6 +46,7 @@ enum fips_test_algorithms {
 		FIPS_TEST_ALGO_SHA,
 		FIPS_TEST_ALGO_RSA,
 		FIPS_TEST_ALGO_ECDSA,
+		FIPS_TEST_ALGO_EDDSA,
 		FIPS_TEST_ALGO_MAX
 };
 
@@ -106,6 +107,12 @@ struct fips_test_vector {
 		struct fips_val s;
 		struct fips_val k;
 	} ecdsa;
+	struct {
+		struct fips_val pkey;
+		struct fips_val q;
+		struct fips_val ctx;
+		struct fips_val sign;
+	} eddsa;
 
 	struct fips_val pt;
 	struct fips_val ct;
@@ -177,6 +184,11 @@ enum fips_ecdsa_test_types {
 	ECDSA_AFT = 0,
 };
 
+enum fips_eddsa_test_types {
+	EDDSA_AFT = 0,
+	EDDSA_BFT
+};
+
 struct aesavs_interim_data {
 	enum fips_aesavs_test_types test_type;
 	uint32_t cipher_algo;
@@ -241,6 +253,13 @@ struct ecdsa_interim_data {
 	uint8_t pubkey_gen;
 };
 
+struct eddsa_interim_data {
+	enum rte_crypto_curve_id curve_id;
+	uint8_t curve_len;
+	uint8_t pubkey_gen;
+	bool prehash;
+};
+
 #ifdef USE_JANSSON
 /*
  * Maximum length of buffer to hold any json string.
@@ -288,6 +307,7 @@ struct fips_test_interim_info {
 		struct xts_interim_data xts_data;
 		struct rsa_interim_data rsa_data;
 		struct ecdsa_interim_data ecdsa_data;
+		struct eddsa_interim_data eddsa_data;
 	} interim_info;
 
 	enum fips_test_op op;
@@ -373,6 +393,9 @@ parse_test_rsa_json_init(void);
 
 int
 parse_test_ecdsa_json_init(void);
+
+int
+parse_test_eddsa_json_init(void);
 
 int
 fips_test_randomize_message(struct fips_val *msg, struct fips_val *rand);

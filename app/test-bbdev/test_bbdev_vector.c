@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <rte_malloc.h>
+#include <rte_os_shim.h>
 
 #include "test_bbdev_vector.h"
 
@@ -837,6 +838,10 @@ parse_ldpc_decoder_params(const char *key_token, char *token,
 		ret = parse_data_entry(key_token, token, vector,
 				DATA_HARQ_OUTPUT,
 				op_data_prefixes[DATA_HARQ_OUTPUT]);
+	else if (starts_with(key_token, op_data_prefixes[DATA_SOFT_OUTPUT]))
+		ret = parse_data_entry(key_token, token, vector,
+				DATA_SOFT_OUTPUT,
+				op_data_prefixes[DATA_SOFT_OUTPUT]);
 	else if (!strcmp(key_token, "e")) {
 		vector->mask |= TEST_BBDEV_VF_E;
 		ldpc_dec->cb_params.e = (uint32_t) strtoul(token, &err, 0);
@@ -860,6 +865,10 @@ parse_ldpc_decoder_params(const char *key_token, char *token,
 	} else if (!strcmp(key_token, "rv_index")) {
 		vector->mask |= TEST_BBDEV_VF_RV_INDEX;
 		ldpc_dec->rv_index = (uint8_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "k0")) {
+		vector->mask |= TEST_BBDEV_VF_K0;
+		ldpc_dec->k0 = (uint16_t) strtoul(token, &err, 0);
 		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
 	} else if (!strcmp(key_token, "n_cb")) {
 		vector->mask |= TEST_BBDEV_VF_NCB;
@@ -1039,6 +1048,20 @@ parse_fft_params(const char *key_token, char *token,
 			return -1;
 		for (i = 0; i < FFT_WIN_SIZE; i++) {
 			fft->time_offset[i] = (uint32_t) strtoul(tok, &err, 0);
+			if (i < (FFT_WIN_SIZE - 1)) {
+				tok = strtok(NULL, VALUE_DELIMITER);
+				if (tok == NULL)
+					return -1;
+			}
+		}
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "fft_window_width")) {
+		tok = strtok(token, VALUE_DELIMITER);
+		if (tok == NULL)
+			return -1;
+		for (i = 0; i < FFT_WIN_SIZE; i++) {
+			if (i == 0)
+				vector->fft_window_width_vec = (uint32_t) strtoul(tok, &err, 0);
 			if (i < (FFT_WIN_SIZE - 1)) {
 				tok = strtok(NULL, VALUE_DELIMITER);
 				if (tok == NULL)

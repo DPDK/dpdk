@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_eal.h>
 #include <dev_driver.h>
 #include <bus_driver.h>
@@ -51,6 +52,7 @@ static struct vdev_custom_scans vdev_custom_scans =
 static rte_spinlock_t vdev_custom_scan_lock = RTE_SPINLOCK_INITIALIZER;
 
 /* register a driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_vdev_register)
 void
 rte_vdev_register(struct rte_vdev_driver *driver)
 {
@@ -58,12 +60,14 @@ rte_vdev_register(struct rte_vdev_driver *driver)
 }
 
 /* unregister a driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_vdev_unregister)
 void
 rte_vdev_unregister(struct rte_vdev_driver *driver)
 {
 	TAILQ_REMOVE(&vdev_driver_list, driver, next);
 }
 
+RTE_EXPORT_SYMBOL(rte_vdev_add_custom_scan)
 int
 rte_vdev_add_custom_scan(rte_vdev_scan_callback callback, void *user_arg)
 {
@@ -92,6 +96,7 @@ rte_vdev_add_custom_scan(rte_vdev_scan_callback callback, void *user_arg)
 	return (custom_scan == NULL) ? -1 : 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_vdev_remove_custom_scan)
 int
 rte_vdev_remove_custom_scan(rte_vdev_scan_callback callback, void *user_arg)
 {
@@ -263,22 +268,6 @@ alloc_devargs(const char *name, const char *args)
 	return devargs;
 }
 
-static struct rte_devargs *
-vdev_devargs_lookup(const char *name)
-{
-	struct rte_devargs *devargs;
-	char dev_name[32];
-
-	RTE_EAL_DEVARGS_FOREACH("vdev", devargs) {
-		devargs->bus->parse(devargs->name, &dev_name);
-		if (strcmp(dev_name, name) == 0) {
-			VDEV_LOG(INFO, "devargs matched %s", dev_name);
-			return devargs;
-		}
-	}
-	return NULL;
-}
-
 static int
 insert_vdev(const char *name, const char *args,
 		struct rte_vdev_device **p_dev,
@@ -291,10 +280,7 @@ insert_vdev(const char *name, const char *args,
 	if (name == NULL)
 		return -EINVAL;
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		devargs = alloc_devargs(name, args);
-	else
-		devargs = vdev_devargs_lookup(name);
+	devargs = alloc_devargs(name, args);
 
 	if (!devargs)
 		return -ENOMEM;
@@ -307,7 +293,6 @@ insert_vdev(const char *name, const char *args,
 
 	dev->device.bus = &rte_vdev_bus;
 	dev->device.numa_node = SOCKET_ID_ANY;
-	dev->device.name = devargs->name;
 
 	if (find_vdev(name)) {
 		/*
@@ -322,6 +307,7 @@ insert_vdev(const char *name, const char *args,
 	if (init)
 		rte_devargs_insert(&devargs);
 	dev->device.devargs = devargs;
+	dev->device.name = devargs->name;
 	TAILQ_INSERT_TAIL(&vdev_device_list, dev, next);
 
 	if (p_dev)
@@ -335,6 +321,7 @@ fail:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_vdev_init)
 int
 rte_vdev_init(const char *name, const char *args)
 {
@@ -374,6 +361,7 @@ vdev_remove_driver(struct rte_vdev_device *dev)
 	return driver->remove(dev);
 }
 
+RTE_EXPORT_SYMBOL(rte_vdev_uninit)
 int
 rte_vdev_uninit(const char *name)
 {
@@ -615,6 +603,7 @@ vdev_cleanup(void)
 
 		dev->device.driver = NULL;
 free:
+		TAILQ_REMOVE(&vdev_device_list, dev, next);
 		free(dev);
 	}
 

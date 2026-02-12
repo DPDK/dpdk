@@ -47,15 +47,15 @@ struct worker_params {
 struct worker_params worker_params;
 
 /* statics - all zero-initialized by default */
-static volatile int quit;      /**< general quit variable for all threads */
-static volatile int zero_quit; /**< var for when we just want thr0 to quit*/
-static volatile int zero_sleep; /**< thr0 has quit basic loop and is sleeping*/
-static volatile unsigned worker_idx;
-static volatile unsigned zero_idx;
+static volatile RTE_ATOMIC(int) quit;      /**< general quit variable for all threads */
+static volatile RTE_ATOMIC(int) zero_quit; /**< var for when we just want thr0 to quit*/
+static volatile RTE_ATOMIC(int) zero_sleep; /**< thr0 has quit basic loop and is sleeping*/
+static volatile RTE_ATOMIC(unsigned int) worker_idx;
+static volatile RTE_ATOMIC(unsigned int) zero_idx;
 
-struct worker_stats {
-	volatile unsigned handled_packets;
-} __rte_cache_aligned;
+struct __rte_cache_aligned worker_stats {
+	volatile RTE_ATOMIC(unsigned int) handled_packets;
+};
 struct worker_stats worker_stats[RTE_MAX_LCORE];
 
 /* returns the total count of the number of packets handled by the worker
@@ -66,8 +66,8 @@ total_packet_count(void)
 {
 	unsigned i, count = 0;
 	for (i = 0; i < worker_idx; i++)
-		count += __atomic_load_n(&worker_stats[i].handled_packets,
-				__ATOMIC_RELAXED);
+		count += rte_atomic_load_explicit(&worker_stats[i].handled_packets,
+				rte_memory_order_relaxed);
 	return count;
 }
 
@@ -77,8 +77,8 @@ clear_packet_count(void)
 {
 	unsigned int i;
 	for (i = 0; i < RTE_MAX_LCORE; i++)
-		__atomic_store_n(&worker_stats[i].handled_packets, 0,
-			__ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&worker_stats[i].handled_packets, 0,
+			rte_memory_order_relaxed);
 }
 
 /* this is the basic worker function for sanity test
@@ -87,21 +87,21 @@ clear_packet_count(void)
 static int
 handle_work(void *arg)
 {
-	struct rte_mbuf *buf[8] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_mbuf *buf[8];
 	struct worker_params *wp = arg;
 	struct rte_distributor *db = wp->dist;
 	unsigned int num;
-	unsigned int id = __atomic_fetch_add(&worker_idx, 1, __ATOMIC_RELAXED);
+	unsigned int id = rte_atomic_fetch_add_explicit(&worker_idx, 1, rte_memory_order_relaxed);
 
 	num = rte_distributor_get_pkt(db, id, buf, NULL, 0);
 	while (!quit) {
-		__atomic_fetch_add(&worker_stats[id].handled_packets, num,
-				__ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&worker_stats[id].handled_packets, num,
+				rte_memory_order_relaxed);
 		num = rte_distributor_get_pkt(db, id,
 				buf, buf, num);
 	}
-	__atomic_fetch_add(&worker_stats[id].handled_packets, num,
-			__ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&worker_stats[id].handled_packets, num,
+			rte_memory_order_relaxed);
 	rte_distributor_return_pkt(db, id, buf, num);
 	return 0;
 }
@@ -162,8 +162,8 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 
 	for (i = 0; i < rte_lcore_count() - 1; i++)
 		printf("Worker %u handled %u packets\n", i,
-			__atomic_load_n(&worker_stats[i].handled_packets,
-					__ATOMIC_RELAXED));
+			rte_atomic_load_explicit(&worker_stats[i].handled_packets,
+					rte_memory_order_relaxed));
 	printf("Sanity test with all zero hashes done.\n");
 
 	/* pick two flows and check they go correctly */
@@ -189,9 +189,9 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 
 		for (i = 0; i < rte_lcore_count() - 1; i++)
 			printf("Worker %u handled %u packets\n", i,
-				__atomic_load_n(
+				rte_atomic_load_explicit(
 					&worker_stats[i].handled_packets,
-					__ATOMIC_RELAXED));
+					rte_memory_order_relaxed));
 		printf("Sanity test with two hash values done\n");
 	}
 
@@ -218,8 +218,8 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 
 	for (i = 0; i < rte_lcore_count() - 1; i++)
 		printf("Worker %u handled %u packets\n", i,
-			__atomic_load_n(&worker_stats[i].handled_packets,
-					__ATOMIC_RELAXED));
+			rte_atomic_load_explicit(&worker_stats[i].handled_packets,
+					rte_memory_order_relaxed));
 	printf("Sanity test with non-zero hashes done\n");
 
 	rte_mempool_put_bulk(p, (void *)bufs, BURST);
@@ -306,23 +306,23 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 static int
 handle_work_with_free_mbufs(void *arg)
 {
-	struct rte_mbuf *buf[8] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_mbuf *buf[8];
 	struct worker_params *wp = arg;
 	struct rte_distributor *d = wp->dist;
 	unsigned int i;
 	unsigned int num;
-	unsigned int id = __atomic_fetch_add(&worker_idx, 1, __ATOMIC_RELAXED);
+	unsigned int id = rte_atomic_fetch_add_explicit(&worker_idx, 1, rte_memory_order_relaxed);
 
 	num = rte_distributor_get_pkt(d, id, buf, NULL, 0);
 	while (!quit) {
-		__atomic_fetch_add(&worker_stats[id].handled_packets, num,
-				__ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&worker_stats[id].handled_packets, num,
+				rte_memory_order_relaxed);
 		for (i = 0; i < num; i++)
 			rte_pktmbuf_free(buf[i]);
 		num = rte_distributor_get_pkt(d, id, buf, NULL, 0);
 	}
-	__atomic_fetch_add(&worker_stats[id].handled_packets, num,
-			__ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&worker_stats[id].handled_packets, num,
+			rte_memory_order_relaxed);
 	rte_distributor_return_pkt(d, id, buf, num);
 	return 0;
 }
@@ -375,57 +375,57 @@ sanity_test_with_mbuf_alloc(struct worker_params *wp, struct rte_mempool *p)
 static int
 handle_work_for_shutdown_test(void *arg)
 {
-	struct rte_mbuf *buf[8] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_mbuf *buf[8];
 	struct worker_params *wp = arg;
 	struct rte_distributor *d = wp->dist;
 	unsigned int num;
 	unsigned int zero_id = 0;
 	unsigned int zero_unset;
-	const unsigned int id = __atomic_fetch_add(&worker_idx, 1,
-			__ATOMIC_RELAXED);
+	const unsigned int id = rte_atomic_fetch_add_explicit(&worker_idx, 1,
+			rte_memory_order_relaxed);
 
 	num = rte_distributor_get_pkt(d, id, buf, NULL, 0);
 
 	if (num > 0) {
 		zero_unset = RTE_MAX_LCORE;
-		__atomic_compare_exchange_n(&zero_idx, &zero_unset, id,
-			false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
+		rte_atomic_compare_exchange_strong_explicit(&zero_idx, &zero_unset, id,
+			rte_memory_order_acq_rel, rte_memory_order_acquire);
 	}
-	zero_id = __atomic_load_n(&zero_idx, __ATOMIC_ACQUIRE);
+	zero_id = rte_atomic_load_explicit(&zero_idx, rte_memory_order_acquire);
 
 	/* wait for quit single globally, or for worker zero, wait
 	 * for zero_quit */
 	while (!quit && !(id == zero_id && zero_quit)) {
-		__atomic_fetch_add(&worker_stats[id].handled_packets, num,
-				__ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&worker_stats[id].handled_packets, num,
+				rte_memory_order_relaxed);
 		num = rte_distributor_get_pkt(d, id, buf, NULL, 0);
 
 		if (num > 0) {
 			zero_unset = RTE_MAX_LCORE;
-			__atomic_compare_exchange_n(&zero_idx, &zero_unset, id,
-				false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
+			rte_atomic_compare_exchange_strong_explicit(&zero_idx, &zero_unset, id,
+				rte_memory_order_acq_rel, rte_memory_order_acquire);
 		}
-		zero_id = __atomic_load_n(&zero_idx, __ATOMIC_ACQUIRE);
+		zero_id = rte_atomic_load_explicit(&zero_idx, rte_memory_order_acquire);
 	}
 
-	__atomic_fetch_add(&worker_stats[id].handled_packets, num,
-			__ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&worker_stats[id].handled_packets, num,
+			rte_memory_order_relaxed);
 	if (id == zero_id) {
 		rte_distributor_return_pkt(d, id, NULL, 0);
 
 		/* for worker zero, allow it to restart to pick up last packet
 		 * when all workers are shutting down.
 		 */
-		__atomic_store_n(&zero_sleep, 1, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&zero_sleep, 1, rte_memory_order_release);
 		while (zero_quit)
 			usleep(100);
-		__atomic_store_n(&zero_sleep, 0, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&zero_sleep, 0, rte_memory_order_release);
 
 		num = rte_distributor_get_pkt(d, id, buf, NULL, 0);
 
 		while (!quit) {
-			__atomic_fetch_add(&worker_stats[id].handled_packets,
-					num, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&worker_stats[id].handled_packets,
+					num, rte_memory_order_relaxed);
 			num = rte_distributor_get_pkt(d, id, buf, NULL, 0);
 		}
 	}
@@ -491,17 +491,17 @@ sanity_test_with_worker_shutdown(struct worker_params *wp,
 
 	/* flush the distributor */
 	rte_distributor_flush(d);
-	while (!__atomic_load_n(&zero_sleep, __ATOMIC_ACQUIRE))
+	while (!rte_atomic_load_explicit(&zero_sleep, rte_memory_order_acquire))
 		rte_distributor_flush(d);
 
 	zero_quit = 0;
-	while (__atomic_load_n(&zero_sleep, __ATOMIC_ACQUIRE))
+	while (rte_atomic_load_explicit(&zero_sleep, rte_memory_order_acquire))
 		rte_delay_us(100);
 
 	for (i = 0; i < rte_lcore_count() - 1; i++)
 		printf("Worker %u handled %u packets\n", i,
-			__atomic_load_n(&worker_stats[i].handled_packets,
-					__ATOMIC_RELAXED));
+			rte_atomic_load_explicit(&worker_stats[i].handled_packets,
+					rte_memory_order_relaxed));
 
 	if (total_packet_count() != BURST * 2) {
 		printf("Line %d: Error, not all packets flushed. "
@@ -560,18 +560,18 @@ test_flush_with_worker_shutdown(struct worker_params *wp,
 	/* flush the distributor */
 	rte_distributor_flush(d);
 
-	while (!__atomic_load_n(&zero_sleep, __ATOMIC_ACQUIRE))
+	while (!rte_atomic_load_explicit(&zero_sleep, rte_memory_order_acquire))
 		rte_distributor_flush(d);
 
 	zero_quit = 0;
 
-	while (__atomic_load_n(&zero_sleep, __ATOMIC_ACQUIRE))
+	while (rte_atomic_load_explicit(&zero_sleep, rte_memory_order_acquire))
 		rte_delay_us(100);
 
 	for (i = 0; i < rte_lcore_count() - 1; i++)
 		printf("Worker %u handled %u packets\n", i,
-			__atomic_load_n(&worker_stats[i].handled_packets,
-					__ATOMIC_RELAXED));
+			rte_atomic_load_explicit(&worker_stats[i].handled_packets,
+					rte_memory_order_relaxed));
 
 	if (total_packet_count() != BURST) {
 		printf("Line %d: Error, not all packets flushed. "
@@ -592,22 +592,22 @@ test_flush_with_worker_shutdown(struct worker_params *wp,
 static int
 handle_and_mark_work(void *arg)
 {
-	struct rte_mbuf *buf[8] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_mbuf *buf[8];
 	struct worker_params *wp = arg;
 	struct rte_distributor *db = wp->dist;
 	unsigned int num, i;
-	unsigned int id = __atomic_fetch_add(&worker_idx, 1, __ATOMIC_RELAXED);
+	unsigned int id = rte_atomic_fetch_add_explicit(&worker_idx, 1, rte_memory_order_relaxed);
 	num = rte_distributor_get_pkt(db, id, buf, NULL, 0);
 	while (!quit) {
-		__atomic_fetch_add(&worker_stats[id].handled_packets, num,
-				__ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&worker_stats[id].handled_packets, num,
+				rte_memory_order_relaxed);
 		for (i = 0; i < num; i++)
 			*seq_field(buf[i]) += id + 1;
 		num = rte_distributor_get_pkt(db, id,
 				buf, buf, num);
 	}
-	__atomic_fetch_add(&worker_stats[id].handled_packets, num,
-			__ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&worker_stats[id].handled_packets, num,
+			rte_memory_order_relaxed);
 	rte_distributor_return_pkt(db, id, buf, num);
 	return 0;
 }
@@ -679,8 +679,8 @@ sanity_mark_test(struct worker_params *wp, struct rte_mempool *p)
 
 	for (i = 0; i < rte_lcore_count() - 1; i++)
 		printf("Worker %u handled %u packets\n", i,
-			__atomic_load_n(&worker_stats[i].handled_packets,
-					__ATOMIC_RELAXED));
+			rte_atomic_load_explicit(&worker_stats[i].handled_packets,
+					rte_memory_order_relaxed));
 
 	/* Sort returned packets by sent order (sequence numbers). */
 	for (i = 0; i < buf_count; i++) {
@@ -953,4 +953,4 @@ err:
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_FAST_TEST(distributor_autotest, false, true, test_distributor);
+REGISTER_FAST_TEST(distributor_autotest, NOHUGE_SKIP, ASAN_OK, test_distributor);

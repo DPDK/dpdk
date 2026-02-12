@@ -3,9 +3,9 @@
 # All rights reserved.
 #
 
-if is_windows
+if not is_linux
     build = false
-    reason = 'not supported on Windows'
+    reason = 'only supported on Linux'
     subdir_done()
 endif
 

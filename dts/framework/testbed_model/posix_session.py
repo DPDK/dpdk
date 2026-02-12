@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2023 University of New Hampshire
+# Copyright(c) 2025 Arm Limited
 
 """POSIX compliant OS translator.
 
@@ -13,14 +14,20 @@ This intermediate module implements the common parts of mostly POSIX compliant d
 
 import re
 from collections.abc import Iterable
-from pathlib import PurePath, PurePosixPath
+from pathlib import Path, PurePath, PurePosixPath
 
-from framework.config import Architecture, NodeInfo
 from framework.exception import DPDKBuildError, RemoteCommandExecutionError
 from framework.settings import SETTINGS
-from framework.utils import MesonArgs
+from framework.utils import (
+    MesonArgs,
+    TarCompressionFormat,
+    convert_to_list_of_string,
+    create_tarball,
+    extract_tarball,
+)
 
-from .os_session import OSSession
+from .cpu import Architecture
+from .os_session import FilePermissions, OSSession, OSSessionInfo
 
 
 class PosixSession(OSSession):
@@ -85,21 +92,78 @@ class PosixSession(OSSession):
         """Overrides :meth:`~.os_session.OSSession.join_remote_path`."""
         return PurePosixPath(*args)
 
-    def copy_from(
-        self,
-        source_file: str | PurePath,
-        destination_file: str | PurePath,
-    ) -> None:
-        """Overrides :meth:`~.os_session.OSSession.copy_from`."""
-        self.remote_session.copy_from(source_file, destination_file)
+    def remote_path_exists(self, remote_path: str | PurePath) -> bool:
+        """Overrides :meth:`~.os_session.OSSession.remote_path_exists`."""
+        result = self.send_command(f"test -e {remote_path}")
+        return not result.return_code
 
-    def copy_to(
-        self,
-        source_file: str | PurePath,
-        destination_file: str | PurePath,
-    ) -> None:
+    def create_tmp_dir(self, template: str = "dts.XXXXX") -> PurePath:
+        """Overrides :meth:`~.os_session.OSSession.create_tmp_dir`."""
+        result = self.send_command(f'mktemp -dp "" {template}')
+        return PurePath(result.stdout)
+
+    def copy_from(self, source_file: str | PurePath, destination_dir: str | Path) -> None:
+        """Overrides :meth:`~.os_session.OSSession.copy_from`."""
+        self._logger.debug(f"Copying file '{source_file}' to local '{destination_dir}'.")
+        self.remote_session.copy_from(source_file, destination_dir)
+
+    def copy_to(self, source_file: str | Path, destination_dir: str | PurePath) -> None:
         """Overrides :meth:`~.os_session.OSSession.copy_to`."""
-        self.remote_session.copy_to(source_file, destination_file)
+        self._logger.debug(f"Copying file '{source_file}' to remote '{destination_dir}'.")
+        self.remote_session.copy_to(source_file, destination_dir)
+
+    def copy_dir_from(
+        self,
+        source_dir: str | PurePath,
+        destination_dir: str | Path,
+        compress_format: TarCompressionFormat = TarCompressionFormat.none,
+        exclude: str | list[str] | None = None,
+    ) -> None:
+        """Overrides :meth:`~.os_session.OSSession.copy_dir_from`."""
+        self._logger.debug(f"Copying directory '{source_dir}' to local '{destination_dir}'.")
+        source_dir = PurePath(source_dir)
+        remote_tarball_path = self.create_remote_tarball(source_dir, compress_format, exclude)
+
+        self.copy_from(remote_tarball_path, destination_dir)
+        self.remove_remote_file(remote_tarball_path)
+
+        tarball_path = Path(destination_dir, f"{source_dir.name}.{compress_format.extension}")
+        extract_tarball(tarball_path)
+        tarball_path.unlink()
+
+    def copy_dir_to(
+        self,
+        source_dir: str | Path,
+        destination_dir: str | PurePath,
+        compress_format: TarCompressionFormat = TarCompressionFormat.none,
+        exclude: str | list[str] | None = None,
+    ) -> None:
+        """Overrides :meth:`~.os_session.OSSession.copy_dir_to`."""
+        self._logger.debug(f"Copying directory '{source_dir}' to remote '{destination_dir}'.")
+        source_dir = Path(source_dir)
+        tarball_path = create_tarball(source_dir, compress_format, exclude=exclude)
+        self.copy_to(tarball_path, destination_dir)
+        tarball_path.unlink()
+
+        remote_tar_path = self.join_remote_path(
+            destination_dir, f"{source_dir.name}.{compress_format.extension}"
+        )
+        self.extract_remote_tarball(remote_tar_path, destination_dir, strip_root_dir=True)
+        self.remove_remote_file(remote_tar_path)
+
+    def change_permissions(
+        self, remote_path: PurePath, permissions: FilePermissions, recursive: bool = False
+    ) -> None:
+        """Overrides :meth:`~.os_session.OSSession.change_permissions`."""
+        self.send_command(
+            f"chmod {'-R ' if recursive else ''}{permissions.to_octal()} {remote_path}",
+            privileged=True,
+        )
+
+    def remove_remote_file(self, remote_file_path: str | PurePath, force: bool = True) -> None:
+        """Overrides :meth:`~.os_session.OSSession.remove_remote_dir`."""
+        opts = PosixSession.combine_short_options(f=force)
+        self.send_command(f"rm{opts} {remote_file_path}")
 
     def remove_remote_dir(
         self,
@@ -111,18 +175,83 @@ class PosixSession(OSSession):
         opts = PosixSession.combine_short_options(r=recursive, f=force)
         self.send_command(f"rm{opts} {remote_dir_path}")
 
+    def create_remote_tarball(
+        self,
+        remote_dir_path: str | PurePath,
+        compress_format: TarCompressionFormat = TarCompressionFormat.none,
+        exclude: str | list[str] | None = None,
+    ) -> PurePosixPath:
+        """Overrides :meth:`~.os_session.OSSession.create_remote_tarball`."""
+
+        def generate_tar_exclude_args(exclude_patterns: str | list[str] | None) -> str:
+            """Generate args to exclude patterns when creating a tarball.
+
+            Args:
+                exclude_patterns: Patterns for files or directories to exclude from the tarball.
+                    These patterns are used with `tar`'s `--exclude` option.
+
+            Returns:
+                The generated string args to exclude the specified patterns.
+            """
+            if exclude_patterns:
+                exclude_patterns = convert_to_list_of_string(exclude_patterns)
+                return "".join([f" --exclude={pattern}" for pattern in exclude_patterns])
+            return ""
+
+        posix_remote_dir_path = PurePosixPath(remote_dir_path)
+        target_tarball_path = PurePosixPath(f"{remote_dir_path}.{compress_format.extension}")
+
+        self.send_command(
+            f"tar caf {target_tarball_path}{generate_tar_exclude_args(exclude)} "
+            f"-C {posix_remote_dir_path.parent} {posix_remote_dir_path.name}",
+            60,
+        )
+
+        return target_tarball_path
+
+    def create_directory(self, path: PurePath) -> None:
+        """Overrides :meth:`~.os_session.OSSession.create_directory`."""
+        self.send_command(f"mkdir -p {path}")
+
     def extract_remote_tarball(
         self,
         remote_tarball_path: str | PurePath,
-        expected_dir: str | PurePath | None = None,
+        destination_path: str | PurePath,
+        strip_root_dir: bool = False,
     ) -> None:
         """Overrides :meth:`~.os_session.OSSession.extract_remote_tarball`."""
-        self.send_command(
-            f"tar xfm {remote_tarball_path} -C {PurePosixPath(remote_tarball_path).parent}",
-            60,
-        )
-        if expected_dir:
-            self.send_command(f"ls {expected_dir}", verify=True)
+        cmd = f"tar xfmv {remote_tarball_path} -C {destination_path}"
+        if strip_root_dir and self.get_tarball_top_dir(remote_tarball_path):
+            cmd += " --strip-components=1"
+
+        self.send_command(cmd)
+        self.send_command(f"ls {destination_path}", verify=True)
+
+    def is_remote_dir(self, remote_path: PurePath) -> bool:
+        """Overrides :meth:`~.os_session.OSSession.is_remote_dir`."""
+        result = self.send_command(f"test -d {remote_path}")
+        return not result.return_code
+
+    def is_remote_tarfile(self, remote_tarball_path: PurePath) -> bool:
+        """Overrides :meth:`~.os_session.OSSession.is_remote_tarfile`."""
+        result = self.send_command(f"tar -tvf {remote_tarball_path}")
+        return not result.return_code
+
+    def get_tarball_top_dir(
+        self, remote_tarball_path: str | PurePath
+    ) -> str | PurePosixPath | None:
+        """Overrides :meth:`~.os_session.OSSession.get_tarball_top_dir`."""
+        members = self.send_command(f"tar tf {remote_tarball_path}").stdout.split()
+
+        top_dirs = []
+        for member in members:
+            parts_of_member = PurePosixPath(member).parts
+            if parts_of_member:
+                top_dirs.append(parts_of_member[0])
+
+        if len(set(top_dirs)) == 1:
+            return top_dirs[0]
+        return None
 
     def build_dpdk(
         self,
@@ -133,7 +262,11 @@ class PosixSession(OSSession):
         rebuild: bool = False,
         timeout: float = SETTINGS.compile_timeout,
     ) -> None:
-        """Overrides :meth:`~.os_session.OSSession.build_dpdk`."""
+        """Overrides :meth:`~.os_session.OSSession.build_dpdk`.
+
+        Raises:
+            DPDKBuildError: If the DPDK build failed.
+        """
         try:
             if rebuild:
                 # reconfigure, then build
@@ -229,7 +362,7 @@ class PosixSession(OSSession):
         pid_regex = r"p(\d+)"
         for dpdk_runtime_dir in dpdk_runtime_dirs:
             dpdk_config_file = PurePosixPath(dpdk_runtime_dir, "config")
-            if self._remote_files_exists(dpdk_config_file):
+            if self.remote_path_exists(dpdk_config_file):
                 out = self.send_command(f"lsof -Fp {dpdk_config_file}").stdout
                 if out and "No such file or directory" not in out:
                     for out_line in out.splitlines():
@@ -237,10 +370,6 @@ class PosixSession(OSSession):
                         if match:
                             pids.append(int(match.group(1)))
         return pids
-
-    def _remote_files_exists(self, remote_path: PurePath) -> bool:
-        result = self.send_command(f"test -e {remote_path}")
-        return not result.return_code
 
     def _check_dpdk_hugepages(self, dpdk_runtime_dirs: Iterable[str | PurePath]) -> None:
         """Check there aren't any leftover hugepages.
@@ -253,7 +382,7 @@ class PosixSession(OSSession):
         """
         for dpdk_runtime_dir in dpdk_runtime_dirs:
             hugepage_info = PurePosixPath(dpdk_runtime_dir, "hugepage_info")
-            if self._remote_files_exists(hugepage_info):
+            if self.remote_path_exists(hugepage_info):
                 out = self.send_command(f"lsof -Fp {hugepage_info}").stdout
                 if out and "No such file or directory" not in out:
                     self._logger.warning("Some DPDK processes did not free hugepages.")
@@ -270,7 +399,11 @@ class PosixSession(OSSession):
         return ""
 
     def get_compiler_version(self, compiler_name: str) -> str:
-        """Overrides :meth:`~.os_session.OSSession.get_compiler_version`."""
+        """Overrides :meth:`~.os_session.OSSession.get_compiler_version`.
+
+        Raises:
+            ValueError: If the given `compiler_name` is invalid.
+        """
         match compiler_name:
             case "gcc":
                 return self.send_command(
@@ -282,16 +415,20 @@ class PosixSession(OSSession):
                 ).stdout.split("\n")[0]
             case "msvc":
                 return self.send_command("cl", SETTINGS.timeout).stdout
-            case "icc":
-                return self.send_command(f"{compiler_name} -V", SETTINGS.timeout).stdout
             case _:
                 raise ValueError(f"Unknown compiler {compiler_name}")
 
-    def get_node_info(self) -> NodeInfo:
+    def get_node_info(self) -> OSSessionInfo:
         """Overrides :meth:`~.os_session.OSSession.get_node_info`."""
         os_release_info = self.send_command(
             "awk -F= '$1 ~ /^NAME$|^VERSION$/ {print $2}' /etc/os-release",
             SETTINGS.timeout,
         ).stdout.split("\n")
         kernel_version = self.send_command("uname -r", SETTINGS.timeout).stdout
-        return NodeInfo(os_release_info[0].strip(), os_release_info[1].strip(), kernel_version)
+        return OSSessionInfo(
+            os_release_info[0].strip('"'), os_release_info[1].strip('"'), kernel_version
+        )
+
+    def get_arch_info(self) -> str:
+        """Overrides :meth'~.os_session.OSSession.get_arch_info'."""
+        return self.send_command("uname -m").stdout.strip()

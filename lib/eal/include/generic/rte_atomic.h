@@ -17,6 +17,10 @@
 #include <rte_common.h>
 #include <rte_stdatomic.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef __DOXYGEN__
 
 /** @name Memory Barrier
@@ -1155,5 +1159,9 @@ rte_atomic128_cmp_exchange(rte_int128_t *dst,
 			   int failure);
 
 #endif /* __DOXYGEN__ */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_ATOMIC_H_ */

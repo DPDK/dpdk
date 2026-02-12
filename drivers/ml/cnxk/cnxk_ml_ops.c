@@ -437,7 +437,7 @@ cnxk_ml_model_xstats_reset(struct cnxk_ml_dev *cnxk_mldev, int32_t model_id,
 
 			model = cnxk_mldev->mldev->data->models[model_id];
 			if (model == NULL) {
-				plt_err("Invalid model_id = %d\n", model_id);
+				plt_err("Invalid model_id = %d", model_id);
 				return -EINVAL;
 			}
 		}
@@ -454,7 +454,7 @@ cnxk_ml_model_xstats_reset(struct cnxk_ml_dev *cnxk_mldev, int32_t model_id,
 		} else {
 			for (j = 0; j < nb_ids; j++) {
 				if (stat_ids[j] < start_id || stat_ids[j] > end_id) {
-					plt_err("Invalid stat_ids[%d] = %d for model_id = %d\n", j,
+					plt_err("Invalid stat_ids[%d] = %d for model_id = %d", j,
 						stat_ids[j], lcl_model_id);
 					return -EINVAL;
 				}
@@ -510,12 +510,12 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 
 	cnxk_ml_dev_info_get(dev, &dev_info);
 	if (conf->nb_models > dev_info.max_models) {
-		plt_err("Invalid device config, nb_models > %u\n", dev_info.max_models);
+		plt_err("Invalid device config, nb_models > %u", dev_info.max_models);
 		return -EINVAL;
 	}
 
 	if (conf->nb_queue_pairs > dev_info.max_queue_pairs) {
-		plt_err("Invalid device config, nb_queue_pairs > %u\n", dev_info.max_queue_pairs);
+		plt_err("Invalid device config, nb_queue_pairs > %u", dev_info.max_queue_pairs);
 		return -EINVAL;
 	}
 
@@ -533,10 +533,10 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 		plt_ml_dbg("Re-configuring ML device, nb_queue_pairs = %u, nb_models = %u",
 			   conf->nb_queue_pairs, conf->nb_models);
 	} else if (cnxk_mldev->state == ML_CNXK_DEV_STATE_STARTED) {
-		plt_err("Device can't be reconfigured in started state\n");
+		plt_err("Device can't be reconfigured in started state");
 		return -ENOTSUP;
 	} else if (cnxk_mldev->state == ML_CNXK_DEV_STATE_CLOSED) {
-		plt_err("Device can't be reconfigured after close\n");
+		plt_err("Device can't be reconfigured after close");
 		return -ENOTSUP;
 	}
 
@@ -647,9 +647,7 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 
 	cnxk_mldev->mldev->enqueue_burst = cnxk_ml_enqueue_burst;
 	cnxk_mldev->mldev->dequeue_burst = cnxk_ml_dequeue_burst;
-
-	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_PCI)
-		cnxk_mldev->mldev->op_error_get = cn10k_ml_op_error_get;
+	cnxk_mldev->mldev->op_error_get = cnxk_ml_op_error_get;
 
 	/* Allocate and initialize index_map */
 	if (cnxk_mldev->index_map == NULL) {
@@ -853,7 +851,7 @@ cnxk_ml_dev_queue_pair_setup(struct rte_ml_dev *dev, uint16_t queue_pair_id,
 	uint32_t nb_desc;
 
 	if (queue_pair_id >= dev->data->nb_queue_pairs) {
-		plt_err("Queue-pair id = %u (>= max queue pairs supported, %u)\n", queue_pair_id,
+		plt_err("Queue-pair id = %u (>= max queue pairs supported, %u)", queue_pair_id,
 			dev->data->nb_queue_pairs);
 		return -EINVAL;
 	}
@@ -1249,11 +1247,11 @@ cnxk_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, u
 	}
 
 	if ((total_wb_pages + max_scratch_pages) > ocm->num_pages) {
-		plt_err("model_id = %u: total_wb_pages (%u) + scratch_pages (%u) >  %u\n",
+		plt_err("model_id = %u: total_wb_pages (%u) + scratch_pages (%u) >  %u",
 			lcl_model_id, total_wb_pages, max_scratch_pages, ocm->num_pages);
 
 		if (model->type == ML_CNXK_MODEL_TYPE_GLOW) {
-			plt_ml_dbg("layer_id = %u: wb_pages = %u, scratch_pages = %u\n", layer_id,
+			plt_ml_dbg("layer_id = %u: wb_pages = %u, scratch_pages = %u", layer_id,
 				   model->layer[layer_id].glow.ocm_map.wb_pages,
 				   model->layer[layer_id].glow.ocm_map.scratch_pages);
 #ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
@@ -1262,7 +1260,7 @@ cnxk_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, u
 			     layer_id++) {
 				if (model->layer[layer_id].type == ML_CNXK_LAYER_TYPE_MRVL) {
 					plt_ml_dbg(
-						"layer_id = %u: wb_pages = %u, scratch_pages = %u\n",
+						"layer_id = %u: wb_pages = %u, scratch_pages = %u",
 						layer_id,
 						model->layer[layer_id].glow.ocm_map.wb_pages,
 						model->layer[layer_id].glow.ocm_map.scratch_pages);
@@ -1400,7 +1398,7 @@ cnxk_ml_model_info_get(struct rte_ml_dev *dev, uint16_t model_id,
 	}
 
 	info = (struct rte_ml_model_info *)model->info;
-	rte_memcpy(model_info, info, sizeof(struct rte_ml_model_info));
+	*model_info = *info;
 	model_info->input_info = info->input_info;
 	model_info->output_info = info->output_info;
 
@@ -1462,7 +1460,8 @@ cnxk_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_buf
 	d_offset = 0;
 	q_offset = 0;
 	for (i = 0; i < info->nb_inputs; i++) {
-		if (model->type == ML_CNXK_MODEL_TYPE_TVM) {
+		if (model->type == ML_CNXK_MODEL_TYPE_TVM &&
+		    model->subtype != ML_CNXK_MODEL_SUBTYPE_TVM_MRVL) {
 			lcl_dbuffer = dbuffer[i]->addr;
 			lcl_qbuffer = qbuffer[i]->addr;
 		} else {
@@ -1474,7 +1473,8 @@ cnxk_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_buf
 		if (ret < 0)
 			return ret;
 
-		if (model->type == ML_CNXK_MODEL_TYPE_GLOW) {
+		if ((model->type == ML_CNXK_MODEL_TYPE_GLOW) ||
+		    (model->subtype == ML_CNXK_MODEL_SUBTYPE_TVM_MRVL)) {
 			d_offset += info->input[i].sz_d;
 			q_offset += info->input[i].sz_q;
 		}
@@ -1516,7 +1516,8 @@ cnxk_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_b
 	q_offset = 0;
 	d_offset = 0;
 	for (i = 0; i < info->nb_outputs; i++) {
-		if (model->type == ML_CNXK_MODEL_TYPE_TVM) {
+		if (model->type == ML_CNXK_MODEL_TYPE_TVM &&
+		    model->subtype != ML_CNXK_MODEL_SUBTYPE_TVM_MRVL) {
 			lcl_qbuffer = qbuffer[i]->addr;
 			lcl_dbuffer = dbuffer[i]->addr;
 		} else {
@@ -1528,7 +1529,8 @@ cnxk_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_b
 		if (ret < 0)
 			return ret;
 
-		if (model->type == ML_CNXK_MODEL_TYPE_GLOW) {
+		if ((model->type == ML_CNXK_MODEL_TYPE_GLOW) ||
+		    (model->subtype == ML_CNXK_MODEL_SUBTYPE_TVM_MRVL)) {
 			q_offset += info->output[i].sz_q;
 			d_offset += info->output[i].sz_d;
 		}
@@ -1636,7 +1638,7 @@ dequeue_req:
 		if (plt_tsc_cycles() < req->timeout)
 			goto empty_or_active;
 		else /* Timeout, set indication of driver error */
-			model->set_error_code(req, ML_CNXK_ETYPE_DRIVER, 0);
+			model->set_error_code(req, ML_CN10K_ETYPE_DRIVER, 0);
 	}
 
 	model->result_update(cnxk_mldev, qp->id, req);
@@ -1652,6 +1654,18 @@ empty_or_active:
 	queue->tail = tail;
 
 	return count;
+}
+
+__rte_hot int
+cnxk_ml_op_error_get(struct rte_ml_dev *dev, struct rte_ml_op *op, struct rte_ml_op_error *error)
+{
+	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_model *model;
+
+	cnxk_mldev = dev->data->dev_private;
+	model = cnxk_mldev->mldev->data->models[op->model_id];
+
+	return model->op_error_get(cnxk_mldev, op, error);
 }
 
 struct rte_ml_dev_ops cnxk_ml_ops = {

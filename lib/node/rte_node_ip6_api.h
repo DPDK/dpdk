@@ -15,12 +15,14 @@
  * This API allows to do control path functions of ip6_* nodes
  * like ip6_lookup, ip6_rewrite.
  */
+#include <rte_common.h>
+#include <rte_compat.h>
+#include <rte_fib6.h>
+#include <rte_ip6.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_common.h>
-#include <rte_compat.h>
 
 /**
  * IP6 lookup next nodes.
@@ -48,7 +50,7 @@ enum rte_node_ip6_lookup_next {
  *   0 on success, negative otherwise.
  */
 __rte_experimental
-int rte_node_ip6_route_add(const uint8_t *ip, uint8_t depth, uint16_t next_hop,
+int rte_node_ip6_route_add(const struct rte_ipv6_addr *ip, uint8_t depth, uint16_t next_hop,
 			   enum rte_node_ip6_lookup_next next_node);
 
 /**
@@ -69,6 +71,39 @@ int rte_node_ip6_route_add(const uint8_t *ip, uint8_t depth, uint16_t next_hop,
 __rte_experimental
 int rte_node_ip6_rewrite_add(uint16_t next_hop, uint8_t *rewrite_data,
 			     uint8_t rewrite_len, uint16_t dst_port);
+
+/**
+ * Create ipv6 FIB.
+ *
+ * @param socket
+ *   NUMA socket for FIB memory allocation.
+ * @param conf
+ *   Structure containing FIB configuration.
+ *
+ * @return
+ *   0 on success, negative otherwise.
+ */
+__rte_experimental
+int rte_node_ip6_fib_create(int socket, struct rte_fib6_conf *conf);
+
+/**
+ * Add IPv6 route to FIB.
+ *
+ * @param ip
+ *   IPv6 address of route to be added.
+ * @param depth
+ *   Depth of the rule to be added.
+ * @param next_hop
+ *   Next hop id of the rule result to be added.
+ * @param next_node
+ *   Next node to redirect traffic to.
+ *
+ * @return
+ *   0 on success, negative otherwise.
+ */
+__rte_experimental
+int rte_node_ip6_fib_route_add(const struct rte_ipv6_addr *ip, uint8_t depth, uint16_t next_hop,
+			       enum rte_node_ip6_lookup_next next_node);
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2023 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -1127,6 +1127,71 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_get_sram_policy)(enum tf_dir dir,
 				      enum tf_sram_bank_id *bank_id);
+
+#ifdef TF_FLOW_SCALE_QUERY
+	/**
+	 * Update resource usage state with firmware
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] dir
+	 *   Receive or transmit direction
+	 *
+	 * [in] flow_resc_type
+	 *   Resource type to update its usage state
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_update_resc_usage)(struct tf *tfp,
+					enum tf_dir dir,
+					enum tf_flow_resc_type flow_resc_type);
+
+	/**
+	 * Query resource usage state from firmware
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] dir
+	 *   Receive or transmit direction
+	 *
+	 * [in] flow_resc_type
+	 *   Resource type to query its usage state
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_query_resc_usage)(struct tf *tfp,
+				       struct tf_query_resc_usage_parms *parms);
+
+	/**
+	 * Update buffer of table usage
+	 *
+	 * [in] session_id
+	 *   The TruFlow session id
+	 *
+	 * [in] dir
+	 *   Receive or transmit direction
+	 *
+	 * [in] tbl_type
+	 *   SRAM table type to update its usage state
+	 *
+	 * [in] resc_opt
+	 *   Alloca or free resource
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_update_tbl_usage_buffer)(struct tf *tfp,
+					      enum tf_dir dir,
+					      enum tf_tbl_type tbl_type,
+					      uint32_t resc_opt);
+#endif /* TF_FLOW_SCALE_QUERY */
 };
 
 /**

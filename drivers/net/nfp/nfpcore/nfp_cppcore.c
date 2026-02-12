@@ -344,7 +344,7 @@ nfp_cpp_area_alloc_with_name(struct nfp_cpp *cpp,
 
 	err = cpp->op->area_init(area, target_id, target_addr, size);
 	if (err < 0) {
-		PMD_DRV_LOG(ERR, "Area init op failed");
+		PMD_DRV_LOG(ERR, "Area init op failed.");
 		free(area);
 		return NULL;
 	}
@@ -413,12 +413,12 @@ nfp_cpp_area_alloc_acquire(struct nfp_cpp *cpp,
 
 	area = nfp_cpp_area_alloc(cpp, destination, address, size);
 	if (area == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to allocate CPP area");
+		PMD_DRV_LOG(ERR, "Failed to allocate CPP area.");
 		return NULL;
 	}
 
 	if (nfp_cpp_area_acquire(area) != 0) {
-		PMD_DRV_LOG(ERR, "Failed to acquire CPP area");
+		PMD_DRV_LOG(ERR, "Failed to acquire CPP area.");
 		nfp_cpp_area_free(area);
 		return NULL;
 	}
@@ -469,7 +469,7 @@ nfp_cpp_area_acquire(struct nfp_cpp_area *area)
 	if (area->cpp->op->area_acquire != NULL) {
 		int err = area->cpp->op->area_acquire(area);
 		if (err < 0) {
-			PMD_DRV_LOG(ERR, "Area acquire op failed");
+			PMD_DRV_LOG(ERR, "Area acquire op failed.");
 			return -1;
 		}
 	}
@@ -950,14 +950,14 @@ nfp_cpp_alloc(struct rte_pci_device *pci_dev,
 	 */
 	err = cpp->op->init(cpp);
 	if (err < 0) {
-		PMD_DRV_LOG(ERR, "NFP interface initialization failed");
+		PMD_DRV_LOG(ERR, "NFP interface initialization failed.");
 		free(cpp);
 		return NULL;
 	}
 
 	err = nfp_cpp_model_autodetect(cpp, &cpp->model);
 	if (err < 0) {
-		PMD_DRV_LOG(ERR, "NFP model detection failed");
+		PMD_DRV_LOG(ERR, "NFP model detection failed.");
 		free(cpp);
 		return NULL;
 	}
@@ -967,7 +967,7 @@ nfp_cpp_alloc(struct rte_pci_device *pci_dev,
 		xpb_addr = 0x000a0000 + (target * 4);
 		err = nfp_xpb_readl(cpp, xpb_addr, &cpp->imb_cat_table[target]);
 		if (err < 0) {
-			PMD_DRV_LOG(ERR, "Can't read CPP mapping from device");
+			PMD_DRV_LOG(ERR, "Can not read CPP mapping from device.");
 			free(cpp);
 			return NULL;
 		}
@@ -975,7 +975,7 @@ nfp_cpp_alloc(struct rte_pci_device *pci_dev,
 
 	err = nfp_cpp_set_mu_locality_lsb(cpp);
 	if (err < 0) {
-		PMD_DRV_LOG(ERR, "Can't calculate MU locality bit offset");
+		PMD_DRV_LOG(ERR, "Can not calculate MU locality bit offset.");
 		free(cpp);
 		return NULL;
 	}
@@ -1050,7 +1050,7 @@ nfp_cpp_read(struct nfp_cpp *cpp,
 
 	area = nfp_cpp_area_alloc_acquire(cpp, destination, offset, length);
 	if (area == NULL) {
-		PMD_DRV_LOG(ERR, "Area allocation/acquire failed for read");
+		PMD_DRV_LOG(ERR, "Area allocation/acquire failed for read.");
 		return -EACCES;
 	}
 
@@ -1089,7 +1089,7 @@ nfp_cpp_write(struct nfp_cpp *cpp,
 
 	area = nfp_cpp_area_alloc_acquire(cpp, destination, offset, length);
 	if (area == NULL) {
-		PMD_DRV_LOG(ERR, "Area allocation/acquire failed for write");
+		PMD_DRV_LOG(ERR, "Area allocation/acquire failed for write.");
 		return -EACCES;
 	}
 
@@ -1155,7 +1155,7 @@ nfp_cpp_map_area(struct nfp_cpp *cpp,
 
 	*area = nfp_cpp_area_alloc_acquire(cpp, cpp_id, addr, size);
 	if (*area == NULL) {
-		PMD_DRV_LOG(ERR, "Area allocation/acquire failed for map");
+		PMD_DRV_LOG(ERR, "Area allocation/acquire failed for map.");
 		goto err_eio;
 	}
 
@@ -1169,4 +1169,10 @@ err_release_free:
 	nfp_cpp_area_release_free(*area);
 err_eio:
 	return NULL;
+}
+
+uint8_t
+nfp_get_pf_id_from_cpp(struct nfp_cpp *cpp)
+{
+	return nfp_get_pf_id_from_device(nfp_cpp_priv(cpp));
 }

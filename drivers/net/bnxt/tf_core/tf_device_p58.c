@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2023 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -15,8 +15,10 @@
 #include "tf_if_tbl.h"
 #include "tfp.h"
 #include "tf_msg_common.h"
+ #include "tf_msg.h"
 #include "tf_tbl_sram.h"
 #include "tf_util.h"
+#include "tf_resources.h"
 
 #define TF_DEV_P58_PARIF_MAX 16
 #define TF_DEV_P58_PF_MASK 0xfUL
@@ -781,6 +783,99 @@ static int tf_dev_p58_get_sram_policy(enum tf_dir dir,
 	return 0;
 }
 
+#ifdef TF_FLOW_SCALE_QUERY
+/**
+ * Update resource usage to firmware.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] dir
+ *   Receive or transmit direction
+ *
+ * [in] flow_resc_type
+ *   Types of the resource to update their usage state.
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+static int tf_dev_p58_update_resc_usage(struct tf *tfp,
+					enum tf_dir dir,
+					enum tf_flow_resc_type flow_resc_type)
+{
+	int rc;
+
+	struct cfa_tf_resc_usage *usage_state = &tf_resc_usage[dir];
+
+	flow_resc_type |= HWRM_TF_RESC_USAGE_SET_INPUT_TYPES_ALL;
+	rc = tf_msg_set_resc_usage(tfp,
+				   dir,
+				   flow_resc_type,
+				   sizeof(cfa_tf_resc_usage_t),
+				   (uint8_t *)usage_state);
+
+	return rc;
+}
+
+/**
+ * Query resource usage from firmware.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in/out] parms
+ *   Pointer to parms structure
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+static int tf_dev_p58_query_resc_usage(struct tf *tfp,
+				       struct tf_query_resc_usage_parms *parms)
+{
+	int rc = 0;
+
+	parms->size = sizeof(struct cfa_tf_resc_usage);
+	rc = tf_msg_query_resc_usage(tfp,
+				     parms->dir,
+				     parms->flow_resc_type,
+				     &parms->size,
+				     (void *)parms->data);
+	return rc;
+}
+
+/**
+ * Update buffer of table usage state
+ *
+ * [in] session_id
+ *   Pointer to TF handle
+ *
+ * [in] dir
+ *   Receive or transmit direction
+ *
+ * [in] tbl_type
+ *   SRAM table type to update its usage state
+ *
+ * [in] resc_opt
+ *   Alloca or free resource
+ *
+ *    returns:
+ *    0       - Success
+ *    -EINVAL - Error
+ */
+static int
+tf_dev_p58_update_tbl_usage_buffer(struct tf *tfp,
+				   enum tf_dir dir,
+				   enum tf_tbl_type tbl_type,
+				   enum tf_resc_opt resc_opt)
+{
+	int rc;
+	rc = tf_tbl_usage_update(tfp, dir, tbl_type, resc_opt);
+	return rc;
+}
+#endif /* TF_FLOW_SCALE_QUERY */
+
 /**
  * Truflow P58 device specific functions
  */
@@ -835,6 +930,11 @@ const struct tf_dev_ops tf_dev_ops_p58_init = {
 	.tf_dev_get_sram_resources = tf_dev_p58_get_sram_resources,
 	.tf_dev_set_sram_policy = tf_dev_p58_set_sram_policy,
 	.tf_dev_get_sram_policy = tf_dev_p58_get_sram_policy,
+#ifdef TF_FLOW_SCALE_QUERY
+	.tf_dev_update_resc_usage = tf_dev_p58_update_resc_usage,
+	.tf_dev_query_resc_usage = tf_dev_p58_query_resc_usage,
+	.tf_dev_update_tbl_usage_buffer = tf_dev_p58_update_tbl_usage_buffer,
+#endif /* TF_FLOW_SCALE_QUERY */
 };
 
 /**
@@ -853,12 +953,12 @@ const struct tf_dev_ops tf_dev_ops_p58 = {
 	.tf_dev_get_tbl_info = tf_dev_p58_get_sram_tbl_info,
 	.tf_dev_alloc_tbl = tf_tbl_alloc,
 	.tf_dev_alloc_sram_tbl = tf_tbl_sram_alloc,
-	.tf_dev_alloc_ext_tbl = tf_tbl_ext_alloc,
+	.tf_dev_alloc_ext_tbl = NULL,
 	.tf_dev_free_tbl = tf_tbl_free,
-	.tf_dev_free_ext_tbl = tf_tbl_ext_free,
+	.tf_dev_free_ext_tbl = NULL,
 	.tf_dev_free_sram_tbl = tf_tbl_sram_free,
 	.tf_dev_set_tbl = tf_tbl_set,
-	.tf_dev_set_ext_tbl = tf_tbl_ext_common_set,
+	.tf_dev_set_ext_tbl = NULL,
 	.tf_dev_set_sram_tbl = tf_tbl_sram_set,
 	.tf_dev_get_tbl = tf_tbl_get,
 	.tf_dev_get_sram_tbl = tf_tbl_sram_get,
@@ -894,4 +994,9 @@ const struct tf_dev_ops tf_dev_ops_p58 = {
 	.tf_dev_get_sram_resources = tf_dev_p58_get_sram_resources,
 	.tf_dev_set_sram_policy = tf_dev_p58_set_sram_policy,
 	.tf_dev_get_sram_policy = tf_dev_p58_get_sram_policy,
+#ifdef TF_FLOW_SCALE_QUERY
+	.tf_dev_update_resc_usage = tf_dev_p58_update_resc_usage,
+	.tf_dev_query_resc_usage = tf_dev_p58_query_resc_usage,
+	.tf_dev_update_tbl_usage_buffer = tf_dev_p58_update_tbl_usage_buffer,
+#endif /* TF_FLOW_SCALE_QUERY */
 };

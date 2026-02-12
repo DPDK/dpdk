@@ -219,7 +219,8 @@ int mlx4_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr);
 int mlx4_set_mc_addr_list(struct rte_eth_dev *dev, struct rte_ether_addr *list,
 			  uint32_t num);
 int mlx4_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
-int mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
+int mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		   struct eth_queue_stats *qstats);
 int mlx4_stats_reset(struct rte_eth_dev *dev);
 int mlx4_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size);
 int mlx4_dev_infos_get(struct rte_eth_dev *dev,

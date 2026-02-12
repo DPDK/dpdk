@@ -14,9 +14,12 @@
 #include <rte_per_lcore.h>
 #include <rte_string_fns.h>
 
+#include <eal_export.h>
 #include "eal_trace.h"
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(per_lcore_trace_point_sz, 20.05)
 RTE_DEFINE_PER_LCORE(volatile int, trace_point_sz);
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(per_lcore_trace_mem, 20.05)
 RTE_DEFINE_PER_LCORE(void *, trace_mem);
 static RTE_DEFINE_PER_LCORE(char *, ctf_field);
 
@@ -94,6 +97,7 @@ eal_trace_fini(void)
 	eal_trace_args_free();
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_trace_is_enabled, 20.05)
 bool
 rte_trace_is_enabled(void)
 {
@@ -111,6 +115,7 @@ trace_mode_set(rte_trace_point_t *t, enum rte_trace_mode mode)
 			rte_memory_order_release);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_trace_mode_set, 20.05)
 void
 rte_trace_mode_set(enum rte_trace_mode mode)
 {
@@ -122,6 +127,7 @@ rte_trace_mode_set(enum rte_trace_mode mode)
 	trace.mode = mode;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_trace_mode_get, 20.05)
 enum
 rte_trace_mode rte_trace_mode_get(void)
 {
@@ -134,6 +140,7 @@ trace_point_is_invalid(rte_trace_point_t *t)
 	return (t == NULL) || (trace_id_get(t) >= trace.nb_trace_points);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_trace_point_is_enabled, 20.05)
 bool
 rte_trace_point_is_enabled(rte_trace_point_t *t)
 {
@@ -146,6 +153,7 @@ rte_trace_point_is_enabled(rte_trace_point_t *t)
 	return (val & __RTE_TRACE_FIELD_ENABLE_MASK) != 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_trace_point_enable, 20.05)
 int
 rte_trace_point_enable(rte_trace_point_t *t)
 {
@@ -161,6 +169,7 @@ rte_trace_point_enable(rte_trace_point_t *t)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_trace_point_disable, 20.05)
 int
 rte_trace_point_disable(rte_trace_point_t *t)
 {
@@ -176,6 +185,7 @@ rte_trace_point_disable(rte_trace_point_t *t)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_trace_pattern, 20.05)
 int
 rte_trace_pattern(const char *pattern, bool enable)
 {
@@ -200,6 +210,7 @@ rte_trace_pattern(const char *pattern, bool enable)
 	return rc | found;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_trace_regexp, 20.05)
 int
 rte_trace_regexp(const char *regex, bool enable)
 {
@@ -229,6 +240,7 @@ rte_trace_regexp(const char *regex, bool enable)
 	return rc | found;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_trace_point_lookup, 20.05)
 rte_trace_point_t *
 rte_trace_point_lookup(const char *name)
 {
@@ -258,32 +270,32 @@ trace_point_dump(FILE *f, struct trace_point *tp)
 static void
 trace_lcore_mem_dump(FILE *f)
 {
-	struct trace *trace = trace_obj_get();
+	struct trace *t = trace_obj_get();
 	struct __rte_trace_header *header;
 	uint32_t count;
 
-	rte_spinlock_lock(&trace->lock);
-	if (trace->nb_trace_mem_list == 0)
+	rte_spinlock_lock(&t->lock);
+	if (t->nb_trace_mem_list == 0)
 		goto out;
-	fprintf(f, "nb_trace_mem_list = %d\n", trace->nb_trace_mem_list);
+	fprintf(f, "nb_trace_mem_list = %d\n", t->nb_trace_mem_list);
 	fprintf(f, "\nTrace mem info\n--------------\n");
-	for (count = 0; count < trace->nb_trace_mem_list; count++) {
-		header = trace->lcore_meta[count].mem;
+	for (count = 0; count < t->nb_trace_mem_list; count++) {
+		header = t->lcore_meta[count].mem;
 		fprintf(f, "\tid %d, mem=%p, area=%s, lcore_id=%d, name=%s\n",
 		count, header,
-		trace_area_to_string(trace->lcore_meta[count].area),
+		trace_area_to_string(t->lcore_meta[count].area),
 		header->stream_header.lcore_id,
 		header->stream_header.thread_name);
 	}
 out:
-	rte_spinlock_unlock(&trace->lock);
+	rte_spinlock_unlock(&t->lock);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_trace_dump, 20.05)
 void
 rte_trace_dump(FILE *f)
 {
-	struct trace_point_head *tp_list = trace_list_head_get();
-	struct trace *trace = trace_obj_get();
+	struct trace *t = trace_obj_get();
 	struct trace_point *tp;
 
 	fprintf(f, "\nGlobal info\n-----------\n");
@@ -291,13 +303,13 @@ rte_trace_dump(FILE *f)
 		rte_trace_is_enabled() ? "enabled" : "disabled");
 	fprintf(f, "mode = %s\n",
 		trace_mode_to_string(rte_trace_mode_get()));
-	fprintf(f, "dir = %s\n", trace->dir);
-	fprintf(f, "buffer len = %d\n", trace->buff_len);
-	fprintf(f, "number of trace points = %d\n", trace->nb_trace_points);
+	fprintf(f, "dir = %s\n", t->dir);
+	fprintf(f, "buffer len = %d\n", t->buff_len);
+	fprintf(f, "number of trace points = %d\n", t->nb_trace_points);
 
 	trace_lcore_mem_dump(f);
 	fprintf(f, "\nTrace point info\n----------------\n");
-	STAILQ_FOREACH(tp, tp_list, next)
+	STAILQ_FOREACH(tp, trace_list_head_get(), next)
 		trace_point_dump(f, tp);
 }
 
@@ -314,10 +326,11 @@ thread_get_name(rte_thread_t id, char *name, size_t len)
 	RTE_SET_USED(len);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_trace_mem_per_thread_alloc, 20.05)
 void
 __rte_trace_mem_per_thread_alloc(void)
 {
-	struct trace *trace = trace_obj_get();
+	struct trace *t = trace_obj_get();
 	struct __rte_trace_header *header;
 	uint32_t count;
 
@@ -327,30 +340,33 @@ __rte_trace_mem_per_thread_alloc(void)
 	if (RTE_PER_LCORE(trace_mem))
 		return;
 
-	rte_spinlock_lock(&trace->lock);
+	rte_spinlock_lock(&t->lock);
 
-	count = trace->nb_trace_mem_list;
+	count = t->nb_trace_mem_list;
 
 	/* Allocate room for storing the thread trace mem meta */
-	trace->lcore_meta = realloc(trace->lcore_meta,
-		sizeof(trace->lcore_meta[0]) * (count + 1));
+	t->lcore_meta = realloc(t->lcore_meta,
+		sizeof(t->lcore_meta[0]) * (count + 1));
 
 	/* Provide dummy space for fast path to consume */
-	if (trace->lcore_meta == NULL) {
+	if (t->lcore_meta == NULL) {
 		trace_crit("trace mem meta memory realloc failed");
 		header = NULL;
 		goto fail;
 	}
 
 	/* First attempt from huge page */
-	header = eal_malloc_no_trace(NULL, trace_mem_sz(trace->buff_len), 8);
+	header = eal_malloc_no_trace(NULL, trace_mem_sz(t->buff_len), 8);
 	if (header) {
-		trace->lcore_meta[count].area = TRACE_AREA_HUGEPAGE;
+		t->lcore_meta[count].area = TRACE_AREA_HUGEPAGE;
 		goto found;
 	}
 
-	/* Second attempt from heap */
-	header = malloc(trace_mem_sz(trace->buff_len));
+	/* Second attempt from heap with proper alignment */
+	size_t mem_size = trace_mem_sz(t->buff_len);
+	void *aligned_ptr = NULL;
+	int ret = posix_memalign(&aligned_ptr, 8, mem_size);
+	header = (ret == 0) ? aligned_ptr : NULL;
 	if (header == NULL) {
 		trace_crit("trace mem malloc attempt failed");
 		header = NULL;
@@ -359,14 +375,14 @@ __rte_trace_mem_per_thread_alloc(void)
 	}
 
 	/* Second attempt from heap is success */
-	trace->lcore_meta[count].area = TRACE_AREA_HEAP;
+	t->lcore_meta[count].area = TRACE_AREA_HEAP;
 
 	/* Initialize the trace header */
 found:
 	header->offset = 0;
-	header->len = trace->buff_len;
+	header->len = t->buff_len;
 	header->stream_header.magic = TRACE_CTF_MAGIC;
-	rte_uuid_copy(header->stream_header.uuid, trace->uuid);
+	rte_uuid_copy(header->stream_header.uuid, t->uuid);
 	header->stream_header.lcore_id = rte_lcore_id();
 
 	/* Store the thread name */
@@ -375,11 +391,11 @@ found:
 	thread_get_name(rte_thread_self(), name,
 		__RTE_TRACE_EMIT_STRING_LEN_MAX);
 
-	trace->lcore_meta[count].mem = header;
-	trace->nb_trace_mem_list++;
+	t->lcore_meta[count].mem = header;
+	t->nb_trace_mem_list++;
 fail:
 	RTE_PER_LCORE(trace_mem) = header;
-	rte_spinlock_unlock(&trace->lock);
+	rte_spinlock_unlock(&t->lock);
 }
 
 static void
@@ -394,7 +410,7 @@ trace_mem_per_thread_free_unlocked(struct thread_mem_meta *meta)
 void
 trace_mem_per_thread_free(void)
 {
-	struct trace *trace = trace_obj_get();
+	struct trace *t = trace_obj_get();
 	struct __rte_trace_header *header;
 	uint32_t count;
 
@@ -402,39 +418,39 @@ trace_mem_per_thread_free(void)
 	if (header == NULL)
 		return;
 
-	rte_spinlock_lock(&trace->lock);
-	for (count = 0; count < trace->nb_trace_mem_list; count++) {
-		if (trace->lcore_meta[count].mem == header)
+	rte_spinlock_lock(&t->lock);
+	for (count = 0; count < t->nb_trace_mem_list; count++) {
+		if (t->lcore_meta[count].mem == header)
 			break;
 	}
-	if (count != trace->nb_trace_mem_list) {
-		struct thread_mem_meta *meta = &trace->lcore_meta[count];
+	if (count != t->nb_trace_mem_list) {
+		struct thread_mem_meta *meta = &t->lcore_meta[count];
 
 		trace_mem_per_thread_free_unlocked(meta);
-		if (count != trace->nb_trace_mem_list - 1) {
+		if (count != t->nb_trace_mem_list - 1) {
 			memmove(meta, meta + 1,
 				sizeof(*meta) *
-				 (trace->nb_trace_mem_list - count - 1));
+				 (t->nb_trace_mem_list - count - 1));
 		}
-		trace->nb_trace_mem_list--;
+		t->nb_trace_mem_list--;
 	}
-	rte_spinlock_unlock(&trace->lock);
+	rte_spinlock_unlock(&t->lock);
 }
 
 void
 trace_mem_free(void)
 {
-	struct trace *trace = trace_obj_get();
+	struct trace *t = trace_obj_get();
 	uint32_t count;
 
-	rte_spinlock_lock(&trace->lock);
-	for (count = 0; count < trace->nb_trace_mem_list; count++) {
-		trace_mem_per_thread_free_unlocked(&trace->lcore_meta[count]);
-	}
-	trace->nb_trace_mem_list = 0;
-	rte_spinlock_unlock(&trace->lock);
+	rte_spinlock_lock(&t->lock);
+	for (count = 0; count < t->nb_trace_mem_list; count++)
+		trace_mem_per_thread_free_unlocked(&t->lcore_meta[count]);
+	t->nb_trace_mem_list = 0;
+	rte_spinlock_unlock(&t->lock);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_trace_point_emit_field, 20.05)
 void
 __rte_trace_point_emit_field(size_t sz, const char *in, const char *datatype)
 {
@@ -461,6 +477,7 @@ __rte_trace_point_emit_field(size_t sz, const char *in, const char *datatype)
 	RTE_PER_LCORE(ctf_field) = field;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_trace_point_register, 20.05)
 int
 __rte_trace_point_register(rte_trace_point_t *handle, const char *name,
 		void (*register_fn)(void))

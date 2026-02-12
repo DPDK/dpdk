@@ -6,9 +6,8 @@
 Typical usage example in a TestSuite::
 
     from framework.remote_session import PythonShell
-    python_shell = self.tg_node.create_interactive_shell(
-        PythonShell, timeout=5, privileged=True
-    )
+
+    python_shell = PythonShell(self.tg_node, timeout=5, privileged=True)
     python_shell.send_command("print('Hello World')")
     python_shell.close()
 """
@@ -16,7 +15,7 @@ Typical usage example in a TestSuite::
 from pathlib import PurePath
 from typing import ClassVar
 
-from .interactive_shell import InteractiveShell
+from .interactive_shell import InteractiveShell, only_active
 
 
 class PythonShell(InteractiveShell):
@@ -28,5 +27,12 @@ class PythonShell(InteractiveShell):
     #: This forces the prompt to appear after sending a command.
     _command_extra_chars: ClassVar[str] = "\n"
 
-    #: The Python executable.
-    path: ClassVar[PurePath] = PurePath("python3")
+    @property
+    def path(self) -> PurePath:
+        """Path to the Python3 executable."""
+        return PurePath("python3")
+
+    @only_active
+    def close(self) -> None:
+        """Close Python shell."""
+        return super().close()

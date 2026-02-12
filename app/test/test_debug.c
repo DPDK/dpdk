@@ -8,6 +8,18 @@
 #include <stdint.h>
 
 #ifdef RTE_EXEC_ENV_WINDOWS
+int
+test_panic(void)
+{
+	printf("debug not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+int
+test_exit(void)
+{
+	printf("debug not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
 static int
 test_debug(void)
 {
@@ -25,34 +37,31 @@ test_debug(void)
 #include <rte_debug.h>
 #include <rte_common.h>
 #include <rte_eal.h>
-#include <rte_service_component.h>
+#include <rte_lcore.h>
+
+#include "process.h"
 
 /*
  * Debug test
  * ==========
  */
 
-/* use fork() to test rte_panic() */
-static int
+static const char *test_args[8];
+
+int
 test_panic(void)
 {
-	int pid;
 	int status;
 
-	pid = fork();
-
-	if (pid == 0) {
+	if (getenv(RECURSIVE_ENV_VAR) != NULL) {
 		struct rlimit rl;
 
 		/* No need to generate a coredump when panicking. */
 		rl.rlim_cur = rl.rlim_max = 0;
 		setrlimit(RLIMIT_CORE, &rl);
 		rte_panic("Test Debug\n");
-	} else if (pid < 0) {
-		printf("Fork Failed\n");
-		return -1;
 	}
-	wait(&status);
+	status = process_dup(test_args, RTE_DIM(test_args), "test_panic");
 	if(status == 0){
 		printf("Child process terminated normally!\n");
 		return -1;
@@ -62,27 +71,16 @@ test_panic(void)
 	return 0;
 }
 
-/* use fork() to test rte_exit() */
 static int
 test_exit_val(int exit_val)
 {
-	int pid;
+	char buf[5];
 	int status;
 
-	/* manually cleanup EAL memory, as the fork() below would otherwise
-	 * cause the same hugepages to be free()-ed multiple times.
-	 */
-	rte_service_finalize();
-
-	pid = fork();
-
-	if (pid == 0)
-		rte_exit(exit_val, __func__);
-	else if (pid < 0){
-		printf("Fork Failed\n");
-		return -1;
-	}
-	wait(&status);
+	sprintf(buf, "%d", exit_val);
+	if (setenv("TEST_DEBUG_EXIT_VAL", buf, 1) == -1)
+		rte_panic("Failed to set exit value in env\n");
+	status = process_dup(test_args, RTE_DIM(test_args), "test_exit");
 	printf("Child process status: %d\n", status);
 	if(!WIFEXITED(status) || WEXITSTATUS(status) != (uint8_t)exit_val){
 		printf("Child process terminated with incorrect status (expected = %d)!\n",
@@ -92,11 +90,22 @@ test_exit_val(int exit_val)
 	return 0;
 }
 
-static int
+int
 test_exit(void)
 {
 	int test_vals[] = { 0, 1, 2, 255, -1 };
 	unsigned i;
+
+	if (getenv(RECURSIVE_ENV_VAR) != NULL) {
+		int exit_val;
+
+		if (!getenv("TEST_DEBUG_EXIT_VAL"))
+			rte_panic("No exit value set in env\n");
+
+		exit_val = strtol(getenv("TEST_DEBUG_EXIT_VAL"), NULL, 0);
+		rte_exit(exit_val, __func__);
+	}
+
 	for (i = 0; i < RTE_DIM(test_vals); i++) {
 		if (test_exit_val(test_vals[i]) < 0)
 			return -1;
@@ -128,6 +137,40 @@ test_usage(void)
 static int
 test_debug(void)
 {
+#ifdef RTE_EXEC_ENV_FREEBSD
+	/* BSD target doesn't support prefixes at this point, and we also need to
+	 * run another primary process here.
+	 */
+	const char * prefix = "--no-shconf";
+#else
+	const char * prefix = "--file-prefix=debug";
+#endif
+	char core[10];
+
+	sprintf(core, "%d", rte_get_main_lcore());
+
+	test_args[0] = prgname;
+	test_args[1] = prefix;
+	test_args[2] = "-l";
+	test_args[3] = core;
+
+	if (rte_eal_has_hugepages()) {
+		test_args[4] = "";
+		test_args[5] = "";
+		test_args[6] = "";
+		test_args[7] = "";
+	} else {
+		test_args[4] = "--no-huge";
+		test_args[5] = "-m";
+		test_args[6] = "2048";
+#ifdef RTE_ARCH_PPC_64
+		/* iova=pa is the default, but fails on ppc64 with --no-huge */
+		test_args[7] = "--iova-mode=va";
+#else
+		test_args[7] = "";
+#endif
+	}
+
 	rte_dump_stack();
 	if (test_panic() < 0)
 		return -1;
@@ -140,4 +183,4 @@ test_debug(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_FAST_TEST(debug_autotest, true, true, test_debug);
+REGISTER_FAST_TEST(debug_autotest, NOHUGE_OK, ASAN_OK, test_debug);

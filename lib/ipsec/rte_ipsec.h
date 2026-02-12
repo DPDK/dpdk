@@ -17,17 +17,26 @@
 #include <rte_ipsec_sa.h>
 #include <rte_mbuf.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct rte_ipsec_session;
+
+/**
+ * IPsec state for stateless processing of a batch of IPsec packets.
+ */
+struct rte_ipsec_state {
+	/**
+	 * 64 bit sequence number to be used for the first packet of the
+	 * batch of packets.
+	 */
+	uint64_t sqn;
+};
 
 /**
  * IPsec session specific functions that will be used to:
  * - prepare - for input mbufs and given IPsec session prepare crypto ops
  *   that can be enqueued into the cryptodev associated with given session
  *   (see *rte_ipsec_pkt_crypto_prepare* below for more details).
+ * - prepare_stateless - similar to prepare, but further processing is done
+ *   based on IPsec state provided by the 'state' parameter.
  * - process - finalize processing of packets after crypto-dev finished
  *   with them or process packets that are subjects to inline IPsec offload
  *   (see rte_ipsec_pkt_process for more details).
@@ -42,6 +51,17 @@ struct rte_ipsec_sa_pkt_func {
 				struct rte_mbuf *mb[],
 				uint16_t num);
 	} prepare;
+	union {
+		uint16_t (*async)(const struct rte_ipsec_session *ss,
+				struct rte_mbuf *mb[],
+				struct rte_crypto_op *cop[],
+				uint16_t num,
+				struct rte_ipsec_state *state);
+		uint16_t (*sync)(const struct rte_ipsec_session *ss,
+				struct rte_mbuf *mb[],
+				uint16_t num,
+				struct rte_ipsec_state *state);
+	} prepare_stateless;
 	uint16_t (*process)(const struct rte_ipsec_session *ss,
 				struct rte_mbuf *mb[],
 				uint16_t num);
@@ -129,6 +149,66 @@ rte_ipsec_pkt_cpu_prepare(const struct rte_ipsec_session *ss,
 }
 
 /**
+ * Same as *rte_ipsec_pkt_crypto_prepare*, but processing is done based on
+ * IPsec state provided by the 'state' parameter. Internal IPsec state won't
+ * be updated when this API is called.
+ *
+ * For input mbufs and given IPsec session prepare crypto ops that can be
+ * enqueued into the cryptodev associated with given session.
+ * expects that for each input packet:
+ *      - l2_len, l3_len are setup correctly
+ * Note that erroneous mbufs are not freed by the function,
+ * but are placed beyond last valid mbuf in the *mb* array.
+ * It is a user responsibility to handle them further.
+ * @param ss
+ *   Pointer to the *rte_ipsec_session* object the packets belong to.
+ * @param mb
+ *   The address of an array of *num* pointers to *rte_mbuf* structures
+ *   which contain the input packets.
+ * @param cop
+ *   The address of an array of *num* pointers to the output *rte_crypto_op*
+ *   structures.
+ * @param num
+ *   The maximum number of packets to process.
+ * @param state
+ *   The IPsec state to be used for processing current batch of packets.
+ * @return
+ *   Number of successfully processed packets, with error code set in rte_errno.
+ */
+__rte_experimental
+static inline uint16_t
+rte_ipsec_pkt_crypto_prepare_stateless(const struct rte_ipsec_session *ss,
+	struct rte_mbuf *mb[], struct rte_crypto_op *cop[], uint16_t num,
+	struct rte_ipsec_state *state)
+{
+	return ss->pkt_func.prepare_stateless.async(ss, mb, cop, num, state);
+}
+
+/**
+ * Same as *rte_ipsec_pkt_crypto_prepare_stateless*, but processing is done
+ * in synchronous mode.
+ *
+ * @param ss
+ *   Pointer to the *rte_ipsec_session* object the packets belong to.
+ * @param mb
+ *   The address of an array of *num* pointers to *rte_mbuf* structures
+ *   which contain the input packets.
+ * @param num
+ *   The maximum number of packets to process.
+ * @param state
+ *   The IPsec state to be used for processing current batch of packets.
+ * @return
+ *   Number of successfully processed packets, with error code set in rte_errno.
+ */
+__rte_experimental
+static inline uint16_t
+rte_ipsec_pkt_cpu_prepare_stateless(const struct rte_ipsec_session *ss,
+	struct rte_mbuf *mb[], uint16_t num, struct rte_ipsec_state *state)
+{
+	return ss->pkt_func.prepare_stateless.sync(ss, mb, num, state);
+}
+
+/**
  * Finalise processing of packets after crypto-dev finished with them or
  * process packets that are subjects to inline IPsec offload.
  * Expects that for each input packet:
@@ -180,6 +260,10 @@ void
 rte_ipsec_telemetry_sa_del(const struct rte_ipsec_sa *sa);
 
 #include <rte_ipsec_group.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifdef __cplusplus
 }

@@ -6,6 +6,8 @@
 #ifndef __NFP_FLOWER_REPRESENTOR_H__
 #define __NFP_FLOWER_REPRESENTOR_H__
 
+#include <ethdev_driver.h>
+
 #include "nfp_flower.h"
 
 struct nfp_flower_representor {
@@ -17,13 +19,24 @@ struct nfp_flower_representor {
 	char name[RTE_ETH_NAME_MAX_LEN];
 	struct rte_ether_addr mac_addr;
 	struct nfp_app_fw_flower *app_fw_flower;
-	struct rte_ring *ring;
+	struct rte_ring **ring;
 	struct rte_eth_link link;
 	struct rte_eth_stats repr_stats;
-	struct rte_eth_dev *eth_dev;
+	struct eth_queue_stats repr_qstats;
+
+	struct rte_eth_xstat *repr_xstats_base;
+	uint8_t *mac_stats;
+	/** Sequential physical port number, only valid for repr of physical port */
+	uint8_t idx;
 };
 
-int nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower);
+int nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_net_hw_priv *hw_priv);
 bool nfp_flower_repr_is_vf(struct nfp_flower_representor *repr);
+bool nfp_flower_repr_is_phy(struct nfp_flower_representor *repr);
+int nfp_flower_repr_stats_reset(struct rte_eth_dev *ethdev);
+int nfp_flower_repr_link_update(struct rte_eth_dev *dev,
+		__rte_unused int wait_to_complete);
+bool nfp_flower_repr_is_pf(struct rte_eth_dev *dev);
 
 #endif /* __NFP_FLOWER_REPRESENTOR_H__ */

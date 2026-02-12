@@ -60,7 +60,7 @@ Arguments of ``test()`` that can be provided in meson.build are as below:
 
 Note: the content of meson ``--test-args`` option and the content of ``args``
 are appended when invoking the DPDK test binary.
-Because of this, it is recommended not to set any default coremask or memory
+Because of this, it is recommended not to set any default corelist or memory
 configuration in per test ``args`` and rather let users select what best fits
 their environment. If a test can't run, then it should be skipped, as described
 below.

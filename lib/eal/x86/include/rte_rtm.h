@@ -7,7 +7,7 @@
 
 #include <immintrin.h>
 
-/* Official RTM intrinsics interface matching gcc/icc, but works
+/* Official RTM intrinsics interface matching gcc, but works
    on older gcc compatible compilers and binutils. */
 
 #include <rte_common.h>

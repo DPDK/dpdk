@@ -1,9 +1,0 @@
-INTERNAL {
-	global:
-
-	nitrox_logtype;
-	nitrox_qp_release;
-	nitrox_qp_setup;
-
-	local: *;
-};

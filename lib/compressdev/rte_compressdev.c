@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <inttypes.h>
 
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
 #include <dev_driver.h>
@@ -28,6 +29,18 @@ static struct rte_compressdev_global compressdev_globals = {
 		.max_devs		= RTE_COMPRESS_MAX_DEVS
 };
 
+RTE_EXPORT_SYMBOL(rte_compressdev_capability_get)
+
+static inline uint8_t
+rte_compressdev_is_valid_device_data(uint8_t dev_id)
+{
+	if (dev_id >= RTE_COMPRESS_MAX_DEVS ||
+			compressdev_globals.devs[dev_id].data == NULL)
+		return 0;
+
+	return 1;
+}
+
 const struct rte_compressdev_capabilities *
 rte_compressdev_capability_get(uint8_t dev_id,
 			enum rte_comp_algorithm algo)
@@ -36,10 +49,11 @@ rte_compressdev_capability_get(uint8_t dev_id,
 	struct rte_compressdev_info dev_info;
 	int i = 0;
 
-	if (dev_id >= compressdev_globals.nb_devs) {
+	if (!rte_compressdev_is_valid_device_data(dev_id)) {
 		COMPRESSDEV_LOG(ERR, "Invalid dev_id=%d", dev_id);
 		return NULL;
 	}
+
 	rte_compressdev_info_get(dev_id, &dev_info);
 
 	while ((capability = &dev_info.capabilities[i++])->algo !=
@@ -51,6 +65,7 @@ rte_compressdev_capability_get(uint8_t dev_id,
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_get_feature_name)
 const char *
 rte_compressdev_get_feature_name(uint64_t flag)
 {
@@ -80,6 +95,7 @@ rte_compressdev_get_dev(uint8_t dev_id)
 	return &compressdev_globals.devs[dev_id];
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_pmd_get_named_dev)
 struct rte_compressdev *
 rte_compressdev_pmd_get_named_dev(const char *name)
 {
@@ -105,7 +121,7 @@ rte_compressdev_is_valid_dev(uint8_t dev_id)
 {
 	struct rte_compressdev *dev = NULL;
 
-	if (dev_id >= compressdev_globals.nb_devs)
+	if (!rte_compressdev_is_valid_device_data(dev_id))
 		return 0;
 
 	dev = rte_compressdev_get_dev(dev_id);
@@ -116,6 +132,7 @@ rte_compressdev_is_valid_dev(uint8_t dev_id)
 }
 
 
+RTE_EXPORT_SYMBOL(rte_compressdev_get_dev_id)
 int
 rte_compressdev_get_dev_id(const char *name)
 {
@@ -124,22 +141,24 @@ rte_compressdev_get_dev_id(const char *name)
 	if (name == NULL)
 		return -1;
 
-	for (i = 0; i < compressdev_globals.nb_devs; i++)
-		if ((strcmp(compressdev_globals.devs[i].data->name, name)
-				== 0) &&
-				(compressdev_globals.devs[i].attached ==
+	for (i = 0; i < compressdev_globals.max_devs; i++)
+		if (compressdev_globals.devs[i].data != NULL &&
+		    (strcmp(compressdev_globals.devs[i].data->name, name) == 0)
+		    && (compressdev_globals.devs[i].attached ==
 						RTE_COMPRESSDEV_ATTACHED))
 			return i;
 
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_count)
 uint8_t
 rte_compressdev_count(void)
 {
 	return compressdev_globals.nb_devs;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_devices_get)
 uint8_t
 rte_compressdev_devices_get(const char *driver_name, uint8_t *devices,
 	uint8_t nb_devices)
@@ -165,6 +184,7 @@ rte_compressdev_devices_get(const char *driver_name, uint8_t *devices,
 	return count;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_socket_id)
 int
 rte_compressdev_socket_id(uint8_t dev_id)
 {
@@ -222,6 +242,7 @@ rte_compressdev_find_free_device_index(void)
 	return RTE_COMPRESS_MAX_DEVS;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_pmd_allocate)
 struct rte_compressdev *
 rte_compressdev_pmd_allocate(const char *name, int socket_id)
 {
@@ -268,6 +289,7 @@ rte_compressdev_pmd_allocate(const char *name, int socket_id)
 	return compressdev;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_pmd_release_device)
 int
 rte_compressdev_pmd_release_device(struct rte_compressdev *compressdev)
 {
@@ -288,6 +310,7 @@ rte_compressdev_pmd_release_device(struct rte_compressdev *compressdev)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_queue_pair_count)
 uint16_t
 rte_compressdev_queue_pair_count(uint8_t dev_id)
 {
@@ -316,9 +339,9 @@ rte_compressdev_queue_pairs_config(struct rte_compressdev *dev,
 
 	memset(&dev_info, 0, sizeof(struct rte_compressdev_info));
 
-	if (*dev->dev_ops->dev_infos_get == NULL)
+	if (dev->dev_ops->dev_infos_get == NULL)
 		return -ENOTSUP;
-	(*dev->dev_ops->dev_infos_get)(dev, &dev_info);
+	dev->dev_ops->dev_infos_get(dev, &dev_info);
 
 	if ((dev_info.max_nb_queue_pairs != 0) &&
 			(nb_qpairs > dev_info.max_nb_queue_pairs)) {
@@ -346,11 +369,11 @@ rte_compressdev_queue_pairs_config(struct rte_compressdev *dev,
 
 		qp = dev->data->queue_pairs;
 
-		if (*dev->dev_ops->queue_pair_release == NULL)
+		if (dev->dev_ops->queue_pair_release == NULL)
 			return -ENOTSUP;
 
 		for (i = nb_qpairs; i < old_nb_queues; i++) {
-			ret = (*dev->dev_ops->queue_pair_release)(dev, i);
+			ret = dev->dev_ops->queue_pair_release(dev, i);
 			if (ret < 0)
 				return ret;
 		}
@@ -397,11 +420,11 @@ rte_compressdev_queue_pairs_release(struct rte_compressdev *dev)
 	COMPRESSDEV_LOG(DEBUG, "Free %d queues pairs on device %u",
 			dev->data->nb_queue_pairs, dev->data->dev_id);
 
-	if (*dev->dev_ops->queue_pair_release == NULL)
+	if (dev->dev_ops->queue_pair_release == NULL)
 		return -ENOTSUP;
 
 	for (i = 0; i < num_qps; i++) {
-		ret = (*dev->dev_ops->queue_pair_release)(dev, i);
+		ret = dev->dev_ops->queue_pair_release(dev, i);
 		if (ret < 0)
 			return ret;
 	}
@@ -413,6 +436,7 @@ rte_compressdev_queue_pairs_release(struct rte_compressdev *dev)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_configure)
 int
 rte_compressdev_configure(uint8_t dev_id, struct rte_compressdev_config *config)
 {
@@ -432,7 +456,7 @@ rte_compressdev_configure(uint8_t dev_id, struct rte_compressdev_config *config)
 		return -EBUSY;
 	}
 
-	if (*dev->dev_ops->dev_configure == NULL)
+	if (dev->dev_ops->dev_configure == NULL)
 		return -ENOTSUP;
 
 	/* Setup new number of queue pairs and reconfigure device. */
@@ -445,9 +469,10 @@ rte_compressdev_configure(uint8_t dev_id, struct rte_compressdev_config *config)
 		return diag;
 	}
 
-	return (*dev->dev_ops->dev_configure)(dev, config);
+	return dev->dev_ops->dev_configure(dev, config);
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_start)
 int
 rte_compressdev_start(uint8_t dev_id)
 {
@@ -463,7 +488,7 @@ rte_compressdev_start(uint8_t dev_id)
 
 	dev = &rte_comp_devices[dev_id];
 
-	if (*dev->dev_ops->dev_start == NULL)
+	if (dev->dev_ops->dev_start == NULL)
 		return -ENOTSUP;
 
 	if (dev->data->dev_started != 0) {
@@ -472,7 +497,7 @@ rte_compressdev_start(uint8_t dev_id)
 		return 0;
 	}
 
-	diag = (*dev->dev_ops->dev_start)(dev);
+	diag = dev->dev_ops->dev_start(dev);
 	if (diag == 0)
 		dev->data->dev_started = 1;
 	else
@@ -481,6 +506,7 @@ rte_compressdev_start(uint8_t dev_id)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_stop)
 void
 rte_compressdev_stop(uint8_t dev_id)
 {
@@ -493,7 +519,7 @@ rte_compressdev_stop(uint8_t dev_id)
 
 	dev = &rte_comp_devices[dev_id];
 
-	if (*dev->dev_ops->dev_stop == NULL)
+	if (dev->dev_ops->dev_stop == NULL)
 		return;
 
 	if (dev->data->dev_started == 0) {
@@ -502,10 +528,11 @@ rte_compressdev_stop(uint8_t dev_id)
 		return;
 	}
 
-	(*dev->dev_ops->dev_stop)(dev);
+	dev->dev_ops->dev_stop(dev);
 	dev->data->dev_started = 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_close)
 int
 rte_compressdev_close(uint8_t dev_id)
 {
@@ -532,9 +559,9 @@ rte_compressdev_close(uint8_t dev_id)
 	if (retval < 0)
 		return retval;
 
-	if (*dev->dev_ops->dev_close == NULL)
+	if (dev->dev_ops->dev_close == NULL)
 		return -ENOTSUP;
-	retval = (*dev->dev_ops->dev_close)(dev);
+	retval = dev->dev_ops->dev_close(dev);
 
 	if (retval < 0)
 		return retval;
@@ -542,6 +569,7 @@ rte_compressdev_close(uint8_t dev_id)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_queue_pair_setup)
 int
 rte_compressdev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 		uint32_t max_inflight_ops, int socket_id)
@@ -571,35 +599,33 @@ rte_compressdev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 		return -EINVAL;
 	}
 
-	if (*dev->dev_ops->queue_pair_setup == NULL)
+	if (dev->dev_ops->queue_pair_setup == NULL)
 		return -ENOTSUP;
 
-	return (*dev->dev_ops->queue_pair_setup)(dev, queue_pair_id,
-			max_inflight_ops, socket_id);
+	return dev->dev_ops->queue_pair_setup(dev, queue_pair_id, max_inflight_ops, socket_id);
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_dequeue_burst)
 uint16_t
 rte_compressdev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
 		struct rte_comp_op **ops, uint16_t nb_ops)
 {
 	struct rte_compressdev *dev = &rte_comp_devices[dev_id];
 
-	nb_ops = (*dev->dequeue_burst)
-			(dev->data->queue_pairs[qp_id], ops, nb_ops);
-
-	return nb_ops;
+	return dev->dequeue_burst(dev->data->queue_pairs[qp_id], ops, nb_ops);
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_enqueue_burst)
 uint16_t
 rte_compressdev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 		struct rte_comp_op **ops, uint16_t nb_ops)
 {
 	struct rte_compressdev *dev = &rte_comp_devices[dev_id];
 
-	return (*dev->enqueue_burst)(
-			dev->data->queue_pairs[qp_id], ops, nb_ops);
+	return dev->enqueue_burst(dev->data->queue_pairs[qp_id], ops, nb_ops);
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_stats_get)
 int
 rte_compressdev_stats_get(uint8_t dev_id, struct rte_compressdev_stats *stats)
 {
@@ -618,12 +644,13 @@ rte_compressdev_stats_get(uint8_t dev_id, struct rte_compressdev_stats *stats)
 	dev = &rte_comp_devices[dev_id];
 	memset(stats, 0, sizeof(*stats));
 
-	if (*dev->dev_ops->stats_get == NULL)
+	if (dev->dev_ops->stats_get == NULL)
 		return -ENOTSUP;
-	(*dev->dev_ops->stats_get)(dev, stats);
+	dev->dev_ops->stats_get(dev, stats);
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_stats_reset)
 void
 rte_compressdev_stats_reset(uint8_t dev_id)
 {
@@ -636,18 +663,19 @@ rte_compressdev_stats_reset(uint8_t dev_id)
 
 	dev = &rte_comp_devices[dev_id];
 
-	if (*dev->dev_ops->stats_reset == NULL)
+	if (dev->dev_ops->stats_reset == NULL)
 		return;
-	(*dev->dev_ops->stats_reset)(dev);
+	dev->dev_ops->stats_reset(dev);
 }
 
 
+RTE_EXPORT_SYMBOL(rte_compressdev_info_get)
 void
 rte_compressdev_info_get(uint8_t dev_id, struct rte_compressdev_info *dev_info)
 {
 	struct rte_compressdev *dev;
 
-	if (dev_id >= compressdev_globals.nb_devs) {
+	if (!rte_compressdev_is_valid_device_data(dev_id)) {
 		COMPRESSDEV_LOG(ERR, "Invalid dev_id=%d", dev_id);
 		return;
 	}
@@ -656,13 +684,14 @@ rte_compressdev_info_get(uint8_t dev_id, struct rte_compressdev_info *dev_info)
 
 	memset(dev_info, 0, sizeof(struct rte_compressdev_info));
 
-	if (*dev->dev_ops->dev_infos_get == NULL)
+	if (dev->dev_ops->dev_infos_get == NULL)
 		return;
-	(*dev->dev_ops->dev_infos_get)(dev, dev_info);
+	dev->dev_ops->dev_infos_get(dev, dev_info);
 
 	dev_info->driver_name = dev->device->driver->name;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_private_xform_create)
 int
 rte_compressdev_private_xform_create(uint8_t dev_id,
 		const struct rte_comp_xform *xform,
@@ -676,9 +705,9 @@ rte_compressdev_private_xform_create(uint8_t dev_id,
 	if (xform == NULL || priv_xform == NULL || dev == NULL)
 		return -EINVAL;
 
-	if (*dev->dev_ops->private_xform_create == NULL)
+	if (dev->dev_ops->private_xform_create == NULL)
 		return -ENOTSUP;
-	ret = (*dev->dev_ops->private_xform_create)(dev, xform, priv_xform);
+	ret = dev->dev_ops->private_xform_create(dev, xform, priv_xform);
 	if (ret < 0) {
 		COMPRESSDEV_LOG(ERR,
 			"dev_id %d failed to create private_xform: err=%d",
@@ -689,6 +718,7 @@ rte_compressdev_private_xform_create(uint8_t dev_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_private_xform_free)
 int
 rte_compressdev_private_xform_free(uint8_t dev_id, void *priv_xform)
 {
@@ -700,7 +730,7 @@ rte_compressdev_private_xform_free(uint8_t dev_id, void *priv_xform)
 	if (dev == NULL || priv_xform == NULL)
 		return -EINVAL;
 
-	if (*dev->dev_ops->private_xform_free == NULL)
+	if (dev->dev_ops->private_xform_free == NULL)
 		return -ENOTSUP;
 	ret = dev->dev_ops->private_xform_free(dev, priv_xform);
 	if (ret < 0) {
@@ -713,6 +743,7 @@ rte_compressdev_private_xform_free(uint8_t dev_id, void *priv_xform)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_stream_create)
 int
 rte_compressdev_stream_create(uint8_t dev_id,
 		const struct rte_comp_xform *xform,
@@ -726,9 +757,9 @@ rte_compressdev_stream_create(uint8_t dev_id,
 	if (xform == NULL || dev == NULL || stream == NULL)
 		return -EINVAL;
 
-	if (*dev->dev_ops->stream_create == NULL)
+	if (dev->dev_ops->stream_create == NULL)
 		return -ENOTSUP;
-	ret = (*dev->dev_ops->stream_create)(dev, xform, stream);
+	ret = dev->dev_ops->stream_create(dev, xform, stream);
 	if (ret < 0) {
 		COMPRESSDEV_LOG(ERR,
 			"dev_id %d failed to create stream: err=%d",
@@ -740,6 +771,7 @@ rte_compressdev_stream_create(uint8_t dev_id,
 }
 
 
+RTE_EXPORT_SYMBOL(rte_compressdev_stream_free)
 int
 rte_compressdev_stream_free(uint8_t dev_id, void *stream)
 {
@@ -751,7 +783,7 @@ rte_compressdev_stream_free(uint8_t dev_id, void *stream)
 	if (dev == NULL || stream == NULL)
 		return -EINVAL;
 
-	if (*dev->dev_ops->stream_free == NULL)
+	if (dev->dev_ops->stream_free == NULL)
 		return -ENOTSUP;
 	ret = dev->dev_ops->stream_free(dev, stream);
 	if (ret < 0) {
@@ -764,6 +796,7 @@ rte_compressdev_stream_free(uint8_t dev_id, void *stream)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_name_get)
 const char *
 rte_compressdev_name_get(uint8_t dev_id)
 {

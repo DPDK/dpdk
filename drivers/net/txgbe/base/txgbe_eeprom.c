@@ -137,7 +137,7 @@ void txgbe_release_eeprom_semaphore(struct txgbe_hw *hw)
 s32 txgbe_ee_read16(struct txgbe_hw *hw, u32 offset,
 			      u16 *data)
 {
-	const u32 mask = TXGBE_MNGSEM_SWMBX | TXGBE_MNGSEM_SWFLASH;
+	const u32 mask = TXGBE_MNGSEM_SWFLASH;
 	u32 addr = (offset << 1);
 	int err;
 
@@ -164,7 +164,7 @@ s32 txgbe_ee_read16(struct txgbe_hw *hw, u32 offset,
 s32 txgbe_ee_readw_buffer(struct txgbe_hw *hw,
 				     u32 offset, u32 words, void *data)
 {
-	const u32 mask = TXGBE_MNGSEM_SWMBX | TXGBE_MNGSEM_SWFLASH;
+	const u32 mask = TXGBE_MNGSEM_SWFLASH;
 	u32 addr = (offset << 1);
 	u32 len = (words << 1);
 	u8 *buf = (u8 *)data;
@@ -195,7 +195,7 @@ s32 txgbe_ee_readw_buffer(struct txgbe_hw *hw,
 s32 txgbe_ee_readw_sw(struct txgbe_hw *hw, u32 offset,
 			      u16 *data)
 {
-	const u32 mask = TXGBE_MNGSEM_SWMBX | TXGBE_MNGSEM_SWFLASH;
+	const u32 mask = TXGBE_MNGSEM_SWFLASH;
 	u32 addr = hw->rom.sw_addr + (offset << 1);
 	int err;
 
@@ -220,7 +220,7 @@ s32 txgbe_ee_readw_sw(struct txgbe_hw *hw, u32 offset,
  **/
 s32 txgbe_ee_read32(struct txgbe_hw *hw, u32 addr, u32 *data)
 {
-	const u32 mask = TXGBE_MNGSEM_SWMBX | TXGBE_MNGSEM_SWFLASH;
+	const u32 mask = TXGBE_MNGSEM_SWFLASH;
 	int err;
 
 	err = hw->mac.acquire_swfw_sync(hw, mask);
@@ -245,7 +245,7 @@ s32 txgbe_ee_read32(struct txgbe_hw *hw, u32 addr, u32 *data)
 s32 txgbe_ee_write16(struct txgbe_hw *hw, u32 offset,
 			       u16 data)
 {
-	const u32 mask = TXGBE_MNGSEM_SWMBX | TXGBE_MNGSEM_SWFLASH;
+	const u32 mask = TXGBE_MNGSEM_SWFLASH;
 	u32 addr = (offset << 1);
 	int err;
 
@@ -272,7 +272,7 @@ s32 txgbe_ee_write16(struct txgbe_hw *hw, u32 offset,
 s32 txgbe_ee_writew_buffer(struct txgbe_hw *hw,
 				      u32 offset, u32 words, void *data)
 {
-	const u32 mask = TXGBE_MNGSEM_SWMBX | TXGBE_MNGSEM_SWFLASH;
+	const u32 mask = TXGBE_MNGSEM_SWFLASH;
 	u32 addr = (offset << 1);
 	u32 len = (words << 1);
 	u8 *buf = (u8 *)data;
@@ -301,7 +301,7 @@ s32 txgbe_ee_writew_buffer(struct txgbe_hw *hw,
 s32 txgbe_ee_writew_sw(struct txgbe_hw *hw, u32 offset,
 			       u16 data)
 {
-	const u32 mask = TXGBE_MNGSEM_SWMBX | TXGBE_MNGSEM_SWFLASH;
+	const u32 mask = TXGBE_MNGSEM_SWFLASH;
 	u32 addr = hw->rom.sw_addr + (offset << 1);
 	int err;
 
@@ -326,7 +326,7 @@ s32 txgbe_ee_writew_sw(struct txgbe_hw *hw, u32 offset,
  **/
 s32 txgbe_ee_write32(struct txgbe_hw *hw, u32 addr, u32 data)
 {
-	const u32 mask = TXGBE_MNGSEM_SWMBX | TXGBE_MNGSEM_SWFLASH;
+	const u32 mask = TXGBE_MNGSEM_SWFLASH;
 	int err;
 
 	err = hw->mac.acquire_swfw_sync(hw, mask);
@@ -366,8 +366,13 @@ s32 txgbe_calc_eeprom_checksum(struct txgbe_hw *hw)
 		err = hw->rom.readw_buffer(hw, i, seg, buffer);
 		if (err)
 			return err;
-		for (j = 0; j < seg; j++)
+		for (j = 0; j < seg; j++) {
+			if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40)
+				if (((i + j) >= (TXGBE_SHOWROM_I2C_PTR / 2)) &&
+				    ((i + j) < (TXGBE_SHOWROM_I2C_END / 2)))
+					buffer[j] = 0xffff;
 			checksum += buffer[j];
+		}
 	}
 
 	checksum = (u16)TXGBE_EEPROM_SUM - checksum + read_checksum;
@@ -456,4 +461,3 @@ s32 txgbe_update_eeprom_checksum(struct txgbe_hw *hw)
 
 	return status;
 }
-

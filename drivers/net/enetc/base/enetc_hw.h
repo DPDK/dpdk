@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2020 NXP
+ * Copyright 2018-2024 NXP
  */
 
 #ifndef _ENETC_HW_H_
 #define _ENETC_HW_H_
 #include <rte_io.h>
+#include <ethdev_pci.h>
 
 #define BIT(x)		((uint64_t)1 << ((x)))
-
 /* ENETC device IDs */
 #define ENETC_DEV_ID_VF		0xef00
 #define ENETC_DEV_ID		0xe100
@@ -21,19 +21,28 @@
 /* SI regs, offset: 0h */
 #define ENETC_SIMR			0x0
 #define ENETC_SIMR_EN			BIT(31)
+#define ENETC_SIMR_RSSE			BIT(0)
 
+/* BDR grouping*/
+#define ENETC_SIRBGCR			0x38
 #define ENETC_SICAR0			0x40
 #define ENETC_SICAR0_COHERENT		0x2B2B6727
 #define ENETC_SIPMAR0			0x80
 #define ENETC_SIPMAR1			0x84
 
 #define ENETC_SICAPR0			0x900
+#define ENETC_SICAPR0_BDR_MASK		0xFF
 #define ENETC_SICAPR1			0x904
 
 #define ENETC_SIMSITRV(n)		(0xB00 + (n) * 0x4)
 #define ENETC_SIMSIRRV(n)		(0xB80 + (n) * 0x4)
 
 #define ENETC_SICCAPR			0x1200
+
+#define ENETC_SIPCAPR0			0x20
+#define ENETC_SIPCAPR0_RSS		BIT(8)
+#define ENETC_SIRSSCAPR			0x1600
+#define ENETC_SIRSSCAPR_GET_NUM_RSS(val) (BIT((val) & 0xf) * 32)
 
 /* enum for BD type */
 enum enetc_bdr_type {TX, RX};
@@ -44,6 +53,7 @@ enum enetc_bdr_type {TX, RX};
 #define ENETC_RBMR		0x0 /* RX BDR mode register*/
 #define ENETC_RBMR_EN		BIT(31)
 
+#define ENETC_BMR_RESET		0x0 /* BDR reset*/
 #define ENETC_RBSR		0x4  /* Rx BDR status register*/
 #define ENETC_RBBSR		0x8  /* Rx BDR buffer size register*/
 #define ENETC_RBCIR		0xc  /* Rx BDR consumer index register*/
@@ -196,6 +206,7 @@ enum enetc_bdr_type {TX, RX};
 #define ENETC_PKT_TYPE_ETHER            0x0060
 #define ENETC_PKT_TYPE_IPV4             0x0000
 #define ENETC_PKT_TYPE_IPV6             0x0020
+#define ENETC_PKT_TYPE_IPV6_EXT         0x0080
 #define ENETC_PKT_TYPE_IPV4_TCP \
 			(0x0010 | ENETC_PKT_TYPE_IPV4)
 #define ENETC_PKT_TYPE_IPV6_TCP \
@@ -208,6 +219,10 @@ enum enetc_bdr_type {TX, RX};
 			(0x0013 | ENETC_PKT_TYPE_IPV4)
 #define ENETC_PKT_TYPE_IPV6_SCTP \
 			(0x0013 | ENETC_PKT_TYPE_IPV6)
+#define ENETC_PKT_TYPE_IPV4_FRAG \
+			(0x0001 | ENETC_PKT_TYPE_IPV4)
+#define ENETC_PKT_TYPE_IPV6_FRAG \
+			(0x0001 | ENETC_PKT_TYPE_IPV6_EXT | ENETC_PKT_TYPE_IPV6)
 #define ENETC_PKT_TYPE_IPV4_ICMP \
 			(0x0003 | ENETC_PKT_TYPE_IPV4)
 #define ENETC_PKT_TYPE_IPV6_ICMP \
@@ -226,15 +241,6 @@ struct enetc_eth_mac_info {
 	uint8_t get_link_status;
 };
 
-struct enetc_eth_hw {
-	struct rte_eth_dev *ndev;
-	struct enetc_hw hw;
-	uint16_t device_id;
-	uint16_t vendor_id;
-	uint8_t revision_id;
-	struct enetc_eth_mac_info mac;
-};
-
 /* Transmit Descriptor */
 struct enetc_tx_desc {
 	uint64_t addr;
@@ -248,8 +254,19 @@ struct enetc_tx_bd {
 	uint64_t addr;
 	uint16_t buf_len;
 	uint16_t frm_len;
-	uint16_t err_csum;
-	uint16_t flags;
+	union {
+		struct {
+			uint8_t l3_start:7;
+			uint8_t ipcs:1;
+			uint8_t l3_hdr_size:7;
+			uint8_t l3t:1;
+			uint8_t resv:5;
+			uint8_t l4t:3;
+			uint16_t flags;
+		};/* default layout */
+		uint32_t txstart;
+		uint32_t lstatus;
+	};
 };
 
 /* RX buffer descriptor */
@@ -267,11 +284,13 @@ union enetc_rx_bd {
 		union {
 			struct {
 				uint16_t flags;
-				uint16_t error;
+				uint8_t error;
+				uint8_t resv:6;
+				uint8_t r:1;
+				uint8_t f:1;
 			};
 			uint32_t lstatus;
 		};
 	} r;
 };
-
 #endif

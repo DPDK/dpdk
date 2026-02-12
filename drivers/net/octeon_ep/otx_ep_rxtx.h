@@ -32,6 +32,9 @@ otx_ep_incr_index(uint32_t index, uint32_t count, uint32_t max)
 	return ((index + count) & (max - 1));
 }
 
+void
+cnxk_ep_drain_rx_pkts(void *rx_queue);
+
 uint16_t
 otx_ep_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts);
 

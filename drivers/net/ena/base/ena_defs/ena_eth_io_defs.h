@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: BSD-3-Clause
- * Copyright (c) 2015-2020 Amazon.com, Inc. or its affiliates.
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright (c) Amazon.com, Inc. or its affiliates.
  * All rights reserved.
  */
+
 #ifndef _ENA_ETH_IO_H_
 #define _ENA_ETH_IO_H_
 
@@ -162,6 +163,14 @@ struct ena_eth_io_tx_cdesc {
 	uint16_t sq_head_idx;
 };
 
+struct ena_eth_io_tx_cdesc_ext {
+	struct ena_eth_io_tx_cdesc base;
+
+	uint32_t timestamp_low;
+
+	uint32_t timestamp_high;
+};
+
 struct ena_eth_io_rx_desc {
 	/* In bytes. 0 means 64KB */
 	uint16_t length;
@@ -254,9 +263,9 @@ struct ena_eth_io_rx_cdesc_ext {
 
 	uint16_t reserved16;
 
-	uint32_t reserved_w6;
+	uint32_t timestamp_low;
 
-	uint32_t reserved_w7;
+	uint32_t timestamp_high;
 };
 
 struct ena_eth_io_intr_reg {
@@ -964,14 +973,15 @@ static inline void set_ena_eth_io_intr_reg_intr_unmask(struct ena_eth_io_intr_re
 	p->intr_control |= (val << ENA_ETH_IO_INTR_REG_INTR_UNMASK_SHIFT) & ENA_ETH_IO_INTR_REG_INTR_UNMASK_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_intr_reg_no_mod_update(const struct ena_eth_io_intr_reg *p)
+static inline
+uint32_t get_ena_eth_io_intr_reg_no_moderation_update(const struct ena_eth_io_intr_reg *p)
 {
 	return (p->intr_control & ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_MASK) >>
 			ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_SHIFT;
 }
 
-static inline void set_ena_eth_io_intr_reg_no_mod_update(struct ena_eth_io_intr_reg *p,
-									     uint32_t val)
+static inline
+void set_ena_eth_io_intr_reg_no_moderation_update(struct ena_eth_io_intr_reg *p, uint32_t val)
 {
 	p->intr_control |= (val << ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_SHIFT) &
 			ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_MASK;

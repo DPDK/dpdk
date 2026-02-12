@@ -466,7 +466,7 @@ create_cipher_auth_sglist(struct nitrox_softreq *sr,
 	if (unlikely(
 		op->sym->cipher.data.offset + op->sym->cipher.data.length !=
 		op->sym->auth.data.offset + op->sym->auth.data.length)) {
-		NITROX_LOG(ERR, "Auth only data after cipher data not supported\n");
+		NITROX_LOG_LINE(ERR, "Auth only data after cipher data not supported");
 		return -ENOTSUP;
 	}
 
@@ -679,7 +679,7 @@ softreq_copy_salt(struct nitrox_softreq *sr)
 	uint8_t *addr;
 
 	if (unlikely(ctx->iv.length < AES_GCM_SALT_SIZE)) {
-		NITROX_LOG(ERR, "Invalid IV length %d\n", ctx->iv.length);
+		NITROX_LOG_LINE(ERR, "Invalid IV length %d", ctx->iv.length);
 		return -EINVAL;
 	}
 
@@ -829,8 +829,8 @@ nitrox_process_se_req(uint16_t qno, struct rte_crypto_op *op,
 	if (unlikely(op->sym->m_src->nb_segs > MAX_SUPPORTED_MBUF_SEGS ||
 		     (op->sym->m_dst &&
 		      op->sym->m_dst->nb_segs > MAX_SUPPORTED_MBUF_SEGS))) {
-		NITROX_LOG(ERR, "Mbuf segments not supported. "
-			   "Max supported %d\n", MAX_SUPPORTED_MBUF_SEGS);
+		NITROX_LOG_LINE(ERR, "Mbuf segments not supported. "
+			   "Max supported %d", MAX_SUPPORTED_MBUF_SEGS);
 		return -ENOTSUP;
 	}
 
@@ -865,7 +865,7 @@ nitrox_check_se_req(struct nitrox_softreq *sr, struct rte_crypto_op **op)
 		return -EAGAIN;
 
 	if (unlikely(err))
-		NITROX_LOG(ERR, "Request err 0x%x, orh 0x%"PRIx64"\n", err,
+		NITROX_LOG_LINE(ERR, "Request err 0x%x, orh 0x%"PRIx64, err,
 			   sr->resp.orh);
 
 	*op = sr->op;
@@ -901,7 +901,7 @@ nitrox_sym_req_pool_create(struct rte_cryptodev *cdev, uint32_t nobjs,
 				64, 0, NULL, NULL, req_pool_obj_init, NULL,
 				socket_id, 0);
 	if (unlikely(!mp))
-		NITROX_LOG(ERR, "Failed to create req pool, qid %d, err %d\n",
+		NITROX_LOG_LINE(ERR, "Failed to create req pool, qid %d, err %d",
 			   qp_id, rte_errno);
 
 	return mp;

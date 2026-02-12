@@ -5,12 +5,12 @@
 #ifndef RTE_XXH64_AVX512_H
 #define RTE_XXH64_AVX512_H
 
+#include <rte_common.h>
+#include <immintrin.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_common.h>
-#include <immintrin.h>
 
 /* 0b1001111000110111011110011011000110000101111010111100101010000111 */
 static const uint64_t PRIME64_1 = 0x9E3779B185EBCA87ULL;

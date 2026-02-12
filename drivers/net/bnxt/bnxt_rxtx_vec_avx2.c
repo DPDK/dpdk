@@ -660,18 +660,19 @@ uint16_t
 bnxt_recv_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 			 uint16_t nb_pkts)
 {
+	struct bnxt_rx_queue *rxq = rx_queue;
+	uint32_t brst = rxq->rx_free_thresh;
 	uint16_t cnt = 0;
 
-	while (nb_pkts > RTE_BNXT_MAX_RX_BURST) {
+	while (nb_pkts > brst) {
 		uint16_t burst;
 
-		burst = recv_burst_vec_avx2(rx_queue, rx_pkts + cnt,
-					     RTE_BNXT_MAX_RX_BURST);
+		burst = recv_burst_vec_avx2(rx_queue, rx_pkts + cnt, brst);
 
 		cnt += burst;
 		nb_pkts -= burst;
 
-		if (burst < RTE_BNXT_MAX_RX_BURST)
+		if (burst < brst)
 			return cnt;
 	}
 	return cnt + recv_burst_vec_avx2(rx_queue, rx_pkts + cnt, nb_pkts);
@@ -681,18 +682,19 @@ uint16_t
 bnxt_crx_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 		       uint16_t nb_pkts)
 {
+	struct bnxt_rx_queue *rxq = rx_queue;
+	uint32_t brst = rxq->rx_free_thresh;
 	uint16_t cnt = 0;
 
-	while (nb_pkts > RTE_BNXT_MAX_RX_BURST) {
+	while (nb_pkts > brst) {
 		uint16_t burst;
 
-		burst = crx_burst_vec_avx2(rx_queue, rx_pkts + cnt,
-					     RTE_BNXT_MAX_RX_BURST);
+		burst = crx_burst_vec_avx2(rx_queue, rx_pkts + cnt, brst);
 
 		cnt += burst;
 		nb_pkts -= burst;
 
-		if (burst < RTE_BNXT_MAX_RX_BURST)
+		if (burst < brst)
 			return cnt;
 	}
 	return cnt + crx_burst_vec_avx2(rx_queue, rx_pkts + cnt, nb_pkts);
@@ -869,7 +871,7 @@ bnxt_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	/* Tx queue was stopped; wait for it to be restarted */
 	if (unlikely(!txq->tx_started)) {
-		PMD_DRV_LOG(DEBUG, "Tx q stopped;return\n");
+		PMD_DRV_LOG_LINE(DEBUG, "Tx q stopped;return");
 		return 0;
 	}
 

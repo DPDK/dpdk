@@ -5,6 +5,8 @@
 #ifndef _GRO_TCP6_H_
 #define _GRO_TCP6_H_
 
+#include <rte_ip6.h>
+
 #include "gro_tcp.h"
 
 #define GRO_TCP6_TBL_MAX_ITEM_NUM (1024UL * 1024UL)
@@ -12,8 +14,8 @@
 /* Header fields representing a TCP/IPv6 flow */
 struct tcp6_flow_key {
 	struct cmn_tcp_key cmn_key;
-	uint8_t  src_addr[16];
-	uint8_t  dst_addr[16];
+	struct rte_ipv6_addr src_addr;
+	struct rte_ipv6_addr dst_addr;
 	rte_be32_t vtc_flow;
 };
 

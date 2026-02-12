@@ -14,35 +14,38 @@ performance testing. In functional testing, we need to be able to dissect each a
 and a capturing traffic generator is required.
 """
 
-# pylama:ignore=W0611
-
-from framework.config import ScapyTrafficGeneratorConfig, TrafficGeneratorType
+from framework.config.test_run import (
+    ScapyTrafficGeneratorConfig,
+    TrafficGeneratorConfig,
+    TrexTrafficGeneratorConfig,
+)
 from framework.exception import ConfigurationError
 from framework.testbed_model.node import Node
 
-from .capturing_traffic_generator import (
-    CapturingTrafficGenerator,
-    PacketFilteringConfig,
-)
 from .scapy import ScapyTrafficGenerator
+from .traffic_generator import TrafficGenerator
+from .trex import TrexTrafficGenerator
 
 
 def create_traffic_generator(
-    tg_node: Node, traffic_generator_config: ScapyTrafficGeneratorConfig
-) -> CapturingTrafficGenerator:
+    traffic_generator_config: TrafficGeneratorConfig, node: Node
+) -> TrafficGenerator:
     """The factory function for creating traffic generator objects from the test run configuration.
 
     Args:
-        tg_node: The traffic generator node where the created traffic generator will be running.
         traffic_generator_config: The traffic generator config.
+        node: The node where the created traffic generator will be running.
 
     Returns:
         A traffic generator capable of capturing received packets.
+
+    Raises:
+        ConfigurationError: If an unknown traffic generator has been setup.
     """
-    match traffic_generator_config.traffic_generator_type:
-        case TrafficGeneratorType.SCAPY:
-            return ScapyTrafficGenerator(tg_node, traffic_generator_config)
+    match traffic_generator_config:
+        case ScapyTrafficGeneratorConfig():
+            return ScapyTrafficGenerator(node, traffic_generator_config, privileged=True)
+        case TrexTrafficGeneratorConfig():
+            return TrexTrafficGenerator(node, traffic_generator_config)
         case _:
-            raise ConfigurationError(
-                "Unknown traffic generator: {traffic_generator_config.traffic_generator_type}"
-            )
+            raise ConfigurationError(f"Unknown traffic generator: {traffic_generator_config.type}")

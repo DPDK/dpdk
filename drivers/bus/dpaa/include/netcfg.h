@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2010-2012 Freescale Semiconductor, Inc.
  * All rights reserved.
@@ -29,20 +29,6 @@ struct netcfg_info {
 	/**< Variable structure array of size num_ethports */
 };
 
-struct interface_info {
-	char *name;
-	struct rte_ether_addr mac_addr;
-	struct rte_ether_addr peer_mac;
-	int mac_present;
-	int fman_enabled_mac_interface;
-};
-
-struct netcfg_interface {
-	uint8_t numof_netcfg_interface;
-	uint8_t numof_fman_enabled_macless;
-	struct interface_info interface_info[];
-};
-
 /* pcd_file: FMC netpcd XML ("policy") file, that contains PCD information.
  * cfg_file: FMC config XML file
  * Returns the configuration information in newly allocated memory.
@@ -60,7 +46,7 @@ void netcfg_release(struct netcfg_info *cfg_ptr);
 /* cfg_ptr: configuration information pointer.
  * This function dumps configuration data to stdout.
  */
-void dump_netcfg(struct netcfg_info *cfg_ptr);
+void dump_netcfg(struct netcfg_info *cfg_ptr, FILE *f);
 #endif
 
 #endif /* __NETCFG_H */

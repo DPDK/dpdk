@@ -4,13 +4,6 @@
 NVIDIA BlueField Board Support Package
 ======================================
 
-.. note::
-
-   NVIDIA acquired Mellanox Technologies in 2020.
-   The DPDK documentation and code might still include instances
-   of or references to Mellanox trademarks (like BlueField and ConnectX)
-   that are now NVIDIA trademarks.
-
 This document has information about steps to setup NVIDIA BlueField platform
 and common offload HW drivers of **NVIDIA BlueField** family SoC.
 
@@ -18,8 +11,21 @@ and common offload HW drivers of **NVIDIA BlueField** family SoC.
 Supported BlueField Platforms
 -----------------------------
 
-- `BlueField-2 <https://docs.nvidia.com/networking/display/BlueField2DPUENUG/Introduction>`_
-- `BlueField-3 <https://docs.nvidia.com/networking/display/BlueField3DPU/Introduction>`_
+- `BlueField-2 <https://docs.nvidia.com/networking/display/bluefield2dpuenug>`_
+- `BlueField-3 <https://docs.nvidia.com/networking/display/bf3dpu>`_
+
+The following table highlights key differences between BlueField-2 and BlueField-3:
+
+.. table:: BlueField-2 vs BlueField-3 Comparison
+
+   =========================== =================== ===================
+   Feature                     BlueField-2         BlueField-3
+   =========================== =================== ===================
+   **Networking Speed**        Up to 200 Gb/s      Up to 400 Gb/s
+   **Processing Cores**        8 ARM Cortex-A72    16 ARM Cortex-A78
+   **Memory**                  16GB DDR4           32 GB DDR5
+   **Integrated Networking**   ConnectX-6          ConnectX-7
+   =========================== =================== ===================
 
 
 Common Offload HW Drivers
@@ -53,6 +59,14 @@ Compile DPDK
 
 DPDK can be compiled either natively on BlueField platforms or cross-compiled on
 an x86 based platform.
+
+.. note::
+
+   Starting with DPDK 25.03, the option ``-mcpu=cortex-a78ae`` is required
+   for optimal performance on BlueField-3.
+   If the compiler does not support this option, a fallback is possible
+   with ``-Dplatform=generic`` for native compilation,
+   or with ``--cross-file config/arm/arm64_armv8_linux_gcc`` for cross-compilation.
 
 Native Compilation
 ~~~~~~~~~~~~~~~~~~

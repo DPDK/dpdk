@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2022 Intel Corporation
- * Copyright(c) 2023 AMD Corporation
+ * Copyright(c) 2024 Advanced Micro Devices, Inc.
  */
 
 #ifndef RTE_POWER_UNCORE_H
@@ -8,11 +8,11 @@
 
 /**
  * @file
- * RTE Uncore Frequency Management
+ * Uncore Frequency Management
  */
 
 #include <rte_compat.h>
-#include "rte_power.h"
+#include <rte_common.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -116,9 +116,7 @@ rte_power_uncore_exit(unsigned int pkg, unsigned int die);
  *  The current index of available frequencies.
  *  If error, it will return 'RTE_POWER_INVALID_FREQ_INDEX = (~0)'.
  */
-typedef uint32_t (*rte_power_get_uncore_freq_t)(unsigned int pkg, unsigned int die);
-
-extern rte_power_get_uncore_freq_t rte_power_get_uncore_freq;
+uint32_t rte_power_get_uncore_freq(unsigned int pkg, unsigned int die);
 
 /**
  * Set minimum and maximum uncore frequency for specified die on a package
@@ -141,12 +139,14 @@ extern rte_power_get_uncore_freq_t rte_power_get_uncore_freq;
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-typedef int (*rte_power_set_uncore_freq_t)(unsigned int pkg, unsigned int die, uint32_t index);
-
-extern rte_power_set_uncore_freq_t rte_power_set_uncore_freq;
+int rte_power_set_uncore_freq(unsigned int pkg, unsigned int die, uint32_t index);
 
 /**
- * Function pointer definition for generic frequency change functions.
+ * Set minimum and maximum uncore frequency for specified die on a package
+ * to maximum value according to the available frequencies.
+ * It should be protected outside of this function for threadsafe.
+ *
+ * This function should NOT be called in the fast path.
  *
  * @param pkg
  *  Package number.
@@ -160,16 +160,7 @@ extern rte_power_set_uncore_freq_t rte_power_set_uncore_freq;
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-typedef int (*rte_power_uncore_freq_change_t)(unsigned int pkg, unsigned int die);
-
-/**
- * Set minimum and maximum uncore frequency for specified die on a package
- * to maximum value according to the available frequencies.
- * It should be protected outside of this function for threadsafe.
- *
- * This function should NOT be called in the fast path.
- */
-extern rte_power_uncore_freq_change_t rte_power_uncore_freq_max;
+int rte_power_uncore_freq_max(unsigned int pkg, unsigned int die);
 
 /**
  * Set minimum and maximum uncore frequency for specified die on a package
@@ -177,8 +168,20 @@ extern rte_power_uncore_freq_change_t rte_power_uncore_freq_max;
  * It should be protected outside of this function for threadsafe.
  *
  * This function should NOT be called in the fast path.
+ *
+ * @param pkg
+ *  Package number.
+ *  Each physical CPU in a system is referred to as a package.
+ * @param die
+ *  Die number.
+ *  Each package can have several dies connected together via the uncore mesh.
+ *
+ * @return
+ *  - 1 on success with frequency changed.
+ *  - 0 on success without frequency changed.
+ *  - Negative on error.
  */
-extern rte_power_uncore_freq_change_t rte_power_uncore_freq_min;
+int rte_power_uncore_freq_min(unsigned int pkg, unsigned int die);
 
 /**
  * Return the list of available frequencies in the index array.
@@ -200,10 +203,9 @@ extern rte_power_uncore_freq_change_t rte_power_uncore_freq_min;
  *  - The number of available index's in frequency array.
  *  - Negative on error.
  */
-typedef int (*rte_power_uncore_freqs_t)(unsigned int pkg, unsigned int die,
+__rte_experimental
+int rte_power_uncore_freqs(unsigned int pkg, unsigned int die,
 		uint32_t *freqs, uint32_t num);
-
-extern rte_power_uncore_freqs_t rte_power_uncore_freqs;
 
 /**
  * Return the list length of available frequencies in the index array.
@@ -221,9 +223,7 @@ extern rte_power_uncore_freqs_t rte_power_uncore_freqs;
  *  - The number of available index's in frequency array.
  *  - Negative on error.
  */
-typedef int (*rte_power_uncore_get_num_freqs_t)(unsigned int pkg, unsigned int die);
-
-extern rte_power_uncore_get_num_freqs_t rte_power_uncore_get_num_freqs;
+int rte_power_uncore_get_num_freqs(unsigned int pkg, unsigned int die);
 
 /**
  * Return the number of packages (CPUs) on a system
@@ -235,9 +235,7 @@ extern rte_power_uncore_get_num_freqs_t rte_power_uncore_get_num_freqs;
  *  - Zero on error.
  *  - Number of package on system on success.
  */
-typedef unsigned int (*rte_power_uncore_get_num_pkgs_t)(void);
-
-extern rte_power_uncore_get_num_pkgs_t rte_power_uncore_get_num_pkgs;
+unsigned int rte_power_uncore_get_num_pkgs(void);
 
 /**
  * Return the number of dies for pakckages (CPUs) specified
@@ -253,9 +251,7 @@ extern rte_power_uncore_get_num_pkgs_t rte_power_uncore_get_num_pkgs;
  *  - Zero on error.
  *  - Number of dies for package on sucecss.
  */
-typedef unsigned int (*rte_power_uncore_get_num_dies_t)(unsigned int pkg);
-
-extern rte_power_uncore_get_num_dies_t rte_power_uncore_get_num_dies;
+unsigned int rte_power_uncore_get_num_dies(unsigned int pkg);
 
 #ifdef __cplusplus
 }

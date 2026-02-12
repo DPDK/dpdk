@@ -67,7 +67,7 @@ static unsigned int l2fwd_rx_queue_per_lcore = 1;
 #define MAX_RX_QUEUE_PER_LCORE 16
 #define MAX_TX_QUEUE_PER_PORT 16
 /* List of queues to be polled for given lcore. 8< */
-struct lcore_queue_conf {
+struct __rte_cache_aligned lcore_queue_conf {
 	unsigned n_rx_port;
 	unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
 	uint64_t next_flush_time[RTE_MAX_ETHPORTS];
@@ -80,9 +80,9 @@ struct lcore_queue_conf {
 	struct rte_jobstats idle_job;
 	struct rte_jobstats_context jobs_context;
 
-	uint16_t stats_read_pending;
+	RTE_ATOMIC(uint16_t) stats_read_pending;
 	rte_spinlock_t lock;
-} __rte_cache_aligned;
+};
 /* >8 End of list of queues to be polled for given lcore. */
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 
@@ -97,11 +97,11 @@ static struct rte_eth_conf port_conf = {
 struct rte_mempool *l2fwd_pktmbuf_pool = NULL;
 
 /* Per-port statistics struct */
-struct l2fwd_port_statistics {
+struct __rte_cache_aligned l2fwd_port_statistics {
 	uint64_t tx;
 	uint64_t rx;
 	uint64_t dropped;
-} __rte_cache_aligned;
+};
 struct l2fwd_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 
 /* 1 day max */
@@ -151,9 +151,9 @@ show_lcore_stats(unsigned lcore_id)
 	uint64_t collection_time = rte_get_timer_cycles();
 
 	/* Ask forwarding thread to give us stats. */
-	__atomic_store_n(&qconf->stats_read_pending, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&qconf->stats_read_pending, 1, rte_memory_order_relaxed);
 	rte_spinlock_lock(&qconf->lock);
-	__atomic_store_n(&qconf->stats_read_pending, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&qconf->stats_read_pending, 0, rte_memory_order_relaxed);
 
 	/* Collect context statistics. */
 	stats_period = ctx->state_time - ctx->start_time;
@@ -522,8 +522,9 @@ l2fwd_main_loop(void)
 				repeats++;
 				need_manage = qconf->flush_timer.expire < now;
 				/* Check if we was esked to give a stats. */
-				stats_read_pending = __atomic_load_n(&qconf->stats_read_pending,
-						__ATOMIC_RELAXED);
+				stats_read_pending = rte_atomic_load_explicit(
+					&qconf->stats_read_pending,
+					rte_memory_order_relaxed);
 				need_manage |= stats_read_pending;
 
 				for (i = 0; i < qconf->n_rx_port && !need_manage; i++)

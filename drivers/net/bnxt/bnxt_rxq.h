@@ -8,15 +8,20 @@
 
 /* Maximum receive burst supported in vector mode. */
 #define RTE_BNXT_MAX_RX_BURST		64U
+#define RTE_BNXT_MAX_RX_BURST_TH2	296U
 
 /* Drop by default when receive desc is not available. */
 #define BNXT_DEFAULT_RX_DROP_EN		1
+
+#define BNXT_MEM_POOL_IDX_0		0
+#define BNXT_MEM_POOL_IDX_1		1
 
 struct bnxt;
 struct bnxt_rx_ring_info;
 struct bnxt_cp_ring_info;
 struct bnxt_rx_queue {
 	struct rte_mempool	*mb_pool; /* mbuf pool for RX ring */
+	struct rte_mempool	*agg_mb_pool; /* mbuf pool for AGG ring */
 	uint64_t		mbuf_initializer; /* val to init mbuf */
 	uint16_t		nb_rx_desc; /* num of RX desc */
 	uint16_t		rx_free_thresh; /* max free RX desc to hold */
@@ -25,6 +30,7 @@ struct bnxt_rx_queue {
 	uint16_t		rxrearm_nb; /* number of descs to reinit. */
 	uint16_t		rxrearm_start; /* next desc index to reinit. */
 #endif
+	uint32_t		epoch;
 	uint16_t		port_id; /* Device port identifier */
 	uint8_t			crc_len; /* 0 if CRC stripped, 4 otherwise */
 	uint8_t			rx_deferred_start; /* not in global dev start */
@@ -40,7 +46,7 @@ struct bnxt_rx_queue {
 	struct bnxt_rx_ring_info	*rx_ring;
 	struct bnxt_cp_ring_info	*cp_ring;
 	struct rte_mbuf			fake_mbuf;
-	uint64_t			rx_mbuf_alloc_fail;
+	RTE_ATOMIC(uint64_t)		rx_mbuf_alloc_fail;
 	uint8_t				need_realloc;
 	const struct rte_memzone *mz;
 };

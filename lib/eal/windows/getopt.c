@@ -20,7 +20,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-const char    *optarg;		/* argument associated with option */
+char    *optarg;		/* argument associated with option */
 int	opterr = 1;		/* if error message should be printed */
 int	optind = 1;		/* index into parent argv vector */
 int	optopt = '?';		/* character checked for validity */
@@ -39,9 +39,9 @@ static void pass(const char *a) {(void) a; }
 #define	BADARG		((*options == ':') ? (int)':' : (int)'?')
 #define	INORDER		1
 
-#define	EMSG		""
+static char EMSG[] = "";
 
-static const char *place = EMSG; /* option letter processing */
+static char *place = EMSG; /* option letter processing */
 
 /* XXX: set optreset to 1 rather than these two */
 static int nonopt_start = -1; /* first non option argument (for permute) */
@@ -80,7 +80,7 @@ gcd(int a, int b)
  */
 static void
 permute_args(int panonopt_start, int panonopt_end, int opt_end,
-	char **nargv)
+	char * const *nargv)
 {
 	int cstart, cyclelen, i, j, ncycle, nnonopts, nopts, pos;
 	char *swap;
@@ -101,11 +101,12 @@ permute_args(int panonopt_start, int panonopt_end, int opt_end,
 				pos -= nnonopts;
 			else
 				pos += nopts;
+
 			swap = nargv[pos];
 			/* LINTED const cast */
-			((char **) nargv)[pos] = nargv[cstart];
+			((char **)(uintptr_t)nargv)[pos] = nargv[cstart];
 			/* LINTED const cast */
-			((char **)nargv)[cstart] = swap;
+			((char **)(uintptr_t)nargv)[cstart] = swap;
 		}
 	}
 }
@@ -116,7 +117,7 @@ permute_args(int panonopt_start, int panonopt_end, int opt_end,
  * Returns -1 if short_too is set and the option does not match long_options.
  */
 static int
-parse_long_options(char **nargv, const char *options,
+parse_long_options(char * const *nargv, const char *options,
 	const struct option *long_options, int *idx, int short_too)
 {
 	const char *current_argv;
@@ -236,7 +237,7 @@ parse_long_options(char **nargv, const char *options,
  *	Parse argc/argv argument vector.  Called by user level routines.
  */
 static int
-getopt_internal(int nargc, char **nargv, const char *options,
+getopt_internal(int nargc, char *const nargv[], const char *options,
 	const struct option *long_options, int *idx, int flags)
 {
 	char *oli;				/* option letter list index */
@@ -434,7 +435,7 @@ start:
  *	Parse argc/argv argument vector.
  */
 int
-getopt(int nargc, char *nargv[], const char *options)
+getopt(int nargc, char *const nargv[], const char *options)
 {
 	return getopt_internal(nargc, nargv, options, NULL, NULL,
 			       FLAG_PERMUTE);
@@ -445,7 +446,7 @@ getopt(int nargc, char *nargv[], const char *options)
  *	Parse argc/argv argument vector.
  */
 int
-getopt_long(int nargc, char *nargv[], const char *options,
+getopt_long(int nargc, char *const nargv[], const char *options,
 	const struct option *long_options, int *idx)
 {
 
@@ -458,7 +459,7 @@ getopt_long(int nargc, char *nargv[], const char *options,
  *	Parse argc/argv argument vector.
  */
 int
-getopt_long_only(int nargc, char *nargv[], const char *options,
+getopt_long_only(int nargc, char *const nargv[], const char *options,
 	const struct option *long_options, int *idx)
 {
 

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2021 NXP
+ * Copyright 2021-2024 NXP
  */
 
 #include <rte_mbuf.h>
@@ -17,12 +17,13 @@ enetfec_recv_pkts(void *rxq1, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
 	struct rte_mempool *pool;
-	struct bufdesc *bdp;
 	struct rte_mbuf *mbuf, *new_mbuf = NULL;
 	unsigned short status;
 	unsigned short pkt_len;
 	int pkt_received = 0, index = 0;
+	struct rte_ether_hdr *eth;
 	void *data, *mbuf_data;
+	struct bufdesc *bdp;
 	uint16_t vlan_tag;
 	struct  bufdesc_ex *ebdp = NULL;
 	bool    vlan_packet_rcvd = false;
@@ -92,6 +93,16 @@ enetfec_recv_pkts(void *rxq1, struct rte_mbuf **rx_pkts,
 			data = rte_pktmbuf_adj(mbuf, 2);
 
 		rx_pkts[pkt_received] = mbuf;
+
+		/* Assuming Ethernet packets, doing software packet type parsing.
+		 * To be replaced by HW packet parsing
+		 */
+		eth = rte_pktmbuf_mtod(mbuf, struct rte_ether_hdr *);
+		mbuf->packet_type = RTE_PTYPE_L2_ETHER;
+		if (rte_be_to_cpu_16(eth->ether_type) == RTE_ETHER_TYPE_IPV4)
+			mbuf->packet_type |= RTE_PTYPE_L3_IPV4;
+		if (rte_be_to_cpu_16(eth->ether_type) == RTE_ETHER_TYPE_IPV6)
+			mbuf->packet_type |= RTE_PTYPE_L3_IPV6;
 		pkt_received++;
 
 		/* Extract the enhanced buffer descriptor */
@@ -121,10 +132,11 @@ enetfec_recv_pkts(void *rxq1, struct rte_mbuf **rx_pkts,
 			(rxq->fep->flag_csum & RX_FLAG_CSUM_EN)) {
 			if ((rte_read32(&ebdp->bd_esc) &
 				rte_cpu_to_le_32(RX_FLAG_CSUM_ERR)) == 0) {
-				/* don't check it */
-				mbuf->ol_flags = RTE_MBUF_F_RX_IP_CKSUM_BAD;
-			} else {
+				/* No checksum error - checksum is good */
 				mbuf->ol_flags = RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+			} else {
+				/* Checksum error detected */
+				mbuf->ol_flags = RTE_MBUF_F_RX_IP_CKSUM_BAD;
 			}
 		}
 
@@ -229,7 +241,7 @@ enetfec_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		status |= (TX_BD_LAST);
 		data = rte_pktmbuf_mtod(mbuf, void *);
 		for (i = 0; i <= buflen; i += RTE_CACHE_LINE_SIZE)
-			dcbf(data + i);
+			dccivac(data + i);
 
 		rte_write32(rte_cpu_to_le_32(rte_pktmbuf_iova(mbuf)),
 			    &bdp->bd_bufaddr);
@@ -238,7 +250,8 @@ enetfec_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		if (txq->fep->bufdesc_ex) {
 			struct bufdesc_ex *ebdp = (struct bufdesc_ex *)bdp;
 
-			if (mbuf->ol_flags == RTE_MBUF_F_RX_IP_CKSUM_GOOD)
+			if (mbuf->ol_flags & (RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_TCP_CKSUM |
+					RTE_MBUF_F_TX_UDP_CKSUM | RTE_MBUF_F_TX_SCTP_CKSUM))
 				estatus |= TX_BD_PINS | TX_BD_IINS;
 
 			rte_write32(0, &ebdp->bd_bdu);

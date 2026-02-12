@@ -20,6 +20,8 @@
 #include "mlx5_utils.h"
 #include "rte_pmd_mlx5.h"
 
+static void mlx5_traffic_disable_legacy(struct rte_eth_dev *dev);
+
 /**
  * Stop traffic on Tx queues.
  *
@@ -49,52 +51,60 @@ static int
 mlx5_txq_start(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	unsigned int i;
+	uint32_t log_max_wqe = log2above(mlx5_dev_get_max_wq_size(priv->sh));
+	uint32_t flags = MLX5_MEM_RTE | MLX5_MEM_ZERO;
+	unsigned int i, cnt;
 	int ret;
 
-	for (i = 0; i != priv->txqs_n; ++i) {
-		struct mlx5_txq_ctrl *txq_ctrl = mlx5_txq_get(dev, i);
-		struct mlx5_txq_data *txq_data = &txq_ctrl->txq;
-		uint32_t flags = MLX5_MEM_RTE | MLX5_MEM_ZERO;
+	for (cnt = log_max_wqe; cnt > 0; cnt -= 1) {
+		for (i = 0; i != priv->txqs_n; ++i) {
+			struct mlx5_txq_ctrl *txq_ctrl = mlx5_txq_get(dev, i);
+			struct mlx5_txq_data *txq_data = &txq_ctrl->txq;
 
-		if (!txq_ctrl)
-			continue;
-		if (!txq_ctrl->is_hairpin)
-			txq_alloc_elts(txq_ctrl);
-		MLX5_ASSERT(!txq_ctrl->obj);
-		txq_ctrl->obj = mlx5_malloc(flags, sizeof(struct mlx5_txq_obj),
-					    0, txq_ctrl->socket);
-		if (!txq_ctrl->obj) {
-			DRV_LOG(ERR, "Port %u Tx queue %u cannot allocate "
-				"memory resources.", dev->data->port_id,
-				txq_data->idx);
-			rte_errno = ENOMEM;
-			goto error;
-		}
-		ret = priv->obj_ops.txq_obj_new(dev, i);
-		if (ret < 0) {
-			mlx5_free(txq_ctrl->obj);
-			txq_ctrl->obj = NULL;
-			goto error;
-		}
-		if (!txq_ctrl->is_hairpin) {
-			size_t size = txq_data->cqe_s * sizeof(*txq_data->fcqs);
-
-			txq_data->fcqs = mlx5_malloc(flags, size,
-						     RTE_CACHE_LINE_SIZE,
-						     txq_ctrl->socket);
-			if (!txq_data->fcqs) {
-				DRV_LOG(ERR, "Port %u Tx queue %u cannot "
-					"allocate memory (FCQ).",
-					dev->data->port_id, i);
+			if (!txq_ctrl)
+				continue;
+			if (txq_data->elts_n != cnt) {
+				mlx5_txq_release(dev, i);
+				continue;
+			}
+			if (!txq_ctrl->is_hairpin)
+				txq_alloc_elts(txq_ctrl);
+			MLX5_ASSERT(!txq_ctrl->obj);
+			txq_ctrl->obj = mlx5_malloc_numa_tolerant(flags,
+								  sizeof(struct mlx5_txq_obj),
+								  0, txq_ctrl->socket);
+			if (!txq_ctrl->obj) {
+				DRV_LOG(ERR, "Port %u Tx queue %u cannot allocate "
+					"memory resources.", dev->data->port_id,
+					txq_data->idx);
 				rte_errno = ENOMEM;
 				goto error;
 			}
-		}
-		DRV_LOG(DEBUG, "Port %u txq %u updated with %p.",
-			dev->data->port_id, i, (void *)&txq_ctrl->obj);
-		LIST_INSERT_HEAD(&priv->txqsobj, txq_ctrl->obj, next);
+			ret = priv->obj_ops.txq_obj_new(dev, i);
+			if (ret < 0) {
+				mlx5_free(txq_ctrl->obj);
+				txq_ctrl->obj = NULL;
+				goto error;
+			}
+			if (!txq_ctrl->is_hairpin) {
+				size_t size = txq_data->cqe_s * sizeof(*txq_data->fcqs);
+
+				txq_data->fcqs = mlx5_malloc_numa_tolerant(flags, size,
+									   RTE_CACHE_LINE_SIZE,
+									   txq_ctrl->socket);
+				if (!txq_data->fcqs) {
+					DRV_LOG(ERR, "Port %u Tx queue %u cannot "
+						"allocate memory (FCQ).",
+						dev->data->port_id, i);
+					rte_errno = ENOMEM;
+					goto error;
+				}
+			}
+			DRV_LOG(DEBUG, "Port %u txq %u updated with %p.",
+				dev->data->port_id, i, (void *)&txq_ctrl->obj);
+			LIST_INSERT_HEAD(&priv->txqsobj, txq_ctrl->obj, next);
 	}
+}
 	return 0;
 error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
@@ -180,9 +190,9 @@ mlx5_rxq_ctrl_prepare(struct rte_eth_dev *dev, struct mlx5_rxq_ctrl *rxq_ctrl,
 			return ret;
 	}
 	MLX5_ASSERT(!rxq_ctrl->obj);
-	rxq_ctrl->obj = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
-				    sizeof(*rxq_ctrl->obj), 0,
-				    rxq_ctrl->socket);
+	rxq_ctrl->obj = mlx5_malloc_numa_tolerant(MLX5_MEM_RTE | MLX5_MEM_ZERO,
+						  sizeof(*rxq_ctrl->obj), 0,
+						  rxq_ctrl->socket);
 	if (!rxq_ctrl->obj) {
 		DRV_LOG(ERR, "Port %u Rx queue %u can't allocate resources.",
 			dev->data->port_id, idx);
@@ -215,8 +225,8 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 		/* Should not release Rx queues but return immediately. */
 		return -rte_errno;
 	}
-	DRV_LOG(DEBUG, "Port %u dev_cap.max_qp_wr is %d.",
-		dev->data->port_id, priv->sh->dev_cap.max_qp_wr);
+	DRV_LOG(DEBUG, "Port %u max work queue size is %d.",
+		dev->data->port_id, mlx5_dev_get_max_wq_size(priv->sh));
 	DRV_LOG(DEBUG, "Port %u dev_cap.max_sge is %d.",
 		dev->data->port_id, priv->sh->dev_cap.max_sge);
 	for (i = 0; i != priv->rxqs_n; ++i) {
@@ -1122,9 +1132,9 @@ mlx5_hw_representor_port_allowed_start(struct rte_eth_dev *dev)
 		rte_errno = EAGAIN;
 		return -rte_errno;
 	}
-	if (priv->sh->config.repr_matching && !priv->dr_ctx) {
-		DRV_LOG(ERR, "Failed to start port %u: with representor matching enabled, port "
-			     "must be configured for HWS", dev->data->port_id);
+	if (priv->dr_ctx == NULL) {
+		DRV_LOG(ERR, "Failed to start port %u: port must be configured for HWS",
+			dev->data->port_id);
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
@@ -1132,6 +1142,94 @@ mlx5_hw_representor_port_allowed_start(struct rte_eth_dev *dev)
 }
 
 #endif
+
+/*
+ * Allocate TxQs unique umem and register its MR.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int mlx5_dev_allocate_consec_tx_mem(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	size_t alignment;
+	uint32_t total_size;
+	struct mlx5dv_devx_umem *umem_obj = NULL;
+	void *umem_buf = NULL;
+
+	/* Legacy per queue allocation, do nothing here. */
+	if (priv->sh->config.txq_mem_algn == 0)
+		return 0;
+	alignment = (size_t)1 << priv->sh->config.txq_mem_algn;
+	total_size = priv->consec_tx_mem.sq_total_size + priv->consec_tx_mem.cq_total_size;
+	/*
+	 * Hairpin queues can be skipped later
+	 * queue size alignment is bigger than doorbell alignment, no need to align or
+	 * round-up again. One queue have two DBs (for CQ + WQ).
+	 */
+	total_size += MLX5_DBR_SIZE * priv->txqs_n * 2;
+	umem_buf = mlx5_malloc_numa_tolerant(MLX5_MEM_RTE | MLX5_MEM_ZERO, total_size,
+					     alignment, priv->sh->numa_node);
+	if (!umem_buf) {
+		DRV_LOG(ERR, "Failed to allocate consecutive memory for TxQs.");
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	umem_obj = mlx5_os_umem_reg(priv->sh->cdev->ctx, (void *)(uintptr_t)umem_buf,
+				    total_size, IBV_ACCESS_LOCAL_WRITE);
+	if (!umem_obj) {
+		DRV_LOG(ERR, "Failed to register unique umem for all SQs.");
+		rte_errno = errno;
+		if (umem_buf)
+			mlx5_free(umem_buf);
+		return -rte_errno;
+	}
+	priv->consec_tx_mem.umem = umem_buf;
+	priv->consec_tx_mem.sq_cur_off = 0;
+	priv->consec_tx_mem.cq_cur_off = priv->consec_tx_mem.sq_total_size;
+	priv->consec_tx_mem.umem_obj = umem_obj;
+	DRV_LOG(DEBUG, "Allocated umem %p with size %u for %u queues with sq_len %u,"
+		" cq_len %u and registered object %p on port %u",
+		umem_buf, total_size, priv->txqs_n, priv->consec_tx_mem.sq_total_size,
+		priv->consec_tx_mem.cq_total_size, (void *)umem_obj, dev->data->port_id);
+	return 0;
+}
+
+/*
+ * Release TxQs unique umem and register its MR.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param on_stop
+ *   If this is on device stop stage.
+ */
+static void mlx5_dev_free_consec_tx_mem(struct rte_eth_dev *dev, bool on_stop)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->consec_tx_mem.umem_obj) {
+		mlx5_os_umem_dereg(priv->consec_tx_mem.umem_obj);
+		priv->consec_tx_mem.umem_obj = NULL;
+	}
+	if (priv->consec_tx_mem.umem) {
+		mlx5_free(priv->consec_tx_mem.umem);
+		priv->consec_tx_mem.umem = NULL;
+	}
+	/* Queues information will not be reset. */
+	if (on_stop) {
+		/* Reset to 0s for re-setting up queues. */
+		priv->consec_tx_mem.sq_cur_off = 0;
+		priv->consec_tx_mem.cq_cur_off = 0;
+	}
+}
+
+#define SAVE_RTE_ERRNO_AND_STOP(ret, dev) do {	\
+	ret = rte_errno;			\
+	(dev)->data->dev_started = 0;		\
+} while (0)
 
 /**
  * DPDK callback to start the device.
@@ -1158,6 +1256,26 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	DRV_LOG(DEBUG, "port %u starting device", dev->data->port_id);
 #ifdef HAVE_MLX5_HWS_SUPPORT
 	if (priv->sh->config.dv_flow_en == 2) {
+		struct rte_flow_error error = { 0, };
+
+		/*
+		 * If steering is disabled, then:
+		 * - There are no limitations regarding port start ordering,
+		 *   since no flow rules need to be created as part of port start.
+		 * - Non template API initialization will be skipped.
+		 */
+		if (mlx5_flow_is_steering_disabled())
+			goto continue_dev_start;
+		/*If previous configuration does not exist. */
+		if (!(priv->dr_ctx)) {
+			ret = flow_hw_init(dev, &error);
+			if (ret) {
+				DRV_LOG(ERR, "Failed to start port %u %s: %s",
+					dev->data->port_id, dev->data->name,
+					error.message);
+				return ret;
+			}
+		}
 		/* If there is no E-Switch, then there are no start/stop order limitations. */
 		if (!priv->sh->config.dv_esw_en)
 			goto continue_dev_start;
@@ -1172,7 +1290,7 @@ continue_dev_start:
 	fine_inline = rte_mbuf_dynflag_lookup
 		(RTE_PMD_MLX5_FINE_GRANULARITY_INLINE, NULL);
 	if (fine_inline >= 0)
-		rte_net_mlx5_dynf_inline_mask = 1UL << fine_inline;
+		rte_net_mlx5_dynf_inline_mask = RTE_BIT64(fine_inline);
 	else
 		rte_net_mlx5_dynf_inline_mask = 0;
 	if (dev->data->nb_rx_queues > 0) {
@@ -1203,19 +1321,30 @@ continue_dev_start:
 	if (ret) {
 		DRV_LOG(ERR, "port %u Tx packet pacing init failed: %s",
 			dev->data->port_id, strerror(rte_errno));
+		SAVE_RTE_ERRNO_AND_STOP(ret, dev);
 		goto error;
 	}
 	if (mlx5_devx_obj_ops_en(priv->sh) &&
 	    priv->obj_ops.lb_dummy_queue_create) {
 		ret = priv->obj_ops.lb_dummy_queue_create(dev);
-		if (ret)
-			goto error;
+		if (ret) {
+			SAVE_RTE_ERRNO_AND_STOP(ret, dev);
+			goto txpp_stop;
+		}
+	}
+	ret = mlx5_dev_allocate_consec_tx_mem(dev);
+	if (ret) {
+		DRV_LOG(ERR, "port %u Tx queues memory allocation failed: %s",
+			dev->data->port_id, strerror(rte_errno));
+		SAVE_RTE_ERRNO_AND_STOP(ret, dev);
+		goto lb_dummy_queue_release;
 	}
 	ret = mlx5_txq_start(dev);
 	if (ret) {
 		DRV_LOG(ERR, "port %u Tx queue allocation failed: %s",
 			dev->data->port_id, strerror(rte_errno));
-		goto error;
+		SAVE_RTE_ERRNO_AND_STOP(ret, dev);
+		goto free_consec_tx_mem;
 	}
 	if (priv->config.std_delay_drop || priv->config.hp_delay_drop) {
 		if (!priv->sh->dev_cap.vf && !priv->sh->dev_cap.sf &&
@@ -1239,7 +1368,8 @@ continue_dev_start:
 	if (ret) {
 		DRV_LOG(ERR, "port %u Rx queue allocation failed: %s",
 			dev->data->port_id, strerror(rte_errno));
-		goto error;
+		SAVE_RTE_ERRNO_AND_STOP(ret, dev);
+		goto txq_stop;
 	}
 	/*
 	 * Such step will be skipped if there is no hairpin TX queue configured
@@ -1249,7 +1379,8 @@ continue_dev_start:
 	if (ret) {
 		DRV_LOG(ERR, "port %u hairpin auto binding failed: %s",
 			dev->data->port_id, strerror(rte_errno));
-		goto error;
+		SAVE_RTE_ERRNO_AND_STOP(ret, dev);
+		goto rxq_stop;
 	}
 	/* Set started flag here for the following steps like control flow. */
 	dev->data->dev_started = 1;
@@ -1257,7 +1388,8 @@ continue_dev_start:
 	if (ret) {
 		DRV_LOG(ERR, "port %u Rx interrupt vector creation failed",
 			dev->data->port_id);
-		goto error;
+		SAVE_RTE_ERRNO_AND_STOP(ret, dev);
+		goto rxq_stop;
 	}
 	mlx5_os_stats_init(dev);
 	/*
@@ -1269,7 +1401,8 @@ continue_dev_start:
 		DRV_LOG(ERR,
 			"port %u failed to attach indirect actions: %s",
 			dev->data->port_id, rte_strerror(rte_errno));
-		goto error;
+		SAVE_RTE_ERRNO_AND_STOP(ret, dev);
+		goto rx_intr_vec_disable;
 	}
 #ifdef HAVE_MLX5_HWS_SUPPORT
 	if (priv->sh->config.dv_flow_en == 2) {
@@ -1277,7 +1410,8 @@ continue_dev_start:
 		if (ret) {
 			DRV_LOG(ERR, "port %u failed to update HWS tables",
 				dev->data->port_id);
-			goto error;
+			SAVE_RTE_ERRNO_AND_STOP(ret, dev);
+			goto action_handle_detach;
 		}
 	}
 #endif
@@ -1285,7 +1419,8 @@ continue_dev_start:
 	if (ret) {
 		DRV_LOG(ERR, "port %u failed to set defaults flows",
 			dev->data->port_id);
-		goto error;
+		SAVE_RTE_ERRNO_AND_STOP(ret, dev);
+		goto action_handle_detach;
 	}
 	/* Set dynamic fields and flags into Rx queues. */
 	mlx5_flow_rxq_dynf_set(dev);
@@ -1302,13 +1437,17 @@ continue_dev_start:
 	if (ret) {
 		DRV_LOG(DEBUG, "port %u failed to start default actions: %s",
 			dev->data->port_id, strerror(rte_errno));
-		goto error;
+		SAVE_RTE_ERRNO_AND_STOP(ret, dev);
+		goto traffic_disable;
 	}
 	if (mlx5_dev_ctx_shared_mempool_subscribe(dev) != 0) {
 		DRV_LOG(ERR, "port %u failed to subscribe for mempool life cycle: %s",
 			dev->data->port_id, rte_strerror(rte_errno));
-		goto error;
+		SAVE_RTE_ERRNO_AND_STOP(ret, dev);
+		goto stop_default;
 	}
+	if (mlx5_flow_is_steering_disabled())
+		mlx5_flow_rxq_mark_flag_set(dev);
 	rte_wmb();
 	dev->tx_pkt_burst = mlx5_select_tx_function(dev);
 	dev->rx_pkt_burst = mlx5_select_rx_function(dev);
@@ -1334,18 +1473,27 @@ continue_dev_start:
 		priv->sh->port[priv->dev_port - 1].devx_ih_port_id =
 					(uint32_t)dev->data->port_id;
 	return 0;
-error:
-	ret = rte_errno; /* Save rte_errno before cleanup. */
-	/* Rollback. */
-	dev->data->dev_started = 0;
+stop_default:
 	mlx5_flow_stop_default(dev);
+traffic_disable:
 	mlx5_traffic_disable(dev);
-	mlx5_txq_stop(dev);
+action_handle_detach:
+	mlx5_action_handle_detach(dev);
+rx_intr_vec_disable:
+	mlx5_rx_intr_vec_disable(dev);
+rxq_stop:
 	mlx5_rxq_stop(dev);
+txq_stop:
+	mlx5_txq_stop(dev);
+free_consec_tx_mem:
+	mlx5_dev_free_consec_tx_mem(dev, false);
+lb_dummy_queue_release:
 	if (priv->obj_ops.lb_dummy_queue_release)
 		priv->obj_ops.lb_dummy_queue_release(dev);
-	mlx5_txpp_stop(dev); /* Stop last. */
-	rte_errno = ret; /* Restore rte_errno. */
+txpp_stop:
+	mlx5_txpp_stop(dev);
+error:
+	rte_errno = ret;
 	return -rte_errno;
 }
 
@@ -1418,6 +1566,13 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 
 #ifdef HAVE_MLX5_HWS_SUPPORT
 	if (priv->sh->config.dv_flow_en == 2) {
+		/*
+		 * If steering is disabled,
+		 * then there are no limitations regarding port stop ordering,
+		 * since no flow rules need to be destroyed as part of port stop.
+		 */
+		if (mlx5_flow_is_steering_disabled())
+			goto continue_dev_stop;
 		/* If there is no E-Switch, then there are no start/stop order limitations. */
 		if (!priv->sh->config.dv_esw_en)
 			goto continue_dev_stop;
@@ -1440,12 +1595,9 @@ continue_dev_stop:
 	mlx5_mp_os_req_stop_rxtx(dev);
 	rte_delay_us_sleep(1000 * priv->rxqs_n);
 	DRV_LOG(DEBUG, "port %u stopping device", dev->data->port_id);
-	if (priv->sh->config.dv_flow_en == 2) {
-		if (!__atomic_load_n(&priv->hws_mark_refcnt, __ATOMIC_RELAXED))
-			flow_hw_rxq_flag_set(dev, false);
-	} else {
-		mlx5_flow_stop_default(dev);
-	}
+	if (mlx5_flow_is_steering_disabled())
+		mlx5_flow_rxq_flags_clear(dev);
+	mlx5_flow_stop_default(dev);
 	/* Control flows for default traffic can be removed firstly. */
 	mlx5_traffic_disable(dev);
 	/* All RX queue flags will be cleared in the flush interface. */
@@ -1461,6 +1613,7 @@ continue_dev_stop:
 	priv->sh->port[priv->dev_port - 1].nl_ih_port_id = RTE_MAX_ETHPORTS;
 	mlx5_txq_stop(dev);
 	mlx5_rxq_stop(dev);
+	mlx5_dev_free_consec_tx_mem(dev, true);
 	if (priv->obj_ops.lb_dummy_queue_release)
 		priv->obj_ops.lb_dummy_queue_release(dev);
 	mlx5_txpp_stop(dev);
@@ -1477,20 +1630,8 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 	struct mlx5_sh_config *config = &priv->sh->config;
 	uint64_t flags = 0;
 	unsigned int i;
-	int ret;
+	int ret = 0;
 
-	/*
-	 * With extended metadata enabled, the Tx metadata copy is handled by default
-	 * Tx tagging flow rules, so default Tx flow rule is not needed. It is only
-	 * required when representor matching is disabled.
-	 */
-	if (config->dv_esw_en &&
-	    !config->repr_matching &&
-	    config->dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS &&
-	    priv->master) {
-		if (mlx5_flow_hw_create_tx_default_mreg_copy_flow(dev))
-			goto error;
-	}
 	for (i = 0; i < priv->txqs_n; ++i) {
 		struct mlx5_txq_ctrl *txq = mlx5_txq_get(dev, i);
 		uint32_t queue;
@@ -1498,14 +1639,22 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 		if (!txq)
 			continue;
 		queue = mlx5_txq_get_sqn(txq);
-		if ((priv->representor || priv->master) && config->dv_esw_en) {
+		if ((priv->representor || priv->master) &&
+		    config->dv_esw_en &&
+		    config->fdb_def_rule) {
 			if (mlx5_flow_hw_esw_create_sq_miss_flow(dev, queue, false)) {
 				mlx5_txq_release(dev, i);
 				goto error;
 			}
 		}
-		if (config->dv_esw_en && config->repr_matching) {
-			if (mlx5_flow_hw_tx_repr_matching_flow(dev, queue, false)) {
+		if (config->dv_esw_en) {
+			if (mlx5_flow_hw_create_tx_repr_matching_flow(dev, queue, false)) {
+				mlx5_txq_release(dev, i);
+				goto error;
+			}
+		}
+		if (mlx5_vport_tx_metadata_passing_enabled(priv->sh)) {
+			if (mlx5_flow_hw_create_nic_tx_default_mreg_copy_flow(dev, queue)) {
 				mlx5_txq_release(dev, i);
 				goto error;
 			}
@@ -1522,11 +1671,17 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 	} else {
 		DRV_LOG(INFO, "port %u FDB default rule is disabled", dev->data->port_id);
 	}
-	if (priv->isolated)
-		return 0;
 	if (!priv->sh->config.lacp_by_user && priv->pf_bond >= 0 && priv->master)
 		if (mlx5_flow_hw_lacp_rx_flow(dev))
 			goto error;
+	if (priv->isolated)
+		return 0;
+	ret = mlx5_flow_hw_create_ctrl_rx_tables(dev);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to set up Rx control flow templates for port %u, %d",
+			dev->data->port_id, -ret);
+		goto error;
+	}
 	if (dev->data->promiscuous)
 		flags |= MLX5_CTRL_PROMISCUOUS;
 	if (dev->data->all_multicast)
@@ -1540,6 +1695,7 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 error:
 	ret = rte_errno;
 	mlx5_flow_hw_flush_ctrl_flows(dev);
+	mlx5_flow_hw_cleanup_ctrl_rx_tables(dev);
 	rte_errno = ret;
 	return -rte_errno;
 }
@@ -1560,27 +1716,30 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_item_eth bcast = {
-		.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.hdr.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 	};
 	struct rte_flow_item_eth ipv6_multi_spec = {
-		.hdr.dst_addr.addr_bytes = "\x33\x33\x00\x00\x00\x00",
+		.hdr.dst_addr.addr_bytes = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x00 },
 	};
 	struct rte_flow_item_eth ipv6_multi_mask = {
-		.hdr.dst_addr.addr_bytes = "\xff\xff\x00\x00\x00\x00",
+		.hdr.dst_addr.addr_bytes = { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 },
 	};
 	struct rte_flow_item_eth unicast = {
-		.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	};
 	struct rte_flow_item_eth unicast_mask = {
-		.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.hdr.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 	};
 	const unsigned int vlan_filter_n = priv->vlan_filter_n;
 	const struct rte_ether_addr cmp = {
-		.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	};
 	unsigned int i;
 	unsigned int j;
 	int ret;
+
+	if (mlx5_flow_is_steering_disabled())
+		return 0;
 
 #ifdef HAVE_MLX5_HWS_SUPPORT
 	if (priv->sh->config.dv_flow_en == 2)
@@ -1645,8 +1804,8 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 		return 0;
 	if (dev->data->promiscuous) {
 		struct rte_flow_item_eth promisc = {
-			.hdr.dst_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
-			.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+			.hdr.dst_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+			.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 			.hdr.ether_type = 0,
 		};
 
@@ -1656,8 +1815,8 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 	}
 	if (dev->data->all_multicast) {
 		struct rte_flow_item_eth multicast = {
-			.hdr.dst_addr.addr_bytes = "\x01\x00\x00\x00\x00\x00",
-			.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+			.hdr.dst_addr.addr_bytes = { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00 },
+			.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 			.hdr.ether_type = 0,
 		};
 
@@ -1703,7 +1862,10 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 	for (i = 0; i != MLX5_MAX_MAC_ADDRESSES; ++i) {
 		struct rte_ether_addr *mac = &dev->data->mac_addrs[i];
 
-		if (!memcmp(mac, &cmp, sizeof(*mac)))
+		/* Add flows for unicast and multicast mac addresses added by API. */
+		if (!memcmp(mac, &cmp, sizeof(*mac)) ||
+		    !BITFIELD_ISSET(priv->mac_own, i) ||
+		    (dev->data->all_multicast && rte_is_multicast_ether_addr(mac)))
 			continue;
 		memcpy(&unicast.hdr.dst_addr.addr_bytes,
 		       mac->addr_bytes,
@@ -1733,11 +1895,31 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 	return 0;
 error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
-	mlx5_flow_list_flush(dev, MLX5_FLOW_TYPE_CTL, false);
+	mlx5_traffic_disable_legacy(dev);
 	rte_errno = ret; /* Restore rte_errno. */
 	return -rte_errno;
 }
 
+static void
+mlx5_traffic_disable_legacy(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ctrl_flow_entry *entry;
+	struct mlx5_ctrl_flow_entry *tmp;
+
+	/*
+	 * Free registered control flow rules first,
+	 * to free the memory allocated for list entries
+	 */
+	entry = LIST_FIRST(&priv->hw_ctrl_flows);
+	while (entry != NULL) {
+		tmp = LIST_NEXT(entry, next);
+		mlx5_legacy_ctrl_flow_destroy(dev, entry);
+		entry = tmp;
+	}
+
+	mlx5_flow_list_flush(dev, MLX5_FLOW_TYPE_CTL, false);
+}
 
 /**
  * Disable traffic flows configured by control plane
@@ -1748,14 +1930,22 @@ error:
 void
 mlx5_traffic_disable(struct rte_eth_dev *dev)
 {
+	if (mlx5_flow_is_steering_disabled())
+		return;
+
 #ifdef HAVE_MLX5_HWS_SUPPORT
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (priv->sh->config.dv_flow_en == 2)
+	if (priv->sh->config.dv_flow_en == 2) {
+		/* Device started flag was cleared before, this is used to derefer the Rx queues. */
+		priv->hws_rule_flushing = true;
 		mlx5_flow_hw_flush_ctrl_flows(dev);
+		mlx5_flow_hw_cleanup_ctrl_rx_tables(dev);
+		priv->hws_rule_flushing = false;
+	}
 	else
 #endif
-		mlx5_flow_list_flush(dev, MLX5_FLOW_TYPE_CTL, false);
+		mlx5_traffic_disable_legacy(dev);
 }
 
 /**
@@ -1770,6 +1960,9 @@ mlx5_traffic_disable(struct rte_eth_dev *dev)
 int
 mlx5_traffic_restart(struct rte_eth_dev *dev)
 {
+	if (mlx5_flow_is_steering_disabled())
+		return 0;
+
 	if (dev->data->dev_started) {
 		mlx5_traffic_disable(dev);
 #ifdef HAVE_MLX5_HWS_SUPPORT
@@ -1777,5 +1970,243 @@ mlx5_traffic_restart(struct rte_eth_dev *dev)
 #endif
 		return mlx5_traffic_enable(dev);
 	}
+	return 0;
+}
+
+static bool
+mac_flows_update_needed(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (mlx5_flow_is_steering_disabled())
+		return false;
+	if (!dev->data->dev_started)
+		return false;
+	if (dev->data->promiscuous)
+		return false;
+	if (priv->isolated)
+		return false;
+
+	return true;
+}
+
+static int
+traffic_dmac_create(struct rte_eth_dev *dev, const struct rte_ether_addr *addr)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->sh->config.dv_flow_en == 2)
+		return mlx5_flow_hw_ctrl_flow_dmac(dev, addr);
+	else
+		return mlx5_legacy_dmac_flow_create(dev, addr);
+}
+
+static int
+traffic_dmac_destroy(struct rte_eth_dev *dev, const struct rte_ether_addr *addr)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->sh->config.dv_flow_en == 2)
+		return mlx5_flow_hw_ctrl_flow_dmac_destroy(dev, addr);
+	else
+		return mlx5_legacy_dmac_flow_destroy(dev, addr);
+}
+
+static int
+traffic_dmac_vlan_create(struct rte_eth_dev *dev,
+			 const struct rte_ether_addr *addr,
+			 const uint16_t vid)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->sh->config.dv_flow_en == 2)
+		return mlx5_flow_hw_ctrl_flow_dmac_vlan(dev, addr, vid);
+	else
+		return mlx5_legacy_dmac_vlan_flow_create(dev, addr, vid);
+}
+
+static int
+traffic_dmac_vlan_destroy(struct rte_eth_dev *dev,
+			 const struct rte_ether_addr *addr,
+			 const uint16_t vid)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->sh->config.dv_flow_en == 2)
+		return mlx5_flow_hw_ctrl_flow_dmac_vlan_destroy(dev, addr, vid);
+	else
+		return mlx5_legacy_dmac_vlan_flow_destroy(dev, addr, vid);
+}
+
+/**
+ * Adjust Rx control flow rules to allow traffic on provided MAC address.
+ */
+int
+mlx5_traffic_mac_add(struct rte_eth_dev *dev, const struct rte_ether_addr *addr)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (!mac_flows_update_needed(dev))
+		return 0;
+
+	if (priv->vlan_filter_n > 0) {
+		unsigned int i;
+
+		for (i = 0; i < priv->vlan_filter_n; ++i) {
+			uint16_t vlan = priv->vlan_filter[i];
+			int ret;
+
+			if (mlx5_ctrl_flow_uc_dmac_vlan_exists(dev, addr, vlan))
+				continue;
+
+			ret = traffic_dmac_vlan_create(dev, addr, vlan);
+			if (ret != 0)
+				return ret;
+		}
+
+		return 0;
+	}
+
+	if (mlx5_ctrl_flow_uc_dmac_exists(dev, addr))
+		return 0;
+
+	return traffic_dmac_create(dev, addr);
+}
+
+/**
+ * Adjust Rx control flow rules to disallow traffic with removed MAC address.
+ */
+int
+mlx5_traffic_mac_remove(struct rte_eth_dev *dev, const struct rte_ether_addr *addr)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (!mac_flows_update_needed(dev))
+		return 0;
+
+	if (priv->vlan_filter_n > 0) {
+		unsigned int i;
+
+		for (i = 0; i < priv->vlan_filter_n; ++i) {
+			uint16_t vlan = priv->vlan_filter[i];
+			int ret;
+
+			if (!mlx5_ctrl_flow_uc_dmac_vlan_exists(dev, addr, vlan))
+				continue;
+
+			ret = traffic_dmac_vlan_destroy(dev, addr, vlan);
+			if (ret != 0)
+				return ret;
+		}
+
+		return 0;
+	}
+
+	if (!mlx5_ctrl_flow_uc_dmac_exists(dev, addr))
+		return 0;
+
+	return traffic_dmac_destroy(dev, addr);
+}
+
+/**
+ * Adjust Rx control flow rules to allow traffic on provided VLAN.
+ *
+ * Assumptions:
+ * - Called when VLAN is added.
+ * - At least one VLAN is enabled before function call.
+ *
+ * This functions assumes that VLAN is new and was not included in
+ * Rx control flow rules set up before calling it.
+ */
+int
+mlx5_traffic_vlan_add(struct rte_eth_dev *dev, const uint16_t vid)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	unsigned int i;
+	int ret;
+
+	if (!mac_flows_update_needed(dev))
+		return 0;
+
+	/* Add all unicast DMAC flow rules with new VLAN attached. */
+	for (i = 0; i != MLX5_MAX_MAC_ADDRESSES; ++i) {
+		struct rte_ether_addr *mac = &dev->data->mac_addrs[i];
+
+		if (rte_is_zero_ether_addr(mac))
+			continue;
+
+		ret = traffic_dmac_vlan_create(dev, mac, vid);
+		if (ret != 0)
+			return ret;
+	}
+
+	if (priv->vlan_filter_n == 1) {
+		/*
+		 * Adding first VLAN. Need to remove unicast DMAC rules before adding new rules.
+		 * Removing after creating VLAN rules so that traffic "gap" is not introduced.
+		 */
+
+		for (i = 0; i != MLX5_MAX_MAC_ADDRESSES; ++i) {
+			struct rte_ether_addr *mac = &dev->data->mac_addrs[i];
+
+			if (rte_is_zero_ether_addr(mac))
+				continue;
+
+			ret = traffic_dmac_destroy(dev, mac);
+			if (ret != 0)
+				return ret;
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * Adjust Rx control flow rules to disallow traffic with removed VLAN.
+ *
+ * Assumptions:
+ *
+ * - VLAN was really removed.
+ */
+int
+mlx5_traffic_vlan_remove(struct rte_eth_dev *dev, const uint16_t vid)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	unsigned int i;
+	int ret;
+
+	if (!mac_flows_update_needed(dev))
+		return 0;
+
+	if (priv->vlan_filter_n == 0) {
+		/*
+		 * If there are no VLANs as a result, unicast DMAC flow rules must be recreated.
+		 * Recreating first to ensure no traffic "gap".
+		 */
+
+		for (i = 0; i != MLX5_MAX_MAC_ADDRESSES; ++i) {
+			struct rte_ether_addr *mac = &dev->data->mac_addrs[i];
+
+			if (rte_is_zero_ether_addr(mac))
+				continue;
+
+			ret = traffic_dmac_create(dev, mac);
+			if (ret != 0)
+				return ret;
+		}
+	}
+
+	/* Remove all unicast DMAC flow rules with this VLAN. */
+	for (i = 0; i != MLX5_MAX_MAC_ADDRESSES; ++i) {
+		struct rte_ether_addr *mac = &dev->data->mac_addrs[i];
+
+		if (rte_is_zero_ether_addr(mac))
+			continue;
+
+		ret = traffic_dmac_vlan_destroy(dev, mac, vid);
+		if (ret != 0)
+			return ret;
+	}
+
 	return 0;
 }

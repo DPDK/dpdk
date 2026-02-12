@@ -18,7 +18,6 @@
 typedef uint64_t large_int_ptr;
 #define MAX_PKE_PARAMS	8
 #define QAT_PKE_MAX_LN_SIZE 512
-#define _PKE_ALIGN_ __rte_aligned(8)
 
 #define QAT_ASYM_MAX_PARAMS			8
 #define QAT_ASYM_MODINV_NUM_IN_PARAMS		2
@@ -57,20 +56,20 @@ typedef uint64_t large_int_ptr;
 		}							\
 	}
 
-struct qat_asym_op_cookie {
+struct __rte_aligned(8) qat_asym_op_cookie {
 	uint64_t error;
-	uint32_t alg_bytesize; /*< Bytesize of algorithm */
-	uint32_t qat_func_alignsize; /*< Aligned bytesize of qat function */
+	uint32_t alg_bytesize; /* Bytesize of algorithm */
+	uint32_t qat_func_alignsize; /* Aligned bytesize of qat function */
 	rte_iova_t input_addr;
 	rte_iova_t output_addr;
-	large_int_ptr input_params_ptrs[MAX_PKE_PARAMS] _PKE_ALIGN_;
-	large_int_ptr output_params_ptrs[MAX_PKE_PARAMS] _PKE_ALIGN_;
-	union {
+	alignas(8) large_int_ptr input_params_ptrs[MAX_PKE_PARAMS];
+	alignas(8) large_int_ptr output_params_ptrs[MAX_PKE_PARAMS];
+	union __rte_aligned(8) {
 		uint8_t input_array[MAX_PKE_PARAMS][QAT_PKE_MAX_LN_SIZE];
 		uint8_t input_buffer[MAX_PKE_PARAMS * QAT_PKE_MAX_LN_SIZE];
-	} _PKE_ALIGN_;
-	uint8_t output_array[MAX_PKE_PARAMS][QAT_PKE_MAX_LN_SIZE] _PKE_ALIGN_;
-} _PKE_ALIGN_;
+	};
+	alignas(8) uint8_t output_array[MAX_PKE_PARAMS][QAT_PKE_MAX_LN_SIZE];
+};
 
 struct qat_asym_session {
 	struct icp_qat_fw_pke_request req_tmpl;

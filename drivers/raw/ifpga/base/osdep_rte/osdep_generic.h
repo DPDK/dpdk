@@ -19,8 +19,8 @@
 extern int ifpga_rawdev_logtype;
 #define RTE_LOGTYPE_IFPGA_RAWDEV ifpga_rawdev_logtype
 
-#define dev_printf(level, fmt, args...) \
-	RTE_LOG(level, IFPGA_RAWDEV, "osdep_rte: " fmt, ## args)
+#define dev_printf(level, fmt, ...) \
+	RTE_LOG(level, IFPGA_RAWDEV, "osdep_rte: " fmt, ## __VA_ARGS__)
 
 #define osdep_panic(...) rte_panic(...)
 

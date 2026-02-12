@@ -127,10 +127,22 @@ nix_fc_cq_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		aq->qidx = fc_cfg->cq_cfg.rq;
 		aq->ctype = NIX_AQ_CTYPE_CQ;
 		aq->op = NIX_AQ_INSTOP_READ;
-	} else {
+	} else if (roc_model_is_cn10k()) {
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (!aq) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+
+		aq->qidx = fc_cfg->cq_cfg.rq;
+		aq->ctype = NIX_AQ_CTYPE_CQ;
+		aq->op = NIX_AQ_INSTOP_READ;
+	} else {
+		struct nix_cn20k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
 		if (!aq) {
 			rc = -ENOSPC;
 			goto exit;
@@ -145,7 +157,8 @@ nix_fc_cq_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 	if (rc)
 		goto exit;
 
-	fc_cfg->cq_cfg.cq_drop = rsp->cq.bp;
+	fc_cfg->cq_cfg.cq_drop = rsp->cq.drop;
+	fc_cfg->cq_cfg.cq_bp = rsp->cq.bp;
 	fc_cfg->cq_cfg.enable = rsp->cq.bp_ena;
 	fc_cfg->type = ROC_NIX_FC_CQ_CFG;
 
@@ -158,6 +171,8 @@ static int
 nix_fc_rq_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct npa_cn20k_aq_enq_req *npa_req_cn20k;
+	struct npa_cn20k_aq_enq_rsp *npa_rsp_cn20k;
 	struct dev *dev = &nix->dev;
 	struct mbox *mbox = mbox_get(dev->mbox);
 	struct nix_aq_enq_rsp *rsp;
@@ -177,10 +192,22 @@ nix_fc_rq_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		aq->qidx = fc_cfg->rq_cfg.rq;
 		aq->ctype = NIX_AQ_CTYPE_RQ;
 		aq->op = NIX_AQ_INSTOP_READ;
-	} else {
+	} else if (roc_model_is_cn10k()) {
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (!aq) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+
+		aq->qidx = fc_cfg->rq_cfg.rq;
+		aq->ctype = NIX_AQ_CTYPE_RQ;
+		aq->op = NIX_AQ_INSTOP_READ;
+	} else {
+		struct nix_cn20k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
 		if (!aq) {
 			rc = -ENOSPC;
 			goto exit;
@@ -195,23 +222,43 @@ nix_fc_rq_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 	if (rc)
 		goto exit;
 
-	npa_req = mbox_alloc_msg_npa_aq_enq(mbox);
-	if (!npa_req) {
-		rc = -ENOSPC;
-		goto exit;
+	if (roc_model_is_cn20k()) {
+		npa_req_cn20k = mbox_alloc_msg_npa_cn20k_aq_enq(mbox);
+		if (!npa_req_cn20k) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+
+		npa_req_cn20k->aura_id = rsp->rq.lpb_aura;
+		npa_req_cn20k->ctype = NPA_AQ_CTYPE_AURA;
+		npa_req_cn20k->op = NPA_AQ_INSTOP_READ;
+
+		rc = mbox_process_msg(mbox, (void *)&npa_rsp_cn20k);
+		if (rc)
+			goto exit;
+
+		fc_cfg->cq_cfg.cq_drop = npa_rsp_cn20k->aura.bp;
+		fc_cfg->cq_cfg.enable = npa_rsp_cn20k->aura.bp_ena;
+		fc_cfg->type = ROC_NIX_FC_RQ_CFG;
+	} else {
+		npa_req = mbox_alloc_msg_npa_aq_enq(mbox);
+		if (!npa_req) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+
+		npa_req->aura_id = rsp->rq.lpb_aura;
+		npa_req->ctype = NPA_AQ_CTYPE_AURA;
+		npa_req->op = NPA_AQ_INSTOP_READ;
+
+		rc = mbox_process_msg(mbox, (void *)&npa_rsp);
+		if (rc)
+			goto exit;
+
+		fc_cfg->cq_cfg.cq_drop = npa_rsp->aura.bp;
+		fc_cfg->cq_cfg.enable = npa_rsp->aura.bp_ena;
+		fc_cfg->type = ROC_NIX_FC_RQ_CFG;
 	}
-
-	npa_req->aura_id = rsp->rq.lpb_aura;
-	npa_req->ctype = NPA_AQ_CTYPE_AURA;
-	npa_req->op = NPA_AQ_INSTOP_READ;
-
-	rc = mbox_process_msg(mbox, (void *)&npa_rsp);
-	if (rc)
-		goto exit;
-
-	fc_cfg->cq_cfg.cq_drop = npa_rsp->aura.bp;
-	fc_cfg->cq_cfg.enable = npa_rsp->aura.bp_ena;
-	fc_cfg->type = ROC_NIX_FC_RQ_CFG;
 
 exit:
 	mbox_put(mbox);
@@ -242,13 +289,13 @@ nix_fc_cq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		if (fc_cfg->cq_cfg.enable) {
 			aq->cq.bpid = nix->bpid[fc_cfg->cq_cfg.tc];
 			aq->cq_mask.bpid = ~(aq->cq_mask.bpid);
-			aq->cq.bp = fc_cfg->cq_cfg.cq_drop;
+			aq->cq.bp = fc_cfg->cq_cfg.cq_bp;
 			aq->cq_mask.bp = ~(aq->cq_mask.bp);
 		}
 
 		aq->cq.bp_ena = !!(fc_cfg->cq_cfg.enable);
 		aq->cq_mask.bp_ena = ~(aq->cq_mask.bp_ena);
-	} else {
+	} else if (roc_model_is_cn10k()) {
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
@@ -264,7 +311,29 @@ nix_fc_cq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		if (fc_cfg->cq_cfg.enable) {
 			aq->cq.bpid = nix->bpid[fc_cfg->cq_cfg.tc];
 			aq->cq_mask.bpid = ~(aq->cq_mask.bpid);
-			aq->cq.bp = fc_cfg->cq_cfg.cq_drop;
+			aq->cq.bp = fc_cfg->cq_cfg.cq_bp;
+			aq->cq_mask.bp = ~(aq->cq_mask.bp);
+		}
+
+		aq->cq.bp_ena = !!(fc_cfg->cq_cfg.enable);
+		aq->cq_mask.bp_ena = ~(aq->cq_mask.bp_ena);
+	} else {
+		struct nix_cn20k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
+		if (!aq) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+
+		aq->qidx = fc_cfg->cq_cfg.rq;
+		aq->ctype = NIX_AQ_CTYPE_CQ;
+		aq->op = NIX_AQ_INSTOP_WRITE;
+
+		if (fc_cfg->cq_cfg.enable) {
+			aq->cq.bpid = nix->bpid[fc_cfg->cq_cfg.tc];
+			aq->cq_mask.bpid = ~(aq->cq_mask.bpid);
+			aq->cq.bp = fc_cfg->cq_cfg.cq_bp;
 			aq->cq_mask.bp = ~(aq->cq_mask.bp);
 		}
 
@@ -321,6 +390,7 @@ nix_fc_rq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 	tmp.cq_cfg.rq = fc_cfg->rq_cfg.rq;
 	tmp.cq_cfg.tc = fc_cfg->rq_cfg.tc;
 	tmp.cq_cfg.cq_drop = fc_cfg->rq_cfg.cq_drop;
+	tmp.cq_cfg.cq_bp = fc_cfg->rq_cfg.cq_bp;
 	tmp.cq_cfg.enable = fc_cfg->rq_cfg.enable;
 
 	rc = nix_fc_cq_config_set(roc_nix, &tmp);
@@ -479,6 +549,61 @@ nix_rx_chan_multi_bpid_cfg(struct roc_nix *roc_nix, uint8_t chan, uint16_t bpid,
 
 #define NIX_BPID_INVALID 0xFFFF
 
+static void
+nix_fc_npa_multi_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_handle, uint8_t ena, uint8_t force,
+			uint8_t tc, uint64_t drop_percent)
+{
+	uint32_t pool_id = roc_npa_aura_handle_to_aura(pool_handle);
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct npa_lf *lf = idev_npa_obj_get();
+	struct npa_aura_attr *aura_attr;
+	uint8_t bp_thresh, bp_ena;
+	uint16_t bpid;
+	int i;
+
+	if (!lf)
+		return;
+
+	aura_attr = &lf->aura_attr[pool_id];
+
+	bp_thresh = NIX_RQ_AURA_BP_THRESH(drop_percent, aura_attr->limit, aura_attr->shift);
+	bpid = aura_attr->nix0_bpid;
+	bp_ena = aura_attr->bp_ena;
+
+	/* BP is already enabled. */
+	if ((bp_ena & (0x1 << tc)) && ena) {
+		if (bp_thresh != aura_attr->bp_thresh[tc]) {
+			if (roc_npa_pool_bp_configure(pool_id, nix->bpid[0], bp_thresh, tc, true))
+				plt_err("Enabling backpressue failed on pool 0x%" PRIx32, pool_id);
+		} else {
+			aura_attr->ref_count++;
+		}
+
+		return;
+	}
+
+	if (ena) {
+		if (roc_npa_pool_bp_configure(pool_id, nix->bpid[0], bp_thresh, tc, true))
+			plt_err("Enabling backpressue failed on pool 0x%" PRIx32, pool_id);
+		else
+			aura_attr->ref_count++;
+	} else {
+		bool found = !!force;
+
+		/* Don't disable if existing BPID is not within this port's list */
+		for (i = 0; i < nix->chan_cnt; i++)
+			if (bpid == nix->bpid[i])
+				found = true;
+		if (!found)
+			return;
+		else if ((aura_attr->ref_count > 0) && --(aura_attr->ref_count))
+			return;
+
+		if (roc_npa_pool_bp_configure(pool_id, 0, 0, 0, false))
+			plt_err("Disabling backpressue failed on pool 0x%" PRIx32, pool_id);
+	}
+}
+
 void
 roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, uint8_t force,
 		      uint8_t tc, uint64_t drop_percent)
@@ -496,6 +621,11 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, ui
 
 	if (!lf)
 		return;
+
+	if (roc_model_is_cn20k() && roc_nix->use_multi_bpids) {
+		nix_fc_npa_multi_bp_cfg(roc_nix, pool_id, ena, force, tc, drop_percent);
+		return;
+	}
 
 	aura_attr = &lf->aura_attr[aura_id];
 
@@ -634,10 +764,9 @@ roc_nix_chan_count_get(struct roc_nix *roc_nix)
  *	-ve value on error
  */
 int
-roc_nix_bpids_alloc(struct roc_nix *roc_nix, uint8_t type, uint8_t bp_cnt, uint16_t *bpids)
+nix_bpids_alloc(struct dev *dev, uint8_t type, uint8_t bp_cnt, uint16_t *bpids)
 {
-	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	struct mbox *mbox = mbox_get(nix->dev.mbox);
+	struct mbox *mbox = mbox_get(dev->mbox);
 	struct nix_alloc_bpid_req *req;
 	struct nix_bpids *rsp;
 	int rc = -EINVAL;
@@ -665,10 +794,9 @@ exit:
 }
 
 int
-roc_nix_bpids_free(struct roc_nix *roc_nix, uint8_t bp_cnt, uint16_t *bpids)
+nix_bpids_free(struct dev *dev, uint8_t bp_cnt, uint16_t *bpids)
 {
-	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	struct mbox *mbox = mbox_get(nix->dev.mbox);
+	struct mbox *mbox = mbox_get(dev->mbox);
 	struct nix_bpids *req;
 	int rc = -EINVAL;
 
@@ -688,6 +816,20 @@ roc_nix_bpids_free(struct roc_nix *roc_nix, uint8_t bp_cnt, uint16_t *bpids)
 exit:
 	mbox_put(mbox);
 	return rc;
+}
+
+int
+roc_nix_bpids_alloc(struct roc_nix *roc_nix, uint8_t type, uint8_t bp_cnt, uint16_t *bpids)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	return nix_bpids_alloc(&nix->dev, type, bp_cnt, bpids);
+}
+
+int
+roc_nix_bpids_free(struct roc_nix *roc_nix, uint8_t bp_cnt, uint16_t *bpids)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	return nix_bpids_free(&nix->dev, bp_cnt, bpids);
 }
 
 int

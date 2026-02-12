@@ -133,6 +133,7 @@ struct mlx5dr_cmd_stc_modify_attr {
 		struct {
 			uint16_t vport_num;
 			uint16_t esw_owner_vhca_id;
+			uint8_t eswitch_owner_vhca_id_valid;
 		} vport;
 		struct {
 			struct mlx5dr_pool_chunk ste;
@@ -194,8 +195,6 @@ struct mlx5dr_cmd_query_ft_caps {
 struct mlx5dr_cmd_query_vport_caps {
 	uint16_t vport_num;
 	uint16_t esw_owner_vhca_id;
-	uint32_t metadata_c;
-	uint32_t metadata_c_mask;
 };
 
 struct mlx5dr_cmd_generate_wqe_attr {
@@ -207,7 +206,6 @@ struct mlx5dr_cmd_generate_wqe_attr {
 };
 
 struct mlx5dr_cmd_query_caps {
-	uint32_t wire_regc;
 	uint32_t wire_regc_mask;
 	uint32_t flex_protocols;
 	uint8_t wqe_based_update;
@@ -252,6 +250,9 @@ struct mlx5dr_cmd_query_caps {
 	bool roce;
 	uint16_t roce_max_src_udp_port;
 	uint16_t roce_min_src_udp_port;
+	uint64_t stc_action_type_63_0;
+	uint64_t stc_action_type_127_64;
+	bool fdb_unified_en;
 };
 
 int mlx5dr_cmd_destroy_obj(struct mlx5dr_devx_obj *devx_obj);

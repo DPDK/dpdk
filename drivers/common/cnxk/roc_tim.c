@@ -5,6 +5,8 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+#define LF_ENABLE_RETRY_CNT 8
+
 static int
 tim_fill_msix(struct roc_tim *roc_tim, uint16_t nb_ring)
 {
@@ -86,8 +88,11 @@ tim_err_desc(int rc)
 	case TIM_AF_RING_ALREADY_DISABLED:
 		plt_err("Ring already stopped");
 		break;
+	case TIM_AF_LF_START_SYNC_FAIL:
+		plt_err("Ring start sync failed.");
+		break;
 	default:
-		plt_err("Unknown Error.");
+		plt_err("Unknown Error: %d", rc);
 	}
 }
 
@@ -123,10 +128,12 @@ roc_tim_lf_enable(struct roc_tim *roc_tim, uint8_t ring_id, uint64_t *start_tsc,
 	struct sso *sso = roc_sso_to_sso_priv(roc_tim->roc_sso);
 	struct dev *dev = &sso->dev;
 	struct mbox *mbox = mbox_get(dev->mbox);
+	uint8_t retry_cnt = LF_ENABLE_RETRY_CNT;
 	struct tim_enable_rsp *rsp;
 	struct tim_ring_req *req;
 	int rc = -ENOSPC;
 
+retry:
 	req = mbox_alloc_msg_tim_enable_ring(mbox);
 	if (req == NULL)
 		goto fail;
@@ -134,6 +141,9 @@ roc_tim_lf_enable(struct roc_tim *roc_tim, uint8_t ring_id, uint64_t *start_tsc,
 
 	rc = mbox_process_msg(dev->mbox, (void **)&rsp);
 	if (rc) {
+		if (rc == TIM_AF_LF_START_SYNC_FAIL && retry_cnt--)
+			goto retry;
+
 		tim_err_desc(rc);
 		rc = -EIO;
 		goto fail;
@@ -183,10 +193,9 @@ roc_tim_lf_base_get(struct roc_tim *roc_tim, uint8_t ring_id)
 }
 
 int
-roc_tim_lf_config(struct roc_tim *roc_tim, uint8_t ring_id,
-		  enum roc_tim_clk_src clk_src, uint8_t ena_periodic,
-		  uint8_t ena_dfb, uint32_t bucket_sz, uint32_t chunk_sz,
-		  uint32_t interval, uint64_t intervalns, uint64_t clockfreq)
+roc_tim_lf_config(struct roc_tim *roc_tim, uint8_t ring_id, enum roc_tim_clk_src clk_src,
+		  uint8_t ena_periodic, uint8_t ena_dfb, uint32_t bucket_sz, uint32_t chunk_sz,
+		  uint64_t interval, uint64_t intervalns, uint64_t clockfreq)
 {
 	struct sso *sso = roc_sso_to_sso_priv(roc_tim->roc_sso);
 	struct dev *dev = &sso->dev;
@@ -204,10 +213,46 @@ roc_tim_lf_config(struct roc_tim *roc_tim, uint8_t ring_id,
 	req->clocksource = clk_src;
 	req->enableperiodic = ena_periodic;
 	req->enabledontfreebuffer = ena_dfb;
-	req->interval = interval;
+	req->interval_lo = interval;
+	req->interval_hi = interval >> 32;
 	req->intervalns = intervalns;
 	req->clockfreq = clockfreq;
 	req->gpioedge = TIM_GPIO_LTOH_TRANS;
+
+	rc = mbox_process(mbox);
+	if (rc) {
+		tim_err_desc(rc);
+		rc = -EIO;
+	}
+
+fail:
+	mbox_put(mbox);
+	return rc;
+}
+
+int
+roc_tim_lf_config_hwwqe(struct roc_tim *roc_tim, uint8_t ring_id, struct roc_tim_hwwqe_cfg *cfg)
+{
+	struct sso *sso = roc_sso_to_sso_priv(roc_tim->roc_sso);
+	struct dev *dev = &sso->dev;
+	struct mbox *mbox = mbox_get(dev->mbox);
+	struct tim_cfg_hwwqe_req *req;
+	int rc = -ENOSPC;
+
+	req = mbox_alloc_msg_tim_config_hwwqe(mbox);
+	if (req == NULL)
+		goto fail;
+	req->ring = ring_id;
+	req->hwwqe_ena = cfg->hwwqe_ena;
+	req->grp_ena = cfg->grp_ena;
+	req->grp_tmo_cntr = cfg->grp_tmo_cyc;
+	req->flw_ctrl_ena = cfg->flw_ctrl_ena;
+	req->result_offset = cfg->result_offset;
+	req->event_count_offset = cfg->event_count_offset;
+
+	req->wqe_rd_clr_ena = 1;
+	req->npa_tmo_cntr = TIM_NPA_TMO;
+	req->ins_min_gap = TIM_BUCKET_MIN_GAP;
 
 	rc = mbox_process(mbox);
 	if (rc) {
@@ -342,7 +387,7 @@ tim_free_lf_count_get(struct dev *dev, uint16_t *nb_lfs)
 	mbox_alloc_msg_free_rsrc_cnt(mbox);
 	rc = mbox_process_msg(mbox, (void **)&rsrc_cnt);
 	if (rc) {
-		plt_err("Failed to get free resource count\n");
+		plt_err("Failed to get free resource count");
 		mbox_put(mbox);
 		return -EIO;
 	}
@@ -351,6 +396,31 @@ tim_free_lf_count_get(struct dev *dev, uint16_t *nb_lfs)
 	mbox_put(mbox);
 
 	return 0;
+}
+
+static int
+tim_hw_info_get(struct roc_tim *roc_tim)
+{
+	struct dev *dev = &roc_sso_to_sso_priv(roc_tim->roc_sso)->dev;
+	struct mbox *mbox = mbox_get(dev->mbox);
+	struct tim_hw_info *rsp;
+	int rc;
+
+	mbox_alloc_msg_tim_get_hw_info(mbox);
+	rc = mbox_process_msg(mbox, (void **)&rsp);
+	if (rc && rc != MBOX_MSG_INVALID) {
+		plt_err("Failed to get TIM HW info");
+		rc = -EIO;
+		goto exit;
+	}
+
+	if (rc != MBOX_MSG_INVALID)
+		mbox_memcpy(&roc_tim->feat, &rsp->feat, sizeof(roc_tim->feat));
+
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 int
@@ -371,6 +441,12 @@ roc_tim_init(struct roc_tim *roc_tim)
 	dev->roc_tim = roc_tim;
 	PLT_STATIC_ASSERT(sizeof(struct tim) <= TIM_MEM_SZ);
 	nb_lfs = roc_tim->nb_lfs;
+
+	rc = tim_hw_info_get(roc_tim);
+	if (rc) {
+		plt_tim_dbg("Failed to get TIM HW info");
+		return 0;
+	}
 
 	rc = tim_free_lf_count_get(dev, &nb_free_lfs);
 	if (rc) {

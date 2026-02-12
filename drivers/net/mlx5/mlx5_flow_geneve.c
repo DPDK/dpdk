@@ -97,7 +97,7 @@ option_match_type_and_class(uint8_t type, uint16_t class,
  * @return
  *   Pointer to option structure if exist, NULL otherwise and rte_errno is set.
  */
-static struct mlx5_geneve_tlv_option *
+struct mlx5_geneve_tlv_option *
 mlx5_geneve_tlv_option_get(const struct mlx5_priv *priv, uint8_t type,
 			   uint16_t class)
 {
@@ -590,8 +590,8 @@ mlx5_geneve_tlv_option_copy(struct rte_pmd_mlx5_geneve_tlv *dst,
 /**
  * Create list of GENEVE TLV options according to user configuration list.
  *
- * @param sh
- *   Shared context the options are being created on.
+ * @param ctx
+ *   Context returned from mlx5 open_device() glue function.
  * @param tlv_list
  *   A list of GENEVE TLV options to create parser for them.
  * @param nb_options
@@ -604,7 +604,7 @@ mlx5_geneve_tlv_option_copy(struct rte_pmd_mlx5_geneve_tlv *dst,
  *   NULL otherwise and rte_errno is set.
  */
 static struct mlx5_geneve_tlv_options *
-mlx5_geneve_tlv_options_create(struct mlx5_dev_ctx_shared *sh,
+mlx5_geneve_tlv_options_create(void *ctx,
 			       const struct rte_pmd_mlx5_geneve_tlv tlv_list[],
 			       uint8_t nb_options, uint8_t sample_id)
 {
@@ -625,7 +625,7 @@ mlx5_geneve_tlv_options_create(struct mlx5_dev_ctx_shared *sh,
 	}
 	for (i = 0; i < nb_options; ++i) {
 		spec = &tlv_list[i];
-		ret = mlx5_geneve_tlv_option_create(sh->cdev->ctx, spec,
+		ret = mlx5_geneve_tlv_option_create(ctx, spec,
 						    &options->options[i], sample_id);
 		if (ret < 0)
 			goto error;
@@ -633,8 +633,6 @@ mlx5_geneve_tlv_options_create(struct mlx5_dev_ctx_shared *sh,
 		data_mask = options->buffer + i * MAX_GENEVE_OPTION_DATA_SIZE;
 		mlx5_geneve_tlv_option_copy(&options->spec[i], spec, data_mask);
 	}
-	MLX5_ASSERT(sh->phdev->sh == NULL);
-	sh->phdev->sh = sh;
 	options->nb_options = nb_options;
 	options->refcnt = 1;
 	return options;
@@ -676,39 +674,7 @@ mlx5_geneve_tlv_options_destroy(struct mlx5_geneve_tlv_options *options,
 	}
 	mlx5_free(options);
 	phdev->tlv_options = NULL;
-	phdev->sh = NULL;
 	return 0;
-}
-
-/**
- * Check if GENEVE TLV options are hosted on the current port
- * and the port can be closed
- *
- * @param priv
- *   Device private data.
- *
- * @return
- *   0 on success, a negative EBUSY and rte_errno is set.
- */
-int
-mlx5_geneve_tlv_options_check_busy(struct mlx5_priv *priv)
-{
-	struct mlx5_physical_device *phdev = mlx5_get_locked_physical_device(priv);
-	struct mlx5_dev_ctx_shared *sh = priv->sh;
-
-	if (!phdev || phdev->sh != sh) {
-		mlx5_unlock_physical_device();
-		return 0;
-	}
-	if (!sh->phdev->tlv_options || sh->phdev->tlv_options->refcnt == 1) {
-		/* Mark port as being closed one */
-		sh->phdev->sh = NULL;
-		mlx5_unlock_physical_device();
-		return 0;
-	}
-	mlx5_unlock_physical_device();
-	rte_errno = EBUSY;
-	return -EBUSY;
 }
 
 /**
@@ -955,18 +921,12 @@ mlx5_geneve_tlv_parser_create(uint16_t port_id,
 			rte_errno = EEXIST;
 			return NULL;
 		}
-		if (phdev->sh == NULL) {
-			mlx5_unlock_physical_device();
-			DRV_LOG(ERR, "GENEVE TLV options are hosted on port being closed.");
-			rte_errno = EBUSY;
-			return NULL;
-		}
 		/* Use existing options. */
 		options->refcnt++;
 		goto exit;
 	}
 	/* Create GENEVE TLV options for this physical device. */
-	options = mlx5_geneve_tlv_options_create(priv->sh, tlv_list, nb_options, sample_id);
+	options = mlx5_geneve_tlv_options_create(phdev->ctx, tlv_list, nb_options, sample_id);
 	if (!options) {
 		mlx5_unlock_physical_device();
 		return NULL;

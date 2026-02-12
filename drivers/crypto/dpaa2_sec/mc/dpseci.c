@@ -1,7 +1,7 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016 NXP
+ * Copyright 2016-2023 NXP
  *
  */
 #include <fsl_mc_sys.h>
@@ -760,6 +760,95 @@ int dpseci_get_congestion_notification(
 	cfg->units = dpseci_get_field(rsp_params->type_units, CG_UNITS);
 	cfg->dest_cfg.dest_type = dpseci_get_field(rsp_params->type_units,
 						DEST_TYPE);
+
+	return 0;
+}
+
+
+/**
+ * dpseci_get_rx_queue_status() - Get queue status attributes
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPSECI object
+ * @queue_index:	Select the queue_index
+ * @attr:	Returned queue status attributes
+ *
+ * Return:	'0' on success, error code otherwise
+ */
+int dpseci_get_rx_queue_status(struct fsl_mc_io *mc_io,
+				uint32_t cmd_flags,
+				uint16_t token,
+				uint32_t queue_index,
+				struct dpseci_queue_status *attr)
+{
+	struct dpseci_rsp_get_queue_status *rsp_params;
+	struct dpseci_cmd_get_queue_status *cmd_params;
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPSECI_CMDID_GET_RX_QUEUE_STATUS,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpseci_cmd_get_queue_status *)cmd.params;
+	cmd_params->queue_index = cpu_to_le32(queue_index);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	rsp_params = (struct dpseci_rsp_get_queue_status *)cmd.params;
+	attr->fqid = le32_to_cpu(rsp_params->fqid);
+	attr->schedstate = (enum qbman_fq_schedstate_e)(le16_to_cpu(rsp_params->schedstate));
+	attr->state_flags = le16_to_cpu(rsp_params->state_flags);
+	attr->frame_count = le32_to_cpu(rsp_params->frame_count);
+	attr->byte_count = le32_to_cpu(rsp_params->byte_count);
+
+	return 0;
+}
+
+/**
+ * dpseci_get_tx_queue_status() - Get queue status attributes
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPSECI object
+ * @queue_index:	Select the queue_index
+ * @attr:	Returned queue status attributes
+ *
+ * Return:	'0' on success, error code otherwise
+ */
+int dpseci_get_tx_queue_status(struct fsl_mc_io *mc_io,
+				uint32_t cmd_flags,
+				uint16_t token,
+				uint32_t queue_index,
+				struct dpseci_queue_status *attr)
+{
+	struct dpseci_rsp_get_queue_status *rsp_params;
+	struct dpseci_cmd_get_queue_status *cmd_params;
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPSECI_CMDID_GET_TX_QUEUE_STATUS,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpseci_cmd_get_queue_status *)cmd.params;
+	cmd_params->queue_index = cpu_to_le32(queue_index);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	rsp_params = (struct dpseci_rsp_get_queue_status *)cmd.params;
+	attr->fqid = le32_to_cpu(rsp_params->fqid);
+	attr->schedstate = (enum qbman_fq_schedstate_e)(le16_to_cpu(rsp_params->schedstate));
+	attr->state_flags = le16_to_cpu(rsp_params->state_flags);
+	attr->frame_count = le32_to_cpu(rsp_params->frame_count);
+	attr->byte_count = le32_to_cpu(rsp_params->byte_count);
 
 	return 0;
 }

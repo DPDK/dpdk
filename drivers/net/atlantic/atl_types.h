@@ -13,6 +13,7 @@
 #include <pthread.h>
 
 #include <rte_common.h>
+#include <ethdev_driver.h>
 
 typedef uint8_t		u8;
 typedef int8_t		s8;

@@ -72,10 +72,10 @@ static uint32_t l2fwd_enabled_port_mask;
 /* list of enabled ports */
 static uint32_t l2fwd_dst_ports[RTE_MAX_ETHPORTS];
 
-struct port_pair_params {
+struct __rte_cache_aligned port_pair_params {
 #define NUM_PORTS	2
 	uint16_t port[NUM_PORTS];
-} __rte_cache_aligned;
+};
 
 static struct port_pair_params port_pair_params_array[RTE_MAX_ETHPORTS / 2];
 static struct port_pair_params *port_pair_params;
@@ -86,10 +86,10 @@ static unsigned int l2fwd_rx_queue_per_lcore = 1;
 #define MAX_RX_QUEUE_PER_LCORE 16
 #define MAX_TX_QUEUE_PER_PORT 16
 /* List of queues to be polled for a given lcore. 8< */
-struct lcore_queue_conf {
+struct __rte_cache_aligned lcore_queue_conf {
 	unsigned int n_rx_port;
 	unsigned int rx_port_list[MAX_RX_QUEUE_PER_LCORE];
-} __rte_cache_aligned;
+};
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 /* >8 End of list of queues to be polled for a given lcore. */
 
@@ -105,11 +105,11 @@ static struct rte_eth_conf port_conf = {
 struct rte_mempool *l2fwd_pktmbuf_pool;
 
 /* Per-port statistics struct */
-struct l2fwd_port_statistics {
+struct __rte_cache_aligned l2fwd_port_statistics {
 	uint64_t tx;
 	uint64_t rx;
 	uint64_t dropped;
-} __rte_cache_aligned;
+};
 struct l2fwd_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 
 #define MAX_TIMER_PERIOD 86400 /* 1 day max */
@@ -446,7 +446,8 @@ fill_macsec_sc_conf(uint16_t portid, struct rte_security_macsec_sc *sc_conf)
 		}
 		sc_conf->sc_tx.active = 1;
 		sc_conf->sc_tx.sci = mcs_port_params[portid].sci;
-		if (mcs_port_params[portid].xpn > 0)
+		if (mcs_port_params[portid].alg == RTE_SECURITY_MACSEC_ALG_GCM_XPN_128 ||
+			       mcs_port_params[portid].alg == RTE_SECURITY_MACSEC_ALG_GCM_XPN_256)
 			sc_conf->sc_tx.is_xpn = 1;
 	} else {
 		for (i = 0; i < RTE_SECURITY_MACSEC_NUM_AN; i++) {
@@ -456,7 +457,8 @@ fill_macsec_sc_conf(uint16_t portid, struct rte_security_macsec_sc *sc_conf)
 			}
 		}
 		sc_conf->sc_rx.active = 1;
-		if (mcs_port_params[portid].xpn > 0)
+		if (mcs_port_params[portid].alg == RTE_SECURITY_MACSEC_ALG_GCM_XPN_128 ||
+			       mcs_port_params[portid].alg == RTE_SECURITY_MACSEC_ALG_GCM_XPN_256)
 			sc_conf->sc_rx.is_xpn = 1;
 	}
 }
@@ -510,8 +512,8 @@ create_default_flow(uint16_t portid)
 	struct rte_flow *flow;
 	struct rte_flow_item_eth eth;
 	static const struct rte_flow_item_eth eth_mask = {
-		.hdr.dst_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
-		.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.hdr.dst_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+		.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 		.hdr.ether_type = RTE_BE16(0xFFFF),
 	};
 	int ret;
@@ -1008,7 +1010,7 @@ l2fwd_macsec_default_options(struct l2fwd_macsec_options *options)
 		if ((options->rx_portmask & (1 << portid)) != 0)
 			mcs_port_params[portid].dir = RTE_SECURITY_MACSEC_DIR_RX;
 
-		mcs_port_params[portid].alg = RTE_SECURITY_MACSEC_ALG_GCM_128;
+		mcs_port_params[portid].alg = RTE_SECURITY_MACSEC_ALG_GCM_XPN_128;
 		memcpy(mcs_port_params[portid].sa_key.data, key, 16);
 		mcs_port_params[portid].sa_key.len = 16;
 		memcpy(mcs_port_params[portid].salt, salt, MCS_SALT_LEN);

@@ -320,4 +320,4 @@ test_devargs(void)
 	return 0;
 }
 
-REGISTER_FAST_TEST(devargs_autotest, true, true, test_devargs);
+REGISTER_FAST_TEST(devargs_autotest, NOHUGE_OK, ASAN_OK, test_devargs);

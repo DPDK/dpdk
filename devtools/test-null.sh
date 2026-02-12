@@ -7,7 +7,7 @@
 
 build=${1:-build} # first argument can be the build directory
 testpmd=$1 # or first argument can be the testpmd path
-coremask=${2:-3} # default using cores 0 and 1
+corelist=${2:-0-1} # default using cores 0 and 1
 eal_options=$3
 testpmd_options=$4
 
@@ -28,6 +28,6 @@ fi
 
 (sleep 1 && echo stop) |
 # testpmd only needs 20M, make it x2 (default number of cores) for NUMA systems
-$testpmd -c $coremask --no-huge -m 40 \
+$testpmd -l $corelist --no-huge -m 40 \
 	$libs -a 0:0.0 --vdev net_null1 --vdev net_null2 $eal_options -- \
 	--no-mlockall --total-num-mbufs=2048 $testpmd_options -ia

@@ -1189,6 +1189,7 @@ test_eventdev_profile_switch(void)
 	ev.op = RTE_EVENT_OP_NEW;
 	ev.flow_id = 0;
 	ev.u64 = 0xBADF00D0;
+	ev.sched_type = RTE_SCHED_TYPE_PARALLEL;
 	rc = rte_event_enqueue_burst(TEST_DEV_ID, 0, &ev, 1);
 	TEST_ASSERT(rc == 1, "Failed to enqueue event");
 	ev.queue_id = 1;
@@ -1246,6 +1247,145 @@ test_eventdev_profile_switch(void)
 	q = 1;
 	rc = rte_event_port_profile_unlink(TEST_DEV_ID, 0, &q, 1, 1);
 	TEST_ASSERT(rc == 1, "Failed to unlink queue 1 to port 0 with profile 1");
+
+	return TEST_SUCCESS;
+}
+
+static int
+preschedule_test(enum rte_event_dev_preschedule_type preschedule_type, const char *preschedule_name,
+		 uint8_t modify)
+{
+#define NB_EVENTS     1024
+	uint64_t start, total;
+	struct rte_event ev;
+	int rc, cnt;
+
+	ev.event_type = RTE_EVENT_TYPE_CPU;
+	ev.queue_id = 0;
+	ev.op = RTE_EVENT_OP_NEW;
+	ev.u64 = 0xBADF00D0;
+
+	for (cnt = 0; cnt < NB_EVENTS; cnt++) {
+		ev.flow_id = cnt;
+		rc = rte_event_enqueue_burst(TEST_DEV_ID, 0, &ev, 1);
+		TEST_ASSERT(rc == 1, "Failed to enqueue event");
+	}
+
+	if (modify) {
+		rc = rte_event_port_preschedule_modify(TEST_DEV_ID, 0, preschedule_type);
+		TEST_ASSERT_SUCCESS(rc, "Failed to modify preschedule type");
+	}
+
+	total = 0;
+	while (cnt) {
+		start = rte_rdtsc_precise();
+		rc = rte_event_dequeue_burst(TEST_DEV_ID, 0, &ev, 1, 0);
+		if (rc) {
+			total += rte_rdtsc_precise() - start;
+			cnt--;
+		}
+	}
+	printf("Preschedule type : %s, avg cycles %" PRIu64 "\n", preschedule_name,
+	       total / NB_EVENTS);
+
+	return TEST_SUCCESS;
+}
+
+static int
+preschedule_configure(enum rte_event_dev_preschedule_type type, struct rte_event_dev_info *info)
+{
+	struct rte_event_dev_config dev_conf;
+	struct rte_event_queue_conf qcfg;
+	struct rte_event_port_conf pcfg;
+	int rc;
+
+	devconf_set_default_sane_values(&dev_conf, info);
+	dev_conf.nb_event_ports = 1;
+	dev_conf.nb_event_queues = 1;
+	dev_conf.preschedule_type = type;
+
+	rc = rte_event_dev_configure(TEST_DEV_ID, &dev_conf);
+	TEST_ASSERT_SUCCESS(rc, "Failed to configure eventdev");
+
+	rc = rte_event_port_default_conf_get(TEST_DEV_ID, 0, &pcfg);
+	TEST_ASSERT_SUCCESS(rc, "Failed to get port0 default config");
+	rc = rte_event_port_setup(TEST_DEV_ID, 0, &pcfg);
+	TEST_ASSERT_SUCCESS(rc, "Failed to setup port0");
+
+	rc = rte_event_queue_default_conf_get(TEST_DEV_ID, 0, &qcfg);
+	TEST_ASSERT_SUCCESS(rc, "Failed to get queue0 default config");
+	rc = rte_event_queue_setup(TEST_DEV_ID, 0, &qcfg);
+	TEST_ASSERT_SUCCESS(rc, "Failed to setup queue0");
+
+	rc = rte_event_port_link(TEST_DEV_ID, 0, NULL, NULL, 0);
+	TEST_ASSERT(rc == (int)dev_conf.nb_event_queues, "Failed to link port, device %d",
+		    TEST_DEV_ID);
+
+	rc = rte_event_dev_start(TEST_DEV_ID);
+	TEST_ASSERT_SUCCESS(rc, "Failed to start event device");
+
+	return 0;
+}
+
+static int
+test_eventdev_preschedule_configure(void)
+{
+	struct rte_event_dev_info info;
+	int rc;
+
+	rte_event_dev_info_get(TEST_DEV_ID, &info);
+
+	if ((info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE) == 0)
+		return TEST_SKIPPED;
+
+	rc = preschedule_configure(RTE_EVENT_PRESCHEDULE_NONE, &info);
+	TEST_ASSERT_SUCCESS(rc, "Failed to configure eventdev");
+	rc = preschedule_test(RTE_EVENT_PRESCHEDULE_NONE, "RTE_EVENT_PRESCHEDULE_NONE", 0);
+	TEST_ASSERT_SUCCESS(rc, "Failed to test preschedule RTE_EVENT_PRESCHEDULE_NONE");
+
+	rte_event_dev_stop(TEST_DEV_ID);
+	rc = preschedule_configure(RTE_EVENT_PRESCHEDULE, &info);
+	TEST_ASSERT_SUCCESS(rc, "Failed to configure eventdev");
+	rc = preschedule_test(RTE_EVENT_PRESCHEDULE, "RTE_EVENT_PRESCHEDULE", 0);
+	TEST_ASSERT_SUCCESS(rc, "Failed to test preschedule RTE_EVENT_PRESCHEDULE");
+
+	if (info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE) {
+		rte_event_dev_stop(TEST_DEV_ID);
+		rc = preschedule_configure(RTE_EVENT_PRESCHEDULE_ADAPTIVE, &info);
+		TEST_ASSERT_SUCCESS(rc, "Failed to configure eventdev");
+		rc = preschedule_test(RTE_EVENT_PRESCHEDULE_ADAPTIVE,
+				      "RTE_EVENT_PRESCHEDULE_ADAPTIVE", 0);
+		TEST_ASSERT_SUCCESS(rc,
+				    "Failed to test preschedule RTE_EVENT_PRESCHEDULE_ADAPTIVE");
+	}
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_eventdev_preschedule_modify(void)
+{
+	struct rte_event_dev_info info;
+	int rc;
+
+	rte_event_dev_info_get(TEST_DEV_ID, &info);
+	if ((info.event_dev_cap & RTE_EVENT_DEV_CAP_PER_PORT_PRESCHEDULE) == 0)
+		return TEST_SKIPPED;
+
+	rc = preschedule_configure(RTE_EVENT_PRESCHEDULE_NONE, &info);
+	TEST_ASSERT_SUCCESS(rc, "Failed to configure eventdev");
+	rc = preschedule_test(RTE_EVENT_PRESCHEDULE_NONE, "RTE_EVENT_PRESCHEDULE_NONE", 1);
+	TEST_ASSERT_SUCCESS(rc, "Failed to test per port preschedule RTE_EVENT_PRESCHEDULE_NONE");
+
+	rc = preschedule_test(RTE_EVENT_PRESCHEDULE, "RTE_EVENT_PRESCHEDULE", 1);
+	TEST_ASSERT_SUCCESS(rc, "Failed to test per port preschedule RTE_EVENT_PRESCHEDULE");
+
+	if (info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE) {
+		rc = preschedule_test(RTE_EVENT_PRESCHEDULE_ADAPTIVE,
+				      "RTE_EVENT_PRESCHEDULE_ADAPTIVE", 1);
+		TEST_ASSERT_SUCCESS(
+			rc, "Failed to test per port preschedule RTE_EVENT_PRESCHEDULE_ADAPTIVE");
+	}
 
 	return TEST_SUCCESS;
 }
@@ -1310,6 +1450,10 @@ static struct unit_test_suite eventdev_common_testsuite  = {
 			test_eventdev_start_stop),
 		TEST_CASE_ST(eventdev_configure_setup, eventdev_stop_device,
 			test_eventdev_profile_switch),
+		TEST_CASE_ST(eventdev_configure_setup, eventdev_stop_device,
+			test_eventdev_preschedule_configure),
+		TEST_CASE_ST(eventdev_configure_setup, eventdev_stop_device,
+			test_eventdev_preschedule_modify),
 		TEST_CASE_ST(eventdev_setup_device, eventdev_stop_device,
 			test_eventdev_link),
 		TEST_CASE_ST(eventdev_setup_device, eventdev_stop_device,
@@ -1377,16 +1521,23 @@ test_eventdev_selftest_cn10k(void)
 	return test_eventdev_selftest_impl("event_cn10k", "");
 }
 
+static int
+test_eventdev_selftest_cn20k(void)
+{
+	return test_eventdev_selftest_impl("event_cn20k", "");
+}
+
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_FAST_TEST(eventdev_common_autotest, true, true, test_eventdev_common);
+REGISTER_FAST_TEST(eventdev_common_autotest, NOHUGE_OK, ASAN_OK, test_eventdev_common);
 
 #ifndef RTE_EXEC_ENV_WINDOWS
-REGISTER_FAST_TEST(eventdev_selftest_sw, true, true, test_eventdev_selftest_sw);
+REGISTER_FAST_TEST(eventdev_selftest_sw, NOHUGE_OK, ASAN_OK, test_eventdev_selftest_sw);
 REGISTER_DRIVER_TEST(eventdev_selftest_octeontx, test_eventdev_selftest_octeontx);
 REGISTER_DRIVER_TEST(eventdev_selftest_dpaa2, test_eventdev_selftest_dpaa2);
 REGISTER_DRIVER_TEST(eventdev_selftest_dlb2, test_eventdev_selftest_dlb2);
 REGISTER_DRIVER_TEST(eventdev_selftest_cn9k, test_eventdev_selftest_cn9k);
 REGISTER_DRIVER_TEST(eventdev_selftest_cn10k, test_eventdev_selftest_cn10k);
+REGISTER_DRIVER_TEST(eventdev_selftest_cn20k, test_eventdev_selftest_cn20k);
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */

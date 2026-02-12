@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2021-2022 NXP
+ * Copyright 2021-2022, 2024 NXP
  */
 
 #include <cryptodev_pmd.h>
@@ -605,7 +605,7 @@ build_raw_dp_cipher_fd(uint8_t *drv_ctx,
 	flc = &priv->flc_desc[0].flc;
 
 	DPAA2_SEC_DP_DEBUG(
-		"RAW CIPHER SG: cipher_off: 0x%x/length %d, ivlen=%d\n",
+		"RAW CIPHER SG: cipher_off: 0x%x/length %d, ivlen=%d",
 		data_offset,
 		data_len,
 		sess->iv.length);
@@ -642,7 +642,7 @@ build_raw_dp_cipher_fd(uint8_t *drv_ctx,
 	DPAA2_SET_FLE_FIN(sge);
 
 	DPAA2_SEC_DP_DEBUG(
-		"RAW CIPHER SG: 1 - flc = %p, fle = %p FLEaddr = %x-%x, len %d\n",
+		"RAW CIPHER SG: 1 - flc = %p, fle = %p FLEaddr = %x-%x, len %d",
 		flc, fle, fle->addr_hi, fle->addr_lo,
 		fle->length);
 
@@ -678,7 +678,7 @@ build_raw_dp_cipher_fd(uint8_t *drv_ctx,
 	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
 
 	DPAA2_SEC_DP_DEBUG(
-		"RAW CIPHER SG: fdaddr =%" PRIx64 " off =%d, len =%d\n",
+		"RAW CIPHER SG: fdaddr =%" PRIx64 " off =%d, len =%d",
 		DPAA2_GET_FD_ADDR(fd),
 		DPAA2_GET_FD_OFFSET(fd),
 		DPAA2_GET_FD_LEN(fd));
@@ -721,7 +721,7 @@ dpaa2_sec_raw_enqueue_burst(void *qp_data, uint8_t *drv_ctx,
 		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
 			DPAA2_SEC_ERR(
-				"Failed to allocate IO portal, tid: %d\n",
+				"Failed to allocate IO portal, tid: %d",
 				rte_gettid());
 			return 0;
 		}
@@ -811,7 +811,7 @@ sec_fd_to_userdata(const struct qbman_fd *fd)
 	void *userdata;
 	fle = (struct qbman_fle *)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
 
-	DPAA2_SEC_DP_DEBUG("FLE addr = %x - %x, offset = %x\n",
+	DPAA2_SEC_DP_DEBUG("FLE addr = %x - %x, offset = %x",
 			   fle->addr_hi, fle->addr_lo, fle->fin_bpid_offset);
 	userdata = (struct rte_crypto_op *)DPAA2_GET_FLE_ADDR((fle - 1));
 	/* free the fle memory */
@@ -847,13 +847,13 @@ dpaa2_sec_raw_dequeue_burst(void *qp_data, uint8_t *drv_ctx,
 		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
 			DPAA2_SEC_ERR(
-				"Failed to allocate IO portal, tid: %d\n",
+				"Failed to allocate IO portal, tid: %d",
 				rte_gettid());
 			return 0;
 		}
 	}
 	swp = DPAA2_PER_LCORE_PORTAL;
-	dq_storage = dpaa2_qp->rx_vq.q_storage->dq_storage[0];
+	dq_storage = dpaa2_qp->rx_vq.q_storage[0]->dq_storage[0];
 
 	qbman_pull_desc_clear(&pulldesc);
 	qbman_pull_desc_set_numframes(&pulldesc,
@@ -900,7 +900,7 @@ dpaa2_sec_raw_dequeue_burst(void *qp_data, uint8_t *drv_ctx,
 			status = (uint8_t)qbman_result_DQ_flags(dq_storage);
 			if (unlikely(
 				(status & QBMAN_DQ_STAT_VALIDFRAME) == 0)) {
-				DPAA2_SEC_DP_DEBUG("No frame is delivered\n");
+				DPAA2_SEC_DP_DEBUG("No frame is delivered");
 				continue;
 			}
 		}
@@ -929,7 +929,7 @@ dpaa2_sec_raw_dequeue_burst(void *qp_data, uint8_t *drv_ctx,
 	*dequeue_status = 1;
 	*n_success = num_rx;
 
-	DPAA2_SEC_DP_DEBUG("SEC Received %d Packets\n", num_rx);
+	DPAA2_SEC_DP_DEBUG("SEC Received %d Packets", num_rx);
 	/*Return the total number of packets received to DPAA2 app*/
 	return num_rx;
 }

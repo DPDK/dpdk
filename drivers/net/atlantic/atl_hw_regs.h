@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0) */
-/* Copyright (C) 2014-2017 aQuantia Corporation. */
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
+ * Copyright (C) 2014-2017 aQuantia Corporation.
+ */
 
 /* File aq_hw_utils.h: Declaration of helper functions used across hardware
  * layer.

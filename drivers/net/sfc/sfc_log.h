@@ -11,10 +11,7 @@
 #define _SFC_LOG_H_
 
 /** Generic driver log type */
-extern uint32_t sfc_logtype_driver;
-
-/** Common log type name prefix */
-#define SFC_LOGTYPE_PREFIX	"pmd.net.sfc."
+extern int sfc_logtype_driver;
 
 /** Log PMD generic message, add a prefix and a line break */
 #define SFC_GENERIC_LOG(level, ...) \
@@ -23,10 +20,10 @@ extern uint32_t sfc_logtype_driver;
 			RTE_FMT_TAIL(__VA_ARGS__ ,)))
 
 /** Name prefix for the per-device log type used to report basic information */
-#define SFC_LOGTYPE_MAIN_STR	SFC_LOGTYPE_PREFIX "main"
+#define SFC_LOGTYPE_MAIN_STR	RTE_STR(RTE_LOG_DEFAULT_LOGTYPE) ".main"
 
 /** Device MCDI log type name prefix */
-#define SFC_LOGTYPE_MCDI_STR	SFC_LOGTYPE_PREFIX "mcdi"
+#define SFC_LOGTYPE_MCDI_STR	RTE_STR(RTE_LOG_DEFAULT_LOGTYPE) ".mcdi"
 
 #define SFC_LOG_PREFIX_MAX	32
 

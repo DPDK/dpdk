@@ -24,7 +24,7 @@ enum {
 	WRK_CMD_RUN,
 };
 
-static uint32_t wrk_cmd __rte_cache_aligned = WRK_CMD_STOP;
+static alignas(RTE_CACHE_LINE_SIZE) RTE_ATOMIC(uint32_t) wrk_cmd = WRK_CMD_STOP;
 
 /* test run-time in seconds */
 static const uint32_t run_time = 60;
@@ -41,14 +41,14 @@ struct lcore_stat {
 	} op;
 };
 
-struct lcore_arg {
+struct __rte_cache_aligned lcore_arg {
 	struct rte_ring *rng;
 	struct lcore_stat stats;
-} __rte_cache_aligned;
+};
 
-struct ring_elem {
+struct __rte_cache_aligned ring_elem {
 	uint32_t cnt[RTE_CACHE_LINE_SIZE / sizeof(uint32_t)];
-} __rte_cache_aligned;
+};
 
 /*
  * redefinable functions
@@ -203,7 +203,7 @@ test_worker(void *arg, const char *fname, int32_t prcs)
 	 * really releasing any data through 'wrk_cmd' to
 	 * the worker.
 	 */
-	while (__atomic_load_n(&wrk_cmd, __ATOMIC_RELAXED) != WRK_CMD_RUN)
+	while (rte_atomic_load_explicit(&wrk_cmd, rte_memory_order_relaxed) != WRK_CMD_RUN)
 		rte_pause();
 
 	cl = rte_rdtsc_precise();
@@ -246,7 +246,7 @@ test_worker(void *arg, const char *fname, int32_t prcs)
 
 		lcore_stat_update(&la->stats, 1, num, tm0 + tm1, prcs);
 
-	} while (__atomic_load_n(&wrk_cmd, __ATOMIC_RELAXED) == WRK_CMD_RUN);
+	} while (rte_atomic_load_explicit(&wrk_cmd, rte_memory_order_relaxed) == WRK_CMD_RUN);
 
 	cl = rte_rdtsc_precise() - cl;
 	if (prcs == 0)
@@ -297,7 +297,7 @@ mt1_init(struct rte_ring **rng, void **data, uint32_t num)
 	*data = elm;
 
 	/* alloc ring */
-	nr = 2 * num;
+	nr = rte_align32pow2(2 * num);
 	sz = rte_ring_get_memsize(nr);
 	r = rte_zmalloc(NULL, sz, alignof(typeof(*r)));
 	if (r == NULL) {
@@ -360,12 +360,12 @@ test_mt1(int (*test)(void *))
 	}
 
 	/* signal worker to start test */
-	__atomic_store_n(&wrk_cmd, WRK_CMD_RUN, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&wrk_cmd, WRK_CMD_RUN, rte_memory_order_release);
 
 	rte_delay_us(run_time * US_PER_S);
 
 	/* signal worker to start test */
-	__atomic_store_n(&wrk_cmd, WRK_CMD_STOP, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&wrk_cmd, WRK_CMD_STOP, rte_memory_order_release);
 
 	/* wait for workers and collect stats. */
 	mc = rte_lcore_id();
@@ -380,6 +380,7 @@ test_mt1(int (*test)(void *))
 	}
 
 	lcore_stat_dump(stdout, UINT32_MAX, &arg[mc].stats);
+	rte_ring_dump(stdout, r);
 	mt1_fini(r, data);
 	return rc;
 }

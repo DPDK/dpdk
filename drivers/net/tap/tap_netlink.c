@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <linux/netlink.h>
+#include <net/if.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -293,17 +294,18 @@ retry:
  *   The data to append.
  */
 void
-tap_nlattr_add(struct nlmsghdr *nh, unsigned short type,
+tap_nlattr_add(struct tap_nlmsg *msg, unsigned short type,
 	   unsigned int data_len, const void *data)
 {
 	/* see man 3 rtnetlink */
 	struct rtattr *rta;
 
-	rta = (struct rtattr *)NLMSG_TAIL(nh);
+	rta = (struct rtattr *)NLMSG_TAIL(msg);
 	rta->rta_len = RTA_LENGTH(data_len);
 	rta->rta_type = type;
-	memcpy(RTA_DATA(rta), data, data_len);
-	nh->nlmsg_len = NLMSG_ALIGN(nh->nlmsg_len) + RTA_ALIGN(rta->rta_len);
+	if (data_len > 0)
+		memcpy(RTA_DATA(rta), data, data_len);
+	msg->nh.nlmsg_len = NLMSG_ALIGN(msg->nh.nlmsg_len) + RTA_ALIGN(rta->rta_len);
 }
 
 /**
@@ -317,9 +319,9 @@ tap_nlattr_add(struct nlmsghdr *nh, unsigned short type,
  *   The data to append.
  */
 void
-tap_nlattr_add8(struct nlmsghdr *nh, unsigned short type, uint8_t data)
+tap_nlattr_add8(struct tap_nlmsg *msg, unsigned short type, uint8_t data)
 {
-	tap_nlattr_add(nh, type, sizeof(uint8_t), &data);
+	tap_nlattr_add(msg, type, sizeof(uint8_t), &data);
 }
 
 /**
@@ -333,9 +335,9 @@ tap_nlattr_add8(struct nlmsghdr *nh, unsigned short type, uint8_t data)
  *   The data to append.
  */
 void
-tap_nlattr_add16(struct nlmsghdr *nh, unsigned short type, uint16_t data)
+tap_nlattr_add16(struct tap_nlmsg *msg, unsigned short type, uint16_t data)
 {
-	tap_nlattr_add(nh, type, sizeof(uint16_t), &data);
+	tap_nlattr_add(msg, type, sizeof(uint16_t), &data);
 }
 
 /**
@@ -349,9 +351,9 @@ tap_nlattr_add16(struct nlmsghdr *nh, unsigned short type, uint16_t data)
  *   The data to append.
  */
 void
-tap_nlattr_add32(struct nlmsghdr *nh, unsigned short type, uint32_t data)
+tap_nlattr_add32(struct tap_nlmsg *msg, unsigned short type, uint32_t data)
 {
-	tap_nlattr_add(nh, type, sizeof(uint32_t), &data);
+	tap_nlattr_add(msg, type, sizeof(uint32_t), &data);
 }
 
 /**
@@ -367,7 +369,7 @@ tap_nlattr_add32(struct nlmsghdr *nh, unsigned short type, uint32_t data)
  *   -1 if adding a nested netlink attribute failed, 0 otherwise.
  */
 int
-tap_nlattr_nested_start(struct nlmsg *msg, uint16_t type)
+tap_nlattr_nested_start(struct tap_nlmsg *msg, uint16_t type)
 {
 	struct nested_tail *tail;
 
@@ -378,9 +380,9 @@ tap_nlattr_nested_start(struct nlmsg *msg, uint16_t type)
 		return -1;
 	}
 
-	tail->tail = (struct rtattr *)NLMSG_TAIL(&msg->nh);
+	tail->tail = (struct rtattr *)NLMSG_TAIL(msg);
 
-	tap_nlattr_add(&msg->nh, type, 0, NULL);
+	tap_nlattr_add(msg, type, 0, NULL);
 
 	tail->prev = msg->nested_tails;
 
@@ -399,14 +401,304 @@ tap_nlattr_nested_start(struct nlmsg *msg, uint16_t type)
  *   The netlink message where to edit the nested_tails metadata.
  */
 void
-tap_nlattr_nested_finish(struct nlmsg *msg)
+tap_nlattr_nested_finish(struct tap_nlmsg *msg)
 {
 	struct nested_tail *tail = msg->nested_tails;
 
-	tail->tail->rta_len = (char *)NLMSG_TAIL(&msg->nh) - (char *)tail->tail;
+	tail->tail->rta_len = (char *)NLMSG_TAIL(msg) - (char *)tail->tail;
 
 	if (tail->prev)
 		msg->nested_tails = tail->prev;
 
 	rte_free(tail);
+}
+
+/**
+ * Helper structure to pass data between netlink request and callback
+ */
+struct link_info_ctx {
+	struct ifinfomsg *info;
+	struct rte_ether_addr *mac;
+	unsigned int *flags;
+	unsigned int ifindex;
+	int found;
+};
+
+/**
+ * Callback to extract link information from RTM_GETLINK response
+ */
+static int
+tap_nl_link_cb(struct nlmsghdr *nh, void *arg)
+{
+	struct link_info_ctx *ctx = arg;
+	struct ifinfomsg *ifi = NLMSG_DATA(nh);
+	struct rtattr *rta;
+	int rta_len;
+
+	if (nh->nlmsg_type != RTM_NEWLINK)
+		return 0;
+
+	/* Check if this is the interface we're looking for */
+	if (ifi->ifi_index != (int)ctx->ifindex)
+		return 0;
+
+	ctx->found = 1;
+
+	/* Copy basic info if requested */
+	if (ctx->info)
+		*ctx->info = *ifi;
+
+	/* Extract flags if requested */
+	if (ctx->flags)
+		*ctx->flags = ifi->ifi_flags;
+
+	/* Parse attributes for MAC address if requested */
+	if (ctx->mac) {
+		rta = IFLA_RTA(ifi);
+		rta_len = IFLA_PAYLOAD(nh);
+
+		for (; RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
+			if (rta->rta_type == IFLA_ADDRESS) {
+				if (RTA_PAYLOAD(rta) >= RTE_ETHER_ADDR_LEN)
+					memcpy(ctx->mac, RTA_DATA(rta),
+					       RTE_ETHER_ADDR_LEN);
+				break;
+			}
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * Get interface flags by ifindex
+ *
+ * @param nlsk_fd
+ *   Netlink socket file descriptor
+ * @param ifindex
+ *   Interface index
+ * @param flags
+ *   Pointer to store interface flags
+ *
+ * @return
+ *   0 on success, -1 on error
+ */
+int
+tap_nl_get_flags(int nlsk_fd, unsigned int ifindex, unsigned int *flags)
+{
+	struct {
+		struct nlmsghdr nh;
+		struct ifinfomsg ifi;
+	} req = {
+		.nh = {
+			.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg)),
+			.nlmsg_type = RTM_GETLINK,
+			.nlmsg_flags = NLM_F_REQUEST,
+		},
+		.ifi = {
+			.ifi_family = AF_UNSPEC,
+			.ifi_index = ifindex,
+		},
+	};
+	struct link_info_ctx ctx = {
+		.flags = flags,
+		.ifindex = ifindex,
+		.found = 0,
+	};
+
+	if (tap_nl_send(nlsk_fd, &req.nh) < 0)
+		return -1;
+
+	if (tap_nl_recv(nlsk_fd, tap_nl_link_cb, &ctx) < 0)
+		return -1;
+
+	if (!ctx.found) {
+		errno = ENODEV;
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
+ * Set interface flags by ifindex
+ *
+ * @param nlsk_fd
+ *   Netlink socket file descriptor
+ * @param ifindex
+ *   Interface index
+ * @param flags
+ *   Flags to set/unset
+ * @param set
+ *   1 to set flags, 0 to unset them
+ *
+ * @return
+ *   0 on success, -1 on error
+ */
+int
+tap_nl_set_flags(int nlsk_fd, unsigned int ifindex, unsigned int flags, int set)
+{
+	struct {
+		struct nlmsghdr nh;
+		struct ifinfomsg ifi;
+	} req = {
+		.nh = {
+			.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg)),
+			.nlmsg_type = RTM_SETLINK,
+			.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK,
+		},
+		.ifi = {
+			.ifi_family = AF_UNSPEC,
+			.ifi_index = ifindex,
+			.ifi_flags = set ? flags : 0,
+			.ifi_change = flags,  /* mask of flags to change */
+		},
+	};
+
+	if (tap_nl_send(nlsk_fd, &req.nh) < 0)
+		return -1;
+
+	return tap_nl_recv_ack(nlsk_fd);
+}
+
+/**
+ * Set interface MTU by ifindex
+ *
+ * @param nlsk_fd
+ *   Netlink socket file descriptor
+ * @param ifindex
+ *   Interface index
+ * @param mtu
+ *   New MTU value
+ *
+ * @return
+ *   0 on success, -1 on error
+ */
+int
+tap_nl_set_mtu(int nlsk_fd, unsigned int ifindex, unsigned int mtu)
+{
+	struct {
+		struct nlmsghdr nh;
+		struct ifinfomsg ifi;
+		char buf[64];
+	} req = {
+		.nh = {
+			.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg)),
+			.nlmsg_type = RTM_SETLINK,
+			.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK,
+		},
+		.ifi = {
+			.ifi_family = AF_UNSPEC,
+			.ifi_index = ifindex,
+		},
+	};
+	struct rtattr *rta;
+
+	/* Add MTU attribute */
+	rta = (struct rtattr *)((char *)&req + NLMSG_ALIGN(req.nh.nlmsg_len));
+	rta->rta_type = IFLA_MTU;
+	rta->rta_len = RTA_LENGTH(sizeof(mtu));
+	memcpy(RTA_DATA(rta), &mtu, sizeof(mtu));
+	req.nh.nlmsg_len = NLMSG_ALIGN(req.nh.nlmsg_len) + RTA_ALIGN(rta->rta_len);
+
+	if (tap_nl_send(nlsk_fd, &req.nh) < 0)
+		return -1;
+
+	return tap_nl_recv_ack(nlsk_fd);
+}
+
+/**
+ * Get interface MAC address by ifindex
+ *
+ * @param nlsk_fd
+ *   Netlink socket file descriptor
+ * @param ifindex
+ *   Interface index
+ * @param mac
+ *   Pointer to store MAC address
+ *
+ * @return
+ *   0 on success, -1 on error
+ */
+int
+tap_nl_get_mac(int nlsk_fd, unsigned int ifindex, struct rte_ether_addr *mac)
+{
+	struct {
+		struct nlmsghdr nh;
+		struct ifinfomsg ifi;
+	} req = {
+		.nh = {
+			.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg)),
+			.nlmsg_type = RTM_GETLINK,
+			.nlmsg_flags = NLM_F_REQUEST,
+		},
+		.ifi = {
+			.ifi_family = AF_UNSPEC,
+			.ifi_index = ifindex,
+		},
+	};
+	struct link_info_ctx ctx = {
+		.mac = mac,
+		.ifindex = ifindex,
+		.found = 0,
+	};
+
+	if (tap_nl_send(nlsk_fd, &req.nh) < 0)
+		return -1;
+
+	if (tap_nl_recv(nlsk_fd, tap_nl_link_cb, &ctx) < 0)
+		return -1;
+
+	if (!ctx.found) {
+		errno = ENODEV;
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
+ * Set interface MAC address by ifindex
+ *
+ * @param nlsk_fd
+ *   Netlink socket file descriptor
+ * @param ifindex
+ *   Interface index
+ * @param mac
+ *   New MAC address
+ *
+ * @return
+ *   0 on success, -1 on error
+ */
+int
+tap_nl_set_mac(int nlsk_fd, unsigned int ifindex, const struct rte_ether_addr *mac)
+{
+	struct {
+		struct nlmsghdr nh;
+		struct ifinfomsg ifi;
+		char buf[64];
+	} req = {
+		.nh = {
+			.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg)),
+			.nlmsg_type = RTM_SETLINK,
+			.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK,
+		},
+		.ifi = {
+			.ifi_family = AF_UNSPEC,
+			.ifi_index = ifindex,
+		},
+	};
+	struct rtattr *rta;
+
+	/* Add MAC address attribute */
+	rta = (struct rtattr *)((char *)&req + NLMSG_ALIGN(req.nh.nlmsg_len));
+	rta->rta_type = IFLA_ADDRESS;
+	rta->rta_len = RTA_LENGTH(RTE_ETHER_ADDR_LEN);
+	memcpy(RTA_DATA(rta), mac, RTE_ETHER_ADDR_LEN);
+	req.nh.nlmsg_len = NLMSG_ALIGN(req.nh.nlmsg_len) + RTA_ALIGN(rta->rta_len);
+
+	if (tap_nl_send(nlsk_fd, &req.nh) < 0)
+		return -1;
+
+	return tap_nl_recv_ack(nlsk_fd);
 }

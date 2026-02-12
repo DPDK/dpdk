@@ -4,6 +4,7 @@
 
 #include <bus_vdev_driver.h>
 #include <rte_common.h>
+#include <stdlib.h>
 
 #include "zlib_pmd_private.h"
 
@@ -15,10 +16,124 @@
 		(data = rte_pktmbuf_mtod(mbuf, uint8_t *)),	\
 		(len = rte_pktmbuf_data_len(mbuf)) : 0)
 
+#define BOTTOM_NIBBLE_OF_BYTE 0xf
+#define TOP_NIBBLE_OF_BYTE 0xf0
+#define BOTTOM_NIBBLE_OF_BYTES_IN_DOUBLE_WORD 0x0f0f0f0f
+#define TOP_NIBBLE_OF_BYTE_IN_DOUBLE_WORD 0xf0f0f0f0
+#define ZLIB_MAX_DICT_SIZE (1ULL << 15)
+
+static void
+process_zlib_deflate_chksum(struct rte_comp_op *op,
+		z_stream *strm, enum rte_comp_checksum_type chksum)
+{
+	uint32_t dictionary_len = 0;
+	uint8_t *dictionary = malloc(ZLIB_MAX_DICT_SIZE);
+	uint32_t dictionary_start, dictionary_end, sum;
+	uint8_t *sum_bytes = (uint8_t *)&sum;
+	op->status = RTE_COMP_OP_STATUS_SUCCESS;
+
+	switch (chksum) {
+	case RTE_COMP_CHECKSUM_3GPP_PDCP_UDC:
+
+		if (!dictionary) {
+			ZLIB_PMD_ERR("Unable to fetch dictionary");
+			op->status = RTE_COMP_OP_STATUS_ERROR;
+			return;
+		}
+
+		if (deflateGetDictionary(strm, dictionary, &dictionary_len)) {
+			ZLIB_PMD_ERR("Unable to fetch dictionary");
+			op->status = RTE_COMP_OP_STATUS_CHECKSUM_VALIDATION_FAILED;
+			free(dictionary);
+			return;
+		}
+
+		dictionary_start = *(uint32_t *)dictionary;
+		dictionary_end = *(uint32_t *)(dictionary + dictionary_len - 4);
+		sum = (dictionary_start & BOTTOM_NIBBLE_OF_BYTES_IN_DOUBLE_WORD)
+			+ ((dictionary_start & TOP_NIBBLE_OF_BYTE_IN_DOUBLE_WORD) >> 4)
+			+ (dictionary_end & BOTTOM_NIBBLE_OF_BYTES_IN_DOUBLE_WORD)
+			+ ((dictionary_end & TOP_NIBBLE_OF_BYTE_IN_DOUBLE_WORD) >> 4);
+
+		op->output_chksum = ~(sum_bytes[0] + sum_bytes[1] + sum_bytes[2] + sum_bytes[3])
+			 & BOTTOM_NIBBLE_OF_BYTE;
+		break;
+	case RTE_COMP_CHECKSUM_NONE:
+		break;
+	case RTE_COMP_CHECKSUM_CRC32:
+	case RTE_COMP_CHECKSUM_ADLER32:
+	case RTE_COMP_CHECKSUM_CRC32_ADLER32:
+	default:
+		ZLIB_PMD_ERR("Checksum not supported");
+		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+		free(dictionary);
+		return;
+	}
+	free(dictionary);
+}
+
+static void
+process_zlib_inflate_chksum(struct rte_comp_op *op,
+		z_stream *strm,
+		enum rte_comp_checksum_type chksum)
+{
+	uint32_t dictionary_len = 0;
+	uint8_t *dictionary = malloc(ZLIB_MAX_DICT_SIZE);
+	uint32_t dictionary_start, dictionary_end, sum;
+	uint8_t *sum_bytes = (uint8_t *)&sum;
+	op->status = RTE_COMP_OP_STATUS_SUCCESS;
+
+	switch (chksum) {
+	case RTE_COMP_CHECKSUM_3GPP_PDCP_UDC:
+		if (!dictionary) {
+			ZLIB_PMD_ERR("Unable to malloc dictionary");
+			op->status = RTE_COMP_OP_STATUS_ERROR;
+			return;
+		}
+
+		if (inflateGetDictionary(strm, dictionary, &dictionary_len)) {
+			ZLIB_PMD_ERR("Unable to fetch dictionary");
+			op->status = RTE_COMP_OP_STATUS_CHECKSUM_VALIDATION_FAILED;
+			free(dictionary);
+			return;
+		}
+
+		dictionary_start = *(uint32_t *)dictionary;
+		dictionary_end = *(uint32_t *)(dictionary + dictionary_len - 4);
+		sum = (dictionary_start & BOTTOM_NIBBLE_OF_BYTES_IN_DOUBLE_WORD)
+			+ ((dictionary_start & TOP_NIBBLE_OF_BYTE_IN_DOUBLE_WORD) >> 4)
+			+ (dictionary_end & BOTTOM_NIBBLE_OF_BYTES_IN_DOUBLE_WORD)
+			+ ((dictionary_end & TOP_NIBBLE_OF_BYTE_IN_DOUBLE_WORD) >> 4);
+
+		op->output_chksum = ~(sum_bytes[0] + sum_bytes[1] + sum_bytes[2] + sum_bytes[3])
+			 & BOTTOM_NIBBLE_OF_BYTE;
+
+		if (op->input_chksum != op->output_chksum) {
+			ZLIB_PMD_ERR("Checksum does not match");
+			op->status = RTE_COMP_OP_STATUS_CHECKSUM_VALIDATION_FAILED;
+			free(dictionary);
+			return;
+		}
+		break;
+	case RTE_COMP_CHECKSUM_NONE:
+		break;
+	case RTE_COMP_CHECKSUM_CRC32:
+	case RTE_COMP_CHECKSUM_ADLER32:
+	case RTE_COMP_CHECKSUM_CRC32_ADLER32:
+	default:
+		ZLIB_PMD_ERR("Checksum not supported");
+		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+		free(dictionary);
+		return;
+	}
+	free(dictionary);
+}
+
 static void
 process_zlib_deflate(struct rte_comp_op *op, z_stream *strm)
 {
 	int ret, flush, fin_flush;
+	unsigned long total_in_at_start, total_out_at_start;
 	struct rte_mbuf *mbuf_src = op->m_src;
 	struct rte_mbuf *mbuf_dst = op->m_dst;
 
@@ -27,15 +142,18 @@ process_zlib_deflate(struct rte_comp_op *op, z_stream *strm)
 	case RTE_COMP_FLUSH_FINAL:
 		fin_flush = Z_FINISH;
 		break;
+	case RTE_COMP_FLUSH_SYNC:
+		fin_flush = Z_SYNC_FLUSH;
+		break;
 	default:
 		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
-		ZLIB_PMD_ERR("Invalid flush value\n");
+		ZLIB_PMD_ERR("Invalid flush value");
 		return;
 	}
 
 	if (unlikely(!strm)) {
 		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
-		ZLIB_PMD_ERR("Invalid z_stream\n");
+		ZLIB_PMD_ERR("Invalid z_stream");
 		return;
 	}
 	/* Update z_stream with the inputs provided by application */
@@ -49,6 +167,9 @@ process_zlib_deflate(struct rte_comp_op *op, z_stream *strm)
 
 	strm->avail_out = rte_pktmbuf_data_len(mbuf_dst) - op->dst.offset;
 
+	total_in_at_start = strm->total_in;
+	total_out_at_start = strm->total_out;
+
 	/* Set flush value to NO_FLUSH unless it is last mbuf */
 	flush = Z_NO_FLUSH;
 	/* Initialize status to SUCCESS */
@@ -56,8 +177,8 @@ process_zlib_deflate(struct rte_comp_op *op, z_stream *strm)
 
 	do {
 		/* Set flush value to Z_FINISH for last block */
-		if ((op->src.length - strm->total_in) <= strm->avail_in) {
-			strm->avail_in = (op->src.length - strm->total_in);
+		if ((op->src.length - (strm->total_in - total_in_at_start)) <= strm->avail_in) {
+			strm->avail_in = (op->src.length - (strm->total_in - total_in_at_start));
 			flush = fin_flush;
 		}
 		do {
@@ -92,29 +213,31 @@ def_end:
 	/* Update op stats */
 	switch (op->status) {
 	case RTE_COMP_OP_STATUS_SUCCESS:
-		op->consumed += strm->total_in;
+		op->consumed += strm->total_in - total_in_at_start;
 	/* Fall-through */
 	case RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED:
-		op->produced += strm->total_out;
+		op->produced += strm->total_out - total_out_at_start;
 		break;
 	default:
-		ZLIB_PMD_ERR("stats not updated for status:%d\n",
+		ZLIB_PMD_ERR("stats not updated for status:%d",
 				op->status);
 	}
 
-	deflateReset(strm);
+	if (op->flush_flag != RTE_COMP_FLUSH_SYNC)
+		deflateReset(strm);
 }
 
 static void
 process_zlib_inflate(struct rte_comp_op *op, z_stream *strm)
 {
 	int ret, flush;
+	unsigned long total_in_at_start, total_out_at_start;
 	struct rte_mbuf *mbuf_src = op->m_src;
 	struct rte_mbuf *mbuf_dst = op->m_dst;
 
 	if (unlikely(!strm)) {
 		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
-		ZLIB_PMD_ERR("Invalid z_stream\n");
+		ZLIB_PMD_ERR("Invalid z_stream");
 		return;
 	}
 	strm->next_in = rte_pktmbuf_mtod_offset(mbuf_src, uint8_t *,
@@ -126,6 +249,9 @@ process_zlib_inflate(struct rte_comp_op *op, z_stream *strm)
 			op->dst.offset);
 
 	strm->avail_out = rte_pktmbuf_data_len(mbuf_dst) - op->dst.offset;
+
+	total_in_at_start = strm->total_in;
+	total_out_at_start = strm->total_out;
 
 	/** Ignoring flush value provided from application for decompression */
 	flush = Z_NO_FLUSH;
@@ -178,17 +304,18 @@ inf_end:
 	/* Update op stats */
 	switch (op->status) {
 	case RTE_COMP_OP_STATUS_SUCCESS:
-		op->consumed += strm->total_in;
+		op->consumed += strm->total_in - total_in_at_start;
 	/* Fall-through */
 	case RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED:
-		op->produced += strm->total_out;
+		op->produced += strm->total_out - total_out_at_start;
 		break;
 	default:
-		ZLIB_PMD_ERR("stats not produced for status:%d\n",
+		ZLIB_PMD_ERR("stats not produced for status:%d",
 				op->status);
 	}
 
-	inflateReset(strm);
+	if (op->flush_flag != RTE_COMP_FLUSH_SYNC)
+		inflateReset(strm);
 }
 
 /** Process comp operation for mbuf */
@@ -203,10 +330,14 @@ process_zlib_op(struct zlib_qp *qp, struct rte_comp_op *op)
 			(op->dst.offset > rte_pktmbuf_data_len(op->m_dst))) {
 		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
 		ZLIB_PMD_ERR("Invalid source or destination buffers or "
-			     "invalid Operation requested\n");
+				  "invalid Operation requested");
 	} else {
 		private_xform = (struct zlib_priv_xform *)op->private_xform;
 		stream = &private_xform->stream;
+		stream->chksum(op, &stream->strm, stream->chksum_type);
+		if (op->status != RTE_COMP_OP_STATUS_SUCCESS)
+			return -1;
+
 		stream->comp(op, &stream->strm);
 	}
 	/* whatever is out of op, put it into completion queue with
@@ -232,13 +363,14 @@ zlib_set_stream_parameters(const struct rte_comp_xform *xform,
 	case RTE_COMP_COMPRESS:
 		stream->comp = process_zlib_deflate;
 		stream->free = deflateEnd;
+		stream->chksum = process_zlib_deflate_chksum;
 		/** Compression window bits */
 		switch (xform->compress.algo) {
 		case RTE_COMP_ALGO_DEFLATE:
 			wbits = -(xform->compress.window_size);
 			break;
 		default:
-			ZLIB_PMD_ERR("Compression algorithm not supported\n");
+			ZLIB_PMD_ERR("Compression algorithm not supported");
 			return -1;
 		}
 		/** Compression Level */
@@ -260,7 +392,7 @@ zlib_set_stream_parameters(const struct rte_comp_xform *xform,
 			if (level < RTE_COMP_LEVEL_MIN ||
 					level > RTE_COMP_LEVEL_MAX) {
 				ZLIB_PMD_ERR("Compression level %d "
-						"not supported\n",
+						"not supported",
 						level);
 				return -1;
 			}
@@ -278,33 +410,57 @@ zlib_set_stream_parameters(const struct rte_comp_xform *xform,
 			strategy = Z_DEFAULT_STRATEGY;
 			break;
 		default:
-			ZLIB_PMD_ERR("Compression strategy not supported\n");
+			ZLIB_PMD_ERR("Compression strategy not supported");
 			return -1;
 		}
+
+		/** Checksum used */
+		stream->chksum_type = xform->compress.chksum;
+
 		if (deflateInit2(strm, level,
 					Z_DEFLATED, wbits,
 					DEF_MEM_LEVEL, strategy) != Z_OK) {
-			ZLIB_PMD_ERR("Deflate init failed\n");
+			ZLIB_PMD_ERR("Deflate init failed");
 			return -1;
+		}
+
+		if (xform->compress.deflate.dictionary) {
+			if (deflateSetDictionary(strm, xform->compress.deflate.dictionary,
+					xform->compress.deflate.dictionary_len)) {
+				ZLIB_PMD_ERR("Deflate set dictionary failed");
+				return -1;
+			}
 		}
 		break;
 
 	case RTE_COMP_DECOMPRESS:
 		stream->comp = process_zlib_inflate;
 		stream->free = inflateEnd;
+		stream->chksum = process_zlib_inflate_chksum;
 		/** window bits */
 		switch (xform->decompress.algo) {
 		case RTE_COMP_ALGO_DEFLATE:
 			wbits = -(xform->decompress.window_size);
 			break;
 		default:
-			ZLIB_PMD_ERR("Compression algorithm not supported\n");
+			ZLIB_PMD_ERR("Compression algorithm not supported");
 			return -1;
 		}
 
+		/** Checksum used */
+		stream->chksum_type = xform->decompress.chksum;
+
 		if (inflateInit2(strm, wbits) != Z_OK) {
-			ZLIB_PMD_ERR("Inflate init failed\n");
+			ZLIB_PMD_ERR("Inflate init failed");
 			return -1;
+		}
+
+		if (xform->decompress.inflate.dictionary) {
+			if (inflateSetDictionary(strm, xform->decompress.inflate.dictionary,
+					xform->decompress.inflate.dictionary_len)) {
+				ZLIB_PMD_ERR("inflate set dictionary failed");
+				return -1;
+			}
 		}
 		break;
 	default:
@@ -395,7 +551,7 @@ zlib_probe(struct rte_vdev_device *vdev)
 	retval = rte_compressdev_pmd_parse_input_args(&init_params, input_args);
 	if (retval < 0) {
 		ZLIB_PMD_LOG(ERR,
-			"Failed to parse initialisation arguments[%s]\n",
+			"Failed to parse initialisation arguments[%s]",
 			input_args);
 		return -EINVAL;
 	}

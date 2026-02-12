@@ -1,7 +1,7 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2018-2021 NXP
+ * Copyright 2018-2024 NXP
  *
  */
 #ifndef __FSL_DPDMUX_H
@@ -52,6 +52,9 @@ int dpdmux_close(struct fsl_mc_io *mc_io,
  * IRQ event - Indicates that the link state changed
  */
 #define DPDMUX_IRQ_EVENT_LINK_CHANGED	0x0001
+
+/* DPDMUX_IRQ_EVENT_ENDPOINT_CHANGED - indicates a change in endpoint */
+#define DPDMUX_IRQ_EVENT_ENDPOINT_CHANGED	0x0002
 
 /**
  * enum dpdmux_manip - DPDMUX manipulation operations
@@ -143,17 +146,21 @@ int dpdmux_reset(struct fsl_mc_io *mc_io,
 		 uint16_t token);
 
 /**
- *Setting 1 DPDMUX_RESET will not reset default interface
+ *Setting 1 DPDMUX_RESET will not modify default interface after reset
  */
-#define DPDMUX_SKIP_DEFAULT_INTERFACE	0x01
+#define DPDMUX_SKIP_MODIFY_DEFAULT_INTERFACE	0x01
 /**
- *Setting 1 DPDMUX_RESET will not reset unicast rules
+ *Setting 2 DPDMUX_RESET will not reset unicast rules
  */
 #define DPDMUX_SKIP_UNICAST_RULES	0x02
 /**
- *Setting 1 DPDMUX_RESET will not reset multicast rules
+ *Setting 3 DPDMUX_RESET will not reset multicast rules
  */
 #define DPDMUX_SKIP_MULTICAST_RULES	0x04
+/**
+ *Setting 4 DPDMUX_RESET will not reset default interface
+ */
+#define DPDMUX_SKIP_RESET_DEFAULT_INTERFACE	0x08
 
 int dpdmux_set_resetable(struct fsl_mc_io *mc_io,
 				  uint32_t cmd_flags,
@@ -464,10 +471,50 @@ int dpdmux_get_api_version(struct fsl_mc_io *mc_io,
 			   uint16_t *major_ver,
 			   uint16_t *minor_ver);
 
+enum dpdmux_congestion_unit {
+	DPDMUX_TAIDLROP_DROP_UNIT_BYTE = 0,
+	DPDMUX_TAILDROP_DROP_UNIT_FRAMES,
+	DPDMUX_TAILDROP_DROP_UNIT_BUFFERS
+};
+
 /**
- * Discard bit. This bit must be used together with other bits in
- * DPDMUX_ERROR_ACTION_CONTINUE to disable discarding of frames containing
- * errors
+ * struct dpdmux_taildrop_cfg - interface taildrop configuration
+ * @enable - enable (1 ) or disable (0) taildrop
+ * @units - taildrop units
+ * @threshold - taildtop threshold
+ */
+struct dpdmux_taildrop_cfg {
+	char enable;
+	enum dpdmux_congestion_unit units;
+	uint32_t threshold;
+};
+
+int dpdmux_if_set_taildrop(struct fsl_mc_io *mc_io, uint32_t cmd_flags, uint16_t token,
+			      uint16_t if_id, struct dpdmux_taildrop_cfg *cfg);
+
+int dpdmux_if_get_taildrop(struct fsl_mc_io *mc_io, uint32_t cmd_flags, uint16_t token,
+			      uint16_t if_id, struct dpdmux_taildrop_cfg *cfg);
+
+#define DPDMUX_MAX_KEY_SIZE 56
+
+enum dpdmux_table_type {
+	DPDMUX_DMAT_TABLE = 1,
+	DPDMUX_MISS_TABLE = 2,
+	DPDMUX_PRUNE_TABLE = 3,
+};
+
+int dpdmux_dump_table(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token,
+			 uint16_t table_type,
+			 uint16_t table_index,
+			 uint64_t iova_addr,
+			 uint32_t iova_size,
+			 uint16_t *num_entries);
+
+/**
+ * Discard bit. This bit must be used together with other bits in DPDMUX_ERROR_ACTION_CONTINUE
+ * to disable discarding of frames containing errors
  */
 #define DPDMUX_ERROR_DISC		0x80000000
 /**
@@ -549,6 +596,22 @@ int dpdmux_get_api_version(struct fsl_mc_io *mc_io,
  */
 #define DPDMUX__ERROR_L4CE			0x00000001
 
+#define DPDMUX_ALL_ERRORS	(DPDMUX__ERROR_L4CE | \
+				 DPDMUX__ERROR_L4CV | \
+				 DPDMUX__ERROR_L3CE | \
+				 DPDMUX__ERROR_L3CV | \
+				 DPDMUX_ERROR_BLE | \
+				 DPDMUX_ERROR_PHE | \
+				 DPDMUX_ERROR_ISP | \
+				 DPDMUX_ERROR_PTE | \
+				 DPDMUX_ERROR_FPE | \
+				 DPDMUX_ERROR_FLE | \
+				 DPDMUX_ERROR_PIEE | \
+				 DPDMUX_ERROR_TIDE | \
+				 DPDMUX_ERROR_MNLE | \
+				 DPDMUX_ERROR_EOFHE | \
+				 DPDMUX_ERROR_KSE)
+
 enum dpdmux_error_action {
 	DPDMUX_ERROR_ACTION_DISCARD = 0,
 	DPDMUX_ERROR_ACTION_CONTINUE = 1
@@ -566,5 +629,20 @@ struct dpdmux_error_cfg {
 
 int dpdmux_if_set_errors_behavior(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
 		uint16_t token, uint16_t if_id, struct dpdmux_error_cfg *cfg);
+
+/**
+ * SP Profile on Ingress DPDMUX
+ */
+#define DPDMUX_SP_PROFILE_INGRESS 0x1
+/**
+ * SP Profile on Egress DPDMUX
+ */
+#define DPDMUX_SP_PROFILE_EGRESS	0x2
+
+int dpdmux_set_sp_profile(struct fsl_mc_io *mc_io, uint32_t cmd_flags, uint16_t token,
+		uint8_t sp_profile[], uint8_t type);
+
+int dpdmux_sp_enable(struct fsl_mc_io *mc_io, uint32_t cmd_flags, uint16_t token,
+		uint16_t if_id, uint8_t type, uint8_t en);
 
 #endif /* __FSL_DPDMUX_H */

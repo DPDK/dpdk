@@ -11,14 +11,23 @@
  * API for ethdev trace support
  */
 
+#include <rte_trace_point.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <rte_trace_point.h>
+RTE_TRACE_POINT_FP(
+	rte_ethdev_trace_rx_burst_empty,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint16_t queue_id,
+		void **pkt_tbl),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u16(queue_id);
+	rte_trace_point_emit_ptr(pkt_tbl);
+)
 
 RTE_TRACE_POINT_FP(
-	rte_ethdev_trace_rx_burst,
+	rte_ethdev_trace_rx_burst_nonempty,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint16_t queue_id,
 		void **pkt_tbl, uint16_t nb_rx),
 	rte_trace_point_emit_u16(port_id);
@@ -38,7 +47,17 @@ RTE_TRACE_POINT_FP(
 )
 
 RTE_TRACE_POINT_FP(
-	rte_eth_trace_call_rx_callbacks,
+	rte_eth_trace_call_rx_callbacks_empty,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint16_t queue_id,
+		void **rx_pkts, uint16_t nb_pkts),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u16(queue_id);
+	rte_trace_point_emit_ptr(rx_pkts);
+	rte_trace_point_emit_u16(nb_pkts);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_eth_trace_call_rx_callbacks_nonempty,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint16_t queue_id,
 		void **rx_pkts, uint16_t nb_rx, uint16_t nb_pkts),
 	rte_trace_point_emit_u16(port_id);

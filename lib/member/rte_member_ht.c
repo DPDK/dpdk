@@ -8,6 +8,7 @@
 #include <rte_random.h>
 #include <rte_log.h>
 #include <rte_vect.h>
+#include <rte_cpuflags.h>
 
 #include "member.h"
 #include "rte_member.h"
@@ -494,7 +495,7 @@ rte_member_add_ht(const struct rte_member_setsum *ss,
 		return ret;
 
 	/* Random pick prim or sec for recursive displacement */
-	uint32_t select_bucket = (tmp_sig && 1U) ? prim_bucket : sec_bucket;
+	uint32_t select_bucket = (tmp_sig & 1U) ? prim_bucket : sec_bucket;
 	if (ss->cache) {
 		ret = evict_from_bucket();
 		buckets[select_bucket].sigs[ret] = tmp_sig;

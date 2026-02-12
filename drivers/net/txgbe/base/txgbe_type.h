@@ -29,12 +29,40 @@
 #define TXGBE_FDIRCMD_CMD_POLL			10
 #define TXGBE_VF_INIT_TIMEOUT	200 /* Number of retries to clear RSTI */
 #define TXGBE_SPI_TIMEOUT	10000
+#define TXGBE_PCI_MASTER_DISABLE_TIMEOUT	800
 
 #define TXGBE_ALIGN		128 /* as intel did */
 
 #include "txgbe_status.h"
 #include "txgbe_osdep.h"
 #include "txgbe_devids.h"
+
+/* Sensors for AMLITE PVT(Process Voltage Temperature) */
+#define TXGBE_AML_INTR_RAW_HI           0x10300
+#define TXGBE_AML_INTR_RAW_ME           0x10304
+#define TXGBE_AML_INTR_RAW_LO           0x10308
+#define TXGBE_AML_TS_CTL1               0x10330
+#define TXGBE_AML_TS_CTL2               0x10334
+#define TXGBE_AML_TS_ENA                0x10338
+#define TXGBE_AML_TS_STS                0x1033C
+#define TXGBE_AML_INTR_HIGH_EN          0x10318
+#define TXGBE_AML_INTR_MED_EN           0x1031C
+#define TXGBE_AML_INTR_LOW_EN           0x10320
+#define TXGBE_AML_INTR_HIGH_STS         0x1030C
+#define TXGBE_AML_INTR_MED_STS          0x10310
+#define TXGBE_AML_INTR_LOW_STS          0x10314
+
+#define TXGBE_AML_TS_STS_VLD            0x00001000U
+#define TXGBE_AML_INTR_EN_HI            0x00000002U
+#define TXGBE_AML_INTR_EN_ME            0x00000001U
+#define TXGBE_AML_INTR_EN_LO            0x00000001U
+#define TXGBE_AML_INTR_CL_HI            0x00000002U
+#define TXGBE_AML_INTR_CL_ME            0x00000001U
+#define TXGBE_AML_INTR_CL_LO            0x00000001U
+#define TXGBE_AML_EVAL_MODE_MASK        0x00000010U
+#define TXGBE_AML_CAL_MODE_MASK         0x00000008U
+#define TXGBE_AML_ALARM_THRE_MASK       0x1FFE0000U
+#define TXGBE_AML_DALARM_THRE_MASK      0x0001FFE0U
 
 struct txgbe_thermal_diode_data {
 	s16 temp;
@@ -87,8 +115,11 @@ enum {
 #define TXGBE_ATR_L4TYPE_UDP			0x1
 #define TXGBE_ATR_L4TYPE_TCP			0x2
 #define TXGBE_ATR_L4TYPE_SCTP			0x3
-#define TXGBE_ATR_TUNNEL_MASK			0x10
-#define TXGBE_ATR_TUNNEL_ANY			0x10
+#define TXGBE_ATR_TYPE_MASK_TUN			0x80
+#define TXGBE_ATR_TYPE_MASK_TUN_OUTIP		0x40
+#define TXGBE_ATR_TYPE_MASK_TUN_TYPE		0x20
+#define TXGBE_ATR_TYPE_MASK_L3P			0x10
+#define TXGBE_ATR_TYPE_MASK_L4P			0x08
 enum txgbe_atr_flow_type {
 	TXGBE_ATR_FLOW_TYPE_IPV4		= 0x0,
 	TXGBE_ATR_FLOW_TYPE_UDPV4		= 0x1,
@@ -98,14 +129,6 @@ enum txgbe_atr_flow_type {
 	TXGBE_ATR_FLOW_TYPE_UDPV6		= 0x5,
 	TXGBE_ATR_FLOW_TYPE_TCPV6		= 0x6,
 	TXGBE_ATR_FLOW_TYPE_SCTPV6		= 0x7,
-	TXGBE_ATR_FLOW_TYPE_TUNNELED_IPV4	= 0x10,
-	TXGBE_ATR_FLOW_TYPE_TUNNELED_UDPV4	= 0x11,
-	TXGBE_ATR_FLOW_TYPE_TUNNELED_TCPV4	= 0x12,
-	TXGBE_ATR_FLOW_TYPE_TUNNELED_SCTPV4	= 0x13,
-	TXGBE_ATR_FLOW_TYPE_TUNNELED_IPV6	= 0x14,
-	TXGBE_ATR_FLOW_TYPE_TUNNELED_UDPV6	= 0x15,
-	TXGBE_ATR_FLOW_TYPE_TUNNELED_TCPV6	= 0x16,
-	TXGBE_ATR_FLOW_TYPE_TUNNELED_SCTPV6	= 0x17,
 };
 
 /* Flow Director ATR input struct. */
@@ -115,11 +138,8 @@ struct txgbe_atr_input {
 	 *
 	 * vm_pool	- 1 byte
 	 * flow_type	- 1 byte
-	 * vlan_id	- 2 bytes
+	 * pkt_type	- 2 bytes
 	 * src_ip	- 16 bytes
-	 * inner_mac	- 6 bytes
-	 * cloud_mode	- 2 bytes
-	 * tni_vni	- 4 bytes
 	 * dst_ip	- 16 bytes
 	 * src_port	- 2 bytes
 	 * dst_port	- 2 bytes
@@ -146,8 +166,11 @@ enum txgbe_eeprom_type {
 
 enum txgbe_mac_type {
 	txgbe_mac_unknown = 0,
-	txgbe_mac_raptor,
-	txgbe_mac_raptor_vf,
+	txgbe_mac_sp,
+	txgbe_mac_aml,
+	txgbe_mac_aml40,
+	txgbe_mac_sp_vf,
+	txgbe_mac_aml_vf,
 	txgbe_num_macs
 };
 
@@ -210,6 +233,18 @@ enum txgbe_sfp_type {
 	txgbe_sfp_type_1g_sx_core1,
 	txgbe_sfp_type_1g_lx_core0,
 	txgbe_sfp_type_1g_lx_core1,
+	txgbe_sfp_type_25g_sr_core0,
+	txgbe_sfp_type_25g_sr_core1,
+	txgbe_sfp_type_25g_lr_core0,
+	txgbe_sfp_type_25g_lr_core1,
+	txgbe_sfp_type_25g_aoc_core0,
+	txgbe_sfp_type_25g_aoc_core1,
+	txgbe_qsfp_type_40g_cu_core0,
+	txgbe_qsfp_type_40g_cu_core1,
+	txgbe_qsfp_type_40g_sr_core0,
+	txgbe_qsfp_type_40g_sr_core1,
+	txgbe_qsfp_type_40g_lr_core0,
+	txgbe_qsfp_type_40g_lr_core1,
 	txgbe_sfp_type_not_present = 0xFFFE,
 	txgbe_sfp_type_not_known = 0xFFFF
 };
@@ -306,6 +341,7 @@ struct txgbe_fc_info {
 	u32 high_water[TXGBE_DCB_TC_MAX]; /* Flow Ctrl High-water */
 	u32 low_water[TXGBE_DCB_TC_MAX]; /* Flow Ctrl Low-water */
 	u16 pause_time; /* Flow Control Pause timer */
+	u8 mac_ctrl_frame_fwd; /* Forward MAC control frames */
 	bool send_xon; /* Flow control send XON */
 	bool strict_ieee; /* Strict IEEE mode */
 	bool disable_fc_autoneg; /* Do not autonegotiate FC */
@@ -535,6 +571,7 @@ struct txgbe_mac_info {
 	s32 (*prot_autoc_read)(struct txgbe_hw *hw, bool *locked, u64 *value);
 	s32 (*prot_autoc_write)(struct txgbe_hw *hw, bool locked, u64 value);
 	s32 (*negotiate_api_version)(struct txgbe_hw *hw, int api);
+	void (*init_mac_link_ops)(struct txgbe_hw *hw);
 
 	/* Link */
 	void (*disable_tx_laser)(struct txgbe_hw *hw);
@@ -671,6 +708,7 @@ struct txgbe_phy_info {
 				      u8 *value);
 	s32 (*write_i2c_byte_unlocked)(struct txgbe_hw *hw, u8 offset, u8 addr,
 				       u8 value);
+	s32 (*set_link_hostif)(struct txgbe_hw *hw, u8 speed, u8 autoneg, u8 duplex);
 
 	enum txgbe_phy_type type;
 	u32 addr;
@@ -705,6 +743,11 @@ struct txgbe_phy_info {
 #define TXGBE_DEVARG_FFE_MAIN		"ffe_main"
 #define TXGBE_DEVARG_FFE_PRE		"ffe_pre"
 #define TXGBE_DEVARG_FFE_POST		"ffe_post"
+#define TXGBE_DEVARG_FDIR_PBALLOC	"pkt-filter-size"
+#define TXGBE_DEVARG_FDIR_DROP_QUEUE	"pkt-filter-drop-queue"
+#define TXGBE_DEVARG_TX_HEAD_WB		"tx_headwb"
+#define TXGBE_DEVARG_TX_HEAD_WB_SIZE	"tx_headwb_size"
+#define TXGBE_DEVARG_RX_DESC_MERGE	"rx_desc_merge"
 
 static const char * const txgbe_valid_arguments[] = {
 	TXGBE_DEVARG_BP_AUTO,
@@ -715,6 +758,11 @@ static const char * const txgbe_valid_arguments[] = {
 	TXGBE_DEVARG_FFE_MAIN,
 	TXGBE_DEVARG_FFE_PRE,
 	TXGBE_DEVARG_FFE_POST,
+	TXGBE_DEVARG_FDIR_PBALLOC,
+	TXGBE_DEVARG_FDIR_DROP_QUEUE,
+	TXGBE_DEVARG_TX_HEAD_WB,
+	TXGBE_DEVARG_TX_HEAD_WB_SIZE,
+	TXGBE_DEVARG_RX_DESC_MERGE,
 	NULL
 };
 
@@ -738,6 +786,8 @@ struct txgbe_mbx_info {
 	s32  (*check_for_msg)(struct txgbe_hw *hw, u16 mbx_id);
 	s32  (*check_for_ack)(struct txgbe_hw *hw, u16 mbx_id);
 	s32  (*check_for_rst)(struct txgbe_hw *hw, u16 mbx_id);
+	s32  (*host_interface_command)(struct txgbe_hw *hw, u32 *buffer,
+				u32 length, u32 timeout, bool return_data);
 
 	struct txgbe_mbx_stats stats;
 	u32 timeout;
@@ -754,11 +804,20 @@ enum txgbe_isb_idx {
 	TXGBE_ISB_MAX
 };
 
+#define TXGBE_PHY_FEC_RS	MS(0, 0x1)
+#define TXGBE_PHY_FEC_BASER	MS(1, 0x1)
+#define TXGBE_PHY_FEC_OFF	MS(2, 0x1)
+#define TXGBE_PHY_FEC_AUTO	(TXGBE_PHY_FEC_OFF | TXGBE_PHY_FEC_BASER |\
+				 TXGBE_PHY_FEC_RS)
+
 struct txgbe_devargs {
 	u16 auto_neg;
 	u16 poll;
 	u16 present;
 	u16 sgmii;
+	u16 tx_headwb;
+	u16 tx_headwb_size;
+	u16 rx_desc_merge;
 };
 
 struct txgbe_hw {
@@ -777,10 +836,12 @@ struct txgbe_hw {
 	u16 vendor_id;
 	u16 subsystem_device_id;
 	u16 subsystem_vendor_id;
+	u8 port_id;
 	u8 revision_id;
 	bool adapter_stopped;
 	int api_version;
 	bool allow_unsupported_sfp;
+	bool lldp_enabled;
 	bool need_crosstalk_fix;
 	bool dev_start;
 	bool autoneg;
@@ -815,6 +876,13 @@ struct txgbe_hw {
 		u64 tx_qp_bytes;
 		u64 rx_qp_mc_packets;
 	} qp_last[TXGBE_MAX_QP];
+
+	rte_spinlock_t phy_lock;
+	/*amlite: new SW-FW mbox */
+	u8 swfw_index;
+	rte_atomic32_t swfw_busy;
+	u32 fec_mode;
+	u32 cur_fec_link;
 };
 
 struct txgbe_backplane_ability {

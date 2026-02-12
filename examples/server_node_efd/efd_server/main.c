@@ -68,7 +68,7 @@ static const char *
 get_printable_mac_addr(uint16_t port)
 {
 	static const char err_address[] = "00:00:00:00:00:00";
-	static char addresses[RTE_MAX_ETHPORTS][sizeof(err_address)];
+	static char addresses[RTE_MAX_ETHPORTS][RTE_ETHER_ADDR_FMT_SIZE + 1];
 	struct rte_ether_addr mac;
 	int ret;
 
@@ -177,12 +177,12 @@ static int
 sleep_lcore(__rte_unused void *dummy)
 {
 	/* Used to pick a display thread - static, so zero-initialised */
-	static uint32_t display_stats;
+	static RTE_ATOMIC(uint32_t) display_stats;
 
 	/* Only one core should display stats */
 	uint32_t display_init = 0;
-	if (__atomic_compare_exchange_n(&display_stats, &display_init, 1, 0,
-			__ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+	if (rte_atomic_compare_exchange_strong_explicit(&display_stats, &display_init, 1,
+			rte_memory_order_relaxed, rte_memory_order_relaxed)) {
 		const unsigned int sleeptime = 1;
 
 		printf("Core %u displaying statistics\n", rte_lcore_id());

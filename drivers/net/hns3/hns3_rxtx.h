@@ -178,6 +178,8 @@
 		(HNS3_TXD_VLD_CMD | HNS3_TXD_FE_CMD | HNS3_TXD_DEFAULT_BDTYPE)
 #define HNS3_TXD_SEND_SIZE_SHIFT	16
 
+#define HNS3_KEEP_CRC_OK_MIN_PKT_LEN	60
+
 enum hns3_pkt_l2t_type {
 	HNS3_L2_TYPE_UNICAST,
 	HNS3_L2_TYPE_MULTICAST,
@@ -214,7 +216,7 @@ enum hns3_pkt_tun_type {
 };
 
 /* hardware spec ring buffer format */
-struct hns3_desc {
+struct __rte_packed_begin hns3_desc {
 	union {
 		uint64_t addr;
 		uint64_t timestamp;
@@ -282,7 +284,7 @@ struct hns3_desc {
 			};
 		} rx;
 	};
-} __rte_packed;
+} __rte_packed_end;
 
 struct hns3_entry {
 	struct rte_mbuf *mbuf;
@@ -341,6 +343,7 @@ struct hns3_rx_queue {
 	 */
 	uint8_t pvid_sw_discard_en:1;
 	uint8_t ptype_en:1;          /* indicate if the ptype field enabled */
+	uint8_t keep_crc_fail_ptype:2;
 
 	uint64_t mbuf_initializer; /* value to init mbufs used with vector rx */
 	/* offset_table: used for vector, to solve execute re-order problem */
@@ -362,11 +365,14 @@ struct hns3_rx_queue {
 
 	struct rte_mbuf fake_mbuf; /* fake mbuf used with vector rx */
 
+	/* The CRC context, which is used by software to calculate CRC data. */
+	struct rte_net_crc *crc_ctx;
+
 	/*
 	 * The following fields are not accessed in the I/O path, so they are
 	 * placed at the end.
 	 */
-	void *io_base __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) void *io_base;
 	struct hns3_adapter *hns;
 	uint64_t rx_ring_phys_addr; /* RX ring DMA address */
 	const struct rte_memzone *mz;
@@ -540,7 +546,7 @@ struct hns3_tx_queue {
 	 * The following fields are not accessed in the I/O path, so they are
 	 * placed at the end.
 	 */
-	void *io_base __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) void *io_base;
 	struct hns3_adapter *hns;
 	uint64_t tx_ring_phys_addr; /* TX ring DMA address */
 	const struct rte_memzone *mz;
@@ -745,7 +751,7 @@ int hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 int hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 			unsigned int socket_id,
 			const struct rte_eth_txconf *conf);
-uint32_t hns3_rx_queue_count(void *rx_queue);
+int hns3_rx_queue_count(void *rx_queue);
 int hns3_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int hns3_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int hns3_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);

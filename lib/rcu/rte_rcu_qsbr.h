@@ -21,10 +21,6 @@
  * entered quiescent state.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <inttypes.h>
 #include <stdalign.h>
 #include <stdbool.h>
@@ -35,6 +31,10 @@ extern "C" {
 #include <rte_debug.h>
 #include <rte_atomic.h>
 #include <rte_ring.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 extern int rte_rcu_log_type;
 #define RTE_LOGTYPE_RCU rte_rcu_log_type
@@ -107,7 +107,7 @@ struct __rte_cache_aligned rte_rcu_qsbr {
 	uint32_t max_threads;
 	/**< Maximum number of threads using this QS variable */
 
-	alignas(RTE_CACHE_LINE_SIZE) struct rte_rcu_qsbr_cnt qsbr_cnt[0];
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_rcu_qsbr_cnt qsbr_cnt[];
 	/**< Quiescent state counter array of 'max_threads' elements */
 
 	/**< Registered thread IDs are stored in a bitmap array,
@@ -563,7 +563,7 @@ __rte_rcu_qsbr_check_selective(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 			if (c != __RTE_QSBR_CNT_THR_OFFLINE && acked_token > c)
 				acked_token = c;
 
-			bmap &= ~(1UL << j);
+			bmap &= ~RTE_BIT64(j);
 		}
 	}
 

@@ -346,7 +346,7 @@ nix_rq_ctx_cn9k(volatile void *qctx, struct plt_tel_data *d)
 }
 
 static void
-nix_rq_ctx(volatile void *qctx, struct plt_tel_data *d)
+nix_rq_ctx_cn10k(volatile void *qctx, struct plt_tel_data *d)
 {
 	volatile struct nix_cn10k_rq_ctx_s *ctx;
 
@@ -438,6 +438,100 @@ nix_rq_ctx(volatile void *qctx, struct plt_tel_data *d)
 	CNXK_TEL_DICT_U64(d, ctx, re_pkts, w10_);
 }
 
+static void
+nix_rq_ctx(volatile void *qctx, struct plt_tel_data *d)
+{
+	volatile struct nix_cn20k_rq_ctx_s *ctx;
+
+	ctx = (volatile struct nix_cn20k_rq_ctx_s *)qctx;
+
+	/* W0 */
+	CNXK_TEL_DICT_INT(d, ctx, wqe_aura, w0_);
+	CNXK_TEL_DICT_INT(d, ctx, len_ol3_dis, w0_);
+	CNXK_TEL_DICT_INT(d, ctx, len_ol4_dis, w0_);
+	CNXK_TEL_DICT_INT(d, ctx, len_il3_dis, w0_);
+	CNXK_TEL_DICT_INT(d, ctx, len_il4_dis, w0_);
+	CNXK_TEL_DICT_INT(d, ctx, csum_ol4_dis, w0_);
+	CNXK_TEL_DICT_INT(d, ctx, csum_il4_dis, w0_);
+	CNXK_TEL_DICT_INT(d, ctx, lenerr_dis, w0_);
+	CNXK_TEL_DICT_INT(d, ctx, port_ol4_dis, w0_);
+	CNXK_TEL_DICT_INT(d, ctx, port_il4_dis, w0_);
+	CNXK_TEL_DICT_INT(d, ctx, ena_wqwd, w0);
+	CNXK_TEL_DICT_INT(d, ctx, ipsech_ena, w0);
+	CNXK_TEL_DICT_INT(d, ctx, sso_ena, w0);
+	CNXK_TEL_DICT_INT(d, ctx, ena, w0);
+
+	/* W1 */
+	CNXK_TEL_DICT_INT(d, ctx, chi_ena, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, ipsecd_drop_en, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, pb_stashing, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, lpb_drop_ena, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, spb_drop_ena, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, xqe_drop_ena, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, wqe_caching, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, pb_caching, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, sso_tt, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, sso_grp, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, lpb_aura, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, spb_aura, w1_);
+
+	/* W2 */
+	CNXK_TEL_DICT_INT(d, ctx, xqe_hdr_split, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, xqe_imm_copy, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, band_prof_id_h, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, xqe_imm_size, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, later_skip, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, sso_bp_ena, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, first_skip, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, lpb_sizem1, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, spb_ena, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, spb_high_sizem1, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, wqe_skip, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, spb_sizem1, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, policer_ena, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, band_prof_id_l, w2_);
+
+	/* W3 */
+	CNXK_TEL_DICT_INT(d, ctx, spb_pool_pass, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, spb_pool_drop, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, spb_aura_pass, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, spb_aura_drop, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, wqe_pool_pass, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, wqe_pool_drop, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, xqe_pass, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, xqe_drop, w3_);
+
+	/* W4 */
+	CNXK_TEL_DICT_INT(d, ctx, qint_idx, w4_);
+	CNXK_TEL_DICT_INT(d, ctx, rq_int_ena, w4_);
+	CNXK_TEL_DICT_INT(d, ctx, rq_int, w4_);
+	CNXK_TEL_DICT_INT(d, ctx, lpb_pool_pass, w4_);
+	CNXK_TEL_DICT_INT(d, ctx, lpb_pool_drop, w4_);
+	CNXK_TEL_DICT_INT(d, ctx, lpb_aura_pass, w4_);
+	CNXK_TEL_DICT_INT(d, ctx, lpb_aura_drop, w4_);
+
+	/* W5 */
+	CNXK_TEL_DICT_INT(d, ctx, flow_tagw, w5_);
+	CNXK_TEL_DICT_INT(d, ctx, bad_utag, w5_);
+	CNXK_TEL_DICT_INT(d, ctx, good_utag, w5_);
+	CNXK_TEL_DICT_INT(d, ctx, ltag, w5_);
+
+	/* W6 */
+	CNXK_TEL_DICT_U64(d, ctx, octs, w6_);
+
+	/* W7 */
+	CNXK_TEL_DICT_U64(d, ctx, pkts, w7_);
+
+	/* W8 */
+	CNXK_TEL_DICT_U64(d, ctx, drop_octs, w8_);
+
+	/* W9 */
+	CNXK_TEL_DICT_U64(d, ctx, drop_pkts, w9_);
+
+	/* W10 */
+	CNXK_TEL_DICT_U64(d, ctx, re_pkts, w10_);
+}
+
 static int
 cnxk_tel_nix_rq_ctx(struct roc_nix *roc_nix, uint8_t n, struct plt_tel_data *d)
 {
@@ -459,8 +553,73 @@ cnxk_tel_nix_rq_ctx(struct roc_nix *roc_nix, uint8_t n, struct plt_tel_data *d)
 
 	if (roc_model_is_cn9k())
 		nix_rq_ctx_cn9k(qctx, d);
+	else if (roc_model_is_cn10k())
+		nix_rq_ctx_cn10k(qctx, d);
 	else
 		nix_rq_ctx(qctx, d);
+
+	return 0;
+}
+
+static int
+cnxk_tel_nix_cq_ctx_cn20k(struct roc_nix *roc_nix, uint8_t n, struct plt_tel_data *d)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+	struct npa_lf *npa_lf;
+	volatile struct nix_cn20k_cq_ctx_s *ctx;
+	int rc = -1;
+
+	npa_lf = idev_npa_obj_get();
+	if (npa_lf == NULL)
+		return NPA_ERR_DEVICE_NOT_BOUNDED;
+
+	rc = nix_q_ctx_get(dev, NIX_AQ_CTYPE_CQ, n, (void *)&ctx);
+	if (rc) {
+		plt_err("Failed to get cq context");
+		return rc;
+	}
+
+	/* W0 */
+	CNXK_TEL_DICT_PTR(d, ctx, base, w0_);
+
+	/* W1 */
+	CNXK_TEL_DICT_U64(d, ctx, wrptr, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, avg_con, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, cint_idx, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, cq_err, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, qint_idx, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, lbpid_high, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, bpid, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, lbpid_med, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, bp_ena, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, lbpid_low, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, lbp_ena, w1_);
+
+	/* W2 */
+	CNXK_TEL_DICT_INT(d, ctx, update_time, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, avg_level, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, head, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, tail, w2_);
+
+	/* W3 */
+	CNXK_TEL_DICT_INT(d, ctx, cq_err_int_ena, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, cq_err_int, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, qsize, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, stashing, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, caching, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, lbp_frac, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, stash_thresh, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, msh_valid, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, msh_dst, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, cpt_drop_err_en, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, ena, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, drop_ena, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, drop, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, bp, w3_);
+
+	CNXK_TEL_DICT_INT(d, ctx, lbpid_ext, w4_);
+	CNXK_TEL_DICT_INT(d, ctx, bpid_ext, w4_);
 
 	return 0;
 }
@@ -473,6 +632,9 @@ cnxk_tel_nix_cq_ctx(struct roc_nix *roc_nix, uint8_t n, struct plt_tel_data *d)
 	struct npa_lf *npa_lf;
 	volatile struct nix_cq_ctx_s *ctx;
 	int rc = -1;
+
+	if (roc_model_is_cn20k())
+		return cnxk_tel_nix_cq_ctx_cn20k(roc_nix, n, d);
 
 	npa_lf = idev_npa_obj_get();
 	if (npa_lf == NULL)
@@ -602,7 +764,7 @@ nix_sq_ctx_cn9k(volatile void *qctx, struct plt_tel_data *d)
 }
 
 static void
-nix_sq_ctx(volatile void *qctx, struct plt_tel_data *d)
+nix_sq_ctx_cn10k(volatile void *qctx, struct plt_tel_data *d)
 {
 	volatile struct nix_cn10k_sq_ctx_s *ctx;
 
@@ -617,6 +779,7 @@ nix_sq_ctx(volatile void *qctx, struct plt_tel_data *d)
 	CNXK_TEL_DICT_INT(d, ctx, ena, w0_);
 
 	/* W1 */
+	CNXK_TEL_DICT_INT(d, ctx, smq_rr_count_lb, w1_);
 	CNXK_TEL_DICT_INT(d, ctx, sqb_count, w1_);
 	CNXK_TEL_DICT_INT(d, ctx, default_chan, w1_);
 	CNXK_TEL_DICT_INT(d, ctx, smq_rr_weight, w1_);
@@ -631,7 +794,96 @@ nix_sq_ctx(volatile void *qctx, struct plt_tel_data *d)
 	CNXK_TEL_DICT_INT(d, ctx, sq_int, w2_);
 	CNXK_TEL_DICT_INT(d, ctx, sqb_aura, w2_);
 	CNXK_TEL_DICT_INT(d, ctx, smq_rr_count_ub, w2_);
-	CNXK_TEL_DICT_INT(d, ctx, smq_rr_count_lb, w2_);
+
+	/* W3 */
+	CNXK_TEL_DICT_INT(d, ctx, smq_next_sq_vld, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, smq_pend, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, smenq_next_sqb_vld, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, head_offset, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, smenq_offset, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, tail_offset, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, smq_lso_segnum, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, smq_next_sq, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, mnq_dis, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, lmt_dis, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, cq_limit, w3_);
+	CNXK_TEL_DICT_INT(d, ctx, max_sqe_size, w3_);
+
+	/* W4 */
+	CNXK_TEL_DICT_PTR(d, ctx, next_sqb, w4_);
+
+	/* W5 */
+	CNXK_TEL_DICT_PTR(d, ctx, tail_sqb, w5_);
+
+	/* W6 */
+	CNXK_TEL_DICT_PTR(d, ctx, smenq_sqb, w6_);
+
+	/* W7 */
+	CNXK_TEL_DICT_PTR(d, ctx, smenq_next_sqb, w7_);
+
+	/* W8 */
+	CNXK_TEL_DICT_PTR(d, ctx, head_sqb, w8_);
+
+	/* W9 */
+	CNXK_TEL_DICT_INT(d, ctx, vfi_lso_vld, w9_);
+	CNXK_TEL_DICT_INT(d, ctx, vfi_lso_vlan1_ins_ena, w9_);
+	CNXK_TEL_DICT_INT(d, ctx, vfi_lso_vlan0_ins_ena, w9_);
+	CNXK_TEL_DICT_INT(d, ctx, vfi_lso_mps, w9_);
+	CNXK_TEL_DICT_INT(d, ctx, vfi_lso_sb, w9_);
+	CNXK_TEL_DICT_INT(d, ctx, vfi_lso_sizem1, w9_);
+	CNXK_TEL_DICT_INT(d, ctx, vfi_lso_total, w9_);
+
+	/* W10 */
+	CNXK_TEL_DICT_BF_PTR(d, ctx, scm_lso_rem, w10_);
+
+	/* W11 */
+	CNXK_TEL_DICT_BF_PTR(d, ctx, octs, w11_);
+
+	/* W12 */
+	CNXK_TEL_DICT_BF_PTR(d, ctx, pkts, w12_);
+
+	/* W13 */
+	CNXK_TEL_DICT_INT(d, ctx, aged_drop_octs, w13_);
+	CNXK_TEL_DICT_INT(d, ctx, aged_drop_pkts, w13_);
+
+	/* W14 */
+	CNXK_TEL_DICT_BF_PTR(d, ctx, drop_octs, w14_);
+
+	/* W15 */
+	CNXK_TEL_DICT_BF_PTR(d, ctx, drop_pkts, w15_);
+}
+
+static void
+nix_sq_ctx(volatile void *qctx, struct plt_tel_data *d)
+{
+	volatile struct nix_cn20k_sq_ctx_s *ctx;
+
+	ctx = (volatile struct nix_cn20k_sq_ctx_s *)qctx;
+
+	/* W0 */
+	CNXK_TEL_DICT_INT(d, ctx, sqe_way_mask, w0_);
+	CNXK_TEL_DICT_INT(d, ctx, cq, w0_);
+	CNXK_TEL_DICT_INT(d, ctx, sdp_mcast, w0_);
+	CNXK_TEL_DICT_INT(d, ctx, substream, w0_);
+	CNXK_TEL_DICT_INT(d, ctx, qint_idx, w0_);
+	CNXK_TEL_DICT_INT(d, ctx, ena, w0_);
+
+	/* W1 */
+	CNXK_TEL_DICT_INT(d, ctx, smq_rr_count_lb, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, sqb_count, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, default_chan, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, smq_rr_weight, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, sso_ena, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, xoff, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, cq_ena, w1_);
+	CNXK_TEL_DICT_INT(d, ctx, smq, w1_);
+
+	/* W2 */
+	CNXK_TEL_DICT_INT(d, ctx, sqe_stype, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, sq_int_ena, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, sq_int, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, sqb_aura, w2_);
+	CNXK_TEL_DICT_INT(d, ctx, smq_rr_count_ub, w2_);
 
 	/* W3 */
 	CNXK_TEL_DICT_INT(d, ctx, smq_next_sq_vld, w3_);
@@ -712,6 +964,8 @@ cnxk_tel_nix_sq_ctx(struct roc_nix *roc_nix, uint8_t n, struct plt_tel_data *d)
 
 	if (roc_model_is_cn9k())
 		nix_sq_ctx_cn9k(qctx, d);
+	else if (roc_model_is_cn10k())
+		nix_sq_ctx_cn10k(qctx, d);
 	else
 		nix_sq_ctx(qctx, d);
 

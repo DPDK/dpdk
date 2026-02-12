@@ -1,8 +1,8 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2010-2012 Freescale Semiconductor, Inc.
  * All rights reserved.
- * Copyright 2019-2021 NXP
+ * Copyright 2019-2024 NXP
  *
  */
 
@@ -56,24 +56,25 @@
 #define FMAN_PORT_BMI_FIFO_UNITS	0x100
 #define FMAN_PORT_IC_OFFSET_UNITS	0x10
 
+#define FMAN_BMI_COUNTERS_EN 0x80000000
+
 #define FMAN_ENABLE_BPOOL_DEPLETION	0xF00000F0
 
 #define HASH_CTRL_MCAST_EN	0x00000100
 #define GROUP_ADDRESS		0x0000010000000000LL
 #define HASH_CTRL_ADDR_MASK	0x0000003F
 
-/* Pre definitions of FMAN interface and Bpool structures */
-struct __fman_if;
-struct fman_if_bpool;
-/* Lists of fman interfaces and bpools */
-TAILQ_HEAD(rte_fman_if_list, __fman_if);
+#define FMAN_RTC_MAX_NUM_OF_ALARMS		3
+#define FMAN_RTC_MAX_NUM_OF_PERIODIC_PULSES	4
+#define FMAN_RTC_MAX_NUM_OF_EXT_TRIGGERS	3
 
 /* Represents the different flavour of network interface */
 enum fman_mac_type {
-	fman_offline = 0,
+	fman_offline_internal = 0,
 	fman_mac_1g,
 	fman_mac_10g,
 	fman_mac_2_5g,
+	fman_onic,
 };
 
 struct mac_addr {
@@ -81,6 +82,8 @@ struct mac_addr {
 	uint32_t   mac_addr_u;	/**< Upper 16 bits of 48-bit MAC address */
 };
 
+#define MEMAC_RX_ENABLE ((uint32_t)0x2)
+#define MEMAC_TX_ENABLE ((uint32_t)0x1)
 struct memac_regs {
 	/* General Control and Status */
 	uint32_t res0000[2];
@@ -260,7 +263,7 @@ struct rx_bmi_regs {
 					/**< Buffer Manager pool Information-*/
 	uint32_t fmbm_acnt[FMAN_PORT_MAX_EXT_POOLS_NUM];
 					/**< Allocate Counter-*/
-	uint32_t reserved0130[8];
+	uint32_t reserved0120[16];
 					/**< 0x130/0x140 - 0x15F reserved -*/
 	uint32_t fmbm_rcgm[FMAN_PORT_CG_MAP_NUM];
 					/**< Congestion Group Map*/
@@ -289,6 +292,59 @@ struct rx_bmi_regs {
 	uint32_t fmbm_rdbg;		/**< Rx Debug-*/
 };
 
+struct tx_bmi_regs {
+	uint32_t fmbm_tcfg;		/**< Tx Configuration*/
+	uint32_t fmbm_tst;		/**< Tx Status*/
+	uint32_t fmbm_tda;		/**< Tx DMA attributes*/
+	uint32_t fmbm_tfp;		/**< Tx FIFO Parameters*/
+	uint32_t fmbm_tfed;		/**< Tx Frame End Data*/
+	uint32_t fmbm_ticp;		/**< Tx Internal Context Parameters*/
+	uint32_t fmbm_tfdne;		/**< Tx Frame Dequeue Next Engine*/
+	uint32_t fmbm_tfca;		/**< Tx Frame Attributes*/
+	uint32_t fmbm_tcfqid;		/**< Tx Confirmation Frame Queue ID*/
+	uint32_t fmbm_tefqid;		/**< Tx Error Frame Queue ID*/
+	uint32_t fmbm_tfene;		/**< Tx Frame Enqueue Next Engine*/
+	uint32_t fmbm_trlmts;		/**< Tx Rate Limiter Scale*/
+	uint32_t fmbm_trlmt;		/**< Tx Rate Limiter*/
+};
+
+/* Description FM RTC timer alarm */
+struct t_tmr_alarm {
+	uint32_t tmr_alarm_h;
+	uint32_t tmr_alarm_l;
+};
+
+/* Description FM RTC timer Ex trigger */
+struct t_tmr_ext_trigger {
+	uint32_t tmr_etts_h;
+	uint32_t tmr_etts_l;
+};
+
+struct rtc_regs {
+	uint32_t tmr_id;	/* 0x000 Module ID register */
+	uint32_t tmr_id2;	/* 0x004 Controller ID register */
+	uint32_t reserved0008[30];
+	uint32_t tmr_ctrl;	/* 0x0080 timer control register */
+	uint32_t tmr_tevent;	/* 0x0084 timer event register */
+	uint32_t tmr_temask;	/* 0x0088 timer event mask register */
+	uint32_t reserved008c[3];
+	uint32_t tmr_cnt_h;	/* 0x0098 timer counter high register */
+	uint32_t tmr_cnt_l;	/* 0x009c timer counter low register */
+	uint32_t tmr_add;	/* 0x00a0 timer drift compensation addend register */
+	uint32_t tmr_acc;	/* 0x00a4 timer accumulator register */
+	uint32_t tmr_prsc;	/* 0x00a8 timer prescale */
+	uint32_t reserved00ac;
+	uint32_t tmr_off_h;	/* 0x00b0 timer offset high */
+	uint32_t tmr_off_l;	/* 0x00b4 timer offset low  */
+	struct t_tmr_alarm tmr_alarm[FMAN_RTC_MAX_NUM_OF_ALARMS];
+				/* 0x00b8 timer alarm */
+	uint32_t tmr_fiper[FMAN_RTC_MAX_NUM_OF_PERIODIC_PULSES];
+				/* 0x00d0 timer fixed period interval */
+	struct t_tmr_ext_trigger tmr_etts[FMAN_RTC_MAX_NUM_OF_EXT_TRIGGERS];
+				/* 0x00e0 time stamp general purpose external */
+	uint32_t reserved00f0[4];
+};
+
 struct fman_port_qmi_regs {
 	uint32_t fmqm_pnc;		/**< PortID n Configuration Register */
 	uint32_t fmqm_pns;		/**< PortID n Status Register */
@@ -304,12 +360,22 @@ struct fman_port_qmi_regs {
 	uint32_t fmqm_pndcc;		/**< PortID n Dequeue Confirm Counter */
 };
 
+struct onic_port_cfg {
+	char macless_name[IF_NAME_MAX_LEN];
+	uint32_t rx_start;
+	uint32_t rx_count;
+	uint32_t tx_start;
+	uint32_t tx_count;
+	struct rte_ether_addr src_mac;
+	struct rte_ether_addr peer_mac;
+};
+
 /* This struct exports parameters about an Fman network interface, determined
  * from the device-tree.
  */
 struct fman_if {
 	/* Which Fman this interface belongs to */
-	uint8_t fman_idx;
+	struct __fman *fman;
 	/* The type/speed of the interface */
 	enum fman_mac_type mac_type;
 	/* Boolean, set when mac type is memac */
@@ -339,6 +405,9 @@ struct fman_if {
 	uint32_t fqid_tx_err;
 	uint32_t fqid_tx_confirm;
 
+	/* oNIC port info */
+	struct onic_port_cfg onic_info;
+
 	struct list_head bpool_list;
 	/* The node for linking this interface into "fman_if_list" */
 	struct list_head node;
@@ -366,6 +435,24 @@ struct fman_if_ic_params {
 	uint16_t icsz;
 };
 
+#define FMAN_ADDRESS_NUM 2
+struct __fman {
+	const struct device_node *fman_node;
+	uint64_t ccsr_phy;
+	uint64_t ccsr_size;
+	void *ccsr_vir;
+
+	uint64_t time_phy;
+	uint64_t time_size;
+	void *time_vir;
+
+	uint8_t idx;
+	uint32_t ip_rev;
+	uint32_t dealloc_bufs_mask_hi;
+	uint32_t dealloc_bufs_mask_lo;
+	struct list_head node;
+};
+
 /* The exported "struct fman_if" type contains the subset of fields we want
  * exposed. This struct is embedded in a larger "struct __fman_if" which
  * contains the extra bits we *don't* want exposed.
@@ -377,8 +464,8 @@ struct __fman_if {
 	uint64_t regs_size;
 	void *ccsr_map;
 	void *bmi_map;
+	void *tx_bmi_map;
 	void *qmi_map;
-	struct list_head node;
 };
 
 /* And this is the base list node that the interfaces are added to. (See
@@ -400,24 +487,39 @@ extern int fman_ccsr_map_fd;
 #define fman_if_for_each_bpool(bp, __if) \
 	list_for_each_entry(bp, &(__if)->bpool_list, node)
 
-#define FMAN_ERR(rc, fmt, args...) \
+#define FMAN_ERR(rc, fmt, ...) \
 	do { \
 		_errno = (rc); \
-		DPAA_BUS_LOG(ERR, fmt "(%d)", ##args, errno); \
+		RTE_LOG_LINE(ERR, DPAA_BUS, fmt "(%d)", ##__VA_ARGS__, errno); \
 	} while (0)
 
 #define FMAN_IP_REV_1	0xC30C4
-#define FMAN_IP_REV_1_MAJOR_MASK 0x0000FF00
+#define FMAN_IP_REV_1_MAJOR_MASK 0xff
 #define FMAN_IP_REV_1_MAJOR_SHIFT 8
 #define FMAN_V3	0x06
-#define FMAN_V3_CONTEXTA_EN_A2V	0x10000000
-#define FMAN_V3_CONTEXTA_EN_OVOM	0x02000000
-#define FMAN_V3_CONTEXTA_EN_EBD	0x80000000
-#define FMAN_CONTEXTA_DIS_CHECKSUM	0x7ull
-#define FMAN_CONTEXTA_SET_OPCODE11 0x2000000b00000000
-extern u16 fman_ip_rev;
-extern u32 fman_dealloc_bufs_mask_hi;
-extern u32 fman_dealloc_bufs_mask_lo;
+
+#define DPAA_FQD_CTX_A_SHIFT_BITS       24
+#define DPAA_FQD_CTX_B_SHIFT_BITS       24
+
+/* Following flags are used to set in context A hi field of FQD */
+#define DPAA_FQD_CTX_A_OVERRIDE_FQ	(0x80 << DPAA_FQD_CTX_A_SHIFT_BITS)
+#define DPAA_FQD_CTX_A_IGNORE_CMD	(0x40 << DPAA_FQD_CTX_A_SHIFT_BITS)
+#define DPAA_FQD_CTX_A_A1_FIELD_VALID	(0x20 << DPAA_FQD_CTX_A_SHIFT_BITS)
+#define DPAA_FQD_CTX_A_A2_FIELD_VALID	(0x10 << DPAA_FQD_CTX_A_SHIFT_BITS)
+#define DPAA_FQD_CTX_A_A0_FIELD_VALID	(0x08 << DPAA_FQD_CTX_A_SHIFT_BITS)
+#define DPAA_FQD_CTX_A_B0_FIELD_VALID	(0x04 << DPAA_FQD_CTX_A_SHIFT_BITS)
+#define DPAA_FQD_CTX_A_OVERRIDE_OMB	(0x02 << DPAA_FQD_CTX_A_SHIFT_BITS)
+#define DPAA_FQD_CTX_A_RESERVED		(0x01 << DPAA_FQD_CTX_A_SHIFT_BITS)
+
+/* Following flags are used to set in context A lo field of FQD */
+#define DPAA_FQD_CTX_A2_EBD_BIT		(0x80 << DPAA_FQD_CTX_A_SHIFT_BITS)
+#define DPAA_FQD_CTX_A2_EBAD_BIT	(0x40 << DPAA_FQD_CTX_A_SHIFT_BITS)
+#define DPAA_FQD_CTX_A2_FWD_BIT		(0x20 << DPAA_FQD_CTX_A_SHIFT_BITS)
+#define DPAA_FQD_CTX_A2_NL_BIT		(0x10 << DPAA_FQD_CTX_A_SHIFT_BITS)
+#define DPAA_FQD_CTX_A2_CWD_BIT		(0x08 << DPAA_FQD_CTX_A_SHIFT_BITS)
+#define DPAA_FQD_CTX_A2_NENQ_BIT	(0x04 << DPAA_FQD_CTX_A_SHIFT_BITS)
+#define DPAA_FQD_CTX_A2_RESERVED_BIT	(0x02 << DPAA_FQD_CTX_A_SHIFT_BITS)
+#define DPAA_FQD_CTX_A2_VSPE_BIT	(0x01 << DPAA_FQD_CTX_A_SHIFT_BITS)
 
 /**
  * Initialize the FMAN driver

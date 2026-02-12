@@ -19,10 +19,6 @@
  * by control APIs should be defined in this file.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Define all structures for ntuple Filter type.
  */
@@ -486,9 +482,5 @@ struct rte_eth_fdir_stats {
 	uint32_t guarant_cnt;  /**< Number of filters in guaranteed spaces. */
 	uint32_t best_cnt;     /**< Number of filters in best effort spaces. */
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_ETH_CTRL_H_ */

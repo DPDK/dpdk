@@ -2,9 +2,8 @@
  * Copyright(c) 2020 Dmitry Kozlyuk
  */
 
-#include <stdint.h>
-
-#include <rte_compat.h>
+#ifndef RTE_EAL_PAGING_H
+#define RTE_EAL_PAGING_H
 
 /**
  * @file
@@ -12,6 +11,10 @@
  *
  * Wrappers for OS facilities related to memory paging, used across DPDK.
  */
+
+#include <stdint.h>
+
+#include <rte_compat.h>
 
 /** Memory protection flags. */
 enum rte_mem_prot {
@@ -34,7 +37,12 @@ enum rte_map_flags {
 	 * may remove all other mappings in the requested region. However,
 	 * it is not required to do so, thus mapping with this flag may fail.
 	 */
-	RTE_MAP_FORCE_ADDRESS = 1 << 3
+	RTE_MAP_FORCE_ADDRESS = 1 << 3,
+	/**
+	 * Force mapping to the requested address,
+	 * but fail if a preexisting mapping collides with the request.
+	 */
+	RTE_MAP_FORCE_ADDRESS_NOREPLACE = 1 << 4,
 };
 
 /**
@@ -96,3 +104,5 @@ rte_mem_page_size(void);
 __rte_internal
 int
 rte_mem_lock(const void *virt, size_t size);
+
+#endif /* RTE_EAL_PAGING_H */

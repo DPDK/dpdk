@@ -126,6 +126,9 @@ s32 ngbe_setup_phy_link_yt(struct ngbe_hw *hw, u32 speed,
 
 	UNREFERENCED_PARAMETER(autoneg_wait_to_complete);
 
+	if (hw->ncsi_enabled)
+		return 0;
+
 	hw->phy.autoneg_advertised = 0;
 
 	/* check chip_mode first */
@@ -319,6 +322,10 @@ skip_an_fiber:
 			ngbe_read_phy_reg_mdi(hw, YT_ANA, 0, &value);
 			value |= value_r4;
 			ngbe_write_phy_reg_mdi(hw, YT_ANA, 0, value);
+
+			/* config for yt8531sh-ca */
+			ngbe_write_phy_reg_ext_yt(hw, YT_SPEC_CONF, 0,
+						YT_SPEC_CONF_8531SH_CA);
 
 			/* software reset to make the above configuration
 			 * take effect

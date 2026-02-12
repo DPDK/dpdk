@@ -228,6 +228,8 @@ sfc_tx_qinit(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 
 	info.nic_dma_info = &sas->nic_dma_info;
 
+	info.max_pdu = encp->enc_mac_pdu_max;
+
 	rc = sa->priv.dp_tx->qcreate(sa->eth_dev->data->port_id, sw_index,
 				     &RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,
 				     socket_id, &info, &txq_info->dp);

@@ -12,27 +12,6 @@
 				"ptest": "throughput"
 			}
 		},
-		"AES-CBC-128 SHA1-HMAC auth-then-cipher decrypt": {
-			"cipher-algo": "aes-cbc",
-			"cipher-key-sz": "16",
-			"auth-algo": "sha1-hmac",
-			"optype": "auth-then-cipher",
-			"cipher-op": "decrypt"
-		},
-		"AES-CBC-128 SHA1-HMAC cipher-then-auth encrypt": {
-			"cipher-algo": "aes-cbc",
-			"cipher-key-sz": "16",
-			"auth-algo": "sha1-hmac",
-			"optype": "cipher-then-auth",
-			"cipher-op": "encrypt"
-		},
-		"AES-CBC-256 SHA2-256-HMAC auth-then-cipher decrypt": {
-			"cipher-algo": "aes-cbc",
-			"cipher-key-sz": "32",
-			"auth-algo": "sha2-256-hmac",
-			"optype": "auth-then-cipher",
-			"cipher-op": "decrypt"
-		},
 		"AES-CBC-256 SHA2-256-HMAC cipher-then-auth encrypt": {
 			"cipher-algo": "aes-cbc",
 			"cipher-key-sz": "32",
@@ -47,22 +26,18 @@
 			"aead-op": "encrypt",
 			"aead-aad-sz": "16",
 			"digest-sz": "16",
-			"optype": "aead"
-		},
-		"AES-GCM-128 aead-op decrypt": {
-			"aead-algo": "aes-gcm",
-			"aead-key-sz": "16",
-			"aead-op": "decrypt"
+			"optype": "aead",
+			"total-ops": "10000000"
 		},
 		"AES-GCM-256 aead-op encrypt": {
 			"aead-algo": "aes-gcm",
 			"aead-key-sz": "32",
-			"aead-op": "encrypt"
-		},
-		"AES-GCM-256 aead-op decrypt": {
-			"aead-algo": "aes-gcm",
-			"aead-key-sz": "32",
-			"aead-op": "decrypt"
+			"aead-op": "encrypt",
+			"aead-aad-sz": "32",
+			"aead-iv-sz": "12",
+			"digest-sz": "16",
+			"optype": "aead",
+			"total-ops": "10000000"
 		}
 	},
 	"latency": {
@@ -83,12 +58,18 @@
 			"cipher-key-sz": "32",
 			"auth-algo": "sha2-256-hmac",
 			"optype": "cipher-then-auth",
-			"cipher-op": "encrypt"
+			"cipher-op": "encrypt",
+			"total-ops": "10000000"
 		},
 		"AES-GCM-128 aead-op encrypt": {
 			"aead-algo": "aes-gcm",
 			"aead-key-sz": "16",
-			"aead-op": "encrypt"
+			"aead-op": "encrypt",
+			"aead-aad-sz": "16",
+			"aead-iv-sz": "12",
+			"digest-sz": "16",
+			"optype": "aead",
+			"total-ops": "10000000"
 		}
 	}
 }

@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
@@ -63,6 +64,7 @@ default_update_function(struct rte_jobstats *job, int64_t result)
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_jobstats_context_init)
 int
 rte_jobstats_context_init(struct rte_jobstats_context *ctx)
 {
@@ -77,6 +79,7 @@ rte_jobstats_context_init(struct rte_jobstats_context *ctx)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_jobstats_context_start)
 void
 rte_jobstats_context_start(struct rte_jobstats_context *ctx)
 {
@@ -89,6 +92,7 @@ rte_jobstats_context_start(struct rte_jobstats_context *ctx)
 	ctx->state_time = now;
 }
 
+RTE_EXPORT_SYMBOL(rte_jobstats_context_finish)
 void
 rte_jobstats_context_finish(struct rte_jobstats_context *ctx)
 {
@@ -102,6 +106,7 @@ rte_jobstats_context_finish(struct rte_jobstats_context *ctx)
 	ctx->state_time = now;
 }
 
+RTE_EXPORT_SYMBOL(rte_jobstats_context_reset)
 void
 rte_jobstats_context_reset(struct rte_jobstats_context *ctx)
 {
@@ -113,12 +118,14 @@ rte_jobstats_context_reset(struct rte_jobstats_context *ctx)
 	ctx->loop_cnt = 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_jobstats_set_target)
 void
 rte_jobstats_set_target(struct rte_jobstats *job, int64_t target)
 {
 	job->target = target;
 }
 
+RTE_EXPORT_SYMBOL(rte_jobstats_start)
 int
 rte_jobstats_start(struct rte_jobstats_context *ctx, struct rte_jobstats *job)
 {
@@ -138,6 +145,7 @@ rte_jobstats_start(struct rte_jobstats_context *ctx, struct rte_jobstats *job)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_jobstats_abort)
 int
 rte_jobstats_abort(struct rte_jobstats *job)
 {
@@ -158,6 +166,7 @@ rte_jobstats_abort(struct rte_jobstats *job)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_jobstats_finish)
 int
 rte_jobstats_finish(struct rte_jobstats *job, int64_t job_value)
 {
@@ -194,6 +203,7 @@ rte_jobstats_finish(struct rte_jobstats *job, int64_t job_value)
 	return need_update;
 }
 
+RTE_EXPORT_SYMBOL(rte_jobstats_set_period)
 void
 rte_jobstats_set_period(struct rte_jobstats *job, uint64_t period,
 		uint8_t saturate)
@@ -208,6 +218,7 @@ rte_jobstats_set_period(struct rte_jobstats *job, uint64_t period,
 	job->period = period;
 }
 
+RTE_EXPORT_SYMBOL(rte_jobstats_set_min)
 void
 rte_jobstats_set_min(struct rte_jobstats *job, uint64_t period)
 {
@@ -216,6 +227,7 @@ rte_jobstats_set_min(struct rte_jobstats *job, uint64_t period)
 		job->period = period;
 }
 
+RTE_EXPORT_SYMBOL(rte_jobstats_set_max)
 void
 rte_jobstats_set_max(struct rte_jobstats *job, uint64_t period)
 {
@@ -224,6 +236,7 @@ rte_jobstats_set_max(struct rte_jobstats *job, uint64_t period)
 		job->period = period;
 }
 
+RTE_EXPORT_SYMBOL(rte_jobstats_init)
 int
 rte_jobstats_init(struct rte_jobstats *job, const char *name,
 		uint64_t min_period, uint64_t max_period, uint64_t initial_period,
@@ -244,6 +257,7 @@ rte_jobstats_init(struct rte_jobstats *job, const char *name,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_jobstats_set_update_period_function)
 void
 rte_jobstats_set_update_period_function(struct rte_jobstats *job,
 		rte_job_update_period_cb_t update_period_cb)
@@ -254,6 +268,7 @@ rte_jobstats_set_update_period_function(struct rte_jobstats *job,
 	job->update_period_cb = update_period_cb;
 }
 
+RTE_EXPORT_SYMBOL(rte_jobstats_reset)
 void
 rte_jobstats_reset(struct rte_jobstats *job)
 {

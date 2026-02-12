@@ -9,12 +9,14 @@ Note that following licenses are not exceptions:-
 	- BSD-3-Clause OR LGPL-2.1
 	- GPL-2.0  (*Only for kernel code*)
 
----------------------------------------------------------------------------------------------------
-SPDX Identifier     TB Approval Date  GB Approval Date  File name
----------------------------------------------------------------------------------------------------
-1.MIT               10/23/2019        02/10/2020        lib/eal/windows/include/dirent.h
-2.BSD-2-Clause      10/23/2019        12/18/2019        lib/eal/windows/include/getopt.h
-3.ISC AND
-  BSD-2-Clause      10/23/2019        12/18/2019        lib/eal/windows/getopt.c
-4. MIT              10/19/2022        10/18/2022        drivers/net/gve/base/*
----------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
+SPDX Identifier                 | TB Approval Date | GB Approval Date | File name
+---------------------------------------------------------------------------------------------------------
+MIT                             | 10/23/2019       | 02/10/2020       | lib/eal/windows/include/dirent.h
+BSD-2-Clause                    | 10/23/2019       | 12/18/2019       | lib/eal/windows/include/getopt.h
+ISC AND BSD-2-Clause            | 10/23/2019       | 12/18/2019       | lib/eal/windows/getopt.c
+BSD-2-Clause                    | 28/05/2025       | 30/05/2025       | lib/eal/windows/include/getline.h
+BSD-2-Clause                    | 28/05/2025       | 30/05/2025       | lib/eal/windows/getline.c
+MIT                             | 10/19/2022       | 10/18/2022       | drivers/net/gve/base/*
+GPL-2.0 WITH Linux-syscall-note | 12/11/2024       | 04/14/2025       | kernel/linux/uapi/linux/*
+---------------------------------------------------------------------------------------------------------

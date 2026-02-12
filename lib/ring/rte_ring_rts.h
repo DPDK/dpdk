@@ -51,11 +51,11 @@
  * By default HTD_MAX == ring.capacity / 8.
  */
 
+#include <rte_ring_rts_elem_pvt.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_ring_rts_elem_pvt.h>
 
 /**
  * Enqueue several objects on the RTS ring (multi-producers safe).

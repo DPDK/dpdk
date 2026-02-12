@@ -68,7 +68,7 @@ for details.
 
    .. code-block:: console
 
-      ./<build_dir>/app/dpdk-testpmd -c 700 \
+      ./<build_dir>/app/dpdk-testpmd -l 8-10 \
                 --base-virtaddr=0x100000000000 \
                 --mbuf-pool-ops-name="octeontx_fpavf" \
                 --vdev='event_octeontx' \

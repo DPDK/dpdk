@@ -2,6 +2,7 @@
  * Copyright(c) 2018-2020 Intel Corporation
  */
 
+#include <eal_export.h>
 #include <rte_ipsec.h>
 #include "sa.h"
 
@@ -28,6 +29,7 @@ session_check(struct rte_ipsec_session *ss)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_ipsec_session_prepare)
 int
 rte_ipsec_session_prepare(struct rte_ipsec_session *ss)
 {

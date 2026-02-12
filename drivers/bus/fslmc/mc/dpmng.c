@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2013-2015 Freescale Semiconductor Inc.
  * Copyright 2017 NXP
@@ -9,6 +9,8 @@
 #include <fsl_dpmng.h>
 #include <fsl_dpmng_cmd.h>
 
+#include <eal_export.h>
+
 /**
  * mc_get_version() - Retrieves the Management Complex firmware
  *			version information
@@ -18,6 +20,7 @@
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mc_get_version)
 int mc_get_version(struct fsl_mc_io *mc_io,
 		   uint32_t cmd_flags,
 		   struct mc_version *mc_ver_info)
@@ -57,6 +60,7 @@ int mc_get_version(struct fsl_mc_io *mc_io,
  *
  * Return:     '0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mc_get_soc_version)
 int mc_get_soc_version(struct fsl_mc_io *mc_io,
 		       uint32_t cmd_flags,
 		       struct mc_soc_version *mc_platform_info)

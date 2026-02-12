@@ -6,8 +6,9 @@
 #include <pthread.h>
 #include <sys/types.h>
 
-#define NIX_INL_META_SIZE 384u
-#define NIX_INL_CPT_LF	2
+#define NIX_INL_META_SIZE      384u
+#define MAX_NIX_INL_DEV_CPT_LF 18
+#define NIX_INL_PROFILE_CNT    8
 
 struct nix_inl_dev;
 struct nix_inl_qint {
@@ -32,7 +33,7 @@ struct nix_inl_dev {
 	uint16_t nix_msixoff;
 	uint16_t ssow_msixoff;
 	uint16_t sso_msixoff;
-	uint16_t cpt_msixoff[NIX_INL_CPT_LF];
+	uint16_t cpt_msixoff[MAX_NIX_INL_DEV_CPT_LF];
 
 	/* SSO data */
 	uint32_t xaq_buf_size;
@@ -58,21 +59,26 @@ struct nix_inl_dev {
 	bool is_nix1;
 	uint8_t spb_drop_pc;
 	uint8_t lpb_drop_pc;
+	uint8_t reass_ena; /* Plain packet reassembly enable */
 	uint64_t sso_work_cnt;
 
 	/* NIX/CPT data */
-	void *inb_sa_base;
-	uint16_t inb_sa_sz;
+	void *inb_sa_base[NIX_INL_PROFILE_CNT];
+	uint16_t inb_sa_sz[NIX_INL_PROFILE_CNT];
+	uint32_t inb_sa_max[NIX_INL_PROFILE_CNT];
 	uint8_t nb_cptlf;
+	int8_t res_addr_offset;
 
 	/* CPT data */
-	struct roc_cpt_lf cpt_lf[NIX_INL_CPT_LF];
+	struct roc_cpt_lf cpt_lf[MAX_NIX_INL_DEV_CPT_LF];
+	uint16_t eng_grpmask;
 
 	/* OUTB soft expiry poll thread */
 	plt_thread_t soft_exp_poll_thread;
 	uint32_t soft_exp_poll_freq;
 	uint64_t *sa_soft_exp_ring;
 	bool set_soft_exp_poll;
+	uint8_t cpt_cq_ena;
 
 	/* Soft expiry ring bitmap */
 	struct plt_bitmap *soft_exp_ring_bmap;
@@ -94,14 +100,44 @@ struct nix_inl_dev {
 	uint32_t nb_meta_bufs;
 	uint32_t meta_buf_sz;
 	uint8_t rx_inj_ena; /* Rx Inject Enable */
+	uint8_t custom_inb_sa;
 
 	/* NPC */
 	int *ipsec_index;
 	uint32_t curr_ipsec_idx;
 	uint32_t max_ipsec_rules;
 	uint32_t alloc_ipsec_rules;
+
+	struct roc_nix_inl_dev_q q_info[MAX_NIX_INL_DEV_CPT_LF];
+
+	/* Inbound CPT LF info */
+	uint16_t inb_cpt_lf_id;
+	uint16_t nix_inb_qids[MAX_NIX_INL_DEV_CPT_LF];
+	uint16_t nb_inb_cptlfs;
+	int nix_inb_q_bpid;
+	uint16_t ipsec_prof_id;
+	uint8_t reass_prof_id;
 };
 
+#define NIX_INL_DFLT_IPSEC_DEF_CFG                                                                 \
+	(BIT_ULL(30) | BIT_ULL(29) | BIT_ULL(28) | NPC_LID_LE << 8 | NPC_LT_LE_ESP << 4 | 0xFul)
+
+#define NIX_INL_DFLT_IPSEC_EXTRACT_CFG (32UL << 8 | 32UL)
+
+#define NIX_INL_DFLT_IPSEC_GEN_CFG                                                                 \
+	(BIT_ULL(51) | ROC_CPT_DFLT_ENG_GRP_SE << 48 |                                             \
+	 ROC_IE_OW_MAJOR_OP_PROCESS_INBOUND_IPSEC << 32 | ROC_IE_OW_INPLACE_BIT << 32 |            \
+	 BIT_ULL(18))
+
+#define NIX_INL_REASS_DEF_CFG                                                                      \
+	(BIT_ULL(30) | BIT_ULL(29) | BIT_ULL(28) | NPC_LID_LC << 8 |                               \
+	 (NPC_LT_LC_IP | NPC_LT_LC_IP6) << 4 | 0xFul)
+
+#define NIX_INL_REASS_GEN_CFG                                                                      \
+	(BIT_ULL(51) | (ROC_CPT_DFLT_ENG_GRP_SE << 48) |                                           \
+	 (ROC_IE_OW_MAJOR_OP_PROCESS_INBOUND_REASS << 32 | ROC_IE_OW_INPLACE_BIT << 32))
+
+void nix_inl_cpt_done_irq(void *params);
 int nix_inl_sso_register_irqs(struct nix_inl_dev *inl_dev);
 void nix_inl_sso_unregister_irqs(struct nix_inl_dev *inl_dev);
 
@@ -109,5 +145,8 @@ int nix_inl_nix_register_irqs(struct nix_inl_dev *inl_dev);
 void nix_inl_nix_unregister_irqs(struct nix_inl_dev *inl_dev);
 
 uint16_t nix_inl_dev_pffunc_get(void);
+
+int nix_inl_setup_dflt_ipsec_profile(struct dev *dev, uint16_t *prof_id);
+int nix_inl_setup_reass_profile(struct dev *dev, uint8_t *prof_id);
 
 #endif /* _ROC_NIX_INL_PRIV_H_ */

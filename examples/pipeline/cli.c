@@ -390,14 +390,15 @@ ethdev_show(uint16_t port_id, char **out, size_t *out_size)
 	uint32_t length;
 	uint16_t mtu = 0;
 
-	if (!rte_eth_dev_is_valid_port(port_id))
+	if (rte_eth_dev_info_get(port_id, &info) != 0)
+		return;
+
+	if (rte_eth_link_get(port_id, &link) != 0)
 		return;
 
 	rte_eth_dev_get_name_by_port(port_id, name);
-	rte_eth_dev_info_get(port_id, &info);
 	rte_eth_stats_get(port_id, &stats);
 	rte_eth_macaddr_get(port_id, &addr);
-	rte_eth_link_get(port_id, &link);
 	rte_eth_dev_get_mtu(port_id, &mtu);
 
 	snprintf(*out, *out_size,

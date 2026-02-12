@@ -8,6 +8,7 @@
 #include <rte_log.h>
 #include "bnxt.h"
 #include "bnxt_ulp.h"
+#include "bnxt_ulp_utils.h"
 #include "tf_ext_flow_handle.h"
 #include "ulp_mark_mgr.h"
 #include "bnxt_tf_common.h"
@@ -58,23 +59,23 @@ ulp_mark_db_init(struct bnxt_ulp_context *ctxt)
 	uint32_t dev_id;
 
 	if (!ctxt) {
-		BNXT_TF_DBG(DEBUG, "Invalid ULP CTXT\n");
+		BNXT_DRV_DBG(DEBUG, "Invalid ULP CTXT\n");
 		return -EINVAL;
 	}
 
 	if (bnxt_ulp_cntxt_dev_id_get(ctxt, &dev_id)) {
-		BNXT_TF_DBG(DEBUG, "Failed to get device id\n");
+		BNXT_DRV_DBG(DEBUG, "Failed to get device id\n");
 		return -EINVAL;
 	}
 
 	dparms = bnxt_ulp_device_params_get(dev_id);
 	if (!dparms) {
-		BNXT_TF_DBG(DEBUG, "Failed to device parms\n");
+		BNXT_DRV_DBG(DEBUG, "Failed to device parms\n");
 		return -EINVAL;
 	}
 
 	if (!dparms->mark_db_lfid_entries || !dparms->mark_db_gfid_entries) {
-		BNXT_TF_DBG(DEBUG, "mark Table is not allocated\n");
+		BNXT_DRV_DBG(DEBUG, "mark Table is not allocated\n");
 		bnxt_ulp_cntxt_ptr2_mark_db_set(ctxt, NULL);
 		return 0;
 	}
@@ -116,9 +117,9 @@ ulp_mark_db_init(struct bnxt_ulp_context *ctxt)
 	mark_tbl->gfid_mask	= (mark_tbl->gfid_num_entries / 2) - 1;
 	mark_tbl->gfid_type_bit = (mark_tbl->gfid_num_entries / 2);
 
-	BNXT_TF_DBG(DEBUG, "GFID Max = 0x%08x GFID MASK = 0x%08x\n",
-		    mark_tbl->gfid_num_entries - 1,
-		    mark_tbl->gfid_mask);
+	BNXT_DRV_DBG(DEBUG, "GFID Max = 0x%08x GFID MASK = 0x%08x\n",
+		     mark_tbl->gfid_num_entries - 1,
+		     mark_tbl->gfid_mask);
 
 gfid_not_required:
 	/* Add the mark tbl to the ulp context. */
@@ -131,7 +132,7 @@ mem_error:
 		rte_free(mark_tbl->lfid_tbl);
 		rte_free(mark_tbl);
 	}
-	BNXT_TF_DBG(DEBUG, "Failed to allocate memory for mark mgr\n");
+	BNXT_DRV_DBG(DEBUG, "Failed to allocate memory for mark mgr\n");
 	return -ENOMEM;
 }
 
@@ -235,13 +236,13 @@ ulp_mark_db_mark_add(struct bnxt_ulp_context *ctxt,
 	bool is_gfid;
 
 	if (!ctxt) {
-		BNXT_TF_DBG(ERR, "Invalid ulp context\n");
+		BNXT_DRV_DBG(ERR, "Invalid ulp context\n");
 		return -EINVAL;
 	}
 
 	mtbl = bnxt_ulp_cntxt_ptr2_mark_db_get(ctxt);
 	if (!mtbl) {
-		BNXT_TF_DBG(ERR, "Unable to get Mark DB\n");
+		BNXT_DRV_DBG(ERR, "Unable to get Mark DB\n");
 		return -EINVAL;
 	}
 
@@ -249,20 +250,20 @@ ulp_mark_db_mark_add(struct bnxt_ulp_context *ctxt,
 	if (is_gfid) {
 		idx = ulp_mark_db_idx_get(is_gfid, fid, mtbl);
 		if (idx >= mtbl->gfid_num_entries) {
-			BNXT_TF_DBG(ERR, "Mark index greater than allocated\n");
+			BNXT_DRV_DBG(ERR, "Mark index greater than allocated\n");
 			return -EINVAL;
 		}
-		BNXT_TF_DBG(DEBUG, "Set GFID[0x%0x] = 0x%0x\n", idx, mark);
+		BNXT_DRV_DBG(DEBUG, "Set GFID[0x%0x] = 0x%0x\n", idx, mark);
 		mtbl->gfid_tbl[idx].mark_id = mark;
 		ULP_MARK_DB_ENTRY_SET_VALID(&mtbl->gfid_tbl[idx]);
 
 	} else {
 		/* For the LFID, the FID is used as the index */
 		if (fid >= mtbl->lfid_num_entries) {
-			BNXT_TF_DBG(ERR, "Mark index greater than allocated\n");
+			BNXT_DRV_DBG(ERR, "Mark index greater than allocated\n");
 			return -EINVAL;
 		}
-		BNXT_TF_DBG(DEBUG, "Set LFID[0x%0x] = 0x%0x\n", fid, mark);
+		BNXT_DRV_DBG(DEBUG, "Set LFID[0x%0x] = 0x%0x\n", fid, mark);
 		mtbl->lfid_tbl[fid].mark_id = mark;
 		ULP_MARK_DB_ENTRY_SET_VALID(&mtbl->lfid_tbl[fid]);
 
@@ -293,13 +294,13 @@ ulp_mark_db_mark_del(struct bnxt_ulp_context *ctxt,
 	bool is_gfid;
 
 	if (!ctxt) {
-		BNXT_TF_DBG(ERR, "Invalid ulp context\n");
+		BNXT_DRV_DBG(ERR, "Invalid ulp context\n");
 		return -EINVAL;
 	}
 
 	mtbl = bnxt_ulp_cntxt_ptr2_mark_db_get(ctxt);
 	if (!mtbl) {
-		BNXT_TF_DBG(ERR, "Unable to get Mark DB\n");
+		BNXT_DRV_DBG(ERR, "Unable to get Mark DB\n");
 		return -EINVAL;
 	}
 
@@ -307,17 +308,19 @@ ulp_mark_db_mark_del(struct bnxt_ulp_context *ctxt,
 	if (is_gfid) {
 		idx = ulp_mark_db_idx_get(is_gfid, fid, mtbl);
 		if (idx >= mtbl->gfid_num_entries) {
-			BNXT_TF_DBG(ERR, "Mark index greater than allocated\n");
+			BNXT_DRV_DBG(ERR,
+				     "Mark index greater than allocated\n");
 			return -EINVAL;
 		}
-		BNXT_TF_DBG(DEBUG, "Reset GFID[0x%0x]\n", idx);
+		BNXT_DRV_DBG(DEBUG, "Reset GFID[0x%0x]\n", idx);
 		memset(&mtbl->gfid_tbl[idx], 0,
 		       sizeof(struct bnxt_gfid_mark_info));
 
 	} else {
 		/* For the LFID, the FID is used as the index */
 		if (fid >= mtbl->lfid_num_entries) {
-			BNXT_TF_DBG(ERR, "Mark index greater than allocated\n");
+			BNXT_DRV_DBG(ERR,
+				     "Mark index greater than allocated\n");
 			return -EINVAL;
 		}
 		memset(&mtbl->lfid_tbl[fid], 0,

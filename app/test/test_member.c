@@ -32,13 +32,13 @@ struct rte_member_setsum *setsum_vbf;
 struct rte_member_setsum *setsum_sketch;
 
 /* 5-tuple key type */
-struct flow_key {
+struct __rte_packed_begin flow_key {
 	uint32_t ip_src;
 	uint32_t ip_dst;
 	uint16_t port_src;
 	uint16_t port_dst;
 	uint8_t proto;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Set ID Macros for multimatch test usage */
 #define M_MATCH_S 1	/* Not start with 0 since by default 0 means no match */
@@ -996,4 +996,4 @@ test_member(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_FAST_TEST(member_autotest, true, true, test_member);
+REGISTER_FAST_TEST(member_autotest, NOHUGE_OK, ASAN_OK, test_member);

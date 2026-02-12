@@ -143,21 +143,22 @@ flex_link_item_parse(const char *src, struct rte_flow_item *item)
 	if (ret)
 		return ret;
 	item->type = pattern->type;
-	if (pattern->spec) {
+	ret = rte_flow_conv(RTE_FLOW_CONV_OP_ITEM_MASK, NULL, 0, item, NULL);
+	if ((ret > 0) && pattern->spec) {
 		ptr = (void *)(uintptr_t)item->spec;
-		memcpy(ptr, pattern->spec, FLEX_MAX_FLOW_PATTERN_LENGTH);
+		memcpy(ptr, pattern->spec, ret);
 	} else {
 		item->spec = NULL;
 	}
-	if (pattern->mask) {
+	if ((ret > 0) && pattern->mask) {
 		ptr = (void *)(uintptr_t)item->mask;
-		memcpy(ptr, pattern->mask, FLEX_MAX_FLOW_PATTERN_LENGTH);
+		memcpy(ptr, pattern->mask, ret);
 	} else {
 		item->mask = NULL;
 	}
-	if (pattern->last) {
+	if ((ret > 0) && pattern->last) {
 		ptr = (void *)(uintptr_t)item->last;
-		memcpy(ptr, pattern->last, FLEX_MAX_FLOW_PATTERN_LENGTH);
+		memcpy(ptr, pattern->last, ret);
 	} else {
 		item->last = NULL;
 	}

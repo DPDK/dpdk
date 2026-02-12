@@ -41,7 +41,7 @@ struct pending_queue {
 	unsigned int head;
 };
 
-struct cpt_request_info {
+struct __rte_aligned(8) cpt_request_info {
 	/** Data path fields */
 	uint64_t comp_baddr;
 	volatile uint64_t *completion_addr;
@@ -58,7 +58,7 @@ struct cpt_request_info {
 	/** Control path fields */
 	uint64_t time_out;
 	uint8_t extra_time;
-} __rte_aligned(8);
+};
 
 static __rte_always_inline void
 pending_queue_push(struct pending_queue *q, void *rid, unsigned int off,
@@ -73,7 +73,7 @@ pending_queue_commit(struct pending_queue *q, unsigned int cnt,
 			const unsigned int qsize)
 {
 	/* Ensure ordering between setting the entry and updating the tail */
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 
 	q->tail = (q->tail + cnt) & (qsize - 1);
 }

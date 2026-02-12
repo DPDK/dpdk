@@ -30,13 +30,13 @@ nix_rx_offload_flags(struct rte_eth_dev *eth_dev)
 	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 		flags |= NIX_RX_MULTI_SEG_F;
 
-	if ((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP))
+	if ((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) || dev->ptp_en)
 		flags |= NIX_RX_OFFLOAD_TSTAMP_F;
 
 	if (!dev->ptype_disable)
 		flags |= NIX_RX_OFFLOAD_PTYPE_F;
 
-	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY && !dev->nix.custom_inb_sa)
 		flags |= NIX_RX_OFFLOAD_SECURITY_F;
 
 	return flags;
@@ -198,21 +198,21 @@ cn10k_nix_tx_compl_setup(struct cnxk_eth_dev *dev,
 static void
 cn10k_nix_tx_queue_release(struct rte_eth_dev *eth_dev, uint16_t qid)
 {
+	struct cn10k_eth_txq *txq = eth_dev->data->tx_queues[qid];
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct roc_nix *nix = &dev->nix;
-	struct cn10k_eth_txq *txq;
 
-	cnxk_nix_tx_queue_release(eth_dev, qid);
-	txq = eth_dev->data->tx_queues[qid];
-
-	if (nix->tx_compl_ena)
+	if (nix->tx_compl_ena) {
+		/* First process all CQ entries */
+		handle_tx_completion_pkts(txq, 0);
 		plt_free(txq->tx_compl.ptr);
+	}
+	cnxk_nix_tx_queue_release(eth_dev, qid);
 }
 
 static int
-cn10k_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
-			 uint16_t nb_desc, unsigned int socket,
-			 const struct rte_eth_txconf *tx_conf)
+cn10k_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid, uint16_t nb_desc,
+			 unsigned int socket, const struct rte_eth_txconf *tx_conf)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct roc_nix *nix = &dev->nix;
@@ -256,9 +256,9 @@ cn10k_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 		inl_lf = dev->outb.lf_base + crypto_qid;
 
 		txq->cpt_io_addr = inl_lf->io_addr;
-		txq->cpt_fc = inl_lf->fc_addr;
-		txq->cpt_fc_sw = (int32_t *)((uintptr_t)dev->outb.fc_sw_mem +
-					     crypto_qid * RTE_CACHE_LINE_SIZE);
+		txq->cpt_fc = (uint64_t __rte_atomic *)inl_lf->fc_addr;
+		txq->cpt_fc_sw = (int32_t __rte_atomic *)((uintptr_t)dev->outb.fc_sw_mem +
+							  crypto_qid * RTE_CACHE_LINE_SIZE);
 
 		txq->cpt_desc = inl_lf->nb_desc * 0.7;
 		txq->sa_base = (uint64_t)dev->outb.sa_base;
@@ -473,7 +473,7 @@ cn10k_nix_ptp_info_update_cb(struct roc_nix *nix, bool ptp_en)
 	struct cnxk_eth_dev *dev = (struct cnxk_eth_dev *)nix;
 	struct rte_eth_dev *eth_dev;
 	struct cn10k_eth_rxq *rxq;
-	int i;
+	int i, rc;
 
 	if (!dev)
 		return -EINVAL;
@@ -496,8 +496,22 @@ cn10k_nix_ptp_info_update_cb(struct roc_nix *nix, bool ptp_en)
 		 * and MTU setting also requires MBOX message to be
 		 * sent(VF->PF)
 		 */
+		if (dev->ptp_en) {
+			rc = rte_mbuf_dyn_rx_timestamp_register
+				(&dev->tstamp.tstamp_dynfield_offset,
+				 &dev->tstamp.rx_tstamp_dynflag);
+			if (rc != 0) {
+				plt_err("Failed to register Rx timestamp field/flag");
+				return -EINVAL;
+			}
+		}
 		eth_dev->rx_pkt_burst = nix_ptp_vf_burst;
+		rte_eth_fp_ops[eth_dev->data->port_id].rx_pkt_burst = eth_dev->rx_pkt_burst;
 		rte_mb();
+		if (dev->cnxk_sso_ptp_tstamp_cb)
+			dev->cnxk_sso_ptp_tstamp_cb(eth_dev->data->port_id,
+						    NIX_RX_OFFLOAD_TSTAMP_F, dev->ptp_en);
+
 	}
 
 	return 0;
@@ -641,9 +655,10 @@ cn10k_nix_reassembly_conf_get(struct rte_eth_dev *eth_dev,
 
 static int
 cn10k_nix_reassembly_conf_set(struct rte_eth_dev *eth_dev,
-		const struct rte_eth_ip_reassembly_params *conf)
+			      const struct rte_eth_ip_reassembly_params *conf)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_cpt_rxc_time_cfg rxc_time_cfg = {0};
 	int rc = 0;
 
 	if (!roc_feature_nix_has_reass())
@@ -657,7 +672,7 @@ cn10k_nix_reassembly_conf_set(struct rte_eth_dev *eth_dev,
 		return 0;
 	}
 
-	rc = roc_nix_reassembly_configure(conf->timeout_ms, conf->max_frags);
+	rc = roc_nix_reassembly_configure(&rxc_time_cfg, conf->timeout_ms);
 	if (!rc && dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
 		dev->rx_offload_flags |= NIX_RX_REAS_F;
 		dev->inb.reass_en = true;
@@ -697,7 +712,7 @@ cn10k_rx_descriptor_dump(const struct rte_eth_dev *eth_dev, uint16_t qid,
 	const uint64_t data_off = rxq->data_off;
 	const uint32_t qmask = rxq->qmask;
 	const uintptr_t desc = rxq->desc;
-	struct cpt_parse_hdr_s *cpth;
+	union cpt_parse_hdr_u *cpth;
 	uint32_t head = rxq->head;
 	struct nix_cqe_hdr_s *cq;
 	uint16_t count = 0;
@@ -707,7 +722,7 @@ cn10k_rx_descriptor_dump(const struct rte_eth_dev *eth_dev, uint16_t qid,
 	available_pkts = cn10k_nix_rx_avail_get(rxq);
 
 	if ((offset + num - 1) >= available_pkts) {
-		plt_err("Invalid BD num=%u\n", num);
+		plt_err("Invalid BD num=%u", num);
 		return -EINVAL;
 	}
 
@@ -719,8 +734,7 @@ cn10k_rx_descriptor_dump(const struct rte_eth_dev *eth_dev, uint16_t qid,
 			rte_iova_t buff = *((rte_iova_t *)((uint64_t *)cq + 9));
 			struct rte_mbuf *mbuf =
 				(struct rte_mbuf *)(buff - data_off);
-			cpth = (struct cpt_parse_hdr_s *)
-				((uintptr_t)mbuf + (uint16_t)data_off);
+			cpth = (union cpt_parse_hdr_u *)((uintptr_t)mbuf + (uint16_t)data_off);
 			roc_cpt_parse_hdr_dump(file, cpth);
 		} else {
 			roc_nix_cqe_dump(file, cq);

@@ -52,18 +52,11 @@ if $format; then
 	if command -v git > /dev/null; then
 		if git rev-parse --is-inside-work-tree >&-; then
 			heading "Formatting in $directory/"
-			if command -v black > /dev/null; then
-				echo "Formatting code with black:"
-				black .
+			if command -v ruff > /dev/null; then
+				echo "Formatting code with ruff:"
+				ruff format
 			else
-				echo "black is not installed, not formatting"
-				errors=$((errors + 1))
-			fi
-			if command -v isort > /dev/null; then
-				echo "Sorting imports with isort:"
-				isort .
-			else
-				echo "isort is not installed, not sorting imports"
+				echo "ruff is not installed, not formatting"
 				errors=$((errors + 1))
 			fi
 
@@ -89,11 +82,19 @@ if $lint; then
 		echo
 	fi
 	heading "Linting in $directory/"
-	if command -v pylama > /dev/null; then
-		pylama .
+	if command -v ruff > /dev/null; then
+		ruff check --fix
 		errors=$((errors + $?))
+
+		git update-index --refresh
+		retval=$?
+		if [ $retval -ne 0 ]; then
+			echo 'The "needs update" files have been fixed by the linter.'
+			echo 'Please update your commit.'
+		fi
+		errors=$((errors + retval))
 	else
-		echo "pylama not found, unable to run linter"
+		echo "ruff not found, unable to run linter"
 		errors=$((errors + 1))
 	fi
 fi

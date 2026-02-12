@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_prefetch.h>
 #include <rte_jhash.h>
@@ -620,8 +621,6 @@ table_create(struct rte_swx_table_params *params,
 		return t;
 
 	TAILQ_FOREACH(entry, entries, node) {
-		int status;
-
 		status = table_add(t, entry);
 		if (status) {
 			table_free(t);
@@ -647,6 +646,7 @@ table_footprint(struct rte_swx_table_params *params,
 	return memory_footprint;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_table_exact_match_unoptimized_ops, 20.11)
 struct rte_swx_table_ops rte_swx_table_exact_match_unoptimized_ops = {
 	.footprint_get = table_footprint,
 	.mailbox_size_get = table_mailbox_size_get_unoptimized,
@@ -657,6 +657,7 @@ struct rte_swx_table_ops rte_swx_table_exact_match_unoptimized_ops = {
 	.free = table_free,
 };
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_table_exact_match_ops, 20.11)
 struct rte_swx_table_ops rte_swx_table_exact_match_ops = {
 	.footprint_get = table_footprint,
 	.mailbox_size_get = table_mailbox_size_get,

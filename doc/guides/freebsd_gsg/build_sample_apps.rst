@@ -57,44 +57,7 @@ Running a Sample Application
     Abstraction Layer (EAL) library, which provides some options that are generic
     to every DPDK application.
 
-A large number of options can be given to the EAL when running an
-application. A full list of options can be got by passing `--help` to a
-DPDK application. Some of the EAL options for FreeBSD are as follows:
-
-*   ``-c COREMASK`` or ``-l CORELIST``:
-    A hexadecimal bit mask of the cores to run on.  Note that core numbering
-    can change between platforms and should be determined beforehand. The corelist
-    is a list of cores to use instead of a core mask.
-
-*   ``-b <domain:bus:devid.func>``:
-    Blocklisting of ports; prevent EAL from using specified PCI device
-    (multiple ``-b`` options are allowed).
-
-*   ``--use-device``:
-    Use the specified Ethernet device(s) only.  Use comma-separate
-    ``[domain:]bus:devid.func`` values. Cannot be used with ``-b`` option.
-
-*   ``-v``:
-    Display version information on startup.
-
-*   ``-m MB``:
-    Memory to allocate from hugepages, regardless of processor socket.
-
-Other options, specific to Linux and are not supported under FreeBSD are as follows:
-
-*   ``socket-mem``:
-    Memory to allocate from hugepages on specific sockets.
-
-*   ``--huge-dir``:
-    The directory where hugetlbfs is mounted.
-
-*   ``--mbuf-pool-ops-name``:
-    Pool ops name for mbuf to use.
-
-*   ``--file-prefix``:
-    The prefix text used for hugepage filenames.
-
-The ``-c`` or ``-l`` option is mandatory; the others are optional.
+You can refer to :doc:`freebsd_eal_parameters` for the list of EAL options.
 
 .. _running_non_root:
 

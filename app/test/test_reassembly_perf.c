@@ -36,7 +36,7 @@
 #define IP_DST_ADDR(x) ((198U << 24) | (18 << 16) | (1 << 15) | (x))
 
 /* 2001:0200::/48 is IANA reserved range for IPv6 benchmarking (RFC5180) */
-static uint8_t ip6_addr[16] = {32, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static struct rte_ipv6_addr ip6_addr = RTE_IPV6(0x2001, 0x0200, 0, 0, 0, 0, 0, 0);
 #define IP6_VERSION 6
 
 #define IP_DEFTTL 64 /* from RFC 1340. */
@@ -136,9 +136,7 @@ ipv4_frag_fill_data(struct rte_mbuf **mbuf, uint8_t nb_frags, uint32_t flow_id,
 	for (i = 0; i < nb_frags; i++) {
 		struct rte_mbuf *frag = mbuf[i];
 		uint16_t frag_offset = 0;
-		uint32_t ip_cksum;
 		uint16_t pkt_len;
-		uint16_t *ptr16;
 
 		frag_offset = i * (frag_len / 8);
 
@@ -189,32 +187,7 @@ ipv4_frag_fill_data(struct rte_mbuf **mbuf, uint8_t nb_frags, uint32_t flow_id,
 		ip_hdr->src_addr = rte_cpu_to_be_32(IP_SRC_ADDR(flow_id));
 		ip_hdr->dst_addr = rte_cpu_to_be_32(IP_DST_ADDR(flow_id));
 
-		/*
-		 * Compute IP header checksum.
-		 */
-		ptr16 = (unaligned_uint16_t *)ip_hdr;
-		ip_cksum = 0;
-		ip_cksum += ptr16[0];
-		ip_cksum += ptr16[1];
-		ip_cksum += ptr16[2];
-		ip_cksum += ptr16[3];
-		ip_cksum += ptr16[4];
-		ip_cksum += ptr16[6];
-		ip_cksum += ptr16[7];
-		ip_cksum += ptr16[8];
-		ip_cksum += ptr16[9];
-
-		/*
-		 * Reduce 32 bit checksum to 16 bits and complement it.
-		 */
-		ip_cksum = ((ip_cksum & 0xFFFF0000) >> 16) +
-			   (ip_cksum & 0x0000FFFF);
-		if (ip_cksum > 65535)
-			ip_cksum -= 65535;
-		ip_cksum = (~ip_cksum) & 0x0000FFFF;
-		if (ip_cksum == 0)
-			ip_cksum = 0xFFFF;
-		ip_hdr->hdr_checksum = (uint16_t)ip_cksum;
+		ip_hdr->hdr_checksum = (uint16_t)rte_ipv4_cksum_simple(ip_hdr);
 
 		frag->data_len = sizeof(struct rte_ether_hdr) + pkt_len;
 		frag->pkt_len = frag->data_len;
@@ -340,17 +313,17 @@ ipv6_frag_fill_data(struct rte_mbuf **mbuf, uint8_t nb_frags, uint32_t flow_id,
 			rte_cpu_to_be_16(pkt_len - sizeof(struct rte_ipv6_hdr));
 		ip_hdr->proto = IPPROTO_FRAGMENT;
 		ip_hdr->hop_limits = IP_DEFTTL;
-		memcpy(ip_hdr->src_addr, ip6_addr, sizeof(ip_hdr->src_addr));
-		memcpy(ip_hdr->dst_addr, ip6_addr, sizeof(ip_hdr->dst_addr));
-		ip_hdr->src_addr[7] = (flow_id >> 16) & 0xf;
-		ip_hdr->src_addr[7] |= 0x10;
-		ip_hdr->src_addr[8] = (flow_id >> 8) & 0xff;
-		ip_hdr->src_addr[9] = flow_id & 0xff;
+		ip_hdr->src_addr = ip6_addr;
+		ip_hdr->dst_addr = ip6_addr;
+		ip_hdr->src_addr.a[7] = (flow_id >> 16) & 0xf;
+		ip_hdr->src_addr.a[7] |= 0x10;
+		ip_hdr->src_addr.a[8] = (flow_id >> 8) & 0xff;
+		ip_hdr->src_addr.a[9] = flow_id & 0xff;
 
-		ip_hdr->dst_addr[7] = (flow_id >> 16) & 0xf;
-		ip_hdr->dst_addr[7] |= 0x20;
-		ip_hdr->dst_addr[8] = (flow_id >> 8) & 0xff;
-		ip_hdr->dst_addr[9] = flow_id & 0xff;
+		ip_hdr->dst_addr.a[7] = (flow_id >> 16) & 0xf;
+		ip_hdr->dst_addr.a[7] |= 0x20;
+		ip_hdr->dst_addr.a[8] = (flow_id >> 8) & 0xff;
+		ip_hdr->dst_addr.a[9] = flow_id & 0xff;
 
 		frag_hdr->next_header = IPPROTO_UDP;
 		frag_hdr->reserved = 0;
@@ -584,6 +557,8 @@ ipv4_outstanding_reassembly_perf(int8_t nb_frags, uint8_t fill_order,
 	return TEST_SUCCESS;
 }
 
+#define TEST_REASSEMBLY_ITERATIONS 4
+
 static int
 ipv4_reassembly_interleaved_flows_perf(uint8_t nb_frags)
 {
@@ -595,17 +570,17 @@ ipv4_reassembly_interleaved_flows_perf(uint8_t nb_frags)
 	uint64_t total_cyc = 0;
 	uint32_t i, j;
 
-	for (i = 0; i < flow_cnt; i += 4) {
+	for (i = 0; i < flow_cnt; i += TEST_REASSEMBLY_ITERATIONS) {
 		struct rte_mbuf *buf_out[4] = {NULL};
 		uint8_t reassembled = 0;
 		uint8_t nb_frags = 0;
 		uint8_t prev = 0;
 
-		for (j = 0; j < 4; j++)
+		for (j = 0; j < TEST_REASSEMBLY_ITERATIONS; j++)
 			nb_frags += frag_per_flow[i + j];
 
-		struct rte_mbuf *buf_arr[nb_frags];
-		for (j = 0; j < 4; j++) {
+		struct rte_mbuf *buf_arr[TEST_REASSEMBLY_ITERATIONS * MAX_FRAGMENTS];
+		for (j = 0; j < TEST_REASSEMBLY_ITERATIONS; j++) {
 			join_array(buf_arr, mbufs[i + j], prev,
 				   frag_per_flow[i + j]);
 			prev += frag_per_flow[i + j];
@@ -635,7 +610,7 @@ ipv4_reassembly_interleaved_flows_perf(uint8_t nb_frags)
 		total_cyc += rte_rdtsc_precise() - flow_tstamp;
 		if (reassembled != 4)
 			return TEST_FAILED;
-		for (j = 0; j < 4; j++) {
+		for (j = 0; j < TEST_REASSEMBLY_ITERATIONS; j++) {
 			memset(mbufs[i + j], 0,
 			       sizeof(struct rte_mbuf *) * MAX_FRAGMENTS);
 			mbufs[i + j][0] = buf_out[j];
@@ -806,17 +781,17 @@ ipv6_reassembly_interleaved_flows_perf(int8_t nb_frags)
 	uint64_t total_cyc = 0;
 	uint32_t i, j;
 
-	for (i = 0; i < flow_cnt; i += 4) {
+	for (i = 0; i < flow_cnt; i += TEST_REASSEMBLY_ITERATIONS) {
 		struct rte_mbuf *buf_out[4] = {NULL};
 		uint8_t reassembled = 0;
 		uint8_t nb_frags = 0;
 		uint8_t prev = 0;
 
-		for (j = 0; j < 4; j++)
+		for (j = 0; j < TEST_REASSEMBLY_ITERATIONS; j++)
 			nb_frags += frag_per_flow[i + j];
 
-		struct rte_mbuf *buf_arr[nb_frags];
-		for (j = 0; j < 4; j++) {
+		struct rte_mbuf *buf_arr[TEST_REASSEMBLY_ITERATIONS * MAX_FRAGMENTS];
+		for (j = 0; j < TEST_REASSEMBLY_ITERATIONS; j++) {
 			join_array(buf_arr, mbufs[i + j], prev,
 				   frag_per_flow[i + j]);
 			prev += frag_per_flow[i + j];
@@ -852,7 +827,7 @@ ipv6_reassembly_interleaved_flows_perf(int8_t nb_frags)
 		total_cyc += rte_rdtsc_precise() - flow_tstamp;
 		if (reassembled != 4)
 			return TEST_FAILED;
-		for (j = 0; j < 4; j++) {
+		for (j = 0; j < TEST_REASSEMBLY_ITERATIONS; j++) {
 			memset(mbufs[i + j], 0,
 			       sizeof(struct rte_mbuf *) * MAX_FRAGMENTS);
 			mbufs[i + j][0] = buf_out[j];

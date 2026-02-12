@@ -133,6 +133,10 @@ s32 txgbe_reset_hw_vf(struct txgbe_hw *hw)
 		usec_delay(5);
 	}
 
+	/* amlite: bme */
+	if (hw->mac.type == txgbe_mac_aml_vf)
+		wr32(hw, TXGBE_BME_AML, 0x1);
+
 	if (!timeout)
 		return TXGBE_ERR_RESET_FAILED;
 
@@ -357,6 +361,8 @@ s32 txgbevf_update_xcast_mode(struct txgbe_hw *hw, int xcast_mode)
 			return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
 		/* Fall through */
 	case txgbe_mbox_api_13:
+	case txgbe_mbox_api_21:
+	case txgbe_mbox_api_23:
 		break;
 	default:
 		return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
@@ -487,24 +493,46 @@ s32 txgbe_check_mac_link_vf(struct txgbe_hw *hw, u32 *speed,
 	/* for SFP+ modules and DA cables it can take up to 500usecs
 	 * before the link status is correct
 	 */
-	if (mac->type == txgbe_mac_raptor_vf && wait_to_complete) {
+	if ((mac->type == txgbe_mac_sp_vf ||
+	     mac->type == txgbe_mac_aml_vf) && wait_to_complete) {
 		if (po32m(hw, TXGBE_VFSTATUS, TXGBE_VFSTATUS_UP,
 			0, NULL, 5, 100))
 			goto out;
 	}
 
-	switch (links_reg & TXGBE_VFSTATUS_BW_MASK) {
-	case TXGBE_VFSTATUS_BW_10G:
-		*speed = TXGBE_LINK_SPEED_10GB_FULL;
-		break;
-	case TXGBE_VFSTATUS_BW_1G:
-		*speed = TXGBE_LINK_SPEED_1GB_FULL;
-		break;
-	case TXGBE_VFSTATUS_BW_100M:
-		*speed = TXGBE_LINK_SPEED_100M_FULL;
-		break;
-	default:
-		*speed = TXGBE_LINK_SPEED_UNKNOWN;
+	if (hw->mac.type == txgbe_mac_sp_vf) {
+		if (hw->device_id == TXGBE_DEV_ID_SP1000_VF ||
+		    hw->device_id == TXGBE_DEV_ID_WX1820_VF)
+			switch (links_reg & TXGBE_VFSTATUS_BW_MASK) {
+			case TXGBE_VFSTATUS_BW_10G:
+				*speed = TXGBE_LINK_SPEED_10GB_FULL;
+				break;
+			case TXGBE_VFSTATUS_BW_1G:
+				*speed = TXGBE_LINK_SPEED_1GB_FULL;
+				break;
+			case TXGBE_VFSTATUS_BW_100M:
+				*speed = TXGBE_LINK_SPEED_100M_FULL;
+				break;
+			default:
+				*speed = TXGBE_LINK_SPEED_UNKNOWN;
+			}
+	} else {
+		switch (links_reg & TXGBE_VFSTATUS_BW_MASK_AML) {
+		case TXGBE_VFSTATUS_BW_AML_10G:
+			*speed = TXGBE_LINK_SPEED_10GB_FULL;
+			break;
+		case TXGBE_VFSTATUS_BW_AML_25G:
+			*speed = TXGBE_LINK_SPEED_25GB_FULL;
+			break;
+		case TXGBE_VFSTATUS_BW_AML_40G:
+			*speed = TXGBE_LINK_SPEED_40GB_FULL;
+			break;
+		case TXGBE_VFSTATUS_BW_AML_50G:
+			*speed = TXGBE_LINK_SPEED_50GB_FULL;
+			break;
+		default:
+			*speed = TXGBE_LINK_SPEED_UNKNOWN;
+		}
 	}
 
 	if (no_pflink_check) {
@@ -610,6 +638,8 @@ int txgbevf_get_queues(struct txgbe_hw *hw, unsigned int *num_tcs,
 	case txgbe_mbox_api_11:
 	case txgbe_mbox_api_12:
 	case txgbe_mbox_api_13:
+	case txgbe_mbox_api_21:
+	case txgbe_mbox_api_23:
 		break;
 	default:
 		return 0;
@@ -655,4 +685,77 @@ int txgbevf_get_queues(struct txgbe_hw *hw, unsigned int *num_tcs,
 	}
 
 	return err;
+}
+
+int
+txgbevf_add_5tuple_filter(struct txgbe_hw *hw, u32 *msg, u16 index)
+{
+	int err;
+
+	if (hw->api_version < txgbe_mbox_api_21)
+		return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
+
+	msg[TXGBEVF_5T_REQ] = TXGBE_VF_SET_5TUPLE;
+	msg[TXGBEVF_5T_CMD] = index;
+	msg[TXGBEVF_5T_CMD] |= 1 << TXGBEVF_5T_ADD_SHIFT;
+
+	err = txgbevf_write_msg_read_ack(hw, msg, msg, TXGBEVF_5T_MAX);
+	if (err)
+		return err;
+
+	msg[0] &= ~TXGBE_VT_MSGTYPE_CTS;
+	if (msg[0] != (TXGBE_VF_SET_5TUPLE | TXGBE_VT_MSGTYPE_ACK))
+		return TXGBE_ERR_NOSUPP;
+
+	return 0;
+}
+
+int
+txgbevf_del_5tuple_filter(struct txgbe_hw *hw, u16 index)
+{
+	u32 msg[2] = {0, 0};
+	int err;
+
+	if (hw->api_version < txgbe_mbox_api_21)
+		return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
+
+	msg[TXGBEVF_5T_REQ] = TXGBE_VF_SET_5TUPLE;
+	msg[TXGBEVF_5T_CMD] = index;
+
+	err = txgbevf_write_msg_read_ack(hw, msg, msg, 2);
+	if (err)
+		return err;
+
+	msg[0] &= ~TXGBE_VT_MSGTYPE_CTS;
+	if (msg[0] != (TXGBE_VF_SET_5TUPLE | TXGBE_VT_MSGTYPE_ACK))
+		return TXGBE_ERR_NOSUPP;
+
+	return 0;
+}
+
+int
+txgbevf_set_fdir(struct txgbe_hw *hw, u32 *msg, bool add)
+{
+	u16 msg_len = TXGBEVF_FDIR_MAX;
+	int err = 0;
+
+	if (hw->api_version < txgbe_mbox_api_23)
+		return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
+
+	msg[TXGBEVF_FDIR_REQ] = TXGBE_VF_SET_FDIR;
+
+	if (add)
+		msg[TXGBEVF_FDIR_CMD] |= 1 << TXGBEVF_FDIR_ADD_SHIFT;
+	else
+		msg_len = 2;
+
+	err = txgbevf_write_msg_read_ack(hw, msg, msg, msg_len);
+	if (err)
+		return err;
+
+	msg[0] &= ~TXGBE_VT_MSGTYPE_CTS;
+	if (msg[0] == (TXGBE_VF_SET_FDIR | TXGBE_VT_MSGTYPE_NACK))
+		return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
+
+	return 0;
 }

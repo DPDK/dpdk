@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2008-2012 Freescale Semiconductor, Inc.
+ * Copyright 2024 NXP
  *
  */
 
@@ -41,7 +42,7 @@ struct bm_mc_result;	/* MC result */
  * pool id specific to this buffer is needed (BM_RCR_VERB_CMD_BPID_MULTI,
  * BM_MCC_VERB_ACQUIRE), the 'bpid' field is used.
  */
-struct bm_buffer {
+struct __rte_aligned(8) bm_buffer {
 	union {
 		struct {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
@@ -67,7 +68,15 @@ struct bm_buffer {
 		};
 		u64 opaque;
 	};
-} __rte_aligned(8);
+};
+
+struct __rte_packed_begin bm_hw_buf_desc {
+	uint8_t rsv;
+	uint8_t bpid;
+	rte_be16_t hi_addr; /* High 16-bits of 48-bit address */
+	rte_be32_t lo_addr; /* Low 32-bits of 48-bit address */
+} __rte_packed_end;
+
 static inline u64 bm_buffer_get64(const struct bm_buffer *buf)
 {
 	return buf->addr;
@@ -85,17 +94,19 @@ static inline dma_addr_t bm_buf_addr(const struct bm_buffer *buf)
 		__buf931->lo = lower_32_bits(v); \
 	} while (0)
 
+#define FSL_BM_BURST_MAX 8
+
 /* See 1.5.3.5.4: "Release Command" */
-struct bm_rcr_entry {
+struct __rte_packed_begin bm_rcr_entry {
 	union {
 		struct {
 			u8 __dont_write_directly__verb;
 			u8 bpid; /* used with BM_RCR_VERB_CMD_BPID_SINGLE */
 			u8 __reserved1[62];
 		};
-		struct bm_buffer bufs[8];
+		struct bm_buffer bufs[FSL_BM_BURST_MAX];
 	};
-} __packed;
+} __rte_packed_end;
 #define BM_RCR_VERB_VBIT		0x80
 #define BM_RCR_VERB_CMD_MASK		0x70	/* one of two values; */
 #define BM_RCR_VERB_CMD_BPID_SINGLE	0x20
@@ -104,20 +115,20 @@ struct bm_rcr_entry {
 
 /* See 1.5.3.1: "Acquire Command" */
 /* See 1.5.3.2: "Query Command" */
-struct bm_mcc_acquire {
+struct __rte_packed_begin bm_mcc_acquire {
 	u8 bpid;
 	u8 __reserved1[62];
-} __packed;
-struct bm_mcc_query {
+} __rte_packed_end;
+struct __rte_packed_begin bm_mcc_query {
 	u8 __reserved2[63];
-} __packed;
-struct bm_mc_command {
+} __rte_packed_end;
+struct __rte_packed_begin bm_mc_command {
 	u8 __dont_write_directly__verb;
 	union {
 		struct bm_mcc_acquire acquire;
 		struct bm_mcc_query query;
 	};
-} __packed;
+} __rte_packed_end;
 #define BM_MCC_VERB_VBIT		0x80
 #define BM_MCC_VERB_CMD_MASK		0x70	/* where the verb contains; */
 #define BM_MCC_VERB_CMD_ACQUIRE		0x10
@@ -136,7 +147,7 @@ struct bm_pool_state {
 	} as, ds;
 };
 
-struct bm_mc_result {
+struct __rte_packed_begin bm_mc_result {
 	union {
 		struct {
 			u8 verb;
@@ -148,11 +159,11 @@ struct bm_mc_result {
 				u8 bpid;
 				u8 __reserved2[62];
 			};
-			struct bm_buffer bufs[8];
+			struct bm_buffer bufs[FSL_BM_BURST_MAX];
 		} acquire;
 		struct bm_pool_state query;
 	};
-} __packed;
+} __rte_packed_end;
 #define BM_MCR_VERB_VBIT		0x80
 #define BM_MCR_VERB_CMD_MASK		BM_MCC_VERB_CMD_MASK
 #define BM_MCR_VERB_CMD_ACQUIRE		BM_MCC_VERB_CMD_ACQUIRE
@@ -297,6 +308,9 @@ const struct bman_pool_params *bman_get_params(const struct bman_pool *pool);
 __rte_internal
 int bman_release(struct bman_pool *pool, const struct bm_buffer *bufs, u8 num,
 		 u32 flags);
+__rte_internal
+int bman_release_fast(struct bman_pool *pool, const uint64_t *bufs,
+	uint8_t num);
 
 /**
  * bman_acquire - Acquire buffer(s) from a buffer pool
@@ -311,6 +325,8 @@ int bman_release(struct bman_pool *pool, const struct bm_buffer *bufs, u8 num,
 __rte_internal
 int bman_acquire(struct bman_pool *pool, struct bm_buffer *bufs, u8 num,
 		 u32 flags);
+__rte_internal
+int bman_acquire_fast(struct bman_pool *pool, uint64_t *bufs, uint8_t num);
 
 /**
  * bman_query_pools - Query all buffer pool states

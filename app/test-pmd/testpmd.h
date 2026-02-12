@@ -36,6 +36,15 @@
 extern uint8_t cl_quit;
 extern volatile uint8_t f_quit;
 
+/* Max number of cmdline files we can take on testpmd cmdline */
+#define MAX_CMDLINE_FILENAMES 16
+
+/* Structure to track cmdline files and their echo settings */
+struct cmdline_file_info {
+	char filename[PATH_MAX];  /**< Path to the cmdline file */
+	bool echo;                /**< Whether to echo commands from this file */
+};
+
 /*
  * It is used to allocate the memory for hash key.
  * The hash key size is NIC dependent.
@@ -84,7 +93,7 @@ extern volatile uint8_t f_quit;
 /* Maximum number of pools supported per Rx queue */
 #define MAX_MEMPOOL 8
 
-typedef uint8_t  lcoreid_t;
+typedef uint32_t lcoreid_t;
 typedef uint16_t portid_t;
 typedef uint16_t queueid_t;
 typedef uint16_t streamid_t;
@@ -125,6 +134,16 @@ enum noisy_fwd_mode {
 	NOISY_FWD_MODE_5TSWAP,
 	NOISY_FWD_MODE_MAX,
 };
+
+/**
+ * Command line arguments parser sets `hairpin_multiport_mode` to True
+ * if explicit hairpin map configuration mode was used.
+ */
+extern bool hairpin_multiport_mode;
+
+/** Hairpin maps list. */
+struct hairpin_map;
+extern void hairpin_add_multiport_map(struct hairpin_map *map);
 
 /**
  * The data structure associated with RX and TX packet burst statistics
@@ -220,7 +239,7 @@ struct port_table {
 	uint32_t id; /**< Table ID. */
 	uint32_t nb_pattern_templates; /**< Number of pattern templates. */
 	uint32_t nb_actions_templates; /**< Number of actions templates. */
-	struct rte_flow_attr flow_attr; /**< Flow attributes. */
+	struct rte_flow_template_table_attr attr; /**< Table attributes. */
 	struct rte_flow_template_table *table; /**< PMD opaque template object */
 };
 
@@ -261,6 +280,7 @@ union port_action_query {
 
 /* Descriptor for queue job. */
 struct queue_job {
+	LIST_ENTRY(queue_job) chain;
 	uint32_t type; /**< Job type. */
 	union {
 		struct port_flow *pf;
@@ -268,6 +288,8 @@ struct queue_job {
 	};
 	union port_action_query query;
 };
+
+LIST_HEAD(queue_job_list, queue_job);
 
 struct port_flow_tunnel {
 	LIST_ENTRY(port_flow_tunnel) chain;
@@ -350,6 +372,7 @@ struct rte_port {
 	struct port_flow        *flow_list; /**< Associated flows. */
 	struct port_indirect_action *actions_list;
 	/**< Associated indirect actions. */
+	struct queue_job_list *job_list; /**< Pending async flow API operations, per queue. */
 	LIST_HEAD(, port_flow_tunnel) flow_tunnel_list;
 	const struct rte_eth_rxtx_callback *rx_dump_cb[RTE_MAX_QUEUES_PER_PORT+1];
 	const struct rte_eth_rxtx_callback *tx_dump_cb[RTE_MAX_QUEUES_PER_PORT+1];
@@ -465,6 +488,10 @@ extern cmdline_parse_inst_t cmd_show_set_raw_all;
 extern cmdline_parse_inst_t cmd_set_flex_is_pattern;
 extern cmdline_parse_inst_t cmd_set_flex_spec_pattern;
 
+#define DEFAULT_DCB_FWD_TC_MASK	0xFF
+extern uint8_t dcb_fwd_tc_mask;
+extern uint8_t dcb_fwd_tc_cores;
+
 extern uint16_t mempool_flags;
 
 /**
@@ -488,6 +515,8 @@ enum dcb_mode_enable
 };
 
 extern uint8_t xstats_hide_zero; /**< Hide zero values for xstats display */
+extern uint8_t xstats_hide_disabled; /**< Hide disabled xstat for xstats display */
+extern uint8_t xstats_show_state; /**< Show xstat state in xstats display */
 
 /* globals used for configuration */
 extern uint8_t record_core_cycles; /**< Enables measurement of CPU cycles */
@@ -497,7 +526,8 @@ extern int testpmd_logtype; /**< Log type for testpmd logs */
 extern uint8_t  interactive;
 extern uint8_t  auto_start;
 extern uint8_t  tx_first;
-extern char cmdline_filename[PATH_MAX]; /**< offline commands file */
+extern struct cmdline_file_info cmdline_files[MAX_CMDLINE_FILENAMES]; /**< offline commands files */
+extern unsigned int cmdline_file_count; /**< number of cmdline files */
 extern uint8_t  numa_support; /**< set by "--numa" parameter */
 extern uint16_t port_topology; /**< set by "--port-topology" parameter */
 extern uint8_t no_flush_rx; /**<set by "--no-flush-rx" parameter */
@@ -563,6 +593,7 @@ extern struct rte_eth_rxmode rx_mode;
 extern struct rte_eth_txmode tx_mode;
 
 extern uint64_t rss_hf;
+extern bool force_rss;
 
 extern queueid_t nb_hairpinq;
 extern queueid_t nb_rxq;
@@ -712,8 +743,8 @@ struct vxlan_encap_conf {
 	rte_be16_t udp_dst;
 	rte_be32_t ipv4_src;
 	rte_be32_t ipv4_dst;
-	uint8_t ipv6_src[16];
-	uint8_t ipv6_dst[16];
+	struct rte_ipv6_addr ipv6_src;
+	struct rte_ipv6_addr ipv6_dst;
 	rte_be16_t vlan_tci;
 	uint8_t ip_tos;
 	uint8_t ip_ttl;
@@ -730,8 +761,8 @@ struct nvgre_encap_conf {
 	uint8_t tni[3];
 	rte_be32_t ipv4_src;
 	rte_be32_t ipv4_dst;
-	uint8_t ipv6_src[16];
-	uint8_t ipv6_dst[16];
+	struct rte_ipv6_addr ipv6_src;
+	struct rte_ipv6_addr ipv6_dst;
 	rte_be16_t vlan_tci;
 	uint8_t eth_src[RTE_ETHER_ADDR_LEN];
 	uint8_t eth_dst[RTE_ETHER_ADDR_LEN];
@@ -762,8 +793,8 @@ struct mplsogre_encap_conf {
 	uint8_t label[3];
 	rte_be32_t ipv4_src;
 	rte_be32_t ipv4_dst;
-	uint8_t ipv6_src[16];
-	uint8_t ipv6_dst[16];
+	struct rte_ipv6_addr ipv6_src;
+	struct rte_ipv6_addr ipv6_dst;
 	rte_be16_t vlan_tci;
 	uint8_t eth_src[RTE_ETHER_ADDR_LEN];
 	uint8_t eth_dst[RTE_ETHER_ADDR_LEN];
@@ -786,8 +817,8 @@ struct mplsoudp_encap_conf {
 	rte_be16_t udp_dst;
 	rte_be32_t ipv4_src;
 	rte_be32_t ipv4_dst;
-	uint8_t ipv6_src[16];
-	uint8_t ipv6_dst[16];
+	struct rte_ipv6_addr ipv6_src;
+	struct rte_ipv6_addr ipv6_dst;
 	rte_be16_t vlan_tci;
 	uint8_t eth_src[RTE_ETHER_ADDR_LEN];
 	uint8_t eth_dst[RTE_ETHER_ADDR_LEN];
@@ -915,7 +946,7 @@ unsigned int parse_hdrs_list(const char *str, const char *item_name,
 			unsigned int *parsed_items);
 void launch_args_parse(int argc, char** argv);
 void cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue);
-void cmdline_read_from_file(const char *filename);
+int cmdline_read_from_file(const char *filename, bool echo);
 int init_cmdline(void);
 void prompt(void);
 void prompt_exit(void);
@@ -923,10 +954,13 @@ void nic_stats_display(portid_t port_id);
 void nic_stats_clear(portid_t port_id);
 void nic_xstats_display(portid_t port_id);
 void nic_xstats_clear(portid_t port_id);
+void nic_xstats_set_counter(portid_t port_id, char *counter_name, int on);
 void device_infos_display(const char *identifier);
 void port_infos_display(portid_t port_id);
 void port_summary_display(portid_t port_id);
 void port_eeprom_display(portid_t port_id);
+void port_eeprom_set(portid_t port_id, uint32_t magic, uint32_t offset,
+		     uint32_t length, uint8_t *value);
 void port_module_eeprom_display(portid_t port_id);
 void port_summary_header_display(void);
 void rx_queue_infos_display(portid_t port_idi, uint16_t queue_id);
@@ -942,6 +976,7 @@ int init_fwd_streams(void);
 void update_fwd_ports(portid_t new_pid);
 
 void set_fwd_eth_peer(portid_t port_id, char *peer_addr);
+void set_dev_led(portid_t port_id, bool active);
 
 void port_mtu_set(portid_t port_id, uint16_t mtu);
 int port_action_handle_create(portid_t port_id, uint32_t id, bool indirect_list,
@@ -1098,6 +1133,8 @@ void tx_vlan_pvid_set(portid_t port_id, uint16_t vlan_id, int on);
 void set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value);
 
 void set_xstats_hide_zero(uint8_t on_off);
+void set_xstats_show_state(uint8_t on_off);
+void set_xstats_hide_disabled(uint8_t on_off);
 
 void set_record_core_cycles(uint8_t on_off);
 void set_record_burst_stats(uint8_t on_off);
@@ -1132,7 +1169,10 @@ uint8_t port_is_bonding_member(portid_t member_pid);
 
 int init_port_dcb_config(portid_t pid, enum dcb_mode_enable dcb_mode,
 		     enum rte_eth_nb_tcs num_tcs,
-		     uint8_t pfc_en);
+		     uint8_t pfc_en,
+		     uint8_t prio_tc[RTE_ETH_DCB_NUM_USER_PRIORITIES],
+		     uint8_t prio_tc_en,
+		     uint8_t keep_qnum);
 int start_port(portid_t pid);
 void stop_port(portid_t pid);
 void close_port(portid_t pid);
@@ -1252,6 +1292,10 @@ extern int flow_parse(const char *src, void *result, unsigned int size,
 		      struct rte_flow_attr **attr,
 		      struct rte_flow_item **pattern,
 		      struct rte_flow_action **actions);
+int setup_hairpin_queues(portid_t pi, portid_t p_pi, uint16_t cnt_pi);
+int hairpin_bind(uint16_t cfg_pi, portid_t *pl, portid_t *peer_pl);
+void hairpin_map_usage(void);
+int parse_hairpin_map(const char *hpmap);
 
 uint64_t str_to_rsstypes(const char *str);
 const char *rsstypes_to_str(uint64_t rss_type);
@@ -1275,26 +1319,10 @@ RTE_INIT(__##c) \
 	testpmd_add_driver_commands(&c); \
 }
 
-/*
- * Work-around of a compilation error with ICC on invocations of the
- * rte_be_to_cpu_16() function.
- */
-#ifdef __GCC__
 #define RTE_BE_TO_CPU_16(be_16_v)  rte_be_to_cpu_16((be_16_v))
 #define RTE_CPU_TO_BE_16(cpu_16_v) rte_cpu_to_be_16((cpu_16_v))
-#else
-#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
-#define RTE_BE_TO_CPU_16(be_16_v)  (be_16_v)
-#define RTE_CPU_TO_BE_16(cpu_16_v) (cpu_16_v)
-#else
-#define RTE_BE_TO_CPU_16(be_16_v) \
-	(uint16_t) ((((be_16_v) & 0xFF) << 8) | ((be_16_v) >> 8))
-#define RTE_CPU_TO_BE_16(cpu_16_v) \
-	(uint16_t) ((((cpu_16_v) & 0xFF) << 8) | ((cpu_16_v) >> 8))
-#endif
-#endif /* __GCC__ */
 
-#define TESTPMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, testpmd_logtype, "testpmd: " fmt, ## args)
+#define TESTPMD_LOG(level, fmt, ...) \
+	rte_log(RTE_LOG_ ## level, testpmd_logtype, "testpmd: " fmt, ## __VA_ARGS__)
 
 #endif /* _TESTPMD_H_ */

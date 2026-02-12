@@ -32,7 +32,7 @@
 
 #define IP4_FULL_MASK (sizeof(((struct ip_addr *)NULL)->ip.ip4) * CHAR_BIT)
 
-#define IP6_FULL_MASK (sizeof(((struct ip_addr *)NULL)->ip.ip6.ip6) * CHAR_BIT)
+#define IP6_FULL_MASK RTE_IPV6_MAX_DEPTH
 
 #define MBUF_NO_SEC_OFFLOAD(m) ((m->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD) == 0)
 
@@ -104,14 +104,14 @@ const struct supported_cipher_algo cipher_algos[] = {
 	{
 		.keyword = "aes-192-ctr",
 		.algo = RTE_CRYPTO_CIPHER_AES_CTR,
-		.iv_len = 16,
+		.iv_len = 8,
 		.block_size = 16,
 		.key_len = 28
 	},
 	{
 		.keyword = "aes-256-ctr",
 		.algo = RTE_CRYPTO_CIPHER_AES_CTR,
-		.iv_len = 16,
+		.iv_len = 8,
 		.block_size = 16,
 		.key_len = 36
 	},
@@ -128,6 +128,13 @@ const struct supported_cipher_algo cipher_algos[] = {
 		.iv_len = 8,
 		.block_size = 8,
 		.key_len = 8
+	},
+	{
+		.keyword = "sm4-cbc",
+		.algo = RTE_CRYPTO_CIPHER_SM4_CBC,
+		.iv_len = 16,
+		.block_size = 16,
+		.key_len = 16
 	}
 };
 
@@ -175,6 +182,12 @@ const struct supported_auth_algo auth_algos[] = {
 		.algo = RTE_CRYPTO_AUTH_AES_XCBC_MAC,
 		.digest_len = 12,
 		.key_len = 16
+	},
+	{
+		.keyword = "sm3-hmac",
+		.algo = RTE_CRYPTO_AUTH_SM3_HMAC,
+		.digest_len = 12,
+		.key_len = 20
 	}
 };
 
@@ -502,7 +515,8 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 				return;
 
 			if (algo->algo == RTE_CRYPTO_CIPHER_AES_CBC ||
-				algo->algo == RTE_CRYPTO_CIPHER_3DES_CBC)
+				algo->algo == RTE_CRYPTO_CIPHER_3DES_CBC ||
+				algo->algo == RTE_CRYPTO_CIPHER_SM4_CBC)
 				rule->salt = (uint32_t)rte_rand();
 
 			if (algo->algo == RTE_CRYPTO_CIPHER_AES_CTR) {
@@ -661,7 +675,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 				rule->src.ip.ip4 = rte_bswap32(
 					(uint32_t)ip.s_addr);
 			} else if (IS_IP6_TUNNEL(rule->flags)) {
-				struct in6_addr ip;
+				struct rte_ipv6_addr ip;
 
 				APP_CHECK(parse_ipv6_addr(tokens[ti], &ip,
 					NULL) == 0, status,
@@ -670,8 +684,8 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 					tokens[ti]);
 				if (status->status < 0)
 					return;
-				memcpy(rule->src.ip.ip6.ip6_b,
-					ip.s6_addr, 16);
+
+				rule->src.ip.ip6 = ip;
 			} else if (IS_TRANSPORT(rule->flags)) {
 				APP_CHECK(0, status, "unrecognized input "
 					"\"%s\"", tokens[ti]);
@@ -704,7 +718,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 				rule->dst.ip.ip4 = rte_bswap32(
 					(uint32_t)ip.s_addr);
 			} else if (IS_IP6_TUNNEL(rule->flags)) {
-				struct in6_addr ip;
+				struct rte_ipv6_addr ip;
 
 				APP_CHECK(parse_ipv6_addr(tokens[ti], &ip,
 					NULL) == 0, status,
@@ -713,7 +727,8 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 					tokens[ti]);
 				if (status->status < 0)
 					return;
-				memcpy(rule->dst.ip.ip6.ip6_b, ip.s6_addr, 16);
+
+				rule->dst.ip.ip6 = ip;
 			} else if (IS_TRANSPORT(rule->flags)) {
 				APP_CHECK(0, status, "unrecognized "
 					"input \"%s\"",	tokens[ti]);
@@ -1010,19 +1025,9 @@ print_one_sa_rule(const struct ipsec_sa *sa, int inbound)
 		break;
 	case IP6_TUNNEL:
 		printf("IP6Tunnel ");
-		for (i = 0; i < 16; i++) {
-			if (i % 2 && i != 15)
-				printf("%.2x:", sa->src.ip.ip6.ip6_b[i]);
-			else
-				printf("%.2x", sa->src.ip.ip6.ip6_b[i]);
-		}
+		printf(RTE_IPV6_ADDR_FMT, RTE_IPV6_ADDR_SPLIT(&sa->src.ip.ip6));
 		printf(" ");
-		for (i = 0; i < 16; i++) {
-			if (i % 2 && i != 15)
-				printf("%.2x:", sa->dst.ip.ip6.ip6_b[i]);
-			else
-				printf("%.2x", sa->dst.ip.ip6.ip6_b[i]);
-		}
+		printf(RTE_IPV6_ADDR_FMT, RTE_IPV6_ADDR_SPLIT(&sa->dst.ip.ip6));
 		break;
 	case TRANSPORT:
 		printf("Transport ");
@@ -1220,10 +1225,8 @@ sa_add_address_inline_crypto(struct ipsec_sa *sa)
 		sa->flags |= IP6_TRANSPORT;
 		if (mask[0] == IP6_FULL_MASK &&
 				mask[1] == IP6_FULL_MASK &&
-				(ip_addr[0].ip.ip6.ip6[0] != 0 ||
-				ip_addr[0].ip.ip6.ip6[1] != 0) &&
-				(ip_addr[1].ip.ip6.ip6[0] != 0 ||
-				ip_addr[1].ip.ip6.ip6[1] != 0)) {
+				!rte_ipv6_addr_is_unspec(&ip_addr[0].ip.ip6) &&
+				!rte_ipv6_addr_is_unspec(&ip_addr[1].ip.ip6)) {
 
 			sa->src.ip.ip6 = ip_addr[0].ip.ip6;
 			sa->dst.ip.ip6 = ip_addr[1].ip.ip6;
@@ -1330,6 +1333,7 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 			case RTE_CRYPTO_CIPHER_DES_CBC:
 			case RTE_CRYPTO_CIPHER_3DES_CBC:
 			case RTE_CRYPTO_CIPHER_AES_CBC:
+			case RTE_CRYPTO_CIPHER_SM4_CBC:
 				iv_length = sa->iv_len;
 				break;
 			case RTE_CRYPTO_CIPHER_AES_CTR:
@@ -1571,8 +1575,8 @@ ipsec_sa_init(struct ipsec_sa *lsa, struct rte_ipsec_sa *sa, uint32_t sa_size,
 	};
 
 	if (IS_IP6_TUNNEL(lsa->flags)) {
-		memcpy(v6.src_addr, lsa->src.ip.ip6.ip6_b, sizeof(v6.src_addr));
-		memcpy(v6.dst_addr, lsa->dst.ip.ip6.ip6_b, sizeof(v6.dst_addr));
+		v6.src_addr = lsa->src.ip.ip6;
+		v6.dst_addr = lsa->dst.ip.ip6;
 	}
 
 	rc = fill_ipsec_sa_prm(&prm, lsa, &v4, &v6);

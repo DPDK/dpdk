@@ -30,7 +30,7 @@ struct lcore_config {
 	volatile int ret;          /**< return value of function */
 
 	volatile RTE_ATOMIC(enum rte_lcore_state_t) state; /**< lcore state */
-	unsigned int socket_id;    /**< physical socket id for this lcore */
+	unsigned int numa_id;      /**< NUMA node ID for this lcore */
 	unsigned int core_id;      /**< core number on socket for this lcore */
 	int core_index;            /**< relative index, starting from 0 */
 	uint8_t core_role;         /**< role of core eg: OFF, RTE, SERVICE */
@@ -62,7 +62,7 @@ struct rte_config {
 	 * DPDK instances
 	 */
 	struct rte_mem_config *mem_config;
-} __rte_packed;
+};
 
 /**
  * Get the global configuration structure.
@@ -71,6 +71,27 @@ struct rte_config {
  *   A pointer to the global configuration structure.
  */
 struct rte_config *rte_eal_get_configuration(void);
+
+/**
+ * Put the argument list into a structure.
+ *
+ * This allows the arguments to then be processed out-of-order.
+ *
+ * @return
+ *  - 0 on success
+ * - Negative on error
+ */
+int eal_collate_args(int argc, char **argv);
+
+/**
+ * Convert an rte_cpuset_t to string form suitable for parsing by argparse.
+ *
+ * @param cpuset
+ *   The cpuset to convert to string form.
+ * @return
+ *   String representation of the cpuset (caller must free), or NULL on error.
+ */
+char *eal_cpuset_to_str(const rte_cpuset_t *cpuset);
 
 /**
  * Initialize the memzone subsystem (private to eal).
@@ -95,6 +116,13 @@ int rte_eal_memzone_init(void);
 int rte_eal_cpu_init(void);
 
 /**
+ * Check for architecture supported MMU.
+ *
+ * This function is private to EAL.
+ */
+bool eal_mmu_supported(void);
+
+/**
  * Create memseg lists
  *
  * This function is private to EAL.
@@ -117,7 +145,7 @@ int rte_eal_memseg_init(void);
  *   0 on success, negative on error
  */
 int rte_eal_memory_init(void)
-	__rte_shared_locks_required(rte_mcfg_mem_get_lock());
+	__rte_requires_shared_capability(rte_mcfg_mem_get_lock());
 
 /**
  * Configure timers
@@ -204,7 +232,12 @@ enum eal_mem_reserve_flags {
 	 * @see RTE_MAP_FORCE_ADDRESS for description of possible consequences
 	 *      (although implementations are not required to use it).
 	 */
-	EAL_RESERVE_FORCE_ADDRESS = 1 << 1
+	EAL_RESERVE_FORCE_ADDRESS = 1 << 1,
+	/**
+	 * Force reserving memory at the requested address,
+	 * but fail if a preexisting mapping collides with the request.
+	 */
+	EAL_RESERVE_FORCE_ADDRESS_NOREPLACE = 1 << 2,
 };
 
 /**
@@ -421,7 +454,7 @@ void set_tsc_freq(void);
  *
  * This function is private to the EAL.
  */
-uint64_t get_tsc_freq(void);
+uint64_t get_tsc_freq(uint64_t arch_hz);
 
 /**
  * Get TSC frequency if the architecture supports.
@@ -582,28 +615,6 @@ int local_dev_remove(struct rte_device *dev);
  *	 1 no bus can handler the sigbus
  */
 int rte_bus_sigbus_handler(const void *failure_addr);
-
-/**
- * @internal
- * Register the sigbus handler.
- *
- * @return
- *   - On success, zero.
- *   - On failure, a negative value.
- */
-int
-dev_sigbus_handler_register(void);
-
-/**
- * @internal
- * Unregister the sigbus handler.
- *
- * @return
- *   - On success, zero.
- *   - On failure, a negative value.
- */
-int
-dev_sigbus_handler_unregister(void);
 
 /**
  * Get OS-specific EAL mapping base address.
@@ -770,6 +781,12 @@ eal_get_internal_configuration(void);
  */
 rte_usage_hook_t
 eal_get_application_usage_hook(void);
+
+/**
+ * Initialise random subsystem.
+ */
+void
+eal_rand_init(void);
 
 /**
  * Instruct primary process that a secondary process wants to attach.

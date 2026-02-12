@@ -1,4 +1,4 @@
-/*   SPDX-License-Identifier:        BSD-3-Clause
+/*   SPDX-License-Identifier: BSD-3-Clause
  *   Copyright 2017 NXP
  */
 
@@ -77,19 +77,18 @@ struct dpaa_eventdev {
 	uint32_t event_dev_cfg;
 };
 
-#define DPAA_EVENTDEV_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, dpaa_logtype_eventdev, "%s(): " fmt "\n", \
-		__func__, ##args)
+#define DPAA_EVENTDEV_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, DPAA_EVENTDEV, "%s(): ", __func__, __VA_ARGS__)
 
 #define EVENTDEV_INIT_FUNC_TRACE() DPAA_EVENTDEV_LOG(DEBUG, " >>")
 
-#define DPAA_EVENTDEV_DEBUG(fmt, args...) \
-	DPAA_EVENTDEV_LOG(DEBUG, fmt, ## args)
-#define DPAA_EVENTDEV_ERR(fmt, args...) \
-	DPAA_EVENTDEV_LOG(ERR, fmt, ## args)
-#define DPAA_EVENTDEV_INFO(fmt, args...) \
-	DPAA_EVENTDEV_LOG(INFO, fmt, ## args)
-#define DPAA_EVENTDEV_WARN(fmt, args...) \
-	DPAA_EVENTDEV_LOG(WARNING, fmt, ## args)
+#define DPAA_EVENTDEV_DEBUG(fmt, ...) \
+	DPAA_EVENTDEV_LOG(DEBUG, fmt, ## __VA_ARGS__)
+#define DPAA_EVENTDEV_ERR(fmt, ...) \
+	DPAA_EVENTDEV_LOG(ERR, fmt, ## __VA_ARGS__)
+#define DPAA_EVENTDEV_INFO(fmt, ...) \
+	DPAA_EVENTDEV_LOG(INFO, fmt, ## __VA_ARGS__)
+#define DPAA_EVENTDEV_WARN(fmt, ...) \
+	DPAA_EVENTDEV_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 #endif /* __DPAA_EVENTDEV_H__ */

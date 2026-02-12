@@ -27,7 +27,7 @@
 static void *vmbus_map_addr;
 
 /* Control interrupts */
-void vmbus_uio_irq_control(struct rte_vmbus_device *dev, int32_t onoff)
+void vmbus_uio_irq_control(const struct rte_vmbus_device *dev, int32_t onoff)
 {
 	if ((rte_intr_fd_get(dev->intr_handle) < 0) ||
 	    write(rte_intr_fd_get(dev->intr_handle), &onoff,
@@ -268,7 +268,7 @@ static int vmbus_uio_map_subchan(const struct rte_vmbus_device *dev,
 	}
 	file_size = sb.st_size;
 
-	if (file_size == 0 || (file_size & (rte_mem_page_size() - 1))) {
+	if (file_size == 0 || (file_size & (HYPERV_PAGE_SIZE - 1))) {
 		VMBUS_LOG(ERR, "incorrect size %s: %zu",
 			  ring_path, file_size);
 
@@ -451,9 +451,9 @@ int vmbus_uio_get_subchan(struct vmbus_channel *primary,
 		err = vmbus_uio_sysfs_read(subchan_path, "monitor_id",
 					   &monid, UINT8_MAX);
 		if (err) {
-			VMBUS_LOG(NOTICE, "no monitor_id in %s:%s",
+			VMBUS_LOG(NOTICE, "no monitor_id in %s:%s use int mode",
 				  subchan_path, strerror(-err));
-			goto fail;
+			monid = UINT8_MAX;
 		}
 
 		err = vmbus_chan_create(dev, relid, subid, monid, subchan);

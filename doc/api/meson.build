@@ -14,7 +14,7 @@ endif
 generate_doxygen = py3 + files('generate_doxygen.py')
 generate_examples = py3 + files('generate_examples.py')
 
-htmldir = join_paths(get_option('datadir'), 'doc', 'dpdk')
+htmldir = join_paths(get_option('datadir'), 'doc', 'dpdk', 'api')
 
 # due to the following bug: https://github.com/mesonbuild/meson/issues/4107
 # if install is set to true it will override build_by_default and it will
@@ -27,6 +27,7 @@ example = custom_target('examples.dox',
         depfile: 'examples.dox.d',
         install: get_option('enable_docs'),
         install_dir: htmldir,
+        install_tag: 'doc',
         build_by_default: get_option('enable_docs'))
 
 # set up common Doxygen configuration
@@ -37,6 +38,7 @@ cdata.set('OUTPUT', join_paths(dpdk_build_root, 'doc', 'api'))
 cdata.set('TOPDIR', dpdk_source_root)
 cdata.set('STRIP_FROM_PATH', ' '.join([dpdk_source_root, join_paths(dpdk_build_root, 'doc', 'api')]))
 cdata.set('WARN_AS_ERROR', 'NO')
+cdata.set('DTS_API_MAIN_PAGE', join_paths('.', 'dts', 'index.html'))
 if get_option('werror')
     cdata.set('WARN_AS_ERROR', 'YES')
 endif
@@ -75,6 +77,7 @@ doxy_html_build = custom_target('doxygen-html',
         command: [generate_doxygen, '@OUTPUT@', doxygen, '@INPUT@'],
         install: get_option('enable_docs'),
         install_dir: htmldir,
+        install_tag: 'doc',
         build_by_default: get_option('enable_docs'))
 
 doc_targets += doxy_html_build
@@ -89,6 +92,7 @@ doxy_man_build = custom_target('doxygen-man',
         command: [generate_doxygen, '@OUTPUT@', doxygen, '@INPUT@'],
         install: get_option('enable_docs'),
         install_dir: get_option('datadir'),
+        install_tag: 'doc',
         build_by_default: get_option('enable_docs'))
 
 doc_targets += doxy_man_build
@@ -97,6 +101,11 @@ doc_target_names += 'Doxygen_API(Manpage)'
 # refresh the manpage database on install
 # if DPDK manpages are installed to a staging directory, not in MANPATH, this has no effect
 mandb = find_program('mandb', required: false)
-if mandb.found() and get_option('enable_docs') and meson.version().version_compare('>=0.55.0')
+if mandb.found() and get_option('enable_docs')
     meson.add_install_script(mandb)
 endif
+
+# used by DTS to place its files into
+api_build_dir = meson.current_build_dir()
+
+subdir('dts')

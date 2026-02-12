@@ -11,10 +11,6 @@
  * Auxiliary Bus Interface.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -27,6 +23,10 @@ extern "C" {
 #include <rte_interrupts.h>
 #include <dev_driver.h>
 #include <rte_kvargs.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_BUS_AUXILIARY_NAME "auxiliary"
 
@@ -168,7 +168,7 @@ void rte_auxiliary_register(struct rte_auxiliary_driver *driver);
 		(auxiliary_drv).driver.name = RTE_STR(nm); \
 		rte_auxiliary_register(&(auxiliary_drv)); \
 	} \
-	RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
+	RTE_PMD_EXPORT_NAME(nm)
 
 /**
  * Unregister an auxiliary driver.

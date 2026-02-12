@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdint.h>
 
+#include <eal_export.h>
 #include <rte_mldev.h>
 #include <rte_string_fns.h>
 
@@ -14,6 +15,7 @@
  * This file implements Machine Learning utility routines, except type conversion routines.
  */
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_ml_io_type_size_get)
 int
 rte_ml_io_type_size_get(enum rte_ml_io_type type)
 {
@@ -49,6 +51,7 @@ rte_ml_io_type_size_get(enum rte_ml_io_type type)
 	}
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_ml_io_type_to_str)
 void
 rte_ml_io_type_to_str(enum rte_ml_io_type type, char *str, int len)
 {

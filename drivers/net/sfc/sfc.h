@@ -67,6 +67,8 @@ struct sfc_dp_rx;
 struct sfc_port {
 	unsigned int			lsc_seq;
 
+	efx_phy_lane_count_t		phy_lane_count_active;
+	efx_phy_lane_count_t		phy_lane_count_req;
 	uint32_t			phy_adv_cap_mask;
 	uint32_t			phy_adv_cap;
 	uint32_t			fec_cfg;
@@ -309,6 +311,8 @@ struct sfc_adapter {
 	uint32_t			rxd_wait_timeout_ns;
 
 	bool				switchdev;
+
+	bool				link_ev_need_poll;
 };
 
 static inline struct sfc_adapter_shared *
@@ -413,7 +417,7 @@ int sfc_port_configure(struct sfc_adapter *sa);
 void sfc_port_close(struct sfc_adapter *sa);
 int sfc_port_start(struct sfc_adapter *sa);
 void sfc_port_stop(struct sfc_adapter *sa);
-void sfc_port_link_mode_to_info(efx_link_mode_t link_mode,
+void sfc_port_link_mode_to_info(efx_link_mode_t link_mode, uint32_t phy_cap_req,
 				struct rte_eth_link *link_info);
 int sfc_port_update_mac_stats(struct sfc_adapter *sa, boolean_t manual_update);
 int sfc_port_get_mac_stats(struct sfc_adapter *sa, struct rte_eth_xstat *xstats,

@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <eal_export.h>
 #include <rte_eal_memconfig.h>
 #include <rte_string_fns.h>
 #include <rte_acl.h>
@@ -263,6 +264,7 @@ acl_get_best_alg(void)
 	return alg[i];
 }
 
+RTE_EXPORT_SYMBOL(rte_acl_set_ctx_classify)
 extern int
 rte_acl_set_ctx_classify(struct rte_acl_ctx *ctx, enum rte_acl_classify_alg alg)
 {
@@ -285,6 +287,7 @@ rte_acl_set_ctx_classify(struct rte_acl_ctx *ctx, enum rte_acl_classify_alg alg)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_acl_classify_alg)
 int
 rte_acl_classify_alg(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories,
@@ -297,6 +300,7 @@ rte_acl_classify_alg(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	return classify_fns[alg](ctx, data, results, num, categories);
 }
 
+RTE_EXPORT_SYMBOL(rte_acl_classify)
 int
 rte_acl_classify(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories)
@@ -305,6 +309,7 @@ rte_acl_classify(const struct rte_acl_ctx *ctx, const uint8_t **data,
 		ctx->alg);
 }
 
+RTE_EXPORT_SYMBOL(rte_acl_find_existing)
 struct rte_acl_ctx *
 rte_acl_find_existing(const char *name)
 {
@@ -329,6 +334,7 @@ rte_acl_find_existing(const char *name)
 	return ctx;
 }
 
+RTE_EXPORT_SYMBOL(rte_acl_free)
 void
 rte_acl_free(struct rte_acl_ctx *ctx)
 {
@@ -361,6 +367,7 @@ rte_acl_free(struct rte_acl_ctx *ctx)
 	rte_free(te);
 }
 
+RTE_EXPORT_SYMBOL(rte_acl_create)
 struct rte_acl_ctx *
 rte_acl_create(const struct rte_acl_param *param)
 {
@@ -457,6 +464,7 @@ acl_check_rule(const struct rte_acl_rule_data *rd)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_acl_add_rules)
 int
 rte_acl_add_rules(struct rte_acl_ctx *ctx, const struct rte_acl_rule *rules,
 	uint32_t num)
@@ -486,6 +494,7 @@ rte_acl_add_rules(struct rte_acl_ctx *ctx, const struct rte_acl_rule *rules,
  * Reset all rules.
  * Note that RT structures are not affected.
  */
+RTE_EXPORT_SYMBOL(rte_acl_reset_rules)
 void
 rte_acl_reset_rules(struct rte_acl_ctx *ctx)
 {
@@ -496,6 +505,7 @@ rte_acl_reset_rules(struct rte_acl_ctx *ctx)
 /*
  * Reset all rules and destroys RT structures.
  */
+RTE_EXPORT_SYMBOL(rte_acl_reset)
 void
 rte_acl_reset(struct rte_acl_ctx *ctx)
 {
@@ -508,6 +518,7 @@ rte_acl_reset(struct rte_acl_ctx *ctx)
 /*
  * Dump ACL context to the stdout.
  */
+RTE_EXPORT_SYMBOL(rte_acl_dump)
 void
 rte_acl_dump(const struct rte_acl_ctx *ctx)
 {
@@ -527,6 +538,7 @@ rte_acl_dump(const struct rte_acl_ctx *ctx)
 /*
  * Dump all ACL contexts to the stdout.
  */
+RTE_EXPORT_SYMBOL(rte_acl_list_dump)
 void
 rte_acl_list_dump(void)
 {

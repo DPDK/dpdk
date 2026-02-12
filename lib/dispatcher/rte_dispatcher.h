@@ -19,15 +19,15 @@
  * event device.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdbool.h>
 #include <stdint.h>
 
 #include <rte_compat.h>
 #include <rte_eventdev.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Function prototype for match callbacks.

@@ -15,6 +15,7 @@
 #include "tf_if_tbl.h"
 #include "tfp.h"
 #include "tf_msg_common.h"
+#include "tf_util.h"
 
 #define TF_DEV_P4_PARIF_MAX 16
 #define TF_DEV_P4_PF_MASK 0xfUL
@@ -511,6 +512,11 @@ const struct tf_dev_ops tf_dev_ops_p4_init = {
 	.tf_dev_get_sram_resources = NULL,
 	.tf_dev_set_sram_policy = NULL,
 	.tf_dev_get_sram_policy = NULL,
+#ifdef TF_FLOW_SCALE_QUERY
+	.tf_dev_update_resc_usage = NULL,
+	.tf_dev_query_resc_usage = NULL,
+	.tf_dev_update_tbl_usage_buffer = NULL,
+#endif /* TF_FLOW_SCALE_QUERY */
 };
 
 /**
@@ -528,13 +534,13 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_get_tbl_info = NULL,
 	.tf_dev_is_sram_managed = tf_dev_p4_is_sram_managed,
 	.tf_dev_alloc_tbl = tf_tbl_alloc,
-	.tf_dev_alloc_ext_tbl = tf_tbl_ext_alloc,
+	.tf_dev_alloc_ext_tbl = NULL,
 	.tf_dev_alloc_sram_tbl = tf_tbl_alloc,
 	.tf_dev_free_tbl = tf_tbl_free,
-	.tf_dev_free_ext_tbl = tf_tbl_ext_free,
+	.tf_dev_free_ext_tbl = NULL,
 	.tf_dev_free_sram_tbl = tf_tbl_free,
 	.tf_dev_set_tbl = tf_tbl_set,
-	.tf_dev_set_ext_tbl = tf_tbl_ext_common_set,
+	.tf_dev_set_ext_tbl = NULL,
 	.tf_dev_set_sram_tbl = NULL,
 	.tf_dev_get_tbl = tf_tbl_get,
 	.tf_dev_get_sram_tbl = NULL,
@@ -551,13 +557,13 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_get_tcam_resc_info = tf_tcam_get_resc_info,
 	.tf_dev_insert_int_em_entry = tf_em_insert_int_entry,
 	.tf_dev_delete_int_em_entry = tf_em_delete_int_entry,
-	.tf_dev_insert_ext_em_entry = tf_em_insert_ext_entry,
-	.tf_dev_delete_ext_em_entry = tf_em_delete_ext_entry,
+	.tf_dev_insert_ext_em_entry = NULL,
+	.tf_dev_delete_ext_em_entry = NULL,
 	.tf_dev_get_em_resc_info = tf_em_get_resc_info,
-	.tf_dev_alloc_tbl_scope = tf_em_ext_common_alloc,
-	.tf_dev_map_tbl_scope = tf_em_ext_map_tbl_scope,
+	.tf_dev_alloc_tbl_scope = NULL,
+	.tf_dev_map_tbl_scope = NULL,
 	.tf_dev_map_parif = tf_dev_p4_map_parif,
-	.tf_dev_free_tbl_scope = tf_em_ext_common_free,
+	.tf_dev_free_tbl_scope = NULL,
 	.tf_dev_set_if_tbl = tf_if_tbl_set,
 	.tf_dev_get_if_tbl = tf_if_tbl_get,
 	.tf_dev_set_global_cfg = tf_global_cfg_set,
@@ -569,4 +575,9 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_get_sram_resources = NULL,
 	.tf_dev_set_sram_policy = NULL,
 	.tf_dev_get_sram_policy = NULL,
+#ifdef TF_FLOW_SCALE_QUERY
+	.tf_dev_update_resc_usage = NULL,
+	.tf_dev_query_resc_usage = NULL,
+	.tf_dev_update_tbl_usage_buffer = NULL,
+#endif /* TF_FLOW_SCALE_QUERY */
 };

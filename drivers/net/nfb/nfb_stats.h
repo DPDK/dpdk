@@ -11,6 +11,7 @@
 #include <nfb/ndp.h>
 
 #include <rte_ethdev.h>
+#include <ethdev_driver.h>
 
 /**
  * DPDK callback to get device statistics.
@@ -24,7 +25,8 @@
  *   0 on success and stats is filled, negative errno value otherwise.
  */
 int
-nfb_eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
+nfb_eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		  struct eth_queue_stats *qstats);
 
 /**
  * DPDK callback to clear device statistics.

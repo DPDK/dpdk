@@ -1432,8 +1432,8 @@ static const struct hns3_hw_mod_name hns3_hw_module_name[] = {
 		.module_name = MODULE_MASTER,
 		.msg = "MODULE_MASTER"
 	}, {
-		.module_name = MODULE_ROH_MAC,
-		.msg = "MODULE_ROH_MAC"
+		.module_name = MODULE_HIMAC,
+		.msg = "MODULE_HIMAC"
 	}
 };
 
@@ -1806,7 +1806,7 @@ enable_tm_err_intr(struct hns3_adapter *hns, bool en)
 
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret)
-		hns3_err(hw, "fail to %s TM QCN mem errors, ret = %d\n",
+		hns3_err(hw, "fail to %s TM QCN mem errors, ret = %d",
 			 en ? "enable" : "disable", ret);
 
 	return ret;
@@ -1847,7 +1847,7 @@ enable_common_err_intr(struct hns3_adapter *hns, bool en)
 
 	ret = hns3_cmd_send(hw, &desc[0], RTE_DIM(desc));
 	if (ret)
-		hns3_err(hw, "fail to %s common err interrupts, ret = %d\n",
+		hns3_err(hw, "fail to %s common err interrupts, ret = %d",
 			 en ? "enable" : "disable", ret);
 
 	return ret;
@@ -1984,7 +1984,7 @@ query_num_bds(struct hns3_hw *hw, bool is_ras, uint32_t *mpf_bd_num,
 	pf_bd_num_val = rte_le_to_cpu_32(desc.data[1]);
 	if (mpf_bd_num_val < mpf_min_bd_num || pf_bd_num_val < pf_min_bd_num) {
 		hns3_err(hw, "error bd num: mpf(%u), min_mpf(%u), "
-			 "pf(%u), min_pf(%u)\n", mpf_bd_num_val, mpf_min_bd_num,
+			 "pf(%u), min_pf(%u)", mpf_bd_num_val, mpf_min_bd_num,
 			 pf_bd_num_val, pf_min_bd_num);
 		return -EINVAL;
 	}
@@ -2033,7 +2033,7 @@ hns3_get_hw_error_status(struct hns3_cmd_desc *desc, uint8_t desc_offset,
 
 static int
 hns3_handle_hw_error(struct hns3_adapter *hns, struct hns3_cmd_desc *desc,
-		     int num, uint64_t *levels,
+		     int num, RTE_ATOMIC(uint64_t) *levels,
 		     enum hns3_hw_err_report_type err_type)
 {
 	const struct hns3_hw_error_desc *err = pf_ras_err_tbl;
@@ -2061,7 +2061,7 @@ hns3_handle_hw_error(struct hns3_adapter *hns, struct hns3_cmd_desc *desc,
 		opcode = HNS3_OPC_QUERY_CLEAR_PF_RAS_INT;
 		break;
 	default:
-		hns3_err(hw, "error hardware err_type = %d\n", err_type);
+		hns3_err(hw, "error hardware err_type = %d", err_type);
 		return -EINVAL;
 	}
 
@@ -2069,7 +2069,7 @@ hns3_handle_hw_error(struct hns3_adapter *hns, struct hns3_cmd_desc *desc,
 	hns3_cmd_setup_basic_desc(&desc[0], opcode, true);
 	ret = hns3_cmd_send(hw, &desc[0], num);
 	if (ret) {
-		hns3_err(hw, "query hw err int 0x%x cmd failed, ret = %d\n",
+		hns3_err(hw, "query hw err int 0x%x cmd failed, ret = %d",
 			 opcode, ret);
 		return ret;
 	}
@@ -2097,14 +2097,14 @@ hns3_handle_hw_error(struct hns3_adapter *hns, struct hns3_cmd_desc *desc,
 	hns3_cmd_reuse_desc(&desc[0], false);
 	ret = hns3_cmd_send(hw, &desc[0], num);
 	if (ret)
-		hns3_err(hw, "clear all hw err int cmd failed, ret = %d\n",
+		hns3_err(hw, "clear all hw err int cmd failed, ret = %d",
 			 ret);
 
 	return ret;
 }
 
 void
-hns3_handle_msix_error(struct hns3_adapter *hns, uint64_t *levels)
+hns3_handle_msix_error(struct hns3_adapter *hns, RTE_ATOMIC(uint64_t) *levels)
 {
 	uint32_t mpf_bd_num, pf_bd_num, bd_num;
 	struct hns3_hw *hw = &hns->hw;
@@ -2151,7 +2151,7 @@ out:
 }
 
 void
-hns3_handle_ras_error(struct hns3_adapter *hns, uint64_t *levels)
+hns3_handle_ras_error(struct hns3_adapter *hns, RTE_ATOMIC(uint64_t) *levels)
 {
 	uint32_t mpf_bd_num, pf_bd_num, bd_num;
 	struct hns3_hw *hw = &hns->hw;
@@ -2252,6 +2252,12 @@ hns3_handle_module_error_data(struct hns3_hw *hw, uint32_t *buf,
 	sum_err_info = (struct hns3_sum_err_info *)&buf[offset++];
 	mod_num = sum_err_info->mod_num;
 	reset_type = sum_err_info->reset_type;
+
+	if (reset_type >= HNS3_MAX_RESET) {
+		hns3_err(hw, "invalid reset type = %u", reset_type);
+		return;
+	}
+
 	if (reset_type && reset_type != HNS3_NONE_RESET)
 		hns3_atomic_set_bit(reset_type, &hw->reset.request);
 
@@ -2402,7 +2408,7 @@ hns3_reset_init(struct hns3_hw *hw)
 	hw->reset.request = 0;
 	hw->reset.pending = 0;
 	hw->reset.resetting = 0;
-	__atomic_store_n(&hw->reset.disable_cmd, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&hw->reset.disable_cmd, 0, rte_memory_order_relaxed);
 	hw->reset.wait_data = rte_zmalloc("wait_data",
 					  sizeof(struct hns3_wait_data), 0);
 	if (!hw->reset.wait_data) {
@@ -2419,8 +2425,8 @@ hns3_schedule_reset(struct hns3_adapter *hns)
 
 	/* Reschedule the reset process after successful initialization */
 	if (hw->adapter_state == HNS3_NIC_UNINITIALIZED) {
-		__atomic_store_n(&hw->reset.schedule, SCHEDULE_PENDING,
-				 __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&hw->reset.schedule, SCHEDULE_PENDING,
+				 rte_memory_order_relaxed);
 		return;
 	}
 
@@ -2428,15 +2434,15 @@ hns3_schedule_reset(struct hns3_adapter *hns)
 		return;
 
 	/* Schedule restart alarm if it is not scheduled yet */
-	if (__atomic_load_n(&hw->reset.schedule, __ATOMIC_RELAXED) ==
+	if (rte_atomic_load_explicit(&hw->reset.schedule, rte_memory_order_relaxed) ==
 			SCHEDULE_REQUESTED)
 		return;
-	if (__atomic_load_n(&hw->reset.schedule, __ATOMIC_RELAXED) ==
+	if (rte_atomic_load_explicit(&hw->reset.schedule, rte_memory_order_relaxed) ==
 			    SCHEDULE_DEFERRED)
 		rte_eal_alarm_cancel(hw->reset.ops->reset_service, hns);
 
-	__atomic_store_n(&hw->reset.schedule, SCHEDULE_REQUESTED,
-				 __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&hw->reset.schedule, SCHEDULE_REQUESTED,
+				 rte_memory_order_relaxed);
 
 	rte_eal_alarm_set(SWITCH_CONTEXT_US, hw->reset.ops->reset_service, hns);
 }
@@ -2453,11 +2459,11 @@ hns3_schedule_delayed_reset(struct hns3_adapter *hns)
 		return;
 	}
 
-	if (__atomic_load_n(&hw->reset.schedule, __ATOMIC_RELAXED) !=
+	if (rte_atomic_load_explicit(&hw->reset.schedule, rte_memory_order_relaxed) !=
 			    SCHEDULE_NONE)
 		return;
-	__atomic_store_n(&hw->reset.schedule, SCHEDULE_DEFERRED,
-			 __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&hw->reset.schedule, SCHEDULE_DEFERRED,
+			 rte_memory_order_relaxed);
 	rte_eal_alarm_set(DEFERRED_SCHED_US, hw->reset.ops->reset_service, hns);
 }
 
@@ -2537,7 +2543,7 @@ hns3_reset_req_hw_reset(struct hns3_adapter *hns)
 }
 
 static void
-hns3_clear_reset_level(struct hns3_hw *hw, uint64_t *levels)
+hns3_clear_reset_level(struct hns3_hw *hw, RTE_ATOMIC(uint64_t) *levels)
 {
 	uint64_t merge_cnt = hw->reset.stats.merge_cnt;
 	uint64_t tmp;
@@ -2633,7 +2639,7 @@ hns3_reset_err_handle(struct hns3_adapter *hns)
 	 * Regardless of whether the execution is successful or not, the
 	 * flow after execution must be continued.
 	 */
-	if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED))
+	if (rte_atomic_load_explicit(&hw->reset.disable_cmd, rte_memory_order_relaxed))
 		(void)hns3_cmd_init(hw);
 reset_fail:
 	hw->reset.attempts = 0;
@@ -2661,7 +2667,7 @@ hns3_reset_pre(struct hns3_adapter *hns)
 	int ret;
 
 	if (hw->reset.stage == RESET_STAGE_NONE) {
-		__atomic_store_n(&hns->hw.reset.resetting, 1, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&hns->hw.reset.resetting, 1, rte_memory_order_relaxed);
 		hw->reset.stage = RESET_STAGE_DOWN;
 		hns3_report_reset_begin(hw);
 		ret = hw->reset.ops->stop_service(hns);
@@ -2750,7 +2756,7 @@ hns3_reset_post(struct hns3_adapter *hns)
 		hns3_notify_reset_ready(hw, false);
 		hns3_clear_reset_level(hw, &hw->reset.pending);
 		hns3_clear_reset_status(hw);
-		__atomic_store_n(&hns->hw.reset.resetting, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&hns->hw.reset.resetting, 0, rte_memory_order_relaxed);
 		hw->reset.attempts = 0;
 		hw->reset.stats.success_cnt++;
 		hw->reset.stage = RESET_STAGE_NONE;
@@ -2812,7 +2818,7 @@ hns3_reset_fail_handle(struct hns3_adapter *hns)
 		hw->reset.mbuf_deferred_free = false;
 	}
 	rte_spinlock_unlock(&hw->lock);
-	__atomic_store_n(&hns->hw.reset.resetting, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&hns->hw.reset.resetting, 0, rte_memory_order_relaxed);
 	hw->reset.stage = RESET_STAGE_NONE;
 	hns3_clock_gettime(&tv);
 	timersub(&tv, &hw->reset.start_time, &tv_delta);

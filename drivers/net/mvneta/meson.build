@@ -24,3 +24,5 @@ sources = files(
 )
 
 deps += ['cfgfile', 'common_mvep']
+
+cflags += no_wvla_cflag

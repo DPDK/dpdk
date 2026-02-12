@@ -41,12 +41,8 @@ set_ipsec_conf(struct ipsec_sa *sa, struct rte_security_ipsec_xform *ipsec)
 			tunnel->ipv6.hlimit = IPDEFTTL;
 			tunnel->ipv6.dscp = 0;
 			tunnel->ipv6.flabel = 0;
-
-			memcpy((uint8_t *)&tunnel->ipv6.src_addr,
-				(uint8_t *)&sa->src.ip.ip6.ip6_b, 16);
-
-			memcpy((uint8_t *)&tunnel->ipv6.dst_addr,
-				(uint8_t *)&sa->dst.ip.ip6.ip6_b, 16);
+			tunnel->ipv6.src_addr = sa->src.ip.ip6;
+			tunnel->ipv6.dst_addr = sa->dst.ip.ip6;
 		}
 		/* TODO support for Transport */
 	}
@@ -259,7 +255,7 @@ create_lookaside_session(struct ipsec_ctx *ipsec_ctx_lcore[],
 			continue;
 
 		/* Looking for cryptodev, which can handle this SA */
-		key.lcore_id = (uint8_t)lcore_id;
+		key.lcore_id = lcore_id;
 		key.cipher_algo = (uint8_t)sa->cipher_algo;
 		key.auth_algo = (uint8_t)sa->auth_algo;
 		key.aead_algo = (uint8_t)sa->aead_algo;
@@ -450,10 +446,8 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 			sess_conf.ipsec.tunnel.type =
 				RTE_SECURITY_IPSEC_TUNNEL_IPV6;
 
-			memcpy(sess_conf.ipsec.tunnel.ipv6.src_addr.s6_addr,
-				sa->src.ip.ip6.ip6_b, 16);
-			memcpy(sess_conf.ipsec.tunnel.ipv6.dst_addr.s6_addr,
-				sa->dst.ip.ip6.ip6_b, 16);
+			sess_conf.ipsec.tunnel.ipv6.src_addr = sa->src.ip.ip6;
+			sess_conf.ipsec.tunnel.ipv6.dst_addr = sa->dst.ip.ip6;
 		}
 	} else if (IS_TUNNEL(sa->flags)) {
 		sess_conf.ipsec.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL;
@@ -470,10 +464,8 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 			sess_conf.ipsec.tunnel.type =
 				RTE_SECURITY_IPSEC_TUNNEL_IPV6;
 
-			memcpy(sess_conf.ipsec.tunnel.ipv6.src_addr.s6_addr,
-				sa->src.ip.ip6.ip6_b, 16);
-			memcpy(sess_conf.ipsec.tunnel.ipv6.dst_addr.s6_addr,
-				sa->dst.ip.ip6.ip6_b, 16);
+			sess_conf.ipsec.tunnel.ipv6.src_addr = sa->src.ip.ip6;
+			sess_conf.ipsec.tunnel.ipv6.dst_addr = sa->dst.ip.ip6;
 		} else {
 			RTE_LOG(ERR, IPSEC, "invalid tunnel type\n");
 			return -1;
@@ -528,11 +520,8 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 			sa->pattern[1].mask = &rte_flow_item_ipv6_mask;
 			sa->pattern[1].type = RTE_FLOW_ITEM_TYPE_IPV6;
 			sa->pattern[1].spec = &sa->ipv6_spec;
-
-			memcpy(sa->ipv6_spec.hdr.dst_addr,
-				sa->dst.ip.ip6.ip6_b, 16);
-			memcpy(sa->ipv6_spec.hdr.src_addr,
-			       sa->src.ip.ip6.ip6_b, 16);
+			sa->ipv6_spec.hdr.dst_addr = sa->dst.ip.ip6;
+			sa->ipv6_spec.hdr.src_addr = sa->src.ip.ip6;
 		} else if (IS_IP4(sa->flags)) {
 			sa->pattern[1].mask = &rte_flow_item_ipv4_mask;
 			sa->pattern[1].type = RTE_FLOW_ITEM_TYPE_IPV4;
@@ -735,10 +724,8 @@ create_ipsec_esp_flow(struct ipsec_sa *sa)
 		sa->pattern[1].mask = &rte_flow_item_ipv6_mask;
 		sa->pattern[1].type = RTE_FLOW_ITEM_TYPE_IPV6;
 		sa->pattern[1].spec = &sa->ipv6_spec;
-		memcpy(sa->ipv6_spec.hdr.dst_addr,
-			sa->dst.ip.ip6.ip6_b, sizeof(sa->dst.ip.ip6.ip6_b));
-		memcpy(sa->ipv6_spec.hdr.src_addr,
-			sa->src.ip.ip6.ip6_b, sizeof(sa->src.ip.ip6.ip6_b));
+		sa->ipv6_spec.hdr.dst_addr = sa->dst.ip.ip6;
+		sa->ipv6_spec.hdr.src_addr = sa->src.ip.ip6;
 		sa->pattern[2].type = RTE_FLOW_ITEM_TYPE_ESP;
 		sa->pattern[2].spec = &sa->esp_spec;
 		sa->pattern[2].mask = &rte_flow_item_esp_mask;

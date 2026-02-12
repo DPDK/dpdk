@@ -11,10 +11,6 @@
  * RTE Cryptography Common Definitions
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 
 #include <rte_mbuf.h>
 #include <rte_memory.h>
@@ -23,6 +19,10 @@ extern "C" {
 
 #include "rte_crypto_sym.h"
 #include "rte_crypto_asym.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Crypto operation types */
 enum rte_crypto_op_type {

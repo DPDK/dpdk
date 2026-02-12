@@ -22,10 +22,6 @@ struct cnxk_rte_flow_action_info {
 
 extern const struct cnxk_rte_flow_term_info term[];
 
-struct roc_npc_flow *cnxk_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
-				      const struct rte_flow_item pattern[],
-				      const struct rte_flow_action actions[],
-				      struct rte_flow_error *error);
 int cnxk_flow_destroy(struct rte_eth_dev *dev, struct roc_npc_flow *flow,
 		      struct rte_flow_error *error);
 
@@ -46,5 +42,6 @@ int cnxk_flow_query_common(struct rte_eth_dev *eth_dev, struct rte_flow *flow,
 			   struct rte_flow_error *error, bool is_rep);
 int cnxk_flow_dev_dump_common(struct rte_eth_dev *eth_dev, struct rte_flow *flow, FILE *file,
 			      struct rte_flow_error *error, bool is_rep);
+int cnxk_mtr_destroy(struct rte_eth_dev *eth_dev, uint32_t mtr_id);
 
 #endif /* __CNXK_RTE_FLOW_H__ */

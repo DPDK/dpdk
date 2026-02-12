@@ -313,6 +313,7 @@ cnxk_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 		fc_cfg.rq_cfg.pool = rq->aura_handle;
 		fc_cfg.rq_cfg.spb_pool = rq->spb_aura_handle;
 		fc_cfg.rq_cfg.cq_drop = cq->drop_thresh;
+		fc_cfg.rq_cfg.cq_bp = cq->bp_thresh;
 		fc_cfg.rq_cfg.pool_drop_pct = ROC_NIX_AURA_THRESH;
 
 		rc = roc_nix_fc_config_set(nix, &fc_cfg);
@@ -451,6 +452,13 @@ cnxk_nix_mac_addr_set(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr)
 			roc_nix_npc_mac_addr_set(nix, dev->mac_addr);
 			goto exit;
 		}
+
+		if (eth_dev->data->promiscuous) {
+			rc = roc_nix_mac_promisc_mode_enable(nix, true);
+			if (rc)
+				plt_err("Failed to setup promisc mode in mac, rc=%d(%s)", rc,
+					roc_error_msg_get(rc));
+		}
 	}
 
 	/* Update mac address to cnxk ethernet device */
@@ -466,10 +474,19 @@ cnxk_nix_mac_addr_add(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr,
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct roc_nix *nix = &dev->nix;
+	struct rte_ether_addr *current;
 	int rc;
 
-	PLT_SET_USED(index);
 	PLT_SET_USED(pool);
+
+	if (dev->dmac_idx_map[index] != CNXK_NIX_DMAC_IDX_INVALID) {
+		current = &dev->dmac_addrs[index];
+		plt_nix_dbg("Mac address %02x:%02x:%02x:%02x:%02x:%02x already exists at index %u",
+			    current->addr_bytes[0], current->addr_bytes[1], current->addr_bytes[2],
+			    current->addr_bytes[3], current->addr_bytes[4], current->addr_bytes[5],
+			    index);
+		return 0;
+	}
 
 	rc = roc_nix_mac_addr_add(nix, addr->addr_bytes);
 	if (rc < 0) {
@@ -478,6 +495,11 @@ cnxk_nix_mac_addr_add(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr,
 	}
 
 	dev->dmac_idx_map[index] = rc;
+	plt_nix_dbg("Added mac address %02x:%02x:%02x:%02x:%02x:%02x at index %u(%d)",
+		    addr->addr_bytes[0], addr->addr_bytes[1], addr->addr_bytes[2],
+		    addr->addr_bytes[3], addr->addr_bytes[4], addr->addr_bytes[5], index, rc);
+
+	memcpy(&dev->dmac_addrs[index], addr, RTE_ETHER_ADDR_LEN);
 
 	/* Enable promiscuous mode at NIX level */
 	roc_nix_npc_promisc_ena_dis(nix, true);
@@ -499,6 +521,8 @@ cnxk_nix_mac_addr_del(struct rte_eth_dev *eth_dev, uint32_t index)
 	if (rc)
 		plt_err("Failed to delete mac address, rc=%d", rc);
 
+	plt_nix_dbg("Deleted mac address at index %u(%d)", index, dev->dmac_idx_map[index]);
+	dev->dmac_idx_map[index] = CNXK_NIX_DMAC_IDX_INVALID;
 	dev->dmac_filter_count--;
 }
 
@@ -525,7 +549,7 @@ cnxk_nix_sq_flush(struct rte_eth_dev *eth_dev)
 		/* Wait for sq entries to be flushed */
 		rc = roc_nix_tm_sq_flush_spin(sq);
 		if (rc) {
-			plt_err("Failed to drain sq, rc=%d\n", rc);
+			plt_err("Failed to drain sq, rc=%d", rc);
 			goto exit;
 		}
 		if (data->tx_queue_state[i] == RTE_ETH_QUEUE_STATE_STARTED) {
@@ -589,8 +613,11 @@ cnxk_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	 */
 	if (data->dev_started && frame_size > buffsz &&
 	    !(dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)) {
-		plt_err("Scatter offload is not enabled for mtu");
-		goto exit;
+		if (!roc_nix_is_sdp(nix)) {
+			plt_err("Scatter offload is not enabled for mtu");
+			goto exit;
+		}
+		plt_warn("Scatter offload is not enabled for mtu on SDP interface");
 	}
 
 	/* Check <seg size> * <max_seg>  >= max_frame */
@@ -863,7 +890,7 @@ cnxk_nix_txq_info_get(struct rte_eth_dev *eth_dev, uint16_t qid,
 	memcpy(&qinfo->conf, &txq_sp->qconf.conf.tx, sizeof(qinfo->conf));
 }
 
-uint32_t
+int
 cnxk_nix_rx_queue_count(void *rxq)
 {
 	struct cnxk_eth_rxq_sp *rxq_sp = cnxk_eth_rxq_to_sp(rxq);
@@ -1110,17 +1137,31 @@ cnxk_nix_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-int
-cnxk_nix_mc_addr_list_configure(struct rte_eth_dev *eth_dev,
-				struct rte_ether_addr *mc_addr_set,
-				uint32_t nb_mc_addr)
+static int
+nix_find_mac_addr(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct rte_ether_addr null_mac_addr;
+	int i;
+
+	memset(&null_mac_addr, 0, sizeof(null_mac_addr));
+	addr = addr ? addr : &null_mac_addr;
+	for (i = 0; i < dev->max_mac_entries; i++) {
+		if (!memcmp(&eth_dev->data->mac_addrs[i], addr, sizeof(*addr)))
+			return i;
+	}
+
+	return -ENOENT;
+}
+
+static inline int
+nix_mc_addr_list_flush(struct rte_eth_dev *eth_dev)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct rte_eth_dev_data *data = eth_dev->data;
 	struct rte_ether_addr null_mac_addr;
 	struct roc_nix *nix = &dev->nix;
-	int rc, index;
-	uint32_t i;
+	int i, rc = 0;
 
 	memset(&null_mac_addr, 0, sizeof(null_mac_addr));
 
@@ -1134,6 +1175,9 @@ cnxk_nix_mc_addr_list_configure(struct rte_eth_dev *eth_dev,
 				return rc;
 			}
 
+			plt_nix_dbg("Deleted mac address at index %u(%d)", i, dev->dmac_idx_map[i]);
+
+			dev->dmac_idx_map[i] = CNXK_NIX_DMAC_IDX_INVALID;
 			dev->dmac_filter_count--;
 			/* Update address in NIC data structure */
 			rte_ether_addr_copy(&null_mac_addr,
@@ -1141,18 +1185,44 @@ cnxk_nix_mc_addr_list_configure(struct rte_eth_dev *eth_dev,
 		}
 	}
 
+	return rc;
+}
+
+int
+cnxk_nix_mc_addr_list_configure(struct rte_eth_dev *eth_dev, struct rte_ether_addr *mc_addr_set,
+				uint32_t nb_mc_addr)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct roc_nix *nix = &dev->nix;
+	int index, mc_addr_cnt = 0, j;
+	uint32_t i;
+
 	if (!mc_addr_set || !nb_mc_addr)
-		return 0;
+		return nix_mc_addr_list_flush(eth_dev);
+
+	/* Count multicast MAC addresses in list */
+	for (i = 0; i < dev->max_mac_entries; i++)
+		if (rte_is_multicast_ether_addr(&data->mac_addrs[i]))
+			mc_addr_cnt++;
 
 	/* Check for available space */
 	if (nb_mc_addr >
-	    ((uint32_t)(dev->max_mac_entries - dev->dmac_filter_count))) {
+	    ((uint32_t)(dev->max_mac_entries - (dev->dmac_filter_count - mc_addr_cnt)))) {
 		plt_err("No space is available to add multicast filters");
 		return -ENOSPC;
 	}
+	nix_mc_addr_list_flush(eth_dev);
 
+	j = 0;
 	/* Multicast addresses are to be installed */
 	for (i = 0; i < nb_mc_addr; i++) {
+		j = nix_find_mac_addr(eth_dev, NULL);
+		if (j < 0) {
+			plt_err("Failed to find free mac address");
+			return -ENOSPC;
+		}
+
 		index = roc_nix_mac_addr_add(nix, mc_addr_set[i].addr_bytes);
 		if (index < 0) {
 			plt_err("Failed to add mcast mac address, rc=%d",
@@ -1160,9 +1230,17 @@ cnxk_nix_mc_addr_list_configure(struct rte_eth_dev *eth_dev,
 			return index;
 		}
 
+		dev->dmac_idx_map[j] = index;
+		plt_nix_dbg("Added mac address %02x:%02x:%02x:%02x:%02x:%02x at index %u(%d)",
+			    mc_addr_set[i].addr_bytes[0], mc_addr_set[i].addr_bytes[1],
+			    mc_addr_set[i].addr_bytes[2], mc_addr_set[i].addr_bytes[3],
+			    mc_addr_set[i].addr_bytes[4], mc_addr_set[i].addr_bytes[5], j, index);
+
 		dev->dmac_filter_count++;
 		/* Update address in NIC data structure */
-		rte_ether_addr_copy(&mc_addr_set[i], &data->mac_addrs[index]);
+		rte_ether_addr_copy(&mc_addr_set[i], &data->mac_addrs[j]);
+		rte_ether_addr_copy(&mc_addr_set[i], &dev->dmac_addrs[j]);
+		data->mac_pool_sel[j] = RTE_BIT64(0);
 	}
 
 	roc_nix_npc_promisc_ena_dis(nix, true);
@@ -1216,6 +1294,7 @@ nix_priority_flow_ctrl_rq_conf(struct rte_eth_dev *eth_dev, uint16_t qid,
 	fc_cfg.rq_cfg.pool = rxq->qconf.mp->pool_id;
 	fc_cfg.rq_cfg.spb_pool = rq->spb_aura_handle;
 	fc_cfg.rq_cfg.cq_drop = cq->drop_thresh;
+	fc_cfg.rq_cfg.cq_bp = cq->bp_thresh;
 	fc_cfg.rq_cfg.pool_drop_pct = ROC_NIX_AURA_THRESH;
 	rc = roc_nix_fc_config_set(nix, &fc_cfg);
 	if (rc)

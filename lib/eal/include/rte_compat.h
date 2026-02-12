@@ -6,10 +6,6 @@
 #ifndef _RTE_COMPAT_H_
 #define _RTE_COMPAT_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifndef ALLOW_EXPERIMENTAL_API
 
 #ifdef RTE_TOOLCHAIN_MSVC
@@ -68,10 +64,6 @@ _Pragma("GCC diagnostic pop")
 __attribute__((section(".text.internal")))
 #endif
 
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif /* _RTE_COMPAT_H_ */

@@ -6,6 +6,7 @@
 #ifndef _TF_EM_COMMON_H_
 #define _TF_EM_COMMON_H_
 
+#include "hcapi_cfa_defs.h"
 #include "tf_core.h"
 #include "tf_session.h"
 #include "ll.h"

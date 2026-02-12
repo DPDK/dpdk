@@ -34,12 +34,11 @@ struct __rte_cache_aligned malloc_heap {
 };
 
 void *
-malloc_heap_alloc(const char *type, size_t size, int socket, unsigned int flags,
-		size_t align, size_t bound, bool contig);
+malloc_heap_alloc(size_t size, int socket, unsigned int flags, size_t align,
+		  size_t bound, bool contig);
 
 void *
-malloc_heap_alloc_biggest(const char *type, int socket, unsigned int flags,
-		size_t align, bool contig);
+malloc_heap_alloc_biggest(int socket, unsigned int flags, size_t align, bool contig);
 
 int
 malloc_heap_create(struct malloc_heap *heap, const char *heap_name);

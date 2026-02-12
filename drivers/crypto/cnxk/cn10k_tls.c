@@ -327,7 +327,8 @@ tls_read_ctx_size(struct roc_ie_ot_tls_read_sa *sa, enum rte_security_tls_versio
 static int
 tls_read_sa_fill(struct roc_ie_ot_tls_read_sa *read_sa,
 		 struct rte_security_tls_record_xform *tls_xfrm,
-		 struct rte_crypto_sym_xform *crypto_xfrm, struct cn10k_tls_opt *tls_opt)
+		 struct rte_crypto_sym_xform *crypto_xfrm, struct cn10k_tls_opt *tls_opt,
+		 uint8_t ctx_ilen)
 {
 	enum rte_security_tls_version tls_ver = tls_xfrm->ver;
 	struct rte_crypto_sym_xform *auth_xfrm, *cipher_xfrm;
@@ -470,6 +471,9 @@ key_swap:
 		 ROC_CTX_UNIT_128B) -
 		1;
 
+	if (read_sa->w0.s.ctx_size < ctx_ilen)
+		read_sa->w0.s.ctx_size = ctx_ilen;
+
 	/* Word offset for HW managed CTX field */
 	read_sa->w0.s.hw_ctx_off = offset / 8;
 	read_sa->w0.s.ctx_push_size = read_sa->w0.s.hw_ctx_off;
@@ -482,7 +486,7 @@ key_swap:
 static int
 tls_write_sa_fill(struct roc_ie_ot_tls_write_sa *write_sa,
 		  struct rte_security_tls_record_xform *tls_xfrm,
-		  struct rte_crypto_sym_xform *crypto_xfrm)
+		  struct rte_crypto_sym_xform *crypto_xfrm, uint8_t ctx_ilen)
 {
 	enum rte_security_tls_version tls_ver = tls_xfrm->ver;
 	struct rte_crypto_sym_xform *auth_xfrm, *cipher_xfrm;
@@ -606,6 +610,9 @@ key_swap:
 		write_sa->w0.s.ctx_size -= 1;
 	}
 
+	if (write_sa->w0.s.ctx_size < ctx_ilen)
+		write_sa->w0.s.ctx_size = ctx_ilen;
+
 	/* Word offset for HW managed CTX field */
 	write_sa->w0.s.hw_ctx_off = offset / 8;
 	write_sa->w0.s.ctx_push_size = write_sa->w0.s.hw_ctx_off;
@@ -655,7 +662,8 @@ cn10k_tls_read_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 
 	/* Translate security parameters to SA */
-	ret = tls_read_sa_fill(sa_dptr, tls_xfrm, crypto_xfrm, &sec_sess->tls_opt);
+	ret = tls_read_sa_fill(sa_dptr, tls_xfrm, crypto_xfrm, &sec_sess->tls_opt,
+			       roc_cpt->ctx_ilen);
 	if (ret) {
 		plt_err("Could not fill read session parameters");
 		goto sa_dptr_free;
@@ -690,7 +698,7 @@ cn10k_tls_read_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 	sec_sess->tls_opt.tls_ver = tls_ver;
 	sec_sess->inst.w4 = inst_w4.u64;
-	sec_sess->inst.w7 = cpt_inst_w7_get(roc_cpt, read_sa);
+	sec_sess->inst.w7 = cnxk_cpt_sec_inst_w7_get(roc_cpt, read_sa);
 
 	memset(read_sa, 0, sizeof(struct roc_ie_ot_tls_read_sa));
 
@@ -707,7 +715,11 @@ cn10k_tls_read_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 
 	/* Trigger CTX flush so that data is written back to DRAM */
-	roc_cpt_lf_ctx_flush(lf, read_sa, true);
+	ret = roc_cpt_lf_ctx_flush(lf, read_sa, true);
+	if (ret == -EFAULT) {
+		plt_err("Could not flush TLS read session to hardware");
+		goto sa_dptr_free;
+	}
 
 	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
@@ -741,7 +753,7 @@ cn10k_tls_write_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 
 	/* Translate security parameters to SA */
-	ret = tls_write_sa_fill(sa_dptr, tls_xfrm, crypto_xfrm);
+	ret = tls_write_sa_fill(sa_dptr, tls_xfrm, crypto_xfrm, roc_cpt->ctx_ilen);
 	if (ret) {
 		plt_err("Could not fill write session parameters");
 		goto sa_dptr_free;
@@ -779,7 +791,7 @@ cn10k_tls_write_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 			ROC_IE_OT_TLS13_MAJOR_OP_RECORD_ENC | ROC_IE_OT_INPLACE_BIT;
 	}
 	sec_sess->inst.w4 = inst_w4.u64;
-	sec_sess->inst.w7 = cpt_inst_w7_get(roc_cpt, write_sa);
+	sec_sess->inst.w7 = cnxk_cpt_sec_inst_w7_get(roc_cpt, write_sa);
 
 	memset(write_sa, 0, sizeof(struct roc_ie_ot_tls_write_sa));
 
@@ -796,7 +808,11 @@ cn10k_tls_write_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 
 	/* Trigger CTX flush so that data is written back to DRAM */
-	roc_cpt_lf_ctx_flush(lf, write_sa, false);
+	ret = roc_cpt_lf_ctx_flush(lf, write_sa, false);
+	if (ret == -EFAULT) {
+		plt_err("Could not flush TLS write session to hardware");
+		goto sa_dptr_free;
+	}
 
 	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 

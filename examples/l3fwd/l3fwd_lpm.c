@@ -62,7 +62,7 @@ lpm_get_ipv6_dst_port(const struct rte_ipv6_hdr *ipv6_hdr,
 		      uint16_t portid,
 		      struct rte_lpm6 *ipv6_l3fwd_lookup_struct)
 {
-	const uint8_t *dst_ip = ipv6_hdr->dst_addr;
+	const struct rte_ipv6_addr *dst_ip = &ipv6_hdr->dst_addr;
 	uint32_t next_hop;
 
 	if (rte_lpm6_lookup(ipv6_l3fwd_lookup_struct, dst_ip, &next_hop) == 0)
@@ -122,7 +122,7 @@ lpm_get_dst_port_with_ipv4(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 		ipv6_hdr = (struct rte_ipv6_hdr *)(eth_hdr + 1);
 
 		return (uint16_t) ((rte_lpm6_lookup(qconf->ipv6_lookup_struct,
-				ipv6_hdr->dst_addr, &next_hop) == 0)
+				&ipv6_hdr->dst_addr, &next_hop) == 0)
 				? next_hop : portid);
 
 	}
@@ -148,8 +148,7 @@ lpm_main_loop(__rte_unused void *dummy)
 	unsigned lcore_id;
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
 	int i, nb_rx;
-	uint16_t portid;
-	uint8_t queueid;
+	uint16_t portid, queueid;
 	struct lcore_conf *qconf;
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) /
 		US_PER_S * BURST_TX_DRAIN_US;
@@ -171,7 +170,7 @@ lpm_main_loop(__rte_unused void *dummy)
 		portid = qconf->rx_queue_list[i].port_id;
 		queueid = qconf->rx_queue_list[i].queue_id;
 		RTE_LOG(INFO, L3FWD,
-			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
+			" -- lcoreid=%u portid=%u rxqueueid=%" PRIu16 "\n",
 			lcore_id, portid, queueid);
 	}
 
@@ -206,7 +205,7 @@ lpm_main_loop(__rte_unused void *dummy)
 			portid = qconf->rx_queue_list[i].port_id;
 			queueid = qconf->rx_queue_list[i].queue_id;
 			nb_rx = rte_eth_rx_burst(portid, queueid, pkts_burst,
-				MAX_PKT_BURST);
+				rx_burst_size);
 			if (nb_rx == 0)
 				continue;
 
@@ -589,8 +588,11 @@ setup_lpm(const int socketid)
 				enabled_port_mask) == 0)
 			continue;
 
-		rte_eth_dev_info_get(route_base_v4[i].if_out,
-				     &dev_info);
+		ret = rte_eth_dev_info_get(route_base_v4[i].if_out, &dev_info);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE, "Unable to get device info for port %u\n",
+				 route_base_v4[i].if_out);
+
 		ret = rte_lpm_add(ipv4_l3fwd_lpm_lookup_struct[socketid],
 			route_base_v4[i].ip,
 			route_base_v4[i].depth,
@@ -633,10 +635,13 @@ setup_lpm(const int socketid)
 				enabled_port_mask) == 0)
 			continue;
 
-		rte_eth_dev_info_get(route_base_v6[i].if_out,
-				     &dev_info);
+		ret = rte_eth_dev_info_get(route_base_v6[i].if_out, &dev_info);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE, "Unable to get device info for port %u\n",
+				 route_base_v6[i].if_out);
+
 		ret = rte_lpm6_add(ipv6_l3fwd_lpm_lookup_struct[socketid],
-			route_base_v6[i].ip_8,
+			&route_base_v6[i].ip6,
 			route_base_v6[i].depth,
 			route_base_v6[i].if_out);
 
@@ -648,7 +653,7 @@ setup_lpm(const int socketid)
 		}
 
 		printf("LPM: Adding route %s / %d (%d) [%s]\n",
-		       inet_ntop(AF_INET6, route_base_v6[i].ip_8, abuf,
+		       inet_ntop(AF_INET6, &route_base_v6[i].ip6, abuf,
 				 sizeof(abuf)),
 		       route_base_v6[i].depth,
 		       route_base_v6[i].if_out, rte_dev_name(dev_info.device));

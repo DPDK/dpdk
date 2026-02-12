@@ -1,4 +1,3 @@
-
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2019 Intel Corporation
  */
@@ -8,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <rte_ip6.h>
 
 /**
  * @file rte_ipsec_sad.h
@@ -38,8 +38,8 @@ struct rte_ipsec_sadv4_key {
 
 struct rte_ipsec_sadv6_key {
 	uint32_t spi;
-	uint8_t dip[16];
-	uint8_t sip[16];
+	struct rte_ipv6_addr dip;
+	struct rte_ipv6_addr sip;
 };
 
 union rte_ipsec_sad_key {

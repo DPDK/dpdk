@@ -181,4 +181,3 @@ int octeontx_bgx_port_change_mode(int port,
 				  octeontx_mbox_bgx_port_change_mode_t *cfg);
 
 #endif	/* __OCTEONTX_BGX_H__ */
-

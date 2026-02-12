@@ -18,6 +18,7 @@
 #include <rte_spinlock.h>
 #include <rte_errno.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 
 static struct rte_intr_handle *intr_handle;
@@ -129,7 +130,6 @@ dev_uev_socket_fd_create(void)
 	return 0;
 err:
 	close(fd);
-	fd = -1;
 	return ret;
 }
 
@@ -165,8 +165,6 @@ dev_uev_parse(const char *buf, struct rte_dev_event *event, int length)
 		 * uevent from udev.
 		 */
 		if (!strncmp(buf, "libudev", 7)) {
-			buf += 7;
-			i += 7;
 			return -1;
 		}
 		if (!strncmp(buf, "ACTION=", 7)) {
@@ -306,6 +304,7 @@ failure_handle_err:
 	free(uevent.devname);
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_event_monitor_start)
 int
 rte_dev_event_monitor_start(void)
 {
@@ -356,6 +355,7 @@ exit:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_event_monitor_stop)
 int
 rte_dev_event_monitor_stop(void)
 {
@@ -393,7 +393,7 @@ exit:
 	return ret;
 }
 
-int
+static int
 dev_sigbus_handler_register(void)
 {
 	sigset_t mask;
@@ -414,7 +414,7 @@ dev_sigbus_handler_register(void)
 	return rte_errno;
 }
 
-int
+static int
 dev_sigbus_handler_unregister(void)
 {
 	rte_errno = 0;
@@ -424,6 +424,7 @@ dev_sigbus_handler_unregister(void)
 	return rte_errno;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_hotplug_handle_enable)
 int
 rte_dev_hotplug_handle_enable(void)
 {
@@ -439,6 +440,7 @@ rte_dev_hotplug_handle_enable(void)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_hotplug_handle_disable)
 int
 rte_dev_hotplug_handle_disable(void)
 {

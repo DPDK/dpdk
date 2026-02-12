@@ -203,4 +203,3 @@ gve_to_rte_rss_hf(uint16_t gve_rss_types, struct rte_eth_rss_conf *rss_conf)
 	if (gve_rss_types & GVE_RSS_HASH_UDPV6_EX)
 		rss_conf->rss_hf |= RTE_ETH_RSS_IPV6_UDP_EX;
 }
-

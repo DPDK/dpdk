@@ -1,5 +1,4 @@
-/*
- * SPDX-License-Identifier: BSD-3-Clause
+/* SPDX-License-Identifier: BSD-3-Clause
  * Inspired from FreeBSD src/sys/powerpc/include/endian.h
  * Copyright(c) 1987, 1991, 1993
  * The Regents of the University of California.  All rights reserved.
@@ -8,13 +7,13 @@
 #ifndef RTE_BYTEORDER_RISCV_H
 #define RTE_BYTEORDER_RISCV_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <rte_common.h>
 #include "generic/rte_byteorder.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef RTE_BYTE_ORDER
 #define RTE_BYTE_ORDER RTE_LITTLE_ENDIAN

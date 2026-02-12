@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2017-2019,2021 NXP
+ * Copyright 2017-2019,2021-2025 NXP
  */
 
 /* System headers */
@@ -13,6 +13,7 @@
 #include <rte_dpaa_logs.h>
 #include <fmlib/fm_port_ext.h>
 #include <fmlib/fm_vsp_ext.h>
+#include <rte_pmd_dpaa.h>
 
 #define DPAA_MAX_NUM_ETH_DEV	8
 
@@ -28,6 +29,11 @@ return &scheme_params->param.key_ext_and_hash.extract_array[hdr_idx];
 
 #define SCH_EXT_FULL_FLD(scheme_params, hdr_idx) \
 	SCH_EXT_HDR(scheme_params, hdr_idx).extract_by_hdr_type.full_field
+
+/* FMAN mac indexes mappings (0 is unused, first 8 are for 1G, next for 10G
+ * ports).
+ */
+const uint8_t mac_idx[] = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1};
 
 /* FM global info */
 struct dpaa_fm_info {
@@ -48,17 +54,6 @@ static struct dpaa_fm_info fm_info;
 static struct dpaa_fm_model fm_model;
 static const char *fm_log = "/tmp/fmdpdk.bin";
 
-static inline uint8_t fm_default_vsp_id(struct fman_if *fif)
-{
-	/* Avoid being same as base profile which could be used
-	 * for kernel interface of shared mac.
-	 */
-	if (fif->base_profile_id)
-		return 0;
-	else
-		return DPAA_DEFAULT_RXQ_VSP_ID;
-}
-
 static void fm_prev_cleanup(void)
 {
 	uint32_t fman_id = 0, i = 0, devid;
@@ -68,7 +63,7 @@ static void fm_prev_cleanup(void)
 
 	fm_info.fman_handle = fm_open(fman_id);
 	if (!fm_info.fman_handle) {
-		printf("\n%s- unable to open FMAN", __func__);
+		DPAA_PMD_ERR("unable to open FMAN");
 		return;
 	}
 
@@ -78,7 +73,7 @@ static void fm_prev_cleanup(void)
 	/* FM PCD Open */
 	fm_info.pcd_handle = fm_pcd_open(&fm_pcd_params);
 	if (!fm_info.pcd_handle) {
-		printf("\n%s- unable to open PCD", __func__);
+		DPAA_PMD_ERR("unable to open PCD");
 		return;
 	}
 
@@ -108,11 +103,11 @@ static void fm_prev_cleanup(void)
 			continue;
 
 		if (dpaa_fm_deconfig(&dpaa_intf, NULL))
-			printf("\nDPAA FM deconfig failed\n");
+			DPAA_PMD_ERR("DPAA FM deconfig failed");
 	}
 
 	if (dpaa_fm_term())
-		printf("\nDPAA FM term failed\n");
+		DPAA_PMD_ERR("DPAA FM term failed");
 
 	memset(&fm_model, 0, sizeof(struct dpaa_fm_model));
 }
@@ -531,7 +526,7 @@ fm_port_delete_pcd:
 	/* FM PORT DeletePCD */
 	ret = fm_port_delete_pcd(dpaa_intf->port_handle);
 	if (ret != E_OK) {
-		DPAA_PMD_ERR("fm_port_delete_pcd: Failed\n");
+		DPAA_PMD_ERR("fm_port_delete_pcd: Failed");
 		return ret;
 	}
 	return -1;
@@ -649,9 +644,21 @@ static inline int set_pcd_netenv_scheme(struct dpaa_if *dpaa_intf,
 }
 
 
-static inline int get_port_type(struct fman_if *fif)
+static inline int get_rx_port_type(struct fman_if *fif)
 {
-	if (fif->mac_type == fman_mac_1g)
+	/* For onic ports, configure the VSP as offline ports so that
+	 * kernel can configure correct port.
+	 */
+	if (fif->mac_type == fman_offline_internal ||
+	    fif->mac_type == fman_onic)
+		return e_FM_PORT_TYPE_OH_OFFLINE_PARSING;
+	/* For 1G fm-mac9 and fm-mac10 ports, configure the VSP as 10G
+	 * ports so that kernel can configure correct port.
+	 */
+	else if (fif->mac_type == fman_mac_1g &&
+		fif->mac_idx >= DPAA_10G_MAC_START_IDX)
+		return e_FM_PORT_TYPE_RX_10G;
+	else if (fif->mac_type == fman_mac_1g)
 		return e_FM_PORT_TYPE_RX;
 	else if (fif->mac_type == fman_mac_2_5g)
 		return e_FM_PORT_TYPE_RX_2_5G;
@@ -659,7 +666,7 @@ static inline int get_port_type(struct fman_if *fif)
 		return e_FM_PORT_TYPE_RX_10G;
 
 	DPAA_PMD_ERR("MAC type unsupported");
-	return -1;
+	return e_FM_PORT_TYPE_DUMMY;
 }
 
 static inline int set_fm_port_handle(struct dpaa_if *dpaa_intf,
@@ -670,23 +677,18 @@ static inline int set_fm_port_handle(struct dpaa_if *dpaa_intf,
 	ioc_fm_pcd_net_env_params_t dist_units;
 	PMD_INIT_FUNC_TRACE();
 
-	/* FMAN mac indexes mappings (0 is unused,
-	 * first 8 are for 1G, next for 10G ports
-	 */
-	uint8_t mac_idx[] = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1};
-
 	/* Memset FM port params */
 	memset(&fm_port_params, 0, sizeof(fm_port_params));
 
 	/* Set FM port params */
 	fm_port_params.h_fm = fm_info.fman_handle;
-	fm_port_params.port_type = get_port_type(fif);
+	fm_port_params.port_type = get_rx_port_type(fif);
 	fm_port_params.port_id = mac_idx[fif->mac_idx];
 
 	/* FM PORT Open */
 	dpaa_intf->port_handle = fm_port_open(&fm_port_params);
 	if (!dpaa_intf->port_handle) {
-		DPAA_PMD_ERR("fm_port_open: Failed\n");
+		DPAA_PMD_ERR("fm_port_open: Failed");
 		return -1;
 	}
 
@@ -794,8 +796,6 @@ int dpaa_fm_config(struct rte_eth_dev *dev, uint64_t req_dist_set)
 		return -1;
 	}
 
-	dpaa_intf->nb_rx_queues = dev->data->nb_rx_queues;
-
 	/* Open FM Port and set it in port info */
 	ret = set_fm_port_handle(dpaa_intf, req_dist_set, fif);
 	if (ret) {
@@ -804,7 +804,7 @@ int dpaa_fm_config(struct rte_eth_dev *dev, uint64_t req_dist_set)
 	}
 
 	if (fif->num_profiles) {
-		for (i = 0; i < dpaa_intf->nb_rx_queues; i++)
+		for (i = 0; i < dev->data->nb_rx_queues; i++)
 			dpaa_intf->rx_queues[i].vsp_id =
 				fm_default_vsp_id(fif);
 
@@ -889,9 +889,9 @@ int dpaa_fm_init(void)
 	/* FM PCD Enable */
 	ret = fm_pcd_enable(pcd_handle);
 	if (ret) {
-		fm_close(fman_handle);
-		fm_pcd_close(pcd_handle);
 		DPAA_PMD_ERR("fm_pcd_enable: Failed");
+		fm_pcd_close(pcd_handle);
+		fm_close(fman_handle);
 		return -1;
 	}
 
@@ -943,7 +943,6 @@ static int dpaa_port_vsp_configure(struct dpaa_if *dpaa_intf,
 {
 	t_fm_vsp_params vsp_params;
 	t_fm_buffer_prefix_content buf_prefix_cont;
-	uint8_t mac_idx[] = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1};
 	uint8_t idx = mac_idx[fif->mac_idx];
 	int ret;
 
@@ -964,17 +963,18 @@ static int dpaa_port_vsp_configure(struct dpaa_if *dpaa_intf,
 	memset(&vsp_params, 0, sizeof(vsp_params));
 	vsp_params.h_fm = fman_handle;
 	vsp_params.relative_profile_id = vsp_id;
-	vsp_params.port_params.port_id = idx;
-	if (fif->mac_type == fman_mac_1g) {
-		vsp_params.port_params.port_type = e_FM_PORT_TYPE_RX;
-	} else if (fif->mac_type == fman_mac_2_5g) {
-		vsp_params.port_params.port_type = e_FM_PORT_TYPE_RX_2_5G;
-	} else if (fif->mac_type == fman_mac_10g) {
-		vsp_params.port_params.port_type = e_FM_PORT_TYPE_RX_10G;
-	} else {
+	if (fif->mac_type == fman_offline_internal ||
+	    fif->mac_type == fman_onic)
+		vsp_params.port_params.port_id = fif->mac_idx;
+	else
+		vsp_params.port_params.port_id = idx;
+
+	vsp_params.port_params.port_type = get_rx_port_type(fif);
+	if (vsp_params.port_params.port_type == e_FM_PORT_TYPE_DUMMY) {
 		DPAA_PMD_ERR("Mac type %d error", fif->mac_type);
 		return -1;
 	}
+
 	vsp_params.ext_buf_pools.num_of_pools_used = 1;
 	vsp_params.ext_buf_pools.ext_buf_pool[0].id = dpaa_intf->vsp_bpid[vsp_id];
 	vsp_params.ext_buf_pools.ext_buf_pool[0].size = mbuf_data_room_size;

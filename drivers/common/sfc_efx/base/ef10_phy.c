@@ -92,10 +92,21 @@ mcdi_phy_decode_cap(
 	*maskp = mask;
 }
 
-static			void
+static				void
+mcdi_phy_decode_link_up_duplex(
+	__in			uint32_t link_flags,
+	__out			boolean_t *fdp,
+	__out			boolean_t *upp)
+{
+	*fdp = !!(link_flags & (1U << MC_CMD_GET_LINK_OUT_FULL_DUPLEX_LBN));
+	*upp = !!(link_flags & (1U << MC_CMD_GET_LINK_OUT_LINK_UP_LBN));
+}
+
+			void
 mcdi_phy_decode_link_mode(
 	__in		efx_nic_t *enp,
-	__in		uint32_t link_flags,
+	__in		boolean_t fd,
+	__in		boolean_t up,
 	__in		unsigned int speed,
 	__in		unsigned int fcntl,
 	__in		uint32_t fec,
@@ -103,15 +114,12 @@ mcdi_phy_decode_link_mode(
 	__out		unsigned int *fcntlp,
 	__out		efx_phy_fec_type_t *fecp)
 {
-	boolean_t fd = !!(link_flags &
-		    (1 << MC_CMD_GET_LINK_OUT_FULL_DUPLEX_LBN));
-	boolean_t up = !!(link_flags &
-		    (1 << MC_CMD_GET_LINK_OUT_LINK_UP_LBN));
-
 	_NOTE(ARGUNUSED(enp))
 
 	if (!up)
 		*link_modep = EFX_LINK_DOWN;
+	else if (speed == 200000 && fd)
+		*link_modep = EFX_LINK_200000FDX;
 	else if (speed == 100000 && fd)
 		*link_modep = EFX_LINK_100000FDX;
 	else if (speed == 50000 && fd)
@@ -154,6 +162,12 @@ mcdi_phy_decode_link_mode(
 	case MC_CMD_FEC_RS:
 		*fecp = EFX_PHY_FEC_RS;
 		break;
+	case MC_CMD_FEC_IEEE_RS_INT:
+		*fecp = EFX_PHY_FEC_IEEE_RS_INT;
+		break;
+	case MC_CMD_FEC_ETCS_RS_LL:
+		*fecp = EFX_PHY_FEC_ETCS_RS_LL;
+		break;
 	default:
 		EFSYS_PROBE1(mc_pcol_error, int, fec);
 		*fecp = EFX_PHY_FEC_NONE;
@@ -179,6 +193,8 @@ ef10_phy_link_ev(
 	unsigned int ev_fcntl;
 	unsigned int ev_speed;
 	uint32_t lp_cap_mask;
+	boolean_t fd;
+	boolean_t up;
 
 	if (ev_is_v2) {
 		link_flags = (1 << MC_CMD_GET_LINK_OUT_FULL_DUPLEX_LBN);
@@ -226,7 +242,8 @@ ef10_phy_link_ev(
 		break;
 	}
 
-	mcdi_phy_decode_link_mode(enp, link_flags, speed, ev_fcntl,
+	mcdi_phy_decode_link_up_duplex(link_flags, &fd, &up);
+	mcdi_phy_decode_link_mode(enp, fd, up, speed, ev_fcntl,
 				    MC_CMD_FEC_NONE, &link_mode,
 				    &fcntl, &fec);
 	mcdi_phy_decode_cap(ev_lp_cap, &lp_cap_mask);
@@ -281,6 +298,8 @@ ef10_phy_get_link(
 	uint32_t fec;
 	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_GET_LINK_IN_LEN,
 		MC_CMD_GET_LINK_OUT_V2_LEN);
+	boolean_t fd;
+	boolean_t up;
 	efx_rc_t rc;
 
 	req.emr_cmd = MC_CMD_GET_LINK;
@@ -311,11 +330,15 @@ ef10_phy_get_link(
 	else
 		fec = MCDI_OUT_DWORD(req, GET_LINK_OUT_V2_FEC_TYPE);
 
-	mcdi_phy_decode_link_mode(enp, MCDI_OUT_DWORD(req, GET_LINK_OUT_FLAGS),
+	mcdi_phy_decode_link_up_duplex(MCDI_OUT_DWORD(req, GET_LINK_OUT_FLAGS),
+				    &fd, &up);
+	mcdi_phy_decode_link_mode(enp, fd, up,
 			    MCDI_OUT_DWORD(req, GET_LINK_OUT_LINK_SPEED),
 			    MCDI_OUT_DWORD(req, GET_LINK_OUT_FCNTL),
 			    fec, &elsp->epls.epls_link_mode,
 			    &elsp->epls.epls_fcntl, &elsp->epls.epls_fec);
+
+	elsp->epls.epls_lane_count = EFX_PHY_LANE_COUNT_DEFAULT;
 
 	if (req.emr_out_length_used < MC_CMD_GET_LINK_OUT_V2_LEN) {
 		elsp->epls.epls_ld_cap_mask = 0;
@@ -452,7 +475,7 @@ fail1:
 	return (rc);
 }
 
-static	__checkReturn	efx_rc_t
+	__checkReturn	efx_rc_t
 efx_mcdi_phy_set_led(
 	__in		efx_nic_t *enp,
 	__in		efx_phy_led_mode_t phy_led_mode)

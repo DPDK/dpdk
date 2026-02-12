@@ -46,7 +46,7 @@ enum bnxt_ulp_prsr_action {
 };
 
 void
-bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
+bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_parms *mparms,
 			    struct ulp_rte_parser_params *params,
 			    enum bnxt_ulp_fdb_type flow_type);
 
@@ -130,6 +130,21 @@ int32_t
 ulp_rte_vxlan_hdr_handler(const struct rte_flow_item *item,
 			  struct ulp_rte_parser_params *params);
 
+/* Function to handle the parsing of RTE Flow item Vxlan GPE Header. */
+int32_t
+ulp_rte_vxlan_gpe_hdr_handler(const struct rte_flow_item *item,
+			      struct ulp_rte_parser_params *params);
+
+/* Function to handle the parsing of RTE Flow item GENEVE Header. */
+int32_t
+ulp_rte_geneve_hdr_handler(const struct rte_flow_item *item,
+			      struct ulp_rte_parser_params *params);
+
+/* Function to handle the parsing of RTE Flow item GRE KEY Header. */
+int32_t
+ulp_rte_gre_key_hdr_handler(const struct rte_flow_item *item,
+			    struct ulp_rte_parser_params *params);
+
 /* Function to handle the parsing of RTE Flow item GRE Header. */
 int32_t
 ulp_rte_gre_hdr_handler(const struct rte_flow_item *item,
@@ -153,6 +168,11 @@ ulp_rte_icmp6_hdr_handler(const struct rte_flow_item *item,
 int32_t
 ulp_rte_ecpri_hdr_handler(const struct rte_flow_item *item,
 			  struct ulp_rte_parser_params *params);
+
+/* Function to handle the parsing of RTE Flow item MPLS Header. */
+int32_t
+ulp_rte_mpls_hdr_handler(const struct rte_flow_item *item,
+			 struct ulp_rte_parser_params *params);
 
 /* Function to handle the parsing of RTE Flow item void Header. */
 int32_t
@@ -239,6 +259,16 @@ int32_t
 ulp_rte_set_ipv4_dst_act_handler(const struct rte_flow_action *action_item,
 				 struct ulp_rte_parser_params *params);
 
+/* Function to handle the parsing of RTE Flow action set ipv6 src.*/
+int32_t
+ulp_rte_set_ipv6_src_act_handler(const struct rte_flow_action *action_item,
+				 struct ulp_rte_parser_params *params);
+
+/* Function to handle the parsing of RTE Flow action set ipv6 dst.*/
+int32_t
+ulp_rte_set_ipv6_dst_act_handler(const struct rte_flow_action *action_item,
+				 struct ulp_rte_parser_params *params);
+
 /* Function to handle the parsing of RTE Flow action set tp src.*/
 int32_t
 ulp_rte_set_tp_src_act_handler(const struct rte_flow_action *action_item,
@@ -252,6 +282,10 @@ ulp_rte_set_tp_dst_act_handler(const struct rte_flow_action *action_item,
 /* Function to handle the parsing of RTE Flow action dec ttl.*/
 int32_t
 ulp_rte_dec_ttl_act_handler(const struct rte_flow_action *action_item,
+			    struct ulp_rte_parser_params *params);
+/* Function to handle the parsing of RTE Flow action set ttl.*/
+int32_t
+ulp_rte_set_ttl_act_handler(const struct rte_flow_action *action_item,
 			    struct ulp_rte_parser_params *params);
 /* Function to handle the parsing of RTE Flow action set mac src.*/
 int32_t

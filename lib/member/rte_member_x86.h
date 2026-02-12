@@ -5,11 +5,11 @@
 #ifndef _RTE_MEMBER_X86_H_
 #define _RTE_MEMBER_X86_H_
 
+#include <x86intrin.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <x86intrin.h>
 
 #if defined(__AVX2__)
 

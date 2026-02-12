@@ -47,7 +47,7 @@
 
 #if EFSYS_OPT_TUNNEL
 
-#if EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
+#if EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 || EFSYS_OPT_MEDFORD4
 static	__checkReturn	boolean_t
 ef10_udp_encap_supported(
 	__in		efx_nic_t *enp);
@@ -59,7 +59,7 @@ ef10_tunnel_reconfigure(
 static			void
 ef10_tunnel_fini(
 	__in		efx_nic_t *enp);
-#endif /* EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
+#endif /* EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 || EFSYS_OPT_MEDFORD4 */
 
 #if EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON
 static const efx_tunnel_ops_t	__efx_tunnel_dummy_ops = {
@@ -68,12 +68,12 @@ static const efx_tunnel_ops_t	__efx_tunnel_dummy_ops = {
 };
 #endif /* EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON */
 
-#if EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
+#if EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 || EFSYS_OPT_MEDFORD4
 static const efx_tunnel_ops_t	__efx_tunnel_ef10_ops = {
 	ef10_tunnel_reconfigure,	/* eto_reconfigure */
 	ef10_tunnel_fini,		/* eto_fini */
 };
-#endif /* EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
+#endif /* EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 || EFSYS_OPT_MEDFORD4 */
 
 #if EFSYS_OPT_RIVERHEAD
 static const efx_tunnel_ops_t	__efx_tunnel_rhead_ops = {
@@ -253,6 +253,12 @@ efx_tunnel_init(
 		etop = &__efx_tunnel_rhead_ops;
 		break;
 #endif /* EFSYS_OPT_RIVERHEAD */
+
+#if EFSYS_OPT_MEDFORD4
+	case EFX_FAMILY_MEDFORD4:
+		etop = &__efx_tunnel_ef10_ops;
+		break;
+#endif /* EFSYS_OPT_MEDFORD4 */
 
 	default:
 		EFSYS_ASSERT(0);
@@ -637,7 +643,7 @@ fail1:
 	return (rc);
 }
 
-#if EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
+#if EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 || EFSYS_OPT_MEDFORD4
 static	__checkReturn		boolean_t
 ef10_udp_encap_supported(
 	__in		efx_nic_t *enp)
@@ -724,6 +730,6 @@ ef10_tunnel_fini(
 		    &resetting);
 	}
 }
-#endif /* EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
+#endif /* EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 || EFSYS_OPT_MEDFORD4 */
 
 #endif /* EFSYS_OPT_TUNNEL */

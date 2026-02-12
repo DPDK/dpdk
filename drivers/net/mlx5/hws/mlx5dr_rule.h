@@ -39,11 +39,12 @@ struct mlx5dr_rule_match_tag {
 };
 
 struct mlx5dr_rule_resize_info {
-	uint8_t state;
+	struct mlx5dr_pool *action_ste_pool;
 	uint32_t rtc_0;
 	uint32_t rtc_1;
 	uint32_t rule_idx;
-	struct mlx5dr_pool *action_ste_pool;
+	uint8_t state;
+	uint8_t max_stes;
 	uint8_t ctrl_seg[MLX5DR_WQE_SZ_GTA_CTRL]; /* Ctrl segment of STE: 48 bytes */
 	uint8_t data_seg[MLX5DR_WQE_SZ_GTA_DATA]; /* Data segment of STE: 64 bytes */
 };
@@ -73,5 +74,14 @@ int mlx5dr_rule_move_hws_add(struct mlx5dr_rule *rule,
 			     struct mlx5dr_rule_attr *attr);
 
 bool mlx5dr_rule_move_in_progress(struct mlx5dr_rule *rule);
+
+void mlx5dr_rule_clear_resize_info(struct mlx5dr_rule *rule);
+
+int mlx5dr_rule_create_root_no_comp(struct mlx5dr_rule *rule,
+				    const struct rte_flow_item items[],
+				    uint8_t num_actions,
+				    struct mlx5dr_rule_action rule_actions[]);
+
+int mlx5dr_rule_destroy_root_no_comp(struct mlx5dr_rule *rule);
 
 #endif /* MLX5DR_RULE_H_ */

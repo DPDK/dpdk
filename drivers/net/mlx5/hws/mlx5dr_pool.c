@@ -20,7 +20,7 @@ static void mlx5dr_pool_resource_free(struct mlx5dr_pool *pool,
 	mlx5dr_pool_free_one_resource(pool->resource[resource_idx]);
 	pool->resource[resource_idx] = NULL;
 
-	if (pool->tbl_type == MLX5DR_TABLE_TYPE_FDB) {
+	if (mlx5dr_table_fdb_no_unified(pool->tbl_type)) {
 		mlx5dr_pool_free_one_resource(pool->mirror_resource[resource_idx]);
 		pool->mirror_resource[resource_idx] = NULL;
 	}
@@ -89,7 +89,7 @@ mlx5dr_pool_resource_alloc(struct mlx5dr_pool *pool, uint32_t log_range, int idx
 	}
 	pool->resource[idx] = resource;
 
-	if (pool->tbl_type == MLX5DR_TABLE_TYPE_FDB) {
+	if (mlx5dr_table_fdb_no_unified(pool->tbl_type)) {
 		struct mlx5dr_pool_resource *mir_resource;
 
 		fw_ft_type = mlx5dr_table_get_res_fw_ft_type(pool->tbl_type, true);
@@ -167,7 +167,7 @@ static struct mlx5dr_buddy_mem *
 mlx5dr_pool_buddy_get_next_buddy(struct mlx5dr_pool *pool, int idx,
 				 uint32_t order, bool *is_new_buddy)
 {
-	static struct mlx5dr_buddy_mem *buddy;
+	struct mlx5dr_buddy_mem *buddy;
 	uint32_t new_buddy_size;
 
 	buddy = pool->db.buddy_manager->buddies[idx];
@@ -271,7 +271,6 @@ static void mlx5dr_pool_buddy_db_uninit(struct mlx5dr_pool *pool)
 		buddy = pool->db.buddy_manager->buddies[i];
 		if (buddy) {
 			mlx5dr_buddy_cleanup(buddy);
-			simple_free(buddy);
 			pool->db.buddy_manager->buddies[i] = NULL;
 		}
 	}

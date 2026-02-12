@@ -1592,7 +1592,8 @@ static int qede_dev_close(struct rte_eth_dev *eth_dev)
 }
 
 static int
-qede_get_stats(struct rte_eth_dev *eth_dev, struct rte_eth_stats *eth_stats)
+qede_get_stats(struct rte_eth_dev *eth_dev, struct rte_eth_stats *eth_stats,
+	       struct eth_queue_stats *qstats)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
@@ -1645,18 +1646,18 @@ qede_get_stats(struct rte_eth_dev *eth_dev, struct rte_eth_stats *eth_stats)
 		       " appropriately and retry.\n");
 
 	for (qid = 0; qid < eth_dev->data->nb_rx_queues; qid++) {
-		eth_stats->q_ipackets[i] = 0;
-		eth_stats->q_errors[i] = 0;
+		uint64_t q_ipackets = 0;
+		uint64_t q_errors = 0;
 
 		for_each_hwfn(edev, hw_fn) {
 			idx = qid * edev->num_hwfns + hw_fn;
 
-			eth_stats->q_ipackets[i] +=
+			q_ipackets +=
 				*(uint64_t *)
 					(((char *)(qdev->fp_array[idx].rxq)) +
 					 offsetof(struct qede_rx_queue,
 					 rcv_pkts));
-			eth_stats->q_errors[i] +=
+			q_errors +=
 				*(uint64_t *)
 					(((char *)(qdev->fp_array[idx].rxq)) +
 					 offsetof(struct qede_rx_queue,
@@ -1667,24 +1668,32 @@ qede_get_stats(struct rte_eth_dev *eth_dev, struct rte_eth_stats *eth_stats)
 					 rx_alloc_errors));
 		}
 
+		if (qstats != NULL) {
+			qstats->q_ipackets[i] = q_ipackets;
+			qstats->q_errors[i] = q_errors;
+		}
+
 		i++;
 		if (i == rxq_stat_cntrs)
 			break;
 	}
 
 	for (qid = 0; qid < eth_dev->data->nb_tx_queues; qid++) {
-		eth_stats->q_opackets[j] = 0;
+		uint64_t q_opackets = 0;
 
 		for_each_hwfn(edev, hw_fn) {
 			idx = qid * edev->num_hwfns + hw_fn;
 
 			txq = qdev->fp_array[idx].txq;
-			eth_stats->q_opackets[j] +=
+			q_opackets +=
 				*((uint64_t *)(uintptr_t)
 					(((uint64_t)(uintptr_t)(txq)) +
 					 offsetof(struct qede_tx_queue,
 						  xmit_pkts)));
 		}
+
+		if (qstats != NULL)
+			qstats->q_opackets[j] = q_opackets;
 
 		j++;
 		if (j == txq_stat_cntrs)

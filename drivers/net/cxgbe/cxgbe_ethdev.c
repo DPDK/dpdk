@@ -211,9 +211,9 @@ int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,
 	unsigned int i, work_done, budget = 32;
 	struct link_config *lc = &pi->link_cfg;
 	struct adapter *adapter = pi->adapter;
-	struct rte_eth_link new_link = { 0 };
 	u8 old_link = pi->link_cfg.link_ok;
 	struct sge *s = &adapter->sge;
+	struct rte_eth_link new_link;
 
 	for (i = 0; i < CXGBE_LINK_STATUS_POLL_CNT; i++) {
 		if (!s->fw_evtq.desc)
@@ -232,6 +232,7 @@ int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,
 		rte_delay_ms(CXGBE_LINK_STATUS_POLL_MS);
 	}
 
+	memset(&new_link, 0, sizeof(new_link));
 	new_link.link_status = cxgbe_force_linkup(adapter) ?
 			       RTE_ETH_LINK_UP : pi->link_cfg.link_ok;
 	new_link.link_autoneg = (lc->link_caps & FW_PORT_CAP32_ANEG) ? 1 : 0;
@@ -700,7 +701,8 @@ void cxgbe_dev_rx_queue_release(struct rte_eth_dev *eth_dev, uint16_t qid)
  * Get port statistics.
  */
 static int cxgbe_dev_stats_get(struct rte_eth_dev *eth_dev,
-				struct rte_eth_stats *eth_stats)
+				struct rte_eth_stats *eth_stats,
+				struct eth_queue_stats *qstats __rte_unused)
 {
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adapter = pi->adapter;

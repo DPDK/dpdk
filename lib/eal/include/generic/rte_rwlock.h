@@ -22,17 +22,18 @@
  *  https://locklessinc.com/articles/locks/
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <errno.h>
+#include <stdbool.h>
 
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
 #include <rte_lock_annotations.h>
 #include <rte_pause.h>
 #include <rte_stdatomic.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * The rte_rwlock_t type.
@@ -57,7 +58,7 @@ extern "C" {
 				/* Writer is waiting or has lock */
 #define RTE_RWLOCK_READ	 0x4	/* Reader increment */
 
-typedef struct __rte_lockable {
+typedef struct __rte_capability("rwlock") {
 	RTE_ATOMIC(int32_t) cnt;
 } rte_rwlock_t;
 
@@ -90,7 +91,7 @@ rte_rwlock_init(rte_rwlock_t *rwl)
  */
 static inline void
 rte_rwlock_read_lock(rte_rwlock_t *rwl)
-	__rte_shared_lock_function(rwl)
+	__rte_acquire_shared_capability(rwl)
 	__rte_no_thread_safety_analysis
 {
 	int32_t x;
@@ -127,7 +128,7 @@ rte_rwlock_read_lock(rte_rwlock_t *rwl)
  */
 static inline int
 rte_rwlock_read_trylock(rte_rwlock_t *rwl)
-	__rte_shared_trylock_function(0, rwl)
+	__rte_try_acquire_shared_capability(false, rwl)
 	__rte_no_thread_safety_analysis
 {
 	int32_t x;
@@ -160,7 +161,7 @@ rte_rwlock_read_trylock(rte_rwlock_t *rwl)
  */
 static inline void
 rte_rwlock_read_unlock(rte_rwlock_t *rwl)
-	__rte_unlock_function(rwl)
+	__rte_release_shared_capability(rwl)
 	__rte_no_thread_safety_analysis
 {
 	rte_atomic_fetch_sub_explicit(&rwl->cnt, RTE_RWLOCK_READ, rte_memory_order_release);
@@ -178,7 +179,7 @@ rte_rwlock_read_unlock(rte_rwlock_t *rwl)
  */
 static inline int
 rte_rwlock_write_trylock(rte_rwlock_t *rwl)
-	__rte_exclusive_trylock_function(0, rwl)
+	__rte_try_acquire_capability(false, rwl)
 	__rte_no_thread_safety_analysis
 {
 	int32_t x;
@@ -200,7 +201,7 @@ rte_rwlock_write_trylock(rte_rwlock_t *rwl)
  */
 static inline void
 rte_rwlock_write_lock(rte_rwlock_t *rwl)
-	__rte_exclusive_lock_function(rwl)
+	__rte_acquire_capability(rwl)
 	__rte_no_thread_safety_analysis
 {
 	int32_t x;
@@ -238,7 +239,7 @@ rte_rwlock_write_lock(rte_rwlock_t *rwl)
  */
 static inline void
 rte_rwlock_write_unlock(rte_rwlock_t *rwl)
-	__rte_unlock_function(rwl)
+	__rte_release_capability(rwl)
 	__rte_no_thread_safety_analysis
 {
 	rte_atomic_fetch_sub_explicit(&rwl->cnt, RTE_RWLOCK_WRITE, rte_memory_order_release);
@@ -276,7 +277,7 @@ rte_rwlock_write_is_locked(rte_rwlock_t *rwl)
  */
 static inline void
 rte_rwlock_read_lock_tm(rte_rwlock_t *rwl)
-	__rte_shared_lock_function(rwl);
+	__rte_acquire_shared_capability(rwl);
 
 /**
  * Commit hardware memory transaction or release the read lock if the lock is used as a fall-back
@@ -286,7 +287,7 @@ rte_rwlock_read_lock_tm(rte_rwlock_t *rwl)
  */
 static inline void
 rte_rwlock_read_unlock_tm(rte_rwlock_t *rwl)
-	__rte_unlock_function(rwl);
+	__rte_release_shared_capability(rwl);
 
 /**
  * Try to execute critical section in a hardware memory transaction, if it
@@ -303,7 +304,7 @@ rte_rwlock_read_unlock_tm(rte_rwlock_t *rwl)
  */
 static inline void
 rte_rwlock_write_lock_tm(rte_rwlock_t *rwl)
-	__rte_exclusive_lock_function(rwl);
+	__rte_acquire_capability(rwl);
 
 /**
  * Commit hardware memory transaction or release the write lock if the lock is used as a fall-back
@@ -313,7 +314,7 @@ rte_rwlock_write_lock_tm(rte_rwlock_t *rwl)
  */
 static inline void
 rte_rwlock_write_unlock_tm(rte_rwlock_t *rwl)
-	__rte_unlock_function(rwl);
+	__rte_release_capability(rwl);
 
 #ifdef __cplusplus
 }

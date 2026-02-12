@@ -103,7 +103,7 @@ cnxk_mempool_alloc(struct rte_mempool *mp)
 		struct npa_aura_s *paura;
 
 		paura = CNXK_MEMPOOL_CONFIG(mp);
-		memcpy(&aura, paura, sizeof(struct npa_aura_s));
+		aura = *paura;
 	}
 
 	rc = roc_npa_pool_create(&aura_handle, block_size, block_count, &aura,
@@ -192,7 +192,7 @@ cnxk_mempool_plt_init(void)
 
 	if (roc_model_is_cn9k()) {
 		rte_mbuf_set_platform_mempool_ops("cn9k_mempool_ops");
-	} else if (roc_model_is_cn10k()) {
+	} else if (roc_model_is_cn10k() || roc_model_is_cn20k()) {
 		rte_mbuf_set_platform_mempool_ops("cn10k_mempool_ops");
 		rc = cn10k_mempool_plt_init();
 	}

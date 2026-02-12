@@ -176,6 +176,9 @@ ef10_nic_get_port_mode_bandwidth(
 	case TLV_PORT_MODE_2x1_2x1:			/* mode 5 */
 		bandwidth = (2 * single_lane) + (2 * single_lane);
 		break;
+	case TLV_PORT_MODE_4x1_4x1:			/* mode 26 */
+		bandwidth = (4 * single_lane) + (4 * single_lane);
+		break;
 	case TLV_PORT_MODE_1x2_1x2:			/* mode 12 */
 		bandwidth = dual_lane + dual_lane;
 		break;
@@ -1422,7 +1425,7 @@ ef10_get_datapath_caps(
 
 	/*
 	 * Check if firmware reports the VI window mode.
-	 * Medford2 has a variable VI window size (8K, 16K or 64K).
+	 * Medford2 and Medford4 have a variable VI window size (8K, 16K or 64K).
 	 * Medford and Huntington have a fixed 8K VI window size.
 	 */
 	if (req.emr_out_length_used >= MC_CMD_GET_CAPABILITIES_V3_OUT_LEN) {
@@ -1479,6 +1482,7 @@ ef10_get_datapath_caps(
 
 		switch (enp->en_family) {
 		case EFX_FAMILY_MEDFORD2:
+		case EFX_FAMILY_MEDFORD4:
 			encp->enc_rx_scale_hash_alg_mask =
 			    (1U << EFX_RX_HASHALG_TOEPLITZ);
 			break;
@@ -1922,6 +1926,63 @@ static struct ef10_external_port_map_s {
 		(1U << TLV_PORT_MODE_1x1_1x1),			/* mode 2 */
 		{ 0, 1, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
 	},
+	/*
+	 * Modes that on Medford4 allocate 2 adjacent port numbers to cage 1
+	 * and the rest to cage 2.
+	 *	port 0 -> cage 1
+	 *	port 1 -> cage 1
+	 *	port 2 -> cage 2
+	 *	port 3 -> cage 2
+	 */
+	{
+		EFX_FAMILY_MEDFORD4,
+		(1U << TLV_PORT_MODE_2x1_2x1) |			/* mode 5 */
+		(1U << TLV_PORT_MODE_2x1_1x4) |			/* mode 7 */
+		(1U << TLV_PORT_MODE_2x2_NA) |			/* mode 13 */
+		(1U << TLV_PORT_MODE_2x1_1x2),			/* mode 18 */
+		{ 0, 2, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
+	},
+	/*
+	 * Modes that on Medford4 allocate up to 4 adjacent port numbers
+	 * to cage 1.
+	 *	port 0 -> cage 1
+	 *	port 1 -> cage 1
+	 *	port 2 -> cage 1
+	 *	port 3 -> cage 1
+	 */
+	{
+		EFX_FAMILY_MEDFORD4,
+		(1U << TLV_PORT_MODE_4x1_NA),			/* mode 4 */
+		{ 0, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
+	},
+	/*
+	 * Modes that on Medford4 allocate up to 4 adjacent port numbers
+	 * to cage 1 and 4 port numbers to cage 2.
+	 *	port 0 -> cage 1
+	 *	port 1 -> cage 1
+	 *	port 2 -> cage 1
+	 *	port 3 -> cage 1
+	 *	port 4 -> cage 2
+	 *	port 5 -> cage 2
+	 *	port 6 -> cage 2
+	 *	port 7 -> cage 2
+	 */
+	{
+		EFX_FAMILY_MEDFORD4,
+		(1U << TLV_PORT_MODE_4x1_4x1),			/* mode 26 */
+		{ 0, 4, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
+	},
+	/*
+	 * Modes that on Medford4 allocate each port number to a separate cage.
+	 *	port 0 -> cage 1
+	 *	port 1 -> cage 2
+	 */
+	{
+		EFX_FAMILY_MEDFORD4,
+		(1U << TLV_PORT_MODE_1x1_1x1) |			/* mode 2 */
+		(1U << TLV_PORT_MODE_1x4_1x4),			/* mode 3 */
+		{ 0, 1, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
+	},
 };
 
 static	__checkReturn	efx_rc_t
@@ -2159,30 +2220,22 @@ efx_mcdi_nic_board_cfg(
 
 	encp->enc_board_type = board_type;
 
-	/* Fill out fields in enp->en_port and enp->en_nic_cfg from MCDI */
-	if ((rc = efx_mcdi_get_phy_cfg(enp)) != 0)
-		goto fail8;
+	if (efx_np_supported(enp) == B_FALSE) {
+		/*
+		 * Fill out fields in enp->en_port and enp->en_nic_cfg from MCDI
+		 */
+		rc = efx_mcdi_get_phy_cfg(enp);
+		if (rc != 0)
+			goto fail8;
 
-	/*
-	 * Firmware with support for *_FEC capability bits does not
-	 * report that the corresponding *_FEC_REQUESTED bits are supported.
-	 * Add them here so that drivers understand that they are supported.
-	 */
-	if (epp->ep_phy_cap_mask & (1u << EFX_PHY_CAP_BASER_FEC))
-		epp->ep_phy_cap_mask |=
-		    (1u << EFX_PHY_CAP_BASER_FEC_REQUESTED);
-	if (epp->ep_phy_cap_mask & (1u << EFX_PHY_CAP_RS_FEC))
-		epp->ep_phy_cap_mask |=
-		    (1u << EFX_PHY_CAP_RS_FEC_REQUESTED);
-	if (epp->ep_phy_cap_mask & (1u << EFX_PHY_CAP_25G_BASER_FEC))
-		epp->ep_phy_cap_mask |=
-		    (1u << EFX_PHY_CAP_25G_BASER_FEC_REQUESTED);
+		/* Obtain the default PHY advertised capabilities */
+		rc = ef10_phy_get_link(enp, &els);
+		if (rc != 0)
+			goto fail9;
 
-	/* Obtain the default PHY advertised capabilities */
-	if ((rc = ef10_phy_get_link(enp, &els)) != 0)
-		goto fail9;
-	epp->ep_default_adv_cap_mask = els.epls.epls_adv_cap_mask;
-	epp->ep_adv_cap_mask = els.epls.epls_adv_cap_mask;
+		epp->ep_default_adv_cap_mask = els.epls.epls_adv_cap_mask;
+		epp->ep_adv_cap_mask = els.epls.epls_adv_cap_mask;
+	}
 
 	/* Check capabilities of running datapath firmware */
 	if ((rc = ef10_get_datapath_caps(enp)) != 0)
@@ -2418,6 +2471,7 @@ ef10_nic_probe(
 {
 	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
 	efx_drv_cfg_t *edcp = &(enp->en_drv_cfg);
+	efx_port_t *epp = &(enp->en_port);
 	efx_rc_t rc;
 
 	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
@@ -2437,6 +2491,26 @@ ef10_nic_probe(
 	if ((rc = ef10_nic_board_cfg(enp)) != 0)
 		goto fail4;
 
+	rc = efx_np_attach(enp);
+	if (rc != 0)
+		goto fail5;
+
+	/*
+	 * Firmware with support for *_FEC capability bits does not
+	 * report that the corresponding *_FEC_REQUESTED bits are supported.
+	 * Add them here so that drivers understand that they are supported.
+	 */
+
+	if (epp->ep_phy_cap_mask & (1u << EFX_PHY_CAP_BASER_FEC))
+		epp->ep_phy_cap_mask |=
+		    (1u << EFX_PHY_CAP_BASER_FEC_REQUESTED);
+	if (epp->ep_phy_cap_mask & (1u << EFX_PHY_CAP_RS_FEC))
+		epp->ep_phy_cap_mask |=
+		    (1u << EFX_PHY_CAP_RS_FEC_REQUESTED);
+	if (epp->ep_phy_cap_mask & (1u << EFX_PHY_CAP_25G_BASER_FEC))
+		epp->ep_phy_cap_mask |=
+		    (1u << EFX_PHY_CAP_25G_BASER_FEC_REQUESTED);
+
 	/*
 	 * Set default driver config limits (based on board config).
 	 *
@@ -2454,36 +2528,41 @@ ef10_nic_probe(
 #if EFSYS_OPT_MAC_STATS
 	/* Wipe the MAC statistics */
 	if ((rc = efx_mcdi_mac_stats_clear(enp)) != 0)
-		goto fail5;
+		goto fail6;
 #endif
 
 #if EFSYS_OPT_LOOPBACK
-	if ((rc = efx_mcdi_get_loopback_modes(enp)) != 0)
-		goto fail6;
+	if (efx_np_supported(enp) == B_FALSE) {
+		rc = efx_mcdi_get_loopback_modes(enp);
+		if (rc != 0)
+			goto fail7;
+	}
 #endif
 
 #if EFSYS_OPT_MON_STATS
 	if ((rc = mcdi_mon_cfg_build(enp)) != 0) {
 		/* Unprivileged functions do not have access to sensors */
 		if (rc != EACCES)
-			goto fail7;
+			goto fail8;
 	}
 #endif
 
 	return (0);
 
 #if EFSYS_OPT_MON_STATS
+fail8:
+	EFSYS_PROBE(fail8);
+#endif
+#if EFSYS_OPT_LOOPBACK
 fail7:
 	EFSYS_PROBE(fail7);
 #endif
-#if EFSYS_OPT_LOOPBACK
+#if EFSYS_OPT_MAC_STATS
 fail6:
 	EFSYS_PROBE(fail6);
 #endif
-#if EFSYS_OPT_MAC_STATS
 fail5:
 	EFSYS_PROBE(fail5);
-#endif
 fail4:
 	EFSYS_PROBE(fail4);
 fail3:
@@ -2943,6 +3022,9 @@ ef10_nic_unprobe(
 #if EFSYS_OPT_MON_STATS
 	mcdi_mon_cfg_free(enp);
 #endif /* EFSYS_OPT_MON_STATS */
+
+	efx_np_detach(enp);
+
 	(void) efx_mcdi_drv_attach(enp, B_FALSE);
 }
 

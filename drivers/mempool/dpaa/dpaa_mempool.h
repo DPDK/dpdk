@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2017,2019 NXP
+ *   Copyright 2017,2019,2024 -2025 NXP
  *
  */
 #ifndef __DPAA_MEMPOOL_H__
@@ -26,10 +26,19 @@
 #define DPAA_MAX_BPOOLS	256
 
 /* Maximum release/acquire from BMAN */
-#define DPAA_MBUF_MAX_ACQ_REL  8
+#define DPAA_MBUF_MAX_ACQ_REL  FSL_BM_BURST_MAX
 
 /* Buffers are allocated from single mem segment i.e. phys contiguous */
 #define DPAA_MPOOL_SINGLE_SEGMENT  0x01
+
+#define FMAN_ERRATA_4K_SPAN_ADDR_ALIGN 256
+#define FMAN_ERRATA_4K_SPAN_ADDR_MASK \
+	(FMAN_ERRATA_4K_SPAN_ADDR_ALIGN - 1)
+
+#define FMAN_ERRATA_BUF_START_ALIGN 16
+#define FMAN_ERRATA_BUF_START_MASK (FMAN_ERRATA_BUF_START_ALIGN - 1)
+#define FMAN_ERRATA_SG_LEN_ALIGN 16
+#define FMAN_ERRATA_SG_LEN_MASK (FMAN_ERRATA_SG_LEN_ALIGN - 1)
 
 struct dpaa_bp_info {
 	struct rte_mempool *mp;
@@ -60,21 +69,20 @@ extern struct dpaa_bp_info *rte_dpaa_bpid_info;
 
 /* Mempool related logs */
 
-#define DPAA_MEMPOOL_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, dpaa_logtype_mempool, "%s(): " fmt "\n", \
-		__func__, ##args)
+#define DPAA_MEMPOOL_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, DPAA_MEMPOOL, "%s(): ", __func__, __VA_ARGS__)
 
 #define MEMPOOL_INIT_FUNC_TRACE() DPAA_MEMPOOL_LOG(DEBUG, " >>")
 
-#define DPAA_MEMPOOL_DPDEBUG(fmt, args...) \
-	RTE_LOG_DP(DEBUG, DPAA_MEMPOOL, fmt, ## args)
-#define DPAA_MEMPOOL_DEBUG(fmt, args...) \
-	DPAA_MEMPOOL_LOG(DEBUG, fmt, ## args)
-#define DPAA_MEMPOOL_ERR(fmt, args...) \
-	DPAA_MEMPOOL_LOG(ERR, fmt, ## args)
-#define DPAA_MEMPOOL_INFO(fmt, args...) \
-	DPAA_MEMPOOL_LOG(INFO, fmt, ## args)
-#define DPAA_MEMPOOL_WARN(fmt, args...) \
-	DPAA_MEMPOOL_LOG(WARNING, fmt, ## args)
+#define DPAA_MEMPOOL_DPDEBUG(fmt, ...) \
+	RTE_LOG_DP(DEBUG, DPAA_MEMPOOL, fmt, ## __VA_ARGS__)
+#define DPAA_MEMPOOL_DEBUG(fmt, ...) \
+	DPAA_MEMPOOL_LOG(DEBUG, fmt, ## __VA_ARGS__)
+#define DPAA_MEMPOOL_ERR(fmt, ...) \
+	DPAA_MEMPOOL_LOG(ERR, fmt, ## __VA_ARGS__)
+#define DPAA_MEMPOOL_INFO(fmt, ...) \
+	DPAA_MEMPOOL_LOG(INFO, fmt, ## __VA_ARGS__)
+#define DPAA_MEMPOOL_WARN(fmt, ...) \
+	DPAA_MEMPOOL_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 #endif

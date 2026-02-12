@@ -1,5 +1,4 @@
-/*
- * SPDX-License-Identifier: BSD-3-Clause
+/* SPDX-License-Identifier: BSD-3-Clause
  * Copyright 2016 Intel Corporation.
  * Copyright 2017 Cavium, Inc.
  */
@@ -24,10 +23,10 @@
 #define BATCH_SIZE 16
 #define MAX_NUM_CORE 64
 
-struct worker_data {
+struct __rte_cache_aligned worker_data {
 	uint8_t dev_id;
 	uint8_t port_id;
-} __rte_cache_aligned;
+};
 
 typedef int (*worker_loop)(void *);
 typedef void (*schedule_loop)(unsigned int);
@@ -43,7 +42,7 @@ struct setup_data {
 	opt_check check_opt;
 };
 
-struct fastpath_data {
+struct __rte_cache_aligned fastpath_data {
 	volatile int done;
 	uint32_t evdev_service_id;
 	uint32_t rxadptr_service_id;
@@ -56,7 +55,7 @@ struct fastpath_data {
 	uint64_t sched_core[MAX_NUM_CORE];
 	uint64_t worker_core[MAX_NUM_CORE];
 	struct setup_data cap;
-} __rte_cache_aligned;
+};
 
 struct config_data {
 	unsigned int active_cores;

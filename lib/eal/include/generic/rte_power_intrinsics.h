@@ -9,6 +9,10 @@
 
 #include <rte_spinlock.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file
  * Advanced power management operations.
@@ -146,5 +150,9 @@ int rte_power_pause(const uint64_t tsc_timestamp);
  */
 int rte_power_monitor_multi(const struct rte_power_monitor_cond pmc[],
 		const uint32_t num, const uint64_t tsc_timestamp);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_POWER_INTRINSIC_H_ */

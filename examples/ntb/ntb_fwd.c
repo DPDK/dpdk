@@ -24,10 +24,10 @@
 #include "commands.h"
 
 /* Per-port statistics struct */
-struct ntb_port_statistics {
+struct __rte_cache_aligned ntb_port_statistics {
 	uint64_t tx;
 	uint64_t rx;
-} __rte_cache_aligned;
+};
 /* Port 0: NTB dev, Port 1: ethdev when iofwd. */
 struct ntb_port_statistics ntb_port_stats[2];
 
@@ -774,6 +774,10 @@ ntb_stats_clear(void)
 		return;
 	}
 	ids = malloc(sizeof(uint32_t) * nb_ids);
+	if (ids == NULL) {
+		printf("Cannot allocate memory for statistics IDs\n");
+		return;
+	}
 	for (i = 0; i < nb_ids; i++)
 		ids[i] = i;
 	rte_rawdev_xstats_reset(dev_id, ids, nb_ids);
@@ -843,9 +847,20 @@ ntb_stats_display(void)
 		return;
 	}
 	ids = malloc(sizeof(uint32_t) * nb_ids);
+	if (ids == NULL) {
+		printf("Cannot allocate memory for statistics IDs\n");
+		free(xstats_names);
+		return;
+	}
 	for (i = 0; i < nb_ids; i++)
 		ids[i] = i;
 	values = malloc(sizeof(uint64_t) * nb_ids);
+	if (values == NULL) {
+		printf("Cannot allocate memory to save fetching values\n");
+		free(xstats_names);
+		free(ids);
+		return;
+	}
 	if (nb_ids != rte_rawdev_xstats_get(dev_id, ids, values, nb_ids)) {
 		printf("Error: Unable to get xstats\n");
 		free(xstats_names);
@@ -1285,7 +1300,10 @@ main(int argc, char **argv)
 	eth_port_id = rte_eth_find_next(0);
 
 	if (eth_port_id < RTE_MAX_ETHPORTS) {
-		rte_eth_dev_info_get(eth_port_id, &ethdev_info);
+		ret = rte_eth_dev_info_get(eth_port_id, &ethdev_info);
+		if (ret)
+			rte_exit(EXIT_FAILURE, "Can't get info for port %u\n", eth_port_id);
+
 		eth_pconf.rx_adv_conf.rss_conf.rss_hf &=
 				ethdev_info.flow_type_rss_offloads;
 		ret = rte_eth_dev_configure(eth_port_id, num_queues,

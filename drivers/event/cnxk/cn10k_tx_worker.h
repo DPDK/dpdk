@@ -51,7 +51,9 @@ cn10k_sso_txq_fc_wait(const struct cn10k_eth_txq *txq)
 		     : "memory");
 #else
 	do {
-		avail = txq->nb_sqb_bufs_adj - __atomic_load_n(txq->fc_mem, __ATOMIC_RELAXED);
+		avail = txq->nb_sqb_bufs_adj -
+			rte_atomic_load_explicit((uint64_t __rte_atomic *)txq->fc_mem,
+						 rte_memory_order_relaxed);
 	} while (((avail << txq->sqes_per_sqb_log2) - avail) <= 0);
 #endif
 }
@@ -60,7 +62,8 @@ static __rte_always_inline int32_t
 cn10k_sso_sq_depth(const struct cn10k_eth_txq *txq)
 {
 	int32_t avail = (int32_t)txq->nb_sqb_bufs_adj -
-			(int32_t)__atomic_load_n(txq->fc_mem, __ATOMIC_RELAXED);
+			(int32_t)rte_atomic_load_explicit((uint64_t __rte_atomic *)txq->fc_mem,
+							  rte_memory_order_relaxed);
 	return (avail << txq->sqes_per_sqb_log2) - avail;
 }
 
@@ -279,5 +282,10 @@ NIX_TX_FASTPATH_MODES
 			ws, &ev[0], cmd, (const uint64_t *)ws->tx_adptr_data,  \
 			(flags) | NIX_TX_MULTI_SEG_F);                         \
 	}
+
+uint16_t __rte_hot cn10k_sso_hws_tx_adptr_enq_seg_all_offload(void *port, struct rte_event ev[],
+							      uint16_t nb_events);
+uint16_t __rte_hot cn10k_sso_hws_tx_adptr_enq_seg_all_offload_tst(void *port, struct rte_event ev[],
+								  uint16_t nb_events);
 
 #endif

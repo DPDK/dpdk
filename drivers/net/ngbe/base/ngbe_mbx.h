@@ -57,6 +57,8 @@ enum ngbe_pfvf_api_rev {
 #define NGBE_VF_GET_RSS_KEY	0x0b    /* get RSS key */
 #define NGBE_VF_UPDATE_XCAST_MODE	0x0c
 
+#define NGBE_VF_BACKUP		0x8001 /* VF requests backup */
+
 /* mode choices for NGBE_VF_UPDATE_XCAST_MODE */
 enum ngbevf_xcast_modes {
 	NGBEVF_XCAST_MODE_NONE = 0,
@@ -73,11 +75,34 @@ enum ngbevf_xcast_modes {
 
 /* length of permanent address message returned from PF */
 #define NGBE_VF_PERMADDR_MSG_LEN	4
+/* word in permanent address message with the current multicast type */
+#define NGBE_VF_MC_TYPE_WORD		3
+
+#define NGBE_PF_CONTROL_MSG		0x0100 /* PF control message */
+
+/* mailbox API, version 2.0 VF requests */
+#define NGBE_VF_API_NEGOTIATE		0x08 /* negotiate API version */
+#define NGBE_VF_GET_QUEUES		0x09 /* get queue configuration */
+#define NGBE_VF_ENABLE_MACADDR		0x0A /* enable MAC address */
+#define NGBE_VF_DISABLE_MACADDR	0x0B /* disable MAC address */
+#define NGBE_VF_GET_MACADDRS		0x0C /* get all configured MAC addrs */
+#define NGBE_VF_SET_MCAST_PROMISC	0x0D /* enable multicast promiscuous */
+#define NGBE_VF_GET_MTU		0x0E /* get bounds on MTU */
+#define NGBE_VF_SET_MTU		0x0F /* set a specific MTU */
+
+/* mailbox API, version 2.0 PF requests */
+#define NGBE_PF_TRANSPARENT_VLAN	0x0101 /* enable transparent vlan */
+
+#define NGBE_VF_MBX_INIT_TIMEOUT	2000 /* number of retries on mailbox */
+#define NGBE_VF_MBX_INIT_DELAY		500  /* microseconds between retries */
 s32 ngbe_read_mbx(struct ngbe_hw *hw, u32 *msg, u16 size, u16 mbx_id);
 s32 ngbe_write_mbx(struct ngbe_hw *hw, u32 *msg, u16 size, u16 mbx_id);
+s32 ngbe_read_posted_mbx(struct ngbe_hw *hw, u32 *msg, u16 size, u16 mbx_id);
+s32 ngbe_write_posted_mbx(struct ngbe_hw *hw, u32 *msg, u16 size, u16 mbx_id);
 s32 ngbe_check_for_msg(struct ngbe_hw *hw, u16 mbx_id);
 s32 ngbe_check_for_ack(struct ngbe_hw *hw, u16 mbx_id);
 s32 ngbe_check_for_rst(struct ngbe_hw *hw, u16 mbx_id);
+void ngbe_init_mbx_params_vf(struct ngbe_hw *hw);
 void ngbe_init_mbx_params_pf(struct ngbe_hw *hw);
 
 s32 ngbe_read_mbx_pf(struct ngbe_hw *hw, u32 *msg, u16 size, u16 vf_number);
@@ -85,5 +110,11 @@ s32 ngbe_write_mbx_pf(struct ngbe_hw *hw, u32 *msg, u16 size, u16 vf_number);
 s32 ngbe_check_for_msg_pf(struct ngbe_hw *hw, u16 vf_number);
 s32 ngbe_check_for_ack_pf(struct ngbe_hw *hw, u16 vf_number);
 s32 ngbe_check_for_rst_pf(struct ngbe_hw *hw, u16 vf_number);
+
+s32 ngbe_read_mbx_vf(struct ngbe_hw *hw, u32 *msg, u16 size, u16 mbx_id);
+s32 ngbe_write_mbx_vf(struct ngbe_hw *hw, u32 *msg, u16 size, u16 mbx_id);
+s32 ngbe_check_for_msg_vf(struct ngbe_hw *hw, u16 mbx_id);
+s32 ngbe_check_for_ack_vf(struct ngbe_hw *hw, u16 mbx_id);
+s32 ngbe_check_for_rst_vf(struct ngbe_hw *hw, u16 mbx_id);
 
 #endif /* _NGBE_MBX_H_ */

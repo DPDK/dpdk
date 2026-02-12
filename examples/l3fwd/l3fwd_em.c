@@ -208,8 +208,8 @@ ipv6_hash_crc(const void *data, __rte_unused uint32_t data_len,
 	return init_val;
 }
 
-static uint8_t ipv4_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
-static uint8_t ipv6_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
+static alignas(RTE_CACHE_LINE_SIZE) uint8_t ipv4_l3fwd_out_if[L3FWD_HASH_ENTRIES];
+static alignas(RTE_CACHE_LINE_SIZE) uint8_t ipv6_l3fwd_out_if[L3FWD_HASH_ENTRIES];
 
 static rte_xmm_t mask0;
 static rte_xmm_t mask1;
@@ -586,7 +586,7 @@ em_main_loop(__rte_unused void *dummy)
 	unsigned lcore_id;
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
 	int i, nb_rx;
-	uint8_t queueid;
+	uint16_t queueid;
 	uint16_t portid;
 	struct lcore_conf *qconf;
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) /
@@ -609,7 +609,7 @@ em_main_loop(__rte_unused void *dummy)
 		portid = qconf->rx_queue_list[i].port_id;
 		queueid = qconf->rx_queue_list[i].queue_id;
 		RTE_LOG(INFO, L3FWD,
-			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
+			" -- lcoreid=%u portid=%u rxqueueid=%" PRIu16 "\n",
 			lcore_id, portid, queueid);
 	}
 
@@ -644,7 +644,7 @@ em_main_loop(__rte_unused void *dummy)
 			portid = qconf->rx_queue_list[i].port_id;
 			queueid = qconf->rx_queue_list[i].queue_id;
 			nb_rx = rte_eth_rx_burst(portid, queueid, pkts_burst,
-				MAX_PKT_BURST);
+				rx_burst_size);
 			if (nb_rx == 0)
 				continue;
 

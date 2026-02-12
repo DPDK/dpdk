@@ -15,10 +15,6 @@
 #ifndef _RTE_STACK_H_
 #define _RTE_STACK_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdalign.h>
 
 #include <rte_debug.h>
@@ -37,14 +33,14 @@ struct rte_stack_lf_elem {
 	struct rte_stack_lf_elem *next;	/**< Next pointer */
 };
 
-struct rte_stack_lf_head {
+struct __rte_aligned(16) rte_stack_lf_head {
 	struct rte_stack_lf_elem *top; /**< Stack top */
 	uint64_t cnt; /**< Modification counter for avoiding ABA problem */
 };
 
 struct rte_stack_lf_list {
 	/** List head */
-	alignas(16) struct rte_stack_lf_head head;
+	struct rte_stack_lf_head head;
 	/** List len */
 	RTE_ATOMIC(uint64_t) len;
 };
@@ -94,6 +90,10 @@ struct __rte_cache_aligned rte_stack {
 
 #include "rte_stack_std.h"
 #include "rte_stack_lf.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Push several objects on the stack (MT-safe).

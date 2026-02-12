@@ -35,6 +35,9 @@ extern "C" {
 #define MARKER_TLV_TYPE_INFO                0x01
 #define MARKER_TLV_TYPE_RESP                0x02
 
+#define SLOW_TX_QUEUE_HW_DEFAULT_SIZE       512
+#define SLOW_RX_QUEUE_HW_DEFAULT_SIZE       512
+
 typedef void (*rte_eth_bond_8023ad_ext_slowrx_fn)(uint16_t member_id,
 						  struct rte_mbuf *lacp_pkt);
 
@@ -51,18 +54,18 @@ enum rte_bond_8023ad_agg_selection {
 };
 
 /** Generic slow protocol structure */
-struct slow_protocol {
+struct __rte_packed_begin slow_protocol {
 	uint8_t subtype;
 	uint8_t reserved_119[119];
-} __rte_packed;
+} __rte_packed_end;
 
 /** Generic slow protocol frame type structure */
-struct slow_protocol_frame {
+struct __rte_aligned(2) __rte_packed_begin slow_protocol_frame {
 	struct rte_ether_hdr eth_hdr;
 	struct slow_protocol slow_protocol;
-} __rte_packed __rte_aligned(2);
+} __rte_packed_end;
 
-struct port_params {
+struct __rte_aligned(2) __rte_packed_begin port_params {
 	uint16_t system_priority;
 	/**< System priority (unused in current implementation) */
 	struct rte_ether_addr system;
@@ -73,18 +76,18 @@ struct port_params {
 	/**< Priority of this (unused in current implementation) */
 	uint16_t port_number;
 	/**< Port number. It corresponds to member port id. */
-} __rte_packed __rte_aligned(2);
+} __rte_packed_end;
 
-struct lacpdu_actor_partner_params {
+struct __rte_aligned(2) __rte_packed_begin lacpdu_actor_partner_params {
 	uint8_t tlv_type_info;
 	uint8_t info_length;
 	struct port_params port_params;
 	uint8_t state;
 	uint8_t reserved_3[3];
-} __rte_packed __rte_aligned(2);
+} __rte_packed_end;
 
 /** LACPDU structure (5.4.2 in 802.1AX documentation). */
-struct lacpdu {
+struct __rte_aligned(2) __rte_packed_begin lacpdu {
 	uint8_t subtype;
 	uint8_t version_number;
 
@@ -99,15 +102,15 @@ struct lacpdu {
 	uint8_t tlv_type_terminator;
 	uint8_t terminator_length;
 	uint8_t reserved_50[50];
-} __rte_packed __rte_aligned(2);
+} __rte_packed_end;
 
 /** LACPDU frame: Contains ethernet header and LACPDU. */
-struct lacpdu_header {
+struct __rte_aligned(2) __rte_packed_begin lacpdu_header {
 	struct rte_ether_hdr eth_hdr;
 	struct lacpdu lacpdu;
-} __rte_packed __rte_aligned(2);
+} __rte_packed_end;
 
-struct marker {
+struct __rte_aligned(2) __rte_packed_begin marker {
 	uint8_t subtype;
 	uint8_t version_number;
 
@@ -121,12 +124,12 @@ struct marker {
 	uint8_t tlv_type_terminator;
 	uint8_t terminator_length;
 	uint8_t reserved_90[90];
-} __rte_packed __rte_aligned(2);
+} __rte_packed_end;
 
-struct marker_header {
+struct __rte_aligned(2) __rte_packed_begin marker_header {
 	struct rte_ether_hdr eth_hdr;
 	struct marker marker;
-} __rte_packed __rte_aligned(2);
+} __rte_packed_end;
 
 struct rte_eth_bond_8023ad_conf {
 	uint32_t fast_periodic_ms;
@@ -193,7 +196,6 @@ rte_eth_bond_8023ad_setup(uint16_t port_id,
  *   -EINVAL if conf is NULL or member id is invalid (not a member of given
  *       bonding device or is not inactive).
  */
-__rte_experimental
 int
 rte_eth_bond_8023ad_member_info(uint16_t port_id, uint16_t member_id,
 		struct rte_eth_bond_8023ad_member_info *conf);

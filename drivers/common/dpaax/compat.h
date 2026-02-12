@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2011 Freescale Semiconductor, Inc.
  * All rights reserved.
@@ -30,6 +30,7 @@
 #include <assert.h>
 #include <dirent.h>
 #include <inttypes.h>
+
 #include <rte_byteorder.h>
 #include <rte_atomic.h>
 #include <rte_spinlock.h>
@@ -37,6 +38,7 @@
 #include <rte_debug.h>
 #include <rte_cycles.h>
 #include <rte_malloc.h>
+#include <rte_prefetch.h>
 
 /* The following definitions are primarily to allow the single-source driver
  * interfaces to be included by arbitrary program code. Ie. for interfaces that
@@ -50,9 +52,6 @@
 #endif
 #ifndef __always_unused
 #define __always_unused	__rte_unused
-#endif
-#ifndef __packed
-#define __packed	__rte_packed
 #endif
 #ifndef noinline
 #define noinline	__rte_noinline
@@ -68,28 +67,28 @@
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 /* Debugging */
-#define prflush(fmt, args...) \
+#define prflush(fmt, ...) \
 	do { \
-		printf(fmt, ##args); \
+		printf(fmt, ##__VA_ARGS__); \
 		fflush(stdout); \
 	} while (0)
 #ifndef pr_crit
-#define pr_crit(fmt, args...)	 prflush("CRIT:" fmt, ##args)
+#define pr_crit(fmt, ...)	 prflush("CRIT:" fmt, ##__VA_ARGS__)
 #endif
 #ifndef pr_err
-#define pr_err(fmt, args...)	 prflush("ERR:" fmt, ##args)
+#define pr_err(fmt, ...)	 prflush("ERR:" fmt, ##__VA_ARGS__)
 #endif
 #ifndef pr_warn
-#define pr_warn(fmt, args...)	 prflush("WARN:" fmt, ##args)
+#define pr_warn(fmt, ...)	 prflush("WARN:" fmt, ##__VA_ARGS__)
 #endif
 #ifndef pr_info
-#define pr_info(fmt, args...)	 prflush(fmt, ##args)
+#define pr_info(fmt, ...)	 prflush(fmt, ##__VA_ARGS__)
 #endif
 #ifndef pr_debug
 #ifdef RTE_LIBRTE_DPAA_DEBUG_BUS
-#define pr_debug(fmt, args...)	printf(fmt, ##args)
+#define pr_debug(fmt, ...)	printf(fmt, ##__VA_ARGS__)
 #else
-#define pr_debug(fmt, args...) {}
+#define pr_debug(fmt, ...) {}
 #endif
 #endif
 
@@ -142,8 +141,8 @@ static inline void out_be32(volatile void *__p, u32 val)
 #define hwsync() rte_rmb()
 #define lwsync() rte_wmb()
 
-#define dcbt_ro(p) __builtin_prefetch(p, 0)
-#define dcbt_rw(p) __builtin_prefetch(p, 1)
+#define dcbt_ro(p) rte_prefetch0(p)
+#define dcbt_rw(p) rte_prefetch0_write(p)
 
 #if defined(RTE_ARCH_ARM)
 #if defined(RTE_ARCH_64)

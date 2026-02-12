@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2021-2023 Broadcom
+ * Copyright(c) 2021-2024 Broadcom
  * All rights reserved.
  */
 
@@ -12,49 +12,31 @@
 #include "tf_session.h"
 #include "tf_util.h"
 #include "cfa_tcam_mgr.h"
-#include "cfa_tcam_mgr_hwop_msg.h"
 #include "cfa_tcam_mgr_device.h"
-#include "cfa_tcam_mgr_session.h"
+#include "cfa_tcam_mgr_hwop_msg.h"
 #include "cfa_tcam_mgr_p58.h"
 #include "cfa_tcam_mgr_p4.h"
 
 #define TF_TCAM_SLICE_INVALID (-1)
 
-/*
- * The following macros are for setting the entry status in a row entry.
- * row is (struct cfa_tcam_mgr_table_rows_0 *)
- */
-#define ROW_ENTRY_INUSE(row, entry)  ((row)->entry_inuse &   (1U << (entry)))
-#define ROW_ENTRY_SET(row, entry)    ((row)->entry_inuse |=  (1U << (entry)))
-#define ROW_ENTRY_CLEAR(row, entry)  ((row)->entry_inuse &= ~(1U << (entry)))
-#define ROW_INUSE(row)               ((row)->entry_inuse != 0)
-
-static struct cfa_tcam_mgr_entry_data *entry_data[TF_TCAM_MAX_SESSIONS];
-
-static int global_data_initialized[TF_TCAM_MAX_SESSIONS];
-int cfa_tcam_mgr_max_entries[TF_TCAM_MAX_SESSIONS];
-
-struct cfa_tcam_mgr_table_data
-cfa_tcam_mgr_tables[TF_TCAM_MAX_SESSIONS][TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX];
-
 static int physical_table_types[CFA_TCAM_MGR_TBL_TYPE_MAX] = {
-	[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH_APPS] =
+	[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH] =
 		TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
-	[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW_APPS]  =
+	[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW]  =
 		TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
-	[CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM_APPS]	      =
+	[CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM]	      =
 		TF_TCAM_TBL_TYPE_PROF_TCAM,
-	[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS]	      =
+	[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM]	      =
 		TF_TCAM_TBL_TYPE_WC_TCAM,
-	[CFA_TCAM_MGR_TBL_TYPE_SP_TCAM_APPS]	      =
+	[CFA_TCAM_MGR_TBL_TYPE_SP_TCAM]	      =
 		TF_TCAM_TBL_TYPE_SP_TCAM,
-	[CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM_APPS]      =
+	[CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM]      =
 		TF_TCAM_TBL_TYPE_CT_RULE_TCAM,
-	[CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM_APPS]	      =
+	[CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM]	      =
 		TF_TCAM_TBL_TYPE_VEB_TCAM,
-	[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS]     =
+	[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH]     =
 		TF_TCAM_TBL_TYPE_WC_TCAM_HIGH,
-	[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS]      =
+	[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW]      =
 		TF_TCAM_TBL_TYPE_WC_TCAM_LOW,
 };
 
@@ -71,41 +53,23 @@ const char *
 cfa_tcam_mgr_tbl_2_str(enum cfa_tcam_mgr_tbl_type tcam_type)
 {
 	switch (tcam_type) {
-	case CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH_AFM:
-		return "l2_ctxt_tcam_high AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH:
 		return "l2_ctxt_tcam_high Apps";
-	case CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW_AFM:
-		return "l2_ctxt_tcam_low AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW:
 		return "l2_ctxt_tcam_low Apps";
-	case CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM_AFM:
-		return "prof_tcam AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM:
 		return "prof_tcam Apps";
-	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_AFM:
-		return "wc_tcam AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM:
 		return "wc_tcam Apps";
-	case CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM_AFM:
-		return "veb_tcam AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM:
 		return "veb_tcam Apps";
-	case CFA_TCAM_MGR_TBL_TYPE_SP_TCAM_AFM:
-		return "sp_tcam AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_SP_TCAM_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_SP_TCAM:
 		return "sp_tcam Apps";
-	case CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM_AFM:
-		return "ct_rule_tcam AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM:
 		return "ct_rule_tcam Apps";
-	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_AFM:
-		return "wc_tcam_high AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH:
 		return "wc_tcam_high Apps";
-	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_AFM:
-		return "wc_tcam_low AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW:
 		return "wc_tcam_low Apps";
 	default:
 		return "Invalid tcam table type";
@@ -118,7 +82,7 @@ cfa_tcam_mgr_get_num_slices(unsigned int key_size, unsigned int slice_width)
 {
 	int num_slices = 0;
 
-	if (key_size == 0)
+	if (!key_size)
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 
 	num_slices = ((key_size - 1U) / slice_width) + 1U;
@@ -141,36 +105,43 @@ cfa_tcam_mgr_get_num_slices(unsigned int key_size, unsigned int slice_width)
 }
 
 static struct cfa_tcam_mgr_entry_data *
-cfa_tcam_mgr_entry_get(int sess_idx, uint16_t id)
+cfa_tcam_mgr_entry_get(struct cfa_tcam_mgr_data *tcam_mgr_data, uint16_t id)
 {
-	if (id > cfa_tcam_mgr_max_entries[sess_idx])
+	if (id > tcam_mgr_data->cfa_tcam_mgr_max_entries)
 		return NULL;
 
-	return &entry_data[sess_idx][id];
+	return &tcam_mgr_data->entry_data[id];
 }
 
 /* Insert an entry into the entry table */
 static int
-cfa_tcam_mgr_entry_insert(int sess_idx, uint16_t id,
+cfa_tcam_mgr_entry_insert(struct cfa_tcam_mgr_data *tcam_mgr_data,
+			  struct tf *tfp __rte_unused, uint16_t id,
 			  struct cfa_tcam_mgr_entry_data *entry)
 {
-	if (id > cfa_tcam_mgr_max_entries[sess_idx])
+	if (id > tcam_mgr_data->cfa_tcam_mgr_max_entries)
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 
-	memcpy(&entry_data[sess_idx][id], entry,
-	       sizeof(entry_data[sess_idx][id]));
+	memcpy(&tcam_mgr_data->entry_data[id], entry,
+	       sizeof(tcam_mgr_data->entry_data[id]));
+
+	PMD_DRV_LOG_LINE(INFO, "Added entry %d to table", id);
 
 	return 0;
 }
 
 /* Delete an entry from the entry table */
 static int
-cfa_tcam_mgr_entry_delete(int sess_idx, uint16_t id)
+cfa_tcam_mgr_entry_delete(struct cfa_tcam_mgr_data *tcam_mgr_data,
+			  struct tf *tfp __rte_unused, uint16_t id)
 {
-	if (id > cfa_tcam_mgr_max_entries[sess_idx])
+	if (id > tcam_mgr_data->cfa_tcam_mgr_max_entries)
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 
-	memset(&entry_data[sess_idx][id], 0, sizeof(entry_data[sess_idx][id]));
+	memset(&tcam_mgr_data->entry_data[id], 0,
+	       sizeof(tcam_mgr_data->entry_data[id]));
+
+	PMD_DRV_LOG_LINE(INFO, "Deleted entry %d from table.", id);
 
 	return 0;
 }
@@ -179,11 +150,12 @@ cfa_tcam_mgr_entry_delete(int sess_idx, uint16_t id)
  * TCAM supports.
  */
 static int
-cfa_tcam_mgr_row_size_get(int sess_idx, enum tf_dir dir,
+cfa_tcam_mgr_row_size_get(struct cfa_tcam_mgr_data *tcam_mgr_data,
+			  enum tf_dir dir,
 			  enum cfa_tcam_mgr_tbl_type type)
 {
 	return sizeof(struct cfa_tcam_mgr_table_rows_0) +
-		(cfa_tcam_mgr_tables[sess_idx][dir][type].max_slices *
+		(tcam_mgr_data->cfa_tcam_mgr_tables[dir][type].max_slices *
 		 sizeof(((struct cfa_tcam_mgr_table_rows_0 *)0)->entries[0]));
 }
 
@@ -197,18 +169,19 @@ cfa_tcam_mgr_row_ptr_get(void *base, int index, int row_size)
  * Searches a table to find the direction and type of an entry.
  */
 static int
-cfa_tcam_mgr_entry_find_in_table(int sess_idx, int id, enum tf_dir dir,
+cfa_tcam_mgr_entry_find_in_table(struct cfa_tcam_mgr_data *tcam_mgr_data,
+				 int id, enum tf_dir dir,
 				 enum cfa_tcam_mgr_tbl_type type)
 {
 	struct cfa_tcam_mgr_table_data *table_data;
-	struct cfa_tcam_mgr_table_rows_0 *row;
 	int max_slices, row_idx, row_size, slice;
+	struct cfa_tcam_mgr_table_rows_0 *row;
 
-	table_data = &cfa_tcam_mgr_tables[sess_idx][dir][type];
+	table_data = &tcam_mgr_data->cfa_tcam_mgr_tables[dir][type];
 	if (table_data->max_entries > 0 &&
 	    table_data->hcapi_type > 0) {
 		max_slices = table_data->max_slices;
-		row_size = cfa_tcam_mgr_row_size_get(sess_idx, dir, type);
+		row_size = cfa_tcam_mgr_row_size_get(tcam_mgr_data, dir, type);
 		for (row_idx = table_data->start_row;
 		     row_idx <= table_data->end_row;
 		     row_idx++) {
@@ -234,19 +207,24 @@ cfa_tcam_mgr_entry_find_in_table(int sess_idx, int id, enum tf_dir dir,
  * Searches all the tables to find the direction and type of an entry.
  */
 static int
-cfa_tcam_mgr_entry_find(int sess_idx, int id, enum tf_dir *tbl_dir,
+cfa_tcam_mgr_entry_find(struct cfa_tcam_mgr_data *tcam_mgr_data, int id,
+			enum tf_dir *tbl_dir,
 			enum cfa_tcam_mgr_tbl_type *tbl_type)
 {
-	enum tf_dir dir;
 	enum cfa_tcam_mgr_tbl_type type;
 	int rc = -CFA_TCAM_MGR_ERR_CODE(NOENT);
+	enum tf_dir dir;
 
-	for (dir = TF_DIR_RX; dir < ARRAY_SIZE(cfa_tcam_mgr_tables[sess_idx]); dir++) {
+	for (dir = TF_DIR_RX; dir <
+			ARRAY_SIZE(tcam_mgr_data->cfa_tcam_mgr_tables);
+			dir++) {
 		for (type = CFA_TCAM_MGR_TBL_TYPE_START;
-		     type < ARRAY_SIZE(cfa_tcam_mgr_tables[sess_idx][dir]);
+		     type <
+			ARRAY_SIZE(tcam_mgr_data->cfa_tcam_mgr_tables[dir]);
 		     type++) {
-			rc = cfa_tcam_mgr_entry_find_in_table(sess_idx, id, dir, type);
-			if (rc == 0) {
+			rc = cfa_tcam_mgr_entry_find_in_table(tcam_mgr_data,
+							      id, dir, type);
+			if (!rc) {
 				*tbl_dir  = dir;
 				*tbl_type = type;
 				return rc;
@@ -271,11 +249,11 @@ cfa_tcam_mgr_row_is_entry_free(struct cfa_tcam_mgr_table_rows_0 *row,
 				return j;
 		}
 	}
-	return -1;
+	return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 }
 
 static int
-cfa_tcam_mgr_entry_move(int sess_idx, struct cfa_tcam_mgr_context *context,
+cfa_tcam_mgr_entry_move(struct cfa_tcam_mgr_data *tcam_mgr_data, struct tf *tfp,
 		       enum tf_dir dir, enum cfa_tcam_mgr_tbl_type type,
 		       int entry_id,
 		       struct cfa_tcam_mgr_table_data *table_data,
@@ -289,15 +267,15 @@ cfa_tcam_mgr_entry_move(int sess_idx, struct cfa_tcam_mgr_context *context,
 	struct cfa_tcam_mgr_set_parms sparms = { 0 };
 	struct cfa_tcam_mgr_free_parms fparms = { 0 };
 	struct cfa_tcam_mgr_entry_data *entry;
-	uint8_t  key[CFA_TCAM_MGR_MAX_KEY_SIZE];
-	uint8_t  mask[CFA_TCAM_MGR_MAX_KEY_SIZE];
 	uint8_t  result[CFA_TCAM_MGR_MAX_KEY_SIZE];
+	uint8_t  mask[CFA_TCAM_MGR_MAX_KEY_SIZE];
+	uint8_t  key[CFA_TCAM_MGR_MAX_KEY_SIZE];
 
 	int j, rc;
 
-	entry = cfa_tcam_mgr_entry_get(sess_idx, entry_id);
-	if (entry == NULL)
-		return -1;
+	entry = cfa_tcam_mgr_entry_get(tcam_mgr_data, entry_id);
+	if (!entry)
+		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 
 	gparms.dir	   = dir;
 	gparms.type	   = type;
@@ -309,11 +287,11 @@ cfa_tcam_mgr_entry_move(int sess_idx, struct cfa_tcam_mgr_context *context,
 	gparms.key_size	   = sizeof(key);
 	gparms.result_size = sizeof(result);
 
-	rc = cfa_tcam_mgr_entry_get_msg(sess_idx, context, &gparms,
+	rc = cfa_tcam_mgr_entry_get_msg(tcam_mgr_data, tfp, &gparms,
 					source_row_index,
 					entry->slice * source_row->entry_size,
 					table_data->max_slices);
-	if (rc != 0)
+	if (rc)
 		return rc;
 
 	sparms.dir	   = dir;
@@ -341,18 +319,19 @@ cfa_tcam_mgr_entry_move(int sess_idx, struct cfa_tcam_mgr_context *context,
 	if (dest_row_slice < 0)
 		return -CFA_TCAM_MGR_ERR_CODE(PERM);
 
-	rc = cfa_tcam_mgr_entry_set_msg(sess_idx, context, &sparms,
+	rc = cfa_tcam_mgr_entry_set_msg(tcam_mgr_data, tfp, &sparms,
 					dest_row_index,
 					dest_row_slice * dest_row->entry_size,
 					table_data->max_slices);
-	if (rc != 0)
+	if (rc)
 		return rc;
 
 	if (free_source_entry) {
 		fparms.dir	  = dir;
 		fparms.type	  = type;
 		fparms.hcapi_type = table_data->hcapi_type;
-		rc = cfa_tcam_mgr_entry_free_msg(sess_idx, context, &fparms,
+		rc = cfa_tcam_mgr_entry_free_msg(tcam_mgr_data,
+						 tfp, &fparms,
 						 source_row_index,
 						 entry->slice *
 						 dest_row->entry_size,
@@ -361,15 +340,15 @@ cfa_tcam_mgr_entry_move(int sess_idx, struct cfa_tcam_mgr_context *context,
 						 source_row->entry_size,
 						 table_data->result_size,
 						 table_data->max_slices);
-		if (rc != 0) {
+		if (rc) {
 			CFA_TCAM_MGR_LOG_DIR_TYPE(ERR,
 						  dir, type,
-						 "Failed to free entry ID %d at"
-						 " row %d, slice %d for sess_idx %d. rc: %d.\n",
+						  "Failed to free entry ID:%d"
+						  " at row:%d slice:%d"
+						  " rc:%d\n",
 						  gparms.id,
 						  source_row_index,
 						  entry->slice,
-						  sess_idx,
 						  -rc);
 		}
 	}
@@ -384,9 +363,9 @@ cfa_tcam_mgr_entry_move(int sess_idx, struct cfa_tcam_mgr_context *context,
 }
 
 static int
-cfa_tcam_mgr_row_move(int sess_idx, struct cfa_tcam_mgr_context *context,
+cfa_tcam_mgr_row_move(struct cfa_tcam_mgr_data *tcam_mgr_data, struct tf *tfp,
 		      enum tf_dir dir, enum cfa_tcam_mgr_tbl_type type,
-		      struct cfa_tcam_mgr_table_data *table_data,
+		      struct cfa_tcam_mgr_table_data *tbl_data,
 		      int dest_row_index,
 		      struct cfa_tcam_mgr_table_rows_0 *dest_row,
 		      int source_row_index,
@@ -401,30 +380,32 @@ cfa_tcam_mgr_row_move(int sess_idx, struct cfa_tcam_mgr_context *context,
 
 	fparms.dir	  = dir;
 	fparms.type	  = type;
-	fparms.hcapi_type = table_data->hcapi_type;
+	fparms.hcapi_type = tbl_data->hcapi_type;
 
 	for (j = 0;
-	     j < (table_data->max_slices / source_row->entry_size);
+	     j < (tbl_data->max_slices / source_row->entry_size);
 	     j++) {
 		if (ROW_ENTRY_INUSE(source_row, j)) {
-			cfa_tcam_mgr_entry_move(sess_idx, context, dir, type,
+			cfa_tcam_mgr_entry_move(tcam_mgr_data, tfp,
+						dir, type,
 						source_row->entries[j],
-						table_data,
+						tbl_data,
 						dest_row_index, j, dest_row,
 						source_row_index, source_row,
 						true);
 		} else {
 			/* Slice not in use, write an empty slice. */
-			rc = cfa_tcam_mgr_entry_free_msg(sess_idx, context, &fparms,
-							dest_row_index,
-							j *
-							dest_row->entry_size,
-							table_data->row_width /
-							table_data->max_slices *
-							dest_row->entry_size,
-							table_data->result_size,
-							table_data->max_slices);
-			if (rc != 0)
+			rc = cfa_tcam_mgr_entry_free_msg(tcam_mgr_data,
+							 tfp, &fparms,
+							 dest_row_index,
+							 j *
+							 dest_row->entry_size,
+							 tbl_data->row_width /
+							 tbl_data->max_slices *
+							 dest_row->entry_size,
+							 tbl_data->result_size,
+							 tbl_data->max_slices);
+			if (rc)
 				return rc;
 		}
 	}
@@ -434,7 +415,7 @@ cfa_tcam_mgr_row_move(int sess_idx, struct cfa_tcam_mgr_context *context,
 
 /* Install entry into in-memory tables, not into TCAM (yet). */
 static void
-cfa_tcam_mgr_row_entry_install(int sess_idx,
+cfa_tcam_mgr_row_entry_install(struct tf *tfp __rte_unused,
 			       struct cfa_tcam_mgr_table_rows_0 *row,
 			       struct cfa_tcam_mgr_alloc_parms *parms,
 			       struct cfa_tcam_mgr_entry_data *entry,
@@ -442,12 +423,6 @@ cfa_tcam_mgr_row_entry_install(int sess_idx,
 			       int key_slices,
 			       int row_index, int slice)
 {
-	if (global_data_initialized[sess_idx] == 0) {
-		CFA_TCAM_MGR_LOG(INFO, "PANIC: No TCAM data created for sess_idx %d\n",
-				 sess_idx);
-		return;
-	}
-
 	if (slice == TF_TCAM_SLICE_INVALID) {
 		slice = 0;
 		row->entry_size = key_slices;
@@ -458,36 +433,52 @@ cfa_tcam_mgr_row_entry_install(int sess_idx,
 	row->entries[slice] = id;
 	entry->row = row_index;
 	entry->slice = slice;
+
+	PMD_DRV_LOG_LINE(INFO,
+			 "Entry %d installed row:%d slice:%d prio:%d",
+			 id, row_index, slice, row->priority);
 }
 
 /* Finds an empty row that can be used and reserve for entry.  If necessary,
  * entries will be shuffled in order to make room.
  */
 static struct cfa_tcam_mgr_table_rows_0 *
-cfa_tcam_mgr_empty_row_alloc(int sess_idx, struct cfa_tcam_mgr_context *context,
+cfa_tcam_mgr_empty_row_alloc(struct cfa_tcam_mgr_data *tcam_mgr_data,
+			     struct tf *tfp,
 			     struct cfa_tcam_mgr_alloc_parms *parms,
 			     struct cfa_tcam_mgr_entry_data *entry,
-			     uint16_t id,
-			     int key_slices)
+			     uint16_t id, int key_slices)
 {
+	int to_row_idx, from_row_idx, slice, start_row, end_row;
 	struct cfa_tcam_mgr_table_rows_0 *tcam_rows;
+	struct cfa_tcam_mgr_table_data *table_data;
 	struct cfa_tcam_mgr_table_rows_0 *from_row;
 	struct cfa_tcam_mgr_table_rows_0 *to_row;
 	struct cfa_tcam_mgr_table_rows_0 *row;
-	struct cfa_tcam_mgr_table_data *table_data;
 	int i, max_slices, row_size;
-	int to_row_idx, from_row_idx, slice, start_row, end_row;
-	int empty_row = -1;
 	int target_row = -1;
+	int empty_row = -1;
 
-	table_data = &cfa_tcam_mgr_tables[sess_idx][parms->dir][parms->type];
+	table_data =
+		&tcam_mgr_data->cfa_tcam_mgr_tables[parms->dir][parms->type];
 
-	start_row  = table_data->start_row;
-	end_row	   = table_data->end_row;
+	start_row = table_data->start_row;
+	end_row = table_data->end_row;
 	max_slices = table_data->max_slices;
-	tcam_rows  = table_data->tcam_rows;
+	tcam_rows = table_data->tcam_rows;
 
-	row_size   = cfa_tcam_mgr_row_size_get(sess_idx, parms->dir, parms->type);
+	row_size = cfa_tcam_mgr_row_size_get(tcam_mgr_data, parms->dir,
+					     parms->type);
+	/*
+	 * Note: The rows are ordered from highest priority to lowest priority.
+	 * That is, the first row in the table will have the highest priority
+	 * and the last row in the table will have the lowest priority.
+	 */
+
+	PMD_DRV_LOG_LINE(INFO, "Trying to alloc space for entry with "
+			 "priority %d and width %d slices.",
+			 parms->priority,
+			 key_slices);
 
 	/*
 	 * First check for partially used entries, but only if the key needs
@@ -506,10 +497,11 @@ cfa_tcam_mgr_empty_row_alloc(int sess_idx, struct cfa_tcam_mgr_context *context,
 							       max_slices,
 							       key_slices);
 			if (slice >= 0) {
-				cfa_tcam_mgr_row_entry_install(sess_idx, row, parms,
+				cfa_tcam_mgr_row_entry_install(tfp,
+							       row, parms,
 							       entry, id,
-							       key_slices,
-							       i, slice);
+							       key_slices, i,
+							       slice);
 				return row;
 			}
 		}
@@ -528,11 +520,10 @@ cfa_tcam_mgr_empty_row_alloc(int sess_idx, struct cfa_tcam_mgr_context *context,
 		for (i = start_row; i <= end_row; i++) {
 			row = cfa_tcam_mgr_row_ptr_get(tcam_rows, i, row_size);
 			if (!ROW_INUSE(row)) {
-				cfa_tcam_mgr_row_entry_install(sess_idx,
+				cfa_tcam_mgr_row_entry_install(tfp,
 							       row, parms,
-							       entry,
-							       id, key_slices,
-							       i,
+							       entry, id,
+							       key_slices, i,
 							 TF_TCAM_SLICE_INVALID);
 				return row;
 			}
@@ -572,7 +563,7 @@ cfa_tcam_mgr_empty_row_alloc(int sess_idx, struct cfa_tcam_mgr_context *context,
 		 * just install new entry in empty_row.
 		 */
 		row = cfa_tcam_mgr_row_ptr_get(tcam_rows, empty_row, row_size);
-		cfa_tcam_mgr_row_entry_install(sess_idx, row, parms, entry, id,
+		cfa_tcam_mgr_row_entry_install(tfp, row, parms, entry, id,
 					       key_slices, empty_row,
 					       TF_TCAM_SLICE_INVALID);
 		return row;
@@ -596,15 +587,19 @@ cfa_tcam_mgr_empty_row_alloc(int sess_idx, struct cfa_tcam_mgr_context *context,
 			from_row_idx = i;
 			from_row = row;
 		}
-		cfa_tcam_mgr_row_move(sess_idx, context, parms->dir, parms->type,
+		cfa_tcam_mgr_row_move(tcam_mgr_data, tfp, parms->dir,
+				      parms->type,
 				      table_data, to_row_idx, to_row,
 				      from_row_idx, from_row);
+		PMD_DRV_LOG_LINE(INFO, "Moved row %d to row %d.",
+				 from_row_idx, to_row_idx);
+
 		to_row = from_row;
 		to_row_idx = from_row_idx;
 	}
 	to_row = cfa_tcam_mgr_row_ptr_get(tcam_rows, target_row, row_size);
 	memset(to_row, 0, row_size);
-	cfa_tcam_mgr_row_entry_install(sess_idx, to_row, parms, entry, id,
+	cfa_tcam_mgr_row_entry_install(tfp, to_row, parms, entry, id,
 				       key_slices, target_row,
 				       TF_TCAM_SLICE_INVALID);
 
@@ -616,24 +611,26 @@ cfa_tcam_mgr_empty_row_alloc(int sess_idx, struct cfa_tcam_mgr_context *context,
  * used necessary for the entries that are installed.
  */
 static void
-cfa_tcam_mgr_rows_combine(int sess_idx, struct cfa_tcam_mgr_context *context,
+cfa_tcam_mgr_rows_combine(struct cfa_tcam_mgr_data *tcam_mgr_data,
+			  struct tf *tfp,
 			  struct cfa_tcam_mgr_free_parms *parms,
 			  struct cfa_tcam_mgr_table_data *table_data,
 			  int changed_row_index)
 {
-	struct cfa_tcam_mgr_table_rows_0 *from_row = NULL;
-	struct cfa_tcam_mgr_table_rows_0 *to_row;
-	struct cfa_tcam_mgr_table_rows_0 *tcam_rows;
-	int  i, j, row_size;
 	int  to_row_idx, from_row_idx, start_row, end_row, max_slices;
+	struct cfa_tcam_mgr_table_rows_0 *from_row = NULL;
+	struct cfa_tcam_mgr_table_rows_0 *tcam_rows;
+	struct cfa_tcam_mgr_table_rows_0 *to_row;
 	bool entry_moved = false;
+	int  i, j, row_size;
 
 	start_row  = table_data->start_row;
 	end_row	   = table_data->end_row;
 	max_slices = table_data->max_slices;
 	tcam_rows  = table_data->tcam_rows;
 
-	row_size   = cfa_tcam_mgr_row_size_get(sess_idx, parms->dir, parms->type);
+	row_size   = cfa_tcam_mgr_row_size_get(tcam_mgr_data, parms->dir,
+					       parms->type);
 
 	from_row_idx = changed_row_index;
 	from_row = cfa_tcam_mgr_row_ptr_get(tcam_rows, from_row_idx, row_size);
@@ -667,8 +664,8 @@ cfa_tcam_mgr_rows_combine(int sess_idx, struct cfa_tcam_mgr_context *context,
 				     j++) {
 					if (!ROW_ENTRY_INUSE(to_row, j)) {
 						cfa_tcam_mgr_entry_move
-							(sess_idx,
-							 context,
+							(tcam_mgr_data,
+							 tfp,
 							 parms->dir,
 							 parms->type,
 							 from_row->entries[i],
@@ -685,6 +682,27 @@ cfa_tcam_mgr_rows_combine(int sess_idx, struct cfa_tcam_mgr_context *context,
 				if (entry_moved)
 					break;
 			}
+
+#ifdef TF_FLOW_SCALE_QUERY
+			/* CFA update usage state when moved entries */
+			if (entry_moved) {
+				if (tf_tcam_usage_update(tfp,
+							 parms->dir,
+							 parms->type,
+							 to_row,
+							 TF_RESC_ALLOC)) {
+					PMD_DRV_LOG_LINE(DEBUG, "TF tcam usage update failed");
+				}
+				if (tf_tcam_usage_update(tfp,
+							 parms->dir,
+							 parms->type,
+							 from_row,
+							 TF_RESC_FREE)) {
+					PMD_DRV_LOG_LINE(DEBUG, "TF tcam usage update failed");
+				}
+			}
+#endif /* TF_FLOW_SCALE_QUERY */
+
 			if (ROW_INUSE(from_row))
 				entry_moved = false;
 			else
@@ -695,29 +713,28 @@ cfa_tcam_mgr_rows_combine(int sess_idx, struct cfa_tcam_mgr_context *context,
 
 /*
  * This function will ensure that all rows, except those of the highest
- * priority, at the end of the table.  When this function is finished, all the
+ * priority, are at the end of the table.  When this function is finished, all
  * empty rows should be between the highest priority rows at the beginning of
  * the table and the rest of the rows with lower priorities.
- */
-/*
- * Will need to free the row left newly empty as a result of moving.
  *
+ * Will need to free the row left newly empty as a result of moving.
  * Return row to free to caller.  If new_row_to_free < 0, then no new row to
  * free.
  */
 static void
-cfa_tcam_mgr_rows_compact(int sess_idx, struct cfa_tcam_mgr_context *context,
+cfa_tcam_mgr_rows_compact(struct cfa_tcam_mgr_data *tcam_mgr_data,
+			  struct tf *tfp,
 			  struct cfa_tcam_mgr_free_parms *parms,
 			  struct cfa_tcam_mgr_table_data *table_data,
 			  int *new_row_to_free,
 			  int changed_row_index)
 {
+	int  to_row_idx = 0, from_row_idx = 0, start_row = 0, end_row = 0;
 	struct cfa_tcam_mgr_table_rows_0 *from_row = NULL;
+	struct cfa_tcam_mgr_table_rows_0 *tcam_rows;
 	struct cfa_tcam_mgr_table_rows_0 *to_row;
 	struct cfa_tcam_mgr_table_rows_0 *row;
-	struct cfa_tcam_mgr_table_rows_0 *tcam_rows;
 	int  i, row_size, priority;
-	int  to_row_idx = 0, from_row_idx = 0, start_row = 0, end_row = 0;
 
 	*new_row_to_free = -1;
 
@@ -725,7 +742,8 @@ cfa_tcam_mgr_rows_compact(int sess_idx, struct cfa_tcam_mgr_context *context,
 	end_row	   = table_data->end_row;
 	tcam_rows  = table_data->tcam_rows;
 
-	row_size   = cfa_tcam_mgr_row_size_get(sess_idx, parms->dir, parms->type);
+	row_size   = cfa_tcam_mgr_row_size_get(tcam_mgr_data, parms->dir,
+					       parms->type);
 
 	/*
 	 * The row is no longer in use, so see if rows need to be moved in order
@@ -779,14 +797,21 @@ cfa_tcam_mgr_rows_compact(int sess_idx, struct cfa_tcam_mgr_context *context,
 				 * to fill the newly empty (by free or by move)
 				 * row.
 				 */
-				if (from_row != NULL) {
-					cfa_tcam_mgr_row_move(sess_idx, context,
+				if (from_row) {
+					cfa_tcam_mgr_row_move(tcam_mgr_data,
+							      tfp,
 							      parms->dir,
 							      parms->type,
 							      table_data,
-							     to_row_idx, to_row,
+							      to_row_idx,
+							      to_row,
 							      from_row_idx,
 							      from_row);
+					PMD_DRV_LOG_LINE(INFO,
+							 "Moved row %d "
+							 "to row %d.",
+							 from_row_idx,
+							 to_row_idx);
 					*new_row_to_free = from_row_idx;
 					to_row	   = from_row;
 					to_row_idx = from_row_idx;
@@ -799,11 +824,12 @@ cfa_tcam_mgr_rows_compact(int sess_idx, struct cfa_tcam_mgr_context *context,
 		}
 	}
 
-	if (from_row != NULL) {
-		cfa_tcam_mgr_row_move(sess_idx, context, parms->dir, parms->type,
-				      table_data,
-				      to_row_idx, to_row,
-				      from_row_idx, from_row);
+	if (from_row) {
+		cfa_tcam_mgr_row_move(tcam_mgr_data, tfp, parms->dir,
+				      parms->type, table_data, to_row_idx,
+				      to_row, from_row_idx, from_row);
+		PMD_DRV_LOG_LINE(INFO, "Moved row %d to row %d.",
+				 from_row_idx, to_row_idx);
 		*new_row_to_free = from_row_idx;
 	}
 }
@@ -812,46 +838,51 @@ cfa_tcam_mgr_rows_compact(int sess_idx, struct cfa_tcam_mgr_context *context,
  * This function is to set table limits for the logical TCAM tables.
  */
 static int
-cfa_tcam_mgr_table_limits_set(int sess_idx, struct cfa_tcam_mgr_init_parms *parms)
+cfa_tcam_mgr_table_limits_set(struct cfa_tcam_mgr_data *tcam_mgr_data,
+			      struct cfa_tcam_mgr_init_parms *parms)
 {
 	struct cfa_tcam_mgr_table_data *table_data;
 	unsigned int dir, type;
 	int start, stride;
 
-	if (parms == NULL)
+	if (!parms)
 		return 0;
 
-	for (dir = 0; dir < ARRAY_SIZE(cfa_tcam_mgr_tables[sess_idx]); dir++)
+	for (dir = 0; dir < ARRAY_SIZE(tcam_mgr_data->cfa_tcam_mgr_tables);
+	     dir++)
 		for (type = 0;
-		     type < ARRAY_SIZE(cfa_tcam_mgr_tables[sess_idx][dir]);
+		     type <
+			ARRAY_SIZE(tcam_mgr_data->cfa_tcam_mgr_tables[dir]);
 		     type++) {
-			table_data = &cfa_tcam_mgr_tables[sess_idx][dir][type];
+			table_data =
+				&tcam_mgr_data->cfa_tcam_mgr_tables[dir][type];
 			/*
 			 * If num_rows is zero, then TCAM Manager did not
 			 * allocate any row storage for that table so cannot
 			 * manage it.
 			 */
-			if (table_data->num_rows == 0)
+			if (!table_data->num_rows)
 				continue;
 			start  = parms->resc[dir][type].start;
 			stride = parms->resc[dir][type].stride;
 			if (start % table_data->max_slices > 0) {
 				CFA_TCAM_MGR_LOG_DIR_TYPE(ERR, dir, type,
-							  "Start of resources (%d) for table (%d) "
-							  "does not begin on row boundary.\n",
-							  start, sess_idx);
+							  "Start of resources"
+							  " (%d) does not begin"
+							  " on row boundary.\n",
+							  start);
 				CFA_TCAM_MGR_LOG_DIR(ERR, dir,
-						     "Start is %d, number of slices "
-						     "is %d.\n",
+						     "Start is %d, number of"
+						     " slices is %d.\n",
 						     start,
 						     table_data->max_slices);
 				return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 			}
 			if (stride % table_data->max_slices > 0) {
 				CFA_TCAM_MGR_LOG_DIR_TYPE(ERR, dir, type,
-							  "Stride of resources (%d) for table (%d)"
+							  "Stride of resources (%d) "
 							  " does not end on row boundary.\n",
-							  stride, sess_idx);
+							  stride);
 				CFA_TCAM_MGR_LOG_DIR(ERR, dir,
 						     "Stride is %d, number of "
 						     "slices is %d.\n",
@@ -859,7 +890,7 @@ cfa_tcam_mgr_table_limits_set(int sess_idx, struct cfa_tcam_mgr_init_parms *parm
 						     table_data->max_slices);
 				return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 			}
-			if (stride == 0) {
+			if (!stride) {
 				table_data->start_row	= 0;
 				table_data->end_row	= 0;
 				table_data->max_entries = 0;
@@ -878,48 +909,117 @@ cfa_tcam_mgr_table_limits_set(int sess_idx, struct cfa_tcam_mgr_init_parms *parm
 	return 0;
 }
 
+static int
+cfa_tcam_mgr_bitmap_alloc(struct tf *tfp __rte_unused,
+			  struct cfa_tcam_mgr_data *tcam_mgr_data)
+{
+	struct tfp_calloc_parms cparms;
+	uint64_t logical_id_bmp_size;
+	struct bitalloc *logical_id_bmp;
+	int max_entries;
+	int rc;
+
+	if (!tcam_mgr_data->cfa_tcam_mgr_max_entries)
+		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
+
+	max_entries = tcam_mgr_data->cfa_tcam_mgr_max_entries;
+	logical_id_bmp_size = (sizeof(uint64_t) *
+				(((max_entries - 1) / sizeof(uint64_t)) + 1));
+
+	cparms.nitems = 1;
+	cparms.size = logical_id_bmp_size;
+	cparms.alignment = 0;
+	rc = tfp_calloc(&cparms);
+	if (rc) {
+		/* Log error */
+		TFP_DRV_LOG(ERR,
+			    "Failed to allocate session bmp, rc:%s\n",
+			    strerror(-rc));
+		return -CFA_TCAM_MGR_ERR_CODE(NOMEM);
+	}
+
+	logical_id_bmp = (struct bitalloc *)cparms.mem_va;
+	rc = ba_init(logical_id_bmp, max_entries, true);
+
+	tcam_mgr_data->logical_id_bmp = logical_id_bmp;
+	tcam_mgr_data->logical_id_bmp_size = max_entries;
+
+	TFP_DRV_LOG(DEBUG,
+		    "session bitmap size is %" PRIX64 "\n",
+		    tcam_mgr_data->logical_id_bmp_size);
+
+	return 0;
+}
+
+static void
+cfa_tcam_mgr_uninit(struct tf *tfp,
+				enum cfa_tcam_mgr_device_type type)
+{
+	switch (type) {
+	case CFA_TCAM_MGR_DEVICE_TYPE_P4:
+		cfa_tcam_mgr_uninit_p4(tfp);
+		break;
+	case CFA_TCAM_MGR_DEVICE_TYPE_P5:
+		cfa_tcam_mgr_uninit_p58(tfp);
+		break;
+	default:
+		CFA_TCAM_MGR_LOG(ERR, "No such device %d\n", type);
+		return;
+	}
+}
+
 int
-cfa_tcam_mgr_init(int sess_idx, enum cfa_tcam_mgr_device_type type,
+cfa_tcam_mgr_init(struct tf *tfp, enum cfa_tcam_mgr_device_type type,
 		  struct cfa_tcam_mgr_init_parms *parms)
 {
 	struct cfa_tcam_mgr_table_data *table_data;
+	struct cfa_tcam_mgr_data *tcam_mgr_data;
 	unsigned int dir, tbl_type;
+	struct tf_session *tfs;
 	int rc;
+
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
 
 	switch (type) {
 	case CFA_TCAM_MGR_DEVICE_TYPE_P4:
-	case CFA_TCAM_MGR_DEVICE_TYPE_SR:
-		rc = cfa_tcam_mgr_init_p4(sess_idx, &entry_data[sess_idx]);
+		rc = cfa_tcam_mgr_init_p4(tfp);
 		break;
 	case CFA_TCAM_MGR_DEVICE_TYPE_P5:
-		rc = cfa_tcam_mgr_init_p58(sess_idx, &entry_data[sess_idx]);
+		rc = cfa_tcam_mgr_init_p58(tfp);
 		break;
 	default:
-		CFA_TCAM_MGR_LOG(ERR, "No such device %d for sess_idx %d\n",
-				 type, sess_idx);
+		CFA_TCAM_MGR_LOG(ERR, "No such device %d\n", type);
 		return -CFA_TCAM_MGR_ERR_CODE(NODEV);
 	}
-	if (rc < 0)
+	if (rc)
 		return rc;
 
-	rc = cfa_tcam_mgr_table_limits_set(sess_idx, parms);
-	if (rc < 0)
+	tcam_mgr_data = tfs->tcam_mgr_handle;
+	rc = cfa_tcam_mgr_table_limits_set(tcam_mgr_data, parms);
+	if (rc)
 		return rc;
 
 	/* Now calculate the max entries per table and global max entries based
 	 * on the updated table limits.
 	 */
-	for (dir = 0; dir < ARRAY_SIZE(cfa_tcam_mgr_tables[sess_idx]); dir++)
+	tcam_mgr_data->cfa_tcam_mgr_max_entries = 0;
+	for (dir = 0; dir < ARRAY_SIZE(tcam_mgr_data->cfa_tcam_mgr_tables);
+	     dir++)
 		for (tbl_type = 0;
-		     tbl_type < ARRAY_SIZE(cfa_tcam_mgr_tables[sess_idx][dir]);
+		     tbl_type <
+			ARRAY_SIZE(tcam_mgr_data->cfa_tcam_mgr_tables[dir]);
 		     tbl_type++) {
-			table_data = &cfa_tcam_mgr_tables[sess_idx][dir][tbl_type];
+			table_data =
+				&tcam_mgr_data->cfa_tcam_mgr_tables[dir]
+								[tbl_type];
 			/*
 			 * If num_rows is zero, then TCAM Manager did not
 			 * allocate any row storage for that table so cannot
 			 * manage it.
 			 */
-			if (table_data->num_rows == 0) {
+			if (!table_data->num_rows) {
 				table_data->start_row = 0;
 				table_data->end_row = 0;
 				table_data->max_entries = 0;
@@ -927,14 +1027,13 @@ cfa_tcam_mgr_init(int sess_idx, enum cfa_tcam_mgr_device_type type,
 				   table_data->num_rows) {
 				CFA_TCAM_MGR_LOG_DIR_TYPE(EMERG, dir, tbl_type,
 							  "End row is out of "
-							  "range (%d >= %d) for sess_idx %d\n",
+							  "range (%d >= %d)\n",
 							  table_data->end_row,
-							  table_data->num_rows,
-							  sess_idx);
+							  table_data->num_rows);
 				return -CFA_TCAM_MGR_ERR_CODE(FAULT);
-			} else if (table_data->max_entries == 0 &&
-				   table_data->start_row == 0 &&
-				   table_data->end_row == 0) {
+			} else if (!table_data->max_entries &&
+				   !table_data->start_row &&
+				   !table_data->end_row) {
 				/* Nothing to do */
 			} else {
 				table_data->max_entries =
@@ -942,68 +1041,96 @@ cfa_tcam_mgr_init(int sess_idx, enum cfa_tcam_mgr_device_type type,
 					(table_data->end_row -
 					 table_data->start_row + 1);
 			}
-			cfa_tcam_mgr_max_entries[sess_idx] += table_data->max_entries;
+			tcam_mgr_data->cfa_tcam_mgr_max_entries +=
+				table_data->max_entries;
 		}
 
-	rc = cfa_tcam_mgr_hwops_init(type);
-	if (rc < 0)
+	rc = cfa_tcam_mgr_hwops_init(tcam_mgr_data, type);
+	if (rc)
 		return rc;
 
-	rc = cfa_tcam_mgr_session_init(sess_idx, type);
-	if (rc < 0)
+	rc = cfa_tcam_mgr_bitmap_alloc(tfp, tcam_mgr_data);
+	if (rc)
 		return rc;
 
-	global_data_initialized[sess_idx] = 1;
+	if (parms)
+		parms->max_entries = tcam_mgr_data->cfa_tcam_mgr_max_entries;
 
-	if (parms != NULL)
-		parms->max_entries = cfa_tcam_mgr_max_entries[sess_idx];
-
-	CFA_TCAM_MGR_LOG(INFO, "Global TCAM table initialized for sess_idx %d.\n",
-			 sess_idx);
+	PMD_DRV_LOG_LINE(DEBUG,
+			 "Global TCAM tbl initialized max entries %d",
+			 tcam_mgr_data->cfa_tcam_mgr_max_entries);
 
 	return 0;
 }
 
-int
-cfa_tcam_mgr_qcaps(struct cfa_tcam_mgr_context *context __rte_unused,
-		   struct cfa_tcam_mgr_qcaps_parms *parms)
+static
+int cfa_tcam_mgr_validate_tcam_cnt(struct tf *tfp  __rte_unused,
+				   struct cfa_tcam_mgr_data *tcam_mgr_data,
+				   uint16_t tcam_cnt[]
+						[CFA_TCAM_MGR_TBL_TYPE_MAX])
 {
-	unsigned int type;
-	int rc, sess_idx;
-	uint32_t session_id;
+	struct cfa_tcam_mgr_table_data *table_data;
+	unsigned int dir, type;
+	uint16_t requested_cnt;
 
-	CFA_TCAM_MGR_CHECK_PARMS2(context, parms);
+	/* Validate session request */
+	for (dir = 0; dir < ARRAY_SIZE(tcam_mgr_data->cfa_tcam_mgr_tables);
+			dir++) {
+		for (type = 0;
+		     type < ARRAY_SIZE(tcam_mgr_data->cfa_tcam_mgr_tables[dir]);
+		     type++) {
+			table_data =
+				&tcam_mgr_data->cfa_tcam_mgr_tables[dir][type];
+			requested_cnt = tcam_cnt[dir][type];
+			/* Only check if table supported (max_entries > 0). */
+			if (table_data->max_entries > 0 &&
+			    requested_cnt > table_data->max_entries) {
+				PMD_DRV_LOG_LINE(ERR,
+						 "%s: %s Requested %d, available %d",
+						 tf_dir_2_str(dir),
+						 cfa_tcam_mgr_tbl_2_str(type),
+						 requested_cnt,
+						 table_data->max_entries);
+				return -CFA_TCAM_MGR_ERR_CODE(NOSPC);
+			}
+		}
+	}
 
-	rc = cfa_tcam_mgr_get_session_from_context(context, &session_id);
-	if (rc < 0)
+	return 0;
+}
+
+static int cfa_tcam_mgr_free_entries(struct tf *tfp)
+{
+	struct cfa_tcam_mgr_free_parms free_parms;
+	struct cfa_tcam_mgr_data *tcam_mgr_data;
+	struct tf_session *tfs;
+	int entry_id = 0;
+	int rc = 0;
+
+	PMD_DRV_LOG_LINE(DEBUG, "Unbinding session");
+
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
 		return rc;
 
-	sess_idx = cfa_tcam_mgr_session_find(session_id);
-	if (sess_idx < 0) {
-		CFA_TCAM_MGR_LOG_0(ERR, "Session not found.\n");
-		return sess_idx;
-	}
-
-	if (global_data_initialized[sess_idx] == 0) {
-		CFA_TCAM_MGR_LOG(ERR, "PANIC: No TCAM data created for sess_idx %d\n",
-				 sess_idx);
-		return -CFA_TCAM_MGR_ERR_CODE(PERM);
-	}
+	tcam_mgr_data = tfs->tcam_mgr_handle;
+	memset(&free_parms, 0, sizeof(free_parms));
 
 	/*
-	 * This code will indicate if TCAM Manager is managing a logical TCAM
-	 * table or not.  If not, then the physical TCAM will have to be
-	 * accessed using the traditional methods.
+	 * Since we are freeing all pending TCAM entries (which is typically
+	 * done during tcam_unbind), we don't know the type of each entry.
+	 * So we set the type to MAX as a hint to cfa_tcam_mgr_free() to
+	 * figure out the actual type. We need to set it through each
+	 * iteration in the loop below; otherwise, the type determined for
+	 * the first entry would be used for subsequent entries that may or
+	 * may not be of the same type, resulting in errors.
 	 */
-	parms->rx_tcam_supported = 0;
-	parms->tx_tcam_supported = 0;
-	for (type = 0; type < CFA_TCAM_MGR_TBL_TYPE_MAX; type++) {
-		if (cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX][type].max_entries > 0 &&
-		    cfa_tcam_mgr_tables[sess_idx][TF_DIR_RX][type].hcapi_type > 0)
-			parms->rx_tcam_supported |= 1 << cfa_tcam_mgr_get_phys_table_type(type);
-		if (cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX][type].max_entries > 0 &&
-		    cfa_tcam_mgr_tables[sess_idx][TF_DIR_TX][type].hcapi_type > 0)
-			parms->tx_tcam_supported |= 1 << cfa_tcam_mgr_get_phys_table_type(type);
+
+	while ((entry_id = ba_find_next_inuse_free(tcam_mgr_data->logical_id_bmp,
+						   0)) >= 0) {
+		free_parms.id = entry_id;
+		free_parms.type = CFA_TCAM_MGR_TBL_TYPE_MAX;
+		cfa_tcam_mgr_free(tfp, &free_parms);
 	}
 
 	return 0;
@@ -1014,7 +1141,7 @@ cfa_tcam_mgr_qcaps(struct cfa_tcam_mgr_context *context __rte_unused,
  * and also update the sizes in the tcam count array
  */
 static int
-cfa_tcam_mgr_shared_wc_bind(uint32_t sess_idx, bool dual_ha_app,
+cfa_tcam_mgr_shared_wc_bind(struct tf *tfp, bool dual_ha_app,
 			    uint16_t tcam_cnt[][CFA_TCAM_MGR_TBL_TYPE_MAX])
 {
 	uint16_t start_row, end_row, max_entries, slices;
@@ -1023,39 +1150,42 @@ cfa_tcam_mgr_shared_wc_bind(uint32_t sess_idx, bool dual_ha_app,
 	int rc;
 
 	for (dir = 0; dir < TF_DIR_MAX; dir++) {
-		rc = cfa_tcam_mgr_tables_get(sess_idx, dir,
-					     CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS,
-					     &start_row, &end_row, &max_entries, &slices);
+		rc = cfa_tcam_mgr_tables_get(tfp, dir,
+					     CFA_TCAM_MGR_TBL_TYPE_WC_TCAM,
+					     &start_row, &end_row, &max_entries,
+					     &slices);
 		if (rc)
 			return rc;
 		if (max_entries) {
-			rc = cfa_tcam_mgr_tables_set(sess_idx, dir,
-						     CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS,
+			rc = cfa_tcam_mgr_tables_set(tfp, dir,
+					     CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH,
 						     start_row,
 						     start_row +
-						     ((max_entries / slices) / num_pools) - 1,
+						     ((max_entries / slices) /
+						     num_pools) - 1,
 						     max_entries / num_pools);
 			if (rc)
 				return rc;
-			rc = cfa_tcam_mgr_tables_set(sess_idx, dir,
-						     CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS,
+			rc = cfa_tcam_mgr_tables_set(tfp, dir,
+					      CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW,
 						     start_row +
-						     ((max_entries / slices) / num_pools),
+						     ((max_entries / slices) /
+						     num_pools),
 						     start_row +
 						     (max_entries / slices) - 1,
 						     max_entries / num_pools);
 			if (rc)
 				return rc;
-			rc = cfa_tcam_mgr_tables_set(sess_idx, dir,
-						     CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS,
+			rc = cfa_tcam_mgr_tables_set(tfp, dir,
+						  CFA_TCAM_MGR_TBL_TYPE_WC_TCAM,
 						     0, 0, 0);
 			if (rc)
 				return rc;
-			tcam_cnt[dir][CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS] =
+			tcam_cnt[dir][CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH] =
 				max_entries / num_pools;
-			tcam_cnt[dir][CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS] =
+			tcam_cnt[dir][CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW] =
 				max_entries / num_pools;
-			tcam_cnt[dir][CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS] = 0;
+			tcam_cnt[dir][CFA_TCAM_MGR_TBL_TYPE_WC_TCAM] = 0;
 		}
 	}
 
@@ -1063,24 +1193,24 @@ cfa_tcam_mgr_shared_wc_bind(uint32_t sess_idx, bool dual_ha_app,
 }
 
 int
-cfa_tcam_mgr_bind(struct cfa_tcam_mgr_context *context,
+cfa_tcam_mgr_bind(struct tf *tfp,
 		  struct cfa_tcam_mgr_cfg_parms *parms)
 {
-	struct cfa_tcam_mgr_table_data   *table_data;
-	struct tf_dev_info *dev;
-	unsigned int dir;
-	int rc, sess_idx;
-	uint32_t session_id;
-	struct tf_session *tfs;
-	unsigned int type;
-	int prev_max_entries;
-	int start, stride;
+	struct cfa_tcam_mgr_table_data *table_data;
 	enum cfa_tcam_mgr_device_type device_type;
+	struct cfa_tcam_mgr_data *tcam_mgr_data;
+	struct tf_dev_info *dev;
+	struct tf_session *tfs;
+	int prev_max_entries;
+	unsigned int type;
+	int start, stride;
+	unsigned int dir;
+	int rc;
 
-	CFA_TCAM_MGR_CHECK_PARMS2(context, parms);
+	CFA_TCAM_MGR_CHECK_PARMS2(tfp, parms);
 
 	/* Retrieve the session information */
-	rc = tf_session_get_session_internal(context->tfp, &tfs);
+	rc = tf_session_get_session_internal(tfp, &tfs);
 	if (rc)
 		return rc;
 
@@ -1093,9 +1223,6 @@ cfa_tcam_mgr_bind(struct cfa_tcam_mgr_context *context,
 	case TF_DEVICE_TYPE_P4:
 		device_type = CFA_TCAM_MGR_DEVICE_TYPE_P4;
 		break;
-	case TF_DEVICE_TYPE_SR:
-		device_type = CFA_TCAM_MGR_DEVICE_TYPE_SR;
-		break;
 	case TF_DEVICE_TYPE_P5:
 		device_type = CFA_TCAM_MGR_DEVICE_TYPE_P5;
 		break;
@@ -1104,27 +1231,21 @@ cfa_tcam_mgr_bind(struct cfa_tcam_mgr_context *context,
 		return -CFA_TCAM_MGR_ERR_CODE(NODEV);
 	}
 
-	rc = cfa_tcam_mgr_get_session_from_context(context, &session_id);
-	if (rc < 0)
-		return rc;
-
-	sess_idx = cfa_tcam_mgr_session_add(session_id);
-	if (sess_idx < 0)
-		return sess_idx;
-
-	if (global_data_initialized[sess_idx] == 0) {
-		rc = cfa_tcam_mgr_init(sess_idx, device_type, NULL);
-		if (rc < 0)
+	tcam_mgr_data = tfs->tcam_mgr_handle;
+	if (!tcam_mgr_data) {
+		rc = cfa_tcam_mgr_init(tfp, device_type, NULL);
+		if (rc)
 			return rc;
+		tcam_mgr_data = tfs->tcam_mgr_handle;
 	}
 
-	if (parms->num_elements != ARRAY_SIZE(cfa_tcam_mgr_tables[sess_idx][dir])) {
+	if (parms->num_elements !=
+		ARRAY_SIZE(tcam_mgr_data->cfa_tcam_mgr_tables[dir])) {
 		CFA_TCAM_MGR_LOG(ERR,
 				 "Session element count (%d) differs "
-				 "from table count (%zu) for sess_idx %d.\n",
+				 "from table count (%zu)\n",
 				 parms->num_elements,
-				 ARRAY_SIZE(cfa_tcam_mgr_tables[sess_idx][dir]),
-				 sess_idx);
+			ARRAY_SIZE(tcam_mgr_data->cfa_tcam_mgr_tables[dir]));
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 	}
 
@@ -1132,48 +1253,51 @@ cfa_tcam_mgr_bind(struct cfa_tcam_mgr_context *context,
 	 * Only managing one session. resv_res contains the resources allocated
 	 * to this session by the resource manager.  Update the limits on TCAMs.
 	 */
-	for (dir = 0; dir < ARRAY_SIZE(cfa_tcam_mgr_tables[sess_idx]); dir++) {
+	for (dir = 0; dir < ARRAY_SIZE(tcam_mgr_data->cfa_tcam_mgr_tables);
+		dir++) {
 		for (type = 0;
-		     type < ARRAY_SIZE(cfa_tcam_mgr_tables[sess_idx][dir]);
+		     type <
+			ARRAY_SIZE(tcam_mgr_data->cfa_tcam_mgr_tables[dir]);
 		     type++) {
-			table_data = &cfa_tcam_mgr_tables[sess_idx][dir][type];
+			table_data =
+				&tcam_mgr_data->cfa_tcam_mgr_tables[dir][type];
 			prev_max_entries = table_data->max_entries;
 			/*
 			 * In AFM logical tables, max_entries is initialized to
 			 * zero.  These logical tables are not used when TCAM
 			 * Manager is in the core so skip.
 			 */
-			if (prev_max_entries == 0)
+			if (!prev_max_entries)
 				continue;
 			start  = parms->resv_res[dir][type].start;
 			stride = parms->resv_res[dir][type].stride;
 			if (start % table_data->max_slices > 0) {
 				CFA_TCAM_MGR_LOG_DIR_TYPE(ERR, dir, type,
-					 "Start of resources (%d) for table(%d) "
-					 "does not begin on row boundary.\n",
-					 start, sess_idx);
+					 "%s: %s Resource:%d not row bounded\n",
+					 tf_dir_2_str(dir),
+					 cfa_tcam_mgr_tbl_2_str(type),
+					 start);
 				CFA_TCAM_MGR_LOG_DIR(ERR, dir,
-					    "Start is %d, number of slices "
-					    "is %d.\n",
-					    start,
+					    "%s: Start:%d, num slices:%d\n",
+					    tf_dir_2_str(dir), start,
 					    table_data->max_slices);
-				(void)cfa_tcam_mgr_session_free(session_id, context);
+				cfa_tcam_mgr_free_entries(tfp);
 				return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 			}
 			if (stride % table_data->max_slices > 0) {
 				CFA_TCAM_MGR_LOG_DIR_TYPE(ERR, dir, type,
-					   "Stride of resources (%d) for table(%d) "
-					   "does not end on row boundary.\n",
-					   stride, sess_idx);
+					   "%s: %s Resource:%d not row bound\n",
+					   tf_dir_2_str(dir),
+					   cfa_tcam_mgr_tbl_2_str(type),
+					   stride);
 				CFA_TCAM_MGR_LOG_DIR(ERR, dir,
-					    "Stride is %d, number of "
-					    "slices is %d.\n",
-					    stride,
+					    "%s: Stride:%d num slices:%d\n",
+					    tf_dir_2_str(dir), stride,
 					    table_data->max_slices);
-				(void)cfa_tcam_mgr_session_free(session_id, context);
+				cfa_tcam_mgr_free_entries(tfp);
 				return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 			}
-			if (stride == 0) {
+			if (!stride) {
 				table_data->start_row	= 0;
 				table_data->end_row	= 0;
 				table_data->max_entries = 0;
@@ -1187,71 +1311,137 @@ cfa_tcam_mgr_bind(struct cfa_tcam_mgr_context *context,
 					(table_data->end_row -
 					 table_data->start_row + 1);
 			}
-			cfa_tcam_mgr_max_entries[sess_idx] += (table_data->max_entries -
-						     prev_max_entries);
+			tcam_mgr_data->cfa_tcam_mgr_max_entries +=
+				(table_data->max_entries - prev_max_entries);
 		}
 	}
 
+	PMD_DRV_LOG_LINE(DEBUG, "TCAM table bind for max entries %d.",
+			 tcam_mgr_data->cfa_tcam_mgr_max_entries);
+
 	if (tf_session_is_shared_hotup_session(tfs)) {
-		rc = cfa_tcam_mgr_shared_wc_bind(sess_idx, false, parms->tcam_cnt);
+		rc = cfa_tcam_mgr_shared_wc_bind(tfp, false,
+						 parms->tcam_cnt);
 		if (rc) {
-			(void)cfa_tcam_mgr_session_free(session_id, context);
+			cfa_tcam_mgr_free_entries(tfp);
 			return rc;
 		}
 	}
 
-	rc = cfa_tcam_mgr_session_cfg(session_id, parms->tcam_cnt);
-	if (rc < 0) {
-		(void)cfa_tcam_mgr_session_free(session_id, context);
+	rc = cfa_tcam_mgr_validate_tcam_cnt(tfp, tcam_mgr_data,
+					    parms->tcam_cnt);
+	if (rc) {
+		cfa_tcam_mgr_free_entries(tfp);
 		return rc;
 	}
+
+#ifdef TF_FLOW_SCALE_QUERY
+	/* Initialize the WC TCAM usage state */
+	tf_tcam_usage_init(tfp);
+#endif /* TF_FLOW_SCALE_QUERY */
 
 	return 0;
 }
 
 int
-cfa_tcam_mgr_unbind(struct cfa_tcam_mgr_context *context)
+cfa_tcam_mgr_unbind(struct tf *tfp)
 {
-	int rc, sess_idx;
-	uint32_t session_id;
+	enum cfa_tcam_mgr_device_type device_type;
+	struct cfa_tcam_mgr_data *tcam_mgr_data;
+	struct tf_dev_info *dev;
+	struct tf_session *tfs;
+	int rc;
 
-	CFA_TCAM_MGR_CHECK_PARMS1(context);
+	CFA_TCAM_MGR_CHECK_PARMS1(tfp);
 
-	rc = cfa_tcam_mgr_get_session_from_context(context, &session_id);
-	if (rc < 0)
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
 		return rc;
 
-	sess_idx = cfa_tcam_mgr_session_find(session_id);
-	if (sess_idx < 0) {
-		CFA_TCAM_MGR_LOG_0(ERR, "Session not found.\n");
-		return sess_idx;
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc)
+		return rc;
+
+	switch (dev->type) {
+	case TF_DEVICE_TYPE_P4:
+		device_type = CFA_TCAM_MGR_DEVICE_TYPE_P4;
+		break;
+	case TF_DEVICE_TYPE_P5:
+		device_type = CFA_TCAM_MGR_DEVICE_TYPE_P5;
+		break;
+	default:
+		PMD_DRV_LOG_LINE(DEBUG,
+				 "TF tcam get dev type failed");
+		return -CFA_TCAM_MGR_ERR_CODE(NODEV);
 	}
 
-	if (global_data_initialized[sess_idx] == 0) {
-		CFA_TCAM_MGR_LOG(INFO, "PANIC: No TCAM data created for sess_idx %d\n",
-				 sess_idx);
+	tcam_mgr_data = tfs->tcam_mgr_handle;
+	if (!tcam_mgr_data) {
+		PMD_DRV_LOG_LINE(ERR,
+				 "No TCAM data created for session");
 		return -CFA_TCAM_MGR_ERR_CODE(PERM);
 	}
 
-	(void)cfa_tcam_mgr_session_free(session_id, context);
+	cfa_tcam_mgr_free_entries(tfp);
+	cfa_tcam_mgr_uninit(tfp, device_type);
 
-	global_data_initialized[sess_idx] = 0;
+	return 0;
+}
+
+static int cfa_tcam_mgr_alloc_entry(struct tf *tfp __rte_unused,
+				    struct cfa_tcam_mgr_data *tcam_mgr_data,
+				    enum tf_dir dir __rte_unused)
+{
+	int32_t free_idx;
+
+	/* Scan bitmap to get the free pool */
+	free_idx = ba_alloc(tcam_mgr_data->logical_id_bmp);
+	if (free_idx == BA_FAIL) {
+		PMD_DRV_LOG_LINE(ERR,
+				 "Table full (session)");
+		return -CFA_TCAM_MGR_ERR_CODE(NOSPC);
+	}
+
+	return free_idx;
+}
+
+static int cfa_tcam_mgr_free_entry(struct tf *tfp __rte_unused,
+				   struct cfa_tcam_mgr_data *tcam_mgr_data,
+				   unsigned int entry_id,
+				   enum tf_dir dir __rte_unused,
+				   enum cfa_tcam_mgr_tbl_type type __rte_unused)
+{
+	int rc = 0;
+
+	if (entry_id >= tcam_mgr_data->logical_id_bmp_size)
+		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
+
+	rc = ba_free(tcam_mgr_data->logical_id_bmp, entry_id);
+	if (rc)
+		return rc;
+
+	PMD_DRV_LOG_LINE(INFO,
+			 "Remove session from entry %d",
+			 entry_id);
+
 	return 0;
 }
 
 int
-cfa_tcam_mgr_alloc(struct cfa_tcam_mgr_context *context,
+cfa_tcam_mgr_alloc(struct tf *tfp,
 		   struct cfa_tcam_mgr_alloc_parms *parms)
 {
-	struct cfa_tcam_mgr_entry_data    entry;
+	struct cfa_tcam_mgr_table_data *table_data;
+	struct cfa_tcam_mgr_data *tcam_mgr_data;
 	struct cfa_tcam_mgr_table_rows_0 *row;
-	struct cfa_tcam_mgr_table_data   *table_data;
+	struct cfa_tcam_mgr_entry_data entry;
+	struct tf_session *tfs;
+	int key_slices, rc;
 	int dir, tbl_type;
-	int key_slices, rc, sess_idx;
 	int new_entry_id;
-	uint32_t session_id;
 
-	CFA_TCAM_MGR_CHECK_PARMS2(context, parms);
+	CFA_TCAM_MGR_CHECK_PARMS2(tfp, parms);
 
 	dir = parms->dir;
 	tbl_type = parms->type;
@@ -1268,43 +1458,24 @@ cfa_tcam_mgr_alloc(struct cfa_tcam_mgr_context *context,
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 	}
 
-#if TF_TCAM_PRIORITY_MAX < UINT16_MAX
-	if (parms->priority > TF_TCAM_PRIORITY_MAX) {
-		CFA_TCAM_MGR_LOG_DIR(ERR, dir,
-				     "Priority (%u) out of range (%u -%u).\n",
-				     parms->priority,
-				     TF_TCAM_PRIORITY_MIN,
-				     TF_TCAM_PRIORITY_MAX);
-	}
-#endif
-
-	/* Check for session limits */
-	rc = cfa_tcam_mgr_get_session_from_context(context, &session_id);
-	if (rc < 0)
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
 		return rc;
 
-	sess_idx = cfa_tcam_mgr_session_find(session_id);
-	if (sess_idx < 0) {
-		CFA_TCAM_MGR_LOG(ERR, "Session 0x%08x not found.\n",
-				 session_id);
-		return -CFA_TCAM_MGR_ERR_CODE(NODEV);
-	}
-
-	if (global_data_initialized[sess_idx] == 0) {
-		CFA_TCAM_MGR_LOG(ERR, "PANIC: No TCAM data created for sess_idx %d\n",
-				 sess_idx);
+	tcam_mgr_data = tfs->tcam_mgr_handle;
+	if (!tcam_mgr_data) {
+		CFA_TCAM_MGR_LOG(ERR, "No TCAM data created for session\n");
 		return -CFA_TCAM_MGR_ERR_CODE(PERM);
 	}
 
-	table_data = &cfa_tcam_mgr_tables[sess_idx][dir][tbl_type];
+	table_data = &tcam_mgr_data->cfa_tcam_mgr_tables[dir][tbl_type];
 
-	if (parms->key_size == 0 ||
+	if (!parms->key_size ||
 	    parms->key_size > table_data->row_width) {
 		CFA_TCAM_MGR_LOG_DIR(ERR, dir,
-				     "Invalid key size:%d (range 1-%d) sess_idx %d.\n",
+				     "Invalid key size:%d (range 1-%d).\n",
 				     parms->key_size,
-				     table_data->row_width,
-				     sess_idx);
+				     table_data->row_width);
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 	}
 
@@ -1312,89 +1483,90 @@ cfa_tcam_mgr_alloc(struct cfa_tcam_mgr_context *context,
 	if (table_data->used_entries >=
 	    table_data->max_entries) {
 		CFA_TCAM_MGR_LOG_DIR_TYPE(ERR, dir, tbl_type,
-					    "Table full sess_idx %d.\n",
-					    sess_idx);
+					    "Table full.\n");
 		return -CFA_TCAM_MGR_ERR_CODE(NOSPC);
 	}
 
 	/* There is room, now increment counts and allocate an entry. */
-	new_entry_id = cfa_tcam_mgr_session_entry_alloc(session_id,
-							parms->dir,
-							parms->type);
+	new_entry_id = cfa_tcam_mgr_alloc_entry(tfp, tcam_mgr_data, parms->dir);
 	if (new_entry_id < 0)
 		return new_entry_id;
 
 	memset(&entry, 0, sizeof(entry));
 	entry.ref_cnt++;
 
+	PMD_DRV_LOG_LINE(INFO, "Allocated entry ID %d.", new_entry_id);
+
 	key_slices = cfa_tcam_mgr_get_num_slices(parms->key_size,
 						 (table_data->row_width /
 						  table_data->max_slices));
 
-	row = cfa_tcam_mgr_empty_row_alloc(sess_idx, context, parms, &entry,
+	row = cfa_tcam_mgr_empty_row_alloc(tcam_mgr_data, tfp, parms, &entry,
 					   new_entry_id, key_slices);
-	if (row == NULL) {
+	if (!row) {
 		CFA_TCAM_MGR_LOG_DIR_TYPE(ERR, parms->dir, parms->type,
-					    "Table full (HW) sess_idx %d.\n",
-					    sess_idx);
-		(void)cfa_tcam_mgr_session_entry_free(session_id, new_entry_id,
-						      parms->dir, parms->type);
+					    "Table full (HW).\n");
+		cfa_tcam_mgr_free_entry(tfp, tcam_mgr_data, new_entry_id,
+					parms->dir, parms->type);
 		return -CFA_TCAM_MGR_ERR_CODE(NOSPC);
 	}
 
-	memcpy(&entry_data[sess_idx][new_entry_id],
+	memcpy(&tcam_mgr_data->entry_data[new_entry_id],
 	       &entry,
-	       sizeof(entry_data[sess_idx][new_entry_id]));
+	       sizeof(tcam_mgr_data->entry_data[new_entry_id]));
 	table_data->used_entries += 1;
 
-	cfa_tcam_mgr_entry_insert(sess_idx, new_entry_id, &entry);
+	cfa_tcam_mgr_entry_insert(tcam_mgr_data, tfp, new_entry_id, &entry);
 
 	parms->id = new_entry_id;
+
+#ifdef TF_FLOW_SCALE_QUERY
+	/* CFA update usage state */
+	if (tf_tcam_usage_update(tfp,
+				 parms->dir,
+				 parms->type,
+				 row,
+				 TF_RESC_ALLOC)) {
+		PMD_DRV_LOG_LINE(DEBUG, "TF tcam usage update failed");
+	}
+#endif /* TF_FLOW_SCALE_QUERY */
 
 	return 0;
 }
 
 int
-cfa_tcam_mgr_free(struct cfa_tcam_mgr_context *context,
+cfa_tcam_mgr_free(struct tf *tfp,
 		  struct cfa_tcam_mgr_free_parms *parms)
 {
+	struct cfa_tcam_mgr_table_data *table_data;
+	struct cfa_tcam_mgr_data *tcam_mgr_data;
 	struct cfa_tcam_mgr_entry_data *entry;
 	struct cfa_tcam_mgr_table_rows_0 *row;
-	struct cfa_tcam_mgr_table_data *table_data;
-	int row_size, rc, sess_idx, new_row_to_free;
-	uint32_t session_id;
+	int row_size, rc, new_row_to_free;
+	struct tf_session *tfs;
 	uint16_t id;
 
-	CFA_TCAM_MGR_CHECK_PARMS2(context, parms);
+	CFA_TCAM_MGR_CHECK_PARMS2(tfp, parms);
 
-	rc = cfa_tcam_mgr_get_session_from_context(context, &session_id);
-	if (rc < 0)
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
 		return rc;
 
-	sess_idx = cfa_tcam_mgr_session_find(session_id);
-	if (sess_idx < 0) {
-		CFA_TCAM_MGR_LOG(ERR, "Session 0x%08x not found.\n",
-				 session_id);
-		return sess_idx;
-	}
-
-	if (global_data_initialized[sess_idx] == 0) {
-		CFA_TCAM_MGR_LOG(INFO, "PANIC: No TCAM data created for sess_idx %d\n",
-				 sess_idx);
+	tcam_mgr_data = tfs->tcam_mgr_handle;
+	if (!tcam_mgr_data) {
+		CFA_TCAM_MGR_LOG(ERR, "No TCAM data created for session\n");
 		return -CFA_TCAM_MGR_ERR_CODE(PERM);
 	}
 
 	id = parms->id;
-	entry = cfa_tcam_mgr_entry_get(sess_idx, id);
-	if (entry == NULL) {
-		CFA_TCAM_MGR_LOG(INFO, "Entry %d not found for sess_idx %d.\n",
-				 id, sess_idx);
+	entry = cfa_tcam_mgr_entry_get(tcam_mgr_data, id);
+	if (!entry) {
+		CFA_TCAM_MGR_LOG(ERR, "Entry %d not found\n", id);
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 	}
 
-	if (entry->ref_cnt == 0) {
-		CFA_TCAM_MGR_LOG(ERR, "Entry %d not in use for sess_idx %d.\n",
-				 id, sess_idx);
+	if (!entry->ref_cnt) {
+		CFA_TCAM_MGR_LOG(ERR, "Entry %d not in use.\n", id);
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 	}
 
@@ -1410,30 +1582,38 @@ cfa_tcam_mgr_free(struct cfa_tcam_mgr_context *context,
 	 */
 	if (parms->type == CFA_TCAM_MGR_TBL_TYPE_MAX) {
 		/* Need to search for the entry in the tables */
-		rc = cfa_tcam_mgr_entry_find(sess_idx, id, &parms->dir, &parms->type);
-		if (rc < 0) {
-			CFA_TCAM_MGR_LOG(ERR, "Entry %d not in tables for sess_idx %d.\n",
-					 id, sess_idx);
+		rc = cfa_tcam_mgr_entry_find(tcam_mgr_data, id, &parms->dir,
+					     &parms->type);
+		if (rc) {
+			CFA_TCAM_MGR_LOG(ERR,
+					 "Entry %d not in tables\n", id);
 			return rc;
 		}
+		PMD_DRV_LOG_LINE(INFO, "id: %d dir: 0x%x type: 0x%x",
+				 id, parms->dir, parms->type);
 	}
 
-	table_data = &cfa_tcam_mgr_tables[sess_idx][parms->dir][parms->type];
+	table_data =
+		&tcam_mgr_data->cfa_tcam_mgr_tables[parms->dir][parms->type];
 	parms->hcapi_type = table_data->hcapi_type;
 
-	row_size = cfa_tcam_mgr_row_size_get(sess_idx, parms->dir, parms->type);
+	row_size = cfa_tcam_mgr_row_size_get(tcam_mgr_data, parms->dir,
+					     parms->type);
 
 	row = cfa_tcam_mgr_row_ptr_get(table_data->tcam_rows, entry->row,
 				       row_size);
 
 	entry->ref_cnt--;
 
-	(void)cfa_tcam_mgr_session_entry_free(session_id, id,
-					      parms->dir, parms->type);
+	cfa_tcam_mgr_free_entry(tfp, tcam_mgr_data, id, parms->dir,
+				parms->type);
 
-	if (entry->ref_cnt == 0) {
-		cfa_tcam_mgr_entry_free_msg(sess_idx, context, parms,
-					    entry->row,
+	if (!entry->ref_cnt) {
+		PMD_DRV_LOG_LINE(INFO,
+				 "Freeing entry %d, row %d, slice %d.",
+				 id, entry->row, entry->slice);
+		cfa_tcam_mgr_entry_free_msg(tcam_mgr_data, tfp,
+					    parms, entry->row,
 					    entry->slice * row->entry_size,
 					    table_data->row_width /
 					    table_data->max_slices *
@@ -1442,72 +1622,84 @@ cfa_tcam_mgr_free(struct cfa_tcam_mgr_context *context,
 					    table_data->max_slices);
 		ROW_ENTRY_CLEAR(row, entry->slice);
 
+#ifdef TF_FLOW_SCALE_QUERY
+		/* CFA update usage state */
+		if (tf_tcam_usage_update(tfp,
+					 parms->dir,
+					 parms->type,
+					 row,
+					 TF_RESC_FREE)) {
+			PMD_DRV_LOG_LINE(DEBUG, "TF tcam usage update failed");
+		}
+#endif /* TF_FLOW_SCALE_QUERY */
+
 		new_row_to_free = entry->row;
-		cfa_tcam_mgr_rows_combine(sess_idx, context, parms, table_data,
-					  new_row_to_free);
+		cfa_tcam_mgr_rows_combine(tcam_mgr_data, tfp, parms,
+					  table_data, new_row_to_free);
 
 		if (!ROW_INUSE(row)) {
-			cfa_tcam_mgr_rows_compact(sess_idx, context,
+			cfa_tcam_mgr_rows_compact(tcam_mgr_data, tfp,
 						  parms, table_data,
 						  &new_row_to_free,
 						  new_row_to_free);
 			if (new_row_to_free >= 0)
-				cfa_tcam_mgr_entry_free_msg(sess_idx, context, parms,
+				cfa_tcam_mgr_entry_free_msg(tcam_mgr_data,
+						   tfp, parms,
 						   new_row_to_free, 0,
 						   table_data->row_width,
 						   table_data->result_size,
 						   table_data->max_slices);
 		}
 
-		cfa_tcam_mgr_entry_delete(sess_idx, id);
+		cfa_tcam_mgr_entry_delete(tcam_mgr_data, tfp, id);
 		table_data->used_entries -= 1;
+		PMD_DRV_LOG_LINE(INFO, "Freed entry %d.", id);
+	} else {
+		PMD_DRV_LOG_LINE(INFO, "Entry %d ref cnt = %d.",
+				   id,
+				   entry->ref_cnt);
 	}
 
 	return 0;
 }
 
 int
-cfa_tcam_mgr_set(struct cfa_tcam_mgr_context *context,
+cfa_tcam_mgr_set(struct tf *tfp,
 		 struct cfa_tcam_mgr_set_parms *parms)
 {
+	struct cfa_tcam_mgr_table_data *table_data;
+	struct cfa_tcam_mgr_data *tcam_mgr_data;
 	struct cfa_tcam_mgr_entry_data *entry;
 	struct cfa_tcam_mgr_table_rows_0 *row;
-	struct cfa_tcam_mgr_table_data *table_data;
-	int rc;
-	int row_size, sess_idx;
 	int entry_size_in_bytes;
-	uint32_t session_id;
+	struct tf_session *tfs;
+	int row_size;
+	int rc;
 
-	CFA_TCAM_MGR_CHECK_PARMS2(context, parms);
+	CFA_TCAM_MGR_CHECK_PARMS2(tfp, parms);
 
-	rc = cfa_tcam_mgr_get_session_from_context(context, &session_id);
-	if (rc < 0)
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
 		return rc;
 
-	sess_idx = cfa_tcam_mgr_session_find(session_id);
-	if (sess_idx < 0) {
-		CFA_TCAM_MGR_LOG(ERR, "Session 0x%08x not found.\n",
-				 session_id);
-		return sess_idx;
-	}
-
-	if (global_data_initialized[sess_idx] == 0) {
-		CFA_TCAM_MGR_LOG(ERR, "PANIC: No TCAM data created for sess_idx %d\n",
-				 sess_idx);
+	tcam_mgr_data = tfs->tcam_mgr_handle;
+	if (!tcam_mgr_data) {
+		CFA_TCAM_MGR_LOG(ERR, "No TCAM data created for session\n");
 		return -CFA_TCAM_MGR_ERR_CODE(PERM);
 	}
 
-	entry = cfa_tcam_mgr_entry_get(sess_idx, parms->id);
-	if (entry == NULL) {
-		CFA_TCAM_MGR_LOG(ERR, "Entry %d not found for sess_idx %d.\n",
-				 parms->id, sess_idx);
+	entry = cfa_tcam_mgr_entry_get(tcam_mgr_data, parms->id);
+	if (!entry) {
+		CFA_TCAM_MGR_LOG(ERR, "Entry %d not found.\n", parms->id);
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 	}
 
-	table_data = &cfa_tcam_mgr_tables[sess_idx][parms->dir][parms->type];
+	table_data =
+		&tcam_mgr_data->cfa_tcam_mgr_tables[parms->dir][parms->type];
 	parms->hcapi_type = table_data->hcapi_type;
 
-	row_size = cfa_tcam_mgr_row_size_get(sess_idx, parms->dir, parms->type);
+	row_size = cfa_tcam_mgr_row_size_get(tcam_mgr_data, parms->dir,
+					     parms->type);
 	row = cfa_tcam_mgr_row_ptr_get(table_data->tcam_rows, entry->row,
 				       row_size);
 
@@ -1518,71 +1710,68 @@ cfa_tcam_mgr_set(struct cfa_tcam_mgr_context *context,
 		CFA_TCAM_MGR_LOG(ERR,
 				"Key size(%d) is different from entry "
 				"size(%d).\n",
-				parms->key_size,
-				entry_size_in_bytes);
+				parms->key_size, entry_size_in_bytes);
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 	}
 
-	rc = cfa_tcam_mgr_entry_set_msg(sess_idx, context, parms,
+	rc = cfa_tcam_mgr_entry_set_msg(tcam_mgr_data, tfp, parms,
 					entry->row,
 					entry->slice * row->entry_size,
 					table_data->max_slices);
-	if (rc < 0) {
+	if (rc) {
 		CFA_TCAM_MGR_LOG_0(ERR, "Failed to set TCAM data.\n");
 		return rc;
 	}
+
+	PMD_DRV_LOG_LINE(INFO, "Set data for entry %d", parms->id);
 
 	return 0;
 }
 
 int
-cfa_tcam_mgr_get(struct cfa_tcam_mgr_context *context __rte_unused,
+cfa_tcam_mgr_get(struct tf *tfp __rte_unused,
 		 struct cfa_tcam_mgr_get_parms *parms)
 {
+	struct cfa_tcam_mgr_table_data *table_data;
+	struct cfa_tcam_mgr_data *tcam_mgr_data;
 	struct cfa_tcam_mgr_entry_data *entry;
 	struct cfa_tcam_mgr_table_rows_0 *row;
-	struct cfa_tcam_mgr_table_data *table_data;
+	struct tf_session *tfs;
+	int row_size;
 	int rc;
-	int row_size, sess_idx;
-	uint32_t session_id;
 
-	CFA_TCAM_MGR_CHECK_PARMS2(context, parms);
+	CFA_TCAM_MGR_CHECK_PARMS2(tfp, parms);
 
-	rc = cfa_tcam_mgr_get_session_from_context(context, &session_id);
-	if (rc < 0)
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
 		return rc;
 
-	sess_idx = cfa_tcam_mgr_session_find(session_id);
-	if (sess_idx < 0) {
-		CFA_TCAM_MGR_LOG(ERR, "Session 0x%08x not found.\n",
-				 session_id);
-		return sess_idx;
-	}
-
-	if (global_data_initialized[sess_idx] == 0) {
-		CFA_TCAM_MGR_LOG(ERR, "PANIC: No TCAM data created for sess_idx %d\n",
-				 sess_idx);
+	tcam_mgr_data = tfs->tcam_mgr_handle;
+	if (!tcam_mgr_data) {
+		CFA_TCAM_MGR_LOG(ERR, "No TCAM data created for session\n");
 		return -CFA_TCAM_MGR_ERR_CODE(PERM);
 	}
 
-	entry = cfa_tcam_mgr_entry_get(sess_idx, parms->id);
-	if (entry == NULL) {
+	entry = cfa_tcam_mgr_entry_get(tcam_mgr_data, parms->id);
+	if (!entry) {
 		CFA_TCAM_MGR_LOG(ERR, "Entry %d not found.\n", parms->id);
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 	}
 
-	table_data = &cfa_tcam_mgr_tables[sess_idx][parms->dir][parms->type];
+	table_data =
+		&tcam_mgr_data->cfa_tcam_mgr_tables[parms->dir][parms->type];
 	parms->hcapi_type = table_data->hcapi_type;
 
-	row_size = cfa_tcam_mgr_row_size_get(sess_idx, parms->dir, parms->type);
+	row_size = cfa_tcam_mgr_row_size_get(tcam_mgr_data, parms->dir,
+					     parms->type);
 	row = cfa_tcam_mgr_row_ptr_get(table_data->tcam_rows, entry->row,
 				       row_size);
 
-	rc = cfa_tcam_mgr_entry_get_msg(sess_idx, context, parms,
+	rc = cfa_tcam_mgr_entry_get_msg(tcam_mgr_data, tfp, parms,
 					entry->row,
 					entry->slice * row->entry_size,
 					table_data->max_slices);
-	if (rc < 0) {
+	if (rc) {
 		CFA_TCAM_MGR_LOG_0(ERR, "Failed to read from TCAM.\n");
 		return rc;
 	}
@@ -1590,49 +1779,44 @@ cfa_tcam_mgr_get(struct cfa_tcam_mgr_context *context __rte_unused,
 	return 0;
 }
 
-int cfa_tcam_mgr_shared_clear(struct cfa_tcam_mgr_context *context,
-		     struct cfa_tcam_mgr_shared_clear_parms *parms)
+int cfa_tcam_mgr_shared_clear(struct tf *tfp,
+			      struct cfa_tcam_mgr_shared_clear_parms *parms)
 {
-	int rc;
-	uint16_t row, slice = 0;
-	int sess_idx;
-	uint32_t session_id;
-	struct cfa_tcam_mgr_free_parms fparms;
-	struct cfa_tcam_mgr_table_data *table_data;
 	uint16_t start_row, end_row, max_entries, max_slices;
+	struct cfa_tcam_mgr_table_data *table_data;
+	struct cfa_tcam_mgr_data *tcam_mgr_data;
+	struct cfa_tcam_mgr_free_parms fparms;
+	uint16_t row, slice = 0;
+	struct tf_session *tfs;
+	int rc;
 
-	CFA_TCAM_MGR_CHECK_PARMS2(context, parms);
+	CFA_TCAM_MGR_CHECK_PARMS2(tfp, parms);
 
-	rc = cfa_tcam_mgr_get_session_from_context(context, &session_id);
-	if (rc < 0)
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
 		return rc;
 
-	sess_idx = cfa_tcam_mgr_session_find(session_id);
-	if (sess_idx < 0) {
-		CFA_TCAM_MGR_LOG(ERR, "Session 0x%08x not found.\n",
-				 session_id);
-		return sess_idx;
-	}
-
-	if (global_data_initialized[sess_idx] == 0) {
-		CFA_TCAM_MGR_LOG(ERR, "PANIC: No TCAM data created for sess_idx %d\n",
-				 sess_idx);
+	tcam_mgr_data = tfs->tcam_mgr_handle;
+	if (!tcam_mgr_data) {
+		CFA_TCAM_MGR_LOG(ERR, "No TCAM data created for session\n");
 		return -CFA_TCAM_MGR_ERR_CODE(PERM);
 	}
 
-	table_data = &cfa_tcam_mgr_tables[sess_idx][parms->dir][parms->type];
+	table_data =
+		&tcam_mgr_data->cfa_tcam_mgr_tables[parms->dir][parms->type];
 	fparms.dir = parms->dir;
 	fparms.type = parms->type;
 	fparms.hcapi_type = table_data->hcapi_type;
 	fparms.id = 0;
 
-	rc = cfa_tcam_mgr_tables_get(sess_idx, parms->dir, parms->type,
-				&start_row, &end_row, &max_entries, &max_slices);
+	rc = cfa_tcam_mgr_tables_get(tfp, parms->dir, parms->type,
+				     &start_row, &end_row, &max_entries,
+				     &max_slices);
 	if (rc)
 		return rc;
 
 	for (row = start_row; row <= end_row; row++) {
-		cfa_tcam_mgr_entry_free_msg(sess_idx, context, &fparms,
+		cfa_tcam_mgr_entry_free_msg(tcam_mgr_data, tfp, &fparms,
 					    row,
 					    slice,
 					    table_data->row_width,
@@ -1643,16 +1827,11 @@ int cfa_tcam_mgr_shared_clear(struct cfa_tcam_mgr_context *context,
 }
 
 static void
-cfa_tcam_mgr_mv_used_entries_cnt(int sess_idx, enum tf_dir dir,
-				 struct cfa_tcam_mgr_table_data *dst_table_data,
+cfa_tcam_mgr_mv_used_entries_cnt(struct cfa_tcam_mgr_table_data *dst_table_data,
 				 struct cfa_tcam_mgr_table_data *src_table_data)
 {
 	dst_table_data->used_entries++;
 	src_table_data->used_entries--;
-
-	cfa_tcam_mgr_mv_session_used_entries_cnt(sess_idx, dir,
-						 CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS,
-						 CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS);
 }
 
 /*
@@ -1660,28 +1839,34 @@ cfa_tcam_mgr_mv_used_entries_cnt(int sess_idx, enum tf_dir dir,
  * This happens when secondary is becoming primary
  */
 static int
-cfa_tcam_mgr_shared_entry_move(int sess_idx, struct cfa_tcam_mgr_context *context,
-		       enum tf_dir dir, enum cfa_tcam_mgr_tbl_type type,
-		       int entry_id,
-		       struct cfa_tcam_mgr_table_data *dst_table_data,
-		       struct cfa_tcam_mgr_table_data *table_data,
-		       int dst_row_index, int dst_row_slice,
-		       struct cfa_tcam_mgr_table_rows_0 *dst_row,
-		       int src_row_index,
-		       struct cfa_tcam_mgr_table_rows_0 *src_row)
+cfa_tcam_mgr_shared_entry_move(struct cfa_tcam_mgr_data *tcam_mgr_data,
+			       struct tf *tfp,
+			       enum tf_dir dir, enum cfa_tcam_mgr_tbl_type type,
+			       int entry_id,
+			       struct cfa_tcam_mgr_table_data *dst_table_data,
+			       struct cfa_tcam_mgr_table_data *table_data,
+			       int dst_row_index, int dst_row_slice,
+			       struct cfa_tcam_mgr_table_rows_0 *dst_row,
+			       int src_row_index,
+			       struct cfa_tcam_mgr_table_rows_0 *src_row)
 {
+	struct cfa_tcam_mgr_free_parms fparms = { 0 };
 	struct cfa_tcam_mgr_get_parms gparms = { 0 };
 	struct cfa_tcam_mgr_set_parms sparms = { 0 };
-	struct cfa_tcam_mgr_free_parms fparms = { 0 };
-	struct cfa_tcam_mgr_entry_data *entry;
-	uint8_t  key[CFA_TCAM_MGR_MAX_KEY_SIZE];
-	uint8_t  mask[CFA_TCAM_MGR_MAX_KEY_SIZE];
 	uint8_t  result[CFA_TCAM_MGR_MAX_KEY_SIZE];
-
+	uint8_t  mask[CFA_TCAM_MGR_MAX_KEY_SIZE];
+	uint8_t  key[CFA_TCAM_MGR_MAX_KEY_SIZE];
+	struct cfa_tcam_mgr_entry_data *entry;
 	int rc;
 
-	entry = cfa_tcam_mgr_entry_get(sess_idx, entry_id);
-	if (entry == NULL)
+	/*
+	 * Copy entry size before moving else if
+	 * slice number is non zero and entry size is zero it will cause issues
+	 */
+	dst_row->entry_size = src_row->entry_size;
+
+	entry = cfa_tcam_mgr_entry_get(tcam_mgr_data, entry_id);
+	if (!entry)
 		return -1;
 
 	gparms.dir	   = dir;
@@ -1694,15 +1879,15 @@ cfa_tcam_mgr_shared_entry_move(int sess_idx, struct cfa_tcam_mgr_context *contex
 	gparms.key_size	   = sizeof(key);
 	gparms.result_size = sizeof(result);
 
-	rc = cfa_tcam_mgr_entry_get_msg(sess_idx, context, &gparms,
+	rc = cfa_tcam_mgr_entry_get_msg(tcam_mgr_data, tfp, &gparms,
 					src_row_index,
 					entry->slice * src_row->entry_size,
 					table_data->max_slices);
-	if (rc != 0)
+	if (rc)
 		return rc;
 
 	sparms.dir	   = dir;
-	sparms.type	   = CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS;
+	sparms.type	   = CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW;
 	sparms.hcapi_type  = table_data->hcapi_type;
 	sparms.key	   = key;
 	sparms.mask	   = mask;
@@ -1711,17 +1896,17 @@ cfa_tcam_mgr_shared_entry_move(int sess_idx, struct cfa_tcam_mgr_context *contex
 	sparms.key_size	   = gparms.key_size;
 	sparms.result_size = gparms.result_size;
 
-	rc = cfa_tcam_mgr_entry_set_msg(sess_idx, context, &sparms,
+	rc = cfa_tcam_mgr_entry_set_msg(tcam_mgr_data, tfp, &sparms,
 					dst_row_index,
 					dst_row_slice * dst_row->entry_size,
 					table_data->max_slices);
-	if (rc != 0)
+	if (rc)
 		return rc;
 
 	fparms.dir	  = dir;
 	fparms.type	  = type;
 	fparms.hcapi_type = table_data->hcapi_type;
-	rc = cfa_tcam_mgr_entry_free_msg(sess_idx, context, &fparms,
+	rc = cfa_tcam_mgr_entry_free_msg(tcam_mgr_data, tfp, &fparms,
 					 src_row_index,
 					 entry->slice *
 					 dst_row->entry_size,
@@ -1730,83 +1915,70 @@ cfa_tcam_mgr_shared_entry_move(int sess_idx, struct cfa_tcam_mgr_context *contex
 					 src_row->entry_size,
 					 table_data->result_size,
 					 table_data->max_slices);
-	if (rc != 0) {
+	if (rc)
 		CFA_TCAM_MGR_LOG_DIR_TYPE(ERR,
 					  dir, type,
 					  "Failed to free entry ID %d at"
-					  " row %d, slice %d for sess_idx %d. rc: %d.\n",
+					  " row %d, slice %d. rc: %d.\n",
 					  gparms.id,
 					  src_row_index,
 					  entry->slice,
-					  sess_idx,
 					  -rc);
-	}
 
 #ifdef CFA_TCAM_MGR_TRACING
-	CFA_TCAM_MGR_TRACE(INFO, "Moved entry %d from row %d, slice %d to "
-			   "row %d, slice %d.\n",
-			   entry_id, src_row_index, entry->slice,
-			   dst_row_index, dst_row_slice);
+	PMD_DRV_LOG_LINE(INFO, "Moved entry %d from row %d, slice %d to "
+			 "row %d, slice %d.\n",
+			 entry_id, src_row_index, entry->slice,
+			 dst_row_index, dst_row_slice);
 #endif
 
 	ROW_ENTRY_SET(dst_row, dst_row_slice);
 	dst_row->entries[dst_row_slice] = entry_id;
-	dst_row->entry_size = src_row->entry_size;
 	dst_row->priority = src_row->priority;
 	ROW_ENTRY_CLEAR(src_row, entry->slice);
 	entry->row = dst_row_index;
 	entry->slice = dst_row_slice;
 
-	cfa_tcam_mgr_mv_used_entries_cnt(sess_idx, dir, dst_table_data, table_data);
-
-#ifdef CFA_TCAM_MGR_TRACING
-	cfa_tcam_mgr_rows_dump(sess_idx, dir, type);
-	cfa_tcam_mgr_rows_dump(sess_idx, dir, CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS);
-#endif
+	cfa_tcam_mgr_mv_used_entries_cnt(dst_table_data, table_data);
 
 	return 0;
 }
 
-int cfa_tcam_mgr_shared_move(struct cfa_tcam_mgr_context *context,
-		     struct cfa_tcam_mgr_shared_move_parms *parms)
+int cfa_tcam_mgr_shared_move(struct tf *tfp,
+			     struct cfa_tcam_mgr_shared_move_parms *parms)
 {
-	int rc;
-	int sess_idx;
-	uint32_t session_id;
-	uint16_t src_row, dst_row, row_size, slice;
 	struct cfa_tcam_mgr_table_rows_0 *src_table_row;
 	struct cfa_tcam_mgr_table_rows_0 *dst_table_row;
 	struct cfa_tcam_mgr_table_data *src_table_data;
 	struct cfa_tcam_mgr_table_data *dst_table_data;
+	uint16_t src_row, dst_row, row_size, slice;
+	struct cfa_tcam_mgr_data *tcam_mgr_data;
+	struct tf_session *tfs;
+	int rc;
 
-	CFA_TCAM_MGR_CHECK_PARMS2(context, parms);
+	CFA_TCAM_MGR_CHECK_PARMS2(tfp, parms);
 
-	rc = cfa_tcam_mgr_get_session_from_context(context, &session_id);
+	rc = tf_session_get_session_internal(tfp, &tfs);
 	if (rc < 0)
 		return rc;
 
-	sess_idx = cfa_tcam_mgr_session_find(session_id);
-	if (sess_idx < 0) {
-		CFA_TCAM_MGR_LOG(ERR, "Session 0x%08x not found.\n",
-				 session_id);
-		return sess_idx;
-	}
-
-	if (global_data_initialized[sess_idx] == 0) {
-		CFA_TCAM_MGR_LOG(ERR, "PANIC: No TCAM data created for sess_idx %d\n",
-				 sess_idx);
+	tcam_mgr_data = tfs->tcam_mgr_handle;
+	if (!tcam_mgr_data) {
+		CFA_TCAM_MGR_LOG(ERR, "No TCAM data created for session\n");
 		return -CFA_TCAM_MGR_ERR_CODE(PERM);
 	}
 
 	src_table_data =
-		&cfa_tcam_mgr_tables[sess_idx][parms->dir][CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS];
+		&tcam_mgr_data->cfa_tcam_mgr_tables[parms->dir]
+			[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH];
 	dst_table_data =
-		&cfa_tcam_mgr_tables[sess_idx][parms->dir][CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS];
+		&tcam_mgr_data->cfa_tcam_mgr_tables[parms->dir]
+			[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW];
 
 	row_size =
-		cfa_tcam_mgr_row_size_get(sess_idx,
+		cfa_tcam_mgr_row_size_get(tcam_mgr_data,
 					  parms->dir,
-					  CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS);
+					  CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH);
 
 	for (src_row = src_table_data->start_row,
 	     dst_row = dst_table_data->start_row;
@@ -1822,18 +1994,18 @@ int cfa_tcam_mgr_shared_move(struct cfa_tcam_mgr_context *context,
 			     slice++) {
 				if (ROW_ENTRY_INUSE(src_table_row, slice)) {
 #ifdef CFA_TCAM_MGR_TRACING
-					CFA_TCAM_MGR_TRACE(INFO, "Move entry id %d "
-							   "from src_row %d, slice %d "
-							   "to dst_row %d, slice %d.\n",
-							   src_table_row->entries[slice],
-							   src_row, slice,
-							   dst_row, slice);
+					PMD_DRV_LOG_LINE(INFO, "Move entry id %d "
+							 "from src_row %d, slice %d "
+							 "to dst_row %d, slice %d",
+							 src_table_row->entries[slice],
+							 src_row, slice,
+							 dst_row, slice);
 #endif
-					rc = cfa_tcam_mgr_shared_entry_move(sess_idx,
-							context,
+			rc = cfa_tcam_mgr_shared_entry_move(tcam_mgr_data,
+							tfp,
 							parms->dir,
-							CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS,
-							src_table_row->entries[slice],
+					     CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH,
+						  src_table_row->entries[slice],
 							dst_table_data,
 							src_table_data,
 							dst_row, slice,
@@ -1849,15 +2021,15 @@ int cfa_tcam_mgr_shared_move(struct cfa_tcam_mgr_context *context,
 }
 
 static void
-cfa_tcam_mgr_tbl_get(int sess_idx, enum tf_dir dir,
-			enum cfa_tcam_mgr_tbl_type type,
-				uint16_t *start_row,
-				uint16_t *end_row,
-				uint16_t *max_entries,
-				uint16_t *slices)
+cfa_tcam_mgr_tbl_get(struct cfa_tcam_mgr_data *tcam_mgr_data, enum tf_dir dir,
+		     enum cfa_tcam_mgr_tbl_type type,
+		     uint16_t *start_row,
+		     uint16_t *end_row,
+		     uint16_t *max_entries,
+		     uint16_t *slices)
 {
 	struct cfa_tcam_mgr_table_data *table_data =
-		&cfa_tcam_mgr_tables[sess_idx][dir][type];
+		&tcam_mgr_data->cfa_tcam_mgr_tables[dir][type];
 
 	/* Get start, end and max for tcam type*/
 	*start_row = table_data->start_row;
@@ -1867,51 +2039,59 @@ cfa_tcam_mgr_tbl_get(int sess_idx, enum tf_dir dir,
 }
 
 int
-cfa_tcam_mgr_tables_get(int sess_idx, enum tf_dir dir,
+cfa_tcam_mgr_tables_get(struct tf *tfp, enum tf_dir dir,
 			enum cfa_tcam_mgr_tbl_type type,
 			uint16_t *start_row,
 			uint16_t *end_row,
 			uint16_t *max_entries,
 			uint16_t *slices)
 {
+	struct cfa_tcam_mgr_data *tcam_mgr_data;
+	struct tf_session *tfs;
+	int rc;
+
 	CFA_TCAM_MGR_CHECK_PARMS3(start_row, end_row, max_entries);
 
-	if (global_data_initialized[sess_idx] == 0) {
-		CFA_TCAM_MGR_LOG(ERR, "PANIC: TCAM not initialized for sess_idx %d.\n",
-				 sess_idx);
-		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	tcam_mgr_data = tfs->tcam_mgr_handle;
+	if (!tcam_mgr_data) {
+		CFA_TCAM_MGR_LOG_0(ERR, "No TCAM data created for session.\n");
+		return -CFA_TCAM_MGR_ERR_CODE(PERM);
 	}
 
 	if (dir >= TF_DIR_MAX) {
-		CFA_TCAM_MGR_LOG(ERR, "Must specify valid dir (0-%d) forsess_idx %d.\n",
-				 TF_DIR_MAX - 1, sess_idx);
+		CFA_TCAM_MGR_LOG(ERR, "Must specify valid dir (0-%d).\n",
+				 TF_DIR_MAX - 1);
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 	}
 
 	if (type >= CFA_TCAM_MGR_TBL_TYPE_MAX) {
-		CFA_TCAM_MGR_LOG(ERR, "Must specify valid tbl type (0-%d) forsess_idx %d.\n",
-				 CFA_TCAM_MGR_TBL_TYPE_MAX - 1, sess_idx);
+		CFA_TCAM_MGR_LOG(ERR, "Must specify valid tbl type (0-%d).\n",
+				 CFA_TCAM_MGR_TBL_TYPE_MAX - 1);
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 	}
 
-	cfa_tcam_mgr_tbl_get(sess_idx, dir,
-				  type,
-				  start_row,
-				  end_row,
-				  max_entries,
-				  slices);
+	cfa_tcam_mgr_tbl_get(tcam_mgr_data, dir,
+			     type,
+			     start_row,
+			     end_row,
+			     max_entries,
+			     slices);
 	return 0;
 }
 
 static void
-cfa_tcam_mgr_tbl_set(int sess_idx, enum tf_dir dir,
-			enum cfa_tcam_mgr_tbl_type type,
-				uint16_t start_row,
-				uint16_t end_row,
-				uint16_t max_entries)
+cfa_tcam_mgr_tbl_set(struct cfa_tcam_mgr_data *tcam_mgr_data, enum tf_dir dir,
+		     enum cfa_tcam_mgr_tbl_type type,
+		     uint16_t start_row,
+		     uint16_t end_row,
+		     uint16_t max_entries)
 {
 	struct cfa_tcam_mgr_table_data *table_data =
-		&cfa_tcam_mgr_tables[sess_idx][dir][type];
+		&tcam_mgr_data->cfa_tcam_mgr_tables[dir][type];
 
 	/* Update start, end and max for tcam type*/
 	table_data->start_row = start_row;
@@ -1920,197 +2100,42 @@ cfa_tcam_mgr_tbl_set(int sess_idx, enum tf_dir dir,
 }
 
 int
-cfa_tcam_mgr_tables_set(int sess_idx, enum tf_dir dir,
+cfa_tcam_mgr_tables_set(struct tf *tfp, enum tf_dir dir,
 			enum cfa_tcam_mgr_tbl_type type,
 			uint16_t start_row,
 			uint16_t end_row,
 			uint16_t max_entries)
 {
-	if (global_data_initialized[sess_idx] == 0) {
-		CFA_TCAM_MGR_LOG(ERR, "PANIC: TCAM not initialized for sess_idx %d.\n",
-				 sess_idx);
-		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
+	struct cfa_tcam_mgr_data *tcam_mgr_data;
+	struct tf_session *tfs;
+	int rc;
+
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	tcam_mgr_data = tfs->tcam_mgr_handle;
+	if (!tcam_mgr_data) {
+		CFA_TCAM_MGR_LOG_0(ERR, "No TCAM data created for session.\n");
+		return -CFA_TCAM_MGR_ERR_CODE(PERM);
 	}
 
 	if (dir >= TF_DIR_MAX) {
-		CFA_TCAM_MGR_LOG(ERR, "Must specify valid dir (0-%d) forsess_idx %d.\n",
-				 TF_DIR_MAX - 1, sess_idx);
+		CFA_TCAM_MGR_LOG(ERR, "Must specify valid dir (0-%d).\n",
+				 TF_DIR_MAX - 1);
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 	}
 
 	if (type >= CFA_TCAM_MGR_TBL_TYPE_MAX) {
-		CFA_TCAM_MGR_LOG(ERR, "Must specify valid tbl type (0-%d) forsess_idx %d.\n",
-				 CFA_TCAM_MGR_TBL_TYPE_MAX - 1, sess_idx);
+		CFA_TCAM_MGR_LOG(ERR, "Must specify valid tbl type (0-%d).\n",
+				 CFA_TCAM_MGR_TBL_TYPE_MAX - 1);
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 	}
 
-	cfa_tcam_mgr_tbl_set(sess_idx, dir,
-				  type,
-				  start_row,
-				  end_row,
-				  max_entries);
+	cfa_tcam_mgr_tbl_set(tcam_mgr_data, dir,
+			     type,
+			     start_row,
+			     end_row,
+			     max_entries);
 	return 0;
-}
-
-void
-cfa_tcam_mgr_rows_dump(int sess_idx, enum tf_dir dir,
-		       enum cfa_tcam_mgr_tbl_type type)
-{
-	struct cfa_tcam_mgr_table_data *table_data;
-	struct cfa_tcam_mgr_table_rows_0 *table_row;
-	int i, row, row_size;
-	bool row_found = false;
-	bool empty_row = false;
-
-	if (global_data_initialized[sess_idx] == 0) {
-		printf("PANIC: TCAM not initialized for sess_idx %d.\n", sess_idx);
-		return;
-	}
-
-	if (dir >= TF_DIR_MAX) {
-		printf("Must specify a valid direction (0-%d).\n",
-		       TF_DIR_MAX - 1);
-		return;
-	}
-	if (type >= CFA_TCAM_MGR_TBL_TYPE_MAX) {
-		printf("Must specify a valid type (0-%d).\n",
-		       CFA_TCAM_MGR_TBL_TYPE_MAX - 1);
-		return;
-	}
-
-	table_data = &cfa_tcam_mgr_tables[sess_idx][dir][type];
-	row_size = cfa_tcam_mgr_row_size_get(sess_idx, dir, type);
-
-	printf("\nTCAM Rows:\n");
-	printf("Rows for direction %s, Logical table type %s\n",
-	       tf_dir_2_str(dir), cfa_tcam_mgr_tbl_2_str(type));
-	printf("Managed rows %d-%d for sess_idx %d:\n",
-	       table_data->start_row, table_data->end_row, sess_idx);
-
-	printf("Index Pri   Size  Entry IDs\n");
-	printf("                  Sl 0");
-	for (i = 1; i < table_data->max_slices; i++)
-		printf("  Sl %d", i);
-	printf("\n");
-	for (row = table_data->start_row; row <= table_data->end_row; row++) {
-		table_row = cfa_tcam_mgr_row_ptr_get(table_data->tcam_rows, row,
-						    row_size);
-		if (ROW_INUSE(table_row)) {
-			empty_row = false;
-			printf("%5u %5u %4u",
-			       row,
-			       TF_TCAM_PRIORITY_MAX - table_row->priority - 1,
-			       table_row->entry_size);
-			for (i = 0;
-			     i < table_data->max_slices / table_row->entry_size;
-			     i++) {
-				if (ROW_ENTRY_INUSE(table_row, i))
-					printf(" %5u", table_row->entries[i]);
-				else
-					printf("     x");
-			}
-			printf("\n");
-			row_found = true;
-		} else if (!empty_row) {
-			empty_row = true;
-			printf("\n");
-		}
-	}
-
-	if (!row_found)
-		printf("No rows in use.\n");
-}
-
-static void
-cfa_tcam_mgr_table_dump(int sess_idx, enum tf_dir dir,
-			enum cfa_tcam_mgr_tbl_type type)
-{
-	struct cfa_tcam_mgr_table_data *table_data =
-		&cfa_tcam_mgr_tables[sess_idx][dir][type];
-
-	printf("%3s %-22s %5u %5u %5u %5u %6u %7u %2u\n",
-	       tf_dir_2_str(dir),
-	       cfa_tcam_mgr_tbl_2_str(type),
-	       table_data->row_width,
-	       table_data->num_rows,
-	       table_data->start_row,
-	       table_data->end_row,
-	       table_data->max_entries,
-	       table_data->used_entries,
-	       table_data->max_slices);
-}
-
-#define TABLE_DUMP_HEADER \
-	"Dir Table                  Width  Rows Start   End " \
-	"MaxEnt UsedEnt Slices\n"
-
-void
-cfa_tcam_mgr_tables_dump(int sess_idx, enum tf_dir dir,
-			 enum cfa_tcam_mgr_tbl_type type)
-{
-	if (global_data_initialized[sess_idx] == 0) {
-		printf("PANIC: TCAM not initialized for sess_idx %d.\n", sess_idx);
-		return;
-	}
-
-	printf("\nTCAM Table(s) for sess_idx %d:\n", sess_idx);
-	printf(TABLE_DUMP_HEADER);
-	if (dir >= TF_DIR_MAX) {
-		/* Iterate over all directions */
-		for (dir = 0; dir < TF_DIR_MAX; dir++) {
-			if (type >= CFA_TCAM_MGR_TBL_TYPE_MAX) {
-				/* Iterate over all types */
-				for (type = 0;
-				     type < CFA_TCAM_MGR_TBL_TYPE_MAX;
-				     type++) {
-					cfa_tcam_mgr_table_dump(sess_idx, dir, type);
-				}
-			} else {
-				/* Display a specific type */
-				cfa_tcam_mgr_table_dump(sess_idx, dir, type);
-			}
-		}
-	} else if (type >= CFA_TCAM_MGR_TBL_TYPE_MAX) {
-		/* Iterate over all types for a direction */
-		for (type = 0; type < CFA_TCAM_MGR_TBL_TYPE_MAX; type++)
-			cfa_tcam_mgr_table_dump(sess_idx, dir, type);
-	} else {
-		/* Display a specific direction and type */
-		cfa_tcam_mgr_table_dump(sess_idx, dir, type);
-	}
-}
-
-#define ENTRY_DUMP_HEADER "Entry RefCnt  Row Slice\n"
-
-void
-cfa_tcam_mgr_entries_dump(int sess_idx)
-{
-	struct cfa_tcam_mgr_entry_data *entry;
-	bool entry_found = false;
-	uint16_t id;
-
-	if (global_data_initialized[sess_idx] == 0) {
-		CFA_TCAM_MGR_LOG(INFO, "PANIC: No TCAM data created for sess_idx %d\n",
-				 sess_idx);
-		return;
-	}
-
-	printf("\nGlobal Maximum Entries: %d\n\n",
-	       cfa_tcam_mgr_max_entries[sess_idx]);
-	printf("TCAM Entry Table:\n");
-	for (id = 0; id < cfa_tcam_mgr_max_entries[sess_idx]; id++) {
-		if (entry_data[sess_idx][id].ref_cnt > 0) {
-			entry = &entry_data[sess_idx][id];
-			if (!entry_found)
-				printf(ENTRY_DUMP_HEADER);
-			printf("%5u %5u %5u %5u",
-			       id, entry->ref_cnt,
-			       entry->row, entry->slice);
-			printf("\n");
-			entry_found = true;
-		}
-	}
-
-	if (!entry_found)
-		printf("No entries found.\n");
 }

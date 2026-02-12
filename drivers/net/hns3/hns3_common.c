@@ -224,7 +224,7 @@ hns3_parse_dev_caps_mask(const char *key, const char *value, void *extra_args)
 static int
 hns3_parse_mbx_time_limit(const char *key, const char *value, void *extra_args)
 {
-	uint32_t val;
+	uint64_t val;
 
 	RTE_SET_USED(key);
 
@@ -272,6 +272,45 @@ hns3_parse_vlan_match_mode(const char *key, const char *value, void *args)
 	return 0;
 }
 
+static int
+hns3_parse_fdir_tuple_config(const char *key, const char *value, void *args)
+{
+	enum hns3_fdir_tuple_config tuple_cfg;
+
+	tuple_cfg = hns3_parse_tuple_config(value);
+	if (tuple_cfg == HNS3_FDIR_TUPLE_CONFIG_DEFAULT ||
+	    tuple_cfg == HNS3_FDIR_TUPLE_CONFIG_BUTT) {
+		PMD_INIT_LOG(WARNING, "invalid value:\"%s\" for key:\"%s\"",
+			     value, key);
+		return -1;
+	}
+
+	*(enum hns3_fdir_tuple_config *)args = tuple_cfg;
+
+	return 0;
+}
+
+static int
+hns3_parse_fdir_index_config(const char *key, const char *value, void *args)
+{
+	enum hns3_fdir_index_config cfg;
+
+	if (strcmp(value, "hash") == 0) {
+		cfg  = HNS3_FDIR_INDEX_CONFIG_HASH;
+	} else if (strcmp(value, "priority") == 0) {
+		cfg  = HNS3_FDIR_INDEX_CONFIG_PRIORITY;
+	} else {
+		PMD_INIT_LOG(WARNING, "invalid value:\"%s\" for key:\"%s\", "
+			"value must be 'hash' or 'priority'",
+			value, key);
+		return -1;
+	}
+
+	*(enum hns3_fdir_index_config *)args = cfg;
+
+	return 0;
+}
+
 void
 hns3_parse_devargs(struct rte_eth_dev *dev)
 {
@@ -306,11 +345,20 @@ hns3_parse_devargs(struct rte_eth_dev *dev)
 			   &hns3_parse_dev_caps_mask, &dev_caps_mask);
 	(void)rte_kvargs_process(kvlist, HNS3_DEVARG_MBX_TIME_LIMIT_MS,
 			   &hns3_parse_mbx_time_limit, &mbx_time_limit_ms);
-	if (!hns->is_vf)
+	if (!hns->is_vf) {
 		(void)rte_kvargs_process(kvlist,
-					 HNS3_DEVARG_FDIR_VALN_MATCH_MODE,
+					 HNS3_DEVARG_FDIR_VLAN_MATCH_MODE,
 					 &hns3_parse_vlan_match_mode,
 					 &hns->pf.fdir.vlan_match_mode);
+		(void)rte_kvargs_process(kvlist,
+					 HNS3_DEVARG_FDIR_TUPLE_CONFIG,
+					 &hns3_parse_fdir_tuple_config,
+					 &hns->pf.fdir.tuple_cfg);
+		(void)rte_kvargs_process(kvlist,
+					 HNS3_DEVARG_FDIR_INDEX_CONFIG,
+					 &hns3_parse_fdir_index_config,
+					 &hns->pf.fdir.index_cfg);
+	}
 
 	rte_kvargs_free(kvlist);
 
@@ -675,12 +723,12 @@ hns3_init_mac_addrs(struct rte_eth_dev *dev)
 	eth_addr = (struct rte_ether_addr *)hw->mac.mac_addr;
 	if (!hns->is_vf) {
 		if (!rte_is_valid_assigned_ether_addr(eth_addr)) {
+			hns3_warn(hw, "MAC address " RTE_ETHER_ADDR_PRT_FMT " from firmware is invalid",
+				  RTE_ETHER_ADDR_BYTES(eth_addr));
 			rte_eth_random_addr(hw->mac.mac_addr);
 			hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 				(struct rte_ether_addr *)hw->mac.mac_addr);
-			hns3_warn(hw, "default mac_addr from firmware is an invalid "
-				  "unicast address, using random MAC address %s",
-				  mac_str);
+			hns3_warn(hw, "using random MAC address %s", mac_str);
 		}
 	} else {
 		/*
@@ -834,8 +882,8 @@ hns3_unmap_rx_interrupt(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	uint8_t base = RTE_INTR_VEC_ZERO_OFFSET;
-	uint8_t vec = RTE_INTR_VEC_ZERO_OFFSET;
+	uint16_t base = RTE_INTR_VEC_ZERO_OFFSET;
+	uint16_t vec = RTE_INTR_VEC_ZERO_OFFSET;
 	uint16_t q_id;
 
 	if (dev->data->dev_conf.intr_conf.rxq == 0)
@@ -896,9 +944,8 @@ hns3_get_pci_revision_id(struct hns3_hw *hw, uint8_t *revision_id)
 
 	eth_dev = &rte_eth_devices[hw->data->port_id];
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	ret = rte_pci_read_config(pci_dev, &revision, HNS3_PCI_REVISION_ID_LEN,
-				  HNS3_PCI_REVISION_ID);
-	if (ret != HNS3_PCI_REVISION_ID_LEN) {
+	ret = rte_pci_read_config(pci_dev, &revision, 1, RTE_PCI_REVISION_ID);
+	if (ret != 1) {
 		hns3_err(hw, "failed to read pci revision id, ret = %d", ret);
 		return -EIO;
 	}

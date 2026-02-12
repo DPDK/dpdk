@@ -9,12 +9,10 @@
 #include <stdbool.h>
 #include <rte_eventdev.h>
 
-#define IQ_ROB_NAMESIZE 12
-
-struct sw_queue_chunk {
+struct __rte_cache_aligned sw_queue_chunk {
 	struct rte_event events[SW_EVS_PER_Q_CHUNK];
 	struct sw_queue_chunk *next;
-} __rte_cache_aligned;
+};
 
 static __rte_always_inline bool
 iq_empty(struct sw_iq *iq)

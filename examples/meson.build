@@ -78,10 +78,9 @@ else
     examples = get_option('examples').split(',')
     allow_skips = false # error out if we can't build a requested app
 endif
+
 default_cflags = machine_args
-if cc.has_argument('-Wno-format-truncation')
-    default_cflags += '-Wno-format-truncation'
-endif
+
 default_ldflags = dpdk_extra_ldflags
 if get_option('default_library') == 'static' and not is_windows
     default_ldflags += ['-Wl,--export-dynamic']

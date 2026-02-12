@@ -10,3 +10,4 @@ allow_experimental_apis = true
 sources = files(
         'main.c',
 )
+cflags += no_shadow_cflag

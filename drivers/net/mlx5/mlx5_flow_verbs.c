@@ -600,13 +600,13 @@ flow_verbs_translate_item_ipv6(struct mlx5_flow *dev_flow,
 		uint32_t vtc_flow_val;
 		uint32_t vtc_flow_mask;
 
-		memcpy(&ipv6.val.src_ip, spec->hdr.src_addr,
+		memcpy(&ipv6.val.src_ip, &spec->hdr.src_addr,
 		       RTE_DIM(ipv6.val.src_ip));
-		memcpy(&ipv6.val.dst_ip, spec->hdr.dst_addr,
+		memcpy(&ipv6.val.dst_ip, &spec->hdr.dst_addr,
 		       RTE_DIM(ipv6.val.dst_ip));
-		memcpy(&ipv6.mask.src_ip, mask->hdr.src_addr,
+		memcpy(&ipv6.mask.src_ip, &mask->hdr.src_addr,
 		       RTE_DIM(ipv6.mask.src_ip));
-		memcpy(&ipv6.mask.dst_ip, mask->hdr.dst_addr,
+		memcpy(&ipv6.mask.dst_ip, &mask->hdr.dst_addr,
 		       RTE_DIM(ipv6.mask.dst_ip));
 		vtc_flow_val = rte_be_to_cpu_32(spec->hdr.vtc_flow);
 		vtc_flow_mask = rte_be_to_cpu_32(mask->hdr.vtc_flow);
@@ -1332,9 +1332,8 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		switch (items->type) {
 #ifdef HAVE_IBV_FLOW_SPEC_ESP
 		case RTE_FLOW_ITEM_TYPE_ESP:
-			ret = mlx5_flow_os_validate_item_esp(items, item_flags,
-							  next_protocol,
-							  error);
+			ret = mlx5_flow_os_validate_item_esp(dev, items, item_flags,
+							     next_protocol, false, error);
 			if (ret < 0)
 				return ret;
 			last_item = MLX5_FLOW_ITEM_ESP;
@@ -1343,7 +1342,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			ret = mlx5_flow_validate_item_eth(items, item_flags,
+			ret = mlx5_flow_validate_item_eth(dev, items, item_flags,
 							  false, error);
 			if (ret < 0)
 				return ret;
@@ -1387,7 +1386,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			ret = mlx5_flow_validate_item_ipv4
-						(items, item_flags,
+						(dev, items, item_flags,
 						 last_item, ether_type, NULL,
 						 MLX5_ITEM_RANGE_NOT_ACCEPTED,
 						 error);
@@ -1410,7 +1409,8 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
-			ret = mlx5_flow_validate_item_ipv6(items, item_flags,
+			ret = mlx5_flow_validate_item_ipv6(dev, items,
+							   item_flags,
 							   last_item,
 							   ether_type, NULL,
 							   error);
@@ -1433,7 +1433,8 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
-			ret = mlx5_flow_validate_item_udp(items, item_flags,
+			ret = mlx5_flow_validate_item_udp(dev, items,
+							  item_flags,
 							  next_protocol,
 							  error);
 			const struct rte_flow_item_udp *spec = items->spec;
@@ -1452,7 +1453,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			ret = mlx5_flow_validate_item_tcp
-						(items, item_flags,
+						(dev, items, item_flags,
 						 next_protocol,
 						 &rte_flow_item_tcp_mask,
 						 error);
@@ -1478,7 +1479,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			last_item = MLX5_FLOW_LAYER_VXLAN_GPE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
-			ret = mlx5_flow_validate_item_gre(items, item_flags,
+			ret = mlx5_flow_validate_item_gre(dev, items, item_flags,
 							  next_protocol, error);
 			if (ret < 0)
 				return ret;
@@ -1522,7 +1523,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_FLAG;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
-			ret = mlx5_flow_validate_action_mark(actions,
+			ret = mlx5_flow_validate_action_mark(dev, actions,
 							     action_flags,
 							     attr,
 							     error);
@@ -2183,6 +2184,8 @@ flow_verbs_sync_domain(struct rte_eth_dev *dev, uint32_t domains,
 }
 
 const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops = {
+	.list_create = flow_legacy_list_create,
+	.list_destroy = flow_legacy_list_destroy,
 	.validate = flow_verbs_validate,
 	.prepare = flow_verbs_prepare,
 	.translate = flow_verbs_translate,

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2017-2020 NXP
+ * Copyright 2017-2024 NXP
  */
 
 #include <stdio.h>
@@ -44,7 +44,7 @@ fm_open(uint8_t id)
 	static bool called;
 	ioc_fm_api_version_t ver;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	p_dev = (t_device *)malloc(sizeof(t_device));
 	if (p_dev == NULL)
@@ -75,7 +75,7 @@ fm_open(uint8_t id)
 				ver.version.respin);
 		}
 	}
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 
 	return (t_handle)p_dev;
 }
@@ -84,12 +84,12 @@ void fm_close(t_handle h_fm)
 {
 	t_device *p_dev = (t_device *)h_fm;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	close(p_dev->fd);
 	free(p_dev);
 
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 }
 
 uint32_t
@@ -98,15 +98,15 @@ fm_get_api_version(t_handle h_fm, ioc_fm_api_version_t *p_version)
 	t_device *p_dev = (t_device *)h_fm;
 	int ret;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	ret = ioctl(p_dev->fd, FM_IOC_GET_API_VERSION, p_version);
 	if (ret) {
-		DPAA_PMD_ERR("cannot get API version, error %i (%s)\n",
+		DPAA_PMD_ERR("cannot get API version, error %i (%s)",
 			     errno, strerror(errno));
 		RETURN_ERROR(MINOR, E_INVALID_OPERATION, NO_MSG);
 	}
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 
 	return E_OK;
 }
@@ -118,7 +118,7 @@ fm_pcd_open(t_fm_pcd_params *p_fm_pcd_params)
 	int fd;
 	char dev_name[20];
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	p_dev = (t_device *)malloc(sizeof(t_device));
 	if (p_dev == NULL)
@@ -137,7 +137,7 @@ fm_pcd_open(t_fm_pcd_params *p_fm_pcd_params)
 	p_dev->fd = fd;
 	p_dev->owners = 0;
 
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 
 	return (t_handle)p_dev;
 }
@@ -147,19 +147,19 @@ fm_pcd_close(t_handle h_fm_pcd)
 {
 	t_device *p_dev = (t_device *)h_fm_pcd;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	close(p_dev->fd);
 
 	if (p_dev->owners) {
-		printf("\nTry delete a prev created pcd handler(owners:%u)!\n",
+		printf("\nTry delete a prev created pcd handler(owners:%u)!",
 			p_dev->owners);
 		return;
 	}
 
 	free(p_dev);
 
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 }
 
 uint32_t
@@ -167,12 +167,12 @@ fm_pcd_enable(t_handle h_fm_pcd)
 {
 	t_device *p_dev = (t_device *)h_fm_pcd;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	if (ioctl(p_dev->fd, FM_PCD_IOC_ENABLE))
 		RETURN_ERROR(MINOR, E_INVALID_OPERATION, NO_MSG);
 
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 
 	return E_OK;
 }
@@ -182,12 +182,12 @@ fm_pcd_disable(t_handle h_fm_pcd)
 {
 	t_device *p_dev = (t_device *)h_fm_pcd;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	if (ioctl(p_dev->fd, FM_PCD_IOC_DISABLE))
 		RETURN_ERROR(MINOR, E_INVALID_OPERATION, NO_MSG);
 
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 
 	return E_OK;
 }
@@ -199,7 +199,7 @@ fm_pcd_net_env_characteristics_set(t_handle h_fm_pcd,
 	t_device *p_pcd_dev = (t_device *)h_fm_pcd;
 	t_device *p_dev = NULL;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	params->id = NULL;
 
@@ -216,7 +216,7 @@ fm_pcd_net_env_characteristics_set(t_handle h_fm_pcd,
 	p_pcd_dev->owners++;
 	p_dev->id = PTR_TO_UINT(params->id);
 
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 
 	return (t_handle)p_dev;
 }
@@ -228,7 +228,7 @@ fm_pcd_net_env_characteristics_delete(t_handle h_net_env)
 	t_device *p_pcd_dev = NULL;
 	ioc_fm_obj_t id;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	p_pcd_dev = (t_device *)p_dev->h_user_priv;
 	id.obj = UINT_TO_PTR(p_dev->id);
@@ -240,7 +240,7 @@ fm_pcd_net_env_characteristics_delete(t_handle h_net_env)
 	p_pcd_dev->owners--;
 	free(p_dev);
 
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 
 	return E_OK;
 }
@@ -253,7 +253,7 @@ fm_pcd_kg_scheme_set(t_handle h_fm_pcd,
 	t_device *p_dev = NULL;
 	int ret;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	params->id = NULL;
 
@@ -275,7 +275,7 @@ fm_pcd_kg_scheme_set(t_handle h_fm_pcd,
 
 	ret = ioctl(p_pcd_dev->fd, FM_PCD_IOC_KG_SCHEME_SET, params);
 	if (ret) {
-		DPAA_PMD_ERR("  cannot set kg scheme, error %i (%s)\n",
+		DPAA_PMD_ERR("  cannot set kg scheme, error %i (%s)",
 			     errno, strerror(errno));
 		return NULL;
 	}
@@ -291,7 +291,7 @@ fm_pcd_kg_scheme_set(t_handle h_fm_pcd,
 		p_pcd_dev->owners++;
 	p_dev->id = PTR_TO_UINT(params->id);
 
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 
 	return (t_handle)p_dev;
 }
@@ -303,13 +303,13 @@ fm_pcd_kg_scheme_delete(t_handle h_scheme)
 	t_device *p_pcd_dev = NULL;
 	ioc_fm_obj_t id;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	p_pcd_dev =  (t_device *)p_dev->h_user_priv;
 	id.obj = UINT_TO_PTR(p_dev->id);
 
 	if (ioctl(p_pcd_dev->fd, FM_PCD_IOC_KG_SCHEME_DELETE, &id)) {
-		DPAA_PMD_WARN("cannot delete kg scheme, error %i (%s)\n",
+		DPAA_PMD_WARN("cannot delete kg scheme, error %i (%s)",
 			      errno, strerror(errno));
 		RETURN_ERROR(MINOR, E_INVALID_OPERATION, NO_MSG);
 	}
@@ -317,7 +317,7 @@ fm_pcd_kg_scheme_delete(t_handle h_scheme)
 	p_pcd_dev->owners--;
 	free(p_dev);
 
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 
 	return E_OK;
 }
@@ -335,7 +335,7 @@ fm_port_open(t_fm_port_params *p_fm_port_params)
 	char dev_name[30];
 	t_fm_port *p_fm_port;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	p_dev = (t_device *)malloc(sizeof(t_device));
 	if (p_dev == NULL)
@@ -395,7 +395,7 @@ fm_port_open(t_fm_port_params *p_fm_port_params)
 	p_dev->fd = fd;
 	p_dev->h_user_priv = (t_handle)p_fm_port;
 
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 
 	return (t_handle)p_dev;
 }
@@ -405,13 +405,13 @@ fm_port_close(t_handle h_fm_port)
 {
 	t_device *p_dev = (t_device *)h_fm_port;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	close(p_dev->fd);
 	free(p_dev->h_user_priv);
 	free(p_dev);
 
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 }
 
 uint32_t
@@ -419,12 +419,12 @@ fm_port_disable(t_handle h_fm_port)
 {
 	t_device *p_dev = (t_device *)h_fm_port;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	if (ioctl(p_dev->fd, FM_PORT_IOC_DISABLE))
 		RETURN_ERROR(MINOR, E_INVALID_OPERATION, NO_MSG);
 
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 
 	return E_OK;
 }
@@ -434,12 +434,12 @@ fm_port_enable(t_handle h_fm_port)
 {
 	t_device *p_dev = (t_device *)h_fm_port;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	if (ioctl(p_dev->fd, FM_PORT_IOC_ENABLE))
 		RETURN_ERROR(MINOR, E_INVALID_OPERATION, NO_MSG);
 
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 
 	return E_OK;
 }
@@ -450,7 +450,7 @@ fm_port_set_pcd(t_handle h_fm_port,
 {
 	t_device *p_dev = (t_device *)h_fm_port;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	/* correct h_net_env param from t_fm_portPcdParams */
 	DEV_TO_ID(p->net_env_id);
@@ -509,7 +509,7 @@ fm_port_set_pcd(t_handle h_fm_port,
 	if (ioctl(p_dev->fd, FM_PORT_IOC_SET_PCD, p))
 		RETURN_ERROR(MINOR, E_INVALID_OPERATION, NO_MSG);
 
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 
 	return E_OK;
 }
@@ -519,12 +519,12 @@ fm_port_delete_pcd(t_handle h_fm_port)
 {
 	t_device *p_dev = (t_device *)h_fm_port;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	if (ioctl(p_dev->fd, FM_PORT_IOC_DELETE_PCD))
 		RETURN_ERROR(MINOR, E_INVALID_OPERATION, NO_MSG);
 
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 
 	return E_OK;
 }
@@ -535,7 +535,7 @@ create_device(t_handle h_user_priv, t_handle h_dev_id)
 	t_device *p_user_priv_dev = (t_device *)h_user_priv;
 	t_device *p_dev = NULL;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	p_dev = (t_device *)malloc(sizeof(t_device));
 	if (p_dev == NULL)
@@ -546,7 +546,7 @@ create_device(t_handle h_user_priv, t_handle h_dev_id)
 	p_user_priv_dev->owners++;
 	p_dev->id = PTR_TO_UINT(h_dev_id);
 
-	_fml_dbg("Finishing.\n");
+	_fml_dbg("Finishing.");
 
 	return (t_handle)p_dev;
 }

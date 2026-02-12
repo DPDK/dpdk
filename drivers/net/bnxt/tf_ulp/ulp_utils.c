@@ -12,18 +12,18 @@
  *
  * regfile [in] Ptr to a regfile instance
  *
- * returns 0 on error or 1 on success
+ * returns zero on success
  */
-uint32_t
+int32_t
 ulp_regfile_init(struct ulp_regfile *regfile)
 {
 	/* validate the arguments */
 	if (!regfile) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
-		return 0; /* failure */
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
+		return -EINVAL;
 	}
 	memset(regfile, 0, sizeof(struct ulp_regfile));
-	return 1; /* Success */
+	return 0; /* Success */
 }
 
 /*
@@ -35,21 +35,21 @@ ulp_regfile_init(struct ulp_regfile *regfile)
  *
  * data [in/out]
  *
- * returns size, zero on failure
+ * returns zero on success
  */
-uint32_t
+int32_t
 ulp_regfile_read(struct ulp_regfile *regfile,
 		 enum bnxt_ulp_rf_idx field,
 		 uint64_t *data)
 {
 	/* validate the arguments */
 	if (!regfile || field >= BNXT_ULP_RF_IDX_LAST) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
-		return 0; /* failure */
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
+		return -EINVAL;
 	}
 
 	*data = regfile->entry[field].data;
-	return sizeof(*data);
+	return 0;
 }
 
 /*
@@ -74,7 +74,7 @@ ulp_regfile_write(struct ulp_regfile *regfile,
 {
 	/* validate the arguments */
 	if (!regfile || field >= BNXT_ULP_RF_IDX_LAST) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
 		return -EINVAL; /* failure */
 	}
 
@@ -229,18 +229,18 @@ ulp_bs_push_msb(uint8_t *bs, uint16_t pos, uint8_t len, uint8_t *val)
  * order [in] The byte order for the blob.  Currently only supporting
  * big endian.  All fields are packed with this order.
  *
- * returns 0 on error or 1 on success
+ * returns zero on success
  * Notes - If bitlen is zero then set it to max.
  */
-uint32_t
+int32_t
 ulp_blob_init(struct ulp_blob *blob,
 	      uint16_t bitlen,
 	      enum bnxt_ulp_byte_order order)
 {
 	/* validate the arguments */
 	if (!blob || bitlen > (8 * sizeof(blob->data))) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
-		return 0; /* failure */
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
+		return -EINVAL;
 	}
 	if (bitlen)
 		blob->bitlen = bitlen;
@@ -249,7 +249,7 @@ ulp_blob_init(struct ulp_blob *blob,
 	blob->byte_order = order;
 	blob->write_idx = 0;
 	memset(blob->data, 0, sizeof(blob->data));
-	return 1; /* Success */
+	return 0; /* Success */
 }
 
 /*
@@ -263,12 +263,13 @@ ulp_blob_init(struct ulp_blob *blob,
  * datalen [in] The number of bits to be added to the blob.
  *
  * The offset of the data is updated after each push of data.
- * NULL returned on error.
+ *
+ * returns zero on success
  */
 #define ULP_BLOB_BYTE		8
 #define ULP_BLOB_BYTE_HEX	0xFF
 #define BLOB_MASK_CAL(x)	((0xFF << (x)) & 0xFF)
-uint32_t
+int32_t
 ulp_blob_push(struct ulp_blob *blob,
 	      uint8_t *data,
 	      uint32_t datalen)
@@ -277,8 +278,8 @@ ulp_blob_push(struct ulp_blob *blob,
 
 	/* validate the arguments */
 	if (!blob || datalen > (uint32_t)(blob->bitlen - blob->write_idx)) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
-		return 0; /* failure */
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
+		return -EINVAL;
 	}
 
 	if (blob->byte_order == BNXT_ULP_BYTE_ORDER_BE)
@@ -292,11 +293,11 @@ ulp_blob_push(struct ulp_blob *blob,
 				     datalen,
 				     data);
 	if (!rc) {
-		BNXT_TF_DBG(ERR, "Failed to write blob\n");
-		return 0;
+		BNXT_DRV_DBG(ERR, "Failed to write blob\n");
+		return -EINVAL;
 	}
 	blob->write_idx += datalen;
-	return datalen;
+	return 0;
 }
 
 /*
@@ -312,9 +313,10 @@ ulp_blob_push(struct ulp_blob *blob,
  * datalen [in] The number of bits to be added to the blob.
  *
  * The offset of the data is updated after each push of data.
- * NULL returned on error.
+ *
+ * returns zero on success
  */
-uint32_t
+int32_t
 ulp_blob_insert(struct ulp_blob *blob, uint32_t offset,
 		uint8_t *data, uint32_t datalen)
 {
@@ -325,16 +327,16 @@ ulp_blob_insert(struct ulp_blob *blob, uint32_t offset,
 	/* validate the arguments */
 	if (!blob || datalen > (uint32_t)(blob->bitlen - blob->write_idx) ||
 	    offset > blob->write_idx) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
-		return 0; /* failure */
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
+		return -EINVAL;
 	}
 
 	mov_len = blob->write_idx - offset;
 	/* If offset and data len are not 8 bit aligned then return error */
 	if (ULP_BITS_IS_BYTE_NOT_ALIGNED(offset) ||
 	    ULP_BITS_IS_BYTE_NOT_ALIGNED(datalen)) {
-		BNXT_TF_DBG(ERR, "invalid argument, not aligned\n");
-		return 0; /* failure */
+		BNXT_DRV_DBG(ERR, "invalid argument, not aligned\n");
+		return -EINVAL;
 	}
 
 	/* copy the data so we can move the data */
@@ -352,14 +354,14 @@ ulp_blob_insert(struct ulp_blob *blob, uint32_t offset,
 				     datalen,
 				     data);
 	if (!rc) {
-		BNXT_TF_DBG(ERR, "Failed to write blob\n");
-		return 0;
+		BNXT_DRV_DBG(ERR, "Failed to write blob\n");
+		return -EINVAL;
 	}
 	/* copy the previously stored data */
 	memcpy(&blob->data[ULP_BITS_2_BYTE_NR(offset + datalen)], local_data,
 	       ULP_BITS_2_BYTE(mov_len));
 	blob->write_idx += (mov_len + datalen);
-	return datalen;
+	return 0;
 }
 
 /*
@@ -387,13 +389,13 @@ ulp_blob_push_64(struct ulp_blob *blob,
 
 	if (!blob || !data ||
 	    datalen > (uint32_t)(blob->bitlen - blob->write_idx)) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
-		return 0;
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
+		return NULL;
 	}
 
 	rc = ulp_blob_push(blob, &val[8 - size], datalen);
-	if (!rc)
-		return 0;
+	if (rc)
+		return NULL;
 
 	return &val[8 - size];
 }
@@ -421,13 +423,13 @@ ulp_blob_push_32(struct ulp_blob *blob,
 	uint32_t size = ULP_BITS_2_BYTE(datalen);
 
 	if (!data || size > sizeof(uint32_t)) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
-		return 0;
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
+		return NULL;
 	}
 
 	rc = ulp_blob_push(blob, &val[sizeof(uint32_t) - size], datalen);
-	if (!rc)
-		return 0;
+	if (rc)
+		return NULL;
 
 	return &val[sizeof(uint32_t) - size];
 }
@@ -456,7 +458,7 @@ ulp_blob_push_encap(struct ulp_blob *blob,
 
 	if (!blob || !data ||
 	    datalen > (uint32_t)(blob->bitlen - blob->write_idx)) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
 		return -1;
 	}
 
@@ -474,8 +476,8 @@ ulp_blob_push_encap(struct ulp_blob *blob,
 		} else {
 			size = write_size;
 		}
-		if (!ulp_blob_push(blob, val, size)) {
-			BNXT_TF_DBG(ERR, "push field failed\n");
+		if (ulp_blob_push(blob, val, size)) {
+			BNXT_DRV_DBG(ERR, "push field failed\n");
 			return -1;
 		}
 		val += ULP_BITS_2_BYTE(size);
@@ -499,7 +501,7 @@ ulp_blob_pad_push(struct ulp_blob *blob,
 		  uint32_t datalen)
 {
 	if (datalen > (uint32_t)(blob->bitlen - blob->write_idx)) {
-		BNXT_TF_DBG(ERR, "Pad too large for blob\n");
+		BNXT_DRV_DBG(ERR, "Pad too large for blob\n");
 		return -1;
 	}
 
@@ -525,7 +527,7 @@ ulp_blob_pad_align(struct ulp_blob *blob,
 
 	pad = RTE_ALIGN(blob->write_idx, align) - blob->write_idx;
 	if (pad > (int32_t)(blob->bitlen - blob->write_idx)) {
-		BNXT_TF_DBG(ERR, "Pad too large for blob\n");
+		BNXT_DRV_DBG(ERR, "Pad too large for blob\n");
 		return -1;
 	}
 	blob->write_idx += pad;
@@ -661,7 +663,7 @@ ulp_blob_pull(struct ulp_blob *blob, uint8_t *data, uint32_t data_size,
 	/* validate the arguments */
 	if (!blob || (offset + len) > blob->bitlen ||
 	    ULP_BYTE_2_BITS(data_size) < len) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
 		return -1; /* failure */
 	}
 
@@ -678,9 +680,9 @@ ulp_blob_pull(struct ulp_blob *blob, uint8_t *data, uint32_t data_size,
  * blob [in] The blob's data to be retrieved. The blob must be
  * initialized prior to pushing data.
  *
- * datalen [out] The number of bits to that are filled.
+ * datalen [out] The number of bits that are filled.
  *
- * returns a byte array of the blob data.  Returns NULL on error.
+ * Returns a byte array of the blob data or NULL on error.
  */
 uint8_t *
 ulp_blob_data_get(struct ulp_blob *blob,
@@ -688,7 +690,7 @@ ulp_blob_data_get(struct ulp_blob *blob,
 {
 	/* validate the arguments */
 	if (!blob) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
 		return NULL; /* failure */
 	}
 	*datalen = blob->write_idx;
@@ -707,7 +709,7 @@ ulp_blob_data_len_get(struct ulp_blob *blob)
 {
 	/* validate the arguments */
 	if (!blob) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
 		return 0; /* failure */
 	}
 	return blob->write_idx;
@@ -726,7 +728,7 @@ ulp_blob_encap_swap_idx_set(struct ulp_blob *blob)
 {
 	/* validate the arguments */
 	if (!blob) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
 		return; /* failure */
 	}
 	blob->encap_swap_idx = blob->write_idx;
@@ -747,7 +749,7 @@ ulp_blob_perform_encap_swap(struct ulp_blob *blob)
 
 	/* validate the arguments */
 	if (!blob) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
 		return; /* failure */
 	}
 	idx = ULP_BITS_2_BYTE_NR(blob->encap_swap_idx);
@@ -790,7 +792,7 @@ ulp_blob_perform_byte_reverse(struct ulp_blob *blob,
 
 	/* validate the arguments */
 	if (!blob) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
 		return; /* failure */
 	}
 
@@ -824,7 +826,7 @@ ulp_blob_perform_64B_word_swap(struct ulp_blob *blob)
 
 	/* validate the arguments */
 	if (!blob) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
 		return; /* failure */
 	}
 	num = ULP_BITS_2_BYTE(blob->write_idx);
@@ -855,7 +857,7 @@ ulp_blob_perform_64B_byte_swap(struct ulp_blob *blob)
 
 	/* validate the arguments */
 	if (!blob) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
 		return; /* failure */
 	}
 	num = ULP_BITS_2_BYTE(blob->write_idx);
@@ -878,7 +880,7 @@ ulp_blob_msb_block_merge(struct ulp_blob *dst, struct ulp_blob *src,
 	uint8_t bluff;
 
 	for (i = 0; i < num;) {
-		if (((dst->write_idx % block_size)  + (num - i)) > block_size)
+		if (((dst->write_idx % block_size) + (num - i)) > block_size)
 			write_bytes = block_size -
 				(dst->write_idx % block_size);
 		else
@@ -920,7 +922,8 @@ ulp_blob_msb_block_merge(struct ulp_blob *dst, struct ulp_blob *src,
  *
  * dst [in] The destination blob, the blob to be merged.
  * src [in] The src blob.
- * block_size [in] The size of the block after which padding gets applied.
+ * block_size [in] The size of the block in bytes after which padding gets
+ *                 applied.
  * pad [in] The size of the pad to be applied.
  *
  * returns 0 on success.
@@ -933,7 +936,7 @@ ulp_blob_block_merge(struct ulp_blob *dst, struct ulp_blob *src,
 	    src->byte_order == BNXT_ULP_BYTE_ORDER_BE)
 		return ulp_blob_msb_block_merge(dst, src, block_size, pad);
 
-	BNXT_TF_DBG(ERR, "block merge not implemented yet\n");
+	BNXT_DRV_DBG(ERR, "block merge not implemented yet\n");
 	return -EINVAL;
 }
 
@@ -941,7 +944,7 @@ int32_t
 ulp_blob_append(struct ulp_blob *dst, struct ulp_blob *src,
 		uint16_t src_offset, uint16_t src_len)
 {
-	uint32_t k, remaining;
+	uint32_t k, remaining = 0;
 	uint16_t num;
 	uint8_t bluff;
 	uint8_t *src_buf = ulp_blob_data_get(src, &num);
@@ -976,7 +979,10 @@ ulp_blob_append(struct ulp_blob *dst, struct ulp_blob *src,
 	}
 
 	/* Handle the remaining if length is not a byte boundary */
-	remaining = src_len % ULP_BLOB_BYTE;
+	if (src_len > remaining)
+		remaining = (src_len - remaining) % ULP_BLOB_BYTE;
+	else
+		remaining = 0;
 	if (remaining) {
 		bluff = (*src_buf) & ((uint8_t)-1 <<
 				      (ULP_BLOB_BYTE - remaining));
@@ -1001,12 +1007,12 @@ int32_t
 ulp_blob_buffer_copy(struct ulp_blob *dst, struct ulp_blob *src)
 {
 	if ((dst->write_idx + src->write_idx) > dst->bitlen) {
-		BNXT_TF_DBG(ERR, "source buffer too large\n");
+		BNXT_DRV_DBG(ERR, "source buffer too large\n");
 		return -EINVAL;
 	}
 	if (ULP_BITS_IS_BYTE_NOT_ALIGNED(dst->write_idx) ||
 	    ULP_BITS_IS_BYTE_NOT_ALIGNED(src->write_idx)) {
-		BNXT_TF_DBG(ERR, "source buffer is not aligned\n");
+		BNXT_DRV_DBG(ERR, "source buffer is not aligned\n");
 		return -EINVAL;
 	}
 	memcpy(&dst->data[ULP_BITS_2_BYTE_NR(dst->write_idx)],
@@ -1024,20 +1030,20 @@ ulp_blob_buffer_copy(struct ulp_blob *dst, struct ulp_blob *src)
  *
  * bytes [in] The number of bytes to read into val
  *
- * returns number of bits read, zero on error
+ * returns zero on success.
  */
-uint16_t
+int32_t
 ulp_operand_read(uint8_t *operand,
 		 uint8_t *val,
 		 uint16_t bytes)
 {
 	/* validate the arguments */
 	if (!operand || !val) {
-		BNXT_TF_DBG(ERR, "invalid argument\n");
-		return 0; /* failure */
+		BNXT_DRV_DBG(ERR, "invalid argument\n");
+		return -EINVAL;
 	}
 	memcpy(val, operand, bytes);
-	return bytes;
+	return 0;
 }
 
 /*

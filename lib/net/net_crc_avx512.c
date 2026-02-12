@@ -5,10 +5,9 @@
 #include <stdalign.h>
 
 #include <rte_common.h>
+#include <rte_vect.h>
 
 #include "net_crc.h"
-
-#include <x86intrin.h>
 
 /* VPCLMULQDQ CRC computation context structure */
 struct crc_vpclmulqdq_ctx {
@@ -181,7 +180,6 @@ crc32_eth_calc_vpclmulqdq(const uint8_t *data, uint32_t data_len, uint32_t crc,
 	__m512i temp, k;
 	__m512i qw0 = _mm512_set1_epi64(0), qw1, qw2, qw3;
 	__m512i fold0, fold1, fold2, fold3;
-	__mmask16 mask;
 	uint32_t n = 0;
 	int reduction = 0;
 
@@ -261,8 +259,7 @@ crc32_eth_calc_vpclmulqdq(const uint8_t *data, uint32_t data_len, uint32_t crc,
 			res = _mm_xor_si128(res, d);
 		} else {
 			res = _mm_cvtsi32_si128(crc);
-			mask = byte_len_to_mask_table[data_len];
-			d = _mm_maskz_loadu_epi8(mask, data);
+			d = _mm_maskz_loadu_epi8(byte_len_to_mask_table[data_len], data);
 			res = _mm_xor_si128(res, d);
 
 			if (data_len > 3) {
@@ -331,13 +328,10 @@ crc32_load_init_constants(void)
 			c9, c10, c11);
 	crc32_eth.fold_3x128b = _mm512_setr_epi64(c12, c13, c14, c15,
 			c16, c17, 0, 0);
-	crc32_eth.fold_1x128b = _mm_setr_epi64(_mm_cvtsi64_m64(c16),
-			_mm_cvtsi64_m64(c17));
+	crc32_eth.fold_1x128b = _mm_set_epi64x(c17, c16);
 
-	crc32_eth.rk5_rk6 = _mm_setr_epi64(_mm_cvtsi64_m64(c18),
-			_mm_cvtsi64_m64(c19));
-	crc32_eth.rk7_rk8 = _mm_setr_epi64(_mm_cvtsi64_m64(c20),
-			_mm_cvtsi64_m64(c21));
+	crc32_eth.rk5_rk6 = _mm_set_epi64x(c19, c18);
+	crc32_eth.rk7_rk8 = _mm_set_epi64x(c21, c20);
 }
 
 static void
@@ -378,13 +372,10 @@ crc16_load_init_constants(void)
 			c9, c10, c11);
 	crc16_ccitt.fold_3x128b = _mm512_setr_epi64(c12, c13, c14, c15,
 			c16, c17, 0, 0);
-	crc16_ccitt.fold_1x128b = _mm_setr_epi64(_mm_cvtsi64_m64(c16),
-			_mm_cvtsi64_m64(c17));
+	crc16_ccitt.fold_1x128b = _mm_set_epi64x(c17, c16);
 
-	crc16_ccitt.rk5_rk6 = _mm_setr_epi64(_mm_cvtsi64_m64(c18),
-			_mm_cvtsi64_m64(c19));
-	crc16_ccitt.rk7_rk8 = _mm_setr_epi64(_mm_cvtsi64_m64(c20),
-			_mm_cvtsi64_m64(c21));
+	crc16_ccitt.rk5_rk6 = _mm_set_epi64x(c19, c18);
+	crc16_ccitt.rk7_rk8 = _mm_set_epi64x(c21, c20);
 }
 
 void
@@ -392,12 +383,6 @@ rte_net_crc_avx512_init(void)
 {
 	crc32_load_init_constants();
 	crc16_load_init_constants();
-
-	/*
-	 * Reset the register as following calculation may
-	 * use other data types such as float, double, etc.
-	 */
-	_mm_empty();
 }
 
 uint32_t

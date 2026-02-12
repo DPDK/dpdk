@@ -80,6 +80,8 @@ do_recursive_call(void)
 			{ "test_memory_flags", no_action },
 			{ "test_file_prefix", no_action },
 			{ "test_no_huge_flag", no_action },
+			{ "test_panic", test_panic },
+			{ "test_exit", test_exit },
 #ifdef RTE_LIB_TIMER
 #ifndef RTE_EXEC_ENV_WINDOWS
 			{ "timer_secondary_spawn_wait", test_timer_secondary },
@@ -90,8 +92,13 @@ do_recursive_call(void)
 	if (recursive_call == NULL)
 		return -1;
 	for (i = 0; i < RTE_DIM(actions); i++) {
-		if (strcmp(actions[i].env_var, recursive_call) == 0)
-			return (actions[i].action_fn)();
+		if (strcmp(actions[i].env_var, recursive_call) == 0) {
+			printf("Calling recursive action for %s\n", recursive_call);
+			int ret = actions[i].action_fn();
+			printf("Returned from recursive action for %s with %d\n",
+					recursive_call, ret);
+			return ret;
+		}
 	}
 	printf("ERROR - missing action to take for %s\n", recursive_call);
 	return -1;
@@ -105,7 +112,7 @@ int
 main(int argc, char **argv)
 {
 	struct cmdline *cl;
-	char *tests[argc]; /* store an array of tests to run */
+	char **tests = alloca(sizeof(char *) * argc); /* store an array of tests to run */
 	int test_count = 0;
 	int i;
 	char *extra_args;
@@ -144,6 +151,7 @@ main(int argc, char **argv)
 	} else
 		ret = rte_eal_init(argc, argv);
 	if (ret < 0) {
+		printf("Error with EAL initialization, ret = %d\n", ret);
 		ret = -1;
 		goto out;
 	}
@@ -257,10 +265,14 @@ end_of_cmd:
 	ret = 0;
 
 out:
+	if (recursive_call != NULL)
+		printf("Cleaning up %s recursive instance\n", argv[0]);
 #ifdef RTE_LIB_TIMER
 	rte_timer_subsystem_finalize();
 #endif
 	rte_eal_cleanup();
+	if (recursive_call != NULL)
+		printf("%s recursive instance returning %d\n", argv[0], ret);
 	return ret;
 }
 

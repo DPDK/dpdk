@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Luca Boccassi <bluca@debian.org>
 
+doc_source_dir = meson.current_source_dir()
 doc_targets = []
 doc_target_names = []
 subdir('api')

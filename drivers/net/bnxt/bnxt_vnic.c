@@ -16,6 +16,11 @@
 #include "hsi_struct_def_dpdk.h"
 #include "bnxt_hwrm.h"
 
+#ifndef RTE_HASH_BUCKET_ENTRIES
+/* it is defined in lib/hash/rte_cuckoo_hash.h */
+#define RTE_HASH_BUCKET_ENTRIES     8
+#endif /* RTE_HASH_BUCKET_ENTRIES */
+
 /* Macros to manipulate vnic bitmaps*/
 #define BNXT_VNIC_BITMAP_SIZE	64
 #define BNXT_VNIC_BITMAP_SET(b, i)	((b[(i) / BNXT_VNIC_BITMAP_SIZE]) |= \
@@ -30,6 +35,7 @@
 			((BNXT_VNIC_BITMAP_SIZE - 1) - \
 			((i) % BNXT_VNIC_BITMAP_SIZE))) & 1)
 
+static uint16_t rss_query_queues[BNXT_VNIC_MAX_QUEUE_SIZE];
 /*
  * VNIC Functions
  */
@@ -86,7 +92,7 @@ struct bnxt_vnic_info *bnxt_alloc_vnic(struct bnxt *bp)
 	/* Find the 1st unused vnic from the free_vnic_list pool*/
 	vnic = STAILQ_FIRST(&bp->free_vnic_list);
 	if (!vnic) {
-		PMD_DRV_LOG(ERR, "No more free VNIC resources\n");
+		PMD_DRV_LOG_LINE(ERR, "No more free VNIC resources");
 		return NULL;
 	}
 	STAILQ_REMOVE_HEAD(&bp->free_vnic_list, next);
@@ -164,8 +170,8 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp, bool reconfig)
 						 RTE_MEMZONE_SIZE_HINT_ONLY,
 						 BNXT_PAGE_SIZE);
 		if (mz == NULL) {
-			PMD_DRV_LOG(ERR,
-				    "Cannot allocate vnic_attributes memory\n");
+			PMD_DRV_LOG_LINE(ERR,
+				    "Cannot allocate vnic_attributes memory");
 			return -ENOMEM;
 		}
 	}
@@ -207,7 +213,7 @@ void bnxt_free_vnic_mem(struct bnxt *bp)
 	for (i = 0; i < max_vnics; i++) {
 		vnic = &bp->vnic_info[i];
 		if (vnic->fw_vnic_id != (uint16_t)HWRM_NA_SIGNATURE) {
-			PMD_DRV_LOG(ERR, "VNIC is not freed yet!\n");
+			PMD_DRV_LOG_LINE(ERR, "VNIC is not freed yet!");
 			/* TODO Call HWRM to free VNIC */
 		}
 	}
@@ -226,7 +232,7 @@ int bnxt_alloc_vnic_mem(struct bnxt *bp)
 	vnic_mem = rte_zmalloc("bnxt_vnic_info",
 			       max_vnics * sizeof(struct bnxt_vnic_info), 0);
 	if (vnic_mem == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to alloc memory for %d VNICs",
+		PMD_DRV_LOG_LINE(ERR, "Failed to alloc memory for %d VNICs",
 			max_vnics);
 		return -ENOMEM;
 	}
@@ -242,8 +248,8 @@ int bnxt_vnic_grp_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 	vnic->fw_grp_ids = rte_zmalloc("vnic_fw_grp_ids", size, 0);
 	if (!vnic->fw_grp_ids) {
-		PMD_DRV_LOG(ERR,
-			    "Failed to alloc %d bytes for group ids\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "Failed to alloc %d bytes for group ids",
 			    size);
 		return -ENOMEM;
 	}
@@ -279,8 +285,16 @@ uint32_t bnxt_rte_to_hwrm_hash_types(uint64_t rte_type)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6;
 	if (rte_type & RTE_ETH_RSS_NONFRAG_IPV6_UDP)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6;
-	if (rte_type & RTE_ETH_RSS_IPV6_FLOW_LABEL)
+	if (rte_type & RTE_ETH_RSS_IPV6_FLOW_LABEL) {
+		/* HASH_TYPE_IPV6_FLOW_LABEL and HASH_TYPE_IPV6 are mutually
+		 * exclusive. If both bits are specified in rte_type, set only
+		 * HASH_TYPE_IPV6_FLOW_LABEL in hardware since it subsumes
+		 * HASH_TYPE_IPV6 (see comments for HASH_TYPE_IPV6_FLOW_LABEL
+		 * in hsi.h).
+		 */
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6_FLOW_LABEL;
+		hwrm_type &= ~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
+	}
 	if (rte_type & RTE_ETH_RSS_ESP)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_ESP_SPI_IPV4 |
 			     HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_ESP_SPI_IPV6;
@@ -311,8 +325,8 @@ int bnxt_rte_to_hwrm_hash_level(struct bnxt *bp, uint64_t hash_f, uint32_t lvl)
 	if ((BNXT_CHIP_P5(bp) && BNXT_VNIC_OUTER_RSS_UNSUPPORTED(bp)) ||
 	    (!BNXT_CHIP_P5(bp) && !(bp->vnic_cap_flags & BNXT_VNIC_CAP_OUTER_RSS))) {
 		if (lvl)
-			PMD_DRV_LOG(INFO,
-				    "Given RSS level is unsupported, using default RSS level\n");
+			PMD_DRV_LOG_LINE(INFO,
+				    "Given RSS level is unsupported, using default RSS level");
 		return mode;
 	}
 
@@ -448,7 +462,7 @@ bnxt_vnic_queue_delete(struct bnxt *bp, uint16_t vnic_idx)
 	struct bnxt_vnic_info *vnic = &bp->vnic_info[vnic_idx];
 
 	if (bnxt_hwrm_vnic_free(bp, vnic))
-		PMD_DRV_LOG(ERR, "Failed to delete queue\n");
+		PMD_DRV_LOG_LINE(ERR, "Failed to delete queue");
 
 	if (vnic->fw_grp_ids) {
 		rte_free(vnic->fw_grp_ids);
@@ -476,7 +490,7 @@ bnxt_vnic_queue_create(struct bnxt *bp, int32_t vnic_id, uint16_t q_index)
 
 	vnic = &bp->vnic_info[vnic_id];
 	if (vnic->rx_queue_cnt) {
-		PMD_DRV_LOG(ERR, "invalid queue configuration %d\n", vnic_id);
+		PMD_DRV_LOG_LINE(ERR, "invalid queue configuration %d", vnic_id);
 		return NULL;
 	}
 
@@ -498,7 +512,7 @@ bnxt_vnic_queue_create(struct bnxt *bp, int32_t vnic_id, uint16_t q_index)
 	/* Allocate vnic group for p4 platform */
 	rc = bnxt_vnic_grp_alloc(bp, vnic);
 	if (rc) {
-		PMD_DRV_LOG(DEBUG, "Failed to allocate vnic groups\n");
+		PMD_DRV_LOG_LINE(DEBUG, "Failed to allocate vnic groups");
 		goto cleanup;
 	}
 
@@ -508,7 +522,7 @@ bnxt_vnic_queue_create(struct bnxt *bp, int32_t vnic_id, uint16_t q_index)
 
 	rc = bnxt_hwrm_vnic_alloc(bp, vnic);
 	if (rc) {
-		PMD_DRV_LOG(DEBUG, "Failed to allocate vnic %d\n", q_index);
+		PMD_DRV_LOG_LINE(DEBUG, "Failed to allocate vnic %d", q_index);
 		goto cleanup;
 	}
 
@@ -523,7 +537,7 @@ bnxt_vnic_queue_create(struct bnxt *bp, int32_t vnic_id, uint16_t q_index)
 		vnic->mru = saved_mru;
 
 	if (rc) {
-		PMD_DRV_LOG(DEBUG, "Failed to configure vnic %d\n", q_index);
+		PMD_DRV_LOG_LINE(DEBUG, "Failed to configure vnic %d", q_index);
 		goto cleanup;
 	}
 
@@ -531,11 +545,11 @@ bnxt_vnic_queue_create(struct bnxt *bp, int32_t vnic_id, uint16_t q_index)
 				   (rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) ?
 				    true : false);
 	if (rc)
-		PMD_DRV_LOG(DEBUG, "Failed to configure TPA on this vnic %d\n", q_index);
+		PMD_DRV_LOG_LINE(DEBUG, "Failed to configure TPA on this vnic %d", q_index);
 
 	rc = bnxt_hwrm_vnic_plcmode_cfg(bp, vnic);
 	if (rc) {
-		PMD_DRV_LOG(DEBUG, "Failed to configure vnic plcmode %d\n",
+		PMD_DRV_LOG_LINE(DEBUG, "Failed to configure vnic plcmode %d",
 			    q_index);
 		goto cleanup;
 	}
@@ -573,14 +587,14 @@ bnxt_vnic_queue_db_add(struct bnxt *bp, uint64_t *q_list)
 				   (const void *)q_list);
 
 	if (vnic_id < 0 || vnic_id >= bp->max_vnics) {
-		PMD_DRV_LOG(DEBUG, "unable to assign vnic index %d\n",
+		PMD_DRV_LOG_LINE(DEBUG, "unable to assign vnic index %d",
 			    vnic_id);
 		return rc;
 	}
 
 	vnic_info = &bp->vnic_info[vnic_id];
 	if (vnic_info->fw_vnic_id != INVALID_HW_RING_ID) {
-		PMD_DRV_LOG(DEBUG, "Invalid ring id for %d.\n", vnic_id);
+		PMD_DRV_LOG_LINE(DEBUG, "Invalid ring id for %d.", vnic_id);
 		return rc;
 	}
 	return vnic_id;
@@ -598,7 +612,7 @@ int32_t bnxt_vnic_queue_db_rss_validate(struct bnxt *bp,
 	int32_t out_idx;
 
 	if (!(dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS)) {
-		PMD_DRV_LOG(ERR, "Error Rss is not supported on this port\n");
+		PMD_DRV_LOG_LINE(ERR, "Error Rss is not supported on this port");
 		return rc;
 	}
 
@@ -610,7 +624,7 @@ int32_t bnxt_vnic_queue_db_rss_validate(struct bnxt *bp,
 
 	/* Check to see if the queues id are in supported range */
 	if (rss_info->queue_num > bp->rx_nr_rings) {
-		PMD_DRV_LOG(ERR, "Error unsupported queue num.\n");
+		PMD_DRV_LOG_LINE(ERR, "Error unsupported queue num.");
 		return rc;
 	}
 
@@ -618,8 +632,8 @@ int32_t bnxt_vnic_queue_db_rss_validate(struct bnxt *bp,
 	for (idx = 0; idx < BNXT_VNIC_MAX_QUEUE_SIZE; idx++) {
 		if (BNXT_VNIC_BITMAP_GET(rss_info->queue_list, idx)) {
 			if (idx >= bp->rx_nr_rings) {
-				PMD_DRV_LOG(ERR,
-					    "Error %d beyond support size %u\n",
+				PMD_DRV_LOG_LINE(ERR,
+					    "Error %d beyond support size %u",
 					    idx, bp->rx_nr_rings);
 				return rc;
 			}
@@ -711,7 +725,7 @@ bnxt_vnic_rss_create(struct bnxt *bp,
 	/* Allocate vnic group for p4 platform */
 	rc = bnxt_vnic_grp_alloc(bp, vnic);
 	if (rc) {
-		PMD_DRV_LOG(ERR, "Failed to allocate vnic groups\n");
+		PMD_DRV_LOG_LINE(ERR, "Failed to allocate vnic groups");
 		goto fail_cleanup;
 	}
 
@@ -722,7 +736,7 @@ bnxt_vnic_rss_create(struct bnxt *bp,
 	/* Allocate the vnic in the firmware */
 	rc = bnxt_hwrm_vnic_alloc(bp, vnic);
 	if (rc) {
-		PMD_DRV_LOG(ERR, "Failed to allocate vnic %d\n", idx);
+		PMD_DRV_LOG_LINE(ERR, "Failed to allocate vnic %d", idx);
 		goto fail_cleanup;
 	}
 
@@ -735,8 +749,8 @@ bnxt_vnic_rss_create(struct bnxt *bp,
 			break;
 	}
 	if (rc) {
-		PMD_DRV_LOG(ERR,
-			    "HWRM ctx %d alloc failure rc: %x\n", idx, rc);
+		PMD_DRV_LOG_LINE(ERR,
+			    "HWRM ctx %d alloc failure rc: %x", idx, rc);
 		goto fail_cleanup;
 	}
 	vnic->num_lb_ctxts = nr_ctxs;
@@ -749,7 +763,7 @@ bnxt_vnic_rss_create(struct bnxt *bp,
 	rc = bnxt_hwrm_vnic_cfg(bp, vnic);
 	vnic->mru = saved_mru;
 	if (rc) {
-		PMD_DRV_LOG(ERR, "Failed to configure vnic %d\n", idx);
+		PMD_DRV_LOG_LINE(ERR, "Failed to configure vnic %d", idx);
 		goto fail_cleanup;
 	}
 
@@ -757,11 +771,11 @@ bnxt_vnic_rss_create(struct bnxt *bp,
 				   (rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) ?
 				    true : false);
 	if (rc)
-		PMD_DRV_LOG(DEBUG, "Failed to configure TPA on this vnic %d\n", idx);
+		PMD_DRV_LOG_LINE(DEBUG, "Failed to configure TPA on this vnic %d", idx);
 
 	rc = bnxt_hwrm_vnic_plcmode_cfg(bp, vnic);
 	if (rc) {
-		PMD_DRV_LOG(ERR, "Failed to configure vnic plcmode %d\n",
+		PMD_DRV_LOG_LINE(ERR, "Failed to configure vnic plcmode %d",
 			    idx);
 		goto fail_cleanup;
 	}
@@ -771,22 +785,27 @@ bnxt_vnic_rss_create(struct bnxt *bp,
 
 	/* If only unsupported type(s) are specified then quit */
 	if (rss_info->rss_types == 0) {
-		PMD_DRV_LOG(ERR,
-			    "Unsupported RSS hash type(s)\n");
+		PMD_DRV_LOG_LINE(ERR,
+			    "Unsupported RSS hash type(s)");
 		goto fail_cleanup;
 	}
 
 	/* hwrm_type conversion */
+	vnic->hash_f = rss_info->rss_func;
+	vnic->rss_types = rss_info->rss_types;
 	vnic->hash_type = bnxt_rte_to_hwrm_hash_types(rss_info->rss_types);
 	vnic->hash_mode = bnxt_rte_to_hwrm_hash_level(bp, rss_info->rss_types,
 						      rss_info->rss_level);
 
 	/* configure the key */
-	if (!rss_info->key_len)
+	if (!rss_info->key_len) {
 		/* If hash key has not been specified, use random hash key.*/
 		bnxt_prandom_bytes(vnic->rss_hash_key, HW_HASH_KEY_SIZE);
-	else
+		vnic->key_len = HW_HASH_KEY_SIZE;
+	} else {
 		memcpy(vnic->rss_hash_key, rss_info->key, rss_info->key_len);
+		vnic->key_len = rss_info->key_len;
+	}
 
 	/* Prepare the indirection table */
 	bnxt_vnic_populate_rss_table(bp, vnic);
@@ -805,8 +824,8 @@ bnxt_vnic_rss_create(struct bnxt *bp,
 		rc = bnxt_hwrm_vnic_rss_cfg(bp, vnic);
 		if (rc) {
 			memset(vnic->rss_hash_key, 0, HW_HASH_KEY_SIZE);
-			PMD_DRV_LOG(ERR,
-				    "Failed to configure vnic rss details %d\n",
+			PMD_DRV_LOG_LINE(ERR,
+				    "Failed to configure vnic rss details %d",
 				    idx);
 			goto fail_cleanup;
 		}
@@ -818,6 +837,35 @@ bnxt_vnic_rss_create(struct bnxt *bp,
 fail_cleanup:
 	bnxt_vnic_rss_delete(bp, idx);
 	return NULL;
+}
+
+void
+bnxt_vnic_rss_query_info_fill(struct bnxt *bp,
+			      struct rte_flow_action_rss *rss_conf,
+			      uint16_t vnic_id)
+{
+	struct bnxt_vnic_info *vnic_info;
+	int idx;
+
+	vnic_info = bnxt_vnic_queue_db_get_vnic(bp, vnic_id);
+	if (vnic_info == NULL) {
+		PMD_DRV_LOG_LINE(ERR, "lookup failed for id %d", vnic_id);
+		return;
+	}
+
+	rss_conf->key_len = vnic_info->key_len;
+	rss_conf->key = vnic_info->rss_hash_key;
+	rss_conf->func = vnic_info->hash_f;
+	rss_conf->level = vnic_info->hash_mode;
+	rss_conf->types = vnic_info->rss_types;
+
+	memset(rss_query_queues, 0, sizeof(rss_query_queues));
+	for (idx = 0; idx < BNXT_VNIC_MAX_QUEUE_SIZE; idx++)
+		if (BNXT_VNIC_BITMAP_GET(vnic_info->queue_bitmap, idx)) {
+			rss_query_queues[rss_conf->queue_num] = idx;
+			rss_conf->queue_num += 1;
+		}
+	rss_conf->queue = (const uint16_t *)&rss_query_queues;
 }
 
 int32_t
@@ -834,7 +882,7 @@ bnxt_vnic_rss_queue_status_update(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 	/* configure the rss table */
 	if (bnxt_hwrm_vnic_rss_cfg(bp, vnic)) {
-		PMD_DRV_LOG(DEBUG, "Failed to update vnic rss details\n");
+		PMD_DRV_LOG_LINE(DEBUG, "Failed to update vnic rss details");
 		return -EINVAL;
 	}
 	return 0;
@@ -854,8 +902,8 @@ bnxt_vnic_rss_hash_algo_update(struct bnxt *bp,
 
 	/* validate key length */
 	if (rss_info->key_len != 0 && rss_info->key_len != HW_HASH_KEY_SIZE) {
-		PMD_DRV_LOG(ERR,
-			    "Invalid hashkey length, should be %d bytes\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "Invalid hashkey length, should be %d bytes",
 			    HW_HASH_KEY_SIZE);
 		return -EINVAL;
 	}
@@ -865,8 +913,8 @@ bnxt_vnic_rss_hash_algo_update(struct bnxt *bp,
 
 	/* If only unsupported type(s) are specified then quit */
 	if (!rss_info->rss_types) {
-		PMD_DRV_LOG(ERR,
-			    "Unsupported RSS hash type\n");
+		PMD_DRV_LOG_LINE(ERR,
+			    "Unsupported RSS hash type");
 		return -EINVAL;
 	}
 
@@ -912,10 +960,10 @@ bnxt_vnic_rss_hash_algo_update(struct bnxt *bp,
 	if (apply) {
 		if (bnxt_hwrm_vnic_rss_cfg(bp, vnic)) {
 			memcpy(vnic->rss_hash_key, old_rss_hash_key, HW_HASH_KEY_SIZE);
-			PMD_DRV_LOG(ERR, "Error configuring vnic RSS config\n");
+			PMD_DRV_LOG_LINE(ERR, "Error configuring vnic RSS config");
 			return -EINVAL;
 		}
-		PMD_DRV_LOG(INFO, "Rss config successfully applied\n");
+		PMD_DRV_LOG_LINE(INFO, "Rss config successfully applied");
 	}
 	return 0;
 }
@@ -943,11 +991,17 @@ int32_t bnxt_vnic_queue_db_init(struct bnxt *bp)
 	hash_tbl_params.name = hash_tbl_name;
 	hash_tbl_params.entries = (bp->max_vnics > BNXT_VNIC_MAX_SUPPORTED_ID) ?
 		BNXT_VNIC_MAX_SUPPORTED_ID : bp->max_vnics;
+
+	/* if the number of max vnis is less than bucket size */
+	/* then let the max entries size be the least value */
+	if (hash_tbl_params.entries <= RTE_HASH_BUCKET_ENTRIES)
+		hash_tbl_params.entries = RTE_HASH_BUCKET_ENTRIES;
+
 	hash_tbl_params.key_len = BNXT_VNIC_MAX_QUEUE_SZ_IN_8BITS;
 	hash_tbl_params.socket_id = rte_socket_id();
 	bp->vnic_queue_db.rss_q_db = rte_hash_create(&hash_tbl_params);
 	if (bp->vnic_queue_db.rss_q_db == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to create rss hash tbl\n");
+		PMD_DRV_LOG_LINE(ERR, "Failed to create rss hash tbl");
 		return -ENOMEM;
 	}
 	return 0;
@@ -967,13 +1021,13 @@ void bnxt_vnic_queue_db_update_dlft_vnic(struct bnxt *bp)
 
 	vnic_id  = bnxt_vnic_queue_db_add(bp, bitmap);
 	if (vnic_id < 0) {
-		PMD_DRV_LOG(ERR, "Unable to alloc vnic for default rss\n");
+		PMD_DRV_LOG_LINE(ERR, "Unable to alloc vnic for default rss");
 		return;
 	}
 
 	dflt_vnic  = bnxt_vnic_queue_db_get_vnic(bp, vnic_id);
 	if (dflt_vnic == NULL) {
-		PMD_DRV_LOG(ERR, "Invalid vnic for default rss %d\n", vnic_id);
+		PMD_DRV_LOG_LINE(ERR, "Invalid vnic for default rss %d", vnic_id);
 		return;
 	}
 	/* Update the default vnic structure */
@@ -995,7 +1049,7 @@ int32_t bnxt_vnic_queue_action_alloc(struct bnxt *bp,
 
 	/* validate the given queue id */
 	if (q_index >= bp->rx_nr_rings || q_index >= BNXT_VNIC_MAX_QUEUE_SIZE) {
-		PMD_DRV_LOG(ERR, "invalid queue id should be less than %d\n",
+		PMD_DRV_LOG_LINE(ERR, "invalid queue id should be less than %d",
 			    bp->rx_nr_rings);
 		return rc;
 	}
@@ -1009,14 +1063,14 @@ int32_t bnxt_vnic_queue_action_alloc(struct bnxt *bp,
 		/* Assign the vnic slot */
 		idx = bnxt_vnic_queue_db_add(bp, queue_list);
 		if (idx < 0) {
-			PMD_DRV_LOG(DEBUG, "Unable to alloc vnic for queue\n");
+			PMD_DRV_LOG_LINE(DEBUG, "Unable to alloc vnic for queue");
 			return rc;
 		}
 
 		/* Allocate a new one */
 		vnic_info = bnxt_vnic_queue_create(bp, idx, q_index);
 		if (!vnic_info) {
-			PMD_DRV_LOG(ERR, "failed to create vnic - %d\n",
+			PMD_DRV_LOG_LINE(ERR, "failed to create vnic - %d",
 				    q_index);
 			bnxt_vnic_queue_db_del(bp, queue_list);
 			return rc; /* failed */
@@ -1024,7 +1078,7 @@ int32_t bnxt_vnic_queue_action_alloc(struct bnxt *bp,
 	} else {
 		vnic_info = bnxt_vnic_queue_db_get_vnic(bp, idx);
 		if (vnic_info == NULL) {
-			PMD_DRV_LOG(ERR, "Unable to lookup vnic for queue %d\n",
+			PMD_DRV_LOG_LINE(ERR, "Unable to lookup vnic for queue %d",
 				    q_index);
 			return rc;
 		}
@@ -1045,14 +1099,14 @@ bnxt_vnic_queue_action_free(struct bnxt *bp, uint16_t vnic_id)
 
 	/* validate the given vnic idx */
 	if (vnic_idx >= bp->max_vnics) {
-		PMD_DRV_LOG(ERR, "invalid vnic idx %d\n", vnic_idx);
+		PMD_DRV_LOG_LINE(ERR, "invalid vnic idx %d", vnic_idx);
 		return rc;
 	}
 
 	/* validate the vnic info */
 	vnic_info = &bp->vnic_info[vnic_idx];
 	if (!vnic_info->rx_queue_cnt) {
-		PMD_DRV_LOG(ERR, "Invalid vnic idx, no queues being used\n");
+		PMD_DRV_LOG_LINE(ERR, "Invalid vnic idx, no queues being used");
 		return rc;
 	}
 	if (vnic_info->ref_cnt) {
@@ -1062,7 +1116,7 @@ bnxt_vnic_queue_action_free(struct bnxt *bp, uint16_t vnic_id)
 						      vnic_info->queue_bitmap);
 			/* Check to ensure there is no corruption */
 			if (idx != vnic_idx)
-				PMD_DRV_LOG(ERR, "bad vnic idx %d\n", vnic_idx);
+				PMD_DRV_LOG_LINE(ERR, "bad vnic idx %d", vnic_idx);
 
 			bnxt_vnic_queue_delete(bp, vnic_idx);
 		}
@@ -1083,26 +1137,26 @@ bnxt_vnic_rss_action_alloc(struct bnxt *bp,
 	/* validate the given parameters */
 	rc = bnxt_vnic_queue_db_rss_validate(bp, rss_info, &idx);
 	if (rc == -EINVAL) {
-		PMD_DRV_LOG(ERR, "Failed to apply the rss action.\n");
+		PMD_DRV_LOG_LINE(ERR, "Failed to apply the rss action.");
 		return rc;
 	} else if (rc == -ENOENT) {
 		/* Allocate a new entry */
 		idx = bnxt_vnic_queue_db_add(bp, rss_info->queue_list);
 		if (idx < 0) {
-			PMD_DRV_LOG(DEBUG, "Unable to alloc vnic for rss\n");
+			PMD_DRV_LOG_LINE(DEBUG, "Unable to alloc vnic for rss");
 			return rc;
 		}
 		/* create the rss vnic */
 		vnic_info = bnxt_vnic_rss_create(bp, rss_info, idx);
 		if (!vnic_info) {
-			PMD_DRV_LOG(ERR, "Failed to create rss action.\n");
+			PMD_DRV_LOG_LINE(ERR, "Failed to create rss action.");
 			bnxt_vnic_queue_db_del(bp, rss_info->queue_list);
 			return rc;
 		}
 	} else {
 		vnic_info = bnxt_vnic_queue_db_get_vnic(bp, idx);
 		if (vnic_info == NULL) {
-			PMD_DRV_LOG(ERR, "Unable to lookup vnic for idx %d\n",
+			PMD_DRV_LOG_LINE(ERR, "Unable to lookup vnic for idx %d",
 				    idx);
 			return rc;
 		}
@@ -1112,7 +1166,7 @@ bnxt_vnic_rss_action_alloc(struct bnxt *bp,
 		/* check configuration has changed then update hash details */
 		rc = bnxt_vnic_rss_hash_algo_update(bp, vnic_info, rss_info);
 		if (rc) {
-			PMD_DRV_LOG(ERR, "Failed to update the rss action.\n");
+			PMD_DRV_LOG_LINE(ERR, "Failed to update the rss action.");
 			return rc;
 		}
 	}
@@ -1133,14 +1187,14 @@ bnxt_vnic_rss_action_free(struct bnxt *bp, uint16_t vnic_id)
 
 	/* validate the given vnic id */
 	if (vnic_id >= bp->max_vnics) {
-		PMD_DRV_LOG(ERR, "invalid vnic id %d\n", vnic_id);
+		PMD_DRV_LOG_LINE(ERR, "invalid vnic id %d", vnic_id);
 		return rc;
 	}
 
 	/* validate vnic info */
 	vnic_info = &bp->vnic_info[vnic_id];
 	if (!vnic_info->rx_queue_cnt) {
-		PMD_DRV_LOG(ERR, "Invalid vnic id, not using any queues\n");
+		PMD_DRV_LOG_LINE(ERR, "Invalid vnic id, not using any queues");
 		return rc;
 	}
 
@@ -1165,7 +1219,7 @@ bnxt_vnic_rss_action_free(struct bnxt *bp, uint16_t vnic_id)
 
 			/* check to ensure there is no corruption */
 			if (idx != vnic_id)
-				PMD_DRV_LOG(ERR, "bad vnic idx %d\n", vnic_id);
+				PMD_DRV_LOG_LINE(ERR, "bad vnic idx %d", vnic_id);
 			bnxt_vnic_rss_delete(bp, vnic_id);
 		}
 	}
@@ -1192,7 +1246,7 @@ bnxt_vnic_reta_config_update(struct bnxt *bp,
 		q_id = reta_conf[idx].reta[sft];
 		if (q_id >= bp->vnic_queue_db.num_queues ||
 		    !bp->eth_dev->data->rx_queues[q_id]) {
-			PMD_DRV_LOG(ERR, "Queue id %d is invalid\n", q_id);
+			PMD_DRV_LOG_LINE(ERR, "Queue id %d is invalid", q_id);
 			return -EINVAL;
 		}
 		BNXT_VNIC_BITMAP_SET(l_bitmap, q_id);
@@ -1273,7 +1327,7 @@ bnxt_vnic_queue_db_get_vnic(struct bnxt *bp, uint16_t vnic_idx)
 	struct bnxt_vnic_info *vnic_info;
 
 	if (vnic_idx >= bp->max_vnics) {
-		PMD_DRV_LOG(ERR, "invalid vnic index %u\n", vnic_idx);
+		PMD_DRV_LOG_LINE(ERR, "invalid vnic index %u", vnic_idx);
 		return NULL;
 	}
 	vnic_info = &bp->vnic_info[vnic_idx];
@@ -1338,7 +1392,7 @@ int bnxt_rte_flow_to_hwrm_ring_select_mode(enum rte_eth_hash_function hash_f,
 	    hash_f != RTE_ETH_HASH_FUNCTION_DEFAULT) {
 		if (hash_f == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ ||
 		    (!BNXT_CHIP_P7(bp) && hash_f == RTE_ETH_HASH_FUNCTION_SIMPLE_XOR)) {
-			PMD_DRV_LOG(ERR, "Unsupported hash function\n");
+			PMD_DRV_LOG_LINE(ERR, "Unsupported hash function");
 			return -ENOTSUP;
 		}
 	}
@@ -1355,7 +1409,7 @@ int bnxt_rte_flow_to_hwrm_ring_select_mode(enum rte_eth_hash_function hash_f,
 			vnic->rss_types_local = types;
 			return 0;
 		}
-		PMD_DRV_LOG(ERR, "Hash function not supported with checksun type\n");
+		PMD_DRV_LOG_LINE(ERR, "Hash function not supported with checksun type");
 		return -ENOTSUP;
 	}
 

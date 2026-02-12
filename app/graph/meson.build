@@ -9,14 +9,16 @@ if not build
     subdir_done()
 endif
 
-deps += ['graph', 'eal', 'lpm', 'ethdev', 'node', 'cmdline']
+deps += ['graph', 'eal', 'lpm', 'ethdev', 'node', 'cmdline', 'net']
 sources = files(
         'cli.c',
         'conn.c',
         'ethdev_rx.c',
         'ethdev.c',
+        'feature.c',
         'graph.c',
         'ip4_route.c',
+        'ip4_output_hook.c',
         'ip6_route.c',
         'l2fwd.c',
         'l3fwd.c',

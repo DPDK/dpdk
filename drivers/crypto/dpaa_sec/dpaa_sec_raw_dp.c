@@ -761,7 +761,7 @@ build_dpaa_raw_proto_sg(uint8_t *drv_ctx,
 		fd->cmd = 0x80000000 |
 			*((uint32_t *)((uint8_t *)userdata +
 			ses->pdcp.hfn_ovd_offset));
-		DPAA_SEC_DP_DEBUG("Per packet HFN: %x, ovd:%u\n",
+		DPAA_SEC_DP_DEBUG("Per packet HFN: %x, ovd:%u",
 			*((uint32_t *)((uint8_t *)userdata +
 			ses->pdcp.hfn_ovd_offset)),
 			ses->pdcp.hfn_ovd);
@@ -806,7 +806,7 @@ dpaa_sec_raw_enqueue_burst(void *qp_data, uint8_t *drv_ctx,
 			} else if (unlikely(ses->qp[rte_lcore_id() %
 						MAX_DPAA_CORES] != dpaa_qp)) {
 				DPAA_SEC_DP_ERR("Old:sess->qp = %p"
-					" New qp = %p\n",
+					" New qp = %p",
 					ses->qp[rte_lcore_id() %
 					MAX_DPAA_CORES], dpaa_qp);
 				frames_to_send = loop;
@@ -955,7 +955,7 @@ dpaa_sec_raw_dequeue_burst(void *qp_data, uint8_t *drv_ctx,
 	*dequeue_status = 1;
 	*n_success = num_rx;
 
-	DPAA_SEC_DP_DEBUG("SEC Received %d Packets\n", num_rx);
+	DPAA_SEC_DP_DEBUG("SEC Received %d Packets", num_rx);
 
 	return num_rx;
 }

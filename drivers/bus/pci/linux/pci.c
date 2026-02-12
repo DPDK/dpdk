@@ -13,6 +13,7 @@
 #include <rte_memcpy.h>
 #include <rte_vfio.h>
 
+#include <eal_export.h>
 #include "eal_filesystem.h"
 
 #include "private.h"
@@ -54,6 +55,7 @@ pci_get_kernel_driver_by_path(const char *filename, char *dri_name,
 }
 
 /* Map pci device */
+RTE_EXPORT_SYMBOL(rte_pci_map_device)
 int
 rte_pci_map_device(struct rte_pci_device *dev)
 {
@@ -62,10 +64,8 @@ rte_pci_map_device(struct rte_pci_device *dev)
 	/* try mapping the NIC resources using VFIO if it exists */
 	switch (dev->kdrv) {
 	case RTE_PCI_KDRV_VFIO:
-#ifdef VFIO_PRESENT
 		if (pci_vfio_is_enabled())
 			ret = pci_vfio_map_resource(dev);
-#endif
 		break;
 	case RTE_PCI_KDRV_IGB_UIO:
 	case RTE_PCI_KDRV_UIO_GENERIC:
@@ -75,8 +75,7 @@ rte_pci_map_device(struct rte_pci_device *dev)
 		}
 		break;
 	default:
-		RTE_LOG(DEBUG, EAL,
-			"  Not managed by a supported kernel driver, skipped\n");
+		PCI_LOG(DEBUG, "  Not managed by a supported kernel driver, skipped");
 		ret = 1;
 		break;
 	}
@@ -85,16 +84,15 @@ rte_pci_map_device(struct rte_pci_device *dev)
 }
 
 /* Unmap pci device */
+RTE_EXPORT_SYMBOL(rte_pci_unmap_device)
 void
 rte_pci_unmap_device(struct rte_pci_device *dev)
 {
 	/* try unmapping the NIC resources using VFIO if it exists */
 	switch (dev->kdrv) {
 	case RTE_PCI_KDRV_VFIO:
-#ifdef VFIO_PRESENT
 		if (pci_vfio_is_enabled())
 			pci_vfio_unmap_resource(dev);
-#endif
 		break;
 	case RTE_PCI_KDRV_IGB_UIO:
 	case RTE_PCI_KDRV_UIO_GENERIC:
@@ -102,8 +100,7 @@ rte_pci_unmap_device(struct rte_pci_device *dev)
 		pci_uio_unmap_resource(dev);
 		break;
 	default:
-		RTE_LOG(DEBUG, EAL,
-			"  Not managed by a supported kernel driver, skipped\n");
+		PCI_LOG(DEBUG, "  Not managed by a supported kernel driver, skipped");
 		break;
 	}
 }
@@ -147,8 +144,7 @@ pci_parse_one_sysfs_resource(char *line, size_t len, uint64_t *phys_addr,
 	} res_info;
 
 	if (rte_strsplit(line, len, res_info.ptrs, 3, ' ') != 3) {
-		RTE_LOG(ERR, EAL,
-			"%s(): bad resource format\n", __func__);
+		PCI_LOG(ERR, "%s(): bad resource format", __func__);
 		return -1;
 	}
 	errno = 0;
@@ -156,8 +152,7 @@ pci_parse_one_sysfs_resource(char *line, size_t len, uint64_t *phys_addr,
 	*end_addr = strtoull(res_info.end_addr, NULL, 16);
 	*flags = strtoull(res_info.flags, NULL, 16);
 	if (errno != 0) {
-		RTE_LOG(ERR, EAL,
-			"%s(): bad resource format\n", __func__);
+		PCI_LOG(ERR, "%s(): bad resource format", __func__);
 		return -1;
 	}
 
@@ -175,15 +170,14 @@ pci_parse_sysfs_resource(const char *filename, struct rte_pci_device *dev)
 
 	f = fopen(filename, "r");
 	if (f == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot open sysfs resource\n");
+		PCI_LOG(ERR, "Cannot open sysfs resource");
 		return -1;
 	}
 
 	for (i = 0; i<PCI_MAX_RESOURCE; i++) {
 
 		if (fgets(buf, sizeof(buf), f) == NULL) {
-			RTE_LOG(ERR, EAL,
-				"%s(): cannot read resource\n", __func__);
+			PCI_LOG(ERR, "%s(): cannot read resource", __func__);
 			goto error;
 		}
 		if (pci_parse_one_sysfs_resource(buf, sizeof(buf), &phys_addr,
@@ -218,7 +212,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 
 	pdev = malloc(sizeof(*pdev));
 	if (pdev == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot allocate memory for internal pci device\n");
+		PCI_LOG(ERR, "Cannot allocate memory for internal pci device");
 		return -1;
 	}
 
@@ -300,7 +294,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 	/* parse resources */
 	snprintf(filename, sizeof(filename), "%s/resource", dirname);
 	if (pci_parse_sysfs_resource(filename, dev) < 0) {
-		RTE_LOG(ERR, EAL, "%s(): cannot parse resource\n", __func__);
+		PCI_LOG(ERR, "%s(): cannot parse resource", __func__);
 		pci_free(pdev);
 		return -1;
 	}
@@ -309,7 +303,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 	snprintf(filename, sizeof(filename), "%s/driver", dirname);
 	ret = pci_get_kernel_driver_by_path(filename, driver, sizeof(driver));
 	if (ret < 0) {
-		RTE_LOG(ERR, EAL, "Fail to get kernel driver\n");
+		PCI_LOG(ERR, "Fail to get kernel driver");
 		pci_free(pdev);
 		return -1;
 	}
@@ -332,7 +326,6 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 		rte_pci_add_device(dev);
 	} else {
 		struct rte_pci_device *dev2;
-		int ret;
 
 		TAILQ_FOREACH(dev2, &rte_pci_bus.device_list, next) {
 			ret = rte_pci_addr_cmp(&dev->addr, &dev2->addr);
@@ -371,7 +364,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 						 * So we just print out the
 						 * error as an alarm.
 						 */
-						RTE_LOG(ERR, EAL, "Unexpected device scan at %s!\n",
+						PCI_LOG(ERR, "Unexpected device scan at %s!",
 							filename);
 					else if (dev2->device.devargs !=
 						 dev->device.devargs) {
@@ -454,8 +447,7 @@ rte_pci_scan(void)
 
 	dir = opendir(rte_pci_get_sysfs_path());
 	if (dir == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): opendir failed: %s\n",
-			__func__, strerror(errno));
+		PCI_LOG(ERR, "%s(): opendir failed: %s", __func__, strerror(errno));
 		return -1;
 	}
 
@@ -505,14 +497,14 @@ pci_device_iommu_support_va(const struct rte_pci_device *dev)
 		if (errno == ENOENT)
 			return true;
 
-		RTE_LOG(ERR, EAL, "%s(): can't open %s: %s\n",
+		PCI_LOG(ERR, "%s(): can't open %s: %s",
 			__func__, filename, strerror(errno));
 		return false;
 	}
 
 	/* We have an Intel IOMMU */
 	if (fscanf(fp, "%" PRIx64, &vtd_cap_reg) != 1) {
-		RTE_LOG(ERR, EAL, "%s(): can't read %s\n", __func__, filename);
+		PCI_LOG(ERR, "%s(): can't read %s", __func__, filename);
 		fclose(fp);
 		return false;
 	}
@@ -556,7 +548,7 @@ pci_device_iommu_support_va(__rte_unused const struct rte_pci_device *dev)
 	bool ret = false;
 
 	if (fp == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): can't open %s: %s\n",
+		PCI_LOG(ERR, "%s(): can't open %s: %s",
 			__func__, filename, strerror(errno));
 		return ret;
 	}
@@ -565,15 +557,15 @@ pci_device_iommu_support_va(__rte_unused const struct rte_pci_device *dev)
 	while (getline(&line, &len, fp) != -1) {
 		if (strstr(line, "platform") != NULL) {
 			if (strstr(line, "PowerNV") != NULL) {
-				RTE_LOG(DEBUG, EAL, "Running on a PowerNV platform\n");
+				PCI_LOG(DEBUG, "Running on a PowerNV platform");
 				powernv = true;
 			} else if (strstr(line, "pSeries") != NULL) {
-				RTE_LOG(DEBUG, EAL, "Running on a pSeries platform\n");
+				PCI_LOG(DEBUG, "Running on a pSeries platform");
 				pseries = true;
 			}
 		} else if (strstr(line, "model") != NULL) {
 			if (strstr(line, "qemu") != NULL) {
-				RTE_LOG(DEBUG, EAL, "Found qemu emulation\n");
+				PCI_LOG(DEBUG, "Found qemu emulation");
 				qemu = true;
 			}
 		}
@@ -602,7 +594,6 @@ pci_device_iova_mode(const struct rte_pci_driver *pdrv,
 
 	switch (pdev->kdrv) {
 	case RTE_PCI_KDRV_VFIO: {
-#ifdef VFIO_PRESENT
 		static int is_vfio_noiommu_enabled = -1;
 
 		if (is_vfio_noiommu_enabled == -1) {
@@ -615,7 +606,6 @@ pci_device_iova_mode(const struct rte_pci_driver *pdrv,
 			iova_mode = RTE_IOVA_PA;
 		else if ((pdrv->drv_flags & RTE_PCI_DRV_NEED_IOVA_AS_VA) != 0)
 			iova_mode = RTE_IOVA_VA;
-#endif
 		break;
 	}
 
@@ -633,6 +623,7 @@ pci_device_iova_mode(const struct rte_pci_driver *pdrv,
 }
 
 /* Read PCI config space. */
+RTE_EXPORT_SYMBOL(rte_pci_read_config)
 int rte_pci_read_config(const struct rte_pci_device *device,
 		void *buf, size_t len, off_t offset)
 {
@@ -643,20 +634,18 @@ int rte_pci_read_config(const struct rte_pci_device *device,
 	case RTE_PCI_KDRV_IGB_UIO:
 	case RTE_PCI_KDRV_UIO_GENERIC:
 		return pci_uio_read_config(intr_handle, buf, len, offset);
-#ifdef VFIO_PRESENT
 	case RTE_PCI_KDRV_VFIO:
 		return pci_vfio_read_config(device, buf, len, offset);
-#endif
 	default:
 		rte_pci_device_name(&device->addr, devname,
 				    RTE_DEV_NAME_MAX_LEN);
-		RTE_LOG(ERR, EAL,
-			"Unknown driver type for %s\n", devname);
+		PCI_LOG(ERR, "Unknown driver type for %s", devname);
 		return -1;
 	}
 }
 
 /* Write PCI config space. */
+RTE_EXPORT_SYMBOL(rte_pci_write_config)
 int rte_pci_write_config(const struct rte_pci_device *device,
 		const void *buf, size_t len, off_t offset)
 {
@@ -667,20 +656,18 @@ int rte_pci_write_config(const struct rte_pci_device *device,
 	case RTE_PCI_KDRV_IGB_UIO:
 	case RTE_PCI_KDRV_UIO_GENERIC:
 		return pci_uio_write_config(intr_handle, buf, len, offset);
-#ifdef VFIO_PRESENT
 	case RTE_PCI_KDRV_VFIO:
 		return pci_vfio_write_config(device, buf, len, offset);
-#endif
 	default:
 		rte_pci_device_name(&device->addr, devname,
 				    RTE_DEV_NAME_MAX_LEN);
-		RTE_LOG(ERR, EAL,
-			"Unknown driver type for %s\n", devname);
+		PCI_LOG(ERR, "Unknown driver type for %s", devname);
 		return -1;
 	}
 }
 
 /* Read PCI MMIO space. */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pci_mmio_read, 23.07)
 int rte_pci_mmio_read(const struct rte_pci_device *device, int bar,
 		void *buf, size_t len, off_t offset)
 {
@@ -690,20 +677,18 @@ int rte_pci_mmio_read(const struct rte_pci_device *device, int bar,
 	case RTE_PCI_KDRV_IGB_UIO:
 	case RTE_PCI_KDRV_UIO_GENERIC:
 		return pci_uio_mmio_read(device, bar, buf, len, offset);
-#ifdef VFIO_PRESENT
 	case RTE_PCI_KDRV_VFIO:
 		return pci_vfio_mmio_read(device, bar, buf, len, offset);
-#endif
 	default:
 		rte_pci_device_name(&device->addr, devname,
 				    RTE_DEV_NAME_MAX_LEN);
-		RTE_LOG(ERR, EAL,
-			"Unknown driver type for %s\n", devname);
+		PCI_LOG(ERR, "Unknown driver type for %s", devname);
 		return -1;
 	}
 }
 
 /* Write PCI MMIO space. */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pci_mmio_write, 23.07)
 int rte_pci_mmio_write(const struct rte_pci_device *device, int bar,
 		const void *buf, size_t len, off_t offset)
 {
@@ -713,19 +698,17 @@ int rte_pci_mmio_write(const struct rte_pci_device *device, int bar,
 	case RTE_PCI_KDRV_IGB_UIO:
 	case RTE_PCI_KDRV_UIO_GENERIC:
 		return pci_uio_mmio_write(device, bar, buf, len, offset);
-#ifdef VFIO_PRESENT
 	case RTE_PCI_KDRV_VFIO:
 		return pci_vfio_mmio_write(device, bar, buf, len, offset);
-#endif
 	default:
 		rte_pci_device_name(&device->addr, devname,
 				    RTE_DEV_NAME_MAX_LEN);
-		RTE_LOG(ERR, EAL,
-			"Unknown driver type for %s\n", devname);
+		PCI_LOG(ERR, "Unknown driver type for %s", devname);
 		return -1;
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_pci_ioport_map)
 int
 rte_pci_ioport_map(struct rte_pci_device *dev, int bar,
 		struct rte_pci_ioport *p)
@@ -733,12 +716,10 @@ rte_pci_ioport_map(struct rte_pci_device *dev, int bar,
 	int ret = -1;
 
 	switch (dev->kdrv) {
-#ifdef VFIO_PRESENT
 	case RTE_PCI_KDRV_VFIO:
 		if (pci_vfio_is_enabled())
 			ret = pci_vfio_ioport_map(dev, bar, p);
 		break;
-#endif
 	case RTE_PCI_KDRV_IGB_UIO:
 	case RTE_PCI_KDRV_UIO_GENERIC:
 		ret = pci_uio_ioport_map(dev, bar, p);
@@ -753,16 +734,15 @@ rte_pci_ioport_map(struct rte_pci_device *dev, int bar,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_pci_ioport_read)
 void
 rte_pci_ioport_read(struct rte_pci_ioport *p,
 		void *data, size_t len, off_t offset)
 {
 	switch (p->dev->kdrv) {
-#ifdef VFIO_PRESENT
 	case RTE_PCI_KDRV_VFIO:
 		pci_vfio_ioport_read(p, data, len, offset);
 		break;
-#endif
 	case RTE_PCI_KDRV_IGB_UIO:
 	case RTE_PCI_KDRV_UIO_GENERIC:
 		pci_uio_ioport_read(p, data, len, offset);
@@ -772,16 +752,15 @@ rte_pci_ioport_read(struct rte_pci_ioport *p,
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_pci_ioport_write)
 void
 rte_pci_ioport_write(struct rte_pci_ioport *p,
 		const void *data, size_t len, off_t offset)
 {
 	switch (p->dev->kdrv) {
-#ifdef VFIO_PRESENT
 	case RTE_PCI_KDRV_VFIO:
 		pci_vfio_ioport_write(p, data, len, offset);
 		break;
-#endif
 	case RTE_PCI_KDRV_IGB_UIO:
 	case RTE_PCI_KDRV_UIO_GENERIC:
 		pci_uio_ioport_write(p, data, len, offset);
@@ -791,18 +770,17 @@ rte_pci_ioport_write(struct rte_pci_ioport *p,
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_pci_ioport_unmap)
 int
 rte_pci_ioport_unmap(struct rte_pci_ioport *p)
 {
 	int ret = -1;
 
 	switch (p->dev->kdrv) {
-#ifdef VFIO_PRESENT
 	case RTE_PCI_KDRV_VFIO:
 		if (pci_vfio_is_enabled())
 			ret = pci_vfio_ioport_unmap(p);
 		break;
-#endif
 	case RTE_PCI_KDRV_IGB_UIO:
 	case RTE_PCI_KDRV_UIO_GENERIC:
 		ret = pci_uio_ioport_unmap(p);

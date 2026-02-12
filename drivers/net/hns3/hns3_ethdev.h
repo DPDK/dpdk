@@ -5,7 +5,6 @@
 #ifndef HNS3_ETHDEV_H
 #define HNS3_ETHDEV_H
 
-#include <pthread.h>
 #include <ethdev_driver.h>
 #include <rte_byteorder.h>
 #include <rte_io.h>
@@ -28,16 +27,11 @@
 #define HNS3_DEV_ID_25GE_RDMA			0xA222
 #define HNS3_DEV_ID_50GE_RDMA			0xA224
 #define HNS3_DEV_ID_100G_RDMA_MACSEC		0xA226
-#define HNS3_DEV_ID_100G_ROH	                0xA227
 #define HNS3_DEV_ID_200G_RDMA			0xA228
-#define HNS3_DEV_ID_200G_ROH	                0xA22C
 #define HNS3_DEV_ID_100G_VF			0xA22E
 #define HNS3_DEV_ID_100G_RDMA_PFC_VF		0xA22F
 
-/* PCI Config offsets */
-#define HNS3_PCI_REVISION_ID			0x08
-#define HNS3_PCI_REVISION_ID_LEN		1
-
+/* Revision IDs */
 #define PCI_REVISION_ID_HIP08_B			0x21
 #define PCI_REVISION_ID_HIP09_A			0x30
 
@@ -55,6 +49,10 @@
 
 #define HNS3_SPECIAL_PORT_SW_CKSUM_MODE         0
 #define HNS3_SPECIAL_PORT_HW_CKSUM_MODE         1
+
+#define HNS3_STRIP_CRC_PTYPE_NONE         0
+#define HNS3_STRIP_CRC_PTYPE_TCP          1
+#define HNS3_STRIP_CRC_PTYPE_IP           2
 
 #define HNS3_UC_MACADDR_NUM		128
 #define HNS3_VF_UC_MACADDR_NUM		48
@@ -77,6 +75,7 @@
 #define HNS3_DEFAULT_MTU		1500UL
 #define HNS3_DEFAULT_FRAME_LEN		(HNS3_DEFAULT_MTU + HNS3_ETH_OVERHEAD)
 #define HNS3_HIP08_MIN_TX_PKT_LEN	33
+#define HNS3_MIN_TUN_PKT_LEN		65
 
 #define HNS3_BITS_PER_BYTE	8
 
@@ -131,7 +130,11 @@ struct hns3_tc_info {
 };
 
 struct hns3_dcb_info {
-	uint8_t num_tc;
+	uint8_t tc_max;     /* max number of tc driver supported */
+	uint8_t num_tc;     /* Total number of enabled TCs */
+	uint8_t hw_tc_map;
+	uint8_t local_max_tc; /* max number of local tc */
+	uint8_t pfc_max;
 	uint8_t num_pg;     /* It must be 1 if vNET-Base schd */
 	uint8_t pg_dwrr[HNS3_PG_NUM];
 	uint8_t prio_tc[HNS3_MAX_USER_PRIO];
@@ -401,17 +404,17 @@ enum hns3_schedule {
 
 struct hns3_reset_data {
 	enum hns3_reset_stage stage;
-	uint16_t schedule;
+	RTE_ATOMIC(uint16_t) schedule;
 	/* Reset flag, covering the entire reset process */
-	uint16_t resetting;
+	RTE_ATOMIC(uint16_t) resetting;
 	/* Used to disable sending cmds during reset */
-	uint16_t disable_cmd;
+	RTE_ATOMIC(uint16_t) disable_cmd;
 	/* The reset level being processed */
 	enum hns3_reset_level level;
 	/* Reset level set, each bit represents a reset level */
-	uint64_t pending;
+	RTE_ATOMIC(uint64_t) pending;
 	/* Request reset level set, from interrupt or mailbox */
-	uint64_t request;
+	RTE_ATOMIC(uint64_t) request;
 	int attempts; /* Reset failure retry */
 	int retries;  /* Timeout failure retry in reset_post */
 	/*
@@ -487,6 +490,9 @@ struct hns3_queue_intr {
 #define HNS3_PKTS_DROP_STATS_MODE1		0
 #define HNS3_PKTS_DROP_STATS_MODE2		1
 
+#define HNS3_RX_DMA_ADDR_ALIGN_128	128
+#define HNS3_RX_DMA_ADDR_ALIGN_64	64
+
 struct hns3_hw {
 	struct rte_eth_dev_data *data;
 	void *io_base;
@@ -499,7 +505,7 @@ struct hns3_hw {
 	 * by dev_set_link_up() or dev_start().
 	 */
 	bool set_link_down;
-	unsigned int secondary_cnt; /* Number of secondary processes init'd. */
+	RTE_ATOMIC(unsigned int) secondary_cnt; /* Number of secondary processes init'd. */
 	struct hns3_tqp_stats tqp_stats;
 	/* Include Mac stats | Rx stats | Tx stats */
 	struct hns3_mac_stats mac_stats;
@@ -532,8 +538,6 @@ struct hns3_hw {
 	uint16_t rss_ind_tbl_size;
 	uint16_t rss_key_size;
 
-	uint8_t num_tc;             /* Total number of enabled TCs */
-	uint8_t hw_tc_map;
 	enum hns3_fc_mode requested_fc_mode; /* FC mode requested by user */
 	struct hns3_dcb_info dcb_info;
 	enum hns3_fc_status current_fc_status; /* current flow control status */
@@ -554,6 +558,11 @@ struct hns3_hw {
 	 * direction.
 	 */
 	uint8_t min_tx_pkt_len;
+	/*
+	 * The required alignment of the DMA address of the RX buffer.
+	 * See HNS3_RX_DMA_ADDR_ALIGN_XXX for available values.
+	 */
+	uint16_t rx_dma_addr_align;
 
 	struct hns3_queue_intr intr;
 	/*
@@ -649,9 +658,27 @@ struct hns3_hw {
 	 */
 	uint8_t udp_cksum_mode;
 
+	/*
+	 * When KEEP_CRC offload is enabled, the CRC data of some type packets
+	 * whose length is less than or equal to HNS3_KEEP_CRC_OK_MIN_PKT_LEN
+	 * is still be stripped on some network engine. So here has to use this
+	 * field to distinguish the difference between different network engines.
+	 * value range:
+	 *  - HNS3_STRIP_CRC_PTYPE_TCP
+	 *     This value for HIP08 network engine.
+	 *     Indicates that only the IP-TCP packet type is stripped.
+	 *
+	 *  - HNS3_STRIP_CRC_PTYPE_IP
+	 *     This value for HIP09 network engine.
+	 *     Indicates that all IP packet types are stripped.
+	 *
+	 *  - HNS3_STRIP_CRC_PTYPE_NONE
+	 *     Indicates that all packet types are not stripped.
+	 */
+	uint8_t strip_crc_ptype;
+
 	struct hns3_port_base_vlan_config port_base_vlan_cfg;
 
-	pthread_mutex_t flows_lock; /* rte_flow ops lock */
 	struct hns3_fdir_rule_list flow_fdir_list; /* flow fdir rule list */
 	struct hns3_rss_filter_list flow_rss_list; /* flow RSS rule list */
 	struct hns3_flow_mem_list flow_list;
@@ -767,7 +794,7 @@ struct hns3_ptype_table {
 	 * descriptor, it functions only when firmware report the capability of
 	 * HNS3_CAPS_RXD_ADV_LAYOUT_B and driver enabled it.
 	 */
-	uint32_t ptype[HNS3_PTYPE_NUM] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint32_t ptype[HNS3_PTYPE_NUM];
 };
 
 #define HNS3_FIXED_MAX_TQP_NUM_MODE		0
@@ -806,9 +833,6 @@ struct hns3_pf {
 	uint16_t mps; /* Max packet size */
 
 	uint8_t tx_sch_mode;
-	uint8_t tc_max; /* max number of tc driver supported */
-	uint8_t local_max_tc; /* max number of local tc */
-	uint8_t pfc_max;
 	uint16_t pause_time;
 	bool support_fc_autoneg;       /* support FC autonegotiate */
 	bool support_multi_tc_pause;
@@ -844,7 +868,7 @@ struct hns3_vf {
 	struct hns3_adapter *adapter;
 
 	/* Whether PF support push link status change to VF */
-	uint16_t pf_push_lsc_cap;
+	RTE_ATOMIC(uint16_t) pf_push_lsc_cap;
 
 	/*
 	 * If PF support push link status change, VF still need send request to
@@ -853,7 +877,7 @@ struct hns3_vf {
 	 */
 	uint16_t req_link_info_cnt;
 
-	uint16_t poll_job_started; /* whether poll job is started */
+	RTE_ATOMIC(uint16_t) poll_job_started; /* whether poll job is started */
 };
 
 struct hns3_adapter {
@@ -872,7 +896,7 @@ struct hns3_adapter {
 	uint64_t dev_caps_mask;
 	uint16_t mbx_time_limit_ms; /* wait time for mbx message */
 
-	struct hns3_ptype_table ptype_tbl __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct hns3_ptype_table ptype_tbl;
 };
 
 enum hns3_dev_cap {
@@ -891,6 +915,7 @@ enum hns3_dev_cap {
 	HNS3_DEV_SUPPORT_VF_VLAN_FLT_MOD_B,
 	HNS3_DEV_SUPPORT_FC_AUTO_B,
 	HNS3_DEV_SUPPORT_GRO_B,
+	HNS3_DEV_SUPPORT_VF_MULTI_TCS_B,
 };
 
 #define hns3_dev_get_support(hw, _name) \
@@ -997,32 +1022,32 @@ static inline uint32_t hns3_read_reg(void *base, uint32_t reg)
 	hns3_read_reg((a)->io_base, (reg))
 
 static inline uint64_t
-hns3_atomic_test_bit(unsigned int nr, volatile uint64_t *addr)
+hns3_atomic_test_bit(unsigned int nr, volatile RTE_ATOMIC(uint64_t) *addr)
 {
 	uint64_t res;
 
-	res = (__atomic_load_n(addr, __ATOMIC_RELAXED) & (1UL << nr)) != 0;
+	res = (rte_atomic_load_explicit(addr, rte_memory_order_relaxed) & (1UL << nr)) != 0;
 	return res;
 }
 
 static inline void
-hns3_atomic_set_bit(unsigned int nr, volatile uint64_t *addr)
+hns3_atomic_set_bit(unsigned int nr, volatile RTE_ATOMIC(uint64_t) *addr)
 {
-	__atomic_fetch_or(addr, (1UL << nr), __ATOMIC_RELAXED);
+	rte_atomic_fetch_or_explicit(addr, (1UL << nr), rte_memory_order_relaxed);
 }
 
 static inline void
-hns3_atomic_clear_bit(unsigned int nr, volatile uint64_t *addr)
+hns3_atomic_clear_bit(unsigned int nr, volatile RTE_ATOMIC(uint64_t) *addr)
 {
-	__atomic_fetch_and(addr, ~(1UL << nr), __ATOMIC_RELAXED);
+	rte_atomic_fetch_and_explicit(addr, ~(1UL << nr), rte_memory_order_relaxed);
 }
 
 static inline uint64_t
-hns3_test_and_clear_bit(unsigned int nr, volatile uint64_t *addr)
+hns3_test_and_clear_bit(unsigned int nr, volatile RTE_ATOMIC(uint64_t) *addr)
 {
 	uint64_t mask = (1UL << nr);
 
-	return __atomic_fetch_and(addr, ~mask, __ATOMIC_RELAXED) & mask;
+	return rte_atomic_fetch_and_explicit(addr, ~mask, rte_memory_order_relaxed) & mask;
 }
 
 int

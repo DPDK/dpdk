@@ -11,7 +11,29 @@
  *
  * On the NFP6000, due to THB-350, the configuration BAR is 32K in size.
  */
-#define NFP_NET_CFG_BAR_SZ              (32 * 1024)
+#define NFP_NET_CFG_BAR_SZ_32K          (32 * 1024)
+#define NFP_NET_CFG_BAR_SZ_8K           (8 * 1024)
+#define NFP_NET_CFG_BAR_SZ_MIN          NFP_NET_CFG_BAR_SZ_8K
+
+/*
+ * Configuration sriov VF.
+ * The configuration memory begins with a mailbox region for communication with
+ * the firmware followed by individual VF entries.
+ */
+#define NFP_NET_VF_CFG_SZ               16
+#define NFP_NET_VF_CFG_MB_SZ            16
+
+/* VF config mailbox */
+#define NFP_NET_VF_CFG_MB               0x0
+#define NFP_NET_VF_CFG_MB_CAP           0x0
+#define   NFP_NET_VF_CFG_MB_CAP_QUEUE_CONFIG      (0x1 << 7)
+#define   NFP_NET_VF_CFG_MB_CAP_SPLIT             (0x1 << 8)
+#define NFP_NET_VF_CFG_MB_RET           0x2
+#define NFP_NET_VF_CFG_MB_UPD           0x4
+#define   NFP_NET_VF_CFG_MB_UPD_QUEUE_CONFIG      (0x1 << 7)
+#define   NFP_NET_VF_CFG_MB_UPD_SPLIT             (0x1 << 8)
+#define NFP_NET_VF_CFG_MB_VF_CNT        0x6
+#define NFP_NET_VF_CFG_MB_VF_NUM        0x7
 
 /*
  * @NFP_NET_TXR_MAX:         Maximum number of TX rings
@@ -81,6 +103,7 @@
 #define   NFP_NET_CFG_UPDATE_VXLAN        (0x1 <<  9) /* VXLAN port change */
 #define   NFP_NET_CFG_UPDATE_MACADDR      (0x1 << 11) /* MAC address change */
 #define   NFP_NET_CFG_UPDATE_MBOX         (0x1 << 12) /* Mailbox update */
+#define   NFP_NET_CFG_UPDATE_VF           (0x1 << 13) /* VF settings change */
 #define   NFP_NET_CFG_UPDATE_ERR          (0x1U << 31) /* A error occurred */
 #define NFP_NET_CFG_TXRS_ENABLE         0x0008
 #define NFP_NET_CFG_RXRS_ENABLE         0x0010
@@ -100,6 +123,10 @@
 struct nfp_net_fw_ver {
 	uint8_t minor;
 	uint8_t major;
+	/**
+	 * BIT0: class, refer NFP_NET_CFG_VERSION_CLASS_*
+	 * BIT[7:1]: reserved
+	 */
 	uint8_t class;
 	/**
 	 * This byte can be extended for more use.
@@ -126,6 +153,8 @@ struct nfp_net_fw_ver {
 #define NFP_NET_CFG_VERSION             0x0030
 #define   NFP_NET_CFG_VERSION_DP_NFD3   0
 #define   NFP_NET_CFG_VERSION_DP_NFDK   1
+#define   NFP_NET_CFG_VERSION_CLASS_GENERIC    0
+#define   NFP_NET_CFG_VERSION_CLASS_NO_EMEM    1
 #define NFP_NET_CFG_STS                 0x0034
 #define   NFP_NET_CFG_STS_LINK            (0x1 << 0) /* Link up or down */
 /* Link rate */
@@ -162,6 +191,8 @@ struct nfp_net_fw_ver {
 #define NFP_NET_CFG_RX_OFFSET           0x0050
 #define NFP_NET_CFG_RX_OFFSET_DYNAMIC          0    /* Prepend mode */
 
+#define NFP_NET_CFG_RSS_CAP             0x0054
+
 /* Start anchor of the TLV area */
 #define NFP_NET_CFG_TLV_BASE            0x0058
 
@@ -184,14 +215,20 @@ struct nfp_net_fw_ver {
 #define NFP_NET_CFG_CTRL_IPSEC_LM_LOOKUP  (0x1 << 4) /**< SA long match lookup */
 #define NFP_NET_CFG_CTRL_MULTI_PF         (0x1 << 5)
 #define NFP_NET_CFG_CTRL_FLOW_STEER       (0x1 << 8) /**< Flow Steering */
+#define NFP_NET_CFG_CTRL_VIRTIO           (0x1 << 10) /**< Virtio offload */
 #define NFP_NET_CFG_CTRL_IN_ORDER         (0x1 << 11) /**< Virtio in-order flag */
+#define NFP_NET_CFG_CTRL_LM_RELAY         (0x1 << 12) /**< Virtio live migration relay start */
+#define NFP_NET_CFG_CTRL_NOTIFY_DATA      (0x1 << 13) /**< Virtio notification data flag */
+#define NFP_NET_CFG_CTRL_SWLM             (0x1 << 14) /**< Virtio SW live migration enable */
 #define NFP_NET_CFG_CTRL_USO              (0x1 << 16) /**< UDP segmentation offload */
 
 #define NFP_NET_CFG_CAP_WORD1           0x00a4
 
+#define NFP_NET_CFG_TX_USED_INDEX       0x00b0
+#define NFP_NET_CFG_RX_USED_INDEX       0x00b4
+
 /* 16B reserved for future use (0x00b0 - 0x00c0). */
-#define NFP_NET_CFG_RESERVED            0x00b0
-#define NFP_NET_CFG_RESERVED_SZ         0x0010
+#define NFP_NET_CFG_MAX_FS_CAP          0x00b8
 
 /*
  * RSS configuration (0x0100 - 0x01ac):
@@ -213,6 +250,7 @@ struct nfp_net_fw_ver {
 #define   NFP_NET_CFG_RSS_IPV4_SCTP       (1 << 14) /* RSS for IPv4/SCTP */
 #define   NFP_NET_CFG_RSS_IPV6_SCTP       (1 << 15) /* RSS for IPv6/SCTP */
 #define   NFP_NET_CFG_RSS_TOEPLITZ        (1 << 24) /* Use Toeplitz hash */
+#define   NFP_NET_CFG_RSS_XOR             (1 << 25) /* Use XOR as hash */
 #define   NFP_NET_CFG_RSS_CRC32           (1 << 26) /* Use CRC32 hash */
 #define NFP_NET_CFG_RSS_KEY             (NFP_NET_CFG_RSS_BASE + 0x4)
 #define NFP_NET_CFG_RSS_KEY_SZ          0x28

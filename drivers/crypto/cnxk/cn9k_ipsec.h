@@ -11,18 +11,18 @@
 #include "cnxk_security.h"
 #include "cnxk_security_ar.h"
 
-struct cn9k_ipsec_sa {
+struct __rte_aligned(8) cn9k_ipsec_sa {
 	union {
 		/** Inbound SA */
 		struct roc_ie_on_inb_sa in_sa;
 		/** Outbound SA */
 		struct roc_ie_on_outb_sa out_sa;
 	};
-} __rte_aligned(8);
+};
 
 #define SEC_SESS_SIZE sizeof(struct rte_security_session)
 
-struct cn9k_sec_session {
+struct __rte_cache_aligned cn9k_sec_session {
 	uint8_t rte_sess[SEC_SESS_SIZE];
 
 	/** PMD private space */
@@ -57,7 +57,7 @@ struct cn9k_sec_session {
 	struct cnxk_cpt_qp *qp;
 
 	struct cn9k_ipsec_sa sa;
-} __rte_cache_aligned;
+};
 
 void cn9k_sec_ops_override(void);
 

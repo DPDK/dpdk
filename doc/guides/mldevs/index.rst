@@ -8,7 +8,7 @@ The following are a list of ML device PMDs,
 which can be used from an application through the ML device API.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :numbered:
 
    cnxk

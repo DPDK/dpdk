@@ -2,14 +2,14 @@
  * Copyright(c) 2017-2018 Intel Corporation
  */
 
-#ifndef _VHOST_CRYPTO_H_
-#define _VHOST_CRYPTO_H_
+#ifndef _RTE_VHOST_CRYPTO_H_
+#define _RTE_VHOST_CRYPTO_H_
+
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
 
 /* pre-declare structs to avoid including full headers */
 struct rte_mempool;
@@ -134,4 +134,4 @@ rte_vhost_crypto_finalize_requests(struct rte_crypto_op **ops,
 }
 #endif
 
-#endif /**< _VHOST_CRYPTO_H_ */
+#endif /* _RTE_VHOST_CRYPTO_H_ */

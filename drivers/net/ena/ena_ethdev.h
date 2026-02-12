@@ -29,9 +29,6 @@
 #define ENA_RX_BUF_MIN_SIZE	1400
 #define ENA_DEFAULT_RING_SIZE	1024
 
-#define ENA_RX_RSS_TABLE_LOG_SIZE	7
-#define ENA_RX_RSS_TABLE_SIZE		(1 << ENA_RX_RSS_TABLE_LOG_SIZE)
-
 #define ENA_MIN_MTU		128
 
 #define ENA_MMIO_DISABLE_REG_READ	BIT(0)
@@ -44,7 +41,8 @@
 #define ENA_MONITORED_TX_QUEUES		3
 #define ENA_DEFAULT_MISSING_COMP	256U
 
-#define ENA_MAX_CONTROL_PATH_POLL_INTERVAL_MSEC 1000
+#define ENA_MAX_CONTROL_PATH_POLL_INTERVAL_MSEC 1000U
+#define ENA_MIN_CONTROL_PATH_POLL_INTERVAL_MSEC 500U
 
 /* While processing submitted and completed descriptors (rx and tx path
  * respectively) in a loop it is desired to:
@@ -65,8 +63,6 @@
 #define ENA_IDX_NEXT_MASKED(idx, mask) (((idx) + 1) & (mask))
 #define ENA_IDX_ADD_MASKED(idx, n, mask) (((idx) + (n)) & (mask))
 
-#define ENA_RX_RSS_TABLE_LOG_SIZE	7
-#define ENA_RX_RSS_TABLE_SIZE		(1 << ENA_RX_RSS_TABLE_LOG_SIZE)
 
 #define ENA_HASH_KEY_SIZE		40
 
@@ -140,9 +136,23 @@ struct ena_stats_rx {
 	u64 mbuf_alloc_fail;
 	u64 bad_desc_num;
 	u64 bad_req_id;
+	u64 bad_desc;
+	u64 unknown_error;
 };
 
-struct ena_ring {
+struct ena_timestamp_config {
+	u8 hw_tx_supported;
+	u8 hw_rx_supported;
+};
+
+struct ena_timestamp_mbuf {
+	/* Dynamic mbuf timestamp flag */
+	uint64_t rx_flag;
+	/* Dynamic mbuf timestamp field offset */
+	int offset;
+};
+
+struct __rte_cache_aligned ena_ring {
 	u16 next_to_use;
 	u16 next_to_clean;
 	uint64_t last_cleanup_ticks;
@@ -175,8 +185,7 @@ struct ena_ring {
 		uint16_t rx_free_thresh;
 	};
 
-	struct ena_com_rx_buf_info ena_bufs[ENA_PKT_MAX_BUFS]
-						__rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct ena_com_rx_buf_info ena_bufs[ENA_PKT_MAX_BUFS];
 
 	struct rte_mempool *mb_pool;
 	unsigned int port_id;
@@ -201,7 +210,10 @@ struct ena_ring {
 	unsigned int numa_socket_id;
 
 	uint32_t missing_tx_completion_threshold;
-} __rte_cache_aligned;
+
+	/* Dynamic mbuf params for HW timestamping */
+	struct ena_timestamp_mbuf ts_mbuf;
+};
 
 enum ena_adapter_state {
 	ENA_ADAPTER_STATE_FREE    = 0,
@@ -288,15 +300,15 @@ struct ena_adapter {
 	/* OS defined structs */
 	struct rte_eth_dev_data *edev_data;
 
-	struct ena_com_dev ena_dev __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct ena_com_dev ena_dev;
 
 	/* TX */
-	struct ena_ring tx_ring[ENA_MAX_NUM_QUEUES] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct ena_ring tx_ring[ENA_MAX_NUM_QUEUES];
 	u32 max_tx_ring_size;
 	u16 max_tx_sgl_size;
 
 	/* RX */
-	struct ena_ring rx_ring[ENA_MAX_NUM_QUEUES] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct ena_ring rx_ring[ENA_MAX_NUM_QUEUES];
 	u32 max_rx_ring_size;
 	u16 max_rx_sgl_size;
 
@@ -332,15 +344,13 @@ struct ena_adapter {
 	struct ena_stats_dev dev_stats;
 	struct ena_admin_basic_stats basic_stats;
 
-	u32 indirect_table[ENA_RX_RSS_TABLE_SIZE];
+	u32 *indirect_table;
+	size_t indirect_table_size;
 
 	uint32_t all_aenq_groups;
 	uint32_t active_aenq_groups;
 
 	bool trigger_reset;
-	bool enable_llq;
-	bool use_large_llq_hdr;
-	bool use_normal_llq_hdr;
 	ena_llq_policy llq_header_policy;
 
 	uint32_t last_tx_comp_qid;
@@ -353,15 +363,20 @@ struct ena_adapter {
 	/* Time (in microseconds) of the control path queues monitoring interval */
 	uint64_t control_path_poll_interval;
 
+	bool enable_frag_bypass;
+
+	/* HW timestamp support by the device */
+	struct ena_timestamp_config ts;
 	/*
 	 * Helper variables for holding the information about the supported
 	 * metrics.
 	 */
-	uint64_t metrics_stats[ENA_MAX_CUSTOMER_METRICS] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint64_t metrics_stats[ENA_MAX_CUSTOMER_METRICS];
 	uint16_t metrics_num;
-	struct ena_stats_srd srd_stats __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct ena_stats_srd srd_stats;
 };
 
+size_t ena_rss_get_indirection_table_size(struct ena_adapter *adapter);
 int ena_mp_indirect_table_set(struct ena_adapter *adapter);
 int ena_mp_indirect_table_get(struct ena_adapter *adapter,
 			      uint32_t *indirect_table);

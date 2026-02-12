@@ -218,9 +218,9 @@ mlx5_quota_cmd_completed_status(struct mlx5_aso_sq *sq, uint16_t n)
 		struct mlx5_quota *quota_obj =
 			sq->elts[(sq->tail + i) & mask].quota_obj;
 
-		__atomic_compare_exchange_n(&quota_obj->state, &state,
-					    MLX5_QUOTA_STATE_READY, false,
-					    __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+		rte_atomic_compare_exchange_strong_explicit(&quota_obj->state, &state,
+					    MLX5_QUOTA_STATE_READY,
+					    rte_memory_order_relaxed, rte_memory_order_relaxed);
 	}
 }
 
@@ -278,7 +278,7 @@ mlx5_quota_cmd_wait_cmpl(struct mlx5_aso_sq *sq, struct mlx5_quota *quota_obj)
 		rte_spinlock_lock(&sq->sqsl);
 		mlx5_quota_cmd_completion_handle(sq);
 		rte_spinlock_unlock(&sq->sqsl);
-		if (__atomic_load_n(&quota_obj->state, __ATOMIC_RELAXED) ==
+		if (rte_atomic_load_explicit(&quota_obj->state, rte_memory_order_relaxed) ==
 		    MLX5_QUOTA_STATE_READY)
 			return 0;
 	} while (poll_cqe_times -= MLX5_ASO_WQE_CQE_RESPONSE_DELAY);
@@ -470,9 +470,9 @@ static __rte_always_inline int
 mlx5_quota_check_ready(struct mlx5_quota *qobj, struct rte_flow_error *error)
 {
 	uint8_t state = MLX5_QUOTA_STATE_READY;
-	bool verdict = __atomic_compare_exchange_n
-		(&qobj->state, &state, MLX5_QUOTA_STATE_WAIT, false,
-		 __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+	bool verdict = rte_atomic_compare_exchange_strong_explicit
+		(&qobj->state, &state, MLX5_QUOTA_STATE_WAIT,
+		 rte_memory_order_relaxed, rte_memory_order_relaxed);
 
 	if (!verdict)
 		return rte_flow_error_set(error, EBUSY,
@@ -507,8 +507,8 @@ mlx5_quota_query(struct rte_eth_dev *dev, uint32_t queue,
 	ret = mlx5_quota_cmd_wqe(dev, qobj, mlx5_quota_wqe_query, qix, work_queue,
 				 async_job ? async_job : &sync_job, push, NULL);
 	if (ret) {
-		__atomic_store_n(&qobj->state, MLX5_QUOTA_STATE_READY,
-				 __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&qobj->state, MLX5_QUOTA_STATE_READY,
+				 rte_memory_order_relaxed);
 		return rte_flow_error_set(error, EAGAIN,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL, "try again");
 	}
@@ -557,8 +557,8 @@ mlx5_quota_query_update(struct rte_eth_dev *dev, uint32_t queue,
 				 async_job ? async_job : &sync_job, push,
 				 (void *)(uintptr_t)update->conf);
 	if (ret) {
-		__atomic_store_n(&qobj->state, MLX5_QUOTA_STATE_READY,
-				 __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&qobj->state, MLX5_QUOTA_STATE_READY,
+				 rte_memory_order_relaxed);
 		return rte_flow_error_set(error, EAGAIN,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL, "try again");
 	}
@@ -593,9 +593,9 @@ mlx5_quota_alloc(struct rte_eth_dev *dev, uint32_t queue,
 				   NULL, "quota: failed to allocate quota object");
 		return NULL;
 	}
-	verdict = __atomic_compare_exchange_n
-		(&qobj->state, &state, MLX5_QUOTA_STATE_WAIT, false,
-		 __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+	verdict = rte_atomic_compare_exchange_strong_explicit
+		(&qobj->state, &state, MLX5_QUOTA_STATE_WAIT,
+		 rte_memory_order_relaxed, rte_memory_order_relaxed);
 	if (!verdict) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
 				   NULL, "quota: new quota object has invalid state");
@@ -616,8 +616,8 @@ mlx5_quota_alloc(struct rte_eth_dev *dev, uint32_t queue,
 				 (void *)(uintptr_t)conf);
 	if (ret) {
 		mlx5_ipool_free(qctx->quota_ipool, id);
-		__atomic_store_n(&qobj->state, MLX5_QUOTA_STATE_FREE,
-				 __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&qobj->state, MLX5_QUOTA_STATE_FREE,
+				 rte_memory_order_relaxed);
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
 				   NULL, "quota: WR failure");
 		return 0;
@@ -741,8 +741,13 @@ mlx5_flow_quota_init(struct rte_eth_dev *dev, uint32_t nb_quotas)
 		ret = mlx5_quota_init_guest(priv);
 	if (ret)
 		goto err;
-	if (priv->sh->config.dv_esw_en && priv->master)
-		flags |= MLX5DR_ACTION_FLAG_HWS_FDB;
+	if (priv->sh->config.dv_esw_en && priv->master) {
+		flags |= (is_unified_fdb(priv) ?
+				(MLX5DR_ACTION_FLAG_HWS_FDB_RX |
+				 MLX5DR_ACTION_FLAG_HWS_FDB_TX |
+				 MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED) :
+				MLX5DR_ACTION_FLAG_HWS_FDB);
+	}
 	qctx->dr_action = mlx5dr_action_create_aso_meter
 		(priv->dr_ctx, (struct mlx5dr_devx_obj *)qctx->devx_obj,
 		 reg_id - REG_C_0, flags);

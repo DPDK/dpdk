@@ -8,7 +8,6 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
 endif
 
 subdir('base')
-objs = [base_objs]
 
 sources = files(
         'octeontx_ethdev.c',
@@ -18,4 +17,4 @@ sources = files(
 
 deps += ['mempool_octeontx', 'eventdev']
 
-includes += include_directories('base')
+cflags += no_wvla_cflag

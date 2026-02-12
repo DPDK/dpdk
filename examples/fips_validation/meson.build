@@ -20,9 +20,12 @@ sources = files(
         'fips_validation_xts.c',
         'fips_validation_rsa.c',
         'fips_validation_ecdsa.c',
+        'fips_validation_eddsa.c',
         'fips_dev_self_test.c',
         'main.c',
 )
+
+cflags += no_wvla_cflag
 
 if dpdk_conf.has('RTE_HAS_JANSSON')
     ext_deps += jansson_dep

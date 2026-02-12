@@ -70,6 +70,8 @@ static const struct rte_eth_link pmd_link = {
 
 static int memif_region_init_zc(const struct rte_memseg_list *msl,
 				const struct rte_memseg *ms, void *arg);
+static void memif_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
+static void memif_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 
 const char *
 memif_version(void)
@@ -262,7 +264,7 @@ memif_free_stored_mbufs(struct pmd_process_private *proc_private, struct memif_q
 	 * threads, so using load-acquire pairs with store-release
 	 * in function eth_memif_rx for C2S queues.
 	 */
-	cur_tail = __atomic_load_n(&ring->tail, __ATOMIC_ACQUIRE);
+	cur_tail = rte_atomic_load_explicit(&ring->tail, rte_memory_order_acquire);
 	while (mq->last_tail != cur_tail) {
 		RTE_MBUF_PREFETCH_TO_FREE(mq->buffers[(mq->last_tail + 1) & mask]);
 		rte_pktmbuf_free_seg(mq->buffers[mq->last_tail & mask]);
@@ -334,10 +336,10 @@ eth_memif_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 	if (type == MEMIF_RING_C2S) {
 		cur_slot = mq->last_head;
-		last_slot = __atomic_load_n(&ring->head, __ATOMIC_ACQUIRE);
+		last_slot = rte_atomic_load_explicit(&ring->head, rte_memory_order_acquire);
 	} else {
 		cur_slot = mq->last_tail;
-		last_slot = __atomic_load_n(&ring->tail, __ATOMIC_ACQUIRE);
+		last_slot = rte_atomic_load_explicit(&ring->tail, rte_memory_order_acquire);
 	}
 
 	if (cur_slot == last_slot)
@@ -473,7 +475,7 @@ next_slot2:
 
 no_free_bufs:
 	if (type == MEMIF_RING_C2S) {
-		__atomic_store_n(&ring->tail, cur_slot, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&ring->tail, cur_slot, rte_memory_order_release);
 		mq->last_head = cur_slot;
 	} else {
 		mq->last_tail = cur_slot;
@@ -485,7 +487,7 @@ refill:
 		 * is called in the context of receiver thread. The loads in
 		 * the receiver do not need to synchronize with its own stores.
 		 */
-		head = __atomic_load_n(&ring->head, __ATOMIC_RELAXED);
+		head = rte_atomic_load_explicit(&ring->head, rte_memory_order_relaxed);
 		n_slots = ring_size - head + mq->last_tail;
 
 		while (n_slots--) {
@@ -493,7 +495,7 @@ refill:
 			d0 = &ring->desc[s0];
 			d0->length = pmd->run.pkt_buffer_size;
 		}
-		__atomic_store_n(&ring->head, head, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&ring->head, head, rte_memory_order_release);
 	}
 
 	mq->n_pkts += n_rx_pkts;
@@ -520,7 +522,10 @@ eth_memif_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		return 0;
 	if (unlikely(ring == NULL)) {
 		/* Secondary process will attempt to request regions. */
-		rte_eth_link_get(mq->in_port, &link);
+		ret = rte_eth_link_get(mq->in_port, &link);
+		if (ret < 0)
+			MIF_LOG(ERR, "Failed to get port %u link info: %s",
+				mq->in_port, rte_strerror(-ret));
 		return 0;
 	}
 
@@ -541,7 +546,7 @@ eth_memif_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	 * threads, so using load-acquire pairs with store-release
 	 * to synchronize it between threads.
 	 */
-	last_slot = __atomic_load_n(&ring->tail, __ATOMIC_ACQUIRE);
+	last_slot = rte_atomic_load_explicit(&ring->tail, rte_memory_order_acquire);
 	if (cur_slot == last_slot)
 		goto refill;
 	n_slots = last_slot - cur_slot;
@@ -591,7 +596,7 @@ refill:
 	 * is called in the context of receiver thread. The loads in
 	 * the receiver do not need to synchronize with its own stores.
 	 */
-	head = __atomic_load_n(&ring->head, __ATOMIC_RELAXED);
+	head = rte_atomic_load_explicit(&ring->head, rte_memory_order_relaxed);
 	n_slots = ring_size - head + mq->last_tail;
 
 	if (n_slots < 32)
@@ -600,6 +605,10 @@ refill:
 	ret = rte_pktmbuf_alloc_bulk(mq->mempool, &mq->buffers[head & mask], n_slots);
 	if (unlikely(ret < 0))
 		goto no_free_mbufs;
+	if (unlikely(n_slots > ring_size - (head & mask))) {
+		rte_memcpy(mq->buffers, &mq->buffers[ring_size],
+			(n_slots + (head & mask) - ring_size) * sizeof(struct rte_mbuf *));
+	}
 
 	while (n_slots--) {
 		s0 = head++ & mask;
@@ -620,7 +629,7 @@ no_free_mbufs:
 	 * threads, so using store-release pairs with load-acquire
 	 * in function eth_memif_tx.
 	 */
-	__atomic_store_n(&ring->head, head, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&ring->head, head, rte_memory_order_release);
 
 	mq->n_pkts += n_rx_pkts;
 
@@ -668,9 +677,9 @@ eth_memif_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		 * its own stores. Hence, the following load can be a
 		 * relaxed load.
 		 */
-		slot = __atomic_load_n(&ring->head, __ATOMIC_RELAXED);
+		slot = rte_atomic_load_explicit(&ring->head, rte_memory_order_relaxed);
 		n_free = ring_size - slot +
-				__atomic_load_n(&ring->tail, __ATOMIC_ACQUIRE);
+				rte_atomic_load_explicit(&ring->tail, rte_memory_order_acquire);
 	} else {
 		/* For S2C queues ring->tail is updated by the sender and
 		 * this function is called in the context of sending thread.
@@ -678,8 +687,8 @@ eth_memif_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		 * its own stores. Hence, the following load can be a
 		 * relaxed load.
 		 */
-		slot = __atomic_load_n(&ring->tail, __ATOMIC_RELAXED);
-		n_free = __atomic_load_n(&ring->head, __ATOMIC_ACQUIRE) - slot;
+		slot = rte_atomic_load_explicit(&ring->tail, rte_memory_order_relaxed);
+		n_free = rte_atomic_load_explicit(&ring->head, rte_memory_order_acquire) - slot;
 	}
 
 	uint16_t i;
@@ -792,9 +801,9 @@ next_in_chain2:
 
 no_free_slots:
 	if (type == MEMIF_RING_C2S)
-		__atomic_store_n(&ring->head, slot, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&ring->head, slot, rte_memory_order_release);
 	else
-		__atomic_store_n(&ring->tail, slot, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&ring->tail, slot, rte_memory_order_release);
 
 	if (((ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0) &&
 	    (rte_intr_fd_get(mq->intr_handle) >= 0)) {
@@ -864,8 +873,13 @@ eth_memif_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	if (unlikely((pmd->flags & ETH_MEMIF_FLAG_CONNECTED) == 0))
 		return 0;
 	if (unlikely(ring == NULL)) {
+		int ret;
+
 		/* Secondary process will attempt to request regions. */
-		rte_eth_link_get(mq->in_port, &link);
+		ret = rte_eth_link_get(mq->in_port, &link);
+		if (ret < 0)
+			MIF_LOG(ERR, "Failed to get port %u link info: %s",
+				mq->in_port, rte_strerror(-ret));
 		return 0;
 	}
 
@@ -882,7 +896,7 @@ eth_memif_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	 * its own stores. Hence, the following load can be a
 	 * relaxed load.
 	 */
-	slot = __atomic_load_n(&ring->head, __ATOMIC_RELAXED);
+	slot = rte_atomic_load_explicit(&ring->head, rte_memory_order_relaxed);
 	n_free = ring_size - slot + mq->last_tail;
 
 	int used_slots;
@@ -942,7 +956,7 @@ no_free_slots:
 	 * threads, so using store-release pairs with load-acquire
 	 * in function eth_memif_rx for C2S rings.
 	 */
-	__atomic_store_n(&ring->head, slot, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&ring->head, slot, rte_memory_order_release);
 
 	/* Send interrupt, if enabled. */
 	if ((ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0) {
@@ -1155,8 +1169,8 @@ memif_init_rings(struct rte_eth_dev *dev)
 
 	for (i = 0; i < pmd->run.num_c2s_rings; i++) {
 		ring = memif_get_ring(pmd, proc_private, MEMIF_RING_C2S, i);
-		__atomic_store_n(&ring->head, 0, __ATOMIC_RELAXED);
-		__atomic_store_n(&ring->tail, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&ring->head, 0, rte_memory_order_relaxed);
+		rte_atomic_store_explicit(&ring->tail, 0, rte_memory_order_relaxed);
 		ring->cookie = MEMIF_COOKIE;
 		ring->flags = 0;
 
@@ -1175,8 +1189,8 @@ memif_init_rings(struct rte_eth_dev *dev)
 
 	for (i = 0; i < pmd->run.num_s2c_rings; i++) {
 		ring = memif_get_ring(pmd, proc_private, MEMIF_RING_S2C, i);
-		__atomic_store_n(&ring->head, 0, __ATOMIC_RELAXED);
-		__atomic_store_n(&ring->tail, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&ring->head, 0, rte_memory_order_relaxed);
+		rte_atomic_store_explicit(&ring->tail, 0, rte_memory_order_relaxed);
 		ring->cookie = MEMIF_COOKIE;
 		ring->flags = 0;
 
@@ -1245,8 +1259,12 @@ memif_init_queues(struct rte_eth_dev *dev)
 		}
 		mq->buffers = NULL;
 		if (pmd->flags & ETH_MEMIF_FLAG_ZERO_COPY) {
+			/*
+			 * Allocate 2x ring_size to reserve a contiguous array for
+			 * rte_pktmbuf_alloc_bulk (to store allocated mbufs).
+			 */
 			mq->buffers = rte_zmalloc("bufs", sizeof(struct rte_mbuf *) *
-						  (1 << mq->log2_ring_size), 0);
+						  (1 << (mq->log2_ring_size + 1)), 0);
 			if (mq->buffers == NULL)
 				return -ENOMEM;
 		}
@@ -1292,7 +1310,7 @@ memif_connect(struct rte_eth_dev *dev)
 						PROT_READ | PROT_WRITE,
 						MAP_SHARED, mr->fd, 0);
 				if (mr->addr == MAP_FAILED) {
-					MIF_LOG(ERR, "mmap failed: %s\n",
+					MIF_LOG(ERR, "mmap failed: %s",
 						strerror(errno));
 					return -1;
 				}
@@ -1314,8 +1332,8 @@ memif_connect(struct rte_eth_dev *dev)
 				MIF_LOG(ERR, "Wrong ring");
 				return -1;
 			}
-			__atomic_store_n(&ring->head, 0, __ATOMIC_RELAXED);
-			__atomic_store_n(&ring->tail, 0, __ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&ring->head, 0, rte_memory_order_relaxed);
+			rte_atomic_store_explicit(&ring->tail, 0, rte_memory_order_relaxed);
 			mq->last_head = 0;
 			mq->last_tail = 0;
 			/* enable polling mode */
@@ -1330,8 +1348,8 @@ memif_connect(struct rte_eth_dev *dev)
 				MIF_LOG(ERR, "Wrong ring");
 				return -1;
 			}
-			__atomic_store_n(&ring->head, 0, __ATOMIC_RELAXED);
-			__atomic_store_n(&ring->tail, 0, __ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&ring->head, 0, rte_memory_order_relaxed);
+			rte_atomic_store_explicit(&ring->tail, 0, rte_memory_order_relaxed);
 			mq->last_head = 0;
 			mq->last_tail = 0;
 			/* enable polling mode */
@@ -1402,9 +1420,9 @@ memif_dev_close(struct rte_eth_dev *dev)
 		memif_msg_enq_disconnect(pmd->cc, "Device closed", 0);
 
 		for (i = 0; i < dev->data->nb_rx_queues; i++)
-			(*dev->dev_ops->rx_queue_release)(dev, i);
+			memif_rx_queue_release(dev, i);
 		for (i = 0; i < dev->data->nb_tx_queues; i++)
-			(*dev->dev_ops->tx_queue_release)(dev, i);
+			memif_tx_queue_release(dev, i);
 
 		memif_socket_remove_device(dev);
 	}
@@ -1560,7 +1578,8 @@ memif_link_update(struct rte_eth_dev *dev,
 }
 
 static int
-memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
 	struct memif_queue *mq;
@@ -1580,8 +1599,10 @@ memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	/* RX stats */
 	for (i = 0; i < nq; i++) {
 		mq = dev->data->rx_queues[i];
-		stats->q_ipackets[i] = mq->n_pkts;
-		stats->q_ibytes[i] = mq->n_bytes;
+		if (qstats != NULL) {
+			qstats->q_ipackets[i] = mq->n_pkts;
+			qstats->q_ibytes[i] = mq->n_bytes;
+		}
 		stats->ipackets += mq->n_pkts;
 		stats->ibytes += mq->n_bytes;
 	}
@@ -1594,8 +1615,10 @@ memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	/* TX stats */
 	for (i = 0; i < nq; i++) {
 		mq = dev->data->tx_queues[i];
-		stats->q_opackets[i] = mq->n_pkts;
-		stats->q_obytes[i] = mq->n_bytes;
+		if (qstats != NULL) {
+			qstats->q_opackets[i] = mq->n_pkts;
+			qstats->q_obytes[i] = mq->n_bytes;
+		}
 		stats->opackets += mq->n_pkts;
 		stats->obytes += mq->n_bytes;
 	}
@@ -1813,7 +1836,8 @@ memif_set_rs(const char *key __rte_unused, const char *value, void *extra_args)
 static int
 memif_check_socket_filename(const char *filename)
 {
-	char *dir = NULL, *tmp;
+	char *dir = NULL;
+	const char *tmp;
 	uint32_t idx;
 	int ret = 0;
 

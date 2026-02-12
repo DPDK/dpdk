@@ -9,6 +9,7 @@
 extern cmdline_parse_inst_t cmd_show_port_tm_cap;
 extern cmdline_parse_inst_t cmd_show_port_tm_level_cap;
 extern cmdline_parse_inst_t cmd_show_port_tm_node_cap;
+extern cmdline_parse_inst_t cmd_show_port_tm_node;
 extern cmdline_parse_inst_t cmd_show_port_tm_node_type;
 extern cmdline_parse_inst_t cmd_show_port_tm_node_stats;
 extern cmdline_parse_inst_t cmd_add_port_tm_node_shaper_profile;

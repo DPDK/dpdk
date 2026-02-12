@@ -19,10 +19,6 @@
  * instead.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdalign.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -166,9 +162,5 @@ struct rte_ring {
 
 #define RING_F_MP_HTS_ENQ 0x0020 /**< The default enqueue is "MP HTS". */
 #define RING_F_MC_HTS_DEQ 0x0040 /**< The default dequeue is "MC HTS". */
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_RING_CORE_H_ */

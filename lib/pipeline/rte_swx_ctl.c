@@ -8,6 +8,7 @@
 #include <sys/queue.h>
 #include <unistd.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_byteorder.h>
 #include <rte_tailq.h>
@@ -209,7 +210,7 @@ table_params_get(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
 	uint32_t key_size = 0, key_offset = 0, action_data_size = 0, i;
 
 	if (table->info.n_match_fields) {
-		uint32_t n_match_fields_em = 0, i;
+		uint32_t n_match_fields_em = 0;
 
 		/* Find first (smallest offset) and last (biggest offset) match fields. */
 		first = &table->mf[0];
@@ -832,7 +833,7 @@ selector_group_duplicate_to_pending(struct selector *s, uint32_t group_id)
 		if (!mp)
 			goto error;
 
-		memcpy(mp, m, sizeof(struct rte_swx_table_selector_member));
+		*mp = *m;
 
 		TAILQ_INSERT_TAIL(&gp->members, mp, node);
 	}
@@ -854,22 +855,21 @@ selector_free(struct rte_swx_ctl_pipeline *ctl)
 
 	for (i = 0; i < ctl->info.n_selectors; i++) {
 		struct selector *s = &ctl->selectors[i];
-		uint32_t i;
 
 		/* selector_fields. */
 		free(s->selector_fields);
 
 		/* groups. */
 		if (s->groups)
-			for (i = 0; i < s->info.n_groups_max; i++)
-				selector_group_members_free(s, i);
+			for (uint32_t j = 0; j < s->info.n_groups_max; j++)
+				selector_group_members_free(s, j);
 
 		free(s->groups);
 
 		/* pending_groups. */
 		if (s->pending_groups)
-			for (i = 0; i < s->info.n_groups_max; i++)
-				selector_pending_group_members_free(s, i);
+			for (uint32_t j = 0; j < s->info.n_groups_max; j++)
+				selector_pending_group_members_free(s, j);
 
 		free(s->pending_groups);
 
@@ -1170,6 +1170,7 @@ static struct rte_tailq_elem rte_swx_ctl_pipeline_tailq = {
 
 EAL_REGISTER_TAILQ(rte_swx_ctl_pipeline_tailq)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_find, 22.11)
 struct rte_swx_ctl_pipeline *
 rte_swx_ctl_pipeline_find(const char *name)
 {
@@ -1249,6 +1250,7 @@ ctl_unregister(struct rte_swx_ctl_pipeline *ctl)
 	rte_mcfg_tailq_write_unlock();
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_free, 20.11)
 void
 rte_swx_ctl_pipeline_free(struct rte_swx_ctl_pipeline *ctl)
 {
@@ -1271,6 +1273,7 @@ rte_swx_ctl_pipeline_free(struct rte_swx_ctl_pipeline *ctl)
 	free(ctl);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_create, 20.11)
 struct rte_swx_ctl_pipeline *
 rte_swx_ctl_pipeline_create(struct rte_swx_pipeline *p)
 {
@@ -1549,6 +1552,7 @@ error:
 	return NULL;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_table_entry_add, 20.11)
 int
 rte_swx_ctl_pipeline_table_entry_add(struct rte_swx_ctl_pipeline *ctl,
 				     const char *table_name,
@@ -1663,6 +1667,7 @@ rte_swx_ctl_pipeline_table_entry_add(struct rte_swx_ctl_pipeline *ctl,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_table_entry_delete, 20.11)
 int
 rte_swx_ctl_pipeline_table_entry_delete(struct rte_swx_ctl_pipeline *ctl,
 					const char *table_name,
@@ -1753,6 +1758,7 @@ rte_swx_ctl_pipeline_table_entry_delete(struct rte_swx_ctl_pipeline *ctl,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_table_default_entry_add, 20.11)
 int
 rte_swx_ctl_pipeline_table_default_entry_add(struct rte_swx_ctl_pipeline *ctl,
 					     const char *table_name,
@@ -2090,6 +2096,7 @@ table_abort(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
 	table_pending_default_free(table);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_selector_group_add, 21.08)
 int
 rte_swx_ctl_pipeline_selector_group_add(struct rte_swx_ctl_pipeline *ctl,
 					const char *selector_name,
@@ -2117,6 +2124,7 @@ rte_swx_ctl_pipeline_selector_group_add(struct rte_swx_ctl_pipeline *ctl,
 	return -ENOSPC;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_selector_group_delete, 21.08)
 int
 rte_swx_ctl_pipeline_selector_group_delete(struct rte_swx_ctl_pipeline *ctl,
 					   const char *selector_name,
@@ -2168,6 +2176,7 @@ rte_swx_ctl_pipeline_selector_group_delete(struct rte_swx_ctl_pipeline *ctl,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_selector_group_member_add, 21.08)
 int
 rte_swx_ctl_pipeline_selector_group_member_add(struct rte_swx_ctl_pipeline *ctl,
 					       const char *selector_name,
@@ -2227,6 +2236,7 @@ rte_swx_ctl_pipeline_selector_group_member_add(struct rte_swx_ctl_pipeline *ctl,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_selector_group_member_delete, 21.08)
 int
 rte_swx_ctl_pipeline_selector_group_member_delete(struct rte_swx_ctl_pipeline *ctl,
 						  const char *selector_name,
@@ -2480,6 +2490,7 @@ error:
 	return NULL;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_learner_default_entry_add, 21.11)
 int
 rte_swx_ctl_pipeline_learner_default_entry_add(struct rte_swx_ctl_pipeline *ctl,
 					       const char *learner_name,
@@ -2553,6 +2564,7 @@ learner_abort(struct rte_swx_ctl_pipeline *ctl, uint32_t learner_id)
 	learner_pending_default_free(l);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_commit, 20.11)
 int
 rte_swx_ctl_pipeline_commit(struct rte_swx_ctl_pipeline *ctl, int abort_on_fail)
 {
@@ -2639,6 +2651,7 @@ rollback:
 	return status;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_abort, 20.11)
 void
 rte_swx_ctl_pipeline_abort(struct rte_swx_ctl_pipeline *ctl)
 {
@@ -2973,6 +2986,7 @@ token_is_comment(const char *token)
 
 #define RTE_SWX_CTL_ENTRY_TOKENS_MAX 256
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_table_entry_read, 20.11)
 struct rte_swx_table_entry *
 rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 				      const char *table_name,
@@ -3172,6 +3186,7 @@ error:
 	return NULL;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_learner_default_entry_read, 21.11)
 struct rte_swx_table_entry *
 rte_swx_ctl_pipeline_learner_default_entry_read(struct rte_swx_ctl_pipeline *ctl,
 						const char *learner_name,
@@ -3324,6 +3339,7 @@ table_entry_printf(FILE *f,
 	fprintf(f, "\n");
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_table_fprintf, 20.11)
 int
 rte_swx_ctl_pipeline_table_fprintf(FILE *f,
 				   struct rte_swx_ctl_pipeline *ctl,
@@ -3374,6 +3390,7 @@ rte_swx_ctl_pipeline_table_fprintf(FILE *f,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_ctl_pipeline_selector_fprintf, 21.08)
 int
 rte_swx_ctl_pipeline_selector_fprintf(FILE *f,
 				      struct rte_swx_ctl_pipeline *ctl,

@@ -1,8 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2021 Intel Corporation.
 
-RIB Library
-===========
+Routing Information Base (RIB) Library
+======================================
 
 The Routing Information Base (RIB) library provides a data store for routing information.
 This library is intended for use in control or management plane applications.

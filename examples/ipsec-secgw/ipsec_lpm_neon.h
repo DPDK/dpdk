@@ -5,6 +5,8 @@
 #ifndef IPSEC_LPM_NEON_H
 #define IPSEC_LPM_NEON_H
 
+#include <rte_ip6.h>
+
 #include <arm_neon.h>
 #include "ipsec_neon.h"
 
@@ -114,7 +116,7 @@ process_single_pkt(struct rt_ctx *rt_ctx, struct rte_mbuf *pkt,
 static inline void
 route6_pkts_neon(struct rt_ctx *rt_ctx, struct rte_mbuf **pkts, int nb_rx)
 {
-	uint8_t dst_ip6[MAX_PKT_BURST][16];
+	struct rte_ipv6_addr dst_ip6[MAX_PKT_BURST];
 	uint16_t dst_port[MAX_PKT_BURST];
 	struct rte_ether_hdr *eth_hdr;
 	struct rte_ipv6_hdr *ipv6_hdr;
@@ -142,8 +144,7 @@ route6_pkts_neon(struct rt_ctx *rt_ctx, struct rte_mbuf **pkts, int nb_rx)
 			 * required to get the hop
 			 */
 			ipv6_hdr = (struct rte_ipv6_hdr *)(eth_hdr + 1);
-			memcpy(&dst_ip6[lpm_pkts][0],
-					ipv6_hdr->dst_addr, 16);
+			dst_ip6[lpm_pkts] = ipv6_hdr->dst_addr;
 			lpm_pkts++;
 		}
 	}

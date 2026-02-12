@@ -246,7 +246,7 @@ enum ccp_hash_op {
 };
 
 /* CCP crypto private session structure */
-struct ccp_session {
+struct __rte_cache_aligned ccp_session {
 	bool auth_opt;
 	enum ccp_cmd_order cmd_id;
 	/**< chain order mode */
@@ -314,7 +314,7 @@ struct ccp_session {
 	/**< AEAD Algorithm */
 
 	uint32_t reserved;
-} __rte_cache_aligned;
+};
 
 extern uint8_t ccp_cryptodev_driver_id;
 

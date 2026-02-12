@@ -38,7 +38,7 @@ fs_flow_complain(struct rte_flow_error *error)
 		errstr = "unknown type";
 	else
 		errstr = errstrlist[error->type];
-	ERROR("Caught error type %d (%s): %s%s\n",
+	ERROR("Caught error type %d (%s): %s%s",
 		error->type, errstr,
 		error->cause ? (snprintf(buf, sizeof(buf), "cause: %p, ",
 				error->cause), buf) : "",
@@ -565,8 +565,6 @@ err_remove:
 void
 failsafe_stats_increment(struct rte_eth_stats *to, struct rte_eth_stats *from)
 {
-	uint32_t i;
-
 	RTE_ASSERT(to != NULL && from != NULL);
 	to->ipackets += from->ipackets;
 	to->opackets += from->opackets;
@@ -576,13 +574,6 @@ failsafe_stats_increment(struct rte_eth_stats *to, struct rte_eth_stats *from)
 	to->ierrors += from->ierrors;
 	to->oerrors += from->oerrors;
 	to->rx_nombuf += from->rx_nombuf;
-	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
-		to->q_ipackets[i] += from->q_ipackets[i];
-		to->q_opackets[i] += from->q_opackets[i];
-		to->q_ibytes[i] += from->q_ibytes[i];
-		to->q_obytes[i] += from->q_obytes[i];
-		to->q_errors[i] += from->q_errors[i];
-	}
 }
 
 int
@@ -640,7 +631,7 @@ failsafe_eth_new_event_callback(uint16_t port_id,
 		if (sdev->state >= DEV_PROBED)
 			continue;
 		if (dev->device == NULL) {
-			WARN("Trying to probe malformed device %s.\n",
+			WARN("Trying to probe malformed device %s.",
 			     sdev->devargs.name);
 			continue;
 		}

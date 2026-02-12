@@ -1,5 +1,5 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
- * Copyright 2019-2021 NXP
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
+ * Copyright 2019-2024 NXP
  */
 #include <fsl_mc_sys.h>
 #ifndef _FSL_DPRTC_CMD_H
@@ -42,6 +42,7 @@
 #define DPRTC_CMDID_CLEAR_EXT_TRIGGER		DPRTC_CMD(0x1d9)
 #define DPRTC_CMDID_GET_EXT_TRIGGER_TIMESTAMP	DPRTC_CMD(0x1dA)
 #define DPRTC_CMDID_SET_FIPER_LOOPBACK	DPRTC_CMD(0x1dB)
+#define DPRTC_CMDID_GET_CLOCK_OFFSET		DPRTC_CMD(0x1dC)
 
 /* Macros for accessing command fields smaller than 1byte */
 #define DPRTC_MASK(field)        \
@@ -75,6 +76,10 @@ struct dprtc_rsp_get_attributes {
 };
 
 struct dprtc_cmd_set_clock_offset {
+	uint64_t offset;
+};
+
+struct dprtc_rsp_get_clock_offset {
 	uint64_t offset;
 };
 

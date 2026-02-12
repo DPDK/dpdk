@@ -17,7 +17,7 @@
 #include <rte_prefetch.h>
 #include <rte_distributor.h>
 #include <rte_pause.h>
-#include <rte_power.h>
+#include <rte_power_cpufreq.h>
 
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
@@ -44,39 +44,39 @@ bool enable_lcore_rx_distributor;
 unsigned int num_workers;
 
 static volatile struct app_stats {
-	struct {
+	alignas(RTE_CACHE_LINE_SIZE) struct {
 		uint64_t rx_pkts;
 		uint64_t returned_pkts;
 		uint64_t enqueued_pkts;
 		uint64_t enqdrop_pkts;
-	} rx __rte_cache_aligned;
-	int pad1 __rte_cache_aligned;
+	} rx;
+	alignas(RTE_CACHE_LINE_SIZE) int pad1;
 
-	struct {
+	alignas(RTE_CACHE_LINE_SIZE) struct {
 		uint64_t in_pkts;
 		uint64_t ret_pkts;
 		uint64_t sent_pkts;
 		uint64_t enqdrop_pkts;
-	} dist __rte_cache_aligned;
-	int pad2 __rte_cache_aligned;
+	} dist;
+	alignas(RTE_CACHE_LINE_SIZE) int pad2;
 
-	struct {
+	alignas(RTE_CACHE_LINE_SIZE) struct {
 		uint64_t dequeue_pkts;
 		uint64_t tx_pkts;
 		uint64_t enqdrop_pkts;
-	} tx __rte_cache_aligned;
-	int pad3 __rte_cache_aligned;
+	} tx;
+	alignas(RTE_CACHE_LINE_SIZE) int pad3;
 
-	uint64_t worker_pkts[64] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint64_t worker_pkts[64];
 
-	int pad4 __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) int pad4;
 
-	uint64_t worker_bursts[64][8] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint64_t worker_bursts[64][8];
 
-	int pad5 __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) int pad5;
 
-	uint64_t port_rx_pkts[64] __rte_cache_aligned;
-	uint64_t port_tx_pkts[64] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint64_t port_rx_pkts[64];
+	alignas(RTE_CACHE_LINE_SIZE) uint64_t port_tx_pkts[64];
 } app_stats;
 
 struct app_stats prev_app_stats;
@@ -642,7 +642,7 @@ lcore_worker(struct lcore_params *p)
 	 * port, otherwise we send traffic from 0 to 1, 2 to 3, and vice versa
 	 */
 	const unsigned xor_val = (rte_eth_dev_count_avail() > 1);
-	struct rte_mbuf *buf[8] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_mbuf *buf[8];
 
 	for (i = 0; i < 8; i++)
 		buf[i] = NULL;

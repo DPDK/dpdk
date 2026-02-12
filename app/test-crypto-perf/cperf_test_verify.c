@@ -21,6 +21,7 @@ struct cperf_verify_ctx {
 	struct rte_mempool *pool;
 
 	void *sess;
+	uint8_t sess_owner;
 
 	cperf_populate_ops_t populate_ops;
 
@@ -41,8 +42,8 @@ cperf_verify_test_free(struct cperf_verify_ctx *ctx)
 	if (ctx == NULL)
 		return;
 
-	if (ctx->sess != NULL) {
-		if (ctx->options->op_type == CPERF_ASYM_MODEX)
+	if (ctx->sess != NULL && ctx->sess_owner) {
+		if (cperf_is_asym_test(ctx->options))
 			rte_cryptodev_asym_session_free(ctx->dev_id, ctx->sess);
 #ifdef RTE_LIB_SECURITY
 		else if (ctx->options->op_type == CPERF_PDCP ||
@@ -67,7 +68,8 @@ cperf_verify_test_constructor(struct rte_mempool *sess_mp,
 		uint8_t dev_id, uint16_t qp_id,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
-		const struct cperf_op_fns *op_fns)
+		const struct cperf_op_fns *op_fns,
+		void **sess)
 {
 	struct cperf_verify_ctx *ctx = NULL;
 
@@ -86,10 +88,17 @@ cperf_verify_test_constructor(struct rte_mempool *sess_mp,
 	uint16_t iv_offset = sizeof(struct rte_crypto_op) +
 		sizeof(struct rte_crypto_sym_op);
 
-	ctx->sess = op_fns->sess_create(sess_mp, dev_id, options,
-			test_vector, iv_offset);
-	if (ctx->sess == NULL)
-		goto err;
+	if (*sess != NULL) {
+		ctx->sess = *sess;
+		ctx->sess_owner = false;
+	} else {
+		ctx->sess = op_fns->sess_create(sess_mp, dev_id, options,
+				test_vector, iv_offset);
+		if (ctx->sess == NULL)
+			goto err;
+		*sess = ctx->sess;
+		ctx->sess_owner = true;
+	}
 
 	if (cperf_alloc_common_memory(options, test_vector, dev_id, qp_id, 0,
 			&ctx->src_buf_offset, &ctx->dst_buf_offset,
@@ -216,7 +225,7 @@ cperf_verify_test_runner(void *test_ctx)
 	uint64_t ops_deqd = 0, ops_deqd_total = 0, ops_deqd_failed = 0;
 	uint64_t ops_failed = 0;
 
-	static uint16_t display_once;
+	static RTE_ATOMIC(uint16_t) display_once;
 
 	uint64_t i;
 	uint16_t ops_unused = 0;
@@ -370,8 +379,8 @@ cperf_verify_test_runner(void *test_ctx)
 
 	uint16_t exp = 0;
 	if (!ctx->options->csv) {
-		if (__atomic_compare_exchange_n(&display_once, &exp, 1, 0,
-				__ATOMIC_RELAXED, __ATOMIC_RELAXED))
+		if (rte_atomic_compare_exchange_strong_explicit(&display_once, &exp, 1,
+				rte_memory_order_relaxed, rte_memory_order_relaxed))
 			printf("%12s%12s%12s%12s%12s%12s%12s%12s\n\n",
 				"lcore id", "Buf Size", "Burst size",
 				"Enqueued", "Dequeued", "Failed Enq",
@@ -388,8 +397,8 @@ cperf_verify_test_runner(void *test_ctx)
 				ops_deqd_failed,
 				ops_failed);
 	} else {
-		if (__atomic_compare_exchange_n(&display_once, &exp, 1, 0,
-				__ATOMIC_RELAXED, __ATOMIC_RELAXED))
+		if (rte_atomic_compare_exchange_strong_explicit(&display_once, &exp, 1,
+				rte_memory_order_relaxed, rte_memory_order_relaxed))
 			printf("\n# lcore id, Buffer Size(B), "
 				"Burst Size,Enqueued,Dequeued,Failed Enq,"
 				"Failed Deq,Failed Ops\n");

@@ -17,4 +17,6 @@ struct nfp_cpp *nfp_cpp_from_nfp6000_pcie(struct rte_pci_device *pci_dev,
 		const struct nfp_dev_info *dev_info,
 		bool driver_lock_needed);
 
+uint8_t nfp_get_pf_id_from_device(void *priv);
+
 #endif /* __NFP6000_PCIE_H__ */

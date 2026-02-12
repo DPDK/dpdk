@@ -91,6 +91,12 @@ mvneta_ifnames_get(const char *key __rte_unused, const char *value,
 {
 	struct mvneta_ifnames *ifnames = extra_args;
 
+	if (ifnames->idx >= NETA_NUM_ETH_PPIO) {
+		MVNETA_LOG(ERR, "Too many ifnames specified (max %u)",
+			   NETA_NUM_ETH_PPIO);
+		return -EINVAL;
+	}
+
 	ifnames->names[ifnames->idx++] = value;
 
 	return 0;
@@ -706,7 +712,8 @@ mvneta_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
  *   0 on success, negative error value otherwise.
  */
 static int
-mvneta_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+mvneta_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		 struct eth_queue_stats *qstats __rte_unused)
 {
 	struct mvneta_priv *priv = dev->data->dev_private;
 	struct neta_ppio_statistics ppio_stats;
@@ -759,7 +766,7 @@ mvneta_stats_reset(struct rte_eth_dev *dev)
 	if (!priv->ppio)
 		return 0;
 
-	ret = mvneta_stats_get(dev, &priv->prev_stats);
+	ret = mvneta_stats_get(dev, &priv->prev_stats, NULL);
 	if (unlikely(ret))
 		MVNETA_LOG(ERR, "Failed to reset port statistics");
 

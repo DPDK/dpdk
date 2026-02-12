@@ -30,13 +30,13 @@
  * rte_ethtool_net_set_rx_mode      net_device_ops::ndo_set_rx_mode
  *
  */
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <rte_ethdev.h>
 #include <linux/ethtool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Retrieve the Ethernet device driver information according to

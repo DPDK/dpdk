@@ -14,10 +14,6 @@
  * asymmetric crypto operations.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <string.h>
 #include <stdint.h>
 
@@ -29,6 +25,10 @@ extern "C" {
 
 struct rte_cryptodev_asym_session;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** asym key exchange operation type name strings */
 extern const char *
 rte_crypto_asym_ke_strings[];
@@ -36,6 +36,24 @@ rte_crypto_asym_ke_strings[];
 /** asym operations type name strings */
 extern const char *
 rte_crypto_asym_op_strings[];
+
+/** PQC ML crypto op parameters size */
+extern const uint16_t
+rte_crypto_ml_kem_pubkey_size[];
+extern const uint16_t
+rte_crypto_ml_kem_privkey_size[];
+extern const uint16_t
+rte_crypto_ml_kem_cipher_size[];
+extern const uint16_t
+rte_crypto_ml_dsa_pubkey_size[];
+extern const uint16_t
+rte_crypto_ml_dsa_privkey_size[];
+extern const uint16_t
+rte_crypto_ml_dsa_sign_size[];
+
+#ifdef __cplusplus
+}
+#endif
 
 #define RTE_CRYPTO_ASYM_FLAG_PUB_KEY_NO_PADDING		RTE_BIT32(0)
 /**<
@@ -48,6 +66,10 @@ rte_crypto_asym_op_strings[];
  * Flag to denote shared secret will be returned without leading zero bytes
  * and if the flag is not set, shared secret will be padded to the left with
  * zeros to the size of the underlying algorithm (default)
+ */
+#define RTE_CRYPTO_ASYM_FLAG_PUB_KEY_COMPRESSED		RTE_BIT32(2)
+/**<
+ * Flag to denote public key will be returned in compressed form
  */
 
 /**
@@ -65,7 +87,20 @@ enum rte_crypto_curve_id {
 	RTE_CRYPTO_EC_GROUP_SECP256R1 = 23,
 	RTE_CRYPTO_EC_GROUP_SECP384R1 = 24,
 	RTE_CRYPTO_EC_GROUP_SECP521R1 = 25,
+	RTE_CRYPTO_EC_GROUP_ED25519   = 29,
+	RTE_CRYPTO_EC_GROUP_ED448     = 30,
 	RTE_CRYPTO_EC_GROUP_SM2       = 41,
+};
+
+/**
+ * List of Edwards curve instances as per RFC 8032 (Section 5).
+ */
+enum rte_crypto_edward_instance {
+	RTE_CRYPTO_EDCURVE_25519,
+	RTE_CRYPTO_EDCURVE_25519CTX,
+	RTE_CRYPTO_EDCURVE_25519PH,
+	RTE_CRYPTO_EDCURVE_448,
+	RTE_CRYPTO_EDCURVE_448PH
 };
 
 /**
@@ -119,8 +154,18 @@ enum rte_crypto_asym_xform_type {
 	 * Performs Encrypt, Decrypt, Sign and Verify.
 	 * Refer to rte_crypto_asym_op_type.
 	 */
-	RTE_CRYPTO_ASYM_XFORM_TYPE_LIST_END
-	/**< End of list */
+	RTE_CRYPTO_ASYM_XFORM_EDDSA,
+	/**< Edwards Curve Digital Signature Algorithm
+	 * Perform Signature Generation and Verification.
+	 */
+	RTE_CRYPTO_ASYM_XFORM_ML_KEM,
+	/**< Module Lattice based Key Encapsulation Mechanism
+	 * Performs Key Pair Generation, Encapsulation and Decapsulation.
+	 */
+	RTE_CRYPTO_ASYM_XFORM_ML_DSA
+	/**< Module Lattice based Digital Signature Algorithm
+	 * Performs Key Pair Generation, Signature Generation and Verification.
+	 */
 };
 
 /**
@@ -168,7 +213,6 @@ enum rte_crypto_rsa_padding_type {
 	/**< RSA PKCS#1 OAEP padding scheme */
 	RTE_CRYPTO_RSA_PADDING_PSS,
 	/**< RSA PKCS#1 PSS padding scheme */
-	RTE_CRYPTO_RSA_PADDING_TYPE_LIST_END
 };
 
 /**
@@ -306,12 +350,15 @@ struct rte_crypto_rsa_xform {
 
 	enum rte_crypto_rsa_priv_key_type key_type;
 
-	union {
+	struct {
 		rte_crypto_uint d;
 		/**< the RSA private exponent */
 		struct rte_crypto_rsa_priv_key_qt qt;
 		/**< qt - Private key in quintuple format */
 	};
+
+	struct rte_crypto_rsa_padding padding;
+	/**< RSA padding information */
 };
 
 /**
@@ -447,9 +494,6 @@ struct rte_crypto_rsa_op_param {
 	 * This could be validated and overwritten by the PMD
 	 * with the signature length.
 	 */
-
-	struct rte_crypto_rsa_padding padding;
-	/**< RSA padding information */
 };
 
 /**
@@ -586,6 +630,31 @@ struct rte_crypto_ecdsa_op_param {
 };
 
 /**
+ * EdDSA operation params
+ */
+struct rte_crypto_eddsa_op_param {
+	enum rte_crypto_asym_op_type op_type;
+	/**< Signature generation or verification */
+
+	rte_crypto_param message;
+	/**< Input message digest to be signed or verified */
+
+	rte_crypto_param context;
+	/**< Context value for the sign op.
+	 *   Must not be empty for Ed25519ctx instance.
+	 */
+
+	enum rte_crypto_edward_instance instance;
+	/**< Type of Edwards curve. */
+
+	rte_crypto_uint sign;
+	/**< Edward curve signature
+	 *     output : for signature generation
+	 *     input  : for signature verification
+	 */
+};
+
+/**
  * Structure for EC point multiplication operation param
  */
 struct rte_crypto_ecpm_op_param {
@@ -597,6 +666,386 @@ struct rte_crypto_ecpm_op_param {
 
 	rte_crypto_param scalar;
 	/**< Scalar to multiply the input point */
+};
+
+/**
+ * SM2 operation capabilities
+ */
+enum rte_crypto_sm2_op_capa {
+	RTE_CRYPTO_SM2_RNG,
+	/**< Random number generator supported in SM2 ops. */
+	RTE_CRYPTO_SM2_PH,
+	/**< Prehash message before crypto op. */
+	RTE_CRYPTO_SM2_PARTIAL,
+	/**< Calculate elliptic curve points only. */
+};
+
+/**
+ * SM2 operation params.
+ */
+struct rte_crypto_sm2_op_param {
+	enum rte_crypto_asym_op_type op_type;
+	/**< Signature generation or verification. */
+
+	enum rte_crypto_auth_algorithm hash;
+	/**< Hash algorithm used in EC op. */
+
+	rte_crypto_param message;
+	/**<
+	 * Pointer to input data
+	 * - to be encrypted for SM2 public encrypt.
+	 * - to be signed for SM2 sign generation.
+	 * - to be authenticated for SM2 sign verification.
+	 *
+	 * Pointer to output data
+	 * - for SM2 private decrypt.
+	 * In this case the underlying array should have been
+	 * allocated with enough memory to hold plaintext output
+	 * (at least encrypted text length). The message.length field
+	 * will be overwritten by the PMD with the decrypted length.
+	 */
+
+	union {
+		rte_crypto_param cipher;
+		/**<
+		 * Pointer to input data
+		 * - to be decrypted for SM2 private decrypt.
+		 *
+		 * Pointer to output data
+		 * - for SM2 public encrypt.
+		 * In this case the underlying array should have been allocated
+		 * with enough memory to hold ciphertext output (at least X bytes
+		 * for prime field curve of N bytes and for message M bytes,
+		 * where X = (C1 || C2 || C3) and computed based on SM2 RFC as
+		 * C1 (1 + N + N), C2 = M, C3 = N. The cipher.length field will
+		 * be overwritten by the PMD with the encrypted length.
+		 */
+		struct {
+			struct rte_crypto_ec_point c1;
+			/**<
+			 * This field is used only when PMD does not support the full
+			 * process of the SM2 encryption/decryption, but the elliptic
+			 * curve part only.
+			 *
+			 * In the case of encryption, it is an output - point C1 = (x1,y1).
+			 * In the case of decryption, if is an input - point C1 = (x1,y1).
+			 *
+			 * Must be used along with the RTE_CRYPTO_SM2_PARTIAL flag.
+			 */
+			struct rte_crypto_ec_point kp;
+			/**<
+			 * This field is used only when PMD does not support the full
+			 * process of the SM2 encryption/decryption, but the elliptic
+			 * curve part only.
+			 *
+			 * It is an output in the encryption case, it is a point
+			 * [k]P = (x2,y2).
+			 *
+			 * Must be used along with the RTE_CRYPTO_SM2_PARTIAL flag.
+			 */
+		};
+	};
+
+	rte_crypto_uint id;
+	/**< The SM2 id used by signer and verifier. */
+
+	rte_crypto_uint k;
+	/**< The SM2 per-message secret number, which is an integer
+	 * in the interval (1, n-1).
+	 * If the random number is generated by the PMD,
+	 * the 'rte_crypto_param.data' parameter should be set to NULL.
+	 */
+
+	rte_crypto_uint r;
+	/**< r component of elliptic curve signature
+	 *     output : for signature generation (of at least N bytes
+	 *              where prime field length is N bytes)
+	 *     input  : for signature verification
+	 */
+	rte_crypto_uint s;
+	/**< s component of elliptic curve signature
+	 *     output : for signature generation (of at least N bytes
+	 *              where prime field length is N bytes)
+	 *     input  : for signature verification
+	 */
+};
+
+/**
+ * PQC ML-KEM parameter type
+ *
+ * List of ML-KEM parameter types used in PQC
+ */
+enum rte_crypto_ml_kem_type {
+	RTE_CRYPTO_ML_KEM_NONE,
+	RTE_CRYPTO_ML_KEM_512,
+	RTE_CRYPTO_ML_KEM_768,
+	RTE_CRYPTO_ML_KEM_1024,
+};
+
+/**
+ * PQC ML-KEM op type
+ *
+ * List of ML-KEM op types in PQC
+ */
+enum rte_crypto_ml_kem_op_type {
+	RTE_CRYPTO_ML_KEM_OP_KEYGEN,
+	RTE_CRYPTO_ML_KEM_OP_KEYVER,
+	RTE_CRYPTO_ML_KEM_OP_ENCAP,
+	RTE_CRYPTO_ML_KEM_OP_DECAP,
+	RTE_CRYPTO_ML_KEM_OP_END
+};
+
+/**
+ * PQC ML-KEM transform data
+ *
+ * Structure describing ML-KEM xform parameters
+ */
+struct rte_crypto_ml_kem_xform {
+	enum rte_crypto_ml_kem_type type;
+	/**< ML-KEM xform type */
+};
+
+/**
+ * PQC ML-KEM KEYGEN op
+ *
+ * Parameters for PQC ML-KEM key generation operation
+ */
+struct rte_crypto_ml_kem_keygen_op {
+	rte_crypto_param d;
+	/**< The seed d value (of 32 bytes in length) to generate key pair.*/
+
+	rte_crypto_param z;
+	/**< The seed z value (of 32 bytes in length) to generate key pair.*/
+
+	rte_crypto_param ek;
+	/**<
+	 * Pointer to output data
+	 * - The computed encapsulation key.
+	 * - Refer `rte_crypto_ml_kem_pubkey_size` for size of buffer.
+	 */
+
+	rte_crypto_param dk;
+	/**<
+	 * Pointer to output data
+	 * - The computed decapsulation key.
+	 * - Refer `rte_crypto_ml_kem_privkey_size` for size of buffer.
+	 */
+};
+
+/**
+ * PQC ML-KEM KEYVER op
+ *
+ * Parameters for PQC ML-KEM key verification operation
+ */
+struct rte_crypto_ml_kem_keyver_op {
+	enum rte_crypto_ml_kem_op_type op;
+	/**<
+	 * Op associated with key to be verified is one of below:
+	 * - Encapsulation op
+	 * - Decapsulation op
+	 */
+
+	rte_crypto_param key;
+	/**<
+	 * KEM key to check.
+	 * - ek in case of encapsulation op.
+	 * - dk in case of decapsulation op.
+	 */
+};
+
+/**
+ * PQC ML-KEM ENCAP op
+ *
+ * Parameters for PQC ML-KEM encapsulation operation
+ */
+struct rte_crypto_ml_kem_encap_op {
+	rte_crypto_param message;
+	/**< The message (of 32 bytes in length) for randomness.*/
+
+	rte_crypto_param ek;
+	/**< The encapsulation key.*/
+
+	rte_crypto_param cipher;
+	/**<
+	 * Pointer to output data
+	 * - The computed cipher.
+	 * - Refer `rte_crypto_ml_kem_cipher_size` for size of buffer.
+	 */
+
+	rte_crypto_param sk;
+	/**<
+	 * Pointer to output data
+	 * - The computed shared secret key (32 bytes).
+	 */
+};
+
+/**
+ * PQC ML-KEM DECAP op
+ *
+ * Parameters for PQC ML-KEM decapsulation operation
+ */
+struct rte_crypto_ml_kem_decap_op {
+	rte_crypto_param cipher;
+	/**< The cipher to be decapsulated.*/
+
+	rte_crypto_param dk;
+	/**< The decapsulation key.*/
+
+	rte_crypto_param sk;
+	/**<
+	 * Pointer to output data
+	 * - The computed shared secret key (32 bytes).
+	 */
+};
+
+/**
+ * PQC ML-KEM op
+ *
+ * Parameters for PQC ML-KEM operation
+ */
+struct rte_crypto_ml_kem_op {
+	enum rte_crypto_ml_kem_op_type op;
+	union {
+		struct rte_crypto_ml_kem_keygen_op keygen;
+		struct rte_crypto_ml_kem_keyver_op keyver;
+		struct rte_crypto_ml_kem_encap_op encap;
+		struct rte_crypto_ml_kem_decap_op decap;
+	};
+};
+
+/**
+ * PQC ML-DSA parameter type
+ *
+ * List of ML-DSA parameter types used in PQC
+ */
+enum rte_crypto_ml_dsa_type {
+	RTE_CRYPTO_ML_DSA_NONE,
+	RTE_CRYPTO_ML_DSA_44,
+	RTE_CRYPTO_ML_DSA_65,
+	RTE_CRYPTO_ML_DSA_87,
+};
+
+/**
+ * PQC ML-DSA op type
+ *
+ * List of ML-DSA op types in PQC
+ */
+enum rte_crypto_ml_dsa_op_type {
+	RTE_CRYPTO_ML_DSA_OP_KEYGEN,
+	RTE_CRYPTO_ML_DSA_OP_SIGN,
+	RTE_CRYPTO_ML_DSA_OP_VERIFY,
+	RTE_CRYPTO_ML_DSA_OP_END
+};
+
+/**
+ * PQC ML-DSA transform data
+ *
+ * Structure describing ML-DSA xform parameters
+ */
+struct rte_crypto_ml_dsa_xform {
+	enum rte_crypto_ml_dsa_type type;
+	/**< ML-DSA xform type */
+
+	bool sign_deterministic;
+	/**< The signature generated using deterministic method. */
+
+	bool sign_prehash;
+	/**< The signature generated using prehash or pure routine. */
+};
+
+/**
+ * PQC ML-DSA KEYGEN op
+ *
+ * Parameters for PQC ML-DSA key generation operation
+ */
+struct rte_crypto_ml_dsa_keygen_op {
+	rte_crypto_param seed;
+	/**< The random seed (of 32 bytes in length) to generate key pair.*/
+
+	rte_crypto_param pubkey;
+	/**<
+	 * Pointer to output data
+	 * - The computed public key.
+	 * - Refer `rte_crypto_ml_dsa_pubkey_size` for size of buffer.
+	 */
+
+	rte_crypto_param privkey;
+	/**<
+	 * Pointer to output data
+	 * - The computed secret key.
+	 * - Refer `rte_crypto_ml_dsa_privkey_size` for size of buffer.
+	 */
+};
+
+/**
+ * PQC ML-DSA SIGGEN op
+ *
+ * Parameters for PQC ML-DSA sign operation
+ */
+struct rte_crypto_ml_dsa_siggen_op {
+	rte_crypto_param message;
+	/**< The message to generate signature.*/
+
+	rte_crypto_param mu;
+	/**< The mu to generate signature.*/
+
+	rte_crypto_param privkey;
+	/**< The secret key to generate signature.*/
+
+	rte_crypto_param seed;
+	/**< The seed to generate signature.*/
+
+	rte_crypto_param ctx;
+	/**< The context key to generate signature.*/
+
+	enum rte_crypto_auth_algorithm hash;
+	/**< Hash function to generate signature. */
+
+	rte_crypto_param sign;
+	/**<
+	 * Pointer to output data
+	 * - The computed signature.
+	 * - Refer `rte_crypto_ml_dsa_sign_size` for size of buffer.
+	 */
+};
+
+/**
+ * PQC ML-DSA SIGVER op
+ *
+ * Parameters for PQC ML-DSA verify operation
+ */
+struct rte_crypto_ml_dsa_sigver_op {
+	rte_crypto_param pubkey;
+	/**< The public key to verify signature.*/
+
+	rte_crypto_param message;
+	/**< The message used to verify signature.*/
+
+	rte_crypto_param sign;
+	/**< The signature to verify.*/
+
+	rte_crypto_param mu;
+	/**< The mu used to generate signature.*/
+
+	rte_crypto_param ctx;
+	/**< The context key to generate signature.*/
+
+	enum rte_crypto_auth_algorithm hash;
+	/**< Hash function to generate signature. */
+};
+
+/**
+ * PQC ML-DSA op
+ *
+ * Parameters for PQC ML-DSA operation
+ */
+struct rte_crypto_ml_dsa_op {
+	enum rte_crypto_ml_dsa_op_type op;
+	union {
+		struct rte_crypto_ml_dsa_keygen_op keygen;
+		struct rte_crypto_ml_dsa_siggen_op siggen;
+		struct rte_crypto_ml_dsa_sigver_op sigver;
+	};
 };
 
 /**
@@ -630,71 +1079,13 @@ struct rte_crypto_asym_xform {
 		/**< EC xform parameters, used by elliptic curve based
 		 * operations.
 		 */
+
+		struct rte_crypto_ml_kem_xform mlkem;
+		/**< PQC ML-KEM xform parameters */
+
+		struct rte_crypto_ml_dsa_xform mldsa;
+		/**< PQC ML-DSA xform parameters */
 	};
-};
-
-/**
- * SM2 operation params.
- */
-struct rte_crypto_sm2_op_param {
-	enum rte_crypto_asym_op_type op_type;
-	/**< Signature generation or verification. */
-
-	enum rte_crypto_auth_algorithm hash;
-	/**< Hash algorithm used in EC op. */
-
-	rte_crypto_param message;
-	/**<
-	 * Pointer to input data
-	 * - to be encrypted for SM2 public encrypt.
-	 * - to be signed for SM2 sign generation.
-	 * - to be authenticated for SM2 sign verification.
-	 *
-	 * Pointer to output data
-	 * - for SM2 private decrypt.
-	 * In this case the underlying array should have been
-	 * allocated with enough memory to hold plaintext output
-	 * (at least encrypted text length). The message.length field
-	 * will be overwritten by the PMD with the decrypted length.
-	 */
-
-	rte_crypto_param cipher;
-	/**<
-	 * Pointer to input data
-	 * - to be decrypted for SM2 private decrypt.
-	 *
-	 * Pointer to output data
-	 * - for SM2 public encrypt.
-	 * In this case the underlying array should have been allocated
-	 * with enough memory to hold ciphertext output (at least X bytes
-	 * for prime field curve of N bytes and for message M bytes,
-	 * where X = (C1 || C2 || C3) and computed based on SM2 RFC as
-	 * C1 (1 + N + N), C2 = M, C3 = N. The cipher.length field will
-	 * be overwritten by the PMD with the encrypted length.
-	 */
-
-	rte_crypto_uint id;
-	/**< The SM2 id used by signer and verifier. */
-
-	rte_crypto_uint k;
-	/**< The SM2 per-message secret number, which is an integer
-	 * in the interval (1, n-1).
-	 * If the random number is generated by the PMD,
-	 * the 'rte_crypto_param.data' parameter should be set to NULL.
-	 */
-
-	rte_crypto_uint r;
-	/**< r component of elliptic curve signature
-	 *     output : for signature generation (of at least N bytes
-	 *              where prime field length is N bytes)
-	 *     input  : for signature verification
-	 */
-	rte_crypto_uint s;
-	/**< s component of elliptic curve signature
-	 *     output : for signature generation (of at least N bytes
-	 *              where prime field length is N bytes)
-	 *     input  : for signature verification
-	 */
 };
 
 /**
@@ -720,6 +1111,9 @@ struct rte_crypto_asym_op {
 		struct rte_crypto_ecdsa_op_param ecdsa;
 		struct rte_crypto_ecpm_op_param ecpm;
 		struct rte_crypto_sm2_op_param sm2;
+		struct rte_crypto_eddsa_op_param eddsa;
+		struct rte_crypto_ml_kem_op mlkem;
+		struct rte_crypto_ml_dsa_op mldsa;
 	};
 	uint16_t flags;
 	/**<
@@ -727,9 +1121,5 @@ struct rte_crypto_asym_op {
 	 * Please refer to the RTE_CRYPTO_ASYM_FLAG_*.
 	 */
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_CRYPTO_ASYM_H_ */

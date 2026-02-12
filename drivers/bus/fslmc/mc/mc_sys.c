@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2013-2015 Freescale Semiconductor Inc.
  * Copyright 2017,2022 NXP
@@ -7,6 +7,7 @@
 #include <fsl_mc_sys.h>
 #include <fsl_mc_cmd.h>
 
+#include <eal_export.h>
 #include <rte_spinlock.h>
 #include <rte_cycles.h>
 
@@ -52,6 +53,7 @@ static int mc_status_to_error(enum mc_cmd_status status)
 	return -EINVAL;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mc_send_command)
 int mc_send_command(struct fsl_mc_io *mc_io, struct mc_command *cmd)
 {
 	enum mc_cmd_status status;

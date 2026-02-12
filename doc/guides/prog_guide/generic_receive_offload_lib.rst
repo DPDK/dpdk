@@ -1,8 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2017 Intel Corporation.
 
-Generic Receive Offload Library
-===============================
+Generic Receive Offload (GRO) Library
+=====================================
 
 Generic Receive Offload (GRO) is a widely used SW-based offloading
 technique to reduce per-packet processing overheads. By reassembling

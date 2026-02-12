@@ -3,6 +3,7 @@
  */
 
 #include <string.h>
+#include <eal_export.h>
 #include <rte_eal.h>
 #include <rte_mbuf.h>
 #include <rte_errno.h>
@@ -10,6 +11,7 @@
 
 #include "mbuf_log.h"
 
+RTE_EXPORT_SYMBOL(rte_mbuf_set_platform_mempool_ops)
 int
 rte_mbuf_set_platform_mempool_ops(const char *ops_name)
 {
@@ -39,6 +41,7 @@ rte_mbuf_set_platform_mempool_ops(const char *ops_name)
 	return -EEXIST;
 }
 
+RTE_EXPORT_SYMBOL(rte_mbuf_platform_mempool_ops)
 const char *
 rte_mbuf_platform_mempool_ops(void)
 {
@@ -50,6 +53,7 @@ rte_mbuf_platform_mempool_ops(void)
 	return mz->addr;
 }
 
+RTE_EXPORT_SYMBOL(rte_mbuf_set_user_mempool_ops)
 int
 rte_mbuf_set_user_mempool_ops(const char *ops_name)
 {
@@ -74,6 +78,7 @@ rte_mbuf_set_user_mempool_ops(const char *ops_name)
 
 }
 
+RTE_EXPORT_SYMBOL(rte_mbuf_user_mempool_ops)
 const char *
 rte_mbuf_user_mempool_ops(void)
 {
@@ -86,6 +91,7 @@ rte_mbuf_user_mempool_ops(void)
 }
 
 /* Return mbuf pool ops name */
+RTE_EXPORT_SYMBOL(rte_mbuf_best_mempool_ops)
 const char *
 rte_mbuf_best_mempool_ops(void)
 {

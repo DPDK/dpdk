@@ -43,7 +43,6 @@
 /*#define ENIC_DESC_COUNT_MAKE_ODD (x) do{if ((~(x)) & 1) { (x)--; } }while(0)*/
 
 #define PCI_DEVICE_ID_CISCO_VIC_ENET         0x0043  /* ethernet vnic */
-#define PCI_DEVICE_ID_CISCO_VIC_ENET_VF      0x0071  /* enet SRIOV VF */
 /* enet SRIOV Standalone vNic VF */
 #define PCI_DEVICE_ID_CISCO_VIC_ENET_SN      0x02B7
 
@@ -51,7 +50,7 @@
 #define ENIC_MAGIC_FILTER_ID 0xffff
 
 /*
- * Interrupt 0: LSC and errors
+ * Interrupt 0: LSC and errors / VF admin channel RQ
  * Interrupt 1: rx queue 0
  * Interrupt 2: rx queue 1
  * ...
@@ -154,11 +153,26 @@ struct enic {
 	/* software counters */
 	struct enic_soft_stats soft_stats;
 
+	struct vnic_wq admin_wq;
+	struct vnic_rq admin_rq;
+	struct vnic_cq admin_cq[2];
+
 	/* configured resources on vic */
 	unsigned int conf_rq_count;
 	unsigned int conf_wq_count;
 	unsigned int conf_cq_count;
 	unsigned int conf_intr_count;
+	/* SR-IOV VF has queues for admin channel to PF */
+	unsigned int conf_admin_rq_count;
+	unsigned int conf_admin_wq_count;
+	unsigned int conf_admin_cq_count;
+	uint64_t admin_chan_msg_num;
+	int admin_chan_vf_id;
+	uint32_t admin_pf_cap_version;
+	bool admin_chan_enabled;
+	bool sriov_vf_soft_rx_stats;
+	bool sriov_vf_compat_mode;
+	pthread_mutex_t admin_chan_lock;
 
 	/* linked list storing memory allocations */
 	LIST_HEAD(enic_memzone_list, enic_memzone_entry) memzone_list;
@@ -229,6 +243,16 @@ struct enic_vf_representor {
 	struct rte_flow *vf2rep_flow[2];
 	struct rte_flow *rep2vf_flow[2];
 };
+
+#define ENIC_ADMIN_WQ_CQ 0
+#define ENIC_ADMIN_RQ_CQ 1
+#define ENIC_ADMIN_BUF_SIZE 1024
+
+static inline bool enic_is_vf(struct enic *enic)
+{
+	return enic->pdev->id.device_id == PCI_DEVICE_ID_CISCO_VIC_ENET_SN &&
+		!enic->sriov_vf_compat_mode;
+}
 
 #define VF_ENIC_TO_VF_REP(vf_enic) \
 	container_of(vf_enic, struct enic_vf_representor, enic)
@@ -395,7 +419,8 @@ int enic_disable(struct enic *enic);
 void enic_remove(struct enic *enic);
 int enic_get_link_status(struct enic *enic);
 int enic_dev_stats_get(struct enic *enic,
-		       struct rte_eth_stats *r_stats);
+		       struct rte_eth_stats *r_stats,
+		       struct eth_queue_stats *qstats __rte_unused);
 int enic_dev_stats_clear(struct enic *enic);
 int enic_add_packet_filter(struct enic *enic);
 int enic_set_mac_address(struct enic *enic, uint8_t *mac_addr);

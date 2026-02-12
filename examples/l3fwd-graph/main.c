@@ -90,29 +90,29 @@ static int pcap_trace_enable;
 
 struct lcore_rx_queue {
 	uint16_t port_id;
-	uint8_t queue_id;
+	uint16_t queue_id;
 	char node_name[RTE_NODE_NAMESIZE];
 };
 
 static uint8_t model_conf = RTE_GRAPH_MODEL_DEFAULT;
 
 /* Lcore conf */
-struct lcore_conf {
+struct __rte_cache_aligned lcore_conf {
 	uint16_t n_rx_queue;
 	struct lcore_rx_queue rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
 
 	struct rte_graph *graph;
 	char name[RTE_GRAPH_NAMESIZE];
 	rte_graph_t graph_id;
-} __rte_cache_aligned;
+};
 
 static struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 
-struct lcore_params {
+struct __rte_cache_aligned lcore_params {
 	uint16_t port_id;
-	uint8_t queue_id;
-	uint8_t lcore_id;
-} __rte_cache_aligned;
+	uint16_t queue_id;
+	uint32_t lcore_id;
+};
 
 static struct lcore_params lcore_params_array[MAX_LCORE_PARAMS];
 static struct lcore_params lcore_params_array_default[] = {
@@ -151,7 +151,7 @@ struct ipv4_l3fwd_lpm_route {
 };
 
 struct ipv6_l3fwd_lpm_route {
-	uint8_t ip[RTE_LPM6_IPV6_ADDR_SIZE];
+	struct rte_ipv6_addr ip;
 	uint8_t depth;
 	uint8_t if_out;
 };
@@ -170,23 +170,16 @@ static struct ipv4_l3fwd_lpm_route ipv4_l3fwd_lpm_route_array[] = {
 #define IPV6_L3FWD_LPM_NUM_ROUTES                                              \
 	(sizeof(ipv6_l3fwd_lpm_route_array) /                                  \
 	 sizeof(ipv6_l3fwd_lpm_route_array[0]))
+
 static struct ipv6_l3fwd_lpm_route ipv6_l3fwd_lpm_route_array[] = {
-	{{0x20, 0x01, 0xdb, 0x08, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00}, 48, 0},
-	{{0x20, 0x01, 0xdb, 0x08, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x01}, 48, 1},
-	{{0x20, 0x01, 0xdb, 0x08, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x02}, 48, 2},
-	{{0x20, 0x01, 0xdb, 0x08, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x03}, 48, 3},
-	{{0x20, 0x01, 0xdb, 0x08, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x04}, 48, 4},
-	{{0x20, 0x01, 0xdb, 0x08, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x05}, 48, 5},
-	{{0x20, 0x01, 0xdb, 0x08, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x06}, 48, 6},
-	{{0x20, 0x01, 0xdb, 0x08, 0x12, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x02}, 48, 7},
+	{RTE_IPV6(0x2001, 0xdb08, 0x1234, 0, 0, 0, 0, 0), 48, 0},
+	{RTE_IPV6(0x2001, 0xdb08, 0x1234, 0, 0, 0, 0, 1), 48, 1},
+	{RTE_IPV6(0x2001, 0xdb08, 0x1234, 0, 0, 0, 0, 2), 48, 2},
+	{RTE_IPV6(0x2001, 0xdb08, 0x1234, 0, 0, 0, 0, 3), 48, 3},
+	{RTE_IPV6(0x2001, 0xdb08, 0x1234, 0, 0, 0, 0, 4), 48, 4},
+	{RTE_IPV6(0x2001, 0xdb08, 0x1234, 0, 0, 0, 0, 5), 48, 5},
+	{RTE_IPV6(0x2001, 0xdb08, 0x1234, 0, 0, 0, 0, 6), 48, 6},
+	{RTE_IPV6(0x2001, 0xdb08, 0x1234, 0, 0, 0, 0, 2), 48, 7},
 };
 
 static int
@@ -205,19 +198,19 @@ check_worker_model_params(void)
 static int
 check_lcore_params(void)
 {
-	uint8_t queue, lcore;
+	uint16_t queue, i;
 	int socketid;
-	uint16_t i;
+	uint32_t lcore;
 
 	for (i = 0; i < nb_lcore_params; ++i) {
 		queue = lcore_params[i].queue_id;
 		if (queue >= MAX_RX_QUEUE_PER_PORT) {
-			printf("Invalid queue number: %hhu\n", queue);
+			printf("Invalid queue number: %" PRIu16 "\n", queue);
 			return -1;
 		}
 		lcore = lcore_params[i].lcore_id;
 		if (!rte_lcore_is_enabled(lcore)) {
-			printf("Error: lcore %hhu is not enabled in lcore mask\n",
+			printf("Error: lcore %u is not enabled in lcore mask\n",
 			       lcore);
 			return -1;
 		}
@@ -228,7 +221,7 @@ check_lcore_params(void)
 		}
 		socketid = rte_lcore_to_socket_id(lcore);
 		if ((socketid != 0) && (numa_on == 0)) {
-			printf("Warning: lcore %hhu is on socket %d with numa off\n",
+			printf("Warning: lcore %u is on socket %d with numa off\n",
 			       lcore, socketid);
 		}
 	}
@@ -257,7 +250,7 @@ check_port_config(void)
 	return 0;
 }
 
-static uint8_t
+static uint16_t
 get_port_n_rx_queues(const uint16_t port)
 {
 	int queue = -1;
@@ -275,14 +268,14 @@ get_port_n_rx_queues(const uint16_t port)
 		}
 	}
 
-	return (uint8_t)(++queue);
+	return (uint16_t)(++queue);
 }
 
 static int
 init_lcore_rx_queues(void)
 {
 	uint16_t i, nb_rx_queue;
-	uint8_t lcore;
+	uint32_t lcore;
 
 	for (i = 0; i < nb_lcore_params; ++i) {
 		lcore = lcore_params[i].lcore_id;
@@ -290,7 +283,7 @@ init_lcore_rx_queues(void)
 		if (nb_rx_queue >= MAX_RX_QUEUE_PER_LCORE) {
 			printf("Error: too many queues (%u) for lcore: %u\n",
 			       (unsigned int)nb_rx_queue + 1,
-			       (unsigned int)lcore);
+			       lcore);
 			return -1;
 		}
 
@@ -448,11 +441,11 @@ parse_config(const char *q_arg)
 		}
 
 		lcore_params_array[nb_lcore_params].port_id =
-			(uint8_t)int_fld[FLD_PORT];
+			(uint16_t)int_fld[FLD_PORT];
 		lcore_params_array[nb_lcore_params].queue_id =
-			(uint8_t)int_fld[FLD_QUEUE];
+			(uint16_t)int_fld[FLD_QUEUE];
 		lcore_params_array[nb_lcore_params].lcore_id =
-			(uint8_t)int_fld[FLD_LCORE];
+			(uint32_t)int_fld[FLD_LCORE];
 		++nb_lcore_params;
 	}
 	lcore_params = lcore_params_array;
@@ -1011,7 +1004,8 @@ main(int argc, char **argv)
 		"ethdev_tx-*",
 		"pkt_drop",
 	};
-	uint8_t nb_rx_queue, queue, socketid;
+	uint8_t socketid;
+	uint16_t nb_rx_queue, queue;
 	struct rte_graph_param graph_conf;
 	struct rte_eth_dev_info dev_info;
 	uint32_t nb_ports, nb_conf = 0;
@@ -1087,7 +1081,10 @@ main(int argc, char **argv)
 		printf("Creating queues: nb_rxq=%d nb_txq=%u... ",
 		       nb_rx_queue, n_tx_queue);
 
-		rte_eth_dev_info_get(portid, &dev_info);
+		ret = rte_eth_dev_info_get(portid, &dev_info);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				 "Unable to get info for port %u\n", portid);
 
 		ret = config_port_max_pkt_len(&local_port_conf, &dev_info);
 		if (ret != 0)
@@ -1219,7 +1216,12 @@ main(int argc, char **argv)
 			printf("rxq=%d,%d,%d ", portid, queueid, socketid);
 			fflush(stdout);
 
-			rte_eth_dev_info_get(portid, &dev_info);
+			ret = rte_eth_dev_info_get(portid, &dev_info);
+			if (ret < 0)
+				rte_exit(EXIT_FAILURE,
+					 "rte_eth_dev_info_get: err=%d, port=%u\n",
+					 ret, portid);
+
 			rxq_conf = dev_info.default_rxconf;
 			rxq_conf.offloads = port_conf.rxmode.offloads;
 			if (!per_port_pool)
@@ -1360,7 +1362,6 @@ main(int argc, char **argv)
 	for (i = 0; i < IPV6_L3FWD_LPM_NUM_ROUTES; i++) {
 		char route_str[INET6_ADDRSTRLEN * 4];
 		char abuf[INET6_ADDRSTRLEN];
-		struct in6_addr in6;
 		uint32_t dst_port;
 
 		/* Skip unused ports */
@@ -1370,14 +1371,13 @@ main(int argc, char **argv)
 
 		dst_port = ipv6_l3fwd_lpm_route_array[i].if_out;
 
-		memcpy(in6.s6_addr, ipv6_l3fwd_lpm_route_array[i].ip, RTE_LPM6_IPV6_ADDR_SIZE);
 		snprintf(route_str, sizeof(route_str), "%s / %d (%d)",
-			 inet_ntop(AF_INET6, &in6, abuf, sizeof(abuf)),
+			 inet_ntop(AF_INET6, &ipv6_l3fwd_lpm_route_array[i].ip, abuf, sizeof(abuf)),
 			 ipv6_l3fwd_lpm_route_array[i].depth,
 			 ipv6_l3fwd_lpm_route_array[i].if_out);
 
 		/* Use route index 'i' as next hop id */
-		ret = rte_node_ip6_route_add(ipv6_l3fwd_lpm_route_array[i].ip,
+		ret = rte_node_ip6_route_add(&ipv6_l3fwd_lpm_route_array[i].ip,
 			ipv6_l3fwd_lpm_route_array[i].depth, i,
 			RTE_NODE_IP6_LOOKUP_NEXT_REWRITE);
 

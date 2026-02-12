@@ -75,6 +75,19 @@ cfa_tcam_mgr_session_find(unsigned int session_id)
 }
 
 int
+cfa_tcam_mgr_session_empty(void)
+{
+	unsigned int sess_idx;
+
+	for (sess_idx = 0; sess_idx < ARRAY_SIZE(session_data); sess_idx++) {
+		if (session_data[sess_idx].session_id)
+			return 0;
+	}
+
+	return 1;
+}
+
+int
 cfa_tcam_mgr_session_add(unsigned int session_id)
 {
 	int sess_idx;

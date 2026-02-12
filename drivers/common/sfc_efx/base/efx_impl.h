@@ -45,6 +45,10 @@
 #include "rhead_impl.h"
 #endif	/* EFSYS_OPT_RIVERHEAD */
 
+#if EFSYS_OPT_MEDFORD4
+#include "medford4_impl.h"
+#endif	/* EFSYS_OPT_MEDFORD4 */
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -79,6 +83,7 @@ typedef enum efx_mac_type_e {
 	EFX_MAC_MEDFORD,
 	EFX_MAC_MEDFORD2,
 	EFX_MAC_RIVERHEAD,
+	EFX_MAC_MEDFORD4,
 	EFX_MAC_NTYPES
 } efx_mac_type_t;
 
@@ -334,6 +339,14 @@ typedef struct efx_virtio_ops_s {
 } efx_virtio_ops_t;
 #endif /* EFSYS_OPT_VIRTIO */
 
+typedef uint32_t efx_np_handle_t;
+
+typedef struct efx_np_stat_s {
+	uint32_t	ens_hw_id;
+	uint16_t	ens_dma_fld;
+	boolean_t	ens_valid;
+} efx_np_stat_t;
+
 typedef struct efx_port_s {
 	efx_mac_type_t		ep_mac_type;
 	uint32_t		ep_phy_type;
@@ -377,6 +390,18 @@ typedef struct efx_port_s {
 #endif
 	const efx_mac_ops_t	*ep_emop;
 	const efx_phy_ops_t	*ep_epop;
+
+	efx_np_handle_t		ep_np_handle;
+	efx_qword_t		ep_np_loopback_cap_mask;
+	uint8_t			ep_np_cap_data_raw[MC_CMD_ETH_AN_FIELDS_LEN];
+	/* Lookup table providing DMA buffer field IDs by EFX statistic IDs. */
+	efx_np_stat_t		ep_np_mac_stat_lut[EFX_MAC_NSTATS];
+	/* Client-requested lane count for the physical link. */
+	efx_phy_lane_count_t	ep_np_lane_count_req;
+	/* If 'B_TRUE', the client has not invoked 'efx_phy_adv_cap_set' yet. */
+	boolean_t		ep_np_keep_prev_fec_ctrl;
+	/* It's 'AUTO' on driver attach. Updated on each 'LINK_CTRL' call. */
+	uint8_t			ep_np_prev_fec_ctrl;
 } efx_port_t;
 
 typedef struct efx_mon_ops_s {
@@ -972,7 +997,8 @@ struct efx_nic_s {
 };
 
 #define	EFX_FAMILY_IS_EF10(_enp) \
-	((_enp)->en_family == EFX_FAMILY_MEDFORD2 || \
+	((_enp)->en_family == EFX_FAMILY_MEDFORD4 || \
+	 (_enp)->en_family == EFX_FAMILY_MEDFORD2 || \
 	 (_enp)->en_family == EFX_FAMILY_MEDFORD || \
 	 (_enp)->en_family == EFX_FAMILY_HUNTINGTON)
 
@@ -1126,6 +1152,10 @@ struct efx_txq_s {
 									\
 		case EFX_FAMILY_RIVERHEAD:				\
 			rev = 'G';					\
+			break;						\
+									\
+		case EFX_FAMILY_MEDFORD4:				\
+			rev = 'H';					\
 			break;						\
 									\
 		default:						\
@@ -1873,6 +1903,95 @@ struct efx_virtio_vq_s {
 };
 
 #endif /* EFSYS_OPT_VIRTIO */
+
+LIBEFX_INTERNAL
+extern			boolean_t
+efx_np_supported(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_attach(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern		void
+efx_np_detach(
+	__in	efx_nic_t *enp);
+
+typedef struct efx_np_link_state_s {
+	uint32_t		enls_adv_cap_mask;
+	uint32_t		enls_lp_cap_mask;
+	efx_phy_lane_count_t	enls_lane_count;
+	efx_loopback_type_t	enls_loopback;
+	uint32_t		enls_speed;
+	uint8_t			enls_fec;
+
+	boolean_t		enls_an_supported;
+	boolean_t		enls_fd;
+	boolean_t		enls_up;
+} efx_np_link_state_t;
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_link_state(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__out		efx_np_link_state_t *lsp);
+
+typedef struct efx_np_mac_state_s {
+	uint32_t	enms_fcntl;
+	uint32_t	enms_pdu;
+	boolean_t	enms_up;
+} efx_np_mac_state_t;
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_mac_state(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__out		efx_np_mac_state_t *msp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_link_ctrl(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__in		const uint8_t *cap_mask_sup_raw,
+	__in		efx_link_mode_t loopback_link_mode,
+	__in		efx_loopback_type_t loopback_mode,
+	__in		efx_phy_lane_count_t lane_count,
+	__in		boolean_t keep_prev_fec_ctrl,
+	__inout		uint8_t *prev_fec_ctrlp,
+	__in		uint32_t cap_mask_sw,
+	__in		boolean_t fcntl_an);
+
+typedef struct efx_np_mac_ctrl_s {
+	boolean_t	enmc_set_pdu_only;
+
+	boolean_t	enmc_fcntl_autoneg;
+	boolean_t	enmc_include_fcs;
+	uint32_t	enmc_fcntl;
+	uint32_t	enmc_pdu;
+} efx_np_mac_ctrl_t;
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_mac_ctrl(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__in		const efx_np_mac_ctrl_t *mc);
+
+#if EFSYS_OPT_MAC_STATS
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_mac_stats(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__in		efx_stats_action_t action,
+	__in_opt	const efsys_mem_t *esmp,
+	__in		uint16_t period_ms);
+#endif /* EFSYS_OPT_MAC_STATS */
 
 #ifdef	__cplusplus
 }

@@ -1,25 +1,26 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2016-2017 Intel Corporation.
 
-.. _l2_fwd_crypto_app:
-
 L2 Forwarding with Crypto Sample Application
 ============================================
 
-The L2 Forwarding with Crypto (l2fwd-crypto) sample application is a simple example of packet processing using
-the Data Plane Development Kit (DPDK), in conjunction with the Cryptodev library.
+The L2 Forwarding with Crypto (l2fwd-crypto) sample application
+is a simple example of packet processing
+using the Data Plane Development Kit (DPDK)
+in conjunction with the cryptodev library.
 
 Overview
 --------
 
 The L2 Forwarding with Crypto sample application performs a crypto operation (cipher/hash)
-specified by the user from command line (or using the default values),
+specified by the user from the command line (or using the default values),
 with a crypto device capable of doing that operation,
 for each packet that is received on an RX_PORT and performs L2 forwarding.
-The destination port is the adjacent port from the enabled portmask, that is,
-if the first four ports are enabled (portmask 0xf),
+
+The destination port is the adjacent port from the enabled portmask.
+If the first four ports are enabled (portmask 0xf),
 ports 0 and 1 forward into each other, and ports 2 and 3 forward into each other.
-Also, if MAC addresses updating is enabled, the MAC addresses are affected as follows:
+If the MAC addresses updating is enabled, the MAC addresses are affected as follows:
 
 *   The source MAC address is replaced by the TX_PORT MAC address
 
@@ -28,9 +29,9 @@ Also, if MAC addresses updating is enabled, the MAC addresses are affected as fo
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
-The application is located in the ``l2fwd-crypt`` sub-directory.
+The application is located in the ``l2fwd-crypto`` sub-directory.
 
 Running the Application
 -----------------------
@@ -56,7 +57,7 @@ where,
 
 *   p PORTMASK: A hexadecimal bitmask of the ports to configure. (Default is all the ports.)
 
-*   q NQ: A number of queues (=ports) per lcore. (Default is 1.)
+*   q NQ: Maximum number of queues per lcore (default is 1)
 
 *   s: manage all ports from a single core.
 
@@ -161,7 +162,7 @@ the specified crypto operation are available on application initialization.
 This means that HW crypto device/s must be bound to a DPDK driver or
 a SW crypto device/s (virtual crypto PMD) must be created (using --vdev).
 
-To run the application in linux environment with 2 lcores, 2 ports and 2 crypto devices, issue the command:
+To run the application in Linux environment with 2 lcores, 2 ports and 2 crypto devices, issue the command:
 
 .. code-block:: console
 
@@ -199,12 +200,12 @@ from reception until transmission.
    Encryption flow through the L2 Forwarding with Crypto Application
 
 
-The following sections provide some explanation of the application.
+The following sections provide explanation of the application.
 
 Crypto operation specification
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-All the packets received in all the ports get transformed by the crypto device/s
+All the packets received in all the ports get transformed by the crypto devices
 (ciphering and/or authentication).
 The crypto operation to be performed on the packet is parsed from the command line.
 (Go to "Running the Application" section for all the options.)
@@ -228,16 +229,16 @@ There are two methods to pass keys, IV and ADD from the command line:
    --cipher_key_random_size 16
 
 **Note**:
-   If full key is passed (first method) and the size is passed as well (second method),
+   If the full key is passed (first method) and the size is passed as well (second method),
    the latter will be ignored.
 
-Size of these keys are checked (regardless the method), before starting the app,
+The size of these keys are checked (regardless of the method) before starting the app,
 to make sure that it is supported by the crypto devices.
 
 Crypto device initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Once the encryption operation is defined, crypto devices are initialized.
+Once the encryption operation is defined, the crypto devices are initialized.
 The crypto devices must be either bound to a DPDK driver (if they are physical devices)
 or created using the EAL option --vdev (if they are virtual devices),
 when running the application.
@@ -278,7 +279,7 @@ Session creation
 ~~~~~~~~~~~~~~~~
 
 The crypto operation has a crypto session associated to it, which contains
-information such as the transform chain to perform (e.g. ciphering then hashing),
+information such as the transform chain to perform (e.g. ciphering then hashing)
 pointers to the keys, lengths... etc.
 
 This session is created and is later attached to the crypto operation:

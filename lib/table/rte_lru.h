@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_LRU_H__
 #define __INCLUDE_RTE_LRU_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_config.h>
 #ifdef RTE_ARCH_X86_64
 #include "rte_lru_x86.h"
@@ -45,33 +41,33 @@ while (0)
 
 #define lru_update(bucket, mru_val)					\
 do {									\
-	uint64_t x, pos, x0, x1, x2, mask;				\
+	uint64_t _x, _pos, _x0, _x1, _x2, _mask;			\
 									\
-	x = bucket->lru_list;						\
+	_x = bucket->lru_list;						\
 									\
-	pos = 4;							\
-	if ((x >> 48) == ((uint64_t) mru_val))				\
-		pos = 3;						\
+	_pos = 4;							\
+	if ((_x >> 48) == ((uint64_t) mru_val))			\
+		_pos = 3;						\
 									\
-	if (((x >> 32) & 0xFFFFLLU) == ((uint64_t) mru_val))		\
-		pos = 2;						\
+	if (((_x >> 32) & 0xFFFFLLU) == ((uint64_t) mru_val))		\
+		_pos = 2;						\
 									\
-	if (((x >> 16) & 0xFFFFLLU) == ((uint64_t) mru_val))		\
-		pos = 1;						\
+	if (((_x >> 16) & 0xFFFFLLU) == ((uint64_t) mru_val))		\
+		_pos = 1;						\
 									\
-	if ((x & 0xFFFFLLU) == ((uint64_t) mru_val))			\
-		pos = 0;						\
+	if ((_x & 0xFFFFLLU) == ((uint64_t) mru_val))			\
+		_pos = 0;						\
 									\
 									\
-	pos <<= 4;							\
-	mask = (~0LLU) << pos;						\
-	x0 = x & (~mask);						\
-	x1 = (x >> 16) & mask;						\
-	x2 = (x << (48 - pos)) & (0xFFFFLLU << 48);			\
-	x = x0 | x1 | x2;						\
+	_pos <<= 4;							\
+	_mask = (~0LLU) << _pos;					\
+	_x0 = _x & (~_mask);						\
+	_x1 = (_x >> 16) & _mask;					\
+	_x2 = (_x << (48 - _pos)) & (0xFFFFLLU << 48);			\
+	_x = _x0 | _x1 | _x2;						\
 									\
-	if (pos != 64)							\
-		bucket->lru_list = x;					\
+	if (_pos != 64)							\
+		bucket->lru_list = _x;					\
 } while (0)
 
 #elif (RTE_TABLE_HASH_LRU_STRATEGY == 2) || (RTE_TABLE_HASH_LRU_STRATEGY == 3)
@@ -84,10 +80,6 @@ do {									\
 
 #error "Incorrect value for RTE_TABLE_HASH_LRU_STRATEGY"
 
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif

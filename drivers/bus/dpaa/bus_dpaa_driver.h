@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2017-2022 NXP
+ *   Copyright 2017-2022, 2025 NXP
  *
  */
 #ifndef BUS_DPAA_DRIVER_H
@@ -55,11 +55,9 @@ dpaa_seqn(struct rte_mbuf *mbuf)
 /* DPAA SoC identifier; If this is not available, it can be concluded
  * that board is non-DPAA. Single slot is currently supported.
  */
-#define DPAA_SOC_ID_FILE	"/sys/devices/soc0/soc_id"
 
 #define SVR_LS1043A_FAMILY	0x87920000
 #define SVR_LS1046A_FAMILY	0x87070000
-#define SVR_MASK		0xffff0000
 
 /** Device driver supports link state interrupt */
 #define RTE_DPAA_DRV_INTR_LSC  0x0008
@@ -69,8 +67,6 @@ dpaa_seqn(struct rte_mbuf *mbuf)
 
 #define RTE_DEV_TO_DPAA_CONST(ptr) \
 	container_of(ptr, const struct rte_dpaa_device, device)
-
-extern unsigned int dpaa_svr_family;
 
 struct rte_dpaa_device;
 struct rte_dpaa_driver;
@@ -245,10 +241,19 @@ RTE_INIT(dpaainitfn_ ##nm) \
 	(dpaa_drv).driver.name = RTE_STR(nm);\
 	rte_dpaa_driver_register(&dpaa_drv); \
 } \
-RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
+RTE_PMD_EXPORT_NAME(nm)
 
 __rte_internal
 struct fm_eth_port_cfg *dpaa_get_eth_port_cfg(int dev_id);
+
+__rte_internal
+uint32_t dpaa_soc_ver(void);
+
+__rte_internal
+int dpaa_push_queue_num_update(void);
+
+__rte_internal
+uint16_t dpaa_push_queue_max_num(void);
 
 #ifdef __cplusplus
 }

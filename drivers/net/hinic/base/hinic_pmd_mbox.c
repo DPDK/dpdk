@@ -310,7 +310,7 @@ static int mbox_msg_ack_aeqn(struct hinic_hwdev *hwdev)
 		/* This is used for ovs */
 		msg_ack_aeqn = HINIC_AEQN_1;
 	} else {
-		PMD_DRV_LOG(ERR, "Warning: Invalid aeq num: %d\n", aeq_num);
+		PMD_DRV_LOG(ERR, "Warning: Invalid aeq num: %d", aeq_num);
 		msg_ack_aeqn = -1;
 	}
 
@@ -372,13 +372,13 @@ static int init_mbox_info(struct hinic_recv_mbox *mbox_info)
 
 	mbox_info->mbox = kzalloc(MBOX_MAX_BUF_SZ, GFP_KERNEL);
 	if (!mbox_info->mbox) {
-		PMD_DRV_LOG(ERR, "Alloc mbox buf_in mem failed\n");
+		PMD_DRV_LOG(ERR, "Alloc mbox buf_in mem failed");
 		return -ENOMEM;
 	}
 
 	mbox_info->buf_out = kzalloc(MBOX_MAX_BUF_SZ, GFP_KERNEL);
 	if (!mbox_info->buf_out) {
-		PMD_DRV_LOG(ERR, "Alloc mbox buf_out mem failed\n");
+		PMD_DRV_LOG(ERR, "Alloc mbox buf_out mem failed");
 		err = -ENOMEM;
 		goto alloc_buf_out_err;
 	}
@@ -982,4 +982,3 @@ int hinic_comm_func_to_func_init(struct hinic_hwdev *hwdev)
 
 	return 0;
 }
-

@@ -50,6 +50,14 @@ typedef uint16_t (*rte_dma_completed_status_t)(void *dev_private,
 /** @internal Used to check the remaining space in descriptor ring. */
 typedef uint16_t (*rte_dma_burst_capacity_t)(const void *dev_private, uint16_t vchan);
 
+/** @internal Used to enqueue a rte_dma_op to the dma engine. */
+typedef uint16_t (*rte_dma_enqueue_ops_t)(void *dev_private, uint16_t vchan,
+					  struct rte_dma_op **ops, uint16_t nb_ops);
+
+/** @internal Used to dequeue rte_dma_op from the dma engine. */
+typedef uint16_t (*rte_dma_dequeue_ops_t)(void *dev_private, uint16_t vchan,
+					  struct rte_dma_op **ops, uint16_t nb_ops);
+
 /**
  * @internal
  * Fast-path dmadev functions and related data are hold in a flat array.
@@ -73,6 +81,8 @@ struct __rte_cache_aligned rte_dma_fp_object {
 	rte_dma_completed_t        completed;
 	rte_dma_completed_status_t completed_status;
 	rte_dma_burst_capacity_t   burst_capacity;
+	rte_dma_enqueue_ops_t      enqueue;
+	rte_dma_dequeue_ops_t      dequeue;
 };
 
 extern struct rte_dma_fp_object *rte_dma_fp_objs;

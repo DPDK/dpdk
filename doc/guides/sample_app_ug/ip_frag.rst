@@ -25,17 +25,18 @@ There are three key differences from the L2 Forwarding sample application:
 *   The third difference is that the application differentiates between
     IP and non-IP traffic by means of offload flags.
 
-The Longest Prefix Match (LPM for IPv4, LPM6 for IPv6) table is used to store/lookup an outgoing port number,
-associated with that IP address.
+The Longest Prefix Match (LPM for IPv4, LPM6 for IPv6) table
+is used to store/lookup an outgoing port number associated with that IP address.
 Any unmatched packets are forwarded to the originating port.
 
 By default, input frame sizes up to 9.5 KB are supported.
-Before forwarding, the input IP packet is fragmented to fit into the "standard" Ethernet* v2 MTU (1500 bytes).
+Before forwarding, the input IP packet is fragmented
+to fit into the "standard" Ethernet* v2 MTU (1500 bytes).
 
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``ip_fragmentation`` sub-directory.
 
@@ -46,7 +47,7 @@ The LPM object is created and loaded with the pre-configured entries read from
 global l3fwd_ipv4_route_array and l3fwd_ipv6_route_array tables.
 For each input packet, the packet forwarding decision
 (that is, the identification of the output interface for the packet) is taken as a result of LPM lookup.
-If the IP packet size is greater than default output MTU,
+If the IP packet size is greater than the default output MTU,
 then the input packet is fragmented and several fragments are sent via the output interface.
 
 Application usage:
@@ -59,21 +60,14 @@ where:
 
 *   -p PORTMASK is a hexadecimal bitmask of ports to configure
 
-*   -q NQ is the number of queue (=ports) per lcore (the default is 1)
+*   -q NQ: Maximum number of queues per lcore (default is 1)
 
 To run the example in linux environment with 2 lcores (2,4) over 2 ports(0,2) with 1 RX queue per lcore:
 
 .. code-block:: console
 
     ./<build_dir>/examples/dpdk-ip_fragmentation -l 2,4 -n 3 -- -p 5
-    EAL: coremask set to 14
-    EAL: Detected lcore 0 on socket 0
-    EAL: Detected lcore 1 on socket 1
-    EAL: Detected lcore 2 on socket 0
-    EAL: Detected lcore 3 on socket 1
-    EAL: Detected lcore 4 on socket 0
     ...
-
     Initializing port 0 on lcore 2... Address:00:1B:21:76:FA:2C, rxq=0 txq=2,0 txq=4,1
     done: Link Up - speed 10000 Mbps - full-duplex
     Skipping disabled port 1

@@ -50,22 +50,24 @@
 
 #define NIX_XMIT_FC_OR_RETURN_MTS(txq, pkts)                                                       \
 	do {                                                                                       \
-		int64_t *fc_cache = &(txq)->fc_cache_pkts;                                         \
+		int64_t __rte_atomic *fc_cache = &(txq)->fc_cache_pkts;                            \
 		uint8_t retry_count = 8;                                                           \
 		int64_t val, newval;                                                               \
 	retry:                                                                                     \
 		/* Reduce the cached count */                                                      \
-		val = (int64_t)__atomic_fetch_sub(fc_cache, pkts, __ATOMIC_RELAXED);               \
+		val = (int64_t)rte_atomic_fetch_sub_explicit(fc_cache, pkts,                       \
+							     rte_memory_order_relaxed);            \
 		val -= pkts;                                                                       \
 		/* Cached value is low, Update the fc_cache_pkts */                                \
 		if (unlikely(val < 0)) {                                                           \
 			/* Multiply with sqe_per_sqb to express in pkts */                         \
-			newval = txq->nb_sqb_bufs_adj - __atomic_load_n(txq->fc_mem,               \
-									__ATOMIC_RELAXED);         \
+			newval = txq->nb_sqb_bufs_adj -                                            \
+				 rte_atomic_load_explicit(txq->fc_mem, rte_memory_order_relaxed);  \
 			newval = (newval << (txq)->sqes_per_sqb_log2) - newval;                    \
 			newval -= pkts;                                                            \
-			if (!__atomic_compare_exchange_n(fc_cache, &val, newval, false,            \
-							 __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {    \
+			if (!rte_atomic_compare_exchange_strong_explicit(                          \
+				    fc_cache, &val, newval, rte_memory_order_relaxed,              \
+				    rte_memory_order_relaxed)) {                                   \
 				if (retry_count) {                                                 \
 					retry_count--;                                             \
 					goto retry;                                                \
@@ -164,10 +166,11 @@ retry:
 		     : "memory");
 #else
 	RTE_SET_USED(pkts);
-	while (__atomic_load_n(&txq->fc_cache_pkts, __ATOMIC_RELAXED) < 0)
+	while (rte_atomic_load_explicit(&txq->fc_cache_pkts, rte_memory_order_relaxed) < 0)
 		;
 #endif
-	cached = __atomic_fetch_sub(&txq->fc_cache_pkts, req, __ATOMIC_ACQUIRE) - req;
+	cached = rte_atomic_fetch_sub_explicit(&txq->fc_cache_pkts, req, rte_memory_order_acquire) -
+		 req;
 	/* Check if there is enough space, else update and retry. */
 	if (cached >= 0)
 		return;
@@ -200,14 +203,15 @@ retry:
 		     : "memory");
 #else
 	do {
-		refill = (txq->nb_sqb_bufs_adj - __atomic_load_n(txq->fc_mem, __ATOMIC_RELAXED));
+		refill = (txq->nb_sqb_bufs_adj -
+			  rte_atomic_load_explicit(txq->fc_mem, rte_memory_order_relaxed));
 		refill = (refill << txq->sqes_per_sqb_log2) - refill;
 		refill -= req;
 	} while (refill < 0);
 #endif
-	if (!__atomic_compare_exchange(&txq->fc_cache_pkts, &cached, &refill,
-				  0, __ATOMIC_RELEASE,
-				  __ATOMIC_RELAXED))
+	if (!rte_atomic_compare_exchange_strong_explicit(&txq->fc_cache_pkts, &cached, refill,
+							 rte_memory_order_release,
+							 rte_memory_order_relaxed))
 		goto retry;
 }
 
@@ -365,7 +369,7 @@ cn10k_nix_sec_fc_wait_one(struct cn10k_eth_txq *txq)
 		     : "memory");
 #else
 	RTE_SET_USED(fc);
-	while (nb_desc <= __atomic_load_n(txq->cpt_fc, __ATOMIC_RELAXED))
+	while (nb_desc <= rte_atomic_load_explicit(txq->cpt_fc, rte_memory_order_relaxed))
 		;
 #endif
 }
@@ -374,8 +378,8 @@ static __rte_always_inline void
 cn10k_nix_sec_fc_wait(struct cn10k_eth_txq *txq, uint16_t nb_pkts)
 {
 	int32_t nb_desc, val, newval;
-	int32_t *fc_sw;
-	uint64_t *fc;
+	int32_t __rte_atomic *fc_sw;
+	uint64_t __rte_atomic *fc;
 
 	/* Check if there is any CPT instruction to submit */
 	if (!nb_pkts)
@@ -397,11 +401,11 @@ again:
 		     : "memory");
 #else
 	/* Wait for primary core to refill FC. */
-	while (__atomic_load_n(fc_sw, __ATOMIC_RELAXED) < 0)
+	while (rte_atomic_load_explicit(fc_sw, rte_memory_order_relaxed) < 0)
 		;
 #endif
 
-	val = __atomic_fetch_sub(fc_sw, nb_pkts, __ATOMIC_ACQUIRE) - nb_pkts;
+	val = rte_atomic_fetch_sub_explicit(fc_sw, nb_pkts, rte_memory_order_acquire) - nb_pkts;
 	if (likely(val >= 0))
 		return;
 
@@ -427,15 +431,16 @@ again:
 		     : "memory");
 #else
 	while (true) {
-		newval = nb_desc - __atomic_load_n(fc, __ATOMIC_RELAXED);
+		newval = nb_desc - rte_atomic_load_explicit(fc, rte_memory_order_relaxed);
 		newval -= nb_pkts;
 		if (newval >= 0)
 			break;
 	}
 #endif
 
-	if (!__atomic_compare_exchange_n(fc_sw, &val, newval, false, __ATOMIC_RELEASE,
-					 __ATOMIC_RELAXED))
+	if (!rte_atomic_compare_exchange_strong_explicit(fc_sw, &val, newval,
+							 rte_memory_order_release,
+							 rte_memory_order_relaxed))
 		goto again;
 }
 
@@ -547,7 +552,7 @@ cn10k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 	tag = sa_base & 0xFFFFUL;
 	sa_base &= ~0xFFFFUL;
 	sa = (uintptr_t)roc_nix_inl_ot_ipsec_outb_sa(sa_base, sess_priv.sa_idx);
-	ucode_cmd[3] = (ROC_CPT_DFLT_ENG_GRP_SE_IE << 61 | 1UL << 60 | sa);
+	ucode_cmd[3] = (ROC_LEGACY_CPT_DFLT_ENG_GRP_SE_IE << 61 | 1UL << 60 | sa);
 	ucode_cmd[0] = (ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC << 48 | 1UL << 54 |
 			((uint64_t)sess_priv.chksum) << 32 | ((uint64_t)sess_priv.dec_ttl) << 34 |
 			pkt_len);
@@ -687,7 +692,7 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 	tag = sa_base & 0xFFFFUL;
 	sa_base &= ~0xFFFFUL;
 	sa = (uintptr_t)roc_nix_inl_ot_ipsec_outb_sa(sa_base, sess_priv.sa_idx);
-	ucode_cmd[3] = (ROC_CPT_DFLT_ENG_GRP_SE_IE << 61 | 1UL << 60 | sa);
+	ucode_cmd[3] = (ROC_LEGACY_CPT_DFLT_ENG_GRP_SE_IE << 61 | 1UL << 60 | sa);
 	ucode_cmd[0] = (ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC << 48 | 1UL << 54 |
 			((uint64_t)sess_priv.chksum) << 32 | ((uint64_t)sess_priv.dec_ttl) << 34 |
 			pkt_len);
@@ -763,7 +768,8 @@ cn10k_nix_prefree_seg(struct rte_mbuf *m, struct rte_mbuf **extm, struct cn10k_e
 			m->next = prev;
 			txq->tx_compl.ptr[sqe_id] = m;
 		} else {
-			sqe_id = __atomic_fetch_add(&txq->tx_compl.sqe_id, 1, __ATOMIC_RELAXED);
+			sqe_id = rte_atomic_fetch_add_explicit(&txq->tx_compl.sqe_id, 1,
+							       rte_memory_order_relaxed);
 			send_hdr->w0.pnc = 1;
 			send_hdr->w1.sqe_id = sqe_id &
 				txq->tx_compl.nb_desc_mask;
@@ -1242,7 +1248,7 @@ cn10k_nix_xmit_prepare_tstamp(struct cn10k_eth_txq *txq, uintptr_t lmt_addr,
 		struct nix_send_mem_s *send_mem;
 
 		send_mem = (struct nix_send_mem_s *)(lmt + off);
-		/* Packets for which PKT_TX_IEEE1588_TMST is not set, tx tstamp
+		/* Packets for which RTE_MBUF_F_TX_IEEE1588_TMST is not set, Tx tstamp
 		 * should not be recorded, hence changing the alg type to
 		 * NIX_SENDMEMALG_SUB and also changing send mem addr field to
 		 * next 8 bytes as it corrupts the actual Tx tstamp registered
@@ -1773,6 +1779,9 @@ cn10k_nix_prepare_tso(struct rte_mbuf *m, union nix_send_hdr_w1_u *w1,
 	w0->lso_mps = m->tso_segsz;
 	w0->lso_format = NIX_LSO_FORMAT_IDX_TSOV4 + !!(ol_flags & RTE_MBUF_F_TX_IPV6);
 	w1->ol4type = NIX_SENDL4TYPE_TCP_CKSUM;
+	w1->ol3type = ((!!(ol_flags & RTE_MBUF_F_TX_IPV4)) << 1) +
+		      ((!!(ol_flags & RTE_MBUF_F_TX_IPV6)) << 2) +
+		      !!(ol_flags & RTE_MBUF_F_TX_IP_CKSUM);
 
 	/* Handle tunnel tso */
 	if ((flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F) &&
@@ -2272,7 +2281,8 @@ again:
 	}
 
 	for (i = 0; i < burst; i += NIX_DESCS_PER_LOOP) {
-		if (flags & NIX_TX_OFFLOAD_SECURITY_F && c_lnum + 2 > 16) {
+		if (flags & NIX_TX_OFFLOAD_SECURITY_F &&
+		    (((int)((16 - c_lnum) << 1) - c_loff) < 4)) {
 			burst = i;
 			break;
 		}
@@ -2476,7 +2486,7 @@ again:
 			 */
 			const uint8x16_t tbl = {
 				/* [0-15] = il4type:il3type */
-				0x04, /* none (IPv6 assumed) */
+				0x00, /* none */
 				0x14, /* RTE_MBUF_F_TX_TCP_CKSUM (IPv6 assumed) */
 				0x24, /* RTE_MBUF_F_TX_SCTP_CKSUM (IPv6 assumed) */
 				0x34, /* RTE_MBUF_F_TX_UDP_CKSUM (IPv6 assumed) */
@@ -2680,7 +2690,7 @@ again:
 			const uint8x16x2_t tbl = {{
 				{
 					/* [0-15] = il4type:il3type */
-					0x04, /* none (IPv6) */
+					0x00, /* none */
 					0x14, /* RTE_MBUF_F_TX_TCP_CKSUM (IPv6) */
 					0x24, /* RTE_MBUF_F_TX_SCTP_CKSUM (IPv6) */
 					0x34, /* RTE_MBUF_F_TX_UDP_CKSUM (IPv6) */
@@ -3617,5 +3627,13 @@ NIX_TX_FASTPATH_MODES
 			tx_queue, NULL, tx_pkts, pkts, cmd,                    \
 			(flags) | NIX_TX_MULTI_SEG_F);                         \
 	}
+
+uint16_t __rte_noinline __rte_hot cn10k_nix_xmit_pkts_all_offload(void *tx_queue,
+								  struct rte_mbuf **tx_pkts,
+								  uint16_t pkts);
+
+uint16_t __rte_noinline __rte_hot cn10k_nix_xmit_pkts_vec_all_offload(void *tx_queue,
+								      struct rte_mbuf **tx_pkts,
+								      uint16_t pkts);
 
 #endif /* __CN10K_TX_H__ */

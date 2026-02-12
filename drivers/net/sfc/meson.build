@@ -18,6 +18,7 @@ if (arch_subdir != 'x86' and arch_subdir != 'arm') or (not dpdk_conf.get('RTE_AR
     subdir_done()
 endif
 
+cflags += no_wvla_cflag
 extra_flags = []
 
 # Strict-aliasing rules are violated by rte_eth_link to uint64_t casts

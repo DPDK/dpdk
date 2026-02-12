@@ -123,7 +123,7 @@ struct softnic_thread {
 /**
  * Data plane threads: context
  */
-struct softnic_thread_data {
+struct __rte_cache_aligned softnic_thread_data {
 	struct rte_swx_pipeline *p[THREAD_PIPELINES_MAX];
 	uint32_t n_pipelines;
 
@@ -132,7 +132,7 @@ struct softnic_thread_data {
 	uint64_t timer_period; /* Measured in CPU cycles. */
 	uint64_t time_next;
 	uint64_t iter;
-} __rte_cache_aligned;
+};
 
 /**
  * PMD Internals

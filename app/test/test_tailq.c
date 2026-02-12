@@ -125,4 +125,4 @@ test_tailq(void)
 	return ret;
 }
 
-REGISTER_FAST_TEST(tailq_autotest, true, true, test_tailq);
+REGISTER_FAST_TEST(tailq_autotest, NOHUGE_OK, ASAN_OK, test_tailq);

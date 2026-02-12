@@ -100,7 +100,8 @@ ionic_lif_reset(struct ionic_lif *lif)
 }
 
 static void
-ionic_lif_get_abs_stats(const struct ionic_lif *lif, struct rte_eth_stats *stats)
+ionic_lif_get_abs_stats(const struct ionic_lif *lif, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats)
 {
 	struct ionic_lif_stats *ls = &lif->info->stats;
 	uint32_t i;
@@ -144,13 +145,15 @@ ionic_lif_get_abs_stats(const struct ionic_lif *lif, struct rte_eth_stats *stats
 		ls->rx_desc_fetch_error +
 		ls->rx_desc_data_error;
 
-	for (i = 0; i < num_rx_q_counters; i++) {
-		struct ionic_rx_stats *rx_stats = &lif->rxqcqs[i]->stats;
-		stats->q_ipackets[i] = rx_stats->packets;
-		stats->q_ibytes[i] = rx_stats->bytes;
-		stats->q_errors[i] =
-			rx_stats->bad_cq_status +
-			rx_stats->bad_len;
+	if (qstats != NULL) {
+		for (i = 0; i < num_rx_q_counters; i++) {
+			struct ionic_rx_stats *rx_stats = &lif->rxqcqs[i]->stats;
+			qstats->q_ipackets[i] = rx_stats->packets;
+			qstats->q_ibytes[i] = rx_stats->bytes;
+			qstats->q_errors[i] =
+				rx_stats->bad_cq_status +
+				rx_stats->bad_len;
+		}
 	}
 
 	/* TX */
@@ -179,18 +182,20 @@ ionic_lif_get_abs_stats(const struct ionic_lif *lif, struct rte_eth_stats *stats
 		ls->tx_desc_fetch_error +
 		ls->tx_desc_data_error;
 
-	for (i = 0; i < num_tx_q_counters; i++) {
-		struct ionic_tx_stats *tx_stats = &lif->txqcqs[i]->stats;
-		stats->q_opackets[i] = tx_stats->packets;
-		stats->q_obytes[i] = tx_stats->bytes;
+	if (qstats != NULL) {
+		for (i = 0; i < num_tx_q_counters; i++) {
+			struct ionic_tx_stats *tx_stats = &lif->txqcqs[i]->stats;
+			qstats->q_opackets[i] = tx_stats->packets;
+			qstats->q_obytes[i] = tx_stats->bytes;
+		}
 	}
 }
 
 void
 ionic_lif_get_stats(const struct ionic_lif *lif,
-		struct rte_eth_stats *stats)
+		struct rte_eth_stats *stats, struct eth_queue_stats *qstats)
 {
-	ionic_lif_get_abs_stats(lif, stats);
+	ionic_lif_get_abs_stats(lif, stats, qstats);
 
 	stats->ipackets  -= lif->stats_base.ipackets;
 	stats->opackets  -= lif->stats_base.opackets;
@@ -214,7 +219,7 @@ ionic_lif_reset_stats(struct ionic_lif *lif)
 			sizeof(struct ionic_tx_stats));
 	}
 
-	ionic_lif_get_abs_stats(lif, &lif->stats_base);
+	ionic_lif_get_abs_stats(lif, &lif->stats_base, NULL);
 }
 
 void
@@ -990,13 +995,13 @@ ionic_lif_queue_identify(struct ionic_lif *lif)
 			qtype, ionic_qtype_vers[qtype]);
 		err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
 		if (err == -EINVAL) {
-			IONIC_PRINT(ERR, "qtype %d not supported\n", qtype);
+			IONIC_PRINT(ERR, "qtype %d not supported", qtype);
 			continue;
 		} else if (err == -EIO) {
-			IONIC_PRINT(ERR, "q_ident failed, older FW\n");
+			IONIC_PRINT(ERR, "q_ident failed, older FW");
 			return;
 		} else if (err) {
-			IONIC_PRINT(ERR, "q_ident failed, qtype %d: %d\n",
+			IONIC_PRINT(ERR, "q_ident failed, qtype %d: %d",
 				qtype, err);
 			return;
 		}
@@ -1380,7 +1385,7 @@ ionic_lif_handle_fw_down(struct ionic_lif *lif)
 
 	if (lif->state & IONIC_LIF_F_UP) {
 		IONIC_PRINT(NOTICE,
-			"Surprise FW stop, stopping %s\n", lif->name);
+			"Surprise FW stop, stopping %s", lif->name);
 		ionic_lif_stop(lif);
 	}
 

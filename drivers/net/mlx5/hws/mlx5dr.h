@@ -17,8 +17,10 @@ enum mlx5dr_table_type {
 	MLX5DR_TABLE_TYPE_NIC_RX,
 	MLX5DR_TABLE_TYPE_NIC_TX,
 	MLX5DR_TABLE_TYPE_FDB,
+	MLX5DR_TABLE_TYPE_FDB_RX,
+	MLX5DR_TABLE_TYPE_FDB_TX,
+	MLX5DR_TABLE_TYPE_FDB_UNIFIED,
 	MLX5DR_TABLE_TYPE_MAX,
-	MLX5DR_TABLE_TYPE_DONTCARE = MLX5DR_TABLE_TYPE_MAX,
 };
 
 enum mlx5dr_matcher_resource_mode {
@@ -53,6 +55,7 @@ enum mlx5dr_action_type {
 	MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT,
 	MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT,
 	MLX5DR_ACTION_TYP_NAT64,
+	MLX5DR_ACTION_TYP_JUMP_TO_MATCHER,
 	MLX5DR_ACTION_TYP_MAX,
 };
 
@@ -63,10 +66,13 @@ enum mlx5dr_action_flags {
 	MLX5DR_ACTION_FLAG_HWS_RX = 1 << 3,
 	MLX5DR_ACTION_FLAG_HWS_TX = 1 << 4,
 	MLX5DR_ACTION_FLAG_HWS_FDB = 1 << 5,
+	MLX5DR_ACTION_FLAG_HWS_FDB_RX = 1 << 6,
+	MLX5DR_ACTION_FLAG_HWS_FDB_TX = 1 << 7,
+	MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED = 1 << 8,
 	/* Shared action can be used over a few threads, since data is written
 	 * only once at the creation of the action.
 	 */
-	MLX5DR_ACTION_FLAG_SHARED = 1 << 6,
+	MLX5DR_ACTION_FLAG_SHARED = 1 << 9,
 };
 
 enum mlx5dr_action_aso_meter_color {
@@ -82,6 +88,7 @@ enum mlx5dr_action_aso_ct_flags {
 };
 
 enum mlx5dr_match_template_flags {
+	MLX5DR_MATCH_TEMPLATE_FLAG_NONE = 0,
 	/* Allow relaxed matching by skipping derived dependent match fields. */
 	MLX5DR_MATCH_TEMPLATE_FLAG_RELAXED_MATCH = 1,
 };
@@ -102,10 +109,13 @@ struct mlx5dr_context_attr {
 	uint16_t queues;
 	uint16_t queue_size;
 	size_t initial_log_ste_memory; /* Currently not in use */
-	/* Optional PD used for allocating res ources */
+	/* Optional PD used for allocating resources */
 	struct ibv_pd *pd;
+	/* Optional the STC array size for that context */
+	size_t initial_log_stc_memory;
 	/* Optional other ctx for resources allocation, all objects will be created on it */
 	struct ibv_context *shared_ibv_ctx;
+	bool bwc; /* add support for backward compatible API*/
 };
 
 struct mlx5dr_table_attr {
@@ -129,6 +139,14 @@ enum mlx5dr_matcher_distribute_mode {
 	MLX5DR_MATCHER_DISTRIBUTE_BY_LINEAR = 0x1,
 };
 
+/* Match mode describes the behavior of the matcher STE's when a packet arrives */
+enum mlx5dr_matcher_match_mode {
+	/* Packet arriving at this matcher STE's will match according it's tag and match definer */
+	MLX5DR_MATCHER_MATCH_MODE_DEFAULT = 0x0,
+	/* Packet arriving at this matcher STE's will always hit and perform the actions */
+	MLX5DR_MATCHER_MATCH_MODE_ALWAYS_HIT = 0x1,
+};
+
 enum mlx5dr_rule_hash_calc_mode {
 	MLX5DR_RULE_HASH_CALC_MODE_RAW,
 	MLX5DR_RULE_HASH_CALC_MODE_IDX,
@@ -143,11 +161,14 @@ struct mlx5dr_matcher_attr {
 	enum mlx5dr_matcher_resource_mode mode;
 	/* Optimize insertion in case packet origin is the same for all rules */
 	enum mlx5dr_matcher_flow_src optimize_flow_src;
-	/* Define the insertion and distribution modes for this matcher */
+	/* Define the insertion, distribution and match modes for this matcher */
 	enum mlx5dr_matcher_insert_mode insert_mode;
 	enum mlx5dr_matcher_distribute_mode distribute_mode;
+	enum mlx5dr_matcher_match_mode match_mode;
 	/* Define whether the created matcher supports resizing into a bigger matcher */
 	bool resizable;
+	/* This will imply that this matcher is not part of the matchers chain of parent table */
+	bool isolated;
 	union {
 		struct {
 			uint8_t sz_row_log;
@@ -275,6 +296,10 @@ struct mlx5dr_rule_action {
 			uint32_t offset;
 			enum mlx5dr_action_aso_ct_flags direction;
 		} aso_ct;
+
+		struct {
+			uint32_t offset;
+		} jump_to_matcher;
 	};
 };
 
@@ -292,6 +317,15 @@ struct mlx5dr_action_dest_attr {
 	} reformat;
 };
 
+enum mlx5dr_action_jump_to_matcher_type {
+	MLX5DR_ACTION_JUMP_TO_MATCHER_BY_INDEX,
+};
+
+struct mlx5dr_action_jump_to_matcher_attr {
+	enum mlx5dr_action_jump_to_matcher_type type;
+	struct mlx5dr_matcher *matcher;
+};
+
 union mlx5dr_crc_encap_entropy_hash_ip_field {
 	uint8_t  ipv6_addr[16];
 	struct {
@@ -300,13 +334,13 @@ union mlx5dr_crc_encap_entropy_hash_ip_field {
 	};
 };
 
-struct mlx5dr_crc_encap_entropy_hash_fields {
+struct __rte_packed_begin mlx5dr_crc_encap_entropy_hash_fields {
 	union mlx5dr_crc_encap_entropy_hash_ip_field dst;
 	union mlx5dr_crc_encap_entropy_hash_ip_field src;
 	uint8_t next_protocol;
 	rte_be16_t dst_port;
 	rte_be16_t src_port;
-} __rte_packed;
+} __rte_packed_end;
 
 enum mlx5dr_crc_encap_entropy_hash_size {
 	MLX5DR_CRC_ENCAP_ENTROPY_HASH_SIZE_8,
@@ -677,6 +711,18 @@ struct mlx5dr_action *
 mlx5dr_action_create_tag(struct mlx5dr_context *ctx,
 			 uint32_t flags);
 
+/* Create direct rule LAST action.
+ *
+ * @param[in] ctx
+ *	The context in which the new action will be created.
+ * @param[in] flags
+ *	Action creation flags. (enum mlx5dr_action_flags)
+ * @return pointer to mlx5dr_action on success NULL otherwise.
+ */
+struct mlx5dr_action *
+mlx5dr_action_create_last(struct mlx5dr_context *ctx,
+			  uint32_t flags);
+
 /* Create direct rule counter action.
  *
  * @param[in] ctx
@@ -691,6 +737,20 @@ struct mlx5dr_action *
 mlx5dr_action_create_counter(struct mlx5dr_context *ctx,
 			     struct mlx5dr_devx_obj *obj,
 			     uint32_t flags);
+
+/* Check if counter action on root table is supported.
+ *
+ * @return true if counter action on root table is supported.
+ */
+static inline bool
+mlx5dr_action_counter_root_is_supported(void)
+{
+#ifdef HAVE_MLX5DV_FLOW_ACTION_COUNTERS_DEVX_WITH_OFFSET
+	return true;
+#else
+	return false;
+#endif
+}
 
 /* Create direct rule reformat action.
  *
@@ -914,6 +974,21 @@ mlx5dr_action_create_nat64(struct mlx5dr_context *ctx,
 			   struct mlx5dr_action_nat64_attr *attr,
 			   uint32_t flags);
 
+/* Create direct rule jump to matcher action.
+ *
+ * @param[in] ctx
+ *	The context in which the new action will be created.
+ * @param[in] attr
+ *	The relevant attribute of the action.
+ * @param[in] flags
+ *	Action creation flags. (enum mlx5dr_action_flags)
+ * @return pointer to mlx5dr_action on success NULL otherwise.
+ */
+struct mlx5dr_action *
+mlx5dr_action_create_jump_to_matcher(struct mlx5dr_context *ctx,
+				     struct mlx5dr_action_jump_to_matcher_attr *attr,
+				     uint32_t flags);
+
 /* Destroy direct rule action.
  *
  * @param[in] action
@@ -979,5 +1054,79 @@ int mlx5dr_crc_encap_entropy_hash_calc(struct mlx5dr_context *ctx,
 				       struct mlx5dr_crc_encap_entropy_hash_fields *data,
 				       uint8_t entropy_res[],
 				       enum mlx5dr_crc_encap_entropy_hash_size res_size);
+
+struct mlx5dr_bwc_matcher;
+struct mlx5dr_bwc_rule;
+
+/* Create a new BWC direct rule matcher.
+ * This function does the following:
+ *   - creates match template based on flow items
+ *   - creates an empty action template
+ *   - creates a usual mlx5dr_matcher with these mt and at, setting
+ *     its size to minimal
+ * Notes:
+ *   - table->ctx must have BWC support
+ *   - complex rules are not supported
+ *
+ * @param[in] table
+ *	The table in which the new matcher will be opened
+ * @param[in] priority
+ *	Priority for this BWC matcher
+ * @param[in] flow_items
+ *	Array of flow items that serve as basis for match and action templates
+ * @return pointer to mlx5dr_bwc_matcher on success or NULL otherwise.
+ */
+struct mlx5dr_bwc_matcher *
+mlx5dr_bwc_matcher_create(struct mlx5dr_table *table,
+			  uint32_t priority,
+			  const struct rte_flow_item flow_items[]);
+
+/* Destroy BWC direct rule matcher.
+ *
+ * @param[in] bwc_matcher
+ *	Matcher to destroy
+ * @return zero on success, non zero otherwise
+ */
+int mlx5dr_bwc_matcher_destroy(struct mlx5dr_bwc_matcher *bwc_matcher);
+
+/* Create a new BWC rule.
+ * Unlike the usual rule creation function, this one is blocking: when the
+ * function returns, the rule is written to its place (no need to poll).
+ * This function does the following:
+ *   - finds matching action template based on the provided rule_actions, or
+ *     creates new action template if matching action template doesn't exist
+ *   - updates corresponding BWC matcher stats
+ *   - if needed, the function performs rehash:
+ *       - creates a new matcher based on mt, at, new_sz
+ *       - moves all the existing matcher rules to the new matcher
+ *       - removes the old matcher
+ *   - inserts new rule
+ *   - polls till completion is received
+ * Notes:
+ *   - matcher->tbl->ctx must have BWC support
+ *   - separate BWC ctx queues are used
+ *
+ * @param[in] bwc_matcher
+ *	The BWC matcher in which the new rule will be created.
+ * @param[in] flow_items
+ *	Flow items to be used for the value matching
+ * @param[in] rule_actions
+ *	Rule action to be executed on match
+ * @param[in, out] rule_handle
+ *	A valid rule handle. The handle doesn't require any initialization
+ * @return valid BWC rule handle on success, NULL otherwise
+ */
+struct mlx5dr_bwc_rule *
+mlx5dr_bwc_rule_create(struct mlx5dr_bwc_matcher *bwc_matcher,
+		       const struct rte_flow_item flow_items[],
+		       struct mlx5dr_rule_action rule_actions[]);
+
+/* Destroy BWC direct rule.
+ *
+ * @param[in] bwc_rule
+ *	Rule to destroy
+ * @return zero on success, non zero otherwise
+ */
+int mlx5dr_bwc_rule_destroy(struct mlx5dr_bwc_rule *bwc_rule);
 
 #endif

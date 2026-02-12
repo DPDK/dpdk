@@ -126,6 +126,7 @@ typedef enum {
    VMXNET3_CMD_RESERVED7,
    VMXNET3_CMD_RESERVED8,
    VMXNET3_CMD_GET_MAX_QUEUES_CONF,
+   VMXNET3_CMD_RESERVED11,
    VMXNET3_CMD_GET_MAX_CAPABILITIES,
    VMXNET3_CMD_GET_DCR0_REG,
 } Vmxnet3_Cmd;
@@ -596,6 +597,9 @@ enum vmxnet3_intr_type {
 #define VMXNET3_MAX_RX_QUEUES  16
 /* addition 1 for events */
 #define VMXNET3_MAX_INTRS      25
+
+/* Max number of queues that can request memreg, for both RX and TX. */
+#define VMXNET3_MAX_MEMREG_QUEUES  16
 
 /* Version 6 and later will use below macros */
 #define VMXNET3_EXT_MAX_TX_QUEUES  32

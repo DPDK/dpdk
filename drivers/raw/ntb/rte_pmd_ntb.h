@@ -5,6 +5,8 @@
 #ifndef _RTE_PMD_NTB_H_
 #define _RTE_PMD_NTB_H_
 
+#include <stdint.h>
+
 /* App needs to set/get these attrs */
 #define NTB_QUEUE_SZ_NAME           "queue_size"
 #define NTB_QUEUE_NUM_NAME          "queue_num"

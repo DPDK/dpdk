@@ -5,9 +5,9 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <inttypes.h>
 #ifdef RTE_LIBEAL_USE_HPET
 #include <fcntl.h>
-#include <inttypes.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #endif
@@ -16,8 +16,10 @@
 #include <rte_cycles.h>
 #include <rte_thread.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 
+RTE_EXPORT_SYMBOL(eal_timer_source)
 enum timer_source eal_timer_source = EAL_TIMER_HPET;
 
 #ifdef RTE_LIBEAL_USE_HPET
@@ -93,6 +95,7 @@ hpet_msb_inc(__rte_unused void *arg)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_get_hpet_hz)
 uint64_t
 rte_get_hpet_hz(void)
 {
@@ -105,6 +108,7 @@ rte_get_hpet_hz(void)
 	return eal_hpet_resolution_hz;
 }
 
+RTE_EXPORT_SYMBOL(rte_get_hpet_cycles)
 uint64_t
 rte_get_hpet_cycles(void)
 {
@@ -131,6 +135,7 @@ rte_get_hpet_cycles(void)
  * Open and mmap /dev/hpet (high precision event timer) that will
  * provide our time reference.
  */
+RTE_EXPORT_SYMBOL(rte_eal_hpet_init)
 int
 rte_eal_hpet_init(int make_default)
 {
@@ -187,17 +192,53 @@ rte_eal_hpet_init(int make_default)
 }
 #endif
 
+/* Check if the kernel deems the arch provided TSC frequency trustworthy. */
+
+static bool
+is_tsc_known_freq(void)
+{
+	bool ret = true; /* Assume tsc_known_freq */
+
+#if defined(RTE_ARCH_X86)
+	char line[2048];
+	FILE *stream;
+
+	stream = fopen("/proc/cpuinfo", "r");
+	if (!stream) {
+		EAL_LOG(WARNING, "Unable to open /proc/cpuinfo");
+		return ret;
+	}
+
+	while (fgets(line, sizeof(line), stream)) {
+		if (strncmp(line, "flags", 5) != 0)
+			continue;
+
+		if (!strstr(line, "tsc_known_freq"))
+			ret = false;
+
+		break;
+	}
+
+	fclose(stream);
+#endif
+
+	return ret;
+}
+
 uint64_t
-get_tsc_freq(void)
+get_tsc_freq(uint64_t arch_hz)
 {
 #ifdef CLOCK_MONOTONIC_RAW
 #define NS_PER_SEC 1E9
-#define CYC_PER_10MHZ 1E7
+#define CYC_PER_100KHZ 1E5
 
 	struct timespec sleeptime = {.tv_nsec = NS_PER_SEC / 10 }; /* 1/10 second */
 
 	struct timespec t_start, t_end;
 	uint64_t tsc_hz;
+
+	if (arch_hz && is_tsc_known_freq())
+		return arch_hz;
 
 	if (clock_gettime(CLOCK_MONOTONIC_RAW, &t_start) == 0) {
 		uint64_t ns, end, start = rte_rdtsc();
@@ -209,11 +250,22 @@ get_tsc_freq(void)
 
 		double secs = (double)ns/NS_PER_SEC;
 		tsc_hz = (uint64_t)((end - start)/secs);
-		/* Round up to 10Mhz. 1E7 ~ 10Mhz */
-		return RTE_ALIGN_MUL_NEAR(tsc_hz, CYC_PER_10MHZ);
+
+		if (arch_hz) {
+			/* Make sure we're within 1% for sanity check */
+			if (RTE_MAX(arch_hz, tsc_hz) - RTE_MIN(arch_hz, tsc_hz) > arch_hz / 100)
+				return arch_hz;
+
+			EAL_LOG(DEBUG,
+				"Refined arch frequency %"PRIu64" to measured frequency %"PRIu64,
+				arch_hz, tsc_hz);
+		}
+
+		/* Round up to 100Khz. 1E5 ~ 100Khz */
+		return RTE_ALIGN_MUL_NEAR(tsc_hz, CYC_PER_100KHZ);
 	}
 #endif
-	return 0;
+	return arch_hz;
 }
 
 int

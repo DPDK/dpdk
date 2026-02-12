@@ -5,15 +5,15 @@
 #ifndef BUS_DRIVER_H
 #define BUS_DRIVER_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_bus.h>
 #include <rte_compat.h>
 #include <rte_dev.h>
 #include <rte_eal.h>
 #include <rte_tailq.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct rte_devargs;
 struct rte_device;

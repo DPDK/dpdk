@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
-/* Copyright (C) 2014-2017 aQuantia Corporation. */
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
+ * Copyright (C) 2014-2017 aQuantia Corporation.
+ */
 
 /* File hw_atl_utils_fw2x.c: Definition of firmware 2.x functions for
  * Atlantic hardware abstraction layer.
@@ -37,12 +38,12 @@
 
 #define HW_ATL_FW_FEATURE_LED 0x03010026
 
-struct fw2x_msg_wol_pattern {
+struct __rte_packed_begin fw2x_msg_wol_pattern {
 	u8 mask[16];
 	u32 crc;
-} __rte_packed;
+} __rte_packed_end;
 
-struct fw2x_msg_wol {
+struct __rte_packed_begin fw2x_msg_wol {
 	u32 msg_id;
 	u8 hw_addr[6];
 	u8 magic_packet_enabled;
@@ -53,7 +54,7 @@ struct fw2x_msg_wol {
 	u16 reserved;
 	u32 link_up_timeout;
 	u32 link_down_timeout;
-} __rte_packed;
+} __rte_packed_end;
 
 static int aq_fw2x_set_link_speed(struct aq_hw_s *self, u32 speed);
 static int aq_fw2x_set_state(struct aq_hw_s *self,

@@ -5,9 +5,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_cpuflags.h>
 #include <rte_eal_memconfig.h>
 #include <rte_malloc.h>
@@ -41,6 +43,7 @@ EAL_REGISTER_TAILQ(rte_fbk_hash_tailq)
  * @return
  *   pointer to hash table structure or NULL on error.
  */
+RTE_EXPORT_SYMBOL(rte_fbk_hash_find_existing)
 struct rte_fbk_hash_table *
 rte_fbk_hash_find_existing(const char *name)
 {
@@ -75,12 +78,13 @@ rte_fbk_hash_find_existing(const char *name)
  *   Pointer to hash table structure that is used in future hash table
  *   operations, or NULL on error.
  */
+RTE_EXPORT_SYMBOL(rte_fbk_hash_create)
 struct rte_fbk_hash_table *
 rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 {
 	struct rte_fbk_hash_table *ht = NULL;
 	struct rte_tailq_entry *te;
-	char hash_name[RTE_FBK_HASH_NAMESIZE];
+	char hash_name[RTE_FBK_HASH_NAMESIZE + sizeof("FBK_")];
 	const uint32_t mem_size =
 			sizeof(*ht) + (sizeof(ht->t[0]) * params->entries);
 	uint32_t i;
@@ -93,12 +97,18 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 	/* Error checking of parameters. */
 	if ((!rte_is_power_of_2(params->entries)) ||
 			(!rte_is_power_of_2(params->entries_per_bucket)) ||
+			(params->name == NULL) ||
 			(params->entries == 0) ||
 			(params->entries_per_bucket == 0) ||
 			(params->entries_per_bucket > params->entries) ||
 			(params->entries > RTE_FBK_HASH_ENTRIES_MAX) ||
 			(params->entries_per_bucket > RTE_FBK_HASH_ENTRIES_PER_BUCKET_MAX)){
 		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	if (strlen(params->name) >= RTE_FBK_HASH_NAMESIZE) {
+		rte_errno = ENAMETOOLONG;
 		return NULL;
 	}
 
@@ -125,8 +135,7 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 	}
 
 	/* Allocate memory for table. */
-	ht = rte_zmalloc_socket(hash_name, mem_size,
-			0, params->socket_id);
+	ht = rte_zmalloc_socket(hash_name, mem_size, 0, params->socket_id);
 	if (ht == NULL) {
 		HASH_LOG(ERR, "Failed to allocate fbk hash table");
 		rte_free(te);
@@ -177,6 +186,7 @@ exit:
  * @param ht
  *   Hash table to deallocate.
  */
+RTE_EXPORT_SYMBOL(rte_fbk_hash_free)
 void
 rte_fbk_hash_free(struct rte_fbk_hash_table *ht)
 {

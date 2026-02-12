@@ -11,6 +11,8 @@
 #include <netinet/ip.h>
 #include <string.h>
 
+#include <rte_ip6.h>
+
 struct parse_status {
 	int status;
 	char parse_msg[256];
@@ -63,7 +65,7 @@ int
 parse_ipv4_addr(const char *token, struct in_addr *ipv4, uint32_t *mask);
 
 int
-parse_ipv6_addr(const char *token, struct in6_addr *ipv6, uint32_t *mask);
+parse_ipv6_addr(const char *token, struct rte_ipv6_addr *ipv6, uint32_t *mask);
 
 int
 parse_range(const char *token, uint16_t *low, uint16_t *high);

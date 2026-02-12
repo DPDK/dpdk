@@ -24,6 +24,8 @@ sources += files(
         'mlx5_common_utils.c',
 )
 
+cflags += no_wvla_cflag
+
 cflags_options = [
         '-std=c11',
         '-Wno-strict-prototypes',

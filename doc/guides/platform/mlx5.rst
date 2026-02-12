@@ -7,18 +7,10 @@
 NVIDIA MLX5 Common Driver
 =========================
 
-.. note::
-
-   NVIDIA acquired Mellanox Technologies in 2020.
-   The DPDK documentation and code might still include instances
-   of or references to Mellanox trademarks (like BlueField and ConnectX)
-   that are now NVIDIA trademarks.
-
-The mlx5 common driver library (**librte_common_mlx5**) provides support for
-**NVIDIA ConnectX-4**, **NVIDIA ConnectX-4 Lx**, **NVIDIA ConnectX-5**,
-**NVIDIA ConnectX-6**, **NVIDIA ConnectX-6 Dx**, **NVIDIA ConnectX-6 Lx**,
-**NVIDIA ConnectX-7**, **NVIDIA BlueField**, **NVIDIA BlueField-2** and
-**NVIDIA BlueField-3** families of 10/25/40/50/100/200 Gb/s adapters.
+The mlx5 common driver library (``librte_common_mlx5``) provides support
+for NVIDIA NIC and DPU device families.
+The SR-IOV Virtual Functions (VF), Linux auxiliary Sub-Functions (SF),
+and their port representors are supported as well.
 
 Information and documentation for these adapters can be found on the
 `NVIDIA website <https://www.nvidia.com/en-us/networking/>`_.
@@ -27,6 +19,8 @@ Help is also provided by the
 In addition, there is a `web section dedicated to DPDK
 <https://developer.nvidia.com/networking/dpdk>`_.
 
+
+.. _mlx5_common_design:
 
 Design
 ------
@@ -133,12 +127,23 @@ The following dependencies are not part of DPDK and must be installed separately
   - ``mlx5_ib``: InfiniBand device driver.
   - ``ib_uverbs``: user space driver for Verbs (entry point for ``libibverbs``).
 
-- **Firmware update**
+- **Firmware**
 
-  NVIDIA MLNX_OFED/EN releases include firmware updates.
+  Minimal supported firmware version:
 
-  Because each release provides new features, these updates must be applied to
-  match the kernel modules and libraries they come with.
+  - ConnectX-4: **12.21.1000** and above.
+  - ConnectX-4 Lx: **14.21.1000** and above.
+  - ConnectX-5: **16.21.1000** and above.
+  - ConnectX-5 Ex: **16.21.1000** and above.
+  - ConnectX-6: **20.27.0090** and above.
+  - ConnectX-6 Dx: **22.27.0090** and above.
+  - ConnectX-6 Lx: **26.27.0090** and above.
+  - ConnectX-7: **28.33.2028** and above.
+  - ConnectX-8: **40.44.1036** and above.
+  - BlueField-2: **24.28.1002** and above.
+  - BlueField-3: **32.36.3126** and above.
+
+  New features may be added in more recent firmwares.
 
 Libraries and kernel modules can be provided either by the Linux distribution,
 or by installing NVIDIA MLNX_OFED/EN which provides compatibility with older kernels.
@@ -166,6 +171,11 @@ It is possible to build rdma-core as static libraries starting with version 21::
     ninja
     ninja install
 
+The firmware can be updated with `mlxup
+<https://docs.nvidia.com/networking/display/mlxupfwutility>`_.
+The latest firmwares can be downloaded at
+https://network.nvidia.com/support/firmware/firmware-downloads/
+
 
 NVIDIA MLNX_OFED/EN
 ^^^^^^^^^^^^^^^^^^^
@@ -176,19 +186,6 @@ The minimal supported versions are:
 
 - NVIDIA MLNX_OFED version: **4.5** and above.
 - NVIDIA MLNX_EN version: **4.5** and above.
-- Firmware version:
-
-  - ConnectX-4: **12.21.1000** and above.
-  - ConnectX-4 Lx: **14.21.1000** and above.
-  - ConnectX-5: **16.21.1000** and above.
-  - ConnectX-5 Ex: **16.21.1000** and above.
-  - ConnectX-6: **20.27.0090** and above.
-  - ConnectX-6 Dx: **22.27.0090** and above.
-  - ConnectX-6 Lx: **26.27.0090** and above.
-  - ConnectX-7: **28.33.2028** and above.
-  - BlueField: **18.25.1010** and above.
-  - BlueField-2: **24.28.1002** and above.
-  - BlueField-3: **32.36.3126** and above.
 
 The firmware, the libraries libibverbs, libmlx5, and mlnx-ofed-kernel modules
 are packaged in `NVIDIA MLNX_OFED
@@ -207,6 +204,10 @@ After downloading, it can be installed with this command::
 After installing, the firmware version can be checked::
 
    ibv_devinfo
+
+The firmware updates are included in NVIDIA MLNX_OFED/EN packages.
+Because each release provides new features, these updates must be applied
+to match the kernel modules and libraries they come with.
 
 .. note::
 
@@ -260,14 +261,33 @@ configured by the ``ibverbs_link`` build option:
 Compilation on Windows
 ~~~~~~~~~~~~~~~~~~~~~~
 
-The DevX SDK location must be set through CFLAGS/LDFLAGS,
-either::
+The DevX SDK location must be set through CFLAGS/LDFLAGS.
+When compiling with MSVC, use either::
 
-   meson.exe setup "-Dc_args=-I\"%DEVX_INC_PATH%\"" "-Dc_link_args=-L\"%DEVX_LIB_PATH%\"" ...
+   meson.exe setup ^
+       "-Dc_args=-I\"%DEVX_INC_PATH%\"" ^
+       "-Dc_link_args=-LIBPATH:\"%DEVX_LIB_PATH%\"" ^
+       -Denable_stdatomic=true ^
+       ...
 
 or::
 
-   set CFLAGS=-I"%DEVX_INC_PATH%" && set LDFLAGS=-L"%DEVX_LIB_PATH%" && meson.exe setup ...
+   set CFLAGS=-I"%DEVX_INC_PATH%"
+   set LDFLAGS=-LIBPATH:"%DEVX_LIB_PATH%"
+   meson.exe setup -Denable_stdatomic=true ...
+
+When compiling with Clang, use either::
+
+   meson.exe setup ^
+       "-Dc_args=-I\"%DEVX_INC_PATH%\"" ^
+       "-Dc_link_args=-Wl,-LIBPATH:\"%DEVX_LIB_PATH%\"" ^
+       ...
+
+or::
+
+   set CFLAGS=-I"%DEVX_INC_PATH%"
+   set LDFLAGS=-Wl,-LIBPATH:"%DEVX_LIB_PATH%"
+   meson.exe setup ...
 
 
 .. _mlx5_common_env:
@@ -393,6 +413,8 @@ An SF shares PCI-level resources with other SFs and/or with its parent PCI funct
       auxiliary:mlx5_core.sf.<num>,class=eth:regex
 
 
+.. _mlx5_switchdev:
+
 Enable Switchdev Mode
 ^^^^^^^^^^^^^^^^^^^^^
 
@@ -507,6 +529,15 @@ Below are some firmware configurations listed.
 
     CQE_COMPRESSION=1
 
+- enable real-time timestamp format::
+
+   REAL_TIME_CLOCK_ENABLE=1
+
+- allow locking hairpin RQ data buffer in device memory::
+
+   HAIRPIN_DATA_BUFFER_LOCK=1
+   MEMIC_SIZE_LIMIT=0
+
 - L3 VXLAN and VXLAN-GPE destination UDP port::
 
     IP_OVER_VXLAN_EN=1
@@ -556,14 +587,24 @@ Below are some firmware configurations listed.
    FLEX_PARSER_PROFILE_ENABLE=4
    PROG_PARSE_GRAPH=1
 
-- enable realtime timestamp format::
+Below is a table showing the protocols that requires the flex parser,
+matching with their possible flex parser profiles.
 
-   REAL_TIME_CLOCK_ENABLE=1
+.. rst-class:: punchcard
 
-- allow locking hairpin RQ data buffer in device memory::
-
-   HAIRPIN_DATA_BUFFER_LOCK=1
-   MEMIC_SIZE_LIMIT=0
+========== = = = = = =
+profile    0 1 2 3 4 8
+========== = = = = = =
+IP-in-IP   0
+VXLAN-GPE  0   2
+GENEVE     0 1
+GENEVE TLV 0         8
+MPLS         1
+ICMP           2
+GTP              3
+eCPRI              4
+dyn flex           4
+========== = = = = = =
 
 
 .. _mlx5_common_driver_options:
@@ -627,7 +668,7 @@ and below are the arguments supported by the common mlx5 layer.
 
 - ``sq_db_nc`` parameter [int]
 
-  The rdma core library can map doorbell register in two ways,
+  The rdma-core library can map doorbell register in two ways,
   depending on the environment variable "MLX5_SHUT_UP_BF":
 
   - As regular cached memory (usually with write combining attribute),

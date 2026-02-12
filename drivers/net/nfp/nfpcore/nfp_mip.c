@@ -21,18 +21,18 @@ nfp_mip_try_read(struct nfp_cpp *cpp,
 
 	ret = nfp_cpp_read(cpp, cpp_id, addr, mip, sizeof(*mip));
 	if (ret != sizeof(*mip)) {
-		PMD_DRV_LOG(ERR, "Failed to read MIP data");
+		PMD_DRV_LOG(ERR, "Failed to read MIP data.");
 		return -EIO;
 	}
 
 	if (mip->signature != NFP_MIP_SIGNATURE) {
-		PMD_DRV_LOG(ERR, "Incorrect MIP signature %#08x",
+		PMD_DRV_LOG(ERR, "Incorrect MIP signature %#08x.",
 				rte_le_to_cpu_32(mip->signature));
 		return -EINVAL;
 	}
 
 	if (mip->mip_version != NFP_MIP_VERSION) {
-		PMD_DRV_LOG(ERR, "Unsupported MIP version %d",
+		PMD_DRV_LOG(ERR, "Unsupported MIP version %d.",
 				rte_le_to_cpu_32(mip->mip_version));
 		return -EINVAL;
 	}
@@ -88,7 +88,7 @@ nfp_mip_open(struct nfp_cpp *cpp)
 
 	err = nfp_mip_read_resource(cpp, mip);
 	if (err != 0) {
-		PMD_DRV_LOG(ERR, "Failed to read MIP resource");
+		PMD_DRV_LOG(ERR, "Failed to read MIP resource.");
 		free(mip);
 		return NULL;
 	}

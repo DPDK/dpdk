@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2023 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -27,7 +27,7 @@ tf_tcam_bind(struct tf *tfp,
 	int d, t;
 	struct tf_rm_alloc_info info;
 	struct tf_rm_free_db_parms fparms;
-	struct tf_rm_create_db_parms db_cfg;
+	struct tf_rm_create_db_parms db_cfg = { 0 };
 	struct tf_tcam_resources local_tcam_cnt[TF_DIR_MAX];
 	struct tf_tcam_resources *tcam_cnt;
 	struct tf_rm_get_alloc_info_parms ainfo;
@@ -37,9 +37,6 @@ tf_tcam_bind(struct tf *tfp,
 	struct tcam_rm_db *tcam_db;
 	struct tfp_calloc_parms cparms;
 	struct tf_resource_info resv_res[TF_DIR_MAX][TF_TCAM_TBL_TYPE_MAX];
-	uint32_t rx_supported;
-	uint32_t tx_supported;
-	bool no_req = true;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -167,39 +164,16 @@ tf_tcam_bind(struct tf *tfp,
 	if (rc)
 		return rc;
 
-	rc = tf_tcam_mgr_qcaps_msg(tfp, dev,
-				   &rx_supported, &tx_supported);
-	if (rc)
-		return rc;
-
-	for (t = 0; t < TF_TCAM_TBL_TYPE_MAX; t++) {
-		if (rx_supported & 1 << t)
-			tfs->tcam_mgr_control[TF_DIR_RX][t] = 1;
-		if (tx_supported & 1 << t)
-			tfs->tcam_mgr_control[TF_DIR_TX][t] = 1;
-	}
-
 	/*
 	 * Make a local copy of tcam_cnt with only resources not managed by TCAM
 	 * Manager requested.
 	 */
 	memcpy(&local_tcam_cnt, tcam_cnt, sizeof(local_tcam_cnt));
 	tcam_cnt = local_tcam_cnt;
-	for (d = 0; d < TF_DIR_MAX; d++) {
-		for (t = 0; t < TF_TCAM_TBL_TYPE_MAX; t++) {
-			/* If controlled by TCAM Manager */
-			if (tfs->tcam_mgr_control[d][t])
-				tcam_cnt[d].cnt[t] = 0;
-			else if (tcam_cnt[d].cnt[t] > 0)
-				no_req = false;
-		}
-	}
+	for (d = 0; d < TF_DIR_MAX; d++)
+		for (t = 0; t < TF_TCAM_TBL_TYPE_MAX; t++)
+			tcam_cnt[d].cnt[t] = 0;
 
-	/* If no resources left to request */
-	if (no_req)
-		goto finished;
-
-finished:
 	TFP_DRV_LOG(INFO,
 		    "TCAM - initialized\n");
 
@@ -261,7 +235,6 @@ tf_tcam_unbind(struct tf *tfp)
 
 			tcam_db->tcam_db[i] = NULL;
 		}
-
 	}
 
 	rc = tf_tcam_mgr_unbind_msg(tfp, dev);
@@ -275,14 +248,10 @@ int
 tf_tcam_alloc(struct tf *tfp,
 	      struct tf_tcam_alloc_parms *parms)
 {
-	int rc, i;
+	int rc;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
-	struct tf_rm_allocate_parms aparms;
 	uint16_t num_slices = 1;
-	uint32_t index;
-	struct tcam_rm_db *tcam_db;
-	void *tcam_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -313,43 +282,7 @@ tf_tcam_alloc(struct tf *tfp,
 	if (rc)
 		return rc;
 
-	/* If TCAM controlled by TCAM Manager */
-	if (tfs->tcam_mgr_control[parms->dir][parms->type])
-		return tf_tcam_mgr_alloc_msg(tfp, dev, parms);
-	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to get tcam_db from session, rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
-	tcam_db = (struct tcam_rm_db *)tcam_db_ptr;
-
-	/*
-	 * For WC TCAM, number of slices could be 4, 2, 1 based on
-	 * the key_size. For other TCAM, it is always 1
-	 */
-	for (i = 0; i < num_slices; i++) {
-		memset(&aparms, 0, sizeof(aparms));
-		aparms.rm_db = tcam_db->tcam_db[parms->dir];
-		aparms.subtype = parms->type;
-		aparms.priority = parms->priority;
-		aparms.index = &index;
-		rc = tf_rm_allocate(&aparms);
-		if (rc) {
-			TFP_DRV_LOG(ERR,
-				    "%s: Failed tcam, type:%d\n",
-				    tf_dir_2_str(parms->dir),
-				    parms->type);
-			return rc;
-		}
-
-		/* return the start index of each row */
-			if (i == 0)
-				parms->idx = index;
-	}
-
-	return 0;
+	return tf_tcam_mgr_alloc_msg(tfp, dev, parms);
 }
 
 int
@@ -359,14 +292,7 @@ tf_tcam_free(struct tf *tfp,
 	int rc;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
-	struct tf_rm_is_allocated_parms aparms;
-	struct tf_rm_free_parms fparms;
-	struct tf_rm_get_hcapi_parms hparms;
 	uint16_t num_slices = 1;
-	int allocated = 0;
-	int i;
-	struct tcam_rm_db *tcam_db;
-	void *tcam_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -397,91 +323,7 @@ tf_tcam_free(struct tf *tfp,
 	if (rc)
 		return rc;
 
-	/* If TCAM controlled by TCAM Manager */
-	if (tfs->tcam_mgr_control[parms->dir][parms->type])
-		/*
-		 * If a session can have multiple references to an entry, check
-		 * the reference count here before actually freeing the entry.
-		 */
-		return tf_tcam_mgr_free_msg(tfp, dev, parms);
-
-	if (parms->idx % num_slices) {
-		TFP_DRV_LOG(ERR,
-			    "%s: TCAM reserved resource is not multiple of %d\n",
-			    tf_dir_2_str(parms->dir),
-			    num_slices);
-		return -EINVAL;
-	}
-
-	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to get em_ext_db from session, rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
-	tcam_db = (struct tcam_rm_db *)tcam_db_ptr;
-
-	/* Check if element is in use */
-	memset(&aparms, 0, sizeof(aparms));
-	aparms.rm_db = tcam_db->tcam_db[parms->dir];
-	aparms.subtype = parms->type;
-	aparms.index = parms->idx;
-	aparms.allocated = &allocated;
-	rc = tf_rm_is_allocated(&aparms);
-	if (rc)
-		return rc;
-
-	if (allocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Entry already free, type:%d, index:%d\n",
-			    tf_dir_2_str(parms->dir),
-			    parms->type,
-			    parms->idx);
-		return -EINVAL;
-	}
-
-	for (i = 0; i < num_slices; i++) {
-		/* Free requested element */
-		memset(&fparms, 0, sizeof(fparms));
-		fparms.rm_db = tcam_db->tcam_db[parms->dir];
-		fparms.subtype = parms->type;
-		fparms.index = parms->idx + i;
-		rc = tf_rm_free(&fparms);
-		if (rc) {
-			TFP_DRV_LOG(ERR,
-				    "%s: Free failed, type:%d, index:%d\n",
-				    tf_dir_2_str(parms->dir),
-				    parms->type,
-				    parms->idx);
-			return rc;
-		}
-	}
-
-	/* Convert TF type to HCAPI RM type */
-	memset(&hparms, 0, sizeof(hparms));
-
-	hparms.rm_db = tcam_db->tcam_db[parms->dir];
-	hparms.subtype = parms->type;
-	hparms.hcapi_type = &parms->hcapi_type;
-
-	rc = tf_rm_get_hcapi_type(&hparms);
-	if (rc)
-		return rc;
-
-	rc = tf_msg_tcam_entry_free(tfp, dev, parms);
-	if (rc) {
-		/* Log error */
-		TFP_DRV_LOG(ERR,
-			    "%s: %s: Entry %d free failed, rc:%s\n",
-			    tf_dir_2_str(parms->dir),
-			    tf_tcam_tbl_2_str(parms->type),
-			    parms->idx,
-			    strerror(-rc));
-		return rc;
-	}
-
-	return 0;
+	return tf_tcam_mgr_free_msg(tfp, dev, parms);
 }
 
 int
@@ -491,12 +333,7 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 	int rc;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
-	struct tf_rm_is_allocated_parms aparms;
-	struct tf_rm_get_hcapi_parms hparms;
 	uint16_t num_slice_per_row = 1;
-	int allocated = 0;
-	struct tcam_rm_db *tcam_db;
-	void *tcam_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -527,62 +364,7 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 	if (rc)
 		return rc;
 
-	/* If TCAM controlled by TCAM Manager */
-	if (tfs->tcam_mgr_control[parms->dir][parms->type])
-		return tf_tcam_mgr_set_msg(tfp, dev, parms);
-
-	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to get em_ext_db from session, rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
-	tcam_db = (struct tcam_rm_db *)tcam_db_ptr;
-
-	/* Check if element is in use */
-	memset(&aparms, 0, sizeof(aparms));
-
-	aparms.rm_db = tcam_db->tcam_db[parms->dir];
-	aparms.subtype = parms->type;
-	aparms.index = parms->idx;
-	aparms.allocated = &allocated;
-	rc = tf_rm_is_allocated(&aparms);
-	if (rc)
-		return rc;
-
-	if (allocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Entry is not allocated, type:%d, index:%d\n",
-			    tf_dir_2_str(parms->dir),
-			    parms->type,
-			    parms->idx);
-		return -EINVAL;
-	}
-
-	/* Convert TF type to HCAPI RM type */
-	memset(&hparms, 0, sizeof(hparms));
-
-	hparms.rm_db = tcam_db->tcam_db[parms->dir];
-	hparms.subtype = parms->type;
-	hparms.hcapi_type = &parms->hcapi_type;
-
-	rc = tf_rm_get_hcapi_type(&hparms);
-	if (rc)
-		return rc;
-
-	rc = tf_msg_tcam_entry_set(tfp, dev, parms);
-	if (rc) {
-		/* Log error */
-		TFP_DRV_LOG(ERR,
-			    "%s: %s: Entry %d set failed, rc:%s",
-			    tf_dir_2_str(parms->dir),
-			    tf_tcam_tbl_2_str(parms->type),
-			    parms->idx,
-			    strerror(-rc));
-		return rc;
-	}
-	return 0;
+	return tf_tcam_mgr_set_msg(tfp, dev, parms);
 }
 
 int
@@ -592,11 +374,6 @@ tf_tcam_get(struct tf *tfp __rte_unused,
 	int rc;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
-	struct tf_rm_is_allocated_parms aparms;
-	struct tf_rm_get_hcapi_parms hparms;
-	int allocated = 0;
-	struct tcam_rm_db *tcam_db;
-	void *tcam_db_ptr = NULL;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -610,63 +387,7 @@ tf_tcam_get(struct tf *tfp __rte_unused,
 	if (rc)
 		return rc;
 
-	/* If TCAM controlled by TCAM Manager */
-	if (tfs->tcam_mgr_control[parms->dir][parms->type])
-		return tf_tcam_mgr_get_msg(tfp, dev, parms);
-
-	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_TCAM, &tcam_db_ptr);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to get em_ext_db from session, rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
-	tcam_db = (struct tcam_rm_db *)tcam_db_ptr;
-
-	/* Check if element is in use */
-	memset(&aparms, 0, sizeof(aparms));
-
-	aparms.rm_db = tcam_db->tcam_db[parms->dir];
-	aparms.subtype = parms->type;
-	aparms.index = parms->idx;
-	aparms.allocated = &allocated;
-	rc = tf_rm_is_allocated(&aparms);
-	if (rc)
-		return rc;
-
-	if (allocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Entry is not allocated, type:%d, index:%d\n",
-			    tf_dir_2_str(parms->dir),
-			    parms->type,
-			    parms->idx);
-		return -EINVAL;
-	}
-
-	/* Convert TF type to HCAPI RM type */
-	memset(&hparms, 0, sizeof(hparms));
-
-	hparms.rm_db = tcam_db->tcam_db[parms->dir];
-	hparms.subtype = parms->type;
-	hparms.hcapi_type = &parms->hcapi_type;
-
-	rc = tf_rm_get_hcapi_type(&hparms);
-	if (rc)
-		return rc;
-
-	rc = tf_msg_tcam_entry_get(tfp, dev, parms);
-	if (rc) {
-		/* Log error */
-		TFP_DRV_LOG(ERR,
-			    "%s: %s: Entry %d set failed, rc:%s",
-			    tf_dir_2_str(parms->dir),
-			    tf_tcam_tbl_2_str(parms->type),
-			    parms->idx,
-			    strerror(-rc));
-		return rc;
-	}
-
-	return 0;
+	return tf_tcam_mgr_get_msg(tfp, dev, parms);
 }
 
 int

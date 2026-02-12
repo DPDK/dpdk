@@ -73,7 +73,7 @@ mbuf1_prepare(struct dummy_mbuf *dm, uint32_t plen)
 		struct rte_udp_hdr udp;
 	} pkt = {
 		.eth = {
-			.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+			.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 			.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4),
 		},
 		.ip = {
@@ -102,6 +102,14 @@ mbuf1_prepare(struct dummy_mbuf *dm, uint32_t plen)
 	pkt.udp.dgram_len = rte_cpu_to_be_16(plen);
 
 	memcpy(rte_pktmbuf_mtod(dm->mb, void *), &pkt, sizeof(pkt));
+
+	/* Idea here is to create mbuf chain big enough that after mbuf deep copy they won't be
+	 * compressed into single mbuf to properly test store of chained mbufs
+	 */
+	dummy_mbuf_prep(&dm->mb[1], dm->buf[1], sizeof(dm->buf[1]), pkt_len);
+	dummy_mbuf_prep(&dm->mb[2], dm->buf[2], sizeof(dm->buf[2]), pkt_len);
+	rte_pktmbuf_chain(&dm->mb[0], &dm->mb[1]);
+	rte_pktmbuf_chain(&dm->mb[0], &dm->mb[2]);
 }
 
 static int
@@ -117,7 +125,7 @@ test_setup(void)
 
 	/* Make a pool for cloned packets */
 	mp = rte_pktmbuf_pool_create_by_ops("pcapng_test_pool",
-					    MAX_BURST, 0, 0,
+					    MAX_BURST * 32, 0, 0,
 					    rte_pcapng_mbuf_size(pkt_len) + 128,
 					    SOCKET_ID_ANY, "ring_mp_sc");
 	if (mp == NULL) {
@@ -155,7 +163,7 @@ fill_pcapng_file(rte_pcapng_t *pcapng, unsigned int num_packets)
 		for (i = 0; i < burst_size; i++) {
 			struct rte_mbuf *mc;
 
-			mc = rte_pcapng_copy(port_id, 0, orig, mp, pkt_len,
+			mc = rte_pcapng_copy(port_id, 0, orig, mp, rte_pktmbuf_pkt_len(orig),
 					     RTE_PCAPNG_DIRECTION_IN, NULL);
 			if (mc == NULL) {
 				fprintf(stderr, "Cannot copy packet\n");
@@ -235,7 +243,7 @@ parse_pcap_packet(u_char *user, const struct pcap_pkthdr *h,
 	 * but the file is open in nanonsecond mode therefore
 	 * the timestamp is really in timespec (ie. nanoseconds).
 	 */
-	ns = h->ts.tv_sec * NS_PER_S + h->ts.tv_usec;
+	ns = (uint64_t)h->ts.tv_sec * NS_PER_S + h->ts.tv_usec;
 	if (ns < ctx->start_ns || ns > ctx->end_ns) {
 		char tstart[128], tend[128];
 
@@ -337,7 +345,7 @@ test_add_interface(void)
 	}
 
 	/* Add interface to the file */
-	ret = rte_pcapng_add_interface(pcapng, port_id,
+	ret = rte_pcapng_add_interface(pcapng, port_id, DLT_EN10MB,
 				       NULL, NULL, NULL);
 	if (ret < 0) {
 		fprintf(stderr, "can not add port %u\n", port_id);
@@ -345,7 +353,7 @@ test_add_interface(void)
 	}
 
 	/* Add interface with ifname and ifdescr */
-	ret = rte_pcapng_add_interface(pcapng, port_id,
+	ret = rte_pcapng_add_interface(pcapng, port_id, DLT_EN10MB,
 				       "myeth", "Some long description", NULL);
 	if (ret < 0) {
 		fprintf(stderr, "can not add port %u with ifname\n", port_id);
@@ -353,7 +361,7 @@ test_add_interface(void)
 	}
 
 	/* Add interface with filter */
-	ret = rte_pcapng_add_interface(pcapng, port_id,
+	ret = rte_pcapng_add_interface(pcapng, port_id, DLT_EN10MB,
 				       NULL, NULL, "tcp port 8080");
 	if (ret < 0) {
 		fprintf(stderr, "can not add port %u with filter\n", port_id);
@@ -398,7 +406,7 @@ test_write_packets(void)
 	}
 
 	/* Add interface to the file */
-	ret = rte_pcapng_add_interface(pcapng, port_id,
+	ret = rte_pcapng_add_interface(pcapng, port_id, DLT_EN10MB,
 				       NULL, NULL, NULL);
 	if (ret < 0) {
 		fprintf(stderr, "can not add port %u\n", port_id);
@@ -456,4 +464,4 @@ test_pcapng(void)
 	return unit_test_suite_runner(&test_pcapng_suite);
 }
 
-REGISTER_FAST_TEST(pcapng_autotest, true, true, test_pcapng);
+REGISTER_FAST_TEST(pcapng_autotest, NOHUGE_OK, ASAN_OK, test_pcapng);

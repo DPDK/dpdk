@@ -5,13 +5,13 @@
 #ifndef _RTE_NET_PTYPE_H_
 #define _RTE_NET_PTYPE_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_ip.h>
 #include <rte_udp.h>
 #include <rte_tcp.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Structure containing header lengths associated to a packet, filled
@@ -19,9 +19,11 @@ extern "C" {
  */
 struct rte_net_hdr_lens {
 	uint8_t l2_len;
+	/* Outer_L4_len + ... + inner L2_len for tunneling pkt. */
 	uint8_t inner_l2_len;
 	uint16_t l3_len;
 	uint16_t inner_l3_len;
+	/* Protocol header of tunnel packets */
 	uint16_t tunnel_len;
 	uint8_t l4_len;
 	uint8_t inner_l4_len;
@@ -108,6 +110,10 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 static inline int
 rte_net_intel_cksum_flags_prepare(struct rte_mbuf *m, uint64_t ol_flags)
 {
+	const uint64_t inner_requests = RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_L4_MASK |
+		RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG;
+	const uint64_t outer_requests = RTE_MBUF_F_TX_OUTER_IP_CKSUM |
+		RTE_MBUF_F_TX_OUTER_UDP_CKSUM;
 	/* Initialise ipv4_hdr to avoid false positive compiler warnings. */
 	struct rte_ipv4_hdr *ipv4_hdr = NULL;
 	struct rte_ipv6_hdr *ipv6_hdr;
@@ -120,8 +126,7 @@ rte_net_intel_cksum_flags_prepare(struct rte_mbuf *m, uint64_t ol_flags)
 	 * Mainly it is required to avoid fragmented headers check if
 	 * no offloads are requested.
 	 */
-	if (!(ol_flags & (RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_L4_MASK | RTE_MBUF_F_TX_TCP_SEG |
-					RTE_MBUF_F_TX_UDP_SEG | RTE_MBUF_F_TX_OUTER_IP_CKSUM)))
+	if (!(ol_flags & (inner_requests | outer_requests)))
 		return 0;
 
 	if (ol_flags & (RTE_MBUF_F_TX_OUTER_IPV4 | RTE_MBUF_F_TX_OUTER_IPV6)) {
@@ -134,6 +139,29 @@ rte_net_intel_cksum_flags_prepare(struct rte_mbuf *m, uint64_t ol_flags)
 			ipv4_hdr = rte_pktmbuf_mtod_offset(m,
 					struct rte_ipv4_hdr *, m->outer_l2_len);
 			ipv4_hdr->hdr_checksum = 0;
+		}
+		if (ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM || ol_flags & inner_requests) {
+			if (ol_flags & RTE_MBUF_F_TX_OUTER_IPV4) {
+				ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
+					m->outer_l2_len);
+				udp_hdr = (struct rte_udp_hdr *)((char *)ipv4_hdr +
+					m->outer_l3_len);
+				if (ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM)
+					udp_hdr->dgram_cksum = rte_ipv4_phdr_cksum(ipv4_hdr,
+						m->ol_flags);
+				else if (ipv4_hdr->next_proto_id == IPPROTO_UDP)
+					udp_hdr->dgram_cksum = 0;
+			} else {
+				ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv6_hdr *,
+					m->outer_l2_len);
+				udp_hdr = rte_pktmbuf_mtod_offset(m, struct rte_udp_hdr *,
+					 m->outer_l2_len + m->outer_l3_len);
+				if (ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM)
+					udp_hdr->dgram_cksum = rte_ipv6_phdr_cksum(ipv6_hdr,
+						m->ol_flags);
+				else if (ipv6_hdr->proto == IPPROTO_UDP)
+					udp_hdr->dgram_cksum = 0;
+			}
 		}
 	}
 

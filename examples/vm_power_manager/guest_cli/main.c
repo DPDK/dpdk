@@ -9,7 +9,8 @@
 #include <string.h>
 
 #include <rte_lcore.h>
-#include <rte_power.h>
+#include <rte_power_cpufreq.h>
+#include <rte_power_guest_channel.h>
 #include <rte_debug.h>
 #include <rte_eal.h>
 #include <rte_log.h>

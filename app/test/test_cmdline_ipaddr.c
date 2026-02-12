@@ -17,21 +17,7 @@
 					   (((c) & 0xff) << 16)  | \
 					   ((d) & 0xff)  << 24)}
 
-#define U16_SWAP(x) \
-		(((x & 0xFF) << 8) | ((x & 0xFF00) >> 8))
-
-/* create IPv6 address, swapping bytes where needed */
-#ifndef s6_addr16
-#ifdef RTE_EXEC_ENV_WINDOWS
-#define s6_addr16 u.Word
-#else
-#define s6_addr16 __u6_addr.__u6_addr16
-#endif
-#endif
-#define IP6(a,b,c,d,e,f,g,h) .ipv6 = \
-		{.s6_addr16 = \
-		{U16_SWAP(a),U16_SWAP(b),U16_SWAP(c),U16_SWAP(d),\
-		 U16_SWAP(e),U16_SWAP(f),U16_SWAP(g),U16_SWAP(h)}}
+#define IP6(a, b, c, d, e, f, g, h) .ipv6 = RTE_IPV6(a, b, c, d, e, f, g, h)
 
 /** these are defined in netinet/in.h but not present in linux headers */
 #ifndef NIPQUAD
@@ -42,29 +28,7 @@
 	(unsigned)((unsigned char *)&addr)[1],	\
 	(unsigned)((unsigned char *)&addr)[2],	\
 	(unsigned)((unsigned char *)&addr)[3]
-
-#define NIP6_FMT "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x"
-#define NIP6(addr)					\
-	(unsigned)((addr).s6_addr[0]),			\
-	(unsigned)((addr).s6_addr[1]),			\
-	(unsigned)((addr).s6_addr[2]),			\
-	(unsigned)((addr).s6_addr[3]),			\
-	(unsigned)((addr).s6_addr[4]),			\
-	(unsigned)((addr).s6_addr[5]),			\
-	(unsigned)((addr).s6_addr[6]),			\
-	(unsigned)((addr).s6_addr[7]),			\
-	(unsigned)((addr).s6_addr[8]),			\
-	(unsigned)((addr).s6_addr[9]),			\
-	(unsigned)((addr).s6_addr[10]),			\
-	(unsigned)((addr).s6_addr[11]),			\
-	(unsigned)((addr).s6_addr[12]),			\
-	(unsigned)((addr).s6_addr[13]),			\
-	(unsigned)((addr).s6_addr[14]),			\
-	(unsigned)((addr).s6_addr[15])
-
 #endif
-
-
 
 struct ipaddr_str {
 	const char * str;
@@ -273,8 +237,8 @@ dump_addr(cmdline_ipaddr_t addr)
 	}
 	case AF_INET6:
 	{
-		printf(NIP6_FMT " prefixlen=%u\n",
-				NIP6(addr.addr.ipv6), addr.prefixlen);
+		printf(RTE_IPV6_ADDR_FMT " prefixlen=%u\n",
+				RTE_IPV6_ADDR_SPLIT(&addr.addr.ipv6), addr.prefixlen);
 		break;
 	}
 	default:
@@ -303,8 +267,7 @@ is_addr_different(cmdline_ipaddr_t addr1, cmdline_ipaddr_t addr2)
 	/* IPv6 */
 	case AF_INET6:
 	{
-		if (memcmp(&addr1.addr.ipv6, &addr2.addr.ipv6,
-				sizeof(struct in6_addr)) != 0)
+		if (!rte_ipv6_addr_eq(&addr1.addr.ipv6, &addr2.addr.ipv6))
 			return 1;
 		break;
 	}
@@ -476,7 +439,7 @@ test_parse_ipaddr_valid(void)
 				return -1;
 			}
 			if (ret != -1 &&
-					memcmp(&result.addr.ipv6, &tmp.addr.ipv6, sizeof(struct in6_addr))) {
+					!rte_ipv6_addr_eq(&result.addr.ipv6, &tmp.addr.ipv6)) {
 				printf("Error: result mismatch when parsing %s as %s!\n",
 						ipaddr_garbage_addr6_strs[i], buf);
 				return -1;
@@ -561,7 +524,7 @@ test_parse_ipaddr_valid(void)
 				return -1;
 			}
 			if (ret != -1 &&
-					memcmp(&result.addr.ipv6, &tmp.addr.ipv6, sizeof(struct in6_addr))) {
+					!rte_ipv6_addr_eq(&result.addr.ipv6, &tmp.addr.ipv6)) {
 				printf("Error: result mismatch when parsing %s as %s!\n",
 						ipaddr_garbage_network6_strs[i], buf);
 				return -1;

@@ -6,15 +6,16 @@
 #define __MANA_H__
 
 #define	PCI_VENDOR_ID_MICROSOFT		0x1414
+#define PCI_DEVICE_ID_MICROSOFT_MANA_PF	0x00b9
 #define PCI_DEVICE_ID_MICROSOFT_MANA	0x00ba
 
-/* Shared data between primary/secondary processes */
 struct mana_shared_data {
-	rte_spinlock_t lock;
-	int init_done;
-	unsigned int primary_cnt;
-	unsigned int secondary_cnt;
+	RTE_ATOMIC(uint32_t) secondary_cnt;
 };
+
+/* vendor_part_id returned from ibv_query_device */
+#define GDMA_DEVICE_MANA	2
+#define GDMA_DEVICE_MANA_IB	3
 
 #define MANA_MAX_MTU	9000
 #define MIN_RX_BUF_SIZE	1024
@@ -466,17 +467,16 @@ struct mana_rxq {
 extern int mana_logtype_driver;
 #define RTE_LOGTYPE_MANA_DRIVER mana_logtype_driver
 extern int mana_logtype_init;
+#define RTE_LOGTYPE_MANA_INIT mana_logtype_init
 
-#define DRV_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, mana_logtype_driver, "%s(): " fmt "\n", \
-		__func__, ## args)
+#define DRV_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, MANA_DRIVER, "%s(): ", __func__, __VA_ARGS__)
 
-#define DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, MANA_DRIVER, fmt "\n", ## args)
+#define DP_LOG(level, ...) \
+	RTE_LOG_DP_LINE(level, MANA_DRIVER, __VA_ARGS__)
 
-#define PMD_INIT_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, mana_logtype_init, "%s(): " fmt "\n",\
-		__func__, ## args)
+#define PMD_INIT_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, MANA_INIT, "%s(): ", __func__, __VA_ARGS__)
 
 #define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
 

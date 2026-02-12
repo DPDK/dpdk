@@ -16,6 +16,7 @@
 #endif
 
 #include <bus_driver.h>
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <dev_driver.h>
@@ -33,8 +34,8 @@
 /* conversion from DPDK speed to PCAPNG */
 #define PCAPNG_MBPS_SPEED 1000000ull
 
-/* upper bound for section, stats and interface blocks */
-#define PCAPNG_BLKSIZ	2048
+/* upper bound for section, stats and interface blocks (in uint32_t) */
+#define PCAPNG_BLKSIZ	(2048 / sizeof(uint32_t))
 
 /* Format of the capture file handle */
 struct rte_pcapng {
@@ -128,7 +129,8 @@ pcapng_add_option(struct pcapng_option *popt, uint16_t code,
 {
 	popt->code = code;
 	popt->length = len;
-	memcpy(popt->data, data, len);
+	if (len > 0)
+		memcpy(popt->data, data, len);
 
 	return (struct pcapng_option *)((uint8_t *)popt + pcapng_optlen(len));
 }
@@ -143,7 +145,7 @@ pcapng_section_block(rte_pcapng_t *self,
 {
 	struct pcapng_section_header *hdr;
 	struct pcapng_option *opt;
-	uint8_t buf[PCAPNG_BLKSIZ];
+	uint32_t buf[PCAPNG_BLKSIZ];
 	uint32_t len;
 
 	len = sizeof(*hdr);
@@ -198,8 +200,9 @@ pcapng_section_block(rte_pcapng_t *self,
 }
 
 /* Write an interface block for a DPDK port */
+RTE_EXPORT_SYMBOL(rte_pcapng_add_interface)
 int
-rte_pcapng_add_interface(rte_pcapng_t *self, uint16_t port,
+rte_pcapng_add_interface(rte_pcapng_t *self, uint16_t port, uint16_t link_type,
 			 const char *ifname, const char *ifdescr,
 			 const char *filter)
 {
@@ -211,7 +214,7 @@ rte_pcapng_add_interface(rte_pcapng_t *self, uint16_t port,
 	struct pcapng_option *opt;
 	const uint8_t tsresol = 9;	/* nanosecond resolution */
 	uint32_t len;
-	uint8_t buf[PCAPNG_BLKSIZ];
+	uint32_t buf[PCAPNG_BLKSIZ];
 	char ifname_buf[IF_NAMESIZE];
 	char ifhw[256];
 	uint64_t speed = 0;
@@ -271,7 +274,7 @@ rte_pcapng_add_interface(rte_pcapng_t *self, uint16_t port,
 	hdr = (struct pcapng_interface_block *)buf;
 	*hdr = (struct pcapng_interface_block) {
 		.block_type = PCAPNG_INTERFACE_BLOCK,
-		.link_type = 1,		/* DLT_EN10MB - Ethernet */
+		.link_type = link_type,
 		.block_length = len,
 	};
 
@@ -293,16 +296,15 @@ rte_pcapng_add_interface(rte_pcapng_t *self, uint16_t port,
 		opt = pcapng_add_option(opt, PCAPNG_IFB_HARDWARE,
 					 ifhw, strlen(ifhw));
 	if (filter) {
-		size_t len;
+		const size_t filter_len = strlen(filter) + 1;
 
-		len = strlen(filter) + 1;
 		opt->code = PCAPNG_IFB_FILTER;
-		opt->length = len;
+		opt->length = filter_len;
 		/* Encoding is that the first octet indicates string vs BPF */
 		opt->data[0] = 0;
 		memcpy(opt->data + 1, filter, strlen(filter));
 
-		opt = (struct pcapng_option *)((uint8_t *)opt + pcapng_optlen(len));
+		opt = (struct pcapng_option *)((uint8_t *)opt + pcapng_optlen(filter_len));
 	}
 
 	opt = pcapng_add_option(opt, PCAPNG_OPT_END, NULL, 0);
@@ -319,6 +321,7 @@ rte_pcapng_add_interface(rte_pcapng_t *self, uint16_t port,
 /*
  * Write an Interface statistics block at the end of capture.
  */
+RTE_EXPORT_SYMBOL(rte_pcapng_write_stats)
 ssize_t
 rte_pcapng_write_stats(rte_pcapng_t *self, uint16_t port_id,
 		       uint64_t ifrecv, uint64_t ifdrop,
@@ -329,7 +332,7 @@ rte_pcapng_write_stats(rte_pcapng_t *self, uint16_t port_id,
 	uint64_t start_time = self->offset_ns;
 	uint64_t sample_time;
 	uint32_t optlen, len;
-	uint8_t buf[PCAPNG_BLKSIZ];
+	uint32_t buf[PCAPNG_BLKSIZ];
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
@@ -384,6 +387,7 @@ rte_pcapng_write_stats(rte_pcapng_t *self, uint16_t port_id,
 	return write(self->outfd, buf, len);
 }
 
+RTE_EXPORT_SYMBOL(rte_pcapng_mbuf_size)
 uint32_t
 rte_pcapng_mbuf_size(uint32_t length)
 {
@@ -465,6 +469,7 @@ pcapng_vlan_insert(struct rte_mbuf *m, uint16_t ether_type, uint16_t tci)
  */
 
 /* Make a copy of original mbuf with pcapng header and options */
+RTE_EXPORT_SYMBOL(rte_pcapng_copy)
 struct rte_mbuf *
 rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 		const struct rte_mbuf *md,
@@ -474,7 +479,7 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 		const char *comment)
 {
 	struct pcapng_enhance_packet_block *epb;
-	uint32_t orig_len, data_len, padding, flags;
+	uint32_t orig_len, pkt_len, padding, flags;
 	struct pcapng_option *opt;
 	uint64_t timestamp;
 	uint16_t optlen;
@@ -515,8 +520,8 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 		    (md->ol_flags & RTE_MBUF_F_RX_RSS_HASH));
 
 	/* pad the packet to 32 bit boundary */
-	data_len = rte_pktmbuf_data_len(mc);
-	padding = RTE_ALIGN(data_len, sizeof(uint32_t)) - data_len;
+	pkt_len = rte_pktmbuf_pkt_len(mc);
+	padding = RTE_ALIGN(pkt_len, sizeof(uint32_t)) - pkt_len;
 	if (padding > 0) {
 		void *tail = rte_pktmbuf_append(mc, padding);
 
@@ -583,7 +588,7 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 		goto fail;
 
 	epb->block_type = PCAPNG_ENHANCED_PACKET_BLOCK;
-	epb->block_length = rte_pktmbuf_data_len(mc);
+	epb->block_length = rte_pktmbuf_pkt_len(mc);
 
 	/* Interface index is filled in later during write */
 	mc->port = port_id;
@@ -592,7 +597,7 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 	timestamp = rte_get_tsc_cycles();
 	epb->timestamp_hi = timestamp >> 32;
 	epb->timestamp_lo = (uint32_t)timestamp;
-	epb->capture_length = data_len;
+	epb->capture_length = pkt_len;
 	epb->original_length = orig_len;
 
 	/* set trailer of block length */
@@ -606,6 +611,7 @@ fail:
 }
 
 /* Write pre-formatted packets to file. */
+RTE_EXPORT_SYMBOL(rte_pcapng_write_packets)
 ssize_t
 rte_pcapng_write_packets(rte_pcapng_t *self,
 			 struct rte_mbuf *pkts[], uint16_t nb_pkts)
@@ -622,7 +628,7 @@ rte_pcapng_write_packets(rte_pcapng_t *self,
 		/* sanity check that is really a pcapng mbuf */
 		epb = rte_pktmbuf_mtod(m, struct pcapng_enhance_packet_block *);
 		if (unlikely(epb->block_type != PCAPNG_ENHANCED_PACKET_BLOCK ||
-			     epb->block_length != rte_pktmbuf_data_len(m))) {
+			     epb->block_length != rte_pktmbuf_pkt_len(m))) {
 			rte_errno = EINVAL;
 			return -1;
 		}
@@ -675,6 +681,7 @@ rte_pcapng_write_packets(rte_pcapng_t *self,
 }
 
 /* Create new pcapng writer handle */
+RTE_EXPORT_SYMBOL(rte_pcapng_fdopen)
 rte_pcapng_t *
 rte_pcapng_fdopen(int fd,
 		  const char *osname, const char *hardware,
@@ -712,9 +719,12 @@ fail:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_pcapng_close)
 void
 rte_pcapng_close(rte_pcapng_t *self)
 {
-	close(self->outfd);
-	free(self);
+	if (self) {
+		close(self->outfd);
+		free(self);
+	}
 }

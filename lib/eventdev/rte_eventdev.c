@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_log.h>
 #include <dev_driver.h>
@@ -29,10 +30,12 @@
 #include "eventdev_pmd.h"
 #include "eventdev_trace.h"
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_event_logtype)
 RTE_LOG_REGISTER_DEFAULT(rte_event_logtype, INFO);
 
 static struct rte_eventdev rte_event_devices[RTE_EVENT_MAX_DEVS];
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_eventdevs)
 struct rte_eventdev *rte_eventdevs = rte_event_devices;
 
 static struct rte_eventdev_global eventdev_globals = {
@@ -40,16 +43,19 @@ static struct rte_eventdev_global eventdev_globals = {
 };
 
 /* Public fastpath APIs. */
+RTE_EXPORT_SYMBOL(rte_event_fp_ops)
 struct rte_event_fp_ops rte_event_fp_ops[RTE_EVENT_MAX_DEVS];
 
 /* Event dev north bound API implementation */
 
+RTE_EXPORT_SYMBOL(rte_event_dev_count)
 uint8_t
 rte_event_dev_count(void)
 {
 	return eventdev_globals.nb_devs;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_dev_get_dev_id)
 int
 rte_event_dev_get_dev_id(const char *name)
 {
@@ -74,6 +80,7 @@ rte_event_dev_get_dev_id(const char *name)
 	return -ENODEV;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_dev_socket_id)
 int
 rte_event_dev_socket_id(uint8_t dev_id)
 {
@@ -87,6 +94,7 @@ rte_event_dev_socket_id(uint8_t dev_id)
 	return dev->data->socket_id;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_dev_info_get)
 int
 rte_event_dev_info_get(uint8_t dev_id, struct rte_event_dev_info *dev_info)
 {
@@ -100,9 +108,9 @@ rte_event_dev_info_get(uint8_t dev_id, struct rte_event_dev_info *dev_info)
 
 	memset(dev_info, 0, sizeof(struct rte_event_dev_info));
 
-	if (*dev->dev_ops->dev_infos_get == NULL)
+	if (dev->dev_ops->dev_infos_get == NULL)
 		return -ENOTSUP;
-	(*dev->dev_ops->dev_infos_get)(dev, dev_info);
+	dev->dev_ops->dev_infos_get(dev, dev_info);
 
 	dev_info->dequeue_timeout_ns = dev->data->dev_conf.dequeue_timeout_ns;
 
@@ -115,6 +123,7 @@ rte_event_dev_info_get(uint8_t dev_id, struct rte_event_dev_info *dev_info)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_rx_adapter_caps_get)
 int
 rte_event_eth_rx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 				uint32_t *caps)
@@ -137,12 +146,11 @@ rte_event_eth_rx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 		*caps = 0;
 
 	return dev->dev_ops->eth_rx_adapter_caps_get ?
-				(*dev->dev_ops->eth_rx_adapter_caps_get)(dev,
-						&rte_eth_devices[eth_port_id],
-						caps)
-				: 0;
+		dev->dev_ops->eth_rx_adapter_caps_get(dev, &rte_eth_devices[eth_port_id], caps)
+		: 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_timer_adapter_caps_get)
 int
 rte_event_timer_adapter_caps_get(uint8_t dev_id, uint32_t *caps)
 {
@@ -164,13 +172,11 @@ rte_event_timer_adapter_caps_get(uint8_t dev_id, uint32_t *caps)
 		*caps = 0;
 
 	return dev->dev_ops->timer_adapter_caps_get ?
-				(*dev->dev_ops->timer_adapter_caps_get)(dev,
-									0,
-									caps,
-									&ops)
-				: 0;
+		dev->dev_ops->timer_adapter_caps_get(dev, 0, caps, &ops)
+		: 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_crypto_adapter_caps_get)
 int
 rte_event_crypto_adapter_caps_get(uint8_t dev_id, uint8_t cdev_id,
 				  uint32_t *caps)
@@ -196,10 +202,10 @@ rte_event_crypto_adapter_caps_get(uint8_t dev_id, uint8_t cdev_id,
 		*caps = 0;
 
 	return dev->dev_ops->crypto_adapter_caps_get ?
-		(*dev->dev_ops->crypto_adapter_caps_get)
-		(dev, cdev, caps) : 0;
+		dev->dev_ops->crypto_adapter_caps_get(dev, cdev, caps) : 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_eth_tx_adapter_caps_get)
 int
 rte_event_eth_tx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 				uint32_t *caps)
@@ -224,12 +230,11 @@ rte_event_eth_tx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 		*caps = 0;
 
 	return dev->dev_ops->eth_tx_adapter_caps_get ?
-			(*dev->dev_ops->eth_tx_adapter_caps_get)(dev,
-								eth_dev,
-								caps)
-			: 0;
+		dev->dev_ops->eth_tx_adapter_caps_get(dev, eth_dev, caps)
+		: 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_dma_adapter_caps_get, 23.11)
 int
 rte_event_dma_adapter_caps_get(uint8_t dev_id, uint8_t dma_dev_id, uint32_t *caps)
 {
@@ -247,9 +252,33 @@ rte_event_dma_adapter_caps_get(uint8_t dev_id, uint8_t dma_dev_id, uint32_t *cap
 	*caps = 0;
 
 	if (dev->dev_ops->dma_adapter_caps_get)
-		return (*dev->dev_ops->dma_adapter_caps_get)(dev, dma_dev_id, caps);
+		return dev->dev_ops->dma_adapter_caps_get(dev, dma_dev_id, caps);
 
 	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_vector_adapter_caps_get, 25.07)
+int
+rte_event_vector_adapter_caps_get(uint8_t dev_id, uint32_t *caps)
+{
+	const struct event_vector_adapter_ops *ops;
+	struct rte_eventdev *dev;
+
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+
+	dev = &rte_eventdevs[dev_id];
+
+	if (caps == NULL)
+		return -EINVAL;
+
+	if (dev->dev_ops->vector_adapter_caps_get == NULL)
+		*caps = RTE_EVENT_VECTOR_ADAPTER_SW_CAP;
+	else
+		*caps = 0;
+
+	return dev->dev_ops->vector_adapter_caps_get ?
+		       dev->dev_ops->vector_adapter_caps_get(dev, caps, &ops) :
+		       0;
 }
 
 static inline int
@@ -264,11 +293,11 @@ event_dev_queue_config(struct rte_eventdev *dev, uint8_t nb_queues)
 
 	if (nb_queues != 0) {
 		queues_cfg = dev->data->queues_cfg;
-		if (*dev->dev_ops->queue_release == NULL)
+		if (dev->dev_ops->queue_release == NULL)
 			return -ENOTSUP;
 
 		for (i = nb_queues; i < old_nb_queues; i++)
-			(*dev->dev_ops->queue_release)(dev, i);
+			dev->dev_ops->queue_release(dev, i);
 
 
 		if (nb_queues > old_nb_queues) {
@@ -278,11 +307,11 @@ event_dev_queue_config(struct rte_eventdev *dev, uint8_t nb_queues)
 				sizeof(queues_cfg[0]) * new_qs);
 		}
 	} else {
-		if (*dev->dev_ops->queue_release == NULL)
+		if (dev->dev_ops->queue_release == NULL)
 			return -ENOTSUP;
 
 		for (i = nb_queues; i < old_nb_queues; i++)
-			(*dev->dev_ops->queue_release)(dev, i);
+			dev->dev_ops->queue_release(dev, i);
 	}
 
 	dev->data->nb_queues = nb_queues;
@@ -304,14 +333,14 @@ event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 			 dev->data->dev_id);
 
 	if (nb_ports != 0) { /* re-config */
-		if (*dev->dev_ops->port_release == NULL)
+		if (dev->dev_ops->port_release == NULL)
 			return -ENOTSUP;
 
 		ports = dev->data->ports;
 		ports_cfg = dev->data->ports_cfg;
 
 		for (i = nb_ports; i < old_nb_ports; i++)
-			(*dev->dev_ops->port_release)(ports[i]);
+			(dev->dev_ops->port_release)(ports[i]);
 
 		if (nb_ports > old_nb_ports) {
 			uint8_t new_ps = nb_ports - old_nb_ports;
@@ -331,12 +360,12 @@ event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 			}
 		}
 	} else {
-		if (*dev->dev_ops->port_release == NULL)
+		if (dev->dev_ops->port_release == NULL)
 			return -ENOTSUP;
 
 		ports = dev->data->ports;
 		for (i = nb_ports; i < old_nb_ports; i++) {
-			(*dev->dev_ops->port_release)(ports[i]);
+			(dev->dev_ops->port_release)(ports[i]);
 			ports[i] = NULL;
 		}
 	}
@@ -345,6 +374,7 @@ event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_dev_configure)
 int
 rte_event_dev_configure(uint8_t dev_id,
 			const struct rte_event_dev_config *dev_conf)
@@ -356,9 +386,9 @@ rte_event_dev_configure(uint8_t dev_id,
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_eventdevs[dev_id];
 
-	if (*dev->dev_ops->dev_infos_get == NULL)
+	if (dev->dev_ops->dev_infos_get == NULL)
 		return -ENOTSUP;
-	if (*dev->dev_ops->dev_configure == NULL)
+	if (dev->dev_ops->dev_configure == NULL)
 		return -ENOTSUP;
 
 	if (dev->data->dev_started) {
@@ -370,7 +400,7 @@ rte_event_dev_configure(uint8_t dev_id,
 	if (dev_conf == NULL)
 		return -EINVAL;
 
-	(*dev->dev_ops->dev_infos_get)(dev, &info);
+	dev->dev_ops->dev_infos_get(dev, &info);
 
 	/* Check dequeue_timeout_ns value is in limit */
 	if (!(dev_conf->event_dev_cfg & RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT)) {
@@ -524,7 +554,7 @@ rte_event_dev_configure(uint8_t dev_id,
 	event_dev_fp_ops_reset(rte_event_fp_ops + dev_id);
 
 	/* Configure the device */
-	diag = (*dev->dev_ops->dev_configure)(dev);
+	diag = (dev->dev_ops->dev_configure)(dev);
 	if (diag != 0) {
 		RTE_EDEV_LOG_ERR("dev%d dev_configure = %d", dev_id, diag);
 		event_dev_fp_ops_reset(rte_event_fp_ops + dev_id);
@@ -547,6 +577,7 @@ is_valid_queue(struct rte_eventdev *dev, uint8_t queue_id)
 		return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_queue_default_conf_get)
 int
 rte_event_queue_default_conf_get(uint8_t dev_id, uint8_t queue_id,
 				 struct rte_event_queue_conf *queue_conf)
@@ -564,10 +595,10 @@ rte_event_queue_default_conf_get(uint8_t dev_id, uint8_t queue_id,
 		return -EINVAL;
 	}
 
-	if (*dev->dev_ops->queue_def_conf == NULL)
+	if (dev->dev_ops->queue_def_conf == NULL)
 		return -ENOTSUP;
 	memset(queue_conf, 0, sizeof(struct rte_event_queue_conf));
-	(*dev->dev_ops->queue_def_conf)(dev, queue_id, queue_conf);
+	dev->dev_ops->queue_def_conf(dev, queue_id, queue_conf);
 
 	rte_eventdev_trace_queue_default_conf_get(dev_id, dev, queue_id, queue_conf);
 
@@ -607,6 +638,7 @@ is_valid_ordered_queue_conf(const struct rte_event_queue_conf *queue_conf)
 }
 
 
+RTE_EXPORT_SYMBOL(rte_event_queue_setup)
 int
 rte_event_queue_setup(uint8_t dev_id, uint8_t queue_id,
 		      const struct rte_event_queue_conf *queue_conf)
@@ -654,19 +686,19 @@ rte_event_queue_setup(uint8_t dev_id, uint8_t queue_id,
 		return -EBUSY;
 	}
 
-	if (*dev->dev_ops->queue_setup == NULL)
+	if (dev->dev_ops->queue_setup == NULL)
 		return -ENOTSUP;
 
 	if (queue_conf == NULL) {
-		if (*dev->dev_ops->queue_def_conf == NULL)
+		if (dev->dev_ops->queue_def_conf == NULL)
 			return -ENOTSUP;
-		(*dev->dev_ops->queue_def_conf)(dev, queue_id, &def_conf);
+		dev->dev_ops->queue_def_conf(dev, queue_id, &def_conf);
 		queue_conf = &def_conf;
 	}
 
 	dev->data->queues_cfg[queue_id] = *queue_conf;
 	rte_eventdev_trace_queue_setup(dev_id, queue_id, queue_conf);
-	return (*dev->dev_ops->queue_setup)(dev, queue_id, queue_conf);
+	return dev->dev_ops->queue_setup(dev, queue_id, queue_conf);
 }
 
 static inline int
@@ -678,6 +710,7 @@ is_valid_port(struct rte_eventdev *dev, uint8_t port_id)
 		return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_port_default_conf_get)
 int
 rte_event_port_default_conf_get(uint8_t dev_id, uint8_t port_id,
 				 struct rte_event_port_conf *port_conf)
@@ -695,16 +728,17 @@ rte_event_port_default_conf_get(uint8_t dev_id, uint8_t port_id,
 		return -EINVAL;
 	}
 
-	if (*dev->dev_ops->port_def_conf == NULL)
+	if (dev->dev_ops->port_def_conf == NULL)
 		return -ENOTSUP;
 	memset(port_conf, 0, sizeof(struct rte_event_port_conf));
-	(*dev->dev_ops->port_def_conf)(dev, port_id, port_conf);
+	dev->dev_ops->port_def_conf(dev, port_id, port_conf);
 
 	rte_eventdev_trace_port_default_conf_get(dev_id, dev, port_id, port_conf);
 
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_port_setup)
 int
 rte_event_port_setup(uint8_t dev_id, uint8_t port_id,
 		     const struct rte_event_port_conf *port_conf)
@@ -770,19 +804,19 @@ rte_event_port_setup(uint8_t dev_id, uint8_t port_id,
 		return -EBUSY;
 	}
 
-	if (*dev->dev_ops->port_setup == NULL)
+	if (dev->dev_ops->port_setup == NULL)
 		return -ENOTSUP;
 
 	if (port_conf == NULL) {
-		if (*dev->dev_ops->port_def_conf == NULL)
+		if (dev->dev_ops->port_def_conf == NULL)
 			return -ENOTSUP;
-		(*dev->dev_ops->port_def_conf)(dev, port_id, &def_conf);
+		dev->dev_ops->port_def_conf(dev, port_id, &def_conf);
 		port_conf = &def_conf;
 	}
 
 	dev->data->ports_cfg[port_id] = *port_conf;
 
-	diag = (*dev->dev_ops->port_setup)(dev, port_id, port_conf);
+	diag = dev->dev_ops->port_setup(dev, port_id, port_conf);
 
 	/* Unlink all the queues from this port(default state after setup) */
 	if (!diag)
@@ -795,6 +829,7 @@ rte_event_port_setup(uint8_t dev_id, uint8_t port_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_port_quiesce)
 void
 rte_event_port_quiesce(uint8_t dev_id, uint8_t port_id,
 		       rte_eventdev_port_flush_t release_cb, void *args)
@@ -812,10 +847,10 @@ rte_event_port_quiesce(uint8_t dev_id, uint8_t port_id,
 	}
 
 	if (dev->dev_ops->port_quiesce)
-		(*dev->dev_ops->port_quiesce)(dev, dev->data->ports[port_id],
-					      release_cb, args);
+		dev->dev_ops->port_quiesce(dev, dev->data->ports[port_id], release_cb, args);
 }
 
+RTE_EXPORT_SYMBOL(rte_event_dev_attr_get)
 int
 rte_event_dev_attr_get(uint8_t dev_id, uint32_t attr_id,
 		       uint32_t *attr_value)
@@ -846,6 +881,7 @@ rte_event_dev_attr_get(uint8_t dev_id, uint32_t attr_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_port_attr_get)
 int
 rte_event_port_attr_get(uint8_t dev_id, uint8_t port_id, uint32_t attr_id,
 			uint32_t *attr_value)
@@ -880,6 +916,14 @@ rte_event_port_attr_get(uint8_t dev_id, uint8_t port_id, uint32_t attr_id,
 		*attr_value = !!(config & RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL);
 		break;
 	}
+	case RTE_EVENT_PORT_ATTR_INDEPENDENT_ENQ:
+	{
+		uint32_t config;
+
+		config = dev->data->ports_cfg[port_id].event_port_cfg;
+		*attr_value = !!(config & RTE_EVENT_PORT_CFG_INDEPENDENT_ENQ);
+		break;
+	}
 	default:
 		return -EINVAL;
 	};
@@ -889,6 +933,7 @@ rte_event_port_attr_get(uint8_t dev_id, uint8_t port_id, uint32_t attr_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_queue_attr_get)
 int
 rte_event_queue_attr_get(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
 			uint32_t *attr_value)
@@ -948,6 +993,7 @@ rte_event_queue_attr_get(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_queue_attr_set)
 int
 rte_event_queue_attr_set(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
 			 uint64_t attr_value)
@@ -971,12 +1017,12 @@ rte_event_queue_attr_set(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
 		return -ENOTSUP;
 	}
 
-	if (*dev->dev_ops->queue_attr_set == NULL)
+	if (dev->dev_ops->queue_attr_set == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->queue_attr_set)(dev, queue_id, attr_id,
-					       attr_value);
+	return dev->dev_ops->queue_attr_set(dev, queue_id, attr_id, attr_value);
 }
 
+RTE_EXPORT_SYMBOL(rte_event_port_link)
 int
 rte_event_port_link(uint8_t dev_id, uint8_t port_id,
 		    const uint8_t queues[], const uint8_t priorities[],
@@ -985,6 +1031,7 @@ rte_event_port_link(uint8_t dev_id, uint8_t port_id,
 	return rte_event_port_profile_links_set(dev_id, port_id, queues, priorities, nb_links, 0);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_port_profile_links_set, 23.11)
 int
 rte_event_port_profile_links_set(uint8_t dev_id, uint8_t port_id, const uint8_t queues[],
 				 const uint8_t priorities[], uint16_t nb_links, uint8_t profile_id)
@@ -999,23 +1046,23 @@ rte_event_port_profile_links_set(uint8_t dev_id, uint8_t port_id, const uint8_t 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERRNO_RET(dev_id, EINVAL, 0);
 	dev = &rte_eventdevs[dev_id];
 
-	if (*dev->dev_ops->dev_infos_get == NULL)
+	if (dev->dev_ops->dev_infos_get == NULL)
 		return -ENOTSUP;
 
-	(*dev->dev_ops->dev_infos_get)(dev, &info);
+	dev->dev_ops->dev_infos_get(dev, &info);
 	if (profile_id >= RTE_EVENT_MAX_PROFILES_PER_PORT ||
 	    profile_id >= info.max_profiles_per_port) {
 		RTE_EDEV_LOG_ERR("Invalid profile_id=%" PRIu8, profile_id);
 		return -EINVAL;
 	}
 
-	if (*dev->dev_ops->port_link == NULL) {
+	if (dev->dev_ops->port_link == NULL) {
 		RTE_EDEV_LOG_ERR("Function not supported");
 		rte_errno = ENOTSUP;
 		return 0;
 	}
 
-	if (profile_id && *dev->dev_ops->port_link_profile == NULL) {
+	if (profile_id && dev->dev_ops->port_link_profile == NULL) {
 		RTE_EDEV_LOG_ERR("Function not supported");
 		rte_errno = ENOTSUP;
 		return 0;
@@ -1049,11 +1096,11 @@ rte_event_port_profile_links_set(uint8_t dev_id, uint8_t port_id, const uint8_t 
 		}
 
 	if (profile_id)
-		diag = (*dev->dev_ops->port_link_profile)(dev, dev->data->ports[port_id], queues,
-							  priorities, nb_links, profile_id);
+		diag = dev->dev_ops->port_link_profile(dev, dev->data->ports[port_id], queues,
+						       priorities, nb_links, profile_id);
 	else
-		diag = (*dev->dev_ops->port_link)(dev, dev->data->ports[port_id], queues,
-						  priorities, nb_links);
+		diag = dev->dev_ops->port_link(dev, dev->data->ports[port_id], queues,
+					       priorities, nb_links);
 	if (diag < 0)
 		return diag;
 
@@ -1067,6 +1114,7 @@ rte_event_port_profile_links_set(uint8_t dev_id, uint8_t port_id, const uint8_t 
 	return diag;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_port_unlink)
 int
 rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 		      uint8_t queues[], uint16_t nb_unlinks)
@@ -1074,6 +1122,7 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 	return rte_event_port_profile_unlink(dev_id, port_id, queues, nb_unlinks, 0);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_port_profile_unlink, 23.11)
 int
 rte_event_port_profile_unlink(uint8_t dev_id, uint8_t port_id, uint8_t queues[],
 			      uint16_t nb_unlinks, uint8_t profile_id)
@@ -1087,23 +1136,23 @@ rte_event_port_profile_unlink(uint8_t dev_id, uint8_t port_id, uint8_t queues[],
 	RTE_EVENTDEV_VALID_DEVID_OR_ERRNO_RET(dev_id, EINVAL, 0);
 	dev = &rte_eventdevs[dev_id];
 
-	if (*dev->dev_ops->dev_infos_get == NULL)
+	if (dev->dev_ops->dev_infos_get == NULL)
 		return -ENOTSUP;
 
-	(*dev->dev_ops->dev_infos_get)(dev, &info);
+	dev->dev_ops->dev_infos_get(dev, &info);
 	if (profile_id >= RTE_EVENT_MAX_PROFILES_PER_PORT ||
 	    profile_id >= info.max_profiles_per_port) {
 		RTE_EDEV_LOG_ERR("Invalid profile_id=%" PRIu8, profile_id);
 		return -EINVAL;
 	}
 
-	if (*dev->dev_ops->port_unlink == NULL) {
+	if (dev->dev_ops->port_unlink == NULL) {
 		RTE_EDEV_LOG_ERR("Function not supported");
 		rte_errno = ENOTSUP;
 		return 0;
 	}
 
-	if (profile_id && *dev->dev_ops->port_unlink_profile == NULL) {
+	if (profile_id && dev->dev_ops->port_unlink_profile == NULL) {
 		RTE_EDEV_LOG_ERR("Function not supported");
 		rte_errno = ENOTSUP;
 		return 0;
@@ -1145,11 +1194,11 @@ rte_event_port_profile_unlink(uint8_t dev_id, uint8_t port_id, uint8_t queues[],
 		}
 
 	if (profile_id)
-		diag = (*dev->dev_ops->port_unlink_profile)(dev, dev->data->ports[port_id], queues,
-							    nb_unlinks, profile_id);
+		diag = dev->dev_ops->port_unlink_profile(dev, dev->data->ports[port_id], queues,
+							 nb_unlinks, profile_id);
 	else
-		diag = (*dev->dev_ops->port_unlink)(dev, dev->data->ports[port_id], queues,
-						    nb_unlinks);
+		diag = dev->dev_ops->port_unlink(dev, dev->data->ports[port_id], queues,
+						 nb_unlinks);
 	if (diag < 0)
 		return diag;
 
@@ -1160,6 +1209,7 @@ rte_event_port_profile_unlink(uint8_t dev_id, uint8_t port_id, uint8_t queues[],
 	return diag;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_port_unlinks_in_progress)
 int
 rte_event_port_unlinks_in_progress(uint8_t dev_id, uint8_t port_id)
 {
@@ -1178,13 +1228,13 @@ rte_event_port_unlinks_in_progress(uint8_t dev_id, uint8_t port_id)
 	 * This allows PMDs which handle unlink synchronously to not implement
 	 * this function at all.
 	 */
-	if (*dev->dev_ops->port_unlinks_in_progress == NULL)
+	if (dev->dev_ops->port_unlinks_in_progress == NULL)
 		return 0;
 
-	return (*dev->dev_ops->port_unlinks_in_progress)(dev,
-			dev->data->ports[port_id]);
+	return dev->dev_ops->port_unlinks_in_progress(dev, dev->data->ports[port_id]);
 }
 
+RTE_EXPORT_SYMBOL(rte_event_port_links_get)
 int
 rte_event_port_links_get(uint8_t dev_id, uint8_t port_id,
 			 uint8_t queues[], uint8_t priorities[])
@@ -1217,6 +1267,7 @@ rte_event_port_links_get(uint8_t dev_id, uint8_t port_id,
 	return count;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_port_profile_links_get, 23.11)
 int
 rte_event_port_profile_links_get(uint8_t dev_id, uint8_t port_id, uint8_t queues[],
 				 uint8_t priorities[], uint8_t profile_id)
@@ -1229,10 +1280,10 @@ rte_event_port_profile_links_get(uint8_t dev_id, uint8_t port_id, uint8_t queues
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 
 	dev = &rte_eventdevs[dev_id];
-	if (*dev->dev_ops->dev_infos_get == NULL)
+	if (dev->dev_ops->dev_infos_get == NULL)
 		return -ENOTSUP;
 
-	(*dev->dev_ops->dev_infos_get)(dev, &info);
+	dev->dev_ops->dev_infos_get(dev, &info);
 	if (profile_id >= RTE_EVENT_MAX_PROFILES_PER_PORT ||
 	    profile_id >= info.max_profiles_per_port) {
 		RTE_EDEV_LOG_ERR("Invalid profile_id=%" PRIu8, profile_id);
@@ -1260,6 +1311,7 @@ rte_event_port_profile_links_get(uint8_t dev_id, uint8_t port_id, uint8_t queues
 	return count;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_dequeue_timeout_ticks)
 int
 rte_event_dequeue_timeout_ticks(uint8_t dev_id, uint64_t ns,
 				 uint64_t *timeout_ticks)
@@ -1270,15 +1322,16 @@ rte_event_dequeue_timeout_ticks(uint8_t dev_id, uint64_t ns,
 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_eventdevs[dev_id];
-	if (*dev->dev_ops->timeout_ticks == NULL)
+	if (dev->dev_ops->timeout_ticks == NULL)
 		return -ENOTSUP;
 
 	if (timeout_ticks == NULL)
 		return -EINVAL;
 
-	return (*dev->dev_ops->timeout_ticks)(dev, ns, timeout_ticks);
+	return dev->dev_ops->timeout_ticks(dev, ns, timeout_ticks);
 }
 
+RTE_EXPORT_SYMBOL(rte_event_dev_service_id_get)
 int
 rte_event_dev_service_id_get(uint8_t dev_id, uint32_t *service_id)
 {
@@ -1298,6 +1351,7 @@ rte_event_dev_service_id_get(uint8_t dev_id, uint32_t *service_id)
 	return dev->data->service_inited ? 0 : -ESRCH;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_dev_dump)
 int
 rte_event_dev_dump(uint8_t dev_id, FILE *f)
 {
@@ -1305,12 +1359,12 @@ rte_event_dev_dump(uint8_t dev_id, FILE *f)
 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_eventdevs[dev_id];
-	if (*dev->dev_ops->dump == NULL)
+	if (dev->dev_ops->dump == NULL)
 		return -ENOTSUP;
 	if (f == NULL)
 		return -EINVAL;
 
-	(*dev->dev_ops->dump)(dev, f);
+	dev->dev_ops->dump(dev, f);
 	return 0;
 
 }
@@ -1321,12 +1375,11 @@ xstats_get_count(uint8_t dev_id, enum rte_event_dev_xstats_mode mode,
 {
 	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
 	if (dev->dev_ops->xstats_get_names != NULL)
-		return (*dev->dev_ops->xstats_get_names)(dev, mode,
-							queue_port_id,
-							NULL, NULL, 0);
+		return dev->dev_ops->xstats_get_names(dev, mode, queue_port_id, NULL, NULL, 0);
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_dev_xstats_names_get)
 int
 rte_event_dev_xstats_names_get(uint8_t dev_id,
 		enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
@@ -1344,13 +1397,14 @@ rte_event_dev_xstats_names_get(uint8_t dev_id,
 	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
 
 	if (dev->dev_ops->xstats_get_names != NULL)
-		return (*dev->dev_ops->xstats_get_names)(dev, mode,
-				queue_port_id, xstats_names, ids, size);
+		return dev->dev_ops->xstats_get_names(dev, mode, queue_port_id,
+						      xstats_names, ids, size);
 
 	return -ENOTSUP;
 }
 
 /* retrieve eventdev extended statistics */
+RTE_EXPORT_SYMBOL(rte_event_dev_xstats_get)
 int
 rte_event_dev_xstats_get(uint8_t dev_id, enum rte_event_dev_xstats_mode mode,
 		uint8_t queue_port_id, const uint64_t ids[],
@@ -1361,11 +1415,12 @@ rte_event_dev_xstats_get(uint8_t dev_id, enum rte_event_dev_xstats_mode mode,
 
 	/* implemented by the driver */
 	if (dev->dev_ops->xstats_get != NULL)
-		return (*dev->dev_ops->xstats_get)(dev, mode, queue_port_id,
-				ids, values, n);
+		return dev->dev_ops->xstats_get(dev, mode, queue_port_id,
+						ids, values, n);
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_dev_xstats_by_name_get)
 uint64_t
 rte_event_dev_xstats_by_name_get(uint8_t dev_id, const char *name,
 		uint64_t *id)
@@ -1381,10 +1436,11 @@ rte_event_dev_xstats_by_name_get(uint8_t dev_id, const char *name,
 
 	/* implemented by driver */
 	if (dev->dev_ops->xstats_get_by_name != NULL)
-		return (*dev->dev_ops->xstats_get_by_name)(dev, name, id);
+		return dev->dev_ops->xstats_get_by_name(dev, name, id);
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_dev_xstats_reset)
 int rte_event_dev_xstats_reset(uint8_t dev_id,
 		enum rte_event_dev_xstats_mode mode, int16_t queue_port_id,
 		const uint64_t ids[], uint32_t nb_ids)
@@ -1393,13 +1449,14 @@ int rte_event_dev_xstats_reset(uint8_t dev_id,
 	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
 
 	if (dev->dev_ops->xstats_reset != NULL)
-		return (*dev->dev_ops->xstats_reset)(dev, mode, queue_port_id,
-							ids, nb_ids);
+		return dev->dev_ops->xstats_reset(dev, mode, queue_port_id, ids, nb_ids);
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_event_pmd_selftest_seqn_dynfield_offset)
 int rte_event_pmd_selftest_seqn_dynfield_offset = -1;
 
+RTE_EXPORT_SYMBOL(rte_event_dev_selftest)
 int rte_event_dev_selftest(uint8_t dev_id)
 {
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
@@ -1415,11 +1472,12 @@ int rte_event_dev_selftest(uint8_t dev_id)
 			rte_mbuf_dynfield_register(&test_seqn_dynfield_desc);
 		if (rte_event_pmd_selftest_seqn_dynfield_offset < 0)
 			return -ENOMEM;
-		return (*dev->dev_ops->dev_selftest)();
+		return dev->dev_ops->dev_selftest();
 	}
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_vector_pool_create)
 struct rte_mempool *
 rte_event_vector_pool_create(const char *name, unsigned int n,
 			     unsigned int cache_size, uint16_t nb_elem,
@@ -1465,6 +1523,7 @@ err:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_dev_start)
 int
 rte_event_dev_start(uint8_t dev_id)
 {
@@ -1475,7 +1534,7 @@ rte_event_dev_start(uint8_t dev_id)
 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_eventdevs[dev_id];
-	if (*dev->dev_ops->dev_start == NULL)
+	if (dev->dev_ops->dev_start == NULL)
 		return -ENOTSUP;
 
 	if (dev->data->dev_started != 0) {
@@ -1484,7 +1543,7 @@ rte_event_dev_start(uint8_t dev_id)
 		return 0;
 	}
 
-	diag = (*dev->dev_ops->dev_start)(dev);
+	diag = (dev->dev_ops->dev_start)(dev);
 	rte_eventdev_trace_start(dev_id, diag);
 	if (diag == 0)
 		dev->data->dev_started = 1;
@@ -1496,6 +1555,7 @@ rte_event_dev_start(uint8_t dev_id)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_dev_stop_flush_callback_register)
 int
 rte_event_dev_stop_flush_callback_register(uint8_t dev_id,
 					   rte_eventdev_stop_flush_t callback,
@@ -1516,6 +1576,7 @@ rte_event_dev_stop_flush_callback_register(uint8_t dev_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_dev_stop)
 void
 rte_event_dev_stop(uint8_t dev_id)
 {
@@ -1525,7 +1586,7 @@ rte_event_dev_stop(uint8_t dev_id)
 
 	RTE_EVENTDEV_VALID_DEVID_OR_RET(dev_id);
 	dev = &rte_eventdevs[dev_id];
-	if (*dev->dev_ops->dev_stop == NULL)
+	if (dev->dev_ops->dev_stop == NULL)
 		return;
 
 	if (dev->data->dev_started == 0) {
@@ -1535,11 +1596,12 @@ rte_event_dev_stop(uint8_t dev_id)
 	}
 
 	dev->data->dev_started = 0;
-	(*dev->dev_ops->dev_stop)(dev);
+	dev->dev_ops->dev_stop(dev);
 	rte_eventdev_trace_stop(dev_id);
 	event_dev_fp_ops_reset(rte_event_fp_ops + dev_id);
 }
 
+RTE_EXPORT_SYMBOL(rte_event_dev_close)
 int
 rte_event_dev_close(uint8_t dev_id)
 {
@@ -1547,7 +1609,7 @@ rte_event_dev_close(uint8_t dev_id)
 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_eventdevs[dev_id];
-	if (*dev->dev_ops->dev_close == NULL)
+	if (dev->dev_ops->dev_close == NULL)
 		return -ENOTSUP;
 
 	/* Device must be stopped before it can be closed */
@@ -1559,7 +1621,7 @@ rte_event_dev_close(uint8_t dev_id)
 
 	event_dev_fp_ops_reset(rte_event_fp_ops + dev_id);
 	rte_eventdev_trace_close(dev_id);
-	return (*dev->dev_ops->dev_close)(dev);
+	return dev->dev_ops->dev_close(dev);
 }
 
 static inline int
@@ -1610,6 +1672,7 @@ eventdev_find_free_device_index(void)
 	return RTE_EVENT_MAX_DEVS;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_event_pmd_allocate)
 struct rte_eventdev *
 rte_event_pmd_allocate(const char *name, int socket_id)
 {
@@ -1658,6 +1721,7 @@ rte_event_pmd_allocate(const char *name, int socket_id)
 	return eventdev;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_event_pmd_release)
 int
 rte_event_pmd_release(struct rte_eventdev *eventdev)
 {
@@ -1694,6 +1758,7 @@ rte_event_pmd_release(struct rte_eventdev *eventdev)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(event_dev_probing_finish)
 void
 event_dev_probing_finish(struct rte_eventdev *eventdev)
 {
@@ -1721,6 +1786,41 @@ handle_dev_list(const char *cmd __rte_unused,
 				RTE_EVENTDEV_ATTACHED)
 			rte_tel_data_add_array_int(d, dev_id);
 	}
+
+	return 0;
+}
+
+static int
+handle_dev_info(const char *cmd __rte_unused,
+		const char *params,
+		struct rte_tel_data *d)
+{
+	uint8_t dev_id;
+	struct rte_eventdev *dev;
+	char *end_param;
+
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -1;
+
+	dev_id = strtoul(params, &end_param, 10);
+	if (*end_param != '\0')
+		RTE_EDEV_LOG_DEBUG(
+			"Extra parameters passed to eventdev telemetry command, ignoring");
+
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	dev = &rte_eventdevs[dev_id];
+
+	rte_tel_data_start_dict(d);
+	rte_tel_data_add_dict_int(d, "dev_id", dev_id);
+	rte_tel_data_add_dict_string(d, "dev_name", dev->dev->name);
+	rte_tel_data_add_dict_string(d, "dev_driver", dev->dev->driver->name);
+	rte_tel_data_add_dict_string(d, "state",
+		dev->data->dev_started ? "started" : "stopped");
+	rte_tel_data_add_dict_int(d, "socket_id", dev->data->socket_id);
+	rte_tel_data_add_dict_int(d, "nb_queues", dev->data->nb_queues);
+	rte_tel_data_add_dict_int(d, "nb_ports", dev->data->nb_ports);
+	rte_tel_data_add_dict_uint_hex(d, "capabilities", dev->data->event_dev_cap,
+		sizeof(dev->data->event_dev_cap) * CHAR_BIT);
 
 	return 0;
 }
@@ -2030,6 +2130,17 @@ RTE_INIT(eventdev_init_telemetry)
 {
 	rte_telemetry_register_cmd("/eventdev/dev_list", handle_dev_list,
 			"Returns list of available eventdevs. Takes no parameters");
+	rte_telemetry_register_cmd("/eventdev/dev_info", handle_dev_info,
+			"Returns basic info about an eventdev. Parameter: DevID");
+
+	/* alias "dev_list" and "dev_info" as just "list" and "info" to match
+	 * other categories, such as ethdev, ring, mempool etc.
+	 */
+	rte_telemetry_register_cmd("/eventdev/list", handle_dev_list,
+			"Returns list of available eventdevs. Takes no parameters");
+	rte_telemetry_register_cmd("/eventdev/info", handle_dev_info,
+			"Returns basic info about an eventdev. Parameter: DevID");
+
 	rte_telemetry_register_cmd("/eventdev/port_list", handle_port_list,
 			"Returns list of available ports. Parameter: DevID");
 	rte_telemetry_register_cmd("/eventdev/queue_list", handle_queue_list,

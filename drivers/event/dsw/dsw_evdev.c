@@ -23,15 +23,20 @@ dsw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 	struct rte_event_ring *in_ring;
 	struct rte_ring *ctl_in_ring;
 	char ring_name[RTE_RING_NAMESIZE];
+	bool implicit_release;
 
 	port = &dsw->ports[port_id];
+
+	implicit_release =
+	    !(conf->event_port_cfg & RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL);
 
 	*port = (struct dsw_port) {
 		.id = port_id,
 		.dsw = dsw,
 		.dequeue_depth = conf->dequeue_depth,
 		.enqueue_depth = conf->enqueue_depth,
-		.new_event_threshold = conf->new_event_threshold
+		.new_event_threshold = conf->new_event_threshold,
+		.implicit_release = implicit_release
 	};
 
 	snprintf(ring_name, sizeof(ring_name), "dsw%d_p%u", dev->data->dev_id,
@@ -118,6 +123,7 @@ dsw_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
 		queue->schedule_type = conf->schedule_type;
 	}
 
+	rte_bitset_init(queue->serving_ports, DSW_MAX_PORTS);
 	queue->num_serving_ports = 0;
 
 	return 0;
@@ -144,20 +150,16 @@ dsw_queue_release(struct rte_eventdev *dev __rte_unused,
 static void
 queue_add_port(struct dsw_queue *queue, uint16_t port_id)
 {
-	uint64_t port_mask = UINT64_C(1) << port_id;
-
-	queue->serving_ports |=	port_mask;
+	rte_bitset_set(queue->serving_ports, port_id);
 	queue->num_serving_ports++;
 }
 
 static bool
 queue_remove_port(struct dsw_queue *queue, uint16_t port_id)
 {
-	uint64_t port_mask = UINT64_C(1) << port_id;
-
-	if (queue->serving_ports & port_mask) {
+	if (rte_bitset_test(queue->serving_ports, port_id)) {
 		queue->num_serving_ports--;
-		queue->serving_ports ^= port_mask;
+		rte_bitset_clear(queue->serving_ports, port_id);
 		return true;
 	}
 
@@ -222,9 +224,11 @@ dsw_info_get(struct rte_eventdev *dev __rte_unused,
 		RTE_EVENT_DEV_CAP_ATOMIC |
 		RTE_EVENT_DEV_CAP_PARALLEL |
 		RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED|
+		RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE|
 		RTE_EVENT_DEV_CAP_NONSEQ_MODE|
 		RTE_EVENT_DEV_CAP_MULTIPLE_QUEUE_PORT|
-		RTE_EVENT_DEV_CAP_CARRY_FLOW_ID
+		RTE_EVENT_DEV_CAP_CARRY_FLOW_ID |
+		RTE_EVENT_DEV_CAP_INDEPENDENT_ENQ
 	};
 }
 
@@ -257,14 +261,12 @@ initial_flow_to_port_assignment(struct dsw_evdev *dsw)
 		struct dsw_queue *queue = &dsw->queues[queue_id];
 		uint16_t flow_hash;
 		for (flow_hash = 0; flow_hash < DSW_MAX_FLOWS; flow_hash++) {
-			uint8_t skip =
-				rte_rand_max(queue->num_serving_ports);
+			uint8_t skip = rte_rand_max(queue->num_serving_ports);
 			uint8_t port_id;
 
 			for (port_id = 0;; port_id++) {
-				uint64_t port_mask = UINT64_C(1) << port_id;
-
-				if (queue->serving_ports & port_mask) {
+				if (rte_bitset_test(queue->serving_ports,
+						    port_id)) {
 					if (skip == 0)
 						break;
 					skip--;
@@ -451,11 +453,9 @@ dsw_probe(struct rte_vdev_device *vdev)
 		return -EFAULT;
 
 	dev->dev_ops = &dsw_evdev_ops;
-	dev->enqueue = dsw_event_enqueue;
 	dev->enqueue_burst = dsw_event_enqueue_burst;
 	dev->enqueue_new_burst = dsw_event_enqueue_new_burst;
 	dev->enqueue_forward_burst = dsw_event_enqueue_forward_burst;
-	dev->dequeue = dsw_event_dequeue;
 	dev->dequeue_burst = dsw_event_dequeue_burst;
 	dev->maintain = dsw_event_maintain;
 
@@ -487,3 +487,4 @@ static struct rte_vdev_driver evdev_dsw_pmd_drv = {
 };
 
 RTE_PMD_REGISTER_VDEV(EVENTDEV_NAME_DSW_PMD, evdev_dsw_pmd_drv);
+RTE_LOG_REGISTER_DEFAULT(event_dsw_logtype, NOTICE);

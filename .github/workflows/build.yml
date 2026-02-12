@@ -9,7 +9,30 @@ defaults:
   run:
     shell: bash --noprofile --norc -exo pipefail {0}
 
+env:
+  REF_GIT_BRANCH: main
+  REF_GIT_REPO: https://github.com/DPDK/dpdk
+  REF_GIT_TAG: v25.11
+
 jobs:
+  checkpatch:
+    if: github.repository != 'DPDK/dpdk'
+    name: Check patches
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout sources
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Check patches
+      run: |
+        git remote add upstream ${{ env.REF_GIT_REPO }}
+        git fetch upstream ${{ env.REF_GIT_BRANCH }}
+        failed=
+        devtools/check-doc-vs-code.sh upstream/${{ env.REF_GIT_BRANCH }} || failed=true
+        devtools/check-meson.py || failed=true
+        devtools/check-spdx-tag.sh || failed=true
+        [ -z "$failed" ]
   ubuntu-vm-builds:
     name: ${{ join(matrix.config.*, '-') }}
     runs-on: ${{ matrix.config.os }}
@@ -22,15 +45,37 @@ jobs:
       BUILD_DOCS: ${{ contains(matrix.config.checks, 'doc') }}
       BUILD_EXAMPLES: ${{ contains(matrix.config.checks, 'examples') }}
       CC: ccache ${{ matrix.config.compiler }}
+      CCACHE_DIR: $HOME/.ccache
       DEF_LIB: ${{ matrix.config.library }}
-      LIBABIGAIL_VERSION: libabigail-2.4
+      LIBABIGAIL_VERSION: libabigail-2.6
       MINGW: ${{ matrix.config.cross == 'mingw' }}
       MINI: ${{ matrix.config.mini != '' }}
       PPC64LE: ${{ matrix.config.cross == 'ppc64le' }}
-      REF_GIT_TAG: v23.11
       RISCV64: ${{ matrix.config.cross == 'riscv64' }}
       RUN_TESTS: ${{ contains(matrix.config.checks, 'tests') }}
       STDATOMIC: ${{ contains(matrix.config.checks, 'stdatomic') }}
+      UBSAN: ${{ contains(matrix.config.checks, 'ubsan') }}
+      build_deps: |
+        ccache \
+        libarchive-dev \
+        libbsd-dev \
+        libbpf-dev \
+        libfdt-dev \
+        libibverbs-dev \
+        libipsec-mb-dev \
+        libisal-dev \
+        libjansson-dev \
+        libnuma-dev \
+        libpcap-dev \
+        libssl-dev \
+        libvirt-dev \
+        ninja-build \
+        pkg-config \
+        python3-pip \
+        python3-pyelftools \
+        python3-setuptools \
+        python3-wheel \
+        zlib1g-dev
 
     strategy:
       fail-fast: false
@@ -39,6 +84,10 @@ jobs:
           - os: ubuntu-22.04
             compiler: gcc
             mini: mini
+          - os: ubuntu-22.04
+            compiler: clang
+            library: shared
+            checks: tests+ubsan
           - os: ubuntu-22.04
             compiler: gcc
             checks: stdatomic
@@ -105,13 +154,10 @@ jobs:
     - name: Update APT cache
       run: sudo apt update || true
     - name: Install packages
-      run: sudo apt install -y ccache libarchive-dev libbsd-dev libbpf-dev
-        libfdt-dev libibverbs-dev libipsec-mb-dev libisal-dev libjansson-dev
-        libnuma-dev libpcap-dev libssl-dev ninja-build pkg-config python3-pip
-        python3-pyelftools python3-setuptools python3-wheel zlib1g-dev
+      run: sudo apt install -y ${{ env.build_deps }}
     - name: Install libabigail build dependencies if no cache is available
       if: env.ABI_CHECKS == 'true' && steps.libabigail-cache.outputs.cache-hit != 'true'
-      run: sudo apt install -y autoconf automake libdw-dev libtool libxml2-dev
+      run: sudo apt install -y autoconf automake libdw-dev libtool libxml2-dev libxxhash-dev
     - name: Install i386 cross compiling packages
       if: env.BUILD_32BIT == 'true'
       run: sudo apt install -y gcc-multilib g++-multilib libnuma-dev:i386
@@ -129,7 +175,7 @@ jobs:
       run: sudo apt install -y crossbuild-essential-riscv64
     - name: Install test tools packages
       if: env.AARCH64 != 'true' || env.PPC64LE != 'true' || env.RISCV64 != 'true' || env.RUN_TESTS == 'true'
-      run: sudo apt install -y gdb jq
+      run: sudo apt install -y babeltrace gdb jq
     - name: Install doc generation packages
       if: env.BUILD_DOCS == 'true'
       run: sudo apt install -y doxygen graphviz man-db python3-sphinx
@@ -139,15 +185,14 @@ jobs:
         .ci/linux-setup.sh
         # Workaround on $HOME permissions as EAL checks them for plugin loading
         chmod o-w $HOME
-    - name: Reduce ASLR entropy
-      if: env.ASAN == 'true'
-      # ASan in llvm 14 provided in ubuntu-22.04 is incompatible with
-      # high-entropy ASLR configured in much newer kernels that GitHub
-      # runners are using leading to random crashes:
-      #   https://github.com/actions/runner-images/issues/9491
-      run: sudo sysctl -w vm.mmap_rnd_bits=28
     - name: Build and test
       run: .ci/linux-build.sh
+    - name: Save ccache on failure
+      if: failure()
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.ccache
+        key: ${{ steps.get_ref_keys.outputs.ccache }}-${{ github.ref }}
     - name: Upload logs on failure
       if: failure()
       uses: actions/upload-artifact@v4
@@ -159,22 +204,86 @@ jobs:
           build/meson-logs/meson-log.txt
           build/meson-logs/testlog.txt
 
+  windows-vm-builds:
+    name: ${{ join(matrix.config.*, '-') }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - os: windows-2022
+            compiler: msvc
+
+    steps:
+    - name: Checkout sources
+      uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+    - name: Install dependencies
+      run: python -m pip install meson==1.6.1 ninja
+    - name: Configure
+      shell: cmd
+      run: |
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat" -host_arch=amd64 -arch=amd64
+        meson setup -Denable_stdatomic=true -Dwerror=true build
+    - name: Build
+      shell: cmd
+      run: |
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat" -host_arch=amd64 -arch=amd64
+        meson compile -C build
+    - name: Upload logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: meson-logs-${{ join(matrix.config.*, '-') }}
+        path: |
+          build/.ninja_log
+          build/meson-logs/meson-log.txt
+
   prepare-container-images:
     name: ${{ join(matrix.config.*, '-') }}
     runs-on: ubuntu-latest
+    env:
+      build_deps: |
+        ccache \
+        esmi_ib_library-devel \
+        intel-ipsec-mb-devel \
+        isa-l-devel \
+        jansson-devel \
+        libarchive-devel \
+        libatomic \
+        libbsd-devel \
+        libbpf-devel \
+        libfdt-devel \
+        libpcap-devel \
+        libvirt-devel \
+        libxdp-devel \
+        ninja-build \
+        numactl-devel \
+        openssl-devel \
+        python3-pip \
+        python3-pyelftools \
+        python3-setuptools \
+        python3-wheel \
+        rdma-core-devel \
+        zlib-devel
     outputs:
+      build_deps: ${{ steps.get_keys.outputs.build_deps }}
       image: ${{ steps.get_keys.outputs.image }}
 
     strategy:
       fail-fast: false
       matrix:
         config:
-          - image: fedora:39
+          - image: fedora:43
 
     steps:
     - name: Generate various keys
       id: get_keys
       run: |
+        echo 'build_deps='$(echo -n ${{ env.build_deps }}) >> $GITHUB_OUTPUT
         echo 'image=image-${{ matrix.config.image }}-'$(date -u +%Y-%m-%d) >> $GITHUB_OUTPUT
     - name: Retrieve image cache
       id: image_cache
@@ -194,11 +303,7 @@ jobs:
       run: docker exec -i dpdk dnf update -y
     - name: Install packages
       if: steps.image_cache.outputs.cache-hit != 'true'
-      run: docker exec -i dpdk dnf install -y ccache intel-ipsec-mb-devel
-        isa-l-devel jansson-devel libarchive-devel libatomic libbsd-devel
-        libbpf-devel libfdt-devel libpcap-devel libxdp-devel ninja-build
-        numactl-devel openssl-devel python3-pip python3-pyelftools
-        python3-setuptools python3-wheel rdma-core-devel zlib-devel
+      run: docker exec -i dpdk dnf install -y ${{ env.build_deps }}
     - name: Save image in cache
       if: steps.image_cache.outputs.cache-hit != 'true'
       run: |
@@ -218,9 +323,10 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - image: fedora:39
+          - image: fedora:43
             compiler: gcc
-          - image: fedora:39
+            checks: minsize
+          - image: fedora:43
             compiler: clang
 
     steps:
@@ -254,8 +360,10 @@ jobs:
         mkdir -p ~/.ccache
         > ~/env
         echo CC=ccache ${{ matrix.config.compiler }} >> ~/env
+        echo CCACHE_DIR=/root/.ccache >> ~/env
         echo DEF_LIB=${{ matrix.config.library }} >> ~/env
         echo STDATOMIC=false >> ~/env
+        echo BUILD_MINSIZE=${{ contains(matrix.config.checks, 'minsize') }} >> ~/env
     - name: Load the cached image
       run: |
         docker load -i ~/.image/${{ matrix.config.image }}.tar
@@ -269,11 +377,8 @@ jobs:
     - name: Update
       run: docker exec -i dpdk dnf update -y || true
     - name: Install packages
-      run: docker exec -i dpdk dnf install -y ccache intel-ipsec-mb-devel
-        isa-l-devel jansson-devel libarchive-devel libatomic libbsd-devel
-        libbpf-devel libfdt-devel libpcap-devel libxdp-devel ninja-build
-        numactl-devel openssl-devel python3-pip python3-pyelftools
-        python3-setuptools python3-wheel rdma-core-devel zlib-devel
+      run: docker exec -i dpdk dnf install -y
+        ${{ needs.prepare-container-images.outputs.build_deps }}
         ${{ matrix.config.compiler }}
     - name: Run setup
       run: docker exec -i dpdk .ci/linux-setup.sh

@@ -2,6 +2,7 @@
  * Copyright(c) 2018 Gaëtan Rivet
  */
 
+#include <eal_export.h>
 #include <rte_debug.h>
 
 #include "rte_ethdev.h"
@@ -151,11 +152,20 @@ rte_eth_devargs_parse_representor_ports(char *str, void *data)
 		if (str == NULL)
 			goto done;
 	}
-	if (str[0] == 'p' && str[1] == 'f') {
+	/* pfX... or (pfX)... */
+	if ((str[0] == 'p' && str[1] == 'f') ||
+	    (str[0] == '(' && str[1] == 'p' && str[2] == 'f')) {
 		eth_da->type = RTE_ETH_REPRESENTOR_PF;
-		str += 2;
+		if (str[0] == '(')
+			str++; /* advance past leading "(" */
+		str += 2; /* advance past "pf" */
 		str = rte_eth_devargs_process_list(str, eth_da->ports,
 				&eth_da->nb_ports, RTE_DIM(eth_da->ports));
+		if (str != NULL && str[0] == ')') {
+			str++; /* advance past ")" */
+			eth_da->flags =
+				RTE_ETH_DEVARG_REPRESENTOR_IGNORE_PF;
+		}
 		if (str == NULL || str[0] == '\0')
 			goto done;
 	} else if (eth_da->nb_mh_controllers > 0) {
@@ -285,6 +295,7 @@ eth_dev_fp_ops_setup(struct rte_eth_fp_ops *fpo,
 	fpo->txq.clbk = (void * __rte_atomic *)(uintptr_t)dev->pre_tx_burst_cbs;
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_call_rx_callbacks)
 uint16_t
 rte_eth_call_rx_callbacks(uint16_t port_id, uint16_t queue_id,
 	struct rte_mbuf **rx_pkts, uint16_t nb_rx, uint16_t nb_pkts,
@@ -298,12 +309,17 @@ rte_eth_call_rx_callbacks(uint16_t port_id, uint16_t queue_id,
 		cb = cb->next;
 	}
 
-	rte_eth_trace_call_rx_callbacks(port_id, queue_id, (void **)rx_pkts,
-					nb_rx, nb_pkts);
+	if (unlikely(nb_rx))
+		rte_eth_trace_call_rx_callbacks_nonempty(port_id, queue_id, (void **)rx_pkts,
+						nb_rx, nb_pkts);
+	else
+		rte_eth_trace_call_rx_callbacks_empty(port_id, queue_id, (void **)rx_pkts,
+						nb_pkts);
 
 	return nb_rx;
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_call_tx_callbacks)
 uint16_t
 rte_eth_call_tx_callbacks(uint16_t port_id, uint16_t queue_id,
 	struct rte_mbuf **tx_pkts, uint16_t nb_pkts, void *opaque)
@@ -336,7 +352,7 @@ eth_dev_shared_data_prepare(void)
 		/* Allocate port data and ownership shared memory. */
 		mz = rte_memzone_reserve(MZ_RTE_ETH_DEV_DATA,
 				sizeof(*eth_dev_shared_data),
-				rte_socket_id(), flags);
+				SOCKET_ID_ANY, flags);
 		if (mz == NULL) {
 			RTE_ETHDEV_LOG_LINE(ERR, "Cannot allocate ethdev shared data");
 			goto out;
@@ -394,7 +410,7 @@ eth_dev_rxq_release(struct rte_eth_dev *dev, uint16_t qid)
 		return;
 
 	if (dev->dev_ops->rx_queue_release != NULL)
-		(*dev->dev_ops->rx_queue_release)(dev, qid);
+		dev->dev_ops->rx_queue_release(dev, qid);
 	rxq[qid] = NULL;
 }
 
@@ -407,7 +423,7 @@ eth_dev_txq_release(struct rte_eth_dev *dev, uint16_t qid)
 		return;
 
 	if (dev->dev_ops->tx_queue_release != NULL)
-		(*dev->dev_ops->tx_queue_release)(dev, qid);
+		dev->dev_ops->tx_queue_release(dev, qid);
 	txq[qid] = NULL;
 }
 
@@ -469,4 +485,31 @@ eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 	}
 	dev->data->nb_tx_queues = nb_queues;
 	return 0;
+}
+
+int
+eth_stats_qstats_get(uint16_t port_id, struct rte_eth_stats *stats, struct eth_queue_stats *qstats)
+{
+	struct rte_eth_dev *dev;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (stats == NULL) {
+		RTE_ETHDEV_LOG_LINE(ERR, "Cannot get ethdev port %u stats to NULL",
+				port_id);
+		return -EINVAL;
+	}
+
+	memset(stats, 0, sizeof(*stats));
+	if (qstats != NULL)
+		memset(qstats, 0, sizeof(*qstats));
+
+	if (dev->dev_ops->stats_get == NULL)
+		return -ENOTSUP;
+	stats->rx_nombuf = dev->data->rx_mbuf_alloc_failed;
+	ret = eth_err(port_id, dev->dev_ops->stats_get(dev, stats, qstats));
+
+	return ret;
 }

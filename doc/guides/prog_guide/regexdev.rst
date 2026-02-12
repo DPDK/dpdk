@@ -1,8 +1,8 @@
 .. SPDX-License-Identifier: BSD-3-Clause
    Copyright 2020 Mellanox Technologies, Ltd
 
-RegEx Device Library
-====================
+Regular Expression (RegEx) Device Library
+=========================================
 
 The RegEx library provides a RegEx device framework for management and
 provisioning of hardware and software RegEx poll mode drivers, defining generic

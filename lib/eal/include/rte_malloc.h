@@ -32,13 +32,56 @@ struct rte_malloc_socket_stats {
 };
 
 /**
+ * Functions that expect return value to be freed with rte_free()
+ */
+#define __rte_dealloc_free __rte_dealloc(rte_free, 1)
+
+/**
+ * Frees the memory space pointed to by the provided pointer.
+ *
+ * This pointer must have been returned by a previous call to
+ * rte_malloc(), rte_zmalloc(), rte_calloc() or rte_realloc(). The behaviour of
+ * rte_free() is undefined if the pointer does not match this requirement.
+ *
+ * If the pointer is NULL, the function does nothing.
+ *
+ * @param ptr
+ *   The pointer to memory to be freed.
+ */
+void
+rte_free(void *ptr);
+
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Frees the memory space pointed to by the provided pointer
+ * and guarantees it will be zero'd before reuse.
+ * This function is slower than simple rte_free() it should only
+ * be used for security keys and other sensitive data.
+ *
+ * This pointer must have been returned by a previous call to
+ * rte_malloc(), rte_zmalloc(), rte_calloc() or rte_realloc(). The behaviour of
+ * rte_free() is undefined if the pointer does not match this requirement.
+ *
+ * If the pointer is NULL, the function does nothing.
+ *
+ * @param ptr
+ *   The pointer to memory to be freed.
+ */
+__rte_experimental
+void
+rte_free_sensitive(void *ptr);
+
+/**
  * This function allocates memory from the huge-page area of memory. The memory
  * is not cleared. In NUMA systems, the memory allocated resides on the same
  * NUMA socket as the core that calls this function.
  *
  * @param type
- *   A string identifying the type of allocated objects (useful for debug
- *   purposes, such as identifying the cause of a memory leak). Can be NULL.
+ *   A string identifying the type of allocated objects (useful for tracing).
+ *   Can be NULL.
  * @param size
  *   Size (in bytes) to be allocated.
  * @param align
@@ -54,7 +97,8 @@ struct rte_malloc_socket_stats {
  */
 void *
 rte_malloc(const char *type, size_t size, unsigned align)
-	__rte_alloc_size(2);
+	__rte_alloc_size(2) __rte_alloc_align(3)
+	__rte_malloc __rte_dealloc_free;
 
 /**
  * Allocate zeroed memory from the heap.
@@ -64,8 +108,8 @@ rte_malloc(const char *type, size_t size, unsigned align)
  * same NUMA socket as the core that calls this function.
  *
  * @param type
- *   A string identifying the type of allocated objects (useful for debug
- *   purposes, such as identifying the cause of a memory leak). Can be NULL.
+ *   A string identifying the type of allocated objects (useful for tracing).
+ *   Can be NULL.
  * @param size
  *   Size (in bytes) to be allocated.
  * @param align
@@ -81,7 +125,8 @@ rte_malloc(const char *type, size_t size, unsigned align)
  */
 void *
 rte_zmalloc(const char *type, size_t size, unsigned align)
-	__rte_alloc_size(2);
+	__rte_alloc_size(2) __rte_alloc_align(3)
+	__rte_malloc __rte_dealloc_free;
 
 /**
  * Replacement function for calloc(), using huge-page memory. Memory area is
@@ -89,8 +134,8 @@ rte_zmalloc(const char *type, size_t size, unsigned align)
  * same NUMA socket as the core that calls this function.
  *
  * @param type
- *   A string identifying the type of allocated objects (useful for debug
- *   purposes, such as identifying the cause of a memory leak). Can be NULL.
+ *   A string identifying the type of allocated objects (useful for tracing).
+ *   Can be NULL.
  * @param num
  *   Number of elements to be allocated.
  * @param size
@@ -108,7 +153,8 @@ rte_zmalloc(const char *type, size_t size, unsigned align)
  */
 void *
 rte_calloc(const char *type, size_t num, size_t size, unsigned align)
-	__rte_alloc_size(2, 3);
+	__rte_alloc_size(2, 3)	__rte_alloc_align(4)
+	__rte_malloc __rte_dealloc_free;
 
 /**
  * Replacement function for realloc(), using huge-page memory. Reserved area
@@ -132,7 +178,8 @@ rte_calloc(const char *type, size_t num, size_t size, unsigned align)
  */
 void *
 rte_realloc(void *ptr, size_t size, unsigned int align)
-	__rte_alloc_size(2);
+	__rte_alloc_size(2) __rte_alloc_align(3)
+	__rte_malloc __rte_dealloc_free;
 
 /**
  * Replacement function for realloc(), using huge-page memory. Reserved area
@@ -158,15 +205,16 @@ rte_realloc(void *ptr, size_t size, unsigned int align)
  */
 void *
 rte_realloc_socket(void *ptr, size_t size, unsigned int align, int socket)
-	__rte_alloc_size(2);
+	__rte_alloc_size(2) __rte_alloc_align(3)
+	__rte_malloc __rte_dealloc_free;
 
 /**
  * This function allocates memory from the huge-page area of memory. The memory
  * is not cleared.
  *
  * @param type
- *   A string identifying the type of allocated objects (useful for debug
- *   purposes, such as identifying the cause of a memory leak). Can be NULL.
+ *   A string identifying the type of allocated objects (useful for tracing).
+ *   Can be NULL.
  * @param size
  *   Size (in bytes) to be allocated.
  * @param align
@@ -185,7 +233,8 @@ rte_realloc_socket(void *ptr, size_t size, unsigned int align, int socket)
  */
 void *
 rte_malloc_socket(const char *type, size_t size, unsigned align, int socket)
-	__rte_alloc_size(2);
+	__rte_alloc_size(2) __rte_alloc_align(3)
+	__rte_malloc __rte_dealloc_free;
 
 /**
  * Allocate zeroed memory from the heap.
@@ -194,8 +243,8 @@ rte_malloc_socket(const char *type, size_t size, unsigned align, int socket)
  * initialised with zeros.
  *
  * @param type
- *   A string identifying the type of allocated objects (useful for debug
- *   purposes, such as identifying the cause of a memory leak). Can be NULL.
+ *   A string identifying the type of allocated objects (useful for tracing).
+ *   Can be NULL.
  * @param size
  *   Size (in bytes) to be allocated.
  * @param align
@@ -214,15 +263,16 @@ rte_malloc_socket(const char *type, size_t size, unsigned align, int socket)
  */
 void *
 rte_zmalloc_socket(const char *type, size_t size, unsigned align, int socket)
-	__rte_alloc_size(2);
+	__rte_alloc_size(2) __rte_alloc_align(3)
+	__rte_malloc __rte_dealloc_free;
 
 /**
  * Replacement function for calloc(), using huge-page memory. Memory area is
  * initialised with zeros.
  *
  * @param type
- *   A string identifying the type of allocated objects (useful for debug
- *   purposes, such as identifying the cause of a memory leak). Can be NULL.
+ *   A string identifying the type of allocated objects (useful for tracing).
+ *   Can be NULL.
  * @param num
  *   Number of elements to be allocated.
  * @param size
@@ -243,22 +293,8 @@ rte_zmalloc_socket(const char *type, size_t size, unsigned align, int socket)
  */
 void *
 rte_calloc_socket(const char *type, size_t num, size_t size, unsigned align, int socket)
-	__rte_alloc_size(2, 3);
-
-/**
- * Frees the memory space pointed to by the provided pointer.
- *
- * This pointer must have been returned by a previous call to
- * rte_malloc(), rte_zmalloc(), rte_calloc() or rte_realloc(). The behaviour of
- * rte_free() is undefined if the pointer does not match this requirement.
- *
- * If the pointer is NULL, the function does nothing.
- *
- * @param ptr
- *   The pointer to memory to be freed.
- */
-void
-rte_free(void *ptr);
+	__rte_alloc_size(2, 3)	__rte_alloc_align(4)
+	__rte_malloc __rte_dealloc_free;
 
 /**
  * If malloc debug is enabled, check a memory block for header
@@ -502,8 +538,7 @@ rte_malloc_heap_socket_is_external(int socket_id);
  * @param f
  *   A pointer to a file for output
  * @param type
- *   A string identifying the type of objects to dump, or NULL
- *   to dump all objects.
+ *   Deprecated parameter unused.
  */
 void
 rte_malloc_dump_stats(FILE *f, const char *type);

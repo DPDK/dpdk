@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2022-2023 The DPDK contributors
+# Copyright 2023 Arm Limited
+
+# Define the test run environment
+dpdk:
+  lcores: "" # use all available logical cores (Skips first core)
+  memory_channels: 4 # tells DPDK to use 4 memory channels
+  build:
+    dpdk_location:
+      # dpdk_tree: Commented out because `tarball` is defined.
+      tarball: dpdk-tarball.tar.xz
+      # Either `dpdk_tree` or `tarball` can be defined, but not both.
+      remote: false # Optional, defaults to false. If it's true, the `dpdk_tree` or `tarball`
+                    # is located on the SUT node, instead of the execution host.
+
+    # precompiled_build_dir: Commented out because `build_options` is defined.
+    build_options:
+      # the combination of the following two makes CC="ccache gcc"
+      compiler: gcc
+      compiler_wrapper: ccache # Optional.
+    # If `precompiled_build_dir` is defined, DPDK has been pre-built and the build directory is
+    # in a subdirectory of DPDK tree root directory. Otherwise, will be using the `build_options`
+    # to build the DPDK from source. Either `precompiled_build_dir` or `build_options` can be
+    # defined, but not both.
+func_traffic_generator:
+  type: SCAPY
+# perf_traffic_generator:
+#   type: TREX
+#   remote_path: "/opt/trex/v3.03" # The remote path of the traffic generator application.
+#   config: "/opt/trex_config/trex_config.yaml" # Additional configuration files. (Leave blank if not required)
+perf: false # disable performance testing
+func: true # enable functional testing
+use_virtual_functions: false # use virtual functions (VFs) instead of physical functions
+skip_smoke_tests: true # optional
+# by removing the `test_suites` field, this test run will run every test suite available
+test_suites: # the following test suites will be run in their entirety
+  - hello_world
+vdevs: # optional; if removed, vdevs won't be used in the execution
+  - "crypto_openssl"
+# The machine running the DPDK test executable
+system_under_test_node: "SUT 1"
+# Traffic generator node to use for this execution environment
+traffic_generator_node: "TG 1"
+port_topology:
+  - sut.port-0 <-> tg.port-0  # explicit link. `sut` and `tg` are special identifiers that refer
+                              # to the respective test run's configured nodes.
+  - port-1 <-> port-1         # implicit link, left side is always SUT, right side is always TG.

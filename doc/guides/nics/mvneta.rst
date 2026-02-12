@@ -90,8 +90,8 @@ be passed as part of EAL arguments.
 
 .. code-block:: console
 
-   ./dpdk-testpmd --vdev=net_mvneta,iface=eth0,iface=eth1 \
-    -c 3 -- -i --p 3 -a
+   ./dpdk-testpmd --vdev=net_mvneta,iface=eth0,iface=eth1 -l 0,1 -- \
+     -i -p 3 -a
 
 
 Building MUSDK
@@ -144,12 +144,12 @@ In order to run testpmd example application following command can be used:
 
 .. code-block:: console
 
-   ./dpdk-testpmd --vdev=net_mvneta,iface=eth0,iface=eth1 -c 3 -- \
-     -i --p 3 -a --txd 256 --rxd 128 --rxq=1 --txq=1  --nb-cores=1
+   ./dpdk-testpmd --vdev=net_mvneta,iface=eth0,iface=eth1 -l 0,1 -- \
+     -i -p 3 -a --txd 256 --rxd 128 --rxq=1 --txq=1  --nb-cores=1
 
 
 In order to run l2fwd example application following command can be used:
 
 .. code-block:: console
 
-   ./dpdk-l2fwd --vdev=net_mvneta,iface=eth0,iface=eth1 -c 3 -- -T 1 -p 3
+   ./dpdk-l2fwd --vdev=net_mvneta,iface=eth0,iface=eth1 -l 0,1 -- -T 1 -p 3

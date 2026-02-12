@@ -12,6 +12,7 @@
 
 #define QAT_QP_MIN_INFL_THRESHOLD	256
 
+struct qat_qp;
 struct qat_pci_device;
 
 /**
@@ -57,7 +58,7 @@ struct qat_queue {
  *   - EINVAL if error
  **/
 typedef int (*qat_op_build_request_t)(void *in_op, uint8_t *out_msg,
-		void *op_cookie, uint64_t *opaque, enum qat_device_gen dev_gen);
+		void *op_cookie, struct qat_qp *qp);
 
 /**
  * Type define qat_op_dequeue_t function pointer, passed in as argument
@@ -81,7 +82,7 @@ typedef int (*qat_op_dequeue_t)(void **op, uint8_t *resp, void *op_cookie,
 
 #define QAT_BUILD_REQUEST_MAX_OPAQUE_SIZE	2
 
-struct qat_qp {
+struct __rte_cache_aligned qat_qp {
 	void			*mmap_bar_addr;
 	struct qat_queue	tx_q;
 	struct qat_queue	rx_q;
@@ -95,10 +96,10 @@ struct qat_qp {
 	struct qat_pci_device *qat_dev;
 	/**< qat device this qp is on */
 	uint32_t enqueued;
-	uint32_t dequeued __rte_aligned(4);
+	alignas(sizeof(uint32_t)) uint32_t dequeued;
 	uint16_t max_inflights;
 	uint16_t min_enq_burst_threshold;
-} __rte_cache_aligned;
+};
 
 /**
  * Structure with data needed for creation of queue pair.
@@ -155,11 +156,6 @@ int
 qat_cq_get_fw_cipher_crc_cap(struct qat_qp *qp);
 #endif
 
-/* Needed for weak function*/
-int
-qat_comp_process_response(void **op __rte_unused, uint8_t *resp __rte_unused,
-			  void *op_cookie __rte_unused,
-			  uint64_t *dequeue_err_count __rte_unused);
 int
 qat_read_qp_config(struct qat_pci_device *qat_dev);
 

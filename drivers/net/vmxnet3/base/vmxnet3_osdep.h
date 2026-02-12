@@ -7,13 +7,15 @@
 
 #include <stdbool.h>
 
+#include <rte_branch_prediction.h>
+
 typedef uint64_t	uint64;
 typedef uint32_t	uint32;
 typedef uint16_t	uint16;
 typedef uint8_t		uint8;
 
 #ifndef UNLIKELY
-#define UNLIKELY(x)  __builtin_expect((x),0)
+#define UNLIKELY(x)  unlikely(x)
 #endif /* unlikely */
 
 #endif /* _VMXNET3_OSDEP_H */

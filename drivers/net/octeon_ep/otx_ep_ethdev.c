@@ -91,11 +91,9 @@ otx_ep_set_rx_func(struct rte_eth_dev *eth_dev)
 		eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts;
 #ifdef RTE_ARCH_X86
 		eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts_sse;
-#ifdef CC_AVX2_SUPPORT
 		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256 &&
 		    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1)
 			eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts_avx;
-#endif
 #elif defined(RTE_ARCH_ARM64)
 		eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts_neon;
 #endif
@@ -105,11 +103,9 @@ otx_ep_set_rx_func(struct rte_eth_dev *eth_dev)
 		eth_dev->rx_pkt_burst = &cn9k_ep_recv_pkts;
 #ifdef RTE_ARCH_X86
 		eth_dev->rx_pkt_burst = &cn9k_ep_recv_pkts_sse;
-#ifdef CC_AVX2_SUPPORT
 		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256 &&
 		    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1)
 			eth_dev->rx_pkt_burst = &cn9k_ep_recv_pkts_avx;
-#endif
 #elif defined(RTE_ARCH_ARM64)
 		eth_dev->rx_pkt_burst = &cn9k_ep_recv_pkts_neon;
 #endif
@@ -175,7 +171,7 @@ otx_ep_dev_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
 	ret = otx_ep_mbox_get_link_info(eth_dev, &link);
 	if (ret)
 		return -EINVAL;
-	otx_ep_dbg("link status resp link %d duplex %d autoneg %d link_speed %d\n",
+	otx_ep_dbg("link status resp link %d duplex %d autoneg %d link_speed %d",
 		    link.link_status, link.link_duplex, link.link_autoneg, link.link_speed);
 	return rte_eth_linkstatus_set(eth_dev, &link);
 }
@@ -186,6 +182,8 @@ otx_ep_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	struct rte_eth_dev_info devinfo;
 	int32_t ret = 0;
 
+	/* Avoid what looks like a GCC optimisation bug on devinfo.max_mtu initialisation */
+	memset(&devinfo, 0, sizeof(devinfo));
 	if (otx_ep_dev_info_get(eth_dev, &devinfo)) {
 		otx_ep_err("Cannot set MTU to %u: failed to get device info", mtu);
 		return -EPERM;
@@ -220,7 +218,7 @@ otx_ep_dev_set_default_mac_addr(struct rte_eth_dev *eth_dev,
 	ret = otx_ep_mbox_set_mac_addr(eth_dev, mac_addr);
 	if (ret)
 		return -EINVAL;
-	otx_ep_dbg("Default MAC address " RTE_ETHER_ADDR_PRT_FMT "\n",
+	otx_ep_dbg("Default MAC address " RTE_ETHER_ADDR_PRT_FMT "",
 		    RTE_ETHER_ADDR_BYTES(mac_addr));
 	rte_ether_addr_copy(mac_addr, eth_dev->data->mac_addrs);
 	return 0;
@@ -234,10 +232,16 @@ otx_ep_dev_start(struct rte_eth_dev *eth_dev)
 	int ret;
 
 	otx_epvf = (struct otx_ep_device *)OTX_EP_DEV(eth_dev);
+
+	for (q = 0; q < otx_epvf->nb_rx_queues; q++) {
+		cnxk_ep_drain_rx_pkts(otx_epvf->droq[q]);
+		otx_epvf->fn_list.setup_oq_regs(otx_epvf, q);
+	}
+
 	/* Enable IQ/OQ for this device */
 	ret = otx_epvf->fn_list.enable_io_queues(otx_epvf);
 	if (ret) {
-		otx_ep_err("IOQ enable failed\n");
+		otx_ep_err("IOQ enable failed");
 		return ret;
 	}
 
@@ -246,7 +250,7 @@ otx_ep_dev_start(struct rte_eth_dev *eth_dev)
 			    otx_epvf->droq[q]->pkts_credit_reg);
 
 		rte_wmb();
-		otx_ep_info("OQ[%d] dbells [%d]\n", q,
+		otx_ep_info("OQ[%d] dbells [%d]", q,
 		rte_read32(otx_epvf->droq[q]->pkts_credit_reg));
 	}
 
@@ -255,7 +259,7 @@ otx_ep_dev_start(struct rte_eth_dev *eth_dev)
 	otx_ep_set_tx_func(eth_dev);
 	otx_ep_set_rx_func(eth_dev);
 
-	otx_ep_info("dev started\n");
+	otx_ep_info("dev started");
 
 	for (q = 0; q < eth_dev->data->nb_rx_queues; q++)
 		eth_dev->data->rx_queue_state[q] = RTE_ETH_QUEUE_STATE_STARTED;
@@ -298,7 +302,7 @@ otx_ep_ism_setup(struct otx_ep_device *otx_epvf)
 	/* Same DMA buffer is shared by OQ and IQ, clear it at start */
 	memset(otx_epvf->ism_buffer_mz->addr, 0, OTX_EP_ISM_BUFFER_SIZE);
 	if (otx_epvf->ism_buffer_mz == NULL) {
-		otx_ep_err("Failed to allocate ISM buffer\n");
+		otx_ep_err("Failed to allocate ISM buffer");
 		return(-1);
 	}
 	otx_ep_dbg("ISM: virt: 0x%p, dma: 0x%" PRIX64,
@@ -319,7 +323,6 @@ otx_ep_chip_specific_setup(struct otx_ep_device *otx_epvf)
 	case PCI_DEVID_OCTEONTX_EP_VF:
 		otx_epvf->chip_id = dev_id;
 		ret = otx_ep_vf_setup_device(otx_epvf);
-		otx_epvf->fn_list.disable_io_queues(otx_epvf);
 		break;
 	case PCI_DEVID_CN9K_EP_NET_VF:
 	case PCI_DEVID_CN98XX_EP_NET_VF:
@@ -327,9 +330,6 @@ otx_ep_chip_specific_setup(struct otx_ep_device *otx_epvf)
 	case PCI_DEVID_CNF95O_EP_NET_VF:
 		otx_epvf->chip_id = dev_id;
 		ret = otx2_ep_vf_setup_device(otx_epvf);
-		otx_epvf->fn_list.disable_io_queues(otx_epvf);
-		if (otx_ep_ism_setup(otx_epvf))
-			ret = -EINVAL;
 		break;
 	case PCI_DEVID_CN10KA_EP_NET_VF:
 	case PCI_DEVID_CN10KB_EP_NET_VF:
@@ -337,17 +337,19 @@ otx_ep_chip_specific_setup(struct otx_ep_device *otx_epvf)
 	case PCI_DEVID_CNF10KB_EP_NET_VF:
 		otx_epvf->chip_id = dev_id;
 		ret = cnxk_ep_vf_setup_device(otx_epvf);
-		otx_epvf->fn_list.disable_io_queues(otx_epvf);
-		if (otx_ep_ism_setup(otx_epvf))
-			ret = -EINVAL;
 		break;
 	default:
-		otx_ep_err("Unsupported device\n");
+		otx_ep_err("Unsupported device");
 		ret = -EINVAL;
 	}
 
 	if (!ret)
-		otx_ep_info("OTX_EP dev_id[%d]\n", dev_id);
+		otx_ep_info("OTX_EP dev_id[%d]", dev_id);
+	else
+		return ret;
+
+	if (dev_id != PCI_DEVID_OCTEONTX_EP_VF)
+		ret = otx_ep_ism_setup(otx_epvf);
 
 	return ret;
 }
@@ -361,11 +363,9 @@ otx_epdev_init(struct otx_ep_device *otx_epvf)
 
 	ret = otx_ep_chip_specific_setup(otx_epvf);
 	if (ret) {
-		otx_ep_err("Chip specific setup failed\n");
+		otx_ep_err("Chip specific setup failed");
 		goto setup_fail;
 	}
-
-	otx_epvf->fn_list.setup_device_regs(otx_epvf);
 
 	otx_epvf->eth_dev->tx_pkt_burst = &cnxk_ep_xmit_pkts;
 	otx_epvf->eth_dev->rx_pkt_burst = &otx_ep_recv_pkts;
@@ -385,7 +385,7 @@ otx_epdev_init(struct otx_ep_device *otx_epvf)
 		otx_epvf->eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts;
 		otx_epvf->chip_gen = OTX_EP_CN10XX;
 	} else {
-		otx_ep_err("Invalid chip_id\n");
+		otx_ep_err("Invalid chip_id");
 		ret = -EINVAL;
 		goto setup_fail;
 	}
@@ -393,7 +393,7 @@ otx_epdev_init(struct otx_ep_device *otx_epvf)
 	otx_epvf->max_rx_queues = ethdev_queues;
 	otx_epvf->max_tx_queues = ethdev_queues;
 
-	otx_ep_info("OTX_EP Device is Ready\n");
+	otx_ep_info("OTX_EP Device is Ready");
 
 setup_fail:
 	return ret;
@@ -413,10 +413,14 @@ otx_ep_dev_configure(struct rte_eth_dev *eth_dev)
 	txmode = &conf->txmode;
 	if (eth_dev->data->nb_rx_queues > otx_epvf->max_rx_queues ||
 	    eth_dev->data->nb_tx_queues > otx_epvf->max_tx_queues) {
-		otx_ep_err("invalid num queues\n");
+		otx_ep_err("invalid num queues");
 		return -EINVAL;
 	}
-	otx_ep_info("OTX_EP Device is configured with num_txq %d num_rxq %d\n",
+
+	otx_epvf->fn_list.setup_device_regs(otx_epvf);
+	otx_epvf->fn_list.disable_io_queues(otx_epvf);
+
+	otx_ep_info("OTX_EP Device is configured with num_txq %d num_rxq %d",
 		    eth_dev->data->nb_rx_queues, eth_dev->data->nb_tx_queues);
 
 	otx_epvf->rx_offloads = rxmode->offloads;
@@ -460,29 +464,29 @@ otx_ep_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
 	uint16_t buf_size;
 
 	if (q_no >= otx_epvf->max_rx_queues) {
-		otx_ep_err("Invalid rx queue number %u\n", q_no);
+		otx_ep_err("Invalid rx queue number %u", q_no);
 		return -EINVAL;
 	}
 
 	if (num_rx_descs & (num_rx_descs - 1)) {
-		otx_ep_err("Invalid rx desc number should be pow 2  %u\n",
+		otx_ep_err("Invalid rx desc number should be pow 2  %u",
 			   num_rx_descs);
 		return -EINVAL;
 	}
 	if (num_rx_descs < (SDP_GBL_WMARK * 8)) {
-		otx_ep_err("Invalid rx desc number(%u) should at least be greater than 8xwmark  %u\n",
+		otx_ep_err("Invalid rx desc number(%u) should at least be greater than 8xwmark  %u",
 			   num_rx_descs, (SDP_GBL_WMARK * 8));
 		return -EINVAL;
 	}
 
-	otx_ep_dbg("setting up rx queue %u\n", q_no);
+	otx_ep_dbg("setting up rx queue %u", q_no);
 
 	mbp_priv = rte_mempool_get_priv(mp);
 	buf_size = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
 
 	if (otx_ep_setup_oqs(otx_epvf, q_no, num_rx_descs, buf_size, mp,
 			     socket_id)) {
-		otx_ep_err("droq allocation failed\n");
+		otx_ep_err("droq allocation failed");
 		return -1;
 	}
 
@@ -511,7 +515,7 @@ otx_ep_rx_queue_release(struct rte_eth_dev *dev, uint16_t q_no)
 	int q_id = rq->q_no;
 
 	if (otx_ep_delete_oqs(otx_epvf, q_id))
-		otx_ep_err("Failed to delete OQ:%d\n", q_id);
+		otx_ep_err("Failed to delete OQ:%d", q_id);
 }
 
 /**
@@ -545,16 +549,16 @@ otx_ep_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
 	int retval;
 
 	if (q_no >= otx_epvf->max_tx_queues) {
-		otx_ep_err("Invalid tx queue number %u\n", q_no);
+		otx_ep_err("Invalid tx queue number %u", q_no);
 		return -EINVAL;
 	}
 	if (num_tx_descs & (num_tx_descs - 1)) {
-		otx_ep_err("Invalid tx desc number should be pow 2  %u\n",
+		otx_ep_err("Invalid tx desc number should be pow 2  %u",
 			   num_tx_descs);
 		return -EINVAL;
 	}
 	if (num_tx_descs < (SDP_GBL_WMARK * 8)) {
-		otx_ep_err("Invalid tx desc number(%u) should at least be greater than 8*wmark(%u)\n",
+		otx_ep_err("Invalid tx desc number(%u) should at least be greater than 8*wmark(%u)",
 			   num_tx_descs, (SDP_GBL_WMARK * 8));
 		return -EINVAL;
 	}
@@ -562,12 +566,12 @@ otx_ep_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
 	retval = otx_ep_setup_iqs(otx_epvf, q_no, num_tx_descs, socket_id);
 
 	if (retval) {
-		otx_ep_err("IQ(TxQ) creation failed.\n");
+		otx_ep_err("IQ(TxQ) creation failed.");
 		return retval;
 	}
 
 	eth_dev->data->tx_queues[q_no] = otx_epvf->instr_queue[q_no];
-	otx_ep_dbg("tx queue[%d] setup\n", q_no);
+	otx_ep_dbg("tx queue[%d] setup", q_no);
 	return 0;
 }
 
@@ -610,7 +614,8 @@ otx_ep_dev_stats_reset(struct rte_eth_dev *dev)
 
 static int
 otx_ep_dev_stats_get(struct rte_eth_dev *eth_dev,
-				struct rte_eth_stats *stats)
+				struct rte_eth_stats *stats,
+				struct eth_queue_stats *qstats)
 {
 	struct otx_ep_device *otx_epvf = OTX_EP_DEV(eth_dev);
 	struct otx_ep_iq_stats *ostats;
@@ -621,17 +626,21 @@ otx_ep_dev_stats_get(struct rte_eth_dev *eth_dev,
 
 	for (i = 0; i < otx_epvf->nb_tx_queues; i++) {
 		ostats = &otx_epvf->instr_queue[i]->stats;
-		stats->q_opackets[i] = ostats->tx_pkts;
-		stats->q_obytes[i] = ostats->tx_bytes;
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_opackets[i] = ostats->tx_pkts;
+			qstats->q_obytes[i] = ostats->tx_bytes;
+		}
 		stats->opackets += ostats->tx_pkts;
 		stats->obytes += ostats->tx_bytes;
 		stats->oerrors += ostats->instr_dropped;
 	}
 	for (i = 0; i < otx_epvf->nb_rx_queues; i++) {
 		istats = &otx_epvf->droq[i]->stats;
-		stats->q_ipackets[i] = istats->pkts_received;
-		stats->q_ibytes[i] = istats->bytes_received;
-		stats->q_errors[i] = istats->rx_err;
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_ipackets[i] = istats->pkts_received;
+			qstats->q_ibytes[i] = istats->bytes_received;
+			qstats->q_errors[i] = istats->rx_err;
+		}
 		stats->ipackets += istats->pkts_received;
 		stats->ibytes += istats->bytes_received;
 		stats->imissed += istats->rx_alloc_failure;
@@ -656,27 +665,28 @@ otx_ep_dev_close(struct rte_eth_dev *eth_dev)
 
 	otx_epvf = OTX_EP_DEV(eth_dev);
 	otx_ep_mbox_send_dev_exit(eth_dev);
+	otx_ep_mbox_uninit(eth_dev);
 	otx_epvf->fn_list.disable_io_queues(otx_epvf);
 	num_queues = otx_epvf->nb_rx_queues;
 	for (q_no = 0; q_no < num_queues; q_no++) {
 		if (otx_ep_delete_oqs(otx_epvf, q_no)) {
-			otx_ep_err("Failed to delete OQ:%d\n", q_no);
+			otx_ep_err("Failed to delete OQ:%d", q_no);
 			return -EINVAL;
 		}
 	}
-	otx_ep_dbg("Num OQs:%d freed\n", otx_epvf->nb_rx_queues);
+	otx_ep_dbg("Num OQs:%d freed", otx_epvf->nb_rx_queues);
 
 	num_queues = otx_epvf->nb_tx_queues;
 	for (q_no = 0; q_no < num_queues; q_no++) {
 		if (otx_ep_delete_iqs(otx_epvf, q_no)) {
-			otx_ep_err("Failed to delete IQ:%d\n", q_no);
+			otx_ep_err("Failed to delete IQ:%d", q_no);
 			return -EINVAL;
 		}
 	}
-	otx_ep_dbg("Num IQs:%d freed\n", otx_epvf->nb_tx_queues);
+	otx_ep_dbg("Num IQs:%d freed", otx_epvf->nb_tx_queues);
 
 	if (rte_eth_dma_zone_free(eth_dev, "ism", 0)) {
-		otx_ep_err("Failed to delete ISM buffer\n");
+		otx_ep_err("Failed to delete ISM buffer");
 		return -EINVAL;
 	}
 
@@ -692,7 +702,7 @@ otx_ep_dev_get_mac_addr(struct rte_eth_dev *eth_dev,
 	ret = otx_ep_mbox_get_mac_addr(eth_dev, mac_addr);
 	if (ret)
 		return -EINVAL;
-	otx_ep_dbg("Get MAC address " RTE_ETHER_ADDR_PRT_FMT "\n",
+	otx_ep_dbg("Get MAC address " RTE_ETHER_ADDR_PRT_FMT,
 		    RTE_ETHER_ADDR_BYTES(mac_addr));
 	return 0;
 }
@@ -718,18 +728,27 @@ static const struct eth_dev_ops otx_ep_eth_dev_ops = {
 static int
 otx_ep_eth_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		eth_dev->dev_ops = NULL;
-		eth_dev->rx_pkt_burst = NULL;
-		eth_dev->tx_pkt_burst = NULL;
-		return 0;
-	}
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		otx_ep_mbox_uninit(eth_dev);
 
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
 
 	return 0;
+}
+
+static void
+otx_epdev_event_callback(const char *device_name, enum rte_dev_event_type type,
+			 __rte_unused void *arg)
+{
+	if (type == RTE_DEV_EVENT_REMOVE)
+		otx_ep_info("Octeon epdev: %s has been removed!", device_name);
+
+	/* Cease further execution when the device is removed; otherwise,
+	 * accessing the device may lead to errors.
+	 */
+	RTE_VERIFY(type != RTE_DEV_EVENT_REMOVE);
 }
 
 static int otx_ep_eth_dev_query_set_vf_mac(struct rte_eth_dev *eth_dev,
@@ -741,22 +760,22 @@ static int otx_ep_eth_dev_query_set_vf_mac(struct rte_eth_dev *eth_dev,
 	ret_val = otx_ep_dev_get_mac_addr(eth_dev, mac_addr);
 	if (!ret_val) {
 		if (!rte_is_valid_assigned_ether_addr(mac_addr)) {
-			otx_ep_dbg("PF doesn't have valid VF MAC addr" RTE_ETHER_ADDR_PRT_FMT "\n",
+			otx_ep_dbg("PF doesn't have valid VF MAC addr" RTE_ETHER_ADDR_PRT_FMT,
 				    RTE_ETHER_ADDR_BYTES(mac_addr));
 			rte_eth_random_addr(mac_addr->addr_bytes);
-			otx_ep_dbg("Setting Random MAC address" RTE_ETHER_ADDR_PRT_FMT "\n",
+			otx_ep_dbg("Setting Random MAC address" RTE_ETHER_ADDR_PRT_FMT,
 				    RTE_ETHER_ADDR_BYTES(mac_addr));
 			ret_val = otx_ep_dev_set_default_mac_addr(eth_dev, mac_addr);
 			if (ret_val) {
-				otx_ep_err("Setting MAC address " RTE_ETHER_ADDR_PRT_FMT "fails\n",
+				otx_ep_err("Setting MAC address " RTE_ETHER_ADDR_PRT_FMT "fails",
 					    RTE_ETHER_ADDR_BYTES(mac_addr));
 				return ret_val;
 			}
 		}
-		otx_ep_dbg("Received valid MAC addr from PF" RTE_ETHER_ADDR_PRT_FMT "\n",
+		otx_ep_dbg("Received valid MAC addr from PF" RTE_ETHER_ADDR_PRT_FMT,
 			    RTE_ETHER_ADDR_BYTES(mac_addr));
 	} else {
-		otx_ep_err("Getting MAC address from PF via Mbox fails with ret_val: %d\n",
+		otx_ep_err("Getting MAC address from PF via Mbox fails with ret_val: %d",
 			    ret_val);
 		return ret_val;
 	}
@@ -769,6 +788,7 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pdev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct otx_ep_device *otx_epvf = OTX_EP_DEV(eth_dev);
 	struct rte_ether_addr vf_mac_addr;
+	int ret = 0;
 
 	/* Single process support */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
@@ -780,7 +800,7 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Parse devargs string */
 	if (otx_ethdev_parse_devargs(eth_dev->device->devargs, otx_epvf)) {
-		otx_ep_err("Failed to parse devargs\n");
+		otx_ep_err("Failed to parse devargs");
 		return -EINVAL;
 	}
 
@@ -797,7 +817,7 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 	otx_epvf->mbox_neg_ver = OTX_EP_MBOX_VERSION_V1;
 	eth_dev->data->mac_addrs = rte_zmalloc("otx_ep", RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
-		otx_ep_err("MAC addresses memory allocation failed\n");
+		otx_ep_err("MAC addresses memory allocation failed");
 		eth_dev->dev_ops = NULL;
 		return -ENOMEM;
 	}
@@ -806,8 +826,16 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 	otx_epvf->hw_addr = pdev->mem_resource[0].addr;
 	otx_epvf->pdev = pdev;
 
-	if (otx_epdev_init(otx_epvf))
-		return -ENOMEM;
+	if (rte_dev_event_callback_register(pdev->name, otx_epdev_event_callback, NULL)) {
+		otx_ep_err("Failed  to register a device event callback");
+			return -EINVAL;
+	}
+
+	if (otx_epdev_init(otx_epvf)) {
+		ret = -ENOMEM;
+		goto exit;
+	}
+
 	if (otx_epvf->chip_id == PCI_DEVID_CN9K_EP_NET_VF ||
 	    otx_epvf->chip_id == PCI_DEVID_CN98XX_EP_NET_VF ||
 	    otx_epvf->chip_id == PCI_DEVID_CNF95N_EP_NET_VF ||
@@ -817,26 +845,33 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 	    otx_epvf->chip_id == PCI_DEVID_CNF10KA_EP_NET_VF ||
 	    otx_epvf->chip_id == PCI_DEVID_CNF10KB_EP_NET_VF) {
 		otx_epvf->pkind = SDP_OTX2_PKIND_FS0;
-		otx_ep_info("using pkind %d\n", otx_epvf->pkind);
+		otx_ep_info("using pkind %d", otx_epvf->pkind);
 	} else if (otx_epvf->chip_id == PCI_DEVID_OCTEONTX_EP_VF) {
 		otx_epvf->pkind = SDP_PKIND;
-		otx_ep_info("Using pkind %d.\n", otx_epvf->pkind);
+		otx_ep_info("Using pkind %d.", otx_epvf->pkind);
 	} else {
-		otx_ep_err("Invalid chip id\n");
-		return -EINVAL;
+		otx_ep_err("Invalid chip id");
+		ret = -EINVAL;
+		goto exit;
 	}
 
-	if (otx_ep_mbox_version_check(eth_dev))
-		return -EINVAL;
+	if (otx_ep_mbox_init(eth_dev)) {
+		ret = -EINVAL;
+		goto exit;
+	}
 
 	if (otx_ep_eth_dev_query_set_vf_mac(eth_dev,
 				(struct rte_ether_addr *)&vf_mac_addr)) {
-		otx_ep_err("set mac addr failed\n");
-		return -ENODEV;
+		otx_ep_err("set mac addr failed");
+		ret = -ENODEV;
+		goto exit;
 	}
 	rte_ether_addr_copy(&vf_mac_addr, eth_dev->data->mac_addrs);
 
-	return 0;
+exit:
+	rte_dev_event_callback_unregister(pdev->name, otx_epdev_event_callback, NULL);
+
+	return ret;
 }
 
 static int

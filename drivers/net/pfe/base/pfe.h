@@ -209,7 +209,7 @@ enum {
 #define UTIL_MASK	BIT(UTIL_ID)
 #endif
 
-struct pe_status {
+struct __rte_aligned(16) pe_status {
 	u32	cpu_state;
 	u32	activity_counter;
 	u32	rx;
@@ -222,7 +222,7 @@ struct pe_status {
 	u32	debug_indicator;
 	u32	debug[16];
 #endif
-} __rte_aligned(16);
+};
 
 struct pe_sync_mailbox {
 	u32 stop;

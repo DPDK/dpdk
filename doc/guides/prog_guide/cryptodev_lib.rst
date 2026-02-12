@@ -10,6 +10,7 @@ APIs which support a number of different Crypto operations. The framework
 currently only supports cipher, authentication, chained cipher/authentication
 and AEAD symmetric and asymmetric Crypto operations.
 
+The usages in security protocols are discussed in the :doc:`../howto/security` guide.
 
 Design Principles
 -----------------
@@ -927,7 +928,8 @@ Asymmetric Cryptography
 The cryptodev library currently provides support for the following asymmetric
 Crypto operations; RSA, Modular exponentiation and inversion, Diffie-Hellman and
 Elliptic Curve Diffie-Hellman public and/or private key generation and shared
-secret compute, DSA Signature generation and verification.
+secret compute, DSA and EdDSA signature generation and verification,
+PQC ML-KEM and ML-DSA algorithms.
 
 Session and Session Management
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

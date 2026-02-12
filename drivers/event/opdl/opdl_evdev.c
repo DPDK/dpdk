@@ -99,7 +99,7 @@ opdl_port_link(struct rte_eventdev *dev,
 
 	if (unlikely(dev->data->dev_started)) {
 		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
-			     "Attempt to link queue (%u) to port %d while device started\n",
+			     "Attempt to link queue (%u) to port %d while device started",
 			     dev->data->dev_id,
 				queues[0],
 				p->id);
@@ -110,7 +110,7 @@ opdl_port_link(struct rte_eventdev *dev,
 	/* Max of 1 queue per port */
 	if (num > 1) {
 		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
-			     "Attempt to link more than one queue (%u) to port %d requested\n",
+			     "Attempt to link more than one queue (%u) to port %d requested",
 			     dev->data->dev_id,
 				num,
 				p->id);
@@ -120,7 +120,7 @@ opdl_port_link(struct rte_eventdev *dev,
 
 	if (!p->configured) {
 		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
-			     "port %d not configured, cannot link to %u\n",
+			     "port %d not configured, cannot link to %u",
 			     dev->data->dev_id,
 				p->id,
 				queues[0]);
@@ -130,7 +130,7 @@ opdl_port_link(struct rte_eventdev *dev,
 
 	if (p->external_qid != OPDL_INVALID_QID) {
 		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
-			     "port %d already linked to queue %u, cannot link to %u\n",
+			     "port %d already linked to queue %u, cannot link to %u",
 			     dev->data->dev_id,
 				p->id,
 				p->external_qid,
@@ -157,7 +157,7 @@ opdl_port_unlink(struct rte_eventdev *dev,
 
 	if (unlikely(dev->data->dev_started)) {
 		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
-			     "Attempt to unlink queue (%u) to port %d while device started\n",
+			     "Attempt to unlink queue (%u) to port %d while device started",
 			     dev->data->dev_id,
 			     queues[0],
 			     p->id);
@@ -188,7 +188,7 @@ opdl_port_setup(struct rte_eventdev *dev,
 	/* Check if port already configured */
 	if (p->configured) {
 		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
-			     "Attempt to setup port %d which is already setup\n",
+			     "Attempt to setup port %d which is already setup",
 			     dev->data->dev_id,
 			     p->id);
 		return -EDQUOT;
@@ -244,7 +244,7 @@ opdl_queue_setup(struct rte_eventdev *dev,
 	/* Extra sanity check, probably not needed */
 	if (queue_id == OPDL_INVALID_QID) {
 		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
-			     "Invalid queue id %u requested\n",
+			     "Invalid queue id %u requested",
 			     dev->data->dev_id,
 			     queue_id);
 		return -EINVAL;
@@ -252,7 +252,7 @@ opdl_queue_setup(struct rte_eventdev *dev,
 
 	if (device->nb_q_md > device->max_queue_nb) {
 		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
-			     "Max number of queues %u exceeded by request %u\n",
+			     "Max number of queues %u exceeded by request %u",
 			     dev->data->dev_id,
 			     device->max_queue_nb,
 			     device->nb_q_md);
@@ -262,7 +262,7 @@ opdl_queue_setup(struct rte_eventdev *dev,
 	if (RTE_EVENT_QUEUE_CFG_ALL_TYPES
 	    & conf->event_queue_cfg) {
 		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
-			     "QUEUE_CFG_ALL_TYPES not supported\n",
+			     "QUEUE_CFG_ALL_TYPES not supported",
 			     dev->data->dev_id);
 		return -ENOTSUP;
 	} else if (RTE_EVENT_QUEUE_CFG_SINGLE_LINK
@@ -281,7 +281,7 @@ opdl_queue_setup(struct rte_eventdev *dev,
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
-				     "Unknown queue type %d requested\n",
+				     "Unknown queue type %d requested",
 				     dev->data->dev_id,
 				     conf->event_queue_cfg);
 			return -EINVAL;
@@ -292,7 +292,7 @@ opdl_queue_setup(struct rte_eventdev *dev,
 	for (i = 0; i < device->nb_q_md; i++) {
 		if (device->q_md[i].ext_id == queue_id) {
 			PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
-				     "queue id %u already setup\n",
+				     "queue id %u already setup",
 				     dev->data->dev_id,
 				     queue_id);
 			return -EINVAL;
@@ -352,7 +352,7 @@ opdl_dev_configure(const struct rte_eventdev *dev)
 
 	if (conf->event_dev_cfg & RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT) {
 		PMD_DRV_LOG(ERR, "DEV_ID:[%02d] : "
-			     "DEQUEUE_TIMEOUT not supported\n",
+			     "DEQUEUE_TIMEOUT not supported",
 			     dev->data->dev_id);
 		return -ENOTSUP;
 	}
@@ -662,7 +662,7 @@ opdl_probe(struct rte_vdev_device *vdev)
 
 		if (!kvlist) {
 			PMD_DRV_LOG(INFO,
-					"Ignoring unsupported parameters when creating device '%s'\n",
+					"Ignoring unsupported parameters when creating device '%s'",
 					name);
 		} else {
 			int ret = rte_kvargs_process(kvlist, NUMA_NODE_ARG,
@@ -709,7 +709,7 @@ opdl_probe(struct rte_vdev_device *vdev)
 
 	PMD_DRV_LOG(INFO, "DEV_ID:[%02d] : "
 		      "Success - creating eventdev device %s, numa_node:[%d], do_validation:[%s]"
-			  " , self_test:[%s]\n",
+			  " , self_test:[%s]",
 		      dev->data->dev_id,
 		      name,
 		      socket_id,
@@ -718,11 +718,9 @@ opdl_probe(struct rte_vdev_device *vdev)
 
 	dev->dev_ops = &evdev_opdl_ops;
 
-	dev->enqueue = opdl_event_enqueue;
 	dev->enqueue_burst = opdl_event_enqueue_burst;
 	dev->enqueue_new_burst = opdl_event_enqueue_burst;
 	dev->enqueue_forward_burst = opdl_event_enqueue_burst;
-	dev->dequeue = opdl_event_dequeue;
 	dev->dequeue_burst = opdl_event_dequeue_burst;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -753,7 +751,7 @@ opdl_remove(struct rte_vdev_device *vdev)
 	if (name == NULL)
 		return -EINVAL;
 
-	PMD_DRV_LOG(INFO, "Closing eventdev opdl device %s\n", name);
+	PMD_DRV_LOG(INFO, "Closing eventdev opdl device %s", name);
 
 	return rte_event_pmd_vdev_uninit(name);
 }

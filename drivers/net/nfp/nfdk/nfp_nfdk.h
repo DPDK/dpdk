@@ -6,7 +6,10 @@
 #ifndef __NFP_NFDK_H__
 #define __NFP_NFDK_H__
 
+#include <nfp_platform.h>
+
 #include "../nfp_rxtx.h"
+#include "nfp_net_common.h"
 
 #define NFDK_TX_DESC_PER_SIMPLE_PKT     2
 
@@ -106,19 +109,19 @@ struct nfp_net_nfdk_tx_desc {
 	union {
 		/** Address descriptor */
 		struct {
-			uint16_t dma_addr_hi;  /**< High bits of host buf address */
-			uint16_t dma_len_type; /**< Length to DMA for this desc */
-			uint32_t dma_addr_lo;  /**< Low 32bit of host buf addr */
+			rte_le16_t dma_addr_hi;  /**< High bits of host buf address */
+			rte_le16_t dma_len_type; /**< Length to DMA for this desc */
+			rte_le32_t dma_addr_lo;  /**< Low 32bit of host buf addr */
 		};
 
 		/** TSO descriptor */
 		struct {
-			uint16_t mss;          /**< MSS to be used for LSO */
+			rte_le16_t mss;        /**< MSS to be used for LSO */
 			uint8_t lso_hdrlen;    /**< LSO, TCP payload offset */
 			uint8_t lso_totsegs;   /**< LSO, total segments */
 			uint8_t l3_offset;     /**< L3 header offset */
 			uint8_t l4_offset;     /**< L4 header offset */
-			uint16_t lso_meta_res; /**< Rsvd bits in TSO metadata */
+			rte_le16_t lso_meta_res; /**< Rsvd bits in TSO metadata */
 		};
 
 		/** Metadata descriptor */
@@ -127,8 +130,8 @@ struct nfp_net_nfdk_tx_desc {
 			uint8_t reserved[7];   /**< Meta byte place holder */
 		};
 
-		uint32_t vals[2];
-		uint64_t raw;
+		rte_le32_t vals[2];
+		rte_le64_t raw;
 	};
 };
 
@@ -161,6 +164,45 @@ nfp_net_nfdk_txq_full(struct nfp_net_txq *txq)
 	return (nfp_net_nfdk_free_tx_desc(txq) < txq->tx_free_thresh);
 }
 
+static inline uint16_t
+nfp_net_nfdk_headlen_to_segs(uint16_t headlen)
+{
+	/* First descriptor fits less data, so adjust for that */
+	return DIV_ROUND_UP(headlen + NFDK_TX_MAX_DATA_PER_DESC - NFDK_TX_MAX_DATA_PER_HEAD,
+			NFDK_TX_MAX_DATA_PER_DESC);
+}
+
+/* Set TX CSUM offload flags in TX descriptor of nfdk */
+static inline uint64_t
+nfp_net_nfdk_tx_cksum(struct nfp_net_txq *txq,
+		struct rte_mbuf *mb,
+		uint64_t flags)
+{
+	uint64_t ol_flags;
+	struct nfp_net_hw *hw = txq->hw;
+
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_TXCSUM) == 0)
+		return flags;
+
+	ol_flags = mb->ol_flags;
+
+	/* Set TCP csum offload if TSO enabled. */
+	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0)
+		flags |= NFDK_DESC_TX_L4_CSUM;
+
+	if ((ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) != 0)
+		flags |= NFDK_DESC_TX_ENCAP;
+
+	/* IPv6 does not need checksum */
+	if ((ol_flags & RTE_MBUF_F_TX_IP_CKSUM) != 0)
+		flags |= NFDK_DESC_TX_L3_CSUM;
+
+	if ((ol_flags & RTE_MBUF_F_TX_L4_MASK) != 0)
+		flags |= NFDK_DESC_TX_L4_CSUM;
+
+	return flags;
+}
+
 uint32_t nfp_flower_nfdk_pkt_add_metadata(struct rte_mbuf *mbuf,
 		uint32_t port_id);
 uint16_t nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
@@ -177,5 +219,9 @@ int nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 		const struct rte_eth_txconf *tx_conf);
 int nfp_net_nfdk_tx_maybe_close_block(struct nfp_net_txq *txq,
 		struct rte_mbuf *pkt);
+int nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
+		struct nfp_net_txq *txq,
+		uint64_t *metadata);
+void nfp_net_nfdk_xmit_pkts_set(struct rte_eth_dev *eth_dev);
 
 #endif /* __NFP_NFDK_H__ */

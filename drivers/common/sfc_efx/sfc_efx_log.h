@@ -12,11 +12,10 @@
 
 /** Generic driver log type */
 extern int sfc_efx_logtype;
+#define RTE_LOGTYPE_SFC_EFX sfc_efx_logtype
 
 /** Log message, add a prefix and a line break */
 #define SFC_EFX_LOG(level, ...) \
-	rte_log(RTE_LOG_ ## level, sfc_efx_logtype,			\
-		RTE_FMT("sfc_efx: " RTE_FMT_HEAD(__VA_ARGS__ ,) "\n",	\
-			RTE_FMT_TAIL(__VA_ARGS__ ,)))
+	RTE_LOG_LINE(level, SFC_EFX, ## __VA_ARGS__)
 
 #endif /* _SFC_EFX_LOG_H_ */

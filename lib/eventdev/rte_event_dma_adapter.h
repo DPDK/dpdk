@@ -138,44 +138,17 @@
  * rte_event_dma_adapter_vchan_del() APIs. If HW supports the capability
  * RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND, event information must be passed to the
  * add API.
- *
  */
 
 #include <stdint.h>
 
 #include <rte_common.h>
-#include <rte_dmadev_pmd.h>
+#include <rte_dmadev.h>
 #include <rte_eventdev.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * A structure used to hold event based DMA operation entry. All the information
- * required for a DMA transfer shall be populated in "struct rte_event_dma_adapter_op"
- * instance.
- */
-struct rte_event_dma_adapter_op {
-	struct rte_dma_sge *src_seg;
-	/**< Source segments. */
-	struct rte_dma_sge *dst_seg;
-	/**< Destination segments. */
-	uint16_t nb_src;
-	/**< Number of source segments. */
-	uint16_t nb_dst;
-	/**< Number of destination segments. */
-	uint64_t flags;
-	/**< Flags related to the operation.
-	 * @see RTE_DMA_OP_FLAG_*
-	 */
-	int16_t dma_dev_id;
-	/**< DMA device ID to be used */
-	uint16_t vchan;
-	/**< DMA vchan ID to be used */
-	struct rte_mempool *op_mp;
-	/**< Mempool from which op is allocated. */
-};
 
 /**
  *  DMA event adapter mode

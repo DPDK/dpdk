@@ -107,6 +107,28 @@ User Cases
 The power management mechanism is used to save power when performing L3 forwarding.
 
 
+PM QoS
+------
+
+The ``/sys/devices/system/cpu/cpuX/power/pm_qos_resume_latency_us``
+sysfs interface is used to set and get the resume latency limit
+on the cpuX for userspace.
+Each cpuidle governor in Linux selects which idle state to enter
+based on this CPU resume latency in their idle task.
+
+The deeper the idle state, the lower the power consumption,
+but the longer the resume time.
+Some services are latency sensitive and request a low resume time,
+like interrupt packet receiving mode.
+
+Applications can set and get the CPU resume latency with
+``rte_power_qos_set_cpu_resume_latency()``
+and ``rte_power_qos_get_cpu_resume_latency()`` respectively.
+Applications can set a strict resume latency (zero value)
+to lower the resume latency and get better performance
+(instead, the power consumption of platform may increase).
+
+
 Ethernet PMD Power Management API
 ---------------------------------
 
@@ -191,8 +213,8 @@ API Overview for Ethernet PMD Power Management
 * **Set Scaling Max Freq**: Set the maximum frequency (kHz) to be used in Frequency
   Scaling mode.
 
-Intel Uncore API
-----------------
+Uncore API
+----------
 
 Abstract
 ~~~~~~~~
@@ -203,6 +225,9 @@ to achieve high performance: L3 cache, on-die memory controller, etc.
 Significant power savings can be achieved by reducing the uncore frequency
 to its lowest value.
 
+Intel Uncore
+~~~~~~~~~~~~
+
 The Linux kernel provides the driver "intel-uncore-frequency"
 to control the uncore frequency limits for x86 platform.
 The driver is available from kernel version 5.6 and above.
@@ -211,10 +236,23 @@ which was added in 5.6.
 This manipulates the context of MSR 0x620,
 which sets min/max of the uncore for the SKU.
 
-API Overview for Intel Uncore
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+AMD EPYC Uncore
+~~~~~~~~~~~~~~~
 
-Overview of each function in the Intel Uncore API,
+On AMD EPYC platforms, the Host System Management Port (HSMP) kernel module
+facilitates user-level access to HSMP mailboxes,
+which are implemented by the firmware in the System Management Unit (SMU).
+The AMD HSMP driver is available starting from kernel version 5.18.
+Please ensure that ``CONFIG_AMD_HSMP`` is enabled in your kernel configuration.
+
+Additionally, the EPYC System Management Interface In-band Library for Linux
+offers essential API, enabling user-space software
+to effectively manage system functions.
+
+Uncore API Overview
+~~~~~~~~~~~~~~~~~~~
+
+Overview of each function in the Uncore API,
 with explanation of what they do.
 Each function should not be called in the fast path.
 

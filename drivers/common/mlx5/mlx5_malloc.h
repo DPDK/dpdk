@@ -28,6 +28,8 @@ enum mlx5_mem_flags {
 	/* Memory should be allocated from rte hugepage. */
 	MLX5_MEM_ZERO = 1 << 2,
 	/* Memory should be cleared to zero. */
+	MLX5_NUMA_TOLERANT = 1 << 3,
+	/* Fallback to any NUMA if the memory allocation fails. */
 };
 
 /**
@@ -101,6 +103,24 @@ void *mlx5_realloc(void *addr, uint32_t flags, size_t size, unsigned int align,
 __rte_internal
 void mlx5_free(void *addr);
 
+#if defined(RTE_TOOLCHAIN_GCC) || defined(RTE_TOOLCHAIN_CLANG)
+#define mlx5_malloc_numa_tolerant(flags, size, align, socket) (__extension__ ({ \
+		void *mem = mlx5_malloc((uint32_t)(flags), (size_t)(size), (align), (socket)); \
+		if ((mem == NULL) && ((int)(socket) != SOCKET_ID_ANY)) { \
+			mem = mlx5_malloc((uint32_t)(flags), (size_t)(size), \
+					  (align), SOCKET_ID_ANY); \
+			if (mem) { \
+				DRV_LOG(WARNING, \
+				"Allocated %p (size %zu socket %d) through NUMA tolerant fallback", \
+					(mem), ((size_t)(size)), (socket)); \
+			} \
+		} \
+		mem; \
+	}))
+#else
+#define mlx5_malloc_numa_tolerant(flags, size, align, socket) \
+	mlx5_malloc((flags) | MLX5_NUMA_TOLERANT, (size), (align), (socket))
+#endif
 #ifdef __cplusplus
 }
 #endif

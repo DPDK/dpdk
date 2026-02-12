@@ -364,7 +364,7 @@ octeontx_pko_chan_stop(struct octeontx_pko_vf_ctl_s *ctl, uint64_t chanid)
 
 		res = octeontx_pko_dq_close(dq);
 		if (res < 0)
-			octeontx_log_err("closing DQ%d failed\n", dq);
+			octeontx_log_err("closing DQ%d failed", dq);
 
 		dq_cnt++;
 		dq++;

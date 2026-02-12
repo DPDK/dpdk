@@ -3,11 +3,11 @@
 #ifndef _RTE_RWLOCK_PPC_64_H_
 #define _RTE_RWLOCK_PPC_64_H_
 
+#include "generic/rte_rwlock.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "generic/rte_rwlock.h"
 
 static inline void
 rte_rwlock_read_lock_tm(rte_rwlock_t *rwl)

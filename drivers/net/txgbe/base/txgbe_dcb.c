@@ -358,4 +358,3 @@ s32 txgbe_dcb_config_pfc(struct txgbe_hw *hw, u8 pfc_en, u8 *map)
 	ret = txgbe_dcb_config_pfc_raptor(hw, pfc_en, map);
 	return ret;
 }
-

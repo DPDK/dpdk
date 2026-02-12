@@ -99,11 +99,10 @@ typedef struct VhostUserLog {
 /* Comply with Cryptodev-Linux */
 #define VHOST_USER_CRYPTO_MAX_HMAC_KEY_LENGTH	512
 #define VHOST_USER_CRYPTO_MAX_CIPHER_KEY_LENGTH	64
+#define VHOST_USER_CRYPTO_MAX_KEY_LENGTH	1024
 
 /* Same structure as vhost-user backend session info */
-typedef struct VhostUserCryptoSessionParam {
-	int64_t session_id;
-	uint32_t op_code;
+typedef struct VhostUserCryptoSymSessionParam {
 	uint32_t cipher_algo;
 	uint32_t cipher_key_len;
 	uint32_t hash_algo;
@@ -114,10 +113,36 @@ typedef struct VhostUserCryptoSessionParam {
 	uint8_t dir;
 	uint8_t hash_mode;
 	uint8_t chaining_dir;
-	uint8_t *ciphe_key;
+	uint8_t *cipher_key;
 	uint8_t *auth_key;
 	uint8_t cipher_key_buf[VHOST_USER_CRYPTO_MAX_CIPHER_KEY_LENGTH];
 	uint8_t auth_key_buf[VHOST_USER_CRYPTO_MAX_HMAC_KEY_LENGTH];
+} VhostUserCryptoSymSessionParam;
+
+
+typedef struct VhostUserCryptoAsymRsaParam {
+	uint32_t padding_algo;
+	uint32_t hash_algo;
+} VhostUserCryptoAsymRsaParam;
+
+typedef struct VhostUserCryptoAsymSessionParam {
+	uint32_t algo;
+	uint32_t key_type;
+	uint32_t key_len;
+	uint8_t *key;
+	union {
+		VhostUserCryptoAsymRsaParam rsa;
+	} u;
+	uint8_t key_buf[VHOST_USER_CRYPTO_MAX_KEY_LENGTH];
+} VhostUserCryptoAsymSessionParam;
+
+typedef struct VhostUserCryptoSessionParam {
+	uint32_t op_code;
+	union {
+		VhostUserCryptoSymSessionParam sym_sess;
+		VhostUserCryptoAsymSessionParam asym_sess;
+	} u;
+	int64_t session_id;
 } VhostUserCryptoSessionParam;
 
 typedef struct VhostUserVringArea {
@@ -143,7 +168,7 @@ struct vhost_user_config {
 	uint8_t region[VHOST_USER_MAX_CONFIG_SIZE];
 };
 
-typedef struct VhostUserMsg {
+typedef struct __rte_packed_begin VhostUserMsg {
 	union {
 		uint32_t frontend; /* a VhostUserRequest value */
 		uint32_t backend;  /* a VhostUserBackendRequest value*/
@@ -169,16 +194,16 @@ typedef struct VhostUserMsg {
 		struct vhost_user_config cfg;
 	} payload;
 	/* Nothing should be added after the payload */
-} __rte_packed VhostUserMsg;
+} __rte_packed_end VhostUserMsg;
 
 /* Note: this structure and VhostUserMsg can't be changed carelessly as
  * external message handlers rely on them.
  */
-struct __rte_packed vhu_msg_context {
+struct __rte_packed_begin vhu_msg_context {
 	VhostUserMsg msg;
 	int fds[VHOST_MEMORY_MAX_NREGIONS];
 	int fd_num;
-};
+} __rte_packed_end;
 
 #define VHOST_USER_HDR_SIZE offsetof(VhostUserMsg, payload.u64)
 

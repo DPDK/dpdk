@@ -2,8 +2,6 @@
     Copyright(c) 2010-2015 Intel Corporation.
     Copyright(c) 2018 Arm Limited.
 
-.. _Hash_Library:
-
 Hash Library
 ============
 
@@ -104,7 +102,7 @@ For concurrent writes, and concurrent reads and writes the following flag values
    Where required, the application can make use of RCU mechanisms to determine when the readers have stopped referencing the position.
    RCU QSBR process is integrated within the Hash library for safe freeing of the position. Application has certain responsibilities while using this feature.
    For example, rte_hash_rcu_qsbr_add() need to be called to use the integrated RCU mechanism.
-   Please refer to resource reclamation framework of :ref:`RCU library <RCU_Library>` for more details.
+   Please refer to resource reclamation framework of :doc:`rcu_lib` for more details.
 
 
 Extendable Bucket Functionality support
@@ -291,7 +289,7 @@ The flow table operations on the application side are described below:
     wait till the readers are not referencing the position returned during add/delete flow and then free the position.
     RCU mechanisms can be used to find out when the readers are not referencing the position anymore.
     RCU QSBR process is integrated within the Hash library for safe freeing of the position. Application has certain responsibilities while using this feature.
-    Please refer to resource reclamation framework of :ref:`RCU library <RCU_Library>` for more details.
+    Please refer to resource reclamation framework of :doc:`rcu_lib` for more details.
 
 *   Lookup flow: Lookup for the flow key in the hash.
     If the returned position is valid (flow lookup hit), use the returned position to access the flow entry in the flow table.

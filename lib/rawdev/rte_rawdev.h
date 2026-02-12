@@ -14,12 +14,12 @@
  * no specific type already available in DPDK.
  */
 
+#include <rte_common.h>
+#include <rte_memory.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_common.h>
-#include <rte_memory.h>
 
 /* Rawdevice object - essentially a void to be typecast by implementation */
 typedef void *rte_rawdev_obj_t;
@@ -44,7 +44,7 @@ rte_rawdev_count(void);
  *   Returns raw device identifier on success.
  *   - <0: Failure to find named raw device.
  */
-uint16_t
+int
 rte_rawdev_get_dev_id(const char *name);
 
 /**

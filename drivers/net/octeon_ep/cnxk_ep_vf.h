@@ -134,6 +134,9 @@
 #define CNXK_EP_R_MBOX_VF_PF_DATA(ring)          \
 	(CNXK_EP_R_MBOX_VF_PF_DATA_START + ((ring) * CNXK_EP_RING_OFFSET))
 
+#define CNXK_EP_R_MBOX_PF_VF_DATA(ring)          \
+	(CNXK_EP_R_MBOX_PF_VF_DATA_START + ((ring) * CNXK_EP_RING_OFFSET))
+
 #define CNXK_EP_R_MBOX_PF_VF_INT(ring)           \
 	(CNXK_EP_R_MBOX_PF_VF_INT_START + ((ring) * CNXK_EP_RING_OFFSET))
 
@@ -195,5 +198,7 @@ struct cnxk_ep_instr_32B {
 #define CNXK_EP_OQ_ISM_OFFSET(queue)    (RTE_CACHE_LINE_SIZE * (queue))
 #define CNXK_EP_ISM_EN                  (0x1)
 #define CNXK_EP_ISM_MSIX_DIS            (0x2)
+#define CNXK_EP_MBOX_INTR               (0x1)
+#define CNXK_EP_MBOX_ENAB               (0x2)
 
 #endif /*_CNXK_EP_VF_H_ */

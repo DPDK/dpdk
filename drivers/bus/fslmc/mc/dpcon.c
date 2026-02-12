@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
  * Copyright 2017-2019 NXP
@@ -8,6 +8,8 @@
 #include <fsl_mc_cmd.h>
 #include <fsl_dpcon.h>
 #include <fsl_dpcon_cmd.h>
+
+#include <eal_export.h>
 
 /**
  * dpcon_open() - Open a control session for the specified object
@@ -26,6 +28,7 @@
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpcon_open)
 int dpcon_open(struct fsl_mc_io *mc_io,
 	       uint32_t cmd_flags,
 	       int dpcon_id,
@@ -64,6 +67,7 @@ int dpcon_open(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpcon_close)
 int dpcon_close(struct fsl_mc_io *mc_io,
 		uint32_t cmd_flags,
 		uint16_t token)
@@ -164,6 +168,7 @@ int dpcon_destroy(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpcon_enable)
 int dpcon_enable(struct fsl_mc_io *mc_io,
 		 uint32_t cmd_flags,
 		 uint16_t token)
@@ -187,6 +192,7 @@ int dpcon_enable(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpcon_disable)
 int dpcon_disable(struct fsl_mc_io *mc_io,
 		  uint32_t cmd_flags,
 		  uint16_t token)
@@ -245,6 +251,7 @@ int dpcon_is_enabled(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpcon_reset)
 int dpcon_reset(struct fsl_mc_io *mc_io,
 		uint32_t cmd_flags,
 		uint16_t token)
@@ -268,6 +275,7 @@ int dpcon_reset(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpcon_get_attributes)
 int dpcon_get_attributes(struct fsl_mc_io *mc_io,
 			 uint32_t cmd_flags,
 			 uint16_t token,

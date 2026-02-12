@@ -44,7 +44,7 @@ struct ipaddr {
 };
 
 /** inline crypto private session structure */
-struct txgbe_crypto_session {
+struct __rte_cache_aligned txgbe_crypto_session {
 	enum txgbe_operation op;
 	const uint8_t *key;
 	uint32_t key_len;
@@ -54,7 +54,7 @@ struct txgbe_crypto_session {
 	struct ipaddr src_ip;
 	struct ipaddr dst_ip;
 	struct rte_eth_dev *dev;
-} __rte_cache_aligned;
+};
 
 struct txgbe_crypto_rx_ip_table {
 	struct ipaddr ip;

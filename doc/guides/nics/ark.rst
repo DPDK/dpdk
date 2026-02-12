@@ -172,10 +172,10 @@ during RX from user meta data coming from FPGA hardware.
    };
 
    /* RX tuser field based on user's hardware */
-   struct user_rx_meta {
+   struct __rte_packed_begin user_rx_meta {
       uint64_t timestamp;
       uint32_t rss;
-   } __rte_packed;
+   } __rte_packed_end;
 
    /* Create ark_user_extension object for use in other hook functions */
    void *rte_pmd_ark_dev_init(struct rte_eth_dev * dev,
@@ -310,6 +310,12 @@ ARK PMD supports the following Arkville RTL PCIe instances including:
 * ``1d6c:1024`` - AR-TK242 [2x100GbE Packet Capture Device]
 * ``1d6c:1025`` - AR-TK242-FX2 [2x100GbE Gen5 Packet Capture Device]
 * ``1d6c:1026`` - AR-TK242-FX2 [1x200GbE Gen5 Packet Capture Device]
+* ``1d6c:102a`` - AR-TK242-FX2 [4x100GbE Gen5 Packet Capture Device]
+* ``1d6c:102b`` - AR-ARKV-FX1 [Arkville 128B DPDK Data Mover for Versal/CPM5]
+* ``1d6c:102c`` - AR-TK242-V80 [Gen5 PCAP Processor]
+* ``1d6c:102d`` - AR-TK242-FX2 [8x10GbE Gen5 Packet Capture-Replay Device]
+* ``1d6c:102e`` - AR-TK242-FX2 [8x25GbE Gen5 Packet Capture-Replay Device]
+* ``1d6c:102f`` - AR-TK242-FX2 [1x400GbE Gen5 Packet Capture-Replay Device]
 
 Arkville RTL Core Configurations
 --------------------------------
@@ -322,6 +328,7 @@ stream interfaces for both AMD/Xilinx and Intel FPGAs.
 
 * ARK-FX0 - 256-bit 32B datapath (PCIe Gen3, Gen4)
 * ARK-FX1 - 512-bit 64B datapath (PCIe Gen3, Gen4, Gen5)
+* ARKV-FX1 - 1024-bit 128B datapath (AMD PCIe Versal, Gen5 )
 * ARK-FX2 - 1024-bit 128B datapath (PCIe Gen5x16 Only)
 
 DPDK and Arkville Firmware Versioning

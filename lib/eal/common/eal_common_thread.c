@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include <eal_export.h>
 #include <eal_trace_internal.h>
 #include <rte_errno.h>
 #include <rte_lcore.h>
@@ -22,15 +23,18 @@
 #include "eal_thread.h"
 #include "eal_trace.h"
 
+RTE_EXPORT_SYMBOL(per_lcore__lcore_id)
 RTE_DEFINE_PER_LCORE(unsigned int, _lcore_id) = LCORE_ID_ANY;
+RTE_EXPORT_SYMBOL(per_lcore__thread_id)
 RTE_DEFINE_PER_LCORE(int, _thread_id) = -1;
-static RTE_DEFINE_PER_LCORE(unsigned int, _socket_id) =
+static RTE_DEFINE_PER_LCORE(unsigned int, _numa_id) =
 	(unsigned int)SOCKET_ID_ANY;
 static RTE_DEFINE_PER_LCORE(rte_cpuset_t, _cpuset);
 
+RTE_EXPORT_SYMBOL(rte_socket_id)
 unsigned rte_socket_id(void)
 {
-	return RTE_PER_LCORE(_socket_id);
+	return RTE_PER_LCORE(_numa_id);
 }
 
 static int
@@ -66,8 +70,8 @@ thread_update_affinity(rte_cpuset_t *cpusetp)
 {
 	unsigned int lcore_id = rte_lcore_id();
 
-	/* store socket_id in TLS for quick access */
-	RTE_PER_LCORE(_socket_id) =
+	/* store numa_id in TLS for quick access */
+	RTE_PER_LCORE(_numa_id) =
 		eal_cpuset_socket_id(cpusetp);
 
 	/* store cpuset in TLS for quick access */
@@ -76,12 +80,13 @@ thread_update_affinity(rte_cpuset_t *cpusetp)
 
 	if (lcore_id != (unsigned)LCORE_ID_ANY) {
 		/* EAL thread will update lcore_config */
-		lcore_config[lcore_id].socket_id = RTE_PER_LCORE(_socket_id);
+		lcore_config[lcore_id].numa_id = RTE_PER_LCORE(_numa_id);
 		memmove(&lcore_config[lcore_id].cpuset, cpusetp,
 			sizeof(rte_cpuset_t));
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_set_affinity)
 int
 rte_thread_set_affinity(rte_cpuset_t *cpusetp)
 {
@@ -94,6 +99,7 @@ rte_thread_set_affinity(rte_cpuset_t *cpusetp)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_get_affinity)
 void
 rte_thread_get_affinity(rte_cpuset_t *cpusetp)
 {
@@ -103,43 +109,24 @@ rte_thread_get_affinity(rte_cpuset_t *cpusetp)
 }
 
 int
-eal_thread_dump_affinity(rte_cpuset_t *cpuset, char *str, unsigned int size)
-{
-	unsigned cpu;
-	int ret;
-	unsigned int out = 0;
-
-	for (cpu = 0; cpu < CPU_SETSIZE; cpu++) {
-		if (!CPU_ISSET(cpu, cpuset))
-			continue;
-
-		ret = snprintf(str + out,
-			       size - out, "%u,", cpu);
-		if (ret < 0 || (unsigned)ret >= size - out) {
-			/* string will be truncated */
-			ret = -1;
-			goto exit;
-		}
-
-		out += ret;
-	}
-
-	ret = 0;
-exit:
-	/* remove the last separator */
-	if (out > 0)
-		str[out - 1] = '\0';
-
-	return ret;
-}
-
-int
 eal_thread_dump_current_affinity(char *str, unsigned int size)
 {
 	rte_cpuset_t cpuset;
+	char *cpuset_str;
+	int ret;
 
 	rte_thread_get_affinity(&cpuset);
-	return eal_thread_dump_affinity(&cpuset, str, size);
+	cpuset_str = eal_cpuset_to_str(&cpuset);
+	if (cpuset_str == NULL)
+		return -1;
+
+	ret = snprintf(str, size, "%s", cpuset_str);
+	free(cpuset_str);
+
+	if (ret < 0 || (unsigned int)ret >= size)
+		return -1;
+
+	return 0;
 }
 
 void
@@ -256,7 +243,7 @@ static int control_thread_init(void *arg)
 	/* Set control thread socket ID to SOCKET_ID_ANY
 	 * as control threads may be scheduled on any NUMA node.
 	 */
-	RTE_PER_LCORE(_socket_id) = SOCKET_ID_ANY;
+	RTE_PER_LCORE(_numa_id) = SOCKET_ID_ANY;
 	params->ret = rte_thread_set_affinity_by_id(rte_thread_self(), cpuset);
 	if (params->ret != 0) {
 		rte_atomic_store_explicit(&params->status,
@@ -282,6 +269,7 @@ static uint32_t control_thread_start(void *arg)
 	return start_routine(start_arg);
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_create_control)
 int
 rte_thread_create_control(rte_thread_t *thread, const char *name,
 		rte_thread_func start_routine, void *arg)
@@ -341,6 +329,7 @@ add_internal_prefix(char *prefixed_name, const char *name, size_t size)
 	strlcpy(prefixed_name + prefixlen, name, size - prefixlen);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_thread_create_internal_control)
 int
 rte_thread_create_internal_control(rte_thread_t *id, const char *name,
 		rte_thread_func func, void *arg)
@@ -351,6 +340,7 @@ rte_thread_create_internal_control(rte_thread_t *id, const char *name,
 	return rte_thread_create_control(id, prefixed_name, func, arg);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_thread_set_prefixed_name)
 void
 rte_thread_set_prefixed_name(rte_thread_t id, const char *name)
 {
@@ -360,6 +350,7 @@ rte_thread_set_prefixed_name(rte_thread_t id, const char *name)
 	rte_thread_set_name(id, prefixed_name);
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_register)
 int
 rte_thread_register(void)
 {
@@ -392,6 +383,7 @@ rte_thread_register(void)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_unregister)
 void
 rte_thread_unregister(void)
 {
@@ -405,6 +397,7 @@ rte_thread_unregister(void)
 			lcore_id);
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_attr_init)
 int
 rte_thread_attr_init(rte_thread_attr_t *attr)
 {
@@ -417,6 +410,7 @@ rte_thread_attr_init(rte_thread_attr_t *attr)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_attr_set_priority)
 int
 rte_thread_attr_set_priority(rte_thread_attr_t *thread_attr,
 		enum rte_thread_priority priority)
@@ -429,6 +423,7 @@ rte_thread_attr_set_priority(rte_thread_attr_t *thread_attr,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_attr_set_affinity)
 int
 rte_thread_attr_set_affinity(rte_thread_attr_t *thread_attr,
 		rte_cpuset_t *cpuset)
@@ -444,6 +439,7 @@ rte_thread_attr_set_affinity(rte_thread_attr_t *thread_attr,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_attr_get_affinity)
 int
 rte_thread_attr_get_affinity(rte_thread_attr_t *thread_attr,
 		rte_cpuset_t *cpuset)

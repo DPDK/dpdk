@@ -93,7 +93,7 @@ typedef struct {
 #define IPC_GET_CI_INDEX(x)	(x & IPC_PI_CI_INDEX_MASK)
 
 /** buffer ring common metadata */
-typedef struct ipc_bd_ring_md {
+typedef struct __rte_packed_begin ipc_bd_ring_md {
 	volatile uint32_t pi;		/**< Producer index and flag (MSB)
 					  *  which flip for each Ring wrapping
 					  */
@@ -102,10 +102,10 @@ typedef struct ipc_bd_ring_md {
 					  */
 	uint32_t ring_size;	/**< depth (Used to roll-over pi/ci) */
 	uint32_t msg_size;	/**< Size of the each buffer */
-} __rte_packed ipc_br_md_t;
+} __rte_packed_end ipc_br_md_t;
 
 /** IPC buffer descriptor */
-typedef struct ipc_buffer_desc {
+typedef struct __rte_packed_begin ipc_buffer_desc {
 	union {
 		uint64_t host_virt;	/**< msg's host virtual address */
 		struct {
@@ -115,9 +115,9 @@ typedef struct ipc_buffer_desc {
 	};
 	uint32_t modem_ptr;	/**< msg's modem physical address */
 	uint32_t len;		/**< msg len */
-} __rte_packed ipc_bd_t;
+} __rte_packed_end ipc_bd_t;
 
-typedef struct ipc_channel {
+typedef struct __rte_packed_begin ipc_channel {
 	uint32_t ch_id;		/**< Channel id */
 	ipc_br_md_t md;			/**< Metadata for BD ring */
 	ipc_bd_t bd_h[IPC_MAX_DEPTH];	/**< Buffer Descriptor on Host */
@@ -134,22 +134,22 @@ typedef struct ipc_channel {
 					  * circular buffer size
 					  */
 	uint32_t host_ipc_params;	/**< Address for host IPC parameters */
-} __rte_packed ipc_ch_t;
+} __rte_packed_end ipc_ch_t;
 
-typedef struct ipc_instance {
+typedef struct __rte_packed_begin ipc_instance {
 	uint32_t instance_id;		/**< instance id, use to init this
 					  * instance by ipc_init API
 					  */
 	uint32_t initialized;		/**< Set in ipc_init */
 	ipc_ch_t ch_list[IPC_MAX_CHANNEL_COUNT];
 		/**< Channel descriptors in this instance */
-} __rte_packed ipc_instance_t;
+} __rte_packed_end ipc_instance_t;
 
-typedef struct ipc_metadata {
+typedef struct __rte_packed_begin ipc_metadata {
 	uint32_t ipc_host_signature; /**< IPC host signature, Set by host/L2 */
 	uint32_t ipc_geul_signature; /**< IPC geul signature, Set by modem */
 	ipc_instance_t instance_list[IPC_MAX_INSTANCE_COUNT];
-} __rte_packed ipc_metadata_t;
+} __rte_packed_end ipc_metadata_t;
 
 typedef struct ipc_channel_us_priv {
 	int32_t		eventfd;
@@ -221,24 +221,24 @@ struct bbdev_ipc_dequeue_op {
  * of the parameters which are also part of Shared BD ring. Read access
  * of these parameters from the host side would not be over PCI.
  */
-typedef struct host_ipc_params {
+typedef struct __rte_packed_begin host_ipc_params {
 	volatile uint32_t pi;
 	volatile uint32_t ci;
 	volatile uint32_t bd_m_modem_ptr[IPC_MAX_DEPTH];
-} __rte_packed host_ipc_params_t;
+} __rte_packed_end host_ipc_params_t;
 
-struct hif_ipc_regs {
+struct __rte_packed_begin hif_ipc_regs {
 	uint32_t ipc_mdata_offset;
 	uint32_t ipc_mdata_size;
-} __rte_packed;
+} __rte_packed_end;
 
-struct gul_hif {
+struct __rte_packed_begin gul_hif {
 	uint32_t ver;
 	uint32_t hif_ver;
 	uint32_t status;
 	volatile uint32_t host_ready;
 	volatile uint32_t mod_ready;
 	struct hif_ipc_regs ipc_regs;
-} __rte_packed;
+} __rte_packed_end;
 
 #endif

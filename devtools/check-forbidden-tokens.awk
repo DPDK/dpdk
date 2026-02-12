@@ -10,9 +10,11 @@
 BEGIN {
 	split(FOLDERS,deny_folders," ");
 	split(EXPRESSIONS,deny_expr," ");
+	split(SKIP_FILES,skip_files," ");
 	in_file=0;
 	in_comment=0;
 	count=0;
+	warned=0;
 	comment_start="/*"
 	comment_end="*/"
 }
@@ -32,14 +34,11 @@ BEGIN {
 		for (i in deny_expr) {
 			forbidden_added = "^\\+.*" deny_expr[i];
 			forbidden_removed="^-.*" deny_expr[i];
-			current = expressions[deny_expr[i]]
 			if ($0 ~ forbidden_added) {
-				count = count + 1;
-				expressions[deny_expr[i]] = current + 1
+				count = count + 1
 			}
 			if ($0 ~ forbidden_removed) {
-				count = count - 1;
-				expressions[deny_expr[i]] = current - 1
+				count = count - 1
 			}
 		}
 	}
@@ -49,26 +48,39 @@ BEGIN {
 	}
 }
 # switch to next file , check if the balance of add/remove
-# of previous filehad new additions
+# of previous file had new additions
 ($0 ~ "^\\+\\+\\+ b/") {
 	in_file = 0;
 	if (count > 0) {
-		exit;
+		warned = warned + 1
+		print "Warning in " substr(last_file,7) ":"
 	}
+	count = 0
 	for (i in deny_folders) {
-		re = "^\\+\\+\\+ b/" deny_folders[i];
-		if ($0 ~ re) {
-			# Check only if the files are not part of SKIP_FILES
-			if (!(length(SKIP_FILES) && ($re ~ SKIP_FILES))) {
-				in_file = 1
-				last_file = $0
-			}
+		if (!($0 ~ "^\\+\\+\\+ b/" deny_folders[i])) {
+			continue
 		}
+		skip = 0
+		for (j in skip_files) {
+			if (!($0 ~ "^\\+\\+\\+ b/" skip_files[j])) {
+				continue
+			}
+			skip = 1
+			break
+		}
+		if (skip == 0) {
+			in_file = 1
+			last_file = $0
+		}
+		break
 	}
 }
 END {
 	if (count > 0) {
+		warned = warned + 1
 		print "Warning in " substr(last_file,7) ":"
+	}
+	if (warned > 0) {
 		print MESSAGE
 		exit RET_ON_FAIL
 	}

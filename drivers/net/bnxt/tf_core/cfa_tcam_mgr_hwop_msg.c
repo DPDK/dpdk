@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2021-2023 Broadcom
+ * Copyright(c) 2021-2024 Broadcom
  * All rights reserved.
  */
 
@@ -14,8 +14,8 @@
 #include "tf_tcam.h"
 #include "hcapi_cfa_defs.h"
 #include "cfa_tcam_mgr.h"
-#include "cfa_tcam_mgr_hwop_msg.h"
 #include "cfa_tcam_mgr_device.h"
+#include "cfa_tcam_mgr_hwop_msg.h"
 #include "cfa_tcam_mgr_p58.h"
 #include "cfa_tcam_mgr_p4.h"
 #include "tf_session.h"
@@ -23,20 +23,18 @@
 #include "tfp.h"
 #include "tf_util.h"
 
-/*
- * The free hwop will free more than a single slice so cannot be used.
- */
-struct cfa_tcam_mgr_hwops_funcs hwop_funcs;
-
 int
-cfa_tcam_mgr_hwops_init(enum cfa_tcam_mgr_device_type type)
+cfa_tcam_mgr_hwops_init(struct cfa_tcam_mgr_data *tcam_mgr_data,
+			enum cfa_tcam_mgr_device_type type)
 {
+	struct cfa_tcam_mgr_hwops_funcs *hwop_funcs =
+			&tcam_mgr_data->hwop_funcs;
+
 	switch (type) {
 	case CFA_TCAM_MGR_DEVICE_TYPE_P4:
-	case CFA_TCAM_MGR_DEVICE_TYPE_SR:
-		return cfa_tcam_mgr_hwops_get_funcs_p4(&hwop_funcs);
+		return cfa_tcam_mgr_hwops_get_funcs_p4(hwop_funcs);
 	case CFA_TCAM_MGR_DEVICE_TYPE_P5:
-		return cfa_tcam_mgr_hwops_get_funcs_p58(&hwop_funcs);
+		return cfa_tcam_mgr_hwops_get_funcs_p58(hwop_funcs);
 	default:
 		CFA_TCAM_MGR_LOG(ERR, "No such device\n");
 		return -CFA_TCAM_MGR_ERR_CODE(NODEV);
@@ -51,27 +49,27 @@ cfa_tcam_mgr_hwops_init(enum cfa_tcam_mgr_device_type type)
  */
 
 int
-cfa_tcam_mgr_entry_set_msg(int sess_idx, struct cfa_tcam_mgr_context *context
-			   __rte_unused,
+cfa_tcam_mgr_entry_set_msg(struct cfa_tcam_mgr_data *tcam_mgr_data,
+			   struct tf *tfp __rte_unused,
 			   struct cfa_tcam_mgr_set_parms *parms,
 			   int row, int slice,
 			   int max_slices __rte_unused)
 {
-	cfa_tcam_mgr_hwop_set_func_t set_func;
-
-	set_func = hwop_funcs.set;
-	if (set_func == NULL)
-		return -CFA_TCAM_MGR_ERR_CODE(PERM);
-
-	struct tf_tcam_set_parms sparms;
-	struct tf_session *tfs;
-	struct tf_dev_info *dev;
-	int rc;
 	enum tf_tcam_tbl_type type =
 		cfa_tcam_mgr_get_phys_table_type(parms->type);
+	cfa_tcam_mgr_hwop_set_func_t set_func;
+	struct tf_tcam_set_parms sparms;
+	struct tf_dev_info *dev;
+	struct tf_session *tfs;
+	int rc;
+
+	set_func = tcam_mgr_data->hwop_funcs.set;
+	if (!set_func)
+		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
+
 
 	/* Retrieve the session information */
-	rc = tf_session_get_session_internal(context->tfp, &tfs);
+	rc = tf_session_get_session_internal(tfp, &tfs);
 	if (rc)
 		return rc;
 
@@ -91,63 +89,75 @@ cfa_tcam_mgr_entry_set_msg(int sess_idx, struct cfa_tcam_mgr_context *context
 	sparms.result	   = parms->result;
 	sparms.result_size = parms->result_size;
 
-	rc = tf_msg_tcam_entry_set(context->tfp, dev, &sparms);
+#ifdef CFA_TCAM_MGR_TRACING
+	CFA_TCAM_MGR_LOG_DIR_TYPE(INFO, parms->dir, parms->type,
+				  "%s: %s row:%d slice:%d "
+				  "set tcam physical idx 0x%x\n",
+				  tf_dir_2_str(parms->dir),
+				  cfa_tcam_mgr_tbl_2_str(parms->type),
+				  row, slice, sparms.idx);
+#endif
+
+	rc = tf_msg_tcam_entry_set(tfp, dev, &sparms);
 	if (rc) {
-		/* Log error */
 		CFA_TCAM_MGR_LOG_DIR_TYPE(ERR, parms->dir, parms->type,
-					  "Entry %d set failed, rc:%d\n",
+					  "%s: %s entry:%d "
+					  "set tcam failed, rc:%d\n",
+					  tf_dir_2_str(parms->dir),
+					  cfa_tcam_mgr_tbl_2_str(parms->type),
 					  parms->id, -rc);
 		return rc;
 	}
 
-	return set_func(sess_idx, parms, row, slice, max_slices);
+	return set_func(tcam_mgr_data, parms, row, slice, max_slices);
 }
 
 int
-cfa_tcam_mgr_entry_get_msg(int sess_idx, struct cfa_tcam_mgr_context *context
-			   __rte_unused,
+cfa_tcam_mgr_entry_get_msg(struct cfa_tcam_mgr_data *tcam_mgr_data,
+			   struct tf *tfp __rte_unused,
 			   struct cfa_tcam_mgr_get_parms *parms,
 			   int row, int slice,
 			   int max_slices __rte_unused)
 {
 	cfa_tcam_mgr_hwop_get_func_t get_func;
 
-	get_func = hwop_funcs.get;
-	if (get_func == NULL)
+	get_func = tcam_mgr_data->hwop_funcs.get;
+	if (!get_func)
 		return -CFA_TCAM_MGR_ERR_CODE(PERM);
 
-	return get_func(sess_idx, parms, row, slice, max_slices);
+	return get_func(tcam_mgr_data, parms, row, slice, max_slices);
 }
 
 int
-cfa_tcam_mgr_entry_free_msg(int sess_idx, struct cfa_tcam_mgr_context *context
-			    __rte_unused,
+cfa_tcam_mgr_entry_free_msg(struct cfa_tcam_mgr_data *tcam_mgr_data,
+			    struct tf *tfp __rte_unused,
 			    struct cfa_tcam_mgr_free_parms *parms,
 			    int row, int slice,
 			    int key_size,
 			    int result_size,
 			    int max_slices)
 {
+	enum tf_tcam_tbl_type type =
+		cfa_tcam_mgr_get_phys_table_type(parms->type);
+	uint8_t mask[CFA_TCAM_MGR_MAX_KEY_SIZE] = { 0 };
+	uint8_t key[CFA_TCAM_MGR_MAX_KEY_SIZE] = { 0 };
 	cfa_tcam_mgr_hwop_free_func_t free_func;
-
-	free_func = hwop_funcs.free;
-	if (free_func == NULL)
-		return -CFA_TCAM_MGR_ERR_CODE(PERM);
-
+	struct tf_tcam_set_parms sparms;
 	struct tf_dev_info *dev;
 	struct tf_session *tfs;
 	int rc;
-	enum tf_tcam_tbl_type type =
-		cfa_tcam_mgr_get_phys_table_type(parms->type);
 
-	/* Free will clear an entire row. */
-	/* Use set message to clear an individual entry */
-	struct tf_tcam_set_parms sparms;
-	uint8_t key[CFA_TCAM_MGR_MAX_KEY_SIZE] = { 0 };
-	uint8_t mask[CFA_TCAM_MGR_MAX_KEY_SIZE] = { 0 };
+	free_func = tcam_mgr_data->hwop_funcs.free;
+	if (!free_func)
+		return -CFA_TCAM_MGR_ERR_CODE(PERM);
+
+	/*
+	 * The free hwop will free more than a single slice (an entire row),
+	 * so cannot be used. Use set message to clear an individual entry
+	 */
 
 	/* Retrieve the session information */
-	rc = tf_session_get_session_internal(context->tfp, &tfs);
+	rc = tf_session_get_session_internal(tfp, &tfs);
 	if (rc)
 		return rc;
 
@@ -158,7 +168,9 @@ cfa_tcam_mgr_entry_free_msg(int sess_idx, struct cfa_tcam_mgr_context *context
 
 	if (key_size > CFA_TCAM_MGR_MAX_KEY_SIZE) {
 		CFA_TCAM_MGR_LOG_DIR_TYPE(ERR, parms->dir, parms->type,
-					  "Entry %d key size is %d greater than:%d\n",
+					  "%s: %s entry:%d key size:%d > %d\n",
+					  tf_dir_2_str(parms->dir),
+					  cfa_tcam_mgr_tbl_2_str(parms->type),
 					  parms->id, key_size,
 					  CFA_TCAM_MGR_MAX_KEY_SIZE);
 		return -EINVAL;
@@ -166,7 +178,9 @@ cfa_tcam_mgr_entry_free_msg(int sess_idx, struct cfa_tcam_mgr_context *context
 
 	if (result_size > CFA_TCAM_MGR_MAX_KEY_SIZE) {
 		CFA_TCAM_MGR_LOG_DIR_TYPE(ERR, parms->dir, parms->type,
-					  "Entry %d result size is %d greater than:%d\n",
+					  "%s: %s entry:%d res size:%d > %d\n",
+					  tf_dir_2_str(parms->dir),
+					  cfa_tcam_mgr_tbl_2_str(parms->type),
 					  parms->id, result_size,
 					  CFA_TCAM_MGR_MAX_KEY_SIZE);
 		return -EINVAL;
@@ -186,16 +200,27 @@ cfa_tcam_mgr_entry_free_msg(int sess_idx, struct cfa_tcam_mgr_context *context
 	sparms.key_size	   = key_size;
 	sparms.result_size = result_size;
 
-	rc = tf_msg_tcam_entry_set(context->tfp, dev, &sparms);
+#ifdef CFA_TCAM_MGR_TRACING
+	CFA_TCAM_MGR_LOG_DIR_TYPE(INFO, parms->dir, parms->type,
+				  "%s: %s row:%d slice:%d free idx:%d "
+				  "key_sz:%d result_sz:%d\n",
+				  tf_dir_2_str(parms->dir),
+				  cfa_tcam_mgr_tbl_2_str(parms->type),
+				  row, slice, sparms.idx, key_size,
+				  result_size);
+#endif
+
+	rc = tf_msg_tcam_entry_set(tfp, dev, &sparms);
 	if (rc) {
 		/* Log error */
 		CFA_TCAM_MGR_LOG_DIR_TYPE(ERR, parms->dir, parms->type,
-					  "Row %d, slice %d set failed, "
-					  "rc:%d.\n",
-					  row,
-					  slice,
-					  rc);
+					  "%s: %s row:%d slice:%d set failed, "
+					  "rc:%d\n",
+					  tf_dir_2_str(parms->dir),
+					  cfa_tcam_mgr_tbl_2_str(parms->type),
+					  row, slice, rc);
 		return rc;
 	}
-	return free_func(sess_idx, parms, row, slice, max_slices);
+
+	return free_func(tcam_mgr_data, parms, row, slice, max_slices);
 }

@@ -93,6 +93,8 @@ enum {
 /*
  * callee saved registers list.
  * keep RBP as the last one.
+ * RBP is marked as used every time we have external calls
+ * since we need it to save RSP before stack realignment.
  */
 static const uint32_t save_regs[] = {RBX, R12, R13, R14, R15, RBP};
 
@@ -167,7 +169,7 @@ emit_rex(struct bpf_jit_state *st, uint32_t op, uint32_t reg, uint32_t rm)
 	if (BPF_CLASS(op) == EBPF_ALU64 ||
 			op == (BPF_ST | BPF_MEM | EBPF_DW) ||
 			op == (BPF_STX | BPF_MEM | EBPF_DW) ||
-			op == (BPF_STX | EBPF_XADD | EBPF_DW) ||
+			op == (BPF_STX | EBPF_ATOMIC | EBPF_DW) ||
 			op == (BPF_LD | BPF_IMM | EBPF_DW) ||
 			(BPF_CLASS(op) == BPF_LDX &&
 			BPF_MODE(op) == BPF_MEM &&
@@ -652,22 +654,41 @@ emit_st_reg(struct bpf_jit_state *st, uint32_t op, uint32_t sreg, uint32_t dreg,
 	emit_st_common(st, op, sreg, dreg, 0, ofs);
 }
 
+static void
+emit_abs_jmp(struct bpf_jit_state *st, int32_t ofs);
+
 /*
  * emit lock add %<sreg>, <ofs>(%<dreg>)
  */
 static void
-emit_st_xadd(struct bpf_jit_state *st, uint32_t op, uint32_t sreg,
-	uint32_t dreg, int32_t ofs)
+emit_st_atomic(struct bpf_jit_state *st, uint32_t op, uint32_t sreg,
+	uint32_t dreg, int32_t ofs, int32_t atomic_op)
 {
 	uint32_t imsz, mods;
+	uint8_t ops;
 
 	const uint8_t lck = 0xF0; /* lock prefix */
-	const uint8_t ops = 0x01; /* add opcode */
+
+	switch (atomic_op) {
+	case BPF_ATOMIC_ADD:
+		ops = 0x01; /* add opcode */
+		break;
+	case BPF_ATOMIC_XCHG:
+		ops = 0x87; /* xchg opcode */
+		break;
+	default:
+		/* this should be caught by validator and never reach here */
+		emit_ld_imm64(st, RAX, 0, 0);
+		emit_abs_jmp(st, st->exit.off);
+		return;
+	}
 
 	imsz = imm_size(ofs);
 	mods = (imsz == 1) ? MOD_IDISP8 : MOD_IDISP32;
 
-	emit_bytes(st, &lck, sizeof(lck));
+	/* xchg already implies lock */
+	if (atomic_op != BPF_ATOMIC_XCHG)
+		emit_bytes(st, &lck, sizeof(lck));
 	emit_rex(st, op, sreg, dreg);
 	emit_bytes(st, &ops, sizeof(ops));
 	emit_modregrm(st, mods, sreg, dreg);
@@ -685,6 +706,8 @@ emit_call(struct bpf_jit_state *st, uintptr_t trg)
 	const uint8_t ops = 0xFF;
 	const uint8_t mods = 2;
 
+	/* Mark RBP as used to trigger stack realignment in prolog. */
+	USED(st->reguse, RBP);
 	emit_ld_imm64(st, RAX, trg, trg >> 32);
 	emit_bytes(st, &ops, sizeof(ops));
 	emit_modregrm(st, MOD_DIRECT, mods, RAX);
@@ -1220,6 +1243,16 @@ emit_prolog(struct bpf_jit_state *st, int32_t stack_size)
 	if (INUSE(st->reguse, RBP) != 0) {
 		emit_mov_reg(st, EBPF_ALU64 | EBPF_MOV | BPF_X, RSP, RBP);
 		emit_alu_imm(st, EBPF_ALU64 | BPF_SUB | BPF_K, RSP, stack_size);
+
+		/*
+		 * Align stack pointer appropriately for function calls.
+		 * We do not have direct access to function stack alignment
+		 * value (like gcc internal macro INCOMING_STACK_BOUNDARY),
+		 * but hopefully `alignof(max_align_t)` will always be greater.
+		 * Original stack pointer will be restored from rbp.
+		 */
+		emit_alu_imm(st, EBPF_ALU64 | BPF_AND | BPF_K, RSP,
+			-(uint32_t)alignof(max_align_t));
 	}
 }
 
@@ -1429,10 +1462,10 @@ emit(struct bpf_jit_state *st, const struct rte_bpf *bpf)
 		case (BPF_ST | BPF_MEM | EBPF_DW):
 			emit_st_imm(st, op, dr, ins->imm, ins->off);
 			break;
-		/* atomic add instructions */
-		case (BPF_STX | EBPF_XADD | BPF_W):
-		case (BPF_STX | EBPF_XADD | EBPF_DW):
-			emit_st_xadd(st, op, sr, dr, ins->off);
+		/* atomic instructions */
+		case (BPF_STX | EBPF_ATOMIC | BPF_W):
+		case (BPF_STX | EBPF_ATOMIC | EBPF_DW):
+			emit_st_atomic(st, op, sr, dr, ins->off, ins->imm);
 			break;
 		/* jump instructions */
 		case (BPF_JMP | BPF_JA):

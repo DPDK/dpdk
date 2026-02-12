@@ -245,7 +245,7 @@ void rte_uacce_unregister(struct rte_uacce_driver *driver);
 			(uacce_drv).driver.name = RTE_STR(nm);\
 			rte_uacce_register(&uacce_drv); \
 		} \
-		RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
+		RTE_PMD_EXPORT_NAME(nm)
 
 #ifdef __cplusplus
 }

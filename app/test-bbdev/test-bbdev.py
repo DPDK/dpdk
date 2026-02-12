@@ -27,16 +27,10 @@ parser.add_argument("-p", "--testapp-path",
 parser.add_argument("-e", "--eal-params",
                     help="EAL arguments which must be passed to the test app",
                     default="--vdev=baseband_null0 -a00:00.0")
-# Until deprecated in next release keep -t as an valid argument for timeout, then use -T
-parser.add_argument("-t", "--timeout",
+parser.add_argument("-T", "--timeout",
                     type=int,
                     help="Timeout in seconds",
                     default=600)
-# This will become -t option for iter_max in next release
-parser.add_argument("--iter-max",
-                    type=int,
-                    help="Max iterations",
-                    default=6)
 parser.add_argument("-c", "--test-cases",
                     nargs="+",
                     help="Defines test cases to run. Run all if not specified")
@@ -58,6 +52,10 @@ parser.add_argument("-s", "--snr",
                     type=int,
                     help="SNR in dB for BLER tests",
                     default=0)
+parser.add_argument("-t", "--iter-max",
+                    type=int,
+                    help="Max iterations",
+                    default=6)
 parser.add_argument("-l", "--num-lcores",
                     type=int,
                     help="Number of lcores to run.",
@@ -83,10 +81,6 @@ if args.snr:
 
 if args.iter_max:
     params.extend(["-t", str(args.iter_max)])
-    print("The argument for iter_max will be -t in next release")
-
-if args.timeout:
-    print("The argument for timeout will be -T in next release")
 
 if args.num_ops:
     params.extend(["-n", str(args.num_ops)])
@@ -114,15 +108,29 @@ for vector in args.test_vector:
         try:
             output = subprocess.run(call_params, timeout=args.timeout, universal_newlines=True)
         except subprocess.TimeoutExpired as e:
+            print("===========================================================")
             print("Starting Test Suite : BBdev TimeOut Tests")
+            print("INFO: One of the tests timed out {}".format(e))
+            print("INFO: Unexpected Error")
+            print("+ ------------------------------------------------------- +")
             print("== test: timeout")
-            print("TestCase [ 0] : timeout passed")
-            print(" + Tests Failed :       1")
             print("Unexpected Error")
+            print("TestCase [ 0] : timeout failed")
+            print(" + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ +")
+            print(" + Tests Failed :       1")
+            print(" + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ +")
+            exit_status = 1
         if output.returncode < 0:
+            print("===========================================================")
             print("Starting Test Suite : BBdev Exception Tests")
+            print("INFO: One of the tests returned {}".format(output.returncode))
+            print("INFO: Unexpected Error")
+            print("+ ------------------------------------------------------- +")
             print("== test: exception")
-            print("TestCase [ 0] : exception passed")
-            print(" + Tests Failed :       1")
             print("Unexpected Error")
+            print("TestCase [ 0] : exception failed")
+            print(" + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ +")
+            print(" + Tests Failed :       1")
+            print(" + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ +")
+            exit_status = 1
 sys.exit(exit_status)

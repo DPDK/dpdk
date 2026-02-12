@@ -8,6 +8,8 @@ if not is_linux
     subdir_done()
 endif
 
+cflags += no_wvla_cflag
+
 static_ibverbs = (get_option('ibverbs_link') == 'static')
 dlopen_ibverbs = (get_option('ibverbs_link') == 'dlopen')
 LIB_GLUE_BASE = 'librte_net_mlx4_glue.so'
@@ -29,7 +31,7 @@ foreach libname:libnames
     if not lib.found() and not static_ibverbs
         lib = cc.find_library(libname, required:false)
     endif
-    if lib.found()
+    if lib.found() and cc.links(min_c_code, dependencies: lib)
         libs += lib
         if not static_ibverbs and not dlopen_ibverbs
             ext_deps += lib

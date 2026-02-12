@@ -5,6 +5,8 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+#define NIX_LSO_FRMT_IPV4_OFFSET_SHFT 3
+
 static void
 nix_lso_tcp(struct nix_lso_format_cfg *req, bool v4)
 {
@@ -160,6 +162,34 @@ nix_lso_tun_tcp(struct nix_lso_format_cfg *req, bool outer_v4, bool inner_v4)
 }
 
 int
+roc_nix_lso_alt_flags_profile_setup(struct roc_nix *roc_nix, nix_lso_alt_flg_format_t *fmt)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+	struct mbox *mbox = mbox_get(dev->mbox);
+	struct nix_lso_alt_flags_cfg_rsp *rsp;
+	struct nix_lso_alt_flags_cfg_req *req;
+	int rc = -ENOSPC;
+
+	req = mbox_alloc_msg_nix_lso_alt_flags_cfg(mbox);
+	if (req == NULL)
+		goto exit;
+
+	req->cfg = fmt->u[0];
+	req->cfg1 = fmt->u[1];
+
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		goto exit;
+
+	plt_nix_dbg("Setup alt flags format %u", rsp->lso_alt_flags_idx);
+	rc = rsp->lso_alt_flags_idx;
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+int
 roc_nix_lso_custom_fmt_setup(struct roc_nix *roc_nix,
 			     struct nix_lso_format *fields, uint16_t nb_fields)
 {
@@ -194,6 +224,74 @@ exit:
 	return rc;
 }
 
+static int
+nix_lso_ipv4(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_lso_format_cfg_rsp *rsp;
+	nix_lso_alt_flg_format_t alt_flags;
+
+	__io struct nix_lso_format *field;
+	struct nix_lso_format_cfg *req;
+	int flag_idx = 0, rc = -ENOSPC;
+	struct dev *dev = &nix->dev;
+	struct mbox *mbox;
+
+	/* First get flags profile to update v4 flags */
+	memset(&alt_flags, 0, sizeof(alt_flags));
+	alt_flags.s.alt_fsf_set = 0x2000;
+	alt_flags.s.alt_fsf_mask = 0x5FFF;
+	alt_flags.s.alt_msf_set = 0x2000;
+	alt_flags.s.alt_msf_mask = 0x5FFF;
+	alt_flags.s.alt_lsf_set = 0x0000;
+	alt_flags.s.alt_lsf_mask = 0x5FFF;
+	flag_idx = roc_nix_lso_alt_flags_profile_setup(roc_nix, &alt_flags);
+	if (flag_idx < 0)
+		return rc;
+
+	mbox = mbox_get(dev->mbox);
+
+	/*
+	 * IPv4 Fragmentation
+	 */
+	req = mbox_alloc_msg_nix_lso_format_cfg(mbox);
+	if (req == NULL) {
+		rc = -ENOSPC;
+		goto exit;
+	}
+
+	/* Format works only with TCP packet marked by OL3/OL4 */
+	field = (__io struct nix_lso_format *)&req->fields[0];
+	req->field_mask = NIX_LSO_FIELD_MASK;
+	/* Update Payload Length */
+	field->layer = NIX_TXLAYER_OL3;
+	field->offset = 2;
+	field->sizem1 = 1; /* 2B */
+	field->alg = NIX_LSOALG_ADD_PAYLEN;
+	field++;
+
+	/* Update fragment offset and flags */
+	field->layer = NIX_TXLAYER_OL3;
+	field->offset = 6;
+	field->sizem1 = 1;
+	field->shift = NIX_LSO_FRMT_IPV4_OFFSET_SHFT;
+	field->alt_flags_index = flag_idx;
+	field->alt_flags = 1;
+	/* Cumulative length of previous segments */
+	field->alg = NIX_LSOALG_ADD_OFFSET;
+	field++;
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		goto exit;
+
+	/* IPv4 fragment offset shifted by 3 bits, store this value in profile ID */
+	nix->lso_ipv4_idx = (NIX_LSO_FRMT_IPV4_OFFSET_SHFT << 8) | (rsp->lso_format_idx & 0x1F);
+	plt_nix_dbg("ipv4 fmt=%u", rsp->lso_format_idx);
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
 int
 roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 {
@@ -220,7 +318,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 	}
 
-	plt_nix_dbg("tcpv4 lso fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("tcpv4 lso fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv6/TCP LSO
@@ -240,7 +338,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 	}
 
-	plt_nix_dbg("tcpv6 lso fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("tcpv6 lso fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv4/UDP/TUN HDR/IPv4/TCP LSO
@@ -256,7 +354,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 
 	nix->lso_udp_tun_idx[ROC_NIX_LSO_TUN_V4V4] = rsp->lso_format_idx;
-	plt_nix_dbg("udp tun v4v4 fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("udp tun v4v4 fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv4/UDP/TUN HDR/IPv6/TCP LSO
@@ -272,7 +370,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 
 	nix->lso_udp_tun_idx[ROC_NIX_LSO_TUN_V4V6] = rsp->lso_format_idx;
-	plt_nix_dbg("udp tun v4v6 fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("udp tun v4v6 fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv6/UDP/TUN HDR/IPv4/TCP LSO
@@ -288,7 +386,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 
 	nix->lso_udp_tun_idx[ROC_NIX_LSO_TUN_V6V4] = rsp->lso_format_idx;
-	plt_nix_dbg("udp tun v6v4 fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("udp tun v6v4 fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv6/UDP/TUN HDR/IPv6/TCP LSO
@@ -304,7 +402,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 
 	nix->lso_udp_tun_idx[ROC_NIX_LSO_TUN_V6V6] = rsp->lso_format_idx;
-	plt_nix_dbg("udp tun v6v6 fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("udp tun v6v6 fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv4/TUN HDR/IPv4/TCP LSO
@@ -320,7 +418,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 
 	nix->lso_tun_idx[ROC_NIX_LSO_TUN_V4V4] = rsp->lso_format_idx;
-	plt_nix_dbg("tun v4v4 fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("tun v4v4 fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv4/TUN HDR/IPv6/TCP LSO
@@ -336,7 +434,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 
 	nix->lso_tun_idx[ROC_NIX_LSO_TUN_V4V6] = rsp->lso_format_idx;
-	plt_nix_dbg("tun v4v6 fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("tun v4v6 fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv6/TUN HDR/IPv4/TCP LSO
@@ -352,7 +450,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 
 	nix->lso_tun_idx[ROC_NIX_LSO_TUN_V6V4] = rsp->lso_format_idx;
-	plt_nix_dbg("tun v6v4 fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("tun v6v4 fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv6/TUN HDR/IPv6/TCP LSO
@@ -369,11 +467,24 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 
 	nix->lso_tun_idx[ROC_NIX_LSO_TUN_V6V6] = rsp->lso_format_idx;
-	plt_nix_dbg("tun v6v6 fmt=%u\n", rsp->lso_format_idx);
-	rc = 0;
+	plt_nix_dbg("tun v6v6 fmt=%u", rsp->lso_format_idx);
+
 exit:
 	mbox_put(mbox);
+
+	nix->lso_ipv4_idx = 0; /* IPv4 fragmentation not supported */
+	if (!rc && roc_model_is_cn20k())
+		return nix_lso_ipv4(roc_nix);
+
 	return rc;
+}
+
+int
+roc_nix_lso_fmt_ipv4_frag_get(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+
+	return nix->lso_ipv4_idx;
 }
 
 int

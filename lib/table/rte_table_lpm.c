@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_byteorder.h>
@@ -48,7 +49,7 @@ struct rte_table_lpm {
 
 	/* Next Hop Table (NHT) */
 	uint32_t nht_users[RTE_TABLE_LPM_MAX_NEXT_HOPS];
-	alignas(RTE_CACHE_LINE_SIZE) uint8_t nht[0];
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t nht[];
 };
 
 static void *
@@ -355,6 +356,7 @@ rte_table_lpm_stats_read(void *table, struct rte_table_stats *stats, int clear)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_table_lpm_ops)
 struct rte_table_ops rte_table_lpm_ops = {
 	.f_create = rte_table_lpm_create,
 	.f_free = rte_table_lpm_free,

@@ -23,10 +23,6 @@
 
 #include "virtio_rxtx_simple.h"
 
-#ifndef __INTEL_COMPILER
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
 int __rte_cold
 virtio_rxq_vec_setup(struct virtnet_rx *rxq)
 {
@@ -47,8 +43,9 @@ virtio_rxq_vec_setup(struct virtnet_rx *rxq)
 	return 0;
 }
 
+#ifndef VIRTIO_RXTX_VEC
 /* Stub for linkage when arch specific implementation is not available */
-__rte_weak uint16_t
+uint16_t
 virtio_recv_pkts_vec(void *rx_queue __rte_unused,
 		     struct rte_mbuf **rx_pkts __rte_unused,
 		     uint16_t nb_pkts __rte_unused)
@@ -56,3 +53,4 @@ virtio_recv_pkts_vec(void *rx_queue __rte_unused,
 	rte_panic("Wrong weak function linked by linker\n");
 	return 0;
 }
+#endif /* VIRTIO_RXTX_VEC */

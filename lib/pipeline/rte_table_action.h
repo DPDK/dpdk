@@ -52,18 +52,19 @@
  * @b EXPERIMENTAL: this API may change without prior notice
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_compat.h>
 #include <rte_ether.h>
+#include <rte_ip6.h>
 #include <rte_meter.h>
 #include <rte_table_hash.h>
 
 #include "rte_pipeline.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Table actions. */
 enum rte_table_action_type {
@@ -419,8 +420,8 @@ struct rte_table_action_ipv4_header {
 
 /** Pre-computed IPv6 header fields for encapsulation action. */
 struct rte_table_action_ipv6_header {
-	uint8_t sa[16]; /**< Source address. */
-	uint8_t da[16]; /**< Destination address. */
+	struct rte_ipv6_addr sa; /**< Source address. */
+	struct rte_ipv6_addr da; /**< Destination address. */
 	uint32_t flow_label; /**< Flow label. */
 	uint8_t dscp; /**< DiffServ Code Point (DSCP). */
 	uint8_t hop_limit; /**< Hop Limit (HL). */
@@ -597,7 +598,7 @@ struct rte_table_action_nat_params {
 		uint32_t ipv4;
 
 		/** IPv6 address; only valid when *ip_version* is set to 0. */
-		uint8_t ipv6[16];
+		struct rte_ipv6_addr ipv6;
 	} addr;
 
 	/** Port. */

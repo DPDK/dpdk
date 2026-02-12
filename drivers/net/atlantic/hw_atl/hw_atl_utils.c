@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
-/* Copyright (C) 2014-2017 aQuantia Corporation. */
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
+ * Copyright (C) 2014-2017 aQuantia Corporation.
+ */
 
 /* File hw_atl_utils.c: Definition of common functions for Atlantic hardware
  * abstraction layer.
@@ -76,7 +77,7 @@ int hw_atl_utils_initfw(struct aq_hw_s *self, const struct aq_fw_ops **fw_ops)
 					self->fw_ver_actual) == 0) {
 		*fw_ops = &aq_fw_2x_ops;
 	} else {
-		PMD_DRV_LOG(ERR, "Bad FW version detected: %x\n",
+		PMD_DRV_LOG(ERR, "Bad FW version detected: %x",
 			  self->fw_ver_actual);
 		return -EOPNOTSUPP;
 	}
@@ -124,7 +125,7 @@ static int hw_atl_utils_soft_reset_flb(struct aq_hw_s *self)
 		AQ_HW_SLEEP(10);
 	}
 	if (k == 1000) {
-		PMD_DRV_LOG(ERR, "MAC kickstart failed\n");
+		PMD_DRV_LOG(ERR, "MAC kickstart failed");
 		return -EIO;
 	}
 
@@ -152,7 +153,7 @@ static int hw_atl_utils_soft_reset_flb(struct aq_hw_s *self)
 		AQ_HW_SLEEP(10);
 	}
 	if (k == 1000) {
-		PMD_DRV_LOG(ERR, "FW kickstart failed\n");
+		PMD_DRV_LOG(ERR, "FW kickstart failed");
 		return -EIO;
 	}
 	/* Old FW requires fixed delay after init */
@@ -209,7 +210,7 @@ static int hw_atl_utils_soft_reset_rbl(struct aq_hw_s *self)
 		aq_hw_write_reg(self, 0x534, 0xA0);
 
 	if (rbl_status == 0xF1A7) {
-		PMD_DRV_LOG(ERR, "No FW detected. Dynamic FW load not implemented\n");
+		PMD_DRV_LOG(ERR, "No FW detected. Dynamic FW load not implemented");
 		return -EOPNOTSUPP;
 	}
 
@@ -221,7 +222,7 @@ static int hw_atl_utils_soft_reset_rbl(struct aq_hw_s *self)
 		AQ_HW_SLEEP(10);
 	}
 	if (k == 1000) {
-		PMD_DRV_LOG(ERR, "FW kickstart failed\n");
+		PMD_DRV_LOG(ERR, "FW kickstart failed");
 		return -EIO;
 	}
 	/* Old FW requires fixed delay after init */
@@ -246,7 +247,7 @@ int hw_atl_utils_soft_reset(struct aq_hw_s *self)
 	}
 
 	if (k == 1000) {
-		PMD_DRV_LOG(ERR, "Neither RBL nor FLB firmware started\n");
+		PMD_DRV_LOG(ERR, "Neither RBL nor FLB firmware started");
 		return -EOPNOTSUPP;
 	}
 

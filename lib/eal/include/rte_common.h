@@ -12,19 +12,21 @@
  * for DPDK.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <assert.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdalign.h>
 
+#include <rte_compat.h>
 #include <rte_config.h>
 
 /* OS specific include */
 #include <rte_os.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef RTE_TOOLCHAIN_MSVC
 #ifndef typeof
@@ -45,6 +47,44 @@ extern "C" {
 #endif
 
 /*
+ * Macro __rte_constant checks if an expression's value can be determined at
+ * compile time. It takes a single argument, the expression to test, and
+ * returns 1 if the expression is a compile-time constant, and 0 otherwise.
+ * For most compilers it uses built-in function __builtin_constant_p, but for
+ * MSVC it uses a different method because MSVC does not have an equivalent
+ * to __builtin_constant_p.
+ *
+ * The trick used with MSVC relies on the way null pointer constants interact
+ * with the type of a ?: expression:
+ * An integer constant expression with the value 0, or such an expression cast
+ * to type void *, is called a null pointer constant.
+ * If both the second and third operands (of the ?: expression) are pointers or
+ * one is a null pointer constant and the other is a pointer, the result type
+ * is a pointer to a type qualified with all the type qualifiers of the types
+ * referenced by both operands. Furthermore, if both operands are pointers to
+ * compatible types or to differently qualified versions of compatible types,
+ * the result type is a pointer to an appropriately qualified version of the
+ * composite type; if one operand is a null pointer constant, the result has
+ * the type of the other operand; otherwise, one operand is a pointer to void
+ * or a qualified version of void, in which case the result type is a pointer
+ * to an appropriately qualified version of void.
+ *
+ * The _Generic keyword then checks the type of the expression
+ * (void *) ((e) * 0ll). It matches this type against the types listed in the
+ * _Generic construct:
+ *     - If the type is int *, the result is 1.
+ *     - If the type is void *, the result is 0.
+ *
+ * This explanation with some more details can be found at:
+ * https://stackoverflow.com/questions/49480442/detecting-integer-constant-expressions-in-macros
+ */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_constant(e) _Generic((1 ? (void *) ((e) * 0ll) : (int *) 0), int * : 1, void * : 0)
+#else
+#define __rte_constant(e) __extension__(__builtin_constant_p(e))
+#endif
+
+/*
  * RTE_TOOLCHAIN_GCC is defined if the target is built with GCC,
  * while a host application (like pmdinfogen) may have another compiler.
  * RTE_CC_IS_GNU is true if the file is compiled with GCC,
@@ -53,8 +93,6 @@ extern "C" {
 #define RTE_CC_IS_GNU 0
 #if defined __clang__
 #define RTE_CC_CLANG
-#elif defined __INTEL_COMPILER
-#define RTE_CC_ICC
 #elif defined __GNUC__
 #define RTE_CC_GCC
 #undef RTE_CC_IS_GNU
@@ -94,12 +132,31 @@ typedef uint16_t unaligned_uint16_t;
 #endif
 
 /**
+ * @deprecated
+ * @see __rte_packed_begin
+ * @see __rte_packed_end
+ *
  * Force a structure to be packed
  */
 #ifdef RTE_TOOLCHAIN_MSVC
-#define __rte_packed
+#define __rte_packed RTE_DEPRECATED(__rte_packed)
 #else
-#define __rte_packed __attribute__((__packed__))
+#define __rte_packed (RTE_DEPRECATED(__rte_packed) __attribute__((__packed__)))
+#endif
+
+/**
+ * Force a structure to be packed
+ * Usage:
+ *     struct __rte_packed_begin mystruct { ... } __rte_packed_end;
+ *     union __rte_packed_begin myunion { ... } __rte_packed_end;
+ * Note: alignment attributes when present should precede __rte_packed_begin.
+ */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_packed_begin __pragma(pack(push, 1))
+#define __rte_packed_end __pragma(pack(pop))
+#else
+#define __rte_packed_begin
+#define __rte_packed_end __attribute__((__packed__))
 #endif
 
 /**
@@ -132,9 +189,44 @@ typedef uint16_t unaligned_uint16_t;
 #endif
 
 /**
+ * Macros to cause the compiler to remember the state of the diagnostics as of
+ * each push, and restore to that point at each pop.
+ */
+#if !defined(RTE_TOOLCHAIN_MSVC)
+#define __rte_diagnostic_push _Pragma("GCC diagnostic push")
+#define __rte_diagnostic_pop  _Pragma("GCC diagnostic pop")
+#else
+#define __rte_diagnostic_push
+#define __rte_diagnostic_pop
+#endif
+
+/**
+ * Macro to disable compiler warnings about removing a type
+ * qualifier from the target type.
+ */
+#if !defined(RTE_TOOLCHAIN_MSVC)
+#define __rte_diagnostic_ignored_wcast_qual _Pragma("GCC diagnostic ignored \"-Wcast-qual\"")
+#else
+#define __rte_diagnostic_ignored_wcast_qual
+#endif
+
+/**
  * Mark a function or variable to a weak reference.
  */
-#define __rte_weak __attribute__((__weak__))
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_weak RTE_DEPRECATED(__rte_weak)
+#else
+#define __rte_weak RTE_DEPRECATED(__rte_weak) __attribute__((__weak__))
+#endif
+
+/**
+ * Mark a function to be pure.
+ */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_pure
+#else
+#define __rte_pure __attribute__((pure))
+#endif
 
 /**
  * Force symbol to be generated even if it appears to be unused.
@@ -211,6 +303,40 @@ typedef uint16_t unaligned_uint16_t;
 	__attribute__((alloc_size(__VA_ARGS__)))
 #else
 #define __rte_alloc_size(...)
+#endif
+
+/**
+ * Tells the compiler that the function returns a value that points to
+ * memory aligned by a function argument.
+ *
+ * Note: not enabled on Clang because it warns if align argument is zero.
+ */
+#if defined(RTE_CC_GCC)
+#define __rte_alloc_align(argno) \
+	__attribute__((alloc_align(argno)))
+#else
+#define __rte_alloc_align(argno)
+#endif
+
+/**
+ * Tells the compiler this is a function like malloc and that the pointer
+ * returned cannot alias any other pointer (ie new memory).
+ */
+#if defined(RTE_CC_GCC) || defined(RTE_CC_CLANG)
+#define __rte_malloc __attribute__((__malloc__))
+#else
+#define __rte_malloc
+#endif
+
+/**
+ * With recent GCC versions also able to track that proper
+ * deallocator function is used for this pointer.
+ */
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 110000)
+#define __rte_dealloc(dealloc, argno) \
+	__attribute__((malloc(dealloc, argno)))
+#else
+#define __rte_dealloc(dealloc, argno)
 #endif
 
 #define RTE_PRIORITY_LOG 101
@@ -291,7 +417,7 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 #define RTE_FINI_PRIO(name, priority) \
 	static void name(void); \
 	__pragma(const_seg(DTOR_PRIORITY_TO_SECTION(priority))) \
-	__declspec(allocate(DTOR_PRIORITY_TO_SECTION(priority))) name ## _pointer = &name; \
+	__declspec(allocate(DTOR_PRIORITY_TO_SECTION(priority))) void *name ## _pointer = &name; \
 	__pragma(const_seg()) \
 	static void name(void)
 #endif
@@ -315,6 +441,15 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 #define __rte_noreturn
 #else
 #define __rte_noreturn __attribute__((noreturn))
+#endif
+
+/**
+ * Hint point in program never reached
+ */
+#if defined(RTE_TOOLCHAIN_GCC) || defined(RTE_TOOLCHAIN_CLANG)
+#define __rte_unreachable() __extension__(__builtin_unreachable())
+#else
+#define __rte_unreachable() __assume(0)
 #endif
 
 /**
@@ -350,7 +485,7 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
  * Force a function to be inlined
  */
 #ifdef RTE_TOOLCHAIN_MSVC
-#define __rte_always_inline
+#define __rte_always_inline __forceinline
 #else
 #define __rte_always_inline inline __attribute__((always_inline))
 #endif
@@ -358,12 +493,20 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 /**
  * Force a function to be noinlined
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_noinline __declspec(noinline)
+#else
 #define __rte_noinline __attribute__((noinline))
+#endif
 
 /**
  * Hint function in the hot path
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_hot
+#else
 #define __rte_hot __attribute__((hot))
+#endif
 
 /**
  * Hint function in the cold path
@@ -372,6 +515,22 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 #define __rte_cold
 #else
 #define __rte_cold __attribute__((cold))
+#endif
+
+/**
+ * Hint precondition
+ *
+ * @warning Depending on the compiler, any code in ``condition`` might be executed.
+ * This currently only occurs with GCC prior to version 13.
+ */
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 130000)
+#define __rte_assume(condition) __attribute__((assume(condition)))
+#elif defined(RTE_TOOLCHAIN_GCC)
+#define __rte_assume(condition) do { if (!(condition)) __rte_unreachable(); } while (0)
+#elif defined(RTE_TOOLCHAIN_CLANG)
+#define __rte_assume(condition) __extension__(__builtin_assume(condition))
+#else
+#define __rte_assume(condition) __assume(condition)
 #endif
 
 /**
@@ -405,6 +564,33 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
  * ptr1 is greater than ptr2.
  */
 #define RTE_PTR_DIFF(ptr1, ptr2) ((uintptr_t)(ptr1) - (uintptr_t)(ptr2))
+
+/*********** Macros for casting pointers ********/
+
+/**
+ * Macro to discard qualifiers (such as const, volatile, restrict) from a pointer,
+ * without the compiler emitting a warning.
+ */
+#define RTE_PTR_UNQUAL(X) ((void *)(uintptr_t)(X))
+
+/**
+ * Macro to cast a pointer to a specific type,
+ * without the compiler emitting a warning about discarding qualifiers.
+ *
+ * @warning
+ * When casting a pointer to point to a larger type, the resulting pointer may
+ * be misaligned, which results in undefined behavior.
+ * E.g.:
+ *
+ * struct s {
+ *       uint16_t a;
+ *       uint8_t  b;
+ *       uint8_t  c;
+ *       uint8_t  d;
+ *   } v;
+ *   uint16_t * p = RTE_CAST_PTR(uint16_t *, &v.c); // "p" is not 16 bit aligned!
+ */
+#define RTE_CAST_PTR(type, ptr) ((type)(uintptr_t)(ptr))
 
 /**
  * Workaround to cast a const field of a structure to non-const type.
@@ -608,9 +794,22 @@ __extension__ typedef uint64_t RTE_MARKER64[0];
  */
 #define RTE_MIN(a, b) \
 	__extension__ ({ \
-		typeof (a) _a = (a); \
-		typeof (b) _b = (b); \
-		_a < _b ? _a : _b; \
+		typeof (a) _a_min = (a); \
+		typeof (b) _b_min = (b); \
+		_a_min < _b_min ? _a_min : _b_min; \
+	})
+
+/**
+ * Macro to return the minimum of three numbers
+ */
+#define RTE_MIN3(a, b, c) \
+	__extension__ ({ \
+		typeof (a) _a_min3 = (a); \
+		typeof (b) _b_min3 = (b); \
+		typeof (c) _c_min3 = (c); \
+		_a_min3 < _b_min3 ? \
+			(_a_min3 < _c_min3 ? _a_min3 : _c_min3) : \
+			(_b_min3 < _c_min3 ? _b_min3 : _c_min3); \
 	})
 
 /**
@@ -628,9 +827,22 @@ __extension__ typedef uint64_t RTE_MARKER64[0];
  */
 #define RTE_MAX(a, b) \
 	__extension__ ({ \
-		typeof (a) _a = (a); \
-		typeof (b) _b = (b); \
-		_a > _b ? _a : _b; \
+		typeof (a) _a_max = (a); \
+		typeof (b) _b_max = (b); \
+		_a_max > _b_max ? _a_max : _b_max; \
+	})
+
+/**
+ * Macro to return the maximum of three numbers
+ */
+#define RTE_MAX3(a, b, c) \
+	__extension__ ({ \
+		typeof (a) _a_max3 = (a); \
+		typeof (b) _b_max3 = (b); \
+		typeof (c) _c_max3 = (c); \
+		_a_max3 > _b_max3 ? \
+			(_a_max3 > _c_max3 ? _a_max3 : _c_max3) : \
+			(_b_max3 > _c_max3 ? _b_max3 : _c_max3); \
 	})
 
 /**
@@ -734,6 +946,41 @@ __extension__ typedef uint64_t RTE_MARKER64[0];
  */
 uint64_t
 rte_str_to_size(const char *str);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Converts the uint64_t value provided to a human-readable string.
+ * It null-terminates the string, truncating the data if needed.
+ * An optional unit (like "B") can be provided as a string. It will be
+ * appended to the number, and a space will be inserted before the unit if needed.
+ *
+ * Sample outputs: (1) "use_iec" disabled, (2) "use_iec" enabled,
+ *                 (3) "use_iec" enabled and "B" as unit.
+ * 0 : "0", "0", "0 B"
+ * 700 : "700", "700", "700 B"
+ * 1000 : "1.00 k", "1000", "1000 B"
+ * 1024 : "1.02 k", "1.00 ki", "1.00 kiB"
+ * 21474836480 : "21.5 G", "20.0 Gi", "20.0 GiB"
+ * 109951162777600 : "110 T", "100 Ti", "100 TiB"
+ *
+ * @param buf
+ *     Buffer to write the string to.
+ * @param buf_size
+ *     Size of the buffer.
+ * @param count
+ *     Number to convert.
+ * @param use_iec
+ *     If true, use IEC units (1024-based), otherwise use SI units (1000-based).
+ * @param unit
+ *     Unit to append to the string (Like "B" for bytes). Can be NULL.
+ * @return
+ *     buf on success, NULL if the buffer is too small.
+ */
+__rte_experimental
+char *
+rte_size_to_str(char *buf, int buf_size, uint64_t count, bool use_iec, const char *unit);
 
 /**
  * Function to terminate the application immediately, printing an error

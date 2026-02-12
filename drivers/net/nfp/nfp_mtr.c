@@ -12,6 +12,13 @@
 #include "flower/nfp_flower_representor.h"
 #include "nfp_logs.h"
 
+#ifndef LIST_FOREACH_SAFE
+#define	LIST_FOREACH_SAFE(var, head, field, tvar)			\
+	for ((var) = LIST_FIRST((head));				\
+	    (var) && ((tvar) = LIST_NEXT((var), field), 1);		\
+	    (var) = (tvar))
+#endif
+
 #define NFP_MAX_POLICY_CNT             NFP_MAX_MTR_CNT
 #define NFP_MAX_PROFILE_CNT            NFP_MAX_MTR_CNT
 
@@ -43,7 +50,7 @@ nfp_mtr_cap_get(struct rte_eth_dev *dev __rte_unused,
 	if (cap == NULL) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_UNSPECIFIED,
-				NULL, "NULL pointer for capabilitie argument");
+				NULL, "NULL pointer for capabilitie argument.");
 	}
 
 	memset(cap, 0, sizeof(struct rte_mtr_capabilities));
@@ -78,14 +85,14 @@ nfp_mtr_profile_validate(uint32_t mtr_profile_id,
 	if (profile == NULL) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_METER_PROFILE,
-				NULL, "Meter profile is null");
+				NULL, "Meter profile is null.");
 	}
 
 	/* Meter profile ID must be valid. */
 	if (mtr_profile_id >= NFP_MAX_PROFILE_CNT) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
-				NULL, "Meter profile id not valid");
+				NULL, "Meter profile id not valid.");
 	}
 
 	switch (profile->alg) {
@@ -95,11 +102,11 @@ nfp_mtr_profile_validate(uint32_t mtr_profile_id,
 	case RTE_MTR_TRTCM_RFC4115:
 		return -rte_mtr_error_set(error, ENOTSUP,
 				RTE_MTR_ERROR_TYPE_METER_PROFILE,
-				NULL, "Unsupported metering algorithm");
+				NULL, "Unsupported metering algorithm.");
 	default:
 		return -rte_mtr_error_set(error, ENOTSUP,
 				RTE_MTR_ERROR_TYPE_METER_PROFILE,
-				NULL, "Unknown metering algorithm");
+				NULL, "Unknown metering algorithm.");
 	}
 }
 
@@ -202,7 +209,7 @@ nfp_mtr_profile_insert(struct nfp_app_fw_flower *app_fw_flower,
 	if (mtr_profile == NULL) {
 		return -rte_mtr_error_set(error, ENOMEM,
 				RTE_MTR_ERROR_TYPE_UNSPECIFIED,
-				NULL, "Meter profile alloc failed");
+				NULL, "Meter profile alloc failed.");
 	}
 
 	ret = nfp_mtr_profile_conf_insert(mtr_profile_id,
@@ -210,7 +217,7 @@ nfp_mtr_profile_insert(struct nfp_app_fw_flower *app_fw_flower,
 	if (ret != 0) {
 		rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_UNSPECIFIED,
-				NULL, "Insert profile config failed");
+				NULL, "Insert profile config failed.");
 		goto free_profile;
 	}
 
@@ -218,7 +225,7 @@ nfp_mtr_profile_insert(struct nfp_app_fw_flower *app_fw_flower,
 	if (ret != 0) {
 		rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_UNSPECIFIED,
-				NULL, "Add meter to firmware failed");
+				NULL, "Add meter to firmware failed.");
 		goto free_profile;
 	}
 
@@ -252,7 +259,7 @@ nfp_mtr_profile_mod(struct nfp_app_fw_flower *app_fw_flower,
 	if (ret != 0) {
 		rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_UNSPECIFIED,
-				NULL, "Mod profile config failed");
+				NULL, "Mod profile config failed.");
 		goto rollback;
 	}
 
@@ -260,7 +267,7 @@ nfp_mtr_profile_mod(struct nfp_app_fw_flower *app_fw_flower,
 	if (ret != 0) {
 		rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_UNSPECIFIED,
-				NULL, "Mod meter to firmware failed");
+				NULL, "Mod meter to firmware failed.");
 		goto rollback;
 	}
 
@@ -354,20 +361,20 @@ nfp_mtr_profile_delete(struct rte_eth_dev *dev,
 	if (mtr_profile == NULL) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
-				NULL, "Request meter profile not exist");
+				NULL, "Request meter profile not exist.");
 	}
 
 	if (mtr_profile->in_use) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_METER_PROFILE,
-				NULL, "Request meter profile is been used");
+				NULL, "Request meter profile is been used.");
 	}
 
 	ret = nfp_flower_cmsg_qos_delete(app_fw_flower, &mtr_profile->conf);
 	if (ret != 0) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_UNSPECIFIED,
-				NULL, "Delete meter from firmware failed");
+				NULL, "Delete meter from firmware failed.");
 	}
 
 	/* Remove profile from profile list */
@@ -417,7 +424,7 @@ nfp_mtr_policy_validate(uint32_t mtr_policy_id,
 	if (action != NULL && action->type != RTE_FLOW_ACTION_TYPE_VOID) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_METER_POLICY,
-				NULL, "Green action must be void or end");
+				NULL, "Green action must be void or end.");
 	}
 
 	/* Check yellow action
@@ -427,7 +434,7 @@ nfp_mtr_policy_validate(uint32_t mtr_policy_id,
 	if (action != NULL && action->type != RTE_FLOW_ACTION_TYPE_VOID) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_METER_POLICY,
-				NULL, "Yellow action must be void or end");
+				NULL, "Yellow action must be void or end.");
 	}
 
 	/* Check red action */
@@ -435,7 +442,7 @@ nfp_mtr_policy_validate(uint32_t mtr_policy_id,
 	if (action == NULL || action->type != RTE_FLOW_ACTION_TYPE_DROP) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_METER_POLICY,
-				NULL, "Red action must be drop");
+				NULL, "Red action must be drop.");
 	}
 
 	return 0;
@@ -475,7 +482,7 @@ nfp_mtr_policy_add(struct rte_eth_dev *dev,
 	if (mtr_policy != NULL) {
 		return -rte_mtr_error_set(error, EEXIST,
 				RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
-				NULL, "Meter policy already exist");
+				NULL, "Meter policy already exist.");
 	}
 
 	/* Check input params */
@@ -488,7 +495,7 @@ nfp_mtr_policy_add(struct rte_eth_dev *dev,
 	if (mtr_policy == NULL) {
 		return -rte_mtr_error_set(error, ENOMEM,
 				RTE_MTR_ERROR_TYPE_UNSPECIFIED,
-				NULL, "Meter policy alloc failed");
+				NULL, "Meter policy alloc failed.");
 	}
 
 	mtr_policy->policy_id = mtr_policy_id;
@@ -531,13 +538,13 @@ nfp_mtr_policy_delete(struct rte_eth_dev *dev,
 	if (mtr_policy == NULL) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
-				NULL, "Request meter policy not exist");
+				NULL, "Request meter policy not exist.");
 	}
 
 	if (mtr_policy->ref_cnt > 0) {
 		return -rte_mtr_error_set(error, EBUSY,
 				RTE_MTR_ERROR_TYPE_METER_POLICY,
-				NULL, "Request mtr policy is been used");
+				NULL, "Request mtr policy is been used.");
 	}
 
 	/* Remove profile from profile list */
@@ -577,25 +584,25 @@ nfp_mtr_stats_mask_validate(uint64_t stats_mask, struct rte_mtr_error *error)
 	if ((stats_mask & RTE_MTR_STATS_N_PKTS_YELLOW) != 0) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_MTR_PARAMS,
-				NULL, "RTE_MTR_STATS_N_PKTS_YELLOW not support");
+				NULL, "RTE_MTR_STATS_N_PKTS_YELLOW not support.");
 	}
 
 	if ((stats_mask & RTE_MTR_STATS_N_PKTS_RED) != 0) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_MTR_PARAMS,
-				NULL, "RTE_MTR_STATS_N_PKTS_RED not support");
+				NULL, "RTE_MTR_STATS_N_PKTS_RED not support.");
 	}
 
 	if ((stats_mask & RTE_MTR_STATS_N_BYTES_YELLOW) != 0) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_MTR_PARAMS,
-				NULL, "RTE_MTR_STATS_N_BYTES_YELLOW not support");
+				NULL, "RTE_MTR_STATS_N_BYTES_YELLOW not support.");
 	}
 
 	if ((stats_mask & RTE_MTR_STATS_N_BYTES_RED) != 0) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_MTR_PARAMS,
-				NULL, "RTE_MTR_STATS_N_BYTES_RED not support");
+				NULL, "RTE_MTR_STATS_N_BYTES_RED not support.");
 	}
 
 	return 0;
@@ -623,7 +630,7 @@ nfp_mtr_validate(uint32_t meter_id,
 	if (params->use_prev_mtr_color != 0) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_MTR_PARAMS,
-				NULL, "Feature use_prev_mtr_color not support");
+				NULL, "Feature use_prev_mtr_color not support.");
 	}
 
 	return nfp_mtr_stats_mask_validate(params->stats_mask, error);
@@ -689,7 +696,7 @@ nfp_mtr_create(struct rte_eth_dev *dev,
 	if (mtr != NULL) {
 		return -rte_mtr_error_set(error, EEXIST,
 				RTE_MTR_ERROR_TYPE_MTR_ID,
-				NULL, "Meter already exist");
+				NULL, "Meter already exist.");
 	}
 
 	/* Check input meter params */
@@ -701,20 +708,20 @@ nfp_mtr_create(struct rte_eth_dev *dev,
 	if (mtr_profile == NULL) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
-				NULL, "Request meter profile not exist");
+				NULL, "Request meter profile not exist.");
 	}
 
 	if (mtr_profile->in_use) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
-				NULL, "Request meter profile is been used");
+				NULL, "Request meter profile is been used.");
 	}
 
 	mtr_policy = nfp_mtr_policy_search(priv, params->meter_policy_id);
 	if (mtr_policy == NULL) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
-				NULL, "Request meter policy not exist");
+				NULL, "Request meter policy not exist.");
 	}
 
 	/* Meter param memory alloc */
@@ -722,7 +729,7 @@ nfp_mtr_create(struct rte_eth_dev *dev,
 	if (mtr == NULL) {
 		return -rte_mtr_error_set(error, ENOMEM,
 				RTE_MTR_ERROR_TYPE_UNSPECIFIED,
-				NULL, "Meter param alloc failed");
+				NULL, "Meter param alloc failed.");
 	}
 
 	nfp_mtr_config(mtr_id, shared, params, mtr_profile, mtr_policy, mtr);
@@ -767,13 +774,13 @@ nfp_mtr_destroy(struct rte_eth_dev *dev,
 	if (mtr == NULL) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_MTR_ID,
-				NULL, "Request meter not exist");
+				NULL, "Request meter not exist.");
 	}
 
 	if (mtr->ref_cnt > 0) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_MTR_ID,
-				NULL, "Meter object is being used");
+				NULL, "Meter object is being used.");
 	}
 
 	/* Update profile/policy status */
@@ -817,7 +824,7 @@ nfp_mtr_enable(struct rte_eth_dev *dev,
 	if (mtr == NULL) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_MTR_ID,
-				NULL, "Request meter not exist");
+				NULL, "Request meter not exist.");
 	}
 
 	mtr->enable = true;
@@ -855,13 +862,13 @@ nfp_mtr_disable(struct rte_eth_dev *dev,
 	if (mtr == NULL) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_MTR_ID,
-				NULL, "Request meter not exist");
+				NULL, "Request meter not exist.");
 	}
 
 	if (mtr->ref_cnt > 0) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_MTR_ID,
-				NULL, "Can't disable a used meter");
+				NULL, "Can not disable a used meter.");
 	}
 
 	mtr->enable = false;
@@ -903,13 +910,13 @@ nfp_mtr_profile_update(struct rte_eth_dev *dev,
 	if (mtr == NULL) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_MTR_ID,
-				NULL, "Request meter not exist");
+				NULL, "Request meter not exist.");
 	}
 
 	if (mtr->ref_cnt > 0) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_MTR_ID,
-				NULL, "Request meter is been used");
+				NULL, "Request meter is been used.");
 	}
 
 	if (mtr->mtr_profile->profile_id == mtr_profile_id)
@@ -919,13 +926,13 @@ nfp_mtr_profile_update(struct rte_eth_dev *dev,
 	if (mtr_profile == NULL) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
-				NULL, "Request meter profile not exist");
+				NULL, "Request meter profile not exist.");
 	}
 
 	if (mtr_profile->in_use) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
-				NULL, "Request meter profile is been used");
+				NULL, "Request meter profile is been used.");
 	}
 
 	mtr_profile->in_use = true;
@@ -969,7 +976,7 @@ nfp_mtr_stats_update(struct rte_eth_dev *dev,
 	if (mtr == NULL) {
 		return -rte_mtr_error_set(error, EEXIST,
 				RTE_MTR_ERROR_TYPE_MTR_ID,
-				NULL, "Request meter id not exist");
+				NULL, "Request meter id not exist.");
 	}
 
 	ret = nfp_mtr_stats_mask_validate(stats_mask, error);
@@ -1022,7 +1029,7 @@ nfp_mtr_stats_read(struct rte_eth_dev *dev,
 	if (mtr == NULL) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_MTR_ID,
-				NULL, "Request meter not exist");
+				NULL, "Request meter not exist.");
 	}
 
 	*stats_mask = mtr->stats_mask;
@@ -1067,7 +1074,7 @@ int
 nfp_net_mtr_ops_get(struct rte_eth_dev *dev, void *arg)
 {
 	if (!rte_eth_dev_is_repr(dev)) {
-		PMD_DRV_LOG(ERR, "Port is not a representor");
+		PMD_DRV_LOG(ERR, "Port is not a representor.");
 		return -EINVAL;
 	}
 
@@ -1097,7 +1104,7 @@ nfp_mtr_priv_init(struct nfp_pf_dev *pf_dev)
 
 	priv = rte_zmalloc("nfp_app_mtr_priv", sizeof(struct nfp_mtr_priv), 0);
 	if (priv == NULL) {
-		PMD_INIT_LOG(ERR, "nfp app mtr priv creation failed");
+		PMD_INIT_LOG(ERR, "NFP app mtr priv creation failed.");
 		return -ENOMEM;
 	}
 
@@ -1107,7 +1114,7 @@ nfp_mtr_priv_init(struct nfp_pf_dev *pf_dev)
 	ret = rte_eal_alarm_set(NFP_METER_STATS_INTERVAL, nfp_mtr_stats_request,
 			(void *)app_fw_flower);
 	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "nfp mtr timer init failed.");
+		PMD_INIT_LOG(ERR, "NFP mtr timer init failed.");
 		rte_free(priv);
 		return ret;
 	}
@@ -1124,10 +1131,10 @@ nfp_mtr_priv_init(struct nfp_pf_dev *pf_dev)
 void
 nfp_mtr_priv_uninit(struct nfp_pf_dev *pf_dev)
 {
-	struct nfp_mtr *mtr;
+	struct nfp_mtr *mtr, *tmp_mtr;
 	struct nfp_mtr_priv *priv;
-	struct nfp_mtr_policy *mtr_policy;
-	struct nfp_mtr_profile *mtr_profile;
+	struct nfp_mtr_policy *mtr_policy, *tmp_policy;
+	struct nfp_mtr_profile *mtr_profile, *tmp_profile;
 	struct nfp_app_fw_flower *app_fw_flower;
 
 	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(pf_dev->app_fw_priv);
@@ -1135,17 +1142,17 @@ nfp_mtr_priv_uninit(struct nfp_pf_dev *pf_dev)
 
 	rte_eal_alarm_cancel(nfp_mtr_stats_request, (void *)app_fw_flower);
 
-	LIST_FOREACH(mtr, &priv->mtrs, next) {
+	LIST_FOREACH_SAFE(mtr, &priv->mtrs, next, tmp_mtr) {
 		LIST_REMOVE(mtr, next);
 		rte_free(mtr);
 	}
 
-	LIST_FOREACH(mtr_profile, &priv->profiles, next) {
+	LIST_FOREACH_SAFE(mtr_profile, &priv->profiles, next, tmp_profile) {
 		LIST_REMOVE(mtr_profile, next);
 		rte_free(mtr_profile);
 	}
 
-	LIST_FOREACH(mtr_policy, &priv->policies, next) {
+	LIST_FOREACH_SAFE(mtr_policy, &priv->policies, next, tmp_policy) {
 		LIST_REMOVE(mtr_policy, next);
 		rte_free(mtr_policy);
 	}

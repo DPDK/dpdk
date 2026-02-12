@@ -20,19 +20,19 @@
  * themselves are written by the nodes, so we have a distinct set, on different
  * cache lines for each node to use.
  */
-struct rx_stats {
+struct __rte_cache_aligned rx_stats {
 	uint64_t rx[RTE_MAX_ETHPORTS];
-} __rte_cache_aligned;
+};
 
-struct tx_stats {
+struct __rte_cache_aligned tx_stats {
 	uint64_t tx[RTE_MAX_ETHPORTS];
 	uint64_t tx_drop[RTE_MAX_ETHPORTS];
-} __rte_cache_aligned;
+};
 
-struct filter_stats {
+struct __rte_cache_aligned filter_stats {
 	uint64_t drop;
 	uint64_t passed;
-} __rte_cache_aligned;
+};
 
 struct shared_info {
 	uint8_t num_nodes;
@@ -58,8 +58,9 @@ get_rx_queue_name(unsigned int id)
 	/*
 	 * Buffer for return value. Size calculated by %u being replaced
 	 * by maximum 3 digits (plus an extra byte for safety)
+	 * Used as ring name, so upper limit is ring name size.
 	 */
-	static char buffer[sizeof(MP_NODE_RXQ_NAME) + 2];
+	static char buffer[RTE_RING_NAMESIZE];
 
 	snprintf(buffer, sizeof(buffer), MP_NODE_RXQ_NAME, id);
 	return buffer;

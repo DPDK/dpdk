@@ -308,11 +308,16 @@ nfp_cpp_mutex_trylock(struct nfp_cpp_mutex *mutex)
 
 	/* Verify that the lock marker is not damaged */
 	err = nfp_cpp_readl(cpp, mur, mutex->address + 4, &key);
-	if (err < 0)
+	if (err < 0) {
+		PMD_DRV_LOG(ERR, "Failed to read key.");
 		return err;
+	}
 
-	if (key != mutex->key)
+	if (key != mutex->key) {
+		PMD_DRV_LOG(ERR, "Key: %x is not same with the mutex: %x.",
+				key, mutex->key);
 		return -EPERM;
+	}
 
 	/*
 	 * Compare against the unlocked state, and if true,
@@ -335,8 +340,10 @@ nfp_cpp_mutex_trylock(struct nfp_cpp_mutex *mutex)
 	 * atomic, which returns the original value.
 	 */
 	err = nfp_cpp_readl(cpp, mus, mutex->address, &tmp);
-	if (err < 0)
+	if (err < 0) {
+		PMD_DRV_LOG(ERR, "Failed to read tmp.");
 		return err;
+	}
 
 	/* Was it unlocked? */
 	if (nfp_mutex_is_unlocked(tmp)) {
@@ -350,8 +357,10 @@ nfp_cpp_mutex_trylock(struct nfp_cpp_mutex *mutex)
 		 * debug and bookkeeping.
 		 */
 		err = nfp_cpp_writel(cpp, muw, mutex->address, value);
-		if (err < 0)
+		if (err < 0) {
+			PMD_DRV_LOG(ERR, "Failed to write value.");
 			return err;
+		}
 
 		mutex->depth = 1;
 		return 0;

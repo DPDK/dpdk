@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include <eal_export.h>
 #include <rte_memzone.h>
 #include <rte_errno.h>
 #include <rte_malloc.h>
@@ -132,6 +133,7 @@ default_port_conf_cb(uint16_t id, uint8_t event_dev_id, uint8_t *event_port_id,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_timer_adapter_create)
 struct rte_event_timer_adapter *
 rte_event_timer_adapter_create(const struct rte_event_timer_adapter_conf *conf)
 {
@@ -139,6 +141,7 @@ rte_event_timer_adapter_create(const struct rte_event_timer_adapter_conf *conf)
 						  NULL);
 }
 
+RTE_EXPORT_SYMBOL(rte_event_timer_adapter_create_ext)
 struct rte_event_timer_adapter *
 rte_event_timer_adapter_create_ext(
 		const struct rte_event_timer_adapter_conf *conf,
@@ -264,6 +267,7 @@ free_memzone:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_timer_adapter_get_info)
 int
 rte_event_timer_adapter_get_info(const struct rte_event_timer_adapter *adapter,
 		struct rte_event_timer_adapter_info *adapter_info)
@@ -284,6 +288,7 @@ rte_event_timer_adapter_get_info(const struct rte_event_timer_adapter *adapter,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_timer_adapter_start)
 int
 rte_event_timer_adapter_start(const struct rte_event_timer_adapter *adapter)
 {
@@ -307,6 +312,7 @@ rte_event_timer_adapter_start(const struct rte_event_timer_adapter *adapter)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_timer_adapter_stop)
 int
 rte_event_timer_adapter_stop(const struct rte_event_timer_adapter *adapter)
 {
@@ -330,6 +336,7 @@ rte_event_timer_adapter_stop(const struct rte_event_timer_adapter *adapter)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_timer_adapter_lookup)
 struct rte_event_timer_adapter *
 rte_event_timer_adapter_lookup(uint16_t adapter_id)
 {
@@ -397,6 +404,7 @@ rte_event_timer_adapter_lookup(uint16_t adapter_id)
 	return adapter;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_timer_adapter_free)
 int
 rte_event_timer_adapter_free(struct rte_event_timer_adapter *adapter)
 {
@@ -438,6 +446,7 @@ rte_event_timer_adapter_free(struct rte_event_timer_adapter *adapter)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_timer_adapter_service_id_get)
 int
 rte_event_timer_adapter_service_id_get(struct rte_event_timer_adapter *adapter,
 				       uint32_t *service_id)
@@ -455,6 +464,7 @@ rte_event_timer_adapter_service_id_get(struct rte_event_timer_adapter *adapter,
 	return adapter->data->service_inited ? 0 : -ESRCH;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_timer_adapter_stats_get)
 int
 rte_event_timer_adapter_stats_get(struct rte_event_timer_adapter *adapter,
 				  struct rte_event_timer_adapter_stats *stats)
@@ -469,6 +479,7 @@ rte_event_timer_adapter_stats_get(struct rte_event_timer_adapter *adapter,
 	return adapter->ops->stats_get(adapter, stats);
 }
 
+RTE_EXPORT_SYMBOL(rte_event_timer_adapter_stats_reset)
 int
 rte_event_timer_adapter_stats_reset(struct rte_event_timer_adapter *adapter)
 {
@@ -479,6 +490,7 @@ rte_event_timer_adapter_stats_reset(struct rte_event_timer_adapter *adapter)
 	return adapter->ops->stats_reset(adapter);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_timer_remaining_ticks_get, 23.03)
 int
 rte_event_timer_remaining_ticks_get(
 			const struct rte_event_timer_adapter *adapter,
@@ -549,7 +561,7 @@ event_buffer_add(struct event_buffer *bufp, struct rte_event *eventp)
 	/* Instead of modulus, bitwise AND with mask to get head_idx. */
 	head_idx = bufp->head & EVENT_BUFFER_MASK;
 	buf_eventp = &bufp->events[head_idx];
-	rte_memcpy(buf_eventp, eventp, sizeof(struct rte_event));
+	*buf_eventp = *eventp;
 
 	/* Wrap automatically when overflow occurs. */
 	bufp->head++;
@@ -1398,7 +1410,7 @@ handle_ta_info(const char *cmd __rte_unused, const char *params,
 
 	adapter_id = atoi(params);
 
-	if (adapter_id >= RTE_EVENT_TIMER_ADAPTER_NUM_MAX) {
+	if (adapters == NULL || adapter_id >= RTE_EVENT_TIMER_ADAPTER_NUM_MAX) {
 		EVTIM_LOG_ERR("Invalid timer adapter id %u", adapter_id);
 		return -EINVAL;
 	}
@@ -1444,7 +1456,7 @@ handle_ta_stats(const char *cmd __rte_unused, const char *params,
 
 	adapter_id = atoi(params);
 
-	if (adapter_id >= RTE_EVENT_TIMER_ADAPTER_NUM_MAX) {
+	if (adapters == NULL || adapter_id >= RTE_EVENT_TIMER_ADAPTER_NUM_MAX) {
 		EVTIM_LOG_ERR("Invalid timer adapter id %u", adapter_id);
 		return -EINVAL;
 	}

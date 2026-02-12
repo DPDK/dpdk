@@ -51,7 +51,7 @@ def check_indentation(filename, contents):
         code, comments = split_code_comments(line)
         if not code.strip():
             continue
-        if re.match('^ *\t', code):
+        if re.match(r'^ *\t', code):
             print(f'Error parsing {filename}:{lineno}, got some tabulation')
         if code.endswith('files('):
             if infiles:

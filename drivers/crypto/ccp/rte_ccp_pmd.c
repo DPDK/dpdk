@@ -227,7 +227,7 @@ cryptodev_ccp_create(const char *name,
 	}
 	cryptodev_cnt++;
 
-	CCP_LOG_DBG("CCP : Crypto device count = %d\n", cryptodev_cnt);
+	CCP_LOG_DBG("CCP : Crypto device count = %d", cryptodev_cnt);
 	dev->device = &pci_dev->device;
 	dev->device->driver = &pci_drv->driver;
 	dev->driver_id = ccp_cryptodev_driver_id;
@@ -320,3 +320,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_CCP_PMD,
 	"ccp_auth_opt=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(ccp_crypto_drv, cryptodev_ccp_pmd_drv.driver,
 			       ccp_cryptodev_driver_id);
+RTE_LOG_REGISTER_DEFAULT(crypto_ccp_logtype, NOTICE);

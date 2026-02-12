@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include <eventdev_pmd.h>
+#include <eal_export.h>
 #include <rte_alarm.h>
 #include <rte_branch_prediction.h>
 #include <bus_vdev_driver.h>
@@ -31,19 +32,20 @@
 /* Useful in stopping/closing event device if no of
  * eth ports are using it.
  */
-uint16_t evdev_refcnt;
+RTE_ATOMIC(uint16_t) evdev_refcnt;
 
 #define OCTEONTX_QLM_MODE_SGMII  7
 #define OCTEONTX_QLM_MODE_XFI   12
 
-struct evdev_priv_data {
+struct __rte_cache_aligned evdev_priv_data {
 	OFFLOAD_FLAGS; /*Sequence should not be changed */
-} __rte_cache_aligned;
+};
 
 struct octeontx_vdev_init_params {
 	uint8_t	nr_port;
 };
 
+RTE_EXPORT_SYMBOL(rte_octeontx_pchan_map)
 uint16_t
 rte_octeontx_pchan_map[OCTEONTX_MAX_BGX_PORTS][OCTEONTX_MAX_LMAC_PER_BGX];
 
@@ -559,7 +561,7 @@ octeontx_dev_close(struct rte_eth_dev *dev)
 		return 0;
 
 	/* Stopping/closing event device once all eth ports are closed. */
-	if (__atomic_fetch_sub(&evdev_refcnt, 1, __ATOMIC_ACQUIRE) - 1 == 0) {
+	if (rte_atomic_fetch_sub_explicit(&evdev_refcnt, 1, rte_memory_order_acquire) - 1 == 0) {
 		rte_event_dev_stop(nic->evdev);
 		rte_event_dev_close(nic->evdev);
 	}
@@ -1020,7 +1022,8 @@ octeontx_dev_xstats_get(struct rte_eth_dev *dev,
 }
 
 static int
-octeontx_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+octeontx_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		       struct eth_queue_stats *qstats __rte_unused)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
 
@@ -1223,7 +1226,7 @@ octeontx_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 	if (dev->data->tx_queues[qid]) {
 		res = octeontx_dev_tx_queue_stop(dev, qid);
 		if (res < 0)
-			octeontx_log_err("failed stop tx_queue(%d)\n", qid);
+			octeontx_log_err("failed stop tx_queue(%d)", qid);
 
 		rte_free(dev->data->tx_queues[qid]);
 	}
@@ -1342,7 +1345,7 @@ octeontx_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 
 	/* Verify queue index */
 	if (qidx >= dev->data->nb_rx_queues) {
-		octeontx_log_err("QID %d not supported (0 - %d available)\n",
+		octeontx_log_err("QID %d not supported (0 - %d available)",
 				qidx, (dev->data->nb_rx_queues - 1));
 		return -ENOTSUP;
 	}
@@ -1389,17 +1392,17 @@ octeontx_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 			rte_free(rxq);
 			return ret;
 		}
-		PMD_RX_LOG(DEBUG, "Port %d Rx pktbuf configured:\n"
-				"\tmbuf_size:\t0x%0x\n"
-				"\twqe_skip:\t0x%0x\n"
-				"\tfirst_skip:\t0x%0x\n"
-				"\tlater_skip:\t0x%0x\n"
-				"\tcache_mode:\t%s\n",
-				port,
-				pktbuf_conf.mbuff_size,
-				pktbuf_conf.wqe_skip,
-				pktbuf_conf.first_skip,
-				pktbuf_conf.later_skip,
+		PMD_RX_LOG(DEBUG, "Port %d Rx pktbuf configured:",
+				port);
+		PMD_RX_LOG(DEBUG, "\tmbuf_size:\t0x%0x",
+				pktbuf_conf.mbuff_size);
+		PMD_RX_LOG(DEBUG, "\twqe_skip:\t0x%0x",
+				pktbuf_conf.wqe_skip);
+		PMD_RX_LOG(DEBUG, "\tfirst_skip:\t0x%0x",
+				pktbuf_conf.first_skip);
+		PMD_RX_LOG(DEBUG, "\tlater_skip:\t0x%0x",
+				pktbuf_conf.later_skip);
+		PMD_RX_LOG(DEBUG, "\tcache_mode:\t%s",
 				(pktbuf_conf.cache_mode ==
 						PKI_OPC_MODE_STT) ?
 				"STT" :
@@ -1593,7 +1596,7 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 	nic->pko_vfid = pko_vfid;
 	nic->port_id = port;
 	nic->evdev = evdev;
-	__atomic_fetch_add(&evdev_refcnt, 1, __ATOMIC_ACQUIRE);
+	rte_atomic_fetch_add_explicit(&evdev_refcnt, 1, rte_memory_order_acquire);
 
 	res = octeontx_port_open(nic);
 	if (res < 0)
@@ -1844,7 +1847,7 @@ octeontx_probe(struct rte_vdev_device *dev)
 		}
 	}
 
-	__atomic_store_n(&evdev_refcnt, 0, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&evdev_refcnt, 0, rte_memory_order_release);
 	/*
 	 * Do 1:1 links for ports & queues. All queues would be mapped to
 	 * one port. If there are more ports than queues, then some ports

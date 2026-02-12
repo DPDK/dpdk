@@ -334,7 +334,7 @@ struct __rte_cache_aligned rte_mempool {
 #ifdef RTE_LIBRTE_MEMPOOL_STATS
 #define RTE_MEMPOOL_STAT_ADD(mp, name, n) do {                                  \
 		unsigned int __lcore_id = rte_lcore_id();                       \
-		if (likely(__lcore_id < RTE_MAX_LCORE))                         \
+		if (likely(__lcore_id != LCORE_ID_ANY))                         \
 			(mp)->stats[__lcore_id].name += (n);                    \
 		else                                                            \
 			rte_atomic_fetch_add_explicit(&((mp)->stats[RTE_MAX_LCORE].name),  \
@@ -751,7 +751,7 @@ extern struct rte_mempool_ops_table rte_mempool_ops_table;
 static inline struct rte_mempool_ops *
 rte_mempool_get_ops(int ops_index)
 {
-	RTE_VERIFY((ops_index >= 0) && (ops_index < RTE_MEMPOOL_MAX_OPS_IDX));
+	RTE_ASSERT((ops_index >= 0) && (ops_index < RTE_MEMPOOL_MAX_OPS_IDX));
 
 	return &rte_mempool_ops_table.ops[ops_index];
 }
@@ -791,7 +791,8 @@ rte_mempool_ops_dequeue_bulk(struct rte_mempool *mp,
 	rte_mempool_trace_ops_dequeue_bulk(mp, obj_table, n);
 	ops = rte_mempool_get_ops(mp->ops_index);
 	ret = ops->dequeue(mp, obj_table, n);
-	if (ret == 0) {
+	RTE_ASSERT(ret <= 0);
+	if (likely(ret == 0)) {
 		RTE_MEMPOOL_STAT_ADD(mp, get_common_pool_bulk, 1);
 		RTE_MEMPOOL_STAT_ADD(mp, get_common_pool_objs, n);
 	}
@@ -816,11 +817,14 @@ rte_mempool_ops_dequeue_contig_blocks(struct rte_mempool *mp,
 		void **first_obj_table, unsigned int n)
 {
 	struct rte_mempool_ops *ops;
+	int ret;
 
 	ops = rte_mempool_get_ops(mp->ops_index);
 	RTE_ASSERT(ops->dequeue_contig_blocks != NULL);
 	rte_mempool_trace_ops_dequeue_contig_blocks(mp, first_obj_table, n);
-	return ops->dequeue_contig_blocks(mp, first_obj_table, n);
+	ret = ops->dequeue_contig_blocks(mp, first_obj_table, n);
+	RTE_ASSERT(ret <= 0);
+	return ret;
 }
 
 /**
@@ -848,6 +852,7 @@ rte_mempool_ops_enqueue_bulk(struct rte_mempool *mp, void * const *obj_table,
 	rte_mempool_trace_ops_enqueue_bulk(mp, obj_table, n);
 	ops = rte_mempool_get_ops(mp->ops_index);
 	ret = ops->enqueue(mp, obj_table, n);
+	RTE_ASSERT(ret <= 0);
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	if (unlikely(ret < 0))
 		RTE_MEMPOOL_LOG(CRIT, "cannot enqueue %u objects to mempool %s",
@@ -1013,6 +1018,20 @@ typedef void (rte_mempool_mem_cb_t)(struct rte_mempool *mp,
 typedef void (rte_mempool_ctor_t)(struct rte_mempool *, void *);
 
 /**
+ * Free a mempool
+ *
+ * Unlink the mempool from global list, free the memory chunks, and all
+ * memory referenced by the mempool. The objects must not be used by
+ * other cores as they will be freed.
+ *
+ * @param mp
+ *   A pointer to the mempool structure.
+ *   If NULL then, the function does nothing.
+ */
+void
+rte_mempool_free(struct rte_mempool *mp);
+
+/**
  * Create a new mempool named *name* in memory.
  *
  * This function uses ``rte_memzone_reserve()`` to allocate memory. The
@@ -1095,7 +1114,8 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		   unsigned cache_size, unsigned private_data_size,
 		   rte_mempool_ctor_t *mp_init, void *mp_init_arg,
 		   rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
-		   int socket_id, unsigned flags);
+		   int socket_id, unsigned int flags)
+	__rte_malloc __rte_dealloc(rte_mempool_free, 1);
 
 /**
  * Create an empty mempool
@@ -1132,22 +1152,10 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
  *   with rte_errno set appropriately. See rte_mempool_create() for details.
  */
 struct rte_mempool *
-rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
-	unsigned cache_size, unsigned private_data_size,
-	int socket_id, unsigned flags);
-/**
- * Free a mempool
- *
- * Unlink the mempool from global list, free the memory chunks, and all
- * memory referenced by the mempool. The objects must not be used by
- * other cores as they will be freed.
- *
- * @param mp
- *   A pointer to the mempool structure.
- *   If NULL then, the function does nothing.
- */
-void
-rte_mempool_free(struct rte_mempool *mp);
+rte_mempool_create_empty(const char *name, unsigned int n, unsigned int elt_size,
+			 unsigned int cache_size, unsigned int private_data_size,
+			 int socket_id, unsigned int flags)
+		__rte_malloc __rte_dealloc(rte_mempool_free, 1);
 
 /**
  * Add physically contiguous memory for objects in the pool at init
@@ -1330,10 +1338,10 @@ rte_mempool_cache_free(struct rte_mempool_cache *cache);
 static __rte_always_inline struct rte_mempool_cache *
 rte_mempool_default_cache(struct rte_mempool *mp, unsigned lcore_id)
 {
-	if (mp->cache_size == 0)
+	if (unlikely(mp->cache_size == 0))
 		return NULL;
 
-	if (lcore_id >= RTE_MAX_LCORE)
+	if (unlikely(lcore_id == LCORE_ID_ANY))
 		return NULL;
 
 	rte_mempool_trace_default_cache(mp, lcore_id,
@@ -1380,32 +1388,33 @@ rte_mempool_do_generic_put(struct rte_mempool *mp, void * const *obj_table,
 {
 	void **cache_objs;
 
-	/* No cache provided */
+	/* No cache provided? */
 	if (unlikely(cache == NULL))
 		goto driver_enqueue;
 
-	/* increment stat now, adding in mempool always success */
+	/* Increment stats now, adding in mempool always succeeds. */
 	RTE_MEMPOOL_CACHE_STAT_ADD(cache, put_bulk, 1);
 	RTE_MEMPOOL_CACHE_STAT_ADD(cache, put_objs, n);
 
-	/* The request itself is too big for the cache */
-	if (unlikely(n > cache->flushthresh))
-		goto driver_enqueue_stats_incremented;
-
-	/*
-	 * The cache follows the following algorithm:
-	 *   1. If the objects cannot be added to the cache without crossing
-	 *      the flush threshold, flush the cache to the backend.
-	 *   2. Add the objects to the cache.
-	 */
-
-	if (cache->len + n <= cache->flushthresh) {
+	__rte_assume(cache->flushthresh <= RTE_MEMPOOL_CACHE_MAX_SIZE * 2);
+	__rte_assume(cache->len <= RTE_MEMPOOL_CACHE_MAX_SIZE * 2);
+	__rte_assume(cache->len <= cache->flushthresh);
+	if (likely(cache->len + n <= cache->flushthresh)) {
+		/* Sufficient room in the cache for the objects. */
 		cache_objs = &cache->objs[cache->len];
 		cache->len += n;
-	} else {
+	} else if (n <= cache->flushthresh) {
+		/*
+		 * The cache is big enough for the objects, but - as detected by
+		 * the comparison above - has insufficient room for them.
+		 * Flush the cache to make room for the objects.
+		 */
 		cache_objs = &cache->objs[0];
 		rte_mempool_ops_enqueue_bulk(mp, cache_objs, cache->len);
 		cache->len = n;
+	} else {
+		/* The request itself is too big for the cache. */
+		goto driver_enqueue_stats_incremented;
 	}
 
 	/* Add the objects to the cache. */
@@ -1512,7 +1521,7 @@ rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
 	uint32_t index, len;
 	void **cache_objs;
 
-	/* No cache provided */
+	/* No cache provided? */
 	if (unlikely(cache == NULL)) {
 		remaining = n;
 		goto driver_dequeue;
@@ -1521,7 +1530,8 @@ rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
 	/* The cache is a stack, so copy will be in reverse order. */
 	cache_objs = &cache->objs[cache->len];
 
-	if (__extension__(__builtin_constant_p(n)) && n <= cache->len) {
+	__rte_assume(cache->len <= RTE_MEMPOOL_CACHE_MAX_SIZE * 2);
+	if (__rte_constant(n) && n <= cache->len) {
 		/*
 		 * The request size is known at build time, and
 		 * the entire request can be satisfied from the cache,
@@ -1542,8 +1552,7 @@ rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
 	 * If the request size 'n' is known at build time, the above comparison
 	 * ensures that n > cache->len here, so omit RTE_MIN().
 	 */
-	len = __extension__(__builtin_constant_p(n)) ? cache->len :
-			RTE_MIN(n, cache->len);
+	len = __rte_constant(n) ? cache->len : RTE_MIN(n, cache->len);
 	cache->len -= len;
 	remaining = n - len;
 	for (index = 0; index < len; index++)
@@ -1554,7 +1563,7 @@ rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
 	 * where the entire request can be satisfied from the cache
 	 * has already been handled above, so omit handling it here.
 	 */
-	if (!__extension__(__builtin_constant_p(n)) && remaining == 0) {
+	if (!__rte_constant(n) && likely(remaining == 0)) {
 		/* The entire request is satisfied from the cache. */
 
 		RTE_MEMPOOL_CACHE_STAT_ADD(cache, get_success_bulk, 1);
@@ -1563,7 +1572,7 @@ rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
 		return 0;
 	}
 
-	/* if dequeue below would overflow mem allocated for cache */
+	/* Dequeue below would overflow mem allocated for cache? */
 	if (unlikely(remaining > RTE_MEMPOOL_CACHE_MAX_SIZE))
 		goto driver_dequeue;
 
@@ -1572,8 +1581,7 @@ rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
 			cache->size + remaining);
 	if (unlikely(ret < 0)) {
 		/*
-		 * We are buffer constrained, and not able to allocate
-		 * cache + remaining.
+		 * We are buffer constrained, and not able to fetch all that.
 		 * Do not fill the cache, just satisfy the remaining part of
 		 * the request directly from the backend.
 		 */
@@ -1581,6 +1589,8 @@ rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
 	}
 
 	/* Satisfy the remaining part of the request from the filled cache. */
+	__rte_assume(cache->size <= RTE_MEMPOOL_CACHE_MAX_SIZE);
+	__rte_assume(remaining <= RTE_MEMPOOL_CACHE_MAX_SIZE);
 	cache_objs = &cache->objs[cache->size + remaining];
 	for (index = 0; index < remaining; index++)
 		*obj_table++ = *--cache_objs;
@@ -1597,7 +1607,7 @@ driver_dequeue:
 	/* Get remaining objects directly from the backend. */
 	ret = rte_mempool_ops_dequeue_bulk(mp, obj_table, remaining);
 
-	if (ret < 0) {
+	if (unlikely(ret < 0)) {
 		if (likely(cache != NULL)) {
 			cache->len = n - remaining;
 			/*
@@ -1617,6 +1627,7 @@ driver_dequeue:
 			RTE_MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
 			RTE_MEMPOOL_STAT_ADD(mp, get_success_objs, n);
 		}
+		__rte_assume(ret == 0);
 	}
 
 	return ret;
@@ -1648,7 +1659,7 @@ rte_mempool_generic_get(struct rte_mempool *mp, void **obj_table,
 {
 	int ret;
 	ret = rte_mempool_do_generic_get(mp, obj_table, n, cache);
-	if (ret == 0)
+	if (likely(ret == 0))
 		RTE_MEMPOOL_CHECK_COOKIES(mp, obj_table, n, 1);
 	rte_mempool_trace_generic_get(mp, obj_table, n, cache);
 	return ret;
@@ -1739,7 +1750,7 @@ rte_mempool_get_contig_blocks(struct rte_mempool *mp,
 	int ret;
 
 	ret = rte_mempool_ops_dequeue_contig_blocks(mp, first_obj_table, n);
-	if (ret == 0) {
+	if (likely(ret == 0)) {
 		RTE_MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
 		RTE_MEMPOOL_STAT_ADD(mp, get_success_blks, n);
 		RTE_MEMPOOL_CONTIG_BLOCKS_CHECK_COOKIES(mp, first_obj_table, n,
@@ -1916,6 +1927,54 @@ uint32_t rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
  */
 void rte_mempool_walk(void (*func)(struct rte_mempool *, void *arg),
 		      void *arg);
+
+/**
+ * A structure used to retrieve information about the memory range
+ * of the mempool.
+ */
+struct rte_mempool_mem_range_info {
+	/** Start of the memory range used by mempool objects */
+	void *start;
+	/** Length of the memory range used by mempool objects */
+	size_t length;
+	/** Are all memory addresses used by mempool objects contiguous */
+	bool is_contiguous;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Get information about the memory range used to store objects in the mempool.
+ *
+ * @param[in] mp
+ *   Pointer to an initialized mempool.
+ * @param[out] mem_range
+ *   Pointer to struct which is used to return lowest address,
+ *   length of the memory range containing all the addresses,
+ *   and whether these addresses are contiguous.
+ * @return
+ *   0 on success, -EINVAL if mempool is not valid or mem_range is NULL.
+ */
+__rte_experimental
+int
+rte_mempool_get_mem_range(const struct rte_mempool *mp,
+	struct rte_mempool_mem_range_info *mem_range);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Return alignment of objects stored in the mempool.
+ *
+ * @param[in] mp
+ *   Pointer to a mempool.
+ * @return
+ *   Object alignment if mp is valid. 0 if mp is NULL.
+ */
+__rte_experimental
+size_t
+rte_mempool_get_obj_alignment(const struct rte_mempool *mp);
 
 /**
  * @internal Get page size used for mempool object allocation.

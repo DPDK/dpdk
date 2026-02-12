@@ -21,7 +21,7 @@
 #endif
 
 /* ************************************************************************* */
-struct ark_tx_queue {
+struct __rte_cache_aligned ark_tx_queue {
 	union ark_tx_meta *meta_q;
 	struct rte_mbuf **bufs;
 
@@ -39,8 +39,8 @@ struct ark_tx_queue {
 	uint32_t queue_mask;
 
 	/* 3 indexes to the paired data rings. */
-	int32_t prod_index;		/* where to put the next one */
-	int32_t free_index;		/* mbuf has been freed */
+	uint32_t prod_index;		/* where to put the next one */
+	uint32_t free_index;		/* mbuf has been freed */
 
 	/* The queue Id is used to identify the HW Q */
 	uint16_t phys_qid;
@@ -48,20 +48,20 @@ struct ark_tx_queue {
 	uint16_t queue_index;
 
 	/* next cache line - fields written by device */
-	RTE_MARKER cacheline1 __rte_cache_min_aligned;
-	volatile int32_t cons_index;		/* hw is done, can be freed */
-} __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_MIN_SIZE) RTE_MARKER cacheline1;
+	volatile uint32_t cons_index;		/* hw is done, can be freed */
+};
 
 /* Forward declarations */
-static int eth_ark_tx_jumbo(struct ark_tx_queue *queue,
+static int ark_tx_jumbo(struct ark_tx_queue *queue,
 			    struct rte_mbuf *mbuf,
 			    uint32_t *user_meta, uint8_t meta_cnt);
-static int eth_ark_tx_hw_queue_config(struct ark_tx_queue *queue);
+static int ark_tx_hw_queue_config(struct ark_tx_queue *queue);
 static void free_completed_tx(struct ark_tx_queue *queue);
 
 /* ************************************************************************* */
 static inline void
-eth_ark_tx_desc_fill(struct ark_tx_queue *queue,
+ark_tx_desc_fill(struct ark_tx_queue *queue,
 		     struct rte_mbuf *mbuf,
 		     uint8_t  flags,
 		     uint32_t *user_meta,
@@ -101,14 +101,14 @@ eth_ark_tx_desc_fill(struct ark_tx_queue *queue,
 
 /* ************************************************************************* */
 uint16_t
-eth_ark_xmit_pkts(void *vtxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+ark_xmit_pkts(void *vtxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct ark_tx_queue *queue;
 	struct rte_mbuf *mbuf;
 	uint32_t user_meta[5];
 
 	int stat;
-	int32_t prod_index_limit;
+	uint32_t prod_index_limit;
 	uint16_t nb;
 	uint8_t user_len = 0;
 	const uint32_t min_pkt_len = ARK_MIN_TX_PKTLEN;
@@ -123,8 +123,13 @@ eth_ark_xmit_pkts(void *vtxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	/* leave 4 elements mpu data */
 	prod_index_limit = queue->queue_size + queue->free_index - 4;
 
+	/* Populate the buffer bringing prod_index up to or slightly beyond
+	 * prod_index_limit. Prod_index will increment by 2 or more each
+	 * iteration.  Note: indexes are uint32_t, cast to (signed) int32_t
+	 * to catch the slight overage case;  e.g. (200 - 201)
+	 */
 	for (nb = 0;
-	     (nb < nb_pkts) && (prod_index_limit - queue->prod_index) > 0;
+	     (nb < nb_pkts) && (int32_t)(prod_index_limit - queue->prod_index) > 0;
 	     ++nb) {
 		mbuf = tx_pkts[nb];
 
@@ -154,12 +159,12 @@ eth_ark_xmit_pkts(void *vtxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			tx_user_meta_hook(mbuf, user_meta, &user_len,
 					  queue->ext_user_data);
 		if (unlikely(mbuf->nb_segs != 1)) {
-			stat = eth_ark_tx_jumbo(queue, mbuf,
+			stat = ark_tx_jumbo(queue, mbuf,
 						user_meta, user_len);
 			if (unlikely(stat != 0))
 				break;		/* Queue is full */
 		} else {
-			eth_ark_tx_desc_fill(queue, mbuf,
+			ark_tx_desc_fill(queue, mbuf,
 					     ARK_DDM_SOP | ARK_DDM_EOP,
 					     user_meta, user_len);
 		}
@@ -190,24 +195,24 @@ eth_ark_xmit_pkts(void *vtxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 /* ************************************************************************* */
 static int
-eth_ark_tx_jumbo(struct ark_tx_queue *queue, struct rte_mbuf *mbuf,
+ark_tx_jumbo(struct ark_tx_queue *queue, struct rte_mbuf *mbuf,
 		 uint32_t *user_meta, uint8_t meta_cnt)
 {
 	struct rte_mbuf *next;
-	int32_t free_queue_space;
+	uint32_t free_queue_space;
 	uint8_t flags = ARK_DDM_SOP;
 
 	free_queue_space = queue->queue_mask -
 		(queue->prod_index - queue->free_index);
 	/* We need up to 4 mbufs for first header and 2 for subsequent ones */
-	if (unlikely(free_queue_space < (2 + (2 * mbuf->nb_segs))))
+	if (unlikely(free_queue_space < (2U + (2U * mbuf->nb_segs))))
 		return -1;
 
 	while (mbuf != NULL) {
 		next = mbuf->next;
 		flags |= (next == NULL) ? ARK_DDM_EOP : 0;
 
-		eth_ark_tx_desc_fill(queue, mbuf, flags, user_meta, meta_cnt);
+		ark_tx_desc_fill(queue, mbuf, flags, user_meta, meta_cnt);
 
 		flags &= ~ARK_DDM_SOP;	/* drop SOP flags */
 		meta_cnt = 0;		/* Meta only on SOP */
@@ -219,7 +224,7 @@ eth_ark_tx_jumbo(struct ark_tx_queue *queue, struct rte_mbuf *mbuf,
 
 /* ************************************************************************* */
 int
-eth_ark_tx_queue_setup(struct rte_eth_dev *dev,
+ark_tx_queue_setup(struct rte_eth_dev *dev,
 		       uint16_t queue_idx,
 		       uint16_t nb_desc,
 		       unsigned int socket_id,
@@ -286,7 +291,7 @@ eth_ark_tx_queue_setup(struct rte_eth_dev *dev,
 	queue->ddm = RTE_PTR_ADD(ark->ddm.v, qidx * ARK_DDM_QOFFSET);
 	queue->mpu = RTE_PTR_ADD(ark->mputx.v, qidx * ARK_MPU_QOFFSET);
 
-	status = eth_ark_tx_hw_queue_config(queue);
+	status = ark_tx_hw_queue_config(queue);
 
 	if (unlikely(status != 0)) {
 		rte_free(queue->meta_q);
@@ -300,7 +305,7 @@ eth_ark_tx_queue_setup(struct rte_eth_dev *dev,
 
 /* ************************************************************************* */
 static int
-eth_ark_tx_hw_queue_config(struct ark_tx_queue *queue)
+ark_tx_hw_queue_config(struct ark_tx_queue *queue)
 {
 	rte_iova_t queue_base, ring_base, cons_index_addr;
 
@@ -328,7 +333,7 @@ eth_ark_tx_hw_queue_config(struct ark_tx_queue *queue)
 
 /* ************************************************************************* */
 void
-eth_ark_tx_queue_release(void *vtx_queue)
+ark_tx_queue_release(void *vtx_queue)
 {
 	struct ark_tx_queue *queue;
 
@@ -347,7 +352,7 @@ eth_ark_tx_queue_release(void *vtx_queue)
 
 /* ************************************************************************* */
 int
-eth_ark_tx_queue_stop(struct rte_eth_dev *dev, uint16_t queue_id)
+ark_tx_queue_stop(struct rte_eth_dev *dev, uint16_t queue_id)
 {
 	struct ark_tx_queue *queue;
 	int cnt = 0;
@@ -371,7 +376,7 @@ eth_ark_tx_queue_stop(struct rte_eth_dev *dev, uint16_t queue_id)
 }
 
 int
-eth_ark_tx_queue_start(struct rte_eth_dev *dev, uint16_t queue_id)
+ark_tx_queue_start(struct rte_eth_dev *dev, uint16_t queue_id)
 {
 	struct ark_tx_queue *queue;
 
@@ -392,10 +397,11 @@ free_completed_tx(struct ark_tx_queue *queue)
 {
 	struct rte_mbuf *mbuf;
 	union ark_tx_meta *meta;
-	int32_t top_index;
+	uint32_t top_index;
 
 	top_index = queue->cons_index;	/* read once */
-	while ((top_index - queue->free_index) > 0) {
+
+	while ((int32_t)(top_index - queue->free_index) > 0) {
 		meta = &queue->meta_q[queue->free_index & queue->queue_mask];
 		if (likely((meta->flags & ARK_DDM_SOP) != 0)) {
 			mbuf = queue->bufs[queue->free_index &
@@ -409,27 +415,32 @@ free_completed_tx(struct ark_tx_queue *queue)
 
 /* ************************************************************************* */
 void
-eth_tx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats)
+ark_tx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats, struct eth_queue_stats *qstats)
 {
 	struct ark_tx_queue *queue;
 	struct ark_ddm_t *ddm;
 	uint64_t bytes, pkts;
 
 	queue = vqueue;
-	ddm = queue->ddm;
+	if (queue == NULL)
+		return;
 
+	ddm = queue->ddm;
 	bytes = ark_ddm_queue_byte_count(ddm);
 	pkts = ark_ddm_queue_pkt_count(ddm);
 
-	stats->q_opackets[queue->queue_index] = pkts;
-	stats->q_obytes[queue->queue_index] = bytes;
 	stats->opackets += pkts;
 	stats->obytes += bytes;
 	stats->oerrors += queue->tx_errors;
+
+	if (qstats && queue->queue_index < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+		qstats->q_opackets[queue->queue_index] = pkts;
+		qstats->q_obytes[queue->queue_index] = bytes;
+	}
 }
 
 void
-eth_tx_queue_stats_reset(void *vqueue)
+ark_tx_queue_stats_reset(void *vqueue)
 {
 	struct ark_tx_queue *queue;
 	struct ark_ddm_t *ddm;

@@ -20,3 +20,4 @@ sources = files(
         'obj.c',
         'thread.c',
 )
+cflags += no_wvla_cflag

@@ -1,8 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2018 Intel Corporation.
 
-Berkeley Packet Filter Library
-==============================
+Berkeley Packet Filter (BPF) Library
+====================================
 
 The DPDK provides an BPF library that gives the ability
 to load and execute Enhanced Berkeley Packet Filter (eBPF) bytecode within

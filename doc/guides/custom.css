@@ -4,8 +4,68 @@
 
 /* Override readthedocs theme */
 
+/* Set full width for all responsive tables of a page.
+ * Usage: insert the following line in the doc.
+ *        .. rst-class:: widepage
+ */
+@media screen and (min-width: 1100px) {
+    .wy-nav-content-wrap:has(.widepage) {
+        background: #fcfcfc !important;
+    }
+    .wy-nav-content:has(.widepage) .wy-table-responsive {
+        overflow: visible !important;
+    }
+}
+
 /* Spacing before a list item must be bigger than spacing inside the item.
  * Complex list items start with a p.first element. */
 .section li > .first {
 	margin-top: 18px;
+}
+
+/* Table head row more visible */
+th.head {
+	background-color: #ccc;
+}
+
+/* Class numbering table rows in the first column.
+ * Usage: insert the following line before the table without indent.
+ *        .. rst-class:: numbered-table
+ */
+.numbered-table {
+	counter-reset: row-number;
+}
+.numbered-table tbody tr {
+	counter-increment: row-number;
+}
+.numbered-table tr td:first-child::before {
+	content: counter(row-number) " - ";
+	display: inline-block;
+	min-width: 2.5em;
+}
+.numbered-table tr td:first-child p {
+	display: inline-block;
+}
+
+/* Class highlighting non-empty table cells in green color.
+ * Usage: insert the following line before the table without indent.
+ *        .. rst-class:: punchcard
+ */
+.punchcard {
+	vertical-align: middle;
+}
+.punchcard th,
+.punchcard td:not(:first-child) {
+	text-align: center;
+}
+.punchcard tbody td {
+	padding: 4px 12px !important;
+}
+.punchcard tbody .row-odd td:not(:first-child):not(:empty) {
+	background-color: #cf9 !important;
+	color: #0c0 !important;
+}
+.punchcard tbody .row-even td:not(:first-child):not(:empty) {
+	background-color: #ce9 !important;
+	color: #0b0 !important;
 }

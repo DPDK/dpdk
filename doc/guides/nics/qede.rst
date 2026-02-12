@@ -272,7 +272,7 @@ This section provides instructions to configure SR-IOV with Linux OS.
 
    .. code-block:: console
 
-      dpdk-testpmd -l 0,4-11 -n 4 -- -i --nb-cores=8 --portmask=0xf --rxd=4096 \
+      dpdk-testpmd -l 0,4-11 -- -i --nb-cores=8 --portmask=0xf --rxd=4096 \
       --txd=4096 --txfreet=4068 --enable-rx-cksum --rxq=4 --txq=4 \
       --rss-ip --rss-udp
 

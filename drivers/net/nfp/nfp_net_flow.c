@@ -88,9 +88,12 @@ nfp_net_flow_position_acquire(struct nfp_net_priv *priv,
 		struct rte_flow *nfp_flow)
 {
 	uint32_t i;
+	uint32_t limit;
+
+	limit = priv->flow_limit;
 
 	if (priority != 0) {
-		i = NFP_NET_FLOW_LIMIT - priority - 1;
+		i = limit - priority - 1;
 
 		if (priv->flow_position[i]) {
 			PMD_DRV_LOG(ERR, "There is already a flow rule in this place.");
@@ -102,19 +105,19 @@ nfp_net_flow_position_acquire(struct nfp_net_priv *priv,
 		return 0;
 	}
 
-	for (i = 0; i < NFP_NET_FLOW_LIMIT; i++) {
+	for (i = 0; i < limit; i++) {
 		if (!priv->flow_position[i]) {
 			priv->flow_position[i] = true;
 			break;
 		}
 	}
 
-	if (i == NFP_NET_FLOW_LIMIT) {
+	if (i == limit) {
 		PMD_DRV_LOG(ERR, "The limited flow number is reach.");
 		return -ERANGE;
 	}
 
-	nfp_flow->position = NFP_NET_FLOW_LIMIT - i - 1;
+	nfp_flow->position = limit - i - 1;
 
 	return 0;
 }
@@ -123,7 +126,11 @@ static void
 nfp_net_flow_position_free(struct nfp_net_priv *priv,
 		struct rte_flow *nfp_flow)
 {
-	priv->flow_position[nfp_flow->position] = false;
+	uint32_t index;
+
+	index = priv->flow_limit - 1 - nfp_flow->position;
+
+	priv->flow_position[index] = false;
 }
 
 static struct rte_flow *
@@ -178,7 +185,8 @@ nfp_net_flow_free(struct nfp_net_priv *priv,
 
 static int
 nfp_net_flow_calculate_items(const struct rte_flow_item items[],
-		uint32_t *match_len)
+		uint32_t *match_len,
+		uint32_t *item_type)
 {
 	int ret = -EINVAL;
 	const struct rte_flow_item *item;
@@ -186,20 +194,23 @@ nfp_net_flow_calculate_items(const struct rte_flow_item items[],
 	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
 		switch (item->type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_ETH detected");
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_ETH detected.");
 			*match_len = sizeof(struct nfp_net_cmsg_match_eth);
+			*item_type = RTE_FLOW_ITEM_TYPE_ETH;
 			ret = 0;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV4 detected");
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV4 detected.");
 			*match_len = sizeof(struct nfp_net_cmsg_match_v4);
+			*item_type = RTE_FLOW_ITEM_TYPE_IPV4;
 			return 0;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV6 detected");
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV6 detected.");
 			*match_len = sizeof(struct nfp_net_cmsg_match_v6);
+			*item_type = RTE_FLOW_ITEM_TYPE_IPV6;
 			return 0;
 		default:
-			PMD_DRV_LOG(ERR, "Can't calculate match length");
+			PMD_DRV_LOG(ERR, "Can not calculate match length.");
 			*match_len = 0;
 			return -ENOTSUP;
 		}
@@ -286,28 +297,28 @@ nfp_net_flow_merge_ipv6(struct rte_flow *nfp_flow,
 
 	ipv6->l4_protocol_mask = mask->hdr.proto;
 	for (i = 0; i < sizeof(ipv6->src_ipv6); i += 4) {
-		ipv6->src_ipv6_mask[i] = mask->hdr.src_addr[i + 3];
-		ipv6->src_ipv6_mask[i + 1] = mask->hdr.src_addr[i + 2];
-		ipv6->src_ipv6_mask[i + 2] = mask->hdr.src_addr[i + 1];
-		ipv6->src_ipv6_mask[i + 3] = mask->hdr.src_addr[i];
+		ipv6->src_ipv6_mask[i] = mask->hdr.src_addr.a[i + 3];
+		ipv6->src_ipv6_mask[i + 1] = mask->hdr.src_addr.a[i + 2];
+		ipv6->src_ipv6_mask[i + 2] = mask->hdr.src_addr.a[i + 1];
+		ipv6->src_ipv6_mask[i + 3] = mask->hdr.src_addr.a[i];
 
-		ipv6->dst_ipv6_mask[i] = mask->hdr.dst_addr[i + 3];
-		ipv6->dst_ipv6_mask[i + 1] = mask->hdr.dst_addr[i + 2];
-		ipv6->dst_ipv6_mask[i + 2] = mask->hdr.dst_addr[i + 1];
-		ipv6->dst_ipv6_mask[i + 3] = mask->hdr.dst_addr[i];
+		ipv6->dst_ipv6_mask[i] = mask->hdr.dst_addr.a[i + 3];
+		ipv6->dst_ipv6_mask[i + 1] = mask->hdr.dst_addr.a[i + 2];
+		ipv6->dst_ipv6_mask[i + 2] = mask->hdr.dst_addr.a[i + 1];
+		ipv6->dst_ipv6_mask[i + 3] = mask->hdr.dst_addr.a[i];
 	}
 
 	ipv6->l4_protocol = spec->hdr.proto;
 	for (i = 0; i < sizeof(ipv6->src_ipv6); i += 4) {
-		ipv6->src_ipv6[i] = spec->hdr.src_addr[i + 3];
-		ipv6->src_ipv6[i + 1] = spec->hdr.src_addr[i + 2];
-		ipv6->src_ipv6[i + 2] = spec->hdr.src_addr[i + 1];
-		ipv6->src_ipv6[i + 3] = spec->hdr.src_addr[i];
+		ipv6->src_ipv6[i] = spec->hdr.src_addr.a[i + 3];
+		ipv6->src_ipv6[i + 1] = spec->hdr.src_addr.a[i + 2];
+		ipv6->src_ipv6[i + 2] = spec->hdr.src_addr.a[i + 1];
+		ipv6->src_ipv6[i + 3] = spec->hdr.src_addr.a[i];
 
-		ipv6->dst_ipv6[i] = spec->hdr.dst_addr[i + 3];
-		ipv6->dst_ipv6[i + 1] = spec->hdr.dst_addr[i + 2];
-		ipv6->dst_ipv6[i + 2] = spec->hdr.dst_addr[i + 1];
-		ipv6->dst_ipv6[i + 3] = spec->hdr.dst_addr[i];
+		ipv6->dst_ipv6[i] = spec->hdr.dst_addr.a[i + 3];
+		ipv6->dst_ipv6[i + 1] = spec->hdr.dst_addr.a[i + 2];
+		ipv6->dst_ipv6[i + 2] = spec->hdr.dst_addr.a[i + 1];
+		ipv6->dst_ipv6[i + 3] = spec->hdr.dst_addr.a[i];
 	}
 
 	return 0;
@@ -395,10 +406,8 @@ static const struct nfp_net_flow_item_proc nfp_net_flow_item_proc_list[] = {
 		.mask_support = &(const struct rte_flow_item_ipv6){
 			.hdr = {
 				.proto    = 0xff,
-				.src_addr = "\xff\xff\xff\xff\xff\xff\xff\xff"
-						"\xff\xff\xff\xff\xff\xff\xff\xff",
-				.dst_addr = "\xff\xff\xff\xff\xff\xff\xff\xff"
-						"\xff\xff\xff\xff\xff\xff\xff\xff",
+				.src_addr = RTE_IPV6_MASK_FULL,
+				.dst_addr = RTE_IPV6_MASK_FULL,
 			},
 		},
 		.mask_default = &rte_flow_item_ipv6_mask,
@@ -451,7 +460,7 @@ nfp_net_flow_item_check(const struct rte_flow_item *item,
 	/* item->last and item->mask cannot exist without item->spec. */
 	if (item->spec == NULL) {
 		if (item->mask || item->last) {
-			PMD_DRV_LOG(ERR, "'mask' or 'last' field provided"
+			PMD_DRV_LOG(ERR, "The 'mask' or 'last' field provided"
 					" without a corresponding 'spec'.");
 			return -EINVAL;
 		}
@@ -514,7 +523,7 @@ nfp_net_flow_compile_items(const struct rte_flow_item items[],
 		}
 
 		if (proc == NULL) {
-			PMD_DRV_LOG(ERR, "No next item provided for %d", item->type);
+			PMD_DRV_LOG(ERR, "No next item provided for %d.", item->type);
 			ret = -ENOTSUP;
 			break;
 		}
@@ -522,20 +531,20 @@ nfp_net_flow_compile_items(const struct rte_flow_item items[],
 		/* Perform basic sanity checks */
 		ret = nfp_net_flow_item_check(item, proc);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "NFP flow item %d check failed", item->type);
+			PMD_DRV_LOG(ERR, "NFP flow item %d check failed.", item->type);
 			ret = -EINVAL;
 			break;
 		}
 
 		if (proc->merge == NULL) {
-			PMD_DRV_LOG(ERR, "NFP flow item %d no proc function", item->type);
+			PMD_DRV_LOG(ERR, "NFP flow item %d no proc function.", item->type);
 			ret = -ENOTSUP;
 			break;
 		}
 
 		ret = proc->merge(nfp_flow, item, proc);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "NFP flow item %d exact merge failed", item->type);
+			PMD_DRV_LOG(ERR, "NFP flow item %d exact merge failed.", item->type);
 			break;
 		}
 
@@ -581,7 +590,7 @@ nfp_net_flow_action_queue(struct rte_eth_dev *dev,
 	queue = action->conf;
 	if (queue->index >= dev->data->nb_rx_queues ||
 			dev->data->rx_queues[queue->index] == NULL) {
-		PMD_DRV_LOG(ERR, "Queue index is illegal");
+		PMD_DRV_LOG(ERR, "Queue index is illegal.");
 		return -EINVAL;
 	}
 
@@ -602,19 +611,19 @@ nfp_net_flow_compile_actions(struct rte_eth_dev *dev,
 	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
 		switch (action->type) {
 		case RTE_FLOW_ACTION_TYPE_DROP:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_DROP");
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_DROP.");
 			nfp_net_flow_action_drop(nfp_flow);
 			return 0;
 		case RTE_FLOW_ACTION_TYPE_MARK:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_MARK");
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_MARK.");
 			nfp_net_flow_action_mark(nfp_flow, action);
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_QUEUE");
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_QUEUE.");
 			ret = nfp_net_flow_action_queue(dev, nfp_flow, action);
 			break;
 		default:
-			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
+			PMD_DRV_LOG(ERR, "Unsupported action type: %d.", action->type);
 			return -ENOTSUP;
 		}
 	}
@@ -643,6 +652,66 @@ nfp_net_flow_process_priority(struct rte_flow *nfp_flow,
 	}
 }
 
+static int
+nfp_net_flow_check_count(struct nfp_net_flow_count *flow_count,
+		uint32_t item_type)
+{
+	int ret = 0;
+
+	switch (item_type) {
+	case RTE_FLOW_ITEM_TYPE_ETH:
+		if (flow_count->eth_count >= NFP_NET_ETH_FLOW_LIMIT)
+			ret = -ENOSPC;
+		break;
+	case RTE_FLOW_ITEM_TYPE_IPV4:
+		if (flow_count->ipv4_count >= NFP_NET_IPV4_FLOW_LIMIT)
+			ret = -ENOSPC;
+		break;
+	case RTE_FLOW_ITEM_TYPE_IPV6:
+		if (flow_count->ipv6_count >= NFP_NET_IPV6_FLOW_LIMIT)
+			ret = -ENOSPC;
+		break;
+	default:
+		ret = -ENOTSUP;
+		break;
+	}
+
+	return ret;
+}
+
+static int
+nfp_net_flow_calculate_count(struct rte_flow *nfp_flow,
+		struct nfp_net_flow_count *flow_count,
+		bool delete_flag)
+{
+	uint16_t *count;
+
+	switch (nfp_flow->payload.cmsg_type) {
+	case NFP_NET_CFG_MBOX_CMD_FS_ADD_V4:
+	case NFP_NET_CFG_MBOX_CMD_FS_DEL_V4:
+		count = &flow_count->ipv4_count;
+		break;
+	case NFP_NET_CFG_MBOX_CMD_FS_ADD_V6:
+	case NFP_NET_CFG_MBOX_CMD_FS_DEL_V6:
+		count = &flow_count->ipv6_count;
+		break;
+	case NFP_NET_CFG_MBOX_CMD_FS_ADD_ETHTYPE:
+	case NFP_NET_CFG_MBOX_CMD_FS_DEL_ETHTYPE:
+		count = &flow_count->eth_count;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Flow count calculate failed.");
+		return -EINVAL;
+	}
+
+	if (delete_flag)
+		(*count)--;
+	else
+		(*count)++;
+
+	return 0;
+}
+
 static struct rte_flow *
 nfp_net_flow_setup(struct rte_eth_dev *dev,
 		const struct rte_flow_attr *attr,
@@ -652,21 +721,30 @@ nfp_net_flow_setup(struct rte_eth_dev *dev,
 	int ret;
 	char *hash_data;
 	uint32_t port_id;
+	uint32_t item_type;
 	uint32_t action_len;
 	struct nfp_net_hw *hw;
 	uint32_t match_len = 0;
 	struct nfp_net_priv *priv;
 	struct rte_flow *nfp_flow;
 	struct rte_flow *flow_find;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
 
 	hw = dev->data->dev_private;
-	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw->pf_dev->app_fw_priv);
+	hw_priv = dev->process_private;
+	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw_priv->pf_dev->app_fw_priv);
 	priv = app_fw_nic->ports[hw->idx]->priv;
 
-	ret = nfp_net_flow_calculate_items(items, &match_len);
+	ret = nfp_net_flow_calculate_items(items, &match_len, &item_type);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Key layers calculate failed.");
+		return NULL;
+	}
+
+	ret = nfp_net_flow_check_count(&priv->flow_count, item_type);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Flow count check failed.");
 		return NULL;
 	}
 
@@ -703,7 +781,11 @@ nfp_net_flow_setup(struct rte_eth_dev *dev,
 		goto free_flow;
 	}
 
-	priv->flow_count++;
+	ret = nfp_net_flow_calculate_count(nfp_flow, &priv->flow_count, false);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "NFP flow calculate count failed.");
+		goto free_flow;
+	}
 
 	nfp_net_flow_process_priority(nfp_flow, match_len);
 
@@ -717,11 +799,9 @@ free_flow:
 
 static int
 nfp_net_flow_teardown(struct nfp_net_priv *priv,
-		__rte_unused struct rte_flow *nfp_flow)
+		struct rte_flow *nfp_flow)
 {
-	priv->flow_count--;
-
-	return 0;
+	return nfp_net_flow_calculate_count(nfp_flow, &priv->flow_count, true);
 }
 
 static int
@@ -775,10 +855,12 @@ nfp_net_flow_validate(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	struct rte_flow *nfp_flow;
 	struct nfp_net_priv *priv;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
 
 	hw = dev->data->dev_private;
-	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw->pf_dev->app_fw_priv);
+	hw_priv = dev->process_private;
+	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw_priv->pf_dev->app_fw_priv);
 	priv = app_fw_nic->ports[hw->idx]->priv;
 
 	nfp_flow = nfp_net_flow_setup(dev, attr, items, actions);
@@ -811,10 +893,12 @@ nfp_net_flow_create(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	struct rte_flow *nfp_flow;
 	struct nfp_net_priv *priv;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
 
 	hw = dev->data->dev_private;
-	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw->pf_dev->app_fw_priv);
+	hw_priv = dev->process_private;
+	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw_priv->pf_dev->app_fw_priv);
 	priv = app_fw_nic->ports[hw->idx]->priv;
 
 	nfp_flow = nfp_net_flow_setup(dev, attr, items, actions);
@@ -861,10 +945,12 @@ nfp_net_flow_destroy(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	struct nfp_net_priv *priv;
 	struct rte_flow *flow_find;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
 
 	hw = dev->data->dev_private;
-	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw->pf_dev->app_fw_priv);
+	hw_priv = dev->process_private;
+	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw_priv->pf_dev->app_fw_priv);
 	priv = app_fw_nic->ports[hw->idx]->priv;
 
 	/* Find the flow in flow hash table */
@@ -920,10 +1006,12 @@ nfp_net_flow_flush(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	struct rte_flow *nfp_flow;
 	struct rte_hash *flow_table;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
 
 	hw = dev->data->dev_private;
-	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw->pf_dev->app_fw_priv);
+	hw_priv = dev->process_private;
+	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw_priv->pf_dev->app_fw_priv);
 	flow_table = app_fw_nic->ports[hw->idx]->priv->flow_table;
 
 	while (rte_hash_iterate(flow_table, &next_key, &next_data, &iter) >= 0) {
@@ -966,11 +1054,24 @@ nfp_net_flow_ops_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static uint32_t
+nfp_net_fs_max_entry_get(struct nfp_hw *hw)
+{
+	uint32_t cnt;
+
+	cnt = nn_cfg_readl(hw, NFP_NET_CFG_MAX_FS_CAP);
+	if (cnt != 0)
+		return cnt;
+
+	return NFP_NET_FLOW_LIMIT;
+}
+
 int
 nfp_net_flow_priv_init(struct nfp_pf_dev *pf_dev,
 		uint16_t port)
 {
 	int ret = 0;
+	struct nfp_hw *hw;
 	struct nfp_net_priv *priv;
 	char flow_name[RTE_HASH_NAMESIZE];
 	struct nfp_app_fw_nic *app_fw_nic;
@@ -980,7 +1081,6 @@ nfp_net_flow_priv_init(struct nfp_pf_dev *pf_dev,
 
 	struct rte_hash_parameters flow_hash_params = {
 		.name       = flow_name,
-		.entries    = NFP_NET_FLOW_LIMIT,
 		.hash_func  = rte_jhash,
 		.socket_id  = rte_socket_id(),
 		.key_len    = sizeof(uint32_t),
@@ -989,7 +1089,7 @@ nfp_net_flow_priv_init(struct nfp_pf_dev *pf_dev,
 
 	priv = rte_zmalloc("nfp_app_nic_priv", sizeof(struct nfp_net_priv), 0);
 	if (priv == NULL) {
-		PMD_INIT_LOG(ERR, "NFP app nic priv creation failed");
+		PMD_INIT_LOG(ERR, "NFP app nic priv creation failed.");
 		ret = -ENOMEM;
 		goto exit;
 	}
@@ -998,17 +1098,37 @@ nfp_net_flow_priv_init(struct nfp_pf_dev *pf_dev,
 	app_fw_nic->ports[port]->priv = priv;
 	priv->hash_seed = (uint32_t)rte_rand();
 
-	/* Flow table */
-	flow_hash_params.hash_func_init_val = priv->hash_seed;
-	priv->flow_table = rte_hash_create(&flow_hash_params);
-	if (priv->flow_table == NULL) {
-		PMD_INIT_LOG(ERR, "flow hash table creation failed");
+	/* Flow limit */
+	hw = &app_fw_nic->ports[port]->super;
+	priv->flow_limit = nfp_net_fs_max_entry_get(hw);
+	if (priv->flow_limit == 0) {
+		PMD_INIT_LOG(ERR, "NFP app nic flow limit not right.");
+		ret = -EINVAL;
+		goto free_priv;
+	}
+
+	/* Flow position array */
+	priv->flow_position = rte_zmalloc(NULL, sizeof(bool) * priv->flow_limit, 0);
+	if (priv->flow_position == NULL) {
+		PMD_INIT_LOG(ERR, "NFP app nic flow position creation failed.");
 		ret = -ENOMEM;
 		goto free_priv;
 	}
 
+	/* Flow table */
+	flow_hash_params.hash_func_init_val = priv->hash_seed;
+	flow_hash_params.entries = priv->flow_limit * NFP_NET_HASH_REDUNDANCE;
+	priv->flow_table = rte_hash_create(&flow_hash_params);
+	if (priv->flow_table == NULL) {
+		PMD_INIT_LOG(ERR, "Flow hash table creation failed.");
+		ret = -ENOMEM;
+		goto free_flow_position;
+	}
+
 	return 0;
 
+free_flow_position:
+	rte_free(priv->flow_position);
 free_priv:
 	rte_free(priv);
 exit:
@@ -1027,8 +1147,10 @@ nfp_net_flow_priv_uninit(struct nfp_pf_dev *pf_dev,
 
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
 	priv = app_fw_nic->ports[port]->priv;
-	if (priv != NULL)
+	if (priv != NULL) {
 		rte_hash_free(priv->flow_table);
+		rte_free(priv->flow_position);
+	}
 
 	rte_free(priv);
 }

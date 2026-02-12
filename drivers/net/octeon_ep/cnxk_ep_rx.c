@@ -10,7 +10,6 @@ cnxk_ep_process_pkts_scalar_mseg(struct rte_mbuf **rx_pkts, struct otx_ep_droq *
 {
 	struct rte_mbuf **recv_buf_list = droq->recv_buf_list;
 	uint32_t total_pkt_len, bytes_rsvd = 0;
-	uint16_t port_id = droq->otx_ep_dev->port_id;
 	uint16_t nb_desc = droq->nb_desc;
 	uint16_t pkts;
 
@@ -22,7 +21,7 @@ cnxk_ep_process_pkts_scalar_mseg(struct rte_mbuf **rx_pkts, struct otx_ep_droq *
 		uint32_t pkt_len = 0;
 
 		mbuf = recv_buf_list[droq->read_idx];
-		info = rte_pktmbuf_mtod(mbuf, struct otx_ep_droq_info *);
+		info = cnxk_pktmbuf_mtod(mbuf, struct otx_ep_droq_info *);
 
 		total_pkt_len = rte_bswap16(info->length >> 48) + OTX_EP_INFO_SIZE;
 
@@ -37,7 +36,7 @@ cnxk_ep_process_pkts_scalar_mseg(struct rte_mbuf **rx_pkts, struct otx_ep_droq *
 			if (!pkt_len) {
 				/* Note the first seg */
 				first_buf = mbuf;
-				mbuf->data_off += OTX_EP_INFO_SIZE;
+				*(uint64_t *)&mbuf->rearm_data = droq->rearm_data;
 				mbuf->pkt_len = cpy_len - OTX_EP_INFO_SIZE;
 				mbuf->data_len = cpy_len - OTX_EP_INFO_SIZE;
 			} else {
@@ -57,12 +56,10 @@ cnxk_ep_process_pkts_scalar_mseg(struct rte_mbuf **rx_pkts, struct otx_ep_droq *
 			droq->refill_count++;
 		}
 		mbuf = first_buf;
-		mbuf->port = port_id;
 		rx_pkts[pkts] = mbuf;
 		bytes_rsvd += pkt_len;
 	}
 
-	droq->refill_count += new_pkts;
 	droq->pkts_pending -= pkts;
 	/* Stats */
 	droq->stats.pkts_received += pkts;
@@ -153,4 +150,44 @@ cn9k_ep_recv_pkts_mseg(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pk
 	}
 
 	return new_pkts;
+}
+
+void
+cnxk_ep_drain_rx_pkts(void *rx_queue)
+{
+	struct otx_ep_droq *droq = (struct otx_ep_droq *)rx_queue;
+	struct rte_mbuf *rx_pkt, *next_seg, *seg;
+	uint16_t i, j, nb_pkts;
+
+	if (droq->read_idx == 0 && droq->pkts_pending == 0 && droq->refill_count)
+		return;
+
+	/* Check for pending packets */
+	nb_pkts = cnxk_ep_rx_pkts_to_process(droq, droq->nb_desc);
+
+	/* Drain the pending packets */
+	for (i = 0; i < nb_pkts; i++) {
+		rx_pkt = NULL;
+		cnxk_ep_process_pkts_scalar_mseg(&rx_pkt, droq, 1);
+		if (rx_pkt) {
+			seg = rx_pkt->next;
+			for (j = 1; j < rx_pkt->nb_segs; j++) {
+				next_seg = seg->next;
+				rte_mempool_put(droq->mpool, seg);
+				seg = next_seg;
+			}
+			rx_pkt->nb_segs = 1;
+			rte_mempool_put(droq->mpool, rx_pkt);
+		}
+	}
+
+	cnxk_ep_rx_refill(droq);
+
+	/* Reset the indexes */
+	droq->read_idx  = 0;
+	droq->write_idx = 0;
+	droq->refill_idx = 0;
+	droq->refill_count = 0;
+	droq->last_pkt_count = 0;
+	droq->pkts_pending = 0;
 }

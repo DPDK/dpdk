@@ -11,9 +11,6 @@
 /* Max number of internal subactions of ipv6_ext */
 #define MLX5DR_ACTION_IPV6_EXT_MAX_SA 4
 
-/* Number of MH in NAT64 */
-#define MLX5DR_ACTION_NAT64_STAGES 3
-
 enum mlx5dr_action_stc_idx {
 	MLX5DR_ACTION_STC_IDX_CTRL = 0,
 	MLX5DR_ACTION_STC_IDX_HIT = 1,
@@ -82,13 +79,18 @@ enum {
 	MLX5DR_ACTION_NAT64_IPV4_HEADER = 5,
 	MLX5DR_ACTION_NAT64_IPV6_VER = 0x60000000,
 	MLX5DR_ACTION_NAT64_IPV4_VER = 0x45000000,
+	MLX5DR_ACTION_NAT64_TTL_DEFAULT_VAL = 64,
+	MLX5DR_ACTION_NAT64_ECN_SIZE = 2,
 };
 
 /* 3 stages for the nat64 action */
 enum mlx5dr_action_nat64_stages {
 	MLX5DR_ACTION_NAT64_STAGE_COPY = 0,
 	MLX5DR_ACTION_NAT64_STAGE_REPLACE = 1,
-	MLX5DR_ACTION_NAT64_STAGE_COPYBACK = 2,
+	MLX5DR_ACTION_NAT64_STAGE_COPY_PROTOCOL = 2,
+	MLX5DR_ACTION_NAT64_STAGE_COPYBACK = 3,
+	/* Number of MH in NAT64 */
+	MLX5DR_ACTION_NAT64_STAGES = 4,
 };
 
 /* Registers for keeping data from stage to stage */
@@ -158,7 +160,7 @@ struct mlx5dr_action_template {
 
 struct mlx5dr_action {
 	uint8_t type;
-	uint8_t flags;
+	uint16_t flags;
 	struct mlx5dr_context *ctx;
 	union {
 		struct {
@@ -221,6 +223,13 @@ struct mlx5dr_action {
 				struct {
 					struct mlx5dr_action *stages[MLX5DR_ACTION_NAT64_STAGES];
 				} nat64;
+				struct {
+					struct mlx5dr_matcher *matcher;
+				} jump_to_matcher;
+				struct {
+					struct mlx5dr_devx_obj *devx_obj;
+					enum mlx5dr_table_type type;
+				} dest_tbl;
 			};
 		};
 
@@ -256,6 +265,13 @@ int mlx5dr_action_alloc_single_stc(struct mlx5dr_context *ctx,
 void mlx5dr_action_free_single_stc(struct mlx5dr_context *ctx,
 				   uint32_t table_type,
 				   struct mlx5dr_pool_chunk *stc);
+struct mlx5dr_action *
+mlx5dr_action_create_modify_header_reparse(struct mlx5dr_context *ctx,
+					   uint8_t num_of_patterns,
+					   struct mlx5dr_action_mh_pattern *patterns,
+					   uint32_t log_bulk_size,
+					   uint32_t flags, uint32_t reparse);
+
 
 static inline void
 mlx5dr_action_setter_default_single(struct mlx5dr_actions_apply_data *apply,

@@ -53,7 +53,7 @@ nfb_eth_tx_queue_setup(struct rte_eth_dev *dev,
 	unsigned int socket_id,
 	const struct rte_eth_txconf *tx_conf __rte_unused)
 {
-	struct pmd_internals *internals = dev->data->dev_private;
+	struct pmd_internals *internals = dev->process_private;
 	int ret;
 	struct ndp_tx_queue *txq;
 
@@ -108,7 +108,7 @@ nfb_eth_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 
 	if (txq->queue != NULL) {
 		ndp_close_tx_queue(txq->queue);
-		rte_free(txq);
 		txq->queue = NULL;
+		rte_free(txq);
 	}
 }

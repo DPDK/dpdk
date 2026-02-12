@@ -16,6 +16,7 @@
 #else
 #include "roc_io_generic.h"
 #endif
+#include "roc_model.h"
 #include "roc_npa_dp.h"
 
 #define ROC_AURA_OP_LIMIT_MASK (BIT_ULL(36) - 1)
@@ -68,11 +69,12 @@ roc_npa_aura_op_alloc(uint64_t aura_handle, const int drop)
 static inline uint64_t
 roc_npa_aura_op_cnt_get(uint64_t aura_handle)
 {
-	uint64_t wdata;
+	uint64_t wdata, shift;
 	int64_t *addr;
 	uint64_t reg;
 
-	wdata = roc_npa_aura_handle_to_aura(aura_handle) << 44;
+	shift = roc_model_is_cn20k() ? 47 : 44;
+	wdata = roc_npa_aura_handle_to_aura(aura_handle) << shift;
 	addr = (int64_t *)(roc_npa_aura_handle_to_base(aura_handle) +
 			   NPA_LF_AURA_OP_CNT);
 	reg = roc_atomic64_add_nosync(wdata, addr);
@@ -87,11 +89,13 @@ static inline void
 roc_npa_aura_op_cnt_set(uint64_t aura_handle, const int sign, uint64_t count)
 {
 	uint64_t reg = count & (BIT_ULL(36) - 1);
+	uint64_t shift;
 
 	if (sign)
 		reg |= BIT_ULL(43); /* CNT_ADD */
 
-	reg |= (roc_npa_aura_handle_to_aura(aura_handle) << 44);
+	shift = roc_model_is_cn20k() ? 47 : 44;
+	reg |= (roc_npa_aura_handle_to_aura(aura_handle) << shift);
 
 	plt_write64(reg, roc_npa_aura_handle_to_base(aura_handle) +
 				 NPA_LF_AURA_OP_CNT);
@@ -100,11 +104,12 @@ roc_npa_aura_op_cnt_set(uint64_t aura_handle, const int sign, uint64_t count)
 static inline uint64_t
 roc_npa_aura_op_limit_get(uint64_t aura_handle)
 {
-	uint64_t wdata;
+	uint64_t wdata, shift;
 	int64_t *addr;
 	uint64_t reg;
 
-	wdata = roc_npa_aura_handle_to_aura(aura_handle) << 44;
+	shift = roc_model_is_cn20k() ? 47 : 44;
+	wdata = roc_npa_aura_handle_to_aura(aura_handle) << shift;
 	addr = (int64_t *)(roc_npa_aura_handle_to_base(aura_handle) +
 			   NPA_LF_AURA_OP_LIMIT);
 	reg = roc_atomic64_add_nosync(wdata, addr);
@@ -119,8 +124,10 @@ static inline void
 roc_npa_aura_op_limit_set(uint64_t aura_handle, uint64_t limit)
 {
 	uint64_t reg = limit & ROC_AURA_OP_LIMIT_MASK;
+	uint64_t shift;
 
-	reg |= (roc_npa_aura_handle_to_aura(aura_handle) << 44);
+	shift = roc_model_is_cn20k() ? 47 : 44;
+	reg |= (roc_npa_aura_handle_to_aura(aura_handle) << shift);
 
 	plt_write64(reg, roc_npa_aura_handle_to_base(aura_handle) +
 				 NPA_LF_AURA_OP_LIMIT);
@@ -129,11 +136,12 @@ roc_npa_aura_op_limit_set(uint64_t aura_handle, uint64_t limit)
 static inline uint64_t
 roc_npa_aura_op_available(uint64_t aura_handle)
 {
-	uint64_t wdata;
+	uint64_t wdata, shift;
 	uint64_t reg;
 	int64_t *addr;
 
-	wdata = roc_npa_aura_handle_to_aura(aura_handle) << 44;
+	shift = roc_model_is_cn20k() ? 47 : 44;
+	wdata = roc_npa_aura_handle_to_aura(aura_handle) << shift;
 	addr = (int64_t *)(roc_npa_aura_handle_to_base(aura_handle) +
 			   NPA_LF_POOL_OP_AVAILABLE);
 	reg = roc_atomic64_add_nosync(wdata, addr);
@@ -247,7 +255,7 @@ roc_npa_batch_alloc_wait(uint64_t *cache_line, unsigned int wait_us)
 	/* Batch alloc status code is updated in bits [5:6] of the first word
 	 * of the 128 byte cache line.
 	 */
-	while (((__atomic_load_n(cache_line, __ATOMIC_RELAXED) >> 5) & 0x3) ==
+	while (((__atomic_load_n(cache_line, __ATOMIC_ACQUIRE) >> 5) & 0x3) ==
 	       ALLOC_CCODE_INVAL)
 		if (wait_us && (plt_tsc_cycles() - start) >= ticks)
 			break;
@@ -759,7 +767,8 @@ int __roc_api roc_npa_dev_init(struct roc_npa *roc_npa);
 int __roc_api roc_npa_dev_fini(struct roc_npa *roc_npa);
 
 /* Flags to pool create */
-#define ROC_NPA_ZERO_AURA_F BIT(0)
+#define ROC_NPA_ZERO_AURA_F	    BIT(0)
+#define ROC_NPA_FORCE_OPAQUE_MODE_F BIT(1)
 
 /* Enumerations */
 enum roc_npa_buf_type {
@@ -807,10 +816,15 @@ uint64_t __roc_api roc_npa_buf_type_mask(uint64_t aura_handle);
 uint64_t __roc_api roc_npa_buf_type_limit_get(uint64_t type_mask);
 int __roc_api roc_npa_aura_bp_configure(uint64_t aura_id, uint16_t bpid, uint8_t bp_intf,
 					uint8_t bp_thresh, bool enable);
+int __roc_api roc_npa_pool_bp_configure(uint64_t pool_id, uint16_t bpid, uint8_t bp_thresh,
+					uint8_t bp_class, bool enable);
 
 /* Init callbacks */
 typedef int (*roc_npa_lf_init_cb_t)(struct plt_pci_device *pci_dev);
 int __roc_api roc_npa_lf_init_cb_register(roc_npa_lf_init_cb_t cb);
+
+/* Utility functions */
+uint16_t __roc_api roc_npa_pf_func_get(void);
 
 /* Debug */
 int __roc_api roc_npa_ctx_dump(void);

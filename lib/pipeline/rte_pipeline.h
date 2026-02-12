@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_PIPELINE_H__
 #define __INCLUDE_RTE_PIPELINE_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Pipeline
@@ -58,6 +54,10 @@ extern "C" {
 #include <rte_port.h>
 #include <rte_table.h>
 #include <rte_common.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct rte_mbuf;
 
@@ -220,7 +220,7 @@ struct rte_pipeline_table_entry {
 		uint32_t table_id;
 	};
 	/** Start of table entry area for user defined actions and meta-data */
-	__extension__ uint8_t action_data[0];
+	uint8_t action_data[];
 };
 
 /**

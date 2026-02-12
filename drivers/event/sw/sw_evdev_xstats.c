@@ -419,7 +419,7 @@ sw_xstats_get_names(const struct rte_eventdev *dev,
 		start_offset = sw->xstats_offset_for_qid[queue_port_id];
 		break;
 	default:
-		SW_LOG_ERR("Invalid mode received in sw_xstats_get_names()\n");
+		SW_LOG_ERR("Invalid mode received in sw_xstats_get_names()");
 		return -EINVAL;
 	};
 
@@ -470,7 +470,7 @@ sw_xstats_update(struct sw_evdev *sw, enum rte_event_dev_xstats_mode mode,
 		xstats_mode_count = sw->xstats_count_per_qid[queue_port_id];
 		break;
 	default:
-		SW_LOG_ERR("Invalid mode received in sw_xstats_get()\n");
+		SW_LOG_ERR("Invalid mode received in sw_xstats_get()");
 		goto invalid_value;
 	};
 

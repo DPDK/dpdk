@@ -11,13 +11,20 @@
 #include <rte_os_shim.h>
 #ifdef RTE_EXEC_ENV_WINDOWS
 #include <rte_windows.h>
+#ifndef LINE_MAX
+/**
+ * The LINE_MAX value is derived from POSIX.
+ * Windows environment may not have POSIX definitions.
+ */
+#define LINE_MAX 2048
+#endif
 #else
 #include <termios.h>
 #endif
 
 #include <cmdline.h>
 
-#define RDLINE_BUF_SIZE 512
+#define RDLINE_BUF_SIZE LINE_MAX
 #define RDLINE_PROMPT_SIZE  32
 #define RDLINE_VT100_BUF_SIZE  8
 #define RDLINE_HISTORY_BUF_SIZE BUFSIZ

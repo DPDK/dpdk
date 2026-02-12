@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
 #include <rte_kvargs.h>
@@ -55,6 +56,7 @@ rte_compressdev_pmd_parse_uint_arg(const char *key __rte_unused,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_pmd_parse_input_args)
 int
 rte_compressdev_pmd_parse_input_args(
 		struct rte_compressdev_pmd_init_params *params,
@@ -91,6 +93,7 @@ free_kvlist:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_pmd_create)
 struct rte_compressdev *
 rte_compressdev_pmd_create(const char *name,
 		struct rte_device *device,
@@ -140,6 +143,7 @@ rte_compressdev_pmd_create(const char *name,
 	return compressdev;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_pmd_destroy)
 int
 rte_compressdev_pmd_destroy(struct rte_compressdev *compressdev)
 {

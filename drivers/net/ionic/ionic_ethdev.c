@@ -39,7 +39,7 @@ static int  ionic_dev_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
 static int  ionic_dev_rss_hash_update(struct rte_eth_dev *eth_dev,
 	struct rte_eth_rss_conf *rss_conf);
 static int  ionic_dev_stats_get(struct rte_eth_dev *eth_dev,
-	struct rte_eth_stats *stats);
+	struct rte_eth_stats *stats, struct eth_queue_stats *queue_stats);
 static int  ionic_dev_stats_reset(struct rte_eth_dev *eth_dev);
 static int  ionic_dev_xstats_get(struct rte_eth_dev *dev,
 	struct rte_eth_xstat *xstats, unsigned int n);
@@ -722,11 +722,11 @@ ionic_dev_rss_hash_update(struct rte_eth_dev *eth_dev,
 
 static int
 ionic_dev_stats_get(struct rte_eth_dev *eth_dev,
-		struct rte_eth_stats *stats)
+		struct rte_eth_stats *stats, struct eth_queue_stats *qstats)
 {
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
 
-	ionic_lif_get_stats(lif, stats);
+	ionic_lif_get_stats(lif, stats, qstats);
 
 	return 0;
 }

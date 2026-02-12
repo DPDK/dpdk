@@ -6,15 +6,6 @@
 #ifndef _AXGBE_RXTX_H_
 #define _AXGBE_RXTX_H_
 
-/* to suppress gcc warnings related to descriptor casting*/
-#ifdef RTE_TOOLCHAIN_GCC
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
-#ifdef RTE_TOOLCHAIN_CLANG
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
 /* Descriptor related defines */
 #define AXGBE_MAX_RING_DESC		4096 /*should be power of 2*/
 #define AXGBE_TX_DESC_MIN_FREE		(AXGBE_MAX_RING_DESC >> 3)
@@ -56,7 +47,7 @@ union axgbe_rx_desc {
 	} write;
 };
 
-struct axgbe_rx_queue {
+struct __rte_cache_aligned axgbe_rx_queue {
 	/* membuf pool for rx buffers */
 	struct rte_mempool *mb_pool;
 	/* H/w Rx buffer size configured in DMA */
@@ -101,7 +92,7 @@ struct axgbe_rx_queue {
 	/* Number of mbufs allocated from pool*/
 	uint64_t mbuf_alloc;
 	uint64_t offloads; /**< Rx offloads with RTE_ETH_RX_OFFLOAD_**/
-} __rte_cache_aligned;
+};
 
 /*Tx descriptor format */
 struct axgbe_tx_desc {
@@ -110,7 +101,7 @@ struct axgbe_tx_desc {
 	uint32_t desc3;
 };
 
-struct axgbe_tx_queue {
+struct __rte_cache_aligned axgbe_tx_queue {
 	/* Port private data reference */
 	struct axgbe_port *pdata;
 	/* Number of Tx descriptors in queue*/
@@ -150,7 +141,7 @@ struct axgbe_tx_queue {
 	uint64_t bytes;
 	uint64_t errors;
 	uint64_t offloads; /**< Tx offload flags of RTE_ETH_TX_OFFLOAD_* */
-} __rte_cache_aligned;
+};
 
 /*Queue related APIs */
 

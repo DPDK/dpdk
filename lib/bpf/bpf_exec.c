@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_debug.h>
@@ -63,10 +64,27 @@
 	(*(type *)(uintptr_t)((reg)[(ins)->dst_reg] + (ins)->off) = \
 		(type)(reg)[(ins)->src_reg])
 
-#define BPF_ST_XADD_REG(reg, ins, tp)	\
-	(rte_atomic##tp##_add((rte_atomic##tp##_t *) \
-		(uintptr_t)((reg)[(ins)->dst_reg] + (ins)->off), \
-		reg[ins->src_reg]))
+#define BPF_ST_ATOMIC_REG(reg, ins, tp)	do { \
+	switch (ins->imm) { \
+	case BPF_ATOMIC_ADD: \
+		rte_atomic##tp##_add((rte_atomic##tp##_t *) \
+			(uintptr_t)((reg)[(ins)->dst_reg] + (ins)->off), \
+			(reg)[(ins)->src_reg]); \
+		break; \
+	case BPF_ATOMIC_XCHG: \
+		(reg)[(ins)->src_reg] = rte_atomic##tp##_exchange((uint##tp##_t *) \
+			(uintptr_t)((reg)[(ins)->dst_reg] + (ins)->off), \
+			(reg)[(ins)->src_reg]); \
+		break; \
+	default: \
+		/* this should be caught by validator and never reach here */ \
+		RTE_BPF_LOG_LINE(ERR, \
+			"%s(%p): unsupported atomic operation at pc: %#zx;", \
+			__func__, bpf, \
+			(uintptr_t)(ins) - (uintptr_t)(bpf)->prm.ins); \
+		return 0; \
+	} \
+} while (0)
 
 /* BPF_LD | BPF_ABS/BPF_IND */
 
@@ -372,12 +390,12 @@ bpf_exec(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM])
 		case (BPF_ST | BPF_MEM | EBPF_DW):
 			BPF_ST_IMM(reg, ins, uint64_t);
 			break;
-		/* atomic add instructions */
-		case (BPF_STX | EBPF_XADD | BPF_W):
-			BPF_ST_XADD_REG(reg, ins, 32);
+		/* atomic instructions */
+		case (BPF_STX | EBPF_ATOMIC | BPF_W):
+			BPF_ST_ATOMIC_REG(reg, ins, 32);
 			break;
-		case (BPF_STX | EBPF_XADD | EBPF_DW):
-			BPF_ST_XADD_REG(reg, ins, 64);
+		case (BPF_STX | EBPF_ATOMIC | EBPF_DW):
+			BPF_ST_ATOMIC_REG(reg, ins, 64);
 			break;
 		/* jump instructions */
 		case (BPF_JMP | BPF_JA):
@@ -475,6 +493,7 @@ bpf_exec(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM])
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_bpf_exec_burst)
 uint32_t
 rte_bpf_exec_burst(const struct rte_bpf *bpf, void *ctx[], uint64_t rc[],
 	uint32_t num)
@@ -494,6 +513,7 @@ rte_bpf_exec_burst(const struct rte_bpf *bpf, void *ctx[], uint64_t rc[],
 	return i;
 }
 
+RTE_EXPORT_SYMBOL(rte_bpf_exec)
 uint64_t
 rte_bpf_exec(const struct rte_bpf *bpf, void *ctx)
 {

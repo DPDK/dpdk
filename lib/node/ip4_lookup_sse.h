@@ -115,6 +115,11 @@ ip4_lookup_node_process_vec(struct rte_graph *graph, struct rte_node *node,
 		/* Perform LPM lookup to get NH and next node */
 		rte_lpm_lookupx4(lpm, dip, dst.u32, drop_nh);
 
+		NODE_INCREMENT_XSTAT_ID(node, 0, dst.u16[1] == (drop_nh >> 16), 1);
+		NODE_INCREMENT_XSTAT_ID(node, 0, dst.u16[3] == (drop_nh >> 16), 1);
+		NODE_INCREMENT_XSTAT_ID(node, 0, dst.u16[5] == (drop_nh >> 16), 1);
+		NODE_INCREMENT_XSTAT_ID(node, 0, dst.u16[7] == (drop_nh >> 16), 1);
+
 		/* Extract next node id and NH */
 		node_mbuf_priv1(mbuf0, dyn)->nh = dst.u32[0] & 0xFFFF;
 		next0 = (dst.u32[0] >> 16);
@@ -206,6 +211,7 @@ ip4_lookup_node_process_vec(struct rte_graph *graph, struct rte_node *node,
 		rc = rte_lpm_lookup(lpm, rte_be_to_cpu_32(ipv4_hdr->dst_addr),
 				    &next_hop);
 		next_hop = (rc == 0) ? next_hop : drop_nh;
+		NODE_INCREMENT_XSTAT_ID(node, 0, rc != 0, 1);
 
 		node_mbuf_priv1(mbuf0, dyn)->nh = next_hop & 0xFFFF;
 		next0 = (next_hop >> 16);

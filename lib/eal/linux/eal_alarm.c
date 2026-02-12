@@ -10,6 +10,7 @@
 #include <sys/time.h>
 #include <sys/timerfd.h>
 
+#include <eal_export.h>
 #include <eal_trace_internal.h>
 #include <rte_interrupts.h>
 #include <rte_alarm.h>
@@ -56,7 +57,14 @@ static void eal_alarm_callback(void *arg);
 void
 rte_eal_alarm_cleanup(void)
 {
-	rte_intr_instance_free(intr_handle);
+	/* unregister callback using intr_handle in interrupt thread */
+	int ret = rte_intr_callback_unregister_sync(intr_handle,
+						eal_alarm_callback, (void *)-1);
+	if (ret >= 0) {
+		rte_intr_instance_free(intr_handle);
+		intr_handle = NULL;
+		handler_registered = 0;
+	}
 }
 
 int
@@ -117,8 +125,10 @@ eal_alarm_callback(void *arg __rte_unused)
 		atime.it_value.tv_sec = ap->time.tv_sec;
 		atime.it_value.tv_nsec = ap->time.tv_usec * NS_PER_US;
 		/* perform borrow for subtraction if necessary */
-		if (now.tv_nsec > (ap->time.tv_usec * NS_PER_US))
-			atime.it_value.tv_sec--, atime.it_value.tv_nsec += US_PER_S * NS_PER_US;
+		if (now.tv_nsec > (ap->time.tv_usec * NS_PER_US)) {
+			atime.it_value.tv_sec--;
+			atime.it_value.tv_nsec += US_PER_S * NS_PER_US;
+		}
 
 		atime.it_value.tv_sec -= now.tv_sec;
 		atime.it_value.tv_nsec -= now.tv_nsec;
@@ -127,6 +137,7 @@ eal_alarm_callback(void *arg __rte_unused)
 	rte_spinlock_unlock(&alarm_list_lk);
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_alarm_set)
 int
 rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 {
@@ -191,6 +202,7 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_alarm_cancel)
 int
 rte_eal_alarm_cancel(rte_eal_alarm_callback cb_fn, void *cb_arg)
 {
@@ -251,8 +263,9 @@ rte_eal_alarm_cancel(rte_eal_alarm_callback cb_fn, void *cb_arg)
 
 		rte_spinlock_unlock(&alarm_list_lk);
 
-		/* Yield control to a second thread executing eal_alarm_callback to avoid its starvation,
-		 * as it is waiting for the lock we have just released. */
+		/* Yield control to a second thread executing eal_alarm_callback to avoid
+		 * its starvation, as it is waiting for the lock we have just released.
+		 */
 		sched_yield();
 	} while (executing != 0);
 

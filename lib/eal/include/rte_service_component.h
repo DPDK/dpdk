@@ -10,11 +10,11 @@
  * operate, and you wish to run the component using service cores
  */
 
+#include <rte_service.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_service.h>
 
 /**
  * Signature of callback function to run a service.

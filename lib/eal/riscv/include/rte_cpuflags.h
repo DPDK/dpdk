@@ -8,10 +8,6 @@
 #ifndef RTE_CPUFLAGS_RISCV_H
 #define RTE_CPUFLAGS_RISCV_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Enumeration of all CPU features supported
  */
@@ -45,9 +41,5 @@ enum rte_cpu_flag_t {
 };
 
 #include "generic/rte_cpuflags.h"
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_CPUFLAGS_RISCV_H */

@@ -38,7 +38,7 @@ static inline int qede_alloc_rx_buffer(struct qede_rx_queue *rxq)
 
 static inline int qede_alloc_rx_bulk_mbufs(struct qede_rx_queue *rxq, int count)
 {
-	void *obj_p[QEDE_MAX_BULK_ALLOC_COUNT] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) void *obj_p[QEDE_MAX_BULK_ALLOC_COUNT];
 	struct rte_mbuf *mbuf = NULL;
 	struct eth_rx_bd *rx_bd;
 	dma_addr_t mapping;
@@ -887,7 +887,7 @@ qede_free_tx_pkt(struct qede_tx_queue *txq)
 	mbuf = txq->sw_tx_ring[idx];
 	if (mbuf) {
 		nb_segs = mbuf->nb_segs;
-		PMD_TX_LOG(DEBUG, txq, "nb_segs to free %u\n", nb_segs);
+		PMD_TX_LOG(DEBUG, txq, "nb_segs to free %u", nb_segs);
 		while (nb_segs) {
 			/* It's like consuming rxbuf in recv() */
 			ecore_chain_consume(&txq->tx_pbl);
@@ -897,7 +897,7 @@ qede_free_tx_pkt(struct qede_tx_queue *txq)
 		rte_pktmbuf_free(mbuf);
 		txq->sw_tx_ring[idx] = NULL;
 		txq->sw_tx_cons++;
-		PMD_TX_LOG(DEBUG, txq, "Freed tx packet\n");
+		PMD_TX_LOG(DEBUG, txq, "Freed tx packet");
 	} else {
 		ecore_chain_consume(&txq->tx_pbl);
 		txq->nb_tx_avail++;
@@ -919,7 +919,7 @@ qede_process_tx_compl(__rte_unused struct ecore_dev *edev,
 
 #ifdef RTE_LIBRTE_QEDE_DEBUG_TX
 	sw_tx_cons = ecore_chain_get_cons_idx(&txq->tx_pbl);
-	PMD_TX_LOG(DEBUG, txq, "Tx Completions = %u\n",
+	PMD_TX_LOG(DEBUG, txq, "Tx Completions = %u",
 		   abs(hw_bd_cons - sw_tx_cons));
 #endif
 	while (hw_bd_cons !=  ecore_chain_get_cons_idx(&txq->tx_pbl))
@@ -1124,8 +1124,8 @@ static inline uint32_t qede_rx_cqe_to_pkt_type_inner(uint16_t flags)
 	uint16_t val;
 
 	/* Lookup table */
-	static const uint32_t
-	ptype_lkup_tbl[QEDE_PKT_TYPE_MAX] __rte_cache_aligned = {
+	static const alignas(RTE_CACHE_LINE_SIZE) uint32_t
+	ptype_lkup_tbl[QEDE_PKT_TYPE_MAX] = {
 		[QEDE_PKT_TYPE_IPV4] = RTE_PTYPE_INNER_L3_IPV4		|
 				       RTE_PTYPE_INNER_L2_ETHER,
 		[QEDE_PKT_TYPE_IPV6] = RTE_PTYPE_INNER_L3_IPV6		|
@@ -1197,8 +1197,8 @@ static inline uint32_t qede_rx_cqe_to_pkt_type(uint16_t flags)
 	uint16_t val;
 
 	/* Lookup table */
-	static const uint32_t
-	ptype_lkup_tbl[QEDE_PKT_TYPE_MAX] __rte_cache_aligned = {
+	static const alignas(RTE_CACHE_LINE_SIZE) uint32_t
+	ptype_lkup_tbl[QEDE_PKT_TYPE_MAX] = {
 		[QEDE_PKT_TYPE_IPV4] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L2_ETHER,
 		[QEDE_PKT_TYPE_IPV6] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L2_ETHER,
 		[QEDE_PKT_TYPE_IPV4_TCP] = RTE_PTYPE_L3_IPV4	|
@@ -1353,7 +1353,7 @@ qede_rx_process_tpa_cmn_cont_end_cqe(__rte_unused struct qede_dev *qdev,
 		tpa_info->tpa_tail = curr_frag;
 		qede_rx_bd_ring_consume(rxq);
 		if (unlikely(qede_alloc_rx_buffer(rxq) != 0)) {
-			PMD_RX_LOG(ERR, rxq, "mbuf allocation fails\n");
+			PMD_RX_LOG(ERR, rxq, "mbuf allocation fails");
 			rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
 			rxq->rx_alloc_errors++;
 		}
@@ -1365,7 +1365,7 @@ qede_rx_process_tpa_cont_cqe(struct qede_dev *qdev,
 			     struct qede_rx_queue *rxq,
 			     struct eth_fast_path_rx_tpa_cont_cqe *cqe)
 {
-	PMD_RX_LOG(INFO, rxq, "TPA cont[%d] - len [%d]\n",
+	PMD_RX_LOG(INFO, rxq, "TPA cont[%d] - len [%d]",
 		   cqe->tpa_agg_index, rte_le_to_cpu_16(cqe->len_list[0]));
 	/* only len_list[0] will have value */
 	qede_rx_process_tpa_cmn_cont_end_cqe(qdev, rxq, cqe->tpa_agg_index,
@@ -1388,7 +1388,7 @@ qede_rx_process_tpa_end_cqe(struct qede_dev *qdev,
 	rx_mb->pkt_len = cqe->total_packet_len;
 
 	PMD_RX_LOG(INFO, rxq, "TPA End[%d] reason %d cqe_len %d nb_segs %d"
-		   " pkt_len %d\n", cqe->tpa_agg_index, cqe->end_reason,
+		   " pkt_len %d", cqe->tpa_agg_index, cqe->end_reason,
 		   rte_le_to_cpu_16(cqe->len_list[0]), rx_mb->nb_segs,
 		   rx_mb->pkt_len);
 }
@@ -1398,8 +1398,8 @@ static inline uint32_t qede_rx_cqe_to_tunn_pkt_type(uint16_t flags)
 	uint32_t val;
 
 	/* Lookup table */
-	static const uint32_t
-	ptype_tunn_lkup_tbl[QEDE_PKT_TYPE_TUNN_MAX_TYPE] __rte_cache_aligned = {
+	static const alignas(RTE_CACHE_LINE_SIZE) uint32_t
+	ptype_tunn_lkup_tbl[QEDE_PKT_TYPE_TUNN_MAX_TYPE] = {
 		[QEDE_PKT_TYPE_UNKNOWN] = RTE_PTYPE_UNKNOWN,
 		[QEDE_PKT_TYPE_TUNN_GENEVE] = RTE_PTYPE_TUNNEL_GENEVE,
 		[QEDE_PKT_TYPE_TUNN_GRE] = RTE_PTYPE_TUNNEL_GRE,
@@ -1471,7 +1471,7 @@ qede_process_sg_pkts(void *p_rxq,  struct rte_mbuf *rx_mb,
 							pkt_len;
 		if (unlikely(!cur_size)) {
 			PMD_RX_LOG(ERR, rxq, "Length is 0 while %u BDs"
-				   " left for mapping jumbo\n", num_segs);
+				   " left for mapping jumbo", num_segs);
 			qede_recycle_rx_bd_ring(rxq, qdev, num_segs);
 			return -EINVAL;
 		}
@@ -1497,7 +1497,7 @@ print_rx_bd_info(struct rte_mbuf *m, struct qede_rx_queue *rxq,
 	PMD_RX_LOG(INFO, rxq,
 		"len 0x%04x bf 0x%04x hash_val 0x%x"
 		" ol_flags 0x%04lx l2=%s l3=%s l4=%s tunn=%s"
-		" inner_l2=%s inner_l3=%s inner_l4=%s\n",
+		" inner_l2=%s inner_l3=%s inner_l4=%s",
 		m->data_len, bitfield, m->hash.rss,
 		(unsigned long)m->ol_flags,
 		rte_get_ptype_l2_name(m->packet_type),
@@ -1548,7 +1548,7 @@ qede_recv_pkts_regular(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 			PMD_RX_LOG(ERR, rxq,
 				   "New buffers allocation failed,"
-				   "dropping incoming packets\n");
+				   "dropping incoming packets");
 			dev = &rte_eth_devices[rxq->port_id];
 			dev->data->rx_mbuf_alloc_failed += count;
 			rxq->rx_alloc_errors += count;
@@ -1579,13 +1579,13 @@ qede_recv_pkts_regular(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		cqe =
 		    (union eth_rx_cqe *)ecore_chain_consume(&rxq->rx_comp_ring);
 		cqe_type = cqe->fast_path_regular.type;
-		PMD_RX_LOG(INFO, rxq, "Rx CQE type %d\n", cqe_type);
+		PMD_RX_LOG(INFO, rxq, "Rx CQE type %d", cqe_type);
 
 		if (likely(cqe_type == ETH_RX_CQE_TYPE_REGULAR)) {
 			fp_cqe = &cqe->fast_path_regular;
 		} else {
 			if (cqe_type == ETH_RX_CQE_TYPE_SLOW_PATH) {
-				PMD_RX_LOG(INFO, rxq, "Got unexpected slowpath CQE\n");
+				PMD_RX_LOG(INFO, rxq, "Got unexpected slowpath CQE");
 				ecore_eth_cqe_completion
 					(&edev->hwfns[rxq->queue_id %
 						      edev->num_hwfns],
@@ -1611,10 +1611,10 @@ qede_recv_pkts_regular(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 #endif
 
 		if (unlikely(qede_tunn_exist(parse_flag))) {
-			PMD_RX_LOG(INFO, rxq, "Rx tunneled packet\n");
+			PMD_RX_LOG(INFO, rxq, "Rx tunneled packet");
 			if (unlikely(qede_check_tunn_csum_l4(parse_flag))) {
 				PMD_RX_LOG(ERR, rxq,
-					    "L4 csum failed, flags = 0x%x\n",
+					    "L4 csum failed, flags = 0x%x",
 					    parse_flag);
 				rxq->rx_hw_errors++;
 				ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
@@ -1624,7 +1624,7 @@ qede_recv_pkts_regular(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 			if (unlikely(qede_check_tunn_csum_l3(parse_flag))) {
 				PMD_RX_LOG(ERR, rxq,
-					"Outer L3 csum failed, flags = 0x%x\n",
+					"Outer L3 csum failed, flags = 0x%x",
 					parse_flag);
 				rxq->rx_hw_errors++;
 				ol_flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
@@ -1659,7 +1659,7 @@ qede_recv_pkts_regular(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 */
 		if (unlikely(qede_check_notunn_csum_l4(parse_flag))) {
 			PMD_RX_LOG(ERR, rxq,
-				    "L4 csum failed, flags = 0x%x\n",
+				    "L4 csum failed, flags = 0x%x",
 				    parse_flag);
 			rxq->rx_hw_errors++;
 			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
@@ -1667,7 +1667,7 @@ qede_recv_pkts_regular(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 		}
 		if (unlikely(qede_check_notunn_csum_l3(rx_mb, parse_flag))) {
-			PMD_RX_LOG(ERR, rxq, "IP csum failed, flags = 0x%x\n",
+			PMD_RX_LOG(ERR, rxq, "IP csum failed, flags = 0x%x",
 				   parse_flag);
 			rxq->rx_hw_errors++;
 			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
@@ -1776,7 +1776,7 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 			PMD_RX_LOG(ERR, rxq,
 				   "New buffers allocation failed,"
-				   "dropping incoming packets\n");
+				   "dropping incoming packets");
 			dev = &rte_eth_devices[rxq->port_id];
 			dev->data->rx_mbuf_alloc_failed += count;
 			rxq->rx_alloc_errors += count;
@@ -1805,7 +1805,7 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		cqe =
 		    (union eth_rx_cqe *)ecore_chain_consume(&rxq->rx_comp_ring);
 		cqe_type = cqe->fast_path_regular.type;
-		PMD_RX_LOG(INFO, rxq, "Rx CQE type %d\n", cqe_type);
+		PMD_RX_LOG(INFO, rxq, "Rx CQE type %d", cqe_type);
 
 		switch (cqe_type) {
 		case ETH_RX_CQE_TYPE_REGULAR:
@@ -1823,7 +1823,7 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			 */
 			PMD_RX_LOG(INFO, rxq,
 			 "TPA start[%d] - len_on_first_bd %d header %d"
-			 " [bd_list[0] %d], [seg_len %d]\n",
+			 " [bd_list[0] %d], [seg_len %d]",
 			 cqe_start_tpa->tpa_agg_index,
 			 rte_le_to_cpu_16(cqe_start_tpa->len_on_first_bd),
 			 cqe_start_tpa->header_len,
@@ -1843,7 +1843,7 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rx_mb = rxq->tpa_info[tpa_agg_idx].tpa_head;
 			goto tpa_end;
 		case ETH_RX_CQE_TYPE_SLOW_PATH:
-			PMD_RX_LOG(INFO, rxq, "Got unexpected slowpath CQE\n");
+			PMD_RX_LOG(INFO, rxq, "Got unexpected slowpath CQE");
 			ecore_eth_cqe_completion(
 				&edev->hwfns[rxq->queue_id % edev->num_hwfns],
 				(struct eth_slow_path_rx_cqe *)cqe);
@@ -1881,10 +1881,10 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rss_hash = rte_le_to_cpu_32(cqe_start_tpa->rss_hash);
 		}
 		if (qede_tunn_exist(parse_flag)) {
-			PMD_RX_LOG(INFO, rxq, "Rx tunneled packet\n");
+			PMD_RX_LOG(INFO, rxq, "Rx tunneled packet");
 			if (unlikely(qede_check_tunn_csum_l4(parse_flag))) {
 				PMD_RX_LOG(ERR, rxq,
-					    "L4 csum failed, flags = 0x%x\n",
+					    "L4 csum failed, flags = 0x%x",
 					    parse_flag);
 				rxq->rx_hw_errors++;
 				ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
@@ -1894,7 +1894,7 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 			if (unlikely(qede_check_tunn_csum_l3(parse_flag))) {
 				PMD_RX_LOG(ERR, rxq,
-					"Outer L3 csum failed, flags = 0x%x\n",
+					"Outer L3 csum failed, flags = 0x%x",
 					parse_flag);
 				  rxq->rx_hw_errors++;
 				ol_flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
@@ -1933,7 +1933,7 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 */
 		if (unlikely(qede_check_notunn_csum_l4(parse_flag))) {
 			PMD_RX_LOG(ERR, rxq,
-				    "L4 csum failed, flags = 0x%x\n",
+				    "L4 csum failed, flags = 0x%x",
 				    parse_flag);
 			rxq->rx_hw_errors++;
 			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
@@ -1941,7 +1941,7 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 		}
 		if (unlikely(qede_check_notunn_csum_l3(rx_mb, parse_flag))) {
-			PMD_RX_LOG(ERR, rxq, "IP csum failed, flags = 0x%x\n",
+			PMD_RX_LOG(ERR, rxq, "IP csum failed, flags = 0x%x",
 				   parse_flag);
 			rxq->rx_hw_errors++;
 			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
@@ -2117,13 +2117,13 @@ print_tx_bd_info(struct qede_tx_queue *txq,
 		   rte_cpu_to_le_16(bd1->data.bitfields));
 	if (bd2)
 		PMD_TX_LOG(INFO, txq,
-		   "BD2: nbytes=0x%04x bf1=0x%04x bf2=0x%04x tunn_ip=0x%04x\n",
+		   "BD2: nbytes=0x%04x bf1=0x%04x bf2=0x%04x tunn_ip=0x%04x",
 		   rte_cpu_to_le_16(bd2->nbytes), bd2->data.bitfields1,
 		   bd2->data.bitfields2, bd2->data.tunn_ip_size);
 	if (bd3)
 		PMD_TX_LOG(INFO, txq,
 		   "BD3: nbytes=0x%04x bf=0x%04x MSS=0x%04x "
-		   "tunn_l4_hdr_start_offset_w=0x%04x tunn_hdr_size=0x%04x\n",
+		   "tunn_l4_hdr_start_offset_w=0x%04x tunn_hdr_size=0x%04x",
 		   rte_cpu_to_le_16(bd3->nbytes),
 		   rte_cpu_to_le_16(bd3->data.bitfields),
 		   rte_cpu_to_le_16(bd3->data.lso_mss),
@@ -2131,7 +2131,7 @@ print_tx_bd_info(struct qede_tx_queue *txq,
 		   bd3->data.tunn_hdr_size_w);
 
 	rte_get_tx_ol_flag_list(tx_ol_flags, ol_buf, sizeof(ol_buf));
-	PMD_TX_LOG(INFO, txq, "TX offloads = %s\n", ol_buf);
+	PMD_TX_LOG(INFO, txq, "TX offloads = %s", ol_buf);
 }
 #endif
 
@@ -2201,7 +2201,7 @@ qede_xmit_prep_pkts(__rte_unused void *p_txq, struct rte_mbuf **tx_pkts,
 
 #ifdef RTE_LIBRTE_QEDE_DEBUG_TX
 	if (unlikely(i != nb_pkts))
-		PMD_TX_LOG(ERR, txq, "TX prepare failed for %u\n",
+		PMD_TX_LOG(ERR, txq, "TX prepare failed for %u",
 			   nb_pkts - i);
 #endif
 	return i;
@@ -2215,16 +2215,16 @@ qede_mpls_tunn_tx_sanity_check(struct rte_mbuf *mbuf,
 			       struct qede_tx_queue *txq)
 {
 	if (((mbuf->outer_l2_len + mbuf->outer_l3_len) / 2) > 0xff)
-		PMD_TX_LOG(ERR, txq, "tunn_l4_hdr_start_offset overflow\n");
+		PMD_TX_LOG(ERR, txq, "tunn_l4_hdr_start_offset overflow");
 	if (((mbuf->outer_l2_len + mbuf->outer_l3_len +
 		MPLSINUDP_HDR_SIZE) / 2) > 0xff)
-		PMD_TX_LOG(ERR, txq, "tunn_hdr_size overflow\n");
+		PMD_TX_LOG(ERR, txq, "tunn_hdr_size overflow");
 	if (((mbuf->l2_len - MPLSINUDP_HDR_SIZE) / 2) >
 		ETH_TX_DATA_2ND_BD_TUNN_INNER_L2_HDR_SIZE_W_MASK)
-		PMD_TX_LOG(ERR, txq, "inner_l2_hdr_size overflow\n");
+		PMD_TX_LOG(ERR, txq, "inner_l2_hdr_size overflow");
 	if (((mbuf->l2_len - MPLSINUDP_HDR_SIZE + mbuf->l3_len) / 2) >
 		ETH_TX_DATA_2ND_BD_L4_HDR_START_OFFSET_W_MASK)
-		PMD_TX_LOG(ERR, txq, "inner_l2_hdr_size overflow\n");
+		PMD_TX_LOG(ERR, txq, "inner_l2_hdr_size overflow");
 }
 #endif
 

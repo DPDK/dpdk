@@ -19,10 +19,6 @@
 #include <rte_pdcp_hdr.h>
 #include <rte_security.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* Forward declarations. */
 struct rte_pdcp_entity;
 
@@ -372,6 +368,10 @@ rte_pdcp_t_reordering_expiry_handle(const struct rte_pdcp_entity *entity,
  * So include in the end.
  */
 #include <rte_pdcp_group.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifdef __cplusplus
 }

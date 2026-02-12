@@ -9,7 +9,7 @@
 # - DPDK_CHECKPATCH_OPTIONS
 . $(dirname $(readlink -f $0))/load-devel-config
 
-VALIDATE_NEW_API=$(dirname $(readlink -f $0))/check-symbol-change.sh
+VALIDATE_NEW_API=$(dirname $(readlink -f $0))/check-symbol-change.py
 
 # Enable codespell by default. This can be overwritten from a config file.
 # Codespell can also be enabled by setting DPDK_CHECKPATCH_CODESPELL to a valid path
@@ -33,7 +33,8 @@ VOLATILE,PREFER_PACKED,PREFER_ALIGNED,PREFER_PRINTF,STRLCPY,\
 PREFER_KERNEL_TYPES,PREFER_FALLTHROUGH,BIT_MACRO,CONST_STRUCT,\
 SPLIT_STRING,LONG_LINE_STRING,C99_COMMENT_TOLERANCE,\
 LINE_SPACING,PARENTHESIS_ALIGNMENT,NETWORKING_BLOCK_COMMENT_STYLE,\
-NEW_TYPEDEFS,COMPARISON_TO_NULL,AVOID_BUG"
+NEW_TYPEDEFS,COMPARISON_TO_NULL,AVOID_BUG,EXPORT_SYMBOL,\
+BAD_REPORTED_BY_LINK"
 options="$options $DPDK_CHECKPATCH_OPTIONS"
 
 print_usage () {
@@ -53,7 +54,7 @@ print_usage () {
 check_forbidden_additions() { # <patch>
 	res=0
 
-	# refrain from new calls to RTE_LOG
+	# refrain from new calls to RTE_LOG in libraries
 	awk -v FOLDERS="lib" \
 		-v EXPRESSIONS="RTE_LOG\\\(" \
 		-v RET_ON_FAIL=1 \
@@ -61,9 +62,18 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# refrain from new calls to RTE_LOG in drivers (but leave some leeway for base drivers)
+	awk -v FOLDERS="drivers" \
+		-v SKIP_FILES='.*osdep.h$' \
+		-v EXPRESSIONS="RTE_LOG\\\( RTE_LOG_DP\\\( rte_log\\\(" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Prefer RTE_LOG_LINE/RTE_LOG_DP_LINE' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# no output on stdout or stderr
 	awk -v FOLDERS="lib drivers" \
-		-v EXPRESSIONS="\\\<printf\\\> \\\<fprintf\\\(stdout, \\\<fprintf\\\(stderr," \
+		-v EXPRESSIONS="perror\\\( \\\<printf\\\> \\\<fprintf\\\(stdout, \\\<fprintf\\\(stderr," \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Writing to stdout or stderr' \
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
@@ -78,8 +88,17 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# don't call directly install_headers()
+	awk -v FOLDERS="lib drivers" \
+		-v EXPRESSIONS="\\\<install_headers\\\>" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using install_headers()' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# refrain from using compiler attribute without defining a common macro
 	awk -v FOLDERS="lib drivers app examples" \
+		-v SKIP_FILES='lib/eal/include/rte_common.h' \
 		-v EXPRESSIONS="__attribute__" \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Using compiler attribute directly' \
@@ -129,6 +148,7 @@ check_forbidden_additions() { # <patch>
 
 	# refrain from using compiler __atomic_xxx builtins
 	awk -v FOLDERS="lib drivers app examples" \
+		-v SKIP_FILES='drivers/common/cnxk/' \
 		-v EXPRESSIONS="__atomic_.*\\\( __ATOMIC_(RELAXED|CONSUME|ACQUIRE|RELEASE|ACQ_REL|SEQ_CST)" \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Using __atomic_xxx/__ATOMIC_XXX built-ins, prefer rte_atomic_xxx/rte_memory_order_xxx' \
@@ -167,11 +187,12 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
-	# forbid use of non abstracted bit count operations
+	# forbid use of compiler __builtin_*
 	awk -v FOLDERS="lib drivers app examples" \
-		-v EXPRESSIONS='\\<__builtin_(clz|clzll|ctz|ctzll|popcount|popcountll)\\>' \
+		-v SKIP_FILES='lib/eal/ drivers/.*/base/ drivers/.*osdep.h$' \
+		-v EXPRESSIONS='\\<__builtin_' \
 		-v RET_ON_FAIL=1 \
-		-v MESSAGE='Using __builtin helpers for bit count operations' \
+		-v MESSAGE='Using __builtin helpers, prefer EAL macros' \
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
@@ -188,6 +209,23 @@ check_forbidden_additions() { # <patch>
 		-v EXPRESSIONS='#[[:space:]]*define.*[^(,[:space:]]\\.\\.\\.[[:space:]]*)' \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Do not use variadic argument pack in macros' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# forbid use of __rte_packed_begin with enums
+	awk -v FOLDERS='lib drivers app examples' \
+		-v EXPRESSIONS='enum.*__rte_packed_begin' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using __rte_packed_begin with enum is not allowed' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# forbid use of #pragma
+	awk -v FOLDERS='lib drivers app examples' \
+		-v SKIP_FILES='lib/eal/include/rte_common.h' \
+		-v EXPRESSIONS='(#pragma|_Pragma)' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using compilers pragma is not allowed' \
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
@@ -217,7 +255,7 @@ check_forbidden_additions() { # <patch>
 
 	# forbid rte_ symbols in cnxk base driver
 	awk -v FOLDERS='drivers/common/cnxk/roc_*' \
-		-v SKIP_FILES='roc_platform*' \
+		-v SKIP_FILES='.*roc_platform.*' \
 		-v EXPRESSIONS="rte_ RTE_" \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Use plt_ symbols instead of rte_ API in cnxk base driver' \
@@ -351,6 +389,30 @@ check_aligned_attributes() { # <patch>
 	return $res
 }
 
+check_packed_attributes() { # <patch>
+	res=0
+
+	if [ $(grep -E '^\+.*__rte_packed_begin' "$1" | \
+			grep -vE '\<struct[[:space:]]*__rte_packed_begin\>' | \
+			grep -vE '\<union[[:space:]]*__rte_packed_begin\>' | \
+			grep -vE '\<__rte_cache_aligned[[:space:]]*__rte_packed_begin\>' | \
+			grep -vE '\<__rte_cache_min_aligned[[:space:]]*__rte_packed_begin\>' | \
+			grep -vE '\<__rte_aligned\(.*\)[[:space:]]*__rte_packed_begin\>' | \
+			wc -l) != 0 ]; then
+		echo "Use __rte_packed_begin only after struct, union or alignment attributes."
+		res=1
+	fi
+
+	begin_count=$(grep '__rte_packed_begin' "$1" | wc -l)
+	end_count=$(grep '__rte_packed_end' "$1" | wc -l)
+	if [ $begin_count != $end_count ]; then
+		echo "__rte_packed_begin and __rte_packed_end should always be used in pairs."
+		res=1
+	fi
+
+	return $res
+}
+
 check_release_notes() { # <patch>
 	rel_notes_prefix=doc/guides/rel_notes/release_
 	IFS=. read year month release < VERSION
@@ -360,8 +422,8 @@ check_release_notes() { # <patch>
 		grep -v $current_rel_notes
 }
 
-number=0
-range='origin/main..'
+number=
+range=
 quiet=false
 verbose=false
 while getopts hn:qr:v ARG ; do
@@ -429,7 +491,7 @@ check () { # <patch-file> <commit>
 	fi
 
 	! $verbose || printf '\nChecking API additions/removals:\n'
-	report=$($VALIDATE_NEW_API "$tmpinput")
+	report=$($VALIDATE_NEW_API --patch "$tmpinput")
 	if [ $? -ne 0 ] ; then
 		$headline_printed || print_headline "$subject"
 		printf '%s\n' "$report"
@@ -468,6 +530,14 @@ check () { # <patch-file> <commit>
 		ret=1
 	fi
 
+	! $verbose || printf '\nChecking packed attributes:\n'
+	report=$(check_packed_attributes "$tmpinput")
+	if [ $? -ne 0 ] ; then
+		$headline_printed || print_headline "$subject"
+		printf '%s\n' "$report"
+		ret=1
+	fi
+
 	! $verbose || printf '\nChecking release notes updates:\n'
 	report=$(check_release_notes "$tmpinput")
 	if [ $? -ne 0 ] ; then
@@ -489,17 +559,20 @@ if [ -n "$1" ] ; then
 	for patch in "$@" ; do
 		check "$patch" ''
 	done
-elif [ ! -t 0 ] ; then # stdin
-	check '' ''
-else
-	if [ $number -eq 0 ] ; then
-		commits=$(git rev-list --reverse $range)
-	else
+elif [ -n "$number" ] || [ -n "$range" ] || [ -t 0 ]; then
+	if [ -n "$number" ] ; then
 		commits=$(git rev-list --reverse --max-count=$number HEAD)
+	else
+		if [ -z "$range" ] ; then
+			range='origin/main..' # default
+		fi
+		commits=$(git rev-list --reverse $range)
 	fi
 	for commit in $commits ; do
 		check '' $commit
 	done
+else # stdin
+	check '' ''
 fi
 pass=$(($total - $status))
 $quiet || printf '\n%d/%d valid patch' $pass $total

@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <sys/queue.h>
 #include <string.h>
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <rte_cycles.h>
 #include <rte_memzone.h>
@@ -31,6 +32,7 @@ EAL_REGISTER_TAILQ(rte_dist_burst_tailq)
 
 /**** Burst Packet APIs called by workers ****/
 
+RTE_EXPORT_SYMBOL(rte_distributor_request_pkt)
 void
 rte_distributor_request_pkt(struct rte_distributor *d,
 		unsigned int worker_id, struct rte_mbuf **oldpkt,
@@ -83,6 +85,7 @@ rte_distributor_request_pkt(struct rte_distributor *d,
 			rte_memory_order_release);
 }
 
+RTE_EXPORT_SYMBOL(rte_distributor_poll_pkt)
 int
 rte_distributor_poll_pkt(struct rte_distributor *d,
 		unsigned int worker_id, struct rte_mbuf **pkts)
@@ -127,6 +130,7 @@ rte_distributor_poll_pkt(struct rte_distributor *d,
 	return count;
 }
 
+RTE_EXPORT_SYMBOL(rte_distributor_get_pkt)
 int
 rte_distributor_get_pkt(struct rte_distributor *d,
 		unsigned int worker_id, struct rte_mbuf **pkts,
@@ -157,6 +161,7 @@ rte_distributor_get_pkt(struct rte_distributor *d,
 	return count;
 }
 
+RTE_EXPORT_SYMBOL(rte_distributor_return_pkt)
 int
 rte_distributor_return_pkt(struct rte_distributor *d,
 		unsigned int worker_id, struct rte_mbuf **oldpkt, int num)
@@ -439,6 +444,7 @@ release(struct rte_distributor *d, unsigned int wkr)
 
 
 /* process a set of packets to distribute them to workers */
+RTE_EXPORT_SYMBOL(rte_distributor_process)
 int
 rte_distributor_process(struct rte_distributor *d,
 		struct rte_mbuf **mbufs, unsigned int num_mbufs)
@@ -609,6 +615,7 @@ rte_distributor_process(struct rte_distributor *d,
 }
 
 /* return to the caller, packets returned from workers */
+RTE_EXPORT_SYMBOL(rte_distributor_returned_pkts)
 int
 rte_distributor_returned_pkts(struct rte_distributor *d,
 		struct rte_mbuf **mbufs, unsigned int max_mbufs)
@@ -655,6 +662,7 @@ total_outstanding(const struct rte_distributor *d)
  * Flush the distributor, so that there are no outstanding packets in flight or
  * queued up.
  */
+RTE_EXPORT_SYMBOL(rte_distributor_flush)
 int
 rte_distributor_flush(struct rte_distributor *d)
 {
@@ -687,6 +695,7 @@ rte_distributor_flush(struct rte_distributor *d)
 }
 
 /* clears the internal returns array in the distributor */
+RTE_EXPORT_SYMBOL(rte_distributor_clear_returns)
 void
 rte_distributor_clear_returns(struct rte_distributor *d)
 {
@@ -708,6 +717,7 @@ rte_distributor_clear_returns(struct rte_distributor *d)
 }
 
 /* creates a distributor instance */
+RTE_EXPORT_SYMBOL(rte_distributor_create)
 struct rte_distributor *
 rte_distributor_create(const char *name,
 		unsigned int socket_id,

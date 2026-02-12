@@ -194,10 +194,6 @@
  * - rte_regexdev_dequeue_burst()
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_dev.h>
@@ -1428,6 +1424,10 @@ struct rte_regex_ops {
 
 #include "rte_regexdev_core.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
@@ -1473,14 +1473,14 @@ rte_regexdev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 	struct rte_regexdev *dev = &rte_regex_devices[dev_id];
 #ifdef RTE_LIBRTE_REGEXDEV_DEBUG
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
-	if (*dev->enqueue == NULL)
+	if (dev->enqueue == NULL)
 		return -ENOTSUP;
 	if (qp_id >= dev->data->dev_conf.nb_queue_pairs) {
 		RTE_REGEXDEV_LOG_LINE(ERR, "Invalid queue %d", qp_id);
 		return -EINVAL;
 	}
 #endif
-	return (*dev->enqueue)(dev, qp_id, ops, nb_ops);
+	return dev->enqueue(dev, qp_id, ops, nb_ops);
 }
 
 /**
@@ -1533,14 +1533,14 @@ rte_regexdev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
 	struct rte_regexdev *dev = &rte_regex_devices[dev_id];
 #ifdef RTE_LIBRTE_REGEXDEV_DEBUG
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
-	if (*dev->dequeue == NULL)
+	if (dev->dequeue == NULL)
 		return -ENOTSUP;
 	if (qp_id >= dev->data->dev_conf.nb_queue_pairs) {
 		RTE_REGEXDEV_LOG_LINE(ERR, "Invalid queue %d", qp_id);
 		return -EINVAL;
 	}
 #endif
-	return (*dev->dequeue)(dev, qp_id, ops, nb_ops);
+	return dev->dequeue(dev, qp_id, ops, nb_ops);
 }
 
 #ifdef __cplusplus

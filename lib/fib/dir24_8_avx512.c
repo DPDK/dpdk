@@ -10,7 +10,7 @@
 
 static __rte_always_inline void
 dir24_8_vec_lookup_x16(void *p, const uint32_t *ips,
-	uint64_t *next_hops, int size)
+	uint64_t *next_hops, int size, bool be_addr)
 {
 	struct dir24_8_tbl *dp = (struct dir24_8_tbl *)p;
 	__mmask16 msk_ext;
@@ -28,6 +28,16 @@ dir24_8_vec_lookup_x16(void *p, const uint32_t *ips,
 		res_msk = _mm512_set1_epi32(UINT16_MAX);
 
 	ip_vec = _mm512_loadu_si512(ips);
+	if (be_addr) {
+		const __m512i bswap32 = _mm512_set_epi32(
+			0x0c0d0e0f, 0x08090a0b, 0x04050607, 0x00010203,
+			0x0c0d0e0f, 0x08090a0b, 0x04050607, 0x00010203,
+			0x0c0d0e0f, 0x08090a0b, 0x04050607, 0x00010203,
+			0x0c0d0e0f, 0x08090a0b, 0x04050607, 0x00010203
+		);
+		ip_vec = _mm512_shuffle_epi8(ip_vec, bswap32);
+	}
+
 	/* mask 24 most significant bits */
 	idxes = _mm512_srli_epi32(ip_vec, 8);
 
@@ -78,7 +88,7 @@ dir24_8_vec_lookup_x16(void *p, const uint32_t *ips,
 
 static __rte_always_inline void
 dir24_8_vec_lookup_x8_8b(void *p, const uint32_t *ips,
-	uint64_t *next_hops)
+	uint64_t *next_hops, bool be_addr)
 {
 	struct dir24_8_tbl *dp = (struct dir24_8_tbl *)p;
 	const __m512i zero = _mm512_set1_epi32(0);
@@ -89,6 +99,13 @@ dir24_8_vec_lookup_x8_8b(void *p, const uint32_t *ips,
 	__mmask8 msk_ext;
 
 	ip_vec = _mm256_loadu_si256((const void *)ips);
+	if (be_addr) {
+		const __m256i bswap32 = _mm256_set_epi8(
+			12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3,
+			12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3
+		);
+		ip_vec = _mm256_shuffle_epi8(ip_vec, bswap32);
+	}
 	/* mask 24 most significant bits */
 	idxes_256 = _mm256_srli_epi32(ip_vec, 8);
 
@@ -114,44 +131,24 @@ dir24_8_vec_lookup_x8_8b(void *p, const uint32_t *ips,
 	_mm512_storeu_si512(next_hops, res);
 }
 
-void
-rte_dir24_8_vec_lookup_bulk_1b(void *p, const uint32_t *ips,
-	uint64_t *next_hops, const unsigned int n)
-{
-	uint32_t i;
-	for (i = 0; i < (n / 16); i++)
-		dir24_8_vec_lookup_x16(p, ips + i * 16, next_hops + i * 16,
-			sizeof(uint8_t));
-
-	dir24_8_lookup_bulk_1b(p, ips + i * 16, next_hops + i * 16,
-		n - i * 16);
+#define DECLARE_VECTOR_FN(suffix, nh_type, be_addr) \
+void \
+rte_dir24_8_vec_lookup_bulk_##suffix(void *p, const uint32_t *ips, uint64_t *next_hops, \
+	const unsigned int n) \
+{ \
+	uint32_t i; \
+	for (i = 0; i < (n / 16); i++) \
+		dir24_8_vec_lookup_x16(p, ips + i * 16, next_hops + i * 16, sizeof(nh_type), \
+			be_addr); \
+	dir24_8_lookup_bulk_##suffix(p, ips + i * 16, next_hops + i * 16, n - i * 16); \
 }
 
-void
-rte_dir24_8_vec_lookup_bulk_2b(void *p, const uint32_t *ips,
-	uint64_t *next_hops, const unsigned int n)
-{
-	uint32_t i;
-	for (i = 0; i < (n / 16); i++)
-		dir24_8_vec_lookup_x16(p, ips + i * 16, next_hops + i * 16,
-			sizeof(uint16_t));
-
-	dir24_8_lookup_bulk_2b(p, ips + i * 16, next_hops + i * 16,
-		n - i * 16);
-}
-
-void
-rte_dir24_8_vec_lookup_bulk_4b(void *p, const uint32_t *ips,
-	uint64_t *next_hops, const unsigned int n)
-{
-	uint32_t i;
-	for (i = 0; i < (n / 16); i++)
-		dir24_8_vec_lookup_x16(p, ips + i * 16, next_hops + i * 16,
-			sizeof(uint32_t));
-
-	dir24_8_lookup_bulk_4b(p, ips + i * 16, next_hops + i * 16,
-		n - i * 16);
-}
+DECLARE_VECTOR_FN(1b, uint8_t, false)
+DECLARE_VECTOR_FN(1b_be, uint8_t, true)
+DECLARE_VECTOR_FN(2b, uint16_t, false)
+DECLARE_VECTOR_FN(2b_be, uint16_t, true)
+DECLARE_VECTOR_FN(4b, uint32_t, false)
+DECLARE_VECTOR_FN(4b_be, uint32_t, true)
 
 void
 rte_dir24_8_vec_lookup_bulk_8b(void *p, const uint32_t *ips,
@@ -159,7 +156,16 @@ rte_dir24_8_vec_lookup_bulk_8b(void *p, const uint32_t *ips,
 {
 	uint32_t i;
 	for (i = 0; i < (n / 8); i++)
-		dir24_8_vec_lookup_x8_8b(p, ips + i * 8, next_hops + i * 8);
-
+		dir24_8_vec_lookup_x8_8b(p, ips + i * 8, next_hops + i * 8, false);
 	dir24_8_lookup_bulk_8b(p, ips + i * 8, next_hops + i * 8, n - i * 8);
+}
+
+void
+rte_dir24_8_vec_lookup_bulk_8b_be(void *p, const uint32_t *ips,
+	uint64_t *next_hops, const unsigned int n)
+{
+	uint32_t i;
+	for (i = 0; i < (n / 8); i++)
+		dir24_8_vec_lookup_x8_8b(p, ips + i * 8, next_hops + i * 8, true);
+	dir24_8_lookup_bulk_8b_be(p, ips + i * 8, next_hops + i * 8, n - i * 8);
 }

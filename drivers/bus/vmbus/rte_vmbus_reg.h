@@ -6,20 +6,26 @@
 #ifndef _VMBUS_REG_H_
 #define _VMBUS_REG_H_
 
+#include <stdint.h>
+
+#include <rte_common.h>
+#include <rte_stdatomic.h>
+#include <rte_uuid.h>
+
 /*
  * Hyper-V SynIC message format.
  */
 #define VMBUS_MSG_DSIZE_MAX		240
 #define VMBUS_MSG_SIZE			256
 
-struct vmbus_message {
+struct __rte_packed_begin vmbus_message {
 	uint32_t	type;	/* HYPERV_MSGTYPE_ */
 	uint8_t		dsize;	/* data size */
 	uint8_t		flags;	/* VMBUS_MSGFLAG_ */
 	uint16_t	rsvd;
 	uint64_t	id;
 	uint8_t		data[VMBUS_MSG_DSIZE_MAX];
-} __rte_packed;
+} __rte_packed_end;
 
 #define VMBUS_MSGFLAG_PENDING		0x01
 
@@ -27,10 +33,10 @@ struct vmbus_message {
  * Hyper-V Monitor Notification Facility
  */
 
-struct vmbus_mon_trig {
-	uint32_t	pending;
+struct __rte_packed_begin vmbus_mon_trig {
+	RTE_ATOMIC(uint32_t)	pending;
 	uint32_t	armed;
-} __rte_packed;
+} __rte_packed_end;
 
 #define VMBUS_MONTRIGS_MAX	4
 #define VMBUS_MONTRIG_LEN	32
@@ -38,13 +44,13 @@ struct vmbus_mon_trig {
 /*
  * Hyper-V Monitor Notification Facility
  */
-struct hyperv_mon_param {
+struct __rte_packed_begin hyperv_mon_param {
 	uint32_t	connid;
 	uint16_t	evtflag_ofs;
 	uint16_t	rsvd;
-} __rte_packed;
+} __rte_packed_end;
 
-struct vmbus_mon_page {
+struct __rte_packed_begin vmbus_mon_page {
 	uint32_t	state;
 	uint32_t	rsvd1;
 
@@ -57,13 +63,13 @@ struct vmbus_mon_page {
 	struct hyperv_mon_param
 			param[VMBUS_MONTRIGS_MAX][VMBUS_MONTRIG_LEN];
 	uint8_t		rsvd4[1984];
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Buffer ring
  */
 
-struct vmbus_bufring {
+struct __rte_packed_begin vmbus_bufring {
 	volatile uint32_t windex;
 	volatile uint32_t rindex;
 
@@ -100,15 +106,12 @@ struct vmbus_bufring {
 		uint32_t value;
 	} feature_bits;
 
-	/* Pad it to rte_mem_page_size() so that data starts on page boundary */
-	uint8_t	reserved2[4028];
-
 	/*
-	 * Ring data starts here + RingDataStartOffset
-	 * !!! DO NOT place any fields below this !!!
+	 * This is the end of ring buffer head. The ring buffer data is system
+	 * page aligned and starts at rte_mem_page_size() from the beginning
+	 * of this structure
 	 */
-	uint8_t data[];
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Channel packets
@@ -137,26 +140,26 @@ vmbus_chanpkt_getlen(uint16_t pktlen)
 /*
  * GPA stuffs.
  */
-struct vmbus_gpa_range {
+struct __rte_packed_begin vmbus_gpa_range {
 	uint32_t       len;
 	uint32_t       ofs;
 	uint64_t       page[];
-} __rte_packed;
+} __rte_packed_end;
 
 /* This is actually vmbus_gpa_range.gpa_page[1] */
-struct vmbus_gpa {
+struct __rte_packed_begin vmbus_gpa {
 	uint32_t	len;
 	uint32_t	ofs;
 	uint64_t	page;
-} __rte_packed;
+} __rte_packed_end;
 
-struct vmbus_chanpkt_hdr {
+struct __rte_packed_begin vmbus_chanpkt_hdr {
 	uint16_t	type;	/* VMBUS_CHANPKT_TYPE_ */
 	uint16_t	hlen;	/* header len, in 8 bytes */
 	uint16_t	tlen;	/* total len, in 8 bytes */
 	uint16_t	flags;	/* VMBUS_CHANPKT_FLAG_ */
 	uint64_t	xactid;
-} __rte_packed;
+} __rte_packed_end;
 
 static inline uint32_t
 vmbus_chanpkt_datalen(const struct vmbus_chanpkt_hdr *pkt)
@@ -165,29 +168,29 @@ vmbus_chanpkt_datalen(const struct vmbus_chanpkt_hdr *pkt)
 		- vmbus_chanpkt_getlen(pkt->hlen);
 }
 
-struct vmbus_chanpkt {
+struct __rte_packed_begin vmbus_chanpkt {
 	struct vmbus_chanpkt_hdr hdr;
-} __rte_packed;
+} __rte_packed_end;
 
-struct vmbus_rxbuf_desc {
+struct __rte_packed_begin vmbus_rxbuf_desc {
 	uint32_t	len;
 	uint32_t	ofs;
-} __rte_packed;
+} __rte_packed_end;
 
-struct vmbus_chanpkt_rxbuf {
+struct __rte_packed_begin vmbus_chanpkt_rxbuf {
 	struct vmbus_chanpkt_hdr hdr;
 	uint16_t	rxbuf_id;
 	uint16_t	rsvd;
 	uint32_t	rxbuf_cnt;
 	struct vmbus_rxbuf_desc rxbuf[];
-} __rte_packed;
+} __rte_packed_end;
 
-struct vmbus_chanpkt_sglist {
+struct __rte_packed_begin vmbus_chanpkt_sglist {
 	struct vmbus_chanpkt_hdr hdr;
 	uint32_t	rsvd;
 	uint32_t	gpa_cnt;
 	struct vmbus_gpa gpa[];
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Channel messages
@@ -213,39 +216,39 @@ struct vmbus_chanpkt_sglist {
 #define VMBUS_CHANMSG_TYPE_DISCONNECT		16	/* REQ */
 #define VMBUS_CHANMSG_TYPE_MAX			22
 
-struct vmbus_chanmsg_hdr {
+struct __rte_packed_begin vmbus_chanmsg_hdr {
 	uint32_t	type;	/* VMBUS_CHANMSG_TYPE_ */
 	uint32_t	rsvd;
-} __rte_packed;
+} __rte_packed_end;
 
 /* VMBUS_CHANMSG_TYPE_CONNECT */
-struct vmbus_chanmsg_connect {
+struct __rte_packed_begin vmbus_chanmsg_connect {
 	struct vmbus_chanmsg_hdr hdr;
 	uint32_t	ver;
 	uint32_t	rsvd;
 	uint64_t	evtflags;
 	uint64_t	mnf1;
 	uint64_t	mnf2;
-} __rte_packed;
+} __rte_packed_end;
 
 /* VMBUS_CHANMSG_TYPE_CONNECT_RESP */
-struct vmbus_chanmsg_connect_resp {
+struct __rte_packed_begin vmbus_chanmsg_connect_resp {
 	struct vmbus_chanmsg_hdr hdr;
 	uint8_t		done;
-} __rte_packed;
+} __rte_packed_end;
 
 /* VMBUS_CHANMSG_TYPE_CHREQUEST */
-struct vmbus_chanmsg_chrequest {
+struct __rte_packed_begin vmbus_chanmsg_chrequest {
 	struct vmbus_chanmsg_hdr hdr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* VMBUS_CHANMSG_TYPE_DISCONNECT */
-struct vmbus_chanmsg_disconnect {
+struct __rte_packed_begin vmbus_chanmsg_disconnect {
 	struct vmbus_chanmsg_hdr hdr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* VMBUS_CHANMSG_TYPE_CHOPEN */
-struct vmbus_chanmsg_chopen {
+struct __rte_packed_begin vmbus_chanmsg_chopen {
 	struct vmbus_chanmsg_hdr hdr;
 	uint32_t	chanid;
 	uint32_t	openid;
@@ -254,73 +257,73 @@ struct vmbus_chanmsg_chopen {
 	uint32_t	txbr_pgcnt;
 #define VMBUS_CHANMSG_CHOPEN_UDATA_SIZE	120
 	uint8_t		udata[VMBUS_CHANMSG_CHOPEN_UDATA_SIZE];
-} __rte_packed;
+} __rte_packed_end;
 
 /* VMBUS_CHANMSG_TYPE_CHOPEN_RESP */
-struct vmbus_chanmsg_chopen_resp {
+struct __rte_packed_begin vmbus_chanmsg_chopen_resp {
 	struct vmbus_chanmsg_hdr hdr;
 	uint32_t	chanid;
 	uint32_t	openid;
 	uint32_t	status;
-} __rte_packed;
+} __rte_packed_end;
 
 /* VMBUS_CHANMSG_TYPE_GPADL_CONN */
-struct vmbus_chanmsg_gpadl_conn {
+struct __rte_packed_begin vmbus_chanmsg_gpadl_conn {
 	struct vmbus_chanmsg_hdr hdr;
 	uint32_t	chanid;
 	uint32_t	gpadl;
 	uint16_t	range_len;
 	uint16_t	range_cnt;
 	struct vmbus_gpa_range range;
-} __rte_packed;
+} __rte_packed_end;
 
 #define VMBUS_CHANMSG_GPADL_CONN_PGMAX		26
 
 /* VMBUS_CHANMSG_TYPE_GPADL_SUBCONN */
-struct vmbus_chanmsg_gpadl_subconn {
+struct __rte_packed_begin vmbus_chanmsg_gpadl_subconn {
 	struct vmbus_chanmsg_hdr hdr;
 	uint32_t	msgno;
 	uint32_t	gpadl;
 	uint64_t	gpa_page[];
-} __rte_packed;
+} __rte_packed_end;
 
 #define VMBUS_CHANMSG_GPADL_SUBCONN_PGMAX	28
 
 /* VMBUS_CHANMSG_TYPE_GPADL_CONNRESP */
-struct vmbus_chanmsg_gpadl_connresp {
+struct __rte_packed_begin vmbus_chanmsg_gpadl_connresp {
 	struct vmbus_chanmsg_hdr hdr;
 	uint32_t	chanid;
 	uint32_t	gpadl;
 	uint32_t	status;
-} __rte_packed;
+} __rte_packed_end;
 
 /* VMBUS_CHANMSG_TYPE_CHCLOSE */
-struct vmbus_chanmsg_chclose {
+struct __rte_packed_begin vmbus_chanmsg_chclose {
 	struct vmbus_chanmsg_hdr hdr;
 	uint32_t	chanid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* VMBUS_CHANMSG_TYPE_GPADL_DISCONN */
-struct vmbus_chanmsg_gpadl_disconn {
+struct __rte_packed_begin vmbus_chanmsg_gpadl_disconn {
 	struct vmbus_chanmsg_hdr hdr;
 	uint32_t	chanid;
 	uint32_t	gpadl;
-} __rte_packed;
+} __rte_packed_end;
 
 /* VMBUS_CHANMSG_TYPE_CHFREE */
-struct vmbus_chanmsg_chfree {
+struct __rte_packed_begin vmbus_chanmsg_chfree {
 	struct vmbus_chanmsg_hdr hdr;
 	uint32_t	chanid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* VMBUS_CHANMSG_TYPE_CHRESCIND */
-struct vmbus_chanmsg_chrescind {
+struct __rte_packed_begin vmbus_chanmsg_chrescind {
 	struct vmbus_chanmsg_hdr hdr;
 	uint32_t	chanid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* VMBUS_CHANMSG_TYPE_CHOFFER */
-struct vmbus_chanmsg_choffer {
+struct __rte_packed_begin vmbus_chanmsg_choffer {
 	struct vmbus_chanmsg_hdr hdr;
 	rte_uuid_t	chtype;
 	rte_uuid_t	chinst;
@@ -337,7 +340,7 @@ struct vmbus_chanmsg_choffer {
 	uint8_t		flags1;	/* VMBUS_CHOFFER_FLAG1_ */
 	uint16_t	flags2;
 	uint32_t	connid;
-} __rte_packed;
+} __rte_packed_end;
 
 #define VMBUS_CHOFFER_FLAG1_HASMNF	0x01
 

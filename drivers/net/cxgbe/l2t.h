@@ -30,7 +30,7 @@ struct l2t_entry {
 	u8  lport;                  /* destination port */
 	u8  dmac[RTE_ETHER_ADDR_LEN];   /* destination MAC address */
 	rte_spinlock_t lock;        /* entry lock */
-	u32 refcnt;                 /* entry reference count */
+	RTE_ATOMIC(u32) refcnt;                 /* entry reference count */
 };
 
 struct l2t_data {

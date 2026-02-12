@@ -59,7 +59,7 @@ typedef uint8_t memif_log2_ring_size_t;
   * S2C
   * Contains server interfaces configuration.
   */
-typedef struct __rte_packed {
+typedef struct __rte_packed_begin {
 	uint8_t name[MEMIF_NAME_SZ]; /**< Client app name. In this case DPDK version */
 	memif_version_t min_version; /**< lowest supported memif version */
 	memif_version_t max_version; /**< highest supported memif version */
@@ -67,36 +67,36 @@ typedef struct __rte_packed {
 	memif_ring_index_t max_s2c_ring; /**< maximum num of S2C ring */
 	memif_ring_index_t max_c2s_ring; /**< maximum num of C2S rings */
 	memif_log2_ring_size_t max_log2_ring_size; /**< maximum ring size (as log2) */
-} memif_msg_hello_t;
+} __rte_packed_end memif_msg_hello_t;
 
 /**
  * C2S
  * Contains information required to identify interface
  * to which the client wants to connect.
  */
-typedef struct __rte_packed {
+typedef struct __rte_packed_begin {
 	memif_version_t version;		/**< memif version */
 	memif_interface_id_t id;		/**< interface id */
 	memif_interface_mode_t mode:8;		/**< interface mode */
 	uint8_t secret[24];			/**< optional security parameter */
 	uint8_t name[MEMIF_NAME_SZ]; /**< Client app name. In this case DPDK version */
-} memif_msg_init_t;
+} __rte_packed_end memif_msg_init_t;
 
 /**
  * C2S
  * Request server to add new shared memory region to server interface.
  * Shared files file descriptor is passed in cmsghdr.
  */
-typedef struct __rte_packed {
+typedef struct __rte_packed_begin {
 	memif_region_index_t index;		/**< shm regions index */
 	memif_region_size_t size;		/**< shm region size */
-} memif_msg_add_region_t;
+} __rte_packed_end memif_msg_add_region_t;
 
 /**
  * C2S
  * Request server to add new ring to server interface.
  */
-typedef struct __rte_packed {
+typedef struct __rte_packed_begin {
 	uint16_t flags;				/**< flags */
 #define MEMIF_MSG_ADD_RING_FLAG_C2S 1		/**< ring is in C2S direction */
 	memif_ring_index_t index;		/**< ring index */
@@ -104,34 +104,34 @@ typedef struct __rte_packed {
 	memif_region_offset_t offset;		/**< buffer start offset */
 	memif_log2_ring_size_t log2_ring_size;	/**< ring size (log2) */
 	uint16_t private_hdr_size;		/**< used for private metadata */
-} memif_msg_add_ring_t;
+} __rte_packed_end memif_msg_add_ring_t;
 
 /**
  * C2S
  * Finalize connection establishment.
  */
-typedef struct __rte_packed {
+typedef struct __rte_packed_begin {
 	uint8_t if_name[MEMIF_NAME_SZ];		/**< client interface name */
-} memif_msg_connect_t;
+} __rte_packed_end memif_msg_connect_t;
 
 /**
  * S2C
  * Finalize connection establishment.
  */
-typedef struct __rte_packed {
+typedef struct __rte_packed_begin {
 	uint8_t if_name[MEMIF_NAME_SZ];		/**< server interface name */
-} memif_msg_connected_t;
+} __rte_packed_end memif_msg_connected_t;
 
 /**
  * C2S & S2C
  * Disconnect interfaces.
  */
-typedef struct __rte_packed {
+typedef struct __rte_packed_begin {
 	uint32_t code;				/**< error code */
 	uint8_t string[96];			/**< disconnect reason */
-} memif_msg_disconnect_t;
+} __rte_packed_end memif_msg_disconnect_t;
 
-typedef struct __rte_packed __rte_aligned(128)
+typedef struct __rte_aligned(128) __rte_packed_begin
 {
 	memif_msg_type_t type:16;
 	union {
@@ -143,7 +143,7 @@ typedef struct __rte_packed __rte_aligned(128)
 		memif_msg_connected_t connected;
 		memif_msg_disconnect_t disconnect;
 	};
-} memif_msg_t;
+} __rte_packed_end memif_msg_t;
 
 /*
  *  Ring and Descriptor Layout
@@ -152,26 +152,26 @@ typedef struct __rte_packed __rte_aligned(128)
 /**
  * Buffer descriptor.
  */
-typedef struct __rte_packed {
+typedef struct __rte_packed_begin {
 	uint16_t flags;				/**< flags */
 #define MEMIF_DESC_FLAG_NEXT 1			/**< is chained buffer */
 	memif_region_index_t region; /**< region index on which the buffer is located */
 	uint32_t length;			/**< buffer length */
 	memif_region_offset_t offset;		/**< buffer offset */
 	uint32_t metadata;
-} memif_desc_t;
+} __rte_packed_end memif_desc_t;
 
 #define MEMIF_CACHELINE_ALIGN_MARK(mark) \
-	RTE_MARKER mark __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) RTE_MARKER mark;
 
 typedef struct {
 	MEMIF_CACHELINE_ALIGN_MARK(cacheline0);
 	uint32_t cookie;			/**< MEMIF_COOKIE */
 	uint16_t flags;				/**< flags */
 #define MEMIF_RING_FLAG_MASK_INT 1		/**< disable interrupt mode */
-	uint16_t head;			/**< pointer to ring buffer head */
+	RTE_ATOMIC(uint16_t) head;			/**< pointer to ring buffer head */
 	MEMIF_CACHELINE_ALIGN_MARK(cacheline1);
-	uint16_t tail;			/**< pointer to ring buffer tail */
+	RTE_ATOMIC(uint16_t) tail;			/**< pointer to ring buffer tail */
 	MEMIF_CACHELINE_ALIGN_MARK(cacheline2);
 	memif_desc_t desc[0];			/**< buffer descriptors */
 } memif_ring_t;

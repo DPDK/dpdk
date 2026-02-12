@@ -12,11 +12,13 @@
 
 #include "nfd3/nfp_nfd3.h"
 #include "nfdk/nfp_nfdk.h"
+#include "nfdk/nfp_nfdk_vec.h"
 #include "flower/nfp_flower.h"
 
 #include "nfp_ipsec.h"
 #include "nfp_logs.h"
 #include "nfp_net_meta.h"
+#include "nfp_rxtx_vec.h"
 
 /*
  * The bit format and map of nfp packet type for rxd.offload_info in Rx descriptor.
@@ -120,24 +122,27 @@ nfp_net_rx_cksum(struct nfp_net_rxq *rxq,
 		struct nfp_net_rx_desc *rxd,
 		struct rte_mbuf *mb)
 {
+	uint16_t flags;
 	struct nfp_net_hw *hw = rxq->hw;
 
 	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_RXCSUM) == 0)
 		return;
 
+	flags = rte_le_to_cpu_16(rxd->rxd.flags);
+
 	/* If IPv4 and IP checksum error, fail */
-	if (unlikely((rxd->rxd.flags & PCIE_DESC_RX_IP4_CSUM) != 0 &&
-			(rxd->rxd.flags & PCIE_DESC_RX_IP4_CSUM_OK) == 0))
+	if (unlikely((flags & PCIE_DESC_RX_IP4_CSUM) != 0 &&
+			(flags & PCIE_DESC_RX_IP4_CSUM_OK) == 0))
 		mb->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 	else
 		mb->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 
 	/* If neither UDP nor TCP return */
-	if ((rxd->rxd.flags & PCIE_DESC_RX_TCP_CSUM) == 0 &&
-			(rxd->rxd.flags & PCIE_DESC_RX_UDP_CSUM) == 0)
+	if ((flags & PCIE_DESC_RX_TCP_CSUM) == 0 &&
+			(flags & PCIE_DESC_RX_UDP_CSUM) == 0)
 		return;
 
-	if (likely(rxd->rxd.flags & PCIE_DESC_RX_L4_CSUM_OK) != 0)
+	if (likely(flags & PCIE_DESC_RX_L4_CSUM_OK) != 0)
 		mb->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 	else
 		mb->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
@@ -150,7 +155,7 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 	uint64_t dma_addr;
 	struct nfp_net_dp_buf *rxe = rxq->rxbufs;
 
-	PMD_RX_LOG(DEBUG, "Fill Rx Freelist for %hu descriptors",
+	PMD_RX_LOG(DEBUG, "Fill Rx Freelist for %hu descriptors.",
 			rxq->rx_count);
 
 	for (i = 0; i < rxq->rx_count; i++) {
@@ -158,17 +163,17 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 		struct rte_mbuf *mbuf = rte_pktmbuf_alloc(rxq->mem_pool);
 
 		if (mbuf == NULL) {
-			PMD_DRV_LOG(ERR, "RX mbuf alloc failed queue_id=%hu",
+			PMD_DRV_LOG(ERR, "RX mbuf alloc failed queue_id=%hu.",
 				rxq->qidx);
 			return -ENOMEM;
 		}
 
-		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
+		dma_addr = rte_mbuf_data_iova_default(mbuf);
 
 		rxd = &rxq->rxds[i];
 		rxd->fld.dd = 0;
-		rxd->fld.dma_addr_hi = (dma_addr >> 32) & 0xffff;
-		rxd->fld.dma_addr_lo = dma_addr & 0xffffffff;
+		rxd->fld.dma_addr_hi = rte_cpu_to_le_16((dma_addr >> 32) & 0xffff);
+		rxd->fld.dma_addr_lo = rte_cpu_to_le_32(dma_addr & 0xffffffff);
 
 		rxe[i].mbuf = mbuf;
 	}
@@ -177,7 +182,7 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 	rte_wmb();
 
 	/* Not advertising the whole ring as the firmware gets confused if so */
-	PMD_RX_LOG(DEBUG, "Increment FL write pointer in %hu", rxq->rx_count - 1);
+	PMD_RX_LOG(DEBUG, "Increment FL write pointer in %hu.", rxq->rx_count - 1);
 
 	nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, rxq->rx_count - 1);
 
@@ -197,7 +202,7 @@ nfp_net_rx_freelist_setup(struct rte_eth_dev *dev)
 	return 0;
 }
 
-uint32_t
+int
 nfp_net_rx_queue_count(void *rx_queue)
 {
 	uint32_t idx;
@@ -259,7 +264,7 @@ nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype,
 		mbuf_ptype |= RTE_PTYPE_L3_IPV6;
 		break;
 	default:
-		PMD_RX_LOG(DEBUG, "Unrecognized nfp outer layer 3 packet type: %u",
+		PMD_RX_LOG(DEBUG, "Unrecognized nfp outer layer 3 packet type: %u.",
 				nfp_ptype->outer_l3_ptype);
 		break;
 	}
@@ -277,7 +282,7 @@ nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype,
 		mbuf_ptype |= RTE_PTYPE_TUNNEL_GENEVE | RTE_PTYPE_L4_UDP;
 		break;
 	default:
-		PMD_RX_LOG(DEBUG, "Unrecognized nfp tunnel packet type: %u",
+		PMD_RX_LOG(DEBUG, "Unrecognized nfp tunnel packet type: %u.",
 				nfp_tunnel_ptype);
 		break;
 	}
@@ -304,7 +309,7 @@ nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype,
 		mbuf_ptype |= NFP_PTYPE2RTE(nfp_tunnel_ptype, L4_SCTP);
 		break;
 	default:
-		PMD_RX_LOG(DEBUG, "Unrecognized nfp layer 4 packet type: %u",
+		PMD_RX_LOG(DEBUG, "Unrecognized nfp layer 4 packet type: %u.",
 				nfp_ptype->l4_ptype);
 		break;
 	}
@@ -331,7 +336,7 @@ nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype,
 		mbuf_ptype |= NFP_PTYPE2RTE(nfp_tunnel_ptype, L3_IPV6_EXT_UNKNOWN);
 		break;
 	default:
-		PMD_RX_LOG(DEBUG, "Unrecognized nfp layer 3 packet type: %u",
+		PMD_RX_LOG(DEBUG, "Unrecognized nfp layer 3 packet type: %u.",
 				nfp_ptype->l3_ptype);
 		break;
 	}
@@ -349,18 +354,19 @@ nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype,
  * @param mb
  *   Mbuf to set the packet type.
  */
-static void
+void
 nfp_net_parse_ptype(struct nfp_net_rxq *rxq,
 		struct nfp_net_rx_desc *rxds,
 		struct rte_mbuf *mb)
 {
+	uint16_t rxd_ptype;
 	struct nfp_net_hw *hw = rxq->hw;
 	struct nfp_ptype_parsed nfp_ptype;
-	uint16_t rxd_ptype = rxds->rxd.offload_info;
 
 	if ((hw->super.ctrl_ext & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
 		return;
 
+	rxd_ptype = rte_le_to_cpu_16(rxds->rxd.offload_info);
 	if (rxd_ptype == 0 || (rxds->rxd.flags & PCIE_DESC_RX_VLAN) != 0)
 		return;
 
@@ -408,6 +414,7 @@ nfp_net_recv_pkts(void *rx_queue,
 		struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
+	uint16_t data_len;
 	uint64_t dma_addr;
 	uint16_t avail = 0;
 	struct rte_mbuf *mb;
@@ -415,6 +422,7 @@ nfp_net_recv_pkts(void *rx_queue,
 	struct nfp_net_hw *hw;
 	struct rte_mbuf *new_mb;
 	struct nfp_net_rxq *rxq;
+	struct nfp_pf_dev *pf_dev;
 	struct nfp_net_dp_buf *rxb;
 	struct nfp_net_rx_desc *rxds;
 	uint16_t avail_multiplexed = 0;
@@ -425,16 +433,17 @@ nfp_net_recv_pkts(void *rx_queue,
 		 * DPDK just checks the queue is lower than max queues
 		 * enabled. But the queue needs to be configured.
 		 */
-		PMD_RX_LOG(ERR, "RX Bad queue");
+		PMD_RX_LOG(ERR, "RX Bad queue.");
 		return 0;
 	}
 
 	hw = rxq->hw;
+	pf_dev = rxq->hw_priv->pf_dev;
 
 	while (avail + avail_multiplexed < nb_pkts) {
 		rxb = &rxq->rxbufs[rxq->rd_p];
 		if (unlikely(rxb == NULL)) {
-			PMD_RX_LOG(ERR, "rxb does not exist!");
+			PMD_RX_LOG(ERR, "The rxb does not exist!");
 			break;
 		}
 
@@ -454,7 +463,7 @@ nfp_net_recv_pkts(void *rx_queue,
 		 */
 		new_mb = rte_pktmbuf_alloc(rxq->mem_pool);
 		if (unlikely(new_mb == NULL)) {
-			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%hu",
+			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%hu.",
 					rxq->port_id, rxq->qidx);
 			nfp_net_mbuf_alloc_failed(rxq);
 			break;
@@ -466,14 +475,15 @@ nfp_net_recv_pkts(void *rx_queue,
 		 */
 		mb = rxb->mbuf;
 		rxb->mbuf = new_mb;
+		data_len = rte_le_to_cpu_16(rxds->rxd.data_len);
 
-		PMD_RX_LOG(DEBUG, "Packet len: %u, mbuf_size: %u",
-				rxds->rxd.data_len, rxq->mbuf_size);
+		PMD_RX_LOG(DEBUG, "Packet len: %u, mbuf_size: %u.",
+				data_len, rxq->mbuf_size);
 
 		/* Size of this segment */
-		mb->data_len = rxds->rxd.data_len - NFP_DESC_META_LEN(rxds);
+		mb->data_len = data_len - NFP_DESC_META_LEN(rxds);
 		/* Size of the whole packet. We just support 1 segment */
-		mb->pkt_len = rxds->rxd.data_len - NFP_DESC_META_LEN(rxds);
+		mb->pkt_len = data_len - NFP_DESC_META_LEN(rxds);
 
 		if (unlikely((mb->data_len + hw->rx_offset) > rxq->mbuf_size)) {
 			/*
@@ -481,7 +491,7 @@ nfp_net_recv_pkts(void *rx_queue,
 			 * responsibility of avoiding it. But we have
 			 * to give some info about the error.
 			 */
-			PMD_RX_LOG(ERR, "mbuf overflow likely due to the RX offset.");
+			PMD_RX_LOG(ERR, "The mbuf overflow likely due to the RX offset.");
 			rte_pktmbuf_free(mb);
 			break;
 		}
@@ -508,30 +518,32 @@ nfp_net_recv_pkts(void *rx_queue,
 		/* Now resetting and updating the descriptor */
 		rxds->vals[0] = 0;
 		rxds->vals[1] = 0;
-		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(new_mb));
+		dma_addr = rte_mbuf_data_iova_default(new_mb);
 		rxds->fld.dd = 0;
-		rxds->fld.dma_addr_hi = (dma_addr >> 32) & 0xffff;
-		rxds->fld.dma_addr_lo = dma_addr & 0xffffffff;
+		rxds->fld.dma_addr_hi = rte_cpu_to_le_16((dma_addr >> 32) & 0xffff);
+		rxds->fld.dma_addr_lo = rte_cpu_to_le_32(dma_addr & 0xffffffff);
 		nb_hold++;
 
 		rxq->rd_p++;
 		if (unlikely(rxq->rd_p == rxq->rx_count)) /* Wrapping */
 			rxq->rd_p = 0;
 
-		if (((meta.flags >> NFP_NET_META_PORTID) & 0x1) == 0) {
+		if (pf_dev->recv_pkt_meta_check_t(&meta)) {
 			rx_pkts[avail++] = mb;
-		} else if (nfp_flower_pf_dispatch_pkts(hw, mb, meta.port_id)) {
-			avail_multiplexed++;
 		} else {
-			rte_pktmbuf_free(mb);
-			break;
+			if (nfp_flower_pf_dispatch_pkts(rxq, mb, meta.port_id)) {
+				avail_multiplexed++;
+			} else {
+				rte_pktmbuf_free(mb);
+				break;
+			}
 		}
 	}
 
 	if (nb_hold == 0)
 		return nb_hold;
 
-	PMD_RX_LOG(DEBUG, "RX  port_id=%hu queue_id=%hu, %hu packets received",
+	PMD_RX_LOG(DEBUG, "RX  port_id=%hu queue_id=%hu, %hu packets received.",
 			rxq->port_id, rxq->qidx, avail);
 
 	nb_hold += rxq->nb_rx_hold;
@@ -542,7 +554,7 @@ nfp_net_recv_pkts(void *rx_queue,
 	 */
 	rte_wmb();
 	if (nb_hold > rxq->rx_free_thresh) {
-		PMD_RX_LOG(DEBUG, "port=%hu queue=%hu nb_hold=%hu avail=%hu",
+		PMD_RX_LOG(DEBUG, "The port=%hu queue=%hu nb_hold=%hu avail=%hu.",
 				rxq->port_id, rxq->qidx, nb_hold, avail);
 		nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, nb_hold);
 		nb_hold = 0;
@@ -590,6 +602,20 @@ nfp_net_reset_rx_queue(struct nfp_net_rxq *rxq)
 	rxq->nb_rx_hold = 0;
 }
 
+static void
+nfp_rx_queue_setup_flbufsz(struct nfp_net_hw *hw,
+		struct nfp_net_rxq *rxq)
+{
+	if (!hw->flbufsz_set_flag) {
+		hw->flbufsz_set_flag = true;
+		hw->flbufsz = rxq->mbuf_size;
+		return;
+	}
+
+	if (hw->flbufsz < rxq->mbuf_size)
+		hw->flbufsz = rxq->mbuf_size;
+}
+
 int
 nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 		uint16_t queue_idx,
@@ -604,16 +630,18 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	struct nfp_net_rxq *rxq;
 	const struct rte_memzone *tz;
+	struct nfp_net_hw_priv *hw_priv;
 
 	hw = nfp_net_get_hw(dev);
+	hw_priv = dev->process_private;
 
-	nfp_net_rx_desc_limits(hw, &min_rx_desc, &max_rx_desc);
+	nfp_net_rx_desc_limits(hw_priv, &min_rx_desc, &max_rx_desc);
 
 	/* Validating number of descriptors */
 	rx_desc_sz = nb_desc * sizeof(struct nfp_net_rx_desc);
 	if (rx_desc_sz % NFP_ALIGN_RING_DESC != 0 ||
 			nb_desc > max_rx_desc || nb_desc < min_rx_desc) {
-		PMD_DRV_LOG(ERR, "Wrong nb_desc value");
+		PMD_DRV_LOG(ERR, "Wrong nb_desc value.");
 		return -EINVAL;
 	}
 
@@ -646,7 +674,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->mem_pool = mp;
 	rxq->mbuf_size = rxq->mem_pool->elt_size;
 	rxq->mbuf_size -= (sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM);
-	hw->flbufsz = rxq->mbuf_size;
+	nfp_rx_queue_setup_flbufsz(hw, rxq);
 
 	rxq->rx_count = nb_desc;
 	rxq->port_id = dev->data->port_id;
@@ -661,7 +689,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 			sizeof(struct nfp_net_rx_desc) * max_rx_desc,
 			NFP_MEMZONE_ALIGN, socket_id);
 	if (tz == NULL) {
-		PMD_DRV_LOG(ERR, "Error allocating rx dma");
+		PMD_DRV_LOG(ERR, "Error allocating rx dma.");
 		nfp_net_rx_queue_release(dev, queue_idx);
 		dev->data->rx_queues[queue_idx] = NULL;
 		return -ENOMEM;
@@ -684,6 +712,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	nfp_net_reset_rx_queue(rxq);
 
 	rxq->hw = hw;
+	rxq->hw_priv = dev->process_private;
 
 	/*
 	 * Telling the HW about the physical address of the RX ring and number
@@ -693,6 +722,26 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	nn_cfg_writeb(&hw->super, NFP_NET_CFG_RXR_SZ(queue_idx), rte_log2_u32(nb_desc));
 
 	return 0;
+}
+
+static inline uint32_t
+nfp_net_read_tx_free_qcp(struct nfp_net_txq *txq)
+{
+	/*
+	 * If TX ring pointer write back is not supported, do a PCIe read.
+	 * Otherwise read qcp value from write back dma address.
+	 */
+	if (txq->txrwb == NULL)
+		return nfp_qcp_read(txq->qcp_q, NFP_QCP_READ_PTR);
+
+	/*
+	 * In most cases the TX count is a power of two and the costly modulus
+	 * operation can be substituted with a subtraction and an AND operation.
+	 */
+	if (rte_is_power_of_2(txq->tx_count) == 1)
+		return (*txq->txrwb) & (txq->tx_count - 1);
+	else
+		return (*txq->txrwb) % txq->tx_count;
 }
 
 /**
@@ -710,15 +759,15 @@ nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 	uint32_t todo;
 	uint32_t qcp_rd_p;
 
-	PMD_TX_LOG(DEBUG, "queue %hu. Check for descriptor with a complete"
-			" status", txq->qidx);
+	PMD_TX_LOG(DEBUG, "Queue %hu. Check for descriptor with a complete"
+			" status.", txq->qidx);
 
 	/* Work out how many packets have been sent */
-	qcp_rd_p = nfp_qcp_read(txq->qcp_q, NFP_QCP_READ_PTR);
+	qcp_rd_p = nfp_net_read_tx_free_qcp(txq);
 
 	if (qcp_rd_p == txq->rd_p) {
-		PMD_TX_LOG(DEBUG, "queue %hu: It seems harrier is not sending "
-				"packets (%u, %u)", txq->qidx,
+		PMD_TX_LOG(DEBUG, "Queue %hu: It seems harrier is not sending "
+				"packets (%u, %u).", txq->qidx,
 				qcp_rd_p, txq->rd_p);
 		return 0;
 	}
@@ -728,7 +777,7 @@ nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 	else
 		todo = qcp_rd_p + txq->tx_count - txq->rd_p;
 
-	PMD_TX_LOG(DEBUG, "qcp_rd_p %u, txq->rd_p: %u, qcp->rd_p: %u",
+	PMD_TX_LOG(DEBUG, "The qcp_rd_p %u, txq->rd_p: %u, qcp->rd_p: %u.",
 			qcp_rd_p, txq->rd_p, txq->rd_p);
 
 	if (todo == 0)
@@ -761,9 +810,13 @@ void
 nfp_net_tx_queue_release(struct rte_eth_dev *dev,
 		uint16_t queue_idx)
 {
+	struct nfp_net_hw *net_hw;
 	struct nfp_net_txq *txq = dev->data->tx_queues[queue_idx];
 
 	if (txq != NULL) {
+		net_hw = nfp_net_get_hw(dev);
+		if (net_hw->txrwb_mz != NULL)
+			nn_cfg_writeq(&net_hw->super, NFP_NET_CFG_TXR_WB_ADDR(queue_idx), 0);
 		nfp_net_tx_queue_release_mbufs(txq);
 		rte_eth_dma_zone_free(dev, "tx_ring", queue_idx);
 		rte_free(txq->txbufs);
@@ -777,6 +830,8 @@ nfp_net_reset_tx_queue(struct nfp_net_txq *txq)
 	nfp_net_tx_queue_release_mbufs(txq);
 	txq->wr_p = 0;
 	txq->rd_p = 0;
+	if (txq->txrwb != NULL)
+		*txq->txrwb = 0;
 }
 
 int
@@ -786,14 +841,109 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev,
 		unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf)
 {
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw_priv *hw_priv;
 
-	hw = nfp_net_get_hw(dev);
+	hw_priv = dev->process_private;
 
-	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
+	if (hw_priv->pf_dev->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
 		return nfp_net_nfd3_tx_queue_setup(dev, queue_idx,
 				nb_desc, socket_id, tx_conf);
 	else
 		return nfp_net_nfdk_tx_queue_setup(dev, queue_idx,
 				nb_desc, socket_id, tx_conf);
+}
+
+void
+nfp_net_rx_queue_info_get(struct rte_eth_dev *dev,
+		uint16_t queue_id,
+		struct rte_eth_rxq_info *info)
+{
+	struct rte_eth_dev_info dev_info;
+	struct nfp_net_rxq *rxq = dev->data->rx_queues[queue_id];
+
+	info->mp = rxq->mem_pool;
+	info->nb_desc = rxq->rx_count;
+
+	info->conf.rx_free_thresh = rxq->rx_free_thresh;
+
+	nfp_net_infos_get(dev, &dev_info);
+	info->conf.offloads = dev_info.rx_offload_capa &
+			dev->data->dev_conf.rxmode.offloads;
+	info->conf.rx_thresh = dev_info.default_rxconf.rx_thresh;
+}
+
+void
+nfp_net_tx_queue_info_get(struct rte_eth_dev *dev,
+		uint16_t queue_id,
+		struct rte_eth_txq_info *info)
+{
+	struct rte_eth_dev_info dev_info;
+	struct nfp_net_hw_priv *hw_priv = dev->process_private;
+	struct nfp_net_txq *txq = dev->data->tx_queues[queue_id];
+
+	if (hw_priv->pf_dev->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
+		info->nb_desc = txq->tx_count / NFD3_TX_DESC_PER_PKT;
+	else
+		info->nb_desc = txq->tx_count / NFDK_TX_DESC_PER_SIMPLE_PKT;
+
+	info->conf.tx_free_thresh = txq->tx_free_thresh;
+
+	nfp_net_infos_get(dev, &dev_info);
+	info->conf.offloads = dev_info.tx_offload_capa &
+			dev->data->dev_conf.txmode.offloads;
+	info->conf.tx_thresh = dev_info.default_txconf.tx_thresh;
+}
+
+void
+nfp_net_recv_pkts_set(struct rte_eth_dev *eth_dev)
+{
+	if (nfp_net_get_avx2_supported())
+		eth_dev->rx_pkt_burst = nfp_net_vec_avx2_recv_pkts;
+	else
+		eth_dev->rx_pkt_burst = nfp_net_recv_pkts;
+}
+
+int
+nfp_net_rx_burst_mode_get(struct rte_eth_dev *eth_dev,
+		uint16_t queue_id __rte_unused,
+		struct rte_eth_burst_mode *mode)
+{
+	eth_rx_burst_t pkt_burst;
+
+	pkt_burst = eth_dev->rx_pkt_burst;
+	if (pkt_burst == nfp_net_recv_pkts) {
+		strlcpy(mode->info, "Scalar",
+				RTE_ETH_BURST_MODE_INFO_SIZE);
+	} else if (pkt_burst == nfp_net_vec_avx2_recv_pkts) {
+		strlcpy(mode->info, "Vector AVX2",
+				RTE_ETH_BURST_MODE_INFO_SIZE);
+	} else {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+int
+nfp_net_tx_burst_mode_get(struct rte_eth_dev *eth_dev,
+		uint16_t queue_id __rte_unused,
+		struct rte_eth_burst_mode *mode)
+{
+	eth_tx_burst_t pkt_burst;
+
+	pkt_burst = eth_dev->tx_pkt_burst;
+	if (pkt_burst == nfp_net_nfd3_xmit_pkts) {
+		strlcpy(mode->info, "NFD3 Scalar",
+				RTE_ETH_BURST_MODE_INFO_SIZE);
+	} else if (pkt_burst == nfp_net_nfdk_xmit_pkts) {
+		strlcpy(mode->info, "NFDk Scalar",
+				RTE_ETH_BURST_MODE_INFO_SIZE);
+	} else if (pkt_burst == nfp_net_nfdk_vec_avx2_xmit_pkts) {
+		strlcpy(mode->info, "NFDk Vector AVX2",
+				RTE_ETH_BURST_MODE_INFO_SIZE);
+	} else {
+		return -EINVAL;
+	}
+
+	return 0;
 }

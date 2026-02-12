@@ -12,19 +12,18 @@
  * RTE Security Common Definitions
  */
 
+#include <rte_compat.h>
+#include "rte_security.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_compat.h>
-#include "rte_security.h"
 
 /**
  * @internal
  * Security session to be used by library for internal usage
  */
 struct rte_security_session {
-	RTE_MARKER cacheline0;
 	uint64_t opaque_data;
 	/**< Opaque user defined data */
 	uint64_t fast_mdata;
@@ -32,7 +31,7 @@ struct rte_security_session {
 	rte_iova_t driver_priv_data_iova;
 	/**< session private data IOVA address */
 
-	alignas(RTE_CACHE_LINE_MIN_SIZE) RTE_MARKER cacheline1;
+	alignas(RTE_CACHE_LINE_MIN_SIZE)
 	uint8_t driver_priv_data[];
 	/**< Private session material, variable size (depends on driver) */
 };

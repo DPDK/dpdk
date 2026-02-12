@@ -5,13 +5,14 @@
 #ifndef _RTE_PAUSE_X86_H_
 #define _RTE_PAUSE_X86_H_
 
+#include "generic/rte_pause.h"
+
+#include <emmintrin.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "generic/rte_pause.h"
-
-#include <emmintrin.h>
 static inline void rte_pause(void)
 {
 	_mm_pause();

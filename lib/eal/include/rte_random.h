@@ -11,11 +11,11 @@
  * Pseudo-random Generators in RTE
  */
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
 
 /**
  * Seed the pseudo-random generator.

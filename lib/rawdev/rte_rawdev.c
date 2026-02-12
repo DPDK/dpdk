@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_log.h>
 #include <dev_driver.h>
@@ -22,6 +23,7 @@
 
 static struct rte_rawdev rte_rawdevices[RTE_RAWDEV_MAX_DEVS];
 
+RTE_EXPORT_SYMBOL(rte_rawdevs)
 struct rte_rawdev *rte_rawdevs = rte_rawdevices;
 
 static struct rte_rawdev_global rawdev_globals = {
@@ -29,13 +31,15 @@ static struct rte_rawdev_global rawdev_globals = {
 };
 
 /* Raw device, northbound API implementation */
+RTE_EXPORT_SYMBOL(rte_rawdev_count)
 uint8_t
 rte_rawdev_count(void)
 {
 	return rawdev_globals.nb_devs;
 }
 
-uint16_t
+RTE_EXPORT_SYMBOL(rte_rawdev_get_dev_id)
+int
 rte_rawdev_get_dev_id(const char *name)
 {
 	uint16_t i;
@@ -52,6 +56,7 @@ rte_rawdev_get_dev_id(const char *name)
 	return -ENODEV;
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_socket_id)
 int
 rte_rawdev_socket_id(uint16_t dev_id)
 {
@@ -63,6 +68,7 @@ rte_rawdev_socket_id(uint16_t dev_id)
 	return dev->socket_id;
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_info_get)
 int
 rte_rawdev_info_get(uint16_t dev_id, struct rte_rawdev_info *dev_info,
 		size_t dev_private_size)
@@ -77,9 +83,9 @@ rte_rawdev_info_get(uint16_t dev_id, struct rte_rawdev_info *dev_info,
 	rawdev = &rte_rawdevs[dev_id];
 
 	if (dev_info->dev_private != NULL) {
-		if (*rawdev->dev_ops->dev_info_get == NULL)
+		if (rawdev->dev_ops->dev_info_get == NULL)
 			return -ENOTSUP;
-		ret = (*rawdev->dev_ops->dev_info_get)(rawdev,
+		ret = rawdev->dev_ops->dev_info_get(rawdev,
 				dev_info->dev_private,
 				dev_private_size);
 	}
@@ -91,6 +97,7 @@ rte_rawdev_info_get(uint16_t dev_id, struct rte_rawdev_info *dev_info,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_configure)
 int
 rte_rawdev_configure(uint16_t dev_id, struct rte_rawdev_info *dev_conf,
 		size_t dev_private_size)
@@ -104,7 +111,7 @@ rte_rawdev_configure(uint16_t dev_id, struct rte_rawdev_info *dev_conf,
 
 	dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->dev_configure == NULL)
+	if (dev->dev_ops->dev_configure == NULL)
 		return -ENOTSUP;
 
 	if (dev->started) {
@@ -114,8 +121,7 @@ rte_rawdev_configure(uint16_t dev_id, struct rte_rawdev_info *dev_conf,
 	}
 
 	/* Configure the device */
-	diag = (*dev->dev_ops->dev_configure)(dev, dev_conf->dev_private,
-			dev_private_size);
+	diag = dev->dev_ops->dev_configure(dev, dev_conf->dev_private, dev_private_size);
 	if (diag != 0)
 		RTE_RDEV_ERR("dev%d dev_configure = %d", dev_id, diag);
 	else
@@ -124,6 +130,7 @@ rte_rawdev_configure(uint16_t dev_id, struct rte_rawdev_info *dev_conf,
 	return diag;
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_queue_conf_get)
 int
 rte_rawdev_queue_conf_get(uint16_t dev_id,
 			  uint16_t queue_id,
@@ -135,12 +142,12 @@ rte_rawdev_queue_conf_get(uint16_t dev_id,
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->queue_def_conf == NULL)
+	if (dev->dev_ops->queue_def_conf == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->queue_def_conf)(dev, queue_id, queue_conf,
-			queue_conf_size);
+	return dev->dev_ops->queue_def_conf(dev, queue_id, queue_conf, queue_conf_size);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_queue_setup)
 int
 rte_rawdev_queue_setup(uint16_t dev_id,
 		       uint16_t queue_id,
@@ -152,12 +159,12 @@ rte_rawdev_queue_setup(uint16_t dev_id,
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->queue_setup == NULL)
+	if (dev->dev_ops->queue_setup == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->queue_setup)(dev, queue_id, queue_conf,
-			queue_conf_size);
+	return dev->dev_ops->queue_setup(dev, queue_id, queue_conf, queue_conf_size);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_queue_release)
 int
 rte_rawdev_queue_release(uint16_t dev_id, uint16_t queue_id)
 {
@@ -166,11 +173,12 @@ rte_rawdev_queue_release(uint16_t dev_id, uint16_t queue_id)
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->queue_release == NULL)
+	if (dev->dev_ops->queue_release == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->queue_release)(dev, queue_id);
+	return dev->dev_ops->queue_release(dev, queue_id);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_queue_count)
 uint16_t
 rte_rawdev_queue_count(uint16_t dev_id)
 {
@@ -179,11 +187,12 @@ rte_rawdev_queue_count(uint16_t dev_id)
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->queue_count == NULL)
+	if (dev->dev_ops->queue_count == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->queue_count)(dev);
+	return dev->dev_ops->queue_count(dev);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_get_attr)
 int
 rte_rawdev_get_attr(uint16_t dev_id,
 		    const char *attr_name,
@@ -194,11 +203,12 @@ rte_rawdev_get_attr(uint16_t dev_id,
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->attr_get == NULL)
+	if (dev->dev_ops->attr_get == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->attr_get)(dev, attr_name, attr_value);
+	return dev->dev_ops->attr_get(dev, attr_name, attr_value);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_set_attr)
 int
 rte_rawdev_set_attr(uint16_t dev_id,
 		    const char *attr_name,
@@ -209,11 +219,12 @@ rte_rawdev_set_attr(uint16_t dev_id,
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->attr_set == NULL)
+	if (dev->dev_ops->attr_set == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->attr_set)(dev, attr_name, attr_value);
+	return dev->dev_ops->attr_set(dev, attr_name, attr_value);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_enqueue_buffers)
 int
 rte_rawdev_enqueue_buffers(uint16_t dev_id,
 			   struct rte_rawdev_buf **buffers,
@@ -225,11 +236,12 @@ rte_rawdev_enqueue_buffers(uint16_t dev_id,
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->enqueue_bufs == NULL)
+	if (dev->dev_ops->enqueue_bufs == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->enqueue_bufs)(dev, buffers, count, context);
+	return dev->dev_ops->enqueue_bufs(dev, buffers, count, context);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_dequeue_buffers)
 int
 rte_rawdev_dequeue_buffers(uint16_t dev_id,
 			   struct rte_rawdev_buf **buffers,
@@ -241,11 +253,12 @@ rte_rawdev_dequeue_buffers(uint16_t dev_id,
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->dequeue_bufs == NULL)
+	if (dev->dev_ops->dequeue_bufs == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->dequeue_bufs)(dev, buffers, count, context);
+	return dev->dev_ops->dequeue_bufs(dev, buffers, count, context);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_dump)
 int
 rte_rawdev_dump(uint16_t dev_id, FILE *f)
 {
@@ -254,9 +267,9 @@ rte_rawdev_dump(uint16_t dev_id, FILE *f)
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->dump == NULL)
+	if (dev->dev_ops->dump == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->dump)(dev, f);
+	return dev->dev_ops->dump(dev, f);
 }
 
 static int
@@ -264,11 +277,12 @@ xstats_get_count(uint16_t dev_id)
 {
 	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->xstats_get_names == NULL)
+	if (dev->dev_ops->xstats_get_names == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->xstats_get_names)(dev, NULL, 0);
+	return dev->dev_ops->xstats_get_names(dev, NULL, 0);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_xstats_names_get)
 int
 rte_rawdev_xstats_names_get(uint16_t dev_id,
 		struct rte_rawdev_xstats_name *xstats_names,
@@ -287,12 +301,13 @@ rte_rawdev_xstats_names_get(uint16_t dev_id,
 
 	dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->xstats_get_names == NULL)
+	if (dev->dev_ops->xstats_get_names == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->xstats_get_names)(dev, xstats_names, size);
+	return dev->dev_ops->xstats_get_names(dev, xstats_names, size);
 }
 
 /* retrieve rawdev extended statistics */
+RTE_EXPORT_SYMBOL(rte_rawdev_xstats_get)
 int
 rte_rawdev_xstats_get(uint16_t dev_id,
 		      const unsigned int ids[],
@@ -302,11 +317,12 @@ rte_rawdev_xstats_get(uint16_t dev_id,
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -ENODEV);
 	const struct rte_rawdev *dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->xstats_get == NULL)
+	if (dev->dev_ops->xstats_get == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->xstats_get)(dev, ids, values, n);
+	return dev->dev_ops->xstats_get(dev, ids, values, n);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_xstats_by_name_get)
 uint64_t
 rte_rawdev_xstats_by_name_get(uint16_t dev_id,
 			      const char *name,
@@ -322,11 +338,12 @@ rte_rawdev_xstats_by_name_get(uint16_t dev_id,
 		id = &temp; /* driver never gets a NULL value */
 
 	/* implemented by driver */
-	if (*dev->dev_ops->xstats_get_by_name == NULL)
+	if (dev->dev_ops->xstats_get_by_name == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->xstats_get_by_name)(dev, name, id);
+	return dev->dev_ops->xstats_get_by_name(dev, name, id);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_xstats_reset)
 int
 rte_rawdev_xstats_reset(uint16_t dev_id,
 			const uint32_t ids[], uint32_t nb_ids)
@@ -334,33 +351,36 @@ rte_rawdev_xstats_reset(uint16_t dev_id,
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->xstats_reset == NULL)
+	if (dev->dev_ops->xstats_reset == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->xstats_reset)(dev, ids, nb_ids);
+	return dev->dev_ops->xstats_reset(dev, ids, nb_ids);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_firmware_status_get)
 int
 rte_rawdev_firmware_status_get(uint16_t dev_id, rte_rawdev_obj_t status_info)
 {
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->firmware_status_get == NULL)
+	if (dev->dev_ops->firmware_status_get == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->firmware_status_get)(dev, status_info);
+	return dev->dev_ops->firmware_status_get(dev, status_info);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_firmware_version_get)
 int
 rte_rawdev_firmware_version_get(uint16_t dev_id, rte_rawdev_obj_t version_info)
 {
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->firmware_version_get == NULL)
+	if (dev->dev_ops->firmware_version_get == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->firmware_version_get)(dev, version_info);
+	return dev->dev_ops->firmware_version_get(dev, version_info);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_firmware_load)
 int
 rte_rawdev_firmware_load(uint16_t dev_id, rte_rawdev_obj_t firmware_image)
 {
@@ -370,45 +390,48 @@ rte_rawdev_firmware_load(uint16_t dev_id, rte_rawdev_obj_t firmware_image)
 	if (!firmware_image)
 		return -EINVAL;
 
-	if (*dev->dev_ops->firmware_load == NULL)
+	if (dev->dev_ops->firmware_load == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->firmware_load)(dev, firmware_image);
+	return dev->dev_ops->firmware_load(dev, firmware_image);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_firmware_unload)
 int
 rte_rawdev_firmware_unload(uint16_t dev_id)
 {
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->firmware_load == NULL)
+	if (dev->dev_ops->firmware_load == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->firmware_unload)(dev);
+	return dev->dev_ops->firmware_unload(dev);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_selftest)
 int
 rte_rawdev_selftest(uint16_t dev_id)
 {
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	struct rte_rawdev *dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->dev_selftest == NULL)
+	if (dev->dev_ops->dev_selftest == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->dev_selftest)(dev_id);
+	return dev->dev_ops->dev_selftest(dev_id);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_start)
 int
 rte_rawdev_start(uint16_t dev_id)
 {
 	struct rte_rawdev *dev;
 	int diag;
 
-	RTE_RDEV_DEBUG("Start dev_id=%" PRIu8, dev_id);
+	RTE_RDEV_DEBUG("Start dev_id=%" PRIu16, dev_id);
 
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 	if (dev->started != 0) {
-		RTE_RDEV_ERR("Device with dev_id=%" PRIu8 "already started",
+		RTE_RDEV_ERR("Device with dev_id=%" PRIu16 "already started",
 			     dev_id);
 		return 0;
 	}
@@ -416,7 +439,7 @@ rte_rawdev_start(uint16_t dev_id)
 	if (dev->dev_ops->dev_start == NULL)
 		goto mark_started;
 
-	diag = (*dev->dev_ops->dev_start)(dev);
+	diag = dev->dev_ops->dev_start(dev);
 	if (diag != 0)
 		return diag;
 
@@ -425,18 +448,19 @@ mark_started:
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_stop)
 void
 rte_rawdev_stop(uint16_t dev_id)
 {
 	struct rte_rawdev *dev;
 
-	RTE_RDEV_DEBUG("Stop dev_id=%" PRIu8, dev_id);
+	RTE_RDEV_DEBUG("Stop dev_id=%" PRIu16, dev_id);
 
 	RTE_RAWDEV_VALID_DEVID_OR_RET(dev_id);
 	dev = &rte_rawdevs[dev_id];
 
 	if (dev->started == 0) {
-		RTE_RDEV_ERR("Device with dev_id=%" PRIu8 "already stopped",
+		RTE_RDEV_ERR("Device with dev_id=%" PRIu16 "already stopped",
 			dev_id);
 		return;
 	}
@@ -444,12 +468,13 @@ rte_rawdev_stop(uint16_t dev_id)
 	if (dev->dev_ops->dev_stop == NULL)
 		goto mark_stopped;
 
-	(*dev->dev_ops->dev_stop)(dev);
+	dev->dev_ops->dev_stop(dev);
 
 mark_stopped:
 	dev->started = 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_close)
 int
 rte_rawdev_close(uint16_t dev_id)
 {
@@ -458,7 +483,7 @@ rte_rawdev_close(uint16_t dev_id)
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->dev_close == NULL)
+	if (dev->dev_ops->dev_close == NULL)
 		return -ENOTSUP;
 	/* Device must be stopped before it can be closed */
 	if (dev->started == 1) {
@@ -467,9 +492,10 @@ rte_rawdev_close(uint16_t dev_id)
 		return -EBUSY;
 	}
 
-	return (*dev->dev_ops->dev_close)(dev);
+	return dev->dev_ops->dev_close(dev);
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_reset)
 int
 rte_rawdev_reset(uint16_t dev_id)
 {
@@ -478,10 +504,10 @@ rte_rawdev_reset(uint16_t dev_id)
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
 
-	if (*dev->dev_ops->dev_reset == NULL)
+	if (dev->dev_ops->dev_reset == NULL)
 		return -ENOTSUP;
 	/* Reset is not dependent on state of the device */
-	return (*dev->dev_ops->dev_reset)(dev);
+	return dev->dev_ops->dev_reset(dev);
 }
 
 static inline uint8_t
@@ -498,6 +524,7 @@ rte_rawdev_find_free_device_index(void)
 	return RTE_RAWDEV_MAX_DEVS;
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_pmd_allocate)
 struct rte_rawdev *
 rte_rawdev_pmd_allocate(const char *name, size_t dev_priv_size, int socket_id)
 {
@@ -539,6 +566,7 @@ rte_rawdev_pmd_allocate(const char *name, size_t dev_priv_size, int socket_id)
 	return rawdev;
 }
 
+RTE_EXPORT_SYMBOL(rte_rawdev_pmd_release)
 int
 rte_rawdev_pmd_release(struct rte_rawdev *rawdev)
 {

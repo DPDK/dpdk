@@ -53,4 +53,6 @@
 /* ML */
 #include "roc_ml_priv.h"
 
+/* RVU LF */
+#include "roc_rvu_lf_priv.h"
 #endif /* _ROC_PRIV_H_ */

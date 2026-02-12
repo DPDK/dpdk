@@ -73,6 +73,11 @@ struct vnic_rq {
 	unsigned int max_mbufs_per_pkt;
 	uint16_t tot_nb_desc;
 	bool need_initial_post;
+	bool admin_chan;
+	const struct rte_memzone *admin_msg_rz;
+	int admin_next_idx;
+	uint64_t soft_stats_pkts;
+	uint64_t soft_stats_bytes;
 };
 
 static inline unsigned int vnic_rq_desc_avail(struct vnic_rq *rq)
@@ -126,6 +131,8 @@ static inline int vnic_rq_fill_count(struct vnic_rq *rq,
 
 void vnic_rq_free(struct vnic_rq *rq);
 int vnic_rq_alloc(struct vnic_dev *vdev, struct vnic_rq *rq, unsigned int index,
+	unsigned int desc_count, unsigned int desc_size);
+int vnic_admin_rq_alloc(struct vnic_dev *vdev, struct vnic_rq *rq,
 	unsigned int desc_count, unsigned int desc_size);
 void vnic_rq_init_start(struct vnic_rq *rq, unsigned int cq_index,
 	unsigned int fetch_index, unsigned int posted_index,

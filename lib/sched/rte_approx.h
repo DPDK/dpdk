@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_APPROX_H__
 #define __INCLUDE_RTE_APPROX_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Rational Approximation
@@ -19,6 +15,10 @@ extern "C" {
  */
 
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Find best rational approximation

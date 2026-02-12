@@ -14,13 +14,20 @@ in the infrastructure (a faulty link between NICs or a misconfiguration).
 
 import re
 
-from framework.config import PortConfig
-from framework.remote_session import TestPmdShell
+from api.capabilities import (
+    LinkTopology,
+    requires_link_topology,
+)
+from api.test import verify
+from api.testpmd import TestPmd
+from framework.config.node import PortConfig
 from framework.settings import SETTINGS
-from framework.test_suite import TestSuite
+from framework.test_suite import TestSuite, func_test
+from framework.testbed_model.linux_session import LinuxSession
 from framework.utils import REGEX_FOR_PCI_ADDRESS
 
 
+@requires_link_topology(LinkTopology.NO_LINK)
 class TestSmokeTests(TestSuite):
     """DPDK and infrastructure smoke test suite.
 
@@ -28,8 +35,6 @@ class TestSmokeTests(TestSuite):
     The infrastructure also needs to be tested, as that is also used by all other test suites.
 
     Attributes:
-        is_blocking: This test suite will block the execution of all other test suites
-            in the build target after it.
         nics_in_node: The NICs present on the SUT node.
     """
 
@@ -44,37 +49,46 @@ class TestSmokeTests(TestSuite):
         Setup:
             Set the build directory path and a list of NICs in the SUT node.
         """
-        self.dpdk_build_dir_path = self.sut_node.remote_dpdk_build_dir
-        self.nics_in_node = self.sut_node.config.ports
+        self.sut_node = self._ctx.sut_node  # FIXME: accessing the context should be forbidden
+        self.dpdk_build_dir_path = self._ctx.dpdk_build.remote_dpdk_build_dir
+        self.nics_in_node = [p.config for p in self.topology.sut_ports]
 
-    def test_unit_tests(self) -> None:
+    @func_test
+    def unit_tests(self) -> None:
         """DPDK meson ``fast-tests`` unit tests.
 
         Test that all unit test from the ``fast-tests`` suite pass.
         The suite is a subset with only the most basic tests.
 
-        Test:
-            Run the ``fast-tests`` unit test suite through meson.
+        Steps:
+            * Run the ``fast-tests`` unit test suite through meson.
+
+        Verify:
+            * That driver unit tests are executed through meson.
         """
         self.sut_node.main_session.send_command(
-            f"meson test -C {self.dpdk_build_dir_path} --suite fast-tests -t 60",
+            f"meson test -C {self.dpdk_build_dir_path} --suite fast-tests -t 120",
             480,
             verify=True,
             privileged=True,
         )
 
-    def test_driver_tests(self) -> None:
+    @func_test
+    def driver_tests(self) -> None:
         """DPDK meson ``driver-tests`` unit tests.
 
         Test that all unit test from the ``driver-tests`` suite pass.
         The suite is a subset with driver tests. This suite may be run with virtual devices
         configured in the test run configuration.
 
-        Test:
-            Run the ``driver-tests`` unit test suite through meson.
+        Steps:
+            * Run the ``driver-tests`` unit test suite through meson.
+
+        Verify:
+            * Driver unit tests are executed successfully.
         """
         vdev_args = ""
-        for dev in self.sut_node.virtual_devices:
+        for dev in self._ctx.dpdk.get_virtual_devices():
             vdev_args += f"--vdev {dev} "
         vdev_args = vdev_args[:-1]
         driver_tests_command = f"meson test -C {self.dpdk_build_dir_path} --suite driver-tests"
@@ -91,37 +105,47 @@ class TestSmokeTests(TestSuite):
             privileged=True,
         )
 
-    def test_devices_listed_in_testpmd(self) -> None:
+    @func_test
+    def devices_listed_in_testpmd(self) -> None:
         """Testpmd device discovery.
 
         Test that the devices configured in the test run configuration are found in testpmd.
 
-        Test:
-            List all devices found in testpmd and verify the configured devices are among them.
+        Steps:
+            * List all devices found in testpmd.
+
+        Verify:
+            * The configured devices are among them.
         """
-        testpmd_driver = self.sut_node.create_interactive_shell(TestPmdShell, privileged=True)
-        dev_list = [str(x) for x in testpmd_driver.get_devices()]
+        with TestPmd() as testpmd:
+            dev_list = [str(x) for x in testpmd.get_devices()]
         for nic in self.nics_in_node:
-            self.verify(
+            verify(
                 nic.pci in dev_list,
                 f"Device {nic.pci} was not listed in testpmd's available devices, "
                 "please check your configuration",
             )
 
-    def test_device_bound_to_driver(self) -> None:
+    @func_test
+    def device_bound_to_driver(self) -> None:
         """Device driver in OS.
 
         Test that the devices configured in the test run configuration are bound to
-        the proper driver.
+        the proper driver. This test case runs on Linux only.
 
-        Test:
-            List all devices with the ``dpdk-devbind.py`` script and verify that
-            the configured devices are bound to the proper driver.
+        Steps:
+            * List all devices with the ``dpdk-devbind.py`` script.
+
+        Verify:
+            * The configured devices are bound to the proper driver.
         """
-        path_to_devbind = self.sut_node.path_to_devbind_script
+        if not isinstance(self._ctx.sut_node.main_session, LinuxSession):
+            return
+
+        path_to_devbind = self._ctx.sut_node.main_session.devbind_script_path
 
         all_nics_in_dpdk_devbind = self.sut_node.main_session.send_command(
-            f"{path_to_devbind} --status | awk '{REGEX_FOR_PCI_ADDRESS}'",
+            f"{path_to_devbind} --status | awk '/{REGEX_FOR_PCI_ADDRESS}/'",
             SETTINGS.timeout,
         ).stdout
 
@@ -130,16 +154,16 @@ class TestSmokeTests(TestSuite):
             # with the address for the nic we are on in the loop and then captures the
             # name of the driver in a group
             devbind_info_for_nic = re.search(
-                f"{nic.pci}[^\\n]*drv=([\\d\\w-]*) [^\\n]*",
+                rf"{nic.pci}.*drv=(\S+) [^\\n]*",
                 all_nics_in_dpdk_devbind,
             )
-            self.verify(
+            verify(
                 devbind_info_for_nic is not None,
                 f"Failed to find configured device ({nic.pci}) using dpdk-devbind.py",
             )
             # We know this isn't None, but mypy doesn't
             assert devbind_info_for_nic is not None
-            self.verify(
+            verify(
                 devbind_info_for_nic.group(1) == nic.os_driver_for_dpdk,
                 f"Driver for device {nic.pci} does not match driver listed in "
                 f"configuration (bound to {devbind_info_for_nic.group(1)})",

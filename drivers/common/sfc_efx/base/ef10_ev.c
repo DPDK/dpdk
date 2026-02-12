@@ -418,6 +418,7 @@ ef10_ev_rx_packed_stream(
 	__in		const efx_ev_callbacks_t *eecp,
 	__in_opt	void *arg)
 {
+	efx_nic_t *enp = eep->ee_enp;
 	uint32_t label;
 	uint32_t pkt_count_lbits;
 	uint16_t flags;
@@ -466,10 +467,22 @@ ef10_ev_rx_packed_stream(
 
 	/* Check for errors that invalidate checksum and L3/L4 fields */
 	if (EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_TRUNC_ERR) != 0) {
-		/* RX frame truncated */
-		EFX_EV_QSTAT_INCR(eep, EV_RX_FRM_TRUNC);
-		flags |= EFX_DISCARD;
-		goto deliver;
+		/*
+		 * X4 uses RX_TRUNC_ERR for packet size and CRC errors. Count
+		 * these as CRC errors (as over-size packets are only likely in
+		 * a misconfigured network).
+		 */
+		if (enp->en_family == EFX_FAMILY_MEDFORD4) {
+			/* Bad Ethernet frame CRC */
+			EFX_EV_QSTAT_INCR(eep, EV_RX_ETH_CRC_ERR);
+			flags |= EFX_DISCARD;
+			goto deliver;
+		} else {
+			/* RX frame truncated */
+			EFX_EV_QSTAT_INCR(eep, EV_RX_FRM_TRUNC);
+			flags |= EFX_DISCARD;
+			goto deliver;
+		}
 	}
 	if (EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_ECRC_ERR) != 0) {
 		/* Bad Ethernet frame CRC */
@@ -630,10 +643,22 @@ ef10_ev_rx(
 
 	/* Check for errors that invalidate checksum and L3/L4 fields */
 	if (EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_TRUNC_ERR) != 0) {
-		/* RX frame truncated */
-		EFX_EV_QSTAT_INCR(eep, EV_RX_FRM_TRUNC);
-		flags |= EFX_DISCARD;
-		goto deliver;
+		/*
+		 * X4 uses RX_TRUNC_ERR for packet size and CRC errors. Count
+		 * these as CRC errors (as over-size packets are only likely in
+		 * a misconfigured network).
+		 */
+		if (enp->en_family == EFX_FAMILY_MEDFORD4) {
+			/* Bad Ethernet frame CRC */
+			EFX_EV_QSTAT_INCR(eep, EV_RX_ETH_CRC_ERR);
+			flags |= EFX_DISCARD;
+			goto deliver;
+		} else {
+			/* RX frame truncated */
+			EFX_EV_QSTAT_INCR(eep, EV_RX_FRM_TRUNC);
+			flags |= EFX_DISCARD;
+			goto deliver;
+		}
 	}
 	if (EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_ECRC_ERR) != 0) {
 		/* Bad Ethernet frame CRC */
@@ -866,6 +891,7 @@ ef10_ev_mcdi(
 	__in_opt	void *arg)
 {
 	efx_nic_t *enp = eep->ee_enp;
+	efx_port_t *epp = &(enp->en_port);
 	unsigned int code;
 	boolean_t should_abort = B_FALSE;
 	boolean_t ev_is_v2 = B_FALSE;
@@ -906,7 +932,45 @@ ef10_ev_mcdi(
 		break;
 #endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
 
+	case MCDI_EVENT_CODE_PORT_LINKCHANGE:
+		/*
+		 * These events are generated on netport MCDI capable
+		 * boards. They supersede legacy LINKCHANGE_V2 events.
+		 */
+		if (MCDI_EV_FIELD(eqp, PORT_LINKCHANGE_PORT_HANDLE) ==
+		    epp->ep_np_handle) {
+			efx_link_mode_t mode;
+
+			if (MCDI_EV_FIELD(eqp, PORT_LINKCHANGE_LINK_UP) == 1)
+				mode = EFX_LINK_UNKNOWN;
+			else
+				mode = EFX_LINK_DOWN;
+
+			/*
+			 * The event does not contain full link state details.
+			 *
+			 * Either notify the client driver with a dummy link
+			 * mode value (UNKNOWN), just to say the link is up,
+			 * or, in case the link is not up, pass DOWN value.
+			 *
+			 * The client driver will need to poll for link state
+			 * in order to get full details like speed and duplex.
+			 */
+			should_abort = eecp->eec_link_change(arg, mode);
+		}
+		break;
+
 	case MCDI_EVENT_CODE_LINKCHANGE_V2:
+		if (efx_np_supported(enp) != B_FALSE) {
+			/*
+			 * Netport MCDI capable NICs support new link change
+			 * events, but legacy LINKCHANGE_V2 events may still
+			 * show up should the firmware support them. For the
+			 * sake of consistency, ignore LINKCHANGE_V2 events.
+			 */
+			break;
+		}
+
 		ev_is_v2 = B_TRUE;
 		/* Fallthrough */
 	case MCDI_EVENT_CODE_LINKCHANGE: {

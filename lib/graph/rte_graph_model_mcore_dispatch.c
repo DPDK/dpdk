@@ -3,6 +3,7 @@
  */
 
 #include "graph_private.h"
+#include <eal_export.h>
 #include "rte_graph_model_mcore_dispatch.h"
 
 int
@@ -101,6 +102,8 @@ submit_again:
 	if (node->idx > 0)
 		goto submit_again;
 
+	if (graph->dispatch.notify_cb)
+		graph->dispatch.notify_cb(graph, graph->dispatch.cb_priv);
 	return true;
 
 fallback:
@@ -113,20 +116,25 @@ fallback:
 	return false;
 }
 
+RTE_EXPORT_SYMBOL(__rte_graph_mcore_dispatch_sched_node_enqueue)
 bool __rte_noinline
 __rte_graph_mcore_dispatch_sched_node_enqueue(struct rte_node *node,
 					      struct rte_graph_rq_head *rq)
 {
 	const unsigned int lcore_id = node->dispatch.lcore_id;
-	struct rte_graph *graph;
+	struct rte_graph *graph = node->dispatch.graph;
 
-	SLIST_FOREACH(graph, rq, next)
-		if (graph->dispatch.lcore_id == lcore_id)
-			break;
+	if (unlikely((!graph) || (graph->dispatch.lcore_id != lcore_id))) {
+		SLIST_FOREACH(graph, rq, next)
+			if (graph->dispatch.lcore_id == lcore_id)
+				break;
+		node->dispatch.graph = graph;
+	}
 
 	return graph != NULL ? __graph_sched_node_enqueue(node, graph) : false;
 }
 
+RTE_EXPORT_SYMBOL(__rte_graph_mcore_dispatch_sched_wq_process)
 void
 __rte_graph_mcore_dispatch_sched_wq_process(struct rte_graph *graph)
 {
@@ -166,6 +174,7 @@ __rte_graph_mcore_dispatch_sched_wq_process(struct rte_graph *graph)
 	rte_mempool_put_bulk(mp, (void **)wq_nodes, n);
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_model_mcore_dispatch_node_lcore_affinity_set)
 int
 rte_graph_model_mcore_dispatch_node_lcore_affinity_set(const char *name, unsigned int lcore_id)
 {

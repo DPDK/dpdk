@@ -264,9 +264,9 @@ eal_dynmem_hugepage_init(void)
 #endif
 	}
 
-	/* make a copy of socket_mem, needed for balanced allocation. */
+	/* make a copy of numa_mem, needed for balanced allocation. */
 	for (hp_sz_idx = 0; hp_sz_idx < RTE_MAX_NUMA_NODES; hp_sz_idx++)
-		memory[hp_sz_idx] = internal_conf->socket_mem[hp_sz_idx];
+		memory[hp_sz_idx] = internal_conf->numa_mem[hp_sz_idx];
 
 	/* calculate final number of pages */
 	if (eal_dynmem_calc_num_pages_per_socket(memory,
@@ -334,10 +334,10 @@ eal_dynmem_hugepage_init(void)
 	}
 
 	/* if socket limits were specified, set them */
-	if (internal_conf->force_socket_limits) {
+	if (internal_conf->force_numa_limits) {
 		unsigned int i;
 		for (i = 0; i < RTE_MAX_NUMA_NODES; i++) {
-			uint64_t limit = internal_conf->socket_limit[i];
+			uint64_t limit = internal_conf->numa_limit[i];
 			if (limit == 0)
 				continue;
 			if (rte_mem_alloc_validator_register("socket-limit",
@@ -382,7 +382,7 @@ eal_dynmem_calc_num_pages_per_socket(
 		return -1;
 
 	/* if specific memory amounts per socket weren't requested */
-	if (internal_conf->force_sockets == 0) {
+	if (internal_conf->force_numa == 0) {
 		size_t total_size;
 #ifdef RTE_ARCH_64
 		int cpu_per_socket[RTE_MAX_NUMA_NODES];
@@ -509,14 +509,10 @@ eal_dynmem_calc_num_pages_per_socket(
 
 		/* if we didn't satisfy all memory requirements per socket */
 		if (memory[socket] > 0 &&
-				internal_conf->socket_mem[socket] != 0) {
-			/* to prevent icc errors */
-			requested = (unsigned int)(
-				internal_conf->socket_mem[socket] / 0x100000);
-			available = requested -
-				((unsigned int)(memory[socket] / 0x100000));
-			EAL_LOG(ERR, "Not enough memory available on "
-				"socket %u! Requested: %uMB, available: %uMB",
+				internal_conf->numa_mem[socket] != 0) {
+			requested = internal_conf->numa_mem[socket] / 0x100000;
+			available = requested - (memory[socket] / 0x100000);
+			EAL_LOG(ERR, "Not enough memory available on socket %u! Requested: %uMB, available: %uMB",
 				socket, requested, available);
 			return -1;
 		}
@@ -524,10 +520,9 @@ eal_dynmem_calc_num_pages_per_socket(
 
 	/* if we didn't satisfy total memory requirements */
 	if (total_mem > 0) {
-		requested = (unsigned int)(internal_conf->memory / 0x100000);
-		available = requested - (unsigned int)(total_mem / 0x100000);
-		EAL_LOG(ERR, "Not enough memory available! "
-			"Requested: %uMB, available: %uMB",
+		requested = internal_conf->memory / 0x100000;
+		available = requested - (total_mem / 0x100000);
+		EAL_LOG(ERR, "Not enough memory available! Requested: %uMB, available: %uMB",
 			requested, available);
 		return -1;
 	}

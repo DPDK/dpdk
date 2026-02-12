@@ -157,6 +157,11 @@ command. An example command being registered is shown below:
     rte_telemetry_register_cmd("/example_lib/string_example", handle_string,
             "Returns an example string. Takes no parameters");
 
+The command name **must consist only of alphanumeric characters (`A-Z`, `a-z`, `0-9`)
+and the special characters underscore (`_`) and forward slash (`/`)**.
+Any other characters, including spaces, are not permitted
+and will cause the command registration to fail.
+
 
 Using Commands
 --------------

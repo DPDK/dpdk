@@ -25,7 +25,7 @@
  */
 #define TF_MSG_SET_GLOBAL_CFG_DATA_SIZE  16
 #define TF_MSG_EM_INSERT_KEY_SIZE        64
-#define TF_MSG_EM_INSERT_RECORD_SIZE     80
+#define TF_MSG_EM_INSERT_RECORD_SIZE     96
 #define TF_MSG_TBL_TYPE_SET_DATA_SIZE    88
 
 /* Compile check - Catch any msg changes that we depend on, like the
@@ -385,7 +385,7 @@ tf_msg_session_qcfg(struct tf *tfp)
 	/* Populate the request */
 	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
 
-	parms.tf_type = HWRM_TF_SESSION_QCFG,
+	parms.tf_type = HWRM_TF_SESSION_QCFG;
 	parms.req_data = (uint32_t *)&req;
 	parms.req_size = sizeof(req);
 	parms.resp_data = (uint32_t *)&resp;
@@ -925,7 +925,7 @@ tf_msg_hash_insert_em_internal_entry(struct tf *tfp,
 	if (msg_record_size > TF_MSG_EM_INSERT_RECORD_SIZE) {
 		rc = -EINVAL;
 		TFP_DRV_LOG(ERR,
-			    "%s: Record size to large, rc:%s\n",
+			    "%s: Record size too large, rc:%s\n",
 			    tf_dir_2_str(em_parms->dir),
 			    strerror(-rc));
 		return rc;
@@ -1100,471 +1100,6 @@ tf_msg_move_em_entry(struct tf *tfp,
 	return 0;
 }
 
-int tf_msg_ext_em_ctxt_mem_alloc(struct tf *tfp,
-				struct hcapi_cfa_em_table *tbl,
-				uint64_t *dma_addr,
-				uint32_t *page_lvl,
-				uint32_t *page_size)
-{
-	struct tfp_send_msg_parms parms = { 0 };
-	struct hwrm_tf_ctxt_mem_alloc_input req = {0};
-	struct hwrm_tf_ctxt_mem_alloc_output resp = {0};
-	uint32_t mem_size_k;
-	int rc = 0;
-	struct tf_dev_info *dev;
-	struct tf_session *tfs;
-	uint32_t fw_se_id;
-
-	/* Retrieve the session information */
-	rc = tf_session_get_session_internal(tfp, &tfs);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to lookup session, rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
-
-	/* Retrieve the device information */
-	rc = tf_session_get_device(tfs, &dev);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to lookup device, rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
-	/* Retrieve the session information */
-	fw_se_id = tfs->session_id.internal.fw_session_id;
-
-	if (tbl->num_entries && tbl->entry_size) {
-		/* unit: kbytes */
-		mem_size_k = (tbl->num_entries / TF_KILOBYTE) * tbl->entry_size;
-		req.mem_size = tfp_cpu_to_le_32(mem_size_k);
-		req.fw_session_id = tfp_cpu_to_le_32(fw_se_id);
-		parms.tf_type = HWRM_TF_CTXT_MEM_ALLOC;
-		parms.req_data = (uint32_t *)&req;
-		parms.req_size = sizeof(req);
-		parms.resp_data = (uint32_t *)&resp;
-		parms.resp_size = sizeof(resp);
-		parms.mailbox = dev->ops->tf_dev_get_mailbox();
-		rc = tfp_send_msg_direct(tf_session_get_bp(tfp), &parms);
-		if (rc) {
-			TFP_DRV_LOG(ERR, "Failed ext_em_alloc error rc:%s\n",
-				strerror(-rc));
-			return rc;
-		}
-
-		*dma_addr = tfp_le_to_cpu_64(resp.page_dir);
-		*page_lvl = resp.page_level;
-		*page_size = resp.page_size;
-	}
-
-	return rc;
-}
-
-int tf_msg_ext_em_ctxt_mem_free(struct tf *tfp,
-				uint32_t mem_size_k,
-				uint64_t dma_addr,
-				uint8_t page_level,
-				uint8_t page_size)
-{
-	struct tfp_send_msg_parms parms = { 0 };
-	struct hwrm_tf_ctxt_mem_free_input req = {0};
-	struct hwrm_tf_ctxt_mem_free_output resp = {0};
-	int rc = 0;
-	struct tf_dev_info *dev;
-	struct tf_session *tfs;
-	uint32_t fw_se_id;
-
-	/* Retrieve the session information */
-	rc = tf_session_get_session_internal(tfp, &tfs);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to lookup session, rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
-
-	/* Retrieve the device information */
-	rc = tf_session_get_device(tfs, &dev);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to lookup device, rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
-	/* Retrieve the session information */
-	fw_se_id = tfs->session_id.internal.fw_session_id;
-
-	req.fw_session_id = tfp_cpu_to_le_32(fw_se_id);
-	req.mem_size = tfp_cpu_to_le_32(mem_size_k);
-	req.page_dir = tfp_cpu_to_le_64(dma_addr);
-	req.page_level = page_level;
-	req.page_size = page_size;
-	parms.tf_type = HWRM_TF_CTXT_MEM_FREE;
-	parms.req_data = (uint32_t *)&req;
-	parms.req_size = sizeof(req);
-	parms.resp_data = (uint32_t *)&resp;
-	parms.resp_size = sizeof(resp);
-	parms.mailbox = dev->ops->tf_dev_get_mailbox();
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfp), &parms);
-
-	return rc;
-}
-
-int
-tf_msg_em_mem_rgtr(struct tf *tfp,
-		   int page_lvl,
-		   int page_size,
-		   uint64_t dma_addr,
-		   uint16_t *ctx_id)
-{
-	int rc;
-	struct hwrm_tf_ctxt_mem_rgtr_input req = { 0 };
-	struct hwrm_tf_ctxt_mem_rgtr_output resp = { 0 };
-	struct tfp_send_msg_parms parms = { 0 };
-	struct tf_dev_info *dev;
-	struct tf_session *tfs;
-	uint32_t fw_se_id;
-
-	/* Retrieve the session information */
-	rc = tf_session_get_session_internal(tfp, &tfs);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to lookup session, rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
-
-	/* Retrieve the device information */
-	rc = tf_session_get_device(tfs, &dev);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to lookup device, rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
-	fw_se_id = tfs->session_id.internal.fw_session_id;
-
-	req.fw_session_id = tfp_cpu_to_le_32(fw_se_id);
-	req.page_level = page_lvl;
-	req.page_size = page_size;
-	req.page_dir = tfp_cpu_to_le_64(dma_addr);
-
-	parms.tf_type = HWRM_TF_CTXT_MEM_RGTR;
-	parms.req_data = (uint32_t *)&req;
-	parms.req_size = sizeof(req);
-	parms.resp_data = (uint32_t *)&resp;
-	parms.resp_size = sizeof(resp);
-	parms.mailbox = dev->ops->tf_dev_get_mailbox();
-
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
-				 &parms);
-	if (rc)
-		return rc;
-
-	*ctx_id = tfp_le_to_cpu_16(resp.ctx_id);
-
-	return rc;
-}
-
-int
-tf_msg_em_mem_unrgtr(struct tf *tfp,
-		     uint16_t *ctx_id)
-{
-	int rc;
-	struct hwrm_tf_ctxt_mem_unrgtr_input req = {0};
-	struct hwrm_tf_ctxt_mem_unrgtr_output resp = {0};
-	struct tfp_send_msg_parms parms = { 0 };
-	struct tf_dev_info *dev;
-	struct tf_session *tfs;
-	uint32_t fw_se_id;
-
-	/* Retrieve the session information */
-	rc = tf_session_get_session_internal(tfp, &tfs);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to lookup session, rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
-
-	/* Retrieve the device information */
-	rc = tf_session_get_device(tfs, &dev);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to lookup device, rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
-
-	fw_se_id = tfs->session_id.internal.fw_session_id;
-	req.fw_session_id = tfp_cpu_to_le_32(fw_se_id);
-
-	req.ctx_id = tfp_cpu_to_le_32(*ctx_id);
-
-	parms.tf_type = HWRM_TF_CTXT_MEM_UNRGTR;
-	parms.req_data = (uint32_t *)&req;
-	parms.req_size = sizeof(req);
-	parms.resp_data = (uint32_t *)&resp;
-	parms.resp_size = sizeof(resp);
-	parms.mailbox = dev->ops->tf_dev_get_mailbox();
-
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
-				 &parms);
-	return rc;
-}
-
-int
-tf_msg_em_qcaps(struct tf *tfp,
-		int dir,
-		struct tf_em_caps *em_caps)
-{
-	int rc;
-	struct hwrm_tf_ext_em_qcaps_input  req = {0};
-	struct hwrm_tf_ext_em_qcaps_output resp = { 0 };
-	uint32_t             flags;
-	struct tfp_send_msg_parms parms = { 0 };
-	struct tf_dev_info *dev;
-	struct tf_session *tfs;
-	uint32_t fw_se_id;
-
-	/* Retrieve the session information */
-	rc = tf_session_get_session_internal(tfp, &tfs);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Failed to lookup session, rc:%s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		return rc;
-	}
-	fw_se_id = tfs->session_id.internal.fw_session_id;
-
-	/* Retrieve the device information */
-	rc = tf_session_get_device(tfs, &dev);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Failed to lookup device, rc:%s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		return rc;
-	}
-
-	flags = (dir == TF_DIR_TX ? HWRM_TF_EXT_EM_QCAPS_INPUT_FLAGS_DIR_TX :
-		 HWRM_TF_EXT_EM_QCAPS_INPUT_FLAGS_DIR_RX);
-	req.flags = tfp_cpu_to_le_32(flags);
-
-	parms.tf_type = HWRM_TF_EXT_EM_QCAPS;
-	req.fw_session_id = tfp_cpu_to_le_32(fw_se_id);
-	parms.req_data = (uint32_t *)&req;
-	parms.req_size = sizeof(req);
-	parms.resp_data = (uint32_t *)&resp;
-	parms.resp_size = sizeof(resp);
-	parms.mailbox = dev->ops->tf_dev_get_mailbox();
-
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
-				 &parms);
-	if (rc)
-		return rc;
-
-	em_caps->supported = tfp_le_to_cpu_32(resp.supported);
-	em_caps->max_entries_supported =
-		tfp_le_to_cpu_32(resp.max_entries_supported);
-	em_caps->key_entry_size = tfp_le_to_cpu_16(resp.key_entry_size);
-	em_caps->record_entry_size =
-		tfp_le_to_cpu_16(resp.record_entry_size);
-	em_caps->efc_entry_size = tfp_le_to_cpu_16(resp.efc_entry_size);
-
-	return rc;
-}
-
-int
-tf_msg_em_cfg(struct tf *tfp,
-	      uint32_t num_entries,
-	      uint16_t key0_ctx_id,
-	      uint16_t key1_ctx_id,
-	      uint16_t record_ctx_id,
-	      uint16_t efc_ctx_id,
-	      uint8_t flush_interval,
-	      int dir)
-{
-	int rc;
-	struct hwrm_tf_ext_em_cfg_input  req = {0};
-	struct hwrm_tf_ext_em_cfg_output resp = {0};
-	uint32_t flags;
-	struct tfp_send_msg_parms parms = { 0 };
-	struct tf_dev_info *dev;
-	struct tf_session *tfs;
-
-	/* Retrieve the session information */
-	rc = tf_session_get_session_internal(tfp, &tfs);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Failed to lookup session, rc:%s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		return rc;
-	}
-
-	/* Retrieve the device information */
-	rc = tf_session_get_device(tfs, &dev);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Failed to lookup device, rc:%s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		return rc;
-	}
-
-	flags = (dir == TF_DIR_TX ? HWRM_TF_EXT_EM_CFG_INPUT_FLAGS_DIR_TX :
-		 HWRM_TF_EXT_EM_CFG_INPUT_FLAGS_DIR_RX);
-	flags |= HWRM_TF_EXT_EM_QCAPS_INPUT_FLAGS_PREFERRED_OFFLOAD;
-
-	req.flags = tfp_cpu_to_le_32(flags);
-	req.num_entries = tfp_cpu_to_le_32(num_entries);
-
-	req.flush_interval = flush_interval;
-
-	req.key0_ctx_id = tfp_cpu_to_le_16(key0_ctx_id);
-	req.key1_ctx_id = tfp_cpu_to_le_16(key1_ctx_id);
-	req.record_ctx_id = tfp_cpu_to_le_16(record_ctx_id);
-	req.efc_ctx_id = tfp_cpu_to_le_16(efc_ctx_id);
-
-	parms.tf_type = HWRM_TF_EXT_EM_CFG;
-	parms.req_data = (uint32_t *)&req;
-	parms.req_size = sizeof(req);
-	parms.resp_data = (uint32_t *)&resp;
-	parms.resp_size = sizeof(resp);
-	parms.mailbox = dev->ops->tf_dev_get_mailbox();
-
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
-				 &parms);
-	return rc;
-}
-
-int
-tf_msg_ext_em_cfg(struct tf *tfp,
-		  struct tf_tbl_scope_cb *tbl_scope_cb,
-		  uint32_t st_buckets,
-		  uint8_t flush_interval,
-		  enum tf_dir dir)
-{
-	struct hcapi_cfa_em_ctx_mem_info *ctxp = &tbl_scope_cb->em_ctx_info[dir];
-	struct hcapi_cfa_em_table *lkup_tbl, *act_tbl;
-	struct hwrm_tf_ext_em_cfg_input  req = {0};
-	struct hwrm_tf_ext_em_cfg_output resp = {0};
-	struct tfp_send_msg_parms parms = { 0 };
-	uint32_t flags;
-	struct tf_dev_info *dev;
-	struct tf_session *tfs;
-	uint32_t fw_se_id;
-	int rc;
-
-	/* Retrieve the session information */
-	rc = tf_session_get_session_internal(tfp, &tfs);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Failed to lookup session, rc:%s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		return rc;
-	}
-
-	/* Retrieve the device information */
-	rc = tf_session_get_device(tfs, &dev);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Failed to lookup device, rc:%s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		return rc;
-	}
-	fw_se_id = tfs->session_id.internal.fw_session_id;
-
-	lkup_tbl = &ctxp->em_tables[TF_EM_LKUP_TABLE];
-	act_tbl = &ctxp->em_tables[TF_ACTION_TABLE];
-	flags = (dir == TF_DIR_TX ? HWRM_TF_EXT_EM_CFG_INPUT_FLAGS_DIR_TX :
-		 HWRM_TF_EXT_EM_CFG_INPUT_FLAGS_DIR_RX);
-	flags |= HWRM_TF_EXT_EM_QCAPS_INPUT_FLAGS_PREFERRED_OFFLOAD;
-
-	req.flags = tfp_cpu_to_le_32(flags);
-	req.num_entries = tfp_cpu_to_le_32(act_tbl->num_entries);
-	req.lkup_static_buckets = tfp_cpu_to_le_32(st_buckets);
-	req.fw_session_id = tfp_cpu_to_le_32(fw_se_id);
-	req.flush_interval = flush_interval;
-	req.action_ctx_id = tfp_cpu_to_le_16(act_tbl->ctx_id);
-	req.action_tbl_scope = tfp_cpu_to_le_16(tbl_scope_cb->tbl_scope_id);
-	req.lkup_ctx_id = tfp_cpu_to_le_16(lkup_tbl->ctx_id);
-	req.lkup_tbl_scope = tfp_cpu_to_le_16(tbl_scope_cb->tbl_scope_id);
-
-	req.enables = (HWRM_TF_EXT_EM_CFG_INPUT_ENABLES_ACTION_CTX_ID |
-		       HWRM_TF_EXT_EM_CFG_INPUT_ENABLES_ACTION_TBL_SCOPE |
-		       HWRM_TF_EXT_EM_CFG_INPUT_ENABLES_LKUP_CTX_ID |
-		       HWRM_TF_EXT_EM_CFG_INPUT_ENABLES_LKUP_TBL_SCOPE |
-		       HWRM_TF_EXT_EM_CFG_INPUT_ENABLES_LKUP_STATIC_BUCKETS |
-		       HWRM_TF_EXT_EM_CFG_INPUT_ENABLES_NUM_ENTRIES);
-
-	parms.tf_type = HWRM_TF_EXT_EM_CFG;
-	parms.req_data = (uint32_t *)&req;
-	parms.req_size = sizeof(req);
-	parms.resp_data = (uint32_t *)&resp;
-	parms.resp_size = sizeof(resp);
-	parms.mailbox = dev->ops->tf_dev_get_mailbox();
-
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
-				 &parms);
-	return rc;
-}
-
-int
-tf_msg_em_op(struct tf *tfp,
-	     int dir,
-	     uint16_t op)
-{
-	int rc;
-	struct hwrm_tf_ext_em_op_input req = {0};
-	struct hwrm_tf_ext_em_op_output resp = {0};
-	uint32_t flags;
-	struct tfp_send_msg_parms parms = { 0 };
-	struct tf_dev_info *dev;
-	struct tf_session *tfs;
-
-	/* Retrieve the session information */
-	rc = tf_session_get_session_internal(tfp, &tfs);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Failed to lookup session, rc:%s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		return rc;
-	}
-
-	/* Retrieve the device information */
-	rc = tf_session_get_device(tfs, &dev);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Failed to lookup device, rc:%s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		return rc;
-	}
-
-	flags = (dir == TF_DIR_TX ? HWRM_TF_EXT_EM_CFG_INPUT_FLAGS_DIR_TX :
-		 HWRM_TF_EXT_EM_CFG_INPUT_FLAGS_DIR_RX);
-	req.flags = tfp_cpu_to_le_32(flags);
-	req.op = tfp_cpu_to_le_16(op);
-
-	parms.tf_type = HWRM_TF_EXT_EM_OP;
-	parms.req_data = (uint32_t *)&req;
-	parms.req_size = sizeof(req);
-	parms.resp_data = (uint32_t *)&resp;
-	parms.resp_size = sizeof(resp);
-	parms.mailbox = dev->ops->tf_dev_get_mailbox();
-
-	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
-				 &parms);
-	return rc;
-}
-
 int
 tf_msg_tcam_entry_set(struct tf *tfp,
 		      struct tf_dev_info *dev,
@@ -1612,20 +1147,20 @@ tf_msg_tcam_entry_set(struct tf *tfp,
 	req.result_size = parms->result_size;
 	data_size = 2 * req.key_size + req.result_size;
 
-	if (data_size <= TF_PCI_BUF_SIZE_MAX) {
-		/* use pci buffer */
-		data = &req.dev_data[0];
-	} else {
-		/* use dma buffer */
-		req.flags |= HWRM_TF_TCAM_SET_INPUT_FLAGS_DMA;
-		rc = tf_msg_alloc_dma_buf(&buf, data_size);
-		if (rc)
-			goto cleanup;
-		data = buf.va_addr;
-		tfp_memcpy(&req.dev_data[0],
-			   &buf.pa_addr,
-			   sizeof(buf.pa_addr));
-	}
+	/*
+	 * Always use dma buffer, as the delete multi slice
+	 * tcam entries not support with HWRM request buffer
+	 * only DMA'ed buffer can update the mode bits for
+	 * the delete to work
+	 */
+	req.flags |= HWRM_TF_TCAM_SET_INPUT_FLAGS_DMA;
+	rc = tf_msg_alloc_dma_buf(&buf, data_size);
+	if (rc)
+		goto cleanup;
+	data = buf.va_addr;
+	tfp_memcpy(&req.dev_data[0],
+		   &buf.pa_addr,
+		   sizeof(buf.pa_addr));
 
 	tfp_memcpy(&data[0], parms->key, parms->key_size);
 	tfp_memcpy(&data[parms->key_size], parms->mask, parms->key_size);
@@ -2327,7 +1862,7 @@ tf_msg_get_version(struct bnxt *bp,
 	struct tfp_send_msg_parms parms = { 0 };
 
 	/* Populate the request */
-	parms.tf_type = HWRM_TF_VERSION_GET,
+	parms.tf_type = HWRM_TF_VERSION_GET;
 	parms.req_data = (uint32_t *)&req;
 	parms.req_size = sizeof(req);
 	parms.resp_data = (uint32_t *)&resp;
@@ -2460,3 +1995,178 @@ tf_msg_session_get_hotup_state(struct tf *tfp,
 
 	return rc;
 }
+
+#ifdef TF_FLOW_SCALE_QUERY
+/* Send set resource usage request to the firmware. */
+int
+tf_msg_set_resc_usage(struct tf *tfp,
+		      enum tf_dir dir,
+		      uint32_t resc_types,
+		      uint32_t size,
+		      uint8_t *data)
+{
+	int rc;
+	struct hwrm_tf_resc_usage_set_input req = { 0 };
+	struct hwrm_tf_resc_usage_set_output resp = { 0 };
+	struct tfp_send_msg_parms parms = { 0 };
+	struct tf_msg_dma_buf buf = { 0 };
+	uint8_t fw_session_id;
+	struct tf_dev_info *dev;
+	struct tf_session *tfs;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Unable to lookup FW id, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+	req.flags = tfp_cpu_to_le_16(dir);
+	req.types = tfp_cpu_to_le_32(resc_types);
+	req.size = tfp_cpu_to_le_16(size);
+#if (TF_RM_MSG_DEBUG == 1)
+	/* Dump data */
+	dump_tf_resc_usage(dir, data, size);
+#endif /* (TF_RM_MSG_DEBUG == 1) */
+	/* Check for data size conformity */
+	if (size > sizeof(req.data)) {
+		/* use dma buffer */
+		req.flags |= HWRM_TF_RESC_USAGE_SET_INPUT_FLAGS_DMA;
+		rc = tf_msg_alloc_dma_buf(&buf, size);
+		if (rc)
+			goto exit;
+		tfp_memcpy(buf.va_addr, data, size);
+		tfp_memcpy(&req.data[0],
+			   &buf.pa_addr,
+			   sizeof(buf.pa_addr));
+	} else {
+		tfp_memcpy(&req.data, data, size);
+	}
+
+	parms.tf_type = HWRM_TF_RESC_USAGE_SET;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = dev->ops->tf_dev_get_mailbox();
+
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
+				 &parms);
+
+	/* Free dma buffer */
+	if (size > sizeof(req.data))
+		tf_msg_free_dma_buf(&buf);
+exit:
+	return rc;
+}
+
+/* Send query resource usage request to the firmware. */
+int tf_msg_query_resc_usage(struct tf *tfp,
+			    enum tf_dir dir,
+			    uint32_t resc_types,
+			    uint32_t *size,
+			    uint8_t *data)
+{
+	int rc;
+	struct hwrm_tf_resc_usage_query_input req = { 0 };
+	struct hwrm_tf_resc_usage_query_output resp = { 0 };
+	struct tfp_send_msg_parms parms = { 0 };
+	uint8_t fw_session_id;
+	struct tf_dev_info *dev;
+	struct tf_session *tfs;
+	uint32_t flags = 0;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Unable to lookup FW id, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+	flags = (dir == TF_DIR_TX ?
+		 HWRM_TF_RESC_USAGE_QUERY_INPUT_FLAGS_DIR_TX :
+		 HWRM_TF_RESC_USAGE_QUERY_INPUT_FLAGS_DIR_RX);
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+	req.flags = tfp_cpu_to_le_16(flags);
+	req.types = tfp_cpu_to_le_32(resc_types);
+
+	parms.tf_type = HWRM_TF_RESC_USAGE_QUERY;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = dev->ops->tf_dev_get_mailbox();
+
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
+				 &parms);
+	if (rc)
+		return rc;
+
+	/* The response size should be less than or equal to (<=) the input buffer size. */
+	if (resp.size > *size)
+		return -EINVAL;
+
+	*size = resp.size;
+
+	/*
+	 * Copy the requested number of bytes
+	 */
+	tfp_memcpy(data,
+		   &resp.data,
+		   resp.size);
+
+#if (TF_RM_MSG_DEBUG == 1)
+	/* dump data */
+	dump_tf_resc_usage(dir, data, resp.size);
+#endif /* (TF_RM_MSG_DEBUG == 1) */
+
+	return 0;
+}
+#endif /* TF_FLOW_SCALE_QUERY */

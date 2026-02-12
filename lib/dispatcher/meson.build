@@ -7,6 +7,8 @@ if is_windows
     subdir_done()
 endif
 
+cflags += no_wvla_cflag
+
 sources = files('rte_dispatcher.c')
 headers = files('rte_dispatcher.h')
 

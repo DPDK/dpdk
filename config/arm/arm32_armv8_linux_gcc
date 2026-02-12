@@ -4,6 +4,7 @@ cpp = ['ccache', 'arm-linux-gnueabihf-g++']
 ar = 'arm-linux-gnueabihf-gcc-ar'
 strip = 'arm-linux-gnueabihf-strip'
 pkgconfig = 'arm-linux-gnueabihf-pkg-config'
+pkg-config = 'arm-linux-gnueabihf-pkg-config'
 pcap-config = ''
 
 [host_machine]
@@ -11,6 +12,9 @@ system = 'linux'
 cpu_family = 'aarch32'
 cpu = 'armv8-a'
 endian = 'little'
+
+[built-in options]
+c_args = '-mfpu=fp-armv8'
 
 [properties]
 platform = 'generic_aarch32'

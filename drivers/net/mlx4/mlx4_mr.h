@@ -41,29 +41,29 @@ struct mlx4_mr {
 };
 
 /* Cache entry for Memory Region. */
-struct mlx4_mr_cache {
+struct __rte_packed_begin mlx4_mr_cache {
 	uintptr_t start; /* Start address of MR. */
 	uintptr_t end; /* End address of MR. */
 	uint32_t lkey; /* rte_cpu_to_be_32(ibv_mr->lkey). */
-} __rte_packed;
+} __rte_packed_end;
 
 /* MR Cache table for Binary search. */
-struct mlx4_mr_btree {
+struct __rte_packed_begin mlx4_mr_btree {
 	uint16_t len; /* Number of entries. */
 	uint16_t size; /* Total number of entries. */
 	int overflow; /* Mark failure of table expansion. */
 	struct mlx4_mr_cache (*table)[];
-} __rte_packed;
+} __rte_packed_end;
 
 /* Per-queue MR control descriptor. */
-struct mlx4_mr_ctrl {
+struct __rte_packed_begin mlx4_mr_ctrl {
 	uint32_t *dev_gen_ptr; /* Generation number of device to poll. */
 	uint32_t cur_gen; /* Generation number saved to flush caches. */
 	uint16_t mru; /* Index of last hit entry in top-half cache. */
 	uint16_t head; /* Index of the oldest entry in top-half cache. */
 	struct mlx4_mr_cache cache[MLX4_MR_CACHE_N]; /* Cache for top-half. */
 	struct mlx4_mr_btree cache_bh; /* Cache for bottom-half. */
-} __rte_packed;
+} __rte_packed_end;
 
 extern struct mlx4_dev_list  mlx4_mem_event_cb_list;
 extern rte_rwlock_t mlx4_mem_event_rwlock;

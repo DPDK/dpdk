@@ -50,6 +50,7 @@ bnxt_rxq_vec_setup_common(struct bnxt_rx_queue *rxq)
 	rxq->mbuf_initializer = *(uint64_t *)p;
 	rxq->rxrearm_nb = 0;
 	rxq->rxrearm_start = 0;
+	rxq->epoch = 1;
 	return 0;
 }
 
@@ -88,9 +89,11 @@ bnxt_rxq_rearm(struct bnxt_rx_queue *rxq, struct bnxt_rx_ring_info *rxr)
 	}
 
 	rxq->rxrearm_start += nb;
-	bnxt_db_write(&rxr->rx_db, rxq->rxrearm_start - 1);
-	if (rxq->rxrearm_start >= rxq->nb_rx_desc)
+	bnxt_db_epoch_write(&rxr->rx_db, rxq->rxrearm_start - 1, rxq->epoch);
+	if (rxq->rxrearm_start >= rxq->nb_rx_desc) {
 		rxq->rxrearm_start = 0;
+		rxq->epoch = rxq->epoch == 0 ? 1 : 0;
+	}
 
 	rxq->rxrearm_nb -= nb;
 }

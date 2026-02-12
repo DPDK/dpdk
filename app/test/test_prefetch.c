@@ -35,4 +35,4 @@ test_prefetch(void)
 	return 0;
 }
 
-REGISTER_FAST_TEST(prefetch_autotest, true, true, test_prefetch);
+REGISTER_FAST_TEST(prefetch_autotest, NOHUGE_OK, ASAN_OK, test_prefetch);

@@ -54,7 +54,7 @@ Running the Application
 
    ..  code-block:: console
 
-       $ ./<build-dir>/examples/dpdk-distributor -l 1-9,22 -n 4 -- -p f
+       $ ./<build-dir>/examples/dpdk-distributor -l 1-9,22 -- -p f
 
 #. Refer to the DPDK Getting Started Guide for general information on running
    applications and the Environment Abstraction Layer (EAL) options.

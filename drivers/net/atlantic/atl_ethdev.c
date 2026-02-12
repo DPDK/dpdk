@@ -33,7 +33,7 @@ static int atl_dev_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
 				    unsigned int size);
 
 static int atl_dev_stats_get(struct rte_eth_dev *dev,
-				struct rte_eth_stats *stats);
+				struct rte_eth_stats *stats, struct eth_queue_stats *qstats);
 
 static int atl_dev_xstats_get(struct rte_eth_dev *dev,
 			      struct rte_eth_xstat *stats, unsigned int n);
@@ -930,7 +930,8 @@ int atl_macsec_select_rxsa(struct rte_eth_dev *dev,
 }
 
 static int
-atl_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+atl_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		  struct eth_queue_stats *qstats)
 {
 	struct atl_adapter *adapter = ATL_DEV_TO_ADAPTER(dev);
 	struct aq_hw_s *hw = &adapter->hw;
@@ -951,12 +952,14 @@ atl_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	stats->rx_nombuf = swstats->rx_nombuf;
 
-	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
-		stats->q_ipackets[i] = swstats->q_ipackets[i];
-		stats->q_opackets[i] = swstats->q_opackets[i];
-		stats->q_ibytes[i] = swstats->q_ibytes[i];
-		stats->q_obytes[i] = swstats->q_obytes[i];
-		stats->q_errors[i] = swstats->q_errors[i];
+	if (qstats != NULL) {
+		for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
+			qstats->q_ipackets[i] = swstats->q_ipackets[i];
+			qstats->q_opackets[i] = swstats->q_opackets[i];
+			qstats->q_ibytes[i] = swstats->q_ibytes[i];
+			qstats->q_obytes[i] = swstats->q_obytes[i];
+			qstats->q_errors[i] = swstats->q_errors[i];
+		}
 	}
 	return 0;
 }

@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 
+#include <eal_export.h>
 #include "rte_eth_ring.h"
 #include <rte_mbuf.h>
 #include <ethdev_driver.h>
@@ -44,8 +45,9 @@ enum dev_action {
 
 struct ring_queue {
 	struct rte_ring *rng;
-	uint64_t rx_pkts;
-	uint64_t tx_pkts;
+	uint16_t in_port;
+	RTE_ATOMIC(uint64_t) rx_pkts;
+	RTE_ATOMIC(uint64_t) tx_pkts;
 };
 
 struct pmd_internals {
@@ -67,22 +69,25 @@ static struct rte_eth_link pmd_link = {
 };
 
 RTE_LOG_REGISTER_DEFAULT(eth_ring_logtype, NOTICE);
+#define RTE_LOGTYPE_ETH_RING eth_ring_logtype
 
-#define PMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, eth_ring_logtype, \
-		"%s(): " fmt "\n", __func__, ##args)
+#define PMD_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, ETH_RING, "%s(): ", __func__, __VA_ARGS__)
 
 static uint16_t
 eth_ring_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
+	unsigned int i;
 	void **ptrs = (void *)&bufs[0];
 	struct ring_queue *r = q;
 	const uint16_t nb_rx = (uint16_t)rte_ring_dequeue_burst(r->rng,
 			ptrs, nb_bufs, NULL);
+	for (i = 0; i < nb_rx; i++)
+		bufs[i]->port = r->in_port;
 	if (r->rng->flags & RING_F_SC_DEQ)
 		r->rx_pkts += nb_rx;
 	else
-		__atomic_fetch_add(&r->rx_pkts, nb_rx, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&r->rx_pkts, nb_rx, rte_memory_order_relaxed);
 	return nb_rx;
 }
 
@@ -96,7 +101,7 @@ eth_ring_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	if (r->rng->flags & RING_F_SP_ENQ)
 		r->tx_pkts += nb_tx;
 	else
-		__atomic_fetch_add(&r->tx_pkts, nb_tx, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&r->tx_pkts, nb_tx, rte_memory_order_relaxed);
 	return nb_tx;
 }
 
@@ -155,7 +160,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 				    struct rte_mempool *mb_pool __rte_unused)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
-
+	internals->rx_ring_queues[rx_queue_id].in_port = dev->data->port_id;
 	dev->data->rx_queues[rx_queue_id] = &internals->rx_ring_queues[rx_queue_id];
 	return 0;
 }
@@ -191,7 +196,8 @@ eth_dev_info(struct rte_eth_dev *dev,
 }
 
 static int
-eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+	      struct eth_queue_stats *qstats)
 {
 	unsigned int i;
 	unsigned long rx_total = 0, tx_total = 0;
@@ -199,14 +205,16 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
 			i < dev->data->nb_rx_queues; i++) {
-		stats->q_ipackets[i] = internal->rx_ring_queues[i].rx_pkts;
-		rx_total += stats->q_ipackets[i];
+		if (qstats != NULL)
+			qstats->q_ipackets[i] = internal->rx_ring_queues[i].rx_pkts;
+		rx_total += internal->rx_ring_queues[i].rx_pkts;
 	}
 
 	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
 			i < dev->data->nb_tx_queues; i++) {
-		stats->q_opackets[i] = internal->tx_ring_queues[i].tx_pkts;
-		tx_total += stats->q_opackets[i];
+		if (qstats != NULL)
+			qstats->q_opackets[i] = internal->tx_ring_queues[i].tx_pkts;
+		tx_total += internal->tx_ring_queues[i].tx_pkts;
 	}
 
 	stats->ipackets = rx_total;
@@ -414,10 +422,12 @@ do_eth_dev_ring_create(const char *name,
 	internals->max_tx_queues = nb_tx_queues;
 	for (i = 0; i < nb_rx_queues; i++) {
 		internals->rx_ring_queues[i].rng = rx_queues[i];
+		internals->rx_ring_queues[i].in_port = -1;
 		data->rx_queues[i] = &internals->rx_ring_queues[i];
 	}
 	for (i = 0; i < nb_tx_queues; i++) {
 		internals->tx_ring_queues[i].rng = tx_queues[i];
+		internals->tx_ring_queues[i].in_port = -1;
 		data->tx_queues[i] = &internals->tx_ring_queues[i];
 	}
 
@@ -450,6 +460,7 @@ error:
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_from_rings)
 int
 rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		const unsigned int nb_rx_queues,
@@ -508,6 +519,7 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	return port_id;
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_from_ring)
 int
 rte_eth_from_ring(struct rte_ring *r)
 {

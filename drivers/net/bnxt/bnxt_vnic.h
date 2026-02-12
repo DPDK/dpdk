@@ -75,12 +75,18 @@ struct bnxt_vnic_info {
 	bool		rss_dflt_cr;
 	uint16_t	ref_cnt;
 	uint64_t	queue_bitmap[BNXT_VNIC_MAX_QUEUE_SZ_IN_64BITS];
+	uint64_t	rss_types;
+	uint32_t	key_len; /**< Hash key length in bytes. */
 
 	STAILQ_HEAD(, bnxt_filter_info)	filter;
 	STAILQ_HEAD(, rte_flow)	flow_list;
 	uint8_t		ring_select_mode;
+	enum rte_eth_hash_function hash_f;
 	enum rte_eth_hash_function hash_f_local;
 	uint64_t	rss_types_local;
+	uint16_t	hds_threshold;
+	uint8_t         metadata_format;
+	uint8_t         state;
 };
 
 struct bnxt_vnic_queue_db {
@@ -119,6 +125,9 @@ int32_t bnxt_vnic_queue_db_init(struct bnxt *bp);
 int32_t bnxt_vnic_queue_db_deinit(struct bnxt *bp);
 
 void bnxt_vnic_queue_db_update_dlft_vnic(struct bnxt *bp);
+void bnxt_vnic_rss_query_info_fill(struct bnxt *bp,
+				   struct rte_flow_action_rss *rss_conf,
+				   uint16_t vnic_id);
 int32_t
 bnxt_vnic_rss_queue_status_update(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 

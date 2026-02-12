@@ -28,23 +28,18 @@ Compilation of the DPDK
     For details on Linux distributions and the versions tested, please consult the DPDK Release Notes.
 
 *   General development tools including a C compiler supporting the C11 standard,
-    including standard atomics, for example: GCC (version 5.0+) or Clang (version 3.6+),
+    including standard atomics, for example:
+    GCC (version 8.0+ recommended) or Clang (version 7+ recommended),
     and ``pkg-config`` or ``pkgconf`` to be used when building end-user binaries against DPDK.
 
-    * For RHEL/Fedora systems these can be installed using ``dnf groupinstall "Development Tools"``
+    * For RHEL systems these can be installed using ``dnf groupinstall "Development Tools"``
+    * For Fedora systems these can be installed using ``dnf group install development-tools``
     * For Ubuntu/Debian systems these can be installed using ``apt install build-essential``
     * For Alpine Linux, ``apk add alpine-sdk bsd-compat-headers``
 
-.. note::
-
-   pkg-config 0.27, supplied with RHEL-7,
-   does not process the Libs.private section correctly,
-   resulting in statically linked applications not being linked properly.
-   Use an updated version of ``pkg-config`` or ``pkgconf`` instead when building applications
-
 *   Python 3.6 or later.
 
-*   Meson (version 0.53.2+) and ninja
+*   Meson (version 0.57+) and ninja
 
     * ``meson`` & ``ninja-build`` packages in most Linux distributions
     * If the packaged version is below the minimum version, the latest versions
@@ -71,8 +66,7 @@ Compilation of the DPDK
 
 **Optional Tools:**
 
-*   Intel\ |reg| C++ Compiler (icc). For installation, additional libraries may be required.
-    See the icc Installation Guide found in the Documentation directory under the compiler installation.
+*   Intel\ |reg| oneAPI DPC++/C++ Compiler.
 
 *   IBM\ |reg| Advance ToolChain for Powerlinux. This is a set of open source development tools and runtime libraries
     which allows users to take leading edge advantage of IBM's latest POWER hardware features on Linux. To install
@@ -106,11 +100,15 @@ System Software
 
 **Required:**
 
-*   Kernel version >= 4.14
+*   Kernel version >= 5.4
 
-    The kernel version required is based on the oldest long term stable kernel available
-    at kernel.org when the DPDK version is in development.
-    Compatibility for recent distribution kernels will be kept, notably RHEL/CentOS 7.
+    The Linux userspace API is compatible across releases
+    but there are some restrictions.
+    The oldest kernel tested by the DPDK testing infrastructure
+    is the oldest maintained Long Term Stable (LTS) at time of release.
+
+    Some drivers and hardware support may require more recent kernels,
+    check the documentation.
 
     The kernel version in use can be checked using the command::
 

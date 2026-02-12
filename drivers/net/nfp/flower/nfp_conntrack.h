@@ -27,7 +27,7 @@ int nfp_ct_offload_del(struct rte_eth_dev *dev,
 		struct nfp_ct_map_entry *me,
 		struct rte_flow_error *error);
 
-struct rte_flow *nfp_ct_flow_setup(struct nfp_flower_representor *representor,
+struct rte_flow *nfp_ct_flow_setup(struct rte_eth_dev *dev,
 		const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
 		const struct rte_flow_item *ct_item,

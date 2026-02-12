@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation
-# Copyright(c) 2023 Broadcom
+# Copyright(c) 2024 Broadcom
 
 #Include the folder for headers
 includes += include_directories('.')
@@ -12,7 +12,6 @@ sources += files(
         'cfa_tcam_mgr_hwop_msg.c',
         'cfa_tcam_mgr_p4.c',
         'cfa_tcam_mgr_p58.c',
-        'cfa_tcam_mgr_session.c',
         'dpool.c',
         'll.c',
         'rand.c',
@@ -21,9 +20,7 @@ sources += files(
         'tf_device.c',
         'tf_device_p4.c',
         'tf_device_p58.c',
-        'tf_em_common.c',
         'tf_em_hash_internal.c',
-        'tf_em_host.c',
         'tf_em_internal.c',
         'tf_global_cfg.c',
         'tf_hash.c',
@@ -32,6 +29,7 @@ sources += files(
         'tf_msg.c',
         'tfp.c',
         'tf_rm.c',
+        'tf_resources.c',
         'tf_session.c',
         'tf_sram_mgr.c',
         'tf_tbl.c',

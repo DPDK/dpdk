@@ -88,8 +88,7 @@ parse_flow_max_priority(const char *key, const char *value, void *extra_args)
 
 	val = atoi(value);
 
-	/* Limit the max priority to 32 */
-	if (val < 1 || val > 32)
+	if (val < 1 || val > ROC_NPC_MAX_MCAM_PRIORITY)
 		return -EINVAL;
 
 	*(uint16_t *)extra_args = val;
@@ -280,6 +279,10 @@ parse_val_u16(const char *key, const char *value, void *extra_args)
 #define CNXK_NIX_META_BUF_SZ	"meta_buf_sz"
 #define CNXK_FLOW_AGING_POLL_FREQ	"aging_poll_freq"
 #define CNXK_NIX_RX_INJ_ENABLE	"rx_inj_ena"
+#define CNXK_CUSTOM_META_AURA_DIS "custom_meta_aura_dis"
+#define CNXK_CUSTOM_INB_SA	  "custom_inb_sa"
+#define CNXK_FORCE_TAIL_DROP	  "force_tail_drop"
+#define CNXK_DIS_XQE_DROP	  "disable_xqe_drop"
 
 int
 cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
@@ -291,6 +294,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint32_t ipsec_in_max_spi = BIT(8) - 1;
 	uint16_t sqb_slack = ROC_NIX_SQB_SLACK;
 	uint32_t ipsec_out_max_sa = BIT(12);
+	uint16_t custom_meta_aura_dis = 0;
 	uint16_t flow_prealloc_size = 1;
 	uint16_t switch_header_type = 0;
 	uint16_t flow_max_priority = 3;
@@ -299,14 +303,17 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint16_t outb_nb_desc = 8200;
 	struct sdp_channel sdp_chan;
 	uint16_t rss_tag_as_xor = 0;
+	uint16_t force_tail_drop = 0;
 	uint16_t scalar_enable = 0;
 	uint16_t tx_compl_ena = 0;
 	uint16_t custom_sa_act = 0;
+	uint16_t custom_inb_sa = 0;
 	struct rte_kvargs *kvlist;
+	uint16_t dis_xqe_drop = 0;
 	uint32_t meta_buf_sz = 0;
+	uint16_t lock_rx_ctx = 0;
+	uint16_t rx_inj_ena = 0;
 	uint16_t no_inl_dev = 0;
-	uint8_t lock_rx_ctx = 0;
-	uint8_t rx_inj_ena = 0;
 
 	memset(&sdp_chan, 0, sizeof(sdp_chan));
 	memset(&pre_l2_info, 0, sizeof(struct flow_pre_l2_size_info));
@@ -358,6 +365,11 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	rte_kvargs_process(kvlist, CNXK_FLOW_AGING_POLL_FREQ, &parse_val_u16,
 			   &aging_thread_poll_freq);
 	rte_kvargs_process(kvlist, CNXK_NIX_RX_INJ_ENABLE, &parse_flag, &rx_inj_ena);
+	rte_kvargs_process(kvlist, CNXK_CUSTOM_META_AURA_DIS, &parse_flag,
+			   &custom_meta_aura_dis);
+	rte_kvargs_process(kvlist, CNXK_CUSTOM_INB_SA, &parse_flag, &custom_inb_sa);
+	rte_kvargs_process(kvlist, CNXK_FORCE_TAIL_DROP, &parse_flag, &force_tail_drop);
+	rte_kvargs_process(kvlist, CNXK_DIS_XQE_DROP, &parse_flag, &dis_xqe_drop);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -366,6 +378,7 @@ null_devargs:
 	dev->inb.no_inl_dev = !!no_inl_dev;
 	dev->inb.min_spi = ipsec_in_min_spi;
 	dev->inb.max_spi = ipsec_in_max_spi;
+	dev->inb.custom_meta_aura_dis = custom_meta_aura_dis;
 	dev->outb.max_sa = ipsec_out_max_sa;
 	dev->outb.nb_desc = outb_nb_desc;
 	dev->outb.nb_crypto_qs = outb_nb_crypto_qs;
@@ -376,12 +389,18 @@ null_devargs:
 	dev->nix.lock_rx_ctx = lock_rx_ctx;
 	dev->nix.custom_sa_action = custom_sa_act;
 	dev->nix.sqb_slack = sqb_slack;
+	dev->nix.custom_inb_sa = custom_inb_sa;
 
 	if (roc_feature_nix_has_own_meta_aura())
 		dev->nix.meta_buf_sz = meta_buf_sz;
 
 	dev->npc.flow_prealloc_size = flow_prealloc_size;
-	dev->npc.flow_max_priority = flow_max_priority;
+
+	if (roc_model_is_cn20k())
+		dev->npc.flow_max_priority = ROC_NPC_MAX_MCAM_PRIORITY;
+	else
+		dev->npc.flow_max_priority = flow_max_priority;
+
 	dev->npc.switch_header_type = switch_header_type;
 	dev->npc.sdp_channel = sdp_chan.channel;
 	dev->npc.sdp_channel_mask = sdp_chan.mask;
@@ -392,6 +411,8 @@ null_devargs:
 	dev->npc.flow_age.aging_poll_freq = aging_thread_poll_freq;
 	if (roc_feature_nix_has_rx_inject())
 		dev->nix.rx_inj_ena = rx_inj_ena;
+	dev->nix.force_tail_drop = force_tail_drop;
+	dev->nix.dis_xqe_drop = !!dis_xqe_drop;
 	return 0;
 exit:
 	return -EINVAL;
@@ -415,4 +436,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_cnxk,
 			      CNXK_CUSTOM_SA_ACT "=1"
 			      CNXK_SQB_SLACK "=<12-512>"
 			      CNXK_FLOW_AGING_POLL_FREQ "=<10-65535>"
-			      CNXK_NIX_RX_INJ_ENABLE "=1");
+			      CNXK_NIX_RX_INJ_ENABLE "=1"
+			      CNXK_CUSTOM_META_AURA_DIS "=1"
+			      CNXK_FORCE_TAIL_DROP "=1"
+			      CNXK_DIS_XQE_DROP "=1");

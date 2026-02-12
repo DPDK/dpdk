@@ -106,15 +106,15 @@ bnxt_filter_type_check(const struct rte_flow_item pattern[],
 			use_ntuple |= 1;
 			break;
 		default:
-			PMD_DRV_LOG(DEBUG, "Unknown Flow type\n");
+			PMD_DRV_LOG_LINE(DEBUG, "Unknown Flow type");
 			use_ntuple |= 0;
 		}
 		item++;
 	}
 
 	if (has_vlan && use_ntuple) {
-		PMD_DRV_LOG(ERR,
-			    "VLAN flow cannot use NTUPLE filter\n");
+		PMD_DRV_LOG_LINE(ERR,
+			    "VLAN flow cannot use NTUPLE filter");
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM,
 				   item,
@@ -158,7 +158,7 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 	use_ntuple = bnxt_filter_type_check(pattern, error);
 	if (use_ntuple < 0)
 		return use_ntuple;
-	PMD_DRV_LOG(DEBUG, "Use NTUPLE %d\n", use_ntuple);
+	PMD_DRV_LOG_LINE(DEBUG, "Use NTUPLE %d", use_ntuple);
 
 	filter->filter_type = use_ntuple ?
 		HWRM_CFA_NTUPLE_FILTER : HWRM_CFA_L2_FILTER;
@@ -181,7 +181,7 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 			inner =
 			((const struct rte_flow_item_any *)item->spec)->num > 3;
 			if (inner)
-				PMD_DRV_LOG(DEBUG, "Parse inner header\n");
+				PMD_DRV_LOG_LINE(DEBUG, "Parse inner header");
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			if (!item->spec)
@@ -229,8 +229,8 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 							   RTE_FLOW_ERROR_TYPE_ITEM,
 							   item,
 							   "DMAC is invalid");
-					PMD_DRV_LOG(ERR,
-						    "DMAC is invalid!\n");
+					PMD_DRV_LOG_LINE(ERR,
+						    "DMAC is invalid!");
 					return -rte_errno;
 				}
 				rte_memcpy(filter->dst_macaddr,
@@ -242,8 +242,8 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 					BNXT_FLOW_L2_INNER_DST_VALID_FLAG :
 					BNXT_FLOW_L2_DST_VALID_FLAG;
 				filter->priority = attr->priority;
-				PMD_DRV_LOG(DEBUG,
-					    "Creating a priority flow\n");
+				PMD_DRV_LOG_LINE(DEBUG,
+					    "Creating a priority flow");
 			}
 			if (rte_is_broadcast_ether_addr(&eth_mask->hdr.src_addr)) {
 				src = &eth_spec->hdr.src_addr;
@@ -253,8 +253,8 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 							   RTE_FLOW_ERROR_TYPE_ITEM,
 							   item,
 							   "SMAC is invalid");
-					PMD_DRV_LOG(ERR,
-						    "SMAC is invalid!\n");
+					PMD_DRV_LOG_LINE(ERR,
+						    "SMAC is invalid!");
 					return -rte_errno;
 				}
 				rte_memcpy(filter->src_macaddr,
@@ -267,7 +267,7 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 					BNXT_FLOW_L2_SRC_VALID_FLAG;
 			} /*
 			   * else {
-			   *  PMD_DRV_LOG(ERR, "Handle this condition\n");
+			   *  PMD_DRV_LOG_LINE(ERR, "Handle this condition");
 			   * }
 			   */
 			if (eth_mask->hdr.ether_type) {
@@ -424,22 +424,22 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 					EM_FLOW_ALLOC_INPUT_EN_DST_IPADDR;
 
 			rte_memcpy(filter->src_ipaddr,
-				   ipv6_spec->hdr.src_addr, 16);
+				   &ipv6_spec->hdr.src_addr, 16);
 			rte_memcpy(filter->dst_ipaddr,
-				   ipv6_spec->hdr.dst_addr, 16);
+				   &ipv6_spec->hdr.dst_addr, 16);
 
-			if (!bnxt_check_zero_bytes(ipv6_mask->hdr.src_addr,
+			if (!bnxt_check_zero_bytes(ipv6_mask->hdr.src_addr.a,
 						   16)) {
 				rte_memcpy(filter->src_ipaddr_mask,
-					   ipv6_mask->hdr.src_addr, 16);
+					   &ipv6_mask->hdr.src_addr, 16);
 				en |= !use_ntuple ? 0 :
 				    NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR_MASK;
 			}
 
-			if (!bnxt_check_zero_bytes(ipv6_mask->hdr.dst_addr,
+			if (!bnxt_check_zero_bytes(ipv6_mask->hdr.dst_addr.a,
 						   16)) {
 				rte_memcpy(filter->dst_ipaddr_mask,
-					   ipv6_mask->hdr.dst_addr, 16);
+					   &ipv6_mask->hdr.dst_addr, 16);
 				en |= !use_ntuple ? 0 :
 				     NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR_MASK;
 			}
@@ -783,18 +783,18 @@ bnxt_create_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 	    nf->valid_flags & BNXT_FLOW_L2_DST_VALID_FLAG) {
 		filter1->flags |=
 			HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_OUTERMOST;
-		PMD_DRV_LOG(DEBUG, "Create Outer filter\n");
+		PMD_DRV_LOG_LINE(DEBUG, "Create Outer filter");
 	}
 
 	if (nf->filter_type == HWRM_CFA_L2_FILTER &&
 	    (nf->valid_flags & BNXT_FLOW_L2_SRC_VALID_FLAG ||
 	     nf->valid_flags & BNXT_FLOW_L2_INNER_SRC_VALID_FLAG)) {
-		PMD_DRV_LOG(DEBUG, "Create L2 filter for SRC MAC\n");
+		PMD_DRV_LOG_LINE(DEBUG, "Create L2 filter for SRC MAC");
 		filter1->flags |=
 			HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_SOURCE_VALID;
 		memcpy(filter1->l2_addr, nf->src_macaddr, RTE_ETHER_ADDR_LEN);
 	} else {
-		PMD_DRV_LOG(DEBUG, "Create L2 filter for DST MAC\n");
+		PMD_DRV_LOG_LINE(DEBUG, "Create L2 filter for DST MAC");
 		memcpy(filter1->l2_addr, nf->dst_macaddr, RTE_ETHER_ADDR_LEN);
 	}
 
@@ -988,8 +988,8 @@ static int match_vnic_rss_cfg(struct bnxt *bp,
 	}
 
 	if (match != vnic->rx_queue_cnt) {
-		PMD_DRV_LOG(ERR,
-			    "VNIC queue count %d vs queues matched %d\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "VNIC queue count %d vs queues matched %d",
 			    match, vnic->rx_queue_cnt);
 		return -EINVAL;
 	}
@@ -1021,8 +1021,8 @@ bnxt_update_filter_flags_en(struct bnxt_filter_info *filter,
 	filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
 	filter->l2_ref_cnt = filter1->l2_ref_cnt;
 	filter->flow_id = filter1->flow_id;
-	PMD_DRV_LOG(DEBUG,
-		"l2_filter: %p fw_l2_filter_id %" PRIx64 " l2_ref_cnt %u\n",
+	PMD_DRV_LOG_LINE(DEBUG,
+		"l2_filter: %p fw_l2_filter_id %" PRIx64 " l2_ref_cnt %u",
 		filter1, filter->fw_l2_filter_id, filter->l2_ref_cnt);
 }
 
@@ -1087,7 +1087,7 @@ bnxt_vnic_rss_cfg_update(struct bnxt *bp,
 
 	/* Validate Rx queues */
 	for (i = 0; i < rss->queue_num; i++) {
-		PMD_DRV_LOG(DEBUG, "RSS action Queue %d\n", rss->queue[i]);
+		PMD_DRV_LOG_LINE(DEBUG, "RSS action Queue %d", rss->queue[i]);
 
 		if (rss->queue[i] >= bp->rx_nr_rings ||
 		    !bp->rx_queues[rss->queue[i]]) {
@@ -1247,6 +1247,7 @@ skip_rss_table:
 				   RTE_FLOW_ERROR_TYPE_ACTION,
 				   act,
 				   "VNIC RSS configure failed");
+		vnic->rss_types_local = 0;
 		rc = -rte_errno;
 		goto ret;
 	}
@@ -1306,11 +1307,11 @@ start:
 			rc = -rte_errno;
 			goto ret;
 		}
-		PMD_DRV_LOG(DEBUG, "Queue index %d\n", act_q->index);
+		PMD_DRV_LOG_LINE(DEBUG, "Queue index %d", act_q->index);
 
 		vnic_id = attr->group;
 		if (!vnic_id) {
-			PMD_DRV_LOG(DEBUG, "Group id is 0\n");
+			PMD_DRV_LOG_LINE(DEBUG, "Group id is 0");
 			vnic_id = act_q->index;
 		}
 
@@ -1319,8 +1320,8 @@ start:
 		vnic = &bp->vnic_info[vnic_id];
 		if (vnic->rx_queue_cnt) {
 			if (vnic->start_grp_id != act_q->index) {
-				PMD_DRV_LOG(ERR,
-					    "VNIC already in use\n");
+				PMD_DRV_LOG_LINE(ERR,
+					    "VNIC already in use");
 				rte_flow_error_set(error,
 						   EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1339,8 +1340,8 @@ start:
 			goto use_vnic;
 
 		if (!rxq) {
-			PMD_DRV_LOG(ERR,
-				    "Queue invalid or used with other VNIC\n");
+			PMD_DRV_LOG_LINE(ERR,
+				    "Queue invalid or used with other VNIC");
 			rte_flow_error_set(error,
 					   EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1357,20 +1358,20 @@ start:
 		vnic->end_grp_id = act_q->index;
 		vnic->func_default = 0;	//This is not a default VNIC.
 
-		PMD_DRV_LOG(DEBUG, "VNIC found\n");
+		PMD_DRV_LOG_LINE(DEBUG, "VNIC found");
 
 		rc = bnxt_vnic_prep(bp, vnic, act, error);
 		if (rc)
 			goto ret;
 
-		PMD_DRV_LOG(DEBUG,
-			    "vnic[%d] = %p vnic->fw_grp_ids = %p\n",
+		PMD_DRV_LOG_LINE(DEBUG,
+			    "vnic[%d] = %p vnic->fw_grp_ids = %p",
 			    act_q->index, vnic, vnic->fw_grp_ids);
 
 use_vnic:
 		vnic->ff_pool_idx = vnic_id;
-		PMD_DRV_LOG(DEBUG,
-			    "Setting vnic ff_idx %d\n", vnic->ff_pool_idx);
+		PMD_DRV_LOG_LINE(DEBUG,
+			    "Setting vnic ff_idx %d", vnic->ff_pool_idx);
 		filter->dst_id = vnic->fw_vnic_id;
 
 		/* For ntuple filter, create the L2 filter with default VNIC.
@@ -1392,7 +1393,7 @@ use_vnic:
 			goto ret;
 		}
 
-		PMD_DRV_LOG(DEBUG, "new fltr: %p l2fltr: %p l2_ref_cnt: %d\n",
+		PMD_DRV_LOG_LINE(DEBUG, "new fltr: %p l2fltr: %p l2_ref_cnt: %d",
 			    filter, filter1, filter1->l2_ref_cnt);
 		bnxt_update_filter_flags_en(filter, filter1, use_ntuple);
 		break;
@@ -1528,8 +1529,8 @@ use_vnic:
 		if (vnic->rx_queue_cnt) {
 			rc = match_vnic_rss_cfg(bp, vnic, rss);
 			if (rc) {
-				PMD_DRV_LOG(ERR,
-					    "VNIC and RSS config mismatch\n");
+				PMD_DRV_LOG_LINE(ERR,
+					    "VNIC and RSS config mismatch");
 				rte_flow_error_set(error,
 						   EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1542,7 +1543,7 @@ use_vnic:
 		}
 
 		for (i = 0; i < rss->queue_num; i++) {
-			PMD_DRV_LOG(DEBUG, "RSS action Queue %d\n",
+			PMD_DRV_LOG_LINE(DEBUG, "RSS action Queue %d",
 				    rss->queue[i]);
 
 			if (!rss->queue[i] ||
@@ -1560,8 +1561,8 @@ use_vnic:
 
 			if (bp->vnic_info[0].fw_grp_ids[rss->queue[i]] !=
 			    INVALID_HW_RING_ID) {
-				PMD_DRV_LOG(ERR,
-					    "queue active with other VNIC\n");
+				PMD_DRV_LOG_LINE(ERR,
+					    "queue active with other VNIC");
 				rte_flow_error_set(error,
 						   EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1584,13 +1585,13 @@ use_vnic:
 		if (rc)
 			goto ret;
 
-		PMD_DRV_LOG(DEBUG,
-			    "vnic[%d] = %p vnic->fw_grp_ids = %p\n",
+		PMD_DRV_LOG_LINE(DEBUG,
+			    "vnic[%d] = %p vnic->fw_grp_ids = %p",
 			    vnic_id, vnic, vnic->fw_grp_ids);
 
 		vnic->ff_pool_idx = vnic_id;
-		PMD_DRV_LOG(DEBUG,
-			    "Setting vnic ff_pool_idx %d\n", vnic->ff_pool_idx);
+		PMD_DRV_LOG_LINE(DEBUG,
+			    "Setting vnic ff_pool_idx %d", vnic->ff_pool_idx);
 
 		/* This can be done only after vnic_grp_alloc is done. */
 		for (i = 0; i < vnic->rx_queue_cnt; i++) {
@@ -1632,7 +1633,7 @@ use_vnic:
 			}
 			bnxt_hwrm_vnic_rss_cfg(bp, vnic);
 		} else {
-			PMD_DRV_LOG(DEBUG, "No RSS config required\n");
+			PMD_DRV_LOG_LINE(DEBUG, "No RSS config required");
 		}
 
 vnic_found:
@@ -1648,7 +1649,7 @@ vnic_found:
 			goto ret;
 		}
 
-		PMD_DRV_LOG(DEBUG, "L2 filter created\n");
+		PMD_DRV_LOG_LINE(DEBUG, "L2 filter created");
 		bnxt_update_filter_flags_en(filter, filter1, use_ntuple);
 		break;
 	case RTE_FLOW_ACTION_TYPE_MARK:
@@ -1663,8 +1664,8 @@ vnic_found:
 		}
 
 		if (bp->flags & BNXT_FLAG_RX_VECTOR_PKT_MODE) {
-			PMD_DRV_LOG(DEBUG,
-				    "Disabling vector processing for mark\n");
+			PMD_DRV_LOG_LINE(DEBUG,
+				    "Disabling vector processing for mark");
 			bp->eth_dev->rx_pkt_burst = bnxt_recv_pkts;
 			bp->flags &= ~BNXT_FLAG_RX_VECTOR_PKT_MODE;
 		}
@@ -1672,7 +1673,7 @@ vnic_found:
 		filter->valid_flags |= BNXT_FLOW_MARK_FLAG;
 		filter->mark = ((const struct rte_flow_action_mark *)
 				act->conf)->id;
-		PMD_DRV_LOG(DEBUG, "Mark the flow %d\n", filter->mark);
+		PMD_DRV_LOG_LINE(DEBUG, "Mark the flow %d", filter->mark);
 		break;
 	default:
 		rte_flow_error_set(error,
@@ -1698,8 +1699,10 @@ ret:
 	}
 
 	if (rte_errno)  {
-		if (vnic && STAILQ_EMPTY(&vnic->filter))
+		if (vnic && STAILQ_EMPTY(&vnic->filter)) {
 			vnic->rx_queue_cnt = 0;
+			vnic->rss_types_local = 0;
+		}
 
 		if (rxq && !vnic->rx_queue_cnt)
 			rxq->vnic = &bp->vnic_info[0];
@@ -1718,7 +1721,7 @@ struct bnxt_vnic_info *find_matching_vnic(struct bnxt *bp,
 		vnic = &bp->vnic_info[i];
 		if (vnic->fw_vnic_id != INVALID_VNIC_ID &&
 		    filter->dst_id == vnic->fw_vnic_id) {
-			PMD_DRV_LOG(DEBUG, "Found matching VNIC Id %d\n",
+			PMD_DRV_LOG_LINE(DEBUG, "Found matching VNIC Id %d",
 				    vnic->ff_pool_idx);
 			return vnic;
 		}
@@ -1764,7 +1767,7 @@ bnxt_flow_validate(struct rte_eth_dev *dev,
 		if (STAILQ_EMPTY(&vnic->filter)) {
 			bnxt_vnic_cleanup(bp, vnic);
 			bp->nr_vnics--;
-			PMD_DRV_LOG(DEBUG, "Free VNIC\n");
+			PMD_DRV_LOG_LINE(DEBUG, "Free VNIC");
 		}
 	}
 
@@ -1891,7 +1894,7 @@ void bnxt_flow_cnt_alarm_cb(void *arg)
 	struct bnxt *bp = arg;
 
 	if (!bp->flow_stat->rx_fc_out_tbl.va) {
-		PMD_DRV_LOG(ERR, "bp->flow_stat->rx_fc_out_tbl.va is NULL?\n");
+		PMD_DRV_LOG_LINE(ERR, "bp->flow_stat->rx_fc_out_tbl.va is NULL?");
 		bnxt_cancel_fc_thread(bp);
 		return;
 	}
@@ -1908,7 +1911,7 @@ void bnxt_flow_cnt_alarm_cb(void *arg)
 
 	rc = bnxt_flow_stats_req(bp);
 	if (rc) {
-		PMD_DRV_LOG(ERR, "Flow stat alarm not rescheduled.\n");
+		PMD_DRV_LOG_LINE(ERR, "Flow stat alarm not rescheduled.");
 		return;
 	}
 
@@ -2020,7 +2023,7 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 	bnxt_acquire_flow_lock(bp);
 	ret = bnxt_flow_args_validate(attr, pattern, actions, error);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Not a validate flow.\n");
+		PMD_DRV_LOG_LINE(ERR, "Not a validate flow.");
 		goto free_flow;
 	}
 
@@ -2039,15 +2042,15 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 
 	ret = bnxt_match_filter(bp, filter);
 	if (ret == -EEXIST) {
-		PMD_DRV_LOG(DEBUG, "Flow already exists.\n");
+		PMD_DRV_LOG_LINE(DEBUG, "Flow already exists.");
 		/* Clear the filter that was created as part of
 		 * validate_and_parse_flow() above
 		 */
 		bnxt_hwrm_clear_l2_filter(bp, filter);
 		goto free_filter;
 	} else if (ret == -EXDEV) {
-		PMD_DRV_LOG(DEBUG, "Flow with same pattern exists\n");
-		PMD_DRV_LOG(DEBUG, "Updating with different destination\n");
+		PMD_DRV_LOG_LINE(DEBUG, "Flow with same pattern exists");
+		PMD_DRV_LOG_LINE(DEBUG, "Updating with different destination");
 		update_flow = true;
 	}
 
@@ -2099,8 +2102,8 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 			bnxt_hwrm_tunnel_redirect_free(bp,
 						       filter->tunnel_type);
 			if (ret) {
-				PMD_DRV_LOG(ERR,
-					    "Unable to free existing tunnel\n");
+				PMD_DRV_LOG_LINE(ERR,
+					    "Unable to free existing tunnel");
 				rte_flow_error_set(error, -ret,
 						   RTE_FLOW_ERROR_TYPE_HANDLE,
 						   NULL,
@@ -2155,8 +2158,8 @@ done:
 		}
 
 		if (filter->valid_flags & BNXT_FLOW_MARK_FLAG) {
-			PMD_DRV_LOG(DEBUG,
-				    "Mark action: mark id 0x%x, flow id 0x%x\n",
+			PMD_DRV_LOG_LINE(DEBUG,
+				    "Mark action: mark id 0x%x, flow id 0x%x",
 				    filter->mark, filter->flow_id);
 
 			/* TCAM and EM should be 16-bit only.
@@ -2182,7 +2185,7 @@ done:
 			bp->flow_stat->flow_count++;
 		bnxt_release_flow_lock(bp);
 		bnxt_setup_flow_counter(bp);
-		PMD_DRV_LOG(DEBUG, "Successfully created flow.\n");
+		PMD_DRV_LOG_LINE(DEBUG, "Successfully created flow.");
 		return flow;
 	}
 
@@ -2232,15 +2235,15 @@ static int bnxt_handle_tunnel_redirect_destroy(struct bnxt *bp,
 					   "tunnel_redirect info cmd fail");
 			return ret;
 		}
-		PMD_DRV_LOG(INFO, "Pre-existing tunnel fid = %x vf->fid = %x\n",
+		PMD_DRV_LOG_LINE(INFO, "Pre-existing tunnel fid = %x vf->fid = %x",
 			    tun_dst_fid + bp->first_vf_id, bp->fw_fid);
 
 		/* Tunnel doesn't belong to this VF, so don't send HWRM
 		 * cmd, just delete the flow from driver
 		 */
 		if (bp->fw_fid != (tun_dst_fid + bp->first_vf_id)) {
-			PMD_DRV_LOG(ERR,
-				    "Tunnel does not belong to this VF, skip hwrm_tunnel_redirect_free\n");
+			PMD_DRV_LOG_LINE(ERR,
+				    "Tunnel does not belong to this VF, skip hwrm_tunnel_redirect_free");
 		} else {
 			ret = bnxt_hwrm_tunnel_redirect_free(bp,
 							filter->tunnel_type);
@@ -2314,7 +2317,7 @@ _bnxt_flow_destroy(struct bnxt *bp,
 
 	ret = bnxt_match_filter(bp, filter);
 	if (ret == 0)
-		PMD_DRV_LOG(ERR, "Could not find matching flow\n");
+		PMD_DRV_LOG_LINE(ERR, "Could not find matching flow");
 
 	if (filter->valid_flags & BNXT_FLOW_MARK_FLAG) {
 		flow_id = filter->flow_id & BNXT_FLOW_ID_MASK;

@@ -18,15 +18,15 @@
 #include <rte_memory.h>
 #include <rte_mempool.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifndef __cplusplus
 /* These are not C++-aware. */
 #include <linux/vhost.h>
 #include <linux/virtio_ring.h>
 #include <linux/virtio_net.h>
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 #define RTE_VHOST_USER_CLIENT		(1ULL << 0)
@@ -41,6 +41,7 @@ extern "C" {
 #define RTE_VHOST_USER_ASYNC_COPY	(1ULL << 7)
 #define RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS	(1ULL << 8)
 #define RTE_VHOST_USER_NET_STATS_ENABLE	(1ULL << 9)
+#define RTE_VHOST_USER_ASYNC_CONNECT	(1ULL << 10)
 
 /* Features. */
 #ifndef VIRTIO_NET_F_GUEST_ANNOUNCE
@@ -609,10 +610,9 @@ int
 rte_vhost_driver_get_queue_num(const char *path, uint32_t *queue_num);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
- *
  * Set the maximum number of queue pairs supported by the device.
+ * The value set is ignored for Vhost-user backends. It is only taken into
+ * account with VDUSE backends.
  *
  * @param path
  *  The vhost-user socket file path
@@ -621,7 +621,6 @@ rte_vhost_driver_get_queue_num(const char *path, uint32_t *queue_num);
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_driver_set_max_queue_num(const char *path, uint32_t max_queue_pairs);
 

@@ -3,7 +3,6 @@
  */
 
 #include <rte_pci.h>
-#include <rte_vfio.h>
 
 #include "qat_device.h"
 #include "qat_qp.h"
@@ -17,9 +16,6 @@
 
 #define BITS_PER_ULONG		(sizeof(unsigned long) * 8)
 
-#define VFIO_PCI_LCE_DEVICE_CFG_REGION_INDEX	VFIO_PCI_NUM_REGIONS
-#define VFIO_PCI_LCE_CY_CFG_REGION_INDEX	(VFIO_PCI_NUM_REGIONS + 2)
-#define VFIO_PCI_LCE_RING_CFG_REGION_INDEX	(VFIO_PCI_NUM_REGIONS + 4)
 #define LCE_DEVICE_NAME_SIZE			64
 #define LCE_DEVICE_MAX_BANKS			2080
 #define LCE_DIV_ROUND_UP(n, d)  (((n) + (d) - 1) / (d))

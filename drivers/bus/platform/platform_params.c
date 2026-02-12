@@ -10,12 +10,9 @@
 #include <rte_dev.h>
 #include <rte_errno.h>
 #include <rte_kvargs.h>
-#include <rte_vfio.h>
 
 #include "bus_platform_driver.h"
 #include "private.h"
-
-#ifdef VFIO_PRESENT
 
 enum platform_params {
 	RTE_PLATFORM_PARAM_NAME,
@@ -56,7 +53,7 @@ platform_bus_dev_iterate(const void *start, const char *str,
 	if (str != NULL) {
 		kvargs = rte_kvargs_parse(str, platform_params_keys);
 		if (!kvargs) {
-			PLATFORM_LOG(ERR, "cannot parse argument list %s", str);
+			PLATFORM_LOG_LINE(ERR, "cannot parse argument list %s", str);
 			rte_errno = EINVAL;
 			return NULL;
 		}
@@ -73,5 +70,3 @@ platform_bus_dev_iterate(const void *start, const char *str,
 
 	return dev;
 }
-
-#endif /* VFIO_PRESENT */

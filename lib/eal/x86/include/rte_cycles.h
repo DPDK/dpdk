@@ -12,10 +12,6 @@
 #include <x86intrin.h>
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "generic/rte_cycles.h"
 
 #ifdef RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT
@@ -25,6 +21,10 @@ extern int rte_cycles_vmware_tsc_map;
 #endif
 #include <rte_common.h>
 #include <rte_config.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 static inline uint64_t
 rte_rdtsc(void)

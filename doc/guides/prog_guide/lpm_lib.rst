@@ -1,10 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-.. _LPM_Library:
-
-LPM Library
-===========
+Longest Prefix Match (LPM) Library
+==================================
 
 The DPDK LPM library component implements the Longest Prefix Match (LPM) table search method for 32-bit keys
 that is typically used to find the best route match in IP forwarding applications.
@@ -174,7 +172,7 @@ When the LPM is not using RCU, tbl8 group can be freed immediately even though t
 the tbl8 group entries. This might result in incorrect lookup results.
 
 RCU QSBR process is integrated for safe tbl8 group reclamation. Application has certain responsibilities
-while using this feature. Please refer to resource reclamation framework of :ref:`RCU library <RCU_Library>`
+while using this feature. Please refer to resource reclamation framework of :doc:`rcu_lib`
 for more details.
 
 Lookup

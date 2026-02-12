@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2010-2016 Freescale Semiconductor Inc.
  * Copyright 2017 NXP
@@ -7,6 +7,7 @@
 
 #include <dpaa_of.h>
 #include <assert.h>
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <dpaax_logs.h>
 
@@ -116,7 +117,7 @@ iterate_dir(struct dirent **d, int num, struct dt_dir *dt)
 		case DT_DIR:
 			subdir = malloc(sizeof(*subdir));
 			if (!subdir) {
-				perror("malloc");
+				DPAAX_LOG(ERR, "malloc failed");
 				return -ENOMEM;
 			}
 			strlcpy(subdir->node.node.name, d[loop]->d_name,
@@ -213,6 +214,7 @@ linear_dir(struct dt_dir *d)
 	}
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(of_init_path)
 int
 of_init_path(const char *dt_path)
 {
@@ -297,6 +299,7 @@ check_compatible(const struct dt_file *f, const char *compatible)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(of_find_compatible_node)
 const struct device_node *
 of_find_compatible_node(const struct device_node *from,
 			const char *type __rte_unused,
@@ -322,6 +325,7 @@ of_find_compatible_node(const struct device_node *from,
 	return NULL;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(of_get_property)
 const void *
 of_get_property(const struct device_node *from, const char *name,
 		size_t *lenp)
@@ -341,6 +345,7 @@ of_get_property(const struct device_node *from, const char *name,
 	return NULL;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(of_device_is_available)
 bool
 of_device_is_available(const struct device_node *dev_node)
 {
@@ -357,6 +362,7 @@ of_device_is_available(const struct device_node *dev_node)
 	return false;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(of_find_node_by_phandle)
 const struct device_node *
 of_find_node_by_phandle(uint64_t ph)
 {
@@ -370,6 +376,7 @@ of_find_node_by_phandle(uint64_t ph)
 	return NULL;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(of_get_parent)
 const struct device_node *
 of_get_parent(const struct device_node *dev_node)
 {
@@ -385,6 +392,7 @@ of_get_parent(const struct device_node *dev_node)
 	return &d->parent->node.node;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(of_get_next_child)
 const struct device_node *
 of_get_next_child(const struct device_node *dev_node,
 		  const struct device_node *prev)
@@ -414,6 +422,7 @@ of_get_next_child(const struct device_node *dev_node,
 	return &c->node.node;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(of_n_addr_cells)
 uint32_t
 of_n_addr_cells(const struct device_node *dev_node)
 {
@@ -458,6 +467,7 @@ of_n_size_cells(const struct device_node *dev_node)
 	return OF_DEFAULT_NS;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(of_get_address)
 const uint32_t *
 of_get_address(const struct device_node *dev_node, size_t idx,
 	       uint64_t *size, uint32_t *flags __rte_unused)
@@ -487,6 +497,7 @@ of_get_address(const struct device_node *dev_node, size_t idx,
 	return (const uint32_t *)buf;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(of_translate_address)
 uint64_t
 of_translate_address(const struct device_node *dev_node,
 		     const uint32_t *addr)
@@ -533,6 +544,7 @@ of_translate_address(const struct device_node *dev_node,
 	return phys_addr;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(of_device_is_compatible)
 bool
 of_device_is_compatible(const struct device_node *dev_node,
 			const char *compatible)
@@ -573,6 +585,7 @@ static const void *of_get_mac_addr(const struct device_node *np,
  * this case, the real MAC is in 'local-mac-address', and 'mac-address' exists
  * but is all zeros.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(of_get_mac_address)
 const void *of_get_mac_address(const struct device_node *np)
 {
 	const void *addr;

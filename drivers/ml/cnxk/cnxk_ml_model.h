@@ -128,6 +128,8 @@ typedef bool (*enqueue_single_t)(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_o
 typedef void (*result_update_t)(struct cnxk_ml_dev *cnxk_mldev, int qp_id, void *request);
 typedef void (*set_error_code_t)(struct cnxk_ml_req *req, uint64_t etype, uint64_t stype);
 typedef void (*set_poll_addr_t)(struct cnxk_ml_req *req);
+typedef int (*op_error_get_t)(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_op *op,
+			      struct rte_ml_op_error *error);
 
 /* Model Object */
 struct cnxk_ml_model {
@@ -184,6 +186,7 @@ struct cnxk_ml_model {
 	result_update_t result_update;
 	set_error_code_t set_error_code;
 	set_poll_addr_t set_poll_addr;
+	op_error_get_t op_error_get;
 };
 
 enum cnxk_ml_model_type cnxk_ml_model_get_type(struct rte_ml_model_params *params);

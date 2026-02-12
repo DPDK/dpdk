@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_log.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
@@ -85,7 +86,7 @@ struct __rte_lpm {
  * depth  (IN)		: range = 1 - 32
  * mask   (OUT)		: 32bit mask
  */
-static uint32_t __attribute__((pure))
+static uint32_t __rte_pure
 depth_to_mask(uint8_t depth)
 {
 	VERIFY_DEPTH(depth);
@@ -99,7 +100,7 @@ depth_to_mask(uint8_t depth)
 /*
  * Converts given depth value to its corresponding range value.
  */
-static uint32_t __attribute__((pure))
+static uint32_t __rte_pure
 depth_to_range(uint8_t depth)
 {
 	VERIFY_DEPTH(depth);
@@ -117,6 +118,7 @@ depth_to_range(uint8_t depth)
 /*
  * Find an existing lpm table and return a pointer to it.
  */
+RTE_EXPORT_SYMBOL(rte_lpm_find_existing)
 struct rte_lpm *
 rte_lpm_find_existing(const char *name)
 {
@@ -145,11 +147,12 @@ rte_lpm_find_existing(const char *name)
 /*
  * Allocates memory for LPM object
  */
+RTE_EXPORT_SYMBOL(rte_lpm_create)
 struct rte_lpm *
 rte_lpm_create(const char *name, int socket_id,
 		const struct rte_lpm_config *config)
 {
-	char mem_name[RTE_LPM_NAMESIZE];
+	char mem_name[RTE_LPM_NAMESIZE + sizeof("LPM_")];
 	struct __rte_lpm *i_lpm;
 	struct rte_lpm *lpm = NULL;
 	struct rte_tailq_entry *te;
@@ -164,6 +167,11 @@ rte_lpm_create(const char *name, int socket_id,
 	if ((name == NULL) || (socket_id < -1) || (config->max_rules == 0)
 			|| config->number_tbl8s > RTE_LPM_MAX_TBL8_NUM_GROUPS) {
 		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	if (strlen(name) >= RTE_LPM_NAMESIZE) {
+		rte_errno = ENAMETOOLONG;
 		return NULL;
 	}
 
@@ -251,6 +259,7 @@ exit:
 /*
  * Deallocates memory for given LPM table.
  */
+RTE_EXPORT_SYMBOL(rte_lpm_free)
 void
 rte_lpm_free(struct rte_lpm *lpm)
 {
@@ -294,12 +303,13 @@ __lpm_rcu_qsbr_free_resource(void *p, void *data, unsigned int n)
 
 	RTE_SET_USED(n);
 	/* Set tbl8 group invalid */
-	__atomic_store(&tbl8[tbl8_group_index], &zero_tbl8_entry,
-		__ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&tbl8[tbl8_group_index].val,
+			zero_tbl8_entry.val, rte_memory_order_relaxed);
 }
 
 /* Associate QSBR variable with an LPM object.
  */
+RTE_EXPORT_SYMBOL(rte_lpm_rcu_qsbr_add)
 int
 rte_lpm_rcu_qsbr_add(struct rte_lpm *lpm, struct rte_lpm_rcu_config *cfg)
 {
@@ -322,8 +332,11 @@ rte_lpm_rcu_qsbr_add(struct rte_lpm *lpm, struct rte_lpm_rcu_config *cfg)
 		/* No other things to do. */
 	} else if (cfg->mode == RTE_LPM_QSBR_MODE_DQ) {
 		/* Init QSBR defer queue. */
-		snprintf(rcu_dq_name, sizeof(rcu_dq_name),
-				"LPM_RCU_%s", i_lpm->name);
+		if (snprintf(rcu_dq_name, sizeof(rcu_dq_name), "LPM_RCU_%s", i_lpm->name)
+				>= (int)sizeof(rcu_dq_name))
+			LPM_LOG(NOTICE, "LPM rcu defer queue name truncated to '%s'",
+				rcu_dq_name);
+
 		params.name = rcu_dq_name;
 		params.size = cfg->dq_size;
 		if (params.size == 0)
@@ -338,7 +351,8 @@ rte_lpm_rcu_qsbr_add(struct rte_lpm *lpm, struct rte_lpm_rcu_config *cfg)
 		params.v = cfg->v;
 		i_lpm->dq = rte_rcu_qsbr_dq_create(&params);
 		if (i_lpm->dq == NULL) {
-			LPM_LOG(ERR, "LPM defer queue creation failed");
+			LPM_LOG(ERR, "LPM defer queue creation failed: %s",
+				rte_strerror(rte_errno));
 			return 1;
 		}
 	} else {
@@ -515,8 +529,8 @@ _tbl8_alloc(struct __rte_lpm *i_lpm)
 					RTE_LPM_TBL8_GROUP_NUM_ENTRIES *
 					sizeof(tbl8_entry[0]));
 
-			__atomic_store(tbl8_entry, &new_tbl8_entry,
-					__ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&tbl8_entry->val, new_tbl8_entry.val,
+					rte_memory_order_relaxed);
 
 			/* Return group index for allocated tbl8 group. */
 			return group_idx;
@@ -551,15 +565,19 @@ tbl8_free(struct __rte_lpm *i_lpm, uint32_t tbl8_group_start)
 
 	if (i_lpm->v == NULL) {
 		/* Set tbl8 group invalid*/
-		__atomic_store(&i_lpm->lpm.tbl8[tbl8_group_start], &zero_tbl8_entry,
-				__ATOMIC_RELAXED);
+		struct rte_lpm_tbl_entry *tbl8_entry =
+				&i_lpm->lpm.tbl8[tbl8_group_start];
+		rte_atomic_store_explicit(&tbl8_entry->val, zero_tbl8_entry.val,
+				rte_memory_order_relaxed);
 	} else if (i_lpm->rcu_mode == RTE_LPM_QSBR_MODE_SYNC) {
 		/* Wait for quiescent state change. */
 		rte_rcu_qsbr_synchronize(i_lpm->v,
 			RTE_QSBR_THRID_INVALID);
 		/* Set tbl8 group invalid*/
-		__atomic_store(&i_lpm->lpm.tbl8[tbl8_group_start], &zero_tbl8_entry,
-				__ATOMIC_RELAXED);
+		struct rte_lpm_tbl_entry *tbl8_entry =
+				&i_lpm->lpm.tbl8[tbl8_group_start];
+		rte_atomic_store_explicit(&tbl8_entry->val, zero_tbl8_entry.val,
+				rte_memory_order_relaxed);
 	} else if (i_lpm->rcu_mode == RTE_LPM_QSBR_MODE_DQ) {
 		/* Push into QSBR defer queue. */
 		status = rte_rcu_qsbr_dq_enqueue(i_lpm->dq,
@@ -602,8 +620,10 @@ add_depth_small(struct __rte_lpm *i_lpm, uint32_t ip, uint8_t depth,
 			/* Setting tbl24 entry in one go to avoid race
 			 * conditions
 			 */
-			__atomic_store(&i_lpm->lpm.tbl24[i], &new_tbl24_entry,
-					__ATOMIC_RELEASE);
+			struct rte_lpm_tbl_entry *tbl24_entry =
+					&i_lpm->lpm.tbl24[i];
+			rte_atomic_store_explicit(&tbl24_entry->val, new_tbl24_entry.val,
+					rte_memory_order_release);
 
 			continue;
 		}
@@ -632,9 +652,11 @@ add_depth_small(struct __rte_lpm *i_lpm, uint32_t ip, uint8_t depth,
 					 * Setting tbl8 entry in one go to avoid
 					 * race conditions
 					 */
-					__atomic_store(&i_lpm->lpm.tbl8[j],
-						&new_tbl8_entry,
-						__ATOMIC_RELAXED);
+					struct rte_lpm_tbl_entry *tbl8_entry =
+							&i_lpm->lpm.tbl8[j];
+					rte_atomic_store_explicit(&tbl8_entry->val,
+							new_tbl8_entry.val,
+							rte_memory_order_relaxed);
 
 					continue;
 				}
@@ -679,8 +701,10 @@ add_depth_big(struct __rte_lpm *i_lpm, uint32_t ip_masked, uint8_t depth,
 				.valid_group = i_lpm->lpm.tbl8[i].valid_group,
 				.next_hop = next_hop,
 			};
-			__atomic_store(&i_lpm->lpm.tbl8[i], &new_tbl8_entry,
-					__ATOMIC_RELAXED);
+			struct rte_lpm_tbl_entry *tbl8_entry =
+					&i_lpm->lpm.tbl8[i];
+			rte_atomic_store_explicit(&tbl8_entry->val, new_tbl8_entry.val,
+					rte_memory_order_relaxed);
 		}
 
 		/*
@@ -699,8 +723,10 @@ add_depth_big(struct __rte_lpm *i_lpm, uint32_t ip_masked, uint8_t depth,
 		/* The tbl24 entry must be written only after the
 		 * tbl8 entries are written.
 		 */
-		__atomic_store(&i_lpm->lpm.tbl24[tbl24_index], &new_tbl24_entry,
-				__ATOMIC_RELEASE);
+		struct rte_lpm_tbl_entry *tbl24_entry =
+				&i_lpm->lpm.tbl24[tbl24_index];
+		rte_atomic_store_explicit(&tbl24_entry->val, new_tbl24_entry.val,
+				rte_memory_order_release);
 
 	} /* If valid entry but not extended calculate the index into Table8. */
 	else if (i_lpm->lpm.tbl24[tbl24_index].valid_group == 0) {
@@ -724,8 +750,10 @@ add_depth_big(struct __rte_lpm *i_lpm, uint32_t ip_masked, uint8_t depth,
 				.valid_group = i_lpm->lpm.tbl8[i].valid_group,
 				.next_hop = i_lpm->lpm.tbl24[tbl24_index].next_hop,
 			};
-			__atomic_store(&i_lpm->lpm.tbl8[i], &new_tbl8_entry,
-					__ATOMIC_RELAXED);
+			struct rte_lpm_tbl_entry *tbl8_entry =
+					&i_lpm->lpm.tbl8[i];
+			rte_atomic_store_explicit(&tbl8_entry->val, new_tbl8_entry.val,
+					rte_memory_order_relaxed);
 		}
 
 		tbl8_index = tbl8_group_start + (ip_masked & 0xFF);
@@ -738,8 +766,10 @@ add_depth_big(struct __rte_lpm *i_lpm, uint32_t ip_masked, uint8_t depth,
 				.valid_group = i_lpm->lpm.tbl8[i].valid_group,
 				.next_hop = next_hop,
 			};
-			__atomic_store(&i_lpm->lpm.tbl8[i], &new_tbl8_entry,
-					__ATOMIC_RELAXED);
+			struct rte_lpm_tbl_entry *tbl8_entry =
+					&i_lpm->lpm.tbl8[i];
+			rte_atomic_store_explicit(&tbl8_entry->val, new_tbl8_entry.val,
+					rte_memory_order_relaxed);
 		}
 
 		/*
@@ -758,8 +788,10 @@ add_depth_big(struct __rte_lpm *i_lpm, uint32_t ip_masked, uint8_t depth,
 		/* The tbl24 entry must be written only after the
 		 * tbl8 entries are written.
 		 */
-		__atomic_store(&i_lpm->lpm.tbl24[tbl24_index], &new_tbl24_entry,
-				__ATOMIC_RELEASE);
+		struct rte_lpm_tbl_entry *tbl24_entry =
+				&i_lpm->lpm.tbl24[tbl24_index];
+		rte_atomic_store_explicit(&tbl24_entry->val, new_tbl24_entry.val,
+				rte_memory_order_release);
 
 	} else { /*
 		* If it is valid, extended entry calculate the index into tbl8.
@@ -784,8 +816,10 @@ add_depth_big(struct __rte_lpm *i_lpm, uint32_t ip_masked, uint8_t depth,
 				 * Setting tbl8 entry in one go to avoid race
 				 * condition
 				 */
-				__atomic_store(&i_lpm->lpm.tbl8[i], &new_tbl8_entry,
-						__ATOMIC_RELAXED);
+				struct rte_lpm_tbl_entry *tbl8_entry =
+						&i_lpm->lpm.tbl8[i];
+				rte_atomic_store_explicit(&tbl8_entry->val,
+						new_tbl8_entry.val, rte_memory_order_relaxed);
 
 				continue;
 			}
@@ -798,6 +832,7 @@ add_depth_big(struct __rte_lpm *i_lpm, uint32_t ip_masked, uint8_t depth,
 /*
  * Add a route
  */
+RTE_EXPORT_SYMBOL(rte_lpm_add)
 int
 rte_lpm_add(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 		uint32_t next_hop)
@@ -849,6 +884,7 @@ rte_lpm_add(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 /*
  * Look for a rule in the high-level rules table
  */
+RTE_EXPORT_SYMBOL(rte_lpm_is_rule_present)
 int
 rte_lpm_is_rule_present(struct rte_lpm *lpm, uint32_t ip, uint8_t depth,
 uint32_t *next_hop)
@@ -924,8 +960,10 @@ delete_depth_small(struct __rte_lpm *i_lpm, uint32_t ip_masked,
 
 			if (i_lpm->lpm.tbl24[i].valid_group == 0 &&
 					i_lpm->lpm.tbl24[i].depth <= depth) {
-				__atomic_store(&i_lpm->lpm.tbl24[i],
-					&zero_tbl24_entry, __ATOMIC_RELEASE);
+				struct rte_lpm_tbl_entry *tbl24_entry =
+						&i_lpm->lpm.tbl24[i];
+				rte_atomic_store_explicit(&tbl24_entry->val,
+						zero_tbl24_entry.val, rte_memory_order_release);
 			} else if (i_lpm->lpm.tbl24[i].valid_group == 1) {
 				/*
 				 * If TBL24 entry is extended, then there has
@@ -970,8 +1008,10 @@ delete_depth_small(struct __rte_lpm *i_lpm, uint32_t ip_masked,
 
 			if (i_lpm->lpm.tbl24[i].valid_group == 0 &&
 					i_lpm->lpm.tbl24[i].depth <= depth) {
-				__atomic_store(&i_lpm->lpm.tbl24[i], &new_tbl24_entry,
-						__ATOMIC_RELEASE);
+				struct rte_lpm_tbl_entry *tbl24_entry =
+						&i_lpm->lpm.tbl24[i];
+				rte_atomic_store_explicit(&tbl24_entry->val,
+						new_tbl24_entry.val, rte_memory_order_release);
 			} else  if (i_lpm->lpm.tbl24[i].valid_group == 1) {
 				/*
 				 * If TBL24 entry is extended, then there has
@@ -986,10 +1026,13 @@ delete_depth_small(struct __rte_lpm *i_lpm, uint32_t ip_masked,
 				for (j = tbl8_index; j < (tbl8_index +
 					RTE_LPM_TBL8_GROUP_NUM_ENTRIES); j++) {
 
-					if (i_lpm->lpm.tbl8[j].depth <= depth)
-						__atomic_store(&i_lpm->lpm.tbl8[j],
-							&new_tbl8_entry,
-							__ATOMIC_RELAXED);
+					if (i_lpm->lpm.tbl8[j].depth <= depth) {
+						struct rte_lpm_tbl_entry *tbl8_entry =
+								&i_lpm->lpm.tbl8[j];
+						rte_atomic_store_explicit(&tbl8_entry->val,
+								new_tbl8_entry.val,
+								rte_memory_order_relaxed);
+					}
 				}
 			}
 		}
@@ -1097,9 +1140,12 @@ delete_depth_big(struct __rte_lpm *i_lpm, uint32_t ip_masked,
 		 * rule_to_delete must be modified.
 		 */
 		for (i = tbl8_index; i < (tbl8_index + tbl8_range); i++) {
-			if (i_lpm->lpm.tbl8[i].depth <= depth)
-				__atomic_store(&i_lpm->lpm.tbl8[i], &new_tbl8_entry,
-						__ATOMIC_RELAXED);
+			if (i_lpm->lpm.tbl8[i].depth <= depth) {
+				struct rte_lpm_tbl_entry *tbl8_entry =
+						&i_lpm->lpm.tbl8[i];
+				rte_atomic_store_explicit(&tbl8_entry->val,
+						new_tbl8_entry.val, rte_memory_order_relaxed);
+			}
 		}
 	}
 
@@ -1130,8 +1176,10 @@ delete_depth_big(struct __rte_lpm *i_lpm, uint32_t ip_masked,
 		/* Set tbl24 before freeing tbl8 to avoid race condition.
 		 * Prevent the free of the tbl8 group from hoisting.
 		 */
-		__atomic_store(&i_lpm->lpm.tbl24[tbl24_index], &new_tbl24_entry,
-				__ATOMIC_RELAXED);
+		struct rte_lpm_tbl_entry *tbl24_entry =
+				&i_lpm->lpm.tbl24[tbl24_index];
+		rte_atomic_store_explicit(&tbl24_entry->val, new_tbl24_entry.val,
+				rte_memory_order_relaxed);
 		rte_atomic_thread_fence(rte_memory_order_release);
 		status = tbl8_free(i_lpm, tbl8_group_start);
 	}
@@ -1142,6 +1190,7 @@ delete_depth_big(struct __rte_lpm *i_lpm, uint32_t ip_masked,
 /*
  * Deletes a rule
  */
+RTE_EXPORT_SYMBOL(rte_lpm_delete)
 int
 rte_lpm_delete(struct rte_lpm *lpm, uint32_t ip, uint8_t depth)
 {
@@ -1200,6 +1249,7 @@ rte_lpm_delete(struct rte_lpm *lpm, uint32_t ip, uint8_t depth)
 /*
  * Delete all rules from the LPM table.
  */
+RTE_EXPORT_SYMBOL(rte_lpm_delete_all)
 void
 rte_lpm_delete_all(struct rte_lpm *lpm)
 {

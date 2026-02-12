@@ -27,8 +27,6 @@
 #include "hw/npc.h"
 #include "hw/ssow.h"
 
-#include "roc_ie_ot.h"
-
 /* NPA */
 #include "roc_npa_dp.h"
 
@@ -38,6 +36,10 @@
 /* CPT */
 #include "roc_cpt.h"
 
+#include "roc_ie_ot.h"
+
+#include "roc_ie_ow.h"
+
 /* NIX Inline dev */
 #include "roc_nix_inl_dp.h"
 
@@ -45,8 +47,8 @@
 
 struct cn10k_eth_txq {
 	uint64_t send_hdr_w0;
-	int64_t fc_cache_pkts;
-	uint64_t *fc_mem;
+	int64_t __rte_atomic fc_cache_pkts;
+	uint64_t __rte_atomic *fc_mem;
 	uintptr_t lmt_base;
 	rte_iova_t io_addr;
 	uint16_t sqes_per_sqb_log2;
@@ -54,14 +56,15 @@ struct cn10k_eth_txq {
 	uint8_t flag;
 	rte_iova_t cpt_io_addr;
 	uint64_t sa_base;
-	uint64_t *cpt_fc;
+	uint64_t __rte_atomic *cpt_fc;
 	uint16_t cpt_desc;
-	int32_t *cpt_fc_sw;
+	int32_t __rte_atomic *cpt_fc_sw;
 	uint64_t lso_tun_fmt;
 	uint64_t ts_mem;
 	uint64_t mark_flag : 8;
 	uint64_t mark_fmt : 48;
 	struct cnxk_eth_txq_comp tx_compl;
+	uint16_t tx_offload_flags;
 } __plt_cache_aligned;
 
 struct cn10k_eth_rxq {
@@ -91,7 +94,7 @@ struct cn10k_inb_priv_data {
 	struct cnxk_eth_sec_sess *eth_sec;
 };
 
-struct cn10k_sec_sess_priv {
+struct __rte_packed_begin cn10k_sec_sess_priv {
 	union {
 		struct {
 			uint32_t sa_idx;
@@ -109,7 +112,7 @@ struct cn10k_sec_sess_priv {
 
 		uint64_t u64;
 	};
-} __rte_packed;
+} __rte_packed_end;
 
 #define LMT_OFF(lmt_addr, lmt_num, offset)                                     \
 	(void *)((uintptr_t)(lmt_addr) +                                       \

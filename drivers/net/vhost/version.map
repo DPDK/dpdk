@@ -1,8 +1,0 @@
-DPDK_24 {
-	global:
-
-	rte_eth_vhost_get_queue_event;
-	rte_eth_vhost_get_vid_from_port_id;
-
-	local: *;
-};

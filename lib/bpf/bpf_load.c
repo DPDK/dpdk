@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <stdint.h>
 
+#include <eal_export.h>
 #include <rte_log.h>
 #include <rte_errno.h>
 
@@ -79,6 +80,7 @@ bpf_check_xsym(const struct rte_bpf_xsym *xsym)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_bpf_load)
 struct rte_bpf *
 rte_bpf_load(const struct rte_bpf_prm *prm)
 {
@@ -86,7 +88,7 @@ rte_bpf_load(const struct rte_bpf_prm *prm)
 	int32_t rc;
 	uint32_t i;
 
-	if (prm == NULL || prm->ins == NULL ||
+	if (prm == NULL || prm->ins == NULL || prm->nb_ins == 0 ||
 			(prm->nb_xsym != 0 && prm->xsym == NULL)) {
 		rte_errno = EINVAL;
 		return NULL;

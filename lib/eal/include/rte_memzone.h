@@ -45,7 +45,7 @@ extern "C" {
  * A structure describing a memzone, which is a contiguous portion of
  * physical memory identified by a name.
  */
-struct rte_memzone {
+struct __rte_packed_begin rte_memzone {
 
 #define RTE_MEMZONE_NAMESIZE 32       /**< Maximum length of memory zone name.*/
 	char name[RTE_MEMZONE_NAMESIZE];  /**< Name of the memory zone. */
@@ -62,12 +62,9 @@ struct rte_memzone {
 	int32_t socket_id;                /**< NUMA socket ID. */
 
 	uint32_t flags;                   /**< Characteristics of this memzone. */
-} __rte_packed;
+} __rte_packed_end;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Set the maximum number of memzones.
  *
  * This function can only be called prior to rte_eal_init().
@@ -77,13 +74,9 @@ struct rte_memzone {
  * @return
  *  0 on success, -1 otherwise.
  */
-__rte_experimental
 int rte_memzone_max_set(size_t max);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Get the maximum number of memzones.
  *
  * @note: The maximum value will not change after calling rte_eal_init().
@@ -91,7 +84,6 @@ int rte_memzone_max_set(size_t max);
  * @return
  *   Maximum number of memzones.
  */
-__rte_experimental
 size_t rte_memzone_max_get(void);
 
 /**

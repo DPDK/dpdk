@@ -22,10 +22,6 @@ extern "C" {
 RTE_TRACE_POINT(
 	rte_dma_trace_info_get,
 	RTE_TRACE_POINT_ARGS(int16_t dev_id, struct rte_dma_info *dev_info),
-#ifdef _RTE_TRACE_POINT_REGISTER_H_
-	struct rte_dma_info __dev_info = {0};
-	dev_info = &__dev_info;
-#endif /* _RTE_TRACE_POINT_REGISTER_H_ */
 	rte_trace_point_emit_i16(dev_id);
 	rte_trace_point_emit_string(dev_info->dev_name);
 	rte_trace_point_emit_u64(dev_info->dev_capa);
@@ -35,20 +31,17 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_u16(dev_info->max_sges);
 	rte_trace_point_emit_i16(dev_info->numa_node);
 	rte_trace_point_emit_u16(dev_info->nb_vchans);
+	rte_trace_point_emit_u16(dev_info->nb_priorities);
 )
 
 RTE_TRACE_POINT(
 	rte_dma_trace_configure,
 	RTE_TRACE_POINT_ARGS(int16_t dev_id, const struct rte_dma_conf *dev_conf,
 			     int ret),
-#ifdef _RTE_TRACE_POINT_REGISTER_H_
-	const struct rte_dma_conf __dev_conf = {0};
-	dev_conf = &__dev_conf;
-#endif /* _RTE_TRACE_POINT_REGISTER_H_ */
-	int enable_silent = (int)dev_conf->enable_silent;
 	rte_trace_point_emit_i16(dev_id);
 	rte_trace_point_emit_u16(dev_conf->nb_vchans);
-	rte_trace_point_emit_int(enable_silent);
+	rte_trace_point_emit_u16(dev_conf->priority);
+	rte_trace_point_emit_u64(dev_conf->flags);
 	rte_trace_point_emit_int(ret);
 )
 
@@ -77,26 +70,18 @@ RTE_TRACE_POINT(
 	rte_dma_trace_vchan_setup,
 	RTE_TRACE_POINT_ARGS(int16_t dev_id, uint16_t vchan,
 			     const struct rte_dma_vchan_conf *conf, int ret),
-#ifdef _RTE_TRACE_POINT_REGISTER_H_
-	const struct rte_dma_vchan_conf __conf = {0};
-	conf = &__conf;
-#endif /* _RTE_TRACE_POINT_REGISTER_H_ */
-	int src_port_type = conf->src_port.port_type;
-	int dst_port_type = conf->dst_port.port_type;
-	int direction = conf->direction;
-	uint64_t src_pcie_cfg;
-	uint64_t dst_pcie_cfg;
 	rte_trace_point_emit_i16(dev_id);
 	rte_trace_point_emit_u16(vchan);
-	rte_trace_point_emit_int(direction);
+	rte_trace_point_emit_int(conf->direction);
 	rte_trace_point_emit_u16(conf->nb_desc);
-	rte_trace_point_emit_int(src_port_type);
-	memcpy(&src_pcie_cfg, &conf->src_port.pcie, sizeof(uint64_t));
-	rte_trace_point_emit_u64(src_pcie_cfg);
-	memcpy(&dst_pcie_cfg, &conf->dst_port.pcie, sizeof(uint64_t));
-	rte_trace_point_emit_int(dst_port_type);
-	rte_trace_point_emit_u64(dst_pcie_cfg);
+	rte_trace_point_emit_int(conf->src_port.port_type);
+	rte_trace_point_emit_u64(conf->src_port.pcie.val);
+	rte_trace_point_emit_int(conf->dst_port.port_type);
+	rte_trace_point_emit_u64(conf->dst_port.pcie.val);
 	rte_trace_point_emit_ptr(conf->auto_free.m2d.pool);
+	rte_trace_point_emit_int(conf->domain.type);
+	rte_trace_point_emit_u16(conf->domain.src_handler);
+	rte_trace_point_emit_u16(conf->domain.dst_handler);
 	rte_trace_point_emit_int(ret);
 )
 
@@ -114,6 +99,50 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_i16(dev_id);
 	rte_trace_point_emit_ptr(f);
 	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_dma_trace_access_pair_group_create,
+	RTE_TRACE_POINT_ARGS(int16_t dev_id, rte_uuid_t domain_id, rte_uuid_t token,
+			     int16_t *group_id),
+	rte_trace_point_emit_i16(dev_id);
+	rte_trace_point_emit_u8_ptr(&domain_id[0]);
+	rte_trace_point_emit_u8_ptr(&token[0]);
+	rte_trace_point_emit_ptr(group_id);
+)
+
+RTE_TRACE_POINT(
+	rte_dma_trace_access_pair_group_destroy,
+	RTE_TRACE_POINT_ARGS(int16_t dev_id, int16_t group_id),
+	rte_trace_point_emit_i16(dev_id);
+	rte_trace_point_emit_i16(group_id);
+)
+
+RTE_TRACE_POINT(
+	rte_dma_trace_access_pair_group_join,
+	RTE_TRACE_POINT_ARGS(int16_t dev_id, rte_uuid_t domain_id, rte_uuid_t token,
+			     int16_t group_id),
+	rte_trace_point_emit_i16(dev_id);
+	rte_trace_point_emit_u8_ptr(&domain_id[0]);
+	rte_trace_point_emit_u8_ptr(&token[0]);
+	rte_trace_point_emit_i16(group_id);
+)
+
+RTE_TRACE_POINT(
+	rte_dma_trace_access_pair_group_leave,
+	RTE_TRACE_POINT_ARGS(int16_t dev_id, int16_t group_id),
+	rte_trace_point_emit_i16(dev_id);
+	rte_trace_point_emit_i16(group_id);
+)
+
+RTE_TRACE_POINT(
+	rte_dma_trace_access_pair_group_handler_get,
+	RTE_TRACE_POINT_ARGS(int16_t dev_id, int16_t group_id, rte_uuid_t domain_id,
+			     uint16_t *handler),
+	rte_trace_point_emit_i16(dev_id);
+	rte_trace_point_emit_i16(group_id);
+	rte_trace_point_emit_u8_ptr(&domain_id[0]);
+	rte_trace_point_emit_ptr(handler);
 )
 
 #ifdef __cplusplus

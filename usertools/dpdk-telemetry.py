@@ -18,13 +18,13 @@ import argparse
 
 # global vars
 TELEMETRY_VERSION = "v2"
-SOCKET_NAME = 'dpdk_telemetry.{}'.format(TELEMETRY_VERSION)
-DEFAULT_PREFIX = 'rte'
+SOCKET_NAME = "dpdk_telemetry.{}".format(TELEMETRY_VERSION)
+DEFAULT_PREFIX = "rte"
 CMDS = []
 
 
 def read_socket(sock, buf_len, echo=True, pretty=False):
-    """ Read data from socket and return it in JSON format """
+    """Read data from socket and return it in JSON format"""
     reply = sock.recv(buf_len).decode()
     try:
         ret = json.loads(reply)
@@ -39,11 +39,11 @@ def read_socket(sock, buf_len, echo=True, pretty=False):
 
 
 def get_app_name(pid):
-    """ return the app name for a given PID, for printing """
-    proc_cmdline = os.path.join('/proc', str(pid), 'cmdline')
+    """return the app name for a given PID, for printing"""
+    proc_cmdline = os.path.join("/proc", str(pid), "cmdline")
     try:
         with open(proc_cmdline) as f:
-            argv0 = f.read(1024).split('\0')[0]
+            argv0 = f.read(1024).split("\0")[0]
             return os.path.basename(argv0)
     except IOError as e:
         # ignore file not found errors
@@ -53,41 +53,40 @@ def get_app_name(pid):
 
 
 def find_sockets(path):
-    """ Find any possible sockets to connect to and return them """
-    return glob.glob(os.path.join(path, SOCKET_NAME + '*'))
+    """Find any possible sockets to connect to and return them"""
+    return glob.glob(os.path.join(path, SOCKET_NAME + "*"))
 
 
 def print_socket_options(prefix, paths):
-    """ Given a set of socket paths, give the commands needed to connect """
+    """Given a set of socket paths, give the commands needed to connect"""
     cmd = sys.argv[0]
     if prefix != DEFAULT_PREFIX:
         cmd += " -f " + prefix
     for s in sorted(paths):
         sock_name = os.path.basename(s)
         if sock_name.endswith(TELEMETRY_VERSION):
-            print("- {}  # Connect with '{}'".format(os.path.basename(s),
-                                                     cmd))
+            print("- {}  # Connect with '{}'".format(os.path.basename(s), cmd))
         else:
-            print("- {}  # Connect with '{} -i {}'".format(os.path.basename(s),
-                                                           cmd,
-                                                           s.split(':')[-1]))
+            print(
+                "- {}  # Connect with '{} -i {}'".format(os.path.basename(s), cmd, s.split(":")[-1])
+            )
 
 
 def get_dpdk_runtime_dir(fp):
-    """ Using the same logic as in DPDK's EAL, get the DPDK runtime directory
-    based on the file-prefix and user """
-    run_dir = os.environ.get('RUNTIME_DIRECTORY')
+    """Using the same logic as in DPDK's EAL, get the DPDK runtime directory
+    based on the file-prefix and user"""
+    run_dir = os.environ.get("RUNTIME_DIRECTORY")
     if not run_dir:
-        if (os.getuid() == 0):
-            run_dir = '/var/run'
+        if os.getuid() == 0:
+            run_dir = "/var/run"
         else:
-            run_dir = os.environ.get('XDG_RUNTIME_DIR', '/tmp')
-    return os.path.join(run_dir, 'dpdk', fp)
+            run_dir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+    return os.path.join(run_dir, "dpdk", fp)
 
 
 def list_fp():
-    """ List all available file-prefixes to user """
-    path = get_dpdk_runtime_dir('')
+    """List all available file-prefixes to user"""
+    path = get_dpdk_runtime_dir("")
     sockets = glob.glob(os.path.join(path, "*", SOCKET_NAME + "*"))
     prefixes = []
     if not sockets:
@@ -98,18 +97,17 @@ def list_fp():
         prefixes.append(os.path.relpath(os.path.dirname(s), start=path))
     for p in sorted(set(prefixes)):
         print(p)
-        print_socket_options(p, glob.glob(os.path.join(path, p,
-                                                       SOCKET_NAME + "*")))
+        print_socket_options(p, glob.glob(os.path.join(path, p, SOCKET_NAME + "*")))
 
 
 def handle_socket(args, path):
-    """ Connect to socket and handle user input """
-    prompt = ''  # this evaluates to false in conditions
+    """Connect to socket and handle user input"""
+    prompt = ""  # this evaluates to false in conditions
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
     global CMDS
 
     if os.isatty(sys.stdin.fileno()):
-        prompt = '--> '
+        prompt = "--> "
         print("Connecting to " + path)
     try:
         sock.connect(path)
@@ -142,7 +140,7 @@ def handle_socket(args, path):
     try:
         text = input(prompt).strip()
         while text != "quit":
-            if text.startswith('/'):
+            if text.startswith("/"):
                 sock.send(text.encode())
                 read_socket(sock, output_buf_len, pretty=prompt)
             text = input(prompt).strip()
@@ -153,8 +151,8 @@ def handle_socket(args, path):
 
 
 def readline_complete(text, state):
-    """ Find any matching commands from the list based on user input """
-    all_cmds = ['quit'] + CMDS
+    """Find any matching commands from the list based on user input"""
+    all_cmds = ["quit"] + CMDS
     if text:
         matches = [c for c in all_cmds if c.startswith(text)]
     else:
@@ -162,17 +160,27 @@ def readline_complete(text, state):
     return matches[state]
 
 
-readline.parse_and_bind('tab: complete')
+readline.parse_and_bind("tab: complete")
 readline.set_completer(readline_complete)
-readline.set_completer_delims(readline.get_completer_delims().replace('/', ''))
+readline.set_completer_delims(readline.get_completer_delims().replace("/", ""))
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-f', '--file-prefix', default=DEFAULT_PREFIX,
-                    help='Provide file-prefix for DPDK runtime directory')
-parser.add_argument('-i', '--instance', default='0', type=int,
-                    help='Provide instance number for DPDK application')
-parser.add_argument('-l', '--list', action="store_true", default=False,
-                    help='List all possible file-prefixes and exit')
+parser.add_argument(
+    "-f",
+    "--file-prefix",
+    default=DEFAULT_PREFIX,
+    help="Provide file-prefix for DPDK runtime directory",
+)
+parser.add_argument(
+    "-i", "--instance", default="0", type=int, help="Provide instance number for DPDK application"
+)
+parser.add_argument(
+    "-l",
+    "--list",
+    action="store_true",
+    default=False,
+    help="List all possible file-prefixes and exit",
+)
 args = parser.parse_args()
 if args.list:
     list_fp()

@@ -1,7 +1,7 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016-2017 NXP
+ * Copyright 2016-2023 NXP
  *
  */
 #ifndef _FSL_DPSECI_CMD_H
@@ -9,7 +9,7 @@
 
 /* DPSECI Version */
 #define DPSECI_VER_MAJOR		5
-#define DPSECI_VER_MINOR		3
+#define DPSECI_VER_MINOR		4
 
 /* Command versioning */
 #define DPSECI_CMD_BASE_VERSION		1
@@ -46,6 +46,9 @@
 #define DPSECI_CMDID_GET_OPR		DPSECI_CMD_V1(0x19B)
 #define DPSECI_CMDID_SET_CONGESTION_NOTIFICATION	DPSECI_CMD_V1(0x170)
 #define DPSECI_CMDID_GET_CONGESTION_NOTIFICATION	DPSECI_CMD_V1(0x171)
+#define DPSECI_CMDID_GET_RX_QUEUE_STATUS	DPSECI_CMD_V1(0x172)
+#define DPSECI_CMDID_GET_TX_QUEUE_STATUS	DPSECI_CMD_V1(0x173)
+
 
 /* Macros for accessing command fields smaller than 1byte */
 #define DPSECI_MASK(field)        \
@@ -249,6 +252,18 @@ struct dpseci_cmd_set_congestion_notification {
 	uint64_t message_ctx;
 	uint32_t threshold_entry;
 	uint32_t threshold_exit;
+};
+
+struct dpseci_cmd_get_queue_status {
+	uint32_t queue_index;
+};
+
+struct dpseci_rsp_get_queue_status {
+	uint32_t fqid;
+	uint16_t schedstate;
+	uint16_t state_flags;
+	uint32_t frame_count;
+	uint32_t byte_count;
 };
 
 #pragma pack(pop)

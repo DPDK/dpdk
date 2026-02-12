@@ -9,27 +9,13 @@
 #define MLX5_RXP_BF3_IDENTIFIER 0x1
 #define MLX5_RXP_MAX_JOB_LENGTH	16384
 #define MLX5_RXP_MAX_SUBSETS 4095
-#define MLX5_RXP_CSR_NUM_ENTRIES 31
 #define MLX5_RXP_BF2_ROF_VERSION_STRING 0x07055254
 #define MLX5_RXP_BF3_ROF_VERSION_STRING 0x00065254
-#define MLX5_RXP_BF4_ROF_VERSION_STRING 0x00075254
-
-#define MLX5_RXP_CTRL_TYPE_MASK	7
-#define MLX5_RXP_CTRL_TYPE_JOB_DESCRIPTOR 0
-#define MLX5_RXP_CTRL_TYPE_RESPONSE_DESCRIPTOR 1
-#define MLX5_RXP_CTRL_TYPE_MEMORY_WRITE	4
-#define MLX5_RXP_CSR_CTRL_DISABLE_L2C (1 << 7)
 
 #define MLX5_RXP_CTRL_JOB_DESC_SOF 0x0010
 #define MLX5_RXP_CTRL_JOB_DESC_EOF 0x0020
 #define MLX5_RXP_CTRL_JOB_DESC_HPM_ENABLE 0x0100
 #define MLX5_RXP_CTRL_JOB_DESC_ANYMATCH_ENABLE 0x0200
-#define MLX5_RXP_CTRL_JOB_DESC_FLAGS (MLX5_RXP_CTRL_JOB_DESC_SOF | \
-				      MLX5_RXP_CTRL_JOB_DESC_EOF | \
-				      MLX5_RXP_CTRL_JOB_DESC_HPM_ENABLE | \
-				      MLX5_RXP_CTRL_JOB_DESC_ANYMATCH_ENABLE)
-
-#define MLX5_RXP_CTRL_VALID 0x8000
 
 #define MLX5_RXP_RESP_STATUS_MAX_PRI_THREADS (1 << 3)
 #define MLX5_RXP_RESP_STATUS_MAX_SEC_THREADS (1 << 4)
@@ -42,14 +28,14 @@
 #define MLX5_RXP_RESP_STATUS_PMI_EOJ (1 << 14)
 
 /* This describes the header the RXP expects for any search data. */
-struct mlx5_rxp_job_desc {
+struct __rte_packed_begin mlx5_rxp_job_desc {
 	uint32_t job_id;
 	uint16_t ctrl;
 	uint16_t len;
 	uint16_t subset[4];
-} __rte_packed;
+} __rte_packed_end;
 
-struct mlx5_rxp_response_desc {
+struct __rte_packed_begin mlx5_rxp_response_desc {
 	uint32_t job_id;
 	uint16_t status;
 	uint8_t	detected_match_count;
@@ -58,13 +44,13 @@ struct mlx5_rxp_response_desc {
 	uint16_t instruction_count;
 	uint16_t latency_count;
 	uint16_t pmi_min_byte_ptr;
-} __rte_packed;
+} __rte_packed_end;
 
-struct mlx5_rxp_match_tuple {
+struct __rte_packed_begin mlx5_rxp_match_tuple {
 	uint32_t rule_id;
 	uint16_t start_ptr;
 	uint16_t length;
-} __rte_packed;
+} __rte_packed_end;
 
 struct mlx5_rxp_response {
 	struct mlx5_rxp_response_desc header;
@@ -115,11 +101,11 @@ struct mlx5_rxp_rof {
 	struct mlx5_rxp_rof_entry *rof_entries;
 };
 
-struct mlx5_rxp_ctl_rules_pgm {
+struct __rte_packed_begin mlx5_rxp_ctl_rules_pgm {
 	struct mlx5_rxp_ctl_hdr hdr;
 	uint32_t count;
 	struct mlx5_rxp_rof_entry rules[];
-} __rte_packed;
+} __rte_packed_end;
 
 /* RXP programming mode setting. */
 enum mlx5_rxp_program_mode {
@@ -127,12 +113,6 @@ enum mlx5_rxp_program_mode {
 	MLX5_RXP_SHARED_PROG_MODE,
 	MLX5_RXP_PRIVATE_PROG_MODE,
 };
-
-#define MLX5_RXP_POLL_CSR_FOR_VALUE_TIMEOUT 3000 /* Poll timeout in ms. */
-#define MLX5_RXP_INITIALIZATION_TIMEOUT 60000 /* Initialize timeout in ms. */
-#define MLX5_RXP_MAX_ENGINES 2u /* Number of RXP engines. */
-#define MLX5_RXP_EM_COUNT 1u /* Extra External Memories to use. */
-#define MLX5_RXP_DB_NOT_ASSIGNED 0xFF
 
 struct mlx5_regex_mkey {
 	struct mlx5dv_devx_umem *umem;

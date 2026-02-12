@@ -21,10 +21,13 @@ class MlxQueue:
         self.wait_burst = []  # waiting for completion
         self.pq_id = 0
 
-    def log(self):
+    def log(self, all):
         """Log all queue bursts"""
         for txb in self.done_burst:
             txb.log()
+        if all == True:
+            for txb in self.wait_burst:
+                txb.log()
 
 
 class MlxMbuf:
@@ -147,24 +150,26 @@ class MlxTrace:
         self.tx_qlst = {}  # active Tx queues per port/queue
         self.tx_wlst = {}  # wait timestamp list per CPU
 
-    def run(self, msg_it):
+    def run(self, msg_it, verbose):
         """Run over gathered tracing data and build database"""
         for msg in msg_it:
             if not isinstance(msg, bt2._EventMessageConst):
                 continue
             event = msg.event
             if event.name.startswith(PFX_TX):
-                do_tx(msg, self)
+                do_tx(msg, self, verbose)
             # Handling of other log event cathegories can be added here
+        if verbose:
+            print("*** End of raw data dump ***")
 
-    def log(self):
+    def log(self, all):
         """Log gathered trace database"""
         for pq_id in self.tx_qlst:
             queue = self.tx_qlst.get(pq_id)
-            queue.log()
+            queue.log(all)
 
 
-def do_tx_entry(msg, trace):
+def do_tx_entry(msg, trace, verbose):
     """Handle entry Tx busrt"""
     event = msg.event
     cpu_id = event["cpu_id"]
@@ -172,9 +177,15 @@ def do_tx_entry(msg, trace):
     if burst is not None:
         # continue existing burst after WAIT
         return
+    if verbose > 0:
+        print("%u:%X tx_entry(real_time=%u, port_id=%u, queue_id=%u)" %
+              (msg.default_clock_snapshot.ns_from_origin, cpu_id,
+               event["real_time"], event["port_id"], event["queue_id"]))
     # allocate the new burst and append to the queue
     burst = MlxBurst()
-    burst.call_ts = msg.default_clock_snapshot.ns_from_origin
+    burst.call_ts = event["real_time"]
+    if burst.call_ts == 0:
+        burst.call_ts = msg.default_clock_snapshot.ns_from_origin
     trace.tx_blst[cpu_id] = burst
     pq_id = event["port_id"] << 16 | event["queue_id"]
     queue = trace.tx_qlst.get(pq_id)
@@ -187,45 +198,64 @@ def do_tx_entry(msg, trace):
     queue.wait_burst.append(burst)
 
 
-def do_tx_exit(msg, trace):
+def do_tx_exit(msg, trace, verbose):
     """Handle exit Tx busrt"""
     event = msg.event
     cpu_id = event["cpu_id"]
+    if verbose > 0:
+        print("%u:%X tx_exit(real_time=%u, nb_sent=%u, nb_req=%u)" %
+              (msg.default_clock_snapshot.ns_from_origin, cpu_id,
+               event["real_time"], event["nb_sent"], event["nb_req"]))
     burst = trace.tx_blst.get(cpu_id)
     if burst is None:
         return
-    burst.done_ts = msg.default_clock_snapshot.ns_from_origin
+    burst.done_ts = event["real_time"]
+    if burst.done_ts == 0:
+        burst.done_ts = msg.default_clock_snapshot.ns_from_origin
     burst.req = event["nb_req"]
     burst.done = event["nb_sent"]
     trace.tx_blst.pop(cpu_id)
 
 
-def do_tx_wqe(msg, trace):
+def do_tx_wqe(msg, trace, verbose):
     """Handle WQE record"""
     event = msg.event
     cpu_id = event["cpu_id"]
+    if verbose > 1:
+        print("%u:%X tx_wqe(real_time=%u, opcode=%08X)" %
+              (msg.default_clock_snapshot.ns_from_origin, cpu_id,
+               event["real_time"], event["opcode"]))
     burst = trace.tx_blst.get(cpu_id)
     if burst is None:
         return
     wqe = MlxWqe()
     wqe.wait_ts = trace.tx_wlst.get(cpu_id)
     if wqe.wait_ts is None:
-        wqe.wait_ts = msg.default_clock_snapshot.ns_from_origin
+        wqe.wait_ts = event["real_time"]
+        if wqe.wait_ts == 0:
+            wqe.wait_ts = msg.default_clock_snapshot.ns_from_origin
     wqe.opcode = event["opcode"]
     burst.wqes.append(wqe)
 
 
-def do_tx_wait(msg, trace):
+def do_tx_wait(msg, trace, verbose):
     """Handle WAIT record"""
     event = msg.event
     cpu_id = event["cpu_id"]
+    if verbose > 1:
+        print("%u:%X tx_wait(ts=%u)" %
+              (msg.default_clock_snapshot.ns_from_origin, cpu_id, event["ts"]))
     trace.tx_wlst[cpu_id] = event["ts"]
 
 
-def do_tx_push(msg, trace):
+def do_tx_push(msg, trace, verbose):
     """Handle WQE push event"""
     event = msg.event
     cpu_id = event["cpu_id"]
+    if verbose > 2:
+        print("%u:%X tx_push(mbuf=%X, pkt_len=%u, nb_segs=%u, wqe_id=%04X)" %
+              (msg.default_clock_snapshot.ns_from_origin, cpu_id, event["mbuf"],
+               event["mbuf_pkt_len"], event["mbuf_nb_segs"], event["wqe_id"]))
     burst = trace.tx_blst.get(cpu_id)
     if burst is None:
         return
@@ -240,10 +270,15 @@ def do_tx_push(msg, trace):
     wqe.mbuf.append(mbuf)
 
 
-def do_tx_complete(msg, trace):
+def do_tx_complete(msg, trace, verbose):
     """Handle send completion event"""
     event = msg.event
     pq_id = event["port_id"] << 16 | event["queue_id"]
+    if verbose > 1:
+        cpu_id = event["cpu_id"]
+        print("%u:%X tx_complete(port_id=%u, queue_id=%u, ts=%u, wqe_id=%04X)" %
+              (msg.default_clock_snapshot.ns_from_origin, cpu_id,
+               event["port_id"], event["queue_id"], event["ts"], event["wqe_id"]))
     queue = trace.tx_qlst.get(pq_id)
     if queue is None:
         return
@@ -258,30 +293,31 @@ def do_tx_complete(msg, trace):
         if burst.comp(wqe_id, wqe_ts) == 0:
             break
         rmv += 1
-    # mode completed burst to done list
+    # move completed burst(s) to done list
     if rmv != 0:
         idx = 0
         while idx < rmv:
+            burst = queue.wait_burst[idx]
             queue.done_burst.append(burst)
             idx += 1
-        del queue.wait_burst[0:rmv]
+        queue.wait_burst = queue.wait_burst[rmv:]
 
 
-def do_tx(msg, trace):
+def do_tx(msg, trace, verbose):
     """Handle Tx related records"""
     name = msg.event.name[PFX_TX_LEN:]
     if name == "entry":
-        do_tx_entry(msg, trace)
+        do_tx_entry(msg, trace, verbose)
     elif name == "exit":
-        do_tx_exit(msg, trace)
+        do_tx_exit(msg, trace, verbose)
     elif name == "wqe":
-        do_tx_wqe(msg, trace)
+        do_tx_wqe(msg, trace, verbose)
     elif name == "wait":
-        do_tx_wait(msg, trace)
+        do_tx_wait(msg, trace, verbose)
     elif name == "push":
-        do_tx_push(msg, trace)
+        do_tx_push(msg, trace, verbose)
     elif name == "complete":
-        do_tx_complete(msg, trace)
+        do_tx_complete(msg, trace, verbose)
     else:
         print("Error: unrecognized Tx event name: %s" % msg.event.name, file=sys.stderr)
         raise ValueError()
@@ -292,12 +328,16 @@ def main() -> int:
     try:
         parser = argparse.ArgumentParser()
         parser.add_argument("path", nargs=1, type=str, help="input trace folder")
+        parser.add_argument("-a", "--all", nargs="?", default=False, const=True,
+                            help="show all the bursts, including incomplete ones")
+        parser.add_argument("-v", "--verbose", type=int, nargs="?", default=0, const=2,
+                            help="show all the records below specified level")
         args = parser.parse_args()
 
         mlx_tr = MlxTrace()
         msg_it = bt2.TraceCollectionMessageIterator(args.path)
-        mlx_tr.run(msg_it)
-        mlx_tr.log()
+        mlx_tr.run(msg_it, args.verbose)
+        mlx_tr.log(args.all)
         return 0
     except ValueError:
         return -1

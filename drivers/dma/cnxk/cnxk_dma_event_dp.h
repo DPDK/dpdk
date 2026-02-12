@@ -5,15 +5,15 @@
 #ifndef _CNXK_DMA_EVENT_DP_H_
 #define _CNXK_DMA_EVENT_DP_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_common.h>
 #include <rte_compat.h>
 #include <rte_eventdev.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 __rte_internal
 uint16_t cn10k_dma_adapter_enqueue(void *ws, struct rte_event ev[], uint16_t nb_events);

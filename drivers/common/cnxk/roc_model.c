@@ -16,7 +16,10 @@ struct roc_model *roc_model;
 #define VENDOR_CAVIUM 0x43 /* 'C' */
 
 #define SOC_PART_CN10K 0xD49
+#define SOC_PART_CN20K 0xD8E
 
+#define PART_206xx  0xC2
+#define PART_205xxN 0xC3
 #define PART_106xx  0xB9
 #define PART_105xx  0xBA
 #define PART_105xxN 0xBC
@@ -59,6 +62,8 @@ static const struct model_db {
 	uint64_t flag;
 	char name[ROC_MODEL_STR_LEN_MAX];
 } model_db[] = {
+	{VENDOR_ARM, PART_206xx, 0, 0, ROC_MODEL_CN206xx_A0, "cn20ka_a0"},
+	{VENDOR_ARM, PART_205xxN, 0, 0, ROC_MODEL_CNF205xxN_A0, "cnf20ka_a0"},
 	{VENDOR_ARM, PART_106xx, 0, 0, ROC_MODEL_CN106xx_A0, "cn10ka_a0"},
 	{VENDOR_ARM, PART_106xx, 0, 1, ROC_MODEL_CN106xx_A1, "cn10ka_a1"},
 	{VENDOR_ARM, PART_106xx, 1, 0, ROC_MODEL_CN106xx_B0, "cn10ka_b0"},
@@ -153,7 +158,7 @@ cn10k_part_pass_get(uint32_t *part, uint32_t *pass)
 
 	dir = opendir(SYSFS_PCI_DEVICES);
 	if (dir == NULL) {
-		plt_err("%s(): opendir failed: %s\n", __func__,
+		plt_err("%s(): opendir failed: %s", __func__,
 			strerror(errno));
 		return -errno;
 	}
@@ -187,8 +192,8 @@ populate_model(struct roc_model *model, uint32_t midr)
 	major = (midr >> MODEL_MAJOR_SHIFT) & MODEL_MAJOR_MASK;
 	minor = (midr >> MODEL_MINOR_SHIFT) & MODEL_MINOR_MASK;
 
-	/* Update part number for cn10k from device-tree */
-	if (part == SOC_PART_CN10K) {
+	/* Update part number from device-tree */
+	if (part == SOC_PART_CN10K || part == SOC_PART_CN20K) {
 		if (cn10k_part_pass_get(&part, &pass))
 			goto not_found;
 		/*
@@ -257,7 +262,9 @@ detect_invalid_config(void)
 {
 #ifdef ROC_PLATFORM_CN9K
 #ifdef ROC_PLATFORM_CN10K
+#ifdef ROC_PLATFORM_CN20K
 	PLT_STATIC_ASSERT(0);
+#endif
 #endif
 #endif
 }

@@ -12,12 +12,12 @@
  *
  */
 
+#include <rte_compat.h>
+#include <rte_mempool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_compat.h>
-#include <rte_mempool.h>
 
 /**
  * Get BPID corresponding to the packet pool

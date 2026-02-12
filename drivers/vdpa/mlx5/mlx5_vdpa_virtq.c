@@ -666,7 +666,9 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 {
 	int ret = rte_vhost_get_negotiated_features(priv->vid, &priv->features);
 	uint16_t nr_vring = rte_vhost_get_vring_num(priv->vid);
-	uint32_t remaining_cnt = 0, err_cnt = 0, task_num = 0;
+	RTE_ATOMIC(uint32_t) remaining_cnt = 0;
+	RTE_ATOMIC(uint32_t) err_cnt = 0;
+	uint32_t task_num = 0;
 	uint32_t i, thrd_idx, data[1];
 	struct mlx5_vdpa_virtq *virtq;
 	struct rte_vhost_vring vq;

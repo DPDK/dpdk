@@ -14,7 +14,11 @@ sources = files(
         'dpaa_flow.c',
         'dpaa_rxtx.c',
         'dpaa_fmc.c',
+        'dpaa_ptp.c',
 )
+
+cflags += no_wvla_cflag
+cflags += no_shadow_cflag
 
 if cc.has_argument('-Wno-pointer-arith')
     cflags += '-Wno-pointer-arith'

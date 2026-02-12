@@ -140,6 +140,6 @@ cnxk_nix_cman_config_get(struct rte_eth_dev *eth_dev, struct rte_eth_cman_config
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 
-	memcpy(config, &dev->cman_cfg, sizeof(struct rte_eth_cman_config));
+	*config = dev->cman_cfg;
 	return 0;
 }

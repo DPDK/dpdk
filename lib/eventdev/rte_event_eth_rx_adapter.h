@@ -87,16 +87,16 @@
  * event based so the callback can also modify the event data if it needs to.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_compat.h>
 #include <rte_service.h>
 
 #include "rte_eventdev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_EVENT_ETH_RX_ADAPTER_MAX_INSTANCE 32
 
@@ -552,6 +552,39 @@ int rte_event_eth_rx_adapter_queue_add(uint8_t id,
 			uint16_t eth_dev_id,
 			int32_t rx_queue_id,
 			const struct rte_event_eth_rx_adapter_queue_conf *conf);
+
+/**
+ * Add multiple receive queues to an event adapter.
+ *
+ * @param id
+ *  Adapter identifier.
+ *
+ * @param eth_dev_id
+ *  Port identifier of Ethernet device.
+ *
+ * @param rx_queue_id
+ *  Array of Ethernet device receive queue indices.
+ *  If nb_rx_queues is 0, then rx_queue_id is ignored.
+ *
+ * @param conf
+ *  Array of additional configuration structures of type
+ *  *rte_event_eth_rx_adapter_queue_conf*. conf[i] is used for rx_queue_id[i].
+ *  If nb_rx_queues is 0, then conf[0] is used for all Rx queues.
+ *
+ * @param nb_rx_queues
+ *  Number of receive queues to add.
+ *  If nb_rx_queues is 0, then all Rx queues configured for
+ *  the device are added with the same configuration in conf[0].
+ * @see RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ
+ *
+ * @return
+ *  - 0: Success, Receive queues added correctly.
+ *  - <0: Error code on failure.
+ */
+__rte_experimental
+int rte_event_eth_rx_adapter_queues_add(uint8_t id, uint16_t eth_dev_id, int32_t rx_queue_id[],
+					const struct rte_event_eth_rx_adapter_queue_conf conf[],
+					uint16_t nb_rx_queues);
 
 /**
  * Delete receive queue from an event adapter.

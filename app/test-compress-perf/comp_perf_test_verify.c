@@ -64,12 +64,29 @@ main_loop(struct cperf_verify_ctx *ctx, enum rte_comp_xform_type type)
 	int res = 0;
 	int allocated = 0;
 	uint32_t out_seg_sz;
+	uint8_t dict[MAX_DICT_SIZE] = {0};
+	uint16_t window_size = (1ULL << test_data->window_sz);
+	uint8_t *udc_header = NULL;
 
 	if (test_data == NULL || !test_data->burst_sz) {
 		RTE_LOG(ERR, USER1,
 			"Unknown burst size\n");
 		return -1;
 	}
+
+	if (test_data->dictionary_data) {
+		if (test_data->dictionary_data_sz >= window_size) {
+			memcpy(dict,
+				test_data->dictionary_data
+				+ (test_data->dictionary_data_sz - window_size),
+				window_size);
+		} else if (test_data->dictionary_data_sz < window_size) {
+			memcpy(dict + (window_size - test_data->dictionary_data_sz),
+				test_data->dictionary_data,
+				test_data->dictionary_data_sz);
+		}
+	}
+
 
 	ops = rte_zmalloc_socket(NULL,
 		2 * mem->total_bufs * sizeof(struct rte_comp_op *),
@@ -91,12 +108,14 @@ main_loop(struct cperf_verify_ctx *ctx, enum rte_comp_xform_type type)
 				.level = test_data->level,
 				.window_size = test_data->window_sz,
 				.chksum = RTE_COMP_CHECKSUM_NONE,
-				.hash_algo = RTE_COMP_HASH_ALGO_NONE
+				.hash_algo = RTE_COMP_HASH_ALGO_NONE,
 			}
 		};
-		if (test_data->test_algo == RTE_COMP_ALGO_DEFLATE)
+		if (test_data->test_algo == RTE_COMP_ALGO_DEFLATE) {
 			xform.compress.deflate.huffman = test_data->huffman_enc;
-		else if (test_data->test_algo == RTE_COMP_ALGO_LZ4)
+			xform.compress.deflate.dictionary = dict;
+			xform.compress.deflate.dictionary_len = window_size;
+		} else if (test_data->test_algo == RTE_COMP_ALGO_LZ4)
 			xform.compress.lz4.flags = test_data->lz4_flags;
 		output_data_ptr = ctx->mem.compressed_data;
 		output_data_sz = &ctx->comp_data_sz;
@@ -113,7 +132,10 @@ main_loop(struct cperf_verify_ctx *ctx, enum rte_comp_xform_type type)
 				.hash_algo = RTE_COMP_HASH_ALGO_NONE
 			}
 		};
-		if (test_data->test_algo == RTE_COMP_ALGO_LZ4)
+		if (test_data->test_algo == RTE_COMP_ALGO_DEFLATE) {
+			xform.decompress.inflate.dictionary = dict;
+			xform.decompress.inflate.dictionary_len = window_size;
+		} else if (test_data->test_algo == RTE_COMP_ALGO_LZ4)
 			xform.decompress.lz4.flags = test_data->lz4_flags;
 		output_data_ptr = ctx->mem.decompressed_data;
 		output_data_sz = &ctx->decomp_data_sz;
@@ -194,7 +216,17 @@ main_loop(struct cperf_verify_ctx *ctx, enum rte_comp_xform_type type)
 					rte_pktmbuf_pkt_len(input_bufs[buf_id]);
 				ops[op_id]->dst.offset = 0;
 				ops[op_id]->flush_flag = RTE_COMP_FLUSH_FINAL;
-				ops[op_id]->input_chksum = buf_id;
+				if ((xform.type == RTE_COMP_DECOMPRESS) &&
+					(xform.decompress.chksum
+						== RTE_COMP_CHECKSUM_3GPP_PDCP_UDC)) {
+					udc_header
+						= rte_pktmbuf_mtod(ops[op_id]->m_src, uint8_t *);
+					ops[op_id]->input_chksum = *udc_header & 0xf;
+					ops[op_id]->src.offset = 1;
+				} else {
+					ops[op_id]->input_chksum = buf_id;
+					ops[op_id]->src.offset = 0;
+				}
 				ops[op_id]->private_xform = priv_xform;
 			}
 
@@ -396,7 +428,7 @@ cperf_verify_test_runner(void *test_ctx)
 	struct cperf_verify_ctx *ctx = test_ctx;
 	struct comp_test_data *test_data = ctx->options;
 	int ret = EXIT_SUCCESS;
-	static uint16_t display_once;
+	static RTE_ATOMIC(uint16_t) display_once;
 	uint32_t lcore = rte_lcore_id();
 	uint16_t exp = 0;
 
@@ -452,8 +484,8 @@ cperf_verify_test_runner(void *test_ctx)
 			test_data->input_data_sz * 100;
 
 	if (!ctx->silent) {
-		if (__atomic_compare_exchange_n(&display_once, &exp, 1, 0,
-				__ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+		if (rte_atomic_compare_exchange_strong_explicit(&display_once, &exp, 1,
+				rte_memory_order_relaxed, rte_memory_order_relaxed)) {
 			printf("%12s%6s%12s%17s\n",
 			    "lcore id", "Level", "Comp size", "Comp ratio [%]");
 		}

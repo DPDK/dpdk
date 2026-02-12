@@ -42,10 +42,10 @@ isal_comp_set_priv_xform_parameters(struct isal_priv_xform *priv_xform,
 		/* Set private xform algorithm */
 		if (xform->compress.algo != RTE_COMP_ALGO_DEFLATE) {
 			if (xform->compress.algo == RTE_COMP_ALGO_NULL) {
-				ISAL_PMD_LOG(ERR, "By-pass not supported\n");
+				ISAL_PMD_LOG(ERR, "By-pass not supported");
 				return -ENOTSUP;
 			}
-			ISAL_PMD_LOG(ERR, "Algorithm not supported\n");
+			ISAL_PMD_LOG(ERR, "Algorithm not supported");
 			return -ENOTSUP;
 		}
 		priv_xform->compress.algo = RTE_COMP_ALGO_DEFLATE;
@@ -55,7 +55,7 @@ isal_comp_set_priv_xform_parameters(struct isal_priv_xform *priv_xform,
 			priv_xform->compress.window_size =
 					RTE_COMP_ISAL_WINDOW_SIZE;
 		else {
-			ISAL_PMD_LOG(ERR, "Window size not supported\n");
+			ISAL_PMD_LOG(ERR, "Window size not supported");
 			return -ENOTSUP;
 		}
 
@@ -74,7 +74,7 @@ isal_comp_set_priv_xform_parameters(struct isal_priv_xform *priv_xform,
 					RTE_COMP_HUFFMAN_DYNAMIC;
 			break;
 		default:
-			ISAL_PMD_LOG(ERR, "Huffman code not supported\n");
+			ISAL_PMD_LOG(ERR, "Huffman code not supported");
 			return -ENOTSUP;
 		}
 
@@ -92,10 +92,10 @@ isal_comp_set_priv_xform_parameters(struct isal_priv_xform *priv_xform,
 			break;
 		case(RTE_COMP_CHECKSUM_CRC32_ADLER32):
 			ISAL_PMD_LOG(ERR, "Combined CRC and ADLER checksum not"
-					" supported\n");
+					" supported");
 			return -ENOTSUP;
 		default:
-			ISAL_PMD_LOG(ERR, "Checksum type not supported\n");
+			ISAL_PMD_LOG(ERR, "Checksum type not supported");
 			priv_xform->compress.chksum = IGZIP_DEFLATE;
 			break;
 		}
@@ -105,21 +105,21 @@ isal_comp_set_priv_xform_parameters(struct isal_priv_xform *priv_xform,
 		 */
 		if (xform->compress.level < RTE_COMP_LEVEL_PMD_DEFAULT ||
 				xform->compress.level > RTE_COMP_LEVEL_MAX) {
-			ISAL_PMD_LOG(ERR, "Compression level out of range\n");
+			ISAL_PMD_LOG(ERR, "Compression level out of range");
 			return -EINVAL;
 		}
 		/* Check for Compressdev API level 0, No compression
 		 * not supported in ISA-L
 		 */
 		else if (xform->compress.level == RTE_COMP_LEVEL_NONE) {
-			ISAL_PMD_LOG(ERR, "No Compression not supported\n");
+			ISAL_PMD_LOG(ERR, "No Compression not supported");
 			return -ENOTSUP;
 		}
 		/* If using fixed huffman code, level must be 0 */
 		else if (priv_xform->compress.deflate.huffman ==
 				RTE_COMP_HUFFMAN_FIXED) {
 			ISAL_PMD_LOG(DEBUG, "ISA-L level 0 used due to a"
-					" fixed huffman code\n");
+					" fixed huffman code");
 			priv_xform->compress.level = RTE_COMP_ISAL_LEVEL_ZERO;
 			priv_xform->level_buffer_size =
 					ISAL_DEF_LVL0_DEFAULT;
@@ -169,7 +169,7 @@ isal_comp_set_priv_xform_parameters(struct isal_priv_xform *priv_xform,
 					ISAL_PMD_LOG(DEBUG, "Requested ISA-L level"
 						" 3 or above; Level 3 optimized"
 						" for AVX512 & AVX2 only."
-						" level changed to 2.\n");
+						" level changed to 2.");
 					priv_xform->compress.level =
 						RTE_COMP_ISAL_LEVEL_TWO;
 					priv_xform->level_buffer_size =
@@ -188,10 +188,10 @@ isal_comp_set_priv_xform_parameters(struct isal_priv_xform *priv_xform,
 		/* Set private xform algorithm */
 		if (xform->decompress.algo != RTE_COMP_ALGO_DEFLATE) {
 			if (xform->decompress.algo == RTE_COMP_ALGO_NULL) {
-				ISAL_PMD_LOG(ERR, "By pass not supported\n");
+				ISAL_PMD_LOG(ERR, "By pass not supported");
 				return -ENOTSUP;
 			}
-			ISAL_PMD_LOG(ERR, "Algorithm not supported\n");
+			ISAL_PMD_LOG(ERR, "Algorithm not supported");
 			return -ENOTSUP;
 		}
 		priv_xform->decompress.algo = RTE_COMP_ALGO_DEFLATE;
@@ -210,10 +210,10 @@ isal_comp_set_priv_xform_parameters(struct isal_priv_xform *priv_xform,
 			break;
 		case(RTE_COMP_CHECKSUM_CRC32_ADLER32):
 			ISAL_PMD_LOG(ERR, "Combined CRC and ADLER checksum not"
-					" supported\n");
+					" supported");
 			return -ENOTSUP;
 		default:
-			ISAL_PMD_LOG(ERR, "Checksum type not supported\n");
+			ISAL_PMD_LOG(ERR, "Checksum type not supported");
 			priv_xform->decompress.chksum = ISAL_DEFLATE;
 			break;
 		}
@@ -223,7 +223,7 @@ isal_comp_set_priv_xform_parameters(struct isal_priv_xform *priv_xform,
 			priv_xform->decompress.window_size =
 					RTE_COMP_ISAL_WINDOW_SIZE;
 		else {
-			ISAL_PMD_LOG(ERR, "Window size not supported\n");
+			ISAL_PMD_LOG(ERR, "Window size not supported");
 			return -ENOTSUP;
 		}
 	}
@@ -263,7 +263,7 @@ chained_mbuf_compression(struct rte_comp_op *op, struct isal_comp_qp *qp)
 			remaining_offset);
 
 	if (unlikely(!qp->stream->next_in || !qp->stream->next_out)) {
-		ISAL_PMD_LOG(ERR, "Invalid source or destination buffer\n");
+		ISAL_PMD_LOG(ERR, "Invalid source or destination buffer");
 		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
 		return -1;
 	}
@@ -279,7 +279,7 @@ chained_mbuf_compression(struct rte_comp_op *op, struct isal_comp_qp *qp)
 		remaining_data = op->src.length - qp->stream->total_in;
 
 		if (ret != COMP_OK) {
-			ISAL_PMD_LOG(ERR, "Compression operation failed\n");
+			ISAL_PMD_LOG(ERR, "Compression operation failed");
 			op->status = RTE_COMP_OP_STATUS_ERROR;
 			return ret;
 		}
@@ -294,7 +294,7 @@ chained_mbuf_compression(struct rte_comp_op *op, struct isal_comp_qp *qp)
 					RTE_MIN(remaining_data, src->data_len);
 			} else {
 				ISAL_PMD_LOG(ERR,
-				"Not enough input buffer segments\n");
+				"Not enough input buffer segments");
 				op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
 				return -1;
 			}
@@ -309,7 +309,7 @@ chained_mbuf_compression(struct rte_comp_op *op, struct isal_comp_qp *qp)
 				qp->stream->avail_out = dst->data_len;
 			} else {
 				ISAL_PMD_LOG(ERR,
-				"Not enough output buffer segments\n");
+				"Not enough output buffer segments");
 				op->status =
 				RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
 				return -1;
@@ -378,14 +378,14 @@ chained_mbuf_decompression(struct rte_comp_op *op, struct isal_comp_qp *qp)
 
 		if (ret == ISAL_OUT_OVERFLOW) {
 			ISAL_PMD_LOG(ERR, "Decompression operation ran "
-				"out of space, but can be recovered.\n%d bytes "
-				"consumed\t%d bytes produced\n",
+				"out of space, but can be recovered.%d bytes "
+				"consumed\t%d bytes produced",
 				consumed_data, qp->state->total_out);
 				op->status =
 				RTE_COMP_OP_STATUS_OUT_OF_SPACE_RECOVERABLE;
 			return ret;
 		} else if (ret < 0) {
-			ISAL_PMD_LOG(ERR, "Decompression operation failed\n");
+			ISAL_PMD_LOG(ERR, "Decompression operation failed");
 			op->status = RTE_COMP_OP_STATUS_ERROR;
 			return ret;
 		}
@@ -399,7 +399,7 @@ chained_mbuf_decompression(struct rte_comp_op *op, struct isal_comp_qp *qp)
 				qp->state->avail_out = dst->data_len;
 			} else {
 				ISAL_PMD_LOG(ERR,
-				"Not enough output buffer segments\n");
+				"Not enough output buffer segments");
 				op->status =
 				RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
 				return -1;
@@ -451,14 +451,14 @@ process_isal_deflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
 				IGZIP_HUFFTABLE_DEFAULT);
 
 	if (op->m_src->pkt_len < (op->src.length + op->src.offset)) {
-		ISAL_PMD_LOG(ERR, "Input mbuf(s) not big enough.\n");
+		ISAL_PMD_LOG(ERR, "Input mbuf(s) not big enough.");
 		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
 		return -1;
 	}
 
 	if (op->dst.offset >= op->m_dst->pkt_len) {
 		ISAL_PMD_LOG(ERR, "Output mbuf(s) not big enough"
-				" for offset provided.\n");
+				" for offset provided.");
 		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
 		return -1;
 	}
@@ -483,7 +483,7 @@ process_isal_deflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
 
 		if (unlikely(!qp->stream->next_in || !qp->stream->next_out)) {
 			ISAL_PMD_LOG(ERR, "Invalid source or destination"
-					" buffers\n");
+					" buffers");
 			op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
 			return -1;
 		}
@@ -493,7 +493,7 @@ process_isal_deflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
 
 		/* Check that output buffer did not run out of space */
 		if (ret == STATELESS_OVERFLOW) {
-			ISAL_PMD_LOG(ERR, "Output buffer not big enough\n");
+			ISAL_PMD_LOG(ERR, "Output buffer not big enough");
 			op->status = RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
 			return ret;
 		}
@@ -501,13 +501,13 @@ process_isal_deflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
 		/* Check that input buffer has been fully consumed */
 		if (qp->stream->avail_in != (uint32_t)0) {
 			ISAL_PMD_LOG(ERR, "Input buffer could not be read"
-					" entirely\n");
+					" entirely");
 			op->status = RTE_COMP_OP_STATUS_ERROR;
 			return -1;
 		}
 
 		if (ret != COMP_OK) {
-			ISAL_PMD_LOG(ERR, "Compression operation failed\n");
+			ISAL_PMD_LOG(ERR, "Compression operation failed");
 			op->status = RTE_COMP_OP_STATUS_ERROR;
 			return ret;
 		}
@@ -543,14 +543,14 @@ process_isal_inflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
 	qp->state->crc_flag = priv_xform->decompress.chksum;
 
 	if (op->m_src->pkt_len < (op->src.length + op->src.offset)) {
-		ISAL_PMD_LOG(ERR, "Input mbuf(s) not big enough.\n");
+		ISAL_PMD_LOG(ERR, "Input mbuf(s) not big enough.");
 		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
 		return -1;
 	}
 
 	if (op->dst.offset >= op->m_dst->pkt_len) {
 		ISAL_PMD_LOG(ERR, "Output mbuf not big enough for "
-				"offset provided.\n");
+				"offset provided.");
 		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
 		return -1;
 	}
@@ -574,7 +574,7 @@ process_isal_inflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
 
 		if (unlikely(!qp->state->next_in || !qp->state->next_out)) {
 			ISAL_PMD_LOG(ERR, "Invalid source or destination"
-					" buffers\n");
+					" buffers");
 			op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
 			return -1;
 		}
@@ -583,7 +583,7 @@ process_isal_inflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
 		ret = isal_inflate_stateless(qp->state);
 
 		if (ret == ISAL_OUT_OVERFLOW) {
-			ISAL_PMD_LOG(ERR, "Output buffer not big enough\n");
+			ISAL_PMD_LOG(ERR, "Output buffer not big enough");
 			op->status = RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
 			return ret;
 		}
@@ -591,13 +591,13 @@ process_isal_inflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
 		/* Check that input buffer has been fully consumed */
 		if (qp->state->avail_in != (uint32_t)0) {
 			ISAL_PMD_LOG(ERR, "Input buffer could not be read"
-					" entirely\n");
+					" entirely");
 			op->status = RTE_COMP_OP_STATUS_ERROR;
 			return -1;
 		}
 
 		if (ret != ISAL_DECOMP_OK && ret != ISAL_END_INPUT) {
-			ISAL_PMD_LOG(ERR, "Decompression operation failed\n");
+			ISAL_PMD_LOG(ERR, "Decompression operation failed");
 			op->status = RTE_COMP_OP_STATUS_ERROR;
 			return ret;
 		}
@@ -622,7 +622,7 @@ process_op(struct isal_comp_qp *qp, struct rte_comp_op *op,
 		process_isal_inflate(op, qp, priv_xform);
 		break;
 	default:
-		ISAL_PMD_LOG(ERR, "Operation Not Supported\n");
+		ISAL_PMD_LOG(ERR, "Operation Not Supported");
 		return -ENOTSUP;
 	}
 	return 0;
@@ -641,7 +641,7 @@ isal_comp_pmd_enqueue_burst(void *queue_pair, struct rte_comp_op **ops,
 	for (i = 0; i < num_enq; i++) {
 		if (unlikely(ops[i]->op_type != RTE_COMP_OP_STATELESS)) {
 			ops[i]->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
-			ISAL_PMD_LOG(ERR, "Stateful operation not Supported\n");
+			ISAL_PMD_LOG(ERR, "Stateful operation not Supported");
 			qp->qp_stats.enqueue_err_count++;
 			continue;
 		}
@@ -696,7 +696,7 @@ compdev_isal_create(const char *name, struct rte_vdev_device *vdev,
 	dev->dequeue_burst = isal_comp_pmd_dequeue_burst;
 	dev->enqueue_burst = isal_comp_pmd_enqueue_burst;
 
-	ISAL_PMD_LOG(INFO, "\nISA-L library version used: "ISAL_VERSION_STRING);
+	ISAL_PMD_LOG(INFO, "ISA-L library version used: "ISAL_VERSION_STRING);
 
 	return 0;
 }
@@ -739,7 +739,7 @@ compdev_isal_probe(struct rte_vdev_device *dev)
 	retval = rte_compressdev_pmd_parse_input_args(&init_params, args);
 	if (retval) {
 		ISAL_PMD_LOG(ERR,
-			"Failed to parse initialisation arguments[%s]\n", args);
+			"Failed to parse initialisation arguments[%s]", args);
 		return -EINVAL;
 	}
 

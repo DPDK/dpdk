@@ -10,63 +10,93 @@
 #include <rte_malloc.h>
 #include <rte_errno.h>
 #include <rte_vect.h>
+#include <rte_cpuflags.h>
 
 #include <rte_rib.h>
 #include <rte_fib.h>
 #include "dir24_8.h"
+#include "fib_log.h"
 
-#ifdef CC_DIR24_8_AVX512_SUPPORT
+#ifdef CC_AVX512_SUPPORT
 
 #include "dir24_8_avx512.h"
 
-#endif /* CC_DIR24_8_AVX512_SUPPORT */
+#elif defined(RTE_RISCV_FEATURE_V)
+
+#include "dir24_8_rvv.h"
+
+#endif /* CC_AVX512_SUPPORT */
 
 #define DIR24_8_NAMESIZE	64
 
 #define ROUNDUP(x, y)	 RTE_ALIGN_CEIL(x, (1 << (32 - y)))
 
 static inline rte_fib_lookup_fn_t
-get_scalar_fn(enum rte_fib_dir24_8_nh_sz nh_sz)
+get_scalar_fn(enum rte_fib_dir24_8_nh_sz nh_sz, bool be_addr)
 {
 	switch (nh_sz) {
 	case RTE_FIB_DIR24_8_1B:
-		return dir24_8_lookup_bulk_1b;
+		return be_addr ? dir24_8_lookup_bulk_1b_be : dir24_8_lookup_bulk_1b;
 	case RTE_FIB_DIR24_8_2B:
-		return dir24_8_lookup_bulk_2b;
+		return be_addr ? dir24_8_lookup_bulk_2b_be : dir24_8_lookup_bulk_2b;
 	case RTE_FIB_DIR24_8_4B:
-		return dir24_8_lookup_bulk_4b;
+		return be_addr ? dir24_8_lookup_bulk_4b_be : dir24_8_lookup_bulk_4b;
 	case RTE_FIB_DIR24_8_8B:
-		return dir24_8_lookup_bulk_8b;
+		return be_addr ? dir24_8_lookup_bulk_8b_be : dir24_8_lookup_bulk_8b;
 	default:
 		return NULL;
 	}
 }
 
 static inline rte_fib_lookup_fn_t
-get_scalar_fn_inlined(enum rte_fib_dir24_8_nh_sz nh_sz)
+get_scalar_fn_inlined(enum rte_fib_dir24_8_nh_sz nh_sz, bool be_addr)
 {
 	switch (nh_sz) {
 	case RTE_FIB_DIR24_8_1B:
-		return dir24_8_lookup_bulk_0;
+		return be_addr ? dir24_8_lookup_bulk_0_be : dir24_8_lookup_bulk_0;
 	case RTE_FIB_DIR24_8_2B:
-		return dir24_8_lookup_bulk_1;
+		return be_addr ? dir24_8_lookup_bulk_1_be : dir24_8_lookup_bulk_1;
 	case RTE_FIB_DIR24_8_4B:
-		return dir24_8_lookup_bulk_2;
+		return be_addr ? dir24_8_lookup_bulk_2_be : dir24_8_lookup_bulk_2;
 	case RTE_FIB_DIR24_8_8B:
-		return dir24_8_lookup_bulk_3;
+		return be_addr ? dir24_8_lookup_bulk_3_be : dir24_8_lookup_bulk_3;
 	default:
 		return NULL;
 	}
 }
 
 static inline rte_fib_lookup_fn_t
-get_vector_fn(enum rte_fib_dir24_8_nh_sz nh_sz)
+get_vector_fn(enum rte_fib_dir24_8_nh_sz nh_sz, bool be_addr)
 {
-#ifdef CC_DIR24_8_AVX512_SUPPORT
-	if ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) <= 0) ||
-			(rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_512))
+#ifdef CC_AVX512_SUPPORT
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) <= 0 ||
+			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512DQ) <= 0 ||
+			rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_512)
 		return NULL;
 
+	if (be_addr && rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) <= 0)
+		return NULL;
+
+	switch (nh_sz) {
+	case RTE_FIB_DIR24_8_1B:
+		return be_addr ? rte_dir24_8_vec_lookup_bulk_1b_be :
+			rte_dir24_8_vec_lookup_bulk_1b;
+	case RTE_FIB_DIR24_8_2B:
+		return be_addr ? rte_dir24_8_vec_lookup_bulk_2b_be :
+			rte_dir24_8_vec_lookup_bulk_2b;
+	case RTE_FIB_DIR24_8_4B:
+		return be_addr ? rte_dir24_8_vec_lookup_bulk_4b_be :
+			rte_dir24_8_vec_lookup_bulk_4b;
+	case RTE_FIB_DIR24_8_8B:
+		return be_addr ? rte_dir24_8_vec_lookup_bulk_8b_be :
+			rte_dir24_8_vec_lookup_bulk_8b;
+	default:
+		return NULL;
+	}
+#elif defined(RTE_RISCV_FEATURE_V)
+	RTE_SET_USED(be_addr);
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_RISCV_ISA_V) <= 0)
+		return NULL;
 	switch (nh_sz) {
 	case RTE_FIB_DIR24_8_1B:
 		return rte_dir24_8_vec_lookup_bulk_1b;
@@ -81,12 +111,13 @@ get_vector_fn(enum rte_fib_dir24_8_nh_sz nh_sz)
 	}
 #else
 	RTE_SET_USED(nh_sz);
+	RTE_SET_USED(be_addr);
 #endif
 	return NULL;
 }
 
 rte_fib_lookup_fn_t
-dir24_8_get_lookup_fn(void *p, enum rte_fib_lookup_type type)
+dir24_8_get_lookup_fn(void *p, enum rte_fib_lookup_type type, bool be_addr)
 {
 	enum rte_fib_dir24_8_nh_sz nh_sz;
 	rte_fib_lookup_fn_t ret_fn;
@@ -99,16 +130,16 @@ dir24_8_get_lookup_fn(void *p, enum rte_fib_lookup_type type)
 
 	switch (type) {
 	case RTE_FIB_LOOKUP_DIR24_8_SCALAR_MACRO:
-		return get_scalar_fn(nh_sz);
+		return get_scalar_fn(nh_sz, be_addr);
 	case RTE_FIB_LOOKUP_DIR24_8_SCALAR_INLINE:
-		return get_scalar_fn_inlined(nh_sz);
+		return get_scalar_fn_inlined(nh_sz, be_addr);
 	case RTE_FIB_LOOKUP_DIR24_8_SCALAR_UNI:
-		return dir24_8_lookup_bulk_uni;
+		return be_addr ? dir24_8_lookup_bulk_uni_be : dir24_8_lookup_bulk_uni;
 	case RTE_FIB_LOOKUP_DIR24_8_VECTOR_AVX512:
-		return get_vector_fn(nh_sz);
+		return get_vector_fn(nh_sz, be_addr);
 	case RTE_FIB_LOOKUP_DEFAULT:
-		ret_fn = get_vector_fn(nh_sz);
-		return (ret_fn != NULL) ? ret_fn : get_scalar_fn(nh_sz);
+		ret_fn = get_vector_fn(nh_sz, be_addr);
+		return ret_fn != NULL ? ret_fn : get_scalar_fn(nh_sz, be_addr);
 	default:
 		return NULL;
 	}
@@ -176,6 +207,12 @@ tbl8_alloc(struct dir24_8_tbl *dp, uint64_t nh)
 	uint8_t	*tbl8_ptr;
 
 	tbl8_idx = tbl8_get_idx(dp);
+
+	/* If there are no tbl8 groups try to reclaim one. */
+	if (unlikely(tbl8_idx == -ENOSPC && dp->dq &&
+			!rte_rcu_qsbr_dq_reclaim(dp->dq, 1, NULL, NULL, NULL)))
+		tbl8_idx = tbl8_get_idx(dp);
+
 	if (tbl8_idx < 0)
 		return tbl8_idx;
 	tbl8_ptr = (uint8_t *)dp->tbl8 +
@@ -187,6 +224,25 @@ tbl8_alloc(struct dir24_8_tbl *dp, uint64_t nh)
 		DIR24_8_TBL8_GRP_NUM_ENT);
 	dp->cur_tbl8s++;
 	return tbl8_idx;
+}
+
+static void
+tbl8_cleanup_and_free(struct dir24_8_tbl *dp, uint64_t tbl8_idx)
+{
+	uint8_t *ptr = (uint8_t *)dp->tbl8 + (tbl8_idx * DIR24_8_TBL8_GRP_NUM_ENT << dp->nh_sz);
+
+	memset(ptr, 0, DIR24_8_TBL8_GRP_NUM_ENT << dp->nh_sz);
+	tbl8_free_idx(dp, tbl8_idx);
+	dp->cur_tbl8s--;
+}
+
+static void
+__rcu_qsbr_free_resource(void *p, void *data, unsigned int n __rte_unused)
+{
+	struct dir24_8_tbl *dp = p;
+	uint64_t tbl8_idx = *(uint64_t *)data;
+
+	tbl8_cleanup_and_free(dp, tbl8_idx);
 }
 
 static void
@@ -210,8 +266,6 @@ tbl8_recycle(struct dir24_8_tbl *dp, uint32_t ip, uint64_t tbl8_idx)
 		}
 		((uint8_t *)dp->tbl24)[ip >> 8] =
 			nh & ~DIR24_8_EXT_ENT;
-		for (i = 0; i < DIR24_8_TBL8_GRP_NUM_ENT; i++)
-			ptr8[i] = 0;
 		break;
 	case RTE_FIB_DIR24_8_2B:
 		ptr16 = &((uint16_t *)dp->tbl8)[tbl8_idx *
@@ -223,8 +277,6 @@ tbl8_recycle(struct dir24_8_tbl *dp, uint32_t ip, uint64_t tbl8_idx)
 		}
 		((uint16_t *)dp->tbl24)[ip >> 8] =
 			nh & ~DIR24_8_EXT_ENT;
-		for (i = 0; i < DIR24_8_TBL8_GRP_NUM_ENT; i++)
-			ptr16[i] = 0;
 		break;
 	case RTE_FIB_DIR24_8_4B:
 		ptr32 = &((uint32_t *)dp->tbl8)[tbl8_idx *
@@ -236,8 +288,6 @@ tbl8_recycle(struct dir24_8_tbl *dp, uint32_t ip, uint64_t tbl8_idx)
 		}
 		((uint32_t *)dp->tbl24)[ip >> 8] =
 			nh & ~DIR24_8_EXT_ENT;
-		for (i = 0; i < DIR24_8_TBL8_GRP_NUM_ENT; i++)
-			ptr32[i] = 0;
 		break;
 	case RTE_FIB_DIR24_8_8B:
 		ptr64 = &((uint64_t *)dp->tbl8)[tbl8_idx *
@@ -249,12 +299,18 @@ tbl8_recycle(struct dir24_8_tbl *dp, uint32_t ip, uint64_t tbl8_idx)
 		}
 		((uint64_t *)dp->tbl24)[ip >> 8] =
 			nh & ~DIR24_8_EXT_ENT;
-		for (i = 0; i < DIR24_8_TBL8_GRP_NUM_ENT; i++)
-			ptr64[i] = 0;
 		break;
 	}
-	tbl8_free_idx(dp, tbl8_idx);
-	dp->cur_tbl8s--;
+
+	if (dp->v == NULL) {
+		tbl8_cleanup_and_free(dp, tbl8_idx);
+	} else if (dp->rcu_mode == RTE_FIB_QSBR_MODE_SYNC) {
+		rte_rcu_qsbr_synchronize(dp->v, RTE_QSBR_THRID_INVALID);
+		tbl8_cleanup_and_free(dp, tbl8_idx);
+	} else { /* RTE_FIB_QSBR_MODE_DQ */
+		if (rte_rcu_qsbr_dq_enqueue(dp->dq, &tbl8_idx))
+			FIB_LOG(ERR, "Failed to push QSBR FIFO");
+	}
 }
 
 static int
@@ -526,8 +582,8 @@ dir24_8_create(const char *name, int socket_id, struct rte_fib_conf *fib_conf)
 
 	snprintf(mem_name, sizeof(mem_name), "DP_%s", name);
 	dp = rte_zmalloc_socket(name, sizeof(struct dir24_8_tbl) +
-		DIR24_8_TBL24_NUM_ENT * (1 << nh_sz), RTE_CACHE_LINE_SIZE,
-		socket_id);
+		DIR24_8_TBL24_NUM_ENT * (1 << nh_sz) + sizeof(uint32_t),
+		RTE_CACHE_LINE_SIZE, socket_id);
 	if (dp == NULL) {
 		rte_errno = ENOMEM;
 		return NULL;
@@ -569,7 +625,54 @@ dir24_8_free(void *p)
 {
 	struct dir24_8_tbl *dp = (struct dir24_8_tbl *)p;
 
+	rte_rcu_qsbr_dq_delete(dp->dq);
 	rte_free(dp->tbl8_idxes);
 	rte_free(dp->tbl8);
 	rte_free(dp);
+}
+
+int
+dir24_8_rcu_qsbr_add(struct dir24_8_tbl *dp, struct rte_fib_rcu_config *cfg,
+	const char *name)
+{
+	struct rte_rcu_qsbr_dq_parameters params = {0};
+	char rcu_dq_name[RTE_RCU_QSBR_DQ_NAMESIZE];
+
+	if (dp == NULL || cfg == NULL)
+		return -EINVAL;
+
+	if (dp->v != NULL)
+		return -EEXIST;
+
+	if (cfg->mode == RTE_FIB_QSBR_MODE_SYNC) {
+		/* No other things to do. */
+	} else if (cfg->mode == RTE_FIB_QSBR_MODE_DQ) {
+		/* Init QSBR defer queue. */
+		snprintf(rcu_dq_name, sizeof(rcu_dq_name),
+				"FIB_RCU_%s", name);
+		params.name = rcu_dq_name;
+		params.size = cfg->dq_size;
+		if (params.size == 0)
+			params.size = RTE_FIB_RCU_DQ_RECLAIM_SZ;
+		params.trigger_reclaim_limit = cfg->reclaim_thd;
+		params.max_reclaim_size = cfg->reclaim_max;
+		if (params.max_reclaim_size == 0)
+			params.max_reclaim_size = RTE_FIB_RCU_DQ_RECLAIM_MAX;
+		params.esize = sizeof(uint64_t);
+		params.free_fn = __rcu_qsbr_free_resource;
+		params.p = dp;
+		params.v = cfg->v;
+		dp->dq = rte_rcu_qsbr_dq_create(&params);
+		if (dp->dq == NULL) {
+			FIB_LOG(ERR, "LPM defer queue creation failed");
+			return -rte_errno;
+		}
+	} else {
+		return -EINVAL;
+	}
+
+	dp->rcu_mode = cfg->mode;
+	dp->v = cfg->v;
+
+	return 0;
 }

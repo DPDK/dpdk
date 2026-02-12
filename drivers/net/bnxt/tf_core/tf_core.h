@@ -21,9 +21,15 @@
 
 /********** BEGIN Truflow Core DEFINITIONS **********/
 
+/**
+ * \cond DO_NOT_DOCUMENT
+ */
 #define TF_KILOBYTE  1024
 #define TF_MEGABYTE  (1024 * 1024)
 
+/**
+ * \endcond
+ */
 /**
  * direction
  */
@@ -93,15 +99,19 @@ enum tf_sram_bank_id {
  *
  * Convert absolute offset to action record pointer in EEM record entry
  * Convert action record pointer in EEM record entry to absolute offset
+ * \cond DO_NOT_DOCUMENT
  */
 #define TF_ACT_REC_OFFSET_2_PTR(offset) ((offset) >> 4)
 #define TF_ACT_REC_PTR_2_OFFSET(offset) ((offset) << 4)
 
-/*
+/**
  * Helper Macros
  */
 #define TF_BITS_2_BYTES(num_bits) (((num_bits) + 7) / 8)
 
+/**
+ * \endcond
+ */
 /********** BEGIN API FUNCTION PROTOTYPES/PARAMETERS **********/
 
 /**
@@ -147,6 +157,8 @@ enum tf_sram_bank_id {
  * TruFlow session. Session ID is constructed from the passed in
  * ctrl_chan_name in tf_open_session() together with an allocated
  * fw_session_id. Done by TruFlow on tf_open_session().
+ *
+ * \cond DO_NOT_DOCUMENT
  */
 union tf_session_id {
 	uint32_t id;
@@ -172,6 +184,10 @@ union tf_session_client_id {
 		uint8_t fw_session_client_id;
 	} internal;
 };
+/**
+ * \endcond
+ */
+
 
 /**
  * Session Version
@@ -181,12 +197,17 @@ union tf_session_client_id {
  * versions can be supported.
  *
  * Please see the TF_VER_MAJOR/MINOR and UPDATE defines.
+ *
+ * \cond DO_NOT_DOCUMENT
  */
 struct tf_session_version {
 	uint8_t major;
 	uint8_t minor;
 	uint8_t update;
 };
+/**
+ * \endcond
+ */
 
 /**
  * Session supported device types
@@ -485,6 +506,7 @@ struct tf_session_info {
  *
  * NOTE: This struct must be within the BNXT PMD struct bnxt
  *       (bp). This allows use of container_of() to get access to the PMD.
+ * \cond DO_NOT_DOCUMENT
  */
 struct tf {
 	struct tf_session_info *session;
@@ -493,6 +515,9 @@ struct tf {
 	 */
 	void *bp;
 };
+/**
+ * \endcond
+ */
 
 /**
  * Identifier resource definition
@@ -716,12 +741,15 @@ int tf_open_session(struct tf *tfp,
 
 /**
  * General internal resource info
- *
+ * \cond DO_NOT_DOCUMENT
  */
 struct tf_resource_info {
 	uint16_t start;
 	uint16_t stride;
 };
+/**
+ * \endcond
+ */
 
 /**
  * Identifier resource definition
@@ -2386,6 +2414,7 @@ struct tf_get_version_parms {
 	/* [out] major
 	 *
 	 * Version Major number.
+	 * \cond DO_NOT_DOCUMENT
 	 */
 	uint8_t	major;
 
@@ -2402,6 +2431,7 @@ struct tf_get_version_parms {
 	uint8_t	update;
 
 	/**
+	 * \endcond
 	 * [out] dev_ident_caps
 	 *
 	 * fw available identifier resource list
@@ -2554,4 +2584,56 @@ struct tf_get_sram_policy_parms {
  */
 int tf_get_sram_policy(struct tf *tfp,
 		       struct tf_get_sram_policy_parms *parms);
+
+#ifdef TF_FLOW_SCALE_QUERY
+enum tf_flow_resc_type {
+	TF_FLOW_RESC_TYPE_WCTCAM,
+	TF_FLOW_RESC_TYPE_EM,
+	TF_FLOW_RESC_TYPE_METER,
+	TF_FLOW_RESC_TYPE_COUNTER,
+	TF_FLOW_RESC_TYPE_ACTION,
+	TF_FLOW_RESC_TYPE_ACT_MOD_ENCAP,
+	TF_FLOW_RESC_TYPE_SP_SMAC,
+	TF_FLOW_RESC_TYPE_ALL,
+};
+
+/**
+ * Update TF resource usage state with firmware
+ *
+ * Returns success or failure code.
+ */
+int tf_update_resc_usage(struct tf *tfp,
+			 enum tf_dir dir,
+			 enum tf_flow_resc_type flow_resc_type);
+
+/**
+ * tf_query_resc_usage parameter definition
+ */
+struct	tf_query_resc_usage_parms {
+	/**
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] RESC type
+	 */
+	enum tf_flow_resc_type flow_resc_type;
+	/**
+	 * [in] received buffer size
+	 */
+	uint32_t size;
+	/**
+	 * [out] buffer for query data
+	 */
+	uint8_t data[96];
+};
+/**
+ * Get TF resource usage state from firmware
+ *
+ * Returns success or failure code.
+ */
+int tf_query_resc_usage(struct tf *tfp,
+			struct tf_query_resc_usage_parms *parms);
+
+#endif /* TF_FLOW_SCALE_QUERY */
 #endif /* _TF_CORE_H_ */

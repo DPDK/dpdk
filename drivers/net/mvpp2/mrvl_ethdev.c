@@ -215,7 +215,7 @@ mrvl_pp2_fixup_init(void)
 		dummy_pool_id[i] = mrvl_reserve_bit(&used_bpools[i],
 					     PP2_BPOOL_NUM_POOLS);
 		if (dummy_pool_id[i] < 0) {
-			MRVL_LOG(ERR, "Can't find free pool\n");
+			MRVL_LOG(ERR, "Can't find free pool");
 			return -1;
 		}
 
@@ -227,7 +227,7 @@ mrvl_pp2_fixup_init(void)
 		bpool_params.dummy_short_pool = 1;
 		err = pp2_bpool_init(&bpool_params, &dummy_pool[i]);
 		if (err != 0 || !dummy_pool[i]) {
-			MRVL_LOG(ERR, "BPool init failed!\n");
+			MRVL_LOG(ERR, "BPool init failed!");
 			used_bpools[i] &= ~(1 << dummy_pool_id[i]);
 			return -1;
 		}
@@ -491,7 +491,7 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	if (dev->data->dev_conf.rxmode.mtu > priv->max_mtu) {
-		MRVL_LOG(ERR, "MTU %u is larger than max_mtu %u\n",
+		MRVL_LOG(ERR, "MTU %u is larger than max_mtu %u",
 			 dev->data->dev_conf.rxmode.mtu,
 			 priv->max_mtu);
 		return -EINVAL;
@@ -770,7 +770,7 @@ static int mrvl_populate_vlan_table(struct rte_eth_dev *dev, int on)
 				vbit >>= 1;
 			ret = mrvl_vlan_filter_set(dev, vlan, on);
 			if (ret) {
-				MRVL_LOG(ERR, "Failed to setup VLAN filter\n");
+				MRVL_LOG(ERR, "Failed to setup VLAN filter");
 				return ret;
 			}
 		}
@@ -1486,7 +1486,8 @@ mrvl_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
  *   0 on success, negative error value otherwise.
  */
 static int
-mrvl_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+mrvl_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+	       struct eth_queue_stats *qstats)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
 	struct pp2_ppio_statistics ppio_stats;
@@ -1521,12 +1522,14 @@ mrvl_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			break;
 		}
 
-		stats->q_ibytes[idx] = rxq->bytes_recv;
-		stats->q_ipackets[idx] = rx_stats.enq_desc - rxq->drop_mac;
-		stats->q_errors[idx] = rx_stats.drop_early +
-				       rx_stats.drop_fullq +
-				       rx_stats.drop_bm +
-				       rxq->drop_mac;
+		if (qstats != NULL) {
+			qstats->q_ibytes[idx] = rxq->bytes_recv;
+			qstats->q_ipackets[idx] = rx_stats.enq_desc - rxq->drop_mac;
+			qstats->q_errors[idx] = rx_stats.drop_early +
+					       rx_stats.drop_fullq +
+					       rx_stats.drop_bm +
+					       rxq->drop_mac;
+		}
 		stats->ibytes += rxq->bytes_recv;
 		drop_mac += rxq->drop_mac;
 	}
@@ -1553,8 +1556,10 @@ mrvl_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			break;
 		}
 
-		stats->q_opackets[idx] = tx_stats.deq_desc;
-		stats->q_obytes[idx] = txq->bytes_sent;
+		if (qstats != NULL) {
+			qstats->q_opackets[idx] = tx_stats.deq_desc;
+			qstats->q_obytes[idx] = txq->bytes_sent;
+		}
 		stats->obytes += txq->bytes_sent;
 	}
 
@@ -1875,7 +1880,7 @@ static int mrvl_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	int ret;
 
 	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
-		MRVL_LOG(ERR, "VLAN stripping is not supported\n");
+		MRVL_LOG(ERR, "VLAN stripping is not supported");
 		return -ENOTSUP;
 	}
 
@@ -1890,7 +1895,7 @@ static int mrvl_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 
 	if (mask & RTE_ETH_VLAN_EXTEND_MASK) {
-		MRVL_LOG(ERR, "Extend VLAN not supported\n");
+		MRVL_LOG(ERR, "Extend VLAN not supported");
 		return -ENOTSUP;
 	}
 
@@ -1941,7 +1946,7 @@ mrvl_fill_bpool(struct mrvl_rxq *rxq, int num)
 			!= cookie_addr_high) {
 			MRVL_LOG(ERR,
 				"mbuf virtual addr high is out of range "
-				"0x%x instead of 0x%x\n",
+				"0x%x instead of 0x%x",
 				(uint32_t)((uint64_t)mbufs[i] >> 32),
 				(uint32_t)(cookie_addr_high >> 32));
 			goto out;
@@ -2668,7 +2673,6 @@ mrvl_rx_pkt_burst(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			     (!rx_done && num < q->priv->bpool_init_size))) {
 			mrvl_fill_bpool(q, q->priv->fill_bpool_buffs);
 		} else if (unlikely(num > q->priv->bpool_max_size)) {
-			int i;
 			int pkt_to_remove = num - q->priv->bpool_init_size;
 			struct rte_mbuf *mbuf;
 			struct pp2_buff_inf buff;

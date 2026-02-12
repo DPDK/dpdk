@@ -1,16 +1,18 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
- * Copyright 2017-2021 NXP
+ * Copyright 2017-2021, 2023-2024 NXP
  *
  */
 #include <fsl_mc_sys.h>
 #include <fsl_mc_cmd.h>
 #include <fsl_dpkg.h>
+#include <string.h>
 
 /**
  * dpkg_prepare_key_cfg() - function prepare extract parameters
  * @cfg: defining a full Key Generation profile (rule)
- * @key_cfg_buf: Zeroed 256 bytes of memory before mapping it to DMA
+ * @key_cfg_buf: Zeroed memory whose size is sizeo of
+ *		"struct dpni_ext_set_rx_tc_dist" before mapping it to DMA
  *
  * This function has to be called before the following functions:
  *	- dpni_set_rx_tc_dist()
@@ -32,6 +34,7 @@ dpkg_prepare_key_cfg(const struct dpkg_profile_cfg *cfg, uint8_t *key_cfg_buf)
 
 	for (i = 0; i < cfg->num_extracts; i++) {
 		extr = &dpni_ext->extracts[i];
+		memset(extr, 0, sizeof(struct dpni_dist_extract));
 
 		switch (cfg->extracts[i].type) {
 		case DPKG_EXTRACT_FROM_HDR:

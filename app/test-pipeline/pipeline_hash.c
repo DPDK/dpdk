@@ -432,7 +432,6 @@ app_main_loop_rx_metadata(void) {
 				struct rte_ipv4_hdr *ip_hdr;
 				struct rte_ipv6_hdr *ipv6_hdr;
 				uint32_t ip_dst;
-				uint8_t *ipv6_dst;
 				uint32_t *signature, *k32;
 
 				m = app.mbuf_rx.array[j];
@@ -452,9 +451,8 @@ app_main_loop_rx_metadata(void) {
 				} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
 					ipv6_hdr = (struct rte_ipv6_hdr *)
 						&m_data[sizeof(struct rte_ether_hdr)];
-					ipv6_dst = ipv6_hdr->dst_addr;
 
-					memcpy(key, ipv6_dst, 16);
+					memcpy(key, &ipv6_hdr->dst_addr, 16);
 				} else
 					continue;
 

@@ -76,16 +76,16 @@
  * impact due to a change in how the transmit queue index is specified.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_compat.h>
 #include <rte_mbuf.h>
 
 #include "rte_eventdev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Adapter configuration structure

@@ -78,6 +78,8 @@ DPDK subsystem.
    +---+-----+--------------------------------------------------------------+
    | 13| ML  | rte_mldev                                                    |
    +---+-----+--------------------------------------------------------------+
+   | 14| RVU | rte_rawdev                                                   |
+   +---+-----+--------------------------------------------------------------+
 
 PF0 is called the administrative / admin function (AF) and has exclusive
 privileges to provision RVU functional block's LFs to each of the PF/VF.
@@ -175,6 +177,9 @@ This section lists dataplane H/W block(s) available in cnxk SoC.
 #. **ML Device Driver**
    See :doc:`../mldevs/cnxk` for Machine Learning device driver information.
 
+#. **RVU LF Driver**
+   See :doc:`../rawdevs/cnxk_rvu_lf` for RVU LF driver information.
+
 Procedure to Setup Platform
 ---------------------------
 
@@ -250,9 +255,9 @@ Debugging Options
    +---+------------+-------------------------------------------------------+
    | # | Component  | EAL log command                                       |
    +===+============+=======================================================+
-   | 1 | Common     | --log-level='pmd\.cnxk\.base,8'                       |
+   | 1 | Common     | --log-level='pmd\.common\.cnxk\.base,8'               |
    +---+------------+-------------------------------------------------------+
-   | 2 | Mailbox    | --log-level='pmd\.cnxk\.mbox,8'                       |
+   | 2 | Mailbox    | --log-level='pmd\.common\.cnxk\.mbox,8'               |
    +---+------------+-------------------------------------------------------+
 
 Debugfs support
@@ -587,8 +592,9 @@ Compile DPDK
 
 DPDK may be compiled either natively on OCTEON CN9K/CN10K platform or cross-compiled on
 an x86 based platform.
-Meson build option ``enable_iova_as_pa`` is disabled on CNXK platforms.
-So only PMDs supporting this option are enabled on CNXK platform builds.
+The Meson build option ``enable_iova_as_pa`` should be set to false
+because on CNXK platforms, IOVA is same as the virtual address.
+Disabling the iova field in the mbuf frees it up to be used as a dynamic field.
 
 Native Compilation
 ~~~~~~~~~~~~~~~~~~
@@ -599,14 +605,14 @@ CN9K:
 
 .. code-block:: console
 
-        meson setup -Dplatform=cn9k build
+        meson setup -Dplatform=cn9k -Denable_iova_as_pa=false build
         ninja -C build
 
 CN10K:
 
 .. code-block:: console
 
-        meson setup -Dplatform=cn10k build
+        meson setup -Dplatform=cn10k -Denable_iova_as_pa=false build
         ninja -C build
 
 Cross Compilation
@@ -618,14 +624,14 @@ CN9K:
 
 .. code-block:: console
 
-        meson setup build --cross-file config/arm/arm64_cn9k_linux_gcc
+        meson setup -Denable_iova_as_pa=false build --cross-file config/arm/arm64_cn9k_linux_gcc
         ninja -C build
 
 CN10K:
 
 .. code-block:: console
 
-        meson setup build --cross-file config/arm/arm64_cn10k_linux_gcc
+        meson setup -Denable_iova_as_pa=false build --cross-file config/arm/arm64_cn10k_linux_gcc
         ninja -C build
 
 .. note::

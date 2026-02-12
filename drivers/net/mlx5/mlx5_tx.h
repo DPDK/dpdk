@@ -83,9 +83,9 @@ uint16_t mlx5_tx_burst_##func(void *txq, \
 extern uint64_t rte_net_mlx5_dynf_inline_mask;
 #define RTE_MBUF_F_TX_DYNF_NOINLINE rte_net_mlx5_dynf_inline_mask
 
-extern uint32_t mlx5_ptype_table[] __rte_cache_aligned;
-extern uint8_t mlx5_cksum_table[1 << 10] __rte_cache_aligned;
-extern uint8_t mlx5_swp_types_table[1 << 10] __rte_cache_aligned;
+extern alignas(RTE_CACHE_LINE_SIZE) uint32_t mlx5_ptype_table[];
+extern alignas(RTE_CACHE_LINE_SIZE) uint8_t mlx5_cksum_table[1 << 10];
+extern alignas(RTE_CACHE_LINE_SIZE) uint8_t mlx5_swp_types_table[1 << 10];
 
 struct mlx5_txq_stats {
 #ifdef MLX5_PMD_SOFT_COUNTERS
@@ -112,7 +112,7 @@ struct mlx5_txq_local {
 
 /* TX queue descriptor. */
 __extension__
-struct mlx5_txq_data {
+struct __rte_cache_aligned mlx5_txq_data {
 	uint16_t elts_head; /* Current counter in (*elts)[]. */
 	uint16_t elts_tail; /* Counter of first element awaiting completion. */
 	uint16_t elts_comp; /* elts index since last completion request. */
@@ -149,6 +149,7 @@ struct mlx5_txq_data {
 	uint16_t inlen_mode; /* Minimal data length to inline. */
 	uint8_t tx_aggr_affinity; /* TxQ affinity configuration. */
 	uint32_t qp_num_8s; /* QP number shifted by 8. */
+	uint32_t sq_mem_len; /* Length of TxQ for WQEs */
 	uint64_t offloads; /* Offloads for Tx Queue. */
 	struct mlx5_mr_ctrl mr_ctrl; /* MR control descriptor. */
 	struct mlx5_wqe *wqes; /* Work queue. */
@@ -167,19 +168,20 @@ struct mlx5_txq_data {
 	uint64_t ts_mask; /* Timestamp flag dynamic mask. */
 	uint64_t ts_last; /* Last scheduled timestamp. */
 	int32_t ts_offset; /* Timestamp field dynamic offset. */
+	uint32_t cq_mem_len; /* Length of TxQ for CQEs */
 	struct mlx5_dev_ctx_shared *sh; /* Shared context. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
 	struct mlx5_txq_stats stats_reset; /* stats on last reset. */
 	struct mlx5_uar_data uar_data;
 	struct rte_mbuf *elts[];
 	/* Storage for queued packets, must be the last field. */
-} __rte_cache_aligned;
+};
 
 /* TX queue control descriptor. */
 __extension__
 struct mlx5_txq_ctrl {
 	LIST_ENTRY(mlx5_txq_ctrl) next; /* Pointer to the next element. */
-	uint32_t refcnt; /* Reference counter. */
+	RTE_ATOMIC(uint32_t) refcnt; /* Reference counter. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	bool is_hairpin; /* Whether TxQ type is Hairpin. */
 	unsigned int max_inline_data; /* Max inline data. */
@@ -227,6 +229,8 @@ void mlx5_txq_dynf_timestamp_set(struct rte_eth_dev *dev);
 int mlx5_count_aggr_ports(struct rte_eth_dev *dev);
 int mlx5_map_aggr_tx_affinity(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 			      uint8_t affinity);
+int mlx5_ext_txq_verify(struct rte_eth_dev *dev);
+struct mlx5_external_q *mlx5_ext_txq_get(struct rte_eth_dev *dev, uint16_t idx);
 
 /* mlx5_tx.c */
 
@@ -339,8 +343,8 @@ mlx5_txpp_convert_tx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t mts)
 		 * the service thread, data should be re-read.
 		 */
 		rte_compiler_barrier();
-		ci = __atomic_load_n(&sh->txpp.ts.ci_ts, __ATOMIC_RELAXED);
-		ts = __atomic_load_n(&sh->txpp.ts.ts, __ATOMIC_RELAXED);
+		ci = rte_atomic_load_explicit(&sh->txpp.ts.ci_ts, rte_memory_order_relaxed);
+		ts = rte_atomic_load_explicit(&sh->txpp.ts.ts, rte_memory_order_relaxed);
 		rte_compiler_barrier();
 		if (!((ts ^ ci) << (64 - MLX5_CQ_INDEX_WIDTH)))
 			break;
@@ -350,8 +354,8 @@ mlx5_txpp_convert_tx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t mts)
 	mts -= ts;
 	if (unlikely(mts >= UINT64_MAX / 2)) {
 		/* We have negative integer, mts is in the past. */
-		__atomic_fetch_add(&sh->txpp.err_ts_past,
-				   1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&sh->txpp.err_ts_past,
+				   1, rte_memory_order_relaxed);
 		return -1;
 	}
 	tick = sh->txpp.tick;
@@ -360,14 +364,54 @@ mlx5_txpp_convert_tx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t mts)
 	mts = (mts + tick - 1) / tick;
 	if (unlikely(mts >= (1 << MLX5_CQ_INDEX_WIDTH) / 2 - 1)) {
 		/* We have mts is too distant future. */
-		__atomic_fetch_add(&sh->txpp.err_ts_future,
-				   1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&sh->txpp.err_ts_future,
+				   1, rte_memory_order_relaxed);
 		return -1;
 	}
 	mts <<= 64 - MLX5_CQ_INDEX_WIDTH;
 	ci += mts;
 	ci >>= 64 - MLX5_CQ_INDEX_WIDTH;
 	return ci;
+}
+
+/**
+ * Read real time clock counter directly from the device PCI BAR area.
+ * The PCI BAR must be mapped to the process memory space at initialization.
+ *
+ * @param dev
+ *   Device to read clock counter from
+ *
+ * @return
+ *   0 - if HCA BAR is not supported or not mapped.
+ *   !=0 - read 64-bit value of real-time in UTC formatv (nanoseconds)
+ */
+static __rte_always_inline uint64_t mlx5_read_pcibar_clock(struct rte_eth_dev *dev)
+{
+	struct mlx5_proc_priv *ppriv = dev->process_private;
+
+	if (ppriv && ppriv->hca_bar) {
+		struct mlx5_priv *priv = dev->data->dev_private;
+		struct mlx5_dev_ctx_shared *sh = priv->sh;
+		uint64_t *hca_ptr = (uint64_t *)(ppriv->hca_bar) +
+				  __mlx5_64_off(initial_seg, real_time);
+		uint64_t __rte_atomic *ts_addr;
+		uint64_t ts;
+
+		ts_addr = (uint64_t __rte_atomic *)hca_ptr;
+		ts = rte_atomic_load_explicit(ts_addr, rte_memory_order_seq_cst);
+		ts = rte_be_to_cpu_64(ts);
+		ts = mlx5_txpp_convert_rx_ts(sh, ts);
+		return ts;
+	}
+	return 0;
+}
+
+static __rte_always_inline uint64_t mlx5_read_pcibar_clock_from_txq(struct mlx5_txq_data *txq)
+{
+	struct mlx5_txq_ctrl *txq_ctrl = container_of(txq, struct mlx5_txq_ctrl, txq);
+	struct rte_eth_dev *dev = ETH_DEV(txq_ctrl->priv);
+
+	return mlx5_read_pcibar_clock(dev);
 }
 
 /**
@@ -807,6 +851,7 @@ mlx5_tx_cseg_init(struct mlx5_txq_data *__rte_restrict txq,
 		  unsigned int olx)
 {
 	struct mlx5_wqe_cseg *__rte_restrict cs = &wqe->cseg;
+	uint64_t real_time;
 
 	/* For legacy MPW replace the EMPW by TSO with modifier. */
 	if (MLX5_TXOFF_CONFIG(MPW) && opcode == MLX5_OPCODE_ENHANCED_MPSW)
@@ -820,9 +865,12 @@ mlx5_tx_cseg_init(struct mlx5_txq_data *__rte_restrict txq,
 		cs->flags = RTE_BE32(MLX5_COMP_ONLY_FIRST_ERR <<
 				     MLX5_COMP_MODE_OFFSET);
 	cs->misc = RTE_BE32(0);
-	if (__rte_trace_point_fp_is_enabled() && !loc->pkts_sent)
-		rte_pmd_mlx5_trace_tx_entry(txq->port_id, txq->idx);
-	rte_pmd_mlx5_trace_tx_wqe((txq->wqe_ci << 8) | opcode);
+	if (__rte_trace_point_fp_is_enabled()) {
+		real_time = mlx5_read_pcibar_clock_from_txq(txq);
+		if (!loc->pkts_sent)
+			rte_pmd_mlx5_trace_tx_entry(real_time, txq->port_id, txq->idx);
+		rte_pmd_mlx5_trace_tx_wqe(real_time, (txq->wqe_ci << 8) | opcode);
+	}
 }
 
 /**
@@ -1099,7 +1147,7 @@ mlx5_tx_eseg_data(struct mlx5_txq_data *__rte_restrict txq,
 	} else {
 		/* Fill the gap in the title WQEBB with inline data. */
 		rte_mov16(pdst, psrc);
-		psrc += sizeof(rte_v128u32_t);
+		psrc += MLX5_SIZE_MOV16;
 	}
 	pdst = (uint8_t *)(es + 2);
 	MLX5_ASSERT(inlen >= MLX5_ESEG_MIN_INLINE_SIZE);
@@ -1743,8 +1791,8 @@ mlx5_tx_schedule_send(struct mlx5_txq_data *restrict txq,
 		/* Convert the timestamp into completion to wait. */
 		ts = *RTE_MBUF_DYNFIELD(loc->mbuf, txq->ts_offset, uint64_t *);
 		if (txq->ts_last && ts < txq->ts_last)
-			__atomic_fetch_add(&txq->sh->txpp.err_ts_order,
-					   1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&txq->sh->txpp.err_ts_order,
+					   1, rte_memory_order_relaxed);
 		txq->ts_last = ts;
 		wqe = txq->wqes + (txq->wqe_ci & txq->wqe_m);
 		sh = txq->sh;
@@ -3784,8 +3832,32 @@ burst_exit:
 		__mlx5_tx_free_mbuf(txq, pkts, loc.mbuf_free, olx);
 	/* Trace productive bursts only. */
 	if (__rte_trace_point_fp_is_enabled() && loc.pkts_sent)
-		rte_pmd_mlx5_trace_tx_exit(loc.pkts_sent, pkts_n);
+		rte_pmd_mlx5_trace_tx_exit(mlx5_read_pcibar_clock_from_txq(txq),
+					   loc.pkts_sent, pkts_n);
 	return loc.pkts_sent;
+}
+
+/**
+ * Check whether given TxQ is external.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param queue_idx
+ *   Tx queue index.
+ *
+ * @return
+ *   True if is external TxQ, otherwise false.
+ */
+static __rte_always_inline bool
+mlx5_is_external_txq(struct rte_eth_dev *dev, uint16_t queue_idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_external_q *txq;
+
+	if (!priv->ext_txqs || queue_idx < MLX5_EXTERNAL_TX_QUEUE_ID_MIN)
+		return false;
+	txq = &priv->ext_txqs[queue_idx - MLX5_EXTERNAL_TX_QUEUE_ID_MIN];
+	return !!rte_atomic_load_explicit(&txq->refcnt, rte_memory_order_relaxed);
 }
 
 #endif /* RTE_PMD_MLX5_TX_H_ */

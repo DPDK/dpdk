@@ -10,12 +10,14 @@
 #undef RTE_USE_LIBBSD
 #include <stdbool.h>
 
+#include <eal_export.h>
 #include <rte_string_fns.h>
 
 #include "telemetry_data.h"
 
 #define RTE_TEL_UINT_HEX_STR_BUF_LEN 64
 
+RTE_EXPORT_SYMBOL(rte_tel_data_start_array)
 int
 rte_tel_data_start_array(struct rte_tel_data *d, enum rte_tel_value_type type)
 {
@@ -30,6 +32,7 @@ rte_tel_data_start_array(struct rte_tel_data *d, enum rte_tel_value_type type)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_tel_data_start_dict)
 int
 rte_tel_data_start_dict(struct rte_tel_data *d)
 {
@@ -38,6 +41,7 @@ rte_tel_data_start_dict(struct rte_tel_data *d)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_tel_data_string)
 int
 rte_tel_data_string(struct rte_tel_data *d, const char *str)
 {
@@ -50,6 +54,7 @@ rte_tel_data_string(struct rte_tel_data *d, const char *str)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_tel_data_add_array_string)
 int
 rte_tel_data_add_array_string(struct rte_tel_data *d, const char *str)
 {
@@ -62,6 +67,7 @@ rte_tel_data_add_array_string(struct rte_tel_data *d, const char *str)
 	return bytes < RTE_TEL_MAX_STRING_LEN ? 0 : E2BIG;
 }
 
+RTE_EXPORT_SYMBOL(rte_tel_data_add_array_int)
 int
 rte_tel_data_add_array_int(struct rte_tel_data *d, int64_t x)
 {
@@ -73,6 +79,7 @@ rte_tel_data_add_array_int(struct rte_tel_data *d, int64_t x)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_tel_data_add_array_uint)
 int
 rte_tel_data_add_array_uint(struct rte_tel_data *d, uint64_t x)
 {
@@ -84,12 +91,7 @@ rte_tel_data_add_array_uint(struct rte_tel_data *d, uint64_t x)
 	return 0;
 }
 
-int
-rte_tel_data_add_array_u64(struct rte_tel_data *d, uint64_t x)
-{
-	return rte_tel_data_add_array_uint(d, x);
-}
-
+RTE_EXPORT_SYMBOL(rte_tel_data_add_array_container)
 int
 rte_tel_data_add_array_container(struct rte_tel_data *d,
 		struct rte_tel_data *val, int keep)
@@ -122,6 +124,7 @@ rte_tel_uint_to_hex_encoded_str(char *buf, size_t buf_len, uint64_t val,
 	return len < (int)buf_len ? 0 : -EINVAL;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_tel_data_add_array_uint_hex, 23.03)
 int
 rte_tel_data_add_array_uint_hex(struct rte_tel_data *d, uint64_t val,
 				uint8_t display_bitwidth)
@@ -152,6 +155,7 @@ valid_name(const char *name)
 	return true;
 }
 
+RTE_EXPORT_SYMBOL(rte_tel_data_add_dict_string)
 int
 rte_tel_data_add_dict_string(struct rte_tel_data *d, const char *name,
 		const char *val)
@@ -177,6 +181,7 @@ rte_tel_data_add_dict_string(struct rte_tel_data *d, const char *name,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_tel_data_add_dict_int)
 int
 rte_tel_data_add_dict_int(struct rte_tel_data *d, const char *name, int64_t val)
 {
@@ -196,6 +201,7 @@ rte_tel_data_add_dict_int(struct rte_tel_data *d, const char *name, int64_t val)
 	return bytes < RTE_TEL_MAX_STRING_LEN ? 0 : E2BIG;
 }
 
+RTE_EXPORT_SYMBOL(rte_tel_data_add_dict_uint)
 int
 rte_tel_data_add_dict_uint(struct rte_tel_data *d,
 		const char *name, uint64_t val)
@@ -216,12 +222,7 @@ rte_tel_data_add_dict_uint(struct rte_tel_data *d,
 	return bytes < RTE_TEL_MAX_STRING_LEN ? 0 : E2BIG;
 }
 
-int
-rte_tel_data_add_dict_u64(struct rte_tel_data *d, const char *name, uint64_t val)
-{
-	return rte_tel_data_add_dict_uint(d, name, val);
-}
-
+RTE_EXPORT_SYMBOL(rte_tel_data_add_dict_container)
 int
 rte_tel_data_add_dict_container(struct rte_tel_data *d, const char *name,
 		struct rte_tel_data *val, int keep)
@@ -247,6 +248,7 @@ rte_tel_data_add_dict_container(struct rte_tel_data *d, const char *name,
 	return bytes < RTE_TEL_MAX_STRING_LEN ? 0 : E2BIG;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_tel_data_add_dict_uint_hex, 23.03)
 int
 rte_tel_data_add_dict_uint_hex(struct rte_tel_data *d, const char *name,
 			       uint64_t val, uint8_t display_bitwidth)
@@ -263,12 +265,14 @@ rte_tel_data_add_dict_uint_hex(struct rte_tel_data *d, const char *name,
 	return rte_tel_data_add_dict_string(d, name, hex_str);
 }
 
+RTE_EXPORT_SYMBOL(rte_tel_data_alloc)
 struct rte_tel_data *
 rte_tel_data_alloc(void)
 {
 	return malloc(sizeof(struct rte_tel_data));
 }
 
+RTE_EXPORT_SYMBOL(rte_tel_data_free)
 void
 rte_tel_data_free(struct rte_tel_data *data)
 {

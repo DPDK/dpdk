@@ -8,6 +8,9 @@
 
 #define NGBE_LINK_UP_TIME	90 /* 9.0 Seconds */
 
+#define NGBE_RX_HDR_SIZE	256
+#define NGBE_RX_BUF_SIZE	2048
+
 #define NGBE_FRAME_SIZE_MAX       (9728) /* Maximum frame size, +FCS */
 #define NGBE_FRAME_SIZE_DFT       (1518) /* Default frame size, +FCS */
 #define NGBE_NUM_POOL             (32)
@@ -17,6 +20,7 @@
 #define NGBE_MAX_QP               (8)
 #define NGBE_MAX_UTA              128
 
+#define NGBE_VF_INIT_TIMEOUT	200 /* Number of retries to clear RSTI */
 #define NGBE_PCI_MASTER_DISABLE_TIMEOUT	800
 #define NGBE_SPI_TIMEOUT	10000
 
@@ -108,6 +112,7 @@ struct ngbe_fc_info {
 	u32 high_water; /* Flow Ctrl High-water */
 	u32 low_water; /* Flow Ctrl Low-water */
 	u16 pause_time; /* Flow Control Pause timer */
+	u8 mac_ctrl_frame_fwd; /* Forward MAC control frames */
 	bool send_xon; /* Flow control send XON */
 	bool strict_ieee; /* Strict IEEE mode */
 	bool disable_fc_autoneg; /* Do not autonegotiate FC */
@@ -311,6 +316,7 @@ struct ngbe_mac_info {
 	s32 (*enable_sec_rx_path)(struct ngbe_hw *hw);
 	s32 (*acquire_swfw_sync)(struct ngbe_hw *hw, u32 mask);
 	void (*release_swfw_sync)(struct ngbe_hw *hw, u32 mask);
+	s32 (*negotiate_api_version)(struct ngbe_hw *hw, int api);
 
 	/* Link */
 	s32 (*setup_link)(struct ngbe_hw *hw, u32 speed,
@@ -330,6 +336,7 @@ struct ngbe_mac_info {
 	/* RAR */
 	s32 (*set_rar)(struct ngbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 			  u32 enable_addr);
+	s32 (*set_uc_addr)(struct ngbe_hw *hw, u32 index, u8 *addr);
 	s32 (*clear_rar)(struct ngbe_hw *hw, u32 index);
 	s32 (*set_vmdq)(struct ngbe_hw *hw, u32 rar, u32 vmdq);
 	s32 (*clear_vmdq)(struct ngbe_hw *hw, u32 rar, u32 vmdq);
@@ -346,6 +353,8 @@ struct ngbe_mac_info {
 	void (*set_mac_anti_spoofing)(struct ngbe_hw *hw, bool enable, int vf);
 	void (*set_vlan_anti_spoofing)(struct ngbe_hw *hw,
 					bool enable, int vf);
+	s32 (*update_xcast_mode)(struct ngbe_hw *hw, int xcast_mode);
+	s32 (*set_rlpml)(struct ngbe_hw *hw, u16 max_size);
 
 	/* Flow Control */
 	s32 (*fc_enable)(struct ngbe_hw *hw);
@@ -422,6 +431,10 @@ struct ngbe_mbx_info {
 	void (*init_params)(struct ngbe_hw *hw);
 	s32  (*read)(struct ngbe_hw *hw, u32 *msg, u16 size, u16 vf_number);
 	s32  (*write)(struct ngbe_hw *hw, u32 *msg, u16 size, u16 vf_number);
+	s32  (*read_posted)(struct ngbe_hw *hw, u32 *msg, u16 size,
+				u16 mbx_id);
+	s32  (*write_posted)(struct ngbe_hw *hw, u32 *msg, u16 size,
+				u16 mbx_id);
 	s32  (*check_for_msg)(struct ngbe_hw *hw, u16 mbx_id);
 	s32  (*check_for_ack)(struct ngbe_hw *hw, u16 mbx_id);
 	s32  (*check_for_rst)(struct ngbe_hw *hw, u16 mbx_id);
@@ -429,6 +442,7 @@ struct ngbe_mbx_info {
 	struct ngbe_mbx_stats stats;
 	u32 timeout;
 	u32 usec_delay;
+	u32 v2p_mailbox;
 	u16 size;
 };
 
@@ -455,8 +469,13 @@ struct ngbe_hw {
 	u16 sub_device_id;
 	u16 sub_system_id;
 	u32 eeprom_id;
+	u8 port_id;
 	u8 revision_id;
 	bool adapter_stopped;
+	int api_version;
+	bool wol_enabled;
+	bool ncsi_enabled;
+	bool lldp_enabled;
 
 	uint64_t isb_dma;
 	void IOMEM *isb_mem;
@@ -469,6 +488,7 @@ struct ngbe_hw {
 	u32 q_tx_regs[8 * 4];
 	u32 gphy_efuse[2];
 	bool offset_loaded;
+	bool rx_loaded;
 	bool is_pf;
 	bool gpio_ctl;
 	bool lsc;

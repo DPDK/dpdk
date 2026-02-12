@@ -9,12 +9,12 @@ if not dpdk_conf.get('RTE_ARCH_64')
 endif
 
 if meson.is_cross_build()
-        soc_type = meson.get_cross_property('platform', '')
+        soc_type = meson.get_external_property('platform', '')
 else
         soc_type = platform
 endif
 
-if soc_type != 'cn9k' and soc_type != 'cn10k'
+if soc_type != 'cn9k' and soc_type != 'cn10k' and soc_type != 'cn20k'
         soc_type = 'all'
 endif
 
@@ -32,6 +32,7 @@ sources = files(
         'cnxk_eswitch_devargs.c',
         'cnxk_eswitch_flow.c',
         'cnxk_eswitch_rxtx.c',
+        'cnxk_flow_common.c',
         'cnxk_link.c',
         'cnxk_lookup.c',
         'cnxk_ptp.c',
@@ -44,6 +45,13 @@ sources = files(
         'cnxk_tm.c',
 )
 
+disable_template = false
+if meson.version().version_compare('>=1.1.0')
+        if '-DCNXK_DIS_TMPLT_FUNC' in meson.build_options()
+                disable_template = true
+        endif
+endif
+
 if soc_type == 'cn9k' or soc_type == 'all'
 # CN9K
 sources += files(
@@ -54,7 +62,7 @@ sources += files(
         'cn9k_tx_select.c',
 )
 
-if host_machine.cpu_family().startswith('aarch')
+if host_machine.cpu_family().startswith('aarch') and not disable_template
 sources += files(
         'rx/cn9k/rx_0_15.c',
         'rx/cn9k/rx_16_31.c',
@@ -88,6 +96,7 @@ sources += files(
         'rx/cn9k/rx_80_95_vec_mseg.c',
         'rx/cn9k/rx_96_111_vec_mseg.c',
         'rx/cn9k/rx_112_127_vec_mseg.c',
+        'rx/cn9k/rx_all_offload.c',
 )
 
 sources += files(
@@ -123,6 +132,12 @@ sources += files(
         'tx/cn9k/tx_80_95_vec_mseg.c',
         'tx/cn9k/tx_96_111_vec_mseg.c',
         'tx/cn9k/tx_112_127_vec_mseg.c',
+        'tx/cn9k/tx_all_offload.c',
+)
+else
+sources += files(
+        'rx/cn9k/rx_all_offload.c',
+        'tx/cn9k/tx_all_offload.c',
 )
 endif
 endif
@@ -137,7 +152,7 @@ sources += files(
         'cn10k_tx_select.c',
 )
 
-if host_machine.cpu_family().startswith('aarch')
+if host_machine.cpu_family().startswith('aarch') and not disable_template
 sources += files(
         'rx/cn10k/rx_0_15.c',
         'rx/cn10k/rx_16_31.c',
@@ -171,6 +186,7 @@ sources += files(
         'rx/cn10k/rx_80_95_vec_mseg.c',
         'rx/cn10k/rx_96_111_vec_mseg.c',
         'rx/cn10k/rx_112_127_vec_mseg.c',
+        'rx/cn10k/rx_all_offload.c',
 )
 
 sources += files(
@@ -206,12 +222,113 @@ sources += files(
         'tx/cn10k/tx_80_95_vec_mseg.c',
         'tx/cn10k/tx_96_111_vec_mseg.c',
         'tx/cn10k/tx_112_127_vec_mseg.c',
+        'tx/cn10k/tx_all_offload.c',
+)
+else
+sources += files(
+        'rx/cn10k/rx_all_offload.c',
+        'tx/cn10k/tx_all_offload.c',
 )
 endif
 endif
 
+
+if soc_type == 'cn20k' or soc_type == 'all'
+# CN20K
+sources += files(
+        'cn20k_ethdev.c',
+        'cn20k_ethdev_sec.c',
+        'cn20k_flow.c',
+        'cn20k_rx_select.c',
+        'cn20k_tx_select.c',
+)
+
+if host_machine.cpu_family().startswith('aarch') and not disable_template
+sources += files(
+        'rx/cn20k/rx_0_15.c',
+        'rx/cn20k/rx_16_31.c',
+        'rx/cn20k/rx_32_47.c',
+        'rx/cn20k/rx_48_63.c',
+        'rx/cn20k/rx_64_79.c',
+        'rx/cn20k/rx_80_95.c',
+        'rx/cn20k/rx_96_111.c',
+        'rx/cn20k/rx_112_127.c',
+        'rx/cn20k/rx_0_15_mseg.c',
+        'rx/cn20k/rx_16_31_mseg.c',
+        'rx/cn20k/rx_32_47_mseg.c',
+        'rx/cn20k/rx_48_63_mseg.c',
+        'rx/cn20k/rx_64_79_mseg.c',
+        'rx/cn20k/rx_80_95_mseg.c',
+        'rx/cn20k/rx_96_111_mseg.c',
+        'rx/cn20k/rx_112_127_mseg.c',
+        'rx/cn20k/rx_0_15_vec.c',
+        'rx/cn20k/rx_16_31_vec.c',
+        'rx/cn20k/rx_32_47_vec.c',
+        'rx/cn20k/rx_48_63_vec.c',
+        'rx/cn20k/rx_64_79_vec.c',
+        'rx/cn20k/rx_80_95_vec.c',
+        'rx/cn20k/rx_96_111_vec.c',
+        'rx/cn20k/rx_112_127_vec.c',
+        'rx/cn20k/rx_0_15_vec_mseg.c',
+        'rx/cn20k/rx_16_31_vec_mseg.c',
+        'rx/cn20k/rx_32_47_vec_mseg.c',
+        'rx/cn20k/rx_48_63_vec_mseg.c',
+        'rx/cn20k/rx_64_79_vec_mseg.c',
+        'rx/cn20k/rx_80_95_vec_mseg.c',
+        'rx/cn20k/rx_96_111_vec_mseg.c',
+        'rx/cn20k/rx_112_127_vec_mseg.c',
+        'rx/cn20k/rx_all_offload.c',
+)
+
+sources += files(
+        'tx/cn20k/tx_0_15.c',
+        'tx/cn20k/tx_16_31.c',
+        'tx/cn20k/tx_32_47.c',
+        'tx/cn20k/tx_48_63.c',
+        'tx/cn20k/tx_64_79.c',
+        'tx/cn20k/tx_80_95.c',
+        'tx/cn20k/tx_96_111.c',
+        'tx/cn20k/tx_112_127.c',
+        'tx/cn20k/tx_0_15_mseg.c',
+        'tx/cn20k/tx_16_31_mseg.c',
+        'tx/cn20k/tx_32_47_mseg.c',
+        'tx/cn20k/tx_48_63_mseg.c',
+        'tx/cn20k/tx_64_79_mseg.c',
+        'tx/cn20k/tx_80_95_mseg.c',
+        'tx/cn20k/tx_96_111_mseg.c',
+        'tx/cn20k/tx_112_127_mseg.c',
+        'tx/cn20k/tx_0_15_vec.c',
+        'tx/cn20k/tx_16_31_vec.c',
+        'tx/cn20k/tx_32_47_vec.c',
+        'tx/cn20k/tx_48_63_vec.c',
+        'tx/cn20k/tx_64_79_vec.c',
+        'tx/cn20k/tx_80_95_vec.c',
+        'tx/cn20k/tx_96_111_vec.c',
+        'tx/cn20k/tx_112_127_vec.c',
+        'tx/cn20k/tx_0_15_vec_mseg.c',
+        'tx/cn20k/tx_16_31_vec_mseg.c',
+        'tx/cn20k/tx_32_47_vec_mseg.c',
+        'tx/cn20k/tx_48_63_vec_mseg.c',
+        'tx/cn20k/tx_64_79_vec_mseg.c',
+        'tx/cn20k/tx_80_95_vec_mseg.c',
+        'tx/cn20k/tx_96_111_vec_mseg.c',
+        'tx/cn20k/tx_112_127_vec_mseg.c',
+        'tx/cn20k/tx_all_offload.c',
+)
+else
+sources += files(
+        'rx/cn20k/rx_all_offload.c',
+        'tx/cn20k/tx_all_offload.c',
+)
+endif
+endif
+
+
 deps += ['bus_pci', 'cryptodev', 'eventdev', 'security']
 deps += ['common_cnxk', 'mempool_cnxk']
+
+cflags += no_wvla_cflag
+cflags += no_shadow_cflag
 
 # Allow implicit vector conversions and strict aliasing warning
 extra_flags = ['-flax-vector-conversions', '-Wno-strict-aliasing']

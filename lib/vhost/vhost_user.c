@@ -36,11 +36,9 @@
 #ifdef RTE_LIBRTE_VHOST_POSTCOPY
 #include <linux/userfaultfd.h>
 #endif
-#ifdef F_ADD_SEALS /* if file sealing is supported, so is memfd */
 #include <linux/memfd.h>
-#define MEMFD_SUPPORTED
-#endif
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
@@ -954,6 +952,7 @@ translate_ring_addresses(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 			vq->last_used_idx, vq->used->idx);
 		vq->last_used_idx  = vq->used->idx;
 		vq->last_avail_idx = vq->used->idx;
+		vhost_virtqueue_reconnect_log_split(vq);
 		VHOST_CONFIG_LOG(dev->ifname, WARNING,
 			"some packets maybe resent for Tx and dropped for Rx");
 	}
@@ -1039,9 +1038,11 @@ vhost_user_set_vring_base(struct virtio_net **pdev,
 		 */
 		vq->last_used_idx = vq->last_avail_idx;
 		vq->used_wrap_counter = vq->avail_wrap_counter;
+		vhost_virtqueue_reconnect_log_packed(vq);
 	} else {
 		vq->last_used_idx = ctx->msg.payload.state.num;
 		vq->last_avail_idx = ctx->msg.payload.state.num;
+		vhost_virtqueue_reconnect_log_split(vq);
 	}
 
 	VHOST_CONFIG_LOG(dev->ifname, INFO,
@@ -1623,11 +1624,7 @@ inflight_mem_alloc(struct virtio_net *dev, const char *name, size_t size, int *f
 	char fname[20] = "/tmp/memfd-XXXXXX";
 
 	*fd = -1;
-#ifdef MEMFD_SUPPORTED
 	mfd = memfd_create(name, MFD_CLOEXEC);
-#else
-	RTE_SET_USED(name);
-#endif
 	if (mfd == -1) {
 		mfd = mkstemp(fname);
 		if (mfd == -1) {
@@ -1871,6 +1868,7 @@ vhost_user_set_inflight_fd(struct virtio_net **pdev,
 		if (!vq)
 			continue;
 
+		cleanup_vq_inflight(dev, vq);
 		if (vq_is_packed(dev)) {
 			vq->inflight_packed = addr;
 			vq->inflight_packed->desc_num = queue_size;
@@ -1996,6 +1994,7 @@ vhost_check_queue_inflights_split(struct virtio_net *dev,
 	}
 
 	vq->last_avail_idx += resubmit_num;
+	vhost_virtqueue_reconnect_log_split(vq);
 
 	if (resubmit_num) {
 		resubmit = rte_zmalloc_socket("resubmit", sizeof(struct rte_vhost_resubmit_info),
@@ -2272,6 +2271,7 @@ vhost_user_get_vring_base(struct virtio_net **pdev,
 
 	rte_rwlock_write_lock(&vq->access_lock);
 	vring_invalidate(dev, vq);
+	memset(&vq->ring_addrs, 0, sizeof(struct vhost_vring_addr));
 	rte_rwlock_write_unlock(&vq->access_lock);
 
 	return RTE_VHOST_MSG_RESULT_REPLY;
@@ -2317,9 +2317,8 @@ vhost_user_get_protocol_features(struct virtio_net **pdev,
 			int main_fd __rte_unused)
 {
 	struct virtio_net *dev = *pdev;
-	uint64_t features, protocol_features;
+	uint64_t protocol_features;
 
-	rte_vhost_driver_get_features(dev->ifname, &features);
 	rte_vhost_driver_get_protocol_features(dev->ifname, &protocol_features);
 
 	ctx->msg.payload.u64 = protocol_features;
@@ -2399,7 +2398,7 @@ vhost_user_set_log_base(struct virtio_net **pdev,
 	 * mmap from 0 to workaround a hugepage mmap bug: mmap will
 	 * fail when offset is not page size aligned.
 	 */
-	addr = mmap(0, size + off, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	addr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, off);
 	alignment = get_blk_size(fd);
 	close(fd);
 	if (addr == MAP_FAILED) {
@@ -3181,7 +3180,7 @@ vhost_user_msg_handler(int vid, int fd)
 	handled = false;
 	if (dev->extern_ops.pre_msg_handle) {
 		RTE_BUILD_BUG_ON(offsetof(struct vhu_msg_context, msg) != 0);
-		msg_result = (*dev->extern_ops.pre_msg_handle)(dev->vid, &ctx);
+		msg_result = dev->extern_ops.pre_msg_handle(dev->vid, &ctx);
 		switch (msg_result) {
 		case RTE_VHOST_MSG_RESULT_REPLY:
 			send_vhost_reply(dev, fd, &ctx);
@@ -3233,7 +3232,7 @@ skip_to_post_handle:
 	if (msg_result != RTE_VHOST_MSG_RESULT_ERR &&
 			dev->extern_ops.post_msg_handle) {
 		RTE_BUILD_BUG_ON(offsetof(struct vhu_msg_context, msg) != 0);
-		msg_result = (*dev->extern_ops.post_msg_handle)(dev->vid, &ctx);
+		msg_result = dev->extern_ops.post_msg_handle(dev->vid, &ctx);
 		switch (msg_result) {
 		case RTE_VHOST_MSG_RESULT_REPLY:
 			send_vhost_reply(dev, fd, &ctx);
@@ -3296,7 +3295,8 @@ unlock:
 	 */
 
 	if (!(dev->flags & VIRTIO_DEV_RUNNING)) {
-		if (dev->notify_ops->new_device(dev->vid) == 0)
+		if (!dev->notify_ops->new_device ||
+			dev->notify_ops->new_device(dev->vid) == 0)
 			dev->flags |= VIRTIO_DEV_RUNNING;
 	}
 
@@ -3353,6 +3353,7 @@ vhost_user_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_backend_config_change)
 int
 rte_vhost_backend_config_change(int vid, bool need_reply)
 {
@@ -3415,6 +3416,7 @@ static int vhost_user_backend_set_vring_host_notifier(struct virtio_net *dev,
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_vhost_host_notifier_ctrl)
 int rte_vhost_host_notifier_ctrl(int vid, uint16_t qid, bool enable)
 {
 	struct virtio_net *dev;

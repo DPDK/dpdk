@@ -10,13 +10,13 @@
 #  error Platform must be built with RTE_FORCE_INTRINSICS
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "generic/rte_atomic.h"
 #include <rte_branch_prediction.h>
 #include <rte_debug.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define rte_mb() asm volatile("dmb osh" : : : "memory")
 

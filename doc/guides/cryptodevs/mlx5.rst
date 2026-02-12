@@ -6,17 +6,8 @@
 NVIDIA MLX5 Crypto Driver
 =========================
 
-.. note::
-
-   NVIDIA acquired Mellanox Technologies in 2020.
-   The DPDK documentation and code might still include instances
-   of or references to Mellanox trademarks (like BlueField and ConnectX)
-   that are now NVIDIA trademarks.
-
-The MLX5 crypto driver library
-(**librte_crypto_mlx5**) provides support for **NVIDIA ConnectX-6**,
-**NVIDIA ConnectX-6 Dx**, **NVIDIA ConnectX-7**, **NVIDIA BlueField-2**,
-and **NVIDIA BlueField-3** family adapters.
+The mlx5 crypto driver (``librte_crypto_mlx5``)
+provides support for NVIDIA NIC and DPU device families.
 
 Overview
 --------
@@ -136,11 +127,11 @@ DEK is passed in plaintext without keytag.
 
   The mlx5 crypto PMD can be verified by running the test application::
     Wrapped mode:
-      dpdk-test -c 1 -n 1 -w <dev>,class=crypto,wcs_file=<file_path>
+      dpdk-test -l 0 -n 1 -w <dev>,class=crypto,wcs_file=<file_path>
       RTE>>cryptodev_mlx5_autotest
 
     Plaintext mode:
-      dpdk-test -c 1 -n 1 -w <dev>,class=crypto
+      dpdk-test -l 0 -n 1 -w <dev>,class=crypto
       RTE>>cryptodev_mlx5_autotest
 
 
@@ -185,15 +176,38 @@ for an additional list of options shared with other mlx5 drivers.
 
   Maximum number of mbuf chain segments(src or dest), default value is 8.
 
+- ``crypto_mode`` parameter [string]
 
-Supported NICs
---------------
+  Only valid in AES-GCM mode. Will be ignored in AES-XTS mode.
+
+  - ``full_capable``
+    Use UMR WQE for inputs not as contiguous AAD/Payload/Digest.
+
+  - ``ipsec_opt``
+    Do software AAD shrink for inputs as contiguous AAD/IV/Payload/Digest.
+    The PMD relies on the IPsec layout, expecting the memory to align
+    with AAD/IV/Payload/Digest in a contiguous manner,
+    all within a single mbuf for any given OP.
+    The PMD extracts the ESP.IV bytes from the input memory
+    and binds the AAD (ESP SPI and SN) to the payload during enqueue OP.
+    It then restores the original memory layout in the decrypt OP.
+    The ESP.IV size supported range is [0,16] bytes.
+    For OOP case, the PMD will replace the bytes preceding the OP destination address
+    to match the information found between the AAD pointer and the OP source address.
+    User should prepare this headroom in this case.
+
+  Set to ``full_capable`` by default.
+
+
+Supported Devices
+-----------------
 
 * NVIDIA\ |reg| ConnectX\ |reg|-6 200G MCX654106A-HCAT (2x200G)
 * NVIDIA\ |reg| ConnectX\ |reg|-6 Dx
 * NVIDIA\ |reg| ConnectX\ |reg|-7
-* NVIDIA\ |reg| BlueField\ |reg|-2 SmartNIC
-* NVIDIA\ |reg| BlueField\ |reg|-3 SmartNIC
+* NVIDIA\ |reg| ConnectX\ |reg|-9 SuperNIC
+* NVIDIA\ |reg| BlueField\ |reg|-2 DPU
+* NVIDIA\ |reg| BlueField\ |reg|-3 DPU/SuperNIC
 
 
 Limitations
@@ -205,6 +219,8 @@ Limitations
   values.
 - AES-GCM is supported only on BlueField-3.
 - AES-GCM supports only key import plaintext mode.
+- AES-GCM ``ipsec_opt`` mode does not support non-contiguous AAD/Payload/Digest
+  and multi-segment mode.
 
 
 Prerequisites
@@ -216,6 +232,8 @@ FW Prerequisites
 - xx.31.0328 for ConnectX-6.
 - xx.32.0108 for ConnectX-6 Dx and BlueField-2.
 - xx.36.xxxx for ConnectX-7 and BlueField-3.
+- 40.44.1036 for ConnectX-8.
+- 82.47.xxxx for ConnectX-9.
 - xx.37.3010 for BlueField-3 and newer for AES-GCM.
 
 Linux Prerequisites

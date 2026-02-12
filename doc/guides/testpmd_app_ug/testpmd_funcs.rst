@@ -67,13 +67,14 @@ Command File Functions
 To facilitate loading large number of commands or to avoid cutting and pasting where not
 practical or possible testpmd supports alternative methods for executing commands.
 
-* If started with the ``--cmdline-file=FILENAME`` command line argument testpmd
-  will execute all CLI commands contained within the file immediately before
+* If started with the ``--cmdline-file=FILENAME``
+  or ``--cmdline-file-noecho=FILENAME`` command line argument,
+  testpmd will execute all CLI commands contained within the file immediately before
   starting packet forwarding or entering interactive mode.
 
 .. code-block:: console
 
-   ./dpdk-testpmd -n4 -r2 ... -- -i --cmdline-file=/home/ubuntu/flow-create-commands.txt
+   ./dpdk-testpmd ... -- -i --cmdline-file-noecho=/home/ubuntu/flow-create-commands.txt
    Interactive-mode selected
    CLI commands to be read from /home/ubuntu/flow-create-commands.txt
    Configuring Port 0 (socket 0)
@@ -90,12 +91,12 @@ practical or possible testpmd supports alternative methods for executing command
    ...
    Flow rule #498 created
    Flow rule #499 created
-   Read all CLI commands from /home/ubuntu/flow-create-commands.txt
+   Finished reading all CLI commands from /home/ubuntu/flow-create-commands.txt
    testpmd>
 
 
 * At run-time additional commands can be loaded in bulk by invoking the ``load FILENAME``
-  command.
+  or ``load_echo FILENAME`` command.
 
 .. code-block:: console
 
@@ -106,7 +107,7 @@ practical or possible testpmd supports alternative methods for executing command
    ...
    Flow rule #498 created
    Flow rule #499 created
-   Read all CLI commands from /home/ubuntu/flow-create-commands.txt
+   Finished reading all CLI commands from /home/ubuntu/flow-create-commands.txt
    testpmd>
 
 
@@ -222,6 +223,25 @@ show port (module_eeprom|eeprom)
 Display the EEPROM information of a port::
 
    testpmd> show port (port_id) (module_eeprom|eeprom)
+
+set eeprom
+~~~~~~~~~~
+
+Write a value to the device EEPROM of a port at a specific offset::
+
+   testpmd> set port (port_id) eeprom (accept_risk) magic (magic_num) value (value) \
+            offset (offset)
+
+Value should be given in the form of a hex-as-string, with no leading ``0x``.
+The offset field here is optional,
+if not specified then the offset will default to 0.
+
+.. note::
+
+   This is a high-risk command
+   and its misuse may result in unexpected behaviour from the NIC.
+   By inserting "accept_risk" into the command,
+   the user is acknowledging and taking responsibility for this risk.
 
 show port rss reta
 ~~~~~~~~~~~~~~~~~~
@@ -549,70 +569,83 @@ dump physmem
 
 Dumps all physical memory segment layouts::
 
-   testpmd> dump_physmem
+   testpmd> dump physmem
 
 dump memzone
 ~~~~~~~~~~~~
 
 Dumps the layout of all memory zones::
 
-   testpmd> dump_memzone
+   testpmd> dump memzone
 
 dump socket memory
 ~~~~~~~~~~~~~~~~~~
 
 Dumps the memory usage of all sockets::
 
-   testpmd> dump_socket_mem
+   testpmd> dump socket_mem
 
 dump struct size
 ~~~~~~~~~~~~~~~~
 
 Dumps the size of all memory structures::
 
-   testpmd> dump_struct_sizes
+   testpmd> dump struct_sizes
 
 dump ring
 ~~~~~~~~~
 
 Dumps the status of all or specific element in DPDK rings::
 
-   testpmd> dump_ring [ring_name]
+   testpmd> dump ring [ring_name]
 
 dump mempool
 ~~~~~~~~~~~~
 
 Dumps the statistics of all or specific memory pool::
 
-   testpmd> dump_mempool [mempool_name]
+   testpmd> dump mempool [mempool_name]
 
 dump devargs
 ~~~~~~~~~~~~
 
 Dumps the user device list::
 
-   testpmd> dump_devargs
+   testpmd> dump devargs
 
 dump lcores
 ~~~~~~~~~~~
 
 Dumps the logical cores list::
 
-   testpmd> dump_lcores
+   testpmd> dump lcores
 
 dump trace
 ~~~~~~~~~~
 
 Dumps the tracing data to the folder according to the current EAL settings::
 
-   testpmd> dump_trace
+   testpmd> dump trace
 
 dump log types
 ~~~~~~~~~~~~~~
 
 Dumps the log level for all the dpdk modules::
 
-   testpmd> dump_log_types
+   testpmd> dump log_types
+
+dump mbuf history
+~~~~~~~~~~~~~~~~~
+
+The mbuf history is tracked
+if enabled at compilation with ``RTE_MBUF_HISTORY_DEBUG``.
+
+This tracking can be displayed or saved to a file
+for all mbufs or specific ones selected by pointer or mempool name::
+
+   testpmd> dump mbuf history all [file]
+   testpmd> dump mbuf history <mbuf_addr> [file]
+   testpmd> dump mbuf pool history <mp_name> [file]
 
 show (raw_encap|raw_decap)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1454,6 +1487,22 @@ Where:
 * ``pause_time`` (integer): Pause quanta filled in the PFC frame for which
   interval, remote Tx will be paused. Valid only if Tx pause is on.
 
+Set dcb fwd_tc
+~~~~~~~~~~~~~~
+
+Config DCB forwarding on specify TCs, if bit-n in tc-mask is 1, then TC-n's
+forwarding is enabled, and vice versa::
+
+   testpmd> set dcb fwd_tc (tc_mask)
+
+set dcb fwd_tc_cores
+~~~~~~~~~~~~~~~~~~~~
+
+Config DCB forwarding cores per-TC, 1-means one core process all queues of a TC,
+2-means two cores process all queues of a TC, and so on::
+
+   testpmd> set dcb fwd_tc_cores (tc_cores)
+
 Set Rx queue available descriptors threshold
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1837,6 +1886,13 @@ during the flow rule creation::
 
 Otherwise the default index ``0`` is used.
 
+set port led
+~~~~~~~~~~~~
+
+Set a controllable LED associated with a certain port on or off::
+
+   testpmd> set port (port_id) led (on|off)
+
 Port Functions
 --------------
 
@@ -2032,7 +2088,7 @@ port config - queue ring size
 
 Configure a rx/tx queue ring size::
 
-   testpmd> port (port_id) (rxq|txq) (queue_id) ring_size (value)
+   testpmd> port config (port_id) (rxq|txq) (queue_id) ring_size (value)
 
 Only take effect after command that (re-)start the port or command that setup specific queue.
 
@@ -2064,7 +2120,7 @@ port config - speed
 
 Set the speed and duplex mode for all ports or a specific port::
 
-   testpmd> port config (port_id|all) speed (10|100|1000|2500|5000|10000|25000|40000|50000|100000|200000|400000|auto) \
+   testpmd> port config (port_id|all) speed (10|100|1000|2500|5000|10000|25000|40000|50000|100000|200000|400000|800000|auto) \
             duplex (half|full|auto)
 
 port config - queues/descriptors
@@ -2139,9 +2195,11 @@ port config - DCB
 
 Set the DCB mode for an individual port::
 
-   testpmd> port config (port_id) dcb vt (on|off) (traffic_class) pfc (on|off)
+   testpmd> port config (port_id) dcb vt (on|off) (traffic_class) pfc (on|off) prio-tc (prio-tc) keep-qnum
 
-The traffic class should be 4 or 8.
+The traffic class could be 1~8, if the value is 1, DCB is disabled.
+The prio-tc field here is optional, if not specified then the prio-tc use default configuration.
+The keep-qnum field here is also optional, if specified then don't adjust Rx/Tx queue number.
 
 port config - Burst
 ~~~~~~~~~~~~~~~~~~~
@@ -2790,6 +2848,33 @@ where:
 * ``n_shared_shapers``: Number of shared shapers.
 * ``shared_shaper_id``: Shared shaper id.
 
+Query port traffic management hierarchy node
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An added traffic management hierarchy node, whether leaf of non-leaf,
+can be queried using::
+
+    testpmd> show port tm node (port_id) (node_id)
+
+where ``port_id`` and ``node_id`` are the numeric identifiers of the ethernet port
+and the previously added traffic management node, respectively.
+The output of this command are the parameters previously provided to the add call,
+printed with appropriate labels.
+For example::
+
+   testpmd> show port tm node 0 90
+   Port 0 TM Node 90
+     Parent Node ID: 100
+     Level ID: 1
+     Priority: 0
+     Weight: 1
+     Shaper Profile ID: <none>
+     Shared Shaper IDs: <none>
+     Stats Mask: 0
+     Nonleaf Node Parameters
+       Num Strict Priorities: 1
+       WFQ Weights Mode: WFQ
+
 Delete port traffic management hierarchy node
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -2919,14 +3004,6 @@ for port 0 and queue 0::
 
    testpmd> set port cman config 0 0 obj queue mode red 10 100 1
 
-Filter Functions
-----------------
-
-This section details the available filter functions that are available.
-
-Note these functions interface the deprecated legacy filtering framework,
-superseded by *rte_flow*. See `Flow rules management`_.
-
 .. _testpmd_rte_flow:
 
 Flow rules management
@@ -2935,10 +3012,6 @@ Flow rules management
 Control of the generic flow API (*rte_flow*) is fully exposed through the
 ``flow`` command (configuration, validation, creation, destruction, queries
 and operation modes).
-
-Considering *rte_flow* overlaps with all `Filter Functions`_, using both
-features simultaneously may cause undefined side-effects and is therefore
-not recommended.
 
 ``flow`` syntax
 ~~~~~~~~~~~~~~~
@@ -3696,7 +3769,20 @@ This section lists supported pattern items and their attributes, if any.
 - ``vxlan``: match VXLAN header.
 
   - ``vni {unsigned}``: VXLAN identifier.
-  - ``last_rsvd {unsigned}``: VXLAN last reserved 8-bits.
+  - ``flag_g {unsigned}``: VXLAN flag GBP bit.
+  - ``flag_ver {unsigned}``: VXLAN flag GPE version.
+  - ``flag_i {unsigned}``: VXLAN flag Instance bit.
+  - ``flag_p {unsigned}``: VXLAN flag GPE Next Protocol bit.
+  - ``flag_b {unsigned}``: VXLAN flag GPE Ingress-Replicated BUM.
+  - ``flag_o {unsigned}``: VXLAN flag GPE OAM Packet bit.
+  - ``flag_d {unsigned}``: VXLAN flag GBP Don't Learn bit.
+  - ``flag_a {unsigned}``: VXLAN flag GBP Applied bit.
+  - ``group_policy_id {unsigned}``: VXLAN GBP Group Policy ID.
+  - ``protocol {unsigned}`` : VXLAN GPE next protocol.
+  - ``first_rsvd {unsigned}`` : VXLAN rsvd0 first byte.
+  - ``secnd_rsvd {unsigned}`` : VXLAN rsvd0 second byte.
+  - ``third_rsvd {unsigned}`` : VXLAN rsvd0 third byte.
+  - ``last_rsvd {unsigned}``: VXLAN last reserved byte.
 
 - ``e_tag``: match IEEE 802.1BR E-Tag header.
 
@@ -3749,6 +3835,7 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``vni {unsigned}``: VXLAN-GPE identifier.
   - ``flags {unsigned}``: VXLAN-GPE flags.
+  - ``protocol {unsigned}`` : VXLAN-GPE next protocol.
   - ``rsvd0 {unsigned}``: VXLAN-GPE reserved field 0.
   - ``rsvd1 {unsigned}``: VXLAN-GPE reserved field 1.
 
@@ -5334,6 +5421,10 @@ rules like above for the peer port.
 ::
 
  testpmd> flow indirect_action 0 update 0 action conntrack_update dir / end
+
+Inspect the conntrack action state through the following command::
+
+   testpmd> flow indirect_action 0 query <action ID>
 
 Sample meter with policy rules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

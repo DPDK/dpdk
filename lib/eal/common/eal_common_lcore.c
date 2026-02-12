@@ -15,19 +15,23 @@
 #include <rte_telemetry.h>
 #endif
 
+#include <eal_export.h>
 #include "eal_private.h"
 #include "eal_thread.h"
 
+RTE_EXPORT_SYMBOL(rte_get_main_lcore)
 unsigned int rte_get_main_lcore(void)
 {
 	return rte_eal_get_configuration()->main_lcore;
 }
 
+RTE_EXPORT_SYMBOL(rte_lcore_count)
 unsigned int rte_lcore_count(void)
 {
 	return rte_eal_get_configuration()->lcore_count;
 }
 
+RTE_EXPORT_SYMBOL(rte_lcore_index)
 int rte_lcore_index(int lcore_id)
 {
 	if (unlikely(lcore_id >= RTE_MAX_LCORE))
@@ -43,6 +47,7 @@ int rte_lcore_index(int lcore_id)
 	return lcore_config[lcore_id].core_index;
 }
 
+RTE_EXPORT_SYMBOL(rte_lcore_to_cpu_id)
 int rte_lcore_to_cpu_id(int lcore_id)
 {
 	if (unlikely(lcore_id >= RTE_MAX_LCORE))
@@ -58,11 +63,13 @@ int rte_lcore_to_cpu_id(int lcore_id)
 	return lcore_config[lcore_id].core_id;
 }
 
+RTE_EXPORT_SYMBOL(rte_lcore_cpuset)
 rte_cpuset_t rte_lcore_cpuset(unsigned int lcore_id)
 {
 	return lcore_config[lcore_id].cpuset;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_lcore_role)
 enum rte_lcore_role_t
 rte_eal_lcore_role(unsigned int lcore_id)
 {
@@ -73,17 +80,19 @@ rte_eal_lcore_role(unsigned int lcore_id)
 	return cfg->lcore_role[lcore_id];
 }
 
+RTE_EXPORT_SYMBOL(rte_lcore_has_role)
 int
 rte_lcore_has_role(unsigned int lcore_id, enum rte_lcore_role_t role)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();
 
 	if (lcore_id >= RTE_MAX_LCORE)
-		return -EINVAL;
+		return 0;
 
 	return cfg->lcore_role[lcore_id] == role;
 }
 
+RTE_EXPORT_SYMBOL(rte_lcore_is_enabled)
 int rte_lcore_is_enabled(unsigned int lcore_id)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();
@@ -93,6 +102,7 @@ int rte_lcore_is_enabled(unsigned int lcore_id)
 	return cfg->lcore_role[lcore_id] == ROLE_RTE;
 }
 
+RTE_EXPORT_SYMBOL(rte_get_next_lcore)
 unsigned int rte_get_next_lcore(unsigned int i, int skip_main, int wrap)
 {
 	i++;
@@ -112,10 +122,11 @@ unsigned int rte_get_next_lcore(unsigned int i, int skip_main, int wrap)
 	return i;
 }
 
+RTE_EXPORT_SYMBOL(rte_lcore_to_socket_id)
 unsigned int
 rte_lcore_to_socket_id(unsigned int lcore_id)
 {
-	return lcore_config[lcore_id].socket_id;
+	return lcore_config[lcore_id].numa_id;
 }
 
 static int
@@ -144,7 +155,11 @@ rte_eal_cpu_init(void)
 	unsigned lcore_id;
 	unsigned count = 0;
 	unsigned int socket_id, prev_socket_id;
-	int lcore_to_socket_id[RTE_MAX_LCORE];
+#if CPU_SETSIZE > RTE_MAX_LCORE
+	int lcore_to_socket_id[CPU_SETSIZE] = {0};
+#else
+	int lcore_to_socket_id[RTE_MAX_LCORE] = {0};
+#endif
 
 	/*
 	 * Parse the maximum set of logical cores, detect the subset of running
@@ -173,19 +188,21 @@ rte_eal_cpu_init(void)
 		config->lcore_role[lcore_id] = ROLE_RTE;
 		lcore_config[lcore_id].core_role = ROLE_RTE;
 		lcore_config[lcore_id].core_id = eal_cpu_core_id(lcore_id);
-		lcore_config[lcore_id].socket_id = socket_id;
+		lcore_config[lcore_id].numa_id = socket_id;
 		EAL_LOG(DEBUG, "Detected lcore %u as "
-				"core %u on socket %u",
+				"core %u on NUMA node %u",
 				lcore_id, lcore_config[lcore_id].core_id,
-				lcore_config[lcore_id].socket_id);
+				lcore_config[lcore_id].numa_id);
 		count++;
 	}
 	for (; lcore_id < CPU_SETSIZE; lcore_id++) {
 		if (eal_cpu_detected(lcore_id) == 0)
 			continue;
-		EAL_LOG(DEBUG, "Skipped lcore %u as core %u on socket %u",
+		socket_id = eal_cpu_socket_id(lcore_id);
+		lcore_to_socket_id[lcore_id] = socket_id;
+		EAL_LOG(DEBUG, "Skipped lcore %u as core %u on NUMA node %u",
 			lcore_id, eal_cpu_core_id(lcore_id),
-			eal_cpu_socket_id(lcore_id));
+			socket_id);
 	}
 
 	/* Set the count of enabled logical cores of the EAL configuration */
@@ -201,18 +218,20 @@ rte_eal_cpu_init(void)
 
 	prev_socket_id = -1;
 	config->numa_node_count = 0;
-	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+	for (lcore_id = 0; lcore_id < RTE_DIM(lcore_to_socket_id); lcore_id++) {
 		socket_id = lcore_to_socket_id[lcore_id];
 		if (socket_id != prev_socket_id)
-			config->numa_nodes[config->numa_node_count++] =
-					socket_id;
+			config->numa_nodes[config->numa_node_count++] =	socket_id;
 		prev_socket_id = socket_id;
+		if (config->numa_node_count >= RTE_MAX_NUMA_NODES)
+			break;
 	}
 	EAL_LOG(INFO, "Detected NUMA nodes: %u", config->numa_node_count);
 
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_socket_count)
 unsigned int
 rte_socket_count(void)
 {
@@ -220,6 +239,7 @@ rte_socket_count(void)
 	return config->numa_node_count;
 }
 
+RTE_EXPORT_SYMBOL(rte_socket_id_by_idx)
 int
 rte_socket_id_by_idx(unsigned int idx)
 {
@@ -269,6 +289,7 @@ free_callback(struct lcore_callback *callback)
 	free(callback);
 }
 
+RTE_EXPORT_SYMBOL(rte_lcore_callback_register)
 void *
 rte_lcore_callback_register(const char *name, rte_lcore_init_cb init,
 	rte_lcore_uninit_cb uninit, void *arg)
@@ -319,6 +340,7 @@ out:
 	return callback;
 }
 
+RTE_EXPORT_SYMBOL(rte_lcore_callback_unregister)
 void
 rte_lcore_callback_unregister(void *handle)
 {
@@ -404,6 +426,7 @@ out:
 	rte_rwlock_write_unlock(&lcore_lock);
 }
 
+RTE_EXPORT_SYMBOL(rte_lcore_iterate)
 int
 rte_lcore_iterate(rte_lcore_iterate_cb cb, void *arg)
 {
@@ -440,6 +463,7 @@ lcore_role_str(enum rte_lcore_role_t role)
 
 static rte_lcore_usage_cb lcore_usage_cb;
 
+RTE_EXPORT_SYMBOL(rte_lcore_register_usage_cb)
 void
 rte_lcore_register_usage_cb(rte_lcore_usage_cb cb)
 {
@@ -457,12 +481,11 @@ static int
 lcore_dump_cb(unsigned int lcore_id, void *arg)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();
-	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
+	char *cpuset;
 	struct rte_lcore_usage usage;
 	rte_lcore_usage_cb usage_cb;
 	char *usage_str = NULL;
 	FILE *f = arg;
-	int ret;
 
 	/* The callback may not set all the fields in the structure, so clear it here. */
 	memset(&usage, 0, sizeof(usage));
@@ -475,17 +498,18 @@ lcore_dump_cb(unsigned int lcore_id, void *arg)
 			return -ENOMEM;
 		}
 	}
-	ret = eal_thread_dump_affinity(&lcore_config[lcore_id].cpuset, cpuset,
-		sizeof(cpuset));
-	fprintf(f, "lcore %u, socket %u, role %s, cpuset %s%s%s\n", lcore_id,
+	cpuset = eal_cpuset_to_str(&lcore_config[lcore_id].cpuset);
+	fprintf(f, "lcore %u, socket %u, role %s, cpuset %s\n", lcore_id,
 		rte_lcore_to_socket_id(lcore_id),
-		lcore_role_str(cfg->lcore_role[lcore_id]), cpuset,
-		ret == 0 ? "" : "...", usage_str != NULL ? usage_str : "");
+		lcore_role_str(cfg->lcore_role[lcore_id]),
+		cpuset != NULL ? cpuset : "<unknown>");
+	free(cpuset);
 	free(usage_str);
 
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_lcore_dump)
 void
 rte_lcore_dump(FILE *f)
 {

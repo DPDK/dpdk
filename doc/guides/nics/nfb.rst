@@ -64,10 +64,8 @@ products). The standard `RTE_ETH_RX_OFFLOAD_TIMESTAMP` flag can be used for this
 When the timestamps are enabled, a timestamp validity flag is set in the MBUFs
 containing received frames and timestamp is inserted into the `rte_mbuf` struct.
 
-The timestamp is an `uint64_t` field. Its lower 32 bits represent *seconds* portion of the timestamp
-(number of seconds elapsed since 1.1.1970 00:00:00 UTC) and its higher 32 bits represent
-*nanosecond* portion of the timestamp (number of nanoseconds elapsed since the beginning of the
-second in the *seconds* portion.
+The timestamp is an `uint64_t` field and holds the number of nanoseconds
+elapsed since 1.1.1970 00:00:00 UTC.
 
 
 Using the NFB PMD

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2019 NXP
+ * Copyright 2018-2019, 2024 NXP
  */
 
 #include <stdio.h>
@@ -68,7 +68,7 @@ dpaa2_cmdif_enqueue_bufs(struct rte_rawdev *dev,
 		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
 			DPAA2_CMDIF_ERR(
-				"Failed to allocate IO portal, tid: %d\n",
+				"Failed to allocate IO portal, tid: %d",
 				rte_gettid());
 			return 0;
 		}
@@ -99,14 +99,14 @@ dpaa2_cmdif_enqueue_bufs(struct rte_rawdev *dev,
 	do {
 		ret = qbman_swp_enqueue_multiple(swp, &eqdesc, &fd, NULL, 1);
 		if (ret < 0 && ret != -EBUSY)
-			DPAA2_CMDIF_ERR("Transmit failure with err: %d\n", ret);
+			DPAA2_CMDIF_ERR("Transmit failure with err: %d", ret);
 		retry_count++;
 	} while ((ret == -EBUSY) && (retry_count < DPAA2_MAX_TX_RETRY_COUNT));
 
 	if (ret < 0)
 		return ret;
 
-	DPAA2_CMDIF_DP_DEBUG("Successfully transmitted a packet\n");
+	DPAA2_CMDIF_DP_DEBUG("Successfully transmitted a packet");
 
 	return 1;
 }
@@ -133,7 +133,7 @@ dpaa2_cmdif_dequeue_bufs(struct rte_rawdev *dev,
 		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
 			DPAA2_CMDIF_ERR(
-				"Failed to allocate IO portal, tid: %d\n",
+				"Failed to allocate IO portal, tid: %d",
 				rte_gettid());
 			return 0;
 		}
@@ -142,7 +142,7 @@ dpaa2_cmdif_dequeue_bufs(struct rte_rawdev *dev,
 
 	cmdif_rcv_cnxt = (struct rte_dpaa2_cmdif_context *)(context);
 	rxq = &(cidev->rx_queue[cmdif_rcv_cnxt->priority]);
-	dq_storage = rxq->q_storage->dq_storage[0];
+	dq_storage = rxq->q_storage[0]->dq_storage[0];
 
 	qbman_pull_desc_clear(&pulldesc);
 	qbman_pull_desc_set_fq(&pulldesc, rxq->fqid);
@@ -152,7 +152,7 @@ dpaa2_cmdif_dequeue_bufs(struct rte_rawdev *dev,
 
 	while (1) {
 		if (qbman_swp_pull(swp, &pulldesc)) {
-			DPAA2_CMDIF_DP_WARN("VDQ cmd not issued. QBMAN is busy\n");
+			DPAA2_CMDIF_DP_WARN("VDQ cmd not issued. QBMAN is busy");
 			/* Portal was busy, try again */
 			continue;
 		}
@@ -169,7 +169,7 @@ dpaa2_cmdif_dequeue_bufs(struct rte_rawdev *dev,
 	/* Check for valid frame. */
 	status = (uint8_t)qbman_result_DQ_flags(dq_storage);
 	if (unlikely((status & QBMAN_DQ_STAT_VALIDFRAME) == 0)) {
-		DPAA2_CMDIF_DP_DEBUG("No frame is delivered\n");
+		DPAA2_CMDIF_DP_DEBUG("No frame is delivered");
 		return 0;
 	}
 
@@ -181,7 +181,7 @@ dpaa2_cmdif_dequeue_bufs(struct rte_rawdev *dev,
 	cmdif_rcv_cnxt->flc = DPAA2_GET_FD_FLC(fd);
 	cmdif_rcv_cnxt->frc = DPAA2_GET_FD_FRC(fd);
 
-	DPAA2_CMDIF_DP_DEBUG("packet received\n");
+	DPAA2_CMDIF_DP_DEBUG("packet received");
 
 	return 1;
 }

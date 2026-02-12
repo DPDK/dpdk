@@ -64,6 +64,29 @@ typedef int (*rte_dma_vchan_status_t)(const struct rte_dma_dev *dev, uint16_t vc
 /** @internal Used to dump internal information. */
 typedef int (*rte_dma_dump_t)(const struct rte_dma_dev *dev, FILE *f);
 
+/** @internal Used to create an access pair group for inter-process or inter-OS DMA transfers. */
+typedef int (*rte_dma_access_pair_group_create_t)(const struct rte_dma_dev *dev,
+						  rte_uuid_t domain_id, rte_uuid_t token,
+						  int16_t *group_id,
+						  rte_dma_access_pair_group_event_cb_t cb);
+
+/** @internal Used to destroy an access pair group when all other devices have exited. */
+typedef int (*rte_dma_access_pair_group_destroy_t)(const struct rte_dma_dev *dev,
+						   int16_t group_id);
+
+/** @internal Used to join an access pair group for inter-process or inter-OS DMA transfers. */
+typedef int (*rte_dma_access_pair_group_join_t)(const struct rte_dma_dev *dev, rte_uuid_t domain_id,
+						rte_uuid_t token, int16_t group_id,
+						rte_dma_access_pair_group_event_cb_t cb);
+
+/** @internal Used to leave an access pair group, removing the device from the group. */
+typedef int (*rte_dma_access_pair_group_leave_t)(const struct rte_dma_dev *dev, int16_t group_id);
+
+/** @internal Used to retrieve handler information of the domain_id present in the group. */
+typedef int (*rte_dma_access_pair_group_handler_get_t)(const struct rte_dma_dev *dev,
+						       int16_t group_id, rte_uuid_t domain_id,
+						       uint16_t *handler);
+
 /**
  * DMA device operations function pointer table.
  *
@@ -83,6 +106,12 @@ struct rte_dma_dev_ops {
 
 	rte_dma_vchan_status_t     vchan_status;
 	rte_dma_dump_t             dev_dump;
+
+	rte_dma_access_pair_group_create_t	access_pair_group_create;
+	rte_dma_access_pair_group_destroy_t	access_pair_group_destroy;
+	rte_dma_access_pair_group_join_t	access_pair_group_join;
+	rte_dma_access_pair_group_leave_t	access_pair_group_leave;
+	rte_dma_access_pair_group_handler_get_t	access_pair_group_handler_get;
 };
 
 /**

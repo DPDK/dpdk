@@ -89,8 +89,9 @@ npa_aura_dump(__io struct npa_aura_s *aura)
 int
 roc_npa_ctx_dump(void)
 {
-	struct npa_aq_enq_req *aq;
+	struct npa_cn20k_aq_enq_req *aq_cn20k;
 	struct npa_aq_enq_rsp *rsp;
+	struct npa_aq_enq_req *aq;
 	struct mbox *mbox;
 	struct npa_lf *lf;
 	uint32_t q;
@@ -106,7 +107,12 @@ roc_npa_ctx_dump(void)
 		if (plt_bitmap_get(lf->npa_bmp, q))
 			continue;
 
-		aq = mbox_alloc_msg_npa_aq_enq(mbox);
+		if (roc_model_is_cn20k()) {
+			aq_cn20k = mbox_alloc_msg_npa_cn20k_aq_enq(mbox);
+			aq = (struct npa_aq_enq_req *)aq_cn20k;
+		} else {
+			aq = mbox_alloc_msg_npa_aq_enq(mbox);
+		}
 		if (aq == NULL) {
 			rc = -ENOSPC;
 			goto exit;
@@ -129,7 +135,12 @@ roc_npa_ctx_dump(void)
 		if (plt_bitmap_get(lf->npa_bmp, q))
 			continue;
 
-		aq = mbox_alloc_msg_npa_aq_enq(mbox);
+		if (roc_model_is_cn20k()) {
+			aq_cn20k = mbox_alloc_msg_npa_cn20k_aq_enq(mbox);
+			aq = (struct npa_aq_enq_req *)aq_cn20k;
+		} else {
+			aq = mbox_alloc_msg_npa_aq_enq(mbox);
+		}
 		if (aq == NULL) {
 			rc = -ENOSPC;
 			goto exit;

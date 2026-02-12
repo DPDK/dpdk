@@ -8,6 +8,7 @@
 
 #include <ethdev_driver.h>
 #include <ethdev_vdev.h>
+#include <eal_export.h>
 #include <rte_malloc.h>
 #include <bus_vdev_driver.h>
 #include <rte_kvargs.h>
@@ -51,10 +52,10 @@ static const struct softnic_conn_params conn_params_default = {
 };
 
 RTE_LOG_REGISTER_DEFAULT(pmd_softnic_logtype, NOTICE);
+#define RTE_LOGTYPE_PMD_SOFTNIC pmd_softnic_logtype
 
-#define PMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, pmd_softnic_logtype, \
-		"%s(): " fmt "\n", __func__, ##args)
+#define PMD_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, PMD_SOFTNIC, "%s(): ", __func__, __VA_ARGS__)
 
 static int
 pmd_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
@@ -311,7 +312,6 @@ pmd_ethdev_register(struct rte_vdev_device *vdev,
 	/* dev */
 	dev->rx_pkt_burst = pmd_rx_pkt_burst;
 	dev->tx_pkt_burst = pmd_tx_pkt_burst;
-	dev->tx_pkt_prepare = NULL;
 	dev->dev_ops = &pmd_ops;
 	dev->device = &vdev->device;
 
@@ -516,6 +516,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_softnic,
 	PMD_PARAM_CPU_ID "=<uint32> "
 );
 
+RTE_EXPORT_SYMBOL(rte_pmd_softnic_manage)
 int
 rte_pmd_softnic_manage(uint16_t port_id)
 {

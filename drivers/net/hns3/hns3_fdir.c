@@ -300,6 +300,58 @@ static int hns3_set_fd_key_config(struct hns3_adapter *hns)
 	return ret;
 }
 
+static void hns3_set_tuple_config(struct hns3_adapter *hns,
+				  struct hns3_fd_key_cfg *key_cfg)
+{
+	enum hns3_fdir_tuple_config tuple_cfg = hns->pf.fdir.tuple_cfg;
+
+	if (tuple_cfg == HNS3_FDIR_TUPLE_CONFIG_DEFAULT)
+		return;
+
+	if (hns->pf.fdir.fd_cfg.max_key_length != MAX_KEY_LENGTH) {
+		hns3_warn(&hns->hw, "fdir tuple config only valid with 400bit key!");
+		return;
+	}
+
+	switch (tuple_cfg) {
+	case HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INSMAC:
+		key_cfg->tuple_active &= ~BIT(INNER_SRC_MAC);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_FST);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_SEC);
+		break;
+	case HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INDMAC:
+		key_cfg->tuple_active &= ~BIT(INNER_DST_MAC);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_FST);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_SEC);
+		break;
+	case HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INSIP:
+		key_cfg->tuple_active &= ~BIT(INNER_SRC_IP);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_FST);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_SEC);
+		break;
+	case HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INDIP:
+		key_cfg->tuple_active &= ~BIT(INNER_DST_IP);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_FST);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_SEC);
+		break;
+	case HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_SCTPTAG:
+		key_cfg->tuple_active &= ~BIT(INNER_SCTP_TAG);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_FST);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_SEC);
+		break;
+	case HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_TUNVNI:
+		key_cfg->tuple_active &= ~BIT(OUTER_TUN_VNI);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_FST);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_SEC);
+		break;
+	default:
+		hns3_err(&hns->hw, "invalid fdir tuple config %u!", tuple_cfg);
+		return;
+	}
+
+	hns3_info(&hns->hw, "fdir tuple config %s!", hns3_tuple_config_name(tuple_cfg));
+}
+
 int hns3_init_fd_config(struct hns3_adapter *hns)
 {
 	struct hns3_pf *pf = &hns->pf;
@@ -351,6 +403,8 @@ int hns3_init_fd_config(struct hns3_adapter *hns)
 			 "vlan_tag2 sctp_tag> outer<eth_type ip_proto "
 			 "l4_src_port l4_dst_port tun_vni tun_flow_id>");
 	}
+
+	hns3_set_tuple_config(hns, key_cfg);
 
 	/* roce_type is used to filter roce frames
 	 * dst_vport is used to specify the rule
@@ -500,6 +554,14 @@ static void hns3_fd_convert_int16(uint32_t tuple, struct hns3_fdir_rule *rule,
 	uint16_t key;
 
 	switch (tuple) {
+	case OUTER_VLAN_TAG_FST:
+		key = rule->key_conf.spec.outer_vlan_tag1;
+		mask = rule->key_conf.mask.outer_vlan_tag1;
+		break;
+	case OUTER_VLAN_TAG_SEC:
+		key = rule->key_conf.spec.outer_vlan_tag2;
+		mask = rule->key_conf.mask.outer_vlan_tag2;
+		break;
 	case OUTER_SRC_PORT:
 		key = rule->key_conf.spec.outer_src_port;
 		mask = rule->key_conf.mask.outer_src_port;
@@ -575,6 +637,8 @@ static bool hns3_fd_convert_tuple(struct hns3_hw *hw,
 		hns3_fd_convert_mac(key_conf->spec.src_mac,
 				    key_conf->mask.src_mac, key_x, key_y);
 		break;
+	case OUTER_VLAN_TAG_FST:
+	case OUTER_VLAN_TAG_SEC:
 	case OUTER_SRC_PORT:
 	case OUTER_DST_PORT:
 	case OUTER_ETH_TYPE:
@@ -724,8 +788,8 @@ static int hns3_config_key(struct hns3_adapter *hns,
 	struct hns3_fd_key_cfg *key_cfg;
 	uint8_t *cur_key_x;
 	uint8_t *cur_key_y;
-	uint8_t key_x[MAX_KEY_BYTES] __rte_aligned(4);
-	uint8_t key_y[MAX_KEY_BYTES] __rte_aligned(4);
+	alignas(4) uint8_t key_x[MAX_KEY_BYTES];
+	alignas(4) uint8_t key_y[MAX_KEY_BYTES];
 	uint8_t vf_id = rule->vf_id;
 	uint8_t meta_data_region;
 	uint8_t tuple_size;
@@ -836,6 +900,7 @@ int hns3_fdir_filter_init(struct hns3_adapter *hns)
 		.key_len = sizeof(struct hns3_fdir_key_conf),
 		.hash_func = rte_hash_crc,
 		.hash_func_init_val = 0,
+		.extra_flag = RTE_HASH_EXTRA_FLAGS_EXT_TABLE,
 	};
 	int ret;
 
@@ -917,39 +982,44 @@ static int hns3_insert_fdir_filter(struct hns3_hw *hw,
 {
 	struct hns3_fdir_key_conf *key;
 	hash_sig_t sig;
-	int ret;
+	int index;
 
 	key = &fdir_filter->fdir_conf.key_conf;
 	sig = rte_hash_crc(key, sizeof(*key), 0);
-	ret = rte_hash_add_key_with_hash(fdir_info->hash_handle, key, sig);
-	if (ret < 0) {
-		hns3_err(hw, "Hash table full? err:%d!", ret);
-		return ret;
+	index = rte_hash_add_key_with_hash(fdir_info->hash_handle, key, sig);
+	if (index < 0) {
+		hns3_err(hw, "Hash table full? err:%d!", index);
+		return index;
 	}
 
-	fdir_info->hash_map[ret] = fdir_filter;
+	if (fdir_info->index_cfg == HNS3_FDIR_INDEX_CONFIG_PRIORITY)
+		index = fdir_filter->fdir_conf.location;
+
+	fdir_info->hash_map[index] = fdir_filter;
 	TAILQ_INSERT_TAIL(&fdir_info->fdir_list, fdir_filter, entries);
 
-	return ret;
+	return index;
 }
 
 static int hns3_remove_fdir_filter(struct hns3_hw *hw,
 				   struct hns3_fdir_info *fdir_info,
-				   struct hns3_fdir_key_conf *key)
+				   struct hns3_fdir_rule *rule)
 {
 	struct hns3_fdir_rule_ele *fdir_filter;
 	hash_sig_t sig;
-	int ret;
+	int index;
 
-	sig = rte_hash_crc(key, sizeof(*key), 0);
-	ret = rte_hash_del_key_with_hash(fdir_info->hash_handle, key, sig);
-	if (ret < 0) {
-		hns3_err(hw, "Delete hash key fail ret=%d", ret);
-		return ret;
+	sig = rte_hash_crc(&rule->key_conf, sizeof(rule->key_conf), 0);
+	index = rte_hash_del_key_with_hash(fdir_info->hash_handle, &rule->key_conf, sig);
+	if (index < 0) {
+		hns3_err(hw, "Delete hash key fail ret=%d", index);
+		return index;
 	}
 
-	fdir_filter = fdir_info->hash_map[ret];
-	fdir_info->hash_map[ret] = NULL;
+	if (fdir_info->index_cfg == HNS3_FDIR_INDEX_CONFIG_PRIORITY)
+		index = rule->location;
+	fdir_filter = fdir_info->hash_map[index];
+	fdir_info->hash_map[index] = NULL;
 	TAILQ_REMOVE(&fdir_info->fdir_list, fdir_filter, entries);
 
 	rte_free(fdir_filter);
@@ -978,7 +1048,7 @@ int hns3_fdir_filter_program(struct hns3_adapter *hns,
 				 rule->key_conf.spec.src_port,
 				 rule->key_conf.spec.dst_port, ret);
 		else
-			ret = hns3_remove_fdir_filter(hw, fdir_info, &rule->key_conf);
+			ret = hns3_remove_fdir_filter(hw, fdir_info, rule);
 
 		return ret;
 	}
@@ -1016,7 +1086,7 @@ int hns3_fdir_filter_program(struct hns3_adapter *hns,
 			 rule->key_conf.spec.dst_ip[IP_ADDR_KEY_ID],
 			 rule->key_conf.spec.src_port,
 			 rule->key_conf.spec.dst_port, ret);
-		(void)hns3_remove_fdir_filter(hw, fdir_info, &rule->key_conf);
+		(void)hns3_remove_fdir_filter(hw, fdir_info, rule);
 	}
 
 	return ret;
@@ -1075,17 +1145,6 @@ int hns3_restore_all_fdir_filter(struct hns3_adapter *hns)
 	if (hns->is_vf)
 		return 0;
 
-	/*
-	 * This API is called in the reset recovery process, the parent function
-	 * must hold hw->lock.
-	 * There maybe deadlock if acquire hw->flows_lock directly because rte
-	 * flow driver ops first acquire hw->flows_lock and then may acquire
-	 * hw->lock.
-	 * So here first release the hw->lock and then acquire the
-	 * hw->flows_lock to avoid deadlock.
-	 */
-	rte_spinlock_unlock(&hw->lock);
-	pthread_mutex_lock(&hw->flows_lock);
 	TAILQ_FOREACH(fdir_filter, &fdir_info->fdir_list, entries) {
 		ret = hns3_config_action(hw, &fdir_filter->fdir_conf);
 		if (!ret)
@@ -1096,8 +1155,6 @@ int hns3_restore_all_fdir_filter(struct hns3_adapter *hns)
 				break;
 		}
 	}
-	pthread_mutex_unlock(&hw->flows_lock);
-	rte_spinlock_lock(&hw->lock);
 
 	if (err) {
 		hns3_err(hw, "Fail to restore FDIR filter, ret = %d", ret);
@@ -1127,4 +1184,64 @@ int hns3_fd_get_count(struct hns3_hw *hw, uint32_t id, uint64_t *value)
 	*value = req->value;
 
 	return ret;
+}
+
+static struct {
+	enum hns3_fdir_tuple_config tuple_cfg;
+	const char *name;
+} tuple_config_map[] = {
+	{ HNS3_FDIR_TUPLE_CONFIG_DEFAULT,          "default"          },
+	{ HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INSMAC,  "+outvlan-insmac"  },
+	{ HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INDMAC,  "+outvlan-indmac"  },
+	{ HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INSIP,   "+outvlan-insip"   },
+	{ HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INDIP,   "+outvlan-indip"   },
+	{ HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_SCTPTAG, "+outvlan-sctptag" },
+	{ HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_TUNVNI,  "+outvlan-tunvni"  }
+};
+
+enum hns3_fdir_tuple_config
+hns3_parse_tuple_config(const char *name)
+{
+	uint32_t i;
+
+	for (i = 0; i < RTE_DIM(tuple_config_map); i++) {
+		if (!strcmp(name, tuple_config_map[i].name))
+			return tuple_config_map[i].tuple_cfg;
+	}
+
+	return HNS3_FDIR_TUPLE_CONFIG_BUTT;
+}
+
+const char *
+hns3_tuple_config_name(enum hns3_fdir_tuple_config tuple_cfg)
+{
+	uint32_t i;
+
+	for (i = 0; i < RTE_DIM(tuple_config_map); i++) {
+		if (tuple_cfg == tuple_config_map[i].tuple_cfg)
+			return tuple_config_map[i].name;
+	}
+
+	return "unknown";
+}
+
+static struct {
+	enum hns3_fdir_index_config cfg;
+	const char *name;
+} index_cfg_map[] = {
+	{ HNS3_FDIR_INDEX_CONFIG_HASH, "hash"},
+	{ HNS3_FDIR_INDEX_CONFIG_PRIORITY, "priority"},
+};
+
+const char *
+hns3_fdir_index_config_name(enum hns3_fdir_index_config cfg)
+{
+	uint32_t i;
+
+	for (i = 0; i < RTE_DIM(index_cfg_map); i++) {
+		if (cfg == index_cfg_map[i].cfg)
+			return index_cfg_map[i].name;
+	}
+
+	return "unknown";
 }

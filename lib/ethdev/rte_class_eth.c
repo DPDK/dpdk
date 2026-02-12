@@ -50,8 +50,10 @@ eth_mac_cmp(const char *key __rte_unused,
 	if (rte_ether_unformat_addr(value, &mac) < 0)
 		return -1; /* invalid devargs value */
 
+	if (rte_eth_dev_info_get(data->port_id, &dev_info) != 0)
+		return -1; /* device MAC address unavailable */
+
 	/* Return 0 if devargs MAC is matching one of the device MACs. */
-	rte_eth_dev_info_get(data->port_id, &dev_info);
 	for (index = 0; index < dev_info.max_mac_addrs; index++)
 		if (rte_is_same_ether_addr(&mac, &data->mac_addrs[index]))
 			return 0;

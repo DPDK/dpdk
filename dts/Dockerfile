@@ -5,7 +5,7 @@
 # One is to be used in CI for automated testing.
 # The other provides a DTS development environment, simplifying Python dependency management.
 
-FROM ubuntu:22.04 AS base
+FROM ubuntu:24.04 AS base
 
 RUN apt-get -y update && apt-get -y upgrade && \
     apt-get -y install --no-install-recommends \
@@ -13,8 +13,11 @@ RUN apt-get -y update && apt-get -y upgrade && \
         python3-pip \
         pipx \
         python3-cachecontrol \
+        git \
+        xz-utils \
         openssh-client && \
-    pipx install poetry>=1.5.1 && pipx ensurepath
+    pipx install poetry>=1.8.2 && pipx ensurepath && \
+    git config --global --add safe.directory /dpdk
 WORKDIR /dpdk/dts
 
 
@@ -24,9 +27,14 @@ FROM base AS runner
 # It bakes DTS into the image during the build.
 
 COPY . /dpdk/dts
-RUN poetry install --no-dev
+# pipx installs packages in ~/.local/bin, which is not in PATH by default. The `pipx ensurepath`
+# command used in the previous step adds said directory to PATH, but the docker build process does
+# not preserve environment variables between steps. Therefore, ~/.local/bin must be manually added
+# into PATH in order to use the poetry command below.
+ENV PATH="$PATH:/root/.local/bin"
+RUN poetry install --only main
 
-CMD ["poetry", "run", "python", "main.py"]
+ENTRYPOINT ["poetry", "run", "python", "main.py"]
 
 FROM base AS dev
 
@@ -35,4 +43,4 @@ FROM base AS dev
 # the dependencies should be installed using Poetry.
 
 RUN apt-get -y install --no-install-recommends \
-        vim emacs git
+        vim emacs

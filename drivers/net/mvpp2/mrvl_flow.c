@@ -536,27 +536,23 @@ mrvl_parse_ip6_addr(const struct rte_flow_item_ipv6 *spec,
 	       int parse_dst, struct rte_flow *flow)
 {
 	struct pp2_cls_rule_key_field *key_field;
-	int size = sizeof(spec->hdr.dst_addr);
-	struct in6_addr k, m;
+	struct rte_ipv6_addr k, m;
 
-	memset(&k, 0, sizeof(k));
 	if (parse_dst) {
-		memcpy(k.s6_addr, spec->hdr.dst_addr, size);
-		memcpy(m.s6_addr, mask->hdr.dst_addr, size);
-
+		k = spec->hdr.dst_addr;
+		m = mask->hdr.dst_addr;
 		flow->table_key.proto_field[flow->rule.num_fields].field.ipv6 =
 			MV_NET_IP6_F_DA;
 	} else {
-		memcpy(k.s6_addr, spec->hdr.src_addr, size);
-		memcpy(m.s6_addr, mask->hdr.src_addr, size);
-
+		k = spec->hdr.src_addr;
+		m = mask->hdr.src_addr;
 		flow->table_key.proto_field[flow->rule.num_fields].field.ipv6 =
 			MV_NET_IP6_F_SA;
 	}
 
 	key_field = &flow->rule.fields[flow->rule.num_fields];
 	mrvl_alloc_key_mask(key_field);
-	key_field->size = 16;
+	key_field->size = RTE_IPV6_ADDR_SIZE;
 
 	inet_ntop(AF_INET6, &k, (char *)key_field->key, MRVL_CLS_STR_SIZE_MAX);
 	inet_ntop(AF_INET6, &m, (char *)key_field->mask, MRVL_CLS_STR_SIZE_MAX);
@@ -1035,7 +1031,6 @@ mrvl_parse_ip6(const struct rte_flow_item *item,
 	       struct rte_flow_error *error)
 {
 	const struct rte_flow_item_ipv6 *spec = NULL, *mask = NULL;
-	struct rte_ipv6_hdr zero;
 	uint32_t flow_mask;
 	int ret;
 
@@ -1047,8 +1042,6 @@ mrvl_parse_ip6(const struct rte_flow_item *item,
 	if (ret)
 		return ret;
 
-	memset(&zero, 0, sizeof(zero));
-
 	if (mask->hdr.payload_len ||
 	    mask->hdr.hop_limits) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
@@ -1056,15 +1049,13 @@ mrvl_parse_ip6(const struct rte_flow_item *item,
 		return -rte_errno;
 	}
 
-	if (memcmp(mask->hdr.src_addr,
-		   zero.src_addr, sizeof(mask->hdr.src_addr))) {
+	if (!rte_ipv6_addr_is_unspec(&mask->hdr.src_addr)) {
 		ret = mrvl_parse_ip6_sip(spec, mask, flow);
 		if (ret)
 			goto out;
 	}
 
-	if (memcmp(mask->hdr.dst_addr,
-		   zero.dst_addr, sizeof(mask->hdr.dst_addr))) {
+	if (!rte_ipv6_addr_is_unspec(&mask->hdr.dst_addr)) {
 		ret = mrvl_parse_ip6_dip(spec, mask, flow);
 		if (ret)
 			goto out;

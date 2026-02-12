@@ -59,11 +59,11 @@
 #define VECTOR_TMO_NS_DEFAULT 1E6 /* 1ms */
 
 /* Per-port statistics struct */
-struct l2fwd_port_statistics {
+struct __rte_cache_aligned l2fwd_port_statistics {
 	uint64_t dropped;
-	uint64_t tx;
-	uint64_t rx;
-} __rte_cache_aligned;
+	RTE_ATOMIC(uint64_t) tx;
+	RTE_ATOMIC(uint64_t) rx;
+};
 
 /* Event vector attributes */
 struct l2fwd_event_vector_params {
@@ -72,7 +72,7 @@ struct l2fwd_event_vector_params {
 	uint64_t timeout_ns;
 };
 
-struct l2fwd_resources {
+struct __rte_cache_aligned l2fwd_resources {
 	volatile uint8_t force_quit;
 	uint8_t event_mode;
 	uint8_t sched_type;
@@ -91,7 +91,7 @@ struct l2fwd_resources {
 	struct l2fwd_event_vector_params evt_vec;
 	void *evt_rsrc;
 	void *poll_rsrc;
-} __rte_cache_aligned;
+};
 
 static __rte_always_inline void
 l2fwd_mac_updating(struct rte_mbuf *m, uint32_t dest_port_id,

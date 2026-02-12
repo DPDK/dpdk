@@ -2,9 +2,11 @@
  * Copyright(c) 2017-2018 Intel Corporation
  */
 
+#include <eal_export.h>
 #include "rte_comp.h"
 #include "rte_compressdev_internal.h"
 
+RTE_EXPORT_SYMBOL(rte_comp_get_feature_name)
 const char *
 rte_comp_get_feature_name(uint64_t flag)
 {
@@ -123,6 +125,7 @@ rte_comp_op_init(struct rte_mempool *mempool,
 	op->mempool = mempool;
 }
 
+RTE_EXPORT_SYMBOL(rte_comp_op_pool_create)
 struct rte_mempool *
 rte_comp_op_pool_create(const char *name,
 		unsigned int nb_elts, unsigned int cache_size,
@@ -178,6 +181,7 @@ rte_comp_op_pool_create(const char *name,
 	return mp;
 }
 
+RTE_EXPORT_SYMBOL(rte_comp_op_alloc)
 struct rte_comp_op *
 rte_comp_op_alloc(struct rte_mempool *mempool)
 {
@@ -193,6 +197,7 @@ rte_comp_op_alloc(struct rte_mempool *mempool)
 	return op;
 }
 
+RTE_EXPORT_SYMBOL(rte_comp_op_bulk_alloc)
 int
 rte_comp_op_bulk_alloc(struct rte_mempool *mempool,
 		struct rte_comp_op **ops, uint16_t nb_ops)
@@ -218,6 +223,7 @@ rte_comp_op_bulk_alloc(struct rte_mempool *mempool,
  * @param op
  *   Compress operation
  */
+RTE_EXPORT_SYMBOL(rte_comp_op_free)
 void
 rte_comp_op_free(struct rte_comp_op *op)
 {
@@ -225,6 +231,7 @@ rte_comp_op_free(struct rte_comp_op *op)
 		rte_mempool_put(op->mempool, op);
 }
 
+RTE_EXPORT_SYMBOL(rte_comp_op_bulk_free)
 void
 rte_comp_op_bulk_free(struct rte_comp_op **ops, uint16_t nb_ops)
 {

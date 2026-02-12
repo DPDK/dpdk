@@ -100,23 +100,23 @@ enum {
 #define FM_LAYER_SIZE 64
 
 /* Header match pattern */
-struct fm_header_set {
+struct __rte_packed_begin fm_header_set {
 	uint32_t fk_metadata;       /* FKM flags */
 	uint32_t fk_header_select;  /* FKH flags */
 	uint16_t fk_vlan;
 	/* L2: Ethernet Header (valid if FKH_ETHER) */
-	union {
-		struct {
+	union __rte_packed_begin {
+		struct __rte_packed_begin {
 			uint8_t fk_dstmac[FM_ETH_ALEN];
 			uint8_t fk_srcmac[FM_ETH_ALEN];
 			uint16_t fk_ethtype;
-		} __rte_packed eth;
+		} __rte_packed_end eth;
 		uint8_t rawdata[FM_LAYER_SIZE];
-	} __rte_packed l2;
+	} __rte_packed_end l2;
 	/* L3: IPv4 or IPv6 (valid if FKH_IPV4,6) */
-	union {
+	union __rte_packed_begin {
 		/* Valid if FKH_IPV4 */
-		struct {
+		struct __rte_packed_begin {
 			uint8_t fk_ihl_vers;
 			uint8_t fk_tos;
 			uint16_t fk_tot_len;
@@ -127,9 +127,9 @@ struct fm_header_set {
 			uint16_t fk_check;
 			uint32_t fk_saddr;
 			uint32_t fk_daddr;
-		} __rte_packed ip4;
+		} __rte_packed_end ip4;
 		/* Valid if FKH_IPV6 */
-		struct {
+		struct __rte_packed_begin {
 			union {
 				struct {
 					uint32_t fk_un1_flow;
@@ -141,18 +141,18 @@ struct fm_header_set {
 			} ctl;
 			uint8_t fk_srcip[16];
 			uint8_t fk_dstip[16];
-		} __rte_packed ip6;
+		} __rte_packed_end ip6;
 		uint8_t rawdata[FM_LAYER_SIZE];
-	} __rte_packed l3;
+	} __rte_packed_end l3;
 	/* L4: UDP, TCP, or ICMP (valid if FKH_UDP,TCP,ICMP) */
-	union {
-		struct {
+	union __rte_packed_begin {
+		struct __rte_packed_begin {
 			uint16_t fk_source;
 			uint16_t fk_dest;
 			uint16_t fk_len;
 			uint16_t fk_check;
-		} __rte_packed udp;
-		struct {
+		} __rte_packed_end udp;
+		struct __rte_packed_begin {
 			uint16_t fk_source;
 			uint16_t fk_dest;
 			uint32_t fk_seq;
@@ -161,23 +161,23 @@ struct fm_header_set {
 			uint16_t fk_window;
 			uint16_t fk_check;
 			uint16_t fk_urg_ptr;
-		} __rte_packed tcp;
-		struct {
+		} __rte_packed_end tcp;
+		struct __rte_packed_begin {
 			uint8_t fk_code;
 			uint8_t fk_type;
-		} __rte_packed icmp;
+		} __rte_packed_end icmp;
 		uint8_t rawdata[FM_LAYER_SIZE];
-	} __rte_packed l4;
+	} __rte_packed_end l4;
 	/* VXLAN (valid if FKH_VXLAN) */
-	struct {
+	struct __rte_packed_begin {
 		uint8_t fkvx_flags;
 		uint8_t fkvx_res0[3];
 		uint8_t fkvx_vni[3];
 		uint8_t fkvx_res1;
-	} __rte_packed vxlan;
+	} __rte_packed_end vxlan;
 	/* Payload or unknown inner-most protocol */
 	uint8_t fk_l5_data[64];
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * FK (flow key) template.
@@ -186,7 +186,7 @@ struct fm_header_set {
  */
 #define FM_HDRSET_MAX 2
 
-struct fm_key_template {
+struct __rte_packed_begin fm_key_template {
 	struct fm_header_set fk_hdrset[FM_HDRSET_MAX];
 	uint32_t fk_flags;
 	uint16_t fk_packet_tag;
@@ -194,7 +194,7 @@ struct fm_key_template {
 	uint16_t fk_port_id;
 	uint32_t fk_wq_id;    /* WQ index */
 	uint64_t fk_wq_vnic;  /* VNIC handle for WQ index */
-} __rte_packed;
+} __rte_packed_end;
 
 /* Action operation types */
 enum {
@@ -260,11 +260,11 @@ enum {
  * encap" and also simple ops like insert this data, add PACKET_LEN to
  * this address, etc.
  */
-struct fm_action_op {
+struct __rte_packed_begin fm_action_op {
 	uint32_t fa_op;		/* FMOP flags */
 
-	union {
-		struct {
+	union __rte_packed_begin {
+		struct __rte_packed_begin {
 			uint8_t len1_offset;
 			uint8_t len1_delta;
 			uint8_t len2_offset;
@@ -272,35 +272,35 @@ struct fm_action_op {
 			uint16_t outer_vlan;
 			uint8_t template_offset;
 			uint8_t template_len;
-		} __rte_packed encap;
-		struct {
+		} __rte_packed_end encap;
+		struct __rte_packed_begin {
 			uint16_t rq_index;
 			uint16_t rq_count;
 			uint64_t vnic_handle;
-		} __rte_packed rq_steer;
-		struct {
+		} __rte_packed_end rq_steer;
+		struct __rte_packed_begin {
 			uint16_t vlan;
-		} __rte_packed ovlan;
-		struct {
+		} __rte_packed_end ovlan;
+		struct __rte_packed_begin {
 			uint16_t vlan;
-		} __rte_packed set_encap_vlan;
-		struct {
+		} __rte_packed_end set_encap_vlan;
+		struct __rte_packed_begin {
 			uint16_t mark;
-		} __rte_packed mark;
-		struct {
+		} __rte_packed_end mark;
+		struct __rte_packed_begin {
 			uint32_t ext_mark;
-		} __rte_packed ext_mark;
-		struct {
+		} __rte_packed_end ext_mark;
+		struct __rte_packed_begin {
 			uint8_t tag;
-		} __rte_packed tag;
-		struct {
+		} __rte_packed_end tag;
+		struct __rte_packed_begin {
 			uint64_t handle;
-		} __rte_packed exact;
-		struct {
+		} __rte_packed_end exact;
+		struct __rte_packed_begin {
 			uint32_t egport;
-		} __rte_packed set_egport;
-	} __rte_packed;
-} __rte_packed;
+		} __rte_packed_end set_egport;
+	} __rte_packed_end;
+} __rte_packed_end;
 
 #define FM_ACTION_OP_MAX 64
 #define FM_ACTION_DATA_MAX 96
@@ -309,31 +309,31 @@ struct fm_action_op {
  * Action is a series of action operations applied to matched
  * packet. FMA (flowman action).
  */
-struct fm_action {
+struct __rte_packed_begin fm_action {
 	struct fm_action_op fma_action_ops[FM_ACTION_OP_MAX];
 	uint8_t fma_data[FM_ACTION_DATA_MAX];
-} __rte_packed;
+} __rte_packed_end;
 
 /* Match entry flags. FMEF (flow match entry flag) */
 #define FMEF_COUNTER    0x0001  /* counter index is valid */
 
 /* FEM (flow exact match) entry */
-struct fm_exact_match_entry {
+struct __rte_packed_begin fm_exact_match_entry {
 	struct fm_key_template fem_data;  /* Match data. Mask is per table */
 	uint32_t fem_flags;               /* FMEF_xxx */
 	uint64_t fem_action;              /* Action handle */
 	uint32_t fem_counter;             /* Counter index */
-} __rte_packed;
+} __rte_packed_end;
 
 /* FTM (flow TCAM match) entry */
-struct fm_tcam_match_entry {
+struct __rte_packed_begin fm_tcam_match_entry {
 	struct fm_key_template ftm_mask;  /* Key mask */
 	struct fm_key_template ftm_data;  /* Match data */
 	uint32_t ftm_flags;               /* FMEF_xxx */
 	uint32_t ftm_position;            /* Entry position */
 	uint64_t ftm_action;              /* Action handle */
 	uint32_t ftm_counter;             /* Counter index */
-} __rte_packed;
+} __rte_packed_end;
 
 /* Match directions */
 enum {
@@ -346,34 +346,34 @@ enum {
 #define FM_STAGE_LAST 0xff
 
 /* Hash based exact match table. FET (flow exact match table) */
-struct fm_exact_match_table {
+struct __rte_packed_begin fm_exact_match_table {
 	uint8_t fet_direction; /* FM_INGRESS or EGRESS*/
 	uint8_t fet_stage;
 	uint8_t pad[2];
 	uint32_t fet_max_entries;
 	uint64_t fet_dflt_action;
 	struct fm_key_template fet_key;
-} __rte_packed;
+} __rte_packed_end;
 
 /* TCAM based match table. FTT (flow TCAM match table) */
-struct fm_tcam_match_table {
+struct __rte_packed_begin fm_tcam_match_table {
 	uint8_t ftt_direction;
 	uint8_t ftt_stage;
 	uint8_t pad[2];
 	uint32_t ftt_max_entries;
-} __rte_packed;
+} __rte_packed_end;
 
-struct fm_counter_counts {
+struct __rte_packed_begin fm_counter_counts {
 	uint64_t fcc_packets;
 	uint64_t fcc_bytes;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Return structure for FM_INFO_QUERY devcmd
  */
 #define FM_VERSION 1		/* This header file is for version 1 */
 
-struct fm_info {
+struct __rte_packed_begin fm_info {
 	uint64_t fm_op_mask;		/* Bitmask of action supported ops */
 	uint64_t fm_current_ts;		/* Current VIC timestamp */
 	uint64_t fm_clock_freq;		/* Timestamp clock frequency */
@@ -381,6 +381,6 @@ struct fm_info {
 	uint8_t fm_stages;		/* Number of match-action stages */
 	uint8_t pad[5];
 	uint32_t fm_counter_count;	/* Number of allocated counters */
-} __rte_packed;
+} __rte_packed_end;
 
 #endif /* _VNIC_FLOWMAN_H_ */

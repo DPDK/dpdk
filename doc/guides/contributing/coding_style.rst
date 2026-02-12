@@ -556,14 +556,10 @@ Exits should be 0 on success, or 1 on failure.
 Local Variables
 ~~~~~~~~~~~~~~~
 
-* Variables should be declared at the start of a block of code rather than in the middle.
-  The exception to this is when the variable is ``const`` in which case the declaration must be at the point of first use/assignment.
-  Declaring variable inside a for loop is OK.
 * When declaring variables in functions, multiple variables per line are OK.
   However, if multiple declarations would cause the line to exceed a reasonable line length, begin a new set of declarations on the next line rather than using a line continuation.
 * Be careful to not obfuscate the code by initializing variables in the declarations, only the last variable on a line should be initialized.
   If multiple variables are to be initialized when defined, put one per line.
-* Do not use function calls in initializers, except for ``const`` variables.
 
 .. code-block:: c
 
@@ -1017,13 +1013,6 @@ name
 	since the convention is that for a library called ``librte_xyz.so``, the
 	sources are stored in a directory ``lib/xyz``, this value should
 	never be needed for new libraries.
-
-.. note::
-
-	The name value also provides the name used to find the function version
-	map file, as part of the build process, so if the directory name and
-	library names differ, the ``version.map`` file should be named
-	consistently with the library, not the directory
 
 objs
 	**Default Value = []**.

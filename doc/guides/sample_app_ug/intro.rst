@@ -4,9 +4,9 @@
 Introduction to the DPDK Sample Applications
 ============================================
 
-The DPDK Sample Applications are small standalone applications which
+The DPDK Sample Applications are small standalone applications that
 demonstrate various features of DPDK. They can be considered as a cookbook of
-DPDK features.  Users interested in getting started with DPDK can take the
+DPDK features. Users interested in getting started with DPDK can take the
 applications, try out the features, and then extend them to fit their needs.
 
 
@@ -14,7 +14,7 @@ Running Sample Applications
 ---------------------------
 
 Some sample applications may have their own command-line parameters described in
-their respective guides, however all of them also share the same EAL parameters.
+their respective guides. However, they all also share the same EAL parameters.
 Please refer to :doc:`EAL parameters (Linux) <../linux_gsg/linux_eal_parameters>`
 or :doc:`EAL parameters (FreeBSD) <../freebsd_gsg/freebsd_eal_parameters>` for
 a list of available EAL command-line options.
@@ -24,16 +24,16 @@ The DPDK Sample Applications
 ----------------------------
 
 There are many sample applications available in the examples directory of DPDK.
-These examples range from simple to reasonably complex but most are designed
+These examples range from simple to reasonably complex, but most are designed
 to demonstrate one particular feature of DPDK. Some of the more interesting
 examples are highlighted below.
 
 
 * :doc:`Hello World<hello_world>`: As with most introductions to a
-  programming framework a good place to start is with the Hello World
+  programming framework, a good place to start is with the Hello World
   application. The Hello World example sets up the DPDK Environment Abstraction
   Layer (EAL), and prints a simple "Hello World" message to each of the DPDK
-  enabled cores. This application doesn't do any packet forwarding but it is a
+  enabled cores. This application doesn't do any packet forwarding, but it is a
   good way to test if the DPDK environment is compiled and set up properly.
 
 * :doc:`Basic Forwarding/Skeleton Application<skeleton>`: The Basic
@@ -72,20 +72,20 @@ examples are highlighted below.
 
 * :doc:`RX/TX callbacks Application<rxtx_callbacks>`: The RX/TX
   callbacks sample application is a packet forwarding application that
-  demonstrates the use of user defined callbacks on received and transmitted
+  demonstrates the use of user-defined callbacks on received and transmitted
   packets. The application calculates the latency of a packet between RX
   (packet arrival) and TX (packet transmission) by adding callbacks to the RX
   and TX packet processing functions.
 
 * :doc:`IPsec Security Gateway<ipsec_secgw>`: The IPsec Security
-  Gateway application is minimal example of something closer to a real world
+  Gateway application is a minimal example of something closer to a real world
   example. This is also a good example of an application using the DPDK
   Cryptodev framework.
 
 * :doc:`Precision Time Protocol (PTP) client<ptpclient>`: The PTP
   client is another minimal implementation of a real world application.
-  In this case the application is a PTP client that communicates with a PTP
-  master clock to synchronize time on a Network Interface Card (NIC) using the
+  In this case, the application is a PTP client that communicates with a PTP
+  time transmitter to synchronize time on a Network Interface Card (NIC) using the
   IEEE1588 protocol.
 
 * :doc:`Quality of Service (QoS) Scheduler<qos_scheduler>`: The QoS
@@ -93,4 +93,4 @@ examples are highlighted below.
 
 There are many more examples shown in the following chapters. Each of the
 documented sample applications show how to compile, configure and run the
-application as well as explaining the main functionality of the code.
+application, as well as explaining the main functionality of the code.

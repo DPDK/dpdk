@@ -11,6 +11,7 @@
 #include <rte_pause.h>
 #include <rte_eal.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 #include "eal_memcfg.h"
 
@@ -18,8 +19,10 @@
 static uint64_t eal_tsc_resolution_hz;
 
 /* Pointer to user delay function */
+RTE_EXPORT_SYMBOL(rte_delay_us)
 void (*rte_delay_us)(unsigned int) = NULL;
 
+RTE_EXPORT_SYMBOL(rte_delay_us_block)
 void
 rte_delay_us_block(unsigned int us)
 {
@@ -29,6 +32,7 @@ rte_delay_us_block(unsigned int us)
 		rte_pause();
 }
 
+RTE_EXPORT_SYMBOL(rte_get_tsc_hz)
 uint64_t
 rte_get_tsc_hz(void)
 {
@@ -66,8 +70,7 @@ set_tsc_freq(void)
 	}
 
 	freq = get_tsc_freq_arch();
-	if (!freq)
-		freq = get_tsc_freq();
+	freq = get_tsc_freq(freq);
 	if (!freq)
 		freq = estimate_tsc_freq();
 
@@ -76,6 +79,7 @@ set_tsc_freq(void)
 	mcfg->tsc_hz = freq;
 }
 
+RTE_EXPORT_SYMBOL(rte_delay_us_callback_register)
 void rte_delay_us_callback_register(void (*userfunc)(unsigned int))
 {
 	rte_delay_us = userfunc;

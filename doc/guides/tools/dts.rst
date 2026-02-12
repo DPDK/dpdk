@@ -1,5 +1,7 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
+    Copyright(c) 2024 Arm Limited
+    Copyright(c) 2025 University of New Hampshire
 
 DPDK Test Suite
 ===============
@@ -22,28 +24,18 @@ DTS runtime environment node
   This is the node where we run DTS and from which DTS connects to other nodes.
 
 System under test
-  An SUT is the combination of DPDK and the hardware we're testing
-  in conjunction with DPDK (NICs, crypto and other devices).
+  The system which runs a DPDK application on relevant hardware
+  (NIC, accelerator cards, etc)
+  and from which the DPDK behavior is observed for tests.
 
 System under test node
   A node where at least one SUT is present.
 
 Traffic generator
-  A TG is either software or hardware capable of sending packets.
+  Node that sends traffic to the SUT, which can be hardware or software-based.
 
 Traffic generator node
   A node where at least one TG is present.
-  In case of hardware traffic generators, the TG and the node are literally the same.
-
-
-In most cases, interchangeably referring to a runtime environment, SUT, TG or the node
-they're running on (e.g. using SUT and SUT node interchangeably) doesn't cause confusion.
-There could theoretically be more than of these running on the same node and in that case
-it's useful to have stricter definitions.
-An example would be two different traffic generators (such as Trex and Scapy)
-running on the same node.
-A different example would be a node containing both a DTS runtime environment
-and a traffic generator, in which case it's both a DTS runtime environment node and a TG node.
 
 
 DTS Environment
@@ -54,6 +46,7 @@ DTS uses Poetry as its Python dependency management.
 Python build/development and runtime environments are the same and DTS development environment,
 DTS runtime environment or just plain DTS environment are used interchangeably.
 
+.. _dts_deps:
 
 Setting up DTS environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -82,17 +75,17 @@ Setting up DTS environment
    Another benefit is the usage of ``pyproject.toml``, which has become the standard config file
    for python projects, improving project organization.
    To install Poetry, visit their `doc pages <https://python-poetry.org/docs/>`_.
-   The recommended Poetry version is at least 1.5.1.
+   The recommended Poetry version is at least 1.8.2.
 
-#. **Getting a Poetry shell**
+#. **Running DTS with Poetry**
 
    Once you have Poetry along with the proper Python version all set up, it's just a matter
-   of installing dependencies via Poetry and using the virtual environment Poetry provides:
+   of installing dependencies via Poetry and running main.py:
 
    .. code-block:: console
 
-      poetry install --no-root
-      poetry shell
+      poetry install
+      poetry run ./main.py
 
 #. **SSH Connection**
 
@@ -132,6 +125,11 @@ There are two areas that need to be set up on a System Under Test:
      You may specify the optional hugepage configuration in the DTS config file.
      If you do, DTS will take care of configuring hugepages,
      overwriting your current SUT hugepage configuration.
+     Configuration of hugepages via DTS allows only for allocation of 2MB hugepages,
+     as doing so prevents accidental/over allocation of hugepage sizes
+     not recommended during runtime due to contiguous memory space requirements.
+     Thus, if you require hugepage sizes not equal to 2MB,
+     then this configuration must be done outside of the DTS framework.
 
    * System under test configuration
 
@@ -154,6 +152,54 @@ There are two areas that need to be set up on a System Under Test:
 
       sudo usermod -aG sudo <sut_user>
 
+#. **SR-IOV**
+
+   Before configuring virtual functions, SR-IOV support must be enabled in the system BIOS/UEFI:
+
+   #. Reboot the system and enter BIOS/UEFI settings.
+   #. Locate the SR-IOV option (often under PCIe or Advanced settings).
+   #. Set SR-IOV to **Enabled** and save changes.
+
+   For Mellanox environments, the following additional setup steps are required:
+
+   #. **Install mstflint tools** (if not already installed):
+
+      .. code-block:: bash
+
+         sudo apt install mstflint        # On Debian/Ubuntu
+         sudo yum install mstflint        # On RHEL/CentOS
+
+   #. **Start the MST service**:
+
+      .. code-block:: bash
+
+         sudo mst start
+
+   #. **List Mellanox devices**:
+
+      .. code-block:: bash
+
+         sudo mst status
+
+      This will output paths such as ``/dev/mst/mt4121_pciconf0``
+      and possibly additional functions (e.g., ``pciconf0.1``).
+
+   #. **Enable SR-IOV and configure number of VFs**:
+
+      .. code-block:: bash
+
+         sudo mlxconfig -d /dev/mst/mt4121_pciconf0 set SRIOV_EN=1 NUM_OF_VFS=8
+         sudo mlxconfig -d /dev/mst/mt4121_pciconf0.1 set SRIOV_EN=1 NUM_OF_VFS=8
+
+      Replace the device names with those matching your setup (from ``mst status``).
+      The number of VFs can be adjusted as needed.
+
+   #. **Reboot the system**:
+
+      .. code-block:: bash
+
+         sudo reboot now
+
 
 Setting up Traffic Generator Node
 ---------------------------------
@@ -163,13 +209,49 @@ These need to be set up on a Traffic Generator Node:
 #. **Traffic generator dependencies**
 
    The traffic generator running on the traffic generator node must be installed beforehand.
-   For Scapy traffic generator, only a few Python libraries need to be installed:
+
+   For Scapy traffic generator (functional tests),
+   only a few Python libraries need to be installed:
 
    .. code-block:: console
 
       sudo apt install python3-pip
       sudo pip install --upgrade pip
       sudo pip install scapy==2.5.0
+
+   For TRex traffic generator (performance tests),
+   TRex must be downloaded and a TRex config produced for each TG NIC.
+   For example:
+
+   .. code-block:: console
+
+      wget https://trex-tgn.cisco.com/trex/release/v3.03.tar.gz
+      tar -xf v3.03.tar.gz
+      cd v3.03
+      sudo ./dpdk_setup_ports.py -i
+
+   Within the ``dpdk_setup_ports.py`` utility, follow these instructions:
+
+     - Select MAC based config.
+     - Select interfaces 0 and 1 on your TG NIC.
+     - Do not change assumed dest to DUT MAC (just leave the default loopback).
+     - Print preview of the config.
+     - Check for device address correctness.
+     - Check for socket and CPU correctness (CPU/socket NUMA node should match NIC NUMA node).
+     - Write the file to a path on your system.
+
+   Then, presuming you are using the ``test_run.example.yaml``
+   as a template for your `test_run` config:
+
+     - Uncomment the `performance_traffic_generator` section,
+       making DTS use a performance TG.
+     - Update the `remote_path` and config fields
+       to the remote path of your TRex directory
+       and the path to your new TRex config file.
+     - Update the `perf` field to enable performance testing.
+
+   After these steps, you should be ready to run performance tests with TRex.
+
 
 #. **Hardware dependencies**
 
@@ -189,19 +271,25 @@ Running DTS
 -----------
 
 DTS needs to know which nodes to connect to and what hardware to use on those nodes.
-Once that's configured, either a DPDK source code tarball or a Git revision ID
-of choice needs to be supplied.
-DTS will use this to compile DPDK on the SUT node
+Once that's configured, either a DPDK source code tarball or tree folder
+need to be supplied whether these are on your DTS host machine or the SUT node.
+DTS can accept a pre-compiled build placed in a subdirectory,
+or it will compile DPDK on the SUT node,
 and then run the tests with the newly built binaries.
 
 
 Configuring DTS
 ~~~~~~~~~~~~~~~
 
-DTS configuration is split into nodes and executions and build targets within executions,
-and follows a defined schema as described in `Configuration Schema`_.
-By default, DTS will try to use the ``dts/conf.yaml`` :ref:`config file <configuration_schema_example>`,
-which is a template that illustrates what can be configured in DTS.
+DTS configuration is split into nodes and a test run,
+and must respect the model definitions
+as documented in the DTS API docs under the ``config`` page.
+The root of the configuration is represented by the ``Configuration`` model.
+By default, DTS will try to use the ``dts/configurations/test_run.example.yaml``
+:ref:`config file <test_run_configuration_example>`,
+and ``dts/configurations/nodes.example.yaml``
+:ref:`config file <nodes_configuration_example>`
+which are templates that illustrate what can be configured in DTS.
 
 The user must have :ref:`administrator privileges <sut_admin_user>`
 which don't require password authentication.
@@ -210,46 +298,66 @@ which don't require password authentication.
 DTS Execution
 ~~~~~~~~~~~~~
 
-DTS is run with ``main.py`` located in the ``dts`` directory after entering Poetry shell:
+DTS is run with ``main.py`` located in the ``dts`` directory using the ``poetry run`` command:
 
 .. code-block:: console
 
    (dts-py3.10) $ ./main.py --help
-   usage: main.py [-h] [--config-file CONFIG_FILE] [--output-dir OUTPUT_DIR] [-t TIMEOUT] [-v] [-s] [--tarball TARBALL] [--compile-timeout COMPILE_TIMEOUT] [--test-suite TEST_SUITE [TEST_CASES ...]] [--re-run RE_RUN]
+   usage: main.py [-h] [--test-run-config-file FILE_PATH] [--nodes-config-file FILE_PATH] [--tests-config-file FILE_PATH]
+                  [--output-dir DIR_PATH] [-t SECONDS] [-v] [--dpdk-tree DIR_PATH | --tarball FILE_PATH] [--remote-source]
+                  [--precompiled-build-dir DIR_NAME] [--compile-timeout SECONDS] [--test-suite TEST_SUITE [TEST_CASES ...]]
+                  [--re-run N_TIMES] [--random-seed NUMBER]
 
-   Run DPDK test suites. All options may be specified with the environment variables provided in brackets. Command line arguments have higher priority.
+   Run DPDK test suites. All options may be specified with the environment variables provided in brackets. Command line arguments have higher
+   priority.
 
    options:
-   -h, --help            show this help message and exit
-   --config-file CONFIG_FILE
-                         [DTS_CFG_FILE] The configuration file that describes the test cases, SUTs and targets. (default: ./conf.yaml)
-   --output-dir OUTPUT_DIR, --output OUTPUT_DIR
-                         [DTS_OUTPUT_DIR] Output directory where DTS logs and results are saved. (default: output)
-   -t TIMEOUT, --timeout TIMEOUT
-                         [DTS_TIMEOUT] The default timeout for all DTS operations except for compiling DPDK. (default: 15)
-   -v, --verbose         [DTS_VERBOSE] Specify to enable verbose output, logging all messages to the console. (default: False)
-   -s, --skip-setup      [DTS_SKIP_SETUP] Specify to skip all setup steps on SUT and TG nodes. (default: False)
-   --tarball TARBALL, --snapshot TARBALL, --git-ref TARBALL
-                         [DTS_DPDK_TARBALL] Path to DPDK source code tarball or a git commit ID, tag ID or tree ID to test. To test local changes, first commit them, then use the commit ID with this option. (default: dpdk.tar.xz)
-   --compile-timeout COMPILE_TIMEOUT
-                         [DTS_COMPILE_TIMEOUT] The timeout for compiling DPDK. (default: 1200)
-   --test-suite TEST_SUITE [TEST_CASES ...]
-                         [DTS_TEST_SUITES] A list containing a test suite with test cases. The first parameter is the test suite name, and the rest are test case names, which are optional. May be specified multiple times. To specify multiple test suites in the environment
-                         variable, join the lists with a comma. Examples: --test-suite suite case case --test-suite suite case ... | DTS_TEST_SUITES='suite case case, suite case, ...' | --test-suite suite --test-suite suite case ... | DTS_TEST_SUITES='suite, suite case, ...'
-                         (default: [])
-   --re-run RE_RUN, --re_run RE_RUN
-                         [DTS_RERUN] Re-run each test case the specified number of times if a test failure occurs. (default: 0)
+     -h, --help            show this help message and exit
+     --test-run-config-file FILE_PATH
+                           [DTS_TEST_RUN_CFG_FILE] The configuration file that describes the test cases and DPDK build options. (default: configurations/test_run.yaml)
+     --nodes-config-file FILE_PATH
+                           [DTS_NODES_CFG_FILE] The configuration file that describes the SUT and TG nodes. (default: configurations/nodes.yaml)
+     --tests-config-file FILE_PATH
+                           [DTS_TESTS_CFG_FILE] Configuration file used to override variable values inside specific test suites. (default: None)
+     --output-dir DIR_PATH, --output DIR_PATH
+                           [DTS_OUTPUT_DIR] Output directory where DTS logs and results are saved. (default: output)
+     -t SECONDS, --timeout SECONDS
+                           [DTS_TIMEOUT] The default timeout for all DTS operations except for compiling DPDK. (default: 15)
+     -v, --verbose         [DTS_VERBOSE] Specify to enable verbose output, logging all messages to the console. (default: False)
+     --compile-timeout SECONDS
+                           [DTS_COMPILE_TIMEOUT] The timeout for compiling DPDK. (default: 1200)
+     --test-suite TEST_SUITE [TEST_CASES ...]
+                           [DTS_TEST_SUITES] A list containing a test suite with test cases. The first parameter is the test suite name, and
+                           the rest are test case names, which are optional. May be specified multiple times. To specify multiple test suites
+                           in the environment variable, join the lists with a comma. Examples: --test-suite suite case case --test-suite
+                           suite case ... | DTS_TEST_SUITES='suite case case, suite case, ...' | --test-suite suite --test-suite suite case
+                           ... | DTS_TEST_SUITES='suite, suite case, ...' (default: [])
+     --re-run N_TIMES, --re_run N_TIMES
+                           [DTS_RERUN] Re-run each test case the specified number of times if a test failure occurs. (default: 0)
+     --random-seed NUMBER  [DTS_RANDOM_SEED] The seed to use with the pseudo-random generator. If not specified, the configuration value is
+                           used instead. If that's also not specified, a random seed is generated. (default: None)
+
+   DPDK Build Options:
+     Arguments in this group (and subgroup) will be applied to a DPDKLocation when the DPDK tree, tarball or revision will be provided,
+     other arguments like remote source and build dir are optional. A DPDKLocation from settings are used instead of from config if
+     construct successful.
+
+     --dpdk-tree DIR_PATH  [DTS_DPDK_TREE] The path to the DPDK source tree directory to test. Cannot be used in conjunction with --tarball.
+                           (default: None)
+     --tarball FILE_PATH, --snapshot FILE_PATH
+                           [DTS_DPDK_TARBALL] The path to the DPDK source tarball to test. DPDK must be contained in a folder with the same
+                           name as the tarball file. Cannot be used in conjunction with --dpdk-tree. (default: None)
+     --remote-source       [DTS_REMOTE_SOURCE] Set this option if either the DPDK source tree or tarball to be used are located on the SUT
+                           node. Can only be used with --dpdk-tree or --tarball. (default: False)
+     --precompiled-build-dir DIR_NAME
+                           [DTS_PRECOMPILED_BUILD_DIR] Define the subdirectory under the DPDK tree root directory or tarball where the pre-
+                           compiled binaries are located. (default: None)
 
 
 The brackets contain the names of environment variables that set the same thing.
-The minimum DTS needs is a config file and a DPDK tarball or git ref ID.
-You may pass those to DTS using the command line arguments or use the default paths.
-
-Example command for running DTS with the template configuration and DPDK tag v23.11:
-
-.. code-block:: console
-
-   (dts-py3.10) $ ./main.py --git-ref v23.11
+The minimum DTS needs is a config file and a pre-built DPDK
+or DPDK sources location which can be specified in said config file
+or on the command line or environment variables.
 
 
 DTS Results
@@ -275,109 +383,162 @@ Adding test cases may require adding code to the framework as well.
 Framework Coding Guidelines
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When adding code to the DTS framework, pay attention to the rest of the code
-and try not to divert much from it.
-The :ref:`DTS developer tools <dts_dev_tools>` will issue warnings
-when some of the basics are not met.
+When contributing code to the DTS framework,
+follow existing conventions to ensure consistency.
+The :ref:`DTS developer tools <dts_dev_tools>` will flag basic issues.
+Also, be sure to :ref:`build the API documentation <building_api_docs>`
+to catch any problems during the build.
 
-The code must be properly documented with docstrings.
-The style must conform to the `Google style
+The API documentation is a helpful reference during development.
+It can be viewed in the code directly
+or generated using the :ref:`API docs build steps <building_api_docs>`.
+If you add new files or change the directory structure,
+update the corresponding sources in ``doc/api/dts``.
+
+Code must be documented with docstrings that follow the `Google style
 <https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings>`_.
-See an example of the style `here
-<https://www.sphinx-doc.org/en/master/usage/extensions/example_google.html>`_.
-For cases which are not covered by the Google style, refer to `PEP 257
-<https://peps.python.org/pep-0257/>`_.
-There are some cases which are not covered by the two style guides,
-where we deviate or where some additional clarification is helpful:
+Additional references:
 
-   * The ``__init__()`` methods of classes are documented separately
-     from the docstring of the class itself.
-   * The docstrings of implemented abstract methods should refer to the superclass's definition
-     if there's no deviation.
-   * Instance variables/attributes should be documented in the docstring of the class
-     in the ``Attributes:`` section.
-   * The ``dataclass.dataclass`` decorator changes how the attributes are processed.
-     The dataclass attributes which result in instance variables/attributes
-     should also be recorded in the ``Attributes:`` section.
-   * Class variables/attributes, on the other hand, should be documented with ``#:``
-     above the type annotated line.
-     The description may be omitted if the meaning is obvious.
-   * The ``Enum`` and ``TypedDict`` also process the attributes in particular ways
-     and should be documented with ``#:`` as well.
-     This is mainly so that the autogenerated documentation contains the assigned value.
-   * When referencing a parameter of a function or a method in their docstring,
-     don't use any articles and put the parameter into single backticks.
-     This mimics the style of `Python's documentation <https://docs.python.org/3/index.html>`_.
-   * When specifying a value, use double backticks::
+* `Sphinx Google style example
+  <https://www.sphinx-doc.org/en/master/usage/extensions/example_google.html>`_
+* `PEP 257
+  <https://peps.python.org/pep-0257/>`_
 
-        def foo(greet: bool) -> None:
-            """Demonstration of single and double backticks.
+Docstring and Attribute Guidelines:
 
-            `greet` controls whether ``Hello World`` is printed.
+* Document ``__init__()`` separately from the class docstring.
+* If an abstract method simply implements a superclass definition without changes,
+  refer to that superclass in the docstring.
+* Document instance variables in the class docstring under an ``Attributes:`` section.
+* For ``@dataclass`` classes, document instance-level attributes in ``Attributes:``,
+  as they are generated from the class fields.
+* Document class variables and Pydantic fields using ``#:``,
+  placed above the type-annotated line.
+  Descriptions may be omitted if the meaning is clear.
+* Apply ``#:`` to ``Enum`` and ``TypedDict`` fields as well,
+  so that autogenerated documentation includes their values.
+* When referring to a parameter in a docstring,
+  omit articles and enclose the parameter in single backticks,
+  consistent with the `Python documentation style <https://docs.python.org/3/index.html>`_.
+* Use double backticks for literal values.
 
-            Args:
-               greet: Whether to print the ``Hello World`` message.
-            """
-            if greet:
-               print(f"Hello World")
+Example::
 
-   * The docstring maximum line length is the same as the code maximum line length.
+   def foo(greet: bool) -> None:
+       """Demonstrates single and double backticks.
+
+       `greet` controls whether ``Hello World`` is printed.
+
+       Args:
+           greet: Whether to print the ``Hello World`` message.
+       """
+       if greet:
+           print("Hello World")
+
+The maximum line length for docstrings must match that of the code.
 
 
 How To Write a Test Suite
 -------------------------
 
-All test suites inherit from ``TestSuite`` defined in ``dts/framework/test_suite.py``.
-There are four types of methods that comprise a test suite:
+All test suites are classes that inherit from ``TestSuite``,
+defined in ``dts/framework/test_suite.py``.
+A typical suite contains:
 
-#. **Test cases**
+Test Cases
+~~~~~~~~~~
 
-   | Test cases are methods that start with a particular prefix.
-   | Functional test cases start with ``test_``, e.g. ``test_hello_world_single_core``.
-   | Performance test cases start with ``test_perf_``, e.g. ``test_perf_nic_single_core``.
-   | A test suite may have any number of functional and/or performance test cases.
-     However, these test cases must test the same feature,
-     following the rule of one feature = one test suite.
-     Test cases for one feature don't need to be grouped in just one test suite, though.
-     If the feature requires many testing scenarios to cover,
-     the test cases would be better off spread over multiple test suites
-     so that each test suite doesn't take too long to execute.
+Test cases are defined as methods and must be decorated appropriately.
+Use the ``@func_test`` and/or ``@perf_test`` decorators from ``TestSuite``
+above each test case method.
+For example::
 
-#. **Setup and Teardown methods**
+   @func_test
+   def test_basic_link(self):
+      """your testcase docstring here"""
+      # your testcase code here
 
-   | There are setup and teardown methods for the whole test suite and each individual test case.
-   | Methods ``set_up_suite`` and ``tear_down_suite`` will be executed
-     before any and after all test cases have been executed, respectively.
-   | Methods ``set_up_test_case`` and ``tear_down_test_case`` will be executed
-     before and after each test case, respectively.
-   | These methods don't need to be implemented if there's no need for them in a test suite.
-     In that case, nothing will happen when they are executed.
+Functional test cases should use the ``@func_test`` decorator,
+and performance test cases should use ``@perf_test``.
+A test suite may include any number of functional and/or performance test cases.
+Each suite should focus on testing a single feature (one feature = one test suite).
 
-#. **Configuration, traffic and other logic**
+Test case docstrings must include a Steps and Verify section.
+For example::
 
-   The ``TestSuite`` class contains a variety of methods for anything that
-   a test suite setup, a teardown, or a test case may need to do.
+   @func_test
+   def test_basic_link(self):
+   """Tests basic link status.
 
-   The test suites also frequently use a DPDK app, such as testpmd, in interactive mode
-   and use the interactive shell instances directly.
+      Steps:
+         * Launch testpmd.
+         * Check port info.
 
-   These are the two main ways to call the framework logic in test suites.
-   If there's any functionality or logic missing from the framework,
-   it should be implemented so that the test suites can use one of these two ways.
+      Verify:
+         * Port info shows link status is up.
+   """
 
-#. **Test case verification**
+Setup and Teardown Hooks
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-   Test case verification should be done with the ``verify`` method, which records the result.
-   The method should be called at the end of each test case.
+Setup and teardown methods can be defined at both the suite and test case levels.
 
-#. **Other methods**
+Suite-level:
 
-   Of course, all test suite code should adhere to coding standards.
-   Only the above methods will be treated specially and any other methods may be defined
-   (which should be mostly private methods needed by each particular test suite).
-   Any specific features (such as NIC configuration) required by a test suite
-   should be implemented in the ``SutNode`` class (and the underlying classes that ``SutNode`` uses)
-   and used by the test suite via the ``sut_node`` field.
+``set_up_suite()``
+   Runs once before any test cases in the suite.
+
+``tear_down_suite()``
+   Runs once after all test cases have completed.
+
+Case-level:
+
+``set_up_test_case()``
+   Runs before each individual test case.
+
+``tear_down_test_case()``
+   Runs after each individual test case.
+
+These methods are optional.
+If not implemented, the framework will simply skip them.
+
+The ``TestSuite`` class provides a variety of methods for setup, teardown, and test logic.
+Test suites often use DPDK applications (e.g., testpmd) in interactive mode
+and interact with them via shell instances.
+
+Leveraging the DTS framework in writing testsuites
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One should avoid directly importing DTS framework code to their testsuites where possible.
+Instead, for performing common processes required in testsuites,
+one should use (or add to) the list of methods provided in the ``api`` module.
+
+For instance, for sending a list of packets,
+one should work through the packet transmitting function
+already made available in the ``api`` module,
+instead of directly importing the DTS traffic generator class
+and using that class in one's testsuite implementation.
+It is also acceptable to import and instantiate classes for various DPDK applications.
+For instance, writing a testsuite for a simple packet forwarding operation
+would involve importing the DTS ``TestPmd`` class from the ``api`` module,
+instantiating ``TestPmd``, calling ``TestPmd``'s ``start()`` method,
+and then sending traffic via one of the traffic transmitting functions
+exposed in the ``api`` module.
+
+Test Case Verification
+~~~~~~~~~~~~~~~~~~~~~~
+
+Use the verify method to assert conditions and record test results.
+This should typically be called at the end of each test case.
+Example: ``verify(link_up, "Link should be up after configuration.")``
+
+Other Methods
+~~~~~~~~~~~~~
+
+All test suite code should follow the project's coding standards.
+Only test cases, setup/teardown hooks, and verification methods
+are treated specially by the framework.
+Additional private methods may be added as needed in your testsuite implementation.
 
 
 .. _dts_dev_tools:
@@ -385,213 +546,46 @@ There are four types of methods that comprise a test suite:
 DTS Developer Tools
 -------------------
 
-There are three tools used in DTS to help with code checking, style and formatting:
+There are two tools used in DTS to help with code checking, style and formatting:
 
-* `isort <https://pycqa.github.io/isort/>`_
+ruff
+   Linter and formatter (replaces flake8, pylint, isort, etc.).
+   Compatible with Black.
 
-  Alphabetically sorts python imports within blocks.
+mypy
+   Performs static type checking.
 
-* `black <https://github.com/psf/black>`_
-
-  Does most of the actual formatting (whitespaces, comments, line length etc.)
-  and works similarly to clang-format.
-
-* `pylama <https://github.com/klen/pylama>`_
-
-  Runs a collection of python linters and aggregates output.
-  It will run these tools over the repository:
-
-  .. literalinclude:: ../../../dts/pyproject.toml
-     :language: cfg
-     :start-after: [tool.pylama]
-     :end-at: linters
-
-* `mypy <https://github.com/python/mypy>`_
-
-  Enables static typing for Python, exploiting the type hints in the source code.
-
-These three tools are all used in ``devtools/dts-check-format.sh``,
+These two tools are all used in ``devtools/dts-check-format.sh``,
 the DTS code check and format script.
 Refer to the script for usage: ``devtools/dts-check-format.sh -h``.
 
 
-Configuration Schema
---------------------
+.. _building_api_docs:
 
-Definitions
-~~~~~~~~~~~
+Building DTS API docs
+---------------------
 
-_`Node name`
-   *string* – A unique identifier for a node.
-   **Examples**: ``SUT1``, ``TG1``.
+The documentation is built using the standard DPDK build system.
+See :doc:`../linux_gsg/build_dpdk` for more details on compiling DPDK with meson.
 
-_`ARCH`
-   *string* – The CPU architecture.
-   **Supported values**: ``x86_64``, ``arm64``, ``ppc64le``.
+After executing the meson command, build the documentation with:
 
-_`CPU`
-   *string* – The CPU microarchitecture. Use ``native`` for x86.
-   **Supported values**: ``native``, ``armv8a``, ``dpaa2``, ``thunderx``, ``xgene1``.
+.. code-block:: console
 
-_`OS`
-   *string* – The operating system. **Supported values**: ``linux``.
+   ninja -C build doc
 
-_`Compiler`
-   *string* – The compiler used for building DPDK.
-   **Supported values**: ``gcc``, ``clang``, ``icc``, ``mscv``.
+The output is generated in ``build/doc/api/dts/html``.
 
-_`Build target`
-   *mapping* – Build targets supported by DTS for building DPDK, described as:
+.. note::
 
-   ==================== =================================================================
-   ``arch``             See `ARCH`_
-   ``os``               See `OS`_
-   ``cpu``              See `CPU`_
-   ``compiler``         See `Compiler`_
-   ``compiler_wrapper`` *string* – Value prepended to the CC variable for the DPDK build.
+   Make sure to fix any Sphinx warnings when adding or updating docstrings.
 
-                        **Example**: ``ccache``
-   ==================== =================================================================
+.. _configuration_example:
 
-_`hugepages`
-   *mapping* – hugepages described as:
+Configuration Example
+---------------------
 
-   ==================== ================================================================
-   ``amount``           *integer* – The amount of hugepages to configure.
-
-                        Hugepage size will be the system default.
-   ``force_first_numa`` (*optional*, defaults to ``false``) – If ``true``, it forces the
-
-                        configuration of hugepages on the first NUMA node.
-   ==================== ================================================================
-
-_`Network port`
-   *mapping* – the NIC port described as:
-
-   ====================== =================================================================================
-   ``pci``                *string* – the local PCI address of the port. **Example**: ``0000:00:08.0``
-   ``os_driver_for_dpdk`` | *string* – this port's device driver when using with DPDK
-                          | When setting up the SUT, DTS will bind the network device to this driver
-                          | for compatibility with DPDK.
-
-                          **Examples**: ``vfio-pci``, ``mlx5_core``
-   ``os_driver``          | *string* – this port's device driver when **not** using with DPDK
-                          | When tearing down the tests on the SUT, DTS will bind the network device
-                          | *back* to this driver. This driver is meant to be the one that the SUT would
-                          | normally use for this device, or whichever driver it is preferred to leave the
-                          | device bound to after testing.
-                          | This also represents the driver that is used in conjunction with the traffic
-                          | generator software.
-
-                          **Examples**: ``i40e``, ``mlx5_core``
-   ``peer_node``          *string* – the name of the peer node connected to this port.
-   ``peer_pci``           *string* – the PCI address of the peer node port. **Example**: ``000a:01:00.1``
-   ====================== =================================================================================
-
-_`Test suite`
-   *string* – name of the test suite to run. **Examples**: ``hello_world``, ``os_udp``
-
-_`Test target`
-   *mapping* – selects specific test cases to run from a test suite. Mapping is described as follows:
-
-   ========= ===============================================================================================
-   ``suite`` See `Test suite`_
-   ``cases`` (*optional*) *sequence* of *string* – list of the selected test cases in the test suite to run.
-
-             Unknown test cases will be silently ignored.
-   ========= ===============================================================================================
-
-
-Properties
-~~~~~~~~~~
-
-The configuration requires listing all the execution environments and nodes
-involved in the testing. These can be defined with the following mappings:
-
-``executions``
-   `sequence <https://docs.python.org/3/library/stdtypes.html#sequence-types-list-tuple-range>`_ listing
-   the execution environments. Each entry is described as per the following
-   `mapping <https://docs.python.org/3/library/stdtypes.html#mapping-types-dict>`_:
-
-   +----------------------------+-------------------------------------------------------------------+
-   | ``build_targets``          | *sequence* of `Build target`_                                     |
-   +----------------------------+-------------------------------------------------------------------+
-   | ``perf``                   | *boolean* – Enable performance testing.                           |
-   +----------------------------+-------------------------------------------------------------------+
-   | ``func``                   | *boolean* – Enable functional testing.                            |
-   +----------------------------+-------------------------------------------------------------------+
-   | ``test_suites``            | *sequence* of **one of** `Test suite`_ **or** `Test target`_      |
-   +----------------------------+-------------------------------------------------------------------+
-   | ``skip_smoke_tests``       | (*optional*) *boolean* – Allows you to skip smoke testing         |
-   |                            | if ``true``.                                                      |
-   +----------------------------+-------------------------------------------------------------------+
-   | ``system_under_test_node`` | System under test node specified with:                            |
-   |                            +---------------+---------------------------------------------------+
-   |                            | ``node_name`` | See `Node name`_                                  |
-   |                            +---------------+---------------------------------------------------+
-   |                            | ``vdevs``     | (*optional*) *sequence* of *string*               |
-   |                            |               |                                                   |
-   |                            |               | List of virtual devices passed with the ``--vdev``|
-   |                            |               | argument to DPDK. **Example**: ``crypto_openssl`` |
-   +----------------------------+---------------+---------------------------------------------------+
-   | ``traffic_generator_node`` | Node name for the traffic generator node.                         |
-   +----------------------------+-------------------------------------------------------------------+
-
-``nodes``
-   `sequence <https://docs.python.org/3/library/stdtypes.html#sequence-types-list-tuple-range>`_ listing
-   the nodes. Each entry is described as per the following
-   `mapping <https://docs.python.org/3/library/stdtypes.html#mapping-types-dict>`_:
-
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``name``              | See `Node name`_                                                                      |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``hostname``          | *string* – The network hostname or IP address of this node.                           |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``user``              | *string* – The SSH user credential to use to login to this node.                      |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``password``          | (*optional*) *string* – The SSH password credential for this node.                    |
-   |                       |                                                                                       |
-   |                       | **NB**: Use only as last resort. SSH keys are **strongly** preferred.                 |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``arch``              | The architecture of this node. See `ARCH`_ for supported values.                      |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``os``                | The operating system of this node. See `OS`_ for supported values.                    |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``lcores``            | | (*optional*, defaults to 1) *string* – Comma-separated list of logical              |
-   |                       | | cores to use. An empty string means use all lcores.                                 |
-   |                       |                                                                                       |
-   |                       | **Example**: ``1,2,3,4,5,18-22``                                                      |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``use_first_core``    | (*optional*, defaults to ``false``) *boolean*                                         |
-   |                       |                                                                                       |
-   |                       | Indicates whether DPDK should use only the first physical core or not.                |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``memory_channels``   | (*optional*, defaults to 1) *integer*                                                 |
-   |                       |                                                                                       |
-   |                       | The number of the memory channels to use.                                             |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``hugepages``         | (*optional*) See `hugepages`_. If unset, hugepages won't be configured                |
-   |                       |                                                                                       |
-   |                       | in favour of the system configuration.                                                |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``ports``             | | *sequence* of `Network port`_ – Describe ports that are **directly** paired with    |
-   |                       | | other nodes used in conjunction with this one. Both ends of the links must be       |
-   |                       | | described. If there any inconsistencies DTS won't run.                              |
-   |                       |                                                                                       |
-   |                       | **Example**: port 1 of node ``SUT1`` is connected to port 1 of node ``TG1`` etc.      |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``traffic_generator`` | (*optional*) Traffic generator, if any, setup on this node described as:              |
-   |                       +----------+----------------------------------------------------------------------------+
-   |                       | ``type`` | *string* – **Supported values**: *SCAPY*                                   |
-   +-----------------------+----------+----------------------------------------------------------------------------+
-
-
-.. _configuration_schema_example:
-
-Example
-~~~~~~~
-
-The following example (which can be found in ``dts/conf.yaml``) sets up two nodes:
+The following example configuration files sets up two nodes:
 
 * ``SUT1`` which is already setup with the DPDK build requirements and any other
   required for execution;
@@ -603,6 +597,37 @@ And they both have two network ports which are physically connected to each othe
    This example assumes that you have setup SSH keys in both the system under test
    and traffic generator nodes.
 
-.. literalinclude:: ../../../dts/conf.yaml
+.. _test_run_configuration_example:
+
+``dts/configurations/test_run.example.yaml``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. literalinclude:: ../../../dts/configurations/test_run.example.yaml
    :language: yaml
-   :start-at: executions:
+   :start-at: # Define
+
+.. _nodes_configuration_example:
+
+
+``dts/configurations/nodes.example.yaml``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. literalinclude:: ../../../dts/configurations/nodes.example.yaml
+   :language: yaml
+   :start-at: # Define
+
+Additionally, an example configuration file is provided
+to demonstrate custom test suite configuration:
+
+.. note::
+   You do not need to supply configurations for all test suites,
+   and not all test suites will support or need additional configuration.
+
+.. _tests_config_example:
+
+``dts/configurations/tests_config.example.yaml``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. literalinclude:: ../../../dts/configurations/tests_config.example.yaml
+   :language: yaml
+   :start-at: # Define

@@ -74,7 +74,7 @@ dpaa2_eventdev_enqueue_burst(void *port, const struct rte_event ev[],
 		ret = dpaa2_affine_qbman_swp();
 		if (ret < 0) {
 			DPAA2_EVENTDEV_ERR(
-				"Failed to allocate IO portal, tid: %d\n",
+				"Failed to allocate IO portal, tid: %d",
 				rte_gettid());
 			return 0;
 		}
@@ -202,12 +202,6 @@ err:
 
 }
 
-static uint16_t
-dpaa2_eventdev_enqueue(void *port, const struct rte_event *ev)
-{
-	return dpaa2_eventdev_enqueue_burst(port, ev, 1);
-}
-
 static void dpaa2_eventdev_dequeue_wait(uint64_t timeout_ticks)
 {
 	struct epoll_event epoll_ev;
@@ -230,7 +224,7 @@ static void dpaa2_eventdev_process_parallel(struct qbman_swp *swp,
 
 	RTE_SET_USED(rxq);
 
-	rte_memcpy(ev, ev_temp, sizeof(struct rte_event));
+	*ev = *ev_temp;
 	rte_free(ev_temp);
 
 	qbman_swp_dqrr_consume(swp, dq);
@@ -249,7 +243,7 @@ static void dpaa2_eventdev_process_atomic(struct qbman_swp *swp,
 	RTE_SET_USED(swp);
 	RTE_SET_USED(rxq);
 
-	rte_memcpy(ev, ev_temp, sizeof(struct rte_event));
+	*ev = *ev_temp;
 	rte_free(ev_temp);
 	*dpaa2_seqn(ev->mbuf) = dqrr_index + 1;
 	DPAA2_PER_LCORE_DQRR_SIZE++;
@@ -276,7 +270,7 @@ dpaa2_eventdev_dequeue_burst(void *port, struct rte_event ev[],
 		ret = dpaa2_affine_qbman_swp();
 		if (ret < 0) {
 			DPAA2_EVENTDEV_ERR(
-				"Failed to allocate IO portal, tid: %d\n",
+				"Failed to allocate IO portal, tid: %d",
 				rte_gettid());
 			return 0;
 		}
@@ -361,13 +355,6 @@ err:
 						evq_info->dpcon->dpcon_id);
 	}
 	return 0;
-}
-
-static uint16_t
-dpaa2_eventdev_dequeue(void *port, struct rte_event *ev,
-		       uint64_t timeout_ticks)
-{
-	return dpaa2_eventdev_dequeue_burst(port, ev, 1, timeout_ticks);
 }
 
 static void
@@ -601,8 +588,7 @@ dpaa2_eventdev_port_link(struct rte_eventdev *dev, void *port,
 
 	for (i = 0; i < nb_links; i++) {
 		evq_info = &priv->evq_info[queues[i]];
-		memcpy(&dpaa2_portal->evq_info[queues[i]], evq_info,
-			   sizeof(struct dpaa2_eventq));
+		dpaa2_portal->evq_info[queues[i]] = *evq_info;
 		dpaa2_portal->evq_info[queues[i]].event_port = port;
 		dpaa2_portal->num_linked_evq++;
 	}
@@ -851,7 +837,7 @@ dpaa2_eventdev_crypto_queue_add_all(const struct rte_eventdev *dev,
 	for (i = 0; i < cryptodev->data->nb_queue_pairs; i++) {
 		ret = dpaa2_sec_eventq_attach(cryptodev, i, dpcon, ev);
 		if (ret) {
-			DPAA2_EVENTDEV_ERR("dpaa2_sec_eventq_attach failed: ret %d\n",
+			DPAA2_EVENTDEV_ERR("dpaa2_sec_eventq_attach failed: ret %d",
 				    ret);
 			goto fail;
 		}
@@ -885,7 +871,7 @@ dpaa2_eventdev_crypto_queue_add(const struct rte_eventdev *dev,
 				      dpcon, &conf->ev);
 	if (ret) {
 		DPAA2_EVENTDEV_ERR(
-			"dpaa2_sec_eventq_attach failed: ret: %d\n", ret);
+			"dpaa2_sec_eventq_attach failed: ret: %d", ret);
 		return ret;
 	}
 	return 0;
@@ -905,7 +891,7 @@ dpaa2_eventdev_crypto_queue_del_all(const struct rte_eventdev *dev,
 		ret = dpaa2_sec_eventq_detach(cdev, i);
 		if (ret) {
 			DPAA2_EVENTDEV_ERR(
-				"dpaa2_sec_eventq_detach failed:ret %d\n", ret);
+				"dpaa2_sec_eventq_detach failed:ret %d", ret);
 			return ret;
 		}
 	}
@@ -928,7 +914,7 @@ dpaa2_eventdev_crypto_queue_del(const struct rte_eventdev *dev,
 	ret = dpaa2_sec_eventq_detach(cryptodev, rx_queue_id);
 	if (ret) {
 		DPAA2_EVENTDEV_ERR(
-			"dpaa2_sec_eventq_detach failed: ret: %d\n", ret);
+			"dpaa2_sec_eventq_detach failed: ret: %d", ret);
 		return ret;
 	}
 
@@ -1105,11 +1091,9 @@ dpaa2_eventdev_create(const char *name, struct rte_vdev_device *vdev)
 	}
 
 	eventdev->dev_ops       = &dpaa2_eventdev_ops;
-	eventdev->enqueue       = dpaa2_eventdev_enqueue;
 	eventdev->enqueue_burst = dpaa2_eventdev_enqueue_burst;
 	eventdev->enqueue_new_burst = dpaa2_eventdev_enqueue_burst;
 	eventdev->enqueue_forward_burst = dpaa2_eventdev_enqueue_burst;
-	eventdev->dequeue       = dpaa2_eventdev_dequeue;
 	eventdev->dequeue_burst = dpaa2_eventdev_dequeue_burst;
 	eventdev->txa_enqueue	= dpaa2_eventdev_txa_enqueue;
 	eventdev->txa_enqueue_same_dest	= dpaa2_eventdev_txa_enqueue_same_dest;
@@ -1161,7 +1145,7 @@ dpaa2_eventdev_destroy(const char *name)
 
 	eventdev = rte_event_pmd_get_named_dev(name);
 	if (eventdev == NULL) {
-		RTE_EDEV_LOG_ERR("eventdev with name %s not allocated", name);
+		DPAA2_EVENTDEV_ERR("eventdev with name %s not allocated", name);
 		return -1;
 	}
 

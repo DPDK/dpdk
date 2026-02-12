@@ -240,7 +240,6 @@ efx_table_describe(
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
 	unsigned int n_entries;
 	efx_mcdi_req_t req;
-	unsigned int i;
 	efx_rc_t rc;
 	EFX_MCDI_DECLARE_BUF(payload,
 	    MC_CMD_TABLE_DESCRIPTOR_IN_LEN,

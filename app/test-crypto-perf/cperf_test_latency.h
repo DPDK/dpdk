@@ -21,7 +21,8 @@ cperf_latency_test_constructor(
 		uint16_t qp_id,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
-		const struct cperf_op_fns *ops_fn);
+		const struct cperf_op_fns *ops_fn,
+		void **sess);
 
 int
 cperf_latency_test_runner(void *test_ctx);

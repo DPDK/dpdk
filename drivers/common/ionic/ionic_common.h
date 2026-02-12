@@ -32,6 +32,8 @@ struct ionic_dev_bar {
 
 __rte_internal
 void ionic_uio_scan_mnet_devices(void);
+__rte_internal
+void ionic_uio_scan_mcrypt_devices(void);
 
 __rte_internal
 void ionic_uio_get_rsrc(const char *name, int idx, struct ionic_dev_bar *bar);

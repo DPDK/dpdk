@@ -23,7 +23,7 @@ foreach libname:libnames
     if not lib.found() and not static_ibverbs
         lib = cc.find_library(libname, required:false)
     endif
-    if lib.found()
+    if lib.found() and cc.links(min_c_code, dependencies: lib)
         libs += lib
         if not static_ibverbs and not dlopen_ibverbs
             ext_deps += lib
@@ -47,7 +47,7 @@ endif
 
 libmtcr_ul_found = false
 lib = cc.find_library('mtcr_ul', required:false)
-if lib.found()
+if lib.found() and cc.links(min_c_code, dependencies: lib)
     libmtcr_ul_found = true
     ext_deps += lib
 endif
@@ -170,6 +170,16 @@ has_sym_args = [
             'RDMA_NLDEV_ATTR_PORT_STATE' ],
         [ 'HAVE_RDMA_NLDEV_ATTR_NDEV_INDEX', 'rdma/rdma_netlink.h',
             'RDMA_NLDEV_ATTR_NDEV_INDEX' ],
+        [ 'HAVE_RDMA_NL_GROUP_NOTIFY', 'rdma/rdma_netlink.h',
+            'RDMA_NL_GROUP_NOTIFY' ],
+        [ 'HAVE_RDMA_NLDEV_CMD_SYS_GET', 'rdma/rdma_netlink.h',
+            'RDMA_NLDEV_CMD_SYS_GET' ],
+        [ 'HAVE_RDMA_NLDEV_SYS_ATTR_MONITOR_MODE', 'rdma/rdma_netlink.h',
+            'RDMA_NLDEV_SYS_ATTR_MONITOR_MODE' ],
+        [ 'HAVE_RDMA_NLDEV_ATTR_EVENT_TYPE', 'rdma/rdma_netlink.h',
+            'RDMA_NLDEV_ATTR_EVENT_TYPE' ],
+        [ 'HAVE_RDMA_NLDEV_CMD_MONITOR', 'rdma/rdma_netlink.h',
+            'RDMA_NLDEV_CMD_MONITOR' ],
         [ 'HAVE_MLX5_DR_FLOW_DUMP', 'infiniband/mlx5dv.h',
             'mlx5dv_dump_dr_domain'],
         [ 'HAVE_MLX5_DR_CREATE_ACTION_FLOW_SAMPLE', 'infiniband/mlx5dv.h',
@@ -201,6 +211,10 @@ has_sym_args = [
             'mlx5dv_create_steering_anchor'],
         [ 'HAVE_IBV_FORK_UNNEEDED', 'infiniband/verbs.h',
             'ibv_is_fork_initialized'],
+        [ 'HAVE_IBV_DEVICE_ATTR_ESW_MGR_REG_C0', 'infiniband/mlx5dv.h',
+            'MLX5DV_CONTEXT_MASK_REG_C0' ],
+        [ 'HAVE_MLX5DV_FLOW_ACTION_COUNTERS_DEVX_WITH_OFFSET', 'infiniband/mlx5dv.h',
+            'MLX5DV_FLOW_ACTION_COUNTERS_DEVX_WITH_OFFSET' ],
 ]
 if  libmtcr_ul_found
     has_sym_args += [
@@ -229,7 +243,7 @@ if dlopen_ibverbs
     dlopen_sources = files('mlx5_glue.c')
     dlopen_install_dir = [ eal_pmd_path + '-glue' ]
     dlopen_includes = [global_inc]
-    dlopen_includes += include_directories('../../../../lib/eal/include/generic')
+    dlopen_includes += include_directories('../../../../lib/eal/common')
     dlopen_includes += include_directories('..')
     shared_lib = shared_library(
             dlopen_lib_name,

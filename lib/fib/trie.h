@@ -8,6 +8,9 @@
 
 #include <stdalign.h>
 
+#include <rte_common.h>
+#include <rte_fib6.h>
+
 /**
  * @file
  * RTE IPv6 Longest Prefix Match (LPM)
@@ -15,8 +18,6 @@
 
 /* @internal Total number of tbl24 entries. */
 #define TRIE_TBL24_NUM_ENT	(1 << 24)
-/* Maximum depth value possible for IPv6 LPM. */
-#define TRIE_MAX_DEPTH		128
 /* @internal Number of entries in a tbl8 group. */
 #define TRIE_TBL8_GRP_NUM_ENT	256ULL
 /* @internal Total number of tbl8 groups in the tbl8. */
@@ -37,18 +38,22 @@ struct rte_trie_tbl {
 	uint64_t	*tbl8;		/**< tbl8 table. */
 	uint32_t	*tbl8_pool;	/**< bitmap containing free tbl8 idxes*/
 	uint32_t	tbl8_pool_pos;
+	/* RCU config. */
+	enum rte_fib6_qsbr_mode rcu_mode; /**< Blocking, defer queue. */
+	struct rte_rcu_qsbr *v; /**< RCU QSBR variable. */
+	struct rte_rcu_qsbr_dq *dq; /**< RCU QSBR defer queue. */
 	/* tbl24 table. */
-	__extension__ alignas(RTE_CACHE_LINE_SIZE) uint64_t	tbl24[0];
+	alignas(RTE_CACHE_LINE_SIZE) uint64_t	tbl24[];
 };
 
 static inline uint32_t
-get_tbl24_idx(const uint8_t *ip)
+get_tbl24_idx(const struct rte_ipv6_addr *ip)
 {
-	return ip[0] << 16|ip[1] << 8|ip[2];
+	return ip->a[0] << 16|ip->a[1] << 8|ip->a[2];
 }
 
 static inline void *
-get_tbl24_p(struct rte_trie_tbl *dp, const uint8_t *ip, uint8_t nh_sz)
+get_tbl24_p(struct rte_trie_tbl *dp, const struct rte_ipv6_addr *ip, uint8_t nh_sz)
 {
 	uint32_t tbl24_idx;
 
@@ -107,7 +112,7 @@ is_entry_extended(uint64_t ent)
 
 #define LOOKUP_FUNC(suffix, type, nh_sz)				\
 static inline void rte_trie_lookup_bulk_##suffix(void *p,		\
-	uint8_t ips[][RTE_FIB6_IPV6_ADDR_SIZE],				\
+	const struct rte_ipv6_addr *ips,				\
 	uint64_t *next_hops, const unsigned int n)			\
 {									\
 	struct rte_trie_tbl *dp = (struct rte_trie_tbl *)p;		\
@@ -115,10 +120,10 @@ static inline void rte_trie_lookup_bulk_##suffix(void *p,		\
 	uint32_t i, j;							\
 									\
 	for (i = 0; i < n; i++) {					\
-		tmp = ((type *)dp->tbl24)[get_tbl24_idx(&ips[i][0])];	\
+		tmp = ((type *)dp->tbl24)[get_tbl24_idx(&ips[i])];	\
 		j = 3;							\
 		while (is_entry_extended(tmp)) {			\
-			tmp = ((type *)dp->tbl8)[ips[i][j++] +		\
+			tmp = ((type *)dp->tbl8)[ips[i].a[j++] +	\
 				((tmp >> 1) * TRIE_TBL8_GRP_NUM_ENT)];	\
 		}							\
 		next_hops[i] = tmp >> 1;				\
@@ -128,17 +133,22 @@ LOOKUP_FUNC(2b, uint16_t, 1)
 LOOKUP_FUNC(4b, uint32_t, 2)
 LOOKUP_FUNC(8b, uint64_t, 3)
 
-void *
-trie_create(const char *name, int socket_id, struct rte_fib6_conf *conf);
-
 void
 trie_free(void *p);
+
+void *
+trie_create(const char *name, int socket_id, struct rte_fib6_conf *conf)
+	__rte_malloc __rte_dealloc(trie_free, 1);
 
 rte_fib6_lookup_fn_t
 trie_get_lookup_fn(void *p, enum rte_fib6_lookup_type type);
 
 int
-trie_modify(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
+trie_modify(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 	uint8_t depth, uint64_t next_hop, int op);
+
+int
+trie_rcu_qsbr_add(struct rte_trie_tbl *dp, struct rte_fib6_rcu_config *cfg,
+	const char *name);
 
 #endif /* _TRIE_H_ */

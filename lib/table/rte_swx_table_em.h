@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_RTE_SWX_TABLE_EM_H__
 #define __INCLUDE_RTE_SWX_TABLE_EM_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX Exact Match Table
@@ -15,6 +11,10 @@ extern "C" {
 
 
 #include <rte_swx_table.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Exact match table operations - unoptimized. */
 extern struct rte_swx_table_ops rte_swx_table_exact_match_unoptimized_ops;

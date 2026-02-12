@@ -32,12 +32,17 @@ The user can specify below arguments in `--vdev` option.
 
 #.  ``iface``:
 
-    It is used to specify a path to connect to a QEMU virtio-net device.
+    It is used to specify a path to connect to a Vhost-user frontend or VDUSE device.
 
 #.  ``queues``:
 
-    It is used to specify the number of queues virtio-net device has.
+    It is used to specify the number of queue pairs virtio-net device has.
     (Default: 1)
+
+#.  ``client``:
+
+    It is used to specify whether the Vhost PMD acts as client or server.
+    (Default: 0 (server))
 
 #.  ``iommu-support``:
 
@@ -96,7 +101,7 @@ This section demonstrates vhost PMD with testpmd DPDK sample application.
 
     .. code-block:: console
 
-        ./dpdk-testpmd -l 0-3 -n 4 --vdev 'net_vhost0,iface=/tmp/sock0,queues=1' -- -i
+        ./dpdk-testpmd -l 0-3 --vdev 'net_vhost0,iface=/tmp/sock0,queues=1' -- -i
 
     Other basic DPDK preparations like hugepage enabling here.
     Please refer to the *DPDK Getting Started Guide* for detailed instructions.

@@ -291,7 +291,7 @@ static void fw_asrt(struct adapter *adap, u32 mbox_addr)
  * the return value is the error code indicated by FW (negated).
  */
 int t4_wr_mbox_meat_timeout(struct adapter *adap, int mbox,
-			    const void __attribute__((__may_alias__)) *cmd,
+			    const void __rte_may_alias *cmd,
 			    int size, void *rpl, bool sleep_ok, int timeout)
 {
 	/*

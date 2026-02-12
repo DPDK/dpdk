@@ -63,7 +63,7 @@ for details.
 
    .. code-block:: console
 
-      ./<build_dir>/app/dpdk-testpmd -c 0xc -a 0002:02:00.0 -- --portmask=0x1 --nb-cores=1 --port-topology=loop --rxq=1 --txq=1
+      ./<build_dir>/app/dpdk-testpmd -l 2,3 -a 0002:02:00.0 -- --portmask=0x1 --nb-cores=1 --port-topology=loop --rxq=1 --txq=1
       EAL: Detected 4 lcore(s)
       EAL: Detected 1 NUMA nodes
       EAL: Multi-process socket /var/run/dpdk/rte/mp_socket
@@ -76,7 +76,6 @@ for details.
       [ 2003.202721] vfio-pci 0002:02:00.0: vfio_cap_init: hiding cap 0x14@0x98
       EAL: Probe PCI driver: net_cn10k (177d:a063) device: 0002:02:00.0 (socket 0)
       PMD: RoC Model: cn10k
-      EAL: No legacy callbacks, legacy socket not created
       testpmd: create a new mbuf pool <mb_pool_0>: n=155456, size=2176, socket=0
       testpmd: preferred mempool ops selected: cn10k_mempool_ops
       Configuring Port 0 (socket 0)
@@ -444,6 +443,56 @@ Runtime Config Options
    With the above configuration, driver would enable packet inject from ARM cores
    to crypto to process and send back in Rx path.
 
+- ``Disable custom meta aura feature`` (default ``0``)
+
+   Custom meta aura i.e 1:N meta aura is enabled for second pass traffic by default
+   when ``inl_cpt_channel`` devarg is provided.
+   The custom meta aura feature can be disabled
+   by setting devarg ``custom_meta_aura_dis`` to ``1``.
+
+   For example::
+
+      -a 0002:02:00.0,custom_meta_aura_dis=1
+
+   With the above configuration, the driver would disable custom meta aura feature
+   for the device ``0002:02:00.0``.
+
+- ``Enable custom SA for inbound inline IPsec`` (default ``0``)
+
+   Custom SA for inbound inline IPsec can be enabled
+   by specifying ``custom_inb_sa`` devargs parameter.
+   This option needs to be given to both ethdev and inline device.
+
+   For example::
+
+      -a 0002:02:00.0,custom_inb_sa=1
+
+   With the above configuration, inline inbound IPsec post-processing
+   should be done by the application.
+
+- ``Enable force tail drop feature`` (default ``0``)
+
+   Force tail drop can be enabled
+   by specifying ``force_tail_drop`` devargs parameter.
+   This option is for OCTEON CN10K SoC family.
+
+   For example::
+
+      -a 0002:02:00.0,force_tail_drop=1
+
+   With the above configuration, descriptors are internally increased
+   and back pressures are optimized to avoid CQ full situation due to inflight packets.
+
+- ``Disable RQ XQE drop`` (default ``0``)
+
+   Rx XQE drop can be disabled
+   by specifying ``disable_xqe_drop`` devargs parameter.
+   This option is for OCTEON CN10K SoC family.
+
+   For example::
+
+      -a 0002:02:00.0,disable_xqe_drop=1
+
 .. note::
 
    Above devarg parameters are configurable per device, user needs to pass the
@@ -533,7 +582,7 @@ pattern.
 
 Example usage in testpmd::
 
-   ./dpdk-testpmd -c 3 -w 0002:02:00.0,switch_header=exdsa -- -i \
+   ./dpdk-testpmd -l 0,1 -w 0002:02:00.0,switch_header=exdsa -- -i \
                   --rx-offloads=0x00080000 --rxq 8 --txq 8
    testpmd> flow create 0 ingress pattern eth / raw relative is 0 pattern \
           spec ab pattern mask ab offset is 4 / end actions queue index 1 / end
@@ -629,6 +678,18 @@ Runtime Config Options for inline device
    With the above configuration, driver would poll for soft expiry events every
    1000 usec.
 
+- ``CPT completion queue enable for outbound expiry packet`` (default ``0``)
+
+   CPT completion queue can be enabled for outbound expiry packet processing
+   by specifying ``cpt_cq_ena`` devargs parameter.
+
+   For example::
+
+      -a 0002:1d:00.0,cpt_cq_ena=1
+
+   With the above configuration, CPT completion queue will be enabled
+   for outbound expiry packet handling on the inline device.
+
 - ``Rx Inject Enable inbound inline IPsec for second pass`` (default ``0``)
 
    Rx packet inject feature for inbound inline IPsec processing can be enabled
@@ -641,6 +702,19 @@ Runtime Config Options for inline device
 
    With the above configuration, driver would enable packet inject from ARM cores
    to crypto to process and send back in Rx path.
+
+- ``Enable custom SA for inbound inline IPsec`` (default ``0``)
+
+   Custom SA for inbound inline IPsec can be enabled
+   by specifying ``custom_inb_sa`` devargs parameter
+   with both inline device and ethdev.
+
+   For example::
+
+      -a 0002:1d:00.0,custom_inb_sa=1
+
+   With the above configuration, inline inbound IPsec post-processing
+   should be done by the application.
 
 Port Representors
 -----------------
@@ -684,11 +758,11 @@ Debugging Options
    +---+------------+-------------------------------------------------------+
    | # | Component  | EAL log command                                       |
    +===+============+=======================================================+
-   | 1 | NIX        | --log-level='pmd\.net.cnxk,8'                         |
+   | 1 | NIX        | --log-level='pmd\.common.cnxk\.nix,8'                 |
    +---+------------+-------------------------------------------------------+
-   | 2 | NPC        | --log-level='pmd\.net.cnxk\.flow,8'                   |
+   | 2 | NPC        | --log-level='pmd\.common.cnxk\.flow,8'                |
    +---+------------+-------------------------------------------------------+
-   | 3 | REP        | --log-level='pmd\.net.cnxk\.rep,8'                    |
+   | 3 | REP        | --log-level='pmd\.common.cnxk\.rep,8'                 |
    +---+------------+-------------------------------------------------------+
-   | 4 | ESW        | --log-level='pmd\.net.cnxk\.esw,8'                    |
+   | 4 | ESW        | --log-level='pmd\.common.cnxk\.esw,8'                 |
    +---+------------+-------------------------------------------------------+

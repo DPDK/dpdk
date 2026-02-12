@@ -9,13 +9,13 @@
 #  error Platform must be built with RTE_FORCE_INTRINSICS
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <rte_common.h>
 #include "generic/rte_byteorder.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* ARM architecture is bi-endian (both big and little). */
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN

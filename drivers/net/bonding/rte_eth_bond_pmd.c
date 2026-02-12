@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <netinet/in.h>
 
+#include <rte_bitops.h>
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <ethdev_driver.h>
@@ -191,7 +192,7 @@ bond_ethdev_8023ad_flow_verify(struct rte_eth_dev *bond_dev,
 	ret = rte_eth_dev_info_get(member_port, &member_info);
 	if (ret != 0) {
 		RTE_BOND_LOG(ERR,
-			"%s: Error during getting device (port %u) info: %s\n",
+			"%s: Error during getting device (port %u) info: %s",
 			__func__, member_port, strerror(-ret));
 
 		return ret;
@@ -221,7 +222,7 @@ bond_8023ad_slow_pkt_hw_filter_supported(uint16_t port_id) {
 		ret = rte_eth_dev_info_get(bond_dev->data->port_id, &bond_info);
 		if (ret != 0) {
 			RTE_BOND_LOG(ERR,
-				"%s: Error during getting device (port %u) info: %s\n",
+				"%s: Error during getting device (port %u) info: %s",
 				__func__, bond_dev->data->port_id,
 				strerror(-ret));
 
@@ -491,9 +492,9 @@ update_client_stats(uint32_t addr, uint16_t port, uint32_t *TXorRXindicator)
 
 #ifdef RTE_LIBRTE_BOND_DEBUG_ALB
 #define MODE6_DEBUG(info, src_ip, dst_ip, eth_h, arp_op, port, burstnumber) \
-	rte_log(RTE_LOG_DEBUG, bond_logtype,				\
+	RTE_LOG_LINE(DEBUG, BOND,				\
 		"%s port:%d SrcMAC:" RTE_ETHER_ADDR_PRT_FMT " SrcIP:%s " \
-		"DstMAC:" RTE_ETHER_ADDR_PRT_FMT " DstIP:%s %s %d\n", \
+		"DstMAC:" RTE_ETHER_ADDR_PRT_FMT " DstIP:%s %s %d", \
 		info,							\
 		port,							\
 		RTE_ETHER_ADDR_BYTES(&eth_h->src_addr),                  \
@@ -689,10 +690,8 @@ ipv4_hash(struct rte_ipv4_hdr *ipv4_hdr)
 static inline uint32_t
 ipv6_hash(struct rte_ipv6_hdr *ipv6_hdr)
 {
-	unaligned_uint32_t *word_src_addr =
-		(unaligned_uint32_t *)&(ipv6_hdr->src_addr[0]);
-	unaligned_uint32_t *word_dst_addr =
-		(unaligned_uint32_t *)&(ipv6_hdr->dst_addr[0]);
+	unaligned_uint32_t *word_src_addr = (unaligned_uint32_t *)&ipv6_hdr->src_addr;
+	unaligned_uint32_t *word_dst_addr = (unaligned_uint32_t *)&ipv6_hdr->dst_addr;
 
 	return (word_src_addr[0] ^ word_dst_addr[0]) ^
 			(word_src_addr[1] ^ word_dst_addr[1]) ^
@@ -1685,10 +1684,26 @@ member_configure_slow_queue(struct rte_eth_dev *bonding_eth_dev,
 	}
 
 	if (internals->mode4.dedicated_queues.enabled == 1) {
-		/* Configure slow Rx queue */
+		struct rte_eth_dev_info member_info = {};
+		uint16_t nb_rx_desc = SLOW_RX_QUEUE_HW_DEFAULT_SIZE;
+		uint16_t nb_tx_desc = SLOW_TX_QUEUE_HW_DEFAULT_SIZE;
 
+		errval = rte_eth_dev_info_get(member_eth_dev->data->port_id,
+				&member_info);
+		if (errval != 0) {
+			RTE_BOND_LOG(ERR,
+					"rte_eth_dev_info_get: port=%d, err (%d)",
+					member_eth_dev->data->port_id,
+					errval);
+			return errval;
+		}
+
+		if (member_info.rx_desc_lim.nb_min != 0)
+			nb_rx_desc = member_info.rx_desc_lim.nb_min;
+
+		/* Configure slow Rx queue */
 		errval = rte_eth_rx_queue_setup(member_eth_dev->data->port_id,
-				internals->mode4.dedicated_queues.rx_qid, 128,
+				internals->mode4.dedicated_queues.rx_qid, nb_rx_desc,
 				rte_eth_dev_socket_id(member_eth_dev->data->port_id),
 				NULL, port->slow_pool);
 		if (errval != 0) {
@@ -1700,8 +1715,11 @@ member_configure_slow_queue(struct rte_eth_dev *bonding_eth_dev,
 			return errval;
 		}
 
+		if (member_info.tx_desc_lim.nb_min != 0)
+			nb_tx_desc = member_info.tx_desc_lim.nb_min;
+
 		errval = rte_eth_tx_queue_setup(member_eth_dev->data->port_id,
-				internals->mode4.dedicated_queues.tx_qid, 512,
+				internals->mode4.dedicated_queues.tx_qid, nb_tx_desc,
 				rte_eth_dev_socket_id(member_eth_dev->data->port_id),
 				NULL);
 		if (errval != 0) {
@@ -1886,12 +1904,13 @@ member_start(struct rte_eth_dev *bonding_eth_dev,
 		}
 	}
 
-	/* If RSS is enabled for bonding, synchronize RETA */
-	if (bonding_eth_dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS) {
+	/*
+	 * If flow-isolation is not enabled, then check whether RSS is enabled for
+	 * bonding, synchronize RETA
+	 */
+	if (internals->flow_isolated_valid == 0 &&
+		(bonding_eth_dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS)) {
 		int i;
-		struct bond_dev_private *internals;
-
-		internals = bonding_eth_dev->data->dev_private;
 
 		for (i = 0; i < internals->member_count; i++) {
 			if (internals->members[i].port_id == member_port_id) {
@@ -2289,7 +2308,7 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			ret = rte_eth_dev_info_get(member.port_id, &member_info);
 			if (ret != 0) {
 				RTE_BOND_LOG(ERR,
-					"%s: Error during getting device (port %u) info: %s\n",
+					"%s: Error during getting device (port %u) info: %s",
 					__func__,
 					member.port_id,
 					strerror(-ret));
@@ -2475,8 +2494,8 @@ bond_ethdev_member_link_status_change_monitor(void *cb_arg)
 			polling_member_found = 1;
 
 			/* Update member link status */
-			(*member_ethdev->dev_ops->link_update)(member_ethdev,
-					internals->members[i].link_status_wait_to_complete);
+			member_ethdev->dev_ops->link_update(member_ethdev,
+					      internals->members[i].link_status_wait_to_complete);
 
 			/* if link status has changed since last checked then call lsc
 			 * event callback */
@@ -2617,11 +2636,12 @@ bond_ethdev_link_update(struct rte_eth_dev *ethdev, int wait_to_complete)
 
 
 static int
-bond_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+bond_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		      struct eth_queue_stats *qstats __rte_unused)
 {
 	struct bond_dev_private *internals = dev->data->dev_private;
 	struct rte_eth_stats member_stats;
-	int i, j;
+	int i;
 
 	for (i = 0; i < internals->member_count; i++) {
 		rte_eth_stats_get(internals->members[i].port_id, &member_stats);
@@ -2634,15 +2654,6 @@ bond_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		stats->ierrors += member_stats.ierrors;
 		stats->oerrors += member_stats.oerrors;
 		stats->rx_nombuf += member_stats.rx_nombuf;
-
-		for (j = 0; j < RTE_ETHDEV_QUEUE_STAT_CNTRS; j++) {
-			stats->q_ipackets[j] += member_stats.q_ipackets[j];
-			stats->q_opackets[j] += member_stats.q_opackets[j];
-			stats->q_ibytes[j] += member_stats.q_ibytes[j];
-			stats->q_obytes[j] += member_stats.q_obytes[j];
-			stats->q_errors[j] += member_stats.q_errors[j];
-		}
-
 	}
 
 	return 0;
@@ -2784,6 +2795,7 @@ bond_ethdev_promiscuous_update(struct rte_eth_dev *dev)
 {
 	struct bond_dev_private *internals = dev->data->dev_private;
 	uint16_t port_id = internals->current_primary_port;
+	int ret;
 
 	switch (internals->mode) {
 	case BONDING_MODE_ROUND_ROBIN:
@@ -2803,10 +2815,19 @@ bond_ethdev_promiscuous_update(struct rte_eth_dev *dev)
 		 * mode should be set to new primary member according to bonding
 		 * device.
 		 */
-		if (rte_eth_promiscuous_get(internals->port_id) == 1)
-			rte_eth_promiscuous_enable(port_id);
-		else
-			rte_eth_promiscuous_disable(port_id);
+		if (rte_eth_promiscuous_get(internals->port_id) == 1) {
+			ret = rte_eth_promiscuous_enable(port_id);
+			if (ret != 0)
+				RTE_BOND_LOG(ERR,
+					     "Failed to enable promiscuous mode for port %u: %s",
+					     port_id, rte_strerror(-ret));
+		} else {
+			ret = rte_eth_promiscuous_disable(port_id);
+			if (ret != 0)
+				RTE_BOND_LOG(ERR,
+					     "Failed to disable promiscuous mode for port %u: %s",
+					     port_id, rte_strerror(-ret));
+		}
 	}
 
 	return 0;
@@ -3194,7 +3215,7 @@ bond_ethdev_rss_hash_update(struct rte_eth_dev *dev,
 	struct bond_dev_private *internals = dev->data->dev_private;
 	struct rte_eth_rss_conf bond_rss_conf;
 
-	memcpy(&bond_rss_conf, rss_conf, sizeof(struct rte_eth_rss_conf));
+	bond_rss_conf = *rss_conf;
 
 	bond_rss_conf.rss_hf &= internals->flow_type_rss_offloads;
 
@@ -3247,7 +3268,7 @@ bond_ethdev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	for (i = 0; i < internals->member_count; i++) {
 		member_eth_dev = &rte_eth_devices[internals->members[i].port_id];
-		if (*member_eth_dev->dev_ops->mtu_set == NULL) {
+		if (member_eth_dev->dev_ops->mtu_set == NULL) {
 			rte_spinlock_unlock(&internals->lock);
 			return -ENOTSUP;
 		}
@@ -3297,8 +3318,8 @@ bond_ethdev_mac_addr_add(struct rte_eth_dev *dev,
 
 	for (i = 0; i < internals->member_count; i++) {
 		member_eth_dev = &rte_eth_devices[internals->members[i].port_id];
-		if (*member_eth_dev->dev_ops->mac_addr_add == NULL ||
-			 *member_eth_dev->dev_ops->mac_addr_remove == NULL) {
+		if (member_eth_dev->dev_ops->mac_addr_add == NULL ||
+		    member_eth_dev->dev_ops->mac_addr_remove == NULL) {
 			ret = -ENOTSUP;
 			goto end;
 		}
@@ -3333,7 +3354,7 @@ bond_ethdev_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 
 	for (i = 0; i < internals->member_count; i++) {
 		member_eth_dev = &rte_eth_devices[internals->members[i].port_id];
-		if (*member_eth_dev->dev_ops->mac_addr_remove == NULL)
+		if (member_eth_dev->dev_ops->mac_addr_remove == NULL)
 			goto end;
 	}
 
@@ -3984,7 +4005,7 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 		 * Two '1' in binary of 'link_speeds': bit0 and a unique
 		 * speed bit.
 		 */
-		if (__builtin_popcountl(link_speeds) != 2) {
+		if (rte_popcount64(link_speeds) != 2) {
 			RTE_BOND_LOG(ERR, "please set a unique speed.");
 			return -EINVAL;
 		}

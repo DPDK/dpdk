@@ -8,7 +8,7 @@ The following are a list of event device PMDs, which can be used from an
 application through the eventdev API.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     :numbered:
 
     overview

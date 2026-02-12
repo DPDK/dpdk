@@ -229,8 +229,8 @@ find_biggest_element(struct malloc_heap *heap, size_t *size,
  * the new element after releasing the lock.
  */
 static void *
-heap_alloc(struct malloc_heap *heap, const char *type __rte_unused, size_t size,
-		unsigned int flags, size_t align, size_t bound, bool contig)
+heap_alloc(struct malloc_heap *heap, size_t size, unsigned int flags,
+	   size_t align, size_t bound, bool contig)
 {
 	struct malloc_elem *elem;
 	size_t user_size = size;
@@ -255,8 +255,7 @@ heap_alloc(struct malloc_heap *heap, const char *type __rte_unused, size_t size,
 }
 
 static void *
-heap_alloc_biggest(struct malloc_heap *heap, const char *type __rte_unused,
-		unsigned int flags, size_t align, bool contig)
+heap_alloc_biggest(struct malloc_heap *heap, unsigned int flags, size_t align, bool contig)
 {
 	struct malloc_elem *elem;
 	size_t size;
@@ -640,8 +639,7 @@ alloc_more_mem_on_socket(struct malloc_heap *heap, size_t size, int socket,
 
 /* this will try lower page sizes first */
 static void *
-malloc_heap_alloc_on_heap_id(const char *type, size_t size,
-		unsigned int heap_id, unsigned int flags, size_t align,
+malloc_heap_alloc_on_heap_id(size_t size, unsigned int heap_id, unsigned int flags, size_t align,
 		size_t bound, bool contig)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
@@ -658,7 +656,7 @@ malloc_heap_alloc_on_heap_id(const char *type, size_t size,
 
 	/* for legacy mode, try once and with all flags */
 	if (internal_conf->legacy_mem) {
-		ret = heap_alloc(heap, type, size, flags, align, bound, contig);
+		ret = heap_alloc(heap, size, flags, align, bound, contig);
 		goto alloc_unlock;
 	}
 
@@ -679,7 +677,7 @@ malloc_heap_alloc_on_heap_id(const char *type, size_t size,
 	if (socket_id < 0)
 		size_flags |= RTE_MEMZONE_SIZE_HINT_ONLY;
 
-	ret = heap_alloc(heap, type, size, size_flags, align, bound, contig);
+	ret = heap_alloc(heap, size, size_flags, align, bound, contig);
 	if (ret != NULL)
 		goto alloc_unlock;
 
@@ -689,7 +687,7 @@ malloc_heap_alloc_on_heap_id(const char *type, size_t size,
 
 	if (!alloc_more_mem_on_socket(heap, size, socket_id, flags, align,
 			bound, contig)) {
-		ret = heap_alloc(heap, type, size, flags, align, bound, contig);
+		ret = heap_alloc(heap, size, flags, align, bound, contig);
 
 		/* this should have succeeded */
 		if (ret == NULL)
@@ -712,8 +710,9 @@ malloc_get_numa_socket(void)
 
 	/* for control threads, return first socket where memory is available */
 	for (idx = 0; idx < rte_socket_count(); idx++) {
-		socket_id = rte_socket_id_by_idx(idx);
-		if (conf->socket_mem[socket_id] != 0)
+		int ret = rte_socket_id_by_idx(idx);
+		socket_id = (unsigned int)ret;
+		if (ret != -1 && conf->numa_mem[socket_id] != 0)
 			return socket_id;
 	}
 	/* We couldn't quickly find a NUMA node where memory was available,
@@ -730,8 +729,8 @@ malloc_get_numa_socket(void)
 }
 
 void *
-malloc_heap_alloc(const char *type, size_t size, int socket_arg,
-		unsigned int flags, size_t align, size_t bound, bool contig)
+malloc_heap_alloc(size_t size, int socket_arg, unsigned int flags,
+		  size_t align, size_t bound, bool contig)
 {
 	int socket, heap_id, i;
 	void *ret;
@@ -754,8 +753,7 @@ malloc_heap_alloc(const char *type, size_t size, int socket_arg,
 	if (heap_id < 0)
 		return NULL;
 
-	ret = malloc_heap_alloc_on_heap_id(type, size, heap_id, flags, align,
-			bound, contig);
+	ret = malloc_heap_alloc_on_heap_id(size, heap_id, flags, align, bound, contig);
 	if (ret != NULL || socket_arg != SOCKET_ID_ANY)
 		return ret;
 
@@ -765,8 +763,7 @@ malloc_heap_alloc(const char *type, size_t size, int socket_arg,
 	for (i = 0; i < (int) rte_socket_count(); i++) {
 		if (i == heap_id)
 			continue;
-		ret = malloc_heap_alloc_on_heap_id(type, size, i, flags, align,
-				bound, contig);
+		ret = malloc_heap_alloc_on_heap_id(size, i, flags, align, bound, contig);
 		if (ret != NULL)
 			return ret;
 	}
@@ -774,7 +771,7 @@ malloc_heap_alloc(const char *type, size_t size, int socket_arg,
 }
 
 static void *
-heap_alloc_biggest_on_heap_id(const char *type, unsigned int heap_id,
+heap_alloc_biggest_on_heap_id(unsigned int heap_id,
 		unsigned int flags, size_t align, bool contig)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
@@ -785,7 +782,7 @@ heap_alloc_biggest_on_heap_id(const char *type, unsigned int heap_id,
 
 	align = align == 0 ? 1 : align;
 
-	ret = heap_alloc_biggest(heap, type, flags, align, contig);
+	ret = heap_alloc_biggest(heap, flags, align, contig);
 
 	rte_spinlock_unlock(&(heap->lock));
 
@@ -793,8 +790,7 @@ heap_alloc_biggest_on_heap_id(const char *type, unsigned int heap_id,
 }
 
 void *
-malloc_heap_alloc_biggest(const char *type, int socket_arg, unsigned int flags,
-		size_t align, bool contig)
+malloc_heap_alloc_biggest(int socket_arg, unsigned int flags, size_t align, bool contig)
 {
 	int socket, i, cur_socket, heap_id;
 	void *ret;
@@ -817,8 +813,7 @@ malloc_heap_alloc_biggest(const char *type, int socket_arg, unsigned int flags,
 	if (heap_id < 0)
 		return NULL;
 
-	ret = heap_alloc_biggest_on_heap_id(type, heap_id, flags, align,
-			contig);
+	ret = heap_alloc_biggest_on_heap_id(heap_id, flags, align, contig);
 	if (ret != NULL || socket_arg != SOCKET_ID_ANY)
 		return ret;
 
@@ -827,8 +822,7 @@ malloc_heap_alloc_biggest(const char *type, int socket_arg, unsigned int flags,
 		cur_socket = rte_socket_id_by_idx(i);
 		if (cur_socket == socket)
 			continue;
-		ret = heap_alloc_biggest_on_heap_id(type, i, flags, align,
-				contig);
+		ret = heap_alloc_biggest_on_heap_id(i, flags, align, contig);
 		if (ret != NULL)
 			return ret;
 	}
@@ -1050,9 +1044,9 @@ free_unlock:
 	/* if we unmapped some memory, we need to do additional work for ASan */
 	if (unmapped) {
 		void *asan_end = RTE_PTR_ADD(asan_ptr, asan_data_len);
-		void *aligned_end = RTE_PTR_ADD(aligned_start, aligned_len);
 		void *aligned_trailer = RTE_PTR_SUB(aligned_start,
 				MALLOC_ELEM_TRAILER_LEN);
+		aligned_end = RTE_PTR_ADD(aligned_start, aligned_len);
 
 		/*
 		 * There was a memory area that was unmapped. This memory area

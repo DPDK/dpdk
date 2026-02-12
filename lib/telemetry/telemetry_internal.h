@@ -26,6 +26,17 @@ enum rte_telemetry_legacy_data_req {
 };
 
 /**
+ * Used for handling data received over a telemetry socket.
+ *
+ * @param sock_id
+ * ID for the socket to be used by the handler.
+ *
+ * @return
+ * Void.
+ */
+typedef void * (*telemetry_sock_handler)(void *sock_id);
+
+/**
  * This telemetry callback is used when registering a legacy telemetry command.
  * It handles getting and formatting stats to be returned to telemetry when
  * requested. Stats up to buf_len in length are put in the buffer.

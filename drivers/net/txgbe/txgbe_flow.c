@@ -361,7 +361,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 
 	if (item->type != RTE_FLOW_ITEM_TYPE_END &&
 		(!item->spec && !item->mask)) {
-		goto action;
+		goto item_end;
 	}
 
 	/* get the TCP/UDP/SCTP info */
@@ -490,6 +490,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		goto action;
 	}
 
+item_end:
 	/* check if the next not void item is END */
 	item = next_no_void_pattern(pattern, item);
 	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
@@ -579,7 +580,11 @@ txgbe_parse_ntuple_filter(struct rte_eth_dev *dev,
 			  struct rte_eth_ntuple_filter *filter,
 			  struct rte_flow_error *error)
 {
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
 	int ret;
+
+	if (filter_info->ntuple_is_full)
+		return -ENOSYS;
 
 	ret = cons_parse_ntuple_filter(attr, pattern, actions, filter, error);
 
@@ -822,6 +827,13 @@ txgbe_parse_ethertype_filter(struct rte_eth_dev *dev,
 			     struct rte_flow_error *error)
 {
 	int ret;
+
+	if (!txgbe_is_pf(TXGBE_DEV_HW(dev))) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   NULL, "Flow type not suppotted yet on VF");
+		return -rte_errno;
+	}
 
 	ret = cons_parse_ethertype_filter(attr, pattern,
 					actions, filter, error);
@@ -1109,6 +1121,13 @@ txgbe_parse_syn_filter(struct rte_eth_dev *dev,
 {
 	int ret;
 
+	if (!txgbe_is_pf(TXGBE_DEV_HW(dev))) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   NULL, "Flow type not suppotted yet on VF");
+		return -rte_errno;
+	}
+
 	ret = cons_parse_syn_filter(attr, pattern,
 					actions, filter, error);
 
@@ -1312,6 +1331,13 @@ txgbe_parse_l2_tn_filter(struct rte_eth_dev *dev,
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	uint16_t vf_num;
 
+	if (!txgbe_is_pf(TXGBE_DEV_HW(dev))) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   NULL, "Flow type not suppotted yet on VF");
+		return -rte_errno;
+	}
+
 	ret = cons_parse_l2_tn_filter(dev, attr, pattern,
 				actions, l2_tn_filter, error);
 
@@ -1332,7 +1358,6 @@ txgbe_parse_fdir_act_attr(const struct rte_flow_attr *attr,
 {
 	const struct rte_flow_action *act;
 	const struct rte_flow_action_queue *act_q;
-	const struct rte_flow_action_mark *mark;
 
 	/* parse attr */
 	/* must be input direction */
@@ -1397,10 +1422,9 @@ txgbe_parse_fdir_act_attr(const struct rte_flow_attr *attr,
 		rule->fdirflags = TXGBE_FDIRPICMD_DROP;
 	}
 
-	/* check if the next not void item is MARK */
+	/* nothing else supported */
 	act = next_no_void_action(actions, act);
-	if (act->type != RTE_FLOW_ACTION_TYPE_MARK &&
-		act->type != RTE_FLOW_ACTION_TYPE_END) {
+	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
 		memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1409,21 +1433,6 @@ txgbe_parse_fdir_act_attr(const struct rte_flow_attr *attr,
 	}
 
 	rule->soft_id = 0;
-
-	if (act->type == RTE_FLOW_ACTION_TYPE_MARK) {
-		mark = (const struct rte_flow_action_mark *)act->conf;
-		rule->soft_id = mark->id;
-		act = next_no_void_action(actions, act);
-	}
-
-	/* check if the next not void item is END */
-	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
-		memset(rule, 0, sizeof(struct txgbe_fdir_rule));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ACTION,
-			act, "Not supported action.");
-		return -rte_errno;
-	}
 
 	return 0;
 }
@@ -1486,8 +1495,41 @@ static inline uint8_t signature_match(const struct rte_flow_item pattern[])
 	return 0;
 }
 
+static void
+txgbe_fdir_parse_flow_type(struct txgbe_atr_input *input, u8 ptid, bool tun)
+{
+	if (!tun)
+		ptid = TXGBE_PTID_PKT_IP;
+
+	switch (input->flow_type & TXGBE_ATR_L4TYPE_MASK) {
+	case TXGBE_ATR_L4TYPE_UDP:
+		ptid |= TXGBE_PTID_TYP_UDP;
+		break;
+	case TXGBE_ATR_L4TYPE_TCP:
+		ptid |= TXGBE_PTID_TYP_TCP;
+		break;
+	case TXGBE_ATR_L4TYPE_SCTP:
+		ptid |= TXGBE_PTID_TYP_SCTP;
+		break;
+	default:
+		break;
+	}
+
+	switch (input->flow_type & TXGBE_ATR_L3TYPE_MASK) {
+	case TXGBE_ATR_L3TYPE_IPV4:
+		break;
+	case TXGBE_ATR_L3TYPE_IPV6:
+		ptid |= TXGBE_PTID_PKT_IPV6;
+		break;
+	default:
+		break;
+	}
+
+	input->pkt_type = cpu_to_be16(ptid);
+}
+
 /**
- * Parse the rule to see if it is a IP or MAC VLAN flow director rule.
+ * Parse the rule to see if it is a IP flow director rule.
  * And get the flow director filter info BTW.
  * UDP/TCP/SCTP PATTERN:
  * The first not void item can be ETH or IPV4 or IPV6
@@ -1503,8 +1545,6 @@ static inline uint8_t signature_match(const struct rte_flow_item pattern[])
  * The next not void item must be END.
  * ACTION:
  * The first not void action should be QUEUE or DROP.
- * The second not void optional action should be MARK,
- * mark_id is a uint32_t number.
  * The next not void action should be END.
  * UDP/TCP/SCTP pattern example:
  * ITEM		Spec			Mask
@@ -1554,7 +1594,6 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 	const struct rte_flow_item_sctp *sctp_mask;
 	const struct rte_flow_item_raw *raw_mask;
 	const struct rte_flow_item_raw *raw_spec;
-	u32 ptype = 0;
 	uint8_t j;
 
 	if (!pattern) {
@@ -1584,6 +1623,9 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 	 */
 	memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 	memset(&rule->mask, 0, sizeof(struct txgbe_hw_fdir_mask));
+	rule->mask.pkt_type_mask = TXGBE_ATR_TYPE_MASK_L3P |
+				   TXGBE_ATR_TYPE_MASK_L4P;
+	memset(&rule->input, 0, sizeof(struct txgbe_atr_input));
 
 	/**
 	 * The first not void item should be
@@ -1686,7 +1728,9 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 			}
 		} else {
 			if (item->type != RTE_FLOW_ITEM_TYPE_IPV4 &&
-					item->type != RTE_FLOW_ITEM_TYPE_VLAN) {
+			    item->type != RTE_FLOW_ITEM_TYPE_VLAN &&
+			    item->type != RTE_FLOW_ITEM_TYPE_IPV6 &&
+			    item->type != RTE_FLOW_ITEM_TYPE_RAW) {
 				memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM,
@@ -1694,6 +1738,8 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 				return -rte_errno;
 			}
 		}
+		if (item->type == RTE_FLOW_ITEM_TYPE_VLAN)
+			item = next_no_fuzzy_pattern(pattern, item);
 	}
 
 	/* Get the IPV4 info. */
@@ -1703,7 +1749,7 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 		 * as we must have a flow type.
 		 */
 		rule->input.flow_type = TXGBE_ATR_FLOW_TYPE_IPV4;
-		ptype = txgbe_ptype_table[TXGBE_PT_IPV4];
+		rule->mask.pkt_type_mask &= ~TXGBE_ATR_TYPE_MASK_L3P;
 		/*Not supported last point for range*/
 		if (item->last) {
 			rte_flow_error_set(error, EINVAL,
@@ -1715,31 +1761,26 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 		 * Only care about src & dst addresses,
 		 * others should be masked.
 		 */
-		if (!item->mask) {
-			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by fdir filter");
-			return -rte_errno;
+		if (item->mask) {
+			rule->b_mask = TRUE;
+			ipv4_mask = item->mask;
+			if (ipv4_mask->hdr.version_ihl ||
+			    ipv4_mask->hdr.type_of_service ||
+			    ipv4_mask->hdr.total_length ||
+			    ipv4_mask->hdr.packet_id ||
+			    ipv4_mask->hdr.fragment_offset ||
+			    ipv4_mask->hdr.time_to_live ||
+			    ipv4_mask->hdr.next_proto_id ||
+			    ipv4_mask->hdr.hdr_checksum) {
+				memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item, "Not supported by fdir filter");
+				return -rte_errno;
+			}
+			rule->mask.dst_ipv4_mask = ipv4_mask->hdr.dst_addr;
+			rule->mask.src_ipv4_mask = ipv4_mask->hdr.src_addr;
 		}
-		rule->b_mask = TRUE;
-		ipv4_mask = item->mask;
-		if (ipv4_mask->hdr.version_ihl ||
-		    ipv4_mask->hdr.type_of_service ||
-		    ipv4_mask->hdr.total_length ||
-		    ipv4_mask->hdr.packet_id ||
-		    ipv4_mask->hdr.fragment_offset ||
-		    ipv4_mask->hdr.time_to_live ||
-		    ipv4_mask->hdr.next_proto_id ||
-		    ipv4_mask->hdr.hdr_checksum) {
-			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by fdir filter");
-			return -rte_errno;
-		}
-		rule->mask.dst_ipv4_mask = ipv4_mask->hdr.dst_addr;
-		rule->mask.src_ipv4_mask = ipv4_mask->hdr.src_addr;
 
 		if (item->spec) {
 			rule->b_spec = TRUE;
@@ -1775,16 +1816,9 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 		 * as we must have a flow type.
 		 */
 		rule->input.flow_type = TXGBE_ATR_FLOW_TYPE_IPV6;
-		ptype = txgbe_ptype_table[TXGBE_PT_IPV6];
+		rule->mask.pkt_type_mask &= ~TXGBE_ATR_TYPE_MASK_L3P;
 
-		/**
-		 * 1. must signature match
-		 * 2. not support last
-		 * 3. mask must not null
-		 */
-		if (rule->mode != RTE_FDIR_MODE_SIGNATURE ||
-		    item->last ||
-		    !item->mask) {
+		if (item->last) {
 			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -1792,42 +1826,42 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 			return -rte_errno;
 		}
 
-		rule->b_mask = TRUE;
-		ipv6_mask = item->mask;
-		if (ipv6_mask->hdr.vtc_flow ||
-		    ipv6_mask->hdr.payload_len ||
-		    ipv6_mask->hdr.proto ||
-		    ipv6_mask->hdr.hop_limits) {
-			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by fdir filter");
-			return -rte_errno;
-		}
-
-		/* check src addr mask */
-		for (j = 0; j < 16; j++) {
-			if (ipv6_mask->hdr.src_addr[j] == UINT8_MAX) {
-				rule->mask.src_ipv6_mask |= 1 << j;
-			} else if (ipv6_mask->hdr.src_addr[j] != 0) {
+		if (item->mask) {
+			rule->b_mask = TRUE;
+			ipv6_mask = item->mask;
+			if (ipv6_mask->hdr.vtc_flow ||
+			    ipv6_mask->hdr.payload_len ||
+			    ipv6_mask->hdr.proto ||
+			    ipv6_mask->hdr.hop_limits) {
 				memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM,
 					item, "Not supported by fdir filter");
 				return -rte_errno;
 			}
-		}
 
-		/* check dst addr mask */
-		for (j = 0; j < 16; j++) {
-			if (ipv6_mask->hdr.dst_addr[j] == UINT8_MAX) {
-				rule->mask.dst_ipv6_mask |= 1 << j;
-			} else if (ipv6_mask->hdr.dst_addr[j] != 0) {
-				memset(rule, 0, sizeof(struct txgbe_fdir_rule));
-				rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ITEM,
-					item, "Not supported by fdir filter");
-				return -rte_errno;
+			/* check src addr mask */
+			for (j = 0; j < 16; j++) {
+				if (ipv6_mask->hdr.src_addr.a[j] == UINT8_MAX) {
+					rule->mask.src_ipv6_mask |= 1 << j;
+				} else if (ipv6_mask->hdr.src_addr.a[j] != 0) {
+					memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item, "Not supported by fdir filter");
+					return -rte_errno;
+				}
+			}
+
+			/* check dst addr mask */
+			for (j = 0; j < 16; j++) {
+				if (ipv6_mask->hdr.dst_addr.a[j] != 0) {
+					memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item, "Not supported by fdir filter");
+					return -rte_errno;
+				}
 			}
 		}
 
@@ -1835,9 +1869,9 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 			rule->b_spec = TRUE;
 			ipv6_spec = item->spec;
 			rte_memcpy(rule->input.src_ip,
-				   ipv6_spec->hdr.src_addr, 16);
+				   &ipv6_spec->hdr.src_addr, 16);
 			rte_memcpy(rule->input.dst_ip,
-				   ipv6_spec->hdr.dst_addr, 16);
+				   &ipv6_spec->hdr.dst_addr, 16);
 		}
 
 		/**
@@ -1865,10 +1899,8 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 		 * as we must have a flow type.
 		 */
 		rule->input.flow_type |= TXGBE_ATR_L4TYPE_TCP;
-		if (rule->input.flow_type & TXGBE_ATR_FLOW_TYPE_IPV6)
-			ptype = txgbe_ptype_table[TXGBE_PT_IPV6_TCP];
-		else
-			ptype = txgbe_ptype_table[TXGBE_PT_IPV4_TCP];
+		rule->mask.pkt_type_mask &= ~TXGBE_ATR_TYPE_MASK_L4P;
+
 		/*Not supported last point for range*/
 		if (item->last) {
 			rte_flow_error_set(error, EINVAL,
@@ -1932,10 +1964,8 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 		 * as we must have a flow type.
 		 */
 		rule->input.flow_type |= TXGBE_ATR_L4TYPE_UDP;
-		if (rule->input.flow_type & TXGBE_ATR_FLOW_TYPE_IPV6)
-			ptype = txgbe_ptype_table[TXGBE_PT_IPV6_UDP];
-		else
-			ptype = txgbe_ptype_table[TXGBE_PT_IPV4_UDP];
+		rule->mask.pkt_type_mask &= ~TXGBE_ATR_TYPE_MASK_L4P;
+
 		/*Not supported last point for range*/
 		if (item->last) {
 			rte_flow_error_set(error, EINVAL,
@@ -1994,10 +2024,8 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 		 * as we must have a flow type.
 		 */
 		rule->input.flow_type |= TXGBE_ATR_L4TYPE_SCTP;
-		if (rule->input.flow_type & TXGBE_ATR_FLOW_TYPE_IPV6)
-			ptype = txgbe_ptype_table[TXGBE_PT_IPV6_SCTP];
-		else
-			ptype = txgbe_ptype_table[TXGBE_PT_IPV4_SCTP];
+		rule->mask.pkt_type_mask &= ~TXGBE_ATR_TYPE_MASK_L4P;
+
 		/*Not supported last point for range*/
 		if (item->last) {
 			rte_flow_error_set(error, EINVAL,
@@ -2038,19 +2066,6 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 			rule->input.dst_port =
 				sctp_spec->hdr.dst_port;
 		}
-		/* others even sctp port is not supported */
-		sctp_mask = item->mask;
-		if (sctp_mask &&
-			(sctp_mask->hdr.src_port ||
-			 sctp_mask->hdr.dst_port ||
-			 sctp_mask->hdr.tag ||
-			 sctp_mask->hdr.cksum)) {
-			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by fdir filter");
-			return -rte_errno;
-		}
 
 		item = next_no_fuzzy_pattern(pattern, item);
 		if (item->type != RTE_FLOW_ITEM_TYPE_RAW &&
@@ -2065,6 +2080,8 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 
 	/* Get the flex byte info */
 	if (item->type == RTE_FLOW_ITEM_TYPE_RAW) {
+		uint16_t pattern = 0;
+
 		/* Not supported last point for range*/
 		if (item->last) {
 			rte_flow_error_set(error, EINVAL,
@@ -2081,6 +2098,7 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 			return -rte_errno;
 		}
 
+		rule->b_mask = TRUE;
 		raw_mask = item->mask;
 
 		/* check mask */
@@ -2097,19 +2115,21 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 			return -rte_errno;
 		}
 
+		rule->b_spec = TRUE;
 		raw_spec = item->spec;
 
 		/* check spec */
-		if (raw_spec->relative != 0 ||
-		    raw_spec->search != 0 ||
+		if (raw_spec->search != 0 ||
 		    raw_spec->reserved != 0 ||
 		    raw_spec->offset > TXGBE_MAX_FLX_SOURCE_OFF ||
 		    raw_spec->offset % 2 ||
 		    raw_spec->limit != 0 ||
-		    raw_spec->length != 2 ||
+		    raw_spec->length != 4 ||
 		    /* pattern can't be 0xffff */
 		    (raw_spec->pattern[0] == 0xff &&
-		     raw_spec->pattern[1] == 0xff)) {
+		     raw_spec->pattern[1] == 0xff &&
+		     raw_spec->pattern[2] == 0xff &&
+		     raw_spec->pattern[3] == 0xff)) {
 			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2119,7 +2139,9 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 
 		/* check pattern mask */
 		if (raw_mask->pattern[0] != 0xff ||
-		    raw_mask->pattern[1] != 0xff) {
+		    raw_mask->pattern[1] != 0xff ||
+		    raw_mask->pattern[2] != 0xff ||
+		    raw_mask->pattern[3] != 0xff) {
 			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2128,10 +2150,19 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 		}
 
 		rule->mask.flex_bytes_mask = 0xffff;
-		rule->input.flex_bytes =
-			(((uint16_t)raw_spec->pattern[1]) << 8) |
-			raw_spec->pattern[0];
+		/* Convert pattern string to hex bytes */
+		if (sscanf((const char *)raw_spec->pattern, "%hx", &pattern) != 1) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Failed to parse raw pattern");
+			return -rte_errno;
+		}
+		rule->input.flex_bytes = (pattern & 0x00FF) << 8;
+		rule->input.flex_bytes |= (pattern & 0xFF00) >> 8;
+
 		rule->flex_bytes_offset = raw_spec->offset;
+		rule->flex_relative = raw_spec->relative;
 	}
 
 	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
@@ -2146,57 +2177,35 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 		}
 	}
 
-	rule->input.pkt_type = cpu_to_be16(txgbe_encode_ptype(ptype));
-
-	if (rule->input.flow_type & TXGBE_ATR_FLOW_TYPE_IPV6) {
-		if (rule->input.flow_type & TXGBE_ATR_L4TYPE_MASK)
-			rule->input.pkt_type &= 0xFFFF;
-		else
-			rule->input.pkt_type &= 0xF8FF;
-
-		rule->input.flow_type &= TXGBE_ATR_L3TYPE_MASK |
-					TXGBE_ATR_L4TYPE_MASK;
-	}
+	txgbe_fdir_parse_flow_type(&rule->input, 0, false);
 
 	return txgbe_parse_fdir_act_attr(attr, actions, rule, error);
 }
 
 /**
- * Parse the rule to see if it is a VxLAN or NVGRE flow director rule.
+ * Parse the rule to see if it is a IP tunnel flow director rule.
  * And get the flow director filter info BTW.
- * VxLAN PATTERN:
- * The first not void item must be ETH.
- * The second not void item must be IPV4/ IPV6.
- * The third not void item must be NVGRE.
- * The next not void item must be END.
- * NVGRE PATTERN:
- * The first not void item must be ETH.
- * The second not void item must be IPV4/ IPV6.
- * The third not void item must be NVGRE.
+ * PATTERN:
+ * The first not void item can be ETH or IPV4 or IPV6 or UDP or tunnel type.
+ * The second not void item must be IPV4 or IPV6 if the first one is ETH.
+ * The next not void item could be UDP or tunnel type.
+ * The next not void item could be a certain inner layer.
  * The next not void item must be END.
  * ACTION:
- * The first not void action should be QUEUE or DROP.
- * The second not void optional action should be MARK,
- * mark_id is a uint32_t number.
+ * The first not void action should be QUEUE.
  * The next not void action should be END.
- * VxLAN pattern example:
+ * pattern example:
  * ITEM		Spec			Mask
  * ETH		NULL			NULL
- * IPV4/IPV6	NULL			NULL
+ * IPV4		NULL			NULL
  * UDP		NULL			NULL
- * VxLAN	vni{0x00, 0x32, 0x54}	{0xFF, 0xFF, 0xFF}
- * MAC VLAN	tci	0x2016		0xEFFF
- * END
- * NEGRV pattern example:
- * ITEM		Spec			Mask
+ * VXLAN	NULL			NULL
  * ETH		NULL			NULL
- * IPV4/IPV6	NULL			NULL
- * NVGRE	protocol	0x6558	0xFFFF
- *		tni{0x00, 0x32, 0x54}	{0xFF, 0xFF, 0xFF}
- * MAC VLAN	tci	0x2016		0xEFFF
+ * IPV4		src_addr 192.168.1.20	0xFFFFFFFF
+ *		dst_addr 192.167.3.50	0xFFFFFFFF
+ * UDP/TCP/SCTP	src_port	80	0xFFFF
+ *		dst_port	80	0xFFFF
  * END
- * other members in mask and spec should set to 0x00.
- * item->last should be NULL.
  */
 static int
 txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
@@ -2207,6 +2216,19 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 {
 	const struct rte_flow_item *item;
 	const struct rte_flow_item_eth *eth_mask;
+	const struct rte_flow_item_ipv4 *ipv4_spec;
+	const struct rte_flow_item_ipv4 *ipv4_mask;
+	const struct rte_flow_item_ipv6 *ipv6_spec;
+	const struct rte_flow_item_ipv6 *ipv6_mask;
+	const struct rte_flow_item_tcp *tcp_spec;
+	const struct rte_flow_item_tcp *tcp_mask;
+	const struct rte_flow_item_udp *udp_spec;
+	const struct rte_flow_item_udp *udp_mask;
+	const struct rte_flow_item_sctp *sctp_spec;
+	const struct rte_flow_item_sctp *sctp_mask;
+	const struct rte_flow_item_raw *raw_mask;
+	const struct rte_flow_item_raw *raw_spec;
+	u8 ptid = 0;
 	uint32_t j;
 
 	if (!pattern) {
@@ -2235,12 +2257,14 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 	 * value. So, we need not do anything for the not provided fields later.
 	 */
 	memset(rule, 0, sizeof(struct txgbe_fdir_rule));
-	memset(&rule->mask, 0xFF, sizeof(struct txgbe_hw_fdir_mask));
-	rule->mask.vlan_tci_mask = 0;
+	memset(&rule->mask, 0, sizeof(struct txgbe_hw_fdir_mask));
+	rule->mask.pkt_type_mask = TXGBE_ATR_TYPE_MASK_TUN_OUTIP |
+				   TXGBE_ATR_TYPE_MASK_L3P |
+				   TXGBE_ATR_TYPE_MASK_L4P;
 
 	/**
 	 * The first not void item should be
-	 * MAC or IPv4 or IPv6 or UDP or VxLAN.
+	 * MAC or IPv4 or IPv6 or UDP or tunnel.
 	 */
 	item = next_no_void_pattern(pattern, NULL);
 	if (item->type != RTE_FLOW_ITEM_TYPE_ETH &&
@@ -2248,7 +2272,9 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 	    item->type != RTE_FLOW_ITEM_TYPE_IPV6 &&
 	    item->type != RTE_FLOW_ITEM_TYPE_UDP &&
 	    item->type != RTE_FLOW_ITEM_TYPE_VXLAN &&
-	    item->type != RTE_FLOW_ITEM_TYPE_NVGRE) {
+	    item->type != RTE_FLOW_ITEM_TYPE_NVGRE &&
+	    item->type != RTE_FLOW_ITEM_TYPE_GRE &&
+	    item->type != RTE_FLOW_ITEM_TYPE_GENEVE) {
 		memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2256,7 +2282,8 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
-	rule->mode = RTE_FDIR_MODE_PERFECT_TUNNEL;
+	rule->mode = RTE_FDIR_MODE_PERFECT;
+	ptid = TXGBE_PTID_PKT_TUN;
 
 	/* Skip MAC. */
 	if (item->type == RTE_FLOW_ITEM_TYPE_ETH) {
@@ -2278,6 +2305,8 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 
 		/* Check if the next not void item is IPv4 or IPv6. */
 		item = next_no_void_pattern(pattern, item);
+		if (item->type == RTE_FLOW_ITEM_TYPE_VLAN)
+			item = next_no_fuzzy_pattern(pattern, item);
 		if (item->type != RTE_FLOW_ITEM_TYPE_IPV4 &&
 		    item->type != RTE_FLOW_ITEM_TYPE_IPV6) {
 			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
@@ -2291,6 +2320,8 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 	/* Skip IP. */
 	if (item->type == RTE_FLOW_ITEM_TYPE_IPV4 ||
 	    item->type == RTE_FLOW_ITEM_TYPE_IPV6) {
+		rule->mask.pkt_type_mask &= ~TXGBE_ATR_TYPE_MASK_TUN_OUTIP;
+
 		/* Only used to describe the protocol stack. */
 		if (item->spec || item->mask) {
 			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
@@ -2307,10 +2338,17 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 			return -rte_errno;
 		}
 
-		/* Check if the next not void item is UDP or NVGRE. */
+		if (item->type == RTE_FLOW_ITEM_TYPE_IPV6)
+			ptid |= TXGBE_PTID_TUN_IPV6;
+
 		item = next_no_void_pattern(pattern, item);
-		if (item->type != RTE_FLOW_ITEM_TYPE_UDP &&
-		    item->type != RTE_FLOW_ITEM_TYPE_NVGRE) {
+		if (item->type != RTE_FLOW_ITEM_TYPE_IPV4 &&
+		    item->type != RTE_FLOW_ITEM_TYPE_IPV6 &&
+		    item->type != RTE_FLOW_ITEM_TYPE_UDP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_VXLAN &&
+		    item->type != RTE_FLOW_ITEM_TYPE_GRE &&
+		    item->type != RTE_FLOW_ITEM_TYPE_NVGRE &&
+		    item->type != RTE_FLOW_ITEM_TYPE_GENEVE) {
 			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2321,6 +2359,31 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 
 	/* Skip UDP. */
 	if (item->type == RTE_FLOW_ITEM_TYPE_UDP) {
+		/*Not supported last point for range*/
+		if (item->last) {
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				item, "Not supported last point for range");
+			return -rte_errno;
+		}
+
+		/* Check if the next not void item is VxLAN or GENEVE. */
+		item = next_no_void_pattern(pattern, item);
+		if (item->type != RTE_FLOW_ITEM_TYPE_VXLAN &&
+		    item->type != RTE_FLOW_ITEM_TYPE_GENEVE) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+	}
+
+	/* Skip tunnel. */
+	if (item->type == RTE_FLOW_ITEM_TYPE_VXLAN ||
+	    item->type == RTE_FLOW_ITEM_TYPE_GRE ||
+	    item->type == RTE_FLOW_ITEM_TYPE_NVGRE ||
+	    item->type == RTE_FLOW_ITEM_TYPE_GENEVE) {
 		/* Only used to describe the protocol stack. */
 		if (item->spec || item->mask) {
 			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
@@ -2337,9 +2400,15 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 			return -rte_errno;
 		}
 
-		/* Check if the next not void item is VxLAN. */
+		if (item->type == RTE_FLOW_ITEM_TYPE_GRE)
+			ptid |= TXGBE_PTID_TUN_EIG;
+		else
+			ptid |= TXGBE_PTID_TUN_EIGM;
+
 		item = next_no_void_pattern(pattern, item);
-		if (item->type != RTE_FLOW_ITEM_TYPE_VXLAN) {
+		if (item->type != RTE_FLOW_ITEM_TYPE_ETH &&
+		    item->type != RTE_FLOW_ITEM_TYPE_IPV4 &&
+		    item->type != RTE_FLOW_ITEM_TYPE_IPV6) {
 			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2348,100 +2417,525 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 		}
 	}
 
-	/* check if the next not void item is MAC */
-	item = next_no_void_pattern(pattern, item);
-	if (item->type != RTE_FLOW_ITEM_TYPE_ETH) {
-		memset(rule, 0, sizeof(struct txgbe_fdir_rule));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ITEM,
-			item, "Not supported by fdir filter");
-		return -rte_errno;
-	}
-
-	/**
-	 * Only support vlan and dst MAC address,
-	 * others should be masked.
-	 */
-
-	if (!item->mask) {
-		memset(rule, 0, sizeof(struct txgbe_fdir_rule));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ITEM,
-			item, "Not supported by fdir filter");
-		return -rte_errno;
-	}
-	/*Not supported last point for range*/
-	if (item->last) {
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			item, "Not supported last point for range");
-		return -rte_errno;
-	}
-	rule->b_mask = TRUE;
-	eth_mask = item->mask;
-
-	/* Ether type should be masked. */
-	if (eth_mask->hdr.ether_type) {
-		memset(rule, 0, sizeof(struct txgbe_fdir_rule));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ITEM,
-			item, "Not supported by fdir filter");
-		return -rte_errno;
-	}
-
-	/* src MAC address should be masked. */
-	for (j = 0; j < RTE_ETHER_ADDR_LEN; j++) {
-		if (eth_mask->hdr.src_addr.addr_bytes[j]) {
-			memset(rule, 0,
-			       sizeof(struct txgbe_fdir_rule));
+	/* Get the MAC info. */
+	if (item->type == RTE_FLOW_ITEM_TYPE_ETH) {
+		/**
+		 * Only support vlan and dst MAC address,
+		 * others should be masked.
+		 */
+		if (item->spec && !item->mask) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by fdir filter");
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+
+		if (item->mask) {
+			rule->b_mask = TRUE;
+			eth_mask = item->mask;
+
+			/* Ether type should be masked. */
+			if (eth_mask->hdr.ether_type) {
+				memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item, "Not supported by fdir filter");
+				return -rte_errno;
+			}
+
+			/**
+			 * src MAC address must be masked,
+			 * and don't support dst MAC address mask.
+			 */
+			for (j = 0; j < RTE_ETHER_ADDR_LEN; j++) {
+				if (eth_mask->hdr.src_addr.addr_bytes[j] ||
+				    eth_mask->hdr.dst_addr.addr_bytes[j] != 0xFF) {
+					memset(rule, 0,
+					       sizeof(struct txgbe_fdir_rule));
+					rte_flow_error_set(error, EINVAL,
+							   RTE_FLOW_ERROR_TYPE_ITEM,
+							   item, "Not supported by fdir filter");
+					return -rte_errno;
+				}
+			}
+
+			/* When no VLAN, considered as full mask. */
+			rule->mask.vlan_tci_mask = rte_cpu_to_be_16(0xEFFF);
+		}
+
+		item = next_no_fuzzy_pattern(pattern, item);
+		if (rule->mask.vlan_tci_mask) {
+			if (item->type != RTE_FLOW_ITEM_TYPE_VLAN) {
+				memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item, "Not supported by fdir filter");
+				return -rte_errno;
+			}
+		} else {
+			if (item->type != RTE_FLOW_ITEM_TYPE_IPV4 &&
+			    item->type != RTE_FLOW_ITEM_TYPE_IPV6 &&
+			    item->type != RTE_FLOW_ITEM_TYPE_VLAN) {
+				memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item, "Not supported by fdir filter");
+				return -rte_errno;
+			}
+		}
+		if (item->type == RTE_FLOW_ITEM_TYPE_VLAN) {
+			ptid |= TXGBE_PTID_TUN_EIGMV;
+			item = next_no_fuzzy_pattern(pattern, item);
+		}
+	}
+
+	/* Get the IPV4 info. */
+	if (item->type == RTE_FLOW_ITEM_TYPE_IPV4) {
+		/**
+		 * Set the flow type even if there's no content
+		 * as we must have a flow type.
+		 */
+		rule->input.flow_type = TXGBE_ATR_FLOW_TYPE_IPV4;
+		rule->mask.pkt_type_mask &= ~TXGBE_ATR_TYPE_MASK_L3P;
+
+		/*Not supported last point for range*/
+		if (item->last) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   item, "Not supported last point for range");
+			return -rte_errno;
+		}
+		/**
+		 * Only care about src & dst addresses,
+		 * others should be masked.
+		 */
+		if (item->spec && !item->mask) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+		if (item->mask) {
+			rule->b_mask = TRUE;
+			ipv4_mask = item->mask;
+			if (ipv4_mask->hdr.version_ihl ||
+			    ipv4_mask->hdr.type_of_service ||
+			    ipv4_mask->hdr.total_length ||
+			    ipv4_mask->hdr.packet_id ||
+			    ipv4_mask->hdr.fragment_offset ||
+			    ipv4_mask->hdr.time_to_live ||
+			    ipv4_mask->hdr.next_proto_id ||
+			    ipv4_mask->hdr.hdr_checksum) {
+				memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item, "Not supported by fdir filter");
+				return -rte_errno;
+			}
+			rule->mask.dst_ipv4_mask = ipv4_mask->hdr.dst_addr;
+			rule->mask.src_ipv4_mask = ipv4_mask->hdr.src_addr;
+		}
+		if (item->spec) {
+			rule->b_spec = TRUE;
+			ipv4_spec = item->spec;
+			rule->input.dst_ip[0] =
+				ipv4_spec->hdr.dst_addr;
+			rule->input.src_ip[0] =
+				ipv4_spec->hdr.src_addr;
+		}
+
+		/**
+		 * Check if the next not void item is
+		 * TCP or UDP or SCTP or END.
+		 */
+		item = next_no_fuzzy_pattern(pattern, item);
+		if (item->type != RTE_FLOW_ITEM_TYPE_TCP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_UDP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_SCTP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_END &&
+		    item->type != RTE_FLOW_ITEM_TYPE_RAW) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
 			return -rte_errno;
 		}
 	}
-	rule->mask.mac_addr_byte_mask = 0;
-	for (j = 0; j < ETH_ADDR_LEN; j++) {
-		/* It's a per byte mask. */
-		if (eth_mask->hdr.dst_addr.addr_bytes[j] == 0xFF) {
-			rule->mask.mac_addr_byte_mask |= 0x1 << j;
-		} else if (eth_mask->hdr.dst_addr.addr_bytes[j]) {
+
+	/* Get the IPV6 info. */
+	if (item->type == RTE_FLOW_ITEM_TYPE_IPV6) {
+		/**
+		 * Set the flow type even if there's no content
+		 * as we must have a flow type.
+		 */
+		rule->input.flow_type = TXGBE_ATR_FLOW_TYPE_IPV6;
+		rule->mask.pkt_type_mask &= ~TXGBE_ATR_TYPE_MASK_L3P;
+
+		if (item->last) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   item, "Not supported last point for range");
+			return -rte_errno;
+		}
+		if (item->spec && !item->mask) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+		if (item->mask) {
+			rule->b_mask = TRUE;
+			ipv6_mask = item->mask;
+			if (ipv6_mask->hdr.vtc_flow ||
+			    ipv6_mask->hdr.payload_len ||
+			    ipv6_mask->hdr.proto ||
+			    ipv6_mask->hdr.hop_limits) {
+				memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item, "Not supported by fdir filter");
+				return -rte_errno;
+			}
+
+			/* check src addr mask */
+			for (j = 0; j < 16; j++) {
+				if (ipv6_mask->hdr.src_addr.a[j] == UINT8_MAX) {
+					rule->mask.src_ipv6_mask |= 1 << j;
+				} else if (ipv6_mask->hdr.src_addr.a[j] != 0) {
+					memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+					rte_flow_error_set(error, EINVAL,
+							   RTE_FLOW_ERROR_TYPE_ITEM,
+							   item, "Not supported by fdir filter");
+					return -rte_errno;
+				}
+			}
+
+			/* check dst addr mask */
+			for (j = 0; j < 16; j++) {
+				if (ipv6_mask->hdr.dst_addr.a[j] != 0) {
+					memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+					rte_flow_error_set(error, EINVAL,
+							   RTE_FLOW_ERROR_TYPE_ITEM,
+							   item, "Not supported by fdir filter");
+					return -rte_errno;
+				}
+			}
+		}
+		if (item->spec) {
+			rule->b_spec = TRUE;
+			ipv6_spec = item->spec;
+			rte_memcpy(rule->input.src_ip,
+				   &ipv6_spec->hdr.src_addr, 16);
+			rte_memcpy(rule->input.dst_ip,
+				   &ipv6_spec->hdr.dst_addr, 16);
+		}
+
+		/**
+		 * Check if the next not void item is
+		 * TCP or UDP or SCTP or END.
+		 */
+		item = next_no_fuzzy_pattern(pattern, item);
+		if (item->type != RTE_FLOW_ITEM_TYPE_TCP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_UDP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_SCTP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_END &&
+		    item->type != RTE_FLOW_ITEM_TYPE_RAW) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+	}
+
+	/* Get the TCP info. */
+	if (item->type == RTE_FLOW_ITEM_TYPE_TCP) {
+		/**
+		 * Set the flow type even if there's no content
+		 * as we must have a flow type.
+		 */
+		rule->input.flow_type |= TXGBE_ATR_L4TYPE_TCP;
+		rule->mask.pkt_type_mask &= ~TXGBE_ATR_TYPE_MASK_L4P;
+
+		/*Not supported last point for range*/
+		if (item->last) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   item, "Not supported last point for range");
+			return -rte_errno;
+		}
+		/**
+		 * Only care about src & dst ports,
+		 * others should be masked.
+		 */
+		if (!item->mask) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+		rule->b_mask = TRUE;
+		tcp_mask = item->mask;
+		if (tcp_mask->hdr.sent_seq ||
+		    tcp_mask->hdr.recv_ack ||
+		    tcp_mask->hdr.data_off ||
+		    tcp_mask->hdr.tcp_flags ||
+		    tcp_mask->hdr.rx_win ||
+		    tcp_mask->hdr.cksum ||
+		    tcp_mask->hdr.tcp_urp) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+		rule->mask.src_port_mask = tcp_mask->hdr.src_port;
+		rule->mask.dst_port_mask = tcp_mask->hdr.dst_port;
+
+		if (item->spec) {
+			rule->b_spec = TRUE;
+			tcp_spec = item->spec;
+			rule->input.src_port =
+				tcp_spec->hdr.src_port;
+			rule->input.dst_port =
+				tcp_spec->hdr.dst_port;
+		}
+
+		item = next_no_fuzzy_pattern(pattern, item);
+		if (item->type != RTE_FLOW_ITEM_TYPE_RAW &&
+		    item->type != RTE_FLOW_ITEM_TYPE_END) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+	}
+
+	/* Get the UDP info */
+	if (item->type == RTE_FLOW_ITEM_TYPE_UDP) {
+		/**
+		 * Set the flow type even if there's no content
+		 * as we must have a flow type.
+		 */
+		rule->input.flow_type |= TXGBE_ATR_L4TYPE_UDP;
+		rule->mask.pkt_type_mask &= ~TXGBE_ATR_TYPE_MASK_L4P;
+		/*Not supported last point for range*/
+		if (item->last) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   item, "Not supported last point for range");
+			return -rte_errno;
+		}
+		/**
+		 * Only care about src & dst ports,
+		 * others should be masked.
+		 */
+		if (!item->mask) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+		rule->b_mask = TRUE;
+		udp_mask = item->mask;
+		if (udp_mask->hdr.dgram_len ||
+		    udp_mask->hdr.dgram_cksum) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+		rule->mask.src_port_mask = udp_mask->hdr.src_port;
+		rule->mask.dst_port_mask = udp_mask->hdr.dst_port;
+
+		if (item->spec) {
+			rule->b_spec = TRUE;
+			udp_spec = item->spec;
+			rule->input.src_port =
+				udp_spec->hdr.src_port;
+			rule->input.dst_port =
+				udp_spec->hdr.dst_port;
+		}
+
+		item = next_no_fuzzy_pattern(pattern, item);
+		if (item->type != RTE_FLOW_ITEM_TYPE_RAW &&
+		    item->type != RTE_FLOW_ITEM_TYPE_END) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+	}
+
+	/* Get the SCTP info */
+	if (item->type == RTE_FLOW_ITEM_TYPE_SCTP) {
+		/**
+		 * Set the flow type even if there's no content
+		 * as we must have a flow type.
+		 */
+		rule->input.flow_type |= TXGBE_ATR_L4TYPE_SCTP;
+		rule->mask.pkt_type_mask &= ~TXGBE_ATR_TYPE_MASK_L4P;
+
+		/*Not supported last point for range*/
+		if (item->last) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   item, "Not supported last point for range");
+			return -rte_errno;
+		}
+
+		/**
+		 * Only care about src & dst ports,
+		 * others should be masked.
+		 */
+		if (!item->mask) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+		rule->b_mask = TRUE;
+		sctp_mask = item->mask;
+		if (sctp_mask->hdr.tag || sctp_mask->hdr.cksum) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+		rule->mask.src_port_mask = sctp_mask->hdr.src_port;
+		rule->mask.dst_port_mask = sctp_mask->hdr.dst_port;
+
+		if (item->spec) {
+			rule->b_spec = TRUE;
+			sctp_spec = item->spec;
+			rule->input.src_port =
+				sctp_spec->hdr.src_port;
+			rule->input.dst_port =
+				sctp_spec->hdr.dst_port;
+		}
+
+		item = next_no_fuzzy_pattern(pattern, item);
+		if (item->type != RTE_FLOW_ITEM_TYPE_RAW &&
+		    item->type != RTE_FLOW_ITEM_TYPE_END) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+	}
+
+	/* Get the flex byte info */
+	if (item->type == RTE_FLOW_ITEM_TYPE_RAW) {
+		uint16_t pattern = 0;
+
+		/* Not supported last point for range*/
+		if (item->last) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   item, "Not supported last point for range");
+			return -rte_errno;
+		}
+		/* mask should not be null */
+		if (!item->mask || !item->spec) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+
+		rule->b_mask = TRUE;
+		raw_mask = item->mask;
+
+		/* check mask */
+		if (raw_mask->relative != 0x1 ||
+		    raw_mask->search != 0x1 ||
+		    raw_mask->reserved != 0x0 ||
+		    (uint32_t)raw_mask->offset != 0xffffffff ||
+		    raw_mask->limit != 0xffff ||
+		    raw_mask->length != 0xffff) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+
+		rule->b_spec = TRUE;
+		raw_spec = item->spec;
+
+		/* check spec */
+		if (raw_spec->search != 0 ||
+		    raw_spec->reserved != 0 ||
+		    raw_spec->offset > TXGBE_MAX_FLX_SOURCE_OFF ||
+		    raw_spec->offset % 2 ||
+		    raw_spec->limit != 0 ||
+		    raw_spec->length != 4 ||
+		    /* pattern can't be 0xffff */
+		    (raw_spec->pattern[0] == 0xff &&
+		     raw_spec->pattern[1] == 0xff &&
+		     raw_spec->pattern[2] == 0xff &&
+		     raw_spec->pattern[3] == 0xff)) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+
+		/* check pattern mask */
+		if (raw_mask->pattern[0] != 0xff ||
+		    raw_mask->pattern[1] != 0xff ||
+		    raw_mask->pattern[2] != 0xff ||
+		    raw_mask->pattern[3] != 0xff) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+
+		rule->mask.flex_bytes_mask = 0xffff;
+		/* Convert pattern string to hex bytes */
+		if (sscanf((const char *)raw_spec->pattern, "%hx", &pattern) != 1) {
 			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by fdir filter");
+				item, "Failed to parse raw pattern");
+			return -rte_errno;
+		}
+		rule->input.flex_bytes = (pattern & 0x00FF) << 8;
+		rule->input.flex_bytes |= (pattern & 0xFF00) >> 8;
+
+		rule->flex_bytes_offset = raw_spec->offset;
+		rule->flex_relative = raw_spec->relative;
+	}
+
+	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
+		/* check if the next not void item is END */
+		item = next_no_fuzzy_pattern(pattern, item);
+		if (item->type != RTE_FLOW_ITEM_TYPE_END) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
 			return -rte_errno;
 		}
 	}
 
-	/* When no vlan, considered as full mask. */
-	rule->mask.vlan_tci_mask = rte_cpu_to_be_16(0xEFFF);
-
-	/**
-	 * Check if the next not void item is vlan or ipv4.
-	 * IPv6 is not supported.
-	 */
-	item = next_no_void_pattern(pattern, item);
-	if (item->type != RTE_FLOW_ITEM_TYPE_VLAN &&
-		item->type != RTE_FLOW_ITEM_TYPE_IPV4) {
-		memset(rule, 0, sizeof(struct txgbe_fdir_rule));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ITEM,
-			item, "Not supported by fdir filter");
-		return -rte_errno;
-	}
-	/*Not supported last point for range*/
-	if (item->last) {
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			item, "Not supported last point for range");
-		return -rte_errno;
-	}
-
-	/**
-	 * If the tags is 0, it means don't care about the VLAN.
-	 * Do nothing.
-	 */
+	txgbe_fdir_parse_flow_type(&rule->input, ptid, true);
 
 	return txgbe_parse_fdir_act_attr(attr, actions, rule, error);
 }
@@ -2455,7 +2949,6 @@ txgbe_parse_fdir_filter(struct rte_eth_dev *dev,
 			struct rte_flow_error *error)
 {
 	int ret;
-	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct rte_eth_fdir_conf *fdir_conf = TXGBE_DEV_FDIR_CONF(dev);
 
 	ret = txgbe_parse_fdir_filter_normal(dev, attr, pattern,
@@ -2469,11 +2962,8 @@ txgbe_parse_fdir_filter(struct rte_eth_dev *dev,
 		return ret;
 
 step_next:
-
-	if (hw->mac.type == txgbe_mac_raptor &&
-		rule->fdirflags == TXGBE_FDIRPICMD_DROP &&
-		(rule->input.src_port != 0 || rule->input.dst_port != 0))
-		return -ENOTSUP;
+	if (!txgbe_is_pf(TXGBE_DEV_HW(dev)))
+		return ret;
 
 	if (fdir_conf->mode == RTE_FDIR_MODE_NONE) {
 		fdir_conf->mode = rule->mode;
@@ -2502,6 +2992,13 @@ txgbe_parse_rss_filter(struct rte_eth_dev *dev,
 	const struct rte_flow_action *act;
 	const struct rte_flow_action_rss *rss;
 	uint16_t n;
+
+	if (!txgbe_is_pf(TXGBE_DEV_HW(dev))) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   NULL, "Flow type not suppotted yet on VF");
+		return -rte_errno;
+	}
 
 	/**
 	 * rss only supports forwarding,
@@ -2719,6 +3216,7 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 	struct txgbe_fdir_rule_ele *fdir_rule_ptr;
 	struct txgbe_rss_conf_ele *rss_filter_ptr;
 	struct txgbe_flow_mem *txgbe_flow_mem_ptr;
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
 	uint8_t first_mask = FALSE;
 
 	flow = rte_zmalloc("txgbe_rte_flow", sizeof(struct rte_flow), 0);
@@ -2764,10 +3262,13 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 			flow->rule = ntuple_filter_ptr;
 			flow->filter_type = RTE_ETH_FILTER_NTUPLE;
 			return flow;
+		} else if (filter_info->ntuple_is_full) {
+			goto next;
 		}
 		goto out;
 	}
 
+next:
 	memset(&ethertype_filter, 0, sizeof(struct rte_eth_ethertype_filter));
 	ret = txgbe_parse_ethertype_filter(dev, attr, pattern,
 				actions, &ethertype_filter, error);
@@ -2823,20 +3324,47 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 	ret = txgbe_parse_fdir_filter(dev, attr, pattern,
 				actions, &fdir_rule, error);
 	if (!ret) {
+		if (!txgbe_is_pf(TXGBE_DEV_HW(dev))) {
+			ret = txgbevf_fdir_filter_program(dev, &fdir_rule, FALSE);
+			if (ret < 0)
+				goto out;
+
+			fdir_rule_ptr = rte_zmalloc("txgbe_fdir_filter",
+					    sizeof(struct txgbe_fdir_rule_ele), 0);
+			if (!fdir_rule_ptr) {
+				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				goto out;
+			}
+			rte_memcpy(&fdir_rule_ptr->filter_info,
+				   &fdir_rule,
+				   sizeof(struct txgbe_fdir_rule));
+			TAILQ_INSERT_TAIL(&filter_fdir_list,
+					  fdir_rule_ptr, entries);
+			flow->rule = fdir_rule_ptr;
+			flow->filter_type = RTE_ETH_FILTER_FDIR;
+			return flow;
+		}
+
 		/* A mask cannot be deleted. */
 		if (fdir_rule.b_mask) {
 			if (!fdir_info->mask_added) {
 				/* It's the first time the mask is set. */
-				rte_memcpy(&fdir_info->mask,
-					&fdir_rule.mask,
-					sizeof(struct txgbe_hw_fdir_mask));
+				fdir_info->mask = fdir_rule.mask;
 				fdir_info->flex_bytes_offset =
 					fdir_rule.flex_bytes_offset;
+				fdir_info->flex_relative = fdir_rule.flex_relative;
 
-				if (fdir_rule.mask.flex_bytes_mask)
+				if (fdir_rule.mask.flex_bytes_mask) {
+					uint16_t flex_base;
+
+					flex_base = txgbe_fdir_get_flex_base(&fdir_rule);
 					txgbe_fdir_set_flexbytes_offset(dev,
-						fdir_rule.flex_bytes_offset);
+									fdir_rule.flex_bytes_offset,
+									flex_base);
+				}
 
+				fdir_info->mask.pkt_type_mask =
+					fdir_rule.mask.pkt_type_mask;
 				ret = txgbe_fdir_set_input_mask(dev);
 				if (ret)
 					goto out;
@@ -2857,7 +3385,9 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 				}
 
 				if (fdir_info->flex_bytes_offset !=
-						fdir_rule.flex_bytes_offset)
+				    fdir_rule.flex_bytes_offset ||
+				    fdir_info->flex_relative !=
+				    fdir_rule.flex_relative)
 					goto out;
 			}
 		}
@@ -3032,6 +3562,7 @@ txgbe_flow_destroy(struct rte_eth_dev *dev,
 	struct txgbe_fdir_rule_ele *fdir_rule_ptr;
 	struct txgbe_flow_mem *txgbe_flow_mem_ptr;
 	struct txgbe_hw_fdir_info *fdir_info = TXGBE_DEV_FDIR(dev);
+	struct rte_eth_fdir_conf *fdir_conf = TXGBE_DEV_FDIR_CONF(dev);
 	struct txgbe_rss_conf_ele *rss_filter_ptr;
 
 	switch (filter_type) {
@@ -3080,13 +3611,22 @@ txgbe_flow_destroy(struct rte_eth_dev *dev,
 		rte_memcpy(&fdir_rule,
 			&fdir_rule_ptr->filter_info,
 			sizeof(struct txgbe_fdir_rule));
-		ret = txgbe_fdir_filter_program(dev, &fdir_rule, TRUE, FALSE);
+		if (txgbe_is_pf(TXGBE_DEV_HW(dev)))
+			ret = txgbe_fdir_filter_program(dev, &fdir_rule, TRUE, FALSE);
+		else
+			ret = txgbevf_fdir_filter_program(dev, &fdir_rule, TRUE);
 		if (!ret) {
 			TAILQ_REMOVE(&filter_fdir_list,
 				fdir_rule_ptr, entries);
 			rte_free(fdir_rule_ptr);
-			if (TAILQ_EMPTY(&filter_fdir_list))
+			if (TAILQ_EMPTY(&filter_fdir_list)) {
+				memset(&fdir_info->mask, 0,
+					sizeof(struct txgbe_hw_fdir_mask));
 				fdir_info->mask_added = false;
+				fdir_info->flex_relative = false;
+				fdir_info->flex_bytes_offset = 0;
+				fdir_conf->mode = RTE_FDIR_MODE_NONE;
+			}
 		}
 		break;
 	case RTE_ETH_FILTER_L2_TUNNEL:
@@ -3146,8 +3686,6 @@ txgbe_flow_flush(struct rte_eth_dev *dev,
 	int ret = 0;
 
 	txgbe_clear_all_ntuple_filter(dev);
-	txgbe_clear_all_ethertype_filter(dev);
-	txgbe_clear_syn_filter(dev);
 
 	ret = txgbe_clear_all_fdir_filter(dev);
 	if (ret < 0) {
@@ -3155,6 +3693,12 @@ txgbe_flow_flush(struct rte_eth_dev *dev,
 					NULL, "Failed to flush rule");
 		return ret;
 	}
+
+	if (!txgbe_is_pf(TXGBE_DEV_HW(dev)))
+		goto out;
+
+	txgbe_clear_all_ethertype_filter(dev);
+	txgbe_clear_syn_filter(dev);
 
 	ret = txgbe_clear_all_l2_tn_filter(dev);
 	if (ret < 0) {
@@ -3165,6 +3709,7 @@ txgbe_flow_flush(struct rte_eth_dev *dev,
 
 	txgbe_clear_rss_filter(dev);
 
+out:
 	txgbe_filterlist_flush();
 
 	return 0;

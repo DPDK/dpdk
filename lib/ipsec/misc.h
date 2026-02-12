@@ -19,11 +19,8 @@ static inline void
 move_bad_mbufs(struct rte_mbuf *mb[], const uint32_t bad_idx[], uint32_t nb_mb,
 	uint32_t nb_bad)
 {
-	uint32_t i, j, k;
+	uint32_t i, j = 0, k = 0;
 	struct rte_mbuf *drb[nb_bad];
-
-	j = 0;
-	k = 0;
 
 	/* copy bad ones into a temp place */
 	for (i = 0; i != nb_mb; i++) {
@@ -126,7 +123,8 @@ cpu_crypto_bulk(const struct rte_ipsec_session *ss,
 
 	const uint32_t vnum = RTE_DIM(vec);
 
-	j = 0, n = 0;
+	j = 0;
+	n = 0;
 	vofs = 0;
 	for (i = 0; i != num; i++) {
 

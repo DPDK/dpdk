@@ -31,6 +31,17 @@ __rte_ring_rts_update_tail(struct rte_ring_rts_headtail *ht)
 	 * might preceded us, then don't update tail with new value.
 	 */
 
+	/*
+	 * A0 = {A0.a, A0.b}: Synchronizes with the CAS at R0.
+	 * The CAS at R0 in same typed thread establishes a happens-before
+	 * relationship with this load acquire. Ensures that this thread
+	 * observes the same or later values for h.raw/h.val.cnt
+	 * observed by the other thread when it updated ht->tail.raw.
+	 * If not, ht->tail.raw may get updated out of sync (e.g. getting
+	 * updated to the same value twice). A0.a makes sure this condition
+	 * holds when CAS succeeds and A0.b when it fails.
+	 */
+	/* A0.a */
 	ot.raw = rte_atomic_load_explicit(&ht->tail.raw, rte_memory_order_acquire);
 
 	do {
@@ -40,7 +51,11 @@ __rte_ring_rts_update_tail(struct rte_ring_rts_headtail *ht)
 		nt.raw = ot.raw;
 		if (++nt.val.cnt == h.val.cnt)
 			nt.val.pos = h.val.pos;
-
+	/*
+	 * R0: Synchronizes with A2 of a different thread of the opposite type and A0.b
+	 * of a different thread of the same type.
+	 */
+	/* A0.b */
 	} while (rte_atomic_compare_exchange_strong_explicit(&ht->tail.raw,
 			(uint64_t *)(uintptr_t)&ot.raw, nt.raw,
 			rte_memory_order_release, rte_memory_order_acquire) == 0);
@@ -50,34 +65,55 @@ __rte_ring_rts_update_tail(struct rte_ring_rts_headtail *ht)
  * @internal This function waits till head/tail distance wouldn't
  * exceed pre-defined max value.
  */
-static __rte_always_inline void
+static __rte_always_inline union __rte_ring_rts_poscnt
 __rte_ring_rts_head_wait(const struct rte_ring_rts_headtail *ht,
-	union __rte_ring_rts_poscnt *h)
+			 rte_memory_order memorder)
 {
-	uint32_t max;
+	union __rte_ring_rts_poscnt h;
+	uint32_t max = ht->htd_max;
 
-	max = ht->htd_max;
+	h.raw = rte_atomic_load_explicit(&ht->head.raw, memorder);
 
-	while (h->val.pos - ht->tail.val.pos > max) {
+	while (h.val.pos - ht->tail.val.pos > max) {
 		rte_pause();
-		h->raw = rte_atomic_load_explicit(&ht->head.raw, rte_memory_order_acquire);
+		h.raw = rte_atomic_load_explicit(&ht->head.raw, memorder);
 	}
+
+	return h;
 }
 
 /**
- * @internal This function updates the producer head for enqueue.
+ * @internal This is a helper function that moves the producer/consumer head
+ *
+ * @param d
+ *   A pointer to the headtail structure with head value to be moved
+ * @param s
+ *   A pointer to the counter-part headtail structure. Note that this
+ *   function only reads tail value from it
+ * @param capacity
+ *   Either ring capacity value (for producer), or zero (for consumer)
+ *   Indicates whether multi-thread safe path is needed or not
+ * @param num
+ *   The number of elements we want to move head value on
+ * @param behavior
+ *   RTE_RING_QUEUE_FIXED:    Move on a fixed number of items
+ *   RTE_RING_QUEUE_VARIABLE: Move on as many items as possible
+ * @param old_head
+ *   Returns head value as it was before the move
+ * @param entries
+ *   Returns the number of ring entries available BEFORE head was moved
+ * @return
+ *   Actual number of objects the head was moved on
+ *   If behavior == RTE_RING_QUEUE_FIXED, this will be 0 or n only
  */
 static __rte_always_inline uint32_t
-__rte_ring_rts_move_prod_head(struct rte_ring *r, uint32_t num,
+__rte_ring_rts_move_head(struct rte_ring_rts_headtail *d,
+	const struct rte_ring_headtail *s, uint32_t capacity, uint32_t num,
 	enum rte_ring_queue_behavior behavior, uint32_t *old_head,
-	uint32_t *free_entries)
+	uint32_t *entries)
 {
-	uint32_t n;
+	uint32_t n, stail;
 	union __rte_ring_rts_poscnt nh, oh;
-
-	const uint32_t capacity = r->capacity;
-
-	oh.raw = rte_atomic_load_explicit(&r->rts_prod.head.raw, rte_memory_order_acquire);
 
 	do {
 		/* Reset n to the initial burst count */
@@ -88,20 +124,33 @@ __rte_ring_rts_move_prod_head(struct rte_ring *r, uint32_t num,
 		 * make sure that we read prod head *before*
 		 * reading cons tail.
 		 */
-		__rte_ring_rts_head_wait(&r->rts_prod, &oh);
+		/*
+		 * A1 Synchronizes with the CAS at R1.
+		 * Establishes a happens-before relationship with a thread of the same
+		 * type that released the ht.raw, ensuring this thread observes all of
+		 * its memory effects needed to maintain a safe partial order.
+		 */
+		oh = __rte_ring_rts_head_wait(d, rte_memory_order_acquire);
+
+		/*
+		 * A2: Establish a synchronizes-with edge using a store-release at R0.
+		 * This ensures that all memory effects from the preceding opposing
+		 * thread are observed.
+		 */
+		stail = rte_atomic_load_explicit(&s->tail, rte_memory_order_acquire);
 
 		/*
 		 *  The subtraction is done between two unsigned 32bits value
 		 * (the result is always modulo 32 bits even if we have
-		 * *old_head > cons_tail). So 'free_entries' is always between 0
+		 * *old_head > cons_tail). So 'entries' is always between 0
 		 * and capacity (which is < size).
 		 */
-		*free_entries = capacity + r->cons.tail - oh.val.pos;
+		*entries = capacity + stail - oh.val.pos;
 
 		/* check that we have enough room in ring */
-		if (unlikely(n > *free_entries))
+		if (unlikely(n > *entries))
 			n = (behavior == RTE_RING_QUEUE_FIXED) ?
-					0 : *free_entries;
+					0 : *entries;
 
 		if (n == 0)
 			break;
@@ -110,16 +159,32 @@ __rte_ring_rts_move_prod_head(struct rte_ring *r, uint32_t num,
 		nh.val.cnt = oh.val.cnt + 1;
 
 	/*
-	 * this CAS(ACQUIRE, ACQUIRE) serves as a hoist barrier to prevent:
-	 *  - OOO reads of cons tail value
-	 *  - OOO copy of elems to the ring
+	 * R1: Establishes a synchronizes-with edge with the load-acquire
+	 * of ht.raw at A1. Ensures that the store-release to the tail by
+	 * this thread, if it was of the opposite type, becomes
+	 * visible to another thread of the current type. That thread will
+	 * then observe the updates in the same order, keeping a safe
+	 * partial order.
 	 */
-	} while (rte_atomic_compare_exchange_strong_explicit(&r->rts_prod.head.raw,
+	} while (rte_atomic_compare_exchange_strong_explicit(&d->head.raw,
 			(uint64_t *)(uintptr_t)&oh.raw, nh.raw,
-			rte_memory_order_acquire, rte_memory_order_acquire) == 0);
+			rte_memory_order_release,
+			rte_memory_order_relaxed) == 0);
 
 	*old_head = oh.val.pos;
 	return n;
+}
+
+/**
+ * @internal This function updates the producer head for enqueue.
+ */
+static __rte_always_inline uint32_t
+__rte_ring_rts_move_prod_head(struct rte_ring *r, uint32_t num,
+	enum rte_ring_queue_behavior behavior, uint32_t *old_head,
+	uint32_t *free_entries)
+{
+	return __rte_ring_rts_move_head(&r->rts_prod, &r->cons,
+			r->capacity, num, behavior, old_head, free_entries);
 }
 
 /**
@@ -130,51 +195,8 @@ __rte_ring_rts_move_cons_head(struct rte_ring *r, uint32_t num,
 	enum rte_ring_queue_behavior behavior, uint32_t *old_head,
 	uint32_t *entries)
 {
-	uint32_t n;
-	union __rte_ring_rts_poscnt nh, oh;
-
-	oh.raw = rte_atomic_load_explicit(&r->rts_cons.head.raw, rte_memory_order_acquire);
-
-	/* move cons.head atomically */
-	do {
-		/* Restore n as it may change every loop */
-		n = num;
-
-		/*
-		 * wait for cons head/tail distance,
-		 * make sure that we read cons head *before*
-		 * reading prod tail.
-		 */
-		__rte_ring_rts_head_wait(&r->rts_cons, &oh);
-
-		/* The subtraction is done between two unsigned 32bits value
-		 * (the result is always modulo 32 bits even if we have
-		 * cons_head > prod_tail). So 'entries' is always between 0
-		 * and size(ring)-1.
-		 */
-		*entries = r->prod.tail - oh.val.pos;
-
-		/* Set the actual entries for dequeue */
-		if (n > *entries)
-			n = (behavior == RTE_RING_QUEUE_FIXED) ? 0 : *entries;
-
-		if (unlikely(n == 0))
-			break;
-
-		nh.val.pos = oh.val.pos + n;
-		nh.val.cnt = oh.val.cnt + 1;
-
-	/*
-	 * this CAS(ACQUIRE, ACQUIRE) serves as a hoist barrier to prevent:
-	 *  - OOO reads of prod tail value
-	 *  - OOO copy of elems from the ring
-	 */
-	} while (rte_atomic_compare_exchange_strong_explicit(&r->rts_cons.head.raw,
-			(uint64_t *)(uintptr_t)&oh.raw, nh.raw,
-			rte_memory_order_acquire, rte_memory_order_acquire) == 0);
-
-	*old_head = oh.val.pos;
-	return n;
+	return __rte_ring_rts_move_head(&r->rts_cons, &r->prod,
+			0, num, behavior, old_head, entries);
 }
 
 /**

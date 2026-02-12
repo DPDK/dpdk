@@ -37,6 +37,7 @@
 #define SSOW_LF_GWS_PRF_WQE1	     (0x448ull) /* [CN10K, .) */
 #define SSOW_LF_GWS_OP_GET_WORK0     (0x600ull)
 #define SSOW_LF_GWS_OP_GET_WORK1     (0x608ull) /* [CN10K, .) */
+#define SSOW_LF_GWS_OP_PRF_GETWORK   (0x610ull) /* [CN20K, .) */
 #define SSOW_LF_GWS_OP_SWTAG_FLUSH   (0x800ull)
 #define SSOW_LF_GWS_OP_SWTAG_UNTAG   (0x810ull)
 #define SSOW_LF_GWS_OP_SWTP_CLR	     (0x820ull)

@@ -25,8 +25,6 @@ The DPDK development process has the following features:
 * Patches are reviewed publicly on the mailing list.
 * Successfully reviewed patches are merged to the repository.
 * Patches should be sent to the target repository or sub-tree, see below.
-* All sub-repositories are merged into main repository for ``-rc1`` and ``-rc2`` versions of the release.
-* After the ``-rc2`` release all patches should target the main repository.
 
 The mailing list for DPDK development is `dev@dpdk.org <https://mails.dpdk.org/archives/dev/>`_.
 Contributors will need to `register for the mailing list <https://mails.dpdk.org/listinfo/dev>`_ in order to submit patches.
@@ -58,7 +56,7 @@ To label a file as dual-licensed with BSD-3-Clause and GPL-2.0 (e.g., for code
 that is shared between the kernel and userspace), the following text would be
 used:
 
-``SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)``
+``SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0``
 
 Refer to ``licenses/README`` for more details.
 
@@ -162,9 +160,9 @@ Make your planned changes in the cloned ``dpdk`` repo. Here are some guidelines 
 
   * For other PMDs and more info, refer to the ``MAINTAINERS`` file.
 
-* New external functions should be added to the local ``version.map`` file. See
-  the :doc:`ABI policy <abi_policy>` and :ref:`ABI versioning <abi_versioning>`
-  guides. New external functions should also be added in alphabetical order.
+* New external functions should be exported.
+  See the :doc:`ABI policy <abi_policy>` and :ref:`ABI versioning <abi_versioning>`
+  guides.
 
 * Any new API function should be used in ``/app`` test directory.
 
@@ -501,6 +499,10 @@ The script usage is::
 For both of the above scripts, the -n option is used to specify a number of commits from HEAD,
 and the -r option allows the user specify a ``git log`` range.
 
+Additionally, when contributing to the DTS tool, patches should also be checked using
+the ``dts-check-format.sh`` script in the ``devtools`` directory of the DPDK repo.
+To run the script, extra :ref:`Python dependencies <dts_deps>` are needed.
+
 .. _contrib_check_compilation:
 
 Checking Compilation
@@ -563,10 +565,6 @@ The appropriate maintainer can be found in the ``MAINTAINERS`` file::
 Script ``get-maintainer.sh`` can be used to select maintainers automatically::
 
   git send-email --to-cmd ./devtools/get-maintainer.sh --cc dev@dpdk.org 000*.patch
-
-New additions can be sent without a maintainer::
-
-   git send-email --to dev@dpdk.org 000*.patch
 
 You can test the emails by sending it to yourself or with the ``--dry-run`` option.
 
@@ -645,6 +643,46 @@ environment) by the person named.
 ``Suggested-by:`` indicates that the patch idea was suggested by the named
 person.
 
+
+Frequency and volume of patches
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Please allow at least 24 hours to pass between posting patch revisions.
+This ensures reviewers from different geographical regions have time to provide feedback.
+Additionally, please do not wait too long (read: weeks) between revisions
+as this makes it harder for reviewers and maintainers
+to recall the context of the previous posting.
+If you have not received any feedback within a week,
+it is appropriate to send a ping to the mailing list.
+
+Please do not post new revisions without addressing all feedback.
+Make sure that all outstanding items have been addressed
+before posting a new revision for review
+(this should involve replying to all the feedback).
+Do not post a new version of a patch while there is ongoing discussion
+unless a reviewer has specifically requested it.
+
+Do not post your patches to the list in lieu of running tests.
+**YOU MUST ENSURE** that your patches are ready by testing them locally
+before posting to the mailing list.
+Testing locally should involve, at a minimum,
+running compilation with debug and release flags, and invoking the unit tests.
+Your changes are expected to pass on an x86/x86-64 Linux system.
+The infrastructure running the tests is a shared resource among all developers on the project,
+and many frequent reposts will result in delays for all developers.
+We do our best to include CI and self-test infrastructure
+that can be used on an individual developer basis.
+
+For details on running the unit tests, see :doc:`unit_test`.
+It is also recommended to run the :doc:`DTS <../tools/dts>` comprehensive tests.
+Finally, you can also push to a branch on the GitHub service
+to trigger a comprehensive set of compile and unit test runs.
+
+Please keep all patch sets to a reasonable length.
+Too many or too large patches and series can quickly become very difficult
+for a reasonable review.
+It is recommended to appropriately split patches and series
+to groups of digestible logical changes.
 
 
 Steps to getting your patch merged

@@ -79,13 +79,13 @@ static uint32_t hashtest_key_lens[] = {0, 2, 4, 5, 6, 7, 8, 10, 11, 15, 16, 21, 
  * Should be packed to avoid holes with potentially
  * undefined content in the middle.
  */
-struct flow_key {
+struct __rte_packed_begin flow_key {
 	uint32_t ip_src;
 	uint32_t ip_dst;
 	uint16_t port_src;
 	uint16_t port_dst;
 	uint32_t proto;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Hash function that always returns the same value, to easily test what
@@ -95,7 +95,7 @@ static uint32_t pseudo_hash(__rte_unused const void *keys,
 			    __rte_unused uint32_t key_len,
 			    __rte_unused uint32_t init_val)
 {
-	return 3;
+	return 3 | (3 << 16);
 }
 
 RTE_LOG_REGISTER(hash_logtype_test, test.hash, INFO);
@@ -115,8 +115,10 @@ static void print_key_info(const char *msg, const struct flow_key *key,
 	rte_log(RTE_LOG_DEBUG, hash_logtype_test, " @ pos %d\n", pos);
 }
 
+#define KEY_PER_BUCKET 8
+
 /* Keys used by unit test functions */
-static struct flow_key keys[5] = { {
+static struct flow_key keys[KEY_PER_BUCKET+1] = { {
 	.ip_src = RTE_IPV4(0x03, 0x02, 0x01, 0x00),
 	.ip_dst = RTE_IPV4(0x07, 0x06, 0x05, 0x04),
 	.port_src = 0x0908,
@@ -146,6 +148,30 @@ static struct flow_key keys[5] = { {
 	.port_src = 0x4948,
 	.port_dst = 0x4b4a,
 	.proto = 0x4c,
+}, {
+	.ip_src = RTE_IPV4(0x53, 0x52, 0x51, 0x50),
+	.ip_dst = RTE_IPV4(0x57, 0x56, 0x55, 0x54),
+	.port_src = 0x5958,
+	.port_dst = 0x5b5a,
+	.proto = 0x5c,
+}, {
+	.ip_src = RTE_IPV4(0x63, 0x62, 0x61, 0x60),
+	.ip_dst = RTE_IPV4(0x67, 0x66, 0x65, 0x64),
+	.port_src = 0x6968,
+	.port_dst = 0x6b6a,
+	.proto = 0x6c,
+}, {
+	.ip_src = RTE_IPV4(0x73, 0x72, 0x71, 0x70),
+	.ip_dst = RTE_IPV4(0x77, 0x76, 0x75, 0x74),
+	.port_src = 0x7978,
+	.port_dst = 0x7b7a,
+	.proto = 0x7c,
+}, {
+	.ip_src = RTE_IPV4(0x83, 0x82, 0x81, 0x80),
+	.ip_dst = RTE_IPV4(0x87, 0x86, 0x85, 0x84),
+	.port_src = 0x8988,
+	.port_dst = 0x8b8a,
+	.proto = 0x8c,
 } };
 
 /* Parameters used for hash table in unit test functions. Name set later. */
@@ -783,13 +809,15 @@ static int test_five_keys(void)
 
 /*
  * Add keys to the same bucket until bucket full.
- *	- add 5 keys to the same bucket (hash created with 4 keys per bucket):
- *	  first 4 successful, 5th successful, pushing existing item in bucket
- *	- lookup the 5 keys: 5 hits
- *	- add the 5 keys again: 5 OK
- *	- lookup the 5 keys: 5 hits (updated data)
- *	- delete the 5 keys: 5 OK
- *	- lookup the 5 keys: 5 misses
+ *	- add 9 keys to the same bucket (hash created with 8 keys per bucket):
+ *	  first 8 successful, 9th successful, pushing existing item in bucket
+ *	- lookup the 9 keys: 9 hits
+ *	- bulk lookup for all the 9 keys: 9 hits
+ *	- add the 9 keys again: 9 OK
+ *	- lookup the 9 keys: 9 hits (updated data)
+ *	- delete the 9 keys: 9 OK
+ *	- lookup the 9 keys: 9 misses
+ *	- bulk lookup for all the 9 keys: 9 misses
  */
 static int test_full_bucket(void)
 {
@@ -801,16 +829,17 @@ static int test_full_bucket(void)
 		.hash_func_init_val = 0,
 		.socket_id = 0,
 	};
+	const void *key_array[KEY_PER_BUCKET+1] = {0};
 	struct rte_hash *handle;
-	int pos[5];
-	int expected_pos[5];
+	int pos[KEY_PER_BUCKET+1];
+	int expected_pos[KEY_PER_BUCKET+1];
 	unsigned i;
-
+	int ret;
 	handle = rte_hash_create(&params_pseudo_hash);
 	RETURN_IF_ERROR(handle == NULL, "hash creation failed");
 
 	/* Fill bucket */
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < KEY_PER_BUCKET; i++) {
 		pos[i] = rte_hash_add_key(handle, &keys[i]);
 		print_key_info("Add", &keys[i], pos[i]);
 		RETURN_IF_ERROR(pos[i] < 0,
@@ -821,22 +850,36 @@ static int test_full_bucket(void)
 	 * This should work and will push one of the items
 	 * in the bucket because it is full
 	 */
-	pos[4] = rte_hash_add_key(handle, &keys[4]);
-	print_key_info("Add", &keys[4], pos[4]);
-	RETURN_IF_ERROR(pos[4] < 0,
-			"failed to add key (pos[4]=%d)", pos[4]);
-	expected_pos[4] = pos[4];
+	pos[KEY_PER_BUCKET] = rte_hash_add_key(handle, &keys[KEY_PER_BUCKET]);
+	print_key_info("Add", &keys[KEY_PER_BUCKET], pos[KEY_PER_BUCKET]);
+	RETURN_IF_ERROR(pos[KEY_PER_BUCKET] < 0,
+			"failed to add key (pos[%d]=%d)", KEY_PER_BUCKET, pos[KEY_PER_BUCKET]);
+	expected_pos[KEY_PER_BUCKET] = pos[KEY_PER_BUCKET];
 
 	/* Lookup */
-	for (i = 0; i < 5; i++) {
+	for (i = 0; i < KEY_PER_BUCKET+1; i++) {
 		pos[i] = rte_hash_lookup(handle, &keys[i]);
 		print_key_info("Lkp", &keys[i], pos[i]);
 		RETURN_IF_ERROR(pos[i] != expected_pos[i],
 			"failed to find key (pos[%u]=%d)", i, pos[i]);
 	}
 
+	for (i = 0; i < KEY_PER_BUCKET+1; i++)
+		key_array[i] = &keys[i];
+
+	/*Bulk lookup after add with same hash*/
+	ret = rte_hash_lookup_bulk(handle, key_array, KEY_PER_BUCKET+1, (int32_t *)pos);
+	RETURN_IF_ERROR(ret, "rte_hash_lookup_bulk returned an error: %d\n", ret);
+	for (i = 0; i < KEY_PER_BUCKET+1; i++) {
+		print_key_info("Blk_Lkp", key_array[i], pos[i]);
+		RETURN_IF_ERROR(pos[i] != expected_pos[i],
+				"failed to find key (pos[%u]=%d)", i, pos[i]);
+	}
+
+
+
 	/* Add - update */
-	for (i = 0; i < 5; i++) {
+	for (i = 0; i < KEY_PER_BUCKET+1; i++) {
 		pos[i] = rte_hash_add_key(handle, &keys[i]);
 		print_key_info("Add", &keys[i], pos[i]);
 		RETURN_IF_ERROR(pos[i] != expected_pos[i],
@@ -844,7 +887,7 @@ static int test_full_bucket(void)
 	}
 
 	/* Lookup */
-	for (i = 0; i < 5; i++) {
+	for (i = 0; i < KEY_PER_BUCKET+1; i++) {
 		pos[i] = rte_hash_lookup(handle, &keys[i]);
 		print_key_info("Lkp", &keys[i], pos[i]);
 		RETURN_IF_ERROR(pos[i] != expected_pos[i],
@@ -869,7 +912,7 @@ static int test_full_bucket(void)
 	RETURN_IF_ERROR(pos[1] < 0, "failed to add key (pos[1]=%d)", pos[1]);
 
 	/* Delete */
-	for (i = 0; i < 5; i++) {
+	for (i = 0; i < KEY_PER_BUCKET+1; i++) {
 		pos[i] = rte_hash_del_key(handle, &keys[i]);
 		print_key_info("Del", &keys[i], pos[i]);
 		RETURN_IF_ERROR(pos[i] != expected_pos[i],
@@ -877,11 +920,20 @@ static int test_full_bucket(void)
 	}
 
 	/* Lookup */
-	for (i = 0; i < 5; i++) {
+	for (i = 0; i < KEY_PER_BUCKET+1; i++) {
 		pos[i] = rte_hash_lookup(handle, &keys[i]);
 		print_key_info("Lkp", &keys[i], pos[i]);
 		RETURN_IF_ERROR(pos[i] != -ENOENT,
 			"fail: found non-existent key (pos[%u]=%d)", i, pos[i]);
+	}
+
+	/* Bulk Lookup on empty table*/
+	ret = rte_hash_lookup_bulk(handle, &key_array[0], KEY_PER_BUCKET+1, (int32_t *)pos);
+	RETURN_IF_ERROR(ret, "rte_hash_lookup_bulk returned an error: %d\n", ret);
+	for (i = 0; i < KEY_PER_BUCKET+1; i++) {
+		print_key_info("Blk_Lkp", key_array[i], pos[i]);
+		RETURN_IF_ERROR(pos[i] != -ENOENT,
+				"failed to find key (pos[%u]=%d)", i, pos[i]);
 	}
 
 	rte_hash_free(handle);
@@ -1068,6 +1120,14 @@ fbk_hash_unit_test(void)
 		.socket_id = RTE_MAX_NUMA_NODES + 1, /* invalid socket */
 	};
 
+	/* try and create hash with an excessively long name */
+	struct rte_fbk_hash_params invalid_params_long_name = {
+		.name = "four_byte_key_hash_name_length_32",
+		.entries = 4,
+		.entries_per_bucket = 2,
+		.socket_id = 0,
+	};
+
 	/* try to create two hashes with identical names
 	 * in this case, trying to create a second one will not
 	 * fail but will simply return pointer to the existing
@@ -1147,6 +1207,9 @@ fbk_hash_unit_test(void)
 	RETURN_IF_ERROR_FBK(handle != NULL, "fbk hash creation should have failed");
 
 	handle = rte_fbk_hash_create(&invalid_params_7);
+	RETURN_IF_ERROR_FBK(handle != NULL, "fbk hash creation should have failed");
+
+	handle = rte_fbk_hash_create(&invalid_params_long_name);
 	RETURN_IF_ERROR_FBK(handle != NULL, "fbk hash creation should have failed");
 
 	if (rte_eal_has_hugepages()) {
@@ -1384,6 +1447,16 @@ static int test_hash_creation_with_bad_parameters(void)
 	if (handle != NULL) {
 		rte_hash_free(handle);
 		printf("Impossible creating hash successfully with invalid socket\n");
+		return -1;
+	}
+
+	memcpy(&params, &ut_params, sizeof(params));
+	params.name = "hash_creation_with_too_long_name";
+	params.socket_id = SOCKET_ID_ANY;
+	handle = rte_hash_create(&params);
+	if (handle != NULL) {
+		rte_hash_free(handle);
+		printf("Impossible creating hash successfully with long name\n");
 		return -1;
 	}
 
@@ -1895,6 +1968,8 @@ test_hash_rcu_qsbr_add(void)
 	return 0;
 }
 
+#define HASH_RCU_QSBR_MAX_TOTAL_ENTRIES 9
+
 /*
  * rte_hash_rcu_qsbr_add DQ mode functional test.
  * Reader and writer are in the same thread in this test.
@@ -1914,7 +1989,7 @@ test_hash_rcu_qsbr_add(void)
 static int
 test_hash_rcu_qsbr_dq_mode(uint8_t ext_bkt)
 {
-	uint32_t total_entries = (ext_bkt == 0) ? 8 : 9;
+	const uint32_t total_entries = (ext_bkt == 0) ? 8 : HASH_RCU_QSBR_MAX_TOTAL_ENTRIES;
 
 	uint8_t hash_extra_flag = RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF;
 
@@ -1930,8 +2005,8 @@ test_hash_rcu_qsbr_dq_mode(uint8_t ext_bkt)
 		.socket_id = 0,
 		.extra_flag = hash_extra_flag,
 	};
-	int pos[total_entries];
-	int expected_pos[total_entries];
+	int pos[HASH_RCU_QSBR_MAX_TOTAL_ENTRIES];
+	int expected_pos[HASH_RCU_QSBR_MAX_TOTAL_ENTRIES];
 	unsigned int i;
 	size_t sz;
 	int32_t status;
@@ -2084,7 +2159,7 @@ test_hash_rcu_qsbr_reader(void *arg)
 static int
 test_hash_rcu_qsbr_sync_mode(uint8_t ext_bkt)
 {
-	uint32_t total_entries = (ext_bkt == 0) ? 8 : 9;
+	const uint32_t total_entries = (ext_bkt == 0) ? 8 : HASH_RCU_QSBR_MAX_TOTAL_ENTRIES;
 
 	uint8_t hash_extra_flag = RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF;
 
@@ -2100,8 +2175,8 @@ test_hash_rcu_qsbr_sync_mode(uint8_t ext_bkt)
 		.socket_id = 0,
 		.extra_flag = hash_extra_flag,
 	};
-	int pos[total_entries];
-	int expected_pos[total_entries];
+	int pos[HASH_RCU_QSBR_MAX_TOTAL_ENTRIES];
+	int expected_pos[HASH_RCU_QSBR_MAX_TOTAL_ENTRIES];
 	unsigned int i;
 	size_t sz;
 	int32_t status;
@@ -2184,6 +2259,90 @@ test_hash_rcu_qsbr_sync_mode(uint8_t ext_bkt)
 }
 
 /*
+ * rte_hash_rcu_qsbr_dq_reclaim unit test.
+ */
+static int
+test_hash_rcu_qsbr_dq_reclaim(void)
+{
+	size_t sz;
+	int32_t status;
+	unsigned int total_entries = 8;
+	unsigned int freed, pending, available;
+	uint32_t reclaim_keys[8] = {10, 11, 12, 13, 14, 15, 16, 17};
+	struct rte_hash_rcu_config rcu_cfg = {0};
+	struct rte_hash_parameters hash_params = {
+			.name = "test_hash_rcu_qsbr_dq_reclaim",
+			.entries = total_entries,
+			.key_len = sizeof(uint32_t),
+			.hash_func = NULL,
+			.hash_func_init_val = 0,
+			.socket_id = 0,
+	};
+
+	hash_params.extra_flag = RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF;
+
+	g_qsv = NULL;
+	g_handle = NULL;
+
+	printf("\n# Running RCU QSBR DQ mode, reclaim defer queue functional test\n");
+
+	g_handle = rte_hash_create(&hash_params);
+	RETURN_IF_ERROR_RCU_QSBR(g_handle == NULL, "Hash creation failed");
+
+	/* Create RCU QSBR variable */
+	sz = rte_rcu_qsbr_get_memsize(RTE_MAX_LCORE);
+	g_qsv = (struct rte_rcu_qsbr *)rte_zmalloc_socket(
+			NULL, sz, RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	RETURN_IF_ERROR_RCU_QSBR(g_qsv == NULL, "RCU QSBR variable creation failed");
+
+	status = rte_rcu_qsbr_init(g_qsv, RTE_MAX_LCORE);
+	RETURN_IF_ERROR_RCU_QSBR(status != 0, "RCU QSBR variable initialization failed");
+
+	rcu_cfg.v = g_qsv;
+	rcu_cfg.dq_size = total_entries;
+	rcu_cfg.mode = RTE_HASH_QSBR_MODE_DQ;
+
+	/* Attach RCU QSBR to hash table */
+	status = rte_hash_rcu_qsbr_add(g_handle, &rcu_cfg);
+	RETURN_IF_ERROR_RCU_QSBR(status != 0, "Attach RCU QSBR to hash table failed");
+
+	/* Register pseudo reader */
+	status = rte_rcu_qsbr_thread_register(g_qsv, 0);
+	RETURN_IF_ERROR_RCU_QSBR(status != 0, "RCU QSBR thread registration failed");
+	rte_rcu_qsbr_thread_online(g_qsv, 0);
+
+	/* Fill half of the hash table */
+	for (size_t i = 0; i < total_entries / 2; i++)
+		status = rte_hash_add_key(g_handle, &reclaim_keys[i]);
+
+	/* Try to put these elements into the defer queue*/
+	for (size_t i = 0; i < total_entries / 2; i++)
+		rte_hash_del_key(g_handle, &reclaim_keys[i]);
+
+	/* Reader quiescent */
+	rte_rcu_qsbr_quiescent(g_qsv, 0);
+
+	status = rte_hash_add_key(g_handle, &reclaim_keys[0]);
+	RETURN_IF_ERROR_RCU_QSBR(status < 0, "failed to add key (pos[%u]=%d)", 0, status);
+
+	/* This should be (total_entries / 2) + 1 (last add) */
+	unsigned int hash_size = rte_hash_count(g_handle);
+
+	/* Freed size should be (total_entries / 2) */
+	rte_hash_rcu_qsbr_dq_reclaim(g_handle, &freed, &pending, &available);
+
+	rte_hash_free(g_handle);
+	rte_free(g_qsv);
+
+	if (hash_size != (total_entries / 2 + 1) || freed != (total_entries / 2)) {
+		printf("Failed to reclaim defer queue\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
  * Do all unit and performance tests.
  */
 static int
@@ -2261,7 +2420,10 @@ test_hash(void)
 	if (test_hash_rcu_qsbr_sync_mode(1) < 0)
 		return -1;
 
+	if (test_hash_rcu_qsbr_dq_reclaim() < 0)
+		return -1;
+
 	return 0;
 }
 
-REGISTER_FAST_TEST(hash_autotest, true, true, test_hash);
+REGISTER_FAST_TEST(hash_autotest, NOHUGE_OK, ASAN_OK, test_hash);

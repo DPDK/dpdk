@@ -74,6 +74,12 @@ l3fwd_event_device_setup_generic(void)
 	evt_rsrc->has_burst = !!(dev_info.event_dev_cap &
 				    RTE_EVENT_DEV_CAP_BURST_MODE);
 
+	if (dev_info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE)
+		event_d_conf.preschedule_type = RTE_EVENT_PRESCHEDULE;
+
+	if (dev_info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE)
+		event_d_conf.preschedule_type = RTE_EVENT_PRESCHEDULE_ADAPTIVE;
+
 	ret = rte_event_dev_configure(event_d_id, &event_d_conf);
 	if (ret < 0)
 		rte_panic("Error in configuring event device\n");
@@ -184,7 +190,7 @@ l3fwd_event_queue_setup_generic(uint32_t event_queue_cfg)
 	}
 
 	event_q_conf.event_queue_cfg |= RTE_EVENT_QUEUE_CFG_SINGLE_LINK;
-	event_q_conf.priority = RTE_EVENT_DEV_PRIORITY_HIGHEST,
+	event_q_conf.priority = RTE_EVENT_DEV_PRIORITY_HIGHEST;
 	ret = rte_event_queue_setup(event_d_id, event_q_id, &event_q_conf);
 	if (ret < 0)
 		rte_panic("Error in configuring event queue for Tx adapter\n");

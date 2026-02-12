@@ -1,7 +1,7 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016-2021 NXP
+ * Copyright 2016-2023 NXP
  *
  */
 
@@ -10,13 +10,17 @@
 
 /* Minimal supported DPRC Version */
 #define DPRC_VER_MAJOR			6
-#define DPRC_VER_MINOR			6
+#define DPRC_VER_MINOR			7
 
 /* Command versioning */
 #define DPRC_CMD_BASE_VERSION			1
+#define DPRC_CMD_VERSION_2			2
+#define DPRC_CMD_VERSION_3			3
 #define DPRC_CMD_ID_OFFSET			4
 
 #define DPRC_CMD(id)	((id << DPRC_CMD_ID_OFFSET) | DPRC_CMD_BASE_VERSION)
+#define DPRC_CMD_V2(id)	(((id) << DPRC_CMD_ID_OFFSET) | DPRC_CMD_VERSION_2)
+#define DPRC_CMD_V3(id)	(((id) << DPRC_CMD_ID_OFFSET) | DPRC_CMD_VERSION_3)
 
 /* Command IDs */
 #define DPRC_CMDID_CLOSE                        DPRC_CMD(0x800)

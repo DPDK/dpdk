@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016,2019 NXP
+ *   Copyright 2016,2019,2022,2024 NXP
  *
  */
 
@@ -32,12 +32,12 @@ extern "C" {
 #define DPAA2_FD_CTRL_PTV1	0x00400000
 
 /* Frame annotation status */
-struct dpaa2_fas {
+struct __rte_packed_begin dpaa2_fas {
 	uint8_t reserved;
 	uint8_t ppid;
 	__le16 ifpid;
 	__le32 status;
-}  __rte_packed;
+} __rte_packed_end;
 
 /**
  * HW Packet Annotation  Register structures
@@ -253,6 +253,9 @@ struct dpaa2_annot_hdr {
 #define PARSE_ERROR_CODE(var)		((uint64_t)(var) & 0xFF00000000000000)
 #define SOFT_PARSING_CONTEXT(var)	((uint64_t)(var) & 0x00FFFFFFFFFFFFFF)
 
+#define DPAA2_RX_MIN_FD_OFFSET \
+	(DPAA2_FD_PTA_SIZE + sizeof(struct dpaa2_annot_hdr))
+
 /*FAEAD offset in anmotation area*/
 #define DPAA2_FD_HW_ANNOT_FAEAD_OFFSET	0x58
 
@@ -260,6 +263,9 @@ struct dpaa2_faead {
 	uint32_t fqid;
 	uint32_t ctrl;
 };
+
+#define DPAA2_DYN_TX_MIN_FD_OFFSET \
+	(DPAA2_FD_HW_ANNOT_FAEAD_OFFSET + sizeof(struct dpaa2_faead))
 
 /*FAEAD bits */
 /*A2 OMB contains valid data*/
@@ -298,13 +304,13 @@ struct dpaa2_faead {
 #define DPAA2_ETH_FAS_PHE	       0x00000020
 #define DPAA2_ETH_FAS_BLE	       0x00000010
 /* L3 csum validation performed */
-#define DPAA2_ETH_FAS_L3CV	      0x00000008
+#define DPAA2_ETH_FAS_L3CV	      0x0000000800000000
 /* L3 csum error */
-#define DPAA2_ETH_FAS_L3CE	      0x00000004
+#define DPAA2_ETH_FAS_L3CE	      0x0000000400000000
 /* L4 csum validation performed */
-#define DPAA2_ETH_FAS_L4CV	      0x00000002
+#define DPAA2_ETH_FAS_L4CV	      0x0000000200000000
 /* L4 csum error */
-#define DPAA2_ETH_FAS_L4CE	      0x00000001
+#define DPAA2_ETH_FAS_L4CE	      0x0000000100000000
 
 #ifdef __cplusplus
 }

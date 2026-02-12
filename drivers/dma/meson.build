@@ -5,9 +5,11 @@ drivers = [
         'cnxk',
         'dpaa',
         'dpaa2',
-        'hisilicon',
+        'hisi_acc',
+        'hisi_pciep',
         'idxd',
         'ioat',
+        'odm',
         'skeleton',
 ]
 std_deps = ['dmadev']

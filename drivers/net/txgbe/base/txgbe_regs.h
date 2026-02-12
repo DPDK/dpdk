@@ -97,7 +97,9 @@
 #define     TXGBE_LINK_SPEED_2_5GB_FULL   0x0400
 #define     TXGBE_LINK_SPEED_5GB_FULL     0x0800
 #define     TXGBE_LINK_SPEED_10GB_FULL    0x0080
-#define     TXGBE_LINK_SPEED_40GB_FULL    0x0100
+#define     TXGBE_LINK_SPEED_25GB_FULL    0x0100
+#define     TXGBE_LINK_SPEED_40GB_FULL    0x0040
+#define     TXGBE_LINK_SPEED_50GB_FULL    0x0200
 #define   TXGBE_AUTOC_AUTONEG             MS64(63, 0x1)
 
 
@@ -156,6 +158,8 @@
 #define   TXGBE_RST_SW             MS(0, 0x1)
 #define   TXGBE_RST_LAN(i)         MS(((i) + 1), 0x1)
 #define   TXGBE_RST_FW             MS(3, 0x1)
+#define   TXGBE_RST_MAC_LAN_1      MS(17, 0x1)
+#define   TXGBE_RST_MAC_LAN_0      MS(20, 0x1)
 #define   TXGBE_RST_ETH(i)         MS(((i) + 29), 0x1)
 #define   TXGBE_RST_GLB            MS(31, 0x1)
 #define   TXGBE_RST_DEFAULT        (TXGBE_RST_SW | \
@@ -261,6 +265,13 @@
 #define   TXGBE_MNGMBXCTL_FWACK    MS(3, 0x1)
 #define TXGBE_MNGMBX               0x01E100
 
+/* amlite: swfw mailbox changes */
+#define TXGBE_AML_MNG_MBOX_CTL_SW2FW    0x01E0A0
+#define TXGBE_AML_MNG_MBOX_SW2FW        0x01E200
+#define TXGBE_AML_MNG_MBOX_CTL_FW2SW    0x01E0A4
+#define TXGBE_AML_MNG_MBOX_FW2SW        0x01E300
+#define   TXGBE_AML_MNG_MBOX_NOTIFY     MS(31, 0x1)
+
 /******************************************************************************
  * Port Registers
  ******************************************************************************/
@@ -291,6 +302,16 @@
 #define   TXGBE_PORT_LINK1000M          MS(2, 0x1)
 #define   TXGBE_PORT_LINK100M           MS(3, 0x1)
 #define   TXGBE_PORT_LANID(r)           RS(r, 8, 0x1)
+#define   TXGBE_AMLITE_CFG_LED_CTL_LINK_BSY_SEL  MS(5, 0x1)
+#define   TXGBE_AMLITE_CFG_LED_CTL_LINK_10G_SEL  MS(4, 0x1)
+#define   TXGBE_AMLITE_CFG_LED_CTL_LINK_25G_SEL  MS(3, 0x1)
+#define   TXGBE_AMLITE_CFG_LED_CTL_LINK_40G_SEL  MS(2, 0x1)
+#define   TXGBE_AMLITE_CFG_LED_CTL_LINK_50G_SEL  MS(1, 0x1)
+#define   TXGBE_AMLITE_LED_LINK_ACTIVE    TXGBE_AMLITE_CFG_LED_CTL_LINK_BSY_SEL
+#define   TXGBE_AMLITE_LED_LINK_10G       TXGBE_AMLITE_CFG_LED_CTL_LINK_10G_SEL
+#define   TXGBE_AMLITE_LED_LINK_25G       TXGBE_AMLITE_CFG_LED_CTL_LINK_25G_SEL
+#define   TXGBE_AMLITE_LED_LINK_40G       TXGBE_AMLITE_CFG_LED_CTL_LINK_40G_SEL
+#define   TXGBE_AMLITE_LED_LINK_50G       TXGBE_AMLITE_CFG_LED_CTL_LINK_50G_SEL
 #define TXGBE_EXTAG                     0x014408
 #define   TXGBE_EXTAG_ETAG_MASK         MS(0, 0xFFFF)
 #define   TXGBE_EXTAG_ETAG(v)           LS(v, 0, 0xFFFF)
@@ -309,11 +330,17 @@
 #define   TXGBE_LEDCTL_1G		MS(2, 0x1)
 #define   TXGBE_LEDCTL_100M		MS(3, 0x1)
 #define   TXGBE_LEDCTL_ACTIVE		MS(4, 0x1)
+#define TXGBE_LINKUP_FILTER             0x014428
 #define TXGBE_TAGTPID(i)                (0x014430 + (i) * 4) /* 0-3 */
 #define   TXGBE_TAGTPID_LSB_MASK        MS(0, 0xFFFF)
 #define   TXGBE_TAGTPID_LSB(v)          LS(v, 0, 0xFFFF)
 #define   TXGBE_TAGTPID_MSB_MASK        MS(16, 0xFFFF)
 #define   TXGBE_TAGTPID_MSB(v)          LS(v, 16, 0xFFFF)
+
+/*AML LINK STATUS OVERWRITE*/
+#define TXGBE_AML_EPCS_MISC_CTL         0x13240
+#define TXGBE_AML_LINK_STATUS_OVRD_EN   MS(5, 0x1)
+#define TXGBE_AML_LINK_STATUS_OVRD_VAL  MS(4, 0x1)
 
 /**
  * GPIO Control
@@ -580,6 +607,8 @@
 #define   TXGBE_RACTL_RSSMASK           MS(16, 0xFFFF)
 #define   TXGBE_RACTL_RSSIPV4TCP        MS(16, 0x1)
 #define   TXGBE_RACTL_RSSIPV4           MS(17, 0x1)
+#define   TXGBE_RACTL_RSSIPV4SCTP       MS(18, 0x1)
+#define   TXGBE_RACTL_RSSIPV6SCTP       MS(19, 0x1)
 #define   TXGBE_RACTL_RSSIPV6           MS(20, 0x1)
 #define   TXGBE_RACTL_RSSIPV6TCP        MS(21, 0x1)
 #define   TXGBE_RACTL_RSSIPV4UDP        MS(22, 0x1)
@@ -1022,6 +1051,8 @@ enum txgbe_5tuple_protocol {
 #define   TXGBE_MACRXFLT_CTL_PASS       LS(3, 6, 0x3)
 #define   TXGBE_MACRXFLT_RXALL          MS(31, 0x1)
 
+#define TXGBE_MAC_WDG_TIMEOUT           0x01100C
+
 /******************************************************************************
  * Statistic Registers
  ******************************************************************************/
@@ -1195,7 +1226,8 @@ enum txgbe_5tuple_protocol {
 #define   TXGBE_ICRMISC_ANDONE MS(19, 0x1) /* link auto-nego done */
 #define   TXGBE_ICRMISC_ERRIG  MS(20, 0x1) /* integrity error */
 #define   TXGBE_ICRMISC_SPI    MS(21, 0x1) /* SPI interface */
-#define   TXGBE_ICRMISC_VFMBX  MS(22, 0x1) /* VF-PF message box */
+#define   TXGBE_ICRMISC_TXDESC MS(22, 0x1) /* TDM desc error */
+#define   TXGBE_ICRMISC_VFMBX  MS(23, 0x1) /* VF-PF message box */
 #define   TXGBE_ICRMISC_GPIO   MS(26, 0x1) /* GPIO interrupt */
 #define   TXGBE_ICRMISC_ERRPCI MS(27, 0x1) /* pcie request error */
 #define   TXGBE_ICRMISC_HEAT   MS(28, 0x1) /* overheat detection */
@@ -1218,6 +1250,8 @@ enum txgbe_5tuple_protocol {
 			TXGBE_ICRMISC_LNKUP)
 #define TXGBE_ICSMISC                   0x000104
 #define TXGBE_IENMISC                   0x000108
+#define TXGBE_PX_PF_BME                 0x0004B8
+#define   TXGBE_PX_PF_BME_EN            MS(0, 0x1)
 #define TXGBE_IVARMISC                  0x0004FC
 #define   TXGBE_IVARMISC_VEC(v)         LS(v, 0, 0x7)
 #define   TXGBE_IVARMISC_VLD            MS(7, 0x1)
@@ -1235,6 +1269,11 @@ enum txgbe_5tuple_protocol {
 #define   TXGBE_IVAR_VLD                MS(7, 0x1)
 #define TXGBE_TCPTMR                    0x000170
 #define TXGBE_ITRSEL                    0x000180
+
+#define TXGBE_BMECTL                    0x012020
+#define TXGBE_BMEPEND                   0x000168
+
+#define TXGBE_BME_AML                   0x0004B8
 
 /* P2V Mailbox */
 #define TXGBE_MBMEM(i)           (0x005000 + 0x40 * (i)) /* 0-63 */
@@ -1266,6 +1305,11 @@ enum txgbe_5tuple_protocol {
 #define     TXGBE_VFSTATUS_BW_10G       LS(0x1, 1, 0x7)
 #define     TXGBE_VFSTATUS_BW_1G        LS(0x2, 1, 0x7)
 #define     TXGBE_VFSTATUS_BW_100M      LS(0x4, 1, 0x7)
+#define   TXGBE_VFSTATUS_BW_MASK_AML    MS(1, 0xF)
+#define     TXGBE_VFSTATUS_BW_AML_50G   LS(0x1, 1, 0xF)
+#define     TXGBE_VFSTATUS_BW_AML_40G   LS(0x2, 1, 0xF)
+#define     TXGBE_VFSTATUS_BW_AML_25G   LS(0x4, 1, 0xF)
+#define     TXGBE_VFSTATUS_BW_AML_10G   LS(0x8, 1, 0xF)
 #define   TXGBE_VFSTATUS_BUSY           MS(4, 0x1)
 #define   TXGBE_VFSTATUS_LANID          MS(8, 0x1)
 #define TXGBE_VFRST                     0x000008
@@ -1281,6 +1325,8 @@ enum txgbe_5tuple_protocol {
 #define   TXGBE_VFPLCFG_RSSMASK         MS(16, 0xFF)
 #define   TXGBE_VFPLCFG_RSSIPV4TCP      MS(16, 0x1)
 #define   TXGBE_VFPLCFG_RSSIPV4         MS(17, 0x1)
+#define   TXGBE_VFPLCFG_RSSIPV4SCTP     MS(18, 0x1)
+#define   TXGBE_VFPLCFG_RSSIPV6SCTP     MS(19, 0x1)
 #define   TXGBE_VFPLCFG_RSSIPV6         MS(20, 0x1)
 #define   TXGBE_VFPLCFG_RSSIPV6TCP      MS(21, 0x1)
 #define   TXGBE_VFPLCFG_RSSIPV4UDP      MS(22, 0x1)
@@ -1348,6 +1394,7 @@ enum txgbe_5tuple_protocol {
 #define   TXGBE_RXCFG_HDRLEN(v)         LS(HDRLEN(v), 12, 0xF)
 #define     TXGBE_RXCFG_HDRLEN_MASK     MS(12, 0xF)
 #define   TXGBE_RXCFG_WTHRESH(v)        LS(v, 16, 0x7)
+#define   TXGBE_RXCFG_DESC_MERGE        MS(19, 0x1)
 #define   TXGBE_RXCFG_ETAG              MS(22, 0x1)
 #define   TXGBE_RXCFG_RSCMAX_MASK       MS(23, 0x3)
 #define     TXGBE_RXCFG_RSCMAX_1        LS(0, 23, 0x3)
@@ -1374,8 +1421,22 @@ enum txgbe_5tuple_protocol {
 #define   TXGBE_TXCFG_HTHRESH_MASK      MS(8, 0xF)
 #define   TXGBE_TXCFG_HTHRESH(v)        LS(v, 8, 0xF)
 #define   TXGBE_TXCFG_WTHRESH_MASK      MS(16, 0x7F)
+#define   TXGBE_TXCFG_WTHRESH_MASK_AML  MS(16, 0x1FF)
 #define   TXGBE_TXCFG_WTHRESH(v)        LS(v, 16, 0x7F)
+#define   TXGBE_TXCFG_WTHRESH_AML(v)    LS(v, 16, 0x1FF)
 #define   TXGBE_TXCFG_FLUSH             MS(26, 0x1)
+#define TXGBE_PX_TR_CFG_HEAD_WB         MS(27, 0x1) /* amlite head wb */
+#define TXGBE_PX_TR_CFG_HEAD_WB_64BYTE  MS(28, 0x1) /* amlite head wb 64byte */
+#define TXGBE_PX_TR_CFG_HEAD_WB_MASK    MS(27, 0x3)
+
+/* amlite: tx head wb */
+#define TXGBE_PX_TR_HEAD_ADDRL(_i)      (0x03028 + ((_i) * 0x40))
+#define TXGBE_PX_TR_HEAD_ADDRH(_i)      (0x0302C + ((_i) * 0x40))
+
+#define TXGBE_TDM_DESC_CHK(i)		(0x0180B0 + (i) * 4) /*0-3*/
+#define TXGBE_TDM_DESC_NONFATAL(i)	(0x0180C0 + (i) * 4) /*0-3*/
+#define TXGBE_TDM_DESC_FATAL(i)		(0x0180D0 + (i) * 4) /*0-3*/
+#define TXGBE_TDM_DESC_MASK(v)		MS(v, 0x1)
 
 /* interrupt registers */
 #define TXGBE_ITRI                      0x000180
@@ -1557,6 +1618,15 @@ enum txgbe_5tuple_protocol {
 #define     TXGBE_PORTSTAT_BW_100M      MS(3, 0x1)
 #define   TXGBE_PORTSTAT_ID(r)          RS(r, 8, 0x1)
 
+/* amlite: diff from sapphire */
+#define TXGBE_CFG_PORT_ST_AML_LINK_MASK     MS(1, 0xF)
+#define TXGBE_CFG_PORT_ST_AML_LINK_10G      MS(4, 0x1)
+#define TXGBE_CFG_PORT_ST_AML_LINK_25G      MS(3, 0x1)
+#define TXGBE_CFG_PORT_ST_AML_LINK_40G      MS(2, 0x1)
+#define TXGBE_CFG_PORT_ST_AML_LINK_50G      MS(1, 0x1)
+
+#define TXGBE_AML_PHY_LINK_UP               MS(2, 0x1)
+
 #define TXGBE_VXLAN                     0x014410
 #define TXGBE_VXLAN_GPE                 0x014414
 #define TXGBE_GENEVE                    0x014418
@@ -1578,15 +1648,32 @@ enum txgbe_5tuple_protocol {
 #define TXGBE_GPIOINTEN                 0x014830
 #define TXGBE_GPIOINTMASK               0x014834
 #define TXGBE_GPIOINTTYPE               0x014838
+#define TXGBE_GPIO_INT_POLARITY         0x01483C
+#define   TXGBE_GPIO_INT_POLARITY_3     MS(3, 0x1)
 #define TXGBE_GPIOINTSTAT               0x014840
 #define TXGBE_GPIORAWINTSTAT            0x014844
 #define TXGBE_GPIOEOI                   0x01484C
-
+#define TXGBE_GPIOEXT                   0x014850
+#define   TXGBE_SFP1_MOD_ABS_LS         MS(2, 0x1) /* GPIO_EXT SFP ABSENT*/
+#define   TXGBE_SFP1_RX_LOS_LS          MS(3, 0x1) /* GPIO_EXT RX LOSS */
+#define   TXGBE_SFP1_MOD_PRST_LS        MS(4, 0x1) /* GPIO_EXT SFP ABSENT*/
 
 #define TXGBE_ARBPOOLIDX                0x01820C
 #define TXGBE_ARBTXRATE                 0x018404
 #define   TXGBE_ARBTXRATE_MIN(v)        LS(v, 0, 0x3FFF)
 #define   TXGBE_ARBTXRATE_MAX(v)        LS(v, 16, 0x3FFF)
+
+#define TXGBE_TDM_RL_QUEUE_IDX          0x018210
+#define TXGBE_TDM_RL_QUEUE_CFG          0x018214
+#define   TXGBE_TDM_FACTOR_INT_MASK     MS(16, 0xFFFF)
+#define   TXGBE_TDM_FACTOR_FRA_MASK     MS(0, 0xFFFC)
+#define   TXGBE_TDM_FACTOR_INT_SHIFT    16
+#define   TXGBE_TDM_FACTOR_FRA_SHIFT    2
+
+#define TXGBE_TDM_RL_VM_IDX             0x018218
+#define TXGBE_TDM_RL_VM_CFG             0x01821C
+#define TXGBE_TDM_RL_CFG                0x018400
+#define TXGBE_TDM_RL_EN                 MS(0, 0x1)
 
 /* qos */
 #define TXGBE_ARBTXCTL                  0x018200
@@ -1602,9 +1689,22 @@ enum txgbe_5tuple_protocol {
 #define   TXGBE_ARBRXCTL_WSP            MS(2, 0x1)
 #define   TXGBE_ARBRXCTL_DIA            MS(6, 0x1)
 
+#define TXGBE_RDM_VF_RE(_i)     (0x12004 + ((_i) * 4))
+#define TXGBE_RDM_VFRE_CLR(_i)  (0x120A0 + ((_i) * 4))
+#define TXGBE_RDM_RSC_CTL       0x1200C
+/* amlite: rdm_rsc_ctl_free_ctl */
+#define TXGBE_RDM_RSC_CTL_FREE_CTL      MS(7, 0x1)
+#define TXGBE_RDM_RSC_CTL_FREE_CNT_DIS  MS(8, 0x1)
+#define TXGBE_RDM_ARB_CFG(_i)   (0x12040 + ((_i) * 4)) /* 8 of these (0-7) */
+#define TXGBE_RDM_PF_QDE(_i)    (0x12080 + ((_i) * 4))
+#define TXGBE_RDM_PF_HIDE(_i)   (0x12090 + ((_i) * 4))
+
 #define TXGBE_RPUP2TC                   0x019008
 #define   TXGBE_RPUP2TC_UP_SHIFT        3
 #define   TXGBE_RPUP2TC_UP_MASK         0x7
+
+#define TXGBE_RDM_DCACHE_CTL             0x0120A8
+#define   TXGBE_RDM_DCACHE_CTL_EN        MS(0, 0x1)
 
 /* mac switcher */
 #define TXGBE_ETHADDRL                  0x016200
@@ -1676,8 +1776,23 @@ enum txgbe_5tuple_protocol {
 #define   TXGBE_MACTXCFG_SPEED_10G      LS(0, 29, 0x3)
 #define   TXGBE_MACTXCFG_SPEED_1G       LS(3, 29, 0x3)
 
+#define TXGBE_MAC_TX_CFG_AML_SPEED_MASK     MS(28, 0x7)
+#define TXGBE_MAC_TX_CFG_AML_SPEED_50G      LS(2, 28, 0x7)
+#define TXGBE_MAC_TX_CFG_AML_SPEED_40G      LS(0, 28, 0x7)
+#define TXGBE_MAC_TX_CFG_AML_SPEED_25G      LS(1, 28, 0x7)
+#define TXGBE_MAC_TX_CFG_AML_SPEED_10G      LS(4, 28, 0x7)
+#define TXGBE_MAC_TX_CFG_AML_SPEED_1G       LS(7, 28, 0x7)
+
+#define TXGBE_MAC_MISC_CTL              0x11f00
+#define TXGBE_MAC_MISC_LINK_STS_MOD     MS(0, 0x1)
+#define TXGBE_LINK_BOTH_PCS_MAC         MS(0, 0x1)
+
+#define TXGBE_EPHY_STAT                 0x13404
+#define TXGBE_EPHY_STAT_PPL_LOCK        0x3
 #define TXGBE_ISBADDRL                  0x000160
 #define TXGBE_ISBADDRH                  0x000164
+
+#define TXGBE_LLDP_REG                  0x0F1000
 
 #define NVM_OROM_OFFSET		0x17
 #define NVM_OROM_BLK_LOW	0x83
@@ -1708,11 +1823,13 @@ txgbe_map_reg(struct txgbe_hw *hw, u32 reg)
 {
 	switch (reg) {
 	case TXGBE_REG_RSSTBL:
-		if (hw->mac.type == txgbe_mac_raptor_vf)
+		if (hw->mac.type == txgbe_mac_sp_vf ||
+		    hw->mac.type == txgbe_mac_aml_vf)
 			reg = TXGBE_VFRSSTBL(0);
 		break;
 	case TXGBE_REG_RSSKEY:
-		if (hw->mac.type == txgbe_mac_raptor_vf)
+		if (hw->mac.type == txgbe_mac_sp_vf ||
+		    hw->mac.type == txgbe_mac_aml_vf)
 			reg = TXGBE_VFRSSKEY(0);
 		break;
 	default:
@@ -1888,10 +2005,13 @@ po32m(struct txgbe_hw *hw, u32 reg, u32 mask, u32 expect, u32 *actual,
 static inline void txgbe_flush(struct txgbe_hw *hw)
 {
 	switch (hw->mac.type) {
-	case txgbe_mac_raptor:
+	case txgbe_mac_sp:
+	case txgbe_mac_aml:
+	case txgbe_mac_aml40:
 		rd32(hw, TXGBE_PWR);
 		break;
-	case txgbe_mac_raptor_vf:
+	case txgbe_mac_sp_vf:
+	case txgbe_mac_aml_vf:
 		rd32(hw, TXGBE_VFSTATUS);
 		break;
 	default:

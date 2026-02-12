@@ -89,7 +89,10 @@ struct nfp_net_meta_parsed {
 	} vlan[NFP_NET_META_MAX_VLANS];
 };
 
-void nfp_net_meta_init_format(struct nfp_net_hw *hw);
+struct nfp_pf_dev;
+
+void nfp_net_meta_init_format(struct nfp_net_hw *hw,
+		struct nfp_pf_dev *pf_dev);
 void nfp_net_meta_parse(struct nfp_net_rx_desc *rxds,
 		struct nfp_net_rxq *rxq,
 		struct nfp_net_hw *hw,

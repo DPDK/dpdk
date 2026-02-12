@@ -206,6 +206,115 @@ test_rte_str_skip_leading_spaces(void)
 }
 
 static int
+test_rte_basename(void)
+{
+	/* Test case structure for positive cases */
+	struct {
+		const char *input_path;    /* Input path string */
+		const char *expected;      /* Expected result */
+	} test_cases[] = {
+		/* Test cases from man 3 basename */
+		{"/usr/lib", "lib"},
+		{"/usr/", "usr"},
+		{"usr", "usr"},
+		{"/", "/"},
+		{".", "."},
+		{"..", ".."},
+
+		/* Additional requested test cases */
+		{"/////", "/"},
+		{"/path/to/file.txt", "file.txt"},
+
+		/* Additional edge cases with trailing slashes */
+		{"///usr///", "usr"},
+		{"/a/b/c/", "c"},
+
+		/* Empty string case */
+		{"", "."},
+		{NULL, "."}  /* NULL path should return "." */
+	};
+
+	char buf[256];
+	size_t result;
+
+	/* Run positive test cases from table */
+	for (size_t i = 0; i < RTE_DIM(test_cases); i++) {
+		result = rte_basename(test_cases[i].input_path, buf, sizeof(buf));
+
+		if (strcmp(buf, test_cases[i].expected) != 0) {
+			LOG("FAIL [%zu]: '%s' - buf contains '%s', expected '%s'\n",
+			    i, test_cases[i].input_path, buf, test_cases[i].expected);
+			return -1;
+		}
+
+		/* Check that the return value matches the expected string length */
+		if (result != strlen(test_cases[i].expected)) {
+			LOG("FAIL [%zu]: '%s' - returned length %zu, expected %zu\n",
+			    i, test_cases[i].input_path, result, strlen(test_cases[i].expected));
+			return -1;
+		}
+
+		LOG("PASS [%zu]: '%s' -> '%s' (len=%zu)\n",
+				i, test_cases[i].input_path, buf, result);
+	}
+
+	/* re-run the table above verifying that for a NULL buffer, or zero length, we get
+	 * correct length returned.
+	 */
+	for (size_t i = 0; i < RTE_DIM(test_cases); i++) {
+		result = rte_basename(test_cases[i].input_path, NULL, 0);
+		if (result != strlen(test_cases[i].expected)) {
+			LOG("FAIL [%zu]: '%s' - returned length %zu, expected %zu\n",
+			    i, test_cases[i].input_path, result, strlen(test_cases[i].expected));
+			return -1;
+		}
+		LOG("PASS [%zu]: '%s' -> length %zu (NULL buffer case)\n",
+		    i, test_cases[i].input_path, result);
+	}
+
+	/* Test case: buffer too small for result should truncate and return full length */
+	const size_t small_size = 5;
+	result = rte_basename("/path/to/very_long_filename.txt", buf, small_size);
+	/* Should be truncated to fit in 5 bytes (4 chars + null terminator) */
+	if (strlen(buf) >= small_size) {
+		LOG("FAIL: small buffer test - result '%s' not properly truncated (len=%zu, buflen=%zu)\n",
+		    buf, strlen(buf), small_size);
+		return -1;
+	}
+	/* Return value should indicate truncation occurred (>= buflen) */
+	if (result != strlen("very_long_filename.txt")) {
+		LOG("FAIL: small buffer test - return value %zu doesn't indicate truncation (buflen=%zu)\n",
+		    result, small_size);
+		return -1;
+	}
+	LOG("PASS: small buffer truncation -> '%s' (returned len=%zu, actual len=%zu)\n",
+	    buf, result, strlen(buf));
+
+	/* extreme length test case -  check that even with paths longer than PATH_MAX we still
+	 * return the last component correctly. Use "/zzz...zzz/abc.txt" and check we get "abc.txt"
+	 */
+	char basename_val[] = "abc.txt";
+	char long_path[PATH_MAX + 50];
+	for (int i = 0; i < PATH_MAX + 20; i++)
+		long_path[i] = (i == 0) ? '/' : 'z';
+	sprintf(long_path + PATH_MAX + 20, "/%s", basename_val);
+
+	result = rte_basename(long_path, buf, sizeof(buf));
+	if (strcmp(buf, basename_val) != 0) {
+		LOG("FAIL: long path test - expected '%s', got '%s'\n",
+		    basename_val, buf);
+		return -1;
+	}
+	if (result != strlen(basename_val)) {
+		LOG("FAIL: long path test - expected length %zu, got %zu\n",
+		    strlen(basename_val), result);
+		return -1;
+	}
+	LOG("PASS: long path test -> '%s' (len=%zu)\n", buf, result);
+	return 0;
+}
+
+static int
 test_string_fns(void)
 {
 	if (test_rte_strsplit() < 0)
@@ -214,7 +323,9 @@ test_string_fns(void)
 		return -1;
 	if (test_rte_str_skip_leading_spaces() < 0)
 		return -1;
+	if (test_rte_basename() < 0)
+		return -1;
 	return 0;
 }
 
-REGISTER_FAST_TEST(string_autotest, true, true, test_string_fns);
+REGISTER_FAST_TEST(string_autotest, NOHUGE_OK, ASAN_OK, test_string_fns);

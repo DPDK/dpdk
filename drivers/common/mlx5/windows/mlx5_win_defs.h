@@ -184,7 +184,6 @@ enum mlx5dv_flow_table_type {
 #define MLX5DV_FLOW_TABLE_TYPE_NIC_RX	MLX5_IB_UAPI_FLOW_TABLE_TYPE_NIC_RX
 #define MLX5DV_FLOW_TABLE_TYPE_NIC_TX	MLX5_IB_UAPI_FLOW_TABLE_TYPE_NIC_TX
 #define MLX5DV_FLOW_TABLE_TYPE_FDB	MLX5_IB_UAPI_FLOW_TABLE_TYPE_FDB
-#define MLX5DV_FLOW_TABLE_TYPE_RDMA_RX	MLX5_IB_UAPI_FLOW_TABLE_TYPE_RDMA_RX
 
 struct mlx5dv_flow_match_parameters {
 	size_t match_sz;
@@ -217,18 +216,6 @@ struct mlx5_action {
 	struct {
 		uint32_t id;
 	} dest_tir;
-};
-
-struct mlx5_err_cqe {
-	uint8_t		rsvd0[32];
-	uint32_t	srqn;
-	uint8_t		rsvd1[18];
-	uint8_t		vendor_err_synd;
-	uint8_t		syndrome;
-	uint32_t	s_wqe_opcode_qpn;
-	uint16_t	wqe_counter;
-	uint8_t		signature;
-	uint8_t		op_own;
 };
 
 struct mlx5_wqe_srq_next_seg {
@@ -275,6 +262,5 @@ enum {
 #define MLX5_MIN_SINGLE_STRIDE_LOG_NUM_BYTES 6
 #define MLX5_MAX_SINGLE_STRIDE_LOG_NUM_BYTES 13
 #define MLX5_EXT_MIN_SINGLE_WQE_LOG_NUM_STRIDES 3
-#define IB_QPT_RAW_PACKET 8
 
 #endif /* MLX5_WIN_DEFS_H */

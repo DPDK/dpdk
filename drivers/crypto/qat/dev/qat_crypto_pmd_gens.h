@@ -6,9 +6,12 @@
 #define _QAT_CRYPTO_PMD_GENS_H_
 
 #include <rte_cryptodev.h>
+#include <rte_common.h>
+#include <rte_branch_prediction.h>
 #include "qat_crypto.h"
 #include "qat_sym_session.h"
 #include "qat_sym.h"
+#include "icp_qat_fw_la.h"
 
 #define AES_OR_3DES_MISALIGNED (ctx->qat_mode == ICP_QAT_HW_CIPHER_CBC_MODE && \
 			((((ctx->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_AES128) || \
@@ -146,11 +149,289 @@ qat_cipher_is_len_in_bits(struct qat_sym_session *ctx,
 	return 0;
 }
 
+static inline
+uint32_t qat_reqs_mid_set(int *error, struct icp_qat_fw_la_bulk_req *const req,
+	struct qat_sym_op_cookie *const cookie, const void *const opaque,
+	const struct rte_crypto_sgl *sgl_src, const struct rte_crypto_sgl *sgl_dst,
+	const union rte_crypto_sym_ofs ofs)
+{
+	uint32_t src_tot_length = 0; /* Returned value */
+	uint32_t dst_tot_length = 0; /* Used only for input validity checks */
+	uint32_t src_length = 0;
+	uint32_t dst_length = 0;
+	uint64_t src_data_addr = 0;
+	uint64_t dst_data_addr = 0;
+	const struct rte_crypto_vec * const vec_src = sgl_src->vec;
+	const struct rte_crypto_vec * const vec_dst = sgl_dst->vec;
+	const uint32_t n_src = sgl_src->num;
+	const uint32_t n_dst = sgl_dst->num;
+	const uint16_t offset = RTE_MAX(ofs.ofs.cipher.head, ofs.ofs.auth.head);
+	const uint8_t is_flat = !(n_src > 1 || n_dst > 1); /* Flat buffer or the SGL */
+	const uint8_t is_in_place = !n_dst; /* In-place or out-of-place */
+
+	*error = 0;
+	if (unlikely((n_src < 1 || n_src > QAT_SYM_SGL_MAX_NUMBER) ||
+			n_dst > QAT_SYM_SGL_MAX_NUMBER)) {
+		QAT_LOG(DEBUG,
+			"Invalid number of sgls, source no: %u, dst no: %u, opaque: %p",
+			n_src, n_dst, opaque);
+		*error = -1;
+		return 0;
+	}
+
+	/* --- Flat buffer --- */
+	if (is_flat) {
+		src_data_addr = vec_src->iova;
+		dst_data_addr = vec_src->iova;
+		src_length = vec_src->len;
+		dst_length = vec_src->len;
+
+		if (is_in_place)
+			goto done;
+		/* Out-of-place
+		 * If OOP, we need to keep in mind that offset needs to
+		 * start where the aead starts
+		 */
+		dst_length = vec_dst->len;
+		/* Integer promotion here, but it does not bother this time */
+		if (unlikely(offset > src_length || offset > dst_length)) {
+			QAT_LOG(DEBUG,
+				"Invalid size of the vector parameters, source length: %u, dst length: %u, opaque: %p",
+				src_length, dst_length, opaque);
+			*error = -1;
+			return 0;
+		}
+		src_data_addr += offset;
+		dst_data_addr = vec_dst->iova + offset;
+		src_length -= offset;
+		dst_length -= offset;
+		src_tot_length = src_length;
+		dst_tot_length = dst_length;
+		goto check;
+	}
+
+	/* --- Scatter-gather list --- */
+	struct qat_sgl * const qat_sgl_src = (struct qat_sgl *)&cookie->qat_sgl_src;
+	uint16_t i;
+
+	ICP_QAT_FW_COMN_PTR_TYPE_SET(req->comn_hdr.comn_req_flags,
+		QAT_COMN_PTR_TYPE_SGL);
+	qat_sgl_src->num_bufs = n_src;
+	src_data_addr = cookie->qat_sgl_src_phys_addr;
+	/* Fill all the source buffers but the first one */
+	for (i = 1; i < n_src; i++) {
+		qat_sgl_src->buffers[i].len = (vec_src + i)->len;
+		qat_sgl_src->buffers[i].addr = (vec_src + i)->iova;
+		src_tot_length += qat_sgl_src->buffers[i].len;
+	}
+
+	if (is_in_place) {
+		/* SGL source first entry, no OOP */
+		qat_sgl_src->buffers[0].len = vec_src->len;
+		qat_sgl_src->buffers[0].addr = vec_src->iova;
+		dst_data_addr = src_data_addr;
+		goto done;
+	}
+	/* Out-of-place */
+	struct qat_sgl * const qat_sgl_dst =
+			(struct qat_sgl *)&cookie->qat_sgl_dst;
+	/*
+	 * Offset reaching outside of the first buffer is not supported (RAW api).
+	 * Integer promotion here, but it does not bother this time
+	 */
+	if (unlikely(offset > vec_src->len || offset > vec_dst->len)) {
+		QAT_LOG(DEBUG,
+			"Invalid size of the vector parameters, source length: %u, dst length: %u, opaque: %p",
+			vec_src->len, vec_dst->len, opaque);
+		*error = -1;
+		return 0;
+	}
+	/* SGL source first entry, adjusted to OOP offsets */
+	qat_sgl_src->buffers[0].addr = vec_src->iova + offset;
+	qat_sgl_src->buffers[0].len = vec_src->len - offset;
+	/* SGL destination first entry, adjusted to OOP offsets */
+	qat_sgl_dst->buffers[0].addr = vec_dst->iova + offset;
+	qat_sgl_dst->buffers[0].len = vec_dst->len - offset;
+	/* Fill the remaining destination buffers */
+	for (i = 1; i < n_dst; i++) {
+		qat_sgl_dst->buffers[i].len = (vec_dst + i)->len;
+		qat_sgl_dst->buffers[i].addr = (vec_dst + i)->iova;
+		dst_tot_length += qat_sgl_dst->buffers[i].len;
+	}
+	dst_tot_length += qat_sgl_dst->buffers[0].len;
+	qat_sgl_dst->num_bufs = n_dst;
+	dst_data_addr = cookie->qat_sgl_dst_phys_addr;
+
+check:	/* If error, return directly. If success, jump to one of these labels */
+	if (src_tot_length != dst_tot_length) {
+		QAT_LOG(DEBUG,
+			"Source length is not equal to the destination length %u, dst no: %u, opaque: %p",
+			src_tot_length, dst_tot_length, opaque);
+		*error = -1;
+		return 0;
+	}
+done:
+	req->comn_mid.opaque_data = (uintptr_t)opaque;
+	req->comn_mid.src_data_addr = src_data_addr;
+	req->comn_mid.dest_data_addr = dst_data_addr;
+	req->comn_mid.src_length = src_length;
+	req->comn_mid.dst_length = dst_length;
+
+	return src_tot_length;
+}
+
+struct qat_sym_req_mid_info {
+	uint32_t data_len;
+	union rte_crypto_sym_ofs ofs;
+};
+
+static inline
+struct qat_sym_req_mid_info qat_sym_req_mid_set(
+	int *error, struct icp_qat_fw_la_bulk_req *const req,
+	struct qat_sym_op_cookie *const cookie, const void *const opaque,
+	const struct rte_crypto_sgl *sgl_src, const struct rte_crypto_sgl *sgl_dst,
+	const union rte_crypto_sym_ofs ofs)
+{
+	struct qat_sym_req_mid_info info = { };  /* Returned value */
+	uint32_t src_tot_length = 0;
+	uint32_t dst_tot_length = 0; /* Used only for input validity checks */
+	uint32_t src_length = 0;
+	uint32_t dst_length = 0;
+	uint64_t src_data_addr = 0;
+	uint64_t dst_data_addr = 0;
+	union rte_crypto_sym_ofs out_ofs = ofs;
+	const struct rte_crypto_vec * const vec_src = sgl_src->vec;
+	const struct rte_crypto_vec * const vec_dst = sgl_dst->vec;
+	const uint32_t n_src = sgl_src->num;
+	const uint32_t n_dst = sgl_dst->num;
+	const uint16_t offset = RTE_MIN(ofs.ofs.cipher.head, ofs.ofs.auth.head);
+	const uint8_t is_flat = !(n_src > 1 || n_dst > 1); /* Flat buffer or the SGL */
+	const uint8_t is_in_place = !n_dst; /* In-place or out-of-place */
+
+	*error = 0;
+	if (unlikely((n_src < 1 || n_src > QAT_SYM_SGL_MAX_NUMBER) ||
+			n_dst > QAT_SYM_SGL_MAX_NUMBER)) {
+		QAT_LOG(DEBUG,
+			"Invalid number of sgls, source no: %u, dst no: %u, opaque: %p",
+			n_src, n_dst, opaque);
+		*error = -1;
+		return info;
+	}
+
+	/* --- Flat buffer --- */
+	if (is_flat) {
+		src_data_addr = vec_src->iova;
+		dst_data_addr = vec_src->iova;
+		src_length = vec_src->len;
+		dst_length = vec_src->len;
+
+		if (is_in_place)
+			goto done;
+		/* Out-of-place
+		 * If OOP, we need to keep in mind that offset needs to
+		 * start where the aead starts
+		 */
+		dst_length = vec_dst->len;
+		/* Comparison between different types, intentional */
+		if (unlikely(offset > src_length || offset > dst_length)) {
+			QAT_LOG(DEBUG,
+				"Invalid size of the vector parameters, source length: %u, dst length: %u, opaque: %p",
+				src_length, dst_length, opaque);
+			*error = -1;
+			return info;
+		}
+		out_ofs.ofs.cipher.head -= offset;
+		out_ofs.ofs.auth.head -= offset;
+		src_data_addr += offset;
+		dst_data_addr = vec_dst->iova + offset;
+		src_length -= offset;
+		dst_length -= offset;
+		src_tot_length = src_length;
+		dst_tot_length = dst_length;
+		goto check;
+	}
+
+	/* --- Scatter-gather list --- */
+	struct qat_sgl * const qat_sgl_src = (struct qat_sgl *)&cookie->qat_sgl_src;
+	uint16_t i;
+
+	ICP_QAT_FW_COMN_PTR_TYPE_SET(req->comn_hdr.comn_req_flags,
+		QAT_COMN_PTR_TYPE_SGL);
+	qat_sgl_src->num_bufs = n_src;
+	src_data_addr = cookie->qat_sgl_src_phys_addr;
+	/* Fill all the source buffers but the first one */
+	for (i = 1; i < n_src; i++) {
+		qat_sgl_src->buffers[i].len = (vec_src + i)->len;
+		qat_sgl_src->buffers[i].addr = (vec_src + i)->iova;
+		src_tot_length += qat_sgl_src->buffers[i].len;
+	}
+
+	if (is_in_place) {
+		/* SGL source first entry, no OOP */
+		qat_sgl_src->buffers[0].len = vec_src->len;
+		qat_sgl_src->buffers[0].addr = vec_src->iova;
+		dst_data_addr = src_data_addr;
+		goto done;
+	}
+	/* Out-of-place */
+	struct qat_sgl * const qat_sgl_dst =
+			(struct qat_sgl *)&cookie->qat_sgl_dst;
+	/*
+	 * Offset reaching outside of the first buffer is not supported (RAW api).
+	 * Integer promotion here, but it does not bother this time
+	 */
+	if (unlikely(offset > vec_src->len || offset > vec_dst->len)) {
+		QAT_LOG(DEBUG,
+			"Invalid size of the vector parameters, source length: %u, dst length: %u, opaque: %p",
+			vec_src->len, vec_dst->len, opaque);
+		*error = -1;
+		return info;
+	}
+	out_ofs.ofs.cipher.head -= offset;
+	out_ofs.ofs.auth.head -= offset;
+	/* SGL source first entry, adjusted to OOP offsets */
+	qat_sgl_src->buffers[0].addr = vec_src->iova + offset;
+	qat_sgl_src->buffers[0].len = vec_src->len - offset;
+	/* SGL destination first entry, adjusted to OOP offsets */
+	qat_sgl_dst->buffers[0].addr = vec_dst->iova + offset;
+	qat_sgl_dst->buffers[0].len = vec_dst->len - offset;
+	/* Fill the remaining destination buffers */
+	for (i = 1; i < n_dst; i++) {
+		qat_sgl_dst->buffers[i].len = (vec_dst + i)->len;
+		qat_sgl_dst->buffers[i].addr = (vec_dst + i)->iova;
+		dst_tot_length += qat_sgl_dst->buffers[i].len;
+	}
+	dst_tot_length += qat_sgl_dst->buffers[0].len;
+	qat_sgl_dst->num_bufs = n_dst;
+	dst_data_addr = cookie->qat_sgl_dst_phys_addr;
+
+check:	/* If error, return directly. If success, jump to one of these labels */
+	if (src_tot_length != dst_tot_length) {
+		QAT_LOG(DEBUG,
+			"Source length is not equal to the destination length %u, dst no: %u, opaque: %p",
+			src_tot_length, dst_tot_length, opaque);
+		*error = -1;
+		return info;
+	}
+done:
+	req->comn_mid.opaque_data = (uintptr_t)opaque;
+	req->comn_mid.src_data_addr = src_data_addr;
+	req->comn_mid.dest_data_addr = dst_data_addr;
+	req->comn_mid.src_length = src_length;
+	req->comn_mid.dst_length = dst_length;
+
+	info.data_len = src_tot_length;
+	info.ofs = out_ofs;
+
+	return info;
+}
+
 static __rte_always_inline int32_t
 qat_sym_build_req_set_data(struct icp_qat_fw_la_bulk_req *req,
 		void *opaque, struct qat_sym_op_cookie *cookie,
 		struct rte_crypto_vec *src_vec, uint16_t n_src,
-		struct rte_crypto_vec *dst_vec, uint16_t n_dst)
+		struct rte_crypto_vec *dst_vec, uint16_t n_dst,
+		union rte_crypto_sym_ofs *ofs, struct rte_crypto_op *op)
 {
 	struct qat_sgl *list;
 	uint32_t i;
@@ -161,6 +442,21 @@ qat_sym_build_req_set_data(struct icp_qat_fw_la_bulk_req *req,
 	if (unlikely(n_src < 1 || n_src > QAT_SYM_SGL_MAX_NUMBER ||
 			n_dst > QAT_SYM_SGL_MAX_NUMBER))
 		return -1;
+
+	/* For crypto API only: try to align the in-place buffers*/
+	if (op != NULL && likely(n_dst == 0) && likely(!is_sgl)) {
+		rte_iova_t offset = src_vec[0].iova & RTE_CACHE_LINE_MASK;
+		if (offset) {
+			rte_iova_t buff_addr = rte_mbuf_iova_get(op->sym->m_src);
+			/* make sure src_data_start is still within the buffer */
+			if (src_vec[0].iova - offset >= buff_addr) {
+				src_vec[0].iova -= offset;
+				src_vec[0].len += offset;
+				ofs->ofs.auth.head += offset;
+				ofs->ofs.cipher.head += offset;
+			}
+		}
+	}
 
 	if (likely(!is_sgl)) {
 		src_data_start = src_vec[0].iova;
@@ -399,7 +695,7 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 		struct qat_sym_op_cookie *cookie)
 {
 	union rte_crypto_sym_ofs ofs;
-	uint32_t max_len = 0;
+	uint32_t max_len = 0, oop_offset = 0;
 	uint32_t cipher_len = 0, cipher_ofs = 0;
 	uint32_t auth_len = 0, auth_ofs = 0;
 	int is_oop = (op->sym->m_dst != NULL) &&
@@ -473,6 +769,16 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 
 	max_len = RTE_MAX(cipher_ofs + cipher_len, auth_ofs + auth_len);
 
+	/* If OOP, we need to keep in mind that offset needs to start where
+	 * cipher/auth starts, namely no offset on the smaller one
+	 */
+	if (is_oop) {
+		oop_offset = RTE_MIN(auth_ofs, cipher_ofs);
+		auth_ofs -= oop_offset;
+		cipher_ofs -= oop_offset;
+		max_len -= oop_offset;
+	}
+
 	/* digest in buffer check. Needed only for wireless algos
 	 * or combined cipher-crc operations
 	 */
@@ -513,9 +819,7 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 			max_len = RTE_MAX(max_len, auth_ofs + auth_len +
 					ctx->digest_length);
 	}
-
-	/* Passing 0 as cipher & auth offsets are assigned into ofs later */
-	n_src = rte_crypto_mbuf_to_vec(op->sym->m_src, 0, max_len,
+	n_src = rte_crypto_mbuf_to_vec(op->sym->m_src, oop_offset, max_len,
 			in_sgl->vec, QAT_SYM_SGL_MAX_NUMBER);
 	if (unlikely(n_src < 0 || n_src > op->sym->m_src->nb_segs)) {
 		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
@@ -525,7 +829,7 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 
 	if (unlikely((op->sym->m_dst != NULL) &&
 			(op->sym->m_dst != op->sym->m_src))) {
-		int n_dst = rte_crypto_mbuf_to_vec(op->sym->m_dst, 0,
+		int n_dst = rte_crypto_mbuf_to_vec(op->sym->m_dst, oop_offset,
 				max_len, out_sgl->vec, QAT_SYM_SGL_MAX_NUMBER);
 
 		if (n_dst < 0 || n_dst > op->sym->m_dst->nb_segs) {
@@ -591,26 +895,6 @@ qat_sym_convert_op_to_vec_aead(struct rte_crypto_op *op,
 		out_sgl->num = 0;
 
 	return 0;
-}
-
-static inline void
-zuc256_modify_iv(uint8_t *iv)
-{
-	uint8_t iv_tmp[8];
-
-	iv_tmp[0] = iv[16];
-	/* pack the last 8 bytes of IV to 6 bytes.
-	 * discard the 2 MSB bits of each byte
-	 */
-	iv_tmp[1] = (((iv[17] & 0x3f) << 2) | ((iv[18] >> 4) & 0x3));
-	iv_tmp[2] = (((iv[18] & 0xf) << 4) | ((iv[19] >> 2) & 0xf));
-	iv_tmp[3] = (((iv[19] & 0x3) << 6) | (iv[20] & 0x3f));
-
-	iv_tmp[4] = (((iv[21] & 0x3f) << 2) | ((iv[22] >> 4) & 0x3));
-	iv_tmp[5] = (((iv[22] & 0xf) << 4) | ((iv[23] >> 2) & 0xf));
-	iv_tmp[6] = (((iv[23] & 0x3) << 6) | (iv[24] & 0x3f));
-
-	memcpy(iv + 16, iv_tmp, 8);
 }
 
 static __rte_always_inline void
@@ -1039,6 +1323,12 @@ qat_sym_dp_enqueue_done_gen1(void *qp_data, uint8_t *drv_ctx, uint32_t n);
 
 int
 qat_sym_dp_dequeue_done_gen1(void *qp_data, uint8_t *drv_ctx, uint32_t n);
+
+int
+qat_sym_dp_enqueue_done_gen4(void *qp_data, uint8_t *drv_ctx, uint32_t n);
+
+int
+qat_sym_dp_dequeue_done_gen4(void *qp_data, uint8_t *drv_ctx, uint32_t n);
 
 int
 qat_sym_configure_raw_dp_ctx_gen1(void *_raw_dp_ctx, void *_ctx);

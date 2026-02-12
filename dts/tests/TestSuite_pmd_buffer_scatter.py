@@ -17,15 +17,24 @@ scattered packets.
 
 import struct
 
-from scapy.layers.inet import IP  # type: ignore[import]
-from scapy.layers.l2 import Ether  # type: ignore[import]
-from scapy.packet import Raw  # type: ignore[import]
-from scapy.utils import hexstr  # type: ignore[import]
+from scapy.layers.inet import IP
+from scapy.layers.l2 import Ether
+from scapy.packet import Packet, Raw
+from scapy.utils import hexstr
 
-from framework.remote_session.testpmd_shell import TestPmdForwardingModes, TestPmdShell
-from framework.test_suite import TestSuite
+from api.capabilities import (
+    NicCapability,
+    requires_nic_capability,
+)
+from api.packet import send_packet_and_capture
+from api.test import verify
+from api.testpmd import TestPmd
+from api.testpmd.config import SimpleForwardingModes
+from framework.test_suite import TestSuite, func_test
 
 
+@requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
+@requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_SCATTER)
 class TestPmdBufferScatter(TestSuite):
     """DPDK PMD packet scattering test suite.
 
@@ -52,81 +61,106 @@ class TestPmdBufferScatter(TestSuite):
         """Set up the test suite.
 
         Setup:
-            Verify that we have at least 2 port links in the current execution
-            and increase the MTU of both ports on the traffic generator to 9000
+            Increase the MTU of both ports on the traffic generator to 9000
             to support larger packet sizes.
         """
-        self.verify(
-            len(self._port_links) > 1,
-            "There must be at least two port links to run the scatter test suite",
-        )
+        self.topology.tg_port_egress.configure_mtu(9000)
+        self.topology.tg_port_ingress.configure_mtu(9000)
 
-        self.tg_node.main_session.configure_port_mtu(9000, self._tg_port_egress)
-        self.tg_node.main_session.configure_port_mtu(9000, self._tg_port_ingress)
-
-    def scatter_pktgen_send_packet(self, pktsize: int) -> str:
+    def _scatter_pktgen_send_packet(self, pkt_size: int) -> list[Packet]:
         """Generate and send a packet to the SUT then capture what is forwarded back.
 
         Generate an IP packet of a specific length and send it to the SUT,
-        then capture the resulting received packet and extract its payload.
-        The desired length of the packet is met by packing its payload
+        then capture the resulting received packets and filter them down to the ones that have the
+        correct layers. The desired length of the packet is met by packing its payload
         with the letter "X" in hexadecimal.
 
         Args:
-            pktsize: Size of the packet to generate and send.
+            pkt_size: Size of the packet to generate and send.
 
         Returns:
-            The payload of the received packet as a string.
+            The filtered down list of received packets.
         """
         packet = Ether() / IP() / Raw()
-        packet.getlayer(2).load = ""
-        payload_len = pktsize - len(packet) - 4
+        if layer2 := packet.getlayer(2):
+            layer2.load = ""
+        payload_len = pkt_size - len(packet) - 4
         payload = ["58"] * payload_len
         # pack the payload
         for X_in_hex in payload:
             packet.load += struct.pack("=B", int("%s%s" % (X_in_hex[0], X_in_hex[1]), 16))
-        received_packets = self.send_packet_and_capture(packet)
-        self.verify(len(received_packets) > 0, "Did not receive any packets.")
-        load = hexstr(received_packets[0].getlayer(2), onlyhex=1)
+        received_packets = send_packet_and_capture(packet)
+        # filter down the list to packets that have the appropriate structure
+        received_packets = [p for p in received_packets if Ether in p and IP in p and Raw in p]
 
-        return load
+        verify(len(received_packets) > 0, "Did not receive any packets.")
 
-    def pmd_scatter(self, mbsize: int) -> None:
+        layer2 = received_packets[0].getlayer(2)
+        verify(layer2 is not None, "The received packet is invalid.")
+        assert layer2 is not None
+
+        return received_packets
+
+    def _pmd_scatter(self, mb_size: int, enable_offload: bool = False) -> None:
         """Testpmd support of receiving and sending scattered multi-segment packets.
 
         Support for scattered packets is shown by sending 5 packets of differing length
         where the length of the packet is calculated by taking mbuf-size + an offset.
         The offsets used in the test are -1, 0, 1, 4, 5 respectively.
 
+        Args:
+            mb_size: Size to set memory buffers to when starting testpmd.
+            enable_offload: Whether or not to offload the scattering functionality in testpmd.
+
         Test:
-            Start testpmd and run functional test with preset mbsize.
+            Start testpmd and run functional test with preset `mb_size`.
         """
-        testpmd = self.sut_node.create_interactive_shell(
-            TestPmdShell,
-            app_parameters=(
-                "--mbcache=200 "
-                f"--mbuf-size={mbsize} "
-                "--max-pkt-len=9000 "
-                "--port-topology=paired "
-                "--tx-offloads=0x00008000"
-            ),
-            privileged=True,
-        )
-        testpmd.set_forward_mode(TestPmdForwardingModes.mac)
-        testpmd.start()
+        with TestPmd(
+            forward_mode=SimpleForwardingModes.mac,
+            mbcache=200,
+            mbuf_size=[mb_size],
+            max_pkt_len=9000,
+            tx_offloads=0x00008000,
+            enable_scatter=True if enable_offload else None,
+        ) as testpmd:
+            testpmd.start()
 
-        for offset in [-1, 0, 1, 4, 5]:
-            recv_payload = self.scatter_pktgen_send_packet(mbsize + offset)
-            self._logger.debug(f"Payload of scattered packet after forwarding: \n{recv_payload}")
-            self.verify(
-                ("58 " * 8).strip() in recv_payload,
-                f"Payload of scattered packet did not match expected payload with offset {offset}.",
-            )
-        testpmd.stop()
+            for offset in [-1, 0, 1, 4, 5]:
+                recv_packets = self._scatter_pktgen_send_packet(mb_size + offset)
+                self._logger.debug(f"Relevant captured packets: \n{recv_packets}")
+                verify(
+                    any(" ".join(["58"] * 8) in hexstr(pkt, onlyhex=1) for pkt in recv_packets),
+                    "Payload of scattered packet did not match expected payload with offset "
+                    f"{offset}.",
+                )
 
-    def test_scatter_mbuf_2048(self) -> None:
-        """Run the :meth:`pmd_scatter` test with `mbsize` set to 2048."""
-        self.pmd_scatter(mbsize=2048)
+    @requires_nic_capability(NicCapability.SCATTERED_RX_ENABLED)
+    @func_test
+    def scatter_mbuf_2048(self) -> None:
+        """Run the :meth:`pmd_scatter` test with `mb_size` set to 2048.
+
+        Steps:
+            * Start testpmd.
+            * Send and capture packets with a `mb_size` of 2048.
+
+        Verify:
+            * Payload of the scattered packets match the expected payload offset.
+        """
+        self._pmd_scatter(mb_size=2048)
+
+    @requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_SCATTER)
+    @func_test
+    def scatter_mbuf_2048_with_offload(self) -> None:
+        """Run the :meth:`pmd_scatter` test with `mb_size` set to 2048 and rx_scatter offload.
+
+        Steps:
+            * Start testpmd with offload true.
+            * Send and capture packets with a `mb_size` of 2048 and rx_scatter offload enabled.
+
+        Verify:
+            * Payload of the scattered packets match the expected payload offset.
+        """
+        self._pmd_scatter(mb_size=2048, enable_offload=True)
 
     def tear_down_suite(self) -> None:
         """Tear down the test suite.
@@ -134,5 +168,5 @@ class TestPmdBufferScatter(TestSuite):
         Teardown:
             Set the MTU of the tg_node back to a more standard size of 1500.
         """
-        self.tg_node.main_session.configure_port_mtu(1500, self._tg_port_egress)
-        self.tg_node.main_session.configure_port_mtu(1500, self._tg_port_ingress)
+        self.topology.tg_port_egress.configure_mtu(1500)
+        self.topology.tg_port_ingress.configure_mtu(1500)

@@ -121,7 +121,7 @@ Soft NIC testing
 
     .. code-block:: console
 
-         ./dpdk-testpmd -c 0x7 -s 0x4 --vdev 'net_softnic0,firmware=<script path>/firmware.cli,cpu_id=0,conn_port=8086' -- -i
+         ./dpdk-testpmd -l 0-2 -S 2 --vdev 'net_softnic0,firmware=<script path>/firmware.cli,cpu_id=0,conn_port=8086' -- -i
               --portmask=0x2
 
     .. code-block:: console
@@ -366,7 +366,7 @@ commands.
 
     .. code-block:: console
 
-        ./<build_dir>/app/dpdk-testpmd -c 0x7 -s 0x4 -n 4 \
+        ./<build_dir>/app/dpdk-testpmd -l 0-2 -S 2 \
                                     --vdev 'net_softnic0, \
                                     firmware=./drivers/net/softnic/ \
                                         firmware.cli, \

@@ -60,7 +60,7 @@ Start the vswitch example
 
 .. code-block:: console
 
-        ./dpdk-vhost -l 0-3 -n 4 --socket-mem 1024  \
+        ./dpdk-vhost -l 0-3 --numa-mem 1024  \
              -- --socket-file /tmp/sock0 --client \
              ...
 
@@ -218,5 +218,5 @@ Common Issues
   pre-allocation
 
   The builtin example doesn't support dynamic memory allocation. When vhost
-  backend enables "builtin-net-driver", "--socket-mem" option should be
+  backend enables "builtin-net-driver", "--numa-mem" option should be
   added at virtio-user PMD side as a startup item.

@@ -455,7 +455,7 @@ cnxk_eswitch_txq_setup(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid, uint1
 	memset(sq, 0, sizeof(struct roc_nix_sq));
 	sq->qid = qid;
 	sq->nb_desc = nb_desc;
-	sq->max_sqe_sz = NIX_MAXSQESZ_W8;
+	sq->max_sqe_sz = NIX_MAXSQESZ_W16;
 	if (sq->nb_desc >= CNXK_NIX_DEF_SQ_COUNT)
 		sq->fc_hyst_bits = 0x1;
 

@@ -11,36 +11,37 @@
 #include "test_security_proto.h"
 
 /* TLS 1.2 Ciphertext length can be up to (2^14 + 2048 + 5 (TLS Header)) Bytes */
-#define TLS_1_2_RECORD_CIPHERTEXT_MAX_LEN  (4096u)
+#define TLS_1_2_RECORD_CIPHERTEXT_MAX_LEN  (18437u)
 static_assert(TLS_1_2_RECORD_CIPHERTEXT_MAX_LEN <= TEST_SEC_CIPHERTEXT_MAX_LEN,
 	      "TEST_SEC_CIPHERTEXT_MAX_LEN should be at least RECORD MAX LEN!");
 
 /* TLS 1.2 Plaintext length can be up to (2^14 + 1024) Bytes */
-#define TLS_1_2_RECORD_PLAINTEXT_MAX_LEN   (3072u)
+#define TLS_1_2_RECORD_PLAINTEXT_MAX_LEN   (17408u)
 static_assert(TLS_1_2_RECORD_PLAINTEXT_MAX_LEN <= TEST_SEC_CLEARTEXT_MAX_LEN,
 	      "TEST_SEC_CLEARTEXT_MAX_LEN should be at least RECORD MAX LEN!");
 
 /* DTLS 1.2 Ciphertext length is similar to TLS 1.2 */
-#define DTLS_1_2_RECORD_CIPHERTEXT_MAX_LEN (4096u)
+#define DTLS_1_2_RECORD_CIPHERTEXT_MAX_LEN (18437u)
 static_assert(DTLS_1_2_RECORD_CIPHERTEXT_MAX_LEN <= TEST_SEC_CIPHERTEXT_MAX_LEN,
 	      "TEST_SEC_CIPHERTEXT_MAX_LEN should be at least RECORD MAX LEN!");
 
 /* DTLS 1.2 Plaintext length is similar to TLS 1.2 */
-#define DTLS_1_2_RECORD_PLAINTEXT_MAX_LEN  (3072u)
+#define DTLS_1_2_RECORD_PLAINTEXT_MAX_LEN  (17408u)
 static_assert(DTLS_1_2_RECORD_PLAINTEXT_MAX_LEN <= TEST_SEC_CLEARTEXT_MAX_LEN,
 	      "TEST_SEC_CLEARTEXT_MAX_LEN should be at least RECORD MAX LEN!");
 
 /* TLS 1.3 Ciphertext length can be up to (2^14 + 256 + 5 (TLS Header)) Bytes */
-#define TLS_1_3_RECORD_CIPHERTEXT_MAX_LEN  (4096u)
+#define TLS_1_3_RECORD_CIPHERTEXT_MAX_LEN  (16645u)
 static_assert(TLS_1_3_RECORD_CIPHERTEXT_MAX_LEN <= TEST_SEC_CIPHERTEXT_MAX_LEN,
 	      "TEST_SEC_CIPHERTEXT_MAX_LEN should be at least RECORD MAX LEN!");
 
 /* TLS 1.3 Plaintext length can be up to 2^14 Bytes */
-#define TLS_1_3_RECORD_PLAINTEXT_MAX_LEN   (3072u)
+#define TLS_1_3_RECORD_PLAINTEXT_MAX_LEN   (16384u)
 static_assert(TLS_1_3_RECORD_PLAINTEXT_MAX_LEN <= TEST_SEC_CLEARTEXT_MAX_LEN,
 	      "TEST_SEC_CLEARTEXT_MAX_LEN should be at least RECORD MAX LEN!");
 
 #define TLS_RECORD_PLAINTEXT_MIN_LEN       (1u)
+#define TLS_RECORD_PAD_CORRUPT_OFFSET      20
 
 enum tls_record_test_content_type {
 	TLS_RECORD_TEST_CONTENT_TYPE_APP,
@@ -99,6 +100,7 @@ struct tls_record_test_flags {
 	bool zero_len;
 	bool padding_corruption;
 	bool out_of_place;
+	bool skip_sess_destroy;
 	uint8_t nb_segs_in_mbuf;
 	uint8_t opt_padding;
 	enum rte_security_tls_version tls_version;

@@ -670,7 +670,7 @@ vhost_vdpa_map_notification_area(struct virtio_user_dev *dev)
 		notify_area[i] = mmap(NULL, page_size, PROT_WRITE, MAP_SHARED | MAP_FILE,
 				      data->vhostfd, i * page_size);
 		if (notify_area[i] == MAP_FAILED) {
-			PMD_DRV_LOG(ERR, "(%s) Map failed for notify address of queue %d\n",
+			PMD_DRV_LOG(ERR, "(%s) Map failed for notify address of queue %d",
 				    dev->path, i);
 			i--;
 			goto map_err;

@@ -9,6 +9,7 @@
 #include <inttypes.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_memory.h>
@@ -23,6 +24,7 @@
 	RTE_LOG_LINE_PREFIX(level, RCU, "%s(): ", __func__, __VA_ARGS__)
 
 /* Get the memory size of QSBR variable */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_get_memsize)
 size_t
 rte_rcu_qsbr_get_memsize(uint32_t max_threads)
 {
@@ -47,6 +49,7 @@ rte_rcu_qsbr_get_memsize(uint32_t max_threads)
 }
 
 /* Initialize a quiescent state variable */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_init)
 int
 rte_rcu_qsbr_init(struct rte_rcu_qsbr *v, uint32_t max_threads)
 {
@@ -78,11 +81,12 @@ rte_rcu_qsbr_init(struct rte_rcu_qsbr *v, uint32_t max_threads)
 /* Register a reader thread to report its quiescent state
  * on a QS variable.
  */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_thread_register)
 int
 rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
-	unsigned int i, id, success;
-	uint64_t old_bmap, new_bmap;
+	unsigned int i, id;
+	uint64_t old_bmap;
 
 	if (v == NULL || thread_id >= v->max_threads) {
 		RCU_LOG(ERR, "Invalid input parameter");
@@ -97,31 +101,15 @@ rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	id = thread_id & __RTE_QSBR_THRID_MASK;
 	i = thread_id >> __RTE_QSBR_THRID_INDEX_SHIFT;
 
-	/* Make sure that the counter for registered threads does not
-	 * go out of sync. Hence, additional checks are required.
+	/* Add the thread to the bitmap of registered threads */
+	old_bmap = rte_atomic_fetch_or_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
+						RTE_BIT64(id), rte_memory_order_release);
+
+	/* Increment the number of threads registered only if the thread was not already
+	 * registered
 	 */
-	/* Check if the thread is already registered */
-	old_bmap = rte_atomic_load_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					rte_memory_order_relaxed);
-	if (old_bmap & 1UL << id)
-		return 0;
-
-	do {
-		new_bmap = old_bmap | (1UL << id);
-		success = rte_atomic_compare_exchange_strong_explicit(
-					__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					&old_bmap, new_bmap,
-					rte_memory_order_release, rte_memory_order_relaxed);
-
-		if (success)
-			rte_atomic_fetch_add_explicit(&v->num_threads,
-						1, rte_memory_order_relaxed);
-		else if (old_bmap & (1UL << id))
-			/* Someone else registered this thread.
-			 * Counter should not be incremented.
-			 */
-			return 0;
-	} while (success == 0);
+	if (!(old_bmap & RTE_BIT64(id)))
+		rte_atomic_fetch_add_explicit(&v->num_threads, 1, rte_memory_order_relaxed);
 
 	return 0;
 }
@@ -129,11 +117,12 @@ rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 /* Remove a reader thread, from the list of threads reporting their
  * quiescent state on a QS variable.
  */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_thread_unregister)
 int
 rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
-	unsigned int i, id, success;
-	uint64_t old_bmap, new_bmap;
+	unsigned int i, id;
+	uint64_t old_bmap;
 
 	if (v == NULL || thread_id >= v->max_threads) {
 		RCU_LOG(ERR, "Invalid input parameter");
@@ -148,40 +137,24 @@ rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	id = thread_id & __RTE_QSBR_THRID_MASK;
 	i = thread_id >> __RTE_QSBR_THRID_INDEX_SHIFT;
 
-	/* Make sure that the counter for registered threads does not
-	 * go out of sync. Hence, additional checks are required.
+	/* Make sure any loads of the shared data structure are
+	 * completed before removal of the thread from the bitmap of
+	 * reporting threads.
 	 */
-	/* Check if the thread is already unregistered */
-	old_bmap = rte_atomic_load_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					rte_memory_order_relaxed);
-	if (!(old_bmap & (1UL << id)))
-		return 0;
+	old_bmap = rte_atomic_fetch_and_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
+						 ~RTE_BIT64(id), rte_memory_order_release);
 
-	do {
-		new_bmap = old_bmap & ~(1UL << id);
-		/* Make sure any loads of the shared data structure are
-		 * completed before removal of the thread from the list of
-		 * reporting threads.
-		 */
-		success = rte_atomic_compare_exchange_strong_explicit(
-					__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					&old_bmap, new_bmap,
-					rte_memory_order_release, rte_memory_order_relaxed);
-
-		if (success)
-			rte_atomic_fetch_sub_explicit(&v->num_threads,
-						1, rte_memory_order_relaxed);
-		else if (!(old_bmap & (1UL << id)))
-			/* Someone else unregistered this thread.
-			 * Counter should not be incremented.
-			 */
-			return 0;
-	} while (success == 0);
+	/* Decrement the number of threads unregistered only if the thread was not already
+	 * unregistered
+	 */
+	if (old_bmap & RTE_BIT64(id))
+		rte_atomic_fetch_sub_explicit(&v->num_threads, 1, rte_memory_order_relaxed);
 
 	return 0;
 }
 
 /* Wait till the reader threads have entered quiescent state. */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_synchronize)
 void
 rte_rcu_qsbr_synchronize(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
@@ -202,6 +175,7 @@ rte_rcu_qsbr_synchronize(struct rte_rcu_qsbr *v, unsigned int thread_id)
 }
 
 /* Dump the details of a single quiescent state variable to a file. */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_dump)
 int
 rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 {
@@ -231,7 +205,7 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 			t = rte_ctz64(bmap);
 			fprintf(f, "%u ", id + t);
 
-			bmap &= ~(1UL << t);
+			bmap &= ~RTE_BIT64(t);
 		}
 	}
 
@@ -258,7 +232,7 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 				rte_atomic_load_explicit(
 					&v->qsbr_cnt[id + t].lock_cnt,
 					rte_memory_order_relaxed));
-			bmap &= ~(1UL << t);
+			bmap &= ~RTE_BIT64(t);
 		}
 	}
 
@@ -268,6 +242,7 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 /* Create a queue used to store the data structure elements that can
  * be freed later. This queue is referred to as 'defer queue'.
  */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_dq_create)
 struct rte_rcu_qsbr_dq *
 rte_rcu_qsbr_dq_create(const struct rte_rcu_qsbr_dq_parameters *params)
 {
@@ -344,6 +319,7 @@ rte_rcu_qsbr_dq_create(const struct rte_rcu_qsbr_dq_parameters *params)
 /* Enqueue one resource to the defer queue to free after the grace
  * period is over.
  */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_dq_enqueue)
 int rte_rcu_qsbr_dq_enqueue(struct rte_rcu_qsbr_dq *dq, void *e)
 {
 	__rte_rcu_qsbr_dq_elem_t *dq_elem;
@@ -356,7 +332,7 @@ int rte_rcu_qsbr_dq_enqueue(struct rte_rcu_qsbr_dq *dq, void *e)
 		return 1;
 	}
 
-	char data[dq->esize];
+	char *data = alloca(dq->esize);
 	dq_elem = (__rte_rcu_qsbr_dq_elem_t *)data;
 	/* Start the grace period */
 	dq_elem->token = rte_rcu_qsbr_start(dq->v);
@@ -402,6 +378,7 @@ int rte_rcu_qsbr_dq_enqueue(struct rte_rcu_qsbr_dq *dq, void *e)
 }
 
 /* Reclaim resources from the defer queue. */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_dq_reclaim)
 int
 rte_rcu_qsbr_dq_reclaim(struct rte_rcu_qsbr_dq *dq, unsigned int n,
 			unsigned int *freed, unsigned int *pending,
@@ -419,10 +396,10 @@ rte_rcu_qsbr_dq_reclaim(struct rte_rcu_qsbr_dq *dq, unsigned int n,
 
 	cnt = 0;
 
-	char data[dq->esize];
+	char *data = alloca(dq->esize);
 	/* Check reader threads quiescent state and reclaim resources */
 	while (cnt < n &&
-		rte_ring_dequeue_bulk_elem_start(dq->r, &data,
+		rte_ring_dequeue_bulk_elem_start(dq->r, data,
 					dq->esize, 1, available) != 0) {
 		dq_elem = (__rte_rcu_qsbr_dq_elem_t *)data;
 
@@ -451,6 +428,7 @@ rte_rcu_qsbr_dq_reclaim(struct rte_rcu_qsbr_dq *dq, unsigned int n,
 }
 
 /* Delete a defer queue. */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_dq_delete)
 int
 rte_rcu_qsbr_dq_delete(struct rte_rcu_qsbr_dq *dq)
 {
@@ -476,4 +454,5 @@ rte_rcu_qsbr_dq_delete(struct rte_rcu_qsbr_dq *dq)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_rcu_log_type)
 RTE_LOG_REGISTER_DEFAULT(rte_rcu_log_type, ERR);

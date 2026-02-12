@@ -69,7 +69,7 @@ nfp_cpp_resource_find(struct nfp_cpp *cpp,
 
 	/* Search for a matching entry */
 	if (memcmp(name_pad, NFP_RESOURCE_TBL_NAME "\0\0\0\0\0\0\0\0", 8) == 0) {
-		PMD_DRV_LOG(ERR, "Grabbing device lock not supported");
+		PMD_DRV_LOG(ERR, "Grabbing device lock not supported.");
 		return -EOPNOTSUPP;
 	}
 
@@ -109,19 +109,19 @@ nfp_resource_try_acquire(struct nfp_cpp *cpp,
 	int err;
 
 	if (nfp_cpp_mutex_lock(dev_mutex) != 0) {
-		PMD_DRV_LOG(ERR, "RESOURCE - CPP mutex lock failed");
+		PMD_DRV_LOG(ERR, "RESOURCE - CPP mutex lock failed.");
 		return -EINVAL;
 	}
 
 	err = nfp_cpp_resource_find(cpp, res);
 	if (err != 0) {
-		PMD_DRV_LOG(ERR, "RESOURCE - CPP resource find failed");
+		PMD_DRV_LOG(ERR, "RESOURCE - CPP resource find failed.");
 		goto err_unlock_dev;
 	}
 
 	err = nfp_cpp_mutex_trylock(res->mutex);
 	if (err != 0) {
-		PMD_DRV_LOG(ERR, "RESOURCE - CPP mutex trylock failed");
+		PMD_DRV_LOG(ERR, "RESOURCE - CPP mutex trylock failed.");
 		goto err_res_mutex_free;
 	}
 
@@ -161,8 +161,10 @@ nfp_resource_acquire(struct nfp_cpp *cpp,
 	struct nfp_cpp_mutex *dev_mutex;
 
 	res = malloc(sizeof(*res));
-	if (res == NULL)
+	if (res == NULL) {
+		PMD_DRV_LOG(ERR, "RESOURCE - Malloc NSP memory failed.");
 		return NULL;
+	}
 
 	memset(res, 0, sizeof(*res));
 
@@ -171,7 +173,7 @@ nfp_resource_acquire(struct nfp_cpp *cpp,
 	dev_mutex = nfp_cpp_mutex_alloc(cpp, NFP_RESOURCE_TBL_TARGET,
 			NFP_RESOURCE_TBL_BASE, NFP_RESOURCE_TBL_KEY);
 	if (dev_mutex == NULL) {
-		PMD_DRV_LOG(ERR, "RESOURCE - CPP mutex alloc failed");
+		PMD_DRV_LOG(ERR, "RESOURCE - CPP mutex alloc failed.");
 		goto err_free;
 	}
 
@@ -183,12 +185,12 @@ nfp_resource_acquire(struct nfp_cpp *cpp,
 		if (err == 0)
 			break;
 		if (err != -EBUSY) {
-			PMD_DRV_LOG(ERR, "RESOURCE - try acquire failed");
+			PMD_DRV_LOG(ERR, "RESOURCE - try acquire failed.");
 			goto mutex_free;
 		}
 
 		if (count++ > 1000) {    /* 1ms * 1000 = 1s */
-			PMD_DRV_LOG(ERR, "Error: resource %s timed out", name);
+			PMD_DRV_LOG(ERR, "Error: resource %s timed out.", name);
 			goto mutex_free;
 		}
 

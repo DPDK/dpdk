@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <arm_neon.h>
 
+#include <rte_bitops.h>
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
 #include <rte_prefetch.h>
@@ -23,8 +24,6 @@
 #include "mlx5_rxtx.h"
 #include "mlx5_rxtx_vec.h"
 #include "mlx5_autoconf.h"
-
-#pragma GCC diagnostic ignored "-Wcast-qual"
 
 /**
  * Store free buffers to RX SW ring.
@@ -63,16 +62,18 @@ rxq_copy_mbuf_v(struct rte_mbuf **elts, struct rte_mbuf **pkts, uint16_t n)
  * @param elts
  *   Pointer to SW ring to be filled. The first mbuf has to be pre-built from
  *   the title completion descriptor to be copied to the rest of mbufs.
+ * @param keep
+ *   Keep unzipping if the next CQE is the miniCQE array.
  *
  * @return
  *   Number of mini-CQEs successfully decompressed.
  */
 static inline uint16_t
 rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
-		    struct rte_mbuf **elts)
+		    struct rte_mbuf **elts, bool keep)
 {
 	volatile struct mlx5_mini_cqe8 *mcq =
-		(void *)&(cq + !rxq->cqe_comp_layout)->pkt_info;
+		(volatile struct mlx5_mini_cqe8 *)&(cq + !rxq->cqe_comp_layout)->pkt_info;
 	/* Title packet is pre-built. */
 	struct rte_mbuf *t_pkt = rxq->cqe_comp_layout ? &rxq->title_pkt : elts[0];
 	unsigned int pos;
@@ -95,8 +96,7 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 	};
 	/* Restore the compressed count. Must be 16 bits. */
 	uint16_t mcqe_n = (rxq->cqe_comp_layout) ?
-		(MLX5_CQE_NUM_MINIS(cq->op_own) + 1) :
-		t_pkt->data_len + (rxq->crc_present * RTE_ETHER_CRC_LEN);
+		(MLX5_CQE_NUM_MINIS(cq->op_own) + 1U) : rte_be_to_cpu_32(cq->byte_cnt);
 	uint16_t pkts_n = mcqe_n;
 	const uint64x2_t rearm =
 		vld1q_u64((void *)&t_pkt->rearm_data);
@@ -137,9 +137,9 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 	 */
 cycle:
 	if (rxq->cqe_comp_layout)
-		rte_prefetch0((void *)(cq + mcqe_n));
+		rte_prefetch0((volatile void *)(cq + mcqe_n));
 	for (pos = 0; pos < mcqe_n; ) {
-		uint8_t *p = (void *)&mcq[pos % 8];
+		uint8_t *p = RTE_CAST_PTR(uint8_t *, &mcq[pos % 8]);
 		uint8_t *e0 = (void *)&elts[pos]->rearm_data;
 		uint8_t *e1 = (void *)&elts[pos + 1]->rearm_data;
 		uint8_t *e2 = (void *)&elts[pos + 2]->rearm_data;
@@ -155,7 +155,7 @@ cycle:
 		if (!rxq->cqe_comp_layout)
 			for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
 				if (likely(pos + i < mcqe_n))
-					rte_prefetch0((void *)(cq + pos + i));
+					rte_prefetch0((volatile void *)(cq + pos + i));
 		__asm__ volatile (
 		/* A.1 load mCQEs into a 128bit register. */
 		"ld1 {v16.16b - v17.16b}, [%[mcq]] \n\t"
@@ -365,14 +365,14 @@ cycle:
 		if (!rxq->cqe_comp_layout) {
 			if (!(pos & 0x7) && pos < mcqe_n) {
 				if (pos + 8 < mcqe_n)
-					rte_prefetch0((void *)(cq + pos + 8));
-				mcq = (void *)&(cq + pos)->pkt_info;
+					rte_prefetch0((volatile void *)(cq + pos + 8));
+				mcq = (volatile struct mlx5_mini_cqe8 *)&(cq + pos)->pkt_info;
 				for (i = 0; i < 8; ++i)
 					cq[inv++].op_own = MLX5_CQE_INVALIDATE;
 			}
 		}
 	}
-	if (rxq->cqe_comp_layout) {
+	if (rxq->cqe_comp_layout && keep) {
 		int ret;
 		/* Keep unzipping if the next CQE is the miniCQE array. */
 		cq = &cq[mcqe_n];
@@ -381,7 +381,7 @@ cycle:
 		    MLX5_CQE_FORMAT(cq->op_own) == MLX5_COMPRESSED) {
 			pos = 0;
 			elts = &elts[mcqe_n];
-			mcq = (void *)cq;
+			mcq = (volatile struct mlx5_mini_cqe8 *)cq;
 			mcqe_n = MLX5_CQE_NUM_MINIS(cq->op_own) + 1;
 			pkts_n += mcqe_n;
 			goto cycle;
@@ -618,7 +618,7 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 
 	/*
 	 * Note that vectors have reverse order - {v3, v2, v1, v0}, because
-	 * there's no instruction to count trailing zeros. __builtin_clzl() is
+	 * there's no instruction to count trailing zeros. rte_clz64() is
 	 * used instead.
 	 *
 	 * A. copy 4 mbuf pointers from elts ring to returning pkts.
@@ -661,7 +661,7 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		mask = vcreate_u16(pkts_n - pos < MLX5_VPMD_DESCS_PER_LOOP ?
 				   -1UL >> ((pkts_n - pos) *
 					    sizeof(uint16_t) * 8) : 0);
-		p0 = (void *)&cq[pos].pkt_info;
+		p0 = RTE_PTR_UNQUAL(&cq[pos].pkt_info);
 		p1 = p0 + (pkts_n - pos > 1) * sizeof(struct mlx5_cqe);
 		p2 = p1 + (pkts_n - pos > 2) * sizeof(struct mlx5_cqe);
 		p3 = p2 + (pkts_n - pos > 3) * sizeof(struct mlx5_cqe);
@@ -806,13 +806,12 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		/* E.2 mask out invalid entries. */
 		comp_mask = vbic_u16(comp_mask, invalid_mask);
 		/* E.3 get the first compressed CQE. */
-		comp_idx = __builtin_clzl(vget_lane_u64(vreinterpret_u64_u16(
-					  comp_mask), 0)) /
-					  (sizeof(uint16_t) * 8);
+		comp_idx = rte_clz64(vget_lane_u64(vreinterpret_u64_u16(comp_mask), 0)) /
+			(sizeof(uint16_t) * 8);
 		invalid_mask = vorr_u16(invalid_mask, comp_mask);
 		/* D.7 count non-compressed valid CQEs. */
-		n = __builtin_clzl(vget_lane_u64(vreinterpret_u64_u16(
-				   invalid_mask), 0)) / (sizeof(uint16_t) * 8);
+		n = rte_clz64(vget_lane_u64(vreinterpret_u64_u16(invalid_mask), 0)) /
+			(sizeof(uint16_t) * 8);
 		nocmp_n += n;
 		/*
 		 * D.2 mask out entries after the compressed CQE.
@@ -835,13 +834,13 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		rxq_cq_to_ptype_oflags_v(rxq, ptype_info, flow_tag,
 					 opcode, &elts[pos]);
 		if (unlikely(rxq->shared)) {
-			elts[pos]->port = container_of(p0, struct mlx5_cqe,
+			pkts[pos]->port = container_of(p0, struct mlx5_cqe,
 					      pkt_info)->user_index_low;
-			elts[pos + 1]->port = container_of(p1, struct mlx5_cqe,
+			pkts[pos + 1]->port = container_of(p1, struct mlx5_cqe,
 					      pkt_info)->user_index_low;
-			elts[pos + 2]->port = container_of(p2, struct mlx5_cqe,
+			pkts[pos + 2]->port = container_of(p2, struct mlx5_cqe,
 					      pkt_info)->user_index_low;
-			elts[pos + 3]->port = container_of(p3, struct mlx5_cqe,
+			pkts[pos + 3]->port = container_of(p3, struct mlx5_cqe,
 					      pkt_info)->user_index_low;
 		}
 		if (unlikely(rxq->hw_timestamp)) {
@@ -853,34 +852,34 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 				ts = rte_be_to_cpu_64
 					(container_of(p0, struct mlx5_cqe,
 						      pkt_info)->timestamp);
-				mlx5_timestamp_set(elts[pos], offset,
+				mlx5_timestamp_set(pkts[pos], offset,
 					mlx5_txpp_convert_rx_ts(sh, ts));
 				ts = rte_be_to_cpu_64
 					(container_of(p1, struct mlx5_cqe,
 						      pkt_info)->timestamp);
-				mlx5_timestamp_set(elts[pos + 1], offset,
+				mlx5_timestamp_set(pkts[pos + 1], offset,
 					mlx5_txpp_convert_rx_ts(sh, ts));
 				ts = rte_be_to_cpu_64
 					(container_of(p2, struct mlx5_cqe,
 						      pkt_info)->timestamp);
-				mlx5_timestamp_set(elts[pos + 2], offset,
+				mlx5_timestamp_set(pkts[pos + 2], offset,
 					mlx5_txpp_convert_rx_ts(sh, ts));
 				ts = rte_be_to_cpu_64
 					(container_of(p3, struct mlx5_cqe,
 						      pkt_info)->timestamp);
-				mlx5_timestamp_set(elts[pos + 3], offset,
+				mlx5_timestamp_set(pkts[pos + 3], offset,
 					mlx5_txpp_convert_rx_ts(sh, ts));
 			} else {
-				mlx5_timestamp_set(elts[pos], offset,
+				mlx5_timestamp_set(pkts[pos], offset,
 					rte_be_to_cpu_64(container_of(p0,
 					struct mlx5_cqe, pkt_info)->timestamp));
-				mlx5_timestamp_set(elts[pos + 1], offset,
+				mlx5_timestamp_set(pkts[pos + 1], offset,
 					rte_be_to_cpu_64(container_of(p1,
 					struct mlx5_cqe, pkt_info)->timestamp));
-				mlx5_timestamp_set(elts[pos + 2], offset,
+				mlx5_timestamp_set(pkts[pos + 2], offset,
 					rte_be_to_cpu_64(container_of(p2,
 					struct mlx5_cqe, pkt_info)->timestamp));
-				mlx5_timestamp_set(elts[pos + 3], offset,
+				mlx5_timestamp_set(pkts[pos + 3], offset,
 					rte_be_to_cpu_64(container_of(p3,
 					struct mlx5_cqe, pkt_info)->timestamp));
 			}

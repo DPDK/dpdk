@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright 2018,2021 NXP
+# Copyright 2018-2023 NXP
 
 if not is_linux
     build = false
     reason = 'only supported on Linux'
 endif
+
+cflags += no_shadow_cflag
 
 deps += ['common_dpaax', 'eventdev', 'kvargs']
 sources = files(
@@ -27,3 +29,4 @@ sources = files(
 )
 
 includes += include_directories('mc', 'qbman/include', 'portal')
+includes += include_directories('../../../lib/eal/linux')

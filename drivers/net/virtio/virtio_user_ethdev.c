@@ -198,11 +198,13 @@ virtio_user_setup_queue_packed(struct virtqueue *vq,
 			   sizeof(struct vring_packed_desc_event),
 			   VIRTIO_VRING_ALIGN);
 	vring->num = vq->vq_nentries;
+	vring->desc_iova = vq->vq_ring_mem;
 	vring->desc = (void *)(uintptr_t)desc_addr;
 	vring->driver = (void *)(uintptr_t)avail_addr;
 	vring->device = (void *)(uintptr_t)used_addr;
 	dev->packed_queues[queue_idx].avail_wrap_counter = true;
 	dev->packed_queues[queue_idx].used_wrap_counter = true;
+	dev->packed_queues[queue_idx].used_idx = 0;
 
 	for (i = 0; i < vring->num; i++)
 		vring->desc[i].flags = 0;
@@ -221,6 +223,7 @@ virtio_user_setup_queue_split(struct virtqueue *vq, struct virtio_user_dev *dev)
 				   VIRTIO_VRING_ALIGN);
 
 	dev->vrings.split[queue_idx].num = vq->vq_nentries;
+	dev->vrings.split[queue_idx].desc_iova = vq->vq_ring_mem;
 	dev->vrings.split[queue_idx].desc = (void *)(uintptr_t)desc_addr;
 	dev->vrings.split[queue_idx].avail = (void *)(uintptr_t)avail_addr;
 	dev->vrings.split[queue_idx].used = (void *)(uintptr_t)used_addr;
@@ -689,7 +692,13 @@ virtio_user_pmd_probe(struct rte_vdev_device *vdev)
 	 * Virtio-user requires using virtual addresses for the descriptors
 	 * buffers, whatever other devices require
 	 */
-	hw->use_va = true;
+	if (backend_type == VIRTIO_USER_BACKEND_VHOST_VDPA)
+		/* vDPA backend requires using IOVA for the buffers
+		 * to make it work in IOVA as PA mode also.
+		 */
+		hw->use_va = false;
+	else
+		hw->use_va = true;
 
 	/* previously called by pci probing for physical dev */
 	if (eth_virtio_dev_init(eth_dev) < 0) {

@@ -536,7 +536,7 @@ efx_mcdi_set_nic_addr_regions(
 		EFX_DWORD_1) << 32)
 
 #define MCDI_STRUCT_MEMBER(_buf, _type, _ofst)				\
-	((_type *)((char *)_buf + _ofst ## _OFST))	\
+	((_type *)((char *)(uintptr_t)(_buf) + _ofst ## _OFST))
 
 #define MCDI_STRUCT_BYTE(_buf, _ofst)					\
 	EFX_BYTE_FIELD(*MCDI_STRUCT_MEMBER(_buf, efx_byte_t, _ofst),	\

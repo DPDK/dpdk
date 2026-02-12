@@ -5,14 +5,14 @@
 #ifndef _RTE_BYTEORDER_X86_H_
 #define _RTE_BYTEORDER_X86_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <rte_common.h>
 #include <rte_config.h>
 #include "generic/rte_byteorder.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef RTE_BYTE_ORDER
 #define RTE_BYTE_ORDER RTE_LITTLE_ENDIAN
@@ -65,6 +65,11 @@ static inline uint32_t rte_arch_bswap32(uint32_t _x)
 #else
 #include "rte_byteorder_64.h"
 #endif
+
+#endif /* !RTE_FORCE_INTRINSICS */
+
+#ifdef __cplusplus
+}
 #endif
 
 #define rte_cpu_to_le_16(x) (x)
@@ -82,9 +87,5 @@ static inline uint32_t rte_arch_bswap32(uint32_t _x)
 #define rte_be_to_cpu_16(x) rte_bswap16(x)
 #define rte_be_to_cpu_32(x) rte_bswap32(x)
 #define rte_be_to_cpu_64(x) rte_bswap64(x)
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_BYTEORDER_X86_H_ */

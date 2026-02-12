@@ -15,11 +15,11 @@
  * AES-CTR counter block format.
  */
 
-struct aesctr_cnt_blk {
+struct __rte_packed_begin aesctr_cnt_blk {
 	uint32_t nonce;
 	uint64_t iv;
 	uint32_t cnt;
-} __rte_packed;
+} __rte_packed_end;
 
  /*
   * CHACHA20-POLY1305 devices have some specific requirements
@@ -27,13 +27,13 @@ struct aesctr_cnt_blk {
   * Ideally that to be done by the driver itself.
   */
 
-struct aead_chacha20_poly1305_iv {
+struct __rte_packed_begin aead_chacha20_poly1305_iv {
 	uint32_t salt;
 	uint64_t iv;
 	uint32_t cnt;
-} __rte_packed;
+} __rte_packed_end;
 
-struct aead_chacha20_poly1305_aad {
+struct __rte_packed_begin aead_chacha20_poly1305_aad {
 	uint32_t spi;
 	/*
 	 * RFC 4106, section 5:
@@ -45,25 +45,25 @@ struct aead_chacha20_poly1305_aad {
 		uint64_t u64;
 	} sqn;
 	uint32_t align0; /* align to 16B boundary */
-} __rte_packed;
+} __rte_packed_end;
 
-struct chacha20_poly1305_esph_iv {
+struct __rte_packed_begin chacha20_poly1305_esph_iv {
 	struct rte_esp_hdr esph;
 	uint64_t iv;
-} __rte_packed;
+} __rte_packed_end;
 
  /*
   * AES-GCM devices have some specific requirements for IV and AAD formats.
   * Ideally that to be done by the driver itself.
   */
 
-struct aead_gcm_iv {
+struct __rte_packed_begin aead_gcm_iv {
 	uint32_t salt;
 	uint64_t iv;
 	uint32_t cnt;
-} __rte_packed;
+} __rte_packed_end;
 
-struct aead_gcm_aad {
+struct __rte_packed_begin aead_gcm_aad {
 	uint32_t spi;
 	/*
 	 * RFC 4106, section 5:
@@ -75,34 +75,34 @@ struct aead_gcm_aad {
 		uint64_t u64;
 	} sqn;
 	uint32_t align0; /* align to 16B boundary */
-} __rte_packed;
+} __rte_packed_end;
 
-struct gcm_esph_iv {
+struct __rte_packed_begin gcm_esph_iv {
 	struct rte_esp_hdr esph;
 	uint64_t iv;
-} __rte_packed;
+} __rte_packed_end;
 
  /*
   * AES-CCM devices have some specific requirements for IV and AAD formats.
   * Ideally that to be done by the driver itself.
   */
-union aead_ccm_salt {
+union __rte_packed_begin aead_ccm_salt {
 	uint32_t salt;
 	struct inner {
 		uint8_t salt8[3];
 		uint8_t ccm_flags;
 	} inner;
-} __rte_packed;
+} __rte_packed_end;
 
 
-struct aead_ccm_iv {
+struct __rte_packed_begin aead_ccm_iv {
 	uint8_t ccm_flags;
 	uint8_t salt[3];
 	uint64_t iv;
 	uint32_t cnt;
-} __rte_packed;
+} __rte_packed_end;
 
-struct aead_ccm_aad {
+struct __rte_packed_begin aead_ccm_aad {
 	uint8_t padding[18];
 	uint32_t spi;
 	/*
@@ -115,12 +115,12 @@ struct aead_ccm_aad {
 		uint64_t u64;
 	} sqn;
 	uint32_t align0; /* align to 16B boundary */
-} __rte_packed;
+} __rte_packed_end;
 
-struct ccm_esph_iv {
+struct __rte_packed_begin ccm_esph_iv {
 	struct rte_esp_hdr esph;
 	uint64_t iv;
-} __rte_packed;
+} __rte_packed_end;
 
 
 static inline void

@@ -59,10 +59,6 @@ Information about kernel, rootfs and toolchain can be found at
 `Broadcom Official Website <https://www.broadcom.com/products/ethernet-connectivity
 /network-adapters/smartnic/stingray-software>`__.
 
-    .. Note::
-        To execute BCMFS PMD, it must be compiled with VFIO_PRESENT flag on the
-        compiling platform and same gets enabled in rte_vfio.h.
-
 The BCMFS PMD may be compiled natively on a Stingray platform or
 cross-compiled on an x86 platform. For example, below commands can be executed
 for cross compiling on x86 platform.

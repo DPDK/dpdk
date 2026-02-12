@@ -13,12 +13,11 @@
  * Defines comp device APIs for the provisioning of compression operations.
  */
 
+#include "rte_comp.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-
-#include "rte_comp.h"
 
 /**
  * Parameter log base 2 range description.

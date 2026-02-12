@@ -25,6 +25,16 @@
 					MLX5_WSEG_SIZE)
 #define MLX5_CRYPTO_GCM_MAX_AAD 64
 #define MLX5_CRYPTO_GCM_MAX_DIGEST 16
+#define MLX5_CRYPTO_GCM_IPSEC_IV_SIZE 16
+
+enum mlx5_crypto_mode {
+	MLX5_CRYPTO_FULL_CAPABLE,
+	MLX5_CRYPTO_IPSEC_OPT,
+};
+
+struct __rte_packed_begin mlx5_crypto_ipsec_mem {
+	uint8_t mem[MLX5_CRYPTO_GCM_IPSEC_IV_SIZE];
+} __rte_packed_end;
 
 struct mlx5_crypto_priv {
 	TAILQ_ENTRY(mlx5_crypto_priv) next;
@@ -45,6 +55,7 @@ struct mlx5_crypto_priv {
 	uint16_t umr_wqe_stride;
 	uint16_t max_rdmar_ds;
 	uint32_t is_wrapped_mode:1;
+	enum mlx5_crypto_mode crypto_mode;
 };
 
 struct mlx5_crypto_qp {
@@ -57,6 +68,7 @@ struct mlx5_crypto_qp {
 	struct mlx5_devx_obj **mkey; /* WQE's indirect mekys. */
 	struct mlx5_klm *klm_array;
 	union mlx5_gga_crypto_opaque *opaque_addr;
+	struct mlx5_crypto_ipsec_mem *ipsec_mem;
 	struct mlx5_mr_ctrl mr_ctrl;
 	struct mlx5_pmd_mr mr;
 	/* Crypto QP. */
@@ -80,12 +92,12 @@ struct mlx5_crypto_qp {
 	uint16_t cpy_tag_op;
 };
 
-struct mlx5_crypto_dek {
+struct __rte_cache_aligned mlx5_crypto_dek {
 	struct mlx5_list_entry entry; /* Pointer to DEK hash list entry. */
 	struct mlx5_devx_obj *obj; /* Pointer to DEK DevX object. */
 	uint8_t data[MLX5_CRYPTO_KEY_LENGTH]; /* DEK key data. */
 	uint32_t size; /* key+keytag size. */
-} __rte_cache_aligned;
+};
 
 struct mlx5_crypto_devarg_params {
 	bool login_devarg;
@@ -93,9 +105,10 @@ struct mlx5_crypto_devarg_params {
 	uint64_t keytag;
 	uint32_t max_segs_num;
 	uint32_t is_aes_gcm:1;
+	enum mlx5_crypto_mode crypto_mode;
 };
 
-struct mlx5_crypto_session {
+struct __rte_packed_begin mlx5_crypto_session {
 	union {
 		/**< AES-XTS configuration. */
 		struct {
@@ -132,12 +145,18 @@ struct mlx5_crypto_session {
 	/**< Initialisation Vector length. */
 	struct mlx5_crypto_dek *dek; /**< Pointer to dek struct. */
 	uint32_t dek_id; /**< DEK ID */
-} __rte_packed;
+} __rte_packed_end;
 
 struct mlx5_crypto_dek_ctx {
 	struct rte_crypto_sym_xform *xform;
 	struct mlx5_crypto_priv *priv;
 };
+
+static __rte_always_inline bool
+mlx5_crypto_is_ipsec_opt(struct mlx5_crypto_priv *priv)
+{
+	return priv->crypto_mode == MLX5_CRYPTO_IPSEC_OPT;
+}
 
 typedef void *(*mlx5_crypto_mkey_update_t)(struct mlx5_crypto_priv *priv,
 					   struct mlx5_crypto_qp *qp,

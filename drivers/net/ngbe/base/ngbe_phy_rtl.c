@@ -295,7 +295,10 @@ s32 ngbe_setup_phy_link_rtl(struct ngbe_hw *hw,
 	}
 
 	/* restart AN and wait AN done interrupt */
-	autoneg_reg = RTL_BMCR_RESTART_AN | RTL_BMCR_ANE;
+	if (!hw->ncsi_enabled)
+		autoneg_reg = RTL_BMCR_RESTART_AN | RTL_BMCR_ANE;
+	else
+		autoneg_reg = RTL_BMCR_ANE;
 	hw->phy.write_reg(hw, RTL_BMCR, RTL_DEV_ZERO, autoneg_reg);
 
 skip_an:

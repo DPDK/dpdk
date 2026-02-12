@@ -114,7 +114,7 @@ OCTEON TX crypto PMD.
 
 .. code-block:: console
 
-        ./build/ipsec-secgw --log-level=8 -c 0xff -- -P -p 0x3 -u 0x2 --config
+        ./build/ipsec-secgw --log-level=8 -l 0-7 -- -P -p 0x3 -u 0x2 --config
         "(1,0,0),(0,0,0)" -f ep1.cfg
 
 Testing

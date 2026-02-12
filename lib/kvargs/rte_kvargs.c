@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include <eal_export.h>
 #include <rte_os_shim.h>
 
 #include "rte_kvargs.h"
@@ -151,6 +152,7 @@ check_for_valid_keys(struct rte_kvargs *kvlist,
  * E.g. given a list = { rx = 0, rx = 1, tx = 2 } the number of args for
  * arg "rx" will be 2.
  */
+RTE_EXPORT_SYMBOL(rte_kvargs_count)
 unsigned
 rte_kvargs_count(const struct rte_kvargs *kvlist, const char *key_match)
 {
@@ -167,32 +169,53 @@ rte_kvargs_count(const struct rte_kvargs *kvlist, const char *key_match)
 	return ret;
 }
 
-/*
- * For each matching key, call the given handler function.
- */
-int
-rte_kvargs_process(const struct rte_kvargs *kvlist,
-		const char *key_match,
-		arg_handler_t handler,
-		void *opaque_arg)
+static int
+kvargs_process_common(const struct rte_kvargs *kvlist, const char *key_match,
+		      arg_handler_t handler, void *opaque_arg, bool support_only_key)
 {
 	const struct rte_kvargs_pair *pair;
 	unsigned i;
 
 	if (kvlist == NULL)
-		return 0;
+		return -1;
 
 	for (i = 0; i < kvlist->count; i++) {
 		pair = &kvlist->pairs[i];
 		if (key_match == NULL || strcmp(pair->key, key_match) == 0) {
+			if (!support_only_key && pair->value == NULL)
+				return -1;
 			if ((*handler)(pair->key, pair->value, opaque_arg) < 0)
 				return -1;
 		}
 	}
+
 	return 0;
 }
 
+/*
+ * For each matching key in key=value, call the given handler function.
+ */
+RTE_EXPORT_SYMBOL(rte_kvargs_process)
+int
+rte_kvargs_process(const struct rte_kvargs *kvlist, const char *key_match, arg_handler_t handler,
+		   void *opaque_arg)
+{
+	return kvargs_process_common(kvlist, key_match, handler, opaque_arg, false);
+}
+
+/*
+ * For each matching key in key=value or only-key, call the given handler function.
+ */
+RTE_EXPORT_SYMBOL(rte_kvargs_process_opt)
+int
+rte_kvargs_process_opt(const struct rte_kvargs *kvlist, const char *key_match,
+		       arg_handler_t handler, void *opaque_arg)
+{
+	return kvargs_process_common(kvlist, key_match, handler, opaque_arg, true);
+}
+
 /* free the rte_kvargs structure */
+RTE_EXPORT_SYMBOL(rte_kvargs_free)
 void
 rte_kvargs_free(struct rte_kvargs *kvlist)
 {
@@ -204,6 +227,7 @@ rte_kvargs_free(struct rte_kvargs *kvlist)
 }
 
 /* Lookup a value in an rte_kvargs list by its key and value. */
+RTE_EXPORT_SYMBOL(rte_kvargs_get_with_value)
 const char *
 rte_kvargs_get_with_value(const struct rte_kvargs *kvlist, const char *key,
 			  const char *value)
@@ -223,6 +247,7 @@ rte_kvargs_get_with_value(const struct rte_kvargs *kvlist, const char *key,
 }
 
 /* Lookup a value in an rte_kvargs list by its key. */
+RTE_EXPORT_SYMBOL(rte_kvargs_get)
 const char *
 rte_kvargs_get(const struct rte_kvargs *kvlist, const char *key)
 {
@@ -236,6 +261,7 @@ rte_kvargs_get(const struct rte_kvargs *kvlist, const char *key)
  * an allocated structure that contains a key/value list. Also
  * check if only valid keys were used.
  */
+RTE_EXPORT_SYMBOL(rte_kvargs_parse)
 struct rte_kvargs *
 rte_kvargs_parse(const char *args, const char * const valid_keys[])
 {
@@ -259,6 +285,7 @@ rte_kvargs_parse(const char *args, const char * const valid_keys[])
 	return kvlist;
 }
 
+RTE_EXPORT_SYMBOL(rte_kvargs_parse_delim)
 struct rte_kvargs *
 rte_kvargs_parse_delim(const char *args, const char * const valid_keys[],
 		       const char *valid_ends)

@@ -23,21 +23,17 @@ sources = files(
         'enic_main.c',
         'enic_res.c',
         'enic_rxtx.c',
+        'enic_sriov.c',
         'enic_vf_representor.c',
 )
 deps += ['hash']
 includes += include_directories('base')
 
-# Build the avx2 handler for 64-bit X86 targets, even though 'machine'
-# may not. This is to support users who build for the min supported machine
-# and need to run the binary on newer CPUs too.
+cflags += no_shadow_cflag
+
 if dpdk_conf.has('RTE_ARCH_X86_64')
-    enic_avx2_lib = static_library('enic_avx2_lib',
-            'enic_rxtx_vec_avx2.c',
-            dependencies: [static_rte_ethdev, static_rte_bus_pci],
-            include_directories: includes,
-            c_args: [cflags, '-mavx2'])
-    objs += enic_avx2_lib.extract_objects('enic_rxtx_vec_avx2.c')
+    cflags += '-DENIC_RXTX_VEC'
+    sources_avx2 += files('enic_rxtx_vec_avx2.c')
 endif
 
 annotate_locks = false

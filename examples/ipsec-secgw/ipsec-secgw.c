@@ -218,11 +218,11 @@ struct app_sa_prm app_sa_prm = {
 		};
 static const char *cfgfile;
 
-struct lcore_params {
+struct __rte_cache_aligned lcore_params {
 	uint16_t port_id;
-	uint8_t queue_id;
-	uint8_t lcore_id;
-} __rte_cache_aligned;
+	uint16_t queue_id;
+	uint32_t lcore_id;
+};
 
 static struct lcore_params lcore_params_array[MAX_LCORE_PARAMS];
 
@@ -626,12 +626,13 @@ drain_inbound_crypto_queues(const struct lcore_conf *qconf,
 	uint32_t n;
 	struct ipsec_traffic trf;
 	unsigned int lcoreid = rte_lcore_id();
+	const int nb_pkts = RTE_DIM(trf.ipsec.pkts);
 
 	if (app_sa_prm.enable == 0) {
 
 		/* dequeue packets from crypto-queue */
 		n = ipsec_inbound_cqp_dequeue(ctx, trf.ipsec.pkts,
-			RTE_DIM(trf.ipsec.pkts));
+			RTE_MIN(MAX_PKT_BURST, nb_pkts));
 
 		trf.ip4.num = 0;
 		trf.ip6.num = 0;
@@ -663,12 +664,13 @@ drain_outbound_crypto_queues(const struct lcore_conf *qconf,
 {
 	uint32_t n;
 	struct ipsec_traffic trf;
+	const int nb_pkts = RTE_DIM(trf.ipsec.pkts);
 
 	if (app_sa_prm.enable == 0) {
 
 		/* dequeue packets from crypto-queue */
 		n = ipsec_outbound_cqp_dequeue(ctx, trf.ipsec.pkts,
-			RTE_DIM(trf.ipsec.pkts));
+			RTE_MIN(MAX_PKT_BURST, nb_pkts));
 
 		trf.ip4.num = 0;
 		trf.ip6.num = 0;
@@ -695,8 +697,7 @@ ipsec_poll_mode_worker(void)
 	struct rte_mbuf *pkts[MAX_PKT_BURST];
 	uint32_t lcore_id;
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
-	uint16_t i, nb_rx, portid;
-	uint8_t queueid;
+	uint16_t i, nb_rx, portid, queueid;
 	struct lcore_conf *qconf;
 	int32_t rc, socket_id;
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1)
@@ -743,7 +744,7 @@ ipsec_poll_mode_worker(void)
 		portid = rxql[i].port_id;
 		queueid = rxql[i].queue_id;
 		RTE_LOG(INFO, IPSEC,
-			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
+			" -- lcoreid=%u portid=%u rxqueueid=%" PRIu16 "\n",
 			lcore_id, portid, queueid);
 	}
 
@@ -788,8 +789,7 @@ int
 check_flow_params(uint16_t fdir_portid, uint8_t fdir_qid)
 {
 	uint16_t i;
-	uint16_t portid;
-	uint8_t queueid;
+	uint16_t portid, queueid;
 
 	for (i = 0; i < nb_lcore_params; ++i) {
 		portid = lcore_params_array[i].port_id;
@@ -809,7 +809,7 @@ check_flow_params(uint16_t fdir_portid, uint8_t fdir_qid)
 static int32_t
 check_poll_mode_params(struct eh_conf *eh_conf)
 {
-	uint8_t lcore;
+	uint32_t lcore;
 	uint16_t portid;
 	uint16_t i;
 	int32_t socket_id;
@@ -828,13 +828,13 @@ check_poll_mode_params(struct eh_conf *eh_conf)
 	for (i = 0; i < nb_lcore_params; ++i) {
 		lcore = lcore_params[i].lcore_id;
 		if (!rte_lcore_is_enabled(lcore)) {
-			printf("error: lcore %hhu is not enabled in "
+			printf("error: lcore %u is not enabled in "
 				"lcore mask\n", lcore);
 			return -1;
 		}
 		socket_id = rte_lcore_to_socket_id(lcore);
 		if (socket_id != 0 && numa_on == 0) {
-			printf("warning: lcore %hhu is on socket %d "
+			printf("warning: lcore %u is on socket %d "
 				"with numa off\n",
 				lcore, socket_id);
 		}
@@ -851,7 +851,7 @@ check_poll_mode_params(struct eh_conf *eh_conf)
 	return 0;
 }
 
-static uint8_t
+static uint16_t
 get_port_nb_rx_queues(const uint16_t port)
 {
 	int32_t queue = -1;
@@ -862,14 +862,14 @@ get_port_nb_rx_queues(const uint16_t port)
 				lcore_params[i].queue_id > queue)
 			queue = lcore_params[i].queue_id;
 	}
-	return (uint8_t)(++queue);
+	return (uint16_t)(++queue);
 }
 
 static int32_t
 init_lcore_rx_queues(void)
 {
 	uint16_t i, nb_rx_queue;
-	uint8_t lcore;
+	uint32_t lcore;
 
 	for (i = 0; i < nb_lcore_params; ++i) {
 		lcore = lcore_params[i].lcore_id;
@@ -1050,6 +1050,11 @@ parse_config(const char *q_arg)
 	char *str_fld[_NUM_FLD];
 	int32_t i;
 	uint32_t size;
+	uint32_t max_fld[_NUM_FLD] = {
+		RTE_MAX_ETHPORTS,
+		RTE_MAX_QUEUES_PER_PORT,
+		RTE_MAX_LCORE
+	};
 
 	nb_lcore_params = 0;
 
@@ -1070,7 +1075,7 @@ parse_config(const char *q_arg)
 		for (i = 0; i < _NUM_FLD; i++) {
 			errno = 0;
 			int_fld[i] = strtoul(str_fld[i], &end, 0);
-			if (errno != 0 || end == str_fld[i] || int_fld[i] > 255)
+			if (errno != 0 || end == str_fld[i] || int_fld[i] > max_fld[i])
 				return -1;
 		}
 		if (nb_lcore_params >= MAX_LCORE_PARAMS) {
@@ -1079,11 +1084,11 @@ parse_config(const char *q_arg)
 			return -1;
 		}
 		lcore_params_array[nb_lcore_params].port_id =
-			(uint8_t)int_fld[FLD_PORT];
+			(uint16_t)int_fld[FLD_PORT];
 		lcore_params_array[nb_lcore_params].queue_id =
-			(uint8_t)int_fld[FLD_QUEUE];
+			(uint16_t)int_fld[FLD_QUEUE];
 		lcore_params_array[nb_lcore_params].lcore_id =
-			(uint8_t)int_fld[FLD_LCORE];
+			(uint32_t)int_fld[FLD_LCORE];
 		++nb_lcore_params;
 	}
 	lcore_params = lcore_params_array;
@@ -1919,7 +1924,8 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads,
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_txconf *txconf;
 	uint16_t nb_tx_queue, nb_rx_queue;
-	uint16_t tx_queueid, rx_queueid, queue, lcore_id;
+	uint16_t tx_queueid, rx_queueid, queue;
+	uint32_t lcore_id;
 	int32_t ret, socket_id;
 	struct lcore_conf *qconf;
 	struct rte_ether_addr ethaddr;
@@ -2988,16 +2994,7 @@ main(int32_t argc, char **argv)
 
 	sess_sz = max_session_size();
 
-	/*
-	 * In event mode request minimum number of crypto queues
-	 * to be reserved equal to number of ports.
-	 */
-	if (eh_conf->mode == EH_PKT_TRANSFER_MODE_EVENT)
-		nb_crypto_qp = rte_eth_dev_count_avail();
-	else
-		nb_crypto_qp = 0;
-
-	nb_crypto_qp = cryptodevs_init(nb_crypto_qp);
+	nb_crypto_qp = cryptodevs_init(eh_conf->mode);
 
 	if (nb_bufs_in_pool == 0) {
 		RTE_ETH_FOREACH_DEV(portid) {

@@ -64,6 +64,7 @@ typedef enum efx_family_e {
 	EFX_FAMILY_MEDFORD,
 	EFX_FAMILY_MEDFORD2,
 	EFX_FAMILY_RIVERHEAD,
+	EFX_FAMILY_MEDFORD4,
 	EFX_FAMILY_NTYPES
 } efx_family_t;
 
@@ -172,6 +173,16 @@ efx_family_probe_bar(
 #define	EFX_PCI_DEVID_RIVERHEAD			0x0100
 #define	EFX_PCI_DEVID_RIVERHEAD_VF		0x1100
 
+/*
+ * Medford4 has low latency (LL) and full feature (FF) datapath engines.
+ * Some Medford4 functions have FF and LL datapath, others only have FF.
+ */
+#define	EFX_PCI_DEVID_MEDFORD4_PF_UNINIT	0x0C13
+#define	EFX_PCI_DEVID_MEDFORD4			0x0C03	/* X4 PF, FF+LL */
+#define	EFX_PCI_DEVID_MEDFORD4_VF		0x1C03	/* X4 VF, FF+LL */
+#define	EFX_PCI_DEVID_MEDFORD4_NO_LL		0x2C03	/* X4 PF, FF only */
+#define	EFX_PCI_DEVID_MEDFORD4_NO_LL_VF		0x3C03	/* X4 VF, FF only */
+
 #define	EFX_MEM_BAR_SIENA			2
 
 #define	EFX_MEM_BAR_HUNTINGTON_PF		2
@@ -185,6 +196,7 @@ efx_family_probe_bar(
 /* FIXME Fix it when memory bar is fixed in FPGA image. It must be 0. */
 #define	EFX_MEM_BAR_RIVERHEAD			2
 
+#define	EFX_MEM_BAR_MEDFORD4			2
 
 /* Error codes */
 
@@ -643,6 +655,7 @@ typedef enum efx_link_mode_e {
 	EFX_LINK_25000FDX,
 	EFX_LINK_50000FDX,
 	EFX_LINK_100000FDX,
+	EFX_LINK_200000FDX,
 	EFX_LINK_NMODES
 } efx_link_mode_t;
 
@@ -655,23 +668,44 @@ typedef enum efx_link_mode_e {
 
 #define	EFX_MAC_SDU_MAX	9202
 
+/*
+ * NOTE: the PDU macros implement an obsolete workaround that is needed for
+ * MC_CMD_SET_MAC; do not use the PDU macros for the netport MCDI commands,
+ * which do not use the workaround.
+ */
+
 #define	EFX_MAC_PDU_ADJUSTMENT					\
 	(/* EtherII */ 14					\
 	    + /* VLAN */ 4					\
 	    + /* CRC */ 4					\
 	    + /* bug16011 */ 16)				\
 
+/* NOTE: this macro is deprecated; use efx_mac_pdu_from_sdu(). */
 #define	EFX_MAC_PDU(_sdu)					\
 	EFX_P2ROUNDUP(size_t, (_sdu) + EFX_MAC_PDU_ADJUSTMENT, 8)
 
 /*
  * Due to the EFX_P2ROUNDUP in EFX_MAC_PDU(), EFX_MAC_SDU_FROM_PDU() may give
  * the SDU rounded up slightly.
+ *
+ * NOTE: do not use this macro in new code as it is
+ * incorrect for the netport MCDI commands.
  */
 #define	EFX_MAC_SDU_FROM_PDU(_pdu)	((_pdu) - EFX_MAC_PDU_ADJUSTMENT)
 
 #define	EFX_MAC_PDU_MIN	60
+
+/* NOTE: this macro is deprecated; use encp->enc_mac_pdu_max. */
 #define	EFX_MAC_PDU_MAX	EFX_MAC_PDU(EFX_MAC_SDU_MAX)
+
+/*
+ * For use with efx_mac_pdu_set(), convert the given SDU value to its PDU form.
+ */
+LIBEFX_API
+extern			size_t
+efx_mac_pdu_from_sdu(
+	__in		efx_nic_t *enp,
+	__in		size_t sdu);
 
 LIBEFX_API
 extern	__checkReturn	efx_rc_t
@@ -1200,9 +1234,15 @@ typedef enum efx_phy_cap_type_e {
 	EFX_PHY_CAP_RS_FEC_REQUESTED,
 	EFX_PHY_CAP_25G_BASER_FEC,
 	EFX_PHY_CAP_25G_BASER_FEC_REQUESTED,
+	EFX_PHY_CAP_200000FDX,
+	EFX_PHY_CAP_IEEE_RS_INT_FEC,
+	EFX_PHY_CAP_IEEE_RS_INT_FEC_REQUESTED,
+	EFX_PHY_CAP_ETCS_RS_LL_FEC,
+	EFX_PHY_CAP_ETCS_RS_LL_FEC_REQUESTED,
 	EFX_PHY_CAP_NTYPES
 } efx_phy_cap_type_t;
 
+#define EFX_PHY_CAP_PAUSE_MASK (EFX_PHY_CAP_PAUSE | EFX_PHY_CAP_ASYM)
 
 #define	EFX_PHY_CAP_CURRENT	0x00000000
 #define	EFX_PHY_CAP_DEFAULT	0x00000001
@@ -1226,6 +1266,28 @@ extern			void
 efx_phy_lp_cap_get(
 	__in		efx_nic_t *enp,
 	__out		uint32_t *maskp);
+
+typedef enum efx_phy_lane_count_e {
+	EFX_PHY_LANE_COUNT_DEFAULT = 0,
+	EFX_PHY_LANE_COUNT_1 = 1,
+	EFX_PHY_LANE_COUNT_2 = 2,
+	EFX_PHY_LANE_COUNT_4 = 4,
+	EFX_PHY_LANE_COUNT_10 = 10,
+	EFX_PHY_LANE_COUNT_NTYPES,
+} efx_phy_lane_count_t;
+
+/*
+ * Instruct the port to use the specified lane count. For this to work, the
+ * active subset of advertised link modes must include at least one mode that
+ * supports this value. This API works only on netport MCDI capable adaptors.
+ *
+ * To query the current lane count, use efx_phy_link_state_get().
+ */
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_phy_lane_count_set(
+	__in		efx_nic_t *enp,
+	__in		efx_phy_lane_count_t lane_count);
 
 LIBEFX_API
 extern	__checkReturn	efx_rc_t
@@ -1711,6 +1773,22 @@ typedef struct efx_nic_cfg_s {
 	efx_nic_dma_mapping_t	enc_dma_mapping;
 	/* Physical ports shared by PFs */
 	efx_port_usage_t	enc_port_usage;
+	/* Minimum MAC PDU value to use with efx_mac_pdu_set() */
+	uint32_t		enc_mac_pdu_min;
+	/* Maximum MAC PDU value to use with efx_mac_pdu_set() */
+	uint32_t		enc_mac_pdu_max;
+	/*
+	 * When true, the link mode value passed from eec_link_change() is
+	 * either UNKNOWN (merely saying the link is up) or DOWN. In order
+	 * to have exact speed/duplex, efx_port_poll() needs to be invoked.
+	 */
+	boolean_t		enc_link_ev_need_poll;
+	/*
+	 * An array of masks to tell which link mode supports which lane counts.
+	 * For bit definitions, see 'efx_phy_lane_count_t'. It is only filled in
+	 * on netport MCDI capable adaptors.
+	 */
+	efx_dword_t		enc_phy_lane_counts[EFX_LINK_NMODES];
 } efx_nic_cfg_t;
 
 #define	EFX_PCI_VF_INVALID 0xffff
@@ -3992,17 +4070,23 @@ efx_nic_set_fw_subvariant(
 typedef enum efx_phy_fec_type_e {
 	EFX_PHY_FEC_NONE = 0,
 	EFX_PHY_FEC_BASER,
-	EFX_PHY_FEC_RS
+	EFX_PHY_FEC_RS,
+	EFX_PHY_FEC_IEEE_RS_INT,
+	EFX_PHY_FEC_ETCS_RS_LL,
 } efx_phy_fec_type_t;
 
 #define EFX_PHY_CAP_FEC_BIT(_fec_bit) (1U << EFX_PHY_CAP_##_fec_bit)
 #define EFX_PHY_CAP_FEC_MASK \
-	(EFX_PHY_CAP_FEC_BIT(BASER_FEC) |		\
-	 EFX_PHY_CAP_FEC_BIT(25G_BASER_FEC) |		\
-	 EFX_PHY_CAP_FEC_BIT(BASER_FEC_REQUESTED) |	\
-	 EFX_PHY_CAP_FEC_BIT(25G_BASER_FEC_REQUESTED) |	\
-	 EFX_PHY_CAP_FEC_BIT(RS_FEC) |			\
-	 EFX_PHY_CAP_FEC_BIT(RS_FEC_REQUESTED))
+	(EFX_PHY_CAP_FEC_BIT(BASER_FEC) |			\
+	 EFX_PHY_CAP_FEC_BIT(25G_BASER_FEC) |			\
+	 EFX_PHY_CAP_FEC_BIT(BASER_FEC_REQUESTED) |		\
+	 EFX_PHY_CAP_FEC_BIT(25G_BASER_FEC_REQUESTED) |		\
+	 EFX_PHY_CAP_FEC_BIT(RS_FEC) |				\
+	 EFX_PHY_CAP_FEC_BIT(RS_FEC_REQUESTED) |		\
+	 EFX_PHY_CAP_FEC_BIT(IEEE_RS_INT_FEC) |			\
+	 EFX_PHY_CAP_FEC_BIT(IEEE_RS_INT_FEC_REQUESTED) |	\
+	 EFX_PHY_CAP_FEC_BIT(ETCS_RS_LL_FEC) |			\
+	 EFX_PHY_CAP_FEC_BIT(ETCS_RS_LL_FEC_REQUESTED))
 
 LIBEFX_API
 extern	__checkReturn	efx_rc_t
@@ -4017,6 +4101,7 @@ typedef struct efx_phy_link_state_s {
 	unsigned int		epls_fcntl;
 	efx_phy_fec_type_t	epls_fec;
 	efx_link_mode_t		epls_link_mode;
+	efx_phy_lane_count_t	epls_lane_count;
 } efx_phy_link_state_t;
 
 LIBEFX_API

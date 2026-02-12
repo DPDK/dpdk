@@ -801,6 +801,25 @@ ef10_phy_stats_update(
 
 #endif	/* EFSYS_OPT_PHY_STATS */
 
+LIBEFX_INTERNAL
+extern				void
+mcdi_phy_decode_link_mode(
+	__in			efx_nic_t *enp,
+	__in			boolean_t fd,
+	__in			boolean_t up,
+	__in			unsigned int speed,
+	__in			unsigned int fcntl,
+	__in			uint32_t fec,
+	__out			efx_link_mode_t *link_modep,
+	__out			unsigned int *fcntlp,
+	__out			efx_phy_fec_type_t *fecp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_mcdi_phy_set_led(
+	__in		efx_nic_t *enp,
+	__in		efx_phy_led_mode_t phy_led_mode);
+
 #if EFSYS_OPT_BIST
 
 LIBEFX_INTERNAL

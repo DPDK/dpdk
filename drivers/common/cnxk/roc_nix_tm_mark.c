@@ -266,7 +266,7 @@ nix_tm_mark_init(struct nix *nix)
 			}
 
 			nix->tm_markfmt[i][j] = rsp->mark_format_idx;
-			plt_tm_dbg("Mark type: %u, Mark Color:%u, id:%u\n", i,
+			plt_tm_dbg("Mark type: %u, Mark Color:%u, id:%u", i,
 				   j, nix->tm_markfmt[i][j]);
 		}
 	}

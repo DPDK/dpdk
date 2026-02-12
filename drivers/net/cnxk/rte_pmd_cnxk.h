@@ -47,6 +47,30 @@ enum rte_pmd_cnxk_sec_action_alg {
 	RTE_PMD_CNXK_SEC_ACTION_ALG4,
 };
 
+/** CPT queue type for obtaining queue hardware statistics. */
+enum rte_pmd_cnxk_cpt_q_stats_type {
+	/** Type to get Inline Device queue(s) statistics */
+	RTE_PMD_CNXK_CPT_Q_STATS_INL_DEV,
+	/** Type to get Inline Inbound queue which is attached to kernel device
+	 * statistics.
+	 */
+	RTE_PMD_CNXK_CPT_Q_STATS_KERNEL,
+	/** Type to get CPT queue which is attached to ethdev statistics */
+	RTE_PMD_CNXK_CPT_Q_STATS_ETHDEV,
+};
+
+/** CPT queue hardware statistics */
+struct rte_pmd_cnxk_cpt_q_stats {
+	/** Encrypted packet count */
+	uint64_t enc_pkts;
+	/** Encrypted byte count */
+	uint64_t enc_bytes;
+	/** Decrypted packet count */
+	uint64_t dec_pkts;
+	/** Decrypted byte count */
+	uint64_t dec_bytes;
+};
+
 struct rte_pmd_cnxk_sec_action {
 	/** Used as lookup result for ALG3 */
 	uint32_t sa_index;
@@ -453,42 +477,101 @@ union rte_pmd_cnxk_ipsec_hw_sa {
 	struct rte_pmd_cnxk_ipsec_outb_sa outb;
 };
 
+/** CPT HW result format */
+union rte_pmd_cnxk_cpt_res_s {
+	/** CN10K CPT result */
+	struct rte_pmd_cpt_cn10k_res_s {
+		/** Completion code */
+		uint64_t compcode : 7;
+		/** Done interrupt */
+		uint64_t doneint : 1;
+		/** Microcode completion code */
+		uint64_t uc_compcode : 8;
+		/** Result length */
+		uint64_t rlen : 16;
+		/** SPI */
+		uint64_t spi : 32;
+
+		/** Extended sequence number */
+		uint64_t esn;
+	} cn10k;
+
+	/** CN9K CPT result */
+	struct rte_pmd_cpt_cn9k_res_s {
+		/** Completion code */
+		uint64_t compcode : 8;
+		/** Microcode completion code */
+		uint64_t uc_compcode : 8;
+		/** Done interrupt */
+		uint64_t doneint : 1;
+		uint64_t reserved_17_63 : 47;
+
+		uint64_t reserved_64_127;
+	} cn9k;
+
+	/** CPT RES */
+	uint64_t u64[2];
+};
+
+/** Inline IPsec inbound queue configuration */
+struct rte_pmd_cnxk_ipsec_inb_cfg {
+	/** Param1 of PROCESS_INBOUND_IPSEC_PACKET as mentioned in the CPT
+	 * microcode document.
+	 */
+	uint16_t param1;
+	/** Param2 of PROCESS_INBOUND_IPSEC_PACKET as mentioned in the CPT
+	 * microcode document.
+	 */
+	uint16_t param2;
+};
+
+/** Forward structure declaration for inline device queue. Applications obtain a pointer
+ * to this structure using the ``rte_pmd_cnxk_inl_dev_qptr_get`` API and use it to submit
+ * CPT instructions (cpt_inst_s) to the inline device via the
+ * ``rte_pmd_cnxk_inl_dev_submit`` API.
+ */
+struct rte_pmd_cnxk_inl_dev_q;
+
 /**
  * Read HW SA context from session.
  *
- * @param device
+ * @param portid
  *   Port identifier of Ethernet device.
  * @param sess
- *   Handle of the security session.
+ *   Handle of the security session as void *.
  * @param[out] data
  *   Destination pointer to copy SA context for application.
  * @param len
  *   Length of SA context to copy into data parameter.
+ * @param inb
+ *   Determines the type of specified SA.
  *
  * @return
  *   0 on success, a negative errno value otherwise.
  */
 __rte_experimental
-int rte_pmd_cnxk_hw_sa_read(void *device, struct rte_security_session *sess,
-			    union rte_pmd_cnxk_ipsec_hw_sa *data, uint32_t len);
+int rte_pmd_cnxk_hw_sa_read(uint16_t portid, void *sess, union rte_pmd_cnxk_ipsec_hw_sa *data,
+			    uint32_t len, bool inb);
 /**
  * Write HW SA context to session.
  *
- * @param device
+ * @param portid
  *   Port identifier of Ethernet device.
  * @param sess
- *   Handle of the security session.
+ *   Handle of the security session as void *.
  * @param[in] data
  *   Source data pointer from application to copy SA context into session.
  * @param len
  *   Length of SA context to copy from data parameter.
+ * @param inb
+ *   Determines the type of specified SA.
  *
  * @return
  *   0 on success, a negative errno value otherwise.
  */
 __rte_experimental
-int rte_pmd_cnxk_hw_sa_write(void *device, struct rte_security_session *sess,
-			     union rte_pmd_cnxk_ipsec_hw_sa *data, uint32_t len);
+int rte_pmd_cnxk_hw_sa_write(uint16_t portid, void *sess, union rte_pmd_cnxk_ipsec_hw_sa *data,
+			     uint32_t len, bool inb);
 
 /**
  * Get pointer to CPT result info for inline inbound processed pkt.
@@ -501,9 +584,109 @@ int rte_pmd_cnxk_hw_sa_write(void *device, struct rte_security_session *sess,
  *   Pointer to packet that was just received and was processed with Inline IPsec.
  *
  * @return
- *   - Pointer to mbuf location where CPT result info is stored on success.
+ *   - Pointer to mbuf location where `union rte_pmd_cnxk_cpt_res_s` is stored on success.
  *   - NULL on failure.
  */
 __rte_experimental
-void *rte_pmd_cnxk_inl_ipsec_res(struct rte_mbuf *mbuf);
+union rte_pmd_cnxk_cpt_res_s *rte_pmd_cnxk_inl_ipsec_res(struct rte_mbuf *mbuf);
+
+/**
+ * Get pointer to the Inline Inbound or Outbound SA table base.
+ *
+ * @param portid
+ *   Port identifier of Ethernet device.
+ * @param inb
+ *   Determines the type of SA base to be returned.
+ *   When inb is true, the method returns the Inbound SA base.
+ *   When inb is false, the method returns the Outbound SA base.
+ *
+ * @return
+ *   Pointer to Inbound or Outbound SA base.
+ */
+__rte_experimental
+union rte_pmd_cnxk_ipsec_hw_sa *rte_pmd_cnxk_hw_session_base_get(uint16_t portid, bool inb);
+
+/**
+ * Executes a CPT flush on the specified session.
+ *
+ * @param portid
+ *   Port identifier of Ethernet device.
+ * @param sess
+ *   Handle of the session on which the CPT flush will be executed.
+ * @param inb
+ *   Determines the type of SA to be flushed, Inbound or Outbound.
+ *
+ * @return
+ *   0 Upon success, a negative errno value otherwise.
+ */
+__rte_experimental
+int rte_pmd_cnxk_sa_flush(uint16_t portid, union rte_pmd_cnxk_ipsec_hw_sa *sess, bool inb);
+
+/**
+ * Get queue pointer of Inline Device.
+ *
+ * @return
+ *   - Pointer to queue structure that would be the input to submit API.
+ *   - NULL upon failure.
+ */
+__rte_experimental
+struct rte_pmd_cnxk_inl_dev_q *rte_pmd_cnxk_inl_dev_qptr_get(void);
+
+/**
+ * Submit CPT instruction(s) (cpt_inst_s) to Inline Device.
+ *
+ * @param qptr
+ *   Pointer obtained with ``rte_pmd_cnxk_inl_dev_qptr_get``.
+ * @param inst
+ *   Pointer to an array of ``cpt_inst_s`` prapared by application.
+ * @param nb_inst
+ *   Number of instructions to be processed.
+ *
+ * @return
+ *   Number of instructions processed.
+ */
+__rte_experimental
+uint16_t rte_pmd_cnxk_inl_dev_submit(struct rte_pmd_cnxk_inl_dev_q *qptr, void *inst,
+				     uint16_t nb_inst);
+
+/**
+ * Retrieves the hardware statistics of a given port and stats type.
+ *
+ * @param portid
+ *   Port identifier of Ethernet device.
+ * @param type
+ *   The type of hardware statistics to retrieve, as defined in the
+ *   ``enum rte_pmd_cnxk_cpt_q_stats_type``.
+ * @param stats
+ *   Pointer where the retrieved statistics will be stored.
+ * @param idx
+ *   The index of the queue of a given type.
+ *
+ * @return
+ *   0 Upon success, a negative errno value otherwise.
+ */
+__rte_experimental
+int rte_pmd_cnxk_cpt_q_stats_get(uint16_t portid, enum rte_pmd_cnxk_cpt_q_stats_type type,
+				 struct rte_pmd_cnxk_cpt_q_stats *stats, uint16_t idx);
+
+/**
+ * Set the configuration for hardware inline inbound IPsec processing. This API must be
+ * called before calling the ``rte_eth_dev_configure`` API.
+ *
+ * @param portid
+ *   Port identifier of Ethernet device.
+ * @param cfg
+ *   Pointer to the IPsec inbound configuration structure.
+ */
+__rte_experimental
+void rte_pmd_cnxk_hw_inline_inb_cfg_set(uint16_t portid, struct rte_pmd_cnxk_ipsec_inb_cfg *cfg);
+
+/**
+ * Retrieves model name on which it is running as a string.
+ *
+ * @return
+ *   Returns model string, ex."cn10ka_a1"
+ */
+__rte_experimental
+const char *rte_pmd_cnxk_model_str_get(void);
 #endif /* _PMD_CNXK_H_ */

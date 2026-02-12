@@ -23,11 +23,19 @@ ethdev_rx map port <STRING>dev queue <UINT32>qid core <UINT32>core_id # Port-Que
 help ethdev_rx                                           # Print help on ethdev_rx commands
 
 ipv4_lookup route add ipv4 <IPv4>ip netmask <IPv4>mask via <IPv4>via_ip # Add IPv4 route to LPM table
+ipv4_lookup mode <STRING>lkup_mode                       # Set IPv4 lookup mode
 help ipv4_lookup                                         # Print help on ipv4_lookup commands
 
 ipv6_lookup route add ipv6 <IPv6>ip netmask <IPv6>mask via <IPv6>via_ip # Add IPv6 route to LPM6 table
+ipv6_lookup mode <STRING>lkup_mode                       # Set IPv6 lookup mode
 help ipv6_lookup                                         # Print help on ipv6_lookup commands
 
 neigh add ipv4 <IPv4>ip <STRING>mac                      # Add static neighbour for IPv4
 neigh add ipv6 <IPv6>ip <STRING>mac                      # Add static neighbour for IPv6
 help neigh                                               # Print help on neigh commands
+
+feature arcs                                             # show all feature arcs
+feature <STRING>name show                                # Show feature arc details
+feature enable <STRING>arc_name <STRING>feature_name <UINT16>interface   # Enable feature on interface
+feature disable <STRING>arc_name <STRING>feature_name <UINT16>interface  # Disable feature on interface
+help feature                                             # Print help on feature command

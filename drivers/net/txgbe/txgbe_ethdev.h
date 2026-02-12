@@ -31,6 +31,7 @@
 #define TXGBE_FLAG_NEED_LINK_CONFIG (uint32_t)(1 << 4)
 #define TXGBE_FLAG_NEED_AN_CONFIG   (uint32_t)(1 << 5)
 #define TXGBE_FLAG_OVERHEAT         (uint32_t)(1 << 6)
+#define TXGBE_FLAG_TX_DESC_ERR      (uint32_t)(1 << 7)
 
 /*
  * Defines that were not part of txgbe_type.h as they are not used by the
@@ -56,7 +57,7 @@
 #define TXGBE_5TUPLE_MAX_PRI            7
 #define TXGBE_5TUPLE_MIN_PRI            1
 
-
+#define TXGBE_MAX_MTU			9414
 /* The overhead from MTU to max frame size. */
 #define TXGBE_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
 
@@ -64,9 +65,11 @@
 	RTE_ETH_RSS_IPV4 | \
 	RTE_ETH_RSS_NONFRAG_IPV4_TCP | \
 	RTE_ETH_RSS_NONFRAG_IPV4_UDP | \
+	RTE_ETH_RSS_NONFRAG_IPV4_SCTP | \
 	RTE_ETH_RSS_IPV6 | \
 	RTE_ETH_RSS_NONFRAG_IPV6_TCP | \
 	RTE_ETH_RSS_NONFRAG_IPV6_UDP | \
+	RTE_ETH_RSS_NONFRAG_IPV6_SCTP | \
 	RTE_ETH_RSS_IPV6_EX | \
 	RTE_ETH_RSS_IPV6_TCP_EX | \
 	RTE_ETH_RSS_IPV6_UDP_EX)
@@ -89,9 +92,7 @@ struct txgbe_hw_fdir_mask {
 	uint16_t src_port_mask;
 	uint16_t dst_port_mask;
 	uint16_t flex_bytes_mask;
-	uint8_t  mac_addr_byte_mask;
-	uint32_t tunnel_id_mask;
-	uint8_t  tunnel_type_mask;
+	uint8_t  pkt_type_mask; /* reversed mask for hw */
 };
 
 struct txgbe_fdir_filter {
@@ -115,11 +116,13 @@ struct txgbe_fdir_rule {
 	uint32_t soft_id; /* an unique value for this rule */
 	uint8_t queue; /* assigned rx queue */
 	uint8_t flex_bytes_offset;
+	bool flex_relative;
 };
 
 struct txgbe_hw_fdir_info {
 	struct txgbe_hw_fdir_mask mask;
 	uint8_t     flex_bytes_offset;
+	bool        flex_relative;
 	uint16_t    collision;
 	uint16_t    free;
 	uint16_t    maxhash;
@@ -242,6 +245,7 @@ struct txgbe_filter_info {
 	/* Bit mask for every used 5tuple filter */
 	uint32_t fivetuple_mask[TXGBE_5TUPLE_ARRAY_SIZE];
 	struct txgbe_5tuple_filter_list fivetuple_list;
+	bool ntuple_is_full;
 	/* store the SYN filter info */
 	uint32_t syn_info;
 	/* store the rss filter info */
@@ -364,6 +368,7 @@ struct txgbe_adapter {
 	struct txgbe_ipsec          ipsec;
 #endif
 	bool rx_bulk_alloc_allowed;
+	bool rx_vec_allowed;
 	struct rte_timecounter      systime_tc;
 	struct rte_timecounter      rx_tstamp_tc;
 	struct rte_timecounter      tx_tstamp_tc;
@@ -372,7 +377,7 @@ struct txgbe_adapter {
 	/* For RSS reta table update */
 	uint8_t rss_reta_updated;
 
-	uint32_t link_thread_running;
+	RTE_ATOMIC(uint32_t) link_thread_running;
 	rte_thread_t link_thread_tid;
 };
 
@@ -449,7 +454,7 @@ int  txgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		uint16_t nb_tx_desc, unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
 
-uint32_t txgbe_dev_rx_queue_count(void *rx_queue);
+int txgbe_dev_rx_queue_count(void *rx_queue);
 
 int txgbe_dev_rx_descriptor_status(void *rx_queue, uint16_t offset);
 int txgbe_dev_tx_descriptor_status(void *tx_queue, uint16_t offset);
@@ -472,6 +477,8 @@ int txgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int txgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
 int txgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+
+void txgbe_tx_queue_clear_error(void *param);
 
 void txgbe_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_rxq_info *qinfo);
@@ -511,7 +518,7 @@ int txgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 int txgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 				struct rte_eth_rss_conf *rss_conf);
 
-bool txgbe_rss_update_sp(enum txgbe_mac_type mac_type);
+bool txgbe_rss_update(enum txgbe_mac_type mac_type);
 
 int txgbe_add_del_ntuple_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *filter,
@@ -522,6 +529,11 @@ int txgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
 int txgbe_syn_filter_set(struct rte_eth_dev *dev,
 			struct rte_eth_syn_filter *filter,
 			bool add);
+int txgbe_ntuple_filter_uninit(struct rte_eth_dev *eth_dev);
+
+int txgbevf_inject_5tuple_filter(struct rte_eth_dev *dev,
+				 struct txgbe_5tuple_filter *filter);
+void txgbevf_remove_5tuple_filter(struct rte_eth_dev *dev, u16 index);
 
 /**
  * l2 tunnel configuration.
@@ -543,6 +555,8 @@ txgbe_dev_l2_tunnel_filter_del(struct rte_eth_dev *dev,
 			       struct txgbe_l2_tunnel_conf *l2_tunnel);
 void txgbe_filterlist_init(void);
 void txgbe_filterlist_flush(void);
+int txgbe_fdir_filter_init(struct rte_eth_dev *eth_dev);
+int txgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev);
 
 void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
@@ -552,12 +566,15 @@ void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
  */
 int txgbe_fdir_configure(struct rte_eth_dev *dev);
 int txgbe_fdir_set_input_mask(struct rte_eth_dev *dev);
+uint16_t txgbe_fdir_get_flex_base(struct txgbe_fdir_rule *rule);
 int txgbe_fdir_set_flexbytes_offset(struct rte_eth_dev *dev,
-				    uint16_t offset);
+				    uint16_t offset, uint16_t flex_base);
 int txgbe_fdir_filter_program(struct rte_eth_dev *dev,
 			      struct txgbe_fdir_rule *rule,
 			      bool del, bool update);
-
+int txgbevf_fdir_filter_program(struct rte_eth_dev *dev,
+				struct txgbe_fdir_rule *rule,
+				bool del);
 void txgbe_configure_pb(struct rte_eth_dev *dev);
 void txgbe_configure_port(struct rte_eth_dev *dev);
 void txgbe_configure_dcb(struct rte_eth_dev *dev);

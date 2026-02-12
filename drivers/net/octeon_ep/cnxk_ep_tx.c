@@ -15,7 +15,7 @@ cnxk_ep_check_tx_ism_mem(void *tx_queue)
 	 * This adds an extra local variable, but almost halves the
 	 * number of PCIe writes.
 	 */
-	val = __atomic_load_n(iq->inst_cnt_ism, __ATOMIC_RELAXED);
+	val = rte_atomic_load_explicit(iq->inst_cnt_ism, rte_memory_order_relaxed);
 	iq->inst_cnt += val - iq->inst_cnt_prev;
 	iq->inst_cnt_prev = val;
 
@@ -27,7 +27,8 @@ cnxk_ep_check_tx_ism_mem(void *tx_queue)
 		rte_mb();
 
 		rte_write64(OTX2_SDP_REQUEST_ISM, iq->inst_cnt_reg);
-		while (__atomic_load_n(iq->inst_cnt_ism, __ATOMIC_RELAXED) >= val) {
+		while (rte_atomic_load_explicit(iq->inst_cnt_ism,
+				rte_memory_order_relaxed) >= val) {
 			rte_write64(OTX2_SDP_REQUEST_ISM, iq->inst_cnt_reg);
 			rte_mb();
 		}
@@ -169,7 +170,7 @@ cnxk_ep_xmit_pkts_scalar_mseg(struct rte_mbuf **tx_pkts, struct otx_ep_instr_que
 		num_sg = (frags + mask) / OTX_EP_NUM_SG_PTRS;
 
 		if (unlikely(pkt_len > OTX_EP_MAX_PKT_SZ && num_sg > OTX_EP_MAX_SG_LISTS)) {
-			otx_ep_err("Failed to xmit the pkt, pkt_len is higher or pkt has more segments\n");
+			otx_ep_err("Failed to xmit the pkt, pkt_len is higher or pkt has more segments");
 			goto exit;
 		}
 

@@ -7,6 +7,12 @@ Driver for the Intel® Dynamic Load Balancer (DLB)
 The DPDK DLB poll mode driver supports the Intel® Dynamic Load Balancer,
 hardware versions 2.0 and 2.5.
 
+Please follow the links below to download the Programmer Guides.
+
+`Intel Dynamic Load Balancer 2.0 Programmer Guide <https://cdrdv2.intel.com/v1/dl/getContent/613545>`_. (Device: 0x2710)
+
+`Intel Dynamic Load Balancer 2.5 Programmer Guide <https://cdrdv2.intel.com/v1/dl/getContent/639481>`_. (Device: 0x2714)
+
 Prerequisites
 -------------
 
@@ -408,9 +414,9 @@ the DLB device locally available on the same tile along with other
 resources. To allocate optimal resources, probing is done for each
 producer port (PP) for a given CPU and the best performing ports are
 allocated to producers. The cpu used for probing is either the first
-core of producer coremask (if present) or the second core of EAL
-coremask. This will be extended later to probe for all CPUs in the
-producer coremask or EAL coremask. Producer coremask can be passed
+core of producer coremask DLB2 device parameter (if present) or the second core of EAL
+core list. This will be extended later to probe for all CPUs in the
+producer coremask or EAL core list. Producer coremask can be passed
 along with the BDF of the DLB devices.
 
     .. code-block:: console
@@ -455,6 +461,47 @@ Example command to enable QE Weight feature:
     .. code-block:: console
 
        --allow ea:00.0,enable_cq_weight=<y/Y>
+
+Credit Handling Scenario Improvements
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is possible for ports to hold on to unused credits and not release them
+due to insufficient accumulation (i.e. less than 2 * credit quanta).
+This can result in credit deadlocks situation.
+DLB2 PMD makes worker ports to release all accumulated credits
+when back-to-back zero poll count reaches a preset threshold
+and makes producer ports release all the accumulated credits
+if enqueue fails for a consecutive number of retries.
+
+New Meson options are provided through c_args for enabling and disabling
+credits handling option flags.
+Credit checks are enabled by default.
+
+Example command to use as meson option for credit handling:
+
+    .. code-block:: console
+
+       meson configure -Dc_args='-DDLB_SW_CREDITS_CHECKS=0 -DDLB_HW_CREDITS_CHECKS=1'
+
+DLB History List Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Every DLB Load Balancing port
+(i.e., eventdev port not using ``RTE_EVENT_PORT_CFG_SINGLE_LINK`` flag)
+has a hardware resource call history list entries (HL) associated with it.
+This count decides the number of events that can be inflight to the port from the DLB hardware.
+DLB has 2048 total HL entries.
+As DLB supports 64 load-balanced ports, by default DLB PMD assigns 32 HL entries to each port.
+Following devargs arguments allow application to control HL entries overriding default mode.
+DLB API ``rte_pmd_dlb2_set_port_param()`` allows setting HL entries for the DLB eventdev ports.
+Please refer to section "Fine Tuning History List Entries" in DLB Programmer Guide for details.
+
+    .. code-block:: console
+
+       --allow ea:00.0,use_default_hl=0,alloc_hl_entries=1024
+
+         use_default_hl: 1=Enable (default), 0=Disable
+         alloc_hl_entries: [0-2048] Total HL entries
 
 Running Eventdev Applications with DLB Device
 ---------------------------------------------

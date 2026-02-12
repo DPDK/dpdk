@@ -14,6 +14,7 @@
 
 #include <rte_log.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 #include "eal_filesystem.h"
 
@@ -77,6 +78,7 @@ int eal_create_runtime_dir(void)
 }
 
 /* parse a sysfs (or other) file containing one integer value */
+RTE_EXPORT_SYMBOL(eal_parse_sysfs_value)
 int eal_parse_sysfs_value(const char *filename, unsigned long *val)
 {
 	FILE *f;

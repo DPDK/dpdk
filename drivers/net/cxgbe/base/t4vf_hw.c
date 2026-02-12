@@ -68,7 +68,7 @@ static void get_mbox_rpl(struct adapter *adap, __be64 *rpl, int nflit,
  * the return value is the error code indicated by FW (negated).
  */
 int t4vf_wr_mbox_core(struct adapter *adapter,
-		      const void __attribute__((__may_alias__)) *cmd,
+		      const void __rte_may_alias *cmd,
 		      int size, void *rpl, bool sleep_ok)
 {
 	/*

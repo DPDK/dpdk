@@ -15,19 +15,23 @@
 /* TODO: this is a workaround to ensure that Tx complq is enough */
 #define DQO_TX_MULTIPLIER 4
 
-#define GVE_DEFAULT_RX_FREE_THRESH   64
-#define GVE_DEFAULT_TX_FREE_THRESH   32
-#define GVE_DEFAULT_TX_RS_THRESH     32
-#define GVE_TX_MAX_FREE_SZ          512
+#define GVE_DEFAULT_MAX_RING_SIZE	1024
+#define GVE_DEFAULT_MIN_RX_RING_SIZE	512
+#define GVE_DEFAULT_MIN_TX_RING_SIZE	256
 
-#define GVE_RX_BUF_ALIGN_DQO        128
-#define GVE_RX_MIN_BUF_SIZE_DQO    1024
-#define GVE_RX_MAX_BUF_SIZE_DQO    ((16 * 1024) - GVE_RX_BUF_ALIGN_DQO)
-#define GVE_MAX_QUEUE_SIZE_DQO     4096
+#define GVE_DEFAULT_RX_FREE_THRESH	64
+#define GVE_DEFAULT_TX_FREE_THRESH	32
+#define GVE_DEFAULT_TX_RS_THRESH	32
+#define GVE_TX_MAX_FREE_SZ		512
 
-#define GVE_RX_BUF_ALIGN_GQI       2048
-#define GVE_RX_MIN_BUF_SIZE_GQI    2048
-#define GVE_RX_MAX_BUF_SIZE_GQI    4096
+#define GVE_RX_BUF_ALIGN_DQO		128
+#define GVE_RX_MIN_BUF_SIZE_DQO		1024
+#define GVE_RX_MAX_BUF_SIZE_DQO		((16 * 1024) - GVE_RX_BUF_ALIGN_DQO)
+#define GVE_MAX_QUEUE_SIZE_DQO		4096
+
+#define GVE_RX_BUF_ALIGN_GQI		2048
+#define GVE_RX_MIN_BUF_SIZE_GQI		2048
+#define GVE_RX_MAX_BUF_SIZE_GQI		4096
 
 #define GVE_RSS_HASH_KEY_SIZE 40
 #define GVE_RSS_INDIR_SIZE 128
@@ -35,6 +39,10 @@
 #define GVE_TX_CKSUM_OFFLOAD_MASK (		\
 		RTE_MBUF_F_TX_L4_MASK  |	\
 		RTE_MBUF_F_TX_TCP_SEG)
+
+#define GVE_TX_CKSUM_OFFLOAD_MASK_DQO (		\
+		GVE_TX_CKSUM_OFFLOAD_MASK |	\
+		RTE_MBUF_F_TX_IP_CKSUM)
 
 #define GVE_RTE_RSS_OFFLOAD_ALL (	\
 	RTE_ETH_RSS_IPV4 |		\
@@ -54,7 +62,10 @@ struct gve_queue_page_list {
 	uint32_t id; /* unique id */
 	uint32_t num_entries;
 	dma_addr_t *page_buses; /* the dma addrs of the pages */
-	const struct rte_memzone *mz;
+	union {
+		const struct rte_memzone *mz; /* memzone allocated for TX queue */
+		void **qpl_bufs; /* RX qpl-buffer list allocated using malloc*/
+	};
 };
 
 /* A TX desc ring entry */
@@ -91,6 +102,7 @@ struct gve_tx_stats {
 	uint64_t packets;
 	uint64_t bytes;
 	uint64_t errors;
+	uint64_t too_many_descs;
 };
 
 struct gve_rx_stats {
@@ -107,16 +119,25 @@ struct gve_xstats_name_offset {
 	unsigned int offset;
 };
 
+struct gve_tx_pkt {
+	struct rte_mbuf *mbuf;
+	int16_t next_avail_pkt; /* Entry in software ring for next free packet slot */
+};
+
 struct gve_tx_queue {
 	volatile union gve_tx_desc *tx_desc_ring;
 	const struct rte_memzone *mz;
 	uint64_t tx_ring_phys_addr;
-	struct rte_mbuf **sw_ring;
+	union {
+		struct rte_mbuf **sw_ring;
+		struct gve_tx_pkt *pkt_ring_dqo;
+	};
 	volatile rte_be32_t *qtx_tail;
 	volatile rte_be32_t *qtx_head;
 
 	uint32_t tx_tail;
 	uint16_t nb_tx_desc;
+	uint16_t nb_complq_desc;
 	uint16_t nb_free;
 	uint16_t nb_used;
 	uint32_t next_to_clean;
@@ -150,6 +171,11 @@ struct gve_tx_queue {
 	/* newly added for DQO */
 	volatile union gve_tx_desc_dqo *tx_ring;
 	struct gve_tx_compl_desc *compl_ring;
+
+	/* List of free completion tags that map into sw_ring. */
+	int16_t free_compl_tags_head;
+	uint16_t num_free_compl_tags;
+
 	const struct rte_memzone *compl_ring_mz;
 	uint64_t compl_ring_phys_addr;
 	uint32_t complq_tail;
@@ -216,6 +242,10 @@ struct gve_rx_queue {
 	uint8_t cur_gen_bit;
 	uint16_t bufq_tail;
 
+	/* List of buffers which are known to be completed by the hardware. */
+	int16_t *completed_buf_list;
+	int16_t completed_buf_list_head;
+
 	/* Only valid for DQO_RDA queue format */
 	struct gve_rx_queue *bufq;
 
@@ -230,10 +260,18 @@ struct gve_priv {
 	const struct rte_memzone *cnt_array_mz;
 
 	uint16_t num_event_counters;
-	uint16_t tx_desc_cnt; /* txq size */
-	uint16_t rx_desc_cnt; /* rxq size */
-	uint16_t tx_pages_per_qpl; /* tx buffer length */
-	uint16_t rx_data_slot_cnt; /* rx buffer length */
+
+	/* TX ring size default and limits. */
+	uint16_t default_tx_desc_cnt;
+	uint16_t max_tx_desc_cnt;
+	uint16_t min_tx_desc_cnt;
+
+	/* RX ring size default and limits. */
+	uint16_t default_rx_desc_cnt;
+	uint16_t max_rx_desc_cnt;
+	uint16_t min_rx_desc_cnt;
+
+	uint16_t tx_pages_per_qpl;
 
 	/* Only valid for DQO_RDA queue format */
 	uint16_t tx_compq_size; /* tx completion queue size */
@@ -284,8 +322,6 @@ struct gve_priv {
 	uint16_t max_mtu;
 	struct rte_ether_addr dev_addr; /* mac address */
 
-	struct gve_queue_page_list *qpl;
-
 	struct gve_tx_queue **txqs;
 	struct gve_rx_queue **rxqs;
 
@@ -295,6 +331,7 @@ struct gve_priv {
 	uint16_t stats_end_idx; /* end index of array of stats written by NIC */
 
 	struct gve_rss_config rss_config;
+	struct gve_ptype_lut *ptype_lut_dqo;
 };
 
 static inline bool
@@ -410,6 +447,13 @@ gve_set_rx_function(struct rte_eth_dev *dev);
 
 void
 gve_set_tx_function(struct rte_eth_dev *dev);
+
+struct gve_queue_page_list *
+gve_setup_queue_page_list(struct gve_priv *priv, uint16_t queue_id, bool is_rx,
+	uint32_t num_pages);
+int
+gve_teardown_queue_page_list(struct gve_priv *priv,
+	struct gve_queue_page_list *qpl);
 
 /* Below functions are used for DQO */
 

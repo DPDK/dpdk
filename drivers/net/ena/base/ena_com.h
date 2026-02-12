@@ -1,5 +1,5 @@
-/* SPDX-License-Identifier: BSD-3-Clause
- * Copyright (c) 2015-2020 Amazon.com, Inc. or its affiliates.
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright (c) Amazon.com, Inc. or its affiliates.
  * All rights reserved.
  */
 
@@ -101,7 +101,6 @@ struct ena_com_io_cq {
 
 	/* Interrupt unmask register */
 	u32 __iomem *unmask_reg;
-
 
 	/* numa configuration register (for TPH) */
 	u32 __iomem *numa_node_cfg_reg;
@@ -209,7 +208,9 @@ struct ena_com_stats_phc {
 	u64 phc_cnt;
 	u64 phc_exp;
 	u64 phc_skp;
-	u64 phc_err;
+	u64 phc_err_dv;
+	u64 phc_err_ts;
+	u64 phc_err_eb;
 };
 
 struct ena_com_admin_queue {
@@ -286,22 +287,21 @@ struct ena_com_phc_info {
 	u32 doorbell_offset;
 
 	/* Shared memory read expire timeout (usec)
-	 * Max time for valid PHC retrieval, passing this threshold will fail the get time request
-	 * and block new PHC requests for block_timeout_usec in order to prevent floods on busy
-	 * device
+	 * Max time for valid PHC retrieval, passing this threshold will fail
+	 * the get time request and block new PHC requests for block_timeout_usec
+	 * in order to prevent floods on busy device
 	 */
 	u32 expire_timeout_usec;
 
 	/* Shared memory read abort timeout (usec)
-	 * PHC requests block period, blocking starts once PHC request expired in order to prevent
-	 * floods on busy device, any PHC requests during block period will be skipped
+	 * PHC requests block period, blocking starts once PHC request expired
+	 * in order to prevent floods on busy device,
+	 * any PHC requests during block period will be skipped
 	 */
 	u32 block_timeout_usec;
 
 	/* PHC shared memory - physical address */
 	dma_addr_t phys_addr;
-
-	/* PHC shared memory handle */
 	ena_mem_handle_t mem_handle;
 
 	/* Cached error bound per timestamp sample */
@@ -402,6 +402,8 @@ struct ena_com_dev {
 	struct ena_com_llq_info llq_info;
 
 	struct ena_customer_metrics customer_metrics;
+	bool use_extended_tx_cdesc;
+	bool use_extended_rx_cdesc;
 };
 
 struct ena_com_dev_get_features_ctx {
@@ -421,6 +423,7 @@ struct ena_com_create_io_ctx {
 	u32 msix_vector;
 	u16 queue_size;
 	u16 qid;
+	bool use_extended_cdesc;
 };
 
 typedef void (*ena_aenq_handler)(void *data,
@@ -768,8 +771,6 @@ int ena_com_set_dev_mtu(struct ena_com_dev *ena_dev, u32 mtu);
  *
  * @return: 0 on Success and negative value otherwise.
  */
-int ena_com_get_offload_settings(struct ena_com_dev *ena_dev,
-				 struct ena_admin_feature_offload_desc *offload);
 
 /* ena_com_rss_init - Init RSS
  * @ena_dev: ENA communication layer struct
@@ -781,7 +782,7 @@ int ena_com_get_offload_settings(struct ena_com_dev *ena_dev,
  *
  * @return: 0 on Success and negative value otherwise.
  */
-int ena_com_rss_init(struct ena_com_dev *ena_dev, u16 log_size);
+int ena_com_rss_init(struct ena_com_dev *ena_dev);
 
 /* ena_com_rss_destroy - Destroy rss
  * @ena_dev: ENA communication layer struct
@@ -1111,6 +1112,13 @@ static inline bool ena_com_get_missing_admin_interrupt(struct ena_com_dev *ena_d
 	return ena_dev->admin_queue.is_missing_admin_interrupt;
 }
 
+/* ena_com_set_frag_bypass - set fragment bypass
+ * @ena_dev: ENA communication layer struct
+ * @enable: true if fragment bypass is enabled, false otherwise.
+ *
+ * @return - 0 on success, negative value on failure.
+ */
+int ena_com_set_frag_bypass(struct ena_com_dev *ena_dev, bool enable);
 /* ena_com_io_sq_to_ena_dev - Extract ena_com_dev using contained field io_sq.
  * @io_sq: IO submit queue struct
  *
@@ -1146,6 +1154,39 @@ static inline void ena_com_disable_adaptive_moderation(struct ena_com_dev *ena_d
 	ena_dev->adaptive_coalescing = false;
 }
 
+/* ena_com_hw_timestamping_supported - query whether HW timestamping is
+ *                                     supported by the device
+ * @ena_dev: ENA communication layer struct
+ *
+ * @return - true if the feature is supported or false otherwise
+ */
+bool ena_com_hw_timestamping_supported(struct ena_com_dev *ena_dev);
+
+/* ena_com_get_hw_timestamping_support - query HW timestamping support options
+ *                                       in the device
+ * @ena_dev: ENA communication layer struct
+ * @tx_support: Will hold the TX side supported options
+ * @rx_support: Will hold the RX side supported options
+ *
+ * @return - 0 on success, negative value on failure.
+ */
+int ena_com_get_hw_timestamping_support(struct ena_com_dev *ena_dev,
+					u8 *tx_support,
+					u8 *rx_support);
+
+/* ena_com_set_hw_timestamping_configuration - set HW timestamping configuration
+ *
+ * @ena_dev: ENA communication layer struct
+ * @tx_enable: Enable/Disable TX HW timestamping
+ * @rx_enable: Enable/Disable RX HW timestamping
+ *
+ * @return - 0 on success, negative value on failure.
+ */
+int ena_com_set_hw_timestamping_configuration(struct ena_com_dev *ena_dev,
+					      u8 tx_enable,
+					      u8 rx_enable);
+
+bool ena_com_indirection_table_config_supported(struct ena_com_dev *ena_dev);
 /* ena_com_get_cap - query whether device supports a capability.
  * @ena_dev: ENA communication layer struct
  * @cap_id: enum value representing the capability
@@ -1187,6 +1228,8 @@ static inline int ena_com_get_customer_metric_count(struct ena_com_dev *ena_dev)
  * @unmask: unmask enable/disable
  * @no_moderation_update: 0 - Indicates that any of the TX/RX intervals was
  *                        updated, 1 - otherwise
+ * @lost_interrupt: true - if driver heuristic indicates interrupt was lost
+ *                  false - otherwise
  *
  * Prepare interrupt update register with the supplied parameters.
  */
@@ -1194,22 +1237,25 @@ static inline void ena_com_update_intr_reg(struct ena_eth_io_intr_reg *intr_reg,
 					   u32 rx_delay_interval,
 					   u32 tx_delay_interval,
 					   bool unmask,
-					   bool no_moderation_update)
+					   bool no_moderation_update,
+					   bool lost_interrupt)
 {
 	intr_reg->intr_control = 0;
 	intr_reg->intr_control |= rx_delay_interval &
 		ENA_ETH_IO_INTR_REG_RX_INTR_DELAY_MASK;
 
 	intr_reg->intr_control |=
-		(tx_delay_interval << ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_SHIFT)
-		& ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_MASK;
+		ENA_FIELD_PREP(tx_delay_interval,
+			       ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_MASK,
+			       ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_SHIFT);
 
-	if (unmask)
+	if (likely(unmask && !lost_interrupt))
 		intr_reg->intr_control |= ENA_ETH_IO_INTR_REG_INTR_UNMASK_MASK;
 
 	intr_reg->intr_control |=
-		(((u32)no_moderation_update) << ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_SHIFT) &
-			ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_MASK;
+		ENA_FIELD_PREP(((u32)(no_moderation_update && !lost_interrupt)),
+			       ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_MASK,
+			       ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_SHIFT);
 }
 
 static inline u8 *ena_com_get_next_bounce_buffer(struct ena_com_io_bounce_buffer_control *bounce_buf_ctrl)

@@ -14,20 +14,10 @@
 #include "eal_private.h"
 #include "eal_vfio.h"
 
-/**
- * @file
- * VFIO socket for communication between primary and secondary processes.
- *
- * This file is only compiled if RTE_EAL_VFIO is set.
- */
-
-#ifdef VFIO_PRESENT
-
 static int
 vfio_mp_primary(const struct rte_mp_msg *msg, const void *peer)
 {
 	int fd = -1;
-	int ret;
 	struct rte_mp_msg reply;
 	struct vfio_mp_param *r = (struct vfio_mp_param *)reply.param;
 	const struct vfio_mp_param *m =
@@ -68,17 +58,6 @@ vfio_mp_primary(const struct rte_mp_msg *msg, const void *peer)
 			reply.fds[0] = fd;
 		}
 		break;
-	case SOCKET_REQ_DEFAULT_CONTAINER:
-		r->req = SOCKET_REQ_DEFAULT_CONTAINER;
-		fd = vfio_get_default_container_fd();
-		if (fd < 0)
-			r->result = SOCKET_ERR;
-		else {
-			r->result = SOCKET_OK;
-			reply.num_fds = 1;
-			reply.fds[0] = fd;
-		}
-		break;
 	case SOCKET_REQ_IOMMU_TYPE:
 	{
 		int iommu_type_id;
@@ -103,10 +82,7 @@ vfio_mp_primary(const struct rte_mp_msg *msg, const void *peer)
 	strcpy(reply.name, EAL_VFIO_MP);
 	reply.len_param = sizeof(*r);
 
-	ret = rte_mp_reply(&reply, peer);
-	if (m->req == SOCKET_REQ_CONTAINER && fd >= 0)
-		close(fd);
-	return ret;
+	return rte_mp_reply(&reply, peer);
 }
 
 int
@@ -129,4 +105,3 @@ vfio_mp_sync_cleanup(void)
 
 	rte_mp_action_unregister(EAL_VFIO_MP);
 }
-#endif

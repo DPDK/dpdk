@@ -422,10 +422,10 @@ outb_dbg_iv_update(struct roc_ie_on_common_sa *common_sa, const char *__iv_str)
 	if (!iv_str)
 		return;
 
-	if (common_sa->ctl.enc_type == ROC_IE_OT_SA_ENC_AES_GCM ||
-	    common_sa->ctl.enc_type == ROC_IE_OT_SA_ENC_AES_CTR ||
-	    common_sa->ctl.enc_type == ROC_IE_OT_SA_ENC_AES_CCM ||
-	    common_sa->ctl.auth_type == ROC_IE_OT_SA_AUTH_AES_GMAC) {
+	if (common_sa->ctl.enc_type == ROC_IE_SA_ENC_AES_GCM ||
+	    common_sa->ctl.enc_type == ROC_IE_SA_ENC_AES_CTR ||
+	    common_sa->ctl.enc_type == ROC_IE_SA_ENC_AES_CCM ||
+	    common_sa->ctl.auth_type == ROC_IE_SA_AUTH_AES_GMAC) {
 		iv_dbg = common_sa->iv.gcm.iv;
 		iv_len = 8;
 	}
@@ -534,7 +534,7 @@ cn9k_eth_sec_session_update(void *device,
 	outb_priv->esn = ipsec->esn.value;
 
 	memcpy(&outb_priv->nonce, outb_sa->common_sa.iv.gcm.nonce, 4);
-	if (outb_sa->common_sa.ctl.enc_type == ROC_IE_ON_SA_ENC_AES_GCM)
+	if (outb_sa->common_sa.ctl.enc_type == ROC_IE_SA_ENC_AES_GCM)
 		outb_priv->copy_salt = 1;
 
 	rlens = &outb_priv->rlens;
@@ -604,13 +604,6 @@ cn9k_eth_sec_session_create(void *device,
 	crypto = conf->crypto_xform;
 	inbound = !!(ipsec->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS);
 
-	/* Search if a session already exists */
-	if (cnxk_eth_sec_sess_get_by_spi(dev, ipsec->spi, inbound)) {
-		plt_err("%s SA with SPI %u already in use",
-			inbound ? "Inbound" : "Outbound", ipsec->spi);
-		return -EEXIST;
-	}
-
 	lock = inbound ? &dev->inb.lock : &dev->outb.lock;
 	rte_spinlock_lock(lock);
 
@@ -632,6 +625,13 @@ cn9k_eth_sec_session_create(void *device,
 				  ROC_NIX_INL_ON_IPSEC_INB_SW_RSVD);
 
 		spi_mask = roc_nix_inl_inb_spi_range(nix, false, NULL, NULL);
+
+		/* Search if a session already exits */
+		if (cnxk_eth_sec_sess_get_by_sa_idx(dev, ipsec->spi & spi_mask, true)) {
+			plt_err("Inbound SA with SPI/SA index %u already in use", ipsec->spi);
+			rc = -EEXIST;
+			goto err;
+		}
 
 		/* Get Inbound SA from NIX_RX_IPSEC_SA_BASE. Assume no inline
 		 * device always for CN9K.
@@ -750,7 +750,7 @@ cn9k_eth_sec_session_create(void *device,
 		outb_priv->seq = 1;
 
 		memcpy(&outb_priv->nonce, outb_sa->common_sa.iv.gcm.nonce, 4);
-		if (outb_sa->common_sa.ctl.enc_type == ROC_IE_ON_SA_ENC_AES_GCM)
+		if (outb_sa->common_sa.ctl.enc_type == ROC_IE_SA_ENC_AES_GCM)
 			outb_priv->copy_salt = 1;
 
 		/* Save rlen info */
@@ -845,6 +845,17 @@ cn9k_eth_sec_capabilities_get(void *device __rte_unused)
 	return cn9k_eth_sec_capabilities;
 }
 
+static uint16_t
+cn9k_inl_dev_submit(struct roc_nix_inl_dev_q *q, void *inst, uint16_t nb_inst)
+{
+	/* Not supported */
+	PLT_SET_USED(q);
+	PLT_SET_USED(inst);
+	PLT_SET_USED(nb_inst);
+
+	return 0;
+}
+
 void
 cn9k_eth_sec_ops_override(void)
 {
@@ -859,4 +870,7 @@ cn9k_eth_sec_ops_override(void)
 	cnxk_eth_sec_ops.session_update = cn9k_eth_sec_session_update;
 	cnxk_eth_sec_ops.session_destroy = cn9k_eth_sec_session_destroy;
 	cnxk_eth_sec_ops.capabilities_get = cn9k_eth_sec_capabilities_get;
+
+	/* Update platform specific rte_pmd_cnxk ops */
+	cnxk_pmd_ops.inl_dev_submit = cn9k_inl_dev_submit;
 }

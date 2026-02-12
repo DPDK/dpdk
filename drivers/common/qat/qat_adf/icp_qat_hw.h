@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  * Copyright(c) 2015-2018 Intel Corporation
  */
 #ifndef _ICP_QAT_HW_H_
@@ -367,7 +367,7 @@ enum icp_qat_hw_cipher_convert {
 #define ICP_QAT_HW_CHACHAPOLY_ICV_SZ 16
 #define ICP_QAT_HW_CHACHAPOLY_AAD_MAX_LOG 14
 #define ICP_QAT_HW_ZUC_256_KEY_SZ 32
-#define ICP_QAT_HW_ZUC_256_IV_SZ 24
+#define ICP_QAT_HW_ZUC_256_IV_SZ 16
 
 #define ICP_QAT_HW_CIPHER_MAX_KEY_SZ ICP_QAT_HW_AES_256_F8_KEY_SZ
 
@@ -391,10 +391,10 @@ enum icp_qat_hw_cipher_convert {
 #define ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE 4
 #define ICP_QAT_HW_CCM_NONCE_OFFSET 1
 
-struct icp_qat_hw_cipher_algo_blk {
+struct __rte_cache_aligned icp_qat_hw_cipher_algo_blk {
 	struct icp_qat_hw_cipher_config cipher_config;
 	uint8_t key[ICP_QAT_HW_CIPHER_MAX_KEY_SZ];
-} __rte_cache_aligned;
+};
 
 struct icp_qat_hw_gen2_crc_cd {
 	uint32_t flags;
@@ -423,10 +423,10 @@ struct icp_qat_hw_ucs_cipher_config {
 	uint32_t reserved[3];
 };
 
-struct icp_qat_hw_cipher_algo_blk20 {
+struct __rte_cache_aligned icp_qat_hw_cipher_algo_blk20 {
 	struct icp_qat_hw_ucs_cipher_config cipher_config;
 	uint8_t key[ICP_QAT_HW_CIPHER_MAX_KEY_SZ];
-} __rte_cache_aligned;
+};
 
 enum icp_qat_hw_ucs_cipher_reflect_out {
 	ICP_QAT_HW_CIPHER_UCS_REFLECT_OUT_DISABLED = 0,

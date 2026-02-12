@@ -41,6 +41,8 @@ struct hwrm_func_qstats_output;
 	(1 << (HWRM_ASYNC_EVENT_CMPL_EVENT_ID_ECHO_REQUEST - 64))
 #define	ASYNC_CMPL_EVENT_ID_ERROR_REPORT	\
 	(1 << (HWRM_ASYNC_EVENT_CMPL_EVENT_ID_ERROR_REPORT - 64))
+#define	ASYNC_CMPL_EVENT_ID_RSS_CHANGE	\
+	(1 << (HWRM_ASYNC_EVENT_CMPL_EVENT_ID_RSS_CHANGE - 64))
 
 #define HWRM_QUEUE_SERVICE_PROFILE_LOSSY \
 	HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID0_SERVICE_PROFILE_LOSSY
@@ -193,6 +195,9 @@ int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, uint16_t target_id,
 			    void *encaped, size_t ec_size);
 int bnxt_hwrm_reject_fwd_resp(struct bnxt *bp, uint16_t target_id,
 			      void *encaped, size_t ec_size);
+int bnxt_hwrm_fwd_resp(struct bnxt *bp, uint16_t target_id,
+		       void *encaped, size_t ec_size,
+		       uint64_t encap_resp_addr, uint16_t cmpl_ring);
 
 int bnxt_hwrm_func_buf_rgtr(struct bnxt *bp, int num_vfs);
 int bnxt_hwrm_func_buf_unrgtr(struct bnxt *bp);
@@ -241,6 +246,9 @@ int bnxt_hwrm_vnic_plcmode_cfg(struct bnxt *bp,
 				struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_vnic_tpa_cfg(struct bnxt *bp,
 			   struct bnxt_vnic_info *vnic, bool enable);
+int bnxt_hwrm_vnic_update(struct bnxt *bp,
+			  struct bnxt_vnic_info *vnic,
+			  uint8_t valid);
 
 int bnxt_clear_all_hwrm_stat_ctxs(struct bnxt *bp);
 int bnxt_alloc_all_hwrm_ring_grps(struct bnxt *bp);
@@ -367,6 +375,10 @@ int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp, struct bnxt_cp_ring_info *cpr);
 void bnxt_free_hwrm_tx_ring(struct bnxt *bp, int queue_index);
 int bnxt_alloc_hwrm_tx_ring(struct bnxt *bp, int queue_index);
 int bnxt_hwrm_config_host_mtu(struct bnxt *bp);
+int bnxt_hwrm_func_cfg_mpc(struct bnxt *bp,
+			   uint8_t mpc_chnls_msk,
+			   bool enable);
+int bnxt_hwrm_stat_ctx_free(struct bnxt *bp, struct bnxt_cp_ring_info *cpr);
 int bnxt_vnic_rss_clear_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_vnic_rss_configure_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_func_backing_store_qcaps_v2(struct bnxt *bp);
@@ -375,4 +387,14 @@ int bnxt_hwrm_func_backing_store_cfg_v2(struct bnxt *bp,
 int bnxt_hwrm_func_backing_store_types_count(struct bnxt *bp);
 int bnxt_hwrm_func_backing_store_ctx_alloc(struct bnxt *bp, uint16_t types);
 int bnxt_alloc_ctx_pg_tbls(struct bnxt *bp);
+int bnxt_hwrm_tf_oem_cmd(struct bnxt *bp,
+			 uint32_t *in,
+			 uint16_t in_len,
+			 uint32_t *out,
+			 uint16_t out_len);
+int bnxt_hwrm_release_afm_func(struct bnxt *bp,
+			       uint16_t fid,
+			       uint16_t rfid,
+			       uint8_t type,
+			       uint32_t flags);
 #endif

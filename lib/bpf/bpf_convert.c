@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_bpf.h>
 #include <rte_log.h>
@@ -517,6 +518,7 @@ err:
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_bpf_convert)
 struct rte_bpf_prm *
 rte_bpf_convert(const struct bpf_program *prog)
 {
@@ -556,7 +558,7 @@ rte_bpf_convert(const struct bpf_program *prog)
 	ret = bpf_convert_filter(prog->bf_insns, prog->bf_len, ebpf, &ebpf_len);
 	if (ret < 0) {
 		RTE_BPF_LOG_LINE(ERR, "%s: cannot convert cBPF to eBPF", __func__);
-		free(prm);
+		rte_free(prm);
 		rte_errno = -ret;
 		return NULL;
 	}

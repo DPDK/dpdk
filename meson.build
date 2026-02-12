@@ -2,10 +2,7 @@
 # Copyright(c) 2017-2019 Intel Corporation
 
 project('DPDK', 'c',
-        # Get version number from file.
-        # Fallback to "more" for Windows compatibility.
-        version: run_command(find_program('cat', 'more'),
-            files('VERSION'), check: true).stdout().strip(),
+        version: files('VERSION'),
         license: 'BSD',
         default_options: [
             'buildtype=release',
@@ -13,13 +10,15 @@ project('DPDK', 'c',
             'default_library=static',
             'warning_level=2',
         ],
-        meson_version: '>= 0.53.2'
+        meson_version: '>= 0.57.2'
+        # meson_version_windows: '>= 1.5.2'
 )
+
+fs = import('fs')
 
 # check for developer mode
 developer_mode = false
 if get_option('developer_mode').auto()
-    fs = import('fs')
     developer_mode = fs.exists('.git')
 else
     developer_mode = get_option('developer_mode').enabled()
@@ -38,7 +37,12 @@ dpdk_libraries = []
 dpdk_static_libraries = []
 dpdk_shared_lib_deps = []
 dpdk_static_lib_deps = []
-dpdk_chkinc_headers = []
+dpdk_arch_headers = []
+dpdk_arch_indirect_headers = []
+dpdk_generic_headers = []
+dpdk_headers = []
+dpdk_indirect_headers = []
+dpdk_drivers_headers = []
 dpdk_driver_classes = []
 dpdk_drivers = []
 dpdk_extra_ldflags = []
@@ -51,6 +55,9 @@ dpdk_drvs_disabled = []
 testpmd_drivers_sources = []
 testpmd_drivers_deps = []
 abi_version_file = files('ABI_VERSION')
+
+# minimal C code for testing library linking compatibility
+min_c_code = 'int main(void) { return 0; }'
 
 if host_machine.cpu_family().startswith('x86')
     arch_subdir = 'x86'
@@ -65,17 +72,21 @@ elif host_machine.cpu_family().startswith('riscv')
 endif
 
 # configure the build, and make sure configs here and in config folder are
-# able to be included in any file. We also store a global array of include dirs
-# for passing to pmdinfogen scripts
-global_inc = include_directories('.', 'config',
+# able to be included in any file
+config_inc = [include_directories('.', 'config')]
+global_inc = [config_inc, include_directories(
     'lib/eal/include',
     'lib/eal/@0@/include'.format(host_machine.system()),
     'lib/eal/@0@/include'.format(arch_subdir),
-)
+)]
 
 # do configuration and get tool paths
 subdir('buildtools')
 subdir('config')
+
+if is_linux
+    global_inc += include_directories('kernel/linux')
+endif
 
 # build libs and drivers
 subdir('lib')
@@ -101,6 +112,14 @@ subdir('kernel')
 # check header includes if requested
 if get_option('check_includes')
     subdir('buildtools/chkincs')
+endif
+
+install_headers(dpdk_arch_headers + dpdk_arch_indirect_headers,
+        subdir: get_option('include_subdir_arch'))
+install_headers(dpdk_headers + dpdk_indirect_headers)
+install_headers(dpdk_generic_headers, subdir: 'generic')
+if get_option('enable_driver_sdk')
+    install_headers(dpdk_drivers_headers)
 endif
 
 # write the build config
@@ -178,3 +197,7 @@ foreach drv:dpdk_drvs_disabled
     output_message += drv + ':\t' + reason + '\n\t'
 endforeach
 message(output_message + '\n')
+
+message('DPDK build config complete:\n' +
+        '  source path = "' + dpdk_source_root + '"\n' +
+        '  build path  = "' + dpdk_build_root + '"')

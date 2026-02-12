@@ -12,6 +12,9 @@ sources = files(
         'evt_options.c',
         'evt_test.c',
         'parser.c',
+        'test_atomic_atq.c',
+        'test_atomic_common.c',
+        'test_atomic_queue.c',
         'test_order_atq.c',
         'test_order_common.c',
         'test_order_queue.c',
@@ -23,3 +26,5 @@ sources = files(
         'test_pipeline_queue.c',
 )
 deps += 'eventdev'
+
+cflags += no_wvla_cflag

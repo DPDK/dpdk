@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_SWX_PORT_FD_H__
 #define __INCLUDE_RTE_SWX_PORT_FD_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX FD Input and Output Ports
@@ -17,6 +13,10 @@ extern "C" {
 #include <stdint.h>
 
 #include "rte_swx_port.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** fd_reader port parameters */
 struct rte_swx_port_fd_reader_params {

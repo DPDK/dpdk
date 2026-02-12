@@ -112,6 +112,42 @@ test_popcount64(void)
 	return 0;
 }
 
+static int
+test_bit_scan_forward(void)
+{
+	unsigned int bit_nr;
+
+	TEST_ASSERT((bit_nr = rte_ffs32(0)) == 0,
+		"rte_ffs32 returned unexpected %d", bit_nr);
+
+	for (int i = 0; i < 32; ++i) {
+		uint32_t n = RTE_BIT32(i);
+
+		TEST_ASSERT((bit_nr = rte_ffs32(n)) == (unsigned int)(i+1),
+			"rte_ffs32 returned unexpected %d", bit_nr);
+	}
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_bit_scan_forward64(void)
+{
+	unsigned int bit_nr;
+
+	TEST_ASSERT((bit_nr = rte_ffs64(0)) == 0,
+		"rte_ffs64 returned unexpected %d", bit_nr);
+
+	for (int i = 0; i < 64; ++i) {
+		uint64_t n = RTE_BIT64(i);
+
+		TEST_ASSERT((bit_nr = rte_ffs64(n)) == (unsigned int)(i+1),
+			"rte_ffs64 returned unexpected %d", bit_nr);
+	}
+
+	return TEST_SUCCESS;
+}
+
 static struct unit_test_suite bitcount_test_suite = {
 	.suite_name = "bitcount autotest",
 	.setup = NULL,
@@ -123,6 +159,8 @@ static struct unit_test_suite bitcount_test_suite = {
 		TEST_CASE(test_ctz64),
 		TEST_CASE(test_popcount32),
 		TEST_CASE(test_popcount64),
+		TEST_CASE(test_bit_scan_forward),
+		TEST_CASE(test_bit_scan_forward64),
 		TEST_CASES_END()
 	}
 };
@@ -133,4 +171,4 @@ test_bitcount(void)
 	return unit_test_suite_runner(&bitcount_test_suite);
 }
 
-REGISTER_FAST_TEST(bitcount_autotest, true, true, test_bitcount);
+REGISTER_FAST_TEST(bitcount_autotest, NOHUGE_OK, ASAN_OK, test_bitcount);

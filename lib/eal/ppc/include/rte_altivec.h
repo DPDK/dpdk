@@ -1,12 +1,10 @@
-/*
- * SPDX-License-Identifier: BSD-3-Clause
+/* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (C) Mellanox 2020.
  */
 
 #ifndef _RTE_ALTIVEC_H_
 #define _RTE_ALTIVEC_H_
 
-/* To include altivec.h, GCC version must be >= 4.8 */
 #include <altivec.h>
 
 /*

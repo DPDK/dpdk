@@ -32,6 +32,8 @@
 
 #define RTE_APP_TEST_HASH_MULTIWRITER_FAILED 0
 
+#define OFFSET_STR_LEN 16
+
 struct {
 	uint32_t *keys;
 	uint32_t *found;
@@ -43,19 +45,23 @@ const uint32_t nb_entries = 5*1024*1024;
 const uint32_t nb_total_tsx_insertion = 4.5*1024*1024;
 uint32_t rounded_nb_total_tsx_insertion;
 
-static uint64_t gcycles;
-static uint64_t ginsertions;
+static RTE_ATOMIC(uint64_t) gcycles;
+static RTE_ATOMIC(uint64_t) ginsertions;
 
 static int use_htm;
 
 static int
 test_hash_multiwriter_worker(void *arg)
 {
+	char offset_start[OFFSET_STR_LEN];
+	char offset_end[OFFSET_STR_LEN];
 	uint64_t i, offset;
 	uint16_t pos_core;
 	uint32_t lcore_id = rte_lcore_id();
 	uint64_t begin, cycles;
 	uint16_t *enabled_core_ids = (uint16_t *)arg;
+	const bool use_iec = true;
+	const char *unit = NULL;
 
 	for (pos_core = 0; pos_core < rte_lcore_count(); pos_core++) {
 		if (enabled_core_ids[pos_core] == lcore_id)
@@ -68,10 +74,12 @@ test_hash_multiwriter_worker(void *arg)
 	 */
 	offset = pos_core * tbl_multiwriter_test_params.nb_tsx_insertion;
 
-	printf("Core #%d inserting %d: %'"PRId64" - %'"PRId64"\n",
+	rte_size_to_str(offset_start, RTE_DIM(offset_start), offset, use_iec, unit);
+	rte_size_to_str(offset_end, RTE_DIM(offset_end),
+			offset + tbl_multiwriter_test_params.nb_tsx_insertion - 1, use_iec, unit);
+	printf("Core #%u inserting %u: %s - %s\n",
 	       lcore_id, tbl_multiwriter_test_params.nb_tsx_insertion,
-	       offset,
-	       offset + tbl_multiwriter_test_params.nb_tsx_insertion - 1);
+	       offset_start, offset_end);
 
 	begin = rte_rdtsc_precise();
 
@@ -84,8 +92,8 @@ test_hash_multiwriter_worker(void *arg)
 	}
 
 	cycles = rte_rdtsc_precise() - begin;
-	__atomic_fetch_add(&gcycles, cycles, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&ginsertions, i - offset, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&gcycles, cycles, rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit(&ginsertions, i - offset, rte_memory_order_relaxed);
 
 	for (; i < offset + tbl_multiwriter_test_params.nb_tsx_insertion; i++)
 		tbl_multiwriter_test_params.keys[i]
@@ -166,8 +174,8 @@ test_hash_multiwriter(void)
 
 	tbl_multiwriter_test_params.found = found;
 
-	__atomic_store_n(&gcycles, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&ginsertions, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&gcycles, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&ginsertions, 0, rte_memory_order_relaxed);
 
 	/* Get list of enabled cores */
 	i = 0;
@@ -233,8 +241,8 @@ test_hash_multiwriter(void)
 	printf("No key corrupted during multiwriter insertion.\n");
 
 	unsigned long long int cycles_per_insertion =
-		__atomic_load_n(&gcycles, __ATOMIC_RELAXED)/
-		__atomic_load_n(&ginsertions, __ATOMIC_RELAXED);
+		rte_atomic_load_explicit(&gcycles, rte_memory_order_relaxed)/
+		rte_atomic_load_explicit(&ginsertions, rte_memory_order_relaxed);
 
 	printf(" cycles per insertion: %llu\n", cycles_per_insertion);
 

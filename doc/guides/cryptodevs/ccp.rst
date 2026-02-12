@@ -94,7 +94,7 @@ To validate ccp PMD, l2fwd-crypto example can be used with following command:
 
 .. code-block:: console
 
-        sudo ./<build_dir>/examples/dpdk-l2fwd-crypto -l 1 -n 4 --vdev "crypto_ccp" -- -p 0x1
+        sudo ./<build_dir>/examples/dpdk-l2fwd-crypto -l 1 --vdev "crypto_ccp" -- -p 0x1
         --chain CIPHER_HASH --cipher_op ENCRYPT --cipher_algo aes-cbc
         --cipher_key 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f
         --cipher_iv 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:ff
@@ -109,7 +109,7 @@ following:
 
 .. code-block:: console
 
-        sudo ./<build_dir>/examples/dpdk-l2fwd-crypto -l 1 -n 4 --vdev "crypto_ccp,ccp_auth_opt=1" -- -p 0x1
+        sudo ./<build_dir>/examples/dpdk-l2fwd-crypto -l 1 --vdev "crypto_ccp,ccp_auth_opt=1" -- -p 0x1
         --chain CIPHER_HASH --cipher_op ENCRYPT --cipher_algo aes-cbc
         --cipher_key 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f
         --cipher_iv 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:ff

@@ -25,6 +25,16 @@ sources += files(
         'ulp_rte_handler_tbl.c',
         'ulp_rte_parser.c',
         'ulp_tun.c',
-        'ulp_utils.c')
+        'ulp_mapper_tf.c',
+        'ulp_mapper_tfc.c',
+        'bnxt_ulp_tf.c',
+        'bnxt_ulp_tfc.c',
+        'ulp_fc_mgr_tfc.c',
+        'ulp_fc_mgr_tf.c',
+        'ulp_alloc_tbl.c',
+        'ulp_sc_mgr.c',
+        'ulp_sc_mgr_tfc.c',
+        'ulp_tfc_ha_mgr.c',
+)
 
 subdir('generic_templates')

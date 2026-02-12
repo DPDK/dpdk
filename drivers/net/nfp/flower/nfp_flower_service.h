@@ -6,12 +6,12 @@
 #ifndef __NFP_FLOWER_SERVICE_H__
 #define __NFP_FLOWER_SERVICE_H__
 
-struct nfp_flower_service;
+#include "../nfp_net_common.h"
 
-int nfp_flower_service_start(void *app_fw_flower);
-void nfp_flower_service_stop(void *app_fw_flower);
+int nfp_flower_service_start(struct nfp_net_hw_priv *hw_priv);
+void nfp_flower_service_stop(struct nfp_net_hw_priv *hw_priv);
 
-int nfp_flower_service_sync_alloc(void *app_fw_flower);
-void nfp_flower_service_sync_free(void *app_fw_flower);
+int nfp_flower_service_sync_alloc(struct nfp_net_hw_priv *hw_priv);
+void nfp_flower_service_sync_free(struct nfp_net_hw_priv *hw_priv);
 
 #endif /* __NFP_FLOWER_SERVICE_H__ */

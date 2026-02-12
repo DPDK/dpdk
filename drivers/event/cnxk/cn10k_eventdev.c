@@ -2,44 +2,22 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <rte_dmadev_pmd.h>
+
+#include "cn10k_cryptodev_ops.h"
+#include "cn10k_ethdev.h"
 #include "cn10k_tx_worker.h"
 #include "cn10k_worker.h"
-#include "cn10k_ethdev.h"
-#include "cn10k_cryptodev_ops.h"
+#include "cnxk_common.h"
+#include "cnxk_dma_event_dp.h"
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
-#include "cnxk_dma_event_dp.h"
-
-#include <rte_dmadev_pmd.h>
 
 #define CN10K_SET_EVDEV_DEQ_OP(dev, deq_op, deq_ops)                           \
 	deq_op = deq_ops[dev->rx_offloads & (NIX_RX_OFFLOAD_MAX - 1)]
 
 #define CN10K_SET_EVDEV_ENQ_OP(dev, enq_op, enq_ops)                           \
 	enq_op = enq_ops[dev->tx_offloads & (NIX_TX_OFFLOAD_MAX - 1)]
-
-static uint32_t
-cn10k_sso_gw_mode_wdata(struct cnxk_sso_evdev *dev)
-{
-	uint32_t wdata = 1;
-
-	if (dev->deq_tmo_ns)
-		wdata |= BIT(16);
-
-	switch (dev->gw_mode) {
-	case CN10K_GW_MODE_NONE:
-	default:
-		break;
-	case CN10K_GW_MODE_PREF:
-		wdata |= BIT(19);
-		break;
-	case CN10K_GW_MODE_PREF_WFE:
-		wdata |= BIT(20) | BIT(19);
-		break;
-	}
-
-	return wdata;
-}
 
 static void *
 cn10k_sso_init_hws_mem(void *arg, uint8_t port_id)
@@ -61,9 +39,10 @@ cn10k_sso_init_hws_mem(void *arg, uint8_t port_id)
 	ws->base = roc_sso_hws_base_get(&dev->sso, port_id);
 	ws->hws_id = port_id;
 	ws->swtag_req = 0;
-	ws->gw_wdata = cn10k_sso_gw_mode_wdata(dev);
+	ws->gw_wdata = cnxk_sso_hws_prf_wdata(dev);
 	ws->gw_rdata = SSO_TT_EMPTY << 32;
 	ws->lmt_base = dev->sso.lmt_base;
+	ws->xae_waes = dev->sso.feat.xaq_wq_entries;
 
 	return ws;
 }
@@ -94,10 +73,11 @@ cn10k_sso_hws_setup(void *arg, void *hws, uintptr_t grp_base)
 	uint64_t val;
 
 	ws->grp_base = grp_base;
-	ws->fc_mem = (int64_t *)dev->fc_iova;
+	ws->fc_mem = (int64_t __rte_atomic *)dev->fc_iova;
 	ws->xaq_lmt = dev->xaq_lmt;
-	ws->fc_cache_space = dev->fc_cache_space;
+	ws->fc_cache_space = (int64_t __rte_atomic *)dev->fc_cache_space;
 	ws->aw_lmt = ws->lmt_base;
+	ws->gw_wdata = cnxk_sso_hws_prf_wdata(dev);
 
 	/* Set get_work timeout for HWS */
 	val = NSEC2USEC(dev->deq_tmo_ns);
@@ -146,8 +126,7 @@ cn10k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base,
 
 	while (aq_cnt || cq_ds_cnt || ds_cnt) {
 		plt_write64(req, ws->base + SSOW_LF_GWS_OP_GET_WORK0);
-		cn10k_sso_hws_get_work_empty(
-			ws, &ev, (NIX_RX_OFFLOAD_MAX - 1) | NIX_RX_REAS_F | NIX_RX_MULTI_SEG_F);
+		cn10k_sso_hws_get_work_empty(ws, &ev, dev->rx_offloads);
 		if (fn != NULL && ev.u64 != 0)
 			fn(arg, ev);
 		if (ev.sched_type != SSO_TT_EMPTY)
@@ -172,83 +151,6 @@ cn10k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base,
 	rte_mb();
 
 	return 0;
-}
-
-static void
-cn10k_sso_hws_reset(void *arg, void *hws)
-{
-	struct cnxk_sso_evdev *dev = arg;
-	struct cn10k_sso_hws *ws = hws;
-	uintptr_t base = ws->base;
-	uint64_t pend_state;
-	union {
-		__uint128_t wdata;
-		uint64_t u64[2];
-	} gw;
-	uint8_t pend_tt;
-	bool is_pend;
-
-	roc_sso_hws_gwc_invalidate(&dev->sso, &ws->hws_id, 1);
-	plt_write64(0, ws->base + SSOW_LF_GWS_OP_GWC_INVAL);
-	/* Wait till getwork/swtp/waitw/desched completes. */
-	is_pend = false;
-	/* Work in WQE0 is always consumed, unless its a SWTAG. */
-	pend_state = plt_read64(ws->base + SSOW_LF_GWS_PENDSTATE);
-	if (pend_state & (BIT_ULL(63) | BIT_ULL(62) | BIT_ULL(54)) ||
-	    ws->swtag_req)
-		is_pend = true;
-
-	do {
-		pend_state = plt_read64(base + SSOW_LF_GWS_PENDSTATE);
-	} while (pend_state & (BIT_ULL(63) | BIT_ULL(62) | BIT_ULL(58) |
-			       BIT_ULL(56) | BIT_ULL(54)));
-	pend_tt = CNXK_TT_FROM_TAG(plt_read64(base + SSOW_LF_GWS_WQE0));
-	if (is_pend && pend_tt != SSO_TT_EMPTY) { /* Work was pending */
-		if (pend_tt == SSO_TT_ATOMIC || pend_tt == SSO_TT_ORDERED)
-			cnxk_sso_hws_swtag_untag(base +
-						 SSOW_LF_GWS_OP_SWTAG_UNTAG);
-		plt_write64(0, base + SSOW_LF_GWS_OP_DESCHED);
-	} else if (pend_tt != SSO_TT_EMPTY) {
-		plt_write64(0, base + SSOW_LF_GWS_OP_SWTAG_FLUSH);
-	}
-
-	/* Wait for desched to complete. */
-	do {
-		pend_state = plt_read64(base + SSOW_LF_GWS_PENDSTATE);
-	} while (pend_state & (BIT_ULL(58) | BIT_ULL(56)));
-
-	switch (dev->gw_mode) {
-	case CN10K_GW_MODE_PREF:
-	case CN10K_GW_MODE_PREF_WFE:
-		while (plt_read64(base + SSOW_LF_GWS_PRF_WQE0) & BIT_ULL(63))
-			;
-		break;
-	case CN10K_GW_MODE_NONE:
-	default:
-		break;
-	}
-
-	if (CNXK_TT_FROM_TAG(plt_read64(base + SSOW_LF_GWS_PRF_WQE0)) !=
-	    SSO_TT_EMPTY) {
-		plt_write64(BIT_ULL(16) | 1,
-			    ws->base + SSOW_LF_GWS_OP_GET_WORK0);
-		do {
-			roc_load_pair(gw.u64[0], gw.u64[1],
-				      ws->base + SSOW_LF_GWS_WQE0);
-		} while (gw.u64[0] & BIT_ULL(63));
-		pend_tt = CNXK_TT_FROM_TAG(plt_read64(base + SSOW_LF_GWS_WQE0));
-		if (pend_tt != SSO_TT_EMPTY) { /* Work was pending */
-			if (pend_tt == SSO_TT_ATOMIC ||
-			    pend_tt == SSO_TT_ORDERED)
-				cnxk_sso_hws_swtag_untag(
-					base + SSOW_LF_GWS_OP_SWTAG_UNTAG);
-			plt_write64(0, base + SSOW_LF_GWS_OP_DESCHED);
-		}
-	}
-
-	plt_write64(0, base + SSOW_LF_GWS_OP_GWC_INVAL);
-	roc_sso_hws_gwc_invalidate(&dev->sso, &ws->hws_id, 1);
-	rte_mb();
 }
 
 static void
@@ -305,27 +207,15 @@ cn10k_sso_updt_tx_adptr_data(const struct rte_eventdev *event_dev)
 	return 0;
 }
 
-static void
-cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
-{
 #if defined(RTE_ARCH_ARM64)
+static inline void
+cn10k_sso_fp_tmplt_fns_set(struct rte_eventdev *event_dev)
+{
+#if !defined(CNXK_DIS_TMPLT_FUNC)
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
-
-	struct roc_cpt *cpt = roc_idev_cpt_get();
-	const event_dequeue_t sso_hws_deq[NIX_RX_OFFLOAD_MAX] = {
-#define R(name, flags)[flags] = cn10k_sso_hws_deq_##name,
-		NIX_RX_FASTPATH_MODES
-#undef R
-	};
 
 	const event_dequeue_burst_t sso_hws_deq_burst[NIX_RX_OFFLOAD_MAX] = {
 #define R(name, flags)[flags] = cn10k_sso_hws_deq_burst_##name,
-		NIX_RX_FASTPATH_MODES
-#undef R
-	};
-
-	const event_dequeue_t sso_hws_deq_tmo[NIX_RX_OFFLOAD_MAX] = {
-#define R(name, flags)[flags] = cn10k_sso_hws_deq_tmo_##name,
 		NIX_RX_FASTPATH_MODES
 #undef R
 	};
@@ -336,33 +226,14 @@ cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 #undef R
 	};
 
-	const event_dequeue_t sso_hws_deq_seg[NIX_RX_OFFLOAD_MAX] = {
-#define R(name, flags)[flags] = cn10k_sso_hws_deq_seg_##name,
-
-		NIX_RX_FASTPATH_MODES
-#undef R
-	};
-
 	const event_dequeue_burst_t sso_hws_deq_seg_burst[NIX_RX_OFFLOAD_MAX] = {
 #define R(name, flags)[flags] = cn10k_sso_hws_deq_seg_burst_##name,
 			NIX_RX_FASTPATH_MODES
 #undef R
 	};
 
-	const event_dequeue_t sso_hws_deq_tmo_seg[NIX_RX_OFFLOAD_MAX] = {
-#define R(name, flags)[flags] = cn10k_sso_hws_deq_tmo_seg_##name,
-		NIX_RX_FASTPATH_MODES
-#undef R
-	};
-
 	const event_dequeue_burst_t sso_hws_deq_tmo_seg_burst[NIX_RX_OFFLOAD_MAX] = {
 #define R(name, flags)[flags] = cn10k_sso_hws_deq_tmo_seg_burst_##name,
-		NIX_RX_FASTPATH_MODES
-#undef R
-	};
-
-	const event_dequeue_t sso_hws_reas_deq[NIX_RX_OFFLOAD_MAX] = {
-#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_##name,
 		NIX_RX_FASTPATH_MODES
 #undef R
 	};
@@ -373,33 +244,14 @@ cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 #undef R
 	};
 
-	const event_dequeue_t sso_hws_reas_deq_tmo[NIX_RX_OFFLOAD_MAX] = {
-#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_tmo_##name,
-		NIX_RX_FASTPATH_MODES
-#undef R
-	};
-
 	const event_dequeue_burst_t sso_hws_reas_deq_tmo_burst[NIX_RX_OFFLOAD_MAX] = {
 #define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_tmo_burst_##name,
 		NIX_RX_FASTPATH_MODES
 #undef R
 	};
 
-	const event_dequeue_t sso_hws_reas_deq_seg[NIX_RX_OFFLOAD_MAX] = {
-#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_seg_##name,
-
-		NIX_RX_FASTPATH_MODES
-#undef R
-	};
-
 	const event_dequeue_burst_t sso_hws_reas_deq_seg_burst[NIX_RX_OFFLOAD_MAX] = {
 #define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_seg_burst_##name,
-		NIX_RX_FASTPATH_MODES
-#undef R
-	};
-
-	const event_dequeue_t sso_hws_reas_deq_tmo_seg[NIX_RX_OFFLOAD_MAX] = {
-#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_tmo_seg_##name,
 		NIX_RX_FASTPATH_MODES
 #undef R
 	};
@@ -423,56 +275,83 @@ cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 #undef T
 	};
 
-	event_dev->enqueue = cn10k_sso_hws_enq;
-	event_dev->enqueue_burst = cn10k_sso_hws_enq_burst;
-	event_dev->enqueue_new_burst = cn10k_sso_hws_enq_new_burst;
-	event_dev->enqueue_forward_burst = cn10k_sso_hws_enq_fwd_burst;
 	if (dev->rx_offloads & NIX_RX_MULTI_SEG_F) {
 		if (dev->rx_offloads & NIX_RX_REAS_F) {
-			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_reas_deq_seg);
 			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
 					       sso_hws_reas_deq_seg_burst);
-			if (dev->is_timeout_deq) {
-				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
-						       sso_hws_reas_deq_tmo_seg);
+			if (dev->is_timeout_deq)
 				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
 						       sso_hws_reas_deq_tmo_seg_burst);
-			}
 		} else {
-			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_deq_seg);
 			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
 					       sso_hws_deq_seg_burst);
 
-			if (dev->is_timeout_deq) {
-				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
-						       sso_hws_deq_tmo_seg);
+			if (dev->is_timeout_deq)
 				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
 						       sso_hws_deq_tmo_seg_burst);
-			}
 		}
 	} else {
 		if (dev->rx_offloads & NIX_RX_REAS_F) {
-			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_reas_deq);
 			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
 					       sso_hws_reas_deq_burst);
 
-			if (dev->is_timeout_deq) {
-				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
-						       sso_hws_reas_deq_tmo);
+			if (dev->is_timeout_deq)
 				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
 						       sso_hws_reas_deq_tmo_burst);
-			}
 		} else {
-			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_deq);
 			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst, sso_hws_deq_burst);
 
-			if (dev->is_timeout_deq) {
-				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_deq_tmo);
+			if (dev->is_timeout_deq)
 				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
 						       sso_hws_deq_tmo_burst);
-			}
 		}
 	}
+
+	if (dev->tx_offloads & NIX_TX_MULTI_SEG_F)
+		CN10K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue, sso_hws_tx_adptr_enq_seg);
+	else
+		CN10K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue, sso_hws_tx_adptr_enq);
+
+	event_dev->txa_enqueue_same_dest = event_dev->txa_enqueue;
+#else
+	RTE_SET_USED(event_dev);
+#endif
+}
+
+static inline void
+cn10k_sso_fp_blk_fns_set(struct rte_eventdev *event_dev)
+{
+#if defined(CNXK_DIS_TMPLT_FUNC)
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+
+	event_dev->dequeue_burst = cn10k_sso_hws_deq_burst_all_offload;
+	if (dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F)
+		event_dev->dequeue_burst = cn10k_sso_hws_deq_burst_all_offload_tst;
+	event_dev->txa_enqueue = cn10k_sso_hws_tx_adptr_enq_seg_all_offload;
+	event_dev->txa_enqueue_same_dest = cn10k_sso_hws_tx_adptr_enq_seg_all_offload;
+	if (dev->tx_offloads & (NIX_TX_OFFLOAD_OL3_OL4_CSUM_F | NIX_TX_OFFLOAD_VLAN_QINQ_F |
+				NIX_TX_OFFLOAD_TSO_F | NIX_TX_OFFLOAD_TSTAMP_F)) {
+		event_dev->txa_enqueue = cn10k_sso_hws_tx_adptr_enq_seg_all_offload_tst;
+		event_dev->txa_enqueue_same_dest = cn10k_sso_hws_tx_adptr_enq_seg_all_offload_tst;
+	}
+#else
+	RTE_SET_USED(event_dev);
+#endif
+}
+#endif
+
+static void
+cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
+{
+#if defined(RTE_ARCH_ARM64)
+	struct roc_cpt *cpt = roc_idev_cpt_get();
+
+	cn10k_sso_fp_blk_fns_set(event_dev);
+	cn10k_sso_fp_tmplt_fns_set(event_dev);
+
+	event_dev->enqueue_burst = cn10k_sso_hws_enq_burst;
+	event_dev->enqueue_new_burst = cn10k_sso_hws_enq_new_burst;
+	event_dev->enqueue_forward_burst = cn10k_sso_hws_enq_fwd_burst;
 
 	if ((cpt != NULL) && cpt->hw_caps[CPT_ENG_TYPE_SE].sg_ver2 &&
 	    cpt->hw_caps[CPT_ENG_TYPE_IE].sg_ver2)
@@ -481,14 +360,8 @@ cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 		event_dev->ca_enqueue = cn10k_cpt_sg_ver1_crypto_adapter_enqueue;
 
 	event_dev->dma_enqueue = cn10k_dma_adapter_enqueue;
-
-	if (dev->tx_offloads & NIX_TX_MULTI_SEG_F)
-		CN10K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue, sso_hws_tx_adptr_enq_seg);
-	else
-		CN10K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue, sso_hws_tx_adptr_enq);
-
-	event_dev->txa_enqueue_same_dest = event_dev->txa_enqueue;
 	event_dev->profile_switch = cn10k_sso_hws_profile_switch;
+	event_dev->preschedule_modify = cn10k_sso_hws_preschedule_modify;
 #else
 	RTE_SET_USED(event_dev);
 #endif
@@ -503,6 +376,9 @@ cn10k_sso_info_get(struct rte_eventdev *event_dev,
 	dev_info->driver_name = RTE_STR(EVENTDEV_NAME_CN10K_PMD);
 	cnxk_sso_info_get(dev, dev_info);
 	dev_info->max_event_port_enqueue_depth = UINT32_MAX;
+	dev_info->event_dev_cap |= RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE |
+				   RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE |
+				   RTE_EVENT_DEV_CAP_PER_PORT_PRESCHEDULE;
 }
 
 static int
@@ -527,6 +403,8 @@ cn10k_sso_dev_configure(const struct rte_eventdev *event_dev)
 	rc = cnxk_sso_xaq_allocate(dev);
 	if (rc < 0)
 		goto cnxk_rsrc_fini;
+
+	dev->gw_mode = cnxk_sso_hws_preschedule_get(event_dev->data->dev_conf.preschedule_type);
 
 	rc = cnxk_setup_event_ports(event_dev, cn10k_sso_init_hws_mem,
 				    cn10k_sso_hws_setup);
@@ -594,8 +472,7 @@ cn10k_sso_port_quiesce(struct rte_eventdev *event_dev, void *port,
 	} while (ptag &
 		 (BIT_ULL(62) | BIT_ULL(58) | BIT_ULL(56) | BIT_ULL(54)));
 
-	cn10k_sso_hws_get_work_empty(ws, &ev,
-				     (NIX_RX_OFFLOAD_MAX - 1) | NIX_RX_REAS_F | NIX_RX_MULTI_SEG_F);
+	cn10k_sso_hws_get_work_empty(ws, &ev, dev->rx_offloads);
 	if (is_pend && ev.u64)
 		if (flush_cb)
 			flush_cb(event_dev->data->dev_id, ev, args);
@@ -609,13 +486,13 @@ cn10k_sso_port_quiesce(struct rte_eventdev *event_dev, void *port,
 
 	/* Check if we have work in PRF_WQE0, if so extract it. */
 	switch (dev->gw_mode) {
-	case CN10K_GW_MODE_PREF:
-	case CN10K_GW_MODE_PREF_WFE:
+	case CNXK_GW_MODE_PREF:
+	case CNXK_GW_MODE_PREF_WFE:
 		while (plt_read64(ws->base + SSOW_LF_GWS_PRF_WQE0) &
 		       BIT_ULL(63))
 			;
 		break;
-	case CN10K_GW_MODE_NONE:
+	case CNXK_GW_MODE_NONE:
 	default:
 		break;
 	}
@@ -624,8 +501,7 @@ cn10k_sso_port_quiesce(struct rte_eventdev *event_dev, void *port,
 	    SSO_TT_EMPTY) {
 		plt_write64(BIT_ULL(16) | 1,
 			    ws->base + SSOW_LF_GWS_OP_GET_WORK0);
-		cn10k_sso_hws_get_work_empty(
-			ws, &ev, (NIX_RX_OFFLOAD_MAX - 1) | NIX_RX_REAS_F | NIX_RX_MULTI_SEG_F);
+		cn10k_sso_hws_get_work_empty(ws, &ev, dev->rx_offloads);
 		if (ev.u64) {
 			if (flush_cb)
 				flush_cb(event_dev->data->dev_id, ev, args);
@@ -684,24 +560,6 @@ cn10k_sso_port_unlink(struct rte_eventdev *event_dev, void *port, uint8_t queues
 	return cn10k_sso_port_unlink_profile(event_dev, port, queues, nb_unlinks, 0);
 }
 
-static void
-cn10k_sso_configure_queue_stash(struct rte_eventdev *event_dev)
-{
-	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
-	struct roc_sso_hwgrp_stash stash[dev->stash_cnt];
-	int i, rc;
-
-	plt_sso_dbg();
-	for (i = 0; i < dev->stash_cnt; i++) {
-		stash[i].hwgrp = dev->stash_parse_data[i].queue;
-		stash[i].stash_offset = dev->stash_parse_data[i].stash_offset;
-		stash[i].stash_count = dev->stash_parse_data[i].stash_length;
-	}
-	rc = roc_sso_hwgrp_stash_config(&dev->sso, stash, dev->stash_cnt);
-	if (rc < 0)
-		plt_warn("failed to configure HWGRP WQE stashing rc = %d", rc);
-}
-
 static int
 cn10k_sso_start(struct rte_eventdev *event_dev)
 {
@@ -713,9 +571,8 @@ cn10k_sso_start(struct rte_eventdev *event_dev)
 	if (rc < 0)
 		return rc;
 
-	cn10k_sso_configure_queue_stash(event_dev);
-	rc = cnxk_sso_start(event_dev, cn10k_sso_hws_reset,
-			    cn10k_sso_hws_flush_events);
+	cnxk_sso_configure_queue_stash(event_dev);
+	rc = cnxk_sso_start(event_dev, cnxk_sso_hws_reset, cn10k_sso_hws_flush_events);
 	if (rc < 0)
 		return rc;
 	cn10k_sso_fp_fns_set(event_dev);
@@ -736,8 +593,7 @@ cn10k_sso_stop(struct rte_eventdev *event_dev)
 	for (i = 0; i < event_dev->data->nb_ports; i++)
 		hws[i] = i;
 	roc_sso_hws_gwc_invalidate(&dev->sso, hws, event_dev->data->nb_ports);
-	cnxk_sso_stop(event_dev, cn10k_sso_hws_reset,
-		      cn10k_sso_hws_flush_events);
+	cnxk_sso_stop(event_dev, cnxk_sso_hws_reset, cn10k_sso_hws_flush_events);
 }
 
 static int
@@ -780,11 +636,66 @@ cn10k_sso_set_priv_mem(const struct rte_eventdev *event_dev, void *lookup_mem)
 	for (i = 0; i < dev->nb_event_ports; i++) {
 		struct cn10k_sso_hws *ws = event_dev->data->ports[i];
 		ws->xaq_lmt = dev->xaq_lmt;
-		ws->fc_mem = (int64_t *)dev->fc_iova;
+		ws->fc_mem = (int64_t __rte_atomic *)dev->fc_iova;
 		ws->tstamp = dev->tstamp;
 		if (lookup_mem)
 			ws->lookup_mem = lookup_mem;
 	}
+}
+
+static void
+eventdev_fops_update(struct rte_eventdev *event_dev)
+{
+	struct rte_event_fp_ops *fp_op =
+		rte_event_fp_ops + event_dev->data->dev_id;
+
+	fp_op->dequeue_burst = event_dev->dequeue_burst;
+}
+
+static void
+cn10k_sso_tstamp_hdl_update(uint16_t port_id, uint16_t flags, bool ptp_en)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct cnxk_eth_dev *cnxk_eth_dev = dev->data->dev_private;
+	struct rte_eventdev *event_dev = cnxk_eth_dev->evdev_priv;
+	struct cnxk_sso_evdev *evdev = cnxk_sso_pmd_priv(event_dev);
+
+	evdev->rx_offloads |= flags;
+	if (ptp_en)
+		evdev->tstamp[port_id] = &cnxk_eth_dev->tstamp;
+	else
+		evdev->tstamp[port_id] = NULL;
+	cn10k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
+	eventdev_fops_update(event_dev);
+}
+
+static void
+cn10k_sso_rx_offload_cb(uint16_t port_id, uint64_t flags)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct cnxk_eth_dev *cnxk_eth_dev = dev->data->dev_private;
+	struct rte_eventdev *event_dev = cnxk_eth_dev->evdev_priv;
+	struct cnxk_sso_evdev *evdev = cnxk_sso_pmd_priv(event_dev);
+
+	evdev->rx_offloads |= flags;
+	cn10k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
+	eventdev_fops_update(event_dev);
+}
+
+static int
+cn10k_sso_configure_queue_stash_default(struct cnxk_sso_evdev *dev, uint16_t hwgrp)
+{
+	struct roc_sso_hwgrp_stash stash;
+	int rc;
+
+	stash.hwgrp = hwgrp;
+	stash.stash_offset = CN10K_SSO_DEFAULT_STASH_OFFSET;
+	stash.stash_count = CN10K_SSO_DEFAULT_STASH_LENGTH;
+	rc = roc_sso_hwgrp_stash_config(&dev->sso, &stash, 1);
+	if (rc)
+		plt_warn("failed to configure HWGRP WQE stashing rc = %d", rc);
+
+	return rc;
 }
 
 static int
@@ -793,9 +704,10 @@ cn10k_sso_rx_adapter_queue_add(
 	int32_t rx_queue_id,
 	const struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
 {
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
-	struct roc_sso_hwgrp_stash stash;
 	struct cn10k_eth_rxq *rxq;
+	uint16_t nb_rx_queues;
 	void *lookup_mem;
 	int rc;
 
@@ -803,24 +715,71 @@ cn10k_sso_rx_adapter_queue_add(
 	if (rc)
 		return -EINVAL;
 
-	rc = cnxk_sso_rx_adapter_queue_add(event_dev, eth_dev, rx_queue_id,
-					   queue_conf);
+	nb_rx_queues = rx_queue_id == -1 ? 0 : 1;
+	rc = cnxk_sso_rx_adapter_queues_add(event_dev, eth_dev, &rx_queue_id, queue_conf,
+					    nb_rx_queues);
 	if (rc)
 		return -EINVAL;
+
+	cnxk_eth_dev->cnxk_sso_ptp_tstamp_cb = cn10k_sso_tstamp_hdl_update;
+	cnxk_eth_dev->evdev_priv = (struct rte_eventdev *)(uintptr_t)event_dev;
+
+	rxq = eth_dev->data->rx_queues[0];
+	lookup_mem = rxq->lookup_mem;
+	cn10k_sso_set_priv_mem(event_dev, lookup_mem);
+	cn10k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
+	if (roc_feature_sso_has_stash() && dev->nb_event_ports > 1)
+		rc = cn10k_sso_configure_queue_stash_default(dev, queue_conf->ev.queue_id);
+
+	return rc;
+}
+static int
+cn10k_sso_rx_adapter_queues_add(const struct rte_eventdev *event_dev,
+				const struct rte_eth_dev *eth_dev, int32_t rx_queue_id[],
+				const struct rte_event_eth_rx_adapter_queue_conf queue_conf[],
+				uint16_t nb_rx_queues)
+{
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	struct cn10k_eth_rxq *rxq;
+	void *lookup_mem;
+	int rc, i;
+
+	rc = strncmp(eth_dev->device->driver->name, "net_cn10k", 8);
+	if (rc)
+		return -EINVAL;
+
+	rc = cnxk_sso_rx_adapter_queues_add(event_dev, eth_dev, rx_queue_id, queue_conf,
+					    nb_rx_queues);
+	if (rc)
+		return -EINVAL;
+
+	cnxk_eth_dev->cnxk_sso_ptp_tstamp_cb = cn10k_sso_tstamp_hdl_update;
+	cnxk_eth_dev->evdev_priv = (struct rte_eventdev *)(uintptr_t)event_dev;
+
 	rxq = eth_dev->data->rx_queues[0];
 	lookup_mem = rxq->lookup_mem;
 	cn10k_sso_set_priv_mem(event_dev, lookup_mem);
 	cn10k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
 	if (roc_feature_sso_has_stash() && dev->nb_event_ports > 1) {
-		stash.hwgrp = queue_conf->ev.queue_id;
-		stash.stash_offset = CN10K_SSO_DEFAULT_STASH_OFFSET;
-		stash.stash_count = CN10K_SSO_DEFAULT_STASH_LENGTH;
-		rc = roc_sso_hwgrp_stash_config(&dev->sso, &stash, 1);
-		if (rc < 0)
-			plt_warn("failed to configure HWGRP WQE stashing rc = %d", rc);
+		uint16_t hwgrp = dev->sso.max_hwgrp;
+
+		if (nb_rx_queues == 0)
+			rc = cn10k_sso_configure_queue_stash_default(dev,
+								     queue_conf[0].ev.queue_id);
+
+		for (i = 0; i < nb_rx_queues; i++) {
+			if (hwgrp == queue_conf[i].ev.queue_id)
+				continue;
+
+			hwgrp = queue_conf[i].ev.queue_id;
+			rc = cn10k_sso_configure_queue_stash_default(dev, hwgrp);
+			if (rc < 0)
+				break;
+		}
 	}
 
-	return 0;
+	return rc;
 }
 
 static int
@@ -1084,8 +1043,6 @@ cn10k_dma_adapter_vchan_del(const struct rte_eventdev *event_dev,
 	return cnxk_dma_adapter_vchan_del(dma_dev_id, vchan_id);
 }
 
-
-
 static struct eventdev_ops cn10k_sso_dev_ops = {
 	.dev_infos_get = cn10k_sso_info_get,
 	.dev_configure = cn10k_sso_dev_configure,
@@ -1107,6 +1064,7 @@ static struct eventdev_ops cn10k_sso_dev_ops = {
 
 	.eth_rx_adapter_caps_get = cn10k_sso_rx_adapter_caps_get,
 	.eth_rx_adapter_queue_add = cn10k_sso_rx_adapter_queue_add,
+	.eth_rx_adapter_queues_add = cn10k_sso_rx_adapter_queues_add,
 	.eth_rx_adapter_queue_del = cn10k_sso_rx_adapter_queue_del,
 	.eth_rx_adapter_start = cnxk_sso_rx_adapter_start,
 	.eth_rx_adapter_stop = cnxk_sso_rx_adapter_stop,
@@ -1154,6 +1112,7 @@ cn10k_sso_init(struct rte_eventdev *event_dev)
 		return rc;
 	}
 
+	cnxk_ethdev_rx_offload_cb_register(cn10k_sso_rx_offload_cb);
 	event_dev->dev_ops = &cn10k_sso_dev_ops;
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
@@ -1161,7 +1120,6 @@ cn10k_sso_init(struct rte_eventdev *event_dev)
 		return 0;
 	}
 
-	dev->gw_mode = CN10K_GW_MODE_PREF_WFE;
 	rc = cnxk_sso_init(event_dev);
 	if (rc < 0)
 		return rc;
@@ -1218,8 +1176,7 @@ RTE_PMD_REGISTER_KMOD_DEP(event_cn10k, "vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(event_cn10k, CNXK_SSO_XAE_CNT "=<int>"
 			      CNXK_SSO_GGRP_QOS "=<string>"
 			      CNXK_SSO_FORCE_BP "=1"
-			      CN10K_SSO_GW_MODE "=<int>"
-			      CN10K_SSO_STASH "=<string>"
+			      CNXK_SSO_STASH "=<string>"
 			      CNXK_TIM_DISABLE_NPA "=1"
 			      CNXK_TIM_CHNK_SLOTS "=<int>"
 			      CNXK_TIM_RINGS_LMT "=<int>"

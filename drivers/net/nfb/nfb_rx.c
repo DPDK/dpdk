@@ -60,7 +60,7 @@ nfb_eth_rx_queue_setup(struct rte_eth_dev *dev,
 		const struct rte_eth_rxconf *rx_conf __rte_unused,
 		struct rte_mempool *mb_pool)
 {
-	struct pmd_internals *internals = dev->data->dev_private;
+	struct pmd_internals *internals = dev->process_private;
 
 	struct ndp_rx_queue *rxq;
 	int ret;
@@ -129,7 +129,7 @@ nfb_eth_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 
 	if (rxq->queue != NULL) {
 		ndp_close_rx_queue(rxq->queue);
-		rte_free(rxq);
 		rxq->queue = NULL;
+		rte_free(rxq);
 	}
 }

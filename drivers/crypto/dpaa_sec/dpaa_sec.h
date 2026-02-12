@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2016-2023 NXP
+ *   Copyright 2016-2024 NXP
  *
  */
 
@@ -62,8 +62,8 @@ enum dpaa_sec_op_type {
 #define DPAA_SEC_MAX_DESC_SIZE  64
 /* code or cmd block to caam */
 struct sec_cdb {
-	struct {
-		union {
+	struct __rte_packed_begin {
+		union __rte_packed_begin {
 			uint32_t word;
 			struct {
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
@@ -76,9 +76,9 @@ struct sec_cdb {
 				uint16_t rsvd63_48;
 #endif
 			} field;
-		} __packed hi;
+		} __rte_packed_end hi;
 
-		union {
+		union __rte_packed_begin {
 			uint32_t word;
 			struct {
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
@@ -101,8 +101,8 @@ struct sec_cdb {
 				unsigned int rsvd31_30:2;
 #endif
 			} field;
-		} __packed lo;
-	} __packed sh_hdr;
+		} __rte_packed_end lo;
+	} __rte_packed_end sh_hdr;
 
 	uint32_t sh_desc[DPAA_SEC_MAX_DESC_SIZE];
 };
@@ -142,6 +142,16 @@ typedef struct dpaa_sec_job* (*dpaa_sec_build_raw_dp_fd_t)(uint8_t *drv_ctx,
 			union rte_crypto_sym_ofs ofs,
 			void *userdata,
 			struct qm_fd *fd);
+
+struct dpaa_ipv4_udp {
+	struct ip ip4_hdr;
+	struct rte_udp_hdr udp_hdr;
+};
+
+struct dpaa_ipv6_udp {
+	struct rte_ipv6_hdr ip6_hdr;
+	struct rte_udp_hdr udp_hdr;
+};
 
 typedef struct dpaa_sec_session_entry {
 	struct sec_cdb cdb;	/**< cmd block associated with qp */
@@ -191,6 +201,8 @@ typedef struct dpaa_sec_session_entry {
 			union {
 				struct ip ip4_hdr;
 				struct rte_ipv6_hdr ip6_hdr;
+				struct dpaa_ipv4_udp udp4;
+				struct dpaa_ipv6_udp udp6;
 			};
 			uint8_t auth_cipher_text;
 				/**< Authenticate/cipher ordering */
@@ -989,7 +1001,14 @@ static const struct rte_security_capability dpaa_sec_security_cap[] = {
 			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
 			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
 			.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS,
-			.options = { 0 },
+			.options = {
+				.copy_df = 1,
+				.copy_dscp = 1,
+				.dec_ttl = 1,
+				.ecn = 1,
+				.esn = 1,
+				.udp_encap = 1,
+			},
 			.replay_win_sz_max = 128
 		},
 		.crypto_capabilities = dpaa_sec_capabilities
@@ -1001,7 +1020,14 @@ static const struct rte_security_capability dpaa_sec_security_cap[] = {
 			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
 			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
 			.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
-			.options = { 0 },
+			.options = {
+				.copy_df = 1,
+				.copy_dscp = 1,
+				.dec_ttl = 1,
+				.ecn = 1,
+				.esn = 1,
+				.udp_encap = 1,
+			},
 			.replay_win_sz_max = 128
 		},
 		.crypto_capabilities = dpaa_sec_capabilities

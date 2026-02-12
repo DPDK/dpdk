@@ -62,7 +62,7 @@ struct tso_info {
 };
 
 /** A table to translate Rx completion flags to packet type. */
-uint32_t mlx4_ptype_table[0x100] __rte_cache_aligned = {
+alignas(RTE_CACHE_LINE_SIZE) uint32_t mlx4_ptype_table[0x100] = {
 	/*
 	 * The index to the array should have:
 	 *  bit[7] - MLX4_CQE_L2_TUNNEL
@@ -638,7 +638,7 @@ mlx4_tx_burst_fill_tso_hdr(struct rte_mbuf *buf,
 			thdr.vto = sq->buf;
 		/* New TXBB, stash the first 32bits for later use. */
 		pv[*pv_counter].dst = (volatile uint32_t *)thdr.to;
-		pv[(*pv_counter)++].val = *(uint32_t *)from,
+		pv[(*pv_counter)++].val = *(uint32_t *)from;
 		from += sizeof(uint32_t);
 		thdr.to += sizeof(uint32_t);
 		remain_size -= txbb_avail_space + sizeof(uint32_t);

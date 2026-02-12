@@ -58,6 +58,14 @@ static const char *const valid_args[] = {CN10K_ML_FW_PATH,
 /* Supported OCM page sizes: 1KB, 2KB, 4KB, 8KB and 16KB */
 static const int valid_ocm_page_size[] = {1024, 2048, 4096, 8192, 16384};
 
+/* Error type database */
+struct cn10k_ml_error_db ml_etype_db[] = {
+	{ML_CN10K_ETYPE_NO_ERROR, "NO_ERROR"},	      {ML_CN10K_ETYPE_FW_NONFATAL, "FW_NON_FATAL"},
+	{ML_CN10K_ETYPE_HW_NONFATAL, "HW_NON_FATAL"}, {ML_CN10K_ETYPE_HW_FATAL, "HW_FATAL"},
+	{ML_CN10K_ETYPE_HW_WARNING, "HW_WARNING"},    {ML_CN10K_ETYPE_DRIVER, "DRIVER_ERROR"},
+	{ML_CN10K_ETYPE_UNKNOWN, "UNKNOWN_ERROR"},
+};
+
 static int
 parse_string_arg(const char *key __rte_unused, const char *value, void *extra_args)
 {
@@ -108,14 +116,14 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *cn10
 
 	kvlist = rte_kvargs_parse(devargs->args, valid_args);
 	if (kvlist == NULL) {
-		plt_err("Error parsing devargs\n");
+		plt_err("Error parsing devargs");
 		return -EINVAL;
 	}
 
 	if (rte_kvargs_count(kvlist, CN10K_ML_FW_PATH) == 1) {
 		ret = rte_kvargs_process(kvlist, CN10K_ML_FW_PATH, &parse_string_arg, &fw_path);
 		if (ret < 0) {
-			plt_err("Error processing arguments, key = %s\n", CN10K_ML_FW_PATH);
+			plt_err("Error processing arguments, key = %s", CN10K_ML_FW_PATH);
 			ret = -EINVAL;
 			goto exit;
 		}
@@ -126,7 +134,7 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *cn10
 		ret = rte_kvargs_process(kvlist, CN10K_ML_FW_ENABLE_DPE_WARNINGS,
 					 &parse_integer_arg, &cn10k_mldev->fw.enable_dpe_warnings);
 		if (ret < 0) {
-			plt_err("Error processing arguments, key = %s\n",
+			plt_err("Error processing arguments, key = %s",
 				CN10K_ML_FW_ENABLE_DPE_WARNINGS);
 			ret = -EINVAL;
 			goto exit;
@@ -138,7 +146,7 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *cn10
 		ret = rte_kvargs_process(kvlist, CN10K_ML_FW_REPORT_DPE_WARNINGS,
 					 &parse_integer_arg, &cn10k_mldev->fw.report_dpe_warnings);
 		if (ret < 0) {
-			plt_err("Error processing arguments, key = %s\n",
+			plt_err("Error processing arguments, key = %s",
 				CN10K_ML_FW_REPORT_DPE_WARNINGS);
 			ret = -EINVAL;
 			goto exit;
@@ -150,7 +158,7 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *cn10
 		ret = rte_kvargs_process(kvlist, CN10K_ML_DEV_CACHE_MODEL_DATA, &parse_integer_arg,
 					 &cn10k_mldev->cache_model_data);
 		if (ret < 0) {
-			plt_err("Error processing arguments, key = %s\n",
+			plt_err("Error processing arguments, key = %s",
 				CN10K_ML_DEV_CACHE_MODEL_DATA);
 			ret = -EINVAL;
 			goto exit;
@@ -162,7 +170,7 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *cn10
 		ret = rte_kvargs_process(kvlist, CN10K_ML_OCM_ALLOC_MODE, &parse_string_arg,
 					 &ocm_alloc_mode);
 		if (ret < 0) {
-			plt_err("Error processing arguments, key = %s\n", CN10K_ML_OCM_ALLOC_MODE);
+			plt_err("Error processing arguments, key = %s", CN10K_ML_OCM_ALLOC_MODE);
 			ret = -EINVAL;
 			goto exit;
 		}
@@ -173,7 +181,7 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *cn10
 		ret = rte_kvargs_process(kvlist, CN10K_ML_DEV_HW_QUEUE_LOCK, &parse_integer_arg,
 					 &cn10k_mldev->hw_queue_lock);
 		if (ret < 0) {
-			plt_err("Error processing arguments, key = %s\n",
+			plt_err("Error processing arguments, key = %s",
 				CN10K_ML_DEV_HW_QUEUE_LOCK);
 			ret = -EINVAL;
 			goto exit;
@@ -185,7 +193,7 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *cn10
 		ret = rte_kvargs_process(kvlist, CN10K_ML_OCM_PAGE_SIZE, &parse_integer_arg,
 					 &cn10k_mldev->ocm_page_size);
 		if (ret < 0) {
-			plt_err("Error processing arguments, key = %s\n", CN10K_ML_OCM_PAGE_SIZE);
+			plt_err("Error processing arguments, key = %s", CN10K_ML_OCM_PAGE_SIZE);
 			ret = -EINVAL;
 			goto exit;
 		}
@@ -204,7 +212,7 @@ check_args:
 	} else {
 		if ((cn10k_mldev->fw.enable_dpe_warnings < 0) ||
 		    (cn10k_mldev->fw.enable_dpe_warnings > 1)) {
-			plt_err("Invalid argument, %s = %d\n", CN10K_ML_FW_ENABLE_DPE_WARNINGS,
+			plt_err("Invalid argument, %s = %d", CN10K_ML_FW_ENABLE_DPE_WARNINGS,
 				cn10k_mldev->fw.enable_dpe_warnings);
 			ret = -EINVAL;
 			goto exit;
@@ -218,7 +226,7 @@ check_args:
 	} else {
 		if ((cn10k_mldev->fw.report_dpe_warnings < 0) ||
 		    (cn10k_mldev->fw.report_dpe_warnings > 1)) {
-			plt_err("Invalid argument, %s = %d\n", CN10K_ML_FW_REPORT_DPE_WARNINGS,
+			plt_err("Invalid argument, %s = %d", CN10K_ML_FW_REPORT_DPE_WARNINGS,
 				cn10k_mldev->fw.report_dpe_warnings);
 			ret = -EINVAL;
 			goto exit;
@@ -231,7 +239,7 @@ check_args:
 		cn10k_mldev->cache_model_data = CN10K_ML_DEV_CACHE_MODEL_DATA_DEFAULT;
 	} else {
 		if ((cn10k_mldev->cache_model_data < 0) || (cn10k_mldev->cache_model_data > 1)) {
-			plt_err("Invalid argument, %s = %d\n", CN10K_ML_DEV_CACHE_MODEL_DATA,
+			plt_err("Invalid argument, %s = %d", CN10K_ML_DEV_CACHE_MODEL_DATA,
 				cn10k_mldev->cache_model_data);
 			ret = -EINVAL;
 			goto exit;
@@ -244,7 +252,7 @@ check_args:
 	} else {
 		if (!((strcmp(ocm_alloc_mode, "lowest") == 0) ||
 		      (strcmp(ocm_alloc_mode, "largest") == 0))) {
-			plt_err("Invalid argument, %s = %s\n", CN10K_ML_OCM_ALLOC_MODE,
+			plt_err("Invalid argument, %s = %s", CN10K_ML_OCM_ALLOC_MODE,
 				ocm_alloc_mode);
 			ret = -EINVAL;
 			goto exit;
@@ -257,7 +265,7 @@ check_args:
 		cn10k_mldev->hw_queue_lock = CN10K_ML_DEV_HW_QUEUE_LOCK_DEFAULT;
 	} else {
 		if ((cn10k_mldev->hw_queue_lock < 0) || (cn10k_mldev->hw_queue_lock > 1)) {
-			plt_err("Invalid argument, %s = %d\n", CN10K_ML_DEV_HW_QUEUE_LOCK,
+			plt_err("Invalid argument, %s = %d", CN10K_ML_DEV_HW_QUEUE_LOCK,
 				cn10k_mldev->hw_queue_lock);
 			ret = -EINVAL;
 			goto exit;
@@ -269,7 +277,7 @@ check_args:
 		cn10k_mldev->ocm_page_size = CN10K_ML_OCM_PAGE_SIZE_DEFAULT;
 	} else {
 		if (cn10k_mldev->ocm_page_size < 0) {
-			plt_err("Invalid argument, %s = %d\n", CN10K_ML_OCM_PAGE_SIZE,
+			plt_err("Invalid argument, %s = %d", CN10K_ML_OCM_PAGE_SIZE,
 				cn10k_mldev->ocm_page_size);
 			ret = -EINVAL;
 			goto exit;
@@ -284,7 +292,7 @@ check_args:
 		}
 
 		if (!found) {
-			plt_err("Unsupported ocm_page_size = %d\n", cn10k_mldev->ocm_page_size);
+			plt_err("Unsupported ocm_page_size = %d", cn10k_mldev->ocm_page_size);
 			ret = -EINVAL;
 			goto exit;
 		}
@@ -773,7 +781,7 @@ cn10k_ml_fw_load(struct cnxk_ml_dev *cnxk_mldev)
 		/* Read firmware image to a buffer */
 		ret = rte_firmware_read(fw->path, &fw_buffer, &fw_size);
 		if ((ret < 0) || (fw_buffer == NULL)) {
-			plt_err("Unable to read firmware data: %s\n", fw->path);
+			plt_err("Unable to read firmware data: %s", fw->path);
 			return ret;
 		}
 

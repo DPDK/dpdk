@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_RTE_SWX_TABLE_H__
 #define __INCLUDE_RTE_SWX_TABLE_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX Table
@@ -313,9 +309,5 @@ struct rte_swx_table_ops {
 	/** Table free. Must be non-NULL. */
 	rte_swx_table_free_t free;
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

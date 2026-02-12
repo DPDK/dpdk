@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 
+#include <eal_export.h>
 #include <rte_malloc.h>
 #include <rte_devargs.h>
 #include <rte_errno.h>
@@ -102,12 +103,14 @@ pci_ids_table_update(const struct rte_pci_id *driver_id_table)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_dev_is_pci)
 bool
 mlx5_dev_is_pci(const struct rte_device *dev)
 {
 	return strcmp(dev->bus->name, "pci") == 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_dev_is_vf_pci)
 bool
 mlx5_dev_is_vf_pci(const struct rte_pci_device *pci_dev)
 {
@@ -242,4 +245,4 @@ RTE_FINI(mlx5_common_pci_finish)
 	}
 }
 
-RTE_PMD_EXPORT_NAME(mlx5_common_pci, __COUNTER__);
+RTE_PMD_EXPORT_NAME(mlx5_common_pci);

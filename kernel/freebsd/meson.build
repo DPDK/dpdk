@@ -29,7 +29,7 @@ foreach k:kmods
                 'KMOD_CFLAGS=' + ' '.join(kmod_cflags),
                 'CC=clang'],
             depends: built_kmods, # make each module depend on prev
-            build_by_default: get_option('enable_kmods'),
-            install: get_option('enable_kmods'),
+            build_by_default: true,
+            install: true,
             install_dir: '/boot/modules/')
 endforeach

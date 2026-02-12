@@ -5,6 +5,8 @@
 #ifndef _NET_CRC_H_
 #define _NET_CRC_H_
 
+#include "rte_net_crc.h"
+
 /*
  * Different implementations of CRC
  */

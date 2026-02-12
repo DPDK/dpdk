@@ -50,10 +50,10 @@ struct array_of_ptrs {
 	phys_addr_t pointer[0];
 };
 
-struct qat_inter_sgl {
+struct __rte_cache_aligned __rte_packed_begin qat_inter_sgl {
 	qat_sgl_hdr;
 	struct qat_flat_buf buffers[QAT_NUM_BUFS_IN_IM_SGL];
-} __rte_packed __rte_cache_aligned;
+} __rte_packed_end;
 
 
 struct qat_comp_op_cookie {

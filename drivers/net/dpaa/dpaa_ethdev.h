@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2014-2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2017-2019 NXP
+ *   Copyright 2017-2024 NXP
  *
  */
 #ifndef __DPAA_ETHDEV_H__
@@ -78,8 +78,11 @@
 #define DPAA_IF_RX_CONTEXT_STASH		0
 
 /* Each "debug" FQ is represented by one of these */
-#define DPAA_DEBUG_FQ_RX_ERROR   0
-#define DPAA_DEBUG_FQ_TX_ERROR   1
+enum {
+	DPAA_DEBUG_FQ_RX_ERROR,
+	DPAA_DEBUG_FQ_TX_ERROR,
+	DPAA_DEBUG_FQ_MAX_NUM
+};
 
 #define DPAA_RSS_OFFLOAD_ALL ( \
 	RTE_ETH_RSS_L2_PAYLOAD | \
@@ -107,11 +110,18 @@
 #define DPAA_FD_CMD_CFQ			0x00ffffff
 /**< Confirmation Frame Queue */
 
+#define DPAA_1G_MAC_START_IDX 1
+#define DPAA_10G_MAC_START_IDX 9
+#define DPAA_2_5G_MAC_START_IDX DPAA_10G_MAC_START_IDX
+
 #define DPAA_DEFAULT_RXQ_VSP_ID		1
 
 #define FMC_FILE "/tmp/fmc.bin"
 
 extern struct rte_mempool *dpaa_tx_sg_pool;
+
+/* PMD related logs */
+extern int dpaa_logtype_pmd;
 
 /* structure to free external and indirect
  * buffers.
@@ -131,8 +141,9 @@ struct dpaa_if {
 	struct qman_fq *rx_queues;
 	struct qman_cgr *cgr_rx;
 	struct qman_fq *tx_queues;
+	struct qman_fq *tx_conf_queues;
 	struct qman_cgr *cgr_tx;
-	struct qman_fq debug_queues[2];
+	struct qman_fq debug_queues[DPAA_DEBUG_FQ_MAX_NUM];
 	uint16_t nb_rx_queues;
 	uint16_t nb_tx_queues;
 	uint32_t ifid;
@@ -142,6 +153,16 @@ struct dpaa_if {
 	void *netenv_handle;
 	void *scheme_handle[2];
 	uint32_t scheme_count;
+	int ts_enable;
+	/*stores timestamp of last received packet on dev*/
+	uint64_t rx_timestamp;
+	/*stores timestamp of last received tx confirmation packet on dev*/
+	uint64_t tx_timestamp;
+	uint64_t tx_old_timestamp;
+	/* stores pointer to next tx_conf queue that should be processed,
+	 * it corresponds to last packet transmitted
+	 */
+	struct qman_fq *next_tx_conf_queue;
 
 	void *vsp_handle[DPAA_VSP_PROFILE_MAX_NUM];
 	uint32_t vsp_bpid[DPAA_VSP_PROFILE_MAX_NUM];
@@ -212,27 +233,68 @@ dpaa_rx_cb_atomic(void *event,
 		  const struct qm_dqrr_entry *dqrr,
 		  void **bufs);
 
+struct dpaa_if_rx_bmi_stats {
+	uint32_t fmbm_rstc;		/**< Rx Statistics Counters*/
+	uint32_t fmbm_rfrc;		/**< Rx Frame Counter*/
+	uint32_t fmbm_rfbc;		/**< Rx Bad Frames Counter*/
+	uint32_t fmbm_rlfc;		/**< Rx Large Frames Counter*/
+	uint32_t fmbm_rffc;		/**< Rx Filter Frames Counter*/
+	uint32_t fmbm_rfdc;		/**< Rx Frame Discard Counter*/
+	uint32_t fmbm_rfldec;		/**< Rx Frames List DMA Error Counter*/
+	uint32_t fmbm_rodc;		/**< Rx Out of Buffers Discard nntr*/
+	uint32_t fmbm_rbdc;		/**< Rx Buffers Deallocate Counter*/
+};
+
+int
+dpaa_tx_conf_queue_init(struct qman_fq *fq);
+
+int
+dpaa_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
+		struct timespec *timestamp);
+
+int
+dpaa_timesync_enable(struct rte_eth_dev *dev);
+
+int
+dpaa_timesync_disable(struct rte_eth_dev *dev);
+
+int
+dpaa_timesync_read_time(struct rte_eth_dev *dev,
+	struct timespec *timestamp);
+
+int
+dpaa_timesync_write_time(struct rte_eth_dev *dev,
+	const struct timespec *timestamp);
+int
+dpaa_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta);
+
+int
+dpaa_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
+	struct timespec *timestamp, uint32_t flags __rte_unused);
+
+uint8_t
+fm_default_vsp_id(struct fman_if *fif);
+
 /* PMD related logs */
 extern int dpaa_logtype_pmd;
 #define RTE_LOGTYPE_DPAA_PMD dpaa_logtype_pmd
 
-#define DPAA_PMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, dpaa_logtype_pmd, "%s(): " fmt "\n", \
-		__func__, ##args)
+#define DPAA_PMD_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, DPAA_PMD, "%s(): ", __func__, __VA_ARGS__)
 
 #define PMD_INIT_FUNC_TRACE() DPAA_PMD_LOG(DEBUG, " >>")
 
-#define DPAA_PMD_DEBUG(fmt, args...) \
-	DPAA_PMD_LOG(DEBUG, fmt, ## args)
-#define DPAA_PMD_ERR(fmt, args...) \
-	DPAA_PMD_LOG(ERR, fmt, ## args)
-#define DPAA_PMD_INFO(fmt, args...) \
-	DPAA_PMD_LOG(INFO, fmt, ## args)
-#define DPAA_PMD_WARN(fmt, args...) \
-	DPAA_PMD_LOG(WARNING, fmt, ## args)
+#define DPAA_PMD_DEBUG(fmt, ...) \
+	DPAA_PMD_LOG(DEBUG, fmt, ## __VA_ARGS__)
+#define DPAA_PMD_ERR(fmt, ...) \
+	DPAA_PMD_LOG(ERR, fmt, ## __VA_ARGS__)
+#define DPAA_PMD_INFO(fmt, ...) \
+	DPAA_PMD_LOG(INFO, fmt, ## __VA_ARGS__)
+#define DPAA_PMD_WARN(fmt, ...) \
+	DPAA_PMD_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 /* DP Logs, toggled out at compile time if level lower than current level */
-#define DPAA_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, DPAA_PMD, fmt, ## args)
+#define DPAA_DP_LOG(level, ...) \
+	RTE_LOG_DP_LINE(level, DPAA_PMD, __VA_ARGS__)
 
 #endif

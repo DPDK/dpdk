@@ -422,6 +422,7 @@ enum nfp_flower_cmsg_port_vnic_type {
 #define NFP_FLOWER_CMSG_PORT_PCI(x)             (((x) >> 14) & 0x3)  /* [14,15] */
 #define NFP_FLOWER_CMSG_PORT_VNIC_TYPE(x)       (((x) >> 12) & 0x3)  /* [12,13] */
 #define NFP_FLOWER_CMSG_PORT_VNIC(x)            (((x) >> 6) & 0x3f)  /* [6,11] */
+#define NFP_FLOWER_CMSG_PORT_VNIC_OFFSET(x, offset)    (NFP_FLOWER_CMSG_PORT_VNIC(x) - (offset))
 #define NFP_FLOWER_CMSG_PORT_PCIE_Q(x)          ((x) & 0x3f)         /* [0,5] */
 #define NFP_FLOWER_CMSG_PORT_PHYS_PORT_NUM(x)   ((x) & 0xff)         /* [0,7] */
 
@@ -707,6 +708,20 @@ struct nfp_flower_ipv6_gre_tun {
 	rte_be32_t reserved2;
 };
 
+/*
+ * L3 other (1W/4B)
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |            reserved           |           ethertype           |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * Note: This is only used when no specific L3 header available.
+ */
+struct nfp_flower_l3_other {
+	rte_be16_t reserved;
+	rte_be16_t ethertype;
+};
+
 struct nfp_fl_act_head {
 	uint8_t jump_id;
 	uint8_t len_lw;
@@ -723,7 +738,7 @@ struct nfp_fl_act_output {
  *    3                   2                   1
  *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |   -   |opcode |   -   |jump_id|               -               |
+ * | res |  opcode |  res  | len_lw|               -               |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |                     eth_dst_47_16_mask                        |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -762,7 +777,7 @@ struct nfp_fl_act_push_vlan {
  *    3                   2                   1
  *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |   -   |opcode |       |jump_id|               -               |
+ * | res |  opcode |  res  | len_lw|               -               |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |                     ipv4_saddr_mask                           |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -787,7 +802,7 @@ struct nfp_fl_act_set_ip4_addrs {
  *    3                   2                   1
  *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |   -   |opcode |       |jump_id|    ttl_mask   |   tos_mask    |
+ * | res |  opcode |  res  | len_lw|    ttl_mask   |   tos_mask    |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |       ttl     |      tos      |               0               |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -806,7 +821,7 @@ struct nfp_fl_act_set_ip4_ttl_tos {
  *    3                   2                   1
  *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |   -   |opcode |       |jump_id|               -               |
+ * | res |  opcode |  res  | len_lw|               -               |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |                     ipv6_addr_127_96_mask                     |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -839,7 +854,7 @@ struct nfp_fl_act_set_ipv6_addr {
  *    3                   2                   1
  *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |   -   |opcode |       |jump_id|  tclass_mask  |  hlimit_mask  |
+ * | res |  opcode |  res  | len_lw|  tclass_mask  |  hlimit_mask  |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |               0               |  tclass       |  hlimit       |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -864,7 +879,7 @@ struct nfp_fl_act_set_ipv6_tc_hl_fl {
  *    3                   2                   1
  *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |   -   |opcode |       |jump_id|               -               |
+ * | res |  opcode |  res  | len_lw|               -               |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |          src_mask             |         dst_mask              |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -885,7 +900,7 @@ struct nfp_fl_act_set_tport {
  *    3                   2                   1
  *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |  -  |  opcode |       |jump_id|              -      |M|   - |V|
+ * | res |  opcode |  res  | len_lw|              -      |M|   - |V|
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |         ipv6_daddr_127_96     /     ipv4_daddr                |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -928,7 +943,7 @@ struct nfp_fl_act_pre_tun {
  * |            var_flags          |            var_np             |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
-struct nfp_fl_act_set_tun {
+struct __rte_packed_begin nfp_fl_act_set_tun {
 	struct nfp_fl_act_head head;
 	rte_be16_t reserved;
 	rte_be64_t tun_id;
@@ -941,7 +956,7 @@ struct nfp_fl_act_set_tun {
 	uint8_t    tun_len;      /**< Only valid for NFP_FL_TUNNEL_GENEVE */
 	uint8_t    reserved2;
 	rte_be16_t tun_proto;    /**< Only valid for NFP_FL_TUNNEL_GENEVE */
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Meter
@@ -975,7 +990,32 @@ struct nfp_fl_act_mark {
 	rte_be32_t mark;
 };
 
-int nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower);
+/*
+ * Partial
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * | res |  opcode |  res  | len_lw|     flag       |     resv1    |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                         Mark                                  |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |           queue_id            |              resv2            |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * flag = 0x0: only mark action
+ * flag = 0x1: only queue action
+ * flag = 0x2: mark and queue action
+ */
+struct nfp_fl_act_partial {
+	struct nfp_fl_act_head head;
+	uint8_t flag;
+	uint8_t resv1;
+	rte_be32_t mark;
+	rte_be16_t queue_id;
+	rte_be16_t resv2;
+};
+
+int nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_pf_dev *pf_dev);
 int nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_flower_representor *repr);
 int nfp_flower_cmsg_port_mod(struct nfp_app_fw_flower *app_fw_flower,
@@ -1004,5 +1044,12 @@ int nfp_flower_cmsg_qos_delete(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_profile_conf *conf);
 int nfp_flower_cmsg_qos_stats(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_cfg_head *head);
+
+static inline bool
+nfp_flower_port_is_phy_port(uint32_t port_id)
+{
+	return (NFP_FLOWER_CMSG_PORT_TYPE(port_id) ==
+			NFP_FLOWER_CMSG_PORT_TYPE_PHYS_PORT);
+}
 
 #endif /* __NFP_CMSG_H__ */

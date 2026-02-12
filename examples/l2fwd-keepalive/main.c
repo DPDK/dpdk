@@ -41,8 +41,6 @@
 
 #include "shm.h"
 
-#define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
-
 #define NB_MBUF_PER_PORT 3000
 
 #define MAX_PKT_BURST 32
@@ -69,10 +67,10 @@ static unsigned int l2fwd_rx_queue_per_lcore = 1;
 
 #define MAX_RX_QUEUE_PER_LCORE 16
 #define MAX_TX_QUEUE_PER_PORT 16
-struct lcore_queue_conf {
+struct __rte_cache_aligned lcore_queue_conf {
 	unsigned n_rx_port;
 	unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
-} __rte_cache_aligned;
+};
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 
 struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
@@ -86,11 +84,11 @@ static struct rte_eth_conf port_conf = {
 struct rte_mempool *l2fwd_pktmbuf_pool = NULL;
 
 /* Per-port statistics struct */
-struct l2fwd_port_statistics {
+struct __rte_cache_aligned l2fwd_port_statistics {
 	uint64_t tx;
 	uint64_t rx;
 	uint64_t dropped;
-} __rte_cache_aligned;
+};
 struct l2fwd_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 
 /* A tsc-based timer responsible for triggering statistics printout */

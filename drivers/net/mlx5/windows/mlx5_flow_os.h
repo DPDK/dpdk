@@ -47,6 +47,7 @@ mlx5_flow_os_item_supported(int item)
 	case RTE_FLOW_ITEM_TYPE_IPV6:
 	case RTE_FLOW_ITEM_TYPE_VLAN:
 	case RTE_FLOW_ITEM_TYPE_ESP:
+	case RTE_FLOW_ITEM_TYPE_NVGRE:
 		return true;
 	default:
 		return false;
@@ -461,6 +462,8 @@ int mlx5_flow_os_destroy_flow(void *drv_flow_ptr);
  *   Bit-fields that holds the items detected until now.
  * @param[in] target_protocol
  *   The next protocol in the previous item.
+ * @param[in] allow_seq
+ *   The match on sequence number is supported.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -468,10 +471,12 @@ int mlx5_flow_os_destroy_flow(void *drv_flow_ptr);
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
-			    uint64_t item_flags,
-			    uint8_t target_protocol,
-			    struct rte_flow_error *error);
+mlx5_flow_os_validate_item_esp(const struct rte_eth_dev *dev,
+			       const struct rte_flow_item *item,
+			       uint64_t item_flags,
+			       uint8_t target_protocol,
+			       bool allow_seq,
+			       struct rte_flow_error *error);
 
 /**
  * Add per thread workspace to the global list for garbage collection.

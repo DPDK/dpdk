@@ -15,6 +15,10 @@
 
 #include <rte_compat.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Structure used to describe platform-specific intrinsics that may or may not
  * be supported at runtime.
@@ -29,15 +33,11 @@ struct rte_cpu_intrinsics {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Check CPU support for various intrinsics at runtime.
  *
  * @param intrinsics
  *     Pointer to a structure to be filled.
  */
-__rte_experimental
 void
 rte_cpu_get_intrinsics_support(struct rte_cpu_intrinsics *intrinsics);
 
@@ -103,5 +103,9 @@ rte_cpu_getauxval(unsigned long type);
  */
 int
 rte_cpu_strcmp_auxval(unsigned long type, const char *str);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_CPUFLAGS_H_ */

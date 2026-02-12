@@ -7,7 +7,7 @@ which jq || {
     exit 77
 }
 
-rootdir=$(readlink -f $(dirname $(readlink -f $0))/../..)
+rootdir=$(readlink -f $(dirname $(readlink -f $0))/../../..)
 tmpoutput=$(mktemp -t dpdk.test_telemetry.XXXXXX)
 trap "cat $tmpoutput; rm -f $tmpoutput" EXIT
 
@@ -15,7 +15,7 @@ call_all_telemetry() {
     telemetry_script=$rootdir/usertools/dpdk-telemetry.py
     echo >$tmpoutput
     echo "Telemetry commands log:" >>$tmpoutput
-    for cmd in $(echo / | $telemetry_script | jq -r '.["/"][]')
+    echo / | $telemetry_script | jq -r '.["/"][]' | while read cmd
     do
         for input in $cmd $cmd,0 $cmd,z
         do
@@ -25,4 +25,6 @@ call_all_telemetry() {
     done
 }
 
+! set -o | grep -q errtrace || set -o errtrace
+! set -o | grep -q pipefail || set -o pipefail
 (sleep 1 && call_all_telemetry && echo quit) | $@

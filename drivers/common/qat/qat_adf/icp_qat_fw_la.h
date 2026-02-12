@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  * Copyright(c) 2015-2019 Intel Corporation
  */
 #ifndef _ICP_QAT_FW_LA_H_
@@ -357,7 +357,7 @@ struct icp_qat_fw_cipher_auth_cd_ctrl_hdr {
 #define ICP_QAT_FW_HASH_REQUEST_PARAMETERS_OFFSET 24
 #define ICP_QAT_FW_CIPHER_REQUEST_PARAMETERS_OFFSET (0)
 
-struct icp_qat_fw_la_cipher_req_params {
+struct __rte_packed_begin icp_qat_fw_la_cipher_req_params {
 	uint32_t cipher_offset;
 	uint32_t cipher_length;
 	union {
@@ -372,9 +372,9 @@ struct icp_qat_fw_la_cipher_req_params {
 	uint16_t spc_aad_sz;
 	uint8_t reserved;
 	uint8_t spc_auth_res_sz;
-} __rte_packed;
+} __rte_packed_end;
 
-struct icp_qat_fw_la_auth_req_params {
+struct __rte_packed_begin icp_qat_fw_la_auth_req_params {
 	uint32_t auth_off;
 	uint32_t auth_len;
 	union {
@@ -389,7 +389,7 @@ struct icp_qat_fw_la_auth_req_params {
 	uint8_t resrvd1;
 	uint8_t hash_state_sz;
 	uint8_t auth_res_sz;
-} __rte_packed;
+} __rte_packed_end;
 
 struct icp_qat_fw_la_auth_req_params_resrvd_flds {
 	uint32_t resrvd[ICP_QAT_FW_NUM_LONGWORDS_6];

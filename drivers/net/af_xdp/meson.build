@@ -7,6 +7,12 @@ if is_windows
     subdir_done()
 endif
 
+if arch_subdir == 'x86' and dpdk_conf.get('RTE_ARCH_32')
+    build = false
+    reason = 'not supported on 32-bit x86'
+    subdir_done()
+endif
+
 sources = files('rte_eth_af_xdp.c')
 
 libxdp_ver = '>=1.2.2'
@@ -14,7 +20,12 @@ xdp_dep = dependency('libxdp', version : libxdp_ver, required: false, method: 'p
 bpf_dep = dependency('libbpf', required: false, method: 'pkg-config')
 if not bpf_dep.found()
     bpf_dep = cc.find_library('bpf', required: false)
+    if bpf_dep.found() and not cc.links(min_c_code, dependencies: bpf_dep)
+        bpf_dep = disabler()
+    endif
 endif
+
+cflags += no_wvla_cflag
 
 if cc.has_header('linux/if_xdp.h')
     if xdp_dep.found() and cc.has_header('xdp/xsk.h')
@@ -76,6 +87,10 @@ if build
                      prefix : '#include <bpf/libbpf.h>',
                      dependencies : bpf_dep, args: cflags)
       cflags += ['-DRTE_NET_AF_XDP_LIBBPF_XDP_ATTACH']
+  endif
+  if cc.has_function('xsk_socket__update_xskmap', prefix : xsk_check_prefix,
+                     dependencies : ext_deps, args: cflags)
+      cflags += ['-DETH_AF_XDP_UPDATE_XSKMAP']
   endif
 endif
 

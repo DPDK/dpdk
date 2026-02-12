@@ -6,13 +6,13 @@
 #ifndef BUS_PCI_DRIVER_H
 #define BUS_PCI_DRIVER_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_bus_pci.h>
 #include <dev_driver.h>
 #include <rte_compat.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Pathname of PCI devices directory. */
 __rte_internal
@@ -171,7 +171,7 @@ RTE_INIT(pciinitfn_ ##nm) \
 	(pci_drv).driver.name = RTE_STR(nm);\
 	rte_pci_register(&pci_drv); \
 } \
-RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
+RTE_PMD_EXPORT_NAME(nm)
 
 /**
  * Unregister a PCI driver.

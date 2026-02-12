@@ -12,13 +12,13 @@
  * RTE PCI Library
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdio.h>
 #include <inttypes.h>
 #include <sys/types.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * Conventional PCI and PCI-X Mode 1 devices have 256 bytes of
@@ -35,7 +35,9 @@ extern "C" {
 #define RTE_PCI_DEVICE_ID	0x02	/* 16 bits */
 #define RTE_PCI_COMMAND		0x04	/* 16 bits */
 #define RTE_PCI_STATUS		0x06	/* 16 bits */
+#define RTE_PCI_REVISION_ID	0x08	/* 8 bits */
 #define RTE_PCI_BASE_ADDRESS_0	0x10	/* 32 bits */
+#define RTE_PCI_SUBSYSTEM_ID	0x2e	/* 32 bits */
 #define RTE_PCI_CAPABILITY_LIST	0x34	/* 32 bits */
 
 /* PCI Command Register (RTE_PCI_COMMAND) */
@@ -45,12 +47,14 @@ extern "C" {
 
 /* PCI Status Register (RTE_PCI_STATUS) */
 #define RTE_PCI_STATUS_CAP_LIST		0x10	/* Support Capability List */
+#define RTE_PCI_STATUS_PARITY		0x100	/* Detected parity error */
 
 /* Base addresses (RTE_PCI_BASE_ADDRESS_*) */
 #define RTE_PCI_BASE_ADDRESS_SPACE_IO	0x01
 
 /* Capability registers (RTE_PCI_CAPABILITY_LIST) */
 #define RTE_PCI_CAP_ID_PM		0x01	/* Power Management */
+#define RTE_PCI_CAP_ID_VPD		0x03	/* Vital Product Data */
 #define RTE_PCI_CAP_ID_MSI		0x05	/* Message Signalled Interrupts */
 #define RTE_PCI_CAP_ID_VNDR		0x09	/* Vendor-Specific */
 #define RTE_PCI_CAP_ID_EXP		0x10	/* PCI Express */
@@ -64,10 +68,16 @@ extern "C" {
 #define RTE_PCI_PM_CTRL_PME_ENABLE	0x0100	/* PME pin enable */
 #define RTE_PCI_PM_CTRL_PME_STATUS	0x8000	/* PME pin status */
 
+/* Vital Product Data (RTE_PCI_CAP_ID_VPD) */
+#define RTE_PCI_VPD_ADDR		2	/* Address to access (15 bits!) */
+#define RTE_PCI_VPD_ADDR_F		0x8000	/* Write 0, 1 indicates completion */
+#define RTE_PCI_VPD_DATA		4	/* 32-bits of data returned here */
+
 /* PCI Express capability registers (RTE_PCI_CAP_ID_EXP) */
 #define RTE_PCI_EXP_TYPE_RC_EC		0xa	/* Root Complex Event Collector */
 #define RTE_PCI_EXP_DEVCTL		0x08	/* Device Control */
 #define RTE_PCI_EXP_DEVCTL_PAYLOAD	0x00e0	/* Max_Payload_Size */
+#define RTE_PCI_EXP_DEVCTL_EXT_TAG	0x0100	/* Extended Tag Field Enable */
 #define RTE_PCI_EXP_DEVCTL_READRQ	0x7000	/* Max_Read_Request_Size */
 #define RTE_PCI_EXP_DEVCTL_BCR_FLR	0x8000	/* Bridge Configuration Retry / FLR */
 #define RTE_PCI_EXP_DEVSTA		0x0a	/* Device Status */

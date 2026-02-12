@@ -219,9 +219,9 @@ mlx5_flow_os_create_flow(void *matcher, void *match_value,
 		default:
 			break;
 		}
-		MLX5_SET(devx_fs_rule_add_in, in, match_criteria_enable,
-			 MLX5_MATCH_OUTER_HEADERS);
 	}
+	MLX5_SET(devx_fs_rule_add_in, in, match_criteria_enable,
+		mlx5_matcher->attr.match_criteria_enable);
 	*flow = mlx5_glue->devx_fs_rule_add(mlx5_matcher->ctx, in, sizeof(in));
 	return (*flow) ? 0 : -1;
 }
@@ -424,9 +424,11 @@ mlx5_flow_os_workspace_gc_add(struct mlx5_flow_workspace *ws)
 }
 
 int
-mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
+mlx5_flow_os_validate_item_esp(const struct rte_eth_dev *dev,
+			    const struct rte_flow_item *item,
 			    uint64_t item_flags,
 			    uint8_t target_protocol,
+			    bool allow_seq,
 			    struct rte_flow_error *error)
 {
 	const struct rte_flow_item_esp *mask = item->mask;
@@ -436,6 +438,12 @@ mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
 				      MLX5_FLOW_LAYER_OUTER_L3;
 	const uint64_t l4m = tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
 				      MLX5_FLOW_LAYER_OUTER_L4;
+	static const struct rte_flow_item_esp mlx5_flow_item_esp_mask = {
+		.hdr = {
+			.spi = RTE_BE32(0xffffffff),
+			.seq = RTE_BE32(0xffffffff),
+		},
+	};
 	int ret;
 
 	if (!(item_flags & l3m))
@@ -459,8 +467,9 @@ mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
 					  "matching on spi field in esp is not"
 					  " supported on Windows");
 	ret = mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
-		 (const uint8_t *)&rte_flow_item_esp_mask,
+		(dev, item, (const uint8_t *)mask,
+		 allow_seq ? (const uint8_t *)&mlx5_flow_item_esp_mask :
+			     (const uint8_t *)&rte_flow_item_esp_mask,
 		 sizeof(struct rte_flow_item_esp), MLX5_ITEM_RANGE_NOT_ACCEPTED,
 		 error);
 	if (ret < 0)

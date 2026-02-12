@@ -134,12 +134,12 @@ struct bnxt_ulp_rte_act_info ulp_act_info[] = {
 	.proto_act_func          = ulp_rte_set_ipv4_dst_act_handler
 	},
 	[RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC] = {
-	.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
-	.proto_act_func          = NULL
+	.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+	.proto_act_func          = ulp_rte_set_ipv6_src_act_handler
 	},
 	[RTE_FLOW_ACTION_TYPE_SET_IPV6_DST] = {
-	.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
-	.proto_act_func          = NULL
+	.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+	.proto_act_func          = ulp_rte_set_ipv6_dst_act_handler
 	},
 	[RTE_FLOW_ACTION_TYPE_SET_TP_SRC] = {
 	.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
@@ -158,8 +158,8 @@ struct bnxt_ulp_rte_act_info ulp_act_info[] = {
 	.proto_act_func          = ulp_rte_dec_ttl_act_handler
 	},
 	[RTE_FLOW_ACTION_TYPE_SET_TTL] = {
-	.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
-	.proto_act_func          = NULL
+	.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+	.proto_act_func          = ulp_rte_set_ttl_act_handler
 	},
 	[RTE_FLOW_ACTION_TYPE_SET_MAC_SRC] = {
 	.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
@@ -297,8 +297,8 @@ struct bnxt_ulp_rte_hdr_info ulp_hdr_info[] = {
 	.proto_hdr_func          = NULL
 	},
 	[RTE_FLOW_ITEM_TYPE_MPLS] = {
-	.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
-	.proto_hdr_func          = NULL
+	.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+	.proto_hdr_func          = ulp_rte_mpls_hdr_handler
 	},
 	[RTE_FLOW_ITEM_TYPE_GRE] = {
 	.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
@@ -325,12 +325,12 @@ struct bnxt_ulp_rte_hdr_info ulp_hdr_info[] = {
 	.proto_hdr_func          = NULL
 	},
 	[RTE_FLOW_ITEM_TYPE_GENEVE] = {
-	.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
-	.proto_hdr_func          = NULL
+	.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+	.proto_hdr_func          = ulp_rte_geneve_hdr_handler
 	},
 	[RTE_FLOW_ITEM_TYPE_VXLAN_GPE] = {
-	.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
-	.proto_hdr_func          = NULL
+	.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+	.proto_hdr_func          = ulp_rte_vxlan_gpe_hdr_handler
 	},
 	[RTE_FLOW_ITEM_TYPE_ARP_ETH_IPV4] = {
 	.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
@@ -373,8 +373,8 @@ struct bnxt_ulp_rte_hdr_info ulp_hdr_info[] = {
 	.proto_hdr_func          = NULL
 	},
 	[RTE_FLOW_ITEM_TYPE_GRE_KEY] = {
-	.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
-	.proto_hdr_func          = NULL
+	.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+	.proto_hdr_func          = ulp_rte_gre_key_hdr_handler
 	},
 	[RTE_FLOW_ITEM_TYPE_GTP_PSC] = {
 	.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
@@ -414,7 +414,7 @@ struct bnxt_ulp_rte_hdr_info ulp_hdr_info[] = {
 	},
 	[RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR] = {
 	.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
-	.proto_hdr_func          = ulp_rte_port_hdr_handler
+	.proto_hdr_func          = ulp_rte_ecpri_hdr_handler
 	},
 	[RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT] = {
 	.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,

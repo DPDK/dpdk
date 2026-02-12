@@ -11,17 +11,17 @@
 #include <fcntl.h>
 
 #include <rte_eal.h>
+#include <rte_eal_paging.h>
 #include <rte_errno.h>
 #include <rte_log.h>
 #include <rte_string_fns.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 #include "eal_internal_cfg.h"
 #include "eal_filesystem.h"
 #include "eal_memcfg.h"
 #include "eal_options.h"
-
-#define EAL_PAGE_SIZE (sysconf(_SC_PAGESIZE))
 
 uint64_t eal_get_baseaddr(void)
 {
@@ -36,6 +36,7 @@ uint64_t eal_get_baseaddr(void)
 /*
  * Get physical address of any mapped virtual address in the current process.
  */
+RTE_EXPORT_SYMBOL(rte_mem_virt2phy)
 phys_addr_t
 rte_mem_virt2phy(const void *virtaddr)
 {
@@ -44,6 +45,7 @@ rte_mem_virt2phy(const void *virtaddr)
 	(void)virtaddr;
 	return RTE_BAD_IOVA;
 }
+RTE_EXPORT_SYMBOL(rte_mem_virt2iova)
 rte_iova_t
 rte_mem_virt2iova(const void *virtaddr)
 {
@@ -188,7 +190,7 @@ rte_eal_hugepage_init(void)
 			addr = mmap(addr, page_sz, PROT_READ|PROT_WRITE,
 					MAP_SHARED | MAP_FIXED,
 					hpi->lock_descriptor,
-					j * EAL_PAGE_SIZE);
+					j * rte_mem_page_size());
 			if (addr == MAP_FAILED) {
 				EAL_LOG(ERR, "Failed to mmap buffer %u from %s",
 						j, hpi->hugedir);
@@ -240,7 +242,7 @@ attach_segment(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 
 	addr = mmap(ms->addr, ms->len, PROT_READ | PROT_WRITE,
 			MAP_SHARED | MAP_FIXED, wa->fd_hugepage,
-			wa->seg_idx * EAL_PAGE_SIZE);
+			wa->seg_idx * rte_mem_page_size());
 	if (addr == MAP_FAILED || addr != ms->addr)
 		return -1;
 	wa->seg_idx++;
@@ -295,6 +297,7 @@ error:
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_using_phys_addrs)
 int
 rte_eal_using_phys_addrs(void)
 {

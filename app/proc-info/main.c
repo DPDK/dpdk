@@ -19,6 +19,7 @@
 #include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_ethdev.h>
+#include <rte_malloc.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_launch.h>
@@ -60,6 +61,7 @@ static unsigned long enabled_port_mask;
 static uint32_t enable_stats;
 /* Enable xstats. */
 static uint32_t enable_xstats;
+static uint32_t enable_xstats_hide_zero;
 /* Enable collectd format */
 static uint32_t enable_collectd_format;
 /* FD to send collectd format messages to STDOUT */
@@ -161,8 +163,8 @@ proc_info_usage(const char *prgname)
 		"  -m to display DPDK memory zones, segments and TAILQ information\n"
 		"  -p PORTMASK: hexadecimal bitmask of ports to retrieve stats for\n"
 		"  --stats: to display port statistics, enabled by default\n"
-		"  --xstats: to display extended port statistics, disabled by "
-			"default\n"
+		"  --xstats[=hide_zero]: to display extended port statistics, disabled by default, "
+			"support hide zero.\n"
 #ifdef RTE_LIB_METRICS
 		"  --metrics: to display derived metrics of the ports, disabled by "
 			"default\n"
@@ -424,7 +426,7 @@ proc_info_parse_args(int argc, char **argv)
 	static struct option long_option[] = {
 		{"stats", 0, NULL, 0},
 		{"stats-reset", 0, NULL, 0},
-		{"xstats", 0, NULL, 0},
+		{"xstats", optional_argument, NULL, 0},
 #ifdef RTE_LIB_METRICS
 		{"metrics", 0, NULL, 0},
 #endif
@@ -475,12 +477,17 @@ proc_info_parse_args(int argc, char **argv)
 		case 0:
 			/* Print stats */
 			if (!strncmp(long_option[option_index].name, "stats",
-					MAX_LONG_OPT_SZ))
+					MAX_LONG_OPT_SZ)) {
 				enable_stats = 1;
 			/* Print xstats */
-			else if (!strncmp(long_option[option_index].name, "xstats",
-					MAX_LONG_OPT_SZ))
+			} else if (!strncmp(long_option[option_index].name, "xstats",
+					MAX_LONG_OPT_SZ)) {
 				enable_xstats = 1;
+				if (optarg != NULL && !strncmp(optarg, "hide_zero",
+				    MAX_LONG_OPT_SZ))
+					enable_xstats_hide_zero = 1;
+
+			}
 #ifdef RTE_LIB_METRICS
 			else if (!strncmp(long_option[option_index].name,
 					"metrics",
@@ -637,6 +644,10 @@ meminfo_display(void)
 	rte_memzone_dump(stdout);
 	printf("---------- END_MEMORY_ZONES -----------\n");
 
+	printf("---------- MALLOC_HEAP_DUMP -----------\n");
+	rte_malloc_dump_heaps(stdout);
+	printf("-------- END_MALLOC_HEAP_DUMP ---------\n");
+
 	printf("------------- TAIL_QUEUES -------------\n");
 	rte_dump_tailq(stdout);
 	printf("---------- END_TAIL_QUEUES ------------\n");
@@ -646,7 +657,6 @@ static void
 nic_stats_display(uint16_t port_id)
 {
 	struct rte_eth_stats stats;
-	uint8_t i;
 
 	static const char *nic_stats_border = "########################";
 
@@ -662,21 +672,6 @@ nic_stats_display(uint16_t port_id)
 	       "  TX-bytes:  %-10"PRIu64"\n", stats.opackets, stats.oerrors,
 	       stats.obytes);
 
-	printf("\n");
-	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
-		printf("  Stats reg %2d RX-packets: %-10"PRIu64
-		       "  RX-errors: %-10"PRIu64
-		       "  RX-bytes: %-10"PRIu64"\n",
-		       i, stats.q_ipackets[i], stats.q_errors[i], stats.q_ibytes[i]);
-	}
-
-	printf("\n");
-	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
-		printf("  Stats reg %2d TX-packets: %-10"PRIu64
-		       "  TX-bytes: %-10"PRIu64"\n",
-		       i, stats.q_opackets[i], stats.q_obytes[i]);
-	}
-
 	printf("  %s############################%s\n",
 		   nic_stats_border, nic_stats_border);
 }
@@ -691,7 +686,7 @@ nic_stats_clear(uint16_t port_id)
 
 static void collectd_resolve_cnt_type(char *cnt_type, size_t cnt_type_len,
 				      const char *cnt_name) {
-	char *type_end = strrchr(cnt_name, '_');
+	const char *type_end = strrchr(cnt_name, '_');
 
 	if ((type_end != NULL) &&
 	    (strncmp(cnt_name, "rx_", strlen("rx_")) == 0)) {
@@ -845,6 +840,8 @@ nic_xstats_display(uint16_t port_id)
 	}
 
 	for (i = 0; i < len; i++) {
+		if (enable_xstats_hide_zero && values[i] == 0)
+			continue;
 		if (enable_collectd_format) {
 			char counter_type[MAX_STRING_LEN];
 			char buf[MAX_STRING_LEN];
@@ -2124,7 +2121,7 @@ main(int argc, char **argv)
 {
 	int ret;
 	int i;
-	char c_flag[] = "-c1";
+	char c_flag[] = "-l0";
 	char n_flag[] = "-n4";
 	char mp_flag[] = "--proc-type=secondary";
 	char log_flag[] = "--log-level=6";
@@ -2166,11 +2163,11 @@ main(int argc, char **argv)
 
 	if (mem_info) {
 		meminfo_display();
-		return 0;
+		goto cleanup;
 	}
 
 	if (eventdev_xstats() > 0)
-		return 0;
+		goto cleanup;
 
 	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports == 0)
@@ -2251,6 +2248,7 @@ main(int argc, char **argv)
 	RTE_ETH_FOREACH_DEV(i)
 		rte_eth_dev_close(i);
 
+cleanup:
 	ret = rte_eal_cleanup();
 	if (ret)
 		printf("Error from rte_eal_cleanup(), %d\n", ret);

@@ -237,12 +237,9 @@
  * \endcode
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <rte_compat.h>
+#include <rte_bitops.h>
 #include <rte_common.h>
+#include <rte_compat.h>
 #include <rte_errno.h>
 #include <rte_mbuf_pool_ops.h>
 #include <rte_mempool.h>
@@ -253,7 +250,7 @@ struct rte_mbuf; /* we just use mbuf pointers; no need to include rte_mbuf.h */
 struct rte_event;
 
 /* Event device capability bitmap flags */
-#define RTE_EVENT_DEV_CAP_QUEUE_QOS           (1ULL << 0)
+#define RTE_EVENT_DEV_CAP_QUEUE_QOS           RTE_BIT32(0)
 /**< Event scheduling prioritization is based on the priority and weight
  * associated with each event queue.
  *
@@ -271,7 +268,7 @@ struct rte_event;
  *  @see rte_event_queue_setup()
  *  @see rte_event_queue_attr_set()
  */
-#define RTE_EVENT_DEV_CAP_EVENT_QOS           (1ULL << 1)
+#define RTE_EVENT_DEV_CAP_EVENT_QOS           RTE_BIT32(1)
 /**< Event scheduling prioritization is based on the priority associated with
  *  each event.
  *
@@ -285,7 +282,7 @@ struct rte_event;
 
  *  @see rte_event_enqueue_burst()
  */
-#define RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED   (1ULL << 2)
+#define RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED   RTE_BIT32(2)
 /**< Event device operates in distributed scheduling mode.
  *
  * In distributed scheduling mode, event scheduling happens in HW or
@@ -295,7 +292,7 @@ struct rte_event;
  *
  * @see rte_event_dev_service_id_get()
  */
-#define RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES     (1ULL << 3)
+#define RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES     RTE_BIT32(3)
 /**< Event device is capable of accepting enqueued events, of any type
  * advertised as supported by the device, to all destination queues.
  *
@@ -319,7 +316,7 @@ struct rte_event;
  * @see rte_event_queue_conf.schedule_type
  * @see rte_event_enqueue_burst()
  */
-#define RTE_EVENT_DEV_CAP_BURST_MODE          (1ULL << 4)
+#define RTE_EVENT_DEV_CAP_BURST_MODE          RTE_BIT32(4)
 /**< Event device is capable of operating in burst mode for enqueue(forward,
  * release) and dequeue operation.
  *
@@ -330,7 +327,7 @@ struct rte_event;
  * @see rte_event_dequeue_burst()
  * @see rte_event_enqueue_burst()
  */
-#define RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE    (1ULL << 5)
+#define RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE    RTE_BIT32(5)
 /**< Event device ports support disabling the implicit release feature, in
  * which the port will release all unreleased events in its dequeue operation.
  *
@@ -343,7 +340,7 @@ struct rte_event;
  * @see rte_event_enqueue_burst()
  */
 
-#define RTE_EVENT_DEV_CAP_NONSEQ_MODE         (1ULL << 6)
+#define RTE_EVENT_DEV_CAP_NONSEQ_MODE         RTE_BIT32(6)
 /**< Event device is capable of operating in non-sequential mode.
  *
  * The path of the event is not necessary to be sequential. Application can change
@@ -355,7 +352,7 @@ struct rte_event;
  * qid which is not the next in the sequence.
  */
 
-#define RTE_EVENT_DEV_CAP_RUNTIME_PORT_LINK   (1ULL << 7)
+#define RTE_EVENT_DEV_CAP_RUNTIME_PORT_LINK   RTE_BIT32(7)
 /**< Event device is capable of reconfiguring the queue/port link at runtime.
  *
  * If the flag is not set, the eventdev queue/port link is only can be
@@ -366,7 +363,7 @@ struct rte_event;
  * @see rte_event_port_unlink()
  */
 
-#define RTE_EVENT_DEV_CAP_MULTIPLE_QUEUE_PORT (1ULL << 8)
+#define RTE_EVENT_DEV_CAP_MULTIPLE_QUEUE_PORT RTE_BIT32(8)
 /**< Event device is capable of setting up links between multiple queues and a single port.
  *
  * If the flag is not set, each port may only be linked to a single queue, and
@@ -376,7 +373,7 @@ struct rte_event;
  * @see rte_event_port_link()
  */
 
-#define RTE_EVENT_DEV_CAP_CARRY_FLOW_ID (1ULL << 9)
+#define RTE_EVENT_DEV_CAP_CARRY_FLOW_ID RTE_BIT32(9)
 /**< Event device preserves the flow ID from the enqueued event to the dequeued event.
  *
  * If this flag is not set,
@@ -385,7 +382,7 @@ struct rte_event;
  * @see rte_event_dequeue_burst()
  */
 
-#define RTE_EVENT_DEV_CAP_MAINTENANCE_FREE (1ULL << 10)
+#define RTE_EVENT_DEV_CAP_MAINTENANCE_FREE RTE_BIT32(10)
 /**< Event device *does not* require calls to rte_event_maintain().
  *
  * An event device that does not set this flag requires calls to
@@ -398,7 +395,7 @@ struct rte_event;
  * @see rte_event_maintain()
  */
 
-#define RTE_EVENT_DEV_CAP_RUNTIME_QUEUE_ATTR (1ULL << 11)
+#define RTE_EVENT_DEV_CAP_RUNTIME_QUEUE_ATTR RTE_BIT32(11)
 /**< Event device is capable of changing the queue attributes at runtime i.e
  * after rte_event_queue_setup() or rte_event_dev_start() call sequence.
  *
@@ -408,7 +405,7 @@ struct rte_event;
  * @see rte_event_queue_setup()
  */
 
-#define RTE_EVENT_DEV_CAP_PROFILE_LINK (1ULL << 12)
+#define RTE_EVENT_DEV_CAP_PROFILE_LINK RTE_BIT32(12)
 /**< Event device is capable of supporting multiple link profiles per event port.
  *
  * When set, the value of `rte_event_dev_info::max_profiles_per_port` is greater
@@ -422,7 +419,7 @@ struct rte_event;
  * @see RTE_EVENT_DEV_CAP_RUNTIME_PORT_LINK
  */
 
-#define RTE_EVENT_DEV_CAP_ATOMIC  (1ULL << 13)
+#define RTE_EVENT_DEV_CAP_ATOMIC  RTE_BIT32(13)
 /**< Event device is capable of atomic scheduling.
  * When this flag is set, the application can configure queues with scheduling type
  * atomic on this event device.
@@ -430,7 +427,7 @@ struct rte_event;
  * @see RTE_SCHED_TYPE_ATOMIC
  */
 
-#define RTE_EVENT_DEV_CAP_ORDERED  (1ULL << 14)
+#define RTE_EVENT_DEV_CAP_ORDERED  RTE_BIT32(14)
 /**< Event device is capable of ordered scheduling.
  * When this flag is set, the application can configure queues with scheduling type
  * ordered on this event device.
@@ -438,12 +435,74 @@ struct rte_event;
  * @see RTE_SCHED_TYPE_ORDERED
  */
 
-#define RTE_EVENT_DEV_CAP_PARALLEL  (1ULL << 15)
+#define RTE_EVENT_DEV_CAP_PARALLEL  RTE_BIT32(15)
 /**< Event device is capable of parallel scheduling.
  * When this flag is set, the application can configure queues with scheduling type
  * parallel on this event device.
  *
  * @see RTE_SCHED_TYPE_PARALLEL
+ */
+
+#define RTE_EVENT_DEV_CAP_INDEPENDENT_ENQ  RTE_BIT32(16)
+/**< Event device is capable of independent enqueue.
+ * A new capability, RTE_EVENT_DEV_CAP_INDEPENDENT_ENQ, will indicate that Eventdev
+ * supports the enqueue in any order or specifically in a different order than the
+ * dequeue. Eventdev PMD can either dequeue events in the changed order in which
+ * they are enqueued or restore the original order before sending them to the
+ * underlying hardware device. A flag is provided during the port configuration to
+ * inform Eventdev PMD that the application intends to use an independent enqueue
+ * order on a particular port. Note that this capability only matters for eventdevs
+ * supporting burst mode.
+ *
+ * When an implicit release is enabled on a port, Eventdev PMD will also handle
+ * the insertion of RELEASE events in place of dropped events. The independent enqueue
+ * feature only applies to FORWARD and RELEASE events. New events (op=RTE_EVENT_OP_NEW)
+ * will be dequeued in the order the application enqueues them and do not maintain
+ * any order relative to FORWARD/RELEASE events. FORWARD vs NEW relaxed ordering
+ * only applies to ports that have enabled independent enqueue feature.
+ */
+
+#define RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE RTE_BIT32(17)
+/**< Event device supports event pre-scheduling.
+ *
+ * When this capability is available, the application can enable event pre-scheduling on the event
+ * device to pre-schedule events to a event port when `rte_event_dequeue_burst()`
+ * is issued.
+ * The pre-schedule process starts with the `rte_event_dequeue_burst()` call and the
+ * pre-scheduled events are returned on the next `rte_event_dequeue_burst()` call.
+ *
+ * @see rte_event_dev_configure()
+ */
+
+#define RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE RTE_BIT32(18)
+/**< Event device supports adaptive event pre-scheduling.
+ *
+ * When this capability is available, the application can enable adaptive pre-scheduling
+ * on the event device where the events are pre-scheduled when there are no forward
+ * progress constraints with the currently held flow contexts.
+ * The pre-schedule process starts with the `rte_event_dequeue_burst()` call and the
+ * pre-scheduled events are returned on the next `rte_event_dequeue_burst()` call.
+ *
+ * @see rte_event_dev_configure()
+ */
+
+#define RTE_EVENT_DEV_CAP_PER_PORT_PRESCHEDULE RTE_BIT32(19)
+/**< Event device supports event pre-scheduling per event port.
+ *
+ * When this flag is set, the event device allows controlling the event
+ * pre-scheduling at a event port granularity.
+ *
+ * @see rte_event_dev_configure()
+ * @see rte_event_port_preschedule_modify()
+ */
+
+#define RTE_EVENT_DEV_CAP_PRESCHEDULE_EXPLICIT RTE_BIT32(20)
+/**< Event device supports explicit pre-scheduling.
+ *
+ * When this flag is set, the application can issue pre-schedule request on
+ * a event port.
+ *
+ * @see rte_event_port_preschedule()
  */
 
 /* Event device priority levels */
@@ -675,10 +734,35 @@ rte_event_dev_attr_get(uint8_t dev_id, uint32_t attr_id,
 
 
 /* Event device configuration bitmap flags */
-#define RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT (1ULL << 0)
+#define RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT RTE_BIT32(0)
 /**< Override the global *dequeue_timeout_ns* and use per dequeue timeout in ns.
  *  @see rte_event_dequeue_timeout_ticks(), rte_event_dequeue_burst()
  */
+
+/** Event device pre-schedule type enumeration. */
+enum rte_event_dev_preschedule_type {
+	RTE_EVENT_PRESCHEDULE_NONE,
+	/**< Disable pre-schedule across the event device or on a given event port.
+	 * @ref rte_event_dev_config.preschedule_type
+	 * @ref rte_event_port_preschedule_modify()
+	 */
+	RTE_EVENT_PRESCHEDULE,
+	/**< Enable pre-schedule always across the event device or a given event port.
+	 * @ref rte_event_dev_config.preschedule_type
+	 * @ref rte_event_port_preschedule_modify()
+	 * @see RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE
+	 * @see RTE_EVENT_DEV_CAP_PER_PORT_PRESCHEDULE
+	 */
+	RTE_EVENT_PRESCHEDULE_ADAPTIVE,
+	/**< Enable adaptive pre-schedule across the event device or a given event port.
+	 * Delay issuing pre-schedule until there are no forward progress constraints with
+	 * the held flow contexts.
+	 * @ref rte_event_dev_config.preschedule_type
+	 * @ref rte_event_port_preschedule_modify()
+	 * @see RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE
+	 * @see RTE_EVENT_DEV_CAP_PER_PORT_PRESCHEDULE
+	 */
+};
 
 /** Event device configuration structure */
 struct rte_event_dev_config {
@@ -752,6 +836,11 @@ struct rte_event_dev_config {
 	 * optimized for single-link usage, this field is a hint for how many
 	 * to allocate; otherwise, regular event ports and queues will be used.
 	 */
+	enum rte_event_dev_preschedule_type preschedule_type;
+	/**< Event pre-schedule type to use across the event device, if supported.
+	 * @see RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE
+	 * @see RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE
+	 */
 };
 
 /**
@@ -785,7 +874,7 @@ rte_event_dev_configure(uint8_t dev_id,
 /* Event queue specific APIs */
 
 /* Event queue configuration bitmap flags */
-#define RTE_EVENT_QUEUE_CFG_ALL_TYPES          (1ULL << 0)
+#define RTE_EVENT_QUEUE_CFG_ALL_TYPES          RTE_BIT32(0)
 /**< Allow events with schedule types ATOMIC, ORDERED, and PARALLEL to be enqueued to this queue.
  *
  * The scheduling type to be used is that specified in each individual event.
@@ -799,7 +888,7 @@ rte_event_dev_configure(uint8_t dev_id,
  * @see RTE_SCHED_TYPE_ORDERED, RTE_SCHED_TYPE_ATOMIC, RTE_SCHED_TYPE_PARALLEL
  * @see rte_event_enqueue_burst()
  */
-#define RTE_EVENT_QUEUE_CFG_SINGLE_LINK        (1ULL << 1)
+#define RTE_EVENT_QUEUE_CFG_SINGLE_LINK        RTE_BIT32(1)
 /**< This event queue links only to a single event port.
  *
  * No load-balancing of events is performed, as all events
@@ -1025,14 +1114,14 @@ rte_event_queue_attr_set(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
 /* Event port specific APIs */
 
 /* Event port configuration bitmap flags */
-#define RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL    (1ULL << 0)
+#define RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL    RTE_BIT32(0)
 /**< Configure the port not to release outstanding events in
  * rte_event_dev_dequeue_burst(). If set, all events received through
  * the port must be explicitly released with RTE_EVENT_OP_RELEASE or
  * RTE_EVENT_OP_FORWARD. Must be unset if the device is not
  * RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE capable.
  */
-#define RTE_EVENT_PORT_CFG_SINGLE_LINK         (1ULL << 1)
+#define RTE_EVENT_PORT_CFG_SINGLE_LINK         RTE_BIT32(1)
 /**< This event port links only to a single event queue.
  * The queue it links with should be similarly configured with the
  * @ref RTE_EVENT_QUEUE_CFG_SINGLE_LINK flag.
@@ -1040,7 +1129,7 @@ rte_event_queue_attr_set(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
  *  @see RTE_EVENT_QUEUE_CFG_SINGLE_LINK
  *  @see rte_event_port_setup(), rte_event_port_link()
  */
-#define RTE_EVENT_PORT_CFG_HINT_PRODUCER       (1ULL << 2)
+#define RTE_EVENT_PORT_CFG_HINT_PRODUCER       RTE_BIT32(2)
 /**< Hint that this event port will primarily enqueue events to the system.
  * A PMD can optimize its internal workings by assuming that this port is
  * primarily going to enqueue NEW events.
@@ -1050,7 +1139,7 @@ rte_event_queue_attr_set(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
  *
  *  @see rte_event_port_setup()
  */
-#define RTE_EVENT_PORT_CFG_HINT_CONSUMER       (1ULL << 3)
+#define RTE_EVENT_PORT_CFG_HINT_CONSUMER       RTE_BIT32(3)
 /**< Hint that this event port will primarily dequeue events from the system.
  * A PMD can optimize its internal workings by assuming that this port is
  * primarily going to consume events, and not enqueue NEW or FORWARD
@@ -1061,7 +1150,7 @@ rte_event_queue_attr_set(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
  *
  *  @see rte_event_port_setup()
  */
-#define RTE_EVENT_PORT_CFG_HINT_WORKER         (1ULL << 4)
+#define RTE_EVENT_PORT_CFG_HINT_WORKER         RTE_BIT32(4)
 /**< Hint that this event port will primarily pass existing events through.
  * A PMD can optimize its internal workings by assuming that this port is
  * primarily going to FORWARD events, and not enqueue NEW or RELEASE events
@@ -1069,6 +1158,18 @@ rte_event_queue_attr_set(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
  *
  * Note that this flag is only a hint, so PMDs must operate under the
  * assumption that any port can enqueue an event with any type of op.
+ *
+ *  @see rte_event_port_setup()
+ */
+#define RTE_EVENT_PORT_CFG_INDEPENDENT_ENQ   RTE_BIT32(5)
+/**< Flag to enable independent enqueue. Must not be set if the device
+ * is not RTE_EVENT_DEV_CAP_INDEPENDENT_ENQ capable. This feature
+ * allows an application to enqueue RTE_EVENT_OP_FORWARD or
+ * RTE_EVENT_OP_RELEASE in an order different than the order the
+ * events were dequeued from the event device, while maintaining
+ * RTE_SCHED_TYPE_ATOMIC or RTE_SCHED_TYPE_ORDERED semantics.
+ *
+ * Note that this flag only matters for Eventdevs supporting burst mode.
  *
  *  @see rte_event_port_setup()
  */
@@ -1218,6 +1319,10 @@ rte_event_port_quiesce(uint8_t dev_id, uint8_t port_id,
  * Port attribute id for the implicit release disable attribute of the port.
  */
 #define RTE_EVENT_PORT_ATTR_IMPLICIT_RELEASE_DISABLE 3
+/**
+ * Port attribute id for the Independent Enqueue feature.
+ */
+#define RTE_EVENT_PORT_ATTR_INDEPENDENT_ENQ 4
 
 /**
  * Get an attribute from a port.
@@ -1735,10 +1840,10 @@ int
 rte_event_eth_rx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 				uint32_t *caps);
 
-#define RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT (1ULL << 0)
+#define RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT RTE_BIT32(0)
 /**< This flag is set when the timer mechanism is in HW. */
 
-#define RTE_EVENT_TIMER_ADAPTER_CAP_PERIODIC      (1ULL << 1)
+#define RTE_EVENT_TIMER_ADAPTER_CAP_PERIODIC      RTE_BIT32(1)
 /**< This flag is set if periodic mode is supported. */
 
 /**
@@ -1846,7 +1951,6 @@ rte_event_crypto_adapter_caps_get(uint8_t dev_id, uint8_t cdev_id,
  *   - 0: Success, driver provides event adapter capabilities for the
  *     dmadev device.
  *   - <0: Error code returned by the driver function.
- *
  */
 __rte_experimental
 int
@@ -1880,6 +1984,16 @@ rte_event_dma_adapter_caps_get(uint8_t dev_id, uint8_t dmadev_id, uint32_t *caps
 int
 rte_event_eth_tx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 				uint32_t *caps);
+
+/* Vector adapter capability bitmap flags */
+#define RTE_EVENT_VECTOR_ADAPTER_CAP_INTERNAL_PORT	0x1
+/**< This flag is set when the vector adapter is capable of generating events
+ * using an internal event port.
+ */
+
+__rte_experimental
+int
+rte_event_vector_adapter_caps_get(uint8_t dev_id, uint32_t *caps);
 
 /**
  * Converts nanoseconds to *timeout_ticks* value for rte_event_dequeue_burst()
@@ -2094,7 +2208,6 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
  * (EDQUOT) Quota exceeded(Application tried to link the queue configured with
  *  RTE_EVENT_QUEUE_CFG_SINGLE_LINK to more than one event ports)
  * (EINVAL) Invalid parameter
- *
  */
 __rte_experimental
 int
@@ -2147,7 +2260,6 @@ rte_event_port_profile_links_set(uint8_t dev_id, uint8_t port_id, const uint8_t 
  * If return value is less than *nb_unlinks* then implementation shall update
  * the rte_errno accordingly, Possible rte_errno values are
  * (EINVAL) Invalid parameter
- *
  */
 __rte_experimental
 int
@@ -2469,6 +2581,10 @@ rte_event_vector_pool_create(const char *name, unsigned int n,
 
 #include <rte_eventdev_core.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static __rte_always_inline uint16_t
 __rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
 			  const struct rte_event ev[], uint16_t nb_events,
@@ -2492,14 +2608,8 @@ __rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
 	}
 #endif
 	rte_eventdev_trace_enq_burst(dev_id, port_id, ev, nb_events, (void *)fn);
-	/*
-	 * Allow zero cost non burst mode routine invocation if application
-	 * requests nb_events as const one
-	 */
-	if (nb_events == 1)
-		return (fp_ops->enqueue)(port, ev);
-	else
-		return fn(port, ev, nb_events);
+
+	return fn(port, ev, nb_events);
 }
 
 /**
@@ -2748,15 +2858,8 @@ rte_event_dequeue_burst(uint8_t dev_id, uint8_t port_id, struct rte_event ev[],
 	}
 #endif
 	rte_eventdev_trace_deq_burst(dev_id, port_id, ev, nb_events);
-	/*
-	 * Allow zero cost non burst mode routine invocation if application
-	 * requests nb_events as const one
-	 */
-	if (nb_events == 1)
-		return (fp_ops->dequeue)(port, ev, timeout_ticks);
-	else
-		return (fp_ops->dequeue_burst)(port, ev, nb_events,
-					       timeout_ticks);
+
+	return (fp_ops->dequeue_burst)(port, ev, nb_events, timeout_ticks);
 }
 
 #define RTE_EVENT_DEV_MAINT_OP_FLUSH          (1 << 0)
@@ -2874,6 +2977,94 @@ rte_event_port_profile_switch(uint8_t dev_id, uint8_t port_id, uint8_t profile_i
 	return fp_ops->profile_switch(port, profile_id);
 }
 
+/**
+ * Modify the pre-schedule type to use on an event port.
+ *
+ * This function is used to change the current pre-schedule type configured
+ * on an event port, the pre-schedule type can be set to none to disable pre-scheduling.
+ * This effects the subsequent ``rte_event_dequeue_burst`` call.
+ * The event device should support RTE_EVENT_DEV_CAP_PER_PORT_PRESCHEDULE capability.
+ *
+ * To avoid fastpath capability checks if an event device does not support
+ * RTE_EVENT_DEV_CAP_PER_PORT_PRESCHEDULE capability, then this function will
+ * return -ENOTSUP.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param port_id
+ *   The identifier of the event port.
+ * @param type
+ *   The preschedule type to use on the event port.
+ * @return
+ *  - 0 on success.
+ *  - -EINVAL if *dev_id*,  *port_id*, or *type* is invalid.
+ *  - -ENOTSUP if the device does not support per port preschedule capability.
+ */
+__rte_experimental
+static inline int
+rte_event_port_preschedule_modify(uint8_t dev_id, uint8_t port_id,
+				  enum rte_event_dev_preschedule_type type)
+{
+	const struct rte_event_fp_ops *fp_ops;
+	void *port;
+
+	fp_ops = &rte_event_fp_ops[dev_id];
+	port = fp_ops->data[port_id];
+
+#ifdef RTE_LIBRTE_EVENTDEV_DEBUG
+	if (dev_id >= RTE_EVENT_MAX_DEVS || port_id >= RTE_EVENT_MAX_PORTS_PER_DEV)
+		return -EINVAL;
+
+	if (port == NULL)
+		return -EINVAL;
+#endif
+	rte_eventdev_trace_port_preschedule_modify(dev_id, port_id, type);
+
+	return fp_ops->preschedule_modify(port, type);
+}
+
+/**
+ * Provide a hint to the event device to pre-schedule events to event port .
+ *
+ * Hint the event device to pre-schedule events to the event port.
+ * The call doesn't not guarantee that the events will be pre-scheduleed.
+ * The call doesn't release the flow context currently held by the event port.
+ * The event device should support RTE_EVENT_DEV_CAP_PRESCHEDULE_EXPLICIT capability.
+ *
+ * When pre-scheduling is enabled at an event device/port level or if
+ * the capability is not supported, then the hint is ignored.
+ *
+ * Subsequent calls to rte_event_dequeue_burst() will dequeue the pre-schedule
+ * events but pre-schedule operation is not issued again.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param port_id
+ *   The identifier of the event port.
+ * @param type
+ *   The pre-schedule type to use on the event port.
+ */
+__rte_experimental
+static inline void
+rte_event_port_preschedule(uint8_t dev_id, uint8_t port_id,
+			   enum rte_event_dev_preschedule_type type)
+{
+	const struct rte_event_fp_ops *fp_ops;
+	void *port;
+
+	fp_ops = &rte_event_fp_ops[dev_id];
+	port = fp_ops->data[port_id];
+
+#ifdef RTE_LIBRTE_EVENTDEV_DEBUG
+	if (dev_id >= RTE_EVENT_MAX_DEVS || port_id >= RTE_EVENT_MAX_PORTS_PER_DEV)
+		return;
+	if (port == NULL)
+		return;
+#endif
+	rte_eventdev_trace_port_preschedule(dev_id, port_id, type);
+
+	fp_ops->preschedule(port, type);
+}
 #ifdef __cplusplus
 }
 #endif

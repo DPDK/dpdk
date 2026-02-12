@@ -135,14 +135,14 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 		return rc;
 
 	if (queue_idx >= bnxt_max_rings(bp)) {
-		PMD_DRV_LOG(ERR,
-			"Cannot create Tx ring %d. Only %d rings available\n",
+		PMD_DRV_LOG_LINE(ERR,
+			"Cannot create Tx ring %d. Only %d rings available",
 			queue_idx, bp->max_tx_rings);
 		return -EINVAL;
 	}
 
 	if (nb_desc < BNXT_MIN_RING_DESC || nb_desc > MAX_TX_DESC_CNT) {
-		PMD_DRV_LOG(ERR, "nb_desc %d is invalid", nb_desc);
+		PMD_DRV_LOG_LINE(ERR, "nb_desc %d is invalid", nb_desc);
 		return -EINVAL;
 	}
 
@@ -154,7 +154,7 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	txq = rte_zmalloc_socket("bnxt_tx_queue", sizeof(struct bnxt_tx_queue),
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (!txq) {
-		PMD_DRV_LOG(ERR, "bnxt_tx_queue allocation failed!");
+		PMD_DRV_LOG_LINE(ERR, "bnxt_tx_queue allocation failed!");
 		return -ENOMEM;
 	}
 
@@ -165,7 +165,7 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 				       sizeof(struct rte_mbuf *) * nb_desc,
 				       RTE_CACHE_LINE_SIZE, socket_id);
 	if (!txq->free) {
-		PMD_DRV_LOG(ERR, "allocation of tx mbuf free array failed!");
+		PMD_DRV_LOG_LINE(ERR, "allocation of tx mbuf free array failed!");
 		rc = -ENOMEM;
 		goto err;
 	}
@@ -187,23 +187,18 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	/* Allocate TX ring hardware descriptors */
 	if (bnxt_alloc_rings(bp, socket_id, queue_idx, txq, NULL, txq->cp_ring,
 			     NULL, "txr")) {
-		PMD_DRV_LOG(ERR, "ring_dma_zone_reserve for tx_ring failed!");
+		PMD_DRV_LOG_LINE(ERR, "ring_dma_zone_reserve for tx_ring failed!");
 		rc = -ENOMEM;
 		goto err;
 	}
 
 	if (bnxt_init_one_tx_ring(txq)) {
-		PMD_DRV_LOG(ERR, "bnxt_init_one_tx_ring failed!");
+		PMD_DRV_LOG_LINE(ERR, "bnxt_init_one_tx_ring failed!");
 		rc = -ENOMEM;
 		goto err;
 	}
 
-	rc = pthread_mutex_init(&txq->txq_lock, NULL);
-	if (rc != 0) {
-		PMD_DRV_LOG(ERR, "TxQ mutex init failed!");
-		goto err;
-	}
-	return 0;
+	return pthread_mutex_init(&txq->txq_lock, NULL);
 err:
 	bnxt_tx_queue_release_op(eth_dev, queue_idx);
 	return rc;

@@ -12,6 +12,7 @@
 #include <rte_trace.h>
 #include <rte_version.h>
 
+#include <eal_export.h>
 #include "eal_trace.h"
 
 __rte_format_printf(2, 0)
@@ -88,6 +89,11 @@ meta_data_type_emit(char **meta, int *offset)
 		"typealias integer {size = 64; base = x;} := size_t;\n"
 #else
 		"typealias integer {size = 32; base = x;} := size_t;\n"
+#endif
+#if defined(_TIME_BITS) && _TIME_BITS == 64
+		"typealias integer {size = 64; base = x;} := time_t;\n"
+#else
+		"typealias integer {size = 32; base = x;} := time_t;\n"
 #endif
 		"typealias floating_point {\n"
 		"    exp_dig = 8;\n"
@@ -351,6 +357,7 @@ meta_fixup(struct trace *trace, char *meta)
 	meta_fix_freq_offset(trace, meta);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_trace_metadata_dump, 20.05)
 int
 rte_trace_metadata_dump(FILE *f)
 {

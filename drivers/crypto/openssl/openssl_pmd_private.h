@@ -23,10 +23,10 @@
 
 /** OPENSSL PMD LOGTYPE DRIVER */
 extern int openssl_logtype_driver;
-#define OPENSSL_LOG(level, fmt, ...)  \
-	rte_log(RTE_LOG_ ## level, openssl_logtype_driver,  \
-			"%s() line %u: " fmt "\n", __func__, __LINE__,  \
-					## __VA_ARGS__)
+#define RTE_LOGTYPE_OPENSSL_DRIVER openssl_logtype_driver
+#define OPENSSL_LOG(level, ...)  \
+	RTE_LOG_LINE_PREFIX(level, OPENSSL_DRIVER, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 /* Maximum length for digest (SHA-512 needs 64 bytes) */
 #define DIGEST_LENGTH_MAX 64
@@ -62,7 +62,7 @@ struct openssl_private {
 };
 
 /** OPENSSL crypto queue pair */
-struct openssl_qp {
+struct __rte_cache_aligned openssl_qp {
 	uint16_t id;
 	/**< Queue Pair Identifier */
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
@@ -78,10 +78,24 @@ struct openssl_qp {
 	 * by the driver when verifying a digest provided
 	 * by the user (using authentication verify operation)
 	 */
-} __rte_cache_aligned;
+};
+
+struct evp_ctx_pair {
+	EVP_CIPHER_CTX *cipher;
+	union {
+		EVP_MD_CTX *auth;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		EVP_MAC_CTX *hmac;
+		EVP_MAC_CTX *cmac;
+#else
+		HMAC_CTX *hmac;
+		CMAC_CTX *cmac;
+#endif
+	};
+};
 
 /** OPENSSL crypto private session structure */
-struct openssl_session {
+struct __rte_cache_aligned openssl_session {
 	enum openssl_chain_order chain_order;
 	/**< chain order mode */
 
@@ -104,7 +118,7 @@ struct openssl_session {
 		/**< cipher algorithm */
 
 		struct {
-			uint8_t data[32];
+			uint8_t data[64];
 			/**< key data */
 			size_t length;
 			/**< key length in bytes */
@@ -166,14 +180,24 @@ struct openssl_session {
 		/**< digest length */
 	} auth;
 
-} __rte_cache_aligned;
+	uint16_t ctx_copies_len;
+	/* < number of entries in ctx_copies */
+	struct evp_ctx_pair qp_ctx[];
+	/**< Flexible array member of per-queue-pair structures, each containing
+	 * pointers to copies of the cipher and auth EVP contexts. Cipher
+	 * contexts are not safe to use from multiple cores simultaneously, so
+	 * maintaining these copies allows avoiding per-buffer copying into a
+	 * temporary context.
+	 */
+};
 
 /** OPENSSL crypto private asymmetric session structure */
-struct openssl_asym_session {
+struct __rte_cache_aligned openssl_asym_session {
 	enum rte_crypto_asym_xform_type xfrm_type;
 	union {
 		struct rsa {
 			RSA *rsa;
+			uint32_t pad;
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 			EVP_PKEY_CTX * ctx;
 #endif
@@ -208,16 +232,44 @@ struct openssl_asym_session {
 #endif
 		} s;
 		struct {
+			uint8_t curve_id;
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+			EC_GROUP * group;
+			BIGNUM *priv_key;
+#endif
+		} ec;
+		struct {
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 			OSSL_PARAM * params;
 #endif
 		} sm2;
+		struct {
+			uint8_t curve_id;
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+			OSSL_PARAM * params;
+#endif
+		} eddsa;
+		struct {
+			uint8_t type;
+#if (OPENSSL_VERSION_NUMBER >= 0x30500000L)
+			EVP_PKEY_CTX * pctx;
+#endif
+		} ml_kem;
+		struct {
+			uint8_t type;
+			bool sign_prehash;
+			bool sign_deterministic;
+#if (OPENSSL_VERSION_NUMBER >= 0x30500000L)
+			EVP_PKEY_CTX * pctx;
+#endif
+		} ml_dsa;
 	} u;
-} __rte_cache_aligned;
+};
 /** Set and validate OPENSSL crypto session parameters */
 extern int
 openssl_set_session_parameters(struct openssl_session *sess,
-		const struct rte_crypto_sym_xform *xform);
+		const struct rte_crypto_sym_xform *xform,
+		uint16_t nb_queue_pairs);
 
 /** Reset OPENSSL crypto session parameters */
 extern void
@@ -226,4 +278,7 @@ openssl_reset_session(struct openssl_session *sess);
 /** device specific operations function pointer structure */
 extern struct rte_cryptodev_ops *rte_openssl_pmd_ops;
 
+/** ML parameter type names */
+extern const char *ml_kem_type_names[];
+extern const char *ml_dsa_type_names[];
 #endif /* _OPENSSL_PMD_PRIVATE_H_ */

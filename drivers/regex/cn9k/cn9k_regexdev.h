@@ -21,7 +21,7 @@
 /**
  * Device private data
  */
-struct cn9k_ree_data {
+struct __rte_cache_aligned cn9k_ree_data {
 	uint32_t regexdev_capa;
 	uint64_t rule_flags;
 	/**< Feature flags exposes HW/SW features for the given device */
@@ -39,6 +39,6 @@ struct cn9k_ree_data {
 	/**< rules to be compiled */
 	uint16_t nb_rules;
 	/**< number of rules */
-} __rte_cache_aligned;
+};
 
 #endif /* _CN9K_REGEXDEV_H_ */

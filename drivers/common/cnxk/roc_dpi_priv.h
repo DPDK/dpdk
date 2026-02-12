@@ -15,6 +15,9 @@
 #define DPI_QUEUE_CLOSE 0x2
 #define DPI_REG_DUMP	0x3
 #define DPI_GET_REG_CFG 0x4
+#define DPI_QUEUE_OPEN_V2 0x5
+
+#define DPI_QUEUE_IDLE_TMO_MS 1E3
 
 typedef union dpi_mbox_msg_t {
 	uint64_t u[2];
@@ -24,7 +27,7 @@ typedef union dpi_mbox_msg_t {
 		/* Command code */
 		uint64_t cmd : 4;
 		/* Command buffer size in 8-byte words */
-		uint64_t csize : 14;
+		uint64_t csize : 16;
 		/* aura of the command buffer */
 		uint64_t aura : 20;
 		/* SSO PF function */
@@ -35,6 +38,8 @@ typedef union dpi_mbox_msg_t {
 		uint64_t wqecs : 1;
 		/* WQE queue DMA completion status offset */
 		uint64_t wqecsoff : 8;
+		/* Priority */
+		uint64_t pri : 1;
 	} s;
 } dpi_mbox_msg_t;
 

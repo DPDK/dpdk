@@ -5,12 +5,12 @@
 #ifndef AFU_PMD_HE_LPBK_H
 #define AFU_PMD_HE_LPBK_H
 
+#include "afu_pmd_core.h"
+#include "rte_pmd_afu.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "afu_pmd_core.h"
-#include "rte_pmd_afu.h"
 
 #define HE_LPBK_UUID_L     0xb94b12284c31e02b
 #define HE_LPBK_UUID_H     0x56e203e9864f49a7

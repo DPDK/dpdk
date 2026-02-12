@@ -11,8 +11,6 @@
 
 #include "ipsec_mb_private.h"
 
-#define IMB_MP_REQ_VER_STR "1.1.0"
-
 /** Configure device */
 int
 ipsec_mb_config(__rte_unused struct rte_cryptodev *dev,
@@ -140,6 +138,7 @@ int
 ipsec_mb_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 {
 	struct ipsec_mb_qp *qp = dev->data->queue_pairs[qp_id];
+	uint16_t process_id = (uint16_t)getpid();
 
 	if (!qp)
 		return 0;
@@ -147,20 +146,17 @@ ipsec_mb_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		rte_ring_free(rte_ring_lookup(qp->name));
 
-#if IMB_VERSION(1, 1, 0) > IMB_VERSION_NUM
-		if (qp->mb_mgr)
-			free_mb_mgr(qp->mb_mgr);
-#else
 		if (qp->mb_mgr_mz) {
 			rte_memzone_free(qp->mb_mgr_mz);
 			qp->mb_mgr = NULL;
 		}
-#endif
 		rte_free(qp);
 		dev->data->queue_pairs[qp_id] = NULL;
 	} else { /* secondary process */
-		return ipsec_mb_secondary_qp_op(dev->data->dev_id, qp_id,
-					NULL, 0, RTE_IPSEC_MB_MP_REQ_QP_FREE);
+		if (qp->qp_used_by_pid == process_id)
+			return ipsec_mb_secondary_qp_op(dev->data->dev_id,
+						qp_id, NULL, 0,
+						RTE_IPSEC_MB_MP_REQ_QP_FREE);
 	}
 	return 0;
 }
@@ -211,7 +207,6 @@ static struct rte_ring
 			       RING_F_SP_ENQ | RING_F_SC_DEQ);
 }
 
-#if IMB_VERSION(1, 1, 0) <= IMB_VERSION_NUM
 static IMB_MGR *
 ipsec_mb_alloc_mgr_from_memzone(const struct rte_memzone **mb_mgr_mz,
 		const char *mb_mgr_mz_name)
@@ -244,7 +239,6 @@ ipsec_mb_alloc_mgr_from_memzone(const struct rte_memzone **mb_mgr_mz,
 	}
 	return mb_mgr;
 }
-#endif
 
 /** Setup a queue pair */
 int
@@ -260,12 +254,6 @@ ipsec_mb_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	int ret;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
-#if IMB_VERSION(1, 1, 0) > IMB_VERSION_NUM
-		IPSEC_MB_LOG(ERR, "The intel-ipsec-mb version (%s) does not support multiprocess,"
-				"the minimum version required for this feature is %s.",
-				IMB_VERSION_STR, IMB_MP_REQ_VER_STR);
-		return -EINVAL;
-#endif
 		qp = dev->data->queue_pairs[qp_id];
 		if (qp == NULL) {
 			IPSEC_MB_LOG(DEBUG, "Secondary process setting up device qp.");
@@ -285,15 +273,11 @@ ipsec_mb_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 			return -ENOMEM;
 	}
 
-#if IMB_VERSION(1, 1, 0) > IMB_VERSION_NUM
-	qp->mb_mgr = alloc_init_mb_mgr();
-#else
 	char mz_name[IPSEC_MB_MAX_MZ_NAME];
 	snprintf(mz_name, sizeof(mz_name), "IMB_MGR_DEV_%d_QP_%d",
 			dev->data->dev_id, qp_id);
 	qp->mb_mgr = ipsec_mb_alloc_mgr_from_memzone(&(qp->mb_mgr_mz),
 			mz_name);
-#endif
 	if (qp->mb_mgr == NULL) {
 		ret = -ENOMEM;
 		goto qp_setup_cleanup;
@@ -330,15 +314,9 @@ ipsec_mb_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	return 0;
 
 qp_setup_cleanup:
-#if IMB_VERSION(1, 1, 0) > IMB_VERSION_NUM
-	if (qp->mb_mgr)
-		free_mb_mgr(qp->mb_mgr);
-#else
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		return ret;
-	if (qp->mb_mgr_mz)
-		rte_memzone_free(qp->mb_mgr_mz);
-#endif
+	rte_memzone_free(qp->mb_mgr_mz);
 	rte_free(qp);
 	return ret;
 }

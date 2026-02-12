@@ -183,6 +183,26 @@ Runtime Configuration
 
     -a 0000:7d:00.0,fdir_vlan_match_mode=nostrict
 
+- ``fdir_tuple_config`` (default ``none``)
+
+  Used to customize the flow director tuples. Current supported options are follows:
+  ``+outvlan-insmac``: means disable inner src mac tuple, and enable outer vlan tuple.
+  ``+outvlan-indmac``: means disable inner dst mac tuple, and enable outer vlan tuple.
+  ``+outvlan-insip``: means disable inner src ip tuple, and enable outer vlan tuple.
+  ``+outvlan-indip``: means disable inner dst ip tuple, and enable outer vlan tuple.
+  ``+outvlan-sctptag``: means disable sctp tag tuple, and enable outer vlan tuple.
+  ``+outvlan-tunvni``: means disable tunnel vni tuple, and enable outer vlan tuple.
+
+- ``fdir_index_config`` (default ``hash``)
+
+  Used to select flow director index strategy,
+  the flow director index is the index position in the hardware flow director table.
+  Lower index denotes higher priority
+  (it means when a packet matches multiple indexes, the smaller index wins).
+  Current supported options are as follows:
+  ``hash``: The driver generates a flow index based on the hash of the rte_flow key.
+  ``priority``: the driver uses the rte_flow priority field as the flow director index.
+
 Driver compilation and testing
 ------------------------------
 
@@ -201,7 +221,7 @@ To start ``testpmd``, and add VLAN 10 to port 0:
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-15 -n 4 -- -i --forward-mode=mac
+    ./<build_dir>/app/dpdk-testpmd -l 0-15 -- -i --forward-mode=mac
     ...
 
     testpmd> set promisc 0 off
@@ -222,7 +242,7 @@ Start ``testpmd``:
 
 .. code-block:: console
 
-   ./<build_dir>/app/dpdk-testpmd -l 0-15 -n 4 -- -i --rxq=8 --txq=8 \
+   ./<build_dir>/app/dpdk-testpmd -l 0-15 -- -i --rxq=8 --txq=8 \
 				  --nb-cores=8 --nb-ports=1
 
 Add a rule to direct ``ipv4-udp`` packet whose ``dst_ip=2.2.2.5, src_ip=2.2.2.3,
@@ -234,6 +254,74 @@ src_port=32, dst_port=32`` to queue 1:
             dst is 2.2.2.5 / udp src is 32 dst is 32 / end \
             actions mark id 1 / queue index 1 / end
 
+The flow rules::
+
+   rule-0: flow create 0 ingress pattern eth / end \
+            queue index 1 / end
+   rule-1: flow create 0 ingress pattern eth / vlan vid is 10 / end \
+            queue index 1 / end
+   rule-2: flow create 0 ingress pattern eth / vlan / vlan vid is 10 / end \
+            queue index 1 / end
+   rule-3: flow create 0 ingress pattern eth / vlan vid is 10 / vlan vid is 11 / end \
+            queue index 1 / end
+
+will match the following packet types with specific VLAN ID at the specified VLAN layer
+and any VLAN ID at the rest VLAN layer.
+
+      +--------+------------------+-------------------------------------------+
+      | rules  | ``strict``       | ``nostrict``                              |
+      +========+==================+===========================================+
+      | rule-0 | untagged         | untagged || single-tagged || multi-tagged |
+      +--------+------------------+-------------------------------------------+
+      | rule-1 | single-tagged    | single-tagged || multi-tagged             |
+      +--------+------------------+-------------------------------------------+
+      | rule-2 | double-tagged    | multi-tagged                              |
+      +--------+------------------+-------------------------------------------+
+      | rule-3 | double-tagged    | multi-tagged                              |
+      +--------+------------------+-------------------------------------------+
+
+The attributes ``has_vlan`` and ``has_more_vlan`` are supported.
+The usage is as follows::
+
+   rule-4: flow create 0 ingress pattern eth has_vlan is 1 / end \
+            queue index 1 / end
+   rule-5: flow create 0 ingress pattern eth has_vlan is 0 / end \
+            queue index 1 / end
+   rule-6: flow create 0 ingress pattern eth / vlan has_more_vlan is 1 / \
+            end queue index 1 / end
+   rule-7: flow create 0 ingress pattern eth / vlan has_more_vlan is 0 / \
+            end queue index 1 / end
+
+They will match the following packet types with any VLAN ID.
+
+      +--------+------------------+-------------------------------------------+
+      | rules  |  ``strict``      | ``nostrict``                              |
+      +========+==================+===========================================+
+      | rule-4 | single-tagged    | untagged || single-tagged || multi-tagged |
+      +--------+------------------+-------------------------------------------+
+      | rule-5 | untagged         | untagged || single-tagged || multi-tagged |
+      +--------+------------------+-------------------------------------------+
+      | rule-6 | double-tagged    | untagged || single-tagged || multi-tagged |
+      +--------+------------------+-------------------------------------------+
+      | rule-7 | single-tagged    | untagged || single-tagged || multi-tagged |
+      +--------+------------------+-------------------------------------------+
+
+These two fields may be used followed by VLAN item,
+and may partially overlap or conflict with the VLAN item.
+For examples, the rule-8 will be rejected by the driver
+and rule-9, rule-10 are repeated with rule-4.
+Similar usage for ``has_more_vlan``.
+
+::
+
+   rule-8: flow create 0 ingress pattern eth has_vlan is 0 / vlan / end \
+            queue index 1 / end
+   rule-9: flow create 0 ingress pattern eth has_vlan is 1 / vlan / end \
+            queue index 1 / end
+   rule-10: flow create 0 ingress pattern eth / vlan / end \
+            queue index 1 / end
+
+
 Generic flow API
 ~~~~~~~~~~~~~~~~
 
@@ -243,6 +331,9 @@ Generic flow API
   and hash algorithm. But hash key, queues and hash algorithm are the global
   configuration for hardware which will affect other rules.
   The rule just setting input tuple is completely independent.
+
+  In addition, if the rule priority level is set, no error is reported,
+  but the rule priority level does not take effect.
 
   Run ``testpmd``:
 
@@ -339,6 +430,15 @@ be provided to avoid scheduling the CPU core used by DPDK application threads fo
 other tasks. Before starting the Linux OS, add the kernel isolation boot parameter.
 For example, "isolcpus=1-18 nohz_full=1-18 rcu_nocbs=1-18".
 
+Dump registers
+--------------
+
+HNS3 supports dumping registers values with their names,
+and supports filtering by module names.
+The available module names are ``bios``, ``ssu``, ``igu_egu``,
+``rpu``, ``ncsi``, ``rtc``, ``ppp``, ``rcb``, ``tqp``, ``rtc``, ``cmdq``,
+``common_pf``, ``common_vf``, ``ring``, ``tqp_intr``, ``32_bit_dfx``,
+``64_bit_dfx``.
 
 Limitations or Known issues
 ---------------------------
@@ -351,5 +451,4 @@ sve burst function. When enabling IEEE 1588, Rx/Tx burst mode should be
 simple or common. It is recommended that enable IEEE 1588 before ethdev
 start. In this way, the correct Rx/Tx burst function can be selected.
 
-Build with ICC is not supported yet.
 X86-32, Power8, ARMv7 and BSD are not supported yet.

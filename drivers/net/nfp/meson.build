@@ -4,6 +4,7 @@
 if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
     build = false
     reason = 'only supported on 64-bit Linux'
+    subdir_done()
 endif
 
 sources = files(
@@ -45,5 +46,22 @@ sources = files(
         'nfp_rxtx.c',
         'nfp_service.c',
 )
+
+cflags += no_wvla_cflag
+
+if arch_subdir == 'x86'
+        includes += include_directories('../../common/nfp')
+
+        sources_avx2 += files(
+                'nfdk/nfp_nfdk_vec_avx2_dp.c',
+                'nfp_rxtx_vec_avx2.c',
+        )
+
+else
+        sources += files(
+                'nfp_rxtx_vec_stub.c',
+                'nfdk/nfp_nfdk_vec_stub.c',
+        )
+endif
 
 deps += ['hash', 'security', 'common_nfp']

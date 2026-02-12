@@ -6,6 +6,7 @@
  * All rights reserved.
  */
 
+#include <rte_common.h>
 #include <rte_string_fns.h>
 #include <rte_mbuf.h>
 #include <ethdev_driver.h>
@@ -35,11 +36,15 @@
 #define ETH_AF_PACKET_FRAMESIZE_ARG	"framesz"
 #define ETH_AF_PACKET_FRAMECOUNT_ARG	"framecnt"
 #define ETH_AF_PACKET_QDISC_BYPASS_ARG	"qdisc_bypass"
+#define ETH_AF_PACKET_FANOUT_MODE_ARG	"fanout_mode"
 
 #define DFLT_FRAME_SIZE		(1 << 11)
 #define DFLT_FRAME_COUNT	(1 << 9)
 
-struct pkt_rx_queue {
+static uint64_t timestamp_dynflag;
+static int timestamp_dynfield_offset = -1;
+
+struct __rte_cache_aligned pkt_rx_queue {
 	int sockfd;
 
 	struct iovec *rd;
@@ -50,12 +55,15 @@ struct pkt_rx_queue {
 	struct rte_mempool *mb_pool;
 	uint16_t in_port;
 	uint8_t vlan_strip;
+	uint8_t timestamp_offloading;
 
 	volatile unsigned long rx_pkts;
 	volatile unsigned long rx_bytes;
+	volatile unsigned long rx_nombuf;
+	volatile unsigned long rx_dropped_pkts;
 };
 
-struct pkt_tx_queue {
+struct __rte_cache_aligned pkt_tx_queue {
 	int sockfd;
 	unsigned int frame_data_size;
 
@@ -81,6 +89,7 @@ struct pmd_internals {
 	struct pkt_rx_queue *rx_queue;
 	struct pkt_tx_queue *tx_queue;
 	uint8_t vlan_strip;
+	uint8_t timestamp_offloading;
 };
 
 static const char *valid_arguments[] = {
@@ -90,6 +99,7 @@ static const char *valid_arguments[] = {
 	ETH_AF_PACKET_FRAMESIZE_ARG,
 	ETH_AF_PACKET_FRAMECOUNT_ARG,
 	ETH_AF_PACKET_QDISC_BYPASS_ARG,
+	ETH_AF_PACKET_FANOUT_MODE_ARG,
 	NULL
 };
 
@@ -101,14 +111,14 @@ static struct rte_eth_link pmd_link = {
 };
 
 RTE_LOG_REGISTER_DEFAULT(af_packet_logtype, NOTICE);
+#define RTE_LOGTYPE_AFPACKET af_packet_logtype
 
-#define PMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, af_packet_logtype, \
-		"%s(): " fmt "\n", __func__, ##args)
+#define PMD_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, AFPACKET, "%s(): ", __func__, __VA_ARGS__)
 
-#define PMD_LOG_ERRNO(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, af_packet_logtype, \
-		"%s(): " fmt ":%s\n", __func__, ##args, strerror(errno))
+#define PMD_LOG_ERRNO(level, fmt, ...) \
+	RTE_LOG_LINE(level, AFPACKET, "%s(): " fmt ":%s", __func__, \
+		## __VA_ARGS__, strerror(errno))
 
 static uint16_t
 eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
@@ -139,8 +149,10 @@ eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 		/* allocate the next mbuf */
 		mbuf = rte_pktmbuf_alloc(pkt_q->mb_pool);
-		if (unlikely(mbuf == NULL))
+		if (unlikely(mbuf == NULL)) {
+			pkt_q->rx_nombuf++;
 			break;
+		}
 
 		/* packet will fit in the mbuf, go ahead and receive it */
 		rte_pktmbuf_pkt_len(mbuf) = rte_pktmbuf_data_len(mbuf) = ppd->tp_snaplen;
@@ -154,6 +166,16 @@ eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 			if (!pkt_q->vlan_strip && rte_vlan_insert(&mbuf))
 				PMD_LOG(ERR, "Failed to reinsert VLAN tag");
+		}
+
+		/* add kernel provided timestamp when offloading is enabled */
+		if (pkt_q->timestamp_offloading) {
+			/* since TPACKET_V2 timestamps are provided in nanoseconds resolution */
+			*RTE_MBUF_DYNFIELD(mbuf, timestamp_dynfield_offset,
+				rte_mbuf_timestamp_t *) =
+					(uint64_t)ppd->tp_sec * 1000000000 + ppd->tp_nsec;
+
+			mbuf->ol_flags |= timestamp_dynflag;
 		}
 
 		/* release incoming frame and advance ring buffer */
@@ -316,6 +338,16 @@ eth_dev_start(struct rte_eth_dev *dev)
 	struct pmd_internals *internals = dev->data->dev_private;
 	uint16_t i;
 
+	if (internals->timestamp_offloading) {
+		/* Register mbuf field and flag for Rx timestamp */
+		int rc = rte_mbuf_dyn_rx_timestamp_register(&timestamp_dynfield_offset,
+				&timestamp_dynflag);
+		if (rc) {
+			PMD_LOG(ERR, "Cannot register mbuf field/flag for timestamp");
+			return rc;
+		}
+	}
+
 	dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 	for (i = 0; i < internals->nb_queues; i++) {
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
@@ -331,39 +363,25 @@ static int
 eth_dev_stop(struct rte_eth_dev *dev)
 {
 	unsigned i;
-	int sockfd;
 	struct pmd_internals *internals = dev->data->dev_private;
 
 	for (i = 0; i < internals->nb_queues; i++) {
-		sockfd = internals->rx_queue[i].sockfd;
-		if (sockfd != -1)
-			close(sockfd);
-
-		/* Prevent use after free in case tx fd == rx fd */
-		if (sockfd != internals->tx_queue[i].sockfd) {
-			sockfd = internals->tx_queue[i].sockfd;
-			if (sockfd != -1)
-				close(sockfd);
-		}
-
-		internals->rx_queue[i].sockfd = -1;
-		internals->tx_queue[i].sockfd = -1;
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
-
 	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 	return 0;
 }
 
 static int
-eth_dev_configure(struct rte_eth_dev *dev __rte_unused)
+eth_dev_configure(struct rte_eth_dev *dev)
 {
 	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
 	const struct rte_eth_rxmode *rxmode = &dev_conf->rxmode;
 	struct pmd_internals *internals = dev->data->dev_private;
 
 	internals->vlan_strip = !!(rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP);
+	internals->timestamp_offloading = !!(rxmode->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP);
 	return 0;
 }
 
@@ -380,43 +398,72 @@ eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = 0;
 	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
 		RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
-	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
+	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+		RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 
 	return 0;
 }
 
-static int
-eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
+
+/*
+ * Query dropped packets counter from socket.
+ * Reading drop count clears the value of the socket!
+ */
+static unsigned int
+packet_drop_count(int sockfd)
 {
-	unsigned i, imax;
-	unsigned long rx_total = 0, tx_total = 0, tx_err_total = 0;
+	struct tpacket_stats pkt_stats;
+	socklen_t pkt_stats_len = sizeof(struct tpacket_stats);
+
+	if (sockfd == -1)
+		return 0;
+
+	if (getsockopt(sockfd, SOL_PACKET, PACKET_STATISTICS, &pkt_stats,
+		&pkt_stats_len) < -1)
+		return 0;
+
+	return pkt_stats.tp_drops;
+}
+
+static int
+eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats, struct eth_queue_stats *qstats)
+{
+	unsigned int i;
+	unsigned long rx_total = 0, rx_dropped_total = 0, rx_nombuf_total = 0;
+	unsigned long tx_total = 0, tx_err_total = 0;
 	unsigned long rx_bytes_total = 0, tx_bytes_total = 0;
 	const struct pmd_internals *internal = dev->data->dev_private;
 
-	imax = (internal->nb_queues < RTE_ETHDEV_QUEUE_STAT_CNTRS ?
-	        internal->nb_queues : RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	for (i = 0; i < imax; i++) {
-		igb_stats->q_ipackets[i] = internal->rx_queue[i].rx_pkts;
-		igb_stats->q_ibytes[i] = internal->rx_queue[i].rx_bytes;
-		rx_total += igb_stats->q_ipackets[i];
-		rx_bytes_total += igb_stats->q_ibytes[i];
-	}
+	for (i = 0; i < internal->nb_queues; i++) {
+		/* reading drop count clears the value, therefore keep total value */
+		internal->rx_queue[i].rx_dropped_pkts +=
+			packet_drop_count(internal->rx_queue[i].sockfd);
 
-	imax = (internal->nb_queues < RTE_ETHDEV_QUEUE_STAT_CNTRS ?
-	        internal->nb_queues : RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	for (i = 0; i < imax; i++) {
-		igb_stats->q_opackets[i] = internal->tx_queue[i].tx_pkts;
-		igb_stats->q_obytes[i] = internal->tx_queue[i].tx_bytes;
-		tx_total += igb_stats->q_opackets[i];
+		rx_total += internal->rx_queue[i].rx_pkts;
+		rx_bytes_total += internal->rx_queue[i].rx_bytes;
+		rx_dropped_total += internal->rx_queue[i].rx_dropped_pkts;
+		rx_nombuf_total += internal->rx_queue[i].rx_nombuf;
+
+		tx_total += internal->tx_queue[i].tx_pkts;
 		tx_err_total += internal->tx_queue[i].err_pkts;
-		tx_bytes_total += igb_stats->q_obytes[i];
+		tx_bytes_total += internal->tx_queue[i].tx_bytes;
+
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_ipackets[i] = internal->rx_queue[i].rx_pkts;
+			qstats->q_ibytes[i] = internal->rx_queue[i].rx_bytes;
+			qstats->q_opackets[i] = internal->tx_queue[i].tx_pkts;
+			qstats->q_obytes[i] = internal->tx_queue[i].tx_bytes;
+			qstats->q_errors[i] = internal->rx_queue[i].rx_nombuf;
+		}
 	}
 
-	igb_stats->ipackets = rx_total;
-	igb_stats->ibytes = rx_bytes_total;
-	igb_stats->opackets = tx_total;
-	igb_stats->oerrors = tx_err_total;
-	igb_stats->obytes = tx_bytes_total;
+	stats->ipackets = rx_total;
+	stats->ibytes = rx_bytes_total;
+	stats->imissed = rx_dropped_total;
+	stats->rx_nombuf = rx_nombuf_total;
+	stats->opackets = tx_total;
+	stats->oerrors = tx_err_total;
+	stats->obytes = tx_bytes_total;
 	return 0;
 }
 
@@ -427,11 +474,14 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	struct pmd_internals *internal = dev->data->dev_private;
 
 	for (i = 0; i < internal->nb_queues; i++) {
+		/* clear socket counter */
+		packet_drop_count(internal->rx_queue[i].sockfd);
+
 		internal->rx_queue[i].rx_pkts = 0;
 		internal->rx_queue[i].rx_bytes = 0;
-	}
+		internal->rx_queue[i].rx_nombuf = 0;
+		internal->rx_queue[i].rx_dropped_pkts = 0;
 
-	for (i = 0; i < internal->nb_queues; i++) {
 		internal->tx_queue[i].tx_pkts = 0;
 		internal->tx_queue[i].err_pkts = 0;
 		internal->tx_queue[i].tx_bytes = 0;
@@ -446,6 +496,7 @@ eth_dev_close(struct rte_eth_dev *dev)
 	struct pmd_internals *internals;
 	struct tpacket_req *req;
 	unsigned int q;
+	int sockfd;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -456,12 +507,26 @@ eth_dev_close(struct rte_eth_dev *dev)
 	internals = dev->data->dev_private;
 	req = &internals->req;
 	for (q = 0; q < internals->nb_queues; q++) {
+		sockfd = internals->rx_queue[q].sockfd;
+		if (sockfd != -1)
+			close(sockfd);
+
+		/* Prevent use after free in case tx fd == rx fd */
+		if (sockfd != internals->tx_queue[q].sockfd) {
+			sockfd = internals->tx_queue[q].sockfd;
+			if (sockfd != -1)
+				close(sockfd);
+		}
+
+		internals->rx_queue[q].sockfd = -1;
+		internals->tx_queue[q].sockfd = -1;
+
 		munmap(internals->rx_queue[q].map,
 			2 * req->tp_block_size * req->tp_block_nr);
 		rte_free(internals->rx_queue[q].rd);
 		rte_free(internals->tx_queue[q].rd);
 	}
-	free(internals->if_name);
+	rte_free(internals->if_name);
 	rte_free(internals->rx_queue);
 	rte_free(internals->tx_queue);
 
@@ -471,9 +536,22 @@ eth_dev_close(struct rte_eth_dev *dev)
 }
 
 static int
-eth_link_update(struct rte_eth_dev *dev __rte_unused,
+eth_link_update(struct rte_eth_dev *dev,
                 int wait_to_complete __rte_unused)
 {
+	const struct pmd_internals *internals = dev->data->dev_private;
+	struct rte_eth_link *dev_link = &dev->data->dev_link;
+	int sockfd = internals->rx_queue[0].sockfd;
+	struct ifreq ifr = { };
+
+	if (sockfd == -1)
+		return 0;
+
+	strlcpy(ifr.ifr_name, internals->if_name, IFNAMSIZ);
+	if (ioctl(sockfd, SIOCGIFFLAGS, &ifr) < 0)
+		return -errno;
+	dev_link->link_status = (ifr.ifr_flags & IFF_RUNNING) ?
+		RTE_ETH_LINK_UP : RTE_ETH_LINK_DOWN;
 	return 0;
 }
 
@@ -507,6 +585,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 	dev->data->rx_queues[rx_queue_id] = pkt_q;
 	pkt_q->in_port = dev->data->port_id;
 	pkt_q->vlan_strip = internals->vlan_strip;
+	pkt_q->timestamp_offloading = internals->timestamp_offloading;
 
 	return 0;
 }
@@ -649,13 +728,60 @@ open_packet_iface(const char *key __rte_unused,
 	int *sockfd = extra_args;
 
 	/* Open an AF_PACKET socket... */
-	*sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+	*sockfd = socket(AF_PACKET, SOCK_RAW, 0);
 	if (*sockfd == -1) {
 		PMD_LOG(ERR, "Could not open AF_PACKET socket");
 		return -1;
 	}
 
 	return 0;
+}
+
+#define PACKET_FANOUT_INVALID -1
+
+static int
+get_fanout_group_id(int if_index)
+{
+	return (getpid() ^ if_index) & 0xffff;
+}
+
+static int
+get_fanout_mode(const char *fanout_mode)
+{
+	int load_balance = PACKET_FANOUT_FLAG_DEFRAG |
+			   PACKET_FANOUT_FLAG_ROLLOVER;
+
+	if (!fanout_mode) {
+		/* Default */
+		load_balance |= PACKET_FANOUT_HASH;
+	} else if (!strcmp(fanout_mode, "hash")) {
+		load_balance |= PACKET_FANOUT_HASH;
+	} else if (!strcmp(fanout_mode, "lb")) {
+		load_balance |= PACKET_FANOUT_LB;
+	} else if (!strcmp(fanout_mode, "cpu")) {
+		load_balance |= PACKET_FANOUT_CPU;
+	} else if (!strcmp(fanout_mode, "rollover")) {
+		load_balance |= PACKET_FANOUT_ROLLOVER;
+	} else if (!strcmp(fanout_mode, "rnd")) {
+		load_balance |= PACKET_FANOUT_RND;
+	} else if (!strcmp(fanout_mode, "qm")) {
+		load_balance |= PACKET_FANOUT_QM;
+	} else {
+		/* Invalid Fanout Mode */
+		load_balance = PACKET_FANOUT_INVALID;
+	}
+
+	return load_balance;
+}
+
+static int
+get_fanout(const char *fanout_mode, int if_index)
+{
+	int load_balance = get_fanout_mode(fanout_mode);
+	if (load_balance != PACKET_FANOUT_INVALID)
+		return get_fanout_group_id(if_index) | (load_balance << 16);
+	else
+		return PACKET_FANOUT_INVALID;
 }
 
 static int
@@ -667,6 +793,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
                        unsigned int framesize,
                        unsigned int framecnt,
 		       unsigned int qdisc_bypass,
+		       const char *fanout_mode,
                        struct pmd_internals **internals,
                        struct rte_eth_dev **eth_dev,
                        struct rte_kvargs *kvlist)
@@ -685,9 +812,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 	int rc, tpver, discard;
 	int qsockfd = -1;
 	unsigned int i, q, rdsize;
-#if defined(PACKET_FANOUT)
 	int fanout_arg;
-#endif
 
 	for (k_idx = 0; k_idx < kvlist->count; k_idx++) {
 		pair = &kvlist->pairs[k_idx];
@@ -751,9 +876,10 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		PMD_LOG_ERRNO(ERR, "%s: ioctl failed (SIOCGIFINDEX)", name);
 		goto free_internals;
 	}
-	(*internals)->if_name = strdup(pair->value);
+	(*internals)->if_name = rte_malloc_socket(name, ifnamelen + 1, 0, numa_node);
 	if ((*internals)->if_name == NULL)
 		goto free_internals;
+	strlcpy((*internals)->if_name, pair->value, ifnamelen + 1);
 	(*internals)->if_index = ifr.ifr_ifindex;
 
 	if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) == -1) {
@@ -767,17 +893,15 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 	sockaddr.sll_protocol = htons(ETH_P_ALL);
 	sockaddr.sll_ifindex = (*internals)->if_index;
 
-#if defined(PACKET_FANOUT)
-	fanout_arg = (getpid() ^ (*internals)->if_index) & 0xffff;
-	fanout_arg |= (PACKET_FANOUT_HASH | PACKET_FANOUT_FLAG_DEFRAG) << 16;
-#if defined(PACKET_FANOUT_FLAG_ROLLOVER)
-	fanout_arg |= PACKET_FANOUT_FLAG_ROLLOVER << 16;
-#endif
-#endif
+	fanout_arg = get_fanout(fanout_mode, (*internals)->if_index);
+	if (fanout_arg == PACKET_FANOUT_INVALID) {
+		PMD_LOG(ERR, "Invalid fanout mode: %s", fanout_mode);
+		goto error;
+	}
 
 	for (q = 0; q < nb_queues; q++) {
 		/* Open an AF_PACKET socket for this queue... */
-		qsockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+		qsockfd = socket(AF_PACKET, SOCK_RAW, 0);
 		if (qsockfd == -1) {
 			PMD_LOG_ERRNO(ERR,
 				"%s: could not open AF_PACKET socket",
@@ -884,16 +1008,17 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 			goto error;
 		}
 
-#if defined(PACKET_FANOUT)
-		rc = setsockopt(qsockfd, SOL_PACKET, PACKET_FANOUT,
-				&fanout_arg, sizeof(fanout_arg));
-		if (rc == -1) {
-			PMD_LOG_ERRNO(ERR,
-				"%s: could not set PACKET_FANOUT on AF_PACKET socket for %s",
-				name, pair->value);
-			goto error;
+		if (nb_queues > 1) {
+			rc = setsockopt(qsockfd, SOL_PACKET, PACKET_FANOUT,
+					&fanout_arg, sizeof(fanout_arg));
+			if (rc == -1) {
+				PMD_LOG_ERRNO(ERR,
+					"%s: could not set PACKET_FANOUT "
+					"on AF_PACKET socket for %s",
+					name, pair->value);
+				goto error;
+			}
 		}
-#endif
 	}
 
 	/* reserve an ethdev entry */
@@ -940,7 +1065,7 @@ error:
 free_internals:
 	rte_free((*internals)->rx_queue);
 	rte_free((*internals)->tx_queue);
-	free((*internals)->if_name);
+	rte_free((*internals)->if_name);
 	rte_free(*internals);
 	return -1;
 }
@@ -961,6 +1086,7 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 	unsigned int framecount = DFLT_FRAME_COUNT;
 	unsigned int qpairs = 1;
 	unsigned int qdisc_bypass = 1;
+	const char *fanout_mode = NULL;
 
 	/* do some parameter checking */
 	if (*sockfd < 0)
@@ -1023,6 +1149,10 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 			}
 			continue;
 		}
+		if (strstr(pair->key, ETH_AF_PACKET_FANOUT_MODE_ARG) != NULL) {
+			fanout_mode = pair->value;
+			continue;
+		}
 	}
 
 	if (framesize > blocksize) {
@@ -1039,16 +1169,22 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 		return -1;
 	}
 
-	PMD_LOG(INFO, "%s: AF_PACKET MMAP parameters:", name);
-	PMD_LOG(INFO, "%s:\tblock size %d", name, blocksize);
-	PMD_LOG(INFO, "%s:\tblock count %d", name, blockcount);
-	PMD_LOG(INFO, "%s:\tframe size %d", name, framesize);
-	PMD_LOG(INFO, "%s:\tframe count %d", name, framecount);
+	PMD_LOG(DEBUG, "%s: AF_PACKET MMAP parameters:", name);
+	PMD_LOG(DEBUG, "%s:\tblock size %d", name, blocksize);
+	PMD_LOG(DEBUG, "%s:\tblock count %d", name, blockcount);
+	PMD_LOG(DEBUG, "%s:\tframe size %d", name, framesize);
+	PMD_LOG(DEBUG, "%s:\tframe count %d", name, framecount);
+	PMD_LOG(DEBUG, "%s:\tqdisc bypass %d", name, qdisc_bypass);
+	if (fanout_mode)
+		PMD_LOG(DEBUG, "%s:\tfanout mode %s", name, fanout_mode);
+	else
+		PMD_LOG(DEBUG, "%s:\tfanout mode %s", name, "default PACKET_FANOUT_HASH");
 
 	if (rte_pmd_init_internals(dev, *sockfd, qpairs,
 				   blocksize, blockcount,
 				   framesize, framecount,
 				   qdisc_bypass,
+				   fanout_mode,
 				   &internals, &eth_dev,
 				   kvlist) < 0)
 		return -1;
@@ -1145,4 +1281,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_af_packet,
 	"blocksz=<int> "
 	"framesz=<int> "
 	"framecnt=<int> "
-	"qdisc_bypass=<0|1>");
+	"qdisc_bypass=<0|1> "
+	"fanout_mode=<hash|lb|cpu|rollover|rnd|qm>");

@@ -147,7 +147,7 @@ nix_sec_flush_meta(uintptr_t laddr, uint16_t lmt_id, uint8_t loff,
 
 #if defined(RTE_ARCH_ARM64)
 static __rte_always_inline uint64_t
-nix_sec_reass_frags_get(const struct cpt_parse_hdr_s *hdr, struct rte_mbuf **next_mbufs)
+nix_sec_reass_frags_get(const struct cpt_cn10k_parse_hdr_s *hdr, struct rte_mbuf **next_mbufs)
 {
 	const struct cpt_frag_info_s *finfo;
 	uint32_t offset = hdr->w2.fi_offset;
@@ -241,7 +241,7 @@ nix_sec_reass_first_frag_update(struct rte_mbuf *head, const uint8_t *m_ipptr,
 
 #else
 static __rte_always_inline uint64_t
-nix_sec_reass_frags_get(const struct cpt_parse_hdr_s *hdr, struct rte_mbuf **next_mbufs)
+nix_sec_reass_frags_get(const struct cpt_cn10k_parse_hdr_s *hdr, struct rte_mbuf **next_mbufs)
 {
 	RTE_SET_USED(hdr);
 	next_mbufs[0] = NULL;
@@ -263,7 +263,7 @@ nix_sec_reass_first_frag_update(struct rte_mbuf *head, const uint8_t *m_ipptr,
 #endif
 
 static struct rte_mbuf *
-nix_sec_attach_frags(const struct cpt_parse_hdr_s *hdr,
+nix_sec_attach_frags(const struct cpt_cn10k_parse_hdr_s *hdr,
 		     struct rte_mbuf *head,
 		     struct cn10k_inb_priv_data *inb_priv,
 		     const uint64_t mbuf_init)
@@ -331,7 +331,7 @@ nix_sec_attach_frags(const struct cpt_parse_hdr_s *hdr,
 }
 
 static __rte_always_inline struct rte_mbuf *
-nix_sec_reassemble_frags(const struct cpt_parse_hdr_s *hdr, struct rte_mbuf *head,
+nix_sec_reassemble_frags(const struct cpt_cn10k_parse_hdr_s *hdr, struct rte_mbuf *head,
 			 uint64_t cq_w1, uint64_t cq_w5, uint64_t mbuf_init)
 {
 	uint8_t num_frags = hdr->w0.num_frags;
@@ -414,7 +414,8 @@ nix_sec_reassemble_frags(const struct cpt_parse_hdr_s *hdr, struct rte_mbuf *hea
 }
 
 static inline struct rte_mbuf *
-nix_sec_oop_process(const struct cpt_parse_hdr_s *hdr, struct rte_mbuf *mbuf, uint64_t *mbuf_init)
+nix_sec_oop_process(const struct cpt_cn10k_parse_hdr_s *hdr, struct rte_mbuf *mbuf,
+		    uint64_t *mbuf_init)
 {
 	uintptr_t wqe = rte_be_to_cpu_64(hdr->wqe_ptr);
 	union nix_rx_parse_u *inner_rx;
@@ -438,7 +439,7 @@ nix_sec_oop_process(const struct cpt_parse_hdr_s *hdr, struct rte_mbuf *mbuf, ui
 	 * calculate actual data off and update in meta mbuf.
 	 */
 	data_off = (uintptr_t)hdr - (uintptr_t)mbuf->buf_addr;
-	data_off += sizeof(struct cpt_parse_hdr_s);
+	data_off += sizeof(struct cpt_cn10k_parse_hdr_s);
 	data_off += hdr->w0.pad_len;
 	*mbuf_init &= ~0xFFFFUL;
 	*mbuf_init |= (uint64_t)data_off;
@@ -455,7 +456,7 @@ nix_sec_meta_to_mbuf_sc(uint64_t cq_w1, uint64_t cq_w5, const uint64_t sa_base,
 			uint64_t mbuf_init)
 {
 	const void *__p = (void *)((uintptr_t)mbuf + (uint16_t)data_off);
-	const struct cpt_parse_hdr_s *hdr = (const struct cpt_parse_hdr_s *)__p;
+	const struct cpt_cn10k_parse_hdr_s *hdr = (const struct cpt_cn10k_parse_hdr_s *)__p;
 	struct cn10k_inb_priv_data *inb_priv;
 	struct rte_mbuf *inner = NULL;
 	uint32_t sa_idx;
@@ -568,10 +569,10 @@ nix_sec_meta_to_mbuf(uint64_t cq_w1, uint64_t cq_w5, uintptr_t inb_sa,
 		     uint8x16_t *rx_desc_field1, uint64_t *ol_flags,
 		     const uint16_t flags, uint64x2_t *rearm)
 {
-	const struct cpt_parse_hdr_s *hdr =
-		(const struct cpt_parse_hdr_s *)cpth;
+	const struct cpt_cn10k_parse_hdr_s *hdr =
+		(const struct cpt_cn10k_parse_hdr_s *)cpth;
 	uint64_t mbuf_init = vgetq_lane_u64(*rearm, 0);
-	struct cn10k_inb_priv_data *inb_priv;
+	struct cn10k_inb_priv_data *inb_priv = NULL;
 	uintptr_t p;
 
 	/* Clear checksum flags */
@@ -700,7 +701,7 @@ static __rte_always_inline void
 nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
 		    uint64_t rearm, uintptr_t cpth, uintptr_t sa_base, const uint16_t flags)
 {
-	const struct cpt_parse_hdr_s *hdr = (const struct cpt_parse_hdr_s *)cpth;
+	const struct cpt_cn10k_parse_hdr_s *hdr = (const struct cpt_cn10k_parse_hdr_s *)cpth;
 	struct cn10k_inb_priv_data *inb_priv = NULL;
 	uint8_t num_frags = 0, frag_i = 0;
 	struct rte_mbuf *next_mbufs[3];
@@ -709,6 +710,7 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
 	uint16_t later_skip = 0;
 	struct rte_mbuf *head;
 	const rte_iova_t *eol;
+	bool rx_inj = false;
 	uint64_t cq_w5 = 0;
 	uint16_t ihl = 0;
 	uint64_t fsz = 0;
@@ -729,7 +731,9 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
 		/* Rx Inject packet must have Match ID 0xFFFF and for this
 		 * wqe will get from address stored at mbuf+1 location
 		 */
-		if ((flags & NIX_RX_REAS_F) && hdr->w0.match_id == 0xFFFFU)
+		rx_inj = ((flags & NIX_RX_REAS_F) && ((hdr->w0.match_id == 0xFFFFU) ||
+					       (hdr->w0.cookie == 0xFFFFFFFFU)));
+		if (rx_inj)
 			wqe = (const uint64_t *)*((uint64_t *)(mbuf + 1));
 		else
 			wqe = (const uint64_t *)(mbuf + 1);
@@ -786,7 +790,8 @@ again:
 	later_skip = (uintptr_t)mbuf->buf_addr - (uintptr_t)mbuf;
 
 	while (nb_segs) {
-		mbuf->next = (struct rte_mbuf *)(*iova_list - later_skip);
+		if (!(flags & NIX_RX_REAS_F) || !rx_inj)
+			mbuf->next = (struct rte_mbuf *)(*iova_list - later_skip);
 		mbuf = mbuf->next;
 
 		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
@@ -804,7 +809,8 @@ again:
 		mbuf->data_len = sg_len;
 		sg = sg >> 16;
 		p = (uintptr_t)&mbuf->rearm_data;
-		*(uint64_t *)p = rearm & ~0xFFFF;
+		if (!(flags & NIX_RX_REAS_F) || !rx_inj)
+			*(uint64_t *)p = rearm & ~0xFFFF;
 		nb_segs--;
 		iova_list++;
 
@@ -1259,7 +1265,6 @@ cn10k_nix_rx_inj_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd)
 			slist++;
 		}
 		m_next = m->next;
-		m->next = NULL;
 		m = m_next;
 	} while (nb_segs);
 
@@ -1359,7 +1364,7 @@ again:
 				((uint64_t)sess_priv.dec_ttl) << 34 | m->pkt_len);
 
 		ucode_cmd[2] = 0;
-		ucode_cmd[3] = (ROC_CPT_DFLT_ENG_GRP_SE_IE << 61 | 1UL << 60 | sa);
+		ucode_cmd[3] = (ROC_LEGACY_CPT_DFLT_ENG_GRP_SE_IE << 61 | 1UL << 60 | sa);
 
 		/* Move to our line */
 		laddr = LMT_OFF(c_lbase, lnum, loff ? 64 : 0);
@@ -1459,9 +1464,9 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 	struct rte_mbuf *mbuf0, *mbuf1, *mbuf2, *mbuf3;
 	uint8_t loff = 0, lnum = 0, shft = 0;
 	struct rte_mempool *meta_pool = NULL;
+	uint16_t lmt_id = 0, d_off = 0;
+	uint64_t lbase = 0, laddr = 0;
 	uint8x16_t f0, f1, f2, f3;
-	uint16_t lmt_id, d_off;
-	uint64_t lbase, laddr;
 	uintptr_t sa_base = 0;
 	uint16_t packets = 0;
 	uint16_t pkts_left;
@@ -2562,5 +2567,21 @@ NIX_RX_FASTPATH_MODES
 
 #define NIX_RX_RECV_VEC_MSEG(fn, flags)                                        \
 	NIX_RX_RECV_VEC(fn, flags | NIX_RX_MULTI_SEG_F)
+
+uint16_t __rte_noinline __rte_hot cn10k_nix_recv_pkts_all_offload(void *rx_queue,
+								  struct rte_mbuf **rx_pkts,
+								  uint16_t pkts);
+
+uint16_t __rte_noinline __rte_hot cn10k_nix_recv_pkts_vec_all_offload(void *rx_queue,
+								      struct rte_mbuf **rx_pkts,
+								      uint16_t pkts);
+
+uint16_t __rte_noinline __rte_hot cn10k_nix_recv_pkts_all_offload_tst(void *rx_queue,
+								      struct rte_mbuf **rx_pkts,
+								      uint16_t pkts);
+
+uint16_t __rte_noinline __rte_hot cn10k_nix_recv_pkts_vec_all_offload_tst(void *rx_queue,
+									  struct rte_mbuf **rx_pkts,
+									  uint16_t pkts);
 
 #endif /* __CN10K_RX_H__ */

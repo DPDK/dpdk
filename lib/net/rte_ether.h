@@ -11,16 +11,18 @@
  * Ethernet Helpers in RTE
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+#include <assert.h>
+#include <stdalign.h>
 #include <stdint.h>
 #include <stdio.h>
 
 #include <rte_random.h>
 #include <rte_mbuf.h>
 #include <rte_byteorder.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_ETHER_ADDR_LEN  6 /**< Length of Ethernet address. */
 #define RTE_ETHER_TYPE_LEN  2 /**< Length of Ethernet type field. */
@@ -74,6 +76,11 @@ extern "C" {
 struct __rte_aligned(2) rte_ether_addr {
 	uint8_t addr_bytes[RTE_ETHER_ADDR_LEN]; /**< Addr bytes in tx order */
 };
+
+static_assert(sizeof(struct rte_ether_addr) == 6,
+		"sizeof(struct rte_ether_addr) == 6");
+static_assert(alignof(struct rte_ether_addr) == 2,
+		"alignof(struct rte_ether_addr) == 2");
 
 #define RTE_ETHER_LOCAL_ADMIN_ADDR 0x02 /**< Locally assigned Eth. address. */
 #define RTE_ETHER_GROUP_ADDR  0x01 /**< Multicast or broadcast Eth. address. */
@@ -290,11 +297,16 @@ rte_ether_unformat_addr(const char *str, struct rte_ether_addr *eth_addr);
  * Ethernet header: Contains the destination address, source address
  * and frame type.
  */
-struct __rte_aligned(2) rte_ether_hdr {
+struct rte_ether_hdr {
 	struct rte_ether_addr dst_addr; /**< Destination address. */
 	struct rte_ether_addr src_addr; /**< Source address. */
 	rte_be16_t ether_type; /**< Frame type. */
 };
+
+static_assert(sizeof(struct rte_ether_hdr) == 14,
+		"sizeof(struct rte_ether_hdr) == 14");
+static_assert(alignof(struct rte_ether_hdr) == 2,
+		"alignof(struct rte_ether_hdr) == 2");
 
 /**
  * Ethernet VLAN Header.
@@ -304,7 +316,12 @@ struct __rte_aligned(2) rte_ether_hdr {
 struct rte_vlan_hdr {
 	rte_be16_t vlan_tci;  /**< Priority (3) + CFI (1) + Identifier Code (12) */
 	rte_be16_t eth_proto; /**< Ethernet type of encapsulated frame. */
-} __rte_packed;
+};
+
+static_assert(sizeof(struct rte_vlan_hdr) == 4,
+		"sizeof(struct rte_vlan_hdr) == 4");
+static_assert(alignof(struct rte_vlan_hdr) == 2,
+		"alignof(struct rte_vlan_hdr) == 2");
 
 
 

@@ -17,17 +17,36 @@
 
 #include <stdint.h>
 
+#include <rte_common.h>
+#include <rte_ip6.h>
+#include <rte_rcu_qsbr.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define RTE_FIB6_IPV6_ADDR_SIZE		16
+#define RTE_FIB6_IPV6_ADDR_SIZE (RTE_DEPRECATED(RTE_FIB6_IPV6_ADDR_SIZE) RTE_IPV6_ADDR_SIZE)
 /** Maximum depth value possible for IPv6 FIB. */
-#define RTE_FIB6_MAXDEPTH       128
+#define RTE_FIB6_MAXDEPTH (RTE_DEPRECATED(RTE_FIB6_MAXDEPTH) RTE_IPV6_MAX_DEPTH)
+
+/* Maximum length of a FIB name. */
+#define RTE_FIB6_NAMESIZE	64
 
 struct rte_fib6;
 struct rte_rib6;
+
+/** @internal Default RCU defer queue entries to reclaim in one go. */
+#define RTE_FIB6_RCU_DQ_RECLAIM_MAX     16
+/** @internal Default RCU defer queue size. */
+#define RTE_FIB6_RCU_DQ_RECLAIM_SZ      128
+
+/** RCU reclamation modes */
+enum rte_fib6_qsbr_mode {
+	/** Create defer queue for reclaim. */
+	RTE_FIB6_QSBR_MODE_DQ = 0,
+	/** Use blocking mode reclaim. No defer queue created. */
+	RTE_FIB6_QSBR_MODE_SYNC
+};
 
 /** Type of FIB struct */
 enum rte_fib6_type {
@@ -37,11 +56,11 @@ enum rte_fib6_type {
 
 /** Modify FIB function */
 typedef int (*rte_fib6_modify_fn_t)(struct rte_fib6 *fib,
-	const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE], uint8_t depth,
+	const struct rte_ipv6_addr *ip, uint8_t depth,
 	uint64_t next_hop, int op);
 /** FIB bulk lookup function */
 typedef void (*rte_fib6_lookup_fn_t)(void *fib,
-	uint8_t ips[][RTE_FIB6_IPV6_ADDR_SIZE],
+	const struct rte_ipv6_addr *ips,
 	uint64_t *next_hops, const unsigned int n);
 
 enum rte_fib6_op {
@@ -80,6 +99,36 @@ struct rte_fib6_conf {
 	};
 };
 
+/** FIB RCU QSBR configuration structure. */
+struct rte_fib6_rcu_config {
+	/** RCU QSBR variable. */
+	struct rte_rcu_qsbr *v;
+	/** Mode of RCU QSBR. See RTE_FIB6_QSBR_MODE_*.
+	 * Default: RTE_FIB6_QSBR_MODE_DQ, create defer queue for reclaim.
+	 */
+	enum rte_fib6_qsbr_mode mode;
+	/** RCU defer queue size.
+	 * Default: RTE_FIB6_RCU_DQ_RECLAIM_SZ.
+	 */
+	uint32_t dq_size;
+	/** Threshold to trigger auto reclaim. */
+	uint32_t reclaim_thd;
+	/** Max entries to reclaim in one go.
+	 * Default: RTE_FIB6_RCU_DQ_RECLAIM_MAX.
+	 */
+	uint32_t reclaim_max;
+};
+
+/**
+ * Free an FIB object.
+ *
+ * @param fib
+ *   FIB object handle created by rte_fib6_create().
+ *   If fib is NULL, no operation is performed.
+ */
+void
+rte_fib6_free(struct rte_fib6 *fib);
+
 /**
  * Create FIB
  *
@@ -94,7 +143,8 @@ struct rte_fib6_conf {
  *  NULL otherwise with rte_errno set to an appropriate values.
  */
 struct rte_fib6 *
-rte_fib6_create(const char *name, int socket_id, struct rte_fib6_conf *conf);
+rte_fib6_create(const char *name, int socket_id, struct rte_fib6_conf *conf)
+	__rte_malloc __rte_dealloc(rte_fib6_free, 1);
 
 /**
  * Find an existing FIB object and return a pointer to it.
@@ -108,16 +158,6 @@ rte_fib6_create(const char *name, int socket_id, struct rte_fib6_conf *conf);
  */
 struct rte_fib6 *
 rte_fib6_find_existing(const char *name);
-
-/**
- * Free an FIB object.
- *
- * @param fib
- *   FIB object handle created by rte_fib6_create().
- *   If fib is NULL, no operation is performed.
- */
-void
-rte_fib6_free(struct rte_fib6 *fib);
 
 /**
  * Add a route to the FIB.
@@ -134,7 +174,7 @@ rte_fib6_free(struct rte_fib6 *fib);
  *   0 on success, negative value otherwise
  */
 int
-rte_fib6_add(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
+rte_fib6_add(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 	uint8_t depth, uint64_t next_hop);
 
 /**
@@ -151,7 +191,7 @@ rte_fib6_add(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
  */
 int
 rte_fib6_delete(struct rte_fib6 *fib,
-	const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE], uint8_t depth);
+	const struct rte_ipv6_addr *ip, uint8_t depth);
 
 /**
  * Lookup multiple IP addresses in the FIB.
@@ -172,7 +212,7 @@ rte_fib6_delete(struct rte_fib6 *fib,
  */
 int
 rte_fib6_lookup_bulk(struct rte_fib6 *fib,
-	uint8_t ips[][RTE_FIB6_IPV6_ADDR_SIZE],
+	const struct rte_ipv6_addr *ips,
 	uint64_t *next_hops, int n);
 
 /**
@@ -213,6 +253,24 @@ rte_fib6_get_rib(struct rte_fib6 *fib);
  */
 int
 rte_fib6_select_lookup(struct rte_fib6 *fib, enum rte_fib6_lookup_type type);
+
+/**
+ * Associate RCU QSBR variable with a FIB object.
+ *
+ * @param fib
+ *   FIB object handle
+ * @param cfg
+ *   RCU QSBR configuration
+ * @return
+ *   0 on success
+ *   -EINVAL - invalid pointer
+ *   -EEXIST - already added QSBR
+ *   -ENOMEM - memory allocation failure
+ *   -ENOTSUP - not supported by configured dataplane algorithm
+ */
+__rte_experimental
+int
+rte_fib6_rcu_qsbr_add(struct rte_fib6 *fib, struct rte_fib6_rcu_config *cfg);
 
 #ifdef __cplusplus
 }

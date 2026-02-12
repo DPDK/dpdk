@@ -154,6 +154,7 @@ mana_start_tx_queues(struct rte_eth_dev *dev)
 			txq->gdma_cq.count, txq->gdma_cq.size,
 			txq->gdma_cq.head);
 
+		__rte_assume(i < RTE_MAX_QUEUES_PER_PORT);
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 	}
 

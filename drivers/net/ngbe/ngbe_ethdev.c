@@ -263,6 +263,8 @@ ngbe_pf_reset_hw(struct ngbe_hw *hw)
 	status = hw->mac.reset_hw(hw);
 
 	ctrl_ext = rd32(hw, NGBE_PORTCTL);
+	/* let hardware know driver is loaded */
+	ctrl_ext |= NGBE_PORTCTL_DRVLOAD;
 	/* Set PF Reset Done bit so PF/VF Mail Ops can work */
 	ctrl_ext |= NGBE_PORTCTL_RSTDONE;
 	wr32(hw, NGBE_PORTCTL, ctrl_ext);
@@ -371,17 +373,18 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	/* Vendor and Device ID need to be set before init of shared code */
 	hw->back = pci_dev;
+	hw->port_id = eth_dev->data->port_id;
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
 	if (pci_dev->id.subsystem_vendor_id == PCI_VENDOR_ID_WANGXUN) {
 		hw->sub_system_id = pci_dev->id.subsystem_device_id;
 	} else {
-		u32 ssid;
+		u32 ssid = 0;
 
-		ssid = ngbe_flash_read_dword(hw, 0xFFFDC);
-		if (ssid == 0x1) {
+		err = ngbe_flash_read_dword(hw, 0xFFFDC, &ssid);
+		if (err) {
 			PMD_INIT_LOG(ERR,
-				"Read of internal subsystem device id failed\n");
+				"Read of internal subsystem device id failed");
 			return -ENODEV;
 		}
 		hw->sub_system_id = (u16)ssid >> 8 | (u16)ssid << 8;
@@ -406,6 +409,7 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	/* Unlock any pending hardware semaphore */
 	ngbe_swfw_lock_reset(hw);
+	ngbe_set_ncsi_status(hw);
 
 	/* Get Hardware Flow Control setting */
 	hw->fc.requested_mode = ngbe_fc_full;
@@ -546,7 +550,7 @@ static int eth_ngbe_pci_remove(struct rte_pci_device *pci_dev)
 	if (ethdev == NULL)
 		return 0;
 
-	return rte_eth_dev_destroy(ethdev, eth_ngbe_dev_uninit);
+	return rte_eth_dev_pci_generic_remove(pci_dev, eth_ngbe_dev_uninit);
 }
 
 static struct rte_pci_driver rte_ngbe_pmd = {
@@ -582,41 +586,25 @@ ngbe_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 }
 
 static void
-ngbe_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
+ngbe_vlan_strip_q_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 {
-	struct ngbe_hw *hw = ngbe_dev_hw(dev);
-	struct ngbe_rx_queue *rxq;
-	bool restart;
-	uint32_t rxcfg, rxbal, rxbah;
-
 	if (on)
 		ngbe_vlan_hw_strip_enable(dev, queue);
 	else
 		ngbe_vlan_hw_strip_disable(dev, queue);
+}
 
-	rxq = dev->data->rx_queues[queue];
-	rxbal = rd32(hw, NGBE_RXBAL(rxq->reg_idx));
-	rxbah = rd32(hw, NGBE_RXBAH(rxq->reg_idx));
-	rxcfg = rd32(hw, NGBE_RXCFG(rxq->reg_idx));
-	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) {
-		restart = (rxcfg & NGBE_RXCFG_ENA) &&
-			!(rxcfg & NGBE_RXCFG_VLAN);
-		rxcfg |= NGBE_RXCFG_VLAN;
-	} else {
-		restart = (rxcfg & NGBE_RXCFG_ENA) &&
-			(rxcfg & NGBE_RXCFG_VLAN);
-		rxcfg &= ~NGBE_RXCFG_VLAN;
-	}
-	rxcfg &= ~NGBE_RXCFG_ENA;
+static void
+ngbe_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 
-	if (restart) {
-		/* set vlan strip for ring */
-		ngbe_dev_rx_queue_stop(dev, queue);
-		wr32(hw, NGBE_RXBAL(rxq->reg_idx), rxbal);
-		wr32(hw, NGBE_RXBAH(rxq->reg_idx), rxbah);
-		wr32(hw, NGBE_RXCFG(rxq->reg_idx), rxcfg);
-		ngbe_dev_rx_queue_start(dev, queue);
+	if (!hw->adapter_stopped) {
+		PMD_DRV_LOG(ERR, "Please stop port first");
+		return;
 	}
+
+	ngbe_vlan_strip_q_set(dev, queue, on);
 }
 
 static int
@@ -842,9 +830,9 @@ ngbe_vlan_hw_strip_config(struct rte_eth_dev *dev)
 		rxq = dev->data->rx_queues[i];
 
 		if (rxq->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
-			ngbe_vlan_hw_strip_enable(dev, i);
+			ngbe_vlan_strip_q_set(dev, i, 1);
 		else
-			ngbe_vlan_hw_strip_disable(dev, i);
+			ngbe_vlan_strip_q_set(dev, i, 0);
 	}
 }
 
@@ -906,6 +894,13 @@ ngbe_vlan_offload_config(struct rte_eth_dev *dev, int mask)
 static int
 ngbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+
+	if (!hw->adapter_stopped && (mask & RTE_ETH_VLAN_STRIP_MASK)) {
+		PMD_DRV_LOG(ERR, "Please stop port first");
+		return -EPERM;
+	}
+
 	ngbe_config_vlan_strip_on_all_queues(dev, mask);
 
 	ngbe_vlan_offload_config(dev, mask);
@@ -932,6 +927,7 @@ ngbe_dev_configure(struct rte_eth_dev *dev)
 	 * allocation Rx preconditions we will reset it.
 	 */
 	adapter->rx_bulk_alloc_allowed = true;
+	adapter->rx_vec_allowed = true;
 
 	return 0;
 }
@@ -1091,10 +1087,12 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 			speed |= NGBE_LINK_SPEED_10M_FULL;
 	}
 
-	err = hw->phy.init_hw(hw);
-	if (err != 0) {
-		PMD_INIT_LOG(ERR, "PHY init failed");
-		goto error;
+	if (!hw->ncsi_enabled) {
+		err = hw->phy.init_hw(hw);
+		if (err != 0) {
+			PMD_INIT_LOG(ERR, "PHY init failed");
+			goto error;
+		}
 	}
 	err = hw->mac.setup_link(hw, speed, link_up);
 	if (err != 0)
@@ -1217,7 +1215,8 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 
 out:
 	/* close phy to prevent reset in dev_close from restarting physical link */
-	hw->phy.set_phy_power(hw, false);
+	if (!(hw->wol_enabled || hw->ncsi_enabled))
+		hw->phy.set_phy_power(hw, false);
 
 	return 0;
 }
@@ -1230,7 +1229,8 @@ ngbe_dev_set_link_up(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 
-	hw->phy.set_phy_power(hw, true);
+	if (!(hw->ncsi_enabled || hw->wol_enabled))
+		hw->phy.set_phy_power(hw, true);
 
 	return 0;
 }
@@ -1243,7 +1243,8 @@ ngbe_dev_set_link_down(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 
-	hw->phy.set_phy_power(hw, false);
+	if (!(hw->ncsi_enabled || hw->wol_enabled))
+		hw->phy.set_phy_power(hw, false);
 
 	return 0;
 }
@@ -1268,6 +1269,9 @@ ngbe_dev_close(struct rte_eth_dev *dev)
 	ngbe_pf_reset_hw(hw);
 
 	ngbe_dev_stop(dev);
+
+	/* Let firmware take over control of hardware */
+	wr32m(hw, NGBE_PORTCTL, NGBE_PORTCTL_DRVLOAD, 0);
 
 	ngbe_dev_free_queues(dev);
 
@@ -1425,7 +1429,7 @@ ngbe_read_stats_registers(struct ngbe_hw *hw,
 	hw_stats->rx_total_bytes += rd64(hw, NGBE_MACRXGBOCTL);
 
 	hw_stats->rx_broadcast_packets += rd64(hw, NGBE_MACRXOCTL);
-	hw_stats->tx_broadcast_packets += rd32(hw, NGBE_MACTXOCTL);
+	hw_stats->tx_broadcast_packets += rd64(hw, NGBE_MACTXOCTL);
 
 	hw_stats->rx_size_64_packets += rd64(hw, NGBE_MACRX1TO64L);
 	hw_stats->rx_size_65_to_127_packets += rd64(hw, NGBE_MACRX65TO127L);
@@ -1444,7 +1448,8 @@ ngbe_read_stats_registers(struct ngbe_hw *hw,
 	hw_stats->tx_size_1024_to_max_packets +=
 			rd64(hw, NGBE_MACTX1024TOMAXL);
 
-	hw_stats->rx_undersize_errors += rd64(hw, NGBE_MACRXERRLENL);
+	hw_stats->rx_length_errors += rd64(hw, NGBE_MACRXERRLENL);
+	hw_stats->rx_undersize_errors += rd32(hw, NGBE_MACRXUNDERSIZE);
 	hw_stats->rx_oversize_cnt += rd32(hw, NGBE_MACRXOVERSIZE);
 	hw_stats->rx_jabber_errors += rd32(hw, NGBE_MACRXJABBER);
 
@@ -1493,12 +1498,14 @@ ngbe_read_stats_registers(struct ngbe_hw *hw,
 }
 
 static int
-ngbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+ngbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	struct ngbe_hw_stats *hw_stats = NGBE_DEV_STATS(dev);
 	struct ngbe_stat_mappings *stat_mappings =
 			NGBE_DEV_STAT_MAPPINGS(dev);
+	struct ngbe_tx_queue *txq;
 	uint32_t i, j;
 
 	ngbe_read_stats_registers(hw, hw_stats);
@@ -1512,29 +1519,31 @@ ngbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->opackets = hw_stats->tx_packets;
 	stats->obytes = hw_stats->tx_bytes;
 
-	memset(&stats->q_ipackets, 0, sizeof(stats->q_ipackets));
-	memset(&stats->q_opackets, 0, sizeof(stats->q_opackets));
-	memset(&stats->q_ibytes, 0, sizeof(stats->q_ibytes));
-	memset(&stats->q_obytes, 0, sizeof(stats->q_obytes));
-	memset(&stats->q_errors, 0, sizeof(stats->q_errors));
-	for (i = 0; i < NGBE_MAX_QP; i++) {
-		uint32_t n = i / NB_QMAP_FIELDS_PER_QSM_REG;
-		uint32_t offset = (i % NB_QMAP_FIELDS_PER_QSM_REG) * 8;
-		uint32_t q_map;
+	if (qstats != NULL) {
+		memset(&qstats->q_ipackets, 0, sizeof(qstats->q_ipackets));
+		memset(&qstats->q_opackets, 0, sizeof(qstats->q_opackets));
+		memset(&qstats->q_ibytes, 0, sizeof(qstats->q_ibytes));
+		memset(&qstats->q_obytes, 0, sizeof(qstats->q_obytes));
+		memset(&qstats->q_errors, 0, sizeof(qstats->q_errors));
+		for (i = 0; i < NGBE_MAX_QP; i++) {
+			uint32_t n = i / NB_QMAP_FIELDS_PER_QSM_REG;
+			uint32_t offset = (i % NB_QMAP_FIELDS_PER_QSM_REG) * 8;
+			uint32_t q_map;
 
-		q_map = (stat_mappings->rqsm[n] >> offset)
-				& QMAP_FIELD_RESERVED_BITS_MASK;
-		j = (q_map < RTE_ETHDEV_QUEUE_STAT_CNTRS
-		     ? q_map : q_map % RTE_ETHDEV_QUEUE_STAT_CNTRS);
-		stats->q_ipackets[j] += hw_stats->qp[i].rx_qp_packets;
-		stats->q_ibytes[j] += hw_stats->qp[i].rx_qp_bytes;
+			q_map = (stat_mappings->rqsm[n] >> offset)
+					& QMAP_FIELD_RESERVED_BITS_MASK;
+			j = (q_map < RTE_ETHDEV_QUEUE_STAT_CNTRS
+			     ? q_map : q_map % RTE_ETHDEV_QUEUE_STAT_CNTRS);
+			qstats->q_ipackets[j] += hw_stats->qp[i].rx_qp_packets;
+			qstats->q_ibytes[j] += hw_stats->qp[i].rx_qp_bytes;
 
-		q_map = (stat_mappings->tqsm[n] >> offset)
-				& QMAP_FIELD_RESERVED_BITS_MASK;
-		j = (q_map < RTE_ETHDEV_QUEUE_STAT_CNTRS
-		     ? q_map : q_map % RTE_ETHDEV_QUEUE_STAT_CNTRS);
-		stats->q_opackets[j] += hw_stats->qp[i].tx_qp_packets;
-		stats->q_obytes[j] += hw_stats->qp[i].tx_qp_bytes;
+			q_map = (stat_mappings->tqsm[n] >> offset)
+					& QMAP_FIELD_RESERVED_BITS_MASK;
+			j = (q_map < RTE_ETHDEV_QUEUE_STAT_CNTRS
+			     ? q_map : q_map % RTE_ETHDEV_QUEUE_STAT_CNTRS);
+			qstats->q_opackets[j] += hw_stats->qp[i].tx_qp_packets;
+			qstats->q_obytes[j] += hw_stats->qp[i].tx_qp_bytes;
+		}
 	}
 
 	/* Rx Errors */
@@ -1551,6 +1560,11 @@ ngbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	/* Tx Errors */
 	stats->oerrors  = 0;
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		stats->oerrors += txq->desc_error;
+	}
+
 	return 0;
 }
 
@@ -1559,10 +1573,17 @@ ngbe_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	struct ngbe_hw_stats *hw_stats = NGBE_DEV_STATS(dev);
+	struct ngbe_tx_queue *txq;
+	uint32_t i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		txq->desc_error = 0;
+	}
 
 	/* HW registers are cleared on read */
 	hw->offset_loaded = 0;
-	ngbe_dev_stats_get(dev, NULL);
+	ngbe_dev_stats_get(dev, NULL, NULL);
 	hw->offset_loaded = 1;
 
 	/* Reset software totals */
@@ -1683,6 +1704,8 @@ ngbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	struct ngbe_hw_stats *hw_stats = NGBE_DEV_STATS(dev);
+	struct ngbe_rx_queue *rxq;
+	uint64_t rx_csum_err = 0;
 	unsigned int i, count;
 
 	ngbe_read_stats_registers(hw, hw_stats);
@@ -1695,6 +1718,13 @@ ngbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		return count;
 
 	limit = min(limit, ngbe_xstats_calc_num(dev));
+
+	/* Rx Checksum Errors */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		rx_csum_err += rxq->csum_err;
+	}
+	hw_stats->rx_l3_l4_xsum_error = rx_csum_err;
 
 	/* Extended stats from ngbe_hw_stats */
 	for (i = 0; i < limit; i++) {
@@ -1772,6 +1802,8 @@ ngbe_dev_xstats_reset(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	struct ngbe_hw_stats *hw_stats = NGBE_DEV_STATS(dev);
+	struct ngbe_rx_queue *rxq;
+	int i = 0;
 
 	/* HW registers are cleared on read */
 	hw->offset_loaded = 0;
@@ -1780,6 +1812,12 @@ ngbe_dev_xstats_reset(struct rte_eth_dev *dev)
 
 	/* Reset software totals */
 	memset(hw_stats, 0, sizeof(*hw_stats));
+
+	/* Reset rxq checksum errors */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		rxq->csum_err = 0;
+	}
 
 	return 0;
 }
@@ -1811,7 +1849,9 @@ ngbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_queues = (uint16_t)hw->mac.max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->mac.max_tx_queues;
 	dev_info->min_rx_bufsize = 1024;
-	dev_info->max_rx_pktlen = 15872;
+	dev_info->max_rx_pktlen = NGBE_MAX_MTU + NGBE_ETH_OVERHEAD;
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
+	dev_info->max_mtu = NGBE_MAX_MTU;
 	dev_info->max_mac_addrs = hw->mac.num_rar_entries;
 	dev_info->max_hash_mac_addrs = NGBE_VMDQ_NUM_UC_MAC;
 	dev_info->max_vfs = pci_dev->max_vfs;
@@ -1867,6 +1907,10 @@ const uint32_t *
 ngbe_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
 	if (dev->rx_pkt_burst == ngbe_recv_pkts ||
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
+	    dev->rx_pkt_burst == ngbe_recv_pkts_vec ||
+	    dev->rx_pkt_burst == ngbe_recv_scattered_pkts_vec ||
+#endif
 	    dev->rx_pkt_burst == ngbe_recv_pkts_sc_single_alloc ||
 	    dev->rx_pkt_burst == ngbe_recv_pkts_sc_bulk_alloc ||
 	    dev->rx_pkt_burst == ngbe_recv_pkts_bulk_alloc)
@@ -1909,6 +1953,7 @@ ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 	bool link_up;
 	int err;
 	int wait = 1;
+	u32 reg;
 
 	memset(&link, 0, sizeof(link));
 	link.link_status = RTE_ETH_LINK_DOWN;
@@ -1966,8 +2011,13 @@ ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 			wr32m(hw, NGBE_MACTXCFG, NGBE_MACTXCFG_SPEED_MASK,
 				NGBE_MACTXCFG_SPEED_1G | NGBE_MACTXCFG_TE);
 		}
+		/* Re configure MAC RX */
+		reg = rd32(hw, NGBE_MACRXCFG);
+		wr32(hw, NGBE_MACRXCFG, reg);
 		wr32m(hw, NGBE_MACRXFLT, NGBE_MACRXFLT_PROMISC,
 			NGBE_MACRXFLT_PROMISC);
+		reg = rd32(hw, NGBE_MAC_WDG_TIMEOUT);
+		wr32(hw, NGBE_MAC_WDG_TIMEOUT, reg);
 	}
 
 	return rte_eth_linkstatus_set(dev, &link);
@@ -2154,6 +2204,19 @@ ngbe_dev_interrupt_get_status(struct rte_eth_dev *dev)
 	uint32_t eicr;
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
+
+	eicr = ((u32 *)hw->isb_mem)[NGBE_ISB_VEC0];
+	if (!eicr) {
+		/*
+		 * shared interrupt alert!
+		 * make sure interrupts are enabled because the read will
+		 * have disabled interrupts.
+		 */
+		if (!hw->adapter_stopped)
+			ngbe_enable_intr(dev);
+		return 0;
+	}
+	((u32 *)hw->isb_mem)[NGBE_ISB_VEC0] = 0;
 
 	/* read-on-clear nic registers here */
 	eicr = ((u32 *)hw->isb_mem)[NGBE_ISB_MISC];
@@ -2378,6 +2441,7 @@ ngbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	hw->fc.low_water      = fc_conf->low_water;
 	hw->fc.send_xon       = fc_conf->send_xon;
 	hw->fc.disable_fc_autoneg = !fc_conf->autoneg;
+	hw->fc.mac_ctrl_frame_fwd = fc_conf->mac_ctrl_frame_fwd;
 
 	err = hw->mac.fc_enable(hw);
 
@@ -2730,6 +2794,35 @@ ngbe_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t on)
 	return 0;
 }
 
+static int
+ngbe_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t mask;
+
+	mask = rd32(hw, NGBE_IMC(0));
+	mask |= (1 << queue_id);
+	wr32(hw, NGBE_IMC(0), mask);
+	rte_intr_enable(intr_handle);
+
+	return 0;
+}
+
+static int
+ngbe_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t mask;
+
+	mask = rd32(hw, NGBE_IMS(0));
+	mask |= (1 << queue_id);
+	wr32(hw, NGBE_IMS(0), mask);
+
+	return 0;
+}
+
 /**
  * Set the IVAR registers, mapping interrupt causes to vectors
  * @param hw
@@ -2757,7 +2850,7 @@ ngbe_set_ivar_map(struct ngbe_hw *hw, int8_t direction,
 		wr32(hw, NGBE_IVARMISC, tmp);
 	} else {
 		/* rx or tx causes */
-		/* Workaround for ICR lost */
+		msix_vector |= NGBE_IVAR_VLD; /* Workaround for ICR lost */
 		idx = ((16 * (queue & 1)) + (8 * direction));
 		tmp = rd32(hw, NGBE_IVAR(queue >> 1));
 		tmp &= ~(0xFF << idx);
@@ -3189,6 +3282,8 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.rx_queue_release           = ngbe_dev_rx_queue_release,
 	.tx_queue_setup             = ngbe_dev_tx_queue_setup,
 	.tx_queue_release           = ngbe_dev_tx_queue_release,
+	.rx_queue_intr_enable       = ngbe_dev_rx_queue_intr_enable,
+	.rx_queue_intr_disable      = ngbe_dev_rx_queue_intr_disable,
 	.dev_led_on                 = ngbe_dev_led_on,
 	.dev_led_off                = ngbe_dev_led_off,
 	.flow_ctrl_get              = ngbe_flow_ctrl_get,

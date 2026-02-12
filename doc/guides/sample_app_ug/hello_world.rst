@@ -4,6 +4,10 @@
 Hello World Sample Application
 ==============================
 
+
+Overview
+--------
+
 The Hello World sample application is an example of the simplest DPDK application that can be written.
 The application simply prints an "helloworld" message on every enabled lcore.
 
@@ -21,7 +25,7 @@ To run the example in a linux environment:
 
 .. code-block:: console
 
-    $ ./<build_dir>/examples/dpdk-helloworld -l 0-3 -n 4
+    $ ./<build_dir>/examples/dpdk-helloworld -l 0-3
 
 Refer to *DPDK Getting Started Guide* for general information on running applications
 and the Environment Abstraction Layer (EAL) options.
@@ -29,7 +33,7 @@ and the Environment Abstraction Layer (EAL) options.
 Explanation
 -----------
 
-The following sections provide some explanation of code.
+The following sections provide an explanation of the code.
 
 EAL Initialization
 ~~~~~~~~~~~~~~~~~~

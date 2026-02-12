@@ -2,597 +2,191 @@
 # Copyright(c) 2010-2021 Intel Corporation
 # Copyright(c) 2022-2023 University of New Hampshire
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
+# Copyright(c) 2024 Arm Limited
 
 """Testbed configuration and test suite specification.
 
 This package offers classes that hold real-time information about the testbed, hold test run
 configuration describing the tested testbed and a loader function, :func:`load_config`, which loads
-the YAML test run configuration file
-and validates it according to :download:`the schema <conf_yaml_schema.json>`.
+the YAML configuration files and validates them against the :class:`Configuration` Pydantic
+model, which fields are directly mapped.
 
-The YAML test run configuration file is parsed into a dictionary, parts of which are used throughout
-this package. The allowed keys and types inside this dictionary are defined in
-the :doc:`types <framework.config.types>` module.
+The configuration files are split in:
 
-The test run configuration has two main sections:
-
-    * The :class:`ExecutionConfiguration` which defines what tests are going to be run
-      and how DPDK will be built. It also references the testbed where these tests and DPDK
-      are going to be run,
-    * The nodes of the testbed are defined in the other section,
-      a :class:`list` of :class:`NodeConfiguration` objects.
+    * The test run which is represented by :class:`~.test_run.TestRunConfiguration`
+      defining what tests are going to be run and how DPDK will be built. It also references
+      the testbed where these tests and DPDK are going to be run,
+    * A list of the nodes of the testbed which ar represented by :class:`~.node.NodeConfiguration`.
+    * A dictionary mapping test suite names to their corresponding configurations.
 
 The real-time information about testbed is supposed to be gathered at runtime.
 
-The classes defined in this package make heavy use of :mod:`dataclasses`.
-All of them use slots and are frozen:
+The classes defined in this package make heavy use of :mod:`pydantic`.
+Nearly all of them are frozen:
 
-    * Slots enables some optimizations, by pre-allocating space for the defined
-      attributes in the underlying data structure,
     * Frozen makes the object immutable. This enables further optimizations,
       and makes it thread safe should we ever want to move in that direction.
 """
 
-import json
-import os.path
-from dataclasses import dataclass, fields
-from enum import auto, unique
 from pathlib import Path
-from typing import Union
+from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeVar, cast
 
-import warlock  # type: ignore[import]
 import yaml
+from pydantic import Field, TypeAdapter, ValidationError, model_validator
+from typing_extensions import Self
 
-from framework.config.types import (
-    BuildTargetConfigDict,
-    ConfigurationDict,
-    ExecutionConfigDict,
-    NodeConfigDict,
-    PortConfigDict,
-    TestSuiteConfigDict,
-    TrafficGeneratorConfigDict,
-)
 from framework.exception import ConfigurationError
-from framework.utils import StrEnum
+
+from .common import FrozenModel, ValidationContext
+from .node import NodeConfiguration
+from .test_run import TestRunConfiguration, create_test_suites_config_model
+
+# Import only if type checking or building docs, to prevent circular imports.
+if TYPE_CHECKING:
+    from framework.test_suite import BaseConfig
+
+NodesConfig = Annotated[list[NodeConfiguration], Field(min_length=1)]
 
 
-@unique
-class Architecture(StrEnum):
-    r"""The supported architectures of :class:`~framework.testbed_model.node.Node`\s."""
+class Configuration(FrozenModel):
+    """DTS testbed and test configuration."""
 
-    #:
-    i686 = auto()
-    #:
-    x86_64 = auto()
-    #:
-    x86_32 = auto()
-    #:
-    arm64 = auto()
-    #:
-    ppc64le = auto()
+    #: Test run configuration.
+    test_run: TestRunConfiguration
+    #: Node configurations.
+    nodes: NodesConfig
+    #: Test suites custom configurations.
+    tests_config: dict[str, "BaseConfig"]
 
-
-@unique
-class OS(StrEnum):
-    r"""The supported operating systems of :class:`~framework.testbed_model.node.Node`\s."""
-
-    #:
-    linux = auto()
-    #:
-    freebsd = auto()
-    #:
-    windows = auto()
-
-
-@unique
-class CPUType(StrEnum):
-    r"""The supported CPUs of :class:`~framework.testbed_model.node.Node`\s."""
-
-    #:
-    native = auto()
-    #:
-    armv8a = auto()
-    #:
-    dpaa2 = auto()
-    #:
-    thunderx = auto()
-    #:
-    xgene1 = auto()
-
-
-@unique
-class Compiler(StrEnum):
-    r"""The supported compilers of :class:`~framework.testbed_model.node.Node`\s."""
-
-    #:
-    gcc = auto()
-    #:
-    clang = auto()
-    #:
-    icc = auto()
-    #:
-    msvc = auto()
-
-
-@unique
-class TrafficGeneratorType(StrEnum):
-    """The supported traffic generators."""
-
-    #:
-    SCAPY = auto()
-
-
-@dataclass(slots=True, frozen=True)
-class HugepageConfiguration:
-    r"""The hugepage configuration of :class:`~framework.testbed_model.node.Node`\s.
-
-    Attributes:
-        amount: The number of hugepages.
-        force_first_numa: If :data:`True`, the hugepages will be configured on the first NUMA node.
-    """
-
-    amount: int
-    force_first_numa: bool
-
-
-@dataclass(slots=True, frozen=True)
-class PortConfig:
-    r"""The port configuration of :class:`~framework.testbed_model.node.Node`\s.
-
-    Attributes:
-        node: The :class:`~framework.testbed_model.node.Node` where this port exists.
-        pci: The PCI address of the port.
-        os_driver_for_dpdk: The operating system driver name for use with DPDK.
-        os_driver: The operating system driver name when the operating system controls the port.
-        peer_node: The :class:`~framework.testbed_model.node.Node` of the port
-            connected to this port.
-        peer_pci: The PCI address of the port connected to this port.
-    """
-
-    node: str
-    pci: str
-    os_driver_for_dpdk: str
-    os_driver: str
-    peer_node: str
-    peer_pci: str
-
-    @staticmethod
-    def from_dict(node: str, d: PortConfigDict) -> "PortConfig":
-        """A convenience method that creates the object from fewer inputs.
-
-        Args:
-            node: The node where this port exists.
-            d: The configuration dictionary.
-
-        Returns:
-            The port configuration instance.
-        """
-        return PortConfig(node=node, **d)
-
-
-@dataclass(slots=True, frozen=True)
-class TrafficGeneratorConfig:
-    """The configuration of traffic generators.
-
-    The class will be expanded when more configuration is needed.
-
-    Attributes:
-        traffic_generator_type: The type of the traffic generator.
-    """
-
-    traffic_generator_type: TrafficGeneratorType
-
-    @staticmethod
-    def from_dict(d: TrafficGeneratorConfigDict) -> "ScapyTrafficGeneratorConfig":
-        """A convenience method that produces traffic generator config of the proper type.
-
-        Args:
-            d: The configuration dictionary.
-
-        Returns:
-            The traffic generator configuration instance.
-
-        Raises:
-            ConfigurationError: An unknown traffic generator type was encountered.
-        """
-        match TrafficGeneratorType(d["type"]):
-            case TrafficGeneratorType.SCAPY:
-                return ScapyTrafficGeneratorConfig(
-                    traffic_generator_type=TrafficGeneratorType.SCAPY
-                )
-            case _:
-                raise ConfigurationError(f'Unknown traffic generator type "{d["type"]}".')
-
-
-@dataclass(slots=True, frozen=True)
-class ScapyTrafficGeneratorConfig(TrafficGeneratorConfig):
-    """Scapy traffic generator specific configuration."""
-
-    pass
-
-
-@dataclass(slots=True, frozen=True)
-class NodeConfiguration:
-    r"""The configuration of :class:`~framework.testbed_model.node.Node`\s.
-
-    Attributes:
-        name: The name of the :class:`~framework.testbed_model.node.Node`.
-        hostname: The hostname of the :class:`~framework.testbed_model.node.Node`.
-            Can be an IP or a domain name.
-        user: The name of the user used to connect to
-            the :class:`~framework.testbed_model.node.Node`.
-        password: The password of the user. The use of passwords is heavily discouraged.
-            Please use keys instead.
-        arch: The architecture of the :class:`~framework.testbed_model.node.Node`.
-        os: The operating system of the :class:`~framework.testbed_model.node.Node`.
-        lcores: A comma delimited list of logical cores to use when running DPDK.
-        use_first_core: If :data:`True`, the first logical core won't be used.
-        hugepages: An optional hugepage configuration.
-        ports: The ports that can be used in testing.
-    """
-
-    name: str
-    hostname: str
-    user: str
-    password: str | None
-    arch: Architecture
-    os: OS
-    lcores: str
-    use_first_core: bool
-    hugepages: HugepageConfiguration | None
-    ports: list[PortConfig]
-
-    @staticmethod
-    def from_dict(
-        d: NodeConfigDict,
-    ) -> Union["SutNodeConfiguration", "TGNodeConfiguration"]:
-        """A convenience method that processes the inputs before creating a specialized instance.
-
-        Args:
-            d: The configuration dictionary.
-
-        Returns:
-            Either an SUT or TG configuration instance.
-        """
-        hugepage_config = None
-        if "hugepages" in d:
-            hugepage_config_dict = d["hugepages"]
-            if "force_first_numa" not in hugepage_config_dict:
-                hugepage_config_dict["force_first_numa"] = False
-            hugepage_config = HugepageConfiguration(**hugepage_config_dict)
-
-        # The calls here contain duplicated code which is here because Mypy doesn't
-        # properly support dictionary unpacking with TypedDicts
-        if "traffic_generator" in d:
-            return TGNodeConfiguration(
-                name=d["name"],
-                hostname=d["hostname"],
-                user=d["user"],
-                password=d.get("password"),
-                arch=Architecture(d["arch"]),
-                os=OS(d["os"]),
-                lcores=d.get("lcores", "1"),
-                use_first_core=d.get("use_first_core", False),
-                hugepages=hugepage_config,
-                ports=[PortConfig.from_dict(d["name"], port) for port in d["ports"]],
-                traffic_generator=TrafficGeneratorConfig.from_dict(d["traffic_generator"]),
+    @model_validator(mode="after")
+    def validate_node_names(self) -> Self:
+        """Validate that the node names are unique."""
+        nodes_by_name: dict[str, int] = {}
+        for node_no, node in enumerate(self.nodes):
+            assert node.name not in nodes_by_name, (
+                f"node {node_no} cannot have the same name as node {nodes_by_name[node.name]} "
+                f"({node.name})"
             )
-        else:
-            return SutNodeConfiguration(
-                name=d["name"],
-                hostname=d["hostname"],
-                user=d["user"],
-                password=d.get("password"),
-                arch=Architecture(d["arch"]),
-                os=OS(d["os"]),
-                lcores=d.get("lcores", "1"),
-                use_first_core=d.get("use_first_core", False),
-                hugepages=hugepage_config,
-                ports=[PortConfig.from_dict(d["name"], port) for port in d["ports"]],
-                memory_channels=d.get("memory_channels", 1),
+            nodes_by_name[node.name] = node_no
+
+        return self
+
+    @model_validator(mode="after")
+    def validate_port_links(self) -> Self:
+        """Validate that all of the test run's port links are valid."""
+        existing_port_links: dict[tuple[str, str], Literal[False] | tuple[str, str]] = {
+            (node.name, port.name): False for node in self.nodes for port in node.ports
+        }
+
+        defined_port_links = [
+            (link_idx, link) for link_idx, link in enumerate(self.test_run.port_topology)
+        ]
+        for link_idx, link in defined_port_links:
+            sut_node_port_peer = existing_port_links.get(
+                (self.test_run.system_under_test_node, link.sut_port), None
+            )
+            assert (
+                sut_node_port_peer is not None
+            ), f"Invalid SUT node port specified for link port_topology.{link_idx}."
+
+            assert sut_node_port_peer is False or sut_node_port_peer == link.right, (
+                f"The SUT node port for link port_topology.{link_idx} is "
+                f"already linked to port {sut_node_port_peer[0]}.{sut_node_port_peer[1]}."
             )
 
+            tg_node_port_peer = existing_port_links.get(
+                (self.test_run.traffic_generator_node, link.tg_port), None
+            )
+            assert (
+                tg_node_port_peer is not None
+            ), f"Invalid TG node port specified for link port_topology.{link_idx}."
 
-@dataclass(slots=True, frozen=True)
-class SutNodeConfiguration(NodeConfiguration):
-    """:class:`~framework.testbed_model.sut_node.SutNode` specific configuration.
+            assert tg_node_port_peer is False or sut_node_port_peer == link.left, (
+                f"The TG node port for link port_topology.{link_idx} is "
+                f"already linked to port {tg_node_port_peer[0]}.{tg_node_port_peer[1]}."
+            )
 
-    Attributes:
-        memory_channels: The number of memory channels to use when running DPDK.
-    """
+            existing_port_links[link.left] = link.right
+            existing_port_links[link.right] = link.left
 
-    memory_channels: int
+        return self
 
+    @model_validator(mode="after")
+    def validate_test_run_against_nodes(self) -> Self:
+        """Validate the test run against the supplied nodes."""
+        sut_node_name = self.test_run.system_under_test_node
+        sut_node = next((n for n in self.nodes if n.name == sut_node_name), None)
 
-@dataclass(slots=True, frozen=True)
-class TGNodeConfiguration(NodeConfiguration):
-    """:class:`~framework.testbed_model.tg_node.TGNode` specific configuration.
+        assert (
+            sut_node is not None
+        ), f"The system_under_test_node {sut_node_name} is not a valid node name."
 
-    Attributes:
-        traffic_generator: The configuration of the traffic generator present on the TG node.
-    """
+        tg_node_name = self.test_run.traffic_generator_node
+        tg_node = next((n for n in self.nodes if n.name == tg_node_name), None)
 
-    traffic_generator: ScapyTrafficGeneratorConfig
+        assert (
+            tg_node is not None
+        ), f"The traffic_generator_name {tg_node_name} is not a valid node name."
 
+        return self
 
-@dataclass(slots=True, frozen=True)
-class NodeInfo:
-    """Supplemental node information.
 
-    Attributes:
-        os_name: The name of the running operating system of
-            the :class:`~framework.testbed_model.node.Node`.
-        os_version: The version of the running operating system of
-            the :class:`~framework.testbed_model.node.Node`.
-        kernel_version: The kernel version of the running operating system of
-            the :class:`~framework.testbed_model.node.Node`.
-    """
+T = TypeVar("T")
 
-    os_name: str
-    os_version: str
-    kernel_version: str
 
+def _load_and_parse_model(file_path: Path, model_type: type[T], ctx: ValidationContext) -> T:
+    with open(file_path) as f:
+        try:
+            data = yaml.safe_load(f)
+            return TypeAdapter(model_type).validate_python(data, context=cast(dict[str, Any], ctx))
+        except ValidationError as e:
+            msg = f"Failed to load the configuration file {file_path}."
+            raise ConfigurationError(msg) from e
 
-@dataclass(slots=True, frozen=True)
-class BuildTargetConfiguration:
-    """DPDK build configuration.
 
-    The configuration used for building DPDK.
+def load_config(ctx: ValidationContext) -> Configuration:
+    """Load the DTS configuration from files.
 
-    Attributes:
-        arch: The target architecture to build for.
-        os: The target os to build for.
-        cpu: The target CPU to build for.
-        compiler: The compiler executable to use.
-        compiler_wrapper: This string will be put in front of the compiler when
-            executing the build. Useful for adding wrapper commands, such as ``ccache``.
-        name: The name of the compiler.
-    """
-
-    arch: Architecture
-    os: OS
-    cpu: CPUType
-    compiler: Compiler
-    compiler_wrapper: str
-    name: str
-
-    @staticmethod
-    def from_dict(d: BuildTargetConfigDict) -> "BuildTargetConfiguration":
-        r"""A convenience method that processes the inputs before creating an instance.
-
-        `arch`, `os`, `cpu` and `compiler` are converted to :class:`Enum`\s and
-        `name` is constructed from `arch`, `os`, `cpu` and `compiler`.
-
-        Args:
-            d: The configuration dictionary.
-
-        Returns:
-            The build target configuration instance.
-        """
-        return BuildTargetConfiguration(
-            arch=Architecture(d["arch"]),
-            os=OS(d["os"]),
-            cpu=CPUType(d["cpu"]),
-            compiler=Compiler(d["compiler"]),
-            compiler_wrapper=d.get("compiler_wrapper", ""),
-            name=f"{d['arch']}-{d['os']}-{d['cpu']}-{d['compiler']}",
-        )
-
-
-@dataclass(slots=True, frozen=True)
-class BuildTargetInfo:
-    """Various versions and other information about a build target.
-
-    Attributes:
-        dpdk_version: The DPDK version that was built.
-        compiler_version: The version of the compiler used to build DPDK.
-    """
-
-    dpdk_version: str
-    compiler_version: str
-
-
-@dataclass(slots=True, frozen=True)
-class TestSuiteConfig:
-    """Test suite configuration.
-
-    Information about a single test suite to be executed.
-
-    Attributes:
-        test_suite: The name of the test suite module without the starting ``TestSuite_``.
-        test_cases: The names of test cases from this test suite to execute.
-            If empty, all test cases will be executed.
-    """
-
-    test_suite: str
-    test_cases: list[str]
-
-    @staticmethod
-    def from_dict(
-        entry: str | TestSuiteConfigDict,
-    ) -> "TestSuiteConfig":
-        """Create an instance from two different types.
-
-        Args:
-            entry: Either a suite name or a dictionary containing the config.
-
-        Returns:
-            The test suite configuration instance.
-        """
-        if isinstance(entry, str):
-            return TestSuiteConfig(test_suite=entry, test_cases=[])
-        elif isinstance(entry, dict):
-            return TestSuiteConfig(test_suite=entry["suite"], test_cases=entry["cases"])
-        else:
-            raise TypeError(f"{type(entry)} is not valid for a test suite config.")
-
-
-@dataclass(slots=True, frozen=True)
-class ExecutionConfiguration:
-    """The configuration of an execution.
-
-    The configuration contains testbed information, what tests to execute
-    and with what DPDK build.
-
-    Attributes:
-        build_targets: A list of DPDK builds to test.
-        perf: Whether to run performance tests.
-        func: Whether to run functional tests.
-        skip_smoke_tests: Whether to skip smoke tests.
-        test_suites: The names of test suites and/or test cases to execute.
-        system_under_test_node: The SUT node to use in this execution.
-        traffic_generator_node: The TG node to use in this execution.
-        vdevs: The names of virtual devices to test.
-    """
-
-    build_targets: list[BuildTargetConfiguration]
-    perf: bool
-    func: bool
-    skip_smoke_tests: bool
-    test_suites: list[TestSuiteConfig]
-    system_under_test_node: SutNodeConfiguration
-    traffic_generator_node: TGNodeConfiguration
-    vdevs: list[str]
-
-    @staticmethod
-    def from_dict(
-        d: ExecutionConfigDict,
-        node_map: dict[str, Union[SutNodeConfiguration | TGNodeConfiguration]],
-    ) -> "ExecutionConfiguration":
-        """A convenience method that processes the inputs before creating an instance.
-
-        The build target and the test suite config are transformed into their respective objects.
-        SUT and TG configurations are taken from `node_map`. The other (:class:`bool`) attributes
-        are just stored.
-
-        Args:
-            d: The configuration dictionary.
-            node_map: A dictionary mapping node names to their config objects.
-
-        Returns:
-            The execution configuration instance.
-        """
-        build_targets: list[BuildTargetConfiguration] = list(
-            map(BuildTargetConfiguration.from_dict, d["build_targets"])
-        )
-        test_suites: list[TestSuiteConfig] = list(map(TestSuiteConfig.from_dict, d["test_suites"]))
-        sut_name = d["system_under_test_node"]["node_name"]
-        skip_smoke_tests = d.get("skip_smoke_tests", False)
-        assert sut_name in node_map, f"Unknown SUT {sut_name} in execution {d}"
-        system_under_test_node = node_map[sut_name]
-        assert isinstance(
-            system_under_test_node, SutNodeConfiguration
-        ), f"Invalid SUT configuration {system_under_test_node}"
-
-        tg_name = d["traffic_generator_node"]
-        assert tg_name in node_map, f"Unknown TG {tg_name} in execution {d}"
-        traffic_generator_node = node_map[tg_name]
-        assert isinstance(
-            traffic_generator_node, TGNodeConfiguration
-        ), f"Invalid TG configuration {traffic_generator_node}"
-
-        vdevs = (
-            d["system_under_test_node"]["vdevs"] if "vdevs" in d["system_under_test_node"] else []
-        )
-        return ExecutionConfiguration(
-            build_targets=build_targets,
-            perf=d["perf"],
-            func=d["func"],
-            skip_smoke_tests=skip_smoke_tests,
-            test_suites=test_suites,
-            system_under_test_node=system_under_test_node,
-            traffic_generator_node=traffic_generator_node,
-            vdevs=vdevs,
-        )
-
-    def copy_and_modify(self, **kwargs) -> "ExecutionConfiguration":
-        """Create a shallow copy with any of the fields modified.
-
-        The only new data are those passed to this method.
-        The rest are copied from the object's fields calling the method.
-
-        Args:
-            **kwargs: The names and types of keyword arguments are defined
-                by the fields of the :class:`ExecutionConfiguration` class.
-
-        Returns:
-            The copied and modified execution configuration.
-        """
-        new_config = {}
-        for field in fields(self):
-            if field.name in kwargs:
-                new_config[field.name] = kwargs[field.name]
-            else:
-                new_config[field.name] = getattr(self, field.name)
-
-        return ExecutionConfiguration(**new_config)
-
-
-@dataclass(slots=True, frozen=True)
-class Configuration:
-    """DTS testbed and test configuration.
-
-    The node configuration is not stored in this object. Rather, all used node configurations
-    are stored inside the execution configuration where the nodes are actually used.
-
-    Attributes:
-        executions: Execution configurations.
-    """
-
-    executions: list[ExecutionConfiguration]
-
-    @staticmethod
-    def from_dict(d: ConfigurationDict) -> "Configuration":
-        """A convenience method that processes the inputs before creating an instance.
-
-        Build target and test suite config are transformed into their respective objects.
-        SUT and TG configurations are taken from `node_map`. The other (:class:`bool`) attributes
-        are just stored.
-
-        Args:
-            d: The configuration dictionary.
-
-        Returns:
-            The whole configuration instance.
-        """
-        nodes: list[Union[SutNodeConfiguration | TGNodeConfiguration]] = list(
-            map(NodeConfiguration.from_dict, d["nodes"])
-        )
-        assert len(nodes) > 0, "There must be a node to test"
-
-        node_map = {node.name: node for node in nodes}
-        assert len(nodes) == len(node_map), "Duplicate node names are not allowed"
-
-        executions: list[ExecutionConfiguration] = list(
-            map(ExecutionConfiguration.from_dict, d["executions"], [node_map for _ in d])
-        )
-
-        return Configuration(executions=executions)
-
-
-def load_config(config_file_path: Path) -> Configuration:
-    """Load DTS test run configuration from a file.
-
-    Load the YAML test run configuration file
-    and :download:`the configuration file schema <conf_yaml_schema.json>`,
-    validate the test run configuration file, and create a test run configuration object.
-
-    The YAML test run configuration file is specified in the :option:`--config-file` command line
-    argument or the :envvar:`DTS_CFG_FILE` environment variable.
+    Load the YAML configuration files, validate them, and create a configuration object.
 
     Args:
-        config_file_path: The path to the YAML test run configuration file.
+        ctx: The context required for validation.
 
     Returns:
         The parsed test run configuration.
+
+    Raises:
+        ConfigurationError: If the supplied configuration files are invalid.
     """
-    with open(config_file_path, "r") as f:
-        config_data = yaml.safe_load(f)
+    test_run = _load_and_parse_model(
+        ctx["settings"].test_run_config_path, TestRunConfiguration, ctx
+    )
 
-    schema_path = os.path.join(Path(__file__).parent.resolve(), "conf_yaml_schema.json")
+    TestSuitesConfiguration = create_test_suites_config_model(test_run.test_suites)
+    if ctx["settings"].tests_config_path:
+        tests_config = _load_and_parse_model(
+            ctx["settings"].tests_config_path,
+            TestSuitesConfiguration,
+            ctx,
+        )
+    else:
+        try:
+            tests_config = TestSuitesConfiguration()
+        except ValidationError as e:
+            raise ConfigurationError(
+                "A test suites' configuration file is required for the given test run. "
+                "The following selected test suites require manual configuration: "
+                + ", ".join(str(error["loc"][0]) for error in e.errors())
+            )
 
-    with open(schema_path, "r") as f:
-        schema = json.load(f)
-    config = warlock.model_factory(schema, name="_Config")(config_data)
-    config_obj: Configuration = Configuration.from_dict(dict(config))  # type: ignore[arg-type]
-    return config_obj
+    nodes = _load_and_parse_model(ctx["settings"].nodes_config_path, NodesConfig, ctx)
+
+    try:
+        from framework.test_suite import BaseConfig as BaseConfig
+
+        Configuration.model_rebuild()
+        return Configuration.model_validate(
+            {"test_run": test_run, "nodes": nodes, "tests_config": dict(tests_config)}, context=ctx
+        )
+    except ValidationError as e:
+        raise ConfigurationError("The configurations supplied are invalid.") from e

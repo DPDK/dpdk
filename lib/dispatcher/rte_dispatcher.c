@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <eal_export.h>
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
 #include <rte_lcore.h>
@@ -266,6 +267,7 @@ evd_service_unregister(struct rte_dispatcher *dispatcher)
 	return rc;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dispatcher_create, 23.11)
 struct rte_dispatcher *
 rte_dispatcher_create(uint8_t event_dev_id)
 {
@@ -300,6 +302,7 @@ rte_dispatcher_create(uint8_t event_dev_id)
 	return dispatcher;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dispatcher_free, 23.11)
 int
 rte_dispatcher_free(struct rte_dispatcher *dispatcher)
 {
@@ -317,6 +320,7 @@ rte_dispatcher_free(struct rte_dispatcher *dispatcher)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dispatcher_service_id_get, 23.11)
 uint32_t
 rte_dispatcher_service_id_get(const struct rte_dispatcher *dispatcher)
 {
@@ -340,6 +344,7 @@ lcore_port_index(struct rte_dispatcher_lcore *lcore,
 	return -1;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dispatcher_bind_port_to_lcore, 23.11)
 int
 rte_dispatcher_bind_port_to_lcore(struct rte_dispatcher *dispatcher,
 	uint8_t event_port_id, uint16_t batch_size, uint64_t timeout,
@@ -369,6 +374,7 @@ rte_dispatcher_bind_port_to_lcore(struct rte_dispatcher *dispatcher,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dispatcher_unbind_port_from_lcore, 23.11)
 int
 rte_dispatcher_unbind_port_from_lcore(struct rte_dispatcher *dispatcher,
 	uint8_t event_port_id, unsigned int lcore_id)
@@ -451,6 +457,7 @@ evd_install_handler(struct rte_dispatcher *dispatcher,
 	}
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dispatcher_register, 23.11)
 int
 rte_dispatcher_register(struct rte_dispatcher *dispatcher,
 	rte_dispatcher_match_t match_fun, void *match_data,
@@ -522,6 +529,7 @@ evd_uninstall_handler(struct rte_dispatcher *dispatcher, int handler_id)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dispatcher_unregister, 23.11)
 int
 rte_dispatcher_unregister(struct rte_dispatcher *dispatcher, int handler_id)
 {
@@ -575,6 +583,7 @@ evd_alloc_finalizer(struct rte_dispatcher *dispatcher)
 	return finalizer;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dispatcher_finalize_register, 23.11)
 int
 rte_dispatcher_finalize_register(struct rte_dispatcher *dispatcher,
 	rte_dispatcher_finalize_t finalize_fun, void *finalize_data)
@@ -592,6 +601,7 @@ rte_dispatcher_finalize_register(struct rte_dispatcher *dispatcher,
 	return finalizer->id;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dispatcher_finalize_unregister, 23.11)
 int
 rte_dispatcher_finalize_unregister(struct rte_dispatcher *dispatcher,
 	int finalizer_id)
@@ -643,12 +653,14 @@ evd_set_service_runstate(struct rte_dispatcher *dispatcher, int state)
 	RTE_VERIFY(rc == 0);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dispatcher_start, 23.11)
 void
 rte_dispatcher_start(struct rte_dispatcher *dispatcher)
 {
 	evd_set_service_runstate(dispatcher, 1);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dispatcher_stop, 23.11)
 void
 rte_dispatcher_stop(struct rte_dispatcher *dispatcher)
 {
@@ -665,6 +677,7 @@ evd_aggregate_stats(struct rte_dispatcher_stats *result,
 	result->ev_drop_count += part->ev_drop_count;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dispatcher_stats_get, 23.11)
 void
 rte_dispatcher_stats_get(const struct rte_dispatcher *dispatcher,
 	struct rte_dispatcher_stats *stats)
@@ -681,6 +694,7 @@ rte_dispatcher_stats_get(const struct rte_dispatcher *dispatcher,
 	}
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dispatcher_stats_reset, 23.11)
 void
 rte_dispatcher_stats_reset(struct rte_dispatcher *dispatcher)
 {

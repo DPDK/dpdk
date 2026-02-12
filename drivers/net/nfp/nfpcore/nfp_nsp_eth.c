@@ -44,6 +44,7 @@
 #define NSP_ETH_CTRL_SET_LANES          RTE_BIT64(5)
 #define NSP_ETH_CTRL_SET_ANEG           RTE_BIT64(6)
 #define NSP_ETH_CTRL_SET_FEC            RTE_BIT64(7)
+#define NSP_ETH_CTRL_SET_IDMODE         RTE_BIT64(8)
 #define NSP_ETH_CTRL_SET_TX_PAUSE       RTE_BIT64(10)
 #define NSP_ETH_CTRL_SET_RX_PAUSE       RTE_BIT64(11)
 
@@ -223,7 +224,7 @@ nfp_eth_calc_port_geometry(struct nfp_eth_table *table)
 
 			if (table->ports[i].label_subport ==
 					table->ports[j].label_subport)
-				PMD_DRV_LOG(DEBUG, "Port %d subport %d is a duplicate",
+				PMD_DRV_LOG(DEBUG, "Port %d subport %d is a duplicate.",
 						table->ports[i].label_port,
 						table->ports[i].label_subport);
 
@@ -267,7 +268,7 @@ nfp_eth_read_ports_real(struct nfp_nsp *nsp)
 	memset(entries, 0, NSP_ETH_TABLE_SIZE);
 	ret = nfp_nsp_read_eth_table(nsp, entries, NSP_ETH_TABLE_SIZE);
 	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "Reading port table failed %d", ret);
+		PMD_DRV_LOG(ERR, "Reading port table failed %d.", ret);
 		goto err;
 	}
 
@@ -281,7 +282,7 @@ nfp_eth_read_ports_real(struct nfp_nsp *nsp)
 	 * above.
 	 */
 	if (ret != 0 && ret != cnt) {
-		PMD_DRV_LOG(ERR, "Table entry count (%d) unmatch entries present (%d)",
+		PMD_DRV_LOG(ERR, "Table entry count (%d) unmatch entries present (%d).",
 				ret, cnt);
 		goto err;
 	}
@@ -347,24 +348,27 @@ nfp_eth_config_start(struct nfp_cpp *cpp,
 	union eth_table_entry *entries;
 
 	entries = malloc(NSP_ETH_TABLE_SIZE);
-	if (entries == NULL)
+	if (entries == NULL) {
+		PMD_DRV_LOG(ERR, "Malloc entries failed.");
 		return NULL;
+	}
 
 	memset(entries, 0, NSP_ETH_TABLE_SIZE);
 	nsp = nfp_nsp_open(cpp);
 	if (nsp == NULL) {
+		PMD_DRV_LOG(ERR, "NSP open failed.");
 		free(entries);
 		return nsp;
 	}
 
 	ret = nfp_nsp_read_eth_table(nsp, entries, NSP_ETH_TABLE_SIZE);
 	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "Reading port table failed %d", ret);
+		PMD_DRV_LOG(ERR, "Reading port table failed %d.", ret);
 		goto err;
 	}
 
 	if ((entries[idx].port & NSP_ETH_PORT_LANES_MASK) == 0) {
-		PMD_DRV_LOG(ERR, "Trying to set port state on disabled port %d", idx);
+		PMD_DRV_LOG(ERR, "Trying to set port state on disabled port %d.", idx);
 		goto err;
 	}
 
@@ -533,7 +537,7 @@ nfp_eth_set_bit_config(struct nfp_nsp *nsp,
 	 * codes were initially not populated correctly.
 	 */
 	if (nfp_nsp_get_abi_ver_minor(nsp) < 17) {
-		PMD_DRV_LOG(ERR, "set operations not supported, please update flash");
+		PMD_DRV_LOG(ERR, "Set operations not supported, please update flash.");
 		return -EOPNOTSUPP;
 	}
 
@@ -658,7 +662,7 @@ nfp_eth_set_speed(struct nfp_nsp *nsp,
 
 	rate = nfp_eth_speed2rate(speed);
 	if (rate == RATE_INVALID) {
-		PMD_DRV_LOG(ERR, "Could not find matching lane rate for speed %u", speed);
+		PMD_DRV_LOG(ERR, "Could not find matching lane rate for speed %u.", speed);
 		return -EINVAL;
 	}
 
@@ -732,4 +736,39 @@ nfp_eth_set_rx_pause(struct nfp_nsp *nsp,
 
 	return NFP_ETH_SET_BIT_CONFIG(nsp, NSP_ETH_RAW_STATE,
 			NSP_ETH_STATE_RX_PAUSE, rx_pause, NSP_ETH_CTRL_SET_RX_PAUSE);
+}
+
+int
+nfp_eth_set_idmode(struct nfp_cpp *cpp,
+		uint32_t idx,
+		bool is_on)
+{
+	uint64_t reg;
+	struct nfp_nsp *nsp;
+	union eth_table_entry *entries;
+
+	nsp = nfp_eth_config_start(cpp, idx);
+	if (nsp == NULL)
+		return -EIO;
+
+	/*
+	 * Older ABI versions did support this feature, however this has only
+	 * been reliable since ABI 32.
+	 */
+	if (nfp_nsp_get_abi_ver_minor(nsp) < 32) {
+		PMD_DRV_LOG(ERR, "Operation only supported on ABI 32 or newer.");
+		nfp_eth_config_cleanup_end(nsp);
+		return -ENOTSUP;
+	}
+
+	entries = nfp_nsp_config_entries(nsp);
+
+	reg = rte_le_to_cpu_64(entries[idx].control);
+	reg &= ~NSP_ETH_CTRL_SET_IDMODE;
+	reg |= FIELD_PREP(NSP_ETH_CTRL_SET_IDMODE, is_on);
+	entries[idx].control = rte_cpu_to_le_64(reg);
+
+	nfp_nsp_config_set_modified(nsp, 1);
+
+	return nfp_eth_config_commit_end(nsp);
 }

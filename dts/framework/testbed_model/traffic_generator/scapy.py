@@ -1,320 +1,399 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2022 University of New Hampshire
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
+# Copyright(c) 2025 Arm Limited
 
 """The Scapy traffic generator.
 
 A traffic generator used for functional testing, implemented with
 `the Scapy library <https://scapy.readthedocs.io/en/latest/>`_.
-The traffic generator uses an XML-RPC server to run Scapy on the remote TG node.
+The traffic generator uses an interactive shell to run Scapy on the remote TG node.
 
-The traffic generator uses the :mod:`xmlrpc.server` module to run an XML-RPC server
-in an interactive remote Python SSH session. The communication with the server is facilitated
-with a local server proxy from the :mod:`xmlrpc.client` module.
+The traffic generator extends :class:`framework.remote_session.python_shell.PythonShell` to
+implement the methods for handling packets by sending commands into the interactive shell.
 """
 
-import inspect
-import marshal
-import time
-import types
-import xmlrpc.client
-from xmlrpc.server import SimpleXMLRPCServer
+from collections.abc import Callable
+from queue import Empty, SimpleQueue
+from threading import Event, Thread
+from typing import Any, ClassVar
 
-import scapy.all  # type: ignore[import]
-from scapy.layers.l2 import Ether  # type: ignore[import]
-from scapy.packet import Packet  # type: ignore[import]
+from scapy.compat import base64_bytes
+from scapy.data import ETHER_TYPES, IP_PROTOS
+from scapy.layers.inet import IP
+from scapy.layers.inet6 import IPv6
+from scapy.layers.l2 import Ether
+from scapy.packet import Packet
 
-from framework.config import OS, ScapyTrafficGeneratorConfig
-from framework.remote_session import PythonShell
-from framework.settings import SETTINGS
+from framework.config.node import OS
+from framework.config.test_run import ScapyTrafficGeneratorConfig
+from framework.exception import InteractiveSSHSessionDeadError, InternalError
+from framework.remote_session.python_shell import PythonShell
 from framework.testbed_model.node import Node
 from framework.testbed_model.port import Port
-
-from .capturing_traffic_generator import (
-    CapturingTrafficGenerator,
+from framework.testbed_model.topology import Topology
+from framework.testbed_model.traffic_generator.capturing_traffic_generator import (
     PacketFilteringConfig,
-    _get_default_capture_name,
 )
 
-"""
-========= BEGIN RPC FUNCTIONS =========
-
-All of the functions in this section are intended to be exported to a python
-shell which runs a scapy RPC server. These functions are made available via that
-RPC server to the packet generator. To add a new function to the RPC server,
-first write the function in this section. Then, if you need any imports, make sure to
-add them to SCAPY_RPC_SERVER_IMPORTS as well. After that, add the function to the list
-in EXPORTED_FUNCTIONS. Note that kwargs (keyword arguments) do not work via xmlrpc,
-so you may need to construct wrapper functions around many scapy types.
-"""
-
-"""
-Add the line needed to import something in a normal python environment
-as an entry to this array. It will be imported before any functions are
-sent to the server.
-"""
-SCAPY_RPC_SERVER_IMPORTS = [
-    "from scapy.all import *",
-    "import xmlrpc",
-    "import sys",
-    "from xmlrpc.server import SimpleXMLRPCServer",
-    "import marshal",
-    "import pickle",
-    "import types",
-    "import time",
-]
+from .capturing_traffic_generator import CapturingTrafficGenerator
 
 
-def scapy_send_packets_and_capture(
-    xmlrpc_packets: list[xmlrpc.client.Binary],
-    send_iface: str,
-    recv_iface: str,
-    duration: float,
-    sniff_filter: str,
-) -> list[bytes]:
-    """The RPC function to send and capture packets.
+class ScapyAsyncSniffer(PythonShell):
+    """Asynchronous Scapy sniffer class.
 
-    This function is meant to be executed on the remote TG node via the server proxy.
-
-    Args:
-        xmlrpc_packets: The packets to send. These need to be converted to
-            :class:`~xmlrpc.client.Binary` objects before sending to the remote server.
-        send_iface: The logical name of the egress interface.
-        recv_iface: The logical name of the ingress interface.
-        duration: Capture for this amount of time, in seconds.
-
-    Returns:
-        A list of bytes. Each item in the list represents one packet, which needs
-        to be converted back upon transfer from the remote node.
-    """
-    scapy_packets = [scapy.all.Packet(packet.data) for packet in xmlrpc_packets]
-    sniffer = scapy.all.AsyncSniffer(
-        iface=recv_iface,
-        store=True,
-        started_callback=lambda *args: scapy.all.sendp(scapy_packets, iface=send_iface),
-        filter=sniff_filter,
-    )
-    sniffer.start()
-    time.sleep(duration)
-    return [scapy_packet.build() for scapy_packet in sniffer.stop(join=True)]
-
-
-def scapy_send_packets(xmlrpc_packets: list[xmlrpc.client.Binary], send_iface: str) -> None:
-    """The RPC function to send packets.
-
-    This function is meant to be executed on the remote TG node via the server proxy.
-    It only sends `xmlrpc_packets`, without capturing them.
-
-    Args:
-        xmlrpc_packets: The packets to send. These need to be converted to
-            :class:`~xmlrpc.client.Binary` objects before sending to the remote server.
-        send_iface: The logical name of the egress interface.
-    """
-    scapy_packets = [scapy.all.Packet(packet.data) for packet in xmlrpc_packets]
-    scapy.all.sendp(scapy_packets, iface=send_iface, realtime=True, verbose=True)
-
-
-"""
-Functions to be exposed by the scapy RPC server.
-"""
-RPC_FUNCTIONS = [
-    scapy_send_packets,
-    scapy_send_packets_and_capture,
-]
-
-"""
-========= END RPC FUNCTIONS =========
-"""
-
-
-class QuittableXMLRPCServer(SimpleXMLRPCServer):
-    """Basic XML-RPC server.
-
-    The server may be augmented by functions serializable by the :mod:`marshal` module.
+    Starts its own dedicated :class:`PythonShell` to constantly sniff packets asynchronously to
+    minimize delays between runs. This is achieved using the synchronous `sniff` Scapy function,
+    which prints one packet per line in Base 64 notation. This class spawns a thread to constantly
+    read the stdout for packets. Packets are only parsed and captured, i.e. placed on a thread-safe
+    queue, when the `_is_capturing` event is set.
     """
 
-    def __init__(self, *args, **kwargs):
-        """Extend the XML-RPC server initialization.
+    _sniffer: Thread
+    _is_sniffing: Event
+    _is_capturing: Event
+    _packets: SimpleQueue[Packet]
+    _packet_filter: Callable[[Packet], bool] | None
+
+    def __init__(
+        self, node: Node, recv_port: Port, name: str | None = None, privileged: bool = True
+    ) -> None:
+        """Sniffer constructor.
 
         Args:
-            args: The positional arguments that will be passed to the superclass's constructor.
-            kwargs: The keyword arguments that will be passed to the superclass's constructor.
-                The `allow_none` argument will be set to :data:`True`.
+            node: Node to start the sniffer on.
+            recv_port: Port to sniff packets from.
+            name: Name identifying the sniffer.
+            privileged: Enables the shell to run as superuser.
         """
-        kwargs["allow_none"] = True
-        super().__init__(*args, **kwargs)
-        self.register_introspection_functions()
-        self.register_function(self.quit)
-        self.register_function(self.add_rpc_function)
+        super().__init__(node, name, privileged)
+        self._sniffer = Thread(target=self._sniff, args=(recv_port,))
+        self._is_sniffing = Event()
+        self._is_capturing = Event()
+        self._packets = SimpleQueue()
+        self._packet_filter = None
 
-    def quit(self) -> None:
-        """Quit the server."""
-        self._BaseServer__shutdown_request = True
-        return None
-
-    def add_rpc_function(self, name: str, function_bytes: xmlrpc.client.Binary) -> None:
-        """Add a function to the server from the local server proxy.
+    def start_capturing(self, filter_config: PacketFilteringConfig) -> None:
+        """Start packet capturing.
 
         Args:
-              name: The name of the function.
-              function_bytes: The code of the function.
-        """
-        function_code = marshal.loads(function_bytes.data)
-        function = types.FunctionType(function_code, globals(), name)
-        self.register_function(function)
+            filter_config: The packet filtering configuration.
 
-    def serve_forever(self, poll_interval: float = 0.5) -> None:
-        """Extend the superclass method with an additional print.
-
-        Once executed in the local server proxy, the print gives us a clear string to expect
-        when starting the server. The print means this function was executed on the XML-RPC server.
+        Raises:
+            InternalError: If the sniffer is already capturing packets.
         """
-        print("XMLRPC OK")
-        super().serve_forever(poll_interval)
+        if self._is_capturing.is_set():
+            raise InternalError("Already capturing. Did you intend to do this?")
+        self._set_packet_filter(filter_config)
+        self._is_capturing.set()
+
+    def collect(
+        self, stop_condition: Callable[[Packet], bool] | None = None, timeout: float = 1.0
+    ) -> list[Packet]:
+        """Collect packets until timeout or stop condition is met.
+
+        A `stop_condition` callback can be passed to trigger a capture stop as soon as the last
+        desired packet has been captured. Without a stop condition, the specified `timeout` is  used
+        to determine when to stop.
+
+        Args:
+            stop_condition: Callback which decides when to stop capturing packets.
+            timeout: Time to wait after the last captured packet before stopping.
+
+        Raises:
+            InternalError: If the sniffer is not capturing any packets.
+            TimeoutError: If a `stop_condition` has been set and was not met before timeout.
+
+        Returns:
+            A list of the captured packets.
+        """
+        if not self._is_capturing.is_set():
+            raise InternalError("Already not capturing. Did you intend to do this?")
+
+        collected_packets = []
+        try:
+            while packet := self._packets.get(timeout=timeout):
+                collected_packets.append(packet)
+                if stop_condition is not None and stop_condition(packet):
+                    break
+        except Empty:
+            if stop_condition is not None:
+                msg = "The stop condition was not met before timeout."
+                raise TimeoutError(msg)
+
+        return collected_packets
+
+    def stop_capturing(self) -> None:
+        """Stop packet capturing.
+
+        It also drains the internal queue from uncollected packets.
+
+        Raises:
+            InternalError: If the sniffer is not capturing any packets.
+        """
+        if not self._is_capturing.is_set():
+            raise InternalError("Already not capturing. Did you intend to do this?")
+
+        self._is_capturing.clear()
+
+        while True:
+            try:
+                self._packets.get_nowait()
+            except Empty:
+                break
+
+    def stop_capturing_and_collect(
+        self, stop_condition: Callable[[Packet], bool] | None = None, timeout: float = 1.0
+    ) -> list[Packet]:
+        """Stop packet capturing and collect all the captured packets in a list.
+
+        A `stop_condition` callback can be passed to trigger a capture stop as soon as the last
+        desired packet has been captured. Without a stop condition, the specified `timeout` is  used
+        to determine when to stop.
+
+        Args:
+            stop_condition: Callback which decides when to stop capturing packets.
+            timeout: Time to wait after the last captured packet before stopping.
+
+        Raises:
+            InternalError: If the sniffer is not capturing any packets.
+            TimeoutError: If a `stop_condition` has been set and was not met before timeout.
+
+        Returns:
+            A list of the captured packets.
+        """
+        if not self._is_capturing.is_set():
+            raise InternalError("Already not capturing. Did you intend to do this?")
+
+        try:
+            return self.collect(stop_condition, timeout)
+        finally:
+            self.stop_capturing()
+
+    def start_application(self, prompt: str | None = None, add_to_shell_pool: bool = True) -> None:
+        """Overrides :meth:`framework.remote_session.interactive_shell.start_application`.
+
+        Prepares the Python shell for scapy and starts the sniffing in a new thread.
+
+        Args:
+            prompt: When starting up the application, expect this string at the end of stdout when
+                the application is ready. If :data:`None`, the class' default prompt will be used.
+            add_to_shell_pool: If :data:`True`, the shell will be registered to the shell pool.
+        """
+        super().start_application(prompt, add_to_shell_pool)
+        self.send_command("from scapy.all import *")
+        self._sniffer.start()
+        self._is_sniffing.wait()
+
+    def close(self) -> None:
+        """Overrides :meth:`framework.remote_session.interactive_shell.start_application`.
+
+        Sends a stop signal to the sniffer thread and waits until its exit before closing the shell.
+        """
+        self._is_sniffing.clear()
+        self._sniffer.join()
+        super().close()
+
+    def _sniff(self, recv_port: Port) -> None:
+        """Sniff packets and use events and queue to communicate with the main thread.
+
+        Raises:
+            InteractiveSSHSessionDeadError: If the SSH connection has been unexpectedly interrupted.
+        """
+        ready_prompt = "Ready."
+        self.send_command(
+            "sniff("
+            f'iface="{recv_port.logical_name}", quiet=True, store=False, '
+            "prn=lambda p: bytes_base64(p.build()).decode(), "
+            f'started_callback=lambda: print("{ready_prompt}")'
+            ")",
+            prompt=ready_prompt,
+        )
+        self._ssh_channel.settimeout(1)
+
+        self._logger.debug("Start sniffing.")
+        self._is_sniffing.set()
+        while self._is_sniffing.is_set():
+            try:
+                line = self._stdout.readline()
+                if not line:
+                    raise InteractiveSSHSessionDeadError(
+                        self._node.main_session.interactive_session.hostname
+                    )
+
+                if self._is_capturing.is_set():
+                    packet = Ether(base64_bytes(line.rstrip()))
+                    if self._packet_filter is None or self._packet_filter(packet):
+                        self._logger.debug(f"CAPTURING sniffed packet: {repr(packet)}")
+                        self._packets.put(packet)
+                    else:
+                        self._logger.debug(f"DROPPING sniffed packet: {repr(packet)}")
+            except TimeoutError:
+                pass
+
+        self._logger.debug("Stop sniffing.")
+        self.send_command("\x03")  # send Ctrl+C to trigger a KeyboardInterrupt in `sniff`.
+
+    def _set_packet_filter(self, filter_config: PacketFilteringConfig) -> None:
+        """Make and set a filtering function from `filter_config`.
+
+        Args:
+            filter_config: Config class that specifies which filters should be applied.
+        """
+
+        def _filter(packet: Packet) -> bool:
+            if ether := packet.getlayer(Ether):
+                if filter_config.no_arp and ether.type == ETHER_TYPES.ARP:
+                    return False
+
+                if filter_config.no_lldp and ether.type == ETHER_TYPES.LLDP:
+                    return False
+
+            if ipv4 := packet.getlayer(IP):
+                if filter_config.no_icmp and ipv4.proto == IP_PROTOS.icmp:
+                    return False
+
+            if ipv6 := packet.getlayer(IPv6):
+                next_header = ipv6.nh
+
+                if next_header == IP_PROTOS.hopopt:
+                    next_header = ipv6.payload.nh
+
+                if filter_config.no_icmp and next_header == IP_PROTOS.ipv6_icmp:
+                    return False
+
+            return True
+
+        self._packet_filter = _filter
 
 
 class ScapyTrafficGenerator(CapturingTrafficGenerator):
-    """Provides access to scapy functions via an RPC interface.
+    """Provides access to scapy functions on a traffic generator node.
 
-    This class extends the base with remote execution of scapy functions.
+    This class extends the base with remote execution of scapy functions. All methods for
+    processing packets are implemented using an underlying
+    :class:`framework.remote_session.python_shell.PythonShell` which imports the Scapy library. This
+    class also extends :class:`.capturing_traffic_generator.CapturingTrafficGenerator` to expose
+    methods that utilize said packet processing functionality to test suites, which are delegated to
+    a dedicated asynchronous packet sniffer with :class:`ScapyAsyncSniffer`.
 
-    Any packets sent to the remote server are first converted to bytes. They are received as
-    :class:`~xmlrpc.client.Binary` objects on the server side. When the server sends the packets
-    back, they are also received as :class:`~xmlrpc.client.Binary` objects on the client side, are
-    converted back to :class:`~scapy.packet.Packet` objects and only then returned from the methods.
+    Because of the double inheritance, this class has both methods that wrap scapy commands
+    sent into the shell (running on the TG node) and methods that run locally to fulfill
+    traffic generation needs.
+    To help make a clear distinction between the two, the names of the methods
+    that wrap the logic of the underlying shell should be prepended with "shell".
 
-    Attributes:
-        session: The exclusive interactive remote session created by the Scapy
-            traffic generator where the XML-RPC server runs.
-        rpc_server_proxy: The object used by clients to execute functions
-            on the XML-RPC server.
+    Note that the order of inheritance is important for this class. In order to instantiate this
+    class, the abstract methods of :class:`~.capturing_traffic_generator.CapturingTrafficGenerator`
+    must be implemented. Since some of these methods are implemented in the underlying interactive
+    shell, according to Python's Method Resolution Order (MRO), the interactive shell must come
+    first.
     """
 
-    session: PythonShell
-    rpc_server_proxy: xmlrpc.client.ServerProxy
     _config: ScapyTrafficGeneratorConfig
+    _shell: PythonShell
+    _sniffer: ScapyAsyncSniffer
 
-    def __init__(self, tg_node: Node, config: ScapyTrafficGeneratorConfig):
+    #: Name of sniffer to ensure the same is used in all places
+    _sniffer_name: ClassVar[str] = "scapy_sniffer"
+    #: Name of variable that points to the list of packets inside the scapy shell.
+    _send_packet_list_name: ClassVar[str] = "packets"
+    #: Padding to add to the start of a line for python syntax compliance.
+    _python_indentation: ClassVar[str] = " " * 4
+
+    def __init__(self, tg_node: Node, config: ScapyTrafficGeneratorConfig, **kwargs: Any) -> None:
         """Extend the constructor with Scapy TG specifics.
 
-        The traffic generator first starts an XML-RPC on the remote `tg_node`.
-        Then it populates the server with functions which use the Scapy library
-        to send/receive traffic:
-
-            * :func:`scapy_send_packets_and_capture`
-            * :func:`scapy_send_packets`
-
-        To enable verbose logging from the xmlrpc client, use the :option:`--verbose`
-        command line argument or the :envvar:`DTS_VERBOSE` environment variable.
+        Initializes both the traffic generator and the interactive shell used to handle Scapy
+        functions. The interactive shell will be started on `tg_node`. The additional keyword
+        arguments in `kwargs` are used to pass into the constructor for the interactive shell.
 
         Args:
             tg_node: The node where the traffic generator resides.
             config: The traffic generator's test run configuration.
+            kwargs: Additional keyword arguments. Supported arguments correspond to the parameters
+                of :meth:`PythonShell.__init__` in this case.
         """
-        super().__init__(tg_node, config)
-
         assert (
-            self._tg_node.config.os == OS.linux
+            tg_node.config.os == OS.linux
         ), "Linux is the only supported OS for scapy traffic generation"
 
-        self.session = self._tg_node.create_interactive_shell(
-            PythonShell, timeout=5, privileged=True
+        super().__init__(tg_node=tg_node, config=config, **kwargs)
+
+    def setup(self, topology: Topology) -> None:
+        """Extends :meth:`.traffic_generator.TrafficGenerator.setup`.
+
+        Binds the TG node ports to the kernel drivers and starts up the async sniffer.
+        """
+        super().setup(topology)
+        topology.configure_ports("tg", "kernel")
+
+        self._sniffer = ScapyAsyncSniffer(
+            self._tg_node, topology.tg_port_ingress, self._sniffer_name
         )
+        self._sniffer.start_application(add_to_shell_pool=False)
 
-        # import libs in remote python console
-        for import_statement in SCAPY_RPC_SERVER_IMPORTS:
-            self.session.send_command(import_statement)
+        self._shell = PythonShell(self._tg_node, "scapy", privileged=True)
+        self._shell.start_application(add_to_shell_pool=False)
+        self._shell.send_command("from scapy.all import *")
+        self._shell.send_command("from scapy.contrib.lldp import *")
 
-        # start the server
-        xmlrpc_server_listen_port = 8000
-        self._start_xmlrpc_server_in_remote_python(xmlrpc_server_listen_port)
+    def close(self) -> None:
+        """Overrides :meth:`.traffic_generator.TrafficGenerator.close`.
 
-        # connect to the server
-        server_url = f"http://{self._tg_node.config.hostname}:{xmlrpc_server_listen_port}"
-        self.rpc_server_proxy = xmlrpc.client.ServerProxy(
-            server_url, allow_none=True, verbose=SETTINGS.verbose
-        )
-
-        # add functions to the server
-        for function in RPC_FUNCTIONS:
-            # A slightly hacky way to move a function to the remote server.
-            # It is constructed from the name and code on the other side.
-            # Pickle cannot handle functions, nor can any of the other serialization
-            # frameworks aside from the libraries used to generate pyc files, which
-            # are even more messy to work with.
-            function_bytes = marshal.dumps(function.__code__)
-            self.rpc_server_proxy.add_rpc_function(function.__name__, function_bytes)
-
-    def _start_xmlrpc_server_in_remote_python(self, listen_port: int) -> None:
-        # load the source of the function
-        src = inspect.getsource(QuittableXMLRPCServer)
-        # Lines with only whitespace break the repl if in the middle of a function
-        # or class, so strip all lines containing only whitespace
-        src = "\n".join([line for line in src.splitlines() if not line.isspace() and line != ""])
-
-        # execute it in the python terminal
-        self.session.send_command(src + "\n")
-        self.session.send_command(
-            f"server = QuittableXMLRPCServer(('0.0.0.0', {listen_port}));server.serve_forever()",
-            "XMLRPC OK",
-        )
+        Stops the traffic generator and sniffer shells.
+        """
+        self._shell.close()
+        self._sniffer.close()
 
     def _send_packets(self, packets: list[Packet], port: Port) -> None:
-        packets = [packet.build() for packet in packets]
-        self.rpc_server_proxy.scapy_send_packets(packets, port.logical_name)
+        """Implementation for sending packets without capturing any received traffic.
 
-    def _create_packet_filter(self, filter_config: PacketFilteringConfig) -> str:
-        """Combines filter settings from `filter_config` into a BPF that scapy can use.
-
-        Scapy allows for the use of Berkeley Packet Filters (BPFs) to filter what packets are
-        collected based on various attributes of the packet.
-
-        Args:
-            filter_config: Config class that specifies which filters should be applied.
-
-        Returns:
-            A string representing the combination of BPF filters to be passed to scapy. For
-            example:
-
-            "ether[12:2] != 0x88cc && ether[12:2] != 0x0806"
+        Provides a "fire and forget" method of sending packets.
         """
-        bpf_filter = []
-        if filter_config.no_arp:
-            bpf_filter.append("ether[12:2] != 0x0806")
-        if filter_config.no_lldp:
-            bpf_filter.append("ether[12:2] != 0x88cc")
-        return " && ".join(bpf_filter)
+        self._shell_set_packet_list(packets)
+        send_command = [
+            "sendp(",
+            f"{self._send_packet_list_name},",
+            f"iface='{port.logical_name}',",
+            "realtime=True,",
+            "verbose=True",
+            ")",
+        ]
+        self._shell.send_command(f"\n{self._python_indentation}".join(send_command))
 
     def _send_packets_and_capture(
         self,
         packets: list[Packet],
         send_port: Port,
-        receive_port: Port,
+        _: Port,
         filter_config: PacketFilteringConfig,
         duration: float,
-        capture_name: str = _get_default_capture_name(),
     ) -> list[Packet]:
-        binary_packets = [packet.build() for packet in packets]
+        """Implementation for sending packets and capturing any received traffic.
 
-        xmlrpc_packets: list[
-            xmlrpc.client.Binary
-        ] = self.rpc_server_proxy.scapy_send_packets_and_capture(
-            binary_packets,
-            send_port.logical_name,
-            receive_port.logical_name,
-            duration,
-            self._create_packet_filter(filter_config),
-        )  # type: ignore[assignment]
+        Returns:
+            A list of packets received after sending `packets`.
+        """
+        self._sniffer.start_capturing(filter_config)
+        self.send_packets(packets, send_port)
+        return self._sniffer.stop_capturing_and_collect(timeout=duration)
 
-        scapy_packets = [Ether(packet.data) for packet in xmlrpc_packets]
-        return scapy_packets
+    def _shell_set_packet_list(self, packets: list[Packet]) -> None:
+        """Build a list of packets to send later.
 
-    def close(self) -> None:
-        """Close the traffic generator."""
-        try:
-            self.rpc_server_proxy.quit()
-        except ConnectionRefusedError:
-            # Because the python instance closes, we get no RPC response.
-            # Thus, this error is expected
-            pass
-        self.session.close()
+        Sends the string that represents the Python command that was used to create each packet in
+        `packets` into the underlying Python session. The purpose behind doing this is to create a
+        list that is identical to `packets` inside the shell. This method should only be called by
+        methods for sending packets immediately prior to sending. The list of packets will continue
+        to exist in the scope of the shell until subsequent calls to this method, so failure to
+        rebuild the list prior to sending packets could lead to undesired "stale" packets to be
+        sent.
+
+        Args:
+            packets: The list of packets to recreate in the shell.
+        """
+        self._logger.info("Building a list of packets to send.")
+        self._shell.send_command(
+            f"{self._send_packet_list_name} = [{', '.join(map(Packet.command, packets))}]"
+        )

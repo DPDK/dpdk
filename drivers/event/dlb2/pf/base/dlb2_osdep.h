@@ -40,14 +40,14 @@
 	DLB2_PCI_REG_WRITE(DLB2_FUNC_REG_ADDR((hw), (reg)), (value))
 
 /* Map to PMDs logging interface */
-#define DLB2_ERR(dev, fmt, args...) \
-	DLB2_LOG_ERR(fmt, ## args)
+#define DLB2_ERR(dev, fmt, ...) \
+	RTE_LOG(ERR, EVENTDEV_DLB2, "%s" fmt, __func__, ## __VA_ARGS__)
 
-#define DLB2_INFO(dev, fmt, args...) \
-	DLB2_LOG_INFO(fmt, ## args)
+#define DLB2_INFO(dev, fmt, ...) \
+	RTE_LOG(INFO, EVENTDEV_DLB2, "%s" fmt, __func__, ## __VA_ARGS__)
 
-#define DLB2_DEBUG(dev, fmt, args...) \
-	DLB2_LOG_DBG(fmt, ## args)
+#define DLB2_DEBUG(dev, fmt, ...) \
+	RTE_LOG_DP(DEBUG, EVENTDEV_DLB2, fmt, ## __VA_ARGS__)
 
 /**
  * os_udelay() - busy-wait for a number of microseconds
@@ -137,6 +137,16 @@ static inline void os_fence_hcw(struct dlb2_hw *hw, u64 *pp_addr)
 #define DLB2_HW_ERR(dlb2, ...) do {	\
 	RTE_SET_USED(dlb2);		\
 	DLB2_ERR(dlb2, __VA_ARGS__);	\
+} while (0)
+
+/**
+ * DLB2_HW_INFO() - log an error message
+ * @dlb2: dlb2_hw handle for a particular device.
+ * @...: variable string args.
+ */
+#define DLB2_HW_INFO(dlb2, ...) do {	\
+	RTE_SET_USED(dlb2);		\
+	DLB2_INFO(dlb2, __VA_ARGS__);	\
 } while (0)
 
 /**

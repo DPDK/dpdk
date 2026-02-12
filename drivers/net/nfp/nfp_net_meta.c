@@ -27,7 +27,6 @@ nfp_net_meta_parse_chained(uint8_t *meta_base,
 
 	meta_info = rte_be_to_cpu_32(meta_header);
 	meta_offset = meta_base + 4;
-	meta->flags = 0;
 
 	for (; meta_info != 0; meta_info >>= NFP_NET_META_FIELD_SIZE, meta_offset += 4) {
 		switch (meta_info & NFP_NET_META_FIELD_MASK) {
@@ -81,6 +80,7 @@ nfp_net_meta_parse_single(uint8_t *meta_base,
 		rte_be32_t meta_header,
 		struct nfp_net_meta_parsed *meta)
 {
+	meta->flags = 0;
 	meta->flags |= (1 << NFP_NET_META_HASH);
 	meta->hash_type = rte_be_to_cpu_32(meta_header);
 	meta->hash = rte_be_to_cpu_32(*(rte_be32_t *)(meta_base + 4));
@@ -111,6 +111,7 @@ nfp_net_meta_parse_vlan(const struct nfp_net_meta_parsed *meta,
 		struct nfp_net_rxq *rxq,
 		struct rte_mbuf *mb)
 {
+	uint16_t flags;
 	uint32_t ctrl = rxq->hw->super.ctrl;
 
 	/* Skip if hardware don't support setting vlan. */
@@ -131,7 +132,8 @@ nfp_net_meta_parse_vlan(const struct nfp_net_meta_parsed *meta,
 			mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		}
 	} else if ((ctrl & NFP_NET_CFG_CTRL_RXVLAN) != 0) {
-		if ((rxd->rxd.flags & PCIE_DESC_RX_VLAN) != 0) {
+		flags = rte_le_to_cpu_16(rxd->rxd.flags);
+		if ((flags & PCIE_DESC_RX_VLAN) != 0) {
 			mb->vlan_tci = rte_cpu_to_le_32(rxd->rxd.offload_info);
 			mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		}
@@ -177,7 +179,7 @@ nfp_net_meta_parse_qinq(const struct nfp_net_meta_parsed *meta,
 		mb->vlan_tci = rte_cpu_to_le_16(meta->vlan[0].tci);
 
 	mb->vlan_tci_outer = rte_cpu_to_le_16(meta->vlan[1].tci);
-	PMD_RX_LOG(DEBUG, "Received outer vlan TCI is %u inner vlan TCI is %u",
+	PMD_RX_LOG(DEBUG, "Received outer vlan TCI is %u inner vlan TCI is %u.",
 			mb->vlan_tci_outer, mb->vlan_tci);
 	mb->ol_flags |= RTE_MBUF_F_RX_QINQ | RTE_MBUF_F_RX_QINQ_STRIPPED;
 }
@@ -234,8 +236,12 @@ nfp_net_meta_parse(struct nfp_net_rx_desc *rxds,
 		struct rte_mbuf *mb,
 		struct nfp_net_meta_parsed *meta)
 {
+	uint16_t flags;
 	uint8_t *meta_base;
 	rte_be32_t meta_header;
+
+	meta->flags = 0;
+	flags = rte_le_to_cpu_16(rxds->rxd.flags);
 
 	if (unlikely(NFP_DESC_META_LEN(rxds) == 0))
 		return;
@@ -256,7 +262,7 @@ nfp_net_meta_parse(struct nfp_net_rx_desc *rxds,
 		}
 		break;
 	case NFP_NET_METAFORMAT_SINGLE:
-		if ((rxds->rxd.flags & PCIE_DESC_RX_RSS) != 0) {
+		if ((flags & PCIE_DESC_RX_RSS) != 0) {
 			nfp_net_meta_parse_single(meta_base, meta_header, meta);
 			nfp_net_meta_parse_hash(meta, rxq, mb);
 		}
@@ -267,14 +273,15 @@ nfp_net_meta_parse(struct nfp_net_rx_desc *rxds,
 }
 
 void
-nfp_net_meta_init_format(struct nfp_net_hw *hw)
+nfp_net_meta_init_format(struct nfp_net_hw *hw,
+		struct nfp_pf_dev *pf_dev)
 {
 	/*
 	 * ABI 4.x and ctrl vNIC always use chained metadata, in other cases we allow use of
 	 * single metadata if only RSS(v1) is supported by hw capability, and RSS(v2)
 	 * also indicate that we are using chained metadata.
 	 */
-	if (hw->ver.major == 4) {
+	if (pf_dev->ver.major == 4) {
 		hw->meta_format = NFP_NET_METAFORMAT_CHAINED;
 	} else if ((hw->super.cap & NFP_NET_CFG_CTRL_CHAIN_META) != 0) {
 		hw->meta_format = NFP_NET_METAFORMAT_CHAINED;

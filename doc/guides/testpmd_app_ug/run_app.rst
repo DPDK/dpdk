@@ -20,7 +20,7 @@ They must be separated from the EAL options, shown in the previous section, with
 
 .. code-block:: console
 
-    sudo ./dpdk-testpmd -l 0-3 -n 4 -- -i --portmask=0x1 --nb-cores=2
+    sudo ./dpdk-testpmd -l 0-3 -- -i --portmask=0x1 --nb-cores=2
 
 The command line options are:
 
@@ -38,6 +38,14 @@ The command line options are:
 *   ``-h, --help``
 
     Display a help message and quit.
+
+*   ``--cmdline-file=filename, --cmdline-file-noecho=filename``
+
+    At startup, read and execute commands from a file.
+    The file should contain the same commands that can be entered interactively.
+    This option can be specified multiple times to process several files in sequence.
+    When using ``cmdline-file``, each command is printed as it is executed.
+    When using ``cmdline-file-noecho``, the commands are executed silently.
 
 *   ``-a, --auto-start``
 
@@ -198,6 +206,10 @@ The command line options are:
 *   ``--enable-drop-en``
 
     Enable per-queue packet drop for packets with no descriptors.
+
+*   ``--enable-rss``
+
+    Enable RSS (Receive Side Scaling) even in case of a single-queue configuration.
 
 *   ``--disable-rss``
 
@@ -398,6 +410,7 @@ The command line options are:
        100000 - 100Gbps
        200000 - 200Gbps
        400000 - 400Gbps
+       800000 - 800Gbps
        ...
 
 *   ``--disable-link-check``
@@ -571,6 +584,9 @@ The command line options are:
 
     The default value is 0. Hairpin will use single port mode and implicit Tx flow mode.
 
+*   ``--hairpin-map=Rx port id:Rx queue:Tx port id:Tx queue:queues number``
+
+    Set explicit hairpin configuration.
 
 Testpmd Multi-Process Command-line Options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

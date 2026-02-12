@@ -17,14 +17,12 @@ test_power_intel_uncore(void)
 #include <rte_power_uncore.h>
 #include <power_common.h>
 
-#define MAX_UNCORE_FREQS 32
-
 #define VALID_PKG 0
 #define VALID_DIE 0
 #define INVALID_PKG (rte_power_uncore_get_num_pkgs() + 1)
 #define INVALID_DIE (rte_power_uncore_get_num_dies(VALID_PKG) + 1)
 #define VALID_INDEX 1
-#define INVALID_INDEX (MAX_UNCORE_FREQS + 1)
+#define INVALID_INDEX (RTE_MAX_UNCORE_FREQS + 1)
 
 static int check_power_uncore_init(void)
 {
@@ -37,7 +35,7 @@ static int check_power_uncore_init(void)
 			"may occur if environment is not configured "
 			"correctly(APCI cpufreq) or operating in another valid "
 			"Power management environment\n", VALID_PKG, VALID_DIE);
-		return -1;
+		return TEST_SKIPPED;
 	}
 
 	/* Unsuccessful Test */
@@ -259,8 +257,11 @@ test_power_intel_uncore(void)
 	}
 
 	ret = check_power_uncore_init();
-	if (ret < 0)
+	if (ret != 0) {
+		if (ret == TEST_SKIPPED)
+			return TEST_SKIPPED;
 		goto fail_all;
+	}
 
 	ret = check_power_get_uncore_freq();
 	if (ret < 0)
@@ -302,4 +303,4 @@ fail_all:
 }
 #endif
 
-REGISTER_FAST_TEST(power_intel_uncore_autotest, true, true, test_power_intel_uncore);
+REGISTER_FAST_TEST(power_intel_uncore_autotest, NOHUGE_OK, ASAN_OK, test_power_intel_uncore);

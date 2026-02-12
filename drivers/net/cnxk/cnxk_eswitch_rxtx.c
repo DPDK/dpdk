@@ -39,14 +39,79 @@ eswitch_nix_rx_nb_pkts(struct roc_nix_cq *cq, const uint64_t wdata, const uint32
 }
 
 static inline void
-nix_cn9k_xmit_one(uint64_t *cmd, void *lmt_addr, const plt_iova_t io_addr)
+nix_cn9k_xmit_one(uint64_t *cmd, void *lmt_addr, const plt_iova_t io_addr, uint16_t segdw)
 {
 	uint64_t lmt_status;
 
 	do {
-		roc_lmt_mov(lmt_addr, cmd, 0);
+		roc_lmt_mov_seg(lmt_addr, (const void *)cmd, segdw);
 		lmt_status = roc_lmt_submit_ldeor(io_addr);
 	} while (lmt_status == 0);
+}
+
+static __rte_always_inline uint16_t
+cnxk_eswitch_prepare_mseg(struct rte_mbuf *m, union nix_send_sg_s *sg, uint64_t *cmd, uint8_t off)
+{
+	union nix_send_sg_s l_sg;
+	struct rte_mbuf *m_next;
+	uint64_t nb_segs;
+	uint64_t *slist;
+	uint16_t segdw;
+	uint64_t dlen;
+
+	l_sg.u = 0;
+	l_sg.ld_type = NIX_SENDLDTYPE_LDD;
+	l_sg.subdc = NIX_SUBDC_SG;
+
+	dlen = m->data_len;
+	l_sg.u |= dlen;
+	nb_segs = m->nb_segs - 1;
+	m_next = m->next;
+	m->next = NULL;
+	slist = &cmd[off + 1];
+	l_sg.segs = 1;
+	*slist = rte_mbuf_data_iova(m);
+	slist++;
+	m = m_next;
+	if (!m)
+		goto done;
+
+	do {
+		uint64_t iova;
+
+		m_next = m->next;
+		iova = rte_mbuf_data_iova(m);
+		dlen = m->data_len;
+
+		nb_segs--;
+		m->next = NULL;
+
+		*slist = iova;
+		/* Set the segment length */
+		l_sg.u |= ((uint64_t)dlen << (l_sg.segs << 4));
+		l_sg.segs += 1;
+		slist++;
+		if (l_sg.segs > 2 && nb_segs) {
+			sg->u = l_sg.u;
+			/* Next SG subdesc */
+			sg = (union nix_send_sg_s *)slist;
+			l_sg.u = 0;
+			l_sg.ld_type = NIX_SENDLDTYPE_LDD;
+			l_sg.subdc = NIX_SUBDC_SG;
+			slist++;
+		}
+		m = m_next;
+	} while (nb_segs);
+done:
+	/* Write the last subdc out */
+	sg->u = l_sg.u;
+	segdw = (uint64_t *)slist - (uint64_t *)&cmd[off];
+	/* Roundup extra dwords to multiple of 2 */
+	segdw = (segdw >> 1) + (segdw & 0x1);
+	/* Default dwords */
+	segdw += (off >> 1);
+
+	return segdw;
 }
 
 uint16_t
@@ -55,15 +120,20 @@ cnxk_eswitch_dev_tx_burst(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid,
 {
 	struct roc_nix_sq *sq = &eswitch_dev->txq[qid].sqs;
 	struct roc_nix_rq *rq = &eswitch_dev->rxq[qid].rqs;
-	uint64_t aura_handle, cmd[6], data = 0;
+	uint64_t cmd[6 + CNXK_NIX_TX_MSEG_SG_DWORDS - 2];
 	uint16_t lmt_id, pkt = 0, nb_tx = 0;
 	struct nix_send_ext_s *send_hdr_ext;
 	struct nix_send_hdr_s *send_hdr;
+	uint64_t aura_handle, data = 0;
 	uint16_t vlan_tci = qid;
 	union nix_send_sg_s *sg;
 	uintptr_t lmt_base, pa;
 	int64_t fc_pkts, dw_m1;
+	struct rte_mbuf *m;
 	rte_iova_t io_addr;
+	uint16_t segdw;
+	uint64_t len;
+	uint8_t off;
 
 	if (unlikely(eswitch_dev->txq[qid].state != CNXK_ESWITCH_QUEUE_STATE_STARTED))
 		return 0;
@@ -79,8 +149,8 @@ cnxk_eswitch_dev_tx_burst(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid,
 	dw_m1 = cn10k_nix_tx_ext_subs(flags) + 1;
 
 	memset(cmd, 0, sizeof(cmd));
+
 	send_hdr = (struct nix_send_hdr_s *)&cmd[0];
-	send_hdr->w0.sizem1 = dw_m1;
 	send_hdr->w0.sq = sq->qid;
 
 	if (dw_m1 >= 2) {
@@ -90,15 +160,15 @@ cnxk_eswitch_dev_tx_burst(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid,
 			send_hdr_ext->w1.vlan0_ins_ena = true;
 			/* 2B before end of l2 header */
 			send_hdr_ext->w1.vlan0_ins_ptr = 12;
-			send_hdr_ext->w1.vlan0_ins_tci = 0;
+			send_hdr_ext->w1.vlan0_ins_tci = vlan_tci;
 		}
-		sg = (union nix_send_sg_s *)&cmd[4];
+		off = 4;
 	} else {
-		sg = (union nix_send_sg_s *)&cmd[2];
+		off = 2;
 	}
 
+	sg = (union nix_send_sg_s *)&cmd[off];
 	sg->subdc = NIX_SUBDC_SG;
-	sg->segs = 1;
 	sg->ld_type = NIX_SENDLDTYPE_LDD;
 
 	/* Tx */
@@ -110,28 +180,29 @@ cnxk_eswitch_dev_tx_burst(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid,
 		nb_tx = PLT_MIN(nb_xmit, (uint64_t)fc_pkts);
 
 	for (pkt = 0; pkt < nb_tx; pkt++) {
-		send_hdr->w0.total = pkts[pkt]->pkt_len;
-		if (pkts[pkt]->pool) {
-			aura_handle = pkts[pkt]->pool->pool_id;
+		m = pkts[pkt];
+		len = m->pkt_len;
+		send_hdr->w0.total = len;
+		if (m->pool) {
+			aura_handle = m->pool->pool_id;
 			send_hdr->w0.aura = roc_npa_aura_handle_to_aura(aura_handle);
 		} else {
 			send_hdr->w0.df = 1;
 		}
-		if (dw_m1 >= 2 && flags & NIX_TX_OFFLOAD_VLAN_QINQ_F)
-			send_hdr_ext->w1.vlan0_ins_tci = vlan_tci;
-		sg->seg1_size = pkts[pkt]->pkt_len;
-		*(plt_iova_t *)(sg + 1) = rte_mbuf_data_iova(pkts[pkt]);
+
+		segdw = cnxk_eswitch_prepare_mseg(m, sg, cmd, off);
+		send_hdr->w0.sizem1 = segdw - 1;
 
 		plt_esw_dbg("Transmitting pkt %d (%p) vlan tci %x on sq %d esw qid %d", pkt,
 			    pkts[pkt], vlan_tci, sq->qid, qid);
 		if (roc_model_is_cn9k()) {
-			nix_cn9k_xmit_one(cmd, sq->lmt_addr, sq->io_addr);
+			nix_cn9k_xmit_one(cmd, sq->lmt_addr, sq->io_addr, segdw);
 		} else {
 			cn10k_nix_xmit_mv_lmt_base(lmt_base, cmd, flags);
 			/* PA<6:4> = LMTST size-1 in units of 128 bits. Size of the first LMTST in
 			 * burst.
 			 */
-			pa = io_addr | (dw_m1 << 4);
+			pa = io_addr | ((segdw - 1) << 4);
 			data &= ~0x7ULL;
 			/*<15:12> = CNTM1: Count minus one of LMTSTs in the burst */
 			data = (0ULL << 12);
@@ -146,6 +217,54 @@ cnxk_eswitch_dev_tx_burst(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid,
 	}
 
 	return nb_tx;
+}
+
+static __rte_always_inline void
+cnxk_eswitch_xtract_mseg(struct rte_mbuf *mbuf, const union nix_rx_parse_u *rx)
+{
+	const rte_iova_t *iova_list;
+	uint16_t later_skip = 0;
+	const rte_iova_t *eol;
+	struct rte_mbuf *head;
+	uint8_t nb_segs;
+	uint16_t sg_len;
+	uint64_t sg;
+
+	sg = *(const uint64_t *)(rx + 1);
+	nb_segs = (sg >> 48) & 0x3;
+	if (nb_segs == 1)
+		return;
+
+	mbuf->nb_segs = nb_segs;
+	mbuf->data_len = sg & 0xFFFF;
+	head = mbuf;
+	eol = ((const rte_iova_t *)(rx + 1) + ((rx->desc_sizem1 + 1) << 1));
+	sg = sg >> 16;
+	/* Skip SG_S and first IOVA*/
+	iova_list = ((const rte_iova_t *)(rx + 1)) + 2;
+	nb_segs--;
+	later_skip = (uintptr_t)mbuf->buf_addr - (uintptr_t)mbuf;
+
+	while (nb_segs) {
+		mbuf->next = (struct rte_mbuf *)(*iova_list - later_skip);
+		mbuf = mbuf->next;
+
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
+
+		sg_len = sg & 0XFFFF;
+
+		mbuf->data_len = sg_len;
+		sg = sg >> 16;
+		nb_segs--;
+		iova_list++;
+
+		if (!nb_segs && (iova_list + 1 < eol)) {
+			sg = *(const uint64_t *)(iova_list);
+			nb_segs = (sg >> 48) & 0x3;
+			head->nb_segs += nb_segs;
+			iova_list = (const rte_iova_t *)(iova_list + 1);
+		}
+	}
 }
 
 uint16_t
@@ -194,7 +313,9 @@ cnxk_eswitch_dev_rx_burst(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid,
 			mbuf->vlan_tci = rx->vtag0_tci;
 		/* Populate RSS hash */
 		mbuf->hash.rss = cqe->tag;
-		mbuf->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
+		mbuf->ol_flags = RTE_MBUF_F_RX_RSS_HASH;
+
+		cnxk_eswitch_xtract_mseg(mbuf, rx);
 		pkts[pkt] = mbuf;
 		roc_prefetch_store_keep(mbuf);
 		plt_esw_dbg("Packet %d rec on queue %d esw qid %d hash %x mbuf %p vlan tci %d",

@@ -355,6 +355,9 @@ enum rte_flow_item_type {
 	RTE_FLOW_ITEM_TYPE_GENEVE,
 
 	/**
+	 * @deprecated
+	 * @see RTE_FLOW_ITEM_TYPE_VXLAN
+	 *
 	 * Matches a VXLAN-GPE header.
 	 *
 	 * See struct rte_flow_item_vxlan_gpe.
@@ -900,8 +903,8 @@ struct rte_flow_item_eth {
 /** Default mask for RTE_FLOW_ITEM_TYPE_ETH. */
 #ifndef __cplusplus
 static const struct rte_flow_item_eth rte_flow_item_eth_mask = {
-	.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-	.hdr.src_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.hdr.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+	.hdr.src_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 	.hdr.ether_type = RTE_BE16(0x0000),
 };
 #endif
@@ -1002,12 +1005,8 @@ struct rte_flow_item_ipv6 {
 #ifndef __cplusplus
 static const struct rte_flow_item_ipv6 rte_flow_item_ipv6_mask = {
 	.hdr = {
-		.src_addr =
-			"\xff\xff\xff\xff\xff\xff\xff\xff"
-			"\xff\xff\xff\xff\xff\xff\xff\xff",
-		.dst_addr =
-			"\xff\xff\xff\xff\xff\xff\xff\xff"
-			"\xff\xff\xff\xff\xff\xff\xff\xff",
+		.src_addr = RTE_IPV6_MASK_FULL,
+		.dst_addr = RTE_IPV6_MASK_FULL,
 	},
 };
 #endif
@@ -1103,7 +1102,12 @@ static const struct rte_flow_item_sctp rte_flow_item_sctp_mask = {
 /**
  * RTE_FLOW_ITEM_TYPE_VXLAN.
  *
- * Matches a VXLAN header (RFC 7348).
+ * Matches a VXLAN header (RFC 7348),
+ * including GPE (draft-ietf-nvo3-vxlan-gpe-13.txt)
+ * and GBP (draft-smith-vxlan-group-policy-05.txt).
+ *
+ * GPE is distinguished with its UDP port.
+ * UDP port may be specified with ``rte_eth_dev_udp_tunnel_port_add()``.
  */
 struct rte_flow_item_vxlan {
 	union {
@@ -1124,7 +1128,7 @@ struct rte_flow_item_vxlan {
 /** Default mask for RTE_FLOW_ITEM_TYPE_VXLAN. */
 #ifndef __cplusplus
 static const struct rte_flow_item_vxlan rte_flow_item_vxlan_mask = {
-	.hdr.vni = "\xff\xff\xff",
+	.hdr.vni = { 0xff, 0xff, 0xff },
 };
 #endif
 
@@ -1177,7 +1181,7 @@ struct rte_flow_item_nvgre {
 /** Default mask for RTE_FLOW_ITEM_TYPE_NVGRE. */
 #ifndef __cplusplus
 static const struct rte_flow_item_nvgre rte_flow_item_nvgre_mask = {
-	.tni = "\xff\xff\xff",
+	.tni =  { 0xff, 0xff, 0xff },
 };
 #endif
 
@@ -1197,7 +1201,7 @@ struct rte_flow_item_mpls {
 /** Default mask for RTE_FLOW_ITEM_TYPE_MPLS. */
 #ifndef __cplusplus
 static const struct rte_flow_item_mpls rte_flow_item_mpls_mask = {
-	.label_tc_s = "\xff\xff\xf0",
+	.label_tc_s = { 0xff, 0xff, 0xf0 },
 };
 #endif
 
@@ -1341,11 +1345,14 @@ struct rte_flow_item_geneve {
 /** Default mask for RTE_FLOW_ITEM_TYPE_GENEVE. */
 #ifndef __cplusplus
 static const struct rte_flow_item_geneve rte_flow_item_geneve_mask = {
-	.vni = "\xff\xff\xff",
+	.vni =  { 0xff, 0xff, 0xff },
 };
 #endif
 
 /**
+ * @deprecated
+ * @see rte_flow_item_vxlan
+ *
  * RTE_FLOW_ITEM_TYPE_VXLAN_GPE (draft-ietf-nvo3-vxlan-gpe-05).
  *
  * Matches a VXLAN-GPE header.
@@ -1367,10 +1374,15 @@ struct rte_flow_item_vxlan_gpe {
 	};
 };
 
-/** Default mask for RTE_FLOW_ITEM_TYPE_VXLAN_GPE. */
+/**
+ * @deprecated
+ * @see rte_flow_item_vxlan_mask
+ *
+ * Default mask for RTE_FLOW_ITEM_TYPE_VXLAN_GPE.
+ */
 #ifndef __cplusplus
 static const struct rte_flow_item_vxlan_gpe rte_flow_item_vxlan_gpe_mask = {
-	.hdr.vni = "\xff\xff\xff",
+	.hdr.vni =  { 0xff, 0xff, 0xff },
 };
 #endif
 
@@ -1404,9 +1416,9 @@ struct rte_flow_item_arp_eth_ipv4 {
 #ifndef __cplusplus
 static const struct rte_flow_item_arp_eth_ipv4
 rte_flow_item_arp_eth_ipv4_mask = {
-	.hdr.arp_data.arp_sha.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.hdr.arp_data.arp_sha.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 	.hdr.arp_data.arp_sip = RTE_BE32(UINT32_MAX),
-	.hdr.arp_data.arp_tha.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.hdr.arp_data.arp_tha.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 	.hdr.arp_data.arp_tip = RTE_BE32(UINT32_MAX),
 };
 #endif
@@ -1486,16 +1498,14 @@ struct rte_flow_item_icmp6_nd_ns {
 	uint8_t code; /**< ICMPv6 code, normally 0. */
 	rte_be16_t checksum; /**< ICMPv6 checksum. */
 	rte_be32_t reserved; /**< Reserved, normally 0. */
-	uint8_t target_addr[16]; /**< Target address. */
+	struct rte_ipv6_addr target_addr; /**< Target address. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_ICMP6_ND_NS. */
 #ifndef __cplusplus
 static const
 struct rte_flow_item_icmp6_nd_ns rte_flow_item_icmp6_nd_ns_mask = {
-	.target_addr =
-		"\xff\xff\xff\xff\xff\xff\xff\xff"
-		"\xff\xff\xff\xff\xff\xff\xff\xff",
+	.target_addr = RTE_IPV6_MASK_FULL,
 };
 #endif
 
@@ -1513,16 +1523,14 @@ struct rte_flow_item_icmp6_nd_na {
 	 * reserved (29b).
 	 */
 	rte_be32_t rso_reserved;
-	uint8_t target_addr[16]; /**< Target address. */
+	struct rte_ipv6_addr target_addr; /**< Target address. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_ICMP6_ND_NA. */
 #ifndef __cplusplus
 static const
 struct rte_flow_item_icmp6_nd_na rte_flow_item_icmp6_nd_na_mask = {
-	.target_addr =
-		"\xff\xff\xff\xff\xff\xff\xff\xff"
-		"\xff\xff\xff\xff\xff\xff\xff\xff",
+	.target_addr = RTE_IPV6_MASK_FULL,
 };
 #endif
 
@@ -1571,7 +1579,7 @@ struct rte_flow_item_icmp6_nd_opt_sla_eth {
 #ifndef __cplusplus
 static const struct rte_flow_item_icmp6_nd_opt_sla_eth
 rte_flow_item_icmp6_nd_opt_sla_eth_mask = {
-	.sla.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.sla.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 };
 #endif
 
@@ -1596,7 +1604,7 @@ struct rte_flow_item_icmp6_nd_opt_tla_eth {
 #ifndef __cplusplus
 static const struct rte_flow_item_icmp6_nd_opt_tla_eth
 rte_flow_item_icmp6_nd_opt_tla_eth_mask = {
-	.tla.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.tla.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 };
 #endif
 
@@ -2059,7 +2067,7 @@ struct rte_flow_item_ib_bth {
 static const struct rte_flow_item_ib_bth rte_flow_item_ib_bth_mask = {
 	.hdr = {
 		.opcode = 0xff,
-		.dst_qp = "\xff\xff\xff",
+		.dst_qp =  { 0xff, 0xff, 0xff },
 	},
 };
 #endif
@@ -2428,6 +2436,7 @@ enum rte_flow_field_id {
 	RTE_FLOW_FIELD_ESP_SEQ_NUM,     /**< ESP Sequence Number. */
 	RTE_FLOW_FIELD_ESP_PROTO,       /**< ESP next protocol value. */
 	RTE_FLOW_FIELD_RANDOM,          /**< Random value. */
+	RTE_FLOW_FIELD_VXLAN_LAST_RSVD, /**< VXLAN last reserved byte. */
 };
 
 /**
@@ -3245,6 +3254,15 @@ enum rte_flow_action_type {
 	 * @see struct rte_flow_action_nat64
 	 */
 	RTE_FLOW_ACTION_TYPE_NAT64,
+
+	/**
+	 * RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX,
+	 *
+	 * Redirects packets to a particular index in a flow table.
+	 *
+	 * @see struct rte_flow_action_jump_to_table_index.
+	 */
+	RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX,
 };
 
 /**
@@ -3792,7 +3810,7 @@ struct rte_flow_action_set_ipv4 {
  * specified outermost IPv6 header.
  */
 struct rte_flow_action_set_ipv6 {
-	uint8_t ipv6_addr[16];
+	struct rte_ipv6_addr ipv6_addr;
 };
 
 /**
@@ -4250,6 +4268,19 @@ rte_flow_dynf_metadata_set(struct rte_mbuf *m, uint32_t v)
 }
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX
+ *
+ * Redirects packets to a particular index in a flow table.
+ */
+struct rte_flow_action_jump_to_table_index {
+	struct rte_flow_template_table *table;
+	uint32_t index;
+};
+
+/**
  * Definition of a single action.
  *
  * A list of actions is terminated by a END action.
@@ -4408,6 +4439,18 @@ enum rte_flow_conv_op {
 	 *   @code struct rte_flow_item * @endcode
 	 */
 	RTE_FLOW_CONV_OP_ITEM,
+
+	/**
+	 * Convert a single item mask.
+	 *
+	 * Duplicates only @p mask.
+	 *
+	 * - @p src type:
+	 *   @code const struct rte_flow_item * @endcode
+	 * - @p dst type:
+	 *   @code struct rte_flow_item * @endcode
+	 */
+	RTE_FLOW_CONV_OP_ITEM_MASK,
 
 	/**
 	 * Convert a single action.
@@ -5164,8 +5207,8 @@ struct rte_flow_tunnel {
 			rte_be32_t dst_addr; /**< IPv4 destination address. */
 		} ipv4;
 		struct {
-			uint8_t src_addr[16]; /**< IPv6 source address. */
-			uint8_t dst_addr[16]; /**< IPv6 destination address. */
+			struct rte_ipv6_addr src_addr; /**< IPv6 source address. */
+			struct rte_ipv6_addr dst_addr; /**< IPv6 destination address. */
 		} ipv6;
 	};
 	rte_be16_t tp_src; /**< Tunnel port source. */
@@ -5869,6 +5912,10 @@ enum rte_flow_table_insertion_type {
 	 * Index-based insertion.
 	 */
 	RTE_FLOW_TABLE_INSERTION_TYPE_INDEX,
+	/**
+	 * Index-based insertion with pattern.
+	 */
+	RTE_FLOW_TABLE_INSERTION_TYPE_INDEX_WITH_PATTERN,
 };
 
 /**
@@ -6153,6 +6200,60 @@ rte_flow_async_create_by_index(uint16_t port_id,
 			       uint8_t actions_template_index,
 			       void *user_data,
 			       struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Enqueue rule creation by index with pattern operation.
+ * Packets are only matched if there is a rule inserted at the index.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param queue_id
+ *   Flow queue used to insert the rule.
+ * @param[in] op_attr
+ *   Rule creation operation attributes.
+ * @param[in] template_table
+ *   Template table to select templates from.
+ * @param[in] rule_index
+ *   Rule index in the table.
+ *   Inserting a rule to already occupied index results in undefined behavior.
+ * @param[in] pattern
+ *   List of pattern items to be used.
+ *   The list order should match the order in the pattern template.
+ *   The spec is the only relevant member of the item that is being used.
+ * @param[in] pattern_template_index
+ *   Pattern template index in the table.
+ * @param[in] actions
+ *   List of actions to be used.
+ *   The list order should match the order in the actions template.
+ * @param[in] actions_template_index
+ *   Actions template index in the table.
+ * @param[in] user_data
+ *   The user data that will be returned on the completion events.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   Handle on success, NULL otherwise and rte_errno is set.
+ *   The rule handle doesn't mean that the rule has been populated.
+ *   Only completion result indicates that if there was success or failure.
+ */
+__rte_experimental
+struct rte_flow *
+rte_flow_async_create_by_index_with_pattern(uint16_t port_id,
+					    uint32_t queue_id,
+					    const struct rte_flow_op_attr *op_attr,
+					    struct rte_flow_template_table *template_table,
+					    uint32_t rule_index,
+					    const struct rte_flow_item pattern[],
+					    uint8_t pattern_template_index,
+					    const struct rte_flow_action actions[],
+					    uint8_t actions_template_index,
+					    void *user_data,
+					    struct rte_flow_error *error);
 
 /**
  * @warning

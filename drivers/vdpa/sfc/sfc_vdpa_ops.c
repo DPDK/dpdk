@@ -2,6 +2,8 @@
  * Copyright(c) 2020-2021 Xilinx, Inc.
  */
 
+#include <uapi/linux/vfio.h>
+
 #include <pthread.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -9,7 +11,6 @@
 #include <rte_errno.h>
 #include <rte_malloc.h>
 #include <rte_vdpa.h>
-#include <rte_vfio.h>
 #include <rte_vhost.h>
 
 #include <vdpa_driver.h>

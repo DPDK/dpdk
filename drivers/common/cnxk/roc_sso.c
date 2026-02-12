@@ -186,13 +186,44 @@ sso_rsrc_get(struct roc_sso *roc_sso)
 	mbox_alloc_msg_free_rsrc_cnt(mbox);
 	rc = mbox_process_msg(mbox, (void **)&rsrc_cnt);
 	if (rc) {
-		plt_err("Failed to get free resource count\n");
+		plt_err("Failed to get free resource count");
 		rc = -EIO;
 		goto exit;
 	}
 
-	roc_sso->max_hwgrp = rsrc_cnt->sso;
+	roc_sso->max_hwgrp = PLT_MIN(rsrc_cnt->sso, roc_sso->feat.hwgrps_per_pf);
 	roc_sso->max_hws = rsrc_cnt->ssow;
+
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+static int
+sso_hw_info_get(struct roc_sso *roc_sso)
+{
+	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
+	struct mbox *mbox = mbox_get(dev->mbox);
+	struct sso_hw_info *rsp;
+	int rc;
+
+	mbox_alloc_msg_sso_get_hw_info(mbox);
+	rc = mbox_process_msg(mbox, (void **)&rsp);
+	if (rc && rc != MBOX_MSG_INVALID) {
+		plt_err("Failed to get SSO HW info");
+		rc = -EIO;
+		goto exit;
+	}
+
+	if (rc == MBOX_MSG_INVALID) {
+		roc_sso->feat.hwgrps_per_pf = ROC_SSO_MAX_HWGRP_PER_PF;
+	} else {
+		mbox_memcpy(&roc_sso->feat, &rsp->feat, sizeof(roc_sso->feat));
+
+		if (!roc_sso->feat.hwgrps_per_pf)
+			roc_sso->feat.hwgrps_per_pf = ROC_SSO_MAX_HWGRP_PER_PF;
+	}
 
 	rc = 0;
 exit:
@@ -317,6 +348,12 @@ roc_sso_hwgrp_base_get(struct roc_sso *roc_sso, uint16_t hwgrp)
 	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
 
 	return dev->bar2 + (RVU_BLOCK_ADDR_SSO << 20 | hwgrp << 12);
+}
+
+uint16_t
+roc_sso_pf_func_get(void)
+{
+	return idev_sso_pffunc_get();
 }
 
 uint64_t
@@ -463,9 +500,233 @@ roc_sso_hws_gwc_invalidate(struct roc_sso *roc_sso, uint8_t *hws,
 	mbox_put(mbox);
 }
 
+static void
+sso_agq_op_wait(struct roc_sso *roc_sso, uint16_t hwgrp)
+{
+	uint64_t reg;
+
+	reg = plt_read64(roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CTX_INSTOP);
+	while (reg & BIT_ULL(2)) {
+		plt_delay_us(100);
+		reg = plt_read64(roc_sso_hwgrp_base_get(roc_sso, hwgrp) +
+				 SSO_LF_GGRP_AGGR_CTX_INSTOP);
+	}
+}
+
 int
-roc_sso_hwgrp_stats_get(struct roc_sso *roc_sso, uint8_t hwgrp,
-			struct roc_sso_hwgrp_stats *stats)
+roc_sso_hwgrp_agq_alloc(struct roc_sso *roc_sso, uint16_t hwgrp, struct roc_sso_agq_data *data,
+			uint32_t *agq_id)
+{
+	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+	struct sso_aggr_setconfig *req;
+	struct sso_agq_ctx *ctx;
+	uint32_t cnt, off;
+	struct mbox *mbox;
+	uintptr_t ptr;
+	uint64_t reg;
+	int rc;
+
+	if (sso->agg_mem[hwgrp] == 0) {
+		mbox = mbox_get(sso->dev.mbox);
+		req = mbox_alloc_msg_sso_aggr_setconfig(mbox);
+		if (req == NULL) {
+			mbox_process(mbox);
+			req = mbox_alloc_msg_sso_aggr_setconfig(mbox);
+			if (req == NULL) {
+				plt_err("Failed to allocate AGQ config mbox.");
+				mbox_put(mbox);
+				return -EIO;
+			}
+		}
+
+		req->hwgrp = hwgrp;
+		req->npa_pf_func = idev_npa_pffunc_get();
+		rc = mbox_process(mbox);
+		if (rc < 0) {
+			plt_err("Failed to set HWGRP AGQ config rc=%d", rc);
+			mbox_put(mbox);
+			return rc;
+		}
+
+		mbox_put(mbox);
+
+		sso->agg_mem[hwgrp] =
+			(uintptr_t)plt_zmalloc(SSO_AGGR_MIN_CTX * sizeof(struct sso_agq_ctx),
+					       roc_model_optimal_align_sz());
+		if (sso->agg_mem[hwgrp] == 0)
+			return -ENOMEM;
+		sso->agg_cnt[hwgrp] = SSO_AGGR_MIN_CTX;
+		sso->agg_used[hwgrp] = 0;
+		plt_wmb();
+		plt_write64(sso->agg_mem[hwgrp],
+			    roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CTX_BASE);
+		reg = (plt_log2_u32(SSO_AGGR_MIN_CTX) - 6) << 16;
+		reg |= (SSO_AGGR_DEF_TMO << 4) | 1;
+		plt_write64(reg, roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CFG);
+	}
+
+	if (sso->agg_cnt[hwgrp] >= SSO_AGGR_MAX_CTX)
+		return -ENOSPC;
+
+	if (sso->agg_cnt[hwgrp] == sso->agg_used[hwgrp]) {
+		ptr = sso->agg_mem[hwgrp];
+		cnt = sso->agg_cnt[hwgrp] << 1;
+		sso->agg_mem[hwgrp] = (uintptr_t)plt_zmalloc(cnt * sizeof(struct sso_agq_ctx),
+							     roc_model_optimal_align_sz());
+		if (sso->agg_mem[hwgrp] == 0) {
+			sso->agg_mem[hwgrp] = ptr;
+			return -ENOMEM;
+		}
+
+		memcpy((void *)sso->agg_mem[hwgrp], (void *)ptr,
+		       sso->agg_cnt[hwgrp] * sizeof(struct sso_agq_ctx));
+		plt_wmb();
+		sso_agq_op_wait(roc_sso, hwgrp);
+		/* Base address has changed, evict old entries. */
+		plt_write64(sso->agg_mem[hwgrp],
+			    roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CTX_BASE);
+		reg = plt_read64(roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CFG);
+		reg &= ~GENMASK_ULL(19, 16);
+		reg |= (uint64_t)(plt_log2_u32(cnt) - 6) << 16;
+		plt_write64(reg, roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CFG);
+		reg = SSO_LF_AGGR_INSTOP_GLOBAL_EVICT << 4;
+		plt_write64(reg,
+			    roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CTX_INSTOP);
+		sso_agq_op_wait(roc_sso, hwgrp);
+		plt_free((void *)ptr);
+
+		sso->agg_cnt[hwgrp] = cnt;
+		off = sso->agg_used[hwgrp];
+	} else {
+		ctx = (struct sso_agq_ctx *)sso->agg_mem[hwgrp];
+		for (cnt = 0; cnt < sso->agg_cnt[hwgrp]; cnt++) {
+			if (!ctx[cnt].ena)
+				break;
+		}
+		if (cnt == sso->agg_cnt[hwgrp])
+			return -EINVAL;
+		off = cnt;
+	}
+
+	ctx = (struct sso_agq_ctx *)sso->agg_mem[hwgrp];
+	ctx += off;
+	ctx->ena = 1;
+	ctx->tt = data->tt;
+	ctx->tag = data->tag;
+	ctx->swqe_tag = data->stag;
+	ctx->cnt_ena = data->cnt_ena;
+	ctx->xqe_type = data->xqe_type;
+	ctx->vtimewait = data->vwqe_wait_tmo;
+	ctx->vwqe_aura = data->vwqe_aura;
+	ctx->max_vsize_exp = data->vwqe_max_sz_exp - 2;
+
+	plt_wmb();
+	sso->agg_used[hwgrp]++;
+	*agq_id = off;
+
+	return 0;
+}
+
+void
+roc_sso_hwgrp_agq_free(struct roc_sso *roc_sso, uint16_t hwgrp, uint32_t agq_id)
+{
+	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+	struct sso_agq_ctx *ctx;
+	uint64_t reg;
+
+	ctx = (struct sso_agq_ctx *)sso->agg_mem[hwgrp];
+	ctx += agq_id;
+
+	if (!ctx->ena)
+		return;
+
+	reg = SSO_LF_AGGR_INSTOP_FLUSH << 4;
+	reg |= (uint64_t)(agq_id << 8);
+
+	plt_write64(reg, roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CTX_INSTOP);
+	sso_agq_op_wait(roc_sso, hwgrp);
+
+	memset(ctx, 0, sizeof(struct sso_agq_ctx));
+	plt_wmb();
+	sso->agg_used[hwgrp]--;
+
+	/* Flush the context from CTX Cache */
+	reg = SSO_LF_AGGR_INSTOP_EVICT << 4;
+	reg |= (uint64_t)(agq_id << 8);
+
+	plt_write64(reg, roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CTX_INSTOP);
+	sso_agq_op_wait(roc_sso, hwgrp);
+}
+
+void
+roc_sso_hwgrp_agq_release(struct roc_sso *roc_sso, uint16_t hwgrp)
+{
+	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+	struct sso_aggr_setconfig *req;
+	struct sso_agq_ctx *ctx;
+	struct mbox *mbox;
+	uint32_t cnt;
+	int rc;
+
+	if (!roc_sso->feat.eva_present)
+		return;
+
+	plt_write64(0, roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CFG);
+	ctx = (struct sso_agq_ctx *)sso->agg_mem[hwgrp];
+	for (cnt = 0; cnt < sso->agg_cnt[hwgrp]; cnt++) {
+		if (!ctx[cnt].ena)
+			continue;
+		roc_sso_hwgrp_agq_free(roc_sso, hwgrp, cnt);
+	}
+
+	plt_write64(0, roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CTX_BASE);
+	plt_free((void *)sso->agg_mem[hwgrp]);
+	sso->agg_mem[hwgrp] = 0;
+	sso->agg_cnt[hwgrp] = 0;
+	sso->agg_used[hwgrp] = 0;
+
+	mbox = mbox_get(sso->dev.mbox);
+	req = mbox_alloc_msg_sso_aggr_setconfig(mbox);
+	if (req == NULL) {
+		mbox_process(mbox);
+		req = mbox_alloc_msg_sso_aggr_setconfig(mbox);
+		if (req == NULL) {
+			plt_err("Failed to allocate AGQ config mbox.");
+			mbox_put(mbox);
+			return;
+		}
+	}
+
+	req->hwgrp = hwgrp;
+	req->npa_pf_func = 0;
+	rc = mbox_process(mbox);
+	if (rc < 0)
+		plt_err("Failed to set HWGRP AGQ config rc=%d", rc);
+	mbox_put(mbox);
+}
+
+uint32_t
+roc_sso_hwgrp_agq_from_tag(struct roc_sso *roc_sso, uint16_t hwgrp, uint32_t tag_mask,
+			   uint8_t xqe_type)
+{
+	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+	struct sso_agq_ctx *ctx;
+	uint32_t i;
+
+	plt_rmb();
+	ctx = (struct sso_agq_ctx *)sso->agg_mem[hwgrp];
+	for (i = 0; i < sso->agg_used[hwgrp]; i++) {
+		if (!ctx[i].ena)
+			continue;
+		if (ctx[i].tag == tag_mask && ctx[i].xqe_type == xqe_type)
+			return i;
+	}
+
+	return UINT32_MAX;
+}
+
+int
+roc_sso_hwgrp_stats_get(struct roc_sso *roc_sso, uint16_t hwgrp, struct roc_sso_hwgrp_stats *stats)
 {
 	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
 	struct sso_grp_stats *req_rsp;
@@ -670,9 +931,8 @@ roc_sso_hwgrp_init_xaq_aura(struct roc_sso *roc_sso, uint32_t nb_xae)
 	struct dev *dev = &sso->dev;
 	int rc;
 
-	rc = sso_hwgrp_init_xaq_aura(dev, &roc_sso->xaq, nb_xae,
-				     roc_sso->xae_waes, roc_sso->xaq_buf_size,
-				     roc_sso->nb_hwgrp);
+	rc = sso_hwgrp_init_xaq_aura(dev, &roc_sso->xaq, nb_xae, roc_sso->feat.xaq_wq_entries,
+				     roc_sso->feat.xaq_buf_size, roc_sso->nb_hwgrp);
 	return rc;
 }
 
@@ -834,7 +1094,10 @@ sso_update_msix_vec_count(struct roc_sso *roc_sso, uint16_t sso_vec_cnt)
 	if (idev == NULL)
 		return -ENODEV;
 
-	mbox_vec_cnt = RVU_PF_INT_VEC_AFPF_MBOX + 1;
+	if (roc_model_is_cn20k())
+		mbox_vec_cnt = RVU_MBOX_PF_INT_VEC_AFPF_MBOX + 1;
+	else
+		mbox_vec_cnt = RVU_PF_INT_VEC_AFPF_MBOX + 1;
 
 	/* Allocating vectors for the first time */
 	if (plt_intr_max_intr_get(pci_dev->intr_handle) == 0) {
@@ -842,7 +1105,14 @@ sso_update_msix_vec_count(struct roc_sso *roc_sso, uint16_t sso_vec_cnt)
 		return dev_irq_reconfigure(pci_dev->intr_handle, mbox_vec_cnt + npa_vec_cnt);
 	}
 
+	/* Before re-configuring unregister irqs */
 	npa_vec_cnt = (dev->npa.pci_dev == pci_dev) ? NPA_LF_INT_VEC_POISON + 1 : 0;
+	if (npa_vec_cnt)
+		npa_unregister_irqs(&dev->npa);
+
+	dev_mbox_unregister_irq(pci_dev, dev);
+	if (!dev_is_vf(dev))
+		dev_vf_flr_unregister_irqs(pci_dev, dev);
 
 	/* Re-configure to include SSO vectors */
 	rc = dev_irq_reconfigure(pci_dev->intr_handle, mbox_vec_cnt + npa_vec_cnt + sso_vec_cnt);
@@ -946,9 +1216,11 @@ roc_sso_rsrc_init(struct roc_sso *roc_sso, uint8_t nb_hws, uint16_t nb_hwgrp, ui
 		goto hwgrp_alloc_fail;
 	}
 
-	roc_sso->xaq_buf_size = rsp_hwgrp->xaq_buf_size;
-	roc_sso->xae_waes = rsp_hwgrp->xaq_wq_entries;
-	roc_sso->iue = rsp_hwgrp->in_unit_entries;
+	if (!roc_sso->feat.xaq_buf_size || !roc_sso->feat.xaq_wq_entries || !roc_sso->feat.iue) {
+		roc_sso->feat.xaq_buf_size = rsp_hwgrp->xaq_buf_size;
+		roc_sso->feat.xaq_wq_entries = rsp_hwgrp->xaq_wq_entries;
+		roc_sso->feat.iue = rsp_hwgrp->in_unit_entries;
+	}
 
 	rc = sso_msix_fill(roc_sso, nb_hws, nb_hwgrp);
 	if (rc < 0) {
@@ -972,7 +1244,10 @@ roc_sso_rsrc_init(struct roc_sso *roc_sso, uint8_t nb_hws, uint16_t nb_hwgrp, ui
 	}
 
 	/* 2 error interrupt per TIM LF */
-	sso_vec_cnt += 2 * nb_tim_lfs;
+	if (roc_model_is_cn20k())
+		sso_vec_cnt += 3 * nb_tim_lfs;
+	else
+		sso_vec_cnt += 2 * nb_tim_lfs;
 
 	rc = sso_update_msix_vec_count(roc_sso, sso_vec_cnt);
 	if (rc < 0) {
@@ -1007,9 +1282,13 @@ void
 roc_sso_rsrc_fini(struct roc_sso *roc_sso)
 {
 	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+	uint32_t cnt;
 
 	if (!roc_sso->nb_hws && !roc_sso->nb_hwgrp)
 		return;
+
+	for (cnt = 0; cnt < roc_sso->nb_hwgrp; cnt++)
+		roc_sso_hwgrp_agq_release(roc_sso, cnt);
 
 	sso_unregister_irqs_priv(roc_sso, sso->pci_dev->intr_handle,
 				 roc_sso->nb_hws, roc_sso->nb_hwgrp);
@@ -1049,6 +1328,12 @@ roc_sso_dev_init(struct roc_sso *roc_sso)
 	rc = dev_init(&sso->dev, pci_dev);
 	if (rc < 0) {
 		plt_err("Failed to init roc device");
+		goto fail;
+	}
+
+	rc = sso_hw_info_get(roc_sso);
+	if (rc < 0) {
+		plt_err("Failed to get SSO HW info");
 		goto fail;
 	}
 

@@ -44,12 +44,12 @@ static int
 hns3_allocate_dma_mem(struct hns3_hw *hw, struct hns3_cmq_ring *ring,
 		      uint64_t size, uint32_t alignment)
 {
-	static uint64_t hns3_dma_memzone_id;
+	static RTE_ATOMIC(uint64_t) hns3_dma_memzone_id;
 	const struct rte_memzone *mz = NULL;
 	char z_name[RTE_MEMZONE_NAMESIZE];
 
 	snprintf(z_name, sizeof(z_name), "hns3_dma_%" PRIu64,
-		__atomic_fetch_add(&hns3_dma_memzone_id, 1, __ATOMIC_RELAXED));
+		rte_atomic_fetch_add_explicit(&hns3_dma_memzone_id, 1, rte_memory_order_relaxed));
 	mz = rte_memzone_reserve_bounded(z_name, size, SOCKET_ID_ANY,
 					 RTE_MEMZONE_IOVA_CONTIG, alignment,
 					 RTE_PGSIZE_2M);
@@ -198,8 +198,8 @@ hns3_cmd_csq_clean(struct hns3_hw *hw)
 		hns3_err(hw, "wrong cmd addr(%0x) head (%u, %u-%u)", addr, head,
 			 csq->next_to_use, csq->next_to_clean);
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-			__atomic_store_n(&hw->reset.disable_cmd, 1,
-					 __ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&hw->reset.disable_cmd, 1,
+					 rte_memory_order_relaxed);
 			hns3_schedule_delayed_reset(HNS3_DEV_HW_TO_ADAPTER(hw));
 		}
 
@@ -304,8 +304,17 @@ hns3_cmd_get_hardware_reply(struct hns3_hw *hw,
 	return hns3_cmd_convert_err_code(desc_ret);
 }
 
-static int hns3_cmd_poll_reply(struct hns3_hw *hw)
+static uint32_t hns3_get_cmd_tx_timeout(uint16_t opcode)
 {
+	if (opcode == HNS3_OPC_CFG_RST_TRIGGER)
+		return HNS3_COMQ_CFG_RST_TIMEOUT;
+
+	return HNS3_CMDQ_TX_TIMEOUT_DEFAULT;
+}
+
+static int hns3_cmd_poll_reply(struct hns3_hw *hw, uint16_t opcode)
+{
+	uint32_t cmdq_tx_timeout = hns3_get_cmd_tx_timeout(opcode);
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	uint32_t timeout = 0;
 
@@ -313,7 +322,7 @@ static int hns3_cmd_poll_reply(struct hns3_hw *hw)
 		if (hns3_cmd_csq_done(hw))
 			return 0;
 
-		if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED)) {
+		if (rte_atomic_load_explicit(&hw->reset.disable_cmd, rte_memory_order_relaxed)) {
 			hns3_err(hw,
 				 "Don't wait for reply because of disable_cmd");
 			return -EBUSY;
@@ -326,7 +335,7 @@ static int hns3_cmd_poll_reply(struct hns3_hw *hw)
 
 		rte_delay_us(1);
 		timeout++;
-	} while (timeout < hw->cmq.tx_timeout);
+	} while (timeout < cmdq_tx_timeout);
 	hns3_err(hw, "Wait for reply timeout");
 	return -ETIME;
 }
@@ -360,7 +369,7 @@ hns3_cmd_send(struct hns3_hw *hw, struct hns3_cmd_desc *desc, int num)
 	int retval;
 	uint32_t ntc;
 
-	if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED))
+	if (rte_atomic_load_explicit(&hw->reset.disable_cmd, rte_memory_order_relaxed))
 		return -EBUSY;
 
 	rte_spinlock_lock(&hw->cmq.csq.lock);
@@ -400,7 +409,7 @@ hns3_cmd_send(struct hns3_hw *hw, struct hns3_cmd_desc *desc, int num)
 	 * if multi descriptors to be sent, use the first one to check.
 	 */
 	if (HNS3_CMD_SEND_SYNC(rte_le_to_cpu_16(desc->flag))) {
-		retval = hns3_cmd_poll_reply(hw);
+		retval = hns3_cmd_poll_reply(hw, desc->opcode);
 		if (!retval)
 			retval = hns3_cmd_get_hardware_reply(hw, desc, num,
 							     ntc);
@@ -473,7 +482,8 @@ static void
 hns3_parse_capability(struct hns3_hw *hw,
 		      struct hns3_query_version_cmd *cmd)
 {
-	uint32_t caps = rte_le_to_cpu_32(cmd->caps[0]);
+	uint64_t caps = ((uint64_t)rte_le_to_cpu_32(cmd->caps[1]) << 32) |
+			rte_le_to_cpu_32(cmd->caps[0]);
 
 	if (hns3_get_bit(caps, HNS3_CAPS_FD_QUEUE_REGION_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_FD_QUEUE_REGION_B,
@@ -515,6 +525,8 @@ hns3_parse_capability(struct hns3_hw *hw,
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_FC_AUTO_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_GRO_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_GRO_B, 1);
+	if (hns3_get_bit(caps, HNS3_CAPS_VF_MULTI_TCS_B))
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_VF_MULTI_TCS_B, 1);
 }
 
 static uint32_t
@@ -545,9 +557,7 @@ hns3_set_dcb_capability(struct hns3_hw *hw)
 	if (device_id == HNS3_DEV_ID_25GE_RDMA ||
 	    device_id == HNS3_DEV_ID_50GE_RDMA ||
 	    device_id == HNS3_DEV_ID_100G_RDMA_MACSEC ||
-	    device_id == HNS3_DEV_ID_200G_RDMA ||
-	    device_id == HNS3_DEV_ID_100G_ROH ||
-	    device_id == HNS3_DEV_ID_200G_ROH)
+	    device_id == HNS3_DEV_ID_200G_RDMA)
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_DCB_B, 1);
 }
 
@@ -612,9 +622,6 @@ hns3_cmd_init_queue(struct hns3_hw *hw)
 	/* Setup the queue entries for use cmd queue */
 	hw->cmq.csq.desc_num = HNS3_NIC_CMQ_DESC_NUM;
 	hw->cmq.crq.desc_num = HNS3_NIC_CMQ_DESC_NUM;
-
-	/* Setup Tx write back timeout */
-	hw->cmq.tx_timeout = HNS3_CMDQ_TX_TIMEOUT;
 
 	/* Setup queue rings */
 	ret = hns3_alloc_cmd_queue(hw, HNS3_TYPE_CSQ);
@@ -747,7 +754,7 @@ hns3_cmd_init(struct hns3_hw *hw)
 		ret = -EBUSY;
 		goto err_cmd_init;
 	}
-	__atomic_store_n(&hw->reset.disable_cmd, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&hw->reset.disable_cmd, 0, rte_memory_order_relaxed);
 
 	ret = hns3_cmd_query_firmware_version_and_capability(hw);
 	if (ret) {
@@ -790,7 +797,7 @@ hns3_cmd_init(struct hns3_hw *hw)
 	return 0;
 
 err_cmd_init:
-	__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&hw->reset.disable_cmd, 1, rte_memory_order_relaxed);
 	return ret;
 }
 
@@ -819,7 +826,7 @@ hns3_cmd_uninit(struct hns3_hw *hw)
 	if (!hns->is_vf)
 		(void)hns3_firmware_compat_config(hw, false);
 
-	__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&hw->reset.disable_cmd, 1, rte_memory_order_relaxed);
 
 	/*
 	 * A delay is added to ensure that the register cleanup operations

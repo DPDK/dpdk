@@ -543,6 +543,48 @@ init_mempools(unsigned int nb_mbuf)
 }
 
 static int
+create_ipsec_flow(uint16_t portid, void *ses, uint32_t spi)
+{
+	struct rte_flow_item_esp esp_spec;
+	struct rte_flow_action action[2];
+	struct rte_flow_item pattern[2];
+	struct rte_flow_attr attr = {0};
+	struct rte_flow_error err;
+	struct rte_flow *flow;
+	int ret;
+
+	esp_spec.hdr.spi = rte_cpu_to_be_32(spi);
+
+	pattern[0].type = RTE_FLOW_ITEM_TYPE_ESP;
+	pattern[0].spec = &esp_spec;
+	pattern[0].mask = &rte_flow_item_esp_mask;
+	pattern[0].last = NULL;
+	pattern[1].type = RTE_FLOW_ITEM_TYPE_END;
+
+	action[0].type = RTE_FLOW_ACTION_TYPE_SECURITY;
+	action[0].conf = ses;
+	action[1].type = RTE_FLOW_ACTION_TYPE_END;
+	action[1].conf = NULL;
+
+	attr.ingress = 1;
+
+	ret = rte_flow_validate(portid, &attr, pattern, action, &err);
+	if (ret) {
+		printf("\nValidate ESP flow failed, ret = %d\n", ret);
+		return -1;
+	}
+	flow = rte_flow_create(portid, &attr, pattern, action, &err);
+	if (flow == NULL) {
+		printf("\nESP flow rule create failed\n");
+		return -1;
+	}
+
+	default_flow[portid] = flow;
+
+	return 0;
+}
+
+static int
 create_default_flow(uint16_t portid)
 {
 	struct rte_flow_action action[2];
@@ -858,7 +900,7 @@ test_ipsec_with_rx_inject(struct ip_pkt_vector *vector, const struct ipsec_test_
 	burst_sz = vector->burst ? ENCAP_DECAP_BURST_SZ : 1;
 	nb_tx = burst_sz;
 
-	memcpy(&sa_data, vector->sa_data, sizeof(struct ipsec_test_data));
+	sa_data = *vector->sa_data;
 	sa_data.ipsec_xform.direction =	RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
 	outer_ipv4 = is_outer_ipv4(&sa_data);
 
@@ -873,7 +915,7 @@ test_ipsec_with_rx_inject(struct ip_pkt_vector *vector, const struct ipsec_test_
 	}
 
 	for (i = 0; i < burst_sz; i++) {
-		memcpy(&sa_data, vector->sa_data, sizeof(struct ipsec_test_data));
+		sa_data = *vector->sa_data;
 		/* Update SPI for every new SA */
 		sa_data.ipsec_xform.spi += i;
 		sa_data.ipsec_xform.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
@@ -901,7 +943,7 @@ test_ipsec_with_rx_inject(struct ip_pkt_vector *vector, const struct ipsec_test_
 	}
 
 	for (i = 0; i < burst_sz; i++) {
-		memcpy(&sa_data, vector->sa_data, sizeof(struct ipsec_test_data));
+		sa_data = *vector->sa_data;
 		/* Update SPI for every new SA */
 		sa_data.ipsec_xform.spi += i;
 		sa_data.ipsec_xform.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS;
@@ -1078,7 +1120,7 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	memset(tx_pkts_burst, 0, sizeof(tx_pkts_burst[0]) * nb_tx);
 	memset(rx_pkts_burst, 0, sizeof(rx_pkts_burst[0]) * nb_tx);
 
-	memcpy(&sa_data, vector->sa_data, sizeof(struct ipsec_test_data));
+	sa_data = *vector->sa_data;
 	sa_data.ipsec_xform.direction =	RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
 	outer_ipv4 = is_outer_ipv4(&sa_data);
 
@@ -1096,8 +1138,7 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	}
 
 	for (i = 0; i < burst_sz; i++) {
-		memcpy(&sa_data, vector->sa_data,
-				sizeof(struct ipsec_test_data));
+		sa_data = *vector->sa_data;
 		/* Update SPI for every new SA */
 		sa_data.ipsec_xform.spi += i;
 		sa_data.ipsec_xform.direction =
@@ -1132,8 +1173,7 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	}
 
 	for (i = 0; i < burst_sz; i++) {
-		memcpy(&sa_data, vector->sa_data,
-				sizeof(struct ipsec_test_data));
+		sa_data = *vector->sa_data;
 		/* Update SPI for every new SA */
 		sa_data.ipsec_xform.spi += i;
 		sa_data.ipsec_xform.direction =
@@ -1375,7 +1415,15 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 	}
 
 	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
-		ret = create_default_flow(port_id);
+		if (flags->inb_oop) {
+			ret = create_ipsec_flow(port_id, ses, td->ipsec_xform.spi);
+			if (ret) {
+				/* Check with default flow rule */
+				printf("\nFailed to create ESP flow, try with default flow");
+				ret = create_default_flow(port_id);
+			}
+		} else
+			ret = create_default_flow(port_id);
 		if (ret)
 			goto out;
 	}
@@ -1449,12 +1497,27 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 	for (i = 0; i < nb_rx; i++) {
 		rte_pktmbuf_adj(rx_pkts_burst[i], RTE_ETHER_HDR_LEN);
 
-		ret = test_ipsec_post_process(rx_pkts_burst[i], td,
-					      res_d, silent, flags);
-		if (ret != TEST_SUCCESS) {
-			for ( ; i < nb_rx; i++)
+		/* For tests with status as error for test success,
+		 * skip verification
+		 */
+		if (td->ipsec_xform.direction ==
+		    RTE_SECURITY_IPSEC_SA_DIR_INGRESS && (flags->icv_corrupt ||
+		    flags->sa_expiry_pkts_hard || flags->tunnel_hdr_verify ||
+		    td->ar_packet)) {
+			if (!(rx_pkts_burst[i]->ol_flags &
+			    RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED)) {
 				rte_pktmbuf_free(rx_pkts_burst[i]);
-			goto out;
+				rx_pkts_burst[i] = NULL;
+				return TEST_FAILED;
+			}
+		} else {
+			ret = test_ipsec_post_process(rx_pkts_burst[i], td,
+						      res_d, silent, flags);
+			if (ret != TEST_SUCCESS) {
+				for ( ; i < nb_rx; i++)
+					rte_pktmbuf_free(rx_pkts_burst[i]);
+				goto out;
+			}
 		}
 
 		ret = test_ipsec_stats_verify(ctx, ses, flags,
@@ -2356,13 +2419,11 @@ test_inline_ip_reassembly(const void *testdata)
 	reassembly_td.nb_frags = td->nb_frags;
 	reassembly_td.burst = td->burst;
 
-	memcpy(&full_pkt, td->full_pkt,
-			sizeof(struct ip_reassembly_test_packet));
+	full_pkt = *td->full_pkt;
 	reassembly_td.full_pkt = &full_pkt;
 
 	for (; i < reassembly_td.nb_frags; i++) {
-		memcpy(&frags[i], td->frags[i],
-			sizeof(struct ip_reassembly_test_packet));
+		frags[i] = *td->frags[i];
 		reassembly_td.frags[i] = &frags[i];
 
 		/* Add extra data for multi-seg test on all fragments except last one */
@@ -2451,8 +2512,7 @@ test_ipsec_inline_proto_rx_inj_inb(const void *test_data)
 	out_td.sa_data = td->sa_data;
 	out_td.burst = td->burst;
 
-	memcpy(&full_pkt, td->full_pkt,
-			sizeof(struct ip_reassembly_test_packet));
+	full_pkt = *td->full_pkt;
 	out_td.full_pkt = &full_pkt;
 
 	/* Add extra data for multi-seg test */
@@ -3606,6 +3666,6 @@ test_event_inline_ipsec(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(inline_ipsec_autotest, test_inline_ipsec);
-REGISTER_TEST_COMMAND(inline_ipsec_sg_autotest, test_inline_ipsec_sg);
-REGISTER_TEST_COMMAND(event_inline_ipsec_autotest, test_event_inline_ipsec);
+REGISTER_DRIVER_TEST(inline_ipsec_autotest, test_inline_ipsec);
+REGISTER_DRIVER_TEST(inline_ipsec_sg_autotest, test_inline_ipsec_sg);
+REGISTER_DRIVER_TEST(event_inline_ipsec_autotest, test_event_inline_ipsec);

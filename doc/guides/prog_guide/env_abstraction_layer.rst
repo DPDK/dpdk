@@ -1,10 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-.. _Environment_Abstraction_Layer:
-
-Environment Abstraction Layer
-=============================
+Environment Abstraction Layer (EAL) Library
+===========================================
 
 The Environment Abstraction Layer (EAL) is responsible for gaining access to low-level resources such as hardware and memory space.
 It provides a generic interface that hides the environment specifics from the applications and libraries.
@@ -39,7 +37,7 @@ EAL in a Linux-userland Execution Environment
 In a Linux user space environment, the DPDK application runs as a user-space application using the pthread library.
 
 The EAL performs physical memory allocation using mmap() in hugetlbfs (using huge page sizes to increase performance).
-This memory is exposed to DPDK service layers such as the :ref:`Mempool Library <Mempool_Library>`.
+This memory is exposed to DPDK service layers such as the :doc:`mempool_lib`.
 
 At this point, the DPDK services layer will be initialized, then through pthread setaffinity calls,
 each execution unit will be assigned to a specific logical core to run as a user-level thread.
@@ -80,8 +78,7 @@ Multi-process Support
 ~~~~~~~~~~~~~~~~~~~~~
 
 The Linux EAL allows a multi-process as well as a multi-threaded (pthread) deployment model.
-See chapter
-:ref:`Multi-process Support <Multi-process_Support>` for more details.
+See chapter :doc:`multi_proc_support` for more details.
 
 Memory Mapping Discovery and Memory Reservation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -122,11 +119,11 @@ in use, either reserved memory will satisfy the requirements, or the allocation
 will fail.
 
 There is no need to preallocate any memory at startup using ``-m`` or
-``--socket-mem`` command-line parameters, however it is still possible to do so,
+``--numa-mem`` command-line parameters, however it is still possible to do so,
 in which case preallocate memory will be "pinned" (i.e. will never be released
 by the application back to the system). It will be possible to allocate more
 hugepages, and deallocate those, but any preallocated pages will not be freed.
-If neither ``-m`` nor ``--socket-mem`` were specified, no memory will be
+If neither ``-m`` nor ``--numa-mem`` were specified, no memory will be
 preallocated, and all memory will be allocated at runtime, as needed.
 
 Another available option to use in dynamic memory mode is
@@ -146,7 +143,7 @@ to deny them), allocation validator callbacks are also available via
 ``rte_mem_alloc_validator_callback_register()`` function.
 
 A default validator callback is provided by EAL, which can be enabled with a
-``--socket-limit`` command-line option, for a simple way to limit maximum amount
+``--numa-limit`` command-line option, for a simple way to limit maximum amount
 of memory that can be used by DPDK application.
 
 .. warning::
@@ -154,8 +151,7 @@ of memory that can be used by DPDK application.
     and IPC must not be mixed: it is not safe to allocate/free memory inside
     memory-related or IPC callbacks, and it is not safe to use IPC inside
     memory-related callbacks. See chapter
-    :ref:`Multi-process Support <Multi-process_Support>` for more details about
-    DPDK IPC.
+    :doc:`multi_proc_support` for more details about DPDK IPC.
 
 Legacy Memory Mode
 ^^^^^^^^^^^^^^^^^^
@@ -168,7 +164,7 @@ This mode mimics historical behavior of EAL. That is, EAL will reserve all
 memory at startup, sort all memory into large IOVA-contiguous chunks, and will
 not allow acquiring or releasing hugepages from the system at runtime.
 
-If neither ``-m`` nor ``--socket-mem`` were specified, the entire available
+If neither ``-m`` nor ``--numa-mem`` were specified, the entire available
 hugepage memory will be preallocated.
 
 Hugepage Allocation Matching
@@ -191,7 +187,7 @@ very dependent on the memory allocation patterns of the application.
 
 Additional restrictions are present when running in 32-bit mode. In dynamic
 memory mode, by default maximum of 2 gigabytes of VA space will be preallocated,
-and all of it will be on main lcore NUMA node unless ``--socket-mem`` flag is
+and all of it will be on main lcore NUMA node unless ``--numa-mem`` flag is
 used.
 
 In legacy mode, VA space will only be preallocated for segments that were
@@ -433,12 +429,45 @@ with them once they're registered.
 Per-lcore and Shared Variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. note::
+By default, static variables, memory blocks allocated on the DPDK heap,
+and other types of memory are shared by all DPDK threads.
 
-    lcore refers to a logical execution unit of the processor, sometimes called a hardware *thread*.
+An application, a DPDK library, or a PMD may opt to keep per-thread state.
 
-Shared variables are the default behavior.
-Per-lcore variables are implemented using *Thread Local Storage* (TLS) to provide per-thread local storage.
+Per-thread data can be maintained using either :doc:`lcore variables <lcore_var>`,
+*thread-local storage (TLS)* (see ``rte_per_lcore.h``),
+or a static array of ``RTE_MAX_LCORE`` elements, indexed by ``rte_lcore_id()``.
+These methods allow per-lcore data to be largely internal to the module
+and not directly exposed in its API.
+Another approach is to explicitly handle per-thread aspects in the API
+(e.g., the ports in the eventdev API).
+
+Lcore variables are suitable for small objects that are statically allocated
+at the time of module or application initialization.
+An lcore variable takes on one value for each lcore ID-equipped thread
+(i.e., for both EAL threads and registered non-EAL threads,
+in total ``RTE_MAX_LCORE`` instances).
+The lifetime of lcore variables is independent of the owning threads
+and can, therefore, be initialized before the threads are created.
+
+Variables with thread-local storage are allocated when the thread is created
+and exist until the thread terminates.
+These are applicable for every thread in the process.
+Only very small objects should be allocated in TLS,
+as large TLS objects can significantly slow down thread creation
+and may unnecessarily increase the memory footprint of applications
+that extensively use unregistered threads.
+
+A common but now largely obsolete DPDK pattern is to use a static array
+sized according to the maximum number of lcore ID-equipped threads
+(i.e., with ``RTE_MAX_LCORE`` elements).
+To avoid *false sharing*, each element must be both cache-aligned
+and include an ``RTE_CACHE_GUARD``.
+This extensive use of padding causes internal fragmentation (i.e., unused space)
+and reduces cache hit rates.
+
+For more discussions on per-lcore state,
+refer to the :doc:`lcore variables documentation <lcore_var>`.
 
 Logs
 ~~~~
@@ -700,7 +729,7 @@ As EAL pthreads usually bind 1:1 to the physical CPU, the *_lcore_id* is typical
 
 When using multiple pthreads, however, the binding is no longer always 1:1 between an EAL pthread and a specified physical CPU.
 The EAL pthread may have affinity to a CPU set, and as such the *_lcore_id* will not be the same as the CPU ID.
-For this reason, there is an EAL long option '--lcores' defined to assign the CPU affinity of lcores.
+For this reason, there is an EAL option ``--lcores`` (or just ``-l``) defined to assign the CPU affinity of lcores.
 For a specified lcore ID or ID group, the option allows setting the CPU set for that EAL pthread.
 
 The format pattern:
@@ -724,7 +753,6 @@ If a '\@cpu_set' value is not supplied, the value of 'cpu_set' will default to t
     	    lcore 8 runs on cpuset 0x100 (cpu 8).
 
 Using this option, for each given lcore ID, the associated CPUs can be assigned.
-It's also compatible with the pattern of corelist('-l') option.
 
 non-EAL pthread support
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -855,9 +883,9 @@ Signal Safety
   Other functions are not signal safe because they use one or more
   library routines that are not themselves signal safe.
   For example, calling ``rte_panic()`` is not safe in a signal handler
-  because it uses ``rte_log()`` and ``rte_log()`` calls the
-  ``syslog()`` library function which is in the list of
-  signal safe functions in
+  because it uses ``rte_log()`` and ``rte_log()`` may call ``vfprintf()`` or
+  ``syslog()`` library functions which are not in the list of
+  signal safe functions
   `Signal-Safety manual page <https://man7.org/linux/man-pages/man7/signal-safety.7.html>`_.
 
   The set of functions that are expected to be async-signal-safe in DPDK
@@ -1187,7 +1215,7 @@ into a single block.
 If deallocating pages at runtime is supported, and the free element encloses
 one or more pages, those pages can be deallocated and be removed from the heap.
 If DPDK was started with command-line parameters for preallocating memory
-(``-m`` or ``--socket-mem``), then those pages that were allocated at startup
+(``-m`` or ``--numa-mem``), then those pages that were allocated at startup
 will not be deallocated.
 
 Any successful deallocation event will trigger a callback, for which user

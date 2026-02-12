@@ -11,6 +11,10 @@
 #include "generic/rte_vect.h"
 #include "rte_common.h"
 
+#ifdef RTE_RISCV_FEATURE_V
+#include <riscv_vector.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -51,7 +51,8 @@ static int axgbe_dev_link_update(struct rte_eth_dev *dev,
 static int axgbe_dev_get_regs(struct rte_eth_dev *dev,
 			      struct rte_dev_reg_info *regs);
 static int axgbe_dev_stats_get(struct rte_eth_dev *dev,
-				struct rte_eth_stats *stats);
+				struct rte_eth_stats *stats,
+				struct eth_queue_stats *qstats);
 static int axgbe_dev_stats_reset(struct rte_eth_dev *dev);
 static int axgbe_dev_xstats_get(struct rte_eth_dev *dev,
 				struct rte_eth_xstat *stats,
@@ -184,6 +185,7 @@ static const struct axgbe_xstats axgbe_xstats_strings[] = {
 
 #define	Fam17h	0x17
 #define	Fam19h	0x19
+#define	Fam1Ah	0x1A
 
 #define	CPUID_VENDOR_AuthenticAMD_ebx	0x68747541
 #define	CPUID_VENDOR_AuthenticAMD_ecx	0x444d4163
@@ -208,6 +210,7 @@ static struct axgbe_version_data axgbe_v2a = {
 	.ecc_support			= 1,
 	.i2c_support			= 1,
 	.an_cdr_workaround		= 1,
+	.enable_rrc			= 1,
 };
 
 static struct axgbe_version_data axgbe_v2b = {
@@ -220,6 +223,7 @@ static struct axgbe_version_data axgbe_v2b = {
 	.ecc_support			= 1,
 	.i2c_support			= 1,
 	.an_cdr_workaround		= 1,
+	.enable_rrc			= 1,
 };
 
 static const struct rte_eth_desc_lim rx_desc_lim = {
@@ -317,14 +321,14 @@ axgbe_dev_interrupt_handler(void *param)
 	pdata->phy_if.an_isr(pdata);
 	/*DMA related interrupts*/
 	dma_isr = AXGMAC_IOREAD(pdata, DMA_ISR);
-	PMD_DRV_LOG(DEBUG, "DMA_ISR=%#010x\n", dma_isr);
+	PMD_DRV_LOG_LINE(DEBUG, "DMA_ISR=%#010x", dma_isr);
 	if (dma_isr) {
 		if (dma_isr & 1) {
 			dma_ch_isr =
 				AXGMAC_DMA_IOREAD((struct axgbe_rx_queue *)
 						  pdata->rx_queues[0],
 						  DMA_CH_SR);
-			PMD_DRV_LOG(DEBUG, "DMA_CH0_ISR=%#010x\n", dma_ch_isr);
+			PMD_DRV_LOG_LINE(DEBUG, "DMA_CH0_ISR=%#010x", dma_ch_isr);
 			AXGMAC_DMA_IOWRITE((struct axgbe_rx_queue *)
 					   pdata->rx_queues[0],
 					   DMA_CH_SR, dma_ch_isr);
@@ -376,17 +380,17 @@ axgbe_dev_start(struct rte_eth_dev *dev)
 	/* Multiqueue RSS */
 	ret = axgbe_dev_rx_mq_config(dev);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "Unable to config RX MQ\n");
+		PMD_DRV_LOG_LINE(ERR, "Unable to config RX MQ");
 		return ret;
 	}
 	ret = axgbe_phy_reset(pdata);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "phy reset failed\n");
+		PMD_DRV_LOG_LINE(ERR, "phy reset failed");
 		return ret;
 	}
 	ret = pdata->hw_if.init(pdata);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "dev_init failed\n");
+		PMD_DRV_LOG_LINE(ERR, "dev_init failed");
 		return ret;
 	}
 
@@ -508,7 +512,7 @@ axgbe_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 	struct axgbe_hw_features *hw_feat = &pdata->hw_feat;
 
 	if (index > hw_feat->addn_mac) {
-		PMD_DRV_LOG(ERR, "Invalid Index %d\n", index);
+		PMD_DRV_LOG_LINE(ERR, "Invalid Index %d", index);
 		return -EINVAL;
 	}
 	axgbe_set_mac_addn_addr(pdata, (u8 *)mac_addr, index);
@@ -525,12 +529,12 @@ axgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 	int ret;
 
 	if (!pdata->rss_enable) {
-		PMD_DRV_LOG(ERR, "RSS not enabled\n");
+		PMD_DRV_LOG_LINE(ERR, "RSS not enabled");
 		return -ENOTSUP;
 	}
 
 	if (reta_size == 0 || reta_size > AXGBE_RSS_MAX_TABLE_SIZE) {
-		PMD_DRV_LOG(ERR, "reta_size %d is not supported\n", reta_size);
+		PMD_DRV_LOG_LINE(ERR, "reta_size %d is not supported", reta_size);
 		return -EINVAL;
 	}
 
@@ -556,12 +560,12 @@ axgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
 	unsigned int i, idx, shift;
 
 	if (!pdata->rss_enable) {
-		PMD_DRV_LOG(ERR, "RSS not enabled\n");
+		PMD_DRV_LOG_LINE(ERR, "RSS not enabled");
 		return -ENOTSUP;
 	}
 
 	if (reta_size == 0 || reta_size > AXGBE_RSS_MAX_TABLE_SIZE) {
-		PMD_DRV_LOG(ERR, "reta_size %d is not supported\n", reta_size);
+		PMD_DRV_LOG_LINE(ERR, "reta_size %d is not supported", reta_size);
 		return -EINVAL;
 	}
 
@@ -583,12 +587,12 @@ axgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 	int ret;
 
 	if (!pdata->rss_enable) {
-		PMD_DRV_LOG(ERR, "RSS not enabled\n");
+		PMD_DRV_LOG_LINE(ERR, "RSS not enabled");
 		return -ENOTSUP;
 	}
 
 	if (rss_conf == NULL) {
-		PMD_DRV_LOG(ERR, "rss_conf value isn't valid\n");
+		PMD_DRV_LOG_LINE(ERR, "rss_conf value isn't valid");
 		return -EINVAL;
 	}
 
@@ -626,12 +630,12 @@ axgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	struct axgbe_port *pdata = dev->data->dev_private;
 
 	if (!pdata->rss_enable) {
-		PMD_DRV_LOG(ERR, "RSS not enabled\n");
+		PMD_DRV_LOG_LINE(ERR, "RSS not enabled");
 		return -ENOTSUP;
 	}
 
 	if (rss_conf == NULL) {
-		PMD_DRV_LOG(ERR, "rss_conf value isn't valid\n");
+		PMD_DRV_LOG_LINE(ERR, "rss_conf value isn't valid");
 		return -EINVAL;
 	}
 
@@ -666,7 +670,7 @@ axgbe_dev_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 	struct axgbe_hw_features *hw_feat = &pdata->hw_feat;
 
 	if (index > hw_feat->addn_mac) {
-		PMD_DRV_LOG(ERR, "Invalid Index %d\n", index);
+		PMD_DRV_LOG_LINE(ERR, "Invalid Index %d", index);
 		return;
 	}
 	axgbe_set_mac_addn_addr(pdata, NULL, index);
@@ -683,7 +687,7 @@ axgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 	uint32_t i;
 
 	if (nb_mc_addr > hw_feat->addn_mac) {
-		PMD_DRV_LOG(ERR, "Invalid Index %d\n", nb_mc_addr);
+		PMD_DRV_LOG_LINE(ERR, "Invalid Index %d", nb_mc_addr);
 		return -EINVAL;
 	}
 
@@ -709,7 +713,7 @@ axgbe_dev_uc_hash_table_set(struct rte_eth_dev *dev,
 	struct axgbe_hw_features *hw_feat = &pdata->hw_feat;
 
 	if (!hw_feat->hash_table_size) {
-		PMD_DRV_LOG(ERR, "MAC Hash Table not supported\n");
+		PMD_DRV_LOG_LINE(ERR, "MAC Hash Table not supported");
 		return -ENOTSUP;
 	}
 
@@ -733,7 +737,7 @@ axgbe_dev_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t add)
 	uint32_t index;
 
 	if (!hw_feat->hash_table_size) {
-		PMD_DRV_LOG(ERR, "MAC Hash Table not supported\n");
+		PMD_DRV_LOG_LINE(ERR, "MAC Hash Table not supported");
 		return -ENOTSUP;
 	}
 
@@ -743,7 +747,7 @@ axgbe_dev_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t add)
 		else
 			pdata->uc_hash_table[index] = 0;
 
-		PMD_DRV_LOG(DEBUG, "%s MAC hash table at Index %#x\n",
+		PMD_DRV_LOG_LINE(DEBUG, "%s MAC hash table at Index %#x",
 			    add ? "set" : "clear", index);
 
 		AXGMAC_IOWRITE(pdata, MAC_HTR(index),
@@ -781,8 +785,8 @@ axgbe_dev_link_update(struct rte_eth_dev *dev,
 	link.link_autoneg = !(dev->data->dev_conf.link_speeds &
 			      RTE_ETH_LINK_SPEED_FIXED);
 	ret = rte_eth_linkstatus_set(dev, &link);
-	if (ret == -1)
-		PMD_DRV_LOG(ERR, "No change in link status\n");
+	if (ret == 0)
+		PMD_DRV_LOG_LINE(ERR, "Link status changed");
 
 	return ret;
 }
@@ -1082,7 +1086,7 @@ axgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 
 	for (i = 0; i < n; i++) {
 		if (ids[i] >= AXGBE_XSTATS_COUNT) {
-			PMD_DRV_LOG(ERR, "id value isn't valid\n");
+			PMD_DRV_LOG_LINE(ERR, "id value isn't valid");
 			return -1;
 		}
 		values[i] = values_copy[ids[i]];
@@ -1106,7 +1110,7 @@ axgbe_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
 
 	for (i = 0; i < size; i++) {
 		if (ids[i] >= AXGBE_XSTATS_COUNT) {
-			PMD_DRV_LOG(ERR, "id value isn't valid\n");
+			PMD_DRV_LOG_LINE(ERR, "id value isn't valid");
 			return -1;
 		}
 		strcpy(xstats_names[i].name, xstats_names_copy[ids[i]].name);
@@ -1131,7 +1135,7 @@ axgbe_dev_xstats_reset(struct rte_eth_dev *dev)
 
 static int
 axgbe_dev_stats_get(struct rte_eth_dev *dev,
-		    struct rte_eth_stats *stats)
+		    struct rte_eth_stats *stats, struct eth_queue_stats *qstats)
 {
 	struct axgbe_rx_queue *rxq;
 	struct axgbe_tx_queue *txq;
@@ -1146,16 +1150,18 @@ axgbe_dev_stats_get(struct rte_eth_dev *dev,
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
 		if (rxq) {
-			stats->q_ipackets[i] = rxq->pkts;
 			stats->ipackets += rxq->pkts;
-			stats->q_ibytes[i] = rxq->bytes;
 			stats->ibytes += rxq->bytes;
 			stats->rx_nombuf += rxq->rx_mbuf_alloc_failed;
-			stats->q_errors[i] = rxq->errors
-				+ rxq->rx_mbuf_alloc_failed;
 			stats->ierrors += rxq->errors;
+
+			if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+				qstats->q_ipackets[i] = rxq->pkts;
+				qstats->q_ibytes[i] = rxq->bytes;
+				qstats->q_errors[i] = rxq->errors + rxq->rx_mbuf_alloc_failed;
+			}
 		} else {
-			PMD_DRV_LOG(DEBUG, "Rx queue not setup for port %d\n",
+			PMD_DRV_LOG_LINE(DEBUG, "Rx queue not setup for port %d",
 					dev->data->port_id);
 		}
 	}
@@ -1163,13 +1169,16 @@ axgbe_dev_stats_get(struct rte_eth_dev *dev,
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
 		if (txq) {
-			stats->q_opackets[i] = txq->pkts;
 			stats->opackets += txq->pkts;
-			stats->q_obytes[i] = txq->bytes;
 			stats->obytes += txq->bytes;
 			stats->oerrors += txq->errors;
+
+			if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+				qstats->q_opackets[i] = txq->pkts;
+				qstats->q_obytes[i] = txq->bytes;
+			}
 		} else {
-			PMD_DRV_LOG(DEBUG, "Tx queue not setup for port %d\n",
+			PMD_DRV_LOG_LINE(DEBUG, "Tx queue not setup for port %d",
 					dev->data->port_id);
 		}
 	}
@@ -1192,7 +1201,7 @@ axgbe_dev_stats_reset(struct rte_eth_dev *dev)
 			rxq->errors = 0;
 			rxq->rx_mbuf_alloc_failed = 0;
 		} else {
-			PMD_DRV_LOG(DEBUG, "Rx queue not setup for port %d\n",
+			PMD_DRV_LOG_LINE(DEBUG, "Rx queue not setup for port %d",
 					dev->data->port_id);
 		}
 	}
@@ -1203,7 +1212,7 @@ axgbe_dev_stats_reset(struct rte_eth_dev *dev)
 			txq->bytes = 0;
 			txq->errors = 0;
 		} else {
-			PMD_DRV_LOG(DEBUG, "Tx queue not setup for port %d\n",
+			PMD_DRV_LOG_LINE(DEBUG, "Tx queue not setup for port %d",
 					dev->data->port_id);
 		}
 	}
@@ -1239,6 +1248,7 @@ axgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		RTE_ETH_TX_OFFLOAD_QINQ_INSERT |
 		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM  |
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS  |
+		RTE_ETH_TX_OFFLOAD_TCP_TSO     |
 		RTE_ETH_TX_OFFLOAD_UDP_CKSUM   |
 		RTE_ETH_TX_OFFLOAD_TCP_CKSUM;
 
@@ -1351,7 +1361,7 @@ axgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 	tc_num = pdata->pfc_map[pfc_conf->priority];
 
 	if (pfc_conf->priority >= pdata->hw_feat.tc_cnt) {
-		PMD_INIT_LOG(ERR, "Max supported  traffic class: %d\n",
+		PMD_INIT_LOG(ERR, "Max supported  traffic class: %d",
 				pdata->hw_feat.tc_cnt);
 	return -EINVAL;
 	}
@@ -1498,7 +1508,7 @@ static int axgb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	/* mtu setting is forbidden if port is start */
 	if (dev->data->dev_started) {
-		PMD_DRV_LOG(ERR, "port %d must be stopped before configuration",
+		PMD_DRV_LOG_LINE(ERR, "port %d must be stopped before configuration",
 				dev->data->port_id);
 		return -EBUSY;
 	}
@@ -1622,7 +1632,7 @@ axgbe_timesync_write_time(struct rte_eth_dev *dev,
 	while (--count && AXGMAC_IOREAD_BITS(pdata, MAC_TSCR, TSUPDT))
 		rte_delay_ms(1);
 	if (!count)
-		PMD_DRV_LOG(ERR, "Timed out update timestamp\n");
+		PMD_DRV_LOG_LINE(ERR, "Timed out update timestamp");
 	return 0;
 }
 
@@ -1639,7 +1649,7 @@ axgbe_update_tstamp_addend(struct axgbe_port *pdata,
 	while (--count && AXGMAC_IOREAD_BITS(pdata, MAC_TSCR, TSADDREG))
 		rte_delay_ms(1);
 	if (!count)
-		PMD_DRV_LOG(ERR, "Timed out updating timestamp addend register\n");
+		PMD_DRV_LOG_LINE(ERR, "Timed out updating timestamp addend register");
 }
 
 static void
@@ -1659,7 +1669,7 @@ axgbe_set_tstamp_time(struct axgbe_port *pdata, unsigned int sec,
 	while (--count && AXGMAC_IOREAD_BITS(pdata, MAC_TSCR, TSINIT))
 		rte_delay_ms(1);
 	if (!count)
-		PMD_DRV_LOG(ERR, "Timed out initializing timestamp\n");
+		PMD_DRV_LOG_LINE(ERR, "Timed out initializing timestamp");
 }
 
 static int
@@ -1694,7 +1704,7 @@ axgbe_timesync_enable(struct rte_eth_dev *dev)
 
 	/* Exit if timestamping is not enabled */
 	if (!AXGMAC_GET_BITS(mac_tscr, MAC_TSCR, TSENA)) {
-		PMD_DRV_LOG(ERR, "Exiting as timestamp is not enabled\n");
+		PMD_DRV_LOG_LINE(ERR, "Exiting as timestamp is not enabled");
 		return 0;
 	}
 
@@ -1718,7 +1728,7 @@ axgbe_timesync_enable(struct rte_eth_dev *dev)
 	pdata->systime_tc.cc_shift = 0;
 	pdata->systime_tc.nsec_mask = 0;
 
-	PMD_DRV_LOG(DEBUG, "Initializing system time counter with realtime\n");
+	PMD_DRV_LOG_LINE(DEBUG, "Initializing system time counter with realtime");
 
 	/* Updating the counter once with clock real time */
 	clock_gettime(CLOCK_REALTIME, &timestamp);
@@ -1733,6 +1743,7 @@ axgbe_timesync_disable(struct rte_eth_dev *dev)
 {
 	struct axgbe_port *pdata = dev->data->dev_private;
 	unsigned int mac_tscr = 0;
+	unsigned int value = 0;
 
 	/*disable timestamp for all pkts*/
 	AXGMAC_SET_BITS(mac_tscr, MAC_TSCR, TSENALL, 0);
@@ -1742,6 +1753,11 @@ axgbe_timesync_disable(struct rte_eth_dev *dev)
 	AXGMAC_SET_BITS(mac_tscr, MAC_TSCR, TSCFUPDT, 0);
 	/*disable time stamp*/
 	AXGMAC_SET_BITS(mac_tscr, MAC_TSCR, TSENA, 0);
+
+	value = AXGMAC_IOREAD(pdata, MAC_TSCR);
+	value |= mac_tscr;
+	AXGMAC_IOWRITE(pdata, MAC_TSCR, value);
+
 	return 0;
 }
 
@@ -1771,8 +1787,8 @@ axgbe_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 			if (nsec != 0xffffffffffffffffULL) {
 				if (pmt == 0x01)
 					*timestamp = rte_ns_to_timespec(nsec);
-				PMD_DRV_LOG(DEBUG,
-					"flags = 0x%x nsec = %"PRIu64"\n",
+				PMD_DRV_LOG_LINE(DEBUG,
+					"flags = 0x%x nsec = %"PRIu64,
 					flags, nsec);
 			}
 		}
@@ -1799,13 +1815,13 @@ axgbe_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 		tx_snr = AXGMAC_IOREAD(pdata, MAC_TXSNR);
 	}
 	if (AXGMAC_GET_BITS(tx_snr, MAC_TXSNR, TXTSSTSMIS)) {
-		PMD_DRV_LOG(DEBUG, "Waiting for TXTSSTSMIS\n");
+		PMD_DRV_LOG_LINE(DEBUG, "Waiting for TXTSSTSMIS");
 		return 0;
 	}
 	nsec = tx_ssr;
 	nsec *= NSEC_PER_SEC;
 	nsec += tx_snr;
-	PMD_DRV_LOG(DEBUG, "nsec = %"PRIu64" tx_ssr = %d tx_snr = %d\n",
+	PMD_DRV_LOG_LINE(DEBUG, "nsec = %"PRIu64" tx_ssr = %d tx_snr = %d",
 			nsec, tx_ssr, tx_snr);
 	*timestamp = rte_ns_to_timespec(nsec);
 	return 0;
@@ -1821,11 +1837,11 @@ axgbe_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vid, int on)
 	vid_idx = VLAN_TABLE_IDX(vid);
 
 	if (on) {
-		PMD_DRV_LOG(DEBUG, "Set VLAN vid=%d for device = %s\n",
+		PMD_DRV_LOG_LINE(DEBUG, "Set VLAN vid=%d for device = %s",
 			    vid, pdata->eth_dev->device->name);
 		pdata->active_vlans[vid_idx] |= vid_bit;
 	} else {
-		PMD_DRV_LOG(DEBUG, "Reset VLAN vid=%d for device = %s\n",
+		PMD_DRV_LOG_LINE(DEBUG, "Reset VLAN vid=%d for device = %s",
 			    vid, pdata->eth_dev->device->name);
 		pdata->active_vlans[vid_idx] &= ~vid_bit;
 	}
@@ -1843,50 +1859,50 @@ axgbe_vlan_tpid_set(struct rte_eth_dev *dev,
 	uint32_t qinq = 0;
 
 	qinq = AXGMAC_IOREAD_BITS(pdata, MAC_VLANTR, EDVLP);
-	PMD_DRV_LOG(DEBUG, "EDVLP: qinq = 0x%x\n", qinq);
+	PMD_DRV_LOG_LINE(DEBUG, "EDVLP: qinq = 0x%x", qinq);
 
 	switch (vlan_type) {
 	case RTE_ETH_VLAN_TYPE_INNER:
-		PMD_DRV_LOG(DEBUG, "RTE_ETH_VLAN_TYPE_INNER\n");
+		PMD_DRV_LOG_LINE(DEBUG, "RTE_ETH_VLAN_TYPE_INNER");
 		if (qinq) {
 			if (tpid != 0x8100 && tpid != 0x88a8)
-				PMD_DRV_LOG(ERR,
-					    "tag supported 0x8100/0x88A8\n");
-			PMD_DRV_LOG(DEBUG, "qinq with inner tag\n");
+				PMD_DRV_LOG_LINE(ERR,
+					    "tag supported 0x8100/0x88A8");
+			PMD_DRV_LOG_LINE(DEBUG, "qinq with inner tag");
 
 			/*Enable Inner VLAN Tag */
 			AXGMAC_IOWRITE_BITS(pdata, MAC_VLANTR, ERIVLT, 1);
 			reg = AXGMAC_IOREAD_BITS(pdata, MAC_VLANTR, ERIVLT);
-			PMD_DRV_LOG(DEBUG, "bit ERIVLT = 0x%x\n", reg);
+			PMD_DRV_LOG_LINE(DEBUG, "bit ERIVLT = 0x%x", reg);
 
 		} else {
-			PMD_DRV_LOG(ERR,
-				    "Inner type not supported in single tag\n");
+			PMD_DRV_LOG_LINE(ERR,
+				    "Inner type not supported in single tag");
 		}
 		break;
 	case RTE_ETH_VLAN_TYPE_OUTER:
-		PMD_DRV_LOG(DEBUG, "RTE_ETH_VLAN_TYPE_OUTER\n");
+		PMD_DRV_LOG_LINE(DEBUG, "RTE_ETH_VLAN_TYPE_OUTER");
 		if (qinq) {
-			PMD_DRV_LOG(DEBUG, "double tagging is enabled\n");
+			PMD_DRV_LOG_LINE(DEBUG, "double tagging is enabled");
 			/*Enable outer VLAN tag*/
 			AXGMAC_IOWRITE_BITS(pdata, MAC_VLANTR, ERIVLT, 0);
 			reg = AXGMAC_IOREAD_BITS(pdata, MAC_VLANTR, ERIVLT);
-			PMD_DRV_LOG(DEBUG, "bit ERIVLT = 0x%x\n", reg);
+			PMD_DRV_LOG_LINE(DEBUG, "bit ERIVLT = 0x%x", reg);
 
 			AXGMAC_IOWRITE_BITS(pdata, MAC_VLANIR, CSVL, 1);
 			reg = AXGMAC_IOREAD_BITS(pdata, MAC_VLANIR, CSVL);
-			PMD_DRV_LOG(DEBUG, "bit CSVL = 0x%x\n", reg);
+			PMD_DRV_LOG_LINE(DEBUG, "bit CSVL = 0x%x", reg);
 		} else {
 			if (tpid != 0x8100 && tpid != 0x88a8)
-				PMD_DRV_LOG(ERR,
-					    "tag supported 0x8100/0x88A8\n");
+				PMD_DRV_LOG_LINE(ERR,
+					    "tag supported 0x8100/0x88A8");
 		}
 		break;
 	case RTE_ETH_VLAN_TYPE_MAX:
-		PMD_DRV_LOG(ERR, "RTE_ETH_VLAN_TYPE_MAX\n");
+		PMD_DRV_LOG_LINE(ERR, "RTE_ETH_VLAN_TYPE_MAX");
 		break;
 	case RTE_ETH_VLAN_TYPE_UNKNOWN:
-		PMD_DRV_LOG(ERR, "RTE_ETH_VLAN_TYPE_UNKNOWN\n");
+		PMD_DRV_LOG_LINE(ERR, "RTE_ETH_VLAN_TYPE_UNKNOWN");
 		break;
 	}
 	return 0;
@@ -1898,7 +1914,7 @@ static void axgbe_vlan_extend_enable(struct axgbe_port *pdata)
 
 	AXGMAC_IOWRITE_BITS(pdata, MAC_VLANTR, EDVLP, 1);
 	qinq = AXGMAC_IOREAD_BITS(pdata, MAC_VLANTR, EDVLP);
-	PMD_DRV_LOG(DEBUG, "vlan double tag enabled EDVLP:qinq=0x%x\n", qinq);
+	PMD_DRV_LOG_LINE(DEBUG, "vlan double tag enabled EDVLP:qinq=0x%x", qinq);
 }
 
 static void axgbe_vlan_extend_disable(struct axgbe_port *pdata)
@@ -1907,7 +1923,7 @@ static void axgbe_vlan_extend_disable(struct axgbe_port *pdata)
 
 	AXGMAC_IOWRITE_BITS(pdata, MAC_VLANTR, EDVLP, 0);
 	qinq = AXGMAC_IOREAD_BITS(pdata, MAC_VLANTR, EDVLP);
-	PMD_DRV_LOG(DEBUG, "vlan double tag disable EDVLP:qinq=0x%x\n", qinq);
+	PMD_DRV_LOG_LINE(DEBUG, "vlan double tag disable EDVLP:qinq=0x%x", qinq);
 }
 
 static int
@@ -1922,29 +1938,29 @@ axgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 
 	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
 		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) {
-			PMD_DRV_LOG(DEBUG, "Strip ON for device = %s\n",
+			PMD_DRV_LOG_LINE(DEBUG, "Strip ON for device = %s",
 				    pdata->eth_dev->device->name);
 			pdata->hw_if.enable_rx_vlan_stripping(pdata);
 		} else {
-			PMD_DRV_LOG(DEBUG, "Strip OFF for device = %s\n",
+			PMD_DRV_LOG_LINE(DEBUG, "Strip OFF for device = %s",
 				    pdata->eth_dev->device->name);
 			pdata->hw_if.disable_rx_vlan_stripping(pdata);
 		}
 	}
 	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
 		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER) {
-			PMD_DRV_LOG(DEBUG, "Filter ON for device = %s\n",
+			PMD_DRV_LOG_LINE(DEBUG, "Filter ON for device = %s",
 				    pdata->eth_dev->device->name);
 			pdata->hw_if.enable_rx_vlan_filtering(pdata);
 		} else {
-			PMD_DRV_LOG(DEBUG, "Filter OFF for device = %s\n",
+			PMD_DRV_LOG_LINE(DEBUG, "Filter OFF for device = %s",
 				    pdata->eth_dev->device->name);
 			pdata->hw_if.disable_rx_vlan_filtering(pdata);
 		}
 	}
 	if (mask & RTE_ETH_VLAN_EXTEND_MASK) {
 		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_EXTEND) {
-			PMD_DRV_LOG(DEBUG, "enabling vlan extended mode\n");
+			PMD_DRV_LOG_LINE(DEBUG, "enabling vlan extended mode");
 			axgbe_vlan_extend_enable(pdata);
 			/* Set global registers with default ethertype*/
 			axgbe_vlan_tpid_set(dev, RTE_ETH_VLAN_TYPE_OUTER,
@@ -1952,7 +1968,7 @@ axgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			axgbe_vlan_tpid_set(dev, RTE_ETH_VLAN_TYPE_INNER,
 					    RTE_ETHER_TYPE_VLAN);
 		} else {
-			PMD_DRV_LOG(DEBUG, "disabling vlan extended mode\n");
+			PMD_DRV_LOG_LINE(DEBUG, "disabling vlan extended mode");
 			axgbe_vlan_extend_disable(pdata);
 		}
 	}
@@ -2237,8 +2253,8 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	__cpuid(0x0, eax, ebx, ecx, edx);
 
 	if (ebx == CPUID_VENDOR_AuthenticAMD_ebx &&
-		edx == CPUID_VENDOR_AuthenticAMD_edx &&
-		ecx == CPUID_VENDOR_AuthenticAMD_ecx) {
+	    edx == CPUID_VENDOR_AuthenticAMD_edx &&
+	    ecx == CPUID_VENDOR_AuthenticAMD_ecx) {
 		int unknown_cpu = 0;
 		eax = 0, ebx = 0, ecx = 0, edx = 0;
 
@@ -2249,36 +2265,54 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 
 		switch (cpu_family) {
 		case Fam17h:
-		/* V1000/R1000 */
-		if (cpu_model >= 0x10 && cpu_model <= 0x1F) {
-			pdata->xpcs_window_def_reg = PCS_V2_RV_WINDOW_DEF;
-			pdata->xpcs_window_sel_reg = PCS_V2_RV_WINDOW_SELECT;
-		/* EPYC 3000 */
-		} else if (cpu_model >= 0x01 && cpu_model <= 0x0F) {
-			pdata->xpcs_window_def_reg = PCS_V2_WINDOW_DEF;
-			pdata->xpcs_window_sel_reg = PCS_V2_WINDOW_SELECT;
-		} else {
-			unknown_cpu = 1;
-		}
-		break;
+			/* V1000/R1000 */
+			if (cpu_model >= 0x10 && cpu_model <= 0x1F) {
+				pdata->xpcs_window_def_reg = PCS_V2_RV_WINDOW_DEF;
+				pdata->xpcs_window_sel_reg = PCS_V2_RV_WINDOW_SELECT;
+				/* EPYC 3000 */
+			} else if (cpu_model >= 0x01 && cpu_model <= 0x0F) {
+				pdata->xpcs_window_def_reg = PCS_V2_WINDOW_DEF;
+				pdata->xpcs_window_sel_reg = PCS_V2_WINDOW_SELECT;
+			} else {
+				unknown_cpu = 1;
+			}
+			break;
 		case Fam19h:
-		/* V3000 (Yellow Carp) */
-		if (cpu_model >= 0x44 && cpu_model <= 0x47) {
-			pdata->xpcs_window_def_reg = PCS_V2_YC_WINDOW_DEF;
-			pdata->xpcs_window_sel_reg = PCS_V2_YC_WINDOW_SELECT;
+			/* V3000 (Yellow Carp) */
+			if (cpu_model >= 0x44 && cpu_model <= 0x47) {
+				pdata->xpcs_window_def_reg = PCS_V2_YC_WINDOW_DEF;
+				pdata->xpcs_window_sel_reg = PCS_V2_YC_WINDOW_SELECT;
 
-			/* Yellow Carp devices do not need cdr workaround */
-			pdata->vdata->an_cdr_workaround = 0;
-		} else {
-			unknown_cpu = 1;
-		}
-		break;
+				/* Yellow Carp devices do not need cdr workaround */
+				pdata->vdata->an_cdr_workaround = 0;
+
+				/* Yellow Carp devices do not need rrc */
+				pdata->vdata->enable_rrc = 0;
+			} else {
+				unknown_cpu = 1;
+			}
+			break;
+		case Fam1Ah:
+			/* V4000 (krackan2e) */
+			if (cpu_model == 0x68) {
+				pdata->xpcs_window_def_reg = PCS_KR_WINDOW_DEF;
+				pdata->xpcs_window_sel_reg = PCS_KR_WINDOW_SELECT;
+
+				/* V4000-Krackan2e devices do not need cdr workaround */
+				pdata->vdata->an_cdr_workaround = 0;
+
+				/* V4000-Krackan2e devices do not need rrc */
+				pdata->vdata->enable_rrc = 0;
+			} else {
+				unknown_cpu = 1;
+			}
+			break;
 		default:
 			unknown_cpu = 1;
 			break;
 		}
 		if (unknown_cpu) {
-			PMD_DRV_LOG(ERR, "Unknown CPU family, no supported axgbe device found\n");
+			PMD_DRV_LOG_LINE(ERR, "Unknown CPU family, no supported axgbe device found");
 			return -ENODEV;
 		}
 	}
@@ -2372,7 +2406,7 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	/* Issue software reset to DMA */
 	ret = pdata->hw_if.exit(pdata);
 	if (ret)
-		PMD_DRV_LOG(ERR, "hw_if->exit EBUSY error\n");
+		PMD_DRV_LOG_LINE(ERR, "hw_if->exit EBUSY error");
 
 	/* Set default configuration data */
 	axgbe_default_config(pdata);
@@ -2411,12 +2445,14 @@ static int
 axgbe_dev_close(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
+	struct axgbe_port *pdata;
 
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	pdata = eth_dev->data->dev_private;
 	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 	axgbe_dev_clear_queues(eth_dev);
 
@@ -2425,6 +2461,9 @@ axgbe_dev_close(struct rte_eth_dev *eth_dev)
 	rte_intr_callback_unregister(pci_dev->intr_handle,
 				     axgbe_dev_interrupt_handler,
 				     (void *)eth_dev);
+
+	/* Disable all interrupts in the hardware */
+	XP_IOWRITE(pdata, XP_INT_EN, 0x0);
 
 	return 0;
 }

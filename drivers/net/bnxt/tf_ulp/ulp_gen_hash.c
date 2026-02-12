@@ -3,12 +3,14 @@
  * All rights reserved.
  */
 
+#include <rte_bitops.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
+#include <rte_hash_crc.h>
+
 #include "bnxt_tf_common.h"
 #include "ulp_gen_hash.h"
 #include "ulp_utils.h"
-#include "tf_hash.h"
 
 static
 int32_t ulp_bit_alloc_list_alloc(struct bit_alloc_list *blist,
@@ -25,13 +27,13 @@ int32_t ulp_bit_alloc_list_alloc(struct bit_alloc_list *blist,
 
 	if (idx <= bsize_64) {
 		if (bentry)
-			jdx = __builtin_clzl(~bentry);
+			jdx = rte_clz64(~bentry);
 		*index = ((idx - 1) * ULP_INDEX_BITMAP_SIZE) + jdx;
 		ULP_INDEX_BITMAP_SET(blist->bdata[(idx - 1)], jdx);
 		return 0;
 	}
 	jdx = (uint32_t)(bsize_64 * ULP_INDEX_BITMAP_SIZE);
-	BNXT_TF_DBG(ERR, "bit allocator is full reached max:%x\n", jdx);
+	BNXT_DRV_DBG(ERR, "bit allocator is full reached max:%d\n", jdx);
 	return -1;
 }
 
@@ -44,8 +46,8 @@ int32_t ulp_bit_alloc_list_dealloc(struct bit_alloc_list *blist,
 
 	idx = index / ULP_INDEX_BITMAP_SIZE;
 	if (idx >= bsize_64) {
-		BNXT_TF_DBG(ERR, "invalid bit index %x:%x\n", idx,
-			    blist->bsize);
+		BNXT_DRV_DBG(ERR, "invalid bit index %x:%x\n", idx,
+			     blist->bsize);
 		return -EINVAL;
 	}
 	jdx = index % ULP_INDEX_BITMAP_SIZE;
@@ -71,7 +73,7 @@ ulp_gen_hash_tbl_list_init(struct ulp_hash_create_params *cparams,
 
 	/* validate the arguments */
 	if (!hash_table || !cparams) {
-		BNXT_TF_DBG(ERR, "invalid arguments\n");
+		BNXT_DRV_DBG(ERR, "invalid arguments\n");
 		return -EINVAL;
 	}
 
@@ -79,20 +81,20 @@ ulp_gen_hash_tbl_list_init(struct ulp_hash_create_params *cparams,
 	if (ulp_util_is_power_of_2(cparams->num_hash_tbl_entries) ||
 	    ulp_util_is_power_of_2(cparams->num_key_entries) ||
 	    (cparams->num_buckets % ULP_HASH_BUCKET_ROW_SZ)) {
-		BNXT_TF_DBG(ERR, "invalid arguments for hash tbl\n");
+		BNXT_DRV_DBG(ERR, "invalid arguments for hash tbl\n");
 		return -EINVAL;
 	}
 
 	/* validate the size of the hash table size */
 	if (cparams->num_hash_tbl_entries >= ULP_GEN_HASH_MAX_TBL_SIZE) {
-		BNXT_TF_DBG(ERR, "invalid size for hash tbl\n");
+		BNXT_DRV_DBG(ERR, "invalid size for hash tbl\n");
 		return -EINVAL;
 	}
 
 	hash_tbl = rte_zmalloc("Generic hash table",
 			       sizeof(struct ulp_gen_hash_tbl), 0);
 	if (!hash_tbl) {
-		BNXT_TF_DBG(ERR, "failed to alloc mem for hash tbl\n");
+		BNXT_DRV_DBG(ERR, "failed to alloc mem for hash tbl\n");
 		return -ENOMEM;
 	}
 	*hash_table = hash_tbl;
@@ -104,7 +106,7 @@ ulp_gen_hash_tbl_list_init(struct ulp_hash_create_params *cparams,
 	hash_tbl->key_tbl.key_data = rte_zmalloc("Generic hash keys",
 						 hash_tbl->key_tbl.mem_size, 0);
 	if (!hash_tbl->key_tbl.key_data) {
-		BNXT_TF_DBG(ERR, "failed to alloc mem for hash key\n");
+		BNXT_DRV_DBG(ERR, "failed to alloc mem for hash key\n");
 		rc = -ENOMEM;
 		goto init_error;
 	}
@@ -117,7 +119,7 @@ ulp_gen_hash_tbl_list_init(struct ulp_hash_create_params *cparams,
 	hash_tbl->hash_list = rte_zmalloc("Generic hash table list", size,
 					  ULP_BUFFER_ALIGN_64_BYTE);
 	if (!hash_tbl->hash_list) {
-		BNXT_TF_DBG(ERR, "failed to alloc mem for hash tbl\n");
+		BNXT_DRV_DBG(ERR, "failed to alloc mem for hash tbl\n");
 		rc = -ENOMEM;
 		goto init_error;
 	}
@@ -135,7 +137,7 @@ ulp_gen_hash_tbl_list_init(struct ulp_hash_create_params *cparams,
 	hash_tbl->bit_list.bdata = rte_zmalloc("Generic hash bit alloc", size,
 					       ULP_BUFFER_ALIGN_64_BYTE);
 	if (!hash_tbl->bit_list.bdata) {
-		BNXT_TF_DBG(ERR, "failed to alloc mem for hash bit list\n");
+		BNXT_DRV_DBG(ERR, "failed to alloc mem for hash bit list\n");
 		rc = -ENOMEM;
 		goto init_error;
 	}
@@ -198,13 +200,34 @@ ulp_gen_hash_tbl_list_key_search(struct ulp_gen_hash_tbl *hash_tbl,
 	/* validate the arguments */
 	if (!hash_tbl || !entry || !entry->key_data || entry->key_length !=
 	    hash_tbl->key_tbl.data_size) {
-		BNXT_TF_DBG(ERR, "invalid arguments\n");
+		BNXT_DRV_DBG(ERR, "invalid arguments\n");
 		return -EINVAL;
 	}
 
 	/* calculate the hash */
-	hash_id = tf_hash_calc_crc32(entry->key_data,
-				     hash_tbl->key_tbl.data_size);
+	switch (hash_tbl->key_tbl.data_size) {
+	case 1:
+		hash_id = rte_hash_crc_1byte(*entry->key_data,
+					     ~0U);
+		break;
+	case 2:
+		hash_id = rte_hash_crc_2byte(*((uint16_t *)entry->key_data),
+					     ~0U);
+		break;
+	case 4:
+		hash_id = rte_hash_crc_4byte(*((uint32_t *)entry->key_data),
+					     ~0U);
+		break;
+	case 8:
+		hash_id = rte_hash_crc_8byte(*((uint64_t *)entry->key_data),
+					     ~0U);
+		break;
+	default:
+		hash_id = rte_hash_crc(entry->key_data,
+				       hash_tbl->key_tbl.data_size,
+				       ~0U);
+		break;
+	}
 	hash_id = (uint16_t)(((hash_id >> 16) & 0xffff) ^ (hash_id & 0xffff));
 	hash_id &= hash_tbl->hash_mask;
 	hash_id = hash_id * hash_tbl->hash_bkt_num;
@@ -217,7 +240,7 @@ ulp_gen_hash_tbl_list_key_search(struct ulp_gen_hash_tbl *hash_tbl,
 			/* compare the key contents */
 			key_idx = ULP_HASH_BUCKET_INDEX(bucket);
 			if (key_idx >= hash_tbl->num_key_entries) {
-				BNXT_TF_DBG(ERR, "Hash table corruption\n");
+				BNXT_DRV_DBG(ERR, "Hash table corruption\n");
 				return -EINVAL;
 			}
 			if (!memcmp(entry->key_data,
@@ -262,19 +285,19 @@ ulp_gen_hash_tbl_list_index_search(struct ulp_gen_hash_tbl *hash_tbl,
 
 	/* validate the arguments */
 	if (!hash_tbl || !entry) {
-		BNXT_TF_DBG(ERR, "invalid arguments\n");
+		BNXT_DRV_DBG(ERR, "invalid arguments\n");
 		return -EINVAL;
 	}
 
 	idx = ULP_HASH_GET_H_INDEX(entry->hash_index);
 	if (idx > (hash_tbl->hash_tbl_size * hash_tbl->hash_bkt_num)) {
-		BNXT_TF_DBG(ERR, "invalid hash index %x\n", idx);
+		BNXT_DRV_DBG(ERR, "invalid hash index %x\n", idx);
 		return -EINVAL;
 	}
 	bucket = (uint16_t *)&hash_tbl->hash_list[idx];
 	idx  = ULP_HASH_GET_B_INDEX(entry->hash_index);
 	if (idx >= (hash_tbl->hash_bkt_num * ULP_HASH_BUCKET_ROW_SZ)) {
-		BNXT_TF_DBG(ERR, "invalid bucket index %x\n", idx);
+		BNXT_DRV_DBG(ERR, "invalid bucket index %x\n", idx);
 		return -EINVAL;
 	}
 	bucket += idx;
@@ -311,12 +334,12 @@ ulp_gen_hash_tbl_list_add(struct ulp_gen_hash_tbl *hash_tbl,
 	bucket = (uint16_t *)&hash_tbl->hash_list[idx];
 	bucket += ULP_HASH_GET_B_INDEX(entry->hash_index);
 	if (ulp_bit_alloc_list_alloc(&hash_tbl->bit_list, &key_index)) {
-		BNXT_TF_DBG(ERR, "Error in bit list alloc\n");
+		BNXT_DRV_DBG(ERR, "Error in bit list alloc\n");
 		return -ENOMEM;
 	}
 	if (key_index > hash_tbl->num_key_entries) {
-		BNXT_TF_DBG(ERR, "reached max size %u:%u\n", key_index,
-			    hash_tbl->num_key_entries);
+		BNXT_DRV_DBG(ERR, "reached max size %u:%u\n", key_index,
+			     hash_tbl->num_key_entries);
 		ulp_bit_alloc_list_dealloc(&hash_tbl->bit_list, key_index);
 		return -ENOMEM;
 	}
@@ -356,14 +379,14 @@ ulp_gen_hash_tbl_list_del(struct ulp_gen_hash_tbl *hash_tbl,
 	/* Get the hash entry */
 	key_index = ULP_HASH_BUCKET_INDEX(bucket);
 	if (key_index >= hash_tbl->num_key_entries) {
-		BNXT_TF_DBG(ERR, "Hash table corruption\n");
+		BNXT_DRV_DBG(ERR, "Hash table corruption\n");
 		return -EINVAL;
 	}
 
 	/* reset the bit in the bit allocator */
 	if (ulp_bit_alloc_list_dealloc(&hash_tbl->bit_list,
 				       key_index)) {
-		BNXT_TF_DBG(ERR, "Error is bit list dealloc\n");
+		BNXT_DRV_DBG(ERR, "Error is bit list dealloc\n");
 		return -EINVAL;
 	}
 

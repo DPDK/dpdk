@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2019 NXP
+ *   Copyright 2016-2023 NXP
  *
  */
 
@@ -12,6 +12,7 @@
 #include <mc/fsl_mc_sys.h>
 
 #include <rte_compat.h>
+#include <dpaa2_hw_pvt.h>
 
 struct dpaa2_io_portal_t {
 	struct dpaa2_dpio_dev *dpio_dev;

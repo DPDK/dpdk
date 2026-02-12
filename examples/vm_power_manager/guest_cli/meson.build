@@ -6,16 +6,17 @@
 # To build this example as a standalone application with an already-installed
 # DPDK instance, use 'make'
 
-deps += ['power']
+deps += ['power', 'power_kvm_vm']
 
 sources = files(
         'main.c',
         'parse.c',
         'vm_power_cli_guest.c',
 )
+cflags += no_shadow_cflag
 
 allow_experimental_apis = true
 
 opt_dep = cc.find_library('virt', required : false)
-build = opt_dep.found()
+build = (opt_dep.found() and cc.links(min_c_code, dependencies: opt_dep))
 ext_deps += opt_dep

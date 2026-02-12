@@ -13,7 +13,7 @@
 	// "forwardPorts": [],
 
 	// The next line runs commands after the container is created - in our case, installing dependencies.
-	"postCreateCommand": "poetry install --no-root",
+	"postCreateCommand": "poetry install",
 
 	"extensions": [
 		"ms-python.vscode-pylance",

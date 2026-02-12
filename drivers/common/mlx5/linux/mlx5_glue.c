@@ -16,6 +16,8 @@
 
 #include "mlx5_glue.h"
 
+#include <eal_export.h>
+
 static int
 mlx5_glue_fork_init(void)
 {
@@ -1578,7 +1580,8 @@ mlx5_glue_dv_destroy_steering_anchor(struct mlx5dv_steering_anchor *sa)
 #endif
 }
 
-__rte_cache_aligned
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_glue)
+alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.version = MLX5_GLUE_VERSION,
 	.fork_init = mlx5_glue_fork_init,

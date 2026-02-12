@@ -14,6 +14,3 @@ sources += files(
         'nitrox_logs.c',
         'nitrox_qp.c',
 )
-
-includes += include_directories('../../crypto/nitrox')
-includes += include_directories('../../compress/nitrox')

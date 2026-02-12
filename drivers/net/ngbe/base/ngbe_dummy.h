@@ -351,4 +351,3 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 }
 
 #endif /* _NGBE_TYPE_DUMMY_H_ */
-

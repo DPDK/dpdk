@@ -10,6 +10,7 @@
 #include <rte_errno.h>
 #include <rte_lcore.h>
 #include <rte_thread.h>
+#include <rte_stdatomic.h>
 
 #include "test.h"
 
@@ -25,7 +26,7 @@ struct thread_context {
 	enum { Thread_INIT, Thread_ERROR, Thread_DONE } state;
 	bool lcore_id_any;
 	rte_thread_t id;
-	unsigned int *registered_count;
+	RTE_ATOMIC(unsigned int) *registered_count;
 };
 
 static uint32_t thread_loop(void *arg)
@@ -49,10 +50,10 @@ static uint32_t thread_loop(void *arg)
 		t->state = Thread_ERROR;
 	}
 	/* Report register happened to the control thread. */
-	__atomic_fetch_add(t->registered_count, 1, __ATOMIC_RELEASE);
+	rte_atomic_fetch_add_explicit(t->registered_count, 1, rte_memory_order_release);
 
 	/* Wait for release from the control thread. */
-	while (__atomic_load_n(t->registered_count, __ATOMIC_ACQUIRE) != 0)
+	while (rte_atomic_load_explicit(t->registered_count, rte_memory_order_acquire) != 0)
 		sched_yield();
 	rte_thread_unregister();
 	lcore_id = rte_lcore_id();
@@ -73,7 +74,7 @@ test_non_eal_lcores(unsigned int eal_threads_count)
 {
 	struct thread_context thread_contexts[RTE_MAX_LCORE];
 	unsigned int non_eal_threads_count;
-	unsigned int registered_count;
+	RTE_ATOMIC(unsigned int) registered_count;
 	struct thread_context *t;
 	unsigned int i;
 	int ret;
@@ -93,7 +94,7 @@ test_non_eal_lcores(unsigned int eal_threads_count)
 	}
 	printf("non-EAL threads count: %u\n", non_eal_threads_count);
 	/* Wait all non-EAL threads to register. */
-	while (__atomic_load_n(&registered_count, __ATOMIC_ACQUIRE) !=
+	while (rte_atomic_load_explicit(&registered_count, rte_memory_order_acquire) !=
 			non_eal_threads_count)
 		sched_yield();
 
@@ -109,14 +110,14 @@ test_non_eal_lcores(unsigned int eal_threads_count)
 	if (rte_thread_create(&t->id, NULL, thread_loop, t) == 0) {
 		non_eal_threads_count++;
 		printf("non-EAL threads count: %u\n", non_eal_threads_count);
-		while (__atomic_load_n(&registered_count, __ATOMIC_ACQUIRE) !=
+		while (rte_atomic_load_explicit(&registered_count, rte_memory_order_acquire) !=
 				non_eal_threads_count)
 			sched_yield();
 	}
 
 skip_lcore_any:
 	/* Release all threads, and check their states. */
-	__atomic_store_n(&registered_count, 0, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&registered_count, 0, rte_memory_order_release);
 	ret = 0;
 	for (i = 0; i < non_eal_threads_count; i++) {
 		t = &thread_contexts[i];
@@ -225,7 +226,7 @@ test_non_eal_lcores_callback(unsigned int eal_threads_count)
 	struct thread_context thread_contexts[2];
 	unsigned int non_eal_threads_count = 0;
 	struct limit_lcore_context l[2] = {};
-	unsigned int registered_count = 0;
+	RTE_ATOMIC(unsigned int) registered_count = 0;
 	struct thread_context *t;
 	void *handle[2] = {};
 	unsigned int i;
@@ -275,7 +276,7 @@ test_non_eal_lcores_callback(unsigned int eal_threads_count)
 	if (rte_thread_create(&t->id, NULL, thread_loop, t) != 0)
 		goto cleanup_threads;
 	non_eal_threads_count++;
-	while (__atomic_load_n(&registered_count, __ATOMIC_ACQUIRE) !=
+	while (rte_atomic_load_explicit(&registered_count, rte_memory_order_acquire) !=
 			non_eal_threads_count)
 		sched_yield();
 	if (l[0].init != eal_threads_count + 1 ||
@@ -298,7 +299,7 @@ test_non_eal_lcores_callback(unsigned int eal_threads_count)
 	if (rte_thread_create(&t->id, NULL, thread_loop, t) != 0)
 		goto cleanup_threads;
 	non_eal_threads_count++;
-	while (__atomic_load_n(&registered_count, __ATOMIC_ACQUIRE) !=
+	while (rte_atomic_load_explicit(&registered_count, rte_memory_order_acquire) !=
 			non_eal_threads_count)
 		sched_yield();
 	if (l[0].init != eal_threads_count + 2 ||
@@ -315,7 +316,7 @@ test_non_eal_lcores_callback(unsigned int eal_threads_count)
 	}
 	rte_lcore_dump(stdout);
 	/* Release all threads, and check their states. */
-	__atomic_store_n(&registered_count, 0, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&registered_count, 0, rte_memory_order_release);
 	ret = 0;
 	for (i = 0; i < non_eal_threads_count; i++) {
 		t = &thread_contexts[i];
@@ -337,7 +338,7 @@ test_non_eal_lcores_callback(unsigned int eal_threads_count)
 
 cleanup_threads:
 	/* Release all threads */
-	__atomic_store_n(&registered_count, 0, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&registered_count, 0, rte_memory_order_release);
 	for (i = 0; i < non_eal_threads_count; i++) {
 		t = &thread_contexts[i];
 		rte_thread_join(t->id, NULL);
@@ -421,4 +422,4 @@ test_lcores(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(lcores_autotest, true, true, test_lcores);
+REGISTER_FAST_TEST(lcores_autotest, NOHUGE_OK, ASAN_OK, test_lcores);

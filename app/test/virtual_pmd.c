@@ -181,7 +181,8 @@ virtual_ethdev_link_update_fail(struct rte_eth_dev *bonding_eth_dev __rte_unused
 }
 
 static int
-virtual_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+virtual_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+	struct eth_queue_stats *qstats __rte_unused)
 {
 	struct virtual_ethdev_private *dev_private = dev->data->dev_private;
 

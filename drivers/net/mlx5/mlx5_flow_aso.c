@@ -489,7 +489,7 @@ mlx5_aso_dump_err_objs(volatile uint32_t *cqe, volatile uint32_t *wqe)
 	int i;
 
 	DRV_LOG(ERR, "Error cqe:");
-	for (i = 0; i < 16; i += 4)
+	for (i = 0; i < (int)sizeof(struct mlx5_error_cqe) / 4; i += 4)
 		DRV_LOG(ERR, "%08X %08X %08X %08X", cqe[i], cqe[i + 1],
 			cqe[i + 2], cqe[i + 3]);
 	DRV_LOG(ERR, "\nError wqe:");
@@ -509,8 +509,8 @@ mlx5_aso_cqe_err_handle(struct mlx5_aso_sq *sq)
 {
 	struct mlx5_aso_cq *cq = &sq->cq;
 	uint32_t idx = cq->cq_ci & ((1 << cq->log_desc_n) - 1);
-	volatile struct mlx5_err_cqe *cqe =
-			(volatile struct mlx5_err_cqe *)&cq->cq_obj.cqes[idx];
+	volatile struct mlx5_error_cqe *cqe =
+			(volatile struct mlx5_error_cqe *)&cq->cq_obj.cqes[idx];
 
 	cq->errors++;
 	idx = rte_be_to_cpu_16(cqe->wqe_counter) & (1u << sq->log_desc_n);
@@ -619,7 +619,7 @@ mlx5_aso_age_action_update(struct mlx5_dev_ctx_shared *sh, uint16_t n)
 			uint8_t *u8addr;
 			uint8_t hit;
 
-			if (__atomic_load_n(&ap->state, __ATOMIC_RELAXED) !=
+			if (rte_atomic_load_explicit(&ap->state, rte_memory_order_relaxed) !=
 					    AGE_CANDIDATE)
 				continue;
 			byte = 63 - (j / 8);
@@ -627,13 +627,13 @@ mlx5_aso_age_action_update(struct mlx5_dev_ctx_shared *sh, uint16_t n)
 			u8addr = (uint8_t *)addr;
 			hit = (u8addr[byte] >> offset) & 0x1;
 			if (hit) {
-				__atomic_store_n(&ap->sec_since_last_hit, 0,
-						 __ATOMIC_RELAXED);
+				rte_atomic_store_explicit(&ap->sec_since_last_hit, 0,
+						 rte_memory_order_relaxed);
 			} else {
 				struct mlx5_priv *priv;
 
-				__atomic_fetch_add(&ap->sec_since_last_hit,
-						   diff, __ATOMIC_RELAXED);
+				rte_atomic_fetch_add_explicit(&ap->sec_since_last_hit,
+						   diff, rte_memory_order_relaxed);
 				/* If timeout passed add to aged-out list. */
 				if (ap->sec_since_last_hit <= ap->timeout)
 					continue;
@@ -641,12 +641,11 @@ mlx5_aso_age_action_update(struct mlx5_dev_ctx_shared *sh, uint16_t n)
 				rte_eth_devices[ap->port_id].data->dev_private;
 				age_info = GET_PORT_AGE_INFO(priv);
 				rte_spinlock_lock(&age_info->aged_sl);
-				if (__atomic_compare_exchange_n(&ap->state,
+				if (rte_atomic_compare_exchange_strong_explicit(&ap->state,
 								&expected,
 								AGE_TMOUT,
-								false,
-							       __ATOMIC_RELAXED,
-							    __ATOMIC_RELAXED)) {
+							       rte_memory_order_relaxed,
+							    rte_memory_order_relaxed)) {
 					LIST_INSERT_HEAD(&age_info->aged_aso,
 							 act, next);
 					MLX5_AGE_SET(age_info,
@@ -946,10 +945,10 @@ mlx5_aso_mtr_completion_handle(struct mlx5_aso_sq *sq, bool need_lock)
 		for (i = 0; i < n; ++i) {
 			aso_mtr = sq->elts[(sq->tail + i) & mask].mtr;
 			MLX5_ASSERT(aso_mtr);
-			verdict = __atomic_compare_exchange_n(&aso_mtr->state,
+			verdict = rte_atomic_compare_exchange_strong_explicit(&aso_mtr->state,
 						    &exp_state, ASO_METER_READY,
-						    false, __ATOMIC_RELAXED,
-						    __ATOMIC_RELAXED);
+						    rte_memory_order_relaxed,
+						    rte_memory_order_relaxed);
 			MLX5_ASSERT(verdict);
 		}
 		sq->tail += n;
@@ -1005,10 +1004,10 @@ repeat:
 			mtr = mlx5_ipool_get(priv->hws_mpool->idx_pool,
 					     MLX5_INDIRECT_ACTION_IDX_GET(job->action));
 			MLX5_ASSERT(mtr);
-			verdict = __atomic_compare_exchange_n(&mtr->state,
+			verdict = rte_atomic_compare_exchange_strong_explicit(&mtr->state,
 						    &exp_state, ASO_METER_READY,
-						    false, __ATOMIC_RELAXED,
-						    __ATOMIC_RELAXED);
+						    rte_memory_order_relaxed,
+						    rte_memory_order_relaxed);
 			MLX5_ASSERT(verdict);
 			flow_hw_job_put(priv, job, CTRL_QUEUE_ID(priv));
 		}
@@ -1103,7 +1102,7 @@ mlx5_aso_mtr_wait(struct mlx5_priv *priv,
 	struct mlx5_aso_sq *sq;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	uint32_t poll_cqe_times = MLX5_MTR_POLL_WQE_CQE_TIMES;
-	uint8_t state = __atomic_load_n(&mtr->state, __ATOMIC_RELAXED);
+	uint8_t state = rte_atomic_load_explicit(&mtr->state, rte_memory_order_relaxed);
 	poll_cq_t poll_mtr_cq =
 		is_tmpl_api ? mlx5_aso_poll_cq_mtr_hws : mlx5_aso_poll_cq_mtr_sws;
 
@@ -1112,7 +1111,7 @@ mlx5_aso_mtr_wait(struct mlx5_priv *priv,
 	sq = mlx5_aso_mtr_select_sq(sh, MLX5_HW_INV_QUEUE, mtr, &need_lock);
 	do {
 		poll_mtr_cq(priv, sq);
-		if (__atomic_load_n(&mtr->state, __ATOMIC_RELAXED) ==
+		if (rte_atomic_load_explicit(&mtr->state, rte_memory_order_relaxed) ==
 					    ASO_METER_READY)
 			return 0;
 		/* Waiting for CQE ready. */
@@ -1411,7 +1410,7 @@ mlx5_aso_ct_sq_query_single(struct mlx5_dev_ctx_shared *sh,
 	uint16_t wqe_idx;
 	struct mlx5_aso_ct_pool *pool;
 	enum mlx5_aso_ct_state state =
-				__atomic_load_n(&ct->state, __ATOMIC_RELAXED);
+				rte_atomic_load_explicit(&ct->state, rte_memory_order_relaxed);
 
 	if (state == ASO_CONNTRACK_FREE) {
 		DRV_LOG(ERR, "Fail: No context to query");
@@ -1620,12 +1619,12 @@ mlx5_aso_ct_wait_ready(struct mlx5_dev_ctx_shared *sh, uint32_t queue,
 		sq = __mlx5_aso_ct_get_sq_in_hws(queue, pool);
 	else
 		sq = __mlx5_aso_ct_get_sq_in_sws(sh, ct);
-	if (__atomic_load_n(&ct->state, __ATOMIC_RELAXED) ==
+	if (rte_atomic_load_explicit(&ct->state, rte_memory_order_relaxed) ==
 	    ASO_CONNTRACK_READY)
 		return 0;
 	do {
 		mlx5_aso_ct_completion_handle(sh, sq, need_lock);
-		if (__atomic_load_n(&ct->state, __ATOMIC_RELAXED) ==
+		if (rte_atomic_load_explicit(&ct->state, rte_memory_order_relaxed) ==
 		    ASO_CONNTRACK_READY)
 			return 0;
 		/* Waiting for CQE ready, consider should block or sleep. */
@@ -1791,7 +1790,7 @@ mlx5_aso_ct_available(struct mlx5_dev_ctx_shared *sh,
 	bool need_lock = !!(queue == MLX5_HW_INV_QUEUE);
 	uint32_t poll_cqe_times = MLX5_CT_POLL_WQE_CQE_TIMES;
 	enum mlx5_aso_ct_state state =
-				__atomic_load_n(&ct->state, __ATOMIC_RELAXED);
+				rte_atomic_load_explicit(&ct->state, rte_memory_order_relaxed);
 
 	if (sh->config.dv_flow_en == 2)
 		sq = __mlx5_aso_ct_get_sq_in_hws(queue, pool);
@@ -1807,7 +1806,7 @@ mlx5_aso_ct_available(struct mlx5_dev_ctx_shared *sh,
 	}
 	do {
 		mlx5_aso_ct_completion_handle(sh, sq, need_lock);
-		state = __atomic_load_n(&ct->state, __ATOMIC_RELAXED);
+		state = rte_atomic_load_explicit(&ct->state, rte_memory_order_relaxed);
 		if (state == ASO_CONNTRACK_READY ||
 		    state == ASO_CONNTRACK_QUERY)
 			return 0;

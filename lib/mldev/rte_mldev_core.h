@@ -16,10 +16,6 @@
  * These APIs are for MLDEV PMDs and library only.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <dev_driver.h>
@@ -667,9 +663,5 @@ struct rte_ml_dev_global {
 	/** Maximum number of devices. */
 	uint8_t max_devs;
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_MLDEV_INTERNAL_H */

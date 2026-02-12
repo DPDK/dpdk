@@ -14,6 +14,7 @@
 #define ARK_RX_META_SIZE 32
 #define ARK_RX_META_OFFSET (RTE_PKTMBUF_HEADROOM - ARK_RX_META_SIZE)
 #define ARK_RX_MPU_CHUNK (64U)
+#define ARK_PCIE_BOUNDARY 4096
 
 /* Forward declarations */
 struct ark_rx_queue;
@@ -21,14 +22,14 @@ struct ark_rx_meta;
 
 static void dump_mbuf_data(struct rte_mbuf *mbuf, uint16_t lo, uint16_t hi);
 static void ark_ethdev_rx_dump(const char *name, struct ark_rx_queue *queue);
-static uint32_t eth_ark_rx_jumbo(struct ark_rx_queue *queue,
+static uint32_t ark_rx_jumbo(struct ark_rx_queue *queue,
 				 struct ark_rx_meta *meta,
 				 struct rte_mbuf *mbuf0,
 				 uint32_t cons_index);
-static inline int eth_ark_rx_seed_mbufs(struct ark_rx_queue *queue);
+static inline int ark_rx_seed_mbufs(struct ark_rx_queue *queue);
 
 /* ************************************************************************* */
-struct ark_rx_queue {
+struct __rte_cache_aligned ark_rx_queue {
 	/* array of mbufs to populate */
 	struct rte_mbuf **reserve_q;
 	/* array of physical addresses of the mbuf data pointer */
@@ -42,6 +43,7 @@ struct ark_rx_queue {
 	rx_user_meta_hook_fn rx_user_meta_hook;
 	void *ext_user_data;
 
+	uint32_t starvation;
 	uint32_t dataroom;
 	uint32_t headroom;
 
@@ -57,17 +59,15 @@ struct ark_rx_queue {
 	/* The queue Index is used within the dpdk device structures */
 	uint16_t queue_index;
 
-	uint32_t unused;
-
 	/* next cache line - fields written by device */
-	RTE_MARKER cacheline1 __rte_cache_min_aligned;
+	alignas(RTE_CACHE_LINE_MIN_SIZE) RTE_MARKER cacheline1;
 
 	volatile uint32_t prod_index;	/* step 2 filled by FPGA */
-} __rte_cache_aligned;
+};
 
 /* ************************************************************************* */
 static int
-eth_ark_rx_hw_setup(struct rte_eth_dev *dev,
+ark_rx_hw_setup(struct rte_eth_dev *dev,
 		    struct ark_rx_queue *queue,
 		    uint16_t rx_queue_idx)
 {
@@ -100,18 +100,18 @@ eth_ark_rx_hw_setup(struct rte_eth_dev *dev,
 }
 
 static inline void
-eth_ark_rx_update_cons_index(struct ark_rx_queue *queue, uint32_t cons_index)
+ark_rx_update_cons_index(struct ark_rx_queue *queue, uint32_t cons_index)
 {
 	queue->cons_index = cons_index;
 	if ((cons_index + queue->queue_size - queue->seed_index) >= ARK_RX_MPU_CHUNK) {
-		eth_ark_rx_seed_mbufs(queue);
+		ark_rx_seed_mbufs(queue);
 		ark_mpu_set_producer(queue->mpu, queue->seed_index);
 	}
 }
 
 /* ************************************************************************* */
 int
-eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
+ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			   uint16_t queue_idx,
 			   uint16_t nb_desc,
 			   unsigned int socket_id,
@@ -129,7 +129,7 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/* We may already be setup, free memory prior to re-allocation */
 	if (dev->data->rx_queues[queue_idx] != NULL) {
-		eth_ark_dev_rx_queue_release(dev->data->rx_queues[queue_idx]);
+		ark_dev_rx_queue_release(dev->data->rx_queues[queue_idx]);
 		dev->data->rx_queues[queue_idx] = NULL;
 	}
 
@@ -187,10 +187,11 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 				   nb_desc * sizeof(struct rte_mbuf *),
 				   512,
 				   socket_id);
+	/* Align buffer to PCIe's boundary size to reduce upstream read request TLPs from FPGA */
 	queue->paddress_q =
 		rte_zmalloc_socket("Ark_rx_queue paddr",
 				   nb_desc * sizeof(rte_iova_t),
-				   512,
+				   ARK_PCIE_BOUNDARY,
 				   socket_id);
 
 	if (queue->reserve_q == 0 || queue->paddress_q == 0) {
@@ -214,7 +215,7 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	ark_udm_queue_stats_reset(queue->udm);
 
 	/* populate mbuf reserve */
-	status = eth_ark_rx_seed_mbufs(queue);
+	status = ark_rx_seed_mbufs(queue);
 
 	if (queue->seed_index != nb_desc) {
 		ARK_PMD_LOG(ERR, "Failed to allocate %u mbufs for RX queue %d\n",
@@ -223,7 +224,7 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 	/* MPU Setup */
 	if (status == 0)
-		status = eth_ark_rx_hw_setup(dev, queue, queue_idx);
+		status = ark_rx_hw_setup(dev, queue, queue_idx);
 
 	if (unlikely(status != 0)) {
 		struct rte_mbuf **mbuf;
@@ -247,7 +248,7 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 /* ************************************************************************* */
 uint16_t
-eth_ark_recv_pkts(void *rx_queue,
+ark_recv_pkts(void *rx_queue,
 		  struct rte_mbuf **rx_pkts,
 		  uint16_t nb_pkts)
 {
@@ -265,6 +266,9 @@ eth_ark_recv_pkts(void *rx_queue,
 		return 0;
 	if (unlikely(nb_pkts == 0))
 		return 0;
+	if (unlikely(queue->starvation))
+		ark_rx_seed_mbufs(queue);
+
 	prod_index = queue->prod_index;
 	cons_index = queue->cons_index;
 	if (prod_index == cons_index)
@@ -313,11 +317,15 @@ eth_ark_recv_pkts(void *rx_queue,
 			}
 		}
 
-		if (unlikely(meta->pkt_len > queue->dataroom))
-			cons_index = eth_ark_rx_jumbo
-				(queue, meta, mbuf, cons_index + 1);
-		else
+		if (unlikely(meta->pkt_len > queue->dataroom)) {
+			uint32_t tcons = ark_rx_jumbo(queue, meta, mbuf, cons_index + 1);
+			if ((int32_t)(prod_index - tcons) >= 0)
+				cons_index = tcons; /* nominal condition */
+			else
+				break;
+		} else {
 			cons_index += 1;
+		}
 
 		rx_pkts[nb] = mbuf;
 		nb++;
@@ -332,14 +340,14 @@ eth_ark_recv_pkts(void *rx_queue,
 		rx_user_meta_hook(mbuf, meta->user_meta, queue->ext_user_data);
 	}
 
-	eth_ark_rx_update_cons_index(queue, cons_index);
+	ark_rx_update_cons_index(queue, cons_index);
 
 	return nb;
 }
 
 /* ************************************************************************* */
 static uint32_t
-eth_ark_rx_jumbo(struct ark_rx_queue *queue,
+ark_rx_jumbo(struct ark_rx_queue *queue,
 		 struct ark_rx_meta *meta,
 		 struct rte_mbuf *mbuf0,
 		 uint32_t cons_index)
@@ -380,7 +388,7 @@ eth_ark_rx_jumbo(struct ark_rx_queue *queue,
 
 /* Drain the internal queue allowing hw to clear out. */
 static void
-eth_ark_rx_queue_drain(struct ark_rx_queue *queue)
+ark_rx_queue_drain(struct ark_rx_queue *queue)
 {
 	register uint32_t cons_index;
 	struct rte_mbuf *mbuf;
@@ -392,12 +400,12 @@ eth_ark_rx_queue_drain(struct ark_rx_queue *queue)
 		mbuf = queue->reserve_q[cons_index & queue->queue_mask];
 		rte_pktmbuf_free(mbuf);
 		cons_index++;
-		eth_ark_rx_update_cons_index(queue, cons_index);
+		ark_rx_update_cons_index(queue, cons_index);
 	}
 }
 
-uint32_t
-eth_ark_dev_rx_queue_count(void *rx_queue)
+int
+ark_dev_rx_queue_count(void *rx_queue)
 {
 	struct ark_rx_queue *queue;
 
@@ -407,7 +415,7 @@ eth_ark_dev_rx_queue_count(void *rx_queue)
 
 /* ************************************************************************* */
 int
-eth_ark_rx_start_queue(struct rte_eth_dev *dev, uint16_t queue_id)
+ark_rx_start_queue(struct rte_eth_dev *dev, uint16_t queue_id)
 {
 	struct ark_rx_queue *queue;
 
@@ -430,7 +438,7 @@ eth_ark_rx_start_queue(struct rte_eth_dev *dev, uint16_t queue_id)
 /* Queue can be restarted.   data remains
  */
 int
-eth_ark_rx_stop_queue(struct rte_eth_dev *dev, uint16_t queue_id)
+ark_rx_stop_queue(struct rte_eth_dev *dev, uint16_t queue_id)
 {
 	struct ark_rx_queue *queue;
 
@@ -447,9 +455,9 @@ eth_ark_rx_stop_queue(struct rte_eth_dev *dev, uint16_t queue_id)
 
 /* ************************************************************************* */
 static inline int
-eth_ark_rx_seed_mbufs(struct ark_rx_queue *queue)
+ark_rx_seed_mbufs(struct ark_rx_queue *queue)
 {
-	uint32_t limit = (queue->cons_index & ~(ARK_RX_MPU_CHUNK - 1)) +
+	uint32_t limit = RTE_ALIGN_FLOOR(queue->cons_index, ARK_RX_MPU_CHUNK) +
 		queue->queue_size;
 	uint32_t seed_index = queue->seed_index;
 
@@ -457,23 +465,32 @@ eth_ark_rx_seed_mbufs(struct ark_rx_queue *queue)
 	uint32_t seed_m = queue->seed_index & queue->queue_mask;
 
 	uint32_t nb = limit - seed_index;
+	int status;
 
 	/* Handle wrap around -- remainder is filled on the next call */
 	if (unlikely(seed_m + nb > queue->queue_size))
 		nb = queue->queue_size - seed_m;
 
 	struct rte_mbuf **mbufs = &queue->reserve_q[seed_m];
-	int status = rte_pktmbuf_alloc_bulk(queue->mb_pool, mbufs, nb);
+	do {
+		status = rte_pktmbuf_alloc_bulk(queue->mb_pool, mbufs, nb);
+		if (status == 0)
+			break;
+		/* Try again with a smaller request, keeping aligned with chunk size */
+		nb = RTE_ALIGN_FLOOR(nb / 2, ARK_RX_MPU_CHUNK);
+	} while (nb >= ARK_RX_MPU_CHUNK);
 
 	if (unlikely(status != 0)) {
-		ARK_PMD_LOG(NOTICE,
-			    "Could not allocate %u mbufs from pool"
-			    " for RX queue %u;"
-			    " %u free buffers remaining in queue\n",
-			    nb, queue->queue_index,
-			    queue->seed_index - queue->cons_index);
+		if (queue->starvation == 0) {
+			ARK_PMD_LOG(NOTICE,
+				    "Could not allocate %u mbufs from pool for RX queue %u; %u free buffers remaining\n",
+				    ARK_RX_MPU_CHUNK, queue->queue_index,
+				    queue->seed_index - queue->cons_index);
+			queue->starvation = 1;
+		}
 		return -1;
 	}
+	queue->starvation = 0;
 
 	if (ARK_DEBUG_CORE) {		/* DEBUG */
 		while (count != nb) {
@@ -522,7 +539,7 @@ eth_ark_rx_seed_mbufs(struct ark_rx_queue *queue)
 }
 
 void
-eth_ark_rx_dump_queue(struct rte_eth_dev *dev, uint16_t queue_id,
+ark_rx_dump_queue(struct rte_eth_dev *dev, uint16_t queue_id,
 		      const char *msg)
 {
 	struct ark_rx_queue *queue;
@@ -535,10 +552,9 @@ eth_ark_rx_dump_queue(struct rte_eth_dev *dev, uint16_t queue_id,
 /* ************************************************************************* */
 /* Call on device closed no user API, queue is stopped */
 void
-eth_ark_dev_rx_queue_release(void *vqueue)
+ark_dev_rx_queue_release(void *vqueue)
 {
 	struct ark_rx_queue *queue;
-	uint32_t i;
 
 	queue = (struct ark_rx_queue *)vqueue;
 	if (queue == 0)
@@ -549,10 +565,7 @@ eth_ark_dev_rx_queue_release(void *vqueue)
 	ark_mpu_stop(queue->mpu);
 
 	/* Need to clear out mbufs here, dropping packets along the way */
-	eth_ark_rx_queue_drain(queue);
-
-	for (i = 0; i < queue->queue_size; ++i)
-		rte_pktmbuf_free(queue->reserve_q[i]);
+	ark_rx_queue_drain(queue);
 
 	rte_free(queue->reserve_q);
 	rte_free(queue->paddress_q);
@@ -560,13 +573,14 @@ eth_ark_dev_rx_queue_release(void *vqueue)
 }
 
 void
-eth_rx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats)
+ark_rx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats,
+		       struct eth_queue_stats *qstats)
 {
 	struct ark_rx_queue *queue;
 	struct ark_udm_t *udm;
 
 	queue = vqueue;
-	if (queue == 0)
+	if (queue == NULL)
 		return;
 	udm = queue->udm;
 
@@ -574,16 +588,19 @@ eth_rx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats)
 	uint64_t ipackets = ark_udm_packets(udm);
 	uint64_t idropped = ark_udm_dropped(queue->udm);
 
-	stats->q_ipackets[queue->queue_index] = ipackets;
-	stats->q_ibytes[queue->queue_index] = ibytes;
-	stats->q_errors[queue->queue_index] = idropped;
 	stats->ipackets += ipackets;
 	stats->ibytes += ibytes;
 	stats->imissed += idropped;
+
+	if (qstats && queue->queue_index < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+		qstats->q_ipackets[queue->queue_index] = ipackets;
+		qstats->q_ibytes[queue->queue_index] = ibytes;
+		qstats->q_errors[queue->queue_index] = idropped;
+	}
 }
 
 void
-eth_rx_queue_stats_reset(void *vqueue)
+ark_rx_queue_stats_reset(void *vqueue)
 {
 	struct ark_rx_queue *queue;
 

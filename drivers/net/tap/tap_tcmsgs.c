@@ -42,7 +42,7 @@ struct qdisc_custom_arg {
  *   Overrides the default netlink flags for this msg with those specified.
  */
 void
-tc_init_msg(struct nlmsg *msg, unsigned int ifindex, uint16_t type, uint16_t flags)
+tc_init_msg(struct tap_nlmsg *msg, unsigned int ifindex, uint16_t type, uint16_t flags)
 {
 	struct nlmsghdr *n = &msg->nh;
 
@@ -72,7 +72,7 @@ tc_init_msg(struct nlmsg *msg, unsigned int ifindex, uint16_t type, uint16_t fla
 static int
 qdisc_del(int nlsk_fd, unsigned int ifindex, struct qdisc *qinfo)
 {
-	struct nlmsg msg;
+	struct tap_nlmsg msg;
 	int fd = 0;
 
 	tc_init_msg(&msg, ifindex, RTM_DELQDISC, 0);
@@ -117,14 +117,14 @@ int
 qdisc_add_multiq(int nlsk_fd, unsigned int ifindex)
 {
 	struct tc_multiq_qopt opt = {0};
-	struct nlmsg msg;
+	struct tap_nlmsg msg;
 
 	tc_init_msg(&msg, ifindex, RTM_NEWQDISC,
 		    NLM_F_REQUEST | NLM_F_ACK | NLM_F_EXCL | NLM_F_CREATE);
 	msg.t.tcm_handle = TC_H_MAKE(MULTIQ_MAJOR_HANDLE, 0);
 	msg.t.tcm_parent = TC_H_ROOT;
-	tap_nlattr_add(&msg.nh, TCA_KIND, sizeof("multiq"), "multiq");
-	tap_nlattr_add(&msg.nh, TCA_OPTIONS, sizeof(opt), &opt);
+	tap_nlattr_add(&msg, TCA_KIND, sizeof("multiq"), "multiq");
+	tap_nlattr_add(&msg, TCA_OPTIONS, sizeof(opt), &opt);
 	if (tap_nl_send(nlsk_fd, &msg.nh) < 0)
 		return -1;
 	if (tap_nl_recv_ack(nlsk_fd) < 0)
@@ -146,13 +146,13 @@ qdisc_add_multiq(int nlsk_fd, unsigned int ifindex)
 int
 qdisc_add_ingress(int nlsk_fd, unsigned int ifindex)
 {
-	struct nlmsg msg;
+	struct tap_nlmsg msg;
 
 	tc_init_msg(&msg, ifindex, RTM_NEWQDISC,
 		    NLM_F_REQUEST | NLM_F_ACK | NLM_F_EXCL | NLM_F_CREATE);
 	msg.t.tcm_handle = TC_H_MAKE(TC_H_INGRESS, 0);
 	msg.t.tcm_parent = TC_H_INGRESS;
-	tap_nlattr_add(&msg.nh, TCA_KIND, sizeof("ingress"), "ingress");
+	tap_nlattr_add(&msg, TCA_KIND, sizeof("ingress"), "ingress");
 	if (tap_nl_send(nlsk_fd, &msg.nh) < 0)
 		return -1;
 	if (tap_nl_recv_ack(nlsk_fd) < 0)
@@ -211,7 +211,7 @@ static int
 qdisc_iterate(int nlsk_fd, unsigned int ifindex,
 	      int (*callback)(struct nlmsghdr *, void *), void *arg)
 {
-	struct nlmsg msg;
+	struct tap_nlmsg msg;
 	struct list_args args = {
 		.nlsk_fd = nlsk_fd,
 		.ifindex = ifindex,
@@ -261,7 +261,7 @@ qdisc_create_multiq(int nlsk_fd, unsigned int ifindex)
 	int err = 0;
 
 	err = qdisc_add_multiq(nlsk_fd, ifindex);
-	if (err < 0 && errno != -EEXIST) {
+	if (err < 0 && errno != EEXIST) {
 		TAP_LOG(ERR, "Could not add multiq qdisc (%d): %s",
 			errno, strerror(errno));
 		return -1;
@@ -287,7 +287,7 @@ qdisc_create_ingress(int nlsk_fd, unsigned int ifindex)
 	int err = 0;
 
 	err = qdisc_add_ingress(nlsk_fd, ifindex);
-	if (err < 0 && errno != -EEXIST) {
+	if (err < 0 && errno != EEXIST) {
 		TAP_LOG(ERR, "Could not add ingress qdisc (%d): %s",
 			errno, strerror(errno));
 		return -1;

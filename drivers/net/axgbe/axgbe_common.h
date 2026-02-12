@@ -161,6 +161,10 @@
 #define DMA_CH_CARBR_LO			0x5c
 #define DMA_CH_SR			0x60
 
+/* Setting MSS register entry bit positions and sizes for TSO */
+#define DMA_CH_CR_MSS_INDEX             0
+#define DMA_CH_CR_MSS_WIDTH             14
+
 /* DMA channel register entry bit positions and sizes */
 #define DMA_CH_CR_PBLX8_INDEX		16
 #define DMA_CH_CR_PBLX8_WIDTH		1
@@ -407,8 +411,6 @@
 #define MAC_MDIOSCAR_PA_WIDTH		5
 #define MAC_MDIOSCAR_RA_INDEX		0
 #define MAC_MDIOSCAR_RA_WIDTH		16
-#define MAC_MDIOSCAR_REG_INDEX		0
-#define MAC_MDIOSCAR_REG_WIDTH		21
 #define MAC_MDIOSCCDR_BUSY_INDEX	22
 #define MAC_MDIOSCCDR_BUSY_WIDTH	1
 #define MAC_MDIOSCCDR_CMD_INDEX		16
@@ -903,6 +905,8 @@
 #define PCS_V2_RV_WINDOW_SELECT		0x1064
 #define PCS_V2_YC_WINDOW_DEF		0x18060
 #define PCS_V2_YC_WINDOW_SELECT		0x18064
+#define PCS_KR_WINDOW_SELECT		0x8080
+#define PCS_KR_WINDOW_DEF		0x8060
 
 /* PCS register entry bit positions and sizes */
 #define PCS_V2_WINDOW_DEF_OFFSET_INDEX	6
@@ -1232,6 +1236,15 @@
 #define TX_CONTEXT_DESC3_VT_INDEX		0
 #define TX_CONTEXT_DESC3_VT_WIDTH		16
 
+/* TSO related register entry bit positions and sizes*/
+#define TX_NORMAL_DESC3_TPL_INDEX               0
+#define TX_NORMAL_DESC3_TPL_WIDTH               18
+#define TX_NORMAL_DESC3_THL_INDEX               19
+#define TX_NORMAL_DESC3_THL_WIDTH               4
+#define TX_CONTEXT_DESC3_OSTC_INDEX             27
+#define TX_CONTEXT_DESC3_OSTC_WIDTH             1
+
+
 #define TX_NORMAL_DESC2_HL_B1L_INDEX		0
 #define TX_NORMAL_DESC2_HL_B1L_WIDTH		14
 #define TX_NORMAL_DESC2_IC_INDEX		31
@@ -1274,6 +1287,22 @@
 
 #ifndef MDIO_PMA_RX_CTRL1
 #define MDIO_PMA_RX_CTRL1		0x8051
+#endif
+
+#ifndef MDIO_PMA_RX_LSTS
+#define MDIO_PMA_RX_LSTS		0x018020
+#endif
+
+#ifndef MDIO_PMA_RX_EQ_CTRL4
+#define MDIO_PMA_RX_EQ_CTRL4		0x0001805C
+#endif
+
+#ifndef MDIO_PMA_MP_MISC_STS
+#define MDIO_PMA_MP_MISC_STS		0x0078
+#endif
+
+#ifndef MDIO_PMA_PHY_RX_EQ_CEU
+#define MDIO_PMA_PHY_RX_EQ_CEU		0x1800E
 #endif
 
 #ifndef MDIO_PCS_DIG_CTRL
@@ -1416,6 +1445,28 @@ static inline uint32_t high32_value(uint64_t addr)
 #define XGBE_PMA_RX_RST_0_MASK         BIT(4)
 #define XGBE_PMA_RX_RST_0_RESET_ON     0x10
 #define XGBE_PMA_RX_RST_0_RESET_OFF    0x00
+
+#define XGBE_PMA_RX_SIG_DET_0_MASK	BIT(4)
+#define XGBE_PMA_RX_SIG_DET_0_ENABLE	BIT(4)
+#define XGBE_PMA_RX_SIG_DET_0_DISABLE	0x0000
+
+#define XGBE_PMA_RX_VALID_0_MASK	BIT(12)
+#define XGBE_PMA_RX_VALID_0_ENABLE	BIT(12)
+#define XGBE_PMA_RX_VALID_0_DISABLE	0x0000
+
+#define XGBE_PMA_RX_AD_REQ_MASK		BIT(12)
+#define XGBE_PMA_RX_AD_REQ_ENABLE	BIT(12)
+#define XGBE_PMA_RX_AD_REQ_DISABLE	0x0000
+
+#define XGBE_PMA_RX_ADPT_ACK_MASK	BIT(12)
+#define XGBE_PMA_RX_ADPT_ACK		BIT(12)
+
+#define XGBE_PMA_CFF_UPDTM1_VLD		BIT(8)
+#define XGBE_PMA_CFF_UPDT0_VLD		BIT(9)
+#define XGBE_PMA_CFF_UPDT1_VLD		BIT(10)
+#define XGBE_PMA_CFF_UPDT_MASK		(XGBE_PMA_CFF_UPDTM1_VLD |\
+					 XGBE_PMA_CFF_UPDT0_VLD | \
+					 XGBE_PMA_CFF_UPDT1_VLD)
 
 /*END*/
 
@@ -1734,14 +1785,14 @@ do {									\
  */
 #define XMDIO_READ(_pdata, _mmd, _reg)					\
 	((_pdata)->hw_if.read_mmd_regs((_pdata), 0,			\
-		MII_ADDR_C45 | ((_mmd) << 16) | ((_reg) & 0xffff)))
+		AXGBE_ADDR_C45 | ((_mmd) << 16) | ((_reg) & 0xffff)))
 
 #define XMDIO_READ_BITS(_pdata, _mmd, _reg, _mask)			\
 	(XMDIO_READ((_pdata), _mmd, _reg) & _mask)
 
 #define XMDIO_WRITE(_pdata, _mmd, _reg, _val)				\
 	((_pdata)->hw_if.write_mmd_regs((_pdata), 0,			\
-		MII_ADDR_C45 | ((_mmd) << 16) | ((_reg) & 0xffff), (_val)))
+		AXGBE_ADDR_C45 | ((_mmd) << 16) | ((_reg) & 0xffff), (_val)))
 
 #define XMDIO_WRITE_BITS(_pdata, _mmd, _reg, _mask, _val)		\
 do {									\

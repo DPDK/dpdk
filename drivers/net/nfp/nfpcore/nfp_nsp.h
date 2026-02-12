@@ -8,6 +8,23 @@
 
 #include "nfp_cpp.h"
 
+/* EEPROM byte offsets */
+#define SFP_SFF8472_COMPLIANCE          0x5e
+#define SFP_SFF_REV_COMPLIANCE          1
+#define NSP_SFF_EEPROM_BLOCK_LEN        8
+
+/* Defines the valid values of the 'abi_drv_reset' hwinfo key */
+#define NFP_NSP_DRV_RESET_DISK                  0
+#define NFP_NSP_DRV_RESET_ALWAYS                1
+#define NFP_NSP_DRV_RESET_NEVER                 2
+#define NFP_NSP_DRV_RESET_DEFAULT               "0"
+
+/* Defines the valid values of the 'app_fw_from_flash' hwinfo key */
+#define NFP_NSP_APP_FW_LOAD_DISK                0
+#define NFP_NSP_APP_FW_LOAD_FLASH               1
+#define NFP_NSP_APP_FW_LOAD_PREF                2
+#define NFP_NSP_APP_FW_LOAD_DEFAULT             "2"
+
 struct nfp_nsp;
 
 struct nfp_nsp *nfp_nsp_open(struct nfp_cpp *cpp);
@@ -16,6 +33,7 @@ uint16_t nfp_nsp_get_abi_ver_major(struct nfp_nsp *state);
 uint16_t nfp_nsp_get_abi_ver_minor(struct nfp_nsp *state);
 int nfp_nsp_wait(struct nfp_nsp *state);
 int nfp_nsp_device_soft_reset(struct nfp_nsp *state);
+int nfp_nsp_device_activate(struct nfp_nsp *state);
 int nfp_nsp_load_fw(struct nfp_nsp *state, void *buf, size_t size);
 int nfp_nsp_mac_reinit(struct nfp_nsp *state);
 int nfp_nsp_read_identify(struct nfp_nsp *state, void *buf, size_t size);
@@ -198,6 +216,7 @@ int nfp_eth_set_speed(struct nfp_nsp *nsp, uint32_t speed);
 int nfp_eth_set_split(struct nfp_nsp *nsp, uint32_t lanes);
 int nfp_eth_set_tx_pause(struct nfp_nsp *nsp, bool tx_pause);
 int nfp_eth_set_rx_pause(struct nfp_nsp *nsp, bool rx_pause);
+int nfp_eth_set_idmode(struct nfp_cpp *cpp, uint32_t idx, bool is_on);
 
 /* NSP static information */
 struct nfp_nsp_identify {
@@ -224,6 +243,13 @@ enum nfp_nsp_sensor_id {
 int nfp_hwmon_read_sensor(struct nfp_cpp *cpp, enum nfp_nsp_sensor_id id,
 		uint32_t *val);
 bool nfp_nsp_fw_loaded(struct nfp_nsp *state);
+int nfp_nsp_load_stored_fw(struct nfp_nsp *state);
+int nfp_nsp_hwinfo_lookup(struct nfp_nsp *state, void *buf, uint32_t size);
+int nfp_nsp_hwinfo_lookup_optional(struct nfp_nsp *state,
+		void *buf, size_t size, const char *default_val);
+int nfp_nsp_read_module_eeprom(struct nfp_nsp *state, int eth_index,
+		uint32_t offset, void *data,
+		uint32_t len, uint32_t *read_len);
 
 /* The buf used to receive bitmap of link modes */
 struct nfp_eth_media_buf {

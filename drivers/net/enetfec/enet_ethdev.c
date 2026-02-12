@@ -1,41 +1,18 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2020-2021 NXP
+ * Copyright 2020-2021,2023-2024 NXP
  */
 
 #include <inttypes.h>
 
 #include <ethdev_vdev.h>
 #include <ethdev_driver.h>
+#include <rte_bitops.h>
 #include <rte_io.h>
 
 #include "enet_pmd_logs.h"
 #include "enet_ethdev.h"
 #include "enet_regs.h"
 #include "enet_uio.h"
-
-#define ENETFEC_NAME_PMD                net_enetfec
-
-/* FEC receive acceleration */
-#define ENETFEC_RACC_IPDIS		RTE_BIT32(1)
-#define ENETFEC_RACC_PRODIS		RTE_BIT32(2)
-#define ENETFEC_RACC_SHIFT16		RTE_BIT32(7)
-#define ENETFEC_RACC_OPTIONS		(ENETFEC_RACC_IPDIS | \
-						ENETFEC_RACC_PRODIS)
-
-#define ENETFEC_PAUSE_FLAG_AUTONEG	0x1
-#define ENETFEC_PAUSE_FLAG_ENABLE	0x2
-
-/* Pause frame field and FIFO threshold */
-#define ENETFEC_FCE			RTE_BIT32(5)
-#define ENETFEC_RSEM_V			0x84
-#define ENETFEC_RSFL_V			16
-#define ENETFEC_RAEM_V			0x8
-#define ENETFEC_RAFL_V			0x8
-#define ENETFEC_OPD_V			0xFFF0
-
-/* Extended buffer descriptor */
-#define ENETFEC_EXTENDED_BD		0
-#define NUM_OF_BD_QUEUES		6
 
 /* Supported Rx offloads */
 static uint64_t dev_rx_offloads_sup =
@@ -171,8 +148,10 @@ enet_free_buffers(struct rte_eth_dev *dev)
 		bdp = rxq->bd.base;
 		for (i = 0; i < rxq->bd.ring_size; i++) {
 			mbuf = rxq->rx_mbuf[i];
-			rxq->rx_mbuf[i] = NULL;
-			rte_pktmbuf_free(mbuf);
+			if (mbuf) {
+				rxq->rx_mbuf[i] = NULL;
+				rte_pktmbuf_free(mbuf);
+			}
 			bdp = enet_get_nextdesc(bdp, &rxq->bd);
 		}
 	}
@@ -253,7 +232,7 @@ enetfec_eth_link_update(struct rte_eth_dev *dev,
 	link.link_status = lstatus;
 	link.link_speed = RTE_ETH_SPEED_NUM_1G;
 
-	ENETFEC_PMD_INFO("Port (%d) link is %s\n", dev->data->port_id,
+	ENETFEC_PMD_INFO("Port (%d) link is %s", dev->data->port_id,
 			 "Up");
 
 	return rte_eth_linkstatus_set(dev, &link);
@@ -295,8 +274,7 @@ enetfec_multicast_enable(struct rte_eth_dev *dev)
 
 /* Set a MAC change in hardware. */
 static int
-enetfec_set_mac_address(struct rte_eth_dev *dev,
-		    struct rte_ether_addr *addr)
+enetfec_set_mac_address(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 {
 	struct enetfec_private *fep = dev->data->dev_private;
 
@@ -313,7 +291,8 @@ enetfec_set_mac_address(struct rte_eth_dev *dev,
 
 static int
 enetfec_stats_get(struct rte_eth_dev *dev,
-	      struct rte_eth_stats *stats)
+	      struct rte_eth_stats *stats,
+	      struct eth_queue_stats *qstats __rte_unused)
 {
 	struct enetfec_private *fep = dev->data->dev_private;
 	struct rte_eth_stats *eth_stats = &fep->stats;
@@ -349,7 +328,7 @@ enet_free_queue(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		rte_free(fep->rx_queues[i]);
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		rte_free(fep->rx_queues[i]);
+		rte_free(fep->tx_queues[i]);
 }
 
 static const unsigned short offset_des_active_rxq[] = {
@@ -365,7 +344,7 @@ enetfec_tx_queue_setup(struct rte_eth_dev *dev,
 			uint16_t queue_idx,
 			uint16_t nb_desc,
 			unsigned int socket_id __rte_unused,
-			const struct rte_eth_txconf *tx_conf)
+			const struct rte_eth_txconf *tx_conf __rte_unused)
 {
 	struct enetfec_private *fep = dev->data->dev_private;
 	unsigned int i;
@@ -374,7 +353,12 @@ enetfec_tx_queue_setup(struct rte_eth_dev *dev,
 	unsigned int size;
 	unsigned int dsize = fep->bufdesc_ex ? sizeof(struct bufdesc_ex) :
 		sizeof(struct bufdesc);
-	unsigned int dsize_log2 = fls64(dsize);
+	unsigned int dsize_log2 = rte_fls_u64(dsize) - 1;
+
+	if (queue_idx > 0) {
+		ENETFEC_PMD_ERR("Multi queue not supported");
+		return -EINVAL;
+	}
 
 	/* Tx deferred start is not supported */
 	if (tx_conf->tx_deferred_start) {
@@ -389,7 +373,7 @@ enetfec_tx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
-	if (nb_desc > MAX_TX_BD_RING_SIZE) {
+	if (nb_desc != MAX_TX_BD_RING_SIZE) {
 		nb_desc = MAX_TX_BD_RING_SIZE;
 		ENETFEC_PMD_WARN("modified the nb_desc to MAX_TX_BD_RING_SIZE");
 	}
@@ -414,7 +398,6 @@ enetfec_tx_queue_setup(struct rte_eth_dev *dev,
 			offset_des_active_txq[queue_idx];
 	bd_base = (struct bufdesc *)(((uintptr_t)bd_base) + size);
 	txq->bd.last = (struct bufdesc *)(((uintptr_t)bd_base) - dsize);
-	bdp = txq->bd.base;
 	bdp = txq->bd.cur;
 
 	for (i = 0; i < txq->bd.ring_size; i++) {
@@ -442,7 +425,7 @@ enetfec_rx_queue_setup(struct rte_eth_dev *dev,
 			uint16_t queue_idx,
 			uint16_t nb_rx_desc,
 			unsigned int socket_id __rte_unused,
-			const struct rte_eth_rxconf *rx_conf,
+			const struct rte_eth_rxconf *rx_conf __rte_unused,
 			struct rte_mempool *mb_pool)
 {
 	struct enetfec_private *fep = dev->data->dev_private;
@@ -453,16 +436,10 @@ enetfec_rx_queue_setup(struct rte_eth_dev *dev,
 	unsigned int size;
 	unsigned int dsize = fep->bufdesc_ex ? sizeof(struct bufdesc_ex) :
 			sizeof(struct bufdesc);
-	unsigned int dsize_log2 = fls64(dsize);
-
-	/* Rx deferred start is not supported */
-	if (rx_conf->rx_deferred_start) {
-		ENETFEC_PMD_ERR("Rx deferred start not supported");
-		return -EINVAL;
-	}
+	unsigned int dsize_log2 = rte_fls_u64(dsize) - 1;
 
 	if (queue_idx >= ENETFEC_MAX_Q) {
-		ENETFEC_PMD_ERR("Invalid queue id %" PRIu16 ", max %d\n",
+		ENETFEC_PMD_ERR("Invalid queue id %" PRIu16 ", max %d",
 			queue_idx, ENETFEC_MAX_Q);
 		return -EINVAL;
 	}
@@ -474,7 +451,7 @@ enetfec_rx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
-	if (nb_rx_desc > MAX_RX_BD_RING_SIZE) {
+	if (nb_rx_desc != MAX_RX_BD_RING_SIZE) {
 		nb_rx_desc = MAX_RX_BD_RING_SIZE;
 		ENETFEC_PMD_WARN("modified the nb_desc to MAX_RX_BD_RING_SIZE");
 	}
@@ -554,7 +531,7 @@ err_alloc:
 		}
 	}
 	rte_free(rxq);
-	return errno;
+	return -ENOMEM;
 }
 
 static const struct eth_dev_ops enetfec_ops = {
@@ -587,15 +564,15 @@ enetfec_eth_init(struct rte_eth_dev *dev)
 static int
 pmd_enetfec_probe(struct rte_vdev_device *vdev)
 {
+	char eth_name[ENETFEC_ETH_NAMESIZE];
 	struct rte_eth_dev *dev = NULL;
 	struct enetfec_private *fep;
-	const char *name;
-	int rc;
-	int i;
+	uint16_t *mac, high_mac = 0;
+	struct rte_ether_addr addr;
+	uint32_t tmac, low_mac = 0;
 	unsigned int bdsize;
-	struct rte_ether_addr macaddr = {
-		.addr_bytes = { 0x1, 0x1, 0x1, 0x1, 0x1, 0x1 }
-	};
+	const char *name;
+	int rc, i;
 
 	name = rte_vdev_device_name(vdev);
 	ENETFEC_PMD_LOG(INFO, "Initializing pmd_fec for %s", name);
@@ -636,8 +613,12 @@ pmd_enetfec_probe(struct rte_vdev_device *vdev)
 		fep->bd_addr_p = fep->bd_addr_p + bdsize;
 	}
 
+	/* Allocate memory for storing MAC addresses */
+	snprintf(eth_name, sizeof(eth_name), "enetfec_eth_mac_%d",
+		 dev->data->port_id);
+
 	/* Copy the station address into the dev structure, */
-	dev->data->mac_addrs = rte_zmalloc("mac_addr", RTE_ETHER_ADDR_LEN, 0);
+	dev->data->mac_addrs = rte_zmalloc(eth_name, RTE_ETHER_ADDR_LEN, 0);
 	if (dev->data->mac_addrs == NULL) {
 		ENETFEC_PMD_ERR("Failed to allocate mem %d to store MAC addresses",
 			RTE_ETHER_ADDR_LEN);
@@ -645,10 +626,33 @@ pmd_enetfec_probe(struct rte_vdev_device *vdev)
 		goto err;
 	}
 
-	/*
-	 * Set default mac address
-	 */
-	enetfec_set_mac_address(dev, &macaddr);
+	/* Set mac address */
+	mac = (uint16_t *)addr.addr_bytes;
+	low_mac = (uint32_t)rte_read32((uint8_t *)fep->hw_baseaddr_v + ENETFEC_PALR);
+	*mac = (uint16_t)low_mac;
+	mac++;
+	*mac = (uint16_t)(low_mac >> ENETFEC_MAC_SHIFT);
+	mac++;
+	tmac = (uint32_t)rte_read32((uint8_t *)fep->hw_baseaddr_v + ENETFEC_PAUR);
+	*mac = (uint16_t)(tmac >> ENETFEC_MAC_SHIFT);
+	high_mac = (uint16_t)(*mac);
+
+	if ((high_mac | low_mac) == 0 || (high_mac | low_mac) == ENETFEC_MAC_RESET) {
+		uint8_t *first_byte;
+
+		mac = (uint16_t *)addr.addr_bytes;
+		tmac = (uint32_t)rte_rand();
+		first_byte = (uint8_t *)&tmac;
+		*first_byte &= (uint8_t)~RTE_ETHER_GROUP_ADDR; /* clear multicast bit */
+		*first_byte |= RTE_ETHER_LOCAL_ADMIN_ADDR; /* set local assignment bit (IEEE802) */
+		*mac = (uint16_t)tmac;
+		mac++;
+		*mac = (uint16_t)(tmac >> ENETFEC_MAC_SHIFT);
+		mac++;
+		*mac = (uint16_t)rte_rand();
+	}
+
+	enetfec_set_mac_address(dev, &addr);
 
 	fep->bufdesc_ex = ENETFEC_EXTENDED_BD;
 	rc = enetfec_eth_init(dev);

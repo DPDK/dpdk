@@ -1,9 +1,10 @@
 [binaries]
-c = ['ccache', 'aarch64-none-linux-gnu-gcc']
-cpp = ['ccache', 'aarch64-none-linux-gnu-cpp']
-ar = 'aarch64-none-linux-gnu-gcc-ar'
-strip = 'aarch64-none-linux-gnu-strip'
-pkgconfig = 'aarch64-none-linux-gnu-pkg-config'
+c = ['ccache', 'aarch64-linux-gnu-gcc']
+cpp = ['ccache', 'aarch64-linux-gnu-g++']
+ar = 'aarch64-linux-gnu-gcc-ar'
+strip = 'aarch64-linux-gnu-strip'
+pkgconfig = 'aarch64-linux-gnu-pkg-config'
+pkg-config = 'aarch64-linux-gnu-pkg-config'
 pcap-config = ''
 
 [host_machine]

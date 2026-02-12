@@ -30,13 +30,15 @@ nfp_net_tlv_caps_parse(struct rte_eth_dev *dev)
 	uint32_t tlv_type;
 	struct nfp_net_hw *net_hw;
 	struct nfp_net_tlv_caps *caps;
+	struct nfp_net_hw_priv *hw_priv;
 
 	net_hw = dev->data->dev_private;
+	hw_priv = dev->process_private;
 	caps = &net_hw->tlv_caps;
 	nfp_net_tlv_caps_reset(caps);
 
 	data = net_hw->super.ctrl_bar + NFP_NET_CFG_TLV_BASE;
-	end = net_hw->super.ctrl_bar + NFP_NET_CFG_BAR_SZ;
+	end = net_hw->super.ctrl_bar + hw_priv->pf_dev->ctrl_bar_size;
 
 	hdr = rte_read32(data);
 	if (hdr == 0) {
@@ -48,7 +50,7 @@ nfp_net_tlv_caps_parse(struct rte_eth_dev *dev)
 		offset = data - net_hw->super.ctrl_bar;
 
 		if (data + NFP_NET_CFG_TLV_VALUE > end) {
-			PMD_DRV_LOG(ERR, "Reached end of BAR without END TLV");
+			PMD_DRV_LOG(ERR, "Reached end of BAR without END TLV.");
 			return -EINVAL;
 		}
 
@@ -56,14 +58,14 @@ nfp_net_tlv_caps_parse(struct rte_eth_dev *dev)
 
 		length = FIELD_GET(NFP_NET_CFG_TLV_HEADER_LENGTH, hdr);
 		if ((length & (NFP_NET_CFG_TLV_LENGTH_INC - 1)) != 0) {
-			PMD_DRV_LOG(ERR, "TLV size not multiple of 4B len: %u", length);
+			PMD_DRV_LOG(ERR, "TLV size not multiple of 4B len: %u.", length);
 			return -EINVAL;
 		}
 
 		/* Advance past the header */
 		data += NFP_NET_CFG_TLV_VALUE;
 		if (data + length > end) {
-			PMD_DRV_LOG(ERR, "Oversized TLV offset: %u len: %u",
+			PMD_DRV_LOG(ERR, "Oversized TLV offset: %u len: %u.",
 					offset, length);
 			return -EINVAL;
 		}
@@ -72,7 +74,7 @@ nfp_net_tlv_caps_parse(struct rte_eth_dev *dev)
 
 		switch (tlv_type) {
 		case NFP_NET_CFG_TLV_TYPE_UNKNOWN:
-			PMD_DRV_LOG(ERR, "Unknown TLV at offset: %u", offset);
+			PMD_DRV_LOG(ERR, "Unknown TLV at offset: %u.", offset);
 			return -EINVAL;
 		case NFP_NET_CFG_TLV_TYPE_RESERVED:
 			break;
@@ -80,7 +82,7 @@ nfp_net_tlv_caps_parse(struct rte_eth_dev *dev)
 			if (length == 0)
 				return 0;
 
-			PMD_DRV_LOG(ERR, "END TLV should be empty, has len: %u", length);
+			PMD_DRV_LOG(ERR, "END TLV should be empty, has len: %u.", length);
 			return -EINVAL;
 		case NFP_NET_CFG_TLV_TYPE_MBOX:
 			caps->mbox_len = length;
@@ -98,12 +100,12 @@ nfp_net_tlv_caps_parse(struct rte_eth_dev *dev)
 			if (FIELD_GET(NFP_NET_CFG_TLV_HEADER_REQUIRED, hdr) == 0)
 				break;
 
-			PMD_DRV_LOG(ERR, "Unknown TLV type: %u offset: %u len: %u",
+			PMD_DRV_LOG(ERR, "Unknown TLV type: %u offset: %u len: %u.",
 					tlv_type, offset, length);
 			return -EINVAL;
 		}
 	}
 
-	PMD_DRV_LOG(ERR, "Reached end of BAR without END TLV");
+	PMD_DRV_LOG(ERR, "Reached end of BAR without END TLV.");
 	return -EINVAL;
 }

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR LGPL-2.1)
+/* SPDX-License-Identifier: BSD-3-Clause OR LGPL-2.1
  * Copyright(c) 2010-2013 Intel Corporation.
  * Copyright(c) 2013-2017 Wind River Systems, Inc.
  */
@@ -7,10 +7,6 @@
 #define _RTE_AVP_FIFO_H_
 
 #include "rte_avp_common.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #ifdef __KERNEL__
 /* Write memory barrier for kernel compiles */
@@ -26,6 +22,10 @@ extern "C" {
 
 #ifndef __KERNEL__
 #include <rte_debug.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Initializes the avp fifo structure
