@@ -89,9 +89,9 @@ __rte_thash_gfni(const uint64_t *mtrx, const uint8_t *tuple,
 	const __m512i shift_8 = _mm512_set1_epi8(8);
 	__m512i xor_acc = _mm512_setzero_si512();
 	__m512i perm_bytes = _mm512_setzero_si512();
-	__m512i vals, matrixes, tuple_bytes_2;
+	__m512i vals, matrixes, tuple_bytes_2 = _mm512_setzero_si512();
 	__m512i tuple_bytes = _mm512_setzero_si512();
-	__mmask64 load_mask, permute_mask_2;
+	__mmask64 load_mask, permute_mask_2 = 0;
 	__mmask64 permute_mask = 0;
 	int chunk_len = 0, i = 0;
 	uint8_t mtrx_msk;
