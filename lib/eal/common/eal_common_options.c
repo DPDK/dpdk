@@ -233,10 +233,15 @@ eal_collate_args(int argc, char **argv)
 		EAL_LOG(ERR, "Options allow (-a) and block (-b) can't be used at the same time");
 		return -1;
 	}
+	if (args.no_auto_probing && !TAILQ_EMPTY(&args.block)) {
+		EAL_LOG(ERR, "Options no-auto-probing and block (-b) can't be used at the same time");
+		return -1;
+	}
 
 	/* for non-list args, we can just check for zero/null values using macro */
 	if (CONFLICTING_OPTIONS(args, coremask, lcores) ||
 			CONFLICTING_OPTIONS(args, service_coremask, service_corelist) ||
+			CONFLICTING_OPTIONS(args, no_auto_probing, auto_probing) ||
 			CONFLICTING_OPTIONS(args, no_telemetry, telemetry) ||
 			CONFLICTING_OPTIONS(args, memory_size, numa_mem) ||
 			CONFLICTING_OPTIONS(args, no_huge, numa_mem) ||
@@ -517,6 +522,8 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 	internal_cfg->vfio_intr_mode = RTE_INTR_MODE_NONE;
 	memset(internal_cfg->vfio_vf_token, 0,
 			sizeof(internal_cfg->vfio_vf_token));
+
+	internal_cfg->no_auto_probing = 0;
 
 #ifdef RTE_LIBEAL_USE_HPET
 	internal_cfg->no_hpet = 0;
@@ -1971,6 +1978,9 @@ eal_parse_args(void)
 			return -1;
 		}
 	}
+
+	if (args.no_auto_probing)
+		int_cfg->no_auto_probing = 1;
 
 	/* device -a/-b/-vdev options*/
 	TAILQ_FOREACH(arg, &args.allow, next)

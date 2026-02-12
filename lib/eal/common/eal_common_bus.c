@@ -258,18 +258,23 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_device_is_ignored)
 bool
 rte_bus_device_is_ignored(const struct rte_bus *bus, const char *dev_name)
 {
+	const struct internal_config *internal_conf = eal_get_internal_configuration();
 	struct rte_devargs *devargs = rte_bus_find_devargs(bus, dev_name);
+	enum rte_bus_scan_mode scan_mode = bus->conf.scan_mode;
 
-	switch (bus->conf.scan_mode) {
-	case RTE_BUS_SCAN_ALLOWLIST:
+	if (scan_mode == RTE_BUS_SCAN_UNDEFINED) {
+		if (internal_conf->no_auto_probing != 0)
+			scan_mode = RTE_BUS_SCAN_ALLOWLIST;
+		else
+			scan_mode = RTE_BUS_SCAN_BLOCKLIST;
+	}
+
+	if (scan_mode == RTE_BUS_SCAN_ALLOWLIST) {
 		if (devargs && devargs->policy == RTE_DEV_ALLOWED)
 			return false;
-		break;
-	case RTE_BUS_SCAN_UNDEFINED:
-	case RTE_BUS_SCAN_BLOCKLIST:
+	} else {
 		if (devargs == NULL || devargs->policy != RTE_DEV_BLOCKED)
 			return false;
-		break;
 	}
 
 	EAL_LOG(DEBUG, "device %s:%s is ignored", rte_bus_name(bus), dev_name);

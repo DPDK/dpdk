@@ -30,7 +30,7 @@ logfile=$build/test-null.log
 (sleep 1 && echo stop) |
 # testpmd only needs 20M, make it x2 (default number of cores) for NUMA systems
 $testpmd -l $corelist --no-huge -m 40 \
-	$libs -a 0:0.0 --vdev net_null1 --vdev net_null2 $eal_options -- \
+	$libs -A --vdev net_null1 --vdev net_null2 $eal_options -- \
 	--no-mlockall --total-num-mbufs=2048 $testpmd_options -ia | tee $logfile
 
 # we expect two ports and some traffic is received and transmitted

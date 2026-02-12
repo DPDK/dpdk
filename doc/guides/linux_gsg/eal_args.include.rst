@@ -101,6 +101,25 @@ Lcore-related options
 Device-related options
 ~~~~~~~~~~~~~~~~~~~~~~
 
+*   ``-A, --no-auto-probing``
+
+    By default, EAL probes all devices on every available bus, unless some ``-a``/``-b``
+    options are passed.
+    Disable automatic probing of non-blocked devices.
+
+.. note::
+
+    Block list (see ``-b`` option below) cannot be used when auto probing is disabled.
+
+    On the other hand, disabling auto probing does not affect the VDEV bus,
+    because this bus is not concerned by automatic probing
+    and requires explicit ``-a`` or ``--vdev``.
+
+*   ``--auto-probing``
+
+    Let EAL probe all available devices unless some ``-a``/``-b`` option is set.
+    This is the default behavior.
+
 *   ``-b, --block <[domain:]bus:devid.func>``
 
     Skip probing a PCI device to prevent EAL from using it.

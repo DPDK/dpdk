@@ -55,6 +55,14 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added option to disable auto probing.**
+
+  Added EAL options affecting the initial bus probing.
+
+  * ``-A`` or ``--no-auto-probing`` disable the initial bus probing: no device is probed during
+    ``rte_eal_init`` and the application is responsible for probing each device,
+  * ``--auto-probing`` enables the initial bus probing, which is the current default behavior.
+
 
 Removed Items
 -------------

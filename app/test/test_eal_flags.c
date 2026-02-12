@@ -119,6 +119,8 @@ test_misc_flags(void)
 #define no_hpet "--no-hpet"
 #define no_huge "--no-huge"
 #define no_shconf "--no-shconf"
+#define auto_probing "--auto-probing"
+#define no_auto_probing "--no-auto-probing"
 #define allow "--allow"
 #define vdev "--vdev"
 #define no_pci "--no-pci"
@@ -338,6 +340,14 @@ test_allow_flag(void)
 			allow, "09:0B.3,type=test",
 			allow, "08:00.1,type=normal",
 	};
+	const char *wlval4[] = {prgname, prefix, mp_flag, eal_debug_logs,
+			no_auto_probing };
+	const char *wlval5[] = {prgname, prefix, mp_flag, eal_debug_logs,
+			no_auto_probing, allow, "00FF:09:0B.3"};
+	const char *wlval6[] = {prgname, prefix, mp_flag, eal_debug_logs,
+			auto_probing };
+	const char *wlval7[] = {prgname, prefix, mp_flag, eal_debug_logs,
+			auto_probing, allow, "00FF:09:0B.3"};
 
 	for (i = 0; i < RTE_DIM(wlinval); i++) {
 		if (launch_proc(wlinval[i]) == 0) {
@@ -357,6 +367,26 @@ test_allow_flag(void)
 	}
 	if (launch_proc(wlval3) != 0 ) {
 		printf("Error (line %d) - process did not run ok with valid allow + args\n",
+			__LINE__);
+		return -1;
+	}
+	if (launch_proc(wlval4) != 0) {
+		printf("Error (line %d) - process did not run ok with no-auto-probing\n",
+			__LINE__);
+		return -1;
+	}
+	if (launch_proc(wlval5) != 0) {
+		printf("Error (line %d) - process did not run ok with no-auto-probing + allow\n",
+			__LINE__);
+		return -1;
+	}
+	if (launch_proc(wlval6) != 0) {
+		printf("Error (line %d) - process did not run ok with auto-probing\n",
+			__LINE__);
+		return -1;
+	}
+	if (launch_proc(wlval7) != 0) {
+		printf("Error (line %d) - process did not run ok with auto-probing + allow\n",
 			__LINE__);
 		return -1;
 	}
@@ -383,6 +413,11 @@ test_invalid_b_flag(void)
 		{prgname, prefix, mp_flag, eal_debug_logs, "-b", "error0:0:0.1"},
 		{prgname, prefix, mp_flag, eal_debug_logs, "-b", "0:0:0.1.2"},
 	};
+	const char *blinval_probing[] =
+		{prgname, prefix, mp_flag, eal_debug_logs, "-b", "0:0.0", auto_probing};
+	const char *blinval_probing_inval[] =
+		{prgname, prefix, mp_flag, eal_debug_logs, "-b", "0:0.0", no_auto_probing};
+
 	/* Test with valid blocklist option */
 	const char *blval[] = {prgname, prefix, mp_flag, eal_debug_logs,
 			       "-b", "FF:09:0B.3"};
@@ -395,6 +430,16 @@ test_invalid_b_flag(void)
 				__LINE__);
 			return -1;
 		}
+	}
+	if (launch_proc(blinval_probing) != 0) {
+		printf("Error (line %d) - process did not run ok with blocklist and auto-probing\n",
+			__LINE__);
+		return -1;
+	}
+	if (launch_proc(blinval_probing_inval) == 0) {
+		printf("Error (line %d) - process did run ok with blocklist and no-auto-probing\n",
+			__LINE__);
+		return -1;
 	}
 	if (launch_proc(blval) != 0) {
 		printf("Error (line %d) - process did not run ok with valid blocklist value\n",
@@ -434,6 +479,12 @@ test_invalid_vdev_flag(void)
 	const char *vdevval3[] = {prgname, prefix, no_huge, eal_debug_logs,
 				bus_debug_logs, no_pci, vdev, "net_ring0,nodeaction=r1:0:CREATE"};
 
+	const char *vdevval4[] = {prgname, prefix, no_huge, eal_debug_logs,
+				bus_debug_logs, no_auto_probing, vdev, "net_ring0"};
+
+	const char *vdevval5[] = {prgname, prefix, no_huge, eal_debug_logs,
+				bus_debug_logs, auto_probing, vdev, "net_ring0"};
+
 	if (launch_proc(vdevinval) == 0) {
 		printf("Error (line %d) - process did run ok with invalid vdev parameter\n",
 			__LINE__);
@@ -454,6 +505,18 @@ test_invalid_vdev_flag(void)
 
 	if (launch_proc(vdevval3) != 0) {
 		printf("Error (line %d) - process did not run ok with valid vdev value with valid args\n",
+			__LINE__);
+		return -1;
+	}
+
+	if (launch_proc(vdevval4) != 0) {
+		printf("Error (line %d) - process did not run ok with valid vdev value and no-auto-probing\n",
+			__LINE__);
+		return -1;
+	}
+
+	if (launch_proc(vdevval5) != 0) {
+		printf("Error (line %d) - process did not run ok with valid vdev value and auto-probing\n",
 			__LINE__);
 		return -1;
 	}
