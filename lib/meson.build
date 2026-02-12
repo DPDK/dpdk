@@ -154,12 +154,8 @@ foreach l:libraries
         build = false
         reason = 'not in enabled libraries build config'
     elif disable_libs.contains(l)
-        if always_enable.contains(l)
-            warning('Cannot disable mandatory library "@0@"'.format(l))
-        else
-            build = false
-            reason = 'explicitly disabled via build config'
-        endif
+        build = false
+        reason = 'explicitly disabled via build config'
     endif
 
     if build

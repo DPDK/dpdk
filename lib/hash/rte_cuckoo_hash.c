@@ -409,7 +409,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
  * If x86 architecture is used, select appropriate compare function,
  * which may use x86 intrinsics, otherwise use memcmp
  */
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64) || defined(RTE_ARCH_RISCV)
 	/* Select function to compare keys */
 	switch (params->key_len) {
 	case 16:

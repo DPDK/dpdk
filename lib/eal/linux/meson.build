@@ -23,3 +23,7 @@ deps += ['kvargs', 'telemetry']
 if has_libnuma
     dpdk_conf.set10('RTE_EAL_NUMA_AWARE_HUGEPAGES', true)
 endif
+
+if dpdk_conf.has('RTE_MALLOC_ASAN')
+    ext_deps += cc.find_library('rt')
+endif

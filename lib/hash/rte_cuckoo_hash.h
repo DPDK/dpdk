@@ -21,6 +21,10 @@
 #include "rte_cmp_arm64.h"
 #endif
 
+#if defined(RTE_ARCH_RISCV)
+#include "rte_cmp_riscv.h"
+#endif
+
 /* Macro to enable/disable run-time checking of function parameters */
 #if defined(RTE_LIBRTE_HASH_DEBUG)
 #define RETURN_IF_TRUE(cond, retval) do { \
@@ -34,7 +38,7 @@
 #include <rte_hash_crc.h>
 #include <rte_jhash.h>
 
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64) || defined(RTE_ARCH_RISCV)
 /*
  * All different options to select a key compare function,
  * based on the key size and custom function.

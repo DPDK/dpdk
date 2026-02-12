@@ -72,7 +72,7 @@
 #define RTE_MAX_MULTI_HOST_CTRLS 4
 
 /* cryptodev defines */
-#define RTE_CRYPTO_MAX_DEVS 64
+#define RTE_CRYPTO_MAX_DEVS 128
 #define RTE_CRYPTODEV_NAME_LEN 64
 #define RTE_CRYPTO_CALLBACKS 1
 

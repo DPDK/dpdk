@@ -40,6 +40,7 @@
 #include "eal_filesystem.h"
 #include "eal_hugepages.h"
 #include "eal_options.h"
+#include "malloc_elem.h"
 
 #define PFN_MASK_SIZE	8
 
@@ -1489,6 +1490,7 @@ eal_legacy_hugepage_init(void)
 		if (msl->memseg_arr.count > 0)
 			continue;
 		/* this is an unused list, deallocate it */
+		eal_memseg_list_unmap_asan_shadow(msl);
 		mem_sz = msl->len;
 		munmap(msl->base_va, mem_sz);
 		msl->base_va = NULL;
@@ -1943,6 +1945,10 @@ memseg_secondary_init(void)
 	return 0;
 }
 
+#ifdef RTE_MALLOC_ASAN
+static int msl_asan_shadow_fd[RTE_MAX_MEMSEG_LISTS];
+#endif
+
 int
 rte_eal_memseg_init(void)
 {
@@ -1952,6 +1958,9 @@ rte_eal_memseg_init(void)
 #ifndef RTE_EAL_NUMA_AWARE_HUGEPAGES
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
+#endif
+#ifdef RTE_MALLOC_ASAN
+	int msl_idx;
 #endif
 	if (getrlimit(RLIMIT_NOFILE, &lim) == 0) {
 		/* set limit to maximum */
@@ -1975,6 +1984,11 @@ rte_eal_memseg_init(void)
 		EAL_LOG(WARNING, "Please use --legacy-mem option, or recompile with NUMA support.");
 	}
 #endif
+#ifdef RTE_MALLOC_ASAN
+	for (msl_idx = 0; msl_idx < RTE_MAX_MEMSEG_LISTS; msl_idx++) {
+		msl_asan_shadow_fd[msl_idx] = -1;
+	}
+#endif
 
 	return rte_eal_process_type() == RTE_PROC_PRIMARY ?
 #ifndef RTE_ARCH_64
@@ -1984,3 +1998,89 @@ rte_eal_memseg_init(void)
 #endif
 			memseg_secondary_init();
 }
+
+#ifdef RTE_MALLOC_ASAN
+int
+eal_memseg_list_map_asan_shadow(struct rte_memseg_list *msl)
+{
+	const struct internal_config *internal_conf =
+			eal_get_internal_configuration();
+	int msl_idx = msl - rte_eal_get_configuration()->mem_config->memsegs;
+	int shm_oflag;
+	char shm_path[PATH_MAX];
+	int shm_fd;
+
+	if (!msl->heap)
+		return 0;
+
+	/* these options imply no secondary process support */
+	if (internal_conf->hugepage_file.unlink_before_mapping ||
+	    internal_conf->no_shconf || internal_conf->no_hugetlbfs) {
+		RTE_ASSERT(rte_eal_process_type() != RTE_PROC_SECONDARY);
+		return 0;
+	}
+
+	snprintf(shm_path, sizeof(shm_path), "/%s_%s_shadow",
+		eal_get_hugefile_prefix(), msl->memseg_arr.name);
+
+	shm_oflag = O_RDWR;
+	if (internal_conf->process_type == RTE_PROC_PRIMARY)
+		shm_oflag |= O_CREAT | O_TRUNC;
+
+	shm_fd = shm_open(shm_path, shm_oflag, 0600);
+	if (shm_fd == -1) {
+		RTE_LOG(DEBUG, EAL, "shadow shm_open() failed: %s\n",
+			strerror(errno));
+		return -1;
+	}
+
+	if (internal_conf->process_type == RTE_PROC_PRIMARY) {
+		if (ftruncate(shm_fd, msl->len >> ASAN_SHADOW_SCALE) == -1) {
+			RTE_LOG(DEBUG, EAL, "shadow ftruncate() failed: %s\n",
+				strerror(errno));
+			close(shm_fd);
+			if (internal_conf->process_type == RTE_PROC_PRIMARY)
+				shm_unlink(shm_path);
+			return -1;
+		}
+	}
+
+	msl_asan_shadow_fd[msl_idx] = shm_fd;
+
+	return 0;
+}
+
+void
+eal_memseg_list_unmap_asan_shadow(struct rte_memseg_list *msl)
+{
+	const struct internal_config *internal_conf =
+			eal_get_internal_configuration();
+	int msl_idx = msl - rte_eal_get_configuration()->mem_config->memsegs;
+	int *shm_fd = &msl_asan_shadow_fd[msl_idx];
+
+	if (*shm_fd == -1)
+		return;
+
+	close(*shm_fd);
+	*shm_fd = -1;
+
+	if (munmap(ASAN_MEM_TO_SHADOW(msl->base_va),
+		   msl->len >> ASAN_SHADOW_SCALE) != 0)
+		RTE_LOG(ERR, EAL, "Could not unmap asan shadow memory: %s\n",
+			strerror(errno));
+	if (internal_conf->process_type == RTE_PROC_PRIMARY) {
+		char shm_path[PATH_MAX];
+
+		snprintf(shm_path, sizeof(shm_path), "/%s_%s_shadow",
+			 eal_get_hugefile_prefix(),
+			 msl->memseg_arr.name);
+		shm_unlink(shm_path);
+	}
+}
+
+int
+eal_memseg_list_get_asan_shadow_fd(int msl_idx)
+{
+	return msl_asan_shadow_fd[msl_idx];
+}
+#endif

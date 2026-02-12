@@ -401,8 +401,8 @@ try_expand_heap_primary(struct malloc_heap *heap, uint64_t pg_sz,
 	int n_segs;
 	bool callback_triggered = false;
 
-	alloc_sz = RTE_ALIGN_CEIL(RTE_ALIGN_CEIL(elt_size, align) +
-			MALLOC_ELEM_OVERHEAD, pg_sz);
+	alloc_sz = RTE_ALIGN_CEIL(RTE_MAX(MALLOC_ELEM_HEADER_LEN, align) +
+			elt_size + MALLOC_ELEM_TRAILER_LEN, pg_sz);
 	n_segs = alloc_sz / pg_sz;
 
 	/* we can't know in advance how many pages we'll need, so we malloc */

@@ -336,6 +336,60 @@ void
 eal_memseg_list_populate(struct rte_memseg_list *msl, void *addr, int n_segs);
 
 /**
+ * Map shared memory for MSL ASan shadow region.
+ *
+ * @param msl
+ *  Memory segment list.
+ * @return
+ *  0 on success, (-1) on failure.
+ */
+#ifdef RTE_MALLOC_ASAN
+int
+eal_memseg_list_map_asan_shadow(struct rte_memseg_list *msl);
+#else
+static inline int
+eal_memseg_list_map_asan_shadow(__rte_unused struct rte_memseg_list *msl)
+{
+	return 0;
+}
+#endif
+
+/**
+ * Unmap the MSL ASan shadow region.
+ *
+ * @param msl
+ *  Memory segment list.
+ */
+#ifdef RTE_MALLOC_ASAN
+void
+eal_memseg_list_unmap_asan_shadow(struct rte_memseg_list *msl);
+#else
+static inline void
+eal_memseg_list_unmap_asan_shadow(__rte_unused struct rte_memseg_list *msl)
+{
+}
+#endif
+
+/**
+ * Get the MSL ASan shadow shared memory object file descriptor.
+ *
+ * @param msl
+ *  Index of the MSL.
+ * @return
+ *  A file descriptor.
+ */
+#ifdef RTE_MALLOC_ASAN
+int
+eal_memseg_list_get_asan_shadow_fd(int msl_idx);
+#else
+static inline int
+eal_memseg_list_get_asan_shadow_fd(__rte_unused int msl_idx)
+{
+	return -1;
+}
+#endif
+
+/**
  * Distribute available memory between MSLs.
  *
  * @return

@@ -251,8 +251,8 @@ handle_alloc_request(const struct malloc_mp_req *m,
 		return -1;
 	}
 
-	alloc_sz = RTE_ALIGN_CEIL(RTE_ALIGN_CEIL(ar->elt_size, ar->align) +
-			MALLOC_ELEM_OVERHEAD, ar->page_sz);
+	alloc_sz = RTE_ALIGN_CEIL(RTE_MAX(MALLOC_ELEM_HEADER_LEN, ar->align) +
+			ar->elt_size + MALLOC_ELEM_TRAILER_LEN, ar->page_sz);
 	n_segs = alloc_sz / ar->page_sz;
 
 	/* we can't know in advance how many pages we'll need, so we malloc */

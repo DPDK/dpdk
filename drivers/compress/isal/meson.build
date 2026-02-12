@@ -3,8 +3,12 @@
 
 dep = dependency('libisal', required: false, method: 'pkg-config')
 if not dep.found()
-    build = false
+    build = true
     reason = 'missing dependency, "libisal"'
+    isal_dep = cc.find_library('libisal', required: false)
+    if isal_dep.found()
+        ext_deps += isal_dep
+    endif
 endif
 
 deps += 'bus_vdev'

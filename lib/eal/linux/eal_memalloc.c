@@ -34,6 +34,7 @@
 #include "eal_memalloc.h"
 #include "eal_memcfg.h"
 #include "eal_private.h"
+#include "malloc_elem.h"
 
 const int anonymous_hugepages_supported =
 #ifdef MAP_HUGE_SHIFT
@@ -494,6 +495,21 @@ resize_hugefile(int fd, uint64_t fa_offset, uint64_t page_sz, bool grow,
 			grow, dirty);
 }
 
+__rte_no_asan
+static inline void
+page_fault(void *addr)
+{
+	/* We need to trigger a write to the page to enforce page fault but we
+	 * can't overwrite value that is already there, so read the old value
+	 * and write it back. Kernel populates the page with zeroes initially.
+	 *
+	 * Disable ASan instrumentation here because if the segment is already
+	 * allocated by another process and is marked as free in the shadow,
+	 * accessing this address will cause an ASan error.
+	 */
+	*(volatile int *)addr = *(volatile int *)addr;
+}
+
 static int
 alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 		struct hugepage_info *hi, unsigned int list_idx,
@@ -593,12 +609,8 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 		goto mapped;
 	}
 
-	/* we need to trigger a write to the page to enforce page fault and
-	 * ensure that page is accessible to us, but we can't overwrite value
-	 * that is already there, so read the old value, and write itback.
-	 * kernel populates the page with zeroes initially.
-	 */
-	*(volatile int *)addr = *(volatile int *)addr;
+	/* enforce page fault and ensure that page is accessible to us */
+	page_fault(addr);
 
 	iova = rte_mem_virt2iova(addr);
 	if (iova == RTE_BAD_PHYS_ADDR) {
@@ -634,6 +646,35 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 				__func__);
 #endif
 
+#ifdef RTE_MALLOC_ASAN
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int shadow_shm_fd = eal_memseg_list_get_asan_shadow_fd(list_idx);
+
+	if (shadow_shm_fd != -1) {
+		void *shadow_base_addr, *shadow_addr;
+		off_t shadow_map_offset;
+		size_t shadow_sz;
+
+		shadow_base_addr = ASAN_MEM_TO_SHADOW(mcfg->memsegs[list_idx].base_va);
+		shadow_addr = ASAN_MEM_TO_SHADOW(addr);
+		shadow_map_offset = (char *)shadow_addr - (char *)shadow_base_addr;
+		shadow_sz = alloc_sz >> ASAN_SHADOW_SCALE;
+
+		va = mmap(shadow_addr, shadow_sz, PROT_READ | PROT_WRITE,
+			  MAP_SHARED | MAP_FIXED, shadow_shm_fd, shadow_map_offset);
+		if (va == MAP_FAILED) {
+			RTE_LOG(DEBUG, EAL, "shadow mmap() failed: %s\n",
+				strerror(errno));
+			goto mapped;
+		}
+
+		if (va != shadow_addr) {
+			RTE_LOG(DEBUG, EAL, "wrong shadow mmap() address\n");
+			munmap(addr, shadow_sz);
+			goto mapped;
+		}
+	}
+#endif
 	huge_recover_sigbus();
 
 	ms->addr = addr;
