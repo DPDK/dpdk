@@ -2265,8 +2265,10 @@ iavf_flow_create(struct rte_eth_dev *dev,
 	}
 
 	/* Special case for inline crypto egress flows */
-	if (attr->egress && actions[0].type == RTE_FLOW_ACTION_TYPE_SECURITY)
-		goto free_flow;
+	if (attr->egress && actions[0].type == RTE_FLOW_ACTION_TYPE_SECURITY) {
+		flow->is_ipsec_egress_flow = true;
+		goto tailq_insert;
+	}
 
 	ret = iavf_flow_process_filter(dev, flow, attr, pattern, actions,
 			&engine, iavf_parse_engine_create, error);
@@ -2278,6 +2280,7 @@ iavf_flow_create(struct rte_eth_dev *dev,
 	}
 
 	flow->engine = engine;
+tailq_insert:
 	rte_spinlock_lock(&vf->flow_ops_lock);
 	TAILQ_INSERT_TAIL(&vf->flow_list, flow, node);
 	rte_spinlock_unlock(&vf->flow_ops_lock);
@@ -2293,7 +2296,14 @@ iavf_flow_is_valid(struct rte_flow *flow)
 	struct iavf_flow_engine *engine;
 	void *temp;
 
-	if (flow && flow->engine) {
+	if (flow == NULL)
+		return false;
+
+	/* these flows don't use engines */
+	if (flow->is_ipsec_egress_flow)
+		return true;
+
+	if (flow->engine) {
 		RTE_TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
 			if (engine == flow->engine)
 				return true;
@@ -2311,18 +2321,26 @@ iavf_flow_destroy(struct rte_eth_dev *dev,
 	struct iavf_adapter *ad =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
+	bool need_destroy;
 	int ret = 0;
 
-	if (!iavf_flow_is_valid(flow) || !flow->engine->destroy) {
+	if (!iavf_flow_is_valid(flow)) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "Invalid flow destroy");
 		return -rte_errno;
 	}
+	need_destroy = !flow->is_ipsec_egress_flow;
+
+	if (need_destroy && flow->engine->destroy == NULL) {
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				"Invalid flow destroy");
+	}
 
 	rte_spinlock_lock(&vf->flow_ops_lock);
-
-	ret = flow->engine->destroy(ad, flow, error);
+	if (need_destroy)
+		ret = flow->engine->destroy(ad, flow, error);
 
 	if (!ret) {
 		TAILQ_REMOVE(&vf->flow_list, flow, node);
