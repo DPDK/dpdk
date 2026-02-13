@@ -221,6 +221,13 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	act = next_no_void_action(actions, NULL);
 	if (act->type == RTE_FLOW_ACTION_TYPE_SECURITY) {
 		const void *conf = act->conf;
+
+		if (conf == NULL) {
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+				act, "NULL security conf.");
+			return -rte_errno;
+		}
 		/* check if the next not void item is END */
 		act = next_no_void_action(actions, act);
 		if (act->type != RTE_FLOW_ACTION_TYPE_END) {
