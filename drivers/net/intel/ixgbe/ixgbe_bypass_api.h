@@ -40,16 +40,10 @@ static s32 ixgbe_bypass_rw_generic(struct ixgbe_hw *hw, u32 cmd, u32 *status)
 		dir_sdo = IXGBE_ESDP_SDP6_DIR;
 		break;
 	case ixgbe_mac_X540:
-		sck = IXGBE_ESDP_SDP2;
-		sdi = IXGBE_ESDP_SDP0;
-		sdo = IXGBE_ESDP_SDP1;
-		dir_sck = IXGBE_ESDP_SDP2_DIR;
-		dir_sdi = IXGBE_ESDP_SDP0_DIR;
-		dir_sdo = IXGBE_ESDP_SDP1_DIR;
-		break;
 	case ixgbe_mac_X550:
 	case ixgbe_mac_X550EM_x:
 	case ixgbe_mac_X550EM_a:
+	case ixgbe_mac_E610:
 		sck = IXGBE_ESDP_SDP2;
 		sdi = IXGBE_ESDP_SDP0;
 		sdo = IXGBE_ESDP_SDP1;

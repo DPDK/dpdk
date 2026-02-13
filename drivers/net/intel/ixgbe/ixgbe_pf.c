@@ -558,11 +558,12 @@ ixgbe_set_vf_lpe(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 	uint32_t max_frs;
 	uint32_t hlreg0;
 
-	/* X540 and X550 support jumbo frames in IOV mode */
+	/* X540, X550, and E610 support jumbo frames in IOV mode */
 	if (hw->mac.type != ixgbe_mac_X540 &&
 		hw->mac.type != ixgbe_mac_X550 &&
 		hw->mac.type != ixgbe_mac_X550EM_x &&
-		hw->mac.type != ixgbe_mac_X550EM_a) {
+		hw->mac.type != ixgbe_mac_X550EM_a &&
+		hw->mac.type != ixgbe_mac_E610) {
 		struct ixgbe_vf_info *vfinfo =
 			*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
 
