@@ -6,6 +6,9 @@
 #define IXGBE_IPSEC_H_
 
 #include <rte_security.h>
+#include <rte_security_driver.h>
+
+#include <rte_flow.h>
 
 #define IPSRXIDX_RX_EN                                    0x00000001
 #define IPSRXIDX_TABLE_IP                                 0x00000002
@@ -109,9 +112,16 @@ struct ixgbe_ipsec {
 
 int ixgbe_ipsec_ctx_create(struct rte_eth_dev *dev);
 int ixgbe_crypto_enable_ipsec(struct rte_eth_dev *dev);
-int ixgbe_crypto_add_ingress_sa_from_flow(const void *sess,
-					  const void *ip_spec,
-					  uint8_t is_ipv6);
+
+struct ip_spec {
+	bool is_ipv6;
+	union {
+		struct rte_flow_item_ipv4 ipv4;
+		struct rte_flow_item_ipv6 ipv6;
+	} spec;
+};
+int ixgbe_crypto_add_ingress_sa_from_flow(struct rte_security_session *sess,
+		const struct ip_spec *ip_spec);
 
 
 
