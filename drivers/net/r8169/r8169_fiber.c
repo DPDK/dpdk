@@ -107,9 +107,15 @@ rtl8127_set_sds_phy_caps_1g_8127(struct rtl_hw *hw)
 {
 	u16 val;
 
+	if (hw->fcpause == rtl_fc_full)
+		rtl8127_set_sds_phy_bit(hw, 0, 2, 4, BIT_8 | BIT_7);
+	else
+		rtl8127_clear_sds_phy_bit(hw, 0, 2, 4, BIT_8 | BIT_7);
+
 	rtl8127_set_sds_phy_bit(hw, 0, 1, 31, BIT_3);
 	rtl8127_clear_and_set_sds_phy_bit(hw, 0, 2, 0, BIT_13 | BIT_12 | BIT_6,
 					  BIT_12 | BIT_6);
+	rtl8127_set_sds_phy_bit(hw, 0, 0, 4, BIT_2);
 	RTL_W16(hw, 0x233A, 0x8004);
 
 	val = RTL_R16(hw, 0x233E);
@@ -138,6 +144,11 @@ static void
 rtl8127_set_sds_phy_caps_10g_8127(struct rtl_hw *hw)
 {
 	u16 val;
+
+	if (hw->fcpause == rtl_fc_full)
+		rtl8127_set_sds_phy_bit(hw, 0, 31, 11, BIT_3 | BIT_2);
+	else
+		rtl8127_clear_sds_phy_bit(hw, 0, 31, 11, BIT_3 | BIT_2);
 
 	RTL_W16(hw, 0x233A, 0x801A);
 
