@@ -221,6 +221,9 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	act = next_no_void_action(actions, NULL);
 	if (act->type == RTE_FLOW_ACTION_TYPE_SECURITY) {
 		const void *conf = act->conf;
+		const struct rte_flow_action_security *sec_act;
+		struct rte_security_session *session;
+		struct ip_spec spec;
 
 		if (conf == NULL) {
 			rte_flow_error_set(error, EINVAL,
@@ -259,8 +262,25 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		}
 
 		filter->proto = IPPROTO_ESP;
-		return ixgbe_crypto_add_ingress_sa_from_flow(conf, item->spec,
-					item->type == RTE_FLOW_ITEM_TYPE_IPV6);
+		sec_act = (const struct rte_flow_action_security *)conf;
+		spec.is_ipv6 = item->type == RTE_FLOW_ITEM_TYPE_IPV6;
+		if (spec.is_ipv6) {
+			const struct rte_flow_item_ipv6 *ipv6 = item->spec;
+			spec.spec.ipv6 = *ipv6;
+		} else {
+			const struct rte_flow_item_ipv4 *ipv4 = item->spec;
+			spec.spec.ipv4 = *ipv4;
+		}
+
+		/*
+		 * we get pointer to security session from security action,
+		 * which is const. however, we do need to act on the session, so
+		 * either we do some kind of pointer based lookup to get session
+		 * pointer internally (which quickly gets unwieldy for lots of
+		 * flows case), or we simply cast away constness.
+		 */
+		session = RTE_CAST_PTR(struct rte_security_session *, sec_act->security_session);
+		return ixgbe_crypto_add_ingress_sa_from_flow(session, &spec);
 	}
 #endif
 
