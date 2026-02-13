@@ -119,7 +119,7 @@ rtl8127_set_sds_phy_caps_1g_8127(struct rtl_hw *hw)
 	RTL_W16(hw, 0x233A, 0x8004);
 
 	val = RTL_R16(hw, 0x233E);
-	val &= (BIT_13 | BIT_12 | BIT_1 | BIT_0);
+	val &= ~(BIT_13 | BIT_12 | BIT_1 | BIT_0);
 	val |= BIT_1;
 	RTL_W16(hw, 0x233E, val);
 
@@ -153,7 +153,7 @@ rtl8127_set_sds_phy_caps_10g_8127(struct rtl_hw *hw)
 	RTL_W16(hw, 0x233A, 0x801A);
 
 	val = RTL_R16(hw, 0x233E);
-	val &= (BIT_13 | BIT_12 | BIT_1 | BIT_0);
+	val &= ~(BIT_13 | BIT_12 | BIT_1 | BIT_0);
 	val |= BIT_12;
 	RTL_W16(hw, 0x233E, val);
 
