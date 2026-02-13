@@ -412,8 +412,29 @@ rtl_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	struct rtl_hw *hw = &adapter->hw;
 
 	dev_info->min_rx_bufsize = 1024;
-	dev_info->max_rx_pktlen = JUMBO_FRAME_9K;
 	dev_info->max_mac_addrs = 1;
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+		dev_info->max_rx_pktlen = JUMBO_FRAME_16K - 1;
+		break;
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_58:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
+	case CFG_METHOD_91:
+		dev_info->max_rx_pktlen = JUMBO_FRAME_16K;
+		break;
+	default:
+		dev_info->max_rx_pktlen = JUMBO_FRAME_9K;
+		break;
+	}
 
 	if (hw->mcfg >= CFG_METHOD_69) {
 		dev_info->max_rx_queues = 4;
