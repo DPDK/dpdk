@@ -976,7 +976,6 @@ _rtl_disable_adv_eee(struct rtl_hw *hw)
 	case CFG_METHOD_57:
 	case CFG_METHOD_58:
 	case CFG_METHOD_59:
-	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 	case CFG_METHOD_91:
@@ -1073,7 +1072,6 @@ rtl_disable_eee(struct rtl_hw *hw)
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA428, BIT_7);
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA4A2, BIT_9);
 		break;
-	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 	case CFG_METHOD_91:
@@ -1211,7 +1209,6 @@ rtl_set_speed_xmii(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex, u64 adv)
 	case CFG_METHOD_91:
 		mask |= BIT_2;
 	/* Fall through */
-	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 		mask |= BIT_1;

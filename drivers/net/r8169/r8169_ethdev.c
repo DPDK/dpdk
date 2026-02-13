@@ -38,7 +38,7 @@ static int rtl_dev_infos_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
 static int rtl_dev_stats_get(struct rte_eth_dev *dev,
 			     struct rte_eth_stats *rte_stats,
-			     struct eth_queue_stats *qstats);
+			     struct eth_queue_stats *qstats __rte_unused);
 static int rtl_dev_stats_reset(struct rte_eth_dev *dev);
 static int rtl_promiscuous_enable(struct rte_eth_dev *dev);
 static int rtl_promiscuous_disable(struct rte_eth_dev *dev);
@@ -436,7 +436,7 @@ rtl_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		break;
 	}
 
-	if (hw->mcfg >= CFG_METHOD_69) {
+	if (hw->mcfg >= CFG_METHOD_70) {
 		dev_info->max_rx_queues = 4;
 		dev_info->max_tx_queues = 2;
 	} else {

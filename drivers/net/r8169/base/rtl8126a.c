@@ -7,16 +7,12 @@
 #include "../r8169_phy.h"
 #include "rtl8126a_mcu.h"
 
-/* For RTL8126A, CFG_METHOD_69,70,71 */
+/* For RTL8126A, CFG_METHOD_70,71 */
 
 static void
 hw_init_rxcfg_8126a(struct rtl_hw *hw)
 {
 	switch (hw->mcfg) {
-	case CFG_METHOD_69:
-		RTL_W32(hw, RxConfig, Rx_Fetch_Number_20 | RxCfg_pause_slot_en |
-			(RX_DMA_BURST_512 << RxCfgDMAShift));
-		break;
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 		RTL_W32(hw, RxConfig, Rx_Fetch_Number_20 | Rx_Close_Multiple |
@@ -29,18 +25,11 @@ static void
 hw_ephy_config_8126a(struct rtl_hw *hw)
 {
 	switch (hw->mcfg) {
-	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 		/* nothing to do */
 		break;
 	}
-}
-
-static void
-rtl_hw_phy_config_8126a_1(struct rtl_hw *hw)
-{
-	rtl_set_eth_phy_ocp_bit(hw, 0xA442, BIT_11);
 }
 
 static void
@@ -473,9 +462,6 @@ static void
 hw_phy_config_8126a(struct rtl_hw *hw)
 {
 	switch (hw->mcfg) {
-	case CFG_METHOD_69:
-		rtl_hw_phy_config_8126a_1(hw);
-		break;
 	case CFG_METHOD_70:
 		rtl_hw_phy_config_8126a_2(hw);
 		break;
@@ -497,9 +483,6 @@ hw_mac_mcu_config_8126a(struct rtl_hw *hw)
 	hw->hw_mcu_patch_code_ver = rtl_get_hw_mcu_patch_code_ver(hw);
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_69:
-		rtl_set_mac_mcu_8126a_1(hw);
-		break;
 	case CFG_METHOD_70:
 		rtl_set_mac_mcu_8126a_2(hw);
 		break;
@@ -513,9 +496,6 @@ static void
 hw_phy_mcu_config_8126a(struct rtl_hw *hw)
 {
 	switch (hw->mcfg) {
-	case CFG_METHOD_69:
-		rtl_set_phy_mcu_8126a_1(hw);
-		break;
 	case CFG_METHOD_70:
 		rtl_set_phy_mcu_8126a_2(hw);
 		break;

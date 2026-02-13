@@ -631,7 +631,6 @@ rtl_stop_all_request(struct rtl_hw *hw)
 	case CFG_METHOD_57:
 	case CFG_METHOD_58:
 	case CFG_METHOD_59:
-	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 	case CFG_METHOD_91:
@@ -689,7 +688,6 @@ rtl_wait_txrx_fifo_empty(struct rtl_hw *hw)
 	case CFG_METHOD_57:
 	case CFG_METHOD_58:
 	case CFG_METHOD_59:
-	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 	case CFG_METHOD_91:
@@ -929,9 +927,6 @@ rtl8125_set_rx_desc_type(struct rtl_hw *hw)
 	case CFG_METHOD_59:
 		RTL_W8(hw, 0xD8, RTL_R8(hw, 0xD8) & ~EnableRxDescV4_0);
 		break;
-	case CFG_METHOD_69:
-		RTL_W32(hw, RxConfig, EnableRxDescV3 | RTL_R32(hw, RxConfig));
-		break;
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 	case CFG_METHOD_91:
@@ -967,7 +962,7 @@ rtl8125_hw_config(struct rtl_hw *hw)
 	if (hw->mcfg >= CFG_METHOD_48 && hw->mcfg <= CFG_METHOD_53)
 		RTL_W16(hw, 0x382, 0x221B);
 
-	if ((hw->mcfg >= CFG_METHOD_69 && hw->mcfg <= CFG_METHOD_71) ||
+	if ((hw->mcfg >= CFG_METHOD_70 && hw->mcfg <= CFG_METHOD_71) ||
 	    hw->mcfg == CFG_METHOD_91)
 		rtl_disable_l1_timeout(hw);
 
@@ -1265,7 +1260,6 @@ rtl_set_hw_ops(struct rtl_hw *hw)
 		hw->hw_ops = rtl8125cp_ops;
 		return 0;
 	/* 8126A */
-	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 		hw->hw_ops = rtl8126a_ops;
@@ -1553,7 +1547,6 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case CFG_METHOD_59:
 		hw->chipset_name = RTL8168KD;
 		break;
-	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 		hw->chipset_name = RTL8126A;
@@ -1704,7 +1697,6 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case CFG_METHOD_57:
 	case CFG_METHOD_58:
 	case CFG_METHOD_59:
-	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 	case CFG_METHOD_91:
@@ -1729,9 +1721,6 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case CFG_METHOD_59:
 	case CFG_METHOD_91:
 		hw->HwSuppTxNoCloseVer = 6;
-		break;
-	case CFG_METHOD_69:
-		hw->HwSuppTxNoCloseVer = 4;
 		break;
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
@@ -1824,9 +1813,6 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case CFG_METHOD_58:
 		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_58;
 		break;
-	case CFG_METHOD_69:
-		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_69;
-		break;
 	case CFG_METHOD_70:
 		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_70;
 		break;
@@ -1849,7 +1835,7 @@ rtl_init_software_variable(struct rtl_hw *hw)
 		hw->mcu_pme_setting = rtl_mac_ocp_read(hw, 0xE00A);
 	}
 
-	if (hw->mcfg >= CFG_METHOD_69)
+	if (hw->mcfg >= CFG_METHOD_70)
 		hw->EnableRss = 1;
 	else
 		hw->EnableRss = 0;
@@ -1869,7 +1855,6 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case CFG_METHOD_50:
 	case CFG_METHOD_51:
 	case CFG_METHOD_53:
-	case CFG_METHOD_69:
 		hw->HwSuppIntMitiVer = 4;
 		break;
 	case CFG_METHOD_54:
@@ -1888,10 +1873,6 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	}
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_69:
-		hw->HwSuppRxDescType = RX_DESC_RING_TYPE_3;
-		hw->RxDescLength = RX_DESC_LEN_TYPE_3;
-		break;
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 	case CFG_METHOD_91:
@@ -2370,7 +2351,7 @@ rtl_get_mac_version(struct rtl_hw *hw, struct rte_pci_device *pci_dev)
 		break;
 	case 0x64800000:
 		if (ic_version_id == 0x00000000) {
-			hw->mcfg = CFG_METHOD_69;
+			hw->mcfg = CFG_METHOD_DEFAULT;
 		} else if (ic_version_id == 0x100000) {
 			hw->mcfg = CFG_METHOD_70;
 		} else if (ic_version_id == 0x200000) {

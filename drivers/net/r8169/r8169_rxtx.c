@@ -1345,7 +1345,6 @@ rtl8125_set_tx_tag_num(struct rtl_hw *hw)
 	case CFG_METHOD_53:
 		mac_ocp_data |= (2 << 8);
 		break;
-	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 		if (hw->EnableTxNoClose)
