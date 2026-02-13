@@ -17,7 +17,7 @@
 /* Macros to check for valid interrupt handle */
 #define CHECK_VALID_INTR_HANDLE(intr_handle) do { \
 	if (intr_handle == NULL) { \
-		EAL_LOG(DEBUG, "Interrupt instance unallocated"); \
+		EAL_LOG(DEBUG, "%s, ln %d: Interrupt instance unallocated", __func__, __LINE__); \
 		rte_errno = EINVAL; \
 		goto fail; \
 	} \
