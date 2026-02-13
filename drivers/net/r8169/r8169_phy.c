@@ -1051,6 +1051,7 @@ rtl_disable_eee(struct rtl_hw *hw)
 	case CFG_METHOD_58:
 	case CFG_METHOD_59:
 	case CFG_METHOD_60:
+	case CFG_METHOD_61:
 		rtl_clear_mac_ocp_bit(hw, 0xE040, (BIT_1 | BIT_0));
 
 		rtl_set_eth_phy_ocp_bit(hw, 0xA432, BIT_4);

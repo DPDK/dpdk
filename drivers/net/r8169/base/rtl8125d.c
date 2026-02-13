@@ -10,6 +10,7 @@
 /*
  * For RTL8125D, CFG_METHOD_56,57
  * For RTL8168KD, CFG_METHOD_59
+ * For RTL8125K, CFG_METHOD_61
  */
 
 static void
@@ -26,6 +27,7 @@ hw_ephy_config_8125d(struct rtl_hw *hw)
 	case CFG_METHOD_56:
 	case CFG_METHOD_57:
 	case CFG_METHOD_59:
+	case CFG_METHOD_61:
 		/* Nothing to do */
 		break;
 	}
@@ -278,6 +280,7 @@ hw_phy_config_8125d(struct rtl_hw *hw)
 		break;
 	case CFG_METHOD_57:
 	case CFG_METHOD_59:
+	case CFG_METHOD_61:
 		rtl_hw_phy_config_8125d_2(hw);
 		break;
 	}
@@ -302,6 +305,9 @@ hw_mac_mcu_config_8125d(struct rtl_hw *hw)
 	case CFG_METHOD_59:
 		rtl_set_mac_mcu_8125d_2(hw);
 		break;
+	default:
+		/* no mac mcu patch code */
+		break;
 	}
 }
 
@@ -314,6 +320,7 @@ hw_phy_mcu_config_8125d(struct rtl_hw *hw)
 		break;
 	case CFG_METHOD_57:
 	case CFG_METHOD_59:
+	case CFG_METHOD_61:
 		rtl_set_phy_mcu_8125d_2(hw);
 		break;
 	}

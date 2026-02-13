@@ -172,6 +172,7 @@ _rtl_setup_link(struct rte_eth_dev *dev)
 		case RTL8125D:
 		case RTL8125CP:
 		case RTL9151A:
+		case RTL8125K:
 			speed_mode = SPEED_2500;
 			break;
 		case RTL8126A:
@@ -428,6 +429,7 @@ rtl_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	case CFG_METHOD_57:
 	case CFG_METHOD_58:
 	case CFG_METHOD_60:
+	case CFG_METHOD_61:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 	case CFG_METHOD_91:
@@ -474,6 +476,7 @@ rtl_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	case RTL8125D:
 	case RTL8125CP:
 	case RTL9151A:
+	case RTL8125K:
 		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_2_5G;
 		break;
 	}
