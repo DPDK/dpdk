@@ -1554,7 +1554,6 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	switch (hw->chipset_name) {
 	case RTL8125A:
 	case RTL8125B:
-	case RTL8168KB:
 	case RTL8125BP:
 	case RTL8125D:
 	case RTL8125CP:
