@@ -797,6 +797,9 @@ rtl_hw_config(struct rtl_hw *hw)
 		break;
 	}
 
+	/* Ensure the old mapping is used. */
+	RTL_W8(hw, INT_CFG0_8125, RTL_R8(hw, INT_CFG0_8125) & ~BIT_0);
+
 	rtl_disable_cfg9346_write(hw);
 
 	rte_delay_us(10);
