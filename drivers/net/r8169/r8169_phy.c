@@ -551,7 +551,7 @@ rtl_powerdown_pll(struct rtl_hw *hw)
 
 	if (!hw->HwIcVerUnknown) {
 		if (!(hw->mcfg == CFG_METHOD_23 || hw->mcfg == CFG_METHOD_37 ||
-		      hw->mcfg == CFG_METHOD_91))
+		      hw->mcfg == CFG_METHOD_60 || hw->mcfg == CFG_METHOD_91))
 			RTL_W8(hw, PMCH, RTL_R8(hw, PMCH) & ~BIT_7);
 	}
 
@@ -964,21 +964,9 @@ _rtl_disable_adv_eee(struct rtl_hw *hw)
 		rtl_mdio_write(hw, 0x11, data);
 		rtl_mdio_write(hw, 0x1F, 0x0000);
 		break;
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_58:
-	case CFG_METHOD_59:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
-	case CFG_METHOD_91:
+	default:
+		if (!rtl_is_8125(hw))
+			break;
 		rtl_clear_mac_ocp_bit(hw, 0xE052, BIT_0);
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA442, (BIT_12 | BIT_13));
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA430, BIT_15);
@@ -1062,6 +1050,7 @@ rtl_disable_eee(struct rtl_hw *hw)
 	case CFG_METHOD_57:
 	case CFG_METHOD_58:
 	case CFG_METHOD_59:
+	case CFG_METHOD_60:
 		rtl_clear_mac_ocp_bit(hw, 0xE040, (BIT_1 | BIT_0));
 
 		rtl_set_eth_phy_ocp_bit(hw, 0xA432, BIT_4);
@@ -1213,18 +1202,9 @@ rtl_set_speed_xmii(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex, u64 adv)
 	case CFG_METHOD_71:
 		mask |= BIT_1;
 	/* Fall through */
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_58:
-	case CFG_METHOD_59:
+	default:
+		if (!rtl_is_8125(hw))
+			break;
 		mask |= BIT_0;
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA428, BIT_9);
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA5EA, mask);

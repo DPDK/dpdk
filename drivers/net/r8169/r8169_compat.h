@@ -271,6 +271,8 @@ enum RTL_registers {
 	IB2SOC_DATA    = 0x0014,
 	IB2SOC_CMD     = 0x0018,
 	IB2SOC_IMR     = 0x001C,
+	/* 9151 */
+	TxConfigV2     = 0x60B0,
 };
 
 enum RTL_register_content {
@@ -526,6 +528,7 @@ enum RTL_chipset_name {
 	RTL8125D,
 	RTL8125CP,
 	RTL8168KD,
+	RTL9151A,
 	RTL8126A,
 	RTL8168EP,
 	RTL8168FP,

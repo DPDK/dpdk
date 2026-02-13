@@ -117,6 +117,9 @@ struct rtl_hw {
 
 	u16 mcu_pme_setting;
 
+	/* Device function */
+	u8 function;
+
 	/* Enable Tx No Close */
 	u8  HwSuppTxNoCloseVer;
 	u8  EnableTxNoClose;

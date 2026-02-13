@@ -496,22 +496,7 @@ exit:
 u32
 rtl_csi_read(struct rtl_hw *hw, u32 addr)
 {
-	u8 multi_fun_sel_bit;
-
-	switch (hw->mcfg) {
-	case CFG_METHOD_26:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-		multi_fun_sel_bit = 1;
-		break;
-	default:
-		multi_fun_sel_bit = 0;
-		break;
-	}
-
-	return rtl_csi_other_fun_read(hw, multi_fun_sel_bit, addr);
+	return rtl_csi_other_fun_read(hw, hw->function, addr);
 }
 
 void
@@ -546,22 +531,7 @@ rtl_csi_other_fun_write(struct rtl_hw *hw, u8 multi_fun_sel_bit, u32 addr,
 void
 rtl_csi_write(struct rtl_hw *hw, u32 addr, u32 value)
 {
-	u8 multi_fun_sel_bit;
-
-	switch (hw->mcfg) {
-	case CFG_METHOD_26:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-		multi_fun_sel_bit = 1;
-		break;
-	default:
-		multi_fun_sel_bit = 0;
-		break;
-	}
-
-	rtl_csi_other_fun_write(hw, multi_fun_sel_bit, addr, value);
+	rtl_csi_other_fun_write(hw, hw->function, addr, value);
 }
 
 void
@@ -631,6 +601,7 @@ rtl_stop_all_request(struct rtl_hw *hw)
 	case CFG_METHOD_57:
 	case CFG_METHOD_58:
 	case CFG_METHOD_59:
+	case CFG_METHOD_60:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 	case CFG_METHOD_91:
@@ -688,6 +659,7 @@ rtl_wait_txrx_fifo_empty(struct rtl_hw *hw)
 	case CFG_METHOD_57:
 	case CFG_METHOD_58:
 	case CFG_METHOD_59:
+	case CFG_METHOD_60:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 	case CFG_METHOD_91:
@@ -925,6 +897,7 @@ rtl8125_set_rx_desc_type(struct rtl_hw *hw)
 	case CFG_METHOD_57:
 	case CFG_METHOD_58:
 	case CFG_METHOD_59:
+	case CFG_METHOD_60:
 		RTL_W8(hw, 0xD8, RTL_R8(hw, 0xD8) & ~EnableRxDescV4_0);
 		break;
 	case CFG_METHOD_70:
@@ -1043,7 +1016,7 @@ rtl8125_hw_config(struct rtl_hw *hw)
 	rtl_oob_mutex_lock(hw);
 
 	if (hw->mcfg == CFG_METHOD_56 || hw->mcfg == CFG_METHOD_57 ||
-	    hw->mcfg == CFG_METHOD_59)
+	    hw->mcfg == CFG_METHOD_59 || hw->mcfg == CFG_METHOD_60)
 		rtl_mac_ocp_write(hw, 0xE0C0, 0x4403);
 	else
 		rtl_mac_ocp_write(hw, 0xE0C0, 0x4000);
@@ -1258,6 +1231,10 @@ rtl_set_hw_ops(struct rtl_hw *hw)
 	/* 8125CP */
 	case CFG_METHOD_58:
 		hw->hw_ops = rtl8125cp_ops;
+		return 0;
+	/* 9151A */
+	case CFG_METHOD_60:
+		hw->hw_ops = rtl9151a_ops;
 		return 0;
 	/* 8126A */
 	case CFG_METHOD_70:
@@ -1486,7 +1463,7 @@ rtl_set_link_option(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex,
 }
 
 static void
-rtl_init_software_variable(struct rtl_hw *hw)
+rtl_init_software_variable(struct rtl_hw *hw, struct rte_pci_device *pci_dev)
 {
 	int tx_no_close_enable = 1;
 	unsigned int speed_mode;
@@ -1547,6 +1524,9 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case CFG_METHOD_59:
 		hw->chipset_name = RTL8168KD;
 		break;
+	case CFG_METHOD_60:
+		hw->chipset_name = RTL9151A;
+		break;
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 		hw->chipset_name = RTL8126A;
@@ -1566,6 +1546,7 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case RTL8125BP:
 	case RTL8125D:
 	case RTL8125CP:
+	case RTL9151A:
 		speed_mode = SPEED_2500;
 		break;
 	case RTL8126A:
@@ -1697,6 +1678,7 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case CFG_METHOD_57:
 	case CFG_METHOD_58:
 	case CFG_METHOD_59:
+	case CFG_METHOD_60:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 	case CFG_METHOD_91:
@@ -1719,6 +1701,7 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case CFG_METHOD_57:
 	case CFG_METHOD_58:
 	case CFG_METHOD_59:
+	case CFG_METHOD_60:
 	case CFG_METHOD_91:
 		hw->HwSuppTxNoCloseVer = 6;
 		break;
@@ -1813,6 +1796,9 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case CFG_METHOD_58:
 		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_58;
 		break;
+	case CFG_METHOD_60:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_60;
+		break;
 	case CFG_METHOD_70:
 		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_70;
 		break;
@@ -1863,6 +1849,7 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case CFG_METHOD_57:
 	case CFG_METHOD_58:
 	case CFG_METHOD_59:
+	case CFG_METHOD_60:
 	case CFG_METHOD_91:
 		hw->HwSuppIntMitiVer = 6;
 		break;
@@ -1894,6 +1881,8 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	rtl_set_link_option(hw, autoneg_mode, speed_mode, duplex_mode, rtl_fc_full);
 
 	hw->mtu = RTL_DEFAULT_MTU;
+
+	hw->function = pci_dev->addr.function;
 }
 
 static void
@@ -2104,15 +2093,45 @@ rtl_hw_init(struct rtl_hw *hw)
 }
 
 void
-rtl_hw_initialize(struct rtl_hw *hw)
+rtl_hw_initialize(struct rtl_hw *hw, struct rte_pci_device *pci_dev)
 {
-	rtl_init_software_variable(hw);
+	rtl_init_software_variable(hw, pci_dev);
 
 	rtl_exit_oob(hw);
 
 	rtl_hw_init(hw);
 
 	rtl_nic_reset(hw);
+}
+
+static void
+rtl8125_get_mac_version_v2(struct rtl_hw *hw)
+{
+	u32 reg, val32;
+	u32 ic_version_id;
+
+	val32 = RTL_R32(hw, TxConfigV2);
+	reg = val32 & 0x7fffffc0;
+	ic_version_id = val32 & 0x3f;
+
+	RTE_ASSERT(val32 != UINT_MAX &&
+		   (val32 & RTL_R32(hw, TxConfig) & 0x7c800000) == 0x7c800000);
+
+	if (val32 == UINT_MAX)
+		return;
+
+	switch (reg) {
+	case 0x00000000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_60;
+		} else {
+			hw->mcfg = CFG_METHOD_60;
+			hw->HwIcVerUnknown = TRUE;
+		}
+		break;
+	default:
+		break;
+	}
 }
 
 void
@@ -2124,6 +2143,13 @@ rtl_get_mac_version(struct rtl_hw *hw, struct rte_pci_device *pci_dev)
 	val32 = RTL_R32(hw, TxConfig);
 	reg = val32 & 0x7c800000;
 	ic_version_id = val32 & 0x00700000;
+
+	hw->mcfg = CFG_METHOD_DEFAULT;
+
+	RTE_ASSERT(val32 != UINT_MAX);
+
+	if (val32 == UINT_MAX)
+		goto exit;
 
 	switch (reg) {
 	case 0x30000000:
@@ -2336,8 +2362,10 @@ rtl_get_mac_version(struct rtl_hw *hw, struct rte_pci_device *pci_dev)
 			hw->mcfg = CFG_METHOD_56;
 		} else if (ic_version_id == 0x100000) {
 			hw->mcfg = CFG_METHOD_57;
+		} else if (ic_version_id == 0x300000) {
+			hw->mcfg = CFG_METHOD_60;
 		} else {
-			hw->mcfg = CFG_METHOD_57;
+			hw->mcfg = CFG_METHOD_61;
 			hw->HwIcVerUnknown = TRUE;
 		}
 		break;
@@ -2369,11 +2397,17 @@ rtl_get_mac_version(struct rtl_hw *hw, struct rte_pci_device *pci_dev)
 			hw->HwIcVerUnknown = TRUE;
 		}
 		break;
-	default:
-		PMD_INIT_LOG(NOTICE, "unknown chip version (%x)", reg);
-		hw->mcfg = CFG_METHOD_DEFAULT;
-		hw->HwIcVerUnknown = TRUE;
+	case 0x7C800000:
+		rtl8125_get_mac_version_v2(hw);
 		break;
+	default:
+		break;
+	}
+
+exit:
+	if (hw->mcfg == CFG_METHOD_DEFAULT) {
+		PMD_INIT_LOG(NOTICE, "unknown chip version (%x)", reg);
+		hw->HwIcVerUnknown = TRUE;
 	}
 
 	if (pci_dev->id.device_id == 0x8162) {

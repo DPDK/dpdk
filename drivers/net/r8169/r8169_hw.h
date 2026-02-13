@@ -45,7 +45,7 @@ void rtl_hw_disable_mac_mcu_bps(struct rtl_hw *hw);
 void rtl_write_mac_mcu_ram_code(struct rtl_hw *hw, const u16 *entry,
 				u16 entry_cnt);
 
-void rtl_hw_initialize(struct rtl_hw *hw);
+void rtl_hw_initialize(struct rtl_hw *hw, struct rte_pci_device *pci_dev);
 
 bool rtl_is_speed_mode_valid(struct rtl_hw *hw, u32 speed);
 
@@ -91,6 +91,7 @@ extern const struct rtl_hw_ops rtl8125a_ops;
 extern const struct rtl_hw_ops rtl8125b_ops;
 extern const struct rtl_hw_ops rtl8125bp_ops;
 extern const struct rtl_hw_ops rtl8125d_ops;
+extern const struct rtl_hw_ops rtl9151a_ops;
 extern const struct rtl_hw_ops rtl8126a_ops;
 extern const struct rtl_hw_ops rtl8168kb_ops;
 extern const struct rtl_hw_ops rtl8127_ops;
@@ -137,6 +138,7 @@ extern const struct rtl_hw_ops rtl8125cp_ops;
 #define NIC_RAMCODE_VERSION_CFG_METHOD_56  (0x0027)
 #define NIC_RAMCODE_VERSION_CFG_METHOD_57  (0x0034)
 #define NIC_RAMCODE_VERSION_CFG_METHOD_58  (0x0024)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_60  (0x0003)
 #define NIC_RAMCODE_VERSION_CFG_METHOD_70  (0x0033)
 #define NIC_RAMCODE_VERSION_CFG_METHOD_71  (0x0060)
 #define NIC_RAMCODE_VERSION_CFG_METHOD_91  (0x0051)

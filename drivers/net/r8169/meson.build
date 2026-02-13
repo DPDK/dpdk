@@ -32,4 +32,6 @@ sources = files(
         'base/rtl8168m.c',
         'base/rtl8127.c',
         'base/rtl8127_mcu.c',
+        'base/rtl9151a.c',
+        'base/rtl9151a_mcu.c',
 )
