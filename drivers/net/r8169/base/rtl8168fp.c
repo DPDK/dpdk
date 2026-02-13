@@ -192,4 +192,5 @@ const struct rtl_hw_ops rtl8168fp_ops = {
 	.hw_ephy_config    = hw_ephy_config_8168fp,
 	.hw_phy_config     = hw_phy_config_8168fp,
 	.hw_mac_mcu_config = hw_mac_mcu_config_8168fp,
+	.hw_phy_mcu_config = hw_phy_mcu_config_8168fp,
 };
