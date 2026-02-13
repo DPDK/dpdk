@@ -3062,8 +3062,12 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 
 #ifdef RTE_LIB_SECURITY
 	/* ESP flow not really a flow*/
-	if (ntuple_filter.proto == IPPROTO_ESP)
+	if (ntuple_filter.proto == IPPROTO_ESP) {
+		if (ret != 0)
+			goto out;
+		flow->is_security = true;
 		return flow;
+	}
 #endif
 
 	if (!ret) {
@@ -3352,6 +3356,12 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
 	struct ixgbe_rss_conf_ele *rss_filter_ptr;
 
+	/* Special case for SECURITY flows */
+	if (flow->is_security) {
+		ret = 0;
+		goto free;
+	}
+
 	switch (filter_type) {
 	case RTE_ETH_FILTER_NTUPLE:
 		ntuple_filter_ptr = (struct ixgbe_ntuple_filter_ele *)
@@ -3444,6 +3454,7 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 		return ret;
 	}
 
+free:
 	TAILQ_FOREACH(ixgbe_flow_mem_ptr, &ixgbe_flow_list, entries) {
 		if (ixgbe_flow_mem_ptr->flow == pmd_flow) {
 			TAILQ_REMOVE(&ixgbe_flow_list,
