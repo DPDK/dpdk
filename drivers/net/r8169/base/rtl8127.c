@@ -14,7 +14,7 @@ hw_init_rxcfg_8127(struct rtl_hw *hw)
 {
 	switch (hw->mcfg) {
 	case CFG_METHOD_91:
-		RTL_W32(hw, RxConfig, Rx_Fetch_Number_8 | Rx_Close_Multiple |
+		RTL_W32(hw, RxConfig, Rx_Fetch_Number_12 | Rx_Close_Multiple |
 			RxCfg_pause_slot_en | (RX_DMA_BURST_512 << RxCfgDMAShift));
 		break;
 	}

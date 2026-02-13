@@ -563,6 +563,8 @@ enum RTL_chipset_name {
 #define TX_DMA_BURST_16     0
 #define InterFrameGap       0x03    /* 3 means InterFrameGap = the shortest one */
 #define Rx_Fetch_Number_8  (1 << 30)
+#define Rx_Fetch_Number_12  (BIT_30 | BIT_29)
+#define Rx_Fetch_Number_20  (BIT_31 | BIT_29)
 #define Rx_Close_Multiple  (1 << 21)
 #define RxEarly_off_V2	   (1 << 11)
 #define Rx_Single_fetch_V2 (1 << 14)
