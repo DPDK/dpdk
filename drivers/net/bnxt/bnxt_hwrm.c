@@ -2985,8 +2985,22 @@ bnxt_hwrm_vnic_rss_cfg_hash_mode_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic
 		req.hash_mode_flags = BNXT_HASH_MODE_INNERMOST;
 	else
 		req.hash_mode_flags = vnic->hash_mode;
-	req.vnic_id = rte_cpu_to_le_16(BNXT_DFLT_VNIC_ID_INVALID);
-	req.rss_ctx_idx = rte_cpu_to_le_16(BNXT_RSS_CTX_IDX_INVALID);
+
+	/* VFs must use actual vnic_id for per-VNIC configuration.
+	 * PFs can use INVALID vnic_id for global configuration.
+	 * This is because VFs don't have permission to configure
+	 * global hash mode, even if they're trusted.
+	 */
+	if (BNXT_VF(bp)) {
+		req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
+		req.rss_ctx_idx = rte_cpu_to_le_16(vnic->fw_grp_ids[0]);
+		PMD_DRV_LOG_LINE(DEBUG, "VF using per-VNIC RSS config (vnic_id=%u)",
+				vnic->fw_vnic_id);
+	} else {
+		req.vnic_id = rte_cpu_to_le_16(BNXT_DFLT_VNIC_ID_INVALID);
+		req.rss_ctx_idx = rte_cpu_to_le_16(BNXT_RSS_CTX_IDX_INVALID);
+		PMD_DRV_LOG_LINE(DEBUG, "PF using global RSS config");
+	}
 
 	PMD_DRV_LOG_LINE(DEBUG, "RSS CFG: Hash level %d", req.hash_mode_flags);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req),
