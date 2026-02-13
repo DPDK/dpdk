@@ -10,5 +10,6 @@
 extern const struct rtl_hw_ops rtl8168fp_ops;
 
 void hw_mac_mcu_config_8168fp(struct rtl_hw *hw);
+void hw_phy_mcu_config_8168fp(struct rtl_hw *hw __rte_unused);
 
 #endif
