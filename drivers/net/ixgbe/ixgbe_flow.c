@@ -251,6 +251,12 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 			}
 			item = next_no_void_pattern(pattern, item);
 		}
+		if (item->spec == NULL) {
+			rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM_SPEC, item,
+					"NULL IP pattern.");
+			return -rte_errno;
+		}
 
 		filter->proto = IPPROTO_ESP;
 		return ixgbe_crypto_add_ingress_sa_from_flow(conf, item->spec,
