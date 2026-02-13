@@ -769,8 +769,8 @@ rtl_enable_aspm_clkreq_lock(struct rtl_hw *hw, bool enable)
 	if (unlock_cfg_wr)
 		rtl_enable_cfg9346_write(hw);
 
-	if (hw->mcfg == CFG_METHOD_70 || hw->mcfg == CFG_METHOD_71 ||
-	    hw->mcfg == CFG_METHOD_91) {
+	if (hw->mcfg == CFG_METHOD_58 || hw->mcfg == CFG_METHOD_70 ||
+	    hw->mcfg == CFG_METHOD_71 || hw->mcfg == CFG_METHOD_91) {
 		if (enable) {
 			RTL_W8(hw, INT_CFG0_8125, RTL_R8(hw, INT_CFG0_8125) | BIT_3);
 			RTL_W8(hw, Config5, RTL_R8(hw, Config5) | BIT_0);

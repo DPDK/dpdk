@@ -256,6 +256,15 @@ rtl_hw_phy_config_8125d_2(struct rtl_hw *hw)
 	rtl_clear_eth_phy_ocp_bit(hw, 0xA5D4, BIT_5);
 	rtl_clear_eth_phy_ocp_bit(hw, 0xA654, BIT_11);
 
+	rtl_clear_eth_phy_ocp_bit(hw, 0xA448, BIT_10);
+	rtl_clear_eth_phy_ocp_bit(hw, 0xA586, BIT_10);
+
+	rtl_clear_eth_phy_ocp_bit(hw, 0xA4E0, BIT_15);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x8155);
+	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xA438, 0xFF00, 0x0200);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x815C);
+	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xA438, 0xFF00, 0x0200);
+
 	rtl_set_eth_phy_ocp_bit(hw, 0xA430, BIT_12 | BIT_0);
 	rtl_set_eth_phy_ocp_bit(hw, 0xA442, BIT_7);
 }

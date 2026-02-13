@@ -5,6 +5,7 @@
 #ifndef RTL8125CP_MCU_H
 #define RTL8125CP_MCU_H
 
+void rtl_set_mac_mcu_8125cp_1(struct rtl_hw *hw);
 void rtl_set_phy_mcu_8125cp_1(struct rtl_hw *hw);
 
 #endif /* RTL8125CP_MCU_H */

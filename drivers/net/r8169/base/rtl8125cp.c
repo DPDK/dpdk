@@ -27,12 +27,39 @@ hw_ephy_config_8125cp(struct rtl_hw *hw)
 }
 
 static void
+rtl_tgphy_irq_mask_and_ack(struct rtl_hw *hw)
+{
+	if (hw->mcfg == CFG_METHOD_58) {
+		rtl_mdio_direct_write_phy_ocp(hw, 0xA4D2, 0x0000);
+		(void)rtl_mdio_direct_read_phy_ocp(hw, 0xA4D4);
+	}
+}
+
+static void
 rtl_hw_phy_config_8125cp_1(struct rtl_hw *hw)
 {
+	rtl_tgphy_irq_mask_and_ack(hw);
+
 	rtl_set_eth_phy_ocp_bit(hw, 0xA442, BIT_11);
 
 	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xad0e, 0x007F, 0x000B);
 	rtl_set_eth_phy_ocp_bit(hw, 0xad78, BIT_4);
+
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x807F);
+	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xB87E, 0xFF00, 0x5300);
+
+	rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x81B8);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xA438, 0x00B4);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x81BA);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xA438, 0x00E4);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x81C5);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xA438, 0x0104);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x81D0);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xA438, 0x054D);
+
+	rtl_set_eth_phy_ocp_bit(hw, 0xA430, BIT_1 | BIT_0);
+	rtl_set_eth_phy_ocp_bit(hw, 0xA442, BIT_7);
+	rtl_clear_eth_phy_ocp_bit(hw, 0xA430, BIT_12);
 }
 
 static void
@@ -52,6 +79,15 @@ hw_mac_mcu_config_8125cp(struct rtl_hw *hw)
 		return;
 
 	rtl_hw_disable_mac_mcu_bps(hw);
+
+	/* Get H/W mac mcu patch code version */
+	hw->hw_mcu_patch_code_ver = rtl_get_hw_mcu_patch_code_ver(hw);
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_58:
+		rtl_set_mac_mcu_8125cp_1(hw);
+		break;
+	}
 }
 
 static void
