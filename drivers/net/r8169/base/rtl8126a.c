@@ -456,6 +456,14 @@ rtl_hw_phy_config_8126a_3(struct rtl_hw *hw)
 	rtl_set_eth_phy_ocp_bit(hw, 0xA430, BIT_1 | BIT_0);
 
 	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xB54C, 0xFFC0, 0x3700);
+
+	rtl_set_eth_phy_ocp_bit(hw, 0xB648, BIT_6);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8082);
+	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xB87E, 0xFF00, 0x5D00);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x807C);
+	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xB87E, 0xFF00, 0x5000);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x809D);
+	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xB87E, 0xFF00, 0x5000);
 }
 
 static void
