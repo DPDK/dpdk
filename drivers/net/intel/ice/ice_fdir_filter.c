@@ -1938,7 +1938,7 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				goto raw_error;
 			}
 
-			u8 *pkt_buf = (u8 *)ice_malloc(&ad->hw, pkt_len + 1);
+			u8 *pkt_buf = (u8 *)rte_zmalloc("raw pkt buf", pkt_len + 1, 0);
 			if (!pkt_buf) {
 				ret_val = -ENOMEM;
 				goto raw_error;
@@ -2497,8 +2497,12 @@ ice_fdir_parse(struct ice_adapter *ad,
 	if (ret)
 		goto error;
 
-	if (meta)
+	/* if meta is NULL we're validating so the flow won't be stored */
+	if (meta) {
 		*meta = filter;
+	} else if (filter->pkt_buf != NULL) {
+		rte_free(filter->pkt_buf);
+	}
 
 	rte_free(item);
 	return ret;
