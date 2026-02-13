@@ -2551,9 +2551,7 @@ i40e_flow_parse_fdir_filter(struct rte_eth_dev *dev,
 			    struct rte_flow_error *error,
 			    union i40e_filter_t *filter)
 {
-	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct i40e_fdir_filter_conf *fdir_filter =
-		&filter->fdir_filter;
+	struct i40e_fdir_filter_conf *fdir_filter = &filter->fdir_filter;
 	int ret;
 
 	ret = i40e_flow_parse_fdir_pattern(dev, pattern, error, fdir_filter);
@@ -2570,32 +2568,7 @@ i40e_flow_parse_fdir_filter(struct rte_eth_dev *dev,
 
 	cons_filter_type = RTE_ETH_FILTER_FDIR;
 
-	if (pf->fdir.fdir_vsi == NULL) {
-		/* Enable fdir when fdir flow is added at first time. */
-		ret = i40e_fdir_setup(pf);
-		if (ret != I40E_SUCCESS) {
-			rte_flow_error_set(error, ENOTSUP,
-					   RTE_FLOW_ERROR_TYPE_HANDLE,
-					   NULL, "Failed to setup fdir.");
-			return -rte_errno;
-		}
-		ret = i40e_fdir_configure(dev);
-		if (ret < 0) {
-			rte_flow_error_set(error, ENOTSUP,
-					   RTE_FLOW_ERROR_TYPE_HANDLE,
-					   NULL, "Failed to configure fdir.");
-			goto err;
-		}
-	}
-
-	/* If create the first fdir rule, enable fdir check for rx queues */
-	if (TAILQ_EMPTY(&pf->fdir.fdir_list))
-		i40e_fdir_rx_proc_enable(dev, 1);
-
 	return 0;
-err:
-	i40e_fdir_teardown(pf);
-	return -rte_errno;
 }
 
 /* Parse to get the action info of a tunnel filter
@@ -3921,6 +3894,28 @@ i40e_flow_create(struct rte_eth_dev *dev,
 		return NULL;
 
 	if (cons_filter_type == RTE_ETH_FILTER_FDIR) {
+		/* if this is the first time we're creating an fdir flow */
+		if (pf->fdir.fdir_vsi == NULL) {
+			ret = i40e_fdir_setup(pf);
+			if (ret != I40E_SUCCESS) {
+				rte_flow_error_set(error, ENOTSUP,
+						RTE_FLOW_ERROR_TYPE_HANDLE,
+						NULL, "Failed to setup fdir.");
+				return NULL;
+			}
+			ret = i40e_fdir_configure(dev);
+			if (ret < 0) {
+				rte_flow_error_set(error, ENOTSUP,
+						RTE_FLOW_ERROR_TYPE_HANDLE,
+						NULL, "Failed to configure fdir.");
+				i40e_fdir_teardown(pf);
+				return NULL;
+			}
+		}
+		/* If create the first fdir rule, enable fdir check for rx queues */
+		if (TAILQ_EMPTY(&pf->fdir.fdir_list))
+			i40e_fdir_rx_proc_enable(dev, 1);
+
 		flow = i40e_fdir_entry_pool_get(fdir_info);
 		if (flow == NULL) {
 			rte_flow_error_set(error, ENOBUFS,
