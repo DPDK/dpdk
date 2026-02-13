@@ -2602,7 +2602,8 @@ ixgbe_get_tx_port_offloads(struct rte_eth_dev *dev)
 
 	if (hw->mac.type == ixgbe_mac_X550 ||
 	    hw->mac.type == ixgbe_mac_X550EM_x ||
-	    hw->mac.type == ixgbe_mac_X550EM_a)
+	    hw->mac.type == ixgbe_mac_X550EM_a ||
+	    hw->mac.type == ixgbe_mac_E610)
 		tx_offload_capa |= RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 
 #ifdef RTE_LIB_SECURITY
@@ -3059,7 +3060,8 @@ ixgbe_get_rx_port_offloads(struct rte_eth_dev *dev)
 
 	if (hw->mac.type == ixgbe_mac_X550 ||
 	    hw->mac.type == ixgbe_mac_X550EM_x ||
-	    hw->mac.type == ixgbe_mac_X550EM_a)
+	    hw->mac.type == ixgbe_mac_X550EM_a ||
+	    hw->mac.type == ixgbe_mac_E610)
 		offloads |= RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM;
 
 #ifdef RTE_LIB_SECURITY
@@ -3129,7 +3131,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/*
 	 * The packet type in RX descriptor is different for different NICs.
-	 * Some bits are used for x550 but reserved for other NICS.
+	 * Some bits are used for x550 and E610 but reserved for other NICS.
 	 * So set different masks for different NICs.
 	 */
 	if (hw->mac.type == ixgbe_mac_X550 ||
@@ -3137,7 +3139,8 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	    hw->mac.type == ixgbe_mac_X550EM_a ||
 	    hw->mac.type == ixgbe_mac_X550_vf ||
 	    hw->mac.type == ixgbe_mac_X550EM_x_vf ||
-	    hw->mac.type == ixgbe_mac_X550EM_a_vf)
+	    hw->mac.type == ixgbe_mac_X550EM_a_vf ||
+	    hw->mac.type == ixgbe_mac_E610)
 		rxq->pkt_type_mask = IXGBE_PACKET_TYPE_MASK_X550;
 	else
 		rxq->pkt_type_mask = IXGBE_PACKET_TYPE_MASK_82599;
@@ -3403,7 +3406,8 @@ ixgbe_dev_clear_queues(struct rte_eth_dev *dev)
 		if (hw->mac.type == ixgbe_mac_X540 ||
 		     hw->mac.type == ixgbe_mac_X550 ||
 		     hw->mac.type == ixgbe_mac_X550EM_x ||
-		     hw->mac.type == ixgbe_mac_X550EM_a)
+		     hw->mac.type == ixgbe_mac_X550EM_a ||
+		     hw->mac.type == ixgbe_mac_E610)
 			ixgbe_setup_loopback_link_x540_x550(hw, false);
 	}
 }
