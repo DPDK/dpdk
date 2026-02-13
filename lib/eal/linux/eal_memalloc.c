@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -31,6 +32,7 @@
 #include <rte_log.h>
 #include <rte_eal.h>
 #include <rte_memory.h>
+#include <rte_cycles.h>
 
 #include "eal_filesystem.h"
 #include "eal_internal_cfg.h"
@@ -1436,8 +1438,10 @@ secondary_msl_create_walk(const struct rte_memseg_list *msl,
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	struct rte_memseg_list *primary_msl, *local_msl;
-	char name[PATH_MAX];
+	char name[RTE_FBARRAY_NAME_LEN];
 	int msl_idx, ret;
+	uint64_t tsc;
+	pid_t pid;
 
 	if (msl->external)
 		return 0;
@@ -1446,12 +1450,21 @@ secondary_msl_create_walk(const struct rte_memseg_list *msl,
 	primary_msl = &mcfg->memsegs[msl_idx];
 	local_msl = &local_memsegs[msl_idx];
 
-	/* create distinct fbarrays for each secondary */
-	ret = snprintf(name, RTE_FBARRAY_NAME_LEN, "%s_%i",
-		primary_msl->memseg_arr.name, getpid());
-	if (ret >= RTE_FBARRAY_NAME_LEN) {
-		EAL_LOG(ERR, "fbarray name %s_%i is too long",
-				primary_msl->memseg_arr.name, getpid());
+	/*
+	 * Create distinct fbarrays for each secondary using TSC for uniqueness,
+	 * since PID is not unique across containers (different PID namespaces).
+	 * The worst case name length is:
+	 * Base name: "memseg-1048576k-99-99" ~21 chars
+	 * Suffix "_<pid>_<16hex>" +24
+	 * Total = ~45 < RTE_FBARRAY_NAME_LEN 64
+	 */
+	tsc = rte_get_tsc_cycles();
+	pid = getpid();
+	ret = snprintf(name, sizeof(name), "%s_%d_%"PRIx64,
+		primary_msl->memseg_arr.name, pid, tsc);
+	if (ret >= (int)sizeof(name)) {
+		EAL_LOG(ERR, "fbarray name \"%s_%d_%"PRIx64"\" is too long",
+			primary_msl->memseg_arr.name, pid, tsc);
 		return -1;
 	}
 
