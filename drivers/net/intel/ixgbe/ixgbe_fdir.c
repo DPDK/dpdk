@@ -650,10 +650,11 @@ ixgbe_fdir_configure(struct rte_eth_dev *dev)
 		hw->mac.type != ixgbe_mac_E610)
 		return -ENOSYS;
 
-	/* x550 supports mac-vlan and tunnel mode but other NICs not */
+	/* x550 and E610 supports mac-vlan and tunnel mode but other NICs not */
 	if (hw->mac.type != ixgbe_mac_X550 &&
 	    hw->mac.type != ixgbe_mac_X550EM_x &&
 	    hw->mac.type != ixgbe_mac_X550EM_a &&
+	    hw->mac.type != ixgbe_mac_E610 &&
 	    mode != RTE_FDIR_MODE_SIGNATURE &&
 	    mode != RTE_FDIR_MODE_PERFECT)
 		return -ENOSYS;
@@ -1130,7 +1131,7 @@ ixgbe_fdir_filter_program(struct rte_eth_dev *dev,
 		return -ENOTSUP;
 
 	/*
-	 * Sanity check for x550.
+	 * Sanity check for x550 and E610.
 	 * When adding a new filter with flow type set to IPv4,
 	 * the flow director mask should be configed before,
 	 * and the L4 protocol and ports are masked.
@@ -1138,7 +1139,8 @@ ixgbe_fdir_filter_program(struct rte_eth_dev *dev,
 	if ((!del) &&
 	    (hw->mac.type == ixgbe_mac_X550 ||
 	     hw->mac.type == ixgbe_mac_X550EM_x ||
-	     hw->mac.type == ixgbe_mac_X550EM_a) &&
+	     hw->mac.type == ixgbe_mac_X550EM_a ||
+	     hw->mac.type == ixgbe_mac_E610) &&
 	    (rule->ixgbe_fdir.formatted.flow_type ==
 	     IXGBE_ATR_FLOW_TYPE_IPV4 ||
 	     rule->ixgbe_fdir.formatted.flow_type ==
