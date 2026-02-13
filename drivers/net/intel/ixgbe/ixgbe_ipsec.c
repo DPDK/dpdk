@@ -664,20 +664,14 @@ ixgbe_crypto_enable_ipsec(struct rte_eth_dev *dev)
 }
 
 int
-ixgbe_crypto_add_ingress_sa_from_flow(const void *sess,
-				      const void *ip_spec,
-				      uint8_t is_ipv6)
+ixgbe_crypto_add_ingress_sa_from_flow(struct rte_security_session *sess,
+		const struct ip_spec *spec)
 {
-	/**
-	 * FIXME Updating the session priv data when the session is const.
-	 * Typecasting done here is wrong and the implementation need to be corrected.
-	 */
-	struct ixgbe_crypto_session *ic_session = (void *)(uintptr_t)
-			((const struct rte_security_session *)sess)->driver_priv_data;
+	struct ixgbe_crypto_session *ic_session = SECURITY_GET_SESS_PRIV(sess);
 
 	if (ic_session->op == IXGBE_OP_AUTHENTICATED_DECRYPTION) {
-		if (is_ipv6) {
-			const struct rte_flow_item_ipv6 *ipv6 = ip_spec;
+		if (spec->is_ipv6) {
+			const struct rte_flow_item_ipv6 *ipv6 = &spec->spec.ipv6;
 			ic_session->src_ip.type = IPv6;
 			ic_session->dst_ip.type = IPv6;
 			rte_memcpy(ic_session->src_ip.ipv6,
@@ -685,7 +679,7 @@ ixgbe_crypto_add_ingress_sa_from_flow(const void *sess,
 			rte_memcpy(ic_session->dst_ip.ipv6,
 				   &ipv6->hdr.dst_addr, 16);
 		} else {
-			const struct rte_flow_item_ipv4 *ipv4 = ip_spec;
+			const struct rte_flow_item_ipv4 *ipv4 = &spec->spec.ipv4;
 			ic_session->src_ip.type = IPv4;
 			ic_session->dst_ip.type = IPv4;
 			ic_session->src_ip.ipv4 = ipv4->hdr.src_addr;
