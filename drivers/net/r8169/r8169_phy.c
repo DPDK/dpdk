@@ -558,10 +558,6 @@ rtl_powerdown_pll(struct rtl_hw *hw)
 	if (hw->mcfg >= CFG_METHOD_21 && hw->mcfg <= CFG_METHOD_36) {
 		RTL_W8(hw, 0xD0, RTL_R8(hw, 0xD0) & ~BIT_6);
 		RTL_W8(hw, 0xF2, RTL_R8(hw, 0xF2) & ~BIT_6);
-	} else if ((hw->mcfg >= CFG_METHOD_48 && hw->mcfg <= CFG_METHOD_58) ||
-		   (hw->mcfg >= CFG_METHOD_69 && hw->mcfg <= CFG_METHOD_71) ||
-		   hw->mcfg == CFG_METHOD_91) {
-		RTL_W8(hw, 0xF2, RTL_R8(hw, 0xF2) & ~BIT_6);
 	}
 }
 
@@ -893,17 +889,14 @@ rtl_is_adv_eee_enabled(struct rtl_hw *hw)
 {
 	bool enabled = false;
 
-	if (hw->mcfg >= CFG_METHOD_25 && hw->mcfg <= CFG_METHOD_36) {
+	if (rtl_is_8125(hw)) {
+		if (rtl_mdio_direct_read_phy_ocp(hw, 0xA430) & BIT_15)
+			enabled = true;
+	} else if (hw->mcfg >= CFG_METHOD_25 && hw->mcfg <= CFG_METHOD_36) {
 		rtl_mdio_write(hw, 0x1F, 0x0A43);
 		if (rtl_mdio_read(hw, 0x10) & BIT_15)
 			enabled = true;
 		rtl_mdio_write(hw, 0x1F, 0x0000);
-	} else if ((hw->mcfg >= CFG_METHOD_48 && hw->mcfg <= CFG_METHOD_55) ||
-		   hw->mcfg == CFG_METHOD_58 || hw->mcfg == CFG_METHOD_69 ||
-		   hw->mcfg == CFG_METHOD_70 || hw->mcfg == CFG_METHOD_71 ||
-		   hw->mcfg == CFG_METHOD_91){
-		if (rtl_mdio_direct_read_phy_ocp(hw, 0xA430) & BIT_15)
-			enabled = true;
 	}
 
 	return enabled;
@@ -982,6 +975,7 @@ _rtl_disable_adv_eee(struct rtl_hw *hw)
 	case CFG_METHOD_56:
 	case CFG_METHOD_57:
 	case CFG_METHOD_58:
+	case CFG_METHOD_59:
 	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
@@ -1068,6 +1062,7 @@ rtl_disable_eee(struct rtl_hw *hw)
 	case CFG_METHOD_56:
 	case CFG_METHOD_57:
 	case CFG_METHOD_58:
+	case CFG_METHOD_59:
 		rtl_clear_mac_ocp_bit(hw, 0xE040, (BIT_1 | BIT_0));
 
 		rtl_set_eth_phy_ocp_bit(hw, 0xA432, BIT_4);
@@ -1232,6 +1227,7 @@ rtl_set_speed_xmii(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex, u64 adv)
 	case CFG_METHOD_56:
 	case CFG_METHOD_57:
 	case CFG_METHOD_58:
+	case CFG_METHOD_59:
 		mask |= BIT_0;
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA428, BIT_9);
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA5EA, mask);

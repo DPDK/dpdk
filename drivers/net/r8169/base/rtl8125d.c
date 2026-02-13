@@ -7,7 +7,10 @@
 #include "../r8169_phy.h"
 #include "rtl8125d_mcu.h"
 
-/* For RTL8125D, CFG_METHOD_56,57 */
+/*
+ * For RTL8125D, CFG_METHOD_56,57
+ * For RTL8168KD, CFG_METHOD_59
+ */
 
 static void
 hw_init_rxcfg_8125d(struct rtl_hw *hw)
@@ -22,6 +25,7 @@ hw_ephy_config_8125d(struct rtl_hw *hw)
 	switch (hw->mcfg) {
 	case CFG_METHOD_56:
 	case CFG_METHOD_57:
+	case CFG_METHOD_59:
 		/* Nothing to do */
 		break;
 	}
@@ -264,6 +268,7 @@ hw_phy_config_8125d(struct rtl_hw *hw)
 		rtl_hw_phy_config_8125d_1(hw);
 		break;
 	case CFG_METHOD_57:
+	case CFG_METHOD_59:
 		rtl_hw_phy_config_8125d_2(hw);
 		break;
 	}
@@ -277,9 +282,16 @@ hw_mac_mcu_config_8125d(struct rtl_hw *hw)
 
 	rtl_hw_disable_mac_mcu_bps(hw);
 
+	/* Get H/W mac mcu patch code version */
+	hw->hw_mcu_patch_code_ver = rtl_get_hw_mcu_patch_code_ver(hw);
+
 	switch (hw->mcfg) {
 	case CFG_METHOD_56:
 		rtl_set_mac_mcu_8125d_1(hw);
+		break;
+	case CFG_METHOD_57:
+	case CFG_METHOD_59:
+		rtl_set_mac_mcu_8125d_2(hw);
 		break;
 	}
 }
@@ -292,6 +304,7 @@ hw_phy_mcu_config_8125d(struct rtl_hw *hw)
 		rtl_set_phy_mcu_8125d_1(hw);
 		break;
 	case CFG_METHOD_57:
+	case CFG_METHOD_59:
 		rtl_set_phy_mcu_8125d_2(hw);
 		break;
 	}
