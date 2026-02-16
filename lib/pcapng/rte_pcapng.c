@@ -544,11 +544,26 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 	if (comment)
 		optlen += pcapng_optlen(strlen(comment));
 
-	/* reserve trailing options and block length */
-	opt = (struct pcapng_option *)
-		rte_pktmbuf_append(mc, optlen + sizeof(uint32_t));
-	if (unlikely(opt == NULL))
-		goto fail;
+	/*
+	 * Try to put options at the end of this mbuf.
+	 * If not extend the mbuf by adding another segment.
+	 */
+	opt = (struct pcapng_option *)rte_pktmbuf_append(mc, optlen + sizeof(uint32_t));
+	if (unlikely(opt == NULL)) {
+		struct rte_mbuf *ml = rte_pktmbuf_alloc(mp);
+
+		if (unlikely(ml == NULL))
+			goto fail;	/* mbuf pool is empty */
+
+		if (unlikely(rte_pktmbuf_chain(mc, ml) != 0)) {
+			rte_pktmbuf_free(ml);
+			goto fail;	/* too many segments in the mbuf */
+		}
+
+		opt = (struct pcapng_option *)rte_pktmbuf_append(mc, optlen + sizeof(uint32_t));
+		if (unlikely(opt == NULL))
+			goto fail;	/* additional segment and still no space */
+	}
 
 	switch (direction) {
 	case RTE_PCAPNG_DIRECTION_IN:
