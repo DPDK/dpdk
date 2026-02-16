@@ -82,6 +82,9 @@ rte_pcapng_close(rte_pcapng_t *self);
  * Interfaces must be added to the output file after opening
  * and before any packet record. All ports used in packet capture
  * must be added.
+ *
+ * @return
+ *   number of bytes written to file, -1 on failure
  */
 int
 rte_pcapng_add_interface(rte_pcapng_t *self, uint16_t port,
@@ -121,7 +124,7 @@ enum rte_pcapng_direction {
  *
  * @return
  *   - The pointer to the new mbuf formatted for pcapng_write
- *   - NULL if allocation fails.
+ *   - NULL on error such as invalid port or out of memory.
  */
 struct rte_mbuf *
 rte_pcapng_copy(uint16_t port_id, uint32_t queue,
@@ -185,7 +188,9 @@ rte_pcapng_write_packets(rte_pcapng_t *self,
  * @param comment
  *  Optional comment to add to statistics.
  * @return
- *  number of bytes written to file, -1 on failure to write file
+ *  On success number of bytes written to file,
+ *   -1 on failure to write file (and errno is set)
+ *   - (-EINVAL) if bad parameter.
  */
 ssize_t
 rte_pcapng_write_stats(rte_pcapng_t *self, uint16_t port,
