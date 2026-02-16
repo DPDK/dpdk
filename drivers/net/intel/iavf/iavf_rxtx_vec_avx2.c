@@ -1800,13 +1800,6 @@ iavf_xmit_pkts_vec_avx2_offload(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return iavf_xmit_pkts_vec_avx2_common(tx_queue, tx_pkts, nb_pkts, true);
 }
 
-int __rte_cold
-iavf_txq_vec_setup(struct ci_tx_queue *txq)
-{
-	txq->use_vec_entry = true;
-	return 0;
-}
-
 void __rte_cold
 iavf_rx_queue_release_mbufs_vec(struct ci_rx_queue *rxq)
 {

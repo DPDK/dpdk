@@ -592,7 +592,6 @@ int iavf_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc);
 int iavf_rx_vec_dev_check(struct rte_eth_dev *dev);
 int iavf_tx_vec_dev_check(struct rte_eth_dev *dev);
 int iavf_rxq_vec_setup(struct ci_rx_queue *rxq);
-int iavf_txq_vec_setup(struct ci_tx_queue *txq);
 uint16_t iavf_recv_pkts_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
 				   uint16_t nb_pkts);
 uint16_t iavf_recv_pkts_vec_avx512_offload(void *rx_queue,
