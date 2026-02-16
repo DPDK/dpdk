@@ -37,12 +37,23 @@
 /* upper bound for strings in pcapng option data */
 #define PCAPNG_STR_MAX	UINT16_MAX
 
+/*
+ * Converter from TSC values to nanoseconds since Unix epoch.
+ * Uses reciprocal multiply to avoid runtime division.
+ */
+struct tsc_clock {
+	uint64_t tsc_base;          /* TSC value at initialization. */
+	uint64_t ns_base;           /* Nanoseconds since epoch at init. */
+	struct rte_reciprocal_u64 tsc_hz_inv; /* Reciprocal of TSC frequency. */
+	uint32_t shift;             /* Pre-shift to avoid overflow. */
+};
+
 /* Format of the capture file handle */
 struct rte_pcapng {
 	int  outfd;		/* output file */
 	unsigned int ports;	/* number of interfaces added */
-	uint64_t offset_ns;	/* ns since 1/1/1970 when initialized */
-	uint64_t tsc_base;	/* TSC when started */
+
+	struct tsc_clock clock;
 
 	/* DPDK port id to interface index in file */
 	uint32_t port_index[RTE_MAX_ETHPORTS];
@@ -98,21 +109,59 @@ static ssize_t writev(int fd, const struct iovec *iov, int iovcnt)
 #define if_indextoname(ifindex, ifname) NULL
 #endif
 
-/* Convert from TSC (CPU cycles) to nanoseconds */
-static uint64_t
-pcapng_timestamp(const rte_pcapng_t *self, uint64_t cycles)
+/*
+ * Initialize TSC-to-epoch-ns converter.
+ *
+ * Captures current TSC and system clock as a reference point.
+ */
+static int
+tsc_clock_init(struct tsc_clock *clk)
 {
-	uint64_t delta, rem, secs, ns;
-	const uint64_t hz = rte_get_tsc_hz();
+	struct timespec ts;
+	uint64_t cycles, tsc_hz, divisor;
+	uint32_t shift;
 
-	delta = cycles - self->tsc_base;
+	memset(clk, 0, sizeof(*clk));
 
-	/* Avoid numeric wraparound by computing seconds first */
-	secs = delta / hz;
-	rem = delta % hz;
-	ns = (rem * NS_PER_S) / hz;
+	/* If Hz is zero, something is seriously broken. */
+	tsc_hz = rte_get_tsc_hz();
+	if (tsc_hz == 0)
+		return -1;
 
-	return secs * NS_PER_S + ns + self->offset_ns;
+	/*
+	 * Choose shift so (delta >> shift) * NSEC_PER_SEC fits in uint64_t.
+	 * For typical GHz-range TSC and ~1s deltas this is 0.
+	 */
+	shift = 0;
+	divisor = tsc_hz;
+	while (divisor > UINT64_MAX / NSEC_PER_SEC) {
+		divisor >>= 1;
+		shift++;
+	}
+
+	clk->shift = shift;
+	clk->tsc_hz_inv = rte_reciprocal_value_u64(divisor);
+
+	/* Sample TSC and system clock as close together as possible. */
+	cycles = rte_get_tsc_cycles();
+	clock_gettime(CLOCK_REALTIME, &ts);
+	clk->tsc_base = (cycles + rte_get_tsc_cycles()) / 2;
+	clk->ns_base = (uint64_t)ts.tv_sec * NSEC_PER_SEC + ts.tv_nsec;
+
+	return 0;
+}
+
+/* Convert a TSC value to nanoseconds since Unix epoch. */
+static inline uint64_t
+tsc_to_ns_epoch(const struct tsc_clock *clk, uint64_t tsc)
+{
+	uint64_t delta, ns;
+
+	delta = tsc - clk->tsc_base;
+	ns = (delta >> clk->shift) * NSEC_PER_SEC;
+	ns = rte_reciprocal_divide_u64(ns, &clk->tsc_hz_inv);
+
+	return clk->ns_base + ns;
 }
 
 /* length of option including padding */
@@ -346,7 +395,7 @@ rte_pcapng_write_stats(rte_pcapng_t *self, uint16_t port_id,
 {
 	struct pcapng_statistics *hdr;
 	struct pcapng_option *opt;
-	uint64_t start_time = self->offset_ns;
+	uint64_t start_time = self->clock.ns_base;
 	uint64_t sample_time;
 	uint32_t optlen, len;
 	uint32_t *buf;
@@ -399,7 +448,7 @@ rte_pcapng_write_stats(rte_pcapng_t *self, uint16_t port_id,
 	hdr->block_length = len;
 	hdr->interface_id = self->port_index[port_id];
 
-	sample_time = pcapng_timestamp(self, rte_get_tsc_cycles());
+	sample_time = tsc_to_ns_epoch(&self->clock, rte_get_tsc_cycles());
 	hdr->timestamp_hi = sample_time >> 32;
 	hdr->timestamp_lo = (uint32_t)sample_time;
 
@@ -684,10 +733,13 @@ rte_pcapng_write_packets(rte_pcapng_t *self,
 			return -1;
 		}
 
-		/* adjust timestamp recorded in packet */
+		/*
+		 * When data is captured by pcapng_copy the current TSC is stored.
+		 * Adjust the value recorded in file to PCAP epoch units.
+		 */
 		cycles = (uint64_t)epb->timestamp_hi << 32;
 		cycles += epb->timestamp_lo;
-		timestamp = pcapng_timestamp(self, cycles);
+		timestamp = tsc_to_ns_epoch(&self->clock, cycles);
 		epb->timestamp_hi = timestamp >> 32;
 		epb->timestamp_lo = (uint32_t)timestamp;
 
@@ -733,8 +785,6 @@ rte_pcapng_fdopen(int fd,
 {
 	unsigned int i;
 	rte_pcapng_t *self;
-	struct timespec ts;
-	uint64_t cycles;
 	int ret;
 
 	if ((osname && strlen(osname) > PCAPNG_STR_MAX) ||
@@ -754,11 +804,10 @@ rte_pcapng_fdopen(int fd,
 	self->outfd = fd;
 	self->ports = 0;
 
-	/* record start time in ns since 1/1/1970 */
-	cycles = rte_get_tsc_cycles();
-	clock_gettime(CLOCK_REALTIME, &ts);
-	self->tsc_base = (cycles + rte_get_tsc_cycles()) / 2;
-	self->offset_ns = rte_timespec_to_ns(&ts);
+	if (tsc_clock_init(&self->clock) < 0) {
+		rte_errno = ENODEV;
+		goto fail;
+	}
 
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
 		self->port_index[i] = UINT32_MAX;
