@@ -191,6 +191,7 @@ rte_pcapng_write_packets(rte_pcapng_t *self,
  *  On success number of bytes written to file,
  *   -1 on failure to write file (and errno is set)
  *   - (-EINVAL) if bad parameter.
+ *   - (-ENOMEM) if unable to allocate resources.
  */
 ssize_t
 rte_pcapng_write_stats(rte_pcapng_t *self, uint16_t port,
