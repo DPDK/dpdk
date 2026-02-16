@@ -12,6 +12,8 @@
 #include "gve_rss.h"
 #include <ethdev_driver.h>
 
+static int gve_init_priv(struct gve_priv *priv, bool skip_describe_device);
+
 static void
 gve_write_version(uint8_t *driver_version_register)
 {
@@ -551,6 +553,35 @@ gve_dev_close(struct rte_eth_dev *dev)
 }
 
 static int
+gve_dev_reset(struct rte_eth_dev *dev)
+{
+	struct gve_priv *priv = dev->data->dev_private;
+	int err;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		PMD_DRV_LOG(ERR,
+			"Device reset on port %u not supported in secondary processes.",
+			dev->data->port_id);
+		return -EPERM;
+	}
+
+	/* Tear down all device resources before re-initializing. */
+	gve_free_queues(dev);
+	gve_teardown_device_resources(priv);
+	gve_adminq_free(priv);
+
+	err = gve_init_priv(priv, true);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR,
+			"Failed to re-init device on port %u after reset.",
+			dev->data->port_id);
+		return err;
+	}
+
+	return 0;
+}
+
+static int
 gve_verify_driver_compatibility(struct gve_priv *priv)
 {
 	const struct rte_memzone *driver_info_mem;
@@ -1068,6 +1099,7 @@ static const struct eth_dev_ops gve_eth_dev_ops = {
 	.dev_start            = gve_dev_start,
 	.dev_stop             = gve_dev_stop,
 	.dev_close            = gve_dev_close,
+	.dev_reset            = gve_dev_reset,
 	.dev_infos_get        = gve_dev_info_get,
 	.rx_queue_setup       = gve_rx_queue_setup,
 	.tx_queue_setup       = gve_tx_queue_setup,
@@ -1094,6 +1126,7 @@ static const struct eth_dev_ops gve_eth_dev_ops_dqo = {
 	.dev_start            = gve_dev_start,
 	.dev_stop             = gve_dev_stop,
 	.dev_close            = gve_dev_close,
+	.dev_reset            = gve_dev_reset,
 	.dev_infos_get        = gve_dev_info_get,
 	.rx_queue_setup       = gve_rx_queue_setup_dqo,
 	.tx_queue_setup       = gve_tx_queue_setup_dqo,

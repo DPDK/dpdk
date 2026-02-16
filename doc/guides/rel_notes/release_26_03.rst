@@ -63,6 +63,10 @@ New Features
 
   * The timestamp value has been updated to make it usable.
 
+* **Updated Google Virtual Ethernet (gve) driver.**
+
+  * Added application-initiated device reset.
+
 * **Updated Intel iavf driver.**
 
   * Added support for pre and post VF reset callbacks.

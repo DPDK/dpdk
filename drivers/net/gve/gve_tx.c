@@ -547,6 +547,8 @@ gve_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 	rte_memzone_free(q->qres_mz);
 	q->qres = NULL;
 	rte_free(q);
+
+	dev->data->tx_queues[qid] = NULL;
 }
 
 int
