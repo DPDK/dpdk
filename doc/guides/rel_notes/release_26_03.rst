@@ -154,6 +154,11 @@ API Changes
   * cfgfile: name must be less than CFG_NAME_LEN
     and value must be less than CFG_VALUE_LEN.
 
+* **Updated the pcapng library.**
+
+  * The length of comment strings is now validated.
+    Maximum allowable length is 2^16-1 because of pcapng file format.
+
 
 ABI Changes
 -----------

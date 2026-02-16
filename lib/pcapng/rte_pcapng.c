@@ -34,6 +34,9 @@
 /* conversion from DPDK speed to PCAPNG */
 #define PCAPNG_MBPS_SPEED 1000000ull
 
+/* upper bound for strings in pcapng option data */
+#define PCAPNG_STR_MAX	UINT16_MAX
+
 /* upper bound for section, stats and interface blocks (in uint32_t) */
 #define PCAPNG_BLKSIZ	(2048 / sizeof(uint32_t))
 
@@ -218,9 +221,11 @@ rte_pcapng_add_interface(rte_pcapng_t *self, uint16_t port, uint16_t link_type,
 	char ifname_buf[IF_NAMESIZE];
 	char ifhw[256];
 	uint64_t speed = 0;
+	int ret;
 
-	if (rte_eth_dev_info_get(port, &dev_info) < 0)
-		return -1;
+	ret = rte_eth_dev_info_get(port, &dev_info);
+	if (ret < 0)
+		return -1;  /* should be ret */
 
 	/* make something like an interface name */
 	if (ifname == NULL) {
@@ -230,7 +235,13 @@ rte_pcapng_add_interface(rte_pcapng_t *self, uint16_t port, uint16_t link_type,
 			snprintf(ifname_buf, IF_NAMESIZE, "dpdk:%u", port);
 			ifname = ifname_buf;
 		}
+	} else if (strlen(ifname) > PCAPNG_STR_MAX) {
+		return -1; /* ENAMETOOLONG */
 	}
+
+	if ((ifdescr && strlen(ifdescr) > PCAPNG_STR_MAX) ||
+	    (filter && strlen(filter) > PCAPNG_STR_MAX))
+		return -1; /* EINVAL */
 
 	/* make a useful device hardware string */
 	dev = dev_info.device;
@@ -269,7 +280,7 @@ rte_pcapng_add_interface(rte_pcapng_t *self, uint16_t port, uint16_t link_type,
 	len += sizeof(uint32_t);
 
 	if (len > sizeof(buf))
-		return -1;
+		return -1; /* EINVAL */
 
 	hdr = (struct pcapng_interface_block *)buf;
 	*hdr = (struct pcapng_interface_block) {
@@ -336,6 +347,9 @@ rte_pcapng_write_stats(rte_pcapng_t *self, uint16_t port_id,
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
+	if (comment && strlen(comment) > PCAPNG_STR_MAX)
+		return -EINVAL;
+
 	optlen = 0;
 
 	if (ifrecv != UINT64_MAX)
@@ -360,7 +374,7 @@ rte_pcapng_write_stats(rte_pcapng_t *self, uint16_t port_id,
 
 	if (comment)
 		opt = pcapng_add_option(opt, PCAPNG_OPT_COMMENT,
-					comment, strlen(comment));
+					comment, strnlen(comment, PCAPNG_STR_MAX));
 	if (start_time != 0)
 		opt = pcapng_add_option(opt, PCAPNG_ISB_STARTTIME,
 					 &start_time, sizeof(start_time));
@@ -487,6 +501,10 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 	bool rss_hash;
 
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	/*
+	 * Since this function is used in the fast path for packet capture
+	 * skip argument validation checks unless debug is enabled.
+	 */
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, NULL);
 #endif
 	orig_len = rte_pktmbuf_pkt_len(md);
@@ -535,8 +553,9 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 	if (rss_hash)
 		optlen += pcapng_optlen(sizeof(uint8_t) + sizeof(uint32_t));
 
+	/* Comment is silently truncated if necessary */
 	if (comment)
-		optlen += pcapng_optlen(strlen(comment));
+		optlen += pcapng_optlen(strnlen(comment, PCAPNG_STR_MAX));
 
 	/* reserve trailing options and block length */
 	opt = (struct pcapng_option *)
@@ -577,7 +596,7 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 
 	if (comment)
 		opt = pcapng_add_option(opt, PCAPNG_OPT_COMMENT, comment,
-					strlen(comment));
+					strnlen(comment, PCAPNG_STR_MAX));
 
 	/* Note: END_OPT necessary here. Wireshark doesn't do it. */
 
@@ -691,6 +710,14 @@ rte_pcapng_fdopen(int fd,
 	rte_pcapng_t *self;
 	struct timespec ts;
 	uint64_t cycles;
+
+	if ((osname && strlen(osname) > PCAPNG_STR_MAX) ||
+	    (hardware && strlen(hardware) > PCAPNG_STR_MAX) ||
+	    (appname && strlen(appname) > PCAPNG_STR_MAX) ||
+	    (comment && strlen(comment) > PCAPNG_STR_MAX)) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
 
 	self = malloc(sizeof(*self));
 	if (!self) {

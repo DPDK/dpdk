@@ -127,7 +127,8 @@ enum rte_pcapng_direction {
  * @param direction
  *   The direction of the packer: receive, transmit or unknown.
  * @param comment
- *   Packet comment.
+ *   Optional per packet comment.
+ *   Truncated to UINT16_MAX characters.
  *
  * @return
  *   - The pointer to the new mbuf formatted for pcapng_write
