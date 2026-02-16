@@ -3871,6 +3871,7 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 #ifdef RTE_ARCH_X86
 	struct ci_tx_queue *txq;
 	int i;
+	const struct ci_tx_path_features *selected_features;
 #endif
 	struct ci_tx_path_features req_features = {
 		.tx_offloads = dev->data->dev_conf.txmode.offloads,
@@ -3905,15 +3906,13 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 
 out:
 #ifdef RTE_ARCH_X86
-	if (iavf_tx_path_infos[adapter->tx_func_type].features.simd_width != 0) {
-		for (i = 0; i < dev->data->nb_tx_queues; i++) {
-			txq = dev->data->tx_queues[i];
-			if (!txq)
-				continue;
-			iavf_txq_vec_setup(txq);
-			txq->use_ctx =
-				iavf_tx_path_infos[adapter->tx_func_type].features.ctx_desc;
-		}
+	selected_features = &iavf_tx_path_infos[adapter->tx_func_type].features;
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if (!txq)
+			continue;
+		txq->use_ctx = selected_features->ctx_desc;
+		txq->use_vec_entry = selected_features->simd_width >= RTE_VECT_SIMD_128;
 	}
 #endif
 
