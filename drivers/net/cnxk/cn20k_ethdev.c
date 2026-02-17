@@ -948,8 +948,8 @@ cn20k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	/* Register up msg callbacks for PTP information */
 	roc_nix_ptp_info_cb_register(&dev->nix, cn20k_nix_ptp_info_update_cb);
 
-	/* Use WRITE SA for inline IPsec */
-	dev->nix.use_write_sa = true;
+	/* Skip WRITE SA for inline IPsec */
+	dev->nix.use_write_sa = false;
 
 	return 0;
 }
