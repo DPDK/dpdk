@@ -55,6 +55,7 @@ where (generally) data from any Ethernet port may be sent by the firmware
 to any queue.
 
 The cards were historically represented in DPDK as a single port.
+Currently each Ethernet channel is represented as one DPDK port.
 
 .. note::
 
