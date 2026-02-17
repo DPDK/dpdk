@@ -3704,6 +3704,8 @@ mlx5_enable_per_queue_hairpin_counter(struct rte_eth_dev *dev, uint64_t id)
 	if (ret) {
 		DRV_LOG(ERR, "failed to modify rq object for port %u"
 			"%s", priv->dev_data->port_id, strerror(rte_errno));
+		mlx5_devx_cmd_destroy(rxq->q_counter);
+		rxq->q_counter = NULL;
 		return ret;
 	}
 
