@@ -74,7 +74,7 @@ New Features
   * Added firmware version and correct Ethernet link speed reporting.
   * Common CESNET-NDK-based adapters have been added,
     including the FB2CGHH (Silicom Denmark) and XpressSX AGI-FH400G (Reflex CES).
-  * Added support for configuration of the link up / down state.
+  * Added support for configuration of the RS-FEC mode, link up / down state.
 
 * **Updated Google Virtual Ethernet (gve) driver.**
 
