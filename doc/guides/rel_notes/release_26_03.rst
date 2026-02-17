@@ -70,6 +70,7 @@ New Features
   * The timestamp value has been updated to make it usable.
   * The DPDK port has been changed to represent just one Ethernet port
     instead of all Ethernet ports on the NIC.
+  * Added ``port`` device argument to select a subset of all ports.
   * Common CESNET-NDK-based adapters have been added,
     including the FB2CGHH (Silicom Denmark) and XpressSX AGI-FH400G (Reflex CES).
 

@@ -64,6 +64,13 @@ Currently each Ethernet channel is represented as one DPDK port.
    For example one 100G port can be used as 4x25G or 4x10G independent Ethernet channels.
 
 By default, all ports are initialized and used for the allowed PCI device.
+When this behaviour is limiting
+(e.g., for multiple instances of DPDK app on different ports of the same PCI device),
+ports can be specified by the `port` item in the `allow` argument:
+
+.. code-block:: console
+
+   -a 0000:01:00.0,port=0,port=3
 
 PCIe slots
 ~~~~~~~~~~
