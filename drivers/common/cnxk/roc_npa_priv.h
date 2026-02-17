@@ -14,6 +14,8 @@ enum npa_error_status {
 	NPA_ERR_AURA_POOL_FINI = -517,
 	NPA_ERR_BASE_INVALID = -518,
 	NPA_ERR_DEVICE_NOT_BOUNDED = -519,
+	NPA_ERR_HALO_INIT = -520,
+	NPA_ERR_HALO_FINI = -521,
 };
 
 struct npa_lf {
@@ -55,6 +57,7 @@ struct npa_aura_attr {
 	uint64_t shift;
 	uint64_t limit;
 	uint8_t bp_ena;
+	bool halo;
 	union {
 		uint8_t bp;	      /* CN9K, CN10K */
 		uint8_t bp_thresh[8]; /* CN20K */

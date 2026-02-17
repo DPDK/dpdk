@@ -43,6 +43,7 @@ struct roc_sso_xaq_data {
 	uint32_t nb_xae;
 	uint32_t xaq_lmt;
 	uint64_t aura_handle;
+	int halo_ena;
 	void *fc;
 	void *mem;
 };

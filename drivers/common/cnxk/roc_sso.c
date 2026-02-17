@@ -834,8 +834,6 @@ sso_hwgrp_init_xaq_aura(struct dev *dev, struct roc_sso_xaq_data *xaq,
 			uint32_t nb_xae, uint32_t xae_waes,
 			uint32_t xaq_buf_size, uint16_t nb_hwgrp)
 {
-	struct npa_pool_s pool;
-	struct npa_aura_s aura;
 	plt_iova_t iova;
 	uint32_t i;
 	int rc;
@@ -877,15 +875,32 @@ sso_hwgrp_init_xaq_aura(struct dev *dev, struct roc_sso_xaq_data *xaq,
 		goto free_fc;
 	}
 
-	memset(&pool, 0, sizeof(struct npa_pool_s));
-	pool.nat_align = 1;
+	if (roc_feature_npa_has_halo() && xaq->halo_ena) {
+		struct npa_cn20k_halo_s halo;
 
-	memset(&aura, 0, sizeof(aura));
-	aura.fc_ena = 1;
-	aura.fc_addr = (uint64_t)xaq->fc;
-	aura.fc_hyst_bits = 0; /* Store count on all updates */
-	rc = roc_npa_pool_create(&xaq->aura_handle, xaq_buf_size, xaq->nb_xaq,
-				 &aura, &pool, 0);
+		memset(&halo, 0, sizeof(struct npa_cn20k_halo_s));
+		halo.nat_align = 1;
+		halo.fc_ena = 1;
+		halo.fc_addr = (uint64_t)xaq->fc;
+		halo.fc_hyst_bits = 0; /* Store count on all updates */
+		halo.unified_ctx = 1;
+		rc = roc_npa_pool_create(&xaq->aura_handle, xaq_buf_size, xaq->nb_xaq,
+					 NULL, (struct npa_pool_s *)&halo, ROC_NPA_HALO_F);
+	} else {
+		struct npa_pool_s pool;
+		struct npa_aura_s aura;
+
+		memset(&pool, 0, sizeof(struct npa_pool_s));
+		pool.nat_align = 1;
+
+		memset(&aura, 0, sizeof(aura));
+		aura.fc_ena = 1;
+		aura.fc_addr = (uint64_t)xaq->fc;
+		aura.fc_hyst_bits = 0; /* Store count on all updates */
+		rc = roc_npa_pool_create(&xaq->aura_handle, xaq_buf_size, xaq->nb_xaq,
+					 &aura, &pool, 0);
+	}
+
 	if (rc) {
 		plt_err("Failed to create XAQ pool");
 		goto npa_fail;

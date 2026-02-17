@@ -33,6 +33,7 @@ idev_set_defaults(struct idev_cfg *idev)
 	idev->npa = NULL;
 	idev->npa_pf_func = 0;
 	idev->max_pools = 128;
+	idev->halo_ena = 0;
 	idev->lmt_pf_func = 0;
 	idev->lmt_base_addr = 0;
 	idev->num_lmtlines = 0;
@@ -121,6 +122,30 @@ roc_idev_npa_maxpools_set(uint32_t max_pools)
 	idev = idev_get_cfg();
 	if (idev != NULL)
 		__atomic_store_n(&idev->max_pools, max_pools, __ATOMIC_RELEASE);
+}
+
+int
+roc_idev_npa_halo_ena_get(void)
+{
+	struct idev_cfg *idev;
+	int halo_ena;
+
+	idev = idev_get_cfg();
+	halo_ena = 0;
+	if (idev != NULL)
+		halo_ena = __atomic_load_n(&idev->halo_ena, __ATOMIC_ACQUIRE);
+
+	return halo_ena;
+}
+
+void
+roc_idev_npa_halo_ena_set(int halo_ena)
+{
+	struct idev_cfg *idev;
+
+	idev = idev_get_cfg();
+	if (idev != NULL)
+		__atomic_store_n(&idev->halo_ena, halo_ena, __ATOMIC_RELEASE);
 }
 
 uint16_t

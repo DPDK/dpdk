@@ -30,6 +30,7 @@ struct idev_cfg {
 	struct npa_lf *npa;
 	uint16_t npa_refcnt;
 	uint32_t max_pools;
+	int halo_ena;
 	uint16_t lmt_pf_func;
 	uint16_t num_lmtlines;
 	uint64_t lmt_base_addr;

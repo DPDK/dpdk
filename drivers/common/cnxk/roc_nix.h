@@ -596,6 +596,7 @@ struct roc_nix {
 	uintptr_t lmt_base;
 	bool io_enabled;
 	bool rx_ptp_ena;
+	bool sqb_halo_ena;
 	uint16_t cints;
 	uint32_t buf_sz;
 	uint64_t meta_aura_handle;

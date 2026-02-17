@@ -118,6 +118,7 @@
 
 #define NPA_AQ_CTYPE_AURA (0x0ull)
 #define NPA_AQ_CTYPE_POOL (0x1ull)
+#define NPA_AQ_CTYPE_HALO (0x2ull)
 
 #define NPA_BPINTF_NIX0_RX (0x0ull)
 #define NPA_BPINTF_NIX1_RX (0x1ull)
@@ -454,6 +455,86 @@ struct npa_cn20k_pool_s {
 	uint64_t rsvd_895_832 : 64;  /* W13 */
 	uint64_t rsvd_959_896 : 64;  /* W14 */
 	uint64_t rsvd_1023_960 : 64; /* W15 */
+};
+
+/* NPA halo context structure [CN20K] */
+struct npa_cn20k_halo_s {
+	uint64_t stack_base : 64; /* W0 */
+	uint64_t ena : 1; /* W1 */
+	uint64_t nat_align : 1;
+	uint64_t reserved_67_66 : 2;
+	uint64_t stack_caching : 1;
+	uint64_t reserved_71_69 : 3;
+	uint64_t aura_drop_ena : 1;
+	uint64_t reserved_79_73 : 7;
+	uint64_t aura_drop : 8;
+	uint64_t buf_offset : 12;
+	uint64_t reserved_103_100 : 4;
+	uint64_t buf_size : 12;
+	uint64_t reserved_119_116 : 4;
+	uint64_t ref_cnt_prof : 3;
+	uint64_t reserved_127_123 : 5;
+	uint64_t stack_max_pages : 32; /* W2 */
+	uint64_t stack_pages : 32;
+	uint64_t bp_0 : 7; /* W3 */
+	uint64_t bp_1 : 7;
+	uint64_t bp_2 : 7;
+	uint64_t bp_3 : 7;
+	uint64_t bp_4 : 7;
+	uint64_t bp_5 : 7;
+	uint64_t bp_6 : 7;
+	uint64_t bp_7 : 7;
+	uint64_t bp_ena_0 : 1;
+	uint64_t bp_ena_1 : 1;
+	uint64_t bp_ena_2 : 1;
+	uint64_t bp_ena_3 : 1;
+	uint64_t bp_ena_4 : 1;
+	uint64_t bp_ena_5 : 1;
+	uint64_t bp_ena_6 : 1;
+	uint64_t bp_ena_7 : 1;
+	uint64_t stack_offset : 4; /* W4 */
+	uint64_t reserved_263_260 : 4;
+	uint64_t shift : 6;
+	uint64_t reserved_271_270 : 2;
+	uint64_t avg_level : 8;
+	uint64_t avg_con : 9;
+	uint64_t fc_ena : 1;
+	uint64_t fc_stype : 2;
+	uint64_t fc_hyst_bits : 4;
+	uint64_t fc_up_crossing : 1;
+	uint64_t reserved_299_297 : 3;
+	uint64_t update_time : 16;
+	uint64_t reserved_319_316 : 4;
+	uint64_t fc_addr : 64;   /* W5 */
+	uint64_t ptr_start : 64; /* W6 */
+	uint64_t ptr_end : 64;   /* W7 */
+	uint64_t bpid_0 : 12; /* W8 */
+	uint64_t reserved_535_524 : 12;
+	uint64_t err_int : 8;
+	uint64_t err_int_ena : 8;
+	uint64_t thresh_int : 1;
+	uint64_t thresh_int_ena : 1;
+	uint64_t thresh_up : 1;
+	uint64_t reserved_555_555 : 1;
+	uint64_t thresh_qint_idx : 7;
+	uint64_t reserved_563_563 : 1;
+	uint64_t err_qint_idx : 7;
+	uint64_t reserved_575_571 : 5;
+	uint64_t thresh : 36; /* W9 */
+	uint64_t reserved_615_612 : 4;
+	uint64_t fc_msh_dst : 11;
+	uint64_t reserved_630_627 : 4;
+	uint64_t op_dpc_ena : 1;
+	uint64_t op_dpc_set : 5;
+	uint64_t reserved_637_637 : 1;
+	uint64_t stream_ctx : 1;
+	uint64_t unified_ctx : 1;
+	uint64_t reserved_703_640 : 64; /* W10 */
+	uint64_t reserved_767_704 : 64; /* W11 */
+	uint64_t reserved_831_768 : 64; /* W12 */
+	uint64_t reserved_895_832 : 64; /* W13 */
+	uint64_t reserved_959_896 : 64; /* W14 */
+	uint64_t reserved_1023_960 : 64; /* W15 */
 };
 
 /* NPA queue interrupt context hardware structure */

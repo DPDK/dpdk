@@ -21,7 +21,9 @@
 
 #define ROC_AURA_OP_LIMIT_MASK (BIT_ULL(36) - 1)
 
-#define ROC_NPA_MAX_BLOCK_SZ		   (128 * 1024)
+#define ROC_NPA_MAX_BLOCK_SZ_CN9K	   (128 * 1024)
+#define ROC_NPA_MAX_BLOCK_SZ_CN10K	   (128 * 1024)
+#define ROC_NPA_MAX_BLOCK_SZ_CN20K	   (256 * 1024)
 #define ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS 512
 #define ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS  15U
 #define ROC_CN10K_NPA_BATCH_FREE_BURST_MAX 16U
@@ -35,6 +37,17 @@
  * outstanding CASPs as we run out of registers.
  */
 #define ROC_CN9K_NPA_BULK_ALLOC_MAX_PTRS 30
+
+static inline uint32_t
+roc_npa_max_block_size(void)
+{
+	if (roc_model_is_cn20k())
+		return ROC_NPA_MAX_BLOCK_SZ_CN20K;
+	else if (roc_model_is_cn10k())
+		return ROC_NPA_MAX_BLOCK_SZ_CN10K;
+	else
+		return ROC_NPA_MAX_BLOCK_SZ_CN9K;
+}
 
 /*
  * Generate 64bit handle to have optimized alloc and free aura operation.
@@ -767,8 +780,9 @@ int __roc_api roc_npa_dev_init(struct roc_npa *roc_npa);
 int __roc_api roc_npa_dev_fini(struct roc_npa *roc_npa);
 
 /* Flags to pool create */
-#define ROC_NPA_ZERO_AURA_F	    BIT(0)
-#define ROC_NPA_FORCE_OPAQUE_MODE_F BIT(1)
+#define ROC_NPA_ZERO_AURA_F		BIT(0)
+#define ROC_NPA_FORCE_OPAQUE_MODE_F	BIT(1)
+#define ROC_NPA_HALO_F			BIT(2)
 
 /* Enumerations */
 enum roc_npa_buf_type {
