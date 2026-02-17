@@ -18,15 +18,11 @@
 static __rte_always_inline void
 cn20k_wqe_to_mbuf(uint64_t wqe, const uint64_t __mbuf, uint8_t port_id, const uint32_t tag,
 		  const uint32_t flags, const void *const lookup_mem, uintptr_t cpth,
-		  uintptr_t sa_base)
+		  uintptr_t sa_base, uint64_t buf_sz)
 {
 	const uint64_t mbuf_init =
 		0x100010000ULL | RTE_PKTMBUF_HEADROOM | (flags & NIX_RX_OFFLOAD_TSTAMP_F ? 8 : 0);
 	struct rte_mbuf *mbuf = (struct rte_mbuf *)__mbuf;
-	uint64_t buf_sz = 0;
-
-	if (flags & NIX_RX_REAS_F)
-		buf_sz = cnxk_nix_inl_bufsize_get(port_id, lookup_mem);
 
 	cn20k_nix_cqe_to_mbuf((struct nix_cqe_hdr_s *)wqe, tag, (struct rte_mbuf *)mbuf, lookup_mem,
 			      mbuf_init | ((uint64_t)port_id) << 48, cpth, sa_base, buf_sz, flags);
@@ -66,6 +62,8 @@ cn20k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags, struc
 	uint64_t buf_sz = 0;
 	uintptr_t cpth = 0;
 	uint8_t loff = 0;
+	uint64_t w4;
+	bool is_oop;
 	int i;
 
 	mbuf_init |= ((uint64_t)port_id) << 48;
@@ -136,7 +134,12 @@ cn20k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags, struc
 				 */
 				*(uint64_t *)(laddr + (loff << 3)) = (uint64_t)mbuf;
 				loff = loff + 1;
-				mbuf = (struct rte_mbuf *)(*(uint64_t *)(cpth + 8) - m_sz);
+				w4 = *(uint64_t *)(cpth + 32);
+				is_oop = !((w4 >> 32) & 0x3) && ((w4 & 0xffffffff) == 1);
+				if ((flags & NIX_RX_REAS_F) && is_oop)
+					mbuf = nix_sec_oop_process(cpth, buf_sz);
+				else
+					mbuf = (struct rte_mbuf *)(*(uint64_t *)(cpth + 8) - m_sz);
 				/* Mark inner mbuf as get */
 				RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
 			}
@@ -176,6 +179,7 @@ cn20k_sso_hws_post_process(struct cn20k_sso_hws *ws, uint64_t *u64, const uint32
 		u64[1] = cn20k_cpt_crypto_adapter_vector_dequeue(u64[1]);
 	} else if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_ETHDEV) {
 		uint8_t port = CNXK_SUB_EVENT_FROM_TAG(u64[0]);
+		uint64_t buf_sz = 0;
 		uintptr_t cpth = 0;
 		uint64_t mbuf;
 
@@ -194,6 +198,8 @@ cn20k_sso_hws_post_process(struct cn20k_sso_hws *ws, uint64_t *u64, const uint32
 			uint8_t loff = 0;
 			uint16_t d_off;
 			uint64_t cq_w1;
+			uint64_t w4;
+			bool is_oop;
 
 			m = (struct rte_mbuf *)mbuf;
 			d_off = (*(uint64_t *)(u64[1] + 72)) - (uintptr_t)m;
@@ -210,12 +216,20 @@ cn20k_sso_hws_post_process(struct cn20k_sso_hws *ws, uint64_t *u64, const uint32
 				/* Mark meta mbuf as put */
 				RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
 
+				if (flags & NIX_RX_REAS_F)
+					buf_sz = cnxk_nix_inl_bufsize_get(port, lookup_mem);
 				/* Store meta in lmtline to free
 				 * Assume all meta's from same aura.
 				 */
 				*(uint64_t *)((uintptr_t)&iova + (loff << 3)) = (uint64_t)m;
 				loff = loff + 1;
-				mbuf = (uint64_t)(*(uint64_t *)(cpth + 8) - m_sz);
+				w4 = *(uint64_t *)(cpth + 32);
+				is_oop = !((w4 >> 32) & 0x3) && ((w4 & 0xffffffff) == 1);
+				if ((flags & NIX_RX_REAS_F) && is_oop)
+					mbuf = (uint64_t)nix_sec_oop_process(cpth, buf_sz);
+				else
+					mbuf = (uint64_t)(*(uint64_t *)(cpth + 8) - m_sz);
+
 				/* Mark inner mbuf as get */
 				RTE_MEMPOOL_CHECK_COOKIES(((struct rte_mbuf *)mbuf)->pool,
 							  (void **)&mbuf, 1, 1);
@@ -225,7 +239,7 @@ cn20k_sso_hws_post_process(struct cn20k_sso_hws *ws, uint64_t *u64, const uint32
 
 		u64[0] = CNXK_CLR_SUB_EVENT(u64[0]);
 		cn20k_wqe_to_mbuf(u64[1], mbuf, port, u64[0] & 0xFFFFF, flags, ws->lookup_mem, cpth,
-				  sa_base);
+				  sa_base, buf_sz);
 		if (flags & NIX_RX_OFFLOAD_TSTAMP_F)
 			cn20k_sso_process_tstamp(u64[1], mbuf, ws->tstamp[port]);
 		u64[1] = mbuf;
