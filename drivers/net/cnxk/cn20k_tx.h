@@ -520,6 +520,7 @@ cn20k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 		nixtx += 16;
 
 		w0 |= cn20k_nix_tx_ext_subs(flags) + 1ULL;
+		w0 |= sess_priv.chksum ? BIT_ULL(63) : BIT_ULL(62);
 		dptr += l2_len;
 		ucode_cmd[1] = dptr;
 		*cmd1 = vsetq_lane_u16(pkt_len + dlen_adj, *cmd1, 0);
@@ -660,6 +661,7 @@ cn20k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr, uin
 		nixtx += 16;
 
 		w0 |= cn20k_nix_tx_ext_subs(flags) + 1ULL;
+		w0 |= sess_priv.chksum ? BIT_ULL(63) : BIT_ULL(62);
 		dptr += l2_len;
 		ucode_cmd[1] = dptr;
 		sg->seg1_size = pkt_len + dlen_adj;
