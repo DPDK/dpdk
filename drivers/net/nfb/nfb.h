@@ -84,6 +84,7 @@ struct pmd_priv {
 	int             *queue_map_rx;
 	/** Mapping from DPDK TX queue index to firmware queue ID */
 	int             *queue_map_tx;
+	uint16_t        frame_len_max_cap;      /**< Maximum length obtained from Rx MAC */
 	bool ready;     /**< This structure is initialized for usage in secondary process */
 };
 

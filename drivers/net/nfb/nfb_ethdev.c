@@ -51,6 +51,7 @@ static struct nfb_pmd_internals_head nfb_eth_dev_list =
 	TAILQ_HEAD_INITIALIZER(nfb_eth_dev_list);
 
 static int nfb_eth_dev_uninit(struct rte_eth_dev *dev);
+static int nfb_eth_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
 static int
 nfb_mdio_read(void *priv, int prtad, int devad, uint16_t addr)
@@ -271,6 +272,10 @@ nfb_eth_dev_configure(struct rte_eth_dev *dev)
 	int ret;
 	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
 
+	ret = nfb_eth_mtu_set(dev, dev_conf->rxmode.mtu);
+	if (ret)
+		goto err_mtu_set;
+
 	if (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
 		ret = rte_mbuf_dyn_rx_timestamp_register
 				(&nfb_timestamp_dynfield_offset,
@@ -285,6 +290,7 @@ nfb_eth_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 
 err_ts_register:
+err_mtu_set:
 	nfb_eth_dev_uninit(dev);
 	return ret;
 }
@@ -330,7 +336,8 @@ nfb_eth_dev_info(struct rte_eth_dev *dev,
 
 	dev_info->max_mac_addrs = nfb_eth_get_max_mac_address_count(dev);
 
-	dev_info->max_rx_pktlen = (uint32_t)-1;
+	dev_info->max_rx_pktlen = priv->frame_len_max_cap;
+	dev_info->max_mtu = dev_info->max_rx_pktlen - (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN);
 	dev_info->max_rx_queues = priv->max_rx_queues;
 	dev_info->max_tx_queues = priv->max_tx_queues;
 	dev_info->speed_capa = RTE_ETH_LINK_SPEED_FIXED;
@@ -575,6 +582,40 @@ nfb_eth_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 		nc_rxmac_set_mac(internals->rxmac[i], index, 0, 0);
 }
 
+static uint16_t
+nfb_mac_read_frame_len_max_cap(struct pmd_internals *intl)
+{
+	unsigned int i;
+	uint16_t ret = UINT16_MAX;
+	struct nc_rxmac_status status;
+
+	for (i = 0; i < intl->max_rxmac; ++i) {
+		status.frame_length_max_capable = 0;
+		nc_rxmac_read_status(intl->rxmac[i], &status);
+		if (status.frame_length_max_capable && ret > status.frame_length_max_capable)
+			ret = status.frame_length_max_capable;
+	}
+	return ret;
+}
+
+static int
+nfb_eth_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	unsigned int i;
+	uint32_t frame_len;
+	struct pmd_internals *intl = dev->process_private;
+	struct pmd_priv *priv = dev->data->dev_private;
+
+	frame_len = (uint32_t)mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+	if (frame_len > priv->frame_len_max_cap)
+		return -EINVAL;
+
+	for (i = 0; i < intl->max_rxmac; ++i)
+		nc_rxmac_set_frame_length(intl->rxmac[i], frame_len, RXMAC_FRAME_LENGTH_MAX);
+
+	return 0;
+}
+
 static int
 nfb_eth_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
 		size_t fw_size)
@@ -690,6 +731,7 @@ static const struct eth_dev_ops ops = {
 	.mac_addr_set = nfb_eth_mac_addr_set,
 	.mac_addr_add = nfb_eth_mac_addr_add,
 	.mac_addr_remove = nfb_eth_mac_addr_remove,
+	.mtu_set = nfb_eth_mtu_set,
 	.fw_version_get = nfb_eth_fw_version_get,
 	.fec_get = nfb_eth_fec_get,
 	.fec_set = nfb_eth_fec_set,
@@ -792,6 +834,8 @@ nfb_eth_dev_init(struct rte_eth_dev *dev, void *init_data)
 				priv->queue_map_tx[cnt++] = mi->txq[i].id;
 			}
 		}
+
+		priv->frame_len_max_cap = nfb_mac_read_frame_len_max_cap(internals);
 
 		/* Allocate space for MAC addresses */
 		mac_count = nfb_eth_get_max_mac_address_count(dev);
