@@ -125,7 +125,7 @@ cpt_cnxk_parse_hdr_dump(FILE *file, const struct cpt_parse_hdr_s *cpth)
 static inline void
 cpt_cn10k_parse_hdr_dump(FILE *file, const struct cpt_cn10k_parse_hdr_s *cpth)
 {
-	struct cpt_frag_info_s *frag_info;
+	struct cpt_cn10k_frag_info_s *frag_info;
 	uint32_t offset;
 	uint64_t *slot;
 

@@ -549,30 +549,60 @@ union cpt_frag_info {
 	};
 };
 
-struct cpt_frag_info_s {
-	/* WORD 0 */
-	union {
-		uint64_t u64;
-		struct {
-			/* CPT HW swaps each 8B word implicitly */
-			union cpt_frag_info f0;
-			union cpt_frag_info f1;
-			union cpt_frag_info f2;
-			union cpt_frag_info f3;
-		};
-	} w0;
+union cpt_rxc_frag_info_u {
+	struct cpt_frag_info_s {
+		/* WORD 0 */
+		union {
+			uint64_t u64;
+			struct {
+				/* CPT HW swaps each 8B word implicitly */
+				union cpt_frag_info f3;
+				union cpt_frag_info f2;
+				union cpt_frag_info f1;
+				union cpt_frag_info f0;
+			};
+		} w0;
 
-	/* WORD 1 */
-	union {
-		uint64_t u64;
-		struct {
-			/* CPT HW swaps each 8B word implicitly */
-			uint16_t frag_size0;
-			uint16_t frag_size1;
-			uint16_t frag_size2;
-			uint16_t frag_size3;
-		};
-	} w1;
+		/* WORD 1 */
+		union {
+			uint64_t u64;
+			struct {
+				/* CPT HW swaps each 8B word implicitly */
+				uint16_t frag_size3;
+				uint16_t frag_size2;
+				uint16_t frag_size1;
+				uint16_t frag_size0;
+			};
+		} w1;
+	} s;
+
+	struct cpt_cn10k_frag_info_s {
+		/* WORD 0 */
+		union {
+			uint64_t u64;
+			struct {
+				/* CPT HW swaps each 8B word implicitly */
+				union cpt_frag_info f0;
+				union cpt_frag_info f1;
+				union cpt_frag_info f2;
+				union cpt_frag_info f3;
+			};
+		} w0;
+
+		/* WORD 1 */
+		union {
+			uint64_t u64;
+			struct {
+				/* CPT HW swaps each 8B word implicitly */
+				uint16_t frag_size0;
+				uint16_t frag_size1;
+				uint16_t frag_size2;
+				uint16_t frag_size3;
+			};
+		} w1;
+	} cn10k;
+
+	uint64_t u64[2];
 };
 
 /* CPT rxc pointer info structure */
@@ -591,29 +621,56 @@ struct cpt_rxc_ptr_info_s {
 };
 
 /* CPT rxc scatter/gather subdescriptor structure */
-struct cpt_rxc_sg_s {
-	/* WORD 0 */
-	union {
-		uint64_t u64;
-		struct {
-			uint16_t seg1_size;
-			uint16_t seg2_size;
-			uint16_t seg3_size;
-			uint16_t segs : 2;
-			uint16_t nxt_fst_frag : 3;
-			uint16_t blk_sz : 4;
-			uint16_t rsvd_63_57 : 7;
-		};
-	} w0;
+union cpt_rxc_sg_u {
+	struct cpt_rxc_sg_s {
+		/* WORD 0 */
+		union {
+			uint64_t u64;
+			struct {
+				uint16_t rsvd_63_57 : 7;
+				uint16_t blk_sz : 4;
+				uint16_t nxt_fst_frag : 3;
+				uint16_t segs : 2;
+				uint16_t seg3_size;
+				uint16_t seg2_size;
+				uint16_t seg1_size;
+			};
+		} w0;
 
-	/* WORD 1 */
-	uint64_t seg1_ptr;
+		/* WORD 1 */
+		uint64_t seg1_ptr;
 
-	/* WORD 2 */
-	uint64_t seg2_ptr;
+		/* WORD 2 */
+		uint64_t seg2_ptr;
 
-	/* WORD 3 */
-	uint64_t seg3_ptr;
+		/* WORD 3 */
+		uint64_t seg3_ptr;
+	} s;
+
+	struct cpt_cn10k_rxc_sg_s {
+		/* WORD 0 */
+		union {
+			uint64_t u64;
+			struct {
+				uint16_t seg1_size;
+				uint16_t seg2_size;
+				uint16_t seg3_size;
+				uint16_t segs : 2;
+				uint16_t rsvd_63_50 : 14;
+			};
+		} w0;
+
+		/* WORD 1 */
+		uint64_t seg1_ptr;
+
+		/* WORD 2 */
+		uint64_t seg2_ptr;
+
+		/* WORD 3 */
+		uint64_t seg3_ptr;
+	} cn10k;
+
+	uint64_t u64[4];
 };
 
 union cpt_fc_write_s {
