@@ -2,137 +2,106 @@
     Copyright 2019 Cesnet
     Copyright 2019 Netcope Technologies
 
-NFB poll mode driver library
-=================================
+NFB Poll Mode Driver
+====================
 
-The NFB poll mode driver library implements support for the Netcope
-FPGA Boards (**NFB-40G2, NFB-100G2, NFB-200G2QL**) and Silicom **FB2CGG3** card,
-FPGA-based programmable NICs. The NFB PMD uses interface provided by the libnfb
-library to communicate with these cards over the nfb layer.
+The NFB PMD implements support for the FPGA-based
+programmable NICs running `CESNET-NDK <https://www.liberouter.org/ndk/>`_
+based firmware (formerly known as the NetCOPE platform).
+The CESNET Network Development Kit offers
+wide spectrum of supported cards, for example:
+N6010, FB2CGG3 (Silicom Denmark),
+IA-420F, IA-440i (BittWare),
+AGI-FH400G (ReflexCES),
+and `many more <https://github.com/CESNET/ndk-fpga/tree/devel/cards>`_.
 
-More information about the
-`NFB cards <https://www.liberouter.org/technologies/cards/>`_
-and used technology
-(`Network Development Kit <https://www.liberouter.org/ndk/>`_)
-can be found on the `Liberouter website <http://www.liberouter.org/>`_.
+The CESNET-NDK framework is open source and
+can be found on `CESNET-NDK GitHub <https://github.com/CESNET/ndk-fpga>`_.
+Ready-to-use demo firmwares can be found
+on the `DYNANIC page <https://dyna-nic.com/try-now/>`_.
+
+Software compatibility and firmware for
+`historical cards <https://www.liberouter.org/technologies/cards/>`_
+are left unmaintained.
+
+Software prerequisites
+----------------------
+
+This PMD requires a Linux kernel module,
+which is responsible for initialization and allocation of resources
+needed for the nfb layer function.
+Communication between PMD and kernel modules is mediated by the libnfb library.
+The kernel module and library are not part of DPDK and must be installed separately.
+Dependencies can be found on GitHub:
+`nfb-framework <https://github.com/CESNET/ndk-sw>`_ as source code,
+or for RPM-based distributions, the prebuilt `nfb-framework` package on
+`Fedora Copr <https://copr.fedorainfracloud.org/coprs/g/CESNET/nfb-framework/>`_.
+
+Before starting the DPDK, make sure that the kernel module is loaded (`sudo modprobe nfb`)
+and the card is running the CESNET-NDK based firmware (`nfb-info -l`).
 
 .. note::
 
-   Currently the driver is supported only on x86_64 architectures.
-   Only x86_64 versions of the external libraries are provided.
+   Currently, the driver is supported only on x86_64 architectures.
 
-Prerequisites
--------------
+NFB card architecture
+---------------------
 
-This PMD requires kernel modules which are responsible for initialization and
-allocation of resources needed for nfb layer function.
-Communication between PMD and kernel modules is mediated by libnfb library.
-These kernel modules and library are not part of DPDK and must be installed
-separately:
+Ethernet Ports
+~~~~~~~~~~~~~~
 
-*  **libnfb library**
+The NFB cards are multi-port multi-queue cards,
+where (generally) data from any Ethernet port may be sent by the firmware
+to any queue.
 
-   The library provides API for initialization of nfb transfers, receiving and
-   transmitting data segments.
+The cards were historically represented in DPDK as a single port.
 
-*  **Kernel modules**
+.. note::
 
-   * nfb
+   Normally, one port corresponds to one channel,
+   but ports can often be configured in a separate manner.
+   For example one 100G port can be used as 4x25G or 4x10G independent Ethernet channels.
 
-   Kernel modules manage initialization of hardware, allocation and
-   sharing of resources for user space applications.
+By default, all ports are initialized and used for the allowed PCI device.
 
-Dependencies can be found here:
-`Netcope common <https://github.com/CESNET/ndk-sw>`_.
+PCIe slots
+~~~~~~~~~~
 
-Versions of the packages
-~~~~~~~~~~~~~~~~~~~~~~~~
+Some cards employ more than one PCIe device for better data throughput.
+This can be achieved by slot bifurcation (only a minor improvement)
+or by an add-on cable connected to another PCIe slot.
+Both improvements can work together, as is,
+for example, in the case of the AGI-FH400G card.
 
-The minimum version of the provided packages:
+Because primary and secondary slot(s) can be attached to different NUMA nodes
+(also applies for bifurcation on some HW),
+the data structures need to be correctly allocated.
+(Device-aware allocation matters also on IOMMU-enabled systems.)
+The firmware already provides DMA queue to PCI device mapping.
+The DPDK application just needs to use all PCI devices,
+otherwise some queues will not be available;
+provide all PCI endpoints listed in the `nfb-info -v` in the `allow` argument.
 
-* for DPDK from 19.05
+.. note::
 
-Configuration
--------------
+   For cards where the number of Ethernet ports is less than the number of PCI devices
+   (e.g., AGI-FH400G: 1 port, up to 4 PCI devices), the virtual DPDK ports are
+   created to achieve the best NUMA-aware throughput
+   (virtual ports lack a lot of configuration features).
+
+Features
+--------
 
 Timestamps
+~~~~~~~~~~
 
-The PMD supports hardware timestamps of frame receipt on physical network interface. In order to use
-the timestamps, the hardware timestamping unit must be enabled (follow the documentation of the NFB
-products). The standard `RTE_ETH_RX_OFFLOAD_TIMESTAMP` flag can be used for this feature.
+The PMD supports hardware timestamps of frame receipt on physical network interface.
+In order to use the timestamps, the hardware timestamping unit must be enabled
+(follow the documentation of the NFB products).
+The standard `RTE_ETH_RX_OFFLOAD_TIMESTAMP` flag can be used for this feature.
 
 When the timestamps are enabled, a timestamp validity flag is set in the MBUFs
 containing received frames and timestamp is inserted into the `rte_mbuf` struct.
 
 The timestamp is an `uint64_t` field and holds the number of nanoseconds
 elapsed since 1.1.1970 00:00:00 UTC.
-
-
-Using the NFB PMD
-----------------------
-
-Kernel modules have to be loaded before running the DPDK application.
-
-NFB card architecture
----------------------
-
-The NFB cards are multi-port multi-queue cards, where (generally) data from any
-Ethernet port may be sent to any queue.
-They are represented in DPDK as a single port.
-
-NFB-200G2QL card employs an add-on cable which allows to connect it to two
-physical PCI-E slots at the same time (see the diagram below).
-This is done to allow 200 Gbps of traffic to be transferred through the PCI-E
-bus (note that a single PCI-E 3.0 x16 slot provides only 125 Gbps theoretical
-throughput).
-
-Although each slot may be connected to a different CPU and therefore to a different
-NUMA node, the card is represented as a single port in DPDK. To work with data
-from the individual queues on the right NUMA node, connection of NUMA nodes on
-first and last queue (each NUMA node has half of the queues) need to be checked.
-
-Limitations
------------
-
-Driver is usable only on Linux architecture, namely on CentOS.
-
-Since a card is always represented as a single port, but can be connected to two
-NUMA nodes, there is need for manual check where master/slave is connected.
-
-Example of usage
-----------------
-
-Read packets from 0. and 1. receive queue and write them to 0. and 1.
-transmit queue:
-
-.. code-block:: console
-
-   ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 2 \
-   -- --port-topology=chained --rxq=2 --txq=2 --nb-cores=2 -i -a
-
-Example output:
-
-.. code-block:: console
-
-   [...]
-   EAL: PCI device 0000:06:00.0 on NUMA socket -1
-   EAL:   probe driver: 1b26:c1c1 net_nfb
-   PMD: Initializing NFB device (0000:06:00.0)
-   PMD: Available DMA queues RX: 8 TX: 8
-   PMD: NFB device (0000:06:00.0) successfully initialized
-   Interactive-mode selected
-   Auto-start selected
-   Configuring Port 0 (socket 0)
-   Port 0: 00:11:17:00:00:00
-   Checking link statuses...
-   Port 0 Link Up - speed 10000 Mbps - full-duplex
-   Done
-   Start automatic packet forwarding
-     io packet forwarding - CRC stripping disabled - packets/burst=32
-     nb forwarding cores=2 - nb forwarding ports=1
-     RX queues=2 - RX desc=128 - RX free threshold=0
-     RX threshold registers: pthresh=0 hthresh=0 wthresh=0
-     TX queues=2 - TX desc=512 - TX free threshold=0
-     TX threshold registers: pthresh=0 hthresh=0 wthresh=0
-     TX RS bit threshold=0 - TXQ flags=0x0
-   testpmd>
