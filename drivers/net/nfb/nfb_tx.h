@@ -17,7 +17,6 @@
 struct ndp_tx_queue {
 	struct nfb_device *nfb;     /* nfb dev structure */
 	struct ndp_queue *queue;    /* tx queue */
-	uint16_t          tx_queue_id;       /* index */
 	volatile uint64_t tx_pkts;  /* packets transmitted */
 	volatile uint64_t tx_bytes; /* bytes transmitted */
 	volatile uint64_t err_pkts; /* erroneous packets */
@@ -54,8 +53,8 @@ nfb_eth_tx_queue_setup(struct rte_eth_dev *dev,
  *
  * @param nfb
  *   Pointer to nfb device structure.
- * @param tx_queue_id
- *   TX queue index.
+ * @param qid
+ *   TX queue ID.
  * @param[out] txq
  *   Pointer to ndp_tx_queue output structure
  *
@@ -64,7 +63,7 @@ nfb_eth_tx_queue_setup(struct rte_eth_dev *dev,
  */
 int
 nfb_eth_tx_queue_init(struct nfb_device *nfb,
-	uint16_t tx_queue_id,
+	int qid,
 	struct ndp_tx_queue *txq);
 
 /**
