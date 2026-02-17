@@ -204,6 +204,8 @@ struct roc_npc_action {
 	enum roc_npc_action_type type; /**< Action type. */
 	const void *conf;	       /**< Pointer to action configuration object. */
 	uint16_t rss_repte_pf_func;    /**< Per flow tmp var for rss representee pffunc */
+	bool is_non_inp;	       /**< Non inplace config */
+	bool no_sec_action;	       /**< No security action */
 };
 
 struct roc_npc_action_sample {
@@ -282,6 +284,7 @@ struct roc_npc_sec_action {
 	 * XOR
 	 */
 	enum roc_npc_sec_action_alg alg;
+	bool is_non_inp;
 };
 
 struct roc_npc_attr {

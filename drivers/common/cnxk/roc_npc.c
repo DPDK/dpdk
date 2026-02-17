@@ -613,10 +613,12 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	const struct roc_npc_action_mark *act_mark;
 	const struct roc_npc_action_meter *act_mtr;
 	const struct roc_npc_action_queue *act_q;
+	const struct roc_npc_sec_action *sec_act;
 	const struct roc_npc_action_vf *vf_act;
 	uint8_t has_spi_to_sa_act = 0;
 	int sel_act, req_act = 0;
 	uint16_t pf_func, vf_id;
+	bool is_non_inp = false;
 	int errcode = 0;
 	int mark = 0;
 	int rq = 0;
@@ -704,6 +706,15 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 			 *  session_protocol ==
 			 *    NPC_SECURITY_PROTOCOL_IPSEC
 			 */
+
+			if (!actions->no_sec_action) {
+				sec_act = (const struct roc_npc_sec_action *)actions->conf;
+				sec_action = actions;
+				is_non_inp = sec_act ? sec_act->is_non_inp : false;
+			} else {
+				is_non_inp = actions->is_non_inp;
+			}
+
 			req_act |= ROC_NPC_ACTION_TYPE_SEC;
 			rq = 0;
 			roc_nix = roc_npc->roc_nix;
@@ -724,7 +735,6 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 
 			if (roc_nix_inl_dev_is_probed())
 				flow->is_inline_dev = 1;
-			sec_action = actions;
 			break;
 		case ROC_NPC_ACTION_TYPE_VLAN_STRIP:
 			req_act |= ROC_NPC_ACTION_TYPE_VLAN_STRIP;
@@ -931,6 +941,7 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 			flow->npc_action |= (uint64_t)rq << 20;
 			flow->npc_action2 =
 				roc_nix_inl_inb_ipsec_profile_id_get(roc_nix, true) << 8;
+			flow->npc_action2 |= is_non_inp ? (1ULL << 15) : 0;
 		} else {
 			flow->npc_action = NIX_RX_ACTIONOP_UCAST_IPSEC;
 			flow->npc_action |= (uint64_t)rq << 20;
