@@ -426,6 +426,29 @@ nfb_eth_link_update(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+nfb_eth_dev_set_link(struct pmd_internals *intl, bool val)
+{
+	int reg;
+	struct mdio_if_info *if_info;
+
+	if (!intl->max_eth)
+		return 0;
+
+	if_info = &intl->eth_node[0].if_info;
+
+	reg = nfb_mdio_if_read_pma(if_info, NFB_MDIO_PMA_CTRL);
+	if (reg < 0)
+		return reg;
+
+	/* Update PMA Reset flag if necessary (Reset flag set means link down) */
+	if ((reg & NFB_MDIO_PMA_CTRL_RESET) != (val ? 0 : NFB_MDIO_PMA_CTRL_RESET)) {
+		reg ^= NFB_MDIO_PMA_CTRL_RESET;
+		return nfb_mdio_if_write_pma(if_info, NFB_MDIO_PMA_CTRL, reg);
+	}
+	return 0;
+}
+
 /**
  * DPDK callback to bring the link UP.
  *
@@ -438,10 +461,14 @@ nfb_eth_link_update(struct rte_eth_dev *dev,
 static int
 nfb_eth_dev_set_link_up(struct rte_eth_dev *dev)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)
-		dev->process_private;
-
+	int ret;
+	struct pmd_internals *internals = dev->process_private;
 	uint16_t i;
+
+	ret = nfb_eth_dev_set_link(internals, true);
+	if (ret)
+		return ret;
+
 	for (i = 0; i < internals->max_rxmac; ++i)
 		nc_rxmac_enable(internals->rxmac[i]);
 
@@ -463,10 +490,15 @@ nfb_eth_dev_set_link_up(struct rte_eth_dev *dev)
 static int
 nfb_eth_dev_set_link_down(struct rte_eth_dev *dev)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)
-		dev->process_private;
+	int ret;
+	struct pmd_internals *internals = dev->process_private;
 
 	uint16_t i;
+
+	ret = nfb_eth_dev_set_link(internals, false);
+	if (ret)
+		return ret;
+
 	for (i = 0; i < internals->max_rxmac; ++i)
 		nc_rxmac_disable(internals->rxmac[i]);
 
