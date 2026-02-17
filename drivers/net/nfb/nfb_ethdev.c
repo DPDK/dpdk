@@ -601,6 +601,69 @@ nfb_eth_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
 	return 0;
 }
 
+static int
+nfb_eth_fec_get(struct rte_eth_dev *dev, uint32_t *fec_capa)
+{
+	int reg;
+	struct pmd_internals *intl = dev->process_private;
+	struct mdio_if_info *if_info;
+
+	*fec_capa = 0;
+	if (!intl->max_eth)
+		return 0;
+
+	if_info = &intl->eth_node[0].if_info;
+
+	reg = nfb_mdio_if_read_pma(if_info, NFB_MDIO_PMA_RSFEC_CR);
+	if (reg < 0)
+		return -EIO;
+
+	*fec_capa = (reg & NFB_MDIO_PMA_RSFEC_CR_ENABLE) ?
+			RTE_ETH_FEC_MODE_CAPA_MASK(RS) :
+			RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
+
+	return 0;
+}
+
+static int
+nfb_eth_fec_set(struct rte_eth_dev *dev, uint32_t fec_capa)
+{
+	int ret;
+	uint32_t fec_capa2 = 0;
+	int reg;
+
+	struct pmd_internals *intl = dev->process_private;
+	struct mdio_if_info *if_info;
+
+	if (!intl->max_eth)
+		return 0;
+
+	if_info = &intl->eth_node[0].if_info;
+
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(AUTO))
+		return -EINVAL;
+
+	reg = nfb_mdio_if_read_pma(if_info, NFB_MDIO_PMA_RSFEC_CR);
+	if (reg < 0)
+		return -EIO;
+
+	reg = (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(RS)) ?
+			(reg | NFB_MDIO_PMA_RSFEC_CR_ENABLE) :
+			(reg & ~NFB_MDIO_PMA_RSFEC_CR_ENABLE);
+	ret = nfb_mdio_if_write_pma(if_info, NFB_MDIO_PMA_RSFEC_CR, reg);
+	if (ret < 0)
+		return -EIO;
+
+	ret = nfb_eth_fec_get(dev, &fec_capa2);
+	if (ret)
+		return ret;
+
+	if (fec_capa != fec_capa2)
+		return -EINVAL;
+
+	return 0;
+}
+
 static const struct eth_dev_ops ops = {
 	.dev_start = nfb_eth_dev_start,
 	.dev_stop = nfb_eth_dev_stop,
@@ -628,6 +691,8 @@ static const struct eth_dev_ops ops = {
 	.mac_addr_add = nfb_eth_mac_addr_add,
 	.mac_addr_remove = nfb_eth_mac_addr_remove,
 	.fw_version_get = nfb_eth_fw_version_get,
+	.fec_get = nfb_eth_fec_get,
+	.fec_set = nfb_eth_fec_set,
 };
 
 /**
