@@ -464,6 +464,7 @@ cn20k_eth_sec_post_event(struct rte_eth_dev *eth_dev, struct roc_ow_ipsec_outb_s
 			desc.subtype = RTE_ETH_EVENT_IPSEC_SA_BYTE_HARD_EXPIRY;
 		break;
 	case ROC_IE_OW_UCC_SUCCESS_SA_SOFTEXP_FIRST:
+	case ROC_IE_OW_UCC_SUCCESS_SA_SOFTEXP_AGAIN:
 		if (sa->w2.s.life_unit == ROC_IE_OW_SA_LIFE_UNIT_PKTS)
 			desc.subtype = RTE_ETH_EVENT_IPSEC_SA_PKT_EXPIRY;
 		else
