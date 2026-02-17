@@ -491,6 +491,7 @@ npc_parse_spi_to_sa_action(struct roc_npc *roc_npc, const struct roc_npc_action 
 			   struct roc_npc_flow *flow, uint8_t *has_spi_to_sa_action)
 {
 	const struct roc_npc_sec_action *sec_action;
+	struct roc_nix *roc_nix = roc_npc->roc_nix;
 	struct nix_spi_to_sa_add_req *req;
 	struct nix_spi_to_sa_add_rsp *rsp;
 	struct nix_inl_dev *inl_dev;
@@ -546,6 +547,9 @@ npc_parse_spi_to_sa_action(struct roc_npc *roc_npc, const struct roc_npc_action 
 		req->spi_index = plt_be_to_cpu_32(flow->spi_to_sa_info.spi);
 		req->match_id = flow->match_id;
 		req->valid = true;
+		if (roc_model_is_cn20k())
+			req->inline_profile_id =
+				roc_nix_inl_inb_ipsec_profile_id_get(roc_nix, true);
 		rc = mbox_process_msg(mbox, (void *)&rsp);
 		if (rc)
 			return rc;
