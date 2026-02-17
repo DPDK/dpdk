@@ -41,6 +41,8 @@
 #define ROC_NIX_INL_REAS_ZOMBIE_LIMIT	  0xFFF
 #define ROC_NIX_INL_REAS_ZOMBIE_THRESHOLD 10
 
+#define ROC_NIX_INL_RXC_QUE_BLK_THR 0x40UL
+
 enum nix_inl_event_type {
 	NIX_INL_CPT_CQ = 1,
 	NIX_INL_SSO,

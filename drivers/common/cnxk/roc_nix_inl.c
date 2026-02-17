@@ -968,12 +968,6 @@ roc_nix_reassembly_configure(struct roc_cpt_rxc_time_cfg *req_cfg, uint32_t max_
 	if (!idev)
 		return -EFAULT;
 
-	roc_cpt = idev->cpt;
-	if (!roc_cpt) {
-		plt_err("Cannot support inline inbound, cryptodev not probed");
-		return -ENOTSUP;
-	}
-
 	cfg.step = req_cfg->step ? req_cfg->step :
 				   (max_wait_time * 1000 / ROC_NIX_INL_REAS_ACTIVE_LIMIT);
 	cfg.zombie_limit =
@@ -985,8 +979,14 @@ roc_nix_reassembly_configure(struct roc_cpt_rxc_time_cfg *req_cfg, uint32_t max_
 	cfg.active_thres =
 		req_cfg->active_thres ? req_cfg->active_thres : ROC_NIX_INL_REAS_ACTIVE_THRESHOLD;
 
-	if (roc_model_is_cn10k())
+	if (roc_model_is_cn10k()) {
+		roc_cpt = idev->cpt;
+		if (!roc_cpt) {
+			plt_err("Cryptodev not probed");
+			return -ENOTSUP;
+		}
 		return roc_cpt_rxc_time_cfg(roc_cpt, &cfg);
+	}
 
 	inl_dev = idev->nix_inl_dev;
 	if (!inl_dev) {
@@ -1009,6 +1009,7 @@ roc_nix_reassembly_configure(struct roc_cpt_rxc_time_cfg *req_cfg, uint32_t max_
 	req->zombie_thres = cfg.zombie_thres;
 	req->active_limit = cfg.active_limit;
 	req->active_thres = cfg.active_thres;
+	req->cpt_af_rxc_que_cfg = ROC_NIX_INL_RXC_QUE_BLK_THR << 32;
 
 	rc = mbox_process(mbox);
 exit:
