@@ -55,81 +55,87 @@ static const struct rte_ether_addr eth_addr = {
 };
 
 /**
- * Open all RX DMA queues
+ * Open Rx and Tx MAC components associated with current ifc
  *
- * @param dev
- *   Pointer to nfb device.
- * @param[out] rxmac
- *   Pointer to output array of nc_rxmac
- * @param[out] max_rxmac
- *   Pointer to output max index of rxmac
+ * @param intl
+ *   Pointer to driver internal structure
+ * @param params
+ *   Pointer to init parameters structure
  */
-static void
-nfb_nc_rxmac_init(struct nfb_device *nfb,
-	struct nc_rxmac *rxmac[RTE_MAX_NC_RXMAC],
-	uint16_t *max_rxmac)
+static int
+nfb_nc_eth_init(struct pmd_internals *intl, struct nfb_ifc_create_params *params)
 {
-	*max_rxmac = 0;
-	while ((rxmac[*max_rxmac] = nc_rxmac_open_index(nfb, *max_rxmac)))
-		++(*max_rxmac);
+	int ret;
+	int i, rxm, txm;
+	struct nc_ifc_info *ifc = params->ifc_info;
+	struct nc_ifc_map_info *mi = &params->map_info;
+
+	ret = -ENOMEM;
+	if (ifc->eth_cnt == 0)
+		return 0;
+
+	intl->rxmac = calloc(ifc->eth_cnt, sizeof(*intl->rxmac));
+	if (intl->rxmac == NULL)
+		goto err_alloc_rxmac;
+
+	intl->txmac = calloc(ifc->eth_cnt, sizeof(*intl->txmac));
+	if (intl->txmac == NULL)
+		goto err_alloc_txmac;
+
+	/* Some eths may not have assigned MAC nodes, hence use separate var for indexing */
+	rxm = 0;
+	txm = 0;
+	for (i = 0; i < mi->eth_cnt; i++) {
+		if (mi->eth[i].ifc != ifc->id)
+			continue;
+
+		if (rxm >= ifc->eth_cnt || txm >= ifc->eth_cnt) {
+			NFB_LOG(ERR, "MAC mapping inconsistent");
+			ret = -EINVAL;
+			goto err_map_inconsistent;
+		}
+
+		intl->rxmac[rxm] = nc_rxmac_open(intl->nfb, mi->eth[i].node_rxmac);
+		if (intl->rxmac[rxm])
+			rxm++;
+
+		intl->txmac[txm] = nc_txmac_open(intl->nfb, mi->eth[i].node_txmac);
+		if (intl->txmac[txm])
+			txm++;
+	}
+
+	intl->max_rxmac = rxm;
+	intl->max_txmac = txm;
+	return 0;
+
+err_map_inconsistent:
+	for (i = 0; i < txm; i++)
+		nc_txmac_close(intl->txmac[i]);
+	for (i = 0; i < rxm; i++)
+		nc_rxmac_close(intl->rxmac[i]);
+	free(intl->txmac);
+err_alloc_txmac:
+	free(intl->rxmac);
+err_alloc_rxmac:
+	return ret;
 }
 
 /**
- * Open all TX DMA queues
- *
- * @param dev
- *   Pointer to nfb device.
- * @param[out] txmac
- *   Pointer to output array of nc_txmac
- * @param[out] max_rxmac
- *   Pointer to output max index of txmac
+ * Close all Rx+Tx MAC components
+ * @param intl
+ *   Pointer to internal driver structure
  */
 static void
-nfb_nc_txmac_init(struct nfb_device *nfb,
-	struct nc_txmac *txmac[RTE_MAX_NC_TXMAC],
-	uint16_t *max_txmac)
-{
-	*max_txmac = 0;
-	while ((txmac[*max_txmac] = nc_txmac_open_index(nfb, *max_txmac)))
-		++(*max_txmac);
-}
-
-/**
- * Close all RX DMA queues
- *
- * @param rxmac
- *   Pointer to array of nc_rxmac
- * @param max_rxmac
- *   Maximum index of rxmac
- */
-static void
-nfb_nc_rxmac_deinit(struct nc_rxmac *rxmac[RTE_MAX_NC_RXMAC],
-	uint16_t max_rxmac)
+nfb_nc_eth_deinit(struct pmd_internals *intl)
 {
 	uint16_t i;
-	for (i = 0; i < max_rxmac; i++) {
-		nc_rxmac_close(rxmac[i]);
-		rxmac[i] = NULL;
-	}
-}
+	for (i = 0; i < intl->max_txmac; i++)
+		nc_txmac_close(intl->txmac[i]);
+	for (i = 0; i < intl->max_rxmac; i++)
+		nc_rxmac_close(intl->rxmac[i]);
 
-/**
- * Close all TX DMA queues
- *
- * @param txmac
- *   Pointer to array of nc_txmac
- * @param max_txmac
- *   Maximum index of txmac
- */
-static void
-nfb_nc_txmac_deinit(struct nc_txmac *txmac[RTE_MAX_NC_TXMAC],
-	uint16_t max_txmac)
-{
-	uint16_t i;
-	for (i = 0; i < max_txmac; i++) {
-		nc_txmac_close(txmac[i]);
-		txmac[i] = NULL;
-	}
+	free(intl->txmac);
+	free(intl->rxmac);
 }
 
 /**
@@ -346,7 +352,7 @@ nfb_eth_link_update(struct rte_eth_dev *dev,
 	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	link.link_autoneg = RTE_ETH_LINK_SPEED_FIXED;
 
-	if (internals->rxmac[0] != NULL) {
+	if (internals->max_rxmac) {
 		nc_rxmac_read_status(internals->rxmac[0], &status);
 
 		switch (status.speed) {
@@ -571,12 +577,9 @@ nfb_eth_dev_init(struct rte_eth_dev *dev, void *init_data)
 	max_rx_queues = ifc->rxq_cnt;
 	max_tx_queues = ifc->txq_cnt;
 
-	nfb_nc_rxmac_init(internals->nfb,
-		internals->rxmac,
-		&internals->max_rxmac);
-	nfb_nc_txmac_init(internals->nfb,
-		internals->txmac,
-		&internals->max_txmac);
+	ret = nfb_nc_eth_init(internals, params);
+	if (ret)
+		goto err_nc_eth_init;
 
 	/* Set rx, tx burst functions */
 	dev->rx_pkt_burst = nfb_eth_ndp_rx;
@@ -662,10 +665,9 @@ err_queue_map:
 	rte_free(priv->queue_map_rx);
 err_alloc_queue_map:
 err_secondary_not_ready:
-	nfb_nc_rxmac_deinit(internals->rxmac, internals->max_rxmac);
-	nfb_nc_txmac_deinit(internals->txmac, internals->max_txmac);
+	nfb_nc_eth_deinit(internals);
+err_nc_eth_init:
 	nfb_close(internals->nfb);
-
 err_nfb_open:
 	rte_free(internals);
 err_alloc_internals:
@@ -692,8 +694,7 @@ nfb_eth_dev_uninit(struct rte_eth_dev *dev)
 
 	TAILQ_REMOVE(&nfb_eth_dev_list, internals, eth_dev_list);
 
-	nfb_nc_rxmac_deinit(internals->rxmac, internals->max_rxmac);
-	nfb_nc_txmac_deinit(internals->txmac, internals->max_txmac);
+	nfb_nc_eth_deinit(internals);
 	nfb_close(internals->nfb);
 
 	rte_free(internals);
