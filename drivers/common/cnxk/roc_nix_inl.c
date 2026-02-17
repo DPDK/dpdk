@@ -19,6 +19,10 @@ PLT_STATIC_ASSERT(ROC_NIX_INL_OT_IPSEC_INB_SA_SZ ==
 PLT_STATIC_ASSERT(ROC_NIX_INL_OT_IPSEC_INB_SA_SZ == 1024);
 PLT_STATIC_ASSERT(ROC_NIX_INL_OT_IPSEC_OUTB_SA_SZ ==
 		  1UL << ROC_NIX_INL_OT_IPSEC_OUTB_SA_SZ_LOG2);
+PLT_STATIC_ASSERT(ROC_NIX_INL_OT_IPSEC_INB_SA_SZ == ROC_NIX_INL_OW_IPSEC_INB_SA_SZ);
+PLT_STATIC_ASSERT(ROC_NIX_INL_OT_IPSEC_INB_SA_SZ == ROC_NIX_INL_ON_IPSEC_INB_SA_SZ);
+PLT_STATIC_ASSERT(ROC_NIX_INL_OT_IPSEC_OUTB_SA_SZ == ROC_NIX_INL_OW_IPSEC_OUTB_SA_SZ);
+PLT_STATIC_ASSERT(ROC_NIX_INL_OT_IPSEC_OUTB_SA_SZ == ROC_NIX_INL_ON_IPSEC_OUTB_SA_SZ);
 
 static int
 nix_inl_meta_aura_destroy(struct roc_nix *roc_nix)
@@ -427,12 +431,8 @@ nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 	/* CN9K SA size is different */
 	if (roc_nix->custom_inb_sa)
 		inb_sa_sz = ROC_NIX_INL_INB_CUSTOM_SA_SZ;
-	else if (roc_model_is_cn9k())
-		inb_sa_sz = ROC_NIX_INL_ON_IPSEC_INB_SA_SZ;
-	else if (roc_model_is_cn10k())
-		inb_sa_sz = ROC_NIX_INL_OT_IPSEC_INB_SA_SZ;
 	else
-		inb_sa_sz = ROC_NIX_INL_OW_IPSEC_INB_SA_SZ;
+		inb_sa_sz = ROC_NIX_INL_IPSEC_INB_SA_SZ;
 
 	/* Alloc contiguous memory for Inbound SA's */
 	nix->inb_sa_sz[profile_id] = inb_sa_sz;
@@ -1198,10 +1198,9 @@ nix_inl_eng_caps_get(struct nix *nix)
 	inst.rptr = (uint64_t)rptr;
 	inst.w4.s.opcode_major = ROC_LOADFVC_MAJOR_OP;
 	inst.w4.s.opcode_minor = ROC_LOADFVC_MINOR_OP;
-	if (roc_model_is_cn9k() || roc_model_is_cn10k())
-		inst.w7.s.egrp = ROC_LEGACY_CPT_DFLT_ENG_GRP_SE;
-	else
-		inst.w7.s.egrp = ROC_CPT_DFLT_ENG_GRP_SE;
+
+	/* SE engine group ID is same for all platform */
+	inst.w7.s.egrp = ROC_CPT_DFLT_ENG_GRP_SE;
 
 	/* Use 1 min timeout for the poll */
 	const uint64_t timeout = plt_tsc_cycles() + 60 * plt_tsc_hz();
@@ -1614,13 +1613,7 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 	if (!roc_nix->ipsec_out_max_sa)
 		goto skip_sa_alloc;
 
-	/* CN9K SA size is different */
-	if (roc_model_is_cn9k())
-		sa_sz = ROC_NIX_INL_ON_IPSEC_OUTB_SA_SZ;
-	else if (roc_model_is_cn10k())
-		sa_sz = ROC_NIX_INL_OT_IPSEC_OUTB_SA_SZ;
-	else
-		sa_sz = ROC_NIX_INL_OW_IPSEC_OUTB_SA_SZ;
+	sa_sz = ROC_NIX_INL_IPSEC_OUTB_SA_SZ;
 
 	/* Alloc contiguous memory of outbound SA */
 	sa_base = plt_zmalloc(sa_sz * roc_nix->ipsec_out_max_sa,

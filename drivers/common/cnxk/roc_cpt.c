@@ -677,10 +677,9 @@ cpt_get_blkaddr(struct dev *dev)
 	 * attached to. Assume CPT LF's of only one block are attached
 	 * to a pffunc.
 	 */
-	if (dev_is_vf(dev))
-		off = RVU_VF_BLOCK_ADDRX_DISC(RVU_BLOCK_ADDR_CPT1);
-	else
-		off = RVU_PF_BLOCK_ADDRX_DISC(RVU_BLOCK_ADDR_CPT1);
+
+	/* PF and VF block address offset is same, hence using common offset */
+	off = RVU_BLOCK_ADDRX_DISC(RVU_BLOCK_ADDR_CPT1);
 
 	reg = plt_read64(dev->bar2 + off);
 

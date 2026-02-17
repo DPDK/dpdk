@@ -105,6 +105,8 @@
 #define RVU_VF_MBOX_REGION		 (0xc0000ull) /* [CN10K, .) */
 #define RVU_VF_MSIX_PBAX(a)		 (0xf0000ull | (uint64_t)(a) << 3)
 
+#define RVU_BLOCK_ADDRX_DISC(a) RVU_PF_BLOCK_ADDRX_DISC(a)
+
 /* CN20k RVU mbox registers */
 #define RVU_MBOX_AF_AFPFX_TRIGX(a)    (0x9000 | (a) << 3)
 #define RVU_MBOX_PF_PFAF_TRIGX(a)     RVU_PF_PFAF_MBOXX(a)
