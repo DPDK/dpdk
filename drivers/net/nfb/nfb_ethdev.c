@@ -14,6 +14,8 @@
 #include <netcope/eth.h>
 #include <netcope/rxmac.h>
 #include <netcope/txmac.h>
+#include <netcope/mdio.h>
+#include <netcope/ieee802_3.h>
 
 #include <ethdev_pci.h>
 #include <rte_kvargs.h>
@@ -23,6 +25,8 @@
 #include "nfb_tx.h"
 #include "nfb_rxmode.h"
 #include "nfb.h"
+
+#include "nfb_mdio.h"
 
 static const char * const VALID_KEYS[] = {
 	NFB_ARG_PORT,
@@ -48,6 +52,18 @@ static struct nfb_pmd_internals_head nfb_eth_dev_list =
 
 static int nfb_eth_dev_uninit(struct rte_eth_dev *dev);
 
+static int
+nfb_mdio_read(void *priv, int prtad, int devad, uint16_t addr)
+{
+	return nc_mdio_read((struct nc_mdio *)priv, prtad, devad, addr);
+}
+
+static int
+nfb_mdio_write(void *priv, int prtad, int devad, uint16_t addr, uint16_t val)
+{
+	return nc_mdio_write((struct nc_mdio *)priv, prtad, devad, addr, val);
+}
+
 /**
  * Default MAC addr
  */
@@ -67,9 +83,16 @@ static int
 nfb_nc_eth_init(struct pmd_internals *intl, struct nfb_ifc_create_params *params)
 {
 	int ret;
-	int i, rxm, txm;
+	int i, rxm, txm, eth;
 	struct nc_ifc_info *ifc = params->ifc_info;
 	struct nc_ifc_map_info *mi = &params->map_info;
+
+	int node, node_cp;
+	const int32_t *prop32;
+	int proplen;
+	const void *fdt;
+
+	fdt = nfb_get_fdt(intl->nfb);
 
 	ret = -ENOMEM;
 	if (ifc->eth_cnt == 0)
@@ -83,14 +106,19 @@ nfb_nc_eth_init(struct pmd_internals *intl, struct nfb_ifc_create_params *params
 	if (intl->txmac == NULL)
 		goto err_alloc_txmac;
 
+	intl->eth_node = calloc(ifc->eth_cnt, sizeof(*intl->eth_node));
+	if (intl->eth_node == NULL)
+		goto err_alloc_ethnode;
+
 	/* Some eths may not have assigned MAC nodes, hence use separate var for indexing */
 	rxm = 0;
 	txm = 0;
+	eth = 0;
 	for (i = 0; i < mi->eth_cnt; i++) {
 		if (mi->eth[i].ifc != ifc->id)
 			continue;
 
-		if (rxm >= ifc->eth_cnt || txm >= ifc->eth_cnt) {
+		if (rxm >= ifc->eth_cnt || txm >= ifc->eth_cnt || eth >= ifc->eth_cnt) {
 			NFB_LOG(ERR, "MAC mapping inconsistent");
 			ret = -EINVAL;
 			goto err_map_inconsistent;
@@ -103,17 +131,37 @@ nfb_nc_eth_init(struct pmd_internals *intl, struct nfb_ifc_create_params *params
 		intl->txmac[txm] = nc_txmac_open(intl->nfb, mi->eth[i].node_txmac);
 		if (intl->txmac[txm])
 			txm++;
+
+		node = nc_eth_get_pcspma_control_node(fdt, mi->eth[i].node_eth, &node_cp);
+
+		intl->eth_node[eth].if_info.dev = nc_mdio_open(intl->nfb, node, node_cp);
+		if (intl->eth_node[eth].if_info.dev) {
+			intl->eth_node[eth].if_info.prtad = 0;
+			intl->eth_node[eth].if_info.mdio_read = nfb_mdio_read;
+			intl->eth_node[eth].if_info.mdio_write = nfb_mdio_write;
+
+			prop32 = fdt_getprop(fdt, node_cp, "dev", &proplen);
+			if (proplen == sizeof(*prop32))
+				intl->eth_node[eth].if_info.prtad = fdt32_to_cpu(*prop32);
+
+			eth++;
+		}
 	}
 
 	intl->max_rxmac = rxm;
 	intl->max_txmac = txm;
+	intl->max_eth = eth;
 	return 0;
 
 err_map_inconsistent:
+	for (i = 0; i < eth; i++)
+		nc_mdio_close(intl->eth_node[i].if_info.dev);
 	for (i = 0; i < txm; i++)
 		nc_txmac_close(intl->txmac[i]);
 	for (i = 0; i < rxm; i++)
 		nc_rxmac_close(intl->rxmac[i]);
+	free(intl->eth_node);
+err_alloc_ethnode:
 	free(intl->txmac);
 err_alloc_txmac:
 	free(intl->rxmac);
@@ -130,6 +178,8 @@ static void
 nfb_nc_eth_deinit(struct pmd_internals *intl)
 {
 	uint16_t i;
+	for (i = 0; i < intl->max_eth; i++)
+		nc_mdio_close(intl->eth_node[i].if_info.dev);
 	for (i = 0; i < intl->max_txmac; i++)
 		nc_txmac_close(intl->txmac[i]);
 	for (i = 0; i < intl->max_rxmac; i++)
@@ -276,15 +326,21 @@ nfb_eth_dev_info(struct rte_eth_dev *dev,
 	struct rte_eth_dev_info *dev_info)
 {
 	struct pmd_priv *priv = dev->data->dev_private;
+	struct pmd_internals *intl = dev->process_private;
 
 	dev_info->max_mac_addrs = nfb_eth_get_max_mac_address_count(dev);
 
 	dev_info->max_rx_pktlen = (uint32_t)-1;
 	dev_info->max_rx_queues = priv->max_rx_queues;
 	dev_info->max_tx_queues = priv->max_tx_queues;
-	dev_info->speed_capa = RTE_ETH_LINK_SPEED_100G;
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_FIXED;
 	dev_info->rx_offload_capa =
 		RTE_ETH_RX_OFFLOAD_TIMESTAMP;
+
+	if (intl->max_eth) {
+		nfb_mdio_cl45_pma_get_speed_capa(&intl->eth_node[0].if_info,
+				&dev_info->speed_capa);
+	}
 
 	return 0;
 }
@@ -353,24 +409,8 @@ nfb_eth_link_update(struct rte_eth_dev *dev,
 	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	link.link_autoneg = RTE_ETH_LINK_SPEED_FIXED;
 
-	if (internals->max_rxmac) {
-		nc_rxmac_read_status(internals->rxmac[0], &status);
-
-		switch (status.speed) {
-		case MAC_SPEED_10G:
-			link.link_speed = RTE_ETH_SPEED_NUM_10G;
-			break;
-		case MAC_SPEED_40G:
-			link.link_speed = RTE_ETH_SPEED_NUM_40G;
-			break;
-		case MAC_SPEED_100G:
-			link.link_speed = RTE_ETH_SPEED_NUM_100G;
-			break;
-		default:
-			link.link_speed = RTE_ETH_SPEED_NUM_NONE;
-			break;
-		}
-	}
+	if (internals->max_eth)
+		link.link_speed = ieee802_3_get_pma_speed_value(&internals->eth_node->if_info);
 
 	for (i = 0; i < internals->max_rxmac; ++i) {
 		nc_rxmac_read_status(internals->rxmac[i], &status);

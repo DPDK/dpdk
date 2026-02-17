@@ -21,6 +21,7 @@ sources = files(
         'nfb_rxmode.c',
         'nfb_stats.c',
         'nfb_tx.c',
+        'nfb_mdio.c',
 )
 
 cflags += no_wvla_cflag
