@@ -212,6 +212,7 @@ nix_inl_inb_queue_setup(struct nix_inl_dev *inl_dev, uint8_t slot_id)
 	cpt_req->slot = slot_id;
 	cpt_req->rx_queue_id = qid;
 	cpt_req->eng_grpmsk = inl_dev->eng_grpmask;
+	cpt_req->pdb_ena = 1;
 	rc = mbox_process(mbox);
 	if (rc) {
 		plt_err("Failed to configure CPT LF for inline processing, rc=%d", rc);

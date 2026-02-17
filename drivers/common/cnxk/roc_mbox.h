@@ -2423,7 +2423,9 @@ struct cpt_rx_inline_qcfg_req {
 	uint8_t __io pf_func_ctx;
 	uint8_t __io inflight_limit;
 	uint8_t __io queue_pri;
-	uint8_t __io rsvd[32]; /* For future extensions */
+	uint8_t __io cq_remap;
+	uint8_t __io pdb_ena;
+	uint8_t __io rsvd[30]; /* For future extensions */
 };
 
 #define CPT_INLINE_INBOUND  0
