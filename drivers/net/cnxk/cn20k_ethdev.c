@@ -35,7 +35,7 @@ nix_rx_offload_flags(struct rte_eth_dev *eth_dev)
 	if (!dev->ptype_disable)
 		flags |= NIX_RX_OFFLOAD_PTYPE_F;
 
-	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY && !dev->nix.custom_inb_sa)
 		flags |= NIX_RX_OFFLOAD_SECURITY_F;
 
 	return flags;
