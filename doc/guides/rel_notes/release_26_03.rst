@@ -77,6 +77,10 @@ New Features
 
   * Added support for pre and post VF reset callbacks.
 
+* **Updated Marvell cnxk net driver.**
+
+  * Added out-of-place support for CN20K SoC.
+
 * **Updated ZTE zxdh ethernet driver.**
 
   * Added support for modifying queue depth.

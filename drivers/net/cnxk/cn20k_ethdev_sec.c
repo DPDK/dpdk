@@ -9,6 +9,7 @@
 #include <rte_security_driver.h>
 
 #include <cn20k_ethdev.h>
+#include <cn20k_rx.h>
 #include <cnxk_security.h>
 #include <roc_priv.h>
 
@@ -810,10 +811,6 @@ cn20k_eth_sec_session_create(void *device, struct rte_security_session_conf *con
 			inb_sa_dptr->w0.s.count_mib_pkts = 1;
 		}
 
-		/* Enable out-of-place processing */
-		if (ipsec->options.ingress_oop)
-			inb_sa_dptr->w0.s.pkt_format = ROC_IE_OT_SA_PKT_FMT_FULL;
-
 		/* Prepare session priv */
 		sess_priv.inb_sa = 1;
 		sess_priv.sa_idx = ipsec->spi & spi_mask;
@@ -843,6 +840,13 @@ cn20k_eth_sec_session_create(void *device, struct rte_security_session_conf *con
 		if (ipsec->options.ingress_oop)
 			dev->inb.nb_oop++;
 
+		/* Update function pointer to handle OOP sessions */
+		if (dev->inb.nb_oop && !(dev->rx_offload_flags & NIX_RX_REAS_F)) {
+			dev->rx_offload_flags |= NIX_RX_REAS_F;
+			cn20k_eth_set_rx_function(eth_dev);
+			if (cnxk_ethdev_rx_offload_cb)
+				cnxk_ethdev_rx_offload_cb(eth_dev->data->port_id, NIX_RX_REAS_F);
+		}
 	} else {
 		struct roc_ow_ipsec_outb_sa *outb_sa, *outb_sa_dptr;
 		struct cn20k_outb_priv_data *outb_priv;
@@ -986,6 +990,12 @@ cn20k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
 		if (eth_sec->inb_oop)
 			dev->inb.nb_oop--;
 
+		/* Clear offload flags if was used by OOP */
+		if (!dev->inb.nb_oop && !dev->inb.reass_en &&
+		    dev->rx_offload_flags & NIX_RX_REAS_F) {
+			dev->rx_offload_flags &= ~NIX_RX_REAS_F;
+			cn20k_eth_set_rx_function(eth_dev);
+		}
 	} else {
 		/* Disable SA */
 		sa_dptr = dev->outb.sa_dptr;
@@ -1063,10 +1073,6 @@ cn20k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 			inb_sa_dptr->w0.s.count_mib_bytes = 1;
 			inb_sa_dptr->w0.s.count_mib_pkts = 1;
 		}
-
-		/* Enable out-of-place processing */
-		if (ipsec->options.ingress_oop)
-			inb_sa_dptr->w0.s.pkt_format = ROC_IE_OT_SA_PKT_FMT_FULL;
 
 		rc = roc_nix_inl_ctx_write(&dev->nix, inb_sa_dptr, eth_sec->sa, eth_sec->inb,
 					   sizeof(struct roc_ow_ipsec_inb_sa));
