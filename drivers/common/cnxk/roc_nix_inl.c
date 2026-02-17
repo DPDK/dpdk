@@ -1573,8 +1573,18 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 		lf->msixoff = nix->cpt_msixoff[i];
 		lf->pci_dev = nix->pci_dev;
 
+		if (roc_feature_nix_has_cpt_cq_support()) {
+			if (inl_dev && inl_dev->cpt_cq_ena) {
+				lf->dq_ack_ena = true;
+				lf->cpt_cq_ena = true;
+				lf->cq_entry_size = 0;
+				lf->cq_all = 0;
+				lf->cq_size = lf->nb_desc;
+			}
+		}
+
 		/* Setup CPT LF instruction queue */
-		rc = cpt_lf_init(lf, false);
+		rc = cpt_lf_init(lf, lf->cpt_cq_ena);
 		if (rc) {
 			plt_err("Failed to initialize CPT LF, rc=%d", rc);
 			goto lf_fini;
@@ -1591,6 +1601,13 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 
 		/* Enable IQ */
 		roc_cpt_iq_enable(lf);
+		/* Enable CQ */
+		if (lf->cpt_cq_ena) {
+			rc = cpt_lf_register_irqs(lf, cpt_lf_misc_irq, nix_inl_cpt_done_irq);
+			if (rc)
+				goto lf_fini;
+			roc_cpt_cq_enable(lf);
+		}
 	}
 
 	if (!roc_nix->ipsec_out_max_sa)
@@ -1635,6 +1652,9 @@ skip_sa_alloc:
 	nix->outb_se_ring_base =
 		roc_nix->port_id * ROC_NIX_SOFT_EXP_PER_PORT_MAX_RINGS;
 
+	/* Fetch engine capabilities */
+	nix_inl_eng_caps_get(nix);
+
 	if (inl_dev == NULL || !inl_dev->set_soft_exp_poll) {
 		nix->outb_se_ring_cnt = 0;
 		return 0;
@@ -1658,13 +1678,15 @@ skip_sa_alloc:
 		}
 	}
 
-	/* Fetch engine capabilities */
-	nix_inl_eng_caps_get(nix);
 	return 0;
 
 lf_fini:
-	for (j = i - 1; j >= 0; j--)
-		cpt_lf_fini(&lf_base[j], false);
+	for (j = i - 1; j >= 0; j--) {
+		lf = &lf_base[j];
+		cpt_lf_fini(lf, lf->cpt_cq_ena);
+		if (lf->cpt_cq_ena)
+			cpt_lf_unregister_irqs(lf, cpt_lf_misc_irq, nix_inl_cpt_done_irq);
+	}
 	plt_free(lf_base);
 lf_free:
 	rc |= cpt_lfs_free(dev);
@@ -1681,6 +1703,7 @@ roc_nix_inl_outb_fini(struct roc_nix *roc_nix)
 	struct idev_cfg *idev = idev_get_cfg();
 	struct dev *dev = &nix->dev;
 	struct nix_inl_dev *inl_dev;
+	struct roc_cpt_lf *lf;
 	uint64_t *ring_base;
 	int i, rc, ret = 0;
 
@@ -1690,9 +1713,12 @@ roc_nix_inl_outb_fini(struct roc_nix *roc_nix)
 	nix->inl_outb_ena = false;
 
 	/* Cleanup CPT LF instruction queue */
-	for (i = 0; i < nix->nb_cpt_lf; i++)
-		cpt_lf_fini(&lf_base[i], false);
-
+	for (i = 0; i < nix->nb_cpt_lf; i++) {
+		lf = &lf_base[i];
+		cpt_lf_fini(lf, lf->cpt_cq_ena);
+		if (lf->cpt_cq_ena)
+			cpt_lf_unregister_irqs(lf, cpt_lf_misc_irq, nix_inl_cpt_done_irq);
+	}
 	/* Free LF resources */
 	rc = cpt_lfs_free(dev);
 	if (rc)
