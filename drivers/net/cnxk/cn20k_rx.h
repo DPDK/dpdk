@@ -112,7 +112,7 @@ nix_sec_flush_meta(uintptr_t laddr, uint16_t lmt_id, uint8_t loff, uintptr_t aur
 
 	/* Update aura handle */
 	*(uint64_t *)laddr =
-		(((uint64_t)(loff & 0x1) << 32) | roc_npa_aura_handle_to_aura(aura_handle));
+		(((uint64_t)(loff & 0x3) << 32) | roc_npa_aura_handle_to_aura(aura_handle));
 
 	pa |= ((uint64_t)(loff >> 1) << 4);
 	roc_lmt_submit_steorl(lmt_id, pa);
@@ -1561,7 +1561,7 @@ cn20k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts, c
 			/* Check if lmtline border is crossed and adjust lnum */
 			if (loff > 15) {
 				/* Update aura handle */
-				*(uint64_t *)(laddr - 8) = (((uint64_t)(15 & 0x1) << 32) |
+				*(uint64_t *)(laddr - 8) = (((uint64_t)(15 & 0x3) << 32) |
 							    roc_npa_aura_handle_to_aura(meta_aura));
 				loff = loff - 15;
 				shft += 3;
@@ -1582,7 +1582,7 @@ cn20k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts, c
 				uint64_t data = BIT_ULL(48) - 1;
 
 				/* Update aura handle */
-				*(uint64_t *)(laddr - 8) = (((uint64_t)(loff & 0x1) << 32) |
+				*(uint64_t *)(laddr - 8) = (((uint64_t)(loff & 0x3) << 32) |
 							    roc_npa_aura_handle_to_aura(meta_aura));
 
 				data = (data & ~(0x7UL << shft)) | (((uint64_t)loff >> 1) << shft);
@@ -1605,7 +1605,7 @@ cn20k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts, c
 
 		/* Update aura handle */
 		*(uint64_t *)(laddr - 8) =
-			(((uint64_t)(loff & 0x1) << 32) | roc_npa_aura_handle_to_aura(meta_aura));
+			(((uint64_t)(loff & 0x3) << 32) | roc_npa_aura_handle_to_aura(meta_aura));
 
 		data = (data & ~(0x7UL << shft)) | (((uint64_t)loff >> 1) << shft);
 
