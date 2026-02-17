@@ -712,7 +712,7 @@ cpt_lf_cq_init(struct roc_cpt_lf *lf)
 
 	lf_cq_base.s.addr = addr >> 7;
 	plt_write64(lf_cq_base.u, lf->rbase + CPT_LF_CQ_BASE);
-	lf_cq_size.s.size = PLT_ALIGN(len, ROC_ALIGN);
+	lf_cq_size.s.size = lf->cq_size;
 	plt_write64(lf_cq_size.u, lf->rbase + CPT_LF_CQ_SIZE);
 
 	return 0;

@@ -164,6 +164,7 @@ struct roc_cpt_lf {
 	bool cpt_cq_ena;
 	uint8_t cq_entry_size;
 	uint32_t cq_size;
+	uint32_t cq_head;
 	/* End of Input parameters */
 	struct plt_pci_device *pci_dev;
 	struct dev *dev;
