@@ -3783,6 +3783,9 @@ int
 mlx5_read_queue_counter(struct mlx5_devx_obj *q_counter, const char *ctr_name,
 		      uint64_t *stat)
 {
+	uint32_t val;
+	int ret;
+
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		DRV_LOG(WARNING,
 			"DevX %s counter is not supported in the secondary process", ctr_name);
@@ -3792,7 +3795,11 @@ mlx5_read_queue_counter(struct mlx5_devx_obj *q_counter, const char *ctr_name,
 	if (q_counter == NULL)
 		return -EINVAL;
 
-	return mlx5_devx_cmd_queue_counter_query(q_counter, 0, (uint32_t *)stat);
+	ret = mlx5_devx_cmd_queue_counter_query(q_counter, 0, &val);
+	if (ret == 0)
+		*stat = val;
+
+	return ret;
 }
 
 /**
