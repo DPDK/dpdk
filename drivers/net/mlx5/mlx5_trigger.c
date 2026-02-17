@@ -59,10 +59,11 @@ mlx5_txq_start(struct rte_eth_dev *dev)
 	for (cnt = log_max_wqe; cnt > 0; cnt -= 1) {
 		for (i = 0; i != priv->txqs_n; ++i) {
 			struct mlx5_txq_ctrl *txq_ctrl = mlx5_txq_get(dev, i);
-			struct mlx5_txq_data *txq_data = &txq_ctrl->txq;
+			struct mlx5_txq_data *txq_data;
 
 			if (!txq_ctrl)
 				continue;
+			txq_data = &txq_ctrl->txq;
 			if (txq_data->elts_n != cnt) {
 				mlx5_txq_release(dev, i);
 				continue;
