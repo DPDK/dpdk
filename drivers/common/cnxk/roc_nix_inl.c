@@ -101,10 +101,12 @@ nix_inl_meta_aura_create(struct idev_cfg *idev, struct roc_nix *roc_nix, uint16_
 			nb_bufs += roc_npa_aura_op_limit_get(inl_rq->spb_aura_handle);
 
 		/* Override meta buf size from NIX devargs if present */
-		if (roc_nix->meta_buf_sz)
+		if (roc_nix->meta_buf_sz) {
 			buf_sz = roc_nix->meta_buf_sz;
-		else
-			buf_sz = first_skip + NIX_INL_META_SIZE;
+		} else {
+			buf_sz = NIX_INL_META_SIZE;
+			buf_sz += roc_nix->def_first_skip ? roc_nix->def_first_skip : first_skip;
+		}
 
 		/* Create Metapool name */
 		snprintf(mempool_name, sizeof(mempool_name), "NIX_INL_META_POOL_%d",
@@ -304,10 +306,14 @@ nix_inl_global_meta_buffer_validate(struct idev_cfg *idev, struct roc_nix_rq *rq
 static int
 nix_inl_local_meta_buffer_validate(struct roc_nix *roc_nix, struct roc_nix_rq *rq)
 {
+	uint32_t buf_sz = NIX_INL_META_SIZE;
+
+	buf_sz += roc_nix->def_first_skip ? roc_nix->def_first_skip : rq->first_skip;
+
 	/* Validate if we have enough space for meta buffer */
-	if (roc_nix->buf_sz && (rq->first_skip + NIX_INL_META_SIZE > roc_nix->buf_sz)) {
-		plt_err("Meta buffer size %u not sufficient to meet RQ first skip %u",
-			roc_nix->buf_sz, rq->first_skip);
+	if (roc_nix->buf_sz && (buf_sz > roc_nix->buf_sz)) {
+		plt_err("Meta buffer size %u is not sufficient to meet minimum required %u",
+			roc_nix->buf_sz, buf_sz);
 		return -EIO;
 	}
 
@@ -1018,7 +1024,7 @@ exit:
 }
 
 static void
-nix_inl_rq_mask_init(struct nix_rq_cpt_field_mask_cfg_req *msk_req)
+nix_inl_rq_mask_init(struct nix_rq_cpt_field_mask_cfg_req *msk_req, uint8_t first_skip)
 {
 	int i;
 
@@ -1041,6 +1047,8 @@ nix_inl_rq_mask_init(struct nix_rq_cpt_field_mask_cfg_req *msk_req)
 	msk_req->rq_set.spb_drop_ena = 0;
 	msk_req->rq_set.xqe_drop_ena = 0;
 	msk_req->rq_set.spb_ena = 1;
+	if (first_skip)
+		msk_req->rq_set.first_skip = first_skip;
 
 	if (!roc_feature_nix_has_second_pass_drop()) {
 		msk_req->rq_set.ena = 1;
@@ -1065,6 +1073,8 @@ nix_inl_rq_mask_init(struct nix_rq_cpt_field_mask_cfg_req *msk_req)
 	msk_req->rq_mask.spb_drop_ena = 0;
 	msk_req->rq_mask.xqe_drop_ena = 0;
 	msk_req->rq_mask.spb_ena = 0;
+	if (first_skip)
+		msk_req->rq_mask.first_skip = 0;
 }
 
 static int
@@ -1087,7 +1097,7 @@ nix_inl_legacy_rq_mask_setup(struct roc_nix *roc_nix, bool enable)
 	if (msk_req == NULL)
 		goto exit;
 
-	nix_inl_rq_mask_init(msk_req);
+	nix_inl_rq_mask_init(msk_req, 0);
 	if (roc_nix->local_meta_aura_ena) {
 		aura_handle = roc_nix->meta_aura_handle;
 		buf_sz = roc_nix->buf_sz;
@@ -1100,10 +1110,10 @@ nix_inl_legacy_rq_mask_setup(struct roc_nix *roc_nix, bool enable)
 		buf_sz = inl_cfg->buf_sz;
 	}
 
-	msk_req->ipsec_cfg1.spb_cpt_aura = roc_npa_aura_handle_to_aura(aura_handle);
-	msk_req->ipsec_cfg1.rq_mask_enable = enable;
-	msk_req->ipsec_cfg1.spb_cpt_sizem1 = (buf_sz >> 7) - 1;
-	msk_req->ipsec_cfg1.spb_cpt_enable = enable;
+	msk_req->ipsec_cfg1_inline_replay.spb_cpt_aura = roc_npa_aura_handle_to_aura(aura_handle);
+	msk_req->ipsec_cfg1_inline_replay.rq_mask_enable = enable;
+	msk_req->ipsec_cfg1_inline_replay.spb_cpt_sizem1 = (buf_sz >> 7) - 1;
+	msk_req->ipsec_cfg1_inline_replay.spb_cpt_enable = enable;
 
 	rc = mbox_process(mbox);
 exit:
@@ -1116,10 +1126,8 @@ nix_inl_rq_mask_cfg(struct roc_nix *roc_nix, bool enable)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct nix_rq_cpt_field_mask_cfg_req *msk_req;
-	struct idev_cfg *idev = idev_get_cfg();
-	struct nix_rx_inl_lf_cfg_req *lf_cfg;
-	struct idev_nix_inl_cfg *inl_cfg;
 	uint64_t aura_handle;
+	uint8_t first_skip;
 	struct mbox *mbox;
 	int rc = -ENOSPC;
 	uint64_t buf_sz;
@@ -1133,21 +1141,8 @@ nix_inl_rq_mask_cfg(struct roc_nix *roc_nix, bool enable)
 	if (msk_req == NULL)
 		goto exit;
 
-	nix_inl_rq_mask_init(msk_req);
-	rc = mbox_process(mbox);
-	if (rc) {
-		plt_err("Failed to setup NIX Inline RQ mask, rc=%d", rc);
-		goto exit;
-	}
-
-	/* SPB setup */
-	if (!roc_nix->local_meta_aura_ena && !roc_nix->custom_meta_aura_ena)
-		goto exit;
-
-	if (!idev)
-		return -ENOENT;
-
-	inl_cfg = &idev->inl_cfg;
+	first_skip = roc_nix->def_first_skip ? (roc_nix->def_first_skip / 8) : 0;
+	nix_inl_rq_mask_init(msk_req, first_skip);
 
 	if (roc_nix->local_meta_aura_ena) {
 		aura_handle = roc_nix->meta_aura_handle;
@@ -1157,28 +1152,19 @@ nix_inl_rq_mask_cfg(struct roc_nix *roc_nix, bool enable)
 			rc = -EINVAL;
 			goto exit;
 		}
-	} else {
-		aura_handle = roc_npa_zero_aura_handle();
-		buf_sz = inl_cfg->buf_sz;
+
+		/* SPB setup */
+		msk_req->ipsec_cfg1_inline_replay.spb_cpt_aura =
+			roc_npa_aura_handle_to_aura(aura_handle);
+		msk_req->ipsec_cfg1_inline_replay.rq_mask_enable = enable;
+		msk_req->ipsec_cfg1_inline_replay.spb_cpt_sizem1 = (buf_sz >> 7) - 1;
+		msk_req->ipsec_cfg1_inline_replay.spb_cpt_enable = enable;
 	}
 
-	/* SPB setup */
-	lf_cfg = mbox_alloc_msg_nix_rx_inl_lf_cfg(mbox);
-	if (lf_cfg == NULL) {
-		rc = -ENOSPC;
-		goto exit;
-	}
-
-	lf_cfg->rx_inline_sa_base = (uintptr_t)nix->inb_sa_base;
-	lf_cfg->rx_inline_cfg0 = nix->rx_inline_cfg0;
-	lf_cfg->profile_id = nix->ipsec_prof_id;
-	if (enable)
-		lf_cfg->rx_inline_cfg1 =
-			(nix->rx_inline_cfg1 | BIT_ULL(37) | ((buf_sz >> 7) - 1) << 38 |
-			 roc_npa_aura_handle_to_aura(aura_handle) << 44);
-	else
-		lf_cfg->rx_inline_cfg1 = nix->rx_inline_cfg1;
 	rc = mbox_process(mbox);
+	if (rc)
+		plt_err("Failed to setup NIX Inline RQ mask, rc=%d", rc);
+
 exit:
 	mbox_put(mbox);
 	return rc;

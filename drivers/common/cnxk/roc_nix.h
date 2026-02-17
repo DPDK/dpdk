@@ -590,6 +590,7 @@ struct roc_nix {
 	bool force_tail_drop;
 	bool dis_xqe_drop;
 	bool sq_resize_ena;
+	uint8_t def_first_skip;
 	/* End of input parameters */
 	/* LMT line base for "Per Core Tx LMT line" mode*/
 	uintptr_t lmt_base;
