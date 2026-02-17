@@ -11,6 +11,7 @@
 
 #include <nfb/nfb.h>
 #include <nfb/ndp.h>
+#include <netcope/eth.h>
 #include <netcope/rxmac.h>
 #include <netcope/txmac.h>
 
@@ -665,10 +666,14 @@ nfb_eth_dev_init(struct rte_eth_dev *dev, void *init_data)
 			goto err_malloc_mac_addrs;
 		}
 
-		rte_eth_random_addr(eth_addr_init.addr_bytes);
-		eth_addr_init.addr_bytes[0] = eth_addr.addr_bytes[0];
-		eth_addr_init.addr_bytes[1] = eth_addr.addr_bytes[1];
-		eth_addr_init.addr_bytes[2] = eth_addr.addr_bytes[2];
+		ret = nc_ifc_get_default_mac(internals->nfb, ifc->id, eth_addr_init.addr_bytes,
+			sizeof(eth_addr_init.addr_bytes));
+		if (ret != 0) {
+			rte_eth_random_addr(eth_addr_init.addr_bytes);
+			eth_addr_init.addr_bytes[0] = eth_addr.addr_bytes[0];
+			eth_addr_init.addr_bytes[1] = eth_addr.addr_bytes[1];
+			eth_addr_init.addr_bytes[2] = eth_addr.addr_bytes[2];
+		}
 
 		nfb_eth_mac_addr_set(dev, &eth_addr_init);
 		rte_ether_addr_copy(&eth_addr_init, &data->mac_addrs[0]);
