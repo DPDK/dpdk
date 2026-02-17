@@ -68,6 +68,12 @@ New Features
 * **Updated CESNET nfb ethernet driver.**
 
   * The timestamp value has been updated to make it usable.
+  * The DPDK port now represents just one Ethernet port instead of all Ethernet ports on the NIC.
+  * All ports are used by default, but a subset can be selected using the ``port`` argument.
+  * Report firmware version.
+  * Common CESNET-NDK-based adapters have been added,
+    including the FB2CGHH (Silicom Denmark) and XpressSX AGI-FH400G (Reflex CES).
+
 
 * **Updated Google Virtual Ethernet (gve) driver.**
 
