@@ -221,8 +221,9 @@ def find_strings(buf: bytes, prefix: str) -> Iterator[str]:
             if b == 0:
                 # end of string
                 s = view[start:i].tobytes().decode("ascii")
-                if s.startswith(prefix):
-                    yield s[len(prefix) :]
+                idx = s.find(prefix)
+                if idx >= 0:
+                    yield s[idx + len(prefix) :]
             # There can be byte sequences where a non-printable byte
             # follows a printable one. Ignore that.
             start = None
