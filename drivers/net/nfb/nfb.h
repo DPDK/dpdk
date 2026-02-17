@@ -11,6 +11,7 @@
 #include <nfb/ndp.h>
 #include <netcope/rxmac.h>
 #include <netcope/txmac.h>
+#include <netcope/mdio_if_info.h>
 #include <netcope/info.h>
 
 extern int nfb_logtype;
@@ -50,6 +51,10 @@ extern int nfb_logtype;
 	NFB_ARG_PORT "=<number>" \
 	""
 
+struct eth_node {
+	struct mdio_if_info if_info;    /**< MDIO interface handles */
+};
+
 /*
  * Handles obtained from the libnfb: each process must use own instance.
  * Stored inside dev->process_private.
@@ -57,8 +62,10 @@ extern int nfb_logtype;
 struct pmd_internals {
 	uint16_t         max_rxmac;     /**< Count of valid rxmac items */
 	uint16_t         max_txmac;     /**< Count of valid txmac items */
+	uint16_t         max_eth;       /**< Count of valid eth nodes */
 	struct nc_rxmac  **rxmac;       /**< Array of Rx MAC handles */
 	struct nc_txmac  **txmac;       /**< Array of Tx MAC handles */
+	struct eth_node	 *eth_node;     /**< Array of Eth nodes */
 	struct nfb_device *nfb;
 
 	TAILQ_ENTRY(pmd_internals) eth_dev_list;  /**< Item in list of all devices */
