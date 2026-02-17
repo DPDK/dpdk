@@ -106,3 +106,19 @@ containing received frames and timestamp is inserted into the `rte_mbuf` struct.
 
 The timestamp is an `uint64_t` field and holds the number of nanoseconds
 elapsed since 1.1.1970 00:00:00 UTC.
+
+Simulation
+~~~~~~~~~~
+
+The CESNET-NDK framework offers the possibility of simulating the firmware together with DPDK.
+This allows for easy debugging of a packet flow behaviour with a specific firmware configuration.
+The DPDK NFB driver can be connected to the simulator (Questa/ModelSim/nvc) via a virtual device:
+
+.. code-block:: console
+
+   dpdk-testpmd
+      --vdev=eth_vdev_nfb,dev=libnfb-ext-grpc.so:grpc+dma_vas:localhost:50051,queue_driver=native
+      --iova-mode=va -- -i
+
+More info about the simulation can be found int the CESNET-NDK `documentation
+<https://cesnet.github.io/ndk-fpga/devel/ndk_apps/minimal/tests/cocotb/readme.html>`_.
