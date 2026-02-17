@@ -389,3 +389,16 @@ fill_items(struct rte_flow_item *items,
 
 	items[items_counter].type = RTE_FLOW_ITEM_TYPE_END;
 }
+
+void
+fill_items_template(struct rte_flow_item *items, uint64_t *flow_items, uint32_t outer_ip_src,
+		    uint8_t core_idx)
+{
+	uint8_t i;
+
+	fill_items(items, flow_items, outer_ip_src, core_idx);
+
+	/* For templates, set spec to NULL - only mask matters for template matching */
+	for (i = 0; items[i].type != RTE_FLOW_ITEM_TYPE_END; i++)
+		items[i].spec = NULL;
+}

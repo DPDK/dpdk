@@ -22,4 +22,8 @@ void fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 	uint64_t encap_data, uint64_t decap_data, uint8_t core_idx,
 	bool unique_data, uint8_t rx_queues_count, uint16_t dst_port);
 
+/* Fill actions template for async flow API (types only, no values) */
+void fill_actions_template(struct rte_flow_action *actions, struct rte_flow_action *masks,
+			   uint64_t *flow_actions, bool *need_wire_orig_table);
+
 #endif /* FLOW_PERF_ACTION_GEN */

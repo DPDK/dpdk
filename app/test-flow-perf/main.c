@@ -37,9 +37,11 @@
 #include <rte_mtr.h>
 #include <rte_os_shim.h>
 
-#include "config.h"
 #include "actions_gen.h"
+#include "async_flow.h"
+#include "config.h"
 #include "flow_gen.h"
+#include "rte_common.h"
 
 #define MAX_BATCHES_COUNT          100
 #define DEFAULT_RULES_COUNT    4000000
@@ -81,6 +83,9 @@ static bool enable_fwd;
 static bool unique_data;
 static bool policy_mtr;
 static bool packet_mode;
+static bool async_mode;
+static uint32_t async_queue_size = 1024;
+static uint32_t async_push_batch = 256;
 
 static uint8_t rx_queues_count;
 static uint8_t tx_queues_count;
@@ -598,6 +603,13 @@ usage(char *progname)
 		"Encapped data is fixed with pattern: ether,ipv4,udp,vxlan\n"
 		"With fixed values\n");
 	printf("  --vxlan-decap: add vxlan_decap action to flow actions\n");
+
+	printf("\nAsync flow API options:\n");
+	printf("  --async: enable async flow API mode\n");
+	printf("  --async-queue-size=N: size of each async queue,"
+	       " default is 4096\n");
+	printf("  --async-push-batch=N: flows to batch before push,"
+	       " default is 256\n");
 }
 
 static void
@@ -655,86 +667,90 @@ args_parse(int argc, char **argv)
 
 	static const struct option lgopts[] = {
 		/* Control */
-		{ "help",                       0, 0, 0 },
-		{ "rules-count",                1, 0, 0 },
-		{ "rules-batch",                1, 0, 0 },
-		{ "dump-iterations",            0, 0, 0 },
-		{ "deletion-rate",              0, 0, 0 },
-		{ "query-rate",                 0, 0, 0 },
-		{ "dump-socket-mem",            0, 0, 0 },
-		{ "enable-fwd",                 0, 0, 0 },
-		{ "unique-data",                0, 0, 0 },
-		{ "portmask",                   1, 0, 0 },
-		{ "hairpin-conf",               1, 0, 0 },
-		{ "cores",                      1, 0, 0 },
-		{ "random-priority",            1, 0, 0 },
-		{ "meter-profile-alg",          1, 0, 0 },
-		{ "rxq",                        1, 0, 0 },
-		{ "txq",                        1, 0, 0 },
-		{ "rxd",                        1, 0, 0 },
-		{ "txd",                        1, 0, 0 },
-		{ "mbuf-size",                  1, 0, 0 },
-		{ "mbuf-cache-size",            1, 0, 0 },
-		{ "total-mbuf-count",           1, 0, 0 },
+		{"help", 0, 0, 0},
+		{"rules-count", 1, 0, 0},
+		{"rules-batch", 1, 0, 0},
+		{"dump-iterations", 0, 0, 0},
+		{"deletion-rate", 0, 0, 0},
+		{"query-rate", 0, 0, 0},
+		{"dump-socket-mem", 0, 0, 0},
+		{"enable-fwd", 0, 0, 0},
+		{"unique-data", 0, 0, 0},
+		{"portmask", 1, 0, 0},
+		{"hairpin-conf", 1, 0, 0},
+		{"cores", 1, 0, 0},
+		{"random-priority", 1, 0, 0},
+		{"meter-profile-alg", 1, 0, 0},
+		{"rxq", 1, 0, 0},
+		{"txq", 1, 0, 0},
+		{"rxd", 1, 0, 0},
+		{"txd", 1, 0, 0},
+		{"mbuf-size", 1, 0, 0},
+		{"mbuf-cache-size", 1, 0, 0},
+		{"total-mbuf-count", 1, 0, 0},
 		/* Attributes */
-		{ "ingress",                    0, 0, 0 },
-		{ "egress",                     0, 0, 0 },
-		{ "transfer",                   0, 0, 0 },
-		{ "group",                      1, 0, 0 },
+		{"ingress", 0, 0, 0},
+		{"egress", 0, 0, 0},
+		{"transfer", 0, 0, 0},
+		{"group", 1, 0, 0},
 		/* Items */
-		{ "ether",                      0, 0, 0 },
-		{ "vlan",                       0, 0, 0 },
-		{ "ipv4",                       0, 0, 0 },
-		{ "ipv6",                       0, 0, 0 },
-		{ "tcp",                        0, 0, 0 },
-		{ "udp",                        0, 0, 0 },
-		{ "vxlan",                      0, 0, 0 },
-		{ "vxlan-gpe",                  0, 0, 0 },
-		{ "gre",                        0, 0, 0 },
-		{ "geneve",                     0, 0, 0 },
-		{ "gtp",                        0, 0, 0 },
-		{ "meta",                       0, 0, 0 },
-		{ "tag",                        0, 0, 0 },
-		{ "icmpv4",                     0, 0, 0 },
-		{ "icmpv6",                     0, 0, 0 },
+		{"ether", 0, 0, 0},
+		{"vlan", 0, 0, 0},
+		{"ipv4", 0, 0, 0},
+		{"ipv6", 0, 0, 0},
+		{"tcp", 0, 0, 0},
+		{"udp", 0, 0, 0},
+		{"vxlan", 0, 0, 0},
+		{"vxlan-gpe", 0, 0, 0},
+		{"gre", 0, 0, 0},
+		{"geneve", 0, 0, 0},
+		{"gtp", 0, 0, 0},
+		{"meta", 0, 0, 0},
+		{"tag", 0, 0, 0},
+		{"icmpv4", 0, 0, 0},
+		{"icmpv6", 0, 0, 0},
 		/* Actions */
-		{ "port-id",                    2, 0, 0 },
-		{ "rss",                        0, 0, 0 },
-		{ "queue",                      0, 0, 0 },
-		{ "jump",                       0, 0, 0 },
-		{ "mark",                       0, 0, 0 },
-		{ "count",                      0, 0, 0 },
-		{ "set-meta",                   0, 0, 0 },
-		{ "set-tag",                    0, 0, 0 },
-		{ "drop",                       0, 0, 0 },
-		{ "hairpin-queue",              1, 0, 0 },
-		{ "hairpin-rss",                1, 0, 0 },
-		{ "set-src-mac",                0, 0, 0 },
-		{ "set-dst-mac",                0, 0, 0 },
-		{ "set-src-ipv4",               0, 0, 0 },
-		{ "set-dst-ipv4",               0, 0, 0 },
-		{ "set-src-ipv6",               0, 0, 0 },
-		{ "set-dst-ipv6",               0, 0, 0 },
-		{ "set-src-tp",                 0, 0, 0 },
-		{ "set-dst-tp",                 0, 0, 0 },
-		{ "inc-tcp-ack",                0, 0, 0 },
-		{ "dec-tcp-ack",                0, 0, 0 },
-		{ "inc-tcp-seq",                0, 0, 0 },
-		{ "dec-tcp-seq",                0, 0, 0 },
-		{ "set-ttl",                    0, 0, 0 },
-		{ "dec-ttl",                    0, 0, 0 },
-		{ "set-ipv4-dscp",              0, 0, 0 },
-		{ "set-ipv6-dscp",              0, 0, 0 },
-		{ "flag",                       0, 0, 0 },
-		{ "meter",                      0, 0, 0 },
-		{ "raw-encap",                  1, 0, 0 },
-		{ "raw-decap",                  1, 0, 0 },
-		{ "vxlan-encap",                0, 0, 0 },
-		{ "vxlan-decap",                0, 0, 0 },
-		{ "policy-mtr",                 1, 0, 0 },
-		{ "meter-profile",              1, 0, 0 },
-		{ "packet-mode",                0, 0, 0 },
-		{ 0, 0, 0, 0 },
+		{"port-id", 2, 0, 0},
+		{"rss", 0, 0, 0},
+		{"queue", 0, 0, 0},
+		{"jump", 0, 0, 0},
+		{"mark", 0, 0, 0},
+		{"count", 0, 0, 0},
+		{"set-meta", 0, 0, 0},
+		{"set-tag", 0, 0, 0},
+		{"drop", 0, 0, 0},
+		{"hairpin-queue", 1, 0, 0},
+		{"hairpin-rss", 1, 0, 0},
+		{"set-src-mac", 0, 0, 0},
+		{"set-dst-mac", 0, 0, 0},
+		{"set-src-ipv4", 0, 0, 0},
+		{"set-dst-ipv4", 0, 0, 0},
+		{"set-src-ipv6", 0, 0, 0},
+		{"set-dst-ipv6", 0, 0, 0},
+		{"set-src-tp", 0, 0, 0},
+		{"set-dst-tp", 0, 0, 0},
+		{"inc-tcp-ack", 0, 0, 0},
+		{"dec-tcp-ack", 0, 0, 0},
+		{"inc-tcp-seq", 0, 0, 0},
+		{"dec-tcp-seq", 0, 0, 0},
+		{"set-ttl", 0, 0, 0},
+		{"dec-ttl", 0, 0, 0},
+		{"set-ipv4-dscp", 0, 0, 0},
+		{"set-ipv6-dscp", 0, 0, 0},
+		{"flag", 0, 0, 0},
+		{"meter", 0, 0, 0},
+		{"raw-encap", 1, 0, 0},
+		{"raw-decap", 1, 0, 0},
+		{"vxlan-encap", 0, 0, 0},
+		{"vxlan-decap", 0, 0, 0},
+		{"policy-mtr", 1, 0, 0},
+		{"meter-profile", 1, 0, 0},
+		{"packet-mode", 0, 0, 0},
+		/* Async flow API options */
+		{"async", 0, 0, 0},
+		{"async-queue-size", 1, 0, 0},
+		{"async-push-batch", 1, 0, 0},
+		{0, 0, 0, 0},
 	};
 
 	RTE_ETH_FOREACH_DEV(i)
@@ -913,14 +929,15 @@ args_parse(int argc, char **argv)
 					rte_exit(EXIT_FAILURE, "Invalid hairpin config mask\n");
 				hairpin_conf_mask = hp_conf;
 			}
-			if (strcmp(lgopts[opt_idx].name,
-					"port-id") == 0) {
+			if (strcmp(lgopts[opt_idx].name, "port-id") == 0) {
 				uint16_t port_idx = 0;
 
-				token = strtok(optarg, ",");
-				while (token != NULL) {
-					dst_ports[port_idx++] = atoi(token);
-					token = strtok(NULL, ",");
+				if (optarg != NULL) {
+					token = strtok(optarg, ",");
+					while (token != NULL) {
+						dst_ports[port_idx++] = atoi(token);
+						token = strtok(NULL, ",");
+					}
 				}
 			}
 			if (strcmp(lgopts[opt_idx].name, "rxq") == 0) {
@@ -981,6 +998,22 @@ args_parse(int argc, char **argv)
 			}
 			if (strcmp(lgopts[opt_idx].name, "packet-mode") == 0)
 				packet_mode = true;
+			if (strcmp(lgopts[opt_idx].name, "async") == 0)
+				async_mode = true;
+			if (strcmp(lgopts[opt_idx].name, "async-queue-size") == 0) {
+				n = atoi(optarg);
+				if (n > 0)
+					async_queue_size = n;
+				else
+					rte_exit(EXIT_FAILURE, "async-queue-size should be > 0\n");
+			}
+			if (strcmp(lgopts[opt_idx].name, "async-push-batch") == 0) {
+				n = atoi(optarg);
+				if (n > 0)
+					async_push_batch = n;
+				else
+					rte_exit(EXIT_FAILURE, "async-push-batch should be > 0\n");
+			}
 			break;
 		default:
 			usage(argv[0]);
@@ -1578,6 +1611,198 @@ insert_flows(int port_id, uint8_t core_id, uint16_t dst_port_id)
 	return flows_list;
 }
 
+static inline int
+push_pull_flows_async(int port_id, int queue_id, uint64_t enqueued, uint64_t *in_flight,
+		      bool force_push, bool force_pull, bool check_op_status,
+		      struct rte_flow_op_result *results, struct rte_flow_error *error)
+{
+	/* Keep queue at most 75% full to avoid overflow */
+	uint32_t max_in_flight = (async_queue_size * 3) / 4;
+	int pulled, i;
+	int ret = 0;
+	bool do_pull = force_pull || *in_flight >= max_in_flight;
+	/* If we need to pull, we want all the in fligt work to have been pushed */
+	bool do_push = do_pull || force_push || (enqueued % async_push_batch) == 0;
+
+	/* Push periodically to give HW work to do */
+	if (do_push) {
+		ret = rte_flow_push(port_id, queue_id, error);
+		if (ret)
+			return ret;
+	}
+
+	/* Check if queue is getting full, if so push and drain completions */
+	if (do_pull) {
+		do {
+			pulled = rte_flow_pull(port_id, queue_id, results, async_push_batch, error);
+			if (pulled < 0) {
+				return -1;
+			} else if (pulled == 0) {
+				rte_pause();
+				continue;
+			}
+
+			*in_flight -= pulled;
+			if (!check_op_status)
+				continue;
+
+			for (i = 0; i < pulled; i++) {
+				if (results[i].status != RTE_FLOW_OP_SUCCESS) {
+					rte_flow_error_set(error, EINVAL,
+							   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+							   "Some flow rule insertion failed");
+					return -1;
+				}
+			}
+		} while (*in_flight >= max_in_flight);
+	}
+
+	return 0;
+}
+
+static struct rte_flow **
+insert_flows_async(int port_id, uint8_t core_id, uint16_t dst_port_id)
+{
+	struct rte_flow **flows_list;
+	struct rte_flow_error error;
+	struct rte_flow_op_result *results;
+	clock_t start_batch, end_batch;
+	double first_flow_latency;
+	double cpu_time_used;
+	double insertion_rate;
+	double cpu_time_per_batch[MAX_BATCHES_COUNT] = {0};
+	double delta;
+	uint32_t flow_index;
+	uint32_t counter, start_counter = 0, end_counter;
+	int rules_batch_idx;
+	int rules_count_per_core;
+	uint64_t total_enqueued = 0;
+	uint64_t in_flight = 0;
+	uint32_t queue_id = core_id;
+
+	rules_count_per_core = rules_count / mc_pool.cores_count;
+
+	/* Set boundaries of rules for each core. */
+	if (core_id)
+		start_counter = core_id * rules_count_per_core;
+	end_counter = (core_id + 1) * rules_count_per_core;
+
+	flows_list = rte_zmalloc("flows_list",
+				 (sizeof(struct rte_flow *) * (rules_count_per_core + 1)), 0);
+	if (flows_list == NULL)
+		rte_exit(EXIT_FAILURE, "No Memory available!\n");
+
+	results = rte_zmalloc("results", sizeof(struct rte_flow_op_result) * async_push_batch, 0);
+	if (results == NULL) {
+		rte_free(flows_list);
+		rte_exit(EXIT_FAILURE, "No Memory available!\n");
+	}
+
+	cpu_time_used = 0;
+	flow_index = 0;
+	if (flow_group > 0 && core_id == 0) {
+		/*
+		 * Create global rule to jump into flow_group,
+		 * this way the app will avoid the default rules.
+		 *
+		 * This rule will be created only once.
+		 *
+		 * Global rule:
+		 * group 0 eth / end actions jump group <flow_group>
+		 */
+
+		uint64_t global_items[MAX_ITEMS_NUM] = {0};
+		uint64_t global_actions[MAX_ACTIONS_NUM] = {0};
+		global_items[0] = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_ETH);
+		global_actions[0] = FLOW_ITEM_MASK(RTE_FLOW_ACTION_TYPE_JUMP);
+		flow = generate_flow(port_id, 0, flow_attrs, global_items, global_actions,
+				     flow_group, 0, 0, 0, 0, dst_port_id, core_id, rx_queues_count,
+				     unique_data, max_priority, &error);
+
+		if (flow == NULL) {
+			print_flow_error(error);
+			rte_exit(EXIT_FAILURE, "Error in creating flow\n");
+		}
+		flows_list[flow_index++] = flow;
+	}
+
+	start_batch = rte_get_timer_cycles();
+	for (counter = start_counter; counter < end_counter; counter++) {
+		if (push_pull_flows_async(port_id, queue_id, total_enqueued, &in_flight, false,
+					  false, false, results, &error)) {
+			print_flow_error(error);
+			rte_exit(EXIT_FAILURE, "Error push/pull async operations\n");
+		}
+
+		/* Create flow with postpone=true to batch operations */
+		flow = async_generate_flow(port_id, queue_id, flow_items, flow_actions, counter,
+					   hairpin_queues_num, encap_data, decap_data, dst_port_id,
+					   core_id, rx_queues_count, unique_data, true,
+					   counter - start_counter, &error);
+
+		if (counter == start_counter) {
+			first_flow_latency = (double)(rte_get_timer_cycles() - start_batch);
+			first_flow_latency /= rte_get_timer_hz();
+			/* In millisecond */
+			first_flow_latency *= 1000;
+			printf(":: First Flow Latency (Async) :: Port %d :: First flow "
+			       "installed in %f milliseconds\n",
+			       port_id, first_flow_latency);
+		}
+
+		if (force_quit)
+			break;
+
+		if (!flow) {
+			print_flow_error(error);
+			rte_exit(EXIT_FAILURE, "Error in creating async flow\n");
+		}
+
+		flows_list[flow_index++] = flow;
+		total_enqueued++;
+		in_flight++;
+
+		/*
+		 * Save the insertion rate for rules batch.
+		 * Check if the insertion reached the rules
+		 * patch counter, then save the insertion rate
+		 * for this batch.
+		 */
+		if (!((counter + 1) % rules_batch)) {
+			end_batch = rte_get_timer_cycles();
+			delta = (double)(end_batch - start_batch);
+			rules_batch_idx = ((counter + 1) / rules_batch) - 1;
+			cpu_time_per_batch[rules_batch_idx] = delta / rte_get_timer_hz();
+			cpu_time_used += cpu_time_per_batch[rules_batch_idx];
+			start_batch = rte_get_timer_cycles();
+		}
+	}
+
+	if (push_pull_flows_async(port_id, queue_id, total_enqueued, &in_flight, true, true, true,
+				  results, &error)) {
+		print_flow_error(error);
+		rte_exit(EXIT_FAILURE, "Error final push/pull async operations\n");
+	}
+
+	/* Print insertion rates for all batches */
+	if (dump_iterations)
+		print_rules_batches(cpu_time_per_batch);
+
+	printf(":: Port %d :: Core %d boundaries (Async) :: start @[%d] - end @[%d]\n", port_id,
+	       core_id, start_counter, end_counter - 1);
+
+	/* Insertion rate for all rules in one core */
+	insertion_rate = ((double)(rules_count_per_core / cpu_time_used) / 1000);
+	printf(":: Port %d :: Core %d :: Async rules insertion rate -> %f K Rule/Sec\n", port_id,
+	       core_id, insertion_rate);
+	printf(":: Port %d :: Core %d :: The time for creating %d async rules is %f seconds\n",
+	       port_id, core_id, rules_count_per_core, cpu_time_used);
+
+	rte_free(results);
+	mc_pool.flows_record.insertion[port_id][core_id] = cpu_time_used;
+	return flows_list;
+}
+
 static void
 flows_handler(uint8_t core_id)
 {
@@ -1602,8 +1827,10 @@ flows_handler(uint8_t core_id)
 		mc_pool.last_alloc[core_id] = (int64_t)dump_socket_mem(stdout);
 		if (has_meter())
 			meters_handler(port_id, core_id, METER_CREATE);
-		flows_list = insert_flows(port_id, core_id,
-						dst_ports[port_idx++]);
+		if (async_mode)
+			flows_list = insert_flows_async(port_id, core_id, dst_ports[port_idx++]);
+		else
+			flows_list = insert_flows(port_id, core_id, dst_ports[port_idx++]);
 		if (flows_list == NULL)
 			rte_exit(EXIT_FAILURE, "Error: Insertion Failed!\n");
 		mc_pool.current_alloc[core_id] = (int64_t)dump_socket_mem(stdout);
@@ -2212,6 +2439,16 @@ init_port(void)
 			}
 		}
 
+		/* Configure async flow engine before device start */
+		if (async_mode) {
+			ret = async_flow_init_port(port_id, mc_pool.cores_count, async_queue_size,
+						   flow_items, flow_actions, flow_attrs, flow_group,
+						   rules_count, rx_queues_count);
+			if (ret != 0)
+				rte_exit(EXIT_FAILURE, "Failed to init async flow on port %d\n",
+					 port_id);
+		}
+
 		ret = rte_eth_dev_start(port_id);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE,
@@ -2291,6 +2528,8 @@ main(int argc, char **argv)
 
 	RTE_ETH_FOREACH_DEV(port) {
 		rte_flow_flush(port, &error);
+		if (async_mode)
+			async_flow_cleanup_port(port);
 		if (rte_eth_dev_stop(port) != 0)
 			printf("Failed to stop device on port %u\n", port);
 		rte_eth_dev_close(port);
