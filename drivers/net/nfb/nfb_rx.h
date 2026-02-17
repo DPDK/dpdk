@@ -30,7 +30,6 @@ nfb_timestamp_dynfield(struct rte_mbuf *mbuf)
 struct ndp_rx_queue {
 	struct nfb_device *nfb;	     /* nfb dev structure */
 	struct ndp_queue *queue;     /* rx queue */
-	uint16_t rx_queue_id;	     /* index */
 	uint8_t in_port;	     /* port */
 	uint8_t flags;               /* setup flags */
 
@@ -47,8 +46,8 @@ struct ndp_rx_queue {
  *
  * @param nfb
  *   Pointer to nfb device structure.
- * @param rx_queue_id
- *   RX queue index.
+ * @param qid
+ *   RX queue ID.
  * @param port_id
  *   Device [external] port identifier.
  * @param mb_pool
@@ -60,7 +59,7 @@ struct ndp_rx_queue {
  */
 int
 nfb_eth_rx_queue_init(struct nfb_device *nfb,
-	uint16_t rx_queue_id,
+	int qid,
 	uint16_t port_id,
 	struct rte_mempool *mb_pool,
 	struct ndp_rx_queue *rxq);
@@ -70,7 +69,7 @@ nfb_eth_rx_queue_init(struct nfb_device *nfb,
  *
  * @param dev
  *   Pointer to Ethernet device structure.
- * @param idx
+ * @param rx_queue_id
  *   RX queue index.
  * @param desc
  *   Number of descriptors to configure in queue.

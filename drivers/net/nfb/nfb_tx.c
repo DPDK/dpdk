@@ -54,11 +54,16 @@ nfb_eth_tx_queue_setup(struct rte_eth_dev *dev,
 	const struct rte_eth_txconf *tx_conf __rte_unused)
 {
 	struct pmd_internals *internals = dev->process_private;
+	struct pmd_priv *priv = dev->data->dev_private;
+
 	int ret;
+	int qid;
 	struct ndp_tx_queue *txq;
 
-	txq = rte_zmalloc_socket("ndp tx queue",
-		sizeof(struct ndp_tx_queue),
+	if (tx_queue_id >= priv->max_tx_queues)
+		return -EINVAL;
+
+	txq = rte_zmalloc_socket("ndp tx queue", sizeof(struct ndp_tx_queue),
 		RTE_CACHE_LINE_SIZE, socket_id);
 
 	if (txq == NULL) {
@@ -67,32 +72,33 @@ nfb_eth_tx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
-	ret = nfb_eth_tx_queue_init(internals->nfb,
-		tx_queue_id,
-		txq);
+	qid = priv->queue_map_tx[tx_queue_id];
 
-	if (ret == 0)
-		dev->data->tx_queues[tx_queue_id] = txq;
-	else
-		rte_free(txq);
+	ret = nfb_eth_tx_queue_init(internals->nfb, qid, txq);
+	if (ret)
+		goto err_queue_init;
 
+	dev->data->tx_queues[tx_queue_id] = txq;
+	return 0;
+
+err_queue_init:
+	rte_free(txq);
 	return ret;
 }
 
 int
 nfb_eth_tx_queue_init(struct nfb_device *nfb,
-	uint16_t tx_queue_id,
+	int qid,
 	struct ndp_tx_queue *txq)
 {
 	if (nfb == NULL)
 		return -EINVAL;
 
-	txq->queue = ndp_open_tx_queue(nfb, tx_queue_id);
+	txq->queue = ndp_open_tx_queue(nfb, qid);
 	if (txq->queue == NULL)
 		return -EINVAL;
 
 	txq->nfb = nfb;
-	txq->tx_queue_id = tx_queue_id;
 
 	txq->tx_pkts = 0;
 	txq->tx_bytes = 0;

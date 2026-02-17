@@ -509,6 +509,7 @@ static const struct eth_dev_ops ops = {
 static int
 nfb_eth_dev_init(struct rte_eth_dev *dev)
 {
+	int i;
 	int ret;
 	uint32_t mac_count;
 	struct rte_eth_dev_data *data = dev->data;
@@ -577,6 +578,20 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 		priv->max_rx_queues = max_rx_queues;
 		priv->max_tx_queues = max_tx_queues;
 
+		priv->queue_map_rx = rte_calloc("NFB queue map", max_rx_queues + max_tx_queues,
+				sizeof(*priv->queue_map_rx), 0);
+		if (priv->queue_map_rx == NULL) {
+			ret = -ENOMEM;
+			goto err_alloc_queue_map;
+		}
+		priv->queue_map_tx = priv->queue_map_rx + max_rx_queues;
+
+		/* default queue mapping is 1:1 */
+		for (i = 0; i < max_rx_queues; i++)
+			priv->queue_map_rx[i] = i;
+		for (i = 0; i < max_tx_queues; i++)
+			priv->queue_map_tx[i] = i;
+
 		/* Allocate space for MAC addresses */
 		mac_count = nfb_eth_get_max_mac_address_count(dev);
 		data->mac_addrs = rte_zmalloc(data->name,
@@ -599,6 +614,12 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 		data->all_multicast = nfb_eth_allmulticast_get(dev);
 
 		data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
+		priv->ready = true;
+	} else {
+		if (!priv->ready) {
+			ret = -EBADFD;
+			goto err_secondary_not_ready;
+		}
 	}
 
 	NFB_LOG(INFO, "NFB device (" PCI_PRI_FMT ") successfully initialized",
@@ -608,6 +629,9 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 	return 0;
 
 err_malloc_mac_addrs:
+	rte_free(priv->queue_map_rx);
+err_alloc_queue_map:
+err_secondary_not_ready:
 	nfb_nc_rxmac_deinit(internals->rxmac, internals->max_rxmac);
 	nfb_nc_txmac_deinit(internals->txmac, internals->max_txmac);
 	nfb_close(internals->nfb);
@@ -633,6 +657,10 @@ nfb_eth_dev_uninit(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_pci_addr *pci_addr = &pci_dev->addr;
 	struct pmd_internals *internals = dev->process_private;
+	struct pmd_priv *priv = dev->data->dev_private;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		rte_free(priv->queue_map_rx);
 
 	nfb_nc_rxmac_deinit(internals->rxmac, internals->max_rxmac);
 	nfb_nc_txmac_deinit(internals->txmac, internals->max_txmac);

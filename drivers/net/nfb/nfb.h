@@ -60,6 +60,12 @@ struct pmd_internals {
 struct pmd_priv {
 	uint16_t max_rx_queues;
 	uint16_t max_tx_queues;
+
+	/** Mapping from DPDK RX queue index to firmware queue ID */
+	int             *queue_map_rx;
+	/** Mapping from DPDK TX queue index to firmware queue ID */
+	int             *queue_map_tx;
+	bool ready;     /**< This structure is initialized for usage in secondary process */
 };
 
 #endif /* _NFB_H_ */
