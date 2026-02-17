@@ -11,6 +11,7 @@
 #include <nfb/ndp.h>
 #include <netcope/rxmac.h>
 #include <netcope/txmac.h>
+#include <netcope/info.h>
 
 extern int nfb_logtype;
 #define RTE_LOGTYPE_NFB nfb_logtype
@@ -51,6 +52,9 @@ struct pmd_internals {
 	struct nc_rxmac *rxmac[RTE_MAX_NC_RXMAC];
 	struct nc_txmac *txmac[RTE_MAX_NC_TXMAC];
 	struct nfb_device *nfb;
+
+	TAILQ_ENTRY(pmd_internals) eth_dev_list;  /**< Item in list of all devices */
+	struct rte_eth_dev *eth_dev;  /**< Handle for matching the device being removed */
 };
 
 /*
@@ -67,5 +71,26 @@ struct pmd_priv {
 	int             *queue_map_tx;
 	bool ready;     /**< This structure is initialized for usage in secondary process */
 };
+
+/* Data for common device probing */
+struct nfb_probe_params {
+	/** Generic device information */
+	struct rte_device *device;
+	/** Port bus specific initialisation callback function */
+	ethdev_bus_specific_init specific_init;
+	/** Port bus specific initialisation parameters */
+	void *specific_device;
+
+	const char *path;       /**< libnfb device string */
+	const char *args;	/**< Device arguments */
+	int nfb_id;             /**< ID of NFB device in system */
+	int ep_index;           /**< (PCIe) endpoint index for matching assigned interfaces */
+
+	char name[RTE_DEV_NAME_MAX_LEN];  /**< Probed name (e.g. PCI device name) */
+};
+
+
+int nfb_eth_common_probe(struct nfb_probe_params *params);
+int nfb_eth_common_remove(struct rte_device *dev);
 
 #endif /* _NFB_H_ */
