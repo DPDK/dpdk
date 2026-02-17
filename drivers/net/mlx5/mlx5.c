@@ -459,6 +459,7 @@ mlx5_flow_aso_age_mng_init(struct mlx5_dev_ctx_shared *sh)
 	err = mlx5_aso_queue_init(sh, ASO_OPC_MOD_FLOW_HIT, 1);
 	if (err) {
 		mlx5_free(sh->aso_age_mng);
+		sh->aso_age_mng = NULL;
 		return -1;
 	}
 	rte_rwlock_init(&sh->aso_age_mng->resize_rwl);
@@ -823,6 +824,7 @@ mlx5_flow_aso_ct_mng_init(struct mlx5_dev_ctx_shared *sh)
 	err = mlx5_aso_queue_init(sh, ASO_OPC_MOD_CONNECTION_TRACKING, MLX5_ASO_CT_SQ_NUM);
 	if (err) {
 		mlx5_free(sh->ct_mng);
+		sh->ct_mng = NULL;
 		/* rte_errno should be extracted from the failure. */
 		rte_errno = EINVAL;
 		return -rte_errno;
