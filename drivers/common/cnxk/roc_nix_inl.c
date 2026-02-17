@@ -1228,7 +1228,7 @@ nix_inl_eng_caps_get(struct nix *nix)
 		do {
 			roc_lmt_mov_seg((void *)lmt_base, &inst, 4);
 			lmt_status = roc_lmt_submit_ldeor(lf->io_addr);
-		} while (lmt_status != 0);
+		} while (lmt_status == 0);
 
 		/* Wait until CPT instruction completes */
 		do {
