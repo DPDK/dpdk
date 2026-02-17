@@ -72,7 +72,7 @@ cn9k_mempool_alloc(struct rte_mempool *mp)
 	padding = ((block_size / ROC_ALIGN) % 2) ? 0 : ROC_ALIGN;
 	mp->trailer_size += padding;
 
-	return cnxk_mempool_alloc(mp);
+	return cnxk_mempool_alloc(mp, 0);
 }
 
 static struct rte_mempool_ops cn9k_mempool_ops = {

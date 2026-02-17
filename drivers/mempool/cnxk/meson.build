@@ -14,6 +14,7 @@ sources = files(
         'cnxk_mempool_telemetry.c',
         'cn9k_mempool_ops.c',
         'cn10k_mempool_ops.c',
+        'cn20k_mempool_ops.c',
         'cn10k_hwpool_ops.c',
 )
 

@@ -5,7 +5,7 @@ cnxk NPA Mempool Driver
 =======================
 
 The cnxk NPA PMD (**librte_mempool_cnxk**) provides mempool driver support for
-the integrated mempool device found in **Marvell OCTEON CN9K/CN10K** SoC family.
+the integrated mempool device found in **Marvell OCTEON CN9K/CN10K/CN20K** SoC family.
 
 More information about cnxk SoC can be found at `Marvell Official Website
 <https://www.marvell.com/embedded-processors/infrastructure-processors/>`_.
@@ -29,6 +29,11 @@ CN10k NPA supports:
 
 - Batch dequeue of up to 512 pointers with single instruction.
 - Batch enqueue of up to 15 pointers with single instruction.
+
+CN20k NPA supports:
+
+- HALO support for 1:1 aura-pool mapping, which uses a single unified context
+  instead of separate aura and pool contexts, saving HW context space.
 
 Prerequisites and Compilation procedure
 ---------------------------------------
@@ -56,11 +61,25 @@ Runtime Config Options
   With the above configuration, the driver will set up only 512 mempools for
   the given application to save HW resources.
 
+- ``HALO enable`` (default ``0``)
+
+  The HALO feature is available on CN20K platforms
+  and allows 1:1 aura-pool mapping to use a single unified context
+  instead of separate aura and pool contexts, saving HW context space.
+  This parameter enables or disables HALO support for NPA pools
+  created by the mempool driver.
+  For example::
+
+    -a 0002:02:00.0,halo_ena=1
+
+  With the above configuration, HALO support will be enabled
+  for mempools created on CN20K platforms.
+
 .. note::
 
    Since this configuration is per application, the end user needs to
-   provide ``max_pools`` parameter to the first PCIe device probed by the given
-   application.
+   provide ``max_pools`` and/or ``halo_ena`` parameter
+   to the first PCIe device probed by the given application.
 
 Debugging Options
 ~~~~~~~~~~~~~~~~~

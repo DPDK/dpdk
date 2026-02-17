@@ -70,9 +70,9 @@ cnxk_mempool_calc_mem_size(const struct rte_mempool *mp, uint32_t obj_num,
 }
 
 int
-cnxk_mempool_alloc(struct rte_mempool *mp)
+cnxk_mempool_alloc(struct rte_mempool *mp, uint64_t roc_flags)
 {
-	uint32_t block_count, flags, roc_flags = 0;
+	uint32_t block_count, flags;
 	uint64_t aura_handle = 0;
 	struct npa_aura_s aura;
 	struct npa_pool_s pool;
@@ -98,7 +98,7 @@ cnxk_mempool_alloc(struct rte_mempool *mp)
 
 	flags = CNXK_MEMPOOL_FLAGS(mp);
 	if (flags & CNXK_MEMPOOL_F_ZERO_AURA) {
-		roc_flags = ROC_NPA_ZERO_AURA_F;
+		roc_flags |= ROC_NPA_ZERO_AURA_F;
 	} else if (flags & CNXK_MEMPOOL_F_CUSTOM_AURA) {
 		struct npa_aura_s *paura;
 
@@ -192,8 +192,11 @@ cnxk_mempool_plt_init(void)
 
 	if (roc_model_is_cn9k()) {
 		rte_mbuf_set_platform_mempool_ops("cn9k_mempool_ops");
-	} else if (roc_model_is_cn10k() || roc_model_is_cn20k()) {
+	} else if (roc_model_is_cn10k()) {
 		rte_mbuf_set_platform_mempool_ops("cn10k_mempool_ops");
+		rc = cn10k_mempool_plt_init();
+	} else if (roc_model_is_cn20k()) {
+		rte_mbuf_set_platform_mempool_ops("cn20k_mempool_ops");
 		rc = cn10k_mempool_plt_init();
 	}
 	return rc;

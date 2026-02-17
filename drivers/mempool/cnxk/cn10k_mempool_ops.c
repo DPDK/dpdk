@@ -2,9 +2,6 @@
  * Copyright(C) 2021 Marvell.
  */
 
-#include <rte_mempool.h>
-
-#include "roc_api.h"
 #include "cnxk_mempool.h"
 
 #define BATCH_ALLOC_SZ              ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS
@@ -79,7 +76,7 @@ batch_op_data_set(uint64_t pool_id, struct batch_op_data *op_data)
 	batch_op_data_tbl[aura] = op_data;
 }
 
-static int
+int
 batch_op_init(struct rte_mempool *mp)
 {
 	struct batch_op_data *op_data;
@@ -109,7 +106,7 @@ batch_op_init(struct rte_mempool *mp)
 	return 0;
 }
 
-static void
+void
 batch_op_fini(struct rte_mempool *mp)
 {
 	struct batch_op_data *op_data;
@@ -149,7 +146,7 @@ free_op_data:
 	rte_wmb();
 }
 
-static int __rte_hot
+int __rte_hot
 cn10k_mempool_enq(struct rte_mempool *mp, void *const *obj_table,
 		  unsigned int n)
 {
@@ -181,7 +178,7 @@ cn10k_mempool_enq(struct rte_mempool *mp, void *const *obj_table,
 	return 0;
 }
 
-static unsigned int
+unsigned int
 cn10k_mempool_get_count(const struct rte_mempool *mp)
 {
 	struct batch_op_data *op_data;
@@ -326,7 +323,7 @@ mempool_deq_batch_sync(struct rte_mempool *mp, void **obj_table, unsigned int n)
 	return count;
 }
 
-static int __rte_hot
+int __rte_hot
 cn10k_mempool_deq(struct rte_mempool *mp, void **obj_table, unsigned int n)
 {
 	struct batch_op_data *op_data;
@@ -353,7 +350,7 @@ cn10k_mempool_deq(struct rte_mempool *mp, void **obj_table, unsigned int n)
 	return 0;
 }
 
-static int
+int
 cn10k_mempool_alloc(struct rte_mempool *mp)
 {
 	uint32_t block_size;
@@ -376,7 +373,7 @@ cn10k_mempool_alloc(struct rte_mempool *mp)
 		block_size += padding;
 	}
 
-	rc = cnxk_mempool_alloc(mp);
+	rc = cnxk_mempool_alloc(mp, 0);
 	if (rc)
 		return rc;
 
@@ -392,7 +389,7 @@ error:
 	return rc;
 }
 
-static void
+void
 cn10k_mempool_free(struct rte_mempool *mp)
 {
 	batch_op_fini(mp);

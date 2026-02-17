@@ -7,6 +7,8 @@
 
 #include <rte_mempool.h>
 
+#include "roc_api.h"
+
 enum cnxk_mempool_flags {
 	/* This flag is used to ensure that only aura zero is allocated.
 	 * If aura zero is not available, then mempool creation fails.
@@ -47,7 +49,7 @@ int cnxk_mempool_populate(struct rte_mempool *mp, unsigned int max_objs,
 			  void *vaddr, rte_iova_t iova, size_t len,
 			  rte_mempool_populate_obj_cb_t *obj_cb,
 			  void *obj_cb_arg);
-int cnxk_mempool_alloc(struct rte_mempool *mp);
+int cnxk_mempool_alloc(struct rte_mempool *mp, uint64_t roc_flags);
 void cnxk_mempool_free(struct rte_mempool *mp);
 
 int __rte_hot cnxk_mempool_enq(struct rte_mempool *mp, void *const *obj_table,
@@ -55,6 +57,16 @@ int __rte_hot cnxk_mempool_enq(struct rte_mempool *mp, void *const *obj_table,
 int __rte_hot cnxk_mempool_deq(struct rte_mempool *mp, void **obj_table,
 			       unsigned int n);
 
+int batch_op_init(struct rte_mempool *mp);
+void batch_op_fini(struct rte_mempool *mp);
+int __rte_hot cn10k_mempool_enq(struct rte_mempool *mp, void *const *obj_table,
+				unsigned int n);
+unsigned int cn10k_mempool_get_count(const struct rte_mempool *mp);
+int __rte_hot cn10k_mempool_deq(struct rte_mempool *mp, void **obj_table,
+				unsigned int n);
+int cn10k_mempool_alloc(struct rte_mempool *mp);
+void cn10k_mempool_free(struct rte_mempool *mp);
+
 int cn10k_mempool_plt_init(void);
 
-#endif
+#endif /* _CNXK_MEMPOOL_H_ */

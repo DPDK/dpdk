@@ -18,6 +18,7 @@
 #define CNXK_NPA_DEV_NAME	 RTE_STR(cnxk_npa_dev_)
 #define CNXK_NPA_DEV_NAME_LEN	 (sizeof(CNXK_NPA_DEV_NAME) + PCI_PRI_STR_SIZE)
 #define CNXK_NPA_MAX_POOLS_PARAM "max_pools"
+#define CNXK_NPA_HALO_ENA_PARAM	 "halo_ena"
 
 static inline uint32_t
 npa_aura_size_to_u32(uint8_t val)
@@ -46,30 +47,46 @@ parse_max_pools_handler(const char *key, const char *value, void *extra_args)
 	return 0;
 }
 
-static inline uint32_t
-parse_max_pools(struct rte_devargs *devargs)
+static int
+parse_halo_ena_handler(const char *key, const char *value, void *extra_args)
+{
+	RTE_SET_USED(key);
+	uint8_t val;
+
+	val = atoi(value);
+	if (val != 0 && val != 1)
+		return -EINVAL;
+
+	*(uint8_t *)extra_args = val;
+	return 0;
+}
+
+static int
+cnxk_mempool_plt_parse_devargs(struct rte_pci_device *pci_dev)
 {
 	uint32_t max_pools = npa_aura_size_to_u32(NPA_AURA_SZ_128);
+	struct rte_devargs *devargs = pci_dev->device.devargs;
 	struct rte_kvargs *kvlist;
+	uint32_t halo_ena = 0;
 
 	if (devargs == NULL)
-		goto exit;
+		goto null_devargs;
 	kvlist = rte_kvargs_parse(devargs->args, NULL);
 	if (kvlist == NULL)
 		goto exit;
 
 	rte_kvargs_process(kvlist, CNXK_NPA_MAX_POOLS_PARAM,
 			   &parse_max_pools_handler, &max_pools);
+	rte_kvargs_process(kvlist, CNXK_NPA_HALO_ENA_PARAM,
+			   &parse_halo_ena_handler, &halo_ena);
 	rte_kvargs_free(kvlist);
-exit:
-	return max_pools;
-}
 
-static int
-cnxk_mempool_plt_parse_devargs(struct rte_pci_device *pci_dev)
-{
-	roc_idev_npa_maxpools_set(parse_max_pools(pci_dev->device.devargs));
+null_devargs:
+	roc_idev_npa_maxpools_set(max_pools);
+	roc_idev_npa_halo_ena_set(halo_ena);
 	return 0;
+exit:
+	return -EINVAL;
 }
 
 static inline char *
@@ -201,7 +218,8 @@ RTE_PMD_REGISTER_PCI(mempool_cnxk, npa_pci);
 RTE_PMD_REGISTER_PCI_TABLE(mempool_cnxk, npa_pci_map);
 RTE_PMD_REGISTER_KMOD_DEP(mempool_cnxk, "vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(mempool_cnxk,
-			      CNXK_NPA_MAX_POOLS_PARAM "=<128-1048576>");
+			      CNXK_NPA_MAX_POOLS_PARAM "=<128-1048576>"
+			      CNXK_NPA_HALO_ENA_PARAM "=<0-1>");
 
 RTE_INIT(cnxk_mempool_parse_devargs)
 {
