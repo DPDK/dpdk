@@ -4,6 +4,7 @@
  * All rights reserved.
  */
 
+#include <ctype.h>
 #include <sys/queue.h>
 #include <eal_export.h>
 #include <rte_tailq.h>
@@ -22,12 +23,19 @@
 #include "nfb_rxmode.h"
 #include "nfb.h"
 
+static const char * const VALID_KEYS[] = {
+	NFB_ARG_PORT,
+	NULL
+};
+
 struct nfb_ifc_create_params {
 	struct nfb_probe_params *probe_params;
 	struct nc_ifc_map_info map_info;
 	struct nc_ifc_info *ifc_info;
 
 	int basename_len;       /* Cached real length of original probe_params->name */
+	/* Return value of failed nfb_eth_dev_create_for_ifc when rte_kvargs_process is used */
+	int ret;
 };
 
 /* The TAILQ entries are used for cleanup of allocated resources
@@ -738,6 +746,33 @@ out:
 	return ret;
 }
 
+static int nfb_eth_dev_create_for_ifc_by_port(const char *key __rte_unused,
+		const char *value, void *opaque)
+{
+	int ret = -EINVAL;
+	char *end;
+	unsigned long port;
+	struct nfb_ifc_create_params *ifc_params = opaque;
+
+	if (value == NULL || strlen(value) == 0 || !isdigit(*value))
+		goto out;
+
+	errno = 0;
+	port = strtoul(value, &end, 10);
+	if (errno != 0 || *end != '\0')
+		goto out;
+
+	if (port >= LONG_MAX || port >= (unsigned long)ifc_params->map_info.ifc_cnt)
+		goto out;
+
+	ifc_params->ifc_info = &ifc_params->map_info.ifc[port];
+	ret = nfb_eth_dev_create_for_ifc(ifc_params);
+
+out:
+	ifc_params->ret = ret;
+	return ret;
+}
+
 int
 nfb_eth_common_probe(struct nfb_probe_params *params)
 {
@@ -746,6 +781,7 @@ nfb_eth_common_probe(struct nfb_probe_params *params)
 
 	struct nfb_device *nfb_dev;
 	struct nfb_ifc_create_params ifc_params;
+	struct rte_kvargs *kvlist = NULL;
 
 	/* Open the device handle just for parsing ifc_params.
 	 * A separate handle is used later for each netdev.
@@ -760,15 +796,37 @@ nfb_eth_common_probe(struct nfb_probe_params *params)
 	if (ret)
 		goto err_map_info_create;
 
+	if (params->args != NULL && strlen(params->args) > 0) {
+		kvlist = rte_kvargs_parse(params->args, VALID_KEYS);
+		if (kvlist == NULL) {
+			NFB_LOG(ERR, "Failed to parse device arguments %s", params->args);
+			ret = -EINVAL;
+			goto err_parse_args;
+		}
+	}
+
+	ifc_params.ret = 0;
 	ifc_params.probe_params = params;
 	ifc_params.basename_len = strlen(params->name);
 
-	for (i = 0; i < ifc_params.map_info.ifc_cnt; i++) {
-		ifc_params.ifc_info = &ifc_params.map_info.ifc[i];
-		ret = nfb_eth_dev_create_for_ifc(&ifc_params);
-		if (ret)
+	/* When at least one port argument is specified, create only selected ports */
+	if (kvlist && rte_kvargs_count(kvlist, NFB_ARG_PORT)) {
+		ret = rte_kvargs_process(kvlist, NFB_ARG_PORT,
+				nfb_eth_dev_create_for_ifc_by_port, (void *)&ifc_params);
+		if (ret) {
+			ret = ifc_params.ret;
 			goto err_dev_create;
+		}
+	} else {
+		for (i = 0; i < ifc_params.map_info.ifc_cnt; i++) {
+			ifc_params.ifc_info = &ifc_params.map_info.ifc[i];
+			ret = nfb_eth_dev_create_for_ifc(&ifc_params);
+			if (ret)
+				goto err_dev_create;
+		}
 	}
+
+	rte_kvargs_free(kvlist);
 
 	nc_map_info_destroy(&ifc_params.map_info);
 	nfb_close(nfb_dev);
@@ -777,6 +835,8 @@ nfb_eth_common_probe(struct nfb_probe_params *params)
 
 err_dev_create:
 	nfb_eth_common_remove(params->device);
+	rte_kvargs_free(kvlist);
+err_parse_args:
 	nc_map_info_destroy(&ifc_params.map_info);
 err_map_info_create:
 	nfb_close(nfb_dev);
@@ -882,3 +942,6 @@ RTE_PMD_REGISTER_PCI(RTE_NFB_DRIVER_NAME, nfb_eth_driver);
 RTE_PMD_REGISTER_PCI_TABLE(RTE_NFB_DRIVER_NAME, nfb_pci_id_table);
 RTE_PMD_REGISTER_KMOD_DEP(RTE_NFB_DRIVER_NAME, "* nfb");
 RTE_LOG_REGISTER_DEFAULT(nfb_logtype, NOTICE);
+RTE_PMD_REGISTER_PARAM_STRING(RTE_NFB_DRIVER_NAME,
+		NFB_COMMON_ARGS
+		);
