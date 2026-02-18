@@ -2044,10 +2044,6 @@ hinic3_dev_release(struct rte_eth_dev *eth_dev)
 	hinic3_free_nic_hwdev(nic_dev->hwdev);
 	hinic3_free_hwdev(nic_dev->hwdev);
 
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-	eth_dev->dev_ops = NULL;
-
 	rte_free(nic_dev->hwdev);
 	nic_dev->hwdev = NULL;
 }
