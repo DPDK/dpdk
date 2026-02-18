@@ -904,20 +904,4 @@ out:
 	dev->tx_pkt_prepare = idpf_dp_prep_pkts;
 	PMD_DRV_LOG(NOTICE, "Using %s Tx (port %d).",
 			idpf_tx_path_infos[ad->tx_func_type].info, dev->data->port_id);
-
-#ifdef RTE_ARCH_X86
-#ifdef CC_AVX512_SUPPORT
-	if (idpf_tx_path_infos[ad->tx_func_type].features.simd_width >= RTE_VECT_SIMD_256 &&
-			idpf_tx_path_infos[ad->tx_func_type].features.single_queue) {
-		for (i = 0; i < dev->data->nb_tx_queues; i++) {
-			txq = dev->data->tx_queues[i];
-			if (txq == NULL)
-				continue;
-			if (idpf_tx_path_infos[ad->tx_func_type].features.simd_width ==
-					RTE_VECT_SIMD_512)
-				idpf_qc_tx_vec_avx512_setup(txq);
-		}
-	}
-#endif /* CC_AVX512_SUPPORT */
-#endif /* RTE_ARCH_X86 */
 }

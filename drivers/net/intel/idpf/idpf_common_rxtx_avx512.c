@@ -1357,13 +1357,3 @@ idpf_dp_splitq_xmit_pkts_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	return idpf_splitq_xmit_pkts_vec_avx512_cmn(tx_queue, tx_pkts, nb_pkts);
 }
-
-RTE_EXPORT_INTERNAL_SYMBOL(idpf_qc_tx_vec_avx512_setup)
-int __rte_cold
-idpf_qc_tx_vec_avx512_setup(struct ci_tx_queue *txq)
-{
-	if (!txq)
-		return 0;
-
-	return 0;
-}
