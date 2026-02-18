@@ -956,27 +956,32 @@ The Rx function is selected based on multiple parameters:
 - :ref:`multi-packet Rx queues (MPRQ) <mlx5_mprq_params>`
 - :ref:`vectorized Rx datapath <mlx5_rx_vec_param>`
 
-This parameter may also have an impact on the behavior:
+These configurations may also have an impact on the behavior:
 
 - :ref:`packet descriptor (CQE) compression <mlx5_cqe_comp_param>`
+- :ref:`shared Rx queue <mlx5_shared_rx>`
 
 .. table:: Rx burst functions
 
-   +-------------------+------------------------+---------+-----------------+------+-------+
-   || Function Name    || Parameters to Enable  || Scatter|| Error Recovery || CQE || Large|
-   |                   |                        |         |                 || comp|| MTU  |
-   +===================+========================+=========+=================+======+=======+
-   | rx_burst          | rx_vec_en=0            |   Yes   | Yes             |  Yes |  Yes  |
-   +-------------------+------------------------+---------+-----------------+------+-------+
-   | rx_burst_vec      | rx_vec_en=1 (default)  |   No    | if CQE comp off |  Yes |  No   |
-   +-------------------+------------------------+---------+-----------------+------+-------+
-   | rx_burst_mprq     || mprq_en=1             |   No    | Yes             |  Yes |  Yes  |
-   |                   || RxQs >= rxqs_min_mprq |         |                 |      |       |
-   +-------------------+------------------------+---------+-----------------+------+-------+
-   | rx_burst_mprq_vec || rx_vec_en=1 (default) |   No    | if CQE comp off |  Yes |  Yes  |
-   |                   || mprq_en=1             |         |                 |      |       |
-   |                   || RxQs >= rxqs_min_mprq |         |                 |      |       |
-   +-------------------+------------------------+---------+-----------------+------+-------+
+   +-------------------+------------------------+---------+-----------------+------+-------+---------+
+   || Function Name    || Parameters to Enable  || Scatter|| Error Recovery || CQE || Large|| Shared |
+   |                   |                        |         |                 || comp|| MTU  |  RxQ    |
+   +===================+========================+=========+=================+======+=======+=========+
+   | rx_burst          | rx_vec_en=0            |   Yes   | Yes             |  Yes |  Yes  | No      |
+   +-------------------+------------------------+---------+-----------------+------+-------+---------+
+   | rx_burst_vec      | rx_vec_en=1 (default)  |   No    | if CQE comp off |  Yes |  No   | No      |
+   +-------------------+------------------------+---------+-----------------+------+-------+---------+
+   | rx_burst_mprq     || mprq_en=1             |   No    | Yes             |  Yes |  Yes  | No      |
+   |                   || RxQs >= rxqs_min_mprq |         |                 |      |       |         |
+   +-------------------+------------------------+---------+-----------------+------+-------+---------+
+   | rx_burst_mprq_vec || rx_vec_en=1 (default) |   No    | if CQE comp off |  Yes |  Yes  | No      |
+   |                   || mprq_en=1             |         |                 |      |       |         |
+   |                   || RxQs >= rxqs_min_mprq |         |                 |      |       |         |
+   +-------------------+------------------------+---------+-----------------+------+-------+---------+
+   | rx_burst          | at least one Rx queue  |   Yes   | Yes             |  Yes |  Yes  | Yes     |
+   |  (out of order)   | on the device          |         |                 |      |       |         |
+   |                   | is shared              |         |                 |      |       |         |
+   +-------------------+------------------------+---------+-----------------+------+-------+---------+
 
 
 Rx/Tx Tuning
@@ -1828,6 +1833,10 @@ Shared Rx Queue
 
 Limitations
 ^^^^^^^^^^^
+
+#. Shared Rx queue is not compatible with both vectorized Rx datapath and multi-packet Rx queues.
+   Any configuration related to these features passed through device arguments
+   will be ignored.
 
 #. Counters of received packets and bytes of devices in the same share group are same.
 
