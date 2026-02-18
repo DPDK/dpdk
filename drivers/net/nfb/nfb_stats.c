@@ -14,11 +14,11 @@ nfb_eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 	uint16_t i;
 	uint16_t nb_rx = dev->data->nb_rx_queues;
 	uint16_t nb_tx = dev->data->nb_tx_queues;
-	uint64_t rx_total = 0;
-	uint64_t tx_total = 0;
-	uint64_t tx_err_total = 0;
-	uint64_t rx_total_bytes = 0;
-	uint64_t tx_total_bytes = 0;
+
+	int ret;
+	struct pmd_internals *internals = dev->process_private;
+	struct nc_rxmac_counters rx_cntrs;
+	struct nc_txmac_counters tx_cntrs;
 
 	for (i = 0; i < nb_rx; i++) {
 		struct ndp_rx_queue *rx_queue = dev->data->rx_queues[i];
@@ -29,8 +29,6 @@ nfb_eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 			qstats->q_ipackets[i] = rx_queue->rx_pkts;
 			qstats->q_ibytes[i] = rx_queue->rx_bytes;
 		}
-		rx_total += rx_queue->rx_pkts;
-		rx_total_bytes += rx_queue->rx_bytes;
 	}
 
 	for (i = 0; i < nb_tx; i++) {
@@ -42,16 +40,28 @@ nfb_eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 			qstats->q_opackets[i] = tx_queue->tx_pkts;
 			qstats->q_obytes[i] = tx_queue->tx_bytes;
 		}
-		tx_total += tx_queue->tx_pkts;
-		tx_total_bytes += tx_queue->tx_bytes;
-		tx_err_total += tx_queue->err_pkts;
 	}
 
-	stats->ipackets = rx_total;
-	stats->opackets = tx_total;
-	stats->ibytes = rx_total_bytes;
-	stats->obytes = tx_total_bytes;
-	stats->oerrors = tx_err_total;
+	for (i = 0; i < internals->max_rxmac; i++) {
+		ret = nc_rxmac_read_counters(internals->rxmac[i], &rx_cntrs, NULL);
+		if (ret)
+			return -EIO;
+
+		stats->ipackets += rx_cntrs.cnt_received;
+		stats->ibytes += rx_cntrs.cnt_octets;
+		stats->ierrors += rx_cntrs.cnt_erroneous;
+		stats->imissed += rx_cntrs.cnt_overflowed;
+	}
+
+	for (i = 0; i < internals->max_txmac; i++) {
+		ret = nc_txmac_read_counters(internals->txmac[i], &tx_cntrs);
+		if (ret)
+			return -EIO;
+
+		stats->opackets += tx_cntrs.cnt_sent;
+		stats->obytes += tx_cntrs.cnt_octets;
+		stats->oerrors += tx_cntrs.cnt_drop;
+	}
 	return 0;
 }
 
