@@ -2804,6 +2804,11 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	 */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		iavf_set_rx_function(eth_dev);
+		/* LLDP may have been enabled by the primary process. Store the offset before
+		 * setting the TX function because it may be used in the selection function.
+		 */
+		rte_pmd_iavf_tx_lldp_dynfield_offset =
+			rte_mbuf_dynfield_lookup(IAVF_TX_LLDP_DYNFIELD, NULL);
 		iavf_set_tx_function(eth_dev);
 		return 0;
 	}
