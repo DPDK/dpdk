@@ -606,6 +606,8 @@ mlx5_rxq_check_vec_support(struct mlx5_rxq_data *rxq)
 
 	if (!RXQ_PORT(ctrl)->config.rx_vec_en || rxq->sges_n != 0)
 		return -ENOTSUP;
+	if (mlx5_shared_rq_enabled(RXQ_DEV(ctrl)))
+		return -ENOTSUP;
 	if (rxq->lro)
 		return -ENOTSUP;
 	return 1;
