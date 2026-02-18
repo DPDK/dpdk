@@ -19,6 +19,10 @@ sources += files(
         'eal_vfio_mp_sync.c',
 )
 
+if dpdk_conf.get('RTE_LIBEAL_USE_HPET')
+    sources += files('eal_timer_hpet.c')
+endif
+
 deps += ['kvargs', 'telemetry']
 if has_libnuma
     dpdk_conf.set10('RTE_EAL_NUMA_AWARE_HUGEPAGES', true)
