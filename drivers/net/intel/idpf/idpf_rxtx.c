@@ -795,11 +795,17 @@ idpf_set_rx_function(struct rte_eth_dev *dev)
 #ifdef RTE_ARCH_X86
 	struct idpf_rx_queue *rxq;
 	int i;
+#endif
 
+	/* If the device has started the function has already been selected. */
+	if (dev->data->dev_started)
+		goto out;
+
+#ifdef RTE_ARCH_X86
 	if (idpf_rx_vec_dev_check_default(dev) == IDPF_VECTOR_PATH &&
 	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
 		req_features.simd_width = idpf_get_max_simd_bitwidth();
-#endif /* RTE_ARCH_X86 */
+#endif
 
 	req_features.single_queue = (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE);
 	req_features.scattered = dev->data->scattered_rx;
@@ -827,6 +833,7 @@ idpf_set_rx_function(struct rte_eth_dev *dev)
 	}
 #endif
 
+out:
 	dev->rx_pkt_burst = idpf_rx_path_infos[ad->rx_func_type].pkt_burst;
 	PMD_DRV_LOG(NOTICE, "Using %s Rx (port %d).",
 			idpf_rx_path_infos[ad->rx_func_type].info, dev->data->port_id);
