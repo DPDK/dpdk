@@ -3001,8 +3001,8 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 	uint16_t i;
 	enum rte_vect_max_simd rx_simd_width = i40e_get_max_simd_bitwidth();
 
-	/* The primary process selects the rx path for all processes. */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	/* If the device has started the function has already been selected. */
+	if (dev->data->dev_started)
 		goto out;
 
 	/* In order to allow Vector Rx there are a few configuration
