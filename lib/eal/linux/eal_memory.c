@@ -156,6 +156,11 @@ rte_mem_virt2iova(const void *virtaddr)
 /*
  * For each hugepage in hugepg_tbl, fill the physaddr value. We find
  * it by browsing the /proc/self/pagemap special file.
+ *
+ * NOTE: Unless a kernel component (such as VFIO_NOIOMMU) locks the memory
+ * in place, the kernel may move the memory at any time (kcompactd, autonuma,
+ * etc etc) so one should only rely on this address being a constant in the
+ * general case.
  */
 static int
 find_physaddrs(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
