@@ -186,6 +186,7 @@ nfb_nc_eth_deinit(struct pmd_internals *intl)
 	for (i = 0; i < intl->max_rxmac; i++)
 		nc_rxmac_close(intl->rxmac[i]);
 
+	free(intl->eth_node);
 	free(intl->txmac);
 	free(intl->rxmac);
 }
