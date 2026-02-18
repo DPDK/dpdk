@@ -746,9 +746,6 @@ ngbevf_dev_close(struct rte_eth_dev *dev)
 	 **/
 	ngbevf_remove_mac_addr(dev, 0);
 
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
-
 	/* Disable the interrupts for VF */
 	ngbevf_intr_disable(dev);
 

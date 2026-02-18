@@ -1112,11 +1112,6 @@ eth_ionic_dev_uninit(struct rte_eth_dev *eth_dev)
 	if (eth_dev->state != RTE_ETH_DEV_UNUSED)
 		ionic_dev_close(eth_dev);
 
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-	eth_dev->tx_pkt_prepare = NULL;
-
 	return 0;
 }
 
