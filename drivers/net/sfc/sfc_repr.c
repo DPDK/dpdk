@@ -820,10 +820,6 @@ sfc_repr_dev_close(struct rte_eth_dev *dev)
 
 	sfc_mae_clear_switch_port(srs->switch_domain_id, srs->switch_port_id);
 
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
-	dev->dev_ops = NULL;
-
 	sfc_repr_unlock(sr);
 	sfc_repr_lock_fini(sr);
 

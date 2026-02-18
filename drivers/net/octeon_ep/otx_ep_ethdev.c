@@ -656,12 +656,8 @@ otx_ep_dev_close(struct rte_eth_dev *eth_dev)
 	struct otx_ep_device *otx_epvf;
 	uint32_t num_queues, q_no;
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		eth_dev->dev_ops = NULL;
-		eth_dev->rx_pkt_burst = NULL;
-		eth_dev->tx_pkt_burst = NULL;
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
-	}
 
 	otx_epvf = OTX_EP_DEV(eth_dev);
 	otx_ep_mbox_send_dev_exit(eth_dev);
@@ -730,10 +726,6 @@ otx_ep_eth_dev_uninit(struct rte_eth_dev *eth_dev)
 {
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		otx_ep_mbox_uninit(eth_dev);
-
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
 
 	return 0;
 }
