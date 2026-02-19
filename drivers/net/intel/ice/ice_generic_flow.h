@@ -27,6 +27,7 @@
 #define ICE_PROT_L2TPV3OIP		BIT_ULL(16)
 #define ICE_PROT_PFCP			BIT_ULL(17)
 #define ICE_PROT_NAT_T_ESP		BIT_ULL(18)
+#define ICE_PROT_L2TPV2OIP		BIT_ULL(19)
 #define ICE_PROT_MAC_INNER		BIT_ULL(20)
 #define ICE_PROT_VLAN_INNER		BIT_ULL(21)
 #define ICE_PROT_IPV4_INNER		BIT_ULL(22)
@@ -64,6 +65,7 @@
 #define ICE_PFCP_S_FIELD		BIT_ULL(41)
 #define ICE_IP_PK_ID			BIT_ULL(40)
 #define ICE_IP_FRAG_OFS			BIT_ULL(39)
+#define ICE_L2TPV2OIP_SESSION_ID	BIT_ULL(38)
 
 /* input set */
 
@@ -131,6 +133,8 @@
 	(ICE_PROT_PFCP | ICE_PFCP_S_FIELD | ICE_PFCP_SEID)
 #define ICE_INSET_NAT_T_ESP_SPI \
 	(ICE_PROT_NAT_T_ESP | ICE_ESP_SPI)
+#define ICE_INSET_L2TPV2OIP_SESSION_ID \
+	(ICE_PROT_L2TPV2OIP | ICE_L2TPV2OIP_SESSION_ID)
 #define ICE_INSET_TUN_IPV4_SRC \
 	(ICE_PROT_IPV4_INNER | ICE_IP_SRC)
 #define ICE_INSET_TUN_IPV4_DST \
@@ -425,6 +429,24 @@ extern enum rte_flow_item_type pattern_eth_ipv6_udp_ah[];
 /* L2TP */
 extern enum rte_flow_item_type pattern_eth_ipv4_l2tp[];
 extern enum rte_flow_item_type pattern_eth_ipv6_l2tp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_l2tpv2[];
+extern enum rte_flow_item_type pattern_eth_ipv6_l2tpv2[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_l2tpv2[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_l2tpv2_ppp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_l2tpv2[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_l2tpv2_ppp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_l2tpv2_ppp_ipv4[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_l2tpv2_ppp_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_l2tpv2_ppp_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_l2tpv2_ppp_ipv4[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_l2tpv2_ppp_ipv4_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_l2tpv2_ppp_ipv4_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_l2tpv2_ppp_ipv6[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_l2tpv2_ppp_ipv6_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_l2tpv2_ppp_ipv6_tcp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_l2tpv2_ppp_ipv6[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_l2tpv2_ppp_ipv6_udp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_l2tpv2_ppp_ipv6_tcp[];
 
 /* PFCP */
 extern enum rte_flow_item_type pattern_eth_ipv4_pfcp[];
