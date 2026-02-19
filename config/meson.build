@@ -367,6 +367,12 @@ if cc.has_argument('-Wno-shadow')
     no_shadow_cflag = '-Wno-shadow'
 endif
 
+# per-driver option to disable -Wcomma if supported by the compiler
+no_comma_cflag = []
+if cc.has_argument('-Wno-comma')
+    no_comma_cflag = '-Wno-comma'
+endif
+
 foreach arg: global_cflags
     if cc.has_argument(arg)
         add_project_arguments(arg, language: 'c')

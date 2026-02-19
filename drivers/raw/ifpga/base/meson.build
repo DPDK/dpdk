@@ -24,3 +24,4 @@ base_sources = files(
         'opae_at24_eeprom.c',
         'opae_eth_group.c',
 )
+base_cflags += no_comma_cflag
