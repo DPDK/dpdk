@@ -218,6 +218,12 @@ source_file_ext_deps = {
     'test_pcapng.c': ['pcap'],
 }
 
+# the NULL ethdev is used by a number of tests, in some cases as an optional dependency.
+# for developer builds, warn user if its missing and we are building the tests.
+if not dpdk_conf.has('RTE_NET_NULL') and developer_mode
+    warning('For unit testing, the net/null PMD should be enabled in the build to enable tests that depend on it.')
+endif
+
 def_lib = get_option('default_library')
 foreach f, f_deps : source_file_deps
     has_deps = true
