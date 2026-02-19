@@ -2361,14 +2361,14 @@ iavf_calc_context_desc(const struct rte_mbuf *mb, uint8_t vlan_flag)
 }
 
 static inline void
-iavf_fill_ctx_desc_tunnelling_field(uint64_t *qw0, const struct rte_mbuf *m)
+iavf_fill_ctx_desc_tunnelling_field(uint64_t *qw0, uint64_t ol_flags, const struct rte_mbuf *m)
 {
 	uint64_t eip_typ = IAVF_TX_CTX_DESC_EIPT_NONE;
 	uint64_t eip_len = 0;
 	uint64_t eip_noinc = 0;
 	/* Default - IP_ID is increment in each segment of LSO */
 
-	switch (m->ol_flags & (RTE_MBUF_F_TX_OUTER_IPV4 |
+	switch (ol_flags & (RTE_MBUF_F_TX_OUTER_IPV4 |
 			RTE_MBUF_F_TX_OUTER_IPV6 |
 			RTE_MBUF_F_TX_OUTER_IP_CKSUM)) {
 	case RTE_MBUF_F_TX_OUTER_IPV4:
@@ -2385,9 +2385,9 @@ iavf_fill_ctx_desc_tunnelling_field(uint64_t *qw0, const struct rte_mbuf *m)
 	break;
 	}
 
-	if (!(m->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD)) {
+	if (!(ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD)) {
 		/* L4TUNT: L4 Tunneling Type */
-		switch (m->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
+		switch (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
 		case RTE_MBUF_F_TX_TUNNEL_IPIP:
 			/* for non UDP / GRE tunneling, set to 00b */
 			break;
@@ -2425,7 +2425,7 @@ iavf_fill_ctx_desc_tunnelling_field(uint64_t *qw0, const struct rte_mbuf *m)
 					IAVF_TX_CTX_EXT_IP_IPV4 |
 					IAVF_TX_CTX_EXT_IP_IPV4_NO_CSUM)) &&
 				(eip_typ & IAVF_TXD_CTX_UDP_TUNNELING) &&
-				(m->ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM))
+				(ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM))
 			eip_typ |= IAVF_TXD_CTX_QW0_L4T_CS_MASK;
 	}
 
@@ -2435,18 +2435,18 @@ iavf_fill_ctx_desc_tunnelling_field(uint64_t *qw0, const struct rte_mbuf *m)
 }
 
 static inline uint16_t
-iavf_fill_ctx_desc_segmentation_field(volatile uint64_t *field,
+iavf_fill_ctx_desc_segmentation_field(volatile uint64_t *field, uint64_t ol_flags,
 	const struct rte_mbuf *m, struct iavf_ipsec_crypto_pkt_metadata *ipsec_md)
 {
 	uint64_t segmentation_field = 0;
 	uint64_t total_length = 0;
 
-	if (m->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) {
+	if (ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) {
 		total_length = ipsec_md->l4_payload_len;
 	} else {
 		total_length = m->pkt_len - (m->l2_len + m->l3_len + m->l4_len);
 
-		if (m->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
+		if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
 			total_length -= m->outer_l3_len + m->outer_l2_len;
 	}
 
@@ -2573,7 +2573,7 @@ iavf_get_context_desc(uint64_t ol_flags, const struct rte_mbuf *mbuf,
 		}
 
 		/* TSO segmentation field */
-		iavf_fill_ctx_desc_segmentation_field(&cd_type_cmd, mbuf, ipsec_md);
+		iavf_fill_ctx_desc_segmentation_field(&cd_type_cmd, ol_flags, mbuf, ipsec_md);
 	}
 
 	/* VLAN field for L2TAG2 */
@@ -2589,7 +2589,7 @@ iavf_get_context_desc(uint64_t ol_flags, const struct rte_mbuf *mbuf,
 
 	/* Tunneling field */
 	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
-		iavf_fill_ctx_desc_tunnelling_field((uint64_t *)&cd_tunneling_params, mbuf);
+		iavf_fill_ctx_desc_tunnelling_field(&cd_tunneling_params, ol_flags, mbuf);
 
 	/* L2TAG2 field (VLAN) */
 	if (ol_flags & RTE_MBUF_F_TX_QINQ) {
