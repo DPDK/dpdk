@@ -251,8 +251,11 @@ testsuite_setup(void)
 	if (!count) {
 		printf("Testing with net_null device\n");
 		err = rte_vdev_init("net_null", NULL);
-		TEST_ASSERT(err == 0, "Failed to create net_null. err=%d",
-			    err);
+		if (err != 0) {
+			printf("Failed to create net_null, skipping tests. err=%d\n",
+				err);
+			return TEST_SKIPPED;
+		}
 		eth_dev_created = true;
 	}
 
@@ -311,8 +314,11 @@ testsuite_setup_rx_intr(void)
 	if (!count) {
 		printf("Testing with net_null device\n");
 		err = rte_vdev_init("net_null", NULL);
-		TEST_ASSERT(err == 0, "Failed to create net_null. err=%d",
-			    err);
+		if (err != 0) {
+			printf("Failed to create net_null, skipping tests. err=%d\n",
+				err);
+			return TEST_SKIPPED;
+		}
 		eth_dev_created = true;
 	}
 
