@@ -937,6 +937,7 @@ skip:
 static int
 tx_adapter_dynamic_device(void)
 {
+#ifdef RTE_NET_NULL
 	uint16_t port_id = rte_eth_dev_count_avail();
 	const char *null_dev[2] = { "eth_null0", "eth_null1" };
 	struct rte_eth_conf dev_conf;
@@ -977,6 +978,9 @@ tx_adapter_dynamic_device(void)
 		rte_vdev_uninit(null_dev[i]);
 
 	return TEST_SUCCESS;
+#else
+	return TEST_SKIPPED;
+#endif
 }
 
 static struct unit_test_suite event_eth_tx_tests = {
