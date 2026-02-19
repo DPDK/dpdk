@@ -77,6 +77,10 @@ New Features
 
   * Added support for pre and post VF reset callbacks.
 
+* **Updated Intel ice driver.**
+
+  * Added rte_flow support for L2TPv2 over UDP.
+
 * **Updated Marvell cnxk net driver.**
 
   * Added out-of-place support for CN20K SoC.
