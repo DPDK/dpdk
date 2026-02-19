@@ -112,7 +112,7 @@ source_file_deps = {
         'net'] + packet_burst_generator_deps + virtual_pmd_deps,
     'test_link_bonding_mode4.c': ['ethdev', 'net_ring', 'net_bond',
         'net'] + packet_burst_generator_deps,
-    'test_link_bonding_rssconf.c': ['ethdev', 'bus_vdev', 'net_bond'],
+    'test_link_bonding_rssconf.c': ['ethdev', 'bus_vdev', 'net_bond', 'net_null'],
     'test_logs.c': [],
     'test_lpm.c': ['net', 'lpm'],
     'test_lpm6.c': ['lpm'],
@@ -209,7 +209,7 @@ source_file_deps = {
     'test_trace.c': [],
     'test_trace_perf.c': [],
     'test_trace_register.c': [],
-    'test_vdev.c': ['kvargs', 'bus_vdev'],
+    'test_vdev.c': ['kvargs', 'bus_vdev', 'net_null'],
     'test_version.c': [],
 }
 
