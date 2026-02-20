@@ -1601,7 +1601,7 @@ iavf_ipsec_crypto_status_get(struct iavf_adapter *adapter,
 	}
 
 	response_len = sizeof(struct inline_ipsec_msg) +
-			sizeof(struct virtchnl_ipsec_cap);
+			sizeof(struct virtchnl_ipsec_status);
 	response = rte_malloc("iavf-device-status-response",
 			response_len, 0);
 	if (response == NULL) {
