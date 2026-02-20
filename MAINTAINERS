@@ -773,7 +773,6 @@ F: doc/guides/nics/hns3.rst
 F: doc/guides/nics/features/hns3.ini
 
 Huawei hinic
-M: Ziyang Xuan <xuanziyang2@huawei.com>
 M: Xiaoyun Wang <cloud.wangxiaoyun@huawei.com>
 F: drivers/net/hinic/
 F: doc/guides/nics/hinic.rst
@@ -1020,7 +1019,6 @@ F: doc/guides/nics/features/rnp.ini
 
 Nebulamatrix nbl
 M: Dimon Zhao <dimon.zhao@nebula-matrix.com>
-M: Kyo Liu <kyo.liu@nebula-matrix.com>
 M: Leon Yu <leon.yu@nebula-matrix.com>
 M: Sam Chen <sam.chen@nebula-matrix.com>
 F: drivers/net/nbl/
@@ -1330,7 +1328,6 @@ F: drivers/compress/qat/
 F: drivers/common/qat/
 
 ISA-L
-M: Lee Daly <lee.daly@intel.com>
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: drivers/compress/isal/
 F: doc/guides/compressdevs/isal.rst
@@ -1676,7 +1673,6 @@ F: doc/guides/prog_guide/pdcp_lib.rst
 F: app/test/test_pdcp*
 
 Distributor
-M: David Hunt <david.hunt@intel.com>
 F: lib/distributor/
 F: doc/guides/prog_guide/packet_distrib_lib.rst
 F: app/test/test_distributor*
@@ -1742,7 +1738,6 @@ F: app/test-acl/
 F: app/test/test_acl.*
 
 EFD
-M: Byron Marohn <byron.marohn@intel.com>
 M: Yipeng Wang <yipeng1.wang@intel.com>
 F: lib/efd/
 F: doc/guides/prog_guide/efd_lib.rst
@@ -1843,7 +1838,6 @@ F: doc/guides/prog_guide/ptr_compress_lib.rst
 
 Power management
 M: Anatoly Burakov <anatoly.burakov@intel.com>
-M: David Hunt <david.hunt@intel.com>
 M: Sivaprasad Tummala <sivaprasad.tummala@amd.com>
 F: lib/power/
 F: doc/guides/prog_guide/power_man.rst
