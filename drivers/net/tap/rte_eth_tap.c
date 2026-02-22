@@ -203,7 +203,7 @@ tun_alloc(struct pmd_internals *pmd, int is_keepalive, int persistent)
 	 * and need to find the resulting device.
 	 */
 	TAP_LOG(DEBUG, "Device name is '%s'", ifr.ifr_name);
-	strlcpy(pmd->name, ifr.ifr_name, RTE_ETH_NAME_MAX_LEN);
+	strlcpy(pmd->name, ifr.ifr_name, IFNAMSIZ);
 
 	if (is_keepalive) {
 		/*
@@ -1994,7 +1994,7 @@ static const struct eth_dev_ops ops = {
 
 static int
 eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
-		   char *remote_iface, struct rte_ether_addr *mac_addr,
+		   const char *remote_iface, struct rte_ether_addr *mac_addr,
 		   enum rte_tuntap_type type, int persist)
 {
 	int numa_node = rte_socket_id();
@@ -2137,7 +2137,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 				pmd->name, remote_iface);
 			goto error_remote;
 		}
-		strlcpy(pmd->remote_iface, remote_iface, RTE_ETH_NAME_MAX_LEN);
+		strlcpy(pmd->remote_iface, remote_iface, IFNAMSIZ);
 
 		/* Save state of remote device */
 		if (tap_nl_get_flags(pmd->nlsk_fd, pmd->remote_if_index,
@@ -2250,10 +2250,10 @@ set_interface_name(const char *key __rte_unused,
 				value);
 			return -1;
 		}
-		strlcpy(name, value, RTE_ETH_NAME_MAX_LEN);
+		strlcpy(name, value, IFNAMSIZ);
 	} else {
 		/* use tap%d which causes kernel to choose next available */
-		strlcpy(name, DEFAULT_TAP_NAME "%d", RTE_ETH_NAME_MAX_LEN);
+		strlcpy(name, DEFAULT_TAP_NAME "%d", IFNAMSIZ);
 	}
 	return 0;
 }
@@ -2271,7 +2271,7 @@ set_remote_iface(const char *key __rte_unused,
 				value);
 			return -1;
 		}
-		strlcpy(name, value, RTE_ETH_NAME_MAX_LEN);
+		strlcpy(name, value, IFNAMSIZ);
 	}
 
 	return 0;
@@ -2322,13 +2322,13 @@ rte_pmd_tun_probe(struct rte_vdev_device *dev)
 	const char *name, *params;
 	int ret;
 	struct rte_kvargs *kvlist = NULL;
-	char tun_name[RTE_ETH_NAME_MAX_LEN];
-	char remote_iface[RTE_ETH_NAME_MAX_LEN];
+	char tun_name[IFNAMSIZ];
+	char remote_iface[IFNAMSIZ];
 	struct rte_eth_dev *eth_dev;
 
 	name = rte_vdev_device_name(dev);
 	params = rte_vdev_device_args(dev);
-	memset(remote_iface, 0, RTE_ETH_NAME_MAX_LEN);
+	memset(remote_iface, 0, IFNAMSIZ);
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
 	    strlen(params) == 0) {
@@ -2344,7 +2344,7 @@ rte_pmd_tun_probe(struct rte_vdev_device *dev)
 	}
 
 	/* use tun%d which causes kernel to choose next available */
-	strlcpy(tun_name, DEFAULT_TUN_NAME "%d", RTE_ETH_NAME_MAX_LEN);
+	strlcpy(tun_name, DEFAULT_TUN_NAME "%d", IFNAMSIZ);
 
 	if (params && (params[0] != '\0')) {
 		TAP_LOG(DEBUG, "parameters (%s)", params);
@@ -2485,8 +2485,8 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	int ret;
 	struct rte_kvargs *kvlist = NULL;
 	int speed;
-	char tap_name[RTE_ETH_NAME_MAX_LEN];
-	char remote_iface[RTE_ETH_NAME_MAX_LEN];
+	char tap_name[IFNAMSIZ];
+	char remote_iface[IFNAMSIZ];
 	struct rte_ether_addr user_mac = { .addr_bytes = {0} };
 	struct rte_eth_dev *eth_dev;
 	int tap_devices_count_increased = 0;
@@ -2537,8 +2537,8 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	speed = RTE_ETH_SPEED_NUM_10G;
 
 	/* use tap%d which causes kernel to choose next available */
-	strlcpy(tap_name, DEFAULT_TAP_NAME "%d", RTE_ETH_NAME_MAX_LEN);
-	memset(remote_iface, 0, RTE_ETH_NAME_MAX_LEN);
+	strlcpy(tap_name, DEFAULT_TAP_NAME "%d", IFNAMSIZ);
+	memset(remote_iface, 0, IFNAMSIZ);
 
 	if (params && (params[0] != '\0')) {
 		TAP_LOG(DEBUG, "parameters (%s)", params);
