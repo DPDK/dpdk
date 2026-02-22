@@ -79,8 +79,14 @@ static_assert(RTE_PMD_TAP_MAX_QUEUES <= RTE_MP_MAX_FD_NUM, "TAP max queues excee
  */
 #define TAP_MAX_RX_SEGS 128
 
+/* Limit on the number of segments per mbuf on Tx */
+#define TAP_MAX_TX_SEGS  128
+
 static_assert(TAP_MAX_RX_SEGS + 1 <= IOV_MAX,
 	      "TAP_MAX_RX_SEGS + 1 (for tun_pi) must not exceed IOV_MAX");
+
+static_assert(TAP_MAX_TX_SEGS + 1 <= IOV_MAX,
+	      "TAP_MAX_TX_SEGS + 1 (for tun_pi) must not exceed IOV_MAX");
 
 #define TAP_RX_OFFLOAD (RTE_ETH_RX_OFFLOAD_SCATTER |	\
 			RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |	\
@@ -533,13 +539,13 @@ tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 			uint16_t *num_packets, unsigned long *num_tx_bytes)
 {
 	struct pmd_process_private *process_private;
+	struct iovec iovecs[TAP_MAX_TX_SEGS + 1];
 	int i;
 
 	process_private = rte_eth_devices[txq->out_port].process_private;
 
 	for (i = 0; i < num_mbufs; i++) {
 		struct rte_mbuf *mbuf = pmbufs[i];
-		struct iovec iovecs[mbuf->nb_segs + 2];
 		struct tun_pi pi = { .flags = 0, .proto = 0x00 };
 		struct rte_mbuf *seg = mbuf;
 		uint64_t l4_ol_flags;
@@ -641,6 +647,10 @@ tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 		}
 
 skip_l4_cksum:
+		/* tun_pi header + packet segments must fit in iovecs */
+		if (unlikely(mbuf->nb_segs > TAP_MAX_TX_SEGS))
+			return -1;
+
 		for (j = 0; j < mbuf->nb_segs; j++) {
 			iovecs[k].iov_len = rte_pktmbuf_data_len(seg);
 			iovecs[k].iov_base = rte_pktmbuf_mtod(seg, void *);
@@ -669,7 +679,7 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	uint16_t num_packets = 0;
 	unsigned long num_tx_bytes = 0;
 	uint32_t max_size;
-	int i;
+	unsigned int i;
 
 	if (unlikely(nb_pkts == 0))
 		return 0;
