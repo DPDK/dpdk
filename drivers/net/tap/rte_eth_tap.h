@@ -67,8 +67,8 @@ struct tx_queue {
 
 struct pmd_internals {
 	struct rte_eth_dev *dev;          /* Ethernet device. */
-	char remote_iface[RTE_ETH_NAME_MAX_LEN]; /* Remote netdevice name */
-	char name[RTE_ETH_NAME_MAX_LEN];  /* Internal Tap device name */
+	char remote_iface[IFNAMSIZ];	  /* Remote netdevice name */
+	char name[IFNAMSIZ];		  /* Internal Tap device name */
 	int type;                         /* Type field - TUN|TAP */
 	struct rte_ether_addr eth_addr;   /* Mac address of the device port */
 	struct ifreq remote_initial_flags;/* Remote netdevice flags on init */
