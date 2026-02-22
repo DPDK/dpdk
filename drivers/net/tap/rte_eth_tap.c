@@ -35,6 +35,7 @@
 #include <linux/if_tun.h>
 #include <linux/sched.h>
 #include <fcntl.h>
+#include <limits.h>
 
 #include <tap_rss.h>
 #include <rte_eth_tap.h>
@@ -69,7 +70,17 @@
 
 static_assert(RTE_PMD_TAP_MAX_QUEUES <= RTE_MP_MAX_FD_NUM, "TAP max queues exceeds MP fd limit");
 
-#define TAP_IOV_DEFAULT_MAX 1024
+/*
+ * Upper bound on the number of scatter segments per received packet.
+ * Actual value is computed at queue setup from MTU and mbuf data size.
+ * One extra iovec slot is reserved for the tun_pi header, so the total
+ * iovec count passed to readv() is max_rx_segs + 1, which must not
+ * exceed IOV_MAX.
+ */
+#define TAP_MAX_RX_SEGS 128
+
+static_assert(TAP_MAX_RX_SEGS + 1 <= IOV_MAX,
+	      "TAP_MAX_RX_SEGS + 1 (for tun_pi) must not exceed IOV_MAX");
 
 #define TAP_RX_OFFLOAD (RTE_ETH_RX_OFFLOAD_SCATTER |	\
 			RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |	\
@@ -444,9 +455,7 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		int len;
 
 		len = readv(process_private->fds[rxq->queue_id],
-			*rxq->iovecs,
-			1 + (rxq->rxmode->offloads & RTE_ETH_RX_OFFLOAD_SCATTER ?
-			     rxq->nb_rx_desc : 1));
+			    rxq->iovecs,  1 + rxq->max_rx_segs);
 		if (len < (int)sizeof(struct tun_pi))
 			break;
 
@@ -483,9 +492,9 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			new_tail->next = seg->next;
 
 			/* iovecs[0] is reserved for packet info (pi) */
-			(*rxq->iovecs)[mbuf->nb_segs].iov_len =
+			rxq->iovecs[mbuf->nb_segs].iov_len =
 				buf->buf_len - data_off;
-			(*rxq->iovecs)[mbuf->nb_segs].iov_base =
+			rxq->iovecs[mbuf->nb_segs].iov_base =
 				(char *)buf->buf_addr + data_off;
 
 			seg->data_len = RTE_MIN(seg->buf_len - data_off, len);
@@ -1049,7 +1058,6 @@ tap_dev_close(struct rte_eth_dev *dev)
 
 		if (rxq != NULL) {
 			tap_rxq_pool_free(rxq->pool);
-			rte_free(rxq->iovecs);
 			rte_free(rxq);
 			dev->data->rx_queues[i] = NULL;
 		}
@@ -1115,7 +1123,6 @@ tap_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 	process_private = rte_eth_devices[rxq->in_port].process_private;
 
 	tap_rxq_pool_free(rxq->pool);
-	rte_free(rxq->iovecs);
 
 	if (dev->data->tx_queues[qid] == NULL)
 		tap_queue_close(process_private, qid);
@@ -1495,7 +1502,7 @@ tap_setup_queue(struct rte_eth_dev *dev,
 static int
 tap_rx_queue_setup(struct rte_eth_dev *dev,
 		   uint16_t rx_queue_id,
-		   uint16_t nb_rx_desc,
+		   uint16_t nb_rx_desc __rte_unused,
 		   unsigned int socket_id,
 		   const struct rte_eth_rxconf *rx_conf __rte_unused,
 		   struct rte_mempool *mp)
@@ -1504,30 +1511,51 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 	struct pmd_process_private *process_private = dev->process_private;
 	struct rx_queue *rxq;
 	struct rte_mbuf **tmp;
-	long iov_max = sysconf(_SC_IOV_MAX);
-
-	if (iov_max <= 0) {
-		TAP_LOG(WARNING,
-			"_SC_IOV_MAX is not defined. Using %d as default",
-			TAP_IOV_DEFAULT_MAX);
-		iov_max = TAP_IOV_DEFAULT_MAX;
-	}
-	uint16_t nb_desc = RTE_MIN(nb_rx_desc, iov_max - 1);
-	struct iovec (*iovecs)[nb_desc + 1];
-	int data_off = RTE_PKTMBUF_HEADROOM;
+	uint16_t max_rx_segs;
+	const uint32_t max_rx_pktlen = dev->data->mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+	const uint16_t seg_size = rte_pktmbuf_data_room_size(mp);
+	uint16_t data_off = RTE_PKTMBUF_HEADROOM;
 	int ret = 0;
-	int fd;
-	int i;
 
-	if (rx_queue_id >= dev->data->nb_rx_queues || !mp) {
-		TAP_LOG(WARNING,
-			"nb_rx_queues %d too small or mempool NULL",
-			dev->data->nb_rx_queues);
-		return -1;
+	/*
+	 * The nb_rx_desc parameter is ignored: the TAP PMD reads one packet
+	 * at a time from the kernel fd, so there is no descriptor ring.
+	 *
+	 * Compute the number of scatter segments needed to receive the
+	 * largest possible packet (MTU + L2 overhead).  The first segment
+	 * has headroom reserved, subsequent segments use the full data area.
+	 */
+	if (seg_size <= RTE_PKTMBUF_HEADROOM) {
+		TAP_LOG(ERR, "%s: mbuf pool has no usable data room", dev->device->name);
+		return -EINVAL;
 	}
 
-	rxq = rte_zmalloc_socket(dev->device->name, sizeof(*rxq), 0,
-				  socket_id);
+	const uint16_t first_seg_size = seg_size - RTE_PKTMBUF_HEADROOM;
+	if (max_rx_pktlen > first_seg_size)
+		max_rx_segs = 1 + (max_rx_pktlen - first_seg_size + seg_size - 1) /
+				   seg_size;
+	else
+		max_rx_segs = 1;
+
+	if (max_rx_segs > TAP_MAX_RX_SEGS) {
+		TAP_LOG(ERR,
+			"%s: MTU %u requires %u scatter segments, max is %u",
+			dev->device->name, dev->data->mtu,
+			max_rx_segs, TAP_MAX_RX_SEGS);
+		return -EINVAL;
+	}
+
+	if (max_rx_segs > 1 &&
+	    !(dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER)) {
+		/* non-fatal since applications might be doing it wrong now */
+		TAP_LOG(WARNING,
+			"%s: MTU %u requires %u scatter segments, but offload not set",
+			dev->device->name, dev->data->mtu, max_rx_segs);
+	}
+
+	rxq = rte_zmalloc_socket(dev->device->name,
+				 sizeof(*rxq) + (max_rx_segs + 1) * sizeof(struct iovec),
+				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (!rxq) {
 		TAP_LOG(ERR,
 			"%s: Couldn't allocate rx queue structure",
@@ -1540,30 +1568,20 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->trigger_seen = 1; /* force initial burst */
 	rxq->in_port = dev->data->port_id;
 	rxq->queue_id = rx_queue_id;
-	rxq->nb_rx_desc = nb_desc;
+	rxq->max_rx_segs = max_rx_segs;
 	rxq->rxmode = &dev->data->dev_conf.rxmode;
-	iovecs = rte_zmalloc_socket(dev->device->name, sizeof(*iovecs), 0,
-				    socket_id);
-	if (!iovecs) {
-		TAP_LOG(WARNING,
-			"%s: Couldn't allocate %d RX descriptors",
-			dev->device->name, nb_desc);
-		rte_free(rxq);
-		return -ENOMEM;
-	}
-	rxq->iovecs = iovecs;
 
 	dev->data->rx_queues[rx_queue_id] = rxq;
-	fd = tap_setup_queue(dev, rx_queue_id, 1);
+	int fd = tap_setup_queue(dev, rx_queue_id, 1);
 	if (fd == -1) {
 		ret = fd;
 		goto error;
 	}
 
-	(*rxq->iovecs)[0].iov_len = sizeof(struct tun_pi);
-	(*rxq->iovecs)[0].iov_base = &rxq->pi;
+	rxq->iovecs[0].iov_len = sizeof(struct tun_pi);
+	rxq->iovecs[0].iov_base = &rxq->pi;
 
-	for (i = 1; i <= nb_desc; i++) {
+	for (uint16_t i = 1; i <= max_rx_segs; i++) {
 		*tmp = rte_pktmbuf_alloc(rxq->mp);
 		if (!*tmp) {
 			TAP_LOG(WARNING,
@@ -1572,8 +1590,8 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 			ret = -ENOMEM;
 			goto error;
 		}
-		(*rxq->iovecs)[i].iov_len = (*tmp)->buf_len - data_off;
-		(*rxq->iovecs)[i].iov_base =
+		rxq->iovecs[i].iov_len = (*tmp)->buf_len - data_off;
+		rxq->iovecs[i].iov_base =
 			(char *)(*tmp)->buf_addr + data_off;
 		data_off = 0;
 		tmp = &(*tmp)->next;
@@ -1592,7 +1610,6 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 
 error:
 	tap_rxq_pool_free(rxq->pool);
-	rte_free(rxq->iovecs);
 	rte_free(rxq);
 	dev->data->rx_queues[rx_queue_id] = NULL;
 	return ret;
@@ -1614,8 +1631,8 @@ tap_tx_queue_setup(struct rte_eth_dev *dev,
 	if (tx_queue_id >= dev->data->nb_tx_queues)
 		return -1;
 
-	txq = rte_zmalloc_socket(dev->device->name, sizeof(*txq), 0,
-				  socket_id);
+	txq = rte_zmalloc_socket(dev->device->name, sizeof(*txq),
+				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (!txq) {
 		TAP_LOG(ERR,
 			"%s: Couldn't allocate tx queue structure",

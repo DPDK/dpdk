@@ -49,11 +49,11 @@ struct rx_queue {
 	uint16_t in_port;               /* Port ID */
 	uint16_t queue_id;		/* queue ID*/
 	struct pkt_stats stats;         /* Stats for this RX queue */
-	uint16_t nb_rx_desc;            /* max number of mbufs available */
+	uint16_t max_rx_segs;           /* max scatter segments per packet */
 	struct rte_eth_rxmode *rxmode;  /* RX features */
 	struct rte_mbuf *pool;          /* mbufs pool for this queue */
-	struct iovec (*iovecs)[];       /* descriptors for this queue */
 	struct tun_pi pi;               /* packet info for iovecs */
+	struct iovec iovecs[];          /* iov[0] = pi, iov[1..max_rx_segs] = data */
 };
 
 struct tx_queue {
