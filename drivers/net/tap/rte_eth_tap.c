@@ -467,7 +467,7 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 		/* Packet couldn't fit in the provided mbuf */
 		if (unlikely(rxq->pi.flags & TUN_PKT_STRIP)) {
-			rxq->stats.ierrors++;
+			rxq->stats.errors++;
 			continue;
 		}
 
@@ -479,7 +479,8 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			struct rte_mbuf *buf = rte_pktmbuf_alloc(rxq->mp);
 
 			if (unlikely(!buf)) {
-				rxq->stats.rx_nombuf++;
+				rte_eth_devices[rxq->in_port].data->rx_mbuf_alloc_failed++;
+
 				/* No new buf has been allocated: do nothing */
 				if (!new_tail || !seg)
 					goto end;
@@ -524,8 +525,8 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		num_rx_bytes += mbuf->pkt_len;
 	}
 end:
-	rxq->stats.ipackets += num_rx;
-	rxq->stats.ibytes += num_rx_bytes;
+	rxq->stats.packets += num_rx;
+	rxq->stats.bytes += num_rx_bytes;
 
 	if (trigger && num_rx < nb_pkts)
 		rxq->trigger_seen = trigger;
@@ -709,7 +710,7 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			tso_segsz = mbuf_in->tso_segsz + hdrs_len;
 			if (unlikely(tso_segsz == hdrs_len) ||
 				tso_segsz > *txq->mtu) {
-				txq->stats.errs++;
+				txq->stats.errors++;
 				break;
 			}
 			gso_ctx->gso_size = tso_segsz;
@@ -747,7 +748,7 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		ret = tap_write_mbufs(txq, num_mbufs, mbuf,
 				&num_packets, &num_tx_bytes);
 		if (ret == -1) {
-			txq->stats.errs++;
+			txq->stats.errors++;
 			/* free tso mbufs */
 			if (num_tso_mbufs > 0)
 				rte_pktmbuf_free_bulk(mbuf, num_tso_mbufs);
@@ -765,9 +766,9 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 	}
 
-	txq->stats.opackets += num_packets;
-	txq->stats.errs += nb_pkts - num_tx;
-	txq->stats.obytes += num_tx_bytes;
+	txq->stats.packets += num_packets;
+	txq->stats.errors += nb_pkts - num_tx;
+	txq->stats.bytes += num_tx_bytes;
 
 	return num_tx;
 }
@@ -960,7 +961,7 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats,
 	unsigned int i;
 	uint64_t rx_total = 0, tx_total = 0, tx_err_total = 0;
 	uint64_t rx_bytes_total = 0, tx_bytes_total = 0;
-	uint64_t rx_nombuf = 0, ierrors = 0;
+	uint64_t ierrors = 0;
 
 	/* rx queue statistics */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
@@ -969,13 +970,12 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats,
 		if (rxq == NULL)
 			continue;
 		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_ipackets[i] = rxq->stats.ipackets;
-			qstats->q_ibytes[i] = rxq->stats.ibytes;
+			qstats->q_ipackets[i] = rxq->stats.packets;
+			qstats->q_ibytes[i] = rxq->stats.bytes;
 		}
-		rx_total += rxq->stats.ipackets;
-		rx_bytes_total += rxq->stats.ibytes;
-		rx_nombuf += rxq->stats.rx_nombuf;
-		ierrors += rxq->stats.ierrors;
+		rx_total += rxq->stats.packets;
+		rx_bytes_total += rxq->stats.bytes;
+		ierrors += rxq->stats.errors;
 	}
 
 	/* tx queue statistics */
@@ -985,21 +985,21 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats,
 		if (txq == NULL)
 			continue;
 		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_opackets[i] = txq->stats.opackets;
-			qstats->q_obytes[i] = txq->stats.obytes;
+			qstats->q_opackets[i] = txq->stats.packets;
+			qstats->q_obytes[i] = txq->stats.bytes;
 		}
-		tx_total += txq->stats.opackets;
-		tx_bytes_total += txq->stats.obytes;
-		tx_err_total += txq->stats.errs;
+		tx_total += txq->stats.packets;
+		tx_bytes_total += txq->stats.bytes;
+		tx_err_total += txq->stats.errors;
 	}
 
 	tap_stats->ipackets = rx_total;
 	tap_stats->ibytes = rx_bytes_total;
 	tap_stats->ierrors = ierrors;
-	tap_stats->rx_nombuf = rx_nombuf;
 	tap_stats->opackets = tx_total;
 	tap_stats->oerrors = tx_err_total;
 	tap_stats->obytes = tx_bytes_total;
+
 	return 0;
 }
 
@@ -1012,14 +1012,14 @@ tap_stats_reset(struct rte_eth_dev *dev)
 		struct rx_queue *rxq = dev->data->rx_queues[i];
 
 		if (rxq != NULL)
-			memset(&rxq->stats, 0, sizeof(struct pkt_stats));
+			memset(&rxq->stats, 0, sizeof(rxq->stats));
 	}
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		struct tx_queue *txq = dev->data->tx_queues[i];
 
 		if (txq != NULL)
-			memset(&txq->stats, 0, sizeof(struct pkt_stats));
+			memset(&txq->stats, 0, sizeof(txq->stats));
 	}
 
 	return 0;
