@@ -942,29 +942,36 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats,
 	uint64_t rx_total = 0, tx_total = 0, tx_err_total = 0;
 	uint64_t rx_bytes_total = 0, tx_bytes_total = 0;
 	uint64_t rx_nombuf = 0, ierrors = 0;
-	const struct pmd_internals *pmd = dev->data->dev_private;
 
 	/* rx queue statistics */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct rx_queue *rxq = dev->data->rx_queues[i];
+
+		if (rxq == NULL)
+			continue;
 		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_ipackets[i] = pmd->rxq[i].stats.ipackets;
-			qstats->q_ibytes[i] = pmd->rxq[i].stats.ibytes;
+			qstats->q_ipackets[i] = rxq->stats.ipackets;
+			qstats->q_ibytes[i] = rxq->stats.ibytes;
 		}
-		rx_total += pmd->rxq[i].stats.ipackets;
-		rx_bytes_total += pmd->rxq[i].stats.ibytes;
-		rx_nombuf += pmd->rxq[i].stats.rx_nombuf;
-		ierrors += pmd->rxq[i].stats.ierrors;
+		rx_total += rxq->stats.ipackets;
+		rx_bytes_total += rxq->stats.ibytes;
+		rx_nombuf += rxq->stats.rx_nombuf;
+		ierrors += rxq->stats.ierrors;
 	}
 
 	/* tx queue statistics */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		struct tx_queue *txq = dev->data->tx_queues[i];
+
+		if (txq == NULL)
+			continue;
 		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_opackets[i] = pmd->txq[i].stats.opackets;
-			qstats->q_obytes[i] = pmd->txq[i].stats.obytes;
+			qstats->q_opackets[i] = txq->stats.opackets;
+			qstats->q_obytes[i] = txq->stats.obytes;
 		}
-		tx_total += pmd->txq[i].stats.opackets;
-		tx_bytes_total += pmd->txq[i].stats.obytes;
-		tx_err_total += pmd->txq[i].stats.errs;
+		tx_total += txq->stats.opackets;
+		tx_bytes_total += txq->stats.obytes;
+		tx_err_total += txq->stats.errs;
 	}
 
 	tap_stats->ipackets = rx_total;
@@ -981,11 +988,19 @@ static int
 tap_stats_reset(struct rte_eth_dev *dev)
 {
 	unsigned int i;
-	struct pmd_internals *pmd = dev->data->dev_private;
 
-	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
-		memset(&pmd->rxq[i].stats, 0, sizeof(struct pkt_stats));
-		memset(&pmd->txq[i].stats, 0, sizeof(struct pkt_stats));
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct rx_queue *rxq = dev->data->rx_queues[i];
+
+		if (rxq != NULL)
+			memset(&rxq->stats, 0, sizeof(struct pkt_stats));
+	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		struct tx_queue *txq = dev->data->tx_queues[i];
+
+		if (txq != NULL)
+			memset(&txq->stats, 0, sizeof(struct pkt_stats));
 	}
 
 	return 0;
@@ -1028,14 +1043,21 @@ tap_dev_close(struct rte_eth_dev *dev)
 #endif
 
 	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
-		struct rx_queue *rxq = &internals->rxq[i];
+		struct rx_queue *rxq = dev->data->rx_queues[i];
 
 		tap_queue_close(process_private, i);
 
-		tap_rxq_pool_free(rxq->pool);
-		rte_free(rxq->iovecs);
-		rxq->pool = NULL;
-		rxq->iovecs = NULL;
+		if (rxq != NULL) {
+			tap_rxq_pool_free(rxq->pool);
+			rte_free(rxq->iovecs);
+			rte_free(rxq);
+			dev->data->rx_queues[i] = NULL;
+		}
+
+		if (dev->data->tx_queues[i] != NULL) {
+			rte_free(dev->data->tx_queues[i]);
+			dev->data->tx_queues[i] = NULL;
+		}
 	}
 
 	if (internals->remote_if_index) {
@@ -1094,11 +1116,12 @@ tap_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 
 	tap_rxq_pool_free(rxq->pool);
 	rte_free(rxq->iovecs);
-	rxq->pool = NULL;
-	rxq->iovecs = NULL;
 
 	if (dev->data->tx_queues[qid] == NULL)
 		tap_queue_close(process_private, qid);
+
+	rte_free(rxq);
+	dev->data->rx_queues[qid] = NULL;
 }
 
 static void
@@ -1113,6 +1136,9 @@ tap_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 	process_private = rte_eth_devices[txq->out_port].process_private;
 	if (dev->data->rx_queues[qid] == NULL)
 		tap_queue_close(process_private, qid);
+
+	rte_free(txq);
+	dev->data->tx_queues[qid] = NULL;
 }
 
 static int
@@ -1424,16 +1450,14 @@ tap_gso_ctx_setup(struct rte_gso_ctx *gso_ctx, struct rte_eth_dev *dev)
 
 static int
 tap_setup_queue(struct rte_eth_dev *dev,
-		struct pmd_internals *internals,
 		uint16_t qid,
 		int is_rx)
 {
 	int fd, ret;
 	struct pmd_internals *pmd = dev->data->dev_private;
 	struct pmd_process_private *process_private = dev->process_private;
-	struct rx_queue *rx = &internals->rxq[qid];
-	struct tx_queue *tx = &internals->txq[qid];
-	struct rte_gso_ctx *gso_ctx = is_rx ? NULL : &tx->gso_ctx;
+	struct tx_queue *tx = dev->data->tx_queues[qid];
+	struct rte_gso_ctx *gso_ctx = (is_rx || tx == NULL) ? NULL : &tx->gso_ctx;
 	const char *dir = is_rx ? "rx" : "tx";
 
 	fd = process_private->fds[qid];
@@ -1455,15 +1479,15 @@ tap_setup_queue(struct rte_eth_dev *dev,
 		process_private->fds[qid] = fd;
 	}
 
-	tx->mtu = &dev->data->mtu;
-	rx->rxmode = &dev->data->dev_conf.rxmode;
+	if (tx != NULL) {
+		tx->mtu = &dev->data->mtu;
+		tx->type = pmd->type;
+	}
 	if (gso_ctx) {
 		ret = tap_gso_ctx_setup(gso_ctx, dev);
 		if (ret)
 			return -1;
 	}
-
-	tx->type = pmd->type;
 
 	return fd;
 }
@@ -1478,8 +1502,8 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 {
 	struct pmd_internals *internals = dev->data->dev_private;
 	struct pmd_process_private *process_private = dev->process_private;
-	struct rx_queue *rxq = &internals->rxq[rx_queue_id];
-	struct rte_mbuf **tmp = &rxq->pool;
+	struct rx_queue *rxq;
+	struct rte_mbuf **tmp;
 	long iov_max = sysconf(_SC_IOV_MAX);
 
 	if (iov_max <= 0) {
@@ -1502,23 +1526,35 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 		return -1;
 	}
 
+	rxq = rte_zmalloc_socket(dev->device->name, sizeof(*rxq), 0,
+				  socket_id);
+	if (!rxq) {
+		TAP_LOG(ERR,
+			"%s: Couldn't allocate rx queue structure",
+			dev->device->name);
+		return -ENOMEM;
+	}
+	tmp = &rxq->pool;
+
 	rxq->mp = mp;
 	rxq->trigger_seen = 1; /* force initial burst */
 	rxq->in_port = dev->data->port_id;
 	rxq->queue_id = rx_queue_id;
 	rxq->nb_rx_desc = nb_desc;
+	rxq->rxmode = &dev->data->dev_conf.rxmode;
 	iovecs = rte_zmalloc_socket(dev->device->name, sizeof(*iovecs), 0,
 				    socket_id);
 	if (!iovecs) {
 		TAP_LOG(WARNING,
 			"%s: Couldn't allocate %d RX descriptors",
 			dev->device->name, nb_desc);
+		rte_free(rxq);
 		return -ENOMEM;
 	}
 	rxq->iovecs = iovecs;
 
 	dev->data->rx_queues[rx_queue_id] = rxq;
-	fd = tap_setup_queue(dev, internals, rx_queue_id, 1);
+	fd = tap_setup_queue(dev, rx_queue_id, 1);
 	if (fd == -1) {
 		ret = fd;
 		goto error;
@@ -1556,9 +1592,9 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 
 error:
 	tap_rxq_pool_free(rxq->pool);
-	rxq->pool = NULL;
 	rte_free(rxq->iovecs);
-	rxq->iovecs = NULL;
+	rte_free(rxq);
+	dev->data->rx_queues[rx_queue_id] = NULL;
 	return ret;
 }
 
@@ -1566,7 +1602,7 @@ static int
 tap_tx_queue_setup(struct rte_eth_dev *dev,
 		   uint16_t tx_queue_id,
 		   uint16_t nb_tx_desc __rte_unused,
-		   unsigned int socket_id __rte_unused,
+		   unsigned int socket_id,
 		   const struct rte_eth_txconf *tx_conf)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
@@ -1577,8 +1613,17 @@ tap_tx_queue_setup(struct rte_eth_dev *dev,
 
 	if (tx_queue_id >= dev->data->nb_tx_queues)
 		return -1;
-	dev->data->tx_queues[tx_queue_id] = &internals->txq[tx_queue_id];
-	txq = dev->data->tx_queues[tx_queue_id];
+
+	txq = rte_zmalloc_socket(dev->device->name, sizeof(*txq), 0,
+				  socket_id);
+	if (!txq) {
+		TAP_LOG(ERR,
+			"%s: Couldn't allocate tx queue structure",
+			dev->device->name);
+		return -ENOMEM;
+	}
+
+	dev->data->tx_queues[tx_queue_id] = txq;
 	txq->out_port = dev->data->port_id;
 	txq->queue_id = tx_queue_id;
 
@@ -1588,9 +1633,12 @@ tap_tx_queue_setup(struct rte_eth_dev *dev,
 			 RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
 			 RTE_ETH_TX_OFFLOAD_TCP_CKSUM));
 
-	ret = tap_setup_queue(dev, internals, tx_queue_id, 0);
-	if (ret == -1)
+	ret = tap_setup_queue(dev, tx_queue_id, 0);
+	if (ret == -1) {
+		rte_free(txq);
+		dev->data->tx_queues[tx_queue_id] = NULL;
 		return -1;
+	}
 	TAP_LOG(DEBUG,
 		"  TX TUNTAP device name %s, qid %d on fd %d csum %s",
 		internals->name, tx_queue_id,
