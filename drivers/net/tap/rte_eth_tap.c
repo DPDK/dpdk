@@ -956,17 +956,15 @@ static int
 tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats,
 	      struct eth_queue_stats *qstats)
 {
-	unsigned int i, imax;
-	unsigned long rx_total = 0, tx_total = 0, tx_err_total = 0;
-	unsigned long rx_bytes_total = 0, tx_bytes_total = 0;
-	unsigned long rx_nombuf = 0, ierrors = 0;
+	unsigned int i;
+	uint64_t rx_total = 0, tx_total = 0, tx_err_total = 0;
+	uint64_t rx_bytes_total = 0, tx_bytes_total = 0;
+	uint64_t rx_nombuf = 0, ierrors = 0;
 	const struct pmd_internals *pmd = dev->data->dev_private;
 
 	/* rx queue statistics */
-	imax = (dev->data->nb_rx_queues < RTE_ETHDEV_QUEUE_STAT_CNTRS) ?
-		dev->data->nb_rx_queues : RTE_ETHDEV_QUEUE_STAT_CNTRS;
-	for (i = 0; i < imax; i++) {
-		if (qstats != NULL) {
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
 			qstats->q_ipackets[i] = pmd->rxq[i].stats.ipackets;
 			qstats->q_ibytes[i] = pmd->rxq[i].stats.ibytes;
 		}
@@ -977,11 +975,8 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats,
 	}
 
 	/* tx queue statistics */
-	imax = (dev->data->nb_tx_queues < RTE_ETHDEV_QUEUE_STAT_CNTRS) ?
-		dev->data->nb_tx_queues : RTE_ETHDEV_QUEUE_STAT_CNTRS;
-
-	for (i = 0; i < imax; i++) {
-		if (qstats != NULL) {
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
 			qstats->q_opackets[i] = pmd->txq[i].stats.opackets;
 			qstats->q_obytes[i] = pmd->txq[i].stats.obytes;
 		}
@@ -1003,18 +998,12 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats,
 static int
 tap_stats_reset(struct rte_eth_dev *dev)
 {
-	int i;
+	unsigned int i;
 	struct pmd_internals *pmd = dev->data->dev_private;
 
 	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
-		pmd->rxq[i].stats.ipackets = 0;
-		pmd->rxq[i].stats.ibytes = 0;
-		pmd->rxq[i].stats.ierrors = 0;
-		pmd->rxq[i].stats.rx_nombuf = 0;
-
-		pmd->txq[i].stats.opackets = 0;
-		pmd->txq[i].stats.errs = 0;
-		pmd->txq[i].stats.obytes = 0;
+		memset(&pmd->rxq[i].stats, 0, sizeof(struct pkt_stats));
+		memset(&pmd->txq[i].stats, 0, sizeof(struct pkt_stats));
 	}
 
 	return 0;
