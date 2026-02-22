@@ -1125,6 +1125,7 @@ M: Stephen Hemminger <stephen@networkplumber.org>
 F: drivers/net/tap/
 F: doc/guides/nics/tap.rst
 F: doc/guides/nics/features/tap.ini
+F: app/test/test_pmd_tap.c
 
 Ring PMD
 M: Bruce Richardson <bruce.richardson@intel.com>
