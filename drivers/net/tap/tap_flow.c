@@ -706,6 +706,13 @@ tap_flow_create_tcp(const struct rte_flow_item *item, struct convert_data *info)
  * @return
  *   0 on success.
  */
+/*
+ * Maximum size of a flow item in bytes.
+ * Must be larger than all supported rte_flow_item_* structures
+ * (currently the largest is rte_flow_item_ipv6 at ~44 bytes).
+ */
+#define TAP_FLOW_ITEM_MAX_SIZE 128
+
 static int
 tap_flow_item_validate(const struct rte_flow_item *item,
 		       unsigned int size,
@@ -754,11 +761,13 @@ tap_flow_item_validate(const struct rte_flow_item *item,
 	 * TC does not support range so anything else is invalid.
 	 */
 	if (item->spec && item->last) {
-		uint8_t spec[size];
-		uint8_t last[size];
+		uint8_t spec[TAP_FLOW_ITEM_MAX_SIZE];
+		uint8_t last[TAP_FLOW_ITEM_MAX_SIZE];
 		const uint8_t *apply = default_mask;
 		unsigned int i;
 
+		if (size > TAP_FLOW_ITEM_MAX_SIZE)
+			return -1;
 		if (item->mask)
 			apply = item->mask;
 		for (i = 0; i < size; ++i) {
