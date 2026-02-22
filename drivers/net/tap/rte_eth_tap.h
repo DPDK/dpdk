@@ -9,6 +9,7 @@
 #include <sys/queue.h>
 #include <sys/uio.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <net/if.h>
 
 #include <linux/if_tun.h>
@@ -33,14 +34,10 @@ enum rte_tuntap_type {
 	ETH_TUNTAP_TYPE_MAX,
 };
 
-struct pkt_stats {
-	uint64_t opackets;              /* Number of output packets */
-	uint64_t ipackets;              /* Number of input packets */
-	uint64_t obytes;                /* Number of bytes on output */
-	uint64_t ibytes;                /* Number of bytes on input */
-	uint64_t errs;                  /* Number of TX error packets */
-	uint64_t ierrors;               /* Number of RX error packets */
-	uint64_t rx_nombuf;             /* Nb of RX mbuf alloc failures */
+struct queue_stats {
+	uint64_t packets;
+	uint64_t bytes;
+	uint64_t errors;
 };
 
 struct rx_queue {
@@ -48,7 +45,7 @@ struct rx_queue {
 	uint32_t trigger_seen;          /* Last seen Rx trigger value */
 	uint16_t in_port;               /* Port ID */
 	uint16_t queue_id;		/* queue ID*/
-	struct pkt_stats stats;         /* Stats for this RX queue */
+	struct queue_stats stats;        /* Stats for this RX queue */
 	uint16_t max_rx_segs;           /* max scatter segments per packet */
 	struct rte_eth_rxmode *rxmode;  /* RX features */
 	struct rte_mbuf *pool;          /* mbufs pool for this queue */
@@ -60,7 +57,7 @@ struct tx_queue {
 	int type;                       /* Type field - TUN|TAP */
 	uint16_t *mtu;                  /* Pointer to MTU from dev_data */
 	uint16_t csum:1;                /* Enable checksum offloading */
-	struct pkt_stats stats;         /* Stats for this TX queue */
+	struct queue_stats stats;        /* Stats for this TX queue */
 	struct rte_gso_ctx gso_ctx;     /* GSO context */
 	uint16_t out_port;              /* Port ID */
 	uint16_t queue_id;		/* queue ID*/
