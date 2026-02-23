@@ -446,17 +446,17 @@ test_invalid_vdev_flag(void)
 
 	/* Test with invalid vdev option */
 	const char *vdevinval[] = {prgname, prefix, no_huge,
-				vdev, "eth_dummy"};
+				no_pci, vdev, "eth_dummy"};
 
 	/* Test with valid vdev option */
 	const char *vdevval1[] = {prgname, prefix, no_huge,
-	vdev, "net_ring0"};
+	no_pci, vdev, "net_ring0"};
 
 	const char *vdevval2[] = {prgname, prefix, no_huge,
-	vdev, "net_ring0,args=test"};
+	no_pci, vdev, "net_ring0,args=test"};
 
 	const char *vdevval3[] = {prgname, prefix, no_huge,
-	vdev, "net_ring0,nodeaction=r1:0:CREATE"};
+	no_pci, vdev, "net_ring0,nodeaction=r1:0:CREATE"};
 
 	if (launch_proc(vdevinval) == 0) {
 		printf("Error - process did run ok with invalid "
