@@ -21,7 +21,6 @@ ixgbe_rxq_rearm(struct ci_rx_queue *rxq)
 	ci_rxq_rearm(rxq, CI_RX_VEC_LEVEL_SSE);
 }
 
-#ifdef RTE_LIB_SECURITY
 static inline void
 desc_to_olflags_v_ipsec(__m128i descs[4], struct rte_mbuf **rx_pkts)
 {
@@ -56,7 +55,6 @@ desc_to_olflags_v_ipsec(__m128i descs[4], struct rte_mbuf **rx_pkts)
 	*rearm2 = _mm_extract_epi32(rearm, 2);
 	*rearm3 = _mm_extract_epi32(rearm, 3);
 }
-#endif
 
 static inline void
 desc_to_olflags_v(__m128i descs[4], __m128i mbuf_init, uint8_t vlan_flags,
@@ -265,9 +263,7 @@ _recv_raw_pkts_vec(struct ci_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	volatile union ixgbe_adv_rx_desc *rxdp;
 	struct ci_rx_entry *sw_ring;
 	uint16_t nb_pkts_recd;
-#ifdef RTE_LIB_SECURITY
 	uint8_t use_ipsec = rxq->using_ipsec;
-#endif
 	int pos;
 	uint64_t var;
 	__m128i shuf_msk;
@@ -444,10 +440,8 @@ _recv_raw_pkts_vec(struct ci_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		desc_to_olflags_v(descs, mbuf_init, vlan_flags, udp_p_flag,
 				  &rx_pkts[pos]);
 
-#ifdef RTE_LIB_SECURITY
 		if (unlikely(use_ipsec))
 			desc_to_olflags_v_ipsec(descs, &rx_pkts[pos]);
-#endif
 
 		/* D.2 pkt 3,4 set in_port/nb_seg and remove crc */
 		pkt_mb4 = _mm_add_epi16(pkt_mb4, crc_adjust);
