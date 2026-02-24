@@ -195,7 +195,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"show (rxq|txq) info (port_id) (queue_id)\n"
 			"    Display information for configured RX/TX queue.\n\n"
 
-			"show config (rxtx|cores|fwd|rxoffs|rxpkts|rxhdrs|txpkts)\n"
+			"show config (rxtx|cores|fwd|rxoffs|rxpkts|rxhdrs|txpkts|txtimes|dcbfwdtc)\n"
 			"    Display the given configuration.\n\n"
 
 			"read rxd (port_id) (queue_id) (rxd_id)\n"
@@ -6227,6 +6227,18 @@ static void cmd_set_fwd_retry_mode_init(void)
 	token_struct->string_data.str = token;
 }
 
+static void show_dcb_fwd_tc_config(void)
+{
+	int i;
+	printf("DCB forwarding TC list:");
+	for (i = 0; i < RTE_ETH_8_TCS; i++) {
+		if (dcb_fwd_tc_mask & (1u << i))
+			printf(" %d", i);
+	}
+	printf("\n");
+	printf("DCB forwarding cores per-TC: %u\n", dcb_fwd_tc_cores);
+}
+
 /* *** set DCB forward TCs *** */
 struct cmd_set_dcb_fwd_tc_result {
 	cmdline_fixed_string_t set;
@@ -7390,6 +7402,8 @@ static void cmd_showcfg_parsed(void *parsed_result,
 		show_tx_pkt_segments();
 	else if (!strcmp(res->what, "txtimes"))
 		show_tx_pkt_times();
+	else if (!strcmp(res->what, "dcbfwdtc"))
+		show_dcb_fwd_tc_config();
 }
 
 static cmdline_parse_token_string_t cmd_showcfg_show =
@@ -7398,12 +7412,12 @@ static cmdline_parse_token_string_t cmd_showcfg_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_showcfg_result, cfg, "config");
 static cmdline_parse_token_string_t cmd_showcfg_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_showcfg_result, what,
-				 "rxtx#cores#fwd#rxoffs#rxpkts#rxhdrs#txpkts#txtimes");
+				 "rxtx#cores#fwd#rxoffs#rxpkts#rxhdrs#txpkts#txtimes#dcbfwdtc");
 
 static cmdline_parse_inst_t cmd_showcfg = {
 	.f = cmd_showcfg_parsed,
 	.data = NULL,
-	.help_str = "show config rxtx|cores|fwd|rxoffs|rxpkts|rxhdrs|txpkts|txtimes",
+	.help_str = "show config rxtx|cores|fwd|rxoffs|rxpkts|rxhdrs|txpkts|txtimes|dcbfwdtc",
 	.tokens = {
 		(void *)&cmd_showcfg_show,
 		(void *)&cmd_showcfg_port,
