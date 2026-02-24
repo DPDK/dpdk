@@ -60,6 +60,10 @@ RTE_TRACE_POINT_REGISTER(rte_mempool_trace_populate_default,
 RTE_TRACE_POINT_REGISTER(rte_mempool_trace_populate_anon,
 	lib.mempool.populate.anon)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_mempool_trace_stats_reset, 26.07)
+RTE_TRACE_POINT_REGISTER(rte_mempool_trace_stats_reset,
+	lib.mempool.stats_reset)
+
 RTE_TRACE_POINT_REGISTER(rte_mempool_trace_cache_create,
 	lib.mempool.cache_create)
 
