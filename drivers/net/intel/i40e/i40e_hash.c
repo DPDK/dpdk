@@ -233,6 +233,22 @@ struct i40e_hash_match_pattern {
 					RTE_ETH_RSS_NONFRAG_IPV6_UDP | \
 					RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
 
+const uint8_t i40e_rss_key_default[] = {
+	0x44, 0x39, 0x79, 0x6b,
+	0xb5, 0x4c, 0x50, 0x23,
+	0xb6, 0x75, 0xea, 0x5b,
+	0x12, 0x4f, 0x9f, 0x30,
+	0xb8, 0xa2, 0xc0, 0x3d,
+	0xdf, 0xdc, 0x4d, 0x02,
+	0xa0, 0x8c, 0x9b, 0x33,
+	0x4a, 0xf6, 0x4a, 0x4c,
+	0x05, 0xc6, 0xfa, 0x34,
+	0x39, 0x58, 0xd8, 0x55,
+	0x7d, 0x99, 0x58, 0x3a,
+	0xe1, 0x38, 0xc9, 0x2e,
+	0x81, 0x15, 0x03, 0x66
+};
+
 /* Current supported patterns and RSS types.
  * All items that have the same pattern types are together.
  */
@@ -910,17 +926,12 @@ i40e_hash_parse_key(const struct rte_flow_action_rss *rss_act,
 	const uint8_t *key = rss_act->key;
 
 	if (!key || rss_act->key_len != sizeof(rss_conf->key)) {
-		const uint32_t rss_key_default[] = {0x6b793944,
-			0x23504cb5, 0x5bea75b6, 0x309f4f12, 0x3dc0a2b8,
-			0x024ddcdf, 0x339b8ca0, 0x4c4af64a, 0x34fac605,
-			0x55d85839, 0x3a58997d, 0x2ec938e1, 0x66031581};
-
 		if (rss_act->key_len != sizeof(rss_conf->key))
 			PMD_DRV_LOG(WARNING,
 				    "RSS key length invalid, must be %u bytes, now set key to default",
 				    (uint32_t)sizeof(rss_conf->key));
 
-		memcpy(rss_conf->key, rss_key_default, sizeof(rss_conf->key));
+		memcpy(rss_conf->key, i40e_rss_key_default, sizeof(rss_conf->key));
 	} else {
 		memcpy(rss_conf->key, key, sizeof(rss_conf->key));
 	}

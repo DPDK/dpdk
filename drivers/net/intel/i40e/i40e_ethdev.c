@@ -9080,23 +9080,21 @@ i40e_pf_reset_rss_reta(struct i40e_pf *pf)
 int
 i40e_pf_reset_rss_key(struct i40e_pf *pf)
 {
-	const uint8_t key_len = (I40E_PFQF_HKEY_MAX_INDEX + 1) *
-			sizeof(uint32_t);
-	uint8_t *rss_key;
+	uint8_t key_buf[I40E_RSS_KEY_LEN];
+	const uint8_t *rss_key;
 
 	/* Reset key */
 	rss_key = pf->dev_data->dev_conf.rx_adv_conf.rss_conf.rss_key;
-	if (!rss_key ||
-	    pf->dev_data->dev_conf.rx_adv_conf.rss_conf.rss_key_len < key_len) {
-		static uint32_t rss_key_default[] = {0x6b793944,
-			0x23504cb5, 0x5bea75b6, 0x309f4f12, 0x3dc0a2b8,
-			0x024ddcdf, 0x339b8ca0, 0x4c4af64a, 0x34fac605,
-			0x55d85839, 0x3a58997d, 0x2ec938e1, 0x66031581};
+	if (!rss_key || pf->dev_data->dev_conf.rx_adv_conf.rss_conf.rss_key_len < sizeof(key_buf))
+		rss_key = i40e_rss_key_default;
 
-		rss_key = (uint8_t *)rss_key_default;
-	}
+	/*
+	 * adminq does not guarantee const-ness of RSS key once a command is sent down, so make a
+	 * local copy.
+	 */
+	memcpy(&key_buf, rss_key, sizeof(key_buf));
 
-	return i40e_set_rss_key(pf->main_vsi, rss_key, key_len);
+	return i40e_set_rss_key(pf->main_vsi, key_buf, sizeof(key_buf));
 }
 
 static int
