@@ -1304,12 +1304,14 @@ struct i40e_vf_representor {
 
 extern const struct rte_flow_ops i40e_flow_ops;
 
-union i40e_filter_t {
-	struct rte_eth_ethertype_filter ethertype_filter;
-	struct i40e_fdir_filter_conf fdir_filter;
-	struct rte_eth_tunnel_filter_conf tunnel_filter;
-	struct i40e_tunnel_filter_conf consistent_tunnel_filter;
-	struct i40e_rte_flow_rss_conf rss_conf;
+struct i40e_filter_ctx {
+	union {
+		struct rte_eth_ethertype_filter ethertype_filter;
+		struct i40e_fdir_filter_conf fdir_filter;
+		struct i40e_tunnel_filter_conf consistent_tunnel_filter;
+		struct i40e_rte_flow_rss_conf rss_conf;
+	};
+	enum rte_filter_type type;
 };
 
 typedef int (*parse_filter_t)(struct rte_eth_dev *dev,
@@ -1317,7 +1319,7 @@ typedef int (*parse_filter_t)(struct rte_eth_dev *dev,
 			      const struct rte_flow_item pattern[],
 			      const struct rte_flow_action actions[],
 			      struct rte_flow_error *error,
-			      union i40e_filter_t *filter);
+			      struct i40e_filter_ctx *filter);
 struct i40e_valid_pattern {
 	enum rte_flow_item_type *items;
 	parse_filter_t parse_filter;
