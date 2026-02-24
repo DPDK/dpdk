@@ -919,20 +919,7 @@ static int iavf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 			goto config_irq_map_err;
 		}
 	} else {
-		uint16_t num_qv_maps = dev->data->nb_rx_queues;
-		uint16_t index = 0;
-
-		while (num_qv_maps > IAVF_IRQ_MAP_NUM_PER_BUF) {
-			if (iavf_config_irq_map_lv(adapter,
-					IAVF_IRQ_MAP_NUM_PER_BUF, index)) {
-				PMD_DRV_LOG(ERR, "config interrupt mapping for large VF failed");
-				goto config_irq_map_err;
-			}
-			num_qv_maps -= IAVF_IRQ_MAP_NUM_PER_BUF;
-			index += IAVF_IRQ_MAP_NUM_PER_BUF;
-		}
-
-		if (iavf_config_irq_map_lv(adapter, num_qv_maps, index)) {
+		if (iavf_config_irq_map_lv(adapter, dev->data->nb_rx_queues)) {
 			PMD_DRV_LOG(ERR, "config interrupt mapping for large VF failed");
 			goto config_irq_map_err;
 		}
@@ -1036,20 +1023,7 @@ iavf_dev_start(struct rte_eth_dev *dev)
 	if (iavf_set_vf_quanta_size(adapter, index, num_queue_pairs) != 0)
 		PMD_DRV_LOG(WARNING, "configure quanta size failed");
 
-	/* If needed, send configure queues msg multiple times to make the
-	 * adminq buffer length smaller than the 4K limitation.
-	 */
-	while (num_queue_pairs > IAVF_CFG_Q_NUM_PER_BUF) {
-		if (iavf_configure_queues(adapter,
-				IAVF_CFG_Q_NUM_PER_BUF, index) != 0) {
-			PMD_DRV_LOG(ERR, "configure queues failed");
-			goto error;
-		}
-		num_queue_pairs -= IAVF_CFG_Q_NUM_PER_BUF;
-		index += IAVF_CFG_Q_NUM_PER_BUF;
-	}
-
-	if (iavf_configure_queues(adapter, num_queue_pairs, index) != 0) {
+	if (iavf_configure_queues(adapter, num_queue_pairs) != 0) {
 		PMD_DRV_LOG(ERR, "configure queues failed");
 		goto error;
 	}
@@ -1553,7 +1527,7 @@ iavf_dev_rss_reta_update(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	lut = rte_zmalloc("rss_lut", reta_size, 0);
+	lut = calloc(1, reta_size);
 	if (!lut) {
 		PMD_DRV_LOG(ERR, "No memory can be allocated");
 		return -ENOMEM;
@@ -1573,7 +1547,7 @@ iavf_dev_rss_reta_update(struct rte_eth_dev *dev,
 	ret = iavf_configure_rss_lut(adapter);
 	if (ret) /* revert back */
 		rte_memcpy(vf->rss_lut, lut, reta_size);
-	rte_free(lut);
+	free(lut);
 
 	return ret;
 }
