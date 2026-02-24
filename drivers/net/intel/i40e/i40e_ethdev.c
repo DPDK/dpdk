@@ -8976,11 +8976,12 @@ i40e_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 }
 
 /* Calculate the maximum number of contiguous PF queues that are configured */
-int
+uint16_t
 i40e_pf_calc_configured_queues_num(struct i40e_pf *pf)
 {
 	struct rte_eth_dev_data *data = pf->dev_data;
-	int i, num;
+	int i;
+	uint16_t num;
 	struct ci_rx_queue *rxq;
 
 	num = 0;
@@ -9056,7 +9057,7 @@ i40e_pf_reset_rss_reta(struct i40e_pf *pf)
 	struct i40e_hw *hw = &pf->adapter->hw;
 	uint8_t lut[RTE_ETH_RSS_RETA_SIZE_512];
 	uint32_t i;
-	int num;
+	uint16_t num;
 
 	/* If both VMDQ and RSS enabled, not all of PF queues are
 	 * configured. It's necessary to calculate the actual PF
@@ -9072,7 +9073,7 @@ i40e_pf_reset_rss_reta(struct i40e_pf *pf)
 		return 0;
 
 	for (i = 0; i < hw->func_caps.rss_table_size; i++)
-		lut[i] = (uint8_t)(i % (uint32_t)num);
+		lut[i] = (uint8_t)(i % num);
 
 	return i40e_set_rss_lut(pf->main_vsi, lut, (uint16_t)i);
 }
@@ -10769,7 +10770,7 @@ i40e_vsi_update_queue_mapping(struct i40e_vsi *vsi,
 		PMD_INIT_LOG(ERR, " number of queues is less that tcs.");
 		return I40E_ERR_INVALID_QP_ID;
 	}
-	qpnum_per_tc = RTE_MIN(i40e_align_floor(qpnum_per_tc),
+	qpnum_per_tc = RTE_MIN((uint16_t)i40e_align_floor(qpnum_per_tc),
 				I40E_MAX_Q_PER_TC);
 	bsf = rte_bsf32(qpnum_per_tc);
 

@@ -24,7 +24,7 @@
 #define I40E_AQ_LEN               32
 #define I40E_AQ_BUF_SZ            4096
 /* Number of queues per TC should be one of 1, 2, 4, 8, 16, 32, 64 */
-#define I40E_MAX_Q_PER_TC         64
+#define I40E_MAX_Q_PER_TC         UINT16_C(64)
 #define I40E_NUM_DESC_DEFAULT     512
 #define I40E_NUM_DESC_ALIGN       32
 #define I40E_BUF_SIZE_MIN         1024
@@ -1456,7 +1456,7 @@ int i40e_flush_queue_region_all_conf(struct rte_eth_dev *dev,
 void i40e_init_queue_region_conf(struct rte_eth_dev *dev);
 void i40e_flex_payload_reg_set_default(struct i40e_hw *hw);
 void i40e_pf_disable_rss(struct i40e_pf *pf);
-int i40e_pf_calc_configured_queues_num(struct i40e_pf *pf);
+uint16_t i40e_pf_calc_configured_queues_num(struct i40e_pf *pf);
 int i40e_pf_reset_rss_reta(struct i40e_pf *pf);
 int i40e_pf_reset_rss_key(struct i40e_pf *pf);
 int i40e_pf_config_rss(struct i40e_pf *pf);
@@ -1517,8 +1517,8 @@ i40e_init_adminq_parameter(struct i40e_hw *hw)
 	hw->aq.asq_buf_size = I40E_AQ_BUF_SZ;
 }
 
-static inline int
-i40e_align_floor(int n)
+static inline uint32_t
+i40e_align_floor(uint32_t n)
 {
 	if (n == 0)
 		return 0;
