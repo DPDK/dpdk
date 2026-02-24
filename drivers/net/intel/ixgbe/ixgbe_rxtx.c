@@ -460,7 +460,6 @@ ixgbe_set_xmit_ctx(struct ci_tx_queue *txq,
 		seqnum_seed |= tx_offload.l2_len
 			       << IXGBE_ADVTXD_TUNNEL_LEN;
 	}
-#ifdef RTE_LIB_SECURITY
 	if (ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) {
 		union ixgbe_crypto_tx_desc_md *md =
 				(union ixgbe_crypto_tx_desc_md *)mdata;
@@ -474,7 +473,6 @@ ixgbe_set_xmit_ctx(struct ci_tx_queue *txq,
 		tx_offload_mask.sa_idx |= ~0;
 		tx_offload_mask.sec_pad_len |= ~0;
 	}
-#endif
 
 	txq->ctx_cache[ctx_idx].flags = ol_flags;
 	txq->ctx_cache[ctx_idx].tx_offload.data[0]  =
@@ -631,9 +629,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint32_t ctx = 0;
 	uint32_t new_ctx;
 	union ixgbe_tx_offload tx_offload;
-#ifdef RTE_LIB_SECURITY
 	uint8_t use_ipsec;
-#endif
 
 	tx_offload.data[0] = 0;
 	tx_offload.data[1] = 0;
@@ -661,9 +657,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * are needed for offload functionality.
 		 */
 		ol_flags = tx_pkt->ol_flags;
-#ifdef RTE_LIB_SECURITY
 		use_ipsec = txq->using_ipsec && (ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD);
-#endif
 
 		/* If hardware offload required */
 		tx_ol_req = ol_flags & IXGBE_TX_OFFLOAD_MASK;
@@ -675,7 +669,6 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			tx_offload.tso_segsz = tx_pkt->tso_segsz;
 			tx_offload.outer_l2_len = tx_pkt->outer_l2_len;
 			tx_offload.outer_l3_len = tx_pkt->outer_l3_len;
-#ifdef RTE_LIB_SECURITY
 			if (use_ipsec) {
 				union ixgbe_crypto_tx_desc_md *ipsec_mdata =
 					(union ixgbe_crypto_tx_desc_md *)
@@ -683,7 +676,6 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				tx_offload.sa_idx = ipsec_mdata->sa_idx;
 				tx_offload.sec_pad_len = ipsec_mdata->pad_len;
 			}
-#endif
 
 			/* If new context need be built or reuse the exist ctx. */
 			ctx = what_advctx_update(txq, tx_ol_req,
@@ -871,10 +863,8 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			olinfo_status |= ctx << IXGBE_ADVTXD_IDX_SHIFT;
 		}
 		olinfo_status |= (pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT);
-#ifdef RTE_LIB_SECURITY
 		if (use_ipsec)
 			olinfo_status |= IXGBE_ADVTXD_POPTS_IPSEC;
-#endif
 
 		m_seg = tx_pkt;
 		do {
@@ -1505,13 +1495,11 @@ rx_desc_error_to_pkt_flags(uint32_t rx_status, uint16_t pkt_info,
 		pkt_flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
 	}
 
-#ifdef RTE_LIB_SECURITY
 	if (rx_status & IXGBE_RXD_STAT_SECP) {
 		pkt_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD;
 		if (rx_status & IXGBE_RXDADV_LNKSEC_ERROR_BAD_SIG)
 			pkt_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
 	}
-#endif
 
 	return pkt_flags;
 }
@@ -2472,9 +2460,7 @@ ixgbe_dev_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
 {
 	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 	if (txq->offloads == 0 &&
-#ifdef RTE_LIB_SECURITY
 			!(txq->using_ipsec) &&
-#endif
 			txq->tx_rs_thresh >= IXGBE_TX_MAX_BURST) {
 		if (txq->tx_rs_thresh <= IXGBE_TX_MAX_FREE_BUF_SZ &&
 				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128 &&
@@ -2629,9 +2615,7 @@ ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ci_tx_queue *txq)
 {
 	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
 	if ((txq->offloads == 0) &&
-#ifdef RTE_LIB_SECURITY
 			!(txq->using_ipsec) &&
-#endif
 			(txq->tx_rs_thresh >= IXGBE_TX_MAX_BURST)) {
 		PMD_INIT_LOG(DEBUG, "Using simple tx code path");
 		dev->tx_pkt_prepare = rte_eth_tx_pkt_prepare_dummy;
@@ -2692,10 +2676,8 @@ ixgbe_get_tx_port_offloads(struct rte_eth_dev *dev)
 	    hw->mac.type == ixgbe_mac_E610)
 		tx_offload_capa |= RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 
-#ifdef RTE_LIB_SECURITY
 	if (dev->security_ctx)
 		tx_offload_capa |= RTE_ETH_TX_OFFLOAD_SECURITY;
-#endif
 	return tx_offload_capa;
 }
 
@@ -2873,10 +2855,8 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->offloads = offloads;
 	txq->ops = &def_txq_ops;
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
-#ifdef RTE_LIB_SECURITY
 	txq->using_ipsec = !!(dev->data->dev_conf.txmode.offloads &
 			RTE_ETH_TX_OFFLOAD_SECURITY);
-#endif
 
 	/*
 	 * Modification to set VFTDT for virtual function if vf is detected
@@ -3170,10 +3150,8 @@ ixgbe_get_rx_port_offloads(struct rte_eth_dev *dev)
 	    hw->mac.type == ixgbe_mac_E610)
 		offloads |= RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM;
 
-#ifdef RTE_LIB_SECURITY
 	if (dev->security_ctx)
 		offloads |= RTE_ETH_RX_OFFLOAD_SECURITY;
-#endif
 
 	return offloads;
 }
@@ -5101,10 +5079,8 @@ ixgbe_set_rx_function(struct rte_eth_dev *dev)
 		struct ci_rx_queue *rxq = dev->data->rx_queues[i];
 
 		rxq->vector_rx = rx_using_sse;
-#ifdef RTE_LIB_SECURITY
 		rxq->using_ipsec = !!(dev->data->dev_conf.rxmode.offloads &
 				RTE_ETH_RX_OFFLOAD_SECURITY);
-#endif
 	}
 }
 
@@ -5610,7 +5586,6 @@ ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 			ixgbe_setup_loopback_link_x540_x550(hw, true);
 	}
 
-#ifdef RTE_LIB_SECURITY
 	if ((dev->data->dev_conf.rxmode.offloads &
 			RTE_ETH_RX_OFFLOAD_SECURITY) ||
 		(dev->data->dev_conf.txmode.offloads &
@@ -5623,7 +5598,6 @@ ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 			return ret;
 		}
 	}
-#endif
 
 	return 0;
 }

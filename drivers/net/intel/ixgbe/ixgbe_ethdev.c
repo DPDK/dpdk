@@ -32,9 +32,7 @@
 #include <rte_random.h>
 #include <dev_driver.h>
 #include <rte_hash_crc.h>
-#ifdef RTE_LIB_SECURITY
 #include <rte_security_driver.h>
-#endif
 #include <rte_os_shim.h>
 
 #include "ixgbe_logs.h"
@@ -1177,11 +1175,9 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	/* Unlock any pending hardware semaphore */
 	ixgbe_swfw_lock_reset(hw);
 
-#ifdef RTE_LIB_SECURITY
 	/* Initialize security_ctx only for primary process*/
 	if (ixgbe_ipsec_ctx_create(eth_dev))
 		return -ENOMEM;
-#endif
 
 	/* Initialize DCB configuration*/
 	memset(dcb_config, 0, sizeof(struct ixgbe_dcb_config));
@@ -1362,10 +1358,8 @@ err_pf_host_init:
 	rte_free(eth_dev->data->hash_mac_addrs);
 	eth_dev->data->hash_mac_addrs = NULL;
 err_exit:
-#ifdef RTE_LIB_SECURITY
 	rte_free(eth_dev->security_ctx);
 	eth_dev->security_ctx = NULL;
-#endif
 	return ret;
 }
 
@@ -3148,10 +3142,8 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 	/* Remove all Traffic Manager configuration */
 	ixgbe_tm_conf_uninit(dev);
 
-#ifdef RTE_LIB_SECURITY
 	rte_free(dev->security_ctx);
 	dev->security_ctx = NULL;
-#endif
 
 	return ret;
 }

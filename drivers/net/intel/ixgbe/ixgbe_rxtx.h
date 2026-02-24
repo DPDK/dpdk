@@ -99,11 +99,9 @@ union ixgbe_tx_offload {
 		/* fields for TX offloading of tunnels */
 		uint64_t outer_l3_len:8; /**< Outer L3 (IP) Hdr Length. */
 		uint64_t outer_l2_len:8; /**< Outer L2 (MAC) Hdr Length. */
-#ifdef RTE_LIB_SECURITY
 		/* inline ipsec related*/
 		uint64_t sa_idx:8;	/**< TX SA database entry index */
 		uint64_t sec_pad_len:4;	/**< padding length */
-#endif
 	};
 };
 
