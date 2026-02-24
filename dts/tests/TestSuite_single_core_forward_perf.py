@@ -91,7 +91,7 @@ class TestSingleCoreForwardPerf(TestSuite):
         print("-" * len(header))
         for params in test_parameters:
             print(f"{params['frame_size']:>12} | {params['num_descriptors']:>12} | ", end="")
-            print(f"{params['measured_mpps']:>12.2f} | {params['expected_mpps']:>14.2f}")
+            print(f"{params['measured_mpps']:>12} | {params['expected_mpps']:>14}")
             print("-" * len(header))
 
         write_performance_json({"results": test_parameters})
@@ -131,10 +131,12 @@ class TestSingleCoreForwardPerf(TestSuite):
             with TestPmd(
                 **driver_specific_testpmd_args,
             ) as testpmd:
-                params["measured_mpps"] = self._transmit(testpmd, frame_size)
-                params["performance_delta"] = (
-                    float(params["measured_mpps"]) - float(params["expected_mpps"])
-                ) / float(params["expected_mpps"])
+                params["measured_mpps"] = round(self._transmit(testpmd, frame_size), 3)
+                params["performance_delta"] = round(
+                    (float(params["measured_mpps"]) - float(params["expected_mpps"]))
+                    / float(params["expected_mpps"]),
+                    3,
+                )
                 params["pass"] = float(params["performance_delta"]) >= -self.delta_tolerance
 
         self._produce_stats_table(self.test_parameters)
