@@ -1049,6 +1049,29 @@ rte_mempool_in_use_count(const struct rte_mempool *mp)
 	return mp->size - rte_mempool_avail_count(mp);
 }
 
+/* Reset the statistics of a mempool. */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mempool_stats_reset, 26.07)
+void
+rte_mempool_stats_reset(struct rte_mempool *mp)
+{
+	RTE_ASSERT(mp != NULL);
+
+#ifdef RTE_LIBRTE_MEMPOOL_STATS
+	memset(&mp->stats, 0, sizeof(mp->stats));
+	if (mp->cache_size != 0) {
+		for (unsigned int lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+			memset(&mp->local_cache[lcore_id].stats, 0,
+					sizeof(mp->local_cache[lcore_id].stats));
+		}
+	}
+
+	RTE_MEMPOOL_LOG(DEBUG, "<%s>@%p: statistics reset", mp->name, mp);
+	rte_mempool_trace_stats_reset(mp);
+#else
+	RTE_SET_USED(mp);
+#endif
+}
+
 /* dump the cache status */
 static unsigned
 rte_mempool_dump_cache(FILE *f, const struct rte_mempool *mp)
@@ -1327,10 +1350,34 @@ rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 	fprintf(f, "    get_fail_bulk=%"PRIu64"\n", sum.get_fail_bulk);
 	fprintf(f, "    get_fail_objs=%"PRIu64"\n", sum.get_fail_objs);
 	if (info.contig_block_size > 0) {
-		fprintf(f, "    get_success_blks=%"PRIu64"\n",
-			sum.get_success_blks);
+		fprintf(f, "    get_success_blks=%"PRIu64"\n", sum.get_success_blks);
 		fprintf(f, "    get_fail_blks=%"PRIu64"\n", sum.get_fail_blks);
 	}
+	fprintf(f, "    avg objs/bulk put=%#Lf, get=%#Lf, get_fail=%#Lf\n",
+			sum.put_bulk != 0 ? (long double)sum.put_objs / sum.put_bulk : 0,
+			sum.get_success_bulk != 0 ?
+			(long double)sum.get_success_objs / sum.get_success_bulk : 0,
+			sum.get_fail_bulk != 0 ?
+			(long double)sum.get_fail_objs / sum.get_fail_bulk : 0);
+	fprintf(f, "    avg common_pool objs/bulk put=%#Lf, get=%#Lf\n",
+			sum.put_common_pool_bulk != 0 ?
+			(long double)sum.put_common_pool_objs / sum.put_common_pool_bulk : 0,
+			sum.get_common_pool_bulk != 0 ?
+			(long double)sum.get_common_pool_objs / sum.get_common_pool_bulk : 0);
+	fprintf(f, "    avg cache miss rate put_objs=%s%#Lf, get_objs=%s%#Lf\n",
+			sum.put_common_pool_objs != 0 ? "1/" : "",
+			sum.put_common_pool_objs != 0 ?
+			(long double)sum.put_objs / sum.put_common_pool_objs : 0,
+			sum.get_common_pool_objs != 0 ? "1/" : "",
+			sum.get_common_pool_objs != 0 ?
+			(long double)sum.get_success_objs / sum.get_common_pool_objs : 0);
+	fprintf(f, "    avg cache miss rate put_bulk=%s%#Lf, get_bulk=%s%#Lf\n",
+			sum.put_common_pool_bulk != 0 ? "1/" : "",
+			sum.put_common_pool_bulk != 0 ?
+			(long double)sum.put_bulk / sum.put_common_pool_bulk : 0,
+			sum.get_common_pool_bulk != 0 ? "1/" : "",
+			sum.get_common_pool_bulk != 0 ?
+			(long double)sum.get_success_bulk / sum.get_common_pool_bulk : 0);
 #else
 	fprintf(f, "  no statistics available\n");
 #endif

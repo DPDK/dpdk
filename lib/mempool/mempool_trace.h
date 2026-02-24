@@ -105,6 +105,13 @@ RTE_TRACE_POINT(
 )
 
 RTE_TRACE_POINT(
+	rte_mempool_trace_stats_reset,
+	RTE_TRACE_POINT_ARGS(struct rte_mempool *mempool),
+	rte_trace_point_emit_ptr(mempool);
+	rte_trace_point_emit_string(mempool->name);
+)
+
+RTE_TRACE_POINT(
 	rte_mempool_trace_cache_create,
 	RTE_TRACE_POINT_ARGS(uint32_t size, int socket_id,
 		struct rte_mempool_cache *cache),

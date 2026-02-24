@@ -1283,6 +1283,35 @@ uint32_t rte_mempool_mem_iter(struct rte_mempool *mp,
 	rte_mempool_mem_cb_t *mem_cb, void *mem_cb_arg);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: This API may change, or be removed, without prior notice.
+ *
+ * Reset the statistics of a mempool.
+ *
+ * This function is intended for use when analyzing mempool statistics
+ * without counting any mempool operations performed during application
+ * initialization.
+ * For example, populating the mempool counts as put operations into the
+ * common pool, and setting up ethdev Rx queues counts as get operations.
+ *
+ * This function should only be called after application initialization,
+ * before the data path is started; otherwise, the mempool statistics may
+ * become inconsistent.
+ *
+ * For a perfectly clean slate, the local caches of the mempools used
+ * during application initialization should be flushed before resetting
+ * the mempool statistics.
+ * For example, mbuf pools used by ethdev Rx queues.
+ *
+ * @see rte_mempool_cache_flush()
+ *
+ * @param mp
+ *   A pointer to the mempool structure.
+ */
+__rte_experimental
+void rte_mempool_stats_reset(struct rte_mempool *mp);
+
+/**
  * Dump the status of the mempool to a file.
  *
  * @param f
