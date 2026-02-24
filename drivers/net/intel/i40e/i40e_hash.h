@@ -27,6 +27,9 @@ int i40e_hash_filter_destroy(struct i40e_pf *pf,
 			     const struct i40e_rss_filter *rss_filter);
 int i40e_hash_filter_flush(struct i40e_pf *pf);
 
+#define I40E_RSS_KEY_LEN ((I40E_PFQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t))
+extern const uint8_t i40e_rss_key_default[I40E_RSS_KEY_LEN];
+
 #ifdef __cplusplus
 }
 #endif
