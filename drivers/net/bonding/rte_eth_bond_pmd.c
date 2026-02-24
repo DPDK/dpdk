@@ -1701,11 +1701,18 @@ member_configure_slow_queue(struct rte_eth_dev *bonding_eth_dev,
 		if (member_info.rx_desc_lim.nb_min != 0)
 			nb_rx_desc = member_info.rx_desc_lim.nb_min;
 
-		/* Configure slow Rx queue */
+		/* Configure slow Rx queue.
+		 * Use explicit conf rather than NULL so we can clamp rx_free_thresh:
+		 * with a minimum-sized ring the default rx_free_thresh may be too large
+		 * for some drivers to work correctly, so clamp it to ring_size / 4.
+		 */
+		struct rte_eth_rxconf slow_rx_conf = member_info.default_rxconf;
+		if (slow_rx_conf.rx_free_thresh > nb_rx_desc / 4)
+			slow_rx_conf.rx_free_thresh = nb_rx_desc / 4;
 		errval = rte_eth_rx_queue_setup(member_eth_dev->data->port_id,
 				internals->mode4.dedicated_queues.rx_qid, nb_rx_desc,
 				rte_eth_dev_socket_id(member_eth_dev->data->port_id),
-				NULL, port->slow_pool);
+				&slow_rx_conf, port->slow_pool);
 		if (errval != 0) {
 			RTE_BOND_LOG(ERR,
 					"rte_eth_rx_queue_setup: port=%d queue_id %d, err (%d)",
