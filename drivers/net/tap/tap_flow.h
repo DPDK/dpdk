@@ -45,6 +45,8 @@ enum implicit_rule_index {
 	TAP_REMOTE_MAX_IDX,
 };
 
+int tap_flow_init(struct pmd_internals *pmd);
+
 int tap_dev_flow_ops_get(struct rte_eth_dev *dev,
 			 const struct rte_flow_ops **ops);
 int tap_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error);

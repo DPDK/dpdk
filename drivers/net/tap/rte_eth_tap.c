@@ -2122,26 +2122,14 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	pmd->persist = persist;
 
 #ifdef HAVE_TCA_FLOWER
-	/*
-	 * Set up everything related to rte_flow:
-	 * - mandatory QDISCs
-	 * - rte_flow actual/implicit lists
-	 * - implicit rules
-	 */
-	if (qdisc_create_multiq(pmd->nlsk_fd, pmd->if_index) < 0) {
-		TAP_LOG(ERR, "%s: failed to create multiq qdisc.",
-			pmd->name);
-		goto disable_rte_flow;
-	}
-	if (qdisc_create_ingress(pmd->nlsk_fd, pmd->if_index) < 0) {
-		TAP_LOG(ERR, "%s: failed to create ingress qdisc.",
-			pmd->name);
-		goto disable_rte_flow;
-	}
-
 	LIST_INIT(&pmd->flows);
 
 	if (strlen(remote_iface)) {
+		if (tap_flow_init(pmd) < 0) {
+			TAP_LOG(ERR, "Remote feature requires flow support.");
+			goto error_exit;
+		}
+
 		pmd->remote_if_index = if_nametoindex(remote_iface);
 		if (!pmd->remote_if_index) {
 			TAP_LOG(ERR, "%s: failed to get %s if_index.",
@@ -2193,16 +2181,6 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	}
 #endif
 
-	rte_eth_dev_probing_finish(dev);
-	return 0;
-
-disable_rte_flow:
-	TAP_LOG(ERR, " Disabling rte flow support: %s(%d)",
-		strerror(errno), errno);
-	if (strlen(remote_iface)) {
-		TAP_LOG(ERR, "Remote feature requires flow support.");
-		goto error_exit;
-	}
 	rte_eth_dev_probing_finish(dev);
 	return 0;
 

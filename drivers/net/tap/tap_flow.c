@@ -1235,6 +1235,12 @@ tap_flow_create(struct rte_eth_dev *dev,
 	struct tap_nlmsg *msg = NULL;
 	int err;
 
+	if (pmd->flow_init == 0 && tap_flow_init(pmd) < 0) {
+		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
+				   NULL,
+				   "can't create rule, qdisc not initialized");
+		goto fail;
+	}
 	if (!pmd->if_index) {
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL,
@@ -1874,6 +1880,26 @@ static int rss_add_actions(struct rte_flow *flow, struct pmd_internals *pmd,
 	return add_actions(flow, RTE_DIM(adata), adata, TCA_FLOWER_ACT);
 }
 #endif
+
+int
+tap_flow_init(struct pmd_internals *pmd)
+{
+	if (qdisc_create_multiq(pmd->nlsk_fd, pmd->if_index) < 0) {
+		TAP_LOG(ERR, "%s: failed to create multiq qdisc.",
+			pmd->name);
+		return -1;
+	}
+
+	if (qdisc_create_ingress(pmd->nlsk_fd, pmd->if_index) < 0) {
+		TAP_LOG(ERR, "%s: failed to create ingress qdisc.",
+			pmd->name);
+		return -1;
+	}
+
+	pmd->flow_init = 1;
+
+	return 0;
+}
 
 /**
  * Get rte_flow operations.

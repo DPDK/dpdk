@@ -79,6 +79,7 @@ struct pmd_internals {
 	int nlsk_fd;                      /* Netlink socket fd */
 
 #ifdef HAVE_TCA_FLOWER
+	int flow_init;                    /* 1 if qdiscs were created */
 	int flow_isolate;                 /* 1 if flow isolation is enabled */
 
 	struct tap_rss *rss;		  /* BPF program */
