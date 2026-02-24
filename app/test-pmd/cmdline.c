@@ -6241,6 +6241,10 @@ static void cmd_set_dcb_fwd_tc_parsed(void *parsed_result,
 {
 	struct cmd_set_dcb_fwd_tc_result *res = parsed_result;
 	int i;
+	if (test_done == 0) {
+		fprintf(stderr, "Please stop forwarding first\n");
+		return;
+	}
 	if (res->tc_mask == 0) {
 		fprintf(stderr, "TC mask should not be zero!\n");
 		return;
@@ -6293,6 +6297,10 @@ static void cmd_set_dcb_fwd_tc_cores_parsed(void *parsed_result,
 					    __rte_unused void *data)
 {
 	struct cmd_set_dcb_fwd_tc_cores_result *res = parsed_result;
+	if (test_done == 0) {
+		fprintf(stderr, "Please stop forwarding first\n");
+		return;
+	}
 	if (res->tc_cores == 0) {
 		fprintf(stderr, "Cores per-TC should not be zero!\n");
 		return;
