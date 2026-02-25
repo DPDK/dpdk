@@ -32,6 +32,7 @@ struct mlx5_hws_global_actions {
 	struct mlx5_hws_global_actions_array send_to_kernel;
 	struct mlx5_hws_global_actions_array nat64_6to4;
 	struct mlx5_hws_global_actions_array nat64_4to6;
+	struct mlx5_hws_global_actions_array def_miss;
 	rte_spinlock_t lock;
 };
 
@@ -62,5 +63,9 @@ struct mlx5dr_action *mlx5_hws_global_action_send_to_kernel_get(struct mlx5_priv
 struct mlx5dr_action *mlx5_hws_global_action_nat64_get(struct mlx5_priv *priv,
 						       enum mlx5dr_table_type table_type,
 						       enum rte_flow_nat64_type nat64_type);
+
+struct mlx5dr_action *mlx5_hws_global_action_def_miss_get(struct mlx5_priv *priv,
+							   enum mlx5dr_table_type table_type,
+							   bool is_root);
 
 #endif /* !RTE_PMD_MLX5_HWS_GLOBAL_ACTIONS_H_ */

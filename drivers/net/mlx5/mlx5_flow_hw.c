@@ -2690,7 +2690,16 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 				DRV_LOG(ERR, "Port representor is not supported in root table.");
 				goto err;
 			}
-			acts->rule_acts[dr_pos].action = priv->hw_def_miss;
+			dr_action = mlx5_hws_global_action_def_miss_get(priv, type, is_root);
+			if (dr_action == NULL) {
+				DRV_LOG(ERR, "port %u failed to allocate port representor action",
+					priv->dev_data->port_id);
+				rte_flow_error_set(&sub_error, ENOMEM,
+						   RTE_FLOW_ERROR_TYPE_STATE, NULL,
+						   "failed to allocate port representor action");
+				goto err;
+			}
+			acts->rule_acts[dr_pos].action = dr_action;
 			break;
 		case RTE_FLOW_ACTION_TYPE_FLAG:
 			dr_action = mlx5_hws_global_action_tag_get(priv, type, is_root);
@@ -3017,7 +3026,16 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 				goto err;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS:
-			acts->rule_acts[dr_pos].action = priv->hw_def_miss;
+			dr_action = mlx5_hws_global_action_def_miss_get(priv, type, is_root);
+			if (dr_action == NULL) {
+				DRV_LOG(ERR, "port %u failed to allocate default miss action",
+					priv->dev_data->port_id);
+				rte_flow_error_set(&sub_error, ENOMEM,
+						   RTE_FLOW_ERROR_TYPE_STATE, NULL,
+						   "failed to allocate default miss action");
+				goto err;
+			}
+			acts->rule_acts[dr_pos].action = dr_action;
 			break;
 		case RTE_FLOW_ACTION_TYPE_NAT64:
 			if (masks->conf &&
@@ -6913,8 +6931,7 @@ flow_hw_validate_action_push_vlan(struct rte_eth_dev *dev,
 }
 
 static int
-flow_hw_validate_action_default_miss(struct rte_eth_dev *dev,
-				     const struct rte_flow_actions_template_attr *attr,
+flow_hw_validate_action_default_miss(const struct rte_flow_actions_template_attr *attr,
 				     uint64_t action_flags,
 				     struct rte_flow_error *error)
 {
@@ -6923,16 +6940,10 @@ flow_hw_validate_action_default_miss(struct rte_eth_dev *dev,
 	 * flows. So this validation can be ignored. It can be kept right now since
 	 * the validation will be done only once.
 	 */
-	struct mlx5_priv *priv = dev->data->dev_private;
-
 	if (!attr->ingress || attr->egress || attr->transfer)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "DEFAULT MISS is only supported in ingress.");
-	if (!priv->hw_def_miss)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "DEFAULT MISS action does not exist.");
 	if (action_flags & MLX5_FLOW_FATE_ACTIONS)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -7493,8 +7504,7 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 			actions_end = true;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS:
-			ret = flow_hw_validate_action_default_miss(dev, attr,
-								   action_flags, error);
+			ret = flow_hw_validate_action_default_miss(attr, action_flags, error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_DEFAULT_MISS;
@@ -11753,8 +11763,6 @@ __mlx5_flow_hw_resource_release(struct rte_eth_dev *dev, bool ctx_close)
 		claim_zero(flow_hw_actions_template_destroy(dev, at, NULL));
 		at = temp_at;
 	}
-	if (priv->hw_def_miss)
-		mlx5dr_action_destroy(priv->hw_def_miss);
 	flow_hw_free_vport_actions(priv);
 	if (priv->acts_ipool) {
 		mlx5_ipool_destroy(priv->acts_ipool);
@@ -11952,9 +11960,7 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 	struct rte_flow_queue_attr **_queue_attr = NULL;
 	struct rte_flow_queue_attr ctrl_queue_attr = {0};
 	bool is_proxy = !!(priv->sh->config.dv_esw_en && priv->master);
-	bool unified_fdb = is_unified_fdb(priv);
 	int ret = 0;
-	uint32_t action_flags;
 	bool strict_queue = false;
 
 	error->type = RTE_FLOW_ERROR_TYPE_NONE;
@@ -12129,30 +12135,6 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 		if (ret)
 			goto err;
 	}
-	/*
-	 * DEFAULT_MISS action have different behaviors in different domains.
-	 * In FDB, it will steering the packets to the E-switch manager.
-	 * In NIC Rx root, it will steering the packet to the kernel driver stack.
-	 * An action with all bits set in the flag can be created and the HWS
-	 * layer will translate it properly when being used in different rules.
-	 */
-	action_flags = MLX5DR_ACTION_FLAG_ROOT_RX | MLX5DR_ACTION_FLAG_HWS_RX |
-		       MLX5DR_ACTION_FLAG_ROOT_TX | MLX5DR_ACTION_FLAG_HWS_TX;
-	if (is_proxy) {
-		if (unified_fdb)
-			action_flags |=
-				(MLX5DR_ACTION_FLAG_ROOT_FDB |
-				 MLX5DR_ACTION_FLAG_HWS_FDB_RX |
-				 MLX5DR_ACTION_FLAG_HWS_FDB_TX |
-				 MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED);
-		else
-			action_flags |=
-				(MLX5DR_ACTION_FLAG_ROOT_FDB |
-				 MLX5DR_ACTION_FLAG_HWS_FDB);
-	}
-	priv->hw_def_miss = mlx5dr_action_create_default_miss(priv->dr_ctx, action_flags);
-	if (!priv->hw_def_miss)
-		goto err;
 	if (is_proxy) {
 		ret = flow_hw_create_vport_actions(priv);
 		if (ret) {
@@ -14599,7 +14581,9 @@ hw_mirror_format_clone(struct rte_eth_dev *dev,
 			const struct mlx5_flow_template_table_cfg *table_cfg,
 			const struct rte_flow_action *actions,
 			struct mlx5dr_action_dest_attr *dest_attr,
-			uint8_t *reformat_buf, struct rte_flow_error *error)
+			uint8_t *reformat_buf,
+			enum mlx5dr_table_type table_type,
+			struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
@@ -14629,7 +14613,13 @@ hw_mirror_format_clone(struct rte_eth_dev *dev,
 				return ret;
 			break;
 		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
-			dest_attr->dest = priv->hw_def_miss;
+			dest_attr->dest = mlx5_hws_global_action_def_miss_get(priv,
+									      table_type,
+									      false);
+			if (dest_attr->dest == NULL)
+				return rte_flow_error_set(error, ENOMEM,
+						RTE_FLOW_ERROR_TYPE_STATE, NULL,
+						"failed to allocate port representor action");
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
 			decap_seen = true;
@@ -14711,7 +14701,7 @@ mlx5_hw_create_mirror(struct rte_eth_dev *dev,
 		}
 		ret = hw_mirror_format_clone(dev, &mirror->clone[i], table_cfg,
 					     clone_actions, &mirror_attr[i],
-					     reformat_buf[i], error);
+					     reformat_buf[i], table_type, error);
 
 		if (ret)
 			goto error;
