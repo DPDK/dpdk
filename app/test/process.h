@@ -225,17 +225,14 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 	return status;
 }
 
-/* FreeBSD doesn't support file prefixes, so no argument passed. */
-#ifdef RTE_EXEC_ENV_FREEBSD
+/* Only Linux supports file prefixes. */
+#ifndef RTE_EXEC_ENV_LINUX
 static inline const char *
 file_prefix_arg(void)
 {
-	/* BSD target doesn't support prefixes at this point */
 	return "";
 }
-#else
-
-#ifdef RTE_EXEC_ENV_LINUX
+#else /* RTE_EXEC_ENV_LINUX */
 static inline char *
 get_current_prefix(char *prefix, int size)
 {
@@ -253,7 +250,7 @@ get_current_prefix(char *prefix, int size)
 	return prefix;
 }
 
-/* Return a --file-prefix=XXXX argument or NULL */
+/* Return a --file-prefix=XXXX argument */
 static inline const char *
 file_prefix_arg(void)
 {
@@ -267,8 +264,7 @@ file_prefix_arg(void)
 
 	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
 	return prefix;
-#endif
 }
-#endif
+#endif /* RTE_EXEC_ENV_LINUX */
 
 #endif /* _PROCESS_H_ */
