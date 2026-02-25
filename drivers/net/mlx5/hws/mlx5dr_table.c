@@ -4,6 +4,81 @@
 
 #include "mlx5dr_internal.h"
 
+static int
+table_type_to_root_action_flags(enum mlx5dr_table_type table_type,
+				enum mlx5dr_action_flags *out)
+{
+	switch (table_type) {
+	case MLX5DR_TABLE_TYPE_NIC_RX:
+		*out = MLX5DR_ACTION_FLAG_ROOT_RX;
+		break;
+	case MLX5DR_TABLE_TYPE_NIC_TX:
+		*out = MLX5DR_ACTION_FLAG_ROOT_TX;
+		break;
+	case MLX5DR_TABLE_TYPE_FDB:
+		*out = MLX5DR_ACTION_FLAG_ROOT_FDB;
+		break;
+	default:
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+static int
+table_type_to_nonroot_action_flags(enum mlx5dr_table_type table_type,
+				   enum mlx5dr_action_flags *out)
+{
+	switch (table_type) {
+	case MLX5DR_TABLE_TYPE_NIC_RX:
+		*out = MLX5DR_ACTION_FLAG_HWS_RX;
+		break;
+	case MLX5DR_TABLE_TYPE_NIC_TX:
+		*out = MLX5DR_ACTION_FLAG_HWS_TX;
+		break;
+	case MLX5DR_TABLE_TYPE_FDB:
+		*out = MLX5DR_ACTION_FLAG_HWS_FDB;
+		break;
+	case MLX5DR_TABLE_TYPE_FDB_RX:
+		*out = MLX5DR_ACTION_FLAG_HWS_FDB_RX;
+		break;
+	case MLX5DR_TABLE_TYPE_FDB_TX:
+		*out = MLX5DR_ACTION_FLAG_HWS_FDB_TX;
+		break;
+	case MLX5DR_TABLE_TYPE_FDB_UNIFIED:
+		*out = MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED;
+		break;
+	default:
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+int
+mlx5dr_table_type_to_action_flags(const enum mlx5dr_table_type table_type,
+				  const bool is_root,
+				  enum mlx5dr_action_flags *action_flags)
+{
+	int ret = 0;
+
+	if (is_root) {
+		ret = table_type_to_root_action_flags(table_type, action_flags);
+		if (ret < 0)
+			DR_LOG(ERR, "Cannot convert table type %d to action flags for root table",
+			       table_type);
+	} else {
+		ret = table_type_to_nonroot_action_flags(table_type, action_flags);
+		if (ret < 0)
+			DR_LOG(ERR, "Cannot convert table type %d to action flags for HWS table",
+			       table_type);
+	}
+
+	return ret;
+}
+
 static void mlx5dr_table_init_next_ft_attr(struct mlx5dr_table *tbl,
 					   struct mlx5dr_cmd_ft_create_attr *ft_attr)
 {

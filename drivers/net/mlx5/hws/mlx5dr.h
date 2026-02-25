@@ -369,6 +369,22 @@ mlx5dr_context_open(struct ibv_context *ibv_ctx,
  */
 int mlx5dr_context_close(struct mlx5dr_context *ctx);
 
+/**
+ * Convert given table type to corresponding action type.
+ *
+ * @param[in] table_type
+ *	Table type.
+ * @param[in] is_root
+ *	Whether table should be considered root or not.
+ * @param[out] action_flags
+ *	Corresponding action flags will be written here.
+ * @return
+ *	0 on success. Negative errno and rte_errno is set otherwise.
+ */
+int mlx5dr_table_type_to_action_flags(const enum mlx5dr_table_type table_type,
+				      const bool is_root,
+				      enum mlx5dr_action_flags *action_flags);
+
 /* Create a new direct rule table. Each table can contain multiple matchers.
  *
  * @param[in] ctx
