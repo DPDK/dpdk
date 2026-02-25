@@ -2753,8 +2753,16 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 			masks += of_vlan_offset;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
-			acts->rule_acts[dr_pos].action =
-				priv->hw_pop_vlan[type];
+			dr_action = mlx5_hws_global_action_pop_vlan_get(priv, type, is_root);
+			if (dr_action == NULL) {
+				DRV_LOG(ERR, "port %u failed to allocate pop VLAN action",
+					priv->dev_data->port_id);
+				rte_flow_error_set(&sub_error, ENOMEM,
+						   RTE_FLOW_ERROR_TYPE_STATE, NULL,
+						   "failed to allocate pop VLAN action");
+				goto err;
+			}
+			acts->rule_acts[dr_pos].action = dr_action;
 			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 			if (masks->conf &&
@@ -11377,10 +11385,6 @@ flow_hw_destroy_vlan(struct rte_eth_dev *dev)
 	enum mlx5dr_table_type i;
 
 	for (i = MLX5DR_TABLE_TYPE_NIC_RX; i < MLX5DR_TABLE_TYPE_MAX; i++) {
-		if (priv->hw_pop_vlan[i]) {
-			mlx5dr_action_destroy(priv->hw_pop_vlan[i]);
-			priv->hw_pop_vlan[i] = NULL;
-		}
 		if (priv->hw_push_vlan[i]) {
 			mlx5dr_action_destroy(priv->hw_push_vlan[i]);
 			priv->hw_push_vlan[i] = NULL;
@@ -11401,10 +11405,6 @@ _create_vlan(struct mlx5_priv *priv, enum mlx5dr_table_type type)
 	};
 
 	/* rte_errno is set in the mlx5dr_action* functions. */
-	priv->hw_pop_vlan[type] =
-		mlx5dr_action_create_pop_vlan(priv->dr_ctx, flags[type]);
-	if (!priv->hw_pop_vlan[type])
-		return -rte_errno;
 	priv->hw_push_vlan[type] =
 		mlx5dr_action_create_push_vlan(priv->dr_ctx, flags[type]);
 	if (!priv->hw_push_vlan[type])

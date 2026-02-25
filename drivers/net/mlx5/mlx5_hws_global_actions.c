@@ -41,6 +41,7 @@ mlx5_hws_global_actions_cleanup(struct mlx5_priv *priv)
 
 	global_actions_array_cleanup(priv, &priv->hw_global_actions.drop, "drop");
 	global_actions_array_cleanup(priv, &priv->hw_global_actions.tag, "tag");
+	global_actions_array_cleanup(priv, &priv->hw_global_actions.pop_vlan, "pop_vlan");
 
 	rte_spinlock_unlock(&priv->hw_global_actions.lock);
 }
@@ -60,6 +61,13 @@ action_create_tag_cb(struct mlx5dr_context *ctx,
 		     uint32_t action_flags)
 {
 	return mlx5dr_action_create_tag(ctx, action_flags);
+}
+
+static struct mlx5dr_action *
+action_create_pop_vlan_cb(struct mlx5dr_context *ctx,
+			  uint32_t action_flags)
+{
+	return mlx5dr_action_create_pop_vlan(ctx, action_flags);
 }
 
 static struct mlx5dr_action *
@@ -123,4 +131,17 @@ mlx5_hws_global_action_tag_get(struct mlx5_priv *priv,
 				 table_type,
 				 is_root,
 				 action_create_tag_cb);
+}
+
+struct mlx5dr_action *
+mlx5_hws_global_action_pop_vlan_get(struct mlx5_priv *priv,
+				    enum mlx5dr_table_type table_type,
+				    bool is_root)
+{
+	return global_action_get(priv,
+				 &priv->hw_global_actions.pop_vlan,
+				 "pop_vlan",
+				 table_type,
+				 is_root,
+				 action_create_pop_vlan_cb);
 }
