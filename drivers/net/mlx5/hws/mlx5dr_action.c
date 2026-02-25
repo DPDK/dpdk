@@ -369,7 +369,7 @@ mlx5dr_action_create_nat64_copy_state(struct mlx5dr_context *ctx,
 				      struct mlx5dr_action_nat64_attr *attr,
 				      uint32_t flags)
 {
-	__be64 modify_action_data[MLX5DR_ACTION_NAT64_MAX_MODIFY_ACTIONS];
+	rte_be64_t modify_action_data[MLX5DR_ACTION_NAT64_MAX_MODIFY_ACTIONS];
 	struct mlx5dr_action_mh_pattern pat[2];
 	struct mlx5dr_action *action;
 	uint32_t packet_len_field;
@@ -484,7 +484,7 @@ mlx5dr_action_create_nat64_repalce_state(struct mlx5dr_context *ctx,
 					 uint32_t flags)
 {
 	uint32_t address_prefix[MLX5DR_ACTION_NAT64_HEADER_MINUS_ONE] = {0};
-	__be64 modify_action_data[MLX5DR_ACTION_NAT64_MAX_MODIFY_ACTIONS];
+	rte_be64_t modify_action_data[MLX5DR_ACTION_NAT64_MAX_MODIFY_ACTIONS];
 	struct mlx5dr_action_mh_pattern pat[2];
 	static struct mlx5dr_action *action;
 	uint8_t header_size_in_dw;
@@ -575,7 +575,7 @@ mlx5dr_action_create_nat64_copy_proto_state(struct mlx5dr_context *ctx,
 					    struct mlx5dr_action_nat64_attr *attr,
 					    uint32_t flags)
 {
-	__be64 modify_action_data[MLX5DR_ACTION_NAT64_MAX_MODIFY_ACTIONS];
+	rte_be64_t modify_action_data[MLX5DR_ACTION_NAT64_MAX_MODIFY_ACTIONS];
 	struct mlx5dr_action_mh_pattern pat[2];
 	struct mlx5dr_action *action;
 	uint8_t *action_ptr;
@@ -615,7 +615,7 @@ mlx5dr_action_create_nat64_copy_back_state(struct mlx5dr_context *ctx,
 					   struct mlx5dr_action_nat64_attr *attr,
 					   uint32_t flags)
 {
-	__be64 modify_action_data[MLX5DR_ACTION_NAT64_MAX_MODIFY_ACTIONS];
+	rte_be64_t modify_action_data[MLX5DR_ACTION_NAT64_MAX_MODIFY_ACTIONS];
 	struct mlx5dr_action_mh_pattern pat[2];
 	struct mlx5dr_action *action;
 	uint32_t packet_len_field;
@@ -2165,7 +2165,7 @@ mlx5dr_action_handle_tunnel_l3_to_l2(struct mlx5dr_action *action,
 
 	/* All DecapL3 cases require the same max arg size */
 	arg_obj = mlx5dr_arg_create_modify_header_arg(ctx,
-						      (__be64 *)mh_data,
+						      (rte_be64_t *)mh_data,
 						      num_of_actions,
 						      log_bulk_sz,
 						      action->flags & MLX5DR_ACTION_FLAG_SHARED);
@@ -2177,7 +2177,7 @@ mlx5dr_action_handle_tunnel_l3_to_l2(struct mlx5dr_action *action,
 		mlx5dr_action_prepare_decap_l3_actions(hdrs[i].sz, mh_data, &num_of_actions);
 		mh_data_size = num_of_actions * MLX5DR_MODIFY_ACTION_SIZE;
 
-		pat_obj = mlx5dr_pat_get_pattern(ctx, (__be64 *)mh_data, mh_data_size);
+		pat_obj = mlx5dr_pat_get_pattern(ctx, (rte_be64_t *)mh_data, mh_data_size);
 		if (!pat_obj) {
 			DR_LOG(ERR, "Failed to allocate pattern for DecapL3");
 			goto free_stc_and_pat;
@@ -2189,7 +2189,7 @@ mlx5dr_action_handle_tunnel_l3_to_l2(struct mlx5dr_action *action,
 		action[i].modify_header.arg_obj = arg_obj;
 		action[i].modify_header.pat_obj = pat_obj;
 		action[i].modify_header.require_reparse =
-			mlx5dr_pat_require_reparse((__be64 *)mh_data, num_of_actions);
+			mlx5dr_pat_require_reparse((rte_be64_t *)mh_data, num_of_actions);
 
 		ret = mlx5dr_action_create_stcs(&action[i], NULL);
 		if (ret) {
@@ -2304,7 +2304,7 @@ free_action:
 static int
 mlx5dr_action_create_modify_header_root(struct mlx5dr_action *action,
 					size_t actions_sz,
-					__be64 *actions)
+					rte_be64_t *actions)
 {
 	enum mlx5dv_flow_table_type ft_type = 0;
 	struct ibv_context *local_ibv_ctx;
@@ -2897,7 +2897,7 @@ static void *
 mlx5dr_action_create_pop_ipv6_route_ext_mhdr1(struct mlx5dr_action *action)
 {
 	struct mlx5dr_action_mh_pattern pattern;
-	__be64 cmd[3] = {0};
+	rte_be64_t cmd[3] = {0};
 	uint16_t mod_id;
 
 	mod_id = flow_hw_get_ipv6_route_ext_mod_id_from_ctx(action->ctx, 0);
@@ -2943,7 +2943,7 @@ mlx5dr_action_create_pop_ipv6_route_ext_mhdr2(struct mlx5dr_action *action)
 		MLX5_MODI_OUT_DIPV6_31_0
 	};
 	struct mlx5dr_action_mh_pattern pattern;
-	__be64 cmd[5] = {0};
+	rte_be64_t cmd[5] = {0};
 	uint16_t mod_id;
 	uint32_t i;
 
@@ -3001,7 +3001,7 @@ mlx5dr_action_create_pop_ipv6_route_ext_mhdr3(struct mlx5dr_action *action)
 	MLX5_SET(copy_action_in, cmd, src_field, mod_id);
 	MLX5_SET(copy_action_in, cmd, dst_field, MLX5_MODI_OUT_IP_PROTOCOL);
 
-	pattern.data = (__be64 *)cmd;
+	pattern.data = (rte_be64_t *)cmd;
 	pattern.sz = sizeof(cmd);
 
 	return mlx5dr_action_create_modify_header_reparse(action->ctx, 1, &pattern, 0,
@@ -3063,7 +3063,7 @@ mlx5dr_action_create_push_ipv6_route_ext_mhdr1(struct mlx5dr_action *action)
 	MLX5_SET(set_action_in, cmd, field, MLX5_MODI_OUT_IP_PROTOCOL);
 	MLX5_SET(set_action_in, cmd, data, IPPROTO_ROUTING);
 
-	pattern.data = (__be64 *)cmd;
+	pattern.data = (rte_be64_t *)cmd;
 	pattern.sz = sizeof(cmd);
 
 	return mlx5dr_action_create_modify_header(action->ctx, 1, &pattern, 0,
@@ -3084,7 +3084,7 @@ mlx5dr_action_create_push_ipv6_route_ext_mhdr2(struct mlx5dr_action *action,
 	struct mlx5dr_action_mh_pattern pattern;
 	uint32_t *ipv6_dst_addr = NULL;
 	uint8_t seg_left, next_hdr;
-	__be64 cmd[5] = {0};
+	rte_be64_t cmd[5] = {0};
 	uint16_t mod_id;
 	uint32_t i;
 

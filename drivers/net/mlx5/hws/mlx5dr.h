@@ -5,6 +5,7 @@
 #ifndef MLX5DR_H_
 #define MLX5DR_H_
 
+#include <rte_byteorder.h>
 #include <rte_flow.h>
 
 struct mlx5dr_context;
@@ -248,7 +249,7 @@ struct mlx5dr_action_mh_pattern {
 	/* Byte size of modify actions provided by "data" */
 	size_t sz;
 	/* PRM format modify actions pattern */
-	__be64 *data;
+	rte_be64_t *data;
 };
 
 /* In actions that take offset, the offset is unique, pointing to a single

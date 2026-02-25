@@ -6294,7 +6294,7 @@ mlx5_flow_modify_create_cb(void *tool_ctx, void *cb_ctx)
 #ifdef HAVE_MLX5_HWS_SUPPORT
 		struct mlx5dr_action_mh_pattern pattern = {
 			.sz = data_len,
-			.data = (__be64 *)ref->actions
+			.data = (rte_be64_t *)ref->actions
 		};
 		entry->action = mlx5dr_action_create_modify_header(ctx->data2,
 			1,

@@ -51,7 +51,7 @@ int mlx5dr_pat_init_pattern_cache(struct mlx5dr_pattern_cache **cache);
 
 void mlx5dr_pat_uninit_pattern_cache(struct mlx5dr_pattern_cache *cache);
 
-bool mlx5dr_pat_verify_actions(__be64 pattern[], size_t sz);
+bool mlx5dr_pat_verify_actions(rte_be64_t pattern[], size_t sz);
 
 struct mlx5dr_devx_obj *
 mlx5dr_arg_create(struct mlx5dr_context *ctx,
@@ -62,14 +62,14 @@ mlx5dr_arg_create(struct mlx5dr_context *ctx,
 
 struct mlx5dr_devx_obj *
 mlx5dr_arg_create_modify_header_arg(struct mlx5dr_context *ctx,
-				    __be64 *data,
+				    rte_be64_t *data,
 				    uint8_t num_of_actions,
 				    uint32_t log_bulk_sz,
 				    bool write_data);
 
 struct mlx5dr_devx_obj *
 mlx5dr_pat_get_pattern(struct mlx5dr_context *ctx,
-		       __be64 *pattern,
+		       rte_be64_t *pattern,
 		       size_t pattern_sz);
 
 void mlx5dr_pat_put_pattern(struct mlx5dr_context *ctx,
@@ -78,7 +78,7 @@ void mlx5dr_pat_put_pattern(struct mlx5dr_context *ctx,
 bool mlx5dr_arg_is_valid_arg_request_size(struct mlx5dr_context *ctx,
 					  uint32_t arg_size);
 
-bool mlx5dr_pat_require_reparse(__be64 *actions, uint16_t num_of_actions);
+bool mlx5dr_pat_require_reparse(rte_be64_t *actions, uint16_t num_of_actions);
 
 void mlx5dr_arg_write(struct mlx5dr_send_engine *queue,
 		      void *comp_data,

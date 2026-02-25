@@ -37,7 +37,7 @@ uint32_t mlx5dr_arg_get_arg_size(uint16_t num_of_actions)
 	return BIT(mlx5dr_arg_get_arg_log_size(num_of_actions));
 }
 
-bool mlx5dr_pat_require_reparse(__be64 *actions, uint16_t num_of_actions)
+bool mlx5dr_pat_require_reparse(rte_be64_t *actions, uint16_t num_of_actions)
 {
 	uint16_t i, field;
 	uint8_t action_id;
@@ -98,9 +98,9 @@ void mlx5dr_pat_uninit_pattern_cache(struct mlx5dr_pattern_cache *cache)
 }
 
 static bool mlx5dr_pat_compare_pattern(int cur_num_of_actions,
-				       __be64 cur_actions[],
+				       rte_be64_t cur_actions[],
 				       int num_of_actions,
-				       __be64 actions[])
+				       rte_be64_t actions[])
 {
 	int i;
 
@@ -129,13 +129,13 @@ static bool mlx5dr_pat_compare_pattern(int cur_num_of_actions,
 static struct mlx5dr_pattern_cache_item *
 mlx5dr_pat_find_cached_pattern(struct mlx5dr_pattern_cache *cache,
 			       uint16_t num_of_actions,
-			       __be64 *actions)
+			       rte_be64_t *actions)
 {
 	struct mlx5dr_pattern_cache_item *cached_pat;
 
 	LIST_FOREACH(cached_pat, &cache->head, next) {
 		if (mlx5dr_pat_compare_pattern(cached_pat->mh_data.num_of_actions,
-					       (__be64 *)cached_pat->mh_data.data,
+					       (rte_be64_t *)cached_pat->mh_data.data,
 					       num_of_actions,
 					       actions))
 			return cached_pat;
@@ -147,7 +147,7 @@ mlx5dr_pat_find_cached_pattern(struct mlx5dr_pattern_cache *cache,
 static struct mlx5dr_pattern_cache_item *
 mlx5dr_pat_get_existing_cached_pattern(struct mlx5dr_pattern_cache *cache,
 				       uint16_t num_of_actions,
-				       __be64 *actions)
+				       rte_be64_t *actions)
 {
 	struct mlx5dr_pattern_cache_item *cached_pattern;
 
@@ -166,7 +166,7 @@ static struct mlx5dr_pattern_cache_item *
 mlx5dr_pat_add_pattern_to_cache(struct mlx5dr_pattern_cache *cache,
 				struct mlx5dr_devx_obj *pattern_obj,
 				uint16_t num_of_actions,
-				__be64 *actions)
+				rte_be64_t *actions)
 {
 	struct mlx5dr_pattern_cache_item *cached_pattern;
 
@@ -248,7 +248,7 @@ out:
 
 struct mlx5dr_devx_obj *
 mlx5dr_pat_get_pattern(struct mlx5dr_context *ctx,
-		       __be64 *pattern, size_t pattern_sz)
+		       rte_be64_t *pattern, size_t pattern_sz)
 {
 	uint16_t num_of_actions = pattern_sz / MLX5DR_MODIFY_ACTION_SIZE;
 	struct mlx5dr_pattern_cache_item *cached_pattern;
@@ -458,7 +458,7 @@ mlx5dr_arg_create(struct mlx5dr_context *ctx,
 
 struct mlx5dr_devx_obj *
 mlx5dr_arg_create_modify_header_arg(struct mlx5dr_context *ctx,
-				    __be64 *data,
+				    rte_be64_t *data,
 				    uint8_t num_of_actions,
 				    uint32_t log_bulk_sz,
 				    bool write_data)
@@ -477,7 +477,7 @@ mlx5dr_arg_create_modify_header_arg(struct mlx5dr_context *ctx,
 	return arg_obj;
 }
 
-bool mlx5dr_pat_verify_actions(__be64 pattern[], size_t sz)
+bool mlx5dr_pat_verify_actions(rte_be64_t pattern[], size_t sz)
 {
 	size_t i;
 

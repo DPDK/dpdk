@@ -2436,7 +2436,7 @@ mlx5_tbl_translate_modify_header(struct rte_eth_dev *dev,
 					  NULL, "translate modify_header: no memory for modify header context");
 	rte_memcpy(acts->mhdr, mhdr, sizeof(*mhdr));
 	if (!mhdr->shared) {
-		pattern.data = (__be64 *)acts->mhdr->mhdr_cmds;
+		pattern.data = (rte_be64_t *)acts->mhdr->mhdr_cmds;
 		typeof(mp_ctx->mh) *mh = &mp_ctx->mh;
 		uint32_t idx = mh->elements_num;
 		mh->pattern[mh->elements_num++] = pattern;
@@ -2470,7 +2470,7 @@ mlx5_tbl_ensure_shared_modify_header(struct rte_eth_dev *dev,
 	uint16_t mhdr_ix = acts->mhdr->pos;
 	uint32_t flags = mlx5_hw_act_flag[!!attr->group][tbl_type] | MLX5DR_ACTION_FLAG_SHARED;
 
-	pattern.data = (__be64 *)acts->mhdr->mhdr_cmds;
+	pattern.data = (rte_be64_t *)acts->mhdr->mhdr_cmds;
 	acts->mhdr->action = mlx5dr_action_create_modify_header(priv->dr_ctx, 1,
 								&pattern, 0, flags);
 	if (!acts->mhdr->action)
