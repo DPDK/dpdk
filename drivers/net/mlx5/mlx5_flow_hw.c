@@ -2913,14 +2913,24 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
 			if (is_root) {
-				__flow_hw_action_template_destroy(dev, acts);
 				rte_flow_error_set(&sub_error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ACTION,
 					NULL,
 					"Send to kernel action on root table is not supported in HW steering mode");
 				goto err;
 			}
-			acts->rule_acts[dr_pos].action = priv->hw_send_to_kernel[type];
+			dr_action = mlx5_hws_global_action_send_to_kernel_get(priv,
+					type,
+					MLX5_HW_LOWEST_PRIO_ROOT);
+			if (dr_action == NULL) {
+				DRV_LOG(ERR, "port %u failed to allocate send to kernel action",
+					priv->dev_data->port_id);
+				rte_flow_error_set(&sub_error, ENOMEM,
+						   RTE_FLOW_ERROR_TYPE_STATE, NULL,
+						   "failed to allocate send to kernel action");
+				goto err;
+			}
+			acts->rule_acts[dr_pos].action = dr_action;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
 			err = flow_hw_modify_field_compile(dev, attr, actions,
@@ -7366,36 +7376,14 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_JUMP;
 			break;
 #ifdef HAVE_MLX5DV_DR_ACTION_CREATE_DEST_ROOT_TABLE
-		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL: {
-			bool res;
-
+		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
 			if (priv->shared_host)
 				return rte_flow_error_set(error, ENOTSUP,
 							  RTE_FLOW_ERROR_TYPE_ACTION,
 							  action,
 							  "action not supported in guest port");
-			if (attr->ingress) {
-				res = priv->hw_send_to_kernel[MLX5DR_TABLE_TYPE_NIC_RX];
-			} else if (attr->egress) {
-				res = priv->hw_send_to_kernel[MLX5DR_TABLE_TYPE_NIC_TX];
-			} else {
-				if (!is_unified_fdb(priv))
-					res = priv->hw_send_to_kernel[MLX5DR_TABLE_TYPE_FDB];
-				else
-					res =
-					    priv->hw_send_to_kernel[MLX5DR_TABLE_TYPE_FDB_RX] &&
-					    priv->hw_send_to_kernel[MLX5DR_TABLE_TYPE_FDB_TX] &&
-					    priv->hw_send_to_kernel[MLX5DR_TABLE_TYPE_FDB_UNIFIED];
-			}
-			if (!res)
-				return rte_flow_error_set(error, ENOTSUP,
-							  RTE_FLOW_ERROR_TYPE_ACTION,
-							  action,
-							  "action is not available");
-
 			action_flags |= MLX5_FLOW_ACTION_SEND_TO_KERNEL;
 			break;
-		}
 #endif
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			ret = mlx5_hw_validate_action_queue(dev, action, mask,
@@ -9891,55 +9879,6 @@ flow_hw_free_vport_actions(struct mlx5_priv *priv)
 	priv->hw_vport = NULL;
 }
 
-#ifdef HAVE_MLX5DV_DR_ACTION_CREATE_DEST_ROOT_TABLE
-static __rte_always_inline void
-_create_send_to_kernel_actions(struct mlx5_priv *priv, int type)
-{
-	int action_flag;
-
-	action_flag = mlx5_hw_act_flag[1][type];
-	priv->hw_send_to_kernel[type] =
-		mlx5dr_action_create_dest_root(priv->dr_ctx,
-				MLX5_HW_LOWEST_PRIO_ROOT,
-				action_flag);
-	if (!priv->hw_send_to_kernel[type])
-		DRV_LOG(WARNING, "Unable to create HWS send to kernel action");
-}
-#endif
-
-static void
-flow_hw_create_send_to_kernel_actions(__rte_unused struct mlx5_priv *priv,
-				      __rte_unused bool is_proxy)
-{
-#ifdef HAVE_MLX5DV_DR_ACTION_CREATE_DEST_ROOT_TABLE
-	int i, from, to;
-	bool unified_fdb = is_unified_fdb(priv);
-
-	for (i = MLX5DR_TABLE_TYPE_NIC_RX; i <= MLX5DR_TABLE_TYPE_NIC_TX; i++)
-		_create_send_to_kernel_actions(priv, i);
-
-	if (is_proxy) {
-		from = unified_fdb ? MLX5DR_TABLE_TYPE_FDB_RX : MLX5DR_TABLE_TYPE_FDB;
-		to = unified_fdb ? MLX5DR_TABLE_TYPE_FDB_UNIFIED : MLX5DR_TABLE_TYPE_FDB;
-		for (i = from; i <= to; i++)
-			_create_send_to_kernel_actions(priv, i);
-	}
-#endif
-}
-
-static void
-flow_hw_destroy_send_to_kernel_action(struct mlx5_priv *priv)
-{
-	int i;
-
-	for (i = MLX5DR_TABLE_TYPE_NIC_RX; i < MLX5DR_TABLE_TYPE_MAX; i++) {
-		if (priv->hw_send_to_kernel[i]) {
-			mlx5dr_action_destroy(priv->hw_send_to_kernel[i]);
-			priv->hw_send_to_kernel[i] = NULL;
-		}
-	}
-}
-
 static bool
 flow_hw_should_create_nat64_actions(struct mlx5_priv *priv)
 {
@@ -11941,7 +11880,6 @@ __mlx5_flow_hw_resource_release(struct rte_eth_dev *dev, bool ctx_close)
 	if (priv->hw_def_miss)
 		mlx5dr_action_destroy(priv->hw_def_miss);
 	flow_hw_destroy_nat64_actions(priv);
-	flow_hw_destroy_send_to_kernel_action(priv);
 	flow_hw_free_vport_actions(priv);
 	if (priv->acts_ipool) {
 		mlx5_ipool_destroy(priv->acts_ipool);
@@ -12360,8 +12298,6 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 			goto err;
 		}
 	}
-	if (!priv->shared_host)
-		flow_hw_create_send_to_kernel_actions(priv, is_proxy);
 	if (port_attr->nb_conn_tracks || (host_priv && host_priv->hws_ctpool)) {
 		if (mlx5_flow_ct_init(dev, port_attr->nb_conn_tracks, nb_q_updated))
 			goto err;
