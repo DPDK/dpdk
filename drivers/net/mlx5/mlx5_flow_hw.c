@@ -2737,8 +2737,16 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 			mlx5_flow_hw_rxq_flag_set(dev, true);
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
-			acts->rule_acts[dr_pos].action =
-				priv->hw_push_vlan[type];
+			dr_action = mlx5_hws_global_action_push_vlan_get(priv, type, is_root);
+			if (dr_action == NULL) {
+				DRV_LOG(ERR, "port %u failed to allocate push VLAN action",
+					priv->dev_data->port_id);
+				rte_flow_error_set(&sub_error, ENOMEM,
+						   RTE_FLOW_ERROR_TYPE_STATE, NULL,
+						   "failed to allocate push VLAN action");
+				goto err;
+			}
+			acts->rule_acts[dr_pos].action = dr_action;
 			if (is_template_masked_push_vlan(masks->conf))
 				acts->rule_acts[dr_pos].push_vlan.vlan_hdr =
 					vlan_hdr_to_be32(actions);
@@ -11378,65 +11386,6 @@ err:
 	return ret;
 }
 
-static void
-flow_hw_destroy_vlan(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	enum mlx5dr_table_type i;
-
-	for (i = MLX5DR_TABLE_TYPE_NIC_RX; i < MLX5DR_TABLE_TYPE_MAX; i++) {
-		if (priv->hw_push_vlan[i]) {
-			mlx5dr_action_destroy(priv->hw_push_vlan[i]);
-			priv->hw_push_vlan[i] = NULL;
-		}
-	}
-}
-
-static int
-_create_vlan(struct mlx5_priv *priv, enum mlx5dr_table_type type)
-{
-	const enum mlx5dr_action_flags flags[MLX5DR_TABLE_TYPE_MAX] = {
-		MLX5DR_ACTION_FLAG_HWS_RX,
-		MLX5DR_ACTION_FLAG_HWS_TX,
-		MLX5DR_ACTION_FLAG_HWS_FDB,
-		MLX5DR_ACTION_FLAG_HWS_FDB_RX,
-		MLX5DR_ACTION_FLAG_HWS_FDB_TX,
-		MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED,
-	};
-
-	/* rte_errno is set in the mlx5dr_action* functions. */
-	priv->hw_push_vlan[type] =
-		mlx5dr_action_create_push_vlan(priv->dr_ctx, flags[type]);
-	if (!priv->hw_push_vlan[type])
-		return -rte_errno;
-	return 0;
-}
-
-static int
-flow_hw_create_vlan(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	enum mlx5dr_table_type i, from, to;
-	int rc;
-	bool unified_fdb = is_unified_fdb(priv);
-
-	for (i = MLX5DR_TABLE_TYPE_NIC_RX; i <= MLX5DR_TABLE_TYPE_NIC_TX; i++) {
-		rc = _create_vlan(priv, i);
-		if (rc)
-			return rc;
-	}
-	from = unified_fdb ? MLX5DR_TABLE_TYPE_FDB_RX : MLX5DR_TABLE_TYPE_FDB;
-	to = unified_fdb ? MLX5DR_TABLE_TYPE_FDB_UNIFIED : MLX5DR_TABLE_TYPE_FDB;
-	if (priv->sh->config.dv_esw_en && priv->master) {
-		for (i = from; i <= to; i++) {
-			rc = _create_vlan(priv, i);
-			if (rc)
-				return rc;
-		}
-	}
-	return 0;
-}
-
 void
 mlx5_flow_hw_cleanup_ctrl_rx_tables(struct rte_eth_dev *dev)
 {
@@ -11992,7 +11941,6 @@ __mlx5_flow_hw_resource_release(struct rte_eth_dev *dev, bool ctx_close)
 	if (priv->hw_def_miss)
 		mlx5dr_action_destroy(priv->hw_def_miss);
 	flow_hw_destroy_nat64_actions(priv);
-	flow_hw_destroy_vlan(dev);
 	flow_hw_destroy_send_to_kernel_action(priv);
 	flow_hw_free_vport_actions(priv);
 	if (priv->acts_ipool) {
@@ -12451,12 +12399,6 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 						nb_queue, strict_queue);
 		if (ret < 0)
 			goto err;
-	}
-	ret = flow_hw_create_vlan(dev);
-	if (ret) {
-		rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL, "Failed to VLAN actions.");
-		goto err;
 	}
 	if (flow_hw_should_create_nat64_actions(priv)) {
 		if (flow_hw_create_nat64_actions(priv, error))
