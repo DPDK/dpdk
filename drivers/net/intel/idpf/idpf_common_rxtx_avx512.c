@@ -1166,7 +1166,7 @@ idpf_splitq_scan_cq_ring(struct ci_tx_queue *cq)
 
 	cq_qid = cq->tx_tail;
 
-	for (i = 0; i < IDPD_TXQ_SCAN_CQ_THRESH; i++) {
+	for (i = 0; i < IDPF_TXQ_SCAN_CQ_THRESH; i++) {
 		if (cq_qid == cq->nb_tx_desc) {
 			cq_qid = 0;
 			cq->expected_gen_id ^= 1;
