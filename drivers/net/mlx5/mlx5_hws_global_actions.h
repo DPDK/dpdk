@@ -26,6 +26,7 @@ struct mlx5_hws_global_actions_array {
 struct mlx5_hws_global_actions {
 	struct mlx5_hws_global_actions_array drop;
 	struct mlx5_hws_global_actions_array tag;
+	struct mlx5_hws_global_actions_array pop_vlan;
 	rte_spinlock_t lock;
 };
 
@@ -40,5 +41,9 @@ struct mlx5dr_action *mlx5_hws_global_action_drop_get(struct mlx5_priv *priv,
 struct mlx5dr_action *mlx5_hws_global_action_tag_get(struct mlx5_priv *priv,
 						     enum mlx5dr_table_type table_type,
 						     bool is_root);
+
+struct mlx5dr_action *mlx5_hws_global_action_pop_vlan_get(struct mlx5_priv *priv,
+							  enum mlx5dr_table_type table_type,
+							  bool is_root);
 
 #endif /* !RTE_PMD_MLX5_HWS_GLOBAL_ACTIONS_H_ */
