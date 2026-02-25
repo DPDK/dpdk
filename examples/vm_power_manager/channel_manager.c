@@ -560,6 +560,7 @@ add_host_channels(void)
 	int ret;
 	struct core_info *ci;
 	struct channel_info *chan_infos[RTE_MAX_LCORE];
+	size_t channel_path_size;
 	int i;
 
 	for (i = 0; i < RTE_MAX_LCORE; i++)
@@ -597,8 +598,15 @@ add_host_channels(void)
 			goto error;
 		}
 		chan_infos[i] = chan_info;
-		strlcpy(chan_info->channel_path, socket_path,
-				sizeof(chan_info->channel_path));
+		channel_path_size = sizeof(chan_info->channel_path);
+		if (strlcpy(chan_info->channel_path, socket_path,
+			      channel_path_size) >= channel_path_size) {
+			RTE_LOG(ERR, CHANNEL_MANAGER, "Socket path is too long "
+				"'%s' >= %zu\n", socket_path, channel_path_size);
+			rte_free(chan_info);
+			chan_infos[i] = NULL;
+			goto error;
+		}
 
 		if (setup_host_channel_info(&chan_info, i) < 0) {
 			rte_free(chan_info);
