@@ -10,7 +10,7 @@
 #include <rte_cycles.h>
 #include <rte_dev.h>
 
-#define MAX_WORKER_NB 128
+#define MAX_WORKER_NB RTE_MAX_LCORE
 
 enum {
 	TEST_TYPE_NONE = 0,
