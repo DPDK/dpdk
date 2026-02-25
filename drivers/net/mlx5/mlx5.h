@@ -2110,7 +2110,6 @@ struct mlx5_priv {
 	LIST_HEAD(flow_hw_tbl, rte_flow_template_table) flow_hw_tbl;
 	/* HW steering rte flow group list header */
 	LIST_HEAD(flow_hw_grp, mlx5_flow_group) flow_hw_grp;
-	struct mlx5dr_action *hw_push_vlan[MLX5DR_TABLE_TYPE_MAX];
 	struct mlx5dr_action **hw_vport;
 	/* HWS global actions. */
 	struct mlx5_hws_global_actions hw_global_actions;
