@@ -49,6 +49,7 @@ mlx5_hws_global_actions_cleanup(struct mlx5_priv *priv)
 				     "send_to_kernel");
 	global_actions_array_cleanup(priv, &priv->hw_global_actions.nat64_6to4, "nat64_6to4");
 	global_actions_array_cleanup(priv, &priv->hw_global_actions.nat64_4to6, "nat64_4to6");
+	global_actions_array_cleanup(priv, &priv->hw_global_actions.def_miss, "def_miss");
 
 	rte_spinlock_unlock(&priv->hw_global_actions.lock);
 }
@@ -109,6 +110,14 @@ action_create_nat64_cb(struct mlx5dr_context *ctx,
 	/* NAT64 action must always be marked as shared. */
 	return mlx5dr_action_create_nat64(ctx, attr,
 					  action_flags | MLX5DR_ACTION_FLAG_SHARED);
+}
+
+static struct mlx5dr_action *
+action_create_def_miss_cb(struct mlx5dr_context *ctx,
+			  uint32_t action_flags,
+			  void *user_data __rte_unused)
+{
+	return mlx5dr_action_create_default_miss(ctx, action_flags);
 }
 
 static struct mlx5dr_action *
@@ -247,4 +256,18 @@ mlx5_hws_global_action_nat64_get(struct mlx5_priv *priv,
 
 	return global_action_get(priv, array, name, table_type,
 				 false, action_create_nat64_cb, &attr);
+}
+
+struct mlx5dr_action *
+mlx5_hws_global_action_def_miss_get(struct mlx5_priv *priv,
+				    enum mlx5dr_table_type table_type,
+				    bool is_root)
+{
+	return global_action_get(priv,
+				 &priv->hw_global_actions.def_miss,
+				 "def_miss",
+				 table_type,
+				 is_root,
+				 action_create_def_miss_cb,
+				 NULL);
 }
