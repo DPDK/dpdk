@@ -2692,16 +2692,33 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 			acts->rule_acts[dr_pos].action = priv->hw_def_miss;
 			break;
 		case RTE_FLOW_ACTION_TYPE_FLAG:
+			dr_action = mlx5_hws_global_action_tag_get(priv, type, is_root);
+			if (dr_action == NULL) {
+				DRV_LOG(ERR, "port %u failed to allocate flag action",
+					priv->dev_data->port_id);
+				rte_flow_error_set(&sub_error, ENOMEM,
+						   RTE_FLOW_ERROR_TYPE_STATE, NULL,
+						   "failed to allocate flag action");
+				goto err;
+			}
 			acts->mark = true;
 			acts->rule_acts[dr_pos].tag.value =
 				mlx5_flow_mark_set(MLX5_FLOW_MARK_DEFAULT);
-			acts->rule_acts[dr_pos].action =
-				priv->hw_tag[!!attr->group];
+			acts->rule_acts[dr_pos].action = dr_action;
 			rte_atomic_fetch_add_explicit(&priv->hws_mark_refcnt, 1,
 					rte_memory_order_relaxed);
 			mlx5_flow_hw_rxq_flag_set(dev, true);
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
+			dr_action = mlx5_hws_global_action_tag_get(priv, type, is_root);
+			if (dr_action == NULL) {
+				DRV_LOG(ERR, "port %u failed to allocate mark action",
+					priv->dev_data->port_id);
+				rte_flow_error_set(&sub_error, ENOMEM,
+						   RTE_FLOW_ERROR_TYPE_STATE, NULL,
+						   "failed to allocate mark action");
+				goto err;
+			}
 			acts->mark = true;
 			if (masks->conf &&
 			    ((const struct rte_flow_action_mark *)
@@ -2714,8 +2731,7 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 								   actions->type,
 								   src_pos, dr_pos))
 				goto err;
-			acts->rule_acts[dr_pos].action =
-				priv->hw_tag[!!attr->group];
+			acts->rule_acts[dr_pos].action = dr_action;
 			rte_atomic_fetch_add_explicit(&priv->hws_mark_refcnt, 1,
 					rte_memory_order_relaxed);
 			mlx5_flow_hw_rxq_flag_set(dev, true);
@@ -11973,10 +11989,6 @@ __mlx5_flow_hw_resource_release(struct rte_eth_dev *dev, bool ctx_close)
 		claim_zero(flow_hw_actions_template_destroy(dev, at, NULL));
 		at = temp_at;
 	}
-	for (i = 0; i < MLX5_HW_ACTION_FLAG_MAX; i++) {
-		if (priv->hw_tag[i])
-			mlx5dr_action_destroy(priv->hw_tag[i]);
-	}
 	if (priv->hw_def_miss)
 		mlx5dr_action_destroy(priv->hw_def_miss);
 	flow_hw_destroy_nat64_actions(priv);
@@ -12351,25 +12363,6 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 	if (port_attr->nb_meters || (host_priv && host_priv->hws_mpool))
 		if (mlx5_flow_meter_init(dev, port_attr->nb_meters, 0, 0, nb_q_updated))
 			goto err;
-	/* Add global actions. */
-	for (i = 0; i < MLX5_HW_ACTION_FLAG_MAX; i++) {
-		uint32_t tag_flags = mlx5_hw_act_flag[i][0];
-		bool tag_fdb_rx = !!priv->sh->cdev->config.hca_attr.fdb_rx_set_flow_tag_stc;
-
-		if (is_proxy) {
-			if (unified_fdb) {
-				if (i == MLX5_HW_ACTION_FLAG_NONE_ROOT && tag_fdb_rx)
-					tag_flags |= mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB_RX];
-			} else {
-				if (i == MLX5_HW_ACTION_FLAG_NONE_ROOT && tag_fdb_rx)
-					tag_flags |= mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB];
-			}
-		}
-		priv->hw_tag[i] = mlx5dr_action_create_tag
-			(priv->dr_ctx, tag_flags);
-		if (!priv->hw_tag[i])
-			goto err;
-	}
 	if (priv->sh->config.dv_esw_en) {
 		ret = flow_hw_setup_tx_repr_tagging(dev, error);
 		if (ret)
