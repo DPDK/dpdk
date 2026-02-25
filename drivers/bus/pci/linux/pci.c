@@ -458,7 +458,7 @@ rte_pci_scan(void)
 		if (parse_pci_addr_format(e->d_name, sizeof(e->d_name), &addr) != 0)
 			continue;
 
-		if (rte_pci_ignore_device(&addr))
+		if (rte_bus_device_is_ignored(&rte_pci_bus.bus, e->d_name))
 			continue;
 
 		snprintf(dirname, sizeof(dirname), "%s/%s",

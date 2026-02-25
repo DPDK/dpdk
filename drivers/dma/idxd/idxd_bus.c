@@ -263,12 +263,8 @@ is_for_this_process_use(struct rte_dsa_device *dev, const char *name)
 	if (strncmp(name, prefix, prefixlen) == 0 && name[prefixlen] == '_')
 		retval = 1;
 
-	if (retval && dsa_bus.bus.conf.scan_mode != RTE_BUS_SCAN_UNDEFINED) {
-		if (dsa_bus.bus.conf.scan_mode == RTE_BUS_SCAN_ALLOWLIST)
-			retval = rte_bus_find_devargs(&dsa_bus.bus, dev->device.name) != NULL;
-		else
-			retval = rte_bus_find_devargs(&dsa_bus.bus, dev->device.name) == NULL;
-	}
+	if (retval)
+		retval = !rte_bus_device_is_ignored(&dsa_bus.bus, dev->device.name);
 
 	return retval;
 }

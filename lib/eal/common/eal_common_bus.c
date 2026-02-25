@@ -254,6 +254,27 @@ rte_bus_find_by_device_name(const char *str)
 	return rte_bus_find(NULL, bus_can_parse, name);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_device_is_ignored)
+bool
+rte_bus_device_is_ignored(const struct rte_bus *bus, const char *dev_name)
+{
+	struct rte_devargs *devargs = rte_bus_find_devargs(bus, dev_name);
+
+	switch (bus->conf.scan_mode) {
+	case RTE_BUS_SCAN_ALLOWLIST:
+		if (devargs && devargs->policy == RTE_DEV_ALLOWED)
+			return false;
+		break;
+	case RTE_BUS_SCAN_UNDEFINED:
+	case RTE_BUS_SCAN_BLOCKLIST:
+		if (devargs == NULL || devargs->policy != RTE_DEV_BLOCKED)
+			return false;
+		break;
+	}
+
+	EAL_LOG(DEBUG, "device %s:%s is ignored", rte_bus_name(bus), dev_name);
+	return true;
+}
 
 /*
  * Get iommu class of devices on the bus.

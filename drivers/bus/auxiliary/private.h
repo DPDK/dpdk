@@ -54,12 +54,6 @@ int auxiliary_scan(void);
 void auxiliary_on_scan(struct rte_auxiliary_device *aux_dev);
 
 /*
- * Validate whether a device with given auxiliary device should be ignored
- * or not.
- */
-bool auxiliary_is_ignored_device(const char *name);
-
-/*
  * Add an auxiliary device to the auxiliary bus (append to auxiliary device
  * list). This function also updates the bus references of the auxiliary
  * device and the generic device object embedded within.

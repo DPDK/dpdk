@@ -151,25 +151,6 @@ void rte_cdx_unmap_device(struct rte_cdx_device *dev)
 	cdx_vfio_unmap_resource(dev);
 }
 
-static bool
-cdx_ignore_device(const char *dev_name)
-{
-	struct rte_devargs *devargs = rte_bus_find_devargs(&rte_cdx_bus.bus, dev_name);
-
-	switch (rte_cdx_bus.bus.conf.scan_mode) {
-	case RTE_BUS_SCAN_ALLOWLIST:
-		if (devargs && devargs->policy == RTE_DEV_ALLOWED)
-			return false;
-		break;
-	case RTE_BUS_SCAN_UNDEFINED:
-	case RTE_BUS_SCAN_BLOCKLIST:
-		if (devargs == NULL || devargs->policy != RTE_DEV_BLOCKED)
-			return false;
-		break;
-	}
-	return true;
-}
-
 /*
  * Scan one cdx sysfs entry, and fill the devices list from it.
  * It checks if the CDX device is bound to vfio-cdx driver. In case
@@ -269,7 +250,7 @@ cdx_scan(void)
 		if (e->d_name[0] == '.')
 			continue;
 
-		if (cdx_ignore_device(e->d_name))
+		if (rte_bus_device_is_ignored(&rte_cdx_bus.bus, e->d_name))
 			continue;
 
 		snprintf(dirname, sizeof(dirname), "%s/%s",

@@ -370,12 +370,15 @@ rte_pci_scan(void)
 		}
 
 		for (i = 0; i < conf_io.num_matches; i++) {
+			char name[RTE_DEV_NAME_MAX_LEN];
+
 			pci_addr.domain = matches[i].pc_sel.pc_domain;
 			pci_addr.bus = matches[i].pc_sel.pc_bus;
 			pci_addr.devid = matches[i].pc_sel.pc_dev;
 			pci_addr.function = matches[i].pc_sel.pc_func;
+			rte_pci_device_name(&pci_addr, name, sizeof(name));
 
-			if (rte_pci_ignore_device(&pci_addr))
+			if (rte_bus_device_is_ignored(&rte_pci_bus.bus, name))
 				continue;
 
 			if (pci_scan_one(fd, &matches[i]) < 0)

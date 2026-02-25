@@ -70,26 +70,6 @@ extern int uacce_bus_logtype;
 #define UACCE_BUS_DEBUG(fmt, ...) UACCE_BUS_LOG(DEBUG, fmt, ##__VA_ARGS__)
 
 
-static bool
-uacce_ignore_device(const char *dev_name)
-{
-	struct rte_devargs *devargs = rte_bus_find_devargs(&uacce_bus.bus, dev_name);
-
-	switch (uacce_bus.bus.conf.scan_mode) {
-	case RTE_BUS_SCAN_ALLOWLIST:
-		if (devargs && devargs->policy == RTE_DEV_ALLOWED)
-			return false;
-		break;
-	case RTE_BUS_SCAN_UNDEFINED:
-	case RTE_BUS_SCAN_BLOCKLIST:
-		if (devargs == NULL || devargs->policy != RTE_DEV_BLOCKED)
-			return false;
-		break;
-	}
-
-	return true;
-}
-
 /*
  * Returns the number of bytes read (removed last newline) on success.
  * Otherwise negative value is returned.
@@ -296,7 +276,7 @@ uacce_scan(void)
 			continue;
 		}
 
-		if (uacce_ignore_device(e->d_name))
+		if (rte_bus_device_is_ignored(&uacce_bus.bus, e->d_name))
 			continue;
 
 		if (uacce_scan_one(e->d_name) < 0)

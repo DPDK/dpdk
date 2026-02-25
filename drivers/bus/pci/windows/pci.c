@@ -373,6 +373,7 @@ pci_scan_one(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data)
 	struct rte_pci_device *dev = NULL;
 	int ret = -1;
 	char  pci_device_info[REGSTR_VAL_MAX_HCID_LEN];
+	char name[RTE_DEV_NAME_MAX_LEN];
 	struct rte_pci_addr addr;
 	struct rte_pci_id pci_id;
 
@@ -380,7 +381,8 @@ pci_scan_one(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data)
 	if (ret != 0)
 		goto end;
 
-	if (rte_pci_ignore_device(&addr)) {
+	rte_pci_device_name(&addr, name, sizeof(name));
+	if (rte_bus_device_is_ignored(&rte_pci_bus.bus, name)) {
 		/*
 		 * We won't add this device, but we want to continue
 		 * looking for supported devices

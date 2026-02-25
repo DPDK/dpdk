@@ -168,29 +168,6 @@ vmbus_probe_all_drivers(struct rte_vmbus_device *dev)
 	return 1;
 }
 
-static bool
-vmbus_ignore_device(struct rte_vmbus_device *dev)
-{
-	char name[RTE_DEV_NAME_MAX_LEN];
-	struct rte_devargs *devargs;
-
-	rte_uuid_unparse(dev->device_id, name, sizeof(name));
-	devargs = rte_bus_find_devargs(&rte_vmbus_bus.bus, name);
-
-	switch (rte_vmbus_bus.bus.conf.scan_mode) {
-	case RTE_BUS_SCAN_ALLOWLIST:
-		if (devargs && devargs->policy == RTE_DEV_ALLOWED)
-			return false;
-		break;
-	case RTE_BUS_SCAN_UNDEFINED:
-	case RTE_BUS_SCAN_BLOCKLIST:
-		if (devargs == NULL || devargs->policy != RTE_DEV_BLOCKED)
-			return false;
-		break;
-	}
-	return true;
-}
-
 /*
  * Scan the vmbus, and call the devinit() function for
  * all registered drivers that have a matching entry in its id_table
@@ -209,7 +186,7 @@ rte_vmbus_probe(void)
 
 		rte_uuid_unparse(dev->device_id, ubuf, sizeof(ubuf));
 
-		if (vmbus_ignore_device(dev))
+		if (rte_bus_device_is_ignored(&rte_vmbus_bus.bus, ubuf))
 			continue;
 
 		if (vmbus_probe_all_drivers(dev) < 0) {

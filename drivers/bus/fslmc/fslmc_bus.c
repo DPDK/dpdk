@@ -410,7 +410,6 @@ static int
 rte_fslmc_probe(void)
 {
 	int ret = 0;
-	int probe_all;
 
 	struct rte_dpaa2_device *dev;
 	struct rte_dpaa2_driver *drv;
@@ -457,8 +456,6 @@ rte_fslmc_probe(void)
 		return 0;
 	}
 
-	probe_all = rte_fslmc_bus.bus.conf.scan_mode != RTE_BUS_SCAN_ALLOWLIST;
-
 	TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next) {
 		TAILQ_FOREACH(drv, &rte_fslmc_bus.driver_list, next) {
 			ret = rte_fslmc_match(drv, dev);
@@ -468,23 +465,15 @@ rte_fslmc_probe(void)
 			if (rte_dev_is_probed(&dev->device))
 				continue;
 
-			if (dev->device.devargs &&
-			    dev->device.devargs->policy == RTE_DEV_BLOCKED) {
-				DPAA2_BUS_LOG(DEBUG, "%s Blocked, skipping",
-					      dev->device.name);
+			if (rte_bus_device_is_ignored(&rte_fslmc_bus.bus, dev->device.name))
 				continue;
-			}
 
-			if (probe_all ||
-			   (dev->device.devargs &&
-			    dev->device.devargs->policy == RTE_DEV_ALLOWED)) {
-				ret = drv->probe(drv, dev);
-				if (ret) {
-					DPAA2_BUS_ERR("Unable to probe");
-				} else {
-					dev->driver = drv;
-					dev->device.driver = &drv->driver;
-				}
+			ret = drv->probe(drv, dev);
+			if (ret) {
+				DPAA2_BUS_ERR("Unable to probe");
+			} else {
+				dev->driver = drv;
+				dev->device.driver = &drv->driver;
 			}
 			break;
 		}

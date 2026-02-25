@@ -717,16 +717,12 @@ rte_dpaa_bus_probe(void)
 	struct rte_dpaa_driver *drv;
 	FILE *svr_file = NULL;
 	uint32_t svr_ver;
-	int probe_all = rte_dpaa_bus.bus.conf.scan_mode != RTE_BUS_SCAN_ALLOWLIST;
 	static int process_once;
 	char *penv;
 
 	/* If DPAA bus is not present nothing needs to be done */
 	if (!rte_dpaa_bus.detected)
 		return 0;
-
-	if (rte_dpaa_bus.bus.conf.scan_mode != RTE_BUS_SCAN_ALLOWLIST)
-		probe_all = true;
 
 	svr_file = fopen(DPAA_SOC_ID_FILE, "r");
 	if (svr_file) {
@@ -809,21 +805,15 @@ rte_dpaa_bus_probe(void)
 			if (rte_dev_is_probed(&dev->device))
 				continue;
 
-			if (dev->device.devargs &&
-			    dev->device.devargs->policy == RTE_DEV_BLOCKED)
+			if (rte_bus_device_is_ignored(&rte_dpaa_bus.bus, dev->name))
 				continue;
 
-			if (probe_all ||
-			    (dev->device.devargs &&
-			     dev->device.devargs->policy == RTE_DEV_ALLOWED)) {
-				ret = drv->probe(drv, dev);
-				if (ret) {
-					DPAA_BUS_ERR("unable to probe:%s",
-						     dev->name);
-				} else {
-					dev->driver = drv;
-					dev->device.driver = &drv->driver;
-				}
+			ret = drv->probe(drv, dev);
+			if (ret) {
+				DPAA_BUS_ERR("unable to probe: %s", dev->name);
+			} else {
+				dev->driver = drv;
+				dev->device.driver = &drv->driver;
 			}
 			break;
 		}

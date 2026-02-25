@@ -110,7 +110,7 @@ auxiliary_scan(void)
 		if (e->d_name[0] == '.')
 			continue;
 
-		if (auxiliary_is_ignored_device(e->d_name))
+		if (rte_bus_device_is_ignored(&auxiliary_bus.bus, e->d_name))
 			continue;
 
 		snprintf(dirname, sizeof(dirname), "%s/%s",
