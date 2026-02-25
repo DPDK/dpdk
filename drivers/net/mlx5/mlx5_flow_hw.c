@@ -2634,6 +2634,7 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 	int ret, err;
 	bool is_root = mlx5_group_id_is_root(cfg->attr.flow_attr.group);
 	bool unified_fdb = is_unified_fdb(priv);
+	struct mlx5dr_action *dr_action = NULL;
 
 	flow_hw_modify_field_init(&mhdr, at);
 	type = get_mlx5dr_table_type(attr, cfg->attr.specialize, unified_fdb);
@@ -2672,8 +2673,16 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
-			acts->rule_acts[dr_pos].action =
-				priv->hw_drop[!!attr->group];
+			dr_action = mlx5_hws_global_action_drop_get(priv, type, is_root);
+			if (dr_action == NULL) {
+				DRV_LOG(ERR, "port %u failed to allocate drop action",
+					priv->dev_data->port_id);
+				rte_flow_error_set(&sub_error, ENOMEM,
+						   RTE_FLOW_ERROR_TYPE_STATE, NULL,
+						   "failed to allocate drop action");
+				goto err;
+			}
+			acts->rule_acts[dr_pos].action = dr_action;
 			break;
 		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
 			if (is_root) {
@@ -11965,8 +11974,6 @@ __mlx5_flow_hw_resource_release(struct rte_eth_dev *dev, bool ctx_close)
 		at = temp_at;
 	}
 	for (i = 0; i < MLX5_HW_ACTION_FLAG_MAX; i++) {
-		if (priv->hw_drop[i])
-			mlx5dr_action_destroy(priv->hw_drop[i]);
 		if (priv->hw_tag[i])
 			mlx5dr_action_destroy(priv->hw_tag[i]);
 	}
@@ -11995,6 +12002,7 @@ __mlx5_flow_hw_resource_release(struct rte_eth_dev *dev, bool ctx_close)
 		priv->ct_mng = NULL;
 	}
 	mlx5_flow_quota_destroy(dev);
+	mlx5_hws_global_actions_cleanup(priv);
 	if (priv->hw_q) {
 		for (i = 0; i < priv->nb_queue; i++) {
 			struct mlx5_hw_q *hwq = &priv->hw_q[i];
@@ -12345,29 +12353,18 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 			goto err;
 	/* Add global actions. */
 	for (i = 0; i < MLX5_HW_ACTION_FLAG_MAX; i++) {
-		uint32_t act_flags = 0;
 		uint32_t tag_flags = mlx5_hw_act_flag[i][0];
 		bool tag_fdb_rx = !!priv->sh->cdev->config.hca_attr.fdb_rx_set_flow_tag_stc;
 
-		act_flags = mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_NIC_RX] |
-			    mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_NIC_TX];
 		if (is_proxy) {
 			if (unified_fdb) {
-				act_flags |=
-					(mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB_RX] |
-					 mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB_TX] |
-					 mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB_UNIFIED]);
 				if (i == MLX5_HW_ACTION_FLAG_NONE_ROOT && tag_fdb_rx)
 					tag_flags |= mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB_RX];
 			} else {
-				act_flags |= mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB];
 				if (i == MLX5_HW_ACTION_FLAG_NONE_ROOT && tag_fdb_rx)
 					tag_flags |= mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB];
 			}
 		}
-		priv->hw_drop[i] = mlx5dr_action_create_dest_drop(priv->dr_ctx, act_flags);
-		if (!priv->hw_drop[i])
-			goto err;
 		priv->hw_tag[i] = mlx5dr_action_create_tag
 			(priv->dr_ctx, tag_flags);
 		if (!priv->hw_tag[i])

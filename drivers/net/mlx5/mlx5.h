@@ -39,6 +39,7 @@
 #define HAVE_MLX5_HWS_SUPPORT 1
 #endif
 #include "hws/mlx5dr.h"
+#include "mlx5_hws_global_actions.h"
 #endif
 
 #define MLX5_SH(dev) (((struct mlx5_priv *)(dev)->data->dev_private)->sh)
@@ -2112,8 +2113,8 @@ struct mlx5_priv {
 	struct mlx5dr_action *hw_push_vlan[MLX5DR_TABLE_TYPE_MAX];
 	struct mlx5dr_action *hw_pop_vlan[MLX5DR_TABLE_TYPE_MAX];
 	struct mlx5dr_action **hw_vport;
-	/* HW steering global drop action. */
-	struct mlx5dr_action *hw_drop[2];
+	/* HWS global actions. */
+	struct mlx5_hws_global_actions hw_global_actions;
 	/* HW steering global tag action. */
 	struct mlx5dr_action *hw_tag[2];
 	/* HW steering global default miss action. */
