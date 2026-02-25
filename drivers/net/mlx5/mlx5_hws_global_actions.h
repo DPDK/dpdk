@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <rte_flow.h>
 #include <rte_spinlock.h>
 
 #include "hws/mlx5dr.h"
@@ -29,6 +30,8 @@ struct mlx5_hws_global_actions {
 	struct mlx5_hws_global_actions_array pop_vlan;
 	struct mlx5_hws_global_actions_array push_vlan;
 	struct mlx5_hws_global_actions_array send_to_kernel;
+	struct mlx5_hws_global_actions_array nat64_6to4;
+	struct mlx5_hws_global_actions_array nat64_4to6;
 	rte_spinlock_t lock;
 };
 
@@ -55,5 +58,9 @@ struct mlx5dr_action *mlx5_hws_global_action_push_vlan_get(struct mlx5_priv *pri
 struct mlx5dr_action *mlx5_hws_global_action_send_to_kernel_get(struct mlx5_priv *priv,
 								 enum mlx5dr_table_type table_type,
 								 uint16_t priority);
+
+struct mlx5dr_action *mlx5_hws_global_action_nat64_get(struct mlx5_priv *priv,
+						       enum mlx5dr_table_type table_type,
+						       enum rte_flow_nat64_type nat64_type);
 
 #endif /* !RTE_PMD_MLX5_HWS_GLOBAL_ACTIONS_H_ */

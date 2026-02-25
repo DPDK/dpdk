@@ -369,6 +369,7 @@ static int flow_hw_async_destroy_validate(struct rte_eth_dev *dev,
 					  const uint32_t queue,
 					  const struct rte_flow_hw *flow,
 					  struct rte_flow_error *error);
+static bool flow_hw_should_create_nat64_actions(struct mlx5_priv *priv);
 
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops;
 
@@ -3023,12 +3024,38 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 			    ((const struct rte_flow_action_nat64 *)masks->conf)->type) {
 				const struct rte_flow_action_nat64 *nat64_c =
 					(const struct rte_flow_action_nat64 *)actions->conf;
-
-				acts->rule_acts[dr_pos].action =
-					priv->action_nat64[type][nat64_c->type];
-			} else if (__flow_hw_act_data_general_append(priv, acts,
-								     actions->type,
-								     src_pos, dr_pos))
+				dr_action = mlx5_hws_global_action_nat64_get(priv,
+									     type,
+									     nat64_c->type);
+				if (dr_action == NULL) {
+					DRV_LOG(ERR, "port %u failed to allocate NAT64 action",
+						priv->dev_data->port_id);
+					rte_flow_error_set(&sub_error, ENOMEM,
+							   RTE_FLOW_ERROR_TYPE_STATE, NULL,
+							   "failed to allocate NAT64 action");
+					goto err;
+				}
+				acts->rule_acts[dr_pos].action = dr_action;
+				break;
+			}
+			acts->nat64[RTE_FLOW_NAT64_6TO4] = mlx5_hws_global_action_nat64_get(priv,
+					type,
+					RTE_FLOW_NAT64_6TO4);
+			acts->nat64[RTE_FLOW_NAT64_4TO6] = mlx5_hws_global_action_nat64_get(priv,
+					type,
+					RTE_FLOW_NAT64_4TO6);
+			if (!acts->nat64[RTE_FLOW_NAT64_6TO4] ||
+			    !acts->nat64[RTE_FLOW_NAT64_4TO6]) {
+				DRV_LOG(ERR, "port %u failed to allocate both NAT64 actions",
+					priv->dev_data->port_id);
+				rte_flow_error_set(&sub_error, ENOMEM,
+						   RTE_FLOW_ERROR_TYPE_STATE, NULL,
+						   "failed to allocate both NAT64 actions");
+				goto err;
+			}
+			if (__flow_hw_act_data_general_append(priv, acts,
+							      actions->type,
+							      src_pos, dr_pos))
 				goto err;
 			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX:
@@ -3894,9 +3921,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_NAT64:
 			nat64_c = action->conf;
-			MLX5_ASSERT(table->type < MLX5DR_TABLE_TYPE_MAX);
-			rule_acts[act_data->action_dst].action =
-				priv->action_nat64[table->type][nat64_c->type];
+			rule_acts[act_data->action_dst].action = hw_acts->nat64[nat64_c->type];
 			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX:
 			jump_table = ((const struct rte_flow_action_jump_to_table_index *)
@@ -6916,76 +6941,16 @@ flow_hw_validate_action_default_miss(struct rte_eth_dev *dev,
 }
 
 static int
-flow_hw_validate_action_nat64(struct rte_eth_dev *dev,
-			      const struct rte_flow_actions_template_attr *attr,
-			      const struct rte_flow_action *action,
-			      const struct rte_flow_action *mask,
-			      uint64_t action_flags,
-			      struct rte_flow_error *error)
+flow_hw_validate_action_nat64(struct rte_eth_dev *dev, struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	const struct rte_flow_action_nat64 *nat64_c;
-	enum rte_flow_nat64_type cov_type;
 
-	RTE_SET_USED(action_flags);
-	if (mask->conf && ((const struct rte_flow_action_nat64 *)mask->conf)->type) {
-		nat64_c = (const struct rte_flow_action_nat64 *)action->conf;
-		cov_type = nat64_c->type;
-		if ((attr->ingress && !priv->action_nat64[MLX5DR_TABLE_TYPE_NIC_RX][cov_type]) ||
-		    (attr->egress && !priv->action_nat64[MLX5DR_TABLE_TYPE_NIC_TX][cov_type]))
-			goto err_out;
-		if (attr->transfer) {
-			if (!is_unified_fdb(priv)) {
-				if (!priv->action_nat64[MLX5DR_TABLE_TYPE_FDB][cov_type])
-					goto err_out;
-			} else {
-				if (!priv->action_nat64[MLX5DR_TABLE_TYPE_FDB_RX][cov_type] ||
-				    !priv->action_nat64[MLX5DR_TABLE_TYPE_FDB_TX][cov_type] ||
-				    !priv->action_nat64[MLX5DR_TABLE_TYPE_FDB_UNIFIED][cov_type])
-					goto err_out;
-			}
-		}
-	} else {
-		/*
-		 * Usually, the actions will be used on both directions. For non-masked actions,
-		 * both directions' actions will be checked.
-		 */
-		if (attr->ingress)
-			if (!priv->action_nat64[MLX5DR_TABLE_TYPE_NIC_RX][RTE_FLOW_NAT64_6TO4] ||
-			    !priv->action_nat64[MLX5DR_TABLE_TYPE_NIC_RX][RTE_FLOW_NAT64_4TO6])
-				goto err_out;
-		if (attr->egress)
-			if (!priv->action_nat64[MLX5DR_TABLE_TYPE_NIC_TX][RTE_FLOW_NAT64_6TO4] ||
-			    !priv->action_nat64[MLX5DR_TABLE_TYPE_NIC_TX][RTE_FLOW_NAT64_4TO6])
-				goto err_out;
-		if (attr->transfer) {
-			if (!is_unified_fdb(priv)) {
-				if (!priv->action_nat64[MLX5DR_TABLE_TYPE_FDB]
-						       [RTE_FLOW_NAT64_6TO4] ||
-				    !priv->action_nat64[MLX5DR_TABLE_TYPE_FDB]
-						       [RTE_FLOW_NAT64_4TO6])
-					goto err_out;
-			} else {
-				if (!priv->action_nat64[MLX5DR_TABLE_TYPE_FDB_RX]
-						       [RTE_FLOW_NAT64_6TO4] ||
-				    !priv->action_nat64[MLX5DR_TABLE_TYPE_FDB_RX]
-						       [RTE_FLOW_NAT64_4TO6] ||
-				    !priv->action_nat64[MLX5DR_TABLE_TYPE_FDB_TX]
-						       [RTE_FLOW_NAT64_6TO4] ||
-				    !priv->action_nat64[MLX5DR_TABLE_TYPE_FDB_TX]
-						       [RTE_FLOW_NAT64_4TO6] ||
-				    !priv->action_nat64[MLX5DR_TABLE_TYPE_FDB_UNIFIED]
-						       [RTE_FLOW_NAT64_6TO4] ||
-				    !priv->action_nat64[MLX5DR_TABLE_TYPE_FDB_UNIFIED]
-						       [RTE_FLOW_NAT64_4TO6])
-					goto err_out;
-			}
-		}
-	}
+	if (!flow_hw_should_create_nat64_actions(priv))
+		return rte_flow_error_set(error, EOPNOTSUPP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "NAT64 action is not supported.");
+
 	return 0;
-err_out:
-	return rte_flow_error_set(error, EOPNOTSUPP, RTE_FLOW_ERROR_TYPE_ACTION,
-				  NULL, "NAT64 action is not supported.");
 }
 
 static int
@@ -7519,8 +7484,7 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_OF_PUSH_VLAN;
 			break;
 		case RTE_FLOW_ACTION_TYPE_NAT64:
-			ret = flow_hw_validate_action_nat64(dev, attr, action, mask,
-							    action_flags, error);
+			ret = flow_hw_validate_action_nat64(dev, error);
 			if (ret != 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_NAT64;
@@ -9892,94 +9856,6 @@ flow_hw_should_create_nat64_actions(struct mlx5_priv *priv)
 	return true;
 }
 
-static void
-flow_hw_destroy_nat64_actions(struct mlx5_priv *priv)
-{
-	uint32_t i;
-
-	for (i = MLX5DR_TABLE_TYPE_NIC_RX; i < MLX5DR_TABLE_TYPE_MAX; i++) {
-		if (priv->action_nat64[i][RTE_FLOW_NAT64_6TO4]) {
-			(void)mlx5dr_action_destroy(priv->action_nat64[i][RTE_FLOW_NAT64_6TO4]);
-			priv->action_nat64[i][RTE_FLOW_NAT64_6TO4] = NULL;
-		}
-		if (priv->action_nat64[i][RTE_FLOW_NAT64_4TO6]) {
-			(void)mlx5dr_action_destroy(priv->action_nat64[i][RTE_FLOW_NAT64_4TO6]);
-			priv->action_nat64[i][RTE_FLOW_NAT64_4TO6] = NULL;
-		}
-	}
-}
-
-static int
-_create_nat64_actions(struct mlx5_priv *priv,
-		      struct mlx5dr_action_nat64_attr *attr,
-		      int type,
-		      struct rte_flow_error *error)
-{
-	const uint32_t flags[MLX5DR_TABLE_TYPE_MAX] = {
-		MLX5DR_ACTION_FLAG_HWS_RX | MLX5DR_ACTION_FLAG_SHARED,
-		MLX5DR_ACTION_FLAG_HWS_TX | MLX5DR_ACTION_FLAG_SHARED,
-		MLX5DR_ACTION_FLAG_HWS_FDB | MLX5DR_ACTION_FLAG_SHARED,
-		MLX5DR_ACTION_FLAG_HWS_FDB_RX | MLX5DR_ACTION_FLAG_SHARED,
-		MLX5DR_ACTION_FLAG_HWS_FDB_TX | MLX5DR_ACTION_FLAG_SHARED,
-		MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED | MLX5DR_ACTION_FLAG_SHARED,
-	};
-	struct mlx5dr_action *act;
-
-	attr->flags = (enum mlx5dr_action_nat64_flags)
-		(MLX5DR_ACTION_NAT64_V6_TO_V4 | MLX5DR_ACTION_NAT64_BACKUP_ADDR);
-	act = mlx5dr_action_create_nat64(priv->dr_ctx, attr, flags[type]);
-	if (!act)
-		return rte_flow_error_set(error, rte_errno,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				"Failed to create v6 to v4 action.");
-	priv->action_nat64[type][RTE_FLOW_NAT64_6TO4] = act;
-	attr->flags = (enum mlx5dr_action_nat64_flags)
-		(MLX5DR_ACTION_NAT64_V4_TO_V6 | MLX5DR_ACTION_NAT64_BACKUP_ADDR);
-	act = mlx5dr_action_create_nat64(priv->dr_ctx, attr, flags[type]);
-	if (!act)
-		return rte_flow_error_set(error, rte_errno,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				"Failed to create v4 to v6 action.");
-	priv->action_nat64[type][RTE_FLOW_NAT64_4TO6] = act;
-	return 0;
-}
-
-static int
-flow_hw_create_nat64_actions(struct mlx5_priv *priv, struct rte_flow_error *error)
-{
-	struct mlx5dr_action_nat64_attr attr;
-	uint8_t regs[MLX5_FLOW_NAT64_REGS_MAX];
-	uint32_t i, from, to;
-	int rc;
-	bool unified_fdb = is_unified_fdb(priv);
-
-	attr.registers = regs;
-	/* Try to use 3 registers by default. */
-	attr.num_of_registers = MLX5_FLOW_NAT64_REGS_MAX;
-	for (i = 0; i < MLX5_FLOW_NAT64_REGS_MAX; i++) {
-		MLX5_ASSERT(priv->sh->registers.nat64_regs[i] != REG_NON);
-		regs[i] = mlx5_convert_reg_to_field(priv->sh->registers.nat64_regs[i]);
-	}
-	for (i = MLX5DR_TABLE_TYPE_NIC_RX; i <= MLX5DR_TABLE_TYPE_NIC_TX; i++) {
-		rc = _create_nat64_actions(priv, &attr, i, error);
-		if (rc)
-			return rc;
-	}
-	if (priv->sh->config.dv_esw_en) {
-		from = unified_fdb ? MLX5DR_TABLE_TYPE_FDB_RX :
-					MLX5DR_TABLE_TYPE_FDB;
-		to = unified_fdb ? MLX5DR_TABLE_TYPE_FDB_UNIFIED :
-			MLX5DR_TABLE_TYPE_FDB;
-
-		for (i = from; i <= to; i++) {
-			rc = _create_nat64_actions(priv, &attr, i, error);
-			if (rc)
-				return rc;
-		}
-	}
-	return 0;
-}
-
 /**
  * Create an egress pattern template matching on source SQ.
  *
@@ -11879,7 +11755,6 @@ __mlx5_flow_hw_resource_release(struct rte_eth_dev *dev, bool ctx_close)
 	}
 	if (priv->hw_def_miss)
 		mlx5dr_action_destroy(priv->hw_def_miss);
-	flow_hw_destroy_nat64_actions(priv);
 	flow_hw_free_vport_actions(priv);
 	if (priv->acts_ipool) {
 		mlx5_ipool_destroy(priv->acts_ipool);
@@ -12335,14 +12210,6 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 						nb_queue, strict_queue);
 		if (ret < 0)
 			goto err;
-	}
-	if (flow_hw_should_create_nat64_actions(priv)) {
-		if (flow_hw_create_nat64_actions(priv, error))
-			goto err;
-	} else {
-		DRV_LOG(WARNING, "Cannot create NAT64 action on port %u, "
-			"please check the FW version. NAT64 will not be supported.",
-			dev->data->port_id);
 	}
 	if (_queue_attr)
 		mlx5_free(_queue_attr);

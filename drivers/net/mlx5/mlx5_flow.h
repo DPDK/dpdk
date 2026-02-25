@@ -1625,6 +1625,7 @@ struct mlx5_hw_actions {
 	uint32_t mark:1; /* Indicate the mark action. */
 	cnt_id_t cnt_id; /* Counter id. */
 	uint32_t mtr_id; /* Meter id. */
+	struct mlx5dr_action *nat64[2]; /* [RTE_FLOW_NAT64_6TO4], [RTE_FLOW_NAT64_4TO6] */
 	/* Translated DR action array from action template. */
 	struct mlx5dr_rule_action rule_acts[MLX5_HW_MAX_ACTS];
 };
