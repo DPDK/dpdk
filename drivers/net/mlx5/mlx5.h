@@ -2127,12 +2127,6 @@ struct mlx5_priv {
 
 	struct rte_flow_actions_template *action_template_drop[MLX5DR_TABLE_TYPE_MAX];
 
-	/*
-	 * The NAT64 action can be shared among matchers per domain.
-	 * [0]: RTE_FLOW_NAT64_6TO4, [1]: RTE_FLOW_NAT64_4TO6
-	 * Todo: consider to add *_MAX macro.
-	 */
-	struct mlx5dr_action *action_nat64[MLX5DR_TABLE_TYPE_MAX][2];
 	struct mlx5_indexed_pool *ptype_rss_groups;
 	struct mlx5_nta_sample_ctx *nta_sample_ctx;
 #endif

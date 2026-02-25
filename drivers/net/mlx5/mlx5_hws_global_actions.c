@@ -5,6 +5,7 @@
 #include "mlx5_hws_global_actions.h"
 
 #include "mlx5.h"
+#include "mlx5_flow.h"
 
 void
 mlx5_hws_global_actions_init(struct mlx5_priv *priv)
@@ -46,6 +47,8 @@ mlx5_hws_global_actions_cleanup(struct mlx5_priv *priv)
 	global_actions_array_cleanup(priv,
 				     &priv->hw_global_actions.send_to_kernel,
 				     "send_to_kernel");
+	global_actions_array_cleanup(priv, &priv->hw_global_actions.nat64_6to4, "nat64_6to4");
+	global_actions_array_cleanup(priv, &priv->hw_global_actions.nat64_4to6, "nat64_4to6");
 
 	rte_spinlock_unlock(&priv->hw_global_actions.lock);
 }
@@ -94,6 +97,18 @@ action_create_send_to_kernel_cb(struct mlx5dr_context *ctx,
 	uint16_t priority = (uint16_t)(uintptr_t)user_data;
 
 	return mlx5dr_action_create_dest_root(ctx, priority, action_flags);
+}
+
+static struct mlx5dr_action *
+action_create_nat64_cb(struct mlx5dr_context *ctx,
+		       uint32_t action_flags,
+		       void *user_data)
+{
+	struct mlx5dr_action_nat64_attr *attr = user_data;
+
+	/* NAT64 action must always be marked as shared. */
+	return mlx5dr_action_create_nat64(ctx, attr,
+					  action_flags | MLX5DR_ACTION_FLAG_SHARED);
 }
 
 static struct mlx5dr_action *
@@ -202,4 +217,34 @@ mlx5_hws_global_action_send_to_kernel_get(struct mlx5_priv *priv,
 				 false, /* send-to-kernel is non-root only */
 				 action_create_send_to_kernel_cb,
 				 (void *)(uintptr_t)priority);
+}
+
+struct mlx5dr_action *
+mlx5_hws_global_action_nat64_get(struct mlx5_priv *priv,
+				 enum mlx5dr_table_type table_type,
+				 enum rte_flow_nat64_type nat64_type)
+{
+	struct mlx5_hws_global_actions_array *array;
+	uint8_t regs[MLX5_FLOW_NAT64_REGS_MAX];
+	struct mlx5dr_action_nat64_attr attr;
+	const char *name;
+
+	for (uint32_t i = 0; i < MLX5_FLOW_NAT64_REGS_MAX; i++)
+		regs[i] = mlx5_convert_reg_to_field(priv->sh->registers.nat64_regs[i]);
+
+	attr.num_of_registers = MLX5_FLOW_NAT64_REGS_MAX;
+	attr.registers = regs;
+
+	if (nat64_type == RTE_FLOW_NAT64_6TO4) {
+		attr.flags = MLX5DR_ACTION_NAT64_V6_TO_V4 | MLX5DR_ACTION_NAT64_BACKUP_ADDR;
+		array = &priv->hw_global_actions.nat64_6to4;
+		name = "nat64_6to4";
+	} else {
+		attr.flags = MLX5DR_ACTION_NAT64_V4_TO_V6 | MLX5DR_ACTION_NAT64_BACKUP_ADDR;
+		array = &priv->hw_global_actions.nat64_4to6;
+		name = "nat64_4to6";
+	}
+
+	return global_action_get(priv, array, name, table_type,
+				 false, action_create_nat64_cb, &attr);
 }
