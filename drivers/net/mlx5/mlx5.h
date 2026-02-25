@@ -2115,8 +2115,6 @@ struct mlx5_priv {
 	struct mlx5dr_action **hw_vport;
 	/* HWS global actions. */
 	struct mlx5_hws_global_actions hw_global_actions;
-	/* HW steering global tag action. */
-	struct mlx5dr_action *hw_tag[2];
 	/* HW steering global default miss action. */
 	struct mlx5dr_action *hw_def_miss;
 	/* HW steering global send to kernel action. */

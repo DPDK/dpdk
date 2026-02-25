@@ -25,6 +25,7 @@ struct mlx5_hws_global_actions_array {
 
 struct mlx5_hws_global_actions {
 	struct mlx5_hws_global_actions_array drop;
+	struct mlx5_hws_global_actions_array tag;
 	rte_spinlock_t lock;
 };
 
@@ -35,5 +36,9 @@ void mlx5_hws_global_actions_cleanup(struct mlx5_priv *priv);
 struct mlx5dr_action *mlx5_hws_global_action_drop_get(struct mlx5_priv *priv,
 						      enum mlx5dr_table_type table_type,
 						      bool is_root);
+
+struct mlx5dr_action *mlx5_hws_global_action_tag_get(struct mlx5_priv *priv,
+						     enum mlx5dr_table_type table_type,
+						     bool is_root);
 
 #endif /* !RTE_PMD_MLX5_HWS_GLOBAL_ACTIONS_H_ */
