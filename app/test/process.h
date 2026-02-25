@@ -8,12 +8,11 @@
 #include <errno.h>  /* errno */
 #include <limits.h> /* PATH_MAX */
 #ifndef RTE_EXEC_ENV_WINDOWS
-#include <libgen.h> /* basename et al */
 #include <sys/wait.h>
 #endif
 #include <stdlib.h> /* NULL */
 #include <string.h> /* strerror */
-#include <unistd.h> /* readlink */
+#include <unistd.h>
 #include <dirent.h>
 
 #include <rte_string_fns.h> /* strlcpy */
@@ -236,17 +235,7 @@ file_prefix_arg(void)
 static inline char *
 get_current_prefix(char *prefix, int size)
 {
-	char buf[PATH_MAX];
-
-	/* get file for config (fd is always 3) return NULL on error */
-	if (readlink("/proc/self/fd/3", buf, sizeof(buf)) == -1)
-		return NULL;
-
-	/*
-	 * path should be something like "/var/run/dpdk/config"
-	 * which results in prefix of "dpdk"
-	 */
-	rte_basename(dirname(buf), prefix, size);
+	rte_basename(rte_eal_get_runtime_dir(), prefix, size);
 	return prefix;
 }
 
@@ -257,12 +246,8 @@ file_prefix_arg(void)
 	static char prefix[NAME_MAX + sizeof("--file-prefix=")];
 	char tmp[NAME_MAX];
 
-	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
-		fprintf(stderr, "Error - unable to get current prefix!\n");
-		return NULL;
-	}
-
-	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+	snprintf(prefix, sizeof(prefix), "--file-prefix=%s",
+			get_current_prefix(tmp, sizeof(tmp)));
 	return prefix;
 }
 #endif /* RTE_EXEC_ENV_LINUX */
