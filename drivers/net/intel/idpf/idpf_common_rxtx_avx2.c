@@ -482,6 +482,156 @@ idpf_dp_singleq_recv_pkts_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16
 	return _idpf_singleq_recv_raw_pkts_vec_avx2(rx_queue, rx_pkts, nb_pkts);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_dp_splitq_recv_pkts_avx2)
+uint16_t
+idpf_dp_splitq_recv_pkts_avx2(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	struct idpf_rx_queue *queue = (struct idpf_rx_queue *)rxq;
+	const uint32_t *ptype_tbl = queue->adapter->ptype_tbl;
+	struct rte_mbuf **sw_ring = &queue->bufq2->sw_ring[queue->rx_tail];
+	volatile union virtchnl2_rx_desc *rxdp =
+		(volatile union virtchnl2_rx_desc *)queue->rx_ring + queue->rx_tail;
+	const __m256i mbuf_init = _mm256_set_epi64x(0, 0, 0, queue->mbuf_initializer);
+	uint64_t head_gen;
+	uint16_t received = 0;
+	int i;
+
+	/* Shuffle mask: picks fields from each 16-byte descriptor pair into the
+	 * layout that will be merged into mbuf->rearm_data candidates.
+	 */
+	const __m256i shuf = _mm256_set_epi8(
+		/* high 128 bits (desc 3 then desc 2 lanes) */
+		0xFF, 0xFF, 0xFF, 0xFF, 11, 10, 5, 4,
+		0xFF, 0xFF, 5, 4, 0xFF, 0xFF, 0xFF, 0xFF,
+		/* low 128 bits (desc 1 then desc 0 lanes) */
+		0xFF, 0xFF, 0xFF, 0xFF, 11, 10, 5, 4,
+		0xFF, 0xFF, 5, 4, 0xFF, 0xFF, 0xFF, 0xFF
+	);
+
+	/* mask that clears bits 14 and 15 of the packet length word  */
+	const __m256i len_mask = _mm256_set_epi32(
+		0xffffffff, 0xffffffff, 0xffff3fff, 0xffffffff,
+		0xffffffff, 0xffffffff, 0xffff3fff, 0xffffffff
+	);
+
+	const __m256i ptype_mask = _mm256_set1_epi16(VIRTCHNL2_RX_FLEX_DESC_PTYPE_M);
+
+	rte_prefetch0(rxdp);
+	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, IDPF_VPMD_DESCS_PER_LOOP);
+
+	if (queue->bufq2->rxrearm_nb > IDPF_RXQ_REARM_THRESH)
+		idpf_splitq_rearm_common(queue->bufq2);
+
+	/* check if there is at least one packet available */
+	head_gen = rxdp->flex_adv_nic_3_wb.pktlen_gen_bufq_id;
+	if (((head_gen >> VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_S) &
+		 VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_M) != queue->expected_gen_id)
+		return 0;
+
+	for (i = 0; i < nb_pkts;
+	     i += IDPF_VPMD_DESCS_PER_LOOP,
+	     rxdp += IDPF_VPMD_DESCS_PER_LOOP) {
+		uint16_t pktlen_gen0, pktlen_gen1, pktlen_gen2, pktlen_gen3;
+		uint8_t stat0, stat1, stat2, stat3;
+		bool valid0, valid1, valid2, valid3;
+		uint16_t burst;
+		uint16_t ptype0, ptype1, ptype2, ptype3;
+		__m128i d0, d1, d2, d3;
+		__m256i d01, d23, desc01, desc23;
+		__m256i mb10, mb32, pt10, pt32;
+		__m256i rearm0, rearm1, rearm2, rearm3;
+
+		/* copy mbuf pointers (harmless for invalid descs) */
+		memcpy(&rx_pkts[i], &sw_ring[i],
+			sizeof(rx_pkts[0]) * IDPF_VPMD_DESCS_PER_LOOP);
+		d3 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, &rxdp[3]));
+		rte_compiler_barrier();
+		d2 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, &rxdp[2]));
+		rte_compiler_barrier();
+		d1 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, &rxdp[1]));
+		rte_compiler_barrier();
+		d0 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, &rxdp[0]));
+
+		d23 = _mm256_set_m128i(d3, d2);
+		d01 = _mm256_set_m128i(d1, d0);
+
+		/* mask length and shuffle to build mbuf rearm data */
+		desc01 = _mm256_and_si256(d01, len_mask);
+		desc23 = _mm256_and_si256(d23, len_mask);
+		mb10 = _mm256_shuffle_epi8(desc01, shuf);
+		mb32 = _mm256_shuffle_epi8(desc23, shuf);
+
+		/* Extract ptypes */
+		pt10 = _mm256_and_si256(d01, ptype_mask);
+		pt32 = _mm256_and_si256(d23, ptype_mask);
+
+		ptype0 = (uint16_t)_mm256_extract_epi16(pt10, 1);
+		ptype1 = (uint16_t)_mm256_extract_epi16(pt10, 9);
+		ptype2 = (uint16_t)_mm256_extract_epi16(pt32, 1);
+		ptype3 = (uint16_t)_mm256_extract_epi16(pt32, 9);
+
+		mb10 = _mm256_insert_epi32(mb10, (int)ptype_tbl[ptype1], 2);
+		mb10 = _mm256_insert_epi32(mb10, (int)ptype_tbl[ptype0], 0);
+		mb32 = _mm256_insert_epi32(mb32, (int)ptype_tbl[ptype3], 2);
+		mb32 = _mm256_insert_epi32(mb32, (int)ptype_tbl[ptype2], 0);
+
+		/* Build rearm data for each mbuf */
+		rearm0 = _mm256_permute2f128_si256(mbuf_init, mb10, 0x20);
+		rearm1 = _mm256_blend_epi32(mbuf_init, mb10, 0xF0);
+		rearm2 = _mm256_permute2f128_si256(mbuf_init, mb32, 0x20);
+		rearm3 = _mm256_blend_epi32(mbuf_init, mb32, 0xF0);
+
+		/* Write out mbuf rearm data */
+		_mm256_storeu_si256((__m256i *)&rx_pkts[i + 0]->rearm_data, rearm0);
+		_mm256_storeu_si256((__m256i *)&rx_pkts[i + 1]->rearm_data, rearm1);
+		_mm256_storeu_si256((__m256i *)&rx_pkts[i + 2]->rearm_data, rearm2);
+		_mm256_storeu_si256((__m256i *)&rx_pkts[i + 3]->rearm_data, rearm3);
+
+		/* Extract DD and generation bits from the already-loaded descriptor data (d0-d3) */
+		stat0 = (uint8_t)_mm_extract_epi8(d0, 1);
+		stat1 = (uint8_t)_mm_extract_epi8(d1, 1);
+		stat2 = (uint8_t)_mm_extract_epi8(d2, 1);
+		stat3 = (uint8_t)_mm_extract_epi8(d3, 1);
+
+		pktlen_gen0 = (uint16_t)_mm_extract_epi16(d0, 2);
+		pktlen_gen1 = (uint16_t)_mm_extract_epi16(d1, 2);
+		pktlen_gen2 = (uint16_t)_mm_extract_epi16(d2, 2);
+		pktlen_gen3 = (uint16_t)_mm_extract_epi16(d3, 2);
+
+		valid0 = (stat0 & 1) &&
+			 (((pktlen_gen0 >> VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_S) &
+			   VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_M) == queue->expected_gen_id);
+		valid1 = (stat1 & 1) &&
+			 (((pktlen_gen1 >> VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_S) &
+			   VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_M) == queue->expected_gen_id);
+		valid2 = (stat2 & 1) &&
+			 (((pktlen_gen2 >> VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_S) &
+			   VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_M) == queue->expected_gen_id);
+		valid3 = (stat3 & 1) &&
+			 (((pktlen_gen3 >> VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_S) &
+			   VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_M) == queue->expected_gen_id);
+
+		/* count valid descriptors (holes are impossible because
+		 * descriptors are read in reverse order while the NIC
+		 * completes them in forward order)
+		 */
+		burst = valid0 + valid1 + valid2 + valid3;
+		received += burst;
+		if (burst != IDPF_VPMD_DESCS_PER_LOOP)
+			break;
+	}
+
+	queue->rx_tail += received;
+	queue->expected_gen_id ^= ((queue->rx_tail & queue->nb_rx_desc) != 0);
+	queue->rx_tail &= (queue->nb_rx_desc - 1);
+	if ((queue->rx_tail & 1) == 1 && received > 1) {
+		queue->rx_tail--;
+		received--;
+	}
+	queue->bufq2->rxrearm_nb += received;
+	return received;
+}
+
 static inline void
 idpf_singleq_vtx1(volatile struct ci_tx_desc *txdp,
 		  struct rte_mbuf *pkt, uint64_t flags)
