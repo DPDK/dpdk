@@ -541,62 +541,6 @@ idpf_dp_singleq_recv_pkts_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
 }
 
 static __rte_always_inline void
-idpf_splitq_rearm_common(struct idpf_rx_queue *rx_bufq)
-{
-	struct rte_mbuf **rxp = &rx_bufq->sw_ring[rx_bufq->rxrearm_start];
-	volatile union virtchnl2_rx_buf_desc *rxdp = rx_bufq->rx_ring;
-	uint16_t rx_id;
-	int i;
-
-	rxdp += rx_bufq->rxrearm_start;
-
-	/* Pull 'n' more MBUFs into the software ring */
-	if (rte_mbuf_raw_alloc_bulk(rx_bufq->mp,
-				 (void *)rxp,
-				 IDPF_RXQ_REARM_THRESH) < 0) {
-		if (rx_bufq->rxrearm_nb + IDPF_RXQ_REARM_THRESH >=
-		    rx_bufq->nb_rx_desc) {
-			__m128i dma_addr0;
-
-			dma_addr0 = _mm_setzero_si128();
-			for (i = 0; i < IDPF_VPMD_DESCS_PER_LOOP; i++) {
-				rxp[i] = &rx_bufq->fake_mbuf;
-				_mm_store_si128(RTE_CAST_PTR(__m128i *, &rxdp[i]),
-						dma_addr0);
-			}
-		}
-	rte_atomic_fetch_add_explicit(&rx_bufq->rx_stats.mbuf_alloc_failed,
-			   IDPF_RXQ_REARM_THRESH, rte_memory_order_relaxed);
-		return;
-	}
-
-	/* Initialize the mbufs in vector, process 8 mbufs in one loop */
-	for (i = 0; i < IDPF_RXQ_REARM_THRESH;
-			i += 8, rxp += 8, rxdp += 8) {
-		rxdp[0].split_rd.pkt_addr = rxp[0]->buf_iova + RTE_PKTMBUF_HEADROOM;
-		rxdp[1].split_rd.pkt_addr = rxp[1]->buf_iova + RTE_PKTMBUF_HEADROOM;
-		rxdp[2].split_rd.pkt_addr = rxp[2]->buf_iova + RTE_PKTMBUF_HEADROOM;
-		rxdp[3].split_rd.pkt_addr = rxp[3]->buf_iova + RTE_PKTMBUF_HEADROOM;
-		rxdp[4].split_rd.pkt_addr = rxp[4]->buf_iova + RTE_PKTMBUF_HEADROOM;
-		rxdp[5].split_rd.pkt_addr = rxp[5]->buf_iova + RTE_PKTMBUF_HEADROOM;
-		rxdp[6].split_rd.pkt_addr = rxp[6]->buf_iova + RTE_PKTMBUF_HEADROOM;
-		rxdp[7].split_rd.pkt_addr = rxp[7]->buf_iova + RTE_PKTMBUF_HEADROOM;
-	}
-
-	rx_bufq->rxrearm_start += IDPF_RXQ_REARM_THRESH;
-	if (rx_bufq->rxrearm_start >= rx_bufq->nb_rx_desc)
-		rx_bufq->rxrearm_start = 0;
-
-	rx_bufq->rxrearm_nb -= IDPF_RXQ_REARM_THRESH;
-
-	rx_id = (uint16_t)((rx_bufq->rxrearm_start == 0) ?
-			     (rx_bufq->nb_rx_desc - 1) : (rx_bufq->rxrearm_start - 1));
-
-	/* Update the tail pointer on the NIC */
-	IDPF_PCI_REG_WRITE(rx_bufq->qrx_tail, rx_id);
-}
-
-static __rte_always_inline void
 idpf_splitq_rearm(struct idpf_rx_queue *rx_bufq)
 {
 	int i;
