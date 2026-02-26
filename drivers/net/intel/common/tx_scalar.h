@@ -145,6 +145,8 @@ ci_xmit_burst_simple(struct ci_tx_queue *txq,
 		if (txq->tx_next_rs >= txq->nb_tx_desc)
 			txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 	}
+	if (tx_id == txq->nb_tx_desc)
+		tx_id = 0;
 
 	txq->tx_tail = tx_id;
 
