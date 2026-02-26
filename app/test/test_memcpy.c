@@ -36,6 +36,16 @@ static size_t buf_sizes[TEST_VALUE_RANGE];
 /* Data is aligned on this many bytes (power of 2) */
 #define ALIGNMENT_UNIT          32
 
+/*
+ * Subset of offsets to test. These values cover the structurally
+ * interesting alignment cases for SSE/AVX copy paths:
+ * aligned (0), off-by-one (1), partial vector (7, 15, 17),
+ * vector boundaries (16, 31). Testing all 1024 src x dst
+ * combinations of offsets 0..31 is unnecessary since many
+ * map to the same code paths, and causes the test to timeout
+ * on slow (e.g. emulated 32-bit) build environments.
+ */
+static const unsigned int test_offsets[] = {0, 1, 7, 15, 16, 17, 31};
 
 /*
  * Create two buffers, and initialise one with random values. These are copied
@@ -103,13 +113,15 @@ static int
 func_test(void)
 {
 	unsigned int off_src, off_dst, i;
+	unsigned int n_offsets = RTE_DIM(test_offsets);
 	int ret;
 
-	for (off_src = 0; off_src < ALIGNMENT_UNIT; off_src++) {
-		for (off_dst = 0; off_dst < ALIGNMENT_UNIT; off_dst++) {
+	for (off_src = 0; off_src < n_offsets; off_src++) {
+		for (off_dst = 0; off_dst < n_offsets; off_dst++) {
 			for (i = 0; i < RTE_DIM(buf_sizes); i++) {
-				ret = test_single_memcpy(off_src, off_dst,
-				                         buf_sizes[i]);
+				ret = test_single_memcpy(test_offsets[off_src],
+							 test_offsets[off_dst],
+							 buf_sizes[i]);
 				if (ret != 0)
 					return -1;
 			}
