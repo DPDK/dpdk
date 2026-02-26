@@ -1177,6 +1177,27 @@ rte_cryptodev_find_free_device_index(void)
 	return RTE_CRYPTO_MAX_DEVS;
 }
 
+static uint8_t
+rte_cryptodev_find_device_by_name(const char *name)
+{
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	const struct rte_memzone *mz;
+	struct rte_cryptodev_data *data;
+	uint8_t dev_id;
+
+	for (dev_id = 0; dev_id < RTE_CRYPTO_MAX_DEVS; dev_id++) {
+		snprintf(mz_name, sizeof(mz_name), "rte_cryptodev_data_%u", dev_id);
+		mz = rte_memzone_lookup(mz_name);
+		if (mz == NULL)
+			continue;
+
+		data = mz->addr;
+		if (strncmp(data->name, name, RTE_CRYPTODEV_NAME_MAX_LEN) == 0)
+			return dev_id;
+	}
+	return RTE_CRYPTO_MAX_DEVS;
+}
+
 RTE_EXPORT_INTERNAL_SYMBOL(rte_cryptodev_pmd_allocate)
 struct rte_cryptodev *
 rte_cryptodev_pmd_allocate(const char *name, int socket_id)
@@ -1190,10 +1211,18 @@ rte_cryptodev_pmd_allocate(const char *name, int socket_id)
 		return NULL;
 	}
 
-	dev_id = rte_cryptodev_find_free_device_index();
-	if (dev_id == RTE_CRYPTO_MAX_DEVS) {
-		CDEV_LOG_ERR("Reached maximum number of crypto devices");
-		return NULL;
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		dev_id = rte_cryptodev_find_device_by_name(name);
+		if (dev_id == RTE_CRYPTO_MAX_DEVS) {
+			CDEV_LOG_ERR("Device %s does not exist in primary process", name);
+			return NULL;
+		}
+	} else {
+		dev_id = rte_cryptodev_find_free_device_index();
+		if (dev_id == RTE_CRYPTO_MAX_DEVS) {
+			CDEV_LOG_ERR("Reached maximum number of crypto devices");
+			return NULL;
+		}
 	}
 
 	cryptodev = rte_cryptodev_pmd_get_dev(dev_id);
