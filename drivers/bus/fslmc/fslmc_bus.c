@@ -469,9 +469,6 @@ rte_fslmc_probe(void)
 			if (ret)
 				continue;
 
-			if (!drv->probe)
-				continue;
-
 			if (rte_dev_is_probed(&dev->device))
 				continue;
 
@@ -538,6 +535,7 @@ void
 rte_fslmc_driver_register(struct rte_dpaa2_driver *driver)
 {
 	RTE_VERIFY(driver);
+	RTE_VERIFY(driver->probe != NULL);
 
 	TAILQ_INSERT_TAIL(&rte_fslmc_bus.driver_list, driver, next);
 }
@@ -603,9 +601,6 @@ fslmc_bus_plug(struct rte_device *rte_dev)
 	TAILQ_FOREACH(drv, &rte_fslmc_bus.driver_list, next) {
 		ret = rte_fslmc_match(drv, dev);
 		if (ret)
-			continue;
-
-		if (!drv->probe)
 			continue;
 
 		if (rte_dev_is_probed(&dev->device))
