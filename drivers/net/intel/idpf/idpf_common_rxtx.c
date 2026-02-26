@@ -1620,6 +1620,14 @@ const struct ci_tx_path_info idpf_tx_path_infos[] = {
 			.single_queue = true
 		}
 	},
+	[IDPF_TX_AVX2] = {
+		.pkt_burst = idpf_dp_splitq_xmit_pkts_avx2,
+		.info = "Split AVX2",
+		.features = {
+			.tx_offloads = IDPF_TX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_256
+		}
+	},
 #ifdef CC_AVX512_SUPPORT
 	[IDPF_TX_AVX512] = {
 		.pkt_burst = idpf_dp_splitq_xmit_pkts_avx512,

@@ -779,3 +779,176 @@ idpf_dp_singleq_xmit_pkts_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	return nb_tx;
 }
+
+static __rte_always_inline void
+idpf_splitq_scan_cq_ring(struct ci_tx_queue *cq)
+{
+	struct idpf_splitq_tx_compl_desc *compl_ring;
+	struct ci_tx_queue *txq;
+	uint16_t genid, txq_qid, cq_qid, i;
+	uint8_t ctype;
+
+	cq_qid = cq->tx_tail;
+
+	for (i = 0; i < IDPF_TXQ_SCAN_CQ_THRESH; i++) {
+		if (cq_qid == cq->nb_tx_desc) {
+			cq_qid = 0;
+			cq->expected_gen_id ^= 1;  /* toggle generation bit */
+		}
+
+		compl_ring = &cq->compl_ring[cq_qid];
+
+		genid = (rte_le_to_cpu_16(compl_ring->qid_comptype_gen) &
+				 IDPF_TXD_COMPLQ_GEN_M) >> IDPF_TXD_COMPLQ_GEN_S;
+
+		if (genid != cq->expected_gen_id)
+			break;
+
+		ctype = (rte_le_to_cpu_16(compl_ring->qid_comptype_gen) &
+				 IDPF_TXD_COMPLQ_COMPL_TYPE_M) >> IDPF_TXD_COMPLQ_COMPL_TYPE_S;
+		txq_qid = (rte_le_to_cpu_16(compl_ring->qid_comptype_gen) &
+				   IDPF_TXD_COMPLQ_QID_M) >> IDPF_TXD_COMPLQ_QID_S;
+
+		txq = cq->txqs[txq_qid - cq->tx_start_qid];
+		if (ctype == IDPF_TXD_COMPLT_RS)
+			txq->rs_compl_count++;
+
+		cq_qid++;
+	}
+
+	cq->tx_tail = cq_qid;
+}
+
+static __rte_always_inline void
+idpf_splitq_vtx1_avx2(struct idpf_flex_tx_sched_desc *txdp,
+				struct rte_mbuf *pkt, uint64_t flags)
+{
+	uint64_t high_qw =
+		IDPF_TX_DESC_DTYPE_FLEX_FLOW_SCHE |
+		((uint64_t)flags) |
+		((uint64_t)pkt->data_len << IDPF_TXD_QW1_TX_BUF_SZ_S);
+
+	__m128i descriptor = _mm_set_epi64x(high_qw,
+						pkt->buf_iova + pkt->data_off);
+	_mm_storeu_si128((__m128i *)txdp, descriptor);
+}
+
+static inline void
+idpf_splitq_vtx_avx2(struct idpf_flex_tx_sched_desc *txdp,
+				struct rte_mbuf **pkt, uint16_t nb_pkts, uint64_t flags)
+{
+	const uint64_t hi_qw_tmpl = IDPF_TX_DESC_DTYPE_FLEX_FLOW_SCHE | ((uint64_t)flags);
+
+	/* align if needed */
+	if (((uintptr_t)txdp & 0x1F) != 0 && nb_pkts != 0) {
+		idpf_splitq_vtx1_avx2(txdp, *pkt, flags);
+		txdp++, pkt++, nb_pkts--;
+	}
+
+	for (; nb_pkts >= IDPF_VPMD_DESCS_PER_LOOP; txdp += IDPF_VPMD_DESCS_PER_LOOP,
+			pkt += IDPF_VPMD_DESCS_PER_LOOP, nb_pkts -= IDPF_VPMD_DESCS_PER_LOOP) {
+		uint64_t hi_qw0 = hi_qw_tmpl |
+			((uint64_t)pkt[0]->data_len << IDPF_TXD_QW1_TX_BUF_SZ_S);
+		uint64_t hi_qw1 = hi_qw_tmpl |
+			((uint64_t)pkt[1]->data_len << IDPF_TXD_QW1_TX_BUF_SZ_S);
+		uint64_t hi_qw2 = hi_qw_tmpl |
+			((uint64_t)pkt[2]->data_len << IDPF_TXD_QW1_TX_BUF_SZ_S);
+		uint64_t hi_qw3 = hi_qw_tmpl |
+			((uint64_t)pkt[3]->data_len << IDPF_TXD_QW1_TX_BUF_SZ_S);
+
+		__m256i desc0_1 = _mm256_set_epi64x(hi_qw1,
+			pkt[1]->buf_iova + pkt[1]->data_off,
+			hi_qw0,
+			pkt[0]->buf_iova + pkt[0]->data_off);
+		__m256i desc2_3 = _mm256_set_epi64x(hi_qw3,
+			pkt[3]->buf_iova + pkt[3]->data_off,
+			hi_qw2,
+			pkt[2]->buf_iova + pkt[2]->data_off);
+
+		_mm256_storeu_si256((__m256i *)(txdp + 0), desc0_1);
+		_mm256_storeu_si256((__m256i *)(txdp + 2), desc2_3);
+	}
+
+	while (nb_pkts--) {
+		idpf_splitq_vtx1_avx2(txdp, *pkt, flags);
+		txdp++;
+		pkt++;
+	}
+}
+
+static inline uint16_t
+idpf_splitq_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
+	struct idpf_flex_tx_sched_desc *txdp;
+	struct ci_tx_entry_vec *txep;
+	uint16_t n, nb_commit;
+	uint64_t cmd_dtype = IDPF_TXD_FLEX_FLOW_CMD_EOP;
+	uint16_t tx_id = txq->tx_tail;
+
+	nb_commit = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
+	nb_pkts = nb_commit;
+	if (unlikely(nb_pkts == 0))
+		return 0;
+
+	txdp = (struct idpf_flex_tx_sched_desc *)&txq->desc_ring[tx_id];
+	txep = &txq->sw_ring_vec[tx_id];
+
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
+
+	n = (uint16_t)(txq->nb_tx_desc - tx_id);
+	if (nb_commit >= n) {
+		ci_tx_backlog_entry_vec(txep, tx_pkts, n);
+
+		idpf_splitq_vtx_avx2(txdp, tx_pkts, n - 1, cmd_dtype);
+		tx_pkts += (n - 1);
+		txdp += (n - 1);
+
+		idpf_splitq_vtx1_avx2(txdp, *tx_pkts++, cmd_dtype);
+
+		nb_commit = (uint16_t)(nb_commit - n);
+		tx_id = 0;
+
+		txdp = &txq->desc_ring[tx_id];
+		txep = (void *)txq->sw_ring;
+	}
+
+	ci_tx_backlog_entry_vec(txep, tx_pkts, nb_commit);
+
+	idpf_splitq_vtx_avx2(txdp, tx_pkts, nb_commit, cmd_dtype);
+
+	tx_id = (uint16_t)(tx_id + nb_commit);
+	txq->tx_tail = tx_id;
+
+	IDPF_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
+
+	return nb_pkts;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_dp_splitq_xmit_pkts_avx2)
+uint16_t
+idpf_dp_splitq_xmit_pkts_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
+					uint16_t nb_pkts)
+{
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
+	uint16_t nb_tx = 0;
+
+	while (nb_pkts) {
+		uint16_t ret, num;
+		idpf_splitq_scan_cq_ring(txq->complq);
+
+		if (txq->rs_compl_count > txq->tx_free_thresh) {
+			ci_tx_free_bufs_vec(txq, idpf_tx_desc_done, false);
+			txq->rs_compl_count -= txq->tx_rs_thresh;
+		}
+
+		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_rs_thresh);
+		ret = idpf_splitq_xmit_fixed_burst_vec_avx2(tx_queue, &tx_pkts[nb_tx], num);
+		nb_tx += ret;
+		nb_pkts -= ret;
+		if (ret < num)
+			break;
+	}
+
+	return nb_tx;
+}

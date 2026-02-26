@@ -81,6 +81,10 @@ New Features
 
   * Added flow API support for L2TPv2 over UDP.
 
+* **Updated Intel idpf driver.**
+
+  * Added AVX2 vectorized split queue Rx and Tx paths.
+
 * **Updated Marvell cnxk net driver.**
 
   * Added out-of-place support for CN20K SoC.

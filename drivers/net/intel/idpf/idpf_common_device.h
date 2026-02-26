@@ -81,6 +81,7 @@ enum idpf_tx_func_type {
 	IDPF_TX_SINGLEQ,
 	IDPF_TX_SINGLEQ_SIMPLE,
 	IDPF_TX_SINGLEQ_AVX2,
+	IDPF_TX_AVX2,
 	IDPF_TX_AVX512,
 	IDPF_TX_SINGLEQ_AVX512,
 	/* Need a max value defined as array values in are defined
