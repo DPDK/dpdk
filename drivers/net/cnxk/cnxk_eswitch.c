@@ -389,6 +389,8 @@ cnxk_eswitch_rxq_setup(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid, uint1
 	rq->aura_handle = lpb_pool->pool_id;
 	rq->flow_tag_width = 32;
 	rq->sso_ena = false;
+	rq->pb_caching = ROC_NIX_RQ_DEFAULT_PB_CACHING;
+	rq->wqe_caching = ROC_NIX_RQ_DEFAULT_WQE_CACHING;
 
 	/* Calculate first mbuf skip */
 	first_skip = (sizeof(struct rte_mbuf));
