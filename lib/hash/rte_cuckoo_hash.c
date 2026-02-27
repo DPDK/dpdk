@@ -681,7 +681,7 @@ rte_hash_reset(struct rte_hash *h)
 	}
 
 	memset(h->buckets, 0, h->num_buckets * sizeof(struct rte_hash_bucket));
-	memset(h->key_store, 0, h->key_entry_size * (h->entries + 1));
+	memset(h->key_store, 0, (size_t)h->key_entry_size * (h->entries + 1));
 	*h->tbl_chng_cnt = 0;
 
 	/* reset the free ring */
@@ -750,7 +750,7 @@ search_and_update(const struct rte_hash *h, void *data, const void *key,
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
 		if (bkt->sig_current[i] == sig) {
 			k = (struct rte_hash_key *) ((char *)keys +
-					bkt->key_idx[i] * h->key_entry_size);
+					bkt->key_idx[i] * (size_t)h->key_entry_size);
 			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
 				/* The store to application data at *data
 				 * should not leak after the store to pdata
@@ -1116,7 +1116,7 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 			return -ENOSPC;
 	}
 
-	new_k = RTE_PTR_ADD(keys, slot_id * h->key_entry_size);
+	new_k = RTE_PTR_ADD(keys, slot_id * (size_t)h->key_entry_size);
 	/* The store to application data (by the application) at *data should
 	 * not leak after the store of pdata in the key store. i.e. pdata is
 	 * the guard variable. Release the application data to the readers.
@@ -1301,7 +1301,7 @@ search_one_bucket_l(const struct rte_hash *h, const void *key,
 		if (bkt->sig_current[i] == sig &&
 				bkt->key_idx[i] != EMPTY_SLOT) {
 			k = (struct rte_hash_key *) ((char *)keys +
-					bkt->key_idx[i] * h->key_entry_size);
+					bkt->key_idx[i] * (size_t)h->key_entry_size);
 
 			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
 				if (data != NULL)
@@ -1339,7 +1339,7 @@ search_one_bucket_lf(const struct rte_hash *h, const void *key, uint16_t sig,
 					  rte_memory_order_acquire);
 			if (key_idx != EMPTY_SLOT) {
 				k = (struct rte_hash_key *) ((char *)keys +
-						key_idx * h->key_entry_size);
+						key_idx * (size_t)h->key_entry_size);
 
 				if (rte_hash_cmp_eq(key, k->key, h) == 0) {
 					if (data != NULL) {
@@ -1537,7 +1537,7 @@ __hash_rcu_qsbr_free_resource(void *p, void *e, unsigned int n)
 	keys = h->key_store;
 
 	k = (struct rte_hash_key *) ((char *)keys +
-				rcu_dq_entry.key_idx * h->key_entry_size);
+				rcu_dq_entry.key_idx * (size_t)h->key_entry_size);
 	key_data = k->pdata;
 	if (h->hash_rcu_cfg->free_key_data_func)
 		h->hash_rcu_cfg->free_key_data_func(h->hash_rcu_cfg->key_data_ptr,
@@ -1721,7 +1721,7 @@ search_and_remove(const struct rte_hash *h, const void *key,
 					  rte_memory_order_acquire);
 		if (bkt->sig_current[i] == sig && key_idx != EMPTY_SLOT) {
 			k = (struct rte_hash_key *) ((char *)keys +
-					key_idx * h->key_entry_size);
+					key_idx * (size_t)h->key_entry_size);
 			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
 				bkt->sig_current[i] = NULL_SIGNATURE;
 				/* Free the key store index if
@@ -1873,8 +1873,7 @@ rte_hash_get_key_with_position(const struct rte_hash *h, const int32_t position,
 	RETURN_IF_TRUE(((h == NULL) || (key == NULL)), -EINVAL);
 
 	struct rte_hash_key *k, *keys = h->key_store;
-	k = (struct rte_hash_key *) ((char *) keys + (position + 1) *
-				     h->key_entry_size);
+	k = (struct rte_hash_key *) ((char *) keys + (position + 1) * (size_t)h->key_entry_size);
 	*key = k->key;
 
 	if (position !=
@@ -1967,7 +1966,7 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 			const struct rte_hash_key *key_slot =
 				(const struct rte_hash_key *)(
 				(const char *)h->key_store +
-				key_idx * h->key_entry_size);
+				key_idx * (size_t)h->key_entry_size);
 			rte_prefetch0(key_slot);
 			continue;
 		}
@@ -1981,7 +1980,7 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 			const struct rte_hash_key *key_slot =
 				(const struct rte_hash_key *)(
 				(const char *)h->key_store +
-				key_idx * h->key_entry_size);
+				key_idx * (size_t)h->key_entry_size);
 			rte_prefetch0(key_slot);
 		}
 	}
@@ -2006,7 +2005,7 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 			const struct rte_hash_key *key_slot =
 				(const struct rte_hash_key *)(
 				(const char *)h->key_store +
-				key_idx * h->key_entry_size);
+				key_idx * (size_t)h->key_entry_size);
 
 			/*
 			 * If key index is 0, do not compare key,
@@ -2034,7 +2033,7 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 			const struct rte_hash_key *key_slot =
 				(const struct rte_hash_key *)(
 				(const char *)h->key_store +
-				key_idx * h->key_entry_size);
+				key_idx * (size_t)h->key_entry_size);
 
 			/*
 			 * If key index is 0, do not compare key,
@@ -2153,7 +2152,7 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 				const struct rte_hash_key *key_slot =
 					(const struct rte_hash_key *)(
 					(const char *)h->key_store +
-					key_idx * h->key_entry_size);
+					key_idx * (size_t)h->key_entry_size);
 				rte_prefetch0(key_slot);
 				continue;
 			}
@@ -2167,7 +2166,7 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 				const struct rte_hash_key *key_slot =
 					(const struct rte_hash_key *)(
 					(const char *)h->key_store +
-					key_idx * h->key_entry_size);
+					key_idx * (size_t)h->key_entry_size);
 				rte_prefetch0(key_slot);
 			}
 		}
@@ -2193,7 +2192,7 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 				const struct rte_hash_key *key_slot =
 					(const struct rte_hash_key *)(
 					(const char *)h->key_store +
-					key_idx * h->key_entry_size);
+					key_idx * (size_t)h->key_entry_size);
 
 				/*
 				 * If key index is 0, do not compare key,
@@ -2225,7 +2224,7 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 				const struct rte_hash_key *key_slot =
 					(const struct rte_hash_key *)(
 					(const char *)h->key_store +
-					key_idx * h->key_entry_size);
+					key_idx * (size_t)h->key_entry_size);
 
 				/*
 				 * If key index is 0, do not compare key,
@@ -2576,7 +2575,7 @@ rte_hash_iterate(const struct rte_hash *h, const void **key, void **data, uint32
 
 	__hash_rw_reader_lock(h);
 	next_key = (struct rte_hash_key *) ((char *)h->key_store +
-				position * h->key_entry_size);
+				position * (size_t)h->key_entry_size);
 	/* Return key and data */
 	*key = next_key->key;
 	*data = next_key->pdata;
@@ -2607,7 +2606,7 @@ extend_table:
 	}
 	__hash_rw_reader_lock(h);
 	next_key = (struct rte_hash_key *) ((char *)h->key_store +
-				position * h->key_entry_size);
+				position * (size_t)h->key_entry_size);
 	/* Return key and data */
 	*key = next_key->key;
 	*data = next_key->pdata;
