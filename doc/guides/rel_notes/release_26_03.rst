@@ -93,6 +93,7 @@ New Features
 
   * Added out-of-place support for CN20K SoC.
   * Added plain packet reassembly support for CN20K SoC.
+  * Added IPsec Rx inject support for CN20K SoC.
 
 * **Updated ZTE zxdh ethernet driver.**
 

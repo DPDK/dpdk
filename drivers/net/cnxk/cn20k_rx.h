@@ -890,6 +890,169 @@ cn20k_nix_flush_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pk
 
 #if defined(RTE_ARCH_ARM64)
 
+static __rte_always_inline uint16_t
+cn20k_nix_rx_inj_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd)
+{
+	union nix_send_sg_s *sg, l_sg;
+	struct rte_mbuf *m_next;
+	uint16_t segdw, nb_segs;
+	uint64_t len, dlen;
+	uint64_t *slist;
+
+	sg = (union nix_send_sg_s *)cmd;
+	l_sg.u = sg->u;
+	l_sg.u &= 0xC00000000000000; /* LD_TYPE */
+	l_sg.subdc = NIX_SUBDC_SG;
+	nb_segs = m->nb_segs;
+	len = m->pkt_len;
+	slist = &cmd[1];
+
+	/* Fill mbuf segments */
+	do {
+		*slist = rte_pktmbuf_iova(m);
+		dlen = m->data_len;
+		len -= dlen;
+
+		/* Set the segment length */
+		l_sg.u |= ((uint64_t)dlen << (l_sg.segs << 4));
+		l_sg.segs += 1;
+		slist++;
+		nb_segs--;
+		if (l_sg.segs > 2 && nb_segs) {
+			sg->u = l_sg.u;
+			/* Next SG subdesc */
+			sg = (union nix_send_sg_s *)slist;
+			l_sg.u = sg->u;
+			l_sg.u &= 0xC00000000000000; /* LD_TYPE */
+			l_sg.subdc = NIX_SUBDC_SG;
+			slist++;
+		}
+		m_next = m->next;
+		m = m_next;
+	} while (nb_segs);
+
+	/* Add remaining bytes of data to last seg */
+	if (len) {
+		uint8_t shft = (l_sg.subdc == NIX_SUBDC_SG) ? ((l_sg.segs - 1) << 4) : 0;
+		dlen = ((l_sg.u >> shft) & 0xFFFFULL) + len;
+		l_sg.u = l_sg.u & ~(0xFFFFULL << shft);
+		l_sg.u |= dlen << shft;
+	}
+	/* Write the last subdc out */
+	sg->u = l_sg.u;
+
+	segdw = (uint64_t *)slist - cmd;
+	/* Roundup extra dwords to multiple of 2 */
+	segdw = (segdw >> 1) + (segdw & 0x1);
+	return segdw;
+}
+
+static __rte_always_inline uint16_t
+cn20k_nix_inj_pkts(struct rte_security_session **sess, struct cnxk_ethdev_inj_cfg *inj_cfg,
+		   struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	uintptr_t c_lbase = inj_cfg->lmt_base;
+	struct cn20k_sec_sess_priv sess_priv;
+	uint64_t sa_base = inj_cfg->sa_base;
+	uint16_t c_lmt_id, burst, left, i;
+	uintptr_t cptres, rxphdr, dptr;
+	struct rte_mbuf *m, *last;
+	uint64_t sa, w0, gthr_sz;
+	uint8_t lnum, shft, loff;
+	uint64x2_t cmd01, cmd23;
+	uint64_t ucode_cmd[4];
+	rte_iova_t c_io_addr;
+	uint16_t segdw, segs;
+	uint64_t *laddr;
+
+	/* Get LMT base address and LMT ID as lcore id */
+	ROC_LMT_CPT_BASE_ID_GET(c_lbase, c_lmt_id);
+	c_io_addr = inj_cfg->io_addr;
+
+	sa_base &= ~0xFFFFUL;
+	left = nb_pkts;
+again:
+	burst = left > 32 ? 32 : left;
+
+	lnum = 0;
+	loff = 0;
+	shft = 16;
+
+	for (i = 0; i < burst; i++) {
+		m = tx_pkts[i];
+		sess_priv.u64 = sess[i]->fast_mdata;
+		last = rte_pktmbuf_lastseg(m);
+
+		cptres = rte_pktmbuf_mtod_offset(last, uintptr_t, last->data_len);
+		cptres += BIT_ULL(7);
+		cptres = (cptres - 1) & ~(BIT_ULL(7) - 1);
+		segs = m->nb_segs;
+
+		if (segs > 1) {
+			/* Pointer to WQE header */
+			/* Reserve 8 Dwords of WQE Hdr + Rx Parse Hdr */
+			rxphdr = cptres + 8;
+			dptr = rxphdr + 7 * 8;
+			/* Prepare Multiseg SG list */
+			segdw = cn20k_nix_rx_inj_prepare_mseg(m, (uint64_t *)(dptr));
+			*(uint64_t *)rxphdr = (uint64_t)(segdw - 1) << 12;
+			cptres += 64 + segdw * 16;
+			gthr_sz = (segs % 3) == 0 ? (segs / 3) : (segs / 3 + 1);
+			ucode_cmd[1] = dptr | (gthr_sz << 60);
+		} else {
+			dptr = (uint64_t)rte_pktmbuf_iova(m);
+			ucode_cmd[1] = dptr;
+		}
+
+		/* Prepare CPT instruction */
+		/* CPT word 0 and 1 */
+		cmd01 = vdupq_n_u64(0);
+		w0 = inj_cfg->cmd_w0 | ((uint64_t)m->l2_len - 2) << 24 | (uint64_t)m->l2_len << 16;
+		cmd01 = vsetq_lane_u64(w0, cmd01, 0);
+		cmd01 = vsetq_lane_u64(cptres, cmd01, 1);
+
+		/* CPT word 2 and 3 */
+		cmd23 = vdupq_n_u64(0);
+		/* Set PF func */
+		w0 &= 0xFFFF000000000000UL;
+		cmd23 = vsetq_lane_u64(w0, cmd23, 0);
+		cmd23 = vsetq_lane_u64(((uint64_t)m + sizeof(struct rte_mbuf)) | 1, cmd23, 1);
+
+		sa = (uintptr_t)roc_nix_inl_ow_ipsec_inb_sa(sa_base, sess_priv.sa_idx);
+		ucode_cmd[0] = (ROC_IE_OW_MAJOR_OP_PROCESS_INBOUND_IPSEC << 48 | 1UL << 54 |
+				((uint64_t)sess_priv.chksum) << 32 | (1ULL << 34) | m->pkt_len);
+
+		ucode_cmd[2] = 0;
+		ucode_cmd[3] = (ROC_CPT_DFLT_ENG_GRP_SE << 61 | 1UL << 60 | sa);
+
+		/* Move to our line */
+		laddr = LMT_OFF(c_lbase, lnum, loff ? 64 : 0);
+
+		/* Write CPT instruction to lmt line */
+		vst1q_u64(laddr, cmd01);
+		vst1q_u64((laddr + 2), cmd23);
+
+		*(__uint128_t *)(laddr + 4) = *(__uint128_t *)ucode_cmd;
+		*(__uint128_t *)(laddr + 6) = *(__uint128_t *)(ucode_cmd + 2);
+
+		loff = !loff;
+		lnum = lnum + (loff ? 0 : 1);
+		shft = shft + (loff ? 0 : 3);
+	}
+
+	left -= burst;
+	tx_pkts += burst;
+	sess += burst;
+
+	cn20k_nix_sec_steorl(c_io_addr, c_lmt_id, lnum, loff, shft);
+
+	rte_io_wmb();
+	if (left)
+		goto again;
+
+	return nb_pkts;
+}
+
 static __rte_always_inline void
 nix_sec_meta_to_mbuf(uintptr_t inb_sa, uintptr_t cpth, struct rte_mbuf **inner, uint64_t *ol_flags,
 		     const uint16_t flags, uint64x2_t *rearm, uint64_t buf_sz)
@@ -1738,6 +1901,17 @@ cn20k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts, c
 	RTE_SET_USED(lmt_base);
 	RTE_SET_USED(meta_aura);
 
+	return 0;
+}
+
+static __rte_always_inline uint16_t
+cn20k_nix_inj_pkts(struct rte_security_session **sess, struct cnxk_ethdev_inj_cfg *inj_cfg,
+		   struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	RTE_SET_USED(sess);
+	RTE_SET_USED(inj_cfg);
+	RTE_SET_USED(tx_pkts);
+	RTE_SET_USED(nb_pkts);
 	return 0;
 }
 
