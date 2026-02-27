@@ -486,6 +486,7 @@ nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 	} else {
 		struct nix_rx_inl_lf_cfg_req *lf_cfg;
 		uint64_t def_cptq = 0;
+		uint64_t cpt_cq_ena = 0;
 
 		/* Setup device specific inb SA table */
 		lf_cfg = mbox_alloc_msg_nix_rx_inl_lf_cfg(mbox);
@@ -508,9 +509,10 @@ nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 		if (res_addr_offset)
 			res_addr_offset |= (1UL << 56);
 
+		cpt_cq_ena = (uint64_t)inl_dev->cpt_cq_ena << 63;
 		lf_cfg->enable = 1;
 		lf_cfg->profile_id = profile_id; /* IPsec profile is 0th one */
-		lf_cfg->rx_inline_sa_base = (uintptr_t)nix->inb_sa_base[profile_id];
+		lf_cfg->rx_inline_sa_base = (uintptr_t)nix->inb_sa_base[profile_id] | cpt_cq_ena;
 		lf_cfg->rx_inline_cfg0 =
 			((def_cptq << 57) | res_addr_offset | ((uint64_t)SSO_TT_ORDERED << 44) |
 			 (sa_pow2_sz << 16) | lenm1_max);
@@ -588,6 +590,7 @@ nix_inl_reass_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 	uint64_t max_sa = 1, sa_pow2_sz;
 	uint64_t sa_idx_w, lenm1_max;
 	uint64_t res_addr_offset = 0;
+	uint64_t cpt_cq_ena = 0;
 	uint64_t def_cptq = 0;
 	size_t inb_sa_sz = 1;
 	uint8_t profile_id;
@@ -637,9 +640,10 @@ nix_inl_reass_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 			res_addr_offset |= (1UL << 56);
 	}
 
+	cpt_cq_ena = (uint64_t)inl_dev->cpt_cq_ena << 63;
 	lf_cfg->enable = 1;
 	lf_cfg->profile_id = profile_id;
-	lf_cfg->rx_inline_sa_base = (uintptr_t)nix->inb_sa_base[profile_id];
+	lf_cfg->rx_inline_sa_base = (uintptr_t)nix->inb_sa_base[profile_id] | cpt_cq_ena;
 	lf_cfg->rx_inline_cfg0 =
 		((def_cptq << 57) | res_addr_offset | ((uint64_t)SSO_TT_ORDERED << 44) |
 		 (sa_pow2_sz << 16) | lenm1_max);
