@@ -20,6 +20,9 @@ struct cnxk_rte_flow_action_info {
 	uint16_t conf_size;
 };
 
+#define CNXK_FLOW_NO_SEC_ACTION BIT(0)
+#define CNXK_FLOW_NON_INPLACE	BIT(1)
+
 extern const struct cnxk_rte_flow_term_info term[];
 
 int cnxk_flow_destroy(struct rte_eth_dev *dev, struct roc_npc_flow *flow,
@@ -29,11 +32,12 @@ struct roc_npc_flow *cnxk_flow_create_common(struct rte_eth_dev *eth_dev,
 					     const struct rte_flow_attr *attr,
 					     const struct rte_flow_item pattern[],
 					     const struct rte_flow_action actions[],
-					     struct rte_flow_error *error, bool is_rep);
+					     struct rte_flow_error *error, bool is_rep,
+					     uint32_t flow_flags);
 int cnxk_flow_validate_common(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 			      const struct rte_flow_item pattern[],
 			      const struct rte_flow_action actions[], struct rte_flow_error *error,
-			      bool is_rep);
+			      bool is_rep, uint32_t flow_flags);
 int cnxk_flow_destroy_common(struct rte_eth_dev *eth_dev, struct roc_npc_flow *flow,
 			     struct rte_flow_error *error, bool is_rep);
 int cnxk_flow_flush_common(struct rte_eth_dev *eth_dev, struct rte_flow_error *error, bool is_rep);

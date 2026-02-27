@@ -122,7 +122,9 @@ cnxk_flow_create(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 	const struct rte_flow_action *action_rss = NULL;
 	const struct rte_flow_action_meter *mtr = NULL;
 	const struct rte_flow_action *act_q = NULL;
+	struct cnxk_eth_sec_sess *eth_sec = NULL;
 	struct roc_npc_flow *flow;
+	uint32_t flow_flags = 0;
 	void *mcs_flow = NULL;
 	uint32_t req_act = 0;
 	int i, rc;
@@ -183,7 +185,15 @@ cnxk_flow_create(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 		return mcs_flow;
 	}
 
-	flow = cnxk_flow_create_common(eth_dev, attr, pattern, actions, error, false);
+	if (actions[0].type == RTE_FLOW_ACTION_TYPE_SECURITY) {
+		eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, actions[0].conf);
+		if (eth_sec != NULL) {
+			flow_flags = eth_sec->inb_oop ? CNXK_FLOW_NON_INPLACE : 0;
+			flow_flags |= CNXK_FLOW_NO_SEC_ACTION;
+		}
+	}
+
+	flow = cnxk_flow_create_common(eth_dev, attr, pattern, actions, error, false, flow_flags);
 	if (!flow) {
 		if (mtr)
 			nix_mtr_chain_reset(eth_dev, mtr->mtr_id);
