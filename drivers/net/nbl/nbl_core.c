@@ -41,6 +41,8 @@ int nbl_core_init(struct nbl_adapter *adapter, struct rte_eth_dev *eth_dev)
 	common->eth_dev = eth_dev;
 	nbl_init_func_caps(pci_dev, &adapter->caps);
 
+	common->is_vf = (pci_dev->id.device_id == NBL_DEVICE_ID_M18100_VF);
+
 	product_base_ops = nbl_core_get_product_ops(adapter->caps.product_type);
 
 	/* every product's hw/chan/res layer has a great difference, so call their own init ops */
