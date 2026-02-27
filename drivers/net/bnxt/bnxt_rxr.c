@@ -1115,6 +1115,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	uint16_t cmp_type;
 	uint32_t vfr_flag = 0, mark_id = 0;
 	struct bnxt *bp = rxq->bp;
+	struct bnxt_vnic_info *vnic = rxq->vnic;
 
 	rxcmp = (struct rx_pkt_cmpl *)
 	    &cpr->cp_desc_ring[cp_cons];
@@ -1198,7 +1199,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	if (cmp_type == CMPL_BASE_TYPE_RX_L2_V3) {
 		bnxt_parse_csum_v3(mbuf, rxcmp1);
 		bnxt_parse_pkt_type_v3(mbuf, rxcmp, rxcmp1);
-		bnxt_rx_vlan_v3(mbuf, rxcmp, rxcmp1);
+		bnxt_rx_vlan_v3(mbuf, rxcmp, rxcmp1, vnic->vlan_strip);
 		if (BNXT_TRUFLOW_EN(bp))
 			mark_id = bnxt_ulp_set_mark_in_mbuf_v3(rxq->bp, rxcmp1,
 							       mbuf, &vfr_flag);

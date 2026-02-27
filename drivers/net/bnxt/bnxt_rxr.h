@@ -474,11 +474,14 @@ bnxt_parse_pkt_type_v2(struct rte_mbuf *mbuf,
 
 static inline void bnxt_rx_vlan_v3(struct rte_mbuf *mbuf,
 	struct rx_pkt_cmpl *rxcmp,
-	struct rx_pkt_cmpl_hi *rxcmp1)
+	struct rx_pkt_cmpl_hi *rxcmp1,
+	bool stripped)
 {
 	if (RX_CMP_V3_VLAN_VALID(rxcmp)) {
 		mbuf->vlan_tci = RX_CMP_V3_METADATA0_VID(rxcmp1);
-		mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN;
+		if (stripped)
+			mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN_STRIPPED;
 	}
 }
 
