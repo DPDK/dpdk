@@ -1296,10 +1296,10 @@ ulp_tf_global_cfg_update(struct bnxt *bp,
 	struct tf *tfp;
 
 	/* Initialize the params */
-	parms.dir = dir,
-	parms.type = type,
-	parms.offset = offset,
-	parms.config = (uint8_t *)&global_cfg,
+	parms.dir = dir;
+	parms.type = type;
+	parms.offset = offset;
+	parms.config = (uint8_t *)&global_cfg;
 	parms.config_sz_in_bytes = sizeof(global_cfg);
 
 	tfp = bnxt_ulp_bp_tfp_get(bp, BNXT_ULP_SESSION_TYPE_DEFAULT);
