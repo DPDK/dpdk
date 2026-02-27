@@ -282,6 +282,20 @@ mana_dev_close(struct rte_eth_dev *dev)
 	if (ret)
 		return ret;
 
+	if (priv->ib_parent_pd) {
+		int err = ibv_dealloc_pd(priv->ib_parent_pd);
+		if (err)
+			DRV_LOG(ERR, "Failed to deallocate parent PD: %d", err);
+		priv->ib_parent_pd = NULL;
+	}
+
+	if (priv->ib_pd) {
+		int err = ibv_dealloc_pd(priv->ib_pd);
+		if (err)
+			DRV_LOG(ERR, "Failed to deallocate PD: %d", err);
+		priv->ib_pd = NULL;
+	}
+
 	ret = ibv_close_device(priv->ib_ctx);
 	if (ret) {
 		ret = errno;
