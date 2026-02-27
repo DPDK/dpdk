@@ -82,6 +82,7 @@ struct rte_pmd_cnxk_sec_action {
 	 * XOR.
 	 */
 	enum rte_pmd_cnxk_sec_action_alg alg;
+	bool is_non_inp;
 };
 
 #define RTE_PMD_CNXK_CTX_MAX_CKEY_LEN	   32

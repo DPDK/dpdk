@@ -465,7 +465,7 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 		 const struct rte_flow_action actions[], struct roc_npc_action in_actions[],
 		 struct roc_npc_action_sample *in_sample_actions, uint32_t *flowkey_cfg,
 		 uint16_t *dst_pf_func, uint64_t *npc_default_action, uint8_t has_tunnel_pattern,
-		 bool is_rep, uint8_t rep_pattern, uint64_t *free_allocs)
+		 bool is_rep, uint8_t rep_pattern, uint64_t *free_allocs, uint32_t flow_flags)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	const struct rte_flow_action_queue *act_q = NULL;
@@ -614,6 +614,8 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_SECURITY:
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_SEC;
 			in_actions[i].conf = actions->conf;
+			in_actions[i].is_non_inp = flow_flags & CNXK_FLOW_NON_INPLACE;
+			in_actions[i].no_sec_action = flow_flags & CNXK_FLOW_NO_SEC_ACTION;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_VLAN_STRIP;
@@ -803,7 +805,8 @@ cnxk_map_flow_data(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr
 		   struct roc_npc_attr *in_attr, struct roc_npc_item_info in_pattern[],
 		   struct roc_npc_action in_actions[],
 		   struct roc_npc_action_sample *in_sample_actions, uint32_t *flowkey_cfg,
-		   uint16_t *dst_pf_func, uint64_t *def_action, bool is_rep, uint64_t *free_allocs)
+		   uint16_t *dst_pf_func, uint64_t *def_action, bool is_rep, uint64_t *free_allocs,
+		   uint32_t flow_flags)
 {
 	uint8_t has_tunnel_pattern = 0, rep_pattern = 0;
 	int rc;
@@ -842,14 +845,14 @@ cnxk_map_flow_data(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr
 
 	return cnxk_map_actions(eth_dev, attr, actions, in_actions, in_sample_actions, flowkey_cfg,
 				dst_pf_func, def_action, has_tunnel_pattern, is_rep, rep_pattern,
-				free_allocs);
+				free_allocs, flow_flags);
 }
 
 int
 cnxk_flow_validate_common(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 			  const struct rte_flow_item pattern[],
 			  const struct rte_flow_action actions[], struct rte_flow_error *error,
-			  bool is_rep)
+			  bool is_rep, uint32_t flow_flags)
 {
 	struct roc_npc_item_info in_pattern[ROC_NPC_ITEM_TYPE_END + 1];
 	struct roc_npc_action in_actions[ROC_NPC_MAX_ACTION_COUNT];
@@ -891,7 +894,7 @@ cnxk_flow_validate_common(struct rte_eth_dev *eth_dev, const struct rte_flow_att
 	}
 	rc = cnxk_map_flow_data(eth_dev, attr, pattern, actions, &in_attr, in_pattern, in_actions,
 				&in_sample_action, &flowkey_cfg, &dst_pf_func, &npc_default_action,
-				is_rep, free_allocs);
+				is_rep, free_allocs, flow_flags);
 	if (rc) {
 		rte_flow_error_set(error, 0, RTE_FLOW_ERROR_TYPE_ACTION_NUM, NULL,
 				   "Failed to map flow data");
@@ -919,14 +922,26 @@ cnxk_flow_validate(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr
 		   const struct rte_flow_item pattern[], const struct rte_flow_action actions[],
 		   struct rte_flow_error *error)
 {
-	return cnxk_flow_validate_common(eth_dev, attr, pattern, actions, error, false);
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_eth_sec_sess *eth_sec = NULL;
+	uint32_t flow_flags = 0;
+
+	if (actions[0].type == RTE_FLOW_ACTION_TYPE_SECURITY) {
+		eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, actions[0].conf);
+		if (eth_sec != NULL) {
+			flow_flags = eth_sec->inb_oop ? CNXK_FLOW_NON_INPLACE : 0;
+			flow_flags |= CNXK_FLOW_NO_SEC_ACTION;
+		}
+	}
+
+	return cnxk_flow_validate_common(eth_dev, attr, pattern, actions, error, false, flow_flags);
 }
 
 struct roc_npc_flow *
 cnxk_flow_create_common(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 			const struct rte_flow_item pattern[],
 			const struct rte_flow_action actions[], struct rte_flow_error *error,
-			bool is_rep)
+			bool is_rep, uint32_t flow_flags)
 {
 	struct roc_npc_item_info in_pattern[ROC_NPC_ITEM_TYPE_END + 1] = {0};
 	struct roc_npc_action in_actions[ROC_NPC_MAX_ACTION_COUNT] = {0};
@@ -962,7 +977,7 @@ cnxk_flow_create_common(struct rte_eth_dev *eth_dev, const struct rte_flow_attr 
 	memset(&in_attr, 0, sizeof(struct roc_npc_attr));
 	rc = cnxk_map_flow_data(eth_dev, attr, pattern, actions, &in_attr, in_pattern, in_actions,
 				&in_sample_action, &npc->flowkey_cfg_state, &dst_pf_func,
-				&npc_default_action, is_rep, free_allocs);
+				&npc_default_action, is_rep, free_allocs, flow_flags);
 	if (rc) {
 		rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_ACTION_NUM, NULL,
 				   "Failed to map flow data");

@@ -287,8 +287,7 @@ cnxk_eth_sec_sess_get_by_sa_idx(struct cnxk_eth_dev *dev, uint32_t sa_idx, bool 
 }
 
 struct cnxk_eth_sec_sess *
-cnxk_eth_sec_sess_get_by_sess(struct cnxk_eth_dev *dev,
-			      struct rte_security_session *sess)
+cnxk_eth_sec_sess_get_by_sess(struct cnxk_eth_dev *dev, const struct rte_security_session *sess)
 {
 	struct cnxk_eth_sec_sess *eth_sec = NULL;
 

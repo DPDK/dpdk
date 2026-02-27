@@ -750,9 +750,9 @@ int cnxk_nix_inline_inbound_mode_setup(struct cnxk_eth_dev *dev);
 
 struct cnxk_eth_sec_sess *cnxk_eth_sec_sess_get_by_sa_idx(struct cnxk_eth_dev *dev,
 							  uint32_t sa_idx, bool inb);
-struct cnxk_eth_sec_sess *
-cnxk_eth_sec_sess_get_by_sess(struct cnxk_eth_dev *dev,
-			      struct rte_security_session *sess);
+struct cnxk_eth_sec_sess *cnxk_eth_sec_sess_get_by_sess(struct cnxk_eth_dev *dev,
+							const struct rte_security_session *sess);
+
 int cnxk_nix_inl_meta_pool_cb(uint64_t *aura_handle, uintptr_t *mpool, uint32_t buf_sz,
 			      uint32_t nb_bufs, bool destroy, const char *mempool_name);
 int cnxk_nix_inl_custom_meta_pool_cb(uintptr_t pmpool, uintptr_t *mpool, const char *mempool_name,
