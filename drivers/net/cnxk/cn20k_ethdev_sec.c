@@ -439,17 +439,30 @@ cnxk_pktmbuf_free_no_cache(struct rte_mbuf *mbuf)
 }
 
 static void
-cn20k_eth_sec_post_event(struct rte_eth_dev *eth_dev, struct roc_ow_ipsec_outb_sa *sa,
+cn20k_eth_sec_post_event(struct rte_eth_dev *eth_dev, void *sa, enum nix_inl_event_type type,
 			 uint16_t uc_compcode, uint16_t compcode, struct rte_mbuf *mbuf)
 {
 	struct rte_eth_event_ipsec_desc desc;
 	struct cn20k_sec_sess_priv sess_priv;
-	struct cn20k_outb_priv_data *priv;
+	struct cn20k_outb_priv_data *outb_priv;
+	struct cn20k_inb_priv_data *inb_priv;
 	static uint64_t warn_cnt;
+	uint64_t life_unit;
 
 	memset(&desc, 0, sizeof(desc));
-	priv = roc_nix_inl_ow_ipsec_outb_sa_sw_rsvd(sa);
 	sess_priv.u64 = 0;
+
+	if (type == NIX_INL_INB_CPT_CQ) {
+		struct roc_ow_ipsec_inb_sa *inb_sa = (struct roc_ow_ipsec_inb_sa *)sa;
+		inb_priv = roc_nix_inl_ow_ipsec_inb_sa_sw_rsvd(sa);
+		desc.metadata = (uint64_t)inb_priv->userdata;
+		life_unit = inb_sa->w2.s.life_unit;
+	} else {
+		struct roc_ow_ipsec_outb_sa *outb_sa = (struct roc_ow_ipsec_outb_sa *)sa;
+		outb_priv = roc_nix_inl_ow_ipsec_outb_sa_sw_rsvd(sa);
+		desc.metadata = (uint64_t)outb_priv->userdata;
+		life_unit = outb_sa->w2.s.life_unit;
+	}
 
 	if (mbuf)
 		sess_priv.u64 = *rte_security_dynfield(mbuf);
@@ -459,14 +472,14 @@ cn20k_eth_sec_post_event(struct rte_eth_dev *eth_dev, struct roc_ow_ipsec_outb_s
 		desc.subtype = RTE_ETH_EVENT_IPSEC_ESN_OVERFLOW;
 		break;
 	case ROC_IE_OW_UCC_ERR_SA_EXPIRED:
-		if (sa->w2.s.life_unit == ROC_IE_OW_SA_LIFE_UNIT_PKTS)
+		if (life_unit == ROC_IE_OW_SA_LIFE_UNIT_PKTS)
 			desc.subtype = RTE_ETH_EVENT_IPSEC_SA_PKT_HARD_EXPIRY;
 		else
 			desc.subtype = RTE_ETH_EVENT_IPSEC_SA_BYTE_HARD_EXPIRY;
 		break;
 	case ROC_IE_OW_UCC_SUCCESS_SA_SOFTEXP_FIRST:
 	case ROC_IE_OW_UCC_SUCCESS_SA_SOFTEXP_AGAIN:
-		if (sa->w2.s.life_unit == ROC_IE_OW_SA_LIFE_UNIT_PKTS)
+		if (life_unit == ROC_IE_OW_SA_LIFE_UNIT_PKTS)
 			desc.subtype = RTE_ETH_EVENT_IPSEC_SA_PKT_EXPIRY;
 		else
 			desc.subtype = RTE_ETH_EVENT_IPSEC_SA_BYTE_EXPIRY;
@@ -490,7 +503,6 @@ cn20k_eth_sec_post_event(struct rte_eth_dev *eth_dev, struct roc_ow_ipsec_outb_s
 		break;
 	}
 
-	desc.metadata = (uint64_t)priv->userdata;
 	rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_IPSEC, &desc);
 }
 
@@ -498,12 +510,15 @@ static const char *
 get_inl_event_type(enum nix_inl_event_type type)
 {
 	switch (type) {
-	case NIX_INL_CPT_CQ:
-		return "NIX_INL_CPT_CQ";
+	case NIX_INL_OUTB_CPT_CQ:
+		return "NIX_INL_OUTB_CPT_CQ";
+	case NIX_INL_INB_CPT_CQ:
+		return "NIX_INL_INB_CPT_CQ";
 	case NIX_INL_SSO:
 		return "NIX_INL_SSO";
 	case NIX_INL_SOFT_EXPIRY_THRD:
 		return "NIX_INL_SOFT_EXPIRY_THRD";
+
 	default:
 		return "Unknown event";
 	}
@@ -515,8 +530,8 @@ cn20k_eth_sec_sso_work_cb(uint64_t *gw, void *args, enum nix_inl_event_type type
 {
 	struct rte_eth_event_ipsec_desc desc;
 	struct cn20k_sec_sess_priv sess_priv;
-	struct cn20k_outb_priv_data *priv;
-	struct roc_ow_ipsec_outb_sa *sa;
+	struct cn20k_outb_priv_data *outb_priv;
+	struct roc_ow_ipsec_outb_sa *outb_sa;
 	struct cpt_cn20k_res_s *res;
 	struct rte_eth_dev *eth_dev;
 	struct cnxk_eth_dev *dev;
@@ -546,20 +561,19 @@ cn20k_eth_sec_sso_work_cb(uint64_t *gw, void *args, enum nix_inl_event_type type
 		/* Fall through */
 	default:
 		if (type) {
-			sa = (struct roc_ow_ipsec_outb_sa *)args;
-			priv = roc_nix_inl_ow_ipsec_outb_sa_sw_rsvd(sa);
-			desc.metadata = (uint64_t)priv->userdata;
 			eth_dev = &rte_eth_devices[port_id];
-			if (type == NIX_INL_CPT_CQ) {
-				struct cpt_cq_s *cqs = (struct cpt_cq_s *)cq_s;
-
-				cn20k_eth_sec_post_event(eth_dev, sa,
+			struct cpt_cq_s *cqs = (struct cpt_cq_s *)cq_s;
+			if (type < NIX_INL_SSO) {
+				cn20k_eth_sec_post_event(eth_dev, args, type,
 							 (uint16_t)cqs->w0.s.uc_compcode,
 							 (uint16_t)cqs->w0.s.compcode, NULL);
 				return;
 			}
 			if (type == NIX_INL_SOFT_EXPIRY_THRD) {
-				if (sa->w2.s.life_unit == ROC_IE_OW_SA_LIFE_UNIT_PKTS)
+				outb_sa = (struct roc_ow_ipsec_outb_sa *)args;
+				outb_priv = roc_nix_inl_ow_ipsec_outb_sa_sw_rsvd(outb_sa);
+				desc.metadata = (uint64_t)outb_priv->userdata;
+				if (outb_sa->w2.s.life_unit == ROC_IE_OW_SA_LIFE_UNIT_PKTS)
 					desc.subtype = RTE_ETH_EVENT_IPSEC_SA_PKT_EXPIRY;
 				else
 					desc.subtype = RTE_ETH_EVENT_IPSEC_SA_BYTE_EXPIRY;
@@ -596,9 +610,9 @@ cn20k_eth_sec_sso_work_cb(uint64_t *gw, void *args, enum nix_inl_event_type type
 	sess_priv.u64 = *rte_security_dynfield(mbuf);
 
 	sa_base = dev->outb.sa_base;
-	sa = roc_nix_inl_ow_ipsec_outb_sa(sa_base, sess_priv.sa_idx);
+	outb_sa = roc_nix_inl_ow_ipsec_outb_sa(sa_base, sess_priv.sa_idx);
 
-	cn20k_eth_sec_post_event(eth_dev, sa, res->uc_compcode, res->compcode, mbuf);
+	cn20k_eth_sec_post_event(eth_dev, outb_sa, type, res->uc_compcode, res->compcode, mbuf);
 
 	cnxk_pktmbuf_free_no_cache(mbuf);
 }

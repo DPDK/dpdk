@@ -49,10 +49,11 @@ static void
 nix_inl_cpt_cq_cb(struct roc_cpt_lf *lf)
 {
 	struct roc_nix *roc_nix = (struct roc_nix *)lf->dev->roc_nix;
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct idev_cfg *idev = idev_get_cfg();
 	uint32_t port_id = roc_nix->port_id;
 	struct nix_inl_dev *inl_dev = NULL;
-	struct roc_ow_ipsec_outb_sa *sa;
+	enum nix_inl_event_type cq_type;
 	union cpt_lf_cq_base cq_base;
 	union cpt_lf_cq_ptr cq_ptr;
 	struct cpt_cq_s *cq_s;
@@ -60,6 +61,7 @@ nix_inl_cpt_cq_cb(struct roc_cpt_lf *lf)
 	uint32_t count, head;
 	uint32_t nq_ptr;
 	uint64_t i;
+	void *sa;
 
 	if (idev)
 		inl_dev = idev->nix_inl_dev;
@@ -75,23 +77,30 @@ nix_inl_cpt_cq_cb(struct roc_cpt_lf *lf)
 	count = cq_ptr.s.count;
 	nq_ptr = cq_ptr.s.nq_ptr;
 
+	if (lf->dev == &inl_dev->dev)
+		cq_type = NIX_INL_INB_CPT_CQ;
+	else if (lf->dev == &nix->dev)
+		cq_type = NIX_INL_OUTB_CPT_CQ;
+	else
+		return;
+
 	for (i = 0; i < count; i++) {
 		cq_s = (struct cpt_cq_s *)(uintptr_t)(((cq_base.s.addr << 7)) + (head << 5));
 
 		if (cq_s->w0.s.uc_compcode && cq_s->w0.s.compcode) {
 			switch (cq_s->w2.s.fmt & fmt_msk) {
 			case WQE_PTR_CPTR:
-				sa = (struct roc_ow_ipsec_outb_sa *)cq_s->w1.esn;
+				sa = (void *)cq_s->w1.esn;
 				break;
 			case CPTR_WQE_PTR:
-				sa = (struct roc_ow_ipsec_outb_sa *)cq_s->w3.comp_ptr;
+				sa = (void *)cq_s->w3.comp_ptr;
 				break;
 			default:
 				plt_err("Invalid event Received ");
 				goto done;
 			}
 			uint64_t tmp = ~(uint32_t)0x0;
-			inl_dev->work_cb(&tmp, sa, NIX_INL_CPT_CQ, (void *)cq_s, port_id);
+			inl_dev->work_cb(&tmp, sa, cq_type, (void *)cq_s, port_id);
 		}
 done:
 		head = (head + 1) % lf->cq_size;
@@ -165,7 +174,7 @@ nix_inl_sso_hws_irq(void *param)
 void
 nix_inl_cpt_done_irq(void *param)
 {
-	struct roc_cpt_lf *lf = param;
+	struct roc_cpt_lf *lf = (struct roc_cpt_lf *)param;
 	uint64_t done_wait;
 	uint64_t intr;
 

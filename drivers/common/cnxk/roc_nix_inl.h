@@ -44,7 +44,8 @@
 #define ROC_NIX_INL_RXC_QUE_BLK_THR 0x40UL
 
 enum nix_inl_event_type {
-	NIX_INL_CPT_CQ = 1,
+	NIX_INL_INB_CPT_CQ = 1,
+	NIX_INL_OUTB_CPT_CQ,
 	NIX_INL_SSO,
 	NIX_INL_SOFT_EXPIRY_THRD,
 };
