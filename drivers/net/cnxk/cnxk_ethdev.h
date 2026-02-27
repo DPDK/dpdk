@@ -427,6 +427,8 @@ struct cnxk_eth_dev {
 	/* Reassembly dynfield/flag offsets */
 	int reass_dynfield_off;
 	int reass_dynflag_bit;
+	uint32_t ip_reass_rule_id;
+	bool ip_reass_en;
 
 	/* MCS device */
 	struct cnxk_mcs_dev *mcs_dev;
@@ -645,6 +647,10 @@ int cnxk_nix_tm_set_queue_rate_limit(struct rte_eth_dev *eth_dev,
 int cnxk_nix_tm_mark_vlan_dei(struct rte_eth_dev *eth_dev, int mark_green,
 			      int mark_yellow, int mark_red,
 			      struct rte_tm_error *error);
+int cnxk_nix_ip_reass_rule_clr(struct rte_eth_dev *eth_dev);
+int cnxk_nix_ip_reass_rule_set(struct rte_eth_dev *eth_dev, uint32_t rq);
+int cnxk_nix_inl_inb_fini(struct cnxk_eth_dev *dev);
+
 int cnxk_nix_tm_mark_ip_ecn(struct rte_eth_dev *eth_dev, int mark_green,
 			    int mark_yellow, int mark_red,
 			    struct rte_tm_error *error);
@@ -732,10 +738,15 @@ int cnxk_nix_lookup_mem_metapool_set(struct cnxk_eth_dev *dev);
 int cnxk_nix_lookup_mem_metapool_clear(struct cnxk_eth_dev *dev);
 int cnxk_nix_lookup_mem_bufsize_set(struct cnxk_eth_dev *dev, uint64_t size);
 int cnxk_nix_lookup_mem_bufsize_clear(struct cnxk_eth_dev *dev);
+
 __rte_internal
 int cnxk_nix_inb_mode_set(struct cnxk_eth_dev *dev, bool use_inl_dev);
+
 __rte_internal
 void cnxk_ethdev_rx_offload_cb_register(cnxk_ethdev_rx_offload_cb_t cb);
+
+int cnxk_nix_inline_inbound_setup(struct cnxk_eth_dev *dev);
+int cnxk_nix_inline_inbound_mode_setup(struct cnxk_eth_dev *dev);
 
 struct cnxk_eth_sec_sess *cnxk_eth_sec_sess_get_by_sa_idx(struct cnxk_eth_dev *dev,
 							  uint32_t sa_idx, bool inb);

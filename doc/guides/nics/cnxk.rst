@@ -37,6 +37,7 @@ Features of the CNXK Ethdev PMD are:
 - Inline IPsec processing support
 - Ingress meter support
 - Queue based priority flow control support
+- Plain packet reassembly on CN20K SoC family
 - Port representors
 - Represented port pattern matching and action
 - Port representor pattern matching and action
