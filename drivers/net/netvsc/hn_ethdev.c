@@ -672,6 +672,9 @@ static void netvsc_hotplug_retry(void *args)
 
 			free(drv_str);
 
+			ret = hn_vf_add(dev, hv);
+			if (ret)
+				PMD_DRV_LOG(ERR, "Failed to add VF in hotplug retry: %d", ret);
 			break;
 		}
 	}
@@ -1412,11 +1415,12 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	hv->max_queues = RTE_MIN(rxr_cnt, (unsigned int)max_chan);
 
 	/* If VF was reported but not added, do it now */
+	rte_rwlock_write_lock(&hv->vf_lock);
 	if (hv->vf_ctx.vf_vsp_reported && !hv->vf_ctx.vf_vsc_switched) {
 		PMD_INIT_LOG(DEBUG, "Adding VF device");
-
-		err = hn_vf_add(eth_dev, hv);
+		err = hn_vf_add_unlocked(eth_dev, hv);
 	}
+	rte_rwlock_write_unlock(&hv->vf_lock);
 
 	return 0;
 
