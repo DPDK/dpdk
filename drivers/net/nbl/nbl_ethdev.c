@@ -88,6 +88,17 @@ static int nbl_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		NBL_LOG(ERR, "Secondary process is not supported.");
 		return -ENOTSUP;
 	}
+
+	if (pci_dev->kdrv == RTE_PCI_KDRV_UIO_GENERIC) {
+		NBL_LOG(ERR, "uio_pci_generic is not supported.");
+		return -ENOTSUP;
+	}
+
+	if (pci_dev->kdrv == RTE_PCI_KDRV_IGB_UIO) {
+		NBL_LOG(ERR, "igb_uio is not supported.");
+		return -ENOTSUP;
+	}
+
 	return rte_eth_dev_pci_generic_probe(pci_dev, sizeof(struct nbl_adapter),
 					     nbl_eth_dev_init);
 }

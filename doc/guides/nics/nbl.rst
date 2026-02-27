@@ -78,6 +78,8 @@ it is necessary to force I/O virtual address (IOVA)
 to be mapped to physical address (PA)
 with the EAL command line option ``--iova-mode=pa``.
 
+Only PF supports Coexistence Between DPDK And Kernel Driver, VF does not.
+
 
 Prerequisites
 -------------
@@ -101,3 +103,14 @@ Limitations or Known Issues
 32-bit architectures are not supported.
 
 Windows and BSD are not supported yet.
+
+**igb_uio Driver Support**
+
+The ``igb_uio`` driver is not supported.
+
+**uio_pci_generic Driver Support**
+
+The ``uio_pci_generic`` driver is not supported.
+
+**VFIO no-IOMMU mode**
+If there is no IOMMU available on the system, VF must use ``vfio`` driver in ``noiommu`` mode.
