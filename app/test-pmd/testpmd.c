@@ -287,6 +287,9 @@ enum tx_pkt_split tx_pkt_split = TX_PKT_SPLIT_OFF;
 uint8_t txonly_multi_flow;
 /**< Whether multiple flows are generated in TXONLY mode. */
 
+uint16_t txonly_flows = 64;
+/**< Number of unique flows per lcore in TXONLY multi-flow mode. */
+
 uint32_t tx_pkt_times_inter;
 /**< Timings for send scheduling in TXONLY mode, time between bursts. */
 

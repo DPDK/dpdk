@@ -223,18 +223,17 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 				sizeof(struct rte_ether_hdr) +
 				sizeof(struct rte_ipv4_hdr));
 		/*
-		 * Generate multiple flows by varying UDP source port.
-		 * This enables packets are well distributed by RSS in
-		 * receiver side if any and txonly mode can be a decent
-		 * packet generator for developer's quick performance
-		 * regression test.
+		 * Generate a configurable number of flows per lcore by
+		 * varying the UDP source port. The low byte is the lcore
+		 * ID, ensuring each lcore produces unique ports without
+		 * atomic operations. The high byte cycles through
+		 * txonly_flows values starting at 0xC0, keeping ports
+		 * in the ephemeral range 49152-65535 (RFC 6335).
 		 *
-		 * Only ports in the range 49152 (0xC000) and 65535 (0xFFFF)
-		 * will be used, with the least significant byte representing
-		 * the lcore ID. As such, the most significant byte will cycle
-		 * through 0xC0 and 0xFF.
+		 * Total unique flows = txonly_flows * active_lcores.
 		 */
-		src_port = ((src_var++ | 0xC0) << 8) + rte_lcore_id();
+		src_port = (((src_var++ % txonly_flows) + 0xC0) << 8)
+			   + rte_lcore_id();
 		udp_hdr->src_port = rte_cpu_to_be_16(src_port);
 		RTE_PER_LCORE(_src_port_var) = src_var;
 	}
