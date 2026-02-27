@@ -243,3 +243,9 @@ hn_nvs_send_sglist(struct hn_data *hv, struct vmbus_channel *chan,
 	return rte_vmbus_chan_send_sglist(hn_nvs_get_vmbus_device(hv), chan, sg, sglen, nvs_msg,
 					  nvs_msglen, (uint64_t)sndc, need_sig);
 }
+
+enum netvsc_mp_req_type {
+	NETVSC_MP_REQ_VF_REMOVE = 1,
+};
+int netvsc_mp_req_vf(struct hn_data *hv, enum netvsc_mp_req_type type,
+		     int vf_port);
