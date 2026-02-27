@@ -34,6 +34,16 @@
 #define ROC_NIX_LSO_FORMAT_IDX_TSOV6 1
 #define ROC_NIX_LSO_FORMAT_IDX_IPV4  2
 
+#define ROC_NIX_RQ_MAX_PB_CACHING_VAL 3
+
+/* First aligned cache block is allocated into the LLC.
+ * All remaining cache blocks are not allocated.
+ */
+#define ROC_NIX_RQ_DEFAULT_PB_CACHING 2
+
+/* Writes of WQE data are allocated into LLC. */
+#define ROC_NIX_RQ_DEFAULT_WQE_CACHING 1
+
 enum roc_nix_rss_reta_sz {
 	ROC_NIX_RSS_RETA_SZ_64 = 64,
 	ROC_NIX_RSS_RETA_SZ_128 = 128,
@@ -448,6 +458,10 @@ struct roc_nix_rq {
 	bool spb_drop_ena;
 	/* XQE drop enable */
 	bool xqe_drop_ena;
+	/* RQ PB caching */
+	uint8_t pb_caching;
+	/* RQ WQE caching */
+	uint8_t wqe_caching;
 	/* End of Input parameters */
 	struct roc_nix *roc_nix;
 	uint64_t meta_aura_handle;

@@ -1838,6 +1838,8 @@ roc_nix_inl_dev_rq_get(struct roc_nix_rq *rq, bool enable)
 	inl_rq->spb_ena = rq->spb_ena;
 	inl_rq->spb_aura_handle = rq->spb_aura_handle;
 	inl_rq->spb_size = rq->spb_size;
+	inl_rq->pb_caching = rq->pb_caching;
+	inl_rq->wqe_caching = rq->wqe_caching;
 
 	if (roc_errata_nix_no_meta_aura()) {
 		uint64_t aura_limit =
