@@ -117,7 +117,7 @@ roc_feature_nix_has_inl_profile(void)
 static inline bool
 roc_feature_nix_has_plain_pkt_reassembly(void)
 {
-	return roc_model_is_cn20k();
+	return roc_model_is_cn20k() && !roc_model_is_cnf20ka();
 }
 
 static inline bool
