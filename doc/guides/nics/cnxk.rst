@@ -40,6 +40,7 @@ Features of the CNXK Ethdev PMD are:
 - Port representors
 - Represented port pattern matching and action
 - Port representor pattern matching and action
+- Plain packet reassembly on CN20K SoC family
 
 Prerequisites
 -------------

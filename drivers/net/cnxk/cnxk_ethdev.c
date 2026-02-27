@@ -7,6 +7,11 @@
 #include <eal_export.h>
 #include <rte_eventdev.h>
 #include <rte_pmd_cnxk.h>
+#include "roc_priv.h"
+
+#define REASS_PRIORITY             0
+#define CLS_LTYPE_OFFSET_START     7
+#define CLS_LFLAGS_LC_OFFSET (CLS_LTYPE_OFFSET_START + 4)
 
 static const uint32_t cnxk_mac_modes[CGX_MODE_MAX + 1] = {
 	[CGX_MODE_SGMII] = RTE_ETH_LINK_SPEED_1G,
@@ -203,6 +208,147 @@ cnxk_nix_inb_mode_set(struct cnxk_eth_dev *dev, bool use_inl_dev)
 	return cnxk_nix_lookup_mem_sa_base_set(dev);
 }
 
+int
+cnxk_nix_inline_inbound_mode_setup(struct cnxk_eth_dev *dev)
+{
+	int rc = 0;
+
+	/* By default pick using inline device for poll mode.
+	 * Will be overridden when event mode rq's are setup.
+	 */
+	cnxk_nix_inb_mode_set(dev, !dev->inb.no_inl_dev);
+
+	/* Allocate memory to be used as dptr for CPT ucode
+	 * WRITE_SA op.
+	 */
+	dev->inb.sa_dptr =
+		plt_zmalloc(ROC_NIX_INL_OT_IPSEC_INB_HW_SZ, 0);
+	if (!dev->inb.sa_dptr) {
+		plt_err("Couldn't allocate memory for SA dptr");
+		rc = -ENOMEM;
+		goto cleanup;
+	}
+	dev->inb.inl_dev_q = roc_nix_inl_dev_qptr_get(0);
+cleanup:
+	return rc;
+}
+
+static void
+cnxk_flow_ipfrag_set(struct roc_npc_flow *flow, struct roc_npc *npc)
+{
+	uint8_t lc_offset;
+	uint64_t mask;
+
+	lc_offset = rte_popcount64(npc->rx_parse_nibble & ((1ULL << CLS_LFLAGS_LC_OFFSET) - 1));
+
+	lc_offset *= 4;
+
+	mask = (~(0xffULL << lc_offset));
+	flow->mcam_data[0] &= mask;
+	flow->mcam_mask[0] &= mask;
+	flow->mcam_data[0] |= (0x02ULL << lc_offset);
+	flow->mcam_mask[0] |= (0x82ULL << lc_offset);
+}
+
+int
+cnxk_nix_ip_reass_rule_set(struct rte_eth_dev *eth_dev, uint32_t rq)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct nix_rx_action2_s *action2;
+	struct nix_rx_action_s *action;
+	struct roc_npc_flow mcam;
+	int prio = 0, rc = 0;
+	struct roc_npc *npc;
+	int resp_count = 0;
+	bool inl_dev;
+
+	npc = &dev->npc;
+	inl_dev = roc_nix_inb_is_with_inl_dev(&dev->nix);
+
+	prio = REASS_PRIORITY;
+	memset(&mcam, 0, sizeof(struct roc_npc_flow));
+
+	action = (struct nix_rx_action_s *)&mcam.npc_action;
+	action2 = (struct nix_rx_action2_s *)&mcam.npc_action2;
+
+	if (inl_dev) {
+		struct roc_nix_rq *inl_rq;
+
+		inl_rq = roc_nix_inl_dev_rq(&dev->nix);
+		if (!inl_rq) {
+			plt_err("Failed to get inline dev rq for %d", dev->nix.port_id);
+			goto mcam_alloc_failed;
+		}
+		action->pf_func = roc_idev_nix_inl_dev_pffunc_get();
+		action->index = inl_rq->qid;
+	} else {
+		action->pf_func = npc->pf_func;
+		action->index = rq;
+	}
+	action->op = NIX_RX_ACTIONOP_UCAST_CPT;
+
+	action2->inline_profile_id = roc_nix_inl_inb_reass_profile_id_get(npc->roc_nix, inl_dev);
+
+	rc = roc_npc_mcam_merge_base_steering_rule(npc, &mcam);
+	if (rc < 0)
+		goto mcam_alloc_failed;
+
+	/* Channel[11] should be 'b0 */
+	mcam.mcam_data[0] &= (~0xfffULL);
+	mcam.mcam_mask[0] &= (~0xfffULL);
+	mcam.mcam_data[0] |= (uint64_t)(npc->channel & 0x7ff);
+	mcam.mcam_mask[0] |= (BIT_ULL(12) - 1);
+	cnxk_flow_ipfrag_set(&mcam, npc);
+
+	mcam.priority = prio;
+	mcam.key_type = roc_npc_get_key_type(npc, &mcam);
+	rc = roc_npc_mcam_alloc_entry(npc, &mcam, NULL, prio, &resp_count);
+	if (rc || resp_count == 0)
+		goto mcam_alloc_failed;
+
+	mcam.enable = true;
+	rc = roc_npc_mcam_write_entry(npc, &mcam);
+	if (rc < 0)
+		goto mcam_write_failed;
+
+	dev->ip_reass_rule_id = mcam.mcam_id;
+	dev->ip_reass_en = true;
+	return 0;
+
+mcam_write_failed:
+	rc |= roc_npc_mcam_free(npc, &mcam);
+	if (rc)
+		return rc;
+mcam_alloc_failed:
+	return -EIO;
+}
+
+int
+cnxk_nix_inline_inbound_setup(struct cnxk_eth_dev *dev)
+{
+	struct roc_nix *nix = &dev->nix;
+	int rc = 0;
+
+	/* Setup minimum SA table when inline device is used */
+	nix->ipsec_in_min_spi = dev->inb.no_inl_dev ? dev->inb.min_spi : 0;
+	nix->ipsec_in_max_spi = dev->inb.no_inl_dev ? dev->inb.max_spi : 1;
+
+	/* Enable custom meta aura when multi-chan is used */
+	if (nix->local_meta_aura_ena && roc_nix_inl_dev_is_multi_channel() &&
+	    !dev->inb.custom_meta_aura_dis)
+		nix->custom_meta_aura_ena = true;
+
+	/* Setup Inline Inbound */
+	rc = roc_nix_inl_inb_init(nix);
+	if (rc) {
+		plt_err("Failed to initialize nix inline inb, rc=%d",
+				rc);
+		return rc;
+	}
+
+	return 0;
+}
+
 static int
 nix_security_setup(struct cnxk_eth_dev *dev)
 {
@@ -210,39 +356,12 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 	int i, rc = 0;
 
 	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
-		/* Setup minimum SA table when inline device is used */
-		nix->ipsec_in_min_spi = dev->inb.no_inl_dev ? dev->inb.min_spi : 0;
-		nix->ipsec_in_max_spi = dev->inb.no_inl_dev ? dev->inb.max_spi : 1;
-
-		/* Enable custom meta aura when multi-chan is used */
-		if (nix->local_meta_aura_ena && roc_nix_inl_dev_is_multi_channel() &&
-		    !dev->inb.custom_meta_aura_dis)
-			nix->custom_meta_aura_ena = true;
-
-		/* Setup Inline Inbound */
-		rc = roc_nix_inl_inb_init(nix);
-		if (rc) {
-			plt_err("Failed to initialize nix inline inb, rc=%d",
-				rc);
+		rc = cnxk_nix_inline_inbound_setup(dev);
+		if (rc)
 			return rc;
-		}
-
-		/* By default pick using inline device for poll mode.
-		 * Will be overridden when event mode rq's are setup.
-		 */
-		cnxk_nix_inb_mode_set(dev, !dev->inb.no_inl_dev);
-
-		/* Allocate memory to be used as dptr for CPT ucode
-		 * WRITE_SA op.
-		 */
-		dev->inb.sa_dptr =
-			plt_zmalloc(ROC_NIX_INL_OT_IPSEC_INB_HW_SZ, 0);
-		if (!dev->inb.sa_dptr) {
-			plt_err("Couldn't allocate memory for SA dptr");
-			rc = -ENOMEM;
+		rc = cnxk_nix_inline_inbound_mode_setup(dev);
+		if (rc)
 			goto cleanup;
-		}
-		dev->inb.inl_dev_q = roc_nix_inl_dev_qptr_get(0);
 	}
 
 	if (dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY ||
@@ -365,6 +484,22 @@ nix_meter_fini(struct cnxk_eth_dev *dev)
 	return 0;
 }
 
+int
+cnxk_nix_inl_inb_fini(struct cnxk_eth_dev *dev)
+{
+	struct roc_nix *nix = &dev->nix;
+	int rc;
+
+	if (dev->inb.sa_dptr) {
+		plt_free(dev->inb.sa_dptr);
+		dev->inb.sa_dptr = NULL;
+	}
+	rc = roc_nix_inl_inb_fini(nix);
+	if (rc)
+		plt_err("Failed to cleanup nix inline inb, rc=%d", rc);
+	return rc;
+}
+
 static int
 nix_security_release(struct cnxk_eth_dev *dev)
 {
@@ -374,7 +509,7 @@ nix_security_release(struct cnxk_eth_dev *dev)
 	int rc, ret = 0;
 
 	/* Cleanup Inline inbound */
-	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY || dev->ip_reass_en) {
 		/* Destroy inbound sessions */
 		tvar = NULL;
 		RTE_TAILQ_FOREACH_SAFE(eth_sec, &dev->inb.list, entry, tvar)
@@ -384,17 +519,14 @@ nix_security_release(struct cnxk_eth_dev *dev)
 		/* Clear lookup mem */
 		cnxk_nix_lookup_mem_sa_base_clear(dev);
 
-		rc = roc_nix_inl_inb_fini(nix);
-		if (rc)
-			plt_err("Failed to cleanup nix inline inb, rc=%d", rc);
-		ret |= rc;
+		ret |= cnxk_nix_inl_inb_fini(dev);
 
 		cnxk_nix_lookup_mem_metapool_clear(dev);
+	}
 
-		if (dev->inb.sa_dptr) {
-			plt_free(dev->inb.sa_dptr);
-			dev->inb.sa_dptr = NULL;
-		}
+	if (dev->ip_reass_en) {
+		cnxk_nix_ip_reass_rule_clr(eth_dev);
+		dev->ip_reass_en = false;
 	}
 
 	/* Cleanup Inline outbound */
@@ -946,7 +1078,7 @@ cnxk_nix_rx_queue_release(struct rte_eth_dev *eth_dev, uint16_t qid)
 	plt_nix_dbg("Releasing rxq %u", qid);
 
 	/* Release rq reference for inline dev if present */
-	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY || dev->ip_reass_en)
 		roc_nix_inl_dev_rq_put(rq);
 
 	/* Cleanup ROC RQ */
@@ -1760,6 +1892,18 @@ done:
 	return rc;
 }
 
+int
+cnxk_nix_ip_reass_rule_clr(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_npc *npc = &dev->npc;
+
+	if (dev->ip_reass_en)
+		return roc_npc_mcam_free_entry(npc, dev->ip_reass_rule_id);
+	else
+		return 0;
+}
+
 static int
 cnxk_nix_dev_stop(struct rte_eth_dev *eth_dev)
 {
@@ -1842,7 +1986,7 @@ cnxk_nix_dev_start(struct rte_eth_dev *eth_dev)
 			return rc;
 	}
 
-	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
+	if ((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) || dev->ip_reass_en) {
 		rc = roc_nix_inl_rq_ena_dis(&dev->nix, true);
 		if (rc) {
 			plt_err("Failed to enable Inline device RQ, rc=%d", rc);
@@ -2257,6 +2401,11 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 
 	/* Disable and free rte_meter entries */
 	nix_meter_fini(dev);
+
+	if (dev->ip_reass_en) {
+		cnxk_nix_ip_reass_rule_clr(eth_dev);
+		dev->ip_reass_en = false;
+	}
 
 	/* Disable and free rte_flow entries */
 	roc_npc_fini(&dev->npc);

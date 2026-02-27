@@ -616,22 +616,17 @@ static int
 cn20k_nix_reassembly_capability_get(struct rte_eth_dev *eth_dev,
 				    struct rte_eth_ip_reassembly_params *reassembly_capa)
 {
-	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-	int rc = -ENOTSUP;
 	RTE_SET_USED(eth_dev);
 
 	if (!roc_feature_nix_has_reass())
 		return -ENOTSUP;
 
-	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
-		reassembly_capa->timeout_ms = 60 * 1000;
-		reassembly_capa->max_frags = 4;
-		reassembly_capa->flags =
-			RTE_ETH_DEV_REASSEMBLY_F_IPV4 | RTE_ETH_DEV_REASSEMBLY_F_IPV6;
-		rc = 0;
-	}
+	reassembly_capa->timeout_ms = 60 * 1000;
+	reassembly_capa->max_frags = 8;
+	reassembly_capa->flags =
+		RTE_ETH_DEV_REASSEMBLY_F_IPV4 | RTE_ETH_DEV_REASSEMBLY_F_IPV6;
 
-	return rc;
+	return 0;
 }
 
 static int
@@ -649,7 +644,10 @@ cn20k_nix_reassembly_conf_set(struct rte_eth_dev *eth_dev,
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct roc_cpt_rxc_time_cfg rxc_time_cfg = {0};
-	int rc = 0;
+	uint16_t nb_rxq = dev->nb_rxq;
+	int rc = 0, i, rxq_cnt = 0;
+	struct cn20k_eth_rxq *rxq;
+	struct roc_nix_rq *rq;
 
 	if (!roc_feature_nix_has_reass())
 		return -ENOTSUP;
@@ -659,15 +657,83 @@ cn20k_nix_reassembly_conf_set(struct rte_eth_dev *eth_dev,
 		if (!dev->inb.nb_oop)
 			dev->rx_offload_flags &= ~NIX_RX_REAS_F;
 		dev->inb.reass_en = false;
+		if (dev->ip_reass_en) {
+			cnxk_nix_ip_reass_rule_clr(eth_dev);
+			dev->ip_reass_en = false;
+		}
 		return 0;
 	}
 
-	rc = roc_nix_reassembly_configure(&rxc_time_cfg, conf->timeout_ms);
-	if (!rc && dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
-		dev->rx_offload_flags |= NIX_RX_REAS_F;
-		dev->inb.reass_en = true;
+	if (!(dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)) {
+		rc = cnxk_nix_inline_inbound_setup(dev);
+		if (rc) {
+			plt_err("Nix inline inbound setup failed rc=%d", rc);
+			goto done;
+		}
+
+		rc = cnxk_nix_inline_inbound_mode_setup(dev);
+		if (rc) {
+			plt_err("Nix inline inbound mode setup failed rc=%d", rc);
+			goto cleanup;
+		}
+
+		for (i = 0; i < nb_rxq; i++) {
+			rq = &dev->rqs[i];
+			rxq = eth_dev->data->rx_queues[i];
+
+			if (!rxq) {
+				plt_err("Receive queue = %d not enabled", i);
+				rc = -EINVAL;
+				goto cleanup;
+			}
+
+			roc_nix_inl_dev_xaq_realloc(rq->aura_handle);
+
+			rq->tag_mask = 0x0FF00000 | ((uint32_t)RTE_EVENT_TYPE_ETHDEV << 28);
+			rc = roc_nix_inl_dev_rq_get(rq, !!eth_dev->data->dev_started);
+			if (rc)
+				goto cleanup;
+
+			rxq->lmt_base = dev->nix.lmt_base;
+			rxq->sa_base = roc_nix_inl_inb_sa_base_get(&dev->nix, dev->inb.inl_dev);
+			rc = roc_npa_buf_type_update(rq->aura_handle,
+						     ROC_NPA_BUF_TYPE_PACKET_IPSEC, 1);
+			if (rc)
+				goto cleanup;
+
+			rxq_cnt = i + 1;
+		}
 	}
 
+	rc = roc_nix_reassembly_configure(&rxc_time_cfg, conf->timeout_ms);
+	if (rc) {
+		plt_err("Nix reassembly_configure failed rc=%d", rc);
+		goto cleanup;
+	}
+
+	dev->rx_offload_flags |= NIX_RX_REAS_F | NIX_RX_OFFLOAD_SECURITY_F;
+	dev->inb.reass_en = !!((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY));
+
+	if (!dev->ip_reass_en) {
+		rc = cnxk_nix_ip_reass_rule_set(eth_dev, 0);
+		if (rc) {
+			plt_err("Nix reassembly rule setup failed rc=%d", rc);
+			goto cleanup;
+		}
+	}
+
+	return 0;
+cleanup:
+	dev->inb.reass_en = false;
+	if (!(dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)) {
+		rc |= cnxk_nix_inl_inb_fini(dev);
+		for (i = 0; i < rxq_cnt; i++) {
+			struct roc_nix_rq *rq = &dev->rqs[i];
+
+			roc_nix_inl_dev_rq_put(rq);
+		}
+	}
+done:
 	return rc;
 }
 

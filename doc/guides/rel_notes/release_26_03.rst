@@ -80,6 +80,7 @@ New Features
 * **Updated Marvell cnxk net driver.**
 
   * Added out-of-place support for CN20K SoC.
+  * Added plain packet reassembly support for CN20K SoC.
 
 * **Updated ZTE zxdh ethernet driver.**
 

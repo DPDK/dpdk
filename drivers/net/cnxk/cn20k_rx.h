@@ -258,7 +258,8 @@ nix_sec_meta_to_mbuf_sc(uint64_t cq_w5, uint64_t cpth, const uint64_t sa_base,
 			*rte_security_dynfield(mbuf) = (uint64_t)inb_priv->userdata;
 	} else {
 		/* Update dynamic field with userdata */
-		*rte_security_dynfield(mbuf) = (uint64_t)inb_priv->userdata;
+		if (flags & NIX_RX_REAS_F && inb_priv->userdata)
+			*rte_security_dynfield(mbuf) = (uint64_t)inb_priv->userdata;
 	}
 
 	*len = ((w3 >> 48) & 0xFFFF) + ((cq_w5 >> 16) & 0xFF) - (cq_w5 & 0xFF);
@@ -917,7 +918,8 @@ nix_sec_meta_to_mbuf(uintptr_t inb_sa, uintptr_t cpth, struct rte_mbuf **inner, 
 		/* Get SPI from CPT_PARSE_S's cookie(already swapped) */
 		inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd((void *)inb_sa);
 		/* Update dynamic field with userdata */
-		*rte_security_dynfield(inner_m) = (uint64_t)inb_priv->userdata;
+		if (flags & NIX_RX_REAS_F && inb_priv->userdata)
+			*rte_security_dynfield(inner_m) = (uint64_t)inb_priv->userdata;
 	}
 
 	/* Clear and update original lower 16 bit of data offset */
