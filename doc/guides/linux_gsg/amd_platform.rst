@@ -18,13 +18,13 @@ These are covered in various sections of tuning guides shared below.
 Tuning Guides for AMD EPYC SoC
 ------------------------------
 
-#. `MILAN <https://www.amd.com/content/dam/amd/en/documents/epyc-technical-docs/tuning-guides/data-plane-development-kit-tuning-guide-amd-epyc7003-series-processors.pdf>`_
+#. `MILAN <https://docs.amd.com/v/u/en-US/data-plane-development-kit-tuning-guide-amd-epyc7003-series-processors>`_
 
-#. `GENOA <https://www.amd.com/content/dam/amd/en/documents/epyc-technical-docs/tuning-guides/58017-amd-epyc-9004-tg-data-plane-dpdk.pdf>`_
+#. `GENOA <https://docs.amd.com/v/u/en-US/58017-amd-epyc-9004-tg-data-plane-dpdk>`_
 
-#. `BERGAMO|SIENA <https://www.amd.com/content/dam/amd/en/documents/epyc-technical-docs/tuning-guides/58310_amd-epyc-8004-tg-data-plane-dpdk.pdf>`_
+#. `BERGAMO|SIENA <https://docs.amd.com/v/u/en-US/58310_amd-epyc-8004-tg-data-plane-dpdk>`_
 
-#. `TURIN <https://www.amd.com/content/dam/amd/en/documents/epyc-technical-docs/tuning-guides/58468_amd-epyc-9005-tg-data-plane-dpdk.pdf>`_
+#. `TURIN <https://docs.amd.com/v/u/en-US/58468_amd-epyc-9005-tg-data-plane-dpdk>`_
 
 
 General Requirements
@@ -107,7 +107,12 @@ Please refer the tuning guides to enable ``HSMP`` and DPDK power management guid
 NIC
 ---
 
-To use Solarflare x4 on AMD EPYC TURIN, please ensure the following
+To use NIC in low latency mode, follow the tuning guide to update GRUB with `pcie_aspm=off`.
+
+On AMD EPYC TURIN, please ensure the following:
+
+Solarflare x4
+~~~~~~~~~~~~~
 
 #. Upgrade Linux or distro version to 6.13 or higher.
 
@@ -118,7 +123,9 @@ To use Solarflare x4 on AMD EPYC TURIN, please ensure the following
 
 #. Please use PMD args ``fw_variant=ultra-low-latency,perf_profile=throughput``.
 
-To use Solarflare x2 on AMD EPYC TURIN, please ensure the following
+
+Solarflare x2
+~~~~~~~~~~~~~
 
 #. Upgrade Linux or distro version to 6.13 or higher.
 
@@ -127,4 +134,4 @@ To use Solarflare x2 on AMD EPYC TURIN, please ensure the following
 #. Enable the hardware with ``sfc`` Linux Kernel Driver first;
    then bind with ``vfio-pci`` next.
 
-#. Please use PMD args ``fw_variant=ultra-low-latency,perf_profile=throughput``.
+#. Use PMD args ``fw_variant=ultra-low-latency,perf_profile=throughput``.
