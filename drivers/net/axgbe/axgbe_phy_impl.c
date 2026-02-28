@@ -203,7 +203,7 @@ struct axgbe_phy_data {
 
 	unsigned int rrc_count;
 
-	unsigned int mdio_addr;
+	uint8_t mdio_addr;
 
 	/* SFP Support */
 	enum axgbe_sfp_comm sfp_comm;
@@ -251,12 +251,52 @@ static void axgbe_phy_perform_ratechange(struct axgbe_port *pdata,
 		enum axgbe_mb_cmd cmd, enum axgbe_mb_subcmd sub_cmd);
 static void axgbe_phy_rrc(struct axgbe_port *pdata);
 
+static int axgbe_phy_get_comm_ownership(struct axgbe_port *pdata);
+static void axgbe_phy_put_comm_ownership(struct axgbe_port *pdata);
 
 static int axgbe_phy_i2c_xfer(struct axgbe_port *pdata,
 			      struct axgbe_i2c_op *i2c_op)
 {
 	return pdata->i2c_if.i2c_xfer(pdata, i2c_op);
 }
+
+static int axgbe_phy_read(struct axgbe_port *pdata, u16 reg, u16 *value)
+{
+	struct axgbe_phy_data *phy_data = pdata->phy_data;
+	int ret;
+
+	ret = axgbe_phy_get_comm_ownership(pdata);
+	if (ret)
+		return ret;
+
+	ret = pdata->hw_if.read_ext_mii_regs_c22(pdata,
+			phy_data->mdio_addr, reg, value);
+	if (ret)
+		PMD_DRV_LOG_LINE(ERR, "mdio read failed %s",
+				strerror(-ret));
+
+	axgbe_phy_put_comm_ownership(pdata);
+	return ret;
+}
+
+static int axgbe_phy_write(struct axgbe_port *pdata, u16 reg, u16 value)
+{
+	struct axgbe_phy_data *phy_data = pdata->phy_data;
+	int ret;
+	ret = axgbe_phy_get_comm_ownership(pdata);
+	if (ret)
+		return ret;
+
+	ret = pdata->hw_if.write_ext_mii_regs_c22(pdata,
+			phy_data->mdio_addr, reg, value);
+	if (ret)
+		PMD_DRV_LOG_LINE(ERR, "mdio write failed %s",
+				strerror(-ret));
+
+	axgbe_phy_put_comm_ownership(pdata);
+	return ret;
+}
+
 
 static int axgbe_phy_redrv_write(struct axgbe_port *pdata, unsigned int reg,
 				 unsigned int val)
@@ -2542,4 +2582,7 @@ void axgbe_init_function_ptrs_phy_v2(struct axgbe_phy_if *phy_if)
 
 	phy_impl->kr_training_pre	= axgbe_phy_kr_training_pre;
 	phy_impl->kr_training_post	= axgbe_phy_kr_training_post;
+
+	phy_impl->read			= axgbe_phy_read;
+	phy_impl->write			= axgbe_phy_write;
 }

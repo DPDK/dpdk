@@ -327,11 +327,14 @@ struct axgbe_hw_if {
 
 	int (*set_ext_mii_mode)(struct axgbe_port *, unsigned int,
 				enum axgbe_mdio_mode);
-	int (*read_ext_mii_regs_c22)(struct axgbe_port *pdata, int addr, int reg);
-	int (*write_ext_mii_regs_c22)(struct axgbe_port *pdata, int addr, int reg, uint16_t val);
-	int (*read_ext_mii_regs_c45)(struct axgbe_port *pdata, int addr, int devad, int reg);
-	int (*write_ext_mii_regs_c45)(struct axgbe_port *pdata, int addr, int devad,
-									int reg, uint16_t val);
+	int (*read_ext_mii_regs_c22)(struct axgbe_port *pdata, u8 phy_addr,
+			u16 reg, u16 *value);
+	int (*write_ext_mii_regs_c22)(struct axgbe_port *pdata, u8 phy_addr,
+			u16 reg, u16 value);
+	int (*read_ext_mii_regs_c45)(struct axgbe_port *pdata, u8 phy_addr,
+			u8 dev_addr, u16 reg, u16 *value);
+	int (*write_ext_mii_regs_c45)(struct axgbe_port *pdata, u8 phy_addr,
+			u8 dev_addr, u16 reg, u16 value);
 
 	/* For FLOW ctrl */
 	int (*config_tx_flow_control)(struct axgbe_port *);
@@ -398,6 +401,9 @@ struct axgbe_phy_impl_if {
 	/* Pre/Post KR training enablement support */
 	void (*kr_training_pre)(struct axgbe_port *);
 	void (*kr_training_post)(struct axgbe_port *);
+
+	int (*read)(struct axgbe_port *pdata, u16 reg, u16 *value);
+	int (*write)(struct axgbe_port *pdata, u16 reg, u16 value);
 };
 
 struct axgbe_phy_if {
