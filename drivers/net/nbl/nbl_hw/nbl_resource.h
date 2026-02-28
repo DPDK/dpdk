@@ -219,8 +219,6 @@ struct nbl_txrx_mgt {
 	struct nbl_res_tx_ring **tx_rings;
 	struct nbl_res_rx_ring **rx_rings;
 	u16 queue_offset;
-	u8 tx_ring_num;
-	u8 rx_ring_num;
 };
 
 struct nbl_res_info {
