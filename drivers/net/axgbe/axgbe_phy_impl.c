@@ -3,6 +3,7 @@
  *   Copyright(c) 2018 Synopsys, Inc. All rights reserved.
  */
 
+#include <rte_cycles.h>
 #include "axgbe_ethdev.h"
 #include "axgbe_common.h"
 #include "axgbe_phy.h"
@@ -204,6 +205,7 @@ struct axgbe_phy_data {
 	unsigned int rrc_count;
 
 	uint8_t mdio_addr;
+	uint32_t phy_id;
 
 	/* SFP Support */
 	enum axgbe_sfp_comm sfp_comm;
@@ -253,6 +255,8 @@ static void axgbe_phy_rrc(struct axgbe_port *pdata);
 
 static int axgbe_phy_get_comm_ownership(struct axgbe_port *pdata);
 static void axgbe_phy_put_comm_ownership(struct axgbe_port *pdata);
+static int axgbe_get_ext_phy_link_status(struct axgbe_port *pdata,
+		bool *linkup);
 
 static int axgbe_phy_i2c_xfer(struct axgbe_port *pdata,
 			      struct axgbe_i2c_op *i2c_op)
@@ -297,6 +301,83 @@ static int axgbe_phy_write(struct axgbe_port *pdata, u16 reg, u16 value)
 	return ret;
 }
 
+static int axgbe_phy_config_advert(struct axgbe_port *pdata)
+{
+	u16 advert;
+	int ret;
+
+	ret = pdata->phy_if.phy_impl.read(pdata, MII_ADVERTISE, &advert);
+	if (ret) {
+		PMD_DRV_LOG_LINE(ERR, "Failed to read ADVERTISE register");
+		return ret;
+	}
+
+	advert |= ADVERTISE_FULL;
+	advert |= ADVERTISE_PAUSE_CAP;
+
+	ret = pdata->phy_if.phy_impl.write(pdata, MII_ADVERTISE, advert);
+	if (ret) {
+		PMD_DRV_LOG_LINE(ERR, "Failed to write ADVERTISE register");
+		return ret;
+	}
+	return 0;
+}
+
+static int axgbe_phy_set_speed(struct axgbe_port *pdata)
+{
+	struct axgbe_phy_data *phy_data = pdata->phy_data;
+	u16 bmcr;
+	int ret;
+
+	ret = pdata->phy_if.phy_impl.read(pdata, MII_BMCR, &bmcr);
+	if (ret) {
+		PMD_DRV_LOG_LINE(ERR, "Failed to read BMCR register");
+		return ret;
+	}
+
+	bmcr &= ~(MDIO_CTRL1_SPEEDSELEXT);
+	switch (phy_data->cur_mode) {
+	case AXGBE_MODE_SGMII_1000:
+		bmcr |= BMCR_SPEED1000;
+		break;
+	case AXGBE_MODE_SGMII_100:
+		bmcr |= BMCR_SPEED100;
+		break;
+	default:
+		break;
+	}
+
+	ret = pdata->phy_if.phy_impl.write(pdata, MII_BMCR, bmcr);
+	if (ret) {
+		PMD_DRV_LOG_LINE(ERR, "Failed to write BMCR register");
+		return ret;
+	}
+	return 0;
+}
+
+static int axgbe_phy_config_aneg(struct axgbe_port *pdata)
+{
+	u16 bmcr;
+	int ret;
+
+	ret = pdata->phy_if.phy_impl.read(pdata, MII_BMCR, &bmcr);
+	if (ret) {
+		PMD_DRV_LOG_LINE(ERR, "Failed to read BMCR register");
+		return ret;
+	}
+
+	bmcr &= ~(BMCR_ANENABLE);
+	if (pdata->phy.autoneg == AUTONEG_ENABLE)
+		bmcr |=  BMCR_ANENABLE | BMCR_ANRESTART;
+
+	ret = pdata->phy_if.phy_impl.write(pdata, MII_BMCR, bmcr);
+
+	if (ret) {
+		PMD_DRV_LOG_LINE(ERR, "Failed to write BMCR register");
+		return ret;
+	}
+	return 0;
+}
 
 static int axgbe_phy_redrv_write(struct axgbe_port *pdata, unsigned int reg,
 				 unsigned int val)
@@ -1132,10 +1213,35 @@ static unsigned int axgbe_phy_an_advertising(struct axgbe_port *pdata)
 
 static int axgbe_phy_an_config(struct axgbe_port *pdata __rte_unused)
 {
+	struct axgbe_phy_data *phy_data = pdata->phy_data;
+	int ret;
+
+	/* Auto-negotiation config is implemented only for 1000BASE-T */
+	if (phy_data->port_mode != AXGBE_PORT_MODE_1000BASE_T)
+		return 0;
+
+	/* Supports only Marvell M88E1512 PHY for now*/
+	if (phy_data->phy_id == M88E1512_E_PHY_ID) {
+		ret = axgbe_phy_config_advert(pdata);
+		if (ret) {
+			PMD_DRV_LOG_LINE(ERR, "PHY ADVERTISE config failed");
+			return ret;
+		}
+
+		ret = axgbe_phy_set_speed(pdata);
+		if (ret) {
+			PMD_DRV_LOG_LINE(ERR, "PHY set speed failed");
+			return ret;
+		}
+
+		ret = axgbe_phy_config_aneg(pdata);
+		if (ret) {
+			PMD_DRV_LOG_LINE(ERR, "PHY AN config failed");
+			return ret;
+		}
+		PMD_DRV_LOG_LINE(DEBUG, "M88E1512 PHY AN config done");
+	}
 	return 0;
-	/* Dummy API since there is no case to support
-	 * external phy devices registered through kernel APIs
-	 */
 }
 
 static enum axgbe_an_mode axgbe_phy_an_sfp_mode(struct axgbe_phy_data *phy_data)
@@ -1880,10 +1986,12 @@ static bool axgbe_phy_use_mode(struct axgbe_port *pdata, enum axgbe_mode mode)
 	}
 }
 
+/* return 0 means link down, 1 means link up */
 static int axgbe_phy_link_status(struct axgbe_port *pdata, int *an_restart)
 {
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
-	unsigned int reg;
+	uint32_t reg;
+	bool ext_phy_link_up = false;
 
 	*an_restart = 0;
 
@@ -1900,6 +2008,26 @@ static int axgbe_phy_link_status(struct axgbe_port *pdata, int *an_restart)
 			if (pdata->en_rx_adap)
 				pdata->rx_adapt_done = false;
 			return 0;
+		}
+	}
+
+	if (phy_data->port_mode == AXGBE_PORT_MODE_1000BASE_T) {
+		if (phy_data->phy_id == M88E1512_E_PHY_ID) {
+			if (axgbe_get_ext_phy_link_status(pdata,
+						&ext_phy_link_up)) {
+				PMD_DRV_LOG_LINE(ERR,
+						"Get link status failed");
+				goto out;
+			}
+
+			if (ext_phy_link_up) {
+				PMD_DRV_LOG_LINE(DEBUG,
+						"M88E1512 PHY link is up");
+			} else {
+				PMD_DRV_LOG_LINE(DEBUG,
+						"M88E1512 PHY link is not up");
+				goto out;
+			}
 		}
 	}
 
@@ -1946,6 +2074,7 @@ static int axgbe_phy_link_status(struct axgbe_port *pdata, int *an_restart)
 		axgbe_phy_rrc(pdata);
 	}
 
+out:
 	return 0;
 }
 
@@ -2303,6 +2432,243 @@ static int axgbe_phy_reset(struct axgbe_port *pdata)
 	return 0;
 }
 
+static int axgbe_get_phy_id(struct axgbe_port *pdata)
+{
+	struct axgbe_phy_data *phy_data = pdata->phy_data;
+	u16 phy_id_1;
+	u16 phy_id_2;
+	int ret;
+
+	ret = pdata->phy_if.phy_impl.read(pdata, MII_PHYSID1,
+			&phy_id_1);
+	if (ret) {
+		PMD_DRV_LOG_LINE(ERR, "Failed to read PHYSID1 register");
+		return ret;
+	}
+
+	ret = pdata->phy_if.phy_impl.read(pdata, MII_PHYSID2,
+			&phy_id_2);
+	if (ret) {
+		PMD_DRV_LOG_LINE(ERR, "Failed to read PHYSID2 register");
+		return ret;
+	}
+
+	phy_data->phy_id = (u32)phy_id_1 << 16;
+	phy_data->phy_id |= phy_id_2;
+	phy_data->phy_id &= AXGBE_PHY_REVISION_MASK;
+
+	if (phy_data->phy_id == AXGBE_PHY_REVISION_MASK) {
+		PMD_DRV_LOG_LINE(ERR, "Invalid PHY id (0x%x)",
+				phy_data->phy_id);
+		return -EINVAL;
+	}
+	PMD_DRV_LOG_LINE(DEBUG, "PHY id (0x%x)", phy_data->phy_id);
+	return 0;
+}
+
+static int axgbe_phy_poll_reset(struct axgbe_port *pdata)
+{
+	const uint64_t timeout_ms  = 2000;
+	const uint64_t interval_ms = 1;
+	const uint64_t hz          = rte_get_timer_hz();
+	const uint64_t start       = rte_get_timer_cycles();
+
+	u16 bmcr = 0;
+	int ret;
+
+	for (;;) {
+		ret = pdata->phy_if.phy_impl.read(pdata, MII_BMCR, &bmcr);
+		if (ret) {
+			PMD_DRV_LOG_LINE(ERR, "PHY read BMCR failed");
+			return ret;
+		}
+		if (!(bmcr & BMCR_RESET))
+			return 0;
+
+		uint64_t elapsed_ms =
+			((rte_get_timer_cycles() - start) * 1000) / hz;
+		if (elapsed_ms >= timeout_ms)
+			break;
+
+		rte_delay_us_block(interval_ms * 1000);
+	}
+	return -ETIMEDOUT;
+}
+
+
+static int axgbe_phy_soft_reset(struct axgbe_port *pdata)
+{
+	int ret;
+	u16 bmcr;
+
+	ret = pdata->phy_if.phy_impl.read(pdata, MII_BMCR, &bmcr);
+	if (ret) {
+		PMD_DRV_LOG_LINE(ERR, "Failed to read BMCR register");
+		return ret;
+	}
+
+	bmcr |= BMCR_RESET;
+
+	ret = pdata->phy_if.phy_impl.write(pdata, MII_BMCR, bmcr);
+	if (ret) {
+		PMD_DRV_LOG_LINE(ERR, "Failed to write BMCR register");
+		return ret;
+	}
+
+	ret = axgbe_phy_poll_reset(pdata);
+	if (ret) {
+		PMD_DRV_LOG_LINE(ERR, "Poll for PHY reset done failed");
+		return ret;
+	}
+	return 0;
+}
+
+static int axgbe_m88e1512_set_page(struct axgbe_port *pdata, u16 page)
+{
+	int ret;
+
+	ret = pdata->phy_if.phy_impl.write(pdata,
+			AXGBE_M88E1512_PAGE_ADDR, page);
+	if (ret) {
+		PMD_DRV_LOG_LINE(ERR,
+				"PHY set page failed for page 0x%x", page);
+	}
+	return ret;
+}
+
+static const struct {
+	u16 reg17, reg16;
+} errata_vals[] = {
+	{ 0x214b, 0x2144 },
+	{ 0x0c28, 0x2146 },
+	{ 0xb233, 0x214d },
+	{ 0xcc0c, 0x2159 },
+};
+
+static int axgbe_m88e1512_init(struct axgbe_port *pdata)
+{
+	int ret;
+	u8 i;
+
+	PMD_DRV_LOG_LINE(DEBUG, "Initialize M88E1512 phy");
+
+	/* Switch to PHY page 0xFF */
+	ret = axgbe_m88e1512_set_page(pdata, 0xff);
+	if (ret)
+		goto err_out;
+
+	/* Configure M88E1512 errata registers */
+	for (i = 0; i < ARRAY_SIZE(errata_vals); i++) {
+		ret = pdata->phy_if.phy_impl.write(pdata,
+				AXGBE_M88E1512_CFG_REG_2,
+				errata_vals[i].reg17);
+		if (ret) {
+			PMD_DRV_LOG_LINE(ERR, "Config M88E1512 errata failed");
+			goto err_set_copper_page;
+		}
+
+		ret = pdata->phy_if.phy_impl.write(pdata,
+				AXGBE_M88E1512_CFG_REG_1,
+				errata_vals[i].reg16);
+		if (ret) {
+			PMD_DRV_LOG_LINE(ERR, "Config M88E1512 errata failed");
+			goto err_set_copper_page;
+		}
+	}
+
+	/* Switch to PHY page 0xFB */
+	ret = axgbe_m88e1512_set_page(pdata, 0xfb);
+	if (ret)
+		goto err_set_copper_page;
+
+	ret = pdata->phy_if.phy_impl.write(pdata,
+			AXGBE_M88E1512_CFG_REG_3, 0xC00D);
+	if (ret)
+		goto err_set_copper_page;
+
+	/* Switch to PHY copper page */
+	ret = axgbe_m88e1512_set_page(pdata, AXGBE_M88E1512_COPPER_PAGE);
+	if (ret)
+		goto err_out;
+
+	/* SGMII-to-Copper mode initialization */
+
+	/* Switch to PHY mode page */
+	ret = axgbe_m88e1512_set_page(pdata, AXGBE_M88E1512_MODE_PAGE);
+	if (ret)
+		goto err_set_copper_page;
+
+	ret = pdata->phy_if.phy_impl.write(pdata,
+			AXGBE_M88E1512_MODE,
+			(AXGBE_M88E1512_MODE_SW_RESET |
+			 AXGBE_M88E1512_MODE_SGMII_COPPER));
+	if (ret)
+		goto err_set_copper_page;
+
+	/* Switch to PHY copper page */
+	ret = axgbe_m88e1512_set_page(pdata, AXGBE_M88E1512_COPPER_PAGE);
+	if (ret)
+		goto err_out;
+
+	ret = axgbe_phy_soft_reset(pdata);
+	if (ret) {
+		PMD_DRV_LOG_LINE(ERR, "M88E1512 PHY soft reset failed");
+		goto err_out;
+	}
+
+	PMD_DRV_LOG_LINE(DEBUG, "M88E1512 phy init done");
+	return 0;
+
+err_set_copper_page:
+	/* Switch to PHY page 0 */
+	axgbe_m88e1512_set_page(pdata, AXGBE_M88E1512_COPPER_PAGE);
+err_out:
+	PMD_DRV_LOG_LINE(ERR, "M88E1512 PHY initialization failed");
+	return ret;
+}
+
+
+static int axgbe_get_ext_phy_link_status(struct axgbe_port *pdata, bool *linkup)
+{
+	int ret;
+	u16 bmcr;
+	u16 bmsr;
+
+	*linkup = false;
+
+	ret = pdata->phy_if.phy_impl.read(pdata, MII_BMCR, &bmcr);
+	if (ret) {
+		PMD_DRV_LOG_LINE(ERR, "PHY read failed for BMCR register");
+		return ret;
+	}
+
+	/* Autoneg is being started, therefore disregard BMSR value and
+	 * report link as down.
+	 */
+	if (bmcr & BMCR_ANRESTART)
+		return 0;
+
+	ret = pdata->phy_if.phy_impl.read(pdata, MII_BMSR, &bmsr);
+	if (ret) {
+		PMD_DRV_LOG_LINE(ERR, "PHY read failed for BMSR register");
+		return ret;
+	}
+
+	if (bmsr & BMSR_LSTATUS)
+		goto done;
+
+	/* Read link status */
+	ret = pdata->phy_if.phy_impl.read(pdata, MII_BMSR, &bmsr);
+	if (ret) {
+		PMD_DRV_LOG_LINE(ERR, "PHY read failed for BMSR register");
+		return ret;
+	}
+done:
+	*linkup = (bmsr & BMSR_LSTATUS) ? true : false;
+	return 0;
+}
+
+
 static int axgbe_phy_init(struct axgbe_port *pdata)
 {
 	struct axgbe_phy_data *phy_data;
@@ -2556,6 +2922,23 @@ static int axgbe_phy_init(struct axgbe_port *pdata)
 	}
 
 	phy_data->phy_cdr_delay = AXGBE_CDR_DELAY_INIT;
+
+	if (phy_data->port_mode == AXGBE_PORT_MODE_1000BASE_T) {
+		ret = axgbe_get_phy_id(pdata);
+		if (ret) {
+			PMD_DRV_LOG_LINE(ERR, "failed to get PHY id");
+			return ret;
+		}
+
+		PMD_DRV_LOG_LINE(DEBUG, "PHY ID = 0x%x", phy_data->phy_id);
+
+		if (phy_data->phy_id == M88E1512_E_PHY_ID) {
+			ret = axgbe_m88e1512_init(pdata);
+			if (ret)
+				return ret;
+		}
+	}
+
 	return 0;
 }
 void axgbe_init_function_ptrs_phy_v2(struct axgbe_phy_if *phy_if)
