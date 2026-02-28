@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #ifdef RTE_EXEC_ENV_WINDOWS
 #include <winsock2.h>
@@ -80,8 +81,16 @@ mkstemps(char *tmpl, int suffixlen)
 
 #define PCAPNG_TEST_DEBUG 0
 
+/*
+ * Want to write enough packets to exercise timestamp logic.
+ * On fast CPU's TSC wraps around 32 bits in 4 seconds.
+ */
 #define TOTAL_PACKETS	10000
-#define MAX_BURST	64
+#define MAX_BURST	32
+#define NUM_BURSTS	(TOTAL_PACKETS / MAX_BURST)
+#define TEST_TIME_SEC	4
+#define GAP_US		((TEST_TIME_SEC * US_PER_S) / NUM_BURSTS)
+
 #define DUMMY_MBUF_NUM	2
 
 static struct rte_mempool *mp;
@@ -242,6 +251,7 @@ fill_pcapng_file(rte_pcapng_t *pcapng)
 	struct rte_mbuf *orig;
 	unsigned int burst_size;
 	unsigned int count;
+	struct timespec start_time;
 	ssize_t len;
 	/*
 	 * These are some silly comments to test various lengths and alignments sprinkle
@@ -262,20 +272,21 @@ fill_pcapng_file(rte_pcapng_t *pcapng)
 		 "generations of example code. The magic number 32 is not documented because "
 		 "nobody remembers why. Trust the process."),
 	};
-	/* How many microseconds does it take TSC to wrap around 32 bits */
-	const unsigned wrap_us
-		= (US_PER_S * (uint64_t)UINT32_MAX) / rte_get_tsc_hz();
-
-	/* Want overall test to take to wraparound at least twice. */
-	const unsigned int avg_gap = (2 * wrap_us)
-		/ (TOTAL_PACKETS / (MAX_BURST / 2));
 
 	mbuf1_prepare(&mbfs);
 	orig  = &mbfs.mb[0];
 
+	clock_gettime(CLOCK_MONOTONIC, &start_time);
+
 	for (count = 0; count < TOTAL_PACKETS; count += burst_size) {
 		struct rte_mbuf *clones[MAX_BURST];
+		struct timespec now;
 		unsigned int i;
+
+		/* break off writing if test is taking too long */
+		clock_gettime(CLOCK_MONOTONIC, &now);
+		if (now.tv_sec >= start_time.tv_sec + TEST_TIME_SEC)
+			break;
 
 		/* put 1 .. MAX_BURST packets in one write call */
 		burst_size = rte_rand_max(MAX_BURST) + 1;
@@ -309,7 +320,7 @@ fill_pcapng_file(rte_pcapng_t *pcapng)
 			return -1;
 		}
 
-		rte_delay_us_block(rte_rand_max(2 * avg_gap));
+		rte_delay_us_block(rte_rand_max(2 * GAP_US));
 	}
 
 	return count;
