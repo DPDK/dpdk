@@ -4,7 +4,16 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+#include <winsock2.h>
+#include <io.h>
+#include <fcntl.h>
+#include <windows.h>
+#else
 #include <unistd.h>
+#endif
 
 #include <rte_bus_vdev.h>
 #include <rte_ethdev.h>
@@ -22,6 +31,52 @@
 #include <pcap/pcap.h>
 
 #include "test.h"
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static uint64_t
+current_timestamp(void)
+{
+	FILETIME ft;
+	ULARGE_INTEGER ul;
+
+	GetSystemTimeAsFileTime(&ft);
+	ul.LowPart = ft.dwLowDateTime;
+	ul.HighPart = ft.dwHighDateTime;
+	/* FILETIME is 100ns intervals since 1601-01-01, convert to ns since Unix epoch */
+	return (ul.QuadPart - 116444736000000000ULL) * 100;
+}
+
+/*
+ * Create temporary file with suffix for Windows.
+ * Returns file descriptor or -1 on failure.
+ */
+static int
+mkstemps(char *tmpl, int suffixlen)
+{
+	char temp_dir[MAX_PATH];
+	char temp_file[MAX_PATH];
+	DWORD ret;
+
+	ret = GetTempPathA(sizeof(temp_dir), temp_dir);
+	if (ret == 0 || ret > sizeof(temp_dir))
+		return -1;
+
+	if (GetTempFileNameA(temp_dir, "pcap", 0, temp_file) == 0)
+		return -1;
+
+	/*
+	 * GetTempFileNameA with uUnique=0 creates the file to reserve the name.
+	 * Remove it since we open a different name with the original suffix appended.
+	 */
+	DeleteFileA(temp_file);
+
+	/* Append the original suffix (e.g. ".pcapng") to the temp file */
+	strlcat(temp_file, tmpl + strlen(tmpl) - suffixlen, sizeof(temp_file));
+	strlcpy(tmpl, temp_file, PATH_MAX);
+
+	return _open(tmpl, _O_RDWR | _O_BINARY | _O_CREAT | _O_EXCL, 0666);
+}
+#endif /* RTE_EXEC_ENV_WINDOWS */
 
 #define PCAPNG_TEST_DEBUG 0
 
@@ -344,6 +399,7 @@ error:
 	pcap_breakloop(ctx->pcap);
 }
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 static uint64_t
 current_timestamp(void)
 {
@@ -352,6 +408,7 @@ current_timestamp(void)
 	clock_gettime(CLOCK_REALTIME, &ts);
 	return rte_timespec_to_ns(&ts);
 }
+#endif
 
 /*
  * Open the resulting pcapng file with libpcap
@@ -395,7 +452,7 @@ valid_pcapng_file(const char *file_name, uint64_t started, unsigned int expected
 static int
 test_add_interface(void)
 {
-	char file_name[] = "/tmp/pcapng_test_XXXXXX.pcapng";
+	char file_name[PATH_MAX] = "/tmp/pcapng_test_XXXXXX.pcapng";
 	static rte_pcapng_t *pcapng;
 	int ret, tmp_fd;
 	uint64_t now = current_timestamp();
@@ -444,7 +501,7 @@ test_add_interface(void)
 	ret = valid_pcapng_file(file_name, now, 0);
 	/* if test fails want to investigate the file */
 	if (ret == 0)
-		unlink(file_name);
+		remove(file_name);
 
 	return ret;
 
@@ -456,7 +513,7 @@ fail:
 static int
 test_write_packets(void)
 {
-	char file_name[] = "/tmp/pcapng_test_XXXXXX.pcapng";
+	char file_name[PATH_MAX] = "/tmp/pcapng_test_XXXXXX.pcapng";
 	rte_pcapng_t *pcapng = NULL;
 	int ret, tmp_fd, count;
 	uint64_t now = current_timestamp();
@@ -508,7 +565,7 @@ test_write_packets(void)
 	ret = valid_pcapng_file(file_name, now, count);
 	/* if test fails want to investigate the file */
 	if (ret == 0)
-		unlink(file_name);
+		remove(file_name);
 
 	return ret;
 
