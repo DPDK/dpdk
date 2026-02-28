@@ -212,7 +212,6 @@ static int nbl_res_txrx_start_tx_ring(void *priv,
 	eth_dev->data->tx_queues[param->queue_idx] = tx_ring;
 
 	txrx_mgt->tx_rings[param->queue_idx] = tx_ring;
-	txrx_mgt->tx_ring_num++;
 
 	*dma_addr = tx_ring->ring_phys_addr;
 
@@ -366,7 +365,6 @@ static int nbl_res_txrx_start_rx_ring(void *priv,
 	eth_dev->data->rx_queues[param->queue_idx] = rx_ring;
 
 	txrx_mgt->rx_rings[param->queue_idx] = rx_ring;
-	txrx_mgt->rx_ring_num++;
 
 	*dma_addr = rx_ring->ring_phys_addr;
 
@@ -879,7 +877,7 @@ static int nbl_res_txrx_get_xstats(void *priv, struct rte_eth_xstat *xstats,
 				   u16 need_xstats_cnt, u16 *xstats_cnt)
 {
 	struct nbl_resource_mgt *res_mgt = (struct nbl_resource_mgt *)priv;
-	struct nbl_txrx_mgt *txrx_mgt = NBL_RES_MGT_TO_TXRX_MGT(res_mgt);
+	struct rte_eth_dev *eth_dev = res_mgt->eth_dev;
 	struct nbl_res_rx_ring *rxq;
 	uint64_t rx_multi_descs = 0, rx_drop_noport = 0, rx_drop_proto = 0;
 	u64 txrx_xstats[3];
@@ -887,7 +885,7 @@ static int nbl_res_txrx_get_xstats(void *priv, struct rte_eth_xstat *xstats,
 	u16 count = *xstats_cnt;
 
 	/* todo: get eth stats from emp */
-	for (i = 0; i < txrx_mgt->rx_ring_num; i++) {
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		rxq = NBL_RES_MGT_TO_RX_RING(res_mgt, i);
 
 		if (unlikely(rxq == NULL))
