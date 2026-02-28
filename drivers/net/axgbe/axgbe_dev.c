@@ -63,9 +63,9 @@ static int mdio_complete(struct axgbe_port *pdata)
 	return 0;
 }
 
-static unsigned int axgbe_create_mdio_sca_c22(int port, int reg)
+static unsigned int axgbe_create_mdio_sca_c22(u8 port, u16 reg)
 {
-	unsigned int mdio_sca;
+	u32 mdio_sca;
 
 	mdio_sca = 0;
 	AXGMAC_SET_BITS(mdio_sca, MAC_MDIOSCAR, RA, reg);
@@ -74,20 +74,20 @@ static unsigned int axgbe_create_mdio_sca_c22(int port, int reg)
 	return mdio_sca;
 }
 
-static unsigned int axgbe_create_mdio_sca_c45(int port, unsigned int da, int reg)
+static unsigned int axgbe_create_mdio_sca_c45(u8 port, u8 dev_addr, u16 reg)
 {
-	unsigned int mdio_sca;
+	u32 mdio_sca;
 
 	mdio_sca = 0;
 	AXGMAC_SET_BITS(mdio_sca, MAC_MDIOSCAR, RA, reg);
 	AXGMAC_SET_BITS(mdio_sca, MAC_MDIOSCAR, PA, port);
-	AXGMAC_SET_BITS(mdio_sca, MAC_MDIOSCAR, DA, da);
+	AXGMAC_SET_BITS(mdio_sca, MAC_MDIOSCAR, DA, dev_addr);
 
 	return mdio_sca;
 }
 
 static int axgbe_write_ext_mii_regs(struct axgbe_port *pdata,
-						unsigned int mdio_sca, u16 val)
+		u32 mdio_sca, u16 value)
 {
 	unsigned int mdio_sccd;
 	uint64_t timeout;
@@ -95,7 +95,7 @@ static int axgbe_write_ext_mii_regs(struct axgbe_port *pdata,
 	AXGMAC_IOWRITE(pdata, MAC_MDIOSCAR, mdio_sca);
 
 	mdio_sccd = 0;
-	AXGMAC_SET_BITS(mdio_sccd, MAC_MDIOSCCDR, DATA, val);
+	AXGMAC_SET_BITS(mdio_sccd, MAC_MDIOSCCDR, DATA, value);
 	AXGMAC_SET_BITS(mdio_sccd, MAC_MDIOSCCDR, CMD, 1);
 	AXGMAC_SET_BITS(mdio_sccd, MAC_MDIOSCCDR, BUSY, 1);
 	AXGMAC_IOWRITE(pdata, MAC_MDIOSCCDR, mdio_sccd);
@@ -113,28 +113,28 @@ static int axgbe_write_ext_mii_regs(struct axgbe_port *pdata,
 
 
 static int axgbe_write_ext_mii_regs_c22(struct axgbe_port *pdata,
-							int addr, int reg, u16 val)
+		u8 phy_addr, u16 reg, u16 value)
 {
-	unsigned int mdio_sca;
+	u32 mdio_sca;
 
-	mdio_sca = axgbe_create_mdio_sca_c22(addr, reg);
+	mdio_sca = axgbe_create_mdio_sca_c22(phy_addr, reg);
 
-	return axgbe_write_ext_mii_regs(pdata, mdio_sca, val);
+	return axgbe_write_ext_mii_regs(pdata, mdio_sca, value);
 }
 
 static int axgbe_write_ext_mii_regs_c45(struct axgbe_port *pdata,
-					int addr, int devad, int reg, u16 val)
+	       u8 phy_addr, u8 dev_addr, u16 reg, u16 value)
 {
-	unsigned int mdio_sca;
+	u32 mdio_sca;
 
-	mdio_sca = axgbe_create_mdio_sca_c45(addr, devad, reg);
+	mdio_sca = axgbe_create_mdio_sca_c45(phy_addr, dev_addr, reg);
 
-	return axgbe_write_ext_mii_regs(pdata, mdio_sca, val);
+	return axgbe_write_ext_mii_regs(pdata, mdio_sca, value);
 }
 
 
-static int axgbe_read_ext_mii_regs(struct axgbe_port *pdata,
-							unsigned int mdio_sca)
+static int axgbe_read_ext_mii_regs(struct axgbe_port *pdata, u32 mdio_sca,
+		u16 *value)
 {
 	unsigned int mdio_sccd;
 	uint64_t timeout;
@@ -158,26 +158,28 @@ static int axgbe_read_ext_mii_regs(struct axgbe_port *pdata,
 	return -ETIMEDOUT;
 
 success:
-	return AXGMAC_IOREAD_BITS(pdata, MAC_MDIOSCCDR, DATA);
+	*value = AXGMAC_IOREAD_BITS(pdata, MAC_MDIOSCCDR, DATA);
+	return 0;
 }
 
-static int axgbe_read_ext_mii_regs_c22(struct axgbe_port *pdata, int addr, int reg)
+static int axgbe_read_ext_mii_regs_c22(struct axgbe_port *pdata, u8 phy_addr,
+		u16 reg, u16 *value)
 {
-	unsigned int mdio_sca;
+	u32 mdio_sca;
 
-	mdio_sca = axgbe_create_mdio_sca_c22(addr, reg);
+	mdio_sca = axgbe_create_mdio_sca_c22(phy_addr, reg);
 
-	return axgbe_read_ext_mii_regs(pdata, mdio_sca);
+	return axgbe_read_ext_mii_regs(pdata, mdio_sca, value);
 }
 
-static int axgbe_read_ext_mii_regs_c45(struct axgbe_port *pdata, int addr,
-								int devad, int reg)
+static int axgbe_read_ext_mii_regs_c45(struct axgbe_port *pdata, u8 phy_addr,
+		u8 dev_addr, u16 reg, u16 *value)
 {
-	unsigned int mdio_sca;
+	u32 mdio_sca;
 
-	mdio_sca = axgbe_create_mdio_sca_c45(addr, devad, reg);
+	mdio_sca = axgbe_create_mdio_sca_c45(phy_addr, dev_addr, reg);
 
-	return axgbe_read_ext_mii_regs(pdata, mdio_sca);
+	return axgbe_read_ext_mii_regs(pdata, mdio_sca, value);
 }
 
 static int axgbe_set_ext_mii_mode(struct axgbe_port *pdata, unsigned int port,
