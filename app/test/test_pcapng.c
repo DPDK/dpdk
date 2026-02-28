@@ -222,7 +222,7 @@ test_setup(void)
 
 	/* Make a dummy null device to snoop on */
 	if (rte_vdev_init(null_dev, NULL) != 0) {
-		fprintf(stderr, "Failed to create vdev '%s'\n", null_dev);
+		printf("Failed to create vdev '%s'\n", null_dev);
 		goto fail;
 	}
 
@@ -232,7 +232,7 @@ test_setup(void)
 					    rte_pcapng_mbuf_size(MAX_DATA_SIZE),
 					    SOCKET_ID_ANY, "ring_mp_sc");
 	if (mp == NULL) {
-		fprintf(stderr, "Cannot create mempool\n");
+		printf("Cannot create mempool\n");
 		goto fail;
 	}
 
@@ -304,7 +304,7 @@ fill_pcapng_file(rte_pcapng_t *pcapng)
 			mc = rte_pcapng_copy(port_id, 0, orig, mp, rte_pktmbuf_pkt_len(orig),
 					     RTE_PCAPNG_DIRECTION_IN, comment);
 			if (mc == NULL) {
-				fprintf(stderr, "Cannot copy packet\n");
+				printf("Cannot copy packet\n");
 				return -1;
 			}
 			clones[i] = mc;
@@ -315,7 +315,7 @@ fill_pcapng_file(rte_pcapng_t *pcapng)
 		rte_pktmbuf_free_bulk(clones, burst_size);
 
 		if (len <= 0) {
-			fprintf(stderr, "Write of packets failed: %s\n",
+			printf("Write of packets failed: %s\n",
 				rte_strerror(rte_errno));
 			return -1;
 		}
@@ -326,6 +326,7 @@ fill_pcapng_file(rte_pcapng_t *pcapng)
 	return count;
 }
 
+/* Convert time in nanoseconds since 1/1/1970 to UTC time string */
 static char *
 fmt_time(char *buf, size_t size, uint64_t ts_ns)
 {
@@ -333,7 +334,8 @@ fmt_time(char *buf, size_t size, uint64_t ts_ns)
 	size_t len;
 
 	sec = ts_ns / NS_PER_S;
-	len = strftime(buf, size, "%X", localtime(&sec));
+
+	len = strftime(buf, size, "%T", gmtime(&sec));
 	snprintf(buf + len, size - len, ".%09lu",
 		 (unsigned long)(ts_ns % NS_PER_S));
 
@@ -358,6 +360,7 @@ print_packet(uint64_t ts_ns, const struct rte_ether_hdr *eh, size_t len)
 	rte_ether_format_addr(src, sizeof(src), &eh->src_addr);
 	printf("%s: %s -> %s type %x length %zu\n",
 	       tbuf, src, dst, rte_be_to_cpu_16(eh->ether_type), len);
+	fflush(stdout);
 }
 
 /* Callback from pcap_loop used to validate packets in the file */
@@ -368,6 +371,7 @@ parse_pcap_packet(u_char *user, const struct pcap_pkthdr *h,
 	struct pkt_print_ctx *ctx = (struct pkt_print_ctx *)user;
 	const struct rte_ether_hdr *eh;
 	const struct rte_ipv4_hdr *ip;
+	static unsigned int total_errors;
 	uint64_t ns;
 
 	eh = (const struct rte_ether_hdr *)bytes;
@@ -386,18 +390,19 @@ parse_pcap_packet(u_char *user, const struct pcap_pkthdr *h,
 
 		fmt_time(tstart, sizeof(tstart), ctx->start_ns);
 		fmt_time(tend, sizeof(tend), ctx->end_ns);
-		fprintf(stderr, "Timestamp out of range [%s .. %s]\n",
-			tstart, tend);
+
+		printf("Timestamp out of range [%s .. %s]\n",
+		       tstart, tend);
 		goto error;
 	}
 
 	if (!rte_is_broadcast_ether_addr(&eh->dst_addr)) {
-		fprintf(stderr, "Destination is not broadcast\n");
+		printf("Destination is not broadcast\n");
 		goto error;
 	}
 
 	if (rte_ipv4_cksum(ip) != 0) {
-		fprintf(stderr, "Bad IPv4 checksum\n");
+		printf("Bad IPv4 checksum\n");
 		goto error;
 	}
 
@@ -406,8 +411,9 @@ parse_pcap_packet(u_char *user, const struct pcap_pkthdr *h,
 error:
 	print_packet(ns, eh, h->len);
 
-	/* Stop parsing at first error */
-	pcap_breakloop(ctx->pcap);
+	/* Stop parsing at tenth error */
+	if (++total_errors >= 10)
+		pcap_breakloop(ctx->pcap);
 }
 
 #ifndef RTE_EXEC_ENV_WINDOWS
@@ -440,14 +446,14 @@ valid_pcapng_file(const char *file_name, uint64_t started, unsigned int expected
 							   PCAP_TSTAMP_PRECISION_NANO,
 							   errbuf);
 	if (ctx.pcap == NULL) {
-		fprintf(stderr, "pcap_open_offline('%s') failed: %s\n",
+		printf("pcap_open_offline('%s') failed: %s\n",
 			file_name, errbuf);
 		return -1;
 	}
 
 	ret = pcap_loop(ctx.pcap, 0, parse_pcap_packet, (u_char *)&ctx);
 	if (ret != 0) {
-		fprintf(stderr, "pcap_dispatch: failed: %s\n",
+		printf("pcap_dispatch: failed: %s\n",
 			pcap_geterr(ctx.pcap));
 	} else if (ctx.count != expected) {
 		printf("Only %u packets, expected %u\n",
@@ -478,7 +484,7 @@ test_add_interface(void)
 	/* open a test capture file */
 	pcapng = rte_pcapng_fdopen(tmp_fd, NULL, NULL, "pcapng_addif", NULL);
 	if (pcapng == NULL) {
-		fprintf(stderr, "rte_pcapng_fdopen failed\n");
+		printf("rte_pcapng_fdopen failed\n");
 		close(tmp_fd);
 		goto fail;
 	}
@@ -487,7 +493,7 @@ test_add_interface(void)
 	ret = rte_pcapng_add_interface(pcapng, port_id, DLT_EN10MB,
 				       NULL, NULL, NULL);
 	if (ret < 0) {
-		fprintf(stderr, "can not add port %u\n", port_id);
+		printf("can not add port %u\n", port_id);
 		goto fail;
 	}
 
@@ -495,7 +501,7 @@ test_add_interface(void)
 	ret = rte_pcapng_add_interface(pcapng, port_id, DLT_EN10MB,
 				       "myeth", "Some long description", NULL);
 	if (ret < 0) {
-		fprintf(stderr, "can not add port %u with ifname\n", port_id);
+		printf("can not add port %u with ifname\n", port_id);
 		goto fail;
 	}
 
@@ -503,7 +509,7 @@ test_add_interface(void)
 	ret = rte_pcapng_add_interface(pcapng, port_id, DLT_EN10MB,
 				       NULL, NULL, "tcp port 8080");
 	if (ret < 0) {
-		fprintf(stderr, "can not add port %u with filter\n", port_id);
+		printf("can not add port %u with filter\n", port_id);
 		goto fail;
 	}
 
@@ -539,7 +545,7 @@ test_write_packets(void)
 	/* open a test capture file */
 	pcapng = rte_pcapng_fdopen(tmp_fd, NULL, NULL, "pcapng_test", NULL);
 	if (pcapng == NULL) {
-		fprintf(stderr, "rte_pcapng_fdopen failed\n");
+		printf("rte_pcapng_fdopen failed\n");
 		close(tmp_fd);
 		goto fail;
 	}
@@ -548,14 +554,14 @@ test_write_packets(void)
 	ret = rte_pcapng_add_interface(pcapng, port_id, DLT_EN10MB,
 				       NULL, NULL, NULL);
 	if (ret < 0) {
-		fprintf(stderr, "can not add port %u\n", port_id);
+		printf("can not add port %u\n", port_id);
 		goto fail;
 	}
 
 	/* write a statistics block */
 	ret = rte_pcapng_write_stats(pcapng, port_id, 0, 0, NULL);
 	if (ret <= 0) {
-		fprintf(stderr, "Write of statistics failed\n");
+		printf("Write of statistics failed\n");
 		goto fail;
 	}
 
@@ -567,7 +573,7 @@ test_write_packets(void)
 	ret = rte_pcapng_write_stats(pcapng, port_id,
 				     count, 0, "end of test");
 	if (ret <= 0) {
-		fprintf(stderr, "Write of statistics failed\n");
+		printf("Write of statistics failed\n");
 		goto fail;
 	}
 
