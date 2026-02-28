@@ -591,6 +591,87 @@ fail:
 	return -1;
 }
 
+static int
+test_write_before_open(void)
+{
+	char file_name[PATH_MAX] = "/tmp/pcapng_test_XXXXXX.pcapng";
+	struct dummy_mbuf mbfs;
+	struct rte_mbuf *clones[MAX_BURST];
+	rte_pcapng_t *pcapng = NULL;
+	int ret, tmp_fd, i;
+	unsigned int count = 8;
+	uint64_t now;
+	ssize_t len;
+
+	mbuf1_prepare(&mbfs);
+	mbuf1_resize(&mbfs, rte_rand_max(MAX_DATA_SIZE));
+
+	/* Copy packets BEFORE opening the pcapng file.
+	 * This exercises the negative TSC delta path in tsc_to_ns_epoch().
+	 */
+	for (i = 0; i < (int)count; i++) {
+		clones[i] = rte_pcapng_copy(port_id, 0, &mbfs.mb[0], mp,
+					    rte_pktmbuf_pkt_len(&mbfs.mb[0]),
+					    RTE_PCAPNG_DIRECTION_IN, NULL);
+		if (clones[i] == NULL) {
+			fprintf(stderr, "Cannot copy packet before open\n");
+			rte_pktmbuf_free_bulk(clones, i);
+			return -1;
+		}
+	}
+
+	/* Small delay so fdopen's tsc_base is measurably after the copies */
+	rte_delay_us_block(100);
+
+	now = current_timestamp();
+
+	tmp_fd = mkstemps(file_name, strlen(".pcapng"));
+	if (tmp_fd == -1) {
+		perror("mkstemps() failure");
+		rte_pktmbuf_free_bulk(clones, count);
+		return -1;
+	}
+
+	pcapng = rte_pcapng_fdopen(tmp_fd, NULL, NULL, "pcapng_preopen", NULL);
+	if (pcapng == NULL) {
+		fprintf(stderr, "rte_pcapng_fdopen failed\n");
+		close(tmp_fd);
+		rte_pktmbuf_free_bulk(clones, count);
+		return -1;
+	}
+
+	ret = rte_pcapng_add_interface(pcapng, port_id, DLT_EN10MB,
+				       NULL, NULL, NULL);
+	if (ret < 0) {
+		fprintf(stderr, "can not add port %u\n", port_id);
+		goto fail;
+	}
+
+	/* Write the pre-captured packets — timestamps precede tsc_base */
+	len = rte_pcapng_write_packets(pcapng, clones, count);
+	rte_pktmbuf_free_bulk(clones, count);
+	if (len <= 0) {
+		fprintf(stderr, "Write of pre-open packets failed: %s\n",
+			rte_strerror(rte_errno));
+		goto fail;
+	}
+
+	rte_pcapng_close(pcapng);
+
+	/* Validate the file is parseable — timestamps should be
+	 * slightly before 'now' but still reasonable.
+	 */
+	ret = valid_pcapng_file(file_name, now - NS_PER_S, count);
+	if (ret == 0)
+		remove(file_name);
+
+	return ret;
+
+fail:
+	rte_pcapng_close(pcapng);
+	return -1;
+}
+
 static void
 test_cleanup(void)
 {
@@ -606,6 +687,7 @@ unit_test_suite test_pcapng_suite  = {
 	.unit_test_cases = {
 		TEST_CASE(test_add_interface),
 		TEST_CASE(test_write_packets),
+		TEST_CASE(test_write_before_open),
 		TEST_CASES_END()
 	}
 };
