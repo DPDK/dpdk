@@ -13,6 +13,12 @@
 #include "../common/tx.h"
 #include "../common/rx.h"
 
+#define FIELD_PREP(_mask, _val) \
+	(__extension__ ({ \
+		typeof(_mask) _x = (_mask); \
+		((typeof(_x))(_val) << rte_bsf32(_x)) & (_x); \
+	}))
+
 #define IDPF_RX_MAX_BURST		32
 
 #define IDPF_RX_OFFLOAD_IPV4_CKSUM		RTE_BIT64(1)
@@ -162,6 +168,7 @@ struct idpf_rx_queue {
 
 	uint64_t offloads;
 	uint32_t hw_register_set;
+	uint32_t time_high; /* high 32 bits of hardware timestamp register */
 };
 
 union idpf_tx_desc {

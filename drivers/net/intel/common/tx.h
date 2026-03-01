@@ -216,6 +216,7 @@ struct ci_tx_queue {
 				struct ci_tx_queue *complq;
 				void **txqs;   /*only valid for split queue mode*/
 				uint32_t tx_start_qid;
+				uint32_t latch_idx; /* Tx timestamp latch index */
 				uint16_t sw_nb_desc;
 				uint16_t sw_tail;
 				uint16_t rs_compl_count;

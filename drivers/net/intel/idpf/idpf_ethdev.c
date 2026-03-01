@@ -14,6 +14,7 @@
 #include "idpf_ethdev.h"
 #include "idpf_rxtx.h"
 #include "../common/tx.h"
+#include "idpf_ptp.h"
 
 #define IDPF_TX_SINGLE_Q	"tx_single"
 #define IDPF_RX_SINGLE_Q	"rx_single"
@@ -841,6 +842,267 @@ idpf_dev_close(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+idpf_timesync_enable(struct rte_eth_dev *dev)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_adapter *adapter = vport->adapter;
+	struct timespec sys_ts;
+	uint64_t ns;
+	int ret, q_id;
+	if (dev->data->dev_started && !(dev->data->dev_conf.rxmode.offloads &
+		RTE_ETH_RX_OFFLOAD_TIMESTAMP)) {
+		PMD_DRV_LOG(ERR, "Rx timestamp offload not configured");
+		return -1;
+	}
+
+	adapter->ptp = rte_zmalloc(NULL, sizeof(struct idpf_ptp), 0);
+	if (adapter->ptp == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to allocate memory for PTP");
+		return -ENOMEM;
+	}
+
+	ret = idpf_ptp_get_caps(adapter);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get PTP capabilities, err=%d", ret);
+		goto fail_ptp;
+	}
+
+	/* Write the default increment time value if the clock adjustments are enabled. */
+	if (adapter->ptp->adj_dev_clk_time_access != IDPF_PTP_NONE) {
+		ret = idpf_ptp_adj_dev_clk_fine(adapter, adapter->ptp->base_incval);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "PTP set incval failed, err=%d", ret);
+			goto fail_ptp;
+		}
+	}
+
+	/* Do not initialize the PTP if the device clock time cannot be read. */
+	if (adapter->ptp->get_dev_clk_time_access == IDPF_PTP_NONE) {
+		PMD_DRV_LOG(ERR, "Getting device clock time is not supported");
+		ret = -EIO;
+		goto fail_ptp;
+	}
+
+	/* Set the device clock time to system time. */
+	if (adapter->ptp->set_dev_clk_time_access != IDPF_PTP_NONE) {
+		clock_gettime(CLOCK_REALTIME, &sys_ts);
+		ns = rte_timespec_to_ns(&sys_ts);
+		ret = idpf_ptp_set_dev_clk_time(adapter, ns);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "PTP set clock time failed, err=%d", ret);
+			goto fail_ptp;
+		}
+	}
+
+	ret = idpf_ptp_get_vport_tstamps_caps(vport);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get vport timestamp capabilities, err=%d", ret);
+		goto fail_ptp;
+	}
+
+	for (q_id = 0; q_id < dev->data->nb_tx_queues; q_id++) {
+		struct ci_tx_queue *txq = dev->data->tx_queues[q_id];
+		txq->latch_idx = vport->tx_tstamp_caps->tx_tstamp[q_id].idx;
+	}
+
+	adapter->ptp->cmd.shtime_enable_mask = PF_GLTSYN_CMD_SYNC_SHTIME_EN_M;
+	adapter->ptp->cmd.exec_cmd_mask = PF_GLTSYN_CMD_SYNC_EXEC_CMD_M;
+
+	return 0;
+
+fail_ptp:
+	rte_free(adapter->ptp);
+	adapter->ptp = NULL;
+	return ret;
+}
+
+static int
+idpf_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
+						struct timespec *timestamp,
+						uint32_t flags)
+{
+	struct idpf_rx_queue *rxq;
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_adapter *adapter = vport->adapter;
+	uint64_t ts_ns;
+
+	rxq = dev->data->rx_queues[flags];
+
+	ts_ns = idpf_tstamp_convert_32b_64b(adapter, 1, true, rxq->time_high);
+	*timestamp = rte_ns_to_timespec(ts_ns);
+
+	return 0;
+}
+
+static int
+idpf_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
+						struct timespec *timestamp)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	uint16_t latch_idx;
+	uint64_t ts_ns, tstamp;
+	int ret;
+
+	ret = idpf_ptp_get_tx_tstamp(vport);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get TX timestamp");
+		return ret;
+	}
+
+	latch_idx = vport->tx_tstamp_caps->latched_idx;
+	tstamp = vport->tx_tstamp_caps->tx_tstamp[latch_idx].tstamp;
+	ts_ns = idpf_tstamp_convert_32b_64b(vport->adapter, 0, false, tstamp);
+
+	/* Convert to timespec */
+	*timestamp = rte_ns_to_timespec(ts_ns);
+
+	vport->tx_tstamp_caps->latched_idx = -1;
+
+	return 0;
+}
+
+static int
+idpf_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_adapter *adapter = vport->adapter;
+	struct idpf_ptp *ptp = adapter->ptp;
+	uint64_t time, ns;
+	int ret;
+
+	if (ptp->adj_dev_clk_time_access != IDPF_PTP_MAILBOX) {
+		PMD_DRV_LOG(ERR, "Adjusting device clock time is not supported");
+		return -ENOTSUP;
+	}
+
+	if (delta > INT32_MAX || delta < INT32_MIN) {
+		ret = idpf_ptp_read_src_clk_reg(adapter, &time);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "PTP read clock time failed, err %d", ret);
+			return ret;
+		}
+
+		ns = time + delta;
+
+		ret = idpf_ptp_set_dev_clk_time(adapter, ns);
+		if (ret)
+			PMD_DRV_LOG(ERR, "PTP set clock time failed, err %d", ret);
+
+		return ret;
+	}
+
+	ret = idpf_ptp_adj_dev_clk_time(adapter, delta);
+	if (ret)
+		PMD_DRV_LOG(ERR, "PTP adjusting clock failed, err %d", ret);
+
+	return ret;
+}
+
+static int
+idpf_timesync_adjust_freq(struct rte_eth_dev *dev, int64_t ppm)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_adapter *adapter = vport->adapter;
+	struct idpf_ptp *ptp = adapter->ptp;
+	int64_t incval, diff = 0;
+	bool negative = false;
+	uint64_t div, rem;
+	uint64_t divisor = 1000000ULL << 16;
+	int shift;
+	int ret;
+
+	incval = ptp->base_incval;
+
+	if (ppm < 0) {
+		negative = true;
+		ppm = -ppm;
+	}
+
+	/* can incval * ppm overflow ? */
+	if (rte_log2_u64(incval) + rte_log2_u64(ppm) > 62) {
+		rem = ppm % divisor;
+		div = ppm / divisor;
+		diff = div * incval;
+		ppm = rem;
+
+		shift = rte_log2_u64(incval) + rte_log2_u64(ppm) - 62;
+		if (shift > 0) {
+			/* drop precision */
+			ppm >>= shift;
+			divisor >>= shift;
+		}
+	}
+
+	if (divisor)
+		diff = diff + incval * ppm / divisor;
+
+	if (negative)
+		incval -= diff;
+	else
+		incval += diff;
+
+	ret = idpf_ptp_adj_dev_clk_fine(adapter, incval);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "PTP failed to set incval, err %d", ret);
+		return ret;
+	}
+	return ret;
+}
+
+static int
+idpf_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_adapter *adapter = vport->adapter;
+	uint64_t ns;
+	int ret;
+
+	ns = rte_timespec_to_ns(ts);
+	ret = idpf_ptp_set_dev_clk_time(adapter, ns);
+	if (ret)
+		PMD_DRV_LOG(ERR, "PTP write time failed, err %d", ret);
+
+	return ret;
+}
+
+static int
+idpf_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_adapter *adapter = vport->adapter;
+	uint64_t time;
+	int ret;
+
+	ret = idpf_ptp_read_src_clk_reg(adapter, &time);
+	if (ret)
+		PMD_DRV_LOG(ERR, "PTP read time failed, err %d", ret);
+	else
+		*ts = rte_ns_to_timespec(time);
+
+	return ret;
+}
+
+static int
+idpf_timesync_disable(struct rte_eth_dev *dev)
+{
+	struct idpf_vport *vport = dev->data->dev_private;
+	struct idpf_adapter *adapter = vport->adapter;
+
+	if (vport->tx_tstamp_caps) {
+		rte_free(vport->tx_tstamp_caps);
+		vport->tx_tstamp_caps = NULL;
+	}
+
+	if (adapter->ptp) {
+		rte_free(adapter->ptp);
+		adapter->ptp = NULL;
+	}
+
+	return 0;
+}
+
+
 static const struct eth_dev_ops idpf_eth_dev_ops = {
 	.dev_configure			= idpf_dev_configure,
 	.dev_close			= idpf_dev_close,
@@ -867,6 +1129,14 @@ static const struct eth_dev_ops idpf_eth_dev_ops = {
 	.xstats_get			= idpf_dev_xstats_get,
 	.xstats_get_names		= idpf_dev_xstats_get_names,
 	.xstats_reset			= idpf_dev_xstats_reset,
+	.timesync_enable              = idpf_timesync_enable,
+	.timesync_read_rx_timestamp   = idpf_timesync_read_rx_timestamp,
+	.timesync_read_tx_timestamp   = idpf_timesync_read_tx_timestamp,
+	.timesync_adjust_time         = idpf_timesync_adjust_time,
+	.timesync_adjust_freq         = idpf_timesync_adjust_freq,
+	.timesync_read_time           = idpf_timesync_read_time,
+	.timesync_write_time          = idpf_timesync_write_time,
+	.timesync_disable             = idpf_timesync_disable,
 };
 
 static int

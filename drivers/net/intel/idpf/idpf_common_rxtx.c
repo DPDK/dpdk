@@ -9,6 +9,7 @@
 
 #include "idpf_common_rxtx.h"
 #include "idpf_common_device.h"
+#include "idpf_ptp.h"
 
 int idpf_timestamp_dynfield_offset = -1;
 uint64_t idpf_timestamp_dynflag;
@@ -489,58 +490,6 @@ idpf_qc_split_rxq_mbufs_alloc(struct idpf_rx_queue *rxq)
 	return 0;
 }
 
-#define IDPF_TIMESYNC_REG_WRAP_GUARD_BAND  10000
-/* Helper function to convert a 32b nanoseconds timestamp to 64b. */
-static inline uint64_t
-idpf_tstamp_convert_32b_64b(struct idpf_adapter *ad, uint32_t flag,
-			    uint32_t in_timestamp)
-{
-#ifdef RTE_ARCH_X86_64
-	struct idpf_hw *hw = &ad->hw;
-	const uint64_t mask = 0xFFFFFFFF;
-	uint32_t hi, lo, lo2, delta;
-	uint64_t ns;
-
-	if (flag != 0) {
-		IDPF_WRITE_REG(hw, GLTSYN_CMD_SYNC_0_0, PF_GLTSYN_CMD_SYNC_SHTIME_EN_M);
-		IDPF_WRITE_REG(hw, GLTSYN_CMD_SYNC_0_0, PF_GLTSYN_CMD_SYNC_EXEC_CMD_M |
-			       PF_GLTSYN_CMD_SYNC_SHTIME_EN_M);
-		lo = IDPF_READ_REG(hw, PF_GLTSYN_SHTIME_L_0);
-		hi = IDPF_READ_REG(hw, PF_GLTSYN_SHTIME_H_0);
-		/*
-		 * On typical system, the delta between lo and lo2 is ~1000ns,
-		 * so 10000 seems a large-enough but not overly-big guard band.
-		 */
-		if (lo > (UINT32_MAX - IDPF_TIMESYNC_REG_WRAP_GUARD_BAND))
-			lo2 = IDPF_READ_REG(hw, PF_GLTSYN_SHTIME_L_0);
-		else
-			lo2 = lo;
-
-		if (lo2 < lo) {
-			lo = IDPF_READ_REG(hw, PF_GLTSYN_SHTIME_L_0);
-			hi = IDPF_READ_REG(hw, PF_GLTSYN_SHTIME_H_0);
-		}
-
-		ad->time_hw = ((uint64_t)hi << 32) | lo;
-	}
-
-	delta = (in_timestamp - (uint32_t)(ad->time_hw & mask));
-	if (delta > (mask / 2)) {
-		delta = ((uint32_t)(ad->time_hw & mask) - in_timestamp);
-		ns = ad->time_hw - delta;
-	} else {
-		ns = ad->time_hw + delta;
-	}
-
-	return ns;
-#else /* !RTE_ARCH_X86_64 */
-	RTE_SET_USED(ad);
-	RTE_SET_USED(flag);
-	RTE_SET_USED(in_timestamp);
-	return 0;
-#endif /* RTE_ARCH_X86_64 */
-}
-
 #define IDPF_RX_FLEX_DESC_ADV_STATUS0_XSUM_S				\
 	(RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_ADV_STATUS0_XSUM_IPE_S) |     \
 	 RTE_BIT32(VIRTCHNL2_RX_FLEX_DESC_ADV_STATUS0_XSUM_L4E_S) |     \
@@ -786,20 +735,27 @@ idpf_dp_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			ptype_tbl[(rte_le_to_cpu_16(rx_desc->ptype_err_fflags0) &
 				   VIRTCHNL2_RX_FLEX_DESC_ADV_PTYPE_M) >>
 				  VIRTCHNL2_RX_FLEX_DESC_ADV_PTYPE_S];
+
+		if ((rxm->packet_type & RTE_PTYPE_L2_MASK) == RTE_PTYPE_L2_ETHER_TIMESYNC)
+			rxm->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP;
+
 		status_err0_qw1 = rte_le_to_cpu_16(rx_desc->status_err0_qw1);
 		pkt_flags = idpf_splitq_rx_csum_offload(status_err0_qw1);
 		pkt_flags |= idpf_splitq_rx_rss_offload(rxm, rx_desc);
 		if (idpf_timestamp_dynflag > 0 &&
 		    (rxq->offloads & IDPF_RX_OFFLOAD_TIMESTAMP)) {
 			/* timestamp */
+			rxq->time_high = rte_le_to_cpu_32(rx_desc->ts_high);
 			ts_ns = idpf_tstamp_convert_32b_64b(ad,
-							    rxq->hw_register_set,
-							    rte_le_to_cpu_32(rx_desc->ts_high));
+							    rxq->hw_register_set, true,
+							    rxq->time_high);
 			rxq->hw_register_set = 0;
 			*RTE_MBUF_DYNFIELD(rxm,
 					   idpf_timestamp_dynfield_offset,
 					   rte_mbuf_timestamp_t *) = ts_ns;
 			first_seg->ol_flags |= idpf_timestamp_dynflag;
+			if (rx_desc->ts_low & VIRTCHNL2_RX_FLEX_TSTAMP_VALID)
+				rxm->ol_flags |= RTE_MBUF_F_RX_IEEE1588_TMST;
 		}
 
 		first_seg->ol_flags |= pkt_flags;
@@ -893,21 +849,20 @@ idpf_split_tx_free(struct ci_tx_queue *cq)
 static inline uint16_t
 idpf_calc_context_desc(uint64_t flags)
 {
-	if ((flags & RTE_MBUF_F_TX_TCP_SEG) != 0)
-		return 1;
+	static uint64_t mask = RTE_MBUF_F_TX_TCP_SEG |
+		RTE_MBUF_F_TX_IEEE1588_TMST;
 
-	return 0;
+	return (flags & mask) ? 1 : 0;
 }
 
-/* set TSO context descriptor, returns 0 if no context needed, 1 if context set
+/* set a context descriptor, returns 0 if no context needed, 1 if context set
  */
 static inline uint16_t
-idpf_set_tso_ctx(uint64_t ol_flags, const struct rte_mbuf *mbuf,
+idpf_get_context_desc(uint64_t ol_flags, const struct rte_mbuf *mbuf,
 		 const union ci_tx_offload *tx_offload,
 		 const struct ci_tx_queue *txq __rte_unused,
 		 uint64_t *qw0, uint64_t *qw1)
 {
-	uint16_t cmd_dtype = IDPF_TX_DESC_DTYPE_FLEX_TSO_CTX | IDPF_TX_FLEX_CTX_DESC_CMD_TSO;
 	uint16_t tso_segsz = mbuf->tso_segsz;
 	uint32_t tso_len;
 	uint8_t hdr_len;
@@ -915,19 +870,27 @@ idpf_set_tso_ctx(uint64_t ol_flags, const struct rte_mbuf *mbuf,
 	if (idpf_calc_context_desc(ol_flags) == 0)
 		return 0;
 
-	/* TSO context descriptor setup */
-	if (tx_offload->l4_len == 0) {
-		TX_LOG(DEBUG, "L4 length set to 0");
-		return 0;
-	}
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
+		/* TSO context descriptor setup */
+		if (tx_offload->l4_len == 0) {
+			TX_LOG(DEBUG, "L4 length set to 0");
+			return 0;
+		}
 
-	hdr_len = tx_offload->l2_len + tx_offload->l3_len + tx_offload->l4_len;
-	tso_len = mbuf->pkt_len - hdr_len;
+		hdr_len = tx_offload->l2_len + tx_offload->l3_len + tx_offload->l4_len;
+		tso_len = mbuf->pkt_len - hdr_len;
 
-	*qw0 = rte_cpu_to_le_32(tso_len & IDPF_TXD_FLEX_CTX_MSS_RT_M) |
+		*qw0 = rte_cpu_to_le_32(tso_len & IDPF_TXD_FLEX_CTX_MSS_RT_M) |
 	       ((uint64_t)rte_cpu_to_le_16(tso_segsz & IDPF_TXD_FLEX_CTX_MSS_RT_M) << 32) |
 	       ((uint64_t)hdr_len << 48);
-	*qw1 = rte_cpu_to_le_16(cmd_dtype);
+		*qw1 = rte_cpu_to_le_16(IDPF_TX_DESC_DTYPE_FLEX_TSO_CTX |
+			IDPF_TX_FLEX_CTX_DESC_CMD_TSO);
+	} else if (ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST)
+		*qw1 = FIELD_PREP(IDPF_TXD_QW1_CMD_M, IDPF_TX_CTX_DESC_TSYN) |
+			FIELD_PREP(IDPF_TXD_QW1_DTYPE_M, IDPF_TX_DESC_DTYPE_CTX) |
+			((uint64_t)FIELD_PREP(IDPF_TX_DESC_CTX_TSYN_L_M, txq->latch_idx) << 16) |
+			((uint64_t)FIELD_PREP(IDPF_TX_DESC_CTX_TSYN_H_M, txq->latch_idx >> 2)
+			<< 32);
 
 	return 1;
 }
@@ -988,7 +951,7 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_offload.tso_segsz = tx_pkt->tso_segsz;
 		/* Calculate the number of context descriptors needed. */
 		uint64_t cd_qw0 = 0, cd_qw1 = 0;
-		nb_ctx = idpf_set_tso_ctx(ol_flags, tx_pkt, &tx_offload, txq,
+		nb_ctx = idpf_get_context_desc(ol_flags, tx_pkt, &tx_offload, txq,
 					  &cd_qw0, &cd_qw1);
 
 		/* Calculate the number of TX descriptors needed for
@@ -1230,17 +1193,22 @@ idpf_dp_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		rxm->ol_flags |= pkt_flags;
 
+		if ((rxm->packet_type & RTE_PTYPE_L2_MASK) == RTE_PTYPE_L2_ETHER_TIMESYNC)
+			rxm->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP;
+
 		if (idpf_timestamp_dynflag > 0 &&
 		    (rxq->offloads & IDPF_RX_OFFLOAD_TIMESTAMP) != 0) {
 			/* timestamp */
+			rxq->time_high = rte_le_to_cpu_32(rxd.flex_nic_wb.flex_ts.ts_high);
 			ts_ns = idpf_tstamp_convert_32b_64b(ad,
-					    rxq->hw_register_set,
-					    rte_le_to_cpu_32(rxd.flex_nic_wb.flex_ts.ts_high));
+					    rxq->hw_register_set, true,
+					    rxq->time_high);
 			rxq->hw_register_set = 0;
 			*RTE_MBUF_DYNFIELD(rxm,
 					   idpf_timestamp_dynfield_offset,
 					   rte_mbuf_timestamp_t *) = ts_ns;
 			rxm->ol_flags |= idpf_timestamp_dynflag;
+			rxm->ol_flags |= RTE_MBUF_F_RX_IEEE1588_TMST;
 		}
 
 		rx_pkts[nb_rx++] = rxm;
@@ -1280,6 +1248,9 @@ idpf_dp_singleq_recv_scatter_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	if (unlikely(!rxq) || unlikely(!rxq->q_started))
 		return nb_rx;
+
+	if ((rxq->offloads & IDPF_RX_OFFLOAD_TIMESTAMP) != 0)
+		rxq->hw_register_set = 1;
 
 	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
@@ -1361,17 +1332,22 @@ idpf_dp_singleq_recv_scatter_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			ptype_tbl[(uint8_t)(rte_cpu_to_le_16(rxd.flex_nic_wb.ptype_flex_flags0) &
 				VIRTCHNL2_RX_FLEX_DESC_PTYPE_M)];
 
+		if ((first_seg->packet_type & RTE_PTYPE_L2_MASK) == RTE_PTYPE_L2_ETHER_TIMESYNC)
+			first_seg->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP;
+
 		if (idpf_timestamp_dynflag > 0 &&
 		    (rxq->offloads & IDPF_RX_OFFLOAD_TIMESTAMP) != 0) {
 			/* timestamp */
+			rxq->time_high = rte_le_to_cpu_32(rxd.flex_nic_wb.flex_ts.ts_high);
 			ts_ns = idpf_tstamp_convert_32b_64b(ad,
-				rxq->hw_register_set,
-				rte_le_to_cpu_32(rxd.flex_nic_wb.flex_ts.ts_high));
+				rxq->hw_register_set, true,
+				rxq->time_high);
 			rxq->hw_register_set = 0;
 			*RTE_MBUF_DYNFIELD(rxm,
 					   idpf_timestamp_dynfield_offset,
 					   rte_mbuf_timestamp_t *) = ts_ns;
 			first_seg->ol_flags |= idpf_timestamp_dynflag;
+			first_seg->ol_flags |= RTE_MBUF_F_RX_IEEE1588_TMST;
 		}
 
 		first_seg->ol_flags |= pkt_flags;
@@ -1396,7 +1372,7 @@ idpf_dp_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			  uint16_t nb_pkts)
 {
 	return ci_xmit_pkts(tx_queue, tx_pkts, nb_pkts, CI_VLAN_IN_L2TAG1,
-			idpf_set_tso_ctx, NULL, NULL);
+			idpf_get_context_desc, NULL, NULL);
 }
 
 RTE_EXPORT_INTERNAL_SYMBOL(idpf_dp_singleq_xmit_pkts_simple)

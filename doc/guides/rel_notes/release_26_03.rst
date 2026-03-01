@@ -73,6 +73,10 @@ New Features
 
   * Added application-initiated device reset.
 
+* **Updated Intel idpf ethernet driver.**
+
+  * Added support for time sync features.
+
 * **Updated Intel iavf driver.**
 
   * Added support for pre and post VF reset callbacks.
