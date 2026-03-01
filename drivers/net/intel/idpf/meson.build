@@ -17,6 +17,7 @@ sources += files(
         'idpf_common_virtchnl.c',
 
         'idpf_ethdev.c',
+        'idpf_ptp.c',
         'idpf_rxtx.c',
 )
 

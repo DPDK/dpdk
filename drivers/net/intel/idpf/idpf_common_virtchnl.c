@@ -4,6 +4,7 @@
 
 #include "idpf_common_virtchnl.h"
 #include "idpf_common_logs.h"
+#include "idpf_ptp.h"
 
 #include <eal_export.h>
 
@@ -36,6 +37,24 @@ idpf_vc_clean(struct idpf_adapter *adapter)
 	}
 
 	return 0;
+}
+
+	/* Helper to detect PTP-related mailbox messages */
+static inline bool
+idpf_mb_msg_is_ptp(uint32_t op)
+{
+	switch (op) {
+	case VIRTCHNL2_OP_PTP_GET_VPORT_TX_TSTAMP:
+	case VIRTCHNL2_OP_PTP_GET_DEV_CLK_TIME:
+	case VIRTCHNL2_OP_PTP_GET_CROSS_TIME:
+	case VIRTCHNL2_OP_PTP_SET_DEV_CLK_TIME:
+	case VIRTCHNL2_OP_PTP_ADJ_DEV_CLK_FINE:
+	case VIRTCHNL2_OP_PTP_ADJ_DEV_CLK_TIME:
+	case VIRTCHNL2_OP_PTP_GET_VPORT_TX_TSTAMP_CAPS:
+		return true;
+	default:
+		return false;
+	}
 }
 
 static int
@@ -71,8 +90,16 @@ idpf_send_vc_msg(struct idpf_adapter *adapter, uint32_t op,
 
 	memcpy(dma_mem->va, msg, msg_size);
 
-	ctlq_msg->opcode = idpf_mbq_opc_send_msg_to_pf;
-	ctlq_msg->func_id = 0;
+	if (adapter->ptp != NULL &&
+	    idpf_mb_msg_is_ptp(op) &&
+	    adapter->ptp->secondary_mbx.valid) {
+		ctlq_msg->opcode = idpf_mbq_opc_send_msg_to_peer_drv;
+		ctlq_msg->func_id = adapter->ptp->secondary_mbx.peer_mbx_q_id;
+		ctlq_msg->host_id = adapter->ptp->secondary_mbx.peer_id;
+	} else {
+		ctlq_msg->opcode = idpf_mbq_opc_send_msg_to_pf;
+		ctlq_msg->func_id = 0;
+	}
 	ctlq_msg->data_len = msg_size;
 	ctlq_msg->cookie.mbx.chnl_opcode = op;
 	ctlq_msg->cookie.mbx.chnl_retval = VIRTCHNL_STATUS_SUCCESS;
