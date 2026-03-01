@@ -118,8 +118,14 @@ enum virtchnl2_op {
 	VIRTCHNL2_OP_DEL_QUEUE_GROUPS		= 539,
 	VIRTCHNL2_OP_GET_PORT_STATS		= 540,
 	/* TimeSync opcodes */
-	VIRTCHNL2_OP_GET_PTP_CAPS		= 541,
-	VIRTCHNL2_OP_GET_PTP_TX_TSTAMP_LATCHES	= 542,
+	VIRTCHNL2_OP_PTP_GET_CAPS			= 541,
+	VIRTCHNL2_OP_PTP_GET_VPORT_TX_TSTAMP		= 542,
+	VIRTCHNL2_OP_PTP_GET_DEV_CLK_TIME		= 543,
+	VIRTCHNL2_OP_PTP_GET_CROSS_TIME			= 544,
+	VIRTCHNL2_OP_PTP_SET_DEV_CLK_TIME		= 545,
+	VIRTCHNL2_OP_PTP_ADJ_DEV_CLK_FINE		= 546,
+	VIRTCHNL2_OP_PTP_ADJ_DEV_CLK_TIME		= 547,
+	VIRTCHNL2_OP_PTP_GET_VPORT_TX_TSTAMP_CAPS	= 548,
 };
 
 #define VIRTCHNL2_RDMA_INVALID_QUEUE_IDX	0xFFFF
@@ -1813,123 +1819,180 @@ VIRTCHNL2_CHECK_STRUCT_LEN(8, virtchnl2_promisc_info);
  * enum virtchnl2_ptp_caps - PTP capabilities
  */
 enum virtchnl2_ptp_caps {
-	VIRTCHNL2_PTP_CAP_LEGACY_CROSS_TIME	= BIT(0),
-	VIRTCHNL2_PTP_CAP_PTM			= BIT(1),
-	VIRTCHNL2_PTP_CAP_DEVICE_CLOCK_CONTROL	= BIT(2),
-	VIRTCHNL2_PTP_CAP_TX_TSTAMPS_DIRECT	= BIT(3),
-	VIRTCHNL2_PTP_CAP_TX_TSTAMPS_VIRTCHNL	= BIT(4),
+	VIRTCHNL2_CAP_PTP_GET_DEVICE_CLK_TIME		= BIT(0),
+	VIRTCHNL2_CAP_PTP_GET_DEVICE_CLK_TIME_MB	= BIT(1),
+	VIRTCHNL2_CAP_PTP_GET_CROSS_TIME		= BIT(2),
+	VIRTCHNL2_CAP_PTP_GET_CROSS_TIME_MB		= BIT(3),
+	VIRTCHNL2_CAP_PTP_SET_DEVICE_CLK_TIME		= BIT(4),
+	VIRTCHNL2_CAP_PTP_SET_DEVICE_CLK_TIME_MB	= BIT(5),
+	VIRTCHNL2_CAP_PTP_ADJ_DEVICE_CLK		= BIT(6),
+	VIRTCHNL2_CAP_PTP_ADJ_DEVICE_CLK_MB		= BIT(7),
+	VIRTCHNL2_CAP_PTP_TX_TSTAMPS			= BIT(8),
+	VIRTCHNL2_CAP_PTP_TX_TSTAMPS_MB			= BIT(9),
 };
 
 /**
- * struct virtchnl2_ptp_legacy_cross_time_reg - Legacy cross time registers
- *						offsets.
+ * struct virtchnl2_ptp_clk_reg_offsets - Offsets of device and PHY clocks
+ *					  registers
+ * @dev_clk_ns_l: Device clock low register offset
+ * @dev_clk_ns_h: Device clock high register offset
+ * @phy_clk_ns_l: PHY clock low register offset
+ * @phy_clk_ns_h: PHY clock high register offset
+ * @cmd_sync_trigger: The command sync trigger register offset
+ * @pad: Padding for future extensions
  */
-struct virtchnl2_ptp_legacy_cross_time_reg {
-	__le32 shadow_time_0;
-	__le32 shadow_time_l;
-	__le32 shadow_time_h;
-	__le32 cmd_sync;
-};
-
-VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_ptp_legacy_cross_time_reg);
-
-/**
- * struct virtchnl2_ptp_ptm_cross_time_reg - PTM cross time registers offsets
- */
-struct virtchnl2_ptp_ptm_cross_time_reg {
-	__le32 art_l;
-	__le32 art_h;
-	__le32 cmd_sync;
+struct virtchnl2_ptp_clk_reg_offsets {
+	__le32 dev_clk_ns_l;
+	__le32 dev_clk_ns_h;
+	__le32 phy_clk_ns_l;
+	__le32 phy_clk_ns_h;
+	__le32 cmd_sync_trigger;
 	u8 pad[4];
 };
 
-VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_ptp_ptm_cross_time_reg);
+VIRTCHNL2_CHECK_STRUCT_LEN(24, virtchnl2_ptp_clk_reg_offsets);
 
 /**
- * struct virtchnl2_ptp_device_clock_control - Registers needed to control the
- *					       main clock.
+ * struct virtchnl2_ptp_cross_time_reg_offsets - Offsets of the device cross
+ *						 time registers
+ * @sys_time_ns_l: System time low register offset
+ * @sys_time_ns_h: System time high register offset
+ * @cmd_sync_trigger: The command sync trigger register offset
+ * @pad: Padding for future extensions
  */
-struct virtchnl2_ptp_device_clock_control {
-	__le32 cmd;
-	__le32 incval_l;
-	__le32 incval_h;
-	__le32 shadj_l;
-	__le32 shadj_h;
+struct virtchnl2_ptp_cross_time_reg_offsets {
+	__le32 sys_time_ns_l;
+	__le32 sys_time_ns_h;
+	__le32 cmd_sync_trigger;
 	u8 pad[4];
 };
 
-VIRTCHNL2_CHECK_STRUCT_LEN(24, virtchnl2_ptp_device_clock_control);
+VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_ptp_cross_time_reg_offsets);
 
 /**
- * struct virtchnl2_ptp_tx_tstamp_entry - PTP TX timestamp entry
- * @tx_latch_register_base: TX latch register base
- * @tx_latch_register_offset: TX latch register offset
- * @index: Index
- * @pad: Padding
+ * struct virtchnl2_ptp_clk_adj_reg_offsets - Offsets of device and PHY clocks
+ *					      adjustments registers
+ * @dev_clk_cmd_type: Device clock command type register offset
+ * @dev_clk_incval_l: Device clock increment value low register offset
+ * @dev_clk_incval_h: Device clock increment value high registers offset
+ * @dev_clk_shadj_l: Device clock shadow adjust low register offset
+ * @dev_clk_shadj_h: Device clock shadow adjust high register offset
+ * @phy_clk_cmd_type: PHY timer command type register offset
+ * @phy_clk_incval_l: PHY timer increment value low register offset
+ * @phy_clk_incval_h: PHY timer increment value high register offset
+ * @phy_clk_shadj_l: PHY timer shadow adjust low register offset
+ * @phy_clk_shadj_h: PHY timer shadow adjust high register offset
  */
-struct virtchnl2_ptp_tx_tstamp_entry {
-	__le32 tx_latch_register_base;
-	__le32 tx_latch_register_offset;
+struct virtchnl2_ptp_clk_adj_reg_offsets {
+	__le32 dev_clk_cmd_type;
+	__le32 dev_clk_incval_l;
+	__le32 dev_clk_incval_h;
+	__le32 dev_clk_shadj_l;
+	__le32 dev_clk_shadj_h;
+	__le32 phy_clk_cmd_type;
+	__le32 phy_clk_incval_l;
+	__le32 phy_clk_incval_h;
+	__le32 phy_clk_shadj_l;
+	__le32 phy_clk_shadj_h;
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(40, virtchnl2_ptp_clk_adj_reg_offsets);
+
+/**
+ * struct virtchnl2_ptp_tx_tstamp_latch_caps - PTP Tx timestamp latch
+ *					       capabilities
+ * @tx_latch_reg_offset_l: Tx timestamp latch low register offset
+ * @tx_latch_reg_offset_h: Tx timestamp latch high register offset
+ * @index: Latch index provided to the Tx descriptor
+ * @pad: Padding for future extensions
+ */
+struct virtchnl2_ptp_tx_tstamp_latch_caps {
+	__le32 tx_latch_reg_offset_l;
+	__le32 tx_latch_reg_offset_h;
 	u8 index;
 	u8 pad[7];
 };
 
-VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_ptp_tx_tstamp_entry);
+VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_ptp_tx_tstamp_latch_caps);
 
 /**
- * struct virtchnl2_ptp_tx_tstamp - Structure that defines tx tstamp entries
+ * struct virtchnl2_ptp_get_vport_tx_tstamp_caps - Structure that defines Tx
+ *						   tstamp entries
+ * @vport_id: Vport number
  * @num_latches: Total number of latches
- * @latch_size: Latch size expressed in bits
- * @pad: Padding
- * @ptp_tx_tstamp_entries: Aarray of TX timestamp entries
+ * @tstamp_ns_lo_bit: First bit for nanosecond part of the timestamp
+ * @tstamp_ns_hi_bit: Last bit for nanosecond part of the timestamp
+ * @pad: Padding for future tstamp granularity extensions
+ * @tstamp_latches: Capabilities of Tx timestamp entries
+ *
+ * PF/VF sends this message to negotiate the Tx timestamp latches for each
+ * Vport.
+ *
+ * Associated with VIRTCHNL2_OP_PTP_GET_VPORT_TX_TSTAMP_CAPS
  */
-struct virtchnl2_ptp_tx_tstamp {
+struct virtchnl2_ptp_get_vport_tx_tstamp_caps {
+	__le32 vport_id;
 	__le16 num_latches;
-	__le16 latch_size;
-	u8 pad[4];
-	struct virtchnl2_ptp_tx_tstamp_entry ptp_tx_tstamp_entries[STRUCT_VAR_LEN];
+	u8 tstamp_ns_lo_bit;
+	u8 tstamp_ns_hi_bit;
+	u8 pad[8];
+
+	struct virtchnl2_ptp_tx_tstamp_latch_caps tstamp_latches[STRUCT_VAR_LEN];
 };
-VIRTCHNL2_CHECK_STRUCT_VAR_LEN(24, virtchnl2_ptp_tx_tstamp,
-			       ptp_tx_tstamp_entries);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(32, virtchnl2_ptp_get_vport_tx_tstamp_caps,
+			       tstamp_latches);
 
 /**
- * struct virtchnl2_get_ptp_caps - Get PTP capabilities
- * @ptp_caps: PTP capability bitmap. See enum virtchnl2_ptp_caps.
- * @pad: Padding
- * @legacy_cross_time_reg: Legacy cross time register
- * @ptm_cross_time_reg: PTM cross time register
- * @device_clock_control: Device clock control
- * @tx_tstamp: TX timestamp
+ * struct virtchnl2_ptp_get_caps - Get PTP capabilities
+ * @caps: PTP capability bitmap. See enum virtchnl2_ptp_caps
+ * @max_adj: The maximum possible frequency adjustment
+ * @base_incval: The default timer increment value
+ * @peer_mbx_q_id: ID of the PTP Device Control daemon queue
+ * @peer_id: Peer ID for PTP Device Control daemon
+ * @secondary_mbx: Indicates to the driver that it should create a secondary
+ *		   mailbox to inetract with control plane for PTP
+ * @pad: Padding for future extensions
+ * @clk_offsets: Main timer and PHY registers offsets
+ * @cross_time_offsets: Cross time registers offsets
+ * @clk_adj_offsets: Offsets needed to adjust the PHY and the main timer
  *
- * PV/VF sends this message to negotiate PTP capabilities. CP updates bitmap
+ * PF/VF sends this message to negotiate PTP capabilities. CP updates bitmap
  * with supported features and fulfills appropriate structures.
+ * If HW uses primary MBX for PTP: secondary_mbx is set to false.
+ * If HW uses secondary MBX for PTP: secondary_mbx is set to true.
+ *	Control plane has 2 MBX and the driver has 1 MBX, send to peer
+ *	driver may be used to send a message using valid ptp_peer_mb_q_id and
+ *	ptp_peer_id.
+ * If HW does not use send to peer driver: secondary_mbx is no care field and
+ * peer_mbx_q_id holds invalid value (0xFFFF).
  *
- * Associated with VIRTCHNL2_OP_GET_PTP_CAPS.
+ * Associated with VIRTCHNL2_OP_PTP_GET_CAPS.
  */
-struct virtchnl2_get_ptp_caps {
-	__le32 ptp_caps;
+struct virtchnl2_ptp_get_caps {
+	__le32 caps;
+	__le32 max_adj;
+	__le64 base_incval;
+	__le16 peer_mbx_q_id;
+	u8 peer_id;
+	u8 secondary_mbx;
 	u8 pad[4];
 
-	struct virtchnl2_ptp_legacy_cross_time_reg legacy_cross_time_reg;
-	struct virtchnl2_ptp_ptm_cross_time_reg ptm_cross_time_reg;
-	struct virtchnl2_ptp_device_clock_control device_clock_control;
-	struct virtchnl2_ptp_tx_tstamp tx_tstamp;
+	struct virtchnl2_ptp_clk_reg_offsets clk_offsets;
+	struct virtchnl2_ptp_cross_time_reg_offsets cross_time_offsets;
+	struct virtchnl2_ptp_clk_adj_reg_offsets clk_adj_offsets;
 };
-VIRTCHNL2_CHECK_STRUCT_VAR_LEN(88, virtchnl2_get_ptp_caps,
-			       tx_tstamp.ptp_tx_tstamp_entries);
+VIRTCHNL2_CHECK_STRUCT_LEN(104, virtchnl2_ptp_get_caps);
 
 /**
  * struct virtchnl2_ptp_tx_tstamp_latch - Structure that describes tx tstamp
  *					  values, index and validity.
- * @tstamp_h: Timestamp high
- * @tstamp_l: Timestamp low
+ * @tstamp: Timestamp value
  * @index: Index
  * @valid: Timestamp validity
- * @pad: Padding
+ * @pad: Padding for future extensions
  */
 struct virtchnl2_ptp_tx_tstamp_latch {
-	__le32 tstamp_h;
-	__le32 tstamp_l;
+	__le64 tstamp;
 	u8 index;
 	u8 valid;
 	u8 pad[6];
@@ -1938,25 +2001,96 @@ struct virtchnl2_ptp_tx_tstamp_latch {
 VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_ptp_tx_tstamp_latch);
 
 /**
- * struct virtchnl2_ptp_tx_tstamp_latches - PTP TX timestamp latches
+ * struct virtchnl2_ptp_get_vport_tx_tstamp_latches - Tx timestamp latches
+ *						      associated with the vport
+ * @vport_id: Number of vport that requests the timestamp
  * @num_latches: Number of latches
- * @latch_size: Latch size expressed in bits
- * @pad: Padding
+ * @get_devtime_with_txtstmp: Flag to request device time along with Tx timestamp
+ * @pad: Padding for future extensions
+ * @device_time: device time if get_devtime_with_txtstmp was set in request
  * @tstamp_latches: PTP TX timestamp latch
  *
  * PF/VF sends this message to receive a specified number of timestamps
  * entries.
  *
- * Associated with VIRTCHNL2_OP_GET_PTP_TX_TSTAMP_LATCHES.
+ * Associated with VIRTCHNL2_OP_PTP_GET_VPORT_TX_TSTAMP.
  */
-struct virtchnl2_ptp_tx_tstamp_latches {
+struct virtchnl2_ptp_get_vport_tx_tstamp_latches {
+	__le32 vport_id;
 	__le16 num_latches;
-	__le16 latch_size;
-	u8 pad[4];
+	u8 get_devtime_with_txtstmp;
+	u8 pad[1];
+	u64 device_time;
 	struct virtchnl2_ptp_tx_tstamp_latch tstamp_latches[STRUCT_VAR_LEN];
 };
-VIRTCHNL2_CHECK_STRUCT_VAR_LEN(24, virtchnl2_ptp_tx_tstamp_latches,
+
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(32, virtchnl2_ptp_get_vport_tx_tstamp_latches,
 			       tstamp_latches);
+
+/* VIRTCHNL2_OP_PTP_GET_DEV_CLK_TIME
+ * @dev_time_ns: Device clock time value in nanoseconds
+ * @pad: Padding for future extensions
+ *
+ * PF/VF sends this message to receive the time from the main timer
+ */
+struct virtchnl2_ptp_get_dev_clk_time {
+	__le64 dev_time_ns;
+	u8 pad[8];
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_ptp_get_dev_clk_time);
+
+/* VIRTCHNL2_OP_PTP_GET_CROSS_TIME
+ * @sys_time_ns: System counter value expressed in nanoseconds, read
+ *		 synchronously with device time
+ * @dev_time_ns: Device clock time value expressed in nanoseconds
+ * @pad: Padding for future extensions
+ *
+ * PF/VF sends this message to receive the cross time
+ */
+struct virtchnl2_ptp_get_cross_time {
+	__le64 sys_time_ns;
+	__le64 dev_time_ns;
+	u8 pad[8];
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(24, virtchnl2_ptp_get_cross_time);
+
+/* VIRTCHNL2_OP_PTP_SET_DEV_CLK_TIME
+ * @dev_time_ns: Device time value expressed in nanoseconds to set
+ * @pad: Padding for future extensions
+ *
+ * PF/VF sends this message to set the time of the main timer
+ */
+struct virtchnl2_ptp_set_dev_clk_time {
+	__le64 dev_time_ns;
+	u8 pad[8];
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_ptp_set_dev_clk_time);
+
+/* VIRTCHNL2_OP_PTP_ADJ_DEV_CLK_FINE
+ * @incval: Source timer increment value per clock cycle
+ *
+ * PF/VF sends this message to adjust the frequency of the main timer by the
+ * indicated scaled ppm.
+ */
+struct virtchnl2_ptp_adj_dev_clk_fine {
+	__le64 incval;
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(8, virtchnl2_ptp_adj_dev_clk_fine);
+
+/* VIRTCHNL2_OP_PTP_ADJ_DEV_CLK_TIME
+ * @delta: Offset in nanoseconds to adjust the time by
+ *
+ * PF/VF sends this message to adjust the time of the main timer by the delta
+ */
+struct virtchnl2_ptp_adj_dev_clk_time {
+	__le64 delta;
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(8, virtchnl2_ptp_adj_dev_clk_time);
 
 static inline const char *virtchnl2_op_str(__le32 v_opcode)
 {
@@ -2025,10 +2159,22 @@ static inline const char *virtchnl2_op_str(__le32 v_opcode)
 		return "VIRTCHNL2_OP_DEL_QUEUE_GROUPS";
 	case VIRTCHNL2_OP_GET_PORT_STATS:
 		return "VIRTCHNL2_OP_GET_PORT_STATS";
-	case VIRTCHNL2_OP_GET_PTP_CAPS:
-		return "VIRTCHNL2_OP_GET_PTP_CAPS";
-	case VIRTCHNL2_OP_GET_PTP_TX_TSTAMP_LATCHES:
-		return "VIRTCHNL2_OP_GET_PTP_TX_TSTAMP_LATCHES";
+	case VIRTCHNL2_OP_PTP_GET_CAPS:
+		return "VIRTCHNL2_OP_PTP_GET_CAPS";
+	case VIRTCHNL2_OP_PTP_GET_VPORT_TX_TSTAMP:
+		return "VIRTCHNL2_OP_PTP_GET_VPORT_TX_TSTAMP";
+	case VIRTCHNL2_OP_PTP_GET_DEV_CLK_TIME:
+		return "VIRTCHNL2_OP_PTP_GET_DEV_CLK_TIME";
+	case VIRTCHNL2_OP_PTP_GET_CROSS_TIME:
+		return "VIRTCHNL2_OP_PTP_GET_CROSS_TIME";
+	case VIRTCHNL2_OP_PTP_SET_DEV_CLK_TIME:
+		return "VIRTCHNL2_OP_PTP_SET_DEV_CLK_TIME";
+	case VIRTCHNL2_OP_PTP_ADJ_DEV_CLK_FINE:
+		return "VIRTCHNL2_OP_PTP_ADJ_DEV_CLK_FINE";
+	case VIRTCHNL2_OP_PTP_ADJ_DEV_CLK_TIME:
+		return "VIRTCHNL2_OP_PTP_ADJ_DEV_CLK_TIME";
+	case VIRTCHNL2_OP_PTP_GET_VPORT_TX_TSTAMP_CAPS:
+		return "VIRTCHNL2_OP_PTP_GET_VPORT_TX_TSTAMP_CAPS";
 	default:
 		return "Unsupported (update virtchnl2.h)";
 	}
