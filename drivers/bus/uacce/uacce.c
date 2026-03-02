@@ -2,6 +2,7 @@
  * Copyright(c) 2024 HiSilicon Limited
  */
 
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -324,19 +325,62 @@ error:
 	return -1;
 }
 
-static bool
-uacce_match(const struct rte_uacce_driver *dr, const struct rte_uacce_device *dev)
+static uint32_t
+uacce_calc_api_ver(const char *api, int *offset)
 {
+	int len = strlen(api);
+	int end = len - 1;
+	unsigned long ver;
+
+	while (end >= 0 && isdigit(api[end]))
+		end--;
+
+	if (end <= 0 || end == len - 1 || api[end] != 'v')
+		return 0;
+
+	ver = strtoul(api + end + 1, NULL, 10);
+	if (ver > UINT32_MAX)
+		return 0;
+
+	if (offset != NULL)
+		*offset = end + 1;
+	return (uint32_t)ver;
+}
+
+static bool
+uacce_match_api(const struct rte_uacce_device *dev, bool forward_compat,
+		const struct rte_uacce_id *id_table)
+{
+	int dev_ver_off = 0, id_ver_off = 0;
+	uint32_t dev_ver, id_ver;
+
+	if (!forward_compat)
+		return strcmp(id_table->dev_api, dev->api) == 0;
+
+	dev_ver = uacce_calc_api_ver(dev->api, &dev_ver_off);
+	id_ver = uacce_calc_api_ver(id_table->dev_api, &id_ver_off);
+	return dev_ver > 0 && id_ver > 0 && dev_ver_off == id_ver_off &&
+		strncmp(id_table->dev_api, dev->api, dev_ver_off) == 0 &&
+		dev_ver >= id_ver;
+}
+
+static bool
+uacce_match(const struct rte_uacce_driver *dr, struct rte_uacce_device *dev)
+{
+	bool forward_compat = !!(dr->drv_flags & RTE_UACCE_DRV_FORWARD_COMPATIBILITY_DEV);
+	uint32_t api_ver = uacce_calc_api_ver(dev->api, NULL);
 	const struct rte_uacce_id *id_table;
 	const char *map;
 	uint32_t len;
 
 	for (id_table = dr->id_table; id_table->dev_api != NULL; id_table++) {
-		if (strcmp(id_table->dev_api, dev->api) != 0)
+		if (!uacce_match_api(dev, forward_compat, id_table))
 			continue;
 
-		if (id_table->dev_alg == NULL)
+		if (id_table->dev_alg == NULL) {
+			dev->api_ver = api_ver;
 			return true;
+		}
 
 		/* The dev->algs's algrothims is separated by new line, for
 		 * example: dev->algs could be: aaa\nbbbb\ncc, which has three
@@ -352,6 +396,7 @@ uacce_match(const struct rte_uacce_driver *dr, const struct rte_uacce_device *de
 		if (map[len] != '\0' && map[len] != '\n')
 			continue;
 
+		dev->api_ver = api_ver;
 		return true;
 	}
 

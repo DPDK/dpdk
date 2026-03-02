@@ -50,6 +50,7 @@ struct rte_uacce_device {
 	char dev_root[RTE_UACCE_DEV_PATH_SIZE];  /**< Sysfs path with device name. */
 	char cdev_path[RTE_UACCE_DEV_PATH_SIZE]; /**< Device path in devfs. */
 	char api[RTE_UACCE_API_NAME_SIZE];       /**< Device context type. */
+	uint32_t api_ver;                        /**< Device api version used for compatibility. */
 	char algs[RTE_UACCE_ALGS_NAME_SIZE];     /**< Device supported algorithms. */
 	uint32_t flags;                          /**< Device flags. */
 	int numa_node;                           /**< NUMA node connection, -1 if unknown. */
@@ -100,7 +101,11 @@ struct rte_uacce_driver {
 	rte_uacce_probe_t *probe;               /**< Device probe function. */
 	rte_uacce_remove_t *remove;             /**< Device remove function. */
 	const struct rte_uacce_id *id_table;    /**< ID table, NULL terminated. */
+	uint32_t drv_flags;                     /**< Flags RTE_UACCE_DRV_*. */
 };
+
+/** Device driver supports forward compatibility device */
+#define RTE_UACCE_DRV_FORWARD_COMPATIBILITY_DEV	0x1
 
 /**
  * Get available queue number.
