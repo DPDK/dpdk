@@ -2147,7 +2147,9 @@ event_inline_ipsec_testsuite_setup(void)
 		return TEST_SKIPPED;
 	}
 
-	init_mempools(NB_MBUF);
+	ret = init_mempools(NB_MBUF);
+	if (ret != 0)
+		return ret;
 
 	if (tx_pkts_burst == NULL) {
 		tx_pkts_burst = (struct rte_mbuf **)rte_calloc("tx_buff",
