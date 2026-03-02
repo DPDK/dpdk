@@ -724,7 +724,7 @@ bnxt_set_ol_flags(struct bnxt_rx_ring_info *rxr, struct rx_pkt_cmpl *rxcmp,
 		     RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP))
 		ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP | RTE_MBUF_F_RX_IEEE1588_TMST;
 
-	mbuf->ol_flags = ol_flags;
+	mbuf->ol_flags |= ol_flags;
 }
 
 static void
@@ -1183,6 +1183,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	if (mbuf == NULL)
 		return -EBUSY;
 
+	mbuf->ol_flags = 0;
 	mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 	mbuf->nb_segs = 1;
 	mbuf->next = NULL;
@@ -1200,6 +1201,15 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		bnxt_parse_csum_v3(mbuf, rxcmp1);
 		bnxt_parse_pkt_type_v3(mbuf, rxcmp, rxcmp1);
 		bnxt_rx_vlan_v3(mbuf, rxcmp, rxcmp1, vnic->vlan_strip);
+
+		/* Packet cannot be a PTP ethertype if it is detected as L4 */
+		if (mbuf->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_GOOD)
+			mbuf->ol_flags &= ~RTE_MBUF_F_RX_IEEE1588_PTP;
+
+		/* If its a PTP frame, ptype cannot be L2_ETHER */
+		if (mbuf->ol_flags & RTE_MBUF_F_RX_IEEE1588_PTP)
+			mbuf->packet_type = RTE_PTYPE_L2_ETHER_TIMESYNC;
+
 		if (BNXT_TRUFLOW_EN(bp))
 			mark_id = bnxt_ulp_set_mark_in_mbuf_v3(rxq->bp, rxcmp1,
 							       mbuf, &vfr_flag);
