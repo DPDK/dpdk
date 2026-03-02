@@ -65,6 +65,25 @@ parse_ipsec_in_spi_range(const char *key, const char *value, void *extra_args)
 }
 
 static int
+parse_rxc_step(const char *key, const char *value, void *extra_args)
+{
+	RTE_SET_USED(key);
+	uint32_t val;
+
+	errno = 0;
+	val = strtoul(value, NULL, 0);
+	if (errno)
+		return -EINVAL;
+
+	if (val > ROC_NIX_INL_REAS_STEP_MAX)
+		return -EINVAL;
+
+	*(uint32_t *)extra_args = val;
+
+	return 0;
+}
+
+static int
 parse_ipsec_out_max_sa(const char *key, const char *value, void *extra_args)
 {
 	RTE_SET_USED(key);
@@ -283,6 +302,7 @@ parse_val_u16(const char *key, const char *value, void *extra_args)
 #define CNXK_CUSTOM_INB_SA	  "custom_inb_sa"
 #define CNXK_FORCE_TAIL_DROP	  "force_tail_drop"
 #define CNXK_DIS_XQE_DROP	  "disable_xqe_drop"
+#define CNXK_RXC_STEP		  "rxc_step"
 
 int
 cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
@@ -314,6 +334,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint16_t lock_rx_ctx = 0;
 	uint16_t rx_inj_ena = 0;
 	uint16_t no_inl_dev = 0;
+	uint32_t rxc_step = 0;
 
 	memset(&sdp_chan, 0, sizeof(sdp_chan));
 	memset(&pre_l2_info, 0, sizeof(struct flow_pre_l2_size_info));
@@ -370,6 +391,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	rte_kvargs_process(kvlist, CNXK_CUSTOM_INB_SA, &parse_flag, &custom_inb_sa);
 	rte_kvargs_process(kvlist, CNXK_FORCE_TAIL_DROP, &parse_flag, &force_tail_drop);
 	rte_kvargs_process(kvlist, CNXK_DIS_XQE_DROP, &parse_flag, &dis_xqe_drop);
+	rte_kvargs_process(kvlist, CNXK_RXC_STEP, &parse_rxc_step, &rxc_step);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -413,6 +435,7 @@ null_devargs:
 		dev->nix.rx_inj_ena = rx_inj_ena;
 	dev->nix.force_tail_drop = force_tail_drop;
 	dev->nix.dis_xqe_drop = !!dis_xqe_drop;
+	dev->nix.rxc_step = rxc_step;
 	return 0;
 exit:
 	return -EINVAL;
@@ -439,4 +462,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_cnxk,
 			      CNXK_NIX_RX_INJ_ENABLE "=1"
 			      CNXK_CUSTOM_META_AURA_DIS "=1"
 			      CNXK_FORCE_TAIL_DROP "=1"
-			      CNXK_DIS_XQE_DROP "=1");
+			      CNXK_DIS_XQE_DROP "=1"
+			      CNXK_RXC_STEP "=<0-1048575>");
