@@ -1258,7 +1258,7 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	 * sends another hwrm msg.
 	 */
 	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_PTP_SUPPORTED) {
-		if (BNXT_CHIP_P5(bp) || BNXT_PF(bp)) {
+		if (BNXT_CHIP_P5_P7(bp) || BNXT_PF(bp)) {
 			bp->flags |= BNXT_FLAG_PTP_SUPPORTED;
 			PMD_DRV_LOG_LINE(DEBUG, "PTP SUPPORTED");
 			HWRM_UNLOCK();
