@@ -403,6 +403,10 @@ struct bnxt_ptp_cfg {
 
 	/* On P5, the Rx timestamp is present in the Rx completion record */
 	uint64_t			rx_timestamp;
+	/* Dynamic mbuf field for passing Rx timestamp. */
+	int				mb_rx_timestamp_offset;
+	/* Dynamic mbuf flag for indicating Rx timestamp. */
+	uint64_t			mb_rx_timestamp_flag;
 	uint64_t			current_time;
 	uint64_t			old_time;
 	rte_spinlock_t			ptp_lock;

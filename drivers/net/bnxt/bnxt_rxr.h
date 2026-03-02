@@ -181,6 +181,13 @@ bnxt_cfa_code_dynfield(struct rte_mbuf *mbuf)
 		bnxt_cfa_code_dynfield_offset, bnxt_cfa_code_dynfield_t *);
 }
 
+static __rte_always_inline void
+bnxt_timestamp_dynfield_set(struct rte_mbuf *mbuf, int offset,
+			    rte_mbuf_timestamp_t ts)
+{
+	*RTE_MBUF_DYNFIELD(mbuf, offset, rte_mbuf_timestamp_t *) = ts;
+}
+
 #define BNXT_RX_META_CFA_CODE_SHIFT		19
 #define BNXT_CFA_CODE_META_SHIFT		16
 #define BNXT_RX_META_CFA_CODE_INT_ACT_REC_BIT	0x8000000

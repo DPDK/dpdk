@@ -1191,11 +1191,21 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	mbuf->data_len = mbuf->pkt_len;
 	mbuf->port = rxq->port_id;
 
-	if (unlikely((rte_le_to_cpu_16(rxcmp->flags_type) &
+	if (unlikely(((rte_le_to_cpu_16(rxcmp->flags_type) &
 		      RX_PKT_CMPL_FLAGS_MASK) ==
 		      RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP) ||
-		      bp->ptp_all_rx_tstamp)
+		      bp->ptp_all_rx_tstamp) && bp->ieee_1588 &&
+		      bp->ptp_cfg) {
+		mbuf->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP |
+				  RTE_MBUF_F_RX_IEEE1588_TMST;
 		bnxt_get_rx_ts_p5(rxq->bp, rxcmp1->reorder);
+#ifndef RTE_IOVA_IN_MBUF
+		bnxt_timestamp_dynfield_set(mbuf,
+					    bp->ptp_cfg->mb_rx_timestamp_offset,
+					    bp->ptp_cfg->rx_timestamp);
+		mbuf->ol_flags |= bp->ptp_cfg->mb_rx_timestamp_flag;
+#endif
+	}
 
 	if (cmp_type == CMPL_BASE_TYPE_RX_L2_V3) {
 		bnxt_parse_csum_v3(mbuf, rxcmp1);
@@ -1203,8 +1213,12 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		bnxt_rx_vlan_v3(mbuf, rxcmp, rxcmp1, vnic->vlan_strip);
 
 		/* Packet cannot be a PTP ethertype if it is detected as L4 */
-		if (mbuf->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_GOOD)
+		if (mbuf->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_GOOD) {
 			mbuf->ol_flags &= ~RTE_MBUF_F_RX_IEEE1588_PTP;
+			if (unlikely(bp->ptp_cfg))
+				mbuf->ol_flags &=
+					~bp->ptp_cfg->mb_rx_timestamp_flag;
+		}
 
 		/* If its a PTP frame, ptype cannot be L2_ETHER */
 		if (mbuf->ol_flags & RTE_MBUF_F_RX_IEEE1588_PTP)

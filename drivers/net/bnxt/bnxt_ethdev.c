@@ -1686,6 +1686,7 @@ static void bnxt_ptp_stop(struct bnxt *bp)
 
 static int bnxt_ptp_start(struct bnxt *bp)
 {
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
 	int rc;
 
 	rc = bnxt_schedule_ptp_alarm(bp);
@@ -1694,6 +1695,14 @@ static int bnxt_ptp_start(struct bnxt *bp)
 	} else {
 		bp->flags2 |= BNXT_FLAGS2_PTP_TIMESYNC_ENABLED;
 		bp->flags2 |= BNXT_FLAGS2_PTP_ALARM_SCHEDULED;
+
+		/* extra mbuf field to store timestamp information */
+		if (rte_mbuf_dyn_rx_timestamp_register(&ptp->mb_rx_timestamp_offset,
+						       &ptp->mb_rx_timestamp_flag) != 0) {
+			PMD_DRV_LOG_LINE(ERR,
+					 "Failed to register mbuf field for Rx timestamp");
+			return -rte_errno;
+		}
 	}
 
 	return rc;
