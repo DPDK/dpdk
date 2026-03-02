@@ -172,8 +172,14 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	txq->nb_tx_desc = nb_desc;
 	txq->tx_free_thresh =
 		RTE_MIN(rte_align32pow2(nb_desc) / 4, RTE_BNXT_MAX_TX_BURST);
+	/* For PTP packets, process the completion sooner */
+	if (bp->ptp_cfg != NULL)
+		txq->tx_free_thresh = RTE_BNXT_MIN_TX_BURST;
 	txq->offloads = eth_dev->data->dev_conf.txmode.offloads |
 			tx_conf->offloads;
+	/* mbuf fast free not supported for the following. Reset the bit */
+	if (bp->ieee_1588)
+		txq->offloads &= ~RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 

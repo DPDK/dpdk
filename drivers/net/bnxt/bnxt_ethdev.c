@@ -1827,6 +1827,8 @@ int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	struct rte_eth_link *link = &eth_dev->data->dev_link;
 	int vlan_mask = 0;
 	int rc, retry_cnt = BNXT_IF_CHANGE_RETRY_COUNT;
+	struct bnxt_tx_queue *txq;
+	uint16_t queue_idx;
 
 	if (bp->rx_cp_nr_rings > RTE_ETHDEV_QUEUE_STAT_CNTRS)
 		PMD_DRV_LOG_LINE(ERR,
@@ -1909,6 +1911,27 @@ int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 
 	if (BNXT_P5_PTP_TIMESYNC_ENABLED(bp))
 		bnxt_schedule_ptp_alarm(bp);
+
+	/* There are a few conditions for which fast free is not supported.
+	 * PTP can be enabled/disabled without restarting some programs.
+	 */
+	for (queue_idx = 0; queue_idx < bp->tx_nr_rings; queue_idx++) {
+		txq = eth_dev->data->tx_queues[queue_idx];
+		if (BNXT_P5_PTP_TIMESYNC_ENABLED(bp) || bp->ieee_1588) {
+			txq->offloads &= ~RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
+			if (BNXT_P5_PTP_TIMESYNC_ENABLED(bp) || bp->ieee_1588)
+				txq->tx_free_thresh = RTE_BNXT_MIN_TX_BURST;
+			else
+				txq->tx_free_thresh =
+					RTE_MIN(rte_align32pow2(txq->nb_tx_desc) / 4,
+						RTE_BNXT_MAX_TX_BURST);
+		} else {
+			txq->offloads |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
+			txq->tx_free_thresh =
+				RTE_MIN(rte_align32pow2(txq->nb_tx_desc) / 4,
+					RTE_BNXT_MAX_TX_BURST);
+		}
+	}
 
 	return 0;
 
