@@ -764,9 +764,10 @@ static const struct rte_uacce_id hacc_dma_id_table[] = {
 };
 
 static struct rte_uacce_driver hacc_dma_pmd_drv = {
-	.id_table = hacc_dma_id_table,
-	.probe    = hacc_dma_probe,
-	.remove   = hacc_dma_remove,
+	.id_table  = hacc_dma_id_table,
+	.probe     = hacc_dma_probe,
+	.remove    = hacc_dma_remove,
+	.drv_flags = RTE_UACCE_DRV_FORWARD_COMPATIBILITY_DEV,
 };
 
 RTE_PMD_REGISTER_UACCE(dma_hisi_acc, hacc_dma_pmd_drv);
