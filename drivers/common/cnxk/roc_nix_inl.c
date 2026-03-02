@@ -973,19 +973,16 @@ roc_nix_reassembly_configure(struct roc_cpt_rxc_time_cfg *req_cfg, uint32_t max_
 	struct roc_cpt_rxc_time_cfg cfg;
 	struct roc_cpt *roc_cpt;
 	struct mbox *mbox;
+	uint32_t val;
 	int rc;
 
 	if (!idev)
 		return -EFAULT;
 
-	cfg.step = req_cfg->step ? req_cfg->step :
-				   (max_wait_time * 1000 / ROC_NIX_INL_REAS_ACTIVE_LIMIT);
 	cfg.zombie_limit =
 		req_cfg->zombie_limit ? req_cfg->zombie_limit : ROC_NIX_INL_REAS_ZOMBIE_LIMIT;
 	cfg.zombie_thres =
 		req_cfg->zombie_thres ? req_cfg->zombie_thres : ROC_NIX_INL_REAS_ZOMBIE_THRESHOLD;
-	cfg.active_limit =
-		req_cfg->active_limit ? req_cfg->active_limit : ROC_NIX_INL_REAS_ACTIVE_LIMIT;
 	cfg.active_thres =
 		req_cfg->active_thres ? req_cfg->active_thres : ROC_NIX_INL_REAS_ACTIVE_THRESHOLD;
 
@@ -995,6 +992,12 @@ roc_nix_reassembly_configure(struct roc_cpt_rxc_time_cfg *req_cfg, uint32_t max_
 			plt_err("Cryptodev not probed");
 			return -ENOTSUP;
 		}
+
+		val = max_wait_time ? (max_wait_time * 1000 / ROC_NIX_INL_REAS_ACTIVE_LIMIT) : 0;
+		cfg.step = req_cfg->step ? req_cfg->step : val;
+		cfg.active_limit = req_cfg->active_limit ? req_cfg->active_limit :
+							   ROC_NIX_INL_REAS_ACTIVE_LIMIT;
+
 		return roc_cpt_rxc_time_cfg(roc_cpt, &cfg);
 	}
 
@@ -1011,6 +1014,16 @@ roc_nix_reassembly_configure(struct roc_cpt_rxc_time_cfg *req_cfg, uint32_t max_
 		rc = -ENOSPC;
 		goto exit;
 	}
+
+	/* For CN20K, Configure step size fix and active limit per RXC queue,
+	 * Default CPT_AF_RXC_TIME_CFG::AGE_STEP will be 1ms, so max reassembly
+	 * timeout can be up to 4095 ms.
+	 */
+	cfg.step = req_cfg->step ? req_cfg->step : ROC_NIX_INL_REAS_STEP_DFLT;
+	val = max_wait_time ? (max_wait_time * 1000 / cfg.step) : 0;
+	cfg.active_limit = req_cfg->active_limit ? req_cfg->active_limit : val;
+	if (cfg.active_limit > ROC_NIX_INL_REAS_ACTIVE_LIMIT)
+		cfg.active_limit = ROC_NIX_INL_REAS_ACTIVE_LIMIT;
 
 	req->blkaddr = 0;
 	req->queue_id = inl_dev->nix_inb_qids[inl_dev->inb_cpt_lf_id];
