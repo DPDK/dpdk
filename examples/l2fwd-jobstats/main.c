@@ -541,7 +541,9 @@ l2fwd_main_loop(void)
 		} while (likely(stats_read_pending == 0));
 
 		rte_spinlock_unlock(&qconf->lock);
-		rte_pause();
+		while (__atomic_load_n(&qconf->stats_read_pending,
+			__ATOMIC_RELAXED) != 0)
+			rte_pause();
 	}
 	/* >8 End of minimize impact of stats reading. */
 }
