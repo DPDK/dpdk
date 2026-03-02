@@ -271,7 +271,7 @@ vmbus_devargs_lookup(struct rte_vmbus_device *dev)
 	struct rte_devargs *devargs;
 	rte_uuid_t addr;
 
-	RTE_EAL_DEVARGS_FOREACH("vmbus", devargs) {
+	RTE_EAL_DEVARGS_FOREACH(rte_vmbus_bus.bus.name, devargs) {
 		vmbus_parse(devargs->name, &addr);
 
 		if (rte_uuid_compare(dev->device_id, addr) == 0)

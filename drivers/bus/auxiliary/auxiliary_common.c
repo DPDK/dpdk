@@ -30,7 +30,7 @@ auxiliary_devargs_lookup(const char *name)
 {
 	struct rte_devargs *devargs;
 
-	RTE_EAL_DEVARGS_FOREACH(RTE_BUS_AUXILIARY_NAME, devargs) {
+	RTE_EAL_DEVARGS_FOREACH(auxiliary_bus.bus.name, devargs) {
 		if (strcmp(devargs->name, name) == 0)
 			return devargs;
 	}

@@ -28,8 +28,6 @@
 extern "C" {
 #endif
 
-#define RTE_BUS_AUXILIARY_NAME "auxiliary"
-
 /* Forward declarations */
 struct rte_auxiliary_driver;
 struct rte_auxiliary_device;

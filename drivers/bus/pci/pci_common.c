@@ -85,7 +85,7 @@ pci_devargs_lookup(const struct rte_pci_addr *pci_addr)
 	struct rte_devargs *devargs;
 	struct rte_pci_addr addr;
 
-	RTE_EAL_DEVARGS_FOREACH("pci", devargs) {
+	RTE_EAL_DEVARGS_FOREACH(rte_pci_bus.bus.name, devargs) {
 		devargs->bus->parse(devargs->name, &addr);
 		if (!rte_pci_addr_cmp(pci_addr, &addr))
 			return devargs;

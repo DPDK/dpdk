@@ -77,7 +77,7 @@ uacce_devargs_lookup(const char *dev_name)
 	struct rte_devargs *devargs;
 
 	snprintf(name, sizeof(name), "%s%s", UACCE_DEV_PREFIX, dev_name);
-	RTE_EAL_DEVARGS_FOREACH("uacce", devargs) {
+	RTE_EAL_DEVARGS_FOREACH(uacce_bus.bus.name, devargs) {
 		if (strcmp(devargs->name, name) == 0)
 			return devargs;
 	}

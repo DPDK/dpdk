@@ -26,7 +26,6 @@
 #include <dpaax_iova_table.h>
 
 #define VFIO_IOMMU_GROUP_PATH "/sys/kernel/iommu_groups"
-#define FSLMC_BUS_NAME	fslmc
 
 struct rte_fslmc_bus rte_fslmc_bus;
 
@@ -106,7 +105,7 @@ fslmc_devargs_lookup(struct rte_dpaa2_device *dev)
 	struct rte_devargs *devargs;
 	char dev_name[32];
 
-	RTE_EAL_DEVARGS_FOREACH("fslmc", devargs) {
+	RTE_EAL_DEVARGS_FOREACH(rte_fslmc_bus.bus.name, devargs) {
 		devargs->bus->parse(devargs->name, &dev_name);
 		if (strcmp(dev_name, dev->device.name) == 0) {
 			DPAA2_BUS_INFO("**Devargs matched %s", dev_name);
@@ -266,8 +265,7 @@ rte_fslmc_parse(const char *name, void *addr)
 	 */
 	if (sep_exists) {
 		/* If either of "fslmc" or "name" are starting part */
-		if (!strncmp(name, RTE_STR(FSLMC_BUS_NAME),
-			     strlen(RTE_STR(FSLMC_BUS_NAME))) ||
+		if (!strncmp(name, rte_fslmc_bus.bus.name, strlen(rte_fslmc_bus.bus.name)) ||
 		   (!strncmp(name, "name", strlen("name")))) {
 			goto jump_out;
 		} else {
@@ -708,5 +706,5 @@ struct rte_fslmc_bus rte_fslmc_bus = {
 	.device_count = {0},
 };
 
-RTE_REGISTER_BUS(FSLMC_BUS_NAME, rte_fslmc_bus.bus);
+RTE_REGISTER_BUS(fslmc, rte_fslmc_bus.bus);
 RTE_LOG_REGISTER_DEFAULT(dpaa2_logtype_bus, NOTICE);

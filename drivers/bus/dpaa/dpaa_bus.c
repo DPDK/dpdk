@@ -77,8 +77,6 @@ static pthread_key_t dpaa_portal_key;
 struct dpaa_portal *dpaa_portals[RTE_MAX_LCORE] = {NULL};
 static int dpaa_bus_global_init;
 
-#define FSL_DPAA_BUS_NAME	dpaa_bus
-
 RTE_EXPORT_INTERNAL_SYMBOL(per_lcore_dpaa_io)
 RTE_DEFINE_PER_LCORE(struct dpaa_portal *, dpaa_io);
 
@@ -206,7 +204,7 @@ dpaa_devargs_lookup(struct rte_dpaa_device *dev)
 	struct rte_devargs *devargs;
 	char dev_name[32];
 
-	RTE_EAL_DEVARGS_FOREACH("dpaa_bus", devargs) {
+	RTE_EAL_DEVARGS_FOREACH(rte_dpaa_bus.bus.name, devargs) {
 		devargs->bus->parse(devargs->name, &dev_name);
 		if (strcmp(dev_name, dev->device.name) == 0) {
 			DPAA_BUS_INFO("**Devargs matched %s", dev_name);
@@ -1003,5 +1001,5 @@ static struct rte_dpaa_bus rte_dpaa_bus = {
 	.device_count = 0,
 };
 
-RTE_REGISTER_BUS(FSL_DPAA_BUS_NAME, rte_dpaa_bus.bus);
+RTE_REGISTER_BUS(dpaa_bus, rte_dpaa_bus.bus);
 RTE_LOG_REGISTER_DEFAULT(dpaa_logtype_bus, NOTICE);

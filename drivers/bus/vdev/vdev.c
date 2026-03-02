@@ -526,7 +526,7 @@ scan:
 	rte_spinlock_unlock(&vdev_custom_scan_lock);
 
 	/* for virtual devices we scan the devargs_list populated via cmdline */
-	RTE_EAL_DEVARGS_FOREACH("vdev", devargs) {
+	RTE_EAL_DEVARGS_FOREACH(rte_vdev_bus.name, devargs) {
 
 		dev = calloc(1, sizeof(*dev));
 		if (!dev)

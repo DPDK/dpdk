@@ -48,7 +48,7 @@ dev_devargs(const char *dev_name)
 {
 	struct rte_devargs *devargs;
 
-	RTE_EAL_DEVARGS_FOREACH("platform", devargs) {
+	RTE_EAL_DEVARGS_FOREACH(platform_bus.bus.name, devargs) {
 		if (!strcmp(devargs->name, dev_name))
 			return devargs;
 	}

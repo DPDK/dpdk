@@ -82,7 +82,6 @@
 #include "cdx_logs.h"
 #include "private.h"
 
-#define CDX_BUS_NAME	cdx
 #define CDX_DEV_PREFIX	"cdx-"
 
 /* CDX Bus iterators */
@@ -157,7 +156,7 @@ cdx_devargs_lookup(const char *dev_name)
 {
 	struct rte_devargs *devargs;
 
-	RTE_EAL_DEVARGS_FOREACH("cdx", devargs) {
+	RTE_EAL_DEVARGS_FOREACH(rte_cdx_bus.bus.name, devargs) {
 		if (strcmp(devargs->name, dev_name) == 0)
 			return devargs;
 	}
