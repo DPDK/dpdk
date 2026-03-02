@@ -79,32 +79,15 @@ pci_asprintf(char **buffer, const char *format, ...)
 }
 #endif /* RTE_EXEC_ENV_WINDOWS */
 
-static struct rte_devargs *
-pci_devargs_lookup(const struct rte_pci_addr *pci_addr)
-{
-	struct rte_devargs *devargs;
-	struct rte_pci_addr addr;
-
-	RTE_EAL_DEVARGS_FOREACH(rte_pci_bus.bus.name, devargs) {
-		devargs->bus->parse(devargs->name, &addr);
-		if (!rte_pci_addr_cmp(pci_addr, &addr))
-			return devargs;
-	}
-	return NULL;
-}
-
 void
 pci_common_set(struct rte_pci_device *dev)
 {
-	struct rte_devargs *devargs;
-
 	/* Each device has its internal, canonical name set. */
 	rte_pci_device_name(&dev->addr,
 			dev->name, sizeof(dev->name));
 	dev->device.name = dev->name;
 
-	devargs = pci_devargs_lookup(&dev->addr);
-	dev->device.devargs = devargs;
+	dev->device.devargs = rte_bus_find_devargs(&rte_pci_bus.bus, dev->name);
 
 	if (dev->bus_info != NULL ||
 			asprintf(&dev->bus_info, "vendor_id=%"PRIx16", device_id=%"PRIx16,
@@ -503,6 +486,18 @@ pci_parse(const char *name, void *addr)
 	return parse == false;
 }
 
+static int
+pci_dev_compare(const char *name1, const char *name2)
+{
+	struct rte_pci_addr addr1, addr2;
+
+	if (rte_pci_addr_parse(name1, &addr1) != 0 ||
+			rte_pci_addr_parse(name2, &addr2) != 0)
+		return 1;
+
+	return rte_pci_addr_cmp(&addr1, &addr2);
+}
+
 /* register a driver */
 RTE_EXPORT_INTERNAL_SYMBOL(rte_pci_register)
 void
@@ -721,7 +716,11 @@ pci_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 bool
 rte_pci_ignore_device(const struct rte_pci_addr *pci_addr)
 {
-	struct rte_devargs *devargs = pci_devargs_lookup(pci_addr);
+	char name[RTE_DEV_NAME_MAX_LEN];
+	struct rte_devargs *devargs;
+
+	rte_pci_device_name(pci_addr, name, sizeof(name));
+	devargs = rte_bus_find_devargs(&rte_pci_bus.bus, name);
 
 	switch (rte_pci_bus.bus.conf.scan_mode) {
 	case RTE_BUS_SCAN_ALLOWLIST:
@@ -946,6 +945,7 @@ struct rte_pci_bus rte_pci_bus = {
 		.plug = pci_plug,
 		.unplug = pci_unplug,
 		.parse = pci_parse,
+		.dev_compare = pci_dev_compare,
 		.devargs_parse = rte_pci_devargs_parse,
 		.dma_map = pci_dma_map,
 		.dma_unmap = pci_dma_unmap,

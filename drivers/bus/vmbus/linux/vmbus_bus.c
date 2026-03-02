@@ -333,7 +333,7 @@ vmbus_scan_one(const char *name)
 		dev->monitor_id = UINT8_MAX;
 	}
 
-	dev->device.devargs = vmbus_devargs_lookup(dev);
+	dev->device.devargs = rte_bus_find_devargs(&rte_vmbus_bus.bus, dev_name);
 
 	dev->device.numa_node = SOCKET_ID_ANY;
 	if (vmbus_use_numa(dev)) {

@@ -99,22 +99,6 @@ insert_in_device_list(struct rte_dpaa2_device *newdev)
 		TAILQ_INSERT_TAIL(&rte_fslmc_bus.device_list, newdev, next);
 }
 
-static struct rte_devargs *
-fslmc_devargs_lookup(struct rte_dpaa2_device *dev)
-{
-	struct rte_devargs *devargs;
-	char dev_name[32];
-
-	RTE_EAL_DEVARGS_FOREACH(rte_fslmc_bus.bus.name, devargs) {
-		devargs->bus->parse(devargs->name, &dev_name);
-		if (strcmp(dev_name, dev->device.name) == 0) {
-			DPAA2_BUS_INFO("**Devargs matched %s", dev_name);
-			return devargs;
-		}
-	}
-	return NULL;
-}
-
 static void
 dump_device_list(void)
 {
@@ -216,7 +200,7 @@ scan_one_fslmc_device(char *dev_name)
 		ret = -ENOMEM;
 		goto cleanup;
 	}
-	dev->device.devargs = fslmc_devargs_lookup(dev);
+	dev->device.devargs = rte_bus_find_devargs(&rte_fslmc_bus.bus, dev_name);
 
 	/* Update the device found into the device_count table */
 	rte_fslmc_bus.device_count[dev->dev_type]++;
@@ -309,6 +293,18 @@ err_out:
 }
 
 static int
+fslmc_dev_compare(const char *name1, const char *name2)
+{
+	char devname1[32], devname2[32];
+
+	if (rte_fslmc_parse(name1, devname1) != 0 ||
+			rte_fslmc_parse(name2, devname2) != 0)
+		return 1;
+
+	return strncmp(devname1, devname2, sizeof(devname1));
+}
+
+static int
 rte_fslmc_scan(void)
 {
 	int ret;
@@ -323,8 +319,10 @@ rte_fslmc_scan(void)
 		struct rte_dpaa2_device *dev;
 
 		DPAA2_BUS_DEBUG("Fslmc bus already scanned. Not rescanning");
-		TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next)
-			dev->device.devargs = fslmc_devargs_lookup(dev);
+		TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next) {
+			dev->device.devargs = rte_bus_find_devargs(&rte_fslmc_bus.bus,
+				dev->device.name);
+		}
 		return 0;
 	}
 	process_once = 1;
@@ -695,6 +693,7 @@ struct rte_fslmc_bus rte_fslmc_bus = {
 		.probe = rte_fslmc_probe,
 		.cleanup = rte_fslmc_close,
 		.parse = rte_fslmc_parse,
+		.dev_compare = fslmc_dev_compare,
 		.find_device = rte_fslmc_find_device,
 		.get_iommu_class = rte_dpaa2_get_iommu_class,
 		.plug = fslmc_bus_plug,

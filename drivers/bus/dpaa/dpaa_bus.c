@@ -198,22 +198,6 @@ dpaa_sec_available(void)
 
 static void dpaa_clean_device_list(void);
 
-static struct rte_devargs *
-dpaa_devargs_lookup(struct rte_dpaa_device *dev)
-{
-	struct rte_devargs *devargs;
-	char dev_name[32];
-
-	RTE_EAL_DEVARGS_FOREACH(rte_dpaa_bus.bus.name, devargs) {
-		devargs->bus->parse(devargs->name, &dev_name);
-		if (strcmp(dev_name, dev->device.name) == 0) {
-			DPAA_BUS_INFO("**Devargs matched %s", dev_name);
-			return devargs;
-		}
-	}
-	return NULL;
-}
-
 static int
 dpaa_create_device_list(void)
 {
@@ -269,7 +253,9 @@ dpaa_create_device_list(void)
 				(fman_intf->fman->idx + 1), fman_intf->mac_idx);
 		}
 		dev->device.name = dev->name;
-		dev->device.devargs = dpaa_devargs_lookup(dev);
+		dev->device.devargs = rte_bus_find_devargs(&rte_dpaa_bus.bus, dev->name);
+		if (dev->device.devargs != NULL)
+			DPAA_BUS_INFO("**Devargs matched %s", dev->name);
 
 		dpaa_add_to_device_list(dev);
 	}
@@ -317,7 +303,9 @@ dpaa_create_device_list(void)
 		sprintf(dev->name, "dpaa_sec-%d", i+1);
 		DPAA_BUS_LOG(INFO, "%s cryptodev added", dev->name);
 		dev->device.name = dev->name;
-		dev->device.devargs = dpaa_devargs_lookup(dev);
+		dev->device.devargs = rte_bus_find_devargs(&rte_dpaa_bus.bus, dev->name);
+		if (dev->device.devargs != NULL)
+			DPAA_BUS_INFO("**Devargs matched %s", dev->name);
 
 		dpaa_add_to_device_list(dev);
 	}
@@ -341,7 +329,9 @@ qdma_dpaa:
 		sprintf(dev->name, "dpaa_qdma-%d", i+1);
 		DPAA_BUS_LOG(INFO, "%s qdma device added", dev->name);
 		dev->device.name = dev->name;
-		dev->device.devargs = dpaa_devargs_lookup(dev);
+		dev->device.devargs = rte_bus_find_devargs(&rte_dpaa_bus.bus, dev->name);
+		if (dev->device.devargs != NULL)
+			DPAA_BUS_INFO("**Devargs matched %s", dev->name);
 
 		dpaa_add_to_device_list(dev);
 	}
@@ -570,6 +560,18 @@ rte_dpaa_bus_parse(const char *name, void *out)
 	}
 
 	return 0;
+}
+
+static int
+dpaa_bus_dev_compare(const char *name1, const char *name2)
+{
+	char devname1[32], devname2[32];
+
+	if (rte_dpaa_bus_parse(name1, devname1) != 0 ||
+			rte_dpaa_bus_parse(name2, devname2) != 0)
+		return 1;
+
+	return strncmp(devname1, devname2, sizeof(devname1));
 }
 
 #define DPAA_DEV_PATH1 "/sys/devices/platform/soc/soc:fsl,dpaa"
@@ -988,6 +990,7 @@ static struct rte_dpaa_bus rte_dpaa_bus = {
 		.scan = rte_dpaa_bus_scan,
 		.probe = rte_dpaa_bus_probe,
 		.parse = rte_dpaa_bus_parse,
+		.dev_compare = dpaa_bus_dev_compare,
 		.find_device = rte_dpaa_find_device,
 		.get_iommu_class = rte_dpaa_get_iommu_class,
 		.plug = dpaa_bus_plug,

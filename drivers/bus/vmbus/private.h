@@ -98,9 +98,6 @@ struct vmbus_channel {
 
 #define VMBUS_MAX_CHANNELS	64
 
-struct rte_devargs *
-vmbus_devargs_lookup(struct rte_vmbus_device *dev);
-
 int vmbus_chan_create(const struct rte_vmbus_device *device,
 		      uint16_t relid, uint16_t subid, uint8_t monitor_id,
 		      struct vmbus_channel **new_chan);

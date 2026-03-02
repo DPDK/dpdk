@@ -151,22 +151,10 @@ void rte_cdx_unmap_device(struct rte_cdx_device *dev)
 	cdx_vfio_unmap_resource(dev);
 }
 
-static struct rte_devargs *
-cdx_devargs_lookup(const char *dev_name)
-{
-	struct rte_devargs *devargs;
-
-	RTE_EAL_DEVARGS_FOREACH(rte_cdx_bus.bus.name, devargs) {
-		if (strcmp(devargs->name, dev_name) == 0)
-			return devargs;
-	}
-	return NULL;
-}
-
 static bool
 cdx_ignore_device(const char *dev_name)
 {
-	struct rte_devargs *devargs = cdx_devargs_lookup(dev_name);
+	struct rte_devargs *devargs = rte_bus_find_devargs(&rte_cdx_bus.bus, dev_name);
 
 	switch (rte_cdx_bus.bus.conf.scan_mode) {
 	case RTE_BUS_SCAN_ALLOWLIST:

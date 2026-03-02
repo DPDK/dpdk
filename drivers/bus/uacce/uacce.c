@@ -70,25 +70,10 @@ extern int uacce_bus_logtype;
 #define UACCE_BUS_DEBUG(fmt, ...) UACCE_BUS_LOG(DEBUG, fmt, ##__VA_ARGS__)
 
 
-static struct rte_devargs *
-uacce_devargs_lookup(const char *dev_name)
-{
-	char name[RTE_UACCE_DEV_PATH_SIZE] = {0};
-	struct rte_devargs *devargs;
-
-	snprintf(name, sizeof(name), "%s%s", UACCE_DEV_PREFIX, dev_name);
-	RTE_EAL_DEVARGS_FOREACH(uacce_bus.bus.name, devargs) {
-		if (strcmp(devargs->name, name) == 0)
-			return devargs;
-	}
-
-	return NULL;
-}
-
 static bool
 uacce_ignore_device(const char *dev_name)
 {
-	struct rte_devargs *devargs = uacce_devargs_lookup(dev_name);
+	struct rte_devargs *devargs = rte_bus_find_devargs(&uacce_bus.bus, dev_name);
 
 	switch (uacce_bus.bus.conf.scan_mode) {
 	case RTE_BUS_SCAN_ALLOWLIST:
@@ -257,7 +242,7 @@ uacce_scan_one(const char *dev_name)
 
 	dev->device.bus = &uacce_bus.bus;
 	dev->device.name = dev->name;
-	dev->device.devargs = uacce_devargs_lookup(dev_name);
+	dev->device.devargs = rte_bus_find_devargs(&uacce_bus.bus, dev_name);
 	snprintf(dev->name, sizeof(dev->name), "%s", dev_name);
 	snprintf(dev->dev_root, sizeof(dev->dev_root), "%s/%s",
 		 UACCE_BUS_CLASS_PATH, dev_name);

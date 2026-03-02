@@ -25,18 +25,6 @@
 
 #include "private.h"
 
-static struct rte_devargs *
-auxiliary_devargs_lookup(const char *name)
-{
-	struct rte_devargs *devargs;
-
-	RTE_EAL_DEVARGS_FOREACH(auxiliary_bus.bus.name, devargs) {
-		if (strcmp(devargs->name, name) == 0)
-			return devargs;
-	}
-	return NULL;
-}
-
 #ifndef AUXILIARY_OS_SUPPORTED
 /*
  * Test whether the auxiliary device exist.
@@ -68,7 +56,7 @@ auxiliary_scan(void)
 void
 auxiliary_on_scan(struct rte_auxiliary_device *aux_dev)
 {
-	aux_dev->device.devargs = auxiliary_devargs_lookup(aux_dev->name);
+	aux_dev->device.devargs = rte_bus_find_devargs(&auxiliary_bus.bus, aux_dev->name);
 }
 
 /*
@@ -399,7 +387,7 @@ auxiliary_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova,
 bool
 auxiliary_is_ignored_device(const char *name)
 {
-	struct rte_devargs *devargs = auxiliary_devargs_lookup(name);
+	struct rte_devargs *devargs = rte_bus_find_devargs(&auxiliary_bus.bus, name);
 
 	switch (auxiliary_bus.bus.conf.scan_mode) {
 	case RTE_BUS_SCAN_ALLOWLIST:

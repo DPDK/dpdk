@@ -171,7 +171,11 @@ vmbus_probe_all_drivers(struct rte_vmbus_device *dev)
 static bool
 vmbus_ignore_device(struct rte_vmbus_device *dev)
 {
-	struct rte_devargs *devargs = vmbus_devargs_lookup(dev);
+	char name[RTE_DEV_NAME_MAX_LEN];
+	struct rte_devargs *devargs;
+
+	rte_uuid_unparse(dev->device_id, name, sizeof(name));
+	devargs = rte_bus_find_devargs(&rte_vmbus_bus.bus, name);
 
 	switch (rte_vmbus_bus.bus.conf.scan_mode) {
 	case RTE_BUS_SCAN_ALLOWLIST:
@@ -260,25 +264,16 @@ vmbus_parse(const char *name, void *addr)
 	return ret;
 }
 
-/*
- * scan for matching device args on command line
- * example:
- *	-a 'vmbus:635a7ae3-091e-4410-ad59-667c4f8c04c3,latency=20'
- */
-struct rte_devargs *
-vmbus_devargs_lookup(struct rte_vmbus_device *dev)
+static int
+vmbus_dev_compare(const char *name1, const char *name2)
 {
-	struct rte_devargs *devargs;
-	rte_uuid_t addr;
+	rte_uuid_t guid1, guid2;
 
-	RTE_EAL_DEVARGS_FOREACH(rte_vmbus_bus.bus.name, devargs) {
-		vmbus_parse(devargs->name, &addr);
+	if (vmbus_parse(name1, &guid1) != 0 ||
+			vmbus_parse(name2, &guid2) != 0)
+		return 1;
 
-		if (rte_uuid_compare(dev->device_id, addr) == 0)
-			return devargs;
-	}
-	return NULL;
-
+	return rte_uuid_compare(guid1, guid2);
 }
 
 /* register vmbus driver */
@@ -349,6 +344,7 @@ struct rte_vmbus_bus rte_vmbus_bus = {
 		.cleanup = rte_vmbus_cleanup,
 		.find_device = vmbus_find_device,
 		.parse = vmbus_parse,
+		.dev_compare = vmbus_dev_compare,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_vmbus_bus.device_list),
 	.driver_list = TAILQ_HEAD_INITIALIZER(rte_vmbus_bus.driver_list),

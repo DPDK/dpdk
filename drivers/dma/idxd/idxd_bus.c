@@ -247,16 +247,6 @@ idxd_probe_dsa(struct rte_dsa_device *dev)
 	return 0;
 }
 
-static int search_devargs(const char *name)
-{
-	struct rte_devargs *devargs;
-	RTE_EAL_DEVARGS_FOREACH(dsa_bus.bus.name, devargs) {
-		if (strcmp(devargs->name, name) == 0)
-			return 1;
-	}
-	return 0;
-}
-
 static int
 is_for_this_process_use(struct rte_dsa_device *dev, const char *name)
 {
@@ -275,9 +265,9 @@ is_for_this_process_use(struct rte_dsa_device *dev, const char *name)
 
 	if (retval && dsa_bus.bus.conf.scan_mode != RTE_BUS_SCAN_UNDEFINED) {
 		if (dsa_bus.bus.conf.scan_mode == RTE_BUS_SCAN_ALLOWLIST)
-			retval = search_devargs(dev->device.name);
+			retval = rte_bus_find_devargs(&dsa_bus.bus, dev->device.name) != NULL;
 		else
-			retval = !search_devargs(dev->device.name);
+			retval = rte_bus_find_devargs(&dsa_bus.bus, dev->device.name) == NULL;
 	}
 
 	return retval;

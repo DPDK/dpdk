@@ -119,6 +119,22 @@ typedef int (*rte_bus_unplug_t)(struct rte_device *dev);
 typedef int (*rte_bus_parse_t)(const char *name, void *addr);
 
 /**
+ * Bus specific device name comparison function.
+ * Bus can normalize the names of devices using an internal representation.
+ * This helper makes it possible to check whether two names refer to the same device.
+ *
+ * @param[in] name1
+ *	device name
+ * @param[in] name2
+ *	device name
+ *
+ * @return
+ *      0 if the two names refer to the same device.
+ *      !0 otherwise.
+ */
+typedef int (*rte_bus_dev_compare_t)(const char *name1, const char *name2);
+
+/**
  * Parse bus part of the device arguments.
  *
  * The field name of the struct rte_devargs will be set.
@@ -258,6 +274,7 @@ struct rte_bus {
 	rte_bus_plug_t plug;         /**< Probe single device for drivers */
 	rte_bus_unplug_t unplug;     /**< Remove single device from driver */
 	rte_bus_parse_t parse;       /**< Parse a device name */
+	rte_bus_dev_compare_t dev_compare; /**< Compare two device names */
 	rte_bus_devargs_parse_t devargs_parse; /**< Parse bus devargs */
 	rte_dev_dma_map_t dma_map;   /**< DMA map for device in the bus */
 	rte_dev_dma_unmap_t dma_unmap; /**< DMA unmap for device in the bus */
@@ -280,6 +297,21 @@ struct rte_bus {
  */
 __rte_internal
 void rte_bus_register(struct rte_bus *bus);
+
+/**
+ * Find the devargs associated to a device.
+ *
+ * @param bus
+ *   A pointer to a rte_bus structure describing the bus
+ *   to search for devargs on.
+ * @param dev_name
+ *   A device name.
+ *
+ * @return
+ *   Pointer to the device devargs, or NULL if none found.
+ */
+__rte_internal
+struct rte_devargs *rte_bus_find_devargs(const struct rte_bus *bus, const char *dev_name);
 
 /**
  * Helper for Bus registration.

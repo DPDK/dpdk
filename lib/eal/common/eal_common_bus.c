@@ -8,6 +8,7 @@
 
 #include <bus_driver.h>
 #include <rte_debug.h>
+#include <rte_devargs.h>
 #include <rte_string_fns.h>
 #include <rte_errno.h>
 
@@ -203,6 +204,33 @@ struct rte_bus *
 rte_bus_find_by_name(const char *busname)
 {
 	return rte_bus_find(NULL, cmp_bus_name, (const void *)busname);
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_find_devargs)
+struct rte_devargs *
+rte_bus_find_devargs(const struct rte_bus *bus, const char *name)
+{
+	rte_bus_dev_compare_t cmp = bus->dev_compare;
+	const char *bus_name = rte_bus_name(bus);
+	struct rte_devargs *devargs;
+
+	if (cmp == NULL)
+		cmp = strcmp;
+
+	RTE_EAL_DEVARGS_FOREACH(bus_name, devargs) {
+		const char *devargs_name = devargs->name;
+
+		/* The name in the devargs is usually prefixed with <bus>: */
+		if (strncmp(devargs_name, bus_name, strlen(bus_name)) == 0)
+			devargs_name += strlen(bus_name) + 1;
+		if (cmp(name, devargs_name) != 0)
+			continue;
+		EAL_LOG(DEBUG, "found devargs for %s:%s", bus_name, name);
+		return devargs;
+	}
+
+	EAL_LOG(DEBUG, "no devargs for %s:%s", bus_name, name);
+	return NULL;
 }
 
 static int

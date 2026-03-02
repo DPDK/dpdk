@@ -43,25 +43,12 @@ rte_platform_unregister(struct rte_platform_driver *pdrv)
 	TAILQ_REMOVE(&platform_bus.driver_list, pdrv, next);
 }
 
-static struct rte_devargs *
-dev_devargs(const char *dev_name)
-{
-	struct rte_devargs *devargs;
-
-	RTE_EAL_DEVARGS_FOREACH(platform_bus.bus.name, devargs) {
-		if (!strcmp(devargs->name, dev_name))
-			return devargs;
-	}
-
-	return NULL;
-}
-
 static bool
 dev_allowed(const char *dev_name)
 {
 	struct rte_devargs *devargs;
 
-	devargs = dev_devargs(dev_name);
+	devargs = rte_bus_find_devargs(&platform_bus.bus, dev_name);
 	if (devargs == NULL)
 		return true;
 
@@ -93,7 +80,7 @@ dev_add(const char *dev_name)
 
 	rte_strscpy(pdev->name, dev_name, sizeof(pdev->name));
 	pdev->device.name = pdev->name;
-	pdev->device.devargs = dev_devargs(dev_name);
+	pdev->device.devargs = rte_bus_find_devargs(&platform_bus.bus, dev_name);
 	pdev->device.bus = &platform_bus.bus;
 	snprintf(path, sizeof(path), PLATFORM_BUS_DEVICES_PATH "/%s/numa_node", dev_name);
 	pdev->device.numa_node = eal_parse_sysfs_value(path, &val) ? rte_socket_id() : val;
