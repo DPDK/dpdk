@@ -717,9 +717,6 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 	if (rc)
 		return rc;
 
-	if (!eth_dev->data->dev_started)
-		return -EIO;
-
 	if (BNXT_TPA_V2_P7(bp))
 		return bnxt_stats_get_ext(eth_dev, bnxt_stats, qstats);
 

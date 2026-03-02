@@ -5356,13 +5356,54 @@ static void bnxt_update_prev_stat(uint64_t *cntr, uint64_t *prev_cntr)
 		*prev_cntr = *cntr;
 }
 
+static void bnxt_get_prev_tx_stats(struct bnxt_ring_stats *ring_stats,
+				   struct bnxt_ring_stats *prev_stats)
+{
+	ring_stats->tx_ucast_pkts = prev_stats->tx_ucast_pkts;
+	ring_stats->tx_mcast_pkts = prev_stats->tx_mcast_pkts;
+	ring_stats->tx_bcast_pkts = prev_stats->tx_bcast_pkts;
+	ring_stats->tx_ucast_bytes = prev_stats->tx_ucast_bytes;
+	ring_stats->tx_mcast_bytes = prev_stats->tx_mcast_bytes;
+	ring_stats->tx_bcast_bytes = prev_stats->tx_bcast_bytes;
+	ring_stats->tx_discard_pkts = prev_stats->tx_discard_pkts;
+}
+
+static void bnxt_get_prev_rx_stats(struct bnxt_ring_stats *ring_stats,
+				   struct bnxt_ring_stats *prev_stats)
+{
+	ring_stats->rx_ucast_pkts = prev_stats->rx_ucast_pkts;
+	ring_stats->rx_mcast_pkts = prev_stats->rx_mcast_pkts;
+	ring_stats->rx_bcast_pkts = prev_stats->rx_bcast_pkts;
+	ring_stats->rx_ucast_bytes = prev_stats->rx_ucast_bytes;
+	ring_stats->rx_mcast_bytes = prev_stats->rx_mcast_bytes;
+	ring_stats->rx_bcast_bytes = prev_stats->rx_bcast_bytes;
+	ring_stats->rx_discard_pkts = prev_stats->rx_discard_pkts;
+	ring_stats->rx_error_pkts = prev_stats->rx_error_pkts;
+	ring_stats->rx_agg_pkts = prev_stats->rx_agg_pkts;
+	ring_stats->rx_agg_bytes = prev_stats->rx_agg_bytes;
+	ring_stats->rx_agg_events = prev_stats->rx_agg_events;
+	ring_stats->rx_agg_aborts = prev_stats->rx_agg_aborts;
+}
+
 int bnxt_hwrm_ring_stats(struct bnxt *bp, uint32_t cid, int idx,
 			 struct bnxt_ring_stats *ring_stats, bool rx)
 {
 	int rc = 0;
 	struct hwrm_stat_ctx_query_input req = {.req_type = 0};
 	struct hwrm_stat_ctx_query_output *resp = bp->hwrm_cmd_resp_addr;
+	struct bnxt_ring_stats *prev_stats = &bp->prev_rx_ring_stats[idx];
 
+	if (!rx)
+		prev_stats = &bp->prev_tx_ring_stats[idx];
+
+	if (!bp->eth_dev->data->dev_started) {
+		if (rx)
+			bnxt_get_prev_rx_stats(ring_stats, prev_stats);
+		else
+			bnxt_get_prev_tx_stats(ring_stats, prev_stats);
+
+		return 0;
+	}
 	HWRM_PREP(&req, HWRM_STAT_CTX_QUERY, BNXT_USE_CHIMP_MB);
 
 	req.stat_ctx_id = rte_cpu_to_le_32(cid);
@@ -5372,8 +5413,6 @@ int bnxt_hwrm_ring_stats(struct bnxt *bp, uint32_t cid, int idx,
 	HWRM_CHECK_RESULT();
 
 	if (rx) {
-		struct bnxt_ring_stats *prev_stats = &bp->prev_rx_ring_stats[idx];
-
 		ring_stats->rx_ucast_pkts = rte_le_to_cpu_64(resp->rx_ucast_pkts);
 		bnxt_update_prev_stat(&ring_stats->rx_ucast_pkts,
 				      &prev_stats->rx_ucast_pkts);
@@ -5422,8 +5461,6 @@ int bnxt_hwrm_ring_stats(struct bnxt *bp, uint32_t cid, int idx,
 		bnxt_update_prev_stat(&ring_stats->rx_agg_aborts,
 				      &prev_stats->rx_agg_aborts);
 	} else {
-		struct bnxt_ring_stats *prev_stats = &bp->prev_tx_ring_stats[idx];
-
 		ring_stats->tx_ucast_pkts = rte_le_to_cpu_64(resp->tx_ucast_pkts);
 		bnxt_update_prev_stat(&ring_stats->tx_ucast_pkts,
 				      &prev_stats->tx_ucast_pkts);
@@ -5458,6 +5495,38 @@ int bnxt_hwrm_ring_stats(struct bnxt *bp, uint32_t cid, int idx,
 	return rc;
 }
 
+static void bnxt_get_prev_rx_stats_ext(struct bnxt_ring_stats_ext *ring_stats,
+				       struct bnxt_ring_stats_ext *prev_stats)
+{
+	ring_stats->rx_ucast_pkts = prev_stats->rx_ucast_pkts;
+	ring_stats->rx_mcast_pkts = prev_stats->rx_mcast_pkts;
+	ring_stats->rx_bcast_pkts = prev_stats->rx_bcast_pkts;
+	ring_stats->rx_ucast_bytes = prev_stats->rx_ucast_bytes;
+	ring_stats->rx_mcast_bytes = prev_stats->rx_mcast_bytes;
+	ring_stats->rx_bcast_bytes = prev_stats->rx_bcast_bytes;
+	ring_stats->rx_discard_pkts = prev_stats->rx_discard_pkts;
+	ring_stats->rx_error_pkts = prev_stats->rx_error_pkts;
+	ring_stats->rx_tpa_eligible_pkt = prev_stats->rx_tpa_eligible_pkt;
+	ring_stats->rx_tpa_eligible_bytes = prev_stats->rx_tpa_eligible_bytes;
+	ring_stats->rx_tpa_pkt = prev_stats->rx_tpa_pkt;
+	ring_stats->rx_tpa_bytes = prev_stats->rx_tpa_bytes;
+	ring_stats->rx_tpa_errors = prev_stats->rx_tpa_errors;
+	ring_stats->rx_tpa_events = prev_stats->rx_tpa_events;
+}
+
+static void bnxt_get_prev_tx_stats_ext(struct bnxt_ring_stats_ext *ring_stats,
+				       struct bnxt_ring_stats_ext *prev_stats)
+{
+	ring_stats->tx_ucast_pkts = prev_stats->tx_ucast_pkts;
+	ring_stats->tx_mcast_pkts = prev_stats->tx_mcast_pkts;
+	ring_stats->tx_bcast_pkts = prev_stats->tx_bcast_pkts;
+	ring_stats->tx_ucast_bytes = prev_stats->tx_ucast_bytes;
+	ring_stats->tx_mcast_bytes = prev_stats->tx_mcast_bytes;
+	ring_stats->tx_bcast_bytes = prev_stats->tx_bcast_bytes;
+	ring_stats->tx_discard_pkts = prev_stats->tx_discard_pkts;
+	ring_stats->tx_error_pkts = prev_stats->tx_error_pkts;
+}
+
 int bnxt_hwrm_ring_stats_ext(struct bnxt *bp, uint32_t cid, int idx,
 			     struct bnxt_ring_stats_ext *ring_stats, bool rx)
 {
@@ -5465,6 +5534,19 @@ int bnxt_hwrm_ring_stats_ext(struct bnxt *bp, uint32_t cid, int idx,
 	struct hwrm_stat_ext_ctx_query_input req = {.req_type = 0};
 	struct hwrm_stat_ext_ctx_query_output *resp = bp->hwrm_cmd_resp_addr;
 
+	struct bnxt_ring_stats_ext *prev_stats = &bp->prev_rx_ring_stats_ext[idx];
+
+	if (!rx)
+		prev_stats = &bp->prev_tx_ring_stats_ext[idx];
+
+	if (!bp->eth_dev->data->dev_started) {
+		if (rx)
+			bnxt_get_prev_rx_stats_ext(ring_stats, prev_stats);
+		else
+			bnxt_get_prev_tx_stats_ext(ring_stats, prev_stats);
+
+		return 0;
+	}
 	HWRM_PREP(&req, HWRM_STAT_EXT_CTX_QUERY, BNXT_USE_CHIMP_MB);
 
 	req.stat_ctx_id = rte_cpu_to_le_32(cid);
@@ -5473,8 +5555,6 @@ int bnxt_hwrm_ring_stats_ext(struct bnxt *bp, uint32_t cid, int idx,
 	HWRM_CHECK_RESULT();
 
 	if (rx) {
-		struct bnxt_ring_stats_ext *prev_stats = &bp->prev_rx_ring_stats_ext[idx];
-
 		ring_stats->rx_ucast_pkts = rte_le_to_cpu_64(resp->rx_ucast_pkts);
 		bnxt_update_prev_stat(&ring_stats->rx_ucast_pkts,
 				      &prev_stats->rx_ucast_pkts);
@@ -5531,8 +5611,6 @@ int bnxt_hwrm_ring_stats_ext(struct bnxt *bp, uint32_t cid, int idx,
 		bnxt_update_prev_stat(&ring_stats->rx_tpa_events,
 				      &prev_stats->rx_tpa_events);
 	} else {
-		struct bnxt_ring_stats_ext *prev_stats = &bp->prev_tx_ring_stats_ext[idx];
-
 		ring_stats->tx_ucast_pkts = rte_le_to_cpu_64(resp->tx_ucast_pkts);
 		bnxt_update_prev_stat(&ring_stats->tx_ucast_pkts,
 				      &prev_stats->tx_ucast_pkts);

@@ -786,7 +786,7 @@ static int bnxt_update_phy_setting(struct bnxt *bp)
 	return rc;
 }
 
-static void bnxt_free_prev_ring_stats(struct bnxt *bp)
+static void bnxt_free_prev_ring_stats_ext(struct bnxt *bp)
 {
 	/* tpa v2 devices use ext variant local struct */
 	if (BNXT_TPA_V2_P7(bp)) {
@@ -796,6 +796,10 @@ static void bnxt_free_prev_ring_stats(struct bnxt *bp)
 		bp->prev_tx_ring_stats_ext = NULL;
 		return;
 	}
+}
+
+static void bnxt_free_prev_ring_stats(struct bnxt *bp)
+{
 	rte_free(bp->prev_rx_ring_stats);
 	rte_free(bp->prev_tx_ring_stats);
 	bp->prev_rx_ring_stats = NULL;
@@ -804,17 +808,19 @@ static void bnxt_free_prev_ring_stats(struct bnxt *bp)
 
 static int bnxt_alloc_prev_ring_ext_stats(struct bnxt *bp)
 {
-	bp->prev_rx_ring_stats_ext = rte_zmalloc("bnxt_prev_rx_ring_stats_ext",
-						 sizeof(struct bnxt_ring_stats_ext) *
-						 bp->rx_cp_nr_rings,
-						 0);
+	if (bp->prev_rx_ring_stats_ext == NULL)
+		bp->prev_rx_ring_stats_ext = rte_zmalloc("bnxt_prev_rx_ring_stats_ext",
+							 sizeof(struct bnxt_ring_stats_ext) *
+							 bp->rx_cp_nr_rings,
+							 0);
 	if (bp->prev_rx_ring_stats_ext == NULL)
 		return -ENOMEM;
 
-	bp->prev_tx_ring_stats_ext = rte_zmalloc("bnxt_prev_tx_ring_stats_ext",
-						 sizeof(struct bnxt_ring_stats_ext) *
-						 bp->tx_cp_nr_rings,
-						 0);
+	if (bp->prev_tx_ring_stats_ext == NULL)
+		bp->prev_tx_ring_stats_ext = rte_zmalloc("bnxt_prev_tx_ring_stats_ext",
+							 sizeof(struct bnxt_ring_stats_ext) *
+							 bp->tx_cp_nr_rings,
+							 0);
 
 	if (bp->tx_cp_nr_rings > 0 && bp->prev_tx_ring_stats_ext == NULL)
 		goto error;
@@ -831,24 +837,26 @@ static int bnxt_alloc_prev_ring_stats(struct bnxt *bp)
 	if (BNXT_TPA_V2_P7(bp))
 		return bnxt_alloc_prev_ring_ext_stats(bp);
 
-	bp->prev_rx_ring_stats =  rte_zmalloc("bnxt_prev_rx_ring_stats",
-					      sizeof(struct bnxt_ring_stats) *
-					      bp->rx_cp_nr_rings,
-					      0);
+	if (bp->prev_rx_ring_stats == NULL)
+		bp->prev_rx_ring_stats =  rte_zmalloc("bnxt_prev_rx_ring_stats",
+						      sizeof(struct bnxt_ring_stats) *
+						      bp->rx_cp_nr_rings,
+						      0);
 	if (bp->prev_rx_ring_stats == NULL)
 		return -ENOMEM;
 
-	bp->prev_tx_ring_stats = rte_zmalloc("bnxt_prev_tx_ring_stats",
-					     sizeof(struct bnxt_ring_stats) *
-					     bp->tx_cp_nr_rings,
-					     0);
+	if (bp->prev_tx_ring_stats == NULL)
+		bp->prev_tx_ring_stats = rte_zmalloc("bnxt_prev_tx_ring_stats",
+						     sizeof(struct bnxt_ring_stats) *
+						     bp->tx_cp_nr_rings,
+						     0);
 	if (bp->tx_cp_nr_rings > 0 && bp->prev_tx_ring_stats == NULL)
 		goto error;
 
 	return 0;
 
 error:
-	bnxt_free_prev_ring_stats(bp);
+	bnxt_free_prev_ring_stats_ext(bp);
 	return -ENOMEM;
 }
 
@@ -1758,7 +1766,6 @@ static int bnxt_dev_stop(struct rte_eth_dev *eth_dev)
 	bnxt_shutdown_nic(bp);
 	bnxt_hwrm_if_change(bp, false);
 
-	bnxt_free_prev_ring_stats(bp);
 	rte_free(bp->mark_table);
 	bp->mark_table = NULL;
 
@@ -1966,6 +1973,8 @@ static int bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	if (eth_dev->data->dev_started)
 		ret = bnxt_dev_stop(eth_dev);
 
+	bnxt_free_prev_ring_stats_ext(bp);
+	bnxt_free_prev_ring_stats(bp);
 	bnxt_uninit_resources(bp, false);
 
 	bnxt_drv_uninit(bp);
