@@ -705,6 +705,7 @@ cn20k_nix_reassembly_conf_set(struct rte_eth_dev *eth_dev,
 		}
 	}
 
+	rxc_time_cfg.step = dev->nix.rxc_step;
 	rc = roc_nix_reassembly_configure(&rxc_time_cfg, conf->timeout_ms);
 	if (rc) {
 		plt_err("Nix reassembly_configure failed rc=%d", rc);
