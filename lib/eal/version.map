@@ -408,6 +408,7 @@ INTERNAL {
 	rte_eal_get_baseaddr;
 	rte_eal_parse_coremask;
 	rte_firmware_read;
+	rte_intr_active_events_flags;
 	rte_intr_allow_others;
 	rte_intr_cap_multiple;
 	rte_intr_dev_fd_get;

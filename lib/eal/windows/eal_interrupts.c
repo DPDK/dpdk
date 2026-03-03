@@ -114,6 +114,12 @@ rte_thread_is_intr(void)
 	return rte_thread_equal(intr_thread, rte_thread_self());
 }
 
+uint32_t
+rte_intr_active_events_flags(void)
+{
+	return 0;
+}
+
 int
 rte_intr_rx_ctl(__rte_unused struct rte_intr_handle *intr_handle,
 		__rte_unused int epfd, __rte_unused int op,
