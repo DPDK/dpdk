@@ -57,8 +57,8 @@ nix_inl_cpt_cq_cb(struct roc_cpt_lf *lf)
 	union cpt_lf_cq_ptr cq_ptr;
 	struct cpt_cq_s *cq_s;
 	uint8_t fmt_msk = 0x3;
-	uint64_t nq_ptr;
-	uint32_t count;
+	uint32_t count, head;
+	uint32_t nq_ptr;
 	uint64_t i;
 
 	if (idev)
@@ -69,14 +69,15 @@ nix_inl_cpt_cq_cb(struct roc_cpt_lf *lf)
 		return;
 	}
 
+	head = lf->cq_head;
 	cq_base.u = plt_read64(lf->rbase + CPT_LF_CQ_BASE);
 	cq_ptr.u = plt_read64(lf->rbase + CPT_LF_CQ_PTR);
 	count = cq_ptr.s.count;
-
-	nq_ptr = (((cq_base.s.addr << 7)) + ((cq_ptr.s.nq_ptr - count) << 5));
-	cq_s = (struct cpt_cq_s *)nq_ptr;
+	nq_ptr = cq_ptr.s.nq_ptr;
 
 	for (i = 0; i < count; i++) {
+		cq_s = (struct cpt_cq_s *)(uintptr_t)(((cq_base.s.addr << 7)) + (head << 5));
+
 		if (cq_s->w0.s.uc_compcode && cq_s->w0.s.compcode) {
 			switch (cq_s->w2.s.fmt & fmt_msk) {
 			case WQE_PTR_CPTR:
@@ -93,8 +94,13 @@ nix_inl_cpt_cq_cb(struct roc_cpt_lf *lf)
 			inl_dev->work_cb(&tmp, sa, NIX_INL_CPT_CQ, (void *)cq_s, port_id);
 		}
 done:
-		cq_s = cq_s + 1;
+		head = (head + 1) % lf->cq_size;
 	}
+
+	lf->cq_head = head;
+	if (unlikely(nq_ptr != head))
+		plt_err("CPT LF[%d] CQ head %d != NQ ptr %d", lf->lf_id, head, nq_ptr);
+
 	/* Acknowledge the number of completed requests */
 	plt_write64(count, lf->rbase + CPT_LF_DONE_ACK);
 }
