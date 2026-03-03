@@ -1186,14 +1186,23 @@ hn_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	if (ret)
 		return ret;
 
+	/* Free chimney bitmap and rxbuf_info before NVS detach */
+	hn_chim_uninit(dev);
+	rte_free(hv->primary->rxbuf_info);
+	hv->primary->rxbuf_info = NULL;
+
 	/* Release channel resources */
 	hn_detach(hv);
 
 	/* Close any secondary vmbus channels */
-	for (i = 1; i < hv->num_queues; i++)
+	for (i = 1; i < hv->num_queues; i++) {
 		rte_vmbus_chan_close(hv->channels[i]);
+		hv->channels[i] = NULL;
+	}
+	hv->num_queues = 1;
 
 	/* Close primary vmbus channel */
+	rte_vmbus_chan_close(hv->channels[0]);
 	rte_free(hv->channels[0]);
 
 	/* Unmap and re-map vmbus device */
@@ -1217,16 +1226,21 @@ hn_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return ret;
 	}
 
+	hv->primary->chan = hv->channels[0];
 	rte_vmbus_set_latency(hv->vmbus, hv->channels[0], hv->latency);
 
 	ret = hn_reinit(dev, mtu);
-	if (!ret)
+	if (!ret) {
+		hn_chim_init(dev);
 		goto out;
+	}
 
 	/* In case of error, attempt to restore original MTU */
 	ret = hn_reinit(dev, orig_mtu);
 	if (ret)
 		PMD_DRV_LOG(ERR, "Restoring original MTU failed for netvsc");
+	else
+		hn_chim_init(dev);
 
 	ret = hn_vf_mtu_set(dev, orig_mtu);
 	if (ret)
