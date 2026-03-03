@@ -1486,7 +1486,6 @@ eth_hn_dev_uninit(struct rte_eth_dev *eth_dev)
 	}
 
 	rte_vmbus_chan_close(hv->channels[0]);
-	rte_free(hv->primary);
 	ret = rte_eth_dev_owner_delete(hv->owner.id);
 	if (ret != 0)
 		return ret;
