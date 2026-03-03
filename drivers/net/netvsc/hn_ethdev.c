@@ -1348,8 +1348,10 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	hv->primary = hn_rx_queue_alloc(hv, 0,
 					eth_dev->device->numa_node);
 
-	if (!hv->primary)
-		return -ENOMEM;
+	if (!hv->primary) {
+		err = -ENOMEM;
+		goto failed;
+	}
 
 	err = hn_attach(hv, RTE_ETHER_MTU);
 	if  (err)
@@ -1375,8 +1377,10 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 
 	max_chan = rte_vmbus_max_channels(vmbus);
 	PMD_INIT_LOG(DEBUG, "VMBus max channels %d", max_chan);
-	if (max_chan <= 0)
+	if (max_chan <= 0) {
+		err = max_chan ? max_chan : -ENODEV;
 		goto failed;
+	}
 
 	if (hn_rndis_query_rsscaps(hv, &rxr_cnt) != 0)
 		rxr_cnt = 1;
@@ -1398,6 +1402,8 @@ failed:
 
 	hn_chim_uninit(eth_dev);
 	hn_detach(hv);
+	rte_free(hv->primary);
+	rte_vmbus_chan_close(hv->channels[0]);
 	return err;
 }
 
