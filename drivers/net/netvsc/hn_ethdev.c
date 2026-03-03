@@ -774,6 +774,9 @@ free_ctx:
 	}
 }
 
+static void hn_detach(struct hn_data *hv);
+static int hn_attach(struct hn_data *hv, unsigned int mtu);
+
 static int hn_dev_configure(struct rte_eth_dev *dev)
 {
 	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
@@ -783,6 +786,8 @@ static int hn_dev_configure(struct rte_eth_dev *dev)
 	struct hn_data *hv = dev->data->dev_private;
 	uint64_t unsupported;
 	int i, err, subchan;
+	uint32_t old_subchans = 0;
+	bool device_unmapped = false;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -807,6 +812,125 @@ static int hn_dev_configure(struct rte_eth_dev *dev)
 
 	hv->vlan_strip = !!(rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP);
 
+	/* If queue count unchanged, skip subchannel teardown/reinit */
+	if (RTE_MAX(dev->data->nb_rx_queues,
+		    dev->data->nb_tx_queues) == hv->num_queues)
+		goto skip_reinit;
+
+	hv->num_queues = RTE_MAX(dev->data->nb_rx_queues,
+				 dev->data->nb_tx_queues);
+
+	/* Close all existing subchannels */
+	for (i = 1; i < HN_MAX_CHANNELS; i++) {
+		if (hv->channels[i] != NULL) {
+			rte_vmbus_chan_close(hv->channels[i]);
+			hv->channels[i] = NULL;
+			old_subchans++;
+		}
+	}
+
+	/*
+	 * If subchannels existed, do a full NVS/RNDIS teardown
+	 * and vmbus re-init to ensure a clean NVS session.
+	 * Cannot re-send NVS subchannel request on the same
+	 * session without invalidating the data path.
+	 */
+	if (old_subchans > 0) {
+		PMD_DRV_LOG(NOTICE,
+			    "reinit NVS (had %u subchannels)",
+			    old_subchans);
+
+		hn_chim_uninit(dev);
+		rte_free(hv->primary->rxbuf_info);
+		hv->primary->rxbuf_info = NULL;
+		hn_detach(hv);
+
+		rte_vmbus_chan_close(hv->channels[0]);
+		rte_free(hv->channels[0]);
+		hv->channels[0] = NULL;
+
+		rte_vmbus_unmap_device(hv->vmbus);
+		device_unmapped = true;
+		err = rte_vmbus_map_device(hv->vmbus);
+		if (err) {
+			PMD_DRV_LOG(ERR,
+				    "Could not re-map vmbus device!");
+			goto reinit_failed;
+		}
+		device_unmapped = false;
+
+		hv->rxbuf_res = hv->vmbus->resource[HV_RECV_BUF_MAP];
+		hv->chim_res  = hv->vmbus->resource[HV_SEND_BUF_MAP];
+
+		err = rte_vmbus_chan_open(hv->vmbus, &hv->channels[0]);
+		if (err) {
+			PMD_DRV_LOG(ERR,
+				    "Could not re-open vmbus channel!");
+			goto reinit_failed;
+		}
+
+		hv->primary->chan = hv->channels[0];
+
+		rte_vmbus_set_latency(hv->vmbus, hv->channels[0],
+				      hv->latency);
+
+		err = hn_attach(hv, dev->data->mtu);
+		if (err) {
+			rte_vmbus_chan_close(hv->channels[0]);
+			rte_free(hv->channels[0]);
+			hv->channels[0] = NULL;
+			PMD_DRV_LOG(ERR,
+				    "NVS reinit failed: %d", err);
+			goto reinit_failed;
+		}
+
+		err = hn_chim_init(dev);
+		if (err) {
+			hn_detach(hv);
+			rte_vmbus_chan_close(hv->channels[0]);
+			rte_free(hv->channels[0]);
+			hv->channels[0] = NULL;
+			PMD_DRV_LOG(ERR,
+				    "chim reinit failed: %d", err);
+			goto reinit_failed;
+		}
+	}
+
+	for (i = 0; i < NDIS_HASH_INDCNT; i++)
+		hv->rss_ind[i] = i % dev->data->nb_rx_queues;
+
+	hn_rss_hash_init(hv, rss_conf);
+
+	subchan = hv->num_queues - 1;
+
+	/* Allocate fresh subchannels and configure RSS */
+	if (subchan > 0) {
+		err = hn_subchan_configure(hv, subchan);
+		if (err) {
+			PMD_DRV_LOG(NOTICE,
+				    "subchannel configuration failed");
+			goto subchan_cleanup;
+		}
+
+		err = hn_rndis_conf_rss(hv, NDIS_RSS_FLAG_DISABLE);
+		if (err) {
+			PMD_DRV_LOG(NOTICE,
+				"rss disable failed");
+			goto subchan_cleanup;
+		}
+
+		if (rss_conf->rss_hf != 0) {
+			err = hn_rndis_conf_rss(hv, 0);
+			if (err) {
+				PMD_DRV_LOG(NOTICE,
+					    "initial RSS config failed");
+				goto subchan_cleanup;
+			}
+		}
+	}
+
+skip_reinit:
+	/* Apply offload config after reinit so it targets the final RNDIS session */
 	err = hn_rndis_conf_offload(hv, txmode->offloads,
 				    rxmode->offloads);
 	if (err) {
@@ -815,41 +939,67 @@ static int hn_dev_configure(struct rte_eth_dev *dev)
 		return err;
 	}
 
-	hv->num_queues = RTE_MAX(dev->data->nb_rx_queues,
-				 dev->data->nb_tx_queues);
+	return hn_vf_configure_locked(dev, dev_conf);
 
-	for (i = 0; i < NDIS_HASH_INDCNT; i++)
-		hv->rss_ind[i] = i % dev->data->nb_rx_queues;
-
-	hn_rss_hash_init(hv, rss_conf);
-
-	subchan = hv->num_queues - 1;
-	if (subchan > 0) {
-		err = hn_subchan_configure(hv, subchan);
-		if (err) {
-			PMD_DRV_LOG(NOTICE,
-				    "subchannel configuration failed");
-			return err;
-		}
-
-		err = hn_rndis_conf_rss(hv, NDIS_RSS_FLAG_DISABLE);
-		if (err) {
-			PMD_DRV_LOG(NOTICE,
-				"rss disable failed");
-			return err;
-		}
-
-		if (rss_conf->rss_hf != 0) {
-			err = hn_rndis_conf_rss(hv, 0);
-			if (err) {
-				PMD_DRV_LOG(NOTICE,
-					    "initial RSS config failed");
-				return err;
-			}
+subchan_cleanup:
+	for (i = 1; i < HN_MAX_CHANNELS; i++) {
+		if (hv->channels[i] != NULL) {
+			rte_vmbus_chan_close(hv->channels[i]);
+			hv->channels[i] = NULL;
 		}
 	}
+	hv->num_queues = 1;
+	for (i = 0; i < NDIS_HASH_INDCNT; i++)
+		hv->rss_ind[i] = 0;
 
-	return hn_vf_configure_locked(dev, dev_conf);
+	/* Apply offload config so device is usable on primary queue */
+	hn_rndis_conf_offload(hv, txmode->offloads, rxmode->offloads);
+	return err;
+
+reinit_failed:
+	/*
+	 * Device is in a broken state after failed reinit.
+	 * Try to re-establish minimal connectivity.
+	 */
+	PMD_DRV_LOG(ERR,
+		    "reinit failed (err %d), attempting recovery", err);
+	if (hv->channels[0] == NULL) {
+		if (device_unmapped) {
+			if (rte_vmbus_map_device(hv->vmbus)) {
+				hv->num_queues = 0;
+				PMD_DRV_LOG(ERR,
+					    "recovery failed, could not re-map device");
+				return err;
+			}
+			hv->rxbuf_res = hv->vmbus->resource[HV_RECV_BUF_MAP];
+			hv->chim_res  = hv->vmbus->resource[HV_SEND_BUF_MAP];
+		}
+		if (rte_vmbus_chan_open(hv->vmbus, &hv->channels[0]) == 0) {
+			if (hn_attach(hv, dev->data->mtu) == 0) {
+				hv->primary->chan = hv->channels[0];
+				if (hn_chim_init(dev) != 0)
+					PMD_DRV_LOG(WARNING,
+						    "chim reinit failed during recovery");
+				hv->num_queues = 1;
+				PMD_DRV_LOG(NOTICE,
+					    "recovery successful on primary channel");
+			} else {
+				rte_vmbus_chan_close(hv->channels[0]);
+				rte_free(hv->channels[0]);
+				hv->channels[0] = NULL;
+				hv->num_queues = 0;
+				PMD_DRV_LOG(ERR,
+					    "recovery failed, device unusable");
+			}
+		} else {
+			hv->num_queues = 0;
+			PMD_DRV_LOG(ERR,
+				    "recovery failed, device unusable");
+		}
+	} else {
+		hv->num_queues = 1;
+	}
+	return err;
 }
 
 static int hn_dev_stats_get(struct rte_eth_dev *dev,
@@ -1102,6 +1252,7 @@ hn_dev_stop(struct rte_eth_dev *dev)
 {
 	struct hn_data *hv = dev->data->dev_private;
 	int i, ret;
+	unsigned int retry;
 
 	PMD_INIT_FUNC_TRACE();
 	dev->data->dev_started = 0;
@@ -1109,6 +1260,29 @@ hn_dev_stop(struct rte_eth_dev *dev)
 	rte_dev_event_callback_unregister(NULL, netvsc_hotadd_callback, hv);
 	hn_rndis_set_rxfilter(hv, 0);
 	ret = hn_vf_stop(dev);
+
+	/*
+	 * Drain pending TX completions to prevent stale completions
+	 * from corrupting queue state after port reconfiguration.
+	 */
+	for (retry = 0; retry < 100; retry++) {
+		uint32_t pending = 0;
+
+		for (i = 0; i < hv->num_queues; i++) {
+			struct hn_tx_queue *txq = dev->data->tx_queues[i];
+
+			if (txq == NULL)
+				continue;
+			hn_process_events(hv, i, 0);
+			pending += rte_mempool_in_use_count(txq->txdesc_pool);
+		}
+		if (pending == 0)
+			break;
+		rte_delay_ms(10);
+	}
+	if (retry >= 100)
+		PMD_DRV_LOG(WARNING,
+			    "Failed to drain all TX completions");
 
 	for (i = 0; i < hv->num_queues; i++) {
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
