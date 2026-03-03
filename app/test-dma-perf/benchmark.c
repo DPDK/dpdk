@@ -520,10 +520,10 @@ do_cpu_mem_copy(void *p)
 
 	while (1) {
 		for (i = 0; i < nr_buf; i++) {
-			const void *src = rte_pktmbuf_mtod(dsts[i], void *);
-			void *dst = rte_pktmbuf_mtod(srcs[i], void *);
+			const void *src = rte_pktmbuf_mtod(srcs[i], void *);
+			void *dst = rte_pktmbuf_mtod(dsts[i], void *);
 
-			/* copy buffer form src to dst */
+			/* copy buffer from src to dst */
 			rte_memcpy(dst, src, (size_t)buf_size);
 			worker_info->total_cpl++;
 		}
