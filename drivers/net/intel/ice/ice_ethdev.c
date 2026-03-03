@@ -1397,7 +1397,9 @@ ice_pf_enable_irq0(struct ice_hw *hw)
 	ICE_WRITE_REG(hw, PFINT_OICR_ENA, 0);
 	ICE_READ_REG(hw, PFINT_OICR);
 
-#ifdef ICE_LSE_SPT
+	/* Enable all OICR causes except link-state-change: LSC is delivered
+	 * as an unsolicited AdminQ get-link-status notification.
+	 */
 	ICE_WRITE_REG(hw, PFINT_OICR_ENA,
 		      (uint32_t)(PFINT_OICR_ENA_INT_ENA_M &
 				 (~PFINT_OICR_LINK_STAT_CHANGE_M)));
@@ -1413,9 +1415,6 @@ ice_pf_enable_irq0(struct ice_hw *hw)
 		      ((0 << PFINT_FW_CTL_ITR_INDX_S) &
 		       PFINT_FW_CTL_ITR_INDX_M) |
 		      PFINT_FW_CTL_CAUSE_ENA_M);
-#else
-	ICE_WRITE_REG(hw, PFINT_OICR_ENA, PFINT_OICR_ENA_INT_ENA_M);
-#endif
 
 	ICE_WRITE_REG(hw, GLINT_DYN_CTL(0),
 		      GLINT_DYN_CTL_INTENA_M |
@@ -1434,7 +1433,6 @@ ice_pf_disable_irq0(struct ice_hw *hw)
 	ice_flush(hw);
 }
 
-#ifdef ICE_LSE_SPT
 static void
 ice_handle_aq_msg(struct rte_eth_dev *dev)
 {
@@ -1453,10 +1451,9 @@ ice_handle_aq_msg(struct rte_eth_dev *dev)
 		ret = ice_clean_rq_elem(hw, cq, &event, &pending);
 
 		if (ret != ICE_SUCCESS) {
-			PMD_DRV_LOG(INFO,
-				    "Failed to read msg from AdminQ, "
-				    "adminq_err: %u",
-				    hw->adminq.sq_last_status);
+			if (hw->adminq.sq_last_status != 0)
+				PMD_DRV_LOG(INFO, "Failed to read msg from AdminQ, adminq_err: %u",
+						hw->adminq.sq_last_status);
 			break;
 		}
 		opcode = rte_le_to_cpu_16(event.desc.opcode);
@@ -1475,7 +1472,6 @@ ice_handle_aq_msg(struct rte_eth_dev *dev)
 		}
 	}
 }
-#endif
 
 /**
  * Interrupt handler triggered by NIC for handling
@@ -1494,24 +1490,18 @@ ice_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = ICE_DEV_TO_PCI(dev);
 	uint32_t oicr;
 	uint32_t reg;
 	uint8_t pf_num;
 	uint8_t event;
 	uint16_t queue;
-	int ret;
-#ifdef ICE_LSE_SPT
-	uint32_t int_fw_ctl;
-#endif
 
 	/* Disable interrupt */
 	ice_pf_disable_irq0(hw);
 
 	/* read out interrupt causes */
 	oicr = ICE_READ_REG(hw, PFINT_OICR);
-#ifdef ICE_LSE_SPT
-	int_fw_ctl = ICE_READ_REG(hw, PFINT_FW_CTL);
-#endif
 
 	/* No interrupt event indicated */
 	if (!(oicr & PFINT_OICR_INTEVENT_M)) {
@@ -1519,20 +1509,8 @@ ice_interrupt_handler(void *param)
 		goto done;
 	}
 
-#ifdef ICE_LSE_SPT
-	if (int_fw_ctl & PFINT_FW_CTL_INTEVENT_M) {
-		PMD_DRV_LOG(INFO, "FW_CTL: link state change event");
-		ice_handle_aq_msg(dev);
-	}
-#else
-	if (oicr & PFINT_OICR_LINK_STAT_CHANGE_M) {
-		PMD_DRV_LOG(INFO, "OICR: link state change event");
-		ret = ice_link_update(dev, 0);
-		if (!ret)
-			rte_eth_dev_callback_process
-				(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
-	}
-#endif
+	/* Always drain the AdminQ on any misc interrupt. */
+	ice_handle_aq_msg(dev);
 
 	if (oicr & PFINT_OICR_MAL_DETECT_M) {
 		PMD_DRV_LOG(WARNING, "OICR: MDD event");
@@ -1581,7 +1559,10 @@ ice_interrupt_handler(void *param)
 done:
 	/* Enable interrupt */
 	ice_pf_enable_irq0(hw);
-	rte_intr_ack(dev->intr_handle);
+	rte_intr_ack(pci_dev->intr_handle);
+
+	/* Re-drain AdminQ to catch events that arrived during the CLEARPBA window */
+	ice_handle_aq_msg(dev);
 }
 
 static void
@@ -4393,6 +4374,7 @@ ice_dev_start(struct rte_eth_dev *dev)
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
+	struct rte_pci_device *pci_dev = ICE_DEV_TO_PCI(dev);
 	struct ice_adapter *ad =
 			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	uint16_t nb_rxq = 0;
@@ -4442,6 +4424,8 @@ ice_dev_start(struct rte_eth_dev *dev)
 	/* enable Rx interrupt and mapping Rx queue to interrupt vector */
 	if (ice_rxq_intr_setup(dev))
 		return -EIO;
+
+	rte_intr_enable(pci_dev->intr_handle);
 
 	/* Enable receiving broadcast packets and transmitting packets */
 	ice_set_bit(ICE_PROMISC_BCAST_RX, pmask);
