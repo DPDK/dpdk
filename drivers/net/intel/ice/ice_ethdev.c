@@ -1440,16 +1440,13 @@ ice_handle_aq_msg(struct rte_eth_dev *dev)
 {
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_ctl_q_info *cq = &hw->adminq;
-	struct ice_rq_event_info event;
+	unsigned char buf[ICE_AQ_MAX_BUF_LEN] = {0};
+	struct ice_rq_event_info event = {
+		.msg_buf = buf,
+		.buf_len = sizeof(buf),
+	};
 	uint16_t pending, opcode;
 	int ret;
-
-	event.buf_len = ICE_AQ_MAX_BUF_LEN;
-	event.msg_buf = rte_zmalloc(NULL, event.buf_len, 0);
-	if (!event.msg_buf) {
-		PMD_DRV_LOG(ERR, "Failed to allocate mem");
-		return;
-	}
 
 	pending = 1;
 	while (pending) {
@@ -1477,7 +1474,6 @@ ice_handle_aq_msg(struct rte_eth_dev *dev)
 			break;
 		}
 	}
-	rte_free(event.msg_buf);
 }
 #endif
 
