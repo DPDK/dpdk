@@ -857,6 +857,26 @@ mlx5_dev_interrupt_handler_devx(void *cb_arg)
 			    sizeof(struct mlx5dv_devx_async_cmd_hdr)];
 	} out;
 	uint8_t *buf = out.buf + sizeof(out.cmd_resp);
+	uint32_t events = rte_intr_active_events_flags();
+
+	if (events & (RTE_INTR_EVENT_HUP | RTE_INTR_EVENT_RDHUP | RTE_INTR_EVENT_ERR)) {
+		/*
+		 * Disconnect or Error event that cannot be cleared by reading.
+		 * Unregister callback to prevent interrupt busy-looping.
+		 */
+		DRV_LOG(WARNING, "disconnect or error event for mlx5 devx interrupt on fd %d"
+			" (events=0x%x)",
+			rte_intr_fd_get(sh->intr_handle_devx), events);
+
+		if (rte_intr_callback_unregister_pending(sh->intr_handle_devx,
+							 mlx5_dev_interrupt_handler_devx,
+							 (void *)sh, NULL) < 0) {
+			DRV_LOG(WARNING,
+				"unable to unregister mlx5 devx interrupt callback on fd %d",
+				rte_intr_fd_get(sh->intr_handle_devx));
+		}
+		return;
+	}
 
 	while (!mlx5_glue->devx_get_async_cmd_comp(sh->devx_comp,
 						   &out.cmd_resp,
