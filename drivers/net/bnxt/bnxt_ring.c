@@ -353,8 +353,11 @@ void bnxt_set_db(struct bnxt *bp,
 		 uint32_t ring_type,
 		 uint32_t map_idx,
 		 uint32_t fid,
-		 uint32_t ring_mask)
+		 uint32_t ring_mask,
+		 uint16_t dpi)
 {
+	uint64_t dpi_offset;
+
 	if (BNXT_CHIP_P5_P7(bp)) {
 		int db_offset = DB_PF_OFFSET;
 		switch (ring_type) {
@@ -379,8 +382,14 @@ void bnxt_set_db(struct bnxt *bp,
 		} else if (BNXT_VF(bp)) {
 			db_offset = DB_VF_OFFSET;
 		}
-
 		db->doorbell = (char *)bp->doorbell_base + db_offset;
+
+		if (bp->fw_cap & BNXT_FW_CAP_MULTI_DB &&
+				dpi != BNXT_PRIVILEGED_DPI) {
+			dpi_offset = (dpi - bp->nq_dpi_start) *
+					bp->db_page_size;
+			db->doorbell = (char *)db->doorbell + dpi_offset;
+		}
 		db->db_key64 |= (uint64_t)fid << DBR_XID_SFT;
 		db->db_64 = true;
 	} else {
@@ -404,32 +413,33 @@ void bnxt_set_db(struct bnxt *bp,
 int bnxt_alloc_cmpl_ring(struct bnxt *bp, int queue_index,
 			 struct bnxt_cp_ring_info *cpr)
 {
-	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
-	uint32_t nq_ring_id = HWRM_NA_SIGNATURE;
 	int cp_ring_index = queue_index + BNXT_RX_VEC_START;
 	struct bnxt_cp_ring_info *nqr = bp->rxtx_nq_ring;
+	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
+	uint32_t nq_ring_id = HWRM_NA_SIGNATURE;
+	uint8_t dpi = BNXT_PRIVILEGED_DPI;
 	uint8_t ring_type;
 	int rc = 0;
 
 	ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL;
 
 	if (BNXT_HAS_NQ(bp)) {
-		if (nqr) {
-			nq_ring_id = nqr->cp_ring_struct->fw_ring_id;
-		} else {
+		if (!nqr) {
 			PMD_DRV_LOG_LINE(ERR, "NQ ring is NULL");
 			return -EINVAL;
 		}
+		nq_ring_id = nqr->cp_ring_struct->fw_ring_id;
 	}
 
+	cpr->dpi = dpi;
 	rc = bnxt_hwrm_ring_alloc(bp, cp_ring, ring_type, cp_ring_index,
-				  HWRM_NA_SIGNATURE, nq_ring_id, 0);
+				  HWRM_NA_SIGNATURE, nq_ring_id, 0, dpi);
 	if (rc)
 		return rc;
 
 	cpr->cp_raw_cons = 0;
 	bnxt_set_db(bp, &cpr->cp_db, ring_type, cp_ring_index,
-		    cp_ring->fw_ring_id, cp_ring->ring_mask);
+		    cp_ring->fw_ring_id, cp_ring->ring_mask, dpi);
 	bnxt_db_cq(cpr);
 
 	return 0;
@@ -437,10 +447,12 @@ int bnxt_alloc_cmpl_ring(struct bnxt *bp, int queue_index,
 
 int bnxt_alloc_rxtx_nq_ring(struct bnxt *bp)
 {
+	int ring_index = BNXT_NUM_ASYNC_CPR(bp);
+	uint8_t dpi = BNXT_PRIVILEGED_DPI;
 	struct bnxt_cp_ring_info *nqr;
 	struct bnxt_ring *ring;
-	int ring_index = BNXT_NUM_ASYNC_CPR(bp);
 	uint8_t ring_type;
+	uint8_t offset;
 	int rc = 0;
 
 	if (!BNXT_HAS_NQ(bp) || bp->rxtx_nq_ring)
@@ -481,8 +493,18 @@ int bnxt_alloc_rxtx_nq_ring(struct bnxt *bp)
 
 	ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_NQ;
 
+	/* Assign DPI using round-robin if multi-doorbell is enabled */
+	if (bp->fw_cap & BNXT_FW_CAP_MULTI_DB && bp->nq_dpi_count > 0) {
+		offset = bp->nq_dpi_counter % bp->nq_dpi_count;
+		dpi = bp->nq_dpi_start + offset;
+		bp->nq_dpi_counter++;
+		PMD_DRV_LOG_LINE(DEBUG, "NQ ring assigned DPI %u", dpi);
+	}
+
+	nqr->dpi = dpi;
+
 	rc = bnxt_hwrm_ring_alloc(bp, ring, ring_type, ring_index,
-				  HWRM_NA_SIGNATURE, HWRM_NA_SIGNATURE, 0);
+				  HWRM_NA_SIGNATURE, HWRM_NA_SIGNATURE, 0, dpi);
 	if (rc) {
 		rte_free(ring);
 		rte_free(nqr);
@@ -490,7 +512,7 @@ int bnxt_alloc_rxtx_nq_ring(struct bnxt *bp)
 	}
 
 	bnxt_set_db(bp, &nqr->cp_db, ring_type, ring_index,
-		    ring->fw_ring_id, ring->ring_mask);
+		    ring->fw_ring_id, ring->ring_mask, dpi);
 	bnxt_db_nq(nqr);
 
 	bp->rxtx_nq_ring = nqr;
@@ -523,13 +545,16 @@ static int bnxt_alloc_rx_ring(struct bnxt *bp, int queue_index)
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
 	struct bnxt_ring *ring = rxr->rx_ring_struct;
 	uint8_t ring_type;
+	uint16_t dpi;
 	int rc = 0;
 
 	ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_RX;
+	dpi = BNXT_PRIVILEGED_DPI;
+	rxr->dpi = dpi;
 
 	rc = bnxt_hwrm_ring_alloc(bp, ring, ring_type,
 				  queue_index, cpr->hw_stats_ctx_id,
-				  cp_ring->fw_ring_id, 0);
+				  cp_ring->fw_ring_id, 0, dpi);
 	if (rc)
 		return rc;
 
@@ -537,7 +562,7 @@ static int bnxt_alloc_rx_ring(struct bnxt *bp, int queue_index)
 	if (BNXT_HAS_RING_GRPS(bp))
 		bp->grp_info[queue_index].rx_fw_ring_id = ring->fw_ring_id;
 	bnxt_set_db(bp, &rxr->rx_db, ring_type, queue_index, ring->fw_ring_id,
-		    ring->ring_mask);
+		    ring->ring_mask, dpi);
 	bnxt_db_write(&rxr->rx_db, rxr->rx_raw_prod);
 
 	return 0;
@@ -568,7 +593,8 @@ static int bnxt_alloc_rx_agg_ring(struct bnxt *bp, int queue_index)
 	}
 
 	rc = bnxt_hwrm_ring_alloc(bp, ring, ring_type, map_idx,
-				  hw_stats_ctx_id, cp_ring->fw_ring_id, 0);
+				  hw_stats_ctx_id, cp_ring->fw_ring_id, 0,
+				  BNXT_PRIVILEGED_DPI);
 
 	if (rc)
 		return rc;
@@ -578,7 +604,7 @@ static int bnxt_alloc_rx_agg_ring(struct bnxt *bp, int queue_index)
 	if (BNXT_HAS_RING_GRPS(bp))
 		bp->grp_info[queue_index].ag_fw_ring_id = ring->fw_ring_id;
 	bnxt_set_db(bp, &rxr->ag_db, ring_type, map_idx, ring->fw_ring_id,
-		    ring->ring_mask);
+		    ring->ring_mask, BNXT_PRIVILEGED_DPI);
 	bnxt_db_write(&rxr->ag_db, rxr->ag_raw_prod);
 
 	return 0;
@@ -796,14 +822,16 @@ int bnxt_alloc_async_cp_ring(struct bnxt *bp)
 		ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL;
 
 	rc = bnxt_hwrm_ring_alloc(bp, cp_ring, ring_type, 0,
-				  HWRM_NA_SIGNATURE, HWRM_NA_SIGNATURE, 0);
+				  HWRM_NA_SIGNATURE, HWRM_NA_SIGNATURE, 0,
+				  BNXT_PRIVILEGED_DPI);
 
 	if (rc)
 		return rc;
 
 	cpr->cp_raw_cons = 0;
+	cpr->dpi = BNXT_PRIVILEGED_DPI;
 	bnxt_set_db(bp, &cpr->cp_db, ring_type, 0,
-		    cp_ring->fw_ring_id, cp_ring->ring_mask);
+		    cp_ring->fw_ring_id, cp_ring->ring_mask, BNXT_PRIVILEGED_DPI);
 
 	if (BNXT_HAS_NQ(bp))
 		bnxt_db_nq(cpr);
@@ -900,17 +928,19 @@ int bnxt_alloc_hwrm_tx_ring(struct bnxt *bp, int queue_index)
 	else
 		tx_cosq_id = bp->tx_cosq_id[0];
 
+	/* TX ring inherits DPI from parent NQ */
+	txr->dpi = bp->rxtx_nq_ring ? bp->rxtx_nq_ring->dpi : BNXT_PRIVILEGED_DPI;
 	rc = bnxt_hwrm_ring_alloc(bp, ring,
 				  HWRM_RING_ALLOC_INPUT_RING_TYPE_TX,
 				  queue_index, cpr->hw_stats_ctx_id,
 				  cp_ring->fw_ring_id,
-				  tx_cosq_id);
+				  tx_cosq_id, txr->dpi);
 	if (rc)
 		goto err_out;
 
 	bnxt_set_db(bp, &txr->tx_db, HWRM_RING_ALLOC_INPUT_RING_TYPE_TX,
 		    queue_index, ring->fw_ring_id,
-		    ring->ring_mask);
+		    ring->ring_mask, txr->dpi);
 	txq->index = idx;
 
 	return rc;

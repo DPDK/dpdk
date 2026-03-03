@@ -15745,6 +15745,15 @@ struct __rte_packed_begin hwrm_func_qcaps_output {
 	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT3_MIRROR_ON_ROCE_SUPPORTED \
 		UINT32_C(0x20)
 	/*
+	 * When this bit is '1', it indicates that, when rx/tx/cq/nq l2
+	 * rings are allocated, each ring can be associated with a
+	 * non-common doorbell page index. When '0', a common doorbell
+	 * page is used for all rings on a PF. This bit is only set on a
+	 * PF.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT3_MULTI_L2_DB_SUPPORTED \
+		UINT32_C(0x200)
+	/*
 	 * The number of VFs that can be used for RoCE on the function. If less
 	 * than max_vfs, roce vfs will be assigned to the first VF of the
 	 * function and be contiguous.
@@ -16268,6 +16277,12 @@ struct __rte_packed_begin hwrm_func_qcfg_output {
 	 * of the doorbell BAR between L2 and RoCE is required.
 	 */
 	uint16_t	l2_doorbell_bar_size_kb;
+	/*
+	 * The size of the doorbell BAR in KBytes reserved for multi-L2
+	 * doorbell pages. This area is a subset of l2_doorbell_bar_size_kb,
+	 * which is size of the total doorbell BAR space reserved for L2.
+	 */
+	uint16_t	l2_db_multi_page_size_kb;
 	/*
 	 * A bitmask indicating the active endpoints. Each bit represents a
 	 * specific endpoint, with bit 0 indicating EP 0 and bit 3 indicating
@@ -45464,6 +45479,13 @@ struct __rte_packed_begin hwrm_ring_alloc_input {
 	 */
 	#define HWRM_RING_ALLOC_INPUT_ENABLES_RX_RATE_PROFILE_VALID \
 		UINT32_C(0x1000)
+	/*
+	 * This bit must be '1' for the dpi field to be configured.
+	 * This should only be used when 'multi_l2_db_supported'
+	 * bit is set in flags_ext3 field of FUNC_QCAPS response.
+	 */
+	#define HWRM_RING_ALLOC_INPUT_ENABLES_DPI_VALID \
+		UINT32_C(0x2000)
 	/* Ring Type. */
 	uint8_t	ring_type;
 	/* L2 Completion Ring (CR) */
@@ -45831,6 +45853,14 @@ struct __rte_packed_begin hwrm_ring_alloc_input {
 	 * record.
 	 */
 	uint64_t	cq_handle;
+	/*
+	 * The "doorbell page index" is specified when allocating a l2 ring.
+	 * It is applicable for rx/tx/completion/nq rings, and should only be
+	 * used when 'multi_l2_db_supported' bit is set in flags_ext3 field of
+	 * FUNC_QCAPS response.
+	 */
+	uint16_t	dpi;
+	uint16_t	unused_5[3];
 } __rte_packed_end;
 
 /* hwrm_ring_alloc_output (size:128b/16B) */

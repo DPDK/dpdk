@@ -1254,6 +1254,9 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	if (flags_ext3 & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT3_RX_RATE_PROFILE_SEL_SUPPORTED)
 		bp->fw_cap |= BNXT_FW_CAP_RX_RATE_PROFILE;
 
+	if (flags_ext3 & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT3_MULTI_L2_DB_SUPPORTED)
+		bp->fw_cap |= BNXT_FW_CAP_MULTI_DB;
+
 	/* This block should be kept at the end of this function because it
 	 * sends another hwrm msg.
 	 */
@@ -2176,7 +2179,7 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 			 struct bnxt_ring *ring,
 			 uint32_t ring_type, uint32_t map_index,
 			 uint32_t stats_ctx_id, uint32_t cmpl_ring_id,
-			 uint16_t tx_cosq_id)
+			 uint16_t tx_cosq_id, uint16_t dpi)
 {
 	int rc = 0;
 	uint32_t enables = 0;
@@ -2279,6 +2282,11 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 			ring_type);
 		HWRM_UNLOCK();
 		return -EINVAL;
+	}
+
+	if (bp->fw_cap & BNXT_FW_CAP_MULTI_DB) {
+		req.dpi = rte_cpu_to_le_16(dpi);
+		enables |= HWRM_RING_ALLOC_INPUT_ENABLES_DPI_VALID;
 	}
 	req.enables = rte_cpu_to_le_32(enables);
 
@@ -4195,12 +4203,15 @@ error:
 
 int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 {
-	struct hwrm_func_qcfg_input req = {0};
 	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_qcfg_input req = {0};
+	uint16_t l2_db_multi_kb;
+	uint16_t total_pages;
+	uint16_t svif_info;
 	uint16_t flags;
 	int rc = 0;
+
 	bp->func_svif = BNXT_SVIF_INVALID;
-	uint16_t svif_info;
 
 	HWRM_PREP(&req, HWRM_FUNC_QCFG, BNXT_USE_CHIMP_MB);
 	req.fid = rte_cpu_to_le_16(0xffff);
@@ -4246,9 +4257,39 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 		bp->flags &= ~BNXT_FLAG_NPAR_PF;
 		break;
 	}
-
 	bp->legacy_db_size =
-		rte_le_to_cpu_16(resp->legacy_l2_db_size_kb) * 1024;
+		BNXT_KB_TO_BYTES(rte_le_to_cpu_16(resp->legacy_l2_db_size_kb));
+
+	/* Configure multi-doorbell if supported */
+	if (bp->fw_cap & BNXT_FW_CAP_MULTI_DB) {
+		l2_db_multi_kb = rte_le_to_cpu_16(resp->l2_db_multi_page_size_kb);
+		bp->l2_db_multi_page_size_kb = l2_db_multi_kb ? l2_db_multi_kb :
+			rte_le_to_cpu_16(resp->l2_doorbell_bar_size_kb);
+
+		if (bp->l2_db_multi_page_size_kb > 0) {
+			bp->db_page_size = BNXT_DEFAULT_DB_PAGE_SIZE;
+			total_pages = BNXT_KB_TO_BYTES(bp->l2_db_multi_page_size_kb) /
+					bp->db_page_size;
+
+			/* P7: DPI 0=legacy, DPI 1=push reserved; P5: DPI 0=legacy */
+			bp->nq_dpi_start = BNXT_CHIP_P7(bp) ?
+				BNXT_RESERVED_DPI_TWO : BNXT_RESERVED_DPI_ONE;
+			bp->nq_dpi_count = (total_pages > bp->nq_dpi_start) ?
+				(total_pages - bp->nq_dpi_start) : 0;
+			bp->nq_dpi_counter = 0;
+			PMD_DRV_LOG_LINE(INFO,
+					"Multi-doorbell: %u KB, "
+					"DPI range %u-%u (%u pages)",
+					bp->l2_db_multi_page_size_kb,
+					bp->nq_dpi_start,
+					bp->nq_dpi_start + bp->nq_dpi_count - 1,
+					bp->nq_dpi_count);
+		} else {
+			PMD_DRV_LOG_LINE(INFO,
+					"Multi-doorbell supported "
+					"but no pages allocated");
+		}
+	}
 
 	HWRM_UNLOCK();
 

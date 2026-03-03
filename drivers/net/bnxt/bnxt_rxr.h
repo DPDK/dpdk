@@ -142,6 +142,7 @@ struct bnxt_rx_ring_info {
 
 	uint32_t ol_flags_table[BNXT_OL_FLAGS_TBL_DIM];
 	uint32_t ol_flags_err_table[BNXT_OL_FLAGS_ERR_TBL_DIM];
+	uint8_t			dpi;  /* Doorbell page index for multi-doorbell support */
 };
 
 uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,

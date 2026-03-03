@@ -89,6 +89,7 @@ struct bnxt_cp_ring_info {
 	struct bnxt_ring	*cp_ring_struct;
 	bool			valid;
 	uint32_t                epoch;
+	uint8_t			dpi;
 };
 
 #define RX_CMP_L2_ERRORS						\

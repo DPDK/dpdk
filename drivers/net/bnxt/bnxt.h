@@ -437,6 +437,13 @@ struct bnxt_coal {
 #define DB_PF_OFFSET			0x10000
 #define DB_VF_OFFSET			0x4000
 
+#define BNXT_PRIVILEGED_DPI		0
+#define BNXT_RESERVED_DPI_ONE		1
+#define BNXT_RESERVED_DPI_TWO		2
+#define BNXT_DEFAULT_DB_PAGE_SIZE	4096
+
+#define BNXT_KB_TO_BYTES(kb)		((kb) * 1024)
+
 #define BNXT_RSS_TBL_SIZE_P5		512U
 #define BNXT_RSS_ENTRIES_PER_CTX_P5	64
 #define BNXT_MAX_RSS_CTXTS_P5 \
@@ -877,6 +884,7 @@ struct bnxt {
 #define BNXT_FW_CAP_RX_ALL_PKT_TS	BIT(11)
 #define BNXT_FW_CAP_BACKING_STORE_V2	BIT(12)
 #define BNXT_FW_CAP_RX_RATE_PROFILE	BIT(17)
+#define BNXT_FW_CAP_MULTI_DB		BIT(18)
 #define BNXT_FW_BACKING_STORE_V2_EN(bp)	\
 	((bp)->fw_cap & BNXT_FW_CAP_BACKING_STORE_V2)
 #define BNXT_FW_BACKING_STORE_V1_EN(bp)	\
@@ -1083,6 +1091,11 @@ struct bnxt {
 	struct rte_eth_rss_conf	rss_conf; /* RSS configuration. */
 	uint16_t		tunnel_disable_flag; /* tunnel stateless offloads status */
 	uint8_t			chip_rev;
+	uint16_t		l2_db_multi_page_size_kb;	/* Multi-L2 DB BAR size in KB */
+	uint16_t		db_page_size;			/* DB page size (typically 4KB) */
+	uint8_t			nq_dpi_start;			/* Starting DPI for NQ rings */
+	uint8_t			nq_dpi_count;			/* Number of DPI pages for NQ */
+	uint8_t			nq_dpi_counter;			/* Round-robin counter for NQ DPI */
 };
 
 static

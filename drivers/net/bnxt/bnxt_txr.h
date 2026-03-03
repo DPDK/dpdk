@@ -26,6 +26,7 @@ struct bnxt_tx_ring_info {
 
 	unsigned short          *nr_bds;
 	struct bnxt_ring	*tx_ring_struct;
+	uint8_t			dpi;  /* Doorbell page index for multi-doorbell support */
 };
 
 static inline uint32_t bnxt_tx_bds_in_hw(struct bnxt_tx_queue *txq)

@@ -89,7 +89,8 @@ void bnxt_set_db(struct bnxt *bp,
 		 uint32_t ring_type,
 		 uint32_t map_idx,
 		 uint32_t fid,
-		 uint32_t ring_mask);
+		 uint32_t ring_mask,
+		 uint16_t dpi);
 
 static inline void bnxt_db_write(struct bnxt_db_info *db, uint32_t idx)
 {
