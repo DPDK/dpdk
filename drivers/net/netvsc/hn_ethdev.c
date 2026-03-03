@@ -1464,6 +1464,7 @@ eth_hn_dev_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct hn_data *hv = eth_dev->data->dev_private;
 	int ret, ret_stop;
+	int i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1475,6 +1476,15 @@ eth_hn_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	hn_detach(hv);
 	hn_chim_uninit(eth_dev);
+
+	/* Close any subchannels before closing the primary channel */
+	for (i = 1; i < HN_MAX_CHANNELS; i++) {
+		if (hv->channels[i] != NULL) {
+			rte_vmbus_chan_close(hv->channels[i]);
+			hv->channels[i] = NULL;
+		}
+	}
+
 	rte_vmbus_chan_close(hv->channels[0]);
 	rte_free(hv->primary);
 	ret = rte_eth_dev_owner_delete(hv->owner.id);
