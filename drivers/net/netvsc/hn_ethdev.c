@@ -1014,16 +1014,22 @@ hn_dev_start(struct rte_eth_dev *dev)
 				      NDIS_PACKET_TYPE_BROADCAST |
 				      NDIS_PACKET_TYPE_ALL_MULTICAST |
 				      NDIS_PACKET_TYPE_DIRECTED);
-	if (error)
+	if (error) {
+		rte_dev_event_callback_unregister(NULL,
+						  netvsc_hotadd_callback, hv);
 		return error;
+	}
 
 	error = hn_vf_start(dev);
-	if (error)
+	if (error) {
 		hn_rndis_set_rxfilter(hv, 0);
+		rte_dev_event_callback_unregister(NULL,
+						  netvsc_hotadd_callback, hv);
+		return error;
+	}
 
 	/* Initialize Link state */
-	if (error == 0)
-		hn_dev_link_update(dev, 0);
+	hn_dev_link_update(dev, 0);
 
 	for (i = 0; i < hv->num_queues; i++) {
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
