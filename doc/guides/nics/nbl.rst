@@ -78,39 +78,35 @@ it is necessary to force I/O virtual address (IOVA)
 to be mapped to physical address (PA)
 with the EAL command line option ``--iova-mode=pa``.
 
-Only PF supports Coexistence Between DPDK And Kernel Driver, VF does not.
+Only PF supports coexistence between DPDK and kernel driver; VF does not.
 
 
 Prerequisites
 -------------
 
-- Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>`
-  to setup the basic DPDK environment.
+#. Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>`
+   to setup the basic DPDK environment.
 
-- Learn about `Nebulamatrix Series NICs
-  <https://www.nebula-matrix.com/main>`_.
+#. NBL PMD requires the ``vfio-pci`` kernel driver.
+   The ``igb_uio`` and ``uio_pci_generic`` drivers are not supported.
 
+   Insert the ``vfio-pci`` kernel module using the command ``modprobe vfio-pci``.
+   Please make sure that IOMMU is enabled in your system,
+   or use ``vfio-pci`` in ``noiommu`` mode::
 
-Multiple Processes
-------------------
+     echo 1 > /sys/module/vfio/parameters/enable_unsafe_noiommu_mode
 
-The NBL PMD does not support multiple processes.
+   Note that VF requires ``vfio-pci`` in ``noiommu`` mode
+   when no IOMMU is available on the system.
 
+#. Bind the intended NBL device to ``vfio-pci``.
+
+#. Learn about `Nebulamatrix Series NICs
+   <https://www.nebula-matrix.com/main>`_.
 
 Limitations or Known Issues
 ---------------------------
 
-32-bit architectures are not supported.
-
-Windows and BSD are not supported yet.
-
-**igb_uio Driver Support**
-
-The ``igb_uio`` driver is not supported.
-
-**uio_pci_generic Driver Support**
-
-The ``uio_pci_generic`` driver is not supported.
-
-**VFIO no-IOMMU mode**
-If there is no IOMMU available on the system, VF must use ``vfio`` driver in ``noiommu`` mode.
+- 32-bit architectures are not supported.
+- Windows and BSD are not supported yet.
+- Multiple processes are not supported.
