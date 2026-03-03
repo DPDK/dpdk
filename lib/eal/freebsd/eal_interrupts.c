@@ -748,3 +748,9 @@ int rte_thread_is_intr(void)
 {
 	return rte_thread_equal(intr_thread, rte_thread_self());
 }
+
+uint32_t
+rte_intr_active_events_flags(void)
+{
+	return 0;
+}
