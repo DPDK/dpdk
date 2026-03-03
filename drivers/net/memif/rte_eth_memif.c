@@ -714,6 +714,7 @@ eth_memif_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 next_in_chain1:
 			d0 = &ring->desc[slot & mask];
+			d0->flags = 0;
 			cp_len = rte_pktmbuf_data_len(mbuf);
 
 			rte_memcpy((uint8_t *)memif_get_buffer(proc_private, d0),
@@ -726,7 +727,7 @@ next_in_chain1:
 
 			if (--nb_segs > 0) {
 				if (n_free) {
-					d0->flags |= MEMIF_DESC_FLAG_NEXT;
+					d0->flags = MEMIF_DESC_FLAG_NEXT;
 					mbuf = mbuf->next;
 					goto next_in_chain1;
 				} else {
@@ -747,6 +748,7 @@ free_mbufs:
 
 			saved_slot = slot;
 			d0 = &ring->desc[slot & mask];
+			d0->flags = 0;
 			dst_off = 0;
 			dst_len = (type == MEMIF_RING_C2S) ?
 				pmd->run.pkt_buffer_size : d0->length;
@@ -760,12 +762,12 @@ next_in_chain2:
 					if (n_free) {
 						slot++;
 						n_free--;
-						d0->flags |= MEMIF_DESC_FLAG_NEXT;
+						d0->flags = MEMIF_DESC_FLAG_NEXT;
 						d0 = &ring->desc[slot & mask];
+						d0->flags = 0;
 						dst_off = 0;
 						dst_len = (type == MEMIF_RING_C2S) ?
 						    pmd->run.pkt_buffer_size : d0->length;
-						d0->flags = 0;
 					} else {
 						slot = saved_slot;
 						goto no_free_slots;
