@@ -149,6 +149,7 @@ INTERNAL {
 	mlx5_nl_get_mtu_bounds; # WINDOWS_NO_EXPORT
 
 	mlx5_os_get_physical_device_ctx;
+	mlx5_os_is_device_bond; # WINDOWS_NO_EXPORT
 	mlx5_os_umem_dereg;
 	mlx5_os_umem_reg;
 
