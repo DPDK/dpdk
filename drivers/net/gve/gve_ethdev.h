@@ -314,6 +314,7 @@ struct gve_priv {
 	uint32_t adminq_report_link_speed_cnt;
 	uint32_t adminq_get_ptype_map_cnt;
 	uint32_t adminq_verify_driver_compatibility_cnt;
+	uint32_t adminq_cfg_flow_rule_cnt;
 	volatile uint32_t state_flags;
 
 	/* Gvnic device link speed from hypervisor. */
