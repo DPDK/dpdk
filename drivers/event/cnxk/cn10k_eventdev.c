@@ -678,8 +678,12 @@ cn10k_sso_rx_offload_cb(uint16_t port_id, uint64_t flags)
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	struct cnxk_eth_dev *cnxk_eth_dev = dev->data->dev_private;
 	struct rte_eventdev *event_dev = cnxk_eth_dev->evdev_priv;
-	struct cnxk_sso_evdev *evdev = cnxk_sso_pmd_priv(event_dev);
+	struct cnxk_sso_evdev *evdev;
 
+	if (event_dev == NULL)
+		return;
+
+	evdev = cnxk_sso_pmd_priv(event_dev);
 	evdev->rx_offloads |= flags;
 	cn10k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
 	eventdev_fops_update(event_dev);
