@@ -1928,8 +1928,8 @@ mlx5_dev_spawn_data_cmp(const void *a, const void *b)
 /**
  * Match PCI information for possible slaves of bonding device.
  *
- * @param[in] ibdev_name
- *   Name of Infiniband device.
+ * @param[in] ibdev
+ *   Pointer to IB device.
  * @param[in] pci_dev
  *   Pointer to primary PCI address structure to match.
  * @param[in] nl_rdma
@@ -1946,7 +1946,7 @@ mlx5_dev_spawn_data_cmp(const void *a, const void *b)
  *   positive index of slave PF in bonding.
  */
 static int
-mlx5_device_bond_pci_match(const char *ibdev_name,
+mlx5_device_bond_pci_match(const struct ibv_device *ibdev,
 			   const struct rte_pci_addr *pci_dev,
 			   int nl_rdma, uint16_t owner,
 			   struct mlx5_dev_info *dev_info,
@@ -1968,9 +1968,9 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 	memset(bond_info, 0, sizeof(*bond_info));
 	if (nl_rdma < 0)
 		return -1;
-	if (!strstr(ibdev_name, "bond"))
+	if (!mlx5_os_is_device_bond(ibdev))
 		return -1;
-	np = mlx5_nl_portnum(nl_rdma, ibdev_name, dev_info);
+	np = mlx5_nl_portnum(nl_rdma, ibdev->name, dev_info);
 	if (!np)
 		return -1;
 	if (mlx5_get_device_guid(pci_dev, cur_guid, sizeof(cur_guid)) < 0)
@@ -1982,7 +1982,7 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 	 */
 	for (i = 1; i <= np; ++i) {
 		/* Check whether Infiniband port is populated. */
-		ifindex = mlx5_nl_ifindex(nl_rdma, ibdev_name, i, dev_info);
+		ifindex = mlx5_nl_ifindex(nl_rdma, ibdev->name, i, dev_info);
 		if (!ifindex)
 			continue;
 		if (!if_indextoname(ifindex, ifname))
@@ -2396,7 +2396,7 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 			info = &tmp_info[ret];
 		}
 		DRV_LOG(DEBUG, "Checking device \"%s\"", ibv_list[ret]->name);
-		bd = mlx5_device_bond_pci_match(ibv_list[ret]->name, &owner_pci,
+		bd = mlx5_device_bond_pci_match(ibv_list[ret], &owner_pci,
 						nl_rdma, owner_id,
 						info,
 						&bond_info);
