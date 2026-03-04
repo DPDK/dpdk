@@ -1069,6 +1069,9 @@ iavf_dev_start(struct rte_eth_dev *dev)
 	/* Set all mac addrs */
 	iavf_add_del_all_mac_addr(adapter, true);
 
+	if (!adapter->mac_primary_set)
+		adapter->mac_primary_set = true;
+
 	/* Set all multicast addresses */
 	iavf_add_del_mc_addr_list(adapter, vf->mc_addrs, vf->mc_addrs_num,
 				  true);
@@ -1741,11 +1744,13 @@ iavf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 	if (rte_is_same_ether_addr(old_addr, mac_addr))
 		return 0;
 
-	ret = iavf_add_del_eth_addr(adapter, old_addr, false, VIRTCHNL_ETHER_ADDR_PRIMARY);
-	if (ret)
-		PMD_DRV_LOG(ERR, "Fail to delete old MAC:"
-			    RTE_ETHER_ADDR_PRT_FMT,
-				RTE_ETHER_ADDR_BYTES(old_addr));
+	if (adapter->mac_primary_set) {  /* delete old PRIMARY MAC only if set */
+		ret = iavf_add_del_eth_addr(adapter, old_addr, false, VIRTCHNL_ETHER_ADDR_PRIMARY);
+		if (ret)
+			PMD_DRV_LOG(ERR, "Fail to delete old MAC:"
+				    RTE_ETHER_ADDR_PRT_FMT,
+					RTE_ETHER_ADDR_BYTES(old_addr));
+	}
 
 	ret = iavf_add_del_eth_addr(adapter, mac_addr, true, VIRTCHNL_ETHER_ADDR_PRIMARY);
 	if (ret)
@@ -1755,6 +1760,9 @@ iavf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 
 	if (ret)
 		return -EIO;
+
+	if (!adapter->mac_primary_set)
+		adapter->mac_primary_set = true;
 
 	rte_ether_addr_copy(mac_addr, (struct rte_ether_addr *)hw->mac.addr);
 	return 0;
@@ -2817,6 +2825,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	hw->back = IAVF_DEV_PRIVATE_TO_ADAPTER(eth_dev->data->dev_private);
 	adapter->dev_data = eth_dev->data;
 	adapter->stopped = 1;
+	adapter->mac_primary_set = false;
 
 	if (iavf_dev_event_handler_init())
 		goto init_vf_err;
