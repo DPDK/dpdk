@@ -332,6 +332,8 @@ struct gve_priv {
 
 	struct gve_rss_config rss_config;
 	struct gve_ptype_lut *ptype_lut_dqo;
+
+	uint32_t max_flow_rules;
 };
 
 static inline bool

@@ -36,6 +36,7 @@ void gve_parse_device_option(struct gve_priv *priv,
 			     struct gve_device_option_gqi_rda **dev_op_gqi_rda,
 			     struct gve_device_option_gqi_qpl **dev_op_gqi_qpl,
 			     struct gve_device_option_dqo_rda **dev_op_dqo_rda,
+			     struct gve_device_option_flow_steering **dev_op_flow_steering,
 			     struct gve_device_option_modify_ring **dev_op_modify_ring,
 			     struct gve_device_option_jumbo_frames **dev_op_jumbo_frames)
 {
@@ -109,6 +110,22 @@ void gve_parse_device_option(struct gve_priv *priv,
 		}
 		*dev_op_dqo_rda = RTE_PTR_ADD(option, sizeof(*option));
 		break;
+	case GVE_DEV_OPT_ID_FLOW_STEERING:
+		if (option_length < sizeof(**dev_op_flow_steering) ||
+		    req_feat_mask != GVE_DEV_OPT_REQ_FEAT_MASK_FLOW_STEERING) {
+			PMD_DRV_LOG(WARNING, GVE_DEVICE_OPTION_ERROR_FMT,
+				    "Flow Steering", (int)sizeof(**dev_op_flow_steering),
+				    GVE_DEV_OPT_REQ_FEAT_MASK_FLOW_STEERING,
+				    option_length, req_feat_mask);
+			break;
+		}
+
+		if (option_length > sizeof(**dev_op_flow_steering)) {
+			PMD_DRV_LOG(WARNING,
+				    GVE_DEVICE_OPTION_TOO_BIG_FMT, "Flow Steering");
+		}
+		*dev_op_flow_steering = RTE_PTR_ADD(option, sizeof(*option));
+		break;
 	case GVE_DEV_OPT_ID_MODIFY_RING:
 		/* Min ring size bound is optional. */
 		if (option_length < (sizeof(**dev_op_modify_ring) -
@@ -167,6 +184,7 @@ gve_process_device_options(struct gve_priv *priv,
 			   struct gve_device_option_gqi_rda **dev_op_gqi_rda,
 			   struct gve_device_option_gqi_qpl **dev_op_gqi_qpl,
 			   struct gve_device_option_dqo_rda **dev_op_dqo_rda,
+			   struct gve_device_option_flow_steering **dev_op_flow_steering,
 			   struct gve_device_option_modify_ring **dev_op_modify_ring,
 			   struct gve_device_option_jumbo_frames **dev_op_jumbo_frames)
 {
@@ -188,8 +206,8 @@ gve_process_device_options(struct gve_priv *priv,
 
 		gve_parse_device_option(priv, dev_opt,
 					dev_op_gqi_rda, dev_op_gqi_qpl,
-					dev_op_dqo_rda, dev_op_modify_ring,
-					dev_op_jumbo_frames);
+					dev_op_dqo_rda, dev_op_flow_steering,
+					dev_op_modify_ring, dev_op_jumbo_frames);
 		dev_opt = next_opt;
 	}
 
@@ -777,9 +795,19 @@ gve_set_max_desc_cnt(struct gve_priv *priv,
 
 static void gve_enable_supported_features(struct gve_priv *priv,
 	u32 supported_features_mask,
+	const struct gve_device_option_flow_steering *dev_op_flow_steering,
 	const struct gve_device_option_modify_ring *dev_op_modify_ring,
 	const struct gve_device_option_jumbo_frames *dev_op_jumbo_frames)
 {
+	if (dev_op_flow_steering &&
+	    (supported_features_mask & GVE_SUP_FLOW_STEERING_MASK) &&
+	    dev_op_flow_steering->max_flow_rules) {
+		priv->max_flow_rules =
+			be32_to_cpu(dev_op_flow_steering->max_flow_rules);
+		PMD_DRV_LOG(INFO,
+			    "FLOW STEERING device option enabled with max rule limit of %u.",
+			    priv->max_flow_rules);
+	}
 	if (dev_op_modify_ring &&
 	    (supported_features_mask & GVE_SUP_MODIFY_RING_MASK)) {
 		PMD_DRV_LOG(INFO, "MODIFY RING device option enabled.");
@@ -802,6 +830,7 @@ int gve_adminq_describe_device(struct gve_priv *priv)
 {
 	struct gve_device_option_jumbo_frames *dev_op_jumbo_frames = NULL;
 	struct gve_device_option_modify_ring *dev_op_modify_ring = NULL;
+	struct gve_device_option_flow_steering *dev_op_flow_steering = NULL;
 	struct gve_device_option_gqi_rda *dev_op_gqi_rda = NULL;
 	struct gve_device_option_gqi_qpl *dev_op_gqi_qpl = NULL;
 	struct gve_device_option_dqo_rda *dev_op_dqo_rda = NULL;
@@ -829,6 +858,7 @@ int gve_adminq_describe_device(struct gve_priv *priv)
 
 	err = gve_process_device_options(priv, descriptor, &dev_op_gqi_rda,
 					 &dev_op_gqi_qpl, &dev_op_dqo_rda,
+					 &dev_op_flow_steering,
 					 &dev_op_modify_ring,
 					 &dev_op_jumbo_frames);
 	if (err)
@@ -884,7 +914,7 @@ int gve_adminq_describe_device(struct gve_priv *priv)
 	priv->default_num_queues = be16_to_cpu(descriptor->default_num_queues);
 
 	gve_enable_supported_features(priv, supported_features_mask,
-				      dev_op_modify_ring,
+				      dev_op_flow_steering, dev_op_modify_ring,
 				      dev_op_jumbo_frames);
 
 free_device_descriptor:
