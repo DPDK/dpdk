@@ -3649,7 +3649,8 @@ handle_rxa_get_queue_conf(const char *cmd __rte_unused,
 {
 	uint8_t rx_adapter_id;
 	uint16_t rx_queue_id;
-	int eth_dev_id, ret = -1;
+	uint16_t eth_dev_id;
+	int ret = -1;
 	char *token, *l_params;
 	struct rte_event_eth_rx_adapter_queue_conf queue_conf;
 
@@ -3721,7 +3722,8 @@ handle_rxa_get_queue_stats(const char *cmd __rte_unused,
 {
 	uint8_t rx_adapter_id;
 	uint16_t rx_queue_id;
-	int eth_dev_id, ret = -1;
+	uint16_t eth_dev_id;
+	int ret = -1;
 	char *token, *l_params;
 	struct rte_event_eth_rx_adapter_queue_stats q_stats;
 
@@ -3792,7 +3794,8 @@ handle_rxa_queue_stats_reset(const char *cmd __rte_unused,
 {
 	uint8_t rx_adapter_id;
 	uint16_t rx_queue_id;
-	int eth_dev_id, ret = -1;
+	uint16_t eth_dev_id;
+	int ret = -1;
 	char *token, *l_params;
 
 	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
@@ -3853,7 +3856,8 @@ handle_rxa_instance_get(const char *cmd __rte_unused,
 {
 	uint8_t instance_id;
 	uint16_t rx_queue_id;
-	int eth_dev_id, ret = -1;
+	uint16_t eth_dev_id;
+	int ret = -1;
 	char *token, *l_params;
 
 	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
