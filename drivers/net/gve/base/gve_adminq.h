@@ -7,6 +7,7 @@
 #define _GVE_ADMINQ_H
 
 #include "gve_osdep.h"
+#include "../gve_flow_rule.h"
 
 /* Admin queue opcodes */
 enum gve_adminq_opcodes {
@@ -34,6 +35,10 @@ enum gve_adminq_opcodes {
  * inner opcode of gve_adminq_extended_cmd_opcodes specified. The inner command
  * is written in the dma memory allocated by GVE_ADMINQ_EXTENDED_COMMAND.
  */
+enum gve_adminq_extended_cmd_opcodes {
+	GVE_ADMINQ_CONFIGURE_FLOW_RULE	= 0x101,
+};
+
 /* Admin queue status codes */
 enum gve_adminq_statuses {
 	GVE_ADMINQ_COMMAND_UNSET			= 0x0,
@@ -434,6 +439,26 @@ struct gve_adminq_configure_rss {
 	__be64 indir_addr;
 };
 
+/* Flow rule definition for the admin queue using network byte order (big
+ * endian). This struct represents the hardware wire format and should not be
+ * used outside of admin queue contexts.
+ */
+struct gve_adminq_flow_rule {
+	__be16 flow_type;
+	__be16 action; /* RX queue id */
+	struct gve_flow_spec key;
+	struct gve_flow_spec mask;
+};
+
+struct gve_adminq_configure_flow_rule {
+	__be16 opcode;
+	u8 padding[2];
+	struct gve_adminq_flow_rule rule;
+	__be32 location;
+};
+
+GVE_CHECK_STRUCT_LEN(92, gve_adminq_configure_flow_rule);
+
 union gve_adminq_command {
 	struct {
 		__be32 opcode;
@@ -498,5 +523,10 @@ int gve_adminq_verify_driver_compatibility(struct gve_priv *priv,
 
 int gve_adminq_configure_rss(struct gve_priv *priv,
 			     struct gve_rss_config *rss_config);
+
+int gve_adminq_add_flow_rule(struct gve_priv *priv,
+			     struct gve_flow_rule_params *rule, u32 loc);
+int gve_adminq_del_flow_rule(struct gve_priv *priv, u32 loc);
+int gve_adminq_reset_flow_rules(struct gve_priv *priv);
 
 #endif /* _GVE_ADMINQ_H */
