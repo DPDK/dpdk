@@ -510,6 +510,49 @@ gve_free_ptype_lut_dqo(struct gve_priv *priv)
 	}
 }
 
+static int
+gve_setup_flow_subsystem(struct gve_priv *priv)
+{
+	int err;
+
+	priv->flow_rule_bmp_size =
+			rte_bitmap_get_memory_footprint(priv->max_flow_rules);
+	priv->avail_flow_rule_bmp_mem = rte_zmalloc("gve_flow_rule_bmp",
+			priv->flow_rule_bmp_size, 0);
+	if (!priv->avail_flow_rule_bmp_mem) {
+		PMD_DRV_LOG(ERR, "Failed to alloc bitmap for flow rules.");
+		err = -ENOMEM;
+		goto free_flow_rule_bmp;
+	}
+
+	err = gve_flow_init_bmp(priv);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to initialize flow rule bitmap.");
+		goto free_flow_rule_bmp;
+	}
+
+	TAILQ_INIT(&priv->active_flows);
+	gve_set_flow_subsystem_ok(priv);
+
+	return 0;
+
+free_flow_rule_bmp:
+	gve_flow_free_bmp(priv);
+	return err;
+}
+
+static void
+gve_teardown_flow_subsystem(struct gve_priv *priv)
+{
+	pthread_mutex_lock(&priv->flow_rule_lock);
+
+	gve_clear_flow_subsystem_ok(priv);
+	gve_flow_free_bmp(priv);
+	gve_free_flow_rules(priv);
+
+	pthread_mutex_unlock(&priv->flow_rule_lock);
+}
+
 static void
 gve_teardown_device_resources(struct gve_priv *priv)
 {
@@ -519,7 +562,9 @@ gve_teardown_device_resources(struct gve_priv *priv)
 	if (gve_get_device_resources_ok(priv)) {
 		err = gve_adminq_deconfigure_device_resources(priv);
 		if (err)
-			PMD_DRV_LOG(ERR, "Could not deconfigure device resources: err=%d", err);
+			PMD_DRV_LOG(ERR,
+				"Could not deconfigure device resources: err=%d",
+				err);
 	}
 
 	gve_free_ptype_lut_dqo(priv);
@@ -542,6 +587,11 @@ gve_dev_close(struct rte_eth_dev *dev)
 		if (err != 0)
 			PMD_DRV_LOG(ERR, "Failed to stop dev.");
 	}
+
+	if (gve_get_flow_subsystem_ok(priv))
+		gve_teardown_flow_subsystem(priv);
+
+	pthread_mutex_destroy(&priv->flow_rule_lock);
 
 	gve_free_queues(dev);
 	gve_teardown_device_resources(priv);
@@ -566,6 +616,9 @@ gve_dev_reset(struct rte_eth_dev *dev)
 	}
 
 	/* Tear down all device resources before re-initializing. */
+	if (gve_get_flow_subsystem_ok(priv))
+		gve_teardown_flow_subsystem(priv);
+
 	gve_free_queues(dev);
 	gve_teardown_device_resources(priv);
 	gve_adminq_free(priv);
@@ -1094,6 +1147,18 @@ gve_rss_reta_query(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+gve_flow_ops_get(struct rte_eth_dev *dev, const struct rte_flow_ops **ops)
+{
+	struct gve_priv *priv = dev->data->dev_private;
+
+	if (!gve_get_flow_subsystem_ok(priv))
+		return -ENOTSUP;
+
+	*ops = &gve_flow_ops;
+	return 0;
+}
+
 static const struct eth_dev_ops gve_eth_dev_ops = {
 	.dev_configure        = gve_dev_configure,
 	.dev_start            = gve_dev_start,
@@ -1109,6 +1174,7 @@ static const struct eth_dev_ops gve_eth_dev_ops = {
 	.tx_queue_start       = gve_tx_queue_start,
 	.rx_queue_stop        = gve_rx_queue_stop,
 	.tx_queue_stop        = gve_tx_queue_stop,
+	.flow_ops_get         = gve_flow_ops_get,
 	.link_update          = gve_link_update,
 	.stats_get            = gve_dev_stats_get,
 	.stats_reset          = gve_dev_stats_reset,
@@ -1136,6 +1202,7 @@ static const struct eth_dev_ops gve_eth_dev_ops_dqo = {
 	.tx_queue_start       = gve_tx_queue_start_dqo,
 	.rx_queue_stop        = gve_rx_queue_stop_dqo,
 	.tx_queue_stop        = gve_tx_queue_stop_dqo,
+	.flow_ops_get         = gve_flow_ops_get,
 	.link_update          = gve_link_update,
 	.stats_get            = gve_dev_stats_get,
 	.stats_reset          = gve_dev_stats_reset,
@@ -1303,6 +1370,14 @@ gve_init_priv(struct gve_priv *priv, bool skip_describe_device)
 		    priv->max_nb_txq, priv->max_nb_rxq);
 
 setup_device:
+	if (priv->max_flow_rules) {
+		err = gve_setup_flow_subsystem(priv);
+		if (err)
+			PMD_DRV_LOG(WARNING,
+				    "Failed to set up flow subsystem: err=%d, flow steering will be disabled.",
+				    err);
+	}
+
 	err = gve_setup_device_resources(priv);
 	if (!err)
 		return 0;
@@ -1318,6 +1393,7 @@ gve_dev_init(struct rte_eth_dev *eth_dev)
 	int max_tx_queues, max_rx_queues;
 	struct rte_pci_device *pci_dev;
 	struct gve_registers *reg_bar;
+	pthread_mutexattr_t mutexattr;
 	rte_be32_t *db_bar;
 	int err;
 
@@ -1376,6 +1452,11 @@ gve_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	eth_dev->data->mac_addrs = &priv->dev_addr;
+
+	pthread_mutexattr_init(&mutexattr);
+	pthread_mutexattr_setpshared(&mutexattr, PTHREAD_PROCESS_SHARED);
+	pthread_mutex_init(&priv->flow_rule_lock, &mutexattr);
+	pthread_mutexattr_destroy(&mutexattr);
 
 	return 0;
 }

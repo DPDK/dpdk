@@ -56,4 +56,10 @@ struct gve_flow_rule_params {
 	struct gve_flow_spec mask;
 };
 
+struct gve_priv;
+
+int gve_flow_init_bmp(struct gve_priv *priv);
+void gve_flow_free_bmp(struct gve_priv *priv);
+int gve_free_flow_rules(struct gve_priv *priv);
+
 #endif /* _GVE_FLOW_RULE_H_ */

@@ -9,6 +9,8 @@
 #include <ethdev_pci.h>
 #include <rte_ether.h>
 #include <rte_pci.h>
+#include <pthread.h>
+#include <rte_bitmap.h>
 
 #include "base/gve.h"
 
@@ -252,6 +254,13 @@ struct gve_rx_queue {
 	uint8_t is_gqi_qpl;
 };
 
+struct gve_flow {
+	uint32_t rule_id;
+	TAILQ_ENTRY(gve_flow) list_handle;
+};
+
+extern const struct rte_flow_ops gve_flow_ops;
+
 struct gve_priv {
 	struct gve_irq_db *irq_dbs; /* array of num_ntfy_blks */
 	const struct rte_memzone *irq_dbs_mz;
@@ -334,7 +343,13 @@ struct gve_priv {
 	struct gve_rss_config rss_config;
 	struct gve_ptype_lut *ptype_lut_dqo;
 
+	/* Flow rule management */
 	uint32_t max_flow_rules;
+	uint32_t flow_rule_bmp_size;
+	struct rte_bitmap *avail_flow_rule_bmp; /* Tracks available rule IDs (1 = available) */
+	void *avail_flow_rule_bmp_mem; /* Backing memory for the bitmap */
+	pthread_mutex_t flow_rule_lock; /* Lock for bitmap and tailq access */
+	TAILQ_HEAD(, gve_flow) active_flows;
 };
 
 static inline bool
@@ -404,6 +419,34 @@ static inline void
 gve_clear_device_rings_ok(struct gve_priv *priv)
 {
 	rte_bit_relaxed_clear32(GVE_PRIV_FLAGS_DEVICE_RINGS_OK,
+				&priv->state_flags);
+}
+
+static inline bool
+gve_get_flow_subsystem_ok(struct gve_priv *priv)
+{
+	bool ret;
+
+	ret = !!rte_bit_relaxed_get32(GVE_PRIV_FLAGS_FLOW_SUBSYSTEM_OK,
+				      &priv->state_flags);
+	rte_atomic_thread_fence(rte_memory_order_acquire);
+
+	return ret;
+}
+
+static inline void
+gve_set_flow_subsystem_ok(struct gve_priv *priv)
+{
+	rte_atomic_thread_fence(rte_memory_order_release);
+	rte_bit_relaxed_set32(GVE_PRIV_FLAGS_FLOW_SUBSYSTEM_OK,
+			      &priv->state_flags);
+}
+
+static inline void
+gve_clear_flow_subsystem_ok(struct gve_priv *priv)
+{
+	rte_atomic_thread_fence(rte_memory_order_release);
+	rte_bit_relaxed_clear32(GVE_PRIV_FLAGS_FLOW_SUBSYSTEM_OK,
 				&priv->state_flags);
 }
 
