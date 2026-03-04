@@ -384,6 +384,7 @@ struct iavf_adapter {
 	enum iavf_tx_func_type tx_func_type;
 	uint16_t fdir_ref_cnt;
 	struct iavf_devargs devargs;
+	bool mac_primary_set;
 };
 
 /* IAVF_DEV_PRIVATE_TO */
