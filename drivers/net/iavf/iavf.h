@@ -333,6 +333,7 @@ struct iavf_adapter {
 	eth_tx_burst_t tx_pkt_burst;
 	uint16_t fdir_ref_cnt;
 	struct iavf_devargs devargs;
+	bool mac_primary_set;
 };
 
 /* IAVF_DEV_PRIVATE_TO */
