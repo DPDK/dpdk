@@ -317,4 +317,13 @@ void
 mlx5_os_interrupt_handler_destroy(struct rte_intr_handle *intr_handle,
 				  rte_intr_callback_fn cb, void *cb_arg);
 
+/**
+ * Return true if given IB device is associated with a networking bond.
+ *
+ * @param dev[in]
+ *   Pointer to IB device.
+ */
+__rte_internal
+bool mlx5_os_is_device_bond(const void *dev);
+
 #endif /* RTE_PMD_MLX5_COMMON_OS_H_ */

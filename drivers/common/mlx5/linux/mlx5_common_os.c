@@ -560,6 +560,14 @@ mlx5_os_pd_prepare(struct mlx5_common_device *cdev)
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */
 }
 
+static bool
+pci_addr_partial_match(const struct rte_pci_addr *addr1, const struct rte_pci_addr *addr2)
+{
+	return addr1->domain == addr2->domain &&
+	       addr1->bus == addr2->bus &&
+	       addr1->devid == addr2->devid;
+}
+
 static struct ibv_device *
 mlx5_os_get_ibv_device(const struct rte_pci_device *pci_dev)
 {
@@ -581,17 +589,23 @@ mlx5_os_get_ibv_device(const struct rte_pci_device *pci_dev)
 	}
 	ret1 = mlx5_get_device_guid(addr, guid1, sizeof(guid1));
 	while (n-- > 0) {
+		bool pci_partial_match;
+		bool guid_match;
+		bool bond_match;
+
 		DRV_LOG(DEBUG, "Checking device \"%s\"..", ibv_list[n]->name);
 		if (mlx5_get_pci_addr(ibv_list[n]->ibdev_path, &paddr) != 0)
 			continue;
 		if (ret1 > 0)
 			ret2 = mlx5_get_device_guid(&paddr, guid2, sizeof(guid2));
+		guid_match = ret1 > 0 && ret2 > 0 && memcmp(guid1, guid2, sizeof(guid1)) == 0;
+		pci_partial_match = pci_addr_partial_match(addr, &paddr);
 		/* Bond device can bond secondary PCIe */
-		if ((strstr(ibv_list[n]->name, "bond") && !is_vf_dev &&
-		     ((ret1 > 0 && ret2 > 0 && !memcmp(guid1, guid2, sizeof(guid1))) ||
-		      (addr->domain == paddr.domain && addr->bus == paddr.bus &&
-		       addr->devid == paddr.devid))) ||
-		    !rte_pci_addr_cmp(addr, &paddr)) {
+		bond_match = !is_vf_dev &&
+			     mlx5_os_is_device_bond(ibv_list[n]) &&
+			     (guid_match || pci_partial_match);
+		/* IB device matches either through bond or directly. */
+		if (bond_match || !rte_pci_addr_cmp(addr, &paddr)) {
 			ibv_match = ibv_list[n];
 			break;
 		}
@@ -1159,4 +1173,66 @@ mlx5_os_interrupt_handler_destroy(struct rte_intr_handle *intr_handle,
 	if (rte_intr_fd_get(intr_handle) >= 0)
 		mlx5_intr_callback_unregister(intr_handle, cb, cb_arg);
 	rte_intr_instance_free(intr_handle);
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_os_is_device_bond)
+bool
+mlx5_os_is_device_bond(const void *dev)
+{
+	const struct ibv_device *ibdev;
+	char path[PATH_MAX];
+	struct dirent *e;
+	DIR *net_dir;
+	bool result;
+	int ret;
+
+	if (dev == NULL)
+		return false;
+	ibdev = dev;
+
+	DRV_LOG(DEBUG, "Checking if %s ibdev belongs to bond", ibdev->name);
+
+	ret = snprintf(path, sizeof(path), "%s/device/net", ibdev->ibdev_path);
+	if (ret < 0 || ret >= (int)sizeof(path)) {
+		DRV_LOG(DEBUG, "Unable to get netdevs path for IB device %s", ibdev->name);
+		return false;
+	}
+
+	net_dir = opendir(path);
+	if (net_dir == NULL) {
+		DRV_LOG(DEBUG, "Unable to open directory %s (%s)", path, rte_strerror(errno));
+		return false;
+	}
+
+	result = false;
+	while ((e = readdir(net_dir)) != NULL) {
+		if (e->d_name[0] == '.')
+			continue;
+
+		DRV_LOG(DEBUG, "Checking if %s netdev related to %s ibdev belongs to bond",
+			e->d_name, ibdev->name);
+
+		ret = snprintf(path, sizeof(path), "/sys/class/net/%s/master/bonding", e->d_name);
+		if (ret < 0 || ret >= (int)sizeof(path)) {
+			DRV_LOG(DEBUG, "Unable to get bond path for %s netdev", e->d_name);
+			continue;
+		}
+
+		if (access(path, F_OK) == 0) {
+			/* At least one associated netdev is part of a bond. */
+			DRV_LOG(DEBUG, "Bonding path exists for %s netdev", e->d_name);
+			result = true;
+			goto end;
+		}
+
+		DRV_LOG(DEBUG, "Unable to access bond path for %s netdev (%s)",
+			e->d_name, rte_strerror(errno));
+	}
+
+	DRV_LOG(DEBUG, "No bonded netdev related to %s ibdev found",
+		ibdev->name);
+
+end:
+	closedir(net_dir);
+	return result;
 }
