@@ -438,6 +438,8 @@ static int gve_adminq_issue_cmd(struct gve_priv *priv,
 
 	memcpy(cmd, cmd_orig, sizeof(*cmd_orig));
 	opcode = be32_to_cpu(READ_ONCE32(cmd->opcode));
+	if (opcode == GVE_ADMINQ_EXTENDED_COMMAND)
+		opcode = be32_to_cpu(READ_ONCE32(cmd->extended_command.inner_opcode));
 
 	switch (opcode) {
 	case GVE_ADMINQ_DESCRIBE_DEVICE:
@@ -514,6 +516,34 @@ static int gve_adminq_execute_cmd(struct gve_priv *priv,
 		return err;
 
 	return gve_adminq_kick_and_wait(priv);
+}
+
+static int gve_adminq_execute_extended_cmd(struct gve_priv *priv, u32 opcode,
+					   size_t cmd_size, void *cmd_orig)
+{
+	union gve_adminq_command cmd;
+	struct gve_dma_mem inner_cmd_dma_mem;
+	void *inner_cmd;
+	int err;
+
+	inner_cmd = gve_alloc_dma_mem(&inner_cmd_dma_mem, cmd_size);
+	if (!inner_cmd)
+		return -ENOMEM;
+
+	memcpy(inner_cmd, cmd_orig, cmd_size);
+
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.opcode = cpu_to_be32(GVE_ADMINQ_EXTENDED_COMMAND);
+	cmd.extended_command = (struct gve_adminq_extended_command) {
+		.inner_opcode = cpu_to_be32(opcode),
+		.inner_length = cpu_to_be32(cmd_size),
+		.inner_command_addr = cpu_to_be64(inner_cmd_dma_mem.pa),
+	};
+
+	err = gve_adminq_execute_cmd(priv, &cmd);
+
+	gve_free_dma_mem(&inner_cmd_dma_mem);
+	return err;
 }
 
 /* The device specifies that the management vector can either be the first irq
