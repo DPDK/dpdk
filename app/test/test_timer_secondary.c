@@ -27,7 +27,8 @@ test_timer_secondary(void)
 
 #include "process.h"
 
-#define NUM_TIMERS		(1 << 20) /* ~1M timers */
+#define NUM_TIMERS_MAX		(1 << 20) /* ~1M timers */
+#define NUM_TIMERS_MIN		(1 << 14) /* 16K minimum */
 #define NUM_LCORES_NEEDED	3
 #define TEST_INFO_MZ_NAME	"test_timer_info_mz"
 #define MSECPERSEC		1E3
@@ -38,11 +39,12 @@ struct test_info {
 	unsigned int main_lcore;
 	unsigned int mgr_lcore;
 	unsigned int sec_lcore;
+	unsigned int num_timers;
 	uint32_t timer_data_id;
 	volatile int expected_count;
 	volatile int expired_count;
 	struct rte_mempool *tim_mempool;
-	struct rte_timer *expired_timers[NUM_TIMERS];
+	struct rte_timer *expired_timers[NUM_TIMERS_MAX];
 	int expired_timers_idx;
 	volatile int exit_flag;
 };
@@ -134,8 +136,10 @@ test_timer_secondary(void)
 				     "test data");
 		test_info = mz->addr;
 
+		test_info->num_timers = test_scale_iterations(NUM_TIMERS_MAX, NUM_TIMERS_MIN);
+
 		test_info->tim_mempool = rte_mempool_create("test_timer_mp",
-				NUM_TIMERS, sizeof(struct rte_timer), 0, 0,
+				test_info->num_timers, sizeof(struct rte_timer), 0, 0,
 				NULL, NULL, NULL, NULL, rte_socket_id(), 0);
 
 		ret = rte_timer_data_alloc(&test_info->timer_data_id);
@@ -174,15 +178,16 @@ test_timer_secondary(void)
 	} else if (proc_type == RTE_PROC_SECONDARY) {
 		uint64_t ticks, timeout_ms;
 		struct rte_timer *tim;
-		int i;
+		unsigned int i;
 
 		mz = rte_memzone_lookup(TEST_INFO_MZ_NAME);
 		TEST_ASSERT_NOT_NULL(mz, "Couldn't lookup memzone for "
 				     "test info");
 		test_info = mz->addr;
 
-		for (i = 0; i < NUM_TIMERS; i++) {
-			rte_mempool_get(test_info->tim_mempool, (void **)&tim);
+		for (i = 0; i < test_info->num_timers; i++) {
+			ret = rte_mempool_get(test_info->tim_mempool, (void **)&tim);
+			TEST_ASSERT_SUCCESS(ret, "Couldn't get timer from mempool");
 
 			rte_timer_init(tim);
 
