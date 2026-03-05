@@ -85,10 +85,14 @@ foreach suite:test_suites
             if nohuge
                 test_args += test_no_huge_args
             elif not has_hugepage
-                continue  #skip this tests
+                continue  # skip this test
             endif
             if not asan and get_option('b_sanitize').contains('address')
                 continue  # skip this test
+            endif
+            if is_linux
+                # use unique file-prefix to allow parallel runs
+                test_args += ['--file-prefix=' + test_name.underscorify()]
             endif
 
             if get_option('default_library') == 'shared'
