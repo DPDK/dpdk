@@ -268,10 +268,12 @@ test_free_null(void)
 	return 0;
 }
 
-#define NUM_ITERS_PER_THREAD 100000
+#define NUM_ITERS_BASE  100000u
+#define NUM_ITERS_MIN   1000u
 
 struct test_args {
 	struct rte_stack *s;
+	unsigned int num_iters;
 };
 
 static struct test_args thread_test_args;
@@ -280,9 +282,9 @@ static int
 stack_thread_push_pop(__rte_unused void *args)
 {
 	void *obj_table[MAX_BULK];
-	int i;
+	unsigned int i;
 
-	for (i = 0; i < NUM_ITERS_PER_THREAD; i++) {
+	for (i = 0; i < thread_test_args.num_iters; i++) {
 		unsigned int num;
 
 		num = rte_rand() % MAX_BULK;
@@ -308,12 +310,14 @@ test_stack_multithreaded(uint32_t flags)
 {
 	unsigned int lcore_id;
 	struct rte_stack *s;
+	unsigned int iterations;
 	int result = 0;
 
 	if (rte_lcore_count() < 2) {
 		printf("Not enough cores for test_stack_multithreaded, expecting at least 2\n");
 		return TEST_SKIPPED;
 	}
+	iterations = test_scale_iterations(NUM_ITERS_BASE, NUM_ITERS_MIN);
 
 	printf("[%s():%u] Running with %u lcores\n",
 	       __func__, __LINE__, rte_lcore_count());
@@ -325,6 +329,7 @@ test_stack_multithreaded(uint32_t flags)
 		return -1;
 	}
 
+	thread_test_args.num_iters = iterations;
 	thread_test_args.s = s;
 
 	if (rte_eal_mp_remote_launch(stack_thread_push_pop, NULL, CALL_MAIN))
