@@ -24,7 +24,8 @@ if not xxd.found()
 endif
 
 # BPF compiler flags
-bpf_cflags = [ '-O2', '-target', 'bpf', '-g', '-c']
+# At present: DPDK BPF does not support v3 or later
+bpf_cflags = [ '-O2', '-target', 'bpf', '-mcpu=v2', '-g', '-c']
 
 # Enable test in test_bpf.c
 cflags += '-DTEST_BPF_ELF_LOAD'
