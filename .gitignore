@@ -54,3 +54,4 @@ build-*
 # ignore other build directory patterns
 *-gcc*
 *-clang*
+.cursor-reviews/
