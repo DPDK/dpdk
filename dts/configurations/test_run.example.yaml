@@ -2,27 +2,44 @@
 # Copyright 2022-2023 The DPDK contributors
 # Copyright 2023 Arm Limited
 
+# Optional Fields:
+#   `dpdk_tree` & `tarball`:
+#       Either `dpdk_tree` or `tarball` can be defined, but not both. dpdk_tree is
+#       for an uncompressed DPDK directory while tarball is a compressed DPDK.
+#   `remote`:
+#       Optional, Defaults to false. If it's true, the `dpdk_tree` or `tarball`
+#       is located on the SUT node, instead of the execution host.
+#   `precompiled_build_dir` & `build_options`:
+#       If `precompiled_build_dir` is defined, DPDK has been pre-built
+#       and the build directory is in a subdirectory of DPDK tree root directory.
+#       Otherwise, will be using the `build_options` to build the DPDK from source. Either
+#       `precompiled_build_dir` or `build_options` can be defined, but not both.
+#   `compiler_wrapper`:
+#       Optional, adds a compiler wrapper if present.
+#   `func_traffic_generator` & `perf_traffic_generator`:
+#       Define `func_traffic_generator` when `func` set to true.
+#       Define `perf_traffic_generator` when `perf` set to true.
+#   `skip_smoke_tests`:
+#       Defaults to true. If it's false, smoke tests will run.
+#   `test_suites`:
+#       By removing the `test_suites` field, this test run will run every test suite available.
+#   `vdevs`:
+#       Uncomment to add a specific virtual device to run on the SUT node.
+
 # Define the test run environment
 dpdk:
   lcores: "" # use all available logical cores (Skips first core)
   memory_channels: 4 # tells DPDK to use 4 memory channels
   build:
     dpdk_location:
-      # dpdk_tree: Commented out because `tarball` is defined.
+      # dpdk_tree: see `Optional Fields`
       tarball: dpdk-tarball.tar.xz
-      # Either `dpdk_tree` or `tarball` can be defined, but not both.
-      remote: false # Optional, defaults to false. If it's true, the `dpdk_tree` or `tarball`
-                    # is located on the SUT node, instead of the execution host.
-
-    # precompiled_build_dir: Commented out because `build_options` is defined.
+      remote: false # see `Optional Fields`
+    # precompiled_build_dir: see `Optional Fields`
     build_options:
       # the combination of the following two makes CC="ccache gcc"
       compiler: gcc
-      compiler_wrapper: ccache # Optional.
-    # If `precompiled_build_dir` is defined, DPDK has been pre-built and the build directory is
-    # in a subdirectory of DPDK tree root directory. Otherwise, will be using the `build_options`
-    # to build the DPDK from source. Either `precompiled_build_dir` or `build_options` can be
-    # defined, but not both.
+      compiler_wrapper: ccache # see `Optional Fields`
 func_traffic_generator:
   type: SCAPY
 # perf_traffic_generator:
@@ -32,12 +49,11 @@ func_traffic_generator:
 perf: false # disable performance testing
 func: true # enable functional testing
 use_virtual_functions: false # use virtual functions (VFs) instead of physical functions
-skip_smoke_tests: true # optional
-# by removing the `test_suites` field, this test run will run every test suite available
-test_suites: # the following test suites will be run in their entirety
+skip_smoke_tests: true # see `Optional Fields`
+test_suites: # see `Optional Fields`; the following test suites will be run in their entirety
   - hello_world
-vdevs: # optional; if removed, vdevs won't be used in the execution
-  - "crypto_openssl"
+# vdevs: # see `Optional Fields`
+#   - "crypto_openssl"
 # The machine running the DPDK test executable
 system_under_test_node: "SUT 1"
 # Traffic generator node to use for this execution environment

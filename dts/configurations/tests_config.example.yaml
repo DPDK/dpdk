@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
+# Optional Fields:
+#   All fields are optional, uncomment a test suite to run it with a specific configuration.
+
 # Define the custom test suite configurations
 hello_world:
   msg: A custom hello world to you!
@@ -15,3 +18,7 @@ hello_world:
 #       num_descriptors: 1024
 #       expected_mpps: 1.0
 #   delta_tolerance: 0.05
+# pmd_rss:
+#   NUM_QUEUES: 4
+#   ACTUAL_KEY_SIZE: 52
+#   ACTUAL_RETA_SIZE: 512
