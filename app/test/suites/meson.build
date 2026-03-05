@@ -90,26 +90,29 @@ foreach suite:test_suites
             if not asan and get_option('b_sanitize').contains('address')
                 continue  # skip this test
             endif
-            if is_linux
-                # use unique file-prefix to allow parallel runs
-                test_args += ['--file-prefix=' + test_name.underscorify()]
-            endif
-
             if get_option('default_library') == 'shared'
                 test_args += ['-d', dpdk_drivers_build_dir]
             endif
 
+            # use unique file-prefix to allow parallel runs
+            file_prefix = []
+            trace_prefix = []
+            if is_linux
+                file_prefix = ['--file-prefix=' + test_name.underscorify()]
+                trace_prefix = [file_prefix[0] + '_with_traces']
+            endif
+
             test(test_name, dpdk_test,
-                args : test_args,
+                args : test_args + file_prefix,
                 env: ['DPDK_TEST=' + test_name],
                 timeout : timeout_seconds_fast,
                 is_parallel : false,
                 suite : 'fast-tests')
             if not is_windows and test_name == 'trace_autotest'
-                test_args += ['--trace=.*']
-                test_args += ['--trace-dir=@0@'.format(meson.current_build_dir())]
+                trace_extra = ['--trace=.*',
+                               '--trace-dir=@0@'.format(meson.current_build_dir())]
                 test(test_name + '_with_traces', dpdk_test,
-                    args : test_args,
+                    args : test_args + trace_extra + trace_prefix,
                     env: ['DPDK_TEST=' + test_name],
                     timeout : timeout_seconds_fast,
                     is_parallel : false,
