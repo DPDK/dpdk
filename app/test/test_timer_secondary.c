@@ -12,7 +12,9 @@
 #include <rte_timer.h>
 #include <rte_cycles.h>
 #include <rte_mempool.h>
+#include <rte_pause.h>
 #include <rte_random.h>
+#include <rte_stdatomic.h>
 
 #include "test.h"
 
@@ -41,12 +43,12 @@ struct test_info {
 	unsigned int sec_lcore;
 	unsigned int num_timers;
 	uint32_t timer_data_id;
-	volatile int expected_count;
-	volatile int expired_count;
+	RTE_ATOMIC(unsigned int) expected_count;
+	RTE_ATOMIC(unsigned int) expired_count;
 	struct rte_mempool *tim_mempool;
 	struct rte_timer *expired_timers[NUM_TIMERS_MAX];
 	int expired_timers_idx;
-	volatile int exit_flag;
+	RTE_ATOMIC(int) exit_flag;
 };
 
 static int
@@ -76,7 +78,8 @@ handle_expired_timer(struct rte_timer *tim)
 {
 	struct test_info *test_info = tim->arg;
 
-	test_info->expired_count++;
+	rte_atomic_fetch_add_explicit(&test_info->expired_count, 1,
+				      rte_memory_order_relaxed);
 	test_info->expired_timers[test_info->expired_timers_idx++] = tim;
 }
 
@@ -88,7 +91,8 @@ timer_manage_loop(void *arg)
 	uint64_t prev_tsc = 0, cur_tsc, diff_tsc;
 	struct test_info *test_info = arg;
 
-	while (!test_info->exit_flag) {
+	while (!rte_atomic_load_explicit(&test_info->exit_flag,
+				       rte_memory_order_acquire)) {
 		cur_tsc = rte_rdtsc();
 		diff_tsc = cur_tsc - prev_tsc;
 
@@ -163,7 +167,8 @@ test_timer_secondary(void)
 		/* must set exit flag even on error case, so check ret later */
 
 		rte_delay_ms(500);
-		test_info->exit_flag = 1;
+		rte_atomic_store_explicit(&test_info->exit_flag, 1,
+					  rte_memory_order_release);
 
 		TEST_ASSERT_SUCCESS(ret, "Secondary process execution failed");
 		rte_eal_wait_lcore(*mgr_lcorep);
@@ -172,7 +177,10 @@ test_timer_secondary(void)
 		rte_timer_alt_dump_stats(test_info->timer_data_id, stdout);
 #endif
 
-		return test_info->expected_count == test_info->expired_count ?
+		return rte_atomic_load_explicit(&test_info->expected_count,
+					       rte_memory_order_relaxed) ==
+		       rte_atomic_load_explicit(&test_info->expired_count,
+					       rte_memory_order_relaxed) ?
 			TEST_SUCCESS : TEST_FAILED;
 
 	} else if (proc_type == RTE_PROC_SECONDARY) {
@@ -202,7 +210,8 @@ test_timer_secondary(void)
 			if (ret < 0)
 				return TEST_FAILED;
 
-			test_info->expected_count++;
+			rte_atomic_fetch_add_explicit(&test_info->expected_count,
+						     1, rte_memory_order_relaxed);
 
 			/* randomly leave timer running or stop it */
 			if (rte_rand() & 1)
@@ -211,7 +220,8 @@ test_timer_secondary(void)
 			ret = rte_timer_alt_stop(test_info->timer_data_id,
 						 tim);
 			if (ret == 0) {
-				test_info->expected_count--;
+				rte_atomic_fetch_sub_explicit(&test_info->expected_count,
+							     1, rte_memory_order_relaxed);
 				rte_mempool_put(test_info->tim_mempool,
 						(void *)tim);
 			}
