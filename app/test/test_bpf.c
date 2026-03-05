@@ -4180,7 +4180,7 @@ static int bpf_tx_test(uint16_t port, const char *tmpfile, struct rte_mempool *p
 	const struct rte_bpf_prm prm = {
 		.prog_arg = {
 			.type = RTE_BPF_ARG_PTR,
-			.size = sizeof(struct rte_mbuf),
+			.size = sizeof(struct dummy_net),
 		},
 	};
 	int ret;
@@ -4279,7 +4279,7 @@ static int bpf_rx_test(uint16_t port, const char *tmpfile, struct rte_mempool *p
 	const struct rte_bpf_prm prm = {
 		.prog_arg = {
 			.type = RTE_BPF_ARG_PTR,
-			.size = sizeof(struct rte_mbuf),
+			.size = sizeof(struct dummy_net),
 		},
 	};
 	int ret;
