@@ -2,6 +2,9 @@
 # Copyright 2022-2023 The DPDK contributors
 # Copyright 2023 Arm Limited
 
+# Optional Fields:
+#   `hugepages_2mb`: if removed, will use system hugepage configuration
+
 # Define a system under test node, having two network ports physically
 # connected to the corresponding ports in TG 1 (the peer node)
 - name: "SUT 1"
@@ -17,7 +20,7 @@
       pci: "0000:00:08.1"
       os_driver_for_dpdk: vfio-pci
       os_driver: i40e
-  hugepages_2mb: # optional; if removed, will use system hugepage configuration
+  hugepages_2mb: # see 'Optional Fields'
       number_of: 256
       force_first_numa: false
 # Define a Scapy traffic generator node, having two network ports
@@ -35,6 +38,6 @@
       pci: "0000:00:08.1"
       os_driver_for_dpdk: rdma
       os_driver: rdma
-  hugepages_2mb: # optional; if removed, will use system hugepage configuration
+  hugepages_2mb: # see 'Optional Fields'
       number_of: 256
       force_first_numa: false
