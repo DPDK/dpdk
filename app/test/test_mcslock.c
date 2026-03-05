@@ -42,6 +42,10 @@ RTE_ATOMIC(rte_mcslock_t *) p_ml_perf;
 
 static unsigned int count;
 
+#define MAX_LOOP_BASE  1000000u
+#define MAX_LOOP_MIN   10000u
+static unsigned int max_loop;
+
 static RTE_ATOMIC(uint32_t) synchro;
 
 static int
@@ -60,8 +64,6 @@ test_mcslock_per_core(__rte_unused void *arg)
 
 static uint64_t time_count[RTE_MAX_LCORE] = {0};
 
-#define MAX_LOOP 1000000
-
 static int
 load_loop_fn(void *func_param)
 {
@@ -78,7 +80,7 @@ load_loop_fn(void *func_param)
 	rte_wait_until_equal_32((uint32_t *)(uintptr_t)&synchro, 1, rte_memory_order_relaxed);
 
 	begin = rte_get_timer_cycles();
-	while (lcount < MAX_LOOP) {
+	while (lcount < max_loop) {
 		if (use_lock)
 			rte_mcslock_lock(&p_ml_perf, &ml_perf_me);
 
@@ -174,6 +176,8 @@ test_mcslock(void)
 	/* Define per core me node. */
 	rte_mcslock_t ml_me;
 	rte_mcslock_t ml_try_me;
+
+	max_loop = test_scale_iterations(MAX_LOOP_BASE, MAX_LOOP_MIN);
 
 	/*
 	 * Test mcs lock & unlock on each core
