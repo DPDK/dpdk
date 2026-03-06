@@ -22,3 +22,11 @@ hello_world:
 #   NUM_QUEUES: 4
 #   ACTUAL_KEY_SIZE: 52
 #   ACTUAL_RETA_SIZE: 512
+# cryptodev_throughput:
+#   delta_tolerance: 0.05
+#   throughput_test_parameters:
+#     snow3g_uea2_snow3g_uia2: # Add the name of the test suite you would like to run
+#      - buff_size: 64
+#        Gbps: 2.0 # Set gigabits per second according to your devices throughput for this given buffer size
+#      - buff_size: 512
+#        Gbps: 20.0
