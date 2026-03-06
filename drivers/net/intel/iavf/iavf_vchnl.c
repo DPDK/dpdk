@@ -362,15 +362,65 @@ iavf_get_cmd_resp_count(enum virtchnl_ops op)
 }
 
 static int
+iavf_op_needs_poll(struct iavf_info *vf)
+{
+	/* Poll if interrupts disabled or we are in interrupt thread */
+	return !vf->aq_intr_enabled || rte_thread_is_intr();
+}
+
+static int
+iavf_wait_for_msg(struct iavf_adapter *adapter, struct iavf_cmd_info *args,
+		bool poll)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	int err = 0;
+	int i = 0;
+
+	if (args->out_buffer == NULL) {
+		PMD_DRV_LOG(ERR, "Invalid buffer for cmd %d response", args->ops);
+		return -EINVAL;
+	}
+
+	/* Wait for command completion */
+	do {
+		if (poll) {
+			enum iavf_aq_result result;
+			result = iavf_read_msg_from_pf(adapter, args->out_size,
+					args->out_buffer);
+			if (result == IAVF_MSG_CMD)
+				break;
+		} else {
+			/* check if interrupt thread has erased pending cmd */
+			if (vf->pend_cmd == VIRTCHNL_OP_UNKNOWN)
+				break;
+		}
+		iavf_msec_delay(ASQ_DELAY_MS);
+	} while (i++ < MAX_TRY_TIMES);
+
+	if (i >= MAX_TRY_TIMES) {
+		PMD_DRV_LOG(ERR, "No response for cmd %d", args->ops);
+		err = -EIO;
+	} else if (vf->cmd_retval == VIRTCHNL_STATUS_ERR_NOT_SUPPORTED) {
+		PMD_DRV_LOG(ERR, "Cmd %d not supported", args->ops);
+		err = -ENOTSUP;
+	} else if (vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Return failure %d for cmd %d",
+				vf->cmd_retval, args->ops);
+		err = -EINVAL;
+	}
+
+	return err;
+}
+
+static int
 iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args)
 {
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(adapter);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
-	enum iavf_aq_result result;
-	enum iavf_status ret;
+	enum iavf_status status;
 	uint32_t resp_count;
-	int err = 0;
-	int i = 0;
+	bool poll = iavf_op_needs_poll(vf);
+	int err;
 
 	if (vf->vf_reset)
 		return -EIO;
@@ -385,88 +435,27 @@ iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args)
 	if (iavf_set_pending_cmd(vf, args->ops, RTE_MAX(1U, resp_count)) != 0)
 		return -1;
 
-	ret = iavf_aq_send_msg_to_pf(hw, args->ops, IAVF_SUCCESS,
-				    args->in_args, args->in_args_size, NULL);
-	if (ret) {
+	status = iavf_aq_send_msg_to_pf(hw, args->ops, IAVF_SUCCESS,
+			args->in_args, args->in_args_size, NULL);
+	if (status != IAVF_SUCCESS) {
 		PMD_DRV_LOG(ERR, "fail to send cmd %d", args->ops);
-		iavf_clear_pending_cmd(vf);
-		return err;
+		err = (int)status;
+		goto clear_cmd;
+	} else if (resp_count == 0) {
+		/* we're not waiting on responses */
+		err = 0;
+		goto clear_cmd;
 	}
 
-	if (resp_count == 0) {
-		/* reset pending commands, counter will be overwritten on reset */
-		iavf_clear_pending_cmd(vf);
-		return 0;
-	}
+	err = iavf_wait_for_msg(adapter, args, poll);
 
-	switch (args->ops) {
-	case VIRTCHNL_OP_VERSION:
-	case VIRTCHNL_OP_GET_VF_RESOURCES:
-	case VIRTCHNL_OP_GET_SUPPORTED_RXDIDS:
-	case VIRTCHNL_OP_GET_OFFLOAD_VLAN_V2_CAPS:
-		/* for init virtchnl ops, need to poll the response */
-		do {
-			result = iavf_read_msg_from_pf(adapter, args->out_size,
-						   args->out_buffer);
-			if (result == IAVF_MSG_CMD)
-				break;
-			iavf_msec_delay(ASQ_DELAY_MS);
-		} while (i++ < MAX_TRY_TIMES);
-		if (i >= MAX_TRY_TIMES ||
-		    vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
-			err = -1;
-			PMD_DRV_LOG(ERR, "No response or return failure (%d)"
-				    " for cmd %d", vf->cmd_retval, args->ops);
-		}
-		iavf_clear_pending_cmd(vf);
-		break;
-	default:
-		if (rte_thread_is_intr()) {
-			/* For virtchnl ops were executed in eal_intr_thread,
-			 * need to poll the response.
-			 */
-			do {
-				result = iavf_read_msg_from_pf(adapter, args->out_size,
-							args->out_buffer);
-				if (result == IAVF_MSG_CMD)
-					break;
-				iavf_msec_delay(ASQ_DELAY_MS);
-			} while (i++ < MAX_TRY_TIMES);
-			if (i >= MAX_TRY_TIMES ||
-				vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
-				err = -1;
-				PMD_DRV_LOG(ERR, "No response or return failure (%d)"
-						" for cmd %d", vf->cmd_retval, args->ops);
-			}
-			iavf_clear_pending_cmd(vf);
-		} else {
-			/* For other virtchnl ops in running time,
-			 * wait for the cmd done flag.
-			 */
-			do {
-				if (vf->pend_cmd == VIRTCHNL_OP_UNKNOWN)
-					break;
-				iavf_msec_delay(ASQ_DELAY_MS);
-				/* If don't read msg or read sys event, continue */
-			} while (i++ < MAX_TRY_TIMES);
+	/* in interrupt success case, pending cmd is cleared by intr thread */
+	if (err != 0 || poll)
+		goto clear_cmd;
 
-			if (i >= MAX_TRY_TIMES) {
-				PMD_DRV_LOG(ERR, "No response for cmd %d", args->ops);
-				iavf_clear_pending_cmd(vf);
-				err = -EIO;
-			} else if (vf->cmd_retval ==
-				VIRTCHNL_STATUS_ERR_NOT_SUPPORTED) {
-				PMD_DRV_LOG(ERR, "Cmd %d not supported", args->ops);
-				err = -ENOTSUP;
-			} else if (vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
-				PMD_DRV_LOG(ERR, "Return failure %d for cmd %d",
-						vf->cmd_retval, args->ops);
-				err = -EINVAL;
-			}
-		}
-		break;
-	}
-
+	return err;
+clear_cmd:
+	iavf_clear_pending_cmd(vf);
 	return err;
 }
 
