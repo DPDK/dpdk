@@ -2853,6 +2853,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* configure and enable device interrupt */
 	iavf_enable_irq0(hw);
+	vf->aq_intr_enabled = true;
 
 	ret = iavf_flow_init(adapter);
 	if (ret) {
@@ -2900,6 +2901,7 @@ security_init_err:
 	iavf_security_ctx_destroy(adapter);
 
 flow_init_err:
+	vf->aq_intr_enabled = false;
 	iavf_disable_irq0(hw);
 
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
@@ -2975,6 +2977,7 @@ iavf_dev_close(struct rte_eth_dev *dev)
 		iavf_config_promisc(adapter, false, false);
 
 	iavf_vf_reset(hw);
+	vf->aq_intr_enabled = false;
 	iavf_shutdown_adminq(hw);
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
 		/* disable uio intr before callback unregister */
