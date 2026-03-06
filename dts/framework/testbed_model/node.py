@@ -54,6 +54,8 @@ class Node:
     arch: Architecture
     lcores: list[LogicalCore]
     ports: list[Port]
+    cryptodevs: list[Port]
+    crypto_device_type: str | None
     _logger: DTSLogger
     _other_sessions: list[OSSession]
     _node_info: OSSessionInfo | None
@@ -82,6 +84,14 @@ class Node:
         self._other_sessions = []
         self._setup = False
         self.ports = [Port(self, port_config) for port_config in self.config.ports]
+        self.cryptodevs = [
+            Port(self, cryptodev_config) for cryptodev_config in self.config.cryptodevs
+        ]
+        self.crypto_device_type = self.config.crypto_device_type
+        if self.cryptodevs:
+            self.main_session.load_vfio(self.cryptodevs[0])
+        elif self.ports and self.ports[0].config.os_driver_for_dpdk == "vfio-pci":
+            self.main_session.load_vfio(self.ports[0])
         self._logger.info(f"Created node: {self.name}")
 
     def setup(self) -> None:

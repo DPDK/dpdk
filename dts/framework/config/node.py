@@ -70,6 +70,10 @@ class NodeConfiguration(FrozenModel):
     hugepages: HugepageConfiguration | None = Field(None, alias="hugepages_2mb")
     #: The ports that can be used in testing.
     ports: list[PortConfig] = Field(min_length=1)
+    #: The pci info used by crypto devices
+    cryptodevs: list[PortConfig] = Field(default=[], min_length=0)
+    #: The crypto driver used by crypto devices
+    crypto_device_type: str | None = None
 
     @model_validator(mode="after")
     def verify_unique_port_names(self) -> Self:

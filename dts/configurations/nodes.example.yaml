@@ -4,6 +4,12 @@
 
 # Optional Fields:
 #   `hugepages_2mb`: if removed, will use system hugepage configuration
+#   `cryptodevs`:
+#     Uncomment to run cryptodev tests; add physical cryptodev devices by their BDF
+#   `crypto_device_type`:
+#     Uncomment to run cryptodev tests; the device type of the DUT e.g. (crypto_qat, crypto_zuc,
+#     crypto_aesni_mb); the complete list of device types can be found here
+#     https://doc.dpdk.org/guides-24.07/cryptodevs/overview.html
 
 # Define a system under test node, having two network ports physically
 # connected to the corresponding ports in TG 1 (the peer node)
@@ -23,6 +29,12 @@
   hugepages_2mb: # see 'Optional Fields'
       number_of: 256
       force_first_numa: false
+  # cryptodevs: # see `Optional Fields`
+  #   - name: cryptodev-0
+  #     pci: "ffff:ff:ff.9"
+  #     os_driver_for_dpdk: vfio-pci # OS driver that DPDK will use for cryptodev VFs
+  #     os_driver: _ # This is unused but a value is necessary to run dts
+  # crypto_device_type: # see `Optional Fields`
 # Define a Scapy traffic generator node, having two network ports
 # physically connected to the corresponding ports in SUT 1 (the peer node).
 - name: "TG 1"

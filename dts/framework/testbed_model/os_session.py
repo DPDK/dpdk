@@ -620,6 +620,14 @@ class OSSession(ABC):
         """Load the vfio module according to the device type of the given port."""
 
     @abstractmethod
+    def create_crypto_vfs(self, pf_ports: list[Port]) -> None:
+        """Creates virtual functions for each port in 'pf_ports'.
+
+        Checks how many virtual functions each crypto device in 'pf_ports' supports, and creates
+            that number of VFs on the port.
+        """
+
+    @abstractmethod
     def create_vfs(self, pf_port: Port) -> None:
         """Creates virtual functions for `pf_port`.
 
@@ -632,6 +640,16 @@ class OSSession(ABC):
         Raises:
             InternalError: If the number of VFs is greater than 0 but less than the
             maximum for `pf_port`.
+        """
+
+    @abstractmethod
+    def delete_crypto_vfs(self, pf_port: Port) -> None:
+        """Deletes virtual functions for crypto device 'pf_port'.
+
+        Checks how many virtual functions are currently active and removes all if any exist.
+
+        Args:
+            pf_port: The crypto device port to delete virtual functions on.
         """
 
     @abstractmethod
@@ -652,6 +670,18 @@ class OSSession(ABC):
     @abstractmethod
     def get_pci_addr_of_vfs(self, pf_port: Port) -> list[str]:
         """Find the PCI addresses of all virtual functions (VFs) on the port `pf_port`.
+
+        Args:
+            pf_port: The port to find the VFs on.
+
+        Returns:
+            A list containing all of the PCI addresses of the VFs on the port. If the port has no
+            VFs then the list will be empty.
+        """
+
+    @abstractmethod
+    def get_pci_addr_of_crypto_vfs(self, pf_port: Port) -> list[str]:
+        """Find the PCI addresses of all virtual functions (VFs) of a crypto device on `pf_port`.
 
         Args:
             pf_port: The port to find the VFs on.

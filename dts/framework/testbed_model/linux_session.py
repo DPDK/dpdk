@@ -10,6 +10,7 @@ This intermediate module implements the common parts of mostly POSIX compliant d
 """
 
 import json
+import re
 from collections.abc import Iterable
 from functools import cached_property
 from pathlib import PurePath
@@ -247,6 +248,30 @@ class LinuxSession(PosixSession):
             self.send_command("modprobe vfio-pci")
         self.refresh_lshw()
 
+    def create_crypto_vfs(self, pf_port: list[Port]) -> None:
+        """Overrides :meth:`~os_session.OSSession.create_crypto_vfs`.
+
+        Raises:
+            InternalError: If there are existing VFs which have to be deleted.
+        """
+        for port in pf_port:
+            self.delete_crypto_vfs(port)
+        for port in pf_port:
+            sys_bus_path = f"/sys/bus/pci/devices/{port.pci}".replace(":", "\\:")
+            curr_num_vfs = int(
+                self.send_command(f"cat {sys_bus_path}/sriov_numvfs", privileged=True).stdout
+            )
+            if 0 < curr_num_vfs:
+                raise InternalError("There are existing VFs on the port which must be deleted.")
+            num_vfs = int(
+                self.send_command(f"cat {sys_bus_path}/sriov_totalvfs", privileged=True).stdout
+            )
+            self.send_command(
+                f"echo {num_vfs} | sudo tee {sys_bus_path}/sriov_numvfs", privileged=True
+            )
+
+        self.refresh_lshw()
+
     def create_vfs(self, pf_port: Port) -> None:
         """Overrides :meth:`~.os_session.OSSession.create_vfs`.
 
@@ -263,6 +288,14 @@ class LinuxSession(PosixSession):
             self.send_command(f"echo 1 | sudo tee {sys_bus_path}/sriov_numvfs", privileged=True)
             self.refresh_lshw()
 
+    def delete_crypto_vfs(self, pf_port: Port) -> None:
+        """Overrides :meth:`~.os_session.OSSession.delete_crypto_vfs`."""
+        self.send_command(
+            f"echo 1 | sudo tee /sys/bus/pci/devices/{pf_port.pci}/remove".replace(":", "\\:"),
+            privileged=True,
+        )
+        self.send_command("echo 1 | sudo tee /sys/bus/pci/rescan", privileged=True)
+
     def delete_vfs(self, pf_port: Port) -> None:
         """Overrides :meth:`~.os_session.OSSession.delete_vfs`."""
         sys_bus_path = f"/sys/bus/pci/devices/{pf_port.pci}".replace(":", "\\:")
@@ -273,6 +306,18 @@ class LinuxSession(PosixSession):
             self._logger.debug(f"No VFs found on port {pf_port.pci}, skipping deletion")
         else:
             self.send_command(f"echo 0 | sudo tee {sys_bus_path}/sriov_numvfs", privileged=True)
+
+    def get_pci_addr_of_crypto_vfs(self, pf_port: Port) -> list[str]:
+        """Overrides :meth:`~.os_session.OSSession.get_pci_addr_of_crypto_vfs`."""
+        sys_bus_path = f"/sys/bus/pci/devices/{pf_port.pci}".replace(":", "\\:")
+        curr_num_vfs = int(self.send_command(f"cat {sys_bus_path}/sriov_numvfs").stdout)
+        if curr_num_vfs > 0:
+            pci_addrs = self.send_command(
+                f"readlink {sys_bus_path}/virtfn*",
+                privileged=True,
+            )
+            return [pci.replace("../", "") for pci in pci_addrs.stdout.splitlines()]
+        return []
 
     def get_pci_addr_of_vfs(self, pf_port: Port) -> list[str]:
         """Overrides :meth:`~.os_session.OSSession.get_pci_addr_of_vfs`."""

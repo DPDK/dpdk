@@ -8,6 +8,7 @@ A topology of a testbed captures what links are available between the testbed's 
 The link information then implies what type of topology is available.
 """
 
+import re
 from collections import defaultdict
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -58,6 +59,8 @@ class Topology:
     tg_ports: list[Port]
     pf_ports: list[Port]
     vf_ports: list[Port]
+    crypto_pf_ports: list[Port]
+    crypto_vf_ports: list[Port]
 
     @classmethod
     def from_port_links(cls, port_links: Iterator[PortLink]) -> Self:
@@ -85,7 +88,7 @@ class Topology:
                     msg = "More than two links in a topology are not supported."
                     raise ConfigurationError(msg)
 
-        return cls(type, sut_ports, tg_ports, [], [])
+        return cls(type, sut_ports, tg_ports, [], [], [], [])
 
     def node_and_ports_from_id(self, node_identifier: NodeIdentifier) -> tuple[Node, list[Port]]:
         """Retrieve node and its ports for the current topology.
@@ -104,6 +107,32 @@ class Topology:
             case _:
                 msg = f"Invalid node `{node_identifier}` given."
                 raise InternalError(msg)
+
+    def get_crypto_vfs(self, num_vfs: int) -> list[Port]:
+        """Retrieve virtual functions from active crypto vfs.
+
+        Args:
+            num_vfs: Number of virtual functions to return.
+
+        Returns:
+            List containing the requested number of VFs
+
+        Raises:
+            ValueError: If there are not `num_vfs` available VFs
+        """
+        return_list: list[Port] = []
+        device = 1
+        if len(self.crypto_vf_ports) < num_vfs or num_vfs < 0:
+            raise ValueError
+        for i in range(num_vfs):
+            if i % 8 == 0 and i != 0:
+                device += 1
+            for port in filter(
+                lambda x: re.search(rf"0000:\d+:0{device}.{i}", x.pci), self.crypto_vf_ports
+            ):
+                if len(return_list) < num_vfs:
+                    return_list.append(port)
+        return return_list
 
     def setup(self) -> None:
         """Setup topology ports.
@@ -144,6 +173,32 @@ class Topology:
                     "Could not gather a valid MAC address and/or logical name "
                     f"for port {port.name} in node {node.name}."
                 )
+
+    def instantiate_crypto_ports(self) -> None:
+        """Create max number of virtual functions allowed on the SUT node from physical BDFs.
+
+        Raises:
+            InternalError: If crypto virtual functions could not be created on a port.
+        """
+        from framework.context import get_ctx
+
+        ctx = get_ctx()
+        for port in ctx.sut_node.cryptodevs:
+            self.crypto_pf_ports.append(port)
+
+        ctx.sut_node.main_session.create_crypto_vfs(self.crypto_pf_ports)
+        for port in self.crypto_pf_ports:
+            addr_list = ctx.sut_node.main_session.get_pci_addr_of_crypto_vfs(port)
+            if addr_list == []:
+                raise InternalError(f"Failed to create crypto virtual function on port {port.pci}")
+            for addr in addr_list:
+                vf_config = PortConfig(
+                    name=f"{port.name}-crypto-vf-{addr}",
+                    pci=addr,
+                    os_driver_for_dpdk=port.config.os_driver_for_dpdk,
+                    os_driver=port.config.os_driver,
+                )
+                self.crypto_vf_ports.append(Port(node=port.node, config=vf_config))
 
     def instantiate_vf_ports(self) -> None:
         """Create, setup, and add virtual functions to the list of ports on the SUT node.
@@ -189,6 +244,25 @@ class Topology:
         self.sut_ports.clear()
         self.sut_ports.extend(self.pf_ports)
 
+    def delete_crypto_vf_ports(self) -> None:
+        """Delete crypto virtual functions from the SUT node during test run teardown."""
+        from framework.context import get_ctx
+
+        ctx = get_ctx()
+
+        for port in self.crypto_pf_ports:
+            ctx.sut_node.main_session.delete_crypto_vfs(port)
+
+    def bind_cryptodevs(self, driver: DriverKind):
+        """Bind the crypto device virtual functions on the sut to the specified driver.
+
+        Args:
+            driver: The driver to bind the crypto functions
+        """
+        from framework.context import get_ctx
+
+        self._bind_ports_to_drivers(get_ctx().sut_node, self.crypto_vf_ports, driver)
+
     def configure_ports(
         self, node_identifier: NodeIdentifier, drivers: DriverKind | tuple[DriverKind, ...]
     ) -> None:
@@ -227,7 +301,7 @@ class Topology:
         for port_id, port in enumerate(ports):
             driver_kind = drivers[port_id] if isinstance(drivers, tuple) else drivers
             desired_driver = port.driver_by_kind(driver_kind)
-            if port.current_driver != desired_driver:
+            if port in self.crypto_vf_ports or port.current_driver != desired_driver:
                 driver_to_ports[desired_driver].append(port)
 
         for driver_name, ports in driver_to_ports.items():

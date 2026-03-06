@@ -15,6 +15,23 @@ Example:
 from pathlib import PurePath
 from typing import TypedDict
 
+from api.cryptodev.config import (
+    AeadAlgName,
+    AsymOpMode,
+    AuthenticationAlgorithm,
+    AuthenticationOpMode,
+    BurstSizeRange,
+    CipherAlgorithm,
+    DeviceType,
+    EncryptDecryptSwitch,
+    ListWrapper,
+    OperationType,
+    PDCPDomain,
+    RSAPrivKeytype,
+    Silent,
+    TestType,
+    TLSVersion,
+)
 from api.testpmd.config import (
     AnonMempoolAllocationMode,
     EthPeer,
@@ -53,6 +70,54 @@ class EalParamsDict(TypedDict, total=False):
     allowed_ports: list[Port] | None
     blocked_ports: list[Port] | None
     other_eal_param: Params | None
+
+
+class CryptoPmdParamsDict(EalParamsDict, total=False):
+    """:class:`TypedDict` equivalent of :class:`~.cryptodev.CryptoPmdParams`."""
+
+    aead_aad_sz: int | None
+    aead_algo: AeadAlgName | None
+    aead_iv_sz: int | None
+    aead_key_sz: int | None
+    aead_op: EncryptDecryptSwitch | None
+    asym_op: AsymOpMode | None
+    auth_algo: AuthenticationAlgorithm | None
+    auth_iv_sz: int | None
+    auth_key_sz: int | None
+    auth_op: AuthenticationOpMode | None
+    buffer_sz: BurstSizeRange | ListWrapper | int | None
+    burst_sz: BurstSizeRange | ListWrapper | int | None
+    cipher_algo: CipherAlgorithm | None
+    cipher_iv_sz: int | None
+    cipher_key_sz: int | None
+    cipher_op: EncryptDecryptSwitch | None
+    csv_friendly: Switch
+    desc_nb: int | None
+    devtype: DeviceType | None
+    digest_sz: int | None
+    docsis_hdr_sz: int | None
+    enable_sdap: Switch
+    imix: int | None
+    low_prio_qp_mask: int | None
+    modex_len: int | None
+    optype: OperationType | None
+    out_of_place: Switch
+    pdcp_sn_sz: int | None
+    pdcp_domain: PDCPDomain | None
+    pdcp_ses_hfn_en: Switch | None
+    pmd_cyclecount_delay_pmd: int | None
+    pool_sz: int | None
+    ptest: TestType
+    rsa_modlen: int | None
+    rsa_priv_keytype: RSAPrivKeytype | None
+    segment_sz: int | None
+    sessionless: Switch
+    shared_session: Switch
+    silent: Silent | None
+    test_file: str | None
+    test_name: str | None
+    tls_version: TLSVersion | None
+    total_ops: int | None
 
 
 class TestPmdParamsDict(EalParamsDict, total=False):

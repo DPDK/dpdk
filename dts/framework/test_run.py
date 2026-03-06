@@ -349,6 +349,9 @@ class TestRunSetup(State):
 
         if test_run.config.use_virtual_functions:
             test_run.ctx.topology.instantiate_vf_ports()
+        if test_run.ctx.sut_node.cryptodevs:
+            test_run.ctx.topology.instantiate_crypto_ports()
+            test_run.ctx.topology.bind_cryptodevs("dpdk")
 
         test_run.ctx.topology.configure_ports("sut", "dpdk")
         if test_run.ctx.func_tg:
@@ -442,6 +445,8 @@ class TestRunTeardown(State):
         """Next state."""
         if self.test_run.config.use_virtual_functions:
             self.test_run.ctx.topology.delete_vf_ports()
+        if self.test_run.ctx.sut_node.cryptodevs:
+            self.test_run.ctx.topology.delete_crypto_vf_ports()
 
         self.test_run.ctx.shell_pool.terminate_current_pool()
         if self.test_run.ctx.func_tg and self.test_run.ctx.func_tg.is_setup:
