@@ -3164,7 +3164,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		if (ret < 0) {
 			DPAA2_PMD_ERR(" Error(%d) in loading softparser",
 				      ret);
-			return ret;
+			goto init_err;
 		}
 
 		ret = dpaa2_eth_enable_wriop_soft_parser(priv,
@@ -3172,7 +3172,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		if (ret < 0) {
 			DPAA2_PMD_ERR(" Error(%d) in enabling softparser",
 				      ret);
-			return ret;
+			goto init_err;
 		}
 	}
 
