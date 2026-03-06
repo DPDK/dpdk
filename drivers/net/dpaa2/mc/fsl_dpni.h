@@ -121,6 +121,12 @@ struct fsl_mc_io;
  * The stashing is enabled by default.
  */
 #define DPNI_OPT_STASHING_DIS			0x002000
+/*
+ * High performance buffer mode.
+ * The total number of Rx descriptors is limited to 11264 in this mode.
+ * When not set, the DPNI uses normal buffers and has no such limit.
+ */
+#define DPNI_OPT_HIGH_PERF_BUFFER		0x80000000
 /**
  * Software sequence maximum layout size
  */
