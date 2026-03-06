@@ -432,59 +432,6 @@ struct iavf_cmd_info {
 	uint32_t out_size;      /* buffer size for response */
 };
 
-/* notify current command done. Only call in case execute
- * _atomic_set_cmd successfully.
- */
-static inline void
-_notify_cmd(struct iavf_info *vf, int msg_ret)
-{
-	vf->cmd_retval = msg_ret;
-	rte_wmb();
-	vf->pend_cmd = VIRTCHNL_OP_UNKNOWN;
-}
-
-/* clear current command. Only call in case execute
- * _atomic_set_cmd successfully.
- */
-static inline void
-_clear_cmd(struct iavf_info *vf)
-{
-	rte_wmb();
-	vf->pend_cmd = VIRTCHNL_OP_UNKNOWN;
-	vf->cmd_retval = VIRTCHNL_STATUS_SUCCESS;
-}
-
-/* Check there is pending cmd in execution. If none, set new command. */
-static inline int
-_atomic_set_cmd(struct iavf_info *vf, enum virtchnl_ops ops)
-{
-	enum virtchnl_ops op_unk = VIRTCHNL_OP_UNKNOWN;
-	int ret = rte_atomic_compare_exchange_strong_explicit(&vf->pend_cmd, &op_unk, ops,
-			rte_memory_order_acquire, rte_memory_order_acquire);
-
-	if (!ret)
-		PMD_DRV_LOG(ERR, "There is incomplete cmd %d", vf->pend_cmd);
-
-	rte_atomic_store_explicit(&vf->pend_cmd_count, 1, rte_memory_order_relaxed);
-
-	return !ret;
-}
-
-/* Check there is pending cmd in execution. If none, set new command. */
-static inline int
-_atomic_set_async_response_cmd(struct iavf_info *vf, enum virtchnl_ops ops)
-{
-	enum virtchnl_ops op_unk = VIRTCHNL_OP_UNKNOWN;
-	int ret = rte_atomic_compare_exchange_strong_explicit(&vf->pend_cmd, &op_unk, ops,
-			rte_memory_order_acquire, rte_memory_order_acquire);
-
-	if (!ret)
-		PMD_DRV_LOG(ERR, "There is incomplete cmd %d", vf->pend_cmd);
-
-	rte_atomic_store_explicit(&vf->pend_cmd_count, 2, rte_memory_order_relaxed);
-
-	return !ret;
-}
 int iavf_check_api_version(struct iavf_adapter *adapter);
 int iavf_get_vf_resource(struct iavf_adapter *adapter);
 void iavf_dev_event_post(struct rte_eth_dev *dev,
