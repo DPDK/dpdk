@@ -2553,11 +2553,6 @@ iavf_init_vf(struct rte_eth_dev *dev)
 		goto err;
 	}
 
-	vf->aq_resp = rte_zmalloc("vf_aq_resp", IAVF_AQ_BUF_SZ, 0);
-	if (!vf->aq_resp) {
-		PMD_INIT_LOG(ERR, "unable to allocate vf_aq_resp memory");
-		goto err_aq;
-	}
 	if (iavf_check_api_version(adapter) != 0) {
 		PMD_INIT_LOG(ERR, "check_api version failed");
 		goto err_api;
@@ -2631,8 +2626,6 @@ err_alloc:
 	rte_free(vf->vf_res);
 	vf->vsi_res = NULL;
 err_api:
-	rte_free(vf->aq_resp);
-err_aq:
 	iavf_shutdown_adminq(hw);
 err:
 	return -1;
@@ -2649,9 +2642,6 @@ iavf_uninit_vf(struct rte_eth_dev *dev)
 	rte_free(vf->vf_res);
 	vf->vsi_res = NULL;
 	vf->vf_res = NULL;
-
-	rte_free(vf->aq_resp);
-	vf->aq_resp = NULL;
 
 	rte_free(vf->qos_cap);
 	vf->qos_cap = NULL;
@@ -3008,9 +2998,6 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	rte_free(vf->vf_res);
 	vf->vsi_res = NULL;
 	vf->vf_res = NULL;
-
-	rte_free(vf->aq_resp);
-	vf->aq_resp = NULL;
 
 	/*
 	 * If the VF is reset via VFLR, the device will be knocked out of bus
