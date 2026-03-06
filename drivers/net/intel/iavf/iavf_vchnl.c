@@ -1483,7 +1483,7 @@ iavf_add_del_all_mac_addr(struct iavf_adapter *adapter, bool add)
 
 int
 iavf_query_stats(struct iavf_adapter *adapter,
-		struct virtchnl_eth_stats **pstats)
+		struct virtchnl_eth_stats *pstats)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	struct virtchnl_queue_select q_stats;
@@ -1504,10 +1504,9 @@ iavf_query_stats(struct iavf_adapter *adapter,
 	err = iavf_execute_vf_cmd_safe(adapter, &args, 0);
 	if (err) {
 		PMD_DRV_LOG(ERR, "fail to execute command OP_GET_STATS");
-		*pstats = NULL;
 		return err;
 	}
-	*pstats = (struct virtchnl_eth_stats *)args.out_buffer;
+	*pstats = *(struct virtchnl_eth_stats *)args.out_buffer;
 	return 0;
 }
 

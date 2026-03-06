@@ -1793,7 +1793,7 @@ iavf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_vsi *vsi = &vf->vsi;
-	struct virtchnl_eth_stats *pstats = NULL;
+	struct virtchnl_eth_stats pstats;
 	int ret;
 
 	ret = iavf_query_stats(adapter, &pstats);
@@ -1801,16 +1801,16 @@ iavf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		uint8_t crc_stats_len = (dev->data->dev_conf.rxmode.offloads &
 					 RTE_ETH_RX_OFFLOAD_KEEP_CRC) ? 0 :
 					 RTE_ETHER_CRC_LEN;
-		iavf_update_stats(vsi, pstats);
-		stats->ipackets = pstats->rx_unicast + pstats->rx_multicast +
-				pstats->rx_broadcast - pstats->rx_discards;
-		stats->opackets = pstats->tx_broadcast + pstats->tx_multicast +
-						pstats->tx_unicast;
-		stats->imissed = pstats->rx_discards;
-		stats->oerrors = pstats->tx_errors + pstats->tx_discards;
-		stats->ibytes = pstats->rx_bytes;
+		iavf_update_stats(vsi, &pstats);
+		stats->ipackets = pstats.rx_unicast + pstats.rx_multicast +
+				pstats.rx_broadcast - pstats.rx_discards;
+		stats->opackets = pstats.tx_broadcast + pstats.tx_multicast +
+						pstats.tx_unicast;
+		stats->imissed = pstats.rx_discards;
+		stats->oerrors = pstats.tx_errors + pstats.tx_discards;
+		stats->ibytes = pstats.rx_bytes;
 		stats->ibytes -= stats->ipackets * crc_stats_len;
-		stats->obytes = pstats->tx_bytes;
+		stats->obytes = pstats.tx_bytes;
 	} else {
 		PMD_DRV_LOG(ERR, "Get statistics failed");
 	}
@@ -1825,15 +1825,15 @@ iavf_dev_stats_reset(struct rte_eth_dev *dev)
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_vsi *vsi = &vf->vsi;
-	struct virtchnl_eth_stats *pstats = NULL;
+	struct virtchnl_eth_stats stats;
 
 	/* read stat values to clear hardware registers */
-	ret = iavf_query_stats(adapter, &pstats);
+	ret = iavf_query_stats(adapter, &stats);
 	if (ret != 0)
 		return ret;
 
 	/* set stats offset base on current values */
-	vsi->eth_stats_offset.eth_stats = *pstats;
+	vsi->eth_stats_offset.eth_stats = stats;
 
 	return 0;
 }
@@ -1909,21 +1909,21 @@ static int iavf_dev_xstats_get(struct rte_eth_dev *dev,
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_vsi *vsi = &vf->vsi;
-	struct virtchnl_eth_stats *pstats = NULL;
+	struct virtchnl_eth_stats stats;
 	struct iavf_eth_xstats iavf_xtats = {{0}};
 
 	if (n < IAVF_NB_XSTATS)
 		return IAVF_NB_XSTATS;
 
-	ret = iavf_query_stats(adapter, &pstats);
+	ret = iavf_query_stats(adapter, &stats);
 	if (ret != 0)
 		return 0;
 
 	if (!xstats)
 		return 0;
 
-	iavf_update_stats(vsi, pstats);
-	iavf_xtats.eth_stats = *pstats;
+	iavf_update_stats(vsi, &stats);
+	iavf_xtats.eth_stats = stats;
 
 	if (iavf_ipsec_crypto_supported(adapter))
 		iavf_dev_update_ipsec_xstats(dev, &iavf_xtats.ips_stats);
