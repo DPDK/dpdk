@@ -449,6 +449,13 @@ iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args)
 
 	err = iavf_wait_for_msg(adapter, args, poll);
 
+	/*
+	 * messages received through interrupts store their response in global
+	 * buffer, so we need to copy it if we received the message.
+	 */
+	if (!poll && err == 0)
+		memcpy(args->out_buffer, vf->aq_resp, args->out_size);
+
 	/* in interrupt success case, pending cmd is cleared by intr thread */
 	if (err != 0 || poll)
 		goto clear_cmd;
