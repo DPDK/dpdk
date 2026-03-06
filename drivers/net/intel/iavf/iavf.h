@@ -518,7 +518,7 @@ int iavf_dev_link_update(struct rte_eth_dev *dev,
 			__rte_unused int wait_to_complete);
 void iavf_dev_alarm_handler(void *param);
 int iavf_query_stats(struct iavf_adapter *adapter,
-		    struct virtchnl_eth_stats **pstats);
+		    struct virtchnl_eth_stats *pstats);
 int iavf_config_promisc(struct iavf_adapter *adapter, bool enable_unicast,
 		       bool enable_multicast);
 int iavf_add_del_eth_addr(struct iavf_adapter *adapter,
