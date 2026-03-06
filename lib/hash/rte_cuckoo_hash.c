@@ -1870,18 +1870,15 @@ return_key:
 		/* Key index where key is stored, adding the first dummy index */
 		rcu_dq_entry.key_idx = ret + 1;
 		rcu_dq_entry.ext_bkt_idx = index;
-		if (h->dq == NULL) {
+		if (h->dq == NULL || rte_rcu_qsbr_dq_enqueue(h->dq, &rcu_dq_entry) != 0) {
 			/* Wait for quiescent state change if using
-			 * RTE_HASH_QSBR_MODE_SYNC
+			 * RTE_HASH_QSBR_MODE_SYNC or if RCU enqueue failed.
 			 */
 			rte_rcu_qsbr_synchronize(h->hash_rcu_cfg->v,
 						 RTE_QSBR_THRID_INVALID);
 			__hash_rcu_qsbr_free_resource((void *)((uintptr_t)h),
 						      &rcu_dq_entry, 1);
-		} else if (h->dq)
-			/* Push into QSBR FIFO if using RTE_HASH_QSBR_MODE_DQ */
-			if (rte_rcu_qsbr_dq_enqueue(h->dq, &rcu_dq_entry) != 0)
-				HASH_LOG(ERR, "Failed to push QSBR FIFO");
+		}
 	}
 	__hash_rw_writer_unlock(h);
 	return ret;
