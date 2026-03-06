@@ -75,6 +75,7 @@ EAL_REGISTER_TAILQ(rte_hash_tailq)
 struct __rte_hash_rcu_dq_entry {
 	uint32_t key_idx;
 	uint32_t ext_bkt_idx;
+	void *old_data;
 };
 
 RTE_EXPORT_SYMBOL(rte_hash_find_existing)
@@ -761,6 +762,28 @@ enqueue_slot_back(const struct rte_hash *h,
 						sizeof(uint32_t));
 }
 
+/*
+ * When RCU is configured with a free function, auto-free the overwritten
+ * data pointer via RCU.
+ */
+static inline void
+__rte_hash_rcu_auto_free_old_data(const struct rte_hash *h, void *d)
+{
+	struct __rte_hash_rcu_dq_entry rcu_dq_entry = {
+		.key_idx = EMPTY_SLOT, /* sentinel value for __hash_rcu_qsbr_free_resource */
+		.old_data = d,
+	};
+
+	if (d == NULL || h->hash_rcu_cfg == NULL || h->hash_rcu_cfg->free_key_data_func == NULL)
+		return;
+
+	if (h->dq == NULL || rte_rcu_qsbr_dq_enqueue(h->dq, &rcu_dq_entry) != 0) {
+		/* SYNC mode or enqueue failed in DQ mode */
+		rte_rcu_qsbr_synchronize(h->hash_rcu_cfg->v, RTE_QSBR_THRID_INVALID);
+		h->hash_rcu_cfg->free_key_data_func(h->hash_rcu_cfg->key_data_ptr, d);
+	}
+}
+
 /* Search a key from bucket and update its data.
  * Writer holds the lock before calling this.
  */
@@ -770,6 +793,7 @@ search_and_update(const struct rte_hash *h, void *data, const void *key,
 {
 	int i;
 	struct rte_hash_key *k, *keys = h->key_store;
+	void *old_data;
 
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
 		if (bkt->sig_current[i] == sig) {
@@ -782,9 +806,12 @@ search_and_update(const struct rte_hash *h, void *data, const void *key,
 				 * variable. Release the application data
 				 * to the readers.
 				 */
-				rte_atomic_store_explicit(&k->pdata,
+				old_data = rte_atomic_exchange_explicit(&k->pdata,
 					data,
 					rte_memory_order_release);
+
+				__rte_hash_rcu_auto_free_old_data(h, old_data);
+
 				/*
 				 * Return index where key is stored,
 				 * subtracting the first dummy index
@@ -1566,6 +1593,15 @@ __hash_rcu_qsbr_free_resource(void *p, void *e, unsigned int n)
 			*((struct __rte_hash_rcu_dq_entry *)e);
 
 	RTE_SET_USED(n);
+
+	if (rcu_dq_entry.key_idx == EMPTY_SLOT) {
+		/* Overwrite case: free old data only, do not recycle slot */
+		RTE_ASSERT(h->hash_rcu_cfg->free_key_data_func != NULL);
+		h->hash_rcu_cfg->free_key_data_func(h->hash_rcu_cfg->key_data_ptr,
+						    rcu_dq_entry.old_data);
+		return;
+	}
+
 	keys = h->key_store;
 
 	k = (struct rte_hash_key *) ((char *)keys +
