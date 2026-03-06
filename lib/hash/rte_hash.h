@@ -226,7 +226,9 @@ rte_hash_max_key_id(const struct rte_hash *h);
  * Thread safety can be enabled by setting flag during
  * table creation.
  * If the key exists already in the table, this API updates its value
- * with 'data' passed in this API. It is the responsibility of
+ * with 'data' passed in this API. If RCU is configured with a
+ * free_key_data_func callback, the old data is automatically
+ * deferred-freed via RCU. Otherwise, it is the responsibility of
  * the application to manage any memory associated with the old value.
  * The readers might still be using the old value even after this API
  * has returned.
@@ -253,7 +255,9 @@ rte_hash_add_key_data(const struct rte_hash *h, const void *key, void *data);
  * Thread safety can be enabled by setting flag during
  * table creation.
  * If the key exists already in the table, this API updates its value
- * with 'data' passed in this API. It is the responsibility of
+ * with 'data' passed in this API. If RCU is configured with a
+ * free_key_data_func callback, the old data is automatically
+ * deferred-freed via RCU. Otherwise, it is the responsibility of
  * the application to manage any memory associated with the old value.
  * The readers might still be using the old value even after this API
  * has returned.
