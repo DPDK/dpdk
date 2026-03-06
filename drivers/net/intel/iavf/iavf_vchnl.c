@@ -564,10 +564,6 @@ iavf_handle_virtchnl_msg(struct rte_eth_dev *dev)
 	int ret;
 
 	info.buf_len = IAVF_AQ_BUF_SZ;
-	if (!vf->aq_resp) {
-		PMD_DRV_LOG(ERR, "Buffer for adminq resp should not be NULL");
-		return;
-	}
 	info.msg_buf = vf->aq_resp;
 
 	pending = 1;
