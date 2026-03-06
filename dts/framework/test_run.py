@@ -349,7 +349,7 @@ class TestRunSetup(State):
 
         if test_run.config.use_virtual_functions:
             test_run.ctx.topology.instantiate_vf_ports()
-        if test_run.ctx.sut_node.cryptodevs:
+        if test_run.ctx.sut_node.cryptodevs and test_run.config.crypto:
             test_run.ctx.topology.instantiate_crypto_ports()
             test_run.ctx.topology.bind_cryptodevs("dpdk")
 
