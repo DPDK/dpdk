@@ -1550,6 +1550,11 @@ dpaa2_dev_close(struct rte_eth_dev *dev)
 
 	rte_free(priv->extract.qos_extract_param);
 
+	rte_free(priv->cnt_idx_dma_mem);
+	rte_free(priv->cnt_values_dma_mem);
+	priv->cnt_idx_dma_mem = NULL;
+	priv->cnt_values_dma_mem = NULL;
+
 	DPAA2_PMD_INFO("%s: netdev deleted", dev->data->name);
 	return 0;
 }
@@ -1905,7 +1910,6 @@ dpaa2_dev_xstats_get(struct rte_eth_dev *dev,
 	unsigned int i = 0, j = 0, num = RTE_DIM(dpaa2_xstats_strings);
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	union dpni_statistics value[13] = {};
-	struct mc_version mc_ver_info = {0};
 	struct dpni_rx_tc_policing_cfg cfg;
 	uint8_t page_id, stats_id;
 	uint64_t *cnt_values;
@@ -1976,44 +1980,24 @@ dpaa2_dev_xstats_get(struct rte_eth_dev *dev,
 		i++;
 	}
 
-	if (mc_get_version(dpni, CMD_PRI_LOW, &mc_ver_info))
-		DPAA2_PMD_WARN("Unable to obtain MC version");
-
-	/* mac_statistics supported on MC version > 10.39.0 */
-	if (mc_ver_info.major >= MC_VER_MAJOR &&
-	    mc_ver_info.minor >= MC_VER_MINOR &&
-	    mc_ver_info.revision > 0) {
-		dpaa2_dev_mac_setup_stats(dev);
-		retcode = dpni_get_mac_statistics(dpni, CMD_PRI_LOW, priv->token,
-						  priv->cnt_idx_iova,
-						  priv->cnt_values_iova,
-						  DPAA2_MAC_NUM_STATS);
-		if (retcode) {
-			while (i >= (num - DPAA2_MAC_NUM_STATS) && i < num) {
-				xstats[i].id = i;
-				xstats[i].value = 0;
-				i++;
-			}
-		}
-		if (!retcode) {
-			cnt_values = priv->cnt_values_dma_mem;
-			while (i >= (num - DPAA2_MAC_NUM_STATS) && i < num) {
-				/* mac counters value */
-				xstats[i].id = i;
-				xstats[i].value = rte_le_to_cpu_64(*cnt_values++);
-				i++;
-			}
-		}
-		rte_free(priv->cnt_values_dma_mem);
-		rte_free(priv->cnt_idx_dma_mem);
-		priv->cnt_idx_dma_mem = NULL;
-		priv->cnt_values_dma_mem = NULL;
-	} else {
+	if (priv->cnt_idx_dma_mem &&
+	    !dpni_get_mac_statistics(dpni, CMD_PRI_LOW, priv->token,
+				    priv->cnt_idx_iova,
+				    priv->cnt_values_iova,
+				    DPAA2_MAC_NUM_STATS)) {
+		cnt_values = priv->cnt_values_dma_mem;
 		while (i >= (num - DPAA2_MAC_NUM_STATS) && i < num) {
 			xstats[i].id = i;
-			xstats[i].value = 0;
+			xstats[i].value = rte_le_to_cpu_64(*cnt_values++);
 			i++;
 		}
+		return i;
+	}
+
+	while (i >= (num - DPAA2_MAC_NUM_STATS) && i < num) {
+		xstats[i].id = i;
+		xstats[i].value = 0;
+		i++;
 	}
 
 	return i;
@@ -3154,6 +3138,17 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		eth_dev->data->name, dpaa2_dev->ep_name);
 
 	priv->speed_capa = dpaa2_dev_get_speed_capability(eth_dev);
+
+	/* mac_statistics supported on MC version > 10.39.0 */
+	{
+		struct mc_version mc_ver_info = {0};
+
+		if (!mc_get_version(dpni_dev, CMD_PRI_LOW, &mc_ver_info) &&
+		    mc_ver_info.major >= MC_VER_MAJOR &&
+		    mc_ver_info.minor >= MC_VER_MINOR &&
+		    mc_ver_info.revision > 0)
+			dpaa2_dev_mac_setup_stats(eth_dev);
+	}
 
 	return 0;
 init_err:
