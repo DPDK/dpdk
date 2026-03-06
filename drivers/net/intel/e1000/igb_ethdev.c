@@ -2568,14 +2568,13 @@ eth_igb_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 				RTE_ETH_LINK_HALF_DUPLEX;
 		link.link_speed = speed;
 		link.link_status = RTE_ETH_LINK_UP;
-		link.link_autoneg = !(dev->data->dev_conf.link_speeds &
-				RTE_ETH_LINK_SPEED_FIXED);
 	} else if (!link_check) {
 		link.link_speed = 0;
 		link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
 		link.link_status = RTE_ETH_LINK_DOWN;
-		link.link_autoneg = RTE_ETH_LINK_FIXED;
 	}
+	link.link_autoneg = !(dev->data->dev_conf.link_speeds &
+			RTE_ETH_LINK_SPEED_FIXED);
 
 	return rte_eth_linkstatus_set(dev, &link);
 }

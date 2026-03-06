@@ -549,8 +549,6 @@ eth_igc_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 				RTE_ETH_LINK_HALF_DUPLEX;
 		link.link_speed = speed;
 		link.link_status = RTE_ETH_LINK_UP;
-		link.link_autoneg = !(dev->data->dev_conf.link_speeds &
-				RTE_ETH_LINK_SPEED_FIXED);
 
 		if (speed == SPEED_2500) {
 			uint32_t tipg = E1000_READ_REG(hw, E1000_TIPG);
@@ -564,8 +562,9 @@ eth_igc_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		link.link_speed = 0;
 		link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
 		link.link_status = RTE_ETH_LINK_DOWN;
-		link.link_autoneg = RTE_ETH_LINK_FIXED;
 	}
+	link.link_autoneg = !(dev->data->dev_conf.link_speeds &
+			RTE_ETH_LINK_SPEED_FIXED);
 
 	return rte_eth_linkstatus_set(dev, &link);
 }
