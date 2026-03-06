@@ -97,6 +97,9 @@
  */
 #define DPAA2_TX_DYNAMIC_CONF_ENABLE	RTE_BIT32(9)
 
+/* Disable data stashing (prefetch of packet data into CPU cache) */
+#define DPAA2_DATA_STASHING_OFF		RTE_BIT32(10)
+
 #define DPAAX_RX_ERROR_QUEUE_FLAG	RTE_BIT32(11)
 
 /* DPDMUX index for DPMAC */
