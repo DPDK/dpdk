@@ -1933,6 +1933,7 @@ int
 iavf_get_hena_caps(struct iavf_adapter *adapter, uint64_t *caps)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_rss_hena *hena;
 	struct iavf_cmd_info args;
 	int err;
 
@@ -1949,7 +1950,8 @@ iavf_get_hena_caps(struct iavf_adapter *adapter, uint64_t *caps)
 		return err;
 	}
 
-	*caps = ((struct virtchnl_rss_hena *)args.out_buffer)->hena;
+	hena = (struct virtchnl_rss_hena *)args.out_buffer;
+	*caps = hena->hena;
 	return 0;
 }
 
