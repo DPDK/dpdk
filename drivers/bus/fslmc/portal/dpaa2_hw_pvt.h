@@ -223,13 +223,15 @@ struct swp_active_dqs {
 
 #define dpaa2_queue_storage_free(q, num) \
 ({ \
-	int i; \
-	\
-	for (i = 0; i < (num); i++) { \
-		if ((q)->q_storage[i]) { \
-			dpaa2_free_dq_storage((q)->q_storage[i]); \
-			rte_free((q)->q_storage[i]); \
-			(q)->q_storage[i] = NULL; \
+	if (q) { \
+		int i; \
+		\
+		for (i = 0; i < (num); i++) { \
+			if ((q)->q_storage[i]) { \
+				dpaa2_free_dq_storage((q)->q_storage[i]); \
+				rte_free((q)->q_storage[i]); \
+				(q)->q_storage[i] = NULL; \
+			} \
 		} \
 	} \
 })
