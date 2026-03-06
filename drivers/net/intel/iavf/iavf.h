@@ -243,6 +243,7 @@ struct iavf_info {
 	RTE_ATOMIC(uint32_t) pend_cmd_count;
 	int cmd_retval; /* return value of the cmd response from PF */
 	uint8_t *aq_resp; /* buffer to store the adminq response from PF */
+	bool aq_intr_enabled;
 
 	/** iAVF watchdog enable */
 	bool watchdog_enabled;
