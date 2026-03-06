@@ -34,6 +34,7 @@
 #define DRIVER_TX_CONF "drv_tx_conf"
 #define DRIVER_RX_PARSE_ERR_DROP "drv_rx_parse_drop"
 #define DRIVER_ERROR_QUEUE  "drv_err_queue"
+#define DRIVER_NO_TAILDROP  "drv_no_taildrop"
 #define CHECK_INTERVAL         100  /* 100ms */
 #define MAX_REPEAT_TIME        90   /* 9s (90 * 100ms) in total */
 
@@ -897,7 +898,6 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	dpaa2_q = priv->rx_vq[rx_queue_id];
 	dpaa2_q->mb_pool = mb_pool; /**< mbuf pool to populate RX ring. */
 	dpaa2_q->bp_array = rte_dpaa2_bpid_info;
-	dpaa2_q->nb_desc = UINT16_MAX;
 	dpaa2_q->offloads = rx_conf->offloads;
 
 	/*Get the flow id from given VQ id*/
@@ -950,11 +950,12 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		return ret;
 	}
 
+	dpaa2_q->nb_desc = nb_rx_desc;
+
 	if (!(priv->flags & DPAA2_RX_TAILDROP_OFF)) {
 		struct dpni_taildrop taildrop;
 
 		taildrop.enable = 1;
-		dpaa2_q->nb_desc = nb_rx_desc;
 		/* Private CGR will use tail drop length as nb_rx_desc.
 		 * for rest cases we can use standard byte based tail drop.
 		 * There is no HW restriction, but number of CGRs are limited,
@@ -2887,6 +2888,11 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		DPAA2_PMD_INFO("Rx loopback mode");
 	}
 
+	if (dpaa2_get_devargs(dev->devargs, DRIVER_NO_TAILDROP)) {
+		priv->flags |= DPAA2_RX_TAILDROP_OFF;
+		DPAA2_PMD_INFO("Rx taildrop disabled");
+	}
+
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		/* In case of secondary, only burst and ops API need to be
@@ -3384,5 +3390,6 @@ RTE_PMD_REGISTER_PARAM_STRING(NET_DPAA2_PMD_DRIVER_NAME,
 		DRIVER_NO_PREFETCH_MODE "=<int>"
 		DRIVER_TX_CONF "=<int>"
 		DRIVER_RX_PARSE_ERR_DROP "=<int>"
-		DRIVER_ERROR_QUEUE "=<int>");
+		DRIVER_ERROR_QUEUE "=<int>"
+		DRIVER_NO_TAILDROP "=<int>");
 RTE_LOG_REGISTER_DEFAULT(dpaa2_logtype_pmd, NOTICE);
