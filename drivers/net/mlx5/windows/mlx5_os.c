@@ -892,3 +892,26 @@ mlx5_os_net_cleanup(void)
 }
 
 const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops = {0};
+
+void
+mlx5_os_default_flow_config(struct mlx5_sh_config *config __rte_unused,
+			    struct mlx5_dev_ctx_shared *sh __rte_unused)
+{
+	config->dv_flow_en = 1;
+	config->allow_duplicate_pattern = 1;
+}
+
+void
+mlx5_os_fixup_flow_en(struct mlx5_sh_config *config __rte_unused,
+		      struct mlx5_dev_ctx_shared *sh __rte_unused)
+{
+	/* Nothing to fix up */
+}
+
+void
+mlx5_os_fixup_duplicate_pattern(struct mlx5_sh_config *config __rte_unused,
+				struct mlx5_kvargs_ctrl *mkvlist __rte_unused,
+				const char *key __rte_unused)
+{
+	/* Nothing to fix up */
+}
