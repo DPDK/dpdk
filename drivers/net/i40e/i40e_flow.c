@@ -2350,6 +2350,30 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				return -rte_errno;
 			}
 
+			if (raw_spec->length != 0) {
+				if (raw_spec->pattern == NULL) {
+					rte_flow_error_set(error, EINVAL,
+							   RTE_FLOW_ERROR_TYPE_ITEM,
+							   item,
+							   "NULL RAW spec pattern");
+					return -rte_errno;
+				}
+				if (raw_mask->pattern == NULL) {
+					rte_flow_error_set(error, EINVAL,
+							   RTE_FLOW_ERROR_TYPE_ITEM,
+							   item,
+							   "NULL RAW mask pattern");
+					return -rte_errno;
+				}
+				if (raw_spec->length != raw_mask->length) {
+					rte_flow_error_set(error, EINVAL,
+							   RTE_FLOW_ERROR_TYPE_ITEM,
+							   item,
+							   "RAW spec and mask length mismatch");
+					return -rte_errno;
+				}
+			}
+
 			for (i = 0; i < raw_spec->length; i++) {
 				j = i + next_dst_off;
 				if (j >= RTE_ETH_FDIR_MAX_FLEXLEN ||
