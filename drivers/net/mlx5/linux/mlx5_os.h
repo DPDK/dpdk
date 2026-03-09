@@ -42,4 +42,5 @@ enum mlx5_tunnel_offloads {
 	MLX5_TUNNELED_OFFLOADS_GENEVE_CAP = 0,
 #endif
 };
+
 #endif /* RTE_PMD_MLX5_OS_H_ */

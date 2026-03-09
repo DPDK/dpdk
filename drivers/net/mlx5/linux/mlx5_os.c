@@ -3496,3 +3496,101 @@ mlx5_os_mac_addr_flush(struct rte_eth_dev *dev)
 			       dev->data->mac_addrs,
 			       MLX5_MAX_MAC_ADDRESSES, priv->mac_own, vf);
 }
+
+static bool
+mlx5_hws_is_supported(struct mlx5_dev_ctx_shared *sh)
+{
+	return (sh->cdev->config.devx &&
+	       sh->cdev->config.hca_attr.wqe_based_flow_table_sup);
+}
+
+static bool
+mlx5_sws_is_any_supported(struct mlx5_dev_ctx_shared *sh)
+{
+	struct mlx5_common_device *cdev = sh->cdev;
+	struct mlx5_hca_attr *hca_attr = &cdev->config.hca_attr;
+
+	if (hca_attr->rx_sw_owner_v2 || hca_attr->rx_sw_owner)
+		return true;
+
+	if (hca_attr->tx_sw_owner_v2 || hca_attr->tx_sw_owner)
+		return true;
+
+	if (hca_attr->eswitch_manager && (hca_attr->esw_sw_owner_v2 || hca_attr->esw_sw_owner))
+		return true;
+
+	return false;
+}
+
+/**
+ * Initialize default shared configuration for arguments related to flow engine.
+ *
+ * @param[in] sh
+ *   Pointer to shared configuration.
+ * @param[in] sh
+ *   Pointer to shared device context.
+ */
+void
+mlx5_os_default_flow_config(struct mlx5_sh_config *config, struct mlx5_dev_ctx_shared *sh)
+{
+	bool hws_is_supported = mlx5_hws_is_supported(sh);
+	bool sws_is_supported = mlx5_sws_is_any_supported(sh);
+
+	if (!sws_is_supported && hws_is_supported)
+		config->dv_flow_en = 2;
+	else
+		config->dv_flow_en = 1;
+
+	if (config->dv_flow_en == 2)
+		config->allow_duplicate_pattern = 0;
+	else
+		config->allow_duplicate_pattern = 1;
+}
+
+static bool
+mlx5_kvargs_is_used(struct mlx5_kvargs_ctrl *mkvlist, const char *key)
+{
+	const struct rte_kvargs_pair *pair;
+	uint32_t i;
+
+	for (i = 0; i < mkvlist->kvlist->count; ++i) {
+		pair = &mkvlist->kvlist->pairs[i];
+		if (strcmp(pair->key, key) == 0 && mkvlist->is_used[i])
+			return true;
+	}
+	return false;
+}
+
+void mlx5_os_fixup_flow_en(struct mlx5_sh_config *config,
+			   struct mlx5_dev_ctx_shared *sh)
+{
+	bool hws_is_supported = mlx5_hws_is_supported(sh);
+	bool sws_is_supported = mlx5_sws_is_any_supported(sh);
+
+	/* Inform user if DV flow is not supported. */
+	if (config->dv_flow_en == 1 && !sws_is_supported && hws_is_supported) {
+		DRV_LOG(WARNING, "DV flow is not supported. Changing to HWS mode.");
+		config->dv_flow_en = 2;
+	}
+}
+
+void
+mlx5_os_fixup_duplicate_pattern(struct mlx5_sh_config *config,
+				struct mlx5_kvargs_ctrl *mkvlist,
+				const char *key)
+{
+	/* Handle allow_duplicate_pattern based on final dv_flow_en mode.
+	 * HWS mode (dv_flow_en=2) doesn't support duplicate patterns.
+	 * Warn only if user explicitly requested an incompatible setting.
+	 */
+	bool allow_dup_pattern_set = mkvlist != NULL &&
+		mlx5_kvargs_is_used(mkvlist, key);
+	if (config->dv_flow_en == 2) {
+		if (config->allow_duplicate_pattern == 1 && allow_dup_pattern_set)
+			DRV_LOG(WARNING, "Duplicate pattern is not supported with HWS. Disabling it.");
+		config->allow_duplicate_pattern = 0;
+	} else if (!allow_dup_pattern_set) {
+		/* Non-HWS mode: set default to 1 only if not explicitly set by user */
+		config->allow_duplicate_pattern = 1;
+	}
+}

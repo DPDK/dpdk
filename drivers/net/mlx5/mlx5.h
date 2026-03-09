@@ -2313,6 +2313,9 @@ struct mlx5_physical_device *
 mlx5_get_locked_physical_device(struct mlx5_priv *priv);
 void mlx5_unlock_physical_device(void);
 int mlx5_read_queue_counter(struct mlx5_devx_obj *q_counter, const char *ctr_name, uint64_t *stat);
+void mlx5_fixup_flow_config(struct mlx5_sh_config *config,
+			    struct mlx5_dev_ctx_shared *sh,
+			    struct mlx5_kvargs_ctrl *mkvlist);
 
 /* mlx5_ethdev.c */
 
@@ -2620,6 +2623,12 @@ int mlx5_os_set_allmulti(struct rte_eth_dev *dev, int enable);
 int mlx5_os_set_nonblock_channel_fd(int fd);
 void mlx5_os_mac_addr_flush(struct rte_eth_dev *dev);
 void mlx5_os_net_cleanup(void);
+void mlx5_os_default_flow_config(struct mlx5_sh_config *config, struct mlx5_dev_ctx_shared *sh);
+void mlx5_os_fixup_flow_en(struct mlx5_sh_config *config,
+			   struct mlx5_dev_ctx_shared *sh);
+void mlx5_os_fixup_duplicate_pattern(struct mlx5_sh_config *config,
+				     struct mlx5_kvargs_ctrl *mkvlist,
+				     const char *key);
 
 /* mlx5_txpp.c */
 
