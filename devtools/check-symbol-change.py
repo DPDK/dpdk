@@ -7,6 +7,7 @@
 import argparse
 import re
 
+new_file_regexp = re.compile(r"^(\-\-\-|\+\+\+) [ab]/")
 file_header_regexp = re.compile(r"^(\-\-\-|\+\+\+) [ab]/(lib|drivers)/([^/]+)/([^/]+)")
 # From eal_exports.h
 export_exp_sym_regexp = re.compile(r"^.RTE_EXPORT_EXPERIMENTAL_SYMBOL\(([^,]+),")
@@ -29,17 +30,24 @@ args = parser.parse_args()
 symbols = {}
 
 for file in args.patch:
+    lib = None
     for ln in file.readlines():
-        if file_header_regexp.match(ln):
-            if file_header_regexp.match(ln).group(2) == "lib":
-                lib = "/".join(file_header_regexp.match(ln).group(2, 3))
-            elif file_header_regexp.match(ln).group(3) == "intel":
-                lib = "/".join(file_header_regexp.match(ln).group(2, 3, 4))
+        if new_file_regexp.match(ln):
+            if file_header_regexp.match(ln):
+                m = file_header_regexp.match(ln)
+                if m.group(2) == "lib":
+                    lib = "/".join(m.group(2, 3))
+                elif m.group(3) == "intel":
+                    lib = "/".join(m.group(2, 3, 4))
+                else:
+                    lib = "/".join(m.group(2, 3))
+                if lib not in symbols:
+                    symbols[lib] = {}
             else:
-                lib = "/".join(file_header_regexp.match(ln).group(2, 3))
+                lib = None
+            continue
 
-            if lib not in symbols:
-                symbols[lib] = {}
+        if lib is None:
             continue
 
         if export_exp_sym_regexp.match(ln):
