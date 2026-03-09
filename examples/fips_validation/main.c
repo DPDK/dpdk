@@ -2610,7 +2610,7 @@ fips_mct_sha_test(void)
 		rte_free(md[i].val);
 
 	rte_free(vec.pt.val);
-
+	vec.pt.val = NULL;
 	rte_free(val.val);
 	return 0;
 }
@@ -2698,6 +2698,7 @@ fips_mct_shake_test(void)
 
 	rte_free(md.val);
 	rte_free(vec.pt.val);
+	vec.pt.val = NULL;
 	rte_free(val.val);
 	return 0;
 }
