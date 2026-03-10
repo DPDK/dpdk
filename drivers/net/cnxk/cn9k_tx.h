@@ -1182,13 +1182,13 @@ cn9k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64x2_t len_olflags0, len_olflags1, len_olflags2, len_olflags3;
 	uint64x2_t cmd0[NIX_DESCS_PER_LOOP], cmd1[NIX_DESCS_PER_LOOP],
 		cmd2[NIX_DESCS_PER_LOOP], cmd3[NIX_DESCS_PER_LOOP];
+	uint64x2_t sendext01_w0 = {0}, sendext23_w0 = {0};
+	uint64x2_t sendext01_w1 = {0}, sendext23_w1 = {0};
+	uint64x2_t sendmem01_w1 = {0}, sendmem23_w1 = {0};
 	uint64_t *mbuf0, *mbuf1, *mbuf2, *mbuf3;
 	uint64x2_t senddesc01_w0, senddesc23_w0;
 	uint64x2_t senddesc01_w1, senddesc23_w1;
-	uint64x2_t sendext01_w0, sendext23_w0;
-	uint64x2_t sendext01_w1, sendext23_w1;
 	uint64x2_t sendmem01_w0, sendmem23_w0;
-	uint64x2_t sendmem01_w1, sendmem23_w1;
 	uint64x2_t sgdesc01_w0, sgdesc23_w0;
 	uint64x2_t sgdesc01_w1, sgdesc23_w1;
 	struct cn9k_eth_txq *txq = tx_queue;

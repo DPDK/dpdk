@@ -1445,7 +1445,7 @@ cn10k_nix_xmit_pkts(void *tx_queue, uint64_t *ws, struct rte_mbuf **tx_pkts,
 {
 	struct cn10k_eth_txq *txq = tx_queue;
 	const rte_iova_t io_addr = txq->io_addr;
-	uint8_t lnum, c_lnum, c_shft, c_loff;
+	uint8_t lnum, c_lnum = 0, c_shft = 0, c_loff = 0;
 	uintptr_t pa, lbase = txq->lmt_base;
 	uint16_t lmt_id, burst, left, i;
 	struct rte_mbuf *extm = NULL;
@@ -1453,9 +1453,9 @@ cn10k_nix_xmit_pkts(void *tx_queue, uint64_t *ws, struct rte_mbuf **tx_pkts,
 	uint64_t lso_tun_fmt = 0;
 	uint64_t mark_fmt = 0;
 	uint8_t mark_flag = 0;
-	rte_iova_t c_io_addr;
-	uint16_t c_lmt_id;
-	uint64_t sa_base;
+	rte_iova_t c_io_addr = 0;
+	uint16_t c_lmt_id = 0;
+	uint64_t sa_base = 0;
 	uintptr_t laddr;
 	uint64_t data;
 	bool sec;
@@ -1599,19 +1599,19 @@ cn10k_nix_xmit_pkts_mseg(void *tx_queue, uint64_t *ws,
 	const rte_iova_t io_addr = txq->io_addr;
 	uint16_t segdw, lmt_id, burst, left, i;
 	struct rte_mbuf *extm = NULL;
-	uint8_t lnum, c_lnum, c_loff;
+	uint8_t lnum, c_lnum = 0, c_loff = 0;
 	uintptr_t c_lbase = lbase;
 	uint64_t lso_tun_fmt = 0;
+	rte_iova_t c_io_addr = 0;
+	uint8_t shft, c_shft = 0;
+	uint16_t c_lmt_id = 0;
 	uint64_t mark_fmt = 0;
 	uint8_t mark_flag = 0;
 	uint64_t data0, data1;
-	rte_iova_t c_io_addr;
-	uint8_t shft, c_shft;
 	__uint128_t data128;
-	uint16_t c_lmt_id;
-	uint64_t sa_base;
+	uint64_t sa_base = 0;
 	uintptr_t laddr;
-	bool sec;
+	bool sec = 0;
 
 	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F && txq->tx_compl.ena)
 		handle_tx_completion_pkts(txq, flags & NIX_TX_VWQE_F);
@@ -2166,14 +2166,14 @@ cn10k_nix_xmit_pkts_vector(void *tx_queue, uint64_t *ws,
 	uint64x2_t len_olflags0, len_olflags1, len_olflags2, len_olflags3;
 	uint64x2_t cmd0[NIX_DESCS_PER_LOOP], cmd1[NIX_DESCS_PER_LOOP],
 		cmd2[NIX_DESCS_PER_LOOP], cmd3[NIX_DESCS_PER_LOOP];
-	uint16_t left, scalar, burst, i, lmt_id, c_lmt_id;
+	uint16_t left, scalar, burst, i, lmt_id, c_lmt_id = 0;
 	uint64_t *mbuf0, *mbuf1, *mbuf2, *mbuf3, pa;
-	uint64x2_t senddesc01_w0, senddesc23_w0;
-	uint64x2_t senddesc01_w1, senddesc23_w1;
-	uint64x2_t sendext01_w0, sendext23_w0;
-	uint64x2_t sendext01_w1, sendext23_w1;
-	uint64x2_t sendmem01_w0, sendmem23_w0;
-	uint64x2_t sendmem01_w1, sendmem23_w1;
+	uint64x2_t senddesc01_w0 = {0}, senddesc23_w0 = {0};
+	uint64x2_t senddesc01_w1 = {0}, senddesc23_w1 = {0};
+	uint64x2_t sendext01_w0 = {0}, sendext23_w0 = {0};
+	uint64x2_t sendext01_w1 = {0}, sendext23_w1 = {0};
+	uint64x2_t sendmem01_w0 = {0}, sendmem23_w0 = {0};
+	uint64x2_t sendmem01_w1 = {0}, sendmem23_w1 = {0};
 	uint8_t segdw[NIX_DESCS_PER_LOOP + 1];
 	uint64x2_t sgdesc01_w0, sgdesc23_w0;
 	uint64x2_t sgdesc01_w1, sgdesc23_w1;
@@ -2181,13 +2181,13 @@ cn10k_nix_xmit_pkts_vector(void *tx_queue, uint64_t *ws,
 	rte_iova_t io_addr = txq->io_addr;
 	uint8_t lnum, shift = 0, loff = 0;
 	uintptr_t laddr = txq->lmt_base;
-	uint8_t c_lnum, c_shft, c_loff;
+	uint8_t c_lnum = 0, c_shft = 0, c_loff = 0;
 	uint64x2_t ltypes01, ltypes23;
 	uint64x2_t xtmp128, ytmp128;
 	uint64x2_t xmask01, xmask23;
 	uintptr_t c_laddr = laddr;
-	rte_iova_t c_io_addr;
-	uint64_t sa_base;
+	rte_iova_t c_io_addr = 0;
+	uint64_t sa_base = 0;
 	union wdata {
 		__uint128_t data128;
 		uint64_t data[2];
