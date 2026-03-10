@@ -6083,7 +6083,7 @@ int ice_ptp_write_incval_locked(struct ice_hw *hw, u64 incval,
  */
 int ice_ptp_adj_clock(struct ice_hw *hw, s32 adj, bool lock_sbq)
 {
-	int err;
+	int err = 0;
 	u8 tmr_idx;
 
 	tmr_idx = hw->func_caps.ts_func_info.tmr_index_owned;
@@ -6101,8 +6101,8 @@ int ice_ptp_adj_clock(struct ice_hw *hw, s32 adj, bool lock_sbq)
 		err = ice_ptp_prep_phy_adj_eth56g(hw, adj, lock_sbq);
 		break;
 	case ICE_PHY_E830:
-		/* E830 sync PHYs automatically after setting GLTSYN_SHADJ */
-		return 0;
+		/* E830 sync PHYs automatically after setting cmd register */
+		break;
 	case ICE_PHY_E810:
 		err = ice_ptp_prep_phy_adj_e810(hw, adj, lock_sbq);
 		break;
