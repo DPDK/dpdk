@@ -79,7 +79,7 @@ Start ``testpmd``:
 
 .. code-block:: console
 
-   ./dpdk-testpmd -l 4-8 -- i --rxq=4 --txq=4 --pkt-filter-mode=perfect --disable-rss
+   ./dpdk-testpmd -l 4-8 -- i --rxq=4 --txq=4 --disable-rss
 
 Add a rule to direct packet whose ``ether-type=0x801`` to queue 1:
 
