@@ -7437,7 +7437,7 @@ ice_fill_fv_word_index(struct ice_hw *hw, struct LIST_HEAD_TYPE *fv_list,
 			struct ice_fv_word *pr;
 			bool found = false;
 			u16 mask;
-			u8 j;
+			u16 j;
 
 			pr = &rg->r_group.pairs[i];
 			mask = rg->r_group.mask[i];

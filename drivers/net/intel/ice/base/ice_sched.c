@@ -1257,7 +1257,8 @@ int ice_sched_init_port(struct ice_port_info *pi)
 	u8 num_branches;
 	u16 num_elems;
 	int status;
-	u8 i, j;
+	u8 i;
+	u16 j;
 
 	if (!pi)
 		return ICE_ERR_PARAM;
