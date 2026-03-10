@@ -203,7 +203,7 @@ class ScapyAsyncSniffer(PythonShell):
         ready_prompt = "Ready."
         self.send_command(
             "sniff("
-            f'iface="{recv_port.logical_name}", quiet=True, store=False, '
+            f'iface="{recv_port.logical_name}", filter="inbound", quiet=True, store=False, '
             "prn=lambda p: bytes_base64(p.build()).decode(), "
             f'started_callback=lambda: print("{ready_prompt}")'
             ")",
