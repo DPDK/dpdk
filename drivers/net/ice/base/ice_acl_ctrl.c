@@ -494,7 +494,7 @@ ice_acl_alloc_partition(struct ice_hw *hw, struct ice_acl_scen *req)
 			 * is available.
 			 */
 			p = dir > 0 ? i : ICE_AQC_MAX_TCAM_ALLOC_UNITS - i - 1;
-			for (w = row; w < row + width && avail; w++) {
+			for (w = row; w < (u16)(row + width) && avail; w++) {
 				u16 b;
 
 				b = (w * ICE_AQC_MAX_TCAM_ALLOC_UNITS) + p;
@@ -644,7 +644,7 @@ ice_acl_set_scen_chnk_msk(struct ice_aqc_acl_scen *scen_buf,
 		 * For each TCAM, there will be (ICE_AQC_ACL_TCAM_DEPTH
 		 * / ICE_ACL_ENTRY_ALLOC_UNIT) or 8 chunks.
 		 */
-		for (i = tcam_idx; i < tcam_idx + num_cscd; i++)
+		for (i = tcam_idx; i < (u16)(tcam_idx + num_cscd); i++)
 			scen_buf->tcam_cfg[i].chnk_msk |= BIT(chnk_offst);
 
 		chnk_offst = (chnk_offst + 1) % ICE_AQC_MAX_TCAM_ALLOC_UNITS;
@@ -799,7 +799,7 @@ ice_acl_create_scen(struct ice_hw *hw, u16 match_width, u16 num_entries,
 			ICE_AQC_ACL_ALLOC_SCE_START_CMP;
 
 		/* cascade TCAMs up to the width of the scenario */
-		for (i = k; i < cascade_cnt + k; i++) {
+		for (i = k; i < (u8)(cascade_cnt + k); i++) {
 			ice_acl_fill_tcam_select(&scen_buf, scen, i, i - k);
 			ice_acl_assign_act_mem_for_scen(hw->acl_tbl, scen,
 							&scen_buf,

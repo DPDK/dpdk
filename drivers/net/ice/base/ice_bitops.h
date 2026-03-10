@@ -188,7 +188,7 @@ ice_and_bitmap(ice_bitmap_t *dst, const ice_bitmap_t *bmp1,
 	u16 i;
 
 	/* Handle all but the last chunk */
-	for (i = 0; i < BITS_TO_CHUNKS(size) - 1; i++) {
+	for (i = 0; i < (u16)(BITS_TO_CHUNKS(size) - 1); i++) {
 		dst[i] = bmp1[i] & bmp2[i];
 		res |= dst[i];
 	}
@@ -225,7 +225,7 @@ ice_or_bitmap(ice_bitmap_t *dst, const ice_bitmap_t *bmp1,
 	u16 i;
 
 	/* Handle all but last chunk */
-	for (i = 0; i < BITS_TO_CHUNKS(size) - 1; i++)
+	for (i = 0; i < (u16)(BITS_TO_CHUNKS(size) - 1); i++)
 		dst[i] = bmp1[i] | bmp2[i];
 
 	/* We want to only OR bits within the size. Furthermore, we also do
@@ -256,7 +256,7 @@ ice_xor_bitmap(ice_bitmap_t *dst, const ice_bitmap_t *bmp1,
 	u16 i;
 
 	/* Handle all but last chunk */
-	for (i = 0; i < BITS_TO_CHUNKS(size) - 1; i++)
+	for (i = 0; i < (u16)(BITS_TO_CHUNKS(size) - 1); i++)
 		dst[i] = bmp1[i] ^ bmp2[i];
 
 	/* We want to only XOR bits within the size. Furthermore, we also do
@@ -287,7 +287,7 @@ ice_andnot_bitmap(ice_bitmap_t *dst, const ice_bitmap_t *bmp1,
 	u16 i;
 
 	/* Handle all but last chunk */
-	for (i = 0; i < BITS_TO_CHUNKS(size) - 1; i++)
+	for (i = 0; i < (u16)(BITS_TO_CHUNKS(size) - 1); i++)
 		dst[i] = bmp1[i] & ~bmp2[i];
 
 	/* We want to only clear bits within the size. Furthermore, we also do
@@ -330,7 +330,7 @@ ice_find_next_bit(const ice_bitmap_t *bitmap, u16 size, u16 offset)
 	}
 
 	/* Now we handle the remaining chunks, if any */
-	for (i++; i < BITS_TO_CHUNKS(size); i++) {
+	for (i++; i < (u16)BITS_TO_CHUNKS(size); i++) {
 		if (bitmap[i] != 0) {
 			u16 off = i * BITS_PER_CHUNK;
 
@@ -405,7 +405,7 @@ ice_bitmap_set(ice_bitmap_t *dst, u16 pos, u16 num_bits)
 {
 	u16 i;
 
-	for (i = pos; i < pos + num_bits; i++)
+	for (i = pos; i < (u16)(pos + num_bits); i++)
 		ice_set_bit(i, dst);
 }
 
@@ -447,7 +447,7 @@ ice_cmp_bitmap(ice_bitmap_t *bmp1, ice_bitmap_t *bmp2, u16 size)
 	u16 i;
 
 	/* Handle all but last chunk */
-	for (i = 0; i < BITS_TO_CHUNKS(size) - 1; i++)
+	for (i = 0; i < (u16)(BITS_TO_CHUNKS(size) - 1); i++)
 		if (bmp1[i] != bmp2[i])
 			return false;
 
