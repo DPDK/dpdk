@@ -400,19 +400,33 @@ class TestPmdQueueInfo(TextParser):
     """Dataclass representation of the common parts of the testpmd `show rxq/txq info` commands."""
 
     #:
-    prefetch_threshold: int = field(metadata=TextParser.find_int(r"prefetch threshold: (\d+)"))
+    prefetch_threshold: int | None = field(
+        default=None, metadata=TextParser.find_int(r"prefetch threshold: (\d+)")
+    )
     #:
-    host_threshold: int = field(metadata=TextParser.find_int(r"host threshold: (\d+)"))
+    host_threshold: int | None = field(
+        default=None, metadata=TextParser.find_int(r"host threshold: (\d+)")
+    )
     #:
-    writeback_threshold: int = field(metadata=TextParser.find_int(r"writeback threshold: (\d+)"))
+    writeback_threshold: int | None = field(
+        default=None, metadata=TextParser.find_int(r"writeback threshold: (\d+)")
+    )
     #:
-    free_threshold: int = field(metadata=TextParser.find_int(r"free threshold: (\d+)"))
+    free_threshold: int | None = field(
+        default=None, metadata=TextParser.find_int(r"free threshold: (\d+)")
+    )
     #:
-    deferred_start: bool = field(metadata=TextParser.find("deferred start: on"))
+    deferred_start: bool | None = field(
+        default=None, metadata=TextParser.find("deferred start: on")
+    )
     #: The number of RXD/TXDs is just the ring size of the queue.
-    ring_size: int = field(metadata=TextParser.find_int(r"Number of (?:RXDs|TXDs): (\d+)"))
+    ring_size: int | None = field(
+        default=None, metadata=TextParser.find_int(r"Number of (?:RXDs|TXDs): (\d+)")
+    )
     #:
-    is_queue_started: bool = field(metadata=TextParser.find("queue state: started"))
+    is_queue_started: bool | None = field(
+        default=None, metadata=TextParser.find("queue state: started")
+    )
     #:
     burst_mode: str | None = field(
         default=None, metadata=TextParser.find(r"Burst mode: ([^\r\n]+)")

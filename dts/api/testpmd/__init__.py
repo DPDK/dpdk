@@ -1299,9 +1299,15 @@ class TestPmd(DPDKShell):
                 )
 
     def get_queue_ring_size(self, port_id: int, queue_id: int, is_rx_queue: bool) -> int:
-        """Returns the current size of the ring on the specified queue."""
+        """Returns the current size of the ring on the specified queue.
+
+        Raises:
+            ValueError: If ring size could not be parsed from test pmd.
+        """
         command = f"show {'rxq' if is_rx_queue else 'txq'} info {port_id} {queue_id}"
         queue_info = TestPmdQueueInfo.parse(self.send_command(command))
+        if queue_info.ring_size is None:
+            raise ValueError("Ring size could not be gathered from test pmd.")
         return queue_info.ring_size
 
     def set_queue_ring_size(
