@@ -154,6 +154,16 @@ eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			break;
 		}
 
+		/* drop packets that won't fit in the mbuf */
+		if (ppd->tp_snaplen > rte_pktmbuf_tailroom(mbuf)) {
+			rte_pktmbuf_free(mbuf);
+			ppd->tp_status = TP_STATUS_KERNEL;
+			if (++framenum >= framecount)
+				framenum = 0;
+			pkt_q->rx_dropped_pkts++;
+			continue;
+		}
+
 		/* packet will fit in the mbuf, go ahead and receive it */
 		rte_pktmbuf_pkt_len(mbuf) = rte_pktmbuf_data_len(mbuf) = ppd->tp_snaplen;
 		pbuf = (uint8_t *) ppd + ppd->tp_mac;
