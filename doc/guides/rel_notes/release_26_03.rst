@@ -100,6 +100,8 @@ New Features
 
   * Added support for AES-XTS cipher algorithm.
   * Added support for SHAKE-128 and SHAKE-256 authentication algorithms.
+  * Added support for SHA3-224, SHA3-256, SHA3-384, and SHA3-512 hash algorithms
+    and their HMAC variants.
 
 * **Added Ctrl+L support to cmdline library.**
 
