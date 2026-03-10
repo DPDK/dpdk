@@ -465,7 +465,7 @@ ice_parse_cee_app_tlv(struct ice_cee_feat_tlv *tlv, struct ice_dcbx_cfg *dcbcfg)
 {
 	u16 len, typelen, offset = 0;
 	struct ice_cee_app_prio *app;
-	u8 i;
+	u32 i;
 
 	typelen = NTOHS(tlv->hdr.typelen);
 	len = ((typelen & ICE_LLDP_TLV_LEN_M) >> ICE_LLDP_TLV_LEN_S);
@@ -790,8 +790,8 @@ ice_cee_to_dcb_cfg(struct ice_aqc_get_cee_dcb_cfg_resp *cee_cfg,
 		   struct ice_port_info *pi)
 {
 	u32 status, tlv_status = LE32_TO_CPU(cee_cfg->tlv_status);
-	u32 ice_aqc_cee_status_mask, ice_aqc_cee_status_shift;
-	u8 i, j, err, sync, oper, app_index, ice_app_sel_type;
+	u32 j, ice_aqc_cee_status_mask, ice_aqc_cee_status_shift;
+	u8 i, err, sync, oper, app_index, ice_app_sel_type;
 	u16 app_prio = LE16_TO_CPU(cee_cfg->oper_app_prio);
 	u16 ice_aqc_cee_app_mask, ice_aqc_cee_app_shift;
 	struct ice_dcbx_cfg *cmp_dcbcfg, *dcbcfg;
@@ -1324,7 +1324,7 @@ ice_add_ieee_app_pri_tlv(struct ice_lldp_org_tlv *tlv,
 	 *   Bits:|23    21|20 19|18 16|15                0|
 	 *        -----------------------------------------
 	 */
-	while (i < dcbcfg->numapps) {
+	while (i < (u8)dcbcfg->numapps) {
 		priority = dcbcfg->app[i].priority & 0x7;
 		selector = dcbcfg->app[i].selector & 0x7;
 		buf[offset] = (priority << ICE_IEEE_APP_PRIO_S) | selector;
