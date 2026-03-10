@@ -966,6 +966,22 @@ static bool ice_sq_done(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 }
 
 /**
+ * ice_ctrlq_pending - check if there are pending messages on the control queue
+ * @hw: pointer to the HW struct
+ * @cq: pointer to the specific Control queue
+ *
+ * Returns: true if there are pending messages in a queue (i.e. next_to_clean
+ *          does not match the hardware head register), false otherwise
+ */
+bool ice_ctrlq_pending(struct ice_hw *hw, struct ice_ctl_q_info *cq)
+{
+	u16 ntu;
+
+	ntu = (u16)(rd32(hw, cq->rq.head) & cq->rq.head_mask);
+	return cq->rq.next_to_clean != ntu;
+}
+
+/**
  * ice_sq_send_cmd_nolock - send command to a control queue
  * @hw: pointer to the HW struct
  * @cq: pointer to the specific Control queue

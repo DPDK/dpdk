@@ -148,6 +148,7 @@ ice_aq_ena_dis_txtimeq(struct ice_hw *hw, u16 txtimeq, u16 q_count, bool q_ena,
 extern const struct ice_ctx_ele ice_txtime_ctx_info[];
 
 bool ice_check_sq_alive(struct ice_hw *hw, struct ice_ctl_q_info *cq);
+bool ice_ctrlq_pending(struct ice_hw *hw, struct ice_ctl_q_info *cq);
 int ice_aq_q_shutdown(struct ice_hw *hw, bool unloading);
 void ice_fill_dflt_direct_cmd_desc(struct ice_aq_desc *desc, u16 opcode);
 extern const struct ice_ctx_ele ice_tlan_ctx_info[];
