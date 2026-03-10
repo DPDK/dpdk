@@ -612,7 +612,7 @@ eth_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	int ret;
 	int s;
 	unsigned int data_size = internals->req.tp_frame_size -
-				 TPACKET2_HDRLEN;
+				 TPACKET2_HDRLEN + sizeof(struct sockaddr_ll);
 
 	if (mtu > data_size)
 		return -EINVAL;
