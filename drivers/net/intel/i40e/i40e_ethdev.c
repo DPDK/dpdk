@@ -7243,9 +7243,7 @@ i40e_remove_macvlan_filters(struct i40e_vsi *vsi,
 
 		if (ret != I40E_SUCCESS) {
 			/* Do not report as an error when firmware returns ENOENT */
-			if (aq_status == I40E_AQ_RC_ENOENT) {
-				ret = I40E_SUCCESS;
-			} else {
+			if (aq_status != I40E_AQ_RC_ENOENT) {
 				PMD_DRV_LOG(ERR, "Failed to remove macvlan filter");
 				return ret;
 			}
