@@ -20,9 +20,7 @@ from scapy.layers.sctp import SCTP
 from scapy.packet import Packet, Raw
 
 from api.capabilities import (
-    LinkTopology,
     NicCapability,
-    requires_link_topology,
     requires_nic_capability,
 )
 from api.packet import send_packet_and_capture
@@ -33,7 +31,6 @@ from api.testpmd.types import ChecksumOffloadOptions, PacketOffloadFlag
 from framework.test_suite import TestSuite, func_test
 
 
-@requires_link_topology(LinkTopology.TWO_LINKS)
 @requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_IPV4_CKSUM)
 @requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_UDP_CKSUM)
 @requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_TCP_CKSUM)

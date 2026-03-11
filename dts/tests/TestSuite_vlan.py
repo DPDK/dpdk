@@ -29,7 +29,6 @@ from framework.test_suite import TestSuite, func_test
 
 
 @requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_VLAN_FILTER)
-@requires_link_topology(LinkTopology.TWO_LINKS)
 class TestVlan(TestSuite):
     """DPDK VLAN test suite.
 
@@ -178,6 +177,7 @@ class TestVlan(TestSuite):
             testpmd.start()
             self._send_vlan_packet_and_verify(should_receive=False, strip=False, vlan_id=2)
 
+    @requires_link_topology(LinkTopology.TWO_LINKS)
     @func_test
     def vlan_header_insertion(self) -> None:
         """Ensure that VLAN packet is received with the correct inserted VLAN tag.

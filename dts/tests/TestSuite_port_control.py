@@ -13,9 +13,7 @@ from scapy.layers.l2 import Ether
 from scapy.packet import Packet, Raw
 
 from api.capabilities import (
-    LinkTopology,
     NicCapability,
-    requires_link_topology,
     requires_nic_capability,
 )
 from api.packet import send_packets_and_capture
@@ -26,7 +24,6 @@ from framework.test_suite import TestSuite, func_test
 
 
 @requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
-@requires_link_topology(LinkTopology.TWO_LINKS)
 class TestPortControl(TestSuite):
     """DPDK Port Control Testing Suite."""
 

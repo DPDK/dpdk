@@ -18,6 +18,7 @@ from typing import ClassVar
 from scapy.layers.l2 import Dot1Q, Ether
 from scapy.packet import Packet, Raw
 
+from api.capabilities import LinkTopology, requires_link_topology
 from api.packet import send_packet_and_capture
 from api.test import verify
 from api.testpmd import TestPmd
@@ -161,6 +162,7 @@ class TestDualVlan(TestSuite):
         if self.TestCaseOptions.VLAN_STRIP in options:
             shell.set_vlan_strip(self.rx_port, add)
 
+    @requires_link_topology(LinkTopology.TWO_LINKS)
     @func_test
     def insert_second_vlan(self) -> None:
         """Test that a packet with a single VLAN can have an additional one inserted into it.

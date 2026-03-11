@@ -16,7 +16,6 @@ from framework.test_suite import TestSuite, func_test
 from framework.testbed_model.port import Port
 
 
-@requires_link_topology(LinkTopology.TWO_LINKS)
 class TestBlocklist(TestSuite):
     """DPDK device blocklisting test suite."""
 
@@ -45,6 +44,7 @@ class TestBlocklist(TestSuite):
         """
         self._verify_blocklisted_ports([])
 
+    @requires_link_topology(LinkTopology.TWO_LINKS)
     @func_test
     def one_port_blocklisted(self) -> None:
         """Run testpmd with one blocklisted port.
@@ -57,6 +57,7 @@ class TestBlocklist(TestSuite):
         """
         self._verify_blocklisted_ports(self.topology.sut_ports[:1])
 
+    @requires_link_topology(LinkTopology.TWO_LINKS)
     @func_test
     def all_but_one_port_blocklisted(self) -> None:
         """Run testpmd with all but one blocklisted port.

@@ -20,9 +20,7 @@ from scapy.layers.vxlan import VXLAN
 from scapy.packet import Packet, Raw
 
 from api.capabilities import (
-    LinkTopology,
     NicCapability,
-    requires_link_topology,
     requires_nic_capability,
 )
 from api.packet import send_packet_and_capture
@@ -33,7 +31,6 @@ from api.testpmd.types import RtePTypes, TestPmdVerbosePacket
 from framework.test_suite import TestSuite, func_test
 
 
-@requires_link_topology(LinkTopology.TWO_LINKS)
 class TestUniPkt(TestSuite):
     """DPDK Unified packet test suite.
 
