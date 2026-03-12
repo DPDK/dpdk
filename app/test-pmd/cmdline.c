@@ -3686,6 +3686,9 @@ cmd_config_dcb_parsed(void *parsed_result,
 		return;
 	}
 
+	/* Update forwarding TC mask to match the configured number of TCs. */
+	dcb_fwd_tc_mask = (1u << res->num_tcs) - 1;
+
 	fwd_config_setup();
 
 	cmd_reconfig_device_queue(port_id, 1, 1);

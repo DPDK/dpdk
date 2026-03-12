@@ -5450,7 +5450,8 @@ dcb_fwd_config_setup(void)
 			/* if the nb_queue is zero, means this tc is
 			 * not enabled on the POOL
 			 */
-			if (rxp_dcb_info.tc_queue.tc_rxq[i][tc].nb_queue == 0)
+			if (rxp_dcb_info.tc_queue.tc_rxq[i][tc].nb_queue == 0 ||
+			    txp_dcb_info.tc_queue.tc_txq[i][tc].nb_queue == 0)
 				break;
 			k = fwd_lcores[lc_id]->stream_nb +
 				fwd_lcores[lc_id]->stream_idx;
@@ -5458,6 +5459,12 @@ dcb_fwd_config_setup(void)
 						dcb_fwd_tc_cores;
 			nb_tx_queue = txp_dcb_info.tc_queue.tc_txq[i][tc].nb_queue /
 						dcb_fwd_tc_cores;
+			/* guard against integer truncation to zero (e.g.
+			 * nb_queue=1, dcb_fwd_tc_cores=2) to prevent SIGFPE
+			 * from "j % nb_tx_queue" below.
+			 */
+			if (nb_rx_queue == 0 || nb_tx_queue == 0)
+				break;
 			rxq = rxp_dcb_info.tc_queue.tc_rxq[i][tc].base + nb_rx_queue * sub_core_idx;
 			txq = txp_dcb_info.tc_queue.tc_txq[i][tc].base + nb_tx_queue * sub_core_idx;
 			for (j = 0; j < nb_rx_queue; j++) {
