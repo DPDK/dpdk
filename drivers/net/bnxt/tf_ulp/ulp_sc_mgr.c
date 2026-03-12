@@ -192,7 +192,7 @@ static uint32_t ulp_stats_cache_main_loop(void *arg)
 	const struct bnxt_ulp_sc_core_ops *sc_ops = NULL;
 	struct ulp_sc_tfc_stats_cache_entry *sce;
 	struct ulp_sc_tfc_stats_cache_entry *sce_end;
-	struct tfc_mpc_batch_info_t batch_info;
+	struct tfc_mpc_batch_info_t batch_info = {0};
 	struct bnxt_ulp_sc_info *ulp_sc_info;
 	struct bnxt_ulp_context *ctxt = NULL;
 	uint16_t words = (ULP_TFC_CNTR_READ_BYTES + ULP_TFC_ACT_WORD_SZ - 1) / ULP_TFC_ACT_WORD_SZ;
