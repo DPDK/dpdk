@@ -1036,6 +1036,7 @@ out_mutex:
 	if (pthread_mutex_destroy(&vsocket->conn_mutex)) {
 		VHOST_CONFIG_LOG(path, ERR, "failed to destroy connection mutex");
 	}
+	vhost_user_socket_mem_free(vsocket);
 out:
 	pthread_mutex_unlock(&vhost_user.mutex);
 	return -1;
