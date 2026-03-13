@@ -754,7 +754,7 @@ sp6_spi_present(uint32_t spi, int inbound, struct ip_addr ip_addr[2],
 			uint32_t mask[2])
 {
 	uint32_t num;
-	struct acl6_rules *rule;
+	const struct acl6_rules *rule;
 	const struct acl6_rules *acr;
 	struct acl6_rules tmpl;
 
