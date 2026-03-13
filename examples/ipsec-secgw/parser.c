@@ -48,7 +48,7 @@ int
 parse_ipv4_addr(const char *token, struct in_addr *ipv4, uint32_t *mask)
 {
 	char ip_str[INET_ADDRSTRLEN] = {0};
-	char *pch;
+	const char *pch;
 
 	pch = strchr(token, '/');
 	if (pch != NULL) {
@@ -78,7 +78,7 @@ int
 parse_ipv6_addr(const char *token, struct rte_ipv6_addr *ipv6, uint32_t *mask)
 {
 	char ip_str[256] = {0};
-	char *pch;
+	const char *pch;
 
 	pch = strchr(token, '/');
 	if (pch != NULL) {
