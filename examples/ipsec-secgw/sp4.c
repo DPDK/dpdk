@@ -610,7 +610,7 @@ sp4_spi_present(uint32_t spi, int inbound, struct ip_addr ip_addr[2],
 			uint32_t mask[2])
 {
 	uint32_t num;
-	struct acl4_rules *rule;
+	const struct acl4_rules *rule;
 	const struct acl4_rules *acr;
 	struct acl4_rules tmpl;
 
