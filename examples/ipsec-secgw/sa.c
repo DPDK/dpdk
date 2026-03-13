@@ -1675,7 +1675,7 @@ int
 sa_spi_present(struct sa_ctx *sa_ctx, uint32_t spi, int inbound)
 {
 	uint32_t num;
-	struct ipsec_sa *sa;
+	const struct ipsec_sa *sa;
 	struct ipsec_sa tmpl;
 	const struct ipsec_sa *sar;
 
