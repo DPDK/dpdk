@@ -293,6 +293,8 @@ mlx5_nta_sample_cached_group_match(void *cache_ctx __rte_unused,
 		container_of(entry, struct mlx5_nta_sample_cached_group, entry);
 	if (actions_size < 0)
 		return ~0;
+	if ((size_t)actions_size != cached_obj->actions_size)
+		return ~0;
 	return memcmp(cached_obj->actions, obj_ctx->actions, actions_size);
 }
 
