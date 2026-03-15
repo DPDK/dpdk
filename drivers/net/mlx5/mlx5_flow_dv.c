@@ -7286,10 +7286,16 @@ flow_dv_aso_mtr_release_to_pool(struct rte_eth_dev *dev, uint32_t mtr_idx)
 	struct mlx5_aso_mtr_pools_mng *pools_mng =
 				&priv->sh->mtrmng->pools_mng;
 	struct mlx5_aso_mtr *aso_mtr = mlx5_aso_meter_by_idx(priv, mtr_idx);
+	void *meter_action_g;
+	void *meter_action_y;
 
 	MLX5_ASSERT(aso_mtr);
 	rte_spinlock_lock(&pools_mng->mtrsl);
+	meter_action_g = aso_mtr->fm.meter_action_g;
+	meter_action_y = aso_mtr->fm.meter_action_y;
 	memset(&aso_mtr->fm, 0, sizeof(struct mlx5_flow_meter_info));
+	aso_mtr->fm.meter_action_g = meter_action_g;
+	aso_mtr->fm.meter_action_y = meter_action_y;
 	aso_mtr->state = ASO_METER_FREE;
 	LIST_INSERT_HEAD(&pools_mng->meters, aso_mtr, next);
 	rte_spinlock_unlock(&pools_mng->mtrsl);
