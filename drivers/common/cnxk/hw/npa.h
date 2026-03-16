@@ -48,6 +48,8 @@
 #define NPA_AF_BATCH_ACCEPT_CTL	     (0x6a8ull) /* [CN10K, .) */
 #define NPA_AF_BATCH_ERR_DATA0	     (0x6c0ull) /* [CN10K, .) */
 #define NPA_AF_BATCH_ERR_DATA1	     (0x6c8ull) /* [CN10K, .) */
+#define NPA_AF_DPCX_CFG(a)           (0x800ull | (uint64_t)(a) << 6)  /* [CN20K, .) */
+#define NPA_AF_DPC_PERMITX(a)        (0x1000ull | (uint64_t)(a) << 3) /* [CN20K, .) */
 #define NPA_AF_LFX_AURAS_CFG(a)	     (0x4000ull | (uint64_t)(a) << 18)
 #define NPA_AF_LFX_LOC_AURAS_BASE(a) (0x4010ull | (uint64_t)(a) << 18)
 #define NPA_AF_LFX_QINTS_CFG(a)	     (0x4100ull | (uint64_t)(a) << 18)
@@ -89,6 +91,14 @@
 #define NPA_LF_AURA_BATCH_FREE0	  (0x400ull) /* [CN10K, .) */
 #define NPA_LF_AURA_BATCH_FREEX(a)                                             \
 	(0x400ull | (uint64_t)(a) << 3) /* [CN10K, .) */
+#define NPA_LF_DPCX_ALLOC_CNT(a)                                               \
+	(0x808ull | (uint64_t)(a) << 6) /* [CN20K, .) */
+#define NPA_LF_DPCX_FREE_CNT(a)                                                \
+	(0x810ull | (uint64_t)(a) << 6) /* [CN20K, .) */
+#define NPA_LF_DPCX_OUTST_BUF_CNT(a)                                           \
+	(0x818ull | (uint64_t)(a) << 6) /* [CN20K, .) */
+#define NPA_LF_DPCX_CNT_HI_WM(a)                                               \
+	(0x820ull | (uint64_t)(a) << 6) /* [CN20K, .) */
 
 /* Enum offsets */
 
