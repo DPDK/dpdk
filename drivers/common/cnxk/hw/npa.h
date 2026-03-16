@@ -375,7 +375,8 @@ struct npa_cn20k_aura_s {
 	uint64_t fc_msh_dst : 11;
 	uint64_t rsvd_438_435 : 4;
 	uint64_t op_dpc_ena : 1;
-	uint64_t op_dpc_set : 6;
+	uint64_t op_dpc_set : 5;
+	uint64_t rsvd_637_637 : 1;
 	uint64_t stream_ctx : 1;
 	uint64_t unified_ctx : 1;
 	uint64_t rsvd_511_448 : 64; /* W7 */
@@ -446,7 +447,8 @@ struct npa_cn20k_pool_s {
 	uint64_t fc_msh_dst : 11;
 	uint64_t rsvd_630_627 : 4;
 	uint64_t op_dpc_ena : 1;
-	uint64_t op_dpc_set : 6;
+	uint64_t op_dpc_set : 5;
+	uint64_t rsvd_637_637 : 1;
 	uint64_t stream_ctx : 1;
 	uint64_t rsvd_639 : 1;
 	uint64_t rsvd_703_640 : 64;  /* W10 */
