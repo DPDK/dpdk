@@ -16,6 +16,8 @@ enum npa_error_status {
 	NPA_ERR_DEVICE_NOT_BOUNDED = -519,
 	NPA_ERR_HALO_INIT = -520,
 	NPA_ERR_HALO_FINI = -521,
+	NPA_ERR_DPC_ALLOC = -522,
+	NPA_ERR_DPC_FREE = -523,
 };
 
 struct npa_lf {

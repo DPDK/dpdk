@@ -1803,3 +1803,238 @@ roc_npa_dev_unlock(void)
 	if (idev != NULL)
 		plt_spinlock_unlock(&idev->npa_dev_lock);
 }
+
+int
+roc_npa_dpc_alloc(uint8_t *counter_id, uint16_t conf)
+{
+	struct npa_cn20k_dpc_alloc_req *req;
+	struct npa_cn20k_dpc_alloc_rsp *rsp;
+	int rc = NPA_ERR_DPC_ALLOC, off;
+	struct mbox_dev *mdev;
+	struct mbox *mbox;
+	struct npa_lf *lf;
+
+	lf = idev_npa_obj_get();
+	if (lf == NULL) {
+		rc = NPA_ERR_DEVICE_NOT_BOUNDED;
+		return rc;
+	}
+	mdev = &lf->mbox->dev[0];
+
+	mbox = mbox_get(lf->mbox);
+	req = mbox_alloc_msg_npa_cn20k_dpc_alloc(mbox);
+	if (req == NULL)
+		goto exit;
+
+	req->dpc_conf = conf;
+	rc = mbox_process(mbox);
+	if (rc < 0)
+		goto exit;
+
+	off = mbox->rx_start +
+	      PLT_ALIGN(sizeof(struct mbox_hdr), MBOX_MSG_ALIGN);
+	rsp = (struct npa_cn20k_dpc_alloc_rsp *)((uintptr_t)mdev->mbase + off);
+
+	if (rsp->hdr.rc != 0)
+		goto exit;
+
+	*counter_id = rsp->cntr_id;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+int
+roc_npa_dpc_free(uint8_t counter_id)
+{
+	struct npa_cn20k_dpc_free_req *free_req;
+	int rc = NPA_ERR_DPC_FREE, off;
+	struct mbox_dev *mdev;
+	struct msg_rsp *rsp;
+	struct mbox *mbox;
+	struct npa_lf *lf;
+
+	lf = idev_npa_obj_get();
+	if (lf == NULL) {
+		rc = NPA_ERR_DEVICE_NOT_BOUNDED;
+		return rc;
+	}
+	mdev = &lf->mbox->dev[0];
+	mbox = mbox_get(lf->mbox);
+	free_req = mbox_alloc_msg_npa_cn20k_dpc_free(mbox);
+	if (free_req == NULL)
+		goto exit;
+
+	free_req->cntr_id = counter_id;
+	rc = mbox_process(mbox);
+	if (rc < 0)
+		goto exit;
+
+	off = mbox->rx_start +
+	      PLT_ALIGN(sizeof(struct mbox_hdr), MBOX_MSG_ALIGN);
+	rsp = (struct msg_rsp *)((uintptr_t)mdev->mbase + off);
+	if (rsp->hdr.rc != 0)
+		goto exit;
+
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+int
+roc_npa_pool_dpc_enable(uint64_t aura_handle, uint8_t counter_id, uint32_t flags)
+{
+	struct npa_cn20k_aq_enq_req *req;
+	struct npa_cn20k_aq_enq_rsp *rsp;
+	int rc = -ENOSPC, off;
+	struct mbox_dev *mdev;
+	struct mbox *mbox;
+	struct npa_lf *lf;
+
+	lf = idev_npa_obj_get();
+	if (lf == NULL) {
+		rc = NPA_ERR_DEVICE_NOT_BOUNDED;
+		return rc;
+	}
+	mdev = &lf->mbox->dev[0];
+	mbox = mbox_get(lf->mbox);
+	req = mbox_alloc_msg_npa_cn20k_aq_enq(mbox);
+	if (req == NULL)
+		goto exit;
+
+	req->aura_id = roc_npa_aura_handle_to_aura(aura_handle);
+	req->op = NPA_AQ_INSTOP_WRITE;
+	if (!(flags & ROC_NPA_HALO_F)) {
+		/* Enable DPC in Pool */
+		req->ctype = NPA_AQ_CTYPE_POOL;
+		req->pool.op_dpc_ena = 1;
+		req->pool.op_dpc_set = counter_id;
+		req->pool_mask.op_dpc_ena = 1;
+		req->pool_mask.op_dpc_set = 0;
+		req->pool_mask.op_dpc_set = ~req->pool_mask.op_dpc_set;
+	} else {
+		/* Enable DPC in Halo */
+		req->ctype = NPA_AQ_CTYPE_HALO;
+		req->halo.op_dpc_ena = 1;
+		req->halo.op_dpc_set = counter_id;
+		req->halo_mask.op_dpc_ena = 1;
+		req->halo_mask.op_dpc_set = 0;
+		req->halo_mask.op_dpc_set = ~req->halo_mask.op_dpc_set;
+	}
+
+	rc = mbox_process(mbox);
+	if (rc < 0)
+		goto exit;
+
+	off = mbox->rx_start +
+	      PLT_ALIGN(sizeof(struct mbox_hdr), MBOX_MSG_ALIGN);
+	rsp = (struct npa_cn20k_aq_enq_rsp *)((uintptr_t)mdev->mbase + off);
+	if (rsp->hdr.rc != 0)
+		goto exit;
+
+	if (!(flags & ROC_NPA_HALO_F)) {
+		req = mbox_alloc_msg_npa_cn20k_aq_enq(mbox);
+		if (req == NULL)
+			goto disable;
+
+		/* Enable DPC in Aura */
+		req->aura_id = roc_npa_aura_handle_to_aura(aura_handle);
+		req->op = NPA_AQ_INSTOP_WRITE;
+		req->ctype = NPA_AQ_CTYPE_AURA;
+		req->aura.op_dpc_ena = 1;
+		req->aura.op_dpc_set = counter_id;
+		req->aura_mask.op_dpc_ena = 1;
+		req->aura_mask.op_dpc_set = 0;
+		req->aura_mask.op_dpc_set = ~req->aura_mask.op_dpc_set;
+
+		rc = mbox_process(mbox);
+		if (rc < 0)
+			goto disable;
+
+		off = mbox->rx_start +
+		      PLT_ALIGN(sizeof(struct mbox_hdr), MBOX_MSG_ALIGN);
+		rsp = (struct npa_cn20k_aq_enq_rsp *)((uintptr_t)mdev->mbase + off);
+		if (rsp->hdr.rc != 0)
+			goto disable;
+	}
+	rc = 0;
+	goto exit;
+
+disable:
+	roc_npa_pool_dpc_disable(aura_handle, flags);
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+int
+roc_npa_pool_dpc_disable(uint64_t aura_handle, uint32_t flags)
+{
+	struct npa_cn20k_aq_enq_req *req;
+	struct npa_cn20k_aq_enq_rsp *rsp;
+	int rc = -ENOSPC, off;
+	struct mbox_dev *mdev;
+	struct mbox *mbox;
+	struct npa_lf *lf;
+
+	lf = idev_npa_obj_get();
+	if (lf == NULL) {
+		rc = NPA_ERR_DEVICE_NOT_BOUNDED;
+		return rc;
+	}
+	mdev = &lf->mbox->dev[0];
+	mbox = mbox_get(lf->mbox);
+	req = mbox_alloc_msg_npa_cn20k_aq_enq(mbox);
+	if (req == NULL)
+		goto exit;
+
+	req->aura_id = roc_npa_aura_handle_to_aura(aura_handle);
+	req->op = NPA_AQ_INSTOP_WRITE;
+	if (!(flags & ROC_NPA_HALO_F)) {
+		req->ctype = NPA_AQ_CTYPE_POOL;
+		req->pool.op_dpc_ena = 0;
+		req->pool_mask.op_dpc_ena = 1;
+	} else {
+		req->ctype = NPA_AQ_CTYPE_HALO;
+		req->halo.op_dpc_ena = 0;
+		req->halo_mask.op_dpc_ena = 1;
+	}
+
+	rc = mbox_process(mbox);
+	if (rc < 0)
+		goto exit;
+
+	off = mbox->rx_start +
+	      PLT_ALIGN(sizeof(struct mbox_hdr), MBOX_MSG_ALIGN);
+	rsp = (struct npa_cn20k_aq_enq_rsp *)((uintptr_t)mdev->mbase + off);
+	if (rsp->hdr.rc != 0)
+		goto exit;
+
+	if (!(flags & ROC_NPA_HALO_F)) {
+		req = mbox_alloc_msg_npa_cn20k_aq_enq(mbox);
+		if (req == NULL)
+			goto exit;
+
+		req->aura_id = roc_npa_aura_handle_to_aura(aura_handle);
+		req->op = NPA_AQ_INSTOP_WRITE;
+		req->ctype = NPA_AQ_CTYPE_AURA;
+		req->aura.op_dpc_ena = 0;
+		req->aura_mask.op_dpc_ena = 1;
+		rc = mbox_process(mbox);
+		if (rc < 0)
+			goto exit;
+
+		off = mbox->rx_start + PLT_ALIGN(sizeof(struct mbox_hdr), MBOX_MSG_ALIGN);
+		rsp = (struct npa_cn20k_aq_enq_rsp *)((uintptr_t)mdev->mbase + off);
+		if (rsp->hdr.rc != 0)
+			goto exit;
+	}
+
+	rc = 0;
+
+exit:
+	mbox_put(mbox);
+	return rc;
+}

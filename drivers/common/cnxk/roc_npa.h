@@ -191,6 +191,47 @@ roc_npa_aura_op_available_wait(uint64_t aura_handle, uint32_t count,
 	return op_avail;
 }
 
+static inline void
+roc_npa_pool_op_dpc_reset(uint64_t aura_handle, uint8_t counter_id)
+{
+	plt_write64(0, roc_npa_aura_handle_to_base(aura_handle) +
+		       NPA_LF_DPCX_ALLOC_CNT(counter_id));
+	plt_write64(0, roc_npa_aura_handle_to_base(aura_handle) +
+		       NPA_LF_DPCX_FREE_CNT(counter_id));
+	plt_write64(0, roc_npa_aura_handle_to_base(aura_handle) +
+		       NPA_LF_DPCX_OUTST_BUF_CNT(counter_id));
+	plt_write64(0, roc_npa_aura_handle_to_base(aura_handle) +
+		       NPA_LF_DPCX_CNT_HI_WM(counter_id));
+}
+
+static inline uint64_t
+roc_npa_pool_op_dpc_alloc_count(uint64_t aura_handle, uint8_t counter_id)
+{
+	return plt_read64(roc_npa_aura_handle_to_base(aura_handle) +
+			  NPA_LF_DPCX_ALLOC_CNT(counter_id));
+}
+
+static inline uint64_t
+roc_npa_pool_op_dpc_free_count(uint64_t aura_handle, uint8_t counter_id)
+{
+	return plt_read64(roc_npa_aura_handle_to_base(aura_handle) +
+			  NPA_LF_DPCX_FREE_CNT(counter_id));
+}
+
+static inline uint64_t
+roc_npa_pool_op_dpc_outst_buf_count(uint64_t aura_handle, uint8_t counter_id)
+{
+	return plt_read64(roc_npa_aura_handle_to_base(aura_handle) +
+			  NPA_LF_DPCX_OUTST_BUF_CNT(counter_id));
+}
+
+static inline uint64_t
+roc_npa_pool_op_dpc_high_wm_count(uint64_t aura_handle, uint8_t counter_id)
+{
+	return plt_read64(roc_npa_aura_handle_to_base(aura_handle) +
+			  NPA_LF_DPCX_CNT_HI_WM(counter_id));
+}
+
 static inline uint64_t
 roc_npa_pool_op_performance_counter(uint64_t aura_handle, const int drop)
 {
@@ -852,5 +893,9 @@ int __roc_api roc_npa_aura_drop_set(uint64_t aura_handle, uint64_t limit,
 
 void __roc_api roc_npa_dev_lock(void);
 void __roc_api roc_npa_dev_unlock(void);
+int __roc_api roc_npa_dpc_alloc(uint8_t *counter_id, uint16_t conf);
+int __roc_api roc_npa_dpc_free(uint8_t counter_id);
+int __roc_api roc_npa_pool_dpc_enable(uint64_t aura_handle, uint8_t counter_id, uint32_t flags);
+int __roc_api roc_npa_pool_dpc_disable(uint64_t aura_handle, uint32_t flags);
 
 #endif /* _ROC_NPA_H_ */
