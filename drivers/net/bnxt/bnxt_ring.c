@@ -385,9 +385,10 @@ void bnxt_set_db(struct bnxt *bp,
 		db->doorbell = (char *)bp->doorbell_base + db_offset;
 
 		if (bp->fw_cap & BNXT_FW_CAP_MULTI_DB &&
-				dpi != BNXT_PRIVILEGED_DPI) {
-			dpi_offset = (dpi - bp->nq_dpi_start) *
-					bp->db_page_size;
+		    dpi != BNXT_PRIVILEGED_DPI &&
+		    dpi >= bp->nq_dpi_start) {
+			dpi_offset = (uint64_t)(dpi - bp->nq_dpi_start) *
+							bp->db_page_size;
 			db->doorbell = (char *)db->doorbell + dpi_offset;
 		}
 		db->db_key64 |= (uint64_t)fid << DBR_XID_SFT;
