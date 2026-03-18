@@ -719,7 +719,7 @@ test_tap_setup(void)
 		       rte_strerror(-ret));
 		rte_mempool_free(mp);
 		mp = NULL;
-		return -1;
+		return TEST_SKIPPED;
 	}
 
 	/* Create second TAP device */
