@@ -1843,7 +1843,7 @@ const void *__rte_pktmbuf_read(const struct rte_mbuf *m, uint32_t off,
 static inline const void *rte_pktmbuf_read(const struct rte_mbuf *m,
 	uint32_t off, uint32_t len, void *buf)
 {
-	if (likely(off + len <= rte_pktmbuf_data_len(m)))
+	if (likely((uint64_t)off + len <= rte_pktmbuf_data_len(m)))
 		return rte_pktmbuf_mtod_offset(m, char *, off);
 	else
 		return __rte_pktmbuf_read(m, off, len, buf);

@@ -795,7 +795,7 @@ const void *__rte_pktmbuf_read(const struct rte_mbuf *m, uint32_t off,
 	const struct rte_mbuf *seg = m;
 	uint32_t buf_off = 0, copy_len;
 
-	if (off + len > rte_pktmbuf_pkt_len(m))
+	if ((uint64_t)off + len > rte_pktmbuf_pkt_len(m))
 		return NULL;
 
 	while (off >= rte_pktmbuf_data_len(seg)) {
