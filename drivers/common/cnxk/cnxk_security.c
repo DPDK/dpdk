@@ -170,6 +170,35 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2, uint8_t *cipher_k
 	w2->s.spi = ipsec_xfrm->spi;
 
 	if (key != NULL && length != 0) {
+		/* Validate key length and set AES key len before copy to avoid overflow */
+		if (w2->s.enc_type == ROC_IE_SA_ENC_AES_CBC ||
+		    w2->s.enc_type == ROC_IE_SA_ENC_AES_CTR ||
+		    w2->s.enc_type == ROC_IE_SA_ENC_AES_GCM ||
+		    w2->s.enc_type == ROC_IE_SA_ENC_AES_CCM ||
+		    w2->s.auth_type == ROC_IE_SA_AUTH_AES_GMAC) {
+			switch (length) {
+			case ROC_CPT_AES128_KEY_LEN:
+				w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_128;
+				break;
+			case ROC_CPT_AES192_KEY_LEN:
+				w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_192;
+				break;
+			case ROC_CPT_AES256_KEY_LEN:
+				w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_256;
+				break;
+			default:
+				plt_err("Invalid AES key length");
+				return -EINVAL;
+			}
+		}
+		if (w2->s.enc_type == ROC_IE_SA_ENC_DES_CBC && length != ROC_CPT_DES_KEY_LEN) {
+			plt_err("Invalid DES key length");
+			return -EINVAL;
+		}
+		if (w2->s.enc_type == ROC_IE_SA_ENC_3DES_CBC && length != ROC_CPT_DES3_KEY_LEN) {
+			plt_err("Invalid 3DES key length");
+			return -EINVAL;
+		}
 		/* Copy encryption key */
 		memcpy(cipher_key, key, length);
 		tmp_key = (uint64_t *)cipher_key;
@@ -177,30 +206,7 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2, uint8_t *cipher_k
 			tmp_key[i] = rte_be_to_cpu_64(tmp_key[i]);
 	}
 
-	/* Set AES key length */
-	if (w2->s.enc_type == ROC_IE_SA_ENC_AES_CBC ||
-	    w2->s.enc_type == ROC_IE_SA_ENC_AES_CTR ||
-	    w2->s.enc_type == ROC_IE_SA_ENC_AES_GCM ||
-	    w2->s.enc_type == ROC_IE_SA_ENC_AES_CCM ||
-	    w2->s.auth_type == ROC_IE_SA_AUTH_AES_GMAC) {
-		switch (length) {
-		case ROC_CPT_AES128_KEY_LEN:
-			w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_128;
-			break;
-		case ROC_CPT_AES192_KEY_LEN:
-			w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_192;
-			break;
-		case ROC_CPT_AES256_KEY_LEN:
-			w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_256;
-			break;
-		default:
-			plt_err("Invalid AES key length");
-			return -EINVAL;
-		}
-	}
-
-	if (ipsec_xfrm->life.packets_soft_limit != 0 ||
-	    ipsec_xfrm->life.packets_hard_limit != 0) {
+	if (ipsec_xfrm->life.packets_soft_limit != 0 || ipsec_xfrm->life.packets_hard_limit != 0) {
 		if (ipsec_xfrm->life.bytes_soft_limit != 0 ||
 		    ipsec_xfrm->life.bytes_hard_limit != 0) {
 			plt_err("Expiry tracking with both packets & bytes is not supported");
@@ -844,9 +850,11 @@ on_ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 				break;
 			case RTE_CRYPTO_CIPHER_DES_CBC:
 				ctl->enc_type = ROC_IE_SA_ENC_DES_CBC;
+				aes_key_len = cipher_xform->cipher.key.length;
 				break;
 			case RTE_CRYPTO_CIPHER_3DES_CBC:
 				ctl->enc_type = ROC_IE_SA_ENC_3DES_CBC;
+				aes_key_len = cipher_xform->cipher.key.length;
 				break;
 			case RTE_CRYPTO_CIPHER_AES_CBC:
 				ctl->enc_type = ROC_IE_SA_ENC_AES_CBC;
@@ -897,26 +905,32 @@ on_ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 		}
 	}
 
-	/* Set AES key length */
-	if (ctl->enc_type == ROC_IE_SA_ENC_AES_CBC ||
-	    ctl->enc_type == ROC_IE_SA_ENC_AES_CTR ||
-	    ctl->enc_type == ROC_IE_SA_ENC_AES_GCM ||
-	    ctl->enc_type == ROC_IE_SA_ENC_AES_CCM ||
+	/* Validate and set AES key length before copy */
+	if (ctl->enc_type == ROC_IE_SA_ENC_AES_CBC || ctl->enc_type == ROC_IE_SA_ENC_AES_CTR ||
+	    ctl->enc_type == ROC_IE_SA_ENC_AES_GCM || ctl->enc_type == ROC_IE_SA_ENC_AES_CCM ||
 	    ctl->auth_type == ROC_IE_SA_AUTH_AES_GMAC) {
 		switch (aes_key_len) {
-		case 16:
+		case ROC_CPT_AES128_KEY_LEN:
 			ctl->aes_key_len = ROC_IE_SA_AES_KEY_LEN_128;
 			break;
-		case 24:
+		case ROC_CPT_AES192_KEY_LEN:
 			ctl->aes_key_len = ROC_IE_SA_AES_KEY_LEN_192;
 			break;
-		case 32:
+		case ROC_CPT_AES256_KEY_LEN:
 			ctl->aes_key_len = ROC_IE_SA_AES_KEY_LEN_256;
 			break;
 		default:
 			plt_err("Invalid AES key length");
 			return -EINVAL;
 		}
+	}
+	if (ctl->enc_type == ROC_IE_SA_ENC_DES_CBC && aes_key_len != ROC_CPT_DES_KEY_LEN) {
+		plt_err("Invalid DES key length");
+		return -EINVAL;
+	}
+	if (ctl->enc_type == ROC_IE_SA_ENC_3DES_CBC && aes_key_len != ROC_CPT_DES3_KEY_LEN) {
+		plt_err("Invalid 3DES key length");
+		return -EINVAL;
 	}
 
 	if (ipsec->options.esn)
@@ -1364,31 +1378,40 @@ ow_ipsec_sa_common_param_fill(union roc_ow_ipsec_sa_word2 *w2, uint8_t *cipher_k
 	w2->s.spi = ipsec_xfrm->spi;
 
 	if (key != NULL && length != 0) {
+		/* Validate key length and set AES key len before copy to avoid overflow */
+		if (w2->s.enc_type == ROC_IE_SA_ENC_AES_CBC ||
+		    w2->s.enc_type == ROC_IE_SA_ENC_AES_CTR ||
+		    w2->s.enc_type == ROC_IE_SA_ENC_AES_GCM ||
+		    w2->s.enc_type == ROC_IE_SA_ENC_AES_CCM ||
+		    w2->s.auth_type == ROC_IE_SA_AUTH_AES_GMAC) {
+			switch (length) {
+			case ROC_CPT_AES128_KEY_LEN:
+				w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_128;
+				break;
+			case ROC_CPT_AES192_KEY_LEN:
+				w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_192;
+				break;
+			case ROC_CPT_AES256_KEY_LEN:
+				w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_256;
+				break;
+			default:
+				plt_err("Invalid AES key length");
+				return -EINVAL;
+			}
+		}
+		if (w2->s.enc_type == ROC_IE_SA_ENC_DES_CBC && length != ROC_CPT_DES_KEY_LEN) {
+			plt_err("Invalid DES key length");
+			return -EINVAL;
+		}
+		if (w2->s.enc_type == ROC_IE_SA_ENC_3DES_CBC && length != ROC_CPT_DES3_KEY_LEN) {
+			plt_err("Invalid 3DES key length");
+			return -EINVAL;
+		}
 		/* Copy encryption key */
 		memcpy(cipher_key, key, length);
 		tmp_key = (uint64_t *)cipher_key;
 		for (i = 0; i < (int)(ROC_CTX_MAX_CKEY_LEN / sizeof(uint64_t)); i++)
 			tmp_key[i] = rte_be_to_cpu_64(tmp_key[i]);
-	}
-
-	/* Set AES key length */
-	if (w2->s.enc_type == ROC_IE_SA_ENC_AES_CBC || w2->s.enc_type == ROC_IE_SA_ENC_AES_CCM ||
-	    w2->s.enc_type == ROC_IE_SA_ENC_AES_CTR || w2->s.enc_type == ROC_IE_SA_ENC_AES_GCM ||
-	    w2->s.enc_type == ROC_IE_SA_ENC_AES_CCM || w2->s.auth_type == ROC_IE_SA_AUTH_AES_GMAC) {
-		switch (length) {
-		case ROC_CPT_AES128_KEY_LEN:
-			w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_128;
-			break;
-		case ROC_CPT_AES192_KEY_LEN:
-			w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_192;
-			break;
-		case ROC_CPT_AES256_KEY_LEN:
-			w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_256;
-			break;
-		default:
-			plt_err("Invalid AES key length");
-			return -EINVAL;
-		}
 	}
 
 	if (ipsec_xfrm->life.packets_soft_limit != 0 || ipsec_xfrm->life.packets_hard_limit != 0) {
