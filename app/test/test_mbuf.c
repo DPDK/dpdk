@@ -2037,13 +2037,13 @@ test_pktmbuf_read_from_offset(struct rte_mempool *pktmbuf_pool)
 	/* read length greater than mbuf data_len */
 	if (rte_pktmbuf_read(m, hdr_len, rte_pktmbuf_data_len(m) + 1,
 				NULL) != NULL)
-		GOTO_FAIL("%s: Requested len is larger than mbuf data len!\n",
+		GOTO_FAIL("%s: Requested offset + len is larger than mbuf data len!\n",
 				__func__);
 
 	/* read length greater than mbuf pkt_len */
 	if (rte_pktmbuf_read(m, hdr_len, rte_pktmbuf_pkt_len(m) + 1,
 				NULL) != NULL)
-		GOTO_FAIL("%s: Requested len is larger than mbuf pkt len!\n",
+		GOTO_FAIL("%s: Requested offset + len is larger than mbuf pkt len!\n",
 				__func__);
 
 	/* read data of zero len from valid offset */
@@ -2065,21 +2065,21 @@ test_pktmbuf_read_from_offset(struct rte_mempool *pktmbuf_pool)
 
 	/* read data of max length from valid offset */
 	data_copy = rte_pktmbuf_read(m, hdr_len, UINT_MAX, NULL);
-	if (data_copy == NULL)
-		GOTO_FAIL("%s: Error in reading packet data!\n", __func__);
-	/* check if the received address is the beginning of data segment */
-	if (data_copy != data)
-		GOTO_FAIL("%s: Corrupted data address!\n", __func__);
+	if (data_copy != NULL)
+		GOTO_FAIL("%s: Requested offset + max len is larger than mbuf pkt len!\n",
+				__func__);
 
 	/* try to read from mbuf with max size offset */
 	data_copy = rte_pktmbuf_read(m, UINT_MAX, 0, NULL);
 	if (data_copy != NULL)
-		GOTO_FAIL("%s: Error in reading packet data!\n", __func__);
+		GOTO_FAIL("%s: Requested max offset is larger than mbuf pkt len!\n",
+				__func__);
 
 	/* try to read from mbuf with max size offset and len */
 	data_copy = rte_pktmbuf_read(m, UINT_MAX, UINT_MAX, NULL);
 	if (data_copy != NULL)
-		GOTO_FAIL("%s: Error in reading packet data!\n", __func__);
+		GOTO_FAIL("%s: Requested max offset + max len is larger than mbuf pkt len!\n",
+				__func__);
 
 	rte_pktmbuf_dump(stdout, m, rte_pktmbuf_pkt_len(m));
 
