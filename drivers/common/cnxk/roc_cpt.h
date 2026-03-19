@@ -79,6 +79,7 @@
 #define ROC_CPT_SHA2_HMAC_LEN	16
 #define ROC_CPT_DES_IV_LEN	8
 
+#define ROC_CPT_DES_KEY_LEN	    8
 #define ROC_CPT_DES3_KEY_LEN	    24
 #define ROC_CPT_AES128_KEY_LEN	    16
 #define ROC_CPT_AES192_KEY_LEN	    24
