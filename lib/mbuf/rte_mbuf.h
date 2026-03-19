@@ -780,9 +780,7 @@ void rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg);
  * @param name
  *   The name of the mbuf pool.
  * @param n
- *   The number of elements in the mbuf pool. The optimum size (in terms
- *   of memory usage) for a mempool is when n is a power of two minus one:
- *   n = (2^q - 1).
+ *   The number of elements in the mbuf pool.
  * @param cache_size
  *   Size of the per-core object cache. See rte_mempool_create() for
  *   details.
@@ -818,9 +816,7 @@ rte_pktmbuf_pool_create(const char *name, unsigned n,
  * @param name
  *   The name of the mbuf pool.
  * @param n
- *   The number of elements in the mbuf pool. The optimum size (in terms
- *   of memory usage) for a mempool is when n is a power of two minus one:
- *   n = (2^q - 1).
+ *   The number of elements in the mbuf pool.
  * @param cache_size
  *   Size of the per-core object cache. See rte_mempool_create() for
  *   details.
@@ -867,9 +863,7 @@ struct rte_pktmbuf_extmem {
  * @param name
  *   The name of the mbuf pool.
  * @param n
- *   The number of elements in the mbuf pool. The optimum size (in terms
- *   of memory usage) for a mempool is when n is a power of two minus one:
- *   n = (2^q - 1).
+ *   The number of elements in the mbuf pool.
  * @param cache_size
  *   Size of the per-core object cache. See rte_mempool_create() for
  *   details.

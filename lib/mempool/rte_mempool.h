@@ -1040,19 +1040,15 @@ rte_mempool_free(struct rte_mempool *mp);
  * @param name
  *   The name of the mempool.
  * @param n
- *   The number of elements in the mempool. The optimum size (in terms of
- *   memory usage) for a mempool is when n is a power of two minus one:
- *   n = (2^q - 1).
+ *   The number of elements in the mempool.
  * @param elt_size
  *   The size of each element.
  * @param cache_size
  *   If cache_size is non-zero, the rte_mempool library will try to
  *   limit the accesses to the common lockless pool, by maintaining a
  *   per-lcore object cache. This argument must be lower or equal to
- *   RTE_MEMPOOL_CACHE_MAX_SIZE and n / 1.5. It is advised to choose
- *   cache_size to have "n modulo cache_size == 0": if this is
- *   not the case, some elements will always stay in the pool and will
- *   never be used. The access to the per-lcore table is of course
+ *   RTE_MEMPOOL_CACHE_MAX_SIZE and n / 1.5.
+ *   The access to the per-lcore table is of course
  *   faster than the multi-producer/consumer pool. The cache can be
  *   disabled if the cache_size argument is set to 0; it can be useful to
  *   avoid losing objects in cache.
@@ -1130,8 +1126,6 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
  *   The name of the mempool.
  * @param n
  *   The maximum number of elements that can be added in the mempool.
- *   The optimum size (in terms of memory usage) for a mempool is when n
- *   is a power of two minus one: n = (2^q - 1).
  * @param elt_size
  *   The size of each element.
  * @param cache_size
@@ -1889,7 +1883,6 @@ struct rte_mempool *rte_mempool_lookup(const char *name);
  * @param flags
  *   The flags used for the mempool creation.
  *   Consult rte_mempool_create() for more information about possible values.
- *   The size of each element.
  * @param sz
  *   The calculated detailed size the mempool object. May be NULL.
  * @return
