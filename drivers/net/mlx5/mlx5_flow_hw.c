@@ -2305,6 +2305,60 @@ table_template_translate_indirect_list(struct rte_eth_dev *dev,
 	return ret;
 }
 
+/**
+ * Translate given encap action and mask to raw tunnel header buffer.
+ *
+ * @param[in] action
+ *   Pointer to encap action.
+ * @param[in] mask
+ *   Pointer to encap action's mask.
+ * @param[out] conf_encap_data
+ *   Buffer where tunnel header will be written.
+ * @param[out] data_size
+ *   Pointer to tunnel header size.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 or greater if translation was successful.
+ *   Negative errno value otherwise.
+ *
+ *   If returned value is 0, then action is not shared in the actions template
+ *   If bigger than 0, then it is shared.
+ */
+static int
+translate_l2_encap_action(const struct rte_flow_action *action,
+			  const struct rte_flow_action *mask,
+			  uint8_t conf_encap_data[MLX5_ENCAP_MAX_LEN],
+			  size_t *data_size,
+			  struct rte_flow_error *error)
+{
+	struct rte_flow_item *conf_item;
+	int ret;
+
+	if (action->conf == NULL)
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION_CONF, NULL,
+					  "Missing VXLAN/NVGRE encap action configuration");
+
+	/* Only these 2 action types receive encap data as flow item pattern. */
+	MLX5_ASSERT(action->type == RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP ||
+		    action->type == RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP);
+	if (action->type == RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP)
+		conf_item = MLX5_CONST_ENCAP_ITEM(rte_flow_action_vxlan_encap, action->conf);
+	else
+		conf_item = MLX5_CONST_ENCAP_ITEM(rte_flow_action_nvgre_encap, action->conf);
+	if (conf_item == NULL)
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION_CONF, NULL,
+				"Missing VXLAN/NVGRE tunnel definition in action config");
+
+	ret = mlx5_flow_dv_convert_encap_data(conf_item, conf_encap_data, data_size, error);
+	if (ret < 0)
+		return ret;
+
+	/* If mask is provided, then action is shared */
+	return mask->conf != NULL;
+}
+
 static void
 mlx5_set_reformat_header(struct mlx5dr_action_reformat_header *hdr,
 			 uint8_t *encap_data,
@@ -2318,8 +2372,6 @@ static int
 mlx5_tbl_translate_reformat(struct mlx5_priv *priv,
 			    struct mlx5_hw_actions *acts,
 			    struct rte_flow_actions_template *at,
-			    const struct rte_flow_item *enc_item,
-			    const struct rte_flow_item *enc_item_m,
 			    uint8_t *encap_data, uint8_t *encap_data_m,
 			    struct mlx5_tbl_multi_pattern_ctx *mp_ctx,
 			    size_t data_size, uint16_t reformat_src,
@@ -2328,22 +2380,12 @@ mlx5_tbl_translate_reformat(struct mlx5_priv *priv,
 {
 	int mp_reformat_ix = mlx5_multi_pattern_reformat_to_index(refmt_type);
 	struct mlx5dr_action_reformat_header hdr;
-	uint8_t buf[MLX5_ENCAP_MAX_LEN];
 	bool shared_rfmt = false;
 	int ret;
 
 	MLX5_ASSERT(at->reformat_off != UINT16_MAX);
-	if (enc_item) {
-		MLX5_ASSERT(!encap_data);
-		ret = mlx5_flow_dv_convert_encap_data(enc_item, buf, &data_size, error);
-		if (ret)
-			return ret;
-		encap_data = buf;
-		if (enc_item_m)
-			shared_rfmt = true;
-	} else if (encap_data && encap_data_m) {
+	if (encap_data && encap_data_m)
 		shared_rfmt = true;
-	}
 	acts->encap_decap = mlx5_malloc(MLX5_MEM_ZERO,
 					sizeof(*acts->encap_decap) + data_size,
 					0, SOCKET_ID_ANY);
@@ -2615,8 +2657,8 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 	enum mlx5dr_action_type recom_type = MLX5DR_ACTION_TYP_LAST;
 	const struct rte_flow_action_raw_encap *raw_encap_data;
 	const struct rte_flow_action_ipv6_ext_push *ipv6_ext_data;
-	const struct rte_flow_item *enc_item = NULL, *enc_item_m = NULL;
 	uint16_t reformat_src = 0, recom_src = 0;
+	uint8_t converted_encap_data[MLX5_ENCAP_MAX_LEN] = { 0 };
 	uint8_t *encap_data = NULL, *encap_data_m = NULL;
 	uint8_t *push_data = NULL, *push_data_m = NULL;
 	size_t data_size = 0, push_size = 0;
@@ -2835,23 +2877,17 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
-			MLX5_ASSERT(!reformat_used);
-			enc_item = MLX5_CONST_ENCAP_ITEM(rte_flow_action_vxlan_encap,
-							 actions->conf);
-			if (masks->conf)
-				enc_item_m = MLX5_CONST_ENCAP_ITEM(rte_flow_action_vxlan_encap,
-								   masks->conf);
-			reformat_used = true;
-			reformat_src = src_pos;
-			refmt_type = MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2;
-			break;
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 			MLX5_ASSERT(!reformat_used);
-			enc_item = MLX5_CONST_ENCAP_ITEM(rte_flow_action_nvgre_encap,
-							 actions->conf);
-			if (masks->conf)
-				enc_item_m = MLX5_CONST_ENCAP_ITEM(rte_flow_action_nvgre_encap,
-								   masks->conf);
+			ret = translate_l2_encap_action(actions, masks, converted_encap_data,
+							&data_size, error);
+			if (ret < 0)
+				goto err;
+			/* If masked action, then use converted encap data for shared action. */
+			if (ret > 0) {
+				encap_data = converted_encap_data;
+				encap_data_m = converted_encap_data;
+			}
 			reformat_used = true;
 			reformat_src = src_pos;
 			refmt_type = MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2;
@@ -3133,7 +3169,6 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 	}
 	if (reformat_used) {
 		ret = mlx5_tbl_translate_reformat(priv, acts, at,
-						  enc_item, enc_item_m,
 						  encap_data, encap_data_m,
 						  mp_ctx, data_size,
 						  reformat_src,
