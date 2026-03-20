@@ -5377,6 +5377,7 @@ dcb_fwd_config_setup(void)
 	uint16_t nb_rx_queue, nb_tx_queue;
 	uint16_t i, j, k, sm_id = 0;
 	uint16_t sub_core_idx = 0;
+	uint8_t effective_nb_tcs;
 	uint16_t total_tc_num;
 	struct rte_port *port;
 	uint8_t tc = 0;
@@ -5442,6 +5443,7 @@ dcb_fwd_config_setup(void)
 	dcb_fwd_tc_update_dcb_info(&rxp_dcb_info);
 	(void)rte_eth_dev_get_dcb_info(fwd_ports_ids[txp], &txp_dcb_info);
 	dcb_fwd_tc_update_dcb_info(&txp_dcb_info);
+	effective_nb_tcs = RTE_MIN(rxp_dcb_info.nb_tcs, txp_dcb_info.nb_tcs);
 
 	for (lc_id = 0; lc_id < cur_fwd_config.nb_fwd_lcores; lc_id++) {
 		fwd_lcores[lc_id]->stream_nb = 0;
@@ -5450,7 +5452,8 @@ dcb_fwd_config_setup(void)
 			/* if the nb_queue is zero, means this tc is
 			 * not enabled on the POOL
 			 */
-			if (rxp_dcb_info.tc_queue.tc_rxq[i][tc].nb_queue == 0)
+			if (rxp_dcb_info.tc_queue.tc_rxq[i][tc].nb_queue == 0 ||
+			    txp_dcb_info.tc_queue.tc_txq[i][tc].nb_queue == 0)
 				break;
 			k = fwd_lcores[lc_id]->stream_nb +
 				fwd_lcores[lc_id]->stream_idx;
@@ -5480,7 +5483,7 @@ dcb_fwd_config_setup(void)
 
 		sub_core_idx = 0;
 		tc++;
-		if (tc < rxp_dcb_info.nb_tcs)
+		if (tc < effective_nb_tcs)
 			continue;
 		/* Restart from TC 0 on next RX port */
 		tc = 0;
@@ -5497,6 +5500,8 @@ dcb_fwd_config_setup(void)
 		dcb_fwd_tc_update_dcb_info(&rxp_dcb_info);
 		rte_eth_dev_get_dcb_info(fwd_ports_ids[txp], &txp_dcb_info);
 		dcb_fwd_tc_update_dcb_info(&txp_dcb_info);
+
+		effective_nb_tcs = RTE_MIN(rxp_dcb_info.nb_tcs, txp_dcb_info.nb_tcs);
 	}
 }
 
