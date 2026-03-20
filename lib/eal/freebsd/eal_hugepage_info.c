@@ -56,7 +56,7 @@ eal_hugepage_info_init(void)
 {
 	size_t sysctl_size;
 	int num_buffers, fd, error;
-	int64_t buffer_size;
+	int64_t buffer_size = 0;
 	struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 
@@ -80,6 +80,11 @@ eal_hugepage_info_init(void)
 	error = sysctlbyname("hw.contigmem.buffer_size", &buffer_size,
 			&sysctl_size, NULL, 0);
 
+	if (error != 0) {
+		error = sysctlbyname("hw.contigmem.buffer_size_MB", &buffer_size,
+				&sysctl_size, NULL, 0);
+		buffer_size *= 1024 * 1024;  /* convert to bytes, harmless to multiple on error*/
+	}
 	if (error != 0) {
 		EAL_LOG(ERR, "could not read sysctl hw.contigmem.buffer_size");
 		return -1;

@@ -84,11 +84,18 @@ contiguous blocks to be reserved by the module can be set at runtime prior to
 module loading using::
 
     kenv hw.contigmem.num_buffers=n
-    kenv hw.contigmem.buffer_size=m
+    kenv hw.contigmem.buffer_size_MB=m
 
-Where n is the number of blocks and m is the size in bytes of each area of contiguous memory.
-A default of two buffers of size 1073741824 bytes (1 Gigabyte) each
-is set during module load if they are not specified in the environment.
+Where n is the number of blocks
+and m is the size in megabytes of each area of contiguous memory.
+A default of one buffer of size 512 MB is set during module load
+if they are not specified in the environment.
+
+.. note::
+
+   For backward compatibility, the buffer size may also be specified in bytes
+   using ``hw.contigmem.buffer_size``.
+   The two parameters are mutually exclusive and cannot be set simultaneously.
 
 Buffers are excluded from core dump by default.
 Mapped buffers can be included in core dump using the following tunable::
@@ -108,7 +115,7 @@ following in ``/boot/loader.conf``:
 .. code-block:: shell
 
     hw.contigmem.num_buffers=n
-    hw.contigmem.buffer_size=m
+    hw.contigmem.buffer_size_MB=m
     hw.contigmem.coredump_enable=1
 
 The variables can be inspected using the following command::
@@ -127,7 +134,7 @@ up time.  This can be achieved by placing lines similar to the following into
 .. code-block:: shell
 
     hw.contigmem.num_buffers=1
-    hw.contigmem.buffer_size=1073741824
+    hw.contigmem.buffer_size_MB=1024
     hw.contigmem.coredump_enable=1
     contigmem_load="YES"
 
