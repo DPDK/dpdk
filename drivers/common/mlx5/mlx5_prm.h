@@ -5516,8 +5516,8 @@ struct mlx5_mini_cqe8 {
 				uint16_t checksum;
 				uint16_t flow_tag_high;
 				struct {
-					uint8_t reserved;
 					uint8_t hdr_type;
+					uint8_t reserved;
 				};
 			};
 			uint16_t stride_idx;
