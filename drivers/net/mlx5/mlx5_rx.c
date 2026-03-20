@@ -1000,8 +1000,7 @@ rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
 			vlan_strip = cqe->hdr_type_etc &
 				     RTE_BE16(MLX5_CQE_VLAN_STRIPPED);
 		else
-			vlan_strip = mcqe->hdr_type &
-				     RTE_BE16(MLX5_CQE_VLAN_STRIPPED);
+			vlan_strip = mcqe->hdr_type & MLX5_CQE_VLAN_STRIPPED;
 		if (vlan_strip) {
 			pkt->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 			pkt->vlan_tci = rte_be_to_cpu_16(cqe->vlan_info);
