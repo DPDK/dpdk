@@ -215,6 +215,8 @@ struct mlx5_dev_cap {
 struct mlx5_dev_spawn_data {
 	uint32_t ifindex; /**< Network interface index. */
 	uint32_t max_port; /**< Device maximal port index. */
+	uint32_t nb_uplinks; /**< Number of uplinks associated with IB device. */
+	uint32_t nb_hpfs; /**< Number of host PFs associated with IB device. */
 	uint32_t phys_port; /**< Device physical port index. */
 	int pf_bond; /**< bonding device PF index. < 0 - no bonding */
 	int mpesw_port; /**< MPESW uplink index. Valid if mpesw_owner_port >= 0. */
