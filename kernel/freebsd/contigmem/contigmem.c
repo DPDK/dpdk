@@ -50,7 +50,8 @@ static d_open_t         contigmem_open;
 static d_close_t        contigmem_close;
 
 static int              contigmem_num_buffers = RTE_CONTIGMEM_DEFAULT_NUM_BUFS;
-static int64_t          contigmem_buffer_size = RTE_CONTIGMEM_DEFAULT_BUF_SIZE;
+static int64_t          contigmem_buffer_size = 0; /* 0 = not set; resolved in contigmem_load() */
+static int64_t          contigmem_buffer_size_MB = 0; /* 0 = not set; alternative to buffer_size */
 static bool             contigmem_coredump_enable;
 
 static eventhandler_tag contigmem_eh_tag;
@@ -60,6 +61,7 @@ static int              contigmem_refcnt;
 
 TUNABLE_INT("hw.contigmem.num_buffers", &contigmem_num_buffers);
 TUNABLE_QUAD("hw.contigmem.buffer_size", &contigmem_buffer_size);
+TUNABLE_QUAD("hw.contigmem.buffer_size_MB", &contigmem_buffer_size_MB);
 TUNABLE_BOOL("hw.contigmem.coredump_enable", &contigmem_coredump_enable);
 
 static SYSCTL_NODE(_hw, OID_AUTO, contigmem, CTLFLAG_RD, 0, "contigmem");
@@ -67,7 +69,10 @@ static SYSCTL_NODE(_hw, OID_AUTO, contigmem, CTLFLAG_RD, 0, "contigmem");
 SYSCTL_INT(_hw_contigmem, OID_AUTO, num_buffers, CTLFLAG_RD,
 	&contigmem_num_buffers, 0, "Number of contigmem buffers allocated");
 SYSCTL_QUAD(_hw_contigmem, OID_AUTO, buffer_size, CTLFLAG_RD,
-	&contigmem_buffer_size, 0, "Size of each contiguous buffer");
+	&contigmem_buffer_size, 0, "Size of each contiguous buffer (in bytes)");
+SYSCTL_QUAD(_hw_contigmem, OID_AUTO, buffer_size_MB, CTLFLAG_RD,
+	&contigmem_buffer_size_MB, 0,
+	"Size of each contiguous buffer in MB (alternative to buffer_size)");
 SYSCTL_INT(_hw_contigmem, OID_AUTO, num_references, CTLFLAG_RD,
 	&contigmem_refcnt, 0, "Number of references to contigmem");
 SYSCTL_BOOL(_hw_contigmem, OID_AUTO, coredump_enable, CTLFLAG_RD,
@@ -120,6 +125,15 @@ contigmem_load(void)
 	char index_string[8], description[32];
 	int  i, error = 0;
 	void *addr;
+
+	if (contigmem_buffer_size != 0 && contigmem_buffer_size_MB != 0) {
+		printf("contigmem: buffer_size and buffer_size_MB cannot both be specified\n");
+		return EINVAL;
+	}
+	if (contigmem_buffer_size_MB != 0)
+		contigmem_buffer_size = contigmem_buffer_size_MB * 1024 * 1024;
+	else if (contigmem_buffer_size == 0)
+		contigmem_buffer_size = RTE_CONTIGMEM_DEFAULT_BUF_SIZE;
 
 	if (contigmem_num_buffers > RTE_CONTIGMEM_MAX_NUM_BUFS) {
 		printf("%d buffers requested is greater than %d allowed\n",

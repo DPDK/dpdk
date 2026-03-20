@@ -670,7 +670,7 @@ devices managed by librte_net_cxgbe in FreeBSD operating system.
 
       # reserve 2 x 1G blocks of contiguous memory using contigmem driver
       hw.contigmem.num_buffers=2
-      hw.contigmem.buffer_size=1073741824
+      hw.contigmem.buffer_size_MB=1024
       # load contigmem module during boot process
       contigmem_load="YES"
 
