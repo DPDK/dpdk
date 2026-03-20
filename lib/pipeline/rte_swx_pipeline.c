@@ -2524,7 +2524,7 @@ instr_table_translate(struct rte_swx_pipeline *p,
 		return 0;
 	}
 
-	CHECK(0, EINVAL);
+	return -EINVAL;
 }
 
 static inline void
@@ -3049,7 +3049,7 @@ instr_extern_translate(struct rte_swx_pipeline *p,
 		return 0;
 	}
 
-	CHECK(0, EINVAL);
+	return -EINVAL;
 }
 
 static inline void
@@ -3457,7 +3457,7 @@ instr_movh_translate(struct rte_swx_pipeline *p,
 		return 0;
 	}
 
-	CHECK(0, EINVAL);
+	return -EINVAL;
 }
 
 static inline void
