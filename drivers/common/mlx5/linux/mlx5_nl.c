@@ -581,8 +581,8 @@ mlx5_nl_mac_addr_modify(int nlsk_fd, unsigned int iface_idx,
 	} req = {
 		.hdr = {
 			.nlmsg_len = NLMSG_LENGTH(sizeof(struct ndmsg)),
-			.nlmsg_flags = NLM_F_REQUEST | NLM_F_CREATE |
-				NLM_F_EXCL | NLM_F_ACK,
+			.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK |
+				(add ? NLM_F_CREATE | NLM_F_EXCL : 0),
 			.nlmsg_type = add ? RTM_NEWNEIGH : RTM_DELNEIGH,
 		},
 		.ndm = {
@@ -612,7 +612,6 @@ mlx5_nl_mac_addr_modify(int nlsk_fd, unsigned int iface_idx,
 		goto error;
 	return 0;
 error:
-#ifdef RTE_PMD_MLX5_DEBUG
 	{
 		char m[RTE_ETHER_ADDR_FMT_SIZE];
 
@@ -622,7 +621,6 @@ error:
 			iface_idx,
 			add ? "add" : "remove", m, strerror(rte_errno));
 	}
-#endif
 	return -rte_errno;
 }
 
