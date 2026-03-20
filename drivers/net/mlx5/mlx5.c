@@ -1876,6 +1876,8 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 			strerror(rte_errno));
 		goto error;
 	}
+	/* Used on Tx send scheduling (tx_pp=1 or wait-on-time). */
+	sh->txpp.skew = sh->config.tx_skew;
 	sh->refcnt = 1;
 	sh->max_port = spawn->max_port;
 	strncpy(sh->ibdev_name, mlx5_os_get_ctx_device_name(sh->cdev->ctx),

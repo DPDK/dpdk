@@ -823,7 +823,6 @@ mlx5_txpp_create(struct mlx5_dev_ctx_shared *sh)
 	/* Store the requested pacing parameters. */
 	sh->txpp.tick = tx_pp >= 0 ? tx_pp : -tx_pp;
 	sh->txpp.test = !!(tx_pp < 0);
-	sh->txpp.skew = sh->config.tx_skew;
 	sh->txpp.freq = sh->cdev->config.hca_attr.dev_freq_khz;
 	ret = mlx5_txpp_create_event_channel(sh);
 	if (ret)
@@ -849,7 +848,6 @@ exit:
 		mlx5_txpp_destroy_event_channel(sh);
 		sh->txpp.tick = 0;
 		sh->txpp.test = 0;
-		sh->txpp.skew = 0;
 	}
 	return ret;
 }
@@ -871,7 +869,6 @@ mlx5_txpp_destroy(struct mlx5_dev_ctx_shared *sh)
 	mlx5_txpp_destroy_event_channel(sh);
 	sh->txpp.tick = 0;
 	sh->txpp.test = 0;
-	sh->txpp.skew = 0;
 }
 
 /**
