@@ -46,9 +46,9 @@ class Result(IntEnum):
     """The possible states that a setup, a teardown or a test case may end up in."""
 
     #:
-    PASS = auto()
-    #:
     SKIP = auto()
+    #:
+    PASS = auto()
     #:
     BLOCK = auto()
     #:
@@ -195,8 +195,15 @@ class ResultNode(BaseModel):
                 case ResultLeaf():
                     return value
 
+        # Filter out setup/teardown steps
+        results = [
+            extract_result(child)
+            for child in self.children
+            if not (isinstance(child, ResultNode) and child.label in self.__ignore_steps)
+        ]
+
         return max(
-            (extract_result(child) for child in self.children),
+            results,
             default=ResultLeaf(result=Result.PASS),
         )
 
