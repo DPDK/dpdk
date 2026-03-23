@@ -3085,6 +3085,15 @@ Flex Item
 A flow can be matched on a set of fields at specific offsets
 with ``RTE_FLOW_ITEM_TYPE_FLEX``.
 
+Requirements
+^^^^^^^^^^^^
+
+=========  ==========
+Minimum    Version
+=========  ==========
+firmware   XX.31.1002
+=========  ==========
+
 Firmware configuration
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -3104,11 +3113,37 @@ Limitations
 
 #. The header length mask width can go up to 6 bits.
 
-#. The Firmware supports 8 global sample fields.
+#. Following number of global sample fields is available based on FW version.
    Each flex item allocates non-shared sample fields from that pool.
 
-#. The flex item can have 1 input link - ``eth`` or ``udp``
-   and up to 3 output links - ``ipv4`` or ``ipv6``.
+   =============  ==========
+   Sample fields  FW version
+   =============  ==========
+   3              XX.31.1002
+   8              XX.33.1048
+   =============  ==========
+
+#. The flex item can have 1 input link and up to 3 output links.
+
+#. Following types of input links are supported:
+
+   ====  ==========
+   Type  FW version
+   ====  ==========
+   ETH   XX.31.1002
+   UDP   XX.31.1002
+   ====  ==========
+
+#. Following types of output links are supported:
+
+   ====  ==========
+   Type  FW version
+   ====  ==========
+   IPV4  XX.31.1002
+   IPV6  XX.31.1002
+   TCP   XX.36.1010
+   UDP   XX.36.1010
+   ====  ==========
 
 #. In flex item configuration, ``next_header.field_base`` value
    must be byte aligned (multiple of 8).
