@@ -234,8 +234,7 @@ struct mlx5_external_q *mlx5_ext_txq_get(struct rte_eth_dev *dev, uint16_t idx);
 
 /* mlx5_tx.c */
 
-void mlx5_tx_handle_completion(struct mlx5_txq_data *__rte_restrict txq,
-			       unsigned int olx __rte_unused);
+void mlx5_tx_handle_completion(struct mlx5_txq_data *__rte_restrict txq);
 int mlx5_tx_descriptor_status(void *tx_queue, uint16_t offset);
 void mlx5_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		       struct rte_eth_txq_info *qinfo);
@@ -511,15 +510,11 @@ txq_ol_cksum_to_cs(struct rte_mbuf *buf)
  *   Pointer to array of packets to be free.
  * @param pkts_n
  *   Number of packets to be freed.
- * @param olx
- *   Configured Tx offloads mask. It is fully defined at
- *   compile time and may be used for optimization.
  */
 static __rte_always_inline void
 mlx5_tx_free_mbuf(struct mlx5_txq_data *__rte_restrict txq,
 		  struct rte_mbuf **__rte_restrict pkts,
-		  unsigned int pkts_n,
-		  unsigned int olx __rte_unused)
+		  unsigned int pkts_n)
 {
 	struct rte_mempool *pool = NULL;
 	struct rte_mbuf **p_free = NULL;
@@ -537,7 +532,7 @@ mlx5_tx_free_mbuf(struct mlx5_txq_data *__rte_restrict txq,
 	 * Free mbufs directly to the pool in bulk
 	 * if fast free offload is engaged
 	 */
-	if (!MLX5_TXOFF_CONFIG(MULTI) && txq->fast_free) {
+	if (txq->fast_free) {
 		mbuf = *pkts;
 		pool = mbuf->pool;
 		rte_mempool_put_bulk(pool, (void *)pkts, pkts_n);
@@ -627,10 +622,9 @@ mlx5_tx_free_mbuf(struct mlx5_txq_data *__rte_restrict txq,
 static __rte_noinline void
 __mlx5_tx_free_mbuf(struct mlx5_txq_data *__rte_restrict txq,
 		    struct rte_mbuf **__rte_restrict pkts,
-		    unsigned int pkts_n,
-		    unsigned int olx __rte_unused)
+		    unsigned int pkts_n)
 {
-	mlx5_tx_free_mbuf(txq, pkts, pkts_n, olx);
+	mlx5_tx_free_mbuf(txq, pkts, pkts_n);
 }
 
 /**
@@ -640,14 +634,10 @@ __mlx5_tx_free_mbuf(struct mlx5_txq_data *__rte_restrict txq,
  *   Pointer to Tx queue structure.
  * @param tail
  *   Index in elts to free up to, becomes new elts tail.
- * @param olx
- *   Configured Tx offloads mask. It is fully defined at
- *   compile time and may be used for optimization.
  */
 static __rte_always_inline void
 mlx5_tx_free_elts(struct mlx5_txq_data *__rte_restrict txq,
-		  uint16_t tail,
-		  unsigned int olx __rte_unused)
+		  uint16_t tail)
 {
 	uint16_t n_elts = tail - txq->elts_tail;
 
@@ -666,7 +656,7 @@ mlx5_tx_free_elts(struct mlx5_txq_data *__rte_restrict txq,
 		MLX5_ASSERT(part <= txq->elts_s);
 		mlx5_tx_free_mbuf(txq,
 				  &txq->elts[txq->elts_tail & txq->elts_m],
-				  part, olx);
+				  part);
 		txq->elts_tail += part;
 		n_elts -= part;
 	} while (n_elts);
@@ -3565,7 +3555,7 @@ send_loop:
 	 * - doorbell the NIC about processed CQEs
 	 */
 	rte_prefetch0(*(pkts + loc.pkts_sent));
-	mlx5_tx_handle_completion(txq, olx);
+	mlx5_tx_handle_completion(txq);
 	/*
 	 * Calculate the number of available resources - elts and WQEs.
 	 * There are two possible different scenarios:
@@ -3814,7 +3804,7 @@ burst_exit:
 	txq->stats.opackets += loc.pkts_sent;
 #endif
 	if (MLX5_TXOFF_CONFIG(INLINE) && loc.mbuf_free)
-		__mlx5_tx_free_mbuf(txq, pkts, loc.mbuf_free, olx);
+		__mlx5_tx_free_mbuf(txq, pkts, loc.mbuf_free);
 	/* Trace productive bursts only. */
 	if (__rte_trace_point_fp_is_enabled() && loc.pkts_sent)
 		rte_pmd_mlx5_trace_tx_exit(mlx5_read_pcibar_clock_from_txq(txq),
