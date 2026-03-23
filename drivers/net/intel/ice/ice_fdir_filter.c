@@ -2094,13 +2094,13 @@ raw_error:
 				   &eth_spec->hdr.ether_type, sizeof(eth_spec->hdr.ether_type));
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
-			/* Only set flow_type for outer IPv4, track inner L3 for tunnels */
-			if (is_outer || !tunnel_type) {
-				flow_type = ICE_FLTR_PTYPE_NONF_IPV4_OTHER;
-				l3 = RTE_FLOW_ITEM_TYPE_IPV4;
+			if (!is_outer &&
+			    tunnel_type == ICE_FDIR_TUNNEL_TYPE_L2TPV2) {
+				inner_l3 = RTE_FLOW_ITEM_TYPE_IPV4;
 				current_l3 = RTE_FLOW_ITEM_TYPE_IPV4;
 			} else {
-				inner_l3 = RTE_FLOW_ITEM_TYPE_IPV4;
+				flow_type = ICE_FLTR_PTYPE_NONF_IPV4_OTHER;
+				l3 = RTE_FLOW_ITEM_TYPE_IPV4;
 				current_l3 = RTE_FLOW_ITEM_TYPE_IPV4;
 			}
 
@@ -2203,12 +2203,13 @@ raw_error:
 
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
-			if (is_outer || !tunnel_type) {
-				flow_type = ICE_FLTR_PTYPE_NONF_IPV6_OTHER;
-				l3 = RTE_FLOW_ITEM_TYPE_IPV6;
+			if (!is_outer &&
+			    tunnel_type == ICE_FDIR_TUNNEL_TYPE_L2TPV2) {
+				inner_l3 = RTE_FLOW_ITEM_TYPE_IPV6;
 				current_l3 = RTE_FLOW_ITEM_TYPE_IPV6;
 			} else {
-				inner_l3 = RTE_FLOW_ITEM_TYPE_IPV6;
+				flow_type = ICE_FLTR_PTYPE_NONF_IPV6_OTHER;
+				l3 = RTE_FLOW_ITEM_TYPE_IPV6;
 				current_l3 = RTE_FLOW_ITEM_TYPE_IPV6;
 			}
 
@@ -2294,11 +2295,10 @@ raw_error:
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_TCP:
-			if (!is_outer && tunnel_type) {
-				/* For inner TCP in tunnels, track inner_l4 */
+			if (!is_outer &&
+			    tunnel_type == ICE_FDIR_TUNNEL_TYPE_L2TPV2) {
 				inner_l4 = RTE_FLOW_ITEM_TYPE_TCP;
 			} else {
-				/* For outer TCP, update flow_type normally */
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
 					flow_type = ICE_FLTR_PTYPE_NONF_IPV4_TCP;
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
@@ -2361,11 +2361,10 @@ raw_error:
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
-			if (!is_outer && tunnel_type) {
-				/* For inner UDP in tunnels, track inner_l4 */
+			if (!is_outer &&
+			    tunnel_type == ICE_FDIR_TUNNEL_TYPE_L2TPV2) {
 				inner_l4 = RTE_FLOW_ITEM_TYPE_UDP;
 			} else {
-				/* For outer UDP, update flow_type normally */
 				l4 = RTE_FLOW_ITEM_TYPE_UDP;
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
 					flow_type = ICE_FLTR_PTYPE_NONF_IPV4_UDP;
@@ -2424,11 +2423,10 @@ raw_error:
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_SCTP:
-			if (!is_outer && tunnel_type) {
-				/* For inner SCTP in tunnels, track inner_l4 */
+			if (!is_outer &&
+			    tunnel_type == ICE_FDIR_TUNNEL_TYPE_L2TPV2) {
 				inner_l4 = RTE_FLOW_ITEM_TYPE_SCTP;
 			} else {
-				/* For outer SCTP, update flow_type normally */
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
 					flow_type = ICE_FLTR_PTYPE_NONF_IPV4_SCTP;
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
