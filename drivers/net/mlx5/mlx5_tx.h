@@ -303,21 +303,6 @@ mlx5_tx_bfreg(struct mlx5_txq_data *txq)
 }
 
 /**
- * Ring TX queue doorbell and flush the update by write memory barrier.
- *
- * @param txq
- *   Pointer to TX queue structure.
- * @param wqe
- *   Pointer to the last WQE posted in the NIC.
- */
-static __rte_always_inline void
-mlx5_tx_dbrec(struct mlx5_txq_data *txq, volatile struct mlx5_wqe *wqe)
-{
-	mlx5_doorbell_ring(mlx5_tx_bfreg(txq), *(volatile uint64_t *)wqe,
-			   txq->wqe_ci, txq->qp_db, 1);
-}
-
-/**
  * Convert timestamp from mbuf format to linear counter
  * of Clock Queue completions (24 bits).
  *
