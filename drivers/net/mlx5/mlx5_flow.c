@@ -11904,6 +11904,12 @@ mlx5_flow_flex_item_create(struct rte_eth_dev *dev,
 				   "flex item available on BlueField ports only");
 		return NULL;
 	}
+	if (!priv->sh->cdev->config.hca_attr.parse_graph_flex_node) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "flex item not supported on current FW");
+		return NULL;
+	}
 	if (!fops->item_create) {
 		DRV_LOG(ERR, "port %u %s.", dev->data->port_id, err_msg);
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
