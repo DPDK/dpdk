@@ -639,8 +639,12 @@ rte_is_aligned(const void * const __rte_restrict ptr, const unsigned int align)
  *
  * Use as spacing between data accessed by different lcores,
  * to prevent cache thrashing on hardware with speculative prefetching.
+ *
+ * Note: Although __COUNTER__ would be better for uniqueness,
+ * it is not yet (March 2026) part of the C standard,
+ * so compilation would fail when building in pedantic mode.
  */
-#define RTE_CACHE_GUARD _RTE_CACHE_GUARD_HELPER1(__COUNTER__)
+#define RTE_CACHE_GUARD _RTE_CACHE_GUARD_HELPER1(__LINE__)
 
 /*********** PA/IOVA type definitions ********/
 
