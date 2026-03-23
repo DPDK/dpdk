@@ -144,14 +144,10 @@ mlx5_tx_error_cqe_handle(struct mlx5_txq_data *__rte_restrict txq,
  *   Pointer to TX queue structure.
  * @param last_cqe
  *   valid CQE pointer, if not NULL update txq->wqe_pi and flush the buffers.
- * @param olx
- *   Configured Tx offloads mask. It is fully defined at
- *   compile time and may be used for optimization.
  */
 static __rte_always_inline void
 mlx5_tx_comp_flush(struct mlx5_txq_data *__rte_restrict txq,
-		   volatile struct mlx5_cqe *last_cqe,
-		   unsigned int olx __rte_unused)
+		   volatile struct mlx5_cqe *last_cqe)
 {
 	if (likely(last_cqe != NULL)) {
 		uint16_t tail;
@@ -159,7 +155,7 @@ mlx5_tx_comp_flush(struct mlx5_txq_data *__rte_restrict txq,
 		txq->wqe_pi = rte_be_to_cpu_16(last_cqe->wqe_counter);
 		tail = txq->fcqs[(txq->cq_ci - 1) & txq->cqe_m];
 		if (likely(tail != txq->elts_tail)) {
-			mlx5_tx_free_elts(txq, tail, olx);
+			mlx5_tx_free_elts(txq, tail);
 			MLX5_ASSERT(tail == txq->elts_tail);
 		}
 	}
@@ -172,16 +168,12 @@ mlx5_tx_comp_flush(struct mlx5_txq_data *__rte_restrict txq,
  *
  * @param txq
  *   Pointer to TX queue structure.
- * @param olx
- *   Configured Tx offloads mask. It is fully defined at
- *   compile time and may be used for optimization.
  *
  * NOTE: not inlined intentionally, it makes tx_burst
  * routine smaller, simple and faster - from experiments.
  */
 void
-mlx5_tx_handle_completion(struct mlx5_txq_data *__rte_restrict txq,
-			  unsigned int olx __rte_unused)
+mlx5_tx_handle_completion(struct mlx5_txq_data *__rte_restrict txq)
 {
 	unsigned int count = MLX5_TX_COMP_MAX_CQE;
 	volatile struct mlx5_cqe *last_cqe = NULL;
@@ -259,7 +251,7 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *__rte_restrict txq,
 		/* Ring doorbell to notify hardware. */
 		rte_compiler_barrier();
 		*txq->cq_db = rte_cpu_to_be_32(txq->cq_ci);
-		mlx5_tx_comp_flush(txq, last_cqe, olx);
+		mlx5_tx_comp_flush(txq, last_cqe);
 	}
 }
 
@@ -280,7 +272,7 @@ mlx5_tx_descriptor_status(void *tx_queue, uint16_t offset)
 	struct mlx5_txq_data *__rte_restrict txq = tx_queue;
 	uint16_t used;
 
-	mlx5_tx_handle_completion(txq, 0);
+	mlx5_tx_handle_completion(txq);
 	used = txq->elts_head - txq->elts_tail;
 	if (offset < used)
 		return RTE_ETH_TX_DESC_FULL;
