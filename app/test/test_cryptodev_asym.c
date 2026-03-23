@@ -3826,6 +3826,14 @@ modular_exponentiation(const void *test_data)
 	uint8_t result[TEST_DATA_SIZE] = { 0 };
 	struct rte_crypto_asym_xform xform = { };
 	const uint8_t dev_id = params->valid_devs[0];
+	const struct rte_cryptodev_asymmetric_xform_capability *cap;
+	struct rte_cryptodev_asym_capability_idx cap_idx;
+
+	cap_idx.type = RTE_CRYPTO_ASYM_XFORM_MODEX;
+	cap = rte_cryptodev_asym_capability_get(dev_id, &cap_idx);
+	if (cap == NULL || rte_cryptodev_asym_xform_capability_check_modlen(
+			cap, vector->modulus.len))
+		return TEST_SKIPPED;
 
 	memcpy(input, vector->base.data, vector->base.len);
 	memcpy(exponent, vector->exponent.data, vector->exponent.len);
