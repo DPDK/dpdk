@@ -30,9 +30,6 @@
 #define I40E_IPV6_FRAG_HEADER	44
 #define I40E_TENANT_ARRAY_NUM	3
 #define I40E_VLAN_TCI_MASK	0xFFFF
-#define I40E_VLAN_PRI_MASK	0xE000
-#define I40E_VLAN_CFI_MASK	0x1000
-#define I40E_VLAN_VID_MASK	0x0FFF
 
 static int i40e_flow_validate(struct rte_eth_dev *dev,
 			      const struct rte_flow_attr *attr,
@@ -1765,22 +1762,19 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 
 			RTE_ASSERT(!(input_set & I40E_INSET_LAST_ETHER_TYPE));
 			if (vlan_spec && vlan_mask) {
-				if (vlan_mask->hdr.vlan_tci !=
-				    rte_cpu_to_be_16(I40E_VLAN_TCI_MASK) &&
+				if (vlan_mask->hdr.vlan_tci != 0 &&
 				    vlan_mask->hdr.vlan_tci !=
-				    rte_cpu_to_be_16(I40E_VLAN_PRI_MASK) &&
-				    vlan_mask->hdr.vlan_tci !=
-				    rte_cpu_to_be_16(I40E_VLAN_CFI_MASK) &&
-				    vlan_mask->hdr.vlan_tci !=
-				    rte_cpu_to_be_16(I40E_VLAN_VID_MASK)) {
+				    rte_cpu_to_be_16(I40E_VLAN_TCI_MASK)) {
 					rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
 						   "Unsupported TCI mask.");
+					return -rte_errno;
 				}
-				input_set |= I40E_INSET_VLAN_INNER;
-				filter->input.flow_ext.vlan_tci =
-					vlan_spec->hdr.vlan_tci;
+				if (vlan_mask->hdr.vlan_tci != 0) {
+					input_set |= I40E_INSET_VLAN_INNER;
+					filter->input.flow_ext.vlan_tci = vlan_spec->hdr.vlan_tci;
+				}
 			}
 			if (vlan_spec && vlan_mask && vlan_mask->hdr.eth_proto) {
 				if (vlan_mask->hdr.eth_proto != RTE_BE16(0xffff)) {
