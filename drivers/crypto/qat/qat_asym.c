@@ -274,7 +274,7 @@ modexp_collect(struct rte_crypto_asym_op *asym_op,
 	rte_memcpy(modexp_result,
 		cookie->output_array[0] + alg_bytesize
 		- n.length, n.length);
-	asym_op->modex.result.length = alg_bytesize;
+	asym_op->modex.result.length = n.length;
 	HEXDUMP("ModExp result", cookie->output_array[0],
 			alg_bytesize);
 	return RTE_CRYPTO_OP_STATUS_SUCCESS;
@@ -332,11 +332,10 @@ modinv_collect(struct rte_crypto_asym_op *asym_op,
 		QAT_LOG(ERR, "Incorrect length of modinv modulus");
 		return RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 	}
-	rte_memcpy(modinv_result + (asym_op->modinv.result.length
-		- n.length),
+	rte_memcpy(modinv_result,
 		cookie->output_array[0] + alg_bytesize
 		- n.length, n.length);
-	asym_op->modinv.result.length = alg_bytesize;
+	asym_op->modinv.result.length = n.length;
 	HEXDUMP("ModInv result", cookie->output_array[0],
 			alg_bytesize);
 	return RTE_CRYPTO_OP_STATUS_SUCCESS;
