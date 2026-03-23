@@ -1483,6 +1483,12 @@ static int
 session_set_ec(struct qat_asym_session *qat_session,
 			struct rte_crypto_asym_xform *xform)
 {
+	/* Validate curve for EC operations using pick_curve (not SM2) */
+	if (xform->xform_type != RTE_CRYPTO_ASYM_XFORM_SM2) {
+		if (pick_curve(xform) < 0)
+			return -ENOTSUP;
+	}
+
 	uint8_t *pkey = xform->ec.pkey.data;
 	uint8_t *q_x = xform->ec.q.x.data;
 	uint8_t *q_y = xform->ec.q.y.data;
@@ -1545,6 +1551,10 @@ qat_asym_session_configure(struct rte_cryptodev *dev __rte_unused,
 		ret = session_set_modinv(qat_session, xform);
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_RSA: {
+		if (xform->rsa.padding.type != RTE_CRYPTO_RSA_PADDING_NONE) {
+			ret = -ENOTSUP;
+			return ret;
+		}
 		if (unlikely((xform->rsa.n.length < RSA_MODULUS_2048_BITS)
 				&& (crypto_qat->qat_dev->options.legacy_alg == 0))) {
 			ret = -ENOTSUP;

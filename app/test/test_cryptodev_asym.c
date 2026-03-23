@@ -318,6 +318,9 @@ test_rsa_sign_verify(void)
 error_exit:
 	rte_cryptodev_asym_session_free(dev_id, sess);
 
+	if (status == TEST_SKIPPED)
+		return status;
+
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
 
 	return status;
@@ -368,6 +371,9 @@ error_exit:
 
 	rte_cryptodev_asym_session_free(dev_id, sess);
 
+	if (status == TEST_SKIPPED)
+		return status;
+
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
 
 	return status;
@@ -414,6 +420,9 @@ error_exit:
 
 	rte_cryptodev_asym_session_free(dev_id, sess);
 
+	if (status == TEST_SKIPPED)
+		return status;
+
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
 
 	return status;
@@ -459,6 +468,9 @@ test_rsa_enc_dec_crt(void)
 error_exit:
 
 	rte_cryptodev_asym_session_free(dev_id, sess);
+
+	if (status == TEST_SKIPPED)
+		return status;
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
 
@@ -1712,6 +1724,8 @@ test_ecdsa_sign_verify_all_curve(void)
 		status = test_ecdsa_sign_verify(curve_id);
 		if (status == TEST_SUCCESS) {
 			msg = "succeeded";
+		} else if (status == TEST_SKIPPED) {
+			msg = "skipped";
 		} else {
 			msg = "failed";
 			overall_status = status;
@@ -1901,6 +1915,8 @@ test_ecpm_all_curve(void)
 		status = test_ecpm(curve_id);
 		if (status == TEST_SUCCESS) {
 			msg = "succeeded";
+		} else if (status == TEST_SKIPPED) {
+			msg = "skipped";
 		} else {
 			msg = "failed";
 			overall_status = status;
@@ -1956,10 +1972,10 @@ test_ecdh_priv_key_generate(enum curve curve_id)
 	idx.type = RTE_CRYPTO_ASYM_XFORM_ECDH;
 	capa = rte_cryptodev_asym_capability_get(dev_id, &idx);
 	if (capa == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (!(capa->op_types & (1 <<  RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE)))
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	switch (curve_id) {
 	case SECP192R1:
@@ -2269,10 +2285,10 @@ test_ecdh_pub_key_verify(enum curve curve_id)
 	idx.type = RTE_CRYPTO_ASYM_XFORM_ECDH;
 	capa = rte_cryptodev_asym_capability_get(dev_id, &idx);
 	if (capa == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (!(capa->op_types & (1 <<  RTE_CRYPTO_ASYM_KE_PUB_KEY_VERIFY)))
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	switch (curve_id) {
 	case SECP192R1:
@@ -2408,10 +2424,10 @@ test_ecdh_shared_secret(enum curve curve_id)
 	idx.type = RTE_CRYPTO_ASYM_XFORM_ECDH;
 	capa = rte_cryptodev_asym_capability_get(dev_id, &idx);
 	if (capa == NULL)
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	if (!(capa->op_types & (1 <<  RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE)))
-		return -ENOTSUP;
+		return TEST_SKIPPED;
 
 	switch (curve_id) {
 	case SECP192R1:
@@ -2668,6 +2684,8 @@ test_ecdh_all_curve(void)
 		status = test_ecdh_priv_key_generate(curve_id);
 		if (status == TEST_SUCCESS) {
 			msg = "succeeded";
+		} else if (status == TEST_SKIPPED) {
+			msg = "skipped";
 		} else {
 			msg = "failed";
 			overall_status = status;
@@ -2700,6 +2718,8 @@ test_ecdh_all_curve(void)
 		status = test_ecdh_pub_key_verify(curve_id);
 		if (status == TEST_SUCCESS) {
 			msg = "succeeded";
+		} else if (status == TEST_SKIPPED) {
+			msg = "skipped";
 		} else {
 			msg = "failed";
 			overall_status = status;
@@ -2715,6 +2735,8 @@ test_ecdh_all_curve(void)
 		status = test_ecdh_shared_secret(curve_id);
 		if (status == TEST_SUCCESS) {
 			msg = "succeeded";
+		} else if (status == TEST_SKIPPED) {
+			msg = "skipped";
 		} else {
 			msg = "failed";
 			overall_status = status;
@@ -2752,6 +2774,8 @@ test_ecdh_qat_curves(void)
 		status = test_ecdh_pub_key_verify(curve_id);
 		if (status == TEST_SUCCESS) {
 			msg = "succeeded";
+		} else if (status == TEST_SKIPPED) {
+			msg = "skipped";
 		} else {
 			msg = "failed";
 			overall_status = status;
@@ -2764,6 +2788,8 @@ test_ecdh_qat_curves(void)
 		status = test_ecdh_shared_secret(curve_id);
 		if (status == TEST_SUCCESS) {
 			msg = "succeeded";
+		} else if (status == TEST_SKIPPED) {
+			msg = "skipped";
 		} else {
 			msg = "failed";
 			overall_status = status;
