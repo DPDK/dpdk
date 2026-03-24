@@ -46,10 +46,7 @@ def compute_eal_params(
     params.prefix = prefix
 
     if params.allowed_ports is None:
-        if ctx.topology.crypto_vf_ports:
-            params.allowed_ports = [ctx.topology.crypto_vf_ports[0]]
-        else:
-            params.allowed_ports = ctx.topology.sut_dpdk_ports
+        params.allowed_ports = ctx.topology.sut_dpdk_ports
 
     return params
 
