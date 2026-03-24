@@ -4818,6 +4818,30 @@ int rte_eth_set_queue_rate_limit(uint16_t port_id, uint16_t queue_idx,
 			uint32_t tx_rate);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
+ *
+ * Get the rate limitation for a queue on an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_idx
+ *   The queue ID.
+ * @param[out] tx_rate
+ *   A pointer to retrieve the Tx rate in Mbps.
+ *   0 means rate limiting is disabled.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support this feature.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EIO) if device is removed.
+ *   - (-EINVAL) if bad parameter.
+ */
+__rte_experimental
+int rte_eth_get_queue_rate_limit(uint16_t port_id, uint16_t queue_idx,
+			uint32_t *tx_rate);
+
+/**
  * Configuration of Receive Side Scaling hash computation of Ethernet device.
  *
  * @param port_id

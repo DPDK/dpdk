@@ -5694,6 +5694,41 @@ int rte_eth_set_queue_rate_limit(uint16_t port_id, uint16_t queue_idx,
 	return ret;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_get_queue_rate_limit, 26.07)
+int rte_eth_get_queue_rate_limit(uint16_t port_id, uint16_t queue_idx,
+					uint32_t *tx_rate)
+{
+	struct rte_eth_dev *dev;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (tx_rate == NULL) {
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Get queue rate limit:port %u: NULL tx_rate pointer",
+			port_id);
+		return -EINVAL;
+	}
+
+	if (queue_idx >= dev->data->nb_tx_queues) {
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Get queue rate limit:port %u: invalid queue ID=%u",
+			port_id, queue_idx);
+		return -EINVAL;
+	}
+
+	if (dev->dev_ops->get_queue_rate_limit == NULL)
+		return -ENOTSUP;
+	ret = eth_err(port_id,
+		      dev->dev_ops->get_queue_rate_limit(dev, queue_idx,
+							 tx_rate));
+
+	rte_eth_trace_get_queue_rate_limit(port_id, queue_idx, ret);
+
+	return ret;
+}
+
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_rx_avail_thresh_set, 22.07)
 int rte_eth_rx_avail_thresh_set(uint16_t port_id, uint16_t queue_id,
 			       uint8_t avail_thresh)
