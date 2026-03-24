@@ -553,27 +553,32 @@ for an additional list of options shared with other mlx5 drivers.
 
 - ``tx_pp`` parameter [int]
 
+  This parameter applies to **ConnectX-6 Dx** only.
   If a nonzero value is specified the driver creates all necessary internal
-  objects to provide accurate packet send scheduling on mbuf timestamps.
+  objects (Clock Queue and Rearm Queue) to provide accurate packet send
+  scheduling on mbuf timestamps using a cross-channel approach.
   The positive value specifies the scheduling granularity in nanoseconds,
   the packet send will be accurate up to specified digits. The allowed range is
   from 500 to 1 million of nanoseconds. The negative value specifies the module
   of granularity and engages the special test mode the check the schedule rate.
   By default (if the ``tx_pp`` is not specified) send scheduling on timestamps
-  feature is disabled.
+  feature is disabled on ConnectX-6 Dx.
 
-  Starting with ConnectX-7 the capability to schedule traffic directly
-  on timestamp specified in descriptor is provided,
-  no extra objects are needed anymore and scheduling capability
-  is advertised and handled regardless ``tx_pp`` parameter presence.
+  Starting with **ConnectX-7** the hardware provides a native wait-on-time
+  capability that inserts the scheduling delay directly in the WQE descriptor.
+  No Clock Queue or Rearm Queue is needed and the ``tx_pp`` parameter is not
+  required. The driver automatically advertises send scheduling support when
+  the HCA wait-on-time capability is detected. The ``tx_skew`` parameter can
+  still be used on ConnectX-7 and above to compensate for wire delay.
 
 - ``tx_skew`` parameter [int]
 
   The parameter adjusts the send packet scheduling on timestamps and represents
   the average delay between beginning of the transmitting descriptor processing
   by the hardware and appearance of actual packet data on the wire. The value
-  should be provided in nanoseconds and is valid only if ``tx_pp`` parameter is
-  specified. The default value is zero.
+  should be provided in nanoseconds and applies to both ConnectX-6 Dx
+  (with ``tx_pp``) and ConnectX-7+ (wait-on-time) scheduling modes.
+  The default value is zero.
 
 - ``tx_vec_en`` parameter [int]
 
@@ -883,9 +888,13 @@ Send Scheduling Counters
 
 The mlx5 PMD provides a comprehensive set of counters designed for
 debugging and diagnostics related to packet scheduling during transmission.
-These counters are applicable only if the port was configured with the ``tx_pp`` devarg
-and reflect the status of the PMD scheduling infrastructure
-based on Clock and Rearm Queues, used as a workaround on ConnectX-6 DX NICs.
+The first group of counters (prefixed ``tx_pp_``) reflects the status of the
+Clock Queue and Rearm Queue infrastructure used on ConnectX-6 Dx and is
+applicable only if the port was configured with the ``tx_pp`` devarg.
+The timestamp validation counters
+(``tx_pp_timestamp_past_errors``, ``tx_pp_timestamp_future_errors``,
+``tx_pp_timestamp_order_errors``) are also reported on ConnectX-7 and above
+in wait-on-time mode, without requiring ``tx_pp``.
 
 ``tx_pp_missed_interrupt_errors``
   Indicates that the Rearm Queue interrupt was not serviced on time.
@@ -1969,30 +1978,53 @@ Limitations
 Tx Scheduling
 ~~~~~~~~~~~~~
 
-When PMD sees the ``RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME`` set on the packet
-being sent it tries to synchronize the time of packet appearing on
-the wire with the specified packet timestamp. If the specified one
-is in the past it should be ignored, if one is in the distant future
-it should be capped with some reasonable value (in range of seconds).
-These specific cases ("too late" and "distant future") can be optionally
-reported via device xstats to assist applications to detect the
-time-related problems.
+When the PMD sees ``RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME`` set on a packet
+being sent it inserts a dedicated WAIT WQE to synchronize the time of the
+packet appearing on the wire with the specified timestamp. Every packet
+in a burst that carries the timestamp dynamic flag is individually
+scheduled -- there is no restriction to the first packet only.
 
-The timestamp upper "too-distant-future" limit
-at the moment of invoking the Tx burst routine
-can be estimated as ``tx_pp`` option (in nanoseconds) multiplied by 2^23.
+If the specified timestamp is in the past, the packet is sent immediately.
+If it is in the distant future it should be capped with some reasonable
+value (in range of seconds). These specific cases ("too late" and
+"distant future") can be optionally reported via device xstats to assist
+applications to detect time-related problems.
+
+The eMPW (enhanced Multi-Packet Write) data path automatically breaks
+the batch when a timestamped packet is encountered, ensuring each
+scheduled packet gets its own WAIT WQE.
+
+Two hardware mechanisms are supported:
+
+**ConnectX-6 Dx -- Clock Queue (cross-channel)**
+   The driver creates a Clock Queue and a Rearm Queue that together
+   provide a time reference for scheduling. This mode requires the
+   :ref:`tx_pp <mlx5_tx_pp_param>` devarg. The timestamp upper
+   "too-distant-future" limit at the moment of invoking the Tx burst
+   routine can be estimated as ``tx_pp`` (in nanoseconds) multiplied
+   by 2^23.
+
+**ConnectX-7 and above -- wait-on-time**
+   The hardware supports placing the scheduling delay directly inside
+   the WQE descriptor. No Clock Queue or Rearm Queue is needed and the
+   ``tx_pp`` devarg is **not** required. The driver automatically
+   advertises send scheduling support when the HCA wait-on-time
+   capability is detected.
+
 Please note, for the testpmd txonly mode,
 the limit is deduced from the expression::
 
    (n_tx_descriptors / burst_size + 1) * inter_burst_gap
 
-There is no any packet reordering according timestamps is supposed,
-neither within packet burst, nor between packets, it is an entirely
-application responsibility to generate packets and its timestamps
-in desired order.
+There is no packet reordering according to timestamps,
+neither within a packet burst, nor between packets. It is entirely the
+application's responsibility to generate packets and their timestamps
+in the desired order.
 
 Requirements
 ^^^^^^^^^^^^
+
+ConnectX-6 Dx (Clock Queue mode):
 
 =========  =============
 Minimum    Version
@@ -2005,20 +2037,35 @@ rdma-core
 DPDK       20.08
 =========  =============
 
+ConnectX-7 and above (wait-on-time mode):
+
+=========  =============
+Minimum    Version
+=========  =============
+hardware   ConnectX-7
+=========  =============
+
 Firmware configuration
 ^^^^^^^^^^^^^^^^^^^^^^
 
 Runtime configuration
 ^^^^^^^^^^^^^^^^^^^^^
 
-To provide the packet send scheduling on mbuf timestamps the ``tx_pp``
-parameter should be specified.
+**ConnectX-6 Dx**: the :ref:`tx_pp <mlx5_tx_pp_param>` parameter must be
+specified to enable send scheduling on mbuf timestamps.
+
+**ConnectX-7+**: no devarg is required. Send scheduling is automatically
+enabled when the HCA reports the wait-on-time capability.
+
+On both hardware generations the ``tx_skew`` parameter can be used to
+compensate for the delay between descriptor processing and actual wire
+time.
 
 Limitations
 ^^^^^^^^^^^
 
-#. The timestamps can be put only in the first packet
-   in the burst providing the entire burst scheduling.
+#. On ConnectX-6 Dx (Clock Queue mode) timestamps too far in the future
+   are capped (see the ``tx_pp`` x 2^23 limit above).
 
 
 .. _mlx5_tx_inline:
