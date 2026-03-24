@@ -121,8 +121,7 @@ struct hinic3_nic_dev {
 	uint16_t mtu_size;
 
 	uint16_t rss_state;
-	uint8_t num_rss; /**< Number of RSS queues. */
-	uint8_t rsvd0;   /**< Reserved field 0. */
+	uint16_t num_rss; /**< Number of RSS queues. */
 
 	uint32_t rx_mode;
 	uint8_t rx_queue_list[HINIC3_MAX_QUEUE_NUM];
