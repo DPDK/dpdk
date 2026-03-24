@@ -131,7 +131,8 @@ pdcp_iv_copy(uint8_t *iv_d, const uint8_t *iv_s, const uint8_t pdcp_alg_type, co
 			iv_temp[j] = iv_s_temp[3 - j];
 		memcpy(iv_d, iv_temp, 16);
 	} else if ((pdcp_alg_type == ROC_SE_PDCP_ALG_TYPE_ZUC) ||
-		   pdcp_alg_type == ROC_SE_PDCP_ALG_TYPE_AES_CTR) {
+		   (pdcp_alg_type == ROC_SE_PDCP_ALG_TYPE_AES_CTR) ||
+		   (pdcp_alg_type == ROC_SE_PDCP_ALG_TYPE_SNOW5G)) {
 		memcpy(iv_d, iv_s, 16);
 		if (pack_iv) {
 			uint8_t iv_d23, iv_d24;
@@ -2243,9 +2244,21 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		zsk_flag = ROC_SE_ZS_EA;
 		zs_cipher = ROC_SE_ZS_EA;
 		break;
+	case RTE_CRYPTO_CIPHER_SNOW5G_NEA4:
+		enc_type = ROC_SE_SNOW5G_NEA4;
+		cipher_key_len = 32;
+		zsk_flag = ROC_SE_ZS_EA;
+		zs_cipher = ROC_SE_ZS_EA;
+		break;
 	case RTE_CRYPTO_CIPHER_ZUC_EEA3:
 		enc_type = ROC_SE_ZUC_EEA3;
 		cipher_key_len = c_form->key.length;
+		zsk_flag = ROC_SE_ZS_EA;
+		zs_cipher = ROC_SE_ZS_EA;
+		break;
+	case RTE_CRYPTO_CIPHER_ZUC_NEA6:
+		enc_type = ROC_SE_ZUC_NEA6;
+		cipher_key_len = 32;
 		zsk_flag = ROC_SE_ZS_EA;
 		zs_cipher = ROC_SE_ZS_EA;
 		break;
@@ -2437,8 +2450,18 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		zsk_flag = ROC_SE_ZS_IA;
 		zs_auth = ROC_SE_ZS_IA;
 		break;
+	case RTE_CRYPTO_AUTH_SNOW5G_NIA4:
+		auth_type = ROC_SE_SNOW5G_NIA4;
+		zsk_flag = ROC_SE_ZS_IA;
+		zs_auth = ROC_SE_ZS_IA;
+		break;
 	case RTE_CRYPTO_AUTH_ZUC_EIA3:
 		auth_type = ROC_SE_ZUC_EIA3;
+		zsk_flag = ROC_SE_ZS_IA;
+		zs_auth = ROC_SE_ZS_IA;
+		break;
+	case RTE_CRYPTO_AUTH_ZUC_NIA6:
+		auth_type = ROC_SE_ZUC_NIA6;
 		zsk_flag = ROC_SE_ZS_IA;
 		zs_auth = ROC_SE_ZS_IA;
 		break;

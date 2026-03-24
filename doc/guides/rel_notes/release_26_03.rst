@@ -126,6 +126,10 @@ New Features
   * NEA5, NIA5, NCA5: AES 256 confidentiality, integrity and AEAD modes.
   * NEA6, NIA6, NCA6: ZUC 256 confidentiality, integrity and AEAD modes.
 
+* **Updated Marvell cnxk crypto driver.**
+
+  * Added support for Snow 5G NEA4/NIA4 and ZUC 256 NEA6/NIA6 for CN20K platform.
+
 * **Updated openssl crypto driver.**
 
   * Added support for AES-XTS cipher algorithm.

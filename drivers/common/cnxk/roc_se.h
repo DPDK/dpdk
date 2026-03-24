@@ -101,6 +101,8 @@ typedef enum {
 	ROC_SE_AES_CMAC_EIA2 = 0x92,
 	ROC_SE_KASUMI_F9_CBC = 0x93,
 	ROC_SE_KASUMI_F9_ECB = 0x94,
+	ROC_SE_SNOW5G_NIA4 = 0x95,
+	ROC_SE_ZUC_NIA6 = 0x96,
 } roc_se_auth_type;
 
 typedef enum {
@@ -129,6 +131,8 @@ typedef enum {
 	ROC_SE_KASUMI_F8_ECB = 0x94,
 	ROC_SE_AES_DOCSISBPI = 0x95,
 	ROC_SE_DES_DOCSISBPI = 0x96,
+	ROC_SE_SNOW5G_NEA4 = 0x97,
+	ROC_SE_ZUC_NEA6 = 0x98,
 } roc_se_cipher_type;
 
 typedef enum {
@@ -257,10 +261,8 @@ struct roc_se_pdcp_ctx {
 	union {
 		uint64_t u64;
 		struct {
-			uint64_t cipher_type : 2;
-			uint64_t rsvd58_59 : 2;
-			uint64_t auth_type : 2;
-			uint64_t rsvd62_63 : 2;
+			uint64_t cipher_type : 4;
+			uint64_t auth_type : 4;
 			uint64_t mac_len : 4;
 			uint64_t ci_key_len : 2;
 			uint64_t auth_key_len : 2;
@@ -307,8 +309,10 @@ struct roc_se_iov_ptr {
 #define ROC_SE_PDCP_ALG_TYPE_SNOW3G	  1
 #define ROC_SE_PDCP_ALG_TYPE_AES_CTR	  2
 #define ROC_SE_PDCP_ALG_TYPE_AES_CMAC	  3
+#define ROC_SE_PDCP_ALG_TYPE_SNOW5G	  4
 #define ROC_SE_PDCP_CHAIN_ALG_TYPE_SNOW3G 1
 #define ROC_SE_PDCP_CHAIN_ALG_TYPE_ZUC	  3
+#define ROC_SE_PDCP_CHAIN_ALG_TYPE_SNOW5G 5
 
 #define ROC_SE_PDCP_CHAIN_CTX_LFSR   0
 #define ROC_SE_PDCP_CHAIN_CTX_KEY_IV 1
@@ -348,8 +352,8 @@ struct roc_se_ctx {
 	uint64_t hmac : 1;
 	uint64_t zsk_flags : 3;
 	uint64_t k_ecb : 1;
-	uint64_t pdcp_ci_alg : 2;
-	uint64_t pdcp_auth_alg : 2;
+	uint64_t pdcp_ci_alg : 3;
+	uint64_t pdcp_auth_alg : 3;
 	uint64_t ciph_then_auth : 1;
 	uint64_t auth_then_ciph : 1;
 	uint64_t eia2 : 1;
