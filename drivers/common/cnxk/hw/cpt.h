@@ -81,7 +81,9 @@ union cpt_eng_caps {
 		uint64_t __io reserved_15_20 : 6;
 		uint64_t __io sm3 : 1;
 		uint64_t __io sm4 : 1;
-		uint64_t __io reserved_23_34 : 12;
+		uint64_t __io reserved_23_24 : 2;
+		uint64_t __io zuc256_snow5g : 1;
+		uint64_t __io reserved_26_34 : 9;
 		uint64_t __io sg_ver2 : 1;
 		uint64_t __io sm2 : 1;
 		uint64_t __io pdcp_chain_zuc256 : 1;

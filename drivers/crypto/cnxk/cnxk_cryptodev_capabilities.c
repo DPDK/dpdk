@@ -724,6 +724,99 @@ static const struct rte_cryptodev_capabilities caps_zuc_snow3g[] = {
 	},
 };
 
+static const struct rte_cryptodev_capabilities caps_zuc256_snow5g[] = {
+	{	/* SNOW 5G (NEA4) */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_SNOW5G_NEA4,
+				.block_size = 16,
+				.key_size = {
+					.min = 32,
+					.max = 32,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+	{	/* SNOW 5G (NIA4) */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SNOW5G_NIA4,
+				.block_size = 16,
+				.key_size = {
+					.min = 32,
+					.max = 32,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 4,
+					.max = 16,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+	{	/* ZUC 256 (NEA6) */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_ZUC_NEA6,
+				.block_size = 16,
+				.key_size = {
+					.min = 32,
+					.max = 32,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+	{	/* ZUC 256 (NIA6) */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_ZUC_NIA6,
+				.block_size = 16,
+				.key_size = {
+					.min = 32,
+					.max = 32,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 4,
+					.max = 16,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+};
+
 static const struct rte_cryptodev_capabilities caps_aes[] = {
 	{	/* AES GMAC (AUTH) */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
@@ -1917,7 +2010,8 @@ cn10k_20k_crypto_caps_update(struct rte_cryptodev_capabilities cnxk_caps[])
 	while ((caps = &cnxk_caps[i++])->op != RTE_CRYPTO_OP_TYPE_UNDEFINED) {
 		if ((caps->op == RTE_CRYPTO_OP_TYPE_SYMMETRIC) &&
 		    (caps->sym.xform_type == RTE_CRYPTO_SYM_XFORM_CIPHER) &&
-		    (caps->sym.cipher.algo == RTE_CRYPTO_CIPHER_ZUC_EEA3)) {
+		    ((caps->sym.cipher.algo == RTE_CRYPTO_CIPHER_ZUC_EEA3) ||
+		     (caps->sym.cipher.algo == RTE_CRYPTO_CIPHER_ZUC_NEA6))) {
 
 			caps->sym.cipher.key_size.max = 32;
 			caps->sym.cipher.key_size.increment = 16;
@@ -1930,8 +2024,8 @@ cn10k_20k_crypto_caps_update(struct rte_cryptodev_capabilities cnxk_caps[])
 
 		if ((caps->op == RTE_CRYPTO_OP_TYPE_SYMMETRIC) &&
 		    (caps->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AUTH) &&
-		    (caps->sym.auth.algo == RTE_CRYPTO_AUTH_ZUC_EIA3)) {
-
+		    ((caps->sym.auth.algo == RTE_CRYPTO_AUTH_ZUC_EIA3) ||
+		     (caps->sym.auth.algo == RTE_CRYPTO_AUTH_ZUC_NIA6))) {
 			caps->sym.auth.key_size.max = 32;
 			caps->sym.auth.key_size.increment = 16;
 			caps->sym.auth.digest_size.max = 16;
@@ -1984,6 +2078,9 @@ crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 
 	if (roc_model_is_cn10k() || roc_model_is_cn20k())
 		cn10k_20k_crypto_caps_add(cnxk_caps, hw_caps, &cur_pos);
+
+	if (roc_model_is_cn20k())
+		CPT_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, zuc256_snow5g);
 
 	cpt_caps_add(cnxk_caps, &cur_pos, caps_null, RTE_DIM(caps_null));
 	cpt_caps_add(cnxk_caps, &cur_pos, caps_end, RTE_DIM(caps_end));
