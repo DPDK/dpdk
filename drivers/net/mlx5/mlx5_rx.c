@@ -189,6 +189,10 @@ mlx5_rxq_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		RTE_BIT32(rxq->elts_n);
 	qinfo->avail_thresh = rxq_priv ?
 		mlx5_rxq_lwm_to_percentage(rxq_priv) : 0;
+	if (rxq_ctrl != NULL) {
+		qinfo->conf.share_group = rxq_ctrl->share_group;
+		qinfo->conf.share_qid = rxq_ctrl->share_qid;
+	}
 }
 
 /**
