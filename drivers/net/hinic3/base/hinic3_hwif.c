@@ -138,7 +138,11 @@
 
 #define HINIC3_GET_REG_ADDR(reg) ((reg) & (HINIC3_REGS_FLAG_MASK))
 
-#define HINIC3_IS_VF_DEV(pdev) ((pdev)->id.device_id == HINIC3_DEV_ID_VF)
+static inline bool hinic3_is_vf_dev(const struct rte_pci_device *pdev)
+{
+	return pdev->id.device_id == HINIC3_DEV_ID_VF_SP620 ||
+	       pdev->id.device_id == HINIC3_DEV_ID_VF_SP230;
+}
 
 uint32_t
 hinic3_hwif_read_reg(struct hinic3_hwif *hwif, uint32_t reg)
@@ -552,7 +556,7 @@ hinic3_get_bar_addr(struct hinic3_hwdev *hwdev)
 	void *db_base = NULL;
 	int cfg_bar;
 
-	cfg_bar = HINIC3_IS_VF_DEV(pci_dev) ? HINIC3_VF_PCI_CFG_REG_BAR
+	cfg_bar = hinic3_is_vf_dev(pci_dev) ? HINIC3_VF_PCI_CFG_REG_BAR
 					    : HINIC3_PF_PCI_CFG_REG_BAR;
 	cfg_regs_base = pci_dev->mem_resource[cfg_bar].addr;
 
@@ -561,7 +565,7 @@ hinic3_get_bar_addr(struct hinic3_hwdev *hwdev)
 			    "mem_resource addr is null, cfg_regs_base is NULL");
 		return -EFAULT;
 	}
-	if (!HINIC3_IS_VF_DEV(pci_dev)) {
+	if (!hinic3_is_vf_dev(pci_dev)) {
 		mgmt_reg_base =
 			pci_dev->mem_resource[HINIC3_PCI_MGMT_REG_BAR].addr;
 		if (mgmt_reg_base == NULL) {

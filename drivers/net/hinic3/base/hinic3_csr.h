@@ -5,15 +5,15 @@
 #ifndef _HINIC3_CSR_H_
 #define _HINIC3_CSR_H_
 
-#ifdef CONFIG_SP_VID_DID
-#define PCI_VENDOR_ID_SPNIC    0x1F3F
-#define HINIC3_DEV_ID_STANDARD 0x9020
-#define HINIC3_DEV_ID_VF       0x9001
-#else
-#define PCI_VENDOR_ID_HUAWEI   0x19e5
-#define HINIC3_DEV_ID_STANDARD 0x0222
-#define HINIC3_DEV_ID_VF       0x375F
-#endif
+#define PCI_VENDOR_ID_HUAWEI	0x19e5
+
+#define HINIC3_DEV_ID_SP620	0x0222
+#define HINIC3_DEV_ID_VF_SP620	0x375F
+
+#define HINIC3_DEV_ID_SP230	0x0229
+#define HINIC3_DEV_ID_VF_SP230	0x3750
+
+#define HINIC3_DEV_ID_SP920	0x0224
 
 /*
  * Bit30/bit31 for bar index flag.

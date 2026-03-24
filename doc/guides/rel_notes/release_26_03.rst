@@ -81,6 +81,14 @@ New Features
   * Added application-initiated device reset.
   * Added support for receive flow steering.
 
+* **Updated Huawei hinic3 ethernet driver.**
+
+  * Added support for Huawei new SPx NICs, including SP230 and SP920 (DPU).
+  * Added support for GENEVE tunnel TSO, IP-in-IP tunnel TSO of SP230.
+  * Added support for VXLAN-GPE checksum of SP620.
+  * Added support for tunnel packet outer UDP checksum.
+  * Added support for QinQ of SP620.
+
 * **Updated Intel idpf ethernet driver.**
 
   * Added support for time sync features.

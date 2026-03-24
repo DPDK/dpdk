@@ -16,16 +16,19 @@ Features
 - Receiver Side Scaling (RSS)
 - Flow filtering
 - Checksum offload
+- VLAN/QinQ stripping and inserting
 - TSO offload
 - Promiscuous mode
 - Port hardware statistics
+- Jumbo frames
 - Link state information
 - Link flow control
 - Scattered and gather for TX and RX
 - Allmulticast mode
 - MTU update
 - Multicast MAC filter
-- Flow API
+- NUMA support
+- Generic Flow API
 - Set Link down or up
 - VLAN filter and VLAN offload
 - SR-IOV - Partially supported at this point, VFIO only
