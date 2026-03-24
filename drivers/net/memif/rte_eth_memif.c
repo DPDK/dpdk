@@ -378,6 +378,12 @@ next_slot1:
 			n_slots--;
 
 			if (d0->flags & MEMIF_DESC_FLAG_NEXT) {
+				if (unlikely(n_slots == 0)) {
+					mq->n_err++;
+					rte_pktmbuf_free_bulk(mbufs + rx_pkts,
+							MAX_PKT_BURST - rx_pkts);
+					goto no_free_bufs;
+				}
 				mbuf_tail = mbuf;
 				mbuf = rte_pktmbuf_alloc(mq->mempool);
 				if (unlikely(mbuf == NULL)) {
@@ -416,13 +422,13 @@ next_slot1:
 				goto no_free_bufs;
 			mbuf = mbuf_head;
 			mbuf->port = mq->in_port;
+			dst_off = 0;
 
 next_slot2:
 			s0 = cur_slot & mask;
 			d0 = &ring->desc[s0];
 
 			src_len = d0->length;
-			dst_off = 0;
 			src_off = 0;
 
 			do {
@@ -464,8 +470,14 @@ next_slot2:
 			cur_slot++;
 			n_slots--;
 
-			if (d0->flags & MEMIF_DESC_FLAG_NEXT)
+			if (d0->flags & MEMIF_DESC_FLAG_NEXT) {
+				if (unlikely(n_slots == 0)) {
+					mq->n_err++;
+					rte_pktmbuf_free(mbuf_head);
+					goto no_free_bufs;
+				}
 				goto next_slot2;
+			}
 
 			mq->n_bytes += rte_pktmbuf_pkt_len(mbuf_head);
 			*bufs++ = mbuf_head;
@@ -1607,6 +1619,7 @@ memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		}
 		stats->ipackets += mq->n_pkts;
 		stats->ibytes += mq->n_bytes;
+		stats->ierrors += mq->n_err;
 	}
 
 	tmp = (pmd->role == MEMIF_ROLE_CLIENT) ? pmd->run.num_c2s_rings :
@@ -1639,12 +1652,14 @@ memif_stats_reset(struct rte_eth_dev *dev)
 		    dev->data->rx_queues[i];
 		mq->n_pkts = 0;
 		mq->n_bytes = 0;
+		mq->n_err = 0;
 	}
 	for (i = 0; i < pmd->run.num_s2c_rings; i++) {
 		mq = (pmd->role == MEMIF_ROLE_CLIENT) ? dev->data->rx_queues[i] :
 		    dev->data->tx_queues[i];
 		mq->n_pkts = 0;
 		mq->n_bytes = 0;
+		mq->n_err = 0;
 	}
 
 	return 0;
