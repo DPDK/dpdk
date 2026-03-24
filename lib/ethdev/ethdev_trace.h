@@ -909,6 +909,15 @@ RTE_TRACE_POINT(
 )
 
 RTE_TRACE_POINT(
+	rte_eth_trace_get_queue_rate_limit,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint16_t queue_idx,
+		int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u16(queue_idx);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
 	rte_eth_trace_rx_avail_thresh_set,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint16_t queue_id,
 		uint8_t avail_thresh, int ret),

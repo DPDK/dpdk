@@ -1586,6 +1586,13 @@ Set TX rate limitation for a queue on a port::
 
    testpmd> set port (port_id) queue (queue_id) rate (rate_value)
 
+get queue Tx rate
+~~~~~~~~~~~~~~~~~
+
+Get Tx rate limitation of a queue::
+
+   testpmd> show port (port_id) queue (queue_id) rate
+
 set port - tx_rate (for VF)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

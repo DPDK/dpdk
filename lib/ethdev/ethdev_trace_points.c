@@ -347,6 +347,9 @@ RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_uc_all_hash_table_set,
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_set_queue_rate_limit,
 	lib.ethdev.set_queue_rate_limit)
 
+RTE_TRACE_POINT_REGISTER(rte_eth_trace_get_queue_rate_limit,
+	lib.ethdev.get_queue_rate_limit)
+
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_rx_avail_thresh_set,
 	lib.ethdev.rx_avail_thresh_set)
 

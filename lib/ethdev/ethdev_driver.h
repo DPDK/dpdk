@@ -762,6 +762,11 @@ typedef int (*eth_set_queue_rate_limit_t)(struct rte_eth_dev *dev,
 				uint16_t queue_idx,
 				uint32_t tx_rate);
 
+/** @internal Get queue Tx rate. */
+typedef int (*eth_get_queue_rate_limit_t)(struct rte_eth_dev *dev,
+				uint16_t queue_idx,
+				uint32_t *tx_rate);
+
 /** @internal Add tunneling UDP port. */
 typedef int (*eth_udp_tunnel_port_add_t)(struct rte_eth_dev *dev,
 					 struct rte_eth_udp_tunnel *tunnel_udp);
@@ -1522,6 +1527,8 @@ struct eth_dev_ops {
 
 	/** Set queue rate limit */
 	eth_set_queue_rate_limit_t set_queue_rate_limit;
+	/** Get queue rate limit */
+	eth_get_queue_rate_limit_t get_queue_rate_limit;
 
 	/** Configure RSS hash protocols and hashing key */
 	rss_hash_update_t          rss_hash_update;
