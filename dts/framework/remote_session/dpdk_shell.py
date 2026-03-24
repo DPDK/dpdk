@@ -6,6 +6,7 @@
 Provides a base class to create interactive shells based on DPDK.
 """
 
+import time
 from abc import ABC, abstractmethod
 from pathlib import PurePath
 
@@ -13,6 +14,7 @@ from framework.context import get_ctx
 from framework.params.eal import EalParams
 from framework.remote_session.interactive_shell import (
     InteractiveShell,
+    only_active,
 )
 from framework.testbed_model.cpu import LogicalCoreList
 
@@ -84,3 +86,12 @@ class DPDKShell(InteractiveShell, ABC):
         Adds the remote DPDK build directory to the path.
         """
         return get_ctx().dpdk_build.remote_dpdk_build_dir.joinpath(self.path)
+
+    @only_active
+    def close(self) -> None:
+        """Overrides :meth:`~.interactive_shell.close`."""
+        # Allow time for VFIO and hardware resources to be released by the kernel after the
+        # DPDK process exits. Without this delay, sequential testpmd instances may have EAL
+        # errors when trying to acquire the same devices.
+        time.sleep(1)
+        return super().close()

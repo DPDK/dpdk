@@ -1174,7 +1174,7 @@ class TestPmd(DPDKShell):
 
     @only_active
     def close(self) -> None:
-        """Overrides :meth:`~.interactive_shell.close`."""
+        """Overrides :meth:`~.dpdk_shell.close`."""
         self.stop()
         self.send_command("quit", "Bye...")
         return super().close()
