@@ -1344,6 +1344,7 @@ mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx)
 		mlx5_free(txq_ctrl->obj);
 		txq_ctrl->obj = NULL;
 	}
+	mlx5_txq_free_pp_rate_limit(&txq_ctrl->rate_limit);
 	if (!txq_ctrl->is_hairpin) {
 		if (txq_ctrl->txq.fcqs) {
 			mlx5_free(txq_ctrl->txq.fcqs);
