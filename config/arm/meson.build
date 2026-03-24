@@ -706,7 +706,6 @@ mcpu_defs = {
     },
     'mcpu_cortex-a78ae': {
         'march': 'armv8.4-a',
-        'march_extensions': ['crypto']
     },
     'mcpu_ft2000plus': {
         'march': 'armv8-a',
