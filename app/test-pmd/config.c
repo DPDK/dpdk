@@ -1836,6 +1836,7 @@ port_flow_configure(portid_t port_id,
 	port->queue_sz = queue_attr->size;
 	for (std_queue = 0; std_queue < nb_queue; std_queue++)
 		attr_list[std_queue] = queue_attr;
+	free(port->job_list);
 	port->job_list = calloc(nb_queue, sizeof(*port->job_list));
 	if (port->job_list == NULL) {
 		TESTPMD_LOG(ERR, "Failed to allocate memory for operations tracking on port %u\n",
