@@ -6,6 +6,7 @@
 #define _HINIC3_NIC_IO_H_
 
 #include "hinic3_ethdev.h"
+#include "base/hinic3_cmdq.h"
 
 #define HINIC3_SQ_WQEBB_SHIFT 4
 #define HINIC3_RQ_WQEBB_SHIFT 3
@@ -25,6 +26,13 @@
 #define HINIC3_CI_PADDR(base_paddr, q_id) \
 	((base_paddr) + (q_id) * HINIC3_CI_Q_ADDR_SIZE)
 
+#define HINIC3_Q_CTXT_MAX ((uint16_t)(((HINIC3_CMDQ_BUF_SIZE - 8) - RTE_PKTMBUF_HEADROOM) / 64))
+
+#define SQ_CTXT_SIZE(num_sqs) ((uint16_t)(sizeof(struct hinic3_qp_ctxt_header) \
+					  + (num_sqs) * sizeof(struct hinic3_sq_ctxt)))
+#define RQ_CTXT_SIZE(num_rqs) ((uint16_t)(sizeof(struct hinic3_qp_ctxt_header) \
+					  + (num_rqs) * sizeof(struct hinic3_rq_ctxt)))
+
 enum hinic3_rq_wqe_type {
 	HINIC3_COMPACT_RQ_WQE,
 	HINIC3_NORMAL_RQ_WQE,
@@ -37,10 +45,117 @@ enum hinic3_queue_type {
 	HINIC3_MAX_QUEUE_TYPE,
 };
 
+enum hinic3_qp_ctxt_type {
+	HINIC3_QP_CTXT_TYPE_SQ,
+	HINIC3_QP_CTXT_TYPE_RQ,
+};
+
+/* Prepare cmd to clean tso/lro space */
+typedef uint8_t  (*prepare_cmd_buf_clean_tso_lro_space_t)(struct hinic3_nic_dev *nic_dev,
+							  struct hinic3_cmd_buf *cmd_buf,
+							  enum hinic3_qp_ctxt_type ctxt_type);
+/* Prepare cmd to store RQ and TQ ctxt */
+typedef uint8_t  (*prepare_cmd_buf_qp_context_multi_store_t)(struct hinic3_nic_dev *nic_dev,
+							     struct hinic3_cmd_buf *cmd_buf,
+							     enum hinic3_qp_ctxt_type ctxt_type,
+							     uint16_t start_qid,
+							     uint16_t max_ctxts);
+/* Prepare cmd to modify vlan tag */
+typedef uint8_t  (*prepare_cmd_buf_modify_svlan_t)(struct hinic3_cmd_buf *cmd_buf, uint16_t func_id,
+						   uint16_t vlan_tag, uint16_t q_id,
+						   uint8_t vlan_mode);
+/* Prepare cmd to set RSS indir table */
+typedef uint8_t  (*prepare_cmd_buf_set_rss_indir_table_t)(struct hinic3_nic_dev *nic_dev,
+							  const uint32_t *indir_table,
+							  struct hinic3_cmd_buf *cmd_buf);
+/* Prepare cmd to get RSS indir table */
+typedef uint8_t  (*prepare_cmd_buf_get_rss_indir_table_t)(struct hinic3_nic_dev *nic_dev,
+							  struct hinic3_cmd_buf *cmd_buf);
+/* Configure RSS indir table */
+typedef void     (*cmd_buf_to_rss_indir_table_t)(const struct hinic3_cmd_buf *cmd_buf,
+						 uint32_t *indir_table);
+
+struct hinic3_nic_cmdq_ops {
+	prepare_cmd_buf_clean_tso_lro_space_t		prepare_cmd_buf_clean_tso_lro_space;
+	prepare_cmd_buf_qp_context_multi_store_t	prepare_cmd_buf_qp_context_multi_store;
+	prepare_cmd_buf_modify_svlan_t			prepare_cmd_buf_modify_svlan;
+	prepare_cmd_buf_set_rss_indir_table_t		prepare_cmd_buf_set_rss_indir_table;
+	prepare_cmd_buf_get_rss_indir_table_t		prepare_cmd_buf_get_rss_indir_table;
+	cmd_buf_to_rss_indir_table_t			cmd_buf_to_rss_indir_table;
+};
+
 /* Doorbell info. */
 struct hinic3_db {
 	uint32_t db_info;
 	uint32_t pi_hi;
+};
+
+struct hinic3_sq_ctxt {
+	uint32_t ci_pi;
+	uint32_t drop_mode_sp;
+	uint32_t wq_pfn_hi_owner;
+	uint32_t wq_pfn_lo;
+
+	uint32_t rsvd0;
+	uint32_t pkt_drop_thd;
+	uint32_t global_sq_id;
+	uint32_t vlan_ceq_attr;
+
+	uint32_t pref_cache;
+	uint32_t pref_ci_owner;
+	uint32_t pref_wq_pfn_hi_ci;
+	uint32_t pref_wq_pfn_lo;
+
+	uint32_t rsvd8;
+	uint32_t rsvd9;
+	uint32_t wq_block_pfn_hi;
+	uint32_t wq_block_pfn_lo;
+};
+
+struct hinic3_rq_ctxt {
+	uint32_t ci_pi;
+	uint32_t ceq_attr;
+	uint32_t wq_pfn_hi_type_owner;
+	uint32_t wq_pfn_lo;
+
+	uint32_t rsvd[3];
+	uint32_t cqe_sge_len;
+
+	uint32_t pref_cache;
+	uint32_t pref_ci_owner;
+	uint32_t pref_wq_pfn_hi_ci;
+	uint32_t pref_wq_pfn_lo;
+
+	uint32_t pi_paddr_hi;
+	uint32_t pi_paddr_lo;
+	uint32_t wq_block_pfn_hi;
+	uint32_t wq_block_pfn_lo;
+};
+
+struct hinic3_rq_cqe_ctx {
+	struct mgmt_msg_head msg_head;
+
+	uint8_t cqe_type;
+	uint8_t rq_id;
+	uint8_t threshold_cqe_num;
+	uint8_t rsvd1;
+
+	uint16_t msix_entry_idx;
+	uint16_t rsvd2;
+
+	uint32_t ci_addr_hi;
+	uint32_t ci_addr_lo;
+
+	uint16_t timer_loop;
+	uint16_t rsvd3;
+};
+
+struct hinic3_rq_enable {
+	struct mgmt_msg_head msg_head;
+
+	uint32_t rq_id;
+	uint8_t rq_enable;
+	uint8_t rsvd[3];
 };
 
 #define DB_INFO_QID_SHIFT	 0

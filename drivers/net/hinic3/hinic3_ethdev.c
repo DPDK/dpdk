@@ -15,6 +15,8 @@
 #include "base/hinic3_hw_comm.h"
 #include "base/hinic3_nic_cfg.h"
 #include "base/hinic3_nic_event.h"
+#include "htn_adapt/hinic3_htn_cmdq.h"
+#include "stn_adapt/hinic3_stn_cmdq.h"
 #include "hinic3_nic_io.h"
 #include "hinic3_tx.h"
 #include "hinic3_rx.h"
@@ -2577,8 +2579,7 @@ hinic3_rss_reta_query(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	err = hinic3_rss_get_indir_tbl(nic_dev->hwdev, indirtbl,
-				       HINIC3_RSS_INDIR_SIZE);
+	err = hinic3_rss_get_indir_tbl(nic_dev->hwdev, indirtbl);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Get RSS retas table failed, error: %d", err);
 		return err;
@@ -2626,8 +2627,7 @@ hinic3_rss_reta_update(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	err = hinic3_rss_get_indir_tbl(nic_dev->hwdev, indirtbl,
-				       HINIC3_RSS_INDIR_SIZE);
+	err = hinic3_rss_get_indir_tbl(nic_dev->hwdev, indirtbl);
 	if (err)
 		return err;
 
@@ -2648,8 +2648,7 @@ hinic3_rss_reta_update(struct rte_eth_dev *dev,
 		}
 	}
 
-	err = hinic3_rss_set_indir_tbl(nic_dev->hwdev, indirtbl,
-				       HINIC3_RSS_INDIR_SIZE);
+	err = hinic3_rss_set_indir_tbl(nic_dev->hwdev, indirtbl);
 	if (err)
 		PMD_DRV_LOG(ERR, "Set RSS reta table failed");
 
@@ -3386,6 +3385,11 @@ hinic3_func_init(struct rte_eth_dev *eth_dev)
 			    eth_dev->data->name);
 		goto get_cap_fail;
 	}
+
+	if (!(nic_dev->feature_cap & NIC_F_HTN_CMDQ))
+		nic_dev->cmdq_ops = hinic3_nic_cmdq_get_stn_ops();
+	else
+		nic_dev->cmdq_ops = hinic3_nic_cmdq_get_htn_ops();
 
 	err = hinic3_init_sw_rxtxqs(nic_dev);
 	if (err) {

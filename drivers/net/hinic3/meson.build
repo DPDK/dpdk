@@ -26,5 +26,9 @@ sources = files(
 )
 
 includes += include_directories('base')
+includes += include_directories('htn_adapt')
+includes += include_directories('stn_adapt')
 
 subdir('base')
+subdir('htn_adapt')
+subdir('stn_adapt')

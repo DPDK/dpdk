@@ -11,6 +11,7 @@
 #include "hinic3_mbox.h"
 #include "hinic3_nic_cfg.h"
 #include "hinic3_wq.h"
+#include "hinic3_nic_io.h"
 
 struct vf_msg_handler {
 	uint16_t cmd;
@@ -442,6 +443,7 @@ int
 hinic3_set_vport_enable(struct hinic3_hwdev *hwdev, bool enable)
 {
 	struct hinic3_vport_state en_state;
+	struct hinic3_nic_dev *nic_dev = hwdev->dev_handle;
 	uint16_t out_size = sizeof(en_state);
 	int err;
 
@@ -451,6 +453,7 @@ hinic3_set_vport_enable(struct hinic3_hwdev *hwdev, bool enable)
 	memset(&en_state, 0, sizeof(en_state));
 	en_state.func_id = hinic3_global_func_id(hwdev);
 	en_state.state = enable ? 1 : 0;
+	en_state.num_qps = nic_dev->num_rqs;
 
 	err = hinic3_msg_to_mgmt_sync(hwdev, HINIC3_MOD_L2NIC,
 				      HINIC3_NIC_CMD_SET_VPORT_ENABLE,
@@ -1159,13 +1162,12 @@ hinic3_rss_set_hash_key(struct hinic3_hwdev *hwdev, uint8_t *key, uint16_t key_s
 }
 
 int
-hinic3_rss_get_indir_tbl(struct hinic3_hwdev *hwdev,
-			 uint32_t *indir_table, uint32_t indir_table_size)
+hinic3_rss_get_indir_tbl(struct hinic3_hwdev *hwdev, uint32_t *indir_table)
 {
 	struct hinic3_cmd_buf *cmd_buf = NULL;
-	uint16_t *indir_tbl = NULL;
+	struct hinic3_nic_dev *nic_dev = NULL;
+	uint8_t cmd;
 	int err;
-	uint32_t i;
 
 	if (!hwdev || !indir_table)
 		return -EINVAL;
@@ -1177,31 +1179,28 @@ hinic3_rss_get_indir_tbl(struct hinic3_hwdev *hwdev,
 	}
 
 	cmd_buf->size = sizeof(struct nic_rss_indirect_tbl);
-	err = hinic3_cmdq_detail_resp(hwdev, HINIC3_MOD_L2NIC,
-				      HINIC3_UCODE_CMD_GET_RSS_INDIR_TABLE,
-				      cmd_buf, cmd_buf, 0);
+	nic_dev = (struct hinic3_nic_dev *)hwdev->dev_handle;
+
+	cmd = nic_dev->cmdq_ops->prepare_cmd_buf_get_rss_indir_table(nic_dev, cmd_buf);
+	err = hinic3_cmdq_detail_resp(hwdev, HINIC3_MOD_L2NIC, cmd, cmd_buf, cmd_buf, 0);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Get rss indir table failed");
 		hinic3_free_cmd_buf(cmd_buf);
 		return err;
 	}
 
-	indir_tbl = (uint16_t *)cmd_buf->buf;
-	for (i = 0; i < indir_table_size; i++)
-		indir_table[i] = *(indir_tbl + i);
+	nic_dev->cmdq_ops->cmd_buf_to_rss_indir_table(cmd_buf, indir_table);
 
 	hinic3_free_cmd_buf(cmd_buf);
 	return 0;
 }
 
 int
-hinic3_rss_set_indir_tbl(struct hinic3_hwdev *hwdev, const uint32_t *indir_table,
-			 uint32_t indir_table_size)
+hinic3_rss_set_indir_tbl(struct hinic3_hwdev *hwdev, const uint32_t *indir_table)
 {
-	struct nic_rss_indirect_tbl *indir_tbl = NULL;
 	struct hinic3_cmd_buf *cmd_buf = NULL;
-	uint32_t i, size;
-	uint32_t *temp = NULL;
+	struct hinic3_nic_dev *nic_dev = NULL;
+	uint8_t cmd;
 	uint64_t out_param = 0;
 	int err;
 
@@ -1214,22 +1213,9 @@ hinic3_rss_set_indir_tbl(struct hinic3_hwdev *hwdev, const uint32_t *indir_table
 		return -ENOMEM;
 	}
 
-	cmd_buf->size = sizeof(struct nic_rss_indirect_tbl);
-	indir_tbl = (struct nic_rss_indirect_tbl *)cmd_buf->buf;
-	memset(indir_tbl, 0, sizeof(*indir_tbl));
-
-	for (i = 0; i < indir_table_size; i++)
-		indir_tbl->entry[i] = (uint16_t)(*(indir_table + i));
-
-	rte_atomic_thread_fence(rte_memory_order_seq_cst);
-	size = sizeof(indir_tbl->entry) / sizeof(uint16_t);
-	temp = (uint32_t *)indir_tbl->entry;
-	for (i = 0; i < size; i++)
-		temp[i] = rte_cpu_to_be_32(temp[i]);
-
-	err = hinic3_cmdq_direct_resp(hwdev, HINIC3_MOD_L2NIC,
-				      HINIC3_UCODE_CMD_SET_RSS_INDIR_TABLE,
-				      cmd_buf, &out_param, 0);
+	nic_dev = (struct hinic3_nic_dev *)hwdev->dev_handle;
+	cmd = nic_dev->cmdq_ops->prepare_cmd_buf_set_rss_indir_table(nic_dev, indir_table, cmd_buf);
+	err = hinic3_cmdq_direct_resp(hwdev, HINIC3_MOD_L2NIC, cmd, cmd_buf, &out_param, 0);
 	if (err || out_param != 0) {
 		PMD_DRV_LOG(ERR, "Set rss indir table failed");
 		err = -EFAULT;
@@ -1477,7 +1463,7 @@ hinic3_vf_get_default_cos(struct hinic3_hwdev *hwdev, uint8_t *cos_id)
 		return -EIO;
 	}
 
-	*cos_id = vf_dcb.state.default_cos;
+	*cos_id = vf_dcb.state.default_cos % HINIC3_COS_NUM_MAX_HTN;
 
 	return 0;
 }

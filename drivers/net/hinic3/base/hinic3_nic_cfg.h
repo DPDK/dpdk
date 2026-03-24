@@ -14,16 +14,17 @@
 #define OS_VF_ID_TO_HW(os_vf_id) ((os_vf_id) + 1)
 #define HW_VF_ID_TO_OS(hw_vf_id) ((hw_vf_id) - 1)
 
-#define HINIC3_DCB_UP_MAX 0x8
+#define HINIC3_DCB_UP_MAX		0x8
 
-#define HINIC3_MAX_NUM_RQ 256
+#define HINIC3_MAX_NUM_RQ		256
 
-#define HINIC3_MAX_MTU_SIZE 9600
-#define HINIC3_MIN_MTU_SIZE 256
+#define HINIC3_MAX_MTU_SIZE		9600
+#define HINIC3_MIN_MTU_SIZE		256
 
-#define HINIC3_COS_NUM_MAX 8
+#define HINIC3_COS_NUM_MAX		8
+#define HINIC3_COS_NUM_MAX_HTN		4
 
-#define HINIC3_VLAN_TAG_SIZE 4
+#define HINIC3_VLAN_TAG_SIZE	4
 #define HINIC3_ETH_OVERHEAD \
 	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + HINIC3_VLAN_TAG_SIZE * 2)
 
@@ -34,28 +35,41 @@
 
 #define HINIC3_PKTLEN_TO_MTU(pktlen) (pktlen)
 
-#define HINIC3_PF_SET_VF_ALREADY 0x4
-#define HINIC3_MGMT_STATUS_EXIST 0x6
-#define CHECK_IPSU_15BIT	 0x8000
+#define HINIC3_PF_SET_VF_ALREADY		0x4
+#define HINIC3_MGMT_STATUS_EXIST		0x6
+#define CHECK_IPSU_15BIT				0x8000
 
-#define HINIC3_MGMT_STATUS_TABLE_EMPTY 0xB
-#define HINIC3_MGMT_STATUS_TABLE_FULL  0xC
+#define HINIC3_MGMT_STATUS_TABLE_EMPTY	0xB
+#define HINIC3_MGMT_STATUS_TABLE_FULL	0xC
 
-#define HINIC3_MGMT_CMD_UNSUPPORTED 0xFF
+#define HINIC3_MGMT_CMD_UNSUPPORTED		0xFF
 
-#define HINIC3_MAX_UC_MAC_ADDRS 128
-#define HINIC3_MAX_MC_MAC_ADDRS 2048
+#define HINIC3_MAX_UC_MAC_ADDRS			128
+#define HINIC3_MAX_MC_MAC_ADDRS			2048
 
-#define CAP_INFO_MAX_LEN 512
-#define VENDOR_MAX_LEN	 17
+#define CAP_INFO_MAX_LEN		512
+#define VENDOR_MAX_LEN			17
 
 /* Structures for RSS config. */
-#define HINIC3_RSS_INDIR_SIZE	   256
-#define HINIC3_RSS_INDIR_CMDQ_SIZE 128
-#define HINIC3_RSS_KEY_SIZE	   40
-#define HINIC3_RSS_ENABLE	   0x01
-#define HINIC3_RSS_DISABLE	   0x00
-#define HINIC3_INVALID_QID_BASE	   0xffff
+#define HINIC3_RSS_INDIR_SIZE			256
+#define HINIC3_RSS_INDIR_CMDQ_SIZE		128
+#define HINIC3_RSS_KEY_SIZE			40
+#define HINIC3_RSS_ENABLE			0x01
+#define HINIC3_RSS_DISABLE			0x00
+#define HINIC3_INVALID_QID_BASE			0xffff
+
+#define HINIC3_SUPPORT_FEATURE(dev, feature) \
+	((hinic3_get_driver_feature(dev) & NIC_F_##feature) != 0)
+#define HINIC3_SUPPORT_RX_HW_COMPACT_CQE(dev) \
+	HINIC3_SUPPORT_FEATURE(dev, RX_HW_COMPACT_CQE)
+#define HINIC3_SUPPORT_TX_WQE_COMPACT_TASK(dev) \
+	HINIC3_SUPPORT_FEATURE(dev, TX_WQE_COMPACT_TASK)
+#define HINIC3_SUPPORT_VXLAN_OFFLOAD(dev) \
+	HINIC3_SUPPORT_FEATURE(dev, VXLAN_OFFLOAD)
+#define HINIC3_SUPPORT_GENEVE_OFFLOAD(dev) \
+	HINIC3_SUPPORT_FEATURE(dev, GENEVE_OFFLOAD)
+#define HINIC3_SUPPORT_IPXIP_OFFLOAD(dev) \
+	HINIC3_SUPPORT_FEATURE(dev, IPXIP_OFFLOAD)
 
 struct hinic3_rss_type {
 	uint8_t tcp_ipv6_ext;
@@ -312,7 +326,9 @@ struct hinic3_vport_state {
 	uint16_t func_id;
 	uint16_t rsvd1;
 	uint8_t state; /**< 0:disable, 1:enable. */
-	uint8_t rsvd2[3];
+	uint8_t num_qps;
+	uint8_t rx_compact_wqe_en;
+	uint8_t rsvd2;
 };
 
 #define MAG_CMD_PORT_DISABLE 0x0
@@ -670,12 +686,15 @@ enum hinic3_func_tbl_cfg_bitmap {
 	FUNC_CFG_INIT,
 	FUNC_CFG_RX_BUF_SIZE,
 	FUNC_CFG_MTU,
+	FUNC_CFG_RX_COMPACT_WQE_EN, /**< Enable 8Byte WQE. */
 };
 
 struct hinic3_func_tbl_cfg {
 	uint16_t rx_wqe_buf_size;
 	uint16_t mtu;
-	uint32_t rsvd[9];
+	uint8_t rx_compact_wqe_en; /**< Enable Rx 8Byte compact WQE. */
+	uint8_t rsvd0[3];
+	uint32_t rsvd1[8];
 };
 
 struct hinic3_cmd_set_func_tbl {
@@ -895,7 +914,7 @@ struct hinic3_set_fdir_ethertype_rule {
 	struct mgmt_msg_head head;
 
 	uint16_t func_id;
-	uint16_t rsvd1;
+	uint16_t index;
 	uint8_t pkt_type_en;
 	uint8_t pkt_type;
 	uint8_t qid;
@@ -1231,14 +1250,11 @@ int hinic3_rss_template_free(struct hinic3_hwdev *hwdev);
  * Device pointer to hwdev.
  * @param[in] indir_table
  * RSS indirect table.
- * @param[in] indir_table_size
- * RSS indirect table size.
  *
  * @return
  * 0 on success, non-zero on failure.
  */
-int hinic3_rss_set_indir_tbl(struct hinic3_hwdev *hwdev, const uint32_t *indir_table,
-			     uint32_t indir_table_size);
+int hinic3_rss_set_indir_tbl(struct hinic3_hwdev *hwdev, const uint32_t *indir_table);
 
 /**
  * Get RSS indirect table.
@@ -1247,14 +1263,11 @@ int hinic3_rss_set_indir_tbl(struct hinic3_hwdev *hwdev, const uint32_t *indir_t
  * Device pointer to hwdev.
  * @param[out] indir_table
  * RSS indirect table.
- * @param[in] indir_table_size
- * RSS indirect table size.
  *
  * @return
  * 0 on success, non-zero on failure.
  */
-int hinic3_rss_get_indir_tbl(struct hinic3_hwdev *hwdev, uint32_t *indir_table,
-			     uint32_t indir_table_size);
+int hinic3_rss_get_indir_tbl(struct hinic3_hwdev *hwdev, uint32_t *indir_table);
 
 /**
  * Set RSS type.

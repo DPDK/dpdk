@@ -407,8 +407,7 @@ hinic3_refill_indir_rqid(struct hinic3_rxq *rxq)
 	/* Build indir tbl according to the number of rss queue. */
 	hinic3_fill_indir_tbl(nic_dev, indir_tbl);
 
-	err = hinic3_rss_set_indir_tbl(nic_dev->hwdev, indir_tbl,
-				       HINIC3_RSS_INDIR_SIZE);
+	err = hinic3_rss_set_indir_tbl(nic_dev->hwdev, indir_tbl);
 	if (err) {
 		PMD_DRV_LOG(ERR,
 			"Set indirect table failed, eth_dev:%s, queue_idx:%d",
