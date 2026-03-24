@@ -450,6 +450,50 @@ int
 rte_pmd_mlx5_txq_rate_limit_query(uint16_t port_id, uint16_t queue_id,
 				  struct rte_pmd_mlx5_txq_rate_limit_info *info);
 
+/**
+ * Packet pacing rate table capacity information.
+ */
+struct rte_pmd_mlx5_pp_rate_table_info {
+	uint16_t total;		/**< Total HW rate table entries. */
+	uint16_t port_used;	/**< Entries used by this port's TX queues. */
+};
+
+/**
+ * Query packet pacing rate table capacity.
+ *
+ * The ``port_used`` count reflects only unique PP indices allocated
+ * by the queried port's TX queues. It is a lower bound of actual HW
+ * usage because the rate table is a global shared resource:
+ * - Other DPDK ports on the same physical device may hold entries.
+ * - The kernel mlx5 driver and firmware may also consume entries.
+ * - Multiple DPDK application instances may share the device.
+ *
+ * When multiple queues on the same port are configured with identical
+ * rate parameters, the kernel shares a single rate table entry across
+ * them (with flags=0 allocation), so ``port_used`` counts unique
+ * entries, not the number of queues with rate limiting enabled.
+ *
+ * Applications that need device-wide visibility should query all
+ * ports on the same physical device and aggregate the results,
+ * similar to how the kernel mlx5 driver tracks usage internally.
+ *
+ * @param[in] port_id
+ *   Port ID.
+ * @param[out] info
+ *   Rate table capacity information.
+ *
+ * @return
+ *   0 on success, negative errno on failure:
+ *   - -ENODEV: invalid port_id.
+ *   - -EINVAL: info is NULL.
+ *   - -ENOTSUP: packet pacing not supported.
+ *   - -ENOMEM: allocation failure.
+ */
+__rte_experimental
+int
+rte_pmd_mlx5_pp_rate_table_query(uint16_t port_id,
+				 struct rte_pmd_mlx5_pp_rate_table_info *info);
+
 /** Type of mlx5 driver event for which custom callback is called. */
 enum rte_pmd_mlx5_driver_event_cb_type {
 	/** Called after HW Rx queue is created. */
