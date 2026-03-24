@@ -192,6 +192,7 @@ struct mlx5_txq_ctrl {
 	uint16_t dump_file_n; /* Number of dump files. */
 	struct rte_eth_hairpin_conf hairpin_conf; /* Hairpin configuration. */
 	uint32_t hairpin_status; /* Hairpin binding status. */
+	struct mlx5_txq_rate_limit rate_limit; /* Per-queue rate limit. */
 	struct mlx5_txq_data txq; /* Data path structure. */
 	/* Must be the last field in the structure, contains elts[]. */
 };

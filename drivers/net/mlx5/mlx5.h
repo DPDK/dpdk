@@ -1297,6 +1297,13 @@ struct mlx5_txpp_ts {
 	RTE_ATOMIC(uint64_t) ts;
 };
 
+/* Per-queue rate limit tracking. */
+struct mlx5_txq_rate_limit {
+	void *pp;		/* Packet pacing context from dv_alloc_pp. */
+	uint16_t pp_id;		/* Packet pacing index. */
+	uint32_t rate_mbps;	/* Current rate in Mbps, 0 = disabled. */
+};
+
 /* Tx packet pacing structure. */
 struct mlx5_dev_txpp {
 	pthread_mutex_t mutex; /* Pacing create/destroy mutex. */
@@ -2630,6 +2637,10 @@ int mlx5_txpp_xstats_get_names(struct rte_eth_dev *dev,
 void mlx5_txpp_interrupt_handler(void *cb_arg);
 int mlx5_txpp_map_hca_bar(struct rte_eth_dev *dev);
 void mlx5_txpp_unmap_hca_bar(struct rte_eth_dev *dev);
+int mlx5_txq_alloc_pp_rate_limit(struct mlx5_dev_ctx_shared *sh,
+				 struct mlx5_txq_rate_limit *rate_limit,
+				 uint32_t rate_mbps);
+void mlx5_txq_free_pp_rate_limit(struct mlx5_txq_rate_limit *rate_limit);
 
 /* mlx5_rxtx.c */
 
