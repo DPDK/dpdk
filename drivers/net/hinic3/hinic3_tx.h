@@ -6,30 +6,40 @@
 #define _HINIC3_TX_H_
 
 #define MAX_SINGLE_SGE_SIZE		 65536
-#define HINIC3_NONTSO_PKT_MAX_SGE	 38 /**< non-tso max sge 38. */
+#define HINIC3_NONTSO_PKT_MAX_SGE	 32 /**< non-tso max sge 32. */
 #define HINIC3_NONTSO_SEG_NUM_VALID(num) ((num) <= HINIC3_NONTSO_PKT_MAX_SGE)
 
 #define HINIC3_TSO_PKT_MAX_SGE		127 /**< tso max sge 127. */
 #define HINIC3_TSO_SEG_NUM_INVALID(num) ((num) > HINIC3_TSO_PKT_MAX_SGE)
 
-/* Tx offload info. */
-struct hinic3_tx_offload_info {
-	uint8_t outer_l2_len;
-	uint8_t outer_l3_type;
-	uint16_t outer_l3_len;
+/* Tx wqe queue info */
+struct hinic3_queue_info {
+	uint8_t pri;
+	uint8_t uc;
+	uint8_t sctp;
+	uint8_t udp_dp_en;
+	uint8_t tso;
+	uint8_t ufo;
+	uint8_t payload_offset;
+	uint8_t pkt_type;
+	uint16_t mss;
+	uint16_t rsvd;
+};
 
-	uint8_t inner_l2_len;
-	uint8_t inner_l3_type;
-	uint16_t inner_l3_len;
-
-	uint8_t tunnel_length;
-	uint8_t tunnel_type;
-	uint8_t inner_l4_type;
-	uint8_t inner_l4_len;
-
-	uint16_t payload_offset;
-	uint8_t inner_l4_tcp_udp;
-	uint8_t rsvd0; /**< Reserved field. */
+/* Tx wqe offload info */
+struct hinic3_offload_info {
+	uint8_t encapsulation;
+	uint8_t esp_next_proto;
+	uint8_t inner_l4_en;
+	uint8_t inner_l3_en;
+	uint8_t out_l4_en;
+	uint8_t out_l3_en;
+	uint8_t ipsec_offload;
+	uint8_t pkt_1588;
+	uint8_t vlan_sel;
+	uint8_t vlan_valid;
+	uint16_t vlan_tag;
+	uint32_t ip_identify;
 };
 
 /* Tx wqe ctx. */
@@ -42,14 +52,15 @@ struct hinic3_wqe_info {
 	uint8_t rsvd0; /**< Reserved field 0. */
 	uint16_t payload_offset;
 
-	uint8_t wrapped;
+	uint8_t rsvd1; /**< Reserved field 1. */
 	uint8_t owner;
 	uint16_t pi;
 
 	uint16_t wqebb_cnt;
-	uint16_t rsvd1; /**< Reserved field 1. */
+	uint16_t rsvd2; /**< Reserved field 2. */
 
-	uint32_t queue_info;
+	struct hinic3_queue_info queue_info;
+	struct hinic3_offload_info offload_info;
 };
 
 /* Descriptor for the send queue of wqe. */
@@ -103,8 +114,15 @@ struct hinic3_sq_wqe_combo {
 	uint32_t task_type;
 };
 
-enum sq_wqe_data_format {
+/* Tx queue ctrl info */
+enum sq_wqe_type {
 	SQ_NORMAL_WQE = 0,
+	SQ_DIRECT_WQE = 1,
+};
+
+enum sq_wqe_data_format {
+	SQ_WQE_SGL = 0,
+	SQ_WQE_INLINE_DATA = 1,
 };
 
 /* Indicates the type of a WQE. */
@@ -117,7 +135,7 @@ enum sq_wqe_ec_type {
 
 /* Indicates the type of tasks with different lengths. */
 enum sq_wqe_tasksect_len_type {
-	SQ_WQE_TASKSECT_46BITS = 0,
+	SQ_WQE_TASKSECT_4BYTES = 0,
 	SQ_WQE_TASKSECT_16BYTES = 1,
 };
 
@@ -177,6 +195,33 @@ enum sq_wqe_tasksect_len_type {
 	((val) & (~(SQ_CTRL_QUEUE_INFO_##member##_MASK \
 		    << SQ_CTRL_QUEUE_INFO_##member##_SHIFT)))
 
+/* Compact queue info */
+#define SQ_CTRL_COMPACT_QUEUE_INFO_PKT_TYPE_SHIFT	14
+#define SQ_CTRL_COMPACT_QUEUE_INFO_PLDOFF_SHIFT		16
+#define SQ_CTRL_COMPACT_QUEUE_INFO_UFO_SHIFT		24
+#define SQ_CTRL_COMPACT_QUEUE_INFO_TSO_SHIFT		25
+#define SQ_CTRL_COMPACT_QUEUE_INFO_UDP_DP_EN_SHIFT	26
+#define SQ_CTRL_COMPACT_QUEUE_INFO_SCTP_SHIFT		27
+
+#define SQ_CTRL_COMPACT_QUEUE_INFO_PKT_TYPE_MASK	0x3U
+#define SQ_CTRL_COMPACT_QUEUE_INFO_PLDOFF_MASK		0xFFU
+#define SQ_CTRL_COMPACT_QUEUE_INFO_UFO_MASK		0x1U
+#define SQ_CTRL_COMPACT_QUEUE_INFO_TSO_MASK		0x1U
+#define SQ_CTRL_COMPACT_QUEUE_INFO_UDP_DP_EN_MASK	0x1U
+#define SQ_CTRL_COMPACT_QUEUE_INFO_SCTP_MASK		0x1U
+
+#define SQ_CTRL_COMPACT_QUEUE_INFO_SET(val, member) \
+	(((uint32_t)(val) & SQ_CTRL_COMPACT_QUEUE_INFO_##member##_MASK) << \
+	 SQ_CTRL_COMPACT_QUEUE_INFO_##member##_SHIFT)
+
+#define SQ_CTRL_COMPACT_QUEUE_INFO_GET(val, member) \
+	(((val) >> SQ_CTRL_COMPACT_QUEUE_INFO_##member##_SHIFT) & \
+	 SQ_CTRL_COMPACT_QUEUE_INFO_##member##_MASK)
+
+#define SQ_CTRL_COMPACT_QUEUE_INFO_CLEAR(val, member) \
+	((val) & (~(SQ_CTRL_COMPACT_QUEUE_INFO_##member##_MASK << \
+		    SQ_CTRL_COMPACT_QUEUE_INFO_##member##_SHIFT)))
+
 /* Setting and obtaining task information */
 #define SQ_TASK_INFO0_TUNNEL_FLAG_SHIFT	    19
 #define SQ_TASK_INFO0_ESP_NEXT_PROTO_SHIFT  22
@@ -228,6 +273,37 @@ enum sq_wqe_tasksect_len_type {
 #define SQ_TASK_INFO3_GET(val, member)               \
 	(((val) >> SQ_TASK_INFO3_##member##_SHIFT) & \
 	 SQ_TASK_INFO3_##member##_MASK)
+
+/* compact wqe task field */
+#define SQ_TASK_INFO_PKT_1588_SHIFT		31
+#define SQ_TASK_INFO_IPSEC_PROTO_SHIFT		30
+#define SQ_TASK_INFO_OUT_L3_EN_SHIFT		28
+#define SQ_TASK_INFO_OUT_L4_EN_SHIFT		27
+#define SQ_TASK_INFO_INNER_L3_EN_SHIFT		25
+#define SQ_TASK_INFO_INNER_L4_EN_SHIFT		24
+#define SQ_TASK_INFO_ESP_NEXT_PROTO_SHIFT	22
+#define SQ_TASK_INFO_VLAN_VALID_SHIFT		19
+#define SQ_TASK_INFO_VLAN_SEL_SHIFT		16
+#define SQ_TASK_INFO_VLAN_TAG_SHIFT		0
+
+#define SQ_TASK_INFO_PKT_1588_MASK		0x1U
+#define SQ_TASK_INFO_IPSEC_PROTO_MASK		0x1U
+#define SQ_TASK_INFO_OUT_L3_EN_MASK		0x1U
+#define SQ_TASK_INFO_OUT_L4_EN_MASK		0x1U
+#define SQ_TASK_INFO_INNER_L3_EN_MASK		0x1U
+#define SQ_TASK_INFO_INNER_L4_EN_MASK		0x1U
+#define SQ_TASK_INFO_ESP_NEXT_PROTO_MASK	0x3U
+#define SQ_TASK_INFO_VLAN_VALID_MASK		0x1U
+#define SQ_TASK_INFO_VLAN_SEL_MASK		0x7U
+#define SQ_TASK_INFO_VLAN_TAG_MASK		0xFFFFU
+
+#define SQ_TASK_INFO_SET(val, member) \
+	(((uint32_t)(val) & SQ_TASK_INFO_##member##_MASK) << \
+	SQ_TASK_INFO_##member##_SHIFT)
+
+#define SQ_TASK_INFO_GET(val, member) \
+	(((val) >> SQ_TASK_INFO_##member##_SHIFT) & \
+	SQ_TASK_INFO_##member##_MASK)
 
 /* Defines the TX queue status. */
 enum hinic3_txq_status {
@@ -298,6 +374,8 @@ struct __rte_cache_aligned hinic3_txq {
 	uint64_t sq_head_addr;
 	uint64_t sq_bot_sge_addr;
 	uint32_t cos;
+	uint8_t tx_wqe_compact_task;
+	uint8_t rsvd[3];
 	struct hinic3_txq_stats txq_stats;
 #ifdef HINIC3_XSTAT_PROF_TX
 	uint64_t prof_tx_end_tsc;
@@ -319,4 +397,26 @@ uint16_t hinic3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb
 int hinic3_stop_sq(struct hinic3_txq *txq);
 int hinic3_start_all_sqs(struct rte_eth_dev *eth_dev);
 int hinic3_tx_done_cleanup(void *txq, uint32_t free_cnt);
+
+/**
+ * Set wqe task section
+ *
+ * @param[in] wqe_info
+ * Packet info parsed according to mbuf
+ * @param[in] wqe_combo
+ * Wqe need to format
+ */
+void hinic3_tx_set_normal_task_offload(struct hinic3_wqe_info *wqe_info,
+				       struct hinic3_sq_wqe_combo *wqe_combo);
+
+/**
+ * Set compact wqe task section
+ *
+ * @param[in] wqe_info
+ * Packet info parsed according to mbuf
+ * @param[in] wqe_combo
+ * Wqe need to format
+ */
+void hinic3_tx_set_compact_task_offload(struct hinic3_wqe_info *wqe_info,
+					struct hinic3_sq_wqe_combo *wqe_combo);
 #endif /**< _HINIC3_TX_H_ */
