@@ -1090,6 +1090,7 @@ Rx interrupt                                X
 :ref:`Rx drop delay <mlx5_drop>`            X        X
 :ref:`Rx timestamp <mlx5_rx_timstp>`        X        X
 :ref:`Tx scheduling <mlx5_tx_sched>`        X
+:ref:`Tx rate limit <mlx5_rate_limit>`      X
 :ref:`Tx inline <mlx5_tx_inline>`           X        X
 :ref:`Tx fast free <mlx5_tx_fast_free>`     X        X
 :ref:`Tx affinity <mlx5_aggregated>`        X
@@ -2075,6 +2076,66 @@ Limitations
 
 #. On ConnectX-6 Dx (Clock Queue mode), timestamps too far in the future
    are capped (see the ``tx_pp x 2^23`` limit above).
+
+
+.. _mlx5_rate_limit:
+
+Tx Rate Limiting
+~~~~~~~~~~~~~~~~
+
+The Tx rate can be limited per queue with the function ``rte_eth_set_queue_rate_limit()``.
+
+This feature uses the hardware packet pacing mechanism
+to enforce a data rate on individual Tx queues
+without tearing down the queue.
+
+The rate is specified in Mbps.
+
+Requirements
+^^^^^^^^^^^^
+
+=========  =============
+Minimum    Version
+=========  =============
+hardware   ConnectX-6 Dx
+DPDK       26.07
+=========  =============
+
+- On ConnectX-7 and above, rate limiting coexists with wait-on-time scheduling.
+- On ConnectX-6 Dx, there is per-SQ rate via HW rate table.
+- On ConnectX-5, the dynamic SQ modification may not work with some firmware versions.
+- ConnectX-4 Lx and earlier do not have ``packet_pacing`` capability.
+
+Runtime configuration
+^^^^^^^^^^^^^^^^^^^^^
+
+The DevX path must be used (default).
+The legacy Verbs path (``dv_flow_en=0``) does not support dynamic SQ modification.
+
+The queue must be started (SQ in RDY state) before setting a rate.
+
+Limitations
+^^^^^^^^^^^
+
+#. The hardware rate table has a limited number of entries
+   (typically 128 on ConnectX-6 Dx).
+   When multiple queues are configured with identical rate parameters,
+   the kernel mlx5 driver shares a single rate table entry across them.
+   Each queue still has its own independent SQ and enforces the rate independently —
+   queues are never merged.
+   The rate cap applies per-queue: if two queues share the same 1000 Mbps entry,
+   each can send up to 1000 Mbps independently, they do not share a combined budget.
+   This sharing is transparent and only affects table capacity:
+   128 entries can serve thousands of queues as long as many use the same rate.
+   Queues with different rates consume separate entries.
+
+Examples
+^^^^^^^^
+
+.. code-block:: console
+
+   testpmd> set port 0 queue 0 rate 1000
+   testpmd> set port 0 queue 0 rate 0
 
 
 .. _mlx5_tx_inline:
