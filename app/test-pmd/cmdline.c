@@ -8982,6 +8982,74 @@ static cmdline_parse_inst_t cmd_queue_rate_limit = {
 	},
 };
 
+/* *** SHOW RATE LIMIT FOR A QUEUE OF A PORT *** */
+struct cmd_show_queue_rate_limit_result {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t port;
+	uint16_t port_num;
+	cmdline_fixed_string_t queue;
+	uint16_t queue_num;
+	cmdline_fixed_string_t rate;
+};
+
+static void cmd_show_queue_rate_limit_parsed(void *parsed_result,
+		__rte_unused struct cmdline *cl,
+		__rte_unused void *data)
+{
+	struct cmd_show_queue_rate_limit_result *res = parsed_result;
+	uint32_t tx_rate = 0;
+	int ret;
+
+	ret = rte_eth_get_queue_rate_limit(res->port_num, res->queue_num,
+					   &tx_rate);
+	if (ret) {
+		fprintf(stderr, "Get queue rate limit failed: %s\n",
+			rte_strerror(-ret));
+		return;
+	}
+	if (tx_rate)
+		printf("Port %u Queue %u rate limit: %u Mbps\n",
+		       res->port_num, res->queue_num, tx_rate);
+	else
+		printf("Port %u Queue %u rate limit: disabled\n",
+		       res->port_num, res->queue_num);
+}
+
+static cmdline_parse_token_string_t cmd_show_queue_rate_limit_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_queue_rate_limit_result,
+				show, "show");
+static cmdline_parse_token_string_t cmd_show_queue_rate_limit_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_queue_rate_limit_result,
+				port, "port");
+static cmdline_parse_token_num_t cmd_show_queue_rate_limit_portnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_show_queue_rate_limit_result,
+				port_num, RTE_UINT16);
+static cmdline_parse_token_string_t cmd_show_queue_rate_limit_queue =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_queue_rate_limit_result,
+				queue, "queue");
+static cmdline_parse_token_num_t cmd_show_queue_rate_limit_queuenum =
+	TOKEN_NUM_INITIALIZER(struct cmd_show_queue_rate_limit_result,
+				queue_num, RTE_UINT16);
+static cmdline_parse_token_string_t cmd_show_queue_rate_limit_rate =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_queue_rate_limit_result,
+				rate, "rate");
+
+static cmdline_parse_inst_t cmd_show_queue_rate_limit = {
+	.f = cmd_show_queue_rate_limit_parsed,
+	.data = NULL,
+	.help_str = "show port <port_id> queue <queue_id> rate: "
+		"Show rate limit for a queue on port_id",
+	.tokens = {
+		(void *)&cmd_show_queue_rate_limit_show,
+		(void *)&cmd_show_queue_rate_limit_port,
+		(void *)&cmd_show_queue_rate_limit_portnum,
+		(void *)&cmd_show_queue_rate_limit_queue,
+		(void *)&cmd_show_queue_rate_limit_queuenum,
+		(void *)&cmd_show_queue_rate_limit_rate,
+		NULL,
+	},
+};
+
 /* *** SET RATE LIMIT FOR A VF OF A PORT *** */
 struct cmd_vf_rate_limit_result {
 	cmdline_fixed_string_t set;
@@ -14270,6 +14338,7 @@ static cmdline_parse_ctx_t builtin_ctx[] = {
 	&cmd_set_uc_all_hash_filter,
 	&cmd_vf_mac_addr_filter,
 	&cmd_queue_rate_limit,
+	&cmd_show_queue_rate_limit,
 	&cmd_tunnel_udp_config,
 	&cmd_showport_rss_hash,
 	&cmd_showport_rss_hash_key,
