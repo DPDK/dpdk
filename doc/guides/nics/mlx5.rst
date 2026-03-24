@@ -1372,27 +1372,36 @@ for an additional list of options shared with other mlx5 drivers.
 
 - ``tx_pp`` parameter [int]
 
+  This parameter applies to **ConnectX-6 Dx** only.
   If a nonzero value is specified the driver creates all necessary internal
-  objects to provide accurate packet send scheduling on mbuf timestamps.
+  objects (Clock Queue and Rearm Queue)
+  to provide accurate packet send scheduling on mbuf timestamps
+  using a cross-channel approach.
   The positive value specifies the scheduling granularity in nanoseconds,
   the packet send will be accurate up to specified digits. The allowed range is
   from 500 to 1 million of nanoseconds. The negative value specifies the module
   of granularity and engages the special test mode the check the schedule rate.
   By default (if the ``tx_pp`` is not specified) send scheduling on timestamps
-  feature is disabled.
+  feature is disabled on ConnectX-6 Dx.
 
-  Starting with ConnectX-7 the capability to schedule traffic directly
-  on timestamp specified in descriptor is provided,
-  no extra objects are needed anymore and scheduling capability
-  is advertised and handled regardless ``tx_pp`` parameter presence.
+  Starting with **ConnectX-7** the hardware provides a native wait-on-time capability
+  that inserts the scheduling delay directly in the WQE descriptor.
+  No Clock Queue or Rearm Queue is needed
+  and the ``tx_pp`` parameter is not required.
+  The driver automatically advertises send scheduling support
+  when the HCA wait-on-time capability is detected.
+  The ``tx_skew`` parameter can still be used on ConnectX-7 and above
+  to compensate for wire delay.
 
 - ``tx_skew`` parameter [int]
 
   The parameter adjusts the send packet scheduling on timestamps and represents
   the average delay between beginning of the transmitting descriptor processing
   by the hardware and appearance of actual packet data on the wire. The value
-  should be provided in nanoseconds and is valid only if ``tx_pp`` parameter is
-  specified. The default value is zero.
+  should be provided in nanoseconds
+  and applies to both ConnectX-6 Dx (with ``tx_pp``)
+  and ConnectX-7+ (wait-on-time) scheduling modes.
+  The default value is zero.
 
 - ``tx_vec_en`` parameter [int]
 
