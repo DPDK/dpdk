@@ -67,7 +67,16 @@ struct mlx5_hca_qos_attr {
 	/* Power of the maximum allocation granularity Object. */
 	uint32_t log_max_num_meter_aso:5;
 	/* Power of the maximum number of supported objects. */
-
+	uint32_t packet_pacing_burst_bound:1;
+	/* HW supports burst_upper_bound PP parameter. */
+	uint32_t packet_pacing_typical_size:1;
+	/* HW supports typical_packet_size PP parameter. */
+	uint32_t packet_pacing_max_rate;
+	/* Maximum supported pacing rate in kbps. */
+	uint32_t packet_pacing_min_rate;
+	/* Minimum supported pacing rate in kbps. */
+	uint16_t packet_pacing_rate_table_size;
+	/* Number of entries in the HW rate table. */
 };
 
 struct mlx5_hca_vdpa_attr {

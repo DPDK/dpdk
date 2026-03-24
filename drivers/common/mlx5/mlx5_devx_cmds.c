@@ -1244,6 +1244,21 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 				MLX5_GET(qos_cap, hcattr, packet_pacing);
 		attr->qos.wqe_rate_pp =
 				MLX5_GET(qos_cap, hcattr, wqe_rate_pp);
+		attr->qos.packet_pacing_burst_bound =
+				MLX5_GET(qos_cap, hcattr,
+					packet_pacing_burst_bound);
+		attr->qos.packet_pacing_typical_size =
+				MLX5_GET(qos_cap, hcattr,
+					packet_pacing_typical_size);
+		attr->qos.packet_pacing_max_rate =
+				MLX5_GET(qos_cap, hcattr,
+					packet_pacing_max_rate);
+		attr->qos.packet_pacing_min_rate =
+				MLX5_GET(qos_cap, hcattr,
+					packet_pacing_min_rate);
+		attr->qos.packet_pacing_rate_table_size =
+				MLX5_GET(qos_cap, hcattr,
+					packet_pacing_rate_table_size);
 		if (attr->qos.flow_meter_aso_sup) {
 			attr->qos.log_meter_aso_granularity =
 				MLX5_GET(qos_cap, hcattr,
