@@ -2985,11 +2985,18 @@ struct mlx5_ifc_create_tis_in_bits {
 	struct mlx5_ifc_tisc_bits ctx;
 };
 
+/* Bits for modify_rq_in.modify_bitmask (Receive Queue). */
 enum {
 	MLX5_MODIFY_RQ_IN_MODIFY_BITMASK_WQ_LWM = 1ULL << 0,
 	MLX5_MODIFY_RQ_IN_MODIFY_BITMASK_VSD = 1ULL << 1,
 	MLX5_MODIFY_RQ_IN_MODIFY_BITMASK_SCATTER_FCS = 1ULL << 2,
 	MLX5_MODIFY_RQ_IN_MODIFY_BITMASK_RQ_COUNTER_SET_ID = 1ULL << 3,
+};
+
+/* Bits for modify_sq_in.modify_bitmask (Send Queue). */
+enum {
+	MLX5_MODIFY_SQ_IN_MODIFY_BITMASK_PACKET_PACING_RATE_LIMIT_INDEX =
+		1ULL << 0,
 };
 
 struct mlx5_ifc_modify_rq_in_bits {
