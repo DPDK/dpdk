@@ -224,6 +224,8 @@ int mlx5_txq_releasable(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_txq_verify(struct rte_eth_dev *dev);
 int mlx5_set_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
 			      uint32_t tx_rate);
+int mlx5_get_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
+			      uint32_t *tx_rate);
 int mlx5_txq_get_sqn(struct mlx5_txq_ctrl *txq);
 void mlx5_txq_alloc_elts(struct mlx5_txq_ctrl *txq_ctrl);
 void mlx5_txq_free_elts(struct mlx5_txq_ctrl *txq_ctrl);

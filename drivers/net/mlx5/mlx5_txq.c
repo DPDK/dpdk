@@ -1482,6 +1482,36 @@ mlx5_set_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
 }
 
 /**
+ * Get per-queue packet pacing rate limit.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param queue_idx
+ *   TX queue index.
+ * @param[out] tx_rate
+ *   Pointer to store the TX rate in Mbps, 0 if rate limiting is disabled.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_get_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
+			  uint32_t *tx_rate)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_txq_ctrl *txq_ctrl;
+
+	if (priv->txqs == NULL || (*priv->txqs)[queue_idx] == NULL) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	txq_ctrl = container_of((*priv->txqs)[queue_idx],
+				struct mlx5_txq_ctrl, txq);
+	*tx_rate = txq_ctrl->rate_limit.rate_mbps;
+	return 0;
+}
+
+/**
  * Verify if the queue can be released.
  *
  * @param dev
