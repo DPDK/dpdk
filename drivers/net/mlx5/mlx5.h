@@ -383,6 +383,8 @@ struct mlx5_port_config {
 struct mlx5_sh_config {
 	int tx_pp; /* Timestamp scheduling granularity in nanoseconds. */
 	int tx_skew; /* Tx scheduling skew between WQE and data on wire. */
+	uint32_t tx_burst_bound; /* Burst upper bound in bytes, 0 = default. */
+	uint32_t tx_typical_pkt_sz; /* Typical packet size in bytes, 0 = default. */
 	uint32_t reclaim_mode:2; /* Memory reclaim mode. */
 	uint32_t dv_esw_en:1; /* Enable E-Switch DV flow. */
 	/* Enable DV flow. 1 means SW steering, 2 means HW steering. */
