@@ -384,7 +384,7 @@ class DecoratedNicCapability(Capability):
         )
         if cls.capabilities_to_check:
             capabilities_to_check_map = cls._get_decorated_capabilities_map()
-            with TestPmd() as testpmd:
+            with TestPmd(allowed_ports=topology.sut_dpdk_ports) as testpmd:
                 for (
                     conditional_capability_fn,
                     capabilities,
