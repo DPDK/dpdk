@@ -519,6 +519,9 @@ struct mlx5_devx_modify_sq_attr {
 	uint32_t state:4;
 	uint32_t hairpin_peer_rq:24;
 	uint32_t hairpin_peer_vhca:16;
+	uint32_t rl_update:1;
+	/* Set to update packet_pacing_rate_limit_index on a live SQ. */
+	uint32_t packet_pacing_rate_limit_index:16;
 };
 
 

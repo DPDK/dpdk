@@ -2127,6 +2127,14 @@ mlx5_devx_cmd_modify_sq(struct mlx5_devx_obj *sq,
 	MLX5_SET(sqc, sq_ctx, state, sq_attr->state);
 	MLX5_SET(sqc, sq_ctx, hairpin_peer_rq, sq_attr->hairpin_peer_rq);
 	MLX5_SET(sqc, sq_ctx, hairpin_peer_vhca, sq_attr->hairpin_peer_vhca);
+	if (sq_attr->rl_update) {
+		uint64_t msk = MLX5_GET64(modify_sq_in, in, modify_bitmask);
+
+		msk |= MLX5_MODIFY_SQ_IN_MODIFY_BITMASK_PACKET_PACING_RATE_LIMIT_INDEX;
+		MLX5_SET64(modify_sq_in, in, modify_bitmask, msk);
+		MLX5_SET(sqc, sq_ctx, packet_pacing_rate_limit_index,
+			 sq_attr->packet_pacing_rate_limit_index);
+	}
 	ret = mlx5_glue->devx_obj_modify(sq->obj, in, sizeof(in),
 					 out, sizeof(out));
 	if (ret || MLX5_FW_STATUS(out)) {
