@@ -792,7 +792,7 @@ int rte_pmd_mlx5_txq_dump_contexts(uint16_t port_id, uint16_t queue_id, const ch
 	if (!rte_eth_dev_is_valid_port(port_id))
 		return -ENODEV;
 
-	if (rte_eth_tx_queue_is_valid(port_id, queue_id))
+	if (rte_eth_tx_queue_is_valid(port_id, queue_id) != 0)
 		return -EINVAL;
 
 	fd = fopen(path, "w");
@@ -839,4 +839,44 @@ int rte_pmd_mlx5_txq_dump_contexts(uint16_t port_id, uint16_t queue_id, const ch
 
 	fclose(fd);
 	return ret;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_mlx5_txq_rate_limit_query, 26.07)
+int rte_pmd_mlx5_txq_rate_limit_query(uint16_t port_id, uint16_t queue_id,
+		struct rte_pmd_mlx5_txq_rate_limit_info *info)
+{
+	struct rte_eth_dev *dev;
+	struct mlx5_priv *priv;
+	struct mlx5_txq_data *txq_data;
+	struct mlx5_txq_ctrl *txq_ctrl;
+	uint32_t sq_out[MLX5_ST_SZ_DW(query_sq_out)] = {0};
+	int ret;
+
+	if (info == NULL)
+		return -EINVAL;
+	if (!rte_eth_dev_is_valid_port(port_id))
+		return -ENODEV;
+	if (rte_eth_tx_queue_is_valid(port_id, queue_id) != 0)
+		return -EINVAL;
+	dev = &rte_eth_devices[port_id];
+	priv = dev->data->dev_private;
+	txq_data = (*priv->txqs)[queue_id];
+	if (txq_data == NULL)
+		return -EINVAL;
+	txq_ctrl = container_of(txq_data, struct mlx5_txq_ctrl, txq);
+	info->rate_mbps = txq_ctrl->rate_limit.rate_mbps;
+	info->pp_index = txq_ctrl->rate_limit.pp_id;
+	if (txq_ctrl->obj == NULL) {
+		info->fw_pp_index = 0;
+		return 0;
+	}
+	ret = mlx5_devx_cmd_query_sq(txq_ctrl->obj->sq_obj.sq,
+				     sq_out, sizeof(sq_out));
+	if (ret)
+		return -EIO;
+	info->fw_pp_index = MLX5_GET(sqc,
+				     MLX5_ADDR_OF(query_sq_out, sq_out,
+						  sq_context),
+				     packet_pacing_rate_limit_index);
+	return 0;
 }
