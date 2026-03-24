@@ -393,7 +393,7 @@ static int
 hinic3_set_tx_offload(struct hinic3_nic_dev *nic_dev,
 		      struct rte_mbuf *mbuf,
 		      struct hinic3_sq_wqe_combo *wqe_combo,
-					  struct hinic3_wqe_info *wqe_info)
+		      struct hinic3_wqe_info *wqe_info)
 {
 	uint64_t ol_flags = mbuf->ol_flags;
 	struct hinic3_offload_info *offload_info = &wqe_info->offload_info;
@@ -409,7 +409,7 @@ hinic3_set_tx_offload(struct hinic3_nic_dev *nic_dev,
 
 	/* Tso offload. */
 	if (ol_flags & HINIC3_PKT_TX_TCP_SEG) {
-		wqe_info->queue_info.payload_offset = wqe_info->payload_offset;
+		wqe_info->queue_info.payload_offset = wqe_info->payload_offset >> 1;
 		if ((wqe_info->payload_offset >> 1) > MAX_PAYLOAD_OFFSET)
 			return -EINVAL;
 
@@ -457,7 +457,7 @@ hinic3_set_tx_offload(struct hinic3_nic_dev *nic_dev,
 		offload_info->out_l4_en = 1;
 
 set_tx_wqe_offload:
-	nic_dev->tx_ops->tx_set_wqe_offload(wqe_info, wqe_combo);
+	nic_dev->tx_ops->nic_tx_set_wqe_offload(wqe_info, wqe_combo);
 
 	return 0;
 }
@@ -627,9 +627,8 @@ hinic3_get_tx_offload(struct hinic3_nic_dev *nic_dev, struct rte_mbuf *mbuf,
 		return err;
 
 	/* Non-tso mbuf only check sge num. */
-	if (likely(!(mbuf->ol_flags & HINIC3_PKT_TX_TCP_SEG))) {
+	if (likely(!(mbuf->ol_flags & HINIC3_PKT_TX_TCP_SEG)))
 		return hinic3_non_tso_pkt_pre_process(mbuf, wqe_info);
-	}
 
 	/* Tso mbuf. */
 	wqe_info->payload_offset =
@@ -647,8 +646,7 @@ hinic3_get_tx_offload(struct hinic3_nic_dev *nic_dev, struct rte_mbuf *mbuf,
 }
 
 static inline void
-hinic3_set_buf_desc(struct hinic3_sq_bufdesc *buf_descs, rte_iova_t addr,
-		    uint32_t len)
+hinic3_set_buf_desc(struct hinic3_sq_bufdesc *buf_descs, rte_iova_t addr, uint32_t len)
 {
 	buf_descs->hi_addr = hinic3_hw_be32(upper_32_bits(addr));
 	buf_descs->lo_addr = hinic3_hw_be32(lower_32_bits(addr));
@@ -832,14 +830,14 @@ hinic3_prepare_sq_ctrl(struct hinic3_sq_wqe_combo *wqe_combo,
 	if (wqe_combo->wqe_type == SQ_WQE_EXTENDED_TYPE) {
 		wqe_desc->ctrl_len |= SQ_CTRL_SET(wqe_info->sge_cnt, BUFDESC_NUM) |
 				      SQ_CTRL_SET(wqe_combo->task_type, TASKSECT_LEN) |
-				      SQ_CTRL_SET(SQ_WQE_SGL, DATA_FORMAT);
+				      SQ_CTRL_SET(SQ_NORMAL_WQE, DATA_FORMAT);
 
 		*qsf = SQ_CTRL_QUEUE_INFO_SET(1, UC) |
 		       SQ_CTRL_QUEUE_INFO_SET(queue_info->sctp, SCTP) |
 		       SQ_CTRL_QUEUE_INFO_SET(queue_info->udp_dp_en, TCPUDP_CS) |
 		       SQ_CTRL_QUEUE_INFO_SET(queue_info->tso, TSO) |
 		       SQ_CTRL_QUEUE_INFO_SET(queue_info->ufo, UFO) |
-		       SQ_CTRL_QUEUE_INFO_SET(queue_info->payload_offset >> 1, PLDOFF) |
+		       SQ_CTRL_QUEUE_INFO_SET(queue_info->payload_offset, PLDOFF) |
 		       SQ_CTRL_QUEUE_INFO_SET(queue_info->pkt_type, PKT_TYPE) |
 		       SQ_CTRL_QUEUE_INFO_SET(queue_info->mss, MSS);
 

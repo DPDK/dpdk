@@ -22,8 +22,7 @@
  * Current pi.
  */
 static inline void
-hinic3_get_rq_wqe(struct hinic3_rxq *rxq, struct hinic3_rq_wqe **rq_wqe,
-		  uint16_t *pi)
+hinic3_get_rq_wqe(struct hinic3_rxq *rxq, struct hinic3_rq_wqe **rq_wqe, uint16_t *pi)
 {
 	*pi = MASKED_QUEUE_IDX(rxq, rxq->prod_idx);
 
@@ -84,8 +83,7 @@ hinic3_rx_fill_wqe(struct hinic3_rxq *rxq)
 
 		if (rxq->wqe_type == HINIC3_EXTEND_RQ_WQE) {
 			/* Unit of cqe length is 16B. */
-			hinic3_set_sge(&rq_wqe->extend_wqe.cqe_sect.sge,
-				       cqe_dma,
+			hinic3_set_sge(&rq_wqe->extend_wqe.cqe_sect.sge, cqe_dma,
 				       HINIC3_CQE_LEN >> HINIC3_CQE_SIZE_SHIFT);
 			/* Use fixed len. */
 			rq_wqe->extend_wqe.buf_desc.sge.len = nic_dev->rx_buff_len;
@@ -436,11 +434,17 @@ hinic3_init_rss_type(struct hinic3_nic_dev *nic_dev,
 	rss_type.ipv4 = (rss_hf & (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4)) ? 1 : 0;
 	rss_type.tcp_ipv4 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP) ? 1 : 0;
 	rss_type.ipv6 = (rss_hf & (RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6)) ? 1 : 0;
-	rss_type.ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_EX) ? 1 : 0;
 	rss_type.tcp_ipv6 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP) ? 1 : 0;
-	rss_type.tcp_ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_TCP_EX) ? 1 : 0;
 	rss_type.udp_ipv4 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP) ? 1 : 0;
 	rss_type.udp_ipv6 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP) ? 1 : 0;
+
+	if (nic_dev->feature_cap & NIC_F_HTN_CMDQ) {
+		rss_type.ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_EX) ? 1 : 0;
+		rss_type.tcp_ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_TCP_EX) ? 1 : 0;
+	} else {
+		rss_type.ipv6_ext = 0;
+		rss_type.tcp_ipv6_ext = 0;
+	}
 
 	err = hinic3_set_rss_type(nic_dev->hwdev, rss_type);
 	return err;
@@ -488,8 +492,7 @@ hinic3_update_rss_config(struct rte_eth_dev *dev,
 		goto init_rss_fail;
 	}
 
-	err = hinic3_rss_cfg(nic_dev->hwdev, HINIC3_RSS_ENABLE, num_tc,
-			     prio_tc);
+	err = hinic3_rss_cfg(nic_dev->hwdev, HINIC3_RSS_ENABLE, num_tc, prio_tc);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Enable rss failed, err: %d", err);
 		goto init_rss_fail;
@@ -797,7 +800,7 @@ hinic3_start_rq(struct rte_eth_dev *eth_dev, struct hinic3_rxq *rxq)
 		}
 	}
 
-	hinic3_rearm_rxq_mbuf(rxq);
+	(void)hinic3_rearm_rxq_mbuf(rxq);
 	if (rxq->nic_dev->num_rss == 1) {
 		err = hinic3_set_vport_enable(nic_dev->hwdev, true);
 		if (err)
@@ -812,7 +815,6 @@ hinic3_start_rq(struct rte_eth_dev *eth_dev, struct hinic3_rxq *rxq)
 
 	return err;
 }
-
 
 static inline uint64_t
 hinic3_rx_vlan(uint8_t vlan_offload, uint16_t vlan_tag, uint16_t *vlan_tci)
@@ -1018,8 +1020,8 @@ hinic3_rx_get_cqe_info(struct hinic3_rxq *rxq __rte_unused, volatile struct hini
 	uint32_t dw2 = hinic3_hw_cpu32(rx_cqe->offload_type);
 	uint32_t dw3 = hinic3_hw_cpu32(rx_cqe->hash_val);
 
-	cqe_info->lro_num =  RQ_CQE_STATUS_GET(dw0, NUM_LRO);
-	cqe_info->csum_err =  RQ_CQE_STATUS_GET(dw0, CSUM_ERR);
+	cqe_info->lro_num = RQ_CQE_STATUS_GET(dw0, NUM_LRO);
+	cqe_info->csum_err = RQ_CQE_STATUS_GET(dw0, CSUM_ERR);
 
 	cqe_info->pkt_len = RQ_CQE_SGE_GET(dw1, LEN);
 	cqe_info->vlan_tag = RQ_CQE_SGE_GET(dw1, VLAN);

@@ -1203,7 +1203,7 @@ int hinic3_set_rx_vlan_offload(struct hinic3_hwdev *hwdev, uint8_t en);
  * @return
  * 0 on success, non-zero on failure.
  */
-int hinic3_set_rx_lro_state(struct hinic3_hwdev *hwdev, uint8_t lro_en, uint32_t lro_timer,
+int hinic3_set_rx_lro_state(struct hinic3_hwdev *hwdev, bool lro_en, uint32_t lro_timer,
 			    uint32_t lro_max_pkt_len);
 
 /**
@@ -1522,8 +1522,21 @@ int hinic3_get_feature_from_hw(struct hinic3_hwdev *hwdev, uint64_t *s_feature, 
  */
 int hinic3_set_feature_to_hw(struct hinic3_hwdev *hwdev, uint64_t *s_feature, uint16_t size);
 
-int hinic3_set_fdir_ethertype_filter(struct hinic3_hwdev *hwdev,
-				     uint8_t pkt_type, uint16_t queue_id, uint8_t en);
+/**
+ * Set the Ethernet type filtering rule for the FDIR of a NIC.
+ *
+ * @param[in] hwdev
+ * Pointer to hardware device structure.
+ * @param[in] pkt_type
+ * Indicate the packet type.
+ * @param[in] ethertype_filter
+ * Pointer to ethertype_filter structure.
+ * @param[in] en
+ * Indicate whether to add or delete an operation. 1 - add; 0 - delete.
+ *
+ * @return
+ * 0 on success, non-zero on failure.
+ */
 
 int hinic3_set_link_status_follow(struct hinic3_hwdev *hwdev,
 				  enum hinic3_link_follow_status status);

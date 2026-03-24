@@ -94,7 +94,7 @@ static uint8_t prepare_cmd_buf_modify_svlan(struct hinic3_cmd_buf *cmd_buf, uint
 	return HINIC3_UCODE_CMD_MODIFY_VLAN_CTX;
 }
 
-static uint8_t prepare_cmd_buf_set_rss_indir_table(struct hinic3_nic_dev *nic_dev,
+static uint8_t prepare_cmd_buf_set_rss_indir_table(struct hinic3_nic_dev *nic_dev __rte_unused,
 						   const uint32_t *indir_table,
 						   struct hinic3_cmd_buf *cmd_buf)
 {

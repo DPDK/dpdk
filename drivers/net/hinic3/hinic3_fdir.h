@@ -14,6 +14,30 @@
 #define HINIC3_PKT_TCAM_DYNAMIC_INDEX_START(block_index) \
 	(HINIC3_TCAM_DYNAMIC_BLOCK_SIZE * (block_index))
 
+#define HINIC3_TCAM_GET_DYNAMIC_BLOCK_INDEX(index) \
+		((index) / HINIC3_TCAM_DYNAMIC_BLOCK_SIZE)
+
+#define HINIC3_TCAM_GET_INDEX_IN_BLOCK(index) \
+		((index) % HINIC3_TCAM_DYNAMIC_BLOCK_SIZE)
+
+#define HINIC3_TCAM_INVALID_INDEX 0xFFFF
+
+enum hinic3_ether_type {
+	HINIC3_PKT_TYPE_ARP = 1,
+	HINIC3_PKT_TYPE_ARP_REQ,
+	HINIC3_PKT_TYPE_ARP_REP,
+	HINIC3_PKT_TYPE_RARP,
+	HINIC3_PKT_TYPE_LACP,
+	HINIC3_PKT_TYPE_LLDP,
+	HINIC3_PKT_TYPE_OAM,
+	HINIC3_PKT_TYPE_CDCP,
+	HINIC3_PKT_TYPE_CNM,
+	HINIC3_PKT_TYPE_ECP = 10,
+	HINIC3_PKT_TYPE_BUTT,
+
+	HINIC3_PKT_UNKNOWN = 31,
+};
+
 /* Indicate a traffic filtering rule. */
 struct rte_flow {
 	TAILQ_ENTRY(rte_flow) node;
@@ -30,6 +54,8 @@ struct hinic3_fdir_rule_key {
 	uint16_t src_port;
 	uint16_t dst_port;
 	uint8_t proto;
+	uint8_t vlan_flag;
+	uint16_t ether_type;
 };
 
 struct hinic3_fdir_filter {
@@ -42,17 +68,34 @@ struct hinic3_fdir_filter {
 	uint32_t rq_index; /**< Queue assigned when matched. */
 };
 
+struct hinic3_ethertype_filter {
+	int tcam_index[HINIC3_PKT_TYPE_BUTT];
+	uint16_t ether_type;	/**< Ether type to match */
+	uint16_t queue;		/**< Queue assigned to when match*/
+};
+
 /* This structure is used to describe a basic filter type. */
 struct hinic3_filter_t {
 	uint16_t filter_rule_nums;
 	enum rte_filter_type filter_type;
-	struct rte_eth_ethertype_filter ethertype_filter;
+	struct hinic3_ethertype_filter ethertype_filter;
 	struct hinic3_fdir_filter fdir_filter;
+};
+
+enum hinic3_action_type {
+	HINIC3_ACTION_ADD,
+	HINIC3_ACTION_NOT_ADD,
 };
 
 enum hinic3_fdir_tunnel_mode {
 	HINIC3_FDIR_TUNNEL_MODE_NORMAL = 0,
-	HINIC3_FDIR_TUNNEL_MODE_VXLAN = 1,
+	HINIC3_FDIR_TUNNEL_MODE_VXLAN  = 1,
+	HINIC3_FDIR_TUNNEL_MODE_NVGRE  = 2,
+	HINIC3_FDIR_TUNNEL_MODE_FC     = 3,
+	HINIC3_FDIR_TUNNEL_MODE_GPE    = 4,
+	HINIC3_FDIR_TUNNEL_MODE_GENEVE = 5,
+	HINIC3_FDIR_TUNNEL_MODE_NSH    = 6,
+	HINIC3_FDIR_TUNNEL_MODE_IPIP   = 7,
 };
 
 enum hinic3_fdir_ip_type {
@@ -61,7 +104,6 @@ enum hinic3_fdir_ip_type {
 	HINIC3_FDIR_IP_TYPE_ANY = 2,
 };
 
-/* Describe the key structure of the TCAM. */
 struct hinic3_tcam_key_mem {
 #if (RTE_BYTE_ORDER == RTE_BIG_ENDIAN)
 	uint32_t rsvd0 : 16;
@@ -77,11 +119,13 @@ struct hinic3_tcam_key_mem {
 
 	uint32_t dipv4_h : 16;
 	uint32_t dipv4_l : 16;
-	uint32_t rsvd2 : 16;
+
+	uint32_t vlan_flag : 1;
+	uint32_t rsvd2 : 15;
 
 	uint32_t rsvd3;
 
-	uint32_t rsvd4 : 16;
+	uint32_t ether_type : 16;
 	uint32_t dport : 16;
 
 	uint32_t sport : 16;
@@ -89,9 +133,10 @@ struct hinic3_tcam_key_mem {
 
 	uint32_t rsvd6 : 16;
 	uint32_t outer_sipv4_h : 16;
-	uint32_t outer_sipv4_l : 16;
 
+	uint32_t outer_sipv4_l : 16;
 	uint32_t outer_dipv4_h : 16;
+
 	uint32_t outer_dipv4_l : 16;
 	uint32_t vni_h : 16;
 
@@ -110,13 +155,14 @@ struct hinic3_tcam_key_mem {
 	uint32_t dipv4_h : 16;
 	uint32_t sipv4_l : 16;
 
-	uint32_t rsvd2 : 16;
+	uint32_t rsvd2 : 15;
+	uint32_t vlan_flag : 1;
 	uint32_t dipv4_l : 16;
 
 	uint32_t rsvd3;
 
 	uint32_t dport : 16;
-	uint32_t rsvd4 : 16;
+	uint32_t ether_type : 16;
 
 	uint32_t rsvd5 : 16;
 	uint32_t sport : 16;
@@ -135,18 +181,90 @@ struct hinic3_tcam_key_mem {
 #endif
 };
 
-/*
- * Define the IPv6-related TCAM key data structure in common
- * scenarios or IPv6 tunnel scenarios.
- */
+struct hinic3_tcam_key_mem_htn {
+#if (RTE_BYTE_ORDER == RTE_BIG_ENDIAN)
+	uint32_t rsvd0 : 16;
+	uint32_t ip_proto : 8;
+	uint32_t tunnel_type : 3;
+	uint32_t function_id_h: 5;
+
+	uint32_t function_id_l : 5;
+	uint32_t ip_type : 2;
+	uint32_t outer_ip_type : 1;
+	uint32_t rsvd1 : 8;
+	uint32_t outer_sipv4_h : 16;
+
+	uint32_t outer_sipv4_l : 16;
+	uint32_t outer_dipv4_h : 16;
+
+	uint32_t outer_dipv4_l : 16;
+	uint32_t rsvd2 : 8;
+	uint32_t vni_h : 8;
+
+	uint32_t vni_l : 16;
+	uint32_t sipv4_h : 16;
+
+	uint32_t sipv4_l : 16;
+	uint32_t rsvd5 : 16;
+
+	uint32_t rsvd6;
+	uint32_t rsvd7;
+
+	uint32_t rsvd8 : 16;
+	uint32_t dipv4_h : 16;
+
+	uint32_t dipv4_l : 16;
+	uint32_t sport : 16;
+
+	uint32_t dport : 16;
+	uint32_t rsvd5 : 16;
+#else
+	uint32_t function_id_h : 5;
+	uint32_t tunnel_type : 3;
+	uint32_t ip_proto : 8;
+	uint32_t rsvd0 : 16;
+
+	uint32_t outer_sipv4_h : 16;
+	uint32_t rsvd1 : 8;
+	uint32_t outer_ip_type : 1;
+	uint32_t ip_type : 2;
+	uint32_t function_id_l : 5;
+
+	uint32_t outer_dipv4_h : 16;
+	uint32_t outer_sipv4_l : 16;
+
+	uint32_t vni_h : 8;
+	uint32_t rsvd2 : 8;
+	uint32_t outer_dipv4_l : 16;
+
+	uint32_t sipv4_h : 16;
+	uint32_t vni_l : 16;
+
+	uint32_t rsvd5 : 16;
+	uint32_t sipv4_l : 16;
+
+	uint32_t rsvd6;
+	uint32_t rsvd7;
+
+	uint32_t dipv4_h : 16;
+	uint32_t rsvd8 : 16;
+
+	uint32_t sport : 16;
+	uint32_t dipv4_l :16;
+
+	uint32_t rsvd9 : 16;
+	uint32_t dport : 16;
+#endif
+};
+
 struct hinic3_tcam_key_ipv6_mem {
 #if (RTE_BYTE_ORDER == RTE_BIG_ENDIAN)
 	uint32_t rsvd0 : 16;
-	/* Indicates the normal IPv6 nextHdr or inner IPv4/IPv6 next proto. */
 	uint32_t ip_proto : 8;
 	uint32_t tunnel_type : 4;
 	uint32_t outer_ip_type : 1;
-	uint32_t rsvd1 : 3;
+	uint32_t vlan_flag : 1;
+	uint32_t rsvd1 : 2;
 
 	uint32_t function_id : 15;
 	uint32_t ip_type : 1;
@@ -179,7 +297,9 @@ struct hinic3_tcam_key_ipv6_mem {
 	uint32_t dipv6_key7 : 16;
 	uint32_t rsvd2 : 16;
 #else
-	uint32_t rsvd1 : 3;
+	uint32_t rsvd1 : 2;
+	uint32_t vlan_flag : 1;
+
 	uint32_t outer_ip_type : 1;
 	uint32_t tunnel_type : 4;
 	uint32_t ip_proto : 8;
@@ -218,10 +338,86 @@ struct hinic3_tcam_key_ipv6_mem {
 #endif
 };
 
-/*
- * Define the tcam key value data structure related to IPv6 in
- * the VXLAN scenario.
- */
+struct hinic3_tcam_key_ipv6_mem_htn {
+#if (RTE_BYTE_ORDER == RTE_BIG_ENDIAN)
+	uint32_t rsvd0 : 16;
+	uint32_t ip_proto : 8;
+	uint32_t tunnel_type : 3;
+	uint32_t function_id_h : 5;
+
+	uint32_t function_id_l : 5;
+	uint32_t ip_type : 2;
+	uint32_t outer_ip_type : 1;
+	uint32_t rsvd1 : 8;
+	uint32_t sipv6_key0 : 16;
+
+	uint32_t sipv6_key1 : 16;
+	uint32_t sipv6_key2 : 16;
+
+	uint32_t sipv6_key3 : 16;
+	uint32_t sipv6_key4 : 16;
+
+	uint32_t sipv6_key5 : 16;
+	uint32_t sipv6_key6 : 16;
+
+	uint32_t sipv6_key7 : 16;
+	uint32_t dipv6_key0 : 16;
+
+	uint32_t dipv6_key1 : 16;
+	uint32_t dipv6_key2 : 16;
+
+	uint32_t dipv6_key3 : 16;
+	uint32_t dipv6_key4 : 16;
+
+	uint32_t dipv6_key5 : 16;
+	uint32_t dipv6_key6 : 16;
+
+	uint32_t dipv6_key7 : 16;
+	uint32_t sport : 16;
+
+	uint32_t dport : 16;
+	uint32_t rsvd2 : 16;
+#else
+	uint32_t function_id_h : 5;
+	uint32_t tunnel_type : 3;
+	uint32_t ip_proto : 8;
+	uint32_t rsvd0 : 16;
+
+	uint32_t sipv6_key0 : 16;
+	uint32_t rsvd1 : 8;
+	uint32_t outer_ip_type : 1;
+	uint32_t ip_type : 2;
+	uint32_t function_id_l : 5;
+
+	uint32_t sipv6_key2 : 16;
+	uint32_t sipv6_key1 : 16;
+
+	uint32_t sipv6_key4 : 16;
+	uint32_t sipv6_key3 : 16;
+
+	uint32_t sipv6_key6 : 16;
+	uint32_t sipv6_key5 : 16;
+
+	uint32_t dipv6_key0 : 16;
+	uint32_t sipv6_key7 : 16;
+
+	uint32_t dipv6_key2 : 16;
+	uint32_t dipv6_key1 : 16;
+
+	uint32_t dipv6_key4 : 16;
+	uint32_t dipv6_key3 : 16;
+
+	uint32_t dipv6_key6 : 16;
+	uint32_t dipv6_key5 : 16;
+
+	uint32_t sport : 16;
+	uint32_t dipv6_key7 : 16;
+
+	uint32_t rsvd2 : 16;
+	uint32_t dport : 16;
+#endif
+};
+
 struct hinic3_tcam_key_vxlan_ipv6_mem {
 #if (RTE_BYTE_ORDER == RTE_BIG_ENDIAN)
 	uint32_t rsvd0 : 16;
@@ -246,7 +442,8 @@ struct hinic3_tcam_key_vxlan_ipv6_mem {
 	uint32_t dport : 16;
 
 	uint32_t sport : 16;
-	uint32_t rsvd2 : 16;
+	uint32_t vlan_flag : 1;
+	uint32_t rsvd2 : 15;
 
 	uint32_t rsvd3 : 16;
 	uint32_t outer_sipv4_h : 16;
@@ -281,7 +478,8 @@ struct hinic3_tcam_key_vxlan_ipv6_mem {
 	uint32_t dport : 16;
 	uint32_t dipv6_key7 : 16;
 
-	uint32_t rsvd2 : 16;
+	uint32_t rsvd2 : 15;
+	uint32_t vlan_flag : 1;
 	uint32_t sport : 16;
 
 	uint32_t outer_sipv4_h : 16;
@@ -298,6 +496,88 @@ struct hinic3_tcam_key_vxlan_ipv6_mem {
 #endif
 };
 
+struct hinic3_tcam_key_vxlan_ipv6_mem_htn {
+#if (RTE_BYTE_ORDER == RTE_BIG_ENDIAN)
+	uint32_t rsvd0 : 16;
+	uint32_t ip_proto : 8;
+	uint32_t tunnel_type : 3;
+	uint32_t function_id_h : 5;
+
+	uint32_t function_id_l : 5;
+	uint32_t ip_type : 2;
+	uint32_t outer_ip_type : 1;
+	uint32_t rsvd1 : 8;
+	uint32_t outer_sipv4_h : 16;
+
+	uint32_t outer_sipv4_l : 16;
+	uint32_t outer_dipv4_h : 16;
+
+	uint32_t outer_dipv4_l : 16;
+	uint32_t rsvd2 : 8;
+	uint32_t vni_h : 8;
+
+	uint32_t vni_l : 16;
+	uint32_t rsvd3 : 16;
+
+	uint32_t rsvd4 : 16;
+	uint32_t dipv6_key0 : 16;
+
+	uint32_t dipv6_key1 : 16;
+	uint32_t dipv6_key2 : 16;
+
+	uint32_t dipv6_key3 : 16;
+	uint32_t dipv6_key4 : 16;
+
+	uint32_t dipv6_key5 : 16;
+	uint32_t dipv6_key6 : 16;
+
+	uint32_t dipv6_key7 : 16;
+	uint32_t sport : 16;
+
+	uint32_t dport : 16;
+	uint32_t rsvd2 : 16;
+#else
+	uint32_t function_id_h : 5;
+	uint32_t tunnel_type : 3;
+	uint32_t ip_proto : 8;
+	uint32_t rsvd0 : 16;
+
+	uint32_t outer_sipv4_h : 16;
+	uint32_t rsvd1 : 8;
+	uint32_t outer_ip_type : 1;
+	uint32_t ip_type : 2;
+	uint32_t function_id_l : 5;
+
+	uint32_t outer_dipv4_h : 16;
+	uint32_t outer_sipv4_l : 16;
+
+	uint32_t vni_h : 8;
+	uint32_t rsvd2 : 8;
+	uint32_t outer_dipv4_l : 16;
+
+	uint32_t rsvd3 : 16;
+	uint32_t vni_l : 16;
+
+	uint32_t dipv6_key0 : 16;
+	uint32_t rsvd4 : 16;
+
+	uint32_t dipv6_key2 : 16;
+	uint32_t dipv6_key1 : 16;
+
+	uint32_t dipv6_key4 : 16;
+	uint32_t dipv6_key3 : 16;
+
+	uint32_t dipv6_key6 : 16;
+	uint32_t dipv6_key5 : 16;
+
+	uint32_t sport : 16;
+	uint32_t dipv6_key7 : 16;
+
+	uint32_t rsvd5 : 16;
+	uint32_t dport : 16;
+#endif
+};
+
 /*
  * TCAM key structure. The two unions indicate the key and mask respectively.
  * The TCAM key is consistent with the TCAM entry.
@@ -307,18 +587,26 @@ struct hinic3_tcam_key {
 		struct hinic3_tcam_key_mem key_info;
 		struct hinic3_tcam_key_ipv6_mem key_info_ipv6;
 		struct hinic3_tcam_key_vxlan_ipv6_mem key_info_vxlan_ipv6;
+
+		struct hinic3_tcam_key_mem_htn key_info_htn;
+		struct hinic3_tcam_key_ipv6_mem_htn key_info_ipv6_htn;
+		struct hinic3_tcam_key_vxlan_ipv6_mem_htn key_info_vxlan_ipv6_htn;
 	};
 	union {
 		struct hinic3_tcam_key_mem key_mask;
 		struct hinic3_tcam_key_ipv6_mem key_mask_ipv6;
 		struct hinic3_tcam_key_vxlan_ipv6_mem key_mask_vxlan_ipv6;
+
+		struct hinic3_tcam_key_mem_htn key_mask_htn;
+		struct hinic3_tcam_key_ipv6_mem_htn key_mask_ipv6_htn;
+		struct hinic3_tcam_key_vxlan_ipv6_mem_htn key_mask_vxlan_ipv6_htn;
 	};
 };
 
 /* Structure indicates the TCAM filter. */
 struct hinic3_tcam_filter {
-	TAILQ_ENTRY(hinic3_tcam_filter)
-	entries; /**< Filter entry, used for linked list operations. */
+	/** Filter entry, used for linked list operations. */
+	TAILQ_ENTRY(hinic3_tcam_filter) entries;
 	uint16_t dynamic_block_id;	 /**< Dynamic block ID. */
 	uint16_t index;			 /**< TCAM index. */
 	struct hinic3_tcam_key tcam_key; /**< Indicate TCAM key. */
@@ -362,33 +650,24 @@ struct hinic3_tcam_info {
 #define HINIC3_CNM_RULE_NUM  1
 #define HINIC3_ECP_RULE_NUM  2
 
+#define HINIC3_UINT1_MAX	0x1
+#define HINIC3_UINT2_MAX	0x3
+#define HINIC3_UINT3_MAX	0x7
+#define HINIC3_UINT4_MAX	0xf
+#define HINIC3_UINT5_WIDTH	0x5
+#define HINIC3_UINT5_MAX	0x1f
+#define HINIC3_UINT15_MAX	0x7fff
+
 /* Define Ethernet type. */
 #define RTE_ETHER_TYPE_CNM 0x22e7
 #define RTE_ETHER_TYPE_ECP 0x8940
-
-/* Protocol type of the data packet. */
-enum hinic3_ether_type {
-	HINIC3_PKT_TYPE_ARP = 1,
-	HINIC3_PKT_TYPE_ARP_REQ,
-	HINIC3_PKT_TYPE_ARP_REP,
-	HINIC3_PKT_TYPE_RARP,
-	HINIC3_PKT_TYPE_LACP,
-	HINIC3_PKT_TYPE_LLDP,
-	HINIC3_PKT_TYPE_OAM,
-	HINIC3_PKT_TYPE_CDCP,
-	HINIC3_PKT_TYPE_CNM,
-	HINIC3_PKT_TYPE_ECP = 10,
-
-	HINIC3_PKT_UNKNOWN = 31,
-};
 
 int hinic3_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 				    struct hinic3_fdir_filter *fdir_filter,
 				    bool add);
 int hinic3_flow_add_del_ethertype_filter(struct rte_eth_dev *dev,
-					 struct rte_eth_ethertype_filter *ethertype_filter,
+					 struct hinic3_ethertype_filter *ethertype_filter,
 					 bool add);
-
 void hinic3_free_fdir_filter(struct rte_eth_dev *dev);
 int hinic3_enable_rxq_fdir_filter(struct rte_eth_dev *dev, uint32_t queue_id,
 				  uint32_t able);

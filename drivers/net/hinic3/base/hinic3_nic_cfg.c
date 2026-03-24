@@ -970,7 +970,7 @@ hinic3_set_vlan_filter(struct hinic3_hwdev *hwdev, uint32_t vlan_filter_ctrl)
 
 static int
 hinic3_set_rx_lro(struct hinic3_hwdev *hwdev, uint8_t ipv4_en,
-				uint8_t ipv6_en, uint8_t lro_max_pkt_len)
+		  uint8_t ipv6_en, uint8_t lro_max_pkt_len)
 {
 	struct hinic3_cmd_lro_config lro_cfg = {0};
 	uint16_t out_size = sizeof(lro_cfg);
@@ -1029,7 +1029,7 @@ hinic3_set_rx_lro_timer(struct hinic3_hwdev *hwdev, uint32_t timer_value)
 }
 
 int
-hinic3_set_rx_lro_state(struct hinic3_hwdev *hwdev, uint8_t lro_en, uint32_t lro_timer,
+hinic3_set_rx_lro_state(struct hinic3_hwdev *hwdev, bool lro_en, uint32_t lro_timer,
 			uint32_t lro_max_pkt_len)
 {
 	uint8_t ipv4_en = 0, ipv6_en = 0;
@@ -1468,54 +1468,6 @@ hinic3_vf_get_default_cos(struct hinic3_hwdev *hwdev, uint8_t *cos_id)
 	return 0;
 }
 
-/**
- * Set the Ethernet type filtering rule for the FDIR of a NIC.
- *
- * @param[in] hwdev
- * Pointer to hardware device structure.
- * @param[in] pkt_type
- * Indicate the packet type.
- * @param[in] queue_id
- * Indicate the queue id.
- * @param[in] en
- * Indicate whether to add or delete an operation. 1 - add; 0 - delete.
- *
- * @return
- * 0 on success, non-zero on failure.
- */
-int
-hinic3_set_fdir_ethertype_filter(struct hinic3_hwdev *hwdev,
-			 uint8_t pkt_type, uint16_t queue_id, uint8_t en)
-{
-	struct hinic3_set_fdir_ethertype_rule ethertype_cmd;
-	uint16_t out_size = sizeof(ethertype_cmd);
-	int err;
-
-	if (!hwdev)
-		return -EINVAL;
-
-	memset(&ethertype_cmd, 0,
-	       sizeof(struct hinic3_set_fdir_ethertype_rule));
-	ethertype_cmd.func_id = hinic3_global_func_id(hwdev);
-	ethertype_cmd.pkt_type = pkt_type;
-	ethertype_cmd.pkt_type_en = en;
-	ethertype_cmd.qid = (uint8_t)queue_id;
-
-	err = hinic3_msg_to_mgmt_sync(hwdev, HINIC3_MOD_L2NIC,
-				      HINIC3_NIC_CMD_SET_FDIR_STATUS,
-				      &ethertype_cmd, sizeof(ethertype_cmd),
-				      &ethertype_cmd, &out_size);
-	if (err || ethertype_cmd.head.status || !out_size) {
-		PMD_DRV_LOG(ERR,
-			    "set fdir ethertype rule failed, err: %d, status: 0x%x, out size: 0x%x, func_id %d",
-			    err, ethertype_cmd.head.status, out_size,
-			    ethertype_cmd.func_id);
-		return -EIO;
-	}
-
-	return 0;
-}
-
 int
 hinic3_add_tcam_rule(struct hinic3_hwdev *hwdev, struct hinic3_tcam_cfg_rule *tcam_rule,
 		     uint8_t tcam_rule_type)
@@ -1543,8 +1495,7 @@ hinic3_add_tcam_rule(struct hinic3_hwdev *hwdev, struct hinic3_tcam_cfg_rule *tc
 				      &tcam_cmd, sizeof(tcam_cmd),
 				      &tcam_cmd, &out_size);
 	if (err || tcam_cmd.msg_head.status || !out_size) {
-		PMD_DRV_LOG(ERR,
-			    "Add tcam rule failed, err: %d, status: 0x%x, out size: 0x%x",
+		PMD_DRV_LOG(ERR, "Add tcam rule failed, err: %d, status: 0x%x, out size: 0x%x",
 			    err, tcam_cmd.msg_head.status, out_size);
 		return -EIO;
 	}

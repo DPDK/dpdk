@@ -55,7 +55,8 @@ struct hinic3_htn_vlan_ctx {
 /**
  * Get cmdq ops hardware tile NIC(htn) supported.
  *
- * @retval Pointer to ops.
+ * @return
+ * Pointer to ops.
  */
 struct hinic3_nic_cmdq_ops *hinic3_nic_cmdq_get_htn_ops(void);
 

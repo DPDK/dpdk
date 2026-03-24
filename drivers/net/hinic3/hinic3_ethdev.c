@@ -975,8 +975,8 @@ hinic3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qid, uint16_t nb_desc,
 			    "RX queue depth is out of range from %d to %d",
 			    HINIC3_MIN_QUEUE_DEPTH, HINIC3_MAX_QUEUE_DEPTH);
 		PMD_DRV_LOG(ERR,
-				"nb_desc: %d, q_depth: %d, port: %d queue: %d",
-				nb_desc, rq_depth, dev->data->port_id, qid);
+			    "nb_desc: %d, q_depth: %d, port: %d queue: %d",
+			    nb_desc, rq_depth, dev->data->port_id, qid);
 		return -EINVAL;
 	}
 
@@ -2158,8 +2158,7 @@ hinic3_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	}
 
 	/* Update max frame size. */
-	HINIC3_MAX_RX_PKT_LEN(dev->data->dev_conf.rxmode) =
-		HINIC3_MTU_TO_PKTLEN(mtu);
+	HINIC3_MAX_RX_PKT_LEN(dev->data->dev_conf.rxmode) = HINIC3_MTU_TO_PKTLEN(mtu);
 	nic_dev->mtu_size = mtu;
 	return err;
 }
@@ -2357,6 +2356,12 @@ hinic3_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	uint32_t rx_mode;
 	int err;
 
+	if (!(nic_dev->feature_cap & NIC_F_PROMISC)) {
+		PMD_DRV_LOG(ERR, "nic_dev: %s, port_id: %d, do not support vf promisc: %" PRIu64 "",
+			    nic_dev->dev_name, dev->data->port_id, nic_dev->feature_cap);
+		return -ENOTSUP;
+	}
+
 	rx_mode = nic_dev->rx_mode | HINIC3_RX_MODE_PROMISC;
 
 	err = hinic3_set_rx_mode(nic_dev->hwdev, rx_mode);
@@ -2527,19 +2532,21 @@ hinic3_rss_hash_update(struct rte_eth_dev *dev,
 	}
 
 	rss_type.ipv4 = (rss_hf & (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4 |
-				   RTE_ETH_RSS_NONFRAG_IPV4_OTHER))
-				? 1
-				: 0;
+				   RTE_ETH_RSS_NONFRAG_IPV4_OTHER)) ? 1 : 0;
 	rss_type.tcp_ipv4 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP) ? 1 : 0;
 	rss_type.ipv6 = (rss_hf & (RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6 |
-				   RTE_ETH_RSS_NONFRAG_IPV6_OTHER))
-				? 1
-				: 0;
-	rss_type.ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_EX) ? 1 : 0;
+				   RTE_ETH_RSS_NONFRAG_IPV6_OTHER)) ? 1 : 0;
 	rss_type.tcp_ipv6 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP) ? 1 : 0;
-	rss_type.tcp_ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_TCP_EX) ? 1 : 0;
 	rss_type.udp_ipv4 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP) ? 1 : 0;
 	rss_type.udp_ipv6 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP) ? 1 : 0;
+
+	if (nic_dev->feature_cap & NIC_F_HTN_CMDQ) {
+		rss_type.ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_EX) ? 1 : 0;
+		rss_type.tcp_ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_TCP_EX) ? 1 : 0;
+	} else {
+		rss_type.ipv6_ext = 0;
+		rss_type.tcp_ipv6_ext = 0;
+	}
 
 	err = hinic3_set_rss_type(nic_dev->hwdev, rss_type);
 	if (err)
@@ -2597,11 +2604,13 @@ hinic3_rss_conf_get(struct rte_eth_dev *dev, struct rte_eth_rss_conf *rss_conf)
 	rss_conf->rss_hf |=
 		rss_type.ipv6 ? (RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6 |
 				 RTE_ETH_RSS_NONFRAG_IPV6_OTHER) : 0;
-	rss_conf->rss_hf |= rss_type.ipv6_ext ? RTE_ETH_RSS_IPV6_EX : 0;
 	rss_conf->rss_hf |= rss_type.tcp_ipv6 ? RTE_ETH_RSS_NONFRAG_IPV6_TCP : 0;
-	rss_conf->rss_hf |= rss_type.tcp_ipv6_ext ? RTE_ETH_RSS_IPV6_TCP_EX : 0;
 	rss_conf->rss_hf |= rss_type.udp_ipv4 ? RTE_ETH_RSS_NONFRAG_IPV4_UDP : 0;
 	rss_conf->rss_hf |= rss_type.udp_ipv6 ? RTE_ETH_RSS_NONFRAG_IPV6_UDP : 0;
+	if (nic_dev->feature_cap & NIC_F_HTN_CMDQ) {
+		rss_conf->rss_hf |= rss_type.ipv6_ext ? RTE_ETH_RSS_IPV6_EX : 0;
+		rss_conf->rss_hf |= rss_type.tcp_ipv6_ext ? RTE_ETH_RSS_IPV6_TCP_EX : 0;
+	}
 
 	return 0;
 }
