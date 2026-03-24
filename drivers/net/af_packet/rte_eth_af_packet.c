@@ -56,6 +56,7 @@ struct __rte_cache_aligned pkt_rx_queue {
 	uint16_t in_port;
 	uint8_t vlan_strip;
 	uint8_t timestamp_offloading;
+	uint8_t scatter_enabled;
 
 	volatile unsigned long rx_pkts;
 	volatile unsigned long rx_bytes;
@@ -120,6 +121,44 @@ RTE_LOG_REGISTER_DEFAULT(af_packet_logtype, NOTICE);
 	RTE_LOG_LINE(level, AFPACKET, "%s(): " fmt ":%s", __func__, \
 		## __VA_ARGS__, strerror(errno))
 
+/*
+ * Copy packet data into chained mbufs when it exceeds single mbuf tailroom.
+ * Returns 0 on success, -1 on mbuf allocation failure.
+ */
+static int
+eth_af_packet_rx_scatter(struct rte_mempool *mb_pool, struct rte_mbuf *mbuf,
+		const uint8_t *data, uint32_t data_len)
+{
+	uint16_t len = rte_pktmbuf_tailroom(mbuf);
+	struct rte_mbuf *m = mbuf;
+
+	memcpy(rte_pktmbuf_mtod(mbuf, void *), data, len);
+	rte_pktmbuf_data_len(mbuf) = len;
+	data_len -= len;
+	data += len;
+
+	while (data_len > 0) {
+		m->next = rte_pktmbuf_alloc(mb_pool);
+		if (unlikely(m->next == NULL))
+			return -1;
+
+		m = m->next;
+
+		/* Headroom is not needed in chained mbufs */
+		m->data_off = 0;
+
+		len = RTE_MIN(rte_pktmbuf_tailroom(m), data_len);
+		memcpy(rte_pktmbuf_mtod(m, void *), data, len);
+		rte_pktmbuf_data_len(m) = len;
+
+		mbuf->nb_segs++;
+		data_len -= len;
+		data += len;
+	}
+
+	return 0;
+}
+
 static uint16_t
 eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
@@ -131,6 +170,7 @@ eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	uint16_t num_rx = 0;
 	unsigned long num_rx_bytes = 0;
 	unsigned int framecount, framenum;
+	uint32_t pkt_len;
 
 	if (unlikely(nb_pkts == 0))
 		return 0;
@@ -154,20 +194,29 @@ eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			break;
 		}
 
-		/* drop packets that won't fit in the mbuf */
-		if (ppd->tp_snaplen > rte_pktmbuf_tailroom(mbuf)) {
+		pkt_len = ppd->tp_snaplen;
+		pbuf = (uint8_t *)ppd + ppd->tp_mac;
+
+		if (pkt_len <= rte_pktmbuf_tailroom(mbuf)) {
+			/* packet fits in a single mbuf */
+			memcpy(rte_pktmbuf_mtod(mbuf, void *), pbuf, pkt_len);
+			rte_pktmbuf_data_len(mbuf) = pkt_len;
+		} else if (pkt_q->scatter_enabled) {
+			/* scatter into chained mbufs */
+			if (unlikely(eth_af_packet_rx_scatter(pkt_q->mb_pool,
+					mbuf, pbuf, pkt_len) < 0)) {
+				rte_pktmbuf_free(mbuf);
+				pkt_q->rx_nombuf++;
+				goto release_frame;
+			}
+		} else {
+			/* oversized and no scatter - drop */
 			rte_pktmbuf_free(mbuf);
-			ppd->tp_status = TP_STATUS_KERNEL;
-			if (++framenum >= framecount)
-				framenum = 0;
 			pkt_q->rx_dropped_pkts++;
-			continue;
+			goto release_frame;
 		}
 
-		/* packet will fit in the mbuf, go ahead and receive it */
-		rte_pktmbuf_pkt_len(mbuf) = rte_pktmbuf_data_len(mbuf) = ppd->tp_snaplen;
-		pbuf = (uint8_t *) ppd + ppd->tp_mac;
-		memcpy(rte_pktmbuf_mtod(mbuf, void *), pbuf, rte_pktmbuf_data_len(mbuf));
+		rte_pktmbuf_pkt_len(mbuf) = pkt_len;
 
 		/* check for vlan info */
 		if (ppd->tp_status & TP_STATUS_VLAN_VALID) {
@@ -188,16 +237,18 @@ eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			mbuf->ol_flags |= timestamp_dynflag;
 		}
 
+		mbuf->port = pkt_q->in_port;
+
+		/* account for the receive frame */
+		bufs[num_rx] = mbuf;
+		num_rx++;
+		num_rx_bytes += mbuf->pkt_len;
+
+release_frame:
 		/* release incoming frame and advance ring buffer */
 		ppd->tp_status = TP_STATUS_KERNEL;
 		if (++framenum >= framecount)
 			framenum = 0;
-		mbuf->port = pkt_q->in_port;
-
-		/* account for the receive frame */
-		bufs[i] = mbuf;
-		num_rx++;
-		num_rx_bytes += mbuf->pkt_len;
 	}
 	pkt_q->framenum = framenum;
 	pkt_q->rx_pkts += num_rx;
@@ -412,7 +463,8 @@ eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
 		RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
 	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
-		RTE_ETH_RX_OFFLOAD_TIMESTAMP;
+		RTE_ETH_RX_OFFLOAD_TIMESTAMP |
+		RTE_ETH_RX_OFFLOAD_SCATTER;
 
 	return 0;
 }
@@ -579,26 +631,29 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 	struct pmd_internals *internals = dev->data->dev_private;
 	struct pkt_rx_queue *pkt_q = &internals->rx_queue[rx_queue_id];
 	unsigned int buf_size, data_size;
+	bool scatter_enabled;
 
 	pkt_q->mb_pool = mb_pool;
 
-	/* Now get the space available for data in the mbuf */
 	buf_size = rte_pktmbuf_data_room_size(pkt_q->mb_pool) -
 		RTE_PKTMBUF_HEADROOM;
 	data_size = internals->req.tp_frame_size;
 	data_size -= TPACKET2_HDRLEN - sizeof(struct sockaddr_ll);
 
-	if (data_size > buf_size) {
+	scatter_enabled = !!(dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER);
+
+	if (!scatter_enabled && data_size > buf_size) {
 		PMD_LOG(ERR,
-			"%s: %d bytes will not fit in mbuf (%d bytes)",
+			"%s: %d bytes will not fit in mbuf (%d bytes), enable scatter offload",
 			dev->device->name, data_size, buf_size);
-		return -ENOMEM;
+		return -EINVAL;
 	}
 
 	dev->data->rx_queues[rx_queue_id] = pkt_q;
 	pkt_q->in_port = dev->data->port_id;
 	pkt_q->vlan_strip = internals->vlan_strip;
 	pkt_q->timestamp_offloading = internals->timestamp_offloading;
+	pkt_q->scatter_enabled = scatter_enabled;
 
 	return 0;
 }

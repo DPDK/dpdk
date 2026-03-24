@@ -65,6 +65,11 @@ New Features
 
   * Added support for V4000 Krackan2e.
 
+* **Updated AF_PACKET ethernet driver.**
+
+  * Added support for multi-segment mbuf reception to handle jumbo frames
+    with standard mbuf sizes when scatter Rx offload is enabled.
+
 * **Updated CESNET nfb ethernet driver.**
 
   * The timestamp value has been updated to make it usable.
