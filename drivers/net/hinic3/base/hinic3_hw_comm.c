@@ -12,7 +12,7 @@
 #include "hinic3_wq.h"
 #include "hinic3_nic_cfg.h"
 
-/* Buffer sizes in hinic3_convert_rx_buf_size must be in ascending order. */
+/* Buffer sizes must be in ascending order. */
 const uint32_t hinic3_hw_rx_buf_size[] = {
 	HINIC3_RX_BUF_SIZE_32B,
 	HINIC3_RX_BUF_SIZE_64B,
@@ -239,10 +239,13 @@ size_matched:
 }
 
 static uint16_t
-get_hw_rx_buf_size(uint32_t rx_buf_sz)
+get_hw_rx_buf_size(struct hinic3_hwdev *hwdev, uint32_t rx_buf_sz)
 {
 	uint16_t num_hw_types = RTE_DIM(hinic3_hw_rx_buf_size);
 	uint16_t i;
+
+	if (HINIC3_IS_USE_REAL_RX_BUF_SIZE(hwdev))
+		return rx_buf_sz;
 
 	for (i = 0; i < num_hw_types; i++) {
 		if (hinic3_hw_rx_buf_size[i] == rx_buf_sz)
@@ -271,8 +274,12 @@ hinic3_set_root_ctxt(struct hinic3_hwdev *hwdev, uint32_t rq_depth,
 	root_ctxt.cmdq_depth = 0;
 	root_ctxt.lro_en = 1;
 	root_ctxt.rq_depth = (uint16_t)rte_log2_u32(rq_depth);
-	root_ctxt.rx_buf_sz = get_hw_rx_buf_size(rx_buf_sz);
+	root_ctxt.rx_buf_sz = get_hw_rx_buf_size(hwdev, rx_buf_sz);
 	root_ctxt.sq_depth = (uint16_t)rte_log2_u32(sq_depth);
+	root_ctxt.cmdq_mode = hwdev->cmdqs->cmdq_mode;
+
+	if (hwdev->cmdqs->cmdq_mode == HINIC3_ENHANCE_CMDQ)
+		root_ctxt.cmdq_depth--;
 
 	err = hinic3_msg_to_mgmt_sync(hwdev, HINIC3_MOD_COMM,
 				      HINIC3_MGMT_CMD_SET_VAT,
@@ -403,7 +410,7 @@ hinic3_comm_features_nego(struct hinic3_hwdev *hwdev,
 	uint16_t out_size = sizeof(feature_nego);
 	int err;
 
-	if (!hwdev || !s_feature || size > COMM_MAX_FEATURE_QWORD)
+	if (!hwdev || !s_feature || size > HINIC3_MAX_FEATURE_QWORD)
 		return -EINVAL;
 
 	memset(&feature_nego, 0, sizeof(feature_nego));

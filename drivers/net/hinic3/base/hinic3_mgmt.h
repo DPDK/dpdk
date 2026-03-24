@@ -70,6 +70,8 @@ typedef enum {
 #define HINIC3_TOE_RES	 (1 << RES_TYPE_TOE)
 #define HINIC3_IPSEC_RES (1 << RES_TYPE_IPSEC)
 
+#define HINIC3_MAX_FEATURE_QWORD 4
+
 struct hinic3_recv_msg {
 	void *msg;
 

@@ -2,6 +2,7 @@
 # Copyright(c) 2025 Huawei Technologies Co., Ltd
 
 base_sources = files(
+        'hinic3_cmdq_enhance.c',
         'hinic3_cmdq.c',
         'hinic3_eqs.c',
         'hinic3_hw_cfg.c',

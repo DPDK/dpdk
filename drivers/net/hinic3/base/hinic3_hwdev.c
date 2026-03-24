@@ -261,7 +261,7 @@ hinic3_comm_cmdqs_init(struct hinic3_hwdev *hwdev)
 {
 	int err;
 
-	err = hinic3_init_cmdqs(hwdev);
+	err = hinic3_cmdq_init(hwdev);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Init cmd queues failed");
 		return err;
@@ -276,7 +276,7 @@ hinic3_comm_cmdqs_init(struct hinic3_hwdev *hwdev)
 	return 0;
 
 set_cmdq_depth_err:
-	hinic3_free_cmdqs(hwdev);
+	hinic3_cmdqs_free(hwdev);
 
 	return err;
 }
@@ -284,7 +284,7 @@ set_cmdq_depth_err:
 static void
 hinic3_comm_cmdqs_free(struct hinic3_hwdev *hwdev)
 {
-	hinic3_free_cmdqs(hwdev);
+	hinic3_cmdqs_free(hwdev);
 }
 
 static void
@@ -426,6 +426,12 @@ hinic3_init_comm_ch(struct hinic3_hwdev *hwdev)
 		goto func_reset_err;
 	}
 
+	err = hinic3_get_comm_features(hwdev, hwdev->features, HINIC3_MAX_FEATURE_QWORD);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Get comm features failed");
+		goto get_common_features_err;
+	}
+
 	err = hinic3_set_func_svc_used_state(hwdev, HINIC3_MOD_COMM, 1);
 	if (err)
 		goto set_used_state_err;
@@ -444,6 +450,7 @@ init_cmdqs_channel_err:
 	hinic3_set_func_svc_used_state(hwdev, HINIC3_MOD_COMM, 0);
 set_used_state_err:
 func_reset_err:
+get_common_features_err:
 get_func_info_err:
 	free_mgmt_channel(hwdev);
 

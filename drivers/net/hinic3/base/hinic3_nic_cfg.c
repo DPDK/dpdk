@@ -48,6 +48,46 @@ static const struct vf_msg_handler vf_mag_cmd_handler[] = {
 	},
 };
 
+int
+hinic3_msg_to_mgmt_sync(struct hinic3_hwdev *hwdev, enum hinic3_mod_type mod,
+			uint16_t cmd, void *buf_in, uint16_t in_size,
+			void *buf_out, uint16_t *out_size)
+{
+	uint32_t i;
+	bool cmd_to_pf = false;
+	struct hinic3_handler_info handler_info = {
+		.cmd = cmd,
+		.buf_in = buf_in,
+		.in_size = in_size,
+		.buf_out = buf_out,
+		.out_size = out_size,
+		.dst_func = HINIC3_MGMT_SRC_ID,
+		.direction = HINIC3_MSG_DIRECT_SEND,
+		.ack_type = HINIC3_MSG_ACK,
+	};
+
+	if (hwdev == NULL)
+		return -EINVAL;
+
+	if (hinic3_func_type(hwdev) == TYPE_VF) {
+		if (mod == HINIC3_MOD_HILINK) {
+			for (i = 0; i < RTE_DIM(vf_mag_cmd_handler); i++) {
+				if (cmd == vf_mag_cmd_handler[i].cmd)
+					cmd_to_pf = true;
+			}
+		} else if (mod == HINIC3_MOD_L2NIC) {
+			for (i = 0; i < RTE_DIM(vf_cmd_handler); i++) {
+				if (cmd == vf_cmd_handler[i].cmd)
+					cmd_to_pf = true;
+			}
+		}
+	}
+	if (cmd_to_pf)
+		handler_info.dst_func = hinic3_pf_id_of_vf(hwdev);
+
+	return hinic3_send_mbox_to_mgmt(hwdev, mod, &handler_info, 0);
+}
+
 /**
  * Set CI table for a SQ.
  *
@@ -1710,43 +1750,6 @@ hinic3_set_rq_flush(struct hinic3_hwdev *hwdev, uint16_t q_id)
 	hinic3_free_cmd_buf(cmd_buf);
 
 	return err;
-}
-
-int
-hinic3_msg_to_mgmt_sync(struct hinic3_hwdev *hwdev, enum hinic3_mod_type mod,
-			uint16_t cmd, void *buf_in, uint16_t in_size,
-			void *buf_out, uint16_t *out_size)
-{
-	uint32_t i;
-	bool cmd_to_pf = false;
-	struct hinic3_handler_info handler_info = {
-		.cmd = cmd,
-		.buf_in = buf_in,
-		.in_size = in_size,
-		.buf_out = buf_out,
-		.out_size = out_size,
-		.dst_func = HINIC3_MGMT_SRC_ID,
-		.direction = HINIC3_MSG_DIRECT_SEND,
-		.ack_type = HINIC3_MSG_ACK,
-	};
-
-	if (hinic3_func_type(hwdev) == TYPE_VF) {
-		if (mod == HINIC3_MOD_HILINK) {
-			for (i = 0; i < RTE_DIM(vf_mag_cmd_handler); i++) {
-				if (cmd == vf_mag_cmd_handler[i].cmd)
-					cmd_to_pf = true;
-			}
-		} else if (mod == HINIC3_MOD_L2NIC) {
-			for (i = 0; i < RTE_DIM(vf_cmd_handler); i++) {
-				if (cmd == vf_cmd_handler[i].cmd)
-					cmd_to_pf = true;
-			}
-		}
-	}
-	if (cmd_to_pf)
-		handler_info.dst_func = hinic3_pf_id_of_vf(hwdev);
-
-	return hinic3_send_mbox_to_mgmt(hwdev, mod, &handler_info, 0);
 }
 
 int

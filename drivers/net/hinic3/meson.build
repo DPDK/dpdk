@@ -16,8 +16,6 @@ endif
 
 cflags += ['-DHW_CONVERT_ENDIAN']
 
-subdir('base')
-
 sources = files(
         'hinic3_ethdev.c',
         'hinic3_nic_io.c',
@@ -28,3 +26,5 @@ sources = files(
 )
 
 includes += include_directories('base')
+
+subdir('base')

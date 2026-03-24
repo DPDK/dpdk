@@ -9,17 +9,17 @@
 #define HINIC3_MGMT_CMD_OP_GET 0
 #define HINIC3_MGMT_CMD_OP_SET 1
 
-#define HINIC3_MSIX_CNT_LLI_TIMER_SHIFT	    0
-#define HINIC3_MSIX_CNT_LLI_CREDIT_SHIFT    8
-#define HINIC3_MSIX_CNT_COALESCE_TIMER_SHIFT 8
-#define HINIC3_MSIX_CNT_PENDING_SHIFT	    8
-#define HINIC3_MSIX_CNT_RESEND_TIMER_SHIFT  29
+#define HINIC3_MSIX_CNT_LLI_TIMER_SHIFT			0
+#define HINIC3_MSIX_CNT_LLI_CREDIT_SHIFT		8
+#define HINIC3_MSIX_CNT_COALESCE_TIMER_SHIFT		8
+#define HINIC3_MSIX_CNT_PENDING_SHIFT			8
+#define HINIC3_MSIX_CNT_RESEND_TIMER_SHIFT		29
 
-#define HINIC3_MSIX_CNT_LLI_TIMER_MASK	   0xFFU
-#define HINIC3_MSIX_CNT_LLI_CREDIT_MASK	   0xFFU
-#define HINIC3_MSIX_CNT_COALESCE_TIMER_MASK 0xFFU
-#define HINIC3_MSIX_CNT_PENDING_MASK	   0x1FU
-#define HINIC3_MSIX_CNT_RESEND_TIMER_MASK  0x7U
+#define HINIC3_MSIX_CNT_LLI_TIMER_MASK			0xFFU
+#define HINIC3_MSIX_CNT_LLI_CREDIT_MASK			0xFFU
+#define HINIC3_MSIX_CNT_COALESCE_TIMER_MASK		0xFFU
+#define HINIC3_MSIX_CNT_PENDING_MASK			0x1FU
+#define HINIC3_MSIX_CNT_RESEND_TIMER_MASK		0x7U
 
 #define HINIC3_MSIX_CNT_SET(val, member)           \
 	(((val) & HINIC3_MSIX_CNT_##member##_MASK) \
@@ -129,7 +129,7 @@ struct hinic3_cmd_root_ctxt {
 	uint8_t cmdq_depth;
 	uint16_t rx_buf_sz;
 	uint8_t lro_en;
-	uint8_t rsvd1;
+	uint8_t cmdq_mode;
 	uint16_t sq_depth;
 	uint16_t rq_depth;
 	uint64_t rsvd2;
@@ -143,17 +143,16 @@ enum hinic3_fw_ver_type {
 	HINIC3_FW_VER_TYPE_CFG,
 };
 
-#define MGMT_MSG_CMD_OP_SET 1
-#define MGMT_MSG_CMD_OP_GET 0
+#define MGMT_MSG_CMD_OP_SET	1
+#define MGMT_MSG_CMD_OP_GET	0
 
-#define COMM_MAX_FEATURE_QWORD 4
 struct comm_cmd_feature_nego {
 	struct mgmt_msg_head head;
 
 	uint16_t func_id;
 	uint8_t opcode; /**< 1: set, 0: get. */
 	uint8_t rsvd;
-	uint64_t s_feature[COMM_MAX_FEATURE_QWORD];
+	uint64_t s_feature[HINIC3_MAX_FEATURE_QWORD];
 };
 
 #define HINIC3_FW_VERSION_LEN	    16
