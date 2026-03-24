@@ -2151,6 +2151,7 @@ Examples
 .. code-block:: console
 
    testpmd> set port 0 queue 0 rate 1000
+   testpmd> show port 0 queue 0 rate
    testpmd> set port 0 queue 0 rate 0
 
 
