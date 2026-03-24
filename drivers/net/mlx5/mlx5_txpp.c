@@ -173,6 +173,12 @@ mlx5_txq_alloc_pp_rate_limit(struct mlx5_dev_ctx_shared *sh,
 		rte_errno = ERANGE;
 		return -ERANGE;
 	}
+	if (rate_kbps > UINT32_MAX) {
+		DRV_LOG(ERR, "Rate %u Mbps overflows PRM rate_limit field.",
+			rate_mbps);
+		rte_errno = ERANGE;
+		return -ERANGE;
+	}
 	memset(&pp, 0, sizeof(pp));
 	MLX5_SET(set_pp_rate_limit_context, &pp, rate_limit, (uint32_t)rate_kbps);
 	MLX5_SET(set_pp_rate_limit_context, &pp, rate_mode, MLX5_DATA_RATE);

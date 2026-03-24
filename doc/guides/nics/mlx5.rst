@@ -580,6 +580,60 @@ for an additional list of options shared with other mlx5 drivers.
   (with ``tx_pp``) and ConnectX-7+ (wait-on-time) scheduling modes.
   The default value is zero.
 
+.. _mlx5_per_queue_rate_limit:
+
+Per-Queue Tx Rate Limiting
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The mlx5 PMD supports per-queue Tx rate limiting via the standard ethdev
+API ``rte_eth_set_queue_rate_limit()`` and ``rte_eth_get_queue_rate_limit()``.
+
+This feature uses the hardware packet pacing mechanism to enforce a data
+rate on individual TX queues without tearing down the queue. The rate is
+specified in Mbps.
+
+**Requirements:**
+
+- ConnectX-6 Dx or later with ``packet_pacing`` HCA capability.
+- The DevX path must be used (default). The legacy Verbs path
+  (``dv_flow_en=0``) does not support dynamic SQ modification and
+  returns ``-EINVAL``.
+- The queue must be started (SQ in RDY state) before setting a rate.
+
+**Supported hardware:**
+
+- ConnectX-6 Dx: per-SQ rate via HW rate table.
+- ConnectX-7/8: full support, coexists with wait-on-time scheduling.
+- BlueField-2/3: full support as DPU rep ports.
+
+**Not supported:**
+
+- ConnectX-5: ``packet_pacing`` exists but dynamic SQ modify may not
+  work on all firmware versions.
+- ConnectX-4 Lx and earlier: no ``packet_pacing`` capability.
+
+**Rate table sharing:**
+
+The hardware rate table has a limited number of entries (typically 128 on
+ConnectX-6 Dx). When multiple queues are configured with identical rate
+parameters, the kernel mlx5 driver shares a single rate table entry across
+them. Each queue still has its own independent SQ and enforces the rate
+independently — queues are never merged. The rate cap applies per-queue:
+if two queues share the same 1000 Mbps entry, each can send up to
+1000 Mbps independently, they do not share a combined budget.
+
+This sharing is transparent and only affects table capacity: 128 entries
+can serve thousands of queues as long as many use the same rate. Queues
+with different rates consume separate entries.
+
+**Usage with testpmd:**
+
+.. code-block:: console
+
+   testpmd> set port 0 queue 0 rate 1000
+   testpmd> show port 0 queue 0 rate
+   testpmd> set port 0 queue 0 rate 0
+
 - ``tx_vec_en`` parameter [int]
 
   A nonzero value enables Tx vector with ConnectX-5 NICs and above.

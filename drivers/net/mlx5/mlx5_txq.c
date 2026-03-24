@@ -1364,6 +1364,124 @@ mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx)
 }
 
 /**
+ * Set per-queue packet pacing rate limit.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param queue_idx
+ *   TX queue index.
+ * @param tx_rate
+ *   TX rate in Mbps, 0 to disable rate limiting.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_set_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
+			  uint32_t tx_rate)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	struct mlx5_txq_ctrl *txq_ctrl;
+	struct mlx5_devx_obj *sq_devx;
+	struct mlx5_devx_modify_sq_attr sq_attr = { 0 };
+	struct mlx5_txq_rate_limit new_rate_limit = { 0 };
+	int ret;
+
+	if (!sh->cdev->config.hca_attr.qos.packet_pacing) {
+		DRV_LOG(ERR, "Port %u packet pacing not supported.",
+			dev->data->port_id);
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	if (priv->txqs == NULL || (*priv->txqs)[queue_idx] == NULL) {
+		DRV_LOG(ERR, "Port %u Tx queue %u not configured.",
+			dev->data->port_id, queue_idx);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	txq_ctrl = container_of((*priv->txqs)[queue_idx],
+				struct mlx5_txq_ctrl, txq);
+	if (txq_ctrl->is_hairpin) {
+		DRV_LOG(ERR, "Port %u Tx queue %u is hairpin.",
+			dev->data->port_id, queue_idx);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (txq_ctrl->obj == NULL) {
+		DRV_LOG(ERR, "Port %u Tx queue %u not initialized.",
+			dev->data->port_id, queue_idx);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	/*
+	 * For non-hairpin queues the SQ DevX object lives in
+	 * obj->sq_obj.sq (used by DevX/HWS mode), while hairpin
+	 * queues use obj->sq directly. These are different members
+	 * of a union inside mlx5_txq_obj.
+	 */
+	sq_devx = txq_ctrl->obj->sq_obj.sq;
+	if (sq_devx == NULL) {
+		DRV_LOG(ERR, "Port %u Tx queue %u SQ not ready.",
+			dev->data->port_id, queue_idx);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (dev->data->tx_queue_state[queue_idx] !=
+	    RTE_ETH_QUEUE_STATE_STARTED) {
+		DRV_LOG(ERR,
+			"Port %u Tx queue %u is not started, stop traffic before setting rate.",
+			dev->data->port_id, queue_idx);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (tx_rate == 0) {
+		/* Disable rate limiting. */
+		if (txq_ctrl->rate_limit.pp_id == 0)
+			return 0; /* Already disabled. */
+		sq_attr.sq_state = MLX5_SQC_STATE_RDY;
+		sq_attr.state = MLX5_SQC_STATE_RDY;
+		sq_attr.rl_update = 1;
+		sq_attr.packet_pacing_rate_limit_index = 0;
+		ret = mlx5_devx_cmd_modify_sq(sq_devx, &sq_attr);
+		if (ret) {
+			DRV_LOG(ERR,
+				"Port %u Tx queue %u failed to clear rate.",
+				dev->data->port_id, queue_idx);
+			rte_errno = -ret;
+			return ret;
+		}
+		mlx5_txq_free_pp_rate_limit(&txq_ctrl->rate_limit);
+		DRV_LOG(DEBUG, "Port %u Tx queue %u rate limit disabled.",
+			dev->data->port_id, queue_idx);
+		return 0;
+	}
+	/* Allocate a new PP index for the requested rate into a temp. */
+	ret = mlx5_txq_alloc_pp_rate_limit(sh, &new_rate_limit, tx_rate);
+	if (ret)
+		return ret;
+	/* Modify live SQ to use the new PP index. */
+	sq_attr.sq_state = MLX5_SQC_STATE_RDY;
+	sq_attr.state = MLX5_SQC_STATE_RDY;
+	sq_attr.rl_update = 1;
+	sq_attr.packet_pacing_rate_limit_index = new_rate_limit.pp_id;
+	ret = mlx5_devx_cmd_modify_sq(sq_devx, &sq_attr);
+	if (ret) {
+		DRV_LOG(ERR, "Port %u Tx queue %u failed to set rate %u Mbps.",
+			dev->data->port_id, queue_idx, tx_rate);
+		mlx5_txq_free_pp_rate_limit(&new_rate_limit);
+		rte_errno = -ret;
+		return ret;
+	}
+	/* SQ updated — release old PP context, install new one. */
+	mlx5_txq_free_pp_rate_limit(&txq_ctrl->rate_limit);
+	txq_ctrl->rate_limit = new_rate_limit;
+	DRV_LOG(DEBUG, "Port %u Tx queue %u rate set to %u Mbps (PP idx %u).",
+		dev->data->port_id, queue_idx, tx_rate, txq_ctrl->rate_limit.pp_id);
+	return 0;
+}
+
+/**
  * Verify if the queue can be released.
  *
  * @param dev
