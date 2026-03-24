@@ -182,6 +182,12 @@ mlx5_txq_alloc_pp_rate_limit(struct mlx5_dev_ctx_shared *sh,
 	memset(&pp, 0, sizeof(pp));
 	MLX5_SET(set_pp_rate_limit_context, &pp, rate_limit, (uint32_t)rate_kbps);
 	MLX5_SET(set_pp_rate_limit_context, &pp, rate_mode, MLX5_DATA_RATE);
+	if (sh->config.tx_burst_bound)
+		MLX5_SET(set_pp_rate_limit_context, &pp,
+			 burst_upper_bound, sh->config.tx_burst_bound);
+	if (sh->config.tx_typical_pkt_sz)
+		MLX5_SET(set_pp_rate_limit_context, &pp,
+			 typical_packet_size, sh->config.tx_typical_pkt_sz);
 	rate_limit->pp = mlx5_glue->dv_alloc_pp(sh->cdev->ctx, sizeof(pp),
 						 &pp, 0);
 	if (rate_limit->pp == NULL) {
