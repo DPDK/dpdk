@@ -4,7 +4,22 @@
 Driver for VM Emulated Devices
 ==============================
 
-The DPDK EM poll mode driver supports the following emulated devices:
+E1000 Poll Mode Driver
+----------------------
+
+DPDK provides several poll mode drivers (PMDs)
+supporting Intel 1 Gigabit ethernet controller families.
+These include:
+
+* e1000_em – Intel 8254x family devices, including QEMU ``e1000`` emulation.
+* e1000_igb – Intel PRO/1000 PCIe family.
+
+.. note::
+
+   The ``igb`` (and ``igc`` for 2.5G) PMDs are built from the same driver binary
+   but are documented in separate sections for clarity.
+
+The e1000_em poll mode driver supports the following emulated devices:
 
 *   qemu-kvm emulated Intel® 82540EM Gigabit Ethernet Controller (qemu e1000 device)
 
