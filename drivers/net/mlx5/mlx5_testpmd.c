@@ -1365,6 +1365,94 @@ cmdline_parse_inst_t mlx5_cmd_dump_rq_context_options = {
 	}
 };
 
+/* Show per-queue rate limit PP index for a given port/queue */
+struct mlx5_cmd_show_rate_limit_options {
+	cmdline_fixed_string_t mlx5;
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t txq;
+	queueid_t queue_id;
+	cmdline_fixed_string_t rate;
+	cmdline_fixed_string_t show;
+};
+
+cmdline_parse_token_string_t mlx5_cmd_show_rate_limit_mlx5 =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_show_rate_limit_options,
+				 mlx5, "mlx5");
+cmdline_parse_token_string_t mlx5_cmd_show_rate_limit_port =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_show_rate_limit_options,
+				 port, "port");
+cmdline_parse_token_num_t mlx5_cmd_show_rate_limit_port_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_show_rate_limit_options,
+			      port_id, RTE_UINT16);
+cmdline_parse_token_string_t mlx5_cmd_show_rate_limit_txq =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_show_rate_limit_options,
+				 txq, "txq");
+cmdline_parse_token_num_t mlx5_cmd_show_rate_limit_queue_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_show_rate_limit_options,
+			      queue_id, RTE_UINT16);
+cmdline_parse_token_string_t mlx5_cmd_show_rate_limit_rate =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_show_rate_limit_options,
+				 rate, "rate");
+cmdline_parse_token_string_t mlx5_cmd_show_rate_limit_show =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_show_rate_limit_options,
+				 show, "show");
+
+static void
+mlx5_cmd_show_rate_limit_parsed(void *parsed_result,
+				__rte_unused struct cmdline *cl,
+				__rte_unused void *data)
+{
+	struct mlx5_cmd_show_rate_limit_options *res = parsed_result;
+	struct rte_pmd_mlx5_txq_rate_limit_info info;
+	int ret;
+
+	ret = rte_pmd_mlx5_txq_rate_limit_query(res->port_id, res->queue_id,
+						 &info);
+	switch (ret) {
+	case 0:
+		break;
+	case -ENODEV:
+		fprintf(stderr, "invalid port_id %u\n", res->port_id);
+		return;
+	case -EINVAL:
+		fprintf(stderr, "invalid queue index (%u), out of range\n",
+			res->queue_id);
+		return;
+	case -EIO:
+		fprintf(stderr, "failed to query SQ context\n");
+		return;
+	default:
+		fprintf(stderr, "query failed (%d)\n", ret);
+		return;
+	}
+	fprintf(stdout, "Port %u Txq %u rate limit info:\n",
+		res->port_id, res->queue_id);
+	if (info.rate_mbps > 0)
+		fprintf(stdout, "  Configured rate: %u Mbps\n",
+			info.rate_mbps);
+	else
+		fprintf(stdout, "  Configured rate: disabled\n");
+	fprintf(stdout, "  PP index (driver): %u\n", info.pp_index);
+	fprintf(stdout, "  PP index (FW readback): %u\n", info.fw_pp_index);
+}
+
+cmdline_parse_inst_t mlx5_cmd_show_rate_limit = {
+	.f = mlx5_cmd_show_rate_limit_parsed,
+	.data = NULL,
+	.help_str = "mlx5 port <port_id> txq <queue_id> rate show",
+	.tokens = {
+		(void *)&mlx5_cmd_show_rate_limit_mlx5,
+		(void *)&mlx5_cmd_show_rate_limit_port,
+		(void *)&mlx5_cmd_show_rate_limit_port_id,
+		(void *)&mlx5_cmd_show_rate_limit_txq,
+		(void *)&mlx5_cmd_show_rate_limit_queue_id,
+		(void *)&mlx5_cmd_show_rate_limit_rate,
+		(void *)&mlx5_cmd_show_rate_limit_show,
+		NULL,
+	}
+};
+
 static struct testpmd_driver_commands mlx5_driver_cmds = {
 	.commands = {
 		{
@@ -1439,6 +1527,11 @@ static struct testpmd_driver_commands mlx5_driver_cmds = {
 			.ctx = &mlx5_cmd_dump_rq_context_options,
 			.help = "mlx5 port (port_id) queue (queue_id) dump rq_context (file_name)\n"
 				"    Dump mlx5 RQ Context\n\n",
+		},
+		{
+			.ctx = &mlx5_cmd_show_rate_limit,
+			.help = "mlx5 port (port_id) txq (queue_id) rate show\n"
+				"    Show per-queue rate limit PP index\n\n",
 		},
 		{
 			.ctx = NULL,

@@ -420,6 +420,36 @@ __rte_experimental
 int
 rte_pmd_mlx5_txq_dump_contexts(uint16_t port_id, uint16_t queue_id, const char *filename);
 
+/**
+ * Per-queue rate limit information.
+ */
+struct rte_pmd_mlx5_txq_rate_limit_info {
+	uint32_t rate_mbps;	/**< Configured rate in Mbps, 0 = disabled. */
+	uint16_t pp_index;	/**< PP index from driver state. */
+	uint16_t fw_pp_index;	/**< PP index read back from FW SQ context. */
+};
+
+/**
+ * Query per-queue rate limit state for a given Tx queue.
+ *
+ * @param[in] port_id
+ *   Port ID.
+ * @param[in] queue_id
+ *   Tx queue ID.
+ * @param[out] info
+ *   Rate limit information.
+ *
+ * @return
+ *   0 on success, negative errno on failure:
+ *   - -ENODEV: invalid port_id.
+ *   - -EINVAL: invalid queue_id.
+ *   - -EIO: FW query failed.
+ */
+__rte_experimental
+int
+rte_pmd_mlx5_txq_rate_limit_query(uint16_t port_id, uint16_t queue_id,
+				  struct rte_pmd_mlx5_txq_rate_limit_info *info);
+
 /** Type of mlx5 driver event for which custom callback is called. */
 enum rte_pmd_mlx5_driver_event_cb_type {
 	/** Called after HW Rx queue is created. */
