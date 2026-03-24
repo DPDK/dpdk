@@ -1594,12 +1594,11 @@ mlx5_devx_cmd_modify_rq(struct mlx5_devx_obj *rq,
 	}
 	ret = mlx5_glue->devx_obj_modify(rq->obj, in, sizeof(in),
 					 out, sizeof(out));
-	if (ret) {
-		DRV_LOG(ERR, "Failed to modify RQ using DevX");
-		rte_errno = errno;
-		return -errno;
+	if (ret || MLX5_FW_STATUS(out)) {
+		DEVX_DRV_LOG(ERR, out, "RQ modify", "rq_id", rq->id);
+		return MLX5_DEVX_ERR_RC(ret);
 	}
-	return ret;
+	return 0;
 }
 
 /*
@@ -2029,12 +2028,11 @@ mlx5_devx_cmd_modify_sq(struct mlx5_devx_obj *sq,
 	MLX5_SET(sqc, sq_ctx, hairpin_peer_vhca, sq_attr->hairpin_peer_vhca);
 	ret = mlx5_glue->devx_obj_modify(sq->obj, in, sizeof(in),
 					 out, sizeof(out));
-	if (ret) {
-		DRV_LOG(ERR, "Failed to modify SQ using DevX");
-		rte_errno = errno;
-		return -rte_errno;
+	if (ret || MLX5_FW_STATUS(out)) {
+		DEVX_DRV_LOG(ERR, out, "SQ modify", "sq_id", sq->id);
+		return MLX5_DEVX_ERR_RC(ret);
 	}
-	return ret;
+	return 0;
 }
 
 /*
