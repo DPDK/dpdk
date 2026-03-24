@@ -8,11 +8,16 @@
 #include "hinic3_hwif.h"
 #include "hinic3_stn_cmdq.h"
 
+#define STN_SQ_CTXT_SIZE(num_sqs)	((uint16_t)(sizeof(struct hinic3_stn_qp_ctxt_header) \
+						    + (num_sqs) * sizeof(struct hinic3_sq_ctxt)))
+#define STN_RQ_CTXT_SIZE(num_rqs)	((uint16_t)(sizeof(struct hinic3_stn_qp_ctxt_header) \
+						    + (num_rqs) * sizeof(struct hinic3_rq_ctxt)))
+
 static uint8_t prepare_cmd_buf_clean_tso_lro_space(struct hinic3_nic_dev *nic_dev,
 						   struct hinic3_cmd_buf *cmd_buf,
 						   enum hinic3_qp_ctxt_type ctxt_type)
 {
-	struct hinic3_clean_queue_ctxt *ctxt_block = NULL;
+	struct hinic3_stn_clean_queue_ctxt *ctxt_block = NULL;
 
 	ctxt_block = cmd_buf->buf;
 	ctxt_block->cmdq_hdr.num_queues = nic_dev->max_sqs;
@@ -26,7 +31,7 @@ static uint8_t prepare_cmd_buf_clean_tso_lro_space(struct hinic3_nic_dev *nic_de
 	return HINIC3_UCODE_CMD_CLEAN_QUEUE_CONTEXT;
 }
 
-static void qp_prepare_cmdq_header(struct hinic3_qp_ctxt_header *qp_ctxt_hdr,
+static void qp_prepare_cmdq_header(struct hinic3_stn_qp_ctxt_header *qp_ctxt_hdr,
 				   enum hinic3_qp_ctxt_type ctxt_type, uint16_t num_queues,
 				   uint16_t q_id)
 {
@@ -44,7 +49,7 @@ static uint8_t prepare_cmd_buf_qp_context_multi_store(struct hinic3_nic_dev *nic
 						 enum hinic3_qp_ctxt_type ctxt_type,
 						 uint16_t start_qid, uint16_t max_ctxts)
 {
-	struct hinic3_qp_ctxt_block *qp_ctxt_block = NULL;
+	struct hinic3_stn_qp_ctxt_block *qp_ctxt_block = NULL;
 	uint16_t i;
 
 	qp_ctxt_block = cmd_buf->buf;
@@ -62,9 +67,9 @@ static uint8_t prepare_cmd_buf_qp_context_multi_store(struct hinic3_nic_dev *nic
 	}
 
 	if (ctxt_type == HINIC3_QP_CTXT_TYPE_RQ)
-		cmd_buf->size = RQ_CTXT_SIZE(max_ctxts);
+		cmd_buf->size = STN_RQ_CTXT_SIZE(max_ctxts);
 	else
-		cmd_buf->size = SQ_CTXT_SIZE(max_ctxts);
+		cmd_buf->size = STN_SQ_CTXT_SIZE(max_ctxts);
 
 	return HINIC3_UCODE_CMD_MODIFY_QUEUE_CTX;
 }
@@ -72,10 +77,10 @@ static uint8_t prepare_cmd_buf_qp_context_multi_store(struct hinic3_nic_dev *nic
 static uint8_t prepare_cmd_buf_modify_svlan(struct hinic3_cmd_buf *cmd_buf, uint16_t func_id,
 					    uint16_t vlan_tag, uint16_t q_id, uint8_t vlan_mode)
 {
-	struct hinic3_vlan_ctx *vlan_ctx = NULL;
+	struct hinic3_stn_vlan_ctx *vlan_ctx = NULL;
 
-	cmd_buf->size = sizeof(struct hinic3_vlan_ctx);
-	vlan_ctx = (struct hinic3_vlan_ctx *)cmd_buf->buf;
+	cmd_buf->size = sizeof(struct hinic3_stn_vlan_ctx);
+	vlan_ctx = (struct hinic3_stn_vlan_ctx *)cmd_buf->buf;
 
 	vlan_ctx->func_id = func_id;
 	vlan_ctx->qid = q_id;
@@ -84,7 +89,8 @@ static uint8_t prepare_cmd_buf_modify_svlan(struct hinic3_cmd_buf *cmd_buf, uint
 	vlan_ctx->vlan_mode = vlan_mode;
 
 	rte_atomic_thread_fence(rte_memory_order_seq_cst);
-	hinic3_cpu_to_be32(vlan_ctx, sizeof(struct hinic3_vlan_ctx));
+
+	hinic3_cpu_to_be32(vlan_ctx, sizeof(struct hinic3_stn_vlan_ctx));
 	return HINIC3_UCODE_CMD_MODIFY_VLAN_CTX;
 }
 

@@ -7,7 +7,7 @@
 
 #include "hinic3_nic_io.h"
 
-struct hinic3_qp_ctxt_header {
+struct hinic3_htn_qp_ctxt_header {
 	uint32_t rsvd[2];
 	uint16_t num_queues;
 	uint16_t queue_type;
@@ -15,12 +15,12 @@ struct hinic3_qp_ctxt_header {
 	uint16_t dest_func_id;
 };
 
-struct hinic3_clean_queue_ctxt {
-	struct hinic3_qp_ctxt_header cmdq_hdr;
+struct hinic3_htn_clean_queue_ctxt {
+	struct hinic3_htn_qp_ctxt_header cmdq_hdr;
 };
 
-struct hinic3_qp_ctxt_block {
-	struct hinic3_qp_ctxt_header   cmdq_hdr;
+struct hinic3_htn_qp_ctxt_block {
+	struct hinic3_htn_qp_ctxt_header cmdq_hdr;
 	union {
 		struct hinic3_sq_ctxt  sq_ctxt[HINIC3_Q_CTXT_MAX];
 		struct hinic3_rq_ctxt  rq_ctxt[HINIC3_Q_CTXT_MAX];
@@ -43,7 +43,7 @@ enum hinic3_htn_cmd {
 	HINIC3_HTN_CMD_GET_RSS_INDIR_TABLE
 };
 
-struct hinic3_vlan_ctx {
+struct hinic3_htn_vlan_ctx {
 	uint32_t rsv[2];
 	uint16_t vlan_tag;
 	uint8_t vlan_sel;

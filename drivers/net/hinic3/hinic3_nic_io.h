@@ -28,11 +28,6 @@
 
 #define HINIC3_Q_CTXT_MAX ((uint16_t)(((HINIC3_CMDQ_BUF_SIZE - 8) - RTE_PKTMBUF_HEADROOM) / 64))
 
-#define SQ_CTXT_SIZE(num_sqs) ((uint16_t)(sizeof(struct hinic3_qp_ctxt_header) \
-					  + (num_sqs) * sizeof(struct hinic3_sq_ctxt)))
-#define RQ_CTXT_SIZE(num_rqs) ((uint16_t)(sizeof(struct hinic3_qp_ctxt_header) \
-					  + (num_rqs) * sizeof(struct hinic3_rq_ctxt)))
-
 enum hinic3_rq_wqe_type {
 	HINIC3_COMPACT_RQ_WQE,
 	HINIC3_NORMAL_RQ_WQE,
@@ -232,6 +227,31 @@ hinic3_write_db(void *db_addr, uint16_t q_id, int cos, uint8_t cflag, uint16_t p
 void hinic3_get_func_rx_buf_size(struct hinic3_nic_dev *nic_dev);
 
 /**
+ * Initialize RQ integrated CQE context
+ *
+ * @param[in] nic_dev
+ * Pointer to ethernet device structure.
+ *
+ * @return
+ * 0 on success, non-zero on failure.
+ */
+int hinic3_init_rq_cqe_ctxts(struct hinic3_nic_dev *nic_dev);
+
+/**
+ * Set RQ disable or enable
+ *
+ * @param[in] nic_dev
+ * Pointer to ethernet device structure.
+ * @param[in] q_id
+ * Receive queue id.
+ * @param[in] enable
+ *   1: enable  0: disable
+ * @return
+ * 0 on success, non-zero on failure.
+ */
+int hinic3_set_rq_enable(struct hinic3_nic_dev *nic_dev, uint16_t q_id, bool enable);
+
+/**
  * Initialize qps contexts, set SQ ci attributes, arm all SQ.
  *
  * Function will perform following steps:
@@ -264,9 +284,6 @@ void hinic3_free_qp_ctxts(struct hinic3_hwdev *hwdev);
  * Pointer to ethernet device structure.
  * @param[out] s_feature
  * s_feature driver supported.
- *
- * @return
- * 0 on success, non-zero on failure.
  */
 void hinic3_update_driver_feature(struct hinic3_nic_dev *nic_dev, uint64_t s_feature);
 
@@ -280,5 +297,30 @@ void hinic3_update_driver_feature(struct hinic3_nic_dev *nic_dev, uint64_t s_fea
  * Feature capabilities of driver.
  */
 uint64_t hinic3_get_driver_feature(struct hinic3_nic_dev *nic_dev);
+
+/**
+ * Initialize context structure for specified TXQ by configuring various queue
+ * parameters (e.g., ci, pi, work queue page addresses).
+ *
+ * @param[in] sq
+ * Pointer to TXQ structure.
+ * @param[in] sq_id
+ * ID of TXQ being configured.
+ * @param[out] sq_ctxt
+ * Pointer to structure that will hold TXQ context.
+ */
+void hinic3_sq_prepare_ctxt(struct hinic3_txq *sq, uint16_t sq_id,
+			    struct hinic3_sq_ctxt *sq_ctxt);
+
+/**
+ * Initialize context structure for specified RXQ by configuring various queue
+ * parameters (e.g., ci, pi, work queue page addresses).
+ *
+ * @param[in] rq
+ * Pointer to RXQ structure.
+ * @param[out] rq_ctxt
+ * Pointer to structure that will hold RXQ context.
+ */
+void hinic3_rq_prepare_ctxt(struct hinic3_rxq *rq, struct hinic3_rq_ctxt *rq_ctxt);
 
 #endif /* _HINIC3_NIC_IO_H_ */

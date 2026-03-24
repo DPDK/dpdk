@@ -279,6 +279,24 @@ struct __rte_cache_aligned hinic3_rxq {
 #endif
 };
 
+/* Rx CQE info get callback function */
+typedef void  (*nic_rx_get_cqe_info_t)(struct hinic3_rxq *rxq,
+				       volatile struct hinic3_rq_cqe *rx_cqe,
+				       struct hinic3_cqe_info *cqe_info);
+
+/* Rx CQE check status callback function */
+typedef bool  (*nic_rx_cqe_done_t)(struct hinic3_rxq *rxq,
+				   volatile struct hinic3_rq_cqe **rx_cqe);
+
+/* Rx CQE empty poll callback function */
+typedef int   (*nic_rx_poll_rq_empty_t)(struct hinic3_rxq *rxq);
+
+struct hinic3_nic_rx_ops {
+	nic_rx_get_cqe_info_t		nic_rx_get_cqe_info;
+	nic_rx_cqe_done_t		nic_rx_cqe_done;
+	nic_rx_poll_rq_empty_t		nic_rx_poll_rq_empty;
+};
+
 uint16_t hinic3_rx_fill_wqe(struct hinic3_rxq *rxq);
 
 uint16_t hinic3_rx_fill_buffers(struct hinic3_rxq *rxq);

@@ -304,6 +304,14 @@ struct __rte_cache_aligned hinic3_txq {
 #endif
 };
 
+/* Tx WQE offload set callback function */
+typedef void  (*nic_tx_set_wqe_offload_t)(struct hinic3_wqe_info *wqe_info,
+					  struct hinic3_sq_wqe_combo *wqe_combo);
+
+struct hinic3_nic_tx_ops {
+	nic_tx_set_wqe_offload_t	nic_tx_set_wqe_offload;
+};
+
 void hinic3_flush_txqs(struct hinic3_nic_dev *nic_dev);
 void hinic3_free_txq_mbufs(struct hinic3_txq *txq);
 void hinic3_free_all_txq_mbufs(struct hinic3_nic_dev *nic_dev);
