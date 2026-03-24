@@ -16278,12 +16278,6 @@ struct __rte_packed_begin hwrm_func_qcfg_output {
 	 */
 	uint16_t	l2_doorbell_bar_size_kb;
 	/*
-	 * The size of the doorbell BAR in KBytes reserved for multi-L2
-	 * doorbell pages. This area is a subset of l2_doorbell_bar_size_kb,
-	 * which is size of the total doorbell BAR space reserved for L2.
-	 */
-	uint16_t	l2_db_multi_page_size_kb;
-	/*
 	 * A bitmask indicating the active endpoints. Each bit represents a
 	 * specific endpoint, with bit 0 indicating EP 0 and bit 3 indicating
 	 * EP 3. For example:
@@ -16605,6 +16599,12 @@ struct __rte_packed_begin hwrm_func_qcfg_output {
 	 * or a raw QP.
 	 */
 	uint16_t	mirror_vnic_id;
+	/*
+	 * The size of the doorbell BAR in KBytes reserved for multi-L2
+	 * doorbell pages. This area is a subset of l2_doorbell_bar_size_kb,
+	 * which is size of the total doorbell BAR space reserved for L2.
+	 */
+	uint16_t	l2_db_multi_page_size_kb;
 	uint8_t	unused_7[7];
 	/*
 	 * This field is used in Output records to indicate that the output
