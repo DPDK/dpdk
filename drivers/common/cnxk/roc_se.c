@@ -25,6 +25,9 @@ static uint8_t zuc_key256_mac16[16] = {0x23, 0x2f, 0x25, 0x2a, 0x6d, 0x40,
 				       0x40, 0x40, 0x40, 0x40, 0x40, 0x40,
 				       0x40, 0x52, 0x10, 0x30};
 
+static uint8_t zuc_key256_v2[16] = {0x64, 0x43, 0x7b, 0x2a, 0x11, 0x05, 0x51, 0x42,
+				    0x1a, 0x31, 0x18, 0x66, 0x14, 0x2e, 0x01, 0x5c};
+
 static inline void
 cpt_snow3g_key_gen(const uint8_t *ck, uint32_t *keyx)
 {
@@ -93,7 +96,8 @@ cpt_ciph_type_set(roc_se_cipher_type type, struct roc_se_ctx *ctx, uint16_t key_
 			 * ZUC 256 is not supported with older microcode
 			 * where pdcp_iv_offset is 16
 			 */
-			if (chained_op || (ctx->pdcp_iv_offset == 16)) {
+			if ((chained_op ||
+			     (!roc_model_is_cn20k() && (ctx->pdcp_iv_offset == 16)))) {
 				plt_err("ZUC 256 is not supported with chained operations");
 				return -1;
 			}
@@ -318,7 +322,8 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type, const uint
 				 * ZUC 256 is not supported with older microcode
 				 * where pdcp_iv_offset is 16
 				 */
-				if (chained_op || (se_ctx->pdcp_iv_offset == 16)) {
+				if ((chained_op ||
+				     (!roc_model_is_cn20k() && (se_ctx->pdcp_iv_offset == 16)))) {
 					plt_err("ZUC 256 is not supported with chained operations");
 					return -1;
 				}
@@ -552,7 +557,10 @@ roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type, const ui
 		memcpy(pctx->st.ci_key, key, key_len);
 		if (key_len == 32) {
 			roc_se_zuc_bytes_swap(pctx->st.ci_key, key_len);
-			memcpy(pctx->st.ci_zuc_const, zuc_key256, 16);
+			if (roc_model_is_cn20k())
+				memcpy(pctx->st.ci_zuc_const, zuc_key256_v2, 16);
+			else
+				memcpy(pctx->st.ci_zuc_const, zuc_key256, 16);
 		} else
 			memcpy(pctx->st.ci_zuc_const, zuc_key128, 32);
 		se_ctx->pdcp_ci_alg = ROC_SE_PDCP_ALG_TYPE_ZUC;

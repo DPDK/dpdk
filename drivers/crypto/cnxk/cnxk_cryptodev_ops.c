@@ -632,10 +632,16 @@ cnxk_sess_fill(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xform,
 	struct rte_crypto_sym_xform *a_xfrm = NULL;
 	bool ciph_then_auth = false;
 
-	if (roc_cpt->hw_caps[CPT_ENG_TYPE_SE].pdcp_chain_zuc256)
-		sess->roc_se_ctx->pdcp_iv_offset = 24;
-	else
+	if (roc_model_is_cn20k()) {
+		sess->roc_se_ctx->pdcp_iv_len = 40;
 		sess->roc_se_ctx->pdcp_iv_offset = 16;
+	} else if (roc_cpt->hw_caps[CPT_ENG_TYPE_SE].pdcp_chain_zuc256) {
+		sess->roc_se_ctx->pdcp_iv_offset = 24;
+		sess->roc_se_ctx->pdcp_iv_len = 48;
+	} else {
+		sess->roc_se_ctx->pdcp_iv_offset = 16;
+		sess->roc_se_ctx->pdcp_iv_len = 32;
+	}
 
 	if (xform == NULL)
 		return -EINVAL;

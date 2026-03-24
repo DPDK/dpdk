@@ -1908,7 +1908,7 @@ cpt_caps_add(struct rte_cryptodev_capabilities cnxk_caps[], int *cur_pos,
 }
 
 static void
-cn10k_crypto_caps_update(struct rte_cryptodev_capabilities cnxk_caps[])
+cn10k_20k_crypto_caps_update(struct rte_cryptodev_capabilities cnxk_caps[])
 {
 
 	struct rte_cryptodev_capabilities *caps;
@@ -1921,7 +1921,10 @@ cn10k_crypto_caps_update(struct rte_cryptodev_capabilities cnxk_caps[])
 
 			caps->sym.cipher.key_size.max = 32;
 			caps->sym.cipher.key_size.increment = 16;
-			caps->sym.cipher.iv_size.max = 25;
+			if (roc_model_is_cn20k())
+				caps->sym.cipher.iv_size.max = 16;
+			else
+				caps->sym.cipher.iv_size.max = 25;
 			caps->sym.cipher.iv_size.increment = 1;
 		}
 
@@ -1946,8 +1949,8 @@ cn9k_crypto_caps_add(struct rte_cryptodev_capabilities cnxk_caps[], int *cur_pos
 }
 
 static void
-cn10k_crypto_caps_add(struct rte_cryptodev_capabilities cnxk_caps[],
-		     union cpt_eng_caps *hw_caps, int *cur_pos)
+cn10k_20k_crypto_caps_add(struct rte_cryptodev_capabilities cnxk_caps[],
+			  union cpt_eng_caps *hw_caps, int *cur_pos)
 {
 	if (hw_caps[CPT_ENG_TYPE_SE].sg_ver2) {
 		CPT_CAPS_ADD(cnxk_caps, cur_pos, hw_caps, sm3);
@@ -1980,13 +1983,13 @@ crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 		cn9k_crypto_caps_add(cnxk_caps, &cur_pos);
 
 	if (roc_model_is_cn10k() || roc_model_is_cn20k())
-		cn10k_crypto_caps_add(cnxk_caps, hw_caps, &cur_pos);
+		cn10k_20k_crypto_caps_add(cnxk_caps, hw_caps, &cur_pos);
 
 	cpt_caps_add(cnxk_caps, &cur_pos, caps_null, RTE_DIM(caps_null));
 	cpt_caps_add(cnxk_caps, &cur_pos, caps_end, RTE_DIM(caps_end));
 
 	if (roc_model_is_cn10k() || roc_model_is_cn20k())
-		cn10k_crypto_caps_update(cnxk_caps);
+		cn10k_20k_crypto_caps_update(cnxk_caps);
 }
 
 const struct rte_cryptodev_capabilities *

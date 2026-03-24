@@ -1537,7 +1537,7 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	const uint8_t *auth_iv = NULL, *cipher_iv = NULL;
 	uint8_t pdcp_iv_off = params->pdcp_iv_offset;
 	uint32_t off_ctrl_len = ROC_SE_OFF_CTRL_LEN;
-	const int iv_len = pdcp_iv_off * 2;
+	const int iv_len = params->pdcp_iv_len;
 	uint8_t pdcp_ci_alg, pdcp_auth_alg;
 	union cpt_inst_w4 cpt_inst_w4;
 	struct roc_se_ctx *se_ctx;
@@ -1667,9 +1667,9 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	 * So iv_len reserved is 32B for cipher and auth IVs with old microcode
 	 * and 48B with new microcode.
 	 */
-	const int iv_len = params->pdcp_iv_offset * 2;
 	uint32_t off_ctrl_len = ROC_SE_OFF_CTRL_LEN;
 	struct roc_se_ctx *se_ctx = params->ctx;
+	const int iv_len = params->pdcp_iv_len;
 	uint32_t encr_data_len, auth_data_len;
 	const int flags = se_ctx->zsk_flags;
 	uint32_t encr_offset, auth_offset;
@@ -3039,6 +3039,7 @@ fill_pdcp_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	fc_params.iv_buf = NULL;
 	fc_params.auth_iv_buf = NULL;
 	fc_params.pdcp_iv_offset = sess->roc_se_ctx->pdcp_iv_offset;
+	fc_params.pdcp_iv_len = sess->roc_se_ctx->pdcp_iv_len;
 
 	if (likely(sess->iv_length))
 		fc_params.iv_buf = rte_crypto_op_ctod_offset(cop, uint8_t *, sess->iv_offset);
@@ -3134,6 +3135,7 @@ fill_pdcp_chain_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	fc_params.iv_buf = NULL;
 	fc_params.auth_iv_buf = NULL;
 	fc_params.pdcp_iv_offset = sess->roc_se_ctx->pdcp_iv_offset;
+	fc_params.pdcp_iv_len = sess->roc_se_ctx->pdcp_iv_len;
 
 	m_src = sym_op->m_src;
 	m_dst = sym_op->m_dst;
@@ -3347,6 +3349,7 @@ fill_digest_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		params.auth_iv_buf =
 			rte_crypto_op_ctod_offset(cop, uint8_t *, sess->auth_iv_offset);
 		params.pdcp_iv_offset = sess->roc_se_ctx->pdcp_iv_offset;
+		params.pdcp_iv_len = sess->roc_se_ctx->pdcp_iv_len;
 		if (sess->zsk_flag == ROC_SE_K_F9) {
 			uint32_t length_in_bits, num_bytes;
 			uint8_t *src, direction = 0;

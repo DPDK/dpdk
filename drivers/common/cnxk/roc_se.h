@@ -355,6 +355,7 @@ struct roc_se_ctx {
 	uint64_t eia2 : 1;
 	/* auth_iv_offset passed to PDCP_CHAIN opcode based on FVC bit */
 	uint8_t pdcp_iv_offset;
+	uint8_t pdcp_iv_len;
 	union cpt_inst_w4 template_w4;
 	uint8_t *auth_key;
 } __plt_aligned(ROC_ALIGN);
@@ -374,6 +375,7 @@ struct roc_se_fc_params {
 	uint8_t cipher_iv_len;
 	uint8_t auth_iv_len;
 	uint8_t pdcp_iv_offset;
+	uint8_t pdcp_iv_len;
 
 	struct roc_se_buf_ptr aad_buf;
 	struct roc_se_buf_ptr mac_buf;
