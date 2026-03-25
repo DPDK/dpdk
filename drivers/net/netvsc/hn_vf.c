@@ -314,9 +314,17 @@ int hn_vf_add_unlocked(struct rte_eth_dev *dev, struct hn_data *hv)
 	}
 
 switch_data_path:
-	ret = hn_nvs_set_datapath(hv, NVS_DATAPATH_VF);
-	if (ret == 0)
-		hv->vf_ctx.vf_vsc_switched = true;
+	/* Only switch data path to VF if the device is started.
+	 * Otherwise defer to hn_vf_start() to avoid routing traffic
+	 * to the VF before queues are set up.
+	 */
+	if (dev->data->dev_started) {
+		ret = hn_nvs_set_datapath(hv, NVS_DATAPATH_VF);
+		if (ret)
+			PMD_DRV_LOG(ERR, "Failed to switch to VF: %d", ret);
+		else
+			hv->vf_ctx.vf_vsc_switched = true;
+	}
 
 exit:
 	return ret;
@@ -521,11 +529,31 @@ int hn_vf_start(struct rte_eth_dev *dev)
 	struct rte_eth_dev *vf_dev;
 	int ret = 0;
 
-	rte_rwlock_read_lock(&hv->vf_lock);
+	rte_rwlock_write_lock(&hv->vf_lock);
 	vf_dev = hn_get_vf_dev(hv);
-	if (vf_dev)
+	if (vf_dev) {
 		ret = rte_eth_dev_start(vf_dev->data->port_id);
-	rte_rwlock_read_unlock(&hv->vf_lock);
+		if (ret == 0) {
+			/* Re-switch data path to VF if VSP has reported
+			 * VF is present and we haven't switched yet
+			 * (e.g. after a stop/start cycle).
+			 */
+			if (hv->vf_ctx.vf_vsp_reported &&
+			    !hv->vf_ctx.vf_vsc_switched) {
+				ret = hn_nvs_set_datapath(hv,
+							  NVS_DATAPATH_VF);
+				if (ret) {
+					PMD_DRV_LOG(ERR,
+						    "Failed to switch to VF: %d",
+						    ret);
+					rte_eth_dev_stop(vf_dev->data->port_id);
+				} else {
+					hv->vf_ctx.vf_vsc_switched = true;
+				}
+			}
+		}
+	}
+	rte_rwlock_write_unlock(&hv->vf_lock);
 	return ret;
 }
 
@@ -534,16 +562,33 @@ int hn_vf_stop(struct rte_eth_dev *dev)
 	struct hn_data *hv = dev->data->dev_private;
 	struct rte_eth_dev *vf_dev;
 	int ret = 0;
+	int err;
 
-	rte_rwlock_read_lock(&hv->vf_lock);
+	rte_rwlock_write_lock(&hv->vf_lock);
 	vf_dev = hn_get_vf_dev(hv);
 	if (vf_dev) {
-		ret = rte_eth_dev_stop(vf_dev->data->port_id);
-		if (ret != 0)
+		/* Switch data path back to synthetic before stopping VF,
+		 * so the host stops routing traffic to the VF device.
+		 */
+		if (hv->vf_ctx.vf_vsc_switched) {
+			ret = hn_nvs_set_datapath(hv, NVS_DATAPATH_SYNTHETIC);
+			if (ret) {
+				PMD_DRV_LOG(ERR,
+					    "Failed to switch to synthetic: %d",
+					    ret);
+			} else {
+				hv->vf_ctx.vf_vsc_switched = false;
+			}
+		}
+
+		err = rte_eth_dev_stop(vf_dev->data->port_id);
+		if (err != 0)
 			PMD_DRV_LOG(ERR, "Failed to stop device on port %u",
 				    vf_dev->data->port_id);
+		if (ret == 0)
+			ret = err;
 	}
-	rte_rwlock_read_unlock(&hv->vf_lock);
+	rte_rwlock_write_unlock(&hv->vf_lock);
 
 	return ret;
 }
