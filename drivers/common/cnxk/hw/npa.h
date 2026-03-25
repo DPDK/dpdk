@@ -5,6 +5,8 @@
 #ifndef __NPA_HW_H__
 #define __NPA_HW_H__
 
+#include "roc_platform.h"
+
 /* Register offsets */
 
 #define NPA_AF_BLK_RST		     (0x0ull)
@@ -390,7 +392,7 @@ struct npa_cn20k_aura_s {
 	uint64_t stream_ctx : 1;
 	uint64_t unified_ctx : 1;
 	uint64_t rsvd_511_448 : 64; /* W7 */
-};
+} __plt_may_alias;
 
 /* NPA pool context structure [CN20K] */
 struct npa_cn20k_pool_s {
@@ -467,7 +469,7 @@ struct npa_cn20k_pool_s {
 	uint64_t rsvd_895_832 : 64;  /* W13 */
 	uint64_t rsvd_959_896 : 64;  /* W14 */
 	uint64_t rsvd_1023_960 : 64; /* W15 */
-};
+} __plt_may_alias;
 
 /* NPA halo context structure [CN20K] */
 struct npa_cn20k_halo_s {
@@ -547,7 +549,7 @@ struct npa_cn20k_halo_s {
 	uint64_t reserved_895_832 : 64; /* W13 */
 	uint64_t reserved_959_896 : 64; /* W14 */
 	uint64_t reserved_1023_960 : 64; /* W15 */
-};
+} __plt_may_alias;
 
 /* NPA queue interrupt context hardware structure */
 struct npa_qint_hw_s {

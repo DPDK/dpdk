@@ -100,6 +100,7 @@
 #define __plt_packed_begin  __rte_packed_begin
 #define __plt_packed_end    __rte_packed_end
 #define __plt_unused	    __rte_unused
+#define __plt_may_alias	    __rte_may_alias
 #define __roc_api	    __rte_internal
 #define plt_iova_t	    rte_iova_t
 
