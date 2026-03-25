@@ -116,6 +116,12 @@ struct fsl_mc_io;
  * Flow steering table is shared between all traffic classes
  */
 #define DPNI_OPT_SHARED_FS				0x001000
+/*
+ * PFDR in PEB mode (v1 layout).
+ * The total number of Rx descriptors is limited to 11264 in this mode.
+ * When not set, PFDRs are stored in DDR and there is no such limit.
+ */
+#define DPNI_OPT_V1_PFDR_IN_PEB		0x80000000
 /**
  * Software sequence maximum layout size
  */
