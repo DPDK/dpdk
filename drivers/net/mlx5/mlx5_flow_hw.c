@@ -9939,33 +9939,23 @@ static __rte_always_inline uint32_t
 flow_hw_tx_tag_regc_mask(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	uint32_t mask = priv->sh->dv_regc0_mask;
 
-	/* Mask is verified during device initialization. Sanity checking here. */
-	MLX5_ASSERT(mask != 0);
-	/*
-	 * Availability of sufficient number of bits in REG_C_0 is verified on initialization.
-	 * Sanity checking here.
-	 */
-	MLX5_ASSERT(rte_popcount32(mask) >= rte_popcount32(priv->vport_meta_mask));
-	return mask;
+	if (priv->vport_meta_mask != 0)
+		return priv->sh->dv_regc0_mask;
+	else
+		return UINT32_MAX;
 }
 
 static __rte_always_inline uint32_t
 flow_hw_tx_tag_regc_value(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	uint32_t tag;
 
-	/* Mask is verified during device initialization. Sanity checking here. */
-	MLX5_ASSERT(priv->vport_meta_mask != 0);
-	tag = priv->vport_meta_tag >> (rte_bsf32(priv->vport_meta_mask));
-	/*
-	 * Availability of sufficient number of bits in REG_C_0 is verified on initialization.
-	 * Sanity checking here.
-	 */
-	MLX5_ASSERT((tag & priv->sh->dv_regc0_mask) == tag);
-	return tag;
+	if (priv->vport_meta_mask != 0)
+		return priv->vport_meta_tag >> (rte_bsf32(priv->vport_meta_mask));
+
+	/* Without REG_C match value available, resort to matching vport ID. */
+	return priv->vport_id | (priv->sh->cdev->config.hca_attr.vhca_id << 16);
 }
 
 static void

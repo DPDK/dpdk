@@ -11050,6 +11050,9 @@ flow_dv_translate_item_represented_port(struct rte_eth_dev *dev, void *key,
 #ifndef HAVE_IBV_DEVICE_ATTR_ESW_MGR_REG_C0
 	if (priv->sh->config.dv_flow_en == 2)
 		vport_match = true;
+#else
+	if (priv->sh->config.dv_flow_en == 2)
+		vport_match = !!priv->vport_match;
 #endif
 	if (!pid_m && !pid_v)
 		return 0;
