@@ -153,6 +153,7 @@ struct flow_hw_port_info {
 	uint32_t regc_mask;
 	uint32_t regc_value;
 	uint32_t vhca_id;
+	uint32_t is_set:1;
 	uint32_t is_wire:1;
 	uint32_t direction:2;
 };
