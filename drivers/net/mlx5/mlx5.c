@@ -1679,6 +1679,12 @@ mlx5_init_hws_flow_tags_registers(struct mlx5_dev_ctx_shared *sh)
 		reg->nat64_regs[0] = REG_C_6;
 		reg->nat64_regs[1] = reg->hw_avl_tags[j - 2];
 		reg->nat64_regs[2] = reg->hw_avl_tags[j - 1];
+	} else {
+		if (j >= MLX5_FLOW_NAT64_REGS_MAX) {
+			reg->nat64_regs[0] = reg->hw_avl_tags[j - 3];
+			reg->nat64_regs[1] = reg->hw_avl_tags[j - 2];
+			reg->nat64_regs[2] = reg->hw_avl_tags[j - 1];
+		}
 	}
 }
 
