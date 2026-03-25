@@ -1773,6 +1773,12 @@ err_dsa:
 			goto err_sm2;
 		}
 
+		if (xform->ec.q.x.length >= sizeof(pubkey) ||
+				xform->ec.q.y.length >=
+				sizeof(pubkey) - xform->ec.q.x.length) {
+			OPENSSL_LOG(ERR, "SM2 public key coordinates too large");
+			goto err_sm2;
+		}
 		memset(pubkey, 0, sizeof(pubkey));
 		pubkey[0] = 0x04;
 		len += 1;
