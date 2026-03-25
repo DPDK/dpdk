@@ -5479,9 +5479,10 @@ ice_get_rss_lut(struct ice_vsi *vsi, uint8_t *lut, uint16_t lut_size)
 	if (pf->flags & ICE_FLAG_RSS_AQ_CAPABLE) {
 		lut_params.vsi_handle = vsi->idx;
 		lut_params.lut_size = lut_size;
-		lut_params.lut_type = ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_PF;
+		lut_params.lut_type = (vsi->global_lut_allocated) ?
+			ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_GLOBAL : ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_PF;
 		lut_params.lut = lut;
-		lut_params.global_lut_id = 0;
+		lut_params.global_lut_id = (vsi->global_lut_allocated) ? vsi->global_lut_id : 0;
 		ret = ice_aq_get_rss_lut(hw, &lut_params);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Failed to get RSS lookup table");
@@ -5515,9 +5516,10 @@ ice_set_rss_lut(struct ice_vsi *vsi, uint8_t *lut, uint16_t lut_size)
 	if (pf->flags & ICE_FLAG_RSS_AQ_CAPABLE) {
 		lut_params.vsi_handle = vsi->idx;
 		lut_params.lut_size = lut_size;
-		lut_params.lut_type = ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_PF;
+		lut_params.lut_type = (vsi->global_lut_allocated) ?
+			ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_GLOBAL : ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_PF;
 		lut_params.lut = lut;
-		lut_params.global_lut_id = 0;
+		lut_params.global_lut_id = (vsi->global_lut_allocated) ? vsi->global_lut_id : 0;
 		ret = ice_aq_set_rss_lut(hw, &lut_params);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Failed to set RSS lookup table");
