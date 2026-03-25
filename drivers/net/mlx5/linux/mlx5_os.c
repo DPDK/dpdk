@@ -1866,7 +1866,9 @@ err_secondary:
 		 *   3. with unsupported FW
 		 *   4. all representors in HWS
 		 */
-		priv->unified_fdb_en = !!priv->master && sh->cdev->config.hca_attr.fdb_unified_en;
+		priv->unified_fdb_en = sh->cdev->config.hca_attr.fdb_unified_en &&
+				       priv->master &&
+				       priv->vport_meta_mask != 0;
 		/* Jump FDB Rx works only with unified FDB enabled. */
 		if (priv->unified_fdb_en)
 			priv->jump_fdb_rx_en = sh->cdev->config.hca_attr.jump_fdb_rx_en;
@@ -1874,32 +1876,10 @@ err_secondary:
 			eth_dev->data->port_id,
 			priv->unified_fdb_en ? "is" : "isn't",
 			priv->jump_fdb_rx_en ? "is" : "isn't");
-		if (priv->sh->config.dv_esw_en) {
-			uint32_t usable_bits;
-			uint32_t required_bits;
-
-			if (priv->sh->dv_regc0_mask == UINT32_MAX) {
-				DRV_LOG(ERR, "E-Switch port metadata is required when using HWS "
-					     "but it is disabled (configure it through devlink)");
-				err = ENOTSUP;
-				goto error;
-			}
-			if (priv->sh->dv_regc0_mask == 0) {
-				DRV_LOG(ERR, "E-Switch with HWS is not supported "
-					     "(no available bits in reg_c[0])");
-				err = ENOTSUP;
-				goto error;
-			}
-			usable_bits = rte_popcount32(priv->sh->dv_regc0_mask);
-			required_bits = rte_popcount32(priv->vport_meta_mask);
-			if (usable_bits < required_bits) {
-				DRV_LOG(ERR, "Not enough bits available in reg_c[0] to provide "
-					     "representor matching.");
-				err = ENOTSUP;
-				goto error;
-			}
-		}
-		if (priv->vport_meta_mask)
+		/* Without vport metadata, PMD must rely on source_vport match. */
+		if (priv->sh->config.dv_esw_en && priv->vport_meta_mask == 0)
+			priv->vport_match = 1;
+		if (priv->sh->config.dv_esw_en)
 			mlx5_flow_hw_set_port_info(eth_dev);
 		if (priv->sh->config.dv_esw_en &&
 		    priv->sh->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
