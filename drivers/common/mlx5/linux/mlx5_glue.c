@@ -1263,6 +1263,10 @@ mlx5_glue_devx_port_query(struct ibv_context *ctx,
 		info->vport_id = devx_port.vport;
 		info->query_flags |= MLX5_PORT_QUERY_VPORT;
 	}
+	if (devx_port.flags & MLX5DV_QUERY_PORT_VPORT_VHCA_ID) {
+		info->vport_vhca_id = devx_port.vport_vhca_id;
+		info->query_flags |= MLX5_PORT_QUERY_VPORT_VHCA_ID;
+	}
 	if (devx_port.flags & MLX5DV_QUERY_PORT_ESW_OWNER_VHCA_ID) {
 		info->esw_owner_vhca_id = devx_port.esw_owner_vhca_id;
 		info->query_flags |= MLX5_PORT_QUERY_ESW_OWNER_VHCA_ID;
