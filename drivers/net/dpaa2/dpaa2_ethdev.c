@@ -74,8 +74,9 @@ int dpaa2_timestamp_dynfield_offset = -1;
 
 bool dpaa2_print_parser_result;
 
-#define MAX_NB_RX_DESC		11264
-int total_nb_rx_desc;
+/* Rx descriptor limit when DPNI loads PFDRs in PEB */
+#define MAX_NB_RX_DESC_IN_PEB	11264
+static int total_nb_rx_desc;
 
 int dpaa2_valid_dev;
 struct rte_mempool *dpaa2_tx_sg_pool;
@@ -905,10 +906,14 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			dev, rx_queue_id, mb_pool, rx_conf);
 
 	total_nb_rx_desc += nb_rx_desc;
-	if (total_nb_rx_desc > MAX_NB_RX_DESC) {
-		DPAA2_PMD_WARN("Total nb_rx_desc exceeds %d limit. Please use Normal buffers",
-			       MAX_NB_RX_DESC);
-		DPAA2_PMD_WARN("To use Normal buffers, run 'export DPNI_NORMAL_BUF=1' before running dynamic_dpl.sh script");
+	if (total_nb_rx_desc > MAX_NB_RX_DESC_IN_PEB &&
+	    (priv->options & DPNI_OPT_V1_PFDR_IN_PEB)) {
+		DPAA2_PMD_WARN("RX descriptor exceeds limit(%d) to load PFDR in PEB",
+			       MAX_NB_RX_DESC_IN_PEB);
+		DPAA2_PMD_WARN("Suggest removing 0x%08x from DPNI creating options(0x%08x)",
+			       DPNI_OPT_V1_PFDR_IN_PEB, priv->options);
+		DPAA2_PMD_WARN("Or reduce RX descriptor number(%d) per queue",
+			       nb_rx_desc);
 	}
 
 	if (!priv->bp_list || priv->bp_list->mp != mb_pool) {
