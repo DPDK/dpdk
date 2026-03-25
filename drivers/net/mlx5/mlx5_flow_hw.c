@@ -322,6 +322,21 @@ get_mlx5dr_table_type(const struct rte_flow_attr *attr, uint32_t specialize,
 	return type;
 }
 
+/** Human-readable name for mlx5dr_table_type (for error messages). */
+static inline const char *
+mlx5dr_table_type_name(enum mlx5dr_table_type type)
+{
+	switch (type) {
+	case MLX5DR_TABLE_TYPE_NIC_RX: return "NIC_RX";
+	case MLX5DR_TABLE_TYPE_NIC_TX: return "NIC_TX";
+	case MLX5DR_TABLE_TYPE_FDB: return "FDB";
+	case MLX5DR_TABLE_TYPE_FDB_RX: return "FDB_RX(wire_orig)";
+	case MLX5DR_TABLE_TYPE_FDB_TX: return "FDB_TX(vf_orig)";
+	case MLX5DR_TABLE_TYPE_FDB_UNIFIED: return "FDB_UNIFIED";
+	default: return "unknown";
+	}
+}
+
 /* Non template default queue size used for inner ctrl queue. */
 #define MLX5_NT_DEFAULT_QUEUE_SIZE 32
 
@@ -5347,8 +5362,17 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	/* Verify unified fdb sub domains consistency */
 	table_type = get_mlx5dr_table_type(&flow_attr, specialize, unified_fdb);
 	if (table_type != grp->type) {
-		DRV_LOG(ERR, "Table type (%u) does not match group id (%u) type (%u)",
-			table_type, grp->group_id, grp->type);
+		DRV_LOG(ERR,
+			"Group %u table type mismatch: group type is fixed on first use. "
+			"This table requires %s but group was first used as %s. "
+			"Create tables with transfer wire_orig or vf_orig before tables jumping to it.",
+			grp->group_id,
+			mlx5dr_table_type_name(table_type),
+			mlx5dr_table_type_name(grp->type));
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
+				   NULL,
+				   "group table type mismatch: type is fixed on first use; "
+				   "create transfer wire_orig/vf_orig tables before tables jumping to it");
 		rte_errno = EINVAL;
 		goto error;
 	}

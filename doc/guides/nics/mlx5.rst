@@ -2671,6 +2671,14 @@ DPDK       24.11
 Limitations
 ^^^^^^^^^^^
 
+#. With the async template API, a flow group's table type is fixed when
+   the group is first used. Jumping to a group implicitly creates the
+   group's table (fixing its type) if it does not exist yet. A specialized
+   table (transfer ``wire_orig`` / ``vf_orig``) must therefore be created
+   before any rule jumps to its group; otherwise the implicit creation
+   fixes the group to a different type and creating the specialized table
+   afterwards fails with a group table type mismatch.
+
 #. With the async template API, jumping to a template table
    with ``RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_WIRE_ORIG`` specialization
    from a template table with a different specialization
