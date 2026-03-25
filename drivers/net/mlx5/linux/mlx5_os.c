@@ -387,6 +387,7 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 	sh->dev_cap.esw_info.regc_value = 0;
 	sh->dev_cap.esw_info.regc_mask = 0;
 #endif
+	sh->dev_cap.esw_info.is_set = 1;
 	return 0;
 }
 

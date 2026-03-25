@@ -777,12 +777,13 @@ mlx5dr_definer_vport_set(struct mlx5dr_definer_fc *fc,
 	const struct flow_hw_port_info *port_info = NULL;
 	uint32_t regc_value;
 
-	if (v)
+	if (v) {
 		port_info = flow_hw_conv_port_id(fc->dr_ctx, v->port_id);
-	if (unlikely(!port_info))
-		regc_value = BAD_PORT;
-	else
+		assert(port_info != NULL);
 		regc_value = port_info->regc_value >> fc->bit_off;
+	} else {
+		regc_value = BAD_PORT;
+	}
 
 	/* Bit offset is set to 0 to since regc value is 32bit */
 	DR_SET(tag, regc_value, fc->byte_off, fc->bit_off, fc->bit_mask);
@@ -1593,20 +1594,27 @@ mlx5dr_definer_conv_item_port(struct mlx5dr_definer_conv_data *cd,
 	struct mlx5dr_definer_fc *fc;
 
 	if (port_id) {
-		if (!caps->wire_regc_mask) {
-			DR_LOG(ERR, "Port ID item not supported, missing wire REGC mask");
+		if (caps->vport_metadata_match) {
+			if (!caps->wire_regc_mask) {
+				DR_LOG(ERR, "Port ID item not supported, missing wire REGC mask");
+				rte_errno = ENOTSUP;
+				return rte_errno;
+			}
+
+			fc = &cd->fc[MLX5DR_DEFINER_FNAME_VPORT_REG_C_0];
+			fc->item_idx = item_idx;
+			fc->tag_set = &mlx5dr_definer_vport_set;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			DR_CALC_SET_HDR(fc, registers, register_c_0);
+			fc->bit_off = rte_ctz32(caps->wire_regc_mask);
+			fc->bit_mask = caps->wire_regc_mask >> fc->bit_off;
+			fc->dr_ctx = cd->ctx;
+		} else {
+			/* TODO */
+			DR_LOG(ERR, "Port ID item with legacy vport match is not implemented");
 			rte_errno = ENOTSUP;
 			return rte_errno;
 		}
-
-		fc = &cd->fc[MLX5DR_DEFINER_FNAME_VPORT_REG_C_0];
-		fc->item_idx = item_idx;
-		fc->tag_set = &mlx5dr_definer_vport_set;
-		fc->tag_mask_set = &mlx5dr_definer_ones_set;
-		DR_CALC_SET_HDR(fc, registers, register_c_0);
-		fc->bit_off = rte_ctz32(caps->wire_regc_mask);
-		fc->bit_mask = caps->wire_regc_mask >> fc->bit_off;
-		fc->dr_ctx = cd->ctx;
 	}
 
 	return 0;

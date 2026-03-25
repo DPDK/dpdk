@@ -2156,8 +2156,9 @@ flow_hw_conv_port_id(void *ctx, const uint16_t port_id)
 
 	if (port_id >= RTE_MAX_ETHPORTS)
 		return NULL;
+
 	port_info = &mlx5_flow_hw_port_infos[port_id];
-	return !!port_info->regc_mask ? port_info : NULL;
+	return port_info->is_set ? port_info : NULL;
 }
 
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT

@@ -1363,10 +1363,19 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 	strlcpy(caps->fw_ver, attr_ex.orig_attr.fw_ver, sizeof(caps->fw_ver));
 
 	port_info = flow_hw_get_wire_port(ctx);
-	if (port_info)
+	if (port_info) {
 		caps->wire_regc_mask = port_info->regc_mask;
-	else
+		/*
+		 * If REG_C_0 vport mask is available, then we can assume that vport metadata is
+		 * enabled on the switchdev.
+		 */
+		caps->vport_metadata_match = !!port_info->regc_mask;
+		DR_LOG(DEBUG, "ibdev %s vport metadata match is %sabled",
+		       ctx->device->name,
+		       caps->vport_metadata_match ? "en" : "dis");
+	} else {
 		DR_LOG(INFO, "Failed to query wire port regc value");
+	}
 
 	return ret;
 }

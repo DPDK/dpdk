@@ -12307,6 +12307,7 @@ mlx5_flow_hw_set_port_info(struct rte_eth_dev *dev)
 	info->regc_value = priv->vport_meta_tag;
 	info->vhca_id = priv->vport_vhca_id;
 	info->is_wire = mlx5_is_port_on_mpesw_device(priv) ? priv->mpesw_uplink : priv->master;
+	info->is_set = 1;
 }
 
 /* Clears vport tag and mask used for HWS rules. */
