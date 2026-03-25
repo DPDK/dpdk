@@ -92,11 +92,13 @@ struct mlx5dv_port;
 #define MLX5_PORT_QUERY_VPORT (1u << 0)
 #define MLX5_PORT_QUERY_REG_C0 (1u << 1)
 #define MLX5_PORT_QUERY_ESW_OWNER_VHCA_ID (1u << 2)
+#define MLX5_PORT_QUERY_VPORT_VHCA_ID (1u << 3)
 
 struct mlx5_port_info {
 	uint16_t query_flags;
 	uint16_t vport_id; /* Associated VF vport index (if any). */
 	uint16_t esw_owner_vhca_id; /* Associated the esw_owner that this VF belongs to. */
+	uint16_t vport_vhca_id; /* VHCA ID of the function associated with the vport. */
 	uint32_t vport_meta_tag; /* Used for vport index match ove VF LAG. */
 	uint32_t vport_meta_mask; /* Used for vport index field match mask. */
 };
