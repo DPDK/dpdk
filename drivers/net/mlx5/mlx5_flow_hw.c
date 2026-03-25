@@ -12305,6 +12305,7 @@ mlx5_flow_hw_set_port_info(struct rte_eth_dev *dev)
 	info = &mlx5_flow_hw_port_infos[port_id];
 	info->regc_mask = priv->vport_meta_mask;
 	info->regc_value = priv->vport_meta_tag;
+	info->vhca_id = priv->vport_vhca_id;
 	info->is_wire = mlx5_is_port_on_mpesw_device(priv) ? priv->mpesw_uplink : priv->master;
 }
 
@@ -12317,9 +12318,7 @@ mlx5_flow_hw_clear_port_info(struct rte_eth_dev *dev)
 
 	MLX5_ASSERT(port_id < RTE_MAX_ETHPORTS);
 	info = &mlx5_flow_hw_port_infos[port_id];
-	info->regc_mask = 0;
-	info->regc_value = 0;
-	info->is_wire = 0;
+	memset(info, 0, sizeof(*info));
 }
 
 static int

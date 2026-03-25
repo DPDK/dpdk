@@ -152,6 +152,7 @@ struct mlx5_flow_cb_ctx {
 struct flow_hw_port_info {
 	uint32_t regc_mask;
 	uint32_t regc_value;
+	uint32_t vhca_id;
 	uint32_t is_wire:1;
 	uint32_t direction:2;
 };
@@ -2012,6 +2013,7 @@ struct mlx5_priv {
 	uint32_t jump_fdb_rx_en:1; /* Jump from FDB Tx to FDB Rx flag per port. */
 	uint16_t domain_id; /* Switch domain identifier. */
 	uint16_t vport_id; /* Associated VF vport index (if any). */
+	uint16_t vport_vhca_id; /* VHCA ID of the associated vport (if any). */
 	uint32_t vport_meta_tag; /* Used for vport index match ove VF LAG. */
 	uint32_t vport_meta_mask; /* Used for vport index field match mask. */
 	uint16_t representor_id; /* UINT16_MAX if not a representor. */

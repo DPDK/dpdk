@@ -377,6 +377,7 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 					hca_attr->scatter_fcs_w_decap_disable;
 	sh->dev_cap.rq_delay_drop_en = hca_attr->rq_delay_drop;
 	mlx5_rt_timestamp_config(sh, hca_attr);
+	sh->dev_cap.esw_info.vhca_id = hca_attr->vhca_id;
 #ifdef HAVE_IBV_DEVICE_ATTR_ESW_MGR_REG_C0
 	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_REG_C0) {
 		sh->dev_cap.esw_info.regc_value = dv_attr.reg_c0.value;
@@ -1524,6 +1525,8 @@ err_secondary:
 			goto error;
 		}
 	}
+	if (vport_info.query_flags & MLX5_PORT_QUERY_VPORT_VHCA_ID)
+		priv->vport_vhca_id = vport_info.vport_vhca_id;
 	if (vport_info.query_flags & MLX5_PORT_QUERY_VPORT) {
 		priv->vport_id = vport_info.vport_id;
 	} else if (spawn->pf_bond >= 0 && sh->esw_mode) {
