@@ -207,6 +207,7 @@ struct mlx5dr_cmd_generate_wqe_attr {
 
 struct mlx5dr_cmd_query_caps {
 	uint32_t wire_regc_mask;
+	bool vport_metadata_match;
 	uint32_t flex_protocols;
 	uint8_t wqe_based_update;
 	uint8_t rtc_reparse_mode;
