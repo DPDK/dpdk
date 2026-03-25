@@ -228,9 +228,11 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		txq->gdma_sq.tail += desc->wqe_size_in_bu;
 
 		/* If TX CQE suppression is used, don't read more CQE but move
-		 * on to the next packet
+		 * on to the next packet. On error CQEs, HW generates one CQE
+		 * per WQE regardless of suppression, so always advance.
 		 */
-		if (desc->suppress_tx_cqe)
+		if (desc->suppress_tx_cqe &&
+		    oob->cqe_hdr.cqe_type == CQE_TX_OKAY)
 			continue;
 
 		i++;
