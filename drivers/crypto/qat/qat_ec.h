@@ -274,6 +274,7 @@ pick_curve(const struct rte_crypto_asym_xform *xform)
 	case RTE_CRYPTO_EC_GROUP_SECP521R1:
 		return SECP521R1;
 	default:
+		QAT_LOG(ERR, "Unsupported curve id %d", xform->ec.curve_id);
 		return -1;
 	}
 }
