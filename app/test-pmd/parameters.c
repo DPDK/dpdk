@@ -351,7 +351,7 @@ static const struct option long_options[] = {
 	NO_ARG(TESTPMD_OPT_MULTI_RX_MEMPOOL),
 	NO_ARG(TESTPMD_OPT_TXONLY_MULTI_FLOW),
 	REQUIRED_ARG(TESTPMD_OPT_TXONLY_FLOWS),
-	OPTIONAL_ARG(TESTPMD_OPT_RXQ_SHARE),
+	NO_ARG(TESTPMD_OPT_RXQ_SHARE),
 	REQUIRED_ARG(TESTPMD_OPT_ETH_LINK_SPEED),
 	NO_ARG(TESTPMD_OPT_DISABLE_LINK_CHECK),
 	NO_ARG(TESTPMD_OPT_DISABLE_DEVICE_START),
@@ -507,7 +507,7 @@ usage(char* progname)
 	printf("  --tx-ip=src,dst: IP addresses in Tx-only mode\n");
 	printf("  --tx-udp=src[,dst]: UDP ports in Tx-only mode\n");
 	printf("  --eth-link-speed: force link speed.\n");
-	printf("  --rxq-share=X: number of ports per shared Rx queue groups, defaults to UINT32_MAX (1 group)\n");
+	printf("  --rxq-share: enable Rx queue sharing per switch and Rx domain\n");
 	printf("  --disable-link-check: disable check on link status when "
 	       "starting/stopping ports.\n");
 	printf("  --disable-device-start: do not automatically start port\n");
@@ -1579,15 +1579,7 @@ launch_args_parse(int argc, char** argv)
 				rte_exit(EXIT_FAILURE, "txonly-flows must be >= 1 and <= 64\n");
 			break;
 		case TESTPMD_OPT_RXQ_SHARE_NUM:
-			if (optarg == NULL) {
-				rxq_share = UINT32_MAX;
-			} else {
-				n = atoi(optarg);
-				if (n >= 0)
-					rxq_share = (uint32_t)n;
-				else
-					rte_exit(EXIT_FAILURE, "rxq-share must be >= 0\n");
-			}
+			rxq_share = 1;
 			break;
 		case TESTPMD_OPT_NO_FLUSH_RX_NUM:
 			no_flush_rx = 1;
