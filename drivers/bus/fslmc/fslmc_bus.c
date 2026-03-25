@@ -322,7 +322,11 @@ rte_fslmc_scan(void)
 	char *group_name;
 
 	if (process_once) {
+		struct rte_dpaa2_device *dev;
+
 		DPAA2_BUS_DEBUG("Fslmc bus already scanned. Not rescanning");
+		TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next)
+			dev->device.devargs = fslmc_devargs_lookup(dev);
 		return 0;
 	}
 	process_once = 1;
