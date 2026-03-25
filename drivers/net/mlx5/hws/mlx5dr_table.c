@@ -468,6 +468,12 @@ struct mlx5dr_table *mlx5dr_table_create(struct mlx5dr_context *ctx,
 		return NULL;
 	}
 
+	if (attr->type == MLX5DR_TABLE_TYPE_FDB_UNIFIED && !ctx->caps->vport_metadata_match) {
+		DR_LOG(ERR, "Table type %d requires vport metadata to be enabled", attr->type);
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
 	if ((mlx5dr_table_is_fdb_any(attr->type) && attr->type != MLX5DR_TABLE_TYPE_FDB) &&
 	    !attr->level) {
 		DR_LOG(ERR, "Table type %d not supported by root table", attr->type);

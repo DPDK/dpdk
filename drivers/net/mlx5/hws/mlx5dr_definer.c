@@ -6,6 +6,8 @@
 
 #include "mlx5dr_internal.h"
 
+#define WIRE_GVMI	0
+#define BAD_GVMI	0xFFFF
 #define GTP_PDU_SC	0x85
 #define BAD_PORT	0xBAD
 #define BAD_SQN		0xBAD
@@ -787,6 +789,49 @@ mlx5dr_definer_vport_set(struct mlx5dr_definer_fc *fc,
 
 	/* Bit offset is set to 0 to since regc value is 32bit */
 	DR_SET(tag, regc_value, fc->byte_off, fc->bit_off, fc->bit_mask);
+}
+
+static void
+mlx5dr_definer_source_gvmi_set(struct mlx5dr_definer_fc *fc,
+			       const void *item_spec,
+			       uint8_t *tag)
+{
+	const struct rte_flow_item_ethdev *v = item_spec;
+	const struct flow_hw_port_info *port_info;
+	uint32_t source_gvmi;
+
+	if (v) {
+		port_info = flow_hw_conv_port_id(fc->dr_ctx, v->port_id);
+		assert(port_info != NULL);
+		if (port_info->is_wire)
+			source_gvmi = WIRE_GVMI;
+		else
+			source_gvmi = port_info->vhca_id;
+	} else {
+		source_gvmi = BAD_GVMI;
+	}
+
+	DR_SET(tag, source_gvmi, fc->byte_off, fc->bit_off, fc->bit_mask);
+}
+
+static void
+mlx5dr_definer_functional_lb_set(struct mlx5dr_definer_fc *fc,
+				 const void *item_spec,
+				 uint8_t *tag)
+{
+	const struct rte_flow_item_ethdev *v = item_spec;
+	const struct flow_hw_port_info *port_info;
+	uint32_t functional_lb;
+
+	if (v) {
+		port_info = flow_hw_conv_port_id(fc->dr_ctx, v->port_id);
+		assert(port_info != NULL);
+		functional_lb = !port_info->is_wire;
+	} else {
+		functional_lb = 0;
+	}
+
+	DR_SET(tag, functional_lb, fc->byte_off, fc->bit_off, fc->bit_mask);
 }
 
 static struct mlx5dr_definer_fc *
@@ -1610,10 +1655,22 @@ mlx5dr_definer_conv_item_port(struct mlx5dr_definer_conv_data *cd,
 			fc->bit_mask = caps->wire_regc_mask >> fc->bit_off;
 			fc->dr_ctx = cd->ctx;
 		} else {
-			/* TODO */
-			DR_LOG(ERR, "Port ID item with legacy vport match is not implemented");
-			rte_errno = ENOTSUP;
-			return rte_errno;
+			fc = &cd->fc[MLX5DR_DEFINER_FNAME_SOURCE_GVMI];
+			fc->item_idx = item_idx;
+			fc->tag_set = &mlx5dr_definer_source_gvmi_set;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			DR_CALC_SET_HDR(fc, source_qp_gvmi, source_gvmi);
+			fc->dr_ctx = cd->ctx;
+
+			if (cd->table_type != MLX5DR_TABLE_TYPE_NIC_RX)
+				return 0;
+
+			fc = &cd->fc[MLX5DR_DEFINER_FNAME_FUNCTIONAL_LB];
+			fc->item_idx = item_idx;
+			fc->tag_set = &mlx5dr_definer_functional_lb_set;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			DR_CALC_SET_HDR(fc, source_qp_gvmi, functional_lb);
+			fc->dr_ctx = cd->ctx;
 		}
 	}
 
