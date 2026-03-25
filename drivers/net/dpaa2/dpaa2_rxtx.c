@@ -651,7 +651,7 @@ dump_err_pkts(struct dpaa2_queue *dpaa2_q)
 	const struct qbman_fd *fd;
 	struct qbman_pull_desc pulldesc;
 	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
-	uint32_t lcore_id = rte_lcore_id(), i = 0;
+	uint32_t lcore_id = rte_lcore_id();
 	void *v_addr, *hw_annot_addr;
 	struct dpaa2_fas *fas;
 	struct rte_mbuf *mbuf;
@@ -726,24 +726,27 @@ dump_err_pkts(struct dpaa2_queue *dpaa2_q)
 			DPAA2_GET_FD_OFFSET(fd), DPAA2_GET_FD_ERR(fd),
 			fas->status);
 
-		if (mbuf)
+		if (mbuf) {
 			__rte_mbuf_sanity_check(mbuf, 1);
-		if (mbuf->nb_segs > 1) {
-			while (mbuf) {
-				sprintf(title, "Payload seg[%d]", i);
-				rte_hexdump(stderr, title,
+			if (mbuf->nb_segs > 1) {
+				struct rte_mbuf *seg = mbuf;
+				int i = 0;
+
+				while (seg) {
+					sprintf(title, "Payload seg[%d]", i);
+					rte_hexdump(stderr, title,
+						(char *)seg->buf_addr + seg->data_off,
+						seg->data_len);
+					seg = seg->next;
+					i++;
+				}
+			} else {
+				rte_hexdump(stderr, "Payload",
 					(char *)mbuf->buf_addr + mbuf->data_off,
 					mbuf->data_len);
-				mbuf = mbuf->next;
-				i++;
 			}
-		} else {
-			rte_hexdump(stderr, "Payload",
-				(char *)mbuf->buf_addr + mbuf->data_off,
-				mbuf->data_len);
+			rte_pktmbuf_free(mbuf);
 		}
-
-		rte_pktmbuf_free(mbuf);
 		dq_storage++;
 		num_rx++;
 	} while (pending);
