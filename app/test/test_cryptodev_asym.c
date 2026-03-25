@@ -1816,7 +1816,7 @@ test_ecpm(enum curve curve_id)
 	asym_op = op->asym;
 
 	/* Setup asym xform */
-	xform.next = NULL;
+	memset(&xform, 0, sizeof(xform));
 	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_ECPM;
 	xform.ec.curve_id = input_params.curve;
 
