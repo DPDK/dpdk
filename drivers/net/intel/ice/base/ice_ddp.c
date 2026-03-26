@@ -1359,10 +1359,6 @@ enum ice_ddp_state ice_init_pkg(struct ice_hw *hw, u8 *buf, u32 len, bool load_s
 				  res);
 			return ICE_DDP_PKG_ERR;
 		}
-		ice_debug(hw, ICE_DBG_INIT,
-			  "Topology download successful, reinitializing device\n");
-		ice_deinit_hw(hw);
-		ice_init_hw(hw);
 	}
 
 	/* initialize package info */
