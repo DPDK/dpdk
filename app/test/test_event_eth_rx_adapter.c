@@ -60,6 +60,7 @@ port_init_common(uint16_t port, const struct rte_eth_conf *port_conf,
 {
 	const uint16_t rx_ring_size = 512, tx_ring_size = 512;
 	int retval;
+	bool started = false;
 	uint16_t q;
 	struct rte_eth_dev_info dev_info;
 
@@ -76,31 +77,42 @@ port_init_common(uint16_t port, const struct rte_eth_conf *port_conf,
 					MAX_NUM_RX_QUEUE);
 	default_params.tx_rings = 1;
 
-	/* Configure the Ethernet device. */
-	retval = rte_eth_dev_configure(port, default_params.rx_rings,
+	while (!started) {
+		/* Configure the Ethernet device. */
+		retval = rte_eth_dev_configure(port, default_params.rx_rings,
 				default_params.tx_rings, port_conf);
-	if (retval != 0)
-		return retval;
-
-	for (q = 0; q < default_params.rx_rings; q++) {
-		retval = rte_eth_rx_queue_setup(port, q, rx_ring_size,
-				rte_eth_dev_socket_id(port), NULL, mp);
-		if (retval < 0)
+		if (retval != 0)
 			return retval;
-	}
 
-	/* Allocate and set up 1 TX queue per Ethernet port. */
-	for (q = 0; q < default_params.tx_rings; q++) {
-		retval = rte_eth_tx_queue_setup(port, q, tx_ring_size,
-				rte_eth_dev_socket_id(port), NULL);
-		if (retval < 0)
+		for (q = 0; q < default_params.rx_rings; q++) {
+			retval = rte_eth_rx_queue_setup(port, q, rx_ring_size,
+					rte_eth_dev_socket_id(port), NULL, mp);
+			if (retval < 0)
+				return retval;
+		}
+
+		/* Allocate and set up 1 TX queue per Ethernet port. */
+		for (q = 0; q < default_params.tx_rings; q++) {
+			retval = rte_eth_tx_queue_setup(port, q, tx_ring_size,
+					rte_eth_dev_socket_id(port), NULL);
+			if (retval < 0)
+				return retval;
+		}
+
+		/* Start the Ethernet port. */
+		retval = rte_eth_dev_start(port);
+		if (retval < 0) {
+			/* Some NICs may not support interrupts on all reported queues.
+			 * Therefore try to reconfigure and start with fewer queues
+			 */
+			if (default_params.rx_rings > 2) {
+				default_params.rx_rings /= 2;
+				continue;
+			}
 			return retval;
+		}
+		started = true;
 	}
-
-	/* Start the Ethernet port. */
-	retval = rte_eth_dev_start(port);
-	if (retval < 0)
-		return retval;
 
 	/* Display the port MAC address. */
 	struct rte_ether_addr addr;
