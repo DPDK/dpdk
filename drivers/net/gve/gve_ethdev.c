@@ -521,8 +521,7 @@ gve_setup_flow_subsystem(struct gve_priv *priv)
 			priv->flow_rule_bmp_size, 0);
 	if (!priv->avail_flow_rule_bmp_mem) {
 		PMD_DRV_LOG(ERR, "Failed to alloc bitmap for flow rules.");
-		err = -ENOMEM;
-		goto free_flow_rule_bmp;
+		return -ENOMEM;
 	}
 
 	err = gve_flow_init_bmp(priv);
@@ -619,6 +618,11 @@ gve_dev_reset(struct rte_eth_dev *dev)
 	if (gve_get_flow_subsystem_ok(priv))
 		gve_teardown_flow_subsystem(priv);
 
+	/*
+	 * Note that gve_teardown_flow_subsystem does not destroy the
+	 * flow_rule_lock. The lock is preserved across device resets and only
+	 * destroyed on dev_close.
+	 */
 	gve_free_queues(dev);
 	gve_teardown_device_resources(priv);
 	gve_adminq_free(priv);
