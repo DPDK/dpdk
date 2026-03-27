@@ -721,9 +721,9 @@ static int gve_adminq_create_rx_queue(struct gve_priv *priv, u32 queue_index)
 			GVE_RAW_ADDRESSING_QPL_ID : rxq->qpl->id;
 
 		cmd.create_rx_queue.rx_desc_ring_addr =
-			cpu_to_be64(rxq->mz->iova),
+			cpu_to_be64(rxq->mz->iova);
 		cmd.create_rx_queue.rx_data_ring_addr =
-			cpu_to_be64(rxq->data_mz->iova),
+			cpu_to_be64(rxq->data_mz->iova);
 		cmd.create_rx_queue.index = cpu_to_be32(queue_index);
 		cmd.create_rx_queue.queue_page_list_id = cpu_to_be32(qpl_id);
 		cmd.create_rx_queue.packet_buffer_size = cpu_to_be16(rxq->rx_buf_len);
