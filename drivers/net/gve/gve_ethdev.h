@@ -7,6 +7,7 @@
 
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
+#include <rte_alarm.h>
 #include <rte_ether.h>
 #include <rte_pci.h>
 #include <pthread.h>
@@ -56,6 +57,8 @@
 	RTE_ETH_RSS_NONFRAG_IPV4_UDP |	\
 	RTE_ETH_RSS_NONFRAG_IPV6_UDP |	\
 	RTE_ETH_RSS_IPV6_UDP_EX)
+
+#define GVE_DEV_POLL_INTERVAL_US (1 * 1000 * 1000) /* 1 second in microseconds */
 
 /* A list of pages registered with the device during setup and used by a queue
  * as buffers
