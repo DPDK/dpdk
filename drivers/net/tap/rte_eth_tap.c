@@ -1107,7 +1107,7 @@ tap_dev_close(struct rte_eth_dev *dev)
 	}
 #endif
 
-	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct rx_queue *rxq = dev->data->rx_queues[i];
 
 		tap_queue_close(process_private, i);
