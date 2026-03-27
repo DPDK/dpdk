@@ -737,7 +737,7 @@ main(int argc, char **argv)
 		printf("Initializing port %u... done\n", port_id);
 
 		if (configure_eth_port(port_id) != 0)
-			rte_exit(EXIT_FAILURE, "Cannot initialize port %"PRIu8"\n",
+			rte_exit(EXIT_FAILURE, "Cannot initialize port %"PRIu16"\n",
 					port_id);
 	}
 
