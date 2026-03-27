@@ -794,7 +794,7 @@ main(int argc, char *argv[])
 				ptp_enabled_port_nb++;
 			} else {
 				rte_exit(EXIT_FAILURE,
-					 "Cannot init port %"PRIu8 "\n",
+					 "Cannot init port %"PRIu16"\n",
 					 portid);
 			}
 		} else
