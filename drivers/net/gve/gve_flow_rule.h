@@ -41,6 +41,7 @@ struct gve_flow_spec {
 		u8 tclass;
 	};
 };
+GVE_CHECK_STRUCT_LEN(40, gve_flow_spec);
 
 /* Flow rule parameters using mixed endianness.
  * - flow_type and action are guest endian.
@@ -55,6 +56,7 @@ struct gve_flow_rule_params {
 	struct gve_flow_spec key;
 	struct gve_flow_spec mask;
 };
+GVE_CHECK_STRUCT_LEN(84, gve_flow_rule_params);
 
 struct gve_priv;
 
