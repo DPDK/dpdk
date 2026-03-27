@@ -303,6 +303,9 @@ static int axgbe_set_speed(struct axgbe_port *pdata, int speed)
 	case SPEED_10:
 		ss = 0x07;
 		break;
+	case SPEED_100:
+		ss = 0x04;
+		break;
 	case SPEED_1000:
 		ss = 0x03;
 		break;
