@@ -382,7 +382,7 @@ main(int argc, char **argv)
 
 			if (port_init(portid, mbuf_pool) != 0)
 				rte_exit(EXIT_FAILURE,
-					"Cannot init port %"PRIu8 "\n",
+					"Cannot init port %"PRIu16"\n",
 					portid);
 
 			for (w = 0; w < RTE_POWER_MAX_VFS; w++) {
