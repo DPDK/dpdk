@@ -13,6 +13,8 @@
 #include <ethdev_driver.h>
 
 static int gve_init_priv(struct gve_priv *priv, bool skip_describe_device);
+static void gve_start_dev_status_polling(struct rte_eth_dev *dev);
+static void gve_stop_dev_status_polling(struct rte_eth_dev *dev);
 
 static void
 gve_write_version(uint8_t *driver_version_register)
@@ -411,6 +413,11 @@ gve_dev_start(struct rte_eth_dev *dev)
 	struct gve_priv *priv;
 	int ret;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		PMD_DRV_LOG(WARNING, "Cannot start device in secondary.");
+		return -EPERM;
+	}
+
 	ret = gve_start_queues(dev);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Failed to start queues");
@@ -440,6 +447,8 @@ gve_dev_start(struct rte_eth_dev *dev)
 		}
 	}
 
+	gve_start_dev_status_polling(dev);
+
 	return 0;
 }
 
@@ -447,6 +456,17 @@ static int
 gve_dev_stop(struct rte_eth_dev *dev)
 {
 	struct gve_priv *priv = dev->data->dev_private;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		PMD_DRV_LOG(WARNING, "Cannot stop device in secondary.");
+		return -EPERM;
+	}
+
+	/*
+	 * Block until all polling callbacks have concluded before tearing down
+	 * any device resources.
+	 */
+	gve_stop_dev_status_polling(dev);
 
 	dev->data->dev_started = 0;
 	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
@@ -1309,6 +1329,63 @@ gve_set_default_ring_size_bounds(struct gve_priv *priv)
 	priv->max_rx_desc_cnt = GVE_DEFAULT_MAX_RING_SIZE;
 	priv->min_tx_desc_cnt = GVE_DEFAULT_MIN_TX_RING_SIZE;
 	priv->min_rx_desc_cnt = GVE_DEFAULT_MIN_RX_RING_SIZE;
+}
+
+static void
+gve_check_device_status(void *arg)
+{
+	struct rte_eth_dev *dev = arg;
+	struct gve_priv *priv = dev->data->dev_private;
+	uint32_t dev_status;
+	int ret;
+
+	dev_status = ioread32be(&priv->reg_bar0->device_status);
+
+	if (dev_status & GVE_DEVICE_STATUS_RESET_MASK) {
+		PMD_DRV_LOG(INFO,
+			"Device on port %u requests a reset. Stopping device status polling.",
+			dev->data->port_id);
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
+			NULL);
+	} else {
+		ret = rte_eal_alarm_set(GVE_DEV_POLL_INTERVAL_US,
+					gve_check_device_status, dev);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR,
+				"Port %u: Failed to re-arm alarm poller!",
+				dev->data->port_id);
+		}
+	}
+}
+
+static void
+gve_start_dev_status_polling(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return;
+
+	ret = rte_eal_alarm_set(GVE_DEV_POLL_INTERVAL_US,
+				gve_check_device_status,
+				dev);
+
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR,
+			"Port %u: Failed to arm device reset polling alarm! Err=%d",
+			dev->data->port_id, ret);
+	} else {
+		PMD_DRV_LOG(INFO,
+			"Port %u: Armed device reset polling alarm.",
+			dev->data->port_id);
+	}
+}
+
+static void
+gve_stop_dev_status_polling(struct rte_eth_dev *dev)
+{
+	/* Blocks until all in-progress callbacks have completed. */
+	rte_eal_alarm_cancel(gve_check_device_status, dev);
 }
 
 static int

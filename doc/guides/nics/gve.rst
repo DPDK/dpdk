@@ -132,8 +132,8 @@ Security Protocols
 - Flow priorities are not supported (must be 0).
 - Masking is limited to full matches i.e. ``0x00...0`` or ``0xFF...F``.
 
-Application-Initiated Reset
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Device Reset
+^^^^^^^^^^^^
 
 The driver allows an application to reset the gVNIC device.
 This function will tear down and reinitialize the device's resources,
@@ -141,3 +141,32 @@ including queues and administrative queues.
 
 It is the application's responsibility to reinitialize
 and restart the device after resetting it.
+
+In addition, the driver supports device-requested resets,
+which are triggered when the device encounters an unrecoverable error.
+The driver detects this via a device status register
+and raises an ``RTE_ETH_EVENT_INTR_RESET`` event.
+
+The application must register a callback to handle this event.
+The callback should handle the reset process (reset, reconfigure, restart).
+
+.. code-block:: c
+
+   static int
+   dev_rst_req_callback(uint16_t port_id, enum rte_eth_event_type type,
+                        void *param, void *ret_param)
+   {
+       RTE_SET_USED(param);
+       RTE_SET_USED(ret_param);
+
+       if (type == RTE_ETH_EVENT_INTR_RESET) {
+           printf("Device requested reset on port %u\n", port_id);
+           rte_eth_dev_reset(port_id);
+           /* Reconfigure and restart port ... */
+       }
+       return 0;
+   }
+
+   /* Register this callback in the main execution flow */
+   rte_eth_dev_callback_register(port_id, RTE_ETH_EVENT_INTR_RESET,
+                     dev_rst_req_callback, NULL);
