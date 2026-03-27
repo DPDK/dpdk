@@ -250,6 +250,7 @@ struct gve_rx_queue {
 
 	/* Only valid for DQO_RDA queue format */
 	struct gve_rx_queue *bufq;
+	struct rte_mbuf **refill_bufs;
 
 	uint8_t is_gqi_qpl;
 };
