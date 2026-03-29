@@ -2482,90 +2482,111 @@ end:
 }
 
 /*
+ * Wrapper functions for tests that take parameters.
+ */
+static int
+test_average_table_utilization_no_ext(void)
+{
+	return test_average_table_utilization(0);
+}
+
+static int
+test_average_table_utilization_ext(void)
+{
+	return test_average_table_utilization(1);
+}
+
+static int
+test_hash_iteration_no_ext(void)
+{
+	return test_hash_iteration(0);
+}
+
+static int
+test_hash_iteration_ext(void)
+{
+	return test_hash_iteration(1);
+}
+
+static int
+test_hash_rcu_qsbr_dq_mode_no_ext(void)
+{
+	return test_hash_rcu_qsbr_dq_mode(0);
+}
+
+static int
+test_hash_rcu_qsbr_dq_mode_ext(void)
+{
+	return test_hash_rcu_qsbr_dq_mode(1);
+}
+
+static int
+test_hash_rcu_qsbr_sync_mode_no_ext(void)
+{
+	return test_hash_rcu_qsbr_sync_mode(0);
+}
+
+static int
+test_hash_rcu_qsbr_sync_mode_ext(void)
+{
+	return test_hash_rcu_qsbr_sync_mode(1);
+}
+
+static int
+test_hash_func_tests(void)
+{
+	run_hash_func_tests();
+	return TEST_SUCCESS;
+}
+
+static_assert(sizeof(struct flow_key) % sizeof(uint32_t) == 0,
+	     "flow_key size must be a multiple of 4 bytes");
+
+static struct unit_test_suite hash_test_suite = {
+	.suite_name = "Hash Unit Test Suite",
+	.unit_test_cases = {
+		TEST_CASE(test_add_delete),
+		TEST_CASE(test_hash_add_delete_jhash2),
+		TEST_CASE(test_hash_add_delete_2_jhash2),
+		TEST_CASE(test_hash_add_delete_jhash_1word),
+		TEST_CASE(test_hash_add_delete_jhash_2word),
+		TEST_CASE(test_hash_add_delete_jhash_3word),
+		TEST_CASE(test_hash_get_key_with_position),
+		TEST_CASE(test_hash_find_existing),
+		TEST_CASE(test_add_update_delete),
+		TEST_CASE(test_add_update_delete_free),
+		TEST_CASE(test_add_delete_free_lf),
+		TEST_CASE(test_five_keys),
+		TEST_CASE(test_full_bucket),
+		TEST_CASE(test_extendable_bucket),
+		TEST_CASE(test_fbk_hash_find_existing),
+		TEST_CASE(fbk_hash_unit_test),
+		TEST_CASE(test_hash_creation_with_bad_parameters),
+		TEST_CASE(test_hash_creation_with_good_parameters),
+		TEST_CASE(test_average_table_utilization_no_ext),
+		TEST_CASE(test_hash_iteration_no_ext),
+		TEST_CASE(test_average_table_utilization_ext),
+		TEST_CASE(test_hash_iteration_ext),
+		TEST_CASE(test_hash_func_tests),
+		TEST_CASE(test_crc32_hash_alg_equiv),
+		TEST_CASE(test_hash_rcu_qsbr_add),
+		TEST_CASE(test_hash_rcu_qsbr_dq_mode_no_ext),
+		TEST_CASE(test_hash_rcu_qsbr_dq_mode_ext),
+		TEST_CASE(test_hash_rcu_qsbr_sync_mode_no_ext),
+		TEST_CASE(test_hash_rcu_qsbr_sync_mode_ext),
+		TEST_CASE(test_hash_rcu_qsbr_dq_reclaim),
+		TEST_CASE(test_hash_rcu_qsbr_replace_auto_free),
+		TEST_CASES_END()
+	}
+};
+
+/*
  * Do all unit and performance tests.
  */
 static int
 test_hash(void)
 {
-	RTE_BUILD_BUG_ON(sizeof(struct flow_key) % sizeof(uint32_t) != 0);
-
-	if (test_add_delete() < 0)
-		return -1;
-	if (test_hash_add_delete_jhash2() < 0)
-		return -1;
-	if (test_hash_add_delete_2_jhash2() < 0)
-		return -1;
-	if (test_hash_add_delete_jhash_1word() < 0)
-		return -1;
-	if (test_hash_add_delete_jhash_2word() < 0)
-		return -1;
-	if (test_hash_add_delete_jhash_3word() < 0)
-		return -1;
-	if (test_hash_get_key_with_position() < 0)
-		return -1;
-	if (test_hash_find_existing() < 0)
-		return -1;
-	if (test_add_update_delete() < 0)
-		return -1;
-	if (test_add_update_delete_free() < 0)
-		return -1;
-	if (test_add_delete_free_lf() < 0)
-		return -1;
-	if (test_five_keys() < 0)
-		return -1;
-	if (test_full_bucket() < 0)
-		return -1;
-	if (test_extendable_bucket() < 0)
-		return -1;
-
-	if (test_fbk_hash_find_existing() < 0)
-		return -1;
-	if (fbk_hash_unit_test() < 0)
-		return -1;
-	if (test_hash_creation_with_bad_parameters() < 0)
-		return -1;
-	if (test_hash_creation_with_good_parameters() < 0)
-		return -1;
-
-	/* ext table disabled */
-	if (test_average_table_utilization(0) < 0)
-		return -1;
-	if (test_hash_iteration(0) < 0)
-		return -1;
-
-	/* ext table enabled */
-	if (test_average_table_utilization(1) < 0)
-		return -1;
-	if (test_hash_iteration(1) < 0)
-		return -1;
-
-	run_hash_func_tests();
-
-	if (test_crc32_hash_alg_equiv() < 0)
-		return -1;
-
-	if (test_hash_rcu_qsbr_add() < 0)
-		return -1;
-
-	if (test_hash_rcu_qsbr_dq_mode(0) < 0)
-		return -1;
-
-	if (test_hash_rcu_qsbr_dq_mode(1) < 0)
-		return -1;
-
-	if (test_hash_rcu_qsbr_sync_mode(0) < 0)
-		return -1;
-
-	if (test_hash_rcu_qsbr_sync_mode(1) < 0)
-		return -1;
-
-	if (test_hash_rcu_qsbr_dq_reclaim() < 0)
-		return -1;
-
-	if (test_hash_rcu_qsbr_replace_auto_free() < 0)
-		return -1;
-
-	return 0;
+	return unit_test_suite_runner(&hash_test_suite);
 }
 
 REGISTER_FAST_TEST(hash_autotest, NOHUGE_OK, ASAN_OK, test_hash);
