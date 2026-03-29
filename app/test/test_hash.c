@@ -35,8 +35,16 @@
  */
 static rte_hash_function hashtest_funcs[] = {rte_jhash, rte_hash_crc};
 static uint32_t hashtest_initvals[] = {0};
-static uint32_t hashtest_key_lens[] = {0, 2, 4, 5, 6, 7, 8, 10, 11, 15, 16, 21, 31, 32, 33, 63, 64};
-#define MAX_KEYSIZE 64
+
+/*
+ * Test common hash key lengths. Make sure and cover all the special cases
+ * in the cmp_jump_table.
+ */
+static uint32_t hashtest_key_lens[] = {
+	0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 14, 15, 16, 18, 20,
+	21, 31, 32, 33, 36, 48, 63, 64, 80, 96, 112, 128, 254
+};
+#define MAX_KEYSIZE 256
 /******************************************************************************/
 #define LOCAL_FBK_HASH_ENTRIES_MAX (1 << 15)
 
