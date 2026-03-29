@@ -1515,6 +1515,83 @@ test_hash_creation_with_good_parameters(void)
 	return 0;
 }
 
+/*
+ * Test hash creation and key operations with various key lengths.
+ * This exercises the key compare functions for different sizes.
+ */
+static int
+test_hash_creation_with_key_lengths(void)
+{
+	struct rte_hash *handle;
+	struct rte_hash_parameters params;
+	uint8_t key[MAX_KEYSIZE];
+	unsigned int i, j;
+	int pos, expected_pos;
+
+	for (i = 0; i < RTE_DIM(hashtest_key_lens); i++) {
+		uint32_t key_len = hashtest_key_lens[i];
+
+		/* key_len of 0 is invalid */
+		if (key_len == 0)
+			continue;
+
+		memcpy(&params, &ut_params, sizeof(params));
+		params.name = "key_len_test";
+		params.key_len = key_len;
+
+		handle = rte_hash_create(&params);
+		if (handle == NULL) {
+			printf("Creating hash with key_len %u failed\n", key_len);
+			return -1;
+		}
+
+		/* initialize key with pattern */
+		for (j = 0; j < key_len; j++)
+			key[j] = (uint8_t)j;
+
+		/* add the key */
+		pos = rte_hash_add_key(handle, key);
+		if (pos < 0) {
+			printf("Adding key with key_len %u failed\n", key_len);
+			rte_hash_free(handle);
+			return -1;
+		}
+		expected_pos = pos;
+
+		/* lookup should find same key */
+		pos = rte_hash_lookup(handle, key);
+		if (pos != expected_pos) {
+			printf("Lookup key with key_len %u failed: expected %d got %d\n",
+			       key_len, expected_pos, pos);
+			rte_hash_free(handle);
+			return -1;
+		}
+
+		/* modify one byte and lookup should fail */
+		key[key_len - 1] ^= 0xff;
+		pos = rte_hash_lookup(handle, key);
+		if (pos != -ENOENT) {
+			printf("Lookup modified key with key_len %u should have failed\n",
+			       key_len);
+			rte_hash_free(handle);
+			return -1;
+		}
+
+		/* restore key and delete */
+		key[key_len - 1] ^= 0xff;
+		pos = rte_hash_del_key(handle, key);
+		if (pos != expected_pos) {
+			printf("Delete key with key_len %u failed\n", key_len);
+			rte_hash_free(handle);
+			return -1;
+		}
+
+		rte_hash_free(handle);
+	}
+
+	return 0;
+}
+
 #define ITERATIONS 3
 /*
  * Test to see the average table utilization (entries added/max entries)
@@ -2563,6 +2640,7 @@ static struct unit_test_suite hash_test_suite = {
 		TEST_CASE(fbk_hash_unit_test),
 		TEST_CASE(test_hash_creation_with_bad_parameters),
 		TEST_CASE(test_hash_creation_with_good_parameters),
+		TEST_CASE(test_hash_creation_with_key_lengths),
 		TEST_CASE(test_average_table_utilization_no_ext),
 		TEST_CASE(test_hash_iteration_no_ext),
 		TEST_CASE(test_average_table_utilization_ext),
