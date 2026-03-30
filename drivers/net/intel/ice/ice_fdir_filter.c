@@ -110,7 +110,8 @@
 	ICE_INSET_NAT_T_ESP_SPI)
 
 #define ICE_FDIR_INSET_L2TPV2 (\
-	ICE_INSET_SMAC | ICE_INSET_DMAC | ICE_INSET_L2TPV2OIP_SESSION_ID)
+	ICE_INSET_SMAC | ICE_INSET_DMAC | ICE_INSET_L2TPV2OIP_SESSION_ID | \
+	ICE_INSET_L2TPV2OIP_LEN_SESSION_ID)
 
 #define ICE_FDIR_INSET_L2TPV2_PPP_IPV4 (\
 	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST)
@@ -1001,6 +1002,7 @@ ice_fdir_input_set_parse(uint64_t inset, enum ice_flow_field *field)
 		{ICE_INSET_ESP_SPI, ICE_FLOW_FIELD_IDX_ESP_SPI},
 		{ICE_INSET_NAT_T_ESP_SPI, ICE_FLOW_FIELD_IDX_NAT_T_ESP_SPI},
 		{ICE_INSET_L2TPV2OIP_SESSION_ID, ICE_FLOW_FIELD_IDX_L2TPV2_SESS_ID},
+		{ICE_INSET_L2TPV2OIP_LEN_SESSION_ID, ICE_FLOW_FIELD_IDX_L2TPV2_LEN_SESS_ID},
 	};
 
 	for (i = 0, j = 0; i < RTE_DIM(ice_inset_map); i++) {
@@ -2598,7 +2600,14 @@ raw_error:
 			     l2tpv2_mask->hdr.type1.session_id == UINT16_MAX) ||
 			    (flags_version == RTE_L2TPV2_MSG_TYPE_DATA_L_S_O &&
 			     l2tpv2_mask->hdr.type0.session_id == UINT16_MAX)) {
-				input_set_o |= ICE_INSET_L2TPV2OIP_SESSION_ID;
+				if (flags_version == RTE_L2TPV2_MSG_TYPE_CONTROL ||
+				    flags_version == RTE_L2TPV2_MSG_TYPE_DATA_L ||
+				    flags_version == RTE_L2TPV2_MSG_TYPE_DATA_L_S ||
+				    flags_version == RTE_L2TPV2_MSG_TYPE_DATA_L_O ||
+				    flags_version == RTE_L2TPV2_MSG_TYPE_DATA_L_S_O)
+					input_set_o |= ICE_INSET_L2TPV2OIP_LEN_SESSION_ID;
+				else
+					input_set_o |= ICE_INSET_L2TPV2OIP_SESSION_ID;
 			}
 
 			tunnel_type = ICE_FDIR_TUNNEL_TYPE_L2TPV2;
