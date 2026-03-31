@@ -3151,7 +3151,7 @@ iavf_handle_hw_reset(struct rte_eth_dev *dev)
 	goto exit;
 
 error:
-	PMD_DRV_LOG(DEBUG, "RESET recover with error code=%dn", ret);
+	PMD_DRV_LOG(DEBUG, "RESET recover with error code=%d", ret);
 exit:
 	vf->in_reset_recovery = false;
 	iavf_set_no_poll(adapter, false);
