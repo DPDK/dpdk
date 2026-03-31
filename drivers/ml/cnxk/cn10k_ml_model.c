@@ -33,6 +33,10 @@ cn10k_ml_io_type_map(uint8_t type)
 		return RTE_ML_IO_TYPE_FP16;
 	case 8:
 		return RTE_ML_IO_TYPE_FP32;
+	case 9:
+		return RTE_ML_IO_TYPE_INT64;
+	case 10:
+		return RTE_ML_IO_TYPE_UINT64;
 	}
 
 	return RTE_ML_IO_TYPE_UNKNOWN;
