@@ -104,6 +104,10 @@ IAVF PMD parameters
     transparently after a reset event, rather than relying on the application to do so. To disable
     this functionality, set the ``auto_reset`` devarg to zero: ``-a 18:01.0,auto_reset=0``
 
+``auto_reconfig``
+    Restore settings (unicast and multicast promiscuous states) on the VF after a reset event.
+    Enabled by default. To disable it: ``-a 18:01.0,auto_reconfig=0``
+
 ``no-poll-on-link-down``
     Stop polling Rx/Tx hardware queue when link is down. This is enabled by default because it is
     required when ``auto_reset`` is enabled which it is by default. To disable it, you must disable
