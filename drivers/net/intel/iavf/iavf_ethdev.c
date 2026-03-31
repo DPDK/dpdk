@@ -2947,6 +2947,12 @@ iavf_dev_close(struct rte_eth_dev *dev)
 		vf->max_rss_qregion = IAVF_MAX_NUM_QUEUES_DFLT;
 	}
 
+	/* Disable promiscuous mode before resetting the VF. This is to avoid
+	 * potential issues when the PF is bound to the kernel driver.
+	 */
+	if (vf->promisc_unicast_enabled || vf->promisc_multicast_enabled)
+		iavf_config_promisc(adapter, false, false);
+
 	adapter->closed = true;
 
 	/* free iAVF security device context all related resources */
@@ -2957,14 +2963,6 @@ iavf_dev_close(struct rte_eth_dev *dev)
 
 	iavf_flow_flush(dev, NULL);
 	iavf_flow_uninit(adapter);
-
-	/*
-	 * disable promiscuous mode before reset vf
-	 * it is a workaround solution when work with kernel driver
-	 * and it is not the normal way
-	 */
-	if (vf->promisc_unicast_enabled || vf->promisc_multicast_enabled)
-		iavf_config_promisc(adapter, false, false);
 
 	iavf_vf_reset(hw);
 	vf->aq_intr_enabled = false;
