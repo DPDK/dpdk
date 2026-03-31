@@ -320,6 +320,7 @@ struct iavf_devargs {
 	uint16_t quanta_size;
 	uint32_t watchdog_period;
 	int auto_reset;
+	int auto_reconfig;
 	int no_poll_on_link_down;
 	uint64_t mbuf_check;
 };

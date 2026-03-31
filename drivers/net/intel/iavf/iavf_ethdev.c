@@ -41,6 +41,7 @@
 #define IAVF_QUANTA_SIZE_ARG       "quanta_size"
 #define IAVF_RESET_WATCHDOG_ARG    "watchdog_period"
 #define IAVF_ENABLE_AUTO_RESET_ARG "auto_reset"
+#define IAVF_ENABLE_AUTO_RECONFIG_ARG "auto_reconfig"
 #define IAVF_NO_POLL_ON_LINK_DOWN_ARG "no-poll-on-link-down"
 #define IAVF_MBUF_CHECK_ARG       "mbuf_check"
 uint64_t iavf_timestamp_dynflag;
@@ -52,6 +53,7 @@ static const char * const iavf_valid_args[] = {
 	IAVF_QUANTA_SIZE_ARG,
 	IAVF_RESET_WATCHDOG_ARG,
 	IAVF_ENABLE_AUTO_RESET_ARG,
+	IAVF_ENABLE_AUTO_RECONFIG_ARG,
 	IAVF_NO_POLL_ON_LINK_DOWN_ARG,
 	IAVF_MBUF_CHECK_ARG,
 	NULL
@@ -2375,6 +2377,7 @@ static int iavf_parse_devargs(struct rte_eth_dev *dev)
 
 	ad->devargs.auto_reset = 1;
 	ad->devargs.no_poll_on_link_down = 1;
+	ad->devargs.auto_reconfig = 1;
 
 	if (!devargs)
 		return 0;
@@ -2436,6 +2439,11 @@ static int iavf_parse_devargs(struct rte_eth_dev *dev)
 			"no-poll-on-link-down=0 is incompatible with auto_reset=1, ignoring");
 		ad->devargs.no_poll_on_link_down = 1;
 	}
+
+	ret = rte_kvargs_process(kvlist, IAVF_ENABLE_AUTO_RECONFIG_ARG,
+				 &parse_bool, &ad->devargs.auto_reconfig);
+	if (ret)
+		goto bail;
 
 bail:
 	rte_kvargs_free(kvlist);
@@ -3091,6 +3099,34 @@ iavf_is_reset_detected(struct iavf_adapter *adapter)
 	return false;
 }
 
+static int
+iavf_post_reset_reconfig(struct rte_eth_dev *dev)
+{
+	int ret, status = 0;
+	bool allmulti = false, allunicast = false;
+	struct iavf_adapter *adapter = IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	/* Restore pre-reset unicast promiscuous and multicast promiscuous states */
+	if (dev->data->promiscuous)
+		allunicast = true;
+	if (dev->data->all_multicast)
+		allmulti = true;
+	if (allmulti || allunicast) {
+		ret = iavf_config_promisc(adapter, allunicast, allmulti);
+		if (ret)
+			PMD_DRV_LOG(ERR, "Failed to restore unicast promiscuous mode (%s) "
+						"and multicast promiscuous mode (%s)",
+						allunicast ? "on" : "off", allmulti ? "on" : "off");
+		else
+			PMD_DRV_LOG(DEBUG, "Restored unicast promiscuous mode (%s) "
+						"and multicast promiscuous mode (%s)",
+						allunicast ? "on" : "off", allmulti ? "on" : "off");
+		status |= ret;
+	}
+
+	return status;
+}
+
 /*
  * Handle hardware reset
  */
@@ -3140,6 +3176,21 @@ iavf_handle_hw_reset(struct rte_eth_dev *dev, bool vf_initiated_reset)
 
 		dev->data->dev_started = 1;
 	}
+
+	/* Restore settings after the reset */
+	if (adapter->devargs.auto_reconfig) {
+		ret = iavf_post_reset_reconfig(dev);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to restore VF settings after reset");
+			goto error;
+		}
+	} else {
+		dev->data->promiscuous = 0;
+		dev->data->all_multicast = 0;
+		vf->promisc_unicast_enabled = false;
+		vf->promisc_multicast_enabled = false;
+	}
+
 	goto exit;
 
 error:
