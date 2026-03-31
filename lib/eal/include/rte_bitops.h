@@ -47,7 +47,7 @@ extern "C" {
  * @param nr
  *   The shift number in range of 0 to (32 - width of val).
  */
-#define RTE_SHIFT_VAL32(val, nr) (UINT32_C(val) << (nr))
+#define RTE_SHIFT_VAL32(val, nr) ((uint32_t)(val) << (nr))
 
 /**
  * Get the uint64_t shifted value.
@@ -57,7 +57,7 @@ extern "C" {
  * @param nr
  *   The shift number in range of 0 to (64 - width of val).
  */
-#define RTE_SHIFT_VAL64(val, nr) (UINT64_C(val) << (nr))
+#define RTE_SHIFT_VAL64(val, nr) ((uint64_t)(val) << (nr))
 
 /**
  * Generate a contiguous 32-bit mask
