@@ -22,13 +22,18 @@ snippet_match_modify_ecn_create_actions(__rte_unused uint16_t port_id,
 {
 	/* Create one action that moves the packet to the selected queue. */
 	struct rte_flow_action_queue *queue = calloc(1, sizeof(struct rte_flow_action_queue));
-	if (queue == NULL)
+	if (queue == NULL) {
 		fprintf(stderr, "Failed to allocate memory for queue\n");
+		return;
+	}
 
 	struct rte_flow_action_modify_field *modify_field =
 					calloc(1, sizeof(struct rte_flow_action_modify_field));
-	if (modify_field == NULL)
+	if (modify_field == NULL) {
 		fprintf(stderr, "Failed to allocate memory for modify_field\n");
+		free(queue);
+		return;
+	}
 
 	queue->index = 1;
 	modify_field->operation = RTE_FLOW_MODIFY_SET;

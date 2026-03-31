@@ -20,8 +20,10 @@ snippet_match_packet_type_create_actions(__rte_unused uint16_t port_id,
 {
 	/* Create one action that moves the packet to the selected queue. */
 	struct rte_flow_action_queue *queue = calloc(1, sizeof(struct rte_flow_action_queue));
-	if (queue == NULL)
+	if (queue == NULL) {
 		fprintf(stderr, "Failed to allocate memory for queue\n");
+		return;
+	}
 
 	/*
 	 * create the action sequence.
@@ -38,15 +40,20 @@ snippet_match_packet_type_create_patterns(struct rte_flow_item *pattern)
 {
 	struct rte_flow_item_ptype *ptype_spec;
 	ptype_spec = calloc(1, sizeof(struct rte_flow_item_ptype));
-	if (ptype_spec == NULL)
+	if (ptype_spec == NULL) {
 		fprintf(stderr, "Failed to allocate memory for ptype_spec\n");
+		return;
+	}
 
 	ptype_spec->packet_type = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_TCP;
 
 	struct rte_flow_item_ptype *ptype_mask;
 	ptype_mask = calloc(1, sizeof(struct rte_flow_item_ptype));
-	if (ptype_mask == NULL)
+	if (ptype_mask == NULL) {
 		fprintf(stderr, "Failed to allocate memory for ptype_mask\n");
+		free(ptype_spec);
+		return;
+	}
 
 	ptype_mask->packet_type = RTE_PTYPE_L3_MASK | RTE_PTYPE_L4_MASK;
 

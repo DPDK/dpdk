@@ -25,8 +25,10 @@ snippet_mpls_create_actions(__rte_unused uint16_t port_id, struct rte_flow_actio
 	struct rte_flow_action_queue *queue;
 
 	queue = calloc(1, sizeof(struct rte_flow_item_ipv4));
-	if (queue == NULL)
+	if (queue == NULL) {
 		fprintf(stderr, "Failed to allocate memory for queue\n");
+		return;
+	}
 
 	/* Set the selected queue. */
 	queue->index = UINT16_MAX;
@@ -43,8 +45,10 @@ snippet_mpls_create_patterns(struct rte_flow_item *pattern)
 	struct rte_flow_item_mpls *mpls_item;
 
 	mpls_item = calloc(1, sizeof(struct rte_flow_item_ipv4));
-	if (mpls_item == NULL)
+	if (mpls_item == NULL) {
 		fprintf(stderr, "Failed to allocate memory for mpls_item\n");
+		return;
+	}
 
 	memcpy(mpls_item->label_tc_s, "\xab\xcd\xe1", sizeof(mpls_item->label_tc_s));
 

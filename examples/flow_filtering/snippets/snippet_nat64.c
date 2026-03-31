@@ -23,7 +23,17 @@ snippet_match_nat64_create_actions(uint16_t port_id, struct rte_flow_action *act
 	create_jump_flow(port_id, 1, &error);
 
 	struct rte_flow_action_nat64 *nat64_v = calloc(1, sizeof(struct rte_flow_action_nat64));
+	if (nat64_v == NULL) {
+		fprintf(stderr, "Failed to allocate memory for nat64_v\n");
+		return;
+	}
+
 	struct rte_flow_action_jump *jump_v = calloc(1, sizeof(struct rte_flow_action_jump));
+	if (jump_v == NULL) {
+		fprintf(stderr, "Failed to allocate memory for jump_v\n");
+		free(nat64_v);
+		return;
+	}
 
 	nat64_v->type = RTE_FLOW_NAT64_4TO6;
 	jump_v->group = 2;

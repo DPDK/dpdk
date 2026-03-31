@@ -27,8 +27,10 @@ snippet_match_switch_granularity_create_actions(uint16_t port_id, struct rte_flo
 
 	struct rte_flow_action_ethdev *represented_port = calloc(1,
 		sizeof(struct rte_flow_action_ethdev));
-	if (represented_port == NULL)
+	if (represented_port == NULL) {
 		fprintf(stderr, "Failed to allocate memory for represented_port\n");
+		return;
+	}
 
 	represented_port->port_id = 0;
 	action[0].type = RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT;

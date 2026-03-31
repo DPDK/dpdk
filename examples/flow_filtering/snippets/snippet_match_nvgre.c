@@ -23,8 +23,10 @@ snippet_match_nvgre_create_actions(uint16_t port_id, struct rte_flow_action *act
 	create_jump_flow(port_id, 1, &error);
 
 	struct rte_flow_action_queue *queue = calloc(1, sizeof(struct rte_flow_action_queue));
-	if (queue == NULL)
+	if (queue == NULL) {
 		fprintf(stderr, "Failed to allocate memory for queue\n");
+		return;
+	}
 	queue->index = 1;
 
 	action[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
@@ -36,20 +38,34 @@ void
 snippet_match_nvgre_create_patterns(struct rte_flow_item *pattern)
 {
 	struct rte_flow_item_nvgre *nvgre = calloc(1, sizeof(struct rte_flow_item_nvgre));
-	if (nvgre == NULL)
+	if (nvgre == NULL) {
 		fprintf(stderr, "Failed to allocate memory for nvgre\n");
+		return;
+	}
 
 	struct rte_flow_item_udp *udp = calloc(1, sizeof(struct rte_flow_item_udp));
-	if (udp == NULL)
+	if (udp == NULL) {
 		fprintf(stderr, "Failed to allocate memory for udp\n");
+		free(nvgre);
+		return;
+	}
 
 	struct rte_flow_item_nvgre *nvgre_mask = calloc(1, sizeof(struct rte_flow_item_nvgre));
-	if (nvgre_mask == NULL)
+	if (nvgre_mask == NULL) {
 		fprintf(stderr, "Failed to allocate memory for nvgre_mask\n");
+		free(nvgre);
+		free(udp);
+		return;
+	}
 
 	struct rte_flow_item_udp *udp_mask = calloc(1, sizeof(struct rte_flow_item_udp));
-	if (udp_mask == NULL)
+	if (udp_mask == NULL) {
 		fprintf(stderr, "Failed to allocate memory for udp_mask\n");
+		free(nvgre);
+		free(udp);
+		free(nvgre_mask);
+		return;
+	}
 
 	/* build rule to match specific NVGRE:
 	 * tni = 0x12346, flow_id = 0x78, inner_udp_src = 0x1234

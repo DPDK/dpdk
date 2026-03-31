@@ -20,8 +20,10 @@ snippet_match_random_value_create_actions(__rte_unused uint16_t port_id,
 					struct rte_flow_action *action)
 {
 	struct rte_flow_action_queue *queue = calloc(1, sizeof(struct rte_flow_action_queue));
-	if (queue == NULL)
+	if (queue == NULL) {
 		fprintf(stderr, "Failed to allocate memory for queue\n");
+		return;
+	}
 	queue->index = UINT16_MAX; /* The selected target queue.*/
 	action[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
 	action[0].conf = queue;
@@ -33,8 +35,10 @@ snippet_match_random_value_create_patterns(struct rte_flow_item *pattern)
 {
 	struct rte_flow_item_random *random_item;
 	random_item = calloc(1, sizeof(struct rte_flow_item_random));
-	if (random_item == NULL)
+	if (random_item == NULL) {
 		fprintf(stderr, "Failed to allocate memory for port_representor_spec\n");
+		return;
+	}
 
 	random_item->value = 0;
 

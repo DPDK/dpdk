@@ -21,8 +21,10 @@ snippet_match_vxlan_gbp_create_actions(__rte_unused uint16_t port_id,
 					struct rte_flow_action *action)
 {
 	struct rte_flow_action_queue *queue = calloc(1, sizeof(struct rte_flow_action_queue));
-	if (queue == NULL)
+	if (queue == NULL) {
 		fprintf(stderr, "Failed to allocate memory for queue\n");
+		return;
+	}
 
 	queue->index = 1;
 
@@ -35,12 +37,17 @@ void
 snippet_match_vxlan_gbp_create_patterns(struct rte_flow_item *pattern)
 {
 	struct rte_flow_item_vxlan *vxlan_gbp = calloc(1, sizeof(struct rte_flow_item_vxlan));
-	if (vxlan_gbp == NULL)
+	if (vxlan_gbp == NULL) {
 		fprintf(stderr, "Failed to allocate memory for vxlan_gbp\n");
+		return;
+	}
 
 	struct rte_flow_item_vxlan *vxlan_gbp_mask = calloc(1, sizeof(struct rte_flow_item_vxlan));
-	if (vxlan_gbp_mask == NULL)
+	if (vxlan_gbp_mask == NULL) {
 		fprintf(stderr, "Failed to allocate memory for vxlan_gbp_mask\n");
+		free(vxlan_gbp);
+		return;
+	}
 
 	uint8_t vni[] = {0x00, 0x00, 0x00};
 	uint16_t group_policy_id = 0x200;

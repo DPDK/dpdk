@@ -20,8 +20,10 @@ snippet_match_integrity_flags_create_actions(__rte_unused uint16_t port_id,
 {
 	/* Create one action that moves the packet to the selected queue. */
 	struct rte_flow_action_queue *queue = calloc(1, sizeof(struct rte_flow_action_queue));
-	if (queue == NULL)
+	if (queue == NULL) {
 		fprintf(stderr, "Failed to allocate memory for queue\n");
+		return;
+	}
 
 	queue->index = 1;
 	action[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
@@ -38,16 +40,21 @@ snippet_match_integrity_flags_create_patterns(struct rte_flow_item *pattern)
 	struct rte_flow_item_integrity *integrity_mask;
 
 	integrity_spec = calloc(1, sizeof(struct rte_flow_item_integrity));
-	if (integrity_spec == NULL)
+	if (integrity_spec == NULL) {
 		fprintf(stderr, "Failed to allocate memory for integrity_spec\n");
+		return;
+	}
 
 	integrity_spec->level = 0;
 	integrity_spec->l3_ok = 1;
 	integrity_spec->ipv4_csum_ok = 1;
 
 	integrity_mask = calloc(1, sizeof(struct rte_flow_item_integrity));
-	if (integrity_mask == NULL)
+	if (integrity_mask == NULL) {
 		fprintf(stderr, "Failed to allocate memory for integrity_mask\n");
+		free(integrity_spec);
+		return;
+	}
 
 	integrity_mask->level = 0;
 	integrity_mask->l3_ok = 1;
@@ -55,12 +62,21 @@ snippet_match_integrity_flags_create_patterns(struct rte_flow_item *pattern)
 	integrity_mask->ipv4_csum_ok = 1;
 
 	ip_spec = calloc(1, sizeof(struct rte_flow_item_ipv4));
-	if (ip_spec == NULL)
+	if (ip_spec == NULL) {
 		fprintf(stderr, "Failed to allocate memory for ip_spec\n");
+		free(integrity_spec);
+		free(integrity_mask);
+		return;
+	}
 
 	ip_mask = calloc(1, sizeof(struct rte_flow_item_ipv4));
-	if (ip_mask == NULL)
+	if (ip_mask == NULL) {
 		fprintf(stderr, "Failed to allocate memory for ip_mask\n");
+		free(integrity_spec);
+		free(integrity_mask);
+		free(ip_spec);
+		return;
+	}
 
 	ip_spec->hdr.dst_addr = htonl(((192<<24) + (168<<16) + (1<<8) + 1));
 	ip_mask->hdr.dst_addr = 0xffffffff;

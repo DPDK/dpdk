@@ -23,8 +23,10 @@ snippet_match_vxlan_gpe_create_actions(uint16_t port_id, struct rte_flow_action 
 	create_jump_flow(port_id, 1, &error);
 
 	struct rte_flow_action_queue *queue = calloc(1, sizeof(struct rte_flow_action_queue));
-	if (queue == NULL)
+	if (queue == NULL) {
 		fprintf(stderr, "Failed to allocate memory for queue\n");
+		return;
+	}
 	queue->index = 1;
 
 	action[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
@@ -37,8 +39,10 @@ snippet_match_vxlan_gpe_create_patterns(struct rte_flow_item *pattern)
 {
 	struct rte_flow_item_vxlan_gpe *vxlan_gpe_mask = calloc(1,
 		sizeof(struct rte_flow_item_vxlan_gpe));
-	if (vxlan_gpe_mask == NULL)
+	if (vxlan_gpe_mask == NULL) {
 		fprintf(stderr, "Failed to allocate memory for vxlan_gpe_mask\n");
+		return;
+	}
 	memset(vxlan_gpe_mask->hdr.vni, 0xff, 3);
 
 	pattern[0].type = RTE_FLOW_ITEM_TYPE_ETH;
