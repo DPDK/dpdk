@@ -86,6 +86,7 @@ snippet_match_port_affinity_create_patterns(struct rte_flow_item *pattern)
 		calloc(1, sizeof(struct rte_flow_item_aggr_affinity));
 	if (affinity_mask == NULL) {
 		fprintf(stderr, "Failed to allocate memory for affinity_mask\n");
+		free(affinity_spec);
 		return;
 	}
 

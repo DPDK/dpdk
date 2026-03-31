@@ -24,8 +24,10 @@ snippet_ipv4_flow_create_actions(__rte_unused uint16_t port_id, struct rte_flow_
 	 * one action only, move packet to queue
 	 */
 	struct rte_flow_action_queue *queue = calloc(1, sizeof(struct rte_flow_action_queue));
-	if (queue == NULL)
+	if (queue == NULL) {
 		fprintf(stderr, "Failed to allocate memory for queue\n");
+		return;
+	}
 	queue->index = 1; /* The selected target queue.*/
 	action[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
 	action[0].conf = queue;
@@ -53,12 +55,17 @@ snippet_ipv4_flow_create_patterns(struct rte_flow_item *patterns)
 	patterns[1].type = RTE_FLOW_ITEM_TYPE_IPV4;
 
 	ip_spec = calloc(1, sizeof(struct rte_flow_item_ipv4));
-	if (ip_spec == NULL)
+	if (ip_spec == NULL) {
 		fprintf(stderr, "Failed to allocate memory for ip_spec\n");
+		return;
+	}
 
 	ip_mask = calloc(1, sizeof(struct rte_flow_item_ipv4));
-	if (ip_mask == NULL)
+	if (ip_mask == NULL) {
 		fprintf(stderr, "Failed to allocate memory for ip_mask\n");
+		free(ip_spec);
+		return;
+	}
 
 	/* Match destination IP 192.168.1.1 with full mask */
 	ip_spec->hdr.dst_addr = htonl(((192<<24) + (168<<16) + (1<<8) + 1));

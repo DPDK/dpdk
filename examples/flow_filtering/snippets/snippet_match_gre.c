@@ -21,8 +21,10 @@ snippet_match_gre_create_actions(__rte_unused uint16_t port_id, struct rte_flow_
 {
 	/* Create one action that moves the packet to the selected queue. */
 	struct rte_flow_action_queue *queue = calloc(1, sizeof(struct rte_flow_action_queue));
-	if (queue == NULL)
+	if (queue == NULL) {
 		fprintf(stderr, "Failed to allocate memory for queue\n");
+		return;
+	}
 
 	/* Set the selected queue. */
 	queue->index = 1;
@@ -40,12 +42,17 @@ snippet_match_gre_create_patterns(struct rte_flow_item *pattern)
 	struct rte_flow_item_gre_opt *gre_opt_spec;
 
 	gre_spec = calloc(1, sizeof(struct rte_flow_item_gre));
-	if (gre_spec == NULL)
+	if (gre_spec == NULL) {
 		fprintf(stderr, "Failed to allocate memory for gre_spec\n");
+		return;
+	}
 
 	gre_opt_spec = calloc(1, sizeof(struct rte_flow_item_gre_opt));
-	if (gre_opt_spec == NULL)
+	if (gre_opt_spec == NULL) {
 		fprintf(stderr, "Failed to allocate memory for gre_opt_spec\n");
+		free(gre_spec);
+		return;
+	}
 
 	/* Set the Checksum GRE option. */
 	gre_spec->c_rsvd0_ver = RTE_BE16(0x8000);

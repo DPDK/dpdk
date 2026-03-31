@@ -25,8 +25,10 @@ snippet_match_nsh_create_actions(uint16_t port_id, struct rte_flow_action *actio
 	create_jump_flow(port_id, 1, &error);
 
 	struct rte_flow_action_port_id *portid = calloc(1, sizeof(struct rte_flow_action_port_id));
-	if (portid == NULL)
+	if (portid == NULL) {
 		fprintf(stderr, "Failed to allocate memory for port_id\n");
+		return;
+	}
 
 	/* To match on NSH to port_id 1. */
 	portid->id = 1;
@@ -43,12 +45,17 @@ snippet_match_nsh_create_patterns(struct rte_flow_item *pattern)
 	struct rte_flow_item_udp *mask;
 
 	spec = calloc(1, sizeof(struct rte_flow_item_udp));
-	if (spec == NULL)
+	if (spec == NULL) {
 		fprintf(stderr, "Failed to allocate memory for spec\n");
+		return;
+	}
 
 	mask = calloc(1, sizeof(struct rte_flow_item_udp));
-	if (mask == NULL)
+	if (mask == NULL) {
 		fprintf(stderr, "Failed to allocate memory for mask\n");
+		free(spec);
+		return;
+	}
 
 	/* Set the patterns. */
 	pattern[0].type = RTE_FLOW_ITEM_TYPE_ETH;
