@@ -997,13 +997,8 @@ cn10k_ml_layer_start(void *device, uint16_t model_id, const char *layer_name)
 	if (ret < 0) {
 		cn10k_ml_layer_stop(device, model_id, layer_name);
 	} else {
-		if (cn10k_mldev->cache_model_data) {
-			if ((model->type == ML_CNXK_MODEL_TYPE_GLOW &&
-			     model->subtype == ML_CNXK_MODEL_SUBTYPE_GLOW_MRVL) ||
-			    (model->type == ML_CNXK_MODEL_TYPE_TVM &&
-			     model->subtype == ML_CNXK_MODEL_SUBTYPE_TVM_MRVL))
-				ret = cn10k_ml_cache_model_data(cnxk_mldev, layer);
-		}
+		if (cn10k_mldev->cache_model_data)
+			ret = cn10k_ml_cache_model_data(cnxk_mldev, layer);
 	}
 
 	return ret;
