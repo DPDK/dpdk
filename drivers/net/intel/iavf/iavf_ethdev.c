@@ -2373,6 +2373,9 @@ static int iavf_parse_devargs(struct rte_eth_dev *dev)
 	int ret;
 	int watchdog_period = -1;
 
+	ad->devargs.auto_reset = 1;
+	ad->devargs.no_poll_on_link_down = 1;
+
 	if (!devargs)
 		return 0;
 
@@ -2428,8 +2431,11 @@ static int iavf_parse_devargs(struct rte_eth_dev *dev)
 	if (ret)
 		goto bail;
 
-	if (ad->devargs.auto_reset != 0)
+	if (ad->devargs.auto_reset != 0 && ad->devargs.no_poll_on_link_down == 0) {
+		PMD_INIT_LOG(WARNING,
+			"no-poll-on-link-down=0 is incompatible with auto_reset=1, ignoring");
 		ad->devargs.no_poll_on_link_down = 1;
+	}
 
 bail:
 	rte_kvargs_free(kvlist);
