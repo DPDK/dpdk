@@ -100,12 +100,15 @@ IAVF PMD parameters
     for example, ``-a 18:01.0,watchdog_period=5000`` or ``-a 18:01.0,watchdog_period=0``.
 
 ``auto_reset``
-    Enable VF auto-reset by setting the devargs parameter,
-    for example ``-a 18:01.0,auto_reset=1``,
+    VF auto-reset is enabled by default, meaning the driver will attempt to bring the VF back up
+    transparently after a reset event, rather than relying on the application to do so. To disable
+    this functionality, set the ``auto_reset`` devarg to zero: ``-a 18:01.0,auto_reset=0``
 
 ``no-poll-on-link-down``
-    Stop polling Rx/Tx hardware queue when link is down
-    by setting the ``devargs`` parameter like ``-a 18:01.0,no-poll-on-link-down=1``.
+    Stop polling Rx/Tx hardware queue when link is down. This is enabled by default because it is
+    required when ``auto_reset`` is enabled which it is by default. To disable it, you must disable
+    both ``auto_reset`` and ``no-poll-on-link-down``, for example,
+    ``-a 18:01.0,auto_reset=0,no-poll-on-link-down=0``.
 
 ``mbuf_check``
     Set the ``devargs`` parameter ``mbuf_check`` to enable Tx diagnostics.
