@@ -224,12 +224,14 @@ struct cn10k_ml_model_metadata_input_section {
 	/* Type of incoming input
 	 * 1 = INT8, 2 = UINT8, 3 = INT16, 4 = UINT16,
 	 * 5 = INT32, 6 = UINT32, 7 = FP16, 8 = FP32
+	 * 9 = INT64, 10 = UINT64
 	 */
 	uint8_t input_type;
 
 	/* Type of input required by model
 	 * 1 = INT8, 2 = UINT8, 3 = INT16, 4 = UINT16,
 	 * 5 = INT32, 6 = UINT32, 7 = FP16, 8 = FP32
+	 * 9 = INT64, 10 = UINT64
 	 */
 	uint8_t model_input_type;
 
@@ -282,12 +284,14 @@ struct cn10k_ml_model_metadata_output_section {
 	/* Type of outgoing output
 	 * 1 = INT8, 2 = UINT8, 3 = INT16, 4 = UINT16
 	 * 5 = INT32, 6 = UINT32, 7 = FP16, 8 = FP32
+	 * 9 = INT64, 10 = UINT64
 	 */
 	uint8_t output_type;
 
 	/* Type of output produced by model
 	 * 1 = INT8, 2 = UINT8, 3 = INT16, 4 = UINT16
 	 * 5 = INT32, 6 = UINT32, 7 = FP16, 8 = FP32
+	 * 9 = INT64, 10 = UINT64
 	 */
 	uint8_t model_output_type;
 
