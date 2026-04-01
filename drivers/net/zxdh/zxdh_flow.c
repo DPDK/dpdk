@@ -1884,7 +1884,7 @@ vf_flow_msg_process(enum zxdh_msg_type msg_type, struct rte_eth_dev *dev,
 	struct zxdh_flow_op_rsp *flow_rsp = (struct zxdh_flow_op_rsp *)flow_op_rsp;
 
 	dh_flow->hash_search_index = hw->hash_search_index;
-	rte_memcpy(&flow_msg->dh_flow, dh_flow, sizeof(struct zxdh_flow));
+	flow_msg->dh_flow = *dh_flow;
 
 	zxdh_msg_head_build(hw, msg_type, &msg_info);
 	ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(struct zxdh_msg_info),
