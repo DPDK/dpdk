@@ -392,15 +392,13 @@ comp_perf_dump_dictionary_data(struct comp_test_data *td)
 
 		if (fread(data, data_to_read, 1, f) != 1) {
 			RTE_LOG(ERR, USER1, "Input file could not be read\n");
-			if (td->dictionary_data)
-				rte_free(td->dictionary_data);
+			rte_free(td->dictionary_data);
 			goto end;
 		}
 		if (fseek(f, 0, SEEK_SET) != 0) {
 			RTE_LOG(ERR, USER1,
 				"Size of input could not be calculated\n");
-			if (td->dictionary_data)
-				rte_free(td->dictionary_data);
+			rte_free(td->dictionary_data);
 			goto end;
 		}
 		remaining_data -= data_to_read;
