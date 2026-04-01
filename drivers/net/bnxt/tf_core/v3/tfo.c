@@ -183,13 +183,11 @@ void tfo_close(void **tfo)
 				}
 			}
 		}
-		if (tim)
-			rte_free(tim);
+		rte_free(tim);
 		tfco->ts_tim = NULL;
 		tfco->tfgo = NULL;
 
-		if (*tfo)
-			rte_free(*tfo);
+		rte_free(*tfo);
 		*tfo = NULL;
 	}
 }
