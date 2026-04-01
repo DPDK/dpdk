@@ -877,10 +877,8 @@ static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 	return ret_val;
 
 fail_clear:
-	if (vf_bw != NULL)
-		free(vf_bw);
-	if (tc_bw != NULL)
-		free(tc_bw);
+	free(vf_bw);
+	free(tc_bw);
 
 	/* clear all the traffic manager configuration */
 	if (clear_on_fail) {
