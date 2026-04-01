@@ -169,11 +169,9 @@ ulp_sc_mgr_deinit(struct bnxt_ulp_context *ctxt)
 
 	ulp_sc_mgr_thread_cancel(ctxt);
 
-	if (ulp_sc_info->stats_cache_tbl)
-		rte_free(ulp_sc_info->stats_cache_tbl);
+	rte_free(ulp_sc_info->stats_cache_tbl);
 
-	if (ulp_sc_info->read_data)
-		rte_free(ulp_sc_info->read_data);
+	rte_free(ulp_sc_info->read_data);
 
 	rte_free(ulp_sc_info);
 
