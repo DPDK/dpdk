@@ -131,16 +131,6 @@ set_policy_mac(struct rte_power_channel_packet *pkt, int idx, char *mac)
 	return 0;
 }
 
-static char*
-get_resource_name_from_chn_path(const char *channel_path)
-{
-	char *substr = NULL;
-
-	substr = strstr(channel_path, CHANNEL_MGR_FIFO_PATTERN_NAME);
-
-	return substr;
-}
-
 static int
 get_resource_id_from_vmname(const char *vm_name)
 {
@@ -1066,8 +1056,8 @@ read_json_packet(struct channel_info *chan_info)
 		root = json_loads(json_data, 0, &error);
 
 		if (root) {
-			resource_name = get_resource_name_from_chn_path(
-				chan_info->channel_path);
+			resource_name = strstr(chan_info->channel_path,
+					CHANNEL_MGR_FIFO_PATTERN_NAME);
 			/*
 			 * Because our data is now in the json
 			 * object, we can overwrite the pkt
