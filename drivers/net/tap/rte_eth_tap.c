@@ -1124,7 +1124,7 @@ tap_dev_close(struct rte_eth_dev *dev)
 		}
 	}
 
-	if (internals->remote_if_index) {
+	if (internals->remote_if_index != 0 && internals->nlsk_fd != -1) {
 		/* Restore initial remote state */
 		int ret = tap_nl_set_flags(internals->nlsk_fd, internals->remote_if_index,
 					   internals->remote_initial_flags, 1);
