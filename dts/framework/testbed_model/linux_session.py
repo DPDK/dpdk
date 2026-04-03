@@ -245,7 +245,7 @@ class LinuxSession(PosixSession):
                 privileged=True,
             )
         else:
-            self.send_command("modprobe vfio-pci")
+            self.send_command("modprobe vfio-pci", privileged=True)
         self.refresh_lshw()
 
     def create_crypto_vfs(self, pf_port: list[Port]) -> None:
