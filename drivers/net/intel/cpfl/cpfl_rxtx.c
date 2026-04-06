@@ -27,7 +27,7 @@ cpfl_tx_hairpin_descq_reset(struct ci_tx_queue *txq)
 }
 
 static inline void
-cpfl_tx_hairpin_complq_reset(struct ci_tx_queue *cq)
+cpfl_tx_hairpin_complq_reset(struct idpf_complq *cq)
 {
 	uint32_t i, size;
 
@@ -483,7 +483,7 @@ cpfl_tx_complq_setup(struct rte_eth_dev *dev, struct ci_tx_queue *txq,
 	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
 	struct idpf_vport *vport = &cpfl_vport->base;
 	const struct rte_memzone *mz;
-	struct ci_tx_queue *cq;
+	struct idpf_complq *cq;
 	int ret;
 
 	cq = rte_zmalloc_socket("cpfl splitq cq",
@@ -813,7 +813,8 @@ cpfl_tx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	struct cpfl_txq_hairpin_info *hairpin_info;
 	struct idpf_hw *hw = &adapter_base->hw;
 	struct cpfl_tx_queue *cpfl_txq;
-	struct ci_tx_queue *txq, *cq;
+	struct ci_tx_queue *txq;
+	struct idpf_complq *cq;
 	const struct rte_memzone *mz;
 	uint32_t ring_size;
 	uint16_t peer_port, peer_q;
@@ -894,7 +895,7 @@ cpfl_tx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				  logic_qid, cpfl_vport->p2p_q_chunks_info->tx_qtail_spacing);
 	if (cpfl_vport->p2p_tx_complq == NULL) {
 		cq = rte_zmalloc_socket("cpfl hairpin cq",
-					sizeof(struct ci_tx_queue),
+					sizeof(struct idpf_complq),
 					RTE_CACHE_LINE_SIZE,
 					dev->device->numa_node);
 		if (!cq) {
@@ -996,7 +997,7 @@ cpfl_hairpin_rxq_config(struct idpf_vport *vport, struct cpfl_rx_queue *cpfl_rxq
 int
 cpfl_hairpin_tx_complq_config(struct cpfl_vport *cpfl_vport)
 {
-	struct ci_tx_queue *tx_complq = cpfl_vport->p2p_tx_complq;
+	struct idpf_complq *tx_complq = cpfl_vport->p2p_tx_complq;
 	struct virtchnl2_txq_info txq_info;
 
 	memset(&txq_info, 0, sizeof(txq_info));

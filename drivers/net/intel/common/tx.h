@@ -209,18 +209,12 @@ struct ci_tx_queue {
 			uint8_t vf_ctx_initialized; /**< VF context descriptors initialized */
 		};
 		struct { /* idpf specific values */
-				volatile union {
-						struct idpf_flex_tx_sched_desc *desc_ring;
-						struct idpf_splitq_tx_compl_desc *compl_ring;
-				};
-				struct ci_tx_queue *complq;
-				void **txqs;   /*only valid for split queue mode*/
-				uint32_t tx_start_qid;
+				struct idpf_flex_tx_sched_desc *desc_ring;
+				struct idpf_complq *complq;
 				uint32_t latch_idx; /* Tx timestamp latch index */
 				uint16_t sw_nb_desc;
 				uint16_t sw_tail;
 				uint16_t rs_compl_count;
-				uint8_t expected_gen_id;
 		};
 	};
 };
