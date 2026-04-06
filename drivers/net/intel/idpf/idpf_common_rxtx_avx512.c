@@ -1101,9 +1101,9 @@ idpf_dp_singleq_xmit_pkts_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 }
 
 static __rte_always_inline void
-idpf_splitq_scan_cq_ring(struct ci_tx_queue *cq)
+idpf_splitq_scan_cq_ring(struct idpf_complq *cq)
 {
-	struct idpf_splitq_tx_compl_desc *compl_ring;
+	volatile struct idpf_splitq_tx_compl_desc *compl_ring;
 	struct ci_tx_queue *txq;
 	uint16_t genid, txq_qid, cq_qid, i;
 	uint8_t ctype;

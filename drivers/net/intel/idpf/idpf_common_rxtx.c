@@ -237,7 +237,7 @@ idpf_qc_split_tx_descq_reset(struct ci_tx_queue *txq)
 
 RTE_EXPORT_INTERNAL_SYMBOL(idpf_qc_split_tx_complq_reset)
 void
-idpf_qc_split_tx_complq_reset(struct ci_tx_queue *cq)
+idpf_qc_split_tx_complq_reset(struct idpf_complq *cq)
 {
 	uint32_t i, size;
 
@@ -782,7 +782,7 @@ idpf_dp_splitq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 }
 
 static inline void
-idpf_split_tx_free(struct ci_tx_queue *cq)
+idpf_split_tx_free(struct idpf_complq *cq)
 {
 	volatile struct idpf_splitq_tx_compl_desc *compl_ring = cq->compl_ring;
 	volatile struct idpf_splitq_tx_compl_desc *txd;
