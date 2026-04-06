@@ -181,6 +181,20 @@ struct idpf_rxq_ops {
 	void (*release_mbufs)(struct idpf_rx_queue *rxq);
 };
 
+/* Dedicated completion queue structure for IDPF split queue model. */
+struct idpf_complq {
+	volatile struct idpf_splitq_tx_compl_desc *compl_ring;
+	void **txqs;
+	rte_iova_t tx_ring_dma;
+	const struct rte_memzone *mz;
+	uint32_t tx_start_qid;
+	uint16_t nb_tx_desc;
+	uint16_t tx_tail;
+	uint16_t queue_id;
+	uint16_t port_id;
+	uint8_t expected_gen_id;
+};
+
 extern int idpf_timestamp_dynfield_offset;
 extern uint64_t idpf_timestamp_dynflag;
 
@@ -202,7 +216,7 @@ void idpf_qc_single_rx_queue_reset(struct idpf_rx_queue *rxq);
 __rte_internal
 void idpf_qc_split_tx_descq_reset(struct ci_tx_queue *txq);
 __rte_internal
-void idpf_qc_split_tx_complq_reset(struct ci_tx_queue *cq);
+void idpf_qc_split_tx_complq_reset(struct idpf_complq *cq);
 __rte_internal
 void idpf_splitq_rearm_common(struct idpf_rx_queue *rx_bufq);
 __rte_internal

@@ -188,7 +188,7 @@ struct cpfl_vport {
 	uint16_t nb_p2p_txq;
 
 	struct idpf_rx_queue *p2p_rx_bufq;
-	struct ci_tx_queue *p2p_tx_complq;
+	struct idpf_complq *p2p_tx_complq;
 	bool p2p_manual_bind;
 };
 

@@ -360,7 +360,7 @@ idpf_tx_complq_setup(struct rte_eth_dev *dev, struct ci_tx_queue *txq,
 {
 	struct idpf_vport *vport = dev->data->dev_private;
 	const struct rte_memzone *mz;
-	struct ci_tx_queue *cq;
+	struct idpf_complq *cq;
 	int ret;
 
 	cq = rte_zmalloc_socket("idpf splitq cq",
