@@ -968,6 +968,7 @@ ice_fdir_input_set_parse(uint64_t inset, enum ice_flow_field *field)
 	};
 	static const struct ice_inset_map ice_inset_map[] = {
 		{ICE_INSET_DMAC, ICE_FLOW_FIELD_IDX_ETH_DA},
+		{ICE_INSET_SMAC, ICE_FLOW_FIELD_IDX_ETH_SA},
 		{ICE_INSET_ETHERTYPE, ICE_FLOW_FIELD_IDX_ETH_TYPE},
 		{ICE_INSET_IPV4_SRC, ICE_FLOW_FIELD_IDX_IPV4_SA},
 		{ICE_INSET_IPV4_DST, ICE_FLOW_FIELD_IDX_IPV4_DA},
