@@ -13,7 +13,6 @@ sources = files(
         'parse.c',
         'vm_power_cli_guest.c',
 )
-cflags += no_shadow_cflag
 
 allow_experimental_apis = true
 

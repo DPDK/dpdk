@@ -369,7 +369,6 @@ main(int argc, char **argv)
 		RTE_ETH_FOREACH_DEV(portid) {
 			struct rte_ether_addr eth;
 			int w, j;
-			int ret;
 
 			if ((enabled_port_mask & (1 << portid)) == 0)
 				continue;

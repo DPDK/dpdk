@@ -49,7 +49,7 @@ get_policy(void)
 int
 set_policy_mac(int port, int idx)
 {
-	struct rte_power_channel_packet *policy;
+	struct rte_power_channel_packet *pol;
 	union PFID pfid;
 	int ret;
 
@@ -64,8 +64,8 @@ set_policy_mac(int port, int idx)
 	printf("Port %u MAC: %02" PRIx8 ":%02" PRIx8 ":%02" PRIx8 ":"
 			"%02" PRIx8 ":%02" PRIx8 ":%02" PRIx8 "\n",
 			port, RTE_ETHER_ADDR_BYTES(&pfid.addr));
-	policy = get_policy();
-	policy->vfid[idx] = pfid.pfid;
+	pol = get_policy();
+	pol->vfid[idx] = pfid.pfid;
 	return 0;
 }
 

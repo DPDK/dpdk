@@ -23,9 +23,9 @@
 #include "oob_monitor.h"
 
 #define POWER_SCALE_CORE(DIRECTION, core_num , ret) do { \
-	if (core_num >= ci.core_count) \
+	if (core_num >= cinfo.core_count) \
 		return -1; \
-	if (!(ci.cd[core_num].global_enabled_cpus)) \
+	if (!(cinfo.cd[core_num].global_enabled_cpus)) \
 		return -1; \
 	rte_spinlock_lock(&global_core_freq_info[core_num].power_sl); \
 	ret = rte_power_freq_##DIRECTION(core_num); \
@@ -40,14 +40,14 @@ struct __rte_cache_aligned freq_info {
 
 static struct freq_info global_core_freq_info[RTE_MAX_LCORE];
 
-struct core_info ci;
+struct core_info cinfo;
 
 #define SYSFS_CPU_PATH "/sys/devices/system/cpu/cpu%u/topology/core_id"
 
 struct core_info *
 get_core_info(void)
 {
-	return &ci;
+	return &cinfo;
 }
 
 int
@@ -138,7 +138,7 @@ power_manager_get_current_frequency(unsigned core_num)
 				core_num, RTE_MAX_LCORE-1);
 		return -1;
 	}
-	if (!(ci.cd[core_num].global_enabled_cpus))
+	if (!(cinfo.cd[core_num].global_enabled_cpus))
 		return 0;
 
 	rte_spinlock_lock(&global_core_freq_info[core_num].power_sl);

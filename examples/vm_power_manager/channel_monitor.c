@@ -878,7 +878,7 @@ process_request(struct rte_power_channel_packet *pkt,
 	if (pkt->command == RTE_POWER_PKT_POLICY) {
 		RTE_LOG(INFO, CHANNEL_MONITOR, "Processing policy request %s\n",
 				pkt->vm_name);
-		int ret = send_ack_for_received_cmd(pkt,
+		ret = send_ack_for_received_cmd(pkt,
 				chan_info,
 				RTE_POWER_CMD_ACK);
 		if (ret < 0)
@@ -902,7 +902,7 @@ process_request(struct rte_power_channel_packet *pkt,
 
 		RTE_LOG(INFO, CHANNEL_MONITOR,
 			"Frequency for %s requested.\n", pkt->vm_name);
-		int ret = send_freq(pkt,
+		ret = send_freq(pkt,
 				chan_info,
 				pkt->command == RTE_POWER_QUERY_FREQ_LIST);
 		if (ret < 0)
@@ -914,7 +914,7 @@ process_request(struct rte_power_channel_packet *pkt,
 
 		RTE_LOG(INFO, CHANNEL_MONITOR,
 			"Capabilities for %s requested.\n", pkt->vm_name);
-		int ret = send_capabilities(pkt,
+		ret = send_capabilities(pkt,
 				chan_info,
 				pkt->command == RTE_POWER_QUERY_CAPS_LIST);
 		if (ret < 0)
