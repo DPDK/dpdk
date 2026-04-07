@@ -1030,15 +1030,15 @@ l2fwd_crypto_usage(const char *prgname)
 
 /** Parse crypto device type command line argument */
 static int
-parse_cryptodev_type(enum cdev_type *type, char *optarg)
+parse_cryptodev_type(enum cdev_type *type, const char *arg)
 {
-	if (strcmp("HW", optarg) == 0) {
+	if (strcmp("HW", arg) == 0) {
 		*type = CDEV_TYPE_HW;
 		return 0;
-	} else if (strcmp("SW", optarg) == 0) {
+	} else if (strcmp("SW", arg) == 0) {
 		*type = CDEV_TYPE_SW;
 		return 0;
-	} else if (strcmp("ANY", optarg) == 0) {
+	} else if (strcmp("ANY", arg) == 0) {
 		*type = CDEV_TYPE_ANY;
 		return 0;
 	}
@@ -1048,21 +1048,21 @@ parse_cryptodev_type(enum cdev_type *type, char *optarg)
 
 /** Parse crypto chain xform command line argument */
 static int
-parse_crypto_opt_chain(struct l2fwd_crypto_options *options, char *optarg)
+parse_crypto_opt_chain(struct l2fwd_crypto_options *options, const char *arg)
 {
-	if (strcmp("CIPHER_HASH", optarg) == 0) {
+	if (strcmp("CIPHER_HASH", arg) == 0) {
 		options->xform_chain = L2FWD_CRYPTO_CIPHER_HASH;
 		return 0;
-	} else if (strcmp("HASH_CIPHER", optarg) == 0) {
+	} else if (strcmp("HASH_CIPHER", arg) == 0) {
 		options->xform_chain = L2FWD_CRYPTO_HASH_CIPHER;
 		return 0;
-	} else if (strcmp("CIPHER_ONLY", optarg) == 0) {
+	} else if (strcmp("CIPHER_ONLY", arg) == 0) {
 		options->xform_chain = L2FWD_CRYPTO_CIPHER_ONLY;
 		return 0;
-	} else if (strcmp("HASH_ONLY", optarg) == 0) {
+	} else if (strcmp("HASH_ONLY", arg) == 0) {
 		options->xform_chain = L2FWD_CRYPTO_HASH_ONLY;
 		return 0;
-	} else if (strcmp("AEAD", optarg) == 0) {
+	} else if (strcmp("AEAD", arg) == 0) {
 		options->xform_chain = L2FWD_CRYPTO_AEAD;
 		return 0;
 	}
@@ -1072,10 +1072,10 @@ parse_crypto_opt_chain(struct l2fwd_crypto_options *options, char *optarg)
 
 /** Parse crypto cipher algo option command line argument */
 static int
-parse_cipher_algo(enum rte_crypto_cipher_algorithm *algo, char *optarg)
+parse_cipher_algo(enum rte_crypto_cipher_algorithm *algo, const char *arg)
 {
 
-	if (rte_cryptodev_get_cipher_algo_enum(algo, optarg) < 0) {
+	if (rte_cryptodev_get_cipher_algo_enum(algo, arg) < 0) {
 		RTE_LOG(ERR, USER1, "Cipher algorithm specified "
 				"not supported!\n");
 		return -1;
@@ -1086,12 +1086,12 @@ parse_cipher_algo(enum rte_crypto_cipher_algorithm *algo, char *optarg)
 
 /** Parse crypto cipher operation command line argument */
 static int
-parse_cipher_op(enum rte_crypto_cipher_operation *op, char *optarg)
+parse_cipher_op(enum rte_crypto_cipher_operation *op, const char *arg)
 {
-	if (strcmp("ENCRYPT", optarg) == 0) {
+	if (strcmp("ENCRYPT", arg) == 0) {
 		*op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
 		return 0;
-	} else if (strcmp("DECRYPT", optarg) == 0) {
+	} else if (strcmp("DECRYPT", arg) == 0) {
 		*op = RTE_CRYPTO_CIPHER_OP_DECRYPT;
 		return 0;
 	}
@@ -1146,9 +1146,9 @@ parse_size(int *size, const char *q_arg)
 
 /** Parse crypto cipher operation command line argument */
 static int
-parse_auth_algo(enum rte_crypto_auth_algorithm *algo, char *optarg)
+parse_auth_algo(enum rte_crypto_auth_algorithm *algo, const char *arg)
 {
-	if (rte_cryptodev_get_auth_algo_enum(algo, optarg) < 0) {
+	if (rte_cryptodev_get_auth_algo_enum(algo, arg) < 0) {
 		RTE_LOG(ERR, USER1, "Authentication algorithm specified "
 				"not supported!\n");
 		return -1;
@@ -1158,12 +1158,12 @@ parse_auth_algo(enum rte_crypto_auth_algorithm *algo, char *optarg)
 }
 
 static int
-parse_auth_op(enum rte_crypto_auth_operation *op, char *optarg)
+parse_auth_op(enum rte_crypto_auth_operation *op, const char *arg)
 {
-	if (strcmp("VERIFY", optarg) == 0) {
+	if (strcmp("VERIFY", arg) == 0) {
 		*op = RTE_CRYPTO_AUTH_OP_VERIFY;
 		return 0;
-	} else if (strcmp("GENERATE", optarg) == 0) {
+	} else if (strcmp("GENERATE", arg) == 0) {
 		*op = RTE_CRYPTO_AUTH_OP_GENERATE;
 		return 0;
 	}
@@ -1173,9 +1173,9 @@ parse_auth_op(enum rte_crypto_auth_operation *op, char *optarg)
 }
 
 static int
-parse_aead_algo(enum rte_crypto_aead_algorithm *algo, char *optarg)
+parse_aead_algo(enum rte_crypto_aead_algorithm *algo, const char *arg)
 {
-	if (rte_cryptodev_get_aead_algo_enum(algo, optarg) < 0) {
+	if (rte_cryptodev_get_aead_algo_enum(algo, arg) < 0) {
 		RTE_LOG(ERR, USER1, "AEAD algorithm specified "
 				"not supported!\n");
 		return -1;
@@ -1185,12 +1185,12 @@ parse_aead_algo(enum rte_crypto_aead_algorithm *algo, char *optarg)
 }
 
 static int
-parse_aead_op(enum rte_crypto_aead_operation *op, char *optarg)
+parse_aead_op(enum rte_crypto_aead_operation *op, const char *arg)
 {
-	if (strcmp("ENCRYPT", optarg) == 0) {
+	if (strcmp("ENCRYPT", arg) == 0) {
 		*op = RTE_CRYPTO_AEAD_OP_ENCRYPT;
 		return 0;
-	} else if (strcmp("DECRYPT", optarg) == 0) {
+	} else if (strcmp("DECRYPT", arg) == 0) {
 		*op = RTE_CRYPTO_AEAD_OP_DECRYPT;
 		return 0;
 	}
