@@ -1555,7 +1555,7 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	sprintf(octtx_name, "%s_%d", name, port);
+	snprintf(octtx_name, sizeof(octtx_name), "%s_%d", name, port);
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		eth_dev = rte_eth_dev_attach_secondary(octtx_name);
 		if (eth_dev == NULL)
@@ -1711,7 +1711,7 @@ octeontx_remove(struct rte_vdev_device *dev)
 		return -EINVAL;
 
 	for (i = 0; i < OCTEONTX_VDEV_DEFAULT_MAX_NR_PORT; i++) {
-		sprintf(octtx_name, "eth_octeontx_%d", i);
+		snprintf(octtx_name, sizeof(octtx_name), "eth_octeontx_%d", i);
 
 		eth_dev = rte_eth_dev_allocated(octtx_name);
 		if (eth_dev == NULL)
