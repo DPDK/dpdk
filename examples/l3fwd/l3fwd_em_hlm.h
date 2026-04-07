@@ -31,7 +31,7 @@ em_get_dst_port_ipv4xN(struct lcore_conf *qconf, struct rte_mbuf *m[],
 	const void *key_array[EM_HASH_LOOKUP_COUNT];
 
 	for (i = 0; i < EM_HASH_LOOKUP_COUNT; i++) {
-		get_ipv4_5tuple(m[i], mask0.x, &key[i]);
+		get_ipv4_5tuple(m[i], xmm_mask0.x, &key[i]);
 		key_array[i] = &key[i];
 	}
 
@@ -58,7 +58,7 @@ em_get_dst_port_ipv6xN(struct lcore_conf *qconf, struct rte_mbuf *m[],
 	const void *key_array[EM_HASH_LOOKUP_COUNT];
 
 	for (i = 0; i < EM_HASH_LOOKUP_COUNT; i++) {
-		get_ipv6_5tuple(m[i], mask1.x, mask2.x, &key[i]);
+		get_ipv6_5tuple(m[i], xmm_mask1.x, xmm_mask2.x, &key[i]);
 		key_array[i] = &key[i];
 	}
 
@@ -85,7 +85,7 @@ em_get_dst_port_ipv4xN_events(struct lcore_conf *qconf, struct rte_mbuf *m[],
 	const void *key_array[EM_HASH_LOOKUP_COUNT];
 
 	for (i = 0; i < EM_HASH_LOOKUP_COUNT; i++) {
-		get_ipv4_5tuple(m[i], mask0.x, &key[i]);
+		get_ipv4_5tuple(m[i], xmm_mask0.x, &key[i]);
 		key_array[i] = &key[i];
 	}
 
@@ -112,7 +112,7 @@ em_get_dst_port_ipv6xN_events(struct lcore_conf *qconf, struct rte_mbuf *m[],
 	const void *key_array[EM_HASH_LOOKUP_COUNT];
 
 	for (i = 0; i < EM_HASH_LOOKUP_COUNT; i++) {
-		get_ipv6_5tuple(m[i], mask1.x, mask2.x, &key[i]);
+		get_ipv6_5tuple(m[i], xmm_mask1.x, xmm_mask2.x, &key[i]);
 		key_array[i] = &key[i];
 	}
 

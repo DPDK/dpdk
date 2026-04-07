@@ -94,7 +94,7 @@ xmm_t val_eth[RTE_MAX_ETHPORTS];
 uint32_t enabled_port_mask;
 
 /* Used only in exact match mode. */
-int ipv6; /**< ipv6 is false by default. */
+bool ipv6_enabled; /**< ipv6 is false by default. */
 
 struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 
@@ -254,21 +254,21 @@ const struct ipv6_l3fwd_route ipv6_l3fwd_route_array[] = {
  * API's called during initialization to setup ACL/EM/LPM rules.
  */
 void
-l3fwd_set_rule_ipv4_name(const char *optarg)
+l3fwd_set_rule_ipv4_name(const char *arg)
 {
-	parm_config.rule_ipv4_name = optarg;
+	parm_config.rule_ipv4_name = arg;
 }
 
 void
-l3fwd_set_rule_ipv6_name(const char *optarg)
+l3fwd_set_rule_ipv6_name(const char *arg)
 {
-	parm_config.rule_ipv6_name = optarg;
+	parm_config.rule_ipv6_name = arg;
 }
 
 void
-l3fwd_set_alg(const char *optarg)
+l3fwd_set_alg(const char *arg)
 {
-	parm_config.alg = parse_acl_alg(optarg);
+	parm_config.alg = parse_acl_alg(arg);
 }
 
 /*
@@ -559,17 +559,17 @@ parse_config(const char *q_arg)
 }
 
 static void
-parse_eth_dest(const char *optarg)
+parse_eth_dest(const char *arg)
 {
 	uint16_t portid;
 	char *port_end;
 	uint8_t c, *dest, peer_addr[6];
 
 	errno = 0;
-	portid = strtoul(optarg, &port_end, 10);
-	if (errno != 0 || port_end == optarg || *port_end++ != ',')
+	portid = strtoul(arg, &port_end, 10);
+	if (errno != 0 || port_end == arg || *port_end++ != ',')
 		rte_exit(EXIT_FAILURE,
-		"Invalid eth-dest: %s", optarg);
+		"Invalid eth-dest: %s", arg);
 	if (portid >= RTE_MAX_ETHPORTS)
 		rte_exit(EXIT_FAILURE,
 		"eth-dest: port %d >= RTE_MAX_ETHPORTS(%d)\n",
@@ -587,14 +587,14 @@ parse_eth_dest(const char *optarg)
 }
 
 static void
-parse_mode(const char *optarg __rte_unused)
+parse_mode(const char *arg __rte_unused)
 {
 #ifdef RTE_LIB_EVENTDEV
 	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
 
-	if (!strcmp(optarg, "poll"))
+	if (!strcmp(arg, "poll"))
 		evt_rsrc->enabled = false;
-	else if (!strcmp(optarg, "eventdev"))
+	else if (!strcmp(arg, "eventdev"))
 		evt_rsrc->enabled = true;
 #endif
 }
@@ -633,15 +633,15 @@ parse_queue_size(const char *queue_size_arg, uint16_t *queue_size, int rx)
 
 #ifdef RTE_LIB_EVENTDEV
 static void
-parse_eventq_sched(const char *optarg)
+parse_eventq_sched(const char *arg)
 {
 	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
 
-	if (!strcmp(optarg, "ordered"))
+	if (!strcmp(arg, "ordered"))
 		evt_rsrc->sched_type = RTE_SCHED_TYPE_ORDERED;
-	if (!strcmp(optarg, "atomic"))
+	if (!strcmp(arg, "atomic"))
 		evt_rsrc->sched_type = RTE_SCHED_TYPE_ATOMIC;
-	if (!strcmp(optarg, "parallel"))
+	if (!strcmp(arg, "parallel"))
 		evt_rsrc->sched_type = RTE_SCHED_TYPE_PARALLEL;
 }
 
@@ -665,15 +665,15 @@ parse_event_eth_rx_queues(const char *eth_rx_queues)
 #endif
 
 static int
-parse_lookup(const char *optarg)
+parse_lookup(const char *arg)
 {
-	if (!strcmp(optarg, "em"))
+	if (!strcmp(arg, "em"))
 		lookup_mode = L3FWD_LOOKUP_EM;
-	else if (!strcmp(optarg, "lpm"))
+	else if (!strcmp(arg, "lpm"))
 		lookup_mode = L3FWD_LOOKUP_LPM;
-	else if (!strcmp(optarg, "fib"))
+	else if (!strcmp(arg, "fib"))
 		lookup_mode = L3FWD_LOOKUP_FIB;
-	else if (!strcmp(optarg, "acl"))
+	else if (!strcmp(arg, "acl"))
 		lookup_mode = L3FWD_LOOKUP_ACL;
 	else {
 		fprintf(stderr, "Invalid lookup option! Accepted options: acl, em, lpm, fib\n");
@@ -683,13 +683,13 @@ parse_lookup(const char *optarg)
 }
 
 static void
-parse_mbcache_size(const char *optarg)
+parse_mbcache_size(const char *arg)
 {
 	unsigned long mb_cache_size;
 	char *end = NULL;
 
-	mb_cache_size = strtoul(optarg, &end, 10);
-	if ((optarg[0] == '\0') || (end == NULL) || (*end != '\0'))
+	mb_cache_size = strtoul(arg, &end, 10);
+	if ((arg[0] == '\0') || (end == NULL) || (*end != '\0'))
 		return;
 	if (mb_cache_size <= RTE_MEMPOOL_CACHE_MAX_SIZE)
 		mb_mempool_cache_size = (uint32_t)mb_cache_size;
@@ -699,7 +699,7 @@ parse_mbcache_size(const char *optarg)
 }
 
 static void
-parse_pkt_burst(const char *optarg, bool is_rx_burst, uint32_t *burst_sz)
+parse_pkt_burst(const char *arg, bool is_rx_burst, uint32_t *burst_sz)
 {
 	struct rte_eth_dev_info dev_info;
 	unsigned long pkt_burst;
@@ -708,8 +708,8 @@ parse_pkt_burst(const char *optarg, bool is_rx_burst, uint32_t *burst_sz)
 	int ret;
 
 	/* parse decimal string */
-	pkt_burst = strtoul(optarg, &end, 10);
-	if ((optarg[0] == '\0') || (end == NULL) || (*end != '\0'))
+	pkt_burst = strtoul(arg, &end, 10);
+	if ((arg[0] == '\0') || (end == NULL) || (*end != '\0'))
 		return;
 
 	if (pkt_burst > MAX_PKT_BURST) {
@@ -871,7 +871,7 @@ parse_args(int argc, char **argv)
 	char **argvopt;
 	int option_index;
 	char *prgname = argv[0];
-	uint8_t lcore_params = 0;
+	bool config_parsed = false;
 #ifdef RTE_LIB_EVENTDEV
 	uint8_t eventq_sched = 0;
 	uint8_t eth_rx_q = 0;
@@ -924,7 +924,7 @@ parse_args(int argc, char **argv)
 				print_usage(prgname);
 				return -1;
 			}
-			lcore_params = 1;
+			config_parsed = true;
 			break;
 		case CMD_LINK_OPT_ETH_LINK_SPEED_NUM:
 			speed_num = atoi(optarg);
@@ -966,7 +966,7 @@ parse_args(int argc, char **argv)
 			break;
 
 		case CMD_LINE_OPT_IPV6_NUM:
-			ipv6 = 1;
+			ipv6_enabled = true;
 			break;
 
 		case CMD_LINE_OPT_MAX_PKT_LEN_NUM:
@@ -1056,9 +1056,9 @@ parse_args(int argc, char **argv)
 		}
 	}
 
-	RTE_SET_USED(lcore_params); /* needed if no eventdev block */
+	RTE_SET_USED(config_parsed); /* needed if no eventdev block */
 #ifdef RTE_LIB_EVENTDEV
-	if (evt_rsrc->enabled && lcore_params) {
+	if (evt_rsrc->enabled && config_parsed) {
 		fprintf(stderr, "lcore config is not valid when event mode is selected\n");
 		return -1;
 	}

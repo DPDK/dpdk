@@ -211,9 +211,9 @@ ipv6_hash_crc(const void *data, __rte_unused uint32_t data_len,
 static alignas(RTE_CACHE_LINE_SIZE) uint8_t ipv4_l3fwd_out_if[L3FWD_HASH_ENTRIES];
 static alignas(RTE_CACHE_LINE_SIZE) uint8_t ipv6_l3fwd_out_if[L3FWD_HASH_ENTRIES];
 
-static rte_xmm_t mask0;
-static rte_xmm_t mask1;
-static rte_xmm_t mask2;
+static rte_xmm_t xmm_mask0;
+static rte_xmm_t xmm_mask1;
+static rte_xmm_t xmm_mask2;
 
 #if defined(__SSE2__)
 static inline xmm_t
@@ -275,7 +275,7 @@ em_get_ipv4_dst_port(void *ipv4_hdr, uint16_t portid, void *lookup_struct)
 	 * Get 5 tuple: dst port, src port, dst IP address,
 	 * src IP address and protocol.
 	 */
-	key.xmm = em_mask_key(ipv4_hdr, mask0.x);
+	key.xmm = em_mask_key(ipv4_hdr, xmm_mask0.x);
 
 	/* Find destination port */
 	ret = rte_hash_lookup(ipv4_l3fwd_lookup_struct, (const void *)&key);
@@ -298,7 +298,7 @@ em_get_ipv6_dst_port(void *ipv6_hdr, uint16_t portid, void *lookup_struct)
 	void *data2 = ((uint8_t *)ipv6_hdr) + sizeof(xmm_t) + sizeof(xmm_t);
 
 	/* Get part of 5 tuple: src IP address lower 96 bits and protocol */
-	key.xmm[0] = em_mask_key(data0, mask1.x);
+	key.xmm[0] = em_mask_key(data0, xmm_mask1.x);
 
 	/*
 	 * Get part of 5 tuple: dst IP address lower 96 bits
@@ -314,7 +314,7 @@ em_get_ipv6_dst_port(void *ipv6_hdr, uint16_t portid, void *lookup_struct)
 	 * Get part of 5 tuple: dst port and src port
 	 * and dst IP address higher 32 bits.
 	 */
-	key.xmm[2] = em_mask_key(data2, mask2.x);
+	key.xmm[2] = em_mask_key(data2, xmm_mask2.x);
 
 	/* Find destination port */
 	ret = rte_hash_lookup(ipv6_l3fwd_lookup_struct, (const void *)&key);
@@ -375,8 +375,9 @@ populate_ipv4_flow_into_table(const struct rte_hash *h)
 	char srcbuf[INET6_ADDRSTRLEN];
 	char dstbuf[INET6_ADDRSTRLEN];
 
-	mask0 = (rte_xmm_t){.u32 = {BIT_8_TO_15, ALL_32_BITS,
-				ALL_32_BITS, ALL_32_BITS} };
+	xmm_mask0 = (rte_xmm_t) {
+		.u32 = { BIT_8_TO_15, ALL_32_BITS, ALL_32_BITS, ALL_32_BITS }
+	};
 
 	for (i = 0; i < route_num_v4; i++) {
 		struct em_rule *entry;
@@ -427,10 +428,13 @@ populate_ipv6_flow_into_table(const struct rte_hash *h)
 	char srcbuf[INET6_ADDRSTRLEN];
 	char dstbuf[INET6_ADDRSTRLEN];
 
-	mask1 = (rte_xmm_t){.u32 = {BIT_16_TO_23, ALL_32_BITS,
-				ALL_32_BITS, ALL_32_BITS} };
+	xmm_mask1 = (rte_xmm_t){
+		.u32 = { BIT_16_TO_23, ALL_32_BITS, ALL_32_BITS, ALL_32_BITS }
+	};
 
-	mask2 = (rte_xmm_t){.u32 = {ALL_32_BITS, ALL_32_BITS, 0, 0} };
+	xmm_mask2 = (rte_xmm_t){
+		.u32 = { ALL_32_BITS, ALL_32_BITS, 0, 0 }
+	};
 
 	for (i = 0; i < route_num_v6; i++) {
 		struct em_rule *entry;
@@ -507,11 +511,11 @@ em_check_ptype(int portid)
 		}
 	}
 
-	if (!ipv6 && !ptype_l3_ipv4_ext) {
+	if (!ipv6_enabled && !ptype_l3_ipv4_ext) {
 		printf("port %d cannot parse RTE_PTYPE_L3_IPV4_EXT\n", portid);
 		return 0;
 	}
-	if (ipv6 && !ptype_l3_ipv6_ext) {
+	if (ipv6_enabled && !ptype_l3_ipv6_ext) {
 		printf("port %d cannot parse RTE_PTYPE_L3_IPV6_EXT\n", portid);
 		return 0;
 	}
@@ -1010,7 +1014,7 @@ setup_hash(const int socketid)
 	 * Use data from ipv4/ipv6 l3fwd config file
 	 * directly to initialize the hash table.
 	 */
-	if (ipv6 == 0) {
+	if (!ipv6_enabled) {
 		/* populate the ipv4 hash */
 		populate_ipv4_flow_into_table(
 			ipv4_l3fwd_em_lookup_struct[socketid]);

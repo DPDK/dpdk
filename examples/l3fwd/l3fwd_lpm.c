@@ -681,12 +681,12 @@ lpm_check_ptype(int portid)
 			ptype_l3_ipv6 = 1;
 	}
 
-	if (!ipv6 && !ptype_l3_ipv4) {
+	if (!ipv6_enabled && !ptype_l3_ipv4) {
 		printf("port %d cannot parse RTE_PTYPE_L3_IPV4\n", portid);
 		return 0;
 	}
 
-	if (ipv6 && !ptype_l3_ipv6) {
+	if (ipv6_enabled && !ptype_l3_ipv6) {
 		printf("port %d cannot parse RTE_PTYPE_L3_IPV6\n", portid);
 		return 0;
 	}

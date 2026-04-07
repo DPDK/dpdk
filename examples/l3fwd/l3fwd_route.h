@@ -14,14 +14,14 @@
 #define	IPV6_ADDR_U32	(IPV6_ADDR_LEN / sizeof(uint32_t))
 
 #define GET_CB_FIELD(in, fd, base, lim, dlm)	do {            \
-	unsigned long val;                                      \
-	char *end;                                              \
+	unsigned long _val;                                     \
+	char *_end;                                             \
 	errno = 0;                                              \
-	val = strtoul((in), &end, (base));                      \
-	if (errno != 0 || end[0] != (dlm) || val > (lim))       \
+	_val = strtoul((in), &_end, (base));                    \
+	if (errno != 0 || _end[0] != (dlm) || _val > (lim))     \
 		return -EINVAL;                                 \
-	(fd) = (typeof(fd))val;                                 \
-	(in) = end + 1;                                         \
+	(fd) = (typeof(fd))_val;                                \
+	(in) = _end + 1;                                        \
 } while (0)
 
 struct ipv4_l3fwd_route {

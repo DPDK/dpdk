@@ -99,7 +99,7 @@ extern struct rte_ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 extern uint32_t enabled_port_mask;
 
 /* Used only in exact match mode. */
-extern int ipv6; /**< ipv6 is false by default. */
+extern bool ipv6_enabled; /**< ipv6 is false by default. */
 extern uint32_t hash_entry_number;
 
 extern xmm_t val_eth[RTE_MAX_ETHPORTS];
