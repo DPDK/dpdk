@@ -14,4 +14,3 @@ sources = files(
         'init.c',
         'main.c',
 )
-cflags += no_shadow_cflag

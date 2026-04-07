@@ -42,18 +42,18 @@ usage(void)
  * array variable
  */
 static int
-parse_portmask(const char *portmask)
+parse_portmask(const char *str)
 {
 	char *end = NULL;
 	unsigned long long pm;
 	uint16_t id;
 
-	if (portmask == NULL || *portmask == '\0')
+	if (str == NULL || *str == '\0')
 		return -1;
 
 	/* convert parameter to a number and verify */
 	errno = 0;
-	pm = strtoull(portmask, &end, 16);
+	pm = strtoull(str, &end, 16);
 	if (errno != 0 || end == NULL || *end != '\0')
 		return -1;
 
@@ -80,15 +80,15 @@ parse_portmask(const char *portmask)
  * and convert to a number to store in the num_clients variable
  */
 static int
-parse_num_clients(const char *clients)
+parse_num_clients(const char *str)
 {
 	char *end = NULL;
 	unsigned long temp;
 
-	if (clients == NULL || *clients == '\0')
+	if (str == NULL || *str == '\0')
 		return -1;
 
-	temp = strtoul(clients, &end, 10);
+	temp = strtoul(str, &end, 10);
 	if (end == NULL || *end != '\0' || temp == 0)
 		return -1;
 
