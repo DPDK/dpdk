@@ -144,14 +144,14 @@ print_usage(const char *prgname)
 }
 
 static int
-parse_portmask(const char *portmask)
+parse_portmask(const char *mask)
 {
 	unsigned long pm;
 	char *end = NULL;
 
 	/* parse hexadecimal string */
-	pm = strtoul(portmask, &end, 16);
-	if ((portmask[0] == '\0') || (end == NULL) || (*end != '\0'))
+	pm = strtoul(mask, &end, 16);
+	if ((mask[0] == '\0') || (end == NULL) || (*end != '\0'))
 		return 0;
 
 	return pm;

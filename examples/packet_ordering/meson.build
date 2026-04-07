@@ -11,4 +11,3 @@ deps += 'reorder'
 sources = files(
         'main.c',
 )
-cflags += no_shadow_cflag
