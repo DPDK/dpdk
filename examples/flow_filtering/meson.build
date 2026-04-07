@@ -33,4 +33,3 @@ sources = files(
 
 # The code snippets are not utilized.
 cflags += '-Wno-unused-function'
-cflags += no_shadow_cflag

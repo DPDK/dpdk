@@ -125,7 +125,7 @@ assert_link_status(void)
 }
 
 static void
-configure_port_template(uint16_t port_id)
+configure_port_template(void)
 {
 	int ret;
 	uint16_t std_queue;
@@ -254,7 +254,7 @@ init_port(void)
 			"rte_eth_dev_stop:err=%d, port=%u\n",
 			ret, port_id);
 
-	configure_port_template(port_id);
+	configure_port_template();
 	ret = rte_eth_dev_start(port_id);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE,

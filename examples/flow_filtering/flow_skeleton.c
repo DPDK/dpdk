@@ -14,7 +14,7 @@ struct rte_flow_attr flow_attr;
 struct rte_flow_op_attr ops_attr = { .postpone = 0 };
 
 static struct rte_flow *
-create_flow_non_template(uint16_t port_id, struct rte_flow_attr *flow_attr,
+create_flow_non_template(uint16_t port_id, struct rte_flow_attr *attr,
 						struct rte_flow_item *patterns,
 						struct rte_flow_action *actions,
 						struct rte_flow_error *error)
@@ -22,13 +22,13 @@ create_flow_non_template(uint16_t port_id, struct rte_flow_attr *flow_attr,
 	struct rte_flow *flow = NULL;
 
 	/* Validate the rule and create it. */
-	if (rte_flow_validate(port_id, flow_attr, patterns, actions, error) == 0)
-		flow = rte_flow_create(port_id, flow_attr, patterns, actions, error);
+	if (rte_flow_validate(port_id, attr, patterns, actions, error) == 0)
+		flow = rte_flow_create(port_id, attr, patterns, actions, error);
 	return flow;
 }
 
 static struct rte_flow *
-create_flow_template(uint16_t port_id, struct rte_flow_op_attr *ops_attr,
+create_flow_template(uint16_t port_id, struct rte_flow_op_attr *attr,
 					struct rte_flow_item *patterns,
 					struct rte_flow_action *actions,
 					struct rte_flow_error *error)
@@ -42,7 +42,7 @@ create_flow_template(uint16_t port_id, struct rte_flow_op_attr *ops_attr,
 
 	return rte_flow_async_create(port_id,
 		1, /* Flow queue used to insert the rule. */
-		ops_attr,
+		attr,
 		table,
 		patterns,
 		0, /* Pattern template index in the table. */
