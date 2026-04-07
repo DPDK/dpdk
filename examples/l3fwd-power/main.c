@@ -552,7 +552,7 @@ print_ipv6_key(struct ipv6_5tuple key)
 
 static inline uint16_t
 get_ipv4_dst_port(struct rte_ipv4_hdr *ipv4_hdr, uint16_t portid,
-		lookup_struct_t * ipv4_l3fwd_lookup_struct)
+		lookup_struct_t *ipv4_lookup_struct)
 {
 	struct ipv4_5tuple key;
 	struct rte_tcp_hdr *tcp;
@@ -585,13 +585,13 @@ get_ipv4_dst_port(struct rte_ipv4_hdr *ipv4_hdr, uint16_t portid,
 	}
 
 	/* Find destination port */
-	ret = rte_hash_lookup(ipv4_l3fwd_lookup_struct, (const void *)&key);
+	ret = rte_hash_lookup(ipv4_lookup_struct, (const void *)&key);
 	return ((ret < 0) ? portid : ipv4_l3fwd_out_if[ret]);
 }
 
 static inline uint16_t
 get_ipv6_dst_port(struct rte_ipv6_hdr *ipv6_hdr, uint16_t portid,
-			lookup_struct_t *ipv6_l3fwd_lookup_struct)
+			lookup_struct_t *ipv6_lookup_struct)
 {
 	struct ipv6_5tuple key;
 	struct rte_tcp_hdr *tcp;
@@ -625,7 +625,7 @@ get_ipv6_dst_port(struct rte_ipv6_hdr *ipv6_hdr, uint16_t portid,
 	}
 
 	/* Find destination port */
-	ret = rte_hash_lookup(ipv6_l3fwd_lookup_struct, (const void *)&key);
+	ret = rte_hash_lookup(ipv6_lookup_struct, (const void *)&key);
 	return ((ret < 0) ? portid : ipv6_l3fwd_out_if[ret]);
 }
 #endif
@@ -633,11 +633,11 @@ get_ipv6_dst_port(struct rte_ipv6_hdr *ipv6_hdr, uint16_t portid,
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
 static inline uint16_t
 get_ipv4_dst_port(struct rte_ipv4_hdr *ipv4_hdr, uint16_t portid,
-		lookup_struct_t *ipv4_l3fwd_lookup_struct)
+		lookup_struct_t *ipv4_lookup_struct)
 {
 	uint32_t next_hop;
 
-	return ((rte_lpm_lookup(ipv4_l3fwd_lookup_struct,
+	return ((rte_lpm_lookup(ipv4_lookup_struct,
 			rte_be_to_cpu_32(ipv4_hdr->dst_addr), &next_hop) == 0)?
 			next_hop : portid);
 }
