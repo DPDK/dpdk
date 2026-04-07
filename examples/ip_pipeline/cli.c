@@ -4721,7 +4721,7 @@ table_rule_show(const char *pipeline_name,
 	uint32_t table_id,
 	const char *file_name)
 {
-	struct pipeline *p;
+	struct pipeline *pipeline;
 	struct table *table;
 	struct table_rule *rule;
 	FILE *f = NULL;
@@ -4732,12 +4732,11 @@ table_rule_show(const char *pipeline_name,
 		(file_name == NULL))
 		return -1;
 
-	p = pipeline_find(pipeline_name);
-	if ((p == NULL) ||
-		(table_id >= p->n_tables))
+	pipeline = pipeline_find(pipeline_name);
+	if (pipeline == NULL || table_id >= pipeline->n_tables)
 		return -1;
 
-	table = &p->table[table_id];
+	table = &pipeline->table[table_id];
 
 	/* Open file. */
 	f = fopen(file_name, "w");
