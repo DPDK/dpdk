@@ -12,4 +12,3 @@ sources = files(
         'main.c',
 )
 cflags += no_wvla_cflag
-cflags += no_shadow_cflag
