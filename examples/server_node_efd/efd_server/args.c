@@ -81,15 +81,15 @@ parse_portmask(uint8_t max_ports, const char *portmask)
  * and convert to a number to store in the num_nodes variable
  */
 static int
-parse_num_nodes(const char *nodes)
+parse_num_nodes(const char *arg)
 {
 	char *end = NULL;
 	unsigned long temp;
 
-	if (nodes == NULL || *nodes == '\0')
+	if (arg == NULL || *arg == '\0')
 		return -1;
 
-	temp = strtoul(nodes, &end, 10);
+	temp = strtoul(arg, &end, 10);
 	if (end == NULL || *end != '\0' || temp == 0)
 		return -1;
 
