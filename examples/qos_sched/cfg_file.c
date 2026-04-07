@@ -41,20 +41,20 @@ int parse_u64(const char *entry, uint64_t *val)
 }
 
 int
-cfg_load_port(struct rte_cfgfile *cfg, struct rte_sched_port_params *port_params)
+cfg_load_port(struct rte_cfgfile *cfg)
 {
 	const char *entry;
 
-	if (!cfg || !port_params)
+	if (!cfg)
 		return -1;
 
 	entry = rte_cfgfile_get_entry(cfg, "port", "frame overhead");
 	if (entry)
-		port_params->frame_overhead = (uint32_t)atoi(entry);
+		port_params.frame_overhead = (uint32_t)atoi(entry);
 
 	entry = rte_cfgfile_get_entry(cfg, "port", "number of subports per port");
 	if (entry)
-		port_params->n_subports_per_port = (uint32_t)atoi(entry);
+		port_params.n_subports_per_port = (uint32_t)atoi(entry);
 
 	return 0;
 }
@@ -279,13 +279,13 @@ cfg_load_subport_profile(struct rte_cfgfile *cfg,
 }
 
 int
-cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subport_params)
+cfg_load_subport(struct rte_cfgfile *cfg)
 {
 	bool cman_enabled = false;
 	const char *entry;
 	int i, j, k;
 
-	if (!cfg || !subport_params)
+	if (!cfg)
 		return -1;
 
 	memset(app_pipe_to_profile, -1, sizeof(app_pipe_to_profile));

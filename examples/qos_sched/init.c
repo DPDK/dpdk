@@ -296,11 +296,11 @@ app_load_cfg_profile(const char *profile)
 	if (file == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot load configuration profile %s\n", profile);
 
-	ret = cfg_load_port(file, &port_params);
+	ret = cfg_load_port(file);
 	if (ret)
 		goto _app_load_cfg_profile_error_return;
 
-	ret = cfg_load_subport(file, subport_params);
+	ret = cfg_load_subport(file);
 	if (ret)
 		goto _app_load_cfg_profile_error_return;
 
