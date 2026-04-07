@@ -196,8 +196,8 @@ octeontx_pko_dq_range_lookup(struct octeontx_pko_vf_ctl_s *ctl, uint64_t chanid,
 	while (dq < RTE_DIM(ctl->dq_map)) {
 		dq_base = dq;
 		dq_cnt = 0;
-		while (ctl->dq_map[dq].chanid == ~chanid &&
-			dq < RTE_DIM(ctl->dq_map)) {
+		while (dq < RTE_DIM(ctl->dq_map) &&
+			ctl->dq_map[dq].chanid == ~chanid) {
 			dq_cnt++;
 			if (dq_cnt == dq_num)
 				return dq_base;
