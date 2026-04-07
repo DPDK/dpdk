@@ -82,24 +82,23 @@ l2fwd_event_parse_timer_period(const char *q_arg)
 }
 
 static void
-l2fwd_event_parse_mode(const char *optarg,
-		       struct l2fwd_resources *rsrc)
+l2fwd_event_parse_mode(const char *arg, struct l2fwd_resources *rsrc)
 {
-	if (!strncmp(optarg, "poll", 4))
+	if (!strncmp(arg, "poll", 4))
 		rsrc->event_mode = false;
-	else if (!strncmp(optarg, "eventdev", 8))
+	else if (!strncmp(arg, "eventdev", 8))
 		rsrc->event_mode = true;
 }
 
 static void
-l2fwd_event_parse_eventq_sched(const char *optarg,
+l2fwd_event_parse_eventq_sched(const char *arg,
 			       struct l2fwd_resources *rsrc)
 {
-	if (!strncmp(optarg, "ordered", 7))
+	if (!strncmp(arg, "ordered", 7))
 		rsrc->sched_type = RTE_SCHED_TYPE_ORDERED;
-	else if (!strncmp(optarg, "atomic", 6))
+	else if (!strncmp(arg, "atomic", 6))
 		rsrc->sched_type = RTE_SCHED_TYPE_ATOMIC;
-	else if (!strncmp(optarg, "parallel", 8))
+	else if (!strncmp(arg, "parallel", 8))
 		rsrc->sched_type = RTE_SCHED_TYPE_PARALLEL;
 }
 

@@ -17,4 +17,3 @@ sources = files(
         'l2fwd_event_internal_port.c',
         'l2fwd_poll.c',
 )
-cflags += no_shadow_cflag
