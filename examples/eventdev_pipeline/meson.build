@@ -13,4 +13,3 @@ sources = files(
         'pipeline_worker_generic.c',
         'pipeline_worker_tx.c',
 )
-cflags += no_shadow_cflag

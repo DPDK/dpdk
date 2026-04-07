@@ -874,8 +874,8 @@ init_adapters(uint16_t nb_ports)
 		service.callback = service_rx_adapter;
 		service.callback_userdata = (void *)adptr_services;
 
-		int32_t ret = rte_service_component_register(&service,
-				&fdata->rxadptr_service_id);
+		ret = rte_service_component_register(&service,
+					&fdata->rxadptr_service_id);
 		if (ret)
 			rte_exit(EXIT_FAILURE,
 				"Rx adapter service register failed");
