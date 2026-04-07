@@ -214,7 +214,6 @@ static int
 bbdev_parse_args(int argc, char **argv,
 		struct app_config_params *app_params)
 {
-	int optind = 0;
 	int opt;
 	int opt_indx = 0;
 	char *prgname = argv[0];
@@ -269,8 +268,7 @@ bbdev_parse_args(int argc, char **argv,
 			return -1;
 		}
 	}
-	optind = 0;
-	return optind;
+	return 0;
 }
 
 static void
