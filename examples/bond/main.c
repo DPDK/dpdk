@@ -96,12 +96,11 @@
 		":%02"PRIx8":%02"PRIx8":%02"PRIx8,	\
 		RTE_ETHER_ADDR_BYTES(&addr))
 
-uint16_t members[RTE_MAX_ETHPORTS];
-uint16_t members_count;
+static uint16_t members[RTE_MAX_ETHPORTS];
+static uint16_t members_count;
+static struct rte_mempool *mbuf_pool;
 
 static uint16_t BOND_PORT = 0xffff;
-
-static struct rte_mempool *mbuf_pool;
 
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
@@ -119,7 +118,7 @@ static struct rte_eth_conf port_conf = {
 };
 
 static void
-member_port_init(uint16_t portid, struct rte_mempool *mbuf_pool)
+member_port_init(uint16_t portid)
 {
 	int retval;
 	uint16_t nb_rxd = RTE_RX_DESC_DEFAULT;
@@ -204,7 +203,7 @@ member_port_init(uint16_t portid, struct rte_mempool *mbuf_pool)
 }
 
 static void
-bond_port_init(struct rte_mempool *mbuf_pool)
+bond_port_init(void)
 {
 	int retval;
 	uint8_t i;
@@ -462,10 +461,10 @@ static inline void get_string(struct cmd_send_result *res, char *buf, uint8_t si
 		((unsigned)((unsigned char *)&(res->ip.addr.ipv4))[3])
 		);
 }
+
 void
 cmd_send_parsed(void *parsed_result, __rte_unused struct cmdline *cl, __rte_unused void *data)
 {
-
 	struct cmd_send_result *res = parsed_result;
 	char ip_str[INET6_ADDRSTRLEN];
 
@@ -635,7 +634,7 @@ cmd_quit_parsed(__rte_unused void *parsed_result, struct cmdline *cl, __rte_unus
 void
 cmd_show_parsed(__rte_unused void *parsed_result, struct cmdline *cl, __rte_unused void *data)
 {
-	uint16_t members[16] = {0};
+	uint16_t act_members[16] = {0};
 	uint8_t len = 16;
 	struct rte_ether_addr addr;
 	uint16_t i;
@@ -658,7 +657,7 @@ cmd_show_parsed(__rte_unused void *parsed_result, struct cmdline *cl, __rte_unus
 	cmdline_printf(cl,
 			"Active_members:%d "
 			"packets received:Tot:%d Arp:%d IPv4:%d\n",
-			rte_eth_bond_active_members_get(BOND_PORT, members, len),
+			rte_eth_bond_active_members_get(BOND_PORT, act_members, len),
 			global_flag_stru_p->port_packets[0],
 			global_flag_stru_p->port_packets[1],
 			global_flag_stru_p->port_packets[2]);
@@ -706,11 +705,11 @@ main(int argc, char *argv[])
 	/* initialize all ports */
 	members_count = nb_ports;
 	RTE_ETH_FOREACH_DEV(i) {
-		member_port_init(i, mbuf_pool);
+		member_port_init(i);
 		members[i] = i;
 	}
 
-	bond_port_init(mbuf_pool);
+	bond_port_init();
 
 	rte_spinlock_init(&global_flag_stru_p->lock);
 
