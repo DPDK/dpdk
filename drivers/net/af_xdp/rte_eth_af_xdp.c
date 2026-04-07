@@ -1069,12 +1069,10 @@ eth_dev_close(struct rte_eth_dev *dev)
 		if (rte_atomic_fetch_sub_explicit(&rxq->umem->refcnt, 1,
 				rte_memory_order_acquire) - 1 == 0)
 			xdp_umem_destroy(rxq->umem);
-
-		/* free pkt_tx_queue */
-		rte_free(rxq->pair);
-		rte_free(rxq);
 	}
-
+	/* Free Tx and Rx queue arrays */
+	rte_free(internals->tx_queues);
+	rte_free(internals->rx_queues);
 	/*
 	 * MAC is not allocated dynamically, setting it to NULL would prevent
 	 * from releasing it in rte_eth_dev_release_port.
