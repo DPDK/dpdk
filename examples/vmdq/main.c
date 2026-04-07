@@ -135,19 +135,19 @@ static struct rte_ether_addr vmdq_ports_eth_addr[RTE_MAX_ETHPORTS];
 
  /* Building correct configuration for vdmq. 8< */
 static inline int
-get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t num_pools)
+get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t max_pools)
 {
 	struct rte_eth_vmdq_rx_conf conf;
 	unsigned i;
 
-	conf.nb_queue_pools = (enum rte_eth_nb_pools)num_pools;
-	conf.nb_pool_maps = num_pools;
+	conf.nb_queue_pools = (enum rte_eth_nb_pools)max_pools;
+	conf.nb_pool_maps = max_pools;
 	conf.enable_default_pool = 0;
 	conf.default_pool = 0; /* set explicit value, even if not used */
 
 	for (i = 0; i < conf.nb_pool_maps; i++) {
 		conf.pool_map[i].vlan_id = vlan_tags[i];
-		conf.pool_map[i].pools = (1UL << (i % num_pools));
+		conf.pool_map[i].pools = (1UL << (i % max_pools));
 	}
 
 	*eth_conf = vmdq_conf_default;
