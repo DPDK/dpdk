@@ -1127,7 +1127,6 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	uint16_t cmp_type;
 	uint32_t vfr_flag = 0, mark_id = 0;
 	struct bnxt *bp = rxq->bp;
-	struct bnxt_vnic_info *vnic = rxq->vnic;
 
 	rxcmp = (struct rx_pkt_cmpl *)
 	    &cpr->cp_desc_ring[cp_cons];
@@ -1236,8 +1235,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	if (cmp_type == CMPL_BASE_TYPE_RX_L2_V3) {
 		bnxt_parse_csum_v3(mbuf, rxcmp1);
 		bnxt_parse_pkt_type_v3(mbuf, rxcmp, rxcmp1);
-		bnxt_rx_vlan_v3(mbuf, rxcmp, rxcmp1, vnic->vlan_strip);
-
+		bnxt_rx_vlan_v3(mbuf, rxcmp, rxcmp1);
 		/* Packet cannot be a PTP ethertype if it is detected as L4 */
 		if (mbuf->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_GOOD) {
 			mbuf->ol_flags &= ~RTE_MBUF_F_RX_IEEE1588_PTP;
@@ -1259,7 +1257,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	if (cmp_type == CMPL_BASE_TYPE_RX_L2_V2) {
 		bnxt_parse_csum_v2(mbuf, rxcmp1);
 		bnxt_parse_pkt_type_v2(mbuf, rxcmp, rxcmp1);
-		bnxt_rx_vlan_v2(mbuf, rxcmp, rxcmp1);
+		bnxt_rx_vlan_v2(mbuf, bp, rxcmp, rxcmp1);
 		/* TODO Add support for cfa_code parsing */
 		goto reuse_rx_mbuf;
 	}
