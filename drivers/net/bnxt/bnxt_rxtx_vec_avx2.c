@@ -70,6 +70,17 @@ recv_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		_mm256_set1_epi32(RX_PKT_CMPL_FLAGS2_IP_TYPE);
 	const __m256i rss_mask =
 		_mm256_set1_epi32(RX_PKT_CMPL_FLAGS_RSS_VALID);
+	/*
+	 * ol_flags_table already sets RX_VLAN|RX_VLAN_STRIPPED when VLAN strip
+	 * is enabled.  For completeness, also OR in the flags here based on the
+	 * per-packet VLAN-metadata bit so that the two sources agree.  The
+	 * constant is broadcast once: non-zero only when strip offload is on.
+	 */
+	const __m256i vlan_ol_val =
+		BNXT_RX_VLAN_STRIP_EN(rxq->bp) ?
+		_mm256_set1_epi32((uint32_t)(RTE_MBUF_F_RX_VLAN |
+					     RTE_MBUF_F_RX_VLAN_STRIPPED)) :
+					     _mm256_setzero_si256();
 	__m256i t0, t1, flags_type, flags2, index, errors;
 	__m256i ptype_idx, ptypes, is_tunnel;
 	__m256i mbuf01, mbuf23, mbuf45, mbuf67;
@@ -286,6 +297,25 @@ recv_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rss_flags = _mm256_srli_epi32(rss_flags, 9);
 		ol_flags = _mm256_or_si256(ol_flags, errors);
 		ol_flags = _mm256_or_si256(ol_flags, rss_flags);
+		/*
+		 * Set RX_VLAN | RX_VLAN_STRIPPED for packets whose vlan_tci
+		 * is non-zero (i.e. hardware reported VLAN metadata, indicated
+		 * by RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN in index bit 4).
+		 * vlan_ol_val is the broadcast constant computed before the
+		 * loop: non-zero only when VLAN RX strip offload is enabled.
+		 * _mm256_cmpeq_epi32 produces 0xFFFFFFFF per lane when the
+		 * VLAN bit is set, masking the constant to those lanes only.
+		 */
+		{
+			const __m256i vlan_bit =
+				_mm256_set1_epi32(RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN);
+			__m256i vlan_mask =
+				_mm256_cmpeq_epi32(_mm256_and_si256(index, vlan_bit),
+						   vlan_bit);
+			ol_flags = _mm256_or_si256(ol_flags,
+					_mm256_and_si256(vlan_mask,
+							 vlan_ol_val));
+		}
 		ol_flags_hi = _mm256_permute2f128_si256(ol_flags,
 							ol_flags, 0x11);
 
@@ -908,7 +938,6 @@ static uint16_t
 recv_burst_vec_avx2_v3(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
 	struct bnxt_rx_queue *rxq = rx_queue;
-	struct bnxt_vnic_info *vnic = rxq->vnic;
 	const __m256i mbuf_init =
 		_mm256_set_epi64x(0, 0, 0, rxq->mbuf_initializer);
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
@@ -1001,8 +1030,8 @@ recv_burst_vec_avx2_v3(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pk
 				  mbcons += BNXT_RX_DESCS_PER_LOOP_VEC256) {
 		__m256i desc0, desc1, desc2, desc3, desc4, desc5, desc6, desc7;
 		__m256i rxcmp0_1, rxcmp2_3, rxcmp4_5, rxcmp6_7, info3_v;
+		__m256i errors_v2, cs_calc, cs_valid, meta_format;
 		__m256i md1_0123, lo2_3, md1_4567, lo6_7;
-		__m256i errors_v2, cs_calc, cs_valid;
 		uint32_t num_valid;
 
 		t0 = _mm256_loadu_si256((void *)&rxr->rx_buf_ring[mbcons]);
@@ -1070,7 +1099,9 @@ recv_burst_vec_avx2_v3(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pk
 		flags2 = _mm256_unpackhi_epi64(t0, t1);
 		/* fs mask used for RX_PKT_CMPL_CALC */
 		cs_calc = _mm256_and_si256(flags2, mask_fs);
-		cs_valid = _mm256_cmpeq_epi32(cs_calc, _mm256_setzero_si256());
+		/* Add the meta_format to cs_calc */
+		cs_calc = _mm256_or_si256(cs_calc, _mm256_and_si256(flags2,
+							_mm256_slli_epi32(mask_fs, 4)));
 
 		/* Extract metadata0 and errors from high completion */
 		t0 = _mm256_unpackhi_epi32(rxcmp0_1, rxcmp2_3);
@@ -1082,6 +1113,11 @@ recv_burst_vec_avx2_v3(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pk
 		 */
 		errors_csum_idx = _mm256_srli_epi32(_mm256_and_si256(errors_v2,
 						    _mm256_slli_epi32(mask_fs, 4)), 4);
+		meta_format = _mm256_cmpeq_epi32(_mm256_and_si256(cs_calc,
+							_mm256_slli_epi32(mask_fs, 4)),
+							_mm256_setzero_si256());
+		cs_valid = _mm256_cmpeq_epi32(_mm256_and_si256(cs_calc, mask_fs),
+							_mm256_setzero_si256());
 		errors_csum_idx = _mm256_andnot_si256(cs_valid, errors_csum_idx);
 
 		/*
@@ -1104,10 +1140,14 @@ recv_burst_vec_avx2_v3(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pk
 		vlan_flags = _mm256_and_si256(metadata1, _mm256_slli_epi32(mask_1s, 15));
 		vlan_flags = _mm256_min_epu32(vlan_flags, mask_1s);
 
-		if (vnic->vlan_strip) {
-			vlan_flags = _mm256_or_si256(vlan_flags,
-					_mm256_slli_epi32(vlan_flags, 6));
-		}
+		/*
+		 * VLAN present in mbuf when metadata valid (vlan_flags) and
+		 * meta_format is non-zero in flags2. andnot(cmpeq(tci,0), vlan_flags) is
+		 * (~zero_mask) & vlan_flags.
+		 */
+		t0 = _mm256_andnot_si256(meta_format, vlan_flags);
+		/* RTE_MBUF_F_RX_VLAN + STRIPPED when hardware reports valid VLAN. */
+		vlan_flags = _mm256_or_si256(vlan_flags, _mm256_slli_epi32(t0, 6));
 
 		/* Extract flags_type from low completion for eight packets */
 		t0 = _mm256_unpacklo_epi32(rxcmp0_1, rxcmp2_3);
