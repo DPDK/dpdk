@@ -86,7 +86,6 @@ static uint32_t promiscuous;
 static uint32_t num_queues = 0;
 static uint32_t num_devices;
 
-static struct rte_mempool *mbuf_pool;
 static int mergeable;
 
 /* Enable VM2VM communications. If this is disabled then the MAC address compare is skipped. */
@@ -387,7 +386,7 @@ out:
  * according to the pool & queue limits.
  */
 static inline int
-get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t num_devices)
+get_eth_conf(struct rte_eth_conf *eth_conf)
 {
 	struct rte_eth_vmdq_rx_conf conf;
 	struct rte_eth_vmdq_rx_conf *def_conf =
@@ -415,7 +414,7 @@ get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t num_devices)
  * coming from the mbuf_pool passed as parameter
  */
 static inline int
-port_init(uint16_t port)
+port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 {
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_conf port_conf;
@@ -460,7 +459,7 @@ port_init(uint16_t port)
 	}
 
 	/* Get port configuration. */
-	retval = get_eth_conf(&port_conf, num_devices);
+	retval = get_eth_conf(&port_conf);
 	if (retval < 0)
 		return retval;
 	/* NIC queues are divided into pf queues and vmdq queues.  */
@@ -1440,7 +1439,7 @@ uint16_t sync_dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 }
 
 static __rte_always_inline void
-drain_virtio_tx(struct vhost_dev *vdev)
+drain_virtio_tx(struct vhost_dev *vdev, struct rte_mempool *mbuf_pool)
 {
 	struct rte_mbuf *pkts[MAX_PKT_BURST];
 	uint16_t count;
@@ -1477,8 +1476,9 @@ drain_virtio_tx(struct vhost_dev *vdev)
  * }
  */
 static int
-switch_worker(void *arg __rte_unused)
+switch_worker(void *arg)
 {
+	struct rte_mempool *mbuf_pool = arg;
 	unsigned i;
 	unsigned lcore_id = rte_lcore_id();
 	struct vhost_dev *vdev;
@@ -1519,7 +1519,7 @@ switch_worker(void *arg __rte_unused)
 				drain_eth_rx(vdev);
 
 			if (likely(!vdev->remove))
-				drain_virtio_tx(vdev);
+				drain_virtio_tx(vdev, mbuf_pool);
 		}
 	}
 
@@ -1906,6 +1906,7 @@ reset_dma(void)
 int
 main(int argc, char *argv[])
 {
+	struct rte_mempool *mbuf_pool = NULL;
 	unsigned lcore_id, core_id = 0;
 	unsigned nb_ports, valid_num_ports;
 	int ret, i;
@@ -1982,7 +1983,7 @@ main(int argc, char *argv[])
 				"Skipping disabled port %d\n", portid);
 			continue;
 		}
-		if (port_init(portid) != 0)
+		if (port_init(portid, mbuf_pool) != 0)
 			rte_exit(EXIT_FAILURE,
 				"Cannot initialize network ports\n");
 	}
@@ -1998,7 +1999,7 @@ main(int argc, char *argv[])
 
 	/* Launch all data cores. */
 	RTE_LCORE_FOREACH_WORKER(lcore_id)
-		rte_eal_remote_launch(switch_worker, NULL, lcore_id);
+		rte_eal_remote_launch(switch_worker, mbuf_pool, lcore_id);
 
 	if (client_mode)
 		flags |= RTE_VHOST_USER_CLIENT;
