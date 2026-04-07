@@ -19,4 +19,3 @@ sources = files(
         'main.c',
         'shm.c',
 )
-cflags += no_shadow_cflag

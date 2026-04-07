@@ -780,7 +780,7 @@ main(int argc, char **argv)
 	}
 	/* launch per-lcore init on every worker lcore */
 	RTE_LCORE_FOREACH_WORKER(lcore_id) {
-		struct lcore_queue_conf *qconf = &lcore_queue_conf[lcore_id];
+		qconf = &lcore_queue_conf[lcore_id];
 
 		if (qconf->n_rx_port == 0)
 			RTE_LOG(INFO, L2FWD,
