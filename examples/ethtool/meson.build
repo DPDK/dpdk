@@ -17,7 +17,6 @@ sources = files(
         'ethtool-app/main.c',
 )
 includes = include_directories('lib', 'ethtool-app')
-cflags += no_shadow_cflag
 
 deps += 'bus_pci'
 if dpdk_conf.has('RTE_NET_IXGBE')

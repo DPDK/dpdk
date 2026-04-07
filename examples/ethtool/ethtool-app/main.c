@@ -86,7 +86,7 @@ void mark_port_newmac(int idx_port)
 	ptr_port->port_dirty = 1;
 }
 
-static void setup_ports(struct app_config *app_cfg, int cnt_ports)
+static void setup_ports(struct app_config *ptr_cfg, int cnt_ports)
 {
 	int idx_port;
 	int size_pktpool;
@@ -101,7 +101,7 @@ static void setup_ports(struct app_config *app_cfg, int cnt_ports)
 	cfg_port.txmode.mq_mode = RTE_ETH_MQ_TX_NONE;
 
 	for (idx_port = 0; idx_port < cnt_ports; idx_port++) {
-		struct app_port *ptr_port = &app_cfg->ports[idx_port];
+		struct app_port *ptr_port = &ptr_cfg->ports[idx_port];
 
 		ret = rte_eth_dev_info_get(idx_port, &dev_info);
 		if (ret != 0)
