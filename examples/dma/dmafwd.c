@@ -590,11 +590,11 @@ dma_parse_portmask(const char *portmask)
 }
 
 static copy_mode_t
-dma_parse_copy_mode(const char *copy_mode)
+dma_parse_copy_mode(const char *mode)
 {
-	if (strcmp(copy_mode, COPY_MODE_SW) == 0)
+	if (strcmp(mode, COPY_MODE_SW) == 0)
 		return COPY_MODE_SW_NUM;
-	else if (strcmp(copy_mode, COPY_MODE_DMA) == 0)
+	else if (strcmp(mode, COPY_MODE_DMA) == 0)
 		return COPY_MODE_DMA_NUM;
 
 	return COPY_MODE_INVALID_NUM;
@@ -878,7 +878,7 @@ config_port_max_pkt_len(struct rte_eth_conf *conf,
  * coming from the mbuf_pool passed as a parameter.
  */
 static inline void
-port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
+port_init(uint16_t portid, struct rte_mempool *mbuf_pool)
 {
 	/* Configuring port to use RSS for multiple RX queues. 8< */
 	static const struct rte_eth_conf port_conf = {
@@ -1061,7 +1061,7 @@ main(int argc, char **argv)
 	/* Initialize each port. 8< */
 	cfg.nb_ports = 0;
 	RTE_ETH_FOREACH_DEV(portid)
-		port_init(portid, dma_pktmbuf_pool, nb_queues);
+		port_init(portid, dma_pktmbuf_pool);
 	/* >8 End of initializing each port. */
 
 	/* Initialize port xstats */

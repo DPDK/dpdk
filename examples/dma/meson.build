@@ -13,4 +13,3 @@ deps += ['argparse', 'dmadev']
 sources = files(
         'dmafwd.c',
 )
-cflags += no_shadow_cflag
