@@ -1186,7 +1186,7 @@ representor_match_port(const struct mlx5_dev_spawn_data *spawn,
 
 		/* Uplink ports should not be matched against representor_ports. */
 		if (spawn->info.name_type == MLX5_PHYS_PORT_NAME_TYPE_UPLINK)
-			return false;
+			continue;
 
 		for (uint16_t f = 0; f < eth_da->nb_representor_ports; ++f) {
 			uint16_t port_num = eth_da->representor_ports[f];
