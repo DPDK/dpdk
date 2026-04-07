@@ -94,7 +94,7 @@ ev_vector_attr_update(struct rte_event_vector *vec, struct rte_mbuf *pkt)
 }
 
 static inline void
-prepare_out_sessions_tbl(struct sa_ctx *sa_out,
+prepare_out_sessions_tbl(struct sa_ctx *out_ctx,
 			 struct port_drv_mode_data *data,
 			 uint16_t size)
 {
@@ -102,12 +102,12 @@ prepare_out_sessions_tbl(struct sa_ctx *sa_out,
 	struct ipsec_sa *sa;
 	uint32_t i;
 
-	if (!sa_out)
+	if (!out_ctx)
 		return;
 
-	for (i = 0; i < sa_out->nb_sa; i++) {
+	for (i = 0; i < out_ctx->nb_sa; i++) {
 
-		sa = &sa_out->sa[i];
+		sa = &out_ctx->sa[i];
 		if (!sa)
 			continue;
 
@@ -1597,7 +1597,7 @@ ipsec_poll_mode_wrkr_inl_pr(void)
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
 	struct ipsec_core_statistics *stats;
 	struct rt_ctx *rt4_ctx, *rt6_ctx;
-	struct sa_ctx *sa_in, *sa_out;
+	struct sa_ctx *in_ctx, *out_ctx;
 	struct traffic_type ip4, ip6;
 	struct lcore_rx_queue *rxql;
 	struct rte_mbuf **v4, **v6;
@@ -1621,11 +1621,11 @@ ipsec_poll_mode_wrkr_inl_pr(void)
 
 	sp4_in = socket_ctx[socket_id].sp_ip4_in;
 	sp6_in = socket_ctx[socket_id].sp_ip6_in;
-	sa_in = socket_ctx[socket_id].sa_in;
+	in_ctx = socket_ctx[socket_id].sa_in;
 
 	sp4_out = socket_ctx[socket_id].sp_ip4_out;
 	sp6_out = socket_ctx[socket_id].sp_ip6_out;
-	sa_out = socket_ctx[socket_id].sa_out;
+	out_ctx = socket_ctx[socket_id].sa_out;
 
 	qconf->frag.pool_indir = socket_ctx[socket_id].mbuf_pool_indir;
 
@@ -1676,11 +1676,11 @@ ipsec_poll_mode_wrkr_inl_pr(void)
 			free_pkts(trf.ipsec.pkts, trf.ipsec.num);
 
 			if (is_unprotected_port(portid)) {
-				inbound_sp_sa(sp4_in, sa_in, &trf.ip4,
+				inbound_sp_sa(sp4_in, in_ctx, &trf.ip4,
 					      trf.ip4.num,
 					      &stats->inbound.spd4);
 
-				inbound_sp_sa(sp6_in, sa_in, &trf.ip6,
+				inbound_sp_sa(sp6_in, in_ctx, &trf.ip6,
 					      trf.ip6.num,
 					      &stats->inbound.spd6);
 
@@ -1692,12 +1692,12 @@ ipsec_poll_mode_wrkr_inl_pr(void)
 				ip4.num = 0;
 				ip6.num = 0;
 
-				outb_inl_pro_spd_process(sp4_out, sa_out,
+				outb_inl_pro_spd_process(sp4_out, out_ctx,
 							 &trf.ip4, &ip4, &ip6,
 							 true,
 							 &stats->outbound.spd4);
 
-				outb_inl_pro_spd_process(sp6_out, sa_out,
+				outb_inl_pro_spd_process(sp6_out, out_ctx,
 							 &trf.ip6, &ip6, &ip4,
 							 false,
 							 &stats->outbound.spd6);
@@ -1733,7 +1733,7 @@ ipsec_poll_mode_wrkr_inl_pr_ss(void)
 	struct lcore_rx_queue *rxql;
 	struct ipsec_sa *sa = NULL;
 	struct lcore_conf *qconf;
-	struct sa_ctx *sa_out;
+	struct sa_ctx *out_ctx;
 	uint32_t i, nb_rx, j;
 	int32_t socket_id;
 	uint32_t lcore_id;
@@ -1746,9 +1746,9 @@ ipsec_poll_mode_wrkr_inl_pr_ss(void)
 	socket_id = rte_lcore_to_socket_id(lcore_id);
 
 	/* Get SA info */
-	sa_out = socket_ctx[socket_id].sa_out;
-	if (sa_out && single_sa_idx < sa_out->nb_sa) {
-		sa = &sa_out->sa[single_sa_idx];
+	out_ctx = socket_ctx[socket_id].sa_out;
+	if (out_ctx && single_sa_idx < out_ctx->nb_sa) {
+		sa = &out_ctx->sa[single_sa_idx];
 		ips = ipsec_get_primary_session(sa);
 		sa_out_portid = sa->portid;
 		if (sa->flags & IP6_TUNNEL)

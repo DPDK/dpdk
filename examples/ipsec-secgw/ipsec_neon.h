@@ -17,7 +17,7 @@ extern xmm_t val_eth[RTE_MAX_ETHPORTS];
  */
 static inline void
 processx4_step3(struct rte_mbuf *pkts[FWDSTEP], uint16_t dst_port[FWDSTEP],
-		uint64_t tx_offloads, bool ip_cksum, bool is_ipv4, uint8_t *l_pkt)
+		uint64_t tx_flags, bool ip_cksum, bool is_ipv4, uint8_t *l_pkt)
 {
 	uint32x4_t te[FWDSTEP];
 	uint32x4_t ve[FWDSTEP];
@@ -54,7 +54,7 @@ processx4_step3(struct rte_mbuf *pkts[FWDSTEP], uint16_t dst_port[FWDSTEP],
 		if (ip_cksum) {
 			struct rte_ipv4_hdr *ip;
 
-			pkt->ol_flags |= tx_offloads;
+			pkt->ol_flags |= tx_flags;
 
 			ip = (struct rte_ipv4_hdr *)
 				(((uintptr_t)p[i]) + RTE_ETHER_HDR_LEN);
@@ -73,7 +73,7 @@ processx4_step3(struct rte_mbuf *pkts[FWDSTEP], uint16_t dst_port[FWDSTEP],
  * Update source and destination MAC addresses in the ethernet header.
  */
 static inline void
-process_packet(struct rte_mbuf *pkt, uint16_t *dst_port, uint64_t tx_offloads,
+process_packet(struct rte_mbuf *pkt, uint16_t *dst_port, uint64_t tx_flags,
 	       bool ip_cksum, bool is_ipv4, uint8_t *l_pkt)
 {
 	struct rte_ether_hdr *eth_hdr;
@@ -105,7 +105,7 @@ process_packet(struct rte_mbuf *pkt, uint16_t *dst_port, uint64_t tx_offloads,
 	if (ip_cksum) {
 		struct rte_ipv4_hdr *ip;
 
-		pkt->ol_flags |= tx_offloads;
+		pkt->ol_flags |= tx_flags;
 
 		ip = (struct rte_ipv4_hdr *)(eth_hdr + 1);
 		ip->hdr_checksum = 0;
@@ -224,7 +224,7 @@ exit:
  */
 static __rte_always_inline void
 send_multi_pkts(struct rte_mbuf **pkts, uint16_t dst_port[MAX_PKT_BURST],
-		int nb_rx, uint64_t tx_offloads, bool ip_cksum, bool is_ipv4)
+		int nb_rx, uint64_t tx_flags, bool ip_cksum, bool is_ipv4)
 {
 	unsigned int lcoreid = rte_lcore_id();
 	uint16_t pnum[MAX_PKT_BURST + 1];
@@ -244,13 +244,13 @@ send_multi_pkts(struct rte_mbuf **pkts, uint16_t dst_port[MAX_PKT_BURST],
 		lp = pnum;
 		lp[0] = 1;
 
-		processx4_step3(pkts, dst_port, tx_offloads, ip_cksum, is_ipv4, &l_pkt);
+		processx4_step3(pkts, dst_port, tx_flags, ip_cksum, is_ipv4, &l_pkt);
 
 		/* dp1: <d[0], d[1], d[2], d[3], ... > */
 		dp1 = vld1q_u16(dst_port);
 
 		for (i = FWDSTEP; i != k; i += FWDSTEP) {
-			processx4_step3(&pkts[i], &dst_port[i], tx_offloads, ip_cksum, is_ipv4,
+			processx4_step3(&pkts[i], &dst_port[i], tx_flags, ip_cksum, is_ipv4,
 					&l_pkt);
 
 			/*
@@ -289,17 +289,17 @@ send_multi_pkts(struct rte_mbuf **pkts, uint16_t dst_port[MAX_PKT_BURST],
 	/* Process up to last 3 packets one by one. */
 	switch (nb_rx % FWDSTEP) {
 	case 3:
-		process_packet(pkts[i], dst_port + i, tx_offloads, ip_cksum, is_ipv4, &l_pkt);
+		process_packet(pkts[i], dst_port + i, tx_flags, ip_cksum, is_ipv4, &l_pkt);
 		GROUP_PORT_STEP(dlp, dst_port, lp, pnum, i);
 		i++;
 		/* fallthrough */
 	case 2:
-		process_packet(pkts[i], dst_port + i, tx_offloads, ip_cksum, is_ipv4, &l_pkt);
+		process_packet(pkts[i], dst_port + i, tx_flags, ip_cksum, is_ipv4, &l_pkt);
 		GROUP_PORT_STEP(dlp, dst_port, lp, pnum, i);
 		i++;
 		/* fallthrough */
 	case 1:
-		process_packet(pkts[i], dst_port + i, tx_offloads, ip_cksum, is_ipv4, &l_pkt);
+		process_packet(pkts[i], dst_port + i, tx_flags, ip_cksum, is_ipv4, &l_pkt);
 		GROUP_PORT_STEP(dlp, dst_port, lp, pnum, i);
 	}
 

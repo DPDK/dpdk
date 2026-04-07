@@ -1696,7 +1696,6 @@ sa_spi_present(struct sa_ctx *sa_ctx, uint32_t spi, int inbound)
 
 void
 sa_init(struct socket_ctx *ctx, int32_t socket_id,
-	struct lcore_conf *lcore_conf,
 	const struct eventmode_conf *em_conf)
 {
 	int32_t rc;
@@ -1828,8 +1827,8 @@ outbound_sa_lookup(struct sa_ctx *sa_ctx, uint32_t sa_idx[],
  * Select HW offloads to be used.
  */
 int
-sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
-		uint64_t *tx_offloads, uint8_t *hw_reassembly)
+sa_check_offloads(uint16_t port_id, uint64_t *rx_flags,
+		uint64_t *tx_flags, uint8_t *hw_reassembly)
 {
 	struct ipsec_sa *rule;
 	uint32_t idx_sa;
@@ -1837,8 +1836,8 @@ sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 	struct rte_eth_dev_info dev_info;
 	int ret;
 
-	*rx_offloads = 0;
-	*tx_offloads = 0;
+	*rx_flags = 0;
+	*tx_flags = 0;
 	*hw_reassembly = 0;
 
 	ret = rte_eth_dev_info_get(port_id, &dev_info);
@@ -1855,9 +1854,9 @@ sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 				rule_type ==
 				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)
 				&& rule->portid == port_id)
-			*rx_offloads |= RTE_ETH_RX_OFFLOAD_SECURITY;
+			*rx_flags |= RTE_ETH_RX_OFFLOAD_SECURITY;
 		if (IS_HW_REASSEMBLY_EN(rule->flags)) {
-			*tx_offloads |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+			*tx_flags |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 			*hw_reassembly = 1;
 		}
 	}
@@ -1875,20 +1874,17 @@ sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 				 * non-IPSec packets, there is no need of
 				 * IPv4 Checksum offload.
 				 */
-				*tx_offloads |= RTE_ETH_TX_OFFLOAD_SECURITY;
+				*tx_flags |= RTE_ETH_TX_OFFLOAD_SECURITY;
 				if (rule->mss)
-					*tx_offloads |= (RTE_ETH_TX_OFFLOAD_TCP_TSO |
-							 RTE_ETH_TX_OFFLOAD_IPV4_CKSUM);
+					*tx_flags |= RTE_ETH_TX_OFFLOAD_TCP_TSO |
+						     RTE_ETH_TX_OFFLOAD_IPV4_CKSUM;
 				break;
 			case RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO:
-				*tx_offloads |= RTE_ETH_TX_OFFLOAD_SECURITY;
+				*tx_flags |= RTE_ETH_TX_OFFLOAD_SECURITY;
 				if (rule->mss)
-					*tx_offloads |=
-						RTE_ETH_TX_OFFLOAD_TCP_TSO;
-				if (dev_info.tx_offload_capa &
-						RTE_ETH_TX_OFFLOAD_IPV4_CKSUM)
-					*tx_offloads |=
-						RTE_ETH_TX_OFFLOAD_IPV4_CKSUM;
+					*tx_flags |= RTE_ETH_TX_OFFLOAD_TCP_TSO;
+				if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM)
+					*tx_flags |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM;
 				break;
 			default:
 				/* Enable IPv4 checksum offload even if
@@ -1896,13 +1892,13 @@ sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 				 */
 				if (dev_info.tx_offload_capa &
 				    RTE_ETH_TX_OFFLOAD_IPV4_CKSUM)
-					*tx_offloads |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM;
+					*tx_flags |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM;
 				break;
 			}
 		} else {
 			if (dev_info.tx_offload_capa &
 			    RTE_ETH_TX_OFFLOAD_IPV4_CKSUM)
-				*tx_offloads |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM;
+				*tx_flags |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM;
 		}
 	}
 	return 0;

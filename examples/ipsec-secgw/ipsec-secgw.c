@@ -1108,11 +1108,11 @@ print_app_sa_prm(const struct app_sa_prm *prm)
 }
 
 static int
-parse_transfer_mode(struct eh_conf *conf, const char *optarg)
+parse_transfer_mode(struct eh_conf *conf, const char *arg)
 {
-	if (!strcmp(CMD_LINE_ARG_POLL, optarg))
+	if (!strcmp(CMD_LINE_ARG_POLL, arg))
 		conf->mode = EH_PKT_TRANSFER_MODE_POLL;
-	else if (!strcmp(CMD_LINE_ARG_EVENT, optarg))
+	else if (!strcmp(CMD_LINE_ARG_EVENT, arg))
 		conf->mode = EH_PKT_TRANSFER_MODE_EVENT;
 	else {
 		printf("Unsupported packet transfer mode\n");
@@ -1123,18 +1123,18 @@ parse_transfer_mode(struct eh_conf *conf, const char *optarg)
 }
 
 static int
-parse_schedule_type(struct eh_conf *conf, const char *optarg)
+parse_schedule_type(struct eh_conf *conf, const char *arg)
 {
 	struct eventmode_conf *em_conf = NULL;
 
 	/* Get eventmode conf */
 	em_conf = conf->mode_params;
 
-	if (!strcmp(CMD_LINE_ARG_ORDERED, optarg))
+	if (!strcmp(CMD_LINE_ARG_ORDERED, arg))
 		em_conf->ext_params.sched_type = RTE_SCHED_TYPE_ORDERED;
-	else if (!strcmp(CMD_LINE_ARG_ATOMIC, optarg))
+	else if (!strcmp(CMD_LINE_ARG_ATOMIC, arg))
 		em_conf->ext_params.sched_type = RTE_SCHED_TYPE_ATOMIC;
-	else if (!strcmp(CMD_LINE_ARG_PARALLEL, optarg))
+	else if (!strcmp(CMD_LINE_ARG_PARALLEL, arg))
 		em_conf->ext_params.sched_type = RTE_SCHED_TYPE_PARALLEL;
 	else {
 		printf("Unsupported queue schedule type\n");
@@ -3123,8 +3123,7 @@ main(int32_t argc, char **argv)
 		if ((socket_ctx[socket_id].session_pool != NULL) &&
 			(socket_ctx[socket_id].sa_in == NULL) &&
 			(socket_ctx[socket_id].sa_out == NULL)) {
-			sa_init(&socket_ctx[socket_id], socket_id, lcore_conf,
-				eh_conf->mode_params);
+			sa_init(&socket_ctx[socket_id], socket_id, eh_conf->mode_params);
 			sp4_init(&socket_ctx[socket_id], socket_id);
 			sp6_init(&socket_ctx[socket_id], socket_id);
 			rt_init(&socket_ctx[socket_id], socket_id);

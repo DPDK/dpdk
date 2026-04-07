@@ -174,7 +174,7 @@ route6_pkts_neon(struct rt_ctx *rt_ctx, struct rte_mbuf **pkts, int nb_rx)
  */
 static inline void
 route4_pkts_neon(struct rt_ctx *rt_ctx, struct rte_mbuf **pkts, int nb_rx,
-		 uint64_t tx_offloads, bool ip_cksum)
+		 uint64_t tx_flags, bool ip_cksum)
 {
 	const int32_t k = RTE_ALIGN_FLOOR(nb_rx, FWDSTEP);
 	const int32_t m = nb_rx % FWDSTEP;
@@ -206,7 +206,7 @@ route4_pkts_neon(struct rt_ctx *rt_ctx, struct rte_mbuf **pkts, int nb_rx,
 		process_single_pkt(rt_ctx, pkts[i], &dst_port[i]);
 	}
 
-	send_multi_pkts(pkts, dst_port, nb_rx, tx_offloads, ip_cksum, true);
+	send_multi_pkts(pkts, dst_port, nb_rx, tx_flags, ip_cksum, true);
 }
 
 #endif /* IPSEC_LPM_NEON_H */

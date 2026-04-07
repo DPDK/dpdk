@@ -415,7 +415,7 @@ int
 create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 		struct rte_ipsec_session *ips)
 {
-	int32_t ret = 0;
+	int ret = 0;
 	void *sec_ctx;
 	struct rte_security_session_conf sess_conf = {
 		.action_type = ips->type,
@@ -489,7 +489,6 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 
 	if (ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO) {
 		struct rte_flow_error err;
-		int ret = 0;
 
 		sec_ctx = rte_eth_dev_get_sec_ctx(sa->portid);
 		if (sec_ctx == NULL) {

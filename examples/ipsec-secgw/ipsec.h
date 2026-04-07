@@ -439,7 +439,6 @@ sa_spi_present(struct sa_ctx *sa_ctx, uint32_t spi, int inbound);
 
 void
 sa_init(struct socket_ctx *ctx, int32_t socket_id,
-	struct lcore_conf *lcore_conf,
 	const struct eventmode_conf *em_conf);
 
 void
