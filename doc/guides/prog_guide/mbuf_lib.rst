@@ -8,11 +8,12 @@ The Packet (MBuf) library provides the ability to allocate and free buffers (mbu
 that may be used by the DPDK application to store message buffers.
 The message buffers are stored in a mempool, using the :doc:`mempool_lib`.
 
-A rte_mbuf struct generally carries network packet buffers, but it can actually
-be any data (control data, events, ...).
-The rte_mbuf header structure is kept as small as possible and currently uses
-just two cache lines, with the most frequently used fields being on the first
-of the two cache lines.
+A ``struct rte_mbuf`` generally carries network packet buffers,
+but it can actually be any data (control data, events, etc).
+The ``rte_mbuf`` header structure is
+`kept as small as possible <https://doc.dpdk.org/struct/mbuf/history.html>`_
+and currently uses just two 64-byte cache lines,
+with the most frequently used fields being on the first of the two cache lines.
 
 Design of Packet Buffers
 ------------------------
