@@ -2248,7 +2248,7 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 		edx == CPUID_VENDOR_AuthenticAMD_edx &&
 		ecx == CPUID_VENDOR_AuthenticAMD_ecx) {
 		int unknown_cpu = 0;
-		eax = 0, ebx = 0, ecx = 0, edx = 0;
+		eax = 0; ebx = 0; ecx = 0; edx = 0;
 
 		__cpuid(0x1, eax, ebx, ecx, edx);
 
