@@ -79,6 +79,7 @@ rte_ip_frag_table_create(uint32_t bucket_num, uint32_t bucket_entries,
 	tbl->nb_buckets = bucket_num;
 	tbl->bucket_entries = bucket_entries;
 	tbl->entry_mask = (tbl->nb_entries - 1) & ~(tbl->bucket_entries  - 1);
+	tbl->seed = rte_rand();
 
 	TAILQ_INIT(&(tbl->lru));
 	return tbl;
