@@ -9,8 +9,6 @@
 
 #include "ip_frag_common.h"
 
-#define	PRIME_VALUE	0xeaad8405
-
 #define	IP_FRAG_TBL_POS(tbl, sig)	\
 	((tbl)->pkt + ((sig) & (tbl)->entry_mask))
 
@@ -38,7 +36,7 @@ ip_frag_tbl_reuse(struct rte_ip_frag_tbl *tbl, struct rte_ip_frag_death_row *dr,
 
 
 static inline void
-ipv4_frag_hash(const struct ip_frag_key *key, uint32_t *v1, uint32_t *v2)
+ipv4_frag_hash(const struct ip_frag_key *key, uint32_t *v1, uint32_t *v2, uint32_t seed)
 {
 	uint32_t v;
 	const uint32_t *p;
@@ -46,12 +44,12 @@ ipv4_frag_hash(const struct ip_frag_key *key, uint32_t *v1, uint32_t *v2)
 	p = (const uint32_t *)&key->src_dst;
 
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
-	v = rte_hash_crc_4byte(p[0], PRIME_VALUE);
+	v = rte_hash_crc_4byte(p[0], seed);
 	v = rte_hash_crc_4byte(p[1], v);
 	v = rte_hash_crc_4byte(key->id, v);
 #else
 
-	v = rte_jhash_3words(p[0], p[1], key->id, PRIME_VALUE);
+	v = rte_jhash_3words(p[0], p[1], key->id, seed);
 #endif /* RTE_ARCH_X86 */
 
 	*v1 =  v;
@@ -59,7 +57,7 @@ ipv4_frag_hash(const struct ip_frag_key *key, uint32_t *v1, uint32_t *v2)
 }
 
 static inline void
-ipv6_frag_hash(const struct ip_frag_key *key, uint32_t *v1, uint32_t *v2)
+ipv6_frag_hash(const struct ip_frag_key *key, uint32_t *v1, uint32_t *v2, uint32_t seed)
 {
 	uint32_t v;
 	const uint32_t *p;
@@ -67,7 +65,7 @@ ipv6_frag_hash(const struct ip_frag_key *key, uint32_t *v1, uint32_t *v2)
 	p = (const uint32_t *) &key->src_dst;
 
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
-	v = rte_hash_crc_4byte(p[0], PRIME_VALUE);
+	v = rte_hash_crc_4byte(p[0], seed);
 	v = rte_hash_crc_4byte(p[1], v);
 	v = rte_hash_crc_4byte(p[2], v);
 	v = rte_hash_crc_4byte(p[3], v);
@@ -78,7 +76,7 @@ ipv6_frag_hash(const struct ip_frag_key *key, uint32_t *v1, uint32_t *v2)
 	v = rte_hash_crc_4byte(key->id, v);
 #else
 
-	v = rte_jhash_3words(p[0], p[1], p[2], PRIME_VALUE);
+	v = rte_jhash_3words(p[0], p[1], p[2], seed);
 	v = rte_jhash_3words(p[3], p[4], p[5], v);
 	v = rte_jhash_3words(p[6], p[7], key->id, v);
 #endif /* RTE_ARCH_X86 */
@@ -301,9 +299,9 @@ ip_frag_lookup(struct rte_ip_frag_tbl *tbl,
 
 	/* different hashing methods for IPv4 and IPv6 */
 	if (key->key_len == IPV4_KEYLEN)
-		ipv4_frag_hash(key, &sig1, &sig2);
+		ipv4_frag_hash(key, &sig1, &sig2, tbl->seed);
 	else
-		ipv6_frag_hash(key, &sig1, &sig2);
+		ipv6_frag_hash(key, &sig1, &sig2, tbl->seed);
 
 	p1 = IP_FRAG_TBL_POS(tbl, sig1);
 	p2 = IP_FRAG_TBL_POS(tbl, sig2);

@@ -79,6 +79,7 @@ struct rte_ip_frag_tbl {
 	uint32_t bucket_entries; /* hash associativity. */
 	uint32_t nb_entries;     /* total size of the table. */
 	uint32_t nb_buckets;     /* num of associativity lines. */
+	uint32_t seed;		 /* hash function init value */
 	struct ip_frag_pkt *last;     /* last used entry. */
 	struct ip_pkt_list lru;       /* LRU list for table entries. */
 	struct ip_frag_tbl_stat stat; /* statistics counters. */
