@@ -25,10 +25,15 @@ after a primary process has already configured the hugepage shared memory for th
 
 .. note::
 
-    Secondary processes should run alongside primary process with same DPDK version.
+   Secondary processes run alongside the primary process and:
 
-    Secondary processes which requires access to physical devices in Primary process, must
-    be passed with the same allow and block options.
+   * MUST have equivalent permissions and trust level.
+     There is no privilege separation between primary and secondary processes.
+   * MUST be running the same DPDK version.
+   * MUST be passed the same device access arguments (allow and block options).
+   * MUST share the same mount and PID namespaces.
+     Running a secondary process in a different container namespace
+     from the primary is not supported.
 
 To support these two process types, and other multi-process setups described later,
 two additional command-line parameters are available to the EAL:
