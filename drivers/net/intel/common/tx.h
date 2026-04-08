@@ -200,7 +200,7 @@ struct ci_tx_queue {
 		struct { /* ixgbe specific values */
 			const struct ixgbe_txq_ops *ops;
 			struct ixgbe_advctx_info *ctx_cache;
-			uint32_t ctx_curr;
+			uint8_t ctx_curr;
 			uint8_t pthresh;   /**< Prefetch threshold register. */
 			uint8_t hthresh;   /**< Host threshold register. */
 			uint8_t wthresh;   /**< Write-back threshold reg. */
