@@ -8,6 +8,7 @@
 #include <sys/queue.h>
 
 #include <rte_common.h>
+#include <rte_tailq.h>
 
 #if defined(RTE_ARCH_ARM64)
 #include <rte_cmp_arm64.h>
