@@ -387,6 +387,7 @@ struct iavf_adapter {
 	uint16_t fdir_ref_cnt;
 	struct iavf_devargs devargs;
 	bool mac_primary_set;
+	uint16_t tpid;  /* VLAN tag identifier */
 };
 
 /* IAVF_DEV_PRIVATE_TO */
@@ -456,6 +457,7 @@ int iavf_configure_rss_key(struct iavf_adapter *adapter);
 int iavf_configure_queues(struct iavf_adapter *adapter, uint16_t num_queue_pairs);
 int iavf_get_supported_rxdid(struct iavf_adapter *adapter);
 int iavf_config_vlan_strip_v2(struct iavf_adapter *adapter, bool enable);
+int iavf_config_outer_vlan_strip_v2(struct iavf_adapter *adapter, bool enable);
 int iavf_config_vlan_insert_v2(struct iavf_adapter *adapter, bool enable);
 int iavf_add_del_vlan_v2(struct iavf_adapter *adapter, uint16_t vlanid,
 			 bool add);
