@@ -1574,7 +1574,6 @@ Rawdev Drivers
 
 Intel FPGA
 M: Rosen Xu <rosen.xu@altera.com>
-T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/raw/ifpga/
 F: doc/guides/rawdevs/ifpga.rst
 
