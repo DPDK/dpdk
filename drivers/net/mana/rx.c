@@ -102,6 +102,7 @@ mana_post_rx_wqe(struct mana_rxq *rxq, struct rte_mbuf *mbuf)
 		rxq->wqe_cnt_to_short_db += wqe_size_in_bu;
 #endif
 		rxq->desc_ring_head = (rxq->desc_ring_head + 1) % rxq->num_desc;
+		rxq->desc_ring_len++;
 	} else {
 		DP_LOG(DEBUG, "failed to post recv ret %d", ret);
 		return ret;
@@ -215,7 +216,7 @@ mana_stop_rx_queues(struct rte_eth_dev *dev)
 		}
 
 		/* Drain and free posted WQEs */
-		while (rxq->desc_ring_tail != rxq->desc_ring_head) {
+		while (rxq->desc_ring_len > 0) {
 			struct mana_rxq_desc *desc =
 				&rxq->desc_ring[rxq->desc_ring_tail];
 
@@ -223,9 +224,11 @@ mana_stop_rx_queues(struct rte_eth_dev *dev)
 
 			rxq->desc_ring_tail =
 				(rxq->desc_ring_tail + 1) % rxq->num_desc;
+			rxq->desc_ring_len--;
 		}
 		rxq->desc_ring_head = 0;
 		rxq->desc_ring_tail = 0;
+		rxq->desc_ring_len = 0;
 
 		memset(&rxq->gdma_rq, 0, sizeof(rxq->gdma_rq));
 		memset(&rxq->gdma_cq, 0, sizeof(rxq->gdma_cq));
@@ -560,6 +563,7 @@ drop:
 			rxq->desc_ring_tail = 0;
 
 		rxq->gdma_rq.tail += desc->wqe_size_in_bu;
+		rxq->desc_ring_len--;
 
 		/* Record the number of the RX WQE we need to post to replenish
 		 * consumed RX requests
