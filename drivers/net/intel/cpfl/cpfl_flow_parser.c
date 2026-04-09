@@ -422,6 +422,56 @@ err:
 }
 
 static int
+cpfl_flow_js_pattern_act_fv_lem(json_t *cjson_fv, struct cpfl_flow_js_pr_action *js_act)
+{
+	int len, i, ret;
+
+	len = json_array_size(cjson_fv);
+	js_act->lem.fv = rte_malloc(NULL, sizeof(struct cpfl_flow_js_fv) * len, 0);
+	if (!js_act->lem.fv) {
+		PMD_DRV_LOG(ERR, "Failed to alloc memory.");
+		return -ENOMEM;
+	}
+	js_act->lem.fv_size = len;
+	for (i = 0; i < len; i++) {
+		struct cpfl_flow_js_fv *js_fv;
+		json_t *object, *cjson_value;
+		const char *type;
+
+		object = json_array_get(cjson_fv, i);
+		js_fv = &js_act->lem.fv[i];
+		ret = cpfl_json_t_to_uint16(object, "offset", &js_fv->offset);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Can not parse 'offset'.");
+			return -EINVAL;
+		}
+		type = cpfl_json_t_to_string(object, "type");
+		if (!type) {
+			PMD_DRV_LOG(ERR, "Can not parse 'type'.");
+			return -EINVAL;
+		}
+		cjson_value = json_object_get(object, "value");
+		if (strcmp(type, "immediate") == 0) {
+			js_fv->type = CPFL_FV_TYPE_IMMEDIATE;
+			js_fv->immediate = json_integer_value(cjson_value);
+		} else if (strcmp(type, "metadata") == 0) {
+			js_fv->type = CPFL_FV_TYPE_METADATA;
+			cpfl_flow_js_pattern_act_fv_metadata(cjson_value, js_fv);
+		} else if (strcmp(type, "protocol") == 0) {
+			js_fv->type = CPFL_FV_TYPE_PROTOCOL;
+			cpfl_flow_js_pattern_act_fv_proto(cjson_value, js_fv);
+		} else {
+			PMD_DRV_LOG(ERR, "Not support this type: %s.", type);
+			goto err;
+		}
+	}
+	return 0;
+err:
+	rte_free(js_act->lem.fv);
+	return -EINVAL;
+}
+
+static int
 cpfl_flow_js_pattern_per_act(json_t *ob_per_act, struct cpfl_flow_js_pr_action *js_act)
 {
 	const char *type;
@@ -456,6 +506,25 @@ cpfl_flow_js_pattern_per_act(json_t *ob_per_act, struct cpfl_flow_js_pr_action *
 		}
 		ob_fvs = json_object_get(ob_sem, "fieldvectors");
 		ret = cpfl_flow_js_pattern_act_fv(ob_fvs, js_act);
+		if (ret < 0)
+			return ret;
+	} else if (strcmp(type, "lem") == 0) {
+		js_act->type = CPFL_JS_PR_ACTION_TYPE_LEM;
+		json_t *cjson_fv, *ob_lem;
+
+		ob_lem = json_object_get(ob_per_act, "data");
+		ret = cpfl_json_t_to_uint16(ob_lem, "profile", &js_act->lem.prof);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Can not parse 'profile'.");
+			return -EINVAL;
+		}
+		ret = cpfl_json_t_to_uint16(ob_lem, "keysize", &js_act->lem.keysize);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Can not parse 'keysize'.");
+			return -EINVAL;
+		}
+		cjson_fv = json_object_get(ob_lem, "fieldvectors");
+		ret = cpfl_flow_js_pattern_act_fv_lem(cjson_fv, js_act);
 		if (ret < 0)
 			return ret;
 	} else {
@@ -984,6 +1053,8 @@ cpfl_parser_free_pr_action(struct cpfl_flow_js_pr_action *pr_act)
 {
 	if (pr_act->type == CPFL_JS_PR_ACTION_TYPE_SEM)
 		rte_free(pr_act->sem.fv);
+	else if (pr_act->type == CPFL_JS_PR_ACTION_TYPE_LEM)
+		rte_free(pr_act->lem.fv);
 }
 
 int
@@ -1149,6 +1220,19 @@ cpfl_parse_pr_actions(struct cpfl_itf *itf,
 			ret = cpfl_parse_fieldvectors(itf, sem->fv, sem->fv_size,
 						      pr_action->sem.cpfl_flow_pr_fv, items);
 			return ret;
+		} else if (attr->group % 10 == 4 && type == CPFL_JS_PR_ACTION_TYPE_LEM) {
+			struct cpfl_flow_js_pr_action_lem *lem = &pr_act->lem;
+
+			pr_action->type = CPFL_JS_PR_ACTION_TYPE_LEM;
+			pr_action->lem.prof = lem->prof;
+			pr_action->lem.keysize = lem->keysize;
+			memset(pr_action->lem.cpfl_flow_pr_fv, 0,
+					sizeof(pr_action->lem.cpfl_flow_pr_fv));
+			ret = cpfl_parse_fieldvectors(itf, lem->fv, lem->fv_size,
+							  pr_action->lem.cpfl_flow_pr_fv, items);
+			if (ret < 0)
+				return ret;
+			continue;
 		} else if (attr->group > 4 || attr->group == 0) {
 			return -EPERM;
 		}

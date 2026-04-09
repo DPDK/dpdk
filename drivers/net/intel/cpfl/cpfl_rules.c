@@ -18,6 +18,14 @@ cpfl_prep_rule_desc_common_ctx(struct cpfl_rule_cfg_data_common *cmn_cfg)
 	case cpfl_ctlq_mod_query_rule:
 	case cpfl_ctlq_mod_add_update_rule:
 		/* fallthrough */
+	case cpfl_ctlq_lem_del_rule:
+	case cpfl_ctlq_lem_query_rule:
+	case cpfl_ctlq_lem_add_update_rule:
+	case cpfl_ctlq_lem_query_rule_hash_addr:
+	case cpfl_ctlq_lem_query_del_rule_hash_addr:
+		context |= SHIFT_VAL64(cmn_cfg->vsi_id,
+				       MEV_RULE_VSI_ID);
+		/* fallthrough */
 	case cpfl_ctlq_sem_query_rule_hash_addr:
 	case cpfl_ctlq_sem_query_del_rule_hash_addr:
 	case cpfl_ctlq_sem_add_rule:
@@ -66,6 +74,8 @@ cpfl_prep_rule_desc_ctx(struct cpfl_rule_cfg_data *cfg_data)
 		break;
 	case cpfl_ctlq_sem_query_rule_hash_addr:
 	case cpfl_ctlq_sem_query_del_rule_hash_addr:
+	case cpfl_ctlq_lem_query_rule_hash_addr:
+	case cpfl_ctlq_lem_query_del_rule_hash_addr:
 		context |= SHIFT_VAL64(cfg_data->ext.query_del_addr.obj_id,
 				       MEV_RULE_OBJ_ID);
 		context |= SHIFT_VAL64(cfg_data->ext.query_del_addr.obj_addr,
@@ -123,4 +133,30 @@ cpfl_prep_sem_rule_blob(const uint8_t *key,
 
 	rule_blob->sem_rule.cfg_ctrl[0] = cfg_ctrl & 0xFF;
 	rule_blob->sem_rule.cfg_ctrl[1] = (cfg_ctrl >> 8) & 0xFF;
+}
+
+/**
+ * cpfl_prep_lem_rule_blob - build LEM rule blob data from rule entry info
+ * note: call this function before sending rule to HW via fast path
+ */
+void
+cpfl_prep_lem_rule_blob(uint8_t *key,
+			uint8_t key_byte_len,
+			uint8_t *act_bytes,
+			uint8_t act_byte_len,
+			uint16_t cfg_ctrl,
+			union cpfl_rule_cfg_pkt_record *rule_blob)
+{
+	uint32_t *act_dst = (uint32_t *)&rule_blob->lem_rule.actions;
+	uint32_t *act_src = (uint32_t *)act_bytes;
+	uint32_t i;
+
+	idpf_memset(rule_blob, 0, sizeof(*rule_blob), IDPF_DMA_MEM);
+	memcpy(rule_blob->lem_rule.key, key, key_byte_len);
+
+	for (i = 0; i < act_byte_len / sizeof(uint32_t); i++)
+		*act_dst++ = CPU_TO_LE32(*act_src++);
+
+	rule_blob->lem_rule.cfg_ctrl[0] = cfg_ctrl & 0xFF;
+	rule_blob->lem_rule.cfg_ctrl[1] = (cfg_ctrl >> 8) & 0xFF;
 }
