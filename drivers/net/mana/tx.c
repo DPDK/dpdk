@@ -39,7 +39,7 @@ mana_stop_tx_queues(struct rte_eth_dev *dev)
 		}
 
 		/* Drain and free posted WQEs */
-		while (txq->desc_ring_tail != txq->desc_ring_head) {
+		while (txq->desc_ring_len > 0) {
 			struct mana_txq_desc *desc =
 				&txq->desc_ring[txq->desc_ring_tail];
 

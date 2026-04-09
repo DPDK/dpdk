@@ -443,7 +443,7 @@ struct mana_rxq {
 	/* desc_ring_head is where we put pending requests to ring,
 	 * completion pull off desc_ring_tail
 	 */
-	uint32_t desc_ring_head, desc_ring_tail;
+	uint32_t desc_ring_head, desc_ring_tail, desc_ring_len;
 
 #ifdef RTE_ARCH_32
 	/* For storing wqe increment count btw each short doorbell ring */
