@@ -192,6 +192,14 @@ cpfl_default_rule_pack(struct cpfl_rule_info *rinfo, struct idpf_dma_mem *dma,
 					rinfo->act_bytes, rinfo->act_byte_len,
 					cfg_ctrl, blob);
 		opc = add ? cpfl_ctlq_sem_add_rule : cpfl_ctlq_sem_del_rule;
+	} else if (rinfo->type == CPFL_RULE_TYPE_LEM) {
+		cfg_ctrl = CPFL_GET_MEV_LEM_RULE_CFG_CTRL(rinfo->lem.prof_id,
+							  rinfo->lem.pin_to_cache,
+							  rinfo->clear_mirror_1st_state);
+		cpfl_prep_lem_rule_blob(rinfo->lem.key, rinfo->lem.key_byte_len,
+					rinfo->act_bytes, rinfo->act_byte_len,
+					cfg_ctrl, blob);
+		opc = add ? cpfl_ctlq_lem_add_update_rule : cpfl_ctlq_lem_del_rule;
 	} else {
 		PMD_INIT_LOG(ERR, "not support %d rule.", rinfo->type);
 		return -1;
@@ -219,7 +227,7 @@ cpfl_rule_pack(struct cpfl_rule_info *rinfo, struct idpf_dma_mem *dma,
 {
 	int ret = 0;
 
-	if (rinfo->type == CPFL_RULE_TYPE_SEM) {
+	if (rinfo->type == CPFL_RULE_TYPE_SEM || rinfo->type == CPFL_RULE_TYPE_LEM) {
 		if (cpfl_default_rule_pack(rinfo, dma, msg, add) < 0)
 			ret = -1;
 	} else if (rinfo->type == CPFL_RULE_TYPE_MOD) {

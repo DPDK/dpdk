@@ -28,9 +28,18 @@ struct cpfl_mod_rule_info {
 	uint8_t mod_obj_size;
 };
 
+struct cpfl_lem_rule_info {
+	uint16_t prof_id;
+	uint8_t key[CPFL_MAX_KEY_LEN];
+	uint8_t key_byte_len;
+	uint8_t pin_to_cache;
+	uint8_t fixed_fetch;
+};
+
 enum cpfl_rule_type {
 	CPFL_RULE_TYPE_NONE,
 	CPFL_RULE_TYPE_SEM,
+	CPFL_RULE_TYPE_LEM,
 	CPFL_RULE_TYPE_MOD
 };
 
@@ -50,6 +59,7 @@ struct cpfl_rule_info {
 	union {
 		struct cpfl_mod_rule_info mod;
 		struct cpfl_sem_rule_info sem;
+		struct cpfl_lem_rule_info lem;
 	};
 };
 

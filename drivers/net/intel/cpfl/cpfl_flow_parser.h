@@ -16,10 +16,12 @@
 #define CPFL_JS_PROG_CONTENT_FIELD_NUM_MAX 64
 #define CPFL_JS_PROG_CONSTANT_VALUE_NUM_MAX 8
 #define CPFL_JS_PROG_PARAM_NUM_MAX 10
+#define CPFL_JS_LEM_FV_KEY_NUM_MAX 32
 
 /* Pattern Rules Storage */
 enum cpfl_flow_pr_action_type {
 	CPFL_JS_PR_ACTION_TYPE_SEM,
+	CPFL_JS_PR_ACTION_TYPE_LEM,
 	CPFL_JS_PR_ACTION_TYPE_UNKNOWN = -1,
 };
 
@@ -85,11 +87,19 @@ struct cpfl_flow_js_pr_action_sem {
 	int fv_size;
 };
 
+struct cpfl_flow_js_pr_action_lem {
+	uint16_t prof;
+	uint16_t keysize;
+	struct cpfl_flow_js_fv *fv;
+	int fv_size;
+};
+
 /* define how to map current key to low level pipeline configuration */
 struct cpfl_flow_js_pr_action {
 	enum cpfl_flow_pr_action_type type;
 	union {
 		struct cpfl_flow_js_pr_action_sem sem;
+		struct cpfl_flow_js_pr_action_lem lem;
 	};
 };
 
@@ -230,10 +240,18 @@ struct cpfl_flow_pr_action_sem {
 	uint8_t cpfl_flow_pr_fv[CPFL_JS_SEM_FV_KEY_NUM_MAX];
 };
 
+struct cpfl_flow_pr_action_lem {
+	uint16_t prof;
+	uint16_t keysize;
+	uint8_t cpfl_flow_pr_fv[CPFL_JS_LEM_FV_KEY_NUM_MAX];
+};
+
+
 struct cpfl_flow_pr_action {
 	enum cpfl_flow_pr_action_type type;
 	union {
 		struct cpfl_flow_pr_action_sem sem;
+		struct cpfl_flow_pr_action_lem lem;
 	};
 };
 

@@ -46,6 +46,12 @@ enum cpfl_ctlq_rule_cfg_opc {
 	cpfl_ctlq_sem_query_rule_hash_addr		= 0x1307,
 	cpfl_ctlq_sem_query_del_rule_hash_addr		= 0x1308,
 
+	cpfl_ctlq_lem_add_update_rule			= 0x1343,
+	cpfl_ctlq_lem_del_rule					= 0x1345,
+	cpfl_ctlq_lem_query_rule				= 0x1346,
+	cpfl_ctlq_lem_query_rule_hash_addr		= 0x1347,
+	cpfl_ctlq_lem_query_del_rule_hash_addr	= 0x1348,
+
 	cpfl_ctlq_mod_add_update_rule			= 0x1360,
 	cpfl_ctlq_mod_query_rule			= 0x1361,
 };
@@ -189,10 +195,42 @@ struct cpfl_sem_rule_cfg_pkt {
 };
 
 /**
+ * struct cpfl_lem_rule_cfg_pkt - Describes rule information for LEM
+ * note: The key may be in mixed big/little endian format, the rest of members
+ * are in little endian
+ */
+struct cpfl_lem_rule_cfg_pkt {
+#define MEV_LEM_RULE_KEY_SIZE 128
+	uint8_t key[MEV_LEM_RULE_KEY_SIZE];
+
+#define MEV_LEM_RULE_ACT_SIZE	48
+	uint8_t actions[MEV_LEM_RULE_ACT_SIZE];
+	/* Bit(s):
+	 * 10:0 : PROFILE_ID
+	 * 12:11: Reserved
+	 * 13   : pin the LEM key content into the cache
+	 * 14   : if set, clear mirror first state for first index in actions
+	 * 15   : Reserved.
+	 */
+	uint8_t cfg_ctrl[2];
+	/* Bit(s):
+	 * 0:     valid
+	 * 15:1:  Hints
+	 * 26:16: PROFILE_ID, the profile associated with the entry
+	 * 31:27: PF
+	 * 55:32: FLOW ID (assigned by HW)
+	 * 63:56: EPOCH
+	 */
+	uint8_t ctrl_word[8];
+	uint8_t padding[70];
+};
+
+/**
  * union cpfl_rule_cfg_pkt_record - Describes rule data blob
  */
 union cpfl_rule_cfg_pkt_record {
 	struct cpfl_sem_rule_cfg_pkt sem_rule;
+	struct cpfl_lem_rule_cfg_pkt lem_rule;
 	uint8_t pkt_data[256];
 	uint8_t mod_blob[256];
 };
@@ -313,5 +351,11 @@ cpfl_prep_sem_rule_blob(const uint8_t *key,
 			uint8_t act_byte_len,
 			uint16_t cfg_ctrl,
 			union cpfl_rule_cfg_pkt_record *rule_blob);
-
+void
+cpfl_prep_lem_rule_blob(uint8_t *key,
+			uint8_t key_byte_len,
+			uint8_t *act_bytes,
+			uint8_t act_byte_len,
+			uint16_t cfg_ctrl,
+			union cpfl_rule_cfg_pkt_record *rule_blob);
 #endif /* _CPFL_RULES_API_H_ */
