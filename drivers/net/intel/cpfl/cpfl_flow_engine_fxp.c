@@ -41,6 +41,7 @@
 #define CPFL_PORT_NUM_DEF	0
 #define CPFL_RESP_REQ_DEF	2
 #define CPFL_PIN_TO_CACHE_DEF	0
+#define CPFL_PIN_TO_CACHE_CUST  1
 #define CPFL_CLEAR_MIRROR_1ST_STATE_DEF	0
 #define CPFL_FIXED_FETCH_DEF	0
 #define CPFL_PTI_DEF		0
@@ -180,6 +181,15 @@ cpfl_fxp_parse_pattern(const struct cpfl_flow_pr_action *pr_action,
 		memcpy(rinfo->sem.key, pr_action->sem.cpfl_flow_pr_fv, rinfo->sem.key_byte_len);
 		rinfo->sem.pin_to_cache = CPFL_PIN_TO_CACHE_DEF;
 		rinfo->sem.fixed_fetch = CPFL_FIXED_FETCH_DEF;
+	} else if (pr_action->type == CPFL_JS_PR_ACTION_TYPE_LEM) {
+		struct cpfl_rule_info *rinfo = &rim->rules[i];
+
+		rinfo->type = CPFL_RULE_TYPE_LEM;
+		rinfo->lem.prof_id = pr_action->lem.prof;
+		rinfo->lem.key_byte_len = pr_action->lem.keysize;
+		memcpy(rinfo->lem.key, pr_action->lem.cpfl_flow_pr_fv, rinfo->lem.key_byte_len);
+		rinfo->lem.pin_to_cache = CPFL_PIN_TO_CACHE_CUST;
+		rinfo->lem.fixed_fetch = CPFL_FIXED_FETCH_DEF;
 	} else {
 		PMD_DRV_LOG(ERR, "Invalid pattern item.");
 		return false;
