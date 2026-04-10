@@ -434,7 +434,7 @@ static int set_surprise_link_check_aer(
 	uint32_t aer_new0, aer_new1;
 
 	if (!ifpga_rdev || !ifpga_rdev->rawdev) {
-		printf("\n device does not exist\n");
+		IFPGA_RAWDEV_PMD_ERR("device does not exist");
 		return -EFAULT;
 	}
 
@@ -491,7 +491,7 @@ static int set_surprise_link_check_aer(
 		if (fd != -1)
 			close(fd);
 
-		printf(">>>>>>Set AER %x,%x %x,%x\n",
+		IFPGA_RAWDEV_PMD_DEBUG(">>>>>>Set AER %x,%x %x,%x",
 			ifpga_rdev->aer_old[0], ifpga_rdev->aer_old[1],
 			aer_new0, aer_new1);
 
@@ -527,7 +527,7 @@ ifpga_rawdev_gsd_handle(__rte_unused void *param)
 		}
 
 		if (gsd_enable)
-			printf(">>>>>>Pls Shutdown APP\n");
+			IFPGA_RAWDEV_PMD_WARN(">>>>>>Pls Shutdown APP");
 
 		rte_delay_us(100 * MS);
 	}
