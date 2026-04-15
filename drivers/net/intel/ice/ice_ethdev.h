@@ -204,6 +204,8 @@ enum ice_rx_func_type {
 	ICE_RX_AVX512_SCATTERED,
 	ICE_RX_AVX512_OFFLOAD,
 	ICE_RX_AVX512_SCATTERED_OFFLOAD,
+	ICE_RX_NEON,
+	ICE_RX_NEON_SCATTERED,
 };
 
 enum ice_tx_func_type {
@@ -213,6 +215,7 @@ enum ice_tx_func_type {
 	ICE_TX_AVX2_OFFLOAD,
 	ICE_TX_AVX512,
 	ICE_TX_AVX512_OFFLOAD,
+	ICE_TX_NEON,
 };
 
 struct ice_adapter;

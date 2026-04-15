@@ -2515,7 +2515,9 @@ ice_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 	    ad->rx_func_type == ICE_RX_AVX512 ||
 	    ad->rx_func_type == ICE_RX_AVX512_SCATTERED ||
 	    ad->rx_func_type == ICE_RX_AVX512_OFFLOAD ||
-	    ad->rx_func_type == ICE_RX_AVX512_SCATTERED_OFFLOAD)
+	    ad->rx_func_type == ICE_RX_AVX512_SCATTERED_OFFLOAD ||
+	    ad->rx_func_type == ICE_RX_NEON ||
+	    ad->rx_func_type == ICE_RX_NEON_SCATTERED)
 		return ptypes;
 
 	return NULL;
@@ -3356,6 +3358,26 @@ static const struct ci_rx_path_info ice_rx_path_infos[] = {
 		}
 	},
 #endif
+#elif defined(RTE_ARCH_ARM64)
+	[ICE_RX_NEON] = {
+		.pkt_burst = ice_recv_pkts_vec,
+		.info = "Vector Neon",
+		.features = {
+			.rx_offloads = ICE_RX_VECTOR_OFFLOAD_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_128,
+			.bulk_alloc = true
+		}
+	},
+	[ICE_RX_NEON_SCATTERED] = {
+		.pkt_burst = ice_recv_scattered_pkts_vec,
+		.info = "Vector Neon Scattered",
+		.features = {
+			.rx_offloads = ICE_RX_VECTOR_OFFLOAD_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_128,
+			.scattered = true,
+			.bulk_alloc = true
+		}
+	},
 #endif
 };
 
@@ -3384,6 +3406,15 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 			if (ice_rx_vec_dev_check(dev) == -1)
 				rx_simd_width = RTE_VECT_SIMD_DISABLED;
 	}
+#elif defined(RTE_ARCH_ARM64)
+	if (ad->ptp_ena || !ad->rx_bulk_alloc_allowed) {
+		rx_simd_width = RTE_VECT_SIMD_DISABLED;
+	} else {
+		rx_simd_width = ice_get_max_simd_bitwidth();
+		if (rx_simd_width >= RTE_VECT_SIMD_128)
+			if (ice_rx_vec_dev_check(dev) == -1)
+				rx_simd_width = RTE_VECT_SIMD_DISABLED;
+	}
 #endif
 
 	req_features.simd_width = rx_simd_width;
@@ -3400,6 +3431,14 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 	int i;
 
 	if (ice_rx_path_infos[ad->rx_func_type].features.simd_width >= RTE_VECT_SIMD_256)
+		/* Vector function selected. Prepare the rxq accordingly. */
+		for (i = 0; i < dev->data->nb_rx_queues; i++)
+			if (dev->data->rx_queues[i])
+				ice_rxq_vec_setup(dev->data->rx_queues[i]);
+#elif defined(RTE_ARCH_ARM64)
+	int i;
+
+	if (ice_rx_path_infos[ad->rx_func_type].features.simd_width >= RTE_VECT_SIMD_128)
 		/* Vector function selected. Prepare the rxq accordingly. */
 		for (i = 0; i < dev->data->nb_rx_queues; i++)
 			if (dev->data->rx_queues[i])
@@ -3535,6 +3574,16 @@ static const struct ci_tx_path_info ice_tx_path_infos[] = {
 		.pkt_prep = ice_prep_pkts
 	},
 #endif
+#elif defined(RTE_ARCH_ARM64)
+	[ICE_TX_NEON] = {
+		.pkt_burst = ice_xmit_pkts_vec,
+		.info = "Vector Neon",
+		.features = {
+			.tx_offloads = ICE_TX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_128
+		},
+		.pkt_prep = rte_eth_tx_pkt_prepare_dummy
+	},
 #endif
 };
 
@@ -3718,7 +3767,7 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 
 	req_features.simple_tx = ad->tx_simple_allowed;
 
-#ifdef RTE_ARCH_X86
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	if (ice_tx_vec_dev_check(dev) != -1)
 		req_features.simd_width = ice_get_max_simd_bitwidth();
 #endif
@@ -3729,8 +3778,13 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 						ICE_TX_DEFAULT);
 
 out:
+#if defined(RTE_ARCH_X86)
 	ad->tx_vec_allowed =
 		(ice_tx_path_infos[ad->tx_func_type].features.simd_width >= RTE_VECT_SIMD_256);
+#elif defined(RTE_ARCH_ARM64)
+	ad->tx_vec_allowed =
+		(ice_tx_path_infos[ad->tx_func_type].features.simd_width >= RTE_VECT_SIMD_128);
+#endif
 
 	dev->tx_pkt_burst = mbuf_check ? ice_xmit_pkts_check :
 					 ice_tx_path_infos[ad->tx_func_type].pkt_burst;
