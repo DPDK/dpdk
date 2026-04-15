@@ -33,6 +33,8 @@ endif
 if arch_subdir == 'x86'
     sources_avx2 += files('ice_rxtx_vec_avx2.c')
     sources_avx512 += files('ice_rxtx_vec_avx512.c')
+elif arch_subdir == 'arm' and dpdk_conf.get('RTE_ARCH_64')
+    sources += files('ice_rxtx_vec_neon.c')
 endif
 
 sources += files(
