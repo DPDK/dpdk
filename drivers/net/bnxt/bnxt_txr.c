@@ -907,7 +907,7 @@ int bnxt_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	 */
 	if (BNXT_TPA_V2_P7(bp))
 		memset(&bp->prev_tx_ring_stats_ext[tx_queue_id], 0,
-		       sizeof(struct bnxt_ring_stats));
+		       sizeof(struct bnxt_ring_stats_ext));
 	else
 		memset(&bp->prev_tx_ring_stats[tx_queue_id], 0,
 		       sizeof(struct bnxt_ring_stats));
