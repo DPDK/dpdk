@@ -98,7 +98,6 @@ typedef int (*rte_dpaa_probe_t)(struct rte_dpaa_driver *dpaa_drv,
 typedef int (*rte_dpaa_remove_t)(struct rte_dpaa_device *dpaa_dev);
 
 struct rte_dpaa_driver {
-	TAILQ_ENTRY(rte_dpaa_driver) next;
 	struct rte_driver driver;
 	enum rte_dpaa_type drv_type;
 	rte_dpaa_probe_t probe;

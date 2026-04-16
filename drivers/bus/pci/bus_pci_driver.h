@@ -122,7 +122,6 @@ typedef int (pci_dma_unmap_t)(struct rte_pci_device *dev, void *addr,
  * A structure describing a PCI driver.
  */
 struct rte_pci_driver {
-	RTE_TAILQ_ENTRY(rte_pci_driver) next;  /**< Next in list. */
 	struct rte_driver driver;          /**< Inherit core driver. */
 	rte_pci_probe_t *probe;            /**< Device probe function. */
 	rte_pci_remove_t *remove;          /**< Device remove function. */

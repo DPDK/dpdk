@@ -138,7 +138,6 @@ rte_fslmc_vfio_mem_dmaunmap(uint64_t iova, uint64_t size);
  * A structure describing a DPAA2 driver.
  */
 struct rte_dpaa2_driver {
-	TAILQ_ENTRY(rte_dpaa2_driver) next; /**< Next in list. */
 	struct rte_driver driver;           /**< Inherit core driver. */
 	uint32_t drv_flags;                 /**< Flags for controlling device.*/
 	enum rte_dpaa2_dev_type drv_type;   /**< Driver Type */

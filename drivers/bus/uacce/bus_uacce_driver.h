@@ -91,9 +91,7 @@ typedef int (rte_uacce_remove_t)(struct rte_uacce_device *);
  * A structure describing a UACCE driver.
  */
 struct rte_uacce_driver {
-	RTE_TAILQ_ENTRY(rte_uacce_driver) next;	/**< Next in list. */
 	struct rte_driver driver;               /**< Inherit core driver. */
-	struct rte_uacce_bus *bus;              /**< UACCE bus reference. */
 	rte_uacce_probe_t *probe;               /**< Device probe function. */
 	rte_uacce_remove_t *remove;             /**< Device remove function. */
 	const struct rte_uacce_id *id_table;    /**< ID table, NULL terminated. */

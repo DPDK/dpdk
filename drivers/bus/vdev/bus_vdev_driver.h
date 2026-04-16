@@ -91,7 +91,6 @@ typedef int (rte_vdev_dma_unmap_t)(struct rte_vdev_device *dev, void *addr,
  * A virtual device driver abstraction.
  */
 struct rte_vdev_driver {
-	RTE_TAILQ_ENTRY(rte_vdev_driver) next; /**< Next in list. */
 	struct rte_driver driver;        /**< Inherited general driver. */
 	rte_vdev_probe_t *probe;         /**< Virtual device probe function. */
 	rte_vdev_remove_t *remove;       /**< Virtual device remove function. */

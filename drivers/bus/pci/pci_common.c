@@ -358,7 +358,7 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 	if (dev == NULL)
 		return -EINVAL;
 
-	FOREACH_DRIVER_ON_PCIBUS(dr) {
+	RTE_BUS_FOREACH_DRV(dr, &rte_pci_bus.bus) {
 		rc = rte_pci_probe_one_driver(dr, dev);
 		if (rc < 0)
 			/* negative value is an error */
@@ -501,7 +501,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_pci_register)
 void
 rte_pci_register(struct rte_pci_driver *driver)
 {
-	TAILQ_INSERT_TAIL(&rte_pci_bus.driver_list, driver, next);
+	rte_bus_add_driver(&rte_pci_bus.bus, &driver->driver);
 }
 
 /* unregister a driver */
@@ -509,7 +509,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_pci_unregister)
 void
 rte_pci_unregister(struct rte_pci_driver *driver)
 {
-	TAILQ_REMOVE(&rte_pci_bus.driver_list, driver, next);
+	rte_bus_remove_driver(&rte_pci_bus.bus, &driver->driver);
 }
 
 /* Add a device to PCI bus */
@@ -720,7 +720,7 @@ rte_pci_get_iommu_class(void)
 		if (dev->kdrv == RTE_PCI_KDRV_UNKNOWN ||
 		    dev->kdrv == RTE_PCI_KDRV_NONE)
 			continue;
-		FOREACH_DRIVER_ON_PCIBUS(drv) {
+		RTE_BUS_FOREACH_DRV(drv, &rte_pci_bus.bus) {
 			enum rte_iova_mode dev_iova_mode;
 
 			if (!rte_pci_match(drv, dev))
@@ -917,7 +917,6 @@ struct rte_pci_bus rte_pci_bus = {
 		.sigbus_handler = pci_sigbus_handler,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.device_list),
-	.driver_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.driver_list),
 };
 
 RTE_REGISTER_BUS(pci, rte_pci_bus.bus);

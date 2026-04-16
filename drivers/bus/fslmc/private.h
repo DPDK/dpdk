@@ -16,8 +16,6 @@ struct rte_fslmc_bus {
 	struct rte_bus bus;     /**< Generic Bus object */
 	TAILQ_HEAD(, rte_dpaa2_device) device_list;
 				/**< FSLMC DPAA2 Device list */
-	TAILQ_HEAD(, rte_dpaa2_driver) driver_list;
-				/**< FSLMC DPAA2 Driver list */
 	int device_count[DPAA2_DEVTYPE_MAX];
 				/**< Count of all devices scanned */
 };

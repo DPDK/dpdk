@@ -286,6 +286,7 @@ struct rte_bus {
 	rte_bus_sigbus_handler_t sigbus_handler;
 					/**< handle sigbus error on the bus */
 	rte_bus_cleanup_t cleanup;   /**< Cleanup devices on bus */
+	RTE_TAILQ_HEAD(, rte_driver) driver_list; /**< List of drivers on the bus */
 };
 
 /**
@@ -369,6 +370,49 @@ void rte_bus_unregister(struct rte_bus *bus);
  */
 #define RTE_BUS_DRIVER(drv, bus_drv_type) \
 	container_of(drv, typeof(bus_drv_type), driver)
+
+/**
+ * Helper macro to iterate over all drivers on a bus.
+ *
+ * @param drv
+ *   Variable name for the bus-specific driver pointer.
+ * @param bus
+ *   Pointer to the bus structure.
+ *
+ * Example:
+ *   struct rte_pci_driver *pci_drv;
+ *   RTE_BUS_FOREACH_DRV(pci_drv, &pci_bus.bus) {
+ *       // Use pci_drv here
+ *   }
+ */
+#define RTE_BUS_FOREACH_DRV(drv, bus) \
+	for (struct rte_driver *__rte_drv = TAILQ_FIRST(&(bus)->driver_list), *__rte_drv_tmp; \
+			(__rte_drv != NULL && ((drv) = RTE_BUS_DRIVER(__rte_drv, *drv), \
+				__rte_drv_tmp = TAILQ_NEXT(__rte_drv, next), 1)) || \
+			(drv = NULL, 0); \
+			__rte_drv = __rte_drv_tmp)
+
+/**
+ * Add a driver to the bus driver list.
+ *
+ * @param bus
+ *   A pointer to a rte_bus structure.
+ * @param driver
+ *   A pointer to a rte_driver structure to add.
+ */
+__rte_internal
+void rte_bus_add_driver(struct rte_bus *bus, struct rte_driver *driver);
+
+/**
+ * Remove a driver from the bus driver list.
+ *
+ * @param bus
+ *   A pointer to a rte_bus structure.
+ * @param driver
+ *   A pointer to a rte_driver structure to remove.
+ */
+__rte_internal
+void rte_bus_remove_driver(struct rte_bus *bus, struct rte_driver *driver);
 
 #ifdef __cplusplus
 }

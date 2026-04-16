@@ -60,7 +60,6 @@
 struct rte_dpaa_bus {
 	struct rte_bus bus;
 	TAILQ_HEAD(, rte_dpaa_device) device_list;
-	TAILQ_HEAD(, rte_dpaa_driver) driver_list;
 	int device_count;
 	int detected;
 	uint32_t svr_ver;
@@ -618,7 +617,7 @@ rte_dpaa_driver_register(struct rte_dpaa_driver *driver)
 
 	BUS_INIT_FUNC_TRACE();
 
-	TAILQ_INSERT_TAIL(&rte_dpaa_bus.driver_list, driver, next);
+	rte_bus_add_driver(&rte_dpaa_bus.bus, &driver->driver);
 }
 
 /* un-register a dpaa bus based dpaa driver */
@@ -628,7 +627,7 @@ rte_dpaa_driver_unregister(struct rte_dpaa_driver *driver)
 {
 	BUS_INIT_FUNC_TRACE();
 
-	TAILQ_REMOVE(&rte_dpaa_bus.driver_list, driver, next);
+	rte_bus_remove_driver(&rte_dpaa_bus.bus, &driver->driver);
 }
 
 static int
@@ -797,7 +796,7 @@ rte_dpaa_bus_probe(void)
 
 	/* For each registered driver, and device, call the driver->probe */
 	TAILQ_FOREACH(dev, &rte_dpaa_bus.device_list, next) {
-		TAILQ_FOREACH(drv, &rte_dpaa_bus.driver_list, next) {
+		RTE_BUS_FOREACH_DRV(drv, &rte_dpaa_bus.bus) {
 			ret = rte_dpaa_device_match(drv, dev);
 			if (ret)
 				continue;
@@ -990,7 +989,6 @@ static struct rte_dpaa_bus rte_dpaa_bus = {
 	},
 	.max_push_rxq_num = DPAA_DEFAULT_PUSH_MODE_QUEUE,
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_dpaa_bus.device_list),
-	.driver_list = TAILQ_HEAD_INITIALIZER(rte_dpaa_bus.driver_list),
 	.device_count = 0,
 };
 

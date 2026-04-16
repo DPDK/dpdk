@@ -91,10 +91,9 @@ typedef int (afu_probe_t)(struct rte_afu_device *);
 typedef int (afu_remove_t)(struct rte_afu_device *);
 
 /**
- * A structure describing a AFU device.
+ * A structure describing a AFU driver.
  */
 struct rte_afu_driver {
-	RTE_TAILQ_ENTRY(rte_afu_driver) next;   /**< Next afu driver. */
 	struct rte_driver driver;               /**< Inherit core driver. */
 	afu_probe_t *probe;                     /**< Device Probe function. */
 	afu_remove_t *remove;                   /**< Device Remove function. */

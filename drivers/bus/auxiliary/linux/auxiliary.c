@@ -117,7 +117,7 @@ auxiliary_scan(void)
 			 AUXILIARY_SYSFS_PATH, e->d_name);
 
 		/* Ignore if no driver can handle. */
-		FOREACH_DRIVER_ON_AUXILIARY_BUS(drv) {
+		RTE_BUS_FOREACH_DRV(drv, &auxiliary_bus.bus) {
 			if (drv->match(e->d_name))
 				break;
 		}

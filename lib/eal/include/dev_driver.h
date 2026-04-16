@@ -15,6 +15,7 @@ struct rte_driver {
 	RTE_TAILQ_ENTRY(rte_driver) next; /**< Next in list. */
 	const char *name;                   /**< Driver name. */
 	const char *alias;              /**< Driver alias. */
+	const struct rte_bus *bus;      /**< Bus reference. */
 };
 
 /**

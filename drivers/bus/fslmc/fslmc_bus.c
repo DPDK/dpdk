@@ -457,7 +457,7 @@ rte_fslmc_probe(void)
 	}
 
 	TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next) {
-		TAILQ_FOREACH(drv, &rte_fslmc_bus.driver_list, next) {
+		RTE_BUS_FOREACH_DRV(drv, &rte_fslmc_bus.bus) {
 			ret = rte_fslmc_match(drv, dev);
 			if (ret)
 				continue;
@@ -522,7 +522,7 @@ rte_fslmc_driver_register(struct rte_dpaa2_driver *driver)
 	RTE_VERIFY(driver);
 	RTE_VERIFY(driver->probe != NULL);
 
-	TAILQ_INSERT_TAIL(&rte_fslmc_bus.driver_list, driver, next);
+	rte_bus_add_driver(&rte_fslmc_bus.bus, &driver->driver);
 }
 
 /*un-register a fslmc bus based dpaa2 driver */
@@ -530,7 +530,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_fslmc_driver_unregister)
 void
 rte_fslmc_driver_unregister(struct rte_dpaa2_driver *driver)
 {
-	TAILQ_REMOVE(&rte_fslmc_bus.driver_list, driver, next);
+	rte_bus_remove_driver(&rte_fslmc_bus.bus, &driver->driver);
 }
 
 /*
@@ -544,7 +544,7 @@ fslmc_all_device_support_iova(void)
 	struct rte_dpaa2_driver *drv;
 
 	TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next) {
-		TAILQ_FOREACH(drv, &rte_fslmc_bus.driver_list, next) {
+		RTE_BUS_FOREACH_DRV(drv, &rte_fslmc_bus.bus) {
 			ret = rte_fslmc_match(drv, dev);
 			if (ret)
 				continue;
@@ -582,7 +582,7 @@ fslmc_bus_plug(struct rte_device *rte_dev)
 	struct rte_dpaa2_device *dev = RTE_BUS_DEVICE(rte_dev, *dev);
 	struct rte_dpaa2_driver *drv;
 
-	TAILQ_FOREACH(drv, &rte_fslmc_bus.driver_list, next) {
+	RTE_BUS_FOREACH_DRV(drv, &rte_fslmc_bus.bus) {
 		ret = rte_fslmc_match(drv, dev);
 		if (ret)
 			continue;
@@ -688,7 +688,6 @@ struct rte_fslmc_bus rte_fslmc_bus = {
 		.dev_iterate = fslmc_bus_dev_iterate,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_fslmc_bus.device_list),
-	.driver_list = TAILQ_HEAD_INITIALIZER(rte_fslmc_bus.driver_list),
 	.device_count = {0},
 };
 

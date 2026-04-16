@@ -70,7 +70,7 @@ struct dsa_bus dsa_bus = {
 		.parse = dsa_addr_parse,
 	},
 	.driver = {
-		.name = "dmadev_idxd"
+		.name = "dmadev_idxd",
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(dsa_bus.device_list),
 };
@@ -392,3 +392,7 @@ dsa_addr_parse(const char *name, void *addr)
 }
 
 RTE_REGISTER_BUS(dsa, dsa_bus.bus);
+RTE_INIT(dsa_bus_init)
+{
+	rte_bus_add_driver(&dsa_bus.bus, &dsa_bus.driver);
+}
