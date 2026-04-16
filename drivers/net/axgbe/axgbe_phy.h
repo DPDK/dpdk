@@ -82,6 +82,10 @@
 #define ADVERTISE_LPACK         0x4000  /* Ack link partners response  */
 #define ADVERTISE_NPAGE         0x8000  /* Next page bit               */
 
+/* IEEE 802.3 Clause 40: 1000BASE-T Advertisement Control */
+#define ADVERTISE_1000FULL	0x0200
+#define ADVERTISE_1000HALF	0x0100
+
 #define ADVERTISE_FULL          (ADVERTISE_100FULL | ADVERTISE_10FULL | \
 		ADVERTISE_CSMA)
 #define ADVERTISE_ALL           (ADVERTISE_10HALF | ADVERTISE_10FULL | \
