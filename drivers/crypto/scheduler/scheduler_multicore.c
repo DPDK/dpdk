@@ -191,11 +191,11 @@ mc_scheduler_worker(struct rte_cryptodev *dev)
 					worker->qp_id,
 					&enq_ops[pending_enq_ops_idx],
 					pending_enq_ops);
-			if (processed_ops < pending_deq_ops)
+			if (processed_ops < pending_enq_ops)
 				scheduler_retrieve_sessions(
 					&enq_ops[pending_enq_ops_idx +
 						processed_ops],
-					pending_deq_ops - processed_ops);
+					pending_enq_ops - processed_ops);
 			pending_enq_ops -= processed_ops;
 			pending_enq_ops_idx += processed_ops;
 			inflight_ops += processed_ops;
