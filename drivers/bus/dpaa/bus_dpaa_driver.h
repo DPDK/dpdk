@@ -79,7 +79,6 @@ struct dpaa_device_id {
 };
 
 struct rte_dpaa_device {
-	TAILQ_ENTRY(rte_dpaa_device) next;
 	struct rte_device device;
 	union {
 		struct rte_eth_dev *eth_dev;

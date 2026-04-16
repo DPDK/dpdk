@@ -49,16 +49,12 @@ static struct rte_device *dsa_find_device(const struct rte_device *start,
 static enum rte_iova_mode dsa_get_iommu_class(void);
 static int dsa_addr_parse(const char *name, void *addr);
 
-/** List of devices */
-TAILQ_HEAD(dsa_device_list, rte_dsa_device);
-
 /**
  * Structure describing the DSA bus
  */
 struct dsa_bus {
 	struct rte_bus bus;               /**< Inherit the generic class */
 	struct rte_driver driver;         /**< Driver struct for devices to point to */
-	struct dsa_device_list device_list;  /**< List of PCI devices */
 };
 
 struct dsa_bus dsa_bus = {
@@ -72,7 +68,6 @@ struct dsa_bus dsa_bus = {
 	.driver = {
 		.name = "dmadev_idxd",
 	},
-	.device_list = TAILQ_HEAD_INITIALIZER(dsa_bus.device_list),
 };
 
 static inline const char *
@@ -274,7 +269,7 @@ dsa_probe(void)
 {
 	struct rte_dsa_device *dev;
 
-	TAILQ_FOREACH(dev, &dsa_bus.device_list, next) {
+	RTE_BUS_FOREACH_DEV(dev, &dsa_bus.bus) {
 		char type[64], name[64];
 
 		if (read_wq_string(dev, "type", type, sizeof(type)) < 0 ||
@@ -332,9 +327,8 @@ dsa_scan(void)
 			free(dev);
 			continue;
 		}
-		dev->device.bus = &dsa_bus.bus;
 		strlcpy(dev->wq_name, wq->d_name, sizeof(dev->wq_name));
-		TAILQ_INSERT_TAIL(&dsa_bus.device_list, dev, next);
+		rte_bus_add_device(&dsa_bus.bus, &dev->device);
 		devcount++;
 
 		read_device_int(dev, "numa_node", &numa_node);
@@ -350,16 +344,13 @@ static struct rte_device *
 dsa_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 			 const void *data)
 {
-	struct rte_dsa_device *dev = TAILQ_FIRST(&dsa_bus.device_list);
-
-	/* the rte_device struct must be at start of dsa structure */
-	RTE_BUILD_BUG_ON(offsetof(struct rte_dsa_device, device) != 0);
+	struct rte_device *dev = TAILQ_FIRST(&dsa_bus.bus.device_list);
 
 	if (start != NULL) /* jump to start point if given */
-		dev = TAILQ_NEXT((const struct rte_dsa_device *)start, next);
+		dev = TAILQ_NEXT(start, next);
 	while (dev != NULL) {
-		if (cmp(&dev->device, data) == 0)
-			return &dev->device;
+		if (cmp(dev, data) == 0)
+			return dev;
 		dev = TAILQ_NEXT(dev, next);
 	}
 	return NULL;

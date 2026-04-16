@@ -20,14 +20,9 @@
  */
 struct rte_vmbus_bus {
 	struct rte_bus bus;               /**< Inherit the generic class */
-	RTE_TAILQ_HEAD(, rte_vmbus_device) device_list; /**< List of devices */
 };
 
 extern struct rte_vmbus_bus rte_vmbus_bus;
-
-/* VMBus iterators */
-#define FOREACH_DEVICE_ON_VMBUS(p)	\
-	RTE_TAILQ_FOREACH(p, &(rte_vmbus_bus.device_list), next)
 
 extern int vmbus_logtype_bus;
 #define RTE_LOGTYPE_VMBUS_BUS vmbus_logtype_bus
@@ -97,11 +92,6 @@ struct vmbus_channel {
 int vmbus_chan_create(const struct rte_vmbus_device *device,
 		      uint16_t relid, uint16_t subid, uint8_t monitor_id,
 		      struct vmbus_channel **new_chan);
-
-void vmbus_add_device(struct rte_vmbus_device *vmbus_dev);
-void vmbus_insert_device(struct rte_vmbus_device *exist_vmbus_dev,
-			 struct rte_vmbus_device *new_vmbus_dev);
-void vmbus_remove_device(struct rte_vmbus_device *vmbus_device);
 
 void vmbus_uio_irq_control(const struct rte_vmbus_device *dev, int32_t onoff);
 int vmbus_uio_irq_read(struct rte_vmbus_device *dev);

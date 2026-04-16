@@ -93,7 +93,6 @@ enum rte_dpaa2_dev_type {
  * A structure describing a DPAA2 device.
  */
 struct rte_dpaa2_device {
-	TAILQ_ENTRY(rte_dpaa2_device) next; /**< Next probed DPAA2 device. */
 	struct rte_device device;           /**< Inherit core device */
 	enum rte_dpaa2_dev_type dev_type;   /**< Device Type */
 	uint16_t object_id;                 /**< DPAA2 Object ID */

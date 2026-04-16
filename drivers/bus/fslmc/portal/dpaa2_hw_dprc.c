@@ -28,7 +28,7 @@ rte_dpaa2_create_dprc_device(int vdev_fd __rte_unused,
 {
 	struct dpaa2_dprc_dev *dprc_node;
 	struct dprc_endpoint endpoint1, endpoint2;
-	struct rte_dpaa2_device *dev, *dev_tmp;
+	struct rte_dpaa2_device *dev;
 	int ret, dprc_id = obj->object_id;
 
 	/* Allocate DPAA2 dprc handle */
@@ -49,7 +49,7 @@ rte_dpaa2_create_dprc_device(int vdev_fd __rte_unused,
 		return ret;
 	}
 
-	RTE_TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, dev_tmp) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
 		/** DPRC is always created before it's children are created.*/
 		dev->container = dprc_node;
 		if (dev->dev_type == DPAA2_ETH) {

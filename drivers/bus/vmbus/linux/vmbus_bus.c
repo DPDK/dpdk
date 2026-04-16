@@ -288,7 +288,6 @@ vmbus_scan_one(const char *name)
 	if (dev == NULL)
 		return -1;
 
-	dev->device.bus = &rte_vmbus_bus.bus;
 	dev->device.name = dev_name = strdup(name);
 	if (!dev->device.name)
 		goto error;
@@ -357,7 +356,7 @@ vmbus_scan_one(const char *name)
 	/* device is valid, add in list (sorted) */
 	VMBUS_LOG(DEBUG, "Adding vmbus device %s", name);
 
-	TAILQ_FOREACH(dev2, &rte_vmbus_bus.device_list, next) {
+	RTE_BUS_FOREACH_DEV(dev2, &rte_vmbus_bus.bus) {
 		int ret;
 
 		ret = rte_uuid_compare(dev->device_id, dev2->device_id);
@@ -365,7 +364,7 @@ vmbus_scan_one(const char *name)
 			continue;
 
 		if (ret < 0) {
-			vmbus_insert_device(dev2, dev);
+			rte_bus_insert_device(&rte_vmbus_bus.bus, &dev2->device, &dev->device);
 		} else { /* already registered */
 			VMBUS_LOG(NOTICE,
 				"%s already registered", name);
@@ -375,7 +374,7 @@ vmbus_scan_one(const char *name)
 		return 0;
 	}
 
-	vmbus_add_device(dev);
+	rte_bus_add_device(&rte_vmbus_bus.bus, &dev->device);
 	return 0;
 error:
 	VMBUS_LOG(DEBUG, "failed");

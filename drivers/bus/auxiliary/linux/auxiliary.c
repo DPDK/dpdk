@@ -35,7 +35,6 @@ auxiliary_scan_one(const char *dirname, const char *name)
 		return -1;
 	}
 	dev->device.name = dev->name;
-	dev->device.bus = &auxiliary_bus.bus;
 
 	/* Get NUMA node, default to 0 if not present */
 	snprintf(filename, sizeof(filename), "%s/%s/numa_node",
@@ -49,12 +48,12 @@ auxiliary_scan_one(const char *dirname, const char *name)
 	auxiliary_on_scan(dev);
 
 	/* Device is valid, add in list (sorted) */
-	TAILQ_FOREACH(dev2, &auxiliary_bus.device_list, next) {
+	RTE_BUS_FOREACH_DEV(dev2, &auxiliary_bus.bus) {
 		ret = strcmp(dev->name, dev2->name);
 		if (ret > 0)
 			continue;
 		if (ret < 0) {
-			auxiliary_insert_device(dev2, dev);
+			rte_bus_insert_device(&auxiliary_bus.bus, &dev2->device, &dev->device);
 		} else { /* already registered */
 			if (rte_dev_is_probed(&dev2->device) &&
 			    dev2->device.devargs != dev->device.devargs) {
@@ -66,7 +65,7 @@ auxiliary_scan_one(const char *dirname, const char *name)
 		}
 		return 0;
 	}
-	auxiliary_add_device(dev);
+	rte_bus_add_device(&auxiliary_bus.bus, &dev->device);
 	return 0;
 }
 

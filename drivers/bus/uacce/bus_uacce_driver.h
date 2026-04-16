@@ -49,7 +49,6 @@ struct rte_uacce_driver;
  * A structure describing a UACCE device.
  */
 struct rte_uacce_device {
-	RTE_TAILQ_ENTRY(rte_uacce_device) next;  /**< Next in device list. */
 	struct rte_device device;                /**< Inherit core device. */
 	struct rte_uacce_driver *driver;         /**< Driver used in probing. */
 	char name[RTE_DEV_NAME_MAX_LEN];         /**< Device name. */

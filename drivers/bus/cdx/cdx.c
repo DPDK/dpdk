@@ -84,10 +84,6 @@
 
 #define CDX_DEV_PREFIX	"cdx-"
 
-/* CDX Bus iterators */
-#define FOREACH_DEVICE_ON_CDXBUS(p)	\
-		RTE_TAILQ_FOREACH(p, &rte_cdx_bus.device_list, next)
-
 struct rte_cdx_bus rte_cdx_bus;
 
 enum cdx_params {
@@ -98,13 +94,6 @@ static const char * const cdx_params_keys[] = {
 	[RTE_CDX_PARAM_NAME] = "name",
 	NULL,
 };
-
-/* Add a device to CDX bus */
-static void
-cdx_add_device(struct rte_cdx_device *cdx_dev)
-{
-	TAILQ_INSERT_TAIL(&rte_cdx_bus.device_list, cdx_dev, next);
-}
 
 static int
 cdx_get_kernel_driver_by_path(const char *filename, char *driver_name,
@@ -167,7 +156,6 @@ cdx_scan_one(const char *dirname, const char *dev_name)
 	if (!dev)
 		return -ENOMEM;
 
-	dev->device.bus = &rte_cdx_bus.bus;
 	memcpy(dev->name, dev_name, RTE_DEV_NAME_MAX_LEN);
 	dev->device.name = dev->name;
 
@@ -215,7 +203,7 @@ cdx_scan_one(const char *dirname, const char *dev_name)
 	}
 	dev->id.device_id = (uint16_t)tmp;
 
-	cdx_add_device(dev);
+	rte_bus_add_device(&rte_cdx_bus.bus, &dev->device);
 
 	return 0;
 
@@ -416,7 +404,7 @@ cdx_probe(void)
 	size_t probed = 0, failed = 0;
 	int ret = 0;
 
-	FOREACH_DEVICE_ON_CDXBUS(dev) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_cdx_bus.bus) {
 		probed++;
 
 		ret = cdx_probe_all_drivers(dev);
@@ -465,28 +453,19 @@ static struct rte_device *
 cdx_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 		const void *data)
 {
-	const struct rte_cdx_device *cdx_start;
-	struct rte_cdx_device *cdx_dev;
+	struct rte_device *dev;
 
 	if (start != NULL) {
-		cdx_start = RTE_BUS_DEVICE(start, *cdx_start);
-		cdx_dev = TAILQ_NEXT(cdx_start, next);
+		dev = TAILQ_NEXT(start, next);
 	} else {
-		cdx_dev = TAILQ_FIRST(&rte_cdx_bus.device_list);
+		dev = TAILQ_FIRST(&rte_cdx_bus.bus.device_list);
 	}
-	while (cdx_dev != NULL) {
-		if (cmp(&cdx_dev->device, data) == 0)
-			return &cdx_dev->device;
-		cdx_dev = TAILQ_NEXT(cdx_dev, next);
+	while (dev != NULL) {
+		if (cmp(dev, data) == 0)
+			return dev;
+		dev = TAILQ_NEXT(dev, next);
 	}
 	return NULL;
-}
-
-/* Remove a device from CDX bus */
-static void
-cdx_remove_device(struct rte_cdx_device *cdx_dev)
-{
-	TAILQ_REMOVE(&rte_cdx_bus.device_list, cdx_dev, next);
 }
 
 /*
@@ -534,7 +513,7 @@ cdx_unplug(struct rte_device *dev)
 
 	ret = cdx_detach_dev(cdx_dev);
 	if (ret == 0) {
-		cdx_remove_device(cdx_dev);
+		rte_bus_remove_device(&rte_cdx_bus.bus, &cdx_dev->device);
 		rte_devargs_remove(dev->devargs);
 		free(cdx_dev);
 	}
@@ -562,7 +541,7 @@ cdx_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 static enum rte_iova_mode
 cdx_get_iommu_class(void)
 {
-	if (TAILQ_EMPTY(&rte_cdx_bus.device_list))
+	if (TAILQ_EMPTY(&rte_cdx_bus.bus.device_list))
 		return RTE_IOVA_DC;
 
 	return RTE_IOVA_VA;
@@ -624,7 +603,6 @@ struct rte_cdx_bus rte_cdx_bus = {
 		.get_iommu_class = cdx_get_iommu_class,
 		.dev_iterate = cdx_dev_iterate,
 	},
-	.device_list = TAILQ_HEAD_INITIALIZER(rte_cdx_bus.device_list),
 };
 
 RTE_REGISTER_BUS(cdx, rte_cdx_bus.bus);

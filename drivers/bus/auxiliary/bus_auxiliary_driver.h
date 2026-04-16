@@ -110,7 +110,6 @@ typedef int (rte_auxiliary_dma_unmap_t)(struct rte_auxiliary_device *dev,
  * A structure describing an auxiliary device.
  */
 struct rte_auxiliary_device {
-	RTE_TAILQ_ENTRY(rte_auxiliary_device) next; /**< Next probed device. */
 	struct rte_device device;                 /**< Inherit core device */
 	char name[RTE_DEV_NAME_MAX_LEN + 1];      /**< ASCII device name */
 	struct rte_intr_handle *intr_handle;       /**< Interrupt handle */

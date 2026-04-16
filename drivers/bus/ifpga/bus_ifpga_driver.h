@@ -67,7 +67,6 @@ struct rte_afu_shared {
  * A structure describing a AFU device.
  */
 struct rte_afu_device {
-	RTE_TAILQ_ENTRY(rte_afu_device) next;       /**< Next in device list. */
 	struct rte_device device;               /**< Inherit core device */
 	struct rte_rawdev *rawdev;    /**< Point Rawdev */
 	struct rte_afu_id id;                   /**< AFU id within FPGA. */

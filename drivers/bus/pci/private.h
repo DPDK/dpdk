@@ -34,14 +34,9 @@ extern int pci_bus_logtype;
  */
 struct rte_pci_bus {
 	struct rte_bus bus;               /**< Inherit the generic class */
-	RTE_TAILQ_HEAD(, rte_pci_device) device_list; /**< List of PCI devices */
 };
 
 extern struct rte_pci_bus rte_pci_bus;
-
-/* PCI Bus iterators */
-#define FOREACH_DEVICE_ON_PCIBUS(p)	\
-	RTE_TAILQ_FOREACH(p, &(rte_pci_bus.device_list), next)
 
 struct rte_pci_driver;
 struct rte_pci_device;
@@ -77,31 +72,6 @@ pci_common_set(struct rte_pci_device *dev);
  */
 void
 pci_free(struct rte_pci_device_internal *pdev);
-
-/**
- * Add a PCI device to the PCI Bus (append to PCI Device list). This function
- * also updates the bus references of the PCI Device (and the generic device
- * object embedded within.
- *
- * @param pci_dev
- *	PCI device to add
- * @return void
- */
-void rte_pci_add_device(struct rte_pci_device *pci_dev);
-
-/**
- * Insert a PCI device in the PCI Bus at a particular location in the device
- * list. It also updates the PCI Bus reference of the new devices to be
- * inserted.
- *
- * @param exist_pci_dev
- *	Existing PCI device in PCI Bus
- * @param new_pci_dev
- *	PCI device to be added before exist_pci_dev
- * @return void
- */
-void rte_pci_insert_device(struct rte_pci_device *exist_pci_dev,
-		struct rte_pci_device *new_pci_dev);
 
 /**
  * A structure describing a PCI mapping.

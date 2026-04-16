@@ -16,16 +16,11 @@
 
 extern struct rte_platform_bus platform_bus;
 
-/* Platform bus iterators. */
-#define FOREACH_DEVICE_ON_PLATFORM_BUS(p) \
-	RTE_TAILQ_FOREACH(p, &(platform_bus.device_list), next)
-
 /*
  * Structure describing platform bus.
  */
 struct rte_platform_bus {
 	struct rte_bus bus; /* Core bus */
-	RTE_TAILQ_HEAD(, rte_platform_device) device_list; /* List of bus devices */
 };
 
 extern int platform_bus_logtype;

@@ -24,14 +24,9 @@ extern int auxiliary_bus_logtype;
  */
 struct rte_auxiliary_bus {
 	struct rte_bus bus;                  /* Inherit the generic class */
-	TAILQ_HEAD(, rte_auxiliary_device) device_list;  /* List of devices */
 };
 
 extern struct rte_auxiliary_bus auxiliary_bus;
-
-/* Auxiliary bus iterators */
-#define FOREACH_DEVICE_ON_AUXILIARY_BUS(p) \
-	TAILQ_FOREACH(p, &(auxiliary_bus.device_list), next)
 
 /*
  * Test whether the auxiliary device exist.
@@ -48,21 +43,6 @@ int auxiliary_scan(void);
  * Update a device being scanned.
  */
 void auxiliary_on_scan(struct rte_auxiliary_device *aux_dev);
-
-/*
- * Add an auxiliary device to the auxiliary bus (append to auxiliary device
- * list). This function also updates the bus references of the auxiliary
- * device and the generic device object embedded within.
- */
-void auxiliary_add_device(struct rte_auxiliary_device *aux_dev);
-
-/*
- * Insert an auxiliary device in the auxiliary bus at a particular location
- * in the device list. It also updates the auxiliary bus reference of the
- * new devices to be inserted.
- */
-void auxiliary_insert_device(struct rte_auxiliary_device *exist_aux_dev,
-			     struct rte_auxiliary_device *new_aux_dev);
 
 /*
  * Match the auxiliary driver and device by driver function.

@@ -38,9 +38,6 @@
  */
 static struct rte_bus rte_ifpga_bus;
 
-static TAILQ_HEAD(, rte_afu_device) ifpga_afu_dev_list =
-	TAILQ_HEAD_INITIALIZER(ifpga_afu_dev_list);
-
 /* register a ifpga bus based driver */
 RTE_EXPORT_INTERNAL_SYMBOL(rte_ifpga_driver_register)
 void rte_ifpga_driver_register(struct rte_afu_driver *driver)
@@ -63,7 +60,7 @@ ifpga_find_afu_dev(const struct rte_rawdev *rdev,
 {
 	struct rte_afu_device *afu_dev = NULL;
 
-	TAILQ_FOREACH(afu_dev, &ifpga_afu_dev_list, next) {
+	RTE_BUS_FOREACH_DEV(afu_dev, &rte_ifpga_bus) {
 		if (afu_dev->rawdev == rdev &&
 			!ifpga_afu_id_cmp(&afu_dev->id, afu_id))
 			return afu_dev;
@@ -139,7 +136,6 @@ ifpga_scan_one(struct rte_rawdev *rawdev,
 	if (!afu_dev)
 		goto end;
 
-	afu_dev->device.bus = &rte_ifpga_bus;
 	afu_dev->device.devargs = devargs;
 	afu_dev->device.numa_node = SOCKET_ID_ANY;
 	afu_dev->device.name = devargs->name;
@@ -236,7 +232,7 @@ ifpga_scan(void)
 
 		afu_dev = ifpga_scan_one(rawdev, devargs);
 		if (afu_dev != NULL)
-			TAILQ_INSERT_TAIL(&ifpga_afu_dev_list, afu_dev, next);
+			rte_bus_add_device(&rte_ifpga_bus, &afu_dev->device);
 	}
 
 end:
@@ -333,7 +329,7 @@ ifpga_probe(void)
 	struct rte_afu_device *afu_dev = NULL;
 	int ret = 0;
 
-	TAILQ_FOREACH(afu_dev, &ifpga_afu_dev_list, next) {
+	RTE_BUS_FOREACH_DEV(afu_dev, &rte_ifpga_bus) {
 		ret = ifpga_probe_all_drivers(afu_dev);
 		if (ret == -EEXIST)
 			continue;
@@ -352,10 +348,10 @@ ifpga_probe(void)
 static int
 ifpga_cleanup(void)
 {
-	struct rte_afu_device *afu_dev, *tmp_dev;
+	struct rte_afu_device *afu_dev;
 	int error = 0;
 
-	RTE_TAILQ_FOREACH_SAFE(afu_dev, &ifpga_afu_dev_list, next, tmp_dev) {
+	RTE_BUS_FOREACH_DEV(afu_dev, &rte_ifpga_bus) {
 		struct rte_afu_driver *drv = afu_dev->driver;
 		int ret = 0;
 
@@ -373,7 +369,7 @@ ifpga_cleanup(void)
 		afu_dev->device.driver = NULL;
 
 free:
-		TAILQ_REMOVE(&ifpga_afu_dev_list, afu_dev, next);
+		rte_bus_remove_device(&rte_ifpga_bus, &afu_dev->device);
 		rte_devargs_remove(afu_dev->device.devargs);
 		rte_intr_instance_free(afu_dev->intr_handle);
 		free(afu_dev);
@@ -398,7 +394,7 @@ ifpga_unplug(struct rte_device *dev)
 	if (ret)
 		return ret;
 
-	TAILQ_REMOVE(&ifpga_afu_dev_list, afu_dev, next);
+	rte_bus_remove_device(&rte_ifpga_bus, &afu_dev->device);
 
 	rte_devargs_remove(dev->devargs);
 	rte_intr_instance_free(afu_dev->intr_handle);
@@ -411,15 +407,15 @@ static struct rte_device *
 ifpga_find_device(const struct rte_device *start,
 	rte_dev_cmp_t cmp, const void *data)
 {
-	struct rte_afu_device *afu_dev;
+	struct rte_device *dev;
 
-	TAILQ_FOREACH(afu_dev, &ifpga_afu_dev_list, next) {
-		if (start && &afu_dev->device == start) {
+	TAILQ_FOREACH(dev, &rte_ifpga_bus.device_list, next) {
+		if (start && dev == start) {
 			start = NULL;
 			continue;
 		}
-		if (cmp(&afu_dev->device, data) == 0)
-			return &afu_dev->device;
+		if (cmp(dev, data) == 0)
+			return dev;
 	}
 
 	return NULL;

@@ -383,7 +383,7 @@ pci_probe(void)
 	size_t probed = 0, failed = 0;
 	int ret = 0;
 
-	FOREACH_DEVICE_ON_PCIBUS(dev) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_pci_bus.bus) {
 		probed++;
 
 		ret = pci_probe_all_drivers(dev);
@@ -405,10 +405,10 @@ pci_probe(void)
 static int
 pci_cleanup(void)
 {
-	struct rte_pci_device *dev, *tmp_dev;
+	struct rte_pci_device *dev;
 	int error = 0;
 
-	RTE_TAILQ_FOREACH_SAFE(dev, &rte_pci_bus.device_list, next, tmp_dev) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_pci_bus.bus) {
 		struct rte_pci_driver *drv = dev->driver;
 		int ret = 0;
 
@@ -432,7 +432,7 @@ free:
 		rte_intr_instance_free(dev->vfio_req_intr_handle);
 		dev->vfio_req_intr_handle = NULL;
 
-		TAILQ_REMOVE(&rte_pci_bus.device_list, dev, next);
+		rte_bus_remove_device(&rte_pci_bus.bus, &dev->device);
 		pci_free(RTE_PCI_DEVICE_INTERNAL(dev));
 	}
 
@@ -466,7 +466,7 @@ rte_pci_dump(FILE *f)
 {
 	struct rte_pci_device *dev = NULL;
 
-	FOREACH_DEVICE_ON_PCIBUS(dev) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_pci_bus.bus) {
 		pci_dump_one_device(f, dev);
 	}
 }
@@ -512,45 +512,21 @@ rte_pci_unregister(struct rte_pci_driver *driver)
 	rte_bus_remove_driver(&rte_pci_bus.bus, &driver->driver);
 }
 
-/* Add a device to PCI bus */
-void
-rte_pci_add_device(struct rte_pci_device *pci_dev)
-{
-	TAILQ_INSERT_TAIL(&rte_pci_bus.device_list, pci_dev, next);
-}
-
-/* Insert a device into a predefined position in PCI bus */
-void
-rte_pci_insert_device(struct rte_pci_device *exist_pci_dev,
-		      struct rte_pci_device *new_pci_dev)
-{
-	TAILQ_INSERT_BEFORE(exist_pci_dev, new_pci_dev, next);
-}
-
-/* Remove a device from PCI bus */
-static void
-rte_pci_remove_device(struct rte_pci_device *pci_dev)
-{
-	TAILQ_REMOVE(&rte_pci_bus.device_list, pci_dev, next);
-}
-
 static struct rte_device *
 pci_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 		const void *data)
 {
-	const struct rte_pci_device *pstart;
-	struct rte_pci_device *pdev;
+	struct rte_device *dev;
 
 	if (start != NULL) {
-		pstart = RTE_BUS_DEVICE(start, *pstart);
-		pdev = TAILQ_NEXT(pstart, next);
+		dev = TAILQ_NEXT(start, next);
 	} else {
-		pdev = TAILQ_FIRST(&rte_pci_bus.device_list);
+		dev = TAILQ_FIRST(&rte_pci_bus.bus.device_list);
 	}
-	while (pdev != NULL) {
-		if (cmp(&pdev->device, data) == 0)
-			return &pdev->device;
-		pdev = TAILQ_NEXT(pdev, next);
+	while (dev != NULL) {
+		if (cmp(dev, data) == 0)
+			return dev;
+		dev = TAILQ_NEXT(dev, next);
 	}
 	return NULL;
 }
@@ -569,7 +545,7 @@ pci_find_device_by_addr(const void *failure_addr)
 
 	check_point = (uint64_t)(uintptr_t)failure_addr;
 
-	FOREACH_DEVICE_ON_PCIBUS(pdev) {
+	RTE_BUS_FOREACH_DEV(pdev, &rte_pci_bus.bus) {
 		for (i = 0; i != RTE_DIM(pdev->mem_resource); i++) {
 			start = (uint64_t)(uintptr_t)pdev->mem_resource[i].addr;
 			len = pdev->mem_resource[i].len;
@@ -653,7 +629,7 @@ pci_unplug(struct rte_device *dev)
 
 	ret = rte_pci_detach_dev(pdev);
 	if (ret == 0) {
-		rte_pci_remove_device(pdev);
+		rte_bus_remove_device(&rte_pci_bus.bus, &pdev->device);
 		rte_devargs_remove(dev->devargs);
 		pci_free(RTE_PCI_DEVICE_INTERNAL(pdev));
 	}
@@ -708,7 +684,7 @@ rte_pci_get_iommu_class(void)
 	bool devices_want_pa = false;
 	int iommu_no_va = -1;
 
-	FOREACH_DEVICE_ON_PCIBUS(dev) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_pci_bus.bus) {
 		/*
 		 * We can check this only once, because the IOMMU hardware is
 		 * the same for all of them.
@@ -916,7 +892,6 @@ struct rte_pci_bus rte_pci_bus = {
 		.hot_unplug_handler = pci_hot_unplug_handler,
 		.sigbus_handler = pci_sigbus_handler,
 	},
-	.device_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.device_list),
 };
 
 RTE_REGISTER_BUS(pci, rte_pci_bus.bus);
