@@ -36,7 +36,6 @@
 struct rte_uacce_bus {
 	struct rte_bus bus;		            /* Inherit the generic class. */
 	TAILQ_HEAD(, rte_uacce_device) device_list; /* List of devices. */
-	TAILQ_HEAD(, rte_uacce_driver) driver_list; /* List of drivers. */
 };
 
 /* Forward declaration of UACCE bus. */
@@ -53,8 +52,6 @@ static const char *const uacce_params_keys[] = {
 
 #define FOREACH_DEVICE_ON_UACCEBUS(p)	\
 		RTE_TAILQ_FOREACH(p, &uacce_bus.device_list, next)
-#define FOREACH_DRIVER_ON_UACCEBUS(p)	\
-		RTE_TAILQ_FOREACH(p, &uacce_bus.driver_list, next)
 
 extern int uacce_bus_logtype;
 #define RTE_LOGTYPE_UACCE_BUS uacce_bus_logtype
@@ -422,7 +419,7 @@ uacce_probe_all_drivers(struct rte_uacce_device *dev)
 	struct rte_uacce_driver *dr;
 	int rc;
 
-	FOREACH_DRIVER_ON_UACCEBUS(dr) {
+	RTE_BUS_FOREACH_DRV(dr, &uacce_bus.bus) {
 		rc = uacce_probe_one_driver(dr, dev);
 		if (rc < 0)
 			/* negative value is an error */
@@ -704,16 +701,14 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_uacce_register)
 void
 rte_uacce_register(struct rte_uacce_driver *driver)
 {
-	TAILQ_INSERT_TAIL(&uacce_bus.driver_list, driver, next);
-	driver->bus = &uacce_bus;
+	rte_bus_add_driver(&uacce_bus.bus, &driver->driver);
 }
 
 RTE_EXPORT_INTERNAL_SYMBOL(rte_uacce_unregister)
 void
 rte_uacce_unregister(struct rte_uacce_driver *driver)
 {
-	TAILQ_REMOVE(&uacce_bus.driver_list, driver, next);
-	driver->bus = NULL;
+	rte_bus_remove_driver(&uacce_bus.bus, &driver->driver);
 }
 
 static struct rte_uacce_bus uacce_bus = {
@@ -728,7 +723,6 @@ static struct rte_uacce_bus uacce_bus = {
 		.dev_iterate = uacce_dev_iterate,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(uacce_bus.device_list),
-	.driver_list = TAILQ_HEAD_INITIALIZER(uacce_bus.driver_list),
 };
 
 RTE_REGISTER_BUS(uacce, uacce_bus.bus);

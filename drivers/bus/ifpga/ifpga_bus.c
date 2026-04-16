@@ -40,9 +40,6 @@ static struct rte_bus rte_ifpga_bus;
 
 static TAILQ_HEAD(, rte_afu_device) ifpga_afu_dev_list =
 	TAILQ_HEAD_INITIALIZER(ifpga_afu_dev_list);
-static TAILQ_HEAD(, rte_afu_driver) ifpga_afu_drv_list =
-	TAILQ_HEAD_INITIALIZER(ifpga_afu_drv_list);
-
 
 /* register a ifpga bus based driver */
 RTE_EXPORT_INTERNAL_SYMBOL(rte_ifpga_driver_register)
@@ -50,14 +47,14 @@ void rte_ifpga_driver_register(struct rte_afu_driver *driver)
 {
 	RTE_VERIFY(driver);
 
-	TAILQ_INSERT_TAIL(&ifpga_afu_drv_list, driver, next);
+	rte_bus_add_driver(&rte_ifpga_bus, &driver->driver);
 }
 
 /* un-register a fpga bus based driver */
 RTE_EXPORT_INTERNAL_SYMBOL(rte_ifpga_driver_unregister)
 void rte_ifpga_driver_unregister(struct rte_afu_driver *driver)
 {
-	TAILQ_REMOVE(&ifpga_afu_drv_list, driver, next);
+	rte_bus_remove_driver(&rte_ifpga_bus, &driver->driver);
 }
 
 static struct rte_afu_device *
@@ -309,7 +306,7 @@ ifpga_probe_all_drivers(struct rte_afu_device *afu_dev)
 		return -EEXIST;
 	}
 
-	TAILQ_FOREACH(drv, &ifpga_afu_drv_list, next) {
+	RTE_BUS_FOREACH_DRV(drv, &rte_ifpga_bus) {
 		ret = ifpga_probe_one_driver(drv, afu_dev);
 		if (ret < 0)
 			/* negative value is an error */

@@ -38,9 +38,6 @@ static TAILQ_HEAD(, rte_vdev_device) vdev_device_list =
 static rte_spinlock_recursive_t vdev_device_list_lock =
 	RTE_SPINLOCK_RECURSIVE_INITIALIZER;
 
-static TAILQ_HEAD(, rte_vdev_driver) vdev_driver_list =
-	TAILQ_HEAD_INITIALIZER(vdev_driver_list);
-
 struct vdev_custom_scan {
 	TAILQ_ENTRY(vdev_custom_scan) next;
 	rte_vdev_scan_callback callback;
@@ -56,7 +53,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_vdev_register)
 void
 rte_vdev_register(struct rte_vdev_driver *driver)
 {
-	TAILQ_INSERT_TAIL(&vdev_driver_list, driver, next);
+	rte_bus_add_driver(&rte_vdev_bus, &driver->driver);
 }
 
 /* unregister a driver */
@@ -64,7 +61,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_vdev_unregister)
 void
 rte_vdev_unregister(struct rte_vdev_driver *driver)
 {
-	TAILQ_REMOVE(&vdev_driver_list, driver, next);
+	rte_bus_remove_driver(&rte_vdev_bus, &driver->driver);
 }
 
 RTE_EXPORT_SYMBOL(rte_vdev_add_custom_scan)
@@ -123,7 +120,7 @@ vdev_parse(const char *name, void *addr)
 	struct rte_vdev_driver **out = addr;
 	struct rte_vdev_driver *driver = NULL;
 
-	TAILQ_FOREACH(driver, &vdev_driver_list, next) {
+	RTE_BUS_FOREACH_DRV(driver, &rte_vdev_bus) {
 		if (strncmp(driver->driver.name, name,
 			    strlen(driver->driver.name)) == 0)
 			break;

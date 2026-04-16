@@ -25,7 +25,6 @@ extern int auxiliary_bus_logtype;
 struct rte_auxiliary_bus {
 	struct rte_bus bus;                  /* Inherit the generic class */
 	TAILQ_HEAD(, rte_auxiliary_device) device_list;  /* List of devices */
-	TAILQ_HEAD(, rte_auxiliary_driver) driver_list;  /* List of drivers */
 };
 
 extern struct rte_auxiliary_bus auxiliary_bus;
@@ -33,9 +32,6 @@ extern struct rte_auxiliary_bus auxiliary_bus;
 /* Auxiliary bus iterators */
 #define FOREACH_DEVICE_ON_AUXILIARY_BUS(p) \
 	TAILQ_FOREACH(p, &(auxiliary_bus.device_list), next)
-
-#define FOREACH_DRIVER_ON_AUXILIARY_BUS(p) \
-	TAILQ_FOREACH(p, &(auxiliary_bus.driver_list), next)
 
 /*
  * Test whether the auxiliary device exist.

@@ -121,7 +121,6 @@ struct rte_auxiliary_device {
  * A structure describing an auxiliary driver.
  */
 struct rte_auxiliary_driver {
-	RTE_TAILQ_ENTRY(rte_auxiliary_driver) next; /**< Next in list. */
 	struct rte_driver driver;             /**< Inherit core driver. */
 	rte_auxiliary_match_t *match;         /**< Device match function. */
 	rte_auxiliary_probe_t *probe;         /**< Device probe function. */

@@ -33,14 +33,14 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_platform_register)
 void
 rte_platform_register(struct rte_platform_driver *pdrv)
 {
-	TAILQ_INSERT_TAIL(&platform_bus.driver_list, pdrv, next);
+	rte_bus_add_driver(&platform_bus.bus, &pdrv->driver);
 }
 
 RTE_EXPORT_INTERNAL_SYMBOL(rte_platform_unregister)
 void
 rte_platform_unregister(struct rte_platform_driver *pdrv)
 {
-	TAILQ_REMOVE(&platform_bus.driver_list, pdrv, next);
+	rte_bus_remove_driver(&platform_bus.bus, &pdrv->driver);
 }
 
 static int
@@ -408,7 +408,7 @@ device_attach(struct rte_platform_device *pdev)
 {
 	struct rte_platform_driver *pdrv;
 
-	FOREACH_DRIVER_ON_PLATFORM_BUS(pdrv) {
+	RTE_BUS_FOREACH_DRV(pdrv, &platform_bus.bus) {
 		if (driver_match_device(pdrv, pdev))
 			break;
 	}
@@ -510,7 +510,7 @@ platform_bus_parse(const char *name, void *addr)
 
 	rte_strscpy(pdev.name, name, sizeof(pdev.name));
 
-	FOREACH_DRIVER_ON_PLATFORM_BUS(pdrv) {
+	RTE_BUS_FOREACH_DRV(pdrv, &platform_bus.bus) {
 		if (driver_match_device(pdrv, &pdev))
 			break;
 	}
@@ -589,7 +589,6 @@ struct rte_platform_bus platform_bus = {
 		.cleanup = platform_bus_cleanup,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(platform_bus.device_list),
-	.driver_list = TAILQ_HEAD_INITIALIZER(platform_bus.driver_list),
 };
 
 RTE_REGISTER_BUS(platform, platform_bus.bus);

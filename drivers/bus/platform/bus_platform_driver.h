@@ -107,7 +107,6 @@ struct rte_platform_device {
  * A structure describing a platform device driver.
  */
 struct rte_platform_driver {
-	RTE_TAILQ_ENTRY(rte_platform_driver) next; /**< Next available platform driver */
 	struct rte_driver driver; /**< Core driver */
 	rte_platform_probe_t *probe;  /**< Device probe function */
 	rte_platform_remove_t *remove; /**< Device remove function */

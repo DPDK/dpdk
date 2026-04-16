@@ -68,7 +68,6 @@ typedef int (vmbus_remove_t)(struct rte_vmbus_device *);
  * A structure describing a VMBUS driver.
  */
 struct rte_vmbus_driver {
-	RTE_TAILQ_ENTRY(rte_vmbus_driver) next; /**< Next in list. */
 	struct rte_driver driver;
 	vmbus_probe_t *probe;               /**< Device Probe function. */
 	vmbus_remove_t *remove;             /**< Device Remove function. */

@@ -155,7 +155,7 @@ vmbus_probe_all_drivers(struct rte_vmbus_device *dev)
 		return 0;
 	}
 
-	FOREACH_DRIVER_ON_VMBUS(dr) {
+	RTE_BUS_FOREACH_DRV(dr, &rte_vmbus_bus.bus) {
 		rc = vmbus_probe_one_driver(dr, dev);
 		if (rc < 0) /* negative is an error */
 			return -1;
@@ -263,7 +263,7 @@ rte_vmbus_register(struct rte_vmbus_driver *driver)
 	VMBUS_LOG(DEBUG,
 		"Registered driver %s", driver->driver.name);
 
-	TAILQ_INSERT_TAIL(&rte_vmbus_bus.driver_list, driver, next);
+	rte_bus_add_driver(&rte_vmbus_bus.bus, &driver->driver);
 }
 
 /* unregister vmbus driver */
@@ -271,7 +271,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_vmbus_unregister)
 void
 rte_vmbus_unregister(struct rte_vmbus_driver *driver)
 {
-	TAILQ_REMOVE(&rte_vmbus_bus.driver_list, driver, next);
+	rte_bus_remove_driver(&rte_vmbus_bus.bus, &driver->driver);
 }
 
 /* Add a device to VMBUS bus */
@@ -326,7 +326,6 @@ struct rte_vmbus_bus rte_vmbus_bus = {
 		.dev_compare = vmbus_dev_compare,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_vmbus_bus.device_list),
-	.driver_list = TAILQ_HEAD_INITIALIZER(rte_vmbus_bus.driver_list),
 };
 
 RTE_REGISTER_BUS(vmbus, rte_vmbus_bus.bus);

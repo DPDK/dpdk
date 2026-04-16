@@ -171,7 +171,7 @@ auxiliary_probe_all_drivers(struct rte_auxiliary_device *dev)
 	struct rte_auxiliary_driver *drv;
 	int rc;
 
-	FOREACH_DRIVER_ON_AUXILIARY_BUS(drv) {
+	RTE_BUS_FOREACH_DRV(drv, &auxiliary_bus.bus) {
 		if (!drv->match(dev->name))
 			continue;
 
@@ -226,7 +226,7 @@ auxiliary_parse(const char *name, void *addr)
 	if (strlen(name) == 0)
 		return 0;
 
-	FOREACH_DRIVER_ON_AUXILIARY_BUS(drv) {
+	RTE_BUS_FOREACH_DRV(drv, &auxiliary_bus.bus) {
 		if (drv->match(name))
 			break;
 	}
@@ -240,7 +240,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_auxiliary_register)
 void
 rte_auxiliary_register(struct rte_auxiliary_driver *driver)
 {
-	TAILQ_INSERT_TAIL(&auxiliary_bus.driver_list, driver, next);
+	rte_bus_add_driver(&auxiliary_bus.bus, &driver->driver);
 }
 
 /* Unregister a driver */
@@ -248,7 +248,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_auxiliary_unregister)
 void
 rte_auxiliary_unregister(struct rte_auxiliary_driver *driver)
 {
-	TAILQ_REMOVE(&auxiliary_bus.driver_list, driver, next);
+	rte_bus_remove_driver(&auxiliary_bus.bus, &driver->driver);
 }
 
 /* Add a device to auxiliary bus */
@@ -369,7 +369,7 @@ auxiliary_get_iommu_class(void)
 {
 	const struct rte_auxiliary_driver *drv;
 
-	FOREACH_DRIVER_ON_AUXILIARY_BUS(drv) {
+	RTE_BUS_FOREACH_DRV(drv, &auxiliary_bus.bus) {
 		if ((drv->drv_flags & RTE_AUXILIARY_DRV_NEED_IOVA_AS_VA) > 0)
 			return RTE_IOVA_VA;
 	}
@@ -392,7 +392,6 @@ struct rte_auxiliary_bus auxiliary_bus = {
 		.dev_iterate = auxiliary_dev_iterate,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(auxiliary_bus.device_list),
-	.driver_list = TAILQ_HEAD_INITIALIZER(auxiliary_bus.driver_list),
 };
 
 RTE_REGISTER_BUS(auxiliary, auxiliary_bus.bus);

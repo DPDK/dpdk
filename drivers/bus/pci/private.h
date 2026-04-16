@@ -35,7 +35,6 @@ extern int pci_bus_logtype;
 struct rte_pci_bus {
 	struct rte_bus bus;               /**< Inherit the generic class */
 	RTE_TAILQ_HEAD(, rte_pci_device) device_list; /**< List of PCI devices */
-	RTE_TAILQ_HEAD(, rte_pci_driver) driver_list; /**< List of PCI drivers */
 };
 
 extern struct rte_pci_bus rte_pci_bus;
@@ -43,9 +42,6 @@ extern struct rte_pci_bus rte_pci_bus;
 /* PCI Bus iterators */
 #define FOREACH_DEVICE_ON_PCIBUS(p)	\
 	RTE_TAILQ_FOREACH(p, &(rte_pci_bus.device_list), next)
-
-#define FOREACH_DRIVER_ON_PCIBUS(p)	\
-	RTE_TAILQ_FOREACH(p, &(rte_pci_bus.driver_list), next)
 
 struct rte_pci_driver;
 struct rte_pci_device;

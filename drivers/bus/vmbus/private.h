@@ -21,7 +21,6 @@
 struct rte_vmbus_bus {
 	struct rte_bus bus;               /**< Inherit the generic class */
 	RTE_TAILQ_HEAD(, rte_vmbus_device) device_list; /**< List of devices */
-	RTE_TAILQ_HEAD(, rte_vmbus_driver) driver_list; /**< List of drivers */
 };
 
 extern struct rte_vmbus_bus rte_vmbus_bus;
@@ -29,9 +28,6 @@ extern struct rte_vmbus_bus rte_vmbus_bus;
 /* VMBus iterators */
 #define FOREACH_DEVICE_ON_VMBUS(p)	\
 	RTE_TAILQ_FOREACH(p, &(rte_vmbus_bus.device_list), next)
-
-#define FOREACH_DRIVER_ON_VMBUS(p)	\
-	RTE_TAILQ_FOREACH(p, &(rte_vmbus_bus.driver_list), next)
 
 extern int vmbus_logtype_bus;
 #define RTE_LOGTYPE_VMBUS_BUS vmbus_logtype_bus

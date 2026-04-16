@@ -91,9 +91,7 @@ typedef int (rte_cdx_remove_t)(struct rte_cdx_device *);
  * A structure describing a CDX driver.
  */
 struct rte_cdx_driver {
-	RTE_TAILQ_ENTRY(rte_cdx_driver) next;	/**< Next in list. */
 	struct rte_driver driver;		/**< Inherit core driver. */
-	struct rte_cdx_bus *bus;		/**< CDX bus reference. */
 	rte_cdx_probe_t *probe;			/**< Device probe function. */
 	rte_cdx_remove_t *remove;		/**< Device remove function. */
 	const struct rte_cdx_id *id_table;	/**< ID table, NULL terminated. */

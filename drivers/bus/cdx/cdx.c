@@ -88,9 +88,6 @@
 #define FOREACH_DEVICE_ON_CDXBUS(p)	\
 		RTE_TAILQ_FOREACH(p, &rte_cdx_bus.device_list, next)
 
-#define FOREACH_DRIVER_ON_CDXBUS(p)	\
-		RTE_TAILQ_FOREACH(p, &rte_cdx_bus.driver_list, next)
-
 struct rte_cdx_bus rte_cdx_bus;
 
 enum cdx_params {
@@ -394,7 +391,7 @@ cdx_probe_all_drivers(struct rte_cdx_device *dev)
 	struct rte_cdx_driver *dr = NULL;
 	int rc = 0;
 
-	FOREACH_DRIVER_ON_CDXBUS(dr) {
+	RTE_BUS_FOREACH_DRV(dr, &rte_cdx_bus.bus) {
 		rc = cdx_probe_one_driver(dr, dev);
 		if (rc < 0)
 			/* negative value is an error */
@@ -453,8 +450,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_cdx_register)
 void
 rte_cdx_register(struct rte_cdx_driver *driver)
 {
-	TAILQ_INSERT_TAIL(&rte_cdx_bus.driver_list, driver, next);
-	driver->bus = &rte_cdx_bus;
+	rte_bus_add_driver(&rte_cdx_bus.bus, &driver->driver);
 }
 
 /* unregister a driver */
@@ -462,8 +458,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_cdx_unregister)
 void
 rte_cdx_unregister(struct rte_cdx_driver *driver)
 {
-	TAILQ_REMOVE(&rte_cdx_bus.driver_list, driver, next);
-	driver->bus = NULL;
+	rte_bus_remove_driver(&rte_cdx_bus.bus, &driver->driver);
 }
 
 static struct rte_device *
@@ -630,7 +625,6 @@ struct rte_cdx_bus rte_cdx_bus = {
 		.dev_iterate = cdx_dev_iterate,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_cdx_bus.device_list),
-	.driver_list = TAILQ_HEAD_INITIALIZER(rte_cdx_bus.driver_list),
 };
 
 RTE_REGISTER_BUS(cdx, rte_cdx_bus.bus);
