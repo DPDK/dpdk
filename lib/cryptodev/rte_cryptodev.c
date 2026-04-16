@@ -811,6 +811,7 @@ cryptodev_cb_init(struct rte_cryptodev *dev)
 	if (dev->deq_cbs == NULL) {
 		CDEV_LOG_ERR("Failed to allocate memory for deq callbacks");
 		rte_free(dev->enq_cbs);
+		dev->enq_cbs = NULL;
 		return -ENOMEM;
 	}
 
