@@ -31,9 +31,6 @@
 /* Forward declare to access virtual bus name */
 static struct rte_bus rte_vdev_bus;
 
-
-static TAILQ_HEAD(, rte_vdev_device) vdev_device_list =
-	TAILQ_HEAD_INITIALIZER(vdev_device_list);
 /* The lock needs to be recursive because a vdev can manage another vdev. */
 static rte_spinlock_recursive_t vdev_device_list_lock =
 	RTE_SPINLOCK_RECURSIVE_INITIALIZER;
@@ -198,7 +195,7 @@ find_vdev(const char *name)
 	if (!name)
 		return NULL;
 
-	TAILQ_FOREACH(dev, &vdev_device_list, next) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_vdev_bus) {
 		const char *devname = rte_vdev_device_name(dev);
 
 		if (!strcmp(devname, name))
@@ -262,7 +259,6 @@ insert_vdev(const char *name, const char *args,
 		goto fail;
 	}
 
-	dev->device.bus = &rte_vdev_bus;
 	dev->device.numa_node = SOCKET_ID_ANY;
 
 	if (find_vdev(name)) {
@@ -279,7 +275,7 @@ insert_vdev(const char *name, const char *args,
 		rte_devargs_insert(&devargs);
 	dev->device.devargs = devargs;
 	dev->device.name = devargs->name;
-	TAILQ_INSERT_TAIL(&vdev_device_list, dev, next);
+	rte_bus_add_device(&rte_vdev_bus, &dev->device);
 
 	if (p_dev)
 		*p_dev = dev;
@@ -307,7 +303,7 @@ rte_vdev_init(const char *name, const char *args)
 			if (ret > 0)
 				VDEV_LOG(ERR, "no driver found for %s", name);
 			/* If fails, remove it from vdev list */
-			TAILQ_REMOVE(&vdev_device_list, dev, next);
+			rte_bus_remove_device(&rte_vdev_bus, &dev->device);
 			rte_devargs_remove(dev->device.devargs);
 			free(dev);
 		}
@@ -354,7 +350,7 @@ rte_vdev_uninit(const char *name)
 	if (ret)
 		goto unlock;
 
-	TAILQ_REMOVE(&vdev_device_list, dev, next);
+	rte_bus_remove_device(&rte_vdev_bus, &dev->device);
 	rte_devargs_remove(dev->device.devargs);
 	free(dev);
 
@@ -405,7 +401,7 @@ vdev_action(const struct rte_mp_msg *mp_msg, const void *peer)
 		num = 0;
 
 		rte_spinlock_recursive_lock(&vdev_device_list_lock);
-		TAILQ_FOREACH(dev, &vdev_device_list, next) {
+		RTE_BUS_FOREACH_DEV(dev, &rte_vdev_bus) {
 			devname = rte_vdev_device_name(dev);
 			if (strlen(devname) == 0) {
 				VDEV_LOG(INFO, "vdev with no name is not sent");
@@ -511,12 +507,11 @@ scan:
 			continue;
 		}
 
-		dev->device.bus = &rte_vdev_bus;
 		dev->device.devargs = devargs;
 		dev->device.numa_node = SOCKET_ID_ANY;
 		dev->device.name = devargs->name;
 
-		TAILQ_INSERT_TAIL(&vdev_device_list, dev, next);
+		rte_bus_add_device(&rte_vdev_bus, &dev->device);
 
 		rte_spinlock_recursive_unlock(&vdev_device_list_lock);
 	}
@@ -531,7 +526,7 @@ vdev_probe(void)
 	int r, ret = 0;
 
 	/* call the init function for each virtual device */
-	TAILQ_FOREACH(dev, &vdev_device_list, next) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_vdev_bus) {
 		/* we don't use the vdev lock here, as it's only used in DPDK
 		 * initialization; and we don't want to hold such a lock when
 		 * we call each driver probe.
@@ -553,10 +548,10 @@ vdev_probe(void)
 static int
 vdev_cleanup(void)
 {
-	struct rte_vdev_device *dev, *tmp_dev;
+	struct rte_vdev_device *dev;
 	int error = 0;
 
-	RTE_TAILQ_FOREACH_SAFE(dev, &vdev_device_list, next, tmp_dev) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_vdev_bus) {
 		const struct rte_vdev_driver *drv;
 		int ret;
 
@@ -574,7 +569,7 @@ vdev_cleanup(void)
 
 		dev->device.driver = NULL;
 free:
-		TAILQ_REMOVE(&vdev_device_list, dev, next);
+		rte_bus_remove_device(&rte_vdev_bus, &dev->device);
 		free(dev);
 	}
 
@@ -585,24 +580,22 @@ struct rte_device *
 rte_vdev_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 		     const void *data)
 {
-	const struct rte_vdev_device *vstart;
-	struct rte_vdev_device *dev;
+	struct rte_device *dev;
 
 	rte_spinlock_recursive_lock(&vdev_device_list_lock);
-	if (start != NULL) {
-		vstart = RTE_BUS_DEVICE(start, *vstart);
-		dev = TAILQ_NEXT(vstart, next);
-	} else {
-		dev = TAILQ_FIRST(&vdev_device_list);
-	}
+	if (start != NULL)
+		dev = TAILQ_NEXT(start, next);
+	else
+		dev = TAILQ_FIRST(&rte_vdev_bus.device_list);
+
 	while (dev != NULL) {
-		if (cmp(&dev->device, data) == 0)
+		if (cmp(dev, data) == 0)
 			break;
 		dev = TAILQ_NEXT(dev, next);
 	}
 	rte_spinlock_recursive_unlock(&vdev_device_list_lock);
 
-	return dev ? &dev->device : NULL;
+	return dev;
 }
 
 static int
@@ -624,7 +617,7 @@ vdev_get_iommu_class(void)
 	struct rte_vdev_device *dev;
 	struct rte_vdev_driver *driver;
 
-	TAILQ_FOREACH(dev, &vdev_device_list, next) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_vdev_bus) {
 		name = rte_vdev_device_name(dev);
 		if (vdev_parse(name, &driver))
 			continue;

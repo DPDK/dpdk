@@ -286,6 +286,7 @@ struct rte_bus {
 	rte_bus_sigbus_handler_t sigbus_handler;
 					/**< handle sigbus error on the bus */
 	rte_bus_cleanup_t cleanup;   /**< Cleanup devices on bus */
+	RTE_TAILQ_HEAD(, rte_device) device_list; /**< List of devices on the bus */
 	RTE_TAILQ_HEAD(, rte_driver) driver_list; /**< List of drivers on the bus */
 };
 
@@ -370,6 +371,64 @@ void rte_bus_unregister(struct rte_bus *bus);
  */
 #define RTE_BUS_DRIVER(drv, bus_drv_type) \
 	container_of(drv, typeof(bus_drv_type), driver)
+
+/**
+ * Helper macro to iterate over all devices on a bus.
+ *
+ * @param dev
+ *   Variable name for the bus-specific device pointer.
+ * @param bus
+ *   Pointer to the bus structure.
+ *
+ * Example:
+ *   struct rte_pci_device *pci_dev;
+ *   RTE_BUS_FOREACH_DEV(pci_dev, &pci_bus.bus) {
+ *       // Use pci_dev here
+ *   }
+ */
+#define RTE_BUS_FOREACH_DEV(dev, bus) \
+	for (struct rte_device *__rte_dev = TAILQ_FIRST(&(bus)->device_list), *__rte_dev_tmp; \
+			(__rte_dev != NULL && ((dev) = RTE_BUS_DEVICE(__rte_dev, *dev), \
+				__rte_dev_tmp = TAILQ_NEXT(__rte_dev, next), 1)) || \
+			(dev = NULL, 0); \
+			__rte_dev = __rte_dev_tmp)
+
+/**
+ * Add a device to the bus device list.
+ *
+ * @param bus
+ *   A pointer to a rte_bus structure.
+ * @param dev
+ *   A pointer to a rte_device structure to add.
+ */
+__rte_internal
+void rte_bus_add_device(struct rte_bus *bus, struct rte_device *dev);
+
+/**
+ * Remove a device from the bus device list.
+ *
+ * @param bus
+ *   A pointer to a rte_bus structure.
+ * @param dev
+ *   A pointer to a rte_device structure to remove.
+ */
+__rte_internal
+void rte_bus_remove_device(struct rte_bus *bus, struct rte_device *dev);
+
+/**
+ * Insert a device before another in the bus device list.
+ *
+ * @param bus
+ *   A pointer to a rte_bus structure.
+ * @param exist_dev
+ *   Existing device in the list.
+ * @param new_dev
+ *   New device to insert before exist_dev.
+ */
+__rte_internal
+void rte_bus_insert_device(struct rte_bus *bus,
+			   struct rte_device *exist_dev,
+			   struct rte_device *new_dev);
 
 /**
  * Helper macro to iterate over all drivers on a bus.

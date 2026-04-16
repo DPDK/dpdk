@@ -198,7 +198,7 @@ auxiliary_probe(void)
 	size_t probed = 0, failed = 0;
 	int ret = 0;
 
-	FOREACH_DEVICE_ON_AUXILIARY_BUS(dev) {
+	RTE_BUS_FOREACH_DEV(dev, &auxiliary_bus.bus) {
 		probed++;
 
 		ret = auxiliary_probe_all_drivers(dev);
@@ -251,45 +251,21 @@ rte_auxiliary_unregister(struct rte_auxiliary_driver *driver)
 	rte_bus_remove_driver(&auxiliary_bus.bus, &driver->driver);
 }
 
-/* Add a device to auxiliary bus */
-void
-auxiliary_add_device(struct rte_auxiliary_device *aux_dev)
-{
-	TAILQ_INSERT_TAIL(&auxiliary_bus.device_list, aux_dev, next);
-}
-
-/* Insert a device into a predefined position in auxiliary bus */
-void
-auxiliary_insert_device(struct rte_auxiliary_device *exist_aux_dev,
-			struct rte_auxiliary_device *new_aux_dev)
-{
-	TAILQ_INSERT_BEFORE(exist_aux_dev, new_aux_dev, next);
-}
-
-/* Remove a device from auxiliary bus */
-static void
-rte_auxiliary_remove_device(struct rte_auxiliary_device *auxiliary_dev)
-{
-	TAILQ_REMOVE(&auxiliary_bus.device_list, auxiliary_dev, next);
-}
-
 static struct rte_device *
 auxiliary_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 		      const void *data)
 {
-	const struct rte_auxiliary_device *pstart;
-	struct rte_auxiliary_device *adev;
+	struct rte_device *dev;
 
 	if (start != NULL) {
-		pstart = RTE_BUS_DEVICE(start, *pstart);
-		adev = TAILQ_NEXT(pstart, next);
+		dev = TAILQ_NEXT(start, next);
 	} else {
-		adev = TAILQ_FIRST(&auxiliary_bus.device_list);
+		dev = TAILQ_FIRST(&auxiliary_bus.bus.device_list);
 	}
-	while (adev != NULL) {
-		if (cmp(&adev->device, data) == 0)
-			return &adev->device;
-		adev = TAILQ_NEXT(adev, next);
+	while (dev != NULL) {
+		if (cmp(dev, data) == 0)
+			return dev;
+		dev = TAILQ_NEXT(dev, next);
 	}
 	return NULL;
 }
@@ -310,7 +286,7 @@ auxiliary_unplug(struct rte_device *dev)
 
 	ret = rte_auxiliary_driver_remove_dev(adev);
 	if (ret == 0) {
-		rte_auxiliary_remove_device(adev);
+		rte_bus_remove_device(&auxiliary_bus.bus, &adev->device);
 		rte_devargs_remove(dev->devargs);
 		rte_intr_instance_free(adev->intr_handle);
 		free(adev);
@@ -321,10 +297,10 @@ auxiliary_unplug(struct rte_device *dev)
 static int
 auxiliary_cleanup(void)
 {
-	struct rte_auxiliary_device *dev, *tmp_dev;
+	struct rte_auxiliary_device *dev;
 	int error = 0;
 
-	RTE_TAILQ_FOREACH_SAFE(dev, &auxiliary_bus.device_list, next, tmp_dev) {
+	RTE_BUS_FOREACH_DEV(dev, &auxiliary_bus.bus) {
 		int ret;
 
 		if (!rte_dev_is_probed(&dev->device))
@@ -391,7 +367,6 @@ struct rte_auxiliary_bus auxiliary_bus = {
 		.get_iommu_class = auxiliary_get_iommu_class,
 		.dev_iterate = auxiliary_dev_iterate,
 	},
-	.device_list = TAILQ_HEAD_INITIALIZER(auxiliary_bus.device_list),
 };
 
 RTE_REGISTER_BUS(auxiliary, auxiliary_bus.bus);

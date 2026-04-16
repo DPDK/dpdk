@@ -59,7 +59,6 @@
 
 struct rte_dpaa_bus {
 	struct rte_bus bus;
-	TAILQ_HEAD(, rte_dpaa_device) device_list;
 	int device_count;
 	int detected;
 	uint32_t svr_ver;
@@ -164,19 +163,18 @@ dpaa_add_to_device_list(struct rte_dpaa_device *newdev)
 {
 	int comp, inserted = 0;
 	struct rte_dpaa_device *dev = NULL;
-	struct rte_dpaa_device *tdev = NULL;
 
-	RTE_TAILQ_FOREACH_SAFE(dev, &rte_dpaa_bus.device_list, next, tdev) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus.bus) {
 		comp = compare_dpaa_devices(newdev, dev);
 		if (comp < 0) {
-			TAILQ_INSERT_BEFORE(dev, newdev, next);
+			rte_bus_insert_device(&rte_dpaa_bus.bus, &dev->device, &newdev->device);
 			inserted = 1;
 			break;
 		}
 	}
 
 	if (!inserted)
-		TAILQ_INSERT_TAIL(&rte_dpaa_bus.device_list, newdev, next);
+		rte_bus_add_device(&rte_dpaa_bus.bus, &newdev->device);
 }
 
 /*
@@ -217,7 +215,6 @@ dpaa_create_device_list(void)
 			goto cleanup;
 		}
 
-		dev->device.bus = &rte_dpaa_bus.bus;
 		dev->device.numa_node = SOCKET_ID_ANY;
 
 		/* Allocate interrupt handle instance */
@@ -347,10 +344,9 @@ static void
 dpaa_clean_device_list(void)
 {
 	struct rte_dpaa_device *dev = NULL;
-	struct rte_dpaa_device *tdev = NULL;
 
-	RTE_TAILQ_FOREACH_SAFE(dev, &rte_dpaa_bus.device_list, next, tdev) {
-		TAILQ_REMOVE(&rte_dpaa_bus.device_list, dev, next);
+	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus.bus) {
+		rte_bus_remove_device(&rte_dpaa_bus.bus, &dev->device);
 		rte_intr_instance_free(dev->intr_handle);
 		free(dev);
 		dev = NULL;
@@ -775,7 +771,7 @@ rte_dpaa_bus_probe(void)
 	process_once = 1;
 
 	/* If no device present on DPAA bus nothing needs to be done */
-	if (TAILQ_EMPTY(&rte_dpaa_bus.device_list))
+	if (TAILQ_EMPTY(&rte_dpaa_bus.bus.device_list))
 		return 0;
 
 	/* Register DPAA mempool ops only if any DPAA device has
@@ -783,7 +779,7 @@ rte_dpaa_bus_probe(void)
 	 */
 	rte_mbuf_set_platform_mempool_ops(DPAA_MEMPOOL_OPS_NAME);
 
-	TAILQ_FOREACH(dev, &rte_dpaa_bus.device_list, next) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus.bus) {
 		if (dev->device_type == FSL_DPAA_ETH) {
 			ret = rte_dpaa_setup_intr(dev->intr_handle);
 			if (ret)
@@ -795,7 +791,7 @@ rte_dpaa_bus_probe(void)
 	dpaax_iova_table_populate();
 
 	/* For each registered driver, and device, call the driver->probe */
-	TAILQ_FOREACH(dev, &rte_dpaa_bus.device_list, next) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus.bus) {
 		RTE_BUS_FOREACH_DRV(drv, &rte_dpaa_bus.bus) {
 			ret = rte_dpaa_device_match(drv, dev);
 			if (ret)
@@ -826,24 +822,22 @@ static struct rte_device *
 rte_dpaa_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 		     const void *data)
 {
-	struct rte_dpaa_device *dev;
-	const struct rte_dpaa_device *dstart;
+	struct rte_device *dev;
 
 	/* find_device is called with 'data' as an opaque object - just call
 	 * cmp with this and each device object on bus.
 	 */
 
 	if (start != NULL) {
-		dstart = RTE_BUS_DEVICE(start, *dstart);
-		dev = TAILQ_NEXT(dstart, next);
+		dev = TAILQ_NEXT(start, next);
 	} else {
-		dev = TAILQ_FIRST(&rte_dpaa_bus.device_list);
+		dev = TAILQ_FIRST(&rte_dpaa_bus.bus.device_list);
 	}
 
 	while (dev != NULL) {
-		if (cmp(&dev->device, data) == 0) {
-			DPAA_BUS_DEBUG("Found dev=(%s)", dev->device.name);
-			return &dev->device;
+		if (cmp(dev, data) == 0) {
+			DPAA_BUS_DEBUG("Found dev=(%s)", dev->name);
+			return dev;
 		}
 		dev = TAILQ_NEXT(dev, next);
 	}
@@ -883,9 +877,8 @@ static void *
 dpaa_bus_dev_iterate(const void *start, const char *str,
 		     const struct rte_dev_iterator *it __rte_unused)
 {
-	const struct rte_dpaa_device *dstart;
-	struct rte_dpaa_device *dev;
 	char *dup, *dev_name = NULL;
+	struct rte_device *dev;
 
 	if (str == NULL) {
 		DPAA_BUS_DEBUG("No device string");
@@ -907,16 +900,15 @@ dpaa_bus_dev_iterate(const void *start, const char *str,
 	dev_name = dup + strlen("name=");
 
 	if (start != NULL) {
-		dstart = RTE_BUS_DEVICE(start, *dstart);
-		dev = TAILQ_NEXT(dstart, next);
+		dev = TAILQ_NEXT((const struct rte_device *)start, next);
 	} else {
-		dev = TAILQ_FIRST(&rte_dpaa_bus.device_list);
+		dev = TAILQ_FIRST(&rte_dpaa_bus.bus.device_list);
 	}
 
 	while (dev != NULL) {
-		if (strcmp(dev->device.name, dev_name) == 0) {
+		if (strcmp(dev->name, dev_name) == 0) {
 			free(dup);
-			return &dev->device;
+			return dev;
 		}
 		dev = TAILQ_NEXT(dev, next);
 	}
@@ -928,10 +920,10 @@ dpaa_bus_dev_iterate(const void *start, const char *str,
 static int
 dpaa_bus_cleanup(void)
 {
-	struct rte_dpaa_device *dev, *tmp_dev;
+	struct rte_dpaa_device *dev;
 
 	BUS_INIT_FUNC_TRACE();
-	RTE_TAILQ_FOREACH_SAFE(dev, &rte_dpaa_bus.device_list, next, tmp_dev) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus.bus) {
 		struct rte_dpaa_driver *drv = dev->driver;
 		int ret = 0;
 
@@ -988,7 +980,6 @@ static struct rte_dpaa_bus rte_dpaa_bus = {
 		.cleanup = dpaa_bus_cleanup,
 	},
 	.max_push_rxq_num = DPAA_DEFAULT_PUSH_MODE_QUEUE,
-	.device_list = TAILQ_HEAD_INITIALIZER(rte_dpaa_bus.device_list),
 	.device_count = 0,
 };
 

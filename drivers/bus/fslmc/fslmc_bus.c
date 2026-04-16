@@ -46,10 +46,9 @@ static void
 cleanup_fslmc_device_list(void)
 {
 	struct rte_dpaa2_device *dev;
-	struct rte_dpaa2_device *t_dev;
 
-	RTE_TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, t_dev) {
-		TAILQ_REMOVE(&rte_fslmc_bus.device_list, dev, next);
+	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
+		rte_bus_remove_device(&rte_fslmc_bus.bus, &dev->device);
 		rte_intr_instance_free(dev->intr_handle);
 		free(dev);
 		dev = NULL;
@@ -84,19 +83,18 @@ insert_in_device_list(struct rte_dpaa2_device *newdev)
 {
 	int comp, inserted = 0;
 	struct rte_dpaa2_device *dev = NULL;
-	struct rte_dpaa2_device *tdev = NULL;
 
-	RTE_TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, tdev) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
 		comp = compare_dpaa2_devname(newdev, dev);
 		if (comp < 0) {
-			TAILQ_INSERT_BEFORE(dev, newdev, next);
+			rte_bus_insert_device(&rte_fslmc_bus.bus, &dev->device, &newdev->device);
 			inserted = 1;
 			break;
 		}
 	}
 
 	if (!inserted)
-		TAILQ_INSERT_TAIL(&rte_fslmc_bus.device_list, newdev, next);
+		rte_bus_add_device(&rte_fslmc_bus.bus, &newdev->device);
 }
 
 static void
@@ -107,7 +105,7 @@ dump_device_list(void)
 	/* Only if the log level has been set to Debugging, print list */
 	if (rte_log_can_log(dpaa2_logtype_bus, RTE_LOG_DEBUG)) {
 		DPAA2_BUS_LOG(DEBUG, "List of devices scanned on bus:");
-		TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next) {
+		RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
 			DPAA2_BUS_LOG(DEBUG, "\t\t%s", dev->device.name);
 		}
 	}
@@ -142,7 +140,6 @@ scan_one_fslmc_device(char *dev_name)
 		return -ENOMEM;
 	}
 
-	dev->device.bus = &rte_fslmc_bus.bus;
 	dev->device.numa_node = SOCKET_ID_ANY;
 
 	/* Allocate interrupt instance */
@@ -319,7 +316,7 @@ rte_fslmc_scan(void)
 		struct rte_dpaa2_device *dev;
 
 		DPAA2_BUS_DEBUG("Fslmc bus already scanned. Not rescanning");
-		TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next) {
+		RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
 			dev->device.devargs = rte_bus_find_devargs(&rte_fslmc_bus.bus,
 				dev->device.name);
 		}
@@ -420,7 +417,7 @@ rte_fslmc_probe(void)
 		.align = alignof(dpaa2_seqn_t),
 	};
 
-	if (TAILQ_EMPTY(&rte_fslmc_bus.device_list))
+	if (TAILQ_EMPTY(&rte_fslmc_bus.bus.device_list))
 		return 0;
 
 	dpaa2_seqn_dynfield_offset =
@@ -456,7 +453,7 @@ rte_fslmc_probe(void)
 		return 0;
 	}
 
-	TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
 		RTE_BUS_FOREACH_DRV(drv, &rte_fslmc_bus.bus) {
 			ret = rte_fslmc_match(drv, dev);
 			if (ret)
@@ -486,8 +483,7 @@ static struct rte_device *
 rte_fslmc_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 		      const void *data)
 {
-	const struct rte_dpaa2_device *dstart;
-	struct rte_dpaa2_device *dev;
+	struct rte_device *dev;
 
 	DPAA2_BUS_DEBUG("Finding a device named %s", (const char *)data);
 
@@ -497,16 +493,15 @@ rte_fslmc_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 	 */
 
 	if (start != NULL) {
-		dstart = RTE_BUS_DEVICE(start, *dstart);
-		dev = TAILQ_NEXT(dstart, next);
+		dev = TAILQ_NEXT(start, next);
 	} else {
-		dev = TAILQ_FIRST(&rte_fslmc_bus.device_list);
+		dev = TAILQ_FIRST(&rte_fslmc_bus.bus.device_list);
 	}
 	while (dev != NULL) {
-		if (cmp(&dev->device, data) == 0) {
+		if (cmp(dev, data) == 0) {
 			DPAA2_BUS_DEBUG("Found device (%s)",
-					dev->device.name);
-			return &dev->device;
+					dev->name);
+			return dev;
 		}
 		dev = TAILQ_NEXT(dev, next);
 	}
@@ -543,7 +538,7 @@ fslmc_all_device_support_iova(void)
 	struct rte_dpaa2_device *dev;
 	struct rte_dpaa2_driver *drv;
 
-	TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
 		RTE_BUS_FOREACH_DRV(drv, &rte_fslmc_bus.bus) {
 			ret = rte_fslmc_match(drv, dev);
 			if (ret)
@@ -565,7 +560,7 @@ rte_dpaa2_get_iommu_class(void)
 	if (rte_eal_iova_mode() == RTE_IOVA_PA)
 		return RTE_IOVA_PA;
 
-	if (TAILQ_EMPTY(&rte_fslmc_bus.device_list))
+	if (TAILQ_EMPTY(&rte_fslmc_bus.bus.device_list))
 		return RTE_IOVA_DC;
 
 	/* check if all devices on the bus support Virtual addressing or not */
@@ -632,9 +627,8 @@ static void *
 fslmc_bus_dev_iterate(const void *start, const char *str,
 		      const struct rte_dev_iterator *it __rte_unused)
 {
-	const struct rte_dpaa2_device *dstart;
-	struct rte_dpaa2_device *dev;
 	char *dup, *dev_name = NULL;
+	struct rte_device *dev;
 
 	if (str == NULL) {
 		DPAA2_BUS_DEBUG("No device string");
@@ -656,16 +650,15 @@ fslmc_bus_dev_iterate(const void *start, const char *str,
 	dev_name = dup + strlen("name=");
 
 	if (start != NULL) {
-		dstart = RTE_BUS_DEVICE(start, *dstart);
-		dev = TAILQ_NEXT(dstart, next);
+		dev = TAILQ_NEXT((const struct rte_device *) start, next);
 	} else {
-		dev = TAILQ_FIRST(&rte_fslmc_bus.device_list);
+		dev = TAILQ_FIRST(&rte_fslmc_bus.bus.device_list);
 	}
 
 	while (dev != NULL) {
-		if (strcmp(dev->device.name, dev_name) == 0) {
+		if (strcmp(dev->name, dev_name) == 0) {
 			free(dup);
-			return &dev->device;
+			return dev;
 		}
 		dev = TAILQ_NEXT(dev, next);
 	}
@@ -687,7 +680,6 @@ struct rte_fslmc_bus rte_fslmc_bus = {
 		.unplug = fslmc_bus_unplug,
 		.dev_iterate = fslmc_bus_dev_iterate,
 	},
-	.device_list = TAILQ_HEAD_INITIALIZER(rte_fslmc_bus.device_list),
 	.device_count = {0},
 };
 

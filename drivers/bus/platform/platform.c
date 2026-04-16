@@ -57,11 +57,10 @@ dev_add(const char *dev_name)
 	rte_strscpy(pdev->name, dev_name, sizeof(pdev->name));
 	pdev->device.name = pdev->name;
 	pdev->device.devargs = rte_bus_find_devargs(&platform_bus.bus, dev_name);
-	pdev->device.bus = &platform_bus.bus;
 	snprintf(path, sizeof(path), PLATFORM_BUS_DEVICES_PATH "/%s/numa_node", dev_name);
 	pdev->device.numa_node = eal_parse_sysfs_value(path, &val) ? rte_socket_id() : val;
 
-	FOREACH_DEVICE_ON_PLATFORM_BUS(tmp) {
+	RTE_BUS_FOREACH_DEV(tmp, &platform_bus.bus) {
 		if (!strcmp(tmp->name, pdev->name)) {
 			PLATFORM_LOG_LINE(INFO, "device %s already added", pdev->name);
 
@@ -73,7 +72,7 @@ dev_add(const char *dev_name)
 		}
 	}
 
-	TAILQ_INSERT_HEAD(&platform_bus.device_list, pdev, next);
+	rte_bus_add_device(&platform_bus.bus, &pdev->device);
 
 	PLATFORM_LOG_LINE(INFO, "adding device %s to the list", dev_name);
 
@@ -425,7 +424,7 @@ platform_bus_probe(void)
 	struct rte_platform_device *pdev;
 	int ret;
 
-	FOREACH_DEVICE_ON_PLATFORM_BUS(pdev) {
+	RTE_BUS_FOREACH_DEV(pdev, &platform_bus.bus) {
 		ret = device_attach(pdev);
 		if (ret == -EBUSY) {
 			PLATFORM_LOG_LINE(DEBUG, "device %s already probed", pdev->name);
@@ -441,20 +440,18 @@ platform_bus_probe(void)
 static struct rte_device *
 platform_bus_find_device(const struct rte_device *start, rte_dev_cmp_t cmp, const void *data)
 {
-	const struct rte_platform_device *pstart;
-	struct rte_platform_device *pdev;
+	struct rte_device *dev;
 
 	if (start != NULL) {
-		pstart = RTE_BUS_DEVICE(start, *pstart);
-		pdev = TAILQ_NEXT(pstart, next);
+		dev = TAILQ_NEXT(start, next);
 	} else {
-		pdev = RTE_TAILQ_FIRST(&platform_bus.device_list);
+		dev = RTE_TAILQ_FIRST(&platform_bus.bus.device_list);
 	}
-	while (pdev) {
-		if (cmp(&pdev->device, data) == 0)
-			return &pdev->device;
+	while (dev) {
+		if (cmp(dev, data) == 0)
+			return dev;
 
-		pdev = RTE_TAILQ_NEXT(pdev, next);
+		dev = RTE_TAILQ_NEXT(dev, next);
 	}
 
 	return NULL;
@@ -550,7 +547,7 @@ platform_bus_get_iommu_class(void)
 	struct rte_platform_driver *pdrv;
 	struct rte_platform_device *pdev;
 
-	FOREACH_DEVICE_ON_PLATFORM_BUS(pdev) {
+	RTE_BUS_FOREACH_DEV(pdev, &platform_bus.bus) {
 		pdrv = pdev->driver;
 		if (pdrv != NULL && pdrv->drv_flags & RTE_PLATFORM_DRV_NEED_IOVA_AS_VA)
 			return RTE_IOVA_VA;
@@ -562,10 +559,10 @@ platform_bus_get_iommu_class(void)
 static int
 platform_bus_cleanup(void)
 {
-	struct rte_platform_device *pdev, *tmp;
+	struct rte_platform_device *pdev;
 
-	RTE_TAILQ_FOREACH_SAFE(pdev, &platform_bus.device_list, next, tmp) {
-		TAILQ_REMOVE(&platform_bus.device_list, pdev, next);
+	RTE_BUS_FOREACH_DEV(pdev, &platform_bus.bus) {
+		rte_bus_remove_device(&platform_bus.bus, &pdev->device);
 		if (!rte_dev_is_probed(&pdev->device))
 			continue;
 		platform_bus_unplug(&pdev->device);
@@ -588,7 +585,6 @@ struct rte_platform_bus platform_bus = {
 		.dev_iterate = platform_bus_dev_iterate,
 		.cleanup = platform_bus_cleanup,
 	},
-	.device_list = TAILQ_HEAD_INITIALIZER(platform_bus.device_list),
 };
 
 RTE_REGISTER_BUS(platform, platform_bus.bus);

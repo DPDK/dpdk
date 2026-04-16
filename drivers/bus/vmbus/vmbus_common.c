@@ -181,7 +181,7 @@ rte_vmbus_probe(void)
 	size_t probed = 0, failed = 0;
 	char ubuf[RTE_UUID_STRLEN];
 
-	FOREACH_DEVICE_ON_VMBUS(dev) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_vmbus_bus.bus) {
 		probed++;
 
 		rte_uuid_unparse(dev->device_id, ubuf, sizeof(ubuf));
@@ -203,10 +203,10 @@ rte_vmbus_probe(void)
 static int
 rte_vmbus_cleanup(void)
 {
-	struct rte_vmbus_device *dev, *tmp_dev;
+	struct rte_vmbus_device *dev;
 	int error = 0;
 
-	RTE_TAILQ_FOREACH_SAFE(dev, &rte_vmbus_bus.device_list, next, tmp_dev) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_vmbus_bus.bus) {
 		const struct rte_vmbus_driver *drv = dev->driver;
 		int ret;
 
@@ -223,7 +223,7 @@ rte_vmbus_cleanup(void)
 
 		dev->driver = NULL;
 		dev->device.driver = NULL;
-		TAILQ_REMOVE(&rte_vmbus_bus.device_list, dev, next);
+		rte_bus_remove_device(&rte_vmbus_bus.bus, &dev->device);
 		free(dev);
 	}
 
@@ -274,42 +274,20 @@ rte_vmbus_unregister(struct rte_vmbus_driver *driver)
 	rte_bus_remove_driver(&rte_vmbus_bus.bus, &driver->driver);
 }
 
-/* Add a device to VMBUS bus */
-void
-vmbus_add_device(struct rte_vmbus_device *vmbus_dev)
-{
-	TAILQ_INSERT_TAIL(&rte_vmbus_bus.device_list, vmbus_dev, next);
-}
-
-/* Insert a device into a predefined position in VMBUS bus */
-void
-vmbus_insert_device(struct rte_vmbus_device *exist_vmbus_dev,
-		      struct rte_vmbus_device *new_vmbus_dev)
-{
-	TAILQ_INSERT_BEFORE(exist_vmbus_dev, new_vmbus_dev, next);
-}
-
-/* Remove a device from VMBUS bus */
-void
-vmbus_remove_device(struct rte_vmbus_device *vmbus_dev)
-{
-	TAILQ_REMOVE(&rte_vmbus_bus.device_list, vmbus_dev, next);
-}
-
 /* VMBUS doesn't support hotplug */
 static struct rte_device *
 vmbus_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 		  const void *data)
 {
-	struct rte_vmbus_device *dev;
+	struct rte_device *dev;
 
-	FOREACH_DEVICE_ON_VMBUS(dev) {
-		if (start && &dev->device == start) {
+	TAILQ_FOREACH(dev, &rte_vmbus_bus.bus.device_list, next) {
+		if (start && dev == start) {
 			start = NULL;
 			continue;
 		}
-		if (cmp(&dev->device, data) == 0)
-			return &dev->device;
+		if (cmp(dev, data) == 0)
+			return dev;
 	}
 
 	return NULL;
@@ -325,7 +303,6 @@ struct rte_vmbus_bus rte_vmbus_bus = {
 		.parse = vmbus_parse,
 		.dev_compare = vmbus_dev_compare,
 	},
-	.device_list = TAILQ_HEAD_INITIALIZER(rte_vmbus_bus.device_list),
 };
 
 RTE_REGISTER_BUS(vmbus, rte_vmbus_bus.bus);

@@ -94,7 +94,6 @@ struct rte_platform_resource {
  * A structure describing a platform device.
  */
 struct rte_platform_device {
-	RTE_TAILQ_ENTRY(rte_platform_device) next; /**< Next attached platform device */
 	struct rte_device device; /**< Core device */
 	struct rte_platform_driver *driver; /**< Matching device driver */
 	char name[RTE_DEV_NAME_MAX_LEN]; /**< Device name */

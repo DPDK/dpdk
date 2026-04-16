@@ -37,7 +37,6 @@ enum hv_uio_map {
  * A structure describing a VMBUS device.
  */
 struct rte_vmbus_device {
-	RTE_TAILQ_ENTRY(rte_vmbus_device) next; /**< Next probed VMBUS device */
 	const struct rte_vmbus_driver *driver; /**< Associated driver */
 	struct rte_device device;              /**< Inherit core device */
 	rte_uuid_t device_id;		       /**< VMBUS device id */

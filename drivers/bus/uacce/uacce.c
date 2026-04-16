@@ -35,7 +35,6 @@
  */
 struct rte_uacce_bus {
 	struct rte_bus bus;		            /* Inherit the generic class. */
-	TAILQ_HEAD(, rte_uacce_device) device_list; /* List of devices. */
 };
 
 /* Forward declaration of UACCE bus. */
@@ -49,9 +48,6 @@ static const char *const uacce_params_keys[] = {
 	[RTE_UACCE_PARAM_NAME] = "name",
 	NULL,
 };
-
-#define FOREACH_DEVICE_ON_UACCEBUS(p)	\
-		RTE_TAILQ_FOREACH(p, &uacce_bus.device_list, next)
 
 extern int uacce_bus_logtype;
 #define RTE_LOGTYPE_UACCE_BUS uacce_bus_logtype
@@ -253,7 +249,6 @@ uacce_scan_one(const char *dev_name)
 	if (!dev)
 		return -ENOMEM;
 
-	dev->device.bus = &uacce_bus.bus;
 	dev->device.name = dev->name;
 	dev->device.devargs = rte_bus_find_devargs(&uacce_bus.bus, dev_name);
 	snprintf(dev->name, sizeof(dev->name), "%s", dev_name);
@@ -279,7 +274,7 @@ uacce_scan_one(const char *dev_name)
 	if (ret != 0)
 		goto err;
 
-	TAILQ_INSERT_TAIL(&uacce_bus.device_list, dev, next);
+	rte_bus_add_device(&uacce_bus.bus, &dev->device);
 	return 0;
 
 err:
@@ -440,7 +435,7 @@ uacce_probe(void)
 	struct rte_uacce_device *dev;
 	int ret;
 
-	FOREACH_DEVICE_ON_UACCEBUS(dev) {
+	RTE_BUS_FOREACH_DEV(dev, &uacce_bus.bus) {
 		probed++;
 
 		ret = uacce_probe_all_drivers(dev);
@@ -458,10 +453,10 @@ uacce_probe(void)
 static int
 uacce_cleanup(void)
 {
-	struct rte_uacce_device *dev, *tmp_dev;
+	struct rte_uacce_device *dev;
 	int error = 0;
 
-	RTE_TAILQ_FOREACH_SAFE(dev, &uacce_bus.device_list, next, tmp_dev) {
+	RTE_BUS_FOREACH_DEV(dev, &uacce_bus.bus) {
 		struct rte_uacce_driver *dr = dev->driver;
 		int ret = 0;
 
@@ -479,7 +474,7 @@ uacce_cleanup(void)
 		dev->device.driver = NULL;
 
 free:
-		TAILQ_REMOVE(&uacce_bus.device_list, dev, next);
+		rte_bus_remove_device(&uacce_bus.bus, &dev->device);
 		free(dev);
 	}
 
@@ -520,7 +515,7 @@ uacce_unplug(struct rte_device *dev)
 
 	ret = uacce_detach_dev(uacce_dev);
 	if (ret == 0) {
-		TAILQ_REMOVE(&uacce_bus.device_list, uacce_dev, next);
+		rte_bus_remove_device(&uacce_bus.bus, &uacce_dev->device);
 		rte_devargs_remove(dev->devargs);
 		free(uacce_dev);
 	}
@@ -531,20 +526,18 @@ uacce_unplug(struct rte_device *dev)
 static struct rte_device *
 uacce_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,  const void *data)
 {
-	const struct rte_uacce_device *uacce_start;
-	struct rte_uacce_device *uacce_dev;
+	struct rte_device *dev;
 
 	if (start != NULL) {
-		uacce_start = RTE_BUS_DEVICE(start, *uacce_start);
-		uacce_dev = TAILQ_NEXT(uacce_start, next);
+		dev = TAILQ_NEXT(start, next);
 	} else {
-		uacce_dev = TAILQ_FIRST(&uacce_bus.device_list);
+		dev = TAILQ_FIRST(&uacce_bus.bus.device_list);
 	}
 
-	while (uacce_dev != NULL) {
-		if (cmp(&uacce_dev->device, data) == 0)
-			return &uacce_dev->device;
-		uacce_dev = TAILQ_NEXT(uacce_dev, next);
+	while (dev != NULL) {
+		if (cmp(dev, data) == 0)
+			return dev;
+		dev = TAILQ_NEXT(dev, next);
 	}
 
 	return NULL;
@@ -722,7 +715,6 @@ static struct rte_uacce_bus uacce_bus = {
 		.parse = uacce_parse,
 		.dev_iterate = uacce_dev_iterate,
 	},
-	.device_list = TAILQ_HEAD_INITIALIZER(uacce_bus.device_list),
 };
 
 RTE_REGISTER_BUS(uacce, uacce_bus.bus);

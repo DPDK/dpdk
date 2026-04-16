@@ -33,7 +33,6 @@ enum rte_pci_kernel_driver {
  * A structure describing a PCI device.
  */
 struct rte_pci_device {
-	RTE_TAILQ_ENTRY(rte_pci_device) next;   /**< Next probed PCI device. */
 	struct rte_device device;           /**< Inherit core device */
 	struct rte_pci_addr addr;           /**< PCI location. */
 	struct rte_pci_id id;               /**< PCI ID. */

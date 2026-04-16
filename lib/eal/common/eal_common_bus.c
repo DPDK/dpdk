@@ -38,6 +38,7 @@ rte_bus_register(struct rte_bus *bus)
 	/* Buses supporting driver plug also require unplug. */
 	RTE_VERIFY(!bus->plug || bus->unplug);
 
+	TAILQ_INIT(&bus->device_list);
 	TAILQ_INIT(&bus->driver_list);
 	TAILQ_INSERT_TAIL(&rte_bus_list, bus, next);
 	EAL_LOG(DEBUG, "Registered [%s] bus.", rte_bus_name(bus));
@@ -369,6 +370,32 @@ rte_bus_sigbus_handler(const void *failure_addr)
 	rte_errno = old_errno;
 
 	return ret;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_add_device)
+void
+rte_bus_add_device(struct rte_bus *bus, struct rte_device *dev)
+{
+	TAILQ_INSERT_TAIL(&bus->device_list, dev, next);
+	dev->bus = bus;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_remove_device)
+void
+rte_bus_remove_device(struct rte_bus *bus, struct rte_device *dev)
+{
+	TAILQ_REMOVE(&bus->device_list, dev, next);
+	dev->bus = NULL;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_insert_device)
+void
+rte_bus_insert_device(struct rte_bus *bus,
+		      struct rte_device *exist_dev,
+		      struct rte_device *new_dev)
+{
+	TAILQ_INSERT_BEFORE(exist_dev, new_dev, next);
+	new_dev->bus = bus;
 }
 
 RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_add_driver)

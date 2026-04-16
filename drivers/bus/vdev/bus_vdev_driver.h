@@ -16,7 +16,6 @@ extern "C" {
 #endif
 
 struct rte_vdev_device {
-	RTE_TAILQ_ENTRY(rte_vdev_device) next;      /**< Next attached vdev */
 	struct rte_device device;               /**< Inherit core device */
 };
 
