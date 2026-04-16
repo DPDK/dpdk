@@ -301,6 +301,7 @@ RTE_INIT(qat_sym_crypto_gen_lce_init)
 	qat_sym_gen_dev_ops[QAT_GEN_LCE].get_feature_flags = qat_sym_crypto_feature_flags_get_gen1;
 }
 
+#ifdef BUILD_QAT_ASYM
 RTE_INIT(qat_asym_crypto_gen_lce_init)
 {
 	qat_asym_gen_dev_ops[QAT_GEN_LCE].cryptodev_ops = NULL;
@@ -308,3 +309,4 @@ RTE_INIT(qat_asym_crypto_gen_lce_init)
 	qat_asym_gen_dev_ops[QAT_GEN_LCE].get_feature_flags = NULL;
 	qat_asym_gen_dev_ops[QAT_GEN_LCE].set_session = NULL;
 }
+#endif

@@ -13,6 +13,9 @@ qat_crypto_relpath = '../../' + qat_crypto_path
 qat_compress = true
 qat_compress_path = 'compress/qat'
 qat_compress_relpath = '../../' + qat_compress_path
+qat_crypto_asym = true
+qat_crypto_asym_path = 'crypto/qat/asym'
+qat_crypto_asym_relpath = '../../' + qat_crypto_asym_path
 
 if disable_drivers.contains(qat_crypto_path)
     qat_crypto = false
@@ -24,6 +27,12 @@ if disable_drivers.contains(qat_compress_path)
     qat_compress = false
     dpdk_drvs_disabled += qat_compress_path
     set_variable('drv_' + qat_compress_path.underscorify() + '_disable_reason',
+            'Explicitly disabled via build config')
+endif
+if disable_drivers.contains(qat_crypto_asym_path)
+    qat_crypto_asym = false
+    dpdk_drvs_disabled += qat_crypto_asym_path
+    set_variable('drv_' + qat_crypto_asym_path.underscorify() + '_disable_reason',
             'Explicitly disabled via build config')
 endif
 
@@ -88,6 +97,7 @@ sources += files(
 includes += include_directories(
         'qat_adf',
         qat_crypto_relpath,
+        qat_crypto_asym_relpath,
         qat_compress_relpath,
 )
 
@@ -108,9 +118,8 @@ cflags += no_shadow_cflag
 
 if qat_crypto
     foreach f: ['qat_sym.c', 'qat_sym_session.c',
-            'qat_asym.c', 'qat_crypto.c',
+            'qat_crypto.c',
             'dev/qat_sym_pmd_gen1.c',
-            'dev/qat_asym_pmd_gen1.c',
             'dev/qat_crypto_pmd_gen2.c',
             'dev/qat_crypto_pmd_gen3.c',
             'dev/qat_crypto_pmd_gen4.c',
@@ -119,6 +128,14 @@ if qat_crypto
         ]
         sources += files(join_paths(qat_crypto_relpath, f))
     endforeach
+    cflags += '-DBUILD_QAT_SYM'
+    if qat_crypto_asym
+        foreach f: ['asym/qat_asym.c',
+                    'dev/qat_asym_pmd_gen1.c',
+            ]
+            sources += files(join_paths(qat_crypto_relpath, f))
+        endforeach
+        cflags += '-DBUILD_QAT_ASYM'
+    endif
     deps += ['security']
-    cflags += ['-DBUILD_QAT_SYM', '-DBUILD_QAT_ASYM']
 endif

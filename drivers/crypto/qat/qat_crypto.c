@@ -53,9 +53,11 @@ qat_cryptodev_info_get(struct rte_cryptodev *dev,
 			qat_qps_per_service(qat_dev, service_type);
 		info->feature_flags = dev->feature_flags;
 		info->capabilities = qat_private->qat_dev_capabilities;
+
+#ifdef BUILD_QAT_ASYM
 		if (service_type == QAT_SERVICE_ASYMMETRIC)
 			info->driver_id = qat_asym_driver_id;
-
+#endif
 		if (service_type == QAT_SERVICE_SYMMETRIC)
 			info->driver_id = qat_sym_driver_id;
 		/* No limit of number of sessions */
@@ -168,8 +170,10 @@ qat_cryptodev_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	for (i = 0; i < qp->nb_descriptors; i++) {
 		if (service_type == QAT_SERVICE_SYMMETRIC)
 			qat_sym_init_op_cookie(qp->op_cookies[i]);
+#ifdef BUILD_QAT_ASYM
 		else
 			qat_asym_init_op_cookie(qp->op_cookies[i]);
+#endif
 	}
 
 	if (qat_private->cipher_crc_offload_enable) {

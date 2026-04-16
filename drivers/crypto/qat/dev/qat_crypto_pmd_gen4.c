@@ -115,6 +115,7 @@ static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen4[] = {
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
+#ifdef BUILD_QAT_ASYM
 static struct rte_cryptodev_capabilities qat_asym_crypto_caps_gen4[] = {
 	QAT_ASYM_CAP(MODEX,
 		0, 1, 512, 1),
@@ -159,6 +160,7 @@ static struct rte_cryptodev_capabilities qat_asym_crypto_caps_gen4[] = {
 			64, 512, 64),
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
+#endif
 
 static int
 qat_sym_crypto_cap_get_gen4(struct qat_cryptodev_private *internals,
@@ -202,6 +204,7 @@ qat_sym_crypto_cap_get_gen4(struct qat_cryptodev_private *internals,
 	return 0;
 }
 
+#ifdef BUILD_QAT_ASYM
 static int
 qat_asym_crypto_cap_get_gen4(struct qat_cryptodev_private *internals,
 			const char *capa_memz_name,
@@ -239,6 +242,7 @@ qat_asym_crypto_cap_get_gen4(struct qat_cryptodev_private *internals,
 
 	return 0;
 }
+#endif
 
 static __rte_always_inline void
 enqueue_one_aead_job_gen4(struct qat_sym_session *ctx,
@@ -622,6 +626,7 @@ RTE_INIT(qat_sym_crypto_gen4_init)
 			qat_sym_create_security_gen1;
 }
 
+#ifdef BUILD_QAT_ASYM
 RTE_INIT(qat_asym_crypto_gen4_init)
 {
 	qat_asym_gen_dev_ops[QAT_VQAT].cryptodev_ops =
@@ -637,3 +642,4 @@ RTE_INIT(qat_asym_crypto_gen4_init)
 		qat_asym_gen_dev_ops[QAT_GEN4].set_session =
 			qat_asym_crypto_set_session_gen1;
 }
+#endif
