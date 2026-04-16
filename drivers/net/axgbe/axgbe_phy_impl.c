@@ -303,23 +303,114 @@ static int axgbe_phy_write(struct axgbe_port *pdata, u16 reg, u16 value)
 
 static int axgbe_phy_config_advert(struct axgbe_port *pdata)
 {
-	u16 advert;
+	u32 adv = pdata->phy.advertising;
+	u16 advert, orig_advert;
+	u16 ctrl1000, orig_ctrl1000;
 	int ret;
 
+	/*
+	 * Clause 22 (10/100) advertisement configuration.
+	 *
+	 * AXGBE MAC supports only full-duplex operation.
+	 * Half-duplex modes are masked while preserving any
+	 * PHY-specific or reserved bits.
+	 */
 	ret = pdata->phy_if.phy_impl.read(pdata, MII_ADVERTISE, &advert);
 	if (ret) {
-		PMD_DRV_LOG_LINE(ERR, "Failed to read ADVERTISE register");
+		PMD_DRV_LOG_LINE(ERR,
+				"PHY read failed: MII_ADVERTISE");
 		return ret;
 	}
 
-	advert |= ADVERTISE_FULL;
-	advert |= ADVERTISE_PAUSE_CAP;
+	orig_advert = advert;
 
-	ret = pdata->phy_if.phy_impl.write(pdata, MII_ADVERTISE, advert);
+	/* Always advertise IEEE 802.3 CSMA/CD selector */
+	advert |= ADVERTISE_CSMA;
+
+	/* AXGBE does not support 10/100 half-duplex */
+	advert &= ~(ADVERTISE_10HALF | ADVERTISE_100HALF);
+
+	/*
+	 * Treat adv == 0 as a legacy/default configuration where the driver
+	 * does not impose an explicit policy and preserves the historical
+	 * behavior of advertising all supported full-duplex speeds.
+	 */
+	if (!adv) {
+		advert |= ADVERTISE_10FULL | ADVERTISE_100FULL;
+		advert |= ADVERTISE_PAUSE_CAP;
+	} else {
+		if (adv & ADVERTISED_10baseT_Full)
+			advert |= ADVERTISE_10FULL;
+		else
+			advert &= ~ADVERTISE_10FULL;
+
+		if (adv & ADVERTISED_100baseT_Full)
+			advert |= ADVERTISE_100FULL;
+		else
+			advert &= ~ADVERTISE_100FULL;
+
+		if (adv & ADVERTISED_Pause)
+			advert |= ADVERTISE_PAUSE_CAP;
+		else
+			advert &= ~ADVERTISE_PAUSE_CAP;
+
+		if (adv & ADVERTISED_Asym_Pause)
+			advert |= ADVERTISE_PAUSE_ASYM;
+		else
+			advert &= ~ADVERTISE_PAUSE_ASYM;
+	}
+
+	if (advert != orig_advert) {
+		ret = pdata->phy_if.phy_impl.write(pdata,
+				MII_ADVERTISE,
+				advert);
+		if (ret) {
+			PMD_DRV_LOG_LINE(ERR,
+					"PHY write failed: MII_ADVERTISE");
+			return ret;
+		}
+	}
+
+	/*
+	 * Clause 40 (1000BASE-T) advertisement configuration.
+	 *
+	 * AXGBE MAC supports only full-duplex operation at 1Gbps.
+	 * Half-duplex advertisement is always cleared.
+	 * Existing PHY or vendor-specific bits are preserved.
+	 */
+	ret = pdata->phy_if.phy_impl.read(pdata, MII_CTRL1000, &ctrl1000);
 	if (ret) {
-		PMD_DRV_LOG_LINE(ERR, "Failed to write ADVERTISE register");
+		PMD_DRV_LOG_LINE(ERR,
+				"PHY read failed: MII_CTRL1000");
 		return ret;
 	}
+
+	orig_ctrl1000 = ctrl1000;
+
+	/* Clear unsupported 1000BASE-T half-duplex */
+	ctrl1000 &= ~ADVERTISE_1000HALF;
+
+	/*
+	 * As with Clause 22 advertisement, adv == 0 indicates that no explicit
+	 * advertising policy was requested. In this case, preserve the legacy
+	 * behaviour of advertising 1000BASE-T full-duplex by default.
+	 */
+	if (!adv || (adv & ADVERTISED_1000baseT_Full))
+		ctrl1000 |= ADVERTISE_1000FULL;
+	else
+		ctrl1000 &= ~ADVERTISE_1000FULL;
+
+	if (ctrl1000 != orig_ctrl1000) {
+		ret = pdata->phy_if.phy_impl.write(pdata,
+				MII_CTRL1000,
+				ctrl1000);
+		if (ret) {
+			PMD_DRV_LOG_LINE(ERR,
+					"PHY write failed: MII_CTRL1000");
+			return ret;
+		}
+	}
+
 	return 0;
 }
 
