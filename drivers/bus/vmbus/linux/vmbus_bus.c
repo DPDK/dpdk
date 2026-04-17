@@ -39,8 +39,6 @@ static const rte_uuid_t vmbus_nic_uuid = {
 	0xf2, 0xd2, 0xf9, 0x65, 0xed, 0xe
 };
 
-extern struct rte_vmbus_bus rte_vmbus_bus;
-
 /* Read sysfs file to get UUID */
 static int
 parse_sysfs_uuid(const char *filename, rte_uuid_t uu)
@@ -332,7 +330,7 @@ vmbus_scan_one(const char *name)
 		dev->monitor_id = UINT8_MAX;
 	}
 
-	dev->device.devargs = rte_bus_find_devargs(&rte_vmbus_bus.bus, dev_name);
+	dev->device.devargs = rte_bus_find_devargs(&rte_vmbus_bus, dev_name);
 
 	dev->device.numa_node = SOCKET_ID_ANY;
 	if (vmbus_use_numa(dev)) {
@@ -356,7 +354,7 @@ vmbus_scan_one(const char *name)
 	/* device is valid, add in list (sorted) */
 	VMBUS_LOG(DEBUG, "Adding vmbus device %s", name);
 
-	RTE_BUS_FOREACH_DEV(dev2, &rte_vmbus_bus.bus) {
+	RTE_BUS_FOREACH_DEV(dev2, &rte_vmbus_bus) {
 		int ret;
 
 		ret = rte_uuid_compare(dev->device_id, dev2->device_id);
@@ -364,7 +362,7 @@ vmbus_scan_one(const char *name)
 			continue;
 
 		if (ret < 0) {
-			rte_bus_insert_device(&rte_vmbus_bus.bus, &dev2->device, &dev->device);
+			rte_bus_insert_device(&rte_vmbus_bus, &dev2->device, &dev->device);
 		} else { /* already registered */
 			VMBUS_LOG(NOTICE,
 				"%s already registered", name);
@@ -374,7 +372,7 @@ vmbus_scan_one(const char *name)
 		return 0;
 	}
 
-	rte_bus_add_device(&rte_vmbus_bus.bus, &dev->device);
+	rte_bus_add_device(&rte_vmbus_bus, &dev->device);
 	return 0;
 error:
 	VMBUS_LOG(DEBUG, "failed");

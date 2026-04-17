@@ -75,7 +75,7 @@ rte_pci_dev_iterate(const struct rte_bus *bus __rte_unused,
 			return NULL;
 		}
 	}
-	dev = rte_bus_generic_find_device(&rte_pci_bus.bus, start, pci_dev_match, kvargs);
+	dev = rte_bus_generic_find_device(&rte_pci_bus, start, pci_dev_match, kvargs);
 	rte_kvargs_free(kvargs);
 	return dev;
 }

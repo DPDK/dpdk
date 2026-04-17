@@ -49,7 +49,7 @@ rte_dpaa2_create_dprc_device(int vdev_fd __rte_unused,
 		return ret;
 	}
 
-	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus) {
 		/** DPRC is always created before it's children are created.*/
 		dev->container = dprc_node;
 		if (dev->dev_type == DPAA2_ETH) {

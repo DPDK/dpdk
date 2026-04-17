@@ -23,8 +23,6 @@
 
 #include "private.h"
 
-extern struct rte_vmbus_bus rte_vmbus_bus;
-
 /* map a particular resource from a file */
 void *
 vmbus_map_resource(void *requested_addr, int fd, off_t offset, size_t size,
@@ -128,7 +126,7 @@ RTE_EXPORT_SYMBOL(rte_vmbus_probe)
 int
 rte_vmbus_probe(void)
 {
-	return rte_bus_generic_probe(&rte_vmbus_bus.bus);
+	return rte_bus_generic_probe(&rte_vmbus_bus);
 }
 
 static int
@@ -137,7 +135,7 @@ rte_vmbus_cleanup(void)
 	struct rte_vmbus_device *dev;
 	int error = 0;
 
-	RTE_BUS_FOREACH_DEV(dev, &rte_vmbus_bus.bus) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_vmbus_bus) {
 		const struct rte_vmbus_driver *drv;
 		int ret;
 
@@ -154,7 +152,7 @@ rte_vmbus_cleanup(void)
 		rte_vmbus_unmap_device(dev);
 
 		dev->device.driver = NULL;
-		rte_bus_remove_device(&rte_vmbus_bus.bus, &dev->device);
+		rte_bus_remove_device(&rte_vmbus_bus, &dev->device);
 		free(dev);
 	}
 
@@ -194,7 +192,7 @@ rte_vmbus_register(struct rte_vmbus_driver *driver)
 	VMBUS_LOG(DEBUG,
 		"Registered driver %s", driver->driver.name);
 
-	rte_bus_add_driver(&rte_vmbus_bus.bus, &driver->driver);
+	rte_bus_add_driver(&rte_vmbus_bus, &driver->driver);
 }
 
 /* unregister vmbus driver */
@@ -202,22 +200,20 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_vmbus_unregister)
 void
 rte_vmbus_unregister(struct rte_vmbus_driver *driver)
 {
-	rte_bus_remove_driver(&rte_vmbus_bus.bus, &driver->driver);
+	rte_bus_remove_driver(&rte_vmbus_bus, &driver->driver);
 }
 
 /* VMBUS doesn't support hotplug */
-struct rte_vmbus_bus rte_vmbus_bus = {
-	.bus = {
-		.scan = rte_vmbus_scan,
-		.probe = rte_bus_generic_probe,
-		.cleanup = rte_vmbus_cleanup,
-		.find_device = rte_bus_generic_find_device,
-		.match = vmbus_bus_match,
-		.probe_device = vmbus_probe_device,
-		.parse = vmbus_parse,
-		.dev_compare = vmbus_dev_compare,
-	},
+struct rte_bus rte_vmbus_bus = {
+	.scan = rte_vmbus_scan,
+	.probe = rte_bus_generic_probe,
+	.cleanup = rte_vmbus_cleanup,
+	.find_device = rte_bus_generic_find_device,
+	.match = vmbus_bus_match,
+	.probe_device = vmbus_probe_device,
+	.parse = vmbus_parse,
+	.dev_compare = vmbus_dev_compare,
 };
 
-RTE_REGISTER_BUS(vmbus, rte_vmbus_bus.bus);
+RTE_REGISTER_BUS(vmbus, rte_vmbus_bus);
 RTE_LOG_REGISTER_DEFAULT(vmbus_logtype_bus, NOTICE);

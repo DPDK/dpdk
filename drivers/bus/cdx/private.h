@@ -8,13 +8,6 @@
 #include "bus_cdx_driver.h"
 
 /**
- * Structure describing the CDX bus.
- */
-struct rte_cdx_bus {
-	struct rte_bus bus;				/**< Inherit the generic class */
-};
-
-/**
  * Map a particular resource from a file.
  *
  * @param requested_addr

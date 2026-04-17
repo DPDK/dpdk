@@ -29,14 +29,7 @@ extern int pci_bus_logtype;
 #define RTE_PCI_DEVICE_INTERNAL_CONST(ptr) \
 	container_of(ptr, const struct rte_pci_device_internal, device)
 
-/**
- * Structure describing the PCI bus
- */
-struct rte_pci_bus {
-	struct rte_bus bus;               /**< Inherit the generic class */
-};
-
-extern struct rte_pci_bus rte_pci_bus;
+extern struct rte_bus rte_pci_bus;
 
 struct rte_pci_driver;
 struct rte_pci_device;
