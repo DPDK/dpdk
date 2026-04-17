@@ -59,6 +59,9 @@
 
 struct rte_dpaa_bus {
 	struct rte_bus bus;
+};
+
+struct rte_dpaa_bus_private {
 	int device_count;
 	int detected;
 	uint32_t svr_ver;
@@ -67,6 +70,7 @@ struct rte_dpaa_bus {
 };
 
 static struct rte_dpaa_bus rte_dpaa_bus;
+static struct rte_dpaa_bus_private dpaa_bus;
 static struct netcfg_info *dpaa_netcfg;
 
 /* define a variable to hold the portal_key, once created.*/
@@ -87,7 +91,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(dpaa_get_eth_port_cfg)
 RTE_EXPORT_INTERNAL_SYMBOL(dpaa_soc_ver)
 uint32_t dpaa_soc_ver(void)
 {
-	return rte_dpaa_bus.svr_ver;
+	return dpaa_bus.svr_ver;
 }
 
 struct fm_eth_port_cfg *
@@ -103,11 +107,11 @@ dpaa_push_queue_num_update(void)
 	int ret = false;
 	uint16_t current, new_val;
 
-	current = rte_atomic_load_explicit(&rte_dpaa_bus.push_rxq_num,
+	current = rte_atomic_load_explicit(&dpaa_bus.push_rxq_num,
 					   rte_memory_order_acquire);
-	if (current < rte_dpaa_bus.max_push_rxq_num) {
+	if (current < dpaa_bus.max_push_rxq_num) {
 		new_val = current + 1;
-		if (rte_atomic_compare_exchange_strong_explicit(&rte_dpaa_bus.push_rxq_num,
+		if (rte_atomic_compare_exchange_strong_explicit(&dpaa_bus.push_rxq_num,
 				&current, new_val,
 				rte_memory_order_release,
 				rte_memory_order_acquire))
@@ -121,7 +125,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(dpaa_push_queue_max_num)
 uint16_t
 dpaa_push_queue_max_num(void)
 {
-	return rte_dpaa_bus.max_push_rxq_num;
+	return dpaa_bus.max_push_rxq_num;
 }
 
 static int
@@ -204,7 +208,7 @@ dpaa_create_device_list(void)
 	struct fm_eth_port_cfg *cfg;
 	struct fman_if *fman_intf;
 
-	rte_dpaa_bus.device_count = 0;
+	dpaa_bus.device_count = 0;
 
 	/* Creating Ethernet Devices */
 	for (i = 0; dpaa_netcfg && (i < dpaa_netcfg->num_ethports); i++) {
@@ -256,7 +260,7 @@ dpaa_create_device_list(void)
 		dpaa_add_to_device_list(dev);
 	}
 
-	rte_dpaa_bus.device_count += i;
+	dpaa_bus.device_count += i;
 
 	/* Unlike case of ETH, RTE_LIBRTE_DPAA_MAX_CRYPTODEV SEC devices are
 	 * constantly created only if "sec" property is found in the device
@@ -289,7 +293,7 @@ dpaa_create_device_list(void)
 		}
 
 		dev->device_type = FSL_DPAA_CRYPTO;
-		dev->id.dev_id = rte_dpaa_bus.device_count + i;
+		dev->id.dev_id = dpaa_bus.device_count + i;
 
 		/* Even though RTE_CRYPTODEV_NAME_MAX_LEN is valid length of
 		 * crypto PMD, using RTE_ETH_NAME_MAX_LEN as that is the size
@@ -306,7 +310,7 @@ dpaa_create_device_list(void)
 		dpaa_add_to_device_list(dev);
 	}
 
-	rte_dpaa_bus.device_count += i;
+	dpaa_bus.device_count += i;
 
 qdma_dpaa:
 	/* Creating QDMA Device */
@@ -319,7 +323,7 @@ qdma_dpaa:
 		}
 
 		dev->device_type = FSL_DPAA_QDMA;
-		dev->id.dev_id = rte_dpaa_bus.device_count + i;
+		dev->id.dev_id = dpaa_bus.device_count + i;
 
 		memset(dev->name, 0, RTE_ETH_NAME_MAX_LEN);
 		sprintf(dev->name, "dpaa_qdma-%d", i+1);
@@ -331,7 +335,7 @@ qdma_dpaa:
 
 		dpaa_add_to_device_list(dev);
 	}
-	rte_dpaa_bus.device_count += i;
+	dpaa_bus.device_count += i;
 
 	return 0;
 
@@ -688,10 +692,10 @@ rte_dpaa_bus_scan(void)
 		return 0;
 	}
 
-	if (rte_dpaa_bus.detected)
+	if (dpaa_bus.detected)
 		return 0;
 
-	rte_dpaa_bus.detected = 1;
+	dpaa_bus.detected = 1;
 
 	/* create the key, supplying a function that'll be invoked
 	 * when a portal affined thread will be deleted.
@@ -707,34 +711,34 @@ rte_dpaa_bus_scan(void)
 	svr_file = fopen(DPAA_SOC_ID_FILE, "r");
 	if (svr_file) {
 		if (fscanf(svr_file, "svr:%x", &svr_ver) > 0)
-			rte_dpaa_bus.svr_ver = svr_ver & DPAA_SVR_MASK;
+			dpaa_bus.svr_ver = svr_ver & DPAA_SVR_MASK;
 		else
-			rte_dpaa_bus.svr_ver = 0;
+			dpaa_bus.svr_ver = 0;
 		fclose(svr_file);
 	} else {
-		rte_dpaa_bus.svr_ver = 0;
+		dpaa_bus.svr_ver = 0;
 	}
-	if (rte_dpaa_bus.svr_ver == SVR_LS1046A_FAMILY) {
+	if (dpaa_bus.svr_ver == SVR_LS1046A_FAMILY) {
 		DPAA_BUS_LOG(INFO, "This is LS1046A family SoC.");
-	} else if (rte_dpaa_bus.svr_ver == SVR_LS1043A_FAMILY) {
+	} else if (dpaa_bus.svr_ver == SVR_LS1043A_FAMILY) {
 		DPAA_BUS_LOG(INFO, "This is LS1043A family SoC.");
 	} else {
 		DPAA_BUS_LOG(WARNING,
 			"This is Unknown(%08x) DPAA1 family SoC.",
-			rte_dpaa_bus.svr_ver);
+			dpaa_bus.svr_ver);
 	}
 
 	/* Disabling the default push mode for LS1043A */
-	if (rte_dpaa_bus.svr_ver == SVR_LS1043A_FAMILY) {
-		rte_dpaa_bus.max_push_rxq_num = 0;
+	if (dpaa_bus.svr_ver == SVR_LS1043A_FAMILY) {
+		dpaa_bus.max_push_rxq_num = 0;
 		return 0;
 	}
 
 	penv = getenv("DPAA_PUSH_QUEUES_NUMBER");
 	if (penv)
-		rte_dpaa_bus.max_push_rxq_num = atoi(penv);
-	if (rte_dpaa_bus.max_push_rxq_num > DPAA_MAX_PUSH_MODE_QUEUE)
-		rte_dpaa_bus.max_push_rxq_num = DPAA_MAX_PUSH_MODE_QUEUE;
+		dpaa_bus.max_push_rxq_num = atoi(penv);
+	if (dpaa_bus.max_push_rxq_num > DPAA_MAX_PUSH_MODE_QUEUE)
+		dpaa_bus.max_push_rxq_num = DPAA_MAX_PUSH_MODE_QUEUE;
 
 	/* Device list creation is only done once */
 	if (!process_once) {
@@ -868,6 +872,9 @@ static struct rte_dpaa_bus rte_dpaa_bus = {
 		.dev_iterate = rte_bus_generic_dev_iterate,
 		.cleanup = dpaa_bus_cleanup,
 	},
+};
+
+static struct rte_dpaa_bus_private dpaa_bus = {
 	.max_push_rxq_num = DPAA_DEFAULT_PUSH_MODE_QUEUE,
 	.device_count = 0,
 };

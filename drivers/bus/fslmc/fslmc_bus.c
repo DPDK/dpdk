@@ -28,6 +28,7 @@
 #define VFIO_IOMMU_GROUP_PATH "/sys/kernel/iommu_groups"
 
 struct rte_fslmc_bus rte_fslmc_bus;
+static int fslmc_bus_device_count[DPAA2_DEVTYPE_MAX];
 
 #define DPAA2_SEQN_DYNFIELD_NAME "dpaa2_seqn_dynfield"
 RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_seqn_dynfield_offset)
@@ -39,7 +40,7 @@ rte_fslmc_get_device_count(enum rte_dpaa2_dev_type device_type)
 {
 	if (device_type >= DPAA2_DEVTYPE_MAX)
 		return 0;
-	return rte_fslmc_bus.device_count[device_type];
+	return fslmc_bus_device_count[device_type];
 }
 
 static void
@@ -200,7 +201,7 @@ scan_one_fslmc_device(char *dev_name)
 	dev->device.devargs = rte_bus_find_devargs(&rte_fslmc_bus.bus, dev_name);
 
 	/* Update the device found into the device_count table */
-	rte_fslmc_bus.device_count[dev->dev_type]++;
+	fslmc_bus_device_count[dev->dev_type]++;
 
 	/* Add device in the fslmc device list */
 	insert_in_device_list(dev);
@@ -559,7 +560,6 @@ struct rte_fslmc_bus rte_fslmc_bus = {
 		.unplug = fslmc_bus_unplug,
 		.dev_iterate = rte_bus_generic_dev_iterate,
 	},
-	.device_count = {0},
 };
 
 RTE_REGISTER_BUS(fslmc, rte_fslmc_bus.bus);
