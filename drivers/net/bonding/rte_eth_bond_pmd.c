@@ -57,6 +57,33 @@ get_vlan_offset(struct rte_ether_hdr *eth_hdr, uint16_t *proto)
 }
 
 static uint16_t
+bond_ethdev_rx_secondary(void *queue __rte_unused,
+			 struct rte_mbuf **bufs __rte_unused, uint16_t nb_pkts __rte_unused)
+{
+	static bool once = true;
+
+	if (once) {
+		/* once per process is enough of a notice */
+		RTE_BOND_LOG(ERR, "receive not supported in secondary");
+		once = false;
+	}
+	return 0;
+}
+
+static uint16_t
+bond_ethdev_tx_secondary(void *queue __rte_unused, struct rte_mbuf **bufs, uint16_t nb_pkts)
+{
+	static bool once = true;
+
+	if (once) {
+		RTE_BOND_LOG(ERR, "transmit not supported in secondary");
+		once = false;
+	}
+	rte_pktmbuf_free_bulk(bufs, nb_pkts);
+	return nb_pkts;
+}
+
+static uint16_t
 bond_ethdev_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	struct bond_dev_private *internals;
@@ -1598,6 +1625,11 @@ int
 bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, uint8_t mode)
 {
 	struct bond_dev_private *internals;
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		RTE_BOND_LOG(ERR, "Setting mode in secondary not allowed");
+		return -1;
+	}
 
 	internals = eth_dev->data->dev_private;
 
@@ -3798,9 +3830,18 @@ bond_probe(struct rte_vdev_device *dev)
 			RTE_BOND_LOG(ERR, "Failed to probe %s", name);
 			return -1;
 		}
-		/* TODO: request info from primary to set up Rx and Tx */
+
 		eth_dev->dev_ops = &default_dev_ops;
 		eth_dev->device = &dev->device;
+
+		/*
+		 * Propagation of bond mode would require adding
+		 * MP client/server support and lots of error handling.
+		 *
+		 * For now just install a black hole.
+		 */
+		eth_dev->tx_pkt_burst = bond_ethdev_tx_secondary;
+		eth_dev->rx_pkt_burst = bond_ethdev_rx_secondary;
 		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}
