@@ -10,12 +10,14 @@
 #include <stdbool.h>
 #include <sys/queue.h>
 
+#include <rte_os_shim.h>
 #include <eal_export.h>
 #include <rte_eal.h>
 #include <dev_driver.h>
 #include <bus_driver.h>
 #include <rte_common.h>
 #include <rte_devargs.h>
+#include <rte_log.h>
 #include <rte_memory.h>
 #include <rte_tailq.h>
 #include <rte_spinlock.h>
@@ -23,10 +25,14 @@
 #include <rte_errno.h>
 
 #include "bus_vdev_driver.h"
-#include "vdev_logs.h"
-#include "vdev_private.h"
 
 #define VDEV_MP_KEY	"bus_vdev_mp"
+
+int vdev_logtype_bus;
+#define RTE_LOGTYPE_VDEV_BUS vdev_logtype_bus
+
+#define VDEV_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, VDEV_BUS, "%s(): ", __func__, __VA_ARGS__)
 
 /* Forward declare to access virtual bus name */
 static struct rte_bus rte_vdev_bus;
@@ -589,12 +595,6 @@ vdev_find_device(const struct rte_bus *bus, const struct rte_device *start,
 	return dev;
 }
 
-struct rte_device *
-rte_vdev_find_device(const struct rte_device *start, rte_dev_cmp_t cmp, const void *data)
-{
-	return vdev_find_device(&rte_vdev_bus, start, cmp, data);
-}
-
 static int
 vdev_plug(struct rte_device *dev)
 {
@@ -637,7 +637,7 @@ static struct rte_bus rte_vdev_bus = {
 	.dma_map = vdev_dma_map,
 	.dma_unmap = vdev_dma_unmap,
 	.get_iommu_class = vdev_get_iommu_class,
-	.dev_iterate = rte_vdev_dev_iterate,
+	.dev_iterate = rte_bus_generic_dev_iterate,
 };
 
 RTE_REGISTER_BUS(vdev, rte_vdev_bus);

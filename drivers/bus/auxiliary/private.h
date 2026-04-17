@@ -50,10 +50,4 @@ void auxiliary_on_scan(struct rte_auxiliary_device *aux_dev);
 bool auxiliary_match(const struct rte_auxiliary_driver *aux_drv,
 		     const struct rte_auxiliary_device *aux_dev);
 
-/*
- * Iterate over devices, matching any device against the provided string.
- */
-void *auxiliary_dev_iterate(const void *start, const char *str,
-			    const struct rte_dev_iterator *it);
-
 #endif /* BUS_AUXILIARY_PRIVATE_H */

@@ -11,8 +11,5 @@ endif
 require_iova_in_mbuf = false
 
 deps += ['kvargs']
-sources = files(
-        'platform_params.c',
-        'platform.c',
-)
+sources = files('platform.c')
 driver_sdk_headers += files('bus_platform_driver.h')

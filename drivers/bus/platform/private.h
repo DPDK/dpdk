@@ -28,11 +28,4 @@ extern int platform_bus_logtype;
 #define PLATFORM_LOG_LINE(level, ...) \
 	RTE_LOG_LINE(level, PLATFORM_BUS, __VA_ARGS__)
 
-/*
- * Iterate registered platform devices and find one that matches provided string.
- */
-void *
-platform_bus_dev_iterate(const void *start, const char *str,
-			 const struct rte_dev_iterator *it __rte_unused);
-
 #endif /* PLATFORM_PRIVATE_H */

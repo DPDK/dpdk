@@ -313,7 +313,7 @@ rte_eth_iterator_next(struct rte_dev_iterator *iter)
 				iter->class_device == NULL) {
 			/* get next rte_device to try. */
 			iter->device = iter->bus->dev_iterate(
-					iter->device, iter->bus_str, iter);
+					iter->bus, iter->device, iter->bus_str, iter);
 			if (iter->device == NULL)
 				break; /* no more rte_device candidate */
 		}

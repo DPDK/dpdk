@@ -756,13 +756,13 @@ bus_next_dev_cmp(const struct rte_bus *bus,
 	if (rte_errno != 0)
 		return -1;
 	if (it->cls_str == NULL) {
-		dev = bus->dev_iterate(dev, bus_str, it);
+		dev = bus->dev_iterate(bus, dev, bus_str, it);
 		goto end;
 	}
 	/* cls_str != NULL */
 	if (dev == NULL) {
 next_dev_on_bus:
-		dev = bus->dev_iterate(dev, bus_str, it);
+		dev = bus->dev_iterate(bus, dev, bus_str, it);
 		it->device = dev;
 	}
 	if (dev == NULL)

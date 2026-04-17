@@ -346,7 +346,7 @@ struct rte_auxiliary_bus auxiliary_bus = {
 		.dma_map = auxiliary_dma_map,
 		.dma_unmap = auxiliary_dma_unmap,
 		.get_iommu_class = auxiliary_get_iommu_class,
-		.dev_iterate = auxiliary_dev_iterate,
+		.dev_iterate = rte_bus_generic_dev_iterate,
 	},
 };
 

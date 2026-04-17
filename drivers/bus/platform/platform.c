@@ -562,7 +562,7 @@ struct rte_platform_bus platform_bus = {
 		.dma_map = platform_bus_dma_map,
 		.dma_unmap = platform_bus_dma_unmap,
 		.get_iommu_class = platform_bus_get_iommu_class,
-		.dev_iterate = platform_bus_dev_iterate,
+		.dev_iterate = rte_bus_generic_dev_iterate,
 		.cleanup = platform_bus_cleanup,
 	},
 };

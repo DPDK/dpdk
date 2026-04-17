@@ -86,15 +86,6 @@
 
 struct rte_cdx_bus rte_cdx_bus;
 
-enum cdx_params {
-	RTE_CDX_PARAM_NAME,
-};
-
-static const char * const cdx_params_keys[] = {
-	[RTE_CDX_PARAM_NAME] = "name",
-	NULL,
-};
-
 static int
 cdx_get_kernel_driver_by_path(const char *filename, char *driver_name,
 		size_t len)
@@ -528,47 +519,6 @@ cdx_get_iommu_class(void)
 	return RTE_IOVA_VA;
 }
 
-static int
-cdx_dev_match(const struct rte_device *dev,
-		const void *_kvlist)
-{
-	const struct rte_kvargs *kvlist = _kvlist;
-	const char *key = cdx_params_keys[RTE_CDX_PARAM_NAME];
-	const char *name;
-
-	/* no kvlist arg, all devices match */
-	if (kvlist == NULL)
-		return 0;
-
-	/* if key is present in kvlist and does not match, filter device */
-	name = rte_kvargs_get(kvlist, key);
-	if (name != NULL && strcmp(name, dev->name))
-		return -1;
-
-	return 0;
-}
-
-static void *
-cdx_dev_iterate(const void *start,
-		const char *str,
-		const struct rte_dev_iterator *it __rte_unused)
-{
-	struct rte_kvargs *kvargs = NULL;
-	struct rte_device *dev;
-
-	if (str != NULL) {
-		kvargs = rte_kvargs_parse(str, cdx_params_keys);
-		if (kvargs == NULL) {
-			CDX_BUS_ERR("cannot parse argument list %s", str);
-			rte_errno = EINVAL;
-			return NULL;
-		}
-	}
-	dev = rte_bus_generic_find_device(&rte_cdx_bus.bus, start, cdx_dev_match, kvargs);
-	rte_kvargs_free(kvargs);
-	return dev;
-}
-
 struct rte_cdx_bus rte_cdx_bus = {
 	.bus = {
 		.scan = cdx_scan,
@@ -580,7 +530,7 @@ struct rte_cdx_bus rte_cdx_bus = {
 		.dma_map = cdx_dma_map,
 		.dma_unmap = cdx_dma_unmap,
 		.get_iommu_class = cdx_get_iommu_class,
-		.dev_iterate = cdx_dev_iterate,
+		.dev_iterate = rte_bus_generic_dev_iterate,
 	},
 };
 
