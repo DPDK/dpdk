@@ -845,50 +845,6 @@ dpaa_bus_unplug(struct rte_device *dev __rte_unused)
 	return 0;
 }
 
-static void *
-dpaa_bus_dev_iterate(const void *start, const char *str,
-		     const struct rte_dev_iterator *it __rte_unused)
-{
-	char *dup, *dev_name = NULL;
-	struct rte_device *dev;
-
-	if (str == NULL) {
-		DPAA_BUS_DEBUG("No device string");
-		return NULL;
-	}
-
-	/* Expectation is that device would be name=device_name */
-	if (strncmp(str, "name=", 5) != 0) {
-		DPAA_BUS_DEBUG("Invalid device string (%s)", str);
-		return NULL;
-	}
-
-	/* Now that name=device_name format is available, split */
-	dup = strdup(str);
-	if (dup == NULL) {
-		DPAA_BUS_DEBUG("Dup string (%s) failed!", str);
-		return NULL;
-	}
-	dev_name = dup + strlen("name=");
-
-	if (start != NULL) {
-		dev = TAILQ_NEXT((const struct rte_device *)start, next);
-	} else {
-		dev = TAILQ_FIRST(&rte_dpaa_bus.bus.device_list);
-	}
-
-	while (dev != NULL) {
-		if (strcmp(dev->name, dev_name) == 0) {
-			free(dup);
-			return dev;
-		}
-		dev = TAILQ_NEXT(dev, next);
-	}
-
-	free(dup);
-	return NULL;
-}
-
 static int
 dpaa_bus_cleanup(void)
 {
@@ -948,7 +904,7 @@ static struct rte_dpaa_bus rte_dpaa_bus = {
 		.get_iommu_class = rte_dpaa_get_iommu_class,
 		.plug = dpaa_bus_plug,
 		.unplug = dpaa_bus_unplug,
-		.dev_iterate = dpaa_bus_dev_iterate,
+		.dev_iterate = rte_bus_generic_dev_iterate,
 		.cleanup = dpaa_bus_cleanup,
 	},
 	.max_push_rxq_num = DPAA_DEFAULT_PUSH_MODE_QUEUE,

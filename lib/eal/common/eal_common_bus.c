@@ -9,6 +9,7 @@
 #include <bus_driver.h>
 #include <rte_debug.h>
 #include <rte_devargs.h>
+#include <rte_kvargs.h>
 #include <rte_string_fns.h>
 #include <rte_errno.h>
 
@@ -431,4 +432,44 @@ rte_bus_remove_driver(struct rte_bus *bus, struct rte_driver *driver)
 {
 	TAILQ_REMOVE(&bus->driver_list, driver, next);
 	driver->bus = NULL;
+}
+
+static int
+bus_dev_match_by_name(const struct rte_device *dev, const void *_kvlist)
+{
+	const struct rte_kvargs *kvlist = _kvlist;
+	const char *name;
+
+	if (kvlist == NULL)
+		return 0;
+
+	name = rte_kvargs_get(kvlist, "name");
+	if (name != NULL && strcmp(name, dev->name))
+		return -1;
+
+	return 0;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_generic_dev_iterate)
+void *
+rte_bus_generic_dev_iterate(const struct rte_bus *bus,
+			     const void *start,
+			     const char *str,
+			     const struct rte_dev_iterator *it __rte_unused)
+{
+	static const char * const params_keys[] = { "name", NULL };
+	struct rte_kvargs *kvargs = NULL;
+	struct rte_device *dev;
+
+	if (str != NULL) {
+		kvargs = rte_kvargs_parse(str, params_keys);
+		if (kvargs == NULL) {
+			rte_errno = EINVAL;
+			return NULL;
+		}
+	}
+
+	dev = rte_bus_generic_find_device(bus, start, bus_dev_match_by_name, kvargs);
+	rte_kvargs_free(kvargs);
+	return dev;
 }

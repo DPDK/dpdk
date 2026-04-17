@@ -593,50 +593,6 @@ fslmc_bus_unplug(struct rte_device *rte_dev)
 	return -ENODEV;
 }
 
-static void *
-fslmc_bus_dev_iterate(const void *start, const char *str,
-		      const struct rte_dev_iterator *it __rte_unused)
-{
-	char *dup, *dev_name = NULL;
-	struct rte_device *dev;
-
-	if (str == NULL) {
-		DPAA2_BUS_DEBUG("No device string");
-		return NULL;
-	}
-
-	/* Expectation is that device would be name=device_name */
-	if (strncmp(str, "name=", 5) != 0) {
-		DPAA2_BUS_DEBUG("Invalid device string (%s)", str);
-		return NULL;
-	}
-
-	/* Now that name=device_name format is available, split */
-	dup = strdup(str);
-	if (dup == NULL) {
-		DPAA2_BUS_DEBUG("Dup string (%s) failed!", str);
-		return NULL;
-	}
-	dev_name = dup + strlen("name=");
-
-	if (start != NULL) {
-		dev = TAILQ_NEXT((const struct rte_device *) start, next);
-	} else {
-		dev = TAILQ_FIRST(&rte_fslmc_bus.bus.device_list);
-	}
-
-	while (dev != NULL) {
-		if (strcmp(dev->name, dev_name) == 0) {
-			free(dup);
-			return dev;
-		}
-		dev = TAILQ_NEXT(dev, next);
-	}
-
-	free(dup);
-	return NULL;
-}
-
 struct rte_fslmc_bus rte_fslmc_bus = {
 	.bus = {
 		.scan = rte_fslmc_scan,
@@ -648,7 +604,7 @@ struct rte_fslmc_bus rte_fslmc_bus = {
 		.get_iommu_class = rte_dpaa2_get_iommu_class,
 		.plug = fslmc_bus_plug,
 		.unplug = fslmc_bus_unplug,
-		.dev_iterate = fslmc_bus_dev_iterate,
+		.dev_iterate = rte_bus_generic_dev_iterate,
 	},
 	.device_count = {0},
 };

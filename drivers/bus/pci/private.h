@@ -258,6 +258,9 @@ rte_pci_get_iommu_class(void);
  * matching any device against the provided
  * string.
  *
+ * @param bus
+ *   A pointer to the bus structure.
+ *
  * @param start
  *   Iteration starting point.
  *
@@ -272,7 +275,8 @@ rte_pci_get_iommu_class(void);
  *   NULL otherwise.
  */
 void *
-rte_pci_dev_iterate(const void *start,
+rte_pci_dev_iterate(const struct rte_bus *bus,
+		    const void *start,
 		    const char *str,
 		    const struct rte_dev_iterator *it);
 

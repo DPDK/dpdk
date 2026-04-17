@@ -40,14 +40,6 @@ struct rte_uacce_bus {
 /* Forward declaration of UACCE bus. */
 static struct rte_uacce_bus uacce_bus;
 
-enum uacce_params {
-	RTE_UACCE_PARAM_NAME,
-};
-
-static const char *const uacce_params_keys[] = {
-	[RTE_UACCE_PARAM_NAME] = "name",
-	NULL,
-};
 
 extern int uacce_bus_logtype;
 #define RTE_LOGTYPE_UACCE_BUS uacce_bus_logtype
@@ -537,44 +529,6 @@ uacce_parse(const char *name, void *addr)
 	return ret;
 }
 
-static int
-uacce_dev_match(const struct rte_device *dev, const void *_kvlist)
-{
-	const char *key = uacce_params_keys[RTE_UACCE_PARAM_NAME];
-	const struct rte_kvargs *kvlist = _kvlist;
-	const char *name;
-
-	/* no kvlist arg, all devices match. */
-	if (kvlist == NULL)
-		return 0;
-
-	/* if key is present in kvlist and does not match, filter device. */
-	name = rte_kvargs_get(kvlist, key);
-	if (name != NULL && strcmp(name, dev->name))
-		return -1;
-
-	return 0;
-}
-
-static void *
-uacce_dev_iterate(const void *start, const char *str,
-		  const struct rte_dev_iterator *it __rte_unused)
-{
-	struct rte_kvargs *kvargs = NULL;
-	struct rte_device *dev;
-
-	if (str != NULL) {
-		kvargs = rte_kvargs_parse(str, uacce_params_keys);
-		if (kvargs == NULL) {
-			UACCE_BUS_ERR("cannot parse argument list %s", str);
-			return NULL;
-		}
-	}
-	dev = rte_bus_generic_find_device(&uacce_bus.bus, start, uacce_dev_match, kvargs);
-	rte_kvargs_free(kvargs);
-	return dev;
-}
-
 RTE_EXPORT_INTERNAL_SYMBOL(rte_uacce_avail_queues)
 int
 rte_uacce_avail_queues(struct rte_uacce_device *dev)
@@ -691,7 +645,7 @@ static struct rte_uacce_bus uacce_bus = {
 		.unplug = uacce_unplug,
 		.find_device = rte_bus_generic_find_device,
 		.parse = uacce_parse,
-		.dev_iterate = uacce_dev_iterate,
+		.dev_iterate = rte_bus_generic_dev_iterate,
 	},
 };
 

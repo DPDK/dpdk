@@ -59,7 +59,8 @@ pci_dev_match(const struct rte_device *dev,
 }
 
 void *
-rte_pci_dev_iterate(const void *start,
+rte_pci_dev_iterate(const struct rte_bus *bus __rte_unused,
+		    const void *start,
 		    const char *str,
 		    const struct rte_dev_iterator *it __rte_unused)
 {

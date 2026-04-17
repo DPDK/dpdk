@@ -263,6 +263,32 @@ struct rte_bus_conf {
 typedef enum rte_iova_mode (*rte_bus_get_iommu_class_t)(void);
 
 /**
+ * Per bus, device iteration function.
+ *
+ * Similar to rte_dev_iterate_t but also pass along the bus pointer.
+ *
+ * @param bus
+ *   A pointer to the bus structure.
+ *
+ * @param start
+ *   Starting iteration context.
+ *
+ * @param devstr
+ *   Device description string.
+ *
+ * @param it
+ *   Device iterator.
+ *
+ * @return
+ *   The address of the current element matching the device description
+ *   string.
+ */
+typedef void *(*rte_bus_dev_iterate_t)(const struct rte_bus *bus,
+				       const void *start,
+				       const char *devstr,
+				       const struct rte_dev_iterator *it);
+
+/**
  * A structure describing a generic bus.
  */
 struct rte_bus {
@@ -280,7 +306,7 @@ struct rte_bus {
 	rte_dev_dma_unmap_t dma_unmap; /**< DMA unmap for device in the bus */
 	struct rte_bus_conf conf;    /**< Bus configuration */
 	rte_bus_get_iommu_class_t get_iommu_class; /**< Get iommu class */
-	rte_dev_iterate_t dev_iterate; /**< Device iterator. */
+	rte_bus_dev_iterate_t dev_iterate; /**< Bus device iterator. */
 	rte_bus_hot_unplug_handler_t hot_unplug_handler;
 				/**< handle hot-unplug failure on the bus */
 	rte_bus_sigbus_handler_t sigbus_handler;
@@ -320,6 +346,31 @@ struct rte_devargs *rte_bus_find_devargs(const struct rte_bus *bus, const char *
  */
 __rte_internal
 bool rte_bus_device_is_ignored(const struct rte_bus *bus, const char *dev_name);
+
+/**
+ * Generic device iterator for buses using name-based matching.
+ *
+ * This helper implements the standard name-based device iteration pattern
+ * using kvargs parsing. Buses that only support "name" parameter matching
+ * can use this instead of implementing their own dev_iterate function.
+ *
+ * @param bus
+ *   A pointer to the bus structure.
+ * @param start
+ *   The starting device (NULL to start from the beginning).
+ * @param devstr
+ *   The device filter string (e.g., "name=eth0").
+ * @param it
+ *   Device iterator.
+ *
+ * @return
+ *   Pointer to the matching device, or NULL if not found.
+ */
+__rte_internal
+void *rte_bus_generic_dev_iterate(const struct rte_bus *bus,
+				   const void *start,
+				   const char *devstr,
+				   const struct rte_dev_iterator *it);
 
 /**
  * Helper for Bus registration.
