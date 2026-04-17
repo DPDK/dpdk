@@ -14,8 +14,6 @@
  */
 struct rte_fslmc_bus {
 	struct rte_bus bus;     /**< Generic Bus object */
-	int device_count[DPAA2_DEVTYPE_MAX];
-				/**< Count of all devices scanned */
 };
 
 extern struct rte_fslmc_bus rte_fslmc_bus;
