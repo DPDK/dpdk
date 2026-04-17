@@ -19,14 +19,7 @@ extern int auxiliary_bus_logtype;
 #define AUXILIARY_LOG(level, ...) \
 	RTE_LOG_LINE(level, AUXILIARY_BUS, __VA_ARGS__)
 
-/*
- * Structure describing the auxiliary bus
- */
-struct rte_auxiliary_bus {
-	struct rte_bus bus;                  /* Inherit the generic class */
-};
-
-extern struct rte_auxiliary_bus auxiliary_bus;
+extern struct rte_bus auxiliary_bus;
 
 /*
  * Test whether the auxiliary device exist.

@@ -30,15 +30,8 @@
 /* Support -a uacce:device-name when start DPDK application. */
 #define UACCE_DEV_PREFIX	"uacce:"
 
-/*
- * Structure describing the UACCE bus.
- */
-struct rte_uacce_bus {
-	struct rte_bus bus;		            /* Inherit the generic class. */
-};
-
 /* Forward declaration of UACCE bus. */
-static struct rte_uacce_bus uacce_bus;
+static struct rte_bus uacce_bus;
 
 
 extern int uacce_bus_logtype;
@@ -242,7 +235,7 @@ uacce_scan_one(const char *dev_name)
 		return -ENOMEM;
 
 	dev->device.name = dev->name;
-	dev->device.devargs = rte_bus_find_devargs(&uacce_bus.bus, dev_name);
+	dev->device.devargs = rte_bus_find_devargs(&uacce_bus, dev_name);
 	snprintf(dev->name, sizeof(dev->name), "%s", dev_name);
 	snprintf(dev->dev_root, sizeof(dev->dev_root), "%s/%s",
 		 UACCE_BUS_CLASS_PATH, dev_name);
@@ -266,7 +259,7 @@ uacce_scan_one(const char *dev_name)
 	if (ret != 0)
 		goto err;
 
-	rte_bus_add_device(&uacce_bus.bus, &dev->device);
+	rte_bus_add_device(&uacce_bus, &dev->device);
 	return 0;
 
 err:
@@ -296,7 +289,7 @@ uacce_scan(void)
 			continue;
 		}
 
-		if (rte_bus_device_is_ignored(&uacce_bus.bus, e->d_name))
+		if (rte_bus_device_is_ignored(&uacce_bus, e->d_name))
 			continue;
 
 		if (uacce_scan_one(e->d_name) < 0)
@@ -397,7 +390,7 @@ uacce_cleanup(void)
 	struct rte_uacce_device *dev;
 	int error = 0;
 
-	RTE_BUS_FOREACH_DEV(dev, &uacce_bus.bus) {
+	RTE_BUS_FOREACH_DEV(dev, &uacce_bus) {
 		const struct rte_uacce_driver *dr;
 		int ret = 0;
 
@@ -415,7 +408,7 @@ uacce_cleanup(void)
 		dev->device.driver = NULL;
 
 free:
-		rte_bus_remove_device(&uacce_bus.bus, &dev->device);
+		rte_bus_remove_device(&uacce_bus, &dev->device);
 		free(dev);
 	}
 
@@ -449,7 +442,7 @@ uacce_unplug(struct rte_device *dev)
 
 	ret = uacce_detach_dev(uacce_dev);
 	if (ret == 0) {
-		rte_bus_remove_device(&uacce_bus.bus, &uacce_dev->device);
+		rte_bus_remove_device(&uacce_bus, &uacce_dev->device);
 		rte_devargs_remove(dev->devargs);
 		free(uacce_dev);
 	}
@@ -568,29 +561,27 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_uacce_register)
 void
 rte_uacce_register(struct rte_uacce_driver *driver)
 {
-	rte_bus_add_driver(&uacce_bus.bus, &driver->driver);
+	rte_bus_add_driver(&uacce_bus, &driver->driver);
 }
 
 RTE_EXPORT_INTERNAL_SYMBOL(rte_uacce_unregister)
 void
 rte_uacce_unregister(struct rte_uacce_driver *driver)
 {
-	rte_bus_remove_driver(&uacce_bus.bus, &driver->driver);
+	rte_bus_remove_driver(&uacce_bus, &driver->driver);
 }
 
-static struct rte_uacce_bus uacce_bus = {
-	.bus = {
-		.scan = uacce_scan,
-		.probe = rte_bus_generic_probe,
-		.cleanup = uacce_cleanup,
-		.match = uacce_bus_match,
-		.probe_device = uacce_probe_device,
-		.unplug = uacce_unplug,
-		.find_device = rte_bus_generic_find_device,
-		.parse = uacce_parse,
-		.dev_iterate = rte_bus_generic_dev_iterate,
-	},
+static struct rte_bus uacce_bus = {
+	.scan = uacce_scan,
+	.probe = rte_bus_generic_probe,
+	.cleanup = uacce_cleanup,
+	.match = uacce_bus_match,
+	.probe_device = uacce_probe_device,
+	.unplug = uacce_unplug,
+	.find_device = rte_bus_generic_find_device,
+	.parse = uacce_parse,
+	.dev_iterate = rte_bus_generic_dev_iterate,
 };
 
-RTE_REGISTER_BUS(uacce, uacce_bus.bus);
+RTE_REGISTER_BUS(uacce, uacce_bus);
 RTE_LOG_REGISTER_DEFAULT(uacce_bus_logtype, NOTICE);

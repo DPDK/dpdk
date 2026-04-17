@@ -84,7 +84,7 @@
 
 #define CDX_DEV_PREFIX	"cdx-"
 
-struct rte_cdx_bus rte_cdx_bus;
+static struct rte_bus rte_cdx_bus;
 
 static int
 cdx_get_kernel_driver_by_path(const char *filename, char *driver_name,
@@ -194,7 +194,7 @@ cdx_scan_one(const char *dirname, const char *dev_name)
 	}
 	dev->id.device_id = (uint16_t)tmp;
 
-	rte_bus_add_device(&rte_cdx_bus.bus, &dev->device);
+	rte_bus_add_device(&rte_cdx_bus, &dev->device);
 
 	return 0;
 
@@ -226,7 +226,7 @@ cdx_scan(void)
 		if (e->d_name[0] == '.')
 			continue;
 
-		if (rte_bus_device_is_ignored(&rte_cdx_bus.bus, e->d_name))
+		if (rte_bus_device_is_ignored(&rte_cdx_bus, e->d_name))
 			continue;
 
 		snprintf(dirname, sizeof(dirname), "%s/%s",
@@ -363,7 +363,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_cdx_register)
 void
 rte_cdx_register(struct rte_cdx_driver *driver)
 {
-	rte_bus_add_driver(&rte_cdx_bus.bus, &driver->driver);
+	rte_bus_add_driver(&rte_cdx_bus, &driver->driver);
 }
 
 /* unregister a driver */
@@ -371,7 +371,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_cdx_unregister)
 void
 rte_cdx_unregister(struct rte_cdx_driver *driver)
 {
-	rte_bus_remove_driver(&rte_cdx_bus.bus, &driver->driver);
+	rte_bus_remove_driver(&rte_cdx_bus, &driver->driver);
 }
 
 /*
@@ -412,7 +412,7 @@ cdx_unplug(struct rte_device *dev)
 
 	ret = cdx_detach_dev(cdx_dev);
 	if (ret == 0) {
-		rte_bus_remove_device(&rte_cdx_bus.bus, &cdx_dev->device);
+		rte_bus_remove_device(&rte_cdx_bus, &cdx_dev->device);
 		rte_devargs_remove(dev->devargs);
 		free(cdx_dev);
 	}
@@ -440,27 +440,25 @@ cdx_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 static enum rte_iova_mode
 cdx_get_iommu_class(void)
 {
-	if (TAILQ_EMPTY(&rte_cdx_bus.bus.device_list))
+	if (TAILQ_EMPTY(&rte_cdx_bus.device_list))
 		return RTE_IOVA_DC;
 
 	return RTE_IOVA_VA;
 }
 
-struct rte_cdx_bus rte_cdx_bus = {
-	.bus = {
-		.scan = cdx_scan,
-		.probe = rte_bus_generic_probe,
-		.find_device = rte_bus_generic_find_device,
-		.match = cdx_bus_match,
-		.probe_device = cdx_probe_device,
-		.unplug = cdx_unplug,
-		.parse = cdx_parse,
-		.dma_map = cdx_dma_map,
-		.dma_unmap = cdx_dma_unmap,
-		.get_iommu_class = cdx_get_iommu_class,
-		.dev_iterate = rte_bus_generic_dev_iterate,
-	},
+static struct rte_bus rte_cdx_bus = {
+	.scan = cdx_scan,
+	.probe = rte_bus_generic_probe,
+	.find_device = rte_bus_generic_find_device,
+	.match = cdx_bus_match,
+	.probe_device = cdx_probe_device,
+	.unplug = cdx_unplug,
+	.parse = cdx_parse,
+	.dma_map = cdx_dma_map,
+	.dma_unmap = cdx_dma_unmap,
+	.get_iommu_class = cdx_get_iommu_class,
+	.dev_iterate = rte_bus_generic_dev_iterate,
 };
 
-RTE_REGISTER_BUS(cdx, rte_cdx_bus.bus);
+RTE_REGISTER_BUS(cdx, rte_cdx_bus);
 RTE_LOG_REGISTER_DEFAULT(cdx_logtype_bus, NOTICE);

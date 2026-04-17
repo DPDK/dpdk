@@ -15,14 +15,7 @@
 #include <rte_eal_paging.h>
 #include <rte_vmbus_reg.h>
 
-/**
- * Structure describing the VM bus
- */
-struct rte_vmbus_bus {
-	struct rte_bus bus;               /**< Inherit the generic class */
-};
-
-extern struct rte_vmbus_bus rte_vmbus_bus;
+extern struct rte_bus rte_vmbus_bus;
 
 extern int vmbus_logtype_bus;
 #define RTE_LOGTYPE_VMBUS_BUS vmbus_logtype_bus

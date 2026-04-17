@@ -57,10 +57,6 @@
 #define DPAA_MAX_PUSH_MODE_QUEUE 8
 #define DPAA_DEFAULT_PUSH_MODE_QUEUE 4
 
-struct rte_dpaa_bus {
-	struct rte_bus bus;
-};
-
 struct rte_dpaa_bus_private {
 	int device_count;
 	int detected;
@@ -69,7 +65,7 @@ struct rte_dpaa_bus_private {
 	RTE_ATOMIC(uint16_t) push_rxq_num;
 };
 
-static struct rte_dpaa_bus rte_dpaa_bus;
+static struct rte_bus rte_dpaa_bus;
 static struct rte_dpaa_bus_private dpaa_bus;
 static struct netcfg_info *dpaa_netcfg;
 
@@ -168,17 +164,17 @@ dpaa_add_to_device_list(struct rte_dpaa_device *newdev)
 	int comp, inserted = 0;
 	struct rte_dpaa_device *dev = NULL;
 
-	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus.bus) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus) {
 		comp = compare_dpaa_devices(newdev, dev);
 		if (comp < 0) {
-			rte_bus_insert_device(&rte_dpaa_bus.bus, &dev->device, &newdev->device);
+			rte_bus_insert_device(&rte_dpaa_bus, &dev->device, &newdev->device);
 			inserted = 1;
 			break;
 		}
 	}
 
 	if (!inserted)
-		rte_bus_add_device(&rte_dpaa_bus.bus, &newdev->device);
+		rte_bus_add_device(&rte_dpaa_bus, &newdev->device);
 }
 
 /*
@@ -253,7 +249,7 @@ dpaa_create_device_list(void)
 				(fman_intf->fman->idx + 1), fman_intf->mac_idx);
 		}
 		dev->device.name = dev->name;
-		dev->device.devargs = rte_bus_find_devargs(&rte_dpaa_bus.bus, dev->name);
+		dev->device.devargs = rte_bus_find_devargs(&rte_dpaa_bus, dev->name);
 		if (dev->device.devargs != NULL)
 			DPAA_BUS_INFO("**Devargs matched %s", dev->name);
 
@@ -303,7 +299,7 @@ dpaa_create_device_list(void)
 		sprintf(dev->name, "dpaa_sec-%d", i+1);
 		DPAA_BUS_LOG(INFO, "%s cryptodev added", dev->name);
 		dev->device.name = dev->name;
-		dev->device.devargs = rte_bus_find_devargs(&rte_dpaa_bus.bus, dev->name);
+		dev->device.devargs = rte_bus_find_devargs(&rte_dpaa_bus, dev->name);
 		if (dev->device.devargs != NULL)
 			DPAA_BUS_INFO("**Devargs matched %s", dev->name);
 
@@ -329,7 +325,7 @@ qdma_dpaa:
 		sprintf(dev->name, "dpaa_qdma-%d", i+1);
 		DPAA_BUS_LOG(INFO, "%s qdma device added", dev->name);
 		dev->device.name = dev->name;
-		dev->device.devargs = rte_bus_find_devargs(&rte_dpaa_bus.bus, dev->name);
+		dev->device.devargs = rte_bus_find_devargs(&rte_dpaa_bus, dev->name);
 		if (dev->device.devargs != NULL)
 			DPAA_BUS_INFO("**Devargs matched %s", dev->name);
 
@@ -349,8 +345,8 @@ dpaa_clean_device_list(void)
 {
 	struct rte_dpaa_device *dev = NULL;
 
-	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus.bus) {
-		rte_bus_remove_device(&rte_dpaa_bus.bus, &dev->device);
+	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus) {
+		rte_bus_remove_device(&rte_dpaa_bus, &dev->device);
 		rte_intr_instance_free(dev->intr_handle);
 		free(dev);
 		dev = NULL;
@@ -583,7 +579,7 @@ rte_dpaa_driver_register(struct rte_dpaa_driver *driver)
 
 	BUS_INIT_FUNC_TRACE();
 
-	rte_bus_add_driver(&rte_dpaa_bus.bus, &driver->driver);
+	rte_bus_add_driver(&rte_dpaa_bus, &driver->driver);
 }
 
 /* un-register a dpaa bus based dpaa driver */
@@ -593,7 +589,7 @@ rte_dpaa_driver_unregister(struct rte_dpaa_driver *driver)
 {
 	BUS_INIT_FUNC_TRACE();
 
-	rte_bus_remove_driver(&rte_dpaa_bus.bus, &driver->driver);
+	rte_bus_remove_driver(&rte_dpaa_bus, &driver->driver);
 }
 
 static bool
@@ -760,7 +756,7 @@ rte_dpaa_bus_scan(void)
 	process_once = 1;
 
 	/* If no device present on DPAA bus nothing needs to be done */
-	if (TAILQ_EMPTY(&rte_dpaa_bus.bus.device_list))
+	if (TAILQ_EMPTY(&rte_dpaa_bus.device_list))
 		return 0;
 
 	/* Register DPAA mempool ops only if any DPAA device has
@@ -768,7 +764,7 @@ rte_dpaa_bus_scan(void)
 	 */
 	rte_mbuf_set_platform_mempool_ops(DPAA_MEMPOOL_OPS_NAME);
 
-	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus.bus) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus) {
 		if (dev->device_type == FSL_DPAA_ETH) {
 			ret = rte_dpaa_setup_intr(dev->intr_handle);
 			if (ret)
@@ -816,7 +812,7 @@ dpaa_bus_cleanup(void)
 	struct rte_dpaa_device *dev;
 
 	BUS_INIT_FUNC_TRACE();
-	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus.bus) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus) {
 		const struct rte_dpaa_driver *drv;
 		int ret = 0;
 
@@ -859,19 +855,17 @@ RTE_FINI_PRIO(dpaa_cleanup, 102)
 	DPAA_BUS_DEBUG("Worker thread clean up done");
 }
 
-static struct rte_dpaa_bus rte_dpaa_bus = {
-	.bus = {
-		.scan = rte_dpaa_bus_scan,
-		.probe = rte_bus_generic_probe,
-		.parse = rte_dpaa_bus_parse,
-		.dev_compare = dpaa_bus_dev_compare,
-		.find_device = rte_bus_generic_find_device,
-		.get_iommu_class = rte_dpaa_get_iommu_class,
-		.match = dpaa_bus_match,
-		.probe_device = dpaa_bus_probe_device,
-		.dev_iterate = rte_bus_generic_dev_iterate,
-		.cleanup = dpaa_bus_cleanup,
-	},
+static struct rte_bus rte_dpaa_bus = {
+	.scan = rte_dpaa_bus_scan,
+	.probe = rte_bus_generic_probe,
+	.parse = rte_dpaa_bus_parse,
+	.dev_compare = dpaa_bus_dev_compare,
+	.find_device = rte_bus_generic_find_device,
+	.get_iommu_class = rte_dpaa_get_iommu_class,
+	.match = dpaa_bus_match,
+	.probe_device = dpaa_bus_probe_device,
+	.dev_iterate = rte_bus_generic_dev_iterate,
+	.cleanup = dpaa_bus_cleanup,
 };
 
 static struct rte_dpaa_bus_private dpaa_bus = {
@@ -879,5 +873,5 @@ static struct rte_dpaa_bus_private dpaa_bus = {
 	.device_count = 0,
 };
 
-RTE_REGISTER_BUS(dpaa_bus, rte_dpaa_bus.bus);
+RTE_REGISTER_BUS(dpaa_bus, rte_dpaa_bus);
 RTE_LOG_REGISTER_DEFAULT(dpaa_logtype_bus, NOTICE);

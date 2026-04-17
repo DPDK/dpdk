@@ -9,13 +9,6 @@
 
 #include <bus_fslmc_driver.h>
 
-/*
- * FSLMC bus
- */
-struct rte_fslmc_bus {
-	struct rte_bus bus;     /**< Generic Bus object */
-};
-
-extern struct rte_fslmc_bus rte_fslmc_bus;
+extern struct rte_bus rte_fslmc_bus;
 
 #endif /* BUS_FSLMC_PRIVATE_H */

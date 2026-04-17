@@ -25,7 +25,6 @@ extern "C" {
 /* Forward declarations */
 struct rte_cdx_device;
 struct rte_cdx_driver;
-struct rte_cdx_bus;
 
 #define RTE_CDX_BUS_DEVICES_PATH "/sys/bus/cdx/devices"
 

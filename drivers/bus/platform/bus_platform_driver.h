@@ -24,7 +24,6 @@ extern "C" {
 #endif
 
 /* Forward declarations */
-struct rte_platform_bus;
 struct rte_platform_device;
 struct rte_platform_driver;
 

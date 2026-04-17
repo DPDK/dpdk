@@ -14,15 +14,6 @@
 
 #include "bus_platform_driver.h"
 
-extern struct rte_platform_bus platform_bus;
-
-/*
- * Structure describing platform bus.
- */
-struct rte_platform_bus {
-	struct rte_bus bus; /* Core bus */
-};
-
 extern int platform_bus_logtype;
 #define RTE_LOGTYPE_PLATFORM_BUS platform_bus_logtype
 #define PLATFORM_LOG_LINE(level, ...) \

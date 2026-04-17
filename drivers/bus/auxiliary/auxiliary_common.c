@@ -56,7 +56,7 @@ auxiliary_scan(void)
 void
 auxiliary_on_scan(struct rte_auxiliary_device *aux_dev)
 {
-	aux_dev->device.devargs = rte_bus_find_devargs(&auxiliary_bus.bus, aux_dev->name);
+	aux_dev->device.devargs = rte_bus_find_devargs(&auxiliary_bus, aux_dev->name);
 }
 
 static bool
@@ -156,7 +156,7 @@ auxiliary_parse(const char *name, void *addr)
 	if (strlen(name) == 0)
 		return 0;
 
-	RTE_BUS_FOREACH_DRV(drv, &auxiliary_bus.bus) {
+	RTE_BUS_FOREACH_DRV(drv, &auxiliary_bus) {
 		if (drv->match(name))
 			break;
 	}
@@ -170,7 +170,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_auxiliary_register)
 void
 rte_auxiliary_register(struct rte_auxiliary_driver *driver)
 {
-	rte_bus_add_driver(&auxiliary_bus.bus, &driver->driver);
+	rte_bus_add_driver(&auxiliary_bus, &driver->driver);
 }
 
 /* Unregister a driver */
@@ -178,7 +178,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_auxiliary_unregister)
 void
 rte_auxiliary_unregister(struct rte_auxiliary_driver *driver)
 {
-	rte_bus_remove_driver(&auxiliary_bus.bus, &driver->driver);
+	rte_bus_remove_driver(&auxiliary_bus, &driver->driver);
 }
 
 static int
@@ -189,7 +189,7 @@ auxiliary_unplug(struct rte_device *dev)
 
 	ret = rte_auxiliary_driver_remove_dev(adev);
 	if (ret == 0) {
-		rte_bus_remove_device(&auxiliary_bus.bus, &adev->device);
+		rte_bus_remove_device(&auxiliary_bus, &adev->device);
 		rte_devargs_remove(dev->devargs);
 		rte_intr_instance_free(adev->intr_handle);
 		free(adev);
@@ -203,7 +203,7 @@ auxiliary_cleanup(void)
 	struct rte_auxiliary_device *dev;
 	int error = 0;
 
-	RTE_BUS_FOREACH_DEV(dev, &auxiliary_bus.bus) {
+	RTE_BUS_FOREACH_DEV(dev, &auxiliary_bus) {
 		int ret;
 
 		if (!rte_dev_is_probed(&dev->device))
@@ -250,7 +250,7 @@ auxiliary_get_iommu_class(void)
 {
 	const struct rte_auxiliary_driver *drv;
 
-	RTE_BUS_FOREACH_DRV(drv, &auxiliary_bus.bus) {
+	RTE_BUS_FOREACH_DRV(drv, &auxiliary_bus) {
 		if ((drv->drv_flags & RTE_AUXILIARY_DRV_NEED_IOVA_AS_VA) > 0)
 			return RTE_IOVA_VA;
 	}
@@ -258,22 +258,20 @@ auxiliary_get_iommu_class(void)
 	return RTE_IOVA_DC;
 }
 
-struct rte_auxiliary_bus auxiliary_bus = {
-	.bus = {
-		.scan = auxiliary_scan,
-		.probe = rte_bus_generic_probe,
-		.cleanup = auxiliary_cleanup,
-		.find_device = rte_bus_generic_find_device,
-		.match = auxiliary_bus_match,
-		.probe_device = auxiliary_probe_device,
-		.unplug = auxiliary_unplug,
-		.parse = auxiliary_parse,
-		.dma_map = auxiliary_dma_map,
-		.dma_unmap = auxiliary_dma_unmap,
-		.get_iommu_class = auxiliary_get_iommu_class,
-		.dev_iterate = rte_bus_generic_dev_iterate,
-	},
+struct rte_bus auxiliary_bus = {
+	.scan = auxiliary_scan,
+	.probe = rte_bus_generic_probe,
+	.cleanup = auxiliary_cleanup,
+	.find_device = rte_bus_generic_find_device,
+	.match = auxiliary_bus_match,
+	.probe_device = auxiliary_probe_device,
+	.unplug = auxiliary_unplug,
+	.parse = auxiliary_parse,
+	.dma_map = auxiliary_dma_map,
+	.dma_unmap = auxiliary_dma_unmap,
+	.get_iommu_class = auxiliary_get_iommu_class,
+	.dev_iterate = rte_bus_generic_dev_iterate,
 };
 
-RTE_REGISTER_BUS(auxiliary, auxiliary_bus.bus);
+RTE_REGISTER_BUS(auxiliary, auxiliary_bus);
 RTE_LOG_REGISTER_DEFAULT(auxiliary_bus_logtype, NOTICE);

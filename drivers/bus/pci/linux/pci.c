@@ -321,19 +321,18 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 		return 0;
 	}
 	/* device is valid, add in list (sorted) */
-	if (TAILQ_EMPTY(&rte_pci_bus.bus.device_list)) {
-		rte_bus_add_device(&rte_pci_bus.bus, &dev->device);
+	if (TAILQ_EMPTY(&rte_pci_bus.device_list)) {
+		rte_bus_add_device(&rte_pci_bus, &dev->device);
 	} else {
 		struct rte_pci_device *dev2;
 
-		RTE_BUS_FOREACH_DEV(dev2, &rte_pci_bus.bus) {
+		RTE_BUS_FOREACH_DEV(dev2, &rte_pci_bus) {
 			ret = rte_pci_addr_cmp(&dev->addr, &dev2->addr);
 			if (ret > 0)
 				continue;
 
 			if (ret < 0) {
-				rte_bus_insert_device(&rte_pci_bus.bus, &dev2->device,
-					&dev->device);
+				rte_bus_insert_device(&rte_pci_bus, &dev2->device, &dev->device);
 			} else { /* already registered */
 				if (!rte_dev_is_probed(&dev2->device)) {
 					dev2->kdrv = dev->kdrv;
@@ -377,7 +376,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 			return 0;
 		}
 
-		rte_bus_add_device(&rte_pci_bus.bus, &dev->device);
+		rte_bus_add_device(&rte_pci_bus, &dev->device);
 	}
 
 	return 0;
@@ -458,7 +457,7 @@ rte_pci_scan(void)
 		if (parse_pci_addr_format(e->d_name, sizeof(e->d_name), &addr) != 0)
 			continue;
 
-		if (rte_bus_device_is_ignored(&rte_pci_bus.bus, e->d_name))
+		if (rte_bus_device_is_ignored(&rte_pci_bus, e->d_name))
 			continue;
 
 		snprintf(dirname, sizeof(dirname), "%s/%s",

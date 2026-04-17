@@ -1554,12 +1554,12 @@ fslmc_vfio_close_group(void)
 		return -EIO;
 	}
 
-	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus) {
 		if (dev->device.devargs &&
 		    dev->device.devargs->policy == RTE_DEV_BLOCKED) {
 			DPAA2_BUS_LOG(DEBUG, "%s Blacklisted, skipping",
 				      dev->device.name);
-			rte_bus_remove_device(&rte_fslmc_bus.bus, &dev->device);
+			rte_bus_remove_device(&rte_fslmc_bus, &dev->device);
 				continue;
 		}
 		switch (dev->dev_type) {
@@ -1599,7 +1599,7 @@ fslmc_vfio_process_group(void)
 	bool is_dpmcp_in_blocklist = false, is_dpio_in_blocklist = false;
 	int dpmcp_count = 0, dpio_count = 0, current_device;
 
-	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus) {
 		if (dev->dev_type == DPAA2_MPORTAL) {
 			dpmcp_count++;
 			if (dev->device.devargs &&
@@ -1616,14 +1616,14 @@ fslmc_vfio_process_group(void)
 
 	/* Search the MCP as that should be initialized first. */
 	current_device = 0;
-	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus) {
 		if (dev->dev_type == DPAA2_MPORTAL) {
 			current_device++;
 			if (dev->device.devargs &&
 			    dev->device.devargs->policy == RTE_DEV_BLOCKED) {
 				DPAA2_BUS_LOG(DEBUG, "%s Blocked, skipping",
 					      dev->device.name);
-				rte_bus_remove_device(&rte_fslmc_bus.bus,
+				rte_bus_remove_device(&rte_fslmc_bus,
 						&dev->device);
 				continue;
 			}
@@ -1632,7 +1632,7 @@ fslmc_vfio_process_group(void)
 			    !is_dpmcp_in_blocklist) {
 				if (dpmcp_count == 1 ||
 				    current_device != dpmcp_count) {
-					rte_bus_remove_device(&rte_fslmc_bus.bus,
+					rte_bus_remove_device(&rte_fslmc_bus,
 						     &dev->device);
 					continue;
 				}
@@ -1647,7 +1647,7 @@ fslmc_vfio_process_group(void)
 				found_mportal = 1;
 			}
 
-			rte_bus_remove_device(&rte_fslmc_bus.bus, &dev->device);
+			rte_bus_remove_device(&rte_fslmc_bus, &dev->device);
 			free(dev);
 			dev = NULL;
 			/* Ideally there is only a single dpmcp, but in case
@@ -1666,26 +1666,26 @@ fslmc_vfio_process_group(void)
 	 * other devices.
 	 */
 	current_device = 0;
-	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus) {
 		if (dev->dev_type == DPAA2_DPRC) {
 			ret = fslmc_process_iodevices(dev);
 			if (ret) {
 				DPAA2_BUS_ERR("Unable to process dprc");
 				return ret;
 			}
-			rte_bus_remove_device(&rte_fslmc_bus.bus, &dev->device);
+			rte_bus_remove_device(&rte_fslmc_bus, &dev->device);
 		}
 	}
 
 	current_device = 0;
-	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
+	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus) {
 		if (dev->dev_type == DPAA2_IO)
 			current_device++;
 		if (dev->device.devargs &&
 		    dev->device.devargs->policy == RTE_DEV_BLOCKED) {
 			DPAA2_BUS_LOG(DEBUG, "%s Blocked, skipping",
 				      dev->device.name);
-			rte_bus_remove_device(&rte_fslmc_bus.bus, &dev->device);
+			rte_bus_remove_device(&rte_fslmc_bus, &dev->device);
 			continue;
 		}
 		if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
@@ -1693,7 +1693,7 @@ fslmc_vfio_process_group(void)
 		    dev->dev_type != DPAA2_CRYPTO &&
 		    dev->dev_type != DPAA2_QDMA &&
 		    dev->dev_type != DPAA2_IO) {
-			rte_bus_remove_device(&rte_fslmc_bus.bus, &dev->device);
+			rte_bus_remove_device(&rte_fslmc_bus, &dev->device);
 			continue;
 		}
 		switch (dev->dev_type) {
@@ -1735,13 +1735,13 @@ fslmc_vfio_process_group(void)
 			if (!is_dpio_in_blocklist && dpio_count > 1) {
 				if (rte_eal_process_type() == RTE_PROC_SECONDARY
 				    && current_device != dpio_count) {
-					rte_bus_remove_device(&rte_fslmc_bus.bus,
+					rte_bus_remove_device(&rte_fslmc_bus,
 						     &dev->device);
 					break;
 				}
 				if (rte_eal_process_type() == RTE_PROC_PRIMARY
 				    && current_device == dpio_count) {
-					rte_bus_remove_device(&rte_fslmc_bus.bus,
+					rte_bus_remove_device(&rte_fslmc_bus,
 						     &dev->device);
 					break;
 				}
@@ -1760,7 +1760,7 @@ fslmc_vfio_process_group(void)
 			/* Unknown - ignore */
 			DPAA2_BUS_DEBUG("Found unknown device (%s)",
 					dev->device.name);
-			rte_bus_remove_device(&rte_fslmc_bus.bus, &dev->device);
+			rte_bus_remove_device(&rte_fslmc_bus, &dev->device);
 			free(dev);
 			dev = NULL;
 		}
