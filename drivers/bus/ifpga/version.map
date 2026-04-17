@@ -3,7 +3,6 @@ INTERNAL {
 
 	rte_ifpga_driver_register;
 	rte_ifpga_driver_unregister;
-	rte_ifpga_find_afu_by_name;
 
 	local: *;
 };
