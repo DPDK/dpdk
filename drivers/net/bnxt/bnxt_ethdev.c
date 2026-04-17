@@ -4716,7 +4716,7 @@ err:
 void bnxt_dev_reset_and_resume(void *arg)
 {
 	struct bnxt *bp = arg;
-	uint32_t us = US_PER_MS * bp->fw_reset_min_msecs;
+	uint64_t us = US_PER_MS * (uint64_t)bp->fw_reset_min_msecs;
 	uint16_t val = 0;
 	int rc;
 
@@ -4863,7 +4863,7 @@ static void bnxt_check_fw_health(void *arg)
 
 	info->last_reset_counter = val;
 
-	rte_eal_alarm_set(US_PER_MS * info->driver_polling_freq,
+	rte_eal_alarm_set(US_PER_MS * (uint64_t)info->driver_polling_freq,
 			  bnxt_check_fw_health, (void *)bp);
 
 	return;
@@ -4885,7 +4885,7 @@ reset:
 	else
 		wait_msec = info->normal_func_wait_period;
 
-	rte_eal_alarm_set(US_PER_MS * wait_msec,
+	rte_eal_alarm_set(US_PER_MS * (uint64_t)wait_msec,
 			  bnxt_fw_reset_cb, (void *)bp);
 }
 
@@ -4903,7 +4903,7 @@ void bnxt_schedule_fw_health_check(struct bnxt *bp)
 
 	polling_freq = bp->recovery_info->driver_polling_freq;
 
-	rte_eal_alarm_set(US_PER_MS * polling_freq,
+	rte_eal_alarm_set(US_PER_MS * (uint64_t)polling_freq,
 			  bnxt_check_fw_health, (void *)bp);
 	bp->flags |= BNXT_FLAG_FW_HEALTH_CHECK_SCHEDULED;
 
