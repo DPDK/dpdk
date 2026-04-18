@@ -491,7 +491,7 @@ mlx5_dev_to_pci_str(const struct rte_device *dev, char *addr, size_t size)
 		return 0;
 	}
 #ifdef RTE_EXEC_ENV_LINUX
-	return mlx5_auxiliary_get_pci_str(RTE_DEV_TO_AUXILIARY_CONST(dev),
+	return mlx5_auxiliary_get_pci_str(RTE_BUS_DEVICE(dev, const struct rte_auxiliary_device),
 			addr, size);
 #else
 	rte_errno = ENODEV;

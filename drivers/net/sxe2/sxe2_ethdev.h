@@ -292,9 +292,6 @@ struct sxe2_adapter {
 #define SXE2_DEV_PRIVATE_TO_ADAPTER(dev) \
 	((struct sxe2_adapter *)(dev)->data->dev_private)
 
-#define SXE2_DEV_TO_PCI(eth_dev) \
-		RTE_DEV_TO_PCI((eth_dev)->device)
-
 void *sxe2_pci_map_addr_get(struct sxe2_adapter *adapter,
 			    enum sxe2_pci_map_resource res_type,
 			    uint16_t idx_in_func);

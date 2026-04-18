@@ -3066,7 +3066,7 @@ hns3_tx_push_get_queue_tail_reg(struct rte_eth_dev *dev, uint16_t queue_id)
 #define HNS3_TX_PUSH_QUICK_DOORBELL_OFFSET	64
 #define HNS3_TX_PUSH_PCI_BAR_INDEX		4
 
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(dev->device, *pci_dev);
 	uint8_t bar_id = HNS3_TX_PUSH_PCI_BAR_INDEX;
 
 	/*

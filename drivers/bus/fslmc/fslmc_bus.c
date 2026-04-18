@@ -497,7 +497,7 @@ rte_fslmc_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 	 */
 
 	if (start != NULL) {
-		dstart = RTE_DEV_TO_FSLMC_CONST(start);
+		dstart = RTE_BUS_DEVICE(start, *dstart);
 		dev = TAILQ_NEXT(dstart, next);
 	} else {
 		dev = TAILQ_FIRST(&rte_fslmc_bus.device_list);
@@ -579,8 +579,7 @@ static int
 fslmc_bus_plug(struct rte_device *rte_dev)
 {
 	int ret = 0;
-	struct rte_dpaa2_device *dev = container_of(rte_dev,
-			struct rte_dpaa2_device, device);
+	struct rte_dpaa2_device *dev = RTE_BUS_DEVICE(rte_dev, *dev);
 	struct rte_dpaa2_driver *drv;
 
 	TAILQ_FOREACH(drv, &rte_fslmc_bus.driver_list, next) {
@@ -615,8 +614,7 @@ fslmc_bus_plug(struct rte_device *rte_dev)
 static int
 fslmc_bus_unplug(struct rte_device *rte_dev)
 {
-	struct rte_dpaa2_device *dev = container_of(rte_dev,
-			struct rte_dpaa2_device, device);
+	struct rte_dpaa2_device *dev = RTE_BUS_DEVICE(rte_dev, *dev);
 	struct rte_dpaa2_driver *drv = dev->driver;
 
 	if (drv->remove != NULL) {
@@ -658,7 +656,7 @@ fslmc_bus_dev_iterate(const void *start, const char *str,
 	dev_name = dup + strlen("name=");
 
 	if (start != NULL) {
-		dstart = RTE_DEV_TO_FSLMC_CONST(start);
+		dstart = RTE_BUS_DEVICE(start, *dstart);
 		dev = TAILQ_NEXT(dstart, next);
 	} else {
 		dev = TAILQ_FIRST(&rte_fslmc_bus.device_list);

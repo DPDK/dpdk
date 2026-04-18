@@ -230,7 +230,7 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	dpaa_dev = container_of(rdev, struct rte_dpaa_device, device);
+	dpaa_dev = RTE_BUS_DEVICE(rdev, *dpaa_dev);
 	intr_handle = dpaa_dev->intr_handle;
 	__fif = container_of(fif, struct __fman_if, __if);
 
@@ -432,7 +432,7 @@ static void dpaa_interrupt_handler(void *param)
 	uint64_t buf;
 	int bytes_read;
 
-	dpaa_dev = container_of(rdev, struct rte_dpaa_device, device);
+	dpaa_dev = RTE_BUS_DEVICE(rdev, *dpaa_dev);
 	intr_handle = dpaa_dev->intr_handle;
 
 	if (rte_intr_fd_get(intr_handle) < 0)
@@ -530,7 +530,7 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 		}
 	}
 
-	dpaa_dev = container_of(rdev, struct rte_dpaa_device, device);
+	dpaa_dev = RTE_BUS_DEVICE(rdev, *dpaa_dev);
 	intr_handle = dpaa_dev->intr_handle;
 	__fif = container_of(fif, struct __fman_if, __if);
 
@@ -1269,8 +1269,7 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			struct rte_dpaa_device *dpaa_dev;
 			struct rte_device *rdev = dev->device;
 
-			dpaa_dev = container_of(rdev, struct rte_dpaa_device,
-				device);
+			dpaa_dev = RTE_BUS_DEVICE(rdev, *dpaa_dev);
 			dev->intr_handle = dpaa_dev->intr_handle;
 			if (rte_intr_vec_list_alloc(dev->intr_handle,
 					NULL, dpaa_push_queue_max_num())) {
@@ -2120,7 +2119,7 @@ dpaa_dev_init_secondary(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	dpaa_device = DEV_TO_DPAA_DEVICE(eth_dev->device);
+	dpaa_device = RTE_BUS_DEVICE(eth_dev->device, *dpaa_device);
 	dev_id = dpaa_device->id.dev_id;
 	cfg = dpaa_get_eth_port_cfg(dev_id);
 	fman_intf = cfg->fman_if;
@@ -2237,7 +2236,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	dpaa_device = DEV_TO_DPAA_DEVICE(eth_dev->device);
+	dpaa_device = RTE_BUS_DEVICE(eth_dev->device, *dpaa_device);
 	dev_id = dpaa_device->id.dev_id;
 	dpaa_intf = eth_dev->data->dev_private;
 	cfg = dpaa_get_eth_port_cfg(dev_id);

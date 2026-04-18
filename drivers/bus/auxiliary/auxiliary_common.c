@@ -281,7 +281,7 @@ auxiliary_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 	struct rte_auxiliary_device *adev;
 
 	if (start != NULL) {
-		pstart = RTE_DEV_TO_AUXILIARY_CONST(start);
+		pstart = RTE_BUS_DEVICE(start, *pstart);
 		adev = TAILQ_NEXT(pstart, next);
 	} else {
 		adev = TAILQ_FIRST(&auxiliary_bus.device_list);
@@ -299,13 +299,13 @@ auxiliary_plug(struct rte_device *dev)
 {
 	if (!auxiliary_dev_exists(dev->name))
 		return -ENOENT;
-	return auxiliary_probe_all_drivers(RTE_DEV_TO_AUXILIARY(dev));
+	return auxiliary_probe_all_drivers(RTE_BUS_DEVICE(dev, struct rte_auxiliary_device));
 }
 
 static int
 auxiliary_unplug(struct rte_device *dev)
 {
-	struct rte_auxiliary_device *adev = RTE_DEV_TO_AUXILIARY(dev);
+	struct rte_auxiliary_device *adev = RTE_BUS_DEVICE(dev, *adev);
 	int ret;
 
 	ret = rte_auxiliary_driver_remove_dev(adev);
@@ -342,7 +342,7 @@ auxiliary_cleanup(void)
 static int
 auxiliary_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
-	struct rte_auxiliary_device *aux_dev = RTE_DEV_TO_AUXILIARY(dev);
+	struct rte_auxiliary_device *aux_dev = RTE_BUS_DEVICE(dev, *aux_dev);
 
 	if (aux_dev->driver->dma_map == NULL) {
 		rte_errno = ENOTSUP;
@@ -355,7 +355,7 @@ static int
 auxiliary_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova,
 		    size_t len)
 {
-	struct rte_auxiliary_device *aux_dev = RTE_DEV_TO_AUXILIARY(dev);
+	struct rte_auxiliary_device *aux_dev = RTE_BUS_DEVICE(dev, *aux_dev);
 
 	if (aux_dev->driver->dma_unmap == NULL) {
 		rte_errno = ENOTSUP;

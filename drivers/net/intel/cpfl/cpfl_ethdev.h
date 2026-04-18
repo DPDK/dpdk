@@ -298,7 +298,7 @@ int vcpf_add_queues(struct cpfl_adapter_ext *adapter);
 int vcpf_del_queues(struct cpfl_adapter_ext *adapter);
 
 #define CPFL_DEV_TO_PCI(eth_dev)		\
-	RTE_DEV_TO_PCI((eth_dev)->device)
+	RTE_BUS_DEVICE((eth_dev)->device, struct rte_pci_device)
 #define CPFL_ADAPTER_TO_EXT(p)					\
 	container_of((p), struct cpfl_adapter_ext, base)
 #define CPFL_DEV_TO_VPORT(dev)					\

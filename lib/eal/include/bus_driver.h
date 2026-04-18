@@ -340,6 +340,36 @@ RTE_INIT_PRIO(businitfn_ ##nm, BUS) \
 __rte_internal
 void rte_bus_unregister(struct rte_bus *bus);
 
+/**
+ * Helper macro to convert a generic device pointer to a bus-specific device type.
+ * Uses typeof to automatically determine the bus-specific type from the second argument.
+ *
+ * @param dev
+ *   Generic rte_device pointer to convert
+ * @param bus_dev_type
+ *   Type specifier: either a struct type (e.g., struct rte_pci_device) or
+ *   a dereferenced pointer variable (e.g., *pdev) to infer the type automatically
+ * @return
+ *   Pointer to the bus-specific device structure containing this rte_device
+ */
+#define RTE_BUS_DEVICE(dev, bus_dev_type) \
+	container_of(dev, typeof(bus_dev_type), device)
+
+/**
+ * Helper macro to convert a generic driver pointer to a bus-specific driver type.
+ * Uses typeof to automatically determine the bus-specific type from the second argument.
+ *
+ * @param drv
+ *   Generic rte_driver pointer to convert
+ * @param bus_drv_type
+ *   Type specifier: either a struct type (e.g., struct rte_pci_driver) or
+ *   a dereferenced pointer variable (e.g., *pdrv) to infer the type automatically
+ * @return
+ *   Pointer to the bus-specific driver structure containing this rte_driver
+ */
+#define RTE_BUS_DRIVER(drv, bus_drv_type) \
+	container_of(drv, typeof(bus_drv_type), driver)
+
 #ifdef __cplusplus
 }
 #endif

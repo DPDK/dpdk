@@ -1167,7 +1167,7 @@ uint64_t bnxt_eth_rss_support(struct bnxt *bp)
 static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 				struct rte_eth_dev_info *dev_info)
 {
-	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(eth_dev->device);
+	struct rte_pci_device *pdev = RTE_BUS_DEVICE(eth_dev->device, *pdev);
 	struct bnxt *bp = eth_dev->data->dev_private;
 	uint16_t max_vnics, i, j, vpool, vrxq;
 	unsigned int max_rx_rings;

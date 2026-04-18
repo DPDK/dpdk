@@ -609,8 +609,7 @@ dpaa2_dev_recycle_config(struct rte_eth_dev *eth_dev)
 {
 	struct rte_device *dev = eth_dev->device;
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
-	struct rte_dpaa2_device *dpaa2_dev =
-			container_of(dev, struct rte_dpaa2_device, device);
+	struct rte_dpaa2_device *dpaa2_dev = RTE_BUS_DEVICE(dev, *dpaa2_dev);
 	struct fsl_mc_io *dpni_dev = eth_dev->process_private;
 	struct dpni_port_cfg port_cfg;
 	int ret;
@@ -677,8 +676,7 @@ dpaa2_dev_recycle_deconfig(struct rte_eth_dev *eth_dev)
 {
 	struct rte_device *dev = eth_dev->device;
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
-	struct rte_dpaa2_device *dpaa2_dev =
-			container_of(dev, struct rte_dpaa2_device, device);
+	struct rte_dpaa2_device *dpaa2_dev = RTE_BUS_DEVICE(dev, *dpaa2_dev);
 	struct fsl_mc_io *dpni_dev = eth_dev->process_private;
 	struct dpni_port_cfg port_cfg;
 	int ret = 0;

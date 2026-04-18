@@ -119,16 +119,6 @@ struct rte_platform_driver {
 /** Device driver needs IOVA as VA and cannot work with IOVA as PA */
 #define RTE_PLATFORM_DRV_NEED_IOVA_AS_VA 0x0001
 
-/**
- * @internal
- * Helper macros used to convert core device to platform device.
- */
-#define RTE_DEV_TO_PLATFORM_DEV(ptr) \
-	container_of(ptr, struct rte_platform_device, device)
-
-#define RTE_DEV_TO_PLATFORM_DEV_CONST(ptr) \
-	container_of(ptr, const struct rte_platform_device, device)
-
 /** Helper for platform driver registration. */
 #define RTE_PMD_REGISTER_PLATFORM(nm, platform_drv) \
 static const char *pdrvinit_ ## nm ## _alias; \

@@ -2764,7 +2764,7 @@ cpfl_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 	uint8_t p2p_q_vc_out_info[IDPF_DFLT_MBX_BUF_SIZE] = {0};
 	struct cpfl_vport_id vi;
 	struct cpchnl2_vport_id v_id;
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(dev->device, *pci_dev);
 	int ret = 0;
 
 	dev->dev_ops = &cpfl_eth_dev_ops;
@@ -2836,7 +2836,7 @@ cpfl_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 	}
 	/* get the vport info */
 	if (adapter->base.hw.device_id == IXD_DEV_ID_VCPF) {
-		pci_dev = RTE_DEV_TO_PCI(dev->device);
+		pci_dev = RTE_BUS_DEVICE(dev->device, *pci_dev);
 		vi.func_type = VCPF_CPCHNL2_FTYPE_LAN_VF;
 		vi.pf_id = CPFL_HOST0_CPF_ID;
 		vi.vf_id = pci_dev->addr.function;

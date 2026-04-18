@@ -481,7 +481,7 @@ cnxk_cpt_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	if (dev->data->queue_pairs[qp_id] != NULL)
 		cnxk_cpt_queue_pair_release(dev, qp_id);
 
-	pci_dev = RTE_DEV_TO_PCI(dev->device);
+	pci_dev = RTE_BUS_DEVICE(dev->device, *pci_dev);
 
 	if (pci_dev->mem_resource[2].addr == NULL) {
 		plt_err("Invalid PCI mem address");

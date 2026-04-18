@@ -835,7 +835,7 @@ rte_dpaa_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 	 */
 
 	if (start != NULL) {
-		dstart = RTE_DEV_TO_DPAA_CONST(start);
+		dstart = RTE_BUS_DEVICE(start, *dstart);
 		dev = TAILQ_NEXT(dstart, next);
 	} else {
 		dev = TAILQ_FIRST(&rte_dpaa_bus.device_list);
@@ -908,7 +908,7 @@ dpaa_bus_dev_iterate(const void *start, const char *str,
 	dev_name = dup + strlen("name=");
 
 	if (start != NULL) {
-		dstart = RTE_DEV_TO_DPAA_CONST(start);
+		dstart = RTE_BUS_DEVICE(start, *dstart);
 		dev = TAILQ_NEXT(dstart, next);
 	} else {
 		dev = TAILQ_FIRST(&rte_dpaa_bus.device_list);

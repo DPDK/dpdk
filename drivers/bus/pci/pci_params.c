@@ -49,7 +49,7 @@ pci_dev_match(const struct rte_device *dev,
 	if (kvlist == NULL)
 		/* Empty string matches everything. */
 		return 0;
-	pdev = RTE_DEV_TO_PCI_CONST(dev);
+	pdev = RTE_BUS_DEVICE(dev, *pdev);
 	/* if any field does not match. */
 	if (rte_kvargs_process(kvlist, pci_params_keys[RTE_PCI_PARAM_ADDR],
 			       &pci_addr_kv_cmp,

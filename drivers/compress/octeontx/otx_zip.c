@@ -142,7 +142,7 @@ zipvf_push_command(struct zipvf_qp *qp, union zip_inst_s *cmd)
 int
 zipvf_create(struct rte_compressdev *compressdev)
 {
-	struct   rte_pci_device *pdev = RTE_DEV_TO_PCI(compressdev->device);
+	struct   rte_pci_device *pdev = RTE_BUS_DEVICE(compressdev->device, *pdev);
 	struct   zip_vf *zipvf = NULL;
 	char     *dev_name = compressdev->data->name;
 	void     *vbar0;

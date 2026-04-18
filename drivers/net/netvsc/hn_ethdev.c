@@ -1638,7 +1638,7 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	rte_spinlock_init(&hv->hotadd_lock);
 	LIST_INIT(&hv->hotadd_list);
 
-	vmbus = container_of(device, struct rte_vmbus_device, device);
+	vmbus = RTE_BUS_DEVICE(device, *vmbus);
 	eth_dev->dev_ops = &hn_eth_dev_ops;
 	eth_dev->rx_queue_count = hn_dev_rx_queue_count;
 	eth_dev->rx_descriptor_status = hn_dev_rx_queue_status;

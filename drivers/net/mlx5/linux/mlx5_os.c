@@ -171,7 +171,8 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 	}
 	memset(&sh->dev_cap, 0, sizeof(struct mlx5_dev_cap));
 	if (mlx5_dev_is_pci(cdev->dev))
-		sh->dev_cap.vf = mlx5_dev_is_vf_pci(RTE_DEV_TO_PCI(cdev->dev));
+		sh->dev_cap.vf = mlx5_dev_is_vf_pci(RTE_BUS_DEVICE(cdev->dev,
+			struct rte_pci_device));
 	else
 		sh->dev_cap.sf = 1;
 	sh->dev_cap.max_qp_wr = attr_ex.orig_attr.max_qp_wr;
@@ -2488,7 +2489,7 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 	 *  >= 0 - MPESW device. Value is the port index of the MPESW owner.
 	 */
 	int mpesw = MLX5_MPESW_PORT_INVALID;
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(cdev->dev);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(cdev->dev, *pci_dev);
 	struct mlx5_dev_spawn_data *list = NULL;
 	struct rte_eth_devargs eth_da = *req_eth_da;
 	struct rte_pci_addr owner_pci = pci_dev->addr; /* Owner PF. */
@@ -3051,7 +3052,7 @@ static int
 mlx5_os_pci_probe(struct mlx5_common_device *cdev,
 		  struct mlx5_kvargs_ctrl *mkvlist)
 {
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(cdev->dev);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(cdev->dev, *pci_dev);
 	struct rte_eth_devargs eth_da = { .nb_ports = 0 };
 	int ret = 0;
 	uint16_t p;
@@ -3093,7 +3094,7 @@ mlx5_os_auxiliary_probe(struct mlx5_common_device *cdev,
 		.mpesw_port = MLX5_MPESW_PORT_INVALID,
 	};
 	struct rte_device *dev = cdev->dev;
-	struct rte_auxiliary_device *adev = RTE_DEV_TO_AUXILIARY(dev);
+	struct rte_auxiliary_device *adev = RTE_BUS_DEVICE(dev, *adev);
 	struct rte_eth_dev *eth_dev;
 	int ret = 0;
 

@@ -474,7 +474,7 @@ cdx_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 	struct rte_cdx_device *cdx_dev;
 
 	if (start != NULL) {
-		cdx_start = RTE_DEV_TO_CDX_DEV_CONST(start);
+		cdx_start = RTE_BUS_DEVICE(start, *cdx_start);
 		cdx_dev = TAILQ_NEXT(cdx_start, next);
 	} else {
 		cdx_dev = TAILQ_FIRST(&rte_cdx_bus.device_list);
@@ -528,13 +528,13 @@ cdx_detach_dev(struct rte_cdx_device *dev)
 static int
 cdx_plug(struct rte_device *dev)
 {
-	return cdx_probe_all_drivers(RTE_DEV_TO_CDX_DEV(dev));
+	return cdx_probe_all_drivers(RTE_BUS_DEVICE(dev, struct rte_cdx_device));
 }
 
 static int
 cdx_unplug(struct rte_device *dev)
 {
-	struct rte_cdx_device *cdx_dev = RTE_DEV_TO_CDX_DEV(dev);
+	struct rte_cdx_device *cdx_dev = RTE_BUS_DEVICE(dev, *cdx_dev);
 	int ret;
 
 	ret = cdx_detach_dev(cdx_dev);

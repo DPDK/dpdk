@@ -719,9 +719,10 @@ mlx5_os_get_ibv_dev(const struct rte_device *dev)
 	struct ibv_device *ibv;
 
 	if (mlx5_dev_is_pci(dev))
-		ibv = mlx5_os_get_ibv_device(RTE_DEV_TO_PCI_CONST(dev));
+		ibv = mlx5_os_get_ibv_device(RTE_BUS_DEVICE(dev, const struct rte_pci_device));
 	else
-		ibv = mlx5_get_aux_ibv_device(RTE_DEV_TO_AUXILIARY_CONST(dev));
+		ibv = mlx5_get_aux_ibv_device(RTE_BUS_DEVICE(dev,
+			const struct rte_auxiliary_device));
 	if (ibv == NULL) {
 		rte_errno = ENODEV;
 		DRV_LOG(ERR, "Verbs device not found: %s", dev->name);
