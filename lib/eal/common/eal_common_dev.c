@@ -179,6 +179,7 @@ int
 local_dev_probe(const char *devargs, struct rte_device **new_dev)
 {
 	struct rte_device *dev;
+	struct rte_driver *drv;
 	struct rte_devargs *da;
 	int ret;
 
@@ -191,7 +192,7 @@ local_dev_probe(const char *devargs, struct rte_device **new_dev)
 	if (ret)
 		goto err_devarg;
 
-	if (da->bus->plug == NULL) {
+	if (da->bus->probe_device == NULL) {
 		EAL_LOG(ERR, "Function plug not supported by bus (%s)",
 			da->bus->name);
 		ret = -ENOTSUP;
@@ -219,9 +220,16 @@ local_dev_probe(const char *devargs, struct rte_device **new_dev)
 	 * those devargs shouldn't be removed manually anymore.
 	 */
 
-	ret = dev->bus->plug(dev);
-	if (ret > 0)
+	drv = NULL;
+next_driver:
+	drv = rte_bus_find_driver(dev->bus, drv, dev);
+	if (drv == NULL) {
 		ret = -ENOTSUP;
+	} else {
+		ret = dev->bus->probe_device(drv, dev);
+		if (ret > 0)
+			goto next_driver;
+	}
 
 	if (ret && !rte_dev_is_probed(dev)) { /* if hasn't ever succeeded */
 		EAL_LOG(ERR, "Driver cannot attach the device (%s)",

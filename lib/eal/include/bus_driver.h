@@ -86,6 +86,21 @@ typedef struct rte_device *
 typedef int (*rte_bus_plug_t)(struct rte_device *dev);
 
 /**
+ * Implementation specific probe function which is responsible for linking
+ * devices on that bus with applicable drivers.
+ *
+ * @param drv
+ *	Driver that matches the device.
+ * @param dev
+ *	Device pointer that was returned by a previous call to find_device.
+ *
+ * @return
+ *	0 on success.
+ *	!0 on error.
+ */
+typedef int (*rte_bus_probe_device_t)(struct rte_driver *drv, struct rte_device *dev);
+
+/**
  * Implementation specific remove function which is responsible for unlinking
  * devices on that bus from assigned driver.
  *
@@ -316,7 +331,7 @@ struct rte_bus {
 	rte_bus_probe_t probe;       /**< Probe devices on bus */
 	rte_bus_find_device_t find_device; /**< Find a device on the bus */
 	rte_bus_match_t match;       /**< Check if driver matches device */
-	rte_bus_plug_t plug;         /**< Probe single device for drivers */
+	rte_bus_probe_device_t probe_device; /**< Probe single device with driver */
 	rte_bus_unplug_t unplug;     /**< Remove single device from driver */
 	rte_bus_parse_t parse;       /**< Parse a device name */
 	rte_bus_dev_compare_t dev_compare; /**< Compare two device names */

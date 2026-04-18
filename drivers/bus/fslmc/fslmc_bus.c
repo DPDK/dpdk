@@ -411,7 +411,6 @@ rte_fslmc_probe(void)
 	int ret = 0;
 
 	struct rte_dpaa2_device *dev;
-	struct rte_dpaa2_driver *drv;
 
 	static const struct rte_mbuf_dynfield dpaa2_seqn_dynfield_desc = {
 		.name = DPAA2_SEQN_DYNFIELD_NAME,
@@ -456,25 +455,21 @@ rte_fslmc_probe(void)
 	}
 
 	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
-		RTE_BUS_FOREACH_DRV(drv, &rte_fslmc_bus.bus) {
-			if (!fslmc_bus_match(&drv->driver, &dev->device))
-				continue;
+		struct rte_driver *driver = NULL;
 
-			if (rte_dev_is_probed(&dev->device))
-				continue;
+		if (rte_bus_device_is_ignored(&rte_fslmc_bus.bus, dev->device.name))
+			continue;
 
-			if (rte_bus_device_is_ignored(&rte_fslmc_bus.bus, dev->device.name))
-				continue;
+next_driver:
+		driver = rte_bus_find_driver(&rte_fslmc_bus.bus, driver, &dev->device);
+		if (driver == NULL)
+			continue;
 
-			ret = drv->probe(drv, dev);
-			if (ret) {
-				DPAA2_BUS_ERR("Unable to probe");
-			} else {
-				dev->driver = drv;
-				dev->device.driver = &drv->driver;
-			}
-			break;
-		}
+		ret = rte_fslmc_bus.bus.probe_device(driver, &dev->device);
+		if (ret < 0)
+			DPAA2_BUS_ERR("Failed to probe device %s", dev->device.name);
+		else if (ret > 0)
+			goto next_driver;
 	}
 
 	return 0;
@@ -540,35 +535,29 @@ rte_dpaa2_get_iommu_class(void)
 }
 
 static int
-fslmc_bus_plug(struct rte_device *rte_dev)
+fslmc_bus_probe_device(struct rte_driver *driver, struct rte_device *rte_dev)
 {
-	int ret = 0;
 	struct rte_dpaa2_device *dev = RTE_BUS_DEVICE(rte_dev, *dev);
-	struct rte_dpaa2_driver *drv;
+	struct rte_dpaa2_driver *drv = RTE_BUS_DRIVER(driver, *drv);
+	int ret = 0;
 
-	RTE_BUS_FOREACH_DRV(drv, &rte_fslmc_bus.bus) {
-		if (!fslmc_bus_match(&drv->driver, &dev->device))
-			continue;
+	if (rte_dev_is_probed(&dev->device))
+		return 0;
 
-		if (rte_dev_is_probed(&dev->device))
-			continue;
+	if (dev->device.devargs &&
+	    dev->device.devargs->policy == RTE_DEV_BLOCKED) {
+		DPAA2_BUS_DEBUG("%s Blocked, skipping",
+			      dev->device.name);
+		return 0;
+	}
 
-		if (dev->device.devargs &&
-		    dev->device.devargs->policy == RTE_DEV_BLOCKED) {
-			DPAA2_BUS_DEBUG("%s Blocked, skipping",
-				      dev->device.name);
-			continue;
-		}
-
-		ret = drv->probe(drv, dev);
-		if (ret) {
-			DPAA2_BUS_ERR("Unable to probe");
-		} else {
-			dev->driver = drv;
-			dev->device.driver = &drv->driver;
-			DPAA2_BUS_INFO("%s Plugged",  dev->device.name);
-		}
-		break;
+	ret = drv->probe(drv, dev);
+	if (ret != 0) {
+		DPAA2_BUS_ERR("Unable to probe");
+	} else {
+		dev->driver = drv;
+		dev->device.driver = &drv->driver;
+		DPAA2_BUS_INFO("%s Plugged",  dev->device.name);
 	}
 
 	return ret;
@@ -601,7 +590,7 @@ struct rte_fslmc_bus rte_fslmc_bus = {
 		.find_device = rte_bus_generic_find_device,
 		.get_iommu_class = rte_dpaa2_get_iommu_class,
 		.match = fslmc_bus_match,
-		.plug = fslmc_bus_plug,
+		.probe_device = fslmc_bus_probe_device,
 		.unplug = fslmc_bus_unplug,
 		.dev_iterate = rte_bus_generic_dev_iterate,
 	},

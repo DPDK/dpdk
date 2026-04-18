@@ -706,7 +706,6 @@ rte_dpaa_bus_probe(void)
 {
 	int ret = -1;
 	struct rte_dpaa_device *dev;
-	struct rte_dpaa_driver *drv;
 	FILE *svr_file = NULL;
 	uint32_t svr_ver;
 	static int process_once;
@@ -789,25 +788,18 @@ rte_dpaa_bus_probe(void)
 
 	/* For each registered driver, and device, call the driver->probe */
 	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus.bus) {
-		RTE_BUS_FOREACH_DRV(drv, &rte_dpaa_bus.bus) {
-			if (!dpaa_bus_match(&drv->driver, &dev->device))
-				continue;
+		struct rte_driver *driver = NULL;
 
-			if (rte_dev_is_probed(&dev->device))
-				continue;
+next_driver:
+		driver = rte_bus_find_driver(&rte_dpaa_bus.bus, driver, &dev->device);
+		if (driver == NULL)
+			continue;
 
-			if (rte_bus_device_is_ignored(&rte_dpaa_bus.bus, dev->name))
-				continue;
-
-			ret = drv->probe(drv, dev);
-			if (ret) {
-				DPAA_BUS_ERR("unable to probe: %s", dev->name);
-			} else {
-				dev->driver = drv;
-				dev->device.driver = &drv->driver;
-			}
-			break;
-		}
+		ret = rte_dpaa_bus.bus.probe_device(driver, &dev->device);
+		if (ret < 0)
+			DPAA_BUS_ERR("Failed to probe device %s", dev->name);
+		else if (ret > 0)
+			goto next_driver;
 	}
 	dpaa_bus_global_init = 1;
 
@@ -828,17 +820,27 @@ rte_dpaa_get_iommu_class(void)
 }
 
 static int
-dpaa_bus_plug(struct rte_device *dev __rte_unused)
+dpaa_bus_probe_device(struct rte_driver *drv, struct rte_device *dev)
 {
-	/* No operation is performed while plugging the device */
-	return 0;
-}
+	struct rte_dpaa_device *dpaa_dev = RTE_BUS_DEVICE(dev, *dpaa_dev);
+	struct rte_dpaa_driver *dpaa_drv = RTE_BUS_DRIVER(drv, *dpaa_drv);
+	int ret;
 
-static int
-dpaa_bus_unplug(struct rte_device *dev __rte_unused)
-{
-	/* No operation is performed while unplugging the device */
-	return 0;
+	if (rte_dev_is_probed(&dpaa_dev->device))
+		return 0;
+
+	if (rte_bus_device_is_ignored(&rte_dpaa_bus.bus, dpaa_dev->name))
+		return 0;
+
+	ret = dpaa_drv->probe(dpaa_drv, dpaa_dev);
+	if (ret != 0) {
+		DPAA_BUS_ERR("unable to probe: %s", dpaa_dev->name);
+	} else {
+		dpaa_dev->driver = dpaa_drv;
+		dpaa_dev->device.driver = &dpaa_drv->driver;
+	}
+
+	return ret;
 }
 
 static int
@@ -899,8 +901,7 @@ static struct rte_dpaa_bus rte_dpaa_bus = {
 		.find_device = rte_bus_generic_find_device,
 		.get_iommu_class = rte_dpaa_get_iommu_class,
 		.match = dpaa_bus_match,
-		.plug = dpaa_bus_plug,
-		.unplug = dpaa_bus_unplug,
+		.probe_device = dpaa_bus_probe_device,
 		.dev_iterate = rte_bus_generic_dev_iterate,
 		.cleanup = dpaa_bus_cleanup,
 	},

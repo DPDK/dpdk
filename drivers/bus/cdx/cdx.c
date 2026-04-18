@@ -308,29 +308,23 @@ cdx_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
  * driver.
  */
 static int
-cdx_probe_one_driver(struct rte_cdx_driver *dr,
-		struct rte_cdx_device *dev)
+cdx_probe_device(struct rte_driver *drv, struct rte_device *dev)
 {
-	const char *dev_name = dev->name;
-	bool already_probed;
+	struct rte_cdx_device *cdx_dev = RTE_BUS_DEVICE(dev, *cdx_dev);
+	struct rte_cdx_driver *cdx_drv = RTE_BUS_DRIVER(drv, *cdx_drv);
+	const char *dev_name = cdx_dev->name;
 	int ret;
 
-	/* The device is not blocked; Check if driver supports it */
-	if (!cdx_bus_match(&dr->driver, &dev->device))
-		/* Match of device and driver failed */
-		return 1;
-
-	already_probed = rte_dev_is_probed(&dev->device);
-	if (already_probed) {
+	if (rte_dev_is_probed(&cdx_dev->device)) {
 		CDX_BUS_INFO("Device %s is already probed", dev_name);
 		return -EEXIST;
 	}
 
 	CDX_BUS_DEBUG("  probe device %s using driver: %s", dev_name,
-		dr->driver.name);
+		cdx_drv->driver.name);
 
-	if (dr->drv_flags & RTE_CDX_DRV_NEED_MAPPING) {
-		ret = cdx_vfio_map_resource(dev);
+	if (cdx_drv->drv_flags & RTE_CDX_DRV_NEED_MAPPING) {
+		ret = cdx_vfio_map_resource(cdx_dev);
 		if (ret != 0) {
 			CDX_BUS_ERR("CDX map device failed: %d", ret);
 			goto error_map_device;
@@ -338,48 +332,24 @@ cdx_probe_one_driver(struct rte_cdx_driver *dr,
 	}
 
 	/* call the driver probe() function */
-	ret = dr->probe(dr, dev);
+	ret = cdx_drv->probe(cdx_drv, cdx_dev);
 	if (ret) {
 		CDX_BUS_ERR("Probe CDX driver: %s device: %s failed: %d",
-			dr->driver.name, dev_name, ret);
+			cdx_drv->driver.name, dev_name, ret);
 		goto error_probe;
 	} else {
-		dev->device.driver = &dr->driver;
+		cdx_dev->device.driver = &cdx_drv->driver;
 	}
-	dev->driver = dr;
+	cdx_dev->driver = cdx_drv;
 
 	return ret;
 
 error_probe:
-	cdx_vfio_unmap_resource(dev);
-	rte_intr_instance_free(dev->intr_handle);
-	dev->intr_handle = NULL;
+	cdx_vfio_unmap_resource(cdx_dev);
+	rte_intr_instance_free(cdx_dev->intr_handle);
+	cdx_dev->intr_handle = NULL;
 error_map_device:
 	return ret;
-}
-
-/*
- * If vendor/device ID match, call the probe() function of all
- * registered driver for the given device. Return < 0 if initialization
- * failed, return 1 if no driver is found for this device.
- */
-static int
-cdx_probe_all_drivers(struct rte_cdx_device *dev)
-{
-	struct rte_cdx_driver *dr = NULL;
-	int rc = 0;
-
-	RTE_BUS_FOREACH_DRV(dr, &rte_cdx_bus.bus) {
-		rc = cdx_probe_one_driver(dr, dev);
-		if (rc < 0)
-			/* negative value is an error */
-			return rc;
-		if (rc > 0)
-			/* positive value means driver doesn't support it */
-			continue;
-		return 0;
-	}
-	return 1;
 }
 
 /*
@@ -392,17 +362,26 @@ cdx_probe(void)
 {
 	struct rte_cdx_device *dev = NULL;
 	size_t probed = 0, failed = 0;
-	int ret = 0;
 
 	RTE_BUS_FOREACH_DEV(dev, &rte_cdx_bus.bus) {
+		struct rte_driver *drv = NULL;
+		int ret;
+
 		probed++;
 
-		ret = cdx_probe_all_drivers(dev);
+next_driver:
+		drv = rte_bus_find_driver(&rte_cdx_bus.bus, drv, &dev->device);
+		if (drv == NULL)
+			continue;
+
+		ret = rte_cdx_bus.bus.probe_device(drv, &dev->device);
 		if (ret < 0) {
 			CDX_BUS_ERR("Requested device %s cannot be used",
 				dev->name);
 			rte_errno = errno;
 			failed++;
+		} else if (ret > 0) {
+			goto next_driver;
 		}
 	}
 
@@ -471,12 +450,6 @@ cdx_detach_dev(struct rte_cdx_device *dev)
 }
 
 static int
-cdx_plug(struct rte_device *dev)
-{
-	return cdx_probe_all_drivers(RTE_BUS_DEVICE(dev, struct rte_cdx_device));
-}
-
-static int
 cdx_unplug(struct rte_device *dev)
 {
 	struct rte_cdx_device *cdx_dev = RTE_BUS_DEVICE(dev, *cdx_dev);
@@ -524,7 +497,7 @@ struct rte_cdx_bus rte_cdx_bus = {
 		.probe = cdx_probe,
 		.find_device = rte_bus_generic_find_device,
 		.match = cdx_bus_match,
-		.plug = cdx_plug,
+		.probe_device = cdx_probe_device,
 		.unplug = cdx_unplug,
 		.parse = cdx_parse,
 		.dma_map = cdx_dma_map,

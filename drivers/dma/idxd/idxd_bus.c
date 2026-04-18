@@ -44,6 +44,7 @@ struct rte_dsa_device {
 struct dsa_bus;
 static int dsa_scan(void);
 static bool dsa_match(const struct rte_driver *drv, const struct rte_device *dev);
+static int dsa_probe_device(struct rte_driver *drv, struct rte_device *dev);
 static int dsa_probe(void);
 static enum rte_iova_mode dsa_get_iommu_class(void);
 static int dsa_addr_parse(const char *name, void *addr);
@@ -60,6 +61,7 @@ struct dsa_bus dsa_bus = {
 	.bus = {
 		.scan = dsa_scan,
 		.match = dsa_match,
+		.probe_device = dsa_probe_device,
 		.probe = dsa_probe,
 		.find_device = rte_bus_generic_find_device,
 		.get_iommu_class = dsa_get_iommu_class,
@@ -210,32 +212,33 @@ read_device_int(struct rte_dsa_device *dev, const char *filename,
 }
 
 static int
-idxd_probe_dsa(struct rte_dsa_device *dev)
+dsa_probe_device(__rte_unused struct rte_driver *drv, struct rte_device *dev)
 {
+	struct rte_dsa_device *dsa_dev = RTE_BUS_DEVICE(dev, *dsa_dev);
 	struct idxd_dmadev idxd = {0};
 	int ret = 0;
 
 	IDXD_PMD_INFO("Probing device %s on numa node %d",
-			dev->wq_name, dev->device.numa_node);
-	if (read_wq_int(dev, "size", &ret) < 0)
+			dsa_dev->wq_name, dsa_dev->device.numa_node);
+	if (read_wq_int(dsa_dev, "size", &ret) < 0)
 		return -1;
 	idxd.max_batches = ret;
-	if (read_wq_int(dev, "max_batch_size", &ret) < 0)
+	if (read_wq_int(dsa_dev, "max_batch_size", &ret) < 0)
 		return -1;
 	idxd.max_batch_size = ret;
-	idxd.qid = dev->addr.wq_id;
-	idxd.u.bus.dsa_id = dev->addr.device_id;
+	idxd.qid = dsa_dev->addr.wq_id;
+	idxd.u.bus.dsa_id = dsa_dev->addr.device_id;
 	idxd.sva_support = 1;
 
-	idxd.portal = idxd_bus_mmap_wq(dev);
+	idxd.portal = idxd_bus_mmap_wq(dsa_dev);
 	if (idxd.portal == NULL) {
 		IDXD_PMD_ERR("WQ mmap failed");
 		return -ENOENT;
 	}
 
-	ret = idxd_dmadev_create(dev->wq_name, &dev->device, &idxd, &idxd_bus_ops);
+	ret = idxd_dmadev_create(dsa_dev->wq_name, dev, &idxd, &idxd_bus_ops);
 	if (ret) {
-		IDXD_PMD_ERR("Failed to create dmadev %s", dev->wq_name);
+		IDXD_PMD_ERR("Failed to create dmadev %s", dsa_dev->wq_name);
 		return ret;
 	}
 
@@ -270,7 +273,7 @@ dsa_probe(void)
 		if (dsa_match(&dsa_bus.driver, &dev->device) &&
 				!rte_bus_device_is_ignored(&dsa_bus.bus, dev->device.name)) {
 			dev->device.driver = &dsa_bus.driver;
-			idxd_probe_dsa(dev);
+			dsa_probe_device(&dsa_bus.driver, &dev->device);
 			continue;
 		}
 		IDXD_PMD_DEBUG("WQ '%s', not allocated to DPDK", dev->wq_name);

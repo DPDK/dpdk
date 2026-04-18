@@ -36,8 +36,9 @@ rte_bus_register(struct rte_bus *bus)
 	RTE_VERIFY(bus->scan);
 	RTE_VERIFY(bus->probe);
 	RTE_VERIFY(bus->find_device);
-	/* Buses supporting driver plug also require unplug. */
-	RTE_VERIFY(!bus->plug || bus->unplug);
+
+	/* A bus providing probe_device requires match. */
+	RTE_VERIFY(!bus->probe_device || bus->match);
 
 	TAILQ_INIT(&bus->device_list);
 	TAILQ_INIT(&bus->driver_list);

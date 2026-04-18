@@ -74,61 +74,60 @@ auxiliary_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
  * Call the probe() function of the driver.
  */
 static int
-rte_auxiliary_probe_one_driver(struct rte_auxiliary_driver *drv,
-			       struct rte_auxiliary_device *dev)
+auxiliary_probe_device(struct rte_driver *drv, struct rte_device *dev)
 {
+	struct rte_auxiliary_device *aux_dev = RTE_BUS_DEVICE(dev, *aux_dev);
+	struct rte_auxiliary_driver *aux_drv = RTE_BUS_DRIVER(drv, *aux_drv);
 	enum rte_iova_mode iova_mode;
 	int ret;
 
-	/* Check if driver supports it. */
-	if (!auxiliary_bus_match(&drv->driver, &dev->device))
-		/* Match of device and driver failed */
-		return 1;
+	if (!auxiliary_dev_exists(dev->name))
+		return -ENOENT;
 
 	/* No initialization when marked as blocked, return without error. */
-	if (dev->device.devargs != NULL &&
-	    dev->device.devargs->policy == RTE_DEV_BLOCKED) {
+	if (aux_dev->device.devargs != NULL &&
+	    aux_dev->device.devargs->policy == RTE_DEV_BLOCKED) {
 		AUXILIARY_LOG(INFO, "Device is blocked, not initializing");
 		return -1;
 	}
 
-	if (dev->device.numa_node < 0 && rte_socket_count() > 1)
-		AUXILIARY_LOG(INFO, "Device %s is not NUMA-aware", dev->name);
+	if (aux_dev->device.numa_node < 0 && rte_socket_count() > 1)
+		AUXILIARY_LOG(INFO, "Device %s is not NUMA-aware", aux_dev->name);
 
-	if (rte_dev_is_probed(&dev->device)) {
+	if (rte_dev_is_probed(&aux_dev->device)) {
 		AUXILIARY_LOG(DEBUG, "Device %s is already probed on auxiliary bus",
-			dev->device.name);
+			aux_dev->device.name);
 		return -EEXIST;
 	}
 
 	iova_mode = rte_eal_iova_mode();
-	if ((drv->drv_flags & RTE_AUXILIARY_DRV_NEED_IOVA_AS_VA) > 0 &&
+	if ((aux_drv->drv_flags & RTE_AUXILIARY_DRV_NEED_IOVA_AS_VA) > 0 &&
 	    iova_mode != RTE_IOVA_VA) {
 		AUXILIARY_LOG(ERR, "Driver %s expecting VA IOVA mode but current mode is PA, not initializing",
-			      drv->driver.name);
+			      aux_drv->driver.name);
 		return -EINVAL;
 	}
 
 	/* Allocate interrupt instance */
-	dev->intr_handle =
+	aux_dev->intr_handle =
 		rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
-	if (dev->intr_handle == NULL) {
+	if (aux_dev->intr_handle == NULL) {
 		AUXILIARY_LOG(ERR, "Could not allocate interrupt instance for device %s",
-			dev->name);
+			aux_dev->name);
 		return -ENOMEM;
 	}
 
-	dev->driver = drv;
+	aux_dev->driver = aux_drv;
 
 	AUXILIARY_LOG(INFO, "Probe auxiliary driver: %s device: %s (NUMA node %i)",
-		      drv->driver.name, dev->name, dev->device.numa_node);
-	ret = drv->probe(drv, dev);
+		      aux_drv->driver.name, aux_dev->name, aux_dev->device.numa_node);
+	ret = aux_drv->probe(aux_drv, aux_dev);
 	if (ret != 0) {
-		dev->driver = NULL;
-		rte_intr_instance_free(dev->intr_handle);
-		dev->intr_handle = NULL;
+		aux_dev->driver = NULL;
+		rte_intr_instance_free(aux_dev->intr_handle);
+		aux_dev->intr_handle = NULL;
 	} else {
-		dev->device.driver = &drv->driver;
+		aux_dev->device.driver = &aux_drv->driver;
 	}
 
 	return ret;
@@ -160,33 +159,6 @@ rte_auxiliary_driver_remove_dev(struct rte_auxiliary_device *dev)
 }
 
 /*
- * Call the probe() function of all registered drivers for the given device.
- * Return < 0 if initialization failed.
- * Return 1 if no driver is found for this device.
- */
-static int
-auxiliary_probe_all_drivers(struct rte_auxiliary_device *dev)
-{
-	struct rte_auxiliary_driver *drv;
-	int rc;
-
-	RTE_BUS_FOREACH_DRV(drv, &auxiliary_bus.bus) {
-		if (!drv->match(dev->name))
-			continue;
-
-		rc = rte_auxiliary_probe_one_driver(drv, dev);
-		if (rc < 0)
-			/* negative value is an error */
-			return rc;
-		if (rc > 0)
-			/* positive value means driver doesn't support it */
-			continue;
-		return 0;
-	}
-	return 1;
-}
-
-/*
  * Scan the content of the auxiliary bus, and call the probe function for
  * all registered drivers to try to probe discovered devices.
  */
@@ -195,12 +167,19 @@ auxiliary_probe(void)
 {
 	struct rte_auxiliary_device *dev = NULL;
 	size_t probed = 0, failed = 0;
-	int ret = 0;
 
 	RTE_BUS_FOREACH_DEV(dev, &auxiliary_bus.bus) {
+		struct rte_driver *drv = NULL;
+		int ret;
+
 		probed++;
 
-		ret = auxiliary_probe_all_drivers(dev);
+next_driver:
+		drv = rte_bus_find_driver(&auxiliary_bus.bus, drv, &dev->device);
+		if (drv == NULL)
+			continue;
+
+		ret = auxiliary_bus.bus.probe_device(drv, &dev->device);
 		if (ret < 0) {
 			if (ret != -EEXIST) {
 				AUXILIARY_LOG(ERR, "Requested device %s cannot be used",
@@ -208,7 +187,8 @@ auxiliary_probe(void)
 				rte_errno = errno;
 				failed++;
 			}
-			ret = 0;
+		} else if (ret > 0) {
+			goto next_driver;
 		}
 	}
 
@@ -248,14 +228,6 @@ void
 rte_auxiliary_unregister(struct rte_auxiliary_driver *driver)
 {
 	rte_bus_remove_driver(&auxiliary_bus.bus, &driver->driver);
-}
-
-static int
-auxiliary_plug(struct rte_device *dev)
-{
-	if (!auxiliary_dev_exists(dev->name))
-		return -ENOENT;
-	return auxiliary_probe_all_drivers(RTE_BUS_DEVICE(dev, struct rte_auxiliary_device));
 }
 
 static int
@@ -340,7 +312,7 @@ struct rte_auxiliary_bus auxiliary_bus = {
 		.cleanup = auxiliary_cleanup,
 		.find_device = rte_bus_generic_find_device,
 		.match = auxiliary_bus_match,
-		.plug = auxiliary_plug,
+		.probe_device = auxiliary_probe_device,
 		.unplug = auxiliary_unplug,
 		.parse = auxiliary_parse,
 		.dma_map = auxiliary_dma_map,

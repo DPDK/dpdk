@@ -405,42 +405,35 @@ out:
 }
 
 static int
-device_attach(struct rte_platform_device *pdev)
-{
-	struct rte_platform_driver *pdrv;
-
-	RTE_BUS_FOREACH_DRV(pdrv, &platform_bus.bus) {
-		if (platform_bus_match(&pdrv->driver, &pdev->device))
-			break;
-	}
-
-	if (pdrv == NULL)
-		return -ENODEV;
-
-	return driver_probe_device(pdrv, pdev);
-}
-
-static int
 platform_bus_probe(void)
 {
 	struct rte_platform_device *pdev;
-	int ret;
 
 	RTE_BUS_FOREACH_DEV(pdev, &platform_bus.bus) {
-		ret = device_attach(pdev);
+		struct rte_driver *drv = NULL;
+		int ret;
+
+next_driver:
+		drv = rte_bus_find_driver(&platform_bus.bus, drv, &pdev->device);
+		if (drv == NULL)
+			continue;
+
+		ret = platform_bus.bus.probe_device(drv, &pdev->device);
 		if (ret == -EBUSY) {
 			PLATFORM_LOG_LINE(DEBUG, "device %s already probed", pdev->name);
 			continue;
 		}
-		if (ret)
+		if (ret < 0)
 			PLATFORM_LOG_LINE(ERR, "failed to probe %s", pdev->name);
+		else if (ret > 0)
+			goto next_driver;
 	}
 
 	return 0;
 }
 
 static int
-platform_bus_plug(struct rte_device *dev)
+platform_bus_probe_device(struct rte_driver *drv, struct rte_device *dev)
 {
 	if (rte_bus_device_is_ignored(&platform_bus.bus, dev->name))
 		return -EPERM;
@@ -448,7 +441,8 @@ platform_bus_plug(struct rte_device *dev)
 	if (!dev_is_bound_vfio_platform(dev->name))
 		return -EPERM;
 
-	return device_attach(RTE_BUS_DEVICE(dev, struct rte_platform_device));
+	return driver_probe_device(RTE_BUS_DRIVER(drv, struct rte_platform_driver),
+		RTE_BUS_DEVICE(dev, struct rte_platform_device));
 }
 
 static void
@@ -559,7 +553,7 @@ struct rte_platform_bus platform_bus = {
 		.probe = platform_bus_probe,
 		.find_device = rte_bus_generic_find_device,
 		.match = platform_bus_match,
-		.plug = platform_bus_plug,
+		.probe_device = platform_bus_probe_device,
 		.unplug = platform_bus_unplug,
 		.parse = platform_bus_parse,
 		.dma_map = platform_bus_dma_map,

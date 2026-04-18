@@ -182,32 +182,30 @@ vdev_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
 }
 
 static int
-vdev_probe_all_drivers(struct rte_vdev_device *dev)
+vdev_probe_device(struct rte_driver *drv, struct rte_device *dev)
 {
+	struct rte_vdev_device *vdev_dev = RTE_BUS_DEVICE(dev, *vdev_dev);
+	struct rte_vdev_driver *vdev_drv = RTE_BUS_DRIVER(drv, *vdev_drv);
 	const char *name;
-	struct rte_vdev_driver *driver;
 	enum rte_iova_mode iova_mode;
 	int ret;
 
-	if (rte_dev_is_probed(&dev->device))
+	if (rte_dev_is_probed(&vdev_dev->device))
 		return -EEXIST;
 
-	name = rte_vdev_device_name(dev);
+	name = rte_vdev_device_name(vdev_dev);
 	VDEV_LOG(DEBUG, "Search driver to probe device %s", name);
 
-	if (vdev_parse(name, &driver))
-		return -1;
-
 	iova_mode = rte_eal_iova_mode();
-	if ((driver->drv_flags & RTE_VDEV_DRV_NEED_IOVA_AS_VA) && (iova_mode == RTE_IOVA_PA)) {
+	if ((vdev_drv->drv_flags & RTE_VDEV_DRV_NEED_IOVA_AS_VA) && (iova_mode == RTE_IOVA_PA)) {
 		VDEV_LOG(ERR, "%s requires VA IOVA mode but current mode is PA, not initializing",
 				name);
 		return -1;
 	}
 
-	ret = driver->probe(dev);
+	ret = vdev_drv->probe(vdev_dev);
 	if (ret == 0)
-		dev->device.driver = &driver->driver;
+		vdev_dev->device.driver = &vdev_drv->driver;
 	return ret;
 }
 
@@ -323,14 +321,23 @@ rte_vdev_init(const char *name, const char *args)
 	rte_spinlock_recursive_lock(&vdev_device_list_lock);
 	ret = insert_vdev(name, args, &dev, true);
 	if (ret == 0) {
-		ret = vdev_probe_all_drivers(dev);
-		if (ret) {
-			if (ret > 0)
-				VDEV_LOG(ERR, "no driver found for %s", name);
+		struct rte_driver *drv = NULL;
+
+next_driver:
+		drv = rte_bus_find_driver(&rte_vdev_bus, drv, &dev->device);
+		if (drv == NULL) {
+			VDEV_LOG(ERR, "no driver found for %s", name);
+			ret = -1;
+		} else {
+			ret = rte_vdev_bus.probe_device(drv, &dev->device);
+		}
+		if (ret < 0) {
 			/* If fails, remove it from vdev list */
 			rte_bus_remove_device(&rte_vdev_bus, &dev->device);
 			rte_devargs_remove(dev->device.devargs);
 			free(dev);
+		} else if (ret > 0) {
+			goto next_driver;
 		}
 	}
 	rte_spinlock_recursive_unlock(&vdev_device_list_lock);
@@ -392,8 +399,6 @@ struct vdev_param {
 	int num;
 	char name[RTE_DEV_NAME_MAX_LEN];
 };
-
-static int vdev_plug(struct rte_device *dev);
 
 /**
  * This function works as the action for both primary and secondary process
@@ -552,18 +557,27 @@ vdev_probe(void)
 
 	/* call the init function for each virtual device */
 	RTE_BUS_FOREACH_DEV(dev, &rte_vdev_bus) {
+		struct rte_driver *drv = NULL;
+
 		/* we don't use the vdev lock here, as it's only used in DPDK
 		 * initialization; and we don't want to hold such a lock when
 		 * we call each driver probe.
 		 */
 
-		r = vdev_probe_all_drivers(dev);
-		if (r != 0) {
+next_driver:
+		drv = rte_bus_find_driver(&rte_vdev_bus, drv, &dev->device);
+		if (drv == NULL)
+			continue;
+
+		r = rte_vdev_bus.probe_device(drv, &dev->device);
+		if (r < 0) {
 			if (r == -EEXIST)
 				continue;
 			VDEV_LOG(ERR, "failed to initialize %s device",
 				rte_vdev_device_name(dev));
 			ret = -1;
+		} else if (r > 0) {
+			goto next_driver;
 		}
 	}
 
@@ -615,12 +629,6 @@ vdev_find_device(const struct rte_bus *bus, const struct rte_device *start,
 }
 
 static int
-vdev_plug(struct rte_device *dev)
-{
-	return vdev_probe_all_drivers(RTE_BUS_DEVICE(dev, struct rte_vdev_device));
-}
-
-static int
 vdev_unplug(struct rte_device *dev)
 {
 	return rte_vdev_uninit(dev->name);
@@ -651,7 +659,7 @@ static struct rte_bus rte_vdev_bus = {
 	.cleanup = vdev_cleanup,
 	.find_device = vdev_find_device,
 	.match = vdev_bus_match,
-	.plug = vdev_plug,
+	.probe_device = vdev_probe_device,
 	.unplug = vdev_unplug,
 	.parse = vdev_parse,
 	.dma_map = vdev_dma_map,
