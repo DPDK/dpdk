@@ -8,6 +8,7 @@
 
 #include <rte_bus_pci.h>
 #include <dev_driver.h>
+#include <bus_driver.h>
 #include <rte_compat.h>
 
 #ifdef __cplusplus
@@ -48,16 +49,8 @@ struct rte_pci_device {
 				/**< Handler of VFIO request interrupt */
 };
 
-/**
- * @internal
- * Helper macro for drivers that need to convert to struct rte_pci_device.
- */
-#define RTE_DEV_TO_PCI(ptr) container_of(ptr, struct rte_pci_device, device)
-
-#define RTE_DEV_TO_PCI_CONST(ptr) \
-	container_of(ptr, const struct rte_pci_device, device)
-
-#define RTE_ETH_DEV_TO_PCI(eth_dev)	RTE_DEV_TO_PCI((eth_dev)->device)
+#define RTE_ETH_DEV_TO_PCI(eth_dev) \
+	RTE_BUS_DEVICE((eth_dev)->device, struct rte_pci_device)
 
 #ifdef __cplusplus
 /** C++ macro used to help building up tables of device IDs */

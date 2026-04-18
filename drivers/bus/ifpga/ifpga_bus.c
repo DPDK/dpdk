@@ -388,13 +388,13 @@ free:
 static int
 ifpga_plug(struct rte_device *dev)
 {
-	return ifpga_probe_all_drivers(RTE_DEV_TO_AFU(dev));
+	return ifpga_probe_all_drivers(RTE_BUS_DEVICE(dev, struct rte_afu_device));
 }
 
 static int
 ifpga_unplug(struct rte_device *dev)
 {
-	struct rte_afu_device *afu_dev = RTE_DEV_TO_AFU(dev);
+	struct rte_afu_device *afu_dev = RTE_BUS_DEVICE(dev, *afu_dev);
 	int ret;
 
 	ret = afu_dev->driver->remove(afu_dev);

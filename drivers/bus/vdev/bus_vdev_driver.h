@@ -8,6 +8,7 @@
 #include <rte_bus_vdev.h>
 #include <rte_compat.h>
 #include <dev_driver.h>
+#include <bus_driver.h>
 #include <rte_devargs.h>
 
 #ifdef __cplusplus
@@ -19,17 +20,8 @@ struct rte_vdev_device {
 	struct rte_device device;               /**< Inherit core device */
 };
 
-/**
- * @internal
- * Helper macro for drivers that need to convert to struct rte_vdev_device.
- */
-#define RTE_DEV_TO_VDEV(ptr) \
-	container_of(ptr, struct rte_vdev_device, device)
-
-#define RTE_DEV_TO_VDEV_CONST(ptr) \
-	container_of(ptr, const struct rte_vdev_device, device)
-
-#define RTE_ETH_DEV_TO_VDEV(eth_dev)	RTE_DEV_TO_VDEV((eth_dev)->device)
+#define RTE_ETH_DEV_TO_VDEV(eth_dev) \
+	RTE_BUS_DEVICE((eth_dev)->device, struct rte_vdev_device)
 
 static inline const char *
 rte_vdev_device_name(const struct rte_vdev_device *dev)

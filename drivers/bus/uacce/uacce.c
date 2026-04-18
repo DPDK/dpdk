@@ -492,7 +492,7 @@ free:
 static int
 uacce_plug(struct rte_device *dev)
 {
-	return uacce_probe_all_drivers(RTE_DEV_TO_UACCE_DEV(dev));
+	return uacce_probe_all_drivers(RTE_BUS_DEVICE(dev, struct rte_uacce_device));
 }
 
 static int
@@ -518,7 +518,7 @@ uacce_detach_dev(struct rte_uacce_device *dev)
 static int
 uacce_unplug(struct rte_device *dev)
 {
-	struct rte_uacce_device *uacce_dev = RTE_DEV_TO_UACCE_DEV(dev);
+	struct rte_uacce_device *uacce_dev = RTE_BUS_DEVICE(dev, *uacce_dev);
 	int ret;
 
 	ret = uacce_detach_dev(uacce_dev);
@@ -538,7 +538,7 @@ uacce_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,  const void
 	struct rte_uacce_device *uacce_dev;
 
 	if (start != NULL) {
-		uacce_start = RTE_DEV_TO_UACCE_DEV_CONST(start);
+		uacce_start = RTE_BUS_DEVICE(start, *uacce_start);
 		uacce_dev = TAILQ_NEXT(uacce_start, next);
 	} else {
 		uacce_dev = TAILQ_FIRST(&uacce_bus.device_list);

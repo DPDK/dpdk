@@ -561,7 +561,7 @@ static int32_t sxe2_dev_info_init(struct rte_eth_dev *dev)
 {
 	struct sxe2_adapter *adapter =
 		SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(dev->device, *pci_dev);
 	struct sxe2_dev_info *dev_info = &adapter->dev_info;
 	struct sxe2_drv_dev_info_resp dev_info_resp = {0};
 	struct sxe2_drv_dev_fw_info_resp dev_fw_info_resp = {0};
@@ -600,7 +600,7 @@ l_end:
 int32_t sxe2_dev_pci_map_init(struct rte_eth_dev *dev)
 {
 	struct sxe2_adapter *adapter  = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(dev->device, *pci_dev);
 	struct sxe2_pci_map_context *map_ctxt = &adapter->map_ctxt;
 	struct sxe2_pci_map_bar_info *bar_info = NULL;
 	struct sxe2_pci_map_segment_info *seg_info = NULL;
@@ -817,7 +817,7 @@ l_end:
 static int32_t sxe2_eth_pmd_remove(struct sxe2_common_device *cdev)
 {
 	struct rte_eth_dev *eth_dev;
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(cdev->dev);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(cdev->dev, *pci_dev);
 	int32_t ret = 0;
 
 	eth_dev = rte_eth_dev_allocated(pci_dev->device.name);
@@ -842,7 +842,7 @@ static int32_t sxe2_eth_pmd_probe_pf(struct sxe2_common_device *cdev,
 		uint16_t owner_id __rte_unused,
 		struct sxe2_dev_kvargs_info *kvargs)
 {
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(cdev->dev);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(cdev->dev, *pci_dev);
 	struct rte_eth_dev *eth_dev = NULL;
 	struct sxe2_adapter *adapter = NULL;
 	int32_t ret = 0;

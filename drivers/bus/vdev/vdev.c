@@ -141,11 +141,8 @@ vdev_parse(const char *name, void *addr)
 static int
 vdev_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
-	struct rte_vdev_device *vdev = RTE_DEV_TO_VDEV(dev);
-	const struct rte_vdev_driver *driver;
-
-	driver = container_of(vdev->device.driver, const struct rte_vdev_driver,
-			driver);
+	struct rte_vdev_device *vdev = RTE_BUS_DEVICE(dev, *vdev);
+	const struct rte_vdev_driver *driver = RTE_BUS_DRIVER(vdev->device.driver, *driver);
 
 	if (driver->dma_map != NULL)
 		return driver->dma_map(vdev, addr, iova, len);
@@ -156,11 +153,8 @@ vdev_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 static int
 vdev_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
-	struct rte_vdev_device *vdev = RTE_DEV_TO_VDEV(dev);
-	const struct rte_vdev_driver *driver;
-
-	driver = container_of(vdev->device.driver, const struct rte_vdev_driver,
-			driver);
+	struct rte_vdev_device *vdev = RTE_BUS_DEVICE(dev, *vdev);
+	const struct rte_vdev_driver *driver = RTE_BUS_DRIVER(vdev->device.driver, *driver);
 
 	if (driver->dma_unmap != NULL)
 		return driver->dma_unmap(vdev, addr, iova, len);
@@ -336,8 +330,8 @@ vdev_remove_driver(struct rte_vdev_device *dev)
 		return 1;
 	}
 
-	driver = container_of(dev->device.driver, const struct rte_vdev_driver,
-		driver);
+	driver = RTE_BUS_DRIVER(dev->device.driver, *driver);
+
 	return driver->remove(dev);
 }
 
@@ -572,7 +566,7 @@ vdev_cleanup(void)
 		if (!rte_dev_is_probed(&dev->device))
 			goto free;
 
-		drv = container_of(dev->device.driver, const struct rte_vdev_driver, driver);
+		drv = RTE_BUS_DRIVER(dev->device.driver, *drv);
 
 		if (drv->remove == NULL)
 			goto free;
@@ -599,7 +593,7 @@ rte_vdev_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 
 	rte_spinlock_recursive_lock(&vdev_device_list_lock);
 	if (start != NULL) {
-		vstart = RTE_DEV_TO_VDEV_CONST(start);
+		vstart = RTE_BUS_DEVICE(start, *vstart);
 		dev = TAILQ_NEXT(vstart, next);
 	} else {
 		dev = TAILQ_FIRST(&vdev_device_list);
@@ -617,7 +611,7 @@ rte_vdev_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 static int
 vdev_plug(struct rte_device *dev)
 {
-	return vdev_probe_all_drivers(RTE_DEV_TO_VDEV(dev));
+	return vdev_probe_all_drivers(RTE_BUS_DEVICE(dev, struct rte_vdev_device));
 }
 
 static int

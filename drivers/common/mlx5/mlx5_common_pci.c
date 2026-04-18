@@ -138,7 +138,7 @@ mlx5_dev_pci_match(const struct mlx5_class_driver *drv,
 
 	if (!mlx5_dev_is_pci(dev))
 		return false;
-	pci_dev = RTE_DEV_TO_PCI_CONST(dev);
+	pci_dev = RTE_BUS_DEVICE(dev, *pci_dev);
 	for (id_table = drv->id_table; id_table->vendor_id != 0;
 	     id_table++) {
 		/* Check if device's ids match the class driver's ids. */

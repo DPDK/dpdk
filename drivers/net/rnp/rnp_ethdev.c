@@ -728,7 +728,7 @@ static int rnp_dev_close(struct rte_eth_dev *eth_dev)
 	if (adapter->intr_registered && adapter->eth_dev == eth_dev)
 		rnp_change_manage_port(adapter);
 	if (adapter->closed_ports == adapter->inited_ports) {
-		struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI((void *)eth_dev->device);
+		struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(eth_dev->device, *pci_dev);
 		if (adapter->intr_registered) {
 			/* disable uio irq before callback unregister */
 			rte_intr_disable(pci_dev->intr_handle);
@@ -1667,7 +1667,7 @@ rnp_rx_reset_pool_setup(struct rnp_eth_adapter *adapter)
 static int
 rnp_eth_dev_init(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI((void *)eth_dev->device);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(eth_dev->device, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
 	char name[RTE_ETH_NAME_MAX_LEN] = " ";
@@ -1798,7 +1798,7 @@ free_ad:
 static int
 rnp_eth_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI((void *)eth_dev->device);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(eth_dev->device, *pci_dev);
 	uint16_t port_id;
 	int err = 0;
 

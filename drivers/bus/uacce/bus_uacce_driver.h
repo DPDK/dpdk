@@ -64,16 +64,6 @@ struct rte_uacce_device {
 };
 
 /**
- * @internal
- * Helper macro for drivers that need to convert to struct rte_uacce_device.
- */
-#define RTE_DEV_TO_UACCE_DEV(ptr) \
-	container_of(ptr, struct rte_uacce_device, device)
-
-#define RTE_DEV_TO_UACCE_DEV_CONST(ptr) \
-	container_of(ptr, const struct rte_uacce_device, device)
-
-/**
  * A structure describing an ID for a UACCE driver. Each driver provides a
  * table of these IDs for each device that it supports.
  */

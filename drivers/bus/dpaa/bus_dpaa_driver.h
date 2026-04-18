@@ -8,6 +8,7 @@
 
 #include <rte_compat.h>
 #include <dev_driver.h>
+#include <bus_driver.h>
 #include <rte_mbuf_dyn.h>
 #include <rte_mempool.h>
 
@@ -49,9 +50,6 @@ dpaa_seqn(struct rte_mbuf *mbuf)
 
 #define DPAA_MEMPOOL_OPS_NAME	"dpaa"
 
-#define DEV_TO_DPAA_DEVICE(ptr)	\
-		container_of(ptr, struct rte_dpaa_device, device)
-
 /* DPAA SoC identifier; If this is not available, it can be concluded
  * that board is non-DPAA. Single slot is currently supported.
  */
@@ -64,9 +62,6 @@ dpaa_seqn(struct rte_mbuf *mbuf)
 
 /** Number of supported QDMA devices */
 #define RTE_DPAA_QDMA_DEVICES  1
-
-#define RTE_DEV_TO_DPAA_CONST(ptr) \
-	container_of(ptr, const struct rte_dpaa_device, device)
 
 struct rte_dpaa_device;
 struct rte_dpaa_driver;

@@ -26,7 +26,7 @@ const char *pmd_bond_init_valid_arguments[] = {
 static inline int
 bond_pci_addr_cmp(const struct rte_device *dev, const void *_pci_addr)
 {
-	const struct rte_pci_device *pdev = RTE_DEV_TO_PCI_CONST(dev);
+	const struct rte_pci_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
 	const struct rte_pci_addr *paddr = _pci_addr;
 
 	return rte_pci_addr_cmp(&pdev->addr, paddr);

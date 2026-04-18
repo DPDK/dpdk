@@ -180,7 +180,7 @@ mlx5_os_get_devx_device(struct rte_device *dev,
 			struct devx_device_bdf *devx_list, int n)
 {
 	struct devx_device_bdf *devx_match = NULL;
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(dev, *pci_dev);
 	struct rte_pci_addr *addr = &pci_dev->addr;
 
 	while (n-- > 0) {

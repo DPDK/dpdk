@@ -2634,7 +2634,7 @@ ice_dev_init(struct rte_eth_dev *dev)
 	}
 
 	ice_set_default_ptype_table(dev);
-	pci_dev = RTE_DEV_TO_PCI(dev->device);
+	pci_dev = RTE_BUS_DEVICE(dev->device, *pci_dev);
 	intr_handle = pci_dev->intr_handle;
 
 	pf->adapter = ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
@@ -4531,7 +4531,7 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(dev->device, *pci_dev);
 	bool is_safe_mode = pf->adapter->is_safe_mode;
 	u64 phy_type_low;
 	u64 phy_type_high;

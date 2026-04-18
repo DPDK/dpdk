@@ -542,7 +542,7 @@ pci_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 	struct rte_pci_device *pdev;
 
 	if (start != NULL) {
-		pstart = RTE_DEV_TO_PCI_CONST(start);
+		pstart = RTE_BUS_DEVICE(start, *pstart);
 		pdev = TAILQ_NEXT(pstart, next);
 	} else {
 		pdev = TAILQ_FIRST(&rte_pci_bus.device_list);
@@ -588,7 +588,7 @@ pci_find_device_by_addr(const void *failure_addr)
 static int
 pci_hot_unplug_handler(struct rte_device *dev)
 {
-	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(dev);
+	struct rte_pci_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
 	int ret = 0;
 
 	switch (pdev->kdrv) {
@@ -642,13 +642,13 @@ pci_sigbus_handler(const void *failure_addr)
 static int
 pci_plug(struct rte_device *dev)
 {
-	return pci_probe_all_drivers(RTE_DEV_TO_PCI(dev));
+	return pci_probe_all_drivers(RTE_BUS_DEVICE(dev, struct rte_pci_device));
 }
 
 static int
 pci_unplug(struct rte_device *dev)
 {
-	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(dev);
+	struct rte_pci_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
 	int ret;
 
 	ret = rte_pci_detach_dev(pdev);
@@ -663,7 +663,7 @@ pci_unplug(struct rte_device *dev)
 static int
 pci_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
-	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(dev);
+	struct rte_pci_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
 
 	if (pdev->driver->dma_map != NULL)
 		return pdev->driver->dma_map(pdev, addr, iova, len);
@@ -682,7 +682,7 @@ pci_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 static int
 pci_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
-	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(dev);
+	struct rte_pci_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
 
 	if (pdev->driver->dma_unmap != NULL)
 		return pdev->driver->dma_unmap(pdev, addr, iova, len);

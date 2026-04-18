@@ -168,7 +168,7 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 		return -rte_errno;
 	}
 	memset(&sh->dev_cap, 0, sizeof(struct mlx5_dev_cap));
-	sh->dev_cap.vf = mlx5_dev_is_vf_pci(RTE_DEV_TO_PCI(sh->cdev->dev));
+	sh->dev_cap.vf = mlx5_dev_is_vf_pci(RTE_BUS_DEVICE(sh->cdev->dev, struct rte_pci_device));
 	sh->dev_cap.max_cq = 1 << hca_attr->log_max_cq;
 	sh->dev_cap.max_qp = 1 << hca_attr->log_max_qp;
 	sh->dev_cap.max_qp_wr = 1 << hca_attr->log_max_qp_sz;
@@ -846,7 +846,7 @@ int
 mlx5_os_net_probe(struct mlx5_common_device *cdev,
 		  struct mlx5_kvargs_ctrl *mkvlist)
 {
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(cdev->dev);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(cdev->dev, *pci_dev);
 	struct mlx5_dev_spawn_data spawn = {
 		.pf_bond = -1,
 		.max_port = 1,

@@ -309,18 +309,8 @@ struct ipn3ke_hw {
 	uint8_t *hw_addr;
 };
 
-/**
- * @internal
- * Helper macro for drivers that need to convert to struct rte_afu_device.
- */
-#define RTE_DEV_TO_AFU(ptr) \
-	container_of(ptr, struct rte_afu_device, device)
-
-#define RTE_DEV_TO_AFU_CONST(ptr) \
-	container_of(ptr, const struct rte_afu_device, device)
-
 #define RTE_ETH_DEV_TO_AFU(eth_dev) \
-	RTE_DEV_TO_AFU((eth_dev)->device)
+	RTE_BUS_DEVICE((eth_dev)->device, struct rte_afu_device)
 
 /**
  * PCIe MMIO Access

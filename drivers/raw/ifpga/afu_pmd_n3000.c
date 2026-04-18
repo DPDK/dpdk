@@ -1467,11 +1467,11 @@ static struct rte_pci_device *n3000_afu_get_pci_dev(struct afu_rawdev *dev)
 	if (!dev || !dev->rawdev || !dev->rawdev->device)
 		return NULL;
 
-	afudev = RTE_DEV_TO_AFU(dev->rawdev->device);
+	afudev = RTE_BUS_DEVICE(dev->rawdev->device, *afudev);
 	if (!afudev->rawdev || !afudev->rawdev->device)
 		return NULL;
 
-	return RTE_DEV_TO_PCI(afudev->rawdev->device);
+	return RTE_BUS_DEVICE(afudev->rawdev->device, struct rte_pci_device);
 }
 
 static int dma_afu_set_irqs(struct afu_rawdev *dev, uint32_t vec_start,

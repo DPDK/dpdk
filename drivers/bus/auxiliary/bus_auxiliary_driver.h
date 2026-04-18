@@ -22,6 +22,7 @@
 #include <rte_debug.h>
 #include <rte_interrupts.h>
 #include <dev_driver.h>
+#include <bus_driver.h>
 #include <rte_kvargs.h>
 
 #ifdef __cplusplus
@@ -130,18 +131,8 @@ struct rte_auxiliary_driver {
 	uint32_t drv_flags;                   /**< Flags RTE_AUXILIARY_DRV_*. */
 };
 
-/**
- * @internal
- * Helper macro for drivers that need to convert to struct rte_auxiliary_device.
- */
-#define RTE_DEV_TO_AUXILIARY(ptr) \
-	container_of(ptr, struct rte_auxiliary_device, device)
-
-#define RTE_DEV_TO_AUXILIARY_CONST(ptr) \
-	container_of(ptr, const struct rte_auxiliary_device, device)
-
 #define RTE_ETH_DEV_TO_AUXILIARY(eth_dev) \
-	RTE_DEV_TO_AUXILIARY((eth_dev)->device)
+	RTE_BUS_DEVICE((eth_dev)->device, struct rte_auxiliary_device)
 
 /** Device driver needs IOVA as VA and cannot work with IOVA as PA */
 #define RTE_AUXILIARY_DRV_NEED_IOVA_AS_VA 0x002

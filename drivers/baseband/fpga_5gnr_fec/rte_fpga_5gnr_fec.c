@@ -2873,7 +2873,7 @@ fpga_5gnr_dequeue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 static void
 fpga_5gnr_fec_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 {
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(dev->device, *pci_dev);
 
 	dev->dev_ops = &fpga_5gnr_ops;
 	dev->enqueue_ldpc_enc_ops = fpga_5gnr_enqueue_ldpc_enc;
@@ -3376,7 +3376,7 @@ int rte_fpga_5gnr_fec_configure(const char *dev_name, const struct rte_fpga_5gnr
 				dev_name);
 		return -ENODEV;
 	}
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(bbdev->device);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(bbdev->device, *pci_dev);
 	rte_bbdev_log(INFO, "Configure dev id %x", pci_dev->id.device_id);
 	if (pci_dev->id.device_id == VC_5GNR_PF_DEVICE_ID)
 		return vc_5gnr_configure(dev_name, conf);

@@ -441,10 +441,15 @@ platform_bus_probe(void)
 static struct rte_device *
 platform_bus_find_device(const struct rte_device *start, rte_dev_cmp_t cmp, const void *data)
 {
+	const struct rte_platform_device *pstart;
 	struct rte_platform_device *pdev;
 
-	pdev = start ? RTE_TAILQ_NEXT(RTE_DEV_TO_PLATFORM_DEV_CONST(start), next) :
-		       RTE_TAILQ_FIRST(&platform_bus.device_list);
+	if (start != NULL) {
+		pstart = RTE_BUS_DEVICE(start, *pstart);
+		pdev = TAILQ_NEXT(pstart, next);
+	} else {
+		pdev = RTE_TAILQ_FIRST(&platform_bus.device_list);
+	}
 	while (pdev) {
 		if (cmp(&pdev->device, data) == 0)
 			return &pdev->device;
@@ -464,7 +469,7 @@ platform_bus_plug(struct rte_device *dev)
 	if (!dev_is_bound_vfio_platform(dev->name))
 		return -EPERM;
 
-	return device_attach(RTE_DEV_TO_PLATFORM_DEV(dev));
+	return device_attach(RTE_BUS_DEVICE(dev, struct rte_platform_device));
 }
 
 static void
@@ -486,7 +491,7 @@ device_release_driver(struct rte_platform_device *pdev)
 static int
 platform_bus_unplug(struct rte_device *dev)
 {
-	struct rte_platform_device *pdev = RTE_DEV_TO_PLATFORM_DEV(dev);
+	struct rte_platform_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
 
 	device_release_driver(pdev);
 	device_cleanup(pdev);
@@ -519,7 +524,7 @@ platform_bus_parse(const char *name, void *addr)
 static int
 platform_bus_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
-	struct rte_platform_device *pdev = RTE_DEV_TO_PLATFORM_DEV(dev);
+	struct rte_platform_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
 
 	if (pdev->driver->dma_map != NULL)
 		return pdev->driver->dma_map(pdev, addr, iova, len);
@@ -530,7 +535,7 @@ platform_bus_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t l
 static int
 platform_bus_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
-	struct rte_platform_device *pdev = RTE_DEV_TO_PLATFORM_DEV(dev);
+	struct rte_platform_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
 
 	if (pdev->driver->dma_unmap != NULL)
 		return pdev->driver->dma_unmap(pdev, addr, iova, len);

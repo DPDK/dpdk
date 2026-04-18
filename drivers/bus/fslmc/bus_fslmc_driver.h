@@ -25,6 +25,7 @@
 #include <rte_debug.h>
 #include <rte_interrupts.h>
 #include <dev_driver.h>
+#include <bus_driver.h>
 #include <rte_tailq.h>
 #include <rte_devargs.h>
 #include <rte_mbuf.h>
@@ -66,9 +67,6 @@ dpaa2_seqn(struct rte_mbuf *mbuf)
 #define RTE_DPAA2_DRV_IOVA_AS_VA 0X0040
 
 struct rte_dpaa2_driver;
-
-#define RTE_DEV_TO_FSLMC_CONST(ptr) \
-	container_of(ptr, const struct rte_dpaa2_device, device)
 
 enum rte_dpaa2_dev_type {
 	/* Devices backed by DPDK driver */

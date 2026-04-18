@@ -1231,7 +1231,7 @@ static int qede_args_check(const char *key, const char *val, void *opaque)
 
 static int qede_args(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(eth_dev->device, *pci_dev);
 	struct rte_kvargs *kvlist;
 	struct rte_devargs *devargs;
 	int ret;

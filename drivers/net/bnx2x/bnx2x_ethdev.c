@@ -639,7 +639,7 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 
 	/* Extract key data structures */
 	sc = eth_dev->data->dev_private;
-	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
+	pci_dev = RTE_BUS_DEVICE(eth_dev->device, *pci_dev);
 	pci_addr = pci_dev->addr;
 
 	snprintf(sc->devinfo.name, NAME_SIZE, PCI_SHORT_PRI_FMT ":dpdk-port-%u",

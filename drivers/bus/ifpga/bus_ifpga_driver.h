@@ -13,6 +13,7 @@
 
 #include <rte_compat.h>
 #include <dev_driver.h>
+#include <bus_driver.h>
 #include <rte_pci.h>
 #include <rte_interrupts.h>
 #include <rte_spinlock.h>
@@ -78,13 +79,6 @@ struct rte_afu_device {
 	struct rte_afu_driver *driver;          /**< Associated driver */
 	char path[IFPGA_BUS_BITSTREAM_PATH_MAX_LEN];
 };
-
-/**
- * @internal
- * Helper macro for drivers that need to convert to struct rte_afu_device.
- */
-#define RTE_DEV_TO_AFU(ptr) \
-	container_of(ptr, struct rte_afu_device, device)
 
 /**
  * Initialization function for the driver called during FPGA BUS probing.

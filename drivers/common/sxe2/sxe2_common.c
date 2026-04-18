@@ -171,7 +171,7 @@ static int32_t sxe2_parse_class_type(const char *key, const char *value, void *a
 
 static int32_t sxe2_common_device_setup(struct sxe2_common_device *cdev)
 {
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(cdev->dev);
+	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(cdev->dev, *pci_dev);
 	int32_t ret = 0;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -258,7 +258,7 @@ static bool sxe2_dev_pci_id_match(const struct sxe2_class_driver *cdrv,
 		goto l_end;
 	}
 
-	pci_dev = RTE_DEV_TO_PCI_CONST(dev);
+	pci_dev = RTE_BUS_DEVICE(dev, *pci_dev);
 	for (id_table = cdrv->id_table; id_table->vendor_id != 0;
 			id_table++) {
 
