@@ -371,8 +371,10 @@ driver_probe_device(struct rte_platform_driver *pdrv, struct rte_platform_device
 }
 
 static bool
-driver_match_device(struct rte_platform_driver *pdrv, struct rte_platform_device *pdev)
+platform_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
 {
+	const struct rte_platform_driver *pdrv = RTE_BUS_DRIVER(drv, *pdrv);
+	const struct rte_platform_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
 	bool match = false;
 	char *kdrv;
 
@@ -408,7 +410,7 @@ device_attach(struct rte_platform_device *pdev)
 	struct rte_platform_driver *pdrv;
 
 	RTE_BUS_FOREACH_DRV(pdrv, &platform_bus.bus) {
-		if (driver_match_device(pdrv, pdev))
+		if (platform_bus_match(&pdrv->driver, &pdev->device))
 			break;
 	}
 
@@ -488,7 +490,7 @@ platform_bus_parse(const char *name, void *addr)
 	rte_strscpy(pdev.name, name, sizeof(pdev.name));
 
 	RTE_BUS_FOREACH_DRV(pdrv, &platform_bus.bus) {
-		if (driver_match_device(pdrv, &pdev))
+		if (platform_bus_match(&pdrv->driver, &pdev.device))
 			break;
 	}
 
@@ -556,6 +558,7 @@ struct rte_platform_bus platform_bus = {
 		.scan = platform_bus_scan,
 		.probe = platform_bus_probe,
 		.find_device = rte_bus_generic_find_device,
+		.match = platform_bus_match,
 		.plug = platform_bus_plug,
 		.unplug = platform_bus_unplug,
 		.parse = platform_bus_parse,

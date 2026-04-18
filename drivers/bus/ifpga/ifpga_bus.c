@@ -245,10 +245,11 @@ end:
 /*
  * Match the AFU Driver and AFU Device using the ID Table
  */
-static int
-rte_afu_match(const struct rte_afu_driver *afu_drv,
-	      const struct rte_afu_device *afu_dev)
+static bool
+ifpga_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
 {
+	const struct rte_afu_driver *afu_drv = RTE_BUS_DRIVER(drv, *afu_drv);
+	const struct rte_afu_device *afu_dev = RTE_BUS_DEVICE(dev, *afu_dev);
 	const struct rte_afu_uuid *id_table;
 
 	for (id_table = afu_drv->id_table;
@@ -260,10 +261,10 @@ rte_afu_match(const struct rte_afu_driver *afu_drv,
 				 afu_dev->id.uuid.uuid_high)
 			continue;
 
-		return 1;
+		return true;
 	}
 
-	return 0;
+	return false;
 }
 
 static int
@@ -272,7 +273,7 @@ ifpga_probe_one_driver(struct rte_afu_driver *drv,
 {
 	int ret;
 
-	if (!rte_afu_match(drv, afu_dev))
+	if (!ifpga_bus_match(&drv->driver, &afu_dev->device))
 		/* Match of device and driver failed */
 		return 1;
 
@@ -452,6 +453,7 @@ static struct rte_bus rte_ifpga_bus = {
 	.probe       = ifpga_probe,
 	.cleanup     = ifpga_cleanup,
 	.find_device = rte_bus_generic_find_device,
+	.match       = ifpga_bus_match,
 	.plug        = ifpga_plug,
 	.unplug      = ifpga_unplug,
 	.parse       = ifpga_parse,

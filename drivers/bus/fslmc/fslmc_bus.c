@@ -381,14 +381,16 @@ scan_fail:
 	return 0;
 }
 
-static int
-rte_fslmc_match(struct rte_dpaa2_driver *dpaa2_drv,
-		struct rte_dpaa2_device *dpaa2_dev)
+static bool
+fslmc_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
 {
-	if (dpaa2_drv->drv_type == dpaa2_dev->dev_type)
-		return 0;
+	const struct rte_dpaa2_driver *dpaa2_drv = RTE_BUS_DRIVER(drv, *dpaa2_drv);
+	const struct rte_dpaa2_device *dpaa2_dev = RTE_BUS_DEVICE(dev, *dpaa2_dev);
 
-	return 1;
+	if (dpaa2_drv->drv_type == dpaa2_dev->dev_type)
+		return true;
+
+	return false;
 }
 
 static int
@@ -455,8 +457,7 @@ rte_fslmc_probe(void)
 
 	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
 		RTE_BUS_FOREACH_DRV(drv, &rte_fslmc_bus.bus) {
-			ret = rte_fslmc_match(drv, dev);
-			if (ret)
+			if (!fslmc_bus_match(&drv->driver, &dev->device))
 				continue;
 
 			if (rte_dev_is_probed(&dev->device))
@@ -504,14 +505,12 @@ rte_fslmc_driver_unregister(struct rte_dpaa2_driver *driver)
 static inline int
 fslmc_all_device_support_iova(void)
 {
-	int ret = 0;
 	struct rte_dpaa2_device *dev;
 	struct rte_dpaa2_driver *drv;
 
 	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
 		RTE_BUS_FOREACH_DRV(drv, &rte_fslmc_bus.bus) {
-			ret = rte_fslmc_match(drv, dev);
-			if (ret)
+			if (!fslmc_bus_match(&drv->driver, &dev->device))
 				continue;
 			/* if the driver is not supporting IOVA */
 			if (!(drv->drv_flags & RTE_DPAA2_DRV_IOVA_AS_VA))
@@ -548,8 +547,7 @@ fslmc_bus_plug(struct rte_device *rte_dev)
 	struct rte_dpaa2_driver *drv;
 
 	RTE_BUS_FOREACH_DRV(drv, &rte_fslmc_bus.bus) {
-		ret = rte_fslmc_match(drv, dev);
-		if (ret)
+		if (!fslmc_bus_match(&drv->driver, &dev->device))
 			continue;
 
 		if (rte_dev_is_probed(&dev->device))
@@ -602,6 +600,7 @@ struct rte_fslmc_bus rte_fslmc_bus = {
 		.dev_compare = fslmc_dev_compare,
 		.find_device = rte_bus_generic_find_device,
 		.get_iommu_class = rte_dpaa2_get_iommu_class,
+		.match = fslmc_bus_match,
 		.plug = fslmc_bus_plug,
 		.unplug = fslmc_bus_unplug,
 		.dev_iterate = rte_bus_generic_dev_iterate,

@@ -141,13 +141,12 @@ pci_unmap_resource(void *requested_addr, size_t size)
 	} else
 		PCI_LOG(DEBUG, "  PCI memory unmapped at %p", requested_addr);
 }
-/*
- * Match the PCI Driver and Device using the ID Table
- */
-int
-rte_pci_match(const struct rte_pci_driver *pci_drv,
-	      const struct rte_pci_device *pci_dev)
+
+static bool
+pci_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
 {
+	const struct rte_pci_driver *pci_drv = RTE_BUS_DRIVER(drv, *pci_drv);
+	const struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(dev, *pci_dev);
 	const struct rte_pci_id *id_table;
 
 	for (id_table = pci_drv->id_table; id_table->vendor_id != 0;
@@ -171,10 +170,10 @@ rte_pci_match(const struct rte_pci_driver *pci_drv,
 				id_table->class_id != RTE_CLASS_ANY_ID)
 			continue;
 
-		return 1;
+		return true;
 	}
 
-	return 0;
+	return false;
 }
 
 /*
@@ -195,7 +194,7 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 	loc = &dev->addr;
 
 	/* The device is not blocked; Check if driver supports it */
-	if (!rte_pci_match(dr, dev))
+	if (!pci_bus_match(&dr->driver, &dev->device))
 		/* Match of device and driver failed */
 		return 1;
 
@@ -680,7 +679,7 @@ rte_pci_get_iommu_class(void)
 		RTE_BUS_FOREACH_DRV(drv, &rte_pci_bus.bus) {
 			enum rte_iova_mode dev_iova_mode;
 
-			if (!rte_pci_match(drv, dev))
+			if (!pci_bus_match(&drv->driver, &dev->device))
 				continue;
 
 			dev_iova_mode = pci_device_iova_mode(drv, dev);
@@ -861,6 +860,7 @@ struct rte_pci_bus rte_pci_bus = {
 		.probe = pci_probe,
 		.cleanup = pci_cleanup,
 		.find_device = rte_bus_generic_find_device,
+		.match = pci_bus_match,
 		.plug = pci_plug,
 		.unplug = pci_unplug,
 		.parse = pci_parse,
