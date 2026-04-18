@@ -1949,6 +1949,7 @@ Tested Platforms
 * Intel(R) Testing
 
    * Basic Intel(R) NIC testing
+
       * Build & CFLAG compile: cover the build test combination with latest GCC/Clang version and the popular OS revision such as Ubuntu24.04.3, Ubuntu25.04, Fedora42, RHEL10, RHEL9.6, FreeBSD14.3, SUSE15.6, AzureLinux3.0, OpenAnolis8.10, OpenEuler24.04-SP2
       * i40E-(XXV710, X722) PF/VF: test scenarios including basic/RTE_FLOW/TSO/Jumboframe/checksum offload/mac_filter/VLAN/VXLAN/RSS, etc.
       * IXGBE-(E610) PF/VF: test scenarios including basic/RTE_FLOW/TSO/Jumboframe/checksum offload/mac_filter/VLAN/VXLAN/RSS, etc.
@@ -1960,6 +1961,7 @@ Tested Platforms
       * Other: test scenarios including AF_XDP, Power, CBDMA, DSA
 
    * Performance test
+
     * Thoughput Performance
     * Cryptodev Latency
     * PF/VF NIC single core
