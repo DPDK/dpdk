@@ -162,6 +162,25 @@ vdev_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 	return 0;
 }
 
+/*
+ * Check if a vdev driver matches a vdev device by name.
+ */
+static bool
+vdev_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
+{
+	const char *name = dev->name;
+
+	/* Check driver name match */
+	if (strncmp(drv->name, name, strlen(drv->name)) == 0)
+		return true;
+
+	/* Check driver alias match */
+	if (drv->alias && strncmp(drv->alias, name, strlen(drv->alias)) == 0)
+		return true;
+
+	return false;
+}
+
 static int
 vdev_probe_all_drivers(struct rte_vdev_device *dev)
 {
@@ -631,6 +650,7 @@ static struct rte_bus rte_vdev_bus = {
 	.probe = vdev_probe,
 	.cleanup = vdev_cleanup,
 	.find_device = vdev_find_device,
+	.match = vdev_bus_match,
 	.plug = vdev_plug,
 	.unplug = vdev_unplug,
 	.parse = vdev_parse,

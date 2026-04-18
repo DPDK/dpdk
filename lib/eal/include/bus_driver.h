@@ -234,6 +234,24 @@ typedef int (*rte_bus_sigbus_handler_t)(const void *failure_addr);
 typedef int (*rte_bus_cleanup_t)(void);
 
 /**
+ * Check if a driver matches a device.
+ *
+ * This function checks whether a driver can handle a given device.
+ * Matching logic is bus-specific (e.g., PCI uses ID tables, vdev uses
+ * name matching, fslmc uses device type).
+ *
+ * @param drv
+ *	Driver to check.
+ * @param dev
+ *	Device to check against.
+ *
+ * @return
+ *	true if the driver matches the device, false otherwise.
+ */
+typedef bool (*rte_bus_match_t)(const struct rte_driver *drv,
+				 const struct rte_device *dev);
+
+/**
  * Bus scan policies
  */
 enum rte_bus_scan_mode {
@@ -297,6 +315,7 @@ struct rte_bus {
 	rte_bus_scan_t scan;         /**< Scan for devices attached to bus */
 	rte_bus_probe_t probe;       /**< Probe devices on bus */
 	rte_bus_find_device_t find_device; /**< Find a device on the bus */
+	rte_bus_match_t match;       /**< Check if driver matches device */
 	rte_bus_plug_t plug;         /**< Probe single device for drivers */
 	rte_bus_unplug_t unplug;     /**< Remove single device from driver */
 	rte_bus_parse_t parse;       /**< Parse a device name */
@@ -543,6 +562,25 @@ void rte_bus_add_driver(struct rte_bus *bus, struct rte_driver *driver);
  */
 __rte_internal
 void rte_bus_remove_driver(struct rte_bus *bus, struct rte_driver *driver);
+
+/**
+ * Find the first driver that matches a device on a bus.
+ *
+ * Iterates through all registered drivers on the bus and returns the next
+ * one that matches the given device according to the bus's match operation.
+ *
+ * @param bus
+ *   A pointer to a rte_bus structure.
+ * @param start
+ *   Starting iteration context.
+ * @param dev
+ *   A pointer to a rte_device structure.
+ * @return
+ *   Pointer to the matching driver, or NULL if no match found.
+ */
+__rte_internal
+struct rte_driver *rte_bus_find_driver(const struct rte_bus *bus, const struct rte_driver *start,
+	const struct rte_device *dev);
 
 #ifdef __cplusplus
 }

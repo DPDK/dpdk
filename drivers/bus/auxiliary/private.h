@@ -44,10 +44,4 @@ int auxiliary_scan(void);
  */
 void auxiliary_on_scan(struct rte_auxiliary_device *aux_dev);
 
-/*
- * Match the auxiliary driver and device by driver function.
- */
-bool auxiliary_match(const struct rte_auxiliary_driver *aux_drv,
-		     const struct rte_auxiliary_device *aux_dev);
-
 #endif /* BUS_AUXILIARY_PRIVATE_H */

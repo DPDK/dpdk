@@ -65,25 +65,15 @@ vmbus_unmap_resource(void *requested_addr, size_t size)
 	}
 }
 
-/**
- * Match the VMBUS driver and device using UUID table
- *
- * @param drv
- *	VMBUS driver from which ID table would be extracted
- * @param pci_dev
- *	VMBUS device to match against the driver
- * @return
- *	true for successful match
- *	false for unsuccessful match
- */
 static bool
-vmbus_match(const struct rte_vmbus_driver *dr,
-	    const struct rte_vmbus_device *dev)
+vmbus_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
 {
+	const struct rte_vmbus_driver *dr = RTE_BUS_DRIVER(drv, *dr);
+	const struct rte_vmbus_device *vmbus_dev = RTE_BUS_DEVICE(dev, *vmbus_dev);
 	const rte_uuid_t *id_table;
 
 	for (id_table = dr->id_table; !rte_uuid_is_null(*id_table); ++id_table) {
-		if (rte_uuid_compare(*id_table, dev->class_id) == 0)
+		if (rte_uuid_compare(*id_table, vmbus_dev->class_id) == 0)
 			return true;
 	}
 
@@ -99,7 +89,7 @@ vmbus_probe_one_driver(struct rte_vmbus_driver *dr,
 	char guid[RTE_UUID_STRLEN];
 	int ret;
 
-	if (!vmbus_match(dr, dev))
+	if (!vmbus_bus_match(&dr->driver, &dev->device))
 		return 1;	 /* not supported */
 
 	rte_uuid_unparse(dev->device_id, guid, sizeof(guid));
@@ -281,6 +271,7 @@ struct rte_vmbus_bus rte_vmbus_bus = {
 		.probe = rte_vmbus_probe,
 		.cleanup = rte_vmbus_cleanup,
 		.find_device = rte_bus_generic_find_device,
+		.match = vmbus_bus_match,
 		.parse = vmbus_parse,
 		.dev_compare = vmbus_dev_compare,
 	},

@@ -59,13 +59,12 @@ auxiliary_on_scan(struct rte_auxiliary_device *aux_dev)
 	aux_dev->device.devargs = rte_bus_find_devargs(&auxiliary_bus.bus, aux_dev->name);
 }
 
-/*
- * Match the auxiliary driver and device using driver function.
- */
-bool
-auxiliary_match(const struct rte_auxiliary_driver *aux_drv,
-		const struct rte_auxiliary_device *aux_dev)
+static bool
+auxiliary_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
 {
+	const struct rte_auxiliary_driver *aux_drv = RTE_BUS_DRIVER(drv, *aux_drv);
+	const struct rte_auxiliary_device *aux_dev = RTE_BUS_DEVICE(dev, *aux_dev);
+
 	if (aux_drv->match == NULL)
 		return false;
 	return aux_drv->match(aux_dev->name);
@@ -82,7 +81,7 @@ rte_auxiliary_probe_one_driver(struct rte_auxiliary_driver *drv,
 	int ret;
 
 	/* Check if driver supports it. */
-	if (!auxiliary_match(drv, dev))
+	if (!auxiliary_bus_match(&drv->driver, &dev->device))
 		/* Match of device and driver failed */
 		return 1;
 
@@ -340,6 +339,7 @@ struct rte_auxiliary_bus auxiliary_bus = {
 		.probe = auxiliary_probe,
 		.cleanup = auxiliary_cleanup,
 		.find_device = rte_bus_generic_find_device,
+		.match = auxiliary_bus_match,
 		.plug = auxiliary_plug,
 		.unplug = auxiliary_unplug,
 		.parse = auxiliary_parse,

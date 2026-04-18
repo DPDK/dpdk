@@ -626,19 +626,16 @@ rte_dpaa_driver_unregister(struct rte_dpaa_driver *driver)
 	rte_bus_remove_driver(&rte_dpaa_bus.bus, &driver->driver);
 }
 
-static int
-rte_dpaa_device_match(struct rte_dpaa_driver *drv,
-		      struct rte_dpaa_device *dev)
+static bool
+dpaa_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
 {
-	if (!drv || !dev) {
-		DPAA_BUS_DEBUG("Invalid drv or dev received.");
-		return -1;
-	}
+	const struct rte_dpaa_driver *dpaa_drv = RTE_BUS_DRIVER(drv, *dpaa_drv);
+	const struct rte_dpaa_device *dpaa_dev = RTE_BUS_DEVICE(dev, *dpaa_dev);
 
-	if (drv->drv_type == dev->device_type)
-		return 0;
+	if (dpaa_drv->drv_type == dpaa_dev->device_type)
+		return true;
 
-	return -1;
+	return false;
 }
 
 static int
@@ -793,8 +790,7 @@ rte_dpaa_bus_probe(void)
 	/* For each registered driver, and device, call the driver->probe */
 	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus.bus) {
 		RTE_BUS_FOREACH_DRV(drv, &rte_dpaa_bus.bus) {
-			ret = rte_dpaa_device_match(drv, dev);
-			if (ret)
+			if (!dpaa_bus_match(&drv->driver, &dev->device))
 				continue;
 
 			if (rte_dev_is_probed(&dev->device))
@@ -902,6 +898,7 @@ static struct rte_dpaa_bus rte_dpaa_bus = {
 		.dev_compare = dpaa_bus_dev_compare,
 		.find_device = rte_bus_generic_find_device,
 		.get_iommu_class = rte_dpaa_get_iommu_class,
+		.match = dpaa_bus_match,
 		.plug = dpaa_bus_plug,
 		.unplug = dpaa_bus_unplug,
 		.dev_iterate = rte_bus_generic_dev_iterate,

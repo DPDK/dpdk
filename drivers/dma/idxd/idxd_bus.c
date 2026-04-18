@@ -43,6 +43,7 @@ struct rte_dsa_device {
 /* forward prototypes */
 struct dsa_bus;
 static int dsa_scan(void);
+static bool dsa_match(const struct rte_driver *drv, const struct rte_device *dev);
 static int dsa_probe(void);
 static enum rte_iova_mode dsa_get_iommu_class(void);
 static int dsa_addr_parse(const char *name, void *addr);
@@ -58,6 +59,7 @@ struct dsa_bus {
 struct dsa_bus dsa_bus = {
 	.bus = {
 		.scan = dsa_scan,
+		.match = dsa_match,
 		.probe = dsa_probe,
 		.find_device = rte_bus_generic_find_device,
 		.get_iommu_class = dsa_get_iommu_class,
@@ -126,7 +128,7 @@ idxd_bus_mmap_wq(struct rte_dsa_device *dev)
 }
 
 static int
-read_wq_string(struct rte_dsa_device *dev, const char *filename,
+read_wq_string(const struct rte_dsa_device *dev, const char *filename,
 		char *value, size_t valuelen)
 {
 	char sysfs_node[PATH_MAX];
@@ -241,7 +243,7 @@ idxd_probe_dsa(struct rte_dsa_device *dev)
 }
 
 static int
-is_for_this_process_use(struct rte_dsa_device *dev, const char *name)
+is_for_this_process_use(const char *name)
 {
 	char prefix[256];
 	int retval = 0;
@@ -256,9 +258,6 @@ is_for_this_process_use(struct rte_dsa_device *dev, const char *name)
 	if (strncmp(name, prefix, prefixlen) == 0 && name[prefixlen] == '_')
 		retval = 1;
 
-	if (retval)
-		retval = !rte_bus_device_is_ignored(&dsa_bus.bus, dev->device.name);
-
 	return retval;
 }
 
@@ -268,14 +267,8 @@ dsa_probe(void)
 	struct rte_dsa_device *dev;
 
 	RTE_BUS_FOREACH_DEV(dev, &dsa_bus.bus) {
-		char type[64], name[64];
-
-		if (read_wq_string(dev, "type", type, sizeof(type)) < 0 ||
-				read_wq_string(dev, "name", name, sizeof(name)) < 0)
-			continue;
-
-		if (strncmp(type, "user", 4) == 0 &&
-				is_for_this_process_use(dev, name)) {
+		if (dsa_match(&dsa_bus.driver, &dev->device) &&
+				!rte_bus_device_is_ignored(&dsa_bus.bus, dev->device.name)) {
 			dev->device.driver = &dsa_bus.driver;
 			idxd_probe_dsa(dev);
 			continue;
@@ -284,6 +277,22 @@ dsa_probe(void)
 	}
 
 	return 0;
+}
+
+static bool dsa_match(const struct rte_driver *drv, const struct rte_device *dev)
+{
+	const struct rte_dsa_device *dsa_dev = RTE_BUS_DEVICE(dev, *dsa_dev);
+
+	if (drv == &dsa_bus.driver) {
+		char type[64], name[64];
+
+		if (read_wq_string(dsa_dev, "type", type, sizeof(type)) >= 0 &&
+				read_wq_string(dsa_dev, "name", name, sizeof(name)) >= 0) {
+			return strncmp(type, "user", 4) == 0 && is_for_this_process_use(name);
+		}
+	}
+
+	return false;
 }
 
 static int

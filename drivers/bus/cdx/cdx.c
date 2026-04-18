@@ -279,13 +279,12 @@ cdx_unmap_resource(void *requested_addr, size_t size)
 			requested_addr, size, rte_strerror(rte_errno));
 	}
 }
-/*
- * Match the CDX Driver and Device using device id and vendor id.
- */
+
 static bool
-cdx_match(const struct rte_cdx_driver *cdx_drv,
-		const struct rte_cdx_device *cdx_dev)
+cdx_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
 {
+	const struct rte_cdx_driver *cdx_drv = RTE_BUS_DRIVER(drv, *cdx_drv);
+	const struct rte_cdx_device *cdx_dev = RTE_BUS_DEVICE(dev, *cdx_dev);
 	const struct rte_cdx_id *id_table;
 
 	for (id_table = cdx_drv->id_table; id_table->vendor_id != 0;
@@ -298,10 +297,10 @@ cdx_match(const struct rte_cdx_driver *cdx_drv,
 				id_table->device_id != RTE_CDX_ANY_ID)
 			continue;
 
-		return 1;
+		return true;
 	}
 
-	return 0;
+	return false;
 }
 
 /*
@@ -317,7 +316,7 @@ cdx_probe_one_driver(struct rte_cdx_driver *dr,
 	int ret;
 
 	/* The device is not blocked; Check if driver supports it */
-	if (!cdx_match(dr, dev))
+	if (!cdx_bus_match(&dr->driver, &dev->device))
 		/* Match of device and driver failed */
 		return 1;
 
@@ -524,6 +523,7 @@ struct rte_cdx_bus rte_cdx_bus = {
 		.scan = cdx_scan,
 		.probe = cdx_probe,
 		.find_device = rte_bus_generic_find_device,
+		.match = cdx_bus_match,
 		.plug = cdx_plug,
 		.unplug = cdx_unplug,
 		.parse = cdx_parse,

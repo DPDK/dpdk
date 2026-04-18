@@ -473,3 +473,22 @@ rte_bus_generic_dev_iterate(const struct rte_bus *bus,
 	rte_kvargs_free(kvargs);
 	return dev;
 }
+
+RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_find_driver)
+struct rte_driver *
+rte_bus_find_driver(const struct rte_bus *bus, const struct rte_driver *start,
+	const struct rte_device *dev)
+{
+	struct rte_driver *drv;
+
+	if (start != NULL)
+		drv = TAILQ_NEXT(start, next);
+	else
+		drv = TAILQ_FIRST(&bus->driver_list);
+	while (drv != NULL) {
+		if (bus->match(drv, dev))
+			break;
+		drv = TAILQ_NEXT(drv, next);
+	}
+	return drv;
+}
