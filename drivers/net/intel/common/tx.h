@@ -279,42 +279,12 @@ ci_tx_free_bufs_vec(struct ci_tx_queue *txq, ci_desc_done_fn desc_done, bool ctx
 			(txq->fast_free_mp = txep[0].mbuf->pool);
 
 	if (mp != NULL && (n & 31) == 0) {
-		void **cache_objs;
-		struct rte_mempool_cache *cache = rte_mempool_default_cache(mp, rte_lcore_id());
-
-		if (cache == NULL)
-			goto normal;
-
-		cache_objs = &cache->objs[cache->len];
-
-		if (n > RTE_MEMPOOL_CACHE_MAX_SIZE) {
-			rte_mempool_ops_enqueue_bulk(mp, (void *)txep, n);
-			goto done;
-		}
-
-		/* The cache follows the following algorithm
-		 *   1. Add the objects to the cache
-		 *   2. Anything greater than the cache min value (if it
-		 *   crosses the cache flush threshold) is flushed to the ring.
-		 */
-		/* Add elements back into the cache */
-		uint32_t copied = 0;
-		/* n is multiple of 32 */
-		while (copied < n) {
-			memcpy(&cache_objs[copied], &txep[copied], 32 * sizeof(void *));
-			copied += 32;
-		}
-		cache->len += n;
-
-		if (cache->len >= cache->flushthresh) {
-			rte_mempool_ops_enqueue_bulk(mp, &cache->objs[cache->size],
-					cache->len - cache->size);
-			cache->len = cache->size;
-		}
+		static_assert(sizeof(*txep) == sizeof(struct rte_mbuf *),
+				"txep array is not similar to an array of rte_mbuf pointers");
+		rte_mbuf_raw_free_bulk(mp, (void *)txep, n);
 		goto done;
 	}
 
-normal:
 	m = rte_pktmbuf_prefree_seg(txep[0].mbuf);
 	if (likely(m)) {
 		free[0] = m;
