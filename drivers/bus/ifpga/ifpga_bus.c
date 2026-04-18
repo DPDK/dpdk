@@ -268,33 +268,11 @@ ifpga_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
 }
 
 static int
-ifpga_probe_one_driver(struct rte_afu_driver *drv,
-			struct rte_afu_device *afu_dev)
+ifpga_probe_device(struct rte_driver *drv, struct rte_device *dev)
 {
+	struct rte_afu_device *afu_dev = RTE_BUS_DEVICE(dev, *afu_dev);
+	struct rte_afu_driver *afu_drv = RTE_BUS_DRIVER(drv, *afu_drv);
 	int ret;
-
-	if (!ifpga_bus_match(&drv->driver, &afu_dev->device))
-		/* Match of device and driver failed */
-		return 1;
-
-	/* reference driver structure */
-	afu_dev->driver = drv;
-
-	/* call the driver probe() function */
-	ret = drv->probe(afu_dev);
-	if (ret)
-		afu_dev->driver = NULL;
-	else
-		afu_dev->device.driver = &drv->driver;
-
-	return ret;
-}
-
-static int
-ifpga_probe_all_drivers(struct rte_afu_device *afu_dev)
-{
-	struct rte_afu_driver *drv = NULL;
-	int ret = 0;
 
 	/* Check if a driver is already loaded */
 	if (rte_dev_is_probed(&afu_dev->device)) {
@@ -303,20 +281,17 @@ ifpga_probe_all_drivers(struct rte_afu_device *afu_dev)
 		return -EEXIST;
 	}
 
-	RTE_BUS_FOREACH_DRV(drv, &rte_ifpga_bus) {
-		ret = ifpga_probe_one_driver(drv, afu_dev);
-		if (ret < 0)
-			/* negative value is an error */
-			return ret;
-		if (ret > 0)
-			/* positive value means driver doesn't support it */
-			continue;
-		return 0;
-	}
-	if ((ret > 0) && (afu_dev->driver == NULL))
-		return 0;
+	/* reference driver structure */
+	afu_dev->driver = afu_drv;
+
+	/* call the driver probe() function */
+	ret = afu_drv->probe(afu_dev);
+	if (ret)
+		afu_dev->driver = NULL;
 	else
-		return ret;
+		afu_dev->device.driver = &afu_drv->driver;
+
+	return ret;
 }
 
 /*
@@ -331,12 +306,21 @@ ifpga_probe(void)
 	int ret = 0;
 
 	RTE_BUS_FOREACH_DEV(afu_dev, &rte_ifpga_bus) {
-		ret = ifpga_probe_all_drivers(afu_dev);
+		struct rte_driver *drv = NULL;
+
+next_driver:
+		drv = rte_bus_find_driver(&rte_ifpga_bus, drv, &afu_dev->device);
+		if (drv == NULL)
+			continue;
+
+		ret = rte_ifpga_bus.probe_device(drv, &afu_dev->device);
 		if (ret == -EEXIST)
 			continue;
 		if (ret < 0)
 			IFPGA_BUS_ERR("failed to initialize %s device",
 				rte_ifpga_device_name(afu_dev));
+		else if (ret > 0)
+			goto next_driver;
 	}
 
 	return ret;
@@ -377,12 +361,6 @@ free:
 	}
 
 	return error;
-}
-
-static int
-ifpga_plug(struct rte_device *dev)
-{
-	return ifpga_probe_all_drivers(RTE_BUS_DEVICE(dev, struct rte_afu_device));
 }
 
 static int
@@ -454,7 +432,7 @@ static struct rte_bus rte_ifpga_bus = {
 	.cleanup     = ifpga_cleanup,
 	.find_device = rte_bus_generic_find_device,
 	.match       = ifpga_bus_match,
-	.plug        = ifpga_plug,
+	.probe_device = ifpga_probe_device,
 	.unplug      = ifpga_unplug,
 	.parse       = ifpga_parse,
 };

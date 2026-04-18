@@ -79,83 +79,57 @@ vmbus_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
 
 	return false;
 }
+
 /*
  * If device ID match, call the devinit() function of the driver.
  */
 static int
-vmbus_probe_one_driver(struct rte_vmbus_driver *dr,
-		       struct rte_vmbus_device *dev)
+vmbus_probe_device(struct rte_driver *drv, struct rte_device *dev)
 {
+	struct rte_vmbus_device *vmbus_dev = RTE_BUS_DEVICE(dev, *vmbus_dev);
+	struct rte_vmbus_driver *vmbus_drv = RTE_BUS_DRIVER(drv, *vmbus_drv);
 	char guid[RTE_UUID_STRLEN];
 	int ret;
 
-	if (!vmbus_bus_match(&dr->driver, &dev->device))
-		return 1;	 /* not supported */
+	/* Check if a driver is already loaded */
+	if (rte_dev_is_probed(&vmbus_dev->device)) {
+		VMBUS_LOG(DEBUG, "VMBUS driver already loaded");
+		return 0;
+	}
 
-	rte_uuid_unparse(dev->device_id, guid, sizeof(guid));
+	rte_uuid_unparse(vmbus_dev->device_id, guid, sizeof(guid));
 	VMBUS_LOG(INFO, "VMBUS device %s on NUMA socket %i",
-		  guid, dev->device.numa_node);
+		  guid, vmbus_dev->device.numa_node);
 
 	/* no initialization when marked as blocked, return without error */
-	if (dev->device.devargs != NULL &&
-		dev->device.devargs->policy == RTE_DEV_BLOCKED) {
+	if (vmbus_dev->device.devargs != NULL &&
+		vmbus_dev->device.devargs->policy == RTE_DEV_BLOCKED) {
 		VMBUS_LOG(INFO, "  Device is blocked, not initializing");
 		return 1;
 	}
 
 	/* map resources for device */
-	ret = rte_vmbus_map_device(dev);
+	ret = rte_vmbus_map_device(vmbus_dev);
 	if (ret != 0)
 		return ret;
 
 	/* reference driver structure */
-	dev->driver = dr;
+	vmbus_dev->driver = vmbus_drv;
 
-	if (dev->device.numa_node < 0 && rte_socket_count() > 1)
+	if (vmbus_dev->device.numa_node < 0 && rte_socket_count() > 1)
 		VMBUS_LOG(INFO, "Device %s is not NUMA-aware", guid);
 
 	/* call the driver probe() function */
-	VMBUS_LOG(INFO, "  probe driver: %s", dr->driver.name);
-	ret = dr->probe(dr, dev);
-	if (ret) {
-		dev->driver = NULL;
-		rte_vmbus_unmap_device(dev);
+	VMBUS_LOG(INFO, "  probe driver: %s", vmbus_drv->driver.name);
+	ret = vmbus_drv->probe(vmbus_drv, vmbus_dev);
+	if (ret != 0) {
+		vmbus_dev->driver = NULL;
+		rte_vmbus_unmap_device(vmbus_dev);
 	} else {
-		dev->device.driver = &dr->driver;
+		vmbus_dev->device.driver = &vmbus_drv->driver;
 	}
 
 	return ret;
-}
-
-/*
- * If device class GUID matches, call the probe function of
- * register drivers for the vmbus device.
- * Return -1 if initialization failed,
- * and 1 if no driver found for this device.
- */
-static int
-vmbus_probe_all_drivers(struct rte_vmbus_device *dev)
-{
-	struct rte_vmbus_driver *dr;
-	int rc;
-
-	/* Check if a driver is already loaded */
-	if (rte_dev_is_probed(&dev->device)) {
-		VMBUS_LOG(DEBUG, "VMBUS driver already loaded");
-		return 0;
-	}
-
-	RTE_BUS_FOREACH_DRV(dr, &rte_vmbus_bus.bus) {
-		rc = vmbus_probe_one_driver(dr, dev);
-		if (rc < 0) /* negative is an error */
-			return -1;
-
-		if (rc > 0) /* positive driver doesn't support it */
-			continue;
-
-		return 0;
-	}
-	return 1;
 }
 
 /*
@@ -172,6 +146,9 @@ rte_vmbus_probe(void)
 	char ubuf[RTE_UUID_STRLEN];
 
 	RTE_BUS_FOREACH_DEV(dev, &rte_vmbus_bus.bus) {
+		struct rte_driver *drv = NULL;
+		int ret;
+
 		probed++;
 
 		rte_uuid_unparse(dev->device_id, ubuf, sizeof(ubuf));
@@ -179,11 +156,19 @@ rte_vmbus_probe(void)
 		if (rte_bus_device_is_ignored(&rte_vmbus_bus.bus, ubuf))
 			continue;
 
-		if (vmbus_probe_all_drivers(dev) < 0) {
+next_driver:
+		drv = rte_bus_find_driver(&rte_vmbus_bus.bus, drv, &dev->device);
+		if (drv == NULL)
+			continue;
+
+		ret = rte_vmbus_bus.bus.probe_device(drv, &dev->device);
+		if (ret < 0) {
 			VMBUS_LOG(NOTICE,
 				"Requested device %s cannot be used", ubuf);
 			rte_errno = errno;
 			failed++;
+		} else if (ret > 0) {
+			goto next_driver;
 		}
 	}
 
@@ -272,6 +257,7 @@ struct rte_vmbus_bus rte_vmbus_bus = {
 		.cleanup = rte_vmbus_cleanup,
 		.find_device = rte_bus_generic_find_device,
 		.match = vmbus_bus_match,
+		.probe_device = vmbus_probe_device,
 		.parse = vmbus_parse,
 		.dev_compare = vmbus_dev_compare,
 	},

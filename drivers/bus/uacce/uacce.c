@@ -370,56 +370,32 @@ uacce_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
 }
 
 static int
-uacce_probe_one_driver(struct rte_uacce_driver *dr, struct rte_uacce_device *dev)
+uacce_probe_device(struct rte_driver *drv, struct rte_device *dev)
 {
-	const char *dev_name = dev->name;
-	bool already_probed;
+	struct rte_uacce_device *uacce_dev = RTE_BUS_DEVICE(dev, *uacce_dev);
+	struct rte_uacce_driver *uacce_drv = RTE_BUS_DRIVER(drv, *uacce_drv);
+	const char *dev_name = uacce_dev->name;
 	int ret;
 
-	if (!uacce_bus_match(&dr->driver, &dev->device))
-		/* Match of device and driver failed */
-		return 1;
-
-	already_probed = rte_dev_is_probed(&dev->device);
-	if (already_probed) {
+	if (rte_dev_is_probed(&uacce_dev->device)) {
 		UACCE_BUS_INFO("device %s is already probed", dev_name);
 		return -EEXIST;
 	}
 
-	UACCE_BUS_DEBUG("probe device %s using driver %s", dev_name, dr->driver.name);
+	UACCE_BUS_DEBUG("probe device %s using driver %s", dev_name, uacce_drv->driver.name);
 
-	ret = dr->probe(dr, dev);
+	ret = uacce_drv->probe(uacce_drv, uacce_dev);
 	if (ret != 0) {
 		UACCE_BUS_ERR("probe device %s with driver %s failed %d",
-			      dev_name, dr->driver.name, ret);
+			      dev_name, uacce_drv->driver.name, ret);
 	} else {
-		dev->device.driver = &dr->driver;
-		dev->driver = dr;
+		uacce_dev->device.driver = &uacce_drv->driver;
+		uacce_dev->driver = uacce_drv;
 		UACCE_BUS_DEBUG("probe device %s with driver %s success",
-				dev_name, dr->driver.name);
+				dev_name, uacce_drv->driver.name);
 	}
 
 	return ret;
-}
-
-static int
-uacce_probe_all_drivers(struct rte_uacce_device *dev)
-{
-	struct rte_uacce_driver *dr;
-	int rc;
-
-	RTE_BUS_FOREACH_DRV(dr, &uacce_bus.bus) {
-		rc = uacce_probe_one_driver(dr, dev);
-		if (rc < 0)
-			/* negative value is an error */
-			return rc;
-		if (rc > 0)
-			/* positive value means driver doesn't support it */
-			continue;
-		return 0;
-	}
-
-	return 1;
 }
 
 static int
@@ -427,17 +403,26 @@ uacce_probe(void)
 {
 	size_t probed = 0, failed = 0;
 	struct rte_uacce_device *dev;
-	int ret;
 
 	RTE_BUS_FOREACH_DEV(dev, &uacce_bus.bus) {
+		struct rte_driver *drv = NULL;
+		int ret;
+
 		probed++;
 
-		ret = uacce_probe_all_drivers(dev);
+next_driver:
+		drv = rte_bus_find_driver(&uacce_bus.bus, drv, &dev->device);
+		if (drv == NULL)
+			continue;
+
+		ret = uacce_bus.bus.probe_device(drv, &dev->device);
 		if (ret < 0) {
 			UACCE_BUS_LOG(ERR, "Requested device %s cannot be used",
 				dev->name);
 			rte_errno = errno;
 			failed++;
+		} else if (ret > 0) {
+			goto next_driver;
 		}
 	}
 
@@ -473,12 +458,6 @@ free:
 	}
 
 	return error;
-}
-
-static int
-uacce_plug(struct rte_device *dev)
-{
-	return uacce_probe_all_drivers(RTE_BUS_DEVICE(dev, struct rte_uacce_device));
 }
 
 static int
@@ -644,7 +623,7 @@ static struct rte_uacce_bus uacce_bus = {
 		.probe = uacce_probe,
 		.cleanup = uacce_cleanup,
 		.match = uacce_bus_match,
-		.plug = uacce_plug,
+		.probe_device = uacce_probe_device,
 		.unplug = uacce_unplug,
 		.find_device = rte_bus_generic_find_device,
 		.parse = uacce_parse,
