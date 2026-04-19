@@ -1171,7 +1171,7 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 	const struct rte_flow_item_e_tag *e_tag_mask;
 	const struct rte_flow_action *act;
 	const struct rte_flow_action_vf *act_vf;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	if (!pattern) {
 		rte_flow_error_set(error, EINVAL,
@@ -1328,7 +1328,7 @@ txgbe_parse_l2_tn_filter(struct rte_eth_dev *dev,
 			struct rte_flow_error *error)
 {
 	int ret = 0;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	uint16_t vf_num;
 
 	if (!txgbe_is_pf(TXGBE_DEV_HW(dev))) {

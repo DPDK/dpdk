@@ -192,7 +192,7 @@ ulp_session_init(struct bnxt *bp,
 	if (!bp)
 		return NULL;
 
-	pci_dev = RTE_BUS_DEVICE(bp->eth_dev->device, *pci_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(bp->eth_dev, *pci_dev);
 	pci_addr = &pci_dev->addr;
 
 	pthread_mutex_lock(&bnxt_ulp_global_mutex);
@@ -556,7 +556,7 @@ bnxt_ulp_port_deinit(struct bnxt *bp)
 		     bp->eth_dev->data->port_id);
 
 	/* Get the session details  */
-	pci_dev = RTE_BUS_DEVICE(bp->eth_dev->device, *pci_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(bp->eth_dev, *pci_dev);
 	pci_addr = &pci_dev->addr;
 	pthread_mutex_lock(&bnxt_ulp_global_mutex);
 	session = ulp_get_session(bp, pci_addr);

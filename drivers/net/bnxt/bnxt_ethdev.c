@@ -862,7 +862,7 @@ error:
 
 static int bnxt_start_nic(struct bnxt *bp)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(bp->eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(bp->eth_dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint32_t intr_vector = 0;
 	uint32_t queue_id, base = BNXT_MISC_VEC_ID;
@@ -1167,7 +1167,7 @@ uint64_t bnxt_eth_rss_support(struct bnxt *bp)
 static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 				struct rte_eth_dev_info *dev_info)
 {
-	struct rte_pci_device *pdev = RTE_BUS_DEVICE(eth_dev->device, *pdev);
+	struct rte_pci_device *pdev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pdev);
 	struct bnxt *bp = eth_dev->data->dev_private;
 	uint16_t max_vnics, i, j, vpool, vrxq;
 	unsigned int max_rx_rings;
@@ -1719,7 +1719,7 @@ static int bnxt_ptp_start(struct bnxt *bp)
 static int bnxt_dev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct rte_eth_link link;
 	uint16_t i;
@@ -5143,7 +5143,7 @@ bool bnxt_stratus_device(struct bnxt *bp)
 
 static int bnxt_map_pci_bars(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	struct bnxt *bp = eth_dev->data->dev_private;
 
 	/* enable device (incl. PCI PM wakeup), and bus-mastering */
@@ -6600,7 +6600,7 @@ err:
  */
 static int bnxt_drv_init(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	struct bnxt *bp = eth_dev->data->dev_private;
 	int rc = 0;
 
@@ -6684,7 +6684,7 @@ static int bnxt_drv_init(struct rte_eth_dev *eth_dev)
 static int
 bnxt_dev_init(struct rte_eth_dev *eth_dev, void *params __rte_unused)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	static int version_printed;
 	struct bnxt *bp;
 	int rc;

@@ -44,7 +44,7 @@ sriov_mac_addr_assigned(const efx_vport_config_t *vport_config,
 int
 sfc_sriov_attach(struct sfc_adapter *sa)
 {
-	const struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(sa->eth_dev);
+	const struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(sa->eth_dev, *pci_dev);
 	struct sfc_sriov *sriov = &sa->sriov;
 	efx_vport_config_t *vport_config;
 	unsigned int i;

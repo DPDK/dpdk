@@ -30,7 +30,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 	struct nfp_net_hw *net_hw;
 	struct rte_eth_conf *dev_conf;
 	struct rte_eth_rxmode *rxmode;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	/* Disabling queues just in case... */
@@ -169,7 +169,7 @@ nfp_netvf_close(struct rte_eth_dev *dev)
 		return 0;
 
 	net_hw = dev->data->dev_private;
-	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	hw_priv = dev->process_private;
 
 	rte_free(net_hw->eth_xstats_base);
@@ -266,7 +266,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	const struct nfp_dev_info *dev_info;
 
 	port = eth_dev->data->port_id;
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 
 	dev_info = nfp_dev_info_get(pci_dev->id.device_id);
 	if (dev_info == NULL) {

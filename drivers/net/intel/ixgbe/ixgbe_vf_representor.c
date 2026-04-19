@@ -223,7 +223,7 @@ ixgbe_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params)
 	if (pf_ethdev == NULL)
 		return -ENODEV;
 
-	pci_dev = RTE_ETH_DEV_TO_PCI(pf_ethdev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(pf_ethdev, *pci_dev);
 
 	if (representor->vf_id >= pci_dev->max_vfs)
 		return -ENODEV;

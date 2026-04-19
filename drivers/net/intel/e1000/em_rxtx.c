@@ -2092,7 +2092,7 @@ em_flush_desc_rings(struct rte_eth_dev *dev)
 {
 	uint32_t fextnvm11, tdlen;
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	uint16_t pci_cfg_status = 0;
 	int ret;
 

@@ -217,7 +217,6 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 	uint64_t rx_offloads = eth_conf->rxmode.offloads;
 	uint64_t tx_offloads = eth_conf->txmode.offloads;
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
-	struct rte_device *rdev = dev->device;
 	struct rte_eth_link *link = &dev->data->dev_link;
 	struct rte_dpaa_device *dpaa_dev;
 	struct fman_if *fif = dev->process_private;
@@ -230,7 +229,7 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	dpaa_dev = RTE_BUS_DEVICE(rdev, *dpaa_dev);
+	dpaa_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *dpaa_dev);
 	intr_handle = dpaa_dev->intr_handle;
 	__fif = container_of(fif, struct __fman_if, __if);
 
@@ -426,13 +425,12 @@ dpaa_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 static void dpaa_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *dev = param;
-	struct rte_device *rdev = dev->device;
 	struct rte_dpaa_device *dpaa_dev;
 	struct rte_intr_handle *intr_handle;
 	uint64_t buf;
 	int bytes_read;
 
-	dpaa_dev = RTE_BUS_DEVICE(rdev, *dpaa_dev);
+	dpaa_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *dpaa_dev);
 	intr_handle = dpaa_dev->intr_handle;
 
 	if (rte_intr_fd_get(intr_handle) < 0)
@@ -502,7 +500,6 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 {
 	struct fman_if *fif = dev->process_private;
 	struct __fman_if *__fif;
-	struct rte_device *rdev = dev->device;
 	struct rte_dpaa_device *dpaa_dev;
 	struct rte_intr_handle *intr_handle;
 	struct rte_eth_link *link = &dev->data->dev_link;
@@ -530,7 +527,7 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 		}
 	}
 
-	dpaa_dev = RTE_BUS_DEVICE(rdev, *dpaa_dev);
+	dpaa_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *dpaa_dev);
 	intr_handle = dpaa_dev->intr_handle;
 	__fif = container_of(fif, struct __fman_if, __if);
 
@@ -1267,9 +1264,8 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		/* Set up the device interrupt handler */
 		if (dev->intr_handle == NULL) {
 			struct rte_dpaa_device *dpaa_dev;
-			struct rte_device *rdev = dev->device;
 
-			dpaa_dev = RTE_BUS_DEVICE(rdev, *dpaa_dev);
+			dpaa_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *dpaa_dev);
 			dev->intr_handle = dpaa_dev->intr_handle;
 			if (rte_intr_vec_list_alloc(dev->intr_handle,
 					NULL, dpaa_push_queue_max_num())) {
@@ -2119,7 +2115,7 @@ dpaa_dev_init_secondary(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	dpaa_device = RTE_BUS_DEVICE(eth_dev->device, *dpaa_device);
+	dpaa_device = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *dpaa_device);
 	dev_id = dpaa_device->id.dev_id;
 	cfg = dpaa_get_eth_port_cfg(dev_id);
 	fman_intf = cfg->fman_if;
@@ -2236,7 +2232,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	dpaa_device = RTE_BUS_DEVICE(eth_dev->device, *dpaa_device);
+	dpaa_device = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *dpaa_device);
 	dev_id = dpaa_device->id.dev_id;
 	dpaa_intf = eth_dev->data->dev_private;
 	cfg = dpaa_get_eth_port_cfg(dev_id);

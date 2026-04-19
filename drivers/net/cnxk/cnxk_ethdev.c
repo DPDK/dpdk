@@ -2177,7 +2177,7 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	/* Parse devargs string */

@@ -111,7 +111,7 @@ zxdh_intr_unmask(struct rte_eth_dev *dev)
 	if (rte_intr_ack(dev->intr_handle) < 0)
 		return -1;
 
-	hw->use_msix = zxdh_pci_msix_detect(RTE_ETH_DEV_TO_PCI(dev));
+	hw->use_msix = zxdh_pci_msix_detect(RTE_CLASS_TO_BUS_DEVICE(dev, struct rte_pci_device));
 
 	return 0;
 }
@@ -1586,7 +1586,7 @@ static int32_t
 zxdh_init_device(struct rte_eth_dev *eth_dev)
 {
 	struct zxdh_hw *hw = eth_dev->data->dev_private;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	int ret = 0;
 
 	ret = zxdh_read_pci_caps(pci_dev, hw);
@@ -1820,7 +1820,7 @@ zxdh_get_dev_shared_data_idx(uint32_t dev_serial_id)
 static int zxdh_init_dev_share_data(struct rte_eth_dev *eth_dev)
 {
 	struct zxdh_hw *hw = eth_dev->data->dev_private;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	uint32_t serial_id = (pci_dev->addr.domain << 16) |
 				(pci_dev->addr.bus << 8) | pci_dev->addr.devid;
 	uint16_t slot_id = 0;
@@ -2201,7 +2201,7 @@ is_inic_pf(uint16_t device_id)
 static int
 zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	struct zxdh_hw *hw = eth_dev->data->dev_private;
 	int ret = 0;
 

@@ -360,7 +360,7 @@ static int
 eth_atl_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct atl_adapter *adapter = eth_dev->data->dev_private;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	int err = 0;
@@ -479,7 +479,7 @@ static int
 atl_dev_start(struct rte_eth_dev *dev)
 {
 	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint32_t intr_vector = 0;
 	int status;
@@ -607,7 +607,7 @@ atl_dev_stop(struct rte_eth_dev *dev)
 	struct rte_eth_link link;
 	struct aq_hw_s *hw =
 		ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
@@ -688,7 +688,7 @@ atl_dev_set_link_down(struct rte_eth_dev *dev)
 static int
 atl_dev_close(struct rte_eth_dev *dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct aq_hw_s *hw;
 	int ret;
@@ -1094,7 +1094,7 @@ atl_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 static int
 atl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	dev_info->max_rx_queues = AQ_HW_MAX_RX_QUEUES;
 	dev_info->max_tx_queues = AQ_HW_MAX_TX_QUEUES;
@@ -1345,7 +1345,7 @@ atl_dev_link_status_print(struct rte_eth_dev *dev)
 
 #ifdef DEBUG
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	PMD_DRV_LOG(DEBUG, "PCI Address: " PCI_PRI_FMT,
 				pci_dev->addr.domain,

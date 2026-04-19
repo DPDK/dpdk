@@ -321,7 +321,7 @@ ngbe_swfw_lock_reset(struct ngbe_hw *hw)
 static int
 eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	struct ngbe_hw *hw = ngbe_dev_hw(eth_dev);
 	struct ngbe_vfta *shadow_vfta = NGBE_DEV_VFTA(eth_dev);
 	struct ngbe_hwstrip *hwstrip = NGBE_DEV_HWSTRIP(eth_dev);
@@ -958,7 +958,7 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	struct ngbe_hw_stats *hw_stats = NGBE_DEV_STATS(dev);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint32_t intr_vector = 0;
 	int err;
@@ -1160,7 +1160,7 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	struct ngbe_vf_info *vfinfo = *NGBE_DEV_VFDATA(dev);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int vf;
 
@@ -1256,7 +1256,7 @@ static int
 ngbe_dev_close(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int retries = 0;
 	int ret;
@@ -1843,7 +1843,7 @@ ngbe_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 static int
 ngbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 
 	dev_info->max_rx_queues = (uint16_t)hw->mac.max_rx_queues;
@@ -2258,7 +2258,7 @@ ngbe_dev_interrupt_get_status(struct rte_eth_dev *dev)
 static void
 ngbe_dev_link_status_print(struct rte_eth_dev *dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_eth_link link;
 
 	rte_eth_linkstatus_get(dev, &link);
@@ -2472,7 +2472,7 @@ static s32
 ngbe_fc_hpbthresh_set(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	u32 max_frame_size, tc, dv_id, rx_pb;
 	s32 kb, marker;
 
@@ -2653,7 +2653,7 @@ ngbe_remove_rar(struct rte_eth_dev *dev, uint32_t index)
 static int
 ngbe_set_default_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	ngbe_remove_rar(dev, 0);
 	ngbe_add_rar(dev, addr, 0, pci_dev->max_vfs);
@@ -2797,7 +2797,7 @@ ngbe_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t on)
 static int
 ngbe_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	uint32_t mask;
@@ -2867,7 +2867,7 @@ ngbe_set_ivar_map(struct ngbe_hw *hw, int8_t direction,
 static void
 ngbe_configure_msix(struct rte_eth_dev *dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	uint32_t queue_id, base = NGBE_MISC_VEC_ID;

@@ -654,7 +654,7 @@ cnxk_sso_init(struct rte_eventdev *event_dev)
 		return -ENOMEM;
 	}
 
-	pci_dev = RTE_BUS_DEVICE(event_dev->device, *pci_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(event_dev, *pci_dev);
 	dev->sso.pci_dev = pci_dev;
 
 	*(uint64_t *)mz->addr = (uint64_t)dev;

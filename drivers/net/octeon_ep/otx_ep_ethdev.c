@@ -777,7 +777,7 @@ static int otx_ep_eth_dev_query_set_vf_mac(struct rte_eth_dev *eth_dev,
 static int
 otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pdev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pdev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pdev);
 	struct otx_ep_device *otx_epvf = OTX_EP_DEV(eth_dev);
 	struct rte_ether_addr vf_mac_addr;
 	int ret = 0;

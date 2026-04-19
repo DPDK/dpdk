@@ -1622,7 +1622,7 @@ hns3vf_clear_vport_list(struct hns3_hw *hw)
 static int
 hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
@@ -1739,7 +1739,7 @@ hns3vf_notify_uninit(struct hns3_hw *hw)
 static void
 hns3vf_uninit_vf(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 
@@ -2377,7 +2377,7 @@ static int
 hns3vf_reinit_dev(struct hns3_adapter *hns)
 {
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[hns->hw.data->port_id];
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 

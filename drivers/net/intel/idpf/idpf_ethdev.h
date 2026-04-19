@@ -85,7 +85,7 @@ struct idpf_adapter_ext {
 TAILQ_HEAD(idpf_adapter_list, idpf_adapter_ext);
 
 #define IDPF_DEV_TO_PCI(eth_dev)		\
-	RTE_BUS_DEVICE((eth_dev)->device, struct rte_pci_device)
+	RTE_CLASS_TO_BUS_DEVICE(eth_dev, struct rte_pci_device)
 #define IDPF_ADAPTER_TO_EXT(p)					\
 	container_of((p), struct idpf_adapter_ext, base)
 

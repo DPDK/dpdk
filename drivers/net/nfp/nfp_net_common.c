@@ -1568,7 +1568,7 @@ nfp_rx_queue_intr_enable(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	struct rte_pci_device *pci_dev;
 
-	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	if (rte_intr_type_get(pci_dev->intr_handle) != RTE_INTR_HANDLE_UIO)
 		base = 1;
 
@@ -1589,7 +1589,7 @@ nfp_rx_queue_intr_disable(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	struct rte_pci_device *pci_dev;
 
-	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	if (rte_intr_type_get(pci_dev->intr_handle) != RTE_INTR_HANDLE_UIO)
 		base = 1;
 
@@ -1606,7 +1606,7 @@ static void
 nfp_net_dev_link_status_print(struct rte_eth_dev *dev)
 {
 	struct rte_eth_link link;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	rte_eth_linkstatus_get(dev, &link);
 	if (link.link_status != 0)
@@ -1635,7 +1635,7 @@ nfp_net_irq_unmask(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev;
 
 	hw = nfp_net_get_hw(dev);
-	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	/* Make sure all updates are written before un-masking */
 	rte_wmb();

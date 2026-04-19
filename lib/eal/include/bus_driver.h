@@ -462,6 +462,24 @@ void rte_bus_unregister(struct rte_bus *bus);
 	container_of(drv, typeof(bus_drv_type), driver)
 
 /**
+ * Helper macro to convert a device class pointer to a bus-specific device type.
+ * Works with any device class (ethdev, cryptodev, eventdev, bbdev, etc.) that has
+ * a 'device' field pointing to struct rte_device.
+ *
+ * Example: RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev) or
+ *          RTE_CLASS_TO_BUS_DEVICE(eth_dev, struct rte_pci_device)
+ *
+ * @param class_dev
+ *   Pointer to device class structure (e.g., struct rte_eth_dev *)
+ * @param bus_dev_type
+ *   Bus device type for type inference (e.g., *pci_dev or struct rte_pci_device)
+ * @return
+ *   Pointer to the bus-specific device structure
+ */
+#define RTE_CLASS_TO_BUS_DEVICE(class_dev, bus_dev_type) \
+	RTE_BUS_DEVICE((class_dev)->device, bus_dev_type)
+
+/**
  * Helper macro to iterate over all devices on a bus.
  *
  * @param dev

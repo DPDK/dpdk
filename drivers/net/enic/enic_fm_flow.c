@@ -3229,7 +3229,7 @@ enic_fm_init(struct enic *enic)
 	if (rte_eth_dev_is_repr(enic->rte_dev))
 		addr = &VF_ENIC_TO_VF_REP(enic)->bdf;
 	else
-		addr = &RTE_ETH_DEV_TO_PCI(enic->rte_dev)->addr;
+		addr = &RTE_CLASS_TO_BUS_DEVICE(enic->rte_dev, struct rte_pci_device)->addr;
 	rc = enic_fm_find_vnic(enic, addr, &enic->fm_vnic_handle);
 	if (rc) {
 		ENICPMD_LOG(ERR, "cannot find vnic handle for %x:%x:%x",
@@ -3361,7 +3361,7 @@ enic_fm_allocate_switch_domain(struct enic *pf)
 	if (rte_eth_dev_is_repr(pf->rte_dev))
 		return -EINVAL;
 	cur = pf;
-	cur_a = &RTE_ETH_DEV_TO_PCI(cur->rte_dev)->addr;
+	cur_a = &RTE_CLASS_TO_BUS_DEVICE(cur->rte_dev, struct rte_pci_device)->addr;
 	/* Go through ports and find another PF that is on the same adapter */
 	RTE_ETH_FOREACH_DEV(pid) {
 		dev = &rte_eth_devices[pid];
@@ -3373,7 +3373,7 @@ enic_fm_allocate_switch_domain(struct enic *pf)
 			continue;
 		/* dev is another PF. Is it on the same adapter? */
 		prev = pmd_priv(dev);
-		prev_a = &RTE_ETH_DEV_TO_PCI(dev)->addr;
+		prev_a = &RTE_CLASS_TO_BUS_DEVICE(dev, struct rte_pci_device)->addr;
 		if (!enic_fm_find_vnic(cur, prev_a, &vnic_h)) {
 			ENICPMD_LOG(DEBUG, "Port %u (PF BDF %x:%x:%x) and port %u (PF BDF %x:%x:%x domain %u) are on the same VIC",
 				cur->rte_dev->data->port_id,

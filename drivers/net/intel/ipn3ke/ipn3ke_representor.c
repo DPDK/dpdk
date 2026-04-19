@@ -2070,7 +2070,7 @@ ipn3ke_rpst_stats_reset(struct rte_eth_dev *ethdev)
 		return -EINVAL;
 	}
 
-	afu_dev = RTE_ETH_DEV_TO_AFU(ethdev);
+	afu_dev = RTE_CLASS_TO_BUS_DEVICE(ethdev, *afu_dev);
 	if (!afu_dev) {
 		IPN3KE_AFU_PMD_ERR("afu device to reset is NULL!");
 		return -EINVAL;
@@ -2138,7 +2138,7 @@ ipn3ke_rpst_stats_get
 		return -EINVAL;
 	}
 
-	afu_dev = RTE_ETH_DEV_TO_AFU(ethdev);
+	afu_dev = RTE_CLASS_TO_BUS_DEVICE(ethdev, *afu_dev);
 	if (!afu_dev) {
 		IPN3KE_AFU_PMD_ERR("afu device to get statistics is NULL!");
 		return -EINVAL;
@@ -2228,7 +2228,7 @@ ipn3ke_rpst_xstats_get
 		return -EINVAL;
 	}
 
-	afu_dev = RTE_ETH_DEV_TO_AFU(ethdev);
+	afu_dev = RTE_CLASS_TO_BUS_DEVICE(ethdev, *afu_dev);
 	if (!afu_dev) {
 		IPN3KE_AFU_PMD_ERR("afu device to get statistics is NULL!");
 		return -EINVAL;

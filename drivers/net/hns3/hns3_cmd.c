@@ -551,7 +551,7 @@ hns3_set_dcb_capability(struct hns3_hw *hw)
 		return;
 
 	eth_dev = &rte_eth_devices[hw->data->port_id];
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	device_id = pci_dev->id.device_id;
 
 	if (device_id == HNS3_DEV_ID_25GE_RDMA ||

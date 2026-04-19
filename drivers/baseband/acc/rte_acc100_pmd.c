@@ -3993,7 +3993,7 @@ acc100_dequeue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 static void
 acc100_bbdev_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 {
-	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(dev->device, *pci_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	dev->dev_ops = &acc100_bbdev_ops;
 	dev->enqueue_enc_ops = acc100_enqueue_enc;
@@ -4646,7 +4646,7 @@ rte_acc_configure(const char *dev_name, struct rte_acc_conf *conf)
 				dev_name);
 		return -ENODEV;
 	}
-	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(bbdev->device, *pci_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(bbdev, *pci_dev);
 	rte_bbdev_log(INFO, "Configure dev id %x", pci_dev->id.device_id);
 	if (pci_dev->id.device_id == ACC100_PF_DEVICE_ID)
 		return acc100_configure(dev_name, conf);

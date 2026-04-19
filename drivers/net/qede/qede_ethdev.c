@@ -1231,7 +1231,7 @@ static int qede_args_check(const char *key, const char *val, void *opaque)
 
 static int qede_args(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(eth_dev->device, *pci_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	struct rte_kvargs *kvlist;
 	struct rte_devargs *devargs;
 	int ret;
@@ -1540,7 +1540,7 @@ static void qede_poll_sp_sb_cb(void *param)
 
 static int qede_dev_close(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	int ret = 0;
@@ -2529,7 +2529,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	adapter = eth_dev->data->dev_private;
 	adapter->ethdev = eth_dev;
 	edev = &adapter->edev;
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	pci_addr = pci_dev->addr;
 
 	PMD_INIT_FUNC_TRACE(edev);
