@@ -61,6 +61,41 @@ osdep_iface_index_get(const char *device_name)
 }
 
 /*
+ * Helper function to get adapter information by name.
+ * Returns adapter info on success, NULL on failure.
+ * Caller must free the returned buffer.
+ */
+static IP_ADAPTER_ADDRESSES *
+get_adapter_addresses(void)
+{
+	IP_ADAPTER_ADDRESSES *info = NULL;
+	ULONG size;
+	DWORD sys_ret;
+
+	sys_ret = GetAdaptersAddresses(AF_UNSPEC, 0, NULL, NULL, &size);
+	if (sys_ret != ERROR_BUFFER_OVERFLOW) {
+		PMD_LOG(ERR, "GetAdapterAddresses() = %lu, expected %lu",
+			sys_ret, ERROR_BUFFER_OVERFLOW);
+		return NULL;
+	}
+
+	info = (IP_ADAPTER_ADDRESSES *)malloc(size);
+	if (info == NULL) {
+		PMD_LOG(ERR, "Cannot allocate adapter address info");
+		return NULL;
+	}
+
+	sys_ret = GetAdaptersAddresses(AF_UNSPEC, 0, NULL, info, &size);
+	if (sys_ret != ERROR_SUCCESS) {
+		PMD_LOG(ERR, "GetAdapterAddresses() = %lu", sys_ret);
+		free(info);
+		return NULL;
+	}
+
+	return info;
+}
+
+/*
  * libpcap takes device names like "\Device\NPF_{GUID}",
  * GetAdaptersAddresses() returns names in "{GUID}" form.
  * Try to extract GUID from device name, fall back to original device name.
@@ -69,29 +104,12 @@ int
 osdep_iface_mac_get(const char *device_name, struct rte_ether_addr *mac)
 {
 	IP_ADAPTER_ADDRESSES *info = NULL, *cur = NULL;
-	ULONG size, sys_ret;
 	const char *adapter_name;
 	int ret = -1;
 
-	sys_ret = GetAdaptersAddresses(AF_UNSPEC, 0, NULL, NULL, &size);
-	if (sys_ret != ERROR_BUFFER_OVERFLOW) {
-		PMD_LOG(ERR, "GetAdapterAddresses() = %lu, expected %lu",
-			sys_ret, ERROR_BUFFER_OVERFLOW);
+	info = get_adapter_addresses();
+	if (info == NULL)
 		return -1;
-	}
-
-	info = (IP_ADAPTER_ADDRESSES *)malloc(size);
-	if (info == NULL) {
-		PMD_LOG(ERR, "Cannot allocate adapter address info");
-		return -1;
-	}
-
-	sys_ret = GetAdaptersAddresses(AF_UNSPEC, 0, NULL, info, &size);
-	if (sys_ret != ERROR_SUCCESS) {
-		PMD_LOG(ERR, "GetAdapterAddresses() = %lu", sys_ret);
-		free(info);
-		return -1;
-	}
 
 	adapter_name = iface_guid(device_name);
 	if (adapter_name == NULL)
@@ -109,6 +127,32 @@ osdep_iface_mac_get(const char *device_name, struct rte_ether_addr *mac)
 			memcpy(mac->addr_bytes, cur->PhysicalAddress,
 				RTE_ETHER_ADDR_LEN);
 			ret = 0;
+			break;
+		}
+	}
+
+	free(info);
+	return ret;
+}
+
+int
+osdep_iface_link_status(const char *device_name)
+{
+	IP_ADAPTER_ADDRESSES *info, *cur;
+	const char *adapter_name;
+	int ret = -1;
+
+	info = get_adapter_addresses();
+	if (info == NULL)
+		return -1;
+
+	adapter_name = iface_guid(device_name);
+	if (adapter_name == NULL)
+		adapter_name = device_name;
+
+	for (cur = info; cur != NULL; cur = cur->Next) {
+		if (strcmp(cur->AdapterName, adapter_name) == 0) {
+			ret = (cur->OperStatus == IfOperStatusUp) ? 1 : 0;
 			break;
 		}
 	}
