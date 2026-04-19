@@ -247,3 +247,14 @@ will be discarded by the Rx flushing operation.
    The network interface provided to the PMD should be up.
    The PMD will return an error if the interface is down,
    and the PMD itself won't change the status of the external network interface.
+
+Features and Limitations
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+* When ``RTE_ETH_RX_OFFLOAD_VLAN_STRIP`` is enabled,
+  the driver removes the outermost VLAN tag
+  from received packets via ``rte_vlan_strip()``.
+  The strip setting can be changed at runtime through ``vlan_offload_set``.
+
+* The PMD will transparently insert a VLAN tag to transmitted packets
+  if the mbuf has ``RTE_MBUF_F_TX_VLAN`` set.
