@@ -784,7 +784,7 @@ dlb2_eventdev_pci_init(struct rte_eventdev *eventdev)
 
 	dlb2_pf_iface_fn_ptrs_init();
 
-	pci_dev = RTE_BUS_DEVICE(eventdev->dev, *pci_dev);
+	pci_dev = RTE_BUS_DEVICE(eventdev->device, *pci_dev);
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		dlb2 = dlb2_pmd_priv(eventdev); /* rte_zmalloc_socket mem */

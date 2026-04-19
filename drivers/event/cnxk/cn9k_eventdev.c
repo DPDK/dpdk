@@ -1038,7 +1038,7 @@ static int
 cn9k_crypto_adapter_caps_get(const struct rte_eventdev *event_dev, const struct rte_cryptodev *cdev,
 			     uint32_t *caps)
 {
-	CNXK_VALID_DEV_OR_ERR_RET(event_dev->dev, "event_cn9k", ENOTSUP);
+	CNXK_VALID_DEV_OR_ERR_RET(event_dev->device, "event_cn9k", ENOTSUP);
 	CNXK_VALID_DEV_OR_ERR_RET(cdev->device, "crypto_cn9k", ENOTSUP);
 
 	*caps = RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD |
@@ -1055,7 +1055,7 @@ cn9k_crypto_adapter_qp_add(const struct rte_eventdev *event_dev,
 {
 	int ret;
 
-	CNXK_VALID_DEV_OR_ERR_RET(event_dev->dev, "event_cn9k", EINVAL);
+	CNXK_VALID_DEV_OR_ERR_RET(event_dev->device, "event_cn9k", EINVAL);
 	CNXK_VALID_DEV_OR_ERR_RET(cdev->device, "crypto_cn9k", EINVAL);
 
 	cn9k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
@@ -1070,7 +1070,7 @@ static int
 cn9k_crypto_adapter_qp_del(const struct rte_eventdev *event_dev, const struct rte_cryptodev *cdev,
 			   int32_t queue_pair_id)
 {
-	CNXK_VALID_DEV_OR_ERR_RET(event_dev->dev, "event_cn9k", EINVAL);
+	CNXK_VALID_DEV_OR_ERR_RET(event_dev->device, "event_cn9k", EINVAL);
 	CNXK_VALID_DEV_OR_ERR_RET(cdev->device, "crypto_cn9k", EINVAL);
 
 	return cnxk_crypto_adapter_qp_del(cdev, queue_pair_id);

@@ -67,7 +67,7 @@ rte_event_pmd_vdev_init(const char *name, size_t dev_private_size,
 			rte_panic("Cannot allocate memzone for private device"
 					" data");
 	}
-	eventdev->dev = &vdev->device;
+	eventdev->device = &vdev->device;
 
 	return eventdev;
 }
