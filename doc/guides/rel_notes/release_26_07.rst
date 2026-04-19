@@ -68,6 +68,7 @@ New Features
   * Added support for VLAN insertion and stripping.
   * Added support for reporting link state in ``iface`` mode.
   * Added nanosecond precision to timestamp support.
+  * Added ``snaplen`` devarg to configure packet capture snapshot length.
 
 
 Removed Items

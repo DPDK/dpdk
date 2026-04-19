@@ -162,6 +162,24 @@ Runtime Config Options
 
   In this case, one dummy Rx queue is created for each Tx queue argument passed.
 
+* Set the snapshot length for packet capture
+
+  The snapshot length controls the maximum number of bytes captured per packet.
+  This affects both interface capture and pcap file output.
+  The default value is 65535 bytes,
+  which captures complete packets up to the maximum Ethernet jumbo frame size.
+  Reducing this value can improve performance when only packet headers are needed.
+
+  The ``snaplen`` argument is used when opening capture handles,
+  so it should be specified before the interface or file arguments.
+  Example::
+
+     --vdev 'net_pcap0,snaplen=1518,iface=eth0'
+     --vdev 'net_pcap0,snaplen=9000,rx_pcap=in.pcap,tx_pcap=out.pcap'
+
+  The snapshot length also determines the reported ``max_rx_pktlen``
+  and ``max_mtu`` in device info.
+
 Examples of Usage
 ~~~~~~~~~~~~~~~~~
 
