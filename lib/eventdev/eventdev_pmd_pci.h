@@ -68,7 +68,7 @@ rte_event_pmd_pci_probe_named(struct rte_pci_driver *pci_drv,
 					"device data");
 	}
 
-	eventdev->dev = &pci_dev->device;
+	eventdev->device = &pci_dev->device;
 
 	/* Invoke PMD device initialization function */
 	retval = devinit(eventdev);
@@ -150,7 +150,7 @@ rte_event_pmd_pci_remove(struct rte_pci_device *pci_dev,
 	/* Free event device */
 	rte_event_pmd_release(eventdev);
 
-	eventdev->dev = NULL;
+	eventdev->device = NULL;
 
 	return 0;
 }

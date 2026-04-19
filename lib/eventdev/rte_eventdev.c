@@ -68,8 +68,8 @@ rte_event_dev_get_dev_id(const char *name)
 	for (i = 0; i < eventdev_globals.nb_devs; i++) {
 		cmp = (strncmp(rte_event_devices[i].data->name, name,
 				RTE_EVENTDEV_NAME_MAX_LEN) == 0) ||
-			(rte_event_devices[i].dev ? (strncmp(
-				rte_event_devices[i].dev->driver->name, name,
+			(rte_event_devices[i].device ? (strncmp(
+				rte_event_devices[i].device->driver->name, name,
 					 RTE_EVENTDEV_NAME_MAX_LEN) == 0) : 0);
 		if (cmp && (rte_event_devices[i].attached ==
 					RTE_EVENTDEV_ATTACHED)) {
@@ -114,9 +114,9 @@ rte_event_dev_info_get(uint8_t dev_id, struct rte_event_dev_info *dev_info)
 
 	dev_info->dequeue_timeout_ns = dev->data->dev_conf.dequeue_timeout_ns;
 
-	dev_info->dev = dev->dev;
-	if (dev->dev != NULL && dev->dev->driver != NULL)
-		dev_info->driver_name = dev->dev->driver->name;
+	dev_info->dev = dev->device;
+	if (dev->device != NULL && dev->device->driver != NULL)
+		dev_info->driver_name = dev->device->driver->name;
 
 	rte_eventdev_trace_info_get(dev_id, dev_info, dev_info->dev);
 
@@ -1812,8 +1812,8 @@ handle_dev_info(const char *cmd __rte_unused,
 
 	rte_tel_data_start_dict(d);
 	rte_tel_data_add_dict_int(d, "dev_id", dev_id);
-	rte_tel_data_add_dict_string(d, "dev_name", dev->dev->name);
-	rte_tel_data_add_dict_string(d, "dev_driver", dev->dev->driver->name);
+	rte_tel_data_add_dict_string(d, "dev_name", dev->device->name);
+	rte_tel_data_add_dict_string(d, "dev_driver", dev->device->driver->name);
 	rte_tel_data_add_dict_string(d, "state",
 		dev->data->dev_started ? "started" : "stopped");
 	rte_tel_data_add_dict_int(d, "socket_id", dev->data->socket_id);

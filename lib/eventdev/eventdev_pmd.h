@@ -156,7 +156,7 @@ struct __rte_cache_aligned rte_eventdev {
 	/**< Pointer to device data */
 	struct eventdev_ops *dev_ops;
 	/**< Functions exported by PMD */
-	struct rte_device *dev;
+	struct rte_device *device;
 	/**< Device info. supplied by probing */
 
 	uint8_t attached : 1;
