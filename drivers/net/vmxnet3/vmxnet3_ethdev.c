@@ -308,7 +308,7 @@ eth_vmxnet3_setup_capabilities(struct vmxnet3_hw *hw,
 			       struct rte_eth_dev *eth_dev)
 {
 	uint32_t dcr, ptcr, value;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
 			       VMXNET3_CMD_GET_MAX_CAPABILITIES);
@@ -381,7 +381,7 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->tx_pkt_burst = &vmxnet3_xmit_pkts;
 	eth_dev->tx_pkt_prepare = vmxnet3_prep_pkts;
 	eth_dev->rx_queue_count = vmxnet3_dev_rx_queue_count;
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 
 	/* extra mbuf field is required to guess MSS */
 	vmxnet3_segs_dynfield_offset =

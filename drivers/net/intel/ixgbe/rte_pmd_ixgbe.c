@@ -25,7 +25,7 @@ rte_pmd_ixgbe_set_vf_mac_addr(uint16_t port, uint16_t vf,
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	if (!is_ixgbe_supported(dev))
 		return -ENOTSUP;
@@ -60,7 +60,7 @@ rte_pmd_ixgbe_ping_vf(uint16_t port, uint16_t vf)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	if (!is_ixgbe_supported(dev))
 		return -ENOTSUP;
@@ -92,7 +92,7 @@ rte_pmd_ixgbe_set_vf_vlan_anti_spoof(uint16_t port, uint16_t vf, uint8_t on)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	if (!is_ixgbe_supported(dev))
 		return -ENOTSUP;
@@ -123,7 +123,7 @@ rte_pmd_ixgbe_set_vf_mac_anti_spoof(uint16_t port, uint16_t vf, uint8_t on)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	if (!is_ixgbe_supported(dev))
 		return -ENOTSUP;
@@ -153,7 +153,7 @@ rte_pmd_ixgbe_set_vf_vlan_insert(uint16_t port, uint16_t vf, uint16_t vlan_id)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	if (!is_ixgbe_supported(dev))
 		return -ENOTSUP;
@@ -252,7 +252,7 @@ rte_pmd_ixgbe_set_vf_split_drop_en(uint16_t port, uint16_t vf, uint8_t on)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	if (!is_ixgbe_supported(dev))
 		return -ENOTSUP;
@@ -289,7 +289,7 @@ rte_pmd_ixgbe_set_vf_vlan_stripq(uint16_t port, uint16_t vf, uint8_t on)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (!is_ixgbe_supported(dev))
@@ -338,7 +338,7 @@ rte_pmd_ixgbe_set_vf_rxmode(uint16_t port, uint16_t vf,
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	if (!is_ixgbe_supported(dev))
 		return -ENOTSUP;
@@ -386,7 +386,7 @@ rte_pmd_ixgbe_set_vf_rx(uint16_t port, uint16_t vf, uint8_t on)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	if (!is_ixgbe_supported(dev))
 		return -ENOTSUP;
@@ -438,7 +438,7 @@ rte_pmd_ixgbe_set_vf_tx(uint16_t port, uint16_t vf, uint8_t on)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	if (!is_ixgbe_supported(dev))
 		return -ENOTSUP;

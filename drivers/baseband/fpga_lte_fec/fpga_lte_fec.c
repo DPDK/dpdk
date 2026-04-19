@@ -2316,7 +2316,7 @@ fpga_dequeue_dec(struct rte_bbdev_queue_data *q_data,
 static void
 fpga_lte_fec_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 {
-	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(dev->device, *pci_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	dev->dev_ops = &fpga_ops;
 	dev->enqueue_enc_ops = fpga_enqueue_enc;

@@ -365,7 +365,7 @@ ixgbe_queue_base_nb_get(struct rte_eth_dev *dev, uint16_t tc_node_no,
 			uint16_t *base, uint16_t *nb)
 {
 	uint8_t nb_tcs = ixgbe_tc_nb_get(dev);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	uint16_t vf_num = pci_dev->max_vfs;
 
 	*base = 0;

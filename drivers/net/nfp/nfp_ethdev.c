@@ -363,7 +363,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 	struct rte_eth_txmode *txmode;
 	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	net_hw = dev->data->dev_private;
@@ -770,7 +770,7 @@ nfp_net_close(struct rte_eth_dev *dev)
 
 	hw = dev->data->dev_private;
 	pf_dev = hw_priv->pf_dev;
-	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
 
 	/*
@@ -1022,7 +1022,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev,
 	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
 
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	net_hw = eth_dev->data->dev_private;
 
 	hw_init = para;
@@ -2879,7 +2879,7 @@ nfp_pci_uninit(struct rte_eth_dev *eth_dev)
 	uint16_t port_id;
 	struct rte_pci_device *pci_dev;
 
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 
 	/* Free up all physical ports under PF */
 	RTE_ETH_FOREACH_DEV_OF(port_id, &pci_dev->device)

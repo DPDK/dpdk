@@ -74,10 +74,11 @@ struct mgmt_event_handle {
 };
 
 bool
-hinic3_is_vfio_iommu_enable(const struct rte_eth_dev *rte_dev)
+hinic3_is_vfio_iommu_enable(const struct rte_eth_dev *eth_dev)
 {
-	return ((RTE_ETH_DEV_TO_PCI(rte_dev)->kdrv == RTE_PCI_KDRV_VFIO) &&
-		(rte_vfio_noiommu_is_enabled() != 1));
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
+
+	return pci_dev->kdrv == RTE_PCI_KDRV_VFIO && rte_vfio_noiommu_is_enabled() != 1;
 }
 
 int

@@ -1277,8 +1277,9 @@ sfc_rx_qinit(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 
 	info.nic_dma_info = &sas->nic_dma_info;
 
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(sa->eth_dev, *pci_dev);
 	rc = sa->priv.dp_rx->qcreate(sa->eth_dev->data->port_id, sw_index,
-				     &RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,
+				     &pci_dev->addr,
 				     socket_id, &info, &rxq_info->dp);
 	if (rc != 0)
 		goto fail_dp_rx_qcreate;

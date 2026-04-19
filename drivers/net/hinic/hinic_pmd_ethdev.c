@@ -1234,7 +1234,7 @@ static int hinic_dev_stop(struct rte_eth_dev *dev)
 static void hinic_disable_interrupt(struct rte_eth_dev *dev)
 {
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	int ret, retries = 0;
 
 	rte_bit_relaxed_clear32(HINIC_DEV_INTR_EN, &nic_dev->dev_status);
@@ -2745,7 +2745,7 @@ static int hinic_nic_dev_create(struct rte_eth_dev *eth_dev)
 			    eth_dev->data->name);
 		return -ENOMEM;
 	}
-	nic_dev->hwdev->pcidev_hdl = RTE_ETH_DEV_TO_PCI(eth_dev);
+	nic_dev->hwdev->pcidev_hdl = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *nic_dev->hwdev->pcidev_hdl);
 
 	/* init osdep*/
 	rc = hinic_osdep_init(nic_dev->hwdev);
@@ -3086,7 +3086,7 @@ static int hinic_func_init(struct rte_eth_dev *eth_dev)
 	u32 mac_size;
 	int rc;
 
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 
 	/* EAL is SECONDARY and eth_dev is already created */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
@@ -3218,7 +3218,7 @@ static int hinic_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
 
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 
 	PMD_DRV_LOG(INFO, "Initializing pf hinic-" PCI_PRI_FMT " in %s process",
 		    pci_dev->addr.domain, pci_dev->addr.bus,

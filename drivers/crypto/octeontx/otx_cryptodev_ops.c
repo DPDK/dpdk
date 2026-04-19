@@ -156,7 +156,7 @@ otx_cpt_que_pair_setup(struct rte_cryptodev *dev,
 			     DEFAULT_CMD_QLEN);
 	}
 
-	pci_dev = RTE_BUS_DEVICE(dev->device, *pci_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 
 	if (pci_dev->mem_resource[0].addr == NULL) {
 		CPT_LOG_ERR("PCI mem address null");
@@ -1001,7 +1001,7 @@ static struct rte_cryptodev_ops cptvf_ops = {
 int
 otx_cpt_dev_create(struct rte_cryptodev *c_dev)
 {
-	struct rte_pci_device *pdev = RTE_BUS_DEVICE(c_dev->device, *pdev);
+	struct rte_pci_device *pdev = RTE_CLASS_TO_BUS_DEVICE(c_dev, *pdev);
 	struct cpt_vf *cptvf = NULL;
 	void *reg_base;
 	char dev_name[32];

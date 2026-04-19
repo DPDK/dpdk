@@ -561,7 +561,7 @@ static int32_t sxe2_dev_info_init(struct rte_eth_dev *dev)
 {
 	struct sxe2_adapter *adapter =
 		SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
-	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(dev->device, *pci_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct sxe2_dev_info *dev_info = &adapter->dev_info;
 	struct sxe2_drv_dev_info_resp dev_info_resp = {0};
 	struct sxe2_drv_dev_fw_info_resp dev_fw_info_resp = {0};
@@ -600,7 +600,7 @@ l_end:
 int32_t sxe2_dev_pci_map_init(struct rte_eth_dev *dev)
 {
 	struct sxe2_adapter *adapter  = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
-	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(dev->device, *pci_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct sxe2_pci_map_context *map_ctxt = &adapter->map_ctxt;
 	struct sxe2_pci_map_bar_info *bar_info = NULL;
 	struct sxe2_pci_map_segment_info *seg_info = NULL;

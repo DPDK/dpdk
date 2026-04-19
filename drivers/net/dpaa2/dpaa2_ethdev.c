@@ -1339,7 +1339,6 @@ dpaa2_eth_setup_irqs(struct rte_eth_dev *dev, int enable)
 static int
 dpaa2_dev_start(struct rte_eth_dev *dev)
 {
-	struct rte_device *rdev = dev->device;
 	struct rte_dpaa2_device *dpaa2_dev;
 	struct rte_eth_dev_data *data = dev->data;
 	struct dpaa2_dev_priv *priv = data->dev_private;
@@ -1351,7 +1350,7 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 	int ret, i;
 	struct rte_intr_handle *intr_handle;
 
-	dpaa2_dev = RTE_BUS_DEVICE(rdev, *dpaa2_dev);
+	dpaa2_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *dpaa2_dev);
 	intr_handle = dpaa2_dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
@@ -1458,12 +1457,11 @@ dpaa2_dev_stop(struct rte_eth_dev *dev)
 	struct fsl_mc_io *dpni = dev->process_private;
 	int ret;
 	struct rte_eth_link link;
-	struct rte_device *rdev = dev->device;
 	struct rte_intr_handle *intr_handle;
 	struct rte_dpaa2_device *dpaa2_dev;
 	uint16_t i;
 
-	dpaa2_dev = RTE_BUS_DEVICE(rdev, *dpaa2_dev);
+	dpaa2_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *dpaa2_dev);
 	intr_handle = dpaa2_dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
@@ -2918,7 +2916,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		return 0;
 	}
 
-	dpaa2_dev = RTE_BUS_DEVICE(dev, *dpaa2_dev);
+	dpaa2_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *dpaa2_dev);
 
 	hw_id = dpaa2_dev->object_id;
 	ret = dpni_open(dpni_dev, CMD_PRI_LOW, hw_id, &priv->token);

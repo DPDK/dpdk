@@ -655,7 +655,7 @@ int enic_vf_representor_init(struct rte_eth_dev *eth_dev, void *init_params)
 	}
 
 	/* Check for non-existent VFs */
-	pdev = RTE_ETH_DEV_TO_PCI(pf->rte_dev);
+	pdev = RTE_CLASS_TO_BUS_DEVICE(pf->rte_dev, *pdev);
 	if (vf->vf_id >= pdev->max_vfs) {
 		ENICPMD_LOG(ERR, "VF ID is invalid. vf_id %u max_vfs %u",
 			    vf->vf_id, pdev->max_vfs);

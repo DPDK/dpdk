@@ -454,7 +454,7 @@ static uint32_t speed_capa_from_pci_id(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pdev;
 	uint16_t id;
 
-	pdev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	pdev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pdev);
 	id = pdev->id.subsystem_device_id;
 	for (m = vic_speed_capa_map; m->sub_devid != 0; m++) {
 		if (m->sub_devid == id)
@@ -1292,7 +1292,7 @@ static int eth_enic_dev_init(struct rte_eth_dev *eth_dev,
 	enic->rte_dev = eth_dev;
 	enic->dev_data = eth_dev->data;
 
-	pdev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	pdev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pdev);
 	rte_eth_copy_pci_info(eth_dev, pdev);
 	enic->pdev = pdev;
 	addr = &pdev->addr;

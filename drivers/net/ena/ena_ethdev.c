@@ -924,7 +924,7 @@ static inline void ena_indirect_table_release(struct ena_adapter *adapter)
 
 static int ena_close(struct rte_eth_dev *dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ena_adapter *adapter = dev->data->dev_private;
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
@@ -1457,7 +1457,7 @@ static int ena_stop(struct rte_eth_dev *dev)
 {
 	struct ena_adapter *adapter = dev->data->dev_private;
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint16_t i;
 	int rc;
@@ -1503,7 +1503,7 @@ static int ena_create_io_queue(struct rte_eth_dev *dev, struct ena_ring *ring)
 {
 	struct ena_adapter *adapter = ring->adapter;
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ena_com_create_io_ctx ctx =
 		/* policy set to _HOST just to satisfy icc compiler */
@@ -2422,7 +2422,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 
 	adapter->edev_data = eth_dev->data;
 
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 
 	PMD_INIT_LOG_LINE(INFO, "Initializing " PCI_PRI_FMT,
 		     pci_dev->addr.domain,
@@ -3978,7 +3978,7 @@ exit:
 
 static int ena_setup_rx_intr(struct rte_eth_dev *dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int rc;
 	uint16_t vectors_nb, i;

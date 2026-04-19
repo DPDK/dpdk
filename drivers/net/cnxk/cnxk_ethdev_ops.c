@@ -7,7 +7,7 @@
 int
 cnxk_nix_info_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *devinfo)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	int max_rx_pktlen;
 

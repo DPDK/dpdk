@@ -19,9 +19,6 @@ struct rte_vdev_device {
 	struct rte_device device;               /**< Inherit core device */
 };
 
-#define RTE_ETH_DEV_TO_VDEV(eth_dev) \
-	RTE_BUS_DEVICE((eth_dev)->device, struct rte_vdev_device)
-
 static inline const char *
 rte_vdev_device_name(const struct rte_vdev_device *dev)
 {

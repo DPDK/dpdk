@@ -346,7 +346,7 @@ otx_ep_mbox_intr_handler(void *param)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
 	struct otx_ep_device *otx_ep = (struct otx_ep_device *)eth_dev->data->dev_private;
-	struct rte_pci_device *pdev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pdev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pdev);
 	union otx_ep_mbox_word mbox_cmd;
 
 	if (otx2_read64(otx_ep->hw_addr + CNXK_EP_R_MBOX_PF_VF_INT(0)) & CNXK_EP_MBOX_INTR) {
@@ -369,7 +369,7 @@ int
 otx_ep_mbox_init(struct rte_eth_dev *eth_dev)
 {
 	struct otx_ep_device *otx_ep = (struct otx_ep_device *)eth_dev->data->dev_private;
-	struct rte_pci_device *pdev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pdev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pdev);
 	uint64_t reg_val;
 	int rc;
 
@@ -402,7 +402,7 @@ void
 otx_ep_mbox_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct otx_ep_device *otx_ep = (struct otx_ep_device *)eth_dev->data->dev_private;
-	struct rte_pci_device *pdev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pdev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pdev);
 
 	otx2_write64(0, otx_ep->hw_addr + CNXK_EP_R_MBOX_PF_VF_INT(0));
 

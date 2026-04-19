@@ -1704,7 +1704,7 @@ static int eth_cxgbe_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = &cxgbe_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &cxgbe_recv_pkts;
 	eth_dev->tx_pkt_burst = &cxgbe_xmit_pkts;
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 
 	/* for secondary processes, we attach to ethdevs allocated by primary
 	 * and do minimal initialization.
@@ -1767,7 +1767,7 @@ out_free_adapter:
 
 static int eth_cxgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	uint16_t port_id;
 	int err = 0;
 

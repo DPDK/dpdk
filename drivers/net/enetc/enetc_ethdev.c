@@ -886,7 +886,7 @@ static int
 enetc_dev_init(struct rte_eth_dev *eth_dev)
 {
 	int error = 0;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	struct enetc_eth_hw *hw =
 		ENETC_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 

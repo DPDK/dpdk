@@ -1048,7 +1048,7 @@ xsc_ethdev_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	priv->eth_dev = eth_dev;
-	priv->pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	priv->pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *priv->pci_dev);
 
 	ret = xsc_dev_init(priv->pci_dev, &priv->xdev);
 	if (ret) {

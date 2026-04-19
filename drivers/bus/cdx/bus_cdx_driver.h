@@ -60,8 +60,6 @@ struct rte_cdx_device {
 	struct rte_intr_handle *intr_handle;	/**< Interrupt handle */
 };
 
-#define RTE_ETH_DEV_TO_CDX_DEV(eth_dev)	RTE_BUS_DEVICE((eth_dev)->device, struct rte_cdx_device)
-
 #ifdef __cplusplus
 /** C++ macro used to help building up tables of device IDs. */
 #define RTE_CDX_DEVICE(vend, dev)	\

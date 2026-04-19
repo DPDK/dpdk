@@ -128,9 +128,6 @@ struct rte_auxiliary_driver {
 	uint32_t drv_flags;                   /**< Flags RTE_AUXILIARY_DRV_*. */
 };
 
-#define RTE_ETH_DEV_TO_AUXILIARY(eth_dev) \
-	RTE_BUS_DEVICE((eth_dev)->device, struct rte_auxiliary_device)
-
 /** Device driver needs IOVA as VA and cannot work with IOVA as PA */
 #define RTE_AUXILIARY_DRV_NEED_IOVA_AS_VA 0x002
 

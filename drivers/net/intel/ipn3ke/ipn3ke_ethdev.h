@@ -309,9 +309,6 @@ struct ipn3ke_hw {
 	uint8_t *hw_addr;
 };
 
-#define RTE_ETH_DEV_TO_AFU(eth_dev) \
-	RTE_BUS_DEVICE((eth_dev)->device, struct rte_afu_device)
-
 /**
  * PCIe MMIO Access
  */

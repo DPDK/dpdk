@@ -4353,7 +4353,7 @@ vrb2_dequeue_mldts(struct rte_bbdev_queue_data *q_data,
 static void
 vrb_bbdev_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 {
-	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(dev->device, *pci_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct acc_device *d = dev->data->dev_private;
 
 	dev->dev_ops = &vrb_bbdev_ops;

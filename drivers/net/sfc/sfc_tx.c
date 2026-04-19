@@ -230,8 +230,9 @@ sfc_tx_qinit(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 
 	info.max_pdu = encp->enc_mac_pdu_max;
 
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(sa->eth_dev, *pci_dev);
 	rc = sa->priv.dp_tx->qcreate(sa->eth_dev->data->port_id, sw_index,
-				     &RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,
+				     &pci_dev->addr,
 				     socket_id, &info, &txq_info->dp);
 	if (rc != 0)
 		goto fail_dp_tx_qinit;

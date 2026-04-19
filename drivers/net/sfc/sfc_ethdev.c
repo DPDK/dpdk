@@ -3309,7 +3309,7 @@ static int
 sfc_eth_dev_init(struct rte_eth_dev *dev, void *init_params)
 {
 	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct sfc_ethdev_init_data *init_data = init_params;
 	uint32_t logtype_main;
 	struct sfc_adapter *sa;

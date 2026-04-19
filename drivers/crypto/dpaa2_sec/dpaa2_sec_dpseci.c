@@ -4383,7 +4383,6 @@ static int
 dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 {
 	struct dpaa2_sec_dev_private *internals;
-	struct rte_device *dev = cryptodev->device;
 	struct rte_dpaa2_device *dpaa2_dev;
 	struct rte_security_ctx *security_instance;
 	struct fsl_mc_io *dpseci;
@@ -4392,7 +4391,7 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 	int retcode, hw_id;
 
 	PMD_INIT_FUNC_TRACE();
-	dpaa2_dev = RTE_BUS_DEVICE(dev, *dpaa2_dev);
+	dpaa2_dev = RTE_CLASS_TO_BUS_DEVICE(cryptodev, *dpaa2_dev);
 	hw_id = dpaa2_dev->object_id;
 
 	cryptodev->driver_id = cryptodev_driver_id;

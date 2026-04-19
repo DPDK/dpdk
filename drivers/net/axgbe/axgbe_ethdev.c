@@ -2231,7 +2231,7 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	rte_bit_relaxed_set32(AXGBE_STOPPED, &pdata->dev_state);
 	pdata->eth_dev = eth_dev;
 
-	pci_dev = RTE_BUS_DEVICE(eth_dev->device, *pci_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	pdata->pci_dev = pci_dev;
 
 	pdata->xgmac_regs =
@@ -2454,7 +2454,7 @@ axgbe_dev_close(struct rte_eth_dev *eth_dev)
 		return 0;
 
 	pdata = eth_dev->data->dev_private;
-	pci_dev = RTE_BUS_DEVICE(eth_dev->device, *pci_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	axgbe_dev_clear_queues(eth_dev);
 
 	/* disable uio intr before callback unregister */

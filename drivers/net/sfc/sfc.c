@@ -781,7 +781,7 @@ static int
 sfc_mem_bar_init(struct sfc_adapter *sa, const efx_bar_region_t *mem_ebrp)
 {
 	struct rte_eth_dev *eth_dev = sa->eth_dev;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	efsys_bar_t *ebp = &sa->mem_bar;
 	struct rte_mem_resource *res =
 		&pci_dev->mem_resource[mem_ebrp->ebr_index];
@@ -1283,7 +1283,7 @@ sfc_probe(struct sfc_adapter *sa)
 {
 	efx_bar_region_t mem_ebrp;
 	struct rte_eth_dev *eth_dev = sa->eth_dev;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	efx_nic_t *enp;
 	int rc;
 

@@ -812,7 +812,7 @@ hns3_init_ring_with_vector(struct hns3_hw *hw)
 int
 hns3_map_rx_interrupt(struct rte_eth_dev *dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint16_t base = RTE_INTR_VEC_ZERO_OFFSET;
@@ -878,7 +878,7 @@ alloc_intr_vec_error:
 void
 hns3_unmap_rx_interrupt(struct rte_eth_dev *dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
@@ -912,7 +912,7 @@ int
 hns3_restore_rx_interrupt(struct hns3_hw *hw)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint16_t q_id;
 	int ret;
@@ -943,7 +943,7 @@ hns3_get_pci_revision_id(struct hns3_hw *hw, uint8_t *revision_id)
 	int ret;
 
 	eth_dev = &rte_eth_devices[hw->data->port_id];
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	ret = rte_pci_read_config(pci_dev, &revision, 1, RTE_PCI_REVISION_ID);
 	if (ret != 1) {
 		hns3_err(hw, "failed to read pci revision id, ret = %d", ret);

@@ -47,9 +47,6 @@ struct rte_pci_device {
 				/**< Handler of VFIO request interrupt */
 };
 
-#define RTE_ETH_DEV_TO_PCI(eth_dev) \
-	RTE_BUS_DEVICE((eth_dev)->device, struct rte_pci_device)
-
 #ifdef __cplusplus
 /** C++ macro used to help building up tables of device IDs */
 #define RTE_PCI_DEVICE(vend, dev) \
