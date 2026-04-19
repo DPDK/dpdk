@@ -279,3 +279,8 @@ Features and Limitations
 
 * If ``RTE_ETH_RX_OFFLOAD_TIMESTAMP`` is enabled
   then the timestamp from the pcap file is converted to DPDK format.
+
+* In ``iface`` mode, the PMD supports link status change (LSC) notifications.
+  When the application enables ``intr_conf.lsc`` in the port configuration,
+  the driver polls the underlying network interface once per second
+  and generates a ``RTE_ETH_EVENT_INTR_LSC`` callback when the link state changes.
