@@ -258,3 +258,6 @@ Features and Limitations
 
 * The PMD will transparently insert a VLAN tag to transmitted packets
   if the mbuf has ``RTE_MBUF_F_TX_VLAN`` set.
+
+* If ``RTE_ETH_RX_OFFLOAD_TIMESTAMP`` is enabled
+  then the timestamp from the pcap file is converted to DPDK format.

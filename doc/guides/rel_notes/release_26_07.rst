@@ -67,6 +67,7 @@ New Features
 
   * Added support for VLAN insertion and stripping.
   * Added support for reporting link state in ``iface`` mode.
+  * Added nanosecond precision to timestamp support.
 
 
 Removed Items
