@@ -1119,6 +1119,7 @@ M: Stephen Hemminger <stephen@networkplumber.org>
 F: drivers/net/pcap/
 F: doc/guides/nics/pcap.rst
 F: doc/guides/nics/features/pcap.ini
+F: app/test/test_pmd_pcap.c
 
 Tap PMD
 M: Stephen Hemminger <stephen@networkplumber.org>

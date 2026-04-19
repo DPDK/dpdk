@@ -141,6 +141,7 @@ source_file_deps = {
     'test_per_lcore.c': [],
     'test_pflock.c': [],
     'test_pie.c': ['sched'],
+    'test_pmd_pcap.c': ['net_pcap', 'ethdev', 'bus_vdev']  + packet_burst_generator_deps,
     'test_pmd_perf.c': ['ethdev', 'net'] + packet_burst_generator_deps,
     'test_pmd_ring.c': ['net_ring', 'ethdev', 'bus_vdev'],
     'test_pmd_ring_perf.c': ['ethdev', 'net_ring', 'bus_vdev'],
@@ -217,6 +218,7 @@ source_file_deps = {
 source_file_ext_deps = {
     'test_compressdev.c': ['zlib'],
     'test_pcapng.c': ['pcap'],
+    'test_pmd_pcap.c': ['pcap'],
 }
 
 # the NULL ethdev is used by a number of tests, in some cases as an optional dependency.

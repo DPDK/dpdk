@@ -71,6 +71,7 @@ New Features
   * Added nanosecond precision to timestamp support.
   * Added ``snaplen`` devarg to configure packet capture snapshot length.
   * Added ``eof`` devarg to use link state to signal end of receive file input.
+  * Added unit test suite.
 
 
 Removed Items
