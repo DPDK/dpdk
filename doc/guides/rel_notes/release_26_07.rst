@@ -70,6 +70,7 @@ New Features
   * Added support for link state interrupt in ``iface`` mode.
   * Added nanosecond precision to timestamp support.
   * Added ``snaplen`` devarg to configure packet capture snapshot length.
+  * Added ``eof`` devarg to use link state to signal end of receive file input.
 
 
 Removed Items
