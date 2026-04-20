@@ -322,7 +322,6 @@ rte_fslmc_scan(void)
 		}
 		return 0;
 	}
-	process_once = 1;
 
 	/* Now we only support single group per process.*/
 	group_name = getenv("DPRC");
@@ -368,6 +367,48 @@ rte_fslmc_scan(void)
 	/* If debugging is enabled, device list is dumped to log output */
 	dump_device_list();
 
+	/* Bus initialization - only if devices were found */
+	if (!TAILQ_EMPTY(&rte_fslmc_bus.bus.device_list)) {
+		static const struct rte_mbuf_dynfield dpaa2_seqn_dynfield_desc = {
+			.name = DPAA2_SEQN_DYNFIELD_NAME,
+			.size = sizeof(dpaa2_seqn_t),
+			.align = alignof(dpaa2_seqn_t),
+		};
+
+		dpaa2_seqn_dynfield_offset =
+			rte_mbuf_dynfield_register(&dpaa2_seqn_dynfield_desc);
+		if (dpaa2_seqn_dynfield_offset < 0) {
+			DPAA2_BUS_ERR("Failed to register mbuf field for dpaa sequence number");
+			return 0;
+		}
+
+		ret = fslmc_vfio_setup_group();
+		if (ret) {
+			DPAA2_BUS_ERR("Unable to setup VFIO %d", ret);
+			return 0;
+		}
+
+		/* Map existing segments as well as, in case of hotpluggable memory,
+		 * install callback handler.
+		 */
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			ret = fslmc_vfio_dmamap();
+			if (ret) {
+				DPAA2_BUS_ERR("Unable to DMA map existing VAs: (%d)", ret);
+				DPAA2_BUS_ERR("FSLMC VFIO Mapping failed");
+				return 0;
+			}
+		}
+
+		ret = fslmc_vfio_process_group();
+		if (ret) {
+			DPAA2_BUS_ERR("Unable to setup devices %d", ret);
+			return 0;
+		}
+	}
+
+	process_once = 1;
+
 	return 0;
 
 scan_fail_cleanup:
@@ -408,51 +449,8 @@ rte_fslmc_close(void)
 static int
 rte_fslmc_probe(void)
 {
-	int ret = 0;
-
 	struct rte_dpaa2_device *dev;
-
-	static const struct rte_mbuf_dynfield dpaa2_seqn_dynfield_desc = {
-		.name = DPAA2_SEQN_DYNFIELD_NAME,
-		.size = sizeof(dpaa2_seqn_t),
-		.align = alignof(dpaa2_seqn_t),
-	};
-
-	if (TAILQ_EMPTY(&rte_fslmc_bus.bus.device_list))
-		return 0;
-
-	dpaa2_seqn_dynfield_offset =
-		rte_mbuf_dynfield_register(&dpaa2_seqn_dynfield_desc);
-	if (dpaa2_seqn_dynfield_offset < 0) {
-		DPAA2_BUS_ERR("Failed to register mbuf field for dpaa sequence number");
-		return 0;
-	}
-
-	ret = fslmc_vfio_setup_group();
-	if (ret) {
-		DPAA2_BUS_ERR("Unable to setup VFIO %d", ret);
-		return 0;
-	}
-
-	/* Map existing segments as well as, in case of hotpluggable memory,
-	 * install callback handler.
-	 */
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		ret = fslmc_vfio_dmamap();
-		if (ret) {
-			DPAA2_BUS_ERR("Unable to DMA map existing VAs: (%d)",
-				      ret);
-			/* Not continuing ahead */
-			DPAA2_BUS_ERR("FSLMC VFIO Mapping failed");
-			return 0;
-		}
-	}
-
-	ret = fslmc_vfio_process_group();
-	if (ret) {
-		DPAA2_BUS_ERR("Unable to setup devices %d", ret);
-		return 0;
-	}
+	int ret;
 
 	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
 		struct rte_driver *driver = NULL;
