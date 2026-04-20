@@ -3856,7 +3856,7 @@ out:
 	else
 		dev->rx_pkt_burst = iavf_rx_path_infos[adapter->rx_func_type].pkt_burst;
 
-	PMD_DRV_LOG(NOTICE, "Using %s (port %d).",
+	PMD_DRV_LOG(DEBUG, "Using %s (port %d).",
 		iavf_rx_path_infos[adapter->rx_func_type].info, dev->data->port_id);
 }
 
@@ -3923,7 +3923,7 @@ out:
 	else
 		dev->tx_pkt_burst = iavf_tx_path_infos[adapter->tx_func_type].pkt_burst;
 
-	PMD_DRV_LOG(NOTICE, "Using %s (port %d).",
+	PMD_DRV_LOG(DEBUG, "Using %s (port %d).",
 		 iavf_tx_path_infos[adapter->tx_func_type].info, dev->data->port_id);
 }
 
