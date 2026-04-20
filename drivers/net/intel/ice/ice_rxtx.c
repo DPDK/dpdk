@@ -3447,7 +3447,7 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 
 out:
 	dev->rx_pkt_burst = ice_rx_path_infos[ad->rx_func_type].pkt_burst;
-	PMD_DRV_LOG(NOTICE, "Using %s (port %d).",
+	PMD_DRV_LOG(DEBUG, "Using %s (port %d).",
 			ice_rx_path_infos[ad->rx_func_type].info, dev->data->port_id);
 }
 
@@ -3789,7 +3789,7 @@ out:
 	dev->tx_pkt_burst = mbuf_check ? ice_xmit_pkts_check :
 					 ice_tx_path_infos[ad->tx_func_type].pkt_burst;
 	dev->tx_pkt_prepare = ice_tx_path_infos[ad->tx_func_type].pkt_prep;
-	PMD_DRV_LOG(NOTICE, "Using %s (port %d).",
+	PMD_DRV_LOG(DEBUG, "Using %s (port %d).",
 		ice_tx_path_infos[ad->tx_func_type].info, dev->data->port_id);
 }
 
