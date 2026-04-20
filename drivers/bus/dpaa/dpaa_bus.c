@@ -569,40 +569,6 @@ dpaa_bus_dev_compare(const char *name1, const char *name2)
 	return strncmp(devname1, devname2, sizeof(devname1));
 }
 
-#define DPAA_DEV_PATH1 "/sys/devices/platform/soc/soc:fsl,dpaa"
-#define DPAA_DEV_PATH2 "/sys/devices/platform/fsl,dpaa"
-
-static int
-rte_dpaa_bus_scan(void)
-{
-	int ret;
-
-	BUS_INIT_FUNC_TRACE();
-
-	if ((access(DPAA_DEV_PATH1, F_OK) != 0) &&
-	    (access(DPAA_DEV_PATH2, F_OK) != 0)) {
-		DPAA_BUS_LOG(DEBUG, "DPAA Bus not present. Skipping.");
-		return 0;
-	}
-
-	if (rte_dpaa_bus.detected)
-		return 0;
-
-	rte_dpaa_bus.detected = 1;
-
-	/* create the key, supplying a function that'll be invoked
-	 * when a portal affined thread will be deleted.
-	 */
-	ret = pthread_key_create(&dpaa_portal_key, dpaa_portal_finish);
-	if (ret) {
-		DPAA_BUS_LOG(DEBUG, "Unable to create pthread key. (%d)", ret);
-		dpaa_clean_device_list();
-		return ret;
-	}
-
-	return 0;
-}
-
 /* register a dpaa bus based dpaa driver */
 RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa_driver_register)
 void
@@ -701,20 +667,43 @@ static int rte_dpaa_setup_intr(struct rte_intr_handle *intr_handle)
 	return 0;
 }
 
+#define DPAA_DEV_PATH1 "/sys/devices/platform/soc/soc:fsl,dpaa"
+#define DPAA_DEV_PATH2 "/sys/devices/platform/fsl,dpaa"
+
 static int
-rte_dpaa_bus_probe(void)
+rte_dpaa_bus_scan(void)
 {
-	int ret = -1;
 	struct rte_dpaa_device *dev;
 	FILE *svr_file = NULL;
 	uint32_t svr_ver;
 	static int process_once;
 	char *penv;
+	int ret;
 
-	/* If DPAA bus is not present nothing needs to be done */
-	if (!rte_dpaa_bus.detected)
+	BUS_INIT_FUNC_TRACE();
+
+	if ((access(DPAA_DEV_PATH1, F_OK) != 0) &&
+	    (access(DPAA_DEV_PATH2, F_OK) != 0)) {
+		DPAA_BUS_LOG(DEBUG, "DPAA Bus not present. Skipping.");
+		return 0;
+	}
+
+	if (rte_dpaa_bus.detected)
 		return 0;
 
+	rte_dpaa_bus.detected = 1;
+
+	/* create the key, supplying a function that'll be invoked
+	 * when a portal affined thread will be deleted.
+	 */
+	ret = pthread_key_create(&dpaa_portal_key, dpaa_portal_finish);
+	if (ret) {
+		DPAA_BUS_LOG(DEBUG, "Unable to create pthread key. (%d)", ret);
+		dpaa_clean_device_list();
+		return ret;
+	}
+
+	/* SoC version detection and configuration */
 	svr_file = fopen(DPAA_SOC_ID_FILE, "r");
 	if (svr_file) {
 		if (fscanf(svr_file, "svr:%x", &svr_ver) > 0)
@@ -786,9 +775,19 @@ rte_dpaa_bus_probe(void)
 	/* And initialize the PA->VA translation table */
 	dpaax_iova_table_populate();
 
+	dpaa_bus_global_init = 1;
+	return 0;
+}
+
+static int
+rte_dpaa_bus_probe(void)
+{
+	struct rte_dpaa_device *dev;
+
 	/* For each registered driver, and device, call the driver->probe */
 	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus.bus) {
 		struct rte_driver *driver = NULL;
+		int ret;
 
 next_driver:
 		driver = rte_bus_find_driver(&rte_dpaa_bus.bus, driver, &dev->device);
@@ -804,7 +803,6 @@ next_driver:
 		else if (ret > 0)
 			goto next_driver;
 	}
-	dpaa_bus_global_init = 1;
 
 	return 0;
 }
