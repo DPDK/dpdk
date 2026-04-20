@@ -302,9 +302,6 @@ ifpga_probe_all_drivers(struct rte_afu_device *afu_dev)
 	struct rte_afu_driver *drv = NULL;
 	int ret = 0;
 
-	if (afu_dev == NULL)
-		return -1;
-
 	/* Check if a driver is already loaded */
 	if (rte_dev_is_probed(&afu_dev->device)) {
 		IFPGA_BUS_DEBUG("Device %s is already probed",

@@ -81,9 +81,6 @@ rte_auxiliary_probe_one_driver(struct rte_auxiliary_driver *drv,
 	enum rte_iova_mode iova_mode;
 	int ret;
 
-	if (drv == NULL || dev == NULL)
-		return -EINVAL;
-
 	/* Check if driver supports it. */
 	if (!auxiliary_match(drv, dev))
 		/* Match of device and driver failed */
@@ -173,9 +170,6 @@ auxiliary_probe_all_drivers(struct rte_auxiliary_device *dev)
 {
 	struct rte_auxiliary_driver *drv;
 	int rc;
-
-	if (dev == NULL)
-		return -EINVAL;
 
 	FOREACH_DRIVER_ON_AUXILIARY_BUS(drv) {
 		if (!drv->match(dev->name))
