@@ -835,7 +835,7 @@ idpf_set_rx_function(struct rte_eth_dev *dev)
 
 out:
 	dev->rx_pkt_burst = idpf_rx_path_infos[ad->rx_func_type].pkt_burst;
-	PMD_DRV_LOG(NOTICE, "Using %s Rx (port %d).",
+	PMD_DRV_LOG(DEBUG, "Using %s Rx (port %d).",
 			idpf_rx_path_infos[ad->rx_func_type].info, dev->data->port_id);
 
 }
@@ -902,6 +902,6 @@ idpf_set_tx_function(struct rte_eth_dev *dev)
 out:
 	dev->tx_pkt_burst = idpf_tx_path_infos[ad->tx_func_type].pkt_burst;
 	dev->tx_pkt_prepare = idpf_dp_prep_pkts;
-	PMD_DRV_LOG(NOTICE, "Using %s Tx (port %d).",
+	PMD_DRV_LOG(DEBUG, "Using %s Tx (port %d).",
 			idpf_tx_path_infos[ad->tx_func_type].info, dev->data->port_id);
 }
