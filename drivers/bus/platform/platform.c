@@ -458,19 +458,13 @@ platform_bus_find_device(const struct rte_device *start, rte_dev_cmp_t cmp, cons
 static int
 platform_bus_plug(struct rte_device *dev)
 {
-	struct rte_platform_device *pdev;
-
 	if (rte_bus_device_is_ignored(&platform_bus.bus, dev->name))
 		return -EPERM;
 
 	if (!dev_is_bound_vfio_platform(dev->name))
 		return -EPERM;
 
-	pdev = RTE_DEV_TO_PLATFORM_DEV(dev);
-	if (pdev == NULL)
-		return -EINVAL;
-
-	return device_attach(pdev);
+	return device_attach(RTE_DEV_TO_PLATFORM_DEV(dev));
 }
 
 static void
