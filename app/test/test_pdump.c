@@ -198,6 +198,10 @@ int
 test_pdump(void)
 {
 	int ret = 0;
+
+	if (RTE_EXEC_ENV_IS_FREEBSD)
+		return TEST_SKIPPED;
+
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		printf("IN PRIMARY PROCESS\n");
 		ret = run_pdump_server_tests();

@@ -18,11 +18,11 @@
 
 #include "test.h"
 
-#ifdef RTE_EXEC_ENV_WINDOWS
+#ifndef RTE_EXEC_ENV_LINUX
 int
 test_timer_secondary(void)
 {
-	printf("timer_secondary not supported on Windows, skipping test\n");
+	printf("timer_secondary only supported on Linux, skipping test\n");
 	return TEST_SKIPPED;
 }
 #else
