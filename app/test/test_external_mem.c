@@ -10,11 +10,11 @@
 #include <string.h>
 #include <fcntl.h>
 
-#ifdef RTE_EXEC_ENV_WINDOWS
+#ifndef RTE_EXEC_ENV_LINUX
 static int
 test_external_mem(void)
 {
-	printf("external_mem not supported on Windows, skipping test\n");
+	printf("external_mem only supported on Linux, skipping test\n");
 	return TEST_SKIPPED;
 }
 

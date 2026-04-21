@@ -154,15 +154,15 @@ test_debug(void)
 	test_args[2] = "-l";
 	test_args[3] = core;
 
-	if (rte_eal_has_hugepages()) {
+	if (rte_eal_has_hugepages() && RTE_EXEC_ENV_IS_LINUX) {
 		test_args[4] = "";
 		test_args[5] = "";
 		test_args[6] = "";
 		test_args[7] = "";
 	} else {
 		test_args[4] = "--no-huge";
-		test_args[5] = "-m";
-		test_args[6] = "2048";
+		test_args[5] = "-m2048";
+		test_args[6] = "--no-telemetry";
 #ifdef RTE_ARCH_PPC_64
 		/* iova=pa is the default, but fails on ppc64 with --no-huge */
 		test_args[7] = "--iova-mode=va";

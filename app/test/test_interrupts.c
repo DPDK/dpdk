@@ -429,7 +429,7 @@ test_interrupt(void)
 	int ret = -1;
 	struct rte_intr_handle *test_intr_handle;
 
-	if (RTE_EXEC_ENV_IS_WINDOWS)
+	if (RTE_EXEC_ENV_IS_WINDOWS || RTE_EXEC_ENV_IS_FREEBSD)
 		return TEST_SKIPPED;
 
 	if (test_interrupt_init() < 0) {
