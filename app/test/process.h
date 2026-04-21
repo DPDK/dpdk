@@ -19,14 +19,6 @@
 #include <rte_devargs.h>
 #include <rte_eal.h>
 
-#ifdef RTE_EXEC_ENV_FREEBSD
-#define self "curproc"
-#define exe "file"
-#else
-#define self "self"
-#define exe "exe"
-#endif
-
 #ifdef RTE_LIB_PDUMP
 #ifdef RTE_NET_RING
 #include <rte_thread.h>
@@ -96,7 +88,6 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 	int driver_path_num;
 	int argv_num;
 	int i, status;
-	char path[32];
 #ifdef RTE_LIB_PDUMP
 #ifdef RTE_NET_RING
 	rte_thread_t thread;
@@ -132,7 +123,7 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 
 #ifdef RTE_EXEC_ENV_LINUX
 		{
-			const char *procdir = "/proc/" self "/fd/";
+			const char *procdir = "/proc/self/fd/";
 			struct dirent *dirent;
 			char *endptr;
 			int fd, fdir;
@@ -188,15 +179,8 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 		/* set the environment variable */
 		if (setenv(RECURSIVE_ENV_VAR, env_value, 1) != 0)
 			rte_panic("Cannot export environment variable\n");
-
-		strlcpy(path, "/proc/" self "/" exe, sizeof(path));
-		if (execv(path, argv_cpy) < 0) {
-			if (errno == ENOENT) {
-				printf("Could not find '%s', is procfs mounted?\n",
-						path);
-			}
+		if (execv(argv_cpy[0], argv_cpy) < 0)
 			rte_panic("Cannot exec: %s\n", strerror(errno));
-		}
 	}
 	/* parent process does a wait */
 #ifdef RTE_LIB_PDUMP
