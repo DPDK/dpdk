@@ -385,7 +385,7 @@ Note, that for each supported rule type,
 the application needs to calculate the expected offset of the fields
 from the start of the packet.
 That's why only packets with fixed IPv4/ IPv6 header are supported.
-That allows to perform ACL classify straight over incoming packet buffer -
+That allows performing ACL classify straight over incoming packet buffer -
 no extra protocol field retrieval need to be performed.
 
 Subsequently, the application checks whether NUMA is enabled.

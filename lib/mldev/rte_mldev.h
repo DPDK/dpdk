@@ -569,7 +569,7 @@ struct rte_ml_op_error {
  * Get PMD specific error information for an ML op.
  *
  * When an ML operation completed with RTE_ML_OP_STATUS_ERROR as status,
- * This API allows to get PMD specific error details.
+ * This API allows getting PMD specific error details.
  *
  * @param[in] dev_id
  *   Device identifier

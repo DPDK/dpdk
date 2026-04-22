@@ -69,11 +69,11 @@ enum sfc_tbls_status {
  *   and information about the table
  *
  * All table layout data should be saved in a cache.
- * The cache allows to avoid getting the table descriptor each time when you want
+ * The cache allows one to avoid getting the table descriptor each time when you want
  * to manipulate table entries. It just contains the table
  * descriptors and all associated data. The cache is based on the RTE hash map and
  * it uses a table ID as a key.
- * The sfc_tbl_meta library serves as a wrapper over the cache and allows to user
+ * The sfc_tbl_meta library serves as a wrapper over the cache and allows the user
  * to get all information about the tables without worrying about the cache.
  *
  * +------------------------+

@@ -145,7 +145,7 @@ struct rte_mempool_objsz {
  * Mempool object header structure
  *
  * Each object stored in mempools are prefixed by this header structure,
- * it allows to retrieve the mempool pointer from the object and to
+ * it allows retrieving the mempool pointer from the object and
  * iterate on all objects attached to a mempool. When debug is enabled,
  * a cookie is also added in this structure preventing corruptions and
  * double-frees.

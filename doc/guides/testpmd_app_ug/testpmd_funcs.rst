@@ -1713,7 +1713,7 @@ Map a Tx queue with an aggregated port of the DPDK port (specified with port_id)
 
 * ``affinity``: the number of the aggregated port.
                 When multiple ports are aggregated into a single one,
-                it allows to choose which port to use for Tx via a queue.
+                it allows choosing which port to use for Tx via a queue.
 
 This command should be run when the port is stopped, otherwise it fails.
 

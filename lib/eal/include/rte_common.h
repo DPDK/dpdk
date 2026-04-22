@@ -356,7 +356,7 @@ typedef uint16_t unaligned_uint16_t;
  *   Priority number must be above 100.
  *   Lowest number is the first to run.
  */
-#ifndef RTE_INIT_PRIO /* Allow to override from EAL */
+#ifndef RTE_INIT_PRIO /* Allow overriding from EAL */
 #ifndef RTE_TOOLCHAIN_MSVC
 #define RTE_INIT_PRIO(func, prio) \
 static void __attribute__((constructor(RTE_PRIO(prio)), used)) func(void)
@@ -402,7 +402,7 @@ typedef int(__cdecl *_PIFV)(void);
  *   Priority number must be above 100.
  *   Lowest number is the last to run.
  */
-#ifndef RTE_FINI_PRIO /* Allow to override from EAL */
+#ifndef RTE_FINI_PRIO /* Allow overriding from EAL */
 #ifndef RTE_TOOLCHAIN_MSVC
 #define RTE_FINI_PRIO(func, prio) \
 static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)

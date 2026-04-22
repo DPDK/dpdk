@@ -74,7 +74,7 @@ struct ecore_vf_acquire_sw_info {
 
 	/* We have several close releases that all use ~same FW with different
 	 * versions [making it incompatible as the versioning scheme is still
-	 * tied directly to FW version], allow to override the checking. Only
+	 * tied directly to FW version], allow overriding the checking. Only
 	 * those versions would actually support this feature [so it would not
 	 * break forward compatibility with newer HV drivers that are no longer
 	 * suited].

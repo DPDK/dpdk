@@ -242,7 +242,7 @@ so available amount depends on the system load.
 It uses ``virt2phys`` kernel module to obtain physical addresses,
 unless running in IOVA-as-VA mode (e.g. forced with ``--iova-mode=va``).
 
-Linux allows to select any combination of the following:
+Linux allows selecting any combination of the following:
 
 * use files in hugetlbfs (the default)
   or anonymous mappings (``--in-memory``);

@@ -310,7 +310,7 @@ used for each window index when scaling back the size to a reference of 1024 FFT
 The actual shape size is effectively scaled up or down
 based on the dynamic size of the FFT operation being used.
 
-This allows to distinguish different version of the flexible pointwise windowing
+This allows distinguishing different version of the flexible pointwise windowing
 applied to the FFT and exposes this platform configuration to the application.
 
 Other optional capabilities exposed during device discovery
@@ -1119,7 +1119,7 @@ is also valid for LDPC decode.
 BBDEV FFT Operation
 ~~~~~~~~~~~~~~~~~~~
 
-This operation allows to run a combination of DFT and/or IDFT and/or time-domain windowing.
+This operation allows running a combination of DFT and/or IDFT and/or time-domain windowing.
 These can be used in a modular fashion (using bypass modes) or as a processing pipeline
 which can be used for FFT-based baseband signal processing.
 
@@ -1255,7 +1255,7 @@ first by cyclic shift then by antenna.
 BBDEV MLD-TS Operation
 ~~~~~~~~~~~~~~~~~~~~~~
 
-This operation allows to run the Tree Search (TS) portion of a Maximum Likelihood processing (MLD).
+This operation allows running the Tree Search (TS) portion of a Maximum Likelihood processing (MLD).
 
 This alternate equalization option accelerates the exploration of the best combination of
 transmitted symbols across layers minimizing the Euclidean distance between the received and

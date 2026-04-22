@@ -188,7 +188,7 @@ node_clone(struct node *node, const char *name)
 	struct rte_node_register *reg;
 	rte_edge_t i;
 
-	/* Don't allow to clone a node from a cloned node */
+	/* Don't allow cloning a node from a cloned node */
 	if (node->parent_id != RTE_NODE_ID_INVALID) {
 		rte_errno = EEXIST;
 		goto fail;

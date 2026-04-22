@@ -379,7 +379,7 @@ Such model has the following benefits:
  - It enables the DPDK application to filter only part of the traffic,
    while the rest will be directed and handled by the kernel driver.
    The flow bifurcation is performed by the NIC hardware.
-   As an example, using :ref:`flow_isolated_mode` allows to choose
+   As an example, using :ref:`flow_isolated_mode` allows choosing
    strictly what is received in DPDK.
 
 More about the bifurcated driver can be found in

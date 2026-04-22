@@ -202,7 +202,7 @@ struct rte_event_dma_adapter_runtime_params {
 	 *
 	 * Callback function passed to rte_event_dma_adapter_create_ext() configures the adapter
 	 * with default value of max_nb.
-	 * rte_event_dma_adapter_runtime_params_set() allows to re-configure max_nb during runtime
+	 * rte_event_dma_adapter_runtime_params_set() allows re-configuring max_nb during runtime
 	 * (after adding at least one queue pair)
 	 *
 	 * This is valid for the devices without RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_FWD or

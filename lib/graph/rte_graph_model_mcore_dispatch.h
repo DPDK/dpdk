@@ -8,7 +8,7 @@
 /**
  * @file rte_graph_model_mcore_dispatch.h
  *
- * These APIs allow to set core affinity with the node and only used for mcore
+ * These APIs allow setting core affinity with the node and only used for mcore
  * dispatch model.
  */
 

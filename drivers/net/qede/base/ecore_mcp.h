@@ -469,7 +469,7 @@ struct ecore_resc_unlock_params {
 	/* Resource number [valid values are 0..31] */
 	u8 resource;
 
-	/* Allow to release a resource even if belongs to another PF */
+	/* Allow releasing a resource even if belongs to another PF */
 	bool b_force;
 
 	/* Will be set as true if the resource is released */

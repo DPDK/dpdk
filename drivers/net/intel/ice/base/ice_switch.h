@@ -295,7 +295,7 @@ struct ice_rule_query_data {
 };
 
 /*
- * This structure allows to pass info about lb_en and lan_en
+ * This structure allows passing info about lb_en and lan_en
  * flags to ice_add_adv_rule. Values in act would be used
  * only if act_valid was set to true, otherwise dflt
  * values would be used.

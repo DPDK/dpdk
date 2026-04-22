@@ -63,12 +63,12 @@ settings and stats per node.
 
 **--show-ring[=name]**
 The show-ring parameter display current allocation of all ring with
-debug information. Specifying the name allows to display details for specific
+debug information. Specifying the name allows displaying details for specific
 ring. For invalid or no ring name, whole list is dump.
 
 **--show-mempool[=name]**
 The show-mempool parameter display current allocation of all mempool
-debug information. Specifying the name allows to display details for specific
+debug information. Specifying the name allows displaying details for specific
 mempool. For invalid or no mempool name, whole list is dump.
 
 **--iter-mempool=name**

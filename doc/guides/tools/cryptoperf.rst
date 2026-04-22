@@ -35,7 +35,7 @@ Linearization setting
 ---------------------
 
 It is possible linearized input segmented packets just before crypto operation
-for devices which doesn't support scatter-gather, and allows to measure
+for devices which doesn't support scatter-gather, and allows measuring
 performance also for this use case.
 
 To set on the linearization options add below definition to the

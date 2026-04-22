@@ -120,7 +120,7 @@ struct rte_event_eth_tx_adapter_runtime_params {
 	 * rte_event_eth_tx_adapter_create_ext() configures the adapter with
 	 * user provided value of max_nb_tx through
 	 * rte_event_eth_tx_adapter_conf::max_nb_tx parameter.
-	 * rte_event_eth_tx_adapter_runtime_params_set() allows to re-configure
+	 * rte_event_eth_tx_adapter_runtime_params_set() allows re-configuring
 	 * max_nb_tx during runtime (after adding at least one queue)
 	 *
 	 * This is valid for the devices without

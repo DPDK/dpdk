@@ -10,7 +10,7 @@
 /*
  * At the moment of writing DPDK v16.07 has notion of two types of
  * interrupts: LSC (link status change) and RXQ (receive indication).
- * It allows to register interrupt callback for entire device which is
+ * It allows registering an interrupt callback for entire device which is
  * not intended to be used for receive indication (i.e. link status
  * change indication only). The handler has no information which HW
  * interrupt has triggered it, so we don't know which event queue should

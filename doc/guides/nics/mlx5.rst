@@ -103,7 +103,7 @@ Flow Steering
 
 A major benefit of the mlx5 devices
 is the :ref:`bifurcated driver <mlx5_bifurcated>` capability.
-It allows to route some flows from the device to the kernel
+It allows routing some flows from the device to the kernel
 while other flows go directly to the userspace PMD.
 This capability allows the PMD to coexist with kernel network interfaces
 which remain functional, although they stop receiving unicast packets
@@ -121,12 +121,12 @@ This technology is named software steering (SWS).
 Later the performance was a lot more improved
 with :ref:`hardware steering (HWS) <mlx5_hws>`,
 a WQE-based high scaling and safer flow insertion/destruction.
-It allows to insert millions of rules per second.
+It allows inserting millions of rules per second.
 
 While using the :doc:`synchronous flow API <../prog_guide/ethdev/flow_offload>`
 is convenient and easy to manage,
 it is not efficient enough at a large scale.
-That's why mlx5 allows to offload many features asynchronously.
+That's why mlx5 allows offloading many features asynchronously.
 The :ref:`asynchronous flow API <flow_async_api>`
 makes use of :ref:`pre-configured templates <flow_template_api>`
 to insert new rules very fast with predictable performance.
@@ -210,7 +210,7 @@ for an additional list of options shared with other mlx5 drivers.
 - ``rxq_cqe_comp_en`` parameter [int]
 
   A nonzero value enables the compression of CQE on RX side. This feature
-  allows to save PCI bandwidth and improve performance. Enabled by default.
+  allows saving PCI bandwidth and improve performance. Enabled by default.
   Different compression formats are supported in order to achieve the best
   performance for different traffic patterns. Default format depends on
   Multi-Packet Rx queue configuration: Hash RSS format is used in case
@@ -2409,7 +2409,7 @@ DPDK       17.11
 RSS
 ~~~
 
-Receive Side Scaling (RSS) allows to dispatch received packets to multiple queues.
+Receive Side Scaling (RSS) allows dispatching received packets to multiple queues.
 
 RSS can be configured at port level:
 
@@ -2714,7 +2714,7 @@ Runtime configuration
 ^^^^^^^^^^^^^^^^^^^^^
 
 The parameter :ref:`dv_xmeta_en <mlx5_meta_mark_param>`
-allows to configure the driver handling of META and MARK.
+allows configuring the driver handling of META and MARK.
 
 Limitations
 ^^^^^^^^^^^

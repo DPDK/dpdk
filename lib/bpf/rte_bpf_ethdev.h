@@ -12,7 +12,7 @@
  * Note that right now:
  * - it is not MT safe, i.e. it is not allowed to do load/unload for the
  *   same port/queue from different threads in parallel.
- * - though it allows to do load/unload at runtime
+ * - though it allows load/unload at runtime
  *   (while RX/TX is ongoing on given port/queue).
  * - allows only one BPF program per port/queue,
  * i.e. new load will replace previously loaded for that port/queue BPF program.

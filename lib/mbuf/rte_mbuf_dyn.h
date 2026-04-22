@@ -272,7 +272,7 @@ typedef RTE_ATOMIC(uint64_t) rte_mbuf_history_t;
  * The timestamp dynamic field provides some timing information, the
  * units and time references (initial phase) are not explicitly defined
  * but are maintained always the same for a given port. Some devices allow
- * to query rte_eth_read_clock() that will return the current device
+ * querying rte_eth_read_clock() that will return the current device
  * timestamp. The dynamic Tx timestamp flag tells whether the field contains
  * actual timestamp value for the packets being sent, this value can be
  * used by PMD to schedule packet sending.
