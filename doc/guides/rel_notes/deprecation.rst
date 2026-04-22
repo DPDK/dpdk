@@ -154,3 +154,7 @@ Deprecation Notices
 * bus/vmbus: Starting DPDK 25.11, all the vmbus API defined in
   ``drivers/bus/vmbus/rte_bus_vmbus.h`` will become internal to DPDK.
   Those API functions are used internally by DPDK core and netvsc PMD.
+
+* net/iavf: The dynamic mbuf field used to detect LLDP packets on the
+  transmit path in the iavf PMD will be removed in a future release.
+  After removal, only packet type-based detection will be supported.
