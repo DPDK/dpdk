@@ -197,6 +197,7 @@ struct ci_tx_queue {
 			uint8_t vlan_flag;
 			uint8_t tc;
 			bool use_ctx;  /* with ctx info, each pkt needs two descriptors */
+			uint8_t lldp_mode; /* ptype or dynfield */
 		};
 		struct { /* ixgbe specific values */
 			const struct ixgbe_txq_ops *ops;

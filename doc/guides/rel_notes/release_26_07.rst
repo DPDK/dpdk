@@ -64,6 +64,11 @@ New Features
   * ``--auto-probing`` enables the initial bus probing, which is the current default behavior.
 
 
+* **Updated Intel iavf driver.**
+
+  * Added support for transmitting LLDP packets based on mbuf packet type.
+
+
 Removed Items
 -------------
 
