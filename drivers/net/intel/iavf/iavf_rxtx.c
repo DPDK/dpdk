@@ -2343,7 +2343,7 @@ iavf_recv_pkts_bulk_alloc(void *rx_queue,
 
 /* Check if the context descriptor is needed for TX offloading */
 static inline uint16_t
-iavf_calc_context_desc(const struct rte_mbuf *mb, uint8_t vlan_flag)
+iavf_calc_context_desc(const struct rte_mbuf *mb, uint8_t vlan_flag, uint8_t lldp_mode)
 {
 	uint64_t flags = mb->ol_flags;
 	if (flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG |
@@ -2354,7 +2354,7 @@ iavf_calc_context_desc(const struct rte_mbuf *mb, uint8_t vlan_flag)
 	    vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2)
 		return 1;
 
-	if (IAVF_CHECK_TX_LLDP(mb))
+	if (IAVF_CHECK_TX_LLDP(mb, lldp_mode))
 		return 1;
 
 	return 0;
@@ -2542,17 +2542,18 @@ iavf_get_context_desc(uint64_t ol_flags, const struct rte_mbuf *mbuf,
 		      const struct ci_tx_queue *txq,
 		      uint64_t *qw0, uint64_t *qw1)
 {
-	uint8_t iavf_vlan_flag;
+	uint8_t iavf_vlan_flag, lldp_mode;
 	uint16_t cd_l2tag2 = 0;
 	uint64_t cd_type_cmd = IAVF_TX_DESC_DTYPE_CONTEXT;
 	uint64_t cd_tunneling_params = 0;
 	struct iavf_ipsec_crypto_pkt_metadata *ipsec_md = NULL;
 
-	/* Use IAVF-specific vlan_flag from txq */
+	/* Use IAVF-specific flags from txq */
 	iavf_vlan_flag = txq->vlan_flag;
+	lldp_mode = txq->lldp_mode;
 
 	/* Check if context descriptor is needed using existing IAVF logic */
-	if (!iavf_calc_context_desc(mbuf, iavf_vlan_flag))
+	if (!iavf_calc_context_desc(mbuf, iavf_vlan_flag, lldp_mode))
 		return 0;
 
 	/* Get IPsec metadata if needed */
@@ -2584,7 +2585,7 @@ iavf_get_context_desc(uint64_t ol_flags, const struct rte_mbuf *mbuf,
 	}
 
 	/* LLDP switching field */
-	if (IAVF_CHECK_TX_LLDP(mbuf))
+	if (IAVF_CHECK_TX_LLDP(mbuf, lldp_mode))
 		cd_type_cmd |= IAVF_TX_CTX_DESC_SWTCH_UPLINK << IAVF_TXD_CTX_QW1_CMD_SHIFT;
 
 	/* Tunneling field */
@@ -3886,7 +3887,7 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 	if (iavf_tx_vec_dev_check(dev) != -1)
 		req_features.simd_width = iavf_get_max_simd_bitwidth();
 
-	if (rte_pmd_iavf_tx_lldp_dynfield_offset > 0)
+	if (adapter->devargs.enable_ptype_lldp || rte_pmd_iavf_tx_lldp_dynfield_offset > 0)
 		req_features.ctx_desc = true;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {

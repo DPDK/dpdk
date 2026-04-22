@@ -67,6 +67,10 @@ New Features
 
   Added network driver for the LinkData network adapters.
 
+* **Updated Intel iavf driver.**
+
+  * Added support for transmitting LLDP packets based on mbuf packet type.
+
 * **Updated PCAP ethernet driver.**
 
   * Added support for VLAN insertion and stripping.
