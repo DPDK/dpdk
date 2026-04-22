@@ -3617,6 +3617,24 @@ static const struct ci_tx_path_info iavf_tx_path_infos[] = {
 			.simd_width = RTE_VECT_SIMD_256
 		}
 	},
+	[IAVF_TX_AVX2_CTX] = {
+		.pkt_burst = iavf_xmit_pkts_vec_avx2_ctx,
+		.info = "Vector AVX2 Ctx",
+		.features = {
+			.tx_offloads = IAVF_TX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_256,
+			.ctx_desc = true
+		}
+	},
+	[IAVF_TX_AVX2_CTX_OFFLOAD] = {
+		.pkt_burst = iavf_xmit_pkts_vec_avx2_ctx_offload,
+		.info = "Vector AVX2 Ctx Offload",
+		.features = {
+			.tx_offloads = IAVF_TX_VECTOR_CTX_OFFLOAD_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_256,
+			.ctx_desc = true
+		}
+	},
 #ifdef CC_AVX512_SUPPORT
 	[IAVF_TX_AVX512] = {
 		.pkt_burst = iavf_xmit_pkts_vec_avx512,
