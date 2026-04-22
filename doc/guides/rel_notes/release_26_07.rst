@@ -67,6 +67,7 @@ New Features
 * **Updated Intel iavf driver.**
 
   * Added support for transmitting LLDP packets based on mbuf packet type.
+  * Implemented AVX2 context descriptor transmit paths.
 
 
 Removed Items
