@@ -168,7 +168,7 @@ class LinuxSession(PosixSession):
             ConfigurationError: If the port could not be found.
         """
         bus_info = f"pci@{pci_address}"
-        port = next(port for port in self._lshw_net_info if port.get("businfo") == bus_info)
+        port = next((port for port in self._lshw_net_info if port.get("businfo") == bus_info), None)
         if port is None:
             raise ConfigurationError(f"Port {pci_address} could not be found on the node.")
 
