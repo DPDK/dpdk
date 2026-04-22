@@ -103,7 +103,7 @@ Memory-related options
     which may be a security concern.
     Hugepage files created in this mode are also not removed
     when all the hugepages mapped from them are freed,
-    which allows to reuse these files after a restart.
+    which allows reusing these files after a restart.
 
 *   ``--match-allocations``
 

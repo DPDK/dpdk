@@ -28619,7 +28619,7 @@
 #define	MC_CMD_PRIVILEGE_MASK_IN_GRP_BROADCAST 0x100 /* enum */
 #define	MC_CMD_PRIVILEGE_MASK_IN_GRP_ALL_MULTICAST 0x200 /* enum */
 #define	MC_CMD_PRIVILEGE_MASK_IN_GRP_PROMISCUOUS 0x400 /* enum */
-/* enum: Allows to set the TX packets' source MAC address to any arbitrary MAC
+/* enum: Allows setting the TX packets' source MAC address to any arbitrary MAC
  * adress.
  */
 #define	MC_CMD_PRIVILEGE_MASK_IN_GRP_MAC_SPOOFING_TX 0x800

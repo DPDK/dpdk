@@ -13,7 +13,7 @@
  *
  * The ethtool bits definition should not change as it is a kernel API.
  * Using raw numbers directly avoids checking API availability
- * and allows to compile with new bits included even on an old kernel.
+ * and allows compiling with new bits included even on an old kernel.
  *
  * The array below is built from bit definitions with this shell command:
  *   sed -rn \

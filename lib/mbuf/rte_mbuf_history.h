@@ -11,7 +11,7 @@
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
- * These functions allow to track history of mbuf objects using a dynamic field.
+ * These functions allow tracking history of mbuf objects using a dynamic field.
  *
  * It tracks the lifecycle of mbuf objects through the system
  * with a fixed set of predefined events to maintain performance.

@@ -110,7 +110,7 @@ where,
 
 *   --config (port,queue,lcore)[,(port,queue,lcore)]: determines which queues from which ports are mapped to which cores.
 
-*   --cpu-resume-latency LATENCY: set CPU resume latency to control C-state selection, 0 : just allow to enter C0-state.
+*   --cpu-resume-latency LATENCY: set CPU resume latency to control C-state selection, 0 : just allow entering C0-state.
 
 *   --max-pkt-len: optional, maximum packet length in decimal (64-9600)
 

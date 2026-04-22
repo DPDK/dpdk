@@ -270,7 +270,7 @@ struct rte_event_crypto_adapter_runtime_params {
 	 * rte_event_crypto_adapter_create_ext() configures the adapter with
 	 * user provided value of max_nb through
 	 * rte_event_crypto_adapter_conf::max_nb parameter.
-	 * rte_event_cryptoadapter_runtime_params_set() allows to re-configure
+	 * rte_event_cryptoadapter_runtime_params_set() allows re-configuring
 	 * max_nb during runtime (after adding at least one queue pair)
 	 *
 	 * This is valid for the devices without

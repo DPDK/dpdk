@@ -177,7 +177,7 @@ sfc_repr_tx_burst(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	/*
 	 * mbuf is likely cache-hot. Set flag and egress m-port here instead of
 	 * doing that in representors proxy. Also, it should help to avoid
-	 * cache bounce. Moreover, potentially, it allows to use one
+	 * cache bounce. Moreover, potentially, it allows using one
 	 * multi-producer single-consumer ring for all representors.
 	 *
 	 * The only potential problem is doing so many times if enqueue

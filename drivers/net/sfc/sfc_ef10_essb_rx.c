@@ -42,7 +42,7 @@
 #define SFC_EF10_ESSB_RX_FAKE_BUF_SIZE	32
 
 /**
- * Minimum number of Rx buffers the datapath allows to use.
+ * Minimum number of Rx buffers the datapath allows using.
  *
  * Each HW Rx descriptor has many Rx buffers. The number of buffers
  * in one HW Rx descriptor is equal to size of contiguous block

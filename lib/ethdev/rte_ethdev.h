@@ -2737,7 +2737,7 @@ int rte_eth_dev_count_aggr_ports(uint16_t port_id);
  *
  *  Map a Tx queue with an aggregated port of the DPDK port (specified with port_id).
  *  When multiple ports are aggregated into a single one,
- *  it allows to choose which port to use for Tx via a queue.
+ *  it allows choosing which port to use for Tx via a queue.
  *
  *  The application should use rte_eth_dev_map_aggr_tx_affinity()
  *  after rte_eth_dev_configure(), rte_eth_tx_queue_setup(), and
@@ -4390,7 +4390,7 @@ int rte_eth_dev_rx_intr_disable(uint16_t port_id, uint16_t queue_id);
  *   The port identifier of the Ethernet device.
  * @param epfd
  *   Epoll instance fd which the intr vector associated to.
- *   Using RTE_EPOLL_PER_THREAD allows to use per thread epoll instance.
+ *   Using RTE_EPOLL_PER_THREAD allows using a per-thread epoll instance.
  * @param op
  *   The operation be performed for the vector.
  *   Operation type of {RTE_INTR_EVENT_ADD, RTE_INTR_EVENT_DEL}.
@@ -4413,7 +4413,7 @@ int rte_eth_dev_rx_intr_ctl(uint16_t port_id, int epfd, int op, void *data);
  *   to rte_eth_dev_configure().
  * @param epfd
  *   Epoll instance fd which the intr vector associated to.
- *   Using RTE_EPOLL_PER_THREAD allows to use per thread epoll instance.
+ *   Using RTE_EPOLL_PER_THREAD allows using a per-thread epoll instance.
  * @param op
  *   The operation be performed for the vector.
  *   Operation type of {RTE_INTR_EVENT_ADD, RTE_INTR_EVENT_DEL}.

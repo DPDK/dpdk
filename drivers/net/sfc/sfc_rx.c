@@ -1216,7 +1216,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 	/*
 	 * If Rx refill threshold is specified (its value is non zero) in
 	 * Rx configuration, use specified value. Otherwise use 1/8 of
-	 * the Rx descriptors number as the default. It allows to keep
+	 * the Rx descriptors number as the default. It allows keeping
 	 * Rx ring full-enough and does not refill too aggressive if
 	 * packet rate is high.
 	 *

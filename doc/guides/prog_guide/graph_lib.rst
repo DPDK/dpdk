@@ -10,7 +10,7 @@ data processing functions.
 
 The graph library provides API to enable graph framework operations such as
 create, lookup, dump and destroy on graph and node operations such as clone,
-edge update, and edge shrink, etc. The API also allows to create the stats
+edge update, and edge shrink, etc. The API also allows creating the stats
 cluster to monitor per graph and per node stats.
 
 Features

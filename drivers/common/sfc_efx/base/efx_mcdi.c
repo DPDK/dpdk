@@ -2689,7 +2689,7 @@ efx_mcdi_phy_module_get_info(
 
 	/*
 	 * Map device address to MC_CMD_GET_PHY_MEDIA_INFO pages.
-	 * Offset plus length interface allows to access page 0 only.
+	 * Offset plus length interface allows accessing page 0 only.
 	 * I.e. non-zero upper pages are not accessible.
 	 * See SFF-8472 section 4 Memory Organization and SFF-8436 section 7.6
 	 * QSFP+ Memory Map for details on how information is structured

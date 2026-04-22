@@ -3011,7 +3011,7 @@ Action: ``INDIRECT_LIST``
 Indirect API creates a shared flow action with unique action handle.
 Flow rules can access the shared flow action and resources related to
 that action through the indirect action handle.
-In addition, the API allows to update existing shared flow action configuration.
+In addition, the API allows updating existing shared flow action configuration.
 After the update completes, the new action configuration
 is available to all flows that reference that shared action.
 

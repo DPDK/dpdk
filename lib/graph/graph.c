@@ -569,7 +569,7 @@ graph_clone(struct graph *parent_graph, const char *name, struct rte_graph_param
 
 	graph_spinlock_lock();
 
-	/* Don't allow to clone a node from a cloned graph */
+	/* Don't allow cloning a node from a cloned graph */
 	if (parent_graph->parent_id != RTE_GRAPH_ID_INVALID)
 		SET_ERR_JMP(EEXIST, fail, "A cloned graph is not allowed to be cloned");
 

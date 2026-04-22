@@ -505,7 +505,7 @@ In particular, main SORING properties:
 
 * circular ring buffer with fixed size objects and related metadata.
 * producer, consumer plus multiple processing stages in between.
-* allows to split objects processing into multiple stages.
+* allows splitting objects processing into multiple stages.
 * objects remain in the same ring while moving from one stage to the other,
   initial order is preserved, no extra copying needed.
 * preserves the ingress order of objects within the queue across multiple stages.

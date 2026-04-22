@@ -9,7 +9,7 @@ The application provides the ability to test insertion rate of specific
 rte_flow rule, by stressing it to the NIC, and calculates the insertion
 and deletion rates.
 
-The application allows to configure which rule to apply through several
+The application allows configuring which rule to apply through several
 options of the command line.
 
 After that the application will start producing rules with same pattern

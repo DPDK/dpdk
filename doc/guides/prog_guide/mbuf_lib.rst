@@ -124,7 +124,7 @@ timestamp mechanism, the VLAN tagging and the IP checksum computation.
 
 On TX side, it is also possible for an application to delegate some
 processing to the hardware if it supports it. For instance, the
-RTE_MBUF_F_TX_IP_CKSUM flag allows to offload the computation of the IPv4
+RTE_MBUF_F_TX_IP_CKSUM flag allows offloading the computation of the IPv4
 checksum.
 
 The following examples explain how to configure different TX offloads on

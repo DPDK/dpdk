@@ -12,7 +12,7 @@
  * @b EXPERIMENTAL:
  * All functions in this file may be changed or removed without prior notice.
  *
- * This API allows to do control path functions of pkt_cls node.
+ * This API allows performing control path functions of pkt_cls node.
  */
 
 #ifdef __cplusplus

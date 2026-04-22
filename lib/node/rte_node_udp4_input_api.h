@@ -12,7 +12,7 @@
  * @b EXPERIMENTAL:
  * All functions in this file may be changed or removed without prior notice.
  *
- * This API allows to control path functions of udp4_* nodes
+ * This API allows performing control path functions of udp4_* nodes
  * like udp4_input.
  */
 #include <rte_common.h>
