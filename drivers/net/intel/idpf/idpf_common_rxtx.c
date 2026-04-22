@@ -825,11 +825,23 @@ idpf_split_tx_free(struct idpf_complq *cq)
 		txq->last_desc_cleaned = q_head;
 		break;
 	case IDPF_TXD_COMPLT_RS:
-		/* q_head indicates sw_id when ctype is 2 */
+		/* Walk from first segment to EOP, freeing each segment. */
 		txe = &txq->sw_ring[q_head];
 		if (txe->mbuf != NULL) {
-			rte_pktmbuf_free_seg(txe->mbuf);
-			txe->mbuf = NULL;
+			uint16_t first = txe->first_id;
+			uint16_t idx = first;
+			uint16_t end = (q_head + 1 == txq->sw_nb_desc) ?
+					0 : q_head + 1;
+
+			do {
+				txe = &txq->sw_ring[idx];
+				if (txe->mbuf != NULL) {
+					rte_pktmbuf_free_seg(txe->mbuf);
+					txe->mbuf = NULL;
+				}
+				idx = (idx + 1 == txq->sw_nb_desc) ?
+					0 : idx + 1;
+			} while (idx != end);
 		}
 		break;
 	default:
@@ -979,6 +991,8 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				tx_id = 0;
 		}
 
+		uint16_t first_sw_id = sw_id;
+
 		do {
 			txd = &txr[tx_id];
 			txn = &sw_ring[txe->next_id];
@@ -1001,6 +1015,9 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		/* fill the last descriptor with End of Packet (EOP) bit */
 		txd->qw1.cmd_dtype |= IDPF_TXD_FLEX_FLOW_CMD_EOP;
+
+		/* Record first sw_id at EOP so completion can walk forward. */
+		sw_ring[txd->qw1.compl_tag].first_id = first_sw_id;
 
 		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_used);
 		txq->rs_compl_count += nb_used;
