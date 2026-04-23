@@ -152,49 +152,6 @@ rte_auxiliary_driver_remove_dev(struct rte_auxiliary_device *dev)
 	return 0;
 }
 
-/*
- * Scan the content of the auxiliary bus, and call the probe function for
- * all registered drivers to try to probe discovered devices.
- */
-static int
-auxiliary_probe(void)
-{
-	struct rte_auxiliary_device *dev = NULL;
-	size_t probed = 0, failed = 0;
-
-	RTE_BUS_FOREACH_DEV(dev, &auxiliary_bus.bus) {
-		struct rte_driver *drv = NULL;
-		int ret;
-
-		probed++;
-
-next_driver:
-		drv = rte_bus_find_driver(&auxiliary_bus.bus, drv, &dev->device);
-		if (drv == NULL)
-			continue;
-
-		if (rte_dev_is_probed(&dev->device)) {
-			AUXILIARY_LOG(DEBUG, "Device %s is already probed on auxiliary bus",
-				dev->device.name);
-			continue;
-		}
-
-		ret = auxiliary_bus.bus.probe_device(drv, &dev->device);
-		if (ret < 0) {
-			if (ret != -EEXIST) {
-				AUXILIARY_LOG(ERR, "Requested device %s cannot be used",
-					      dev->name);
-				rte_errno = errno;
-				failed++;
-			}
-		} else if (ret > 0) {
-			goto next_driver;
-		}
-	}
-
-	return (probed && probed == failed) ? -1 : 0;
-}
-
 static int
 auxiliary_parse(const char *name, void *addr)
 {
@@ -308,7 +265,7 @@ auxiliary_get_iommu_class(void)
 struct rte_auxiliary_bus auxiliary_bus = {
 	.bus = {
 		.scan = auxiliary_scan,
-		.probe = auxiliary_probe,
+		.probe = rte_bus_generic_probe,
 		.cleanup = auxiliary_cleanup,
 		.find_device = rte_bus_generic_find_device,
 		.match = auxiliary_bus_match,

@@ -40,11 +40,14 @@ typedef int (*rte_bus_scan_t)(void);
  *
  * This is called while iterating over each registered bus.
  *
+ * @param bus
+ *   A pointer to the bus structure.
+ *
  * @return
  *	0 for successful probe
  *	!0 for any error while probing
  */
-typedef int (*rte_bus_probe_t)(void);
+typedef int (*rte_bus_probe_t)(struct rte_bus *bus);
 
 /**
  * Device iterator to find a device on a bus.
@@ -597,6 +600,24 @@ void rte_bus_remove_driver(struct rte_bus *bus, struct rte_driver *driver);
 __rte_internal
 struct rte_driver *rte_bus_find_driver(const struct rte_bus *bus, const struct rte_driver *start,
 	const struct rte_device *dev);
+
+/**
+ * Generic probe function for buses.
+ *
+ * Iterates through all devices on the bus, finds matching drivers using
+ * rte_bus_find_driver(), and calls bus->probe_device() for each device that has
+ * a matching driver.
+ *
+ * This function can be used by buses that don't require special probe
+ * logic and just need the standard device iteration and driver matching.
+ *
+ * @param bus
+ *   Pointer to the bus to probe.
+ * @return
+ *   0 on success.
+ */
+__rte_internal
+int rte_bus_generic_probe(struct rte_bus *bus);
 
 #ifdef __cplusplus
 }

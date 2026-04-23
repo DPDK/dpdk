@@ -99,15 +99,6 @@ struct rte_afu_driver {
 	const struct rte_afu_uuid *id_table;    /**< AFU uuid within FPGA. */
 };
 
-__rte_internal
-static inline const char *
-rte_ifpga_device_name(const struct rte_afu_device *afu)
-{
-	if (afu && afu->device.name)
-		return afu->device.name;
-	return NULL;
-}
-
 /**
  * Register a ifpga afu device driver.
  *

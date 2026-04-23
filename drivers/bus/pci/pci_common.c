@@ -334,46 +334,6 @@ rte_pci_detach_dev(struct rte_pci_device *dev)
 	return 0;
 }
 
-/*
- * Scan the content of the PCI bus, and call the probe() function for
- * all registered drivers that have a matching entry in its id_table
- * for discovered devices.
- */
-static int
-pci_probe(void)
-{
-	struct rte_pci_device *dev = NULL;
-	size_t probed = 0, failed = 0;
-
-	RTE_BUS_FOREACH_DEV(dev, &rte_pci_bus.bus) {
-		struct rte_driver *drv = NULL;
-		int ret;
-
-		probed++;
-
-next_driver:
-		drv = rte_bus_find_driver(&rte_pci_bus.bus, drv, &dev->device);
-		if (drv == NULL)
-			continue;
-
-		ret = rte_pci_bus.bus.probe_device(drv, &dev->device);
-		if (ret < 0) {
-			if (ret != -EEXIST) {
-				PCI_LOG(ERR, "Requested device " PCI_PRI_FMT " cannot be used",
-					dev->addr.domain, dev->addr.bus,
-					dev->addr.devid, dev->addr.function);
-				rte_errno = errno;
-				failed++;
-			}
-			ret = 0;
-		} else if (ret > 0) {
-			goto next_driver;
-		}
-	}
-
-	return (probed && probed == failed) ? -1 : 0;
-}
-
 static int
 pci_cleanup(void)
 {
@@ -825,7 +785,7 @@ struct rte_pci_bus rte_pci_bus = {
 	.bus = {
 		.allow_multi_probe = true,
 		.scan = rte_pci_scan,
-		.probe = pci_probe,
+		.probe = rte_bus_generic_probe,
 		.cleanup = pci_cleanup,
 		.find_device = rte_bus_generic_find_device,
 		.match = pci_bus_match,

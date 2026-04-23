@@ -45,7 +45,6 @@ struct dsa_bus;
 static int dsa_scan(void);
 static bool dsa_match(const struct rte_driver *drv, const struct rte_device *dev);
 static int dsa_probe_device(struct rte_driver *drv, struct rte_device *dev);
-static int dsa_probe(void);
 static enum rte_iova_mode dsa_get_iommu_class(void);
 static int dsa_addr_parse(const char *name, void *addr);
 
@@ -60,9 +59,9 @@ struct dsa_bus {
 struct dsa_bus dsa_bus = {
 	.bus = {
 		.scan = dsa_scan,
+		.probe = rte_bus_generic_probe,
 		.match = dsa_match,
 		.probe_device = dsa_probe_device,
-		.probe = dsa_probe,
 		.find_device = rte_bus_generic_find_device,
 		.get_iommu_class = dsa_get_iommu_class,
 		.parse = dsa_addr_parse,
@@ -262,24 +261,6 @@ is_for_this_process_use(const char *name)
 		retval = 1;
 
 	return retval;
-}
-
-static int
-dsa_probe(void)
-{
-	struct rte_dsa_device *dev;
-
-	RTE_BUS_FOREACH_DEV(dev, &dsa_bus.bus) {
-		if (dsa_match(&dsa_bus.driver, &dev->device) &&
-				!rte_bus_device_is_ignored(&dsa_bus.bus, dev->device.name)) {
-			dev->device.driver = &dsa_bus.driver;
-			dsa_probe_device(&dsa_bus.driver, &dev->device);
-			continue;
-		}
-		IDXD_PMD_DEBUG("WQ '%s', not allocated to DPDK", dev->wq_name);
-	}
-
-	return 0;
 }
 
 static bool dsa_match(const struct rte_driver *drv, const struct rte_device *dev)

@@ -72,6 +72,51 @@ rte_bus_scan(void)
 	return 0;
 }
 
+/*
+ * Generic probe function for buses.
+ * Iterates through all devices on the bus, finds matching drivers,
+ * and calls bus->probe_device() for each device.
+ */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_generic_probe)
+int
+rte_bus_generic_probe(struct rte_bus *bus)
+{
+	size_t probed = 0, failed = 0;
+	struct rte_device *dev;
+
+	TAILQ_FOREACH(dev, &bus->device_list, next) {
+		struct rte_driver *drv = NULL;
+		int ret;
+
+		if (rte_bus_device_is_ignored(bus, dev->name))
+			continue;
+
+		if (rte_dev_is_probed(dev) && !bus->allow_multi_probe) {
+			EAL_LOG(INFO, "Device %s is already probed", dev->name);
+			continue;
+		}
+
+		probed++;
+next_driver:
+		drv = rte_bus_find_driver(bus, drv, dev);
+		if (drv == NULL)
+			continue;
+
+		ret = bus->probe_device(drv, dev);
+		if (ret > 0)
+			goto next_driver;
+
+		if (ret < 0) {
+			if (ret == -EEXIST)
+				continue;
+			EAL_LOG(ERR, "Failed to probe device %s", dev->name);
+			failed++;
+		}
+	}
+
+	return (probed && probed == failed) ? -1 : 0;
+}
+
 /* Probe all devices of all buses */
 RTE_EXPORT_SYMBOL(rte_bus_probe)
 int
@@ -86,14 +131,14 @@ rte_bus_probe(void)
 			continue;
 		}
 
-		ret = bus->probe();
+		ret = bus->probe(bus);
 		if (ret)
 			EAL_LOG(ERR, "Bus (%s) probe failed.",
 				rte_bus_name(bus));
 	}
 
 	if (vbus) {
-		ret = vbus->probe();
+		ret = vbus->probe(vbus);
 		if (ret)
 			EAL_LOG(ERR, "Bus (%s) probe failed.",
 				rte_bus_name(vbus));

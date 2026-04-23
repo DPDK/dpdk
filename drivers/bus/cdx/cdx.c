@@ -347,47 +347,6 @@ error_map_device:
 	return ret;
 }
 
-/*
- * Scan the content of the CDX bus, and call the probe() function for
- * all registered drivers that have a matching entry in its id_table
- * for discovered devices.
- */
-static int
-cdx_probe(void)
-{
-	struct rte_cdx_device *dev = NULL;
-	size_t probed = 0, failed = 0;
-
-	RTE_BUS_FOREACH_DEV(dev, &rte_cdx_bus.bus) {
-		struct rte_driver *drv = NULL;
-		int ret;
-
-		probed++;
-
-next_driver:
-		drv = rte_bus_find_driver(&rte_cdx_bus.bus, drv, &dev->device);
-		if (drv == NULL)
-			continue;
-
-		if (rte_dev_is_probed(&dev->device)) {
-			CDX_BUS_INFO("Device %s is already probed", dev->name);
-			continue;
-		}
-
-		ret = rte_cdx_bus.bus.probe_device(drv, &dev->device);
-		if (ret < 0) {
-			CDX_BUS_ERR("Requested device %s cannot be used",
-				dev->name);
-			rte_errno = errno;
-			failed++;
-		} else if (ret > 0) {
-			goto next_driver;
-		}
-	}
-
-	return (probed && probed == failed) ? -1 : 0;
-}
-
 static int
 cdx_parse(const char *name, void *addr)
 {
@@ -494,7 +453,7 @@ cdx_get_iommu_class(void)
 struct rte_cdx_bus rte_cdx_bus = {
 	.bus = {
 		.scan = cdx_scan,
-		.probe = cdx_probe,
+		.probe = rte_bus_generic_probe,
 		.find_device = rte_bus_generic_find_device,
 		.match = cdx_bus_match,
 		.probe_device = cdx_probe_device,

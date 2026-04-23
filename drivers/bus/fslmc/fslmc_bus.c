@@ -446,36 +446,6 @@ rte_fslmc_close(void)
 	return 0;
 }
 
-static int
-rte_fslmc_probe(void)
-{
-	struct rte_dpaa2_device *dev;
-	int ret;
-
-	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus.bus) {
-		struct rte_driver *driver = NULL;
-
-		if (rte_bus_device_is_ignored(&rte_fslmc_bus.bus, dev->device.name))
-			continue;
-
-next_driver:
-		driver = rte_bus_find_driver(&rte_fslmc_bus.bus, driver, &dev->device);
-		if (driver == NULL)
-			continue;
-
-		if (rte_dev_is_probed(&dev->device))
-			continue;
-
-		ret = rte_fslmc_bus.bus.probe_device(driver, &dev->device);
-		if (ret < 0)
-			DPAA2_BUS_ERR("Failed to probe device %s", dev->device.name);
-		else if (ret > 0)
-			goto next_driver;
-	}
-
-	return 0;
-}
-
 /*register a fslmc bus based dpaa2 driver */
 RTE_EXPORT_INTERNAL_SYMBOL(rte_fslmc_driver_register)
 void
@@ -581,7 +551,7 @@ fslmc_bus_unplug(struct rte_device *rte_dev)
 struct rte_fslmc_bus rte_fslmc_bus = {
 	.bus = {
 		.scan = rte_fslmc_scan,
-		.probe = rte_fslmc_probe,
+		.probe = rte_bus_generic_probe,
 		.cleanup = rte_fslmc_close,
 		.parse = rte_fslmc_parse,
 		.dev_compare = fslmc_dev_compare,
