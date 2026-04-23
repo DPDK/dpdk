@@ -288,44 +288,6 @@ ifpga_probe_device(struct rte_driver *drv, struct rte_device *dev)
 }
 
 /*
- * Scan the content of the Intel FPGA bus, and call the probe() function for
- * all registered drivers that have a matching entry in its id_table
- * for discovered devices.
- */
-static int
-ifpga_probe(void)
-{
-	struct rte_afu_device *afu_dev = NULL;
-	int ret = 0;
-
-	RTE_BUS_FOREACH_DEV(afu_dev, &rte_ifpga_bus) {
-		struct rte_driver *drv = NULL;
-
-next_driver:
-		drv = rte_bus_find_driver(&rte_ifpga_bus, drv, &afu_dev->device);
-		if (drv == NULL)
-			continue;
-
-		if (rte_dev_is_probed(&afu_dev->device)) {
-			IFPGA_BUS_DEBUG("Device %s is already probed",
-				rte_ifpga_device_name(afu_dev));
-			continue;
-		}
-
-		ret = rte_ifpga_bus.probe_device(drv, &afu_dev->device);
-		if (ret == -EEXIST)
-			continue;
-		if (ret < 0)
-			IFPGA_BUS_ERR("failed to initialize %s device",
-				rte_ifpga_device_name(afu_dev));
-		else if (ret > 0)
-			goto next_driver;
-	}
-
-	return ret;
-}
-
-/*
  * Cleanup the content of the Intel FPGA bus, and call the remove() function
  * for all registered devices.
  */
@@ -427,7 +389,7 @@ ifpga_parse(const char *name, void *addr)
 
 static struct rte_bus rte_ifpga_bus = {
 	.scan        = ifpga_scan,
-	.probe       = ifpga_probe,
+	.probe       = rte_bus_generic_probe,
 	.cleanup     = ifpga_cleanup,
 	.find_device = rte_bus_generic_find_device,
 	.match       = ifpga_bus_match,

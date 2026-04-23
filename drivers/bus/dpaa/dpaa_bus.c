@@ -779,34 +779,6 @@ rte_dpaa_bus_scan(void)
 	return 0;
 }
 
-static int
-rte_dpaa_bus_probe(void)
-{
-	struct rte_dpaa_device *dev;
-
-	/* For each registered driver, and device, call the driver->probe */
-	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus.bus) {
-		struct rte_driver *driver = NULL;
-		int ret;
-
-next_driver:
-		driver = rte_bus_find_driver(&rte_dpaa_bus.bus, driver, &dev->device);
-		if (driver == NULL)
-			continue;
-
-		if (rte_dev_is_probed(&dev->device))
-			continue;
-
-		ret = rte_dpaa_bus.bus.probe_device(driver, &dev->device);
-		if (ret < 0)
-			DPAA_BUS_ERR("Failed to probe device %s", dev->name);
-		else if (ret > 0)
-			goto next_driver;
-	}
-
-	return 0;
-}
-
 /*
  * Get iommu class of DPAA2 devices on the bus.
  */
@@ -826,9 +798,6 @@ dpaa_bus_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	struct rte_dpaa_device *dpaa_dev = RTE_BUS_DEVICE(dev, *dpaa_dev);
 	struct rte_dpaa_driver *dpaa_drv = RTE_BUS_DRIVER(drv, *dpaa_drv);
 	int ret;
-
-	if (rte_bus_device_is_ignored(&rte_dpaa_bus.bus, dpaa_dev->name))
-		return 0;
 
 	ret = dpaa_drv->probe(dpaa_drv, dpaa_dev);
 	if (ret != 0) {
@@ -893,7 +862,7 @@ RTE_FINI_PRIO(dpaa_cleanup, 102)
 static struct rte_dpaa_bus rte_dpaa_bus = {
 	.bus = {
 		.scan = rte_dpaa_bus_scan,
-		.probe = rte_dpaa_bus_probe,
+		.probe = rte_bus_generic_probe,
 		.parse = rte_dpaa_bus_parse,
 		.dev_compare = dpaa_bus_dev_compare,
 		.find_device = rte_bus_generic_find_device,

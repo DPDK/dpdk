@@ -135,43 +135,7 @@ RTE_EXPORT_SYMBOL(rte_vmbus_probe)
 int
 rte_vmbus_probe(void)
 {
-	struct rte_vmbus_device *dev;
-	size_t probed = 0, failed = 0;
-	char ubuf[RTE_UUID_STRLEN];
-
-	RTE_BUS_FOREACH_DEV(dev, &rte_vmbus_bus.bus) {
-		struct rte_driver *drv = NULL;
-		int ret;
-
-		probed++;
-
-		rte_uuid_unparse(dev->device_id, ubuf, sizeof(ubuf));
-
-		if (rte_bus_device_is_ignored(&rte_vmbus_bus.bus, ubuf))
-			continue;
-
-next_driver:
-		drv = rte_bus_find_driver(&rte_vmbus_bus.bus, drv, &dev->device);
-		if (drv == NULL)
-			continue;
-
-		if (rte_dev_is_probed(&dev->device)) {
-			VMBUS_LOG(DEBUG, "VMBUS driver already loaded");
-			continue;
-		}
-
-		ret = rte_vmbus_bus.bus.probe_device(drv, &dev->device);
-		if (ret < 0) {
-			VMBUS_LOG(NOTICE,
-				"Requested device %s cannot be used", ubuf);
-			rte_errno = errno;
-			failed++;
-		} else if (ret > 0) {
-			goto next_driver;
-		}
-	}
-
-	return (probed && probed == failed) ? -1 : 0;
+	return rte_bus_generic_probe(&rte_vmbus_bus.bus);
 }
 
 static int
@@ -252,7 +216,7 @@ rte_vmbus_unregister(struct rte_vmbus_driver *driver)
 struct rte_vmbus_bus rte_vmbus_bus = {
 	.bus = {
 		.scan = rte_vmbus_scan,
-		.probe = rte_vmbus_probe,
+		.probe = rte_bus_generic_probe,
 		.cleanup = rte_vmbus_cleanup,
 		.find_device = rte_bus_generic_find_device,
 		.match = vmbus_bus_match,

@@ -549,41 +549,6 @@ scan:
 }
 
 static int
-vdev_probe(void)
-{
-	struct rte_vdev_device *dev;
-	int r, ret = 0;
-
-	/* call the init function for each virtual device */
-	RTE_BUS_FOREACH_DEV(dev, &rte_vdev_bus) {
-		struct rte_driver *drv = NULL;
-
-		/* we don't use the vdev lock here, as it's only used in DPDK
-		 * initialization; and we don't want to hold such a lock when
-		 * we call each driver probe.
-		 */
-
-next_driver:
-		drv = rte_bus_find_driver(&rte_vdev_bus, drv, &dev->device);
-		if (drv == NULL)
-			continue;
-
-		r = rte_vdev_bus.probe_device(drv, &dev->device);
-		if (r < 0) {
-			if (r == -EEXIST)
-				continue;
-			VDEV_LOG(ERR, "failed to initialize %s device",
-				rte_vdev_device_name(dev));
-			ret = -1;
-		} else if (r > 0) {
-			goto next_driver;
-		}
-	}
-
-	return ret;
-}
-
-static int
 vdev_cleanup(void)
 {
 	struct rte_vdev_device *dev;
@@ -654,7 +619,7 @@ vdev_get_iommu_class(void)
 
 static struct rte_bus rte_vdev_bus = {
 	.scan = vdev_scan,
-	.probe = vdev_probe,
+	.probe = rte_bus_generic_probe,
 	.cleanup = vdev_cleanup,
 	.find_device = vdev_find_device,
 	.match = vdev_bus_match,

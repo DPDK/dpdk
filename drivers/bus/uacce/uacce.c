@@ -394,42 +394,6 @@ uacce_probe_device(struct rte_driver *drv, struct rte_device *dev)
 }
 
 static int
-uacce_probe(void)
-{
-	size_t probed = 0, failed = 0;
-	struct rte_uacce_device *dev;
-
-	RTE_BUS_FOREACH_DEV(dev, &uacce_bus.bus) {
-		struct rte_driver *drv = NULL;
-		int ret;
-
-		probed++;
-
-next_driver:
-		drv = rte_bus_find_driver(&uacce_bus.bus, drv, &dev->device);
-		if (drv == NULL)
-			continue;
-
-		if (rte_dev_is_probed(&dev->device)) {
-			UACCE_BUS_INFO("device %s is already probed", dev->name);
-			continue;
-		}
-
-		ret = uacce_bus.bus.probe_device(drv, &dev->device);
-		if (ret < 0) {
-			UACCE_BUS_LOG(ERR, "Requested device %s cannot be used",
-				dev->name);
-			rte_errno = errno;
-			failed++;
-		} else if (ret > 0) {
-			goto next_driver;
-		}
-	}
-
-	return (probed && probed == failed) ? -1 : 0;
-}
-
-static int
 uacce_cleanup(void)
 {
 	struct rte_uacce_device *dev;
@@ -620,7 +584,7 @@ rte_uacce_unregister(struct rte_uacce_driver *driver)
 static struct rte_uacce_bus uacce_bus = {
 	.bus = {
 		.scan = uacce_scan,
-		.probe = uacce_probe,
+		.probe = rte_bus_generic_probe,
 		.cleanup = uacce_cleanup,
 		.match = uacce_bus_match,
 		.probe_device = uacce_probe_device,
