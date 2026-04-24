@@ -363,9 +363,9 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->min_mtu = priv->min_mtu;
 	info->max_mtu = priv->max_mtu;
 	info->max_rx_pktlen = info->max_mtu + MLX5_ETH_OVERHEAD;
-	/* FIXME: we should ask the device for these values. */
 	info->min_rx_bufsize = 32;
-	info->max_lro_pkt_size = MLX5_MAX_LRO_SIZE;
+	info->max_lro_pkt_size = priv->sh->config.lro_allowed ?
+				 MLX5_MAX_LRO_SIZE : 0;
 	/*
 	 * Since we need one CQ per QP, the limit is the minimum number
 	 * between the two values.
