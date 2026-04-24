@@ -203,7 +203,7 @@ pci_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	if (pci_dev->device.numa_node < 0 && rte_socket_count() > 1)
 		PCI_LOG(INFO, "Device %s is not NUMA-aware", pci_dev->name);
 
-	already_probed = rte_dev_is_probed(&pci_dev->device);
+	already_probed = (pci_dev->intr_handle != NULL);
 	if (already_probed && !(pci_drv->drv_flags & RTE_PCI_DRV_PROBE_AGAIN)) {
 		PCI_LOG(DEBUG, "Device %s is already probed", pci_dev->device.name);
 		return -EEXIST;
@@ -251,7 +251,7 @@ pci_probe_device(struct rte_driver *drv, struct rte_device *dev)
 		 * to use driver flags for adjusting configuration.
 		 */
 		pci_dev->driver = pci_drv;
-		if (pci_dev->driver->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
+		if (pci_drv->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
 			ret = rte_pci_map_device(pci_dev);
 			if (ret != 0) {
 				pci_dev->driver = NULL;
@@ -285,8 +285,6 @@ pci_probe_device(struct rte_driver *drv, struct rte_device *dev)
 		pci_dev->vfio_req_intr_handle = NULL;
 		rte_intr_instance_free(pci_dev->intr_handle);
 		pci_dev->intr_handle = NULL;
-	} else {
-		pci_dev->device.driver = &pci_drv->driver;
 	}
 
 	return ret;

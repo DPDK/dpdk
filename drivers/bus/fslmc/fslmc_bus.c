@@ -524,7 +524,6 @@ fslmc_bus_probe_device(struct rte_driver *driver, struct rte_device *rte_dev)
 		DPAA2_BUS_ERR("Unable to probe");
 	} else {
 		dev->driver = drv;
-		dev->device.driver = &drv->driver;
 		DPAA2_BUS_INFO("%s Plugged",  dev->device.name);
 	}
 

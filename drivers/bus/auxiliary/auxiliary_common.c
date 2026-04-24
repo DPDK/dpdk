@@ -120,8 +120,6 @@ auxiliary_probe_device(struct rte_driver *drv, struct rte_device *dev)
 		aux_dev->driver = NULL;
 		rte_intr_instance_free(aux_dev->intr_handle);
 		aux_dev->intr_handle = NULL;
-	} else {
-		aux_dev->device.driver = &aux_drv->driver;
 	}
 
 	return ret;

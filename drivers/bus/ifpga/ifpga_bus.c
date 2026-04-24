@@ -281,8 +281,6 @@ ifpga_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	ret = afu_drv->probe(afu_dev);
 	if (ret)
 		afu_dev->driver = NULL;
-	else
-		afu_dev->device.driver = &afu_drv->driver;
 
 	return ret;
 }
