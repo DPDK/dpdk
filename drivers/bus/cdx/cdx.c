@@ -501,18 +501,13 @@ cdx_remove_device(struct rte_cdx_device *cdx_dev)
 static int
 cdx_detach_dev(struct rte_cdx_device *dev)
 {
-	struct rte_cdx_driver *dr;
+	struct rte_cdx_driver *dr = dev->driver;
 	int ret = 0;
-
-	if (dev == NULL)
-		return -EINVAL;
-
-	dr = dev->driver;
 
 	CDX_BUS_DEBUG("detach device %s using driver: %s",
 		dev->device.name, dr->driver.name);
 
-	if (dr->remove) {
+	if (dr->remove != NULL) {
 		ret = dr->remove(dev);
 		if (ret < 0)
 			return ret;
@@ -539,10 +534,9 @@ cdx_plug(struct rte_device *dev)
 static int
 cdx_unplug(struct rte_device *dev)
 {
-	struct rte_cdx_device *cdx_dev;
+	struct rte_cdx_device *cdx_dev = RTE_DEV_TO_CDX_DEV(dev);
 	int ret;
 
-	cdx_dev = RTE_DEV_TO_CDX_DEV(dev);
 	ret = cdx_detach_dev(cdx_dev);
 	if (ret == 0) {
 		cdx_remove_device(cdx_dev);

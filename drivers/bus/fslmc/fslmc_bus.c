@@ -619,7 +619,7 @@ fslmc_bus_unplug(struct rte_device *rte_dev)
 			struct rte_dpaa2_device, device);
 	struct rte_dpaa2_driver *drv = dev->driver;
 
-	if (drv && drv->remove) {
+	if (drv->remove != NULL) {
 		drv->remove(dev);
 		dev->driver = NULL;
 		dev->device.driver = NULL;

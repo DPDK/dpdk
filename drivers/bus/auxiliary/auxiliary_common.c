@@ -144,15 +144,8 @@ rte_auxiliary_probe_one_driver(struct rte_auxiliary_driver *drv,
 static int
 rte_auxiliary_driver_remove_dev(struct rte_auxiliary_device *dev)
 {
-	struct rte_auxiliary_driver *drv;
+	struct rte_auxiliary_driver *drv = dev->driver;
 	int ret = 0;
-
-	if (dev == NULL)
-		return -EINVAL;
-
-	drv = dev->driver;
-	if (drv == NULL)
-		return 0;
 
 	AUXILIARY_LOG(DEBUG, "Driver %s remove auxiliary device %s on NUMA node %i",
 		      drv->driver.name, dev->name, dev->device.numa_node);
@@ -318,10 +311,9 @@ auxiliary_plug(struct rte_device *dev)
 static int
 auxiliary_unplug(struct rte_device *dev)
 {
-	struct rte_auxiliary_device *adev;
+	struct rte_auxiliary_device *adev = RTE_DEV_TO_AUXILIARY(dev);
 	int ret;
 
-	adev = RTE_DEV_TO_AUXILIARY(dev);
 	ret = rte_auxiliary_driver_remove_dev(adev);
 	if (ret == 0) {
 		rte_auxiliary_remove_device(adev);
@@ -341,6 +333,8 @@ auxiliary_cleanup(void)
 	RTE_TAILQ_FOREACH_SAFE(dev, &auxiliary_bus.device_list, next, tmp_dev) {
 		int ret;
 
+		if (!rte_dev_is_probed(&dev->device))
+			continue;
 		ret = auxiliary_unplug(&dev->device);
 		if (ret < 0) {
 			rte_errno = errno;

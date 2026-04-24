@@ -210,7 +210,9 @@ rte_vmbus_cleanup(void)
 		const struct rte_vmbus_driver *drv = dev->driver;
 		int ret;
 
-		if (drv == NULL || drv->remove == NULL)
+		if (!rte_dev_is_probed(&dev->device))
+			continue;
+		if (drv->remove == NULL)
 			continue;
 
 		ret = drv->remove(dev);

@@ -468,7 +468,9 @@ uacce_cleanup(void)
 		struct rte_uacce_driver *dr = dev->driver;
 		int ret = 0;
 
-		if (dr == NULL || dr->remove == NULL)
+		if (!rte_dev_is_probed(&dev->device))
+			goto free;
+		if (dr->remove == NULL)
 			goto free;
 
 		ret = dr->remove(dev);
@@ -496,14 +498,12 @@ uacce_plug(struct rte_device *dev)
 static int
 uacce_detach_dev(struct rte_uacce_device *dev)
 {
-	struct rte_uacce_driver *dr;
+	struct rte_uacce_driver *dr = dev->driver;
 	int ret = 0;
-
-	dr = dev->driver;
 
 	UACCE_BUS_DEBUG("detach device %s using driver: %s", dev->device.name, dr->driver.name);
 
-	if (dr->remove) {
+	if (dr->remove != NULL) {
 		ret = dr->remove(dev);
 		if (ret < 0)
 			return ret;
@@ -518,10 +518,9 @@ uacce_detach_dev(struct rte_uacce_device *dev)
 static int
 uacce_unplug(struct rte_device *dev)
 {
-	struct rte_uacce_device *uacce_dev;
+	struct rte_uacce_device *uacce_dev = RTE_DEV_TO_UACCE_DEV(dev);
 	int ret;
 
-	uacce_dev = RTE_DEV_TO_UACCE_DEV(dev);
 	ret = uacce_detach_dev(uacce_dev);
 	if (ret == 0) {
 		TAILQ_REMOVE(&uacce_bus.device_list, uacce_dev, next);
