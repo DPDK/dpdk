@@ -225,6 +225,9 @@ next_driver:
 	drv = rte_bus_find_driver(dev->bus, drv, dev);
 	if (drv == NULL) {
 		ret = -ENOTSUP;
+	} else if (rte_dev_is_probed(dev) && !dev->bus->allow_multi_probe) {
+		EAL_LOG(INFO, "Device %s is already probed", dev->name);
+		ret = -EEXIST;
 	} else {
 		ret = dev->bus->probe_device(drv, dev);
 		if (ret > 0)

@@ -91,12 +91,6 @@ vmbus_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	char guid[RTE_UUID_STRLEN];
 	int ret;
 
-	/* Check if a driver is already loaded */
-	if (rte_dev_is_probed(&vmbus_dev->device)) {
-		VMBUS_LOG(DEBUG, "VMBUS driver already loaded");
-		return 0;
-	}
-
 	rte_uuid_unparse(vmbus_dev->device_id, guid, sizeof(guid));
 	VMBUS_LOG(INFO, "VMBUS device %s on NUMA socket %i",
 		  guid, vmbus_dev->device.numa_node);
@@ -160,6 +154,11 @@ next_driver:
 		drv = rte_bus_find_driver(&rte_vmbus_bus.bus, drv, &dev->device);
 		if (drv == NULL)
 			continue;
+
+		if (rte_dev_is_probed(&dev->device)) {
+			VMBUS_LOG(DEBUG, "VMBUS driver already loaded");
+			continue;
+		}
 
 		ret = rte_vmbus_bus.bus.probe_device(drv, &dev->device);
 		if (ret < 0) {

@@ -327,6 +327,7 @@ typedef void *(*rte_bus_dev_iterate_t)(const struct rte_bus *bus,
 struct rte_bus {
 	RTE_TAILQ_ENTRY(rte_bus) next; /**< Next bus object in linked list */
 	const char *name;            /**< Name of the bus */
+	bool allow_multi_probe;      /**< Allow probing devices multiple times */
 	rte_bus_scan_t scan;         /**< Scan for devices attached to bus */
 	rte_bus_probe_t probe;       /**< Probe devices on bus */
 	rte_bus_find_device_t find_device; /**< Find a device on the bus */

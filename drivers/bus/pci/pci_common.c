@@ -823,6 +823,7 @@ rte_pci_pasid_set_state(const struct rte_pci_device *dev,
 
 struct rte_pci_bus rte_pci_bus = {
 	.bus = {
+		.allow_multi_probe = true,
 		.scan = rte_pci_scan,
 		.probe = pci_probe,
 		.cleanup = pci_cleanup,
