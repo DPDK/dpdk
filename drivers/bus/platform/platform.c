@@ -530,13 +530,7 @@ platform_bus_parse(const char *name, void *addr)
 static int
 platform_bus_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
-	struct rte_platform_device *pdev;
-
-	pdev = RTE_DEV_TO_PLATFORM_DEV(dev);
-	if (pdev == NULL || pdev->driver == NULL) {
-		rte_errno = EINVAL;
-		return -1;
-	}
+	struct rte_platform_device *pdev = RTE_DEV_TO_PLATFORM_DEV(dev);
 
 	if (pdev->driver->dma_map != NULL)
 		return pdev->driver->dma_map(pdev, addr, iova, len);
@@ -547,13 +541,7 @@ platform_bus_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t l
 static int
 platform_bus_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
-	struct rte_platform_device *pdev;
-
-	pdev = RTE_DEV_TO_PLATFORM_DEV(dev);
-	if (pdev == NULL || pdev->driver == NULL) {
-		rte_errno = EINVAL;
-		return -1;
-	}
+	struct rte_platform_device *pdev = RTE_DEV_TO_PLATFORM_DEV(dev);
 
 	if (pdev->driver->dma_unmap != NULL)
 		return pdev->driver->dma_unmap(pdev, addr, iova, len);

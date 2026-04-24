@@ -829,6 +829,10 @@ int
 rte_dev_dma_map(struct rte_device *dev, void *addr, uint64_t iova,
 		size_t len)
 {
+	if (!rte_dev_is_probed(dev)) {
+		rte_errno = EINVAL;
+		return -1;
+	}
 	if (dev->bus->dma_map == NULL || len == 0) {
 		rte_errno = ENOTSUP;
 		return -1;
@@ -847,6 +851,10 @@ int
 rte_dev_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova,
 		  size_t len)
 {
+	if (!rte_dev_is_probed(dev)) {
+		rte_errno = EINVAL;
+		return -1;
+	}
 	if (dev->bus->dma_unmap == NULL || len == 0) {
 		rte_errno = ENOTSUP;
 		return -1;

@@ -356,10 +356,6 @@ auxiliary_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
 	struct rte_auxiliary_device *aux_dev = RTE_DEV_TO_AUXILIARY(dev);
 
-	if (dev == NULL || aux_dev->driver == NULL) {
-		rte_errno = EINVAL;
-		return -1;
-	}
 	if (aux_dev->driver->dma_map == NULL) {
 		rte_errno = ENOTSUP;
 		return -1;
@@ -373,10 +369,6 @@ auxiliary_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova,
 {
 	struct rte_auxiliary_device *aux_dev = RTE_DEV_TO_AUXILIARY(dev);
 
-	if (dev == NULL || aux_dev->driver == NULL) {
-		rte_errno = EINVAL;
-		return -1;
-	}
 	if (aux_dev->driver->dma_unmap == NULL) {
 		rte_errno = ENOTSUP;
 		return -1;
