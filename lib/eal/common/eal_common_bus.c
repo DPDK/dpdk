@@ -86,6 +86,7 @@ rte_bus_generic_probe(struct rte_bus *bus)
 
 	TAILQ_FOREACH(dev, &bus->device_list, next) {
 		struct rte_driver *drv = NULL;
+		bool was_probed;
 		int ret;
 
 		if (rte_bus_device_is_ignored(bus, dev->name))
@@ -102,7 +103,13 @@ next_driver:
 		if (drv == NULL)
 			continue;
 
+		was_probed = rte_dev_is_probed(dev);
+		if (!was_probed)
+			dev->driver = drv;
 		ret = bus->probe_device(drv, dev);
+		if (!was_probed && ret != 0)
+			dev->driver = NULL;
+
 		if (ret > 0)
 			goto next_driver;
 

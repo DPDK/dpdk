@@ -332,8 +332,6 @@ cdx_probe_device(struct rte_driver *drv, struct rte_device *dev)
 		CDX_BUS_ERR("Probe CDX driver: %s device: %s failed: %d",
 			cdx_drv->driver.name, dev_name, ret);
 		goto error_probe;
-	} else {
-		cdx_dev->device.driver = &cdx_drv->driver;
 	}
 	cdx_dev->driver = cdx_drv;
 

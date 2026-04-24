@@ -800,12 +800,10 @@ dpaa_bus_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	int ret;
 
 	ret = dpaa_drv->probe(dpaa_drv, dpaa_dev);
-	if (ret != 0) {
+	if (ret != 0)
 		DPAA_BUS_ERR("unable to probe: %s", dpaa_dev->name);
-	} else {
+	else
 		dpaa_dev->driver = dpaa_drv;
-		dpaa_dev->device.driver = &dpaa_drv->driver;
-	}
 
 	return ret;
 }

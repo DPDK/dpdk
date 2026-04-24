@@ -119,8 +119,6 @@ vmbus_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	if (ret != 0) {
 		vmbus_dev->driver = NULL;
 		rte_vmbus_unmap_device(vmbus_dev);
-	} else {
-		vmbus_dev->device.driver = &vmbus_drv->driver;
 	}
 
 	return ret;

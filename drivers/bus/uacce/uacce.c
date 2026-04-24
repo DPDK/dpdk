@@ -384,7 +384,6 @@ uacce_probe_device(struct rte_driver *drv, struct rte_device *dev)
 		UACCE_BUS_ERR("probe device %s with driver %s failed %d",
 			      dev_name, uacce_drv->driver.name, ret);
 	} else {
-		uacce_dev->device.driver = &uacce_drv->driver;
 		uacce_dev->driver = uacce_drv;
 		UACCE_BUS_DEBUG("probe device %s with driver %s success",
 				dev_name, uacce_drv->driver.name);

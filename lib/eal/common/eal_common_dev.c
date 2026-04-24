@@ -229,7 +229,19 @@ next_driver:
 		EAL_LOG(INFO, "Device %s is already probed", dev->name);
 		ret = -EEXIST;
 	} else {
+		bool was_probed = rte_dev_is_probed(dev);
+
+		/*
+		 * Reference driver structure.
+		 * This needs to be before .probe_device as some bus (like PCI) use
+		 * driver flags for adjusting configuration.
+		 */
+		if (!was_probed)
+			dev->driver = drv;
 		ret = dev->bus->probe_device(drv, dev);
+		if (!was_probed && ret != 0)
+			dev->driver = NULL;
+
 		if (ret > 0)
 			goto next_driver;
 	}
