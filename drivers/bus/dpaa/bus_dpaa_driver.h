@@ -85,7 +85,6 @@ struct rte_dpaa_device {
 		struct rte_cryptodev *crypto_dev;
 		struct rte_dma_dev *dmadev;
 	};
-	struct rte_dpaa_driver *driver;
 	struct dpaa_device_id id;
 	struct rte_intr_handle *intr_handle;
 	enum rte_dpaa_type device_type; /**< Ethernet or crypto type device */

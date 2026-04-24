@@ -50,7 +50,6 @@ struct rte_uacce_driver;
  */
 struct rte_uacce_device {
 	struct rte_device device;                /**< Inherit core device. */
-	struct rte_uacce_driver *driver;         /**< Driver used in probing. */
 	char name[RTE_DEV_NAME_MAX_LEN];         /**< Device name. */
 	char dev_root[RTE_UACCE_DEV_PATH_SIZE];  /**< Sysfs path with device name. */
 	char cdev_path[RTE_UACCE_DEV_PATH_SIZE]; /**< Device path in devfs. */

@@ -245,11 +245,9 @@ pci_probe_device(struct rte_driver *drv, struct rte_device *dev)
 			return -ENOMEM;
 		}
 
-		pci_dev->driver = pci_drv;
 		if (pci_drv->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
 			ret = rte_pci_map_device(pci_dev);
 			if (ret != 0) {
-				pci_dev->driver = NULL;
 				rte_intr_instance_free(pci_dev->vfio_req_intr_handle);
 				pci_dev->vfio_req_intr_handle = NULL;
 				rte_intr_instance_free(pci_dev->intr_handle);
@@ -268,7 +266,6 @@ pci_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	if (already_probed)
 		return ret; /* no rollback if already succeeded earlier */
 	if (ret) {
-		pci_dev->driver = NULL;
 		if ((pci_drv->drv_flags & RTE_PCI_DRV_NEED_MAPPING) &&
 			/* Don't unmap if device is unsupported and
 			 * driver needs mapped resources.
@@ -312,7 +309,6 @@ rte_pci_detach_dev(struct rte_pci_device *dev)
 	}
 
 	/* clear driver structure */
-	dev->driver = NULL;
 	dev->device.driver = NULL;
 
 	if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING)
@@ -348,7 +344,6 @@ pci_cleanup(void)
 			rte_errno = errno;
 			error = -1;
 		}
-		dev->driver = NULL;
 		dev->device.driver = NULL;
 
 free:

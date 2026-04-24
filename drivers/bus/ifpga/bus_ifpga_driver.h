@@ -75,7 +75,6 @@ struct rte_afu_device {
 						/**< AFU Memory Resource */
 	struct rte_afu_shared shared;
 	struct rte_intr_handle *intr_handle;     /**< Interrupt handle */
-	struct rte_afu_driver *driver;          /**< Associated driver */
 	char path[IFPGA_BUS_BITSTREAM_PATH_MAX_LEN];
 };
 

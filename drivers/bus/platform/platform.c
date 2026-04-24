@@ -329,10 +329,8 @@ out:
 static int
 driver_call_probe(struct rte_platform_driver *pdrv, struct rte_platform_device *pdev)
 {
-	if (pdrv->probe != NULL) {
-		pdev->driver = pdrv;
+	if (pdrv->probe != NULL)
 		return pdrv->probe(pdev);
-	}
 
 	return 0;
 }
@@ -418,7 +416,6 @@ device_release_driver(struct rte_platform_device *pdev)
 	}
 
 	pdev->device.driver = NULL;
-	pdev->driver = NULL;
 }
 
 static int
