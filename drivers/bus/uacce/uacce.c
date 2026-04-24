@@ -377,11 +377,6 @@ uacce_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	const char *dev_name = uacce_dev->name;
 	int ret;
 
-	if (rte_dev_is_probed(&uacce_dev->device)) {
-		UACCE_BUS_INFO("device %s is already probed", dev_name);
-		return -EEXIST;
-	}
-
 	UACCE_BUS_DEBUG("probe device %s using driver %s", dev_name, uacce_drv->driver.name);
 
 	ret = uacce_drv->probe(uacce_drv, uacce_dev);
@@ -414,6 +409,11 @@ next_driver:
 		drv = rte_bus_find_driver(&uacce_bus.bus, drv, &dev->device);
 		if (drv == NULL)
 			continue;
+
+		if (rte_dev_is_probed(&dev->device)) {
+			UACCE_BUS_INFO("device %s is already probed", dev->name);
+			continue;
+		}
 
 		ret = uacce_bus.bus.probe_device(drv, &dev->device);
 		if (ret < 0) {

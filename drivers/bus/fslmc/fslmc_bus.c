@@ -465,6 +465,9 @@ next_driver:
 		if (driver == NULL)
 			continue;
 
+		if (rte_dev_is_probed(&dev->device))
+			continue;
+
 		ret = rte_fslmc_bus.bus.probe_device(driver, &dev->device);
 		if (ret < 0)
 			DPAA2_BUS_ERR("Failed to probe device %s", dev->device.name);
@@ -540,9 +543,6 @@ fslmc_bus_probe_device(struct rte_driver *driver, struct rte_device *rte_dev)
 	struct rte_dpaa2_device *dev = RTE_BUS_DEVICE(rte_dev, *dev);
 	struct rte_dpaa2_driver *drv = RTE_BUS_DRIVER(driver, *drv);
 	int ret = 0;
-
-	if (rte_dev_is_probed(&dev->device))
-		return 0;
 
 	if (dev->device.devargs &&
 	    dev->device.devargs->policy == RTE_DEV_BLOCKED) {

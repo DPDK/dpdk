@@ -331,9 +331,6 @@ driver_call_probe(struct rte_platform_driver *pdrv, struct rte_platform_device *
 {
 	int ret;
 
-	if (rte_dev_is_probed(&pdev->device))
-		return -EBUSY;
-
 	if (pdrv->probe != NULL) {
 		pdev->driver = pdrv;
 		ret = pdrv->probe(pdev);
@@ -417,6 +414,11 @@ next_driver:
 		drv = rte_bus_find_driver(&platform_bus.bus, drv, &pdev->device);
 		if (drv == NULL)
 			continue;
+
+		if (rte_dev_is_probed(&pdev->device)) {
+			PLATFORM_LOG_LINE(DEBUG, "device %s already probed", pdev->name);
+			continue;
+		}
 
 		ret = platform_bus.bus.probe_device(drv, &pdev->device);
 		if (ret == -EBUSY) {

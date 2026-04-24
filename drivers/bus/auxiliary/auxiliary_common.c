@@ -94,12 +94,6 @@ auxiliary_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	if (aux_dev->device.numa_node < 0 && rte_socket_count() > 1)
 		AUXILIARY_LOG(INFO, "Device %s is not NUMA-aware", aux_dev->name);
 
-	if (rte_dev_is_probed(&aux_dev->device)) {
-		AUXILIARY_LOG(DEBUG, "Device %s is already probed on auxiliary bus",
-			aux_dev->device.name);
-		return -EEXIST;
-	}
-
 	iova_mode = rte_eal_iova_mode();
 	if ((aux_drv->drv_flags & RTE_AUXILIARY_DRV_NEED_IOVA_AS_VA) > 0 &&
 	    iova_mode != RTE_IOVA_VA) {
@@ -178,6 +172,12 @@ next_driver:
 		drv = rte_bus_find_driver(&auxiliary_bus.bus, drv, &dev->device);
 		if (drv == NULL)
 			continue;
+
+		if (rte_dev_is_probed(&dev->device)) {
+			AUXILIARY_LOG(DEBUG, "Device %s is already probed on auxiliary bus",
+				dev->device.name);
+			continue;
+		}
 
 		ret = auxiliary_bus.bus.probe_device(drv, &dev->device);
 		if (ret < 0) {
