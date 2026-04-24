@@ -1602,7 +1602,7 @@ ifpga_rawdev_create(struct rte_pci_device *pci_dev,
 
 	rawdev->dev_ops = &ifpga_rawdev_ops;
 	rawdev->device = &pci_dev->device;
-	rawdev->driver_name = pci_dev->driver->driver.name;
+	rawdev->driver_name = pci_dev->device.driver->name;
 
 	/* must enumerate the adapter before use it */
 	ret = opae_adapter_enumerate(adapter);

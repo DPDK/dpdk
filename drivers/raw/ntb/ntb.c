@@ -1478,7 +1478,7 @@ ntb_create(struct rte_pci_device *pci_dev, int socket_id)
 
 	rawdev->dev_ops = &ntb_ops;
 	rawdev->device = &pci_dev->device;
-	rawdev->driver_name = pci_dev->driver->driver.name;
+	rawdev->driver_name = pci_dev->device.driver->name;
 
 	ret = ntb_init_hw(rawdev, pci_dev);
 	if (ret < 0) {

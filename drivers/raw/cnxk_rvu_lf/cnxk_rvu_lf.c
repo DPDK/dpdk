@@ -210,7 +210,7 @@ rvu_lf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 	rvu_lf_rawdev->dev_ops = &rvu_lf_rawdev_ops;
 	rvu_lf_rawdev->device = &pci_dev->device;
-	rvu_lf_rawdev->driver_name = pci_dev->driver->driver.name;
+	rvu_lf_rawdev->driver_name = pci_dev->device.driver->name;
 
 	roc_rvu_lf = (struct roc_rvu_lf *)rvu_lf_rawdev->dev_private;
 	roc_rvu_lf->pci_dev = pci_dev;

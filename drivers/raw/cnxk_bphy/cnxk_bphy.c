@@ -351,7 +351,7 @@ bphy_rawdev_probe(struct rte_pci_driver *pci_drv,
 
 	bphy_rawdev->dev_ops = &bphy_rawdev_ops;
 	bphy_rawdev->device = &pci_dev->device;
-	bphy_rawdev->driver_name = pci_dev->driver->driver.name;
+	bphy_rawdev->driver_name = pci_dev->device.driver->name;
 
 	bphy_dev = (struct bphy_device *)bphy_rawdev->dev_private;
 	bphy_dev->mem.res0 = pci_dev->mem_resource[0];

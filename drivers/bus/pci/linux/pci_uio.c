@@ -301,8 +301,10 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 	struct pci_map *maps;
 	int wc_activate = 0;
 
-	if (dev->driver != NULL)
-		wc_activate = dev->driver->drv_flags & RTE_PCI_DRV_WC_ACTIVATE;
+	if (dev->device.driver != NULL) {
+		const struct rte_pci_driver *pdrv = RTE_BUS_DRIVER(dev->device.driver, *pdrv);
+		wc_activate = pdrv->drv_flags & RTE_PCI_DRV_WC_ACTIVATE;
+	}
 
 	loc = &dev->addr;
 	maps = uio_res->maps;

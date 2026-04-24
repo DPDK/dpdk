@@ -408,7 +408,7 @@ platform_bus_probe_device(struct rte_driver *drv, struct rte_device *dev)
 static void
 device_release_driver(struct rte_platform_device *pdev)
 {
-	struct rte_platform_driver *pdrv = pdev->driver;
+	const struct rte_platform_driver *pdrv = RTE_BUS_DRIVER(pdev->device.driver, *pdrv);
 	int ret;
 
 	if (pdrv->remove != NULL) {
@@ -458,9 +458,10 @@ static int
 platform_bus_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
 	struct rte_platform_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
+	const struct rte_platform_driver *pdrv = RTE_BUS_DRIVER(dev->driver, *pdrv);
 
-	if (pdev->driver->dma_map != NULL)
-		return pdev->driver->dma_map(pdev, addr, iova, len);
+	if (pdrv->dma_map != NULL)
+		return pdrv->dma_map(pdev, addr, iova, len);
 
 	return rte_vfio_container_dma_map(RTE_VFIO_DEFAULT_CONTAINER_FD, (uint64_t)addr, iova, len);
 }
@@ -469,9 +470,10 @@ static int
 platform_bus_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
 	struct rte_platform_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
+	const struct rte_platform_driver *pdrv = RTE_BUS_DRIVER(dev->driver, *pdrv);
 
-	if (pdev->driver->dma_unmap != NULL)
-		return pdev->driver->dma_unmap(pdev, addr, iova, len);
+	if (pdrv->dma_unmap != NULL)
+		return pdrv->dma_unmap(pdev, addr, iova, len);
 
 	return rte_vfio_container_dma_unmap(RTE_VFIO_DEFAULT_CONTAINER_FD, (uint64_t)addr, iova,
 					    len);
@@ -480,12 +482,14 @@ platform_bus_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t
 static enum rte_iova_mode
 platform_bus_get_iommu_class(void)
 {
-	struct rte_platform_driver *pdrv;
+	const struct rte_platform_driver *pdrv;
 	struct rte_platform_device *pdev;
 
 	RTE_BUS_FOREACH_DEV(pdev, &platform_bus.bus) {
-		pdrv = pdev->driver;
-		if (pdrv != NULL && pdrv->drv_flags & RTE_PLATFORM_DRV_NEED_IOVA_AS_VA)
+		if (!rte_dev_is_probed(&pdev->device))
+			continue;
+		pdrv = RTE_BUS_DRIVER(pdev->device.driver, *pdrv);
+		if (pdrv->drv_flags & RTE_PLATFORM_DRV_NEED_IOVA_AS_VA)
 			return RTE_IOVA_VA;
 	}
 

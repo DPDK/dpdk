@@ -592,12 +592,12 @@ zsda_queue_create(const uint8_t dev_id, struct zsda_queue *queue,
 
 	if (dir == RING_DIR_TX)
 		snprintf(queue->memz_name, sizeof(queue->memz_name),
-			 "%s_%d_%s_%s_%d", pci_dev->driver->driver.name, dev_id,
+			 "%s_%d_%s_%s_%d", pci_dev->device.driver->name, dev_id,
 			 qp_conf->service_str, "qptxmem",
 			 queue->hw_queue_number);
 	else
 		snprintf(queue->memz_name, sizeof(queue->memz_name),
-			 "%s_%d_%s_%s_%d", pci_dev->driver->driver.name, dev_id,
+			 "%s_%d_%s_%s_%d", pci_dev->device.driver->name, dev_id,
 			 qp_conf->service_str, "qprxmem",
 			 queue->hw_queue_number);
 

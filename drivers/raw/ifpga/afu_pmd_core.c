@@ -310,7 +310,7 @@ static int afu_rawdev_create(struct rte_afu_device *afu_dev, int socket_id)
 
 	rawdev->dev_ops = &afu_rawdev_ops;
 	rawdev->device = &afu_dev->device;
-	rawdev->driver_name = afu_dev->driver->driver.name;
+	rawdev->driver_name = afu_dev->device.driver->name;
 
 	dev = afu_rawdev_get_priv(rawdev);
 	if (!dev)
