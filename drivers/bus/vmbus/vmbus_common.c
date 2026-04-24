@@ -107,19 +107,14 @@ vmbus_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	if (ret != 0)
 		return ret;
 
-	/* reference driver structure */
-	vmbus_dev->driver = vmbus_drv;
-
 	if (vmbus_dev->device.numa_node < 0 && rte_socket_count() > 1)
 		VMBUS_LOG(INFO, "Device %s is not NUMA-aware", guid);
 
 	/* call the driver probe() function */
 	VMBUS_LOG(INFO, "  probe driver: %s", vmbus_drv->driver.name);
 	ret = vmbus_drv->probe(vmbus_drv, vmbus_dev);
-	if (ret != 0) {
-		vmbus_dev->driver = NULL;
+	if (ret != 0)
 		rte_vmbus_unmap_device(vmbus_dev);
-	}
 
 	return ret;
 }
@@ -158,7 +153,6 @@ rte_vmbus_cleanup(void)
 
 		rte_vmbus_unmap_device(dev);
 
-		dev->driver = NULL;
 		dev->device.driver = NULL;
 		rte_bus_remove_device(&rte_vmbus_bus.bus, &dev->device);
 		free(dev);

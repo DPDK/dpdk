@@ -333,7 +333,6 @@ cdx_probe_device(struct rte_driver *drv, struct rte_device *dev)
 			cdx_drv->driver.name, dev_name, ret);
 		goto error_probe;
 	}
-	cdx_dev->driver = cdx_drv;
 
 	return ret;
 
@@ -395,7 +394,6 @@ cdx_detach_dev(struct rte_cdx_device *dev)
 	}
 
 	/* clear driver structure */
-	dev->driver = NULL;
 	dev->device.driver = NULL;
 
 	rte_cdx_unmap_device(dev);

@@ -95,7 +95,6 @@ struct rte_platform_resource {
  */
 struct rte_platform_device {
 	struct rte_device device; /**< Core device */
-	struct rte_platform_driver *driver; /**< Matching device driver */
 	char name[RTE_DEV_NAME_MAX_LEN]; /**< Device name */
 	unsigned int num_resource; /**< Number of device resources */
 	struct rte_platform_resource *resource; /**< Device resources */

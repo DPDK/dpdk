@@ -111,13 +111,10 @@ auxiliary_probe_device(struct rte_driver *drv, struct rte_device *dev)
 		return -ENOMEM;
 	}
 
-	aux_dev->driver = aux_drv;
-
 	AUXILIARY_LOG(INFO, "Probe auxiliary driver: %s device: %s (NUMA node %i)",
 		      aux_drv->driver.name, aux_dev->name, aux_dev->device.numa_node);
 	ret = aux_drv->probe(aux_drv, aux_dev);
 	if (ret != 0) {
-		aux_dev->driver = NULL;
 		rte_intr_instance_free(aux_dev->intr_handle);
 		aux_dev->intr_handle = NULL;
 	}
@@ -144,7 +141,6 @@ rte_auxiliary_driver_remove_dev(struct rte_auxiliary_device *dev)
 	}
 
 	/* clear driver structure */
-	dev->driver = NULL;
 	dev->device.driver = NULL;
 
 	return 0;

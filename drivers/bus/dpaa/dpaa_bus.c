@@ -802,8 +802,6 @@ dpaa_bus_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	ret = dpaa_drv->probe(dpaa_drv, dpaa_dev);
 	if (ret != 0)
 		DPAA_BUS_ERR("unable to probe: %s", dpaa_dev->name);
-	else
-		dpaa_dev->driver = dpaa_drv;
 
 	return ret;
 }
@@ -828,7 +826,6 @@ dpaa_bus_cleanup(void)
 			rte_errno = errno;
 			return -1;
 		}
-		dev->driver = NULL;
 		dev->device.driver = NULL;
 	}
 	dpaa_portal_finish((void *)DPAA_PER_LCORE_PORTAL);

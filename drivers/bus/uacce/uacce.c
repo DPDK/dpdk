@@ -384,7 +384,6 @@ uacce_probe_device(struct rte_driver *drv, struct rte_device *dev)
 		UACCE_BUS_ERR("probe device %s with driver %s failed %d",
 			      dev_name, uacce_drv->driver.name, ret);
 	} else {
-		uacce_dev->driver = uacce_drv;
 		UACCE_BUS_DEBUG("probe device %s with driver %s success",
 				dev_name, uacce_drv->driver.name);
 	}
@@ -413,7 +412,6 @@ uacce_cleanup(void)
 			rte_errno = errno;
 			error = -1;
 		}
-		dev->driver = NULL;
 		dev->device.driver = NULL;
 
 free:
@@ -438,7 +436,6 @@ uacce_detach_dev(struct rte_uacce_device *dev)
 			return ret;
 	}
 
-	dev->driver = NULL;
 	dev->device.driver = NULL;
 
 	return 0;

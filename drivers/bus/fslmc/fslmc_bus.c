@@ -523,7 +523,6 @@ fslmc_bus_probe_device(struct rte_driver *driver, struct rte_device *rte_dev)
 	if (ret != 0) {
 		DPAA2_BUS_ERR("Unable to probe");
 	} else {
-		dev->driver = drv;
 		DPAA2_BUS_INFO("%s Plugged",  dev->device.name);
 	}
 
@@ -538,7 +537,6 @@ fslmc_bus_unplug(struct rte_device *rte_dev)
 
 	if (drv->remove != NULL) {
 		drv->remove(dev);
-		dev->driver = NULL;
 		dev->device.driver = NULL;
 		DPAA2_BUS_INFO("%s Un-Plugged",  dev->device.name);
 		return 0;

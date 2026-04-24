@@ -272,17 +272,8 @@ ifpga_probe_device(struct rte_driver *drv, struct rte_device *dev)
 {
 	struct rte_afu_device *afu_dev = RTE_BUS_DEVICE(dev, *afu_dev);
 	struct rte_afu_driver *afu_drv = RTE_BUS_DRIVER(drv, *afu_drv);
-	int ret;
 
-	/* reference driver structure */
-	afu_dev->driver = afu_drv;
-
-	/* call the driver probe() function */
-	ret = afu_drv->probe(afu_dev);
-	if (ret)
-		afu_dev->driver = NULL;
-
-	return ret;
+	return afu_drv->probe(afu_dev);
 }
 
 /*
@@ -310,7 +301,6 @@ ifpga_cleanup(void)
 			rte_errno = errno;
 			error = -1;
 		}
-		afu_dev->driver = NULL;
 		afu_dev->device.driver = NULL;
 
 free:
