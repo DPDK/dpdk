@@ -938,7 +938,7 @@ dpaa_bus_cleanup(void)
 
 		if (!rte_dev_is_probed(&dev->device))
 			continue;
-		if (!drv || !drv->remove)
+		if (drv->remove == NULL)
 			continue;
 		ret = drv->remove(dev);
 		if (ret < 0) {

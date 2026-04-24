@@ -310,13 +310,9 @@ static int
 rte_pci_detach_dev(struct rte_pci_device *dev)
 {
 	struct rte_pci_addr *loc;
-	struct rte_pci_driver *dr;
+	struct rte_pci_driver *dr = dev->driver;
 	int ret = 0;
 
-	if (dev == NULL)
-		return -EINVAL;
-
-	dr = dev->driver;
 	loc = &dev->addr;
 
 	PCI_LOG(DEBUG, "PCI device "PCI_PRI_FMT" on NUMA socket %i",
@@ -416,7 +412,9 @@ pci_cleanup(void)
 		struct rte_pci_driver *drv = dev->driver;
 		int ret = 0;
 
-		if (drv == NULL || drv->remove == NULL)
+		if (!rte_dev_is_probed(&dev->device))
+			goto free;
+		if (drv->remove == NULL)
 			goto free;
 
 		ret = drv->remove(dev);
@@ -590,12 +588,8 @@ pci_find_device_by_addr(const void *failure_addr)
 static int
 pci_hot_unplug_handler(struct rte_device *dev)
 {
-	struct rte_pci_device *pdev = NULL;
+	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(dev);
 	int ret = 0;
-
-	pdev = RTE_DEV_TO_PCI(dev);
-	if (!pdev)
-		return -1;
 
 	switch (pdev->kdrv) {
 	case RTE_PCI_KDRV_VFIO:
@@ -654,10 +648,9 @@ pci_plug(struct rte_device *dev)
 static int
 pci_unplug(struct rte_device *dev)
 {
-	struct rte_pci_device *pdev;
+	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(dev);
 	int ret;
 
-	pdev = RTE_DEV_TO_PCI(dev);
 	ret = rte_pci_detach_dev(pdev);
 	if (ret == 0) {
 		rte_pci_remove_device(pdev);

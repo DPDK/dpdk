@@ -476,11 +476,10 @@ platform_bus_plug(struct rte_device *dev)
 static void
 device_release_driver(struct rte_platform_device *pdev)
 {
-	struct rte_platform_driver *pdrv;
+	struct rte_platform_driver *pdrv = pdev->driver;
 	int ret;
 
-	pdrv = pdev->driver;
-	if (pdrv != NULL && pdrv->remove != NULL) {
+	if (pdrv->remove != NULL) {
 		ret = pdrv->remove(pdev);
 		if (ret)
 			PLATFORM_LOG_LINE(WARNING, "failed to remove %s", pdev->name);
@@ -493,11 +492,7 @@ device_release_driver(struct rte_platform_device *pdev)
 static int
 platform_bus_unplug(struct rte_device *dev)
 {
-	struct rte_platform_device *pdev;
-
-	pdev = RTE_DEV_TO_PLATFORM_DEV(dev);
-	if (pdev == NULL)
-		return -EINVAL;
+	struct rte_platform_device *pdev = RTE_DEV_TO_PLATFORM_DEV(dev);
 
 	device_release_driver(pdev);
 	device_cleanup(pdev);
@@ -572,6 +567,8 @@ platform_bus_cleanup(void)
 
 	RTE_TAILQ_FOREACH_SAFE(pdev, &platform_bus.device_list, next, tmp) {
 		TAILQ_REMOVE(&platform_bus.device_list, pdev, next);
+		if (!rte_dev_is_probed(&pdev->device))
+			continue;
 		platform_bus_unplug(&pdev->device);
 	}
 

@@ -365,7 +365,9 @@ ifpga_cleanup(void)
 		struct rte_afu_driver *drv = afu_dev->driver;
 		int ret = 0;
 
-		if (drv == NULL || drv->remove == NULL)
+		if (!rte_dev_is_probed(&afu_dev->device))
+			goto free;
+		if (drv->remove == NULL)
 			goto free;
 
 		ret = drv->remove(afu_dev);
@@ -393,33 +395,12 @@ ifpga_plug(struct rte_device *dev)
 }
 
 static int
-ifpga_remove_driver(struct rte_afu_device *afu_dev)
-{
-	const char *name;
-
-	name = rte_ifpga_device_name(afu_dev);
-	if (afu_dev->driver == NULL) {
-		IFPGA_BUS_DEBUG("no driver attach to device %s", name);
-		return 1;
-	}
-
-	return afu_dev->driver->remove(afu_dev);
-}
-
-static int
 ifpga_unplug(struct rte_device *dev)
 {
-	struct rte_afu_device *afu_dev = NULL;
+	struct rte_afu_device *afu_dev = RTE_DEV_TO_AFU(dev);
 	int ret;
 
-	if (dev == NULL)
-		return -EINVAL;
-
-	afu_dev = RTE_DEV_TO_AFU(dev);
-	if (!afu_dev)
-		return -ENOENT;
-
-	ret = ifpga_remove_driver(afu_dev);
+	ret = afu_dev->driver->remove(afu_dev);
 	if (ret)
 		return ret;
 

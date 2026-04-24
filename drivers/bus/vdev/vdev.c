@@ -567,9 +567,9 @@ vdev_cleanup(void)
 
 	RTE_TAILQ_FOREACH_SAFE(dev, &vdev_device_list, next, tmp_dev) {
 		const struct rte_vdev_driver *drv;
-		int ret = 0;
+		int ret;
 
-		if (dev->device.driver == NULL)
+		if (!rte_dev_is_probed(&dev->device))
 			goto free;
 
 		drv = container_of(dev->device.driver, const struct rte_vdev_driver, driver);
