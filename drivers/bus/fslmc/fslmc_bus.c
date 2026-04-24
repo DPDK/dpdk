@@ -534,7 +534,7 @@ static int
 fslmc_bus_unplug(struct rte_device *rte_dev)
 {
 	struct rte_dpaa2_device *dev = RTE_BUS_DEVICE(rte_dev, *dev);
-	struct rte_dpaa2_driver *drv = dev->driver;
+	const struct rte_dpaa2_driver *drv = RTE_BUS_DRIVER(rte_dev->driver, *drv);
 
 	if (drv->remove != NULL) {
 		drv->remove(dev);

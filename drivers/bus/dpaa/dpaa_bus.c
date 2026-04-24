@@ -815,11 +815,12 @@ dpaa_bus_cleanup(void)
 
 	BUS_INIT_FUNC_TRACE();
 	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus.bus) {
-		struct rte_dpaa_driver *drv = dev->driver;
+		const struct rte_dpaa_driver *drv;
 		int ret = 0;
 
 		if (!rte_dev_is_probed(&dev->device))
 			continue;
+		drv = RTE_BUS_DRIVER(dev->device.driver, *drv);
 		if (drv->remove == NULL)
 			continue;
 		ret = drv->remove(dev);

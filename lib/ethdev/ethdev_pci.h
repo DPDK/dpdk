@@ -39,10 +39,13 @@ rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev,
 	eth_dev->intr_handle = pci_dev->intr_handle;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		const struct rte_pci_driver *pci_drv;
+
+		pci_drv = RTE_BUS_DRIVER(pci_dev->device.driver, *pci_drv);
 		eth_dev->data->dev_flags = 0;
-		if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)
+		if (pci_drv->drv_flags & RTE_PCI_DRV_INTR_LSC)
 			eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
-		if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_RMV)
+		if (pci_drv->drv_flags & RTE_PCI_DRV_INTR_RMV)
 			eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_RMV;
 
 		eth_dev->data->numa_node = pci_dev->device.numa_node;

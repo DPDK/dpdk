@@ -143,11 +143,12 @@ rte_vmbus_cleanup(void)
 	int error = 0;
 
 	RTE_BUS_FOREACH_DEV(dev, &rte_vmbus_bus.bus) {
-		const struct rte_vmbus_driver *drv = dev->driver;
+		const struct rte_vmbus_driver *drv;
 		int ret;
 
 		if (!rte_dev_is_probed(&dev->device))
 			continue;
+		drv = RTE_BUS_DRIVER(dev->device.driver, *drv);
 		if (drv->remove == NULL)
 			continue;
 

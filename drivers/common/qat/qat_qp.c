@@ -174,7 +174,7 @@ qat_qp_setup(struct qat_pci_device *qat_dev,
 
 	snprintf(op_cookie_pool_name, RTE_RING_NAMESIZE,
 					"%s%d_cookies_%s_qp%hu",
-		pci_dev->driver->driver.name, qat_dev->qat_dev_id,
+		pci_dev->device.driver->name, qat_dev->qat_dev_id,
 		qat_qp_conf->service_str, queue_pair_id);
 
 	QAT_LOG(DEBUG, "cookiepool: %s", op_cookie_pool_name);
@@ -252,7 +252,7 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 	 */
 	snprintf(queue->memz_name, sizeof(queue->memz_name),
 			"%s_%d_%s_%s_%d_%d",
-		pci_dev->driver->driver.name, qat_dev->qat_dev_id,
+		pci_dev->device.driver->name, qat_dev->qat_dev_id,
 		qp_conf->service_str, "qp_mem",
 		queue->hw_bundle_number, queue->hw_queue_number);
 	qp_mz = queue_dma_zone_reserve(queue->memz_name, queue_size_bytes,

@@ -319,7 +319,7 @@ cnxk_bphy_cgx_rawdev_probe(struct rte_pci_driver *pci_drv,
 
 	rawdev->dev_ops = &cnxk_bphy_cgx_rawdev_ops;
 	rawdev->device = &pci_dev->device;
-	rawdev->driver_name = pci_dev->driver->driver.name;
+	rawdev->driver_name = pci_dev->device.driver->name;
 
 	cgx = rawdev->dev_private;
 	cgx->rcgx = rte_zmalloc(NULL, sizeof(*rcgx), 0);

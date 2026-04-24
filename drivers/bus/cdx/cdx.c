@@ -382,7 +382,7 @@ rte_cdx_unregister(struct rte_cdx_driver *driver)
 static int
 cdx_detach_dev(struct rte_cdx_device *dev)
 {
-	struct rte_cdx_driver *dr = dev->driver;
+	const struct rte_cdx_driver *dr = RTE_BUS_DRIVER(dev->device.driver, *dr);
 	int ret = 0;
 
 	CDX_BUS_DEBUG("detach device %s using driver: %s",

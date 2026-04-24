@@ -2676,8 +2676,7 @@ nthw_pci_dev_deinit(struct rte_eth_dev *eth_dev __rte_unused)
 }
 
 static int
-nthw_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-	struct rte_pci_device *pci_dev)
+nthw_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 {
 	int ret;
 
@@ -2711,9 +2710,8 @@ nthw_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		pci_dev->id.subsystem_vendor_id, pci_dev->id.subsystem_device_id,
 		pci_dev->name[0] ? pci_dev->name : "NA",
 		pci_dev->device.numa_node,
-		pci_dev->driver->driver.name ? pci_dev->driver->driver.name : "NA",
-		pci_dev->driver->driver.alias ? pci_dev->driver->driver.alias : "NA");
-
+		(pci_drv->driver.name != NULL) ? pci_drv->driver.name : "NA",
+		(pci_drv->driver.alias != NULL) ? pci_drv->driver.alias : "NA");
 
 	ret = nthw_pci_dev_init(pci_dev);
 

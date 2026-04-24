@@ -399,11 +399,12 @@ uacce_cleanup(void)
 	int error = 0;
 
 	RTE_BUS_FOREACH_DEV(dev, &uacce_bus.bus) {
-		struct rte_uacce_driver *dr = dev->driver;
+		const struct rte_uacce_driver *dr;
 		int ret = 0;
 
 		if (!rte_dev_is_probed(&dev->device))
 			goto free;
+		dr = RTE_BUS_DRIVER(dev->device.driver, *dr);
 		if (dr->remove == NULL)
 			goto free;
 
@@ -426,7 +427,7 @@ free:
 static int
 uacce_detach_dev(struct rte_uacce_device *dev)
 {
-	struct rte_uacce_driver *dr = dev->driver;
+	const struct rte_uacce_driver *dr = RTE_BUS_DRIVER(dev->device.driver, *dr);
 	int ret = 0;
 
 	UACCE_BUS_DEBUG("detach device %s using driver: %s", dev->device.name, dr->driver.name);

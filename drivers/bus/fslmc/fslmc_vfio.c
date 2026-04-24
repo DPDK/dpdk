@@ -1392,7 +1392,7 @@ fslmc_close_iodevices(struct rte_dpaa2_device *dev,
 	int vfio_fd)
 {
 	struct rte_dpaa2_object *object = NULL;
-	struct rte_dpaa2_driver *drv;
+	const struct rte_dpaa2_driver *drv;
 	int ret;
 
 	switch (dev->dev_type) {
@@ -1411,9 +1411,11 @@ fslmc_close_iodevices(struct rte_dpaa2_device *dev,
 	case DPAA2_ETH:
 	case DPAA2_CRYPTO:
 	case DPAA2_QDMA:
-		drv = dev->driver;
-		if (drv && drv->remove && drv->remove(dev))
-			DPAA2_BUS_ERR("Unable to remove");
+		if (dev->device.driver != NULL) {
+			drv = RTE_BUS_DRIVER(dev->device.driver, *drv);
+			if (drv->remove && drv->remove(dev))
+				DPAA2_BUS_ERR("Unable to remove");
+		}
 		break;
 	default:
 		break;

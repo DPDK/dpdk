@@ -245,11 +245,6 @@ pci_probe_device(struct rte_driver *drv, struct rte_device *dev)
 			return -ENOMEM;
 		}
 
-		/*
-		 * Reference driver structure.
-		 * This needs to be before rte_pci_map_device(), as it enables
-		 * to use driver flags for adjusting configuration.
-		 */
 		pci_dev->driver = pci_drv;
 		if (pci_drv->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
 			ret = rte_pci_map_device(pci_dev);
@@ -298,7 +293,7 @@ static int
 rte_pci_detach_dev(struct rte_pci_device *dev)
 {
 	struct rte_pci_addr *loc;
-	struct rte_pci_driver *dr = dev->driver;
+	const struct rte_pci_driver *dr = RTE_BUS_DRIVER(dev->device.driver, *dr);
 	int ret = 0;
 
 	loc = &dev->addr;
@@ -339,11 +334,12 @@ pci_cleanup(void)
 	int error = 0;
 
 	RTE_BUS_FOREACH_DEV(dev, &rte_pci_bus.bus) {
-		struct rte_pci_driver *drv = dev->driver;
+		const struct rte_pci_driver *drv;
 		int ret = 0;
 
 		if (!rte_dev_is_probed(&dev->device))
 			goto free;
+		drv = RTE_BUS_DRIVER(dev->device.driver, *drv);
 		if (drv->remove == NULL)
 			goto free;
 
@@ -545,9 +541,10 @@ static int
 pci_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
 	struct rte_pci_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
+	const struct rte_pci_driver *pdrv = RTE_BUS_DRIVER(dev->driver, *pdrv);
 
-	if (pdev->driver->dma_map != NULL)
-		return pdev->driver->dma_map(pdev, addr, iova, len);
+	if (pdrv->dma_map != NULL)
+		return pdrv->dma_map(pdev, addr, iova, len);
 	/**
 	 *  In case driver don't provides any specific mapping
 	 *  try fallback to VFIO.
@@ -564,9 +561,10 @@ static int
 pci_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
 	struct rte_pci_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
+	const struct rte_pci_driver *pdrv = RTE_BUS_DRIVER(dev->driver, *pdrv);
 
-	if (pdev->driver->dma_unmap != NULL)
-		return pdev->driver->dma_unmap(pdev, addr, iova, len);
+	if (pdrv->dma_unmap != NULL)
+		return pdrv->dma_unmap(pdev, addr, iova, len);
 	/**
 	 *  In case driver don't provides any specific mapping
 	 *  try fallback to VFIO.

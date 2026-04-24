@@ -131,7 +131,7 @@ auxiliary_probe_device(struct rte_driver *drv, struct rte_device *dev)
 static int
 rte_auxiliary_driver_remove_dev(struct rte_auxiliary_device *dev)
 {
-	struct rte_auxiliary_driver *drv = dev->driver;
+	const struct rte_auxiliary_driver *drv = RTE_BUS_DRIVER(dev->device.driver, *drv);
 	int ret = 0;
 
 	AUXILIARY_LOG(DEBUG, "Driver %s remove auxiliary device %s on NUMA node %i",
@@ -226,12 +226,13 @@ static int
 auxiliary_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
 	struct rte_auxiliary_device *aux_dev = RTE_BUS_DEVICE(dev, *aux_dev);
+	const struct rte_auxiliary_driver *aux_drv = RTE_BUS_DRIVER(dev->driver, *aux_drv);
 
-	if (aux_dev->driver->dma_map == NULL) {
+	if (aux_drv->dma_map == NULL) {
 		rte_errno = ENOTSUP;
 		return -1;
 	}
-	return aux_dev->driver->dma_map(aux_dev, addr, iova, len);
+	return aux_drv->dma_map(aux_dev, addr, iova, len);
 }
 
 static int
@@ -239,12 +240,13 @@ auxiliary_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova,
 		    size_t len)
 {
 	struct rte_auxiliary_device *aux_dev = RTE_BUS_DEVICE(dev, *aux_dev);
+	const struct rte_auxiliary_driver *aux_drv = RTE_BUS_DRIVER(dev->driver, *aux_drv);
 
-	if (aux_dev->driver->dma_unmap == NULL) {
+	if (aux_drv->dma_unmap == NULL) {
 		rte_errno = ENOTSUP;
 		return -1;
 	}
-	return aux_dev->driver->dma_unmap(aux_dev, addr, iova, len);
+	return aux_drv->dma_unmap(aux_dev, addr, iova, len);
 }
 
 static enum rte_iova_mode

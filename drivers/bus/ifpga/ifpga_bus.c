@@ -296,11 +296,12 @@ ifpga_cleanup(void)
 	int error = 0;
 
 	RTE_BUS_FOREACH_DEV(afu_dev, &rte_ifpga_bus) {
-		struct rte_afu_driver *drv = afu_dev->driver;
+		const struct rte_afu_driver *drv;
 		int ret = 0;
 
 		if (!rte_dev_is_probed(&afu_dev->device))
 			goto free;
+		drv = RTE_BUS_DRIVER(afu_dev->device.driver, *drv);
 		if (drv->remove == NULL)
 			goto free;
 
@@ -326,9 +327,10 @@ static int
 ifpga_unplug(struct rte_device *dev)
 {
 	struct rte_afu_device *afu_dev = RTE_BUS_DEVICE(dev, *afu_dev);
+	const struct rte_afu_driver *afu_drv = RTE_BUS_DRIVER(dev->driver, *afu_drv);
 	int ret;
 
-	ret = afu_dev->driver->remove(afu_dev);
+	ret = afu_drv->remove(afu_dev);
 	if (ret)
 		return ret;
 
