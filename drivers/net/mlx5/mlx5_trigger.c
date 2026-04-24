@@ -97,6 +97,9 @@ mlx5_txq_start(struct rte_eth_dev *dev)
 					DRV_LOG(ERR, "Port %u Tx queue %u cannot "
 						"allocate memory (FCQ).",
 						dev->data->port_id, i);
+					priv->obj_ops.txq_obj_release(txq_ctrl->obj);
+					mlx5_free(txq_ctrl->obj);
+					txq_ctrl->obj = NULL;
 					rte_errno = ENOMEM;
 					goto error;
 				}
