@@ -557,7 +557,7 @@ configure_event_dma_adapter(enum rte_event_dma_adapter_mode mode)
 {
 	struct rte_event_dev_info evdev_info = {0};
 	struct rte_event_port_conf conf = {0};
-	struct rte_event event;
+	struct rte_event event = {0};
 	uint32_t cap;
 	int ret;
 
