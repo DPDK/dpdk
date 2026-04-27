@@ -1707,7 +1707,7 @@ vhost_crypto_finalize_one_request(struct rte_crypto_op *op,
 	struct rte_mbuf *m_src = NULL, *m_dst = NULL;
 	struct vhost_crypto_data_req *vc_req;
 	struct vhost_virtqueue *vq;
-	uint16_t used_idx, desc_idx;
+	uint16_t desc_idx;
 
 	if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
 		m_src = op->sym->m_src;
@@ -1725,10 +1725,15 @@ vhost_crypto_finalize_one_request(struct rte_crypto_op *op,
 		return NULL;
 	}
 	vq = vc_req->vq;
-	used_idx = vc_req->desc_idx;
+	desc_idx = vc_req->desc_idx;
 
 	if (old_vq && (vq != old_vq))
 		return vq;
+
+	if (unlikely(desc_idx >= vq->size)) {
+		VC_LOG_ERR("Invalid descriptor index %u", desc_idx);
+		return NULL;
+	}
 
 	if (unlikely(op->status != RTE_CRYPTO_OP_STATUS_SUCCESS))
 		vc_req->inhdr->status = VIRTIO_CRYPTO_ERR;
@@ -1737,8 +1742,7 @@ vhost_crypto_finalize_one_request(struct rte_crypto_op *op,
 			write_back_data(vc_req);
 	}
 
-	desc_idx = vq->avail->ring[used_idx];
-	vq->used->ring[desc_idx].id = vq->avail->ring[desc_idx];
+	vq->used->ring[desc_idx].id = desc_idx;
 	vq->used->ring[desc_idx].len = vc_req->len;
 
 	if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
@@ -2044,16 +2048,20 @@ rte_vhost_crypto_fetch_requests(int vid, uint32_t qid,
 		for (i = 0; i < count; i++) {
 			uint16_t used_idx = (start_idx + i) & (vq->size - 1);
 			uint16_t desc_idx = vq->avail->ring[used_idx];
-			struct vring_desc *head = &vq->desc[desc_idx];
+			struct vring_desc *head;
 			struct rte_crypto_op *op = ops[i];
 
+			if (unlikely(desc_idx >= vq->size))
+				break;
+
+			head = &vq->desc[desc_idx];
 			op->sym->m_src = mbufs[i * 2];
 			op->sym->m_dst = mbufs[i * 2 + 1];
 			op->sym->m_src->data_off = 0;
 			op->sym->m_dst->data_off = 0;
 
 			if (unlikely(vhost_crypto_process_one_req(vcrypto, vq,
-					op, head, descs, used_idx) < 0))
+					op, head, descs, desc_idx) < 0))
 				break;
 		}
 
@@ -2074,9 +2082,13 @@ rte_vhost_crypto_fetch_requests(int vid, uint32_t qid,
 		for (i = 0; i < count; i++) {
 			uint16_t used_idx = (start_idx + i) & (vq->size - 1);
 			uint16_t desc_idx = vq->avail->ring[used_idx];
-			struct vring_desc *head = &vq->desc[desc_idx];
+			struct vring_desc *head;
 			struct rte_crypto_op *op = ops[i];
 
+			if (unlikely(desc_idx >= vq->size))
+				break;
+
+			head = &vq->desc[desc_idx];
 			op->sym->m_src = mbufs[i];
 			op->sym->m_dst = NULL;
 			op->sym->m_src->data_off = 0;
