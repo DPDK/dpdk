@@ -66,7 +66,7 @@ T: git://dpdk.org/next/dpdk-next-baseband
 
 Next-dts Tree
 M: Luca Vizzarro <luca.vizzarro@arm.com>
-M: Patrick Robb <probb@iol.unh.edu>
+M: Patrick Robb <patrickrobb1997@gmail.com>
 T: git://dpdk.org/next/dpdk-next-dts
 
 Stable Branches
@@ -2000,7 +2000,7 @@ F: doc/guides/tools/proc_info.rst
 
 DTS
 M: Luca Vizzarro <luca.vizzarro@arm.com>
-M: Patrick Robb <probb@iol.unh.edu>
+M: Patrick Robb <patrickrobb1997@gmail.com>
 T: git://dpdk.org/next/dpdk-next-dts
 F: dts/
 F: buildtools/check-dts-requirements.py
