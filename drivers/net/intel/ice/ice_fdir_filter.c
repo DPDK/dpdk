@@ -1395,9 +1395,7 @@ static int
 ice_fdir_is_tunnel_profile(enum ice_fdir_tunnel_type tunnel_type)
 {
 	if (tunnel_type == ICE_FDIR_TUNNEL_TYPE_VXLAN ||
-	    tunnel_type == ICE_FDIR_TUNNEL_TYPE_L2TPV2 ||
-	    tunnel_type == ICE_FDIR_TUNNEL_TYPE_GTPU ||
-	    tunnel_type == ICE_FDIR_TUNNEL_TYPE_GTPU_EH)
+	    tunnel_type == ICE_FDIR_TUNNEL_TYPE_L2TPV2)
 		return 1;
 	else
 		return 0;
