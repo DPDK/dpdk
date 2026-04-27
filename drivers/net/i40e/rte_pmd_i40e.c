@@ -1883,6 +1883,11 @@ int rte_pmd_i40e_get_ddp_info(uint8_t *pkg_buff, uint32_t pkg_size,
 		return I40E_SUCCESS;
 	}
 
+	if (!i40e_seg_hdr) {
+		PMD_DRV_LOG(ERR, "Failed to find i40e segment header");
+		return -EINVAL;
+	}
+
 	/* get i40e segment header info */
 	if (type == RTE_PMD_I40E_PKG_INFO_HEADER) {
 		struct rte_pmd_i40e_profile_info *info =
@@ -1895,11 +1900,6 @@ int rte_pmd_i40e_get_ddp_info(uint8_t *pkg_buff, uint32_t pkg_size,
 
 		if (!metadata_seg_hdr) {
 			PMD_DRV_LOG(ERR, "Failed to find metadata segment header");
-			return -EINVAL;
-		}
-
-		if (!i40e_seg_hdr) {
-			PMD_DRV_LOG(ERR, "Failed to find i40e segment header");
 			return -EINVAL;
 		}
 
