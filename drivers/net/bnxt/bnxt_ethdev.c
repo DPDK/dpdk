@@ -3326,6 +3326,7 @@ static const struct {
 	{bnxt_recv_pkts_vec,		"Vector SSE"},
 	{bnxt_crx_pkts_vec_avx2,	"Vector AVX2"},
 	{bnxt_recv_pkts_vec_avx2,	"Vector AVX2"},
+	{bnxt_recv_pkts_vec_avx2_v3,	"Vector AVX2"},
 #endif
 #if defined(RTE_ARCH_ARM64)
 	{bnxt_recv_pkts_vec,		"Vector Neon"},
