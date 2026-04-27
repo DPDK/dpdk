@@ -1779,6 +1779,17 @@ ice_fdir_destroy_filter(struct ice_adapter *ad,
 
 	ice_fdir_cnt_update(pf, filter->input.flow_type, is_tun, false);
 
+	/* Remove the FDIR HW profile when no filters of this ptype
+	 * remain.  The profile encodes field extraction offsets that
+	 * vary between L2TPv2 subtypes (e.g. data vs data_l).  If the
+	 * profile is not removed, a subsequent rule with a different
+	 * subtype but the same ptype reuses the stale profile via
+	 * -EEXIST and the NIC extracts session_id from the wrong
+	 * offset, causing mismatched packets to hit the rule.
+	 */
+	if (pf->fdir_fltr_cnt[filter->input.flow_type][is_tun] == 0)
+		ice_fdir_prof_rm(pf, filter->input.flow_type, is_tun);
+
 	if (filter->mark_flag == 1)
 		ice_fdir_rx_parsing_enable(ad, 0);
 
