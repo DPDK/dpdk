@@ -251,25 +251,6 @@ rte_auxiliary_unregister(struct rte_auxiliary_driver *driver)
 	rte_bus_remove_driver(&auxiliary_bus.bus, &driver->driver);
 }
 
-static struct rte_device *
-auxiliary_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
-		      const void *data)
-{
-	struct rte_device *dev;
-
-	if (start != NULL) {
-		dev = TAILQ_NEXT(start, next);
-	} else {
-		dev = TAILQ_FIRST(&auxiliary_bus.bus.device_list);
-	}
-	while (dev != NULL) {
-		if (cmp(dev, data) == 0)
-			return dev;
-		dev = TAILQ_NEXT(dev, next);
-	}
-	return NULL;
-}
-
 static int
 auxiliary_plug(struct rte_device *dev)
 {
@@ -358,7 +339,7 @@ struct rte_auxiliary_bus auxiliary_bus = {
 		.scan = auxiliary_scan,
 		.probe = auxiliary_probe,
 		.cleanup = auxiliary_cleanup,
-		.find_device = auxiliary_find_device,
+		.find_device = rte_bus_generic_find_device,
 		.plug = auxiliary_plug,
 		.unplug = auxiliary_unplug,
 		.parse = auxiliary_parse,

@@ -818,34 +818,6 @@ rte_dpaa_bus_probe(void)
 	return 0;
 }
 
-static struct rte_device *
-rte_dpaa_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
-		     const void *data)
-{
-	struct rte_device *dev;
-
-	/* find_device is called with 'data' as an opaque object - just call
-	 * cmp with this and each device object on bus.
-	 */
-
-	if (start != NULL) {
-		dev = TAILQ_NEXT(start, next);
-	} else {
-		dev = TAILQ_FIRST(&rte_dpaa_bus.bus.device_list);
-	}
-
-	while (dev != NULL) {
-		if (cmp(dev, data) == 0) {
-			DPAA_BUS_DEBUG("Found dev=(%s)", dev->name);
-			return dev;
-		}
-		dev = TAILQ_NEXT(dev, next);
-	}
-
-	DPAA_BUS_DEBUG("Unable to find any device");
-	return NULL;
-}
-
 /*
  * Get iommu class of DPAA2 devices on the bus.
  */
@@ -972,7 +944,7 @@ static struct rte_dpaa_bus rte_dpaa_bus = {
 		.probe = rte_dpaa_bus_probe,
 		.parse = rte_dpaa_bus_parse,
 		.dev_compare = dpaa_bus_dev_compare,
-		.find_device = rte_dpaa_find_device,
+		.find_device = rte_bus_generic_find_device,
 		.get_iommu_class = rte_dpaa_get_iommu_class,
 		.plug = dpaa_bus_plug,
 		.unplug = dpaa_bus_unplug,

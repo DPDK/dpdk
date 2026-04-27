@@ -479,36 +479,6 @@ rte_fslmc_probe(void)
 	return 0;
 }
 
-static struct rte_device *
-rte_fslmc_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
-		      const void *data)
-{
-	struct rte_device *dev;
-
-	DPAA2_BUS_DEBUG("Finding a device named %s", (const char *)data);
-
-	/* find_device is always called with an opaque object which should be
-	 * passed along to the 'cmp' function iterating over all device obj
-	 * on the bus.
-	 */
-
-	if (start != NULL) {
-		dev = TAILQ_NEXT(start, next);
-	} else {
-		dev = TAILQ_FIRST(&rte_fslmc_bus.bus.device_list);
-	}
-	while (dev != NULL) {
-		if (cmp(dev, data) == 0) {
-			DPAA2_BUS_DEBUG("Found device (%s)",
-					dev->name);
-			return dev;
-		}
-		dev = TAILQ_NEXT(dev, next);
-	}
-
-	return NULL;
-}
-
 /*register a fslmc bus based dpaa2 driver */
 RTE_EXPORT_INTERNAL_SYMBOL(rte_fslmc_driver_register)
 void
@@ -674,7 +644,7 @@ struct rte_fslmc_bus rte_fslmc_bus = {
 		.cleanup = rte_fslmc_close,
 		.parse = rte_fslmc_parse,
 		.dev_compare = fslmc_dev_compare,
-		.find_device = rte_fslmc_find_device,
+		.find_device = rte_bus_generic_find_device,
 		.get_iommu_class = rte_dpaa2_get_iommu_class,
 		.plug = fslmc_bus_plug,
 		.unplug = fslmc_bus_unplug,

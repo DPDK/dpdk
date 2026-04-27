@@ -523,26 +523,6 @@ uacce_unplug(struct rte_device *dev)
 	return ret;
 }
 
-static struct rte_device *
-uacce_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,  const void *data)
-{
-	struct rte_device *dev;
-
-	if (start != NULL) {
-		dev = TAILQ_NEXT(start, next);
-	} else {
-		dev = TAILQ_FIRST(&uacce_bus.bus.device_list);
-	}
-
-	while (dev != NULL) {
-		if (cmp(dev, data) == 0)
-			return dev;
-		dev = TAILQ_NEXT(dev, next);
-	}
-
-	return NULL;
-}
-
 static int
 uacce_parse(const char *name, void *addr)
 {
@@ -580,7 +560,6 @@ static void *
 uacce_dev_iterate(const void *start, const char *str,
 		  const struct rte_dev_iterator *it __rte_unused)
 {
-	rte_bus_find_device_t find_device;
 	struct rte_kvargs *kvargs = NULL;
 	struct rte_device *dev;
 
@@ -591,8 +570,7 @@ uacce_dev_iterate(const void *start, const char *str,
 			return NULL;
 		}
 	}
-	find_device = uacce_bus.bus.find_device;
-	dev = find_device(start, uacce_dev_match, kvargs);
+	dev = rte_bus_generic_find_device(&uacce_bus.bus, start, uacce_dev_match, kvargs);
 	rte_kvargs_free(kvargs);
 	return dev;
 }
@@ -711,7 +689,7 @@ static struct rte_uacce_bus uacce_bus = {
 		.cleanup = uacce_cleanup,
 		.plug = uacce_plug,
 		.unplug = uacce_unplug,
-		.find_device = uacce_find_device,
+		.find_device = rte_bus_generic_find_device,
 		.parse = uacce_parse,
 		.dev_iterate = uacce_dev_iterate,
 	},
