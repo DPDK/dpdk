@@ -794,7 +794,7 @@ vdev_netvsc_scan_callback(__rte_unused void *arg)
 			     VDEV_NETVSC_DRIVER_NAME_LEN))
 			return;
 
-	dev = vbus->find_device(NULL, vdev_netvsc_cmp_rte_device,
+	dev = vbus->find_device(vbus, NULL, vdev_netvsc_cmp_rte_device,
 				VDEV_NETVSC_DRIVER_NAME);
 	if (dev)
 		return;

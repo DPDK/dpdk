@@ -63,7 +63,6 @@ rte_pci_dev_iterate(const void *start,
 		    const char *str,
 		    const struct rte_dev_iterator *it __rte_unused)
 {
-	rte_bus_find_device_t find_device;
 	struct rte_kvargs *kvargs = NULL;
 	struct rte_device *dev;
 
@@ -75,8 +74,7 @@ rte_pci_dev_iterate(const void *start,
 			return NULL;
 		}
 	}
-	find_device = rte_pci_bus.bus.find_device;
-	dev = find_device(start, pci_dev_match, kvargs);
+	dev = rte_bus_generic_find_device(&rte_pci_bus.bus, start, pci_dev_match, kvargs);
 	rte_kvargs_free(kvargs);
 	return dev;
 }

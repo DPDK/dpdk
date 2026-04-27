@@ -437,26 +437,6 @@ platform_bus_probe(void)
 	return 0;
 }
 
-static struct rte_device *
-platform_bus_find_device(const struct rte_device *start, rte_dev_cmp_t cmp, const void *data)
-{
-	struct rte_device *dev;
-
-	if (start != NULL) {
-		dev = TAILQ_NEXT(start, next);
-	} else {
-		dev = RTE_TAILQ_FIRST(&platform_bus.bus.device_list);
-	}
-	while (dev) {
-		if (cmp(dev, data) == 0)
-			return dev;
-
-		dev = RTE_TAILQ_NEXT(dev, next);
-	}
-
-	return NULL;
-}
-
 static int
 platform_bus_plug(struct rte_device *dev)
 {
@@ -575,7 +555,7 @@ struct rte_platform_bus platform_bus = {
 	.bus = {
 		.scan = platform_bus_scan,
 		.probe = platform_bus_probe,
-		.find_device = platform_bus_find_device,
+		.find_device = rte_bus_generic_find_device,
 		.plug = platform_bus_plug,
 		.unplug = platform_bus_unplug,
 		.parse = platform_bus_parse,

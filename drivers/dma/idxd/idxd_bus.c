@@ -44,8 +44,6 @@ struct rte_dsa_device {
 struct dsa_bus;
 static int dsa_scan(void);
 static int dsa_probe(void);
-static struct rte_device *dsa_find_device(const struct rte_device *start,
-		rte_dev_cmp_t cmp,  const void *data);
 static enum rte_iova_mode dsa_get_iommu_class(void);
 static int dsa_addr_parse(const char *name, void *addr);
 
@@ -61,7 +59,7 @@ struct dsa_bus dsa_bus = {
 	.bus = {
 		.scan = dsa_scan,
 		.probe = dsa_probe,
-		.find_device = dsa_find_device,
+		.find_device = rte_bus_generic_find_device,
 		.get_iommu_class = dsa_get_iommu_class,
 		.parse = dsa_addr_parse,
 	},
@@ -338,22 +336,6 @@ dsa_scan(void)
 
 	closedir(dev_dir);
 	return 0;
-}
-
-static struct rte_device *
-dsa_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
-			 const void *data)
-{
-	struct rte_device *dev = TAILQ_FIRST(&dsa_bus.bus.device_list);
-
-	if (start != NULL) /* jump to start point if given */
-		dev = TAILQ_NEXT(start, next);
-	while (dev != NULL) {
-		if (cmp(dev, data) == 0)
-			return dev;
-		dev = TAILQ_NEXT(dev, next);
-	}
-	return NULL;
 }
 
 static enum rte_iova_mode

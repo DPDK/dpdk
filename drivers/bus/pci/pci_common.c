@@ -512,25 +512,6 @@ rte_pci_unregister(struct rte_pci_driver *driver)
 	rte_bus_remove_driver(&rte_pci_bus.bus, &driver->driver);
 }
 
-static struct rte_device *
-pci_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
-		const void *data)
-{
-	struct rte_device *dev;
-
-	if (start != NULL) {
-		dev = TAILQ_NEXT(start, next);
-	} else {
-		dev = TAILQ_FIRST(&rte_pci_bus.bus.device_list);
-	}
-	while (dev != NULL) {
-		if (cmp(dev, data) == 0)
-			return dev;
-		dev = TAILQ_NEXT(dev, next);
-	}
-	return NULL;
-}
-
 /*
  * find the device which encounter the failure, by iterate over all device on
  * PCI bus to check if the memory failure address is located in the range
@@ -879,7 +860,7 @@ struct rte_pci_bus rte_pci_bus = {
 		.scan = rte_pci_scan,
 		.probe = pci_probe,
 		.cleanup = pci_cleanup,
-		.find_device = pci_find_device,
+		.find_device = rte_bus_generic_find_device,
 		.plug = pci_plug,
 		.unplug = pci_unplug,
 		.parse = pci_parse,

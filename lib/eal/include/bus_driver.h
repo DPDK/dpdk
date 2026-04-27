@@ -69,8 +69,8 @@ typedef int (*rte_bus_probe_t)(void);
  *	The first device matching the data, NULL if none exists.
  */
 typedef struct rte_device *
-(*rte_bus_find_device_t)(const struct rte_device *start, rte_dev_cmp_t cmp,
-			 const void *data);
+(*rte_bus_find_device_t)(const struct rte_bus *bus, const struct rte_device *start,
+			 rte_dev_cmp_t cmp, const void *data);
 
 /**
  * Implementation specific probe function which is responsible for linking
@@ -429,6 +429,26 @@ __rte_internal
 void rte_bus_insert_device(struct rte_bus *bus,
 			   struct rte_device *exist_dev,
 			   struct rte_device *new_dev);
+
+/**
+ * Find a device on a bus.
+ *
+ * @param bus
+ *   A pointer to a rte_bus structure.
+ * @param start
+ *   Starting point for the search. If NULL, search from the beginning.
+ * @param cmp
+ *   Comparison function to match devices.
+ * @param data
+ *   Data to pass to the comparison function.
+ * @return
+ *   The first matching device, or NULL if not found.
+ */
+__rte_internal
+struct rte_device *rte_bus_generic_find_device(const struct rte_bus *bus,
+					       const struct rte_device *start,
+					       rte_dev_cmp_t cmp,
+					       const void *data);
 
 /**
  * Helper macro to iterate over all drivers on a bus.

@@ -275,31 +275,12 @@ rte_vmbus_unregister(struct rte_vmbus_driver *driver)
 }
 
 /* VMBUS doesn't support hotplug */
-static struct rte_device *
-vmbus_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
-		  const void *data)
-{
-	struct rte_device *dev;
-
-	TAILQ_FOREACH(dev, &rte_vmbus_bus.bus.device_list, next) {
-		if (start && dev == start) {
-			start = NULL;
-			continue;
-		}
-		if (cmp(dev, data) == 0)
-			return dev;
-	}
-
-	return NULL;
-}
-
-
 struct rte_vmbus_bus rte_vmbus_bus = {
 	.bus = {
 		.scan = rte_vmbus_scan,
 		.probe = rte_vmbus_probe,
 		.cleanup = rte_vmbus_cleanup,
-		.find_device = vmbus_find_device,
+		.find_device = rte_bus_generic_find_device,
 		.parse = vmbus_parse,
 		.dev_compare = vmbus_dev_compare,
 	},

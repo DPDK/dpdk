@@ -576,26 +576,23 @@ free:
 	return error;
 }
 
-struct rte_device *
-rte_vdev_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
-		     const void *data)
+static struct rte_device *
+vdev_find_device(const struct rte_bus *bus, const struct rte_device *start,
+	rte_dev_cmp_t cmp, const void *data)
 {
 	struct rte_device *dev;
 
 	rte_spinlock_recursive_lock(&vdev_device_list_lock);
-	if (start != NULL)
-		dev = TAILQ_NEXT(start, next);
-	else
-		dev = TAILQ_FIRST(&rte_vdev_bus.device_list);
-
-	while (dev != NULL) {
-		if (cmp(dev, data) == 0)
-			break;
-		dev = TAILQ_NEXT(dev, next);
-	}
+	dev = rte_bus_generic_find_device(bus, start, cmp, data);
 	rte_spinlock_recursive_unlock(&vdev_device_list_lock);
 
 	return dev;
+}
+
+struct rte_device *
+rte_vdev_find_device(const struct rte_device *start, rte_dev_cmp_t cmp, const void *data)
+{
+	return vdev_find_device(&rte_vdev_bus, start, cmp, data);
 }
 
 static int
@@ -633,7 +630,7 @@ static struct rte_bus rte_vdev_bus = {
 	.scan = vdev_scan,
 	.probe = vdev_probe,
 	.cleanup = vdev_cleanup,
-	.find_device = rte_vdev_find_device,
+	.find_device = vdev_find_device,
 	.plug = vdev_plug,
 	.unplug = vdev_unplug,
 	.parse = vdev_parse,

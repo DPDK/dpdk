@@ -403,23 +403,6 @@ ifpga_unplug(struct rte_device *dev)
 
 }
 
-static struct rte_device *
-ifpga_find_device(const struct rte_device *start,
-	rte_dev_cmp_t cmp, const void *data)
-{
-	struct rte_device *dev;
-
-	TAILQ_FOREACH(dev, &rte_ifpga_bus.device_list, next) {
-		if (start && dev == start) {
-			start = NULL;
-			continue;
-		}
-		if (cmp(dev, data) == 0)
-			return dev;
-	}
-
-	return NULL;
-}
 static int
 ifpga_parse(const char *name, void *addr)
 {
@@ -468,7 +451,7 @@ static struct rte_bus rte_ifpga_bus = {
 	.scan        = ifpga_scan,
 	.probe       = ifpga_probe,
 	.cleanup     = ifpga_cleanup,
-	.find_device = ifpga_find_device,
+	.find_device = rte_bus_generic_find_device,
 	.plug        = ifpga_plug,
 	.unplug      = ifpga_unplug,
 	.parse       = ifpga_parse,

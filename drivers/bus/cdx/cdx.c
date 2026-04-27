@@ -449,25 +449,6 @@ rte_cdx_unregister(struct rte_cdx_driver *driver)
 	rte_bus_remove_driver(&rte_cdx_bus.bus, &driver->driver);
 }
 
-static struct rte_device *
-cdx_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
-		const void *data)
-{
-	struct rte_device *dev;
-
-	if (start != NULL) {
-		dev = TAILQ_NEXT(start, next);
-	} else {
-		dev = TAILQ_FIRST(&rte_cdx_bus.bus.device_list);
-	}
-	while (dev != NULL) {
-		if (cmp(dev, data) == 0)
-			return dev;
-		dev = TAILQ_NEXT(dev, next);
-	}
-	return NULL;
-}
-
 /*
  * If vendor/device ID match, call the remove() function of the
  * driver.
@@ -572,7 +553,6 @@ cdx_dev_iterate(const void *start,
 		const char *str,
 		const struct rte_dev_iterator *it __rte_unused)
 {
-	rte_bus_find_device_t find_device;
 	struct rte_kvargs *kvargs = NULL;
 	struct rte_device *dev;
 
@@ -584,8 +564,7 @@ cdx_dev_iterate(const void *start,
 			return NULL;
 		}
 	}
-	find_device = rte_cdx_bus.bus.find_device;
-	dev = find_device(start, cdx_dev_match, kvargs);
+	dev = rte_bus_generic_find_device(&rte_cdx_bus.bus, start, cdx_dev_match, kvargs);
 	rte_kvargs_free(kvargs);
 	return dev;
 }
@@ -594,7 +573,7 @@ struct rte_cdx_bus rte_cdx_bus = {
 	.bus = {
 		.scan = cdx_scan,
 		.probe = cdx_probe,
-		.find_device = cdx_find_device,
+		.find_device = rte_bus_generic_find_device,
 		.plug = cdx_plug,
 		.unplug = cdx_unplug,
 		.parse = cdx_parse,

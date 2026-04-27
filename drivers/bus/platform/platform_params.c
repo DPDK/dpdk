@@ -46,7 +46,6 @@ void *
 platform_bus_dev_iterate(const void *start, const char *str,
 			 const struct rte_dev_iterator *it __rte_unused)
 {
-	rte_bus_find_device_t find_device;
 	struct rte_kvargs *kvargs = NULL;
 	struct rte_device *dev;
 
@@ -59,13 +58,7 @@ platform_bus_dev_iterate(const void *start, const char *str,
 		}
 	}
 
-	find_device = platform_bus.bus.find_device;
-	if (find_device == NULL) {
-		rte_kvargs_free(kvargs);
-		return NULL;
-	}
-
-	dev = platform_bus.bus.find_device(start, platform_dev_match, kvargs);
+	dev = rte_bus_generic_find_device(&platform_bus.bus, start, platform_dev_match, kvargs);
 	rte_kvargs_free(kvargs);
 
 	return dev;

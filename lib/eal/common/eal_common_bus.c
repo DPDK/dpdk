@@ -182,7 +182,7 @@ bus_find_device(const struct rte_bus *bus, const void *_dev)
 {
 	struct rte_device *dev;
 
-	dev = bus->find_device(NULL, cmp_rte_device, _dev);
+	dev = bus->find_device(bus, NULL, cmp_rte_device, _dev);
 	return dev == NULL;
 }
 
@@ -396,6 +396,25 @@ rte_bus_insert_device(struct rte_bus *bus,
 {
 	TAILQ_INSERT_BEFORE(exist_dev, new_dev, next);
 	new_dev->bus = bus;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_generic_find_device)
+struct rte_device *
+rte_bus_generic_find_device(const struct rte_bus *bus, const struct rte_device *start,
+		    rte_dev_cmp_t cmp, const void *data)
+{
+	struct rte_device *dev;
+
+	if (start != NULL)
+		dev = TAILQ_NEXT(start, next);
+	else
+		dev = TAILQ_FIRST(&bus->device_list);
+	while (dev != NULL) {
+		if (cmp(dev, data) == 0)
+			return dev;
+		dev = TAILQ_NEXT(dev, next);
+	}
+	return NULL;
 }
 
 RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_add_driver)
