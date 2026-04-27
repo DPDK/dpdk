@@ -1469,6 +1469,17 @@ ice_fdir_extract_fltr_key(struct ice_fdir_fltr_pattern *key,
 	memcpy(&key->l2tpv2_data, &input->l2tpv2_data, sizeof(key->l2tpv2_data));
 	memcpy(&key->l2tpv2_mask, &input->l2tpv2_mask, sizeof(key->l2tpv2_mask));
 
+	/* Normalize flags: keep only CTRL/LEN/VER bits that affect
+	 * FDIR extraction offsets. Subtypes differing only in S/O/P
+	 * share the same HW entry; masking prevents spurious SW hash
+	 * mismatches and delete failures.
+	 */
+	uint16_t fv_norm = rte_cpu_to_be_16(ICE_L2TPV2_FLAGS_CTRL |
+					     ICE_L2TPV2_FLAGS_LEN |
+					     ICE_L2TPV2_FLAGS_VER);
+	key->l2tpv2_data.flags_version &= fv_norm;
+	key->l2tpv2_mask.flags_version &= fv_norm;
+
 	key->tunnel_type = filter->tunnel_type;
 }
 
@@ -2762,6 +2773,14 @@ raw_error:
 		else if (flow_type == ICE_FLTR_PTYPE_NONF_IPV6_UDP)
 			flow_type = ICE_FLTR_PTYPE_NONF_IPV6_L2TPV2_PPP;
 	}
+
+	/* Bare L2TPv2 (no inner fields) must use single-segment profile.
+	 * PPPoL2TPv2 rules must keep the tunnel profile even without
+	 * inner field values, so only reset when PPP is not present.
+	 */
+	if (tunnel_type == ICE_FDIR_TUNNEL_TYPE_L2TPV2 &&
+	    input_set_i == 0 && !ppp_present)
+		tunnel_type = ICE_FDIR_TUNNEL_TYPE_NONE;
 
 	filter->tunnel_type = tunnel_type;
 	filter->input.flow_type = flow_type;
