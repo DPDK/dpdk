@@ -1024,7 +1024,8 @@ ice_fdir_input_set_parse(uint64_t inset, enum ice_flow_field *field)
 }
 
 static void
-ice_fdir_input_set_hdrs(enum ice_fltr_ptype flow, struct ice_flow_seg_info *seg)
+ice_fdir_input_set_hdrs(enum ice_fltr_ptype flow, struct ice_flow_seg_info *seg,
+		       int seg_idx)
 {
 	switch (flow) {
 	case ICE_FLTR_PTYPE_NONF_IPV4_UDP:
@@ -1132,16 +1133,77 @@ ice_fdir_input_set_hdrs(enum ice_fltr_ptype flow, struct ice_flow_seg_info *seg)
 				  ICE_FLOW_SEG_HDR_IPV_OTHER);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV6_L2TPV2_PPP:
+		if (seg_idx == 0)
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_L2TPV2 |
+					  ICE_FLOW_SEG_HDR_PPP |
+					  ICE_FLOW_SEG_HDR_IPV6 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		else
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV_OTHER);
+		break;
 	case ICE_FLTR_PTYPE_NONF_IPV6_L2TPV2_PPP_IPV4:
-	case ICE_FLTR_PTYPE_NONF_IPV6_L2TPV2_PPP_IPV4_TCP:
+		if (seg_idx == 0)
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_L2TPV2 |
+					  ICE_FLOW_SEG_HDR_PPP |
+					  ICE_FLOW_SEG_HDR_IPV6 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		else
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV4 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		break;
 	case ICE_FLTR_PTYPE_NONF_IPV6_L2TPV2_PPP_IPV4_UDP:
+		if (seg_idx == 0)
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_L2TPV2 |
+					  ICE_FLOW_SEG_HDR_PPP |
+					  ICE_FLOW_SEG_HDR_IPV6 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		else
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_UDP |
+					  ICE_FLOW_SEG_HDR_IPV4 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV6_L2TPV2_PPP_IPV4_TCP:
+		if (seg_idx == 0)
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_L2TPV2 |
+					  ICE_FLOW_SEG_HDR_PPP |
+					  ICE_FLOW_SEG_HDR_IPV6 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		else
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_TCP |
+					  ICE_FLOW_SEG_HDR_IPV4 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		break;
 	case ICE_FLTR_PTYPE_NONF_IPV6_L2TPV2_PPP_IPV6:
-	case ICE_FLTR_PTYPE_NONF_IPV6_L2TPV2_PPP_IPV6_TCP:
+		if (seg_idx == 0)
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_L2TPV2 |
+					  ICE_FLOW_SEG_HDR_PPP |
+					  ICE_FLOW_SEG_HDR_IPV6 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		else
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV6 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		break;
 	case ICE_FLTR_PTYPE_NONF_IPV6_L2TPV2_PPP_IPV6_UDP:
-		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_L2TPV2 |
-				  ICE_FLOW_SEG_HDR_PPP |
-				  ICE_FLOW_SEG_HDR_IPV6 |
-				  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		if (seg_idx == 0)
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_L2TPV2 |
+					  ICE_FLOW_SEG_HDR_PPP |
+					  ICE_FLOW_SEG_HDR_IPV6 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		else
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_UDP |
+					  ICE_FLOW_SEG_HDR_IPV6 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV6_L2TPV2_PPP_IPV6_TCP:
+		if (seg_idx == 0)
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_L2TPV2 |
+					  ICE_FLOW_SEG_HDR_PPP |
+					  ICE_FLOW_SEG_HDR_IPV6 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		else
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_TCP |
+					  ICE_FLOW_SEG_HDR_IPV6 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_L2TPV2:
 	case ICE_FLTR_PTYPE_NONF_IPV4_L2TPV2_CONTROL:
@@ -1150,16 +1212,77 @@ ice_fdir_input_set_hdrs(enum ice_fltr_ptype flow, struct ice_flow_seg_info *seg)
 				  ICE_FLOW_SEG_HDR_IPV_OTHER);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_L2TPV2_PPP:
+		if (seg_idx == 0)
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_L2TPV2 |
+					  ICE_FLOW_SEG_HDR_PPP |
+					  ICE_FLOW_SEG_HDR_IPV4 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		else
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV_OTHER);
+		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_L2TPV2_PPP_IPV4:
-	case ICE_FLTR_PTYPE_NONF_IPV4_L2TPV2_PPP_IPV4_TCP:
+		if (seg_idx == 0)
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_L2TPV2 |
+					  ICE_FLOW_SEG_HDR_PPP |
+					  ICE_FLOW_SEG_HDR_IPV4 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		else
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV4 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_L2TPV2_PPP_IPV4_UDP:
+		if (seg_idx == 0)
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_L2TPV2 |
+					  ICE_FLOW_SEG_HDR_PPP |
+					  ICE_FLOW_SEG_HDR_IPV4 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		else
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_UDP |
+					  ICE_FLOW_SEG_HDR_IPV4 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_L2TPV2_PPP_IPV4_TCP:
+		if (seg_idx == 0)
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_L2TPV2 |
+					  ICE_FLOW_SEG_HDR_PPP |
+					  ICE_FLOW_SEG_HDR_IPV4 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		else
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_TCP |
+					  ICE_FLOW_SEG_HDR_IPV4 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_L2TPV2_PPP_IPV6:
-	case ICE_FLTR_PTYPE_NONF_IPV4_L2TPV2_PPP_IPV6_TCP:
+		if (seg_idx == 0)
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_L2TPV2 |
+					  ICE_FLOW_SEG_HDR_PPP |
+					  ICE_FLOW_SEG_HDR_IPV4 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		else
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV6 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_L2TPV2_PPP_IPV6_UDP:
-		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_L2TPV2 |
-				  ICE_FLOW_SEG_HDR_PPP |
-				  ICE_FLOW_SEG_HDR_IPV4 |
-				  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		if (seg_idx == 0)
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_L2TPV2 |
+					  ICE_FLOW_SEG_HDR_PPP |
+					  ICE_FLOW_SEG_HDR_IPV4 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		else
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_UDP |
+					  ICE_FLOW_SEG_HDR_IPV6 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_L2TPV2_PPP_IPV6_TCP:
+		if (seg_idx == 0)
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_L2TPV2 |
+					  ICE_FLOW_SEG_HDR_PPP |
+					  ICE_FLOW_SEG_HDR_IPV4 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		else
+			ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_TCP |
+					  ICE_FLOW_SEG_HDR_IPV6 |
+					  ICE_FLOW_SEG_HDR_IPV_OTHER);
 		break;
 
 	default:
@@ -1194,15 +1317,22 @@ ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
 	for (k = 0; k <= ICE_FD_HW_SEG_TUN; k++) {
 		seg = &seg_tun[k];
 		input_set = (k == ICE_FD_HW_SEG_TUN) ? inner_input_set : outer_input_set;
-		if (input_set == 0)
+		if (input_set == 0) {
+			/* For tunnel inner segment, always set headers for
+			 * correct ptype narrowing even if no fields extracted.
+			 */
+			if (k == ICE_FD_HW_SEG_TUN &&
+			    ice_fdir_is_tunnel_profile(ttype))
+				ice_fdir_input_set_hdrs(flow, seg, k);
 			continue;
+		}
 
 		for (i = 0; i < ICE_FLOW_FIELD_IDX_MAX; i++)
 			field[i] = ICE_FLOW_FIELD_IDX_MAX;
 
 		ice_fdir_input_set_parse(input_set, field);
 
-		ice_fdir_input_set_hdrs(flow, seg);
+		ice_fdir_input_set_hdrs(flow, seg, k);
 
 		for (i = 0; field[i] != ICE_FLOW_FIELD_IDX_MAX; i++) {
 			ice_flow_set_fld(seg, field[i],
