@@ -2791,6 +2791,19 @@ raw_error:
 	    input_set_i == 0 && !ppp_present)
 		tunnel_type = ICE_FDIR_TUNNEL_TYPE_NONE;
 
+	/* Match outer IPv4/IPv6 for L2TPv2 via Ethertype. */
+	if (tunnel_type == ICE_FDIR_TUNNEL_TYPE_L2TPV2) {
+		if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
+			input_set_o |= ICE_INSET_ETHERTYPE;
+			filter->input.ext_data.ether_type =
+				rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+		} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
+			input_set_o |= ICE_INSET_ETHERTYPE;
+			filter->input.ext_data.ether_type =
+				rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+		}
+	}
+
 	filter->tunnel_type = tunnel_type;
 	filter->input.flow_type = flow_type;
 	filter->input_set_o = input_set_o;
