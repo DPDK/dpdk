@@ -4379,6 +4379,8 @@ print_stats(void)
 static void
 signal_handler(int signum __rte_unused)
 {
+	signal(SIGINT, SIG_DFL);
+	signal(SIGTERM, SIG_DFL);
 	f_quit = 1;
 	prompt_exit();
 }
