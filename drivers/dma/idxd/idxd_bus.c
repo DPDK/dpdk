@@ -41,34 +41,24 @@ struct rte_dsa_device {
 };
 
 /* forward prototypes */
-struct dsa_bus;
 static int dsa_scan(void);
 static bool dsa_match(const struct rte_driver *drv, const struct rte_device *dev);
 static int dsa_probe_device(struct rte_driver *drv, struct rte_device *dev);
 static enum rte_iova_mode dsa_get_iommu_class(void);
 static int dsa_addr_parse(const char *name, void *addr);
 
-/**
- * Structure describing the DSA bus
- */
-struct dsa_bus {
-	struct rte_bus bus;               /**< Inherit the generic class */
-	struct rte_driver driver;         /**< Driver struct for devices to point to */
+struct rte_bus dsa_bus = {
+	.scan = dsa_scan,
+	.probe = rte_bus_generic_probe,
+	.match = dsa_match,
+	.probe_device = dsa_probe_device,
+	.find_device = rte_bus_generic_find_device,
+	.get_iommu_class = dsa_get_iommu_class,
+	.parse = dsa_addr_parse,
 };
 
-struct dsa_bus dsa_bus = {
-	.bus = {
-		.scan = dsa_scan,
-		.probe = rte_bus_generic_probe,
-		.match = dsa_match,
-		.probe_device = dsa_probe_device,
-		.find_device = rte_bus_generic_find_device,
-		.get_iommu_class = dsa_get_iommu_class,
-		.parse = dsa_addr_parse,
-	},
-	.driver = {
-		.name = "dmadev_idxd",
-	},
+struct rte_driver dsa_driver = {
+	.name = "dmadev_idxd",
 };
 
 static inline const char *
@@ -267,7 +257,7 @@ static bool dsa_match(const struct rte_driver *drv, const struct rte_device *dev
 {
 	const struct rte_dsa_device *dsa_dev = RTE_BUS_DEVICE(dev, *dsa_dev);
 
-	if (drv == &dsa_bus.driver) {
+	if (drv == &dsa_driver) {
 		char type[64], name[64];
 
 		if (read_wq_string(dsa_dev, "type", type, sizeof(type)) >= 0 &&
@@ -319,7 +309,7 @@ dsa_scan(void)
 			continue;
 		}
 		strlcpy(dev->wq_name, wq->d_name, sizeof(dev->wq_name));
-		rte_bus_add_device(&dsa_bus.bus, &dev->device);
+		rte_bus_add_device(&dsa_bus, &dev->device);
 		devcount++;
 
 		read_device_int(dev, "numa_node", &numa_node);
@@ -357,8 +347,8 @@ dsa_addr_parse(const char *name, void *addr)
 	return 0;
 }
 
-RTE_REGISTER_BUS(dsa, dsa_bus.bus);
+RTE_REGISTER_BUS(dsa, dsa_bus);
 RTE_INIT(dsa_bus_init)
 {
-	rte_bus_add_driver(&dsa_bus.bus, &dsa_bus.driver);
+	rte_bus_add_driver(&dsa_bus, &dsa_driver);
 }
