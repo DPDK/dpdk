@@ -606,3 +606,12 @@ cleanup:
 	}
 	return ret;
 }
+
+/* Note: Windows does not have PTHREAD_PROCESS_SHARED
+ * and DPDK on Windows only supports single process model.
+ */
+void
+rte_thread_mutex_init_shared(pthread_mutex_t *mutex)
+{
+	pthread_mutex_init(mutex, NULL);
+}
