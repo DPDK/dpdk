@@ -178,7 +178,8 @@ bnxt_tx_cmp_vec(struct bnxt_tx_queue *txq, uint32_t nr_pkts)
 	txr->tx_raw_cons = raw_cons;
 }
 
-static const uint32_t errors_to_olflags_v3[16] = {
+static const uint32_t errors_to_olflags_v3[17] = {
+	RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN,
 	RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD |
 	RTE_MBUF_F_RX_IP_CKSUM_GOOD,
 	RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD |

@@ -1111,14 +1111,16 @@ recv_burst_vec_avx2_v3(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pk
 		 * RX_PKT_CMPL_ERRORS_T_IP_CS_ERROR | RX_PKT_CMPL_ERRORS_L4_CS_ERROR |
 		 * RX_PKT_CMPL_ERRORS_IP_CS_ERROR
 		 */
-		errors_csum_idx = _mm256_srli_epi32(_mm256_and_si256(errors_v2,
-						    _mm256_slli_epi32(mask_fs, 4)), 4);
+		errors_csum_idx = _mm256_and_si256(_mm256_srli_epi32(errors_v2, 4),
+						   mask_fs);
 		meta_format = _mm256_cmpeq_epi32(_mm256_and_si256(cs_calc,
-							_mm256_slli_epi32(mask_fs, 4)),
-							_mm256_setzero_si256());
+						 _mm256_slli_epi32(mask_fs, 4)),
+						 _mm256_setzero_si256());
 		cs_valid = _mm256_cmpeq_epi32(_mm256_and_si256(cs_calc, mask_fs),
-							_mm256_setzero_si256());
-		errors_csum_idx = _mm256_andnot_si256(cs_valid, errors_csum_idx);
+					      _mm256_setzero_si256());
+		errors_csum_idx = _mm256_add_epi32(_mm256_andnot_si256(cs_valid, mask_1s),
+						   _mm256_andnot_si256(cs_valid,
+								       errors_csum_idx));
 
 		/*
 		 * Load ol_flags for eight packets using gather. Gather
