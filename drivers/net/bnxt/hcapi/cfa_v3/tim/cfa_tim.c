@@ -83,6 +83,11 @@ int cfa_tim_tpm_inst_set(void *tim, uint8_t tsid, uint8_t region_id,
 		return -EINVAL;
 	}
 
+	if (dir < 0 || dir >= CFA_DIR_MAX) {
+		CFA_LOG_ERR("dir = %d\n", dir);
+		return -EINVAL;
+	}
+
 	if (!(CFA_CHECK_UPPER_BOUNDS(tsid, ctx->max_tsid - 1) &&
 	      CFA_CHECK_UPPER_BOUNDS(region_id, ctx->max_regions - 1))) {
 		CFA_LOG_ERR("tsid = %d, region_id = %d\n", tsid, region_id);
@@ -102,6 +107,11 @@ int cfa_tim_tpm_inst_get(void *tim, uint8_t tsid, uint8_t region_id,
 	if (tim == NULL || tpm_inst == NULL ||
 	    ctx->signature != CFA_TIM_SIGNATURE) {
 		CFA_LOG_ERR("tim = %p\n", tim);
+		return -EINVAL;
+	}
+
+	if (dir < 0 || dir >= CFA_DIR_MAX) {
+		CFA_LOG_ERR("dir = %d\n", dir);
 		return -EINVAL;
 	}
 
