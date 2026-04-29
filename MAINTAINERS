@@ -545,6 +545,7 @@ F: lib/eventdev/
 F: doc/guides/prog_guide/eventdev/eventdev.rst
 F: drivers/event/skeleton/
 F: app/test/test_eventdev.c
+F: app/test/test_event_ring.c
 F: examples/l3fwd/l3fwd_event*
 
 Eventdev Ethdev Rx Adapter API
@@ -1772,7 +1773,8 @@ M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
 F: lib/hash/
 F: doc/guides/prog_guide/hash_lib.rst
 F: doc/guides/prog_guide/toeplitz_hash_lib.rst
-F: app/test/test_*hash*
+F: app/test/test_hash*
+F: app/test/test_thash*
 F: app/test/test_func_reentrancy.c
 
 LPM
@@ -2003,7 +2005,6 @@ T: git://dpdk.org/next/dpdk-next-eventdev
 F: app/test-eventdev/
 F: doc/guides/tools/testeventdev.rst
 F: doc/guides/tools/img/eventdev_*
-F: app/test/test_event_ring.c
 
 Graph application
 M: Sunil Kumar Kori <skori@marvell.com>
