@@ -41,7 +41,7 @@ check_spdx() {
     files_without_spdx=$(cat $tmpfile)
     git grep -LE '(/\*|#|;|\.\.) *SPDX-License-Identifier: [A-Z(]' -- $no_license_list > $tmpfile
     for file in $files_without_spdx ; do
-	sed -i "/^$file$/d" $tmpfile
+	sed -i "\|^$file$|d" $tmpfile
     done
 
     warnings=$(($warnings + $(wc -l < $tmpfile)))
