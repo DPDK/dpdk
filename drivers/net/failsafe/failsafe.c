@@ -144,15 +144,24 @@ fs_mutex_init(struct fs_priv *priv)
 	/* Allow mutex relocks for the thread holding the mutex. */
 	ret = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
 	if (ret) {
-		ERROR("Cannot set mutex type - %s", strerror(ret));
-		return ret;
+		ERROR("Cannot set mutex recursive - %s", strerror(ret));
+		goto out;
+	}
+	/* Allow mutex to be shared between processes. */
+	ret = pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+	if (ret) {
+		ERROR("Cannot set mutex pshared - %s", strerror(ret));
+		goto out;
 	}
 	ret = pthread_mutex_init(&priv->hotplug_mutex, &attr);
 	if (ret) {
 		ERROR("Cannot initiate mutex - %s", strerror(ret));
-		return ret;
+		goto out;
 	}
-	return 0;
+
+out:
+	pthread_mutexattr_destroy(&attr);
+	return ret;
 }
 
 static int
