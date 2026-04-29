@@ -419,3 +419,15 @@ rte_thread_get_affinity_by_id(rte_thread_t thread_id,
 	return pthread_getaffinity_np((pthread_t)thread_id.opaque_id,
 		sizeof(*cpuset), cpuset);
 }
+
+RTE_EXPORT_INTERNAL_SYMBOL(rte_thread_mutex_init_shared)
+void
+rte_thread_mutex_init_shared(pthread_mutex_t *mutex)
+{
+	pthread_mutexattr_t attr;
+
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+	pthread_mutex_init(mutex, &attr);
+	pthread_mutexattr_destroy(&attr);
+}
