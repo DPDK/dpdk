@@ -3,6 +3,7 @@
  * Copyright (C) 2022 Microsoft Corporation
  */
 
+#include <pthread.h>
 #include <stdint.h>
 
 #include <rte_os.h>
@@ -462,6 +463,20 @@ int rte_thread_value_set(rte_thread_key key, const void *value);
  *                     ENOEXEC - Specific OS error.
  */
 void *rte_thread_value_get(rte_thread_key key);
+
+/**
+ * Initialize a pthread mutex for use in shared memory accessible by
+ * multiple DPDK processes.
+ *
+ * Sets PTHREAD_PROCESS_SHARED so the mutex can synchronize threads
+ * across DPDK primary and secondary processes when the mutex resides
+ * in shared memory (e.g. hugepage memory).
+ *
+ * @param mutex
+ *   The mutex to initialize.
+ */
+__rte_internal
+void rte_thread_mutex_init_shared(pthread_mutex_t *mutex);
 
 #ifdef __cplusplus
 }
