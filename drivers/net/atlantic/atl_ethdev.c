@@ -5,6 +5,7 @@
 #include <rte_string_fns.h>
 #include <ethdev_pci.h>
 #include <rte_alarm.h>
+#include <rte_thread.h>
 
 #include "atl_ethdev.h"
 #include "atl_common.h"
@@ -405,7 +406,7 @@ eth_atl_dev_init(struct rte_eth_dev *eth_dev)
 
 	hw->aq_nic_cfg = &adapter->hw_cfg;
 
-	pthread_mutex_init(&hw->mbox_mutex, NULL);
+	rte_thread_mutex_init_shared(&hw->mbox_mutex);
 
 	/* disable interrupt */
 	atl_disable_intr(hw);
