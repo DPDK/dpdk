@@ -119,6 +119,12 @@ int cfa_tpm_free(void *tpm, uint16_t pool_id)
 		return -EINVAL;
 	}
 
+	if (pool_id >= ctx->max_pools) {
+		CFA_LOG_ERR("pool_id (%u) out of range (max %u)\n",
+			    pool_id, ctx->max_pools);
+		return -EINVAL;
+	}
+
 	if (ctx->fid_tbl[pool_id] != CFA_INVALID_FID) {
 		CFA_LOG_ERR("A function (%d) is still using the pool (%d)\n",
 			    ctx->fid_tbl[pool_id], pool_id);
@@ -134,6 +140,12 @@ int cfa_tpm_fid_add(void *tpm, uint16_t pool_id, uint16_t fid)
 
 	if (tpm == NULL || ctx->signature != CFA_TPM_SIGNATURE) {
 		CFA_LOG_ERR("tpm = %p, pool_id = %d\n", tpm, pool_id);
+		return -EINVAL;
+	}
+
+	if (pool_id >= ctx->max_pools) {
+		CFA_LOG_ERR("pool_id (%u) out of range (max %u)\n",
+			    pool_id, ctx->max_pools);
 		return -EINVAL;
 	}
 
@@ -160,6 +172,12 @@ int cfa_tpm_fid_rem(void *tpm, uint16_t pool_id, uint16_t fid)
 
 	if (tpm == NULL || ctx->signature != CFA_TPM_SIGNATURE) {
 		CFA_LOG_ERR("tpm = %p, pool_id = %d\n", tpm, pool_id);
+		return -EINVAL;
+	}
+
+	if (pool_id >= ctx->max_pools) {
+		CFA_LOG_ERR("pool_id (%u) out of range (max %u)\n",
+			    pool_id, ctx->max_pools);
 		return -EINVAL;
 	}
 
