@@ -19,6 +19,7 @@
 #include <rte_spinlock.h>
 #include <rte_cycles.h>
 #include <rte_log.h>
+#include <rte_thread.h>
 
 typedef uint8_t   u8;
 typedef int8_t    s8;
@@ -198,15 +199,10 @@ static inline u16 ilog2(u32 n)
 }
 
 static inline int hinic_mutex_init(pthread_mutex_t *pthreadmutex,
-					const pthread_mutexattr_t *mattr)
+					__rte_unused const pthread_mutexattr_t *mattr)
 {
-	int err;
-
-	err = pthread_mutex_init(pthreadmutex, mattr);
-	if (unlikely(err))
-		PMD_DRV_LOG(ERR, "Fail to initialize mutex, error: %d", err);
-
-	return err;
+	rte_thread_mutex_init_shared(pthreadmutex);
+	return 0;
 }
 
 static inline int hinic_mutex_destroy(pthread_mutex_t *pthreadmutex)
