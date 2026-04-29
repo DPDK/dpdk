@@ -5899,10 +5899,10 @@ try_again:
 static int
 bnxt_init_locks(struct bnxt *bp)
 {
-	pthread_mutex_init(&bp->flow_lock, NULL);
-	pthread_mutex_init(&bp->def_cp_lock, NULL);
-	pthread_mutex_init(&bp->health_check_lock, NULL);
-	pthread_mutex_init(&bp->err_recovery_lock, NULL);
+	rte_thread_mutex_init_shared(&bp->flow_lock);
+	rte_thread_mutex_init_shared(&bp->def_cp_lock);
+	rte_thread_mutex_init_shared(&bp->health_check_lock);
+	rte_thread_mutex_init_shared(&bp->err_recovery_lock);
 
 	return 0;
 }
@@ -6920,7 +6920,8 @@ static int bnxt_init_rep_info(struct bnxt *bp)
 	for (i = 0; i < BNXT_MAX_CFA_CODE; i++)
 		bp->cfa_code_map[i] = BNXT_VF_IDX_INVALID;
 
-	return pthread_mutex_init(&bp->rep_info->vfr_start_lock, NULL);
+	rte_thread_mutex_init_shared(&bp->rep_info->vfr_start_lock);
+	return 0;
 }
 
 static int bnxt_rep_port_probe(struct rte_pci_device *pci_dev,
