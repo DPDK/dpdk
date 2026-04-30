@@ -1713,6 +1713,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 	memset(&rule->mask, 0xFF, sizeof(struct ixgbe_hw_fdir_mask));
 	rule->mask.vlan_tci_mask = 0;
 	rule->mask.flex_bytes_mask = 0;
+	rule->mask.l4_proto_match = 0;
 	rule->mask.dst_port_mask = 0;
 	rule->mask.src_port_mask = 0;
 
@@ -2325,6 +2326,10 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 		}
 	}
 
+	/* L4 protocol matching is enabled when parser selected an L4 type. */
+	rule->mask.l4_proto_match =
+		(rule->ixgbe_fdir.formatted.flow_type & IXGBE_ATR_L4TYPE_MASK) != 0;
+
 	return ixgbe_parse_fdir_act_attr(attr, actions, rule, error);
 }
 
@@ -2851,12 +2856,6 @@ ixgbe_parse_fdir_filter(struct rte_eth_dev *dev,
 		return ret;
 
 step_next:
-
-	if (hw->mac.type == ixgbe_mac_82599EB &&
-		rule->fdirflags == IXGBE_FDIRCMD_DROP &&
-		(rule->ixgbe_fdir.formatted.src_port != 0 ||
-		rule->ixgbe_fdir.formatted.dst_port != 0))
-		return -ENOTSUP;
 
 	if (fdir_conf->mode == RTE_FDIR_MODE_NONE) {
 		fdir_conf->mode = rule->mode;

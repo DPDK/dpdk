@@ -151,6 +151,7 @@ struct ixgbe_hw_fdir_mask {
 	uint32_t dst_ipv4_mask;
 	uint16_t src_ipv6_mask;
 	uint16_t dst_ipv6_mask;
+	uint8_t  l4_proto_match;
 	uint16_t src_port_mask;
 	uint16_t dst_port_mask;
 	uint16_t flex_bytes_mask;
