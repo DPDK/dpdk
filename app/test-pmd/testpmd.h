@@ -1085,7 +1085,7 @@ int port_flow_update(portid_t port_id, uint32_t rule,
 int port_flow_flush(portid_t port_id);
 int port_flow_dump(portid_t port_id, bool dump_all,
 			uint64_t rule, const char *file_name,
-			bool is_user_id);
+			bool is_user_id, bool file_mode);
 int port_flow_query(portid_t port_id, uint64_t rule,
 		    const struct rte_flow_action *action, bool is_user_id);
 void port_flow_list(portid_t port_id, uint32_t n, const uint32_t *group);

@@ -267,7 +267,10 @@ enum index {
 	DUMP_ALL,
 	DUMP_ONE,
 	DUMP_IS_USER_ID,
+	DUMP_FILE_PATH,
 
+	DUMP_WRITE,
+	DUMP_APPEND,
 	/* Configure arguments */
 	CONFIG_QUEUES_NUMBER,
 	CONFIG_QUEUES_SIZE,
@@ -1263,8 +1266,9 @@ struct buffer {
 		} destroy; /**< Destroy arguments. */
 		struct {
 			char file[128];
-			bool mode;
+			bool dump_all;
 			uint64_t rule;
+			bool append_to_file;
 			bool is_user_id;
 		} dump; /**< Dump arguments. */
 		struct {
@@ -1550,8 +1554,7 @@ static const enum index next_destroy_attr[] = {
 };
 
 static const enum index next_dump_attr[] = {
-	COMMON_FILE_PATH,
-	END,
+	DUMP_FILE_PATH,
 	ZERO,
 };
 
@@ -4294,6 +4297,27 @@ static const struct token token_list[] = {
 		.name = "user_id",
 		.help = "rule identifier is user-id",
 		.next = NEXT(next_dump_subcmd),
+		.call = parse_dump,
+	},
+	[DUMP_FILE_PATH] = {
+		.name = "{file path}",
+		.type = "STRING",
+		.help = "file path",
+		.next = NEXT(NEXT_ENTRY(DUMP_WRITE, DUMP_APPEND, END)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.dump.file)),
+		.call = parse_string0,
+		.comp = comp_none,
+	},
+	[DUMP_WRITE] = {
+		.name = "write",
+		.help = "open file in write mode (default)",
+		.next = NEXT(NEXT_ENTRY(END)),
+		.call = parse_dump,
+	},
+	[DUMP_APPEND] = {
+		.name = "append",
+		.help = "open file in append mode",
+		.next = NEXT(NEXT_ENTRY(END)),
 		.call = parse_dump,
 	},
 	/* Query arguments. */
@@ -10733,7 +10757,9 @@ parse_dump(struct context *ctx, const struct token *token,
 	switch (ctx->curr) {
 	case DUMP_ALL:
 	case DUMP_ONE:
-		out->args.dump.mode = (ctx->curr == DUMP_ALL) ? true : false;
+		out->args.dump.dump_all = (ctx->curr == DUMP_ALL) ? true : false;
+		/* don't append to file by default */
+		out->args.dump.append_to_file = false;
 		out->command = ctx->curr;
 		ctx->objdata = 0;
 		ctx->object = out;
@@ -10741,6 +10767,12 @@ parse_dump(struct context *ctx, const struct token *token,
 		return len;
 	case DUMP_IS_USER_ID:
 		out->args.dump.is_user_id = true;
+		return len;
+	case DUMP_WRITE:
+		out->args.dump.append_to_file = false;
+		return len;
+	case DUMP_APPEND:
+		out->args.dump.append_to_file = true;
 		return len;
 	default:
 		return -1;
@@ -13579,9 +13611,10 @@ cmd_flow_parsed(const struct buffer *in)
 		break;
 	case DUMP_ONE:
 	case DUMP_ALL:
-		port_flow_dump(in->port, in->args.dump.mode,
+		port_flow_dump(in->port, in->args.dump.dump_all,
 				in->args.dump.rule, in->args.dump.file,
-				in->args.dump.is_user_id);
+				in->args.dump.is_user_id,
+				in->args.dump.append_to_file);
 		break;
 	case QUERY:
 		port_flow_query(in->port, in->args.query.rule,

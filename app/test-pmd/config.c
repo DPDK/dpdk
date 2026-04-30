@@ -4162,7 +4162,7 @@ port_flow_flush(portid_t port_id)
 /** Dump flow rules. */
 int
 port_flow_dump(portid_t port_id, bool dump_all, uint64_t rule_id,
-		const char *file_name, bool is_user_id)
+		const char *file_name, bool is_user_id, bool append_to_file)
 {
 	int ret = 0;
 	FILE *file = stdout;
@@ -4198,7 +4198,7 @@ port_flow_dump(portid_t port_id, bool dump_all, uint64_t rule_id,
 	}
 
 	if (file_name && strlen(file_name)) {
-		file = fopen(file_name, "w");
+		file = fopen(file_name, append_to_file ? "a" : "w");
 		if (!file) {
 			fprintf(stderr, "Failed to create file %s: %s\n",
 				file_name, strerror(errno));
