@@ -1468,6 +1468,9 @@ static int ixgbe_fdir_filter_init(struct rte_eth_dev *eth_dev)
 	fdir_info->n_flows = 0;
 	fdir_info->mask_added = FALSE;
 
+	/* drop queue is always fixed */
+	IXGBE_DEV_FDIR_CONF(eth_dev)->drop_queue = IXGBE_FDIR_DROP_QUEUE;
+
 	return 0;
 }
 
