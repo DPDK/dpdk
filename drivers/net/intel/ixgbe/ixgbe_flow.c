@@ -2055,42 +2055,44 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 				item, "Not supported last point for range");
 			return -rte_errno;
 		}
-		/**
-		 * Only care about src & dst ports,
-		 * others should be masked.
-		 */
-		if (!item->mask) {
-			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by fdir filter");
-			return -rte_errno;
-		}
-		rule->b_mask = TRUE;
 		tcp_mask = item->mask;
-		if (tcp_mask->hdr.sent_seq ||
-		    tcp_mask->hdr.recv_ack ||
-		    tcp_mask->hdr.data_off ||
-		    tcp_mask->hdr.tcp_flags ||
-		    tcp_mask->hdr.rx_win ||
-		    tcp_mask->hdr.cksum ||
-		    tcp_mask->hdr.tcp_urp) {
+		if (tcp_mask != NULL) {
+			/**
+			 * Only care about src & dst ports,
+			 * others should be masked.
+			 */
+			rule->b_mask = TRUE;
+			if (tcp_mask->hdr.sent_seq ||
+			    tcp_mask->hdr.recv_ack ||
+			    tcp_mask->hdr.data_off ||
+			    tcp_mask->hdr.tcp_flags ||
+			    tcp_mask->hdr.rx_win ||
+			    tcp_mask->hdr.cksum ||
+			    tcp_mask->hdr.tcp_urp) {
+				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item, "Not supported by fdir filter");
+				return -rte_errno;
+			}
+			rule->mask.src_port_mask = tcp_mask->hdr.src_port;
+			rule->mask.dst_port_mask = tcp_mask->hdr.dst_port;
+
+			if (item->spec) {
+				rule->b_spec = TRUE;
+				tcp_spec = item->spec;
+				rule->ixgbe_fdir.formatted.src_port =
+					tcp_spec->hdr.src_port;
+				rule->ixgbe_fdir.formatted.dst_port =
+					tcp_spec->hdr.dst_port;
+			}
+		} else if (item->spec != NULL) {
+			/* No port mask means protocol-only match; spec is invalid. */
 			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
 				item, "Not supported by fdir filter");
 			return -rte_errno;
-		}
-		rule->mask.src_port_mask = tcp_mask->hdr.src_port;
-		rule->mask.dst_port_mask = tcp_mask->hdr.dst_port;
-
-		if (item->spec) {
-			rule->b_spec = TRUE;
-			tcp_spec = item->spec;
-			rule->ixgbe_fdir.formatted.src_port =
-				tcp_spec->hdr.src_port;
-			rule->ixgbe_fdir.formatted.dst_port =
-				tcp_spec->hdr.dst_port;
 		}
 
 		item = next_no_fuzzy_pattern(pattern, item);
@@ -2120,37 +2122,39 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 				item, "Not supported last point for range");
 			return -rte_errno;
 		}
-		/**
-		 * Only care about src & dst ports,
-		 * others should be masked.
-		 */
-		if (!item->mask) {
-			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by fdir filter");
-			return -rte_errno;
-		}
-		rule->b_mask = TRUE;
 		udp_mask = item->mask;
-		if (udp_mask->hdr.dgram_len ||
-		    udp_mask->hdr.dgram_cksum) {
+		if (udp_mask != NULL) {
+			/**
+			 * Only care about src & dst ports,
+			 * others should be masked.
+			 */
+			rule->b_mask = TRUE;
+			if (udp_mask->hdr.dgram_len ||
+			    udp_mask->hdr.dgram_cksum) {
+				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item, "Not supported by fdir filter");
+				return -rte_errno;
+			}
+			rule->mask.src_port_mask = udp_mask->hdr.src_port;
+			rule->mask.dst_port_mask = udp_mask->hdr.dst_port;
+
+			if (item->spec) {
+				rule->b_spec = TRUE;
+				udp_spec = item->spec;
+				rule->ixgbe_fdir.formatted.src_port =
+					udp_spec->hdr.src_port;
+				rule->ixgbe_fdir.formatted.dst_port =
+					udp_spec->hdr.dst_port;
+			}
+		} else if (item->spec != NULL) {
+			/* No port mask means protocol-only match; spec is invalid. */
 			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
 				item, "Not supported by fdir filter");
 			return -rte_errno;
-		}
-		rule->mask.src_port_mask = udp_mask->hdr.src_port;
-		rule->mask.dst_port_mask = udp_mask->hdr.dst_port;
-
-		if (item->spec) {
-			rule->b_spec = TRUE;
-			udp_spec = item->spec;
-			rule->ixgbe_fdir.formatted.src_port =
-				udp_spec->hdr.src_port;
-			rule->ixgbe_fdir.formatted.dst_port =
-				udp_spec->hdr.dst_port;
 		}
 
 		item = next_no_fuzzy_pattern(pattern, item);
