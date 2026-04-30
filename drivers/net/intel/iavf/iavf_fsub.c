@@ -57,7 +57,6 @@ static struct iavf_flow_parser iavf_fsub_parser;
 
 static struct
 iavf_pattern_match_item iavf_fsub_pattern_list[] = {
-	{iavf_pattern_raw,				IAVF_INSET_NONE,			IAVF_INSET_NONE},
 	{iavf_pattern_ethertype,			IAVF_SW_INSET_ETHER,			IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4,				IAVF_SW_INSET_MAC_IPV4,			IAVF_INSET_NONE},
 	{iavf_pattern_eth_vlan_ipv4,			IAVF_SW_INSET_MAC_VLAN_IPV4,		IAVF_INSET_NONE},
@@ -154,7 +153,6 @@ iavf_fsub_parse_pattern(const struct rte_flow_item pattern[],
 {
 	struct virtchnl_proto_hdrs *hdrs = &filter->sub_fltr.proto_hdrs;
 	enum rte_flow_item_type item_type;
-	const struct rte_flow_item_raw *raw_spec, *raw_mask;
 	const struct rte_flow_item_eth *eth_spec, *eth_mask;
 	const struct rte_flow_item_ipv4 *ipv4_spec, *ipv4_mask;
 	const struct rte_flow_item_ipv6 *ipv6_spec, *ipv6_mask;
@@ -166,7 +164,6 @@ iavf_fsub_parse_pattern(const struct rte_flow_item pattern[],
 	uint64_t outer_input_set = IAVF_INSET_NONE;
 	uint64_t *input = NULL;
 	uint16_t input_set_byte = 0;
-	uint8_t item_num = 0;
 	uint32_t layer = 0;
 
 	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
@@ -178,79 +175,7 @@ iavf_fsub_parse_pattern(const struct rte_flow_item pattern[],
 		}
 
 		item_type = item->type;
-		item_num++;
-
 		switch (item_type) {
-		case RTE_FLOW_ITEM_TYPE_RAW: {
-			raw_spec = item->spec;
-			raw_mask = item->mask;
-
-			if (!raw_spec || !raw_mask) {
-				PMD_DRV_LOG(ERR, "NULL RAW spec/mask");
-				rte_flow_error_set(error, EINVAL,
-						RTE_FLOW_ERROR_TYPE_ITEM,
-						item, "NULL RAW spec/mask");
-				return -rte_errno;
-			}
-
-			if (item_num != 1)
-				return -rte_errno;
-
-			if (raw_spec->length != raw_mask->length)
-				return -rte_errno;
-
-			uint16_t pkt_len = 0;
-			uint16_t tmp_val = 0;
-			uint8_t tmp = 0;
-			int i, j;
-
-			pkt_len = raw_spec->length;
-
-			for (i = 0, j = 0; i < pkt_len; i += 2, j++) {
-				tmp = raw_spec->pattern[i];
-				if (tmp >= 'a' && tmp <= 'f')
-					tmp_val = tmp - 'a' + 10;
-				if (tmp >= 'A' && tmp <= 'F')
-					tmp_val = tmp - 'A' + 10;
-				if (tmp >= '0' && tmp <= '9')
-					tmp_val = tmp - '0';
-
-				tmp_val *= 16;
-				tmp = raw_spec->pattern[i + 1];
-				if (tmp >= 'a' && tmp <= 'f')
-					tmp_val += (tmp - 'a' + 10);
-				if (tmp >= 'A' && tmp <= 'F')
-					tmp_val += (tmp - 'A' + 10);
-				if (tmp >= '0' && tmp <= '9')
-					tmp_val += (tmp - '0');
-
-				hdrs->raw.spec[j] = tmp_val;
-
-				tmp = raw_mask->pattern[i];
-				if (tmp >= 'a' && tmp <= 'f')
-					tmp_val = tmp - 'a' + 10;
-				if (tmp >= 'A' && tmp <= 'F')
-					tmp_val = tmp - 'A' + 10;
-				if (tmp >= '0' && tmp <= '9')
-					tmp_val = tmp - '0';
-
-				tmp_val *= 16;
-				tmp = raw_mask->pattern[i + 1];
-				if (tmp >= 'a' && tmp <= 'f')
-					tmp_val += (tmp - 'a' + 10);
-				if (tmp >= 'A' && tmp <= 'F')
-					tmp_val += (tmp - 'A' + 10);
-				if (tmp >= '0' && tmp <= '9')
-					tmp_val += (tmp - '0');
-
-				hdrs->raw.mask[j] = tmp_val;
-			}
-
-			hdrs->raw.pkt_len = pkt_len / 2;
-			hdrs->tunnel_level = 0;
-			hdrs->count = 0;
-			return 0;
-		}
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			eth_spec = item->spec;
 			eth_mask = item->mask;
