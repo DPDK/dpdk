@@ -79,8 +79,6 @@
 #define IXGBE_FDIRIP6M_INNER_MAC_SHIFT 4
 
 static int fdir_erase_filter_82599(struct ixgbe_hw *hw, uint32_t fdirhash);
-static int fdir_set_input_mask(struct rte_eth_dev *dev,
-			       const struct rte_eth_fdir_masks *input_mask);
 static int fdir_set_input_mask_82599(struct rte_eth_dev *dev);
 static int fdir_set_input_mask_x550(struct rte_eth_dev *dev);
 static int ixgbe_set_fdir_flex_conf(struct rte_eth_dev *dev,
@@ -266,14 +264,8 @@ fdir_set_input_mask_82599(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	/*
-	 * Program the relevant mask registers.  If src/dst_port or src/dst_addr
-	 * are zero, then assume a full mask for that field. Also assume that
-	 * a VLAN of 0 is unspecified, so mask that out as well.  L4type
-	 * cannot be masked out in this implementation.
-	 */
-	if (info->mask.dst_port_mask == 0 && info->mask.src_port_mask == 0)
-		/* use the L4 protocol mask for raw IPv4/IPv6 traffic */
+	if (!info->mask.l4_proto_match)
+		/* set L4P to ignore L4 protocol for IP traffic */
 		fdirm |= IXGBE_FDIRM_L4P;
 
 	if (info->mask.vlan_tci_mask == rte_cpu_to_be_16(0x0FFF))
@@ -306,7 +298,12 @@ fdir_set_input_mask_82599(struct rte_eth_dev *dev)
 	 */
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRTCPM, ~fdirtcpm);
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRUDPM, ~fdirtcpm);
-	IXGBE_WRITE_REG(hw, IXGBE_FDIRSCTPM, ~fdirtcpm);
+	/* only certain MAC types have SCTP masking register */
+	if (hw->mac.type == ixgbe_mac_X550 ||
+			hw->mac.type == ixgbe_mac_X550EM_x ||
+			hw->mac.type == ixgbe_mac_X550EM_a ||
+			hw->mac.type == ixgbe_mac_E610)
+		IXGBE_WRITE_REG(hw, IXGBE_FDIRSCTPM, ~fdirtcpm);
 
 	/* Store source and destination IPv4 masks (big-endian),
 	 * can not use IXGBE_WRITE_REG.
@@ -425,62 +422,6 @@ fdir_set_input_mask_x550(struct rte_eth_dev *dev)
 	return IXGBE_SUCCESS;
 }
 
-static int
-ixgbe_fdir_store_input_mask_82599(struct rte_eth_dev *dev,
-				  const struct rte_eth_fdir_masks *input_mask)
-{
-	struct ixgbe_hw_fdir_info *info =
-		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
-	uint16_t dst_ipv6m = 0;
-	uint16_t src_ipv6m = 0;
-
-	memset(&info->mask, 0, sizeof(struct ixgbe_hw_fdir_mask));
-	info->mask.vlan_tci_mask = input_mask->vlan_tci_mask;
-	info->mask.src_port_mask = input_mask->src_port_mask;
-	info->mask.dst_port_mask = input_mask->dst_port_mask;
-	info->mask.src_ipv4_mask = input_mask->ipv4_mask.src_ip;
-	info->mask.dst_ipv4_mask = input_mask->ipv4_mask.dst_ip;
-	IPV6_ADDR_TO_MASK(input_mask->ipv6_mask.src_ip, src_ipv6m);
-	IPV6_ADDR_TO_MASK(input_mask->ipv6_mask.dst_ip, dst_ipv6m);
-	info->mask.src_ipv6_mask = src_ipv6m;
-	info->mask.dst_ipv6_mask = dst_ipv6m;
-
-	return IXGBE_SUCCESS;
-}
-
-static int
-ixgbe_fdir_store_input_mask_x550(struct rte_eth_dev *dev,
-				 const struct rte_eth_fdir_masks *input_mask)
-{
-	struct ixgbe_hw_fdir_info *info =
-		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
-
-	memset(&info->mask, 0, sizeof(struct ixgbe_hw_fdir_mask));
-	info->mask.vlan_tci_mask = input_mask->vlan_tci_mask;
-	info->mask.mac_addr_byte_mask = input_mask->mac_addr_byte_mask;
-	info->mask.tunnel_type_mask = input_mask->tunnel_type_mask;
-	info->mask.tunnel_id_mask = input_mask->tunnel_id_mask;
-
-	return IXGBE_SUCCESS;
-}
-
-static int
-ixgbe_fdir_store_input_mask(struct rte_eth_dev *dev,
-			    const struct rte_eth_fdir_masks *input_mask)
-{
-	enum rte_fdir_mode mode = IXGBE_DEV_FDIR_CONF(dev)->mode;
-
-	if (mode >= RTE_FDIR_MODE_SIGNATURE &&
-	    mode <= RTE_FDIR_MODE_PERFECT)
-		return ixgbe_fdir_store_input_mask_82599(dev, input_mask);
-	else if (mode >= RTE_FDIR_MODE_PERFECT_MAC_VLAN &&
-		 mode <= RTE_FDIR_MODE_PERFECT_TUNNEL)
-		return ixgbe_fdir_store_input_mask_x550(dev, input_mask);
-
-	PMD_DRV_LOG(ERR, "Not supported fdir mode - %d!", mode);
-	return -ENOTSUP;
-}
-
 int
 ixgbe_fdir_set_input_mask(struct rte_eth_dev *dev)
 {
@@ -549,19 +490,6 @@ ixgbe_fdir_set_flexbytes_offset(struct rte_eth_dev *dev,
 	fdir_info->flex_bytes_offset = offset;
 
 	return 0;
-}
-
-static int
-fdir_set_input_mask(struct rte_eth_dev *dev,
-		    const struct rte_eth_fdir_masks *input_mask)
-{
-	int ret;
-
-	ret = ixgbe_fdir_store_input_mask(dev, input_mask);
-	if (ret)
-		return ret;
-
-	return ixgbe_fdir_set_input_mask(dev);
 }
 
 /*
@@ -681,7 +609,7 @@ ixgbe_fdir_configure(struct rte_eth_dev *dev)
 	for (i = 1; i < 8; i++)
 		IXGBE_WRITE_REG(hw, IXGBE_RXPBSIZE(i), 0);
 
-	err = fdir_set_input_mask(dev, &IXGBE_DEV_FDIR_CONF(dev)->mask);
+	err = ixgbe_fdir_set_input_mask(dev);
 	if (err < 0) {
 		PMD_INIT_LOG(ERR, " Error on setting FD mask");
 		return err;
