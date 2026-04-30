@@ -805,7 +805,9 @@ iavf_flow_engine iavf_fsub_engine = {
 	.create = iavf_fsub_create,
 	.destroy = iavf_fsub_destroy,
 	.validation = iavf_fsub_validation,
+	.name = "fsub",
 	.type = IAVF_FLOW_ENGINE_FSUB,
+	.rule_size = sizeof(struct iavf_fsub_conf),
 };
 
 static struct

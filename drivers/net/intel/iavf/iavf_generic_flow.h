@@ -495,7 +495,9 @@ struct iavf_flow_engine {
 	engine_destroy_t destroy;
 	engine_query_t query_count;
 	engine_free_t free;
+	const char *name;
 	enum iavf_flow_engine_type type;
+	size_t rule_size;
 };
 
 TAILQ_HEAD(iavf_engine_list, iavf_flow_engine);

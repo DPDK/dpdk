@@ -17,6 +17,7 @@
 
 #include "iavf.h"
 #include "iavf_generic_flow.h"
+#include <rte_hexdump.h>
 
 static struct iavf_engine_list engine_list =
 		TAILQ_HEAD_INITIALIZER(engine_list);
@@ -39,6 +40,10 @@ static int iavf_flow_query(struct rte_eth_dev *dev,
 		const struct rte_flow_action *actions,
 		void *data,
 		struct rte_flow_error *error);
+static int iavf_flow_dev_dump(struct rte_eth_dev *dev,
+		struct rte_flow *flow,
+		FILE *file,
+		struct rte_flow_error *error);
 
 const struct rte_flow_ops iavf_flow_ops = {
 	.validate = iavf_flow_validate,
@@ -46,6 +51,7 @@ const struct rte_flow_ops iavf_flow_ops = {
 	.destroy = iavf_flow_destroy,
 	.flush = iavf_flow_flush,
 	.query = iavf_flow_query,
+	.dev_dump = iavf_flow_dev_dump,
 };
 
 /* raw */
@@ -2417,4 +2423,75 @@ iavf_flow_query(struct rte_eth_dev *dev,
 		}
 	}
 	return ret;
+}
+
+#define IAVF_FLOW_DUMP_CHUNK_BYTES 32
+
+static void
+iavf_flow_dump_blob(FILE *file, const char *engine,
+		    const void *data, size_t data_len)
+{
+	const uint8_t *raw = (const uint8_t *)data;
+	const size_t nchunks =
+		(data_len + IAVF_FLOW_DUMP_CHUNK_BYTES - 1) /
+		IAVF_FLOW_DUMP_CHUNK_BYTES;
+	char title[64];
+	size_t ci;
+
+	fprintf(file, "FLOW DUMP: driver=iavf engine=%s\n", engine);
+	fprintf(file, "FLOW DUMP: DATA size=%zu chunks=%zu chunk_bytes=%d\n",
+		data_len, nchunks, IAVF_FLOW_DUMP_CHUNK_BYTES);
+
+	for (ci = 0; ci < nchunks; ci++) {
+		const size_t off = ci * IAVF_FLOW_DUMP_CHUNK_BYTES;
+		const size_t clen =
+			RTE_MIN((size_t)IAVF_FLOW_DUMP_CHUNK_BYTES,
+				data_len - off);
+		snprintf(title, sizeof(title), "FLOW DUMP: chunk %03zu/%03zu",
+			 ci + 1, nchunks);
+		rte_memdump(file, title, raw + off, clen);
+	}
+}
+
+static int
+iavf_flow_dev_dump(struct rte_eth_dev *dev,
+		   struct rte_flow *flow,
+		   FILE *file,
+		   struct rte_flow_error *error)
+{
+	struct iavf_adapter *ad =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
+	struct rte_flow *f;
+	bool found = false;
+
+	rte_spinlock_lock(&vf->flow_ops_lock);
+	TAILQ_FOREACH(f, &vf->flow_list, node) {
+		size_t rule_size = 0;
+		const void *rule_data = NULL;
+
+		if (flow != NULL && f != flow)
+			continue;
+
+		found = true;
+		if (f->engine != NULL) {
+			rule_size = f->engine->rule_size;
+			if (f->rule != NULL)
+				rule_data = f->rule;
+		}
+
+		if (f->engine != NULL)
+			iavf_flow_dump_blob(file,
+				f->engine->name != NULL ?
+					f->engine->name : "unknown",
+				rule_data, rule_size);
+	}
+	rte_spinlock_unlock(&vf->flow_ops_lock);
+
+	if (flow != NULL && !found)
+		return rte_flow_error_set(error, ENOENT,
+			RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+			"Flow not found");
+
+	return 0;
 }

@@ -437,7 +437,9 @@ static struct iavf_flow_engine iavf_fdir_engine = {
 	.create = iavf_fdir_create,
 	.destroy = iavf_fdir_destroy,
 	.validation = iavf_fdir_validation,
+	.name = "fdir",
 	.type = IAVF_FLOW_ENGINE_FDIR,
+	.rule_size = sizeof(struct iavf_fdir_conf),
 };
 
 static int
