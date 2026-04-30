@@ -589,7 +589,9 @@ static struct ice_flow_engine ice_hash_engine = {
 	.destroy = ice_hash_destroy,
 	.uninit = ice_hash_uninit,
 	.free = ice_hash_free,
+	.name = "hash",
 	.type = ICE_FLOW_ENGINE_HASH,
+	.rule_size = sizeof(struct ice_hash_flow_cfg),
 };
 
 /* Register parser for os package. */

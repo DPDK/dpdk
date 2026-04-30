@@ -539,7 +539,9 @@ struct ice_flow_engine {
 	engine_query_t query_count;
 	engine_redirect_t redirect;
 	engine_free_t free;
+	const char *name;
 	enum ice_flow_engine_type type;
+	size_t rule_size;
 };
 TAILQ_HEAD(ice_engine_list, ice_flow_engine);
 

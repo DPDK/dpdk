@@ -2070,7 +2070,9 @@ ice_flow_engine ice_switch_engine = {
 	.query_count = ice_switch_query,
 	.redirect = ice_switch_redirect,
 	.free = ice_switch_filter_rule_free,
+	.name = "switch",
 	.type = ICE_FLOW_ENGINE_SWITCH,
+	.rule_size = sizeof(struct ice_switch_filter_conf),
 };
 
 struct

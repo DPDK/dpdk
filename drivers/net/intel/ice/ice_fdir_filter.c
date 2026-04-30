@@ -1688,7 +1688,9 @@ static struct ice_flow_engine ice_fdir_engine = {
 	.create = ice_fdir_create_filter,
 	.destroy = ice_fdir_destroy_filter,
 	.query_count = ice_fdir_query_count,
+	.name = "fdir",
 	.type = ICE_FLOW_ENGINE_FDIR,
+	.rule_size = sizeof(struct ice_fdir_filter_conf),
 };
 
 static int
