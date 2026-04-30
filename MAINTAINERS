@@ -673,6 +673,7 @@ Linux AF_PACKET
 M: Stephen Hemminger <stephen@networkplumber.org>
 F: drivers/net/af_packet/
 F: doc/guides/nics/features/afpacket.ini
+F: app/test/test_pmd_af_packet.c
 
 Linux AF_XDP
 M: Ciara Loftus <ciara.loftus@intel.com>
