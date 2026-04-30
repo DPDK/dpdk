@@ -13,6 +13,7 @@
 
 #include <rte_ether.h>
 #include <ethdev_driver.h>
+#include <rte_hexdump.h>
 #include <rte_malloc.h>
 #include <rte_tailq.h>
 
@@ -46,6 +47,10 @@ static int ice_flow_query(struct rte_eth_dev *dev,
 		const struct rte_flow_action *actions,
 		void *data,
 		struct rte_flow_error *error);
+static int ice_flow_dev_dump(struct rte_eth_dev *dev,
+		struct rte_flow *flow,
+		FILE *file,
+		struct rte_flow_error *error);
 
 const struct rte_flow_ops ice_flow_ops = {
 	.validate = ice_flow_validate,
@@ -53,6 +58,7 @@ const struct rte_flow_ops ice_flow_ops = {
 	.destroy = ice_flow_destroy,
 	.flush = ice_flow_flush,
 	.query = ice_flow_query,
+	.dev_dump = ice_flow_dev_dump,
 };
 
 /* empty */
@@ -2647,6 +2653,77 @@ ice_flow_query(struct rte_eth_dev *dev,
 out:
 	rte_spinlock_unlock(&pf->flow_ops_lock);
 	return ret;
+}
+
+#define ICE_FLOW_DUMP_CHUNK_BYTES 32
+
+static void
+ice_flow_dump_blob(FILE *file, const char *engine,
+		   const void *data, size_t data_len)
+{
+	const uint8_t *raw = (const uint8_t *)data;
+	const size_t nchunks =
+		(data_len + ICE_FLOW_DUMP_CHUNK_BYTES - 1) /
+		ICE_FLOW_DUMP_CHUNK_BYTES;
+	char title[64];
+	size_t ci;
+
+	fprintf(file, "FLOW DUMP: driver=ice engine=%s\n", engine);
+	fprintf(file, "FLOW DUMP: DATA size=%zu chunks=%zu chunk_bytes=%d\n",
+		data_len, nchunks, ICE_FLOW_DUMP_CHUNK_BYTES);
+
+	for (ci = 0; ci < nchunks; ci++) {
+		const size_t off = ci * ICE_FLOW_DUMP_CHUNK_BYTES;
+		const size_t clen =
+			RTE_MIN((size_t)ICE_FLOW_DUMP_CHUNK_BYTES, data_len - off);
+
+		snprintf(title, sizeof(title), "FLOW DUMP: chunk %03zu/%03zu",
+			 ci + 1, nchunks);
+		rte_memdump(file, title, raw + off, clen);
+	}
+}
+
+static int
+ice_flow_dev_dump(struct rte_eth_dev *dev,
+		  struct rte_flow *flow,
+		  FILE *file,
+		  struct rte_flow_error *error)
+{
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct ice_pf *pf = &ad->pf;
+	struct rte_flow *p_flow;
+	bool found = false;
+
+	rte_spinlock_lock(&pf->flow_ops_lock);
+	TAILQ_FOREACH(p_flow, &pf->flow_list, node) {
+		size_t rule_size = 0;
+		const void *rule_data = NULL;
+
+		if (flow != NULL && p_flow != flow)
+			continue;
+
+		found = true;
+		if (p_flow->engine != NULL) {
+			rule_size = p_flow->engine->rule_size;
+			if (p_flow->rule != NULL)
+				rule_data = p_flow->rule;
+		}
+
+		if (p_flow->engine != NULL)
+			ice_flow_dump_blob(file,
+				p_flow->engine->name != NULL ?
+				p_flow->engine->name : "unknown",
+				rule_data, rule_size);
+	}
+	rte_spinlock_unlock(&pf->flow_ops_lock);
+
+	if (flow != NULL && !found)
+		return rte_flow_error_set(error, ENOENT,
+			RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+			"Flow not found");
+
+	return 0;
 }
 
 int
