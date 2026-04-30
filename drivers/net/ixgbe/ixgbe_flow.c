@@ -3420,11 +3420,16 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 			sizeof(struct ixgbe_fdir_rule));
 		ret = ixgbe_fdir_filter_program(dev, &fdir_rule, TRUE, FALSE);
 		if (!ret) {
+			struct rte_eth_fdir_conf *fdir_conf = IXGBE_DEV_FDIR_CONF(dev);
 			TAILQ_REMOVE(&filter_fdir_list,
 				fdir_rule_ptr, entries);
 			rte_free(fdir_rule_ptr);
-			if (TAILQ_EMPTY(&filter_fdir_list))
+			if (TAILQ_EMPTY(&filter_fdir_list)) {
 				fdir_info->mask_added = false;
+				fdir_info->mask = (struct ixgbe_hw_fdir_mask){0};
+				fdir_info->flex_bytes_offset = 0;
+				fdir_conf->mode = RTE_FDIR_MODE_NONE;
+			}
 		}
 		break;
 	case RTE_ETH_FILTER_L2_TUNNEL:
