@@ -2838,7 +2838,6 @@ ixgbe_parse_fdir_filter(struct rte_eth_dev *dev,
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_adapter *adapter = IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct rte_eth_fdir_conf *fdir_conf = IXGBE_DEV_FDIR_CONF(dev);
-	fdir_conf->drop_queue = IXGBE_FDIR_DROP_QUEUE;
 
 	if (hw->mac.type != ixgbe_mac_82599EB &&
 		hw->mac.type != ixgbe_mac_X540 &&
@@ -2863,12 +2862,15 @@ ixgbe_parse_fdir_filter(struct rte_eth_dev *dev,
 step_next:
 
 	if (fdir_conf->mode == RTE_FDIR_MODE_NONE) {
-		fdir_conf->mode = rule->mode;
-		ret = ixgbe_fdir_configure(adapter);
+		struct rte_eth_fdir_conf fc = *fdir_conf;
+
+		fc.mode = rule->mode;
+		ret = ixgbe_fdir_configure(adapter, &fc, &rule->mask);
 		if (ret) {
 			fdir_conf->mode = RTE_FDIR_MODE_NONE;
 			return ret;
 		}
+		fdir_conf->mode = rule->mode;
 	} else if (fdir_conf->mode != rule->mode) {
 		return -ENOTSUP;
 	}
@@ -3167,19 +3169,25 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 		/* A mask cannot be deleted. */
 		if (fdir_rule.b_mask) {
 			if (!fdir_info->mask_added) {
-				/* It's the first time the mask is set. */
-				*&fdir_info->mask = *&fdir_rule.mask;
+				bool flex_byte_offset_changed =
+					fdir_info->flex_bytes_offset !=
+					fdir_rule.flex_bytes_offset;
 
-				if (fdir_rule.mask.flex_bytes_mask) {
+				if (fdir_rule.mask.flex_bytes_mask &&
+				    flex_byte_offset_changed) {
 					ret = ixgbe_fdir_set_flexbytes_offset(adapter,
 						fdir_rule.flex_bytes_offset);
 					if (ret)
 						goto out;
 				}
-				ret = ixgbe_fdir_set_input_mask(adapter);
+				ret = ixgbe_fdir_set_input_mask(adapter,
+						&fdir_rule.mask, fdir_rule.mode);
 				if (ret)
 					goto out;
 
+				fdir_info->mask = fdir_rule.mask;
+				fdir_info->flex_bytes_offset =
+					fdir_rule.flex_bytes_offset;
 				fdir_info->mask_added = TRUE;
 				first_mask = TRUE;
 			} else {
@@ -3201,8 +3209,10 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 		}
 
 		if (fdir_rule.b_spec) {
-			ret = ixgbe_fdir_filter_program(adapter, &fdir_rule,
-					FALSE, FALSE);
+			struct rte_eth_fdir_conf *fdir_conf = IXGBE_DEV_FDIR_CONF(dev);
+
+			ret = ixgbe_fdir_filter_program(adapter, fdir_conf,
+					&fdir_rule, FALSE, FALSE);
 			if (!ret) {
 				fdir_rule_ptr = rte_zmalloc("ixgbe_fdir_filter",
 					sizeof(struct ixgbe_fdir_rule_ele), 0);
@@ -3374,6 +3384,7 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 	struct ixgbe_filter_ele_base *flow_mem_base;
 	struct ixgbe_hw_fdir_info *fdir_info =
 		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(adapter);
+	struct rte_eth_fdir_conf *fdir_conf = IXGBE_DEV_FDIR_CONF(dev);
 	struct ixgbe_rss_conf_ele *rss_filter_ptr;
 
 	/* Validate ownership before touching HW/SW state. */
@@ -3433,9 +3444,8 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 		rte_memcpy(&fdir_rule,
 			&fdir_rule_ptr->filter_info,
 			sizeof(struct ixgbe_fdir_rule));
-		ret = ixgbe_fdir_filter_program(adapter, &fdir_rule, TRUE, FALSE);
+		ret = ixgbe_fdir_filter_program(adapter, fdir_conf, &fdir_rule, TRUE, FALSE);
 		if (!ret) {
-			struct rte_eth_fdir_conf *fdir_conf = IXGBE_DEV_FDIR_CONF(dev);
 			rte_free(fdir_rule_ptr);
 			if (fdir_info->n_flows > 0 && --(fdir_info->n_flows) == 0) {
 				fdir_info->mask_added = false;
