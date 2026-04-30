@@ -2125,57 +2125,55 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 			return -rte_errno;
 		}
 
-		/* only some mac types support sctp port */
-		if (hw->mac.type == ixgbe_mac_X550 ||
-		    hw->mac.type == ixgbe_mac_X550EM_x ||
-		    hw->mac.type == ixgbe_mac_X550EM_a ||
-		    hw->mac.type == ixgbe_mac_E610) {
-			/**
-			 * Only care about src & dst ports,
-			 * others should be masked.
-			 */
-			if (!item->mask) {
-				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
-				rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ITEM,
-					item, "Not supported by fdir filter");
-				return -rte_errno;
-			}
-			rule->b_mask = TRUE;
-			sctp_mask = item->mask;
-			if (sctp_mask->hdr.tag ||
-				sctp_mask->hdr.cksum) {
-				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
-				rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ITEM,
-					item, "Not supported by fdir filter");
-				return -rte_errno;
-			}
-			rule->mask.src_port_mask = sctp_mask->hdr.src_port;
-			rule->mask.dst_port_mask = sctp_mask->hdr.dst_port;
+		sctp_mask = item->mask;
+		if (sctp_mask != NULL) {
+			/* only some mac types support sctp port masking */
+			if (hw->mac.type == ixgbe_mac_X550 ||
+			    hw->mac.type == ixgbe_mac_X550EM_x ||
+			    hw->mac.type == ixgbe_mac_X550EM_a ||
+			    hw->mac.type == ixgbe_mac_E610) {
+				/**
+				 * Only care about src & dst ports,
+				 * others should be masked.
+				 */
+				rule->b_mask = TRUE;
+				if (sctp_mask->hdr.tag ||
+				    sctp_mask->hdr.cksum) {
+					memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item, "Not supported by fdir filter");
+					return -rte_errno;
+				}
+				rule->mask.src_port_mask = sctp_mask->hdr.src_port;
+				rule->mask.dst_port_mask = sctp_mask->hdr.dst_port;
 
-			if (item->spec) {
-				rule->b_spec = TRUE;
-				sctp_spec = item->spec;
-				rule->ixgbe_fdir.formatted.src_port =
-					sctp_spec->hdr.src_port;
-				rule->ixgbe_fdir.formatted.dst_port =
-					sctp_spec->hdr.dst_port;
-			}
-		/* others even sctp port is not supported */
-		} else {
-			sctp_mask = item->mask;
-			if (sctp_mask &&
-				(sctp_mask->hdr.src_port ||
-				 sctp_mask->hdr.dst_port ||
-				 sctp_mask->hdr.tag ||
-				 sctp_mask->hdr.cksum)) {
+				if (item->spec) {
+					rule->b_spec = TRUE;
+					sctp_spec = item->spec;
+					rule->ixgbe_fdir.formatted.src_port =
+						sctp_spec->hdr.src_port;
+					rule->ixgbe_fdir.formatted.dst_port =
+						sctp_spec->hdr.dst_port;
+				}
+			/* others even sctp port masking is not supported */
+			} else if (sctp_mask->hdr.src_port ||
+				   sctp_mask->hdr.dst_port ||
+				   sctp_mask->hdr.tag ||
+				   sctp_mask->hdr.cksum) {
 				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM,
 					item, "Not supported by fdir filter");
 				return -rte_errno;
 			}
+		} else if (item->spec != NULL) {
+			/* No port mask means protocol-only match; spec is invalid. */
+			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by fdir filter");
+			return -rte_errno;
 		}
 
 		item = next_no_fuzzy_pattern(pattern, item);
