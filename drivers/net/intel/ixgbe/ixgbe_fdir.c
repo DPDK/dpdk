@@ -1358,6 +1358,7 @@ ixgbe_fdir_filter_restore(struct rte_eth_dev *dev)
 int
 ixgbe_clear_all_fdir_filter(struct rte_eth_dev *dev)
 {
+	struct rte_eth_fdir_conf *fdir_conf = IXGBE_DEV_FDIR_CONF(dev);
 	struct ixgbe_hw_fdir_info *fdir_info =
 		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
 	struct ixgbe_fdir_filter *fdir_filter;
@@ -1375,6 +1376,12 @@ ixgbe_clear_all_fdir_filter(struct rte_eth_dev *dev)
 			     entries);
 		rte_free(fdir_filter);
 	}
+
+	/* reset internal FDIR state */
+	fdir_info->mask = (struct ixgbe_hw_fdir_mask){0};
+	fdir_info->flex_bytes_offset = 0;
+	fdir_info->mask_added = FALSE;
+	fdir_conf->mode = RTE_FDIR_MODE_NONE;
 
 	if (filter_flag != NULL)
 		ret = ixgbe_fdir_flush(dev);
