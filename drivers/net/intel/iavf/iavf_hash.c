@@ -682,7 +682,9 @@ static struct iavf_flow_engine iavf_hash_engine = {
 	.destroy = iavf_hash_destroy,
 	.uninit = iavf_hash_uninit_parser,
 	.free = iavf_hash_free,
+	.name = "hash",
 	.type = IAVF_FLOW_ENGINE_HASH,
+	.rule_size = sizeof(struct virtchnl_rss_cfg),
 };
 
 /* Register parser for comms package. */
