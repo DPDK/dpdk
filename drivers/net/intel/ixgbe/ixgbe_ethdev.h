@@ -455,6 +455,19 @@ struct ixgbe_tm_conf {
 	bool committed;
 };
 
+struct ixgbe_filter_ele_base;
+TAILQ_HEAD(ixgbe_filter_ele_list, ixgbe_filter_ele_base);
+
+struct ixgbe_flow_lists {
+	struct ixgbe_filter_ele_list ntuple_list;
+	struct ixgbe_filter_ele_list ethertype_list;
+	struct ixgbe_filter_ele_list syn_list;
+	struct ixgbe_filter_ele_list fdir_list;
+	struct ixgbe_filter_ele_list l2_tunnel_list;
+	struct ixgbe_filter_ele_list rss_list;
+	struct ixgbe_filter_ele_list flow_list;
+};
+
 /*
  * Structure to store private data for each driver instance (for each port).
  */
@@ -476,6 +489,7 @@ struct ixgbe_adapter {
 	struct ixgbe_bypass_info    bps;
 #endif /* RTE_LIBRTE_IXGBE_BYPASS */
 	struct ixgbe_filter_info    filter;
+	struct ixgbe_flow_lists     flow_lists;
 	struct ixgbe_l2_tn_info     l2_tn;
 	struct ixgbe_bw_conf        bw_conf;
 	struct ixgbe_ipsec          ipsec;
@@ -559,6 +573,9 @@ uint16_t ixgbe_vf_representor_tx_burst(void *tx_queue, struct rte_mbuf **tx_pkts
 
 #define IXGBE_DEV_PRIVATE_TO_FILTER_INFO(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->filter)
+
+#define IXGBE_DEV_PRIVATE_TO_FLOW_LISTS(adapter) \
+	(&((struct ixgbe_adapter *)adapter)->flow_lists)
 
 #define IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->l2_tn)
@@ -690,8 +707,8 @@ ixgbe_dev_l2_tunnel_filter_add(struct rte_eth_dev *dev,
 int
 ixgbe_dev_l2_tunnel_filter_del(struct rte_eth_dev *dev,
 			       struct ixgbe_l2_tunnel_conf *l2_tunnel);
-void ixgbe_filterlist_init(void);
-void ixgbe_filterlist_flush(void);
+void ixgbe_filterlist_init(struct rte_eth_dev *dev);
+void ixgbe_filterlist_flush(struct rte_eth_dev *dev);
 /*
  * Flow director function prototypes
  */
