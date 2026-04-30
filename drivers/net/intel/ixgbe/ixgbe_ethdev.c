@@ -2724,7 +2724,9 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	ixgbe_configure_dcb(dev);
 
 	if (fdir_conf->mode != RTE_FDIR_MODE_NONE) {
-		err = ixgbe_fdir_configure(adapter);
+		struct ixgbe_hw_fdir_info *info =
+			IXGBE_DEV_PRIVATE_TO_FDIR_INFO(adapter);
+		err = ixgbe_fdir_configure(adapter, fdir_conf, &info->mask);
 		if (err)
 			goto error;
 	}

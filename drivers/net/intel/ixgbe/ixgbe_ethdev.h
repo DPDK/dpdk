@@ -705,13 +705,18 @@ void ixgbe_filterlist_flush(struct rte_eth_dev *dev);
 /*
  * Flow director function prototypes
  */
-int ixgbe_fdir_configure(struct ixgbe_adapter *adapter);
-int ixgbe_fdir_set_input_mask(struct ixgbe_adapter *adapter);
+int ixgbe_fdir_configure(struct ixgbe_adapter *adapter,
+			 const struct rte_eth_fdir_conf *fdir_conf,
+			 const struct ixgbe_hw_fdir_mask *fdir_mask);
+int ixgbe_fdir_set_input_mask(struct ixgbe_adapter *adapter,
+			      const struct ixgbe_hw_fdir_mask *mask,
+			      enum rte_fdir_mode mode);
 int ixgbe_fdir_set_flexbytes_offset(struct ixgbe_adapter *adapter,
 				    uint16_t offset);
 int ixgbe_fdir_filter_program(struct ixgbe_adapter *adapter,
-			      struct ixgbe_fdir_rule *rule,
-			      bool del, bool update);
+		struct rte_eth_fdir_conf *fdir_conf,
+		struct ixgbe_fdir_rule *rule,
+		bool del, bool update);
 void ixgbe_fdir_info_get(struct rte_eth_dev *dev,
 			 struct rte_eth_fdir_info *fdir_info);
 void ixgbe_fdir_stats_get(struct rte_eth_dev *dev,
