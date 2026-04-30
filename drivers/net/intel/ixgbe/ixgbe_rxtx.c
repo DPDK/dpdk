@@ -6132,7 +6132,7 @@ ixgbe_action_rss_same(const struct rte_flow_action_rss *comp,
 }
 
 int
-ixgbe_config_rss_filter(struct rte_eth_dev *dev,
+ixgbe_config_rss_filter(struct ixgbe_adapter *adapter,
 		struct ixgbe_rte_flow_rss_conf *conf, bool add)
 {
 	struct ixgbe_hw *hw;
@@ -6148,17 +6148,17 @@ ixgbe_config_rss_filter(struct rte_eth_dev *dev,
 		.rss_hf = conf->conf.types,
 	};
 	struct ixgbe_filter_info *filter_info =
-		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(adapter);
 
 	PMD_INIT_FUNC_TRACE();
-	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = IXGBE_DEV_PRIVATE_TO_HW(adapter);
 
 	sp_reta_size = ixgbe_reta_size_get(hw->mac.type);
 
 	if (!add) {
 		if (ixgbe_action_rss_same(&filter_info->rss_info.conf,
 					  &conf->conf)) {
-			ixgbe_rss_disable(dev);
+			ixgbe_mrqc_rss_remove(hw);
 			memset(&filter_info->rss_info, 0,
 				sizeof(struct ixgbe_rte_flow_rss_conf));
 			return 0;
@@ -6188,7 +6188,7 @@ ixgbe_config_rss_filter(struct rte_eth_dev *dev,
 	 * the RSS hash of input packets.
 	 */
 	if ((rss_conf.rss_hf & IXGBE_RSS_OFFLOAD_ALL) == 0) {
-		ixgbe_rss_disable(dev);
+		ixgbe_mrqc_rss_remove(hw);
 		return 0;
 	}
 	if (rss_conf.rss_key == NULL)
