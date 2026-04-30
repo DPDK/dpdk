@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdint.h>
+#include <stddef.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
@@ -29,6 +30,7 @@
 #include <dev_driver.h>
 #include <rte_hash_crc.h>
 #include <rte_flow.h>
+#include <rte_hexdump.h>
 #include <rte_flow_driver.h>
 
 #include "ixgbe_logs.h"
@@ -3581,9 +3583,148 @@ ixgbe_flow_flush(struct rte_eth_dev *dev,
 	return 0;
 }
 
+#define IXGBE_FLOW_DUMP_CHUNK_BYTES 32
+
+static const char *
+ixgbe_flow_rule_engine_name(const struct rte_flow *flow)
+{
+	if (flow->is_security)
+		return "security";
+
+	switch (flow->filter_type) {
+	case RTE_ETH_FILTER_NTUPLE:
+		return "ntuple";
+	case RTE_ETH_FILTER_ETHERTYPE:
+		return "ethertype";
+	case RTE_ETH_FILTER_SYN:
+		return "syn";
+	case RTE_ETH_FILTER_FDIR:
+		return "fdir";
+	case RTE_ETH_FILTER_L2_TUNNEL:
+		return "l2_tunnel";
+	case RTE_ETH_FILTER_HASH:
+		return "hash";
+	default:
+		return "unknown";
+	}
+}
+
+static size_t
+ixgbe_flow_rule_size(const struct rte_flow *flow)
+{
+	if (flow->is_security)
+		return 0;
+
+	switch (flow->filter_type) {
+	case RTE_ETH_FILTER_NTUPLE:
+		return sizeof(struct rte_eth_ntuple_filter);
+	case RTE_ETH_FILTER_ETHERTYPE:
+		return sizeof(struct rte_eth_ethertype_filter);
+	case RTE_ETH_FILTER_SYN:
+		return sizeof(struct rte_eth_syn_filter);
+	case RTE_ETH_FILTER_FDIR:
+		return sizeof(struct ixgbe_fdir_rule);
+	case RTE_ETH_FILTER_L2_TUNNEL:
+		return sizeof(struct ixgbe_l2_tunnel_conf);
+	case RTE_ETH_FILTER_HASH:
+		return sizeof(struct ixgbe_rte_flow_rss_conf);
+	default:
+		return 0;
+	}
+}
+
+static const void *
+ixgbe_flow_rule_data(const struct rte_flow *flow)
+{
+	if (flow->is_security || flow->rule == NULL)
+		return NULL;
+
+	switch (flow->filter_type) {
+	case RTE_ETH_FILTER_NTUPLE:
+		return RTE_PTR_ADD(flow->rule, sizeof(TAILQ_ENTRY(ixgbe_ntuple_filter_ele)));
+	case RTE_ETH_FILTER_ETHERTYPE:
+		return RTE_PTR_ADD(flow->rule, sizeof(TAILQ_ENTRY(ixgbe_ethertype_filter_ele)));
+	case RTE_ETH_FILTER_SYN:
+		return RTE_PTR_ADD(flow->rule, sizeof(TAILQ_ENTRY(ixgbe_eth_syn_filter_ele)));
+	case RTE_ETH_FILTER_FDIR:
+		return RTE_PTR_ADD(flow->rule, sizeof(TAILQ_ENTRY(ixgbe_fdir_rule_ele)));
+	case RTE_ETH_FILTER_L2_TUNNEL:
+		return RTE_PTR_ADD(flow->rule, sizeof(TAILQ_ENTRY(ixgbe_eth_l2_tunnel_conf_ele)));
+	case RTE_ETH_FILTER_HASH:
+		return RTE_PTR_ADD(flow->rule, sizeof(TAILQ_ENTRY(ixgbe_rss_conf_ele)));
+	default:
+		return NULL;
+	}
+}
+
+static void
+ixgbe_flow_dump_blob(FILE *file, const char *engine,
+		     const void *data, size_t data_len)
+{
+	const uint8_t *raw = (const uint8_t *)data;
+	const size_t nchunks =
+		(data_len + IXGBE_FLOW_DUMP_CHUNK_BYTES - 1) /
+		IXGBE_FLOW_DUMP_CHUNK_BYTES;
+	char title[64];
+	size_t ci;
+
+	fprintf(file, "FLOW DUMP: driver=ixgbe engine=%s\n", engine);
+	fprintf(file, "FLOW DUMP: DATA size=%zu chunks=%zu chunk_bytes=%d\n",
+		data_len, nchunks, IXGBE_FLOW_DUMP_CHUNK_BYTES);
+
+	for (ci = 0; ci < nchunks; ci++) {
+		const size_t off = ci * IXGBE_FLOW_DUMP_CHUNK_BYTES;
+		const size_t clen =
+			RTE_MIN((size_t)IXGBE_FLOW_DUMP_CHUNK_BYTES, data_len - off);
+
+		snprintf(title, sizeof(title), "FLOW DUMP: chunk %03zu/%03zu",
+			 ci + 1, nchunks);
+		rte_memdump(file, title, raw + off, clen);
+	}
+}
+
+static int
+ixgbe_flow_dev_dump(struct rte_eth_dev *dev __rte_unused,
+		    struct rte_flow *flow,
+		    FILE *file,
+		    struct rte_flow_error *error)
+{
+	struct ixgbe_flow_mem *flow_mem_base;
+	bool found = false;
+
+	TAILQ_FOREACH(flow_mem_base, &ixgbe_flow_list, entries) {
+		struct ixgbe_flow_mem *ixgbe_flow_mem_ptr =
+			(struct ixgbe_flow_mem *)flow_mem_base;
+		struct rte_flow *p_flow = ixgbe_flow_mem_ptr->flow;
+		const void *rule_data = NULL;
+		const char *engine_name;
+		size_t rule_size = 0;
+
+		if (flow != NULL && p_flow != flow)
+			continue;
+
+		found = true;
+		if (p_flow->rule != NULL) {
+			rule_data = ixgbe_flow_rule_data(p_flow);
+			rule_size = ixgbe_flow_rule_size(p_flow);
+		}
+		engine_name = ixgbe_flow_rule_engine_name(p_flow);
+		ixgbe_flow_dump_blob(file, engine_name,
+			rule_data, rule_size);
+	}
+
+	if (flow != NULL && !found)
+		return rte_flow_error_set(error, ENOENT,
+			RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+			"Flow not found");
+
+	return 0;
+}
+
 const struct rte_flow_ops ixgbe_flow_ops = {
 	.validate = ixgbe_flow_validate,
 	.create = ixgbe_flow_create,
 	.destroy = ixgbe_flow_destroy,
 	.flush = ixgbe_flow_flush,
+	.dev_dump = ixgbe_flow_dev_dump,
 };
