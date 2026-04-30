@@ -88,10 +88,10 @@ ixgbe_crypto_clear_ipsec_tables(struct rte_eth_dev *dev)
 static int
 ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 {
-	struct rte_eth_dev *dev = ic_session->dev;
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_dev_data *dev_data = ic_session->dev_data;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev_data->dev_private);
 	struct ixgbe_ipsec *priv = IXGBE_DEV_PRIVATE_TO_IPSEC(
-			dev->data->dev_private);
+			dev_data->dev_private);
 	uint32_t reg_val;
 	int sa_index = -1;
 
@@ -405,7 +405,7 @@ ixgbe_crypto_create_session(void *device,
 	memcpy(&ic_session->salt,
 	       &aead_xform->key.data[aead_xform->key.length], 4);
 	ic_session->spi = conf->ipsec.spi;
-	ic_session->dev = eth_dev;
+	ic_session->dev_data = eth_dev->data;
 
 	if (ic_session->op == IXGBE_OP_AUTHENTICATED_ENCRYPTION) {
 		if (ixgbe_crypto_add_sa(ic_session)) {
@@ -430,7 +430,7 @@ ixgbe_crypto_remove_session(void *device,
 	struct rte_eth_dev *eth_dev = device;
 	struct ixgbe_crypto_session *ic_session = SECURITY_GET_SESS_PRIV(session);
 
-	if (eth_dev != ic_session->dev) {
+	if (eth_dev->data != ic_session->dev_data) {
 		PMD_DRV_LOG(ERR, "Session not bound to this device");
 		return -ENODEV;
 	}

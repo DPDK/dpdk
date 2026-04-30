@@ -5,6 +5,7 @@
 #ifndef IXGBE_IPSEC_H_
 #define IXGBE_IPSEC_H_
 
+#include <ethdev_driver.h>
 #include <rte_security.h>
 
 #define IPSRXIDX_RX_EN                                    0x00000001
@@ -69,7 +70,7 @@ struct __rte_cache_aligned ixgbe_crypto_session {
 	uint32_t spi;
 	struct ipaddr src_ip;
 	struct ipaddr dst_ip;
-	struct rte_eth_dev *dev;
+	struct rte_eth_dev_data *dev_data;
 };
 
 struct ixgbe_crypto_rx_ip_table {
