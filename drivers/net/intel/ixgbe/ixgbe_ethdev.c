@@ -1084,7 +1084,7 @@ ixgbe_parse_devargs(struct ixgbe_adapter *adapter,
 static int
 eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 {
-	struct ixgbe_adapter *ad = eth_dev->data->dev_private;
+	struct ixgbe_adapter *ad = IXGBE_DEV_PRIVATE_TO_ADAPTER(eth_dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ixgbe_hw *hw =
@@ -1151,6 +1151,7 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	hw->vendor_id = pci_dev->id.vendor_id;
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 	hw->allow_unsupported_sfp = 1;
+	ad->max_vfs = pci_dev->max_vfs;
 
 	/* Initialize the shared code (base driver) */
 #ifdef RTE_LIBRTE_IXGBE_BYPASS

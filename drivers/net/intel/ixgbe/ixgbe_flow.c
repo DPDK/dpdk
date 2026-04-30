@@ -1263,7 +1263,7 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 	const struct rte_flow_item_e_tag *e_tag_mask;
 	const struct rte_flow_action *act;
 	const struct rte_flow_action_vf *act_vf;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct ixgbe_adapter *ad = IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
 	if (!pattern) {
 		rte_flow_error_set(error, EINVAL,
@@ -1395,7 +1395,7 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 		act_vf = (const struct rte_flow_action_vf *)act->conf;
 		filter->pool = act_vf->id;
 	} else {
-		filter->pool = pci_dev->max_vfs;
+		filter->pool = ad->max_vfs;
 	}
 
 	/* check if the next not void item is END */
@@ -1421,7 +1421,7 @@ ixgbe_parse_l2_tn_filter(struct rte_eth_dev *dev,
 {
 	int ret = 0;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct ixgbe_adapter *ad = IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	uint16_t vf_num;
 
 	ret = cons_parse_l2_tn_filter(dev, attr, pattern,
@@ -1438,7 +1438,7 @@ ixgbe_parse_l2_tn_filter(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	vf_num = pci_dev->max_vfs;
+	vf_num = ad->max_vfs;
 
 	if (l2_tn_filter->pool > vf_num)
 		return -rte_errno;
