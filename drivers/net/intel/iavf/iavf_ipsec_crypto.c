@@ -1942,7 +1942,9 @@ static struct iavf_flow_engine iavf_ipsec_flow_engine = {
 	.uninit = iavf_ipsec_flow_uninit,
 	.create = iavf_ipsec_flow_create,
 	.destroy = iavf_ipsec_flow_destroy,
+	.name = "ipsec_crypto",
 	.type = IAVF_FLOW_ENGINE_IPSEC_CRYPTO,
+	.rule_size = sizeof(struct iavf_ipsec_flow_item),
 };
 
 static int
