@@ -13,14 +13,27 @@
 #include "ixgbe_rxtx.h"
 #include "rte_pmd_ixgbe.h"
 
+static struct rte_eth_dev *
+ixgbe_vf_representor_pf_get(const struct ixgbe_vf_representor *representor)
+{
+	if (!rte_eth_dev_is_valid_port(representor->pf_port_id))
+		return NULL;
+
+	return &rte_eth_devices[representor->pf_port_id];
+}
+
 
 static int
 ixgbe_vf_representor_link_update(struct rte_eth_dev *ethdev,
 	int wait_to_complete)
 {
 	struct ixgbe_vf_representor *representor = ethdev->data->dev_private;
+	struct rte_eth_dev *pf_ethdev = ixgbe_vf_representor_pf_get(representor);
 
-	return ixgbe_dev_link_update_share(representor->pf_ethdev,
+	if (pf_ethdev == NULL)
+		return -ENODEV;
+
+	return ixgbe_dev_link_update_share(pf_ethdev,
 		wait_to_complete, 0);
 }
 
@@ -29,9 +42,13 @@ ixgbe_vf_representor_mac_addr_set(struct rte_eth_dev *ethdev,
 	struct rte_ether_addr *mac_addr)
 {
 	struct ixgbe_vf_representor *representor = ethdev->data->dev_private;
+	struct rte_eth_dev *pf_ethdev = ixgbe_vf_representor_pf_get(representor);
+
+	if (pf_ethdev == NULL)
+		return -ENODEV;
 
 	return rte_pmd_ixgbe_set_vf_mac_addr(
-		representor->pf_ethdev->data->port_id,
+		pf_ethdev->data->port_id,
 		representor->vf_id, mac_addr);
 }
 
@@ -40,11 +57,14 @@ ixgbe_vf_representor_dev_infos_get(struct rte_eth_dev *ethdev,
 	struct rte_eth_dev_info *dev_info)
 {
 	struct ixgbe_vf_representor *representor = ethdev->data->dev_private;
+	struct rte_eth_dev *pf_ethdev = ixgbe_vf_representor_pf_get(representor);
 
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(
-		representor->pf_ethdev->data->dev_private);
+	if (pf_ethdev == NULL)
+		return -ENODEV;
 
-	dev_info->device = representor->pf_ethdev->device;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(pf_ethdev->data->dev_private);
+
+	dev_info->device = pf_ethdev->device;
 
 	dev_info->min_rx_bufsize = 1024;
 	/**< Minimum size of RX buffer. */
@@ -70,11 +90,11 @@ ixgbe_vf_representor_dev_infos_get(struct rte_eth_dev *ethdev,
 	/**< Device TX offload capabilities. */
 
 	dev_info->speed_capa =
-		representor->pf_ethdev->data->dev_link.link_speed;
+		pf_ethdev->data->dev_link.link_speed;
 	/**< Supported speeds bitmap (RTE_ETH_LINK_SPEED_). */
 
 	dev_info->switch_info.name =
-		representor->pf_ethdev->device->name;
+		pf_ethdev->device->name;
 	dev_info->switch_info.domain_id = representor->switch_domain_id;
 	dev_info->switch_info.port_id = representor->vf_id;
 
@@ -123,10 +143,14 @@ ixgbe_vf_representor_vlan_filter_set(struct rte_eth_dev *ethdev,
 	uint16_t vlan_id, int on)
 {
 	struct ixgbe_vf_representor *representor = ethdev->data->dev_private;
+	struct rte_eth_dev *pf_ethdev = ixgbe_vf_representor_pf_get(representor);
 	uint64_t vf_mask = 1ULL << representor->vf_id;
 
+	if (pf_ethdev == NULL)
+		return -ENODEV;
+
 	return rte_pmd_ixgbe_set_vf_vlan_filter(
-		representor->pf_ethdev->data->port_id, vlan_id, vf_mask, on);
+		pf_ethdev->data->port_id, vlan_id, vf_mask, on);
 }
 
 static void
@@ -134,8 +158,12 @@ ixgbe_vf_representor_vlan_strip_queue_set(struct rte_eth_dev *ethdev,
 	__rte_unused uint16_t rx_queue_id, int on)
 {
 	struct ixgbe_vf_representor *representor = ethdev->data->dev_private;
+	struct rte_eth_dev *pf_ethdev = ixgbe_vf_representor_pf_get(representor);
 
-	rte_pmd_ixgbe_set_vf_vlan_stripq(representor->pf_ethdev->data->port_id,
+	if (pf_ethdev == NULL)
+		return;
+
+	rte_pmd_ixgbe_set_vf_vlan_stripq(pf_ethdev->data->port_id,
 		representor->vf_id, on);
 }
 
@@ -175,6 +203,7 @@ int
 ixgbe_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params)
 {
 	struct ixgbe_vf_representor *representor = ethdev->data->dev_private;
+	struct rte_eth_dev *pf_ethdev;
 
 	struct ixgbe_vf_info *vf_data;
 	struct rte_pci_device *pci_dev;
@@ -187,17 +216,21 @@ ixgbe_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params)
 		((struct ixgbe_vf_representor *)init_params)->vf_id;
 	representor->switch_domain_id =
 		((struct ixgbe_vf_representor *)init_params)->switch_domain_id;
-	representor->pf_ethdev =
-		((struct ixgbe_vf_representor *)init_params)->pf_ethdev;
+	representor->pf_port_id =
+		((struct ixgbe_vf_representor *)init_params)->pf_port_id;
 
-	pci_dev = RTE_ETH_DEV_TO_PCI(representor->pf_ethdev);
+	pf_ethdev = ixgbe_vf_representor_pf_get(representor);
+	if (pf_ethdev == NULL)
+		return -ENODEV;
+
+	pci_dev = RTE_ETH_DEV_TO_PCI(pf_ethdev);
 
 	if (representor->vf_id >= pci_dev->max_vfs)
 		return -ENODEV;
 
 	ethdev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
 	ethdev->data->representor_id = representor->vf_id;
-	ethdev->data->backer_port_id = representor->pf_ethdev->data->port_id;
+	ethdev->data->backer_port_id = pf_ethdev->data->port_id;
 
 	/* Set representor device ops */
 	ethdev->dev_ops = &ixgbe_vf_representor_dev_ops;
@@ -214,13 +247,13 @@ ixgbe_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params)
 
 	/* Reference VF mac address from PF data structure */
 	vf_data = *IXGBE_DEV_PRIVATE_TO_P_VFDATA(
-		representor->pf_ethdev->data->dev_private);
+		pf_ethdev->data->dev_private);
 
 	ethdev->data->mac_addrs = (struct rte_ether_addr *)
 		vf_data[representor->vf_id].vf_mac_addresses;
 
 	/* Link state. Inherited from PF */
-	link = &representor->pf_ethdev->data->dev_link;
+	link = &pf_ethdev->data->dev_link;
 
 	ethdev->data->dev_link.link_speed = link->link_speed;
 	ethdev->data->dev_link.link_duplex = link->link_duplex;
