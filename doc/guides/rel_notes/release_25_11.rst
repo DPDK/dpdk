@@ -904,3 +904,19 @@ Tested Platforms
    * Performance testing
 
       * TestPMD throughput single core tests
+
+25.11.2 Release Notes
+---------------------
+
+This release is address a regression in DPDK v25.11.1 as reported
+at https://bugs.dpdk.org/show_bug.cgi?id=1941.
+
+25.11.2 Fixes
+~~~~~~~~~~~~~
+
+* Revert "net: fix packet type for stacked VLAN"
+
+25.11.2 Validation
+~~~~~~~~~~~~~~~~~~
+
+* Github Actions, UNH CI, OBS CI
