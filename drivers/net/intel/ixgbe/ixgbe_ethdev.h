@@ -525,6 +525,9 @@ uint16_t ixgbe_vf_representor_tx_burst(void *tx_queue, struct rte_mbuf **tx_pkts
 #define IXGBE_DEV_PRIVATE_TO_ADAPTER(adapter) \
 	((struct ixgbe_adapter *)adapter)
 
+#define IXGBE_DEV_PRIVATE_TO_FDIR_CONF(adapter) \
+	(&(adapter)->fdir_conf)
+
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\
 	(&((struct ixgbe_adapter *)adapter)->hw)
 
@@ -669,13 +672,13 @@ uint32_t ixgbe_rssrk_reg_get(enum ixgbe_mac_type mac_type, uint8_t i);
 
 bool ixgbe_rss_update_sp(enum ixgbe_mac_type mac_type);
 
-int ixgbe_add_del_ntuple_filter(struct rte_eth_dev *dev,
+int ixgbe_add_del_ntuple_filter(struct ixgbe_adapter *adapter,
 			struct rte_eth_ntuple_filter *filter,
 			bool add);
-int ixgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
+int ixgbe_add_del_ethertype_filter(struct ixgbe_adapter *adapter,
 			struct rte_eth_ethertype_filter *filter,
 			bool add);
-int ixgbe_syn_filter_set(struct rte_eth_dev *dev,
+int ixgbe_syn_filter_set(struct ixgbe_adapter *adapter,
 			struct rte_eth_syn_filter *filter,
 			bool add);
 
@@ -691,22 +694,22 @@ struct ixgbe_l2_tunnel_conf {
 };
 
 int
-ixgbe_dev_l2_tunnel_filter_add(struct rte_eth_dev *dev,
+ixgbe_dev_l2_tunnel_filter_add(struct ixgbe_adapter *adapter,
 			       struct ixgbe_l2_tunnel_conf *l2_tunnel,
 			       bool restore);
 int
-ixgbe_dev_l2_tunnel_filter_del(struct rte_eth_dev *dev,
+ixgbe_dev_l2_tunnel_filter_del(struct ixgbe_adapter *adapter,
 			       struct ixgbe_l2_tunnel_conf *l2_tunnel);
 void ixgbe_filterlist_init(struct rte_eth_dev *dev);
 void ixgbe_filterlist_flush(struct rte_eth_dev *dev);
 /*
  * Flow director function prototypes
  */
-int ixgbe_fdir_configure(struct rte_eth_dev *dev);
-int ixgbe_fdir_set_input_mask(struct rte_eth_dev *dev);
-int ixgbe_fdir_set_flexbytes_offset(struct rte_eth_dev *dev,
+int ixgbe_fdir_configure(struct ixgbe_adapter *adapter);
+int ixgbe_fdir_set_input_mask(struct ixgbe_adapter *adapter);
+int ixgbe_fdir_set_flexbytes_offset(struct ixgbe_adapter *adapter,
 				    uint16_t offset);
-int ixgbe_fdir_filter_program(struct rte_eth_dev *dev,
+int ixgbe_fdir_filter_program(struct ixgbe_adapter *adapter,
 			      struct ixgbe_fdir_rule *rule,
 			      bool del, bool update);
 void ixgbe_fdir_info_get(struct rte_eth_dev *dev,
@@ -766,7 +769,7 @@ int ixgbe_rss_conf_init(struct ixgbe_rte_flow_rss_conf *out,
 			const struct rte_flow_action_rss *in);
 int ixgbe_action_rss_same(const struct rte_flow_action_rss *comp,
 			  const struct rte_flow_action_rss *with);
-int ixgbe_config_rss_filter(struct rte_eth_dev *dev,
+int ixgbe_config_rss_filter(struct ixgbe_adapter *adapter,
 		struct ixgbe_rte_flow_rss_conf *conf, bool add);
 
 void ixgbe_dev_macsec_register_enable(struct rte_eth_dev *dev,
