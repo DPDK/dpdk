@@ -1818,7 +1818,7 @@ eth_ixgbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 		representor.vf_id = eth_da.representor_ports[i];
 		representor.switch_domain_id = vfinfo->switch_domain_id;
-		representor.pf_ethdev = pf_ethdev;
+		representor.pf_port_id = pf_ethdev->data->port_id;
 
 		/* representor port net_bdf_port */
 		snprintf(name, sizeof(name), "net_%s_representor_%d",
