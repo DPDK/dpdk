@@ -2832,6 +2832,7 @@ ixgbe_parse_fdir_filter(struct rte_eth_dev *dev,
 {
 	int ret;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_adapter *adapter = IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct rte_eth_fdir_conf *fdir_conf = IXGBE_DEV_FDIR_CONF(dev);
 	fdir_conf->drop_queue = IXGBE_FDIR_DROP_QUEUE;
 
@@ -2859,7 +2860,7 @@ step_next:
 
 	if (fdir_conf->mode == RTE_FDIR_MODE_NONE) {
 		fdir_conf->mode = rule->mode;
-		ret = ixgbe_fdir_configure(dev);
+		ret = ixgbe_fdir_configure(adapter);
 		if (ret) {
 			fdir_conf->mode = RTE_FDIR_MODE_NONE;
 			return ret;
@@ -2992,11 +2993,13 @@ ixgbe_parse_rss_filter(struct rte_eth_dev *dev,
 static void
 ixgbe_clear_rss_filter(struct rte_eth_dev *dev)
 {
+	struct ixgbe_adapter *adapter =
+		IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct ixgbe_filter_info *filter_info =
 		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 
 	if (filter_info->rss_info.conf.queue_num)
-		ixgbe_config_rss_filter(dev, &filter_info->rss_info, FALSE);
+		ixgbe_config_rss_filter(adapter, &filter_info->rss_info, FALSE);
 }
 
 void
@@ -3039,13 +3042,15 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 		  struct rte_flow_error *error)
 {
 	int ret;
+	struct ixgbe_adapter *adapter =
+		IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct rte_eth_ntuple_filter ntuple_filter;
 	struct rte_eth_ethertype_filter ethertype_filter;
 	struct rte_eth_syn_filter syn_filter;
 	struct ixgbe_fdir_rule fdir_rule;
 	struct ixgbe_l2_tunnel_conf l2_tn_filter;
 	struct ixgbe_hw_fdir_info *fdir_info =
-		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
+		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(adapter);
 	struct ixgbe_rte_flow_rss_conf rss_conf;
 	struct rte_flow *flow = NULL;
 	struct ixgbe_ntuple_filter_ele *ntuple_filter_ptr;
@@ -3055,7 +3060,6 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 	struct ixgbe_fdir_rule_ele *fdir_rule_ptr;
 	struct ixgbe_rss_conf_ele *rss_filter_ptr;
 	struct ixgbe_flow_mem *ixgbe_flow_mem_ptr;
-	struct ixgbe_adapter *adapter = IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	uint8_t first_mask = FALSE;
 
 	flow = rte_zmalloc("ixgbe_rte_flow", sizeof(struct rte_flow), 0);
@@ -3088,7 +3092,7 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 			actions, &ntuple_filter, error);
 
 	if (!ret) {
-		ret = ixgbe_add_del_ntuple_filter(dev, &ntuple_filter, TRUE);
+		ret = ixgbe_add_del_ntuple_filter(adapter, &ntuple_filter, TRUE);
 		if (!ret) {
 			ntuple_filter_ptr = rte_zmalloc("ixgbe_ntuple_filter",
 				sizeof(struct ixgbe_ntuple_filter_ele), 0);
@@ -3110,7 +3114,7 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 	ret = ixgbe_parse_ethertype_filter(dev, attr, pattern,
 				actions, &ethertype_filter, error);
 	if (!ret) {
-		ret = ixgbe_add_del_ethertype_filter(dev,
+		ret = ixgbe_add_del_ethertype_filter(adapter,
 				&ethertype_filter, TRUE);
 		if (!ret) {
 			ethertype_filter_ptr = rte_zmalloc(
@@ -3134,7 +3138,7 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 	ret = ixgbe_parse_syn_filter(dev, attr, pattern,
 				actions, &syn_filter, error);
 	if (!ret) {
-		ret = ixgbe_syn_filter_set(dev, &syn_filter, TRUE);
+		ret = ixgbe_syn_filter_set(adapter, &syn_filter, TRUE);
 		if (!ret) {
 			syn_filter_ptr = rte_zmalloc("ixgbe_syn_filter",
 				sizeof(struct ixgbe_eth_syn_filter_ele), 0);
@@ -3163,12 +3167,12 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 				*&fdir_info->mask = *&fdir_rule.mask;
 
 				if (fdir_rule.mask.flex_bytes_mask) {
-					ret = ixgbe_fdir_set_flexbytes_offset(dev,
+					ret = ixgbe_fdir_set_flexbytes_offset(adapter,
 						fdir_rule.flex_bytes_offset);
 					if (ret)
 						goto out;
 				}
-				ret = ixgbe_fdir_set_input_mask(dev);
+				ret = ixgbe_fdir_set_input_mask(adapter);
 				if (ret)
 					goto out;
 
@@ -3193,7 +3197,7 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 		}
 
 		if (fdir_rule.b_spec) {
-			ret = ixgbe_fdir_filter_program(dev, &fdir_rule,
+			ret = ixgbe_fdir_filter_program(adapter, &fdir_rule,
 					FALSE, FALSE);
 			if (!ret) {
 				fdir_rule_ptr = rte_zmalloc("ixgbe_fdir_filter",
@@ -3230,7 +3234,7 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 	ret = ixgbe_parse_l2_tn_filter(dev, attr, pattern,
 					actions, &l2_tn_filter, error);
 	if (!ret) {
-		ret = ixgbe_dev_l2_tunnel_filter_add(dev, &l2_tn_filter, FALSE);
+		ret = ixgbe_dev_l2_tunnel_filter_add(adapter, &l2_tn_filter, FALSE);
 		if (!ret) {
 			l2_tn_filter_ptr = rte_zmalloc("ixgbe_l2_tn_filter",
 				sizeof(struct ixgbe_eth_l2_tunnel_conf_ele), 0);
@@ -3251,7 +3255,7 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 	ret = ixgbe_parse_rss_filter(dev, attr,
 					actions, &rss_conf, error);
 	if (!ret) {
-		ret = ixgbe_config_rss_filter(dev, &rss_conf, TRUE);
+		ret = ixgbe_config_rss_filter(adapter, &rss_conf, TRUE);
 		if (!ret) {
 			rss_filter_ptr = rte_zmalloc("ixgbe_rss_filter",
 				sizeof(struct ixgbe_rss_conf_ele), 0);
@@ -3349,6 +3353,8 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 		struct rte_flow_error *error)
 {
 	int ret;
+	struct ixgbe_adapter *adapter =
+		IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct rte_flow *pmd_flow = flow;
 	enum rte_filter_type filter_type = pmd_flow->filter_type;
 	struct rte_eth_ntuple_filter ntuple_filter;
@@ -3362,9 +3368,8 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 	struct ixgbe_eth_l2_tunnel_conf_ele *l2_tn_filter_ptr;
 	struct ixgbe_fdir_rule_ele *fdir_rule_ptr;
 	struct ixgbe_filter_ele_base *flow_mem_base;
-	struct ixgbe_adapter *adapter = IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct ixgbe_hw_fdir_info *fdir_info =
-		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
+		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(adapter);
 	struct ixgbe_rss_conf_ele *rss_filter_ptr;
 
 	/* Validate ownership before touching HW/SW state. */
@@ -3394,7 +3399,7 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 		rte_memcpy(&ntuple_filter,
 			&ntuple_filter_ptr->filter_info,
 			sizeof(struct rte_eth_ntuple_filter));
-		ret = ixgbe_add_del_ntuple_filter(dev, &ntuple_filter, FALSE);
+		ret = ixgbe_add_del_ntuple_filter(adapter, &ntuple_filter, FALSE);
 		if (!ret)
 			rte_free(ntuple_filter_ptr);
 		break;
@@ -3404,7 +3409,7 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 		rte_memcpy(&ethertype_filter,
 			&ethertype_filter_ptr->filter_info,
 			sizeof(struct rte_eth_ethertype_filter));
-		ret = ixgbe_add_del_ethertype_filter(dev,
+		ret = ixgbe_add_del_ethertype_filter(adapter,
 				&ethertype_filter, FALSE);
 		if (!ret)
 			rte_free(ethertype_filter_ptr);
@@ -3415,7 +3420,7 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 		rte_memcpy(&syn_filter,
 			&syn_filter_ptr->filter_info,
 			sizeof(struct rte_eth_syn_filter));
-		ret = ixgbe_syn_filter_set(dev, &syn_filter, FALSE);
+		ret = ixgbe_syn_filter_set(adapter, &syn_filter, FALSE);
 		if (!ret)
 			rte_free(syn_filter_ptr);
 		break;
@@ -3424,7 +3429,7 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 		rte_memcpy(&fdir_rule,
 			&fdir_rule_ptr->filter_info,
 			sizeof(struct ixgbe_fdir_rule));
-		ret = ixgbe_fdir_filter_program(dev, &fdir_rule, TRUE, FALSE);
+		ret = ixgbe_fdir_filter_program(adapter, &fdir_rule, TRUE, FALSE);
 		if (!ret) {
 			struct rte_eth_fdir_conf *fdir_conf = IXGBE_DEV_FDIR_CONF(dev);
 			rte_free(fdir_rule_ptr);
@@ -3441,14 +3446,14 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 				pmd_flow->rule;
 		rte_memcpy(&l2_tn_filter, &l2_tn_filter_ptr->filter_info,
 			sizeof(struct ixgbe_l2_tunnel_conf));
-		ret = ixgbe_dev_l2_tunnel_filter_del(dev, &l2_tn_filter);
+		ret = ixgbe_dev_l2_tunnel_filter_del(adapter, &l2_tn_filter);
 		if (!ret)
 			rte_free(l2_tn_filter_ptr);
 		break;
 	case RTE_ETH_FILTER_HASH:
 		rss_filter_ptr = (struct ixgbe_rss_conf_ele *)
 				pmd_flow->rule;
-		ret = ixgbe_config_rss_filter(dev,
+		ret = ixgbe_config_rss_filter(adapter,
 					&rss_filter_ptr->filter_info, FALSE);
 		if (!ret)
 			rte_free(rss_filter_ptr);
