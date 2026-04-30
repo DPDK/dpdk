@@ -828,3 +828,22 @@ To start ``testpmd``, and enable QinQ strip for default TPID on port 0:
 
    testpmd> vlan set extend on 0
    testpmd> vlan set qinq_strip on 0
+
+QinQ Configuration
+~~~~~~~~~~~~~~~~~~
+
+When using QinQ Tx offload (``RTE_ETH_TX_OFFLOAD_QINQ_INSERT``),
+you must also enable ``RTE_ETH_RX_OFFLOAD_VLAN_EXTEND``
+to configure the hardware for double VLAN mode.
+Without this, only the inner VLAN tag will be inserted.
+
+Example::
+
+  struct rte_eth_conf port_conf = {
+      .rxmode = {
+          .offloads = RTE_ETH_RX_OFFLOAD_VLAN_EXTEND,
+      },
+      .txmode = {
+          .offloads = RTE_ETH_TX_OFFLOAD_QINQ_INSERT,
+      },
+  };

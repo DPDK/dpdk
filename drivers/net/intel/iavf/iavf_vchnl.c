@@ -921,7 +921,7 @@ iavf_config_vlan_strip_v2(struct iavf_adapter *adapter, bool enable)
 }
 
 int
-iavf_config_vlan_insert_v2(struct iavf_adapter *adapter, bool enable)
+iavf_config_outer_vlan_insert_v2(struct iavf_adapter *adapter, bool enable)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	struct virtchnl_vlan_supported_caps *insertion_caps;
@@ -931,12 +931,64 @@ iavf_config_vlan_insert_v2(struct iavf_adapter *adapter, bool enable)
 	uint32_t *ethertype;
 	int ret;
 
+	memset(&vlan_insert, 0, sizeof(vlan_insert));
 	insertion_caps = &vf->vlan_v2_caps.offloads.insertion_support;
 
-	if ((insertion_caps->outer & VIRTCHNL_VLAN_ETHERTYPE_8100) &&
+	if ((insertion_caps->outer & VIRTCHNL_VLAN_ETHERTYPE_88A8) &&
+	    (insertion_caps->outer & VIRTCHNL_VLAN_TOGGLE) &&
+	    adapter->tpid == RTE_ETHER_TYPE_QINQ) {
+		ethertype = &vlan_insert.outer_ethertype_setting;
+		*ethertype = VIRTCHNL_VLAN_ETHERTYPE_88A8;
+	} else if ((insertion_caps->outer & VIRTCHNL_VLAN_ETHERTYPE_8100) &&
+		   (insertion_caps->outer & VIRTCHNL_VLAN_TOGGLE) &&
+		   adapter->tpid == RTE_ETHER_TYPE_VLAN) {
+		ethertype = &vlan_insert.outer_ethertype_setting;
+		*ethertype = VIRTCHNL_VLAN_ETHERTYPE_8100;
+	} else {
+		return -ENOTSUP;
+	}
+
+	vlan_insert.vport_id = vf->vsi_res->vsi_id;
+
+	args.ops = enable ? VIRTCHNL_OP_ENABLE_VLAN_INSERTION_V2 :
+			    VIRTCHNL_OP_DISABLE_VLAN_INSERTION_V2;
+	args.in_args = (uint8_t *)&vlan_insert;
+	args.in_args_size = sizeof(vlan_insert);
+	args.out_buffer = msg_buf;
+	args.out_size = IAVF_AQ_BUF_SZ;
+	ret = iavf_execute_vf_cmd_safe(adapter, &args);
+	if (ret)
+		PMD_DRV_LOG(ERR, "fail to execute command %s",
+			    enable ? "VIRTCHNL_OP_ENABLE_VLAN_INSERTION_V2" :
+				     "VIRTCHNL_OP_DISABLE_VLAN_INSERTION_V2");
+
+	return ret;
+}
+
+int
+iavf_config_vlan_insert_v2(struct iavf_adapter *adapter, bool enable)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_vlan_supported_caps *insertion_caps;
+	struct virtchnl_vlan_setting vlan_insert;
+	uint8_t msg_buf[IAVF_AQ_BUF_SZ] = {0};
+	struct iavf_cmd_info args;
+	uint32_t *ethertype;
+	bool qinq = adapter->dev_data->dev_conf.rxmode.offloads &
+		    RTE_ETH_RX_OFFLOAD_VLAN_EXTEND;
+	bool insert_qinq = adapter->dev_data->dev_conf.txmode.offloads &
+			   RTE_ETH_TX_OFFLOAD_QINQ_INSERT;
+	int ret;
+
+	if (qinq && insert_qinq)
+		iavf_config_outer_vlan_insert_v2(adapter, enable);
+
+	insertion_caps = &vf->vlan_v2_caps.offloads.insertion_support;
+
+	if (!qinq && (insertion_caps->outer & VIRTCHNL_VLAN_ETHERTYPE_8100) &&
 	    (insertion_caps->outer & VIRTCHNL_VLAN_TOGGLE))
 		ethertype = &vlan_insert.outer_ethertype_setting;
-	else if ((insertion_caps->inner & VIRTCHNL_VLAN_ETHERTYPE_8100) &&
+	else if (qinq && (insertion_caps->inner & VIRTCHNL_VLAN_ETHERTYPE_8100) &&
 		 (insertion_caps->inner & VIRTCHNL_VLAN_TOGGLE))
 		ethertype = &vlan_insert.inner_ethertype_setting;
 	else
