@@ -1099,7 +1099,9 @@ ice_flow_engine ice_acl_engine = {
 	.create = ice_acl_create_filter,
 	.destroy = ice_acl_destroy_filter,
 	.free = ice_acl_filter_free,
+	.name = "acl",
 	.type = ICE_FLOW_ENGINE_ACL,
+	.rule_size = sizeof(struct acl_rule),
 };
 
 struct
