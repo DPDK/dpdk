@@ -1362,20 +1362,22 @@ ixgbe_clear_all_fdir_filter(struct rte_eth_dev *dev)
 	struct ixgbe_hw_fdir_info *fdir_info =
 		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
 	struct ixgbe_fdir_filter *fdir_filter;
-	struct ixgbe_fdir_filter *filter_flag;
+	bool had_flows;
 	int ret = 0;
+
+	had_flows = (fdir_info->n_flows != 0);
 
 	/* flush flow director */
 	rte_hash_reset(fdir_info->hash_handle);
 	memset(fdir_info->hash_map, 0,
 	       sizeof(struct ixgbe_fdir_filter *) * IXGBE_MAX_FDIR_FILTER_NUM);
-	filter_flag = TAILQ_FIRST(&fdir_info->fdir_list);
 	while ((fdir_filter = TAILQ_FIRST(&fdir_info->fdir_list))) {
 		TAILQ_REMOVE(&fdir_info->fdir_list,
 			     fdir_filter,
 			     entries);
 		rte_free(fdir_filter);
 	}
+	fdir_info->n_flows = 0;
 
 	/* reset internal FDIR state */
 	fdir_info->mask = (struct ixgbe_hw_fdir_mask){0};
@@ -1383,7 +1385,7 @@ ixgbe_clear_all_fdir_filter(struct rte_eth_dev *dev)
 	fdir_info->mask_added = FALSE;
 	fdir_conf->mode = RTE_FDIR_MODE_NONE;
 
-	if (filter_flag != NULL)
+	if (had_flows)
 		ret = ixgbe_fdir_flush(dev);
 
 	return ret;

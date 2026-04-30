@@ -1465,6 +1465,7 @@ static int ixgbe_fdir_filter_init(struct rte_eth_dev *eth_dev)
 		rte_hash_free(fdir_info->hash_handle);
 		return -ENOMEM;
 	}
+	fdir_info->n_flows = 0;
 	fdir_info->mask_added = FALSE;
 
 	return 0;

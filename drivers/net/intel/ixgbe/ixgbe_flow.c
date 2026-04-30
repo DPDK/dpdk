@@ -3241,6 +3241,7 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 					&fdir_rule_ptr->base, entries);
 				flow->rule = fdir_rule_ptr;
 				flow->filter_type = RTE_ETH_FILTER_FDIR;
+				fdir_info->n_flows++;
 
 				return flow;
 			}
@@ -3477,7 +3478,7 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 			TAILQ_REMOVE(&flow_lists->fdir_list,
 				&fdir_rule_ptr->base, entries);
 			rte_free(fdir_rule_ptr);
-			if (TAILQ_EMPTY(&flow_lists->fdir_list)) {
+			if (fdir_info->n_flows > 0 && --(fdir_info->n_flows) == 0) {
 				fdir_info->mask_added = false;
 				fdir_info->mask = (struct ixgbe_hw_fdir_mask){0};
 				fdir_info->flex_bytes_offset = 0;

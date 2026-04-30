@@ -198,6 +198,7 @@ struct ixgbe_hw_fdir_info {
 	/* store the pointers of the filters, index is the hash value. */
 	struct ixgbe_fdir_filter **hash_map;
 	struct rte_hash *hash_handle; /* cuckoo hash handler */
+	uint32_t n_flows;
 	bool mask_added; /* If already got mask from consistent filter */
 };
 
