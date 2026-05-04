@@ -20,7 +20,7 @@ rte_stack_std_get_memsize(unsigned int count)
 	/* Add padding to avoid false sharing conflicts caused by
 	 * next-line hardware prefetchers.
 	 */
-	sz += 2 * RTE_CACHE_LINE_SIZE;
+	sz += RTE_CACHE_GUARD_LINES * RTE_CACHE_LINE_SIZE;
 
 	return sz;
 }
