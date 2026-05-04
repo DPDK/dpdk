@@ -3246,7 +3246,7 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 		hw_stats->qbrc[i] +=
 		    ((uint64_t)IXGBE_READ_REG(hw, IXGBE_QBRC_H(i)) << 32);
 		if (crc_strip == 0)
-			hw_stats->qbrc[i] -= delta_qprc * RTE_ETHER_CRC_LEN;
+			hw_stats->qbrc[i] -= (uint64_t)delta_qprc * RTE_ETHER_CRC_LEN;
 
 		hw_stats->qbtc[i] += IXGBE_READ_REG(hw, IXGBE_QBTC_L(i));
 		hw_stats->qbtc[i] +=
