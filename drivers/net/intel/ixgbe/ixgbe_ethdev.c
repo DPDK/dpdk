@@ -3191,7 +3191,7 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 			   uint64_t *total_qprc, uint64_t *total_qprdc)
 {
 	uint32_t bprc, lxon, lxoff, total;
-	uint32_t delta_gprc = 0;
+	uint64_t delta_gprc = 0;
 	unsigned i;
 	/* Workaround for RX byte count not including CRC bytes when CRC
 	 * strip is enabled. CRC bytes are removed from counters when crc_strip
