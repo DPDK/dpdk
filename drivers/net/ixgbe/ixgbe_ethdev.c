@@ -3180,7 +3180,8 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 			   uint64_t *total_missed_rx, uint64_t *total_qbrc,
 			   uint64_t *total_qprc, uint64_t *total_qprdc)
 {
-	uint32_t bprc, lxon, lxoff, total;
+	uint32_t bprc, lxon, lxoff;
+	uint64_t total;
 	uint64_t delta_gprc = 0;
 	unsigned i;
 	/* Workaround for RX byte count not including CRC bytes when CRC
@@ -3309,7 +3310,7 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 	hw_stats->lxontxc += lxon;
 	lxoff = IXGBE_READ_REG(hw, IXGBE_LXOFFTXC);
 	hw_stats->lxofftxc += lxoff;
-	total = lxon + lxoff;
+	total = (uint64_t)lxon + lxoff;
 
 	hw_stats->mptc += IXGBE_READ_REG(hw, IXGBE_MPTC);
 	hw_stats->ptc64 += IXGBE_READ_REG(hw, IXGBE_PTC64);
