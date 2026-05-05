@@ -285,6 +285,12 @@ struct roc_npc_sec_action {
 	 */
 	enum roc_npc_sec_action_alg alg;
 	bool is_non_inp;
+	uint16_t profile_id;
+	/* Enable custom inline profile.
+	 * When true, use custom IPsec profile specified by profile_id.
+	 * When false, use default IPsec profile (backward compatible).
+	 */
+	bool use_custom_profile;
 };
 
 struct roc_npc_attr {

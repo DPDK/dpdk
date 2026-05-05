@@ -778,6 +778,43 @@ roc_nix_inl_inb_sa_base_get(struct roc_nix *roc_nix, bool inb_inl_dev)
 	return (uintptr_t)nix->inb_sa_base[nix->ipsec_prof_id];
 }
 
+uintptr_t
+roc_nix_inl_inb_prof_sa_base_get(struct roc_nix *roc_nix, bool inb_inl_dev, uint16_t profile_id)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev;
+	struct nix *nix = NULL;
+
+	/* Validate profile_id range */
+	if (profile_id >= ROC_NIX_INL_PROFILE_CNT) {
+		plt_err("Invalid profile_id %u, must be < %u", profile_id, ROC_NIX_INL_PROFILE_CNT);
+		return 0;
+	}
+
+	if (idev == NULL)
+		return 0;
+
+	if (!inb_inl_dev && roc_nix == NULL)
+		return 0;
+
+	if (roc_nix) {
+		nix = roc_nix_to_nix_priv(roc_nix);
+		if (!nix->inl_inb_ena)
+			return 0;
+	}
+
+	if (inb_inl_dev) {
+		inl_dev = idev->nix_inl_dev;
+		/* Return inline dev sa base for the specified profile */
+		if (inl_dev)
+			return (uintptr_t)inl_dev->inb_sa_base[profile_id];
+		return 0;
+	}
+
+	/* Return NIX sa base for the specified profile */
+	return (uintptr_t)nix->inb_sa_base[profile_id];
+}
+
 uint16_t
 roc_nix_inl_inb_ipsec_profile_id_get(struct roc_nix *roc_nix, bool inb_inl_dev)
 {
@@ -836,6 +873,263 @@ roc_nix_inl_inb_reass_profile_id_get(struct roc_nix *roc_nix, bool inb_inl_dev)
 	}
 
 	return nix->reass_prof_id;
+}
+
+static int
+nix_inl_custom_profile_sa_tbl_setup(struct roc_nix *roc_nix, uint32_t sa_size, uint32_t max_sa,
+				    uint16_t profile_id)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev = NULL;
+	struct nix_rx_inl_lf_cfg_req *lf_cfg;
+	uint64_t res_addr_offset = 0;
+	uint64_t cpt_cq_ena = 0;
+	uint32_t inb_sa_sz;
+	uint32_t lenm1_max;
+	uint64_t def_cptq = 0;
+	struct mbox *mbox;
+	uint8_t sa_pow2_sz;
+	uint8_t sa_w;
+	int rc = 0;
+
+	/* Validate profile_id range */
+	if (profile_id >= ROC_NIX_INL_PROFILE_CNT) {
+		plt_err("Invalid profile_id %u, must be < %u", profile_id, ROC_NIX_INL_PROFILE_CNT);
+		return -EINVAL;
+	}
+
+	/* Use sa_size parameter if provided, otherwise use default */
+	if (sa_size > 0)
+		inb_sa_sz = sa_size;
+	else
+		inb_sa_sz = ROC_NIX_INL_OW_IPSEC_INB_SA_SZ;
+
+	/* Validate max_sa is provided */
+	if (max_sa == 0) {
+		plt_err("max_sa must be greater than 0 for profile %u", profile_id);
+		return -EINVAL;
+	}
+
+	/* Update max_sa */
+	nix->inb_sa_max[profile_id] = max_sa;
+
+	nix->inb_sa_sz[profile_id] = inb_sa_sz;
+	nix->inb_sa_base[profile_id] = plt_zmalloc(inb_sa_sz * max_sa, ROC_NIX_INL_SA_BASE_ALIGN);
+	if (!nix->inb_sa_base[profile_id]) {
+		plt_err("Failed to allocate memory for Inbound SA for profile %u", profile_id);
+		rc = -ENOMEM;
+		goto exit;
+	}
+
+	mbox = mbox_get(nix->dev.mbox);
+	lf_cfg = mbox_alloc_msg_nix_rx_inl_lf_cfg(mbox);
+	if (lf_cfg == NULL) {
+		rc = -ENOSPC;
+		goto free_mem;
+	}
+
+	lenm1_max = NIX_RPM_MAX_HW_FRS - 1;
+	sa_w = plt_log2_u32(max_sa);
+	sa_pow2_sz = plt_log2_u32(inb_sa_sz);
+
+	/* Get default CPT queue from inline device if available */
+	if (idev && idev->nix_inl_dev) {
+		inl_dev = idev->nix_inl_dev;
+		if (!inl_dev->nb_inb_cptlfs)
+			def_cptq = 0;
+		else
+			def_cptq = inl_dev->nix_inb_qids[inl_dev->inb_cpt_lf_id];
+
+		res_addr_offset = (uint64_t)(inl_dev->res_addr_offset & 0xFF) << 48;
+		if (res_addr_offset)
+			res_addr_offset |= (1UL << 56);
+
+		cpt_cq_ena = (uint64_t)inl_dev->cpt_cq_ena << 63;
+	}
+
+	lf_cfg->enable = 1;
+	lf_cfg->profile_id = profile_id;
+	lf_cfg->rx_inline_sa_base = (uintptr_t)nix->inb_sa_base[profile_id] | cpt_cq_ena;
+	lf_cfg->rx_inline_cfg0 = ((uint64_t)def_cptq << 57) | res_addr_offset |
+				 ((uint64_t)SSO_TT_ORDERED << 44) | (sa_pow2_sz << 16) | lenm1_max;
+	lf_cfg->rx_inline_cfg1 = (max_sa - 1) | ((uint64_t)sa_w << 32);
+
+	rc = mbox_process(mbox);
+	if (rc) {
+		plt_err("Failed to setup NIX Inbound SA conf of profile=%u, rc=%d", profile_id, rc);
+		goto free_mem;
+	}
+
+	mbox_put(mbox);
+	return rc;
+
+free_mem:
+	mbox_put(mbox);
+	plt_free(nix->inb_sa_base[profile_id]);
+	nix->inb_sa_base[profile_id] = NULL;
+exit:
+	return rc;
+}
+
+int
+roc_nix_inl_custom_profile_setup(struct roc_nix *roc_nix, uint64_t def_cfg, uint64_t gen_cfg,
+				 uint64_t extract_cfg, const uint64_t *prot_field_cfg,
+				 uint32_t sa_size, uint32_t max_sa, bool is_inline,
+				 uint16_t *profile_id)
+{
+	struct nix_rx_inl_profile_cfg_req *req;
+	struct nix_rx_inl_profile_cfg_rsp *rsp;
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev = NULL;
+	struct mbox *mbox;
+	int rc = 0;
+	int i;
+
+	if (roc_nix == NULL || profile_id == NULL)
+		return -EINVAL;
+
+	if (!nix->inl_inb_ena)
+		return -ENOTSUP;
+
+	/* Get inline device - required for custom profiles */
+	if (!idev || !idev->nix_inl_dev) {
+		plt_err("nix_inl_dev not available for custom profile setup");
+		return -ENODEV;
+	}
+
+	inl_dev = idev->nix_inl_dev;
+
+	/* Use inline device mbox if is_inline is true, otherwise use nix mbox */
+	if (is_inline)
+		mbox = mbox_get(inl_dev->dev.mbox);
+	else
+		mbox = mbox_get(nix->dev.mbox);
+
+	req = mbox_alloc_msg_nix_rx_inl_profile_cfg(mbox);
+	if (req == NULL) {
+		rc = -ENOSPC;
+		plt_err("Failed to alloc %s profile cfg mbox msg",
+			is_inline ? "inline device" : "nix device");
+		mbox_put(mbox);
+		goto exit;
+	}
+
+	req->def_cfg = def_cfg;
+	req->gen_cfg = gen_cfg;
+	req->extract_cfg = extract_cfg;
+	for (i = 0; i < NIX_RX_INL_PROFILE_PROTO_CNT; i++)
+		req->prot_field_cfg[i] = prot_field_cfg[i];
+
+	rc = mbox_process_msg(mbox, (void **)&rsp);
+	if (rc) {
+		plt_err("Failed to setup %s custom profile, rc=%d",
+			is_inline ? "inline device" : "nix device", rc);
+		mbox_put(mbox);
+		goto exit;
+	}
+
+	*profile_id = rsp->profile_id;
+
+	/* Validate returned profile_id */
+	if (*profile_id >= ROC_NIX_INL_PROFILE_CNT) {
+		plt_err("Hardware returned invalid profile_id %u", *profile_id);
+		mbox_put(mbox);
+		rc = -EINVAL;
+		goto exit;
+	}
+
+	plt_info("%s custom profile %u created", is_inline ? "Inline device" : "NIX device",
+		 *profile_id);
+	mbox_put(mbox);
+
+	if (is_inline)
+		rc = nix_inl_dev_profile_config(inl_dev, sa_size, max_sa, *profile_id);
+	else
+		rc = nix_inl_custom_profile_sa_tbl_setup(roc_nix, sa_size, max_sa, *profile_id);
+
+	if (rc) {
+		plt_err("Failed to configure custom profile %u, rc=%d", *profile_id, rc);
+		/* Release the allocated profile on failure */
+		roc_nix_inl_custom_profile_release(roc_nix, *profile_id, is_inline);
+	}
+
+exit:
+	return rc;
+}
+
+int
+roc_nix_inl_custom_profile_release(struct roc_nix *roc_nix, uint16_t profile_id, bool is_inline)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev = NULL;
+	struct nix_rx_inl_lf_cfg_req *lf_cfg;
+	struct mbox *mbox;
+	int rc = 0;
+
+	if (roc_nix == NULL)
+		return -EINVAL;
+
+	if (!nix->inl_inb_ena)
+		return -ENOTSUP;
+
+	/* Validate profile_id range */
+	if (profile_id >= ROC_NIX_INL_PROFILE_CNT) {
+		plt_err("Invalid profile_id %u, must be < %u", profile_id, ROC_NIX_INL_PROFILE_CNT);
+		return -EINVAL;
+	}
+
+	if (is_inline) {
+		/* Get inline device for inline mode */
+		if (!idev || !idev->nix_inl_dev) {
+			plt_err("nix_inl_dev not available for custom profile release");
+			return -ENODEV;
+		}
+		inl_dev = idev->nix_inl_dev;
+		mbox = mbox_get(inl_dev->dev.mbox);
+	} else {
+		/* Use NIX device mbox for non-inline mode */
+		mbox = mbox_get(nix->dev.mbox);
+	}
+
+	lf_cfg = mbox_alloc_msg_nix_rx_inl_lf_cfg(mbox);
+	if (lf_cfg == NULL) {
+		rc = -ENOSPC;
+		plt_err("Failed to alloc profile release mbox msg");
+		mbox_put(mbox);
+		goto exit;
+	}
+
+	lf_cfg->enable = 0;
+	lf_cfg->profile_id = profile_id;
+	rc = mbox_process(mbox);
+	if (rc) {
+		plt_err("Failed to cleanup NIX Inbound profile=%u SA conf, rc=%d", profile_id, rc);
+		mbox_put(mbox);
+		goto exit;
+	}
+
+	/* Free SA base memory */
+	if (is_inline) {
+		if (inl_dev->inb_sa_base[profile_id]) {
+			plt_free(inl_dev->inb_sa_base[profile_id]);
+			inl_dev->inb_sa_base[profile_id] = NULL;
+		}
+	} else {
+		if (nix->inb_sa_base[profile_id]) {
+			plt_free(nix->inb_sa_base[profile_id]);
+			nix->inb_sa_base[profile_id] = NULL;
+		}
+	}
+
+	mbox_put(mbox);
+	plt_info("%s custom profile %u released", is_inline ? "Inline device" : "NIX device",
+		 profile_id);
+
+exit:
+	return rc;
 }
 
 bool

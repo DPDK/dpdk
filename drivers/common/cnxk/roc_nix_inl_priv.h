@@ -148,5 +148,7 @@ uint16_t nix_inl_dev_pffunc_get(void);
 
 int nix_inl_setup_dflt_ipsec_profile(struct dev *dev, uint16_t *prof_id);
 int nix_inl_setup_reass_profile(struct dev *dev, uint8_t *prof_id);
+int nix_inl_dev_profile_config(struct nix_inl_dev *inl_dev, uint32_t sa_size, uint32_t max_sa,
+			       uint16_t profile_id);
 
 #endif /* _ROC_NIX_INL_PRIV_H_ */

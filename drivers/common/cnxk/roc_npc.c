@@ -547,9 +547,13 @@ npc_parse_spi_to_sa_action(struct roc_npc *roc_npc, const struct roc_npc_action 
 		req->spi_index = plt_be_to_cpu_32(flow->spi_to_sa_info.spi);
 		req->match_id = flow->match_id;
 		req->valid = true;
-		if (roc_model_is_cn20k())
-			req->inline_profile_id =
-				roc_nix_inl_inb_ipsec_profile_id_get(roc_nix, true);
+		if (roc_model_is_cn20k()) {
+			if (sec_action->use_custom_profile)
+				req->inline_profile_id = sec_action->profile_id;
+			else
+				req->inline_profile_id =
+					roc_nix_inl_inb_ipsec_profile_id_get(roc_nix, true);
+		}
 		rc = mbox_process_msg(mbox, (void *)&rsp);
 		if (rc)
 			return rc;
@@ -937,11 +941,18 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
 	} else if (req_act & ROC_NPC_ACTION_TYPE_SEC) {
 		if (roc_model_is_cn20k()) {
+			const struct roc_npc_sec_action *sa_action = NULL;
+			uint16_t profile_id;
+
 			flow->npc_action = NIX_RX_ACTIONOP_UCAST_CPT;
 			flow->npc_action |= (uint64_t)rq << 20;
-			flow->npc_action2 =
-				roc_nix_inl_inb_ipsec_profile_id_get(roc_nix, true) << 8;
-			flow->npc_action2 |= is_non_inp ? (1ULL << 15) : 0;
+			profile_id = roc_nix_inl_inb_ipsec_profile_id_get(roc_nix, true);
+			if (sec_action && sec_action->conf) {
+				sa_action = (const struct roc_npc_sec_action *)sec_action->conf;
+				if (sa_action->use_custom_profile)
+					profile_id = sa_action->profile_id;
+			}
+			flow->npc_action2 = (is_non_inp ? (1ULL << 15) : 0) | (profile_id << 8);
 		} else {
 			flow->npc_action = NIX_RX_ACTIONOP_UCAST_IPSEC;
 			flow->npc_action |= (uint64_t)rq << 20;
