@@ -44,6 +44,8 @@ static struct ip4_lookup_node_main ip4_lookup_nm;
 #include "ip4_lookup_neon.h"
 #elif defined(RTE_ARCH_X86)
 #include "ip4_lookup_sse.h"
+#elif defined(RTE_ARCH_RISCV) && defined(RTE_RISCV_FEATURE_V)
+#include "ip4_lookup_rvv.h"
 #endif
 
 static uint16_t
@@ -208,7 +210,8 @@ ip4_lookup_node_init(const struct rte_graph *graph, struct rte_node *node)
 	IP4_LOOKUP_NODE_LPM(node->ctx) = ip4_lookup_nm.lpm_tbl[graph->socket];
 	IP4_LOOKUP_NODE_PRIV1_OFF(node->ctx) = dyn;
 
-#if defined(__ARM_NEON) || defined(RTE_ARCH_X86)
+#if defined(__ARM_NEON) || defined(RTE_ARCH_X86) || \
+	(defined(RTE_ARCH_RISCV) && defined(RTE_RISCV_FEATURE_V))
 	if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128)
 		node->process = ip4_lookup_node_process_vec;
 #endif
