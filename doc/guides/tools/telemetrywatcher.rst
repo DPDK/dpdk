@@ -97,6 +97,19 @@ Example telemetry commands:
 
 See `Examples`_ section for usage examples based on the results of these telemetry commands.
 
+Shortcuts
+---------
+
+The tool provides convenient shortcuts for common statistics:
+
+* ``eth.rx`` - Expands to ``/ethdev/stats,N.ipackets`` for all Ethernet devices
+* ``eth.tx`` - Expands to ``/ethdev/stats,N.opackets`` for all Ethernet devices
+* ``eth.FIELD`` - Expands to ``/ethdev/stats,N.FIELD`` for all Ethernet devices
+
+These shortcuts automatically detect all available Ethernet devices
+and create a column for each one.
+
+
 Examples
 --------
 
@@ -108,9 +121,29 @@ Monitor received and transmitted packets on device 0::
 
    dpdk-telemetry-watcher.py /ethdev/stats,0.ipackets /ethdev/stats,0.opackets
 
+Monitor received packets on all Ethernet devices using shortcut::
+
+   dpdk-telemetry-watcher.py eth.rx
+
+Monitor packet deltas (rates) for device 0::
+
+   dpdk-telemetry-watcher.py -d /ethdev/stats,0.ipackets /ethdev/stats,0.opackets
+
+Monitor with a total column showing aggregate traffic::
+
+   dpdk-telemetry-watcher.py -d -T eth.rx eth.tx
+
+Monitor for a specific duration (60 iterations = 60 seconds)::
+
+   dpdk-telemetry-watcher.py -t 60 /ethdev/stats,0.ipackets
+
 Monitor a DPDK application with a custom file-prefix::
 
    dpdk-telemetry-watcher.py -f myapp /ethdev/stats,0.ipackets
+
+Monitor in single-line mode (no scrolling)::
+
+   dpdk-telemetry-watcher.py -1 -d eth.rx eth.tx
 
 List all running DPDK applications::
 
