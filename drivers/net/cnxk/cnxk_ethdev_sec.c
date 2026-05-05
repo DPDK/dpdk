@@ -348,6 +348,181 @@ rte_pmd_cnxk_hw_session_base_get(uint16_t portid, bool inb)
 	return (union rte_pmd_cnxk_ipsec_hw_sa *)sa_base;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_inl_inb_prof_sa_base_get, 25.11)
+union rte_pmd_cnxk_ipsec_hw_sa *
+rte_pmd_cnxk_inl_inb_prof_sa_base_get(uint16_t portid, uint16_t profile_id)
+{
+	struct rte_eth_dev *eth_dev;
+	struct cnxk_eth_dev *dev;
+	uintptr_t sa_base;
+
+	if (!rte_eth_dev_is_valid_port(portid))
+		return NULL;
+
+	eth_dev = &rte_eth_devices[portid];
+	dev = cnxk_eth_pmd_priv(eth_dev);
+
+	sa_base = roc_nix_inl_inb_prof_sa_base_get(&dev->nix, !dev->inb.no_inl_dev, profile_id);
+
+	if (!sa_base)
+		return NULL;
+
+	return (union rte_pmd_cnxk_ipsec_hw_sa *)sa_base;
+}
+
+static uint64_t
+cnxk_rx_def_inl_cfg_pack(const struct rte_pmd_cnxk_rx_def_inl_cfg *cfg)
+{
+	uint64_t val = 0;
+
+	val |= PACK(cfg->ltype_mask, NIX_LTYPE_MASK_SHIFT, 4);
+	val |= PACK(cfg->ltype_match, NIX_LTYPE_MATCH_SHIFT, 4);
+	val |= PACK(cfg->lid, NIX_LID_SHIFT, 3);
+	val |= PACK(cfg->gen_offset_ng, NIX_GEN_OFFSET_NG_SHIFT, 1);
+	val |= PACK(cfg->gen_offset, NIX_GEN_OFFSET_SHIFT, 4);
+	val |= PACK(cfg->gen_nz, NIX_GEN_NZ_SHIFT, 1);
+	val |= PACK(cfg->cpt_l3_lid, NIX_CPT_L3_LID_SHIFT, 3);
+	val |= PACK(cfg->flags_mask, NIX_FLAGS_MASK_SHIFT, 4);
+	val |= PACK(cfg->flags_match, NIX_FLAGS_MATCH_SHIFT, 4);
+	val |= PACK(cfg->match_oipv4, NIX_MATCH_OIPV4_SHIFT, 1);
+	val |= PACK(cfg->match_oipv6, NIX_MATCH_OIPV6_SHIFT, 1);
+	val |= PACK(cfg->oiplen_ena, NIX_OIPLEN_ENA_SHIFT, 1);
+	val |= PACK(cfg->inline_shift, NIX_INLINE_SHIFT_SHIFT, 2);
+
+	return val;
+}
+
+static uint64_t
+cnxk_rx_gen_inl_cfg_pack(const struct rte_pmd_cnxk_rx_gen_inl_cfg *cfg)
+{
+	uint64_t val = 0;
+
+	/* CPT instruction fields */
+	val |= PACK(cfg->param2, NIX_PARAM2_SHIFT, 16);
+	val |= PACK(cfg->param1, NIX_PARAM1_SHIFT, 16);
+	val |= PACK(cfg->opcode, NIX_OPCODE_SHIFT, 16);
+	val |= PACK(cfg->egrp, NIX_EGRP_SHIFT, 3);
+	val |= PACK(cfg->ctx_val, NIX_CTX_VAL_SHIFT, 1);
+
+	return val;
+}
+
+static uint64_t
+cnxk_rx_extract_inl_cfg_pack(const struct rte_pmd_cnxk_rx_extract_inl_cfg *cfg)
+{
+	uint64_t val = 0;
+
+	val |= PACK(cfg->len_l, NIX_LEN_L_SHIFT, 6);
+	val |= PACK(cfg->bitpos_l, NIX_BITPOS_L_SHIFT, 6);
+	val |= PACK(cfg->len_m, NIX_LEN_M_SHIFT, 6);
+	val |= PACK(cfg->bitpos_m, NIX_BITPOS_M_SHIFT, 6);
+	val |= PACK(cfg->len_h, NIX_LEN_H_SHIFT, 6);
+	val |= PACK(cfg->bitpos_h, NIX_BITPOS_H_SHIFT, 6);
+
+	return val;
+}
+
+static uint64_t
+cnxk_rx_prot_field_inline_cfg_pack(const struct rte_pmd_cnxk_rx_prot_field_inl_cfg *cfg)
+{
+	uint64_t val = 0;
+
+	val |= PACK(cfg->valid, NIX_VALID_SHIFT, 1);
+	val |= PACK(cfg->offset, NIX_OFFSET_SHIFT, 6);
+	val |= PACK(cfg->sizem1, NIX_SIZEM1_SHIFT, 4);
+	val |= PACK(cfg->logmult, NIX_LOGMULT_SHIFT, 2);
+
+	return val;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_nix_inl_custom_profile_setup, 25.11)
+int
+rte_pmd_cnxk_nix_inl_custom_profile_setup(uint16_t portid,
+					  const struct rte_pmd_cnxk_profile_cfg_params *cfg,
+					  uint16_t *profile_id)
+{
+	uint64_t prot_field_cfg_val[RTE_PMD_CNXK_MAX_PROT_FIELDS] = {0};
+	struct rte_eth_dev *eth_dev;
+	struct cnxk_eth_dev *dev;
+	uint64_t extract_cfg_val = 0;
+	uint64_t def_cfg_val = 0;
+	uint64_t gen_cfg_val = 0;
+	uint32_t sa_size = 0;
+	uint32_t max_sa = 0;
+	uint16_t prof_id = 0;
+	int rc = 0;
+	int i;
+
+	if (!roc_feature_nix_has_inl_profile())
+		return -ENOTSUP;
+
+	if (!rte_eth_dev_is_valid_port(portid))
+		return -EINVAL;
+
+	if (!cfg || !profile_id)
+		return -EINVAL;
+
+	eth_dev = &rte_eth_devices[portid];
+	dev = cnxk_eth_pmd_priv(eth_dev);
+
+	/* Pack default inline configuration */
+	def_cfg_val = cnxk_rx_def_inl_cfg_pack(&cfg->def_cfg);
+
+	/* Pack generic inline configuration */
+	gen_cfg_val = cnxk_rx_gen_inl_cfg_pack(&cfg->gen_cfg);
+
+	/* Pack extract inline configuration */
+	extract_cfg_val = cnxk_rx_extract_inl_cfg_pack(&cfg->extract_cfg);
+
+	/* Pack protocol field inline configurations */
+	for (i = 0; i < RTE_PMD_CNXK_MAX_PROT_FIELDS; i++)
+		prot_field_cfg_val[i] = cnxk_rx_prot_field_inline_cfg_pack(&cfg->prot_field_cfg[i]);
+
+	/* Get SA size and max SA count */
+	sa_size = cfg->sa_size;
+	max_sa = cfg->max_sa;
+
+	/* Call ROC API to configure the custom profile */
+	rc = roc_nix_inl_custom_profile_setup(&dev->nix, def_cfg_val, gen_cfg_val, extract_cfg_val,
+					      prot_field_cfg_val, sa_size, max_sa,
+					      !dev->inb.no_inl_dev, &prof_id);
+	if (rc) {
+		plt_err("Failed to setup custom profile: rc=%d", rc);
+		return rc;
+	}
+
+	*profile_id = prof_id;
+
+	plt_nix_dbg("Custom profile setup: port=%u, sa_size=%u, max_sa=%u, profile_id=%u", portid,
+		    sa_size, max_sa, *profile_id);
+
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_nix_inl_custom_profile_release, 25.11)
+int
+rte_pmd_cnxk_nix_inl_custom_profile_release(uint16_t portid, uint16_t profile_id)
+{
+	struct rte_eth_dev *eth_dev;
+	struct cnxk_eth_dev *dev;
+	int rc;
+
+	if (!rte_eth_dev_is_valid_port(portid))
+		return -EINVAL;
+
+	eth_dev = &rte_eth_devices[portid];
+	dev = cnxk_eth_pmd_priv(eth_dev);
+
+	/* Call ROC API to release the custom profile */
+	rc = roc_nix_inl_custom_profile_release(&dev->nix, profile_id, !dev->inb.no_inl_dev);
+	if (rc) {
+		plt_err("Failed to release custom profile %u: rc=%d", profile_id, rc);
+		return rc;
+	}
+
+	return 0;
+}
+
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_sa_flush, 23.11)
 int
 rte_pmd_cnxk_sa_flush(uint16_t portid, union rte_pmd_cnxk_ipsec_hw_sa *sess, bool inb)

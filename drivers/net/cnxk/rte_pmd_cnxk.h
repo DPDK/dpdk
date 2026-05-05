@@ -83,6 +83,15 @@ struct rte_pmd_cnxk_sec_action {
 	 */
 	enum rte_pmd_cnxk_sec_action_alg alg;
 	bool is_non_inp;
+	/** Inline profile ID (0-7) for custom profiles.
+	 * Only used when use_custom_profile is true.
+	 * Use profile_id returned by rte_pmd_cnxk_nix_inl_custom_profile_setup().
+	 */
+	uint16_t profile_id;
+	/** When true, use custom inline profile specified by profile_id.
+	 * When false, use default IPsec profile (backward compatible).
+	 */
+	bool use_custom_profile;
 };
 
 #define RTE_PMD_CNXK_CTX_MAX_CKEY_LEN	   32
@@ -608,6 +617,21 @@ __rte_experimental
 union rte_pmd_cnxk_ipsec_hw_sa *rte_pmd_cnxk_hw_session_base_get(uint16_t portid, bool inb);
 
 /**
+ * Get pointer to the Inline Inbound SA table base for a specific custom profile.
+ *
+ * @param portid
+ *   Port identifier of Ethernet device.
+ * @param profile_id
+ *   Custom profile ID to get the SA base for.
+ *
+ * @return
+ *   Pointer to Inbound SA base for the specified profile, or NULL on error.
+ */
+__rte_experimental
+union rte_pmd_cnxk_ipsec_hw_sa *rte_pmd_cnxk_inl_inb_prof_sa_base_get(uint16_t portid,
+								       uint16_t profile_id);
+
+/**
  * Executes a CPT flush on the specified session.
  *
  * @param portid
@@ -681,6 +705,198 @@ int rte_pmd_cnxk_cpt_q_stats_get(uint16_t portid, enum rte_pmd_cnxk_cpt_q_stats_
  */
 __rte_experimental
 void rte_pmd_cnxk_hw_inline_inb_cfg_set(uint16_t portid, struct rte_pmd_cnxk_ipsec_inb_cfg *cfg);
+
+/**
+ * RX Default Inline Configuration structure
+ * This structure represents the NIX_AF_RX_DEF_INLINE register fields
+ * used for configuring inline IPsec processing.
+ */
+struct rte_pmd_cnxk_rx_def_inl_cfg {
+	/** Layer type mask (bits 3:0) */
+	uint64_t ltype_mask;
+	/** Layer type match value (bits 7:4) */
+	uint64_t ltype_match;
+	/** Layer ID (bits 10:8) - Enumerated by NPC_LID_E */
+	uint64_t lid;
+	/** Generic offset negative (bit 11) */
+	uint64_t gen_offset_ng;
+	/** Generic offset in bytes (bits 15:12) */
+	uint64_t gen_offset;
+	/** Generic field non-zero (bit 16) */
+	uint64_t gen_nz;
+	/** CPT L3 Layer ID (bits 19:17) */
+	uint64_t cpt_l3_lid;
+	/** Layer type mask (bits 23:20) */
+	uint64_t flags_mask;
+	/** Layer type match value (bits 27:24) */
+	uint64_t flags_match;
+	/** Match on IPv4 (bit 28) */
+	uint64_t match_oipv4;
+	/** Match on IPv6 (bit 29) */
+	uint64_t match_oipv6;
+	/** OIP Length Enable (bit 30) */
+	uint64_t oiplen_ena;
+	/** Inline shift (bits 33:32) - Valid values: 0, 1, 2 */
+	uint64_t inline_shift;
+};
+
+/**
+ * RX Generic Inline Configuration structure
+ * This structure represents the NIX_AF_RX_INLINE_GEN_CFG(0..7) register fields.
+ */
+struct rte_pmd_cnxk_rx_gen_inl_cfg {
+	/** Layer type mask (bits 3:0) */
+	uint64_t ltype_mask;
+	/** Layer type match value (bits 7:4) */
+	uint64_t ltype_match;
+	/** Layer ID (bits 10:8) */
+	uint64_t lid;
+	/** Nibble Offset (bit 11) - 0: IPv4, 1: IPv6 */
+	uint64_t noffset;
+	/** Offset (bits 17:12) - Offset to DSCP field */
+	uint64_t offset;
+	/** PARAM2 (bits 15:0) - CPT_INST_S[PARAM2] */
+	uint64_t param2;
+	/** PARAM1 (bits 31:16) - CPT_INST_S[PARAM1] */
+	uint64_t param1;
+	/** OPCODE (bits 47:32) - CPT_INST_S[OPCODE] */
+	uint64_t opcode;
+	/** Engine Group (bits 50:48) - CPT_INST_S[EGRP] */
+	uint64_t egrp;
+	/** Context Valid (bit 51) - CPT_INST_S[CTX_VAL] */
+	uint64_t ctx_val;
+};
+
+/**
+ * RX Extract Inline Configuration structure
+ * This structure represents the NIX_AF_RX_EXTRACT_INLINE(0..7) register fields.
+ */
+struct rte_pmd_cnxk_rx_extract_inl_cfg {
+	/** LEN_L (bits 5:0) - Bit length from BITPOS_L (0-32) */
+	uint64_t len_l;
+	/** BITPOS_L (bits 13:8) - Bit pos to start extraction */
+	uint64_t bitpos_l;
+	/** LEN_M (bits 21:16) - Bit length from BITPOS_M (0-32) */
+	uint64_t len_m;
+	/** BITPOS_M (bits 29:24) - Bit pos to start extraction */
+	uint64_t bitpos_m;
+	/** LEN_H (bits 37:32) - Bit length from BITPOS_H (0-32) */
+	uint64_t len_h;
+	/** BITPOS_H (bits 45:40) - Bit pos to start extraction */
+	uint64_t bitpos_h;
+};
+
+/**
+ * Protocol field types for inline IPsec configuration
+ */
+enum rte_pmd_cnxk_nix_rx_prot_e {
+	RTE_PMD_CNXK_RX_PROT_OPCODE = 0,     /**< Opcode (max 2 bytes) */
+	RTE_PMD_CNXK_RX_PROT_PARAM1 = 1,     /**< Parameter 1 (max 2 bytes) */
+	RTE_PMD_CNXK_RX_PROT_PARAM2 = 2,     /**< Parameter 2 (max 2 bytes) */
+	RTE_PMD_CNXK_RX_PROT_SA_INDEX = 3,   /**< SA index (max 4 bytes) */
+	RTE_PMD_CNXK_RX_PROT_RPTR_H = 4,     /**< RPTR high bits (max 4 bytes) */
+	RTE_PMD_CNXK_RX_PROT_IP_OFFSET = 5,  /**< IP offset (max 1 byte) */
+	RTE_PMD_CNXK_RX_PROT_INL_OFFSET = 6, /**< Inline offset (max 4 bytes) */
+	RTE_PMD_CNXK_RX_PROT_ALG = 7,	     /**< ALG override (max 1 nibble) */
+	RTE_PMD_CNXK_RX_PROT_SUB_INDEX = 8,  /**< Sub index (max 1 nibble) */
+};
+
+/** Maximum number of inline profiles supported */
+#define RTE_PMD_CNXK_MAX_PROT_FIELDS 9
+
+/**
+ * RX Protocol Field Inline Configuration structure
+ * This structure represents the NIX_AF_RX_PROT_FIELD(0..8)_INLINE(0..7) registers.
+ */
+struct rte_pmd_cnxk_rx_prot_field_inl_cfg {
+	/** LOGMULT (bits 13:12) - Multiply: 0=1, 1=2, 2=4, 3=8 */
+	uint64_t logmult;
+	/** SIZEM1 (bits 11:8) - Size of field in nibbles */
+	uint64_t sizem1;
+	/** OFFSET (bits 7:2) - Offset from header start in nibbles */
+	uint64_t offset;
+	/** VALID (bit 0) - Valid flag */
+	uint64_t valid;
+};
+
+/**
+ * Combined profile configuration parameters structure
+ * This structure combines all configuration parameters needed for
+ * setting up a custom inline IPsec profile.
+ */
+struct rte_pmd_cnxk_profile_cfg_params {
+	/** Default inline configuration (NIX_AF_RX_DEF_INLINE) */
+	struct rte_pmd_cnxk_rx_def_inl_cfg def_cfg;
+
+	/** Generic inline configuration (NIX_AF_RX_INLINE_GEN_CFG) */
+	struct rte_pmd_cnxk_rx_gen_inl_cfg gen_cfg;
+
+	/** Extract inline configuration (NIX_AF_RX_EXTRACT_INLINE) */
+	struct rte_pmd_cnxk_rx_extract_inl_cfg extract_cfg;
+
+	/** Protocol field inline configuration
+	 * Array of configs for NIX_AF_RX_PROT_FIELD(prot_field)_INLINE(0..7)
+	 */
+	struct rte_pmd_cnxk_rx_prot_field_inl_cfg prot_field_cfg[RTE_PMD_CNXK_MAX_PROT_FIELDS];
+
+	/** SA size in bytes.
+	 * Size of each SA entry for this profile.
+	 * Must be a power of 2 and >= 128 bytes.
+	 * If 0, default SA size is used.
+	 */
+	uint32_t sa_size;
+
+	/** Maximum number of SAs for this profile.
+	 * Number of SA entries to allocate for this profile.
+	 * If 0, default max_sa is used.
+	 */
+	uint32_t max_sa;
+};
+
+/**
+ * Setup custom inline IPsec profile
+ *
+ * This function configures a custom inline IPsec profile for the specified port.
+ * The profile includes default inline configuration, generic inline configuration,
+ * extract inline configuration, protocol field inline configuration, and
+ * optional custom SA size and max SA count.
+ *
+ * @param portid
+ *   Port identifier of the Ethernet device.
+ * @param cfg
+ *   Pointer to the combined profile configuration structure.
+ * @param[out] profile_id
+ *   Pointer to store the returned profile ID (0-7).
+ *   This ID can be used in rte_pmd_cnxk_sec_action.profile_id.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise.
+ *   - -EINVAL: Invalid parameters
+ *   - -ENOTSUP: Function not supported on this device
+ *   - -ENOSPC: No free profile available
+ *   - -ENOMEM: Memory allocation failed for SA table
+ */
+__rte_experimental
+int rte_pmd_cnxk_nix_inl_custom_profile_setup(uint16_t portid,
+		const struct rte_pmd_cnxk_profile_cfg_params *cfg, uint16_t *profile_id);
+
+/**
+ * Release a custom inline profile.
+ *
+ * This function releases resources associated with a custom inline profile
+ * that was previously created using rte_pmd_cnxk_nix_inl_custom_profile_setup().
+ *
+ * @param portid
+ *   Port identifier of the Ethernet device.
+ * @param profile_id
+ *   Custom profile ID to release.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise.
+ */
+__rte_experimental
+int rte_pmd_cnxk_nix_inl_custom_profile_release(uint16_t portid,
+						uint16_t profile_id);
 
 /**
  * Retrieves model name on which it is running as a string.
