@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2022 Intel Corporation
- * Copyright(c) 2022 Arm Limited
+ * Copyright(c) 2022-2026 Arm Limited
  */
 
 #include <stdint.h>
@@ -145,8 +145,6 @@ _recv_raw_pkts_vec(struct ci_rx_queue *__rte_restrict rxq,
 		   struct rte_mbuf **__rte_restrict rx_pkts,
 		   uint16_t nb_pkts, uint8_t *split_packet)
 {
-	RTE_SET_USED(split_packet);
-
 	volatile union ci_rx_desc *rxdp;
 	struct ci_rx_entry *sw_ring;
 	uint16_t nb_pkts_recd;
@@ -163,6 +161,13 @@ _recv_raw_pkts_vec(struct ci_rx_queue *__rte_restrict rxq,
 		2, 3,         /* octet 2~3, low 16 bits vlan_macip */
 		4, 5, 6, 7    /* octet 4~7, 32bits rss */
 		};
+
+	uint8x16_t eop_check = {
+		0x02, 0x00, 0x02, 0x00,
+		0x02, 0x00, 0x02, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00
+	};
 
 	uint16x8_t crc_adjust = {
 		0, 0,         /* ignore pkt_type field */
@@ -238,6 +243,13 @@ _recv_raw_pkts_vec(struct ci_rx_queue *__rte_restrict rxq,
 		vst1q_u64((uint64_t *)&rx_pkts[pos], mbp1);
 		vst1q_u64((uint64_t *)&rx_pkts[pos + 2], mbp2);
 
+		if (split_packet) {
+			rte_mbuf_prefetch_part2(rx_pkts[pos]);
+			rte_mbuf_prefetch_part2(rx_pkts[pos + 1]);
+			rte_mbuf_prefetch_part2(rx_pkts[pos + 2]);
+			rte_mbuf_prefetch_part2(rx_pkts[pos + 3]);
+		}
+
 		/* pkts shift the pktlen field to be 16-bit aligned*/
 		uint32x4_t len3 = vshlq_u32(vreinterpretq_u32_u64(descs[3]),
 					    len_shl);
@@ -306,6 +318,32 @@ _recv_raw_pkts_vec(struct ci_rx_queue *__rte_restrict rxq,
 		staterr = vzipq_u16(sterr_tmp1.val[1],
 				    sterr_tmp2.val[1]).val[0];
 
+		/* C* extract and record EOP bit */
+		if (split_packet) {
+			uint8x16_t eop_shuf_mask = {
+				0x00, 0x02, 0x04, 0x06,
+				0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF
+			};
+			uint8x16_t eop_bits;
+
+			/* and with mask to extract bits, flipping 1-0 */
+			eop_bits = vmvnq_u8(vreinterpretq_u8_u16(staterr));
+			eop_bits = vandq_u8(eop_bits, eop_check);
+			/* the staterr values are not in order, as the count
+			 * of dd bits doesn't care. However, for end of
+			 * packet tracking, we do care, so shuffle. This also
+			 * compresses the 32-bit values to 8-bit
+			 */
+			eop_bits = vqtbl1q_u8(eop_bits, eop_shuf_mask);
+
+			/* store the resulting 32-bit value */
+			vst1q_lane_u32((uint32_t *)split_packet,
+				vreinterpretq_u32_u8(eop_bits), 0);
+			split_packet += IAVF_VPMD_DESCS_PER_LOOP;
+		}
+
 		staterr = vshlq_n_u16(staterr, IAVF_UINT16_BIT - 1);
 		staterr = vreinterpretq_u16_s16(
 				vshrq_n_s16(vreinterpretq_s16_u16(staterr),
@@ -339,6 +377,72 @@ iavf_recv_pkts_vec(void *__rte_restrict rx_queue,
 		struct rte_mbuf **__rte_restrict rx_pkts, uint16_t nb_pkts)
 {
 	return _recv_raw_pkts_vec(rx_queue, rx_pkts, nb_pkts, NULL);
+}
+
+/*
+ * vPMD receive routine that reassembles single burst of 32 scattered
+ * packets.
+ *
+ * Notice:
+ * - nb_pkts < IAVF_VPMD_DESCS_PER_LOOP, just return no packet
+ */
+static __rte_always_inline uint16_t
+iavf_recv_scattered_burst_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
+{
+	struct ci_rx_queue *rxq = rx_queue;
+	uint8_t split_flags[IAVF_VPMD_RX_BURST] = {0};
+
+	/* get some new buffers */
+	uint16_t nb_bufs = _recv_raw_pkts_vec(rxq, rx_pkts, nb_pkts,
+						split_flags);
+
+	if (nb_bufs == 0)
+		return 0;
+
+	/* happy day case, full burst + no packets to be assembled */
+	const uint64_t *split_fl64 = (uint64_t *)split_flags;
+	if (!rxq->pkt_first_seg &&
+			split_fl64[0] == 0 && split_fl64[1] == 0 &&
+			split_fl64[2] == 0 && split_fl64[3] == 0)
+		return nb_bufs;
+
+	/* reassmble any packets that need reassembly */
+	unsigned int i = 0;
+	if (!rxq->pkt_first_seg) {
+		/* find the first split flag, and only reassmeble then */
+		while (i < nb_bufs && !split_flags[i])
+			i++;
+		if (i == nb_bufs)
+			return nb_bufs;
+		rxq->pkt_first_seg = rx_pkts[i];
+	}
+	return i + ci_rx_reassemble_packets(&rx_pkts[i], nb_bufs - i,
+			&split_flags[i], &rxq->pkt_first_seg, &rxq->pkt_last_seg,
+			rxq->crc_len);
+}
+
+/*
+ * vPMD receive routine that reassembles scattered packets.
+ */
+uint16_t
+iavf_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
+{
+	uint16_t retval = 0;
+
+	while (nb_pkts > IAVF_VPMD_RX_BURST) {
+		uint16_t burst;
+		burst = iavf_recv_scattered_burst_vec(rx_queue,
+				rx_pkts + retval, IAVF_VPMD_RX_BURST);
+		retval += burst;
+		nb_pkts -= burst;
+		if (burst < IAVF_VPMD_RX_BURST)
+			return retval;
+	}
+	/* The last one burst or nb_pkts <= IAVF_VPMD_RX_BURST */
+	return retval + iavf_recv_scattered_burst_vec(rx_queue,
+			rx_pkts + retval, nb_pkts);
 }
 
 void __rte_cold
