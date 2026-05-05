@@ -264,6 +264,7 @@ New Features
 * **Added script for real-time telemetry monitoring.**
 
   Introduced the ``dpdk-telemetry-watcher.py`` script,
+  enabling users to monitor real-time telemetry statistics from running DPDK applications.
 
 * **Added AI review helpers.**
 

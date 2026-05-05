@@ -14,6 +14,7 @@ import os
 import shutil
 import errno
 import json
+import time
 
 
 def get_app_name(pid):
@@ -137,6 +138,91 @@ def print_connected_app(process):
             print(f'Connected to application: "{app_name}"')
 
 
+def validate_stats(process, stat_specs):
+    """Validate stat specifications and check that fields are numeric.
+
+    Args:
+        process: The subprocess.Popen handle to the telemetry process
+        stat_specs: List of stat specifications in format "command.field"
+
+    Returns:
+        List of tuples (spec, command, field) for valid specs, or None on error
+    """
+    parsed_specs = []
+    for spec in stat_specs:
+        # Parse the stat specification
+        if "." not in spec:
+            print(f"Error: Invalid stat specification '{spec}'", file=sys.stderr)
+            print(
+                "Expected format: 'command.field' (e.g., /ethdev/stats,0.ipackets)",
+                file=sys.stderr,
+            )
+            return None
+
+        command, field = spec.rsplit(".", 1)
+        if not command or not field:
+            print(f"Error: Invalid stat specification '{spec}'", file=sys.stderr)
+            print(
+                "Expected format: 'command.field' (e.g., /ethdev/stats,0.ipackets)",
+                file=sys.stderr,
+            )
+            return None
+
+        # Query the stat once to validate it exists and is numeric
+        data = query_telemetry(process, command)
+        if not isinstance(data, dict):
+            print(f"Error: Command '{command}' did not return a dictionary", file=sys.stderr)
+            return None
+        if field not in data:
+            print(f"Error: Field '{field}' not found in '{command}' response", file=sys.stderr)
+            return None
+        value = data[field]
+        if not isinstance(value, (int, float)):
+            print(
+                f"Error: Field '{field}' in '{command}' is not numeric (got {type(value).__name__})",
+                file=sys.stderr,
+            )
+            return None
+
+        parsed_specs.append((spec, command, field))
+
+    return parsed_specs
+
+
+def monitor_stats(process, stat_specs):
+    """Monitor and display statistics in columns.
+
+    Args:
+        process: The subprocess.Popen handle to the telemetry process
+        stat_specs: List of stat specifications in format "command.field"
+    """
+    # Validate all stat specifications
+    parsed_specs = validate_stats(process, stat_specs)
+    if not parsed_specs:
+        return
+
+    # Print header
+    header = "Time".ljust(10)
+    for spec, _, _ in parsed_specs:
+        header += spec.rjust(25)
+    print(header)
+
+    # Monitor loop - once per second
+    try:
+        while True:
+            timestamp = time.strftime("%H:%M:%S")
+            row = timestamp.ljust(10)
+
+            for spec, command, field in parsed_specs:
+                data = query_telemetry(process, command)
+                row += str(data[field]).rjust(25)
+
+            print(row)
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nMonitoring stopped")
+
+
 def main():
     """Main function to parse arguments and run dpdk-telemetry.py with a pipe"""
 
@@ -164,6 +250,11 @@ def main():
         default=False,
         help="List all possible file-prefixes and exit",
     )
+    parser.add_argument(
+        "stats",
+        nargs="*",
+        help="Statistics to monitor in format 'command.field' (e.g., /ethdev/stats,0.ipackets)",
+    )
 
     args = parser.parse_args()
 
@@ -179,13 +270,21 @@ def main():
         cmd = [sys.executable, telemetry_script] + args_list
         return subprocess.run(cmd).returncode
 
+    # Check if stats were provided
+    if not args.stats:
+        print("Error: No statistics to monitor specified", file=sys.stderr)
+        print("Usage: dpdk-telemetry-watcher.py [options] stat1 stat2 ...", file=sys.stderr)
+        print("Example: dpdk-telemetry-watcher.py /ethdev/stats,0.ipackets", file=sys.stderr)
+        return 1
+
     # Run dpdk-telemetry.py with pipes for stdin and stdout
     process = create_telemetry_process(telemetry_script, args_list)
 
     # Get and display the connected application name
     print_connected_app(process)
 
-    # TODO: Add monitoring logic here
+    # Monitor the requested statistics
+    monitor_stats(process, args.stats)
 
     # Clean up
     process.stdin.close()

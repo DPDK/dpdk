@@ -46,6 +46,57 @@ Options
    List all possible file-prefixes and exit.
    This is useful to discover which DPDK applications are currently running.
 
+.. option:: stat
+
+   Statistics to monitor in format ``command.field``.
+   Multiple statistics can be specified and will be displayed in columns.
+   See the `Statistics Format`_ section below for details on specifying statistics.
+
+
+Statistics Format
+-----------------
+
+Specify statistics in the format ``command.field`` where:
+
+* ``command`` is a telemetry command (e.g., ``/ethdev/stats,0``)
+* ``field`` is a field name from the command's JSON response (e.g., ``ipackets``)
+
+To discover available commands and fields, follow the steps below:
+
+1. Use ``dpdk-telemetry.py`` interactively to explore available commands
+2. Use the ``/`` command to list all available telemetry endpoints
+3. Query specific commands to see their response format
+
+Example telemetry commands:
+
+* ``/ethdev/list`` - List all Ethernet devices
+* ``/ethdev/stats,N`` - Get statistics for Ethernet device N
+* ``/ethdev/xstats,N`` - Get extended statistics for Ethernet device N
+* ``/eal/mempool_list`` - List all mempools
+* ``/mempool/info,N`` - Get information about mempool N
+
+See `Examples`_ section for usage examples based on the results of these telemetry commands.
+
+Examples
+--------
+
+Monitor received packets on Ethernet device 0::
+
+   dpdk-telemetry-watcher.py /ethdev/stats,0.ipackets
+
+Monitor received and transmitted packets on device 0::
+
+   dpdk-telemetry-watcher.py /ethdev/stats,0.ipackets /ethdev/stats,0.opackets
+
+Monitor a DPDK application with a custom file-prefix::
+
+   dpdk-telemetry-watcher.py -f myapp /ethdev/stats,0.ipackets
+
+List all running DPDK applications::
+
+   dpdk-telemetry-watcher.py -l
+
+
 Dependencies
 ------------
 
