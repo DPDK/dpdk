@@ -63,6 +63,10 @@ New Features
     ``rte_eal_init`` and the application is responsible for probing each device,
   * ``--auto-probing`` enables the initial bus probing, which is the current default behavior.
 
+* **Added RISC-V vector paths.**
+
+  * Increased the default SIMD bitwidth to allow using the vector extension.
+
 * **Added peek style API for staged-ordered ring (``rte_soring``).**
 
   For sorings with producer/consumer in ``RTE_RING_SYNC_ST``,
