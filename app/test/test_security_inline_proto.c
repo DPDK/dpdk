@@ -38,6 +38,7 @@ test_inline_ipsec_sg(void)
 
 #else
 
+#include <rte_cycles.h>
 #include <rte_eventdev.h>
 #include <rte_event_eth_rx_adapter.h>
 #include <rte_event_eth_tx_adapter.h>
@@ -1306,7 +1307,6 @@ test_ipsec_inline_sa_exp_event_callback(uint16_t port_id,
 		printf("Event descriptor not set\n");
 		return -1;
 	}
-	vector->notify_event = true;
 	if (event_desc->metadata != (uint64_t)vector->sa_data) {
 		printf("Mismatch in event specific metadata\n");
 		return -1;
@@ -1328,6 +1328,10 @@ test_ipsec_inline_sa_exp_event_callback(uint16_t port_id,
 		printf("Invalid IPsec event reported\n");
 		return -1;
 	}
+
+	/* Ensure event subtype is visible before signaling notify_event. */
+	rte_io_wmb();
+	vector->notify_event = true;
 
 	return 0;
 }
@@ -1483,6 +1487,16 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 				break;
 		} while (j++ < 5 || nb_rx == 0);
 
+	/* Wait for soft expiry event from the err-ring poll thread. */
+	if ((flags->sa_expiry_pkts_soft || flags->sa_expiry_bytes_soft) &&
+	    td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
+		j = 0;
+		while (!vector.notify_event && j++ < 100) {
+			rte_delay_us(1000);
+			rte_io_rmb();
+		}
+	}
+
 	if (!flags->sa_expiry_pkts_hard &&
 			!flags->sa_expiry_bytes_hard &&
 			(nb_rx != nb_sent)) {
@@ -1546,10 +1560,13 @@ out:
 		destroy_default_flow(port_id);
 	if (flags->sa_expiry_pkts_soft || flags->sa_expiry_bytes_soft ||
 		flags->sa_expiry_pkts_hard || flags->sa_expiry_bytes_hard) {
-		if (vector.notify_event && (vector.event == event))
-			ret = TEST_SUCCESS;
-		else
+		if (vector.notify_event) {
+			rte_io_rmb();
+			ret = (vector.event == event) ?
+				TEST_SUCCESS : TEST_FAILED;
+		} else {
 			ret = TEST_FAILED;
+		}
 
 		rte_eth_dev_callback_unregister(port_id, RTE_ETH_EVENT_IPSEC,
 			test_ipsec_inline_sa_exp_event_callback, &vector);
