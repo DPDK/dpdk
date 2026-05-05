@@ -3552,13 +3552,23 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 		}
 	},
 #endif
-#elif defined RTE_ARCH_ARM
+#elif defined(RTE_ARCH_ARM64)
 	[IAVF_RX_NEON] = {
 		.pkt_burst = iavf_recv_pkts_vec,
 		.info = "Vector Neon",
 		.features = {
-			.rx_offloads = IAVF_RX_SCALAR_OFFLOADS,
+			.rx_offloads = IAVF_RX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_128,
+			.bulk_alloc = true
+		}
+	},
+	[IAVF_RX_NEON_SCATTERED] = {
+		.pkt_burst = iavf_recv_scattered_pkts_vec,
+		.info = "Vector Scattered Neon",
+		.features = {
+			.rx_offloads = IAVF_RX_VECTOR_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
+			.simd_width = RTE_VECT_SIMD_128,
+			.scattered = true,
 			.bulk_alloc = true
 		}
 	},
@@ -3858,7 +3868,7 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 	if (adapter->rx_bulk_alloc_allowed) {
 		req_features.bulk_alloc = true;
 		default_path = IAVF_RX_BULK_ALLOC;
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 		if (iavf_rx_vec_dev_check(dev) != -1)
 			req_features.simd_width = iavf_get_max_simd_bitwidth();
 #endif
