@@ -12,6 +12,7 @@ install_data([
             'dpdk-hugepages.py',
             'dpdk-rss-flows.py',
             'dpdk-telemetry-exporter.py',
+            'dpdk-telemetry-watcher.py',
         ],
         install_dir: 'bin')
 

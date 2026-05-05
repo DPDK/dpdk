@@ -261,6 +261,10 @@ New Features
   Added support for setting VLAN priority and CFI/DEI bits
   in ``tx_vlan set``/``tx_qinq set`` commands and ``vlan_tci`` parameter.
 
+* **Added script for real-time telemetry monitoring.**
+
+  Introduced the ``dpdk-telemetry-watcher.py`` script,
+
 * **Added AI review helpers.**
 
   Added AGENTS.md file for AI review

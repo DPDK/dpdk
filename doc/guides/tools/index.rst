@@ -14,6 +14,7 @@ DPDK Tools User Guides
     pmdinfo
     dumpcap
     pdump
+    telemetrywatcher
     dmaperf
     flow-perf
     securityperf
