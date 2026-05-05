@@ -641,11 +641,12 @@ nix_inl_sso_release(struct nix_inl_dev *inl_dev)
 	return 0;
 }
 
-static int
-nix_inl_nix_profile_config(struct nix_inl_dev *inl_dev, uint8_t profile_id)
+int
+nix_inl_dev_profile_config(struct nix_inl_dev *inl_dev, uint32_t sa_size, uint32_t max_sa,
+			   uint16_t profile_id)
 {
 	struct mbox *mbox = mbox_get((&inl_dev->dev)->mbox);
-	uint64_t max_sa, sa_w, sa_pow2_sz, lenm1_max;
+	uint64_t sa_w, sa_pow2_sz, lenm1_max;
 	struct nix_rx_inl_lf_cfg_req *lf_cfg;
 	uint64_t res_addr_offset;
 	uint64_t cpt_cq_ena;
@@ -653,10 +654,12 @@ nix_inl_nix_profile_config(struct nix_inl_dev *inl_dev, uint8_t profile_id)
 	size_t inb_sa_sz;
 	void *sa;
 	int rc;
+	uint32_t i;
 
-	/* Alloc contiguous memory for Inbound SA's */
-	inb_sa_sz = ROC_NIX_INL_OW_IPSEC_INB_SA_SZ;
-	max_sa = inl_dev->inb_sa_max[profile_id];
+	inb_sa_sz = sa_size;
+
+	/* Update max_sa in inl_dev */
+	inl_dev->inb_sa_max[profile_id] = max_sa;
 	inl_dev->inb_sa_sz[profile_id] = inb_sa_sz;
 	inl_dev->inb_sa_base[profile_id] =
 		plt_zmalloc(inb_sa_sz * max_sa, ROC_NIX_INL_SA_BASE_ALIGN);
@@ -666,8 +669,11 @@ nix_inl_nix_profile_config(struct nix_inl_dev *inl_dev, uint8_t profile_id)
 		goto exit;
 	}
 
-	sa = ((uint8_t *)inl_dev->inb_sa_base[profile_id]);
-	roc_ow_reass_inb_sa_init(sa);
+	/* Initialize all SAs */
+	for (i = 0; i < max_sa; i++) {
+		sa = ((uint8_t *)inl_dev->inb_sa_base[profile_id]) + (i * inb_sa_sz);
+		roc_ow_reass_inb_sa_init(sa);
+	}
 	lf_cfg = mbox_alloc_msg_nix_rx_inl_lf_cfg(mbox);
 	if (lf_cfg == NULL) {
 		rc = -ENOSPC;
@@ -694,7 +700,7 @@ nix_inl_nix_profile_config(struct nix_inl_dev *inl_dev, uint8_t profile_id)
 	lf_cfg->rx_inline_cfg0 =
 		((def_cptq << 57) | res_addr_offset | ((uint64_t)SSO_TT_ORDERED << 44) |
 		 (sa_pow2_sz << 16) | lenm1_max);
-	lf_cfg->rx_inline_cfg1 = (max_sa - 1) | (sa_w << 32);
+	lf_cfg->rx_inline_cfg1 = (max_sa - 1) | ((uint64_t)sa_w << 32);
 
 	rc = mbox_process(mbox);
 	if (rc) {
@@ -791,8 +797,8 @@ nix_inl_nix_reass_setup(struct nix_inl_dev *inl_dev)
 		return rc;
 	}
 
-	inl_dev->inb_sa_max[inl_dev->reass_prof_id] = 1;
-	return nix_inl_nix_profile_config(inl_dev, inl_dev->reass_prof_id);
+	return nix_inl_dev_profile_config(inl_dev, ROC_NIX_INL_OW_IPSEC_INB_SA_SZ, 1,
+					  inl_dev->reass_prof_id);
 }
 
 static int

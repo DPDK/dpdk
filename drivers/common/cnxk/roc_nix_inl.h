@@ -162,8 +162,17 @@ int __roc_api roc_nix_inl_inb_fini(struct roc_nix *roc_nix);
 bool __roc_api roc_nix_inl_inb_is_enabled(struct roc_nix *roc_nix);
 uintptr_t __roc_api roc_nix_inl_inb_sa_base_get(struct roc_nix *roc_nix,
 						bool inl_dev_sa);
+uintptr_t __roc_api roc_nix_inl_inb_prof_sa_base_get(struct roc_nix *roc_nix, bool inb_inl_dev,
+						     uint16_t profile_id);
 uint16_t roc_nix_inl_inb_ipsec_profile_id_get(struct roc_nix *roc_nix, bool inb_inl_dev);
 uint16_t __roc_api roc_nix_inl_inb_reass_profile_id_get(struct roc_nix *roc_nix, bool inb_inl_dev);
+int __roc_api roc_nix_inl_custom_profile_setup(struct roc_nix *roc_nix, uint64_t def_cfg,
+					       uint64_t gen_cfg, uint64_t extract_cfg,
+					       const uint64_t *prot_field_cfg,
+					       uint32_t sa_size, uint32_t max_sa,
+					       bool is_inline, uint16_t *profile_id);
+int __roc_api roc_nix_inl_custom_profile_release(struct roc_nix *roc_nix, uint16_t profile_id,
+						 bool is_inline);
 bool __roc_api roc_nix_inl_inb_rx_inject_enable(struct roc_nix *roc_nix, bool inl_dev_sa);
 uint32_t __roc_api roc_nix_inl_inb_spi_range(struct roc_nix *roc_nix,
 					     bool inl_dev_sa, uint32_t *min,
