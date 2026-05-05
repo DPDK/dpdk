@@ -15,6 +15,7 @@ import shutil
 import errno
 import json
 import time
+import locale
 
 
 def get_app_name(pid):
@@ -238,10 +239,10 @@ def monitor_stats(process, args):
                     display_value = current_value
 
                 total += display_value
-                row += str(display_value).rjust(25)
+                row += f"{display_value:n}".rjust(25)
 
             if args.total:
-                row += str(total).rjust(25)
+                row += f"{total:n}".rjust(25)
 
             print(row, end=line_ending, flush=True)
             prev_values = current_values
@@ -253,6 +254,9 @@ def monitor_stats(process, args):
 
 def main():
     """Main function to parse arguments and run dpdk-telemetry.py with a pipe"""
+
+    # Set locale for number formatting
+    locale.setlocale(locale.LC_ALL, "")
 
     # Parse command line arguments - matching dpdk-telemetry.py parameters
     parser = argparse.ArgumentParser(
