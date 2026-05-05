@@ -37,24 +37,24 @@
  * plus current stage index).
  * 'release()' extracts old head value from provided ftoken and checks that
  * corresponding 'state[]' contains expected values(mostly for sanity
- * purposes).
- * Then it marks this state[] with 'SORING_ST_FINISH' flag to indicate
- * that given subset of objects was released.
- * After that, it checks does old head value equals to current tail value?
- * If yes, then it performs  'finalize()' operation, otherwise 'release()'
- * just returns (without spinning on stage tail value).
- * As updated state[] is shared by all threads, some other thread can do
- * 'finalize()' for given stage.
- * That allows 'release()' to avoid excessive waits on the tail value.
+ * purposes). Then it marks this state[] with 'SORING_ST_FINISH' flag to
+ * indicate that given subset of objects was released.
+ * After that, it calls 'finalize()'.
  * Main purpose of 'finalize()' operation is to walk through 'state[]'
  * from current stage tail up to its head, check state[] and move stage tail
  * through elements that already are in SORING_ST_FINISH state.
  * Along with that, corresponding state[] values are reset to zero.
- * Note that 'finalize()' for given stage can be done from multiple places:
+ * Note that updated state[] is shared by all threads, so
+ * 'finalize()' for given stage can be done from multiple places:
  * 'release()' for that stage or from 'acquire()' for next stage
  * even from consumer's 'dequeue()' - in case given stage is the last one.
  * So 'finalize()' has to be MT-safe and inside it we have to
- * guarantee that only one thread will update state[] and stage's tail values.
+ * guarantee that only one thread at a time will update state[] and
+ * stage's tail values (sort of critical-section).
+ * When multiple threads trying to do finalize() for the same stage,
+ * simultaneously one thread will win the race and do all the pending
+ * updates, while others will simply return (kind of try-lock scenario).
+ * That allows 'release()' to avoid excessive waits on the tail value.
  */
 
 #include "soring.h"
@@ -442,7 +442,7 @@ static __rte_always_inline void
 soring_release(struct rte_soring *r, const void *objs,
 	const void *meta, uint32_t stage, uint32_t n, uint32_t ftoken)
 {
-	uint32_t idx, pos, tail;
+	uint32_t idx, pos;
 	struct soring_stage *stg;
 	union soring_state st;
 
@@ -479,12 +479,9 @@ soring_release(struct rte_soring *r, const void *objs,
 	rte_atomic_store_explicit(&r->state[idx].raw, st.raw,
 			rte_memory_order_relaxed);
 
-	/* try to do finalize(), if appropriate */
-	tail = rte_atomic_load_explicit(&stg->sht.tail.pos,
-			rte_memory_order_relaxed);
-	if (tail == pos)
-		__rte_soring_stage_finalize(&stg->sht, stage, r->state, r->mask,
-				r->capacity);
+	/* now, try to do finalize() */
+	__rte_soring_stage_finalize(&stg->sht, stage, r->state, r->mask,
+			r->capacity);
 }
 
 /*
