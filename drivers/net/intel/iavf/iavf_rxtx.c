@@ -713,7 +713,7 @@ iavf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		ad->rx_bulk_alloc_allowed = false;
 	}
 
-#if defined RTE_ARCH_X86 || defined RTE_ARCH_ARM
+#if defined RTE_ARCH_X86 || defined RTE_ARCH_ARM64
 	/* check vector conflict */
 	if (ci_rxq_vec_capable(rxq->nb_rx_desc, rxq->rx_free_thresh) &&
 			iavf_rxq_vec_setup(rxq)) {
@@ -3569,6 +3569,27 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 			.rx_offloads = IAVF_RX_VECTOR_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
 			.simd_width = RTE_VECT_SIMD_128,
 			.scattered = true,
+			.bulk_alloc = true
+		}
+	},
+	[IAVF_RX_NEON_FLEX_RXD] = {
+		.pkt_burst = iavf_recv_pkts_vec_flex_rxd,
+		.info = "Vector Neon Flex",
+		.features = {
+			.rx_offloads = IAVF_RX_VECTOR_FLEX_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_128,
+			.flex_desc = true,
+			.bulk_alloc = true
+		}
+	},
+	[IAVF_RX_NEON_SCATTERED_FLEX_RXD] = {
+		.pkt_burst = iavf_recv_scattered_pkts_vec_flex_rxd,
+		.info = "Vector Scattered Neon Flex",
+		.features = {
+			.rx_offloads = IAVF_RX_VECTOR_FLEX_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
+			.simd_width = RTE_VECT_SIMD_128,
+			.scattered = true,
+			.flex_desc = true,
 			.bulk_alloc = true
 		}
 	},
