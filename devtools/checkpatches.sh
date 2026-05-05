@@ -294,10 +294,10 @@ check_experimental_tags() { # <patch>
 		current_file = "";
 		ret = 0;
 	}
-	/^+++ b\// {
+	/^[+][+][+] b\// {
 		current_file = $2;
 	}
-	/^+.*__rte_experimental/ {
+	/^[+].*__rte_experimental/ {
 		if (current_file ~ ".c$" ) {
 			print "Please only put __rte_experimental tags in " \
 				"headers ("current_file")";
@@ -324,10 +324,10 @@ check_internal_tags() { # <patch>
 		current_file = "";
 		ret = 0;
 	}
-	/^+++ b\// {
+	/^[+][+][+] b\// {
 		current_file = $2;
 	}
-	/^+.*__rte_internal/ {
+	/^[+].*__rte_internal/ {
 		if (current_file ~ ".c$" ) {
 			print "Please only put __rte_internal tags in " \
 				"headers ("current_file")";
