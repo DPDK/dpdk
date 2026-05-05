@@ -12,6 +12,12 @@ It wraps the ``dpdk-telemetry.py`` script to provide real-time statistics displa
 Running the Tool
 ----------------
 
+The watcher tool can be run at any time, whether or not a DPDK application is currently running.
+When a DPDK application with telemetry enabled starts
+(assuming correct file-prefix and instance are specified),
+the watcher will automatically connect and begin displaying the requested statistics.
+If the DPDK application stops, the watcher will attempt to reconnect when the application restarts.
+
 The tool has a number of command line options:
 
 .. code-block:: console
