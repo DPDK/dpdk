@@ -210,10 +210,13 @@ def monitor_stats(process, args):
     header = "Time".ljust(10)
     for spec, _, _ in parsed_specs:
         header += spec.rjust(25)
+    if args.total:
+        header += "Total".rjust(25)
     print(header)
 
     # Monitor loop - once per second
     count = 0
+    line_ending = "\r" if args.single_line else "\n"
     try:
         while args.timeout is None or count < args.timeout:
             time.sleep(1)
@@ -223,6 +226,7 @@ def monitor_stats(process, args):
             row = timestamp.ljust(10)
 
             current_values = []
+            total = 0
             for i, (spec, command, field) in enumerate(parsed_specs):
                 data = query_telemetry(process, command)
                 current_value = data[field]
@@ -233,11 +237,17 @@ def monitor_stats(process, args):
                 else:
                     display_value = current_value
 
+                total += display_value
                 row += str(display_value).rjust(25)
 
-            print(row)
+            if args.total:
+                row += str(total).rjust(25)
+
+            print(row, end=line_ending, flush=True)
             prev_values = current_values
     except KeyboardInterrupt:
+        if args.single_line:
+            print()  # Add newline before exit message
         print("\nMonitoring stopped")
 
 
@@ -281,6 +291,21 @@ def main():
         action="store_true",
         default=False,
         help="Display delta values instead of absolute values",
+    )
+    parser.add_argument(
+        "-T",
+        "--total",
+        action="store_true",
+        default=False,
+        help="Display a total column at the end of each row",
+    )
+    parser.add_argument(
+        "-1",
+        "--single-line",
+        action="store_true",
+        default=False,
+        dest="single_line",
+        help="Display output on a single line, replacing the previous output",
     )
     parser.add_argument(
         "stats",

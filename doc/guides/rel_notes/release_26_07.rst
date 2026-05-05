@@ -266,6 +266,7 @@ New Features
   Introduced the ``dpdk-telemetry-watcher.py`` script,
   enabling users to monitor real-time telemetry statistics from running DPDK applications.
   The tool supports customizable display options, including delta values,
+  total statistics, and single-line output for compact monitoring.
 
 * **Added AI review helpers.**
 
