@@ -3681,6 +3681,15 @@ static const struct ci_tx_path_info iavf_tx_path_infos[] = {
 		}
 	},
 #endif
+#elif defined(RTE_ARCH_ARM64)
+	[IAVF_TX_NEON] = {
+		.pkt_burst = iavf_xmit_pkts_vec,
+		.info = "Vector Neon",
+		.features = {
+			.tx_offloads = IAVF_TX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_128
+		}
+	},
 #endif
 };
 
@@ -3897,7 +3906,7 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	int mbuf_check = adapter->devargs.mbuf_check;
 	int no_poll_on_link_down = adapter->devargs.no_poll_on_link_down;
-#ifdef RTE_ARCH_X86
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	struct ci_tx_queue *txq;
 	int i;
 	const struct ci_tx_path_features *selected_features;
@@ -3911,7 +3920,7 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 	if (dev->data->dev_started)
 		goto out;
 
-#ifdef RTE_ARCH_X86
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	if (iavf_tx_vec_dev_check(dev) != -1)
 		req_features.simd_width = iavf_get_max_simd_bitwidth();
 
@@ -3934,7 +3943,7 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 						IAVF_TX_DEFAULT);
 
 out:
-#ifdef RTE_ARCH_X86
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	selected_features = &iavf_tx_path_infos[adapter->tx_func_type].features;
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];

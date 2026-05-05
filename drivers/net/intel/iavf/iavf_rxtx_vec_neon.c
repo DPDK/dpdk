@@ -445,6 +445,120 @@ iavf_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			rx_pkts + retval, nb_pkts);
 }
 
+static __rte_always_inline void
+iavf_vtx1(volatile struct ci_tx_desc *txdp, struct rte_mbuf *pkt,
+	 uint64_t flags)
+{
+	uint64_t high_qw = (CI_TX_DESC_DTYPE_DATA |
+		((uint64_t)flags << CI_TXD_QW1_CMD_S) |
+		((uint64_t)pkt->data_len << CI_TXD_QW1_TX_BUF_SZ_S));
+
+	uint64x2_t descriptor = {rte_pktmbuf_iova(pkt), high_qw};
+	vst1q_u64(RTE_CAST_PTR(uint64_t *, txdp), descriptor);
+}
+
+static __rte_always_inline void
+iavf_vtx(volatile struct ci_tx_desc *txdp, struct rte_mbuf **pkt,
+	uint16_t nb_pkts, uint64_t flags)
+{
+	int i;
+
+	for (i = 0; i < nb_pkts; ++i, ++txdp, ++pkt)
+		iavf_vtx1(txdp, *pkt, flags);
+}
+
+static __rte_always_inline uint16_t
+iavf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts)
+{
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
+	volatile struct ci_tx_desc *txdp;
+	struct ci_tx_entry_vec *txep;
+	uint16_t n, nb_commit, tx_id;
+	uint64_t flags = CI_TX_DESC_CMD_DEFAULT;
+	uint64_t rs = CI_TX_DESC_CMD_RS | CI_TX_DESC_CMD_DEFAULT;
+	int i;
+
+	/* cross rx_thresh boundary is not allowed */
+	nb_pkts = RTE_MIN(nb_pkts, txq->tx_rs_thresh);
+
+	if (txq->nb_tx_free < txq->tx_free_thresh)
+		ci_tx_free_bufs_vec(txq, iavf_tx_desc_done, false);
+
+	nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
+	nb_commit = nb_pkts;
+	if (unlikely(nb_pkts == 0))
+		return 0;
+
+	tx_id = txq->tx_tail;
+	txdp = &txq->ci_tx_ring[tx_id];
+	txep = &txq->sw_ring_vec[tx_id];
+
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
+
+	n = (uint16_t)(txq->nb_tx_desc - tx_id);
+	if (nb_commit >= n) {
+		ci_tx_backlog_entry_vec(txep, tx_pkts, n);
+
+		for (i = 0; i < n - 1; ++i, ++tx_pkts, ++txdp)
+			iavf_vtx1(txdp, *tx_pkts, flags);
+
+		/* write with RS for the last descriptor in the segment */
+		iavf_vtx1(txdp, *tx_pkts++, rs);
+
+		nb_commit = (uint16_t)(nb_commit - n);
+
+		tx_id = 0;
+		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
+
+		/* avoid reach the end of ring */
+		txdp = &txq->ci_tx_ring[tx_id];
+		txep = &txq->sw_ring_vec[tx_id];
+	}
+
+	ci_tx_backlog_entry_vec(txep, tx_pkts, nb_commit);
+
+	iavf_vtx(txdp, tx_pkts, nb_commit, flags);
+
+	tx_id = (uint16_t)(tx_id + nb_commit);
+	if (tx_id > txq->tx_next_rs) {
+		txq->ci_tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
+			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) <<
+					 CI_TXD_QW1_CMD_S);
+		txq->tx_next_rs =
+			(uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
+	}
+
+	txq->tx_tail = tx_id;
+
+	IAVF_PCI_REG_WC_WRITE(txq->qtx_tail, txq->tx_tail);
+
+	return nb_pkts;
+}
+
+uint16_t
+iavf_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+		   uint16_t nb_pkts)
+{
+	uint16_t nb_tx = 0;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
+
+	while (nb_pkts) {
+		uint16_t ret, num;
+
+		/* cross rs_thresh boundary is not allowed */
+		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_rs_thresh);
+		ret = iavf_xmit_fixed_burst_vec(tx_queue, &tx_pkts[nb_tx],
+				num);
+		nb_tx += ret;
+		nb_pkts -= ret;
+		if (ret < num)
+			break;
+	}
+
+	return nb_tx;
+}
+
 void __rte_cold
 iavf_rx_queue_release_mbufs_neon(struct ci_rx_queue *rxq)
 {
@@ -463,6 +577,12 @@ int __rte_cold
 iavf_rx_vec_dev_check(struct rte_eth_dev *dev)
 {
 	return iavf_rx_vec_dev_check_default(dev);
+}
+
+int __rte_cold
+iavf_tx_vec_dev_check(struct rte_eth_dev *dev)
+{
+	return iavf_tx_vec_dev_check_default(dev);
 }
 
 enum rte_vect_max_simd
