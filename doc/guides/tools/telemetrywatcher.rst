@@ -46,6 +46,17 @@ Options
    List all possible file-prefixes and exit.
    This is useful to discover which DPDK applications are currently running.
 
+.. option:: -t TIMEOUT, --timeout TIMEOUT
+
+   Number of iterations to run before exiting.
+   If not specified, the tool runs indefinitely until interrupted with Ctrl+C.
+
+.. option:: -d, --delta
+
+   Display delta values instead of absolute values.
+   This shows the change in statistics since the last iteration,
+   which is useful for monitoring per-second rates.
+
 .. option:: stat
 
    Statistics to monitor in format ``command.field``.

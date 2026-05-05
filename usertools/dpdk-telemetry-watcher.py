@@ -146,9 +146,13 @@ def validate_stats(process, stat_specs):
         stat_specs: List of stat specifications in format "command.field"
 
     Returns:
-        List of tuples (spec, command, field) for valid specs, or None on error
+        Tuple of (parsed_specs, initial_values) where:
+            parsed_specs: List of tuples (spec, command, field) for valid specs
+            initial_values: List of initial values for each stat
+        Returns (None, None) on error
     """
     parsed_specs = []
+    initial_values = []
     for spec in stat_specs:
         # Parse the stat specification
         if "." not in spec:
@@ -157,7 +161,7 @@ def validate_stats(process, stat_specs):
                 "Expected format: 'command.field' (e.g., /ethdev/stats,0.ipackets)",
                 file=sys.stderr,
             )
-            return None
+            return None, None
 
         command, field = spec.rsplit(".", 1)
         if not command or not field:
@@ -166,38 +170,39 @@ def validate_stats(process, stat_specs):
                 "Expected format: 'command.field' (e.g., /ethdev/stats,0.ipackets)",
                 file=sys.stderr,
             )
-            return None
+            return None, None
 
         # Query the stat once to validate it exists and is numeric
         data = query_telemetry(process, command)
         if not isinstance(data, dict):
             print(f"Error: Command '{command}' did not return a dictionary", file=sys.stderr)
-            return None
+            return None, None
         if field not in data:
             print(f"Error: Field '{field}' not found in '{command}' response", file=sys.stderr)
-            return None
+            return None, None
         value = data[field]
         if not isinstance(value, (int, float)):
             print(
                 f"Error: Field '{field}' in '{command}' is not numeric (got {type(value).__name__})",
                 file=sys.stderr,
             )
-            return None
+            return None, None
 
         parsed_specs.append((spec, command, field))
+        initial_values.append(value)
 
-    return parsed_specs
+    return parsed_specs, initial_values
 
 
-def monitor_stats(process, stat_specs):
+def monitor_stats(process, args):
     """Monitor and display statistics in columns.
 
     Args:
         process: The subprocess.Popen handle to the telemetry process
-        stat_specs: List of stat specifications in format "command.field"
+        args: Parsed command line arguments
     """
-    # Validate all stat specifications
-    parsed_specs = validate_stats(process, stat_specs)
+    # Validate all stat specifications and get initial values
+    parsed_specs, prev_values = validate_stats(process, args.stats)
     if not parsed_specs:
         return
 
@@ -208,17 +213,30 @@ def monitor_stats(process, stat_specs):
     print(header)
 
     # Monitor loop - once per second
+    count = 0
     try:
-        while True:
+        while args.timeout is None or count < args.timeout:
+            time.sleep(1)
+            count += 1
+
             timestamp = time.strftime("%H:%M:%S")
             row = timestamp.ljust(10)
 
-            for spec, command, field in parsed_specs:
+            current_values = []
+            for i, (spec, command, field) in enumerate(parsed_specs):
                 data = query_telemetry(process, command)
-                row += str(data[field]).rjust(25)
+                current_value = data[field]
+                current_values.append(current_value)
+
+                if args.delta:
+                    display_value = current_value - prev_values[i]
+                else:
+                    display_value = current_value
+
+                row += str(display_value).rjust(25)
 
             print(row)
-            time.sleep(1)
+            prev_values = current_values
     except KeyboardInterrupt:
         print("\nMonitoring stopped")
 
@@ -249,6 +267,20 @@ def main():
         action="store_true",
         default=False,
         help="List all possible file-prefixes and exit",
+    )
+    parser.add_argument(
+        "-t",
+        "--timeout",
+        type=int,
+        default=None,
+        help="Number of iterations to run before stopping (default: run indefinitely)",
+    )
+    parser.add_argument(
+        "-d",
+        "--delta",
+        action="store_true",
+        default=False,
+        help="Display delta values instead of absolute values",
     )
     parser.add_argument(
         "stats",
@@ -284,7 +316,7 @@ def main():
     print_connected_app(process)
 
     # Monitor the requested statistics
-    monitor_stats(process, args.stats)
+    monitor_stats(process, args)
 
     # Clean up
     process.stdin.close()
