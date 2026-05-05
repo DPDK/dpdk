@@ -2579,3 +2579,285 @@ Tested Platforms
 * 3eec7a797f net/mlx5: remove counter alignment
 * d762a8fbbd net/cnxk: fix port ID default action
 * f4905fdcf6 fib6: fix memory leak on delete operation
+
+23.11.7 Release Notes
+---------------------
+
+
+23.11.7 Fixes
+~~~~~~~~~~~~~
+
+* app/dma-perf: fix buffer overflow with high core count
+* app/dma-perf: fix reversed CPU copy
+* app/graph: fix variable shadowing
+* app/pdump: fix variable shadowing
+* app/procinfo: fix const pointer in collectd format
+* app/test: fix uninitialized event in DMA adapter test
+* app/testpmd: fix DCB forwarding TC mismatch handling
+* app/testpmd: fix flow queue job leaks
+* app/testpmd: fix function names in logs
+* app/testpmd: fix memory leak in port flow configure
+* app/testpmd: fix variable shadowing
+* bbdev: fix variable shadowing
+* bitops: allow variable as first argument of shift macros
+* bpf: disallow empty program
+* bpf: fix add/subtract overflow
+* bpf: fix signed shift overflows in ARM JIT
+* bpf: fix starting with conditional jump
+* bpf: fix x86 call stack alignment for external calls
+* buildtools/test: suppress empty output
+* bus/fslmc: fix const pointer in device name parsing
+* bus/ifpga: fix const pointer in device name parsing
+* bus/pci: fix variable shadowing
+* common/cnxk: fix array out-of-bounds
+* common/cnxk: fix engine capabilities fetch logic
+* common/mlx5: fix bonding check
+* common/mlx5: fix error logging for queue modify
+* common/mlx5: fix MAC deletion on Linux
+* common/mlx5: fix variable shadowing
+* common/sfc_efx/base: fix flow control on legacy MCDI
+* config/arm: fix 32-bit build
+* crypto/caam_jr: fix const pointer in UIO filename parsing
+* crypto/cnxk: return decrypted data for RSA verify
+* cryptodev: fix memory corruption in secondary process
+* crypto/openssl: fix SM2 public key buffer overflow
+* doc: fix inline crypto feature status for iavf
+* doc: fix TSO and checksum offload feature status for ice
+* doc: fix TSO feature status for i40e
+* doc: fix TSO feature status for iavf
+* doc: remove references to obsolete testpmd flag
+* eal: fix cache guard for pedantic compilation
+* eal: fix variable shadowing
+* eal: introduce more macros for bit definition
+* eal/linux: fix fbarray name collision in containers
+* eal/linux: handle interrupt epoll events
+* eal/x86: fix TSC frequency query
+* ethdev: fix variable shadowing
+* event/cnxk: fix crash on CN10K
+* event/cnxk: fix Rx offload flags
+* eventdev/eth_rx: fix crash with telemetry
+* eventdev: fix variable shadowing
+* examples/ethtool: fix error message about ports limit
+* examples/ethtool: fix size of mempool name
+* examples/fips_validation: fix dangling pointers
+* examples/fips_validation: fix RSA memcpy
+* examples/ipsec-secgw: fix build with glibc 2.43
+* examples/l2fwd-jobstats: fix stats availability
+* examples/packet_ordering: fix format specifier for port ID
+* examples/ptpclient: fix format specifier for port ID
+* examples/vmdq_dcb: initialize all configuration structures
+* examples/vm_power: check truncation of socket path
+* examples/vm_power_manager: fix format specifier for port ID
+* fib: fix prefix addition handling
+* hash: avoid leaking entries on RCU defer queue failure
+* hash: fix maybe-uninitialized warnings on build
+* hash: fix overflow of 32-bit offsets
+* interrupts: add interrupt event info
+* mbuf: fix packet data read
+* net/af_packet: fix MTU set data size calculation
+* net/af_xdp: fix external mbuf transmit
+* net/axgbe: add 100 Mbps MAC speed select
+* net/axgbe: fix 100M SGMII mode
+* net/axgbe: fix auto-negotiation capabilities
+* net/axgbe: fix MAC TCR speed select field width
+* net/axgbe: fix SGMII auto-negotiation status bits
+* net/bnxt: fix build with GCC 16
+* net/bonding: clamp Rx free threshold for small rings
+* net/cpfl: fix variable shadowing
+* net/dpaa2: add SG table walk upper bound in Rx
+* net/dpaa2: fix burst mode info
+* net/dpaa2: fix L3/L4 checksum offload flags
+* net/dpaa2: fix L4 packet type in slow parse path
+* net/dpaa2: fix link after port stop/start
+* net/dpaa2: fix resource leak on soft parser failure
+* net/dpaa2: fix spurious VLAN insertion on non-VLAN packet
+* net/dpaa2: warn on Rx descriptor limit in high perf mode
+* net/e1000: fix allocation of context desc for launch time
+* net/e1000: fix igc launch time calculation
+* net/e1000: fix variable shadowing
+* net/e1000: use device timestamp for clock read in igc
+* net/enetfec: fix const pointer in UIO filename parsing
+* net: fix packet type for stacked VLAN
+* net: fix variable shadowing
+* net/hns3: fix outer UDP checksum with simple BD
+* net/i40e: fix IPv6 GTPU handling
+* net/i40e: fix QinQ stripping
+* net/i40e: fix raw flow item validation
+* net/i40e: fix unused variable
+* net/i40e: fix variable shadowing
+* net/i40e: move filter config to flow create
+* net/i40e: validate raw flow items before dereferencing
+* net/iavf: fix deletion of primary MAC address
+* net/iavf: fix IPv4 flow subscription
+* net/iavf: fix memory leak on egress IPsec flows
+* net/iavf: fix memory leak on uninit
+* net/iavf: fix reported max Tx and Rx queues
+* net/iavf: fix struct size in IPsec status get
+* net/iavf: negotiate PTP before reporting Rx timestamping
+* net/iavf: revert check for PF Rx timestamp support
+* net/ice/base: fix integer types in comparisons
+* net/ice: fix memory leak in DCF QoS bandwidth config
+* net/ice: fix memory leak in FDIR flow parsing
+* net/ice: fix variable shadowing
+* net/idpf: fix typo in CQ scan threshold macro name
+* net/intel: fix comma operator warnings
+* net/intel: fix memory leak on Tx queue setup failure
+* net/intel: update key length when getting RSS key
+* net/ixgbe: fix memory leak in security flows
+* net/ixgbe: fix pointer handling in IPsec
+* net/ixgbe: fix potential null dereference in IPsec flow
+* net/ixgbe: fix potential null dereference with IPsec config
+* net/ixgbe: fix variable shadowing
+* net/mana: fix CQE suppression handling on error completions
+* net/mana: fix fast-path ops setup in secondary process
+* net/mana: fix PD resource leak on device close
+* net/memif: fix const pointer in socket check
+* net/memif: fix descriptor Tx flags corruption
+* net/memif: fix multi-segment Rx corruption
+* net/mlx4: fix fast-path ops setup in secondary process
+* net/mlx5: allow MTU mismatch for running shared queue
+* net/mlx5: check DevX disconnect/error interrupt events
+* net/mlx5: fix bonding check
+* net/mlx5: fix fast-path ops setup in secondary process
+* net/mlx5: fix flex item capability check
+* net/mlx5: fix flex parser creation length attribute
+* net/mlx5: fix flow mark reading after reconfigure
+* net/mlx5: fix HW flow counter query
+* net/mlx5: fix IPv6 SRH flex node header length
+* net/mlx5: fix job leak on indirect meter creation failure
+* net/mlx5: fix memory leak after device spawn failure
+* net/mlx5: fix meter ASO action leak on release to pool
+* net/mlx5: fix MPESW PF probe for any number of ports
+* net/mlx5: fix port down in link detection failure
+* net/mlx5: fix probing to allow BlueField Socket Direct
+* net/mlx5: fix redundant control rules in promiscuous mode
+* net/mlx5: fix send skew settings when using wait on time
+* net/mlx5: fix shared Rx queue limitations
+* net/mlx5: fix use-after-free in ASO management init
+* net/mlx5: fix VLAN strip info for CQE compression
+* net/mlx5/hws: fix null dereference in rule skip
+* net/mlx5/hws: fix stack alignment for ASan compatibility
+* net/mlx5: report share group and queue ID
+* net/mlx5/windows: fix MAC address ownership tracking
+* net/mvpp2: fix variable shadowing
+* net/netvsc: fix devargs memory leak on hotplug
+* net/netvsc: fix double-free of primary Rx queue on uninit
+* net/netvsc: fix event callback leak on Rx filter failure
+* net/netvsc: fix race conditions on VF add/remove events
+* net/netvsc: fix resource leak on init failure
+* net/netvsc: fix resource leaks on MTU change
+* net/netvsc: fix subchannel leak on device removal
+* net/netvsc: support multi-process VF device removal
+* net/netvsc: switch data path to synthetic on device stop
+* net/nfb: fix bad pointer access in queue stats
+* net/nfb: fix resources release
+* net/nfb: stop only started queues in fail path
+* net/nfb: use constant values for max Rx/Tx queues count
+* net/nfb: use process private variable for internal
+* net/sfc: drop AUTO from FEC capabilities and fix comment
+* net/sfc: fix reporting status of autonegotiation
+* net/sfc: rework capability check that is done on FEC set
+* net/tap: fix resource leaks in secondary process probe
+* net/tap: fix use-after-free on remote flow creation failure
+* net/tap: free IPC reply buffer on queue count mismatch
+* net/tap: free remote flow when implicit rule already exists
+* net/tap: remove log when running without multiprocess
+* net/tap: use correct length for interface names
+* pcapng: chain additional mbuf when comment exceeds tailroom
+* pcapng: document return values
+* pcapng: fix variable shadowing
+* pcapng: use malloc instead of fixed buffer size
+* pdcp: add digest physical address
+* pipeline: fix variable shadowing
+* power: fix variable shadowing
+* rcu: fix build with MSVC
+* Revert "net: fix packet type for stacked VLAN"
+* table: fix variable shadowing
+* telemetry: fix adding dict in container array
+* test: add file-prefix for all fast-tests on Linux
+* test: add pause to synchronization spinloops
+* test/atomic: scale test based on core count
+* test/crypto: check for vdev args overflow
+* test/crypto: fix mbuf segment number
+* test/debug: fix IOVA mode on PPC64 without huge pages
+* test: fix dependencies on net null driver
+* test/mcslock: scale test based on core count
+* test/pcapng: fix for Windows
+* test/pcapng: skip test if null driver missing
+* test/red: fix some undefined behaviour
+* test/security: skip inline protocol test if no HW support
+* test/stack: scale test based on core count
+* test/table: avoid input line overflow
+* test/timer: fix hang on secondary process failure
+* test/timer: replace volatile with C11 atomics
+* test/timer: scale test based on core count
+* test/trace: fix parallel execution with traces enabled
+* usertools/pmdinfo: fix search for PMD info string
+* version: 23.11.7-rc1
+* vhost: fix descriptor chain bounds check in control queue
+* vhost: fix mmap error check in VDUSE IOTLB miss handler
+* vhost: fix virtqueue array size for control queue
+
+23.11.7 Validation
+~~~~~~~~~~~~~~~~~~
+
+* `Nvidia(R) Testing <https://inbox.dpdk.org/stable/c7db1005-ef22-4e54-a09d-474d6cee77b6@nvidia.com/>`_:
+
+    * Test scenarios:
+
+        * Send and receive multiple types of traffic.
+        * testpmd xstats counter test.
+        * testpmd timestamp test.
+        * Changing/checking link status through testpmd.
+        * rte_flow tests (See https://doc.dpdk.org/guides/nics/mlx5.html for supported features)
+        * RSS tests.
+        * VLAN filtering, stripping, and insertion tests.
+        * Checksum and TSO tests.
+        * ptype tests.
+        * link_status_interrupt example application tests.
+        * l3fwd-power example application tests.
+        * Multi-process example applications tests.
+        * Hardware LRO tests.
+        * Buffer Split tests.
+        * Tx scheduling tests.
+
+    * Test platform:
+
+        * NIC: ConnectX-6 Dx / OS: Ubuntu 22.04 / Driver: MLNX_OFED_LINUX-23.10-6.1.6.1 / Firmware: 22.39.5124
+        * NIC: ConnectX-7 / OS: Ubuntu 22.04 / Driver: MLNX_OFED_LINUX-23.10-6.1.6.1 / Firmware: 28.39.5124
+        * DPU: BlueField-2 / DOCA SW version: 2.5.5 / Firmware: 24.39.5124
+
+* `Intel(R) Testing <https://inbox.dpdk.org/stable/DS4PPF00BBED10CC6595A70B04B9F7704AA9F352@DS4PPF00BBED10C.namprd11.prod.outlook.com/>`_:
+
+    * Basic NIC testing
+
+        * Build & CFLAG compile: cover the build test with latest GCC/Clang version on the following OS such as Ubuntu25.04/Ubuntu24.04.3, RHEL9.6/RHEL10, Fedora43, FreeBSD15, SUSE16, OpenAnolis8.10, AzureLinux3.0
+        * i40E-(XXV710, X722) PF/VF: test scenarios including basic/RTE_FLOW/TSO/Jumboframe/checksum offload/mac_filter/VLAN/VXLAN/RSS, etc.
+        * IXGBE-(82599) PF/VF: test scenarios including basic/RTE_FLOW/TSO/Jumboframe/checksum offload/mac_filter/VLAN/VXLAN/RSS, etc.
+        * ICE-(E810, E2100) PF/VF: test scenarios including basic/Switch/Package Management/Flow Director/Advanced Tx/Advanced RSS/ACL/DCF/Flexible Descriptor, etc.
+        * IPsec: test scenarios including ipsec/ipsec-gw/ipsec library basic test - QAT&SW/FIB library, etc.
+        * Virtio: both function and performance test are covered. Such as PVP/Virtio_loopback/virtio-user loopback/virtio-net VM2VM perf testing/VMAWARE ESXI 8.0, etc.
+        * Cryptodev: test scenarios including Cryptodev API testing/CompressDev ISA-L/QAT/ZLIB PMD Testing/FIPS, etc.
+        * DLB: test scenarios including DLB2.0 and DLB2.5
+        * Other: test scenarios including AF_XDP, Power, CBDMA, DSA
+
+    * Performance test
+
+        * Thoughput Performance
+        * Cryptodev Latency
+        * PF/VF NIC single core
+        * XXV710/E810 NIC Performance
+
+23.11.7 Fixes skipped and status unresolved
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* bd2f563dbd common/cnxk: fix duplicated branches
+* 89895cdab7 crypto/qat: align vector address
+* e0f92e31f7 net/bnxt: fix statistics for high number of queues
+* 1bef69570f net/mlx5: fix IPv6 SRH flex parser initialization
+* 77bb34e047 net/sfc: avoid speed reset when setting FEC in started state
+* 50d943929a hash: free replaced data on overwrite when RCU is configured
+* 3ed9a05bff net/af_packet: fix receive buffer overflow
+* c87efa43b9 net/bnxt: fix reported VLAN stripped flag for Thor2
+* e7cd393f30 net/dpaa2: fix error packet dump
+* f9b31cf4a6 net/dpaa2: fix Rx error queue memory leaks
