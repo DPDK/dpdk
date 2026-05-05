@@ -187,6 +187,7 @@ source_file_deps = {
     'test_service_cores.c': [],
     'test_soring.c': [],
     'test_soring_mt_stress.c': [],
+    'test_soring_peek_stress.c': [],
     'test_soring_stress.c': [],
     'test_spinlock.c': [],
     'test_stack.c': ['stack'],

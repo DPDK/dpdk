@@ -32,3 +32,4 @@ struct test {
 };
 
 extern const struct test test_soring_mt_stress;
+extern const struct test test_soring_peek_stress;
