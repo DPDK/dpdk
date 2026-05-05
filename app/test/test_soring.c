@@ -409,6 +409,105 @@ test_soring_acquire_release(void)
 }
 
 static int
+test_peek(struct rte_soring *sor, const uintptr_t enq_objs[],
+	uintptr_t deq_objs[], uint32_t max_elems)
+{
+	uint32_t i, nb_avail, nb_free, nb_deq, nb_enq;
+
+	/* fixed amount enqueue */
+	nb_free = 0;
+	nb_enq = rte_soring_enqueue_burst_start(sor, max_elems / 2, &nb_free);
+
+	SORING_TEST_ASSERT(nb_free, max_elems / 2);
+	SORING_TEST_ASSERT(nb_enq, max_elems / 2);
+
+	/* enqueue just one element */
+	rte_soring_enqueue_finish(sor, enq_objs, 1);
+
+	/* variable amount enqueue */
+	nb_free = 0;
+	nb_enq = rte_soring_enqueue_burst_start(sor, max_elems, &nb_free);
+
+	SORING_TEST_ASSERT(nb_free, 0);
+	SORING_TEST_ASSERT(nb_enq, max_elems - 1);
+
+	/* enqueue remaining elements */
+	rte_soring_enqueue_finish(sor, enq_objs + 1, nb_enq);
+
+	/* test no dequeue while stage 0 has not completed */
+	nb_deq = rte_soring_dequeue_bulk_start(sor, deq_objs, 1, NULL);
+	SORING_TEST_ASSERT(nb_deq, 0);
+
+	nb_deq = rte_soring_dequeue_burst_start(sor, deq_objs, 1, NULL);
+	SORING_TEST_ASSERT(nb_deq, 0);
+
+	move_forward_stage(sor, max_elems, 0);
+
+	nb_avail = 0;
+	memset(deq_objs, 0, sizeof(deq_objs[0]) * max_elems);
+	nb_deq = rte_soring_dequeue_bulk_start(sor, deq_objs, max_elems,
+			&nb_avail);
+
+	SORING_TEST_ASSERT(nb_deq, max_elems);
+	SORING_TEST_ASSERT(nb_avail, 0);
+
+	/* don't remove any elements from the ring */
+	rte_soring_dequeue_finish(sor, 0);
+
+	for (i = 0; i != nb_deq; i++)
+		RTE_TEST_ASSERT_EQUAL(deq_objs[i], enq_objs[i],
+			"dequeued != enqueued");
+
+	nb_avail = 0;
+	memset(deq_objs, 0, sizeof(deq_objs[0]) * max_elems);
+	nb_deq = rte_soring_dequeue_burst_start(sor, deq_objs,
+			max_elems, &nb_avail);
+
+	SORING_TEST_ASSERT(nb_deq, max_elems);
+	SORING_TEST_ASSERT(nb_avail, 0);
+
+	/* remove all dequeued elements from the ring */
+	rte_soring_dequeue_finish(sor, nb_deq);
+
+	for (i = 0; i != nb_deq; i++)
+		RTE_TEST_ASSERT_EQUAL(deq_objs[i], enq_objs[i],
+			"dequeued != enqueued");
+
+	return 0;
+}
+
+static int
+test_soring_enqdeq_peek(enum rte_ring_sync_type sync_type)
+{
+	struct rte_soring *sor;
+	int rc;
+	uint32_t i;
+	size_t sz;
+	struct rte_soring_param prm;
+	uintptr_t enq_objs[10];
+	uintptr_t deq_objs[10];
+
+	memset(&prm, 0, sizeof(prm));
+	for (i = 0; i != RTE_DIM(enq_objs); i++)
+		enq_objs[i] = i + 1;
+
+	/* init memory */
+	set_soring_init_param(&prm, "peek enq/deq", sizeof(enq_objs[0]),
+			RTE_DIM(enq_objs), 1, 0, sync_type, sync_type);
+	sz = rte_soring_get_memsize(&prm);
+	sor = rte_zmalloc(NULL, sz, RTE_CACHE_LINE_SIZE);
+	RTE_TEST_ASSERT_NOT_NULL(sor, "alloc failed for soring");
+	rc = rte_soring_init(sor, &prm);
+	RTE_TEST_ASSERT_SUCCESS(rc, "Failed to init soring");
+
+	rc = test_peek(sor, enq_objs, deq_objs, RTE_DIM(enq_objs));
+
+	rte_soring_dump(stdout, sor);
+	rte_free(sor);
+	return rc;
+}
+
+static int
 test_soring(void)
 {
 
@@ -430,6 +529,14 @@ test_soring(void)
 
 	/* Test large number of stages */
 	if (test_soring_stages() < 0)
+		goto test_fail;
+
+	/* Test peek API for RTE_RING_SYNC_ST sync type */
+	if (test_soring_enqdeq_peek(RTE_RING_SYNC_ST) < 0)
+		goto test_fail;
+
+	/* Test peek API for RTE_RING_SYNC_MT_HTS sync type */
+	if (test_soring_enqdeq_peek(RTE_RING_SYNC_MT_HTS) < 0)
 		goto test_fail;
 
 	return 0;

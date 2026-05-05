@@ -37,6 +37,9 @@ test_ring_stress(void)
 	n = 0;
 	k = 0;
 
+	n += test_soring_peek_stress.nb_case;
+	k += run_test(&test_soring_peek_stress);
+
 	n += test_soring_mt_stress.nb_case;
 	k += run_test(&test_soring_mt_stress);
 

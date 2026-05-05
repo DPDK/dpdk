@@ -63,6 +63,14 @@ New Features
     ``rte_eal_init`` and the application is responsible for probing each device,
   * ``--auto-probing`` enables the initial bus probing, which is the current default behavior.
 
+* **Added peek style API for staged-ordered ring (``rte_soring``).**
+
+  For sorings with producer/consumer in ``RTE_RING_SYNC_ST``,
+  ``RTE_RING_SYNC_MT_HTS`` mode, provide the ability to split enqueue/dequeue
+  operation into two phases (enqueue/dequeue start and enqueue/dequeue finish).
+  This allows the user to inspect objects in the ring without removing them
+  (aka MT safe peek).
+
 * **Added LinkData sxe2 ethernet driver.**
 
   Added network driver for the LinkData network adapters.

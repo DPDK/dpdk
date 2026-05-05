@@ -607,6 +607,278 @@ void
 rte_soring_releasx(struct rte_soring *r, const void *objs,
 	const void *meta, uint32_t stage, uint32_t n, uint32_t ftoken);
 
+/**
+ * SORING Peek API
+ * Same as with rte_ring, for some sync modes it is possible to split
+ * public enqueue/dequeue API into two phases:
+ * - enqueue/dequeue start
+ * - enqueue/dequeue finish
+ * That allows user to inspect objects in the soring
+ * without removing them from it (aka MT safe peek).
+ * Note that right now this API is available only for two sync modes:
+ * 1) Single Producer/Single Consumer (RTE_RING_SYNC_ST)
+ * 2) Serialized Producer/Serialized Consumer (RTE_RING_SYNC_MT_HTS).
+ * It is a user responsibility to create/init soring
+ * with appropriate sync modes selected for enqueue/dequeue.
+ * For more information, please refer to corresponding rte_ring peek API.
+ */
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Start to enqueue exact number of objects on the soring.
+ * Note that no actual objects are put in the queue by this function,
+ * it just reserves for user such ability.
+ * User has to call appropriate rte_soring_enqueue_finish()
+ * or rte_soring_enqueux_finish() to copy objects into the queue
+ * and complete given enqueue operation.
+ *
+ * @param r
+ *   A pointer to the soring structure.
+ * @param n
+ *   The number of objects to add in the soring.
+ * @param free_space
+ *   if non-NULL, returns the amount of space in the soring after the
+ *   enqueue operation has finished.
+ * @return
+ *   Actual number of objects that can be enqueued, either 0 or n.
+ */
+__rte_experimental
+uint32_t
+rte_soring_enqueue_bulk_start(struct rte_soring *r, uint32_t n,
+	uint32_t *free_space);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Start to enqueue several objects (up to 'n') on the soring.
+ * Note that no actual objects are put in the queue by this function,
+ * it just reserves for user such ability.
+ * User has to call appropriate rte_soring_enqueue_finish()
+ * or rte_soring_enqueux_finish() to copy objects into the queue
+ * and complete given enqueue operation.
+ *
+ * @param r
+ *   A pointer to the soring structure.
+ * @param n
+ *   The number of objects to add in the soring.
+ * @param free_space
+ *   if non-NULL, returns the amount of space in the soring after the
+ *   enqueue operation has finished.
+ * @return
+ *   Actual number of objects  that can be enqueued.
+ */
+__rte_experimental
+uint32_t
+rte_soring_enqueue_burst_start(struct rte_soring *r, uint32_t n,
+	uint32_t *free_space);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Complete to enqueue several objects on the soring.
+ * Note that number of objects to enqueue should not exceed
+ * previous enqueue_start return value.
+ *
+ * @param r
+ *   A pointer to the soring structure.
+ * @param objs
+ *   A pointer to an array of objects to enqueue.
+ *   Size of objects to enqueue must be the same value as 'elem_size' parameter
+ *   used while creating the soring. Otherwise the results are undefined.
+ * @param n
+ *   The number of objects to add in the soring from the 'objs'.
+ */
+__rte_experimental
+void
+rte_soring_enqueue_finish(struct rte_soring *r, const void *objs, uint32_t n);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Complete to enqueue several objects plus metadata on the soring.
+ * Note that number of objects to enqueue should not exceed
+ * previous enqueue_start return value.
+ *
+ * @param r
+ *   A pointer to the soring structure.
+ * @param objs
+ *   A pointer to an array of objects to enqueue.
+ *   Size of objects to enqueue must be the same value as 'elem_size' parameter
+ *   used while creating the soring. Otherwise the results are undefined.
+ * @param meta
+ *   A pointer to an array of metadata values for each object to enqueue.
+ *   Note that if user not using object metadata values,
+ *   then this parameter can be NULL.
+ *   Size of elements in this array must be the same value as 'meta_size'
+ *   parameter used while creating the soring.
+ *   If user created the soring with 'meta_size' value equals zero,
+ *   then 'meta' parameter should be NULL.
+ *   Otherwise the results are undefined.
+ * @param n
+ *   The number of objects to add in the soring from the 'objs'.
+ */
+__rte_experimental
+void
+rte_soring_enqueux_finish(struct rte_soring *r, const void *objs,
+	const void *meta, uint32_t n);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Start to dequeue several objects from the soring.
+ * Dequeues exactly requested number of objects or none.
+ * Note that user has to call appropriate dequeue_finish()
+ * to complete given dequeue operation
+ * and actually remove objects from the soring.
+ *
+ * @param r
+ *   A pointer to the soring structure.
+ * @param objs
+ *   A pointer to an array of objects to dequeue.
+ *   Size of objects to dequeue must be the same value as 'elem_size' parameter
+ *   used while creating the soring. Otherwise the results are undefined.
+ * @param num
+ *   The number of objects to dequeue from the soring into the objs.
+ * @param available
+ *   If non-NULL, returns the number of remaining soring entries
+ *   after the dequeue has finished.
+ * @return
+ *   Actual number of objects dequeued, either 0 or 'num'.
+ */
+__rte_experimental
+uint32_t
+rte_soring_dequeue_bulk_start(struct rte_soring *r, void *objs, uint32_t num,
+	uint32_t *available);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Start to dequeue several objects plus metadata from the soring.
+ * Dequeues exactly requested number of objects or none.
+ * Note that user has to call appropriate rte_soring_dequeue_finish()
+ * to complete given dequeue operation
+ * and actually remove objects from the soring.
+ *
+ * @param r
+ *   A pointer to the soring structure.
+ * @param objs
+ *   A pointer to an array of objects to dequeue.
+ *   Size of objects to dequeue must be the same value as 'elem_size' parameter
+ *   used while creating the soring. Otherwise the results are undefined.
+ * @param meta
+ *   A pointer to array of metadata values for each object to dequeue.
+ *   Note that if user not using object metadata values,
+ *   then this parameter can be NULL.
+ *   Size of elements in this array must be the same value as 'meta_size'
+ *   parameter used while creating the soring.
+ *   If user created the soring with 'meta_size' value equals zero,
+ *   then 'meta' parameter should be NULL.
+ *   Otherwise the results are undefined.
+ * @param num
+ *   The number of objects to dequeue from the soring into the objs.
+ * @param available
+ *   If non-NULL, returns the number of remaining soring entries
+ *   after the dequeue has finished.
+ * @return
+ *   Actual number of objects dequeued, either 0 or 'num'.
+ */
+__rte_experimental
+uint32_t
+rte_soring_dequeux_bulk_start(struct rte_soring *r, void *objs, void *meta,
+	uint32_t num, uint32_t *available);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Start to dequeue several objects from the soring.
+ * Dequeues up to requested number of objects.
+ * Note that user has to call appropriate rte_soring_dequeue_finish()
+ * to complete given dequeue operation
+ * and actually remove objects from the soring.
+ *
+ * @param r
+ *   A pointer to the soring structure.
+ * @param objs
+ *   A pointer to an array of objects to dequeue.
+ *   Size of objects to dequeue must be the same value as 'elem_size' parameter
+ *   used while creating the soring. Otherwise the results are undefined.
+ * @param num
+ *   The number of objects to dequeue from the soring into the objs.
+ * @param available
+ *   If non-NULL, returns the number of remaining soring entries
+ *   after the dequeue has finished.
+ * @return
+ *   Actual number of objects dequeued.
+ */
+__rte_experimental
+uint32_t
+rte_soring_dequeue_burst_start(struct rte_soring *r, void *objs, uint32_t num,
+	uint32_t *available);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Start to dequeue several objects plus metadata from the soring.
+ * Dequeues up to requested number of objects.
+ * Note that user has to call appropriate rte_soring_dequeue_finish()
+ * to complete given dequeue operation
+ * and actually remove objects from the soring.
+ *
+ * @param r
+ *   A pointer to the soring structure.
+ * @param objs
+ *   A pointer to an array of objects to dequeue.
+ *   Size of objects to dequeue must be the same value as 'elem_size' parameter
+ *   used while creating the soring. Otherwise the results are undefined.
+ * @param meta
+ *   A pointer to array of metadata values for each object to dequeue.
+ *   Note that if user not using object metadata values,
+ *   then this parameter can be NULL.
+ *   Size of elements in this array must be the same value as 'meta_size'
+ *   parameter used while creating the soring.
+ *   If user created the soring with 'meta_size' value equals zero,
+ *   then 'meta' parameter should be NULL.
+ *   Otherwise the results are undefined.
+ * @param num
+ *   The number of objects to dequeue from the soring into the objs.
+ * @param available
+ *   If non-NULL, returns the number of remaining soring entries
+ *   after the dequeue has finished.
+ * @return
+ *   Actual number of objects dequeued.
+ */
+__rte_experimental
+uint32_t
+rte_soring_dequeux_burst_start(struct rte_soring *r, void *objs, void *meta,
+	uint32_t num, uint32_t *available);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Complete to dequeue several objects from the soring.
+ * Note that number of objects to dequeue should not exceed previous
+ * dequeue_start return value.
+ *
+ * @param r
+ *   A pointer to the soring structure.
+ * @param num
+ *   The number of objects to remove from the soring.
+ */
+__rte_experimental
+void
+rte_soring_dequeue_finish(struct rte_soring *r, uint32_t num);
+
+
 #ifdef __cplusplus
 }
 #endif
