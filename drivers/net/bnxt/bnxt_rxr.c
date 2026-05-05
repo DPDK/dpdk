@@ -1203,13 +1203,21 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	mbuf->data_len = mbuf->pkt_len;
 	mbuf->port = rxq->port_id;
 
-	if (unlikely((((rte_le_to_cpu_16(rxcmp->flags_type) &
+	/* Extract the hardware timestamp from the completion record if:
+	 * 1. The packet is explicitly classified as a PTP packet (with or
+	 *    without timestamp), OR
+	 * 2. Promiscuous timestamping is enabled (ptp_all_rx_tstamp), which
+	 *    instructs the hardware to timestamp all packets, including
+	 *    non-PTP traffic (e.g., IPv6).
+	 */
+	if (unlikely(((rte_le_to_cpu_16(rxcmp->flags_type) &
 			RX_PKT_CMPL_FLAGS_MASK) ==
 			RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP) ||
 			((rte_le_to_cpu_16(rxcmp->flags_type) &
 			RX_PKT_CMPL_FLAGS_MASK) ==
-			RX_PKT_CMPL_FLAGS_ITYPE_PTP_WO_TIMESTAMP)) &&
-			bp->ptp_all_rx_tstamp) && bp->ieee_1588 &&
+			RX_PKT_CMPL_FLAGS_ITYPE_PTP_WO_TIMESTAMP) ||
+			bp->ptp_all_rx_tstamp) &&
+			bp->ieee_1588 &&
 			bp->ptp_cfg) {
 		mbuf->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP |
 				  RTE_MBUF_F_RX_IEEE1588_TMST;
