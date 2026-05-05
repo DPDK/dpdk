@@ -359,6 +359,7 @@ enum iavf_rx_func_type {
 enum iavf_tx_func_type {
 	IAVF_TX_DISABLED,
 	IAVF_TX_DEFAULT,
+	IAVF_TX_NEON,
 	IAVF_TX_AVX2,
 	IAVF_TX_AVX2_OFFLOAD,
 	IAVF_TX_AVX2_CTX,
