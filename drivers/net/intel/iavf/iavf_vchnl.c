@@ -1580,7 +1580,7 @@ iavf_config_irq_map_lv_chunk(struct iavf_adapter *adapter,
 
 	/* for some reason PF side checks for buffer being too big, so adjust it down */
 	buf_len = sizeof(struct virtchnl_queue_vector_maps) +
-		  sizeof(struct virtchnl_queue_vector) * chunk_sz;
+		  sizeof(struct virtchnl_queue_vector) * (chunk_sz - 1);
 
 	args.ops = VIRTCHNL_OP_MAP_QUEUE_VECTOR;
 	args.in_args = (u8 *)map_info;
