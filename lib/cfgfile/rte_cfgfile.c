@@ -198,6 +198,10 @@ rte_cfgfile_load_with_params(const char *filename, int flags,
 		return NULL;
 
 	cfg = rte_cfgfile_create(flags);
+	if (cfg == NULL) {
+		fclose(f);
+		return NULL;
+	}
 
 	while (fgets(buffer, sizeof(buffer), f) != NULL) {
 		char *pos;
@@ -506,6 +510,9 @@ rte_cfgfile_num_sections(struct rte_cfgfile *cfg, const char *sectionname,
 	int num_sections = 0;
 	int i;
 
+	if (cfg == NULL)
+		return -1;
+
 	if (sectionname == NULL)
 		return cfg->num_sections;
 
@@ -523,8 +530,14 @@ rte_cfgfile_sections(struct rte_cfgfile *cfg, char *sections[],
 {
 	int i;
 
-	for (i = 0; i < cfg->num_sections && i < max_sections; i++)
+	if (cfg == NULL || sections == NULL || max_sections < 0)
+		return -1;
+
+	for (i = 0; i < cfg->num_sections && i < max_sections; i++) {
+		if (sections[i] == NULL)
+			return -1;
 		strlcpy(sections[i], cfg->sections[i].name, CFG_NAME_LEN);
+	}
 
 	return i;
 }
@@ -533,6 +546,9 @@ RTE_EXPORT_SYMBOL(rte_cfgfile_has_section)
 int
 rte_cfgfile_has_section(struct rte_cfgfile *cfg, const char *sectionname)
 {
+	if (cfg == NULL || sectionname == NULL)
+		return 0;
+
 	return _get_section(cfg, sectionname) != NULL;
 }
 
@@ -541,6 +557,9 @@ int
 rte_cfgfile_section_num_entries(struct rte_cfgfile *cfg,
 	const char *sectionname)
 {
+	if (cfg == NULL || sectionname == NULL)
+		return -1;
+
 	const struct rte_cfgfile_section *s = _get_section(cfg, sectionname);
 	if (s == NULL)
 		return -1;
@@ -552,6 +571,9 @@ int
 rte_cfgfile_section_num_entries_by_index(struct rte_cfgfile *cfg,
 	char *sectionname, int index)
 {
+	if (cfg == NULL || sectionname == NULL)
+		return -1;
+
 	if (index < 0 || index >= cfg->num_sections)
 		return -1;
 
@@ -566,6 +588,10 @@ rte_cfgfile_section_entries(struct rte_cfgfile *cfg, const char *sectionname,
 		struct rte_cfgfile_entry *entries, int max_entries)
 {
 	int i;
+
+	if (cfg == NULL || sectionname == NULL || entries == NULL)
+		return -1;
+
 	const struct rte_cfgfile_section *sect = _get_section(cfg, sectionname);
 	if (sect == NULL)
 		return -1;
@@ -583,6 +609,9 @@ rte_cfgfile_section_entries_by_index(struct rte_cfgfile *cfg, int index,
 	int i;
 	const struct rte_cfgfile_section *sect;
 
+	if (cfg == NULL || sectionname == NULL || entries == NULL)
+		return -1;
+
 	if (index < 0 || index >= cfg->num_sections)
 		return -1;
 	sect = &cfg->sections[index];
@@ -598,6 +627,10 @@ rte_cfgfile_get_entry(struct rte_cfgfile *cfg, const char *sectionname,
 		const char *entryname)
 {
 	int i;
+
+	if (cfg == NULL || sectionname == NULL || entryname == NULL)
+		return NULL;
+
 	const struct rte_cfgfile_section *sect = _get_section(cfg, sectionname);
 	if (sect == NULL)
 		return NULL;
