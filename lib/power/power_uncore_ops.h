@@ -76,30 +76,8 @@ typedef int (*rte_power_uncore_exit_t)(unsigned int pkg, unsigned int die);
 typedef uint32_t (*rte_power_get_uncore_freq_t)(unsigned int pkg, unsigned int die);
 
 /**
- * Set minimum and maximum uncore frequency for specified die on a package
- * to specified index value.
+ * Set uncore frequency for specified die on a package to specified index value.
  * It should be protected outside of this function for threadsafe.
- *
- * This function should NOT be called in the fast path.
- *
- * @param pkg
- *  Package number.
- *  Each physical CPU in a system is referred to as a package.
- * @param die
- *  Die number.
- *  Each package can have several dies connected together via the uncore mesh.
- * @param index
- *  The index of available frequencies.
- *
- * @return
- *  - 1 on success with frequency changed.
- *  - 0 on success without frequency changed.
- *  - Negative on error.
- */
-typedef int (*rte_power_set_uncore_freq_t)(unsigned int pkg, unsigned int die, uint32_t index);
-
-/**
- * Return the list length of available frequencies in the index array.
  *
  * This function should NOT be called in the fast path.
  *
