@@ -171,6 +171,9 @@ int cmdline_complete_get_elt_string(cmdline_parse_token_hdr_t *tk, int idx,
 	if (!tk || !dstbuf || idx < 0)
 		return -1;
 
+	if (size == 0)
+		return -1;
+
 	tk2 = (struct cmdline_token_string *)tk;
 	sd = &tk2->string_data;
 
