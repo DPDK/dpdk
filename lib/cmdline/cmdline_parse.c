@@ -131,7 +131,7 @@ match_inst(cmdline_parse_inst_t *inst, const char *buf,
 		} else {
 			unsigned rb_sz;
 
-			if (token_hdr.offset > resbuf_size) {
+			if (token_hdr.offset >= resbuf_size) {
 				printf("Parse error(%s:%d): Token offset(%u) "
 					"exceeds maximum size(%u)\n",
 					__FILE__, __LINE__,
@@ -514,7 +514,9 @@ cmdline_complete(struct cmdline *cl, const char *buf, int *state,
 				}
 				(*state)++;
 				l=strlcpy(dst, tmpbuf, size);
-				if (l>=0 && token_hdr.ops->get_help) {
+				if ((unsigned int)l >= size)
+					return 1;
+				if (token_hdr.ops->get_help) {
 					token_hdr.ops->get_help(token_p, tmpbuf,
 								sizeof(tmpbuf));
 					help_str = inst->help_str;
