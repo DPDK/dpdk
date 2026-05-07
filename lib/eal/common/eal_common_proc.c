@@ -60,6 +60,15 @@ enum mp_type {
 	MP_IGN, /* Response telling requester to ignore this response */
 };
 
+/* Message sent from primary EAL to secondary EAL */
+#define EAL_MP "mp_eal"
+struct eal_mp_req {
+	enum {
+		MP_REQ_NOP = 0,
+		MP_REQ_QUIT,
+	} type;
+};
+
 struct mp_msg_internal {
 	int type;
 	struct rte_mp_msg msg;
@@ -623,6 +632,25 @@ close_socket_fd(int fd)
 		unlink(path);
 }
 
+/* callback in secondary when primary has exited */
+static int
+mp_primary_exited(const struct rte_mp_msg *msg, const void *peer __rte_unused)
+{
+	const struct eal_mp_req *req;
+
+	if (msg->len_param != sizeof(*req)) {
+		EAL_LOG(ERR, "invalid request from primary");
+		return -EINVAL;
+	}
+
+	req = (const struct eal_mp_req *)msg->param;
+	if (req->type == MP_REQ_QUIT)
+		rte_mp_channel_cleanup();
+
+	/* no reply needed */
+	return 0;
+}
+
 int
 rte_mp_channel_init(void)
 {
@@ -670,6 +698,10 @@ rte_mp_channel_init(void)
 		return -1;
 	}
 
+	/* listen for quit message from primary */
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		rte_mp_action_register(EAL_MP, mp_primary_exited);
+
 	if (rte_thread_create_internal_control(&mp_handle_tid, "mp-msg",
 			mp_handle, NULL) < 0) {
 		EAL_LOG(ERR, "failed to create mp thread: %s",
@@ -691,12 +723,27 @@ rte_mp_channel_cleanup(void)
 {
 	int fd;
 
+	/* Primary exiting, tell all secondary processes */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		struct rte_mp_msg msg = { .name = EAL_MP };
+		struct eal_mp_req req = { .type = MP_REQ_QUIT };
+
+		memcpy(&msg.param, &req, sizeof(req));
+		msg.len_param = sizeof(req);
+
+		rte_mp_sendmsg(&msg);
+	} else {
+		rte_mp_action_unregister(EAL_MP);
+	}
+
 	fd = rte_atomic_exchange_explicit(&mp_fd, -1, rte_memory_order_relaxed);
 	if (fd < 0)
 		return;
 
-	pthread_cancel((pthread_t)mp_handle_tid.opaque_id);
-	rte_thread_join(mp_handle_tid, NULL);
+	if (pthread_self() != (pthread_t)mp_handle_tid.opaque_id) {
+		pthread_cancel((pthread_t)mp_handle_tid.opaque_id);
+		rte_thread_join(mp_handle_tid, NULL);
+	}
 	close_socket_fd(fd);
 }
 
