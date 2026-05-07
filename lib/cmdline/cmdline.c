@@ -103,6 +103,9 @@ RTE_EXPORT_SYMBOL(cmdline_get_rdline)
 struct rdline*
 cmdline_get_rdline(struct cmdline *cl)
 {
+	if (!cl)
+		return NULL;
+
 	return &cl->rdl;
 }
 

@@ -618,6 +618,9 @@ RTE_EXPORT_SYMBOL(rdline_get_history_buffer_size)
 size_t
 rdline_get_history_buffer_size(struct rdline *rdl)
 {
+	if (!rdl)
+		return 0;
+
 	return sizeof(rdl->history_buf);
 }
 
