@@ -456,6 +456,8 @@ ice_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		tm_node->parent = NULL;
 		tm_node->reference_count = 0;
 		tm_node->shaper_profile = shaper_profile;
+		if (shaper_profile != NULL)
+			shaper_profile->reference_count++;
 		tm_node->children = RTE_PTR_ADD(tm_node, sizeof(struct ice_tm_node));
 		tm_node->params = *params;
 		pf->tm_conf.root = tm_node;
@@ -518,6 +520,8 @@ ice_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	tm_node->parent = parent_node;
 	tm_node->level = level_id;
 	tm_node->shaper_profile = shaper_profile;
+	if (shaper_profile != NULL)
+		shaper_profile->reference_count++;
 	tm_node->children = RTE_PTR_ADD(tm_node, sizeof(struct ice_tm_node));
 	tm_node->parent->children[tm_node->parent->reference_count++] = tm_node;
 	tm_node->params = *params;
@@ -568,6 +572,8 @@ ice_tm_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
 
 	/* root node */
 	if (tm_node->level == 0) {
+		if (tm_node->shaper_profile != NULL)
+			tm_node->shaper_profile->reference_count--;
 		rte_free(tm_node);
 		pf->tm_conf.root = NULL;
 		return 0;
@@ -582,6 +588,8 @@ ice_tm_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
 		tm_node->parent->children[j] = tm_node->parent->children[j + 1];
 
 	tm_node->parent->reference_count--;
+	if (tm_node->shaper_profile != NULL)
+		tm_node->shaper_profile->reference_count--;
 	rte_free(tm_node);
 
 	return 0;
