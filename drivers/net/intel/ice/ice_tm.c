@@ -805,6 +805,19 @@ create_sched_node_recursive(struct ice_pf *pf, struct ice_port_info *pi,
 	return 0;
 }
 
+static void
+reset_hw_node_recursive(struct ice_hw *hw, struct ice_sched_node *node)
+{
+	uint16_t i;
+
+	for (i = 0; i < node->num_children; i++) {
+		reset_hw_node_recursive(hw, node->children[i]);
+		if (ice_cfg_hw_node(hw, NULL, node->children[i]))
+			PMD_DRV_LOG(WARNING, "Failed to reset node %u to default configuration",
+					node->children[i]->info.node_teid);
+	}
+}
+
 static int
 commit_new_hierarchy(struct rte_eth_dev *dev)
 {
@@ -820,8 +833,15 @@ commit_new_hierarchy(struct rte_eth_dev *dev)
 	struct ice_sched_node *new_vsi_root = hw->vsi_ctx[pf->main_vsi->idx]->sched.vsi_node[0];
 
 	if (sw_root == NULL) {
-		PMD_DRV_LOG(ERR, "No root node defined in TM hierarchy");
-		return -1;
+		if (!pf->tm_conf.committed) {
+			PMD_DRV_LOG(ERR, "No root node defined in TM hierarchy");
+			return -EINVAL;
+		}
+		/* TM hierarchy deleted. Restore default scheduler state. */
+		reset_hw_node_recursive(hw, hw->vsi_ctx[pf->main_vsi->idx]->sched.vsi_node[0]);
+		pf->main_vsi->nb_qps = pf->lan_nb_qps;
+		pf->tm_conf.committed = false;
+		return ice_alloc_lan_q_ctx(hw, 0, 0, pf->main_vsi->nb_qps);
 	}
 
 	/* handle case where VSI node needs to move DOWN the hierarchy */
