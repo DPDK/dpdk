@@ -319,7 +319,7 @@ cmdline_get_help_num(cmdline_parse_token_hdr_t *tk, char *dstbuf, unsigned int s
 	struct cmdline_token_num_data nd;
 	int ret;
 
-	if (!tk)
+	if (!tk || !dstbuf || size == 0)
 		return -1;
 
 	memcpy(&nd, &((struct cmdline_token_num *)tk)->num_data, sizeof(nd));
