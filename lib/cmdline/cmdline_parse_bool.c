@@ -13,13 +13,17 @@
 #include "cmdline_parse.h"
 #include "cmdline_parse_bool.h"
 
+static int
+cmdline_get_help_bool(cmdline_parse_token_hdr_t *tk, char *dstbuf,
+		unsigned int size);
+
 
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(cmdline_token_bool_ops, 25.03)
 struct cmdline_token_ops cmdline_token_bool_ops = {
 	.parse = cmdline_parse_bool,
 	.complete_get_nb = NULL,
 	.complete_get_elt = NULL,
-	.get_help = cmdline_get_help_string,
+	.get_help = cmdline_get_help_bool,
 };
 
 static cmdline_parse_token_string_t cmd_parse_token_bool = {
@@ -31,6 +35,18 @@ static cmdline_parse_token_string_t cmd_parse_token_bool = {
 		"on#off"
 	}
 };
+
+/* get help for bool token */
+static int
+cmdline_get_help_bool(__rte_unused cmdline_parse_token_hdr_t *tk,
+		char *dstbuf, unsigned int size)
+{
+	if (dstbuf == NULL || size == 0)
+		return -1;
+
+	strlcpy(dstbuf, "on|off", size);
+	return 0;
+}
 
 /* parse string to bool */
 int
