@@ -90,6 +90,12 @@ New Features
   Provides wire-format structures with endian-annotated types
   and correction field manipulation for transparent clock implementations.
 
+* **Added PTP software relay example application.**
+
+  Added a new example application ``ptp_tap_relay_sw``
+  demonstrating a software PTP transparent clock relay
+  between a DPDK port and a kernel TAP interface.
+
 * **Added no-IOMMU mode to UACCE bus.**
 
   Added no-IOMMU mode for devices without or not enabling IOMMU/SVA.

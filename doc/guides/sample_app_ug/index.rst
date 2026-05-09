@@ -51,6 +51,7 @@ Sample Applications User Guides
     dist_app
     vm_power_management
     ptpclient
+    ptp_tap_relay_sw
     fips_validation
     ipsec_secgw
     bbdev_app

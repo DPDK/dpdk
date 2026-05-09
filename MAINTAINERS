@@ -1654,6 +1654,8 @@ F: app/test/test_crc.c
 PTP (IEEE 1588 Precision Time Protocol)
 M: Rajesh Kumar <rajesh3.kumar@intel.com>
 F: lib/net/rte_ptp.h
+F: examples/ptp_tap_relay_sw/
+F: doc/guides/sample_app_ug/ptp_tap_relay_sw.rst
 
 IP fragmentation & reassembly
 M: Konstantin Ananyev <konstantin.v.ananyev@yandex.ru>
