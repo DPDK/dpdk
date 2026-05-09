@@ -39,13 +39,6 @@
 #define POWER_CPPC_DRIVER "cppc_cpufreq"
 #define BUS_FREQ     100000
 
-enum power_state {
-	POWER_IDLE = 0,
-	POWER_ONGOING,
-	POWER_USED,
-	POWER_UNKNOWN
-};
-
 /**
  * Power info per lcore.
  */

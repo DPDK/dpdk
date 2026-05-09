@@ -31,13 +31,6 @@
 #define IA32_PERF_CTL     0x199
 #define CORE_TURBO_DISABLE_BIT ((uint64_t)1<<32)
 
-enum power_state {
-	POWER_IDLE = 0,
-	POWER_ONGOING,
-	POWER_USED,
-	POWER_UNKNOWN
-};
-
 /**
  * Power info per lcore.
  */

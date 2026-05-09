@@ -35,13 +35,6 @@
 #define POWER_AMD_PSTATE_DRIVER "amd-pstate"
 #define BUS_FREQ     1000	/* khz */
 
-enum power_state {
-	POWER_IDLE = 0,
-	POWER_ONGOING,
-	POWER_USED,
-	POWER_UNKNOWN
-};
-
 /**
  * Power info per lcore.
  */

@@ -41,14 +41,6 @@
 		"/sys/devices/system/cpu/intel_pstate/turbo_pct"
 #define POWER_PSTATE_DRIVER "intel_pstate"
 
-
-enum power_state {
-	POWER_IDLE = 0,
-	POWER_ONGOING,
-	POWER_USED,
-	POWER_UNKNOWN
-};
-
 struct __rte_cache_aligned pstate_power_info {
 	unsigned int lcore_id;               /**< Logical core id */
 	uint32_t freqs[RTE_MAX_LCORE_FREQS]; /**< Frequency array */

@@ -19,6 +19,16 @@
 #define RTE_POWER_DRIVER_NAMESZ 24
 
 /**
+ * Power state of cpufreq driver
+ */
+enum power_state {
+	POWER_IDLE = 0,
+	POWER_ONGOING,
+	POWER_USED,
+	POWER_UNKNOWN
+};
+
+/**
  * Initialize power management for a specific lcore. If rte_power_set_env() has
  * not been called then an auto-detect of the environment will start and
  * initialise the corresponding resources.
