@@ -20,8 +20,6 @@
  */
 #define UNIT_DIFF 10000
 
-#define POWER_CONVERT_TO_DECIMAL 10
-
 #define POWER_GOVERNOR_USERSPACE "userspace"
 #define POWER_SYSFILE_SETSPEED   \
 		"/sys/devices/system/cpu/cpu%u/cpufreq/scaling_setspeed"

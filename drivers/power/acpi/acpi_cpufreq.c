@@ -14,7 +14,6 @@
 #include "power_common.h"
 
 #define STR_SIZE     1024
-#define POWER_CONVERT_TO_DECIMAL 10
 
 #define POWER_GOVERNOR_USERSPACE "userspace"
 #define POWER_SYSFILE_AVAIL_FREQ \

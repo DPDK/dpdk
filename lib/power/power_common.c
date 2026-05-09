@@ -21,7 +21,6 @@ RTE_LOG_REGISTER_DEFAULT(rte_power_logtype, INFO);
 		"/sys/devices/system/cpu/cpu%u/cpufreq/scaling_driver"
 #define POWER_SYSFILE_GOVERNOR  \
 		"/sys/devices/system/cpu/cpu%u/cpufreq/scaling_governor"
-#define POWER_CONVERT_TO_DECIMAL 10
 
 RTE_EXPORT_INTERNAL_SYMBOL(cpufreq_check_scaling_driver)
 int

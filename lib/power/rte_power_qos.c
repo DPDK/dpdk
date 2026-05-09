@@ -115,7 +115,7 @@ rte_power_qos_get_cpu_resume_latency(uint16_t lcore_id)
 	if (strcmp(buf, "n/a") == 0)
 		latency = RTE_POWER_QOS_STRICT_LATENCY_VALUE;
 	else {
-		latency = strtoul(buf, NULL, 10);
+		latency = strtoul(buf, NULL, POWER_CONVERT_TO_DECIMAL);
 		latency = latency == 0 ? RTE_POWER_QOS_RESUME_LATENCY_NO_CONSTRAINT : latency;
 	}
 

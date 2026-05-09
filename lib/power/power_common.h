@@ -23,6 +23,8 @@ extern int rte_power_logtype;
 #define POWER_DEBUG_LOG(...)
 #endif
 
+#define POWER_CONVERT_TO_DECIMAL 10
+
 /* check if scaling driver matches one we want */
 __rte_internal
 int cpufreq_check_scaling_driver(const char *driver);

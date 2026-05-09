@@ -16,8 +16,6 @@
 #define FREQ_ROUNDING_DELTA 500
 #define ROUND_FREQ_TO_N_1000 1000
 
-#define POWER_CONVERT_TO_DECIMAL 10
-
 #define POWER_GOVERNOR_USERSPACE "userspace"
 #define POWER_SYSFILE_SETSPEED   \
 		"/sys/devices/system/cpu/cpu%u/cpufreq/scaling_setspeed"
