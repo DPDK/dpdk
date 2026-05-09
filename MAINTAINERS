@@ -1651,6 +1651,10 @@ F: lib/net/net_crc_avx512.c
 F: lib/net/net_crc_sse.c
 F: app/test/test_crc.c
 
+PTP (IEEE 1588 Precision Time Protocol)
+M: Rajesh Kumar <rajesh3.kumar@intel.com>
+F: lib/net/rte_ptp.h
+
 IP fragmentation & reassembly
 M: Konstantin Ananyev <konstantin.v.ananyev@yandex.ru>
 F: lib/ip_frag/

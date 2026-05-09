@@ -83,6 +83,13 @@ New Features
   This allows the user to inspect objects in the ring without removing them
   (aka MT safe peek).
 
+* **Added PTP protocol definitions.**
+
+  Added IEEE 1588 Precision Time Protocol header structures, constants,
+  and inline helpers to ``lib/net/rte_ptp.h``.
+  Provides wire-format structures with endian-annotated types
+  and correction field manipulation for transparent clock implementations.
+
 * **Added no-IOMMU mode to UACCE bus.**
 
   Added no-IOMMU mode for devices without or not enabling IOMMU/SVA.
