@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - name: Checkout sources
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
     - name: Check patches
@@ -95,7 +95,7 @@ jobs:
 
     steps:
     - name: Checkout sources
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     - name: Generate cache keys
       id: get_ref_keys
       run: |
@@ -103,7 +103,7 @@ jobs:
         echo 'libabigail=libabigail-${{ env.LIBABIGAIL_VERSION }}-${{ matrix.config.os }}' >> $GITHUB_OUTPUT
         echo 'abi=abi-${{ matrix.config.os }}-${{ matrix.config.compiler }}-${{ matrix.config.cross }}-${{ env.REF_GIT_TAG }}' >> $GITHUB_OUTPUT
     - name: Retrieve ccache cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.ccache
         key: ${{ steps.get_ref_keys.outputs.ccache }}-${{ github.ref }}
@@ -111,13 +111,13 @@ jobs:
           ${{ steps.get_ref_keys.outputs.ccache }}-refs/heads/main
     - name: Retrieve libabigail cache
       id: libabigail-cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       if: env.ABI_CHECKS == 'true'
       with:
         path: libabigail
         key: ${{ steps.get_ref_keys.outputs.libabigail }}
     - name: Retrieve ABI reference cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       if: env.ABI_CHECKS == 'true'
       with:
         path: reference
@@ -166,7 +166,7 @@ jobs:
       run: .ci/linux-build.sh
     - name: Upload logs on failure
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: meson-logs-${{ join(matrix.config.*, '-') }}
         path: |
@@ -187,9 +187,9 @@ jobs:
 
     steps:
     - name: Checkout sources
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.x'
     - name: Install dependencies
@@ -206,7 +206,7 @@ jobs:
         meson compile -C build
     - name: Upload logs on failure
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: meson-logs-${{ join(matrix.config.*, '-') }}
         path: |
@@ -232,7 +232,7 @@ jobs:
         echo 'image=image-${{ matrix.config.image }}-'$(date -u +%Y-%m-%d) >> $GITHUB_OUTPUT
     - name: Retrieve image cache
       id: image_cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.image
         key: ${{ steps.get_keys.outputs.image }}
@@ -279,7 +279,7 @@ jobs:
 
     steps:
     - name: Checkout sources
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     - name: Generate various keys
       id: get_keys
       run: |
@@ -287,7 +287,7 @@ jobs:
         echo 'logs=meson-logs-${{ join(matrix.config.*, '-') }}' | tr -d ':' >> $GITHUB_OUTPUT
     - name: Retrieve image cache
       id: image_cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.image
         key: ${{ needs.prepare-container-images.outputs.image }}
@@ -297,7 +297,7 @@ jobs:
         echo 'Image ${{ matrix.config.image }} is not cached.'
         false
     - name: Retrieve ccache cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.ccache
         key: ${{ steps.get_keys.outputs.ccache }}-${{ github.ref }}
@@ -338,7 +338,7 @@ jobs:
       run: docker kill dpdk
     - name: Upload logs on failure
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ steps.get_keys.outputs.logs }}
         path: |
