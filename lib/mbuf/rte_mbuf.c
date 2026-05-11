@@ -540,8 +540,8 @@ __rte_pktmbuf_free_seg_via_array(struct rte_mbuf *m,
 	if (likely(m != NULL)) {
 		if (*nb_pending == pending_sz ||
 		    (*nb_pending > 0 && m->pool != pending[0]->pool)) {
-			rte_mempool_put_bulk(pending[0]->pool,
-					(void **)pending, *nb_pending);
+			rte_mbuf_raw_free_bulk(pending[0]->pool,
+					pending, *nb_pending);
 			*nb_pending = 0;
 		}
 
@@ -562,8 +562,6 @@ void rte_pktmbuf_free_bulk(struct rte_mbuf **mbufs, unsigned int count)
 	struct rte_mbuf *m, *m_next, *pending[RTE_PKTMBUF_FREE_PENDING_SZ];
 	unsigned int idx, nb_pending = 0;
 
-	rte_mbuf_history_mark_bulk(mbufs, count, RTE_MBUF_HISTORY_OP_LIB_FREE);
-
 	for (idx = 0; idx < count; idx++) {
 		m = mbufs[idx];
 		if (unlikely(m == NULL))
@@ -581,7 +579,7 @@ void rte_pktmbuf_free_bulk(struct rte_mbuf **mbufs, unsigned int count)
 	}
 
 	if (nb_pending > 0)
-		rte_mempool_put_bulk(pending[0]->pool, (void **)pending, nb_pending);
+		rte_mbuf_raw_free_bulk(pending[0]->pool, pending, nb_pending);
 }
 
 /* Creates a shallow copy of mbuf */

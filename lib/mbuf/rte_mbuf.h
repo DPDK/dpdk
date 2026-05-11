@@ -663,14 +663,14 @@ static __rte_always_inline int
 rte_mbuf_raw_alloc_bulk(struct rte_mempool *mp, struct rte_mbuf **mbufs, unsigned int count)
 {
 	int rc = rte_mempool_get_bulk(mp, (void **)mbufs, count);
-	if (likely(rc == 0)) {
-		for (unsigned int idx = 0; idx < count; idx++)
-			__rte_mbuf_raw_sanity_check_mp(mbufs[idx], mp);
-	}
+	if (unlikely(rc))
+		return rc;
+	for (unsigned int idx = 0; idx < count; idx++)
+		__rte_mbuf_raw_sanity_check_mp(mbufs[idx], mp);
 
 	rte_mbuf_history_mark_bulk(mbufs, count, RTE_MBUF_HISTORY_OP_LIB_ALLOC);
 
-	return rc;
+	return 0;
 }
 
 /**
@@ -1067,8 +1067,6 @@ static inline int rte_pktmbuf_alloc_bulk(struct rte_mempool *pool,
 	rc = rte_mbuf_raw_alloc_bulk(pool, mbufs, count);
 	if (unlikely(rc))
 		return rc;
-
-	rte_mbuf_history_mark_bulk(mbufs, count, RTE_MBUF_HISTORY_OP_LIB_ALLOC);
 
 	rte_mbuf_raw_reset_bulk(pool, mbufs, count);
 
