@@ -524,8 +524,8 @@ idpf_dp_splitq_recv_pkts_avx2(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_
 
 	/* check if there is at least one packet available */
 	head_gen = rxdp->flex_adv_nic_3_wb.pktlen_gen_bufq_id;
-	if (((head_gen >> VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_S) &
-		 VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_M) != queue->expected_gen_id)
+	if (((head_gen & VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_M) >>
+		 VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_S) != queue->expected_gen_id)
 		return 0;
 
 	for (i = 0; i < nb_pkts;
@@ -599,17 +599,17 @@ idpf_dp_splitq_recv_pkts_avx2(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_
 		pktlen_gen3 = (uint16_t)_mm_extract_epi16(d3, 2);
 
 		valid0 = (stat0 & 1) &&
-			 (((pktlen_gen0 >> VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_S) &
-			   VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_M) == queue->expected_gen_id);
+			 (((pktlen_gen0 & VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_M) >>
+			   VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_S) == queue->expected_gen_id);
 		valid1 = (stat1 & 1) &&
-			 (((pktlen_gen1 >> VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_S) &
-			   VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_M) == queue->expected_gen_id);
+			 (((pktlen_gen1 & VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_M) >>
+			   VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_S) == queue->expected_gen_id);
 		valid2 = (stat2 & 1) &&
-			 (((pktlen_gen2 >> VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_S) &
-			   VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_M) == queue->expected_gen_id);
+			 (((pktlen_gen2 & VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_M) >>
+			   VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_S) == queue->expected_gen_id);
 		valid3 = (stat3 & 1) &&
-			 (((pktlen_gen3 >> VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_S) &
-			   VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_M) == queue->expected_gen_id);
+			 (((pktlen_gen3 & VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_M) >>
+			   VIRTCHNL2_RX_FLEX_DESC_ADV_GEN_S) == queue->expected_gen_id);
 
 		/* count valid descriptors (holes are impossible because
 		 * descriptors are read in reverse order while the NIC
