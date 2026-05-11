@@ -491,7 +491,7 @@ idpf_dp_splitq_recv_pkts_avx2(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_
 	struct rte_mbuf **sw_ring = &queue->bufq2->sw_ring[queue->rx_tail];
 	volatile union virtchnl2_rx_desc *rxdp =
 		(volatile union virtchnl2_rx_desc *)queue->rx_ring + queue->rx_tail;
-	const __m256i mbuf_init = _mm256_set_epi64x(0, 0, 0, queue->mbuf_initializer);
+	const __m256i mbuf_init = _mm256_set_epi64x(0, 0, 0, queue->bufq2->mbuf_initializer);
 	uint64_t head_gen;
 	uint16_t received = 0;
 	int i;
