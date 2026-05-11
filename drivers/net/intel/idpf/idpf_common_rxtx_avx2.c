@@ -884,17 +884,21 @@ idpf_splitq_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 	struct idpf_flex_tx_sched_desc *txdp;
 	struct ci_tx_entry_vec *txep;
-	uint16_t n, nb_commit;
+	uint16_t n, nb_commit, tx_id;
 	uint64_t cmd_dtype = IDPF_TXD_FLEX_FLOW_CMD_EOP;
-	uint16_t tx_id = txq->tx_tail;
 
-	nb_commit = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
-	nb_pkts = nb_commit;
+	/* cross rs_thresh boundary is not allowed */
+	nb_pkts = RTE_MIN(nb_pkts, txq->tx_rs_thresh);
+
+	nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
+	nb_commit = nb_pkts;
 	if (unlikely(nb_pkts == 0))
 		return 0;
 
-	txdp = (struct idpf_flex_tx_sched_desc *)&txq->desc_ring[tx_id];
-	txep = &txq->sw_ring_vec[tx_id];
+	tx_id = txq->tx_tail;
+	txdp = &txq->desc_ring[tx_id];
+	txep = (void *)txq->sw_ring;
+	txep += tx_id;
 
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
 
@@ -909,10 +913,14 @@ idpf_splitq_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 		idpf_splitq_vtx1_avx2(txdp, *tx_pkts++, cmd_dtype);
 
 		nb_commit = (uint16_t)(nb_commit - n);
-		tx_id = 0;
 
+		tx_id = 0;
+		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
+
+		/* avoid reach the end of ring */
 		txdp = &txq->desc_ring[tx_id];
 		txep = (void *)txq->sw_ring;
+		txep += tx_id;
 	}
 
 	ci_tx_backlog_entry_vec(txep, tx_pkts, nb_commit);
@@ -920,6 +928,10 @@ idpf_splitq_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 	idpf_splitq_vtx_avx2(txdp, tx_pkts, nb_commit, cmd_dtype);
 
 	tx_id = (uint16_t)(tx_id + nb_commit);
+	if (tx_id > txq->tx_next_rs)
+		txq->tx_next_rs =
+			(uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
+
 	txq->tx_tail = tx_id;
 
 	IDPF_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
