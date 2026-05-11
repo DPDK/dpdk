@@ -55,8 +55,8 @@ class HashAlgorithm(StrEnum):
 
 @requires_link_topology(LinkTopology.ONE_LINK)
 @requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_RSS_HASH)
-class TestPmdRss(TestSuite):
-    """PMD RSS test suite."""
+class TestRss(TestSuite):
+    """RSS test suite."""
 
     config: Config
 

@@ -35,7 +35,7 @@ from framework.test_suite import TestSuite, func_test
 
 @requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
 @requires_nic_capability(NicCapability.PORT_RX_OFFLOAD_SCATTER)
-class TestPmdBufferScatter(TestSuite):
+class TestBufferScatter(TestSuite):
     """DPDK PMD packet scattering test suite.
 
     Configure the Rx queues to have mbuf data buffers

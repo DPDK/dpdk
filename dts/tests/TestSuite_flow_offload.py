@@ -402,8 +402,8 @@ class FlowTestGenerator:
 
 
 @requires_nic_capability(NicCapability.FLOW_CTRL)
-class TestRteFlow(TestSuite):
-    """RTE Flow test suite.
+class TestFlowOffload(TestSuite):
+    """Flow offload test suite.
 
     This suite consists of 4 test cases:
     1. Queue Action: Verifies queue actions with multi-protocol patterns

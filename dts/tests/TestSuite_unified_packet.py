@@ -31,7 +31,7 @@ from api.testpmd.types import RtePTypes, TestPmdVerbosePacket
 from framework.test_suite import TestSuite, func_test
 
 
-class TestUniPkt(TestSuite):
+class TestUnifiedPacket(TestSuite):
     """DPDK Unified packet test suite.
 
     This testing suite uses testpmd's verbose output hardware/software
