@@ -819,6 +819,8 @@ idpf_splitq_scan_cq_ring(struct idpf_complq *cq)
 	cq->tx_tail = cq_qid;
 }
 
+#define IDPF_TXD_FLEX_QW1_TX_BUF_SZ_S  48
+
 static __rte_always_inline void
 idpf_splitq_vtx1_avx2(struct idpf_flex_tx_sched_desc *txdp,
 				struct rte_mbuf *pkt, uint64_t flags)
@@ -826,7 +828,7 @@ idpf_splitq_vtx1_avx2(struct idpf_flex_tx_sched_desc *txdp,
 	uint64_t high_qw =
 		IDPF_TX_DESC_DTYPE_FLEX_FLOW_SCHE |
 		((uint64_t)flags) |
-		((uint64_t)pkt->data_len << IDPF_TXD_QW1_TX_BUF_SZ_S);
+		((uint64_t)pkt->data_len << IDPF_TXD_FLEX_QW1_TX_BUF_SZ_S);
 
 	__m128i descriptor = _mm_set_epi64x(high_qw,
 						pkt->buf_iova + pkt->data_off);
@@ -848,13 +850,13 @@ idpf_splitq_vtx_avx2(struct idpf_flex_tx_sched_desc *txdp,
 	for (; nb_pkts >= IDPF_VPMD_DESCS_PER_LOOP; txdp += IDPF_VPMD_DESCS_PER_LOOP,
 			pkt += IDPF_VPMD_DESCS_PER_LOOP, nb_pkts -= IDPF_VPMD_DESCS_PER_LOOP) {
 		uint64_t hi_qw0 = hi_qw_tmpl |
-			((uint64_t)pkt[0]->data_len << IDPF_TXD_QW1_TX_BUF_SZ_S);
+			((uint64_t)pkt[0]->data_len << IDPF_TXD_FLEX_QW1_TX_BUF_SZ_S);
 		uint64_t hi_qw1 = hi_qw_tmpl |
-			((uint64_t)pkt[1]->data_len << IDPF_TXD_QW1_TX_BUF_SZ_S);
+			((uint64_t)pkt[1]->data_len << IDPF_TXD_FLEX_QW1_TX_BUF_SZ_S);
 		uint64_t hi_qw2 = hi_qw_tmpl |
-			((uint64_t)pkt[2]->data_len << IDPF_TXD_QW1_TX_BUF_SZ_S);
+			((uint64_t)pkt[2]->data_len << IDPF_TXD_FLEX_QW1_TX_BUF_SZ_S);
 		uint64_t hi_qw3 = hi_qw_tmpl |
-			((uint64_t)pkt[3]->data_len << IDPF_TXD_QW1_TX_BUF_SZ_S);
+			((uint64_t)pkt[3]->data_len << IDPF_TXD_FLEX_QW1_TX_BUF_SZ_S);
 
 		__m256i desc0_1 = _mm256_set_epi64x(hi_qw1,
 			pkt[1]->buf_iova + pkt[1]->data_off,
