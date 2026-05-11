@@ -570,9 +570,9 @@ idpf_dp_splitq_recv_pkts_avx2(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_
 		ptype2 = (uint16_t)_mm256_extract_epi16(pt32, 1);
 		ptype3 = (uint16_t)_mm256_extract_epi16(pt32, 9);
 
-		mb10 = _mm256_insert_epi32(mb10, (int)ptype_tbl[ptype1], 2);
+		mb10 = _mm256_insert_epi32(mb10, (int)ptype_tbl[ptype1], 4);
 		mb10 = _mm256_insert_epi32(mb10, (int)ptype_tbl[ptype0], 0);
-		mb32 = _mm256_insert_epi32(mb32, (int)ptype_tbl[ptype3], 2);
+		mb32 = _mm256_insert_epi32(mb32, (int)ptype_tbl[ptype3], 4);
 		mb32 = _mm256_insert_epi32(mb32, (int)ptype_tbl[ptype2], 0);
 
 		/* Build rearm data for each mbuf */
