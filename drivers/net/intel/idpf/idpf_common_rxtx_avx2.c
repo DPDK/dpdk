@@ -587,11 +587,11 @@ idpf_dp_splitq_recv_pkts_avx2(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_
 		_mm256_storeu_si256((__m256i *)&rx_pkts[i + 2]->rearm_data, rearm2);
 		_mm256_storeu_si256((__m256i *)&rx_pkts[i + 3]->rearm_data, rearm3);
 
-		/* Extract DD and generation bits from the already-loaded descriptor data (d0-d3) */
-		stat0 = (uint8_t)_mm_extract_epi8(d0, 1);
-		stat1 = (uint8_t)_mm_extract_epi8(d1, 1);
-		stat2 = (uint8_t)_mm_extract_epi8(d2, 1);
-		stat3 = (uint8_t)_mm_extract_epi8(d3, 1);
+		/* Extract DD bit from status_err0_qw1 (byte 8 of descriptor) */
+		stat0 = (uint8_t)_mm_extract_epi8(d0, 8);
+		stat1 = (uint8_t)_mm_extract_epi8(d1, 8);
+		stat2 = (uint8_t)_mm_extract_epi8(d2, 8);
+		stat3 = (uint8_t)_mm_extract_epi8(d3, 8);
 
 		pktlen_gen0 = (uint16_t)_mm_extract_epi16(d0, 2);
 		pktlen_gen1 = (uint16_t)_mm_extract_epi16(d1, 2);
