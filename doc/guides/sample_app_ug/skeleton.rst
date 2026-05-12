@@ -65,7 +65,7 @@ used by the application:
 
 .. literalinclude:: ../../../examples/skeleton/basicfwd.c
     :language: c
-    :start-after: Allocates mempool to hold the mbufs. 8<
+    :start-after: Create and allocate a mempool to hold the mbufs. 8<
     :end-before: >8 End of allocating mempool to hold mbuf.
     :dedent: 1
 

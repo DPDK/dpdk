@@ -188,11 +188,11 @@ main(int argc, char *argv[])
 	/* Check that there is an even number of ports to send/receive on. */
 	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports < 2 || (nb_ports & 1))
-		rte_exit(EXIT_FAILURE, "Error: number of ports must be even\n");
+		rte_exit(EXIT_FAILURE,
+				"Error: number of ports must be even, found %u ports\n",
+				nb_ports);
 
-	/* Creates a new mempool in memory to hold the mbufs. */
-
-	/* Allocates mempool to hold the mbufs. 8< */
+	/* Create and allocate a mempool to hold the mbufs. 8< */
 	mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", NUM_MBUFS * nb_ports,
 		MBUF_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 	/* >8 End of allocating mempool to hold mbuf. */
