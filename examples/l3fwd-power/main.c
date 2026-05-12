@@ -2300,6 +2300,7 @@ init_power_library(void)
 				RTE_LOG(ERR, L3FWD_POWER,
 					"Failed to get cpu resume latency on lcore-%u, ret=%d.\n",
 					lcore_id, ret);
+				return ret;
 			}
 			resume_latency_bk[lcore_id] = ret;
 
