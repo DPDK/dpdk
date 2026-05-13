@@ -181,6 +181,22 @@ class LinuxSession(PosixSession):
 
         return PortInfo(mac_address, logical_name, driver, is_link_up)
 
+    def unbind_ports(self, ports: list[Port]):
+        """Overrides :meth:`~.os_session.OSSession.unbind_ports`.
+
+        The :attr:`~.devbind_script_path` property must be setup in order to call this method.
+        """
+        ports_pci_addrs = " ".join(port.pci for port in ports)
+
+        self.send_command(
+            f"{self.devbind_script_path} -u --force {ports_pci_addrs}",
+            privileged=True,
+            verify=True,
+        )
+
+        if self._lshw_net_info:
+            del self._lshw_net_info
+
     def bind_ports_to_driver(self, ports: list[Port], driver_name: str) -> None:
         """Overrides :meth:`~.os_session.OSSession.bind_ports_to_driver`.
 
@@ -289,7 +305,18 @@ class LinuxSession(PosixSession):
             self.refresh_lshw()
 
     def delete_crypto_vfs(self, pf_port: Port) -> None:
-        """Overrides :meth:`~.os_session.OSSession.delete_crypto_vfs`."""
+        """Overrides :meth:`~.os_session.OSSession.delete_crypto_vfs`.
+
+        The :attr:`~.devbind_script_path` property must be setup in order to call this method.
+        """
+        if vfs := self.get_pci_addr_of_crypto_vfs(pf_port):
+            vf_pci_addrs = " ".join(vf for vf in vfs)
+            self.send_command(
+                f"{self.devbind_script_path} -u --force {vf_pci_addrs}",
+                privileged=True,
+                verify=True,
+            )
+        self.unbind_ports([pf_port])
         self.send_command(
             f"echo 1 | sudo tee /sys/bus/pci/devices/{pf_port.pci}/remove".replace(":", "\\:"),
             privileged=True,

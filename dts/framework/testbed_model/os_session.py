@@ -574,6 +574,14 @@ class OSSession(ABC):
         """
 
     @abstractmethod
+    def unbind_ports(self, ports: list[Port]) -> None:
+        """Unbind `ports` from any driver.
+
+        Args:
+            ports: The list of ports to unbind.
+        """
+
+    @abstractmethod
     def bind_ports_to_driver(self, ports: list[Port], driver_name: str) -> None:
         """Bind `ports` to the given `driver_name`.
 
