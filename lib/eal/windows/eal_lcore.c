@@ -17,13 +17,27 @@
 /** Number of logical processors (cores) in a processor group (32 or 64). */
 #define EAL_PROCESSOR_GROUP_SIZE (sizeof(KAFFINITY) * CHAR_BIT)
 
+/*
+ * NUMA_NODE_RELATIONSHIP layout differs:
+ *  - MSVC + modern SDK: GroupCount + GroupMasks[]
+ *  - MinGW-w64: only GroupMask (MinGW headers lag behind Windows SDK ABI changes)
+ */
+#ifdef RTE_TOOLCHAIN_GCC
+#define EAL_NUMA_GROUP_COUNT(numa) (RTE_SET_USED(numa), 1)
+#define EAL_NUMA_GROUP_MASKS(numa) (&((numa).GroupMask))
+#else
+#define EAL_NUMA_GROUP_COUNT(numa) ((numa).GroupCount)
+#define EAL_NUMA_GROUP_MASKS(numa) ((numa).GroupMasks)
+#endif
+
 struct lcore_map {
-	uint8_t socket_id;
-	uint8_t core_id;
+	unsigned int socket_id;
+	unsigned int core_id;
 };
 
 struct socket_map {
 	uint16_t node_id;
+	unsigned int lcore_count;
 };
 
 struct cpu_map {
@@ -112,10 +126,14 @@ static bool
 eal_create_lcore_map(const SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *info)
 {
 	const unsigned int node_id = info->NumaNode.NodeNumber;
-	const GROUP_AFFINITY *cores = &info->NumaNode.GroupMask;
+	const GROUP_AFFINITY *group_masks = EAL_NUMA_GROUP_MASKS(info->NumaNode);
 	struct lcore_map *lcore;
 	unsigned int socket_id;
+	unsigned int group_count;
+	unsigned int group_no;
 	unsigned int i;
+
+	group_count = EAL_NUMA_GROUP_COUNT(info->NumaNode);
 
 	/*
 	 * NUMA node may be reported multiple times if it includes
@@ -132,20 +150,33 @@ eal_create_lcore_map(const SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *info)
 			return true;
 
 		cpu_map.sockets[socket_id].node_id = node_id;
+		cpu_map.sockets[socket_id].lcore_count = 0;
 		cpu_map.socket_count++;
 	}
 
-	for (i = 0; i < EAL_PROCESSOR_GROUP_SIZE; i++) {
-		if ((cores->Mask & ((KAFFINITY)1 << i)) == 0)
-			continue;
+	/* Old Windows versions report NUMA nodes with GroupCount == 0 */
+	if (group_count == 0) {
+		group_count = 1;
+		group_masks = &info->NumaNode.GroupMask;
+	}
 
-		if (cpu_map.lcore_count == RTE_DIM(cpu_map.lcores))
-			return true;
+	for (group_no = 0; group_no < group_count; group_no++) {
+		const GROUP_AFFINITY *cores = &group_masks[group_no];
+		for (i = 0; i < EAL_PROCESSOR_GROUP_SIZE; i++) {
+			if ((cores->Mask & ((KAFFINITY)1 << i)) == 0)
+				continue;
 
-		lcore = &cpu_map.lcores[cpu_map.lcore_count];
-		lcore->socket_id = socket_id;
-		lcore->core_id = cores->Group * EAL_PROCESSOR_GROUP_SIZE + i;
-		cpu_map.lcore_count++;
+			if (cpu_map.lcore_count == RTE_DIM(cpu_map.lcores))
+				return true;
+
+			lcore = &cpu_map.lcores[cpu_map.lcore_count];
+			lcore->socket_id = socket_id;
+
+			/* core_id within the socket */
+			lcore->core_id = cpu_map.sockets[socket_id].lcore_count;
+			cpu_map.sockets[socket_id].lcore_count++;
+			cpu_map.lcore_count++;
+		}
 	}
 	return false;
 }
@@ -160,8 +191,9 @@ eal_create_cpu_map(void)
 
 	infos = NULL;
 	infos_size = 0;
+	/* RelationAll is needed to get full multi-group NUMA affinity */
 	if (!GetLogicalProcessorInformationEx(
-			RelationNumaNode, NULL, &infos_size)) {
+			RelationAll, NULL, &infos_size)) {
 		DWORD error = GetLastError();
 		if (error != ERROR_INSUFFICIENT_BUFFER) {
 			log_early("Cannot get NUMA node info size, error %lu\n",
@@ -181,7 +213,7 @@ eal_create_cpu_map(void)
 	}
 
 	if (!GetLogicalProcessorInformationEx(
-			RelationNumaNode, infos, &infos_size)) {
+			RelationAll, infos, &infos_size)) {
 		log_early("Cannot get NUMA node information, error %lu\n",
 			GetLastError());
 		rte_errno = EINVAL;
@@ -191,9 +223,11 @@ eal_create_cpu_map(void)
 
 	info = infos;
 	while ((uint8_t *)info - (uint8_t *)infos < infos_size) {
-		if (eal_create_lcore_map(info)) {
-			full = true;
-			break;
+		if (info->Relationship == RelationNumaNode) {
+			if (eal_create_lcore_map(info)) {
+				full = true;
+				break;
+			}
 		}
 
 		info = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX *)(
