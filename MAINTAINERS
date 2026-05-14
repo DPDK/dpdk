@@ -1109,7 +1109,7 @@ F: doc/guides/nics/features/avp.ini
 
 ZTE zxdh
 M: Junlong Wang <wang.junlong1@zte.com.cn>
-M: Lijie Shan <shan.lijie@zte.com.cn>
+M: Ming Ran <ran.ming@zte.com.cn>
 F: drivers/net/zxdh/
 F: doc/guides/nics/zxdh.rst
 F: doc/guides/nics/features/zxdh.ini
