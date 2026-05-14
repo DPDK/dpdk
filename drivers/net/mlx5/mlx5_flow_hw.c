@@ -364,6 +364,23 @@ mlx5_flow_ct_init(struct rte_eth_dev *dev,
 static __rte_always_inline uint32_t flow_hw_tx_tag_regc_mask(struct rte_eth_dev *dev);
 static __rte_always_inline uint32_t flow_hw_tx_tag_regc_value(struct rte_eth_dev *dev);
 
+static int
+mlx5_hw_validate_action_rss(struct rte_eth_dev *dev,
+			    const struct rte_flow_action *template_action,
+			    const struct rte_flow_action *template_mask,
+			    const struct rte_flow_actions_template_attr *template_attr,
+			    uint64_t action_flags,
+			    bool is_indirect,
+			    struct rte_flow_error *error);
+
+static int
+mlx5_hw_validate_action_conntrack(struct rte_eth_dev *dev,
+				  const struct rte_flow_action *template_action,
+				  const struct rte_flow_action *template_mask,
+				  const struct rte_flow_actions_template_attr *template_attr,
+				  uint64_t action_flags,
+				  struct rte_flow_error *error);
+
 static int flow_hw_async_create_validate(struct rte_eth_dev *dev,
 					 const uint32_t queue,
 					 const struct rte_flow_template_table *table,
@@ -6628,6 +6645,8 @@ flow_hw_validate_action_meter_mark(struct rte_eth_dev *dev,
  *   Pointer to the indirect action.
  * @param[in] mask
  *   Pointer to the indirect action mask.
+ * @param[in] attr
+ *   Pointer to the action template attributes.
  * @param[in, out] action_flags
  *   Holds the actions detected until now.
  * @param[in, out] fixed_cnt
@@ -6642,6 +6661,7 @@ static int
 flow_hw_validate_action_indirect(struct rte_eth_dev *dev,
 				 const struct rte_flow_action *action,
 				 const struct rte_flow_action *mask,
+				 const struct rte_flow_actions_template_attr *attr,
 				 uint64_t *action_flags, bool *fixed_cnt,
 				 struct rte_flow_error *error)
 {
@@ -6661,11 +6681,17 @@ flow_hw_validate_action_indirect(struct rte_eth_dev *dev,
 		*action_flags |= MLX5_FLOW_ACTION_METER;
 		break;
 	case RTE_FLOW_ACTION_TYPE_RSS:
-		/* TODO: Validation logic (same as flow_hw_actions_validate) */
+		ret = mlx5_hw_validate_action_rss(dev, action, mask, attr,
+						  *action_flags, true, error);
+		if (ret < 0)
+			return ret;
 		*action_flags |= MLX5_FLOW_ACTION_RSS;
 		break;
 	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
-		/* TODO: Validation logic (same as flow_hw_actions_validate) */
+		ret = mlx5_hw_validate_action_conntrack(dev, action, mask, attr,
+							*action_flags, error);
+		if (ret < 0)
+			return ret;
 		*action_flags |= MLX5_FLOW_ACTION_CT;
 		break;
 	case RTE_FLOW_ACTION_TYPE_COUNT:
@@ -7163,6 +7189,7 @@ mlx5_hw_validate_action_rss(struct rte_eth_dev *dev,
 			      const struct rte_flow_action *template_mask,
 			      const struct rte_flow_actions_template_attr *template_attr,
 			      __rte_unused uint64_t action_flags,
+			      bool is_indirect,
 			      struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -7172,6 +7199,8 @@ mlx5_hw_validate_action_rss(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ATTR, NULL,
 					  "RSS action supported for ingress only");
+	if (is_indirect)
+		return 0;
 	if (mask != NULL)
 		return mlx5_validate_action_rss(dev, template_action, error);
 	else
@@ -7376,6 +7405,7 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
 			ret = flow_hw_validate_action_indirect(dev, action,
 							       mask,
+							       attr,
 							       &action_flags,
 							       &fixed_cnt,
 							       error);
@@ -7431,7 +7461,7 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			ret = mlx5_hw_validate_action_rss(dev, action, mask,
 							  attr, action_flags,
-							  error);
+							  false, error);
 			if (ret)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_RSS;
