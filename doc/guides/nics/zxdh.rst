@@ -5,12 +5,20 @@ ZXDH Poll Mode Driver
 =====================
 
 The ZXDH PMD (**librte_net_zxdh**) provides poll mode driver support
-for 25/100 Gbps ZXDH NX Series Ethernet Controller
-based on the ZTE Ethernet Controller E310/E312.
+for 25/100/200 Gbps ZXDH NX Series Ethernet Controller.
 
 More information on
 `ZXDH NX Series Ethernet Controller NICs
 <https://enterprise.zte.com.cn/sup-detail.html?id=271&suptype=1>`_.
+
+
+Supported NICs
+--------------
+
+- ZXDH E310 25 Gigabit Ethernet Controller
+- ZXDH E312 100 Gigabit Ethernet Controller
+- ZXDH E312S 100 Gigabit Ethernet Controller
+- ZXDH E316 200 Gigabit Ethernet Controller
 
 
 Features
