@@ -92,6 +92,12 @@ struct netvsc_mp_param {
 /* Retry interval for hot-add VF device (microseconds) */
 #define NETVSC_HOTADD_RETRY_INTERVAL 1000000
 
+/* Max retries when net/ directory exists but no matching MAC found.
+ * On multi-NIC PCI devices, a second VF may register later.
+ * 120 retries = ~2 minutes.
+ */
+#define NETVSC_MAX_MAC_RETRY 120
+
 struct hn_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
 	unsigned int offset;
@@ -768,8 +774,36 @@ static void netvsc_hotplug_retry(void *args)
 			    RTE_ETHER_ADDR_BYTES(dev->data->mac_addrs));
 	}
 
+	/* If we opened the net directory but didn't find a matching MAC,
+	 * the VF interface may not have appeared yet (e.g. on a multi-NIC
+	 * PCI device, the second VF registers later). Retry.
+	 */
+	if (di != NULL) {
+		closedir(di);
+		di = NULL;
+		if (dir == NULL) {
+			/* readdir returned NULL — loop ended without match */
+			hot_ctx->mac_retry++;
+			if (hot_ctx->mac_retry < NETVSC_MAX_MAC_RETRY) {
+				PMD_DRV_LOG(DEBUG,
+					    "%s: no matching MAC found in %s, "
+					    "retrying in 1 second (mac_retry %d/%d)",
+					    __func__, buf,
+					    hot_ctx->mac_retry,
+					    NETVSC_MAX_MAC_RETRY);
+				rte_eal_alarm_set(NETVSC_HOTADD_RETRY_INTERVAL,
+						  netvsc_hotplug_retry,
+						  hot_ctx);
+				return;
+			}
+			PMD_DRV_LOG(NOTICE,
+				    "%s: no matching MAC found after %d retries, giving up",
+				    __func__, hot_ctx->mac_retry);
+		}
+	}
+
 free_hotadd_ctx:
-	if (di)
+	if (di != NULL)
 		closedir(di);
 
 	PMD_DRV_LOG(DEBUG, "%s: retry loop exiting for device %s (retry %d)",

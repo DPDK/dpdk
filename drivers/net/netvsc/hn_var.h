@@ -127,6 +127,7 @@ struct hv_hotadd_context {
 	struct hn_data *hv;
 	struct rte_devargs da;
 	int eal_hot_plug_retry;
+	int mac_retry;
 };
 
 struct hn_data {
