@@ -663,6 +663,11 @@ static void netvsc_hotplug_retry(void *args)
 		if (!strcmp(dir->d_name, ".") || !strcmp(dir->d_name, ".."))
 			continue;
 
+		PMD_DRV_LOG(DEBUG,
+			    "%s: checking interface %s in %s (retry %d)",
+			    __func__, dir->d_name, buf,
+			    hot_ctx->eal_hot_plug_retry);
+
 		/* trying to get mac address if this is a network device*/
 		s = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
 		if (s == -1) {
@@ -687,8 +692,12 @@ static void netvsc_hotplug_retry(void *args)
 					  netvsc_hotplug_retry, hot_ctx);
 			return;
 		}
-		if (req.ifr_hwaddr.sa_family != ARPHRD_ETHER)
+		if (req.ifr_hwaddr.sa_family != ARPHRD_ETHER) {
+			PMD_DRV_LOG(DEBUG,
+				    "%s: device %s sa_family=%d not ARPHRD_ETHER, skipping",
+				    __func__, dir->d_name, req.ifr_hwaddr.sa_family);
 			continue;
+		}
 
 		memcpy(eth_addr.addr_bytes, req.ifr_hwaddr.sa_data,
 		       RTE_DIM(eth_addr.addr_bytes));
@@ -749,11 +758,22 @@ static void netvsc_hotplug_retry(void *args)
 				PMD_DRV_LOG(ERR, "Failed to add VF: %d", ret);
 			break;
 		}
+
+		PMD_DRV_LOG(DEBUG,
+			    "%s: MAC mismatch for %s: got "
+			    RTE_ETHER_ADDR_PRT_FMT
+			    " expected " RTE_ETHER_ADDR_PRT_FMT,
+			    __func__, dir->d_name,
+			    RTE_ETHER_ADDR_BYTES(&eth_addr),
+			    RTE_ETHER_ADDR_BYTES(dev->data->mac_addrs));
 	}
 
 free_hotadd_ctx:
 	if (di)
 		closedir(di);
+
+	PMD_DRV_LOG(DEBUG, "%s: retry loop exiting for device %s (retry %d)",
+		    __func__, d->name, hot_ctx->eal_hot_plug_retry);
 
 	rte_spinlock_lock(&hv->hotadd_lock);
 	LIST_REMOVE(hot_ctx, list);
