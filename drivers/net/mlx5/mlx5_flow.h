@@ -3031,6 +3031,13 @@ struct mlx5_flow_hw_ctrl_rx {
 						[MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_MAX];
 };
 
+/* Contains all templates and table required for redirecting LACP traffic with HWS. */
+struct mlx5_flow_hw_lacp_miss {
+	struct rte_flow_pattern_template *lacp_rx_items_tmpl;
+	struct rte_flow_actions_template *lacp_rx_actions_tmpl;
+	struct rte_flow_template_table *hw_lacp_rx_tbl;
+};
+
 /* Contains all templates required for control flow rules in FDB with HWS. */
 struct mlx5_flow_hw_ctrl_fdb {
 	struct rte_flow_pattern_template *esw_mgr_items_tmpl;
@@ -3042,9 +3049,6 @@ struct mlx5_flow_hw_ctrl_fdb {
 	struct rte_flow_pattern_template *port_items_tmpl;
 	struct rte_flow_actions_template *jump_one_actions_tmpl;
 	struct rte_flow_template_table *hw_esw_zero_tbl;
-	struct rte_flow_pattern_template *lacp_rx_items_tmpl;
-	struct rte_flow_actions_template *lacp_rx_actions_tmpl;
-	struct rte_flow_template_table *hw_lacp_rx_tbl;
 };
 
 struct mlx5_flow_hw_ctrl_nic {
@@ -3734,6 +3738,36 @@ void
 mlx5_indirect_list_handles_release(struct rte_eth_dev *dev);
 
 bool mlx5_flow_is_steering_disabled(void);
+
+/**
+ * Returns true if Rx control rule for LACP traffic is needed.
+ *
+ * mlx5 PMD needs to create a rule matching LACP traffic and forwarding it back to kernel if:
+ *
+ * - Underlying device is a bond interface.
+ * - User did not request to handle LACP traffic in user space.
+ *
+ * Creation of this rule is also controlled by the E-Switch mode:
+ *
+ * - It must be created in legacy mode.
+ * - It must be created only on proxy port in switchdev mode.
+ *
+ * @param[in] priv
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   True if LACP rules must be created.
+ *   False otherwise.
+ */
+static inline bool
+mlx5_flow_lacp_miss_needed(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	return !priv->sh->config.lacp_by_user &&
+	    priv->pf_bond >= 0 &&
+	    (!priv->sh->esw_mode || (priv->sh->esw_mode && priv->master));
+}
 
 #ifdef HAVE_MLX5_HWS_SUPPORT
 
