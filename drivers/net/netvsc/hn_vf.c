@@ -50,6 +50,13 @@ static int hn_vf_match(const struct rte_eth_dev *dev)
 }
 
 
+static int hn_eth_recovering_callback(uint16_t port_id,
+	enum rte_eth_event_type event, void *cb_arg, void *out);
+static int hn_eth_recovery_success_callback(uint16_t port_id,
+	enum rte_eth_event_type event, void *cb_arg, void *out);
+static int hn_eth_recovery_failed_callback(uint16_t port_id,
+	enum rte_eth_event_type event, void *cb_arg, void *out);
+
 /*
  * Attach new PCI VF device and return the port_id
  */
@@ -111,7 +118,56 @@ static int hn_vf_attach(struct rte_eth_dev *dev, struct hn_data *hv)
 		return ret;
 	}
 
+	/* Register recovery event callbacks for service reset handling */
+	ret = rte_eth_dev_callback_register(hv->vf_ctx.vf_port,
+					    RTE_ETH_EVENT_ERR_RECOVERING,
+					    hn_eth_recovering_callback, hv);
+	if (ret) {
+		PMD_DRV_LOG(ERR,
+			    "Registering recovering callback failed for vf port %d ret %d",
+			    port, ret);
+		goto err_recovering;
+	}
+
+	ret = rte_eth_dev_callback_register(hv->vf_ctx.vf_port,
+					    RTE_ETH_EVENT_RECOVERY_SUCCESS,
+					    hn_eth_recovery_success_callback, hv);
+	if (ret) {
+		PMD_DRV_LOG(ERR,
+			    "Registering recovery success callback failed for vf port %d ret %d",
+			    port, ret);
+		goto err_recovery_success;
+	}
+
+	ret = rte_eth_dev_callback_register(hv->vf_ctx.vf_port,
+					    RTE_ETH_EVENT_RECOVERY_FAILED,
+					    hn_eth_recovery_failed_callback, hv);
+	if (ret) {
+		PMD_DRV_LOG(ERR,
+			    "Registering recovery failed callback failed for vf port %d ret %d",
+			    port, ret);
+		goto err_recovery_failed;
+	}
+
 	return 0;
+
+err_recovery_failed:
+	rte_eth_dev_callback_unregister(hv->vf_ctx.vf_port,
+					RTE_ETH_EVENT_RECOVERY_SUCCESS,
+					hn_eth_recovery_success_callback, hv);
+err_recovery_success:
+	rte_eth_dev_callback_unregister(hv->vf_ctx.vf_port,
+					RTE_ETH_EVENT_ERR_RECOVERING,
+					hn_eth_recovering_callback, hv);
+err_recovering:
+	rte_eth_dev_callback_unregister(hv->vf_ctx.vf_port,
+					RTE_ETH_EVENT_INTR_RMV,
+					hn_eth_rmv_event_callback, hv);
+	hv->vf_ctx.vf_attached = false;
+	hv->vf_ctx.vf_port = 0;
+	if (rte_eth_dev_owner_unset(port, hv->owner.id) < 0)
+		PMD_DRV_LOG(ERR, "Failed to unset owner for port %d", port);
+	return ret;
 }
 
 static void hn_vf_remove_unlocked(struct hn_data *hv);
@@ -143,6 +199,12 @@ static void hn_remove_delayed(void *args)
 		PMD_DRV_LOG(ERR,
 			    "rte_eth_dev_callback_unregister failed ret=%d",
 			    ret);
+	rte_eth_dev_callback_unregister(port_id, RTE_ETH_EVENT_ERR_RECOVERING,
+					hn_eth_recovering_callback, hv);
+	rte_eth_dev_callback_unregister(port_id, RTE_ETH_EVENT_RECOVERY_SUCCESS,
+					hn_eth_recovery_success_callback, hv);
+	rte_eth_dev_callback_unregister(port_id, RTE_ETH_EVENT_RECOVERY_FAILED,
+					hn_eth_recovery_failed_callback, hv);
 
 	/* Detach and release port_id from system */
 	ret = rte_eth_dev_stop(port_id);
@@ -182,6 +244,89 @@ int hn_eth_rmv_event_callback(uint16_t port_id,
 	struct hn_data *hv = cb_arg;
 
 	PMD_DRV_LOG(NOTICE, "Removing VF portid %d", port_id);
+	rte_eal_alarm_set(1, hn_remove_delayed, hv);
+
+	return 0;
+}
+
+/*
+ * Deferred handler for VF error recovery event.
+ * Switch data path to synthetic but keep the VF attached.
+ */
+static void hn_recovering_delayed(void *args)
+{
+	struct hn_data *hv = args;
+
+	rte_rwlock_write_lock(&hv->vf_lock);
+	hn_vf_remove_unlocked(hv);
+	rte_rwlock_write_unlock(&hv->vf_lock);
+}
+
+static int
+hn_eth_recovering_callback(uint16_t port_id,
+			   enum rte_eth_event_type event __rte_unused,
+			   void *cb_arg, void *out __rte_unused)
+{
+	struct hn_data *hv = cb_arg;
+
+	PMD_DRV_LOG(NOTICE, "VF port %u recovering from error", port_id);
+	rte_eal_alarm_set(1, hn_recovering_delayed, hv);
+
+	return 0;
+}
+
+/*
+ * Deferred handler for VF recovery success event.
+ * Switch data path back to VF.
+ */
+static void hn_recovery_success_delayed(void *args)
+{
+	struct hn_data *hv = args;
+	struct rte_eth_dev *dev = &rte_eth_devices[hv->port_id];
+	int ret;
+
+	rte_rwlock_write_lock(&hv->vf_lock);
+	/* Only switch data path to VF if the netvsc device is started,
+	 * mirroring the check in hn_vf_add_unlocked.  If the device was
+	 * stopped during recovery, defer to hn_vf_start().
+	 */
+	if (dev->data->dev_started &&
+	    hv->vf_ctx.vf_attached && !hv->vf_ctx.vf_vsc_switched) {
+		ret = hn_nvs_set_datapath(hv, NVS_DATAPATH_VF);
+		if (ret)
+			PMD_DRV_LOG(ERR,
+				    "Failed to switch to VF after recovery");
+		else
+			hv->vf_ctx.vf_vsc_switched = true;
+	}
+	rte_rwlock_write_unlock(&hv->vf_lock);
+}
+
+static int
+hn_eth_recovery_success_callback(uint16_t port_id,
+				 enum rte_eth_event_type event __rte_unused,
+				 void *cb_arg, void *out __rte_unused)
+{
+	struct hn_data *hv = cb_arg;
+
+	PMD_DRV_LOG(NOTICE, "VF port %u recovery succeeded", port_id);
+	rte_eal_alarm_set(1, hn_recovery_success_delayed, hv);
+
+	return 0;
+}
+
+/*
+ * Handle VF recovery failure event from MANA PMD.
+ * VF is unusable, do full removal.
+ */
+static int
+hn_eth_recovery_failed_callback(uint16_t port_id,
+				enum rte_eth_event_type event __rte_unused,
+				void *cb_arg, void *out __rte_unused)
+{
+	struct hn_data *hv = cb_arg;
+
+	PMD_DRV_LOG(NOTICE, "VF port %u recovery failed, removing", port_id);
 	rte_eal_alarm_set(1, hn_remove_delayed, hv);
 
 	return 0;
@@ -247,6 +392,12 @@ static void hn_vf_detach(struct hn_data *hv)
 
 	rte_eth_dev_callback_unregister(port, RTE_ETH_EVENT_INTR_RMV,
 					hn_eth_rmv_event_callback, hv);
+	rte_eth_dev_callback_unregister(port, RTE_ETH_EVENT_ERR_RECOVERING,
+					hn_eth_recovering_callback, hv);
+	rte_eth_dev_callback_unregister(port, RTE_ETH_EVENT_RECOVERY_SUCCESS,
+					hn_eth_recovery_success_callback, hv);
+	rte_eth_dev_callback_unregister(port, RTE_ETH_EVENT_RECOVERY_FAILED,
+					hn_eth_recovery_failed_callback, hv);
 
 	if (rte_eth_dev_owner_unset(port, hv->owner.id) < 0)
 		PMD_DRV_LOG(ERR, "Failed to unset owner for port %d", port);
@@ -630,7 +781,21 @@ int hn_vf_close(struct rte_eth_dev *dev)
 						RTE_ETH_EVENT_INTR_RMV,
 						hn_eth_rmv_event_callback,
 						hv);
+		rte_eth_dev_callback_unregister(hv->vf_ctx.vf_port,
+						RTE_ETH_EVENT_ERR_RECOVERING,
+						hn_eth_recovering_callback,
+						hv);
+		rte_eth_dev_callback_unregister(hv->vf_ctx.vf_port,
+						RTE_ETH_EVENT_RECOVERY_SUCCESS,
+						hn_eth_recovery_success_callback,
+						hv);
+		rte_eth_dev_callback_unregister(hv->vf_ctx.vf_port,
+						RTE_ETH_EVENT_RECOVERY_FAILED,
+						hn_eth_recovery_failed_callback,
+						hv);
 		rte_eal_alarm_cancel(hn_remove_delayed, hv);
+		rte_eal_alarm_cancel(hn_recovering_delayed, hv);
+		rte_eal_alarm_cancel(hn_recovery_success_delayed, hv);
 		ret = rte_eth_dev_close(hv->vf_ctx.vf_port);
 		hv->vf_ctx.vf_attached = false;
 	}
