@@ -33,7 +33,7 @@ ulp_app_tun_search_entry(struct bnxt_ulp_context *ulp_ctx,
 				    app_tunnel,
 				    sizeof(struct rte_flow_tunnel))) {
 				*tun_entry =  &tun_ent_list[i];
-				tun_ent_list[free_entry].ref_cnt++;
+				tun_ent_list[i].ref_cnt++;
 				return rc;
 			}
 		}
