@@ -7,7 +7,8 @@ ZTE Storage Data Accelerator (ZSDA) Poll Mode Driver
 The ZSDA compression PMD provides poll mode compression & decompression driver
 support for the following hardware accelerator devices:
 
-* ZTE Processing accelerators 1cf2
+- Neo X510
+- Neo X512
 
 
 Features
