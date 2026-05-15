@@ -1054,7 +1054,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	uint32_t data_seg_len = 0;
 
 	while (pkts_n) {
-		uint16_t skip_cnt;
+		uint16_t skip_cnt = 0;
 		unsigned int idx = rq_ci & wqe_mask;
 		volatile struct mlx5_wqe_data_seg *wqe =
 			&((volatile struct mlx5_wqe_data_seg *)rxq->wqes)[idx];
@@ -1532,7 +1532,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		uint16_t strd_cnt;
 		uint16_t strd_idx;
 		uint32_t byte_cnt;
-		uint16_t skip_cnt;
+		uint16_t skip_cnt = 0;
 		volatile struct mlx5_mini_cqe8 *mcqe = NULL;
 		enum mlx5_rqx_code rxq_code;
 
