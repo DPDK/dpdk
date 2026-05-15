@@ -749,7 +749,7 @@ void hn_vf_rx_queue_release(struct hn_data *hv, uint16_t queue_id)
 
 int hn_vf_stats_get(struct rte_eth_dev *dev,
 		    struct rte_eth_stats *stats,
-		    struct eth_queue_stats *qstats __rte_unused)
+		    struct eth_queue_stats *qstats)
 {
 	struct hn_data *hv = dev->data->dev_private;
 	struct rte_eth_dev *vf_dev;
@@ -757,8 +757,19 @@ int hn_vf_stats_get(struct rte_eth_dev *dev,
 
 	rte_rwlock_read_lock(&hv->vf_lock);
 	vf_dev = hn_get_vf_dev(hv);
-	if (vf_dev)
-		ret = rte_eth_stats_get(vf_dev->data->port_id, stats);
+	if (vf_dev) {
+		/* Call dev_ops->stats_get directly instead of the public
+		 * rte_eth_stats_get API because we need to forward the
+		 * per-queue stats (qstats) which the public API does not
+		 * support.  The caller (eth_stats_qstats_get) has already
+		 * zeroed stats and qstats before invoking this callback.
+		 */
+		if (vf_dev->dev_ops->stats_get != NULL)
+			ret = vf_dev->dev_ops->stats_get(vf_dev, stats,
+							 qstats);
+		else
+			ret = -ENOTSUP;
+	}
 	rte_rwlock_read_unlock(&hv->vf_lock);
 	return ret;
 }
