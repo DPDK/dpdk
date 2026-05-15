@@ -674,10 +674,18 @@ static void netvsc_hotplug_retry(void *args)
 		ret = ioctl(s, SIOCGIFHWADDR, &req);
 		close(s);
 		if (ret == -1) {
-			PMD_DRV_LOG(ERR,
-				    "Failed to send SIOCGIFHWADDR for device %s",
+			/* Interface may be renamed by udev (e.g. eth1 → ens1).
+			 * Retry from the top — the PCI device check above
+			 * ensures we stop if the device disappears.
+			 */
+			PMD_DRV_LOG(DEBUG,
+				    "Failed to send SIOCGIFHWADDR for device %s, "
+				    "interface may be renaming, retrying",
 				    dir->d_name);
-			break;
+			closedir(di);
+			rte_eal_alarm_set(NETVSC_HOTADD_RETRY_INTERVAL,
+					  netvsc_hotplug_retry, hot_ctx);
+			return;
 		}
 		if (req.ifr_hwaddr.sa_family != ARPHRD_ETHER)
 			continue;
