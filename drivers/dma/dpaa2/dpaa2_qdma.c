@@ -1740,7 +1740,7 @@ dpaa2_qdma_remove(struct rte_dpaa2_device *dpaa2_dev)
 	if (ret)
 		DPAA2_QDMA_ERR("Device cleanup failed");
 
-	return 0;
+	return ret;
 }
 
 static struct rte_dpaa2_driver rte_dpaa2_qdma_pmd;
