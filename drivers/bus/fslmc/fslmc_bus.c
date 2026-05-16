@@ -537,7 +537,9 @@ fslmc_bus_unplug(struct rte_device *rte_dev)
 	const struct rte_dpaa2_driver *drv = RTE_BUS_DRIVER(rte_dev->driver, *drv);
 
 	if (drv->remove != NULL) {
-		drv->remove(dev);
+		int ret = drv->remove(dev);
+		if (ret != 0)
+			return ret;
 		dev->device.driver = NULL;
 		DPAA2_BUS_INFO("%s Un-Plugged",  dev->device.name);
 		return 0;
