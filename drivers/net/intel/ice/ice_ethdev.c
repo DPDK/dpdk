@@ -2003,6 +2003,17 @@ static int ice_read_customized_path(char *pkg_file, uint16_t buff_len)
 	return n;
 }
 
+static int
+ice_firmware_read(const char *file, void *buf, size_t *bufsz)
+{
+	int ret = rte_firmware_read(file, buf, bufsz);
+
+	if (ret < 0)
+		PMD_INIT_LOG(DEBUG, "Cannot read DDP file %s", file);
+
+	return ret;
+}
+
 int ice_load_pkg(struct ice_adapter *adapter, bool use_dsn, uint64_t dsn)
 {
 	struct ice_hw *hw = &adapter->hw;
@@ -2016,7 +2027,7 @@ int ice_load_pkg(struct ice_adapter *adapter, bool use_dsn, uint64_t dsn)
 	/* first read any explicitly referenced DDP file*/
 	if (adapter->devargs.ddp_filename != NULL) {
 		strlcpy(pkg_file, adapter->devargs.ddp_filename, sizeof(pkg_file));
-		if (rte_firmware_read(pkg_file, &buf, &bufsz) == 0) {
+		if (ice_firmware_read(pkg_file, &buf, &bufsz) == 0) {
 			goto load_fw;
 		} else {
 			PMD_INIT_LOG(ERR, "Cannot load DDP file: %s", pkg_file);
@@ -2032,11 +2043,11 @@ int ice_load_pkg(struct ice_adapter *adapter, bool use_dsn, uint64_t dsn)
 		if (use_dsn) {
 			snprintf(pkg_file, RTE_DIM(pkg_file), "%s/%s",
 					customized_path, opt_ddp_filename);
-			if (rte_firmware_read(pkg_file, &buf, &bufsz) == 0)
+			if (ice_firmware_read(pkg_file, &buf, &bufsz) == 0)
 				goto load_fw;
 		}
 		snprintf(pkg_file, RTE_DIM(pkg_file), "%s/%s", customized_path, "ice.pkg");
-		if (rte_firmware_read(pkg_file, &buf, &bufsz) == 0)
+		if (ice_firmware_read(pkg_file, &buf, &bufsz) == 0)
 			goto load_fw;
 	}
 
@@ -2046,23 +2057,23 @@ int ice_load_pkg(struct ice_adapter *adapter, bool use_dsn, uint64_t dsn)
 	strncpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_UPDATES,
 		ICE_MAX_PKG_FILENAME_SIZE);
 	strcat(pkg_file, opt_ddp_filename);
-	if (rte_firmware_read(pkg_file, &buf, &bufsz) == 0)
+	if (ice_firmware_read(pkg_file, &buf, &bufsz) == 0)
 		goto load_fw;
 
 	strncpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_DEFAULT,
 		ICE_MAX_PKG_FILENAME_SIZE);
 	strcat(pkg_file, opt_ddp_filename);
-	if (rte_firmware_read(pkg_file, &buf, &bufsz) == 0)
+	if (ice_firmware_read(pkg_file, &buf, &bufsz) == 0)
 		goto load_fw;
 
 no_dsn:
 	strncpy(pkg_file, ICE_PKG_FILE_UPDATES, ICE_MAX_PKG_FILENAME_SIZE);
-	if (rte_firmware_read(pkg_file, &buf, &bufsz) == 0)
+	if (ice_firmware_read(pkg_file, &buf, &bufsz) == 0)
 		goto load_fw;
 
 	strncpy(pkg_file, ICE_PKG_FILE_DEFAULT, ICE_MAX_PKG_FILENAME_SIZE);
-	if (rte_firmware_read(pkg_file, &buf, &bufsz) < 0) {
-		PMD_INIT_LOG(ERR, "failed to search file path");
+	if (ice_firmware_read(pkg_file, &buf, &bufsz) < 0) {
+		PMD_INIT_LOG(ERR, "Failed to load default DDP package " ICE_PKG_FILE_DEFAULT);
 		return -1;
 	}
 
@@ -2658,13 +2669,13 @@ ice_dev_init(struct rte_eth_dev *dev)
 	if (pos) {
 		if (rte_pci_read_config(pci_dev, &dsn_low, 4, pos + 4) < 0 ||
 				rte_pci_read_config(pci_dev, &dsn_high, 4, pos + 8) < 0) {
-			PMD_INIT_LOG(ERR, "Failed to read pci config space");
+			PMD_INIT_LOG(WARNING, "Failed to read pci config space");
 		} else {
 			use_dsn = true;
 			dsn = (uint64_t)dsn_high << 32 | dsn_low;
 		}
 	} else {
-		PMD_INIT_LOG(ERR, "Failed to read device serial number");
+		PMD_INIT_LOG(INFO, "Failed to read device serial number");
 	}
 
 	ret = ice_load_pkg(pf->adapter, use_dsn, dsn);
