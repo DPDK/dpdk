@@ -71,6 +71,10 @@ New Features
   This allows the user to inspect objects in the ring without removing them
   (aka MT safe peek).
 
+* **Added no-IOMMU mode to UACCE bus.**
+
+  Added no-IOMMU mode for devices without or not enabling IOMMU/SVA.
+
 * **Added LinkData sxe2 ethernet driver.**
 
   Added network driver for the LinkData network adapters.
