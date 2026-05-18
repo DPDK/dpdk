@@ -15,7 +15,6 @@
 #include <sys/types.h>
 
 #include <eal_export.h>
-#include <rte_bitops.h>
 #include <rte_common.h>
 #include <rte_devargs.h>
 #include <rte_eal_paging.h>
@@ -27,9 +26,6 @@
 #include "bus_uacce_driver.h"
 
 #define UACCE_BUS_CLASS_PATH	"/sys/class/uacce"
-
-/* UACCE device flag of SVA. */
-#define UACCE_DEV_FLGA_SVA	RTE_BIT32(0)
 
 /* Support -a uacce:device-name when start DPDK application. */
 #define UACCE_DEV_PREFIX	"uacce:"
@@ -151,9 +147,25 @@ uacce_read_attr_u32(const char *dev_root, const char *attr, uint32_t *val)
 static int
 uacce_read_api(struct rte_uacce_device *dev)
 {
-	int ret = uacce_read_attr(dev->dev_root, "api", dev->api, sizeof(dev->api) - 1);
+#define NOIOMMU_SUFFIX		"_noiommu"
+	size_t api_len, sub_len;
+	int ret;
+
+	ret = uacce_read_attr(dev->dev_root, "api", dev->api, sizeof(dev->api) - 1);
 	if (ret < 0)
 		return ret;
+
+	/*
+	 * If the device is in no-iommu mode, the UACCE_DEV_FLAG_NOIOMMU flag
+	 * in its "flags" will be set, and its "api" will contain the suffix
+	 * _noiommu. To facilitate matching with the driver, the suffix is
+	 * removed here.
+	 */
+	api_len = strlen(dev->api);
+	sub_len = strlen(NOIOMMU_SUFFIX);
+	if (api_len > sub_len && strcmp(dev->api + api_len - sub_len, NOIOMMU_SUFFIX) == 0)
+		dev->api[api_len - sub_len] = 0;
+
 	return 0;
 }
 
@@ -196,8 +208,8 @@ uacce_read_qfrt_sz(struct rte_uacce_device *dev)
 static int
 uacce_verify(struct rte_uacce_device *dev)
 {
-	if (!(dev->flags & UACCE_DEV_FLGA_SVA)) {
-		UACCE_BUS_WARN("device %s don't support SVA, skip it!", dev->name);
+	if (!(dev->flags & (UACCE_DEV_FLAG_SVA | UACCE_DEV_FLAG_NOIOMMU))) {
+		UACCE_BUS_WARN("device %s don't support SVA or NOIOMMU, skip it!", dev->name);
 		return 1; /* >0 will skip this device. */
 	}
 
@@ -333,10 +345,15 @@ static bool
 uacce_match(const struct rte_uacce_driver *dr, struct rte_uacce_device *dev)
 {
 	bool forward_compat = !!(dr->drv_flags & RTE_UACCE_DRV_FORWARD_COMPATIBILITY_DEV);
+	bool drv_support_noiommu = !!(dr->drv_flags & RTE_UACCE_DRV_SUPPORT_NOIOMMU_MODE);
+	bool dev_in_noiommu = !!(dev->flags & UACCE_DEV_FLAG_NOIOMMU);
 	uint32_t api_ver = uacce_calc_api_ver(dev->api, NULL);
 	const struct rte_uacce_id *id_table;
 	const char *map;
 	uint32_t len;
+
+	if (dev_in_noiommu && !drv_support_noiommu)
+		return false;
 
 	for (id_table = dr->id_table; id_table->dev_api != NULL; id_table++) {
 		if (!uacce_match_api(dev, forward_compat, id_table))
