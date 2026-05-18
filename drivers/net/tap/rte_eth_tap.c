@@ -327,52 +327,41 @@ error:
 }
 
 static void
-tap_verify_csum(struct rte_mbuf *mbuf)
+tap_verify_csum(struct rte_mbuf *mbuf, const struct rte_net_hdr_lens *hlen)
 {
-	uint32_t l2 = mbuf->packet_type & RTE_PTYPE_L2_MASK;
 	uint32_t l3 = mbuf->packet_type & RTE_PTYPE_L3_MASK;
 	uint32_t l4 = mbuf->packet_type & RTE_PTYPE_L4_MASK;
-	unsigned int l2_len = sizeof(struct rte_ether_hdr);
-	unsigned int l3_len;
+	uint32_t l4_off = hlen->l2_len + hlen->l3_len;
 	uint16_t cksum = 0;
 	void *l3_hdr;
 	void *l4_hdr;
-	struct rte_udp_hdr *udp_hdr;
 
-	if (l2 == RTE_PTYPE_L2_ETHER_VLAN)
-		l2_len += 4;
-	else if (l2 == RTE_PTYPE_L2_ETHER_QINQ)
-		l2_len += 8;
 	/* Don't verify checksum for packets with discontinuous L2 header */
-	if (unlikely(l2_len + sizeof(struct rte_ipv4_hdr) >
-		     rte_pktmbuf_data_len(mbuf)))
+	if (unlikely(l4_off > rte_pktmbuf_data_len(mbuf)))
 		return;
-	l3_hdr = rte_pktmbuf_mtod_offset(mbuf, void *, l2_len);
+
+	l3_hdr = rte_pktmbuf_mtod_offset(mbuf, void *, hlen->l2_len);
 	if (l3 == RTE_PTYPE_L3_IPV4 || l3 == RTE_PTYPE_L3_IPV4_EXT) {
 		struct rte_ipv4_hdr *iph = l3_hdr;
 
-		l3_len = rte_ipv4_hdr_len(iph);
-		if (unlikely(l2_len + l3_len > rte_pktmbuf_data_len(mbuf)))
-			return;
 		/* check that the total length reported by header is not
 		 * greater than the total received size
 		 */
-		if (l2_len + rte_be_to_cpu_16(iph->total_length) >
+		if (hlen->l2_len + rte_be_to_cpu_16(iph->total_length) >
 				rte_pktmbuf_data_len(mbuf))
 			return;
 
-		cksum = ~rte_raw_cksum(iph, l3_len);
+		cksum = ~rte_raw_cksum(iph, hlen->l3_len);
 		mbuf->ol_flags |= cksum ?
 			RTE_MBUF_F_RX_IP_CKSUM_BAD :
 			RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 	} else if (l3 == RTE_PTYPE_L3_IPV6) {
 		struct rte_ipv6_hdr *iph = l3_hdr;
 
-		l3_len = sizeof(struct rte_ipv6_hdr);
 		/* check that the total length reported by header is not
 		 * greater than the total received size
 		 */
-		if (l2_len + l3_len + rte_be_to_cpu_16(iph->payload_len) >
+		if (hlen->l2_len + sizeof(*iph) + rte_be_to_cpu_16(iph->payload_len) >
 				rte_pktmbuf_data_len(mbuf))
 			return;
 	} else {
@@ -386,20 +375,19 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 
 	if (l4 == RTE_PTYPE_L4_UDP || l4 == RTE_PTYPE_L4_TCP) {
 		int cksum_ok;
-		const unsigned int l4_min_len = (l4 == RTE_PTYPE_L4_UDP)
-			? sizeof(struct rte_udp_hdr) : sizeof(struct rte_tcp_hdr);
 
 		/* Don't verify checksum if L4 header is truncated */
-		if (l2_len + l3_len + l4_min_len > rte_pktmbuf_data_len(mbuf))
+		if (l4_off + hlen->l4_len > rte_pktmbuf_data_len(mbuf))
 			return;
 
-		l4_hdr = rte_pktmbuf_mtod_offset(mbuf, void *, l2_len + l3_len);
 		/* Don't verify checksum for multi-segment packets. */
 		if (mbuf->nb_segs > 1)
 			return;
+
+		l4_hdr = rte_pktmbuf_mtod_offset(mbuf, void *, l4_off);
 		if (l3 == RTE_PTYPE_L3_IPV4 || l3 == RTE_PTYPE_L3_IPV4_EXT) {
 			if (l4 == RTE_PTYPE_L4_UDP) {
-				udp_hdr = (struct rte_udp_hdr *)l4_hdr;
+				struct rte_udp_hdr *udp_hdr = l4_hdr;
 				if (udp_hdr->dgram_cksum == 0) {
 					/*
 					 * For IPv4, a zero UDP checksum
@@ -561,10 +549,11 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			continue;
 		}
 
-		mbuf->packet_type = rte_net_get_ptype(mbuf, NULL,
+		struct rte_net_hdr_lens hlen = {0};
+		mbuf->packet_type = rte_net_get_ptype(mbuf, &hlen,
 						      RTE_PTYPE_ALL_MASK);
 		if (rxq->rxmode->offloads & RTE_ETH_RX_OFFLOAD_CHECKSUM)
-			tap_verify_csum(mbuf);
+			tap_verify_csum(mbuf, &hlen);
 
 		/* account for the receive frame */
 		bufs[num_rx++] = mbuf;
