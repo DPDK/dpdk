@@ -14,7 +14,6 @@
 #include <stdbool.h>
 
 #include <rte_common.h>
-#include <rte_memcpy.h>
 #include <rte_malloc.h>
 #include <rte_memzone.h>
 #include <rte_byteorder.h>
@@ -210,7 +209,7 @@ struct __rte_packed_begin ice_virt_mem {
 #define ice_free(h, m)      ((void)h, rte_free(m))
 
 #define ice_memset(a, b, c, d) memset((a), (b), (c))
-#define ice_memcpy(a, b, c, d) rte_memcpy((a), (b), (c))
+#define ice_memcpy(a, b, c, d) memcpy((a), (b), (c))
 
 /* Memory fence barrier */
 #define ice_memfence_read()        rte_io_rmb()
@@ -238,7 +237,7 @@ ice_memdup(__rte_unused struct ice_hw *hw, const void *src, size_t size,
 
 	p = ice_malloc(hw, size);
 	if (p)
-		rte_memcpy(p, src, size);
+		memcpy(p, src, size);
 
 	return p;
 }
