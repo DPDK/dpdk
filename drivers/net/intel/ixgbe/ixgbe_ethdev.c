@@ -6815,7 +6815,7 @@ ixgbe_add_del_ntuple_filter(struct ixgbe_adapter *adapter,
 				sizeof(struct ixgbe_5tuple_filter), 0);
 		if (filter == NULL)
 			return -ENOMEM;
-		rte_memcpy(&filter->filter_info,
+		memcpy(&filter->filter_info,
 				 &filter_5tuple,
 				 sizeof(struct ixgbe_5tuple_filter_info));
 		filter->queue = ntuple_filter->queue;
@@ -7877,7 +7877,7 @@ ixgbe_dev_l2_tunnel_filter_add(struct ixgbe_adapter *adapter,
 		if (!node)
 			return -ENOMEM;
 
-		rte_memcpy(&node->key,
+		memcpy(&node->key,
 				 &key,
 				 sizeof(struct ixgbe_l2_tn_key));
 		node->pool = l2_tunnel->pool;
