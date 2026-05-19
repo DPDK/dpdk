@@ -32,7 +32,7 @@ cpfl_cc_vport_list_get(struct cpfl_adapter_ext *adapter,
 		return err;
 	}
 
-	rte_memcpy(response, args.out_buffer, IDPF_DFLT_MBX_BUF_SIZE);
+	memcpy(response, args.out_buffer, IDPF_DFLT_MBX_BUF_SIZE);
 
 	return 0;
 }
@@ -66,7 +66,7 @@ cpfl_cc_vport_info_get(struct cpfl_adapter_ext *adapter,
 		return err;
 	}
 
-	rte_memcpy(response, args.out_buffer, sizeof(*response));
+	memcpy(response, args.out_buffer, sizeof(*response));
 
 	return 0;
 }
@@ -139,7 +139,7 @@ vcpf_add_queues(struct cpfl_adapter_ext *adapter)
 		return err;
 	}
 
-	rte_memcpy(adapter->addq_recv_info, args.out_buffer, IDPF_DFLT_MBX_BUF_SIZE);
+	memcpy(adapter->addq_recv_info, args.out_buffer, IDPF_DFLT_MBX_BUF_SIZE);
 
 	return err;
 }
