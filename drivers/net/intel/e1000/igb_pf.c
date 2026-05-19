@@ -17,7 +17,6 @@
 #include <rte_eal.h>
 #include <rte_ether.h>
 #include <ethdev_driver.h>
-#include <rte_memcpy.h>
 #include <rte_malloc.h>
 #include <rte_random.h>
 
@@ -290,7 +289,7 @@ igb_vf_reset(struct rte_eth_dev *dev, uint16_t vf, uint32_t *msgbuf)
 
 	/* reply to reset with ack and vf mac address */
 	msgbuf[0] = E1000_VF_RESET | E1000_VT_MSGTYPE_ACK;
-	rte_memcpy(new_mac, vf_mac, RTE_ETHER_ADDR_LEN);
+	memcpy(new_mac, vf_mac, RTE_ETHER_ADDR_LEN);
 	e1000_write_mbx(hw, msgbuf, 3, vf);
 
 	return 0;
@@ -308,7 +307,7 @@ igb_vf_set_mac_addr(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 
 	if (rte_is_unicast_ether_addr((struct rte_ether_addr *)new_mac)) {
 		if (!rte_is_zero_ether_addr((struct rte_ether_addr *)new_mac))
-			rte_memcpy(vfinfo[vf].vf_mac_addresses, new_mac,
+			memcpy(vfinfo[vf].vf_mac_addresses, new_mac,
 				sizeof(vfinfo[vf].vf_mac_addresses));
 		hw->mac.ops.rar_set(hw, new_mac, rar_entry);
 		rah = E1000_READ_REG(hw, E1000_RAH(rar_entry));
