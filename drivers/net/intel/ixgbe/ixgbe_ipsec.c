@@ -674,9 +674,9 @@ ixgbe_crypto_add_ingress_sa_from_flow(struct rte_security_session *sess,
 			const struct rte_flow_item_ipv6 *ipv6 = &spec->spec.ipv6;
 			ic_session->src_ip.type = IPv6;
 			ic_session->dst_ip.type = IPv6;
-			rte_memcpy(ic_session->src_ip.ipv6,
+			memcpy(ic_session->src_ip.ipv6,
 				   &ipv6->hdr.src_addr, 16);
-			rte_memcpy(ic_session->dst_ip.ipv6,
+			memcpy(ic_session->dst_ip.ipv6,
 				   &ipv6->hdr.dst_addr, 16);
 		} else {
 			const struct rte_flow_item_ipv4 *ipv4 = &spec->spec.ipv4;
