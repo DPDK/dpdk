@@ -1299,7 +1299,7 @@ rte_fls_u64(uint64_t x)
 /**
  * Macro to return 1 if n is a power of 2, 0 otherwise
  */
-#define RTE_IS_POWER_OF_2(n) ((n) && !(((n) - 1) & (n)))
+#define RTE_IS_POWER_OF_2(n) ((n) != 0 && (((n) - 1) & (n)) == 0)
 
 /**
  * Returns true if n is a power of 2
