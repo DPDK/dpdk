@@ -14,7 +14,6 @@
 #include <stdbool.h>
 
 #include <rte_common.h>
-#include <rte_memcpy.h>
 #include <rte_malloc.h>
 #include <rte_memzone.h>
 #include <rte_byteorder.h>
@@ -199,8 +198,8 @@ struct __rte_packed_begin idpf_virt_mem {
 #define idpf_free(h, m)		rte_free(m)
 
 #define idpf_memset(a, b, c, d)	memset((a), (b), (c))
-#define idpf_memcpy(a, b, c, d)	rte_memcpy((a), (b), (c))
-#define idpf_memdup(a, b, c, d)	rte_memcpy(idpf_malloc(a, c), b, c)
+#define idpf_memcpy(a, b, c, d)	memcpy((a), (b), (c))
+#define idpf_memdup(a, b, c, d)	memcpy(idpf_malloc(a, c), b, c)
 
 #define CPU_TO_BE16(o) rte_cpu_to_be_16(o)
 #define CPU_TO_BE32(o) rte_cpu_to_be_32(o)

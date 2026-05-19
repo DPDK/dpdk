@@ -439,7 +439,7 @@ idpf_init_rss(struct idpf_vport *vport)
 			     vport->rss_key_size);
 		return -EINVAL;
 	} else {
-		rte_memcpy(vport->rss_key, rss_conf->rss_key,
+		memcpy(vport->rss_key, rss_conf->rss_key,
 			   vport->rss_key_size);
 	}
 
@@ -558,7 +558,7 @@ idpf_rss_hash_update(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	rte_memcpy(vport->rss_key, rss_conf->rss_key,
+	memcpy(vport->rss_key, rss_conf->rss_key,
 		   vport->rss_key_size);
 	ret = idpf_vc_rss_key_set(vport);
 	if (ret != 0) {
@@ -631,7 +631,7 @@ idpf_rss_hash_conf_get(struct rte_eth_dev *dev,
 	if (rss_conf->rss_key_len > vport->rss_key_size)
 		rss_conf->rss_key_len = vport->rss_key_size;
 
-	rte_memcpy(rss_conf->rss_key, vport->rss_key, rss_conf->rss_key_len);
+	memcpy(rss_conf->rss_key, vport->rss_key, rss_conf->rss_key_len);
 
 	return 0;
 }
@@ -1385,7 +1385,7 @@ idpf_handle_virtchnl_msg(struct idpf_adapter_ext *adapter_ex)
 			return;
 		}
 
-		rte_memcpy(adapter->mbx_resp, ctlq_msg.ctx.indirect.payload->va,
+		memcpy(adapter->mbx_resp, ctlq_msg.ctx.indirect.payload->va,
 			   IDPF_DFLT_MBX_BUF_SIZE);
 
 		mbx_op = rte_le_to_cpu_16(ctlq_msg.opcode);
@@ -1499,7 +1499,7 @@ idpf_adapter_ext_init(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *a
 
 	strncpy(adapter->name, pci_dev->device.name, PCI_PRI_STR_SIZE);
 
-	rte_memcpy(&base->caps, &req_caps, sizeof(struct virtchnl2_get_capabilities));
+	memcpy(&base->caps, &req_caps, sizeof(struct virtchnl2_get_capabilities));
 
 	ret = idpf_adapter_init(base);
 	if (ret != 0) {
