@@ -11357,7 +11357,8 @@ static int i40e_get_eeprom(struct rte_eth_dev *dev,
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint16_t *data = eeprom->data;
-	uint16_t offset, length, cnt_words;
+	uint32_t offset, length;
+	uint16_t cnt_words;
 	int ret_code;
 
 	offset = eeprom->offset >> 1;
