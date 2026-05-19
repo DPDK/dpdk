@@ -2112,7 +2112,7 @@ int vcpf_save_chunk_in_cfgq(struct cpfl_adapter_ext *adapter)
 		PMD_DRV_LOG(ERR, "Failed to allocate memory for add_q");
 		return -ENOMEM;
 	}
-	rte_memcpy(adapter->cfgq_in.cfgq_add, add_q, struct_size);
+	memcpy(adapter->cfgq_in.cfgq_add, add_q, struct_size);
 
 	num_chunks = add_q->chunks.num_chunks;
 	for (u16 i = 0; i < num_chunks; i++) {
@@ -2536,7 +2536,7 @@ cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *a
 
 	strncpy(adapter->name, pci_dev->device.name, PCI_PRI_STR_SIZE);
 
-	rte_memcpy(&base->caps, &req_caps, sizeof(struct virtchnl2_get_capabilities));
+	memcpy(&base->caps, &req_caps, sizeof(struct virtchnl2_get_capabilities));
 
 	ret = idpf_adapter_init(base);
 	if (ret != 0) {
