@@ -39,7 +39,7 @@ rte_pmd_ixgbe_set_vf_mac_addr(uint16_t port, uint16_t vf,
 
 	if (rte_is_valid_assigned_ether_addr(
 			(struct rte_ether_addr *)new_mac)) {
-		rte_memcpy(vfinfo[vf].vf_mac_addresses, new_mac,
+		memcpy(vfinfo[vf].vf_mac_addresses, new_mac,
 			   RTE_ETHER_ADDR_LEN);
 		return hw->mac.ops.set_rar(hw, rar_entry, new_mac, vf,
 					   IXGBE_RAH_AV);
