@@ -12,7 +12,6 @@
 #include <stdarg.h>
 
 #include <rte_common.h>
-#include <rte_memcpy.h>
 #include <rte_memzone.h>
 #include <rte_malloc.h>
 #include <rte_byteorder.h>
@@ -124,7 +123,7 @@ writeq(uint64_t value, volatile void *addr)
 #endif /* __INTEL_NET_BASE_OSDEP__ */
 
 #define iavf_memset(a, b, c, d) memset((a), (b), (c))
-#define iavf_memcpy(a, b, c, d) rte_memcpy((a), (b), (c))
+#define iavf_memcpy(a, b, c, d) memcpy((a), (b), (c))
 
 #define iavf_usec_delay(x) rte_delay_us_sleep(x)
 #define iavf_msec_delay(x) iavf_usec_delay(1000 * (x))

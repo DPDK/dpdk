@@ -955,8 +955,8 @@ iavf_hash_parse_raw_pattern(const struct rte_flow_item *item,
 			msk_buf[j] = tmp_val * 16 + tmp_c - '0';
 	}
 
-	rte_memcpy(meta->proto_hdrs.raw.spec, pkt_buf, pkt_len);
-	rte_memcpy(meta->proto_hdrs.raw.mask, msk_buf, pkt_len);
+	memcpy(meta->proto_hdrs.raw.spec, pkt_buf, pkt_len);
+	memcpy(meta->proto_hdrs.raw.mask, msk_buf, pkt_len);
 	meta->proto_hdrs.raw.pkt_len = pkt_len;
 
 	rte_free(pkt_buf);

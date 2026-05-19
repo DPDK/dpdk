@@ -112,7 +112,7 @@ iavf_dev_event_post(struct rte_eth_dev *dev,
 	elem->param = param;
 	elem->param_alloc_size = param_alloc_size;
 	if (param && param_alloc_size) {
-		rte_memcpy(elem->param_alloc_data, param, param_alloc_size);
+		memcpy(elem->param_alloc_data, param, param_alloc_size);
 		elem->param = elem->param_alloc_data;
 	}
 
@@ -781,7 +781,7 @@ iavf_get_vf_resource(struct iavf_adapter *adapter)
 	len =  sizeof(struct virtchnl_vf_resource) +
 		      IAVF_MAX_VF_VSI * sizeof(struct virtchnl_vsi_resource);
 
-	rte_memcpy(vf->vf_res, args.out_buffer,
+	memcpy(vf->vf_res, args.out_buffer,
 		   RTE_MIN(args.out_size, len));
 	/* parse  VF config message back from PF*/
 	iavf_vf_parse_hw_config(hw, vf->vf_res);
@@ -1082,7 +1082,7 @@ iavf_get_vlan_offload_caps_v2(struct iavf_adapter *adapter)
 		return ret;
 	}
 
-	rte_memcpy(&vf->vlan_v2_caps, args.out_buffer, sizeof(vf->vlan_v2_caps));
+	memcpy(&vf->vlan_v2_caps, args.out_buffer, sizeof(vf->vlan_v2_caps));
 
 	return 0;
 }
@@ -1319,7 +1319,7 @@ iavf_configure_rss_lut(struct iavf_adapter *adapter)
 
 	rss_lut->vsi_id = vf->vsi_res->vsi_id;
 	rss_lut->lut_entries = vf->vf_res->rss_lut_size;
-	rte_memcpy(rss_lut->lut, vf->rss_lut, vf->vf_res->rss_lut_size);
+	memcpy(rss_lut->lut, vf->rss_lut, vf->vf_res->rss_lut_size);
 
 	args.ops = VIRTCHNL_OP_CONFIG_RSS_LUT;
 	args.in_args = (u8 *)rss_lut;
@@ -1352,7 +1352,7 @@ iavf_configure_rss_key(struct iavf_adapter *adapter)
 
 	rss_key->vsi_id = vf->vsi_res->vsi_id;
 	rss_key->key_len = vf->vf_res->rss_key_size;
-	rte_memcpy(rss_key->key, vf->rss_key, vf->vf_res->rss_key_size);
+	memcpy(rss_key->key, vf->rss_key, vf->vf_res->rss_key_size);
 
 	args.ops = VIRTCHNL_OP_CONFIG_RSS_KEY;
 	args.in_args = (u8 *)rss_key;
@@ -1749,7 +1749,7 @@ iavf_add_del_eth_addr(struct iavf_adapter *adapter, struct rte_ether_addr *addr,
 	list->vsi_id = vf->vsi_res->vsi_id;
 	list->num_elements = 1;
 	list->list[0].type = type;
-	rte_memcpy(list->list[0].addr, addr->addr_bytes,
+	memcpy(list->list[0].addr, addr->addr_bytes,
 		   sizeof(addr->addr_bytes));
 
 	args.ops = add ? VIRTCHNL_OP_ADD_ETH_ADDR : VIRTCHNL_OP_DEL_ETH_ADDR;
@@ -2182,7 +2182,7 @@ iavf_get_qos_cap(struct iavf_adapter *adapter)
 	len =  sizeof(struct virtchnl_qos_cap_list) +
 		IAVF_MAX_TRAFFIC_CLASS * sizeof(struct virtchnl_qos_cap_elem);
 
-	rte_memcpy(vf->qos_cap, args.out_buffer,
+	memcpy(vf->qos_cap, args.out_buffer,
 		   RTE_MIN(args.out_size, len));
 
 	return 0;
