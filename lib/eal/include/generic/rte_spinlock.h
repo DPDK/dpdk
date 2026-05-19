@@ -21,6 +21,7 @@
 #ifdef RTE_FORCE_INTRINSICS
 #include <rte_common.h>
 #endif
+#include <rte_debug.h>
 #include <rte_lock_annotations.h>
 #include <rte_pause.h>
 #include <rte_stdatomic.h>
@@ -245,6 +246,8 @@ static inline void rte_spinlock_recursive_lock(rte_spinlock_recursive_t *slr)
 static inline void rte_spinlock_recursive_unlock(rte_spinlock_recursive_t *slr)
 	__rte_no_thread_safety_analysis
 {
+	RTE_ASSERT(rte_atomic_load_explicit(&slr->owner, rte_memory_order_relaxed) == rte_gettid());
+	RTE_ASSERT(slr->count > 0);
 	if (--(slr->count) == 0) {
 		rte_atomic_store_explicit(&slr->owner, -1, rte_memory_order_relaxed);
 		rte_spinlock_unlock(&slr->sl);
