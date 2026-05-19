@@ -660,13 +660,17 @@ rte_flow_conv_item_spec(void *buf, const size_t size,
 			   }),
 			   size > sizeof(*dst.raw) ? sizeof(*dst.raw) : size);
 		off = sizeof(*dst.raw);
-		if (type == RTE_FLOW_CONV_ITEM_SPEC ||
-		    (type == RTE_FLOW_CONV_ITEM_MASK &&
-		     ((spec.raw->length & mask.raw->length) >=
-		      (last.raw->length & mask.raw->length))))
+		if (type == RTE_FLOW_CONV_ITEM_SPEC && spec.raw)
 			tmp = spec.raw->length & mask.raw->length;
-		else
+		else if (type == RTE_FLOW_CONV_ITEM_MASK && spec.raw && last.raw &&
+			 ((spec.raw->length & mask.raw->length) >=
+			  (last.raw->length & mask.raw->length)))
+			tmp = spec.raw->length & mask.raw->length;
+		else if (last.raw)
 			tmp = last.raw->length & mask.raw->length;
+		else
+			tmp = 0;
+
 		if (tmp) {
 			off = RTE_ALIGN_CEIL(off, sizeof(*dst.raw->pattern));
 			if (size >= off + tmp) {
@@ -684,8 +688,8 @@ rte_flow_conv_item_spec(void *buf, const size_t size,
 		spec.geneve_opt = item->spec;
 		src.geneve_opt = data;
 		dst.geneve_opt = buf;
-		tmp = spec.geneve_opt->option_len << 2;
-		if (size > 0 && src.geneve_opt->data) {
+		tmp = spec.geneve_opt ? (spec.geneve_opt->option_len << 2) : 0;
+		if (size > 0 && tmp > 0 && src.geneve_opt->data) {
 			deep_src = (void *)((uintptr_t)(dst.geneve_opt + 1));
 			dst.geneve_opt->data = rte_memcpy(deep_src,
 							  src.geneve_opt->data,
