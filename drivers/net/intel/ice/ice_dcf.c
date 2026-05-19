@@ -268,7 +268,7 @@ ice_dcf_aq_cmd_handle(struct ice_dcf_hw *hw, struct iavf_arq_event_info *info)
 			cmd->rsp_msglen = RTE_MIN(info->msg_len,
 						  cmd->rsp_buflen);
 			if (likely(cmd->rsp_msglen != 0))
-				rte_memcpy(cmd->rsp_msgbuf, info->msg_buf,
+				memcpy(cmd->rsp_msgbuf, info->msg_buf,
 					   cmd->rsp_msglen);
 
 			/* prevent compiler reordering */
@@ -453,7 +453,7 @@ ice_dcf_get_vf_vsi_map(struct ice_dcf_hw *hw)
 		return 1;
 	}
 
-	rte_memcpy(hw->vf_vsi_map, vsi_map->vf_vsi, len);
+	memcpy(hw->vf_vsi_map, vsi_map->vf_vsi, len);
 	return 0;
 }
 
@@ -731,7 +731,7 @@ dcf_get_vlan_offload_caps_v2(struct ice_dcf_hw *hw)
 		return ret;
 	}
 
-	rte_memcpy(&hw->vlan_v2_caps, &vlan_v2_caps, sizeof(vlan_v2_caps));
+	memcpy(&hw->vlan_v2_caps, &vlan_v2_caps, sizeof(vlan_v2_caps));
 	return 0;
 }
 
@@ -931,7 +931,7 @@ ice_dcf_configure_rss_key(struct ice_dcf_hw *hw)
 
 	rss_key->vsi_id = hw->vsi_res->vsi_id;
 	rss_key->key_len = hw->vf_res->rss_key_size;
-	rte_memcpy(rss_key->key, hw->rss_key, hw->vf_res->rss_key_size);
+	memcpy(rss_key->key, hw->rss_key, hw->vf_res->rss_key_size);
 
 	args.v_op = VIRTCHNL_OP_CONFIG_RSS_KEY;
 	args.req_msglen = len;
@@ -963,7 +963,7 @@ ice_dcf_configure_rss_lut(struct ice_dcf_hw *hw)
 
 	rss_lut->vsi_id = hw->vsi_res->vsi_id;
 	rss_lut->lut_entries = hw->vf_res->rss_lut_size;
-	rte_memcpy(rss_lut->lut, hw->rss_lut, hw->vf_res->rss_lut_size);
+	memcpy(rss_lut->lut, hw->rss_lut, hw->vf_res->rss_lut_size);
 
 	args.v_op = VIRTCHNL_OP_CONFIG_RSS_LUT;
 	args.req_msglen = len;
@@ -1130,7 +1130,7 @@ ice_dcf_init_rss(struct ice_dcf_hw *hw)
 		for (i = 0; i < hw->vf_res->rss_key_size; i++)
 			hw->rss_key[i] = (uint8_t)rte_rand();
 	else
-		rte_memcpy(hw->rss_key, rss_conf->rss_key,
+		memcpy(hw->rss_key, rss_conf->rss_key,
 			   RTE_MIN(rss_conf->rss_key_len,
 				   hw->vf_res->rss_key_size));
 
@@ -1406,7 +1406,7 @@ ice_dcf_add_del_all_mac_addr(struct ice_dcf_hw *hw,
 		return -ENOMEM;
 	}
 
-	rte_memcpy(list->list[0].addr, addr->addr_bytes,
+	memcpy(list->list[0].addr, addr->addr_bytes,
 			sizeof(addr->addr_bytes));
 
 	PMD_DRV_LOG(DEBUG, "add/rm mac:" RTE_ETHER_ADDR_PRT_FMT,
