@@ -12,7 +12,6 @@
 #include <stdarg.h>
 
 #include <rte_common.h>
-#include <rte_memcpy.h>
 #include <rte_byteorder.h>
 #include <rte_cycles.h>
 #include <rte_spinlock.h>
@@ -226,7 +225,7 @@ struct i40e_spinlock {
 #define I40E_HTONL(a) rte_cpu_to_be_32(a)
 
 #define i40e_memset(a, b, c, d) memset((a), (b), (c))
-#define i40e_memcpy(a, b, c, d) rte_memcpy((a), (b), (c))
+#define i40e_memcpy(a, b, c, d) memcpy((a), (b), (c))
 
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
 #define DELAY(x) rte_delay_us_sleep(x)

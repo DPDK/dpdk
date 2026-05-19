@@ -464,9 +464,9 @@ fill_ip6_head(const struct i40e_fdir_input *fdir_input, unsigned char *raw_pkt,
 	 * need to be presented in a reversed order with respect
 	 * to the expected received packets.
 	 */
-	rte_memcpy(&ip6->src_addr, &fdir_input->flow.ipv6_flow.dst_ip,
+	memcpy(&ip6->src_addr, &fdir_input->flow.ipv6_flow.dst_ip,
 		IPV6_ADDR_LEN);
-	rte_memcpy(&ip6->dst_addr, &fdir_input->flow.ipv6_flow.src_ip,
+	memcpy(&ip6->dst_addr, &fdir_input->flow.ipv6_flow.src_ip,
 		IPV6_ADDR_LEN);
 	len += sizeof(struct rte_ipv6_hdr);
 
@@ -528,16 +528,16 @@ i40e_flow_fdir_fill_eth_ip_head(struct i40e_pf *pf,
 		[I40E_FILTER_PCTYPE_NONF_IPV6_OTHER] = IPPROTO_NONE,
 	};
 
-	rte_memcpy(raw_pkt, &fdir_input->flow.l2_flow.dst,
+	memcpy(raw_pkt, &fdir_input->flow.l2_flow.dst,
 		sizeof(struct rte_ether_addr));
-	rte_memcpy(raw_pkt + sizeof(struct rte_ether_addr),
+	memcpy(raw_pkt + sizeof(struct rte_ether_addr),
 		&fdir_input->flow.l2_flow.src,
 		sizeof(struct rte_ether_addr));
 	raw_pkt += 2 * sizeof(struct rte_ether_addr);
 
 	if (vlan && fdir_input->flow_ext.vlan_tci) {
-		rte_memcpy(raw_pkt, vlan_frame, sizeof(vlan_frame));
-		rte_memcpy(raw_pkt + sizeof(uint16_t),
+		memcpy(raw_pkt, vlan_frame, sizeof(vlan_frame));
+		memcpy(raw_pkt + sizeof(uint16_t),
 			   &fdir_input->flow_ext.vlan_tci,
 			   sizeof(uint16_t));
 		raw_pkt += sizeof(vlan_frame);
@@ -901,7 +901,7 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 		dst = pf->fdir.flex_set[pit_idx].dst_offset * sizeof(uint16_t);
 		ptr = payload +
 		      pf->fdir.flex_set[pit_idx].src_offset * sizeof(uint16_t);
-		(void)rte_memcpy(ptr,
+		(void)memcpy(ptr,
 				 &fdir_input->flow_ext.flexbytes[dst],
 				 size * sizeof(uint16_t));
 	}
@@ -1001,7 +1001,7 @@ static int
 i40e_fdir_filter_convert(const struct i40e_fdir_filter_conf *input,
 			 struct i40e_fdir_filter *filter)
 {
-	rte_memcpy(&filter->fdir, input, sizeof(struct i40e_fdir_filter_conf));
+	memcpy(&filter->fdir, input, sizeof(struct i40e_fdir_filter_conf));
 	if (input->input.flow_ext.pkt_template) {
 		filter->fdir.input.flow.raw_flow.packet = NULL;
 		filter->fdir.input.flow.raw_flow.length =
@@ -1058,7 +1058,7 @@ i40e_sw_fdir_filter_insert(struct i40e_pf *pf, struct i40e_fdir_filter *filter)
 		return -1;
 
 	hash_filter = &fdir_info->fdir_filter_array[ret];
-	rte_memcpy(hash_filter, filter, sizeof(*filter));
+	memcpy(hash_filter, filter, sizeof(*filter));
 	fdir_info->hash_map[ret] = hash_filter;
 	TAILQ_INSERT_TAIL(&fdir_info->fdir_list, hash_filter, rules);
 

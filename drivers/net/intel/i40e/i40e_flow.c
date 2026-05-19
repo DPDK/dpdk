@@ -1162,7 +1162,7 @@ i40e_pattern_skip_void_item(struct rte_flow_item *items,
 		pe = i40e_find_first_item(pb + 1, true);
 
 		cpy_count = pe - pb;
-		rte_memcpy(items, pb, sizeof(struct rte_flow_item) * cpy_count);
+		memcpy(items, pb, sizeof(struct rte_flow_item) * cpy_count);
 
 		items += cpy_count;
 
@@ -1174,7 +1174,7 @@ i40e_pattern_skip_void_item(struct rte_flow_item *items,
 		pb = pe + 1;
 	}
 	/* Copy the END item. */
-	rte_memcpy(items, pe, sizeof(struct rte_flow_item));
+	memcpy(items, pe, sizeof(struct rte_flow_item));
 }
 
 /* Check if the pattern matches a supported item type array */
@@ -2131,9 +2131,9 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				filter->input.flow_ext.oip_type =
 					I40E_FDIR_IPTYPE_IPV6;
 
-				rte_memcpy(filter->input.flow.ipv6_flow.src_ip,
+				memcpy(filter->input.flow.ipv6_flow.src_ip,
 					   &ipv6_spec->hdr.src_addr, 16);
-				rte_memcpy(filter->input.flow.ipv6_flow.dst_ip,
+				memcpy(filter->input.flow.ipv6_flow.dst_ip,
 					   &ipv6_spec->hdr.dst_addr, 16);
 
 				/* Check if it is fragment. */
@@ -3059,12 +3059,12 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 				}
 
 				if (!vxlan_flag) {
-					rte_memcpy(&filter->outer_mac,
+					memcpy(&filter->outer_mac,
 						   &eth_spec->hdr.dst_addr,
 						   RTE_ETHER_ADDR_LEN);
 					filter_type |= RTE_ETH_TUNNEL_FILTER_OMAC;
 				} else {
-					rte_memcpy(&filter->inner_mac,
+					memcpy(&filter->inner_mac,
 						   &eth_spec->hdr.dst_addr,
 						   RTE_ETHER_ADDR_LEN);
 					filter_type |= RTE_ETH_TUNNEL_FILTER_IMAC;
@@ -3159,7 +3159,7 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 					return -rte_errno;
 				}
 
-				rte_memcpy(((uint8_t *)&tenant_id_be + 1),
+				memcpy(((uint8_t *)&tenant_id_be + 1),
 					   vxlan_spec->hdr.vni, 3);
 				filter->tenant_id =
 					rte_be_to_cpu_32(tenant_id_be);
@@ -3288,12 +3288,12 @@ i40e_flow_parse_nvgre_pattern(__rte_unused struct rte_eth_dev *dev,
 				}
 
 				if (!nvgre_flag) {
-					rte_memcpy(&filter->outer_mac,
+					memcpy(&filter->outer_mac,
 						   &eth_spec->hdr.dst_addr,
 						   RTE_ETHER_ADDR_LEN);
 					filter_type |= RTE_ETH_TUNNEL_FILTER_OMAC;
 				} else {
-					rte_memcpy(&filter->inner_mac,
+					memcpy(&filter->inner_mac,
 						   &eth_spec->hdr.dst_addr,
 						   RTE_ETHER_ADDR_LEN);
 					filter_type |= RTE_ETH_TUNNEL_FILTER_IMAC;
@@ -3410,7 +3410,7 @@ i40e_flow_parse_nvgre_pattern(__rte_unused struct rte_eth_dev *dev,
 						   "Invalid NVGRE item");
 					return -rte_errno;
 				}
-				rte_memcpy(((uint8_t *)&tenant_id_be + 1),
+				memcpy(((uint8_t *)&tenant_id_be + 1),
 					   nvgre_spec->tni, 3);
 				filter->tenant_id =
 					rte_be_to_cpu_32(tenant_id_be);
@@ -3578,7 +3578,7 @@ i40e_flow_parse_mpls_pattern(__rte_unused struct rte_eth_dev *dev,
 						   "Invalid MPLS label mask");
 				return -rte_errno;
 			}
-			rte_memcpy(((uint8_t *)&label_be + 1),
+			memcpy(((uint8_t *)&label_be + 1),
 				   mpls_spec->label_tc_s, 3);
 			filter->tenant_id = rte_be_to_cpu_32(label_be) >> 4;
 			break;
@@ -4216,7 +4216,7 @@ i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
 	cld_filter.element.flags = filter->input.flags;
 	cld_filter.element.tenant_id = filter->input.tenant_id;
 	cld_filter.element.queue_number = filter->queue;
-	rte_memcpy(cld_filter.general_fields,
+	memcpy(cld_filter.general_fields,
 		   filter->input.general_fields,
 		   sizeof(cld_filter.general_fields));
 
@@ -4436,7 +4436,7 @@ i40e_flow_query(struct rte_eth_dev *dev __rte_unused,
 						   "action not supported");
 				return -rte_errno;
 			}
-			rte_memcpy(rss_conf,
+			memcpy(rss_conf,
 				   &rss_rule->rss_filter_info.conf,
 				   sizeof(struct rte_flow_action_rss));
 			break;

@@ -16,7 +16,6 @@
 #include <rte_ether.h>
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
-#include <rte_memcpy.h>
 
 #include "i40e_logs.h"
 #include "base/i40e_prototype.h"
@@ -857,7 +856,7 @@ i40e_pf_host_process_cmd_add_ether_address(struct i40e_pf_vf *vf,
 
 	for (i = 0; i < addr_list->num_elements; i++) {
 		mac = (struct rte_ether_addr *)(addr_list->list[i].addr);
-		rte_memcpy(&filter.mac_addr, mac, RTE_ETHER_ADDR_LEN);
+		memcpy(&filter.mac_addr, mac, RTE_ETHER_ADDR_LEN);
 		filter.filter_type = I40E_MACVLAN_PERFECT_MATCH;
 		if (rte_is_zero_ether_addr(mac) ||
 		    i40e_vsi_add_mac(vf->vsi, &filter)) {
