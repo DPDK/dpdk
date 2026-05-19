@@ -567,7 +567,7 @@ iavf_init_rss(struct iavf_adapter *adapter)
 		for (i = 0; i < vf->vf_res->rss_key_size; i++)
 			vf->rss_key[i] = (uint8_t)rte_rand();
 	} else
-		rte_memcpy(vf->rss_key, rss_conf->rss_key,
+		memcpy(vf->rss_key, rss_conf->rss_key,
 			   RTE_MIN(rss_conf->rss_key_len,
 				   vf->vf_res->rss_key_size));
 
@@ -1620,7 +1620,7 @@ iavf_dev_rss_reta_update(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 	/* store the old lut table temporarily */
-	rte_memcpy(lut, vf->rss_lut, reta_size);
+	memcpy(lut, vf->rss_lut, reta_size);
 
 	for (i = 0; i < reta_size; i++) {
 		idx = i / RTE_ETH_RETA_GROUP_SIZE;
@@ -1629,11 +1629,11 @@ iavf_dev_rss_reta_update(struct rte_eth_dev *dev,
 			lut[i] = reta_conf[idx].reta[shift];
 	}
 
-	rte_memcpy(vf->rss_lut, lut, reta_size);
+	memcpy(vf->rss_lut, lut, reta_size);
 	/* send virtchnl ops to configure RSS */
 	ret = iavf_configure_rss_lut(adapter);
 	if (ret) /* revert back */
-		rte_memcpy(vf->rss_lut, lut, reta_size);
+		memcpy(vf->rss_lut, lut, reta_size);
 	free(lut);
 
 	return ret;
@@ -1689,7 +1689,7 @@ iavf_set_rss_key(struct iavf_adapter *adapter, uint8_t *key, uint8_t key_len)
 		return -EINVAL;
 	}
 
-	rte_memcpy(vf->rss_key, key, key_len);
+	memcpy(vf->rss_key, key, key_len);
 
 	return iavf_configure_rss_key(adapter);
 }
@@ -1773,7 +1773,7 @@ iavf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 		return 0;
 
 	rss_conf->rss_key_len = vf->vf_res->rss_key_size;
-	rte_memcpy(rss_conf->rss_key, vf->rss_key, rss_conf->rss_key_len);
+	memcpy(rss_conf->rss_key, vf->rss_key, rss_conf->rss_key_len);
 
 	return 0;
 }
