@@ -2004,3 +2004,18 @@ Tested Platforms
       * Ubuntu 22.04
       * Driver MLNX_OFED_LINUX-24.10-4.1.4.0
       * fw 22.43.4100
+
+24.11.6 Release Notes
+---------------------
+
+
+24.11.6 Fixes
+~~~~~~~~~~~~~
+
+* docs: fix build issue due to missing spacing between paragraphs
+* Revert "net: fix packet type for stacked VLAN"
+
+24.11.6 Validation
+~~~~~~~~~~~~~~~~~~
+
+
