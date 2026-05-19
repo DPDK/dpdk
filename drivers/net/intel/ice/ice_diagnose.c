@@ -363,13 +363,13 @@ ice_dump_pkg(struct rte_eth_dev *dev, uint8_t **buff, uint32_t *size)
 	count = *size / ICE_PKG_BUF_SIZE;
 	for (i = 0; i < count; i++) {
 		next_buff = (uint8_t *)(*buff) + i * ICE_PKG_BUF_SIZE;
-		rte_memcpy(pkg_buff.buf, next_buff, ICE_PKG_BUF_SIZE);
+		memcpy(pkg_buff.buf, next_buff, ICE_PKG_BUF_SIZE);
 		if (ice_aq_upload_section(hw,
 					  (struct ice_buf_hdr *)&pkg_buff.buf[0],
 					  ICE_PKG_BUF_SIZE,
 					  NULL))
 			return -EINVAL;
-		rte_memcpy(next_buff, pkg_buff.buf, ICE_PKG_BUF_SIZE);
+		memcpy(next_buff, pkg_buff.buf, ICE_PKG_BUF_SIZE);
 	}
 
 	cache_size = sizeof(struct ice_package_header) + *size;

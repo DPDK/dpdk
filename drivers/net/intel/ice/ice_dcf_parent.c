@@ -418,7 +418,7 @@ ice_dcf_load_pkg(struct ice_adapter *adapter)
 
 	use_dsn = ice_dcf_execute_virtchnl_cmd(&dcf_adapter->real_hw, &vc_cmd) == 0;
 	if (use_dsn)
-		rte_memcpy(&dsn, pkg_info.dsn, sizeof(dsn));
+		memcpy(&dsn, pkg_info.dsn, sizeof(dsn));
 
 	return ice_load_pkg(adapter, use_dsn, dsn);
 }

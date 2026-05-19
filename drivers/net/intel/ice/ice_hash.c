@@ -753,7 +753,7 @@ ice_hash_parse_raw_pattern(struct ice_adapter *ad,
 	if (ret)
 		goto free_mem;
 
-	rte_memcpy(&meta->raw.prof, &prof, sizeof(prof));
+	memcpy(&meta->raw.prof, &prof, sizeof(prof));
 
 free_mem:
 	free(pkt_buf);
