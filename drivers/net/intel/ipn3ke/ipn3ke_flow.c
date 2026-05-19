@@ -100,7 +100,7 @@ ipn3ke_pattern_vxlan(const struct rte_flow_item patterns[],
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			eth = item->spec;
 
-			rte_memcpy(&parser->key[0],
+			memcpy(&parser->key[0],
 					eth->hdr.src_addr.addr_bytes,
 					RTE_ETHER_ADDR_LEN);
 			break;
@@ -108,7 +108,7 @@ ipn3ke_pattern_vxlan(const struct rte_flow_item patterns[],
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			vxlan = item->spec;
 
-			rte_memcpy(&parser->key[6], vxlan->hdr.vni, 3);
+			memcpy(&parser->key[6], vxlan->hdr.vni, 3);
 			break;
 
 		default:
@@ -164,7 +164,7 @@ ipn3ke_pattern_mac(const struct rte_flow_item patterns[],
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			eth = item->spec;
 
-			rte_memcpy(parser->key,
+			memcpy(parser->key,
 					eth->hdr.src_addr.addr_bytes,
 					RTE_ETHER_ADDR_LEN);
 			break;
@@ -369,13 +369,13 @@ ipn3ke_pattern_ip_tcp(const struct rte_flow_item patterns[],
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			ipv4 = item->spec;
 
-			rte_memcpy(&parser->key[0], &ipv4->hdr.src_addr, 4);
+			memcpy(&parser->key[0], &ipv4->hdr.src_addr, 4);
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			tcp = item->spec;
 
-			rte_memcpy(&parser->key[4], &tcp->hdr.src_port, 2);
+			memcpy(&parser->key[4], &tcp->hdr.src_port, 2);
 			break;
 
 		default:
@@ -434,13 +434,13 @@ ipn3ke_pattern_ip_udp(const struct rte_flow_item patterns[],
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			ipv4 = item->spec;
 
-			rte_memcpy(&parser->key[0], &ipv4->hdr.src_addr, 4);
+			memcpy(&parser->key[0], &ipv4->hdr.src_addr, 4);
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			udp = item->spec;
 
-			rte_memcpy(&parser->key[4], &udp->hdr.src_port, 2);
+			memcpy(&parser->key[4], &udp->hdr.src_port, 2);
 			break;
 
 		default:
@@ -502,19 +502,19 @@ ipn3ke_pattern_ip_nvgre(const struct rte_flow_item patterns[],
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			ipv4 = item->spec;
 
-			rte_memcpy(&parser->key[0], &ipv4->hdr.src_addr, 4);
+			memcpy(&parser->key[0], &ipv4->hdr.src_addr, 4);
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			udp = item->spec;
 
-			rte_memcpy(&parser->key[4], &udp->hdr.src_port, 2);
+			memcpy(&parser->key[4], &udp->hdr.src_port, 2);
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
 			nvgre = item->spec;
 
-			rte_memcpy(&parser->key[6], nvgre->tni, 3);
+			memcpy(&parser->key[6], nvgre->tni, 3);
 			break;
 
 		default:
@@ -576,19 +576,19 @@ ipn3ke_pattern_vxlan_ip_udp(const struct rte_flow_item patterns[],
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			vxlan = item->spec;
 
-			rte_memcpy(&parser->key[0], vxlan->hdr.vni, 3);
+			memcpy(&parser->key[0], vxlan->hdr.vni, 3);
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			ipv4 = item->spec;
 
-			rte_memcpy(&parser->key[3], &ipv4->hdr.src_addr, 4);
+			memcpy(&parser->key[3], &ipv4->hdr.src_addr, 4);
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			udp = item->spec;
 
-			rte_memcpy(&parser->key[7], &udp->hdr.src_port, 2);
+			memcpy(&parser->key[7], &udp->hdr.src_port, 2);
 			break;
 
 		default:
