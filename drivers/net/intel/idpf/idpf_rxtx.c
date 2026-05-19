@@ -74,7 +74,7 @@ idpf_dma_zone_reserve(struct rte_eth_dev *dev, uint16_t queue_idx,
 		else
 			ring_size = RTE_ALIGN(len * sizeof(struct ci_tx_desc),
 					      IDPF_DMA_MEM_ALIGN);
-		rte_memcpy(ring_name, "idpf Tx ring", sizeof("idpf Tx ring"));
+		memcpy(ring_name, "idpf Tx ring", sizeof("idpf Tx ring"));
 		break;
 	case VIRTCHNL2_QUEUE_TYPE_RX:
 		if (splitq)
@@ -83,17 +83,17 @@ idpf_dma_zone_reserve(struct rte_eth_dev *dev, uint16_t queue_idx,
 		else
 			ring_size = RTE_ALIGN(len * sizeof(struct virtchnl2_singleq_rx_buf_desc),
 					      IDPF_DMA_MEM_ALIGN);
-		rte_memcpy(ring_name, "idpf Rx ring", sizeof("idpf Rx ring"));
+		memcpy(ring_name, "idpf Rx ring", sizeof("idpf Rx ring"));
 		break;
 	case VIRTCHNL2_QUEUE_TYPE_TX_COMPLETION:
 		ring_size = RTE_ALIGN(len * sizeof(struct idpf_splitq_tx_compl_desc),
 				      IDPF_DMA_MEM_ALIGN);
-		rte_memcpy(ring_name, "idpf Tx compl ring", sizeof("idpf Tx compl ring"));
+		memcpy(ring_name, "idpf Tx compl ring", sizeof("idpf Tx compl ring"));
 		break;
 	case VIRTCHNL2_QUEUE_TYPE_RX_BUFFER:
 		ring_size = RTE_ALIGN(len * sizeof(struct virtchnl2_splitq_rx_buf_desc),
 				      IDPF_DMA_MEM_ALIGN);
-		rte_memcpy(ring_name, "idpf Rx buf ring", sizeof("idpf Rx buf ring"));
+		memcpy(ring_name, "idpf Rx buf ring", sizeof("idpf Rx buf ring"));
 		break;
 	default:
 		PMD_INIT_LOG(ERR, "Invalid queue type");

@@ -496,7 +496,7 @@ idpf_vport_init(struct idpf_vport *vport,
 	vport->num_rx_q = vport_info->num_rx_q;
 	vport->num_rx_bufq = vport_info->num_rx_bufq;
 	vport->max_mtu = vport_info->max_mtu;
-	rte_memcpy(vport->default_mac_addr,
+	memcpy(vport->default_mac_addr,
 		   vport_info->default_mac_addr, ETH_ALEN);
 	vport->rss_algorithm = vport_info->rss_algorithm;
 	vport->rss_key_size = RTE_MIN(IDPF_RSS_KEY_LEN,

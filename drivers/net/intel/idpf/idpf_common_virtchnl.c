@@ -141,7 +141,7 @@ idpf_read_msg_from_cp(struct idpf_adapter *adapter, uint16_t buf_len,
 		return result;
 	}
 
-	rte_memcpy(buf, ctlq_msg.ctx.indirect.payload->va, buf_len);
+	memcpy(buf, ctlq_msg.ctx.indirect.payload->va, buf_len);
 
 	opcode = rte_le_to_cpu_32(ctlq_msg.cookie.mbx.chnl_opcode);
 	adapter->cmd_retval = rte_le_to_cpu_32(ctlq_msg.cookie.mbx.chnl_retval);
@@ -323,7 +323,7 @@ idpf_vc_caps_get(struct idpf_adapter *adapter)
 		return err;
 	}
 
-	rte_memcpy(&adapter->caps, args.out_buffer, sizeof(struct virtchnl2_get_capabilities));
+	memcpy(&adapter->caps, args.out_buffer, sizeof(struct virtchnl2_get_capabilities));
 
 	return 0;
 }
@@ -361,7 +361,7 @@ idpf_vc_vport_create(struct idpf_vport *vport,
 		return err;
 	}
 
-	rte_memcpy(&(vport->vport_info.info), args.out_buffer, IDPF_DFLT_MBX_BUF_SIZE);
+	memcpy(&(vport->vport_info.info), args.out_buffer, IDPF_DFLT_MBX_BUF_SIZE);
 	return 0;
 }
 
@@ -419,7 +419,7 @@ idpf_vc_queue_grps_add(struct idpf_vport *vport,
 		return err;
 	}
 
-	rte_memcpy(p2p_queue_grps_out, args.out_buffer, IDPF_DFLT_MBX_BUF_SIZE);
+	memcpy(p2p_queue_grps_out, args.out_buffer, IDPF_DFLT_MBX_BUF_SIZE);
 	return 0;
 }
 
@@ -475,7 +475,7 @@ idpf_vc_rss_key_set(struct idpf_vport *vport)
 
 	rss_key->vport_id = vport->vport_id;
 	rss_key->key_len = vport->rss_key_size;
-	rte_memcpy(rss_key->key, vport->rss_key,
+	memcpy(rss_key->key, vport->rss_key,
 		   sizeof(rss_key->key[0]) * vport->rss_key_size);
 
 	memset(&args, 0, sizeof(args));
@@ -528,7 +528,7 @@ int idpf_vc_rss_key_get(struct idpf_vport *vport)
 				return -ENOMEM;
 			}
 		}
-		rte_memcpy(vport->rss_key, rss_key_ret->key, vport->rss_key_size);
+		memcpy(vport->rss_key, rss_key_ret->key, vport->rss_key_size);
 	} else {
 		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_GET_RSS_KEY");
 	}
@@ -553,7 +553,7 @@ idpf_vc_rss_lut_set(struct idpf_vport *vport)
 
 	rss_lut->vport_id = vport->vport_id;
 	rss_lut->lut_entries = vport->rss_lut_size;
-	rte_memcpy(rss_lut->lut, vport->rss_lut,
+	memcpy(rss_lut->lut, vport->rss_lut,
 		   sizeof(rss_lut->lut[0]) * vport->rss_lut_size);
 
 	memset(&args, 0, sizeof(args));
@@ -605,7 +605,7 @@ idpf_vc_rss_lut_get(struct idpf_vport *vport)
 				return -ENOMEM;
 			}
 		}
-		rte_memcpy(vport->rss_lut, rss_lut_ret->lut, rss_lut_ret->lut_entries);
+		memcpy(vport->rss_lut, rss_lut_ret->lut, rss_lut_ret->lut_entries);
 		vport->rss_lut_size = rss_lut_ret->lut_entries;
 	} else {
 		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_GET_RSS_LUT");
@@ -742,7 +742,7 @@ idpf_vc_vectors_alloc(struct idpf_vport *vport, uint16_t num_vectors)
 	if (err != 0)
 		DRV_LOG(ERR, "Failed to execute command VIRTCHNL2_OP_ALLOC_VECTORS");
 
-	rte_memcpy(vport->recv_vectors, args.out_buffer, len);
+	memcpy(vport->recv_vectors, args.out_buffer, len);
 	rte_free(alloc_vec);
 	return err;
 }
@@ -1007,7 +1007,7 @@ idpf_vc_ptype_info_query(struct idpf_adapter *adapter,
 	if (err != 0)
 		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_GET_PTYPE_INFO");
 
-	rte_memcpy(recv_ptype_info, args.out_buffer, IDPF_DFLT_MBX_BUF_SIZE);
+	memcpy(recv_ptype_info, args.out_buffer, IDPF_DFLT_MBX_BUF_SIZE);
 	return err;
 }
 
