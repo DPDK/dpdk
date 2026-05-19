@@ -50,6 +50,20 @@ enum i40e_status_code i40e_init_nvm(struct i40e_hw *hw)
 }
 
 /**
+ * get_elapsed_time - Compute elapsed hardware timer ticks
+ * @from: The start timer value
+ * @to: The current timer value
+ *
+ * Returns the elapsed time as the difference between the current and start
+ * timer values. The subtraction is wrap-safe for unsigned 32-bit values,
+ * meaning it correctly handles timer wrap-around.
+ **/
+static u32 get_elapsed_time(u32 from, u32 to)
+{
+	return (u32)(to - from); /* wrap-safe */
+}
+
+/**
  * i40e_acquire_nvm - Generic request for acquiring the NVM ownership
  * @hw: pointer to the HW structure
  * @access: NVM access type (read or write)
@@ -61,7 +75,7 @@ enum i40e_status_code i40e_acquire_nvm(struct i40e_hw *hw,
 				       enum i40e_aq_resource_access_type access)
 {
 	enum i40e_status_code ret_code = I40E_SUCCESS;
-	u32 gtime, timeout;
+	u32 gtime_start, gtime_current, timeout, elapsed;
 	u32 time_left = 0;
 
 	DEBUGFUNC("i40e_acquire_nvm");
@@ -72,10 +86,12 @@ enum i40e_status_code i40e_acquire_nvm(struct i40e_hw *hw,
 	ret_code = i40e_aq_request_resource(hw, I40E_NVM_RESOURCE_ID, access,
 					    0, &time_left, NULL);
 	/* Reading the Global Device Timer */
-	gtime = rd32(hw, I40E_GLVFGEN_TIMER);
+	gtime_start = rd32(hw, I40E_GLVFGEN_TIMER);
+	gtime_current = gtime_start;
+	elapsed = 0;
 
 	/* Store the timeout */
-	hw->nvm.hw_semaphore_timeout = I40E_MS_TO_GTIME(time_left) + gtime;
+	hw->nvm.hw_semaphore_timeout = I40E_MS_TO_GTIME(time_left) + gtime_start;
 
 	if (ret_code)
 		i40e_debug(hw, I40E_DEBUG_NVM,
@@ -84,17 +100,20 @@ enum i40e_status_code i40e_acquire_nvm(struct i40e_hw *hw,
 
 	if (ret_code && time_left) {
 		/* Poll until the current NVM owner timeouts */
-		timeout = I40E_MS_TO_GTIME(I40E_MAX_NVM_TIMEOUT) + gtime;
-		while ((s32)(gtime - timeout) < 0 && time_left) {
+		timeout = I40E_MS_TO_GTIME(I40E_MAX_NVM_TIMEOUT);
+
+		while (elapsed < timeout && time_left) {
 			i40e_msec_delay(10);
-			gtime = rd32(hw, I40E_GLVFGEN_TIMER);
+			gtime_current = rd32(hw, I40E_GLVFGEN_TIMER);
+			elapsed = get_elapsed_time(gtime_start, gtime_current);
 			ret_code = i40e_aq_request_resource(hw,
 							I40E_NVM_RESOURCE_ID,
 							access, 0, &time_left,
 							NULL);
 			if (ret_code == I40E_SUCCESS) {
 				hw->nvm.hw_semaphore_timeout =
-					    I40E_MS_TO_GTIME(time_left) + gtime;
+					I40E_MS_TO_GTIME(time_left) +
+					gtime_current;
 				break;
 			}
 		}
@@ -110,7 +129,6 @@ i40e_i40e_acquire_nvm_exit:
 	return ret_code;
 }
 
-
 /**
  * i40e_acquire_nvm_ex - Specific request only for
  * OID_INTEL_FLASH_INFO_TIMEOUT for acquiring the NVM ownership
@@ -121,13 +139,12 @@ i40e_i40e_acquire_nvm_exit:
  * This function will request NVM ownership for reading
  * via the proper Admin Command.
  **/
-
 enum i40e_status_code i40e_acquire_nvm_ex(struct i40e_hw *hw,
 				       enum i40e_aq_resource_access_type access,
 					   u32 custom_timeout)
 {
 	enum i40e_status_code ret_code = I40E_SUCCESS;
-	u32 gtime, timeout;
+	u32 gtime_start, gtime_current, timeout, elapsed;
 	u32 time_left = 0;
 
 	DEBUGFUNC("i40e_acquire_nvm");
@@ -138,10 +155,12 @@ enum i40e_status_code i40e_acquire_nvm_ex(struct i40e_hw *hw,
 	ret_code = i40e_aq_request_resource(hw, I40E_NVM_RESOURCE_ID, access,
 					    0, &time_left, NULL);
 	/* Reading the Global Device Timer */
-	gtime = rd32(hw, I40E_GLVFGEN_TIMER);
+	gtime_start = rd32(hw, I40E_GLVFGEN_TIMER);
+	gtime_current = gtime_start;
+	elapsed = 0;
 
 	/* Store the timeout */
-	hw->nvm.hw_semaphore_timeout = I40E_MS_TO_GTIME(time_left) + gtime;
+	hw->nvm.hw_semaphore_timeout = I40E_MS_TO_GTIME(time_left) + gtime_start;
 
 	if (ret_code)
 		i40e_debug(hw, I40E_DEBUG_NVM,
@@ -151,17 +170,20 @@ enum i40e_status_code i40e_acquire_nvm_ex(struct i40e_hw *hw,
 
 	if (ret_code && time_left) {
 		/* Poll until the current NVM owner timeouts */
-		timeout = I40E_MS_TO_GTIME(custom_timeout) + gtime;
-		while ((gtime < timeout) && time_left) {
+		timeout = I40E_MS_TO_GTIME(custom_timeout);
+
+		while (elapsed < timeout && time_left) {
 			i40e_msec_delay(10);
-			gtime = rd32(hw, I40E_GLVFGEN_TIMER);
+			gtime_current = rd32(hw, I40E_GLVFGEN_TIMER);
+			elapsed = get_elapsed_time(gtime_start, gtime_current);
 			ret_code = i40e_aq_request_resource(hw,
 							I40E_NVM_RESOURCE_ID,
 							access, 0, &time_left,
 							NULL);
 			if (ret_code == I40E_SUCCESS) {
 				hw->nvm.hw_semaphore_timeout =
-					    I40E_MS_TO_GTIME(time_left) + gtime;
+					I40E_MS_TO_GTIME(time_left) +
+					gtime_current;
 				break;
 			}
 		}
@@ -245,7 +267,7 @@ static enum i40e_status_code i40e_poll_sr_srctl_done_bit(struct i40e_hw *hw)
  * Reads one 16 bit word from the Shadow RAM using the GLNVM_SRCTL register.
  **/
 STATIC enum i40e_status_code i40e_read_nvm_word_srctl(struct i40e_hw *hw,
-						      u16 offset,
+						      u32 offset,
 						      u16 *data)
 {
 	enum i40e_status_code ret_code = I40E_ERR_TIMEOUT;
@@ -516,11 +538,12 @@ i40e_read_nvm_module_data(struct i40e_hw *hw, u8 module_ptr, u16 module_offset,
  * method. The buffer read is preceded by the NVM ownership take
  * and followed by the release.
  **/
-STATIC enum i40e_status_code i40e_read_nvm_buffer_srctl(struct i40e_hw *hw, u16 offset,
+STATIC enum i40e_status_code i40e_read_nvm_buffer_srctl(struct i40e_hw *hw, u32 offset,
 							u16 *words, u16 *data)
 {
 	enum i40e_status_code ret_code = I40E_SUCCESS;
-	u16 index, word;
+	u32 index;
+	u16 word;
 
 	DEBUGFUNC("i40e_read_nvm_buffer_srctl");
 
@@ -549,7 +572,7 @@ STATIC enum i40e_status_code i40e_read_nvm_buffer_srctl(struct i40e_hw *hw, u16 
  * method. The buffer read is preceded by the NVM ownership take
  * and followed by the release.
  **/
-STATIC enum i40e_status_code i40e_read_nvm_buffer_aq(struct i40e_hw *hw, u16 offset,
+STATIC enum i40e_status_code i40e_read_nvm_buffer_aq(struct i40e_hw *hw, u32 offset,
 						     u16 *words, u16 *data)
 {
 	enum i40e_status_code ret_code;
@@ -608,7 +631,7 @@ read_nvm_buffer_aq_exit:
  * method.
  **/
 enum i40e_status_code __i40e_read_nvm_buffer(struct i40e_hw *hw,
-					     u16 offset,
+					     u32 offset,
 					     u16 *words, u16 *data)
 {
 	if (hw->flags & I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE)
@@ -767,7 +790,7 @@ enum i40e_status_code i40e_calc_nvm_checksum(struct i40e_hw *hw, u16 *checksum)
 	u16 checksum_local = 0;
 	u16 vpd_module = 0;
 	u16 *data;
-	u16 i = 0;
+	u32 i = 0;
 
 	DEBUGFUNC("i40e_calc_nvm_checksum");
 
