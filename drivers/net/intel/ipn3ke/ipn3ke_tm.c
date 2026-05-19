@@ -814,7 +814,7 @@ ipn3ke_tm_shaper_profile_add(struct rte_eth_dev *dev,
 				rte_strerror(EINVAL));
 	} else {
 		sp->valid = 1;
-		rte_memcpy(&sp->params, profile, sizeof(sp->params));
+		memcpy(&sp->params, profile, sizeof(sp->params));
 	}
 
 	tm->h.n_shaper_profiles++;
@@ -960,7 +960,7 @@ ipn3ke_tm_tdrop_profile_add(struct rte_eth_dev *dev,
 			IPN3KE_TDROP_TH2_MASK);
 	tp->th1 = th1;
 	tp->th2 = th2;
-	rte_memcpy(&tp->params, profile, sizeof(tp->params));
+	memcpy(&tp->params, profile, sizeof(tp->params));
 
 	/* Add to list */
 	tm->h.n_tdrop_profiles++;
@@ -1308,7 +1308,7 @@ ipn3ke_tm_node_add(struct rte_eth_dev *dev,
 		n->tdrop_profile = ipn3ke_hw_tm_tdrop_profile_search(hw,
 			params->leaf.wred.wred_profile_id);
 
-	rte_memcpy(&n->params, params, sizeof(n->params));
+	memcpy(&n->params, params, sizeof(n->params));
 
 	return 0;
 }
