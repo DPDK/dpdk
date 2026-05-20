@@ -20,4 +20,6 @@ sources += files(
         'sxe2_queue.c',
         'sxe2_tx.c',
         'sxe2_rx.c',
+        'sxe2_txrx_poll.c',
+        'sxe2_txrx.c',
 )
