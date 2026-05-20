@@ -24,6 +24,8 @@
 #include "sxe2_ethdev.h"
 #include "sxe2_drv_cmd.h"
 #include "sxe2_cmd_chnl.h"
+#include "sxe2_tx.h"
+#include "sxe2_rx.h"
 #include "sxe2_common.h"
 #include "sxe2_common_log.h"
 #include "sxe2_host_regs.h"
@@ -86,14 +88,6 @@ static int32_t sxe2_dev_configure(struct rte_eth_dev *dev)
 	return ret;
 }
 
-static void __rte_cold sxe2_txqs_all_stop(struct rte_eth_dev *dev __rte_unused)
-{
-}
-
-static void __rte_cold sxe2_rxqs_all_stop(struct rte_eth_dev *dev __rte_unused)
-{
-}
-
 static int32_t sxe2_dev_stop(struct rte_eth_dev *dev)
 {
 	int32_t ret = 0;
@@ -110,16 +104,6 @@ static int32_t sxe2_dev_stop(struct rte_eth_dev *dev)
 	adapter->started = 0;
 l_end:
 	return ret;
-}
-
-static int32_t __rte_cold sxe2_txqs_all_start(struct rte_eth_dev *dev __rte_unused)
-{
-	return 0;
-}
-
-static int32_t __rte_cold sxe2_rxqs_all_start(struct rte_eth_dev *dev __rte_unused)
-{
-	return 0;
 }
 
 static int32_t sxe2_queues_start(struct rte_eth_dev *dev)
@@ -307,6 +291,14 @@ static const struct eth_dev_ops sxe2_eth_dev_ops = {
 	.dev_stop                   = sxe2_dev_stop,
 	.dev_close                  = sxe2_dev_close,
 	.dev_infos_get              = sxe2_dev_infos_get,
+
+	.rx_queue_setup             = sxe2_rx_queue_setup,
+	.tx_queue_setup             = sxe2_tx_queue_setup,
+	.rx_queue_release           = sxe2_rx_queue_release,
+	.tx_queue_release           = sxe2_tx_queue_release,
+
+	.rxq_info_get               = sxe2_rx_queue_info_get,
+	.txq_info_get               = sxe2_tx_queue_info_get,
 };
 
 struct sxe2_pci_map_bar_info *sxe2_dev_get_bar_info(struct sxe2_adapter *adapter,
@@ -332,6 +324,48 @@ struct sxe2_pci_map_bar_info *sxe2_dev_get_bar_info(struct sxe2_adapter *adapter
 
 l_end:
 	return bar_info;
+}
+
+void *sxe2_pci_map_addr_get(struct sxe2_adapter *adapter,
+			     enum sxe2_pci_map_resource res_type,
+			     uint16_t idx_in_func)
+{
+	struct sxe2_pci_map_context *map_ctxt = &adapter->map_ctxt;
+	struct sxe2_pci_map_segment_info *seg_info = NULL;
+	struct sxe2_pci_map_bar_info *bar_info = NULL;
+	void *addr = NULL;
+	uintptr_t calc_addr = 0;
+	uint8_t reg_width = 0;
+	uint8_t i = 0;
+
+	bar_info = sxe2_dev_get_bar_info(adapter, res_type);
+	if (bar_info == NULL) {
+		PMD_DEV_LOG_WARN(adapter, INIT, "Failed to get bar info, res_type=[%d]",
+				res_type);
+		goto l_end;
+	}
+	seg_info = bar_info->seg_info;
+
+	reg_width = map_ctxt->addr_info[res_type].reg_width;
+	if (reg_width == 0) {
+		PMD_DEV_LOG_WARN(adapter, INIT, "Invalid reg width with resource type %d",
+				 res_type);
+		goto l_end;
+	}
+
+	for (i = 0; i < bar_info->map_cnt; i++) {
+		seg_info = &bar_info->seg_info[i];
+		if (res_type == seg_info->type) {
+			calc_addr = (uintptr_t)seg_info->addr;
+			calc_addr += (uintptr_t)seg_info->page_inner_offset;
+			calc_addr += (uintptr_t)reg_width * (uintptr_t)idx_in_func;
+			addr = (void *)calc_addr;
+			goto l_end;
+		}
+	}
+
+l_end:
+	return addr;
 }
 
 static void sxe2_drv_dev_caps_set(struct sxe2_adapter *adapter,

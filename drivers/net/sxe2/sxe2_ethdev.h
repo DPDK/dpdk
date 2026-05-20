@@ -295,6 +295,10 @@ struct sxe2_adapter {
 #define SXE2_DEV_TO_PCI(eth_dev) \
 		RTE_DEV_TO_PCI((eth_dev)->device)
 
+void *sxe2_pci_map_addr_get(struct sxe2_adapter *adapter,
+			    enum sxe2_pci_map_resource res_type,
+			    uint16_t idx_in_func);
+
 struct sxe2_pci_map_bar_info *sxe2_dev_get_bar_info(struct sxe2_adapter *adapter,
 						    enum sxe2_pci_map_resource res_type);
 
