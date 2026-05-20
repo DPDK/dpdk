@@ -1,0 +1,44 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright (C), 2025, Wuxi Stars Micro System Technologies Co., Ltd.
+ */
+
+#ifndef SXE2_IOCTL_CHNL_FUNC_H
+#define SXE2_IOCTL_CHNL_FUNC_H
+
+#include <rte_version.h>
+#include <bus_pci_driver.h>
+
+#include "sxe2_common.h"
+#include "sxe2_ioctl_chnl.h"
+
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
+__rte_internal
+void
+sxe2_drv_cmd_close(struct sxe2_common_device *cdev);
+
+__rte_internal
+int32_t
+sxe2_drv_cmd_exec(struct sxe2_common_device *cdev,
+		struct sxe2_drv_cmd_params *cmd_params);
+
+__rte_internal
+int32_t
+sxe2_drv_dev_open(struct sxe2_common_device *cdev,
+		struct rte_pci_device *pci_dev);
+
+__rte_internal
+void
+sxe2_drv_dev_close(struct sxe2_common_device *cdev);
+
+__rte_internal
+int32_t
+sxe2_drv_dev_handshake(struct sxe2_common_device *cdev);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* SXE2_IOCTL_CHNL_FUNC_H */
