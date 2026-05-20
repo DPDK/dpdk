@@ -158,3 +158,64 @@ sxe2_drv_dev_handshake(struct sxe2_common_device *cdev)
 l_end:
 	return ret;
 }
+
+RTE_EXPORT_INTERNAL_SYMBOL(sxe2_drv_dev_mmap)
+void
+*sxe2_drv_dev_mmap(struct sxe2_common_device *cdev, uint8_t bar_idx, uint64_t len, uint64_t offset)
+{
+	int32_t cmd_fd = 0;
+	void *virt = NULL;
+
+	if (cdev->config.kernel_reset) {
+		PMD_LOG_WARN(COM, "kernel reset, need restart app.");
+		goto l_err;
+	}
+
+	cmd_fd = SXE2_CDEV_TO_CMD_FD(cdev);
+	if (cmd_fd < 0) {
+		PMD_LOG_ERR(COM, "Failed to exec cmd, fd=%d", cmd_fd);
+		goto l_err;
+	}
+
+	PMD_LOG_DEBUG(COM, "fd=%d, bar idx=%d, len=%"PRIu64", src=0x%"PRIx64", offset=0x%"PRIx64"",
+		bar_idx, cmd_fd, len, offset, SXE2_COM_PCI_OFFSET_GEN(bar_idx, offset));
+
+	virt = mmap(NULL, len, PROT_READ | PROT_WRITE,
+		MAP_SHARED, cmd_fd, SXE2_COM_PCI_OFFSET_GEN(bar_idx, offset));
+	if (virt == MAP_FAILED) {
+		PMD_LOG_ERR(COM, "Failed mmap, cmd_fd=%d, len=%"PRIu64", offset=0x%"PRIx64", err:%s",
+			cmd_fd, len, offset, strerror(errno));
+		goto l_err;
+	}
+
+	return virt;
+l_err:
+	return NULL;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(sxe2_drv_dev_munmap)
+int32_t
+sxe2_drv_dev_munmap(struct sxe2_common_device *cdev, void *virt, uint64_t len)
+{
+	int32_t ret = 0;
+
+	if (cdev->config.kernel_reset) {
+		ret = -EPERM;
+		PMD_LOG_WARN(COM, "kernel reset, need restart app.");
+		goto l_end;
+	}
+
+	PMD_LOG_DEBUG(COM, "Munmap virt=%p, len=0x%"PRIx64"",
+		virt, len);
+
+	ret = munmap(virt, len);
+	if (ret < 0) {
+		PMD_LOG_ERR(COM, "Failed to munmap, virt=%p, len=%"PRIu64", err:%s",
+			virt, len, strerror(errno));
+		ret = -errno;
+		goto l_end;
+	}
+
+l_end:
+	return ret;
+}

@@ -54,6 +54,27 @@ static const struct rte_pci_id pci_id_sxe2_tbl[] = {
 	{ .vendor_id = 0, },
 };
 
+static struct sxe2_pci_map_addr_info sxe2_net_map_addr_info_pf[SXE2_PCI_MAP_RES_MAX_COUNT] = {
+	[SXE2_PCI_MAP_RES_INVALID] = {.addr_base = 0,
+				      .bar_idx = 0,
+				      .reg_width = 0},
+	[SXE2_PCI_MAP_RES_DOORBELL_TX] = {.addr_base = SXE2_TXQ_LEGACY_DBLL(0),
+				      .bar_idx = 0,
+				      .reg_width = 4},
+	[SXE2_PCI_MAP_RES_DOORBELL_RX_TAIL] = {.addr_base = SXE2_RXQ_TAIL(0),
+				      .bar_idx = 0,
+				      .reg_width = 4},
+	[SXE2_PCI_MAP_RES_IRQ_DYN] = {.addr_base = SXE2_VF_DYN_CTL(0),
+				      .bar_idx = 0,
+				      .reg_width = 4},
+	[SXE2_PCI_MAP_RES_IRQ_ITR] = {.addr_base = SXE2_VF_INT_ITR(0, 0),
+				      .bar_idx = 0,
+				      .reg_width = 4},
+	[SXE2_PCI_MAP_RES_IRQ_MSIX] = {.addr_base = SXE2_BAR4_MSIX_CTL(0),
+				      .bar_idx = 4,
+				      .reg_width = 10},
+};
+
 static int32_t sxe2_dev_configure(struct rte_eth_dev *dev)
 {
 	int32_t ret = 0;
@@ -151,6 +172,7 @@ static int32_t sxe2_dev_close(struct rte_eth_dev *dev)
 	(void)sxe2_dev_stop(dev);
 
 	sxe2_vsi_uninit(dev);
+	sxe2_dev_pci_map_uinit(dev);
 
 	return 0;
 }
@@ -287,6 +309,31 @@ static const struct eth_dev_ops sxe2_eth_dev_ops = {
 	.dev_infos_get              = sxe2_dev_infos_get,
 };
 
+struct sxe2_pci_map_bar_info *sxe2_dev_get_bar_info(struct sxe2_adapter *adapter,
+						    enum sxe2_pci_map_resource res_type)
+{
+	struct sxe2_pci_map_context *map_ctxt = &adapter->map_ctxt;
+	struct sxe2_pci_map_bar_info *bar_info = NULL;
+	uint8_t bar_idx = SXE2_PCI_MAP_BAR_INVALID;
+	uint8_t i;
+
+	bar_idx = map_ctxt->addr_info[res_type].bar_idx;
+	if (bar_idx == SXE2_PCI_MAP_BAR_INVALID) {
+		PMD_DEV_LOG_ERR(adapter, INIT, "Invalid bar index with resource type %d", res_type);
+		goto l_end;
+	}
+
+	for (i = 0; i < map_ctxt->bar_cnt; i++) {
+		if (bar_idx == map_ctxt->bar_info[i].bar_idx) {
+			bar_info = &map_ctxt->bar_info[i];
+			break;
+		}
+	}
+
+l_end:
+	return bar_info;
+}
+
 static void sxe2_drv_dev_caps_set(struct sxe2_adapter *adapter,
 			struct sxe2_drv_dev_caps_resp *dev_caps)
 {
@@ -354,6 +401,71 @@ static int32_t sxe2_dev_caps_get(struct sxe2_adapter *adapter)
 	return ret;
 }
 
+int32_t sxe2_dev_pci_seg_map(struct sxe2_adapter *adapter,
+			     enum sxe2_pci_map_resource res_type,
+			     uint64_t org_len,
+			     uint64_t org_offset)
+{
+	struct sxe2_pci_map_bar_info *bar_info = NULL;
+	struct sxe2_pci_map_segment_info *seg_info = NULL;
+	void *map_addr = NULL;
+	int32_t ret = 0;
+	size_t page_size = 0;
+	size_t aligned_len = 0;
+	size_t page_inner_offset = 0;
+	off_t aligned_offset = 0;
+	uint8_t i = 0;
+
+	if (org_len == 0) {
+		PMD_DEV_LOG_ERR(adapter, INIT, "Invalid length, ori_len = 0");
+		ret = -EFAULT;
+		goto l_end;
+	}
+
+	bar_info = sxe2_dev_get_bar_info(adapter, res_type);
+	if (!bar_info) {
+		PMD_LOG_ERR(INIT, "Failed to get bar info, res_type=[%d]", res_type);
+		ret = -EFAULT;
+		goto l_end;
+	}
+	seg_info = bar_info->seg_info;
+
+	page_size = rte_mem_page_size();
+
+	aligned_offset = RTE_ALIGN_FLOOR(org_offset, page_size);
+	page_inner_offset = org_offset - aligned_offset;
+	aligned_len = RTE_ALIGN(page_inner_offset + org_len, page_size);
+
+	map_addr = sxe2_drv_dev_mmap(adapter->cdev, bar_info->bar_idx,
+				     aligned_len, aligned_offset);
+	if (!map_addr) {
+		PMD_LOG_ERR(INIT, "Failed to mmap BAR space, type=%d, len=%" PRIu64
+			    ", offset=%" PRIu64 ", page_size=%zu",
+			    res_type, org_len, org_offset, page_size);
+		ret = -EFAULT;
+		goto l_end;
+	}
+
+	for (i = 0; i < bar_info->map_cnt; i++) {
+		if (seg_info[i].type != SXE2_PCI_MAP_RES_INVALID)
+			continue;
+		seg_info[i].type = res_type;
+		seg_info[i].addr = map_addr;
+		seg_info[i].page_inner_offset = page_inner_offset;
+		seg_info[i].len = aligned_len;
+		break;
+	}
+	if (i == bar_info->map_cnt) {
+		PMD_LOG_ERR(INIT, "No memory to save resource, res_type=%d", res_type);
+		ret = -ENOMEM;
+		sxe2_drv_dev_munmap(adapter->cdev, map_addr, aligned_len);
+		goto l_end;
+	}
+
+l_end:
+	return ret;
+}
+
 static int32_t sxe2_hw_init(struct rte_eth_dev *dev)
 {
 	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
@@ -366,6 +478,57 @@ static int32_t sxe2_hw_init(struct rte_eth_dev *dev)
 		PMD_LOG_ERR(INIT, "Failed to get device caps, ret=[%d]", ret);
 
 	return ret;
+}
+
+int32_t sxe2_dev_pci_res_seg_map(struct sxe2_adapter *adapter,
+				 uint32_t res_type,
+				 uint32_t item_cnt,
+				 uint32_t item_base)
+{
+	struct sxe2_pci_map_addr_info *addr_info = NULL;
+	int32_t ret = 0;
+
+	addr_info = &adapter->map_ctxt.addr_info[res_type];
+	if (!addr_info || addr_info->bar_idx == SXE2_PCI_MAP_BAR_INVALID) {
+		PMD_DEV_LOG_ERR(adapter, INIT, "Invalid bar index with resource type %d", res_type);
+		ret = -EFAULT;
+		goto l_end;
+	}
+
+	ret = sxe2_dev_pci_seg_map(adapter, res_type, item_cnt * addr_info->reg_width,
+			addr_info->addr_base + item_base * addr_info->reg_width);
+	if (ret != 0) {
+		PMD_DEV_LOG_ERR(adapter, INIT, "Failed to map resource, res_type=%d", res_type);
+		goto l_end;
+	}
+l_end:
+	return ret;
+}
+
+void sxe2_dev_pci_seg_unmap(struct sxe2_adapter *adapter, uint32_t res_type)
+{
+	struct sxe2_pci_map_bar_info *bar_info = NULL;
+	struct sxe2_pci_map_segment_info *seg_info = NULL;
+	uint32_t i = 0;
+
+	bar_info = sxe2_dev_get_bar_info(adapter, res_type);
+	if (bar_info == NULL) {
+		PMD_DEV_LOG_WARN(adapter, INIT, "Failed to get bar info, res_type=[%d]", res_type);
+		goto l_end;
+	}
+	seg_info = bar_info->seg_info;
+
+	for (i = 0; i < bar_info->map_cnt; i++) {
+		if (res_type == seg_info[i].type) {
+			(void)sxe2_drv_dev_munmap(adapter->cdev, seg_info[i].addr,
+						  seg_info[i].len);
+			memset(&seg_info[i], 0, sizeof(struct sxe2_pci_map_segment_info));
+			break;
+		}
+	}
+
+l_end:
+	return;
 }
 
 static int32_t sxe2_dev_info_init(struct rte_eth_dev *dev)
@@ -408,6 +571,157 @@ l_end:
 	return ret;
 }
 
+int32_t sxe2_dev_pci_map_init(struct rte_eth_dev *dev)
+{
+	struct sxe2_adapter *adapter  = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+	struct sxe2_pci_map_context *map_ctxt = &adapter->map_ctxt;
+	struct sxe2_pci_map_bar_info *bar_info = NULL;
+	struct sxe2_pci_map_segment_info *seg_info = NULL;
+	uint16_t txq_cnt = adapter->q_ctxt.qp_cnt_assign;
+	uint16_t txq_base = adapter->q_ctxt.base_idx_in_pf;
+	uint16_t rxq_cnt = adapter->q_ctxt.qp_cnt_assign;
+	uint16_t irq_cnt = adapter->irq_ctxt.max_cnt_hw;
+	uint16_t irq_base = adapter->irq_ctxt.base_idx_in_func;
+	uint16_t rxq_base = adapter->q_ctxt.base_idx_in_pf;
+	int32_t ret = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	adapter->dev_info.dev_data = dev->data;
+
+	if (!pci_dev->mem_resource[0].phys_addr) {
+		PMD_LOG_ERR(INIT, "Physical address not scanned");
+		ret = -ENXIO;
+		goto l_end;
+	}
+
+	map_ctxt->bar_cnt = 2;
+
+	bar_info = rte_zmalloc(NULL, sizeof(*bar_info) * map_ctxt->bar_cnt, 0);
+	if (!bar_info) {
+		PMD_LOG_ERR(INIT, "Failed to alloc bar_info");
+		ret = -ENOMEM;
+		goto l_end;
+	}
+	bar_info[0].bar_idx = 0;
+	bar_info[0].map_cnt = SXE2_PCI_MAP_RES_MAX_COUNT;
+	seg_info = rte_zmalloc(NULL, sizeof(*seg_info) * bar_info[0].map_cnt, 0);
+	if (!seg_info) {
+		PMD_LOG_ERR(INIT, "Failed to alloc seg_info");
+		ret = -ENOMEM;
+		goto l_free_bar;
+	}
+
+	bar_info[0].seg_info = seg_info;
+
+	bar_info[1].bar_idx = 4;
+	bar_info[1].map_cnt = SXE2_PCI_MAP_RES_MAX_COUNT;
+	seg_info = rte_zmalloc(NULL, sizeof(*seg_info) * bar_info[1].map_cnt, 0);
+	if (!seg_info) {
+		PMD_LOG_ERR(INIT, "Failed to alloc seg_info");
+		ret = -ENOMEM;
+		goto l_free_seg0;
+	}
+
+	bar_info[1].seg_info = seg_info;
+	map_ctxt->bar_info = bar_info;
+
+	map_ctxt->addr_info = sxe2_net_map_addr_info_pf;
+
+	ret = sxe2_dev_pci_res_seg_map(adapter, SXE2_PCI_MAP_RES_DOORBELL_TX,
+				       txq_cnt, txq_base);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to map txq doorbell addr, ret=%d", ret);
+		goto l_free_seg1;
+	}
+
+	ret = sxe2_dev_pci_res_seg_map(adapter, SXE2_PCI_MAP_RES_DOORBELL_RX_TAIL,
+				       rxq_cnt, rxq_base);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to map rxq tail doorbell addr, ret=%d", ret);
+		goto l_free_txq;
+	}
+
+	ret = sxe2_dev_pci_res_seg_map(adapter, SXE2_PCI_MAP_RES_IRQ_DYN,
+				       irq_cnt, irq_base);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to map irq dyn addr, ret=%d", ret);
+		goto l_free_rxq_tail;
+	}
+
+	ret = sxe2_dev_pci_res_seg_map(adapter, SXE2_PCI_MAP_RES_IRQ_ITR,
+				       irq_cnt, irq_base);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to map irq itr addr, ret=%d", ret);
+		goto l_free_irq_dyn;
+	}
+
+	ret = sxe2_dev_pci_res_seg_map(adapter, SXE2_PCI_MAP_RES_IRQ_MSIX,
+				       irq_cnt, irq_base);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to map irq msix addr, ret=%d", ret);
+		goto l_free_irq_itr;
+	}
+	goto l_end;
+
+l_free_irq_itr:
+	(void)sxe2_dev_pci_seg_unmap(adapter, SXE2_PCI_MAP_RES_IRQ_ITR);
+l_free_irq_dyn:
+	(void)sxe2_dev_pci_seg_unmap(adapter, SXE2_PCI_MAP_RES_IRQ_DYN);
+l_free_rxq_tail:
+	(void)sxe2_dev_pci_seg_unmap(adapter, SXE2_PCI_MAP_RES_DOORBELL_RX_TAIL);
+l_free_txq:
+	(void)sxe2_dev_pci_seg_unmap(adapter, SXE2_PCI_MAP_RES_DOORBELL_TX);
+l_free_seg1:
+	if (bar_info[1].seg_info) {
+		rte_free(bar_info[1].seg_info);
+		bar_info[1].seg_info = NULL;
+	}
+l_free_seg0:
+	if (bar_info[0].seg_info) {
+		rte_free(bar_info[0].seg_info);
+		bar_info[0].seg_info = NULL;
+	}
+l_free_bar:
+	if (bar_info) {
+		rte_free(bar_info);
+		bar_info = NULL;
+	}
+l_end:
+	return ret;
+}
+
+void sxe2_dev_pci_map_uinit(struct rte_eth_dev *dev)
+{
+	struct sxe2_adapter *adapter  = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	struct sxe2_pci_map_context *map_ctxt = &adapter->map_ctxt;
+	struct sxe2_pci_map_bar_info *bar_info = NULL;
+	uint8_t i = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	(void)sxe2_dev_pci_seg_unmap(adapter, SXE2_PCI_MAP_RES_DOORBELL_RX_TAIL);
+	(void)sxe2_dev_pci_seg_unmap(adapter, SXE2_PCI_MAP_RES_DOORBELL_TX);
+	(void)sxe2_dev_pci_seg_unmap(adapter, SXE2_PCI_MAP_RES_IRQ_DYN);
+	(void)sxe2_dev_pci_seg_unmap(adapter, SXE2_PCI_MAP_RES_IRQ_ITR);
+	(void)sxe2_dev_pci_seg_unmap(adapter, SXE2_PCI_MAP_RES_IRQ_MSIX);
+
+	if (map_ctxt != NULL && map_ctxt->bar_info != NULL) {
+		for (i = 0; i < map_ctxt->bar_cnt; i++) {
+			bar_info = &map_ctxt->bar_info[i];
+			if (bar_info != NULL && bar_info->seg_info != NULL) {
+				rte_free(bar_info->seg_info);
+				bar_info->seg_info = NULL;
+			}
+		}
+		rte_free(map_ctxt->bar_info);
+		map_ctxt->bar_info = NULL;
+	}
+
+	adapter->dev_info.dev_data = NULL;
+}
+
 static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 			     struct sxe2_dev_kvargs_info *kvargs __rte_unused)
 {
@@ -423,6 +737,12 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 	ret = sxe2_hw_init(dev);
 	if (ret) {
 		PMD_LOG_ERR(INIT, "Failed to initialize hw, ret=[%d]", ret);
+		goto l_end;
+	}
+
+	ret = sxe2_dev_pci_map_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to pci addr map, ret=[%d]", ret);
 		goto l_end;
 	}
 
