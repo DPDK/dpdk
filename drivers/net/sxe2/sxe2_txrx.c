@@ -9,18 +9,42 @@
 #include <rte_memzone.h>
 #include <ethdev_driver.h>
 #include <unistd.h>
-
 #include "sxe2_txrx.h"
 #include "sxe2_txrx_common.h"
+#include "sxe2_txrx_vec.h"
 #include "sxe2_txrx_poll.h"
 #include "sxe2_ethdev.h"
-
 #include "sxe2_common_log.h"
 #include "sxe2_osal.h"
 #include "sxe2_cmd_chnl.h"
 #if defined(RTE_ARCH_ARM64)
 #include <rte_cpuflags.h>
 #endif
+
+int32_t __rte_cold
+sxe2_tx_simple_batch_support_check(struct rte_eth_dev *dev,
+		uint32_t *batch_flags)
+{
+	struct sxe2_tx_queue *txq;
+	int32_t ret = 0;
+	uint16_t i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; ++i) {
+		txq = (struct sxe2_tx_queue *)dev->data->tx_queues[i];
+		if (txq == NULL) {
+			ret = -EINVAL;
+			goto l_end;
+		}
+		if (txq->offloads != (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) ||
+		     txq->rs_thresh < SXE2_TX_PKTS_BURST_BATCH_NUM) {
+			ret = -ENOTSUP;
+			goto l_end;
+		}
+	}
+	*batch_flags = SXE2_TX_MODE_SIMPLE_BATCH;
+l_end:
+	return ret;
+}
 
 static int32_t sxe2_tx_descriptor_status(void *tx_queue, uint16_t offset)
 {
@@ -121,15 +145,85 @@ l_end:
 void sxe2_tx_mode_func_set(struct rte_eth_dev *dev)
 {
 	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
-	uint32_t tx_mode_flags = 0;
+	uint32_t tx_mode_flags;
+	int32_t ret;
+	uint32_t vec_flags = 0;
+	uint32_t batch_flags = 0;
 
 	PMD_INIT_FUNC_TRACE();
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		tx_mode_flags = 0;
+		ret = sxe2_tx_vec_support_check(dev, &vec_flags);
+		if (ret == 0 &&
+		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
+			tx_mode_flags = vec_flags;
+			if (tx_mode_flags & SXE2_TX_MODE_VEC_SET_MASK) {
+				ret = sxe2_tx_queues_vec_prepare(dev);
+				if (ret != 0)
+					tx_mode_flags &= ~SXE2_TX_MODE_VEC_SET_MASK;
+			}
+		}
+		ret = sxe2_tx_simple_batch_support_check(dev, &batch_flags);
+		if (ret == 0 && batch_flags == SXE2_TX_MODE_SIMPLE_BATCH)
+			tx_mode_flags |= SXE2_TX_MODE_SIMPLE_BATCH;
 
-	dev->tx_pkt_prepare = sxe2_tx_pkts_prepare;
-	dev->tx_pkt_burst = sxe2_tx_pkts;
-	adapter->q_ctxt.tx_mode_flags = tx_mode_flags;
-	PMD_LOG_DEBUG(TX, "Tx mode flags:0x%016x port_id:%u.",
-				tx_mode_flags, dev->data->port_id);
+		adapter->q_ctxt.tx_mode_flags = tx_mode_flags;
+	} else {
+		tx_mode_flags = adapter->q_ctxt.tx_mode_flags;
+	}
+
+#ifdef RTE_ARCH_X86
+	if (tx_mode_flags & SXE2_TX_MODE_VEC_SET_MASK) {
+		if (tx_mode_flags & SXE2_TX_MODE_VEC_OFFLOAD) {
+			dev->tx_pkt_prepare = sxe2_tx_pkts_prepare;
+			dev->tx_pkt_burst = sxe2_tx_pkts_vec_sse;
+		} else {
+			dev->tx_pkt_prepare = NULL;
+			dev->tx_pkt_burst = sxe2_tx_pkts_vec_sse_simple;
+		}
+	} else {
+#endif
+		if (tx_mode_flags & SXE2_TX_MODE_SIMPLE_BATCH) {
+			dev->tx_pkt_prepare = NULL;
+			dev->tx_pkt_burst = sxe2_tx_pkts_simple;
+		} else {
+			dev->tx_pkt_prepare = sxe2_tx_pkts_prepare;
+			dev->tx_pkt_burst = sxe2_tx_pkts;
+		}
+#ifdef RTE_ARCH_X86
+	}
+#endif
+}
+
+static const struct {
+	eth_tx_burst_t tx_burst;
+	const char *info;
+} sxe2_tx_burst_infos[] = {
+	{ sxe2_tx_pkts,   "Scalar" },
+#ifdef RTE_ARCH_X86
+	{ sxe2_tx_pkts_vec_sse,        "Vector SSE" },
+	{ sxe2_tx_pkts_vec_sse_simple, "Vector SSE Simple" },
+#endif
+};
+
+int32_t sxe2_tx_burst_mode_get(struct rte_eth_dev *dev,
+		__rte_unused uint16_t queue_id, struct rte_eth_burst_mode *mode)
+{
+	eth_tx_burst_t pkt_burst = dev->tx_pkt_burst;
+	int32_t ret = -EINVAL;
+	uint32_t i;
+	uint32_t size;
+
+	size = RTE_DIM(sxe2_tx_burst_infos);
+	for (i = 0; i < size; ++i) {
+		if (pkt_burst == sxe2_tx_burst_infos[i].tx_burst) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+					sxe2_tx_burst_infos[i].info);
+			ret = 0;
+			break;
+		}
+	}
+	return ret;
 }
 
 static int32_t sxe2_rx_descriptor_status(void *rx_queue, uint16_t offset)
@@ -181,42 +275,69 @@ static int32_t sxe2_rx_queue_count(void *rx_queue)
 	return done_num;
 }
 
-static bool __rte_cold sxe2_rx_offload_en_check(struct rte_eth_dev *dev, uint64_t offload)
-{
-	struct sxe2_rx_queue *rxq;
-	bool en = false;
-	uint16_t i;
-
-	for (i = 0; i < dev->data->nb_rx_queues; ++i) {
-		rxq = (struct sxe2_rx_queue *)dev->data->rx_queues[i];
-		if (rxq == NULL)
-			continue;
-
-		if (0 != (rxq->offloads & offload)) {
-			en = true;
-			goto l_end;
-		}
-	}
-
-l_end:
-	return en;
-}
-
 void sxe2_rx_mode_func_set(struct rte_eth_dev *dev)
 {
 	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
 	uint32_t rx_mode_flags = 0;
-
+	int32_t ret;
+	uint32_t vec_flags = 0;
 	PMD_INIT_FUNC_TRACE();
 
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		ret = sxe2_rx_vec_support_check(dev, &vec_flags);
+		if (ret == 0 &&
+		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
+			rx_mode_flags = vec_flags;
+			if ((rx_mode_flags & SXE2_RX_MODE_VEC_SET_MASK) != 0) {
+				ret = sxe2_rx_queues_vec_prepare(dev);
+				if (ret != 0)
+					rx_mode_flags &= ~SXE2_RX_MODE_VEC_SET_MASK;
+			}
+		}
+		adapter->q_ctxt.rx_mode_flags = rx_mode_flags;
+	} else {
+		rx_mode_flags = adapter->q_ctxt.rx_mode_flags;
+	}
+
+#ifdef RTE_ARCH_X86
+	if (rx_mode_flags & SXE2_RX_MODE_VEC_SET_MASK) {
+		dev->rx_pkt_burst = sxe2_rx_pkts_scattered_vec_sse_offload;
+		return;
+	}
+#endif
 	if (sxe2_rx_offload_en_check(dev, RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT))
 		dev->rx_pkt_burst = sxe2_rx_pkts_scattered_split;
 	else
 		dev->rx_pkt_burst = sxe2_rx_pkts_scattered;
+}
 
-	PMD_LOG_DEBUG(RX, "Rx mode flags:0x%016x port_id:%u.",
-				rx_mode_flags, dev->data->port_id);
-	adapter->q_ctxt.rx_mode_flags = rx_mode_flags;
+static const struct {
+	eth_rx_burst_t rx_burst;
+	const char *info;
+} sxe2_rx_burst_infos[] = {
+	{ sxe2_rx_pkts_scattered,          "Scalar Scattered" },
+	{ sxe2_rx_pkts_scattered_split,          "Scalar Scattered split" },
+#ifdef RTE_ARCH_X86
+	{ sxe2_rx_pkts_scattered_vec_sse_offload,      "Vector SSE Scattered" },
+#endif
+};
+
+int32_t sxe2_rx_burst_mode_get(struct rte_eth_dev *dev,
+			__rte_unused uint16_t queue_id, struct rte_eth_burst_mode *mode)
+{
+	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
+	int32_t ret = -EINVAL;
+	uint32_t i, size;
+	size = RTE_DIM(sxe2_rx_burst_infos);
+	for (i = 0; i < size; ++i) {
+		if (pkt_burst == sxe2_rx_burst_infos[i].rx_burst) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				 sxe2_rx_burst_infos[i].info);
+			ret = 0;
+			break;
+		}
+	}
+	return ret;
 }
 
 void sxe2_set_common_function(struct rte_eth_dev *dev)

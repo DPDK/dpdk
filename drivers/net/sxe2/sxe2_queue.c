@@ -5,6 +5,8 @@
 #include "sxe2_ethdev.h"
 #include "sxe2_queue.h"
 #include "sxe2_common_log.h"
+#include "sxe2_tx.h"
+#include "sxe2_rx.h"
 
 void sxe2_sw_queue_ctx_hw_cap_set(struct sxe2_adapter *adapter,
 		struct sxe2_drv_queue_caps *q_caps)
@@ -35,4 +37,30 @@ int32_t sxe2_queues_init(struct rte_eth_dev *dev)
 	}
 
 	return ret;
+}
+
+int32_t sxe2_queues_start(struct rte_eth_dev *dev)
+{
+	int32_t ret = 0;
+
+	ret = sxe2_txqs_all_start(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to start tx queue.");
+		goto l_end;
+	}
+
+	ret = sxe2_rxqs_all_start(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to start rx queue.");
+		sxe2_txqs_all_stop(dev);
+	}
+l_end:
+	return ret;
+}
+
+void sxe2_queues_release(struct rte_eth_dev *dev)
+{
+	sxe2_all_rxqs_release(dev);
+
+	sxe2_all_txqs_release(dev);
 }

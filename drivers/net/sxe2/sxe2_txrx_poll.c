@@ -480,6 +480,32 @@ l_end:
 	return nb_pkts;
 }
 
+uint16_t sxe2_tx_pkts_simple(void *tx_queue,
+			struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	uint16_t tx_done_num;
+	uint16_t tx_once_num;
+	uint16_t tx_need_num;
+	if (likely(nb_pkts <= SXE2_TX_PKTS_BURST_BATCH_NUM)) {
+		tx_done_num = sxe2_tx_pkts_batch(tx_queue,
+				tx_pkts, nb_pkts);
+		goto l_end;
+	}
+	tx_done_num = 0;
+	while (nb_pkts) {
+		tx_need_num = RTE_MIN(nb_pkts, SXE2_TX_PKTS_BURST_BATCH_NUM);
+		tx_once_num = sxe2_tx_pkts_batch(tx_queue,
+						 &tx_pkts[tx_done_num],
+						 tx_need_num);
+		nb_pkts -= tx_once_num;
+		tx_done_num += tx_once_num;
+		if (tx_once_num < tx_need_num)
+			break;
+	}
+l_end:
+	return tx_done_num;
+}
+
 static inline void
 sxe2_update_rx_tail(struct sxe2_rx_queue *rxq, uint16_t hold_num, uint16_t rx_id)
 {
