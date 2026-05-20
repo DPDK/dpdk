@@ -305,8 +305,8 @@ STATIC s32 e1000_reconfigure_k1_exit_timeout(struct e1000_hw *hw)
 		return E1000_SUCCESS;
 
 	fextnvm12 = E1000_READ_REG(hw, E1000_FEXTNVM12);
-	fextnvm12 |= (1 << 23);
-	fextnvm12 &= ~((1 << 22));
+	fextnvm12 &= ~E1000_FEXTNVM12_PHYPD_CTRL_MASK;
+	fextnvm12 |= E1000_FEXTNVM12_PHYPD_CTRL_P1;
 	E1000_WRITE_REG(hw, E1000_FEXTNVM12, fextnvm12);
 
 	msec_delay_irq(1);
@@ -317,6 +317,9 @@ STATIC s32 e1000_reconfigure_k1_exit_timeout(struct e1000_hw *hw)
 	phy_timeout |= 0xF00;
 	ret_val = hw->phy.ops.write_reg_locked(hw, E1000_PHY_TIMEOUTS_REG,
 					       phy_timeout);
+
+	DEBUGOUT1("e1000_reconfigure_k1_exit_timeout returns %d\n",
+		  ret_val);
 
 	return ret_val;
 }
@@ -460,8 +463,10 @@ STATIC s32 e1000_init_phy_workarounds_pchlan(struct e1000_hw *hw)
 		 *  the PHY is in.
 		 */
 		ret_val = hw->phy.ops.check_reset_block(hw);
-		if (ret_val)
+		if (ret_val) {
 			ERROR_REPORT("ME blocked access to PHY after reset\n");
+			goto out;
+		}
 
 		if (hw->mac.type >= e1000_pch_mtp) {
 			ret_val = hw->phy.ops.acquire(hw);
