@@ -288,7 +288,7 @@ STATIC void e1000_toggle_lanphypc_pch_lpt(struct e1000_hw *hw)
  * e1000_reconfigure_k1_exit_timeout
  * @hw: pointer to the HW structure
  *
- * Reconfigure K1 exit timeout as a workaround to the PHY sycndhronization issue
+ * Reconfigure K1 exit timeout as a workaround to the PHY synchronization issue
  * on MTL, LNL, PTL and WCL.
  *
  * Assuming PHY semaphore is taken prior to this function call.
