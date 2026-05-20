@@ -858,6 +858,10 @@ F: drivers/net/intel/ipn3ke/
 F: doc/guides/nics/ipn3ke.rst
 F: doc/guides/nics/features/ipn3ke.ini
 
+LinkData sxe2
+M: Jie Liu <liujie5@linkdatatechnology.com>
+F: drivers/common/sxe2/
+
 Marvell cnxk
 M: Nithin Dabilpuram <ndabilpuram@marvell.com>
 M: Kiran Kumar K <kirankumark@marvell.com>
