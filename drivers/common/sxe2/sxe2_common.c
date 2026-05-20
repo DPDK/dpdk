@@ -442,7 +442,7 @@ static int32_t sxe2_common_pci_remove(struct rte_pci_device *pci_dev)
 	cdev = sxe2_rtedev_to_cdev(&pci_dev->device);
 	if (cdev == NULL) {
 		ret = -ENODEV;
-		PMD_LOG_ERR(COM, "Fail to get remove device.");
+		PMD_LOG_ERR(COM, "Fail to get device when remove.");
 		goto l_end;
 	}
 
@@ -466,12 +466,60 @@ l_end:
 	return ret;
 }
 
+static int32_t sxe2_common_pci_dma_map(struct rte_pci_device *pci_dev,
+		void *addr,	uint64_t iova, size_t len)
+{
+	struct sxe2_common_device *cdev;
+	int32_t ret = -1;
+
+	cdev = sxe2_rtedev_to_cdev(&pci_dev->device);
+	if (cdev == NULL) {
+		ret = -ENODEV;
+		PMD_LOG_ERR(COM, "Fail to get device when dma map.");
+		goto l_end;
+	}
+
+	ret = sxe2_drv_dev_dma_map(cdev, (uint64_t)(uintptr_t)addr, iova, len);
+	if (ret) {
+		PMD_LOG_ERR(COM, "Fail to map dma map, ret=%d", ret);
+		goto l_end;
+	}
+
+l_end:
+	return ret;
+}
+
+static int32_t sxe2_common_pci_dma_unmap(struct rte_pci_device *pci_dev,
+		void *addr __rte_unused, uint64_t iova, size_t len __rte_unused)
+{
+	struct sxe2_common_device *cdev;
+	int32_t ret = -1;
+
+	cdev = sxe2_rtedev_to_cdev(&pci_dev->device);
+	if (cdev == NULL) {
+		ret = -ENODEV;
+		PMD_LOG_ERR(COM, "Fail to get device when dma unmap.");
+		goto l_end;
+	}
+
+	ret = sxe2_drv_dev_dma_unmap(cdev, iova);
+	if (ret) {
+		PMD_LOG_ERR(COM, "Fail to unmap dma map, ret=%d", ret);
+		goto l_end;
+	}
+
+l_end:
+	return ret;
+}
+
 static struct rte_pci_driver sxe2_common_pci_driver = {
 	.driver = {
 		   .name = SXE2_COMMON_PCI_DRIVER_NAME,
 	},
 	.probe = sxe2_common_pci_probe,
 	.remove = sxe2_common_pci_remove,
+	.dma_map = sxe2_common_pci_dma_map,
+	.dma_unmap = sxe2_common_pci_dma_unmap,
 };
 
 static uint32_t sxe2_common_pci_id_table_size_get(const struct rte_pci_id *id_table)
