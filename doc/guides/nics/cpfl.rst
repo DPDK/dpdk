@@ -28,19 +28,14 @@ It is highly recommended to upgrade the MEV-ts release
 to avoid compatibility issues with the cpfl PMD.
 Here is the suggested matching list which has been tested and verified.
 
-   +------------+------------------+
-   |     DPDK   |  MEV-ts release  |
-   +============+==================+
-   |    23.07   |      0.9.1       |
-   +------------+------------------+
-   |    23.11   |       1.0        |
-   +------------+------------------+
-   |    24.07   |       1.4        |
-   +------------+------------------+
-   |    24.11   |       1.6        |
-   +------------+------------------+
-   |    25.07   |       2.0        |
-   +------------+------------------+
+=====  ==============
+DPDK   MEV-ts release
+=====  ==============
+26.07       2.2
+25.11       2.0
+24.11       1.6
+23.11       1.0
+=====  ==============
 
 
 Configuration
