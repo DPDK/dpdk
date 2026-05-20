@@ -11,6 +11,7 @@ void e1000_null_phy_generic(struct e1000_hw *hw);
 s32  e1000_null_lplu_state(struct e1000_hw *hw, bool active);
 s32  e1000_null_write_reg(struct e1000_hw *hw, u32 offset, u16 data);
 s32  e1000_null_set_page(struct e1000_hw *hw, u16 data);
+s32 e1000_null_an_status(struct e1000_hw *hw, u8 *status);
 s32 e1000_read_i2c_byte_null(struct e1000_hw *hw, u8 byte_offset,
 			     u8 dev_addr, u8 *data);
 s32 e1000_write_i2c_byte_null(struct e1000_hw *hw, u8 byte_offset,
@@ -22,6 +23,7 @@ s32  e1000_check_polarity_ife(struct e1000_hw *hw);
 s32  e1000_check_reset_block_generic(struct e1000_hw *hw);
 s32  e1000_phy_setup_autoneg(struct e1000_hw *hw);
 s32  e1000_copper_link_autoneg(struct e1000_hw *hw);
+s32  e1000_1gbase_t_autoneg_status(struct e1000_hw *hw, u8 *an_status);
 s32  e1000_copper_link_setup_igp(struct e1000_hw *hw);
 s32  e1000_copper_link_setup_m88(struct e1000_hw *hw);
 s32  e1000_copper_link_setup_m88_gen2(struct e1000_hw *hw);

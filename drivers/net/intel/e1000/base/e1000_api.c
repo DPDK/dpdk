@@ -1139,6 +1139,22 @@ s32 e1000_get_phy_info(struct e1000_hw *hw)
 }
 
 /**
+ *  e1000_get_an_status - Finds Auto-negotiation status based on PHY registers
+ *  @hw: pointer to the HW structure
+ *  @an_status: AN status
+ *
+ *  This function gets information from the PHY specific registers to determine
+ *  Auto-negotiation status.
+ **/
+s32 e1000_get_an_status(struct e1000_hw *hw, u8 *an_status)
+{
+	if (hw->phy.ops.get_an_status)
+		return hw->phy.ops.get_an_status(hw, an_status);
+
+	return E1000_SUCCESS;
+}
+
+/**
  *  e1000_phy_hw_reset - Hard PHY reset
  *  @hw: pointer to the HW structure
  *
