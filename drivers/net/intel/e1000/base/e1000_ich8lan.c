@@ -4178,7 +4178,7 @@ STATIC s32 e1000_update_nvm_checksum_spt(struct e1000_hw *hw)
 
 		usec_delay(100);
 
-		/* Write the data to the new bank. Offset in words*/
+		/* Write the data to the new bank. Offset in words */
 		act_offset = i + new_bank_offset;
 		ret_val = e1000_retry_write_flash_dword_ich8lan(hw, act_offset,
 								dword);
@@ -4201,7 +4201,7 @@ STATIC s32 e1000_update_nvm_checksum_spt(struct e1000_hw *hw)
 	 */
 	act_offset = new_bank_offset + E1000_ICH_NVM_SIG_WORD;
 
-	/*offset in words but we read dword*/
+	/* offset in words but we read dword */
 	--act_offset;
 	ret_val = e1000_read_flash_dword_ich8lan(hw, act_offset, &dword);
 
@@ -4214,7 +4214,7 @@ STATIC s32 e1000_update_nvm_checksum_spt(struct e1000_hw *hw)
 	if (ret_val)
 		goto release;
 
-	/* offset in words but we read dword*/
+	/* offset in words but we read dword */
 	act_offset = old_bank_offset + E1000_ICH_NVM_SIG_WORD - 1;
 	ret_val = e1000_read_flash_dword_ich8lan(hw, act_offset, &dword);
 
