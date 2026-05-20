@@ -253,7 +253,7 @@ s32 e1000_phy_reset_dsp_generic(struct e1000_hw *hw)
 	return hw->phy.ops.write_reg(hw, M88E1000_PHY_GEN_CONTROL, 0);
 }
 
-void e1000_disable_phy_retry_mechanism(struct e1000_hw* hw, u32* phy_retries_original)
+void e1000_disable_phy_retry_mechanism(struct e1000_hw *hw, u32 *phy_retries_original)
 {
 	DEBUGFUNC("e1000_disable_phy_retry_mechanism");
 
@@ -262,7 +262,7 @@ void e1000_disable_phy_retry_mechanism(struct e1000_hw* hw, u32* phy_retries_ori
 	hw->phy.current_retry_counter = 0;
 }
 
-void e1000_enable_phy_retry_mechanism(struct e1000_hw* hw, u32 phy_retries_original)
+void e1000_enable_phy_retry_mechanism(struct e1000_hw *hw, u32 phy_retries_original)
 {
 	DEBUGFUNC("e1000_enable_phy_retry_mechanism");
 
@@ -345,7 +345,6 @@ s32 e1000_read_phy_reg_mdic(struct e1000_hw *hw, u32 offset, u16 *data)
 			msec_delay_irq(10);
 		}
 	}
-
 
 	return -E1000_ERR_PHY;
 }
