@@ -2316,12 +2316,16 @@ iavf_request_queues(struct rte_eth_dev *dev, uint16_t num)
 	args.out_size = IAVF_AQ_BUF_SZ;
 
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
+		iavf_phc_sync_alarm_stop(dev);
 		err = iavf_execute_vf_cmd_safe(adapter, &args);
+		iavf_phc_sync_alarm_start(dev);
 	} else {
+		iavf_phc_sync_alarm_stop(dev);
 		rte_eal_alarm_cancel(iavf_dev_alarm_handler, dev);
 		err = iavf_execute_vf_cmd_safe(adapter, &args);
 		rte_eal_alarm_set(IAVF_ALARM_INTERVAL,
 				  iavf_dev_alarm_handler, dev);
+		iavf_phc_sync_alarm_start(dev);
 	}
 
 	if (err) {

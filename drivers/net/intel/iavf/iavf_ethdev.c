@@ -21,6 +21,7 @@
 #include <rte_pci.h>
 #include <rte_alarm.h>
 #include <rte_atomic.h>
+#include <rte_cycles.h>
 #include <rte_eal.h>
 #include <rte_ether.h>
 #include <ethdev_driver.h>
@@ -151,6 +152,12 @@ static int iavf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
 					 uint16_t queue_id);
 static void iavf_dev_interrupt_handler(void *param);
 static void iavf_disable_irq0(struct iavf_hw *hw);
+static struct ci_rx_queue *iavf_phc_sync_rxq_get(struct rte_eth_dev *dev);
+static void iavf_phc_sync_update_all_rxq(struct rte_eth_dev *dev,
+					 uint64_t phc_time,
+					 uint64_t sw_cur_time);
+static bool iavf_phc_sync_alarm_needed(struct rte_eth_dev *dev);
+static void iavf_phc_sync_tick(struct rte_eth_dev *dev);
 static int iavf_dev_flow_ops_get(struct rte_eth_dev *dev,
 				 const struct rte_flow_ops **ops);
 static int iavf_set_mc_addr_list(struct rte_eth_dev *dev,
@@ -1083,6 +1090,8 @@ iavf_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
+	iavf_phc_sync_alarm_start(dev);
+
 	return 0;
 
 error:
@@ -1108,6 +1117,8 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 
 	if (adapter->stopped == 1)
 		return 0;
+
+	iavf_phc_sync_alarm_stop(dev);
 
 	/* Disable the interrupt for Rx */
 	rte_intr_efd_disable(intr_handle);
@@ -2781,30 +2792,158 @@ iavf_dev_interrupt_handler(void *param)
 	iavf_enable_irq0(hw);
 }
 
+static struct ci_rx_queue *
+iavf_phc_sync_rxq_get(struct rte_eth_dev *dev)
+{
+	struct ci_rx_queue *rxq;
+	uint16_t i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		if (rxq != NULL)
+			return rxq;
+	}
+
+	return NULL;
+}
+
+static void
+iavf_phc_sync_update_all_rxq(struct rte_eth_dev *dev,
+			     uint64_t phc_time,
+			     uint64_t sw_cur_time)
+{
+	struct ci_rx_queue *rxq;
+	uint16_t i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		if (rxq == NULL)
+			continue;
+
+		rxq->phc_time = phc_time;
+		rxq->hw_time_update = sw_cur_time;
+	}
+}
+
+static void
+iavf_phc_sync_tick(struct rte_eth_dev *dev)
+{
+	struct iavf_adapter *adapter;
+	const uint16_t phc_sync_ticks_max = RTE_MAX((uint16_t)1,
+		(uint16_t)(IAVF_PHC_SYNC_ALARM_INTERVAL_US / IAVF_ALARM_INTERVAL));
+	struct ci_rx_queue *sync_rxq;
+	uint64_t sw_cur_time;
+
+	adapter = IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	rte_spinlock_lock(&adapter->phc_sync_lock);
+	if (adapter->phc_sync_paused || !iavf_phc_sync_alarm_needed(dev)) {
+		adapter->phc_sync_ticks = 0;
+		goto unlock;
+	}
+
+	if (++adapter->phc_sync_ticks < phc_sync_ticks_max)
+		goto unlock;
+
+	adapter->phc_sync_ticks = 0;
+	sync_rxq = iavf_phc_sync_rxq_get(dev);
+	if (sync_rxq == NULL)
+		goto unlock;
+
+	if (iavf_get_phc_time(sync_rxq) != 0) {
+		PMD_DRV_LOG(ERR, "get physical time failed");
+		goto unlock;
+	}
+
+	sw_cur_time = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
+	iavf_phc_sync_update_all_rxq(dev, sync_rxq->phc_time, sw_cur_time);
+
+unlock:
+	rte_spinlock_unlock(&adapter->phc_sync_lock);
+}
+
 void
 iavf_dev_alarm_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct iavf_info *vf;
 	if (dev == NULL || dev->data == NULL || dev->data->dev_private == NULL)
 		return;
 
+	vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t icr0;
 
-	iavf_disable_irq0(hw);
+	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR)) {
+		iavf_disable_irq0(hw);
 
-	/* read out interrupt causes */
-	icr0 = IAVF_READ_REG(hw, IAVF_VFINT_ICR01);
+		/* read out interrupt causes */
+		icr0 = IAVF_READ_REG(hw, IAVF_VFINT_ICR01);
 
-	if (icr0 & IAVF_VFINT_ICR01_ADMINQ_MASK) {
-		PMD_DRV_LOG(DEBUG, "ICR01_ADMINQ is reported");
-		iavf_handle_virtchnl_msg(dev);
+		if (icr0 & IAVF_VFINT_ICR01_ADMINQ_MASK) {
+			PMD_DRV_LOG(DEBUG, "ICR01_ADMINQ is reported");
+			iavf_handle_virtchnl_msg(dev);
+		}
+
+		iavf_enable_irq0(hw);
 	}
 
-	iavf_enable_irq0(hw);
+	iavf_phc_sync_tick(dev);
 
 	rte_eal_alarm_set(IAVF_ALARM_INTERVAL,
 			  iavf_dev_alarm_handler, dev);
+}
+
+static bool
+iavf_phc_sync_alarm_needed(struct rte_eth_dev *dev)
+{
+	struct iavf_adapter *adapter;
+
+	adapter = IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	if (adapter->closed || adapter->stopped)
+		return false;
+
+	if (!(dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP))
+		return false;
+
+	if (dev->data->nb_rx_queues == 0)
+		return false;
+
+	if (iavf_phc_sync_rxq_get(dev) == NULL)
+		return false;
+
+	return true;
+}
+
+void
+iavf_phc_sync_alarm_start(struct rte_eth_dev *dev)
+{
+	struct iavf_adapter *adapter;
+
+	if (!iavf_phc_sync_alarm_needed(dev))
+		return;
+
+	adapter = IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	rte_spinlock_lock(&adapter->phc_sync_lock);
+	adapter->phc_sync_paused = false;
+	adapter->phc_sync_ticks = 0;
+	rte_spinlock_unlock(&adapter->phc_sync_lock);
+}
+
+void
+iavf_phc_sync_alarm_stop(struct rte_eth_dev *dev)
+{
+	struct iavf_adapter *adapter;
+
+	if (dev == NULL || dev->data == NULL || dev->data->dev_private == NULL)
+		return;
+
+	adapter = IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	rte_spinlock_lock(&adapter->phc_sync_lock);
+	adapter->phc_sync_paused = true;
+	adapter->phc_sync_ticks = 0;
+	rte_spinlock_unlock(&adapter->phc_sync_lock);
 }
 
 static int
@@ -2889,6 +3028,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	adapter->stopped = 1;
 	adapter->mac_primary_set = false;
 	adapter->tpid = RTE_ETHER_TYPE_VLAN; /* VLAN TPID set to 0x8100 by default */
+	rte_spinlock_init(&adapter->phc_sync_lock);
 
 	if (iavf_dev_event_handler_init())
 		goto init_vf_err;
@@ -2928,9 +3068,9 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 
 		/* enable uio intr after callback register */
 		rte_intr_enable(pci_dev->intr_handle);
-	else
-		rte_eal_alarm_set(IAVF_ALARM_INTERVAL,
-				  iavf_dev_alarm_handler, eth_dev);
+
+	rte_eal_alarm_set(IAVF_ALARM_INTERVAL,
+			  iavf_dev_alarm_handler, eth_dev);
 
 	/* configure and enable device interrupt */
 	iavf_enable_irq0(hw);
@@ -2992,9 +3132,9 @@ flow_init_err:
 		/* unregister callback func from eal lib */
 		rte_intr_callback_unregister(pci_dev->intr_handle,
 					     iavf_dev_interrupt_handler, eth_dev);
-	} else {
-		rte_eal_alarm_cancel(iavf_dev_alarm_handler, eth_dev);
 	}
+	iavf_phc_sync_alarm_stop(eth_dev);
+	rte_eal_alarm_cancel(iavf_dev_alarm_handler, eth_dev);
 
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
@@ -3065,9 +3205,9 @@ iavf_dev_close(struct rte_eth_dev *dev)
 		/* unregister callback func from eal lib */
 		rte_intr_callback_unregister(intr_handle,
 					     iavf_dev_interrupt_handler, dev);
-	} else {
-		rte_eal_alarm_cancel(iavf_dev_alarm_handler, dev);
 	}
+	iavf_phc_sync_alarm_stop(dev);
+	rte_eal_alarm_cancel(iavf_dev_alarm_handler, dev);
 	iavf_disable_irq0(hw);
 
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS)
