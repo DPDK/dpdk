@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2025 Intel Corporation
+ * Copyright(c) 2010-2026 Intel Corporation
  */
 
 This directory contains source code of the base driver code for em/igb/igc,
-with this snapshot generated on 2025-06-04-14.40.
+with this snapshot generated on 2026-05-07-13.50.
 
 This driver is valid for the product(s) listed below
 * Intel® Ethernet Controller 82540
