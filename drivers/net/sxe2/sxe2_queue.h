@@ -189,4 +189,8 @@ void sxe2_sw_queue_ctx_hw_cap_set(struct sxe2_adapter *adapter,
 
 int32_t sxe2_queues_init(struct rte_eth_dev *dev);
 
+int32_t sxe2_queues_start(struct rte_eth_dev *dev);
+
+void sxe2_queues_release(struct rte_eth_dev *dev);
+
 #endif /* SXE2_QUEUE_H */

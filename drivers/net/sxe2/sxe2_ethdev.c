@@ -107,25 +107,6 @@ l_end:
 	return ret;
 }
 
-static int32_t sxe2_queues_start(struct rte_eth_dev *dev)
-{
-	int32_t ret = 0;
-	ret = sxe2_txqs_all_start(dev);
-	if (ret) {
-		PMD_LOG_ERR(INIT, "Failed to start tx queue.");
-		goto l_end;
-	}
-
-	ret = sxe2_rxqs_all_start(dev);
-	if (ret) {
-		PMD_LOG_ERR(INIT, "Failed to start rx queue.");
-		sxe2_txqs_all_stop(dev);
-	}
-
-l_end:
-	return ret;
-}
-
 static int32_t sxe2_dev_start(struct rte_eth_dev *dev)
 {
 	int32_t ret = 0;
@@ -158,7 +139,7 @@ l_end:
 static int32_t sxe2_dev_close(struct rte_eth_dev *dev)
 {
 	(void)sxe2_dev_stop(dev);
-
+	(void)sxe2_queues_release(dev);
 	sxe2_vsi_uninit(dev);
 	sxe2_dev_pci_map_uinit(dev);
 
@@ -296,13 +277,19 @@ static const struct eth_dev_ops sxe2_eth_dev_ops = {
 	.dev_close                  = sxe2_dev_close,
 	.dev_infos_get              = sxe2_dev_infos_get,
 
+	.rx_queue_start             = sxe2_rx_queue_start,
+	.rx_queue_stop              = sxe2_rx_queue_stop,
+	.tx_queue_start             = sxe2_tx_queue_start,
+	.tx_queue_stop              = sxe2_tx_queue_stop,
 	.rx_queue_setup             = sxe2_rx_queue_setup,
-	.tx_queue_setup             = sxe2_tx_queue_setup,
 	.rx_queue_release           = sxe2_rx_queue_release,
+	.tx_queue_setup             = sxe2_tx_queue_setup,
 	.tx_queue_release           = sxe2_tx_queue_release,
 
 	.rxq_info_get               = sxe2_rx_queue_info_get,
 	.txq_info_get               = sxe2_tx_queue_info_get,
+	.rx_burst_mode_get          = sxe2_rx_burst_mode_get,
+	.tx_burst_mode_get          = sxe2_tx_burst_mode_get,
 };
 
 struct sxe2_pci_map_bar_info *sxe2_dev_get_bar_info(struct sxe2_adapter *adapter,
