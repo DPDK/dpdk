@@ -10,7 +10,10 @@
 
 /* Device IDs */
 #define IDPF_DEV_ID_PF			0x1452
+#define IDPF_DEV_ID_PF1			0x11DF
+#define IDPF_DEV_ID_CPF1		0x11E0
 #define IDPF_DEV_ID_VF			0x145C
+#define IDPF_DEV_ID_VF1			0x0DE2
 #define IDPF_DEV_ID_VF_SIOV		0x0DD5
 
 
