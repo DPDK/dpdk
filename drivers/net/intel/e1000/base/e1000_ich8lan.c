@@ -5107,6 +5107,13 @@ STATIC s32 e1000_reset_hw_ich8lan(struct e1000_hw *hw)
 	reg |= E1000_KABGTXD_BGSQLBIAS;
 	E1000_WRITE_REG(hw, E1000_KABGTXD, reg);
 
+	if (hw->mac.type >= e1000_pch_ptp) {
+		DEBUGOUT("Clearing DPG EN bit post reset\n");
+		reg = E1000_READ_REG(hw, E1000_CTRL_EXT);
+		reg &= ~E1000_CTRL_EXT_DPG_EN;
+		E1000_WRITE_REG(hw, E1000_CTRL_EXT, reg);
+	}
+
 	return E1000_SUCCESS;
 }
 
