@@ -2585,6 +2585,8 @@ STATIC s32 e1000_hv_phy_workarounds_ich8lan(struct e1000_hw *hw)
 			e1000_phy_sw_reset_generic(hw);
 			ret_val = hw->phy.ops.write_reg(hw, PHY_CONTROL,
 							0x3140);
+			if (ret_val)
+				return ret_val;
 		}
 	}
 
