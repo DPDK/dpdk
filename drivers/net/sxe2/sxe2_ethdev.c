@@ -26,6 +26,7 @@
 #include "sxe2_cmd_chnl.h"
 #include "sxe2_tx.h"
 #include "sxe2_rx.h"
+#include "sxe2_txrx.h"
 #include "sxe2_common.h"
 #include "sxe2_common_log.h"
 #include "sxe2_host_regs.h"
@@ -136,6 +137,9 @@ static int32_t sxe2_dev_start(struct rte_eth_dev *dev)
 		PMD_LOG_ERR(INIT, "Failed to init queues.");
 		goto l_end;
 	}
+
+	sxe2_rx_mode_func_set(dev);
+	sxe2_tx_mode_func_set(dev);
 
 	ret = sxe2_queues_start(dev);
 	if (ret) {
@@ -763,10 +767,15 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
+	sxe2_set_common_function(dev);
+
 	dev->dev_ops = &sxe2_eth_dev_ops;
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		sxe2_rx_mode_func_set(dev);
+		sxe2_tx_mode_func_set(dev);
 		goto l_end;
+	}
 
 	ret = sxe2_hw_init(dev);
 	if (ret) {
