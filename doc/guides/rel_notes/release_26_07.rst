@@ -63,6 +63,10 @@ New Features
     ``rte_eal_init`` and the application is responsible for probing each device,
   * ``--auto-probing`` enables the initial bus probing, which is the current default behavior.
 
+* **Added LinkData sxe2 ethernet driver.**
+
+  Added network driver for the LinkData network adapters.
+
 * **Updated PCAP ethernet driver.**
 
   * Added support for VLAN insertion and stripping.
