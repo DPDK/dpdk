@@ -409,6 +409,14 @@ enum e1000_serdes_link_state {
 	e1000_serdes_link_forced_up
 };
 
+enum e1000_autoneg_status {
+	e1000_an_off = 0,	/* No conn.; AN unsupported, disabled, or disabled on the LP */
+	e1000_an_failed,	/* Remote Fault or Parallel Detection Fault reported */
+	e1000_an_in_progress,
+	e1000_an_complete,
+	e1000_an_status_unavailable	/* AN status could not be obtained */
+};
+
 enum e1000_invm_structure_type {
 	e1000_invm_uninitialized_structure		= 0x00,
 	e1000_invm_word_autoload_structure		= 0x01,
@@ -803,6 +811,7 @@ struct e1000_phy_operations {
 	s32  (*write_reg_page)(struct e1000_hw *, u32, u16);
 	void (*power_up)(struct e1000_hw *);
 	void (*power_down)(struct e1000_hw *);
+	s32  (*get_an_status)(struct e1000_hw *, u8 *);
 	s32 (*read_i2c_byte)(struct e1000_hw *, u8, u8, u8 *);
 	s32 (*write_i2c_byte)(struct e1000_hw *, u8, u8, u8);
 };
