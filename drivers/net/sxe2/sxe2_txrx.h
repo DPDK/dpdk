@@ -13,6 +13,7 @@ int32_t __rte_cold sxe2_tx_simple_batch_support_check(struct rte_eth_dev *dev,
 	uint32_t *batch_flags);
 uint16_t sxe2_tx_pkts_prepare(void *tx_queue,
 		struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
+int32_t sxe2_tx_done_cleanup(void *txq, uint32_t free_cnt);
 void sxe2_tx_mode_func_set(struct rte_eth_dev *dev);
 void __rte_cold sxe2_rx_queue_reset(struct sxe2_rx_queue *rxq);
 void sxe2_rx_mode_func_set(struct rte_eth_dev *dev);

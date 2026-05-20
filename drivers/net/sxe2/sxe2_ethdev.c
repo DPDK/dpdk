@@ -290,6 +290,7 @@ static const struct eth_dev_ops sxe2_eth_dev_ops = {
 	.txq_info_get               = sxe2_tx_queue_info_get,
 	.rx_burst_mode_get          = sxe2_rx_burst_mode_get,
 	.tx_burst_mode_get          = sxe2_tx_burst_mode_get,
+	.tx_done_cleanup            = sxe2_tx_done_cleanup,
 };
 
 struct sxe2_pci_map_bar_info *sxe2_dev_get_bar_info(struct sxe2_adapter *adapter,

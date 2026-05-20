@@ -10,8 +10,10 @@
 #include <ethdev_driver.h>
 #include "sxe2_osal.h"
 #include "sxe2_txrx_common.h"
+#include "sxe2_txrx_vec_common.h"
 #include "sxe2_txrx_poll.h"
 #include "sxe2_txrx.h"
+#include "sxe2_txrx_vec.h"
 #include "sxe2_queue.h"
 #include "sxe2_ethdev.h"
 #include "sxe2_common_log.h"
@@ -111,6 +113,106 @@ static inline int32_t sxe2_tx_cleanup(struct sxe2_tx_queue *txq)
 	txq->desc_free_num += clean_num;
 
 	ret = 0;
+
+l_end:
+	return ret;
+}
+
+static int32_t sxe2_tx_done_cleanup_simple(struct sxe2_tx_queue *txq, uint32_t free_cnt)
+{
+	uint32_t free_cnt_align;
+	uint32_t free_cnt_once;
+	uint32_t i;
+
+	if (free_cnt == 0 || free_cnt > txq->ring_depth)
+		free_cnt = txq->ring_depth;
+
+	free_cnt_align = free_cnt - (free_cnt % txq->rs_thresh);
+	for (i = 0; i < free_cnt_align; i += free_cnt_once) {
+		if ((txq->ring_depth - txq->desc_free_num) < txq->rs_thresh)
+			break;
+
+		free_cnt_once = sxe2_tx_bufs_free(txq);
+		if (free_cnt_once == 0)
+			break;
+	}
+
+	return i;
+}
+
+static int32_t sxe2_tx_done_cleanup_normal(struct sxe2_tx_queue *txq, uint32_t free_cnt)
+{
+	struct sxe2_tx_buffer *buffer_ring = txq->buffer_ring;
+	int32_t ret;
+	uint16_t clean_last_idx, clean_idx;
+	uint16_t clean_last, clean_once;
+	uint16_t pkt_cnt, i;
+
+	if (txq->desc_free_num == 0 && sxe2_tx_cleanup(txq) != 0) {
+		ret = 0;
+		goto l_end;
+	}
+
+	if (free_cnt == 0)
+		free_cnt = txq->ring_depth;
+
+	clean_last_idx = txq->next_use;
+	clean_idx = buffer_ring[clean_last_idx].next_id;
+	clean_once = txq->desc_free_num;
+	clean_last = txq->desc_free_num;
+
+	for (pkt_cnt = 0; pkt_cnt < free_cnt;) {
+		for (i = 0; ((i < clean_once) &&
+			     (pkt_cnt < free_cnt) &&
+			     clean_idx != clean_last_idx); ++i) {
+			if (buffer_ring[clean_idx].mbuf != NULL) {
+				rte_pktmbuf_free_seg(buffer_ring[clean_idx].mbuf);
+				buffer_ring[clean_idx].mbuf = NULL;
+				if (buffer_ring[clean_idx].last_id == clean_idx)
+					pkt_cnt++;
+			}
+			clean_idx = buffer_ring[clean_idx].next_id;
+		}
+
+		if ((txq->rs_thresh > (txq->ring_depth - txq->desc_free_num)) ||
+		    clean_idx == clean_last_idx)
+			break;
+
+		if (pkt_cnt < free_cnt) {
+			if (sxe2_tx_cleanup(txq) != 0)
+				break;
+
+			clean_once = txq->desc_free_num - clean_last;
+			clean_last = txq->desc_free_num;
+		}
+	}
+
+	ret = pkt_cnt;
+l_end:
+	return ret;
+}
+
+int32_t sxe2_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
+{
+	struct sxe2_tx_queue *txq = (struct sxe2_tx_queue *)tx_queue;
+	struct sxe2_adapter *adapter;
+	int32_t ret;
+
+	if (txq == NULL) {
+		ret = 0;
+		goto l_end;
+	}
+
+	adapter = txq->vsi->adapter;
+	if (adapter->q_ctxt.tx_mode_flags & SXE2_TX_MODE_VEC_SET_MASK)
+		ret = -ENOTSUP;
+	else if (adapter->q_ctxt.tx_mode_flags & SXE2_TX_MODE_SIMPLE_BATCH)
+		ret = sxe2_tx_done_cleanup_simple(txq, free_cnt);
+	else
+		ret = sxe2_tx_done_cleanup_normal(txq, free_cnt);
+
+	PMD_LOG_DEBUG(TX, "TX cleanup done desc queue_id=%u free_cnt=%d.",
+				txq->queue_id, ret);
 
 l_end:
 	return ret;
