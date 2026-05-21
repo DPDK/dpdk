@@ -144,6 +144,28 @@ uacce_read_attr_u32(const char *dev_root, const char *attr, uint32_t *val)
 	return 0;
 }
 
+static uint32_t
+uacce_calc_api_ver(const char *api, int *offset)
+{
+	int len = strlen(api);
+	int end = len - 1;
+	unsigned long ver;
+
+	while (end >= 0 && isdigit(api[end]))
+		end--;
+
+	if (end <= 0 || end == len - 1 || api[end] != 'v')
+		return 0;
+
+	ver = strtoul(api + end + 1, NULL, 10);
+	if (ver > UINT32_MAX)
+		return 0;
+
+	if (offset != NULL)
+		*offset = end + 1;
+	return (uint32_t)ver;
+}
+
 static int
 uacce_read_api(struct rte_uacce_device *dev)
 {
@@ -165,6 +187,8 @@ uacce_read_api(struct rte_uacce_device *dev)
 	sub_len = strlen(NOIOMMU_SUFFIX);
 	if (api_len > sub_len && strcmp(dev->api + api_len - sub_len, NOIOMMU_SUFFIX) == 0)
 		dev->api[api_len - sub_len] = 0;
+
+	dev->api_ver = uacce_calc_api_ver(dev->api, NULL);
 
 	return 0;
 }
@@ -302,28 +326,6 @@ error:
 	return -1;
 }
 
-static uint32_t
-uacce_calc_api_ver(const char *api, int *offset)
-{
-	int len = strlen(api);
-	int end = len - 1;
-	unsigned long ver;
-
-	while (end >= 0 && isdigit(api[end]))
-		end--;
-
-	if (end <= 0 || end == len - 1 || api[end] != 'v')
-		return 0;
-
-	ver = strtoul(api + end + 1, NULL, 10);
-	if (ver > UINT32_MAX)
-		return 0;
-
-	if (offset != NULL)
-		*offset = end + 1;
-	return (uint32_t)ver;
-}
-
 static bool
 uacce_match_api(const struct rte_uacce_device *dev, bool forward_compat,
 		const struct rte_uacce_id *id_table)
@@ -342,12 +344,11 @@ uacce_match_api(const struct rte_uacce_device *dev, bool forward_compat,
 }
 
 static bool
-uacce_match(const struct rte_uacce_driver *dr, struct rte_uacce_device *dev)
+uacce_match(const struct rte_uacce_driver *dr, const struct rte_uacce_device *dev)
 {
 	bool forward_compat = !!(dr->drv_flags & RTE_UACCE_DRV_FORWARD_COMPATIBILITY_DEV);
 	bool drv_support_noiommu = !!(dr->drv_flags & RTE_UACCE_DRV_SUPPORT_NOIOMMU_MODE);
 	bool dev_in_noiommu = !!(dev->flags & UACCE_DEV_FLAG_NOIOMMU);
-	uint32_t api_ver = uacce_calc_api_ver(dev->api, NULL);
 	const struct rte_uacce_id *id_table;
 	const char *map;
 	uint32_t len;
@@ -359,10 +360,8 @@ uacce_match(const struct rte_uacce_driver *dr, struct rte_uacce_device *dev)
 		if (!uacce_match_api(dev, forward_compat, id_table))
 			continue;
 
-		if (id_table->dev_alg == NULL) {
-			dev->api_ver = api_ver;
+		if (id_table->dev_alg == NULL)
 			return true;
-		}
 
 		/* The dev->algs's algrothims is separated by new line, for
 		 * example: dev->algs could be: aaa\nbbbb\ncc, which has three
@@ -378,7 +377,6 @@ uacce_match(const struct rte_uacce_driver *dr, struct rte_uacce_device *dev)
 		if (map[len] != '\0' && map[len] != '\n')
 			continue;
 
-		dev->api_ver = api_ver;
 		return true;
 	}
 
