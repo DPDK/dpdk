@@ -322,7 +322,7 @@ dsa_scan(void)
 		}
 		IDXD_PMD_DEBUG("%s(): found %s/%s", __func__, path, wq->d_name);
 
-		dev = malloc(sizeof(*dev));
+		dev = calloc(1, sizeof(*dev));
 		if (dev == NULL) {
 			closedir(dev_dir);
 			return -ENOMEM;
