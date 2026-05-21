@@ -113,6 +113,7 @@ AI review tools
 M: Stephen Hemminger <stephen@networkplumber.org>
 M: Aaron Conole <aconole@redhat.com>
 F: AGENTS.md
+F: devtools/ai/
 
 Linux kernel uAPI headers
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
