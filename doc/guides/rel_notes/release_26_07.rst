@@ -82,6 +82,10 @@ New Features
   * Added ``eof`` devarg to use link state to signal end of receive file input.
   * Added unit test suite.
 
+* **Added AI review helpers.**
+
+  Added AGENTS.md file for AI review
+
 
 Removed Items
 -------------
