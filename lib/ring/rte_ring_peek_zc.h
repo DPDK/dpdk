@@ -235,7 +235,7 @@ rte_ring_enqueue_zc_bulk_start(struct rte_ring *r, unsigned int n,
  *   If non-NULL, returns the amount of space in the ring after the
  *   reservation operation has finished.
  * @return
- *   The number of objects that can be enqueued, either 0 or n
+ *   The actual number of objects that can be enqueued.
  */
 static __rte_always_inline unsigned int
 rte_ring_enqueue_zc_burst_elem_start(struct rte_ring *r, unsigned int esize,
@@ -265,7 +265,7 @@ rte_ring_enqueue_zc_burst_elem_start(struct rte_ring *r, unsigned int esize,
  *   If non-NULL, returns the amount of space in the ring after the
  *   reservation operation has finished.
  * @return
- *   The number of objects that can be enqueued, either 0 or n.
+ *   The actual number of objects that can be enqueued.
  */
 static __rte_always_inline unsigned int
 rte_ring_enqueue_zc_burst_start(struct rte_ring *r, unsigned int n,
@@ -442,7 +442,7 @@ rte_ring_dequeue_zc_bulk_start(struct rte_ring *r, unsigned int n,
  *   If non-NULL, returns the number of remaining ring entries after the
  *   dequeue has finished.
  * @return
- *   The number of objects that can be dequeued, either 0 or n.
+ *   The actual number of objects that can be dequeued.
  */
 static __rte_always_inline unsigned int
 rte_ring_dequeue_zc_burst_elem_start(struct rte_ring *r, unsigned int esize,
@@ -471,7 +471,7 @@ rte_ring_dequeue_zc_burst_elem_start(struct rte_ring *r, unsigned int esize,
  *   If non-NULL, returns the number of remaining ring entries after the
  *   dequeue has finished.
  * @return
- *   The number of objects that can be dequeued, either 0 or n.
+ *   The actual number of objects that can be dequeued.
  */
 static __rte_always_inline unsigned int
 rte_ring_dequeue_zc_burst_start(struct rte_ring *r, unsigned int n,
