@@ -220,8 +220,10 @@ static int bnxt_invalid_mbuf(struct rte_mbuf *mbuf)
 	if (unlikely(rte_mbuf_check(mbuf, 1, &reason)))
 		return -EINVAL;
 
-	if (unlikely(!(mbuf->ol_flags & RTE_MBUF_F_EXTERNAL) &&
-		     (mbuf->buf_iova < mbuf_size ||
+	if (unlikely(mbuf->ol_flags & RTE_MBUF_F_EXTERNAL))
+		return 0;
+
+	if (unlikely((mbuf->buf_iova < mbuf_size ||
 		      (mbuf->buf_iova != rte_mempool_virt2iova(mbuf) + mbuf_size))))
 		return -EINVAL;
 
