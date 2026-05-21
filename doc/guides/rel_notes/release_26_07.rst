@@ -85,6 +85,7 @@ New Features
 * **Added AI review helpers.**
 
   Added AGENTS.md file for AI review
+  and supporting scripts to review patches and documentation.
 
 
 Removed Items
