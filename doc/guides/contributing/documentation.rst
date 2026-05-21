@@ -215,6 +215,9 @@ Here are some guidelines in relation to the style of the documentation:
 
        aspell --lang=en_US --check doc/guides/sample_app_ug/mydoc.rst
 
+The documentation can be reviewed with AI help
+using the script ``devtools/ai/review-doc.py``.
+
 
 RST Guidelines
 --------------
