@@ -13,12 +13,10 @@
 #if defined(__linux__)
 
 #include <inttypes.h>
+#include <stdlib.h>
 #include <sys/eventfd.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-
-#define MSIX_IRQ_SET_BUF_LEN							\
-	(sizeof(struct vfio_irq_set) + sizeof(int) * PLT_MAX_RXTX_INTR_VEC_ID)
 
 static int
 irq_get_info(struct plt_intr_handle *intr_handle)
@@ -39,11 +37,12 @@ irq_get_info(struct plt_intr_handle *intr_handle)
 		     irq.count, PLT_MAX_RXTX_INTR_VEC_ID);
 
 	if (irq.count == 0) {
-		plt_err("HW max=%d > PLT_MAX_RXTX_INTR_VEC_ID: %d", irq.count,
-			PLT_MAX_RXTX_INTR_VEC_ID);
-		plt_intr_max_intr_set(intr_handle, PLT_MAX_RXTX_INTR_VEC_ID);
+		plt_warn("VFIO MSI-X irq.count is 0; using PLT_MAX_RXTX_INTR_VEC_ID=%u",
+			 PLT_MAX_RXTX_INTR_VEC_ID);
+		if (plt_intr_max_intr_set(intr_handle, PLT_MAX_RXTX_INTR_VEC_ID))
+			return -1;
 	} else {
-		if (plt_intr_max_intr_set(intr_handle, irq.count))
+		if (plt_intr_max_intr_set(intr_handle, (int)irq.count))
 			return -1;
 	}
 
@@ -53,7 +52,7 @@ irq_get_info(struct plt_intr_handle *intr_handle)
 static int
 irq_config(struct plt_intr_handle *intr_handle, unsigned int vec)
 {
-	char irq_set_buf[MSIX_IRQ_SET_BUF_LEN];
+	char irq_set_buf[sizeof(struct vfio_irq_set) + sizeof(int32_t)];
 	struct vfio_irq_set *irq_set;
 	int len, rc, vfio_dev_fd;
 	int32_t *fd_ptr;
@@ -89,23 +88,34 @@ irq_config(struct plt_intr_handle *intr_handle, unsigned int vec)
 static int
 irq_init(struct plt_intr_handle *intr_handle)
 {
-	char irq_set_buf[MSIX_IRQ_SET_BUF_LEN];
+	int max_intr, len, rc, vfio_dev_fd;
 	struct vfio_irq_set *irq_set;
-	int len, rc, vfio_dev_fd;
+	char *irq_set_buf = NULL;
 	int32_t *fd_ptr;
-	uint32_t i;
+	int i;
 
-	len = sizeof(struct vfio_irq_set) + sizeof(int32_t) * plt_intr_max_intr_get(intr_handle);
+	max_intr = plt_intr_max_intr_get(intr_handle);
+	if (max_intr <= 0) {
+		plt_err("Invalid max_intr %d for irq init", max_intr);
+		return -EINVAL;
+	}
+
+	len = sizeof(struct vfio_irq_set) + sizeof(int32_t) * max_intr;
+	irq_set_buf = malloc((size_t)len);
+	if (irq_set_buf == NULL) {
+		plt_err("Failed to alloc irq_set_buf len=%d", len);
+		return -ENOMEM;
+	}
 
 	irq_set = (struct vfio_irq_set *)irq_set_buf;
 	irq_set->argsz = len;
 	irq_set->start = 0;
-	irq_set->count = plt_intr_max_intr_get(intr_handle);
+	irq_set->count = (uint32_t)max_intr;
 	irq_set->flags = VFIO_IRQ_SET_DATA_EVENTFD | VFIO_IRQ_SET_ACTION_TRIGGER;
 	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
 
 	fd_ptr = (int32_t *)&irq_set->data[0];
-	for (i = 0; i < irq_set->count; i++)
+	for (i = 0; i < max_intr; i++)
 		fd_ptr[i] = -1;
 
 	vfio_dev_fd = plt_intr_dev_fd_get(intr_handle);
@@ -113,6 +123,7 @@ irq_init(struct plt_intr_handle *intr_handle)
 	if (rc)
 		plt_err("Failed to set irqs vector rc=%d", rc);
 
+	free(irq_set_buf);
 	return rc;
 }
 
