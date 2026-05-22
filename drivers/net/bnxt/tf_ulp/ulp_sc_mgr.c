@@ -345,6 +345,59 @@ bool ulp_sc_mgr_thread_isstarted(struct bnxt_ulp_context *ctxt)
 	return false;
 }
 
+/* Find a free CPU not used by DPDK lcores for the stats cache thread */
+static int ulp_sc_find_free_cpu(void)
+{
+	unsigned int lcore_id;
+	cpu_set_t dpdk_cpus, proc_cpus;
+	int cpu;
+	int rc;
+
+	CPU_ZERO(&dpdk_cpus);
+	CPU_ZERO(&proc_cpus);
+
+	/* Get process's CPU affinity mask */
+	rc = sched_getaffinity(0, sizeof(cpu_set_t), &proc_cpus);
+	if (rc)
+		return -1;
+
+	/* Collect all CPUs used by DPDK lcores */
+	RTE_LCORE_FOREACH(lcore_id) {
+		rte_cpuset_t cpuset = rte_lcore_cpuset(lcore_id);
+
+		for (cpu = 0; cpu < CPU_SETSIZE; cpu++) {
+			if (CPU_ISSET(cpu, &cpuset))
+				CPU_SET(cpu, &dpdk_cpus);
+		}
+	}
+
+	/* Find first CPU in process affinity that's not used by DPDK */
+	for (cpu = 0; cpu < CPU_SETSIZE; cpu++) {
+		if (CPU_ISSET(cpu, &proc_cpus) && !CPU_ISSET(cpu, &dpdk_cpus))
+			return cpu;
+	}
+
+	return -1;
+}
+
+/* Get the first CPU number from the first DPDK lcore */
+static int ulp_sc_get_first_dpdk_cpu(void)
+{
+	unsigned int lcore_id;
+	int cpu;
+
+	RTE_LCORE_FOREACH(lcore_id) {
+		rte_cpuset_t cpuset = rte_lcore_cpuset(lcore_id);
+
+		for (cpu = 0; cpu < CPU_SETSIZE; cpu++) {
+			if (CPU_ISSET(cpu, &cpuset))
+				return cpu;
+		}
+	}
+
+	return -1;
+}
+
 /*
  * Setup the Flow counter timer thread that will fetch/accumulate raw counter
  * data from the chip's internal flow counters
@@ -358,7 +411,7 @@ ulp_sc_mgr_thread_start(struct bnxt_ulp_context *ctxt)
 	struct bnxt_ulp_sc_info *ulp_sc_info;
 	rte_thread_attr_t attr;
 	rte_cpuset_t mask;
-	size_t i;
+	int target_cpu;
 	int rc;
 
 	ulp_sc_info = bnxt_ulp_cntxt_ptr2_sc_info_get(ctxt);
@@ -366,15 +419,17 @@ ulp_sc_mgr_thread_start(struct bnxt_ulp_context *ctxt)
 	if (ulp_sc_info && !(ulp_sc_info->flags & ULP_FLAG_SC_THREAD)) {
 		rte_thread_attr_init(&attr);
 
-		rte_thread_get_affinity(&mask);
-
-		for (i = 1; i < CPU_SETSIZE; i++) {
-			if (CPU_ISSET(i, &mask)) {
-				CPU_ZERO(&mask);
-				CPU_SET(i + 2, &mask);
-				break;
-			}
+		/* Try to find a free CPU not used by DPDK lcores */
+		target_cpu = ulp_sc_find_free_cpu();
+		/* If no free CPU found, use first CPU from first DPDK lcore */
+		if (target_cpu == -1) {
+			target_cpu = ulp_sc_get_first_dpdk_cpu();
+			if (target_cpu == -1)
+				return -ENOENT;
 		}
+
+		CPU_ZERO(&mask);
+		CPU_SET(target_cpu, &mask);
 
 		rc = rte_thread_attr_set_affinity(&attr, &mask);
 		if (rc)
