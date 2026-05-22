@@ -680,6 +680,9 @@ static int bnxt_stats_get_ext(struct rte_eth_dev *eth_dev,
 		struct bnxt_cp_ring_info *cpr = txq->cp_ring;
 		struct bnxt_ring_stats_ext ring_stats = {0};
 
+		bnxt_stats->oerrors += rte_atomic_load_explicit(&txq->tx_mbuf_drop,
+							     rte_memory_order_relaxed);
+
 		if (!txq->tx_started)
 			continue;
 

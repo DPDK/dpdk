@@ -4330,6 +4330,9 @@ static int bnxt_hwrm_set_tpa(struct bnxt *bp)
 	bool tpa_flags = 0;
 	int rc, i;
 
+	if (!BNXT_SUPPORTS_TPA(bp))
+		return 0;
+
 	tpa_flags = (rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) ?  true : false;
 	for (i = 0; i < bp->max_vnics; i++) {
 		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
@@ -4928,31 +4931,6 @@ int bnxt_hwrm_pf_evb_mode(struct bnxt *bp)
 
 	return rc;
 }
-
-static int bnxt_hwrm_set_tpa(struct bnxt *bp)
-{
-	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
-	uint64_t rx_offloads = dev_conf->rxmode.offloads;
-	bool tpa_flags = 0;
-	int rc, i;
-
-	if (!BNXT_SUPPORTS_TPA(bp))
-		return 0;
-
-	tpa_flags = (rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) ?  true : false;
-	for (i = 0; i < bp->max_vnics; i++) {
-		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
-
-		if (vnic->fw_vnic_id == INVALID_HW_RING_ID)
-			continue;
-
-		rc = bnxt_hwrm_vnic_tpa_cfg(bp, vnic, tpa_flags);
-		if (rc)
-			return rc;
-	}
-	return 0;
-}
-
 
 int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
 				uint8_t tunnel_type)
