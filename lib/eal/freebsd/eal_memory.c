@@ -40,16 +40,28 @@ RTE_EXPORT_SYMBOL(rte_mem_virt2phy)
 phys_addr_t
 rte_mem_virt2phy(const void *virtaddr)
 {
-	/* XXX not implemented. This function is only used by
-	 * rte_mempool_virt2iova() when hugepages are disabled. */
-	(void)virtaddr;
-	return RTE_BAD_IOVA;
+	/* not implemented for FreeBSD when not using contigmem memory */
+	if (virtaddr == NULL || rte_eal_iova_mode() != RTE_IOVA_PA)
+		return RTE_BAD_IOVA;
+	/* when IOVA == PA, return the IOVA */
+	return rte_mem_virt2iova(virtaddr);
 }
+
 RTE_EXPORT_SYMBOL(rte_mem_virt2iova)
 rte_iova_t
 rte_mem_virt2iova(const void *virtaddr)
 {
-	return rte_mem_virt2phy(virtaddr);
+	if (virtaddr == NULL)
+		return RTE_BAD_IOVA;
+
+	if (rte_eal_iova_mode() == RTE_IOVA_VA)
+		return (uintptr_t)virtaddr;
+
+	const struct rte_memseg *ms = rte_mem_virt2memseg(virtaddr, NULL);
+	if (ms != NULL && ms->iova != RTE_BAD_IOVA)
+		return ms->iova + RTE_PTR_DIFF(virtaddr, ms->addr);
+
+	return RTE_BAD_IOVA;
 }
 
 int
