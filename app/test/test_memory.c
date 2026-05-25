@@ -8,6 +8,7 @@
 #include <rte_eal.h>
 #include <rte_errno.h>
 #include <rte_memory.h>
+#include <rte_malloc.h>
 #include <rte_common.h>
 #include <rte_memzone.h>
 
@@ -76,6 +77,68 @@ check_seg_fds(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 }
 
 static int
+check_malloc_virt2iova(void)
+{
+	const size_t alloc_sz = 128;
+	const size_t off = 32;
+	struct rte_memseg *ms;
+	char *p;
+	rte_iova_t iova, iova_off;
+
+	p = rte_malloc("memory_autotest", alloc_sz, RTE_CACHE_LINE_SIZE);
+	if (p == NULL) {
+		printf("rte_malloc failed\n");
+		return -1;
+	}
+
+	iova = rte_mem_virt2iova(p);
+	if (iova == RTE_BAD_IOVA) {
+		printf("rte_mem_virt2iova failed for rte_malloc pointer\n");
+		rte_free(p);
+		return -1;
+	}
+
+	ms = rte_mem_virt2memseg(p, NULL);
+	if (ms == NULL) {
+		printf("failed to resolve memseg for rte_malloc pointer\n");
+		rte_free(p);
+		return -1;
+	}
+
+	if (rte_eal_iova_mode() == RTE_IOVA_PA) {
+		if (ms->iova == RTE_BAD_IOVA || iova < ms->iova ||
+					iova >= ms->iova + ms->len) {
+			printf("translated iova is outside memseg range\n");
+			rte_free(p);
+			return -1;
+		}
+
+		phys_addr_t physaddr = rte_mem_virt2phy(p);
+		if (physaddr == RTE_BAD_PHYS_ADDR || physaddr != iova) {
+			printf("rte_mem_virt2phy failed for rte_malloc pointer\n");
+			rte_free(p);
+			return -1;
+		}
+	} else if (rte_eal_iova_mode() == RTE_IOVA_VA) {
+		if (iova != (uintptr_t)p) {
+			printf("rte_mem_virt2iova did not return VA in VA mode\n");
+			rte_free(p);
+			return -1;
+		}
+	}
+
+	iova_off = rte_mem_virt2iova(p + off);
+	if (iova_off == RTE_BAD_IOVA || iova_off != iova + off) {
+		printf("translated iova for interior pointer is invalid\n");
+		rte_free(p);
+		return -1;
+	}
+
+	rte_free(p);
+	return 0;
+}
+
+static int
 test_memory(void)
 {
 	uint64_t s;
@@ -106,6 +169,10 @@ test_memory(void)
 		printf("Error getting segment fd's\n");
 		return -1;
 	}
+
+	ret = check_malloc_virt2iova();
+	if (ret < 0)
+		return ret;
 
 	return 0;
 }
