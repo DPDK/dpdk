@@ -1678,9 +1678,13 @@ err_secondary:
 		err = ENOMEM;
 		goto error;
 	}
+	priv->port_info.type = spawn->info.name_type;
+	priv->port_info.ctrl_num = spawn->info.ctrl_num;
+	priv->port_info.pf_num = spawn->info.pf_num;
+	priv->port_info.port_num = spawn->info.port_name;
 	if (priv->representor) {
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
-		eth_dev->data->representor_id = priv->representor_id;
+		eth_dev->data->representor_id = eth_dev->data->port_id;
 		MLX5_ETH_FOREACH_DEV(port_id, dpdk_dev) {
 			struct mlx5_priv *opriv =
 				rte_eth_devices[port_id].data->dev_private;

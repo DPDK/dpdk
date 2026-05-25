@@ -1985,6 +1985,24 @@ struct mlx5_quota_ctx {
 	struct mlx5_indexed_pool *quota_ipool; /* Manage quota objects */
 };
 
+/* Stores info parsed from phys_port_name related to given DPDK port. */
+struct mlx5_representor_info {
+	enum mlx5_nl_phys_port_name_type type;
+	/* PCI controller index. 0 if no controller was reported in phys_port_name. */
+	int32_t ctrl_num;
+	/* PF index. */
+	int32_t pf_num;
+	/*
+	 * Representor number:
+	 *
+	 * - For VF/SF - VF/SF index.
+	 * - For PFHPF - -1.
+	 * - For uplink - physical port index.
+	 * - For others - VF representor is assumed, so VF index.
+	 */
+	int32_t port_num;
+};
+
 struct mlx5_nta_sample_ctx;
 struct mlx5_priv {
 	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
@@ -2020,6 +2038,7 @@ struct mlx5_priv {
 	uint32_t vport_meta_tag; /* Used for vport index match ove VF LAG. */
 	uint32_t vport_meta_mask; /* Used for vport index field match mask. */
 	uint16_t representor_id; /* UINT16_MAX if not a representor. */
+	struct mlx5_representor_info port_info;
 	int32_t pf_bond; /* >=0, representor owner PF index in bonding. */
 	int32_t mpesw_owner; /* >=0, representor owner PF index in MPESW. */
 	int32_t mpesw_port; /* Related port index of MPESW device. < 0 - no MPESW. */
