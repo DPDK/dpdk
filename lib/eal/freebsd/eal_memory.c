@@ -196,7 +196,10 @@ rte_eal_hugepage_init(void)
 			}
 
 			seg->addr = addr;
-			seg->iova = physaddr;
+			if (rte_eal_iova_mode() == RTE_IOVA_VA)
+				seg->iova = (uintptr_t)addr;
+			else
+				seg->iova = physaddr;
 			seg->hugepage_sz = page_sz;
 			seg->len = page_sz;
 			seg->nchannel = mcfg->nchannel;
