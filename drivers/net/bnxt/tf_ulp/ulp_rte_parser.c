@@ -66,6 +66,11 @@ ulp_rte_parser_fld_copy(struct ulp_rte_hdr_field *field,
 			const void *buffer,
 			uint32_t size)
 {
+	if (unlikely(size > RTE_PARSER_FLOW_HDR_FIELD_SIZE)) {
+		BNXT_DRV_DBG(ERR, "Field size %u exceeds max of %u, clamping",
+			     size, RTE_PARSER_FLOW_HDR_FIELD_SIZE);
+		size = RTE_PARSER_FLOW_HDR_FIELD_SIZE;
+	}
 	field->size = size;
 	memcpy(field->spec, buffer, field->size);
 	field++;
@@ -106,6 +111,11 @@ ulp_rte_prsr_fld_mask(struct ulp_rte_parser_params *params,
 {
 	struct ulp_rte_hdr_field *field = &params->hdr_field[*idx];
 
+	if (unlikely(size > RTE_PARSER_FLOW_HDR_FIELD_SIZE)) {
+		BNXT_DRV_DBG(ERR, "Field size %u exceeds max of %u, clamping",
+			     size, RTE_PARSER_FLOW_HDR_FIELD_SIZE);
+		size = RTE_PARSER_FLOW_HDR_FIELD_SIZE;
+	}
 	/* update the field size */
 	field->size = size;
 
