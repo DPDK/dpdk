@@ -3949,19 +3949,15 @@ mlkem_keygen(const void *test_data)
 		rte_crypto_ml_kem_pubkey_size[vector->type],
 		"Incorrect Encapsulation key length\n");
 
-	/* If the seed is all zero, keys are deterministic */
-	if (memcmp(vector->d.data, (uint8_t [32]) {0},
-			vector->d.length) == 0) {
-		TEST_ASSERT_BUFFERS_ARE_EQUAL(vector->dk.data,
-			self->result_op->asym->mlkem.keygen.dk.data,
-			self->result_op->asym->mlkem.keygen.dk.length,
-			"Incorrect Decapsulation key\n");
-		TEST_ASSERT_BUFFERS_ARE_EQUAL(vector->ek.data,
-			self->result_op->asym->mlkem.keygen.ek.data,
-			self->result_op->asym->mlkem.keygen.ek.length,
-			"Incorrect Encapsulation key\n");
-		RTE_LOG(DEBUG, USER1, "Deterministic keygen test passed\n");
-	}
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(vector->dk.data,
+		self->result_op->asym->mlkem.keygen.dk.data,
+		self->result_op->asym->mlkem.keygen.dk.length,
+		"Incorrect Decapsulation key\n");
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(vector->ek.data,
+		self->result_op->asym->mlkem.keygen.ek.data,
+		self->result_op->asym->mlkem.keygen.ek.length,
+		"Incorrect Encapsulation key\n");
+	RTE_LOG(DEBUG, USER1, "Deterministic keygen test passed\n");
 
 	rte_cryptodev_asym_session_free(dev_id, self->sess);
 	return TEST_SUCCESS;
@@ -4071,7 +4067,7 @@ mlkem_encap(const void *test_data)
 	self->op->asym->mlkem.decap.sk.data = sk;
 	self->op->asym->mlkem.decap.sk.length = 32;
 
-	TEST_ASSERT_SUCCESS(send_one(),
+	TEST_ASSERT_SUCCESS(send_one_no_status_check(),
 		"Failed to process crypto op (ML-KEM Decap)");
 
 	debug_hexdump(stdout, "Shared secret from negative test",
@@ -4149,7 +4145,7 @@ mlkem_decap(const void *test_data)
 	self->op->asym->mlkem.decap.sk.data = sk;
 	self->op->asym->mlkem.decap.sk.length = 32;
 
-	TEST_ASSERT_SUCCESS(send_one(),
+	TEST_ASSERT_SUCCESS(send_one_no_status_check(),
 		"Failed to process crypto op (ML-KEM Decap)");
 
 	debug_hexdump(stdout, "Shared secret from negative test",
@@ -4214,19 +4210,15 @@ mldsa_keygen(const void *test_data)
 		rte_crypto_ml_dsa_pubkey_size[vector->type],
 		"Incorrect Public key length\n");
 
-	/* If the seed is all zero, keys are deterministic */
-	if (memcmp(vector->seed.data, (uint8_t [32]) {0},
-			vector->seed.length) == 0) {
-		TEST_ASSERT_BUFFERS_ARE_EQUAL(vector->privkey.data,
-			self->result_op->asym->mldsa.keygen.privkey.data,
-			self->result_op->asym->mldsa.keygen.privkey.length,
-			"Incorrect Private key\n");
-		TEST_ASSERT_BUFFERS_ARE_EQUAL(vector->pubkey.data,
-			self->result_op->asym->mldsa.keygen.pubkey.data,
-			self->result_op->asym->mldsa.keygen.pubkey.length,
-			"Incorrect Public key\n");
-		RTE_LOG(DEBUG, USER1, "Deterministic keygen test passed\n");
-	}
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(vector->privkey.data,
+		self->result_op->asym->mldsa.keygen.privkey.data,
+		self->result_op->asym->mldsa.keygen.privkey.length,
+		"Incorrect Private key\n");
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(vector->pubkey.data,
+		self->result_op->asym->mldsa.keygen.pubkey.data,
+		self->result_op->asym->mldsa.keygen.pubkey.length,
+		"Incorrect Public key\n");
+	RTE_LOG(DEBUG, USER1, "Deterministic keygen test passed\n");
 
 	rte_cryptodev_asym_session_free(dev_id, self->sess);
 	return TEST_SUCCESS;

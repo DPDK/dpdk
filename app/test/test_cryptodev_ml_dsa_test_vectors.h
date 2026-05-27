@@ -1653,6 +1653,14 @@ struct crypto_testsuite_mldsa_params mldsa_keygen_test_vectors[] = {
 			.data = mldsa_44_seed,
 			.length = sizeof(mldsa_44_seed),
 		},
+		.privkey = {
+			.data = mldsa_44_privkey,
+			.length = sizeof(mldsa_44_privkey),
+		},
+		.pubkey = {
+			.data = mldsa_44_pubkey,
+			.length = sizeof(mldsa_44_pubkey),
+		},
 	},
 	{
 		.name = "mldsa_44_keygen (deterministic)",
