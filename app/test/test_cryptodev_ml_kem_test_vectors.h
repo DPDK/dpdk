@@ -785,6 +785,14 @@ struct crypto_testsuite_mlkem_params mlkem_keygen_test_vectors[] = {
 			.data = mlkem_512_z,
 			.length = sizeof(mlkem_512_z),
 		},
+		.dk = {
+			.data = mlkem_512_dk,
+			.length = sizeof(mlkem_512_dk),
+		},
+		.ek = {
+			.data = mlkem_512_ek,
+			.length = sizeof(mlkem_512_ek),
+		}
 	},
 	{
 		.name = "mlkem_512_keygen (deterministic)",
