@@ -4607,7 +4607,8 @@ static int
 ice_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct ice_vlan vlan = ICE_VLAN(RTE_ETHER_TYPE_VLAN, vlan_id);
+	/* Use the configured outer_ethertype instead of hardcoded 0x8100 */
+	struct ice_vlan vlan = ICE_VLAN(pf->outer_ethertype, vlan_id);
 	struct ice_vsi *vsi = pf->main_vsi;
 	int ret;
 
