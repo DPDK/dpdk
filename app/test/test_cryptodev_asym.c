@@ -4236,6 +4236,7 @@ mldsa_sign(const void *test_data)
 
 	xform.mldsa.type = vector->type;
 	xform.mldsa.sign_deterministic = vector->sign_deterministic;
+	xform.mldsa.sign_prehash = !!vector->hash;
 	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_ML_DSA;
 
 	rte_cryptodev_info_get(dev_id, &dev_info);
@@ -4310,6 +4311,7 @@ mldsa_sign(const void *test_data)
 	self->op->asym->mldsa.sigver.pubkey.length = vector->pubkey.length;
 	self->op->asym->mldsa.sigver.sign.data = sign;
 	self->op->asym->mldsa.sigver.sign.length = sign_len;
+	self->op->asym->mldsa.sigver.hash = vector->hash;
 
 	TEST_ASSERT_SUCCESS(send_one(),
 		"Failed to process crypto op (ML-DSA Verify)");
@@ -4332,6 +4334,7 @@ mldsa_sign(const void *test_data)
 	self->op->asym->mldsa.sigver.pubkey.length = vector->pubkey.length;
 	self->op->asym->mldsa.sigver.sign.data = sign;
 	self->op->asym->mldsa.sigver.sign.length = sign_len;
+	self->op->asym->mldsa.sigver.hash = vector->hash;
 
 	TEST_ASSERT_SUCCESS(send_one_no_status_check(),
 		"Failed to process crypto op (ML-DSA Verify)");
@@ -4352,12 +4355,26 @@ mldsa_verify(const void *test_data)
 	const struct crypto_testsuite_mldsa_params *vector = test_data;
 	const uint8_t dev_id = params->valid_devs[0];
 	struct rte_crypto_asym_xform xform = {0};
+	struct rte_cryptodev_info dev_info;
 	uint8_t sign[TEST_DATA_SIZE] = {0};
 	size_t sign_len;
 
 	xform.mldsa.type = vector->type;
 	xform.mldsa.sign_deterministic = vector->sign_deterministic;
+	xform.mldsa.sign_prehash = !!vector->hash;
 	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_ML_DSA;
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	/* Check if prehash is supported */
+	if (vector->hash) {
+		if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_MLDSA_SIGN_PREHASH)) {
+			RTE_LOG(DEBUG, USER1,
+				"Device doesn't support prehash in ML-DSA verify. Test skipped\n");
+			return TEST_SKIPPED;
+		}
+	}
+
 	if (rte_cryptodev_asym_session_create(dev_id, &xform,
 			params->session_mpool, &self->sess) < 0) {
 		RTE_LOG(ERR, USER1, "line %u FAILED: Session creation failed",
@@ -4379,6 +4396,7 @@ mldsa_verify(const void *test_data)
 	self->op->asym->mldsa.sigver.pubkey.length = vector->pubkey.length;
 	self->op->asym->mldsa.sigver.sign.data = vector->sign.data;
 	self->op->asym->mldsa.sigver.sign.length = vector->sign.length;
+	self->op->asym->mldsa.sigver.hash = vector->hash;
 
 	TEST_ASSERT_SUCCESS(send_one(),
 		"Failed to process crypto op (ML-DSA Verify)");
@@ -4403,6 +4421,7 @@ mldsa_verify(const void *test_data)
 	self->op->asym->mldsa.sigver.pubkey.length = vector->pubkey.length;
 	self->op->asym->mldsa.sigver.sign.data = sign;
 	self->op->asym->mldsa.sigver.sign.length = sign_len;
+	self->op->asym->mldsa.sigver.hash = vector->hash;
 
 	TEST_ASSERT_SUCCESS(send_one_no_status_check(),
 		"Failed to process crypto op (ML-DSA Verify)");
