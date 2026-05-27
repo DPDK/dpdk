@@ -388,10 +388,9 @@ static const char * const mpc_error_str[] = {
 static int32_t
 ulp_mapper_blob_block_swap(struct ulp_blob *blob, uint32_t block_sz)
 {
-	uint8_t data[block_sz]; /* size of a block for temp storage */
 	uint16_t num_words, data_sz;
-	uint8_t *pdata;
-	int i;
+	uint8_t *pdata, *lo, *hi, tmp;
+	uint32_t i, j;
 
 	/* Shouldn't happen since it is internal function, but check anyway */
 	if (unlikely(blob == NULL || !block_sz)) {
@@ -407,13 +406,16 @@ ulp_mapper_blob_block_swap(struct ulp_blob *blob, uint32_t block_sz)
 		return -EINVAL;
 	}
 
+	/* Swap the blocks in place, one byte at a time, no temp buffer */
 	num_words = data_sz / block_sz;
 	for (i = 0; i < num_words / 2; i++) {
-		memcpy(data, &pdata[i * block_sz], block_sz);
-		memcpy(&pdata[i * block_sz],
-		       &pdata[(num_words - 1 - i) * block_sz], block_sz);
-		memcpy(&pdata[(num_words - 1 - i) * block_sz],
-		       data, block_sz);
+		lo = &pdata[i * block_sz];
+		hi = &pdata[(num_words - 1 - i) * block_sz];
+		for (j = 0; j < block_sz; j++) {
+			tmp = lo[j];
+			lo[j] = hi[j];
+			hi[j] = tmp;
+		}
 	}
 	return 0;
 }
