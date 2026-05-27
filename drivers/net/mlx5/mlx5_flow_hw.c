@@ -8432,6 +8432,34 @@ flow_hw_actions_template_destroy(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/*
+ * Build a new item array prefixed with @p new_item.
+ *
+ * Callers typically build @p new_item on their stack with .spec / .mask
+ * pointing at other stack locals, so a shallow copy of @p new_item would
+ * leave dangling pointers as soon as the caller's frame goes away.
+ *
+ * To make the returned array self-contained, deep-copy @p new_item (item
+ * header + spec/mask/last payloads) into the tail of the same allocation
+ * via rte_flow_conv(RTE_FLOW_CONV_OP_ITEM, ...). The remaining items[]
+ * are still shallow-copied: they reference the application-owned spec/
+ * mask blobs handed to rte_flow_create() / rte_flow_pattern_template_
+ * create(), whose lifetime already covers the returned array's use.
+ *
+ * Layout of the single mlx5_malloc() block:
+ *
+ *   +--------------------------------------+ <- returned pointer
+ *   |  rte_flow_item[nb_items + 1]         |   slot 0: copy of the deep-
+ *   |                                      |             copied header below
+ *   |                                      |   slots 1..nb_items: shallow
+ *   |                                      |             copies of items[]
+ *   +--------------------------------------+ <- new_item_buf
+ *   |  rte_flow_item header (deep copy)    |   written by rte_flow_conv;
+ *   |  + spec / mask / last payloads,      |   header.spec/.mask/.last point
+ *   |  contiguous, self-referential        |   into the payloads right below
+ *   +--------------------------------------+
+ *
+ */
 static struct rte_flow_item *
 flow_hw_prepend_item(const struct rte_flow_item *items,
 		     const uint32_t nb_items,
@@ -8439,11 +8467,24 @@ flow_hw_prepend_item(const struct rte_flow_item *items,
 		     struct rte_flow_error *error)
 {
 	struct rte_flow_item *copied_items;
-	size_t size;
+	size_t header_size;
+	size_t total_size;
+	void *new_item_buf;
+	int new_item_size;
+	int rc;
 
-	/* Allocate new array of items. */
-	size = sizeof(*copied_items) * (nb_items + 1);
-	copied_items = mlx5_malloc(MLX5_MEM_ZERO, size, 0, SOCKET_ID_ANY);
+	/*
+	 * Size the deep copy of the prepended item (header + payloads).
+	 * On error, rte_flow_conv() already populates @p error.
+	 */
+	new_item_size = rte_flow_conv(RTE_FLOW_CONV_OP_ITEM, NULL, 0, new_item, error);
+	if (new_item_size < 0)
+		return NULL;
+
+	header_size = sizeof(*copied_items) * (nb_items + 1);
+	total_size = header_size + (size_t)new_item_size;
+
+	copied_items = mlx5_malloc(MLX5_MEM_ZERO, total_size, 0, SOCKET_ID_ANY);
 	if (!copied_items) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -8451,8 +8492,23 @@ flow_hw_prepend_item(const struct rte_flow_item *items,
 				   "cannot allocate item template");
 		return NULL;
 	}
-	/* Put new item at the beginning and copy the rest. */
-	copied_items[0] = *new_item;
+
+	/* Deep-copy the prepended item into the tail region. */
+	new_item_buf = (char *)copied_items + header_size;
+	rc = rte_flow_conv(RTE_FLOW_CONV_OP_ITEM, new_item_buf, (size_t)new_item_size, new_item,
+			   error);
+	if (rc < 0) {
+		mlx5_free(copied_items);
+		return NULL;
+	}
+
+	/*
+	 * Slot 0 is the prepended item header just written by rte_flow_conv,
+	 * with .spec/.mask/.last already pointing inside the same buffer.
+	 * The remaining items[] retain their (caller-owned, longer-lived)
+	 * spec/mask pointers via shallow copy.
+	 */
+	copied_items[0] = *(const struct rte_flow_item *)new_item_buf;
 	rte_memcpy(&copied_items[1], items, sizeof(*items) * nb_items);
 	return copied_items;
 }
@@ -9301,6 +9357,103 @@ end:
 	return -ret;
 }
 
+/*
+ * Validate the user-supplied items and, in eSwitch mode, prepend the implicit
+ * scoping item so the rule/template is bound to the current representor port:
+ *   - ingress -> RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT (dev->data->port_id)
+ *   - egress  -> MLX5_RTE_FLOW_ITEM_TYPE_TAG on REG_C_0 (tx vport tag),
+ *                skipped when the user already supplied an SQ item.
+ *
+ * @param nt_flow
+ *   Selects between the two call paths that share this helper:
+ *     false -> pattern template creation (async API). The prepended item's
+ *              spec is left zeroed so mlx5dr matches any value; the live
+ *              port_id / tx-tag value is substituted later by
+ *              flow_hw_get_rule_items() at rule-create time.
+ *     true  -> sync (non-template) flow creation. The prepended item's spec
+ *              is filled immediately with the live values, and the flag is
+ *              forwarded to __flow_hw_pattern_validate() so that validation
+ *              paths gated on nt_flow (e.g. GENEVE_OPT TLV parser creation)
+ *              take the non-template branch.
+ *
+ * Return / ownership:
+ *   - NULL on validation or allocation failure (error populated).
+ *   - `items` unchanged when no prepending is required; *copied_items == NULL.
+ *   - A newly-allocated array otherwise; also stored in *copied_items. The
+ *     caller must mlx5_free(*copied_items) on every path (it is safe to call
+ *     with NULL). Do not free the returned pointer directly.
+ */
+static const struct rte_flow_item *
+flow_hw_adjust_pattern(struct rte_eth_dev *dev, const struct rte_flow_pattern_template_attr *attr,
+		       bool nt_flow, const struct rte_flow_item *items, uint64_t *item_flags,
+		       uint64_t *nb_items, struct rte_flow_item **copied_items,
+		       struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct rte_flow_item_ethdev port_spec = {.port_id = dev->data->port_id};
+	struct rte_flow_item port = {
+		.type = RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT,
+		.mask = &rte_flow_item_ethdev_mask,
+	};
+	struct rte_flow_item_tag tag_v = {
+		.data = 0,
+		.index = REG_C_0,
+	};
+	struct rte_flow_item_tag tag_m = {
+		.data = flow_hw_tx_tag_regc_mask(dev),
+		.index = 0xff,
+	};
+	struct rte_flow_item tag = {
+		.type = (enum rte_flow_item_type)MLX5_RTE_FLOW_ITEM_TYPE_TAG,
+		.spec = &tag_v,
+		.mask = &tag_m,
+		.last = NULL,
+	};
+	int rc;
+
+	if (!copied_items || !item_flags || !nb_items)
+		return NULL;
+
+	if (nt_flow) {
+		port.spec = &port_spec;
+		tag_v.data = flow_hw_tx_tag_regc_value(dev);
+	}
+
+	/*
+	 * item_flags must be zero-initialized: __flow_hw_pattern_validate()
+	 * OR-accumulates bits into it and reads it (MLX5_FLOW_LAYER_TUNNEL)
+	 * on the first iteration.
+	 */
+	*item_flags = 0;
+
+	/* Validate application items only */
+	rc = __flow_hw_pattern_validate(dev, attr, items, item_flags, nt_flow, error);
+	if (rc < 0)
+		return NULL;
+	*nb_items = rc;
+
+	if (priv->sh->config.dv_esw_en && attr->ingress && !attr->egress && !attr->transfer) {
+		*copied_items = flow_hw_prepend_item(items, *nb_items, &port, error);
+		if (!*copied_items)
+			return NULL;
+		return *copied_items;
+	} else if (priv->sh->config.dv_esw_en && !attr->ingress && attr->egress &&
+		   !attr->transfer) {
+		if (*item_flags & MLX5_FLOW_ITEM_SQ) {
+			DRV_LOG(DEBUG,
+				"Port %u: explicit SQ item present, omitting implicit "
+				"REG_C_0 match for egress pattern",
+				dev->data->port_id);
+			return items;
+		}
+		*copied_items = flow_hw_prepend_item(items, *nb_items, &tag, error);
+		if (!*copied_items)
+			return NULL;
+		return *copied_items;
+	}
+	return items;
+}
+
 /**
  * Create flow item template.
  *
@@ -9327,56 +9480,16 @@ flow_hw_pattern_template_create(struct rte_eth_dev *dev,
 	struct rte_flow_pattern_template *it;
 	struct rte_flow_item *copied_items = NULL;
 	const struct rte_flow_item *tmpl_items;
-	uint64_t orig_item_nb, item_flags = 0;
-	struct rte_flow_item port = {
-		.type = RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT,
-		.mask = &rte_flow_item_ethdev_mask,
-	};
-	struct rte_flow_item_tag tag_v = {
-		.data = 0,
-		.index = REG_C_0,
-	};
-	struct rte_flow_item_tag tag_m = {
-		.data = flow_hw_tx_tag_regc_mask(dev),
-		.index = 0xff,
-	};
-	struct rte_flow_item tag = {
-		.type = (enum rte_flow_item_type)MLX5_RTE_FLOW_ITEM_TYPE_TAG,
-		.spec = &tag_v,
-		.mask = &tag_m,
-		.last = NULL
-	};
 	int it_items_size;
+	uint64_t orig_item_nb, item_flags;
 	unsigned int i = 0;
 	int rc;
 
-	/* Validate application items only */
-	rc = flow_hw_pattern_validate(dev, attr, items, &item_flags, error);
-	if (rc < 0)
+	tmpl_items = flow_hw_adjust_pattern(dev, attr, false, items, &item_flags, &orig_item_nb,
+					    &copied_items, error);
+	if (!tmpl_items)
 		return NULL;
-	orig_item_nb = rc;
-	if (priv->sh->config.dv_esw_en &&
-	    attr->ingress && !attr->egress && !attr->transfer) {
-		copied_items = flow_hw_prepend_item(items, orig_item_nb, &port, error);
-		if (!copied_items)
-			return NULL;
-		tmpl_items = copied_items;
-	} else if (priv->sh->config.dv_esw_en &&
-		   !attr->ingress && attr->egress && !attr->transfer) {
-		if (item_flags & MLX5_FLOW_ITEM_SQ) {
-			DRV_LOG(DEBUG, "Port %u omitting implicit REG_C_0 match for egress "
-				       "pattern template", dev->data->port_id);
-			tmpl_items = items;
-			goto setup_pattern_template;
-		}
-		copied_items = flow_hw_prepend_item(items, orig_item_nb, &tag, error);
-		if (!copied_items)
-			return NULL;
-		tmpl_items = copied_items;
-	} else {
-		tmpl_items = items;
-	}
-setup_pattern_template:
+
 	it = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*it), 0, SOCKET_ID_ANY);
 	if (!it) {
 		rte_flow_error_set(error, ENOMEM,
@@ -14373,7 +14486,6 @@ static uintptr_t flow_hw_list_create(struct rte_eth_dev *dev,
 	struct rte_flow_hw *prfx_flow = NULL;
 	const struct rte_flow_action *qrss = NULL;
 	const struct rte_flow_action *mark = NULL;
-	uint64_t item_flags = 0;
 	uint64_t action_flags = mlx5_flow_hw_action_flags_get(actions, &qrss, &mark,
 							 &encap_idx, &actions_n, error);
 	struct mlx5_flow_hw_split_resource resource = {
@@ -14390,20 +14502,27 @@ static uintptr_t flow_hw_list_create(struct rte_eth_dev *dev,
 		.egress = attr->egress,
 		.transfer = attr->transfer,
 	};
-
-	/* Validate application items only */
-	ret = __flow_hw_pattern_validate(dev, &pattern_template_attr, items,
-						&item_flags, true, error);
-	if (ret < 0)
-		return 0;
+	struct rte_flow_item *copied_items = NULL;
+	const struct rte_flow_item *prepend_items;
+	uint64_t orig_item_nb, item_flags;
 
 	RTE_SET_USED(encap_idx);
 	if (!error)
 		error = &shadow_error;
+
+	prepend_items = flow_hw_adjust_pattern(dev, &pattern_template_attr, true, items,
+					       &item_flags, &orig_item_nb, &copied_items, error);
+	if (!prepend_items)
+		return 0;
+
 	split = mlx5_flow_nta_split_metadata(dev, attr, actions, qrss, action_flags,
 					     actions_n, external, &resource, error);
-	if (split < 0)
-		return split;
+	if (split < 0) {
+		mlx5_free(copied_items);
+		return 0;
+	} else if (!split) {
+		resource.suffix.items = prepend_items;
+	}
 
 	/* Update the metadata copy table - MLX5_FLOW_MREG_CP_TABLE_GROUP */
 	if (((attr->ingress && attr->group != MLX5_FLOW_MREG_CP_TABLE_GROUP) ||
@@ -14414,23 +14533,26 @@ static uintptr_t flow_hw_list_create(struct rte_eth_dev *dev,
 			goto free;
 	}
 	if (action_flags & MLX5_FLOW_ACTION_SAMPLE) {
-		flow = mlx5_nta_sample_flow_list_create(dev, type, attr, items, actions,
+		flow = mlx5_nta_sample_flow_list_create(dev, type, attr, prepend_items, actions,
 							item_flags, action_flags, error);
-		if (flow != NULL)
+		if (flow != NULL) {
+			mlx5_free(copied_items);
 			return (uintptr_t)flow;
+		}
 		goto free;
 	}
 	if (action_flags & MLX5_FLOW_ACTION_RSS) {
 		const struct rte_flow_action_rss
 			*rss_conf = mlx5_flow_nta_locate_rss(dev, actions, error);
-		flow = mlx5_flow_nta_handle_rss(dev, attr, items, actions, rss_conf,
-						item_flags, action_flags, external,
-						type, error);
+		flow = mlx5_flow_nta_handle_rss(dev, attr, prepend_items, actions, rss_conf,
+						item_flags, action_flags, external, type, error);
 		if (flow) {
 			flow->nt2hws->rix_mreg_copy = cpy_idx;
 			cpy_idx = 0;
-			if (!split)
+			if (!split) {
+				mlx5_free(copied_items);
 				return (uintptr_t)flow;
+			}
 			goto prefix_flow;
 		}
 		goto free;
@@ -14444,12 +14566,14 @@ static uintptr_t flow_hw_list_create(struct rte_eth_dev *dev,
 	if (flow) {
 		flow->nt2hws->rix_mreg_copy = cpy_idx;
 		cpy_idx = 0;
-		if (!split)
+		if (!split) {
+			mlx5_free(copied_items);
 			return (uintptr_t)flow;
+		}
 		/* Fall Through to prefix flow creation. */
 	}
 prefix_flow:
-	ret = mlx5_flow_hw_create_flow(dev, type, attr, items, resource.prefix.actions,
+	ret = mlx5_flow_hw_create_flow(dev, type, attr, prepend_items, resource.prefix.actions,
 				       item_flags, action_flags, external, &prfx_flow, error);
 	if (ret)
 		goto free;
@@ -14458,6 +14582,7 @@ prefix_flow:
 		flow->nt2hws->chaned_flow = 1;
 		SLIST_INSERT_AFTER(prfx_flow, flow, nt2hws->next);
 		mlx5_flow_nta_split_resource_free(dev, &resource);
+		mlx5_free(copied_items);
 		return (uintptr_t)prfx_flow;
 	}
 free:
@@ -14469,6 +14594,7 @@ free:
 		mlx5_flow_nta_del_copy_action(dev, cpy_idx);
 	if (split > 0)
 		mlx5_flow_nta_split_resource_free(dev, &resource);
+	mlx5_free(copied_items);
 	return 0;
 }
 
