@@ -230,7 +230,8 @@ sxe2_rx_pkts_refactor(struct sxe2_rx_queue *rxq,
 	}
 	rxq->pkt_first_seg = first_seg;
 	rxq->pkt_last_seg  = last_seg;
-	rte_memcpy(mbuf_bufs, done_pkts, done_num * (sizeof(struct rte_mbuf *)));
+	memcpy(mbuf_bufs, done_pkts, done_num * sizeof(*done_pkts));
 	return done_num;
 }
+
 #endif /* SXE2_TXRX_VEC_COMMON_H */
