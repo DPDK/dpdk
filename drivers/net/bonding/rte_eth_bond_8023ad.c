@@ -1715,7 +1715,6 @@ bond_mode_8023ad_ext_periodic_cb(void *arg)
 int
 rte_eth_bond_8023ad_dedicated_queues_enable(uint16_t port)
 {
-	int retval = 0;
 	struct rte_eth_dev *dev;
 	struct bond_dev_private *internals;
 
@@ -1732,16 +1731,18 @@ rte_eth_bond_8023ad_dedicated_queues_enable(uint16_t port)
 	if (dev->data->dev_started)
 		return -1;
 
+	if (internals->mode != BONDING_MODE_8023AD)
+		return -1;
+
 	internals->mode4.dedicated_queues.enabled = 1;
 
 	bond_ethdev_mode_set(dev, internals->mode);
-	return retval;
+	return 0;
 }
 
 int
 rte_eth_bond_8023ad_dedicated_queues_disable(uint16_t port)
 {
-	int retval = 0;
 	struct rte_eth_dev *dev;
 	struct bond_dev_private *internals;
 
@@ -1755,9 +1756,12 @@ rte_eth_bond_8023ad_dedicated_queues_disable(uint16_t port)
 	if (dev->data->dev_started)
 		return -1;
 
+	if (internals->mode != BONDING_MODE_8023AD)
+		return -1;
+
 	internals->mode4.dedicated_queues.enabled = 0;
 
 	bond_ethdev_mode_set(dev, internals->mode);
 
-	return retval;
+	return 0;
 }
