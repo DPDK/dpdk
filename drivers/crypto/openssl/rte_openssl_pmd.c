@@ -19,34 +19,13 @@
 #include "openssl_pmd_private.h"
 #include "compat.h"
 
-#define DES_BLOCK_SIZE 8
-
-static uint8_t cryptodev_driver_id;
-
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
-static HMAC_CTX *HMAC_CTX_new(void)
-{
-	HMAC_CTX *ctx = OPENSSL_malloc(sizeof(*ctx));
-
-	if (ctx != NULL)
-		HMAC_CTX_init(ctx);
-	return ctx;
-}
-
-static void HMAC_CTX_free(HMAC_CTX *ctx)
-{
-	if (ctx != NULL) {
-		HMAC_CTX_cleanup(ctx);
-		OPENSSL_free(ctx);
-	}
-}
-#endif
-
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-
 #include <openssl/provider.h>
 #include <openssl/core_names.h>
 #include <openssl/param_build.h>
+
+#define DES_BLOCK_SIZE 8
+
+static uint8_t cryptodev_driver_id;
 
 #define MAX_OSSL_ALGO_NAME_SIZE		16
 
@@ -104,7 +83,6 @@ digest_name_get(enum rte_crypto_auth_algorithm algo)
 		return NULL;
 	}
 }
-#endif
 
 static int cryptodev_openssl_remove(struct rte_vdev_device *vdev);
 
@@ -306,14 +284,12 @@ get_auth_algo(enum rte_crypto_auth_algorithm sessalgo,
 		case RTE_CRYPTO_AUTH_SHA3_512_HMAC:
 			*algo = EVP_sha3_512();
 			break;
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		case RTE_CRYPTO_AUTH_SHAKE_128:
 			*algo = EVP_shake128();
 			break;
 		case RTE_CRYPTO_AUTH_SHAKE_256:
 			*algo = EVP_shake256();
 			break;
-#endif
 		default:
 			res = -EINVAL;
 			break;
@@ -659,12 +635,10 @@ static int
 openssl_set_session_auth_parameters(struct openssl_session *sess,
 		const struct rte_crypto_sym_xform *xform)
 {
-# if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 	char algo_name[MAX_OSSL_ALGO_NAME_SIZE];
 	OSSL_PARAM params[2];
 	const char *algo;
 	EVP_MAC *mac;
-# endif
 	/* Select auth generate/verify */
 	sess->auth.operation = xform->auth.op;
 	sess->auth.algo = xform->auth.algo;
@@ -708,10 +682,8 @@ openssl_set_session_auth_parameters(struct openssl_session *sess,
 	case RTE_CRYPTO_AUTH_SHA3_256:
 	case RTE_CRYPTO_AUTH_SHA3_384:
 	case RTE_CRYPTO_AUTH_SHA3_512:
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 	case RTE_CRYPTO_AUTH_SHAKE_128:
 	case RTE_CRYPTO_AUTH_SHAKE_256:
-#endif
 		sess->auth.mode = OPENSSL_AUTH_AS_AUTH;
 		if (get_auth_algo(xform->auth.algo,
 				&sess->auth.auth.evp_algo) != 0)
@@ -720,7 +692,6 @@ openssl_set_session_auth_parameters(struct openssl_session *sess,
 		break;
 
 	case RTE_CRYPTO_AUTH_AES_CMAC:
-# if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		if (xform->auth.key.length == 16)
 			algo = SN_aes_128_cbc;
 		else if (xform->auth.key.length == 24)
@@ -745,22 +716,8 @@ openssl_set_session_auth_parameters(struct openssl_session *sess,
 				xform->auth.key.length,
 				params) != 1)
 			return -EINVAL;
-# else
-		sess->auth.mode = OPENSSL_AUTH_AS_CMAC;
-		sess->auth.cmac.ctx = CMAC_CTX_new();
-		if (get_cipher_algo(RTE_CRYPTO_CIPHER_AES_CBC,
-				    xform->auth.key.length,
-				    &sess->auth.cmac.evp_algo) != 0)
-			return -EINVAL;
-		if (CMAC_Init(sess->auth.cmac.ctx,
-			      xform->auth.key.data,
-			      xform->auth.key.length,
-			      sess->auth.cmac.evp_algo, NULL) != 1)
-			return -EINVAL;
-# endif
 		break;
 
-# if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 	case RTE_CRYPTO_AUTH_MD5_HMAC:
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
 	case RTE_CRYPTO_AUTH_SHA224_HMAC:
@@ -794,30 +751,6 @@ openssl_set_session_auth_parameters(struct openssl_session *sess,
 				params) != 1)
 			return -EINVAL;
 		break;
-# else
-	case RTE_CRYPTO_AUTH_MD5_HMAC:
-	case RTE_CRYPTO_AUTH_SHA1_HMAC:
-	case RTE_CRYPTO_AUTH_SHA224_HMAC:
-	case RTE_CRYPTO_AUTH_SHA256_HMAC:
-	case RTE_CRYPTO_AUTH_SHA384_HMAC:
-	case RTE_CRYPTO_AUTH_SHA512_HMAC:
-	case RTE_CRYPTO_AUTH_SHA3_224_HMAC:
-	case RTE_CRYPTO_AUTH_SHA3_256_HMAC:
-	case RTE_CRYPTO_AUTH_SHA3_384_HMAC:
-	case RTE_CRYPTO_AUTH_SHA3_512_HMAC:
-		sess->auth.mode = OPENSSL_AUTH_AS_HMAC;
-		sess->auth.hmac.ctx = HMAC_CTX_new();
-		if (get_auth_algo(xform->auth.algo,
-				&sess->auth.hmac.evp_algo) != 0)
-			return -EINVAL;
-
-		if (HMAC_Init_ex(sess->auth.hmac.ctx,
-				xform->auth.key.data,
-				xform->auth.key.length,
-				sess->auth.hmac.evp_algo, NULL) != 1)
-			return -EINVAL;
-		break;
-# endif
 	default:
 		return -ENOTSUP;
 	}
@@ -1295,10 +1228,6 @@ process_openssl_auth_encryption_gcm(struct rte_mbuf *mbuf_src, int offset,
 		uint8_t *dst, uint8_t *tag, EVP_CIPHER_CTX *ctx)
 {
 	int len = 0;
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	int unused = 0;
-	uint8_t empty[] = {};
-#endif
 
 	if (EVP_EncryptInit_ex(ctx, NULL, NULL, NULL, iv) <= 0)
 		goto process_auth_encryption_gcm_err;
@@ -1311,12 +1240,6 @@ process_openssl_auth_encryption_gcm(struct rte_mbuf *mbuf_src, int offset,
 		if (process_openssl_encryption_update(mbuf_src, offset, &dst,
 				srclen, ctx, 0))
 			goto process_auth_encryption_gcm_err;
-
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	/* Workaround open ssl bug in version less then 1.0.1f */
-	if (EVP_EncryptUpdate(ctx, empty, &unused, empty, 0) <= 0)
-		goto process_auth_encryption_gcm_err;
-#endif
 
 	if (EVP_EncryptFinal_ex(ctx, dst, &len) <= 0)
 		goto process_auth_encryption_gcm_err;
@@ -1379,10 +1302,6 @@ process_openssl_auth_decryption_gcm(struct rte_mbuf *mbuf_src, int offset,
 		uint8_t *dst, uint8_t *tag, EVP_CIPHER_CTX *ctx)
 {
 	int len = 0;
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	int unused = 0;
-	uint8_t empty[] = {};
-#endif
 
 	if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, 16, tag) <= 0)
 		goto process_auth_decryption_gcm_err;
@@ -1398,12 +1317,6 @@ process_openssl_auth_decryption_gcm(struct rte_mbuf *mbuf_src, int offset,
 		if (process_openssl_decryption_update(mbuf_src, offset, &dst,
 				srclen, ctx, 0))
 			goto process_auth_decryption_gcm_err;
-
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	/* Workaround open ssl bug in version less then 1.0.1f */
-	if (EVP_DecryptUpdate(ctx, empty, &unused, empty, 0) <= 0)
-		goto process_auth_decryption_gcm_err;
-#endif
 
 	if (EVP_DecryptFinal_ex(ctx, dst, &len) <= 0)
 		return -EFAULT;
@@ -1500,17 +1413,11 @@ process_openssl_auth(struct rte_mbuf *mbuf_src, uint8_t *dst, int offset,
 process_auth_final:
 	/* SHAKE algorithms are XOFs and require EVP_DigestFinalXOF */
 	if (algo == EVP_shake128() || algo == EVP_shake256()) {
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		/* Set XOF output length before calling EVP_DigestFinalXOF */
 		if (EVP_MD_CTX_ctrl(ctx, EVP_MD_CTRL_XOF_LEN, digest_length, NULL) <= 0)
 			goto process_auth_err;
 		if (EVP_DigestFinalXOF(ctx, dst, digest_length) <= 0)
 			goto process_auth_err;
-#else
-		RTE_SET_USED(digest_length);
-		OPENSSL_LOG(ERR, "SHAKE algorithms require OpenSSL 3.0+");
-		goto process_auth_err;
-#endif
 	} else {
 		if (EVP_DigestFinal_ex(ctx, dst, (unsigned int *)&dstlen) <= 0)
 			goto process_auth_err;
@@ -1523,7 +1430,6 @@ process_auth_err:
 	return -EINVAL;
 }
 
-# if OPENSSL_VERSION_NUMBER >= 0x30000000L
 /** Process standard openssl auth algorithms with hmac/cmac */
 static int
 process_openssl_auth_mac(struct rte_mbuf *mbuf_src, uint8_t *dst, int offset,
@@ -1576,109 +1482,6 @@ process_auth_err:
 	OPENSSL_LOG(ERR, "Process openssl auth failed");
 	return -EINVAL;
 }
-# else
-/** Process standard openssl auth algorithms with hmac */
-static int
-process_openssl_auth_hmac(struct rte_mbuf *mbuf_src, uint8_t *dst, int offset,
-		int srclen, HMAC_CTX *ctx)
-{
-	unsigned int dstlen;
-	struct rte_mbuf *m;
-	int l, n = srclen;
-	uint8_t *src;
-
-	for (m = mbuf_src; m != NULL && offset > rte_pktmbuf_data_len(m);
-			m = m->next)
-		offset -= rte_pktmbuf_data_len(m);
-
-	if (m == 0)
-		goto process_auth_err;
-
-	src = rte_pktmbuf_mtod_offset(m, uint8_t *, offset);
-
-	l = rte_pktmbuf_data_len(m) - offset;
-	if (srclen <= l) {
-		if (HMAC_Update(ctx, (unsigned char *)src, srclen) != 1)
-			goto process_auth_err;
-		goto process_auth_final;
-	}
-
-	if (HMAC_Update(ctx, (unsigned char *)src, l) != 1)
-		goto process_auth_err;
-
-	n -= l;
-
-	for (m = m->next; (m != NULL) && (n > 0); m = m->next) {
-		src = rte_pktmbuf_mtod(m, uint8_t *);
-		l = rte_pktmbuf_data_len(m) < n ? rte_pktmbuf_data_len(m) : n;
-		if (HMAC_Update(ctx, (unsigned char *)src, l) != 1)
-			goto process_auth_err;
-		n -= l;
-	}
-
-process_auth_final:
-	if (HMAC_Final(ctx, dst, &dstlen) != 1)
-		goto process_auth_err;
-
-	if (unlikely(HMAC_Init_ex(ctx, NULL, 0, NULL, NULL) != 1))
-		goto process_auth_err;
-
-	return 0;
-
-process_auth_err:
-	OPENSSL_LOG(ERR, "Process openssl auth failed");
-	return -EINVAL;
-}
-
-/** Process standard openssl auth algorithms with cmac */
-static int
-process_openssl_auth_cmac(struct rte_mbuf *mbuf_src, uint8_t *dst, int offset,
-		int srclen, CMAC_CTX *ctx)
-{
-	unsigned int dstlen;
-	struct rte_mbuf *m;
-	int l, n = srclen;
-	uint8_t *src;
-
-	for (m = mbuf_src; m != NULL && offset > rte_pktmbuf_data_len(m);
-			m = m->next)
-		offset -= rte_pktmbuf_data_len(m);
-
-	if (m == 0)
-		goto process_auth_err;
-
-	src = rte_pktmbuf_mtod_offset(m, uint8_t *, offset);
-
-	l = rte_pktmbuf_data_len(m) - offset;
-	if (srclen <= l) {
-		if (CMAC_Update(ctx, (unsigned char *)src, srclen) != 1)
-			goto process_auth_err;
-		goto process_auth_final;
-	}
-
-	if (CMAC_Update(ctx, (unsigned char *)src, l) != 1)
-		goto process_auth_err;
-
-	n -= l;
-
-	for (m = m->next; (m != NULL) && (n > 0); m = m->next) {
-		src = rte_pktmbuf_mtod(m, uint8_t *);
-		l = rte_pktmbuf_data_len(m) < n ? rte_pktmbuf_data_len(m) : n;
-		if (CMAC_Update(ctx, (unsigned char *)src, l) != 1)
-			goto process_auth_err;
-		n -= l;
-	}
-
-process_auth_final:
-	if (CMAC_Final(ctx, dst, (size_t *)&dstlen) != 1)
-		goto process_auth_err;
-	return 0;
-
-process_auth_err:
-	OPENSSL_LOG(ERR, "Process openssl cmac auth failed");
-	return -EINVAL;
-}
-# endif
 /*----------------------------------------------------------------------------*/
 
 static inline EVP_CIPHER_CTX *
@@ -1695,7 +1498,7 @@ get_local_cipher_ctx(struct openssl_session *sess, struct openssl_qp *qp)
 		/* EVP_CIPHER_CTX_dup() added in OSSL 3.2 */
 		*lctx = EVP_CIPHER_CTX_dup(sess->cipher.ctx);
 		return *lctx;
-#elif OPENSSL_VERSION_NUMBER >= 0x30000000L
+#else
 		if (sess->chain_order == OPENSSL_CHAIN_COMBINED) {
 			/* AESNI special-cased to use openssl_aesni_ctx_clone()
 			 * to allow for working around lack of
@@ -1706,10 +1509,10 @@ get_local_cipher_ctx(struct openssl_session *sess, struct openssl_qp *qp)
 				*lctx = NULL;
 			return *lctx;
 		}
-#endif
 
 		*lctx = EVP_CIPHER_CTX_new();
 		EVP_CIPHER_CTX_copy(*lctx, sess->cipher.ctx);
+#endif
 	}
 
 	return *lctx;
@@ -1737,11 +1540,7 @@ get_local_auth_ctx(struct openssl_session *sess, struct openssl_qp *qp)
 	return *lctx;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 static inline EVP_MAC_CTX *
-#else
-static inline HMAC_CTX *
-#endif
 get_local_hmac_ctx(struct openssl_session *sess, struct openssl_qp *qp)
 {
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L && OPENSSL_VERSION_NUMBER < 0x30003000L)
@@ -1759,31 +1558,16 @@ get_local_hmac_ctx(struct openssl_session *sess, struct openssl_qp *qp)
 	if (sess->ctx_copies_len == 0)
 		return sess->auth.hmac.ctx;
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	EVP_MAC_CTX **lctx =
-#else
-	HMAC_CTX **lctx =
-#endif
-		&sess->qp_ctx[qp->id].hmac;
+	EVP_MAC_CTX **lctx = &sess->qp_ctx[qp->id].hmac;
 
-	if (unlikely(*lctx == NULL)) {
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (unlikely(*lctx == NULL))
 		*lctx = EVP_MAC_CTX_dup(sess->auth.hmac.ctx);
-#else
-		*lctx = HMAC_CTX_new();
-		HMAC_CTX_copy(*lctx, sess->auth.hmac.ctx);
-#endif
-	}
 
 	return *lctx;
 #endif
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 static inline EVP_MAC_CTX *
-#else
-static inline CMAC_CTX *
-#endif
 get_local_cmac_ctx(struct openssl_session *sess, struct openssl_qp *qp)
 {
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L && OPENSSL_VERSION_NUMBER < 0x30003000L)
@@ -1801,21 +1585,10 @@ get_local_cmac_ctx(struct openssl_session *sess, struct openssl_qp *qp)
 	if (sess->ctx_copies_len == 0)
 		return sess->auth.cmac.ctx;
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	EVP_MAC_CTX **lctx =
-#else
-	CMAC_CTX **lctx =
-#endif
-		&sess->qp_ctx[qp->id].cmac;
+	EVP_MAC_CTX **lctx = &sess->qp_ctx[qp->id].cmac;
 
-	if (unlikely(*lctx == NULL)) {
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (unlikely(*lctx == NULL))
 		*lctx = EVP_MAC_CTX_dup(sess->auth.cmac.ctx);
-#else
-		*lctx = CMAC_CTX_new();
-		CMAC_CTX_copy(*lctx, sess->auth.cmac.ctx);
-#endif
-	}
 
 	return *lctx;
 #endif
@@ -2055,13 +1828,8 @@ process_openssl_auth_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 	uint8_t *dst;
 	int srclen, status;
 	EVP_MD_CTX *ctx_a;
-# if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	EVP_MAC_CTX *ctx_h;
 	EVP_MAC_CTX *ctx_c;
-# else
-	HMAC_CTX *ctx_h;
-	CMAC_CTX *ctx_c;
-# endif
 
 	srclen = op->sym->auth.data.length;
 
@@ -2076,30 +1844,18 @@ process_openssl_auth_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 		break;
 	case OPENSSL_AUTH_AS_HMAC:
 		ctx_h = get_local_hmac_ctx(sess, qp);
-# if OPENSSL_VERSION_NUMBER >= 0x30000000L
 		status = process_openssl_auth_mac(mbuf_src, dst,
 				op->sym->auth.data.offset, srclen,
 				ctx_h);
-# else
-		status = process_openssl_auth_hmac(mbuf_src, dst,
-				op->sym->auth.data.offset, srclen,
-				ctx_h);
-# endif
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L && OPENSSL_VERSION_NUMBER < 0x30003000L)
 		EVP_MAC_CTX_free(ctx_h);
 #endif
 		break;
 	case OPENSSL_AUTH_AS_CMAC:
 		ctx_c = get_local_cmac_ctx(sess, qp);
-# if OPENSSL_VERSION_NUMBER >= 0x30000000L
 		status = process_openssl_auth_mac(mbuf_src, dst,
 				op->sym->auth.data.offset, srclen,
 				ctx_c);
-# else
-		status = process_openssl_auth_cmac(mbuf_src, dst,
-				op->sym->auth.data.offset, srclen,
-				ctx_c);
-# endif
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L && OPENSSL_VERSION_NUMBER < 0x30003000L)
 		EVP_MAC_CTX_free(ctx_c);
 #endif
@@ -2130,7 +1886,6 @@ process_openssl_auth_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 }
 
 /* process dsa sign operation */
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 static int
 process_openssl_dsa_sign_op_evp(struct rte_crypto_op *cop,
 		struct openssl_asym_session *sess)
@@ -2296,92 +2051,8 @@ err_dsa_verify:
 
 	return ret;
 }
-#else
-static int
-process_openssl_dsa_sign_op(struct rte_crypto_op *cop,
-		struct openssl_asym_session *sess)
-{
-	struct rte_crypto_dsa_op_param *op = &cop->asym->dsa;
-	DSA *dsa = sess->u.s.dsa;
-	DSA_SIG *sign = NULL;
-
-	sign = DSA_do_sign(op->message.data,
-			op->message.length,
-			dsa);
-
-	if (sign == NULL) {
-		OPENSSL_LOG(ERR, "%s:%d", __func__, __LINE__);
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-	} else {
-		const BIGNUM *r = NULL, *s = NULL;
-		get_dsa_sign(sign, &r, &s);
-
-		op->r.length = BN_bn2bin(r, op->r.data);
-		op->s.length = BN_bn2bin(s, op->s.data);
-		cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
-	}
-
-	DSA_SIG_free(sign);
-
-	return 0;
-}
-
-/* process dsa verify operation */
-static int
-process_openssl_dsa_verify_op(struct rte_crypto_op *cop,
-		struct openssl_asym_session *sess)
-{
-	struct rte_crypto_dsa_op_param *op = &cop->asym->dsa;
-	DSA *dsa = sess->u.s.dsa;
-	int ret;
-	DSA_SIG *sign = DSA_SIG_new();
-	BIGNUM *r = NULL, *s = NULL;
-	BIGNUM *pub_key = NULL;
-
-	if (sign == NULL) {
-		OPENSSL_LOG(ERR, " %s:%d", __func__, __LINE__);
-		cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-		return -1;
-	}
-
-	r = BN_bin2bn(op->r.data,
-			op->r.length,
-			r);
-	s = BN_bin2bn(op->s.data,
-			op->s.length,
-			s);
-	pub_key = BN_bin2bn(op->y.data,
-			op->y.length,
-			pub_key);
-	if (!r || !s || !pub_key) {
-		BN_free(r);
-		BN_free(s);
-		BN_free(pub_key);
-
-		cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-		return -1;
-	}
-	set_dsa_sign(sign, r, s);
-	set_dsa_pub_key(dsa, pub_key);
-
-	ret = DSA_do_verify(op->message.data,
-			op->message.length,
-			sign,
-			dsa);
-
-	if (ret != 1)
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-	else
-		cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
-
-	DSA_SIG_free(sign);
-
-	return 0;
-}
-#endif
 
 /* process dh operation */
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 static int
 process_openssl_dh_op_evp(struct rte_crypto_op *cop,
 		struct openssl_asym_session *sess)
@@ -2555,141 +2226,6 @@ process_openssl_dh_op_evp(struct rte_crypto_op *cop,
 
 	return ret;
 }
-#else
-static int
-process_openssl_dh_op(struct rte_crypto_op *cop,
-		struct openssl_asym_session *sess)
-{
-	struct rte_crypto_dh_op_param *op = &cop->asym->dh;
-	struct rte_crypto_asym_op *asym_op = cop->asym;
-	DH *dh_key = sess->u.dh.dh_key;
-	BIGNUM *priv_key = NULL;
-	int ret = 0;
-
-	if (asym_op->dh.ke_type == RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE) {
-		/* compute shared secret using peer public key
-		 * and current private key
-		 * shared secret = peer_key ^ priv_key mod p
-		 */
-		BIGNUM *peer_key = NULL;
-
-		/* copy private key and peer key and compute shared secret */
-		peer_key = BN_bin2bn(op->pub_key.data,
-				op->pub_key.length,
-				peer_key);
-		if (peer_key == NULL) {
-			cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-			return -1;
-		}
-		priv_key = BN_bin2bn(op->priv_key.data,
-				op->priv_key.length,
-				priv_key);
-		if (priv_key == NULL) {
-			BN_free(peer_key);
-			cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-			return -1;
-		}
-		ret = set_dh_priv_key(dh_key, priv_key);
-		if (ret) {
-			OPENSSL_LOG(ERR, "Failed to set private key");
-			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-			BN_free(peer_key);
-			BN_free(priv_key);
-			return 0;
-		}
-
-		ret = DH_compute_key(
-				op->shared_secret.data,
-				peer_key, dh_key);
-		if (ret < 0) {
-			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-			BN_free(peer_key);
-			/* priv key is already loaded into dh,
-			 * let's not free that directly here.
-			 * DH_free() will auto free it later.
-			 */
-			return 0;
-		}
-		cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
-		op->shared_secret.length = ret;
-		BN_free(peer_key);
-		return 0;
-	}
-
-	/*
-	 * other options are public and private key generations.
-	 *
-	 * if user provides private key,
-	 * then first set DH with user provided private key
-	 */
-	if (asym_op->dh.ke_type == RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE &&
-			op->priv_key.length) {
-		/* generate public key using user-provided private key
-		 * pub_key = g ^ priv_key mod p
-		 */
-
-		/* load private key into DH */
-		priv_key = BN_bin2bn(op->priv_key.data,
-				op->priv_key.length,
-				priv_key);
-		if (priv_key == NULL) {
-			cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-			return -1;
-		}
-		ret = set_dh_priv_key(dh_key, priv_key);
-		if (ret) {
-			OPENSSL_LOG(ERR, "Failed to set private key");
-			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-			BN_free(priv_key);
-			return 0;
-		}
-	}
-
-	/* generate public and private key pair.
-	 *
-	 * if private key already set, generates only public key.
-	 *
-	 * if private key is not already set, then set it to random value
-	 * and update internal private key.
-	 */
-	if (!DH_generate_key(dh_key)) {
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return 0;
-	}
-
-	if (asym_op->dh.ke_type == RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE) {
-		const BIGNUM *pub_key = NULL;
-
-		OPENSSL_LOG(DEBUG, "%s:%d update public key",
-				__func__, __LINE__);
-
-		/* get the generated keys */
-		get_dh_pub_key(dh_key, &pub_key);
-
-		/* output public key */
-		op->pub_key.length = BN_bn2bin(pub_key,
-				op->pub_key.data);
-	}
-
-	if (asym_op->dh.ke_type == RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE) {
-		const BIGNUM *priv_key = NULL;
-
-		OPENSSL_LOG(DEBUG, "%s:%d updated priv key",
-				__func__, __LINE__);
-
-		/* get the generated keys */
-		get_dh_priv_key(dh_key, &priv_key);
-
-		/* provide generated private key back to user */
-		op->priv_key.length = BN_bn2bin(priv_key,
-				op->priv_key.data);
-	}
-
-	cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
-
-	return 0;
-}
-#endif
 
 /* process modinv operation */
 static int
@@ -2757,7 +2293,6 @@ process_openssl_modexp_op(struct rte_crypto_op *cop,
 }
 
 /* process rsa operations */
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 static int
 process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 		struct openssl_asym_session *sess)
@@ -3333,133 +2868,7 @@ err_eddsa:
 	return ret;
 }
 
-#else
-static int
-process_openssl_rsa_op(struct rte_crypto_op *cop,
-		struct openssl_asym_session *sess)
-{
-	int ret = 0;
-	struct rte_crypto_asym_op *op = cop->asym;
-	RSA *rsa = sess->u.r.rsa;
-	uint32_t pad = sess->u.r.pad;
-	uint8_t *tmp;
 
-	cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
-
-	switch (pad) {
-	case RTE_CRYPTO_RSA_PADDING_PKCS1_5:
-		pad = RSA_PKCS1_PADDING;
-		break;
-	case RTE_CRYPTO_RSA_PADDING_NONE:
-		pad = RSA_NO_PADDING;
-		break;
-	default:
-		cop->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-		OPENSSL_LOG(ERR,
-				"rsa pad type not supported %d", pad);
-		return 0;
-	}
-
-	switch (op->rsa.op_type) {
-	case RTE_CRYPTO_ASYM_OP_ENCRYPT:
-		ret = RSA_public_encrypt(op->rsa.message.length,
-				op->rsa.message.data,
-				op->rsa.cipher.data,
-				rsa,
-				pad);
-
-		if (ret > 0)
-			op->rsa.cipher.length = ret;
-		OPENSSL_LOG(DEBUG,
-				"length of encrypted text %d", ret);
-		break;
-
-	case RTE_CRYPTO_ASYM_OP_DECRYPT:
-		ret = RSA_private_decrypt(op->rsa.cipher.length,
-				op->rsa.cipher.data,
-				op->rsa.message.data,
-				rsa,
-				pad);
-		if (ret > 0)
-			op->rsa.message.length = ret;
-		break;
-
-	case RTE_CRYPTO_ASYM_OP_SIGN:
-		ret = RSA_private_encrypt(op->rsa.message.length,
-				op->rsa.message.data,
-				op->rsa.sign.data,
-				rsa,
-				pad);
-		if (ret > 0)
-			op->rsa.sign.length = ret;
-		break;
-
-	case RTE_CRYPTO_ASYM_OP_VERIFY:
-		tmp = rte_malloc(NULL, op->rsa.sign.length, 0);
-		if (tmp == NULL) {
-			OPENSSL_LOG(ERR, "Memory allocation failed");
-			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-			break;
-		}
-		ret = RSA_public_decrypt(op->rsa.sign.length,
-				op->rsa.sign.data,
-				tmp,
-				rsa,
-				pad);
-
-		OPENSSL_LOG(DEBUG,
-				"Length of public_decrypt %d "
-				"length of message %zd",
-				ret, op->rsa.message.length);
-		if ((ret <= 0) || (CRYPTO_memcmp(tmp, op->rsa.message.data,
-				op->rsa.message.length))) {
-			OPENSSL_LOG(ERR, "RSA sign Verification failed");
-			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		}
-		rte_free(tmp);
-		break;
-
-	default:
-		/* allow ops with invalid args to be pushed to
-		 * completion queue
-		 */
-		cop->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-		break;
-	}
-
-	if (ret < 0)
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-
-	return 0;
-}
-
-static int
-process_openssl_ecfpm_op(struct rte_crypto_op *cop,
-		struct openssl_asym_session *sess)
-{
-	RTE_SET_USED(cop);
-	RTE_SET_USED(sess);
-	return -ENOTSUP;
-}
-
-static int
-process_openssl_sm2_op(struct rte_crypto_op *cop,
-		struct openssl_asym_session *sess)
-{
-	RTE_SET_USED(cop);
-	RTE_SET_USED(sess);
-	return -ENOTSUP;
-}
-
-static int
-process_openssl_eddsa_op(struct rte_crypto_op *cop,
-		struct openssl_asym_session *sess)
-{
-	RTE_SET_USED(cop);
-	RTE_SET_USED(sess);
-	return -ENOTSUP;
-}
-#endif
 
 #if (OPENSSL_VERSION_NUMBER >= 0x30500000L)
 static int
@@ -4085,14 +3494,12 @@ mldsa_sign_op_evp(struct rte_crypto_op *cop,
 	case RTE_CRYPTO_AUTH_SHA3_512:
 		check_md = EVP_sha3_512();
 		break;
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 	case RTE_CRYPTO_AUTH_SHAKE_128:
 		check_md = EVP_shake128();
 		break;
 	case RTE_CRYPTO_AUTH_SHAKE_256:
 		check_md = EVP_shake256();
 		break;
-#endif
 	default:
 		break;
 	}
@@ -4328,11 +3735,7 @@ process_asym_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 
 	switch (sess->xfrm_type) {
 	case RTE_CRYPTO_ASYM_XFORM_RSA:
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		retval = process_openssl_rsa_op_evp(op, sess);
-# else
-		retval = process_openssl_rsa_op(op, sess);
-#endif
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_MODEX:
 		retval = process_openssl_modexp_op(op, sess);
@@ -4341,51 +3744,26 @@ process_asym_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 		retval = process_openssl_modinv_op(op, sess);
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_DH:
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		retval = process_openssl_dh_op_evp(op, sess);
-# else
-		retval = process_openssl_dh_op(op, sess);
-#endif
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_DSA:
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		if (op->asym->dsa.op_type == RTE_CRYPTO_ASYM_OP_SIGN)
 			retval = process_openssl_dsa_sign_op_evp(op, sess);
 		else if (op->asym->dsa.op_type ==
 				RTE_CRYPTO_ASYM_OP_VERIFY)
 			retval =
 				process_openssl_dsa_verify_op_evp(op, sess);
-#else
-		if (op->asym->dsa.op_type == RTE_CRYPTO_ASYM_OP_SIGN)
-			retval = process_openssl_dsa_sign_op(op, sess);
-		else if (op->asym->dsa.op_type ==
-				RTE_CRYPTO_ASYM_OP_VERIFY)
-			retval =
-				process_openssl_dsa_verify_op(op, sess);
 		else
 			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-#endif
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_ECFPM:
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		retval = process_openssl_ecfpm_op_evp(op, sess);
-#else
-		retval = process_openssl_ecfpm_op(op, sess);
-#endif
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_SM2:
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		retval = process_openssl_sm2_op_evp(op, sess);
-#else
-		retval = process_openssl_sm2_op(op, sess);
-#endif
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_EDDSA:
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		retval = process_openssl_eddsa_op_evp(op, sess);
-#else
-		retval = process_openssl_eddsa_op(op, sess);
-#endif
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_ML_KEM:
 #if (OPENSSL_VERSION_NUMBER >= 0x30500000L)
@@ -4590,13 +3968,12 @@ cryptodev_openssl_create(const char *name,
 
 	rte_cryptodev_pmd_probing_finish(dev);
 
-# if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 	/* Load legacy provider
 	 * Some algorithms are no longer available in earlier version of openssl,
 	 * unless the legacy provider explicitly loaded. e.g. DES
 	 */
 	ossl_legacy_provider_load();
-# endif
+
 	return 0;
 
 init_error:
@@ -4645,9 +4022,8 @@ cryptodev_openssl_remove(struct rte_vdev_device *vdev)
 	if (cryptodev == NULL)
 		return -ENODEV;
 
-# if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 	ossl_legacy_provider_unload();
-# endif
+
 	return rte_cryptodev_pmd_destroy(cryptodev);
 }
 

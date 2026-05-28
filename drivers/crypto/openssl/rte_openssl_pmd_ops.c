@@ -10,11 +10,9 @@
 
 #include "openssl_pmd_private.h"
 #include "compat.h"
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 #include <openssl/provider.h>
 #include <openssl/core_names.h>
 #include <openssl/param_build.h>
-#endif
 
 static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 	{	/* MD5 HMAC */
@@ -457,7 +455,6 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 			}, }
 		}, }
 	},
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 	{   /* SHAKE_128 */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -500,7 +497,6 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 			}, }
 		}, }
 	},
-#endif
 	{	/* AES CBC */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -1222,7 +1218,6 @@ static int openssl_set_asym_session_parameters(
 			goto err_rsa;
 
 		asym_session->u.r.pad = xform->rsa.padding.type;
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		OSSL_PARAM_BLD * param_bld = OSSL_PARAM_BLD_new();
 		if (!param_bld) {
 			OPENSSL_LOG(ERR, "failed to allocate resources");
@@ -1323,79 +1318,7 @@ static int openssl_set_asym_session_parameters(
 		OSSL_PARAM_BLD_free(param_bld);
 		OSSL_PARAM_free(params);
 		ret = 0;
-#else
-		RSA *rsa = RSA_new();
-		if (rsa == NULL)
-			goto err_rsa;
 
-		if (xform->rsa.d.length > 0) {
-			d = BN_bin2bn(
-			(const unsigned char *)xform->rsa.d.data,
-			xform->rsa.d.length,
-			d);
-			if (!d) {
-				RSA_free(rsa);
-				goto err_rsa;
-			}
-		}
-
-		if (xform->rsa.key_type == RTE_RSA_KEY_TYPE_QT) {
-			p = BN_bin2bn((const unsigned char *)
-					xform->rsa.qt.p.data,
-					xform->rsa.qt.p.length,
-					p);
-			q = BN_bin2bn((const unsigned char *)
-					xform->rsa.qt.q.data,
-					xform->rsa.qt.q.length,
-					q);
-			dmp1 = BN_bin2bn((const unsigned char *)
-					xform->rsa.qt.dP.data,
-					xform->rsa.qt.dP.length,
-					dmp1);
-			dmq1 = BN_bin2bn((const unsigned char *)
-					xform->rsa.qt.dQ.data,
-					xform->rsa.qt.dQ.length,
-					dmq1);
-			iqmp = BN_bin2bn((const unsigned char *)
-					xform->rsa.qt.qInv.data,
-					xform->rsa.qt.qInv.length,
-					iqmp);
-
-			if (!p || !q || !dmp1 || !dmq1 || !iqmp) {
-				RSA_free(rsa);
-				goto err_rsa;
-			}
-			ret = set_rsa_params(rsa, p, q);
-			if (ret) {
-				OPENSSL_LOG(ERR,
-					"failed to set rsa params");
-				RSA_free(rsa);
-				goto err_rsa;
-			}
-			ret = set_rsa_crt_params(rsa, dmp1, dmq1, iqmp);
-			if (ret) {
-				OPENSSL_LOG(ERR,
-					"failed to set crt params");
-				RSA_free(rsa);
-				/*
-				 * set already populated params to NULL
-				 * as its freed by call to RSA_free
-				 */
-				p = q = NULL;
-				goto err_rsa;
-			}
-		}
-
-		ret = set_rsa_keys(rsa, n, e, d);
-		if (ret) {
-			OPENSSL_LOG(ERR, "Failed to load rsa keys");
-			RSA_free(rsa);
-			return ret;
-		}
-		asym_session->u.r.rsa = rsa;
-		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_RSA;
-		break;
-#endif
 err_rsa:
 		BN_clear_free(n);
 		BN_clear_free(e);
@@ -1469,7 +1392,6 @@ err_rsa:
 	case RTE_CRYPTO_ASYM_XFORM_DH:
 	{
 		DH *dh = NULL;
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		BIGNUM **p = &asym_session->u.dh.p;
 		BIGNUM **g = &asym_session->u.dh.g;
 
@@ -1520,51 +1442,18 @@ err_rsa:
 
 		asym_session->u.dh.param_bld = param_bld;
 		asym_session->u.dh.param_bld_peer = param_bld_peer;
-#else
-		BIGNUM *p = NULL;
-		BIGNUM *g = NULL;
-
-		p = BN_bin2bn((const unsigned char *)
-				xform->dh.p.data,
-				xform->dh.p.length,
-				p);
-		g = BN_bin2bn((const unsigned char *)
-				xform->dh.g.data,
-				xform->dh.g.length,
-				g);
-		if (!p || !g)
-			goto err_dh;
-
-		dh = DH_new();
-		if (dh == NULL) {
-			OPENSSL_LOG(ERR,
-				"failed to allocate resources");
-			goto err_dh;
-		}
-		ret = set_dh_params(dh, p, g);
-		if (ret) {
-			DH_free(dh);
-			goto err_dh;
-		}
-#endif
 		asym_session->u.dh.dh_key = dh;
 		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_DH;
 		break;
 
 err_dh:
 		OPENSSL_LOG(ERR, " failed to set dh params");
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		BN_free(*p);
 		BN_free(*g);
-#else
-		BN_free(p);
-		BN_free(g);
-#endif
 		return -1;
 	}
 	case RTE_CRYPTO_ASYM_XFORM_DSA:
 	{
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		BIGNUM **p = &asym_session->u.s.p;
 		BIGNUM **g = &asym_session->u.s.g;
 		BIGNUM **q = &asym_session->u.s.q;
@@ -1615,85 +1504,16 @@ err_dh:
 		asym_session->u.s.param_bld = param_bld;
 
 		break;
-#else
-		BIGNUM *p = NULL, *g = NULL;
-		BIGNUM *q = NULL, *priv_key = NULL;
-		BIGNUM *pub_key = BN_new();
-		BN_zero(pub_key);
-
-		p = BN_bin2bn((const unsigned char *)
-				xform->dsa.p.data,
-				xform->dsa.p.length,
-				p);
-
-		g = BN_bin2bn((const unsigned char *)
-				xform->dsa.g.data,
-				xform->dsa.g.length,
-				g);
-
-		q = BN_bin2bn((const unsigned char *)
-				xform->dsa.q.data,
-				xform->dsa.q.length,
-				q);
-		if (!p || !q || !g)
-			goto err_dsa;
-
-		priv_key = BN_bin2bn((const unsigned char *)
-				xform->dsa.x.data,
-				xform->dsa.x.length,
-				priv_key);
-		if (priv_key == NULL)
-			goto err_dsa;
-
-		DSA *dsa = DSA_new();
-		if (dsa == NULL) {
-			OPENSSL_LOG(ERR,
-				" failed to allocate resources");
-			goto err_dsa;
-		}
-
-		ret = set_dsa_params(dsa, p, q, g);
-		if (ret) {
-			DSA_free(dsa);
-			OPENSSL_LOG(ERR, "Failed to dsa params");
-			goto err_dsa;
-		}
-
-		/*
-		 * openssl 1.1.0 mandate that public key can't be
-		 * NULL in very first call. so set a dummy pub key.
-		 * to keep consistency, lets follow same approach for
-		 * both versions
-		 */
-		/* just set dummy public for very 1st call */
-		ret = set_dsa_keys(dsa, pub_key, priv_key);
-		if (ret) {
-			DSA_free(dsa);
-			OPENSSL_LOG(ERR, "Failed to set keys");
-			goto err_dsa;
-		}
-		asym_session->u.s.dsa = dsa;
-		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_DSA;
-		break;
-#endif
 err_dsa:
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		BN_free(*p);
 		BN_free(*q);
 		BN_free(*g);
 		BN_free(*priv_key);
-#else
-		BN_free(p);
-		BN_free(q);
-		BN_free(g);
-		BN_free(priv_key);
-#endif
 		BN_free(pub_key);
 		return -1;
 	}
 	case RTE_CRYPTO_ASYM_XFORM_ECFPM:
 	{
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		EC_GROUP *ecgrp = NULL;
 
 		asym_session->xfrm_type = xform->xform_type;
@@ -1727,14 +1547,9 @@ err_dsa:
 		asym_session->u.ec.curve_id = xform->ec.curve_id;
 		asym_session->u.ec.group = ecgrp;
 		break;
-#else
-		OPENSSL_LOG(WARNING, "ECFPM unsupported for OpenSSL Version < 3.0");
-		return -ENOTSUP;
-#endif
 	}
 	case RTE_CRYPTO_ASYM_XFORM_SM2:
 	{
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 #ifndef OPENSSL_NO_SM2
 		OSSL_PARAM_BLD *param_bld = NULL;
 		OSSL_PARAM *params = NULL;
@@ -1817,10 +1632,6 @@ err_sm2:
 		return -1;
 #else
 		OPENSSL_LOG(WARNING, "SM2 unsupported in current OpenSSL Version");
-		return -ENOTSUP;
-#endif
-#else
-		OPENSSL_LOG(WARNING, "SM2 unsupported for OpenSSL Version < 3.0");
 		return -ENOTSUP;
 #endif
 	}
@@ -1983,12 +1794,7 @@ static void openssl_reset_asym_session(struct openssl_asym_session *sess)
 {
 	switch (sess->xfrm_type) {
 	case RTE_CRYPTO_ASYM_XFORM_RSA:
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		EVP_PKEY_CTX_free(sess->u.r.ctx);
-#else
-		if (sess->u.r.rsa)
-			RSA_free(sess->u.r.rsa);
-#endif
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_MODEX:
 		if (sess->u.e.ctx) {
@@ -2003,35 +1809,23 @@ static void openssl_reset_asym_session(struct openssl_asym_session *sess)
 		}
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_DH:
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		OSSL_PARAM_BLD_free(sess->u.dh.param_bld);
 		OSSL_PARAM_BLD_free(sess->u.dh.param_bld_peer);
 		sess->u.dh.param_bld = NULL;
 		sess->u.dh.param_bld_peer = NULL;
-#else
-		if (sess->u.dh.dh_key)
-			DH_free(sess->u.dh.dh_key);
-#endif
 		BN_clear_free(sess->u.dh.p);
 		BN_clear_free(sess->u.dh.g);
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_DSA:
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		OSSL_PARAM_BLD_free(sess->u.s.param_bld);
 		sess->u.s.param_bld = NULL;
 		BN_clear_free(sess->u.s.p);
 		BN_clear_free(sess->u.s.q);
 		BN_clear_free(sess->u.s.g);
 		BN_clear_free(sess->u.s.priv_key);
-#else
-		if (sess->u.s.dsa)
-			DSA_free(sess->u.s.dsa);
-#endif
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_SM2:
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		OSSL_PARAM_free(sess->u.sm2.params);
-#endif
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_EDDSA:
 #if (OPENSSL_VERSION_NUMBER >= 0x30300000L)

@@ -74,9 +74,9 @@ To compile the OpenSSL PMD the openssl library must be installed. It will
 then be picked up by the Meson/Ninja build system.
 
 To ensure that you have the latest security fixes it is recommended that you
-use version 1.1.1g or newer.
+use the latest stable version of OpenSSL 3.x.
 
-* 1.1.1g, 2020-Apr-21. https://www.openssl.org/source/
+* OpenSSL 3.0.0 or newer: https://www.openssl.org/source/
 
 Initialization
 --------------

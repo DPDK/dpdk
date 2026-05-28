@@ -137,11 +137,6 @@ Deprecation Notices
   The legacy actions should be removed
   once ``MODIFY_FIELD`` alternative is implemented in drivers.
 
-* cryptodev: Support for OpenSSL versions earlier than 3.0 is deprecated
-  and will be removed. OpenSSL 1.1.1 reached end-of-life in September 2023.
-  The minimum supported OpenSSL version will be 3.0,
-  and version checks for earlier OpenSSL versions will be removed from the PMD.
-
 * pipeline: The pipeline library legacy API (functions rte_pipeline_*)
   will be deprecated and subsequently removed in DPDK 24.11 release.
   Before this, the new pipeline library API (functions rte_swx_pipeline_*)

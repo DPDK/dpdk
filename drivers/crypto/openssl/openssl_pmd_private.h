@@ -13,10 +13,8 @@
 #include <openssl/dh.h>
 #include <openssl/dsa.h>
 #include <openssl/ec.h>
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 #include <openssl/provider.h>
 #include <openssl/core_names.h>
-#endif
 
 #define CRYPTODEV_NAME_OPENSSL_PMD	crypto_openssl
 /**< Open SSL Crypto PMD device name */
@@ -84,13 +82,8 @@ struct evp_ctx_pair {
 	EVP_CIPHER_CTX *cipher;
 	union {
 		EVP_MD_CTX *auth;
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 		EVP_MAC_CTX *hmac;
 		EVP_MAC_CTX *cmac;
-#else
-		HMAC_CTX *hmac;
-		CMAC_CTX *cmac;
-#endif
 	};
 };
 
@@ -153,24 +146,13 @@ struct __rte_cache_aligned openssl_session {
 				/**< pointer to EVP key */
 				const EVP_MD *evp_algo;
 				/**< pointer to EVP algorithm function */
-# if OPENSSL_VERSION_NUMBER >= 0x30000000L
 				EVP_MAC_CTX * ctx;
-# else
-				HMAC_CTX *ctx;
-# endif
 				/**< pointer to EVP context structure */
 			} hmac;
 
 			struct {
-# if OPENSSL_VERSION_NUMBER >= 0x30000000L
 				EVP_MAC_CTX * ctx;
 				/**< pointer to EVP context structure */
-# else
-				const EVP_CIPHER * evp_algo;
-				/**< pointer to EVP algorithm function */
-				CMAC_CTX *ctx;
-				/**< pointer to EVP context structure */
-# endif
 			} cmac;
 		};
 
@@ -198,9 +180,7 @@ struct __rte_cache_aligned openssl_asym_session {
 		struct rsa {
 			RSA *rsa;
 			uint32_t pad;
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 			EVP_PKEY_CTX * ctx;
-#endif
 		} r;
 		struct exp {
 			BIGNUM *exp;
@@ -216,38 +196,28 @@ struct __rte_cache_aligned openssl_asym_session {
 			uint32_t key_op;
 			BIGNUM *p;
 			BIGNUM *g;
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 			OSSL_PARAM_BLD * param_bld;
 			OSSL_PARAM_BLD *param_bld_peer;
-#endif
 		} dh;
 		struct {
 			DSA *dsa;
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 			OSSL_PARAM_BLD * param_bld;
 			BIGNUM *p;
 			BIGNUM *g;
 			BIGNUM *q;
 			BIGNUM *priv_key;
-#endif
 		} s;
 		struct {
 			uint8_t curve_id;
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 			EC_GROUP * group;
 			BIGNUM *priv_key;
-#endif
 		} ec;
 		struct {
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 			OSSL_PARAM * params;
-#endif
 		} sm2;
 		struct {
 			uint8_t curve_id;
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 			OSSL_PARAM * params;
-#endif
 		} eddsa;
 		struct {
 			uint8_t type;

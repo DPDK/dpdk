@@ -7,10 +7,10 @@ if is_windows
     subdir_done()
 endif
 
-dep = dependency('libcrypto', required: false, method: 'pkg-config')
+dep = dependency('libcrypto', required: false, method: 'pkg-config', version: '>= 3.0.0')
 if not dep.found()
     build = false
-    reason = 'missing dependency, "libcrypto"'
+    reason = 'missing dependency, "libcrypto >= 3.0.0"'
 endif
 deps += 'bus_vdev'
 sources = files('rte_openssl_pmd.c', 'rte_openssl_pmd_ops.c')
