@@ -210,8 +210,8 @@ bond_ethdev_8023ad_flow_verify(struct rte_eth_dev *bond_dev,
 	int ret = rte_flow_validate(member_port, &flow_attr_8023ad,
 			flow_item_8023ad, actions, &error);
 	if (ret < 0) {
-		RTE_BOND_LOG(ERR, "%s: %s (member_port=%d queue_id=%d)",
-				__func__, error.message, member_port,
+		RTE_BOND_LOG(ERR, "%s (member_port=%u queue_id=%u)",
+				error.message, member_port,
 				internals->mode4.dedicated_queues.rx_qid);
 		return -1;
 	}
@@ -219,8 +219,8 @@ bond_ethdev_8023ad_flow_verify(struct rte_eth_dev *bond_dev,
 	ret = rte_eth_dev_info_get(member_port, &member_info);
 	if (ret != 0) {
 		RTE_BOND_LOG(ERR,
-			"%s: Error during getting device (port %u) info: %s",
-			__func__, member_port, strerror(-ret));
+			"Error getting device (port %u) info: %s",
+			member_port, strerror(-ret));
 
 		return ret;
 	}
@@ -228,8 +228,8 @@ bond_ethdev_8023ad_flow_verify(struct rte_eth_dev *bond_dev,
 	if (member_info.max_rx_queues < bond_dev->data->nb_rx_queues ||
 			member_info.max_tx_queues < bond_dev->data->nb_tx_queues) {
 		RTE_BOND_LOG(ERR,
-			"%s: Member %d capabilities doesn't allow allocating additional queues",
-			__func__, member_port);
+			"Member %u capabilities doesn't allow allocating additional queues",
+			member_port);
 		return -1;
 	}
 
@@ -249,9 +249,8 @@ bond_8023ad_slow_pkt_hw_filter_supported(uint16_t port_id) {
 		ret = rte_eth_dev_info_get(bond_dev->data->port_id, &bond_info);
 		if (ret != 0) {
 			RTE_BOND_LOG(ERR,
-				"%s: Error during getting device (port %u) info: %s",
-				__func__, bond_dev->data->port_id,
-				strerror(-ret));
+				"Error getting device (port %u) info: %s",
+				bond_dev->data->port_id, strerror(-ret));
 
 			return ret;
 		}
@@ -2346,10 +2345,8 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			ret = rte_eth_dev_info_get(member.port_id, &member_info);
 			if (ret != 0) {
 				RTE_BOND_LOG(ERR,
-					"%s: Error during getting device (port %u) info: %s",
-					__func__,
-					member.port_id,
-					strerror(-ret));
+					"Error getting device (port %u) info: %s",
+					member.port_id, strerror(-ret));
 
 				return ret;
 			}
