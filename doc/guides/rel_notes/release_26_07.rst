@@ -140,6 +140,17 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* **ethdev: promoted flow metadata API from experimental to stable.**
+
+  The following ethdev symbols are no longer marked experimental:
+
+  - ``rte_flow_dynf_metadata_register``
+  - ``rte_flow_dynf_metadata_offs``
+  - ``rte_flow_dynf_metadata_mask``
+  - ``rte_flow_dynf_metadata_avail``
+  - ``rte_flow_dynf_metadata_get``
+  - ``rte_flow_dynf_metadata_set``
+
 
 ABI Changes
 -----------
