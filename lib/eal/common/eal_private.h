@@ -323,6 +323,19 @@ int
 eal_memseg_list_alloc(struct rte_memseg_list *msl, int reserve_flags);
 
 /**
+ * Assign a pre-reserved VA range to a memory segment list.
+ *
+ * @param msl
+ *  Initialized memory segment list with page size defined.
+ * @param addr
+ *  Starting address of list VA range.
+ * @return
+ *  0 on success, (-1) on failure and rte_errno is set.
+ */
+int
+eal_memseg_list_assign(struct rte_memseg_list *msl, void *addr);
+
+/**
  * Populate MSL, each segment is one page long.
  *
  * @param msl

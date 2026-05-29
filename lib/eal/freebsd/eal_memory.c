@@ -377,8 +377,6 @@ memseg_primary_init(void)
 	for (hpi_idx = 0; hpi_idx < (int) internal_conf->num_hugepage_sizes;
 			hpi_idx++) {
 		uint64_t max_type_mem, total_type_mem = 0;
-		uint64_t avail_mem;
-		unsigned int avail_segs;
 		struct hugepage_info *hpi;
 		uint64_t hugepage_sz;
 		unsigned int n_segs;
@@ -406,11 +404,8 @@ memseg_primary_init(void)
 		 * so we will allocate more and put spaces between segments
 		 * that are non-contiguous.
 		 */
-		avail_segs = (hpi->num_pages[0] * 2) - 1;
-		avail_mem = avail_segs * hugepage_sz;
-
-		max_type_mem = RTE_MIN(avail_mem, max_type_mem);
-		n_segs = max_type_mem / hugepage_sz;
+		n_segs = RTE_MIN((hpi->num_pages[0] * 2) - 1,
+				max_type_mem / hugepage_sz);
 		if (n_segs == 0)
 			continue;
 
@@ -424,12 +419,11 @@ memseg_primary_init(void)
 		if (eal_memseg_list_init(msl, hugepage_sz, n_segs, 0, msl_idx, false))
 			return -1;
 
-		total_type_mem = n_segs * hugepage_sz;
 		if (memseg_list_alloc(msl)) {
 			EAL_LOG(ERR, "Cannot allocate VA space for memseg list");
 			return -1;
 		}
-
+		total_type_mem = n_segs * hugepage_sz;
 		total_mem += total_type_mem;
 		msl_idx++;
 	}

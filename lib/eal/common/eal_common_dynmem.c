@@ -24,11 +24,16 @@ eal_dynmem_memseg_lists_init(void)
 	struct memtype {
 		uint64_t page_sz;
 		int socket_id;
+		unsigned int n_segs;
+		size_t mem_sz;
+		size_t va_offset;
 	} memtypes[RTE_MAX_MEMSEG_LISTS] = {0};
 	int i, hpi_idx, msl_idx, ret = -1; /* fail unless told to succeed */
 	struct rte_memseg_list *msl;
 	uint64_t max_mem, max_mem_per_type;
+	size_t mem_va_len, mem_va_page_sz;
 	unsigned int n_memtypes, cur_type;
+	void *mem_va_addr = NULL;
 	struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 
@@ -103,17 +108,16 @@ eal_dynmem_memseg_lists_init(void)
 	max_mem = (uint64_t)RTE_MAX_MEM_MB << 20;
 	max_mem_per_type = RTE_MIN((uint64_t)RTE_MAX_MEM_MB_PER_TYPE << 20,
 			max_mem / n_memtypes);
+	mem_va_len = 0;
+	mem_va_page_sz = 0;
 
-	/* go through all mem types and create segment lists */
-	msl_idx = 0;
+	/* calculate total VA space and offsets for all mem types */
 	for (cur_type = 0; cur_type < n_memtypes; cur_type++) {
 		unsigned int n_segs;
 		struct memtype *type = &memtypes[cur_type];
 		uint64_t pagesz;
-		int socket_id;
 
 		pagesz = type->page_sz;
-		socket_id = type->socket_id;
 
 		/*
 		 * we need to create a segment list for this type. we must take
@@ -126,17 +130,42 @@ eal_dynmem_memseg_lists_init(void)
 		 */
 		n_segs = max_mem_per_type / pagesz;
 		n_segs = RTE_MIN(n_segs, (unsigned int)RTE_MAX_MEMSEG_PER_TYPE);
+		type->n_segs = n_segs;
+		type->mem_sz = (size_t)pagesz * type->n_segs;
+		mem_va_page_sz = RTE_MAX(mem_va_page_sz, (size_t)pagesz);
+		mem_va_len = RTE_ALIGN_CEIL(mem_va_len, pagesz);
+		type->va_offset = mem_va_len;
+		mem_va_len += type->mem_sz;
+	}
+
+	mem_va_addr = eal_get_virtual_area(NULL, &mem_va_len,
+			mem_va_page_sz, 0, 0);
+	if (mem_va_addr == NULL) {
+		EAL_LOG(ERR, "Cannot reserve VA space for memseg lists");
+		goto out;
+	}
+
+	/* go through all mem types and create segment lists */
+	msl_idx = 0;
+	for (cur_type = 0; cur_type < n_memtypes; cur_type++) {
+		struct memtype *type = &memtypes[cur_type];
+		uint64_t pagesz;
+		int socket_id;
+
+		pagesz = type->page_sz;
+		socket_id = type->socket_id;
 
 		EAL_LOG(DEBUG, "Creating segment list: n_segs:%u socket_id:%i hugepage_sz:%" PRIu64,
-			n_segs, socket_id, pagesz);
+			type->n_segs, socket_id, pagesz);
 
 		msl = &mcfg->memsegs[msl_idx];
 
-		if (eal_memseg_list_init(msl, pagesz, n_segs, socket_id, msl_idx, true))
+		if (eal_memseg_list_init(msl, pagesz, type->n_segs, socket_id, msl_idx, true))
 			goto out;
 
-		if (eal_memseg_list_alloc(msl, 0)) {
-			EAL_LOG(ERR, "Cannot allocate VA space for memseg list");
+		if (eal_memseg_list_assign(msl,
+				RTE_PTR_ADD(mem_va_addr, type->va_offset))) {
+			EAL_LOG(ERR, "Cannot assign VA space for memseg list");
 			goto out;
 		}
 		msl_idx++;
@@ -144,6 +173,15 @@ eal_dynmem_memseg_lists_init(void)
 	/* we're successful */
 	ret = 0;
 out:
+	if (ret != 0) {
+		if (mem_va_addr != NULL)
+			eal_mem_free(mem_va_addr, mem_va_len);
+	} else {
+		/* store the VA space data in shared config */
+		mcfg->mem_va_addr = (uintptr_t)mem_va_addr;
+		mcfg->mem_va_len = mem_va_len;
+		mcfg->mem_va_page_sz = mem_va_page_sz;
+	}
 	return ret;
 }
 
