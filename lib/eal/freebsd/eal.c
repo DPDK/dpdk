@@ -585,6 +585,12 @@ rte_eal_init(int argc, char **argv)
 			rte_errno = EACCES;
 			goto err_out;
 		}
+		if (internal_conf->process_type == RTE_PROC_PRIMARY &&
+				eal_apply_hugepage_mem_sz_limits(internal_conf) < 0) {
+			rte_eal_init_alert("Cannot apply hugepage memory limits.");
+			rte_errno = EINVAL;
+			goto err_out;
+		}
 	}
 
 	if (internal_conf->memory == 0 && internal_conf->force_numa == 0) {

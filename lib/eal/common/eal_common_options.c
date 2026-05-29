@@ -515,6 +515,7 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 		memset(&internal_cfg->hugepage_info[i], 0,
 				sizeof(internal_cfg->hugepage_info[0]));
 		internal_cfg->hugepage_info[i].lock_descriptor = -1;
+		internal_cfg->hugepage_mem_sz_limits[i] = 0;
 	}
 	internal_cfg->base_virtaddr = 0;
 
@@ -2365,6 +2366,25 @@ eal_adjust_config(struct internal_config *internal_cfg)
 	 * will be overridden later, right after eal_hugepage_info_init() */
 	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
 		internal_cfg->memory += internal_cfg->numa_mem[i];
+
+	return 0;
+}
+
+int
+eal_apply_hugepage_mem_sz_limits(struct internal_config *internal_cfg)
+{
+	unsigned int i;
+
+	for (i = 0; i < internal_cfg->num_hugepage_sizes; i++) {
+		const uint64_t pagesz = internal_cfg->hugepage_info[i].hugepage_sz;
+		uint64_t limit;
+
+		/* assign default limits */
+		limit = RTE_MIN((uint64_t)RTE_MAX_MEM_MB_PER_TYPE << 20,
+				(uint64_t)RTE_MAX_MEMSEG_PER_TYPE * pagesz);
+
+		internal_cfg->hugepage_mem_sz_limits[i] = limit;
+	}
 
 	return 0;
 }

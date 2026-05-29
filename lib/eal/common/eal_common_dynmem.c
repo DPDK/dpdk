@@ -24,13 +24,13 @@ eal_dynmem_memseg_lists_init(void)
 	struct memtype {
 		uint64_t page_sz;
 		int socket_id;
+		unsigned int hpi_idx;
 		unsigned int n_segs;
 		size_t mem_sz;
 		size_t va_offset;
 	} memtypes[RTE_MAX_MEMSEG_LISTS] = {0};
 	int i, hpi_idx, msl_idx, ret = -1; /* fail unless told to succeed */
 	struct rte_memseg_list *msl;
-	uint64_t max_mem_per_type;
 	size_t mem_va_len, mem_va_page_sz;
 	unsigned int n_memtypes, cur_type;
 	void *mem_va_addr = NULL;
@@ -51,15 +51,9 @@ eal_dynmem_memseg_lists_init(void)
 	 * balancing act between maximum segments per type, maximum memory per
 	 * type, and number of detected NUMA nodes.
 	 *
-	 * the total amount of memory per type is limited by
-	 * RTE_MAX_MEM_MB_PER_TYPE. additionally, maximum number of segments per
-	 * type is also limited by RTE_MAX_MEMSEG_PER_TYPE. this is because for
-	 * smaller page sizes, it can take hundreds of thousands of segments to
-	 * reach the above specified per-type memory limits.
-	 *
-	 * each memory type is allotted a single memseg list. the size of that
-	 * list is calculated here to respect the per-type memory and segment
-	 * limits that apply.
+	 * the total amount of memory per type is limited by per-page-size
+	 * memory values in internal config. each memory type is allotted one
+	 * memseg list.
 	 */
 
 	/* maximum number of memtypes we're ever going to get */
@@ -92,6 +86,7 @@ eal_dynmem_memseg_lists_init(void)
 #endif
 			memtypes[cur_type].page_sz = hugepage_sz;
 			memtypes[cur_type].socket_id = socket_id;
+			memtypes[cur_type].hpi_idx = hpi_idx;
 
 			EAL_LOG(DEBUG, "Detected memory type: "
 				"socket_id:%u hugepage_sz:%" PRIu64,
@@ -101,8 +96,6 @@ eal_dynmem_memseg_lists_init(void)
 	/* number of memtypes could have been lower due to no NUMA support */
 	n_memtypes = cur_type;
 
-	/* set up limits for types */
-	max_mem_per_type = (uint64_t)RTE_MAX_MEM_MB_PER_TYPE << 20;
 	mem_va_len = 0;
 	mem_va_page_sz = 0;
 
@@ -110,9 +103,12 @@ eal_dynmem_memseg_lists_init(void)
 	for (cur_type = 0; cur_type < n_memtypes; cur_type++) {
 		unsigned int n_segs;
 		struct memtype *type = &memtypes[cur_type];
+		uint64_t max_mem_per_type;
 		uint64_t pagesz;
 
 		pagesz = type->page_sz;
+		max_mem_per_type =
+			internal_conf->hugepage_mem_sz_limits[type->hpi_idx];
 
 		/*
 		 * we need to create a segment list for this type. we must take
@@ -121,10 +117,8 @@ eal_dynmem_memseg_lists_init(void)
 		 * 1. total amount of memory to use for this memory type
 		 * 2. total amount of memory allowed per type
 		 * 3. number of segments needed to fit the amount of memory
-		 * 4. number of segments allowed per type
 		 */
 		n_segs = max_mem_per_type / pagesz;
-		n_segs = RTE_MIN(n_segs, (unsigned int)RTE_MAX_MEMSEG_PER_TYPE);
 		type->n_segs = n_segs;
 		type->mem_sz = (size_t)pagesz * type->n_segs;
 		mem_va_page_sz = RTE_MAX(mem_va_page_sz, (size_t)pagesz);
