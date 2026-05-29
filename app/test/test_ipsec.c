@@ -10,7 +10,6 @@
 #include <rte_hexdump.h>
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
-#include <rte_memcpy.h>
 #include <rte_cycles.h>
 #include <rte_bus_vdev.h>
 #include <rte_ip.h>
@@ -559,7 +558,7 @@ setup_test_string(struct rte_mempool *mpool, const char *string,
 			return NULL;
 		}
 		if (string != NULL)
-			rte_memcpy(dst, string, t_len);
+			memcpy(dst, string, t_len);
 		else
 			memset(dst, 0, t_len);
 	}
@@ -604,22 +603,22 @@ setup_test_string_tunneled(struct rte_mempool *mpool, const char *string,
 	/* copy outer IP and ESP header */
 	ipv4_outer.total_length = rte_cpu_to_be_16(t_len);
 	ipv4_outer.packet_id = rte_cpu_to_be_16(seq);
-	rte_memcpy(dst, &ipv4_outer, sizeof(ipv4_outer));
+	memcpy(dst, &ipv4_outer, sizeof(ipv4_outer));
 	dst += sizeof(ipv4_outer);
 	m->l3_len = sizeof(ipv4_outer);
-	rte_memcpy(dst, &esph, sizeof(esph));
+	memcpy(dst, &esph, sizeof(esph));
 	dst += sizeof(esph);
 
 	if (string != NULL) {
 		/* copy payload */
-		rte_memcpy(dst, string, len);
+		memcpy(dst, string, len);
 		dst += len;
 		/* copy pad bytes */
-		rte_memcpy(dst, esp_pad_bytes, RTE_MIN(padlen,
+		memcpy(dst, esp_pad_bytes, RTE_MIN(padlen,
 			sizeof(esp_pad_bytes)));
 		dst += padlen;
 		/* copy ESP tail header */
-		rte_memcpy(dst, &espt, sizeof(espt));
+		memcpy(dst, &espt, sizeof(espt));
 	} else
 		memset(dst, 0, t_len);
 
