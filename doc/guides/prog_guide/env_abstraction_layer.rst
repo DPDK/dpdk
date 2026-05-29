@@ -204,12 +204,37 @@ of virtual memory being preallocated at startup by editing the following config
 variables:
 
 * ``RTE_MAX_MEMSEG_LISTS`` controls how many segment lists can DPDK have
-* ``RTE_MAX_MEMSEG_PER_TYPE`` controls how many segments each memory type
+* ``RTE_MAX_MEMSEG_PER_TYPE`` sets the default number of segments each memory type
   can have (where "type" is defined as "page size + NUMA node" combination)
-* ``RTE_MAX_MEM_MB_PER_TYPE`` controls how much megabytes of memory each
+* ``RTE_MAX_MEM_MB_PER_TYPE`` sets the default amount of memory each
   memory type can address
 
 Normally, these options do not need to be changed.
+
+Runtime Override of Per-Page-Size Memory Limits
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default, DPDK uses compile-time configured limits
+for memory allocation per page size (as set by ``RTE_MAX_MEM_MB_PER_TYPE``).
+These limits apply uniformly across all NUMA nodes for a given page size.
+
+It is possible to override these defaults at runtime
+using the ``--pagesz-mem`` option,
+which allows specifying custom memory limits for each page size.
+This is useful when:
+
+* The default limits may be insufficient or excessive for your workload
+* You want to dedicate more memory to specific page sizes
+
+The ``--pagesz-mem`` option accepts exactly one ``<pagesz>:<limit>`` pair per occurrence,
+where ``pagesz`` is a page size (e.g., ``2M``, ``4M``, ``1G``)
+and ``limit`` is the maximum memory to reserve for that page size (e.g., ``64G``, ``512M``).
+Both values support standard binary suffixes (K, M, G, T).
+Memory limits must be aligned to their corresponding page size.
+
+Multiple page sizes can be specified by repeating the option::
+
+  --pagesz-mem 2M:64G --pagesz-mem 1G:512G
 
 .. note::
 

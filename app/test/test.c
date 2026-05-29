@@ -80,6 +80,7 @@ do_recursive_call(void)
 			{ "test_memory_flags", no_action },
 			{ "test_file_prefix", no_action },
 			{ "test_no_huge_flag", no_action },
+			{ "test_pagesz_mem_flags", no_action },
 			{ "test_panic", test_panic },
 			{ "test_exit", test_exit },
 #ifdef RTE_LIB_TIMER
