@@ -208,8 +208,6 @@ variables:
   can have (where "type" is defined as "page size + NUMA node" combination)
 * ``RTE_MAX_MEM_MB_PER_TYPE`` controls how much megabytes of memory each
   memory type can address
-* ``RTE_MAX_MEM_MB`` places a global maximum on the amount of memory
-  DPDK can reserve
 
 Normally, these options do not need to be changed.
 

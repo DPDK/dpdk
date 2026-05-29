@@ -1695,12 +1695,13 @@ rte_eal_using_phys_addrs(void)
 static int __rte_unused
 memseg_primary_init_32(void)
 {
+	/* limit total amount of memory on 32-bit */
+	const uint64_t mem32_max_mem = 2ULL << 30;
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	int active_sockets, hpi_idx, msl_idx = 0;
 	unsigned int socket_id, i;
 	struct rte_memseg_list *msl;
 	uint64_t extra_mem_per_socket, total_extra_mem, total_requested_mem;
-	uint64_t max_mem;
 	struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 
@@ -1743,13 +1744,12 @@ memseg_primary_init_32(void)
 	else
 		total_requested_mem = internal_conf->memory;
 
-	max_mem = (uint64_t)RTE_MAX_MEM_MB << 20;
-	if (total_requested_mem > max_mem) {
+	if (total_requested_mem > mem32_max_mem) {
 		EAL_LOG(ERR, "Invalid parameters: 32-bit process can at most use %uM of memory",
-				(unsigned int)(max_mem >> 20));
+				(unsigned int)(mem32_max_mem >> 20));
 		return -1;
 	}
-	total_extra_mem = max_mem - total_requested_mem;
+	total_extra_mem = mem32_max_mem - total_requested_mem;
 	extra_mem_per_socket = active_sockets == 0 ? total_extra_mem :
 			total_extra_mem / active_sockets;
 

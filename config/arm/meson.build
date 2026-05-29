@@ -69,7 +69,6 @@ part_number_config_arm = {
         'flags': [
             ['RTE_MACHINE', '"neoverse-n1"'],
             ['RTE_ARM_FEATURE_ATOMICS', true],
-            ['RTE_MAX_MEM_MB', 1048576],
             ['RTE_MAX_LCORE', 256],
             ['RTE_MAX_NUMA_NODES', 8]
         ]

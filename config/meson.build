@@ -389,11 +389,6 @@ dpdk_conf.set('RTE_PKTMBUF_HEADROOM', get_option('pkt_mbuf_headroom'))
 dpdk_conf.set('RTE_MAX_VFIO_GROUPS', 64)
 dpdk_conf.set('RTE_DRIVER_MEMPOOL_BUCKET_SIZE_KB', 64)
 dpdk_conf.set('RTE_LIBRTE_DPAA2_USE_PHYS_IOVA', true)
-if dpdk_conf.get('RTE_ARCH_64')
-    dpdk_conf.set('RTE_MAX_MEM_MB', 524288)
-else # for 32-bit we need smaller reserved memory areas
-    dpdk_conf.set('RTE_MAX_MEM_MB', 2048)
-endif
 if get_option('mbuf_refcnt_atomic')
     dpdk_conf.set('RTE_MBUF_REFCNT_ATOMIC', true)
 endif
