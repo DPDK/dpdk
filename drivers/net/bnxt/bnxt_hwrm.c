@@ -6015,6 +6015,9 @@ int bnxt_hwrm_nvm_get_dir_info(struct bnxt *bp, uint32_t *entries,
 	return rc;
 }
 
+#define BNXT_MAX_DIR_ENTRIES   UINT8_MAX
+#define BNXT_MAX_ENTRY_LENGTH  UINT8_MAX
+
 int bnxt_get_nvram_directory(struct bnxt *bp, uint32_t len, uint8_t *data)
 {
 	int rc;
@@ -6026,16 +6029,27 @@ int bnxt_get_nvram_directory(struct bnxt *bp, uint32_t len, uint8_t *data)
 	struct hwrm_nvm_get_dir_entries_input req = {0};
 	struct hwrm_nvm_get_dir_entries_output *resp = bp->hwrm_cmd_resp_addr;
 
+	if (len < 2)
+		return -EINVAL;
+
 	rc = bnxt_hwrm_nvm_get_dir_info(bp, &dir_entries, &entry_length);
 	if (rc != 0)
 		return rc;
+
+	if (dir_entries == 0 || dir_entries > BNXT_MAX_DIR_ENTRIES ||
+	    entry_length == 0 || entry_length > BNXT_MAX_ENTRY_LENGTH) {
+		PMD_DRV_LOG_LINE(ERR,
+			"Invalid dir info: entries=%u length=%u",
+			dir_entries, entry_length);
+		return -EINVAL;
+	}
 
 	*data++ = dir_entries;
 	*data++ = entry_length;
 	len -= 2;
 	memset(data, 0xff, len);
 
-	buflen = dir_entries * entry_length;
+	buflen = (size_t)dir_entries * entry_length;
 	buf = rte_malloc("nvm_dir", buflen, 0);
 	if (buf == NULL)
 		return -ENOMEM;
