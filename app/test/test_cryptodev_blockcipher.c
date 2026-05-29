@@ -935,7 +935,7 @@ aes_chain_setup(void)
 	rte_cryptodev_info_get(dev_id, &dev_info);
 	feat_flags = dev_info.feature_flags;
 
-	if (!(feat_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING) ||
 			((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
 			!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
 		RTE_LOG(INFO, USER1, "Feature flag requirements for AES Chain "
@@ -944,7 +944,7 @@ aes_chain_setup(void)
 	}
 
 	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0
-			&& check_auth_capabilities_supported(auths,
+			|| check_auth_capabilities_supported(auths,
 			RTE_DIM(auths)) != 0) {
 		RTE_LOG(INFO, USER1, "Capability requirements for AES Chain "
 				"testsuite not met\n");
@@ -984,9 +984,7 @@ aes_cipheronly_setup(void)
 		return TEST_SKIPPED;
 	}
 
-	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0
-			&& check_auth_capabilities_supported(auths,
-			RTE_DIM(auths)) != 0) {
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0) {
 		RTE_LOG(INFO, USER1, "Capability requirements for AES Cipheronly "
 				"testsuite not met\n");
 		return TEST_SKIPPED;
