@@ -620,7 +620,6 @@ int rte_pmd_mlx5_external_sq_disable(uint16_t port_id, uint32_t sq_num);
  *   - (-EEXIST) if @p cb was already registered.
  *   - (-ENOMEM) if failed to allocate memory for callback entry.
  */
-__rte_experimental
 int
 rte_pmd_mlx5_driver_event_cb_register(rte_pmd_mlx5_driver_event_callback_t cb, void *opaque);
 
@@ -641,7 +640,6 @@ rte_pmd_mlx5_driver_event_cb_register(rte_pmd_mlx5_driver_event_callback_t cb, v
  *   - 0 if callback was successfully unregistered or if no such callback was registered.
  *   - (-EINVAL) if @p cb is NULL.
  */
-__rte_experimental
 int
 rte_pmd_mlx5_driver_event_cb_unregister(rte_pmd_mlx5_driver_event_callback_t cb);
 
@@ -679,7 +677,6 @@ rte_pmd_mlx5_driver_event_cb_unregister(rte_pmd_mlx5_driver_event_callback_t cb)
  * with other functions from ethdev API used to configure any of the mlx5 ports.
  * It is the responsibility of the application to enforce this.
  */
-__rte_experimental
 void
 rte_pmd_mlx5_disable_steering(void);
 
@@ -697,7 +694,6 @@ rte_pmd_mlx5_disable_steering(void);
  *   - 0 - Flow steering was successfully enabled or it flow steering was never disabled.
  *   - (-EBUSY) - There are mlx5 ports probed and re-enabling steering cannot be done safely.
  */
-__rte_experimental
 int
 rte_pmd_mlx5_enable_steering(void);
 
