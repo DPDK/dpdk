@@ -204,10 +204,6 @@ of virtual memory being preallocated at startup by editing the following config
 variables:
 
 * ``RTE_MAX_MEMSEG_LISTS`` controls how many segment lists can DPDK have
-* ``RTE_MAX_MEM_MB_PER_LIST`` controls how much megabytes of memory each
-  segment list can address
-* ``RTE_MAX_MEMSEG_PER_LIST`` controls how many segments each segment list
-  can have
 * ``RTE_MAX_MEMSEG_PER_TYPE`` controls how many segments each memory type
   can have (where "type" is defined as "page size + NUMA node" combination)
 * ``RTE_MAX_MEM_MB_PER_TYPE`` controls how much megabytes of memory each

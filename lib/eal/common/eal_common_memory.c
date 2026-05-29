@@ -228,15 +228,13 @@ eal_memseg_list_init_named(struct rte_memseg_list *msl, const char *name,
 
 int
 eal_memseg_list_init(struct rte_memseg_list *msl, uint64_t page_sz,
-		int n_segs, int socket_id, int type_msl_idx, bool heap)
+		int n_segs, int socket_id, int msl_idx, bool heap)
 {
 	char name[RTE_FBARRAY_NAME_LEN];
 
-	snprintf(name, sizeof(name), MEMSEG_LIST_FMT, page_sz >> 10, socket_id,
-		 type_msl_idx);
+	snprintf(name, sizeof(name), MEMSEG_LIST_FMT, page_sz >> 10, socket_id, msl_idx);
 
-	return eal_memseg_list_init_named(
-		msl, name, page_sz, n_segs, socket_id, heap);
+	return eal_memseg_list_init_named(msl, name, page_sz, n_segs, socket_id, heap);
 }
 
 int
