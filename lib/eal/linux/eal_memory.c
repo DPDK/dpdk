@@ -1813,6 +1813,7 @@ memseg_primary_init_32(void)
 		for (hpi_idx = 0; hpi_idx < hp_sizes; hpi_idx++) {
 			uint64_t max_pagesz_mem, cur_pagesz_mem = 0;
 			uint64_t hugepage_sz;
+			uint64_t pagesz_mem_limit;
 			struct hugepage_info *hpi;
 
 			hpi = &internal_conf->hugepage_info[hpi_idx];
@@ -1823,6 +1824,8 @@ memseg_primary_init_32(void)
 				continue;
 
 			max_pagesz_mem = max_socket_mem - cur_socket_mem;
+			pagesz_mem_limit = internal_conf->hugepage_mem_sz_limits[hpi_idx];
+			max_pagesz_mem = RTE_MIN(max_pagesz_mem, pagesz_mem_limit);
 
 			/* make it multiple of page size */
 			max_pagesz_mem = RTE_ALIGN_FLOOR(max_pagesz_mem,
