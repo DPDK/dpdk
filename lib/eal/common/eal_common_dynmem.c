@@ -30,7 +30,7 @@ eal_dynmem_memseg_lists_init(void)
 	} memtypes[RTE_MAX_MEMSEG_LISTS] = {0};
 	int i, hpi_idx, msl_idx, ret = -1; /* fail unless told to succeed */
 	struct rte_memseg_list *msl;
-	uint64_t max_mem, max_mem_per_type;
+	uint64_t max_mem_per_type;
 	size_t mem_va_len, mem_va_page_sz;
 	unsigned int n_memtypes, cur_type;
 	void *mem_va_addr = NULL;
@@ -51,11 +51,8 @@ eal_dynmem_memseg_lists_init(void)
 	 * balancing act between maximum segments per type, maximum memory per
 	 * type, and number of detected NUMA nodes.
 	 *
-	 * the total amount of memory is limited by RTE_MAX_MEM_MB value.
-	 *
-	 * the total amount of memory per type is limited by either
-	 * RTE_MAX_MEM_MB_PER_TYPE, or by RTE_MAX_MEM_MB divided by the number
-	 * of detected NUMA nodes. additionally, maximum number of segments per
+	 * the total amount of memory per type is limited by
+	 * RTE_MAX_MEM_MB_PER_TYPE. additionally, maximum number of segments per
 	 * type is also limited by RTE_MAX_MEMSEG_PER_TYPE. this is because for
 	 * smaller page sizes, it can take hundreds of thousands of segments to
 	 * reach the above specified per-type memory limits.
@@ -105,9 +102,7 @@ eal_dynmem_memseg_lists_init(void)
 	n_memtypes = cur_type;
 
 	/* set up limits for types */
-	max_mem = (uint64_t)RTE_MAX_MEM_MB << 20;
-	max_mem_per_type = RTE_MIN((uint64_t)RTE_MAX_MEM_MB_PER_TYPE << 20,
-			max_mem / n_memtypes);
+	max_mem_per_type = (uint64_t)RTE_MAX_MEM_MB_PER_TYPE << 20;
 	mem_va_len = 0;
 	mem_va_page_sz = 0;
 
