@@ -72,7 +72,9 @@ ipsec_mb_create(struct rte_vdev_device *vdev,
 
 #if defined(RTE_ARCH_ARM)
 	if ((pmd_type != IPSEC_MB_PMD_TYPE_SNOW3G) &&
-		(pmd_type != IPSEC_MB_PMD_TYPE_ZUC))
+		(pmd_type != IPSEC_MB_PMD_TYPE_ZUC) &&
+		(pmd_type != IPSEC_MB_PMD_TYPE_AESNI_MB) &&
+		(pmd_type != IPSEC_MB_PMD_TYPE_AESNI_GCM))
 		return -ENOTSUP;
 #endif
 
