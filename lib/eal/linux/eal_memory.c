@@ -740,8 +740,8 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 		break;
 	}
 	if (msl_idx == RTE_MAX_MEMSEG_LISTS) {
-		EAL_LOG(ERR, "Could not find space for memseg. Please increase RTE_MAX_MEMSEG_PER_LIST "
-			"RTE_MAX_MEMSEG_PER_TYPE and/or RTE_MAX_MEM_MB_PER_TYPE in configuration.");
+		EAL_LOG(ERR,
+			"Could not find suitable space for memseg in existing memseg lists");
 		return -1;
 	}
 
@@ -820,23 +820,6 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 	EAL_LOG(DEBUG, "Allocated %" PRIu64 "M on socket %i",
 			(seg_len * page_sz) >> 20, socket_id);
 	return seg_len;
-}
-
-static uint64_t
-get_mem_amount(uint64_t page_sz, uint64_t max_mem)
-{
-	uint64_t area_sz, max_pages;
-
-	/* limit to RTE_MAX_MEMSEG_PER_LIST pages or RTE_MAX_MEM_MB_PER_LIST */
-	max_pages = RTE_MAX_MEMSEG_PER_LIST;
-	max_mem = RTE_MIN((uint64_t)RTE_MAX_MEM_MB_PER_LIST << 20, max_mem);
-
-	area_sz = RTE_MIN(page_sz * max_pages, max_mem);
-
-	/* make sure the list isn't smaller than the page size */
-	area_sz = RTE_MAX(area_sz, page_sz);
-
-	return RTE_ALIGN(area_sz, page_sz);
 }
 
 static int
@@ -1831,7 +1814,6 @@ memseg_primary_init_32(void)
 			uint64_t max_pagesz_mem, cur_pagesz_mem = 0;
 			uint64_t hugepage_sz;
 			struct hugepage_info *hpi;
-			int type_msl_idx, max_segs, total_segs = 0;
 
 			hpi = &internal_conf->hugepage_info[hpi_idx];
 			hugepage_sz = hpi->hugepage_sz;
@@ -1840,62 +1822,60 @@ memseg_primary_init_32(void)
 			if (hpi->num_pages[socket_id] == 0)
 				continue;
 
-			max_segs = RTE_MAX_MEMSEG_PER_TYPE;
 			max_pagesz_mem = max_socket_mem - cur_socket_mem;
 
 			/* make it multiple of page size */
 			max_pagesz_mem = RTE_ALIGN_FLOOR(max_pagesz_mem,
 					hugepage_sz);
 
+			if (max_pagesz_mem == 0)
+				continue;
+
 			EAL_LOG(DEBUG, "Attempting to preallocate "
 					"%" PRIu64 "M on socket %i",
 					max_pagesz_mem >> 20, socket_id);
 
-			type_msl_idx = 0;
-			while (cur_pagesz_mem < max_pagesz_mem &&
-					total_segs < max_segs) {
-				uint64_t cur_mem;
+			while (cur_pagesz_mem < max_pagesz_mem) {
+				uint64_t rem_mem;
 				unsigned int n_segs;
 
-				if (msl_idx >= RTE_MAX_MEMSEG_LISTS) {
-					EAL_LOG(ERR,
-						"No more space in memseg lists, please increase RTE_MAX_MEMSEG_LISTS");
-					return -1;
-				}
+				rem_mem = max_pagesz_mem - cur_pagesz_mem;
+				n_segs = rem_mem / hugepage_sz;
 
-				msl = &mcfg->memsegs[msl_idx];
+				while (n_segs > 0) {
+					if (msl_idx >= RTE_MAX_MEMSEG_LISTS) {
+						EAL_LOG(ERR,
+							"No more space in memseg lists, please increase RTE_MAX_MEMSEG_LISTS");
+						return -1;
+					}
 
-				cur_mem = get_mem_amount(hugepage_sz,
-						max_pagesz_mem);
-				n_segs = cur_mem / hugepage_sz;
+					msl = &mcfg->memsegs[msl_idx];
 
-				if (eal_memseg_list_init(msl, hugepage_sz,
-						n_segs, socket_id, type_msl_idx,
-						true)) {
-					/* failing to allocate a memseg list is
-					 * a serious error.
-					 */
-					EAL_LOG(ERR, "Cannot allocate memseg list");
-					return -1;
-				}
+					if (eal_memseg_list_init(msl, hugepage_sz,
+							n_segs, socket_id, msl_idx, true) < 0) {
+						/* failing to allocate a memseg list is a serious error. */
+						EAL_LOG(ERR, "Cannot allocate memseg list");
+						return -1;
+					}
 
-				if (eal_memseg_list_alloc(msl, 0)) {
-					/* if we couldn't allocate VA space, we
-					 * can try with smaller page sizes.
-					 */
-					EAL_LOG(ERR, "Cannot allocate VA space for memseg list, retrying with different page size");
-					/* deallocate memseg list */
+					if (eal_memseg_list_alloc(msl, 0) == 0)
+						break;
+
 					if (memseg_list_free(msl))
 						return -1;
-					break;
+
+					EAL_LOG(DEBUG,
+						"Cannot allocate VA space for memseg list, retrying with smaller chunk");
+					n_segs /= 2;
 				}
 
-				total_segs += msl->memseg_arr.len;
-				cur_pagesz_mem = total_segs * hugepage_sz;
-				type_msl_idx++;
+				if (n_segs == 0)
+					break;
+
+				cur_pagesz_mem += (uint64_t)n_segs * hugepage_sz;
+				cur_socket_mem += (uint64_t)n_segs * hugepage_sz;
 				msl_idx++;
 			}
-			cur_socket_mem += cur_pagesz_mem;
 		}
 		if (cur_socket_mem == 0) {
 			EAL_LOG(ERR, "Cannot allocate VA space on socket %u",

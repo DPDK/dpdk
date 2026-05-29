@@ -299,14 +299,14 @@ eal_memseg_list_init_named(struct rte_memseg_list *msl, const char *name,
  * Initialize memory segment list and create its backing storage
  * with a name corresponding to MSL parameters.
  *
- * @param type_msl_idx
- *  Index of the MSL among other MSLs of the same socket and page size.
+ * @param msl_idx
+ *  Index of the MSL in memsegs array.
  *
  * @see eal_memseg_list_init_named for remaining parameters description.
  */
 int
 eal_memseg_list_init(struct rte_memseg_list *msl, uint64_t page_sz,
-	int n_segs, int socket_id, int type_msl_idx, bool heap);
+		int n_segs, int socket_id, int msl_idx, bool heap);
 
 /**
  * Reserve VA space for a memory segment list

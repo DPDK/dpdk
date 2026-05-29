@@ -24,11 +24,10 @@ eal_dynmem_memseg_lists_init(void)
 	struct memtype {
 		uint64_t page_sz;
 		int socket_id;
-	} *memtypes = NULL;
+	} memtypes[RTE_MAX_MEMSEG_LISTS] = {0};
 	int i, hpi_idx, msl_idx, ret = -1; /* fail unless told to succeed */
 	struct rte_memseg_list *msl;
 	uint64_t max_mem, max_mem_per_type;
-	unsigned int max_seglists_per_type;
 	unsigned int n_memtypes, cur_type;
 	struct internal_config *internal_conf =
 		eal_get_internal_configuration();
@@ -45,8 +44,7 @@ eal_dynmem_memseg_lists_init(void)
 	 *
 	 * deciding amount of memory going towards each memory type is a
 	 * balancing act between maximum segments per type, maximum memory per
-	 * type, and number of detected NUMA nodes. the goal is to make sure
-	 * each memory type gets at least one memseg list.
+	 * type, and number of detected NUMA nodes.
 	 *
 	 * the total amount of memory is limited by RTE_MAX_MEM_MB value.
 	 *
@@ -57,26 +55,18 @@ eal_dynmem_memseg_lists_init(void)
 	 * smaller page sizes, it can take hundreds of thousands of segments to
 	 * reach the above specified per-type memory limits.
 	 *
-	 * additionally, each type may have multiple memseg lists associated
-	 * with it, each limited by either RTE_MAX_MEM_MB_PER_LIST for bigger
-	 * page sizes, or RTE_MAX_MEMSEG_PER_LIST segments for smaller ones.
-	 *
-	 * the number of memseg lists per type is decided based on the above
-	 * limits, and also taking number of detected NUMA nodes, to make sure
-	 * that we don't run out of memseg lists before we populate all NUMA
-	 * nodes with memory.
-	 *
-	 * we do this in three stages. first, we collect the number of types.
-	 * then, we figure out memory constraints and populate the list of
-	 * would-be memseg lists. then, we go ahead and allocate the memseg
-	 * lists.
+	 * each memory type is allotted a single memseg list. the size of that
+	 * list is calculated here to respect the per-type memory and segment
+	 * limits that apply.
 	 */
 
-	/* create space for mem types */
+	/* maximum number of memtypes we're ever going to get */
 	n_memtypes = internal_conf->num_hugepage_sizes * rte_socket_count();
-	memtypes = calloc(n_memtypes, sizeof(*memtypes));
-	if (memtypes == NULL) {
-		EAL_LOG(ERR, "Cannot allocate space for memory types");
+
+	/* can we fit all memtypes into the memseg lists? */
+	if (n_memtypes > RTE_MAX_MEMSEG_LISTS) {
+		EAL_LOG(ERR, "Too many memory types detected: %u. Please increase RTE_MAX_MEMSEG_LISTS in configuration.",
+				n_memtypes);
 		return -1;
 	}
 
@@ -113,91 +103,47 @@ eal_dynmem_memseg_lists_init(void)
 	max_mem = (uint64_t)RTE_MAX_MEM_MB << 20;
 	max_mem_per_type = RTE_MIN((uint64_t)RTE_MAX_MEM_MB_PER_TYPE << 20,
 			max_mem / n_memtypes);
-	/*
-	 * limit maximum number of segment lists per type to ensure there's
-	 * space for memseg lists for all NUMA nodes with all page sizes
-	 */
-	max_seglists_per_type = RTE_MAX_MEMSEG_LISTS / n_memtypes;
-
-	if (max_seglists_per_type == 0) {
-		EAL_LOG(ERR, "Cannot accommodate all memory types, please increase RTE_MAX_MEMSEG_LISTS");
-		goto out;
-	}
 
 	/* go through all mem types and create segment lists */
 	msl_idx = 0;
 	for (cur_type = 0; cur_type < n_memtypes; cur_type++) {
-		unsigned int cur_seglist, n_seglists, n_segs;
-		unsigned int max_segs_per_type, max_segs_per_list;
+		unsigned int n_segs;
 		struct memtype *type = &memtypes[cur_type];
-		uint64_t max_mem_per_list, pagesz;
+		uint64_t pagesz;
 		int socket_id;
 
 		pagesz = type->page_sz;
 		socket_id = type->socket_id;
 
 		/*
-		 * we need to create segment lists for this type. we must take
+		 * we need to create a segment list for this type. we must take
 		 * into account the following things:
 		 *
-		 * 1. total amount of memory we can use for this memory type
-		 * 2. total amount of memory per memseg list allowed
+		 * 1. total amount of memory to use for this memory type
+		 * 2. total amount of memory allowed per type
 		 * 3. number of segments needed to fit the amount of memory
 		 * 4. number of segments allowed per type
-		 * 5. number of segments allowed per memseg list
-		 * 6. number of memseg lists we are allowed to take up
 		 */
+		n_segs = max_mem_per_type / pagesz;
+		n_segs = RTE_MIN(n_segs, (unsigned int)RTE_MAX_MEMSEG_PER_TYPE);
 
-		/* calculate how much segments we will need in total */
-		max_segs_per_type = max_mem_per_type / pagesz;
-		/* limit number of segments to maximum allowed per type */
-		max_segs_per_type = RTE_MIN(max_segs_per_type,
-				(unsigned int)RTE_MAX_MEMSEG_PER_TYPE);
-		/* limit number of segments to maximum allowed per list */
-		max_segs_per_list = RTE_MIN(max_segs_per_type,
-				(unsigned int)RTE_MAX_MEMSEG_PER_LIST);
+		EAL_LOG(DEBUG, "Creating segment list: n_segs:%u socket_id:%i hugepage_sz:%" PRIu64,
+			n_segs, socket_id, pagesz);
 
-		/* calculate how much memory we can have per segment list */
-		max_mem_per_list = RTE_MIN(max_segs_per_list * pagesz,
-				(uint64_t)RTE_MAX_MEM_MB_PER_LIST << 20);
+		msl = &mcfg->memsegs[msl_idx];
 
-		/* calculate how many segments each segment list will have */
-		n_segs = RTE_MIN(max_segs_per_list, max_mem_per_list / pagesz);
+		if (eal_memseg_list_init(msl, pagesz, n_segs, socket_id, msl_idx, true))
+			goto out;
 
-		/* calculate how many segment lists we can have */
-		n_seglists = RTE_MIN(max_segs_per_type / n_segs,
-				max_mem_per_type / max_mem_per_list);
-
-		/* limit number of segment lists according to our maximum */
-		n_seglists = RTE_MIN(n_seglists, max_seglists_per_type);
-
-		EAL_LOG(DEBUG, "Creating %i segment lists: "
-				"n_segs:%i socket_id:%i hugepage_sz:%" PRIu64,
-			n_seglists, n_segs, socket_id, pagesz);
-
-		/* create all segment lists */
-		for (cur_seglist = 0; cur_seglist < n_seglists; cur_seglist++) {
-			if (msl_idx >= RTE_MAX_MEMSEG_LISTS) {
-				EAL_LOG(ERR,
-					"No more space in memseg lists, please increase RTE_MAX_MEMSEG_LISTS");
-				goto out;
-			}
-			msl = &mcfg->memsegs[msl_idx++];
-
-			if (eal_memseg_list_init(msl, pagesz, n_segs,
-					socket_id, cur_seglist, true))
-				goto out;
-
-			if (eal_memseg_list_alloc(msl, 0)) {
-				EAL_LOG(ERR, "Cannot allocate VA space for memseg list");
-				goto out;
-			}
+		if (eal_memseg_list_alloc(msl, 0)) {
+			EAL_LOG(ERR, "Cannot allocate VA space for memseg list");
+			goto out;
 		}
+		msl_idx++;
 	}
 	/* we're successful */
 	ret = 0;
 out:
-	free(memtypes);
 	return ret;
 }
 
