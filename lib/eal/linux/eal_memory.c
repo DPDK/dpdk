@@ -1893,8 +1893,59 @@ memseg_primary_init(void)
 	return eal_dynmem_memseg_lists_init();
 }
 
+static int __rte_unused
+memseg_secondary_init_dynmem(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int msl_idx = 0;
+	struct rte_memseg_list *msl;
+	void *mem_va_addr;
+	size_t mem_va_len;
+
+	if (mcfg->mem_va_addr == 0 || mcfg->mem_va_len == 0 ||
+			mcfg->mem_va_page_sz == 0) {
+		EAL_LOG(ERR, "Missing shared dynamic memory VA range from primary process");
+		return -1;
+	}
+
+	mem_va_addr = (void *)(uintptr_t)mcfg->mem_va_addr;
+	mem_va_len = mcfg->mem_va_len;
+
+	if (eal_get_virtual_area(mem_va_addr, &mem_va_len,
+			mcfg->mem_va_page_sz, 0, 0) == NULL) {
+		EAL_LOG(ERR, "Cannot reserve VA space for hugepage memory");
+		return -1;
+	}
+
+	for (msl_idx = 0; msl_idx < RTE_MAX_MEMSEG_LISTS; msl_idx++) {
+
+		msl = &mcfg->memsegs[msl_idx];
+
+		/* skip empty and external memseg lists */
+		if (msl->memseg_arr.len == 0 || msl->external)
+			continue;
+
+		if (rte_fbarray_attach(&msl->memseg_arr)) {
+			EAL_LOG(ERR, "Cannot attach to primary process memseg lists");
+			eal_mem_free(mem_va_addr, mem_va_len);
+			return -1;
+		}
+
+		if (eal_memseg_list_assign(msl, msl->base_va)) {
+			EAL_LOG(ERR, "Cannot assign VA space for hugepage memory");
+			eal_mem_free(mem_va_addr, mem_va_len);
+			return -1;
+		}
+
+		EAL_LOG(DEBUG, "Attaching segment list: n_segs:%u socket_id:%d hugepage_sz:%" PRIu64,
+			msl->memseg_arr.len, msl->socket_id, msl->page_sz);
+	}
+
+	return 0;
+}
+
 static int
-memseg_secondary_init(void)
+memseg_secondary_init_legacy(void)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	int msl_idx = 0;
@@ -1921,6 +1972,21 @@ memseg_secondary_init(void)
 	}
 
 	return 0;
+}
+
+static int
+memseg_secondary_init(void)
+{
+#ifdef RTE_ARCH_64
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
+	/* for 32-bit dynmem init is same as legacy */
+	if (!internal_conf->legacy_mem)
+		return memseg_secondary_init_dynmem();
+#endif
+
+	return memseg_secondary_init_legacy();
 }
 
 int

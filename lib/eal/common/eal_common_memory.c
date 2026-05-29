@@ -270,6 +270,28 @@ eal_memseg_list_alloc(struct rte_memseg_list *msl, int reserve_flags)
 	return 0;
 }
 
+int
+eal_memseg_list_assign(struct rte_memseg_list *msl, void *addr)
+{
+	size_t page_sz, mem_sz;
+
+	page_sz = msl->page_sz;
+	mem_sz = page_sz * msl->memseg_arr.len;
+
+	if (addr == NULL || addr != RTE_PTR_ALIGN(addr, page_sz)) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+
+	msl->base_va = addr;
+	msl->len = mem_sz;
+
+	EAL_LOG(DEBUG, "VA assigned for memseg list at %p, size %zx",
+			addr, mem_sz);
+
+	return 0;
+}
+
 void
 eal_memseg_list_populate(struct rte_memseg_list *msl, void *addr, int n_segs)
 {

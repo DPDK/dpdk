@@ -49,6 +49,12 @@ struct rte_mem_config {
 
 	struct rte_memseg_list memsegs[RTE_MAX_MEMSEG_LISTS];
 	/**< List of dynamic arrays holding memsegs */
+	uintptr_t mem_va_addr;
+	/**< Base VA address reserved for dynamic memory memseg lists. */
+	size_t mem_va_len;
+	/**< Length of VA range reserved for dynamic memory memseg lists. */
+	size_t mem_va_page_sz;
+	/**< Page size alignment used for dynamic memory VA reservation. */
 
 	struct rte_tailq_head tailq_head[RTE_MAX_TAILQ];
 	/**< Tailqs for objects */
