@@ -162,6 +162,15 @@ API Changes
   - ``rte_flow_dynf_metadata_get``
   - ``rte_flow_dynf_metadata_set``
 
+* **mlx5: promoted driver event and steering management APIs from experimental to stable.**
+
+  The following mlx5 functions are no longer marked experimental:
+
+  - ``rte_pmd_mlx5_driver_event_cb_register``
+  - ``rte_pmd_mlx5_driver_event_cb_unregister``
+  - ``rte_pmd_mlx5_enable_steering``
+  - ``rte_pmd_mlx5_disable_steering``
+
 
 ABI Changes
 -----------

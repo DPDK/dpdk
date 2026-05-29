@@ -12506,7 +12506,7 @@ flow_disable_steering_run_on_related(struct rte_eth_dev *dev,
 	}
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_mlx5_disable_steering, 25.11)
+RTE_EXPORT_SYMBOL(rte_pmd_mlx5_disable_steering)
 void
 rte_pmd_mlx5_disable_steering(void)
 {
@@ -12532,7 +12532,7 @@ rte_pmd_mlx5_disable_steering(void)
 	mlx5_steering_disabled = true;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_mlx5_enable_steering, 25.11)
+RTE_EXPORT_SYMBOL(rte_pmd_mlx5_enable_steering)
 int
 rte_pmd_mlx5_enable_steering(void)
 {
