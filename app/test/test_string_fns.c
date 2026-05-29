@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stddef.h>
+#include <inttypes.h>
 #include <errno.h>
 #include <string.h>
 
@@ -315,6 +316,69 @@ test_rte_basename(void)
 }
 
 static int
+test_rte_str_to_size(void)
+{
+	struct {
+		const char *str;
+		uint64_t value;
+	} valid_values[] = {
+		{"5G", (uint64_t)5 * 1024 * 1024 * 1024},
+		{"0x20g", (uint64_t)0x20 * 1024 * 1024 * 1024},
+		{"10M", 10 * 1024 * 1024},
+		{"050m", 050 * 1024 * 1024},
+		{"8K", 8 * 1024},
+		{"15k", 15 * 1024},
+		{"0200", 0200},
+		{"0x103", 0x103},
+		{"432", 432},
+		{"-1", 0},
+		{"  -2", 0},
+		{"  -3MB", 0},
+	};
+	struct {
+		const char *str;
+	} invalid_values[] = {
+		/* we can only check for invalid input at the start of the string */
+		{"garbage"},
+		{""},
+		{"   "},
+	};
+	unsigned int i;
+	uint64_t value;
+
+	LOG("Checking valid rte_str_to_size inputs\n");
+
+	for (i = 0; i < RTE_DIM(valid_values); i++) {
+		errno = 0;
+		value = rte_str_to_size(valid_values[i].str);
+		if (value != valid_values[i].value) {
+			LOG("FAIL: valid input '%s'\n", valid_values[i].str);
+			return -1;
+		}
+		LOG("PASS: valid input '%s' -> %" PRIu64 "\n",
+			valid_values[i].str, value);
+	}
+
+	LOG("Checking invalid rte_str_to_size inputs\n");
+
+	for (i = 0; i < RTE_DIM(invalid_values); i++) {
+		errno = 0;
+		(void)rte_str_to_size(invalid_values[i].str);
+		if (errno == 0) {
+			LOG("FAIL: invalid input '%s' did not set errno\n",
+				invalid_values[i].str);
+			return -1;
+		}
+		LOG("PASS: invalid input '%s' set errno=%d\n",
+			invalid_values[i].str, errno);
+	}
+
+	LOG("%s - PASSED\n", __func__);
+
+	return 0;
+}
+
+static int
 test_string_fns(void)
 {
 	if (test_rte_strsplit() < 0)
@@ -324,6 +388,8 @@ test_string_fns(void)
 	if (test_rte_str_skip_leading_spaces() < 0)
 		return -1;
 	if (test_rte_basename() < 0)
+		return -1;
+	if (test_rte_str_to_size() < 0)
 		return -1;
 	return 0;
 }

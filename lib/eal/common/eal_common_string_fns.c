@@ -85,6 +85,10 @@ rte_str_to_size(const char *str)
 
 	errno = 0;
 	size = strtoull(str, &endptr, 0);
+	if (endptr == str) {
+		errno = EINVAL;
+		return 0;
+	}
 	if (errno)
 		return 0;
 

@@ -271,35 +271,6 @@ test_reordered_free(void)
 	return ret;
 }
 
-/* test function inside the malloc lib*/
-static int
-test_str_to_size(void)
-{
-	struct {
-		const char *str;
-		uint64_t value;
-	} test_values[] =
-	{{ "5G", (uint64_t)5 * 1024 * 1024 *1024 },
-			{"0x20g", (uint64_t)0x20 * 1024 * 1024 *1024},
-			{"10M", 10 * 1024 * 1024},
-			{"050m", 050 * 1024 * 1024},
-			{"8K", 8 * 1024},
-			{"15k", 15 * 1024},
-			{"0200", 0200},
-			{"0x103", 0x103},
-			{"432", 432},
-			{"-1", 0}, /* negative values return 0 */
-			{"  -2", 0},
-			{"  -3MB", 0},
-			{"18446744073709551616", 0} /* ULLONG_MAX + 1 == out of range*/
-	};
-	unsigned i;
-	for (i = 0; i < RTE_DIM(test_values); i++)
-		if (rte_str_to_size(test_values[i].str) != test_values[i].value)
-			return -1;
-	return 0;
-}
-
 static int
 test_multi_alloc_statistics(void)
 {
@@ -1145,7 +1116,6 @@ test_free_sensitive(void)
 static struct unit_test_suite test_suite = {
 	.suite_name = "Malloc test suite",
 	.unit_test_cases = {
-		TEST_CASE(test_str_to_size),
 		TEST_CASE(test_zero_aligned_alloc),
 		TEST_CASE(test_malloc_bad_params),
 		TEST_CASE(test_realloc),
