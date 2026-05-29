@@ -55,6 +55,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added option to change memory limits per page size.**
+
+  Added the EAL option ``--pagesz-mem``
+  to override the default per-page-size memory limits.
+  Each maximum can be configured with a pair ``<pagesz>:<limit>``.
+
 * **Added option to disable auto probing.**
 
   Added EAL options affecting the initial bus probing.

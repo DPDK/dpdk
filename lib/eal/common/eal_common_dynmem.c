@@ -127,6 +127,11 @@ eal_dynmem_memseg_lists_init(void)
 		mem_va_len += type->mem_sz;
 	}
 
+	if (mem_va_len == 0) {
+		EAL_LOG(ERR, "No virtual memory will be reserved");
+		goto out;
+	}
+
 	mem_va_addr = eal_get_virtual_area(NULL, &mem_va_len,
 			mem_va_page_sz, 0, 0);
 	if (mem_va_addr == NULL) {
@@ -140,6 +145,10 @@ eal_dynmem_memseg_lists_init(void)
 		struct memtype *type = &memtypes[cur_type];
 		uint64_t pagesz;
 		int socket_id;
+
+		/* skip page sizes with zero memory limit */
+		if (type->n_segs == 0)
+			continue;
 
 		pagesz = type->page_sz;
 		socket_id = type->socket_id;
