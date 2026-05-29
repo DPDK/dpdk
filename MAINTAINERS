@@ -1628,7 +1628,7 @@ F: drivers/raw/dpaa2_cmdif/
 F: doc/guides/rawdevs/dpaa2_cmdif.rst
 
 ZTE GDTC
-M: Yong Zhang <zhang.yong25@zte.com.cn>
+M: Wenqiang Chen <chen.wenqiang2@zte.com.cn>
 F: drivers/raw/gdtc/
 F: doc/guides/rawdevs/gdtc.rst
 
