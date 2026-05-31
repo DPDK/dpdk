@@ -16,6 +16,10 @@
 
 #define NUM_STATS 5
 #define LATENCY_NUM_PACKETS 10
+#define LATENCY_FORWARD_ITERATIONS 10000u
+#define LATENCY_FORWARD_MS 10u
+#define MIN_ITERATIONS	10u
+
 #define QUEUE_ID 0
 
 static uint16_t portid;
@@ -140,28 +144,13 @@ static void test_latency_ring_free(void)
 	test_vdev_uninit("net_ring_net_ringa");
 }
 
-static int test_latency_packet_forward(void)
+static int test_forward_loop(uint16_t portid, struct rte_mbuf *pbuf[LATENCY_NUM_PACKETS])
 {
-	unsigned int i;
-	int ret;
-	struct rte_mbuf *pbuf[LATENCY_NUM_PACKETS] = { };
-	struct rte_mempool *mp;
-	char poolname[] = "mbuf_pool";
+	unsigned int i, iters = 0;
 	uint64_t end_cycles;
 	struct rte_metric_value values[NUM_STATS] = { };
 	struct rte_metric_name names[NUM_STATS] = { };
-
-	ret = test_get_mbuf_from_pool(&mp, pbuf, poolname);
-	if (ret < 0) {
-		printf("allocate mbuf pool Failed\n");
-		return TEST_FAILED;
-	}
-	ret = test_dev_start(portid, mp);
-	if (ret < 0) {
-		printf("test_dev_start(%hu, %p) failed, error code: %d\n",
-			portid, mp, ret);
-		return TEST_FAILED;
-	}
+	int ret;
 
 	ret = rte_latencystats_get_names(names, NUM_STATS);
 	TEST_ASSERT((ret == NUM_STATS), "Test Failed to get metrics names");
@@ -170,37 +159,65 @@ static int test_latency_packet_forward(void)
 	TEST_ASSERT(ret == NUM_STATS, "Test failed to get results before forwarding");
 	TEST_ASSERT(values[4].value == 0, "Samples not zero at start of test");
 
-	/*
-	 * Want test to run long enough to collect sufficient samples
-	 * but not so long that scheduler decides to reschedule it (1000 hz).
-	 */
-	end_cycles = rte_rdtsc() + rte_get_tsc_hz() / 2000;
-	do {
+	/* Want test to run long enough to collect sufficient samples */
+	end_cycles = rte_rdtsc() + rte_get_tsc_hz() / MS_PER_S * LATENCY_FORWARD_MS;
+	for (i = 0; i < LATENCY_FORWARD_ITERATIONS; i++) {
 		ret = test_packet_forward(pbuf, portid, QUEUE_ID);
 		if (ret < 0)
 			printf("send pkts Failed\n");
-	} while (rte_rdtsc() < end_cycles);
+
+		if (++iters >= MIN_ITERATIONS && rte_rdtsc() >= end_cycles)
+			break;
+	}
 
 	ret = rte_latencystats_get(values, NUM_STATS);
 	TEST_ASSERT(ret == NUM_STATS, "Test failed to get results after forwarding");
 
+	if (values[4].value == 0) {
+		printf("No latency samples collected after %u iterations, skipping\n", iters);
+		return TEST_SKIPPED;
+	}
+
 	for (i = 0; i < NUM_STATS; i++) {
 		uint16_t k = values[i].key;
 
-		printf("%s = %"PRIu64"\n",
-		       names[k].name, values[i].value);
+		printf("%s = %"PRIu64"\n", names[k].name, values[i].value);
 	}
-
+	fflush(stdout);
 	TEST_ASSERT(values[4].value > 0, "No samples taken");
 
 	TEST_ASSERT(values[0].value < values[1].value, "Min latency > Avg latency");
 	TEST_ASSERT(values[0].value < values[2].value, "Min latency > Max latency");
 	TEST_ASSERT(values[1].value < values[2].value, "Avg latency > Max latency");
+	return TEST_SUCCESS;
+}
+
+static int test_latency_packet_forward(void)
+{
+	struct rte_mempool *mp = NULL;
+	char poolname[] = "mbuf_pool";
+	struct rte_mbuf *pbuf[LATENCY_NUM_PACKETS] = { };
+	int ret;
+
+	ret = test_get_mbuf_from_pool(&mp, pbuf, poolname);
+	if (ret < 0) {
+		printf("allocate mbuf pool Failed\n");
+		return TEST_FAILED;
+	}
+
+	ret = test_dev_start(portid, mp);
+	if (ret < 0) {
+		printf("test_dev_start(%hu, %p) failed, error code: %d\n",
+			portid, mp, ret);
+		ret = TEST_FAILED;
+	} else {
+		ret = test_forward_loop(portid, pbuf);
+	}
 
 	rte_eth_dev_stop(portid);
 	test_put_mbuf_to_pool(mp, pbuf);
 
-	return (ret >= 0) ? TEST_SUCCESS : TEST_FAILED;
+	return ret;
 }
 
 static struct
