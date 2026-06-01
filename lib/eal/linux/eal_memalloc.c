@@ -25,6 +25,7 @@
 #include <linux/falloc.h>
 #include <linux/mman.h> /* for hugetlb-related mmap flags */
 
+#include <rte_atomic.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_eal.h>
@@ -597,10 +598,11 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 
 	/* we need to trigger a write to the page to enforce page fault and
 	 * ensure that page is accessible to us, but we can't overwrite value
-	 * that is already there, so read the old value, and write itback.
-	 * kernel populates the page with zeroes initially.
+	 * that is already there.
+	 * Use an atomic OR with zero to touch the page without changing its contents.
 	 */
-	*(volatile int *)addr = *(volatile int *)addr;
+	(void)rte_atomic_fetch_or_explicit((__rte_atomic uint64_t *)addr, 0,
+					   rte_memory_order_relaxed);
 
 	iova = rte_mem_virt2iova(addr);
 	if (iova == RTE_BAD_PHYS_ADDR) {
