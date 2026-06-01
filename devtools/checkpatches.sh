@@ -113,6 +113,14 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# refrain from using __rte_always_inline
+	awk -v FOLDERS="lib drivers app examples" \
+		-v EXPRESSIONS='\\<__rte_always_inline\\>' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Adding __rte_always_inline; prefer plain inline' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# refrain from new additions of 16/32/64 bits rte_atomicNN_xxx()
 	awk -v FOLDERS="lib drivers app examples" \
 		-v EXPRESSIONS="rte_atomic[0-9][0-9]_.*\\\(" \

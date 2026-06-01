@@ -747,10 +747,46 @@ Static Variables and Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 * All functions and variables that are local to a file must be declared as ``static`` because it can often help the compiler to do some optimizations (such as, inlining the code).
-* Functions that should be inlined should to be declared as ``static inline`` and can be defined in a .c or a .h file.
+* Functions that should be inlined should be declared as ``static inline``
+  and can be defined in a .c or a .h file.
 
 .. note::
 	Static functions defined in a header file must be declared as ``static inline`` in order to prevent compiler warnings about the function being unused.
+
+Inline Functions
+~~~~~~~~~~~~~~~~
+
+The ``__rte_always_inline`` attribute forces the compiler to inline a function
+regardless of its size or call-graph heuristics.
+Prefer plain ``inline`` (or no annotation at all for static functions)
+and let the compiler decide.
+Modern compilers at ``-O2`` make good inlining decisions
+for small ``static inline`` functions in headers,
+and forced inlining can hurt performance by inflating function bodies,
+increasing register pressure, and overriding profile-guided optimization.
+
+``__rte_always_inline`` should only be used when one of the following applies:
+
+* The function contains ``__rte_constant()`` checks that gate a constant-folded fast path,
+  and the optimization is lost if the function is not inlined into the caller.
+  Examples include byte-order helpers and length-dispatched copy/compare routines.
+
+* The function wraps inline assembly or a compiler intrinsic
+  whose correctness depends on being inlined into the caller's register context
+  (for example, intrinsics requiring a compile-time constant argument).
+
+* Measurement on a representative workload shows that
+  the annotation is required to retain performance,
+  and the reason is documented in the commit message that introduces it.
+
+Each use must be justified at the point it is introduced.
+Adding ``__rte_always_inline`` because nearby code uses it is not a justification;
+if the constant or intrinsic that requires inlining is several call levels up the call chain,
+restructure the code rather than annotating the entire chain.
+
+The complementary attribute ``__rte_noinline`` is useful for explicitly marking cold paths
+(error handling, initialization, slow-path fallbacks)
+where outlining the function can reduce instruction-cache pressure on the hot path.
 
 Const Attribute
 ~~~~~~~~~~~~~~~
