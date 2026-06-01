@@ -428,7 +428,7 @@ process_ipsec_ev_inbound(struct ipsec_ctx *ctx, struct route_table *rt,
 		if (pkt->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD) {
 			if (unlikely(pkt->ol_flags &
 				     RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED)) {
-				RTE_LOG(ERR, IPSEC,
+				RTE_LOG(DEBUG, IPSEC,
 					"Inbound security offload failed\n");
 				goto drop_pkt_and_exit;
 			}
@@ -446,7 +446,7 @@ process_ipsec_ev_inbound(struct ipsec_ctx *ctx, struct route_table *rt,
 		if (pkt->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD) {
 			if (unlikely(pkt->ol_flags &
 				     RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED)) {
-				RTE_LOG(ERR, IPSEC,
+				RTE_LOG(DEBUG, IPSEC,
 					"Inbound security offload failed\n");
 				goto drop_pkt_and_exit;
 			}
