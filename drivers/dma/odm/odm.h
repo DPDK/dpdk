@@ -9,6 +9,7 @@
 
 #include <rte_common.h>
 #include <rte_compat.h>
+#include <rte_dmadev.h>
 #include <rte_io.h>
 #include <rte_log.h>
 #include <rte_memzone.h>
@@ -40,9 +41,16 @@
  * ODM Transfer Type Enumeration
  * Enumerates the pointer type in ODM_DMA_INSTR_HDR_S[XTYPE]
  */
+#define ODM_XTYPE_OUTBOUND 0
+#define ODM_XTYPE_INBOUND  1
 #define ODM_XTYPE_INTERNAL 2
 #define ODM_XTYPE_FILL0	   4
 #define ODM_XTYPE_FILL1	   5
+
+/* ODM external port type */
+#define ODM_EXT_PORT_PEM0 0x0
+#define ODM_EXT_PORT_PEM1 0x1
+#define ODM_EXT_PORT_NCB  0x2
 
 /*
  *  ODM Header completion type enumeration
@@ -168,6 +176,8 @@ struct odm_queue {
 	uint16_t iring_max_words;
 	/* Number of words in cring.*/
 	uint16_t cring_max_entry;
+	/* DMA transfer type.*/
+	uint16_t xtype;
 	/* Extra instruction size used per inflight instruction.*/
 	uint8_t *extra_ins_sz;
 	struct vq_stats stats;
@@ -189,6 +199,6 @@ int odm_dev_fini(struct odm_dev *odm);
 int odm_configure(struct odm_dev *odm);
 int odm_enable(struct odm_dev *odm);
 int odm_disable(struct odm_dev *odm);
-int odm_vchan_setup(struct odm_dev *odm, int vchan, int nb_desc);
+int odm_vchan_setup(struct odm_dev *odm, int vchan, const struct rte_dma_vchan_conf *conf);
 
 #endif /* _ODM_H_ */

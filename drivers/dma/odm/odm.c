@@ -125,13 +125,41 @@ odm_disable(struct odm_dev *odm)
 	return 0;
 }
 
+static int
+odm_get_ext_port_type(const struct rte_dma_vchan_conf *conf, uint8_t *ext_port)
+{
+	uint8_t coreid;
+
+	if (conf->src_port.port_type == RTE_DMA_PORT_PCIE) {
+		coreid = conf->src_port.pcie.coreid;
+	} else if (conf->dst_port.port_type == RTE_DMA_PORT_PCIE) {
+		coreid = conf->dst_port.pcie.coreid;
+	} else {
+		*ext_port = ODM_EXT_PORT_NCB;
+		return 0;
+	}
+
+	switch (coreid) {
+	case 0:
+		*ext_port = ODM_EXT_PORT_PEM0;
+		return 0;
+	case 1:
+		*ext_port = ODM_EXT_PORT_PEM1;
+		return 0;
+	default:
+		ODM_LOG(ERR, "Unsupported PCIe coreid %u (only 0 and 1 are valid)", coreid);
+		return -EINVAL;
+	}
+}
+
 int
-odm_vchan_setup(struct odm_dev *odm, int vchan, int nb_desc)
+odm_vchan_setup(struct odm_dev *odm, int vchan, const struct rte_dma_vchan_conf *conf)
 {
 	struct odm_queue *vq = &odm->vq[vchan];
 	int isize, csize, max_nb_desc, rc = 0;
 	union odm_mbox_msg mbox_msg;
 	const struct rte_memzone *mz;
+	uint8_t ext_port;
 	char name[32];
 
 	if (vq->iring_mz != NULL)
@@ -140,10 +168,29 @@ odm_vchan_setup(struct odm_dev *odm, int vchan, int nb_desc)
 	mbox_msg.u[0] = 0;
 	mbox_msg.u[1] = 0;
 
+	switch (conf->direction) {
+	case RTE_DMA_DIR_DEV_TO_MEM:
+		vq->xtype = ODM_XTYPE_INBOUND;
+		break;
+	case RTE_DMA_DIR_MEM_TO_DEV:
+		vq->xtype = ODM_XTYPE_OUTBOUND;
+		break;
+	case RTE_DMA_DIR_MEM_TO_MEM:
+		vq->xtype = ODM_XTYPE_INTERNAL;
+		break;
+	default:
+		ODM_LOG(ERR, "Unsupported DMA direction %d", conf->direction);
+		return -EINVAL;
+	}
+
 	/* ODM PF driver expects vfid starts from index 0 */
 	mbox_msg.q.vfid = odm->vfid;
 	mbox_msg.q.cmd = ODM_QUEUE_OPEN;
 	mbox_msg.q.qidx = vchan;
+	rc = odm_get_ext_port_type(conf, &ext_port);
+	if (rc < 0)
+		return rc;
+	mbox_msg.q.ext_port = ext_port;
 	rc = send_mbox_to_pf(odm, &mbox_msg, &mbox_msg);
 	if (rc < 0)
 		return rc;
@@ -151,7 +198,7 @@ odm_vchan_setup(struct odm_dev *odm, int vchan, int nb_desc)
 	/* Determine instruction & completion ring sizes. */
 
 	/* Create iring that can support nb_desc. Round up to a multiple of 1024. */
-	isize = RTE_ALIGN_CEIL(nb_desc * ODM_IRING_ENTRY_SIZE_MAX * 8, 1024);
+	isize = RTE_ALIGN_CEIL(conf->nb_desc * ODM_IRING_ENTRY_SIZE_MAX * 8, 1024);
 	isize = RTE_MIN(isize, ODM_IRING_MAX_SIZE);
 	snprintf(name, sizeof(name), "vq%d_iring%d", odm->vfid, vchan);
 	mz = rte_memzone_reserve_aligned(name, isize, SOCKET_ID_ANY, 0, 1024);
