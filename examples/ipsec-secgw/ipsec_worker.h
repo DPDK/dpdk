@@ -421,7 +421,9 @@ inbound_sp_sa(struct sp_ctx *sp, struct sa_ctx *sa, struct traffic_type *ip,
 		}
 
 		/* Only check SPI match for processed IPSec packets */
-		if (i < lim && ((m->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD) == 0)) {
+		if (i < lim && ((m->ol_flags & (RTE_MBUF_F_RX_SEC_OFFLOAD |
+				 RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED))) !=
+				 RTE_MBUF_F_RX_SEC_OFFLOAD) {
 			stats->discard++;
 			free_pkts(&m, 1);
 			continue;
