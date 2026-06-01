@@ -34,8 +34,10 @@ struct odm_mbox_queue_msg {
 	uint64_t vfid : 8;
 	/* Queue index in the VF */
 	uint64_t qidx : 8;
+	/* Port type for external DMA access */
+	uint64_t ext_port : 8;
 	/* Reserved */
-	uint64_t rsvd_24_63 : 40;
+	uint64_t rsvd_32_63 : 32;
 };
 
 union odm_mbox_msg {

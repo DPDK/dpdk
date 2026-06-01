@@ -30,7 +30,8 @@ odm_dmadev_info_get(const struct rte_dma_dev *dev, struct rte_dma_info *dev_info
 	dev_info->max_vchans = odm->max_qs;
 	dev_info->nb_vchans = odm->num_qs;
 	dev_info->dev_capa =
-		(RTE_DMA_CAPA_MEM_TO_MEM | RTE_DMA_CAPA_OPS_COPY | RTE_DMA_CAPA_OPS_COPY_SG);
+		(RTE_DMA_CAPA_MEM_TO_MEM | RTE_DMA_CAPA_OPS_COPY | RTE_DMA_CAPA_OPS_COPY_SG |
+		 RTE_DMA_CAPA_MEM_TO_DEV | RTE_DMA_CAPA_DEV_TO_MEM);
 	dev_info->max_desc = ODM_IRING_MAX_ENTRY;
 	dev_info->min_desc = 1;
 	dev_info->max_sges = ODM_MAX_POINTER;
@@ -58,7 +59,7 @@ odm_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 	struct odm_dev *odm = dev->fp_obj->dev_private;
 
 	RTE_SET_USED(conf_sz);
-	return odm_vchan_setup(odm, vchan, conf->nb_desc);
+	return odm_vchan_setup(odm, vchan, conf);
 }
 
 static int
@@ -99,7 +100,7 @@ odm_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t ds
 	struct odm_queue *vq;
 	uint64_t h;
 
-	const union odm_instr_hdr_s hdr = {
+	union odm_instr_hdr_s hdr = {
 		.s.ct = ODM_HDR_CT_CW_NC,
 		.s.xtype = ODM_XTYPE_INTERNAL,
 		.s.nfst = 1,
@@ -107,6 +108,7 @@ odm_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t ds
 	};
 
 	vq = &odm->vq[vchan];
+	hdr.s.xtype = vq->xtype;
 
 	h = length;
 	h |= ((uint64_t)length << 32);
@@ -252,6 +254,7 @@ odm_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge *
 	vq = &odm->vq[vchan];
 	const uint16_t max_iring_words = vq->iring_max_words;
 
+	hdr.s.xtype = vq->xtype;
 	iring_head_ptr = vq->iring_mz->addr;
 	iring_head = vq->iring_head;
 	iring_sz_available = vq->iring_sz_available;
