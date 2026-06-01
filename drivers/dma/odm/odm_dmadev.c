@@ -110,6 +110,9 @@ odm_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t ds
 	vq = &odm->vq[vchan];
 	hdr.s.xtype = vq->xtype;
 
+	if (unlikely(!length))
+		return -EINVAL;
+
 	h = length;
 	h |= ((uint64_t)length << 32);
 
@@ -262,14 +265,20 @@ odm_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge *
 	pending_submit_len = vq->pending_submit_len;
 	pending_submit_cnt = vq->pending_submit_cnt;
 
-	if (unlikely(nb_src > 4 || nb_dst > 4))
+	if (unlikely(!nb_src || nb_src > 4 || !nb_dst || nb_dst > 4))
 		return -EINVAL;
 
-	for (i = 0; i < nb_src; i++)
+	for (i = 0; i < nb_src; i++) {
+		if (unlikely(!src[i].length))
+			return -EINVAL;
 		s_sz += src[i].length;
+	}
 
-	for (i = 0; i < nb_dst; i++)
+	for (i = 0; i < nb_dst; i++) {
+		if (unlikely(!dst[i].length))
+			return -EINVAL;
 		d_sz += dst[i].length;
+	}
 
 	if (s_sz != d_sz)
 		return -EINVAL;
@@ -341,6 +350,9 @@ odm_dmadev_fill(void *dev_private, uint16_t vchan, uint64_t pattern, rte_iova_t 
 		.s.nfst = 0,
 		.s.nlst = 1,
 	};
+
+	if (unlikely(!length))
+		return -EINVAL;
 
 	h = (uint64_t)length;
 
