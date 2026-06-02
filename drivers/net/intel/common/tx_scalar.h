@@ -509,7 +509,6 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 
 			if (txe->mbuf)
 				rte_pktmbuf_free_seg(txe->mbuf);
-			txe->mbuf = m_seg;
 
 			/* Setup TX Descriptor */
 			/* Calculate segment length, using IPsec callback if provided */
@@ -528,6 +527,7 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 					((uint64_t)CI_MAX_DATA_PER_TXD << CI_TXD_QW1_TX_BUF_SZ_S) |
 					((uint64_t)td_tag << CI_TXD_QW1_L2TAG1_S);
 				write_txd(txd, buf_dma_addr, cmd_type_offset_bsz);
+				txe->mbuf = NULL;
 
 				buf_dma_addr += CI_MAX_DATA_PER_TXD;
 				slen -= CI_MAX_DATA_PER_TXD;
@@ -548,6 +548,7 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 				((uint64_t)slen << CI_TXD_QW1_TX_BUF_SZ_S) |
 				((uint64_t)td_tag << CI_TXD_QW1_L2TAG1_S);
 			write_txd(txd, buf_dma_addr, cmd_type_offset_bsz);
+			txe->mbuf = m_seg;
 
 			tx_id = txe->next_id;
 			txe = txn;
