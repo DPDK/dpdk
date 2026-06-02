@@ -329,13 +329,22 @@ ci_txq_release_all_mbufs(struct ci_tx_queue *txq, bool use_ctx)
 		return;
 
 	if (!txq->use_vec_entry) {
-		/* Regular scalar path uses sw_ring with ci_tx_entry */
-		for (uint16_t i = 0; i < txq->nb_tx_desc; i++) {
-			if (txq->sw_ring[i].mbuf != NULL) {
-				rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
-				txq->sw_ring[i].mbuf = NULL;
-			}
+		/* Free mbufs from (last_desc_cleaned + 1) to (tx_tail - 1). */
+		const uint16_t start = (txq->last_desc_cleaned + 1) % txq->nb_tx_desc;
+		const uint16_t nb_desc = txq->nb_tx_desc;
+		const uint16_t end = txq->tx_tail;
+
+		uint16_t i = start;
+		if (end < i) {
+			for (; i < nb_desc; i++)
+				if (txq->sw_ring[i].mbuf != NULL)
+					rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
+			i = 0;
 		}
+		for (; i < end; i++)
+			if (txq->sw_ring[i].mbuf != NULL)
+				rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
+		memset(txq->sw_ring, 0, sizeof(txq->sw_ring[0]) * nb_desc);
 		return;
 	}
 

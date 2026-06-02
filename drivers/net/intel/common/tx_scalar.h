@@ -197,16 +197,66 @@ ci_tx_xmit_cleanup(struct ci_tx_queue *txq)
 	const uint16_t rs_idx = (last_desc_cleaned == nb_tx_desc - 1) ?
 			0 :
 			(last_desc_cleaned + 1) >> txq->log2_rs_thresh;
-	uint16_t desc_to_clean_to = (rs_idx << txq->log2_rs_thresh) + (txq->tx_rs_thresh - 1);
+	const uint16_t dd_idx = txq->rs_last_id[rs_idx];
+	const uint16_t first_to_clean = rs_idx << txq->log2_rs_thresh;
 
-	/* Check if descriptor is done  */
-	if ((txd[txq->rs_last_id[rs_idx]].cmd_type_offset_bsz &
-			rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M)) !=
-				rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE))
+	/* Check if descriptor is done - all drivers use 0xF as done value in bits 3:0 */
+	if ((txd[dd_idx].cmd_type_offset_bsz & rte_cpu_to_le_64(CI_TXD_QW1_DTYPE_M)) !=
+			rte_cpu_to_le_64(CI_TX_DESC_DTYPE_DESC_DONE))
+		/* Descriptor not yet processed by hardware */
 		return -1;
 
+	/* DD bit is set, descriptors are done. Now free the mbufs. */
+	/* Note: nb_tx_desc is guaranteed to be a multiple of tx_rs_thresh,
+	 * validated during queue setup. This means cleanup never wraps around
+	 * the ring within a single burst (e.g., ring=256, rs_thresh=32 gives
+	 * bursts of 0-31, 32-63, ..., 224-255).
+	 */
+	const uint16_t nb_to_clean = txq->tx_rs_thresh;
+	struct ci_tx_entry *sw_ring = txq->sw_ring;
+
+	/* fast_free_mp is NULL only when the fast free is disabled*/
+	if (txq->fast_free_mp != NULL) {
+		/* FAST_FREE path: mbufs are already reset, just return to pool */
+		struct rte_mbuf *free[CI_TX_MAX_FREE_BUF_SZ];
+		uint16_t nb_free = 0;
+
+		/* Get cached mempool pointer, or cache it on first use.
+		 * Read from mbuf at dd_idx, as it is guaranteed to be non-NULL.
+		 */
+		struct rte_mempool *mp =
+			likely(txq->fast_free_mp != (void *)UINTPTR_MAX) ?
+			txq->fast_free_mp :
+			(txq->fast_free_mp = sw_ring[dd_idx].mbuf->pool);
+
+		/* Pack non-NULL mbufs in-place at start of sw_ring range.
+		 * No modulo needed in loop since we're guaranteed not to wrap.
+		 */
+		for (uint16_t i = 0; i < nb_to_clean; i++) {
+			struct rte_mbuf *m = sw_ring[first_to_clean + i].mbuf;
+			if (m == NULL)
+				continue;
+			free[nb_free++] = m;
+			if (unlikely(nb_free == CI_TX_MAX_FREE_BUF_SZ)) {
+				rte_mbuf_raw_free_bulk(mp, free, nb_free);
+				nb_free = 0;
+			}
+		}
+
+		/* Bulk return to mempool using packed sw_ring entries directly */
+		if (nb_free > 0)
+			rte_mbuf_raw_free_bulk(mp, free, nb_free);
+	} else {
+		/* Non-FAST_FREE path: use free_seg for refcount checks and freeing */
+		for (uint16_t i = 0; i < nb_to_clean; i++) {
+			struct rte_mbuf *m = sw_ring[first_to_clean + i].mbuf;
+			if (m != NULL)
+				rte_pktmbuf_free_seg(m);
+		}
+	}
+
 	/* Update the txq to reflect the last descriptor that was cleaned */
-	txq->last_desc_cleaned = desc_to_clean_to;
+	txq->last_desc_cleaned = first_to_clean + txq->tx_rs_thresh - 1;
 	txq->nb_tx_free += txq->tx_rs_thresh;
 
 	return 0;
@@ -450,8 +500,6 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 			txd = &ci_tx_ring[tx_id];
 			tx_id = txe->next_id;
 
-			if (txe->mbuf)
-				rte_pktmbuf_free_seg(txe->mbuf);
 			txe->mbuf = tx_pkt;
 			/* Setup TX Descriptor */
 			td_cmd |= CI_TX_DESC_CMD_EOP;
@@ -471,11 +519,7 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 			uint64_t *ctx_txd = RTE_CAST_PTR(uint64_t *, &ci_tx_ring[tx_id]);
 
 			txn = &sw_ring[txe->next_id];
-			RTE_MBUF_PREFETCH_TO_FREE(txn->mbuf);
-			if (txe->mbuf) {
-				rte_pktmbuf_free_seg(txe->mbuf);
-				txe->mbuf = NULL;
-			}
+			txe->mbuf = NULL;
 
 			write_txd(ctx_txd, cd_qw0, cd_qw1);
 
@@ -488,11 +532,7 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 			uint64_t *ipsec_txd = RTE_CAST_PTR(uint64_t *, &ci_tx_ring[tx_id]);
 
 			txn = &sw_ring[txe->next_id];
-			RTE_MBUF_PREFETCH_TO_FREE(txn->mbuf);
-			if (txe->mbuf) {
-				rte_pktmbuf_free_seg(txe->mbuf);
-				txe->mbuf = NULL;
-			}
+			txe->mbuf = NULL;
 
 			ipsec_txd[0] = ipsec_qw0;
 			ipsec_txd[1] = ipsec_qw1;
@@ -507,8 +547,19 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 			txd = &ci_tx_ring[tx_id];
 			txn = &sw_ring[txe->next_id];
 
-			if (txe->mbuf)
-				rte_pktmbuf_free_seg(txe->mbuf);
+			/* For FAST_FREE: reset mbuf fields while we have it in cache.
+			 * [Fast free is indicated by txq->fast_free_mp being non-NULL.]
+			 * FAST_FREE guarantees refcnt=1 and direct mbufs, so we only
+			 * need to reset nb_segs and next pointer as per rte_pktmbuf_prefree_seg.
+			 * Save next pointer before resetting since we need it for loop iteration.
+			 */
+			struct rte_mbuf *next_seg = m_seg->next;
+			if (txq->fast_free_mp != NULL) {
+				if (m_seg->nb_segs != 1)
+					m_seg->nb_segs = 1;
+				if (next_seg != NULL)
+					m_seg->next = NULL;
+			}
 
 			/* Setup TX Descriptor */
 			/* Calculate segment length, using IPsec callback if provided */
@@ -539,7 +590,7 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 			}
 
 			/* fill the last descriptor with End of Packet (EOP) bit */
-			if (m_seg->next == NULL)
+			if (next_seg == NULL)
 				td_cmd |= CI_TX_DESC_CMD_EOP;
 
 			const uint64_t cmd_type_offset_bsz = CI_TX_DESC_DTYPE_DATA |
@@ -552,7 +603,7 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 
 			tx_id = txe->next_id;
 			txe = txn;
-			m_seg = m_seg->next;
+			m_seg = next_seg;
 		} while (m_seg);
 end_pkt:
 		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_used);
