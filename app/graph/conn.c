@@ -197,6 +197,7 @@ conn_free(struct conn *c)
 	free(c->msg_in);
 	free(c->prompt);
 	free(c->welcome);
+	free(c->buf);
 	free(c);
 }
 
