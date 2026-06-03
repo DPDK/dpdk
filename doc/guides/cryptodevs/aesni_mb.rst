@@ -81,23 +81,14 @@ Limitations
 * RTE_CRYPTO_CIPHER_DES_DOCSISBPI is not supported for combined Crypto-CRC
   DOCSIS security protocol.
 
-AESNI MB PMD selection over SNOW3G/ZUC/KASUMI PMDs
---------------------------------------------------
+AESNI MB PMD selection over SNOW3G/ZUC PMDs
+-------------------------------------------
 
-This PMD supports wireless cipher suite (SNOW3G, ZUC and KASUMI).
+This PMD supports wireless cipher suite (SNOW3G and ZUC).
 On Intel processors, it is recommended to use this PMD
-instead of SNOW3G, ZUC and KASUMI PMDs, as it enables algorithm mixing
+instead of SNOW3G and ZUC PMDs, as it enables algorithm mixing
 (e.g. cipher algorithm SNOW3G-UEA2 with authentication algorithm AES-CMAC-128)
 and performance over IMIX (packet size mix) traffic is significantly higher.
-
-AESNI MB PMD selection over CHACHA20-POLY1305 PMD
--------------------------------------------------
-
-This PMD supports Chacha20-Poly1305 algorithm.
-On Intel processors, it is recommended to use this PMD instead of CHACHA20-POLY1305 PMD,
-as it delivers better performance on single segment buffers.
-For multi-segment buffers, it is still recommended to use CHACHA20-POLY1305 PMD,
-until the new SGL API is introduced in the AESNI MB PMD.
 
 Installation
 ------------

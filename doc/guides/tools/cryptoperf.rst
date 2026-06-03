@@ -153,7 +153,6 @@ The following are the application command-line options:
            crypto_cn10k
            crypto_dpaa_sec
            crypto_dpaa2_sec
-           crypto_kasumi
            crypto_mvsam
            crypto_null
            crypto_octeontx

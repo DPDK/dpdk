@@ -42,8 +42,6 @@ sources = files(
         'ipsec_mb_ops.c',
         'pmd_aesni_mb.c',
         'pmd_aesni_gcm.c',
-        'pmd_chacha_poly.c',
-        'pmd_kasumi.c',
         'pmd_snow3g.c',
         'pmd_zuc.c',
 )

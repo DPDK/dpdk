@@ -20603,17 +20603,6 @@ test_cryptodev_cpu_aesni_mb(void)
 }
 
 static int
-test_cryptodev_chacha_poly_mb(void)
-{
-	int32_t rc;
-	enum rte_security_session_action_type at = gbl_action_type;
-	rc = run_cryptodev_testsuite(
-			RTE_STR(CRYPTODEV_NAME_CHACHA20_POLY1305_PMD));
-	gbl_action_type = at;
-	return rc;
-}
-
-static int
 test_cryptodev_openssl(void)
 {
 	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
@@ -20652,12 +20641,6 @@ static int
 test_cryptodev_sw_snow3g(void)
 {
 	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD));
-}
-
-static int
-test_cryptodev_sw_kasumi(void)
-{
-	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_KASUMI_PMD));
 }
 
 static int
@@ -20910,8 +20893,6 @@ REGISTER_DRIVER_TEST(cryptodev_qat_autotest, test_cryptodev_qat);
 REGISTER_DRIVER_TEST(cryptodev_aesni_mb_autotest, test_cryptodev_aesni_mb);
 REGISTER_DRIVER_TEST(cryptodev_cpu_aesni_mb_autotest,
 	test_cryptodev_cpu_aesni_mb);
-REGISTER_DRIVER_TEST(cryptodev_chacha_poly_mb_autotest,
-	test_cryptodev_chacha_poly_mb);
 REGISTER_DRIVER_TEST(cryptodev_openssl_autotest, test_cryptodev_openssl);
 REGISTER_DRIVER_TEST(cryptodev_aesni_gcm_autotest, test_cryptodev_aesni_gcm);
 REGISTER_DRIVER_TEST(cryptodev_cpu_aesni_gcm_autotest,
@@ -20919,7 +20900,6 @@ REGISTER_DRIVER_TEST(cryptodev_cpu_aesni_gcm_autotest,
 REGISTER_DRIVER_TEST(cryptodev_mlx5_autotest, test_cryptodev_mlx5);
 REGISTER_DRIVER_TEST(cryptodev_null_autotest, test_cryptodev_null);
 REGISTER_DRIVER_TEST(cryptodev_sw_snow3g_autotest, test_cryptodev_sw_snow3g);
-REGISTER_DRIVER_TEST(cryptodev_sw_kasumi_autotest, test_cryptodev_sw_kasumi);
 REGISTER_DRIVER_TEST(cryptodev_sw_zuc_autotest, test_cryptodev_sw_zuc);
 REGISTER_DRIVER_TEST(cryptodev_sw_armv8_autotest, test_cryptodev_armv8);
 REGISTER_DRIVER_TEST(cryptodev_sw_mvsam_autotest, test_cryptodev_mrvl);
