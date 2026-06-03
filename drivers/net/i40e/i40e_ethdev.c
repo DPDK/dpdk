@@ -2565,15 +2565,19 @@ i40e_dev_start(struct rte_eth_dev *dev)
 					       I40E_AQ_EVENT_MEDIA_NA), NULL);
 		if (ret != I40E_SUCCESS)
 			PMD_DRV_LOG(WARNING, "Fail to set phy mask");
-
-		/* Call get_link_info aq command to enable/disable LSE */
-		i40e_dev_link_update(dev, 1);
 	}
 
 	if (dev->data->dev_conf.intr_conf.rxq == 0) {
+		i40e_dev_link_update(dev, 0);
+		pf->mac_config_on_link_up = !dev->data->dev_link.link_status;
 		rte_eal_alarm_set(I40E_ALARM_INTERVAL,
 				  i40e_dev_alarm_handler, dev);
 	} else {
+		/* Block if no interrupt handler can process link-up events, to help
+		 * ensure that MAC config is applied when the link is up.
+		 */
+		i40e_dev_link_update(dev, !rte_intr_allow_others(intr_handle));
+		pf->mac_config_on_link_up = !dev->data->dev_link.link_status;
 		/* enable uio intr after callback register */
 		rte_intr_enable(intr_handle);
 	}
@@ -6892,6 +6896,7 @@ static void
 i40e_dev_handle_aq_msg(struct rte_eth_dev *dev)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_arq_event_info info;
 	uint16_t pending, opcode;
 	int ret;
@@ -6927,9 +6932,21 @@ i40e_dev_handle_aq_msg(struct rte_eth_dev *dev)
 			break;
 		case i40e_aqc_opc_get_link_status:
 			ret = i40e_dev_link_update(dev, 0);
-			if (!ret)
+			/* Some devices require MAC config to be applied when the link comes up. */
+			if (!ret) {
+				if (pf->mac_config_on_link_up && dev->data->dev_link.link_status) {
+					uint16_t max_frame_size;
+
+					max_frame_size = dev->data->mtu ?
+						dev->data->mtu + I40E_ETH_OVERHEAD :
+						I40E_FRAME_SIZE_MAX;
+					i40e_aq_set_mac_config(hw, max_frame_size, TRUE,
+								false, 0, NULL);
+					pf->mac_config_on_link_up = false;
+				}
 				rte_eth_dev_callback_process(dev,
 					RTE_ETH_EVENT_INTR_LSC, NULL);
+			}
 			break;
 		default:
 			PMD_DRV_LOG(DEBUG, "Request %u is not supported yet",
