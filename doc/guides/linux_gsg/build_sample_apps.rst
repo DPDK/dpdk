@@ -126,3 +126,34 @@ Additional sample applications are included in the DPDK examples directory.
 These sample applications may be built and run in a manner similar to that described in earlier sections in this manual.
 In addition, see :doc:`/sample_app_ug/index` for descriptions of the applications,
 specific instructions on compilation and execution and some explanation of the code.
+
+
+.. _linux_gsg_run_in_container:
+
+Running an Application in a Container
+-------------------------------------
+
+A DPDK application can be run inside a container
+using the image built in :ref:`linux_gsg_build_in_container`.
+
+.. warning::
+
+   Hugepages must be configured on the host before running a DPDK application in a container.
+   Refer to :ref:`linux_gsg_hugepages` for setup instructions.
+
+The following example runs testpmd in interactive mode with no physical NICs:
+
+.. code-block:: console
+
+   podman run -it --privileged \
+       -v /dev/hugepages:/dev/hugepages \
+       dpdk-builder \
+       ./build/app/dpdk-testpmd --no-pci -- -i
+
+.. note::
+
+   The ``--privileged`` flag grants access to hugepages and hardware resources.
+   For production deployments, consider using more fine-grained capabilities
+   and device access instead.
+
+   These instructions also work with Docker by replacing ``podman`` with ``docker``.
