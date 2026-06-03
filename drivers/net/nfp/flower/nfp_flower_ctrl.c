@@ -168,7 +168,7 @@ nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 		 * enabled. But the queue needs to be configured.
 		 */
 		PMD_TX_LOG(ERR, "Ctrl dev TX Bad queue.");
-		goto xmit_end;
+		return 0;
 	}
 
 	txds = &txq->txds[txq->wr_p];
@@ -183,7 +183,7 @@ nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 	free_descs = nfp_net_nfd3_free_tx_desc(txq);
 	if (unlikely(free_descs == 0)) {
 		PMD_TX_LOG(ERR, "Ctrl dev no free descs.");
-		goto xmit_end;
+		return 0;
 	}
 
 	lmbuf = &txq->txbufs[txq->wr_p].mbuf;
@@ -207,7 +207,6 @@ nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 	cnt++;
 	app_fw_flower->ctrl_vnic_tx_count++;
 
-xmit_end:
 	rte_wmb();
 	nfp_qcp_ptr_add(txq->qcp_q, NFP_QCP_WRITE_PTR, 1);
 
