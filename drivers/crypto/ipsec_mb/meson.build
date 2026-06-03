@@ -42,8 +42,13 @@ sources = files(
         'ipsec_mb_ops.c',
         'pmd_aesni_mb.c',
         'pmd_aesni_gcm.c',
-        'pmd_snow3g.c',
-        'pmd_zuc.c',
 )
+# PMDs supported only on ARM build
+if arch_subdir == 'arm'
+    sources += files(
+            'pmd_snow3g.c',
+            'pmd_zuc.c',
+    )
+endif
 deps += ['bus_vdev', 'net', 'security']
 require_iova_in_mbuf = false

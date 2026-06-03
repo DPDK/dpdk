@@ -5,8 +5,9 @@ SNOW 3G Crypto Poll Mode Driver
 ===============================
 
 The SNOW3G PMD (**librte_crypto_snow3g**) provides poll mode crypto driver support for
-utilizing `Intel IPSec Multi-buffer library <https://github.com/01org/intel-ipsec-mb>`_
-which implements F8 and F8 functions for SNOW 3G UEA2 cipher and UIA2 hash algorithms.
+utilizing the ARM64 port of `Intel IPsec Multi-Buffer library
+<https://gitlab.arm.com/arm-reference-solutions/ipsec-mb>`_
+which implements F8 and F9 functions for SNOW 3G UEA2 cipher and UIA2 hash algorithms.
 
 Features
 --------
@@ -36,9 +37,7 @@ Limitations
 SNOW3G PMD vs AESNI MB PMD
 --------------------------
 
-AESNI MB PMD also supports SNOW3G cipher and authentication algorithms.
-It is recommended to use the AESNI MB PMD,
-which offers better performance on Intel processors.
+On Intel processors this PMD is no longer supported, please use the AESNI MB PMD.
 Take a look at the PMD documentation (:doc:`aesni_mb`) for more information.
 
 Installation
@@ -47,12 +46,7 @@ Installation
 To build DPDK with the SNOW3G_PMD the user is required to download the multi-buffer
 library and compile it on their user system before building DPDK.
 
-For x86 system, the multi-buffer library is available
-`here <https://github.com/01org/intel-ipsec-mb>`_.
-The latest version of the library supported by this PMD is v1.5, which
-can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.5.zip>`_.
-
-For Arm system, ARM64 port of the multi-buffer library can be downloaded from
+The ARM64 port of the multi-buffer library can be downloaded from
 `<https://gitlab.arm.com/arm-reference-solutions/ipsec-mb/-/tree/main/>`_.
 The latest version of the library supported by this PMD is tagged as SECLIB-IPSEC-2026.05.30.
 

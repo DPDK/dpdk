@@ -196,6 +196,11 @@ Removed Items
   The Chacha20-poly1305 and KASUMI drivers were just wrappers
   around the main AESNI_MB driver.
 
+* crypto/ipsec_mb: Removed ZUC and SNOW 3G crypto drivers from the x86 release.
+
+  The ZUC and SNOW 3G crypto drivers are using APIs
+  that are now deprecated in the Intel IPsec Multi-Buffer library.
+
 
 API Changes
 -----------
