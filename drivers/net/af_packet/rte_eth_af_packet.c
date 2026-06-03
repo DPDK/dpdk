@@ -15,7 +15,9 @@
 #include <rte_kvargs.h>
 #include <bus_vdev_driver.h>
 
+#include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
 #include <arpa/inet.h>
@@ -1138,6 +1140,42 @@ free_internals:
 	return -1;
 }
 
+/* Parse an unsigned integer device argument. */
+static int
+parse_uint(const char *key, const char *value,
+	   unsigned int *out, unsigned long limit)
+{
+	unsigned long val;
+	char *endptr;
+
+	if (value == NULL) {
+		PMD_LOG(ERR, "no value for argument \"%s\"", key);
+		return -1;
+	}
+
+	/* Skip leading whitespace so a leading sign can be detected. */
+	while (isspace((unsigned char)*value))
+		value++;
+
+	/* strtoul() silently accepts and negates a leading '-'. */
+	if (*value == '\0' || *value == '-') {
+		PMD_LOG(ERR, "invalid value \"%s\" for argument \"%s\"",
+			value, key);
+		return -1;
+	}
+
+	errno = 0;
+	val = strtoul(value, &endptr, 10);
+	if (errno != 0 || *endptr != '\0' || val > limit) {
+		PMD_LOG(ERR, "invalid value \"%s\" for argument \"%s\"",
+			value, key);
+		return -1;
+	}
+
+	*out = (unsigned int)val;
+	return 0;
+}
+
 static int
 rte_eth_from_packet(struct rte_vdev_device *dev,
 		    int const *sockfd,
@@ -1168,7 +1206,9 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 	for (k_idx = 0; k_idx < kvlist->count; k_idx++) {
 		pair = &kvlist->pairs[k_idx];
 		if (strstr(pair->key, ETH_AF_PACKET_NUM_Q_ARG) != NULL) {
-			qpairs = atoi(pair->value);
+			if (parse_uint(pair->key, pair->value,
+				       &qpairs, RTE_MAX_QUEUES_PER_PORT) < 0)
+				return -1;
 			if (qpairs < 1) {
 				PMD_LOG(ERR,
 					"%s: invalid qpairs value",
@@ -1178,7 +1218,8 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 			continue;
 		}
 		if (strstr(pair->key, ETH_AF_PACKET_BLOCKSIZE_ARG) != NULL) {
-			blocksize = atoi(pair->value);
+			if (parse_uint(pair->key, pair->value, &blocksize, UINT_MAX) < 0)
+				return -1;
 			if (!blocksize) {
 				PMD_LOG(ERR,
 					"%s: invalid blocksize value",
@@ -1188,7 +1229,8 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 			continue;
 		}
 		if (strstr(pair->key, ETH_AF_PACKET_FRAMESIZE_ARG) != NULL) {
-			framesize = atoi(pair->value);
+			if (parse_uint(pair->key, pair->value, &framesize, UINT_MAX) < 0)
+				return -1;
 			if (!framesize) {
 				PMD_LOG(ERR,
 					"%s: invalid framesize value",
@@ -1198,7 +1240,8 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 			continue;
 		}
 		if (strstr(pair->key, ETH_AF_PACKET_FRAMECOUNT_ARG) != NULL) {
-			framecount = atoi(pair->value);
+			if (parse_uint(pair->key, pair->value, &framecount, UINT_MAX) < 0)
+				return -1;
 			if (!framecount) {
 				PMD_LOG(ERR,
 					"%s: invalid framecount value",
@@ -1208,13 +1251,8 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 			continue;
 		}
 		if (strstr(pair->key, ETH_AF_PACKET_QDISC_BYPASS_ARG) != NULL) {
-			qdisc_bypass = atoi(pair->value);
-			if (qdisc_bypass > 1) {
-				PMD_LOG(ERR,
-					"%s: invalid bypass value",
-					name);
+			if (parse_uint(pair->key, pair->value, &qdisc_bypass, 1) < 0)
 				return -1;
-			}
 			continue;
 		}
 		if (strstr(pair->key, ETH_AF_PACKET_FANOUT_MODE_ARG) != NULL) {
