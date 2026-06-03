@@ -67,7 +67,7 @@ rte_power_set_uncore_env(enum rte_uncore_power_mgmt_env env)
 		 */
 		env = RTE_UNCORE_PM_ENV_INTEL_UNCORE;
 
-	if (env <= RTE_DIM(uncore_env_str)) {
+	if (env < RTE_DIM(uncore_env_str)) {
 		RTE_TAILQ_FOREACH(ops, &uncore_ops_list, next)
 			if (strncmp(ops->name, uncore_env_str[env],
 				RTE_POWER_UNCORE_DRIVER_NAMESZ) == 0) {
