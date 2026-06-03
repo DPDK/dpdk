@@ -92,6 +92,10 @@ static int cpm_insert_pool_id(struct tfc_cpm *cpm, uint16_t pool_id)
 
 	/* Alloc new entry */
 	new_pool_use = rte_zmalloc("tf", sizeof(struct cpm_pool_use), 0);
+	if (new_pool_use == NULL) {
+		PMD_DRV_LOG_LINE(ERR, "Failed to allocate pool_use entry");
+		return -ENOMEM;
+	}
 	new_pool_use->pool_id = pool_id;
 	new_pool_use->prev = NULL;
 	new_pool_use->next = NULL;
@@ -287,6 +291,7 @@ int tfc_cpm_get_pool_size(struct tfc_cpm *cpm, uint32_t *pool_sz_in_records)
 int tfc_cpm_set_cmm_inst(struct tfc_cpm *cpm, uint16_t pool_id, struct tfc_cmm *cmm)
 {
 	struct cpm_pool_entry *pool;
+	int rc;
 
 	if (cpm == NULL) {
 		PMD_DRV_LOG_LINE(ERR, "CPM is NULL");
@@ -309,7 +314,12 @@ int tfc_cpm_set_cmm_inst(struct tfc_cpm *cpm, uint16_t pool_id, struct tfc_cmm *
 		pool->valid = false;
 	} else {
 		pool->valid = true;
-		cpm_insert_pool_id(cpm, pool_id);
+		rc = cpm_insert_pool_id(cpm, pool_id);
+		if (rc) {
+			pool->cmm = NULL;
+			pool->valid = false;
+			return rc;
+		}
 	}
 
 	return 0;
