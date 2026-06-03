@@ -136,6 +136,10 @@ Deprecation Notices
   The legacy actions should be removed
   once ``MODIFY_FIELD`` alternative is implemented in drivers.
 
+* ethdev: Starting in 26.11, the function ``rte_eth_dev_get_name_by_port()``
+  will take a size parameter as well as the string buffer.
+  This will detect and prevent accidental overwriting of caller provided buffer.
+
 * graph: The internal scheduling mechanism of ``struct rte_graph``
   will change in DPDK 26.11.
   The circular buffer fields (``head``, ``tail``, ``cir_mask``, ``cir_start``)
