@@ -82,6 +82,7 @@ struct mlx5dr_matcher {
 	uint8_t num_of_at;
 	/* enum mlx5dr_matcher_flags */
 	uint8_t flags;
+	uint32_t hws_root_match_flags;
 	struct mlx5dr_devx_obj *end_ft;
 	struct mlx5dr_matcher *col_matcher;
 	struct mlx5dr_matcher *resize_dst;
