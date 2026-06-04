@@ -741,6 +741,7 @@ int mlx5dr_rule_create_root_no_comp(struct mlx5dr_rule *rule,
 	}
 
 	flow_attr.tbl_type = rule->matcher->tbl->type;
+	flow_attr.hws_root_match_flags = rule->matcher->hws_root_match_flags;
 
 	ret = mlx5_flow_dv_translate_items_hws(items, &flow_attr, value->match_buf,
 					       MLX5_SET_MATCHER_HS_V, NULL,
