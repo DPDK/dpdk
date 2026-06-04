@@ -117,6 +117,9 @@ enum mlx5_indirect_type {
 	((struct rte_flow_action_handle *)(uintptr_t) \
 	 ((MLX5_INDIRECT_ACTION_TYPE_CT << MLX5_INDIRECT_ACTION_TYPE_OFFSET) | (index)))
 
+#define MLX5_EMPTY_ECPRI_TYPE_MASK RTE_BIT32(0)
+#define MLX5_EMPTY_ECPRI_BODY_MASK RTE_BIT32(1)
+
 enum mlx5_indirect_list_type {
 	MLX5_INDIRECT_ACTION_LIST_TYPE_ERR = 0,
 	MLX5_INDIRECT_ACTION_LIST_TYPE_LEGACY = 1,
@@ -1264,6 +1267,7 @@ struct mlx5_flow_attr {
 	/* Action flags, used by priority adjustment. */
 	uint32_t act_flags;
 	uint32_t tbl_type; /* Flow table type. */
+	uint32_t hws_root_match_flags;
 };
 
 /* Flow structure. */
@@ -1985,6 +1989,8 @@ struct mlx5_flow_workspace {
 	uint32_t skip_matcher_reg:1;
 	/* Indicates if need to skip matcher register in translate. */
 	uint32_t mark:1; /* Indicates if flow contains mark action. */
+	uint32_t empty_ecpri_type_mask:1; /* Indicates if eCPRI type was not masked. */
+	uint32_t empty_ecpri_body_mask:1; /* Indicates if 1st DW of eCPRI payload was not masked. */
 	uint32_t vport_meta_tag; /* Used for vport index match. */
 };
 
@@ -2018,6 +2024,7 @@ struct mlx5_dv_matcher_workspace {
 	const struct rte_flow_item *tunnel_item; /* Flow tunnel item. */
 	const struct rte_flow_item *gre_item; /* Flow GRE item. */
 	const struct rte_flow_item *integrity_items[2];
+	uint32_t *p_root_flags;
 };
 
 struct mlx5_flow_split_info {

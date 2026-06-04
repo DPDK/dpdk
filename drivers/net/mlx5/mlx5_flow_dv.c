@@ -7798,7 +7798,7 @@ mlx5_flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				.u32 =
 				RTE_BE32(((const struct rte_ecpri_common_hdr) {
 					.type = 0xFF,
-					}).u32),
+				}).u32),
 			},
 			.dummy[0] = 0xffffffff,
 		},
@@ -11401,6 +11401,20 @@ flow_dv_translate_item_gtp_psc(void *key, const struct rte_flow_item *item,
 	return 0;
 }
 
+
+static inline void
+flow_dv_set_ecpri_sample1(void *misc4_v,
+			  const struct rte_flow_item_ecpri *ecpri_m,
+			  const struct rte_flow_item_ecpri *ecpri_v,
+			  uint32_t sample1)
+{
+	void *dw_v;
+	dw_v = MLX5_ADDR_OF(fte_match_set_misc4, misc4_v, prog_sample_field_value_1);
+	*(uint32_t *)dw_v = ecpri_v->hdr.dummy[0] & ecpri_m->hdr.dummy[0];
+	/* Sample#1, to match message body, offset 4. */
+	MLX5_SET(fte_match_set_misc4, misc4_v, prog_sample_field_id_1, sample1);
+}
+
 /**
  * Add eCPRI item to matcher and to the value.
  *
@@ -11418,6 +11432,7 @@ flow_dv_translate_item_gtp_psc(void *key, const struct rte_flow_item *item,
 static void
 flow_dv_translate_item_ecpri(struct rte_eth_dev *dev, void *key,
 			     const struct rte_flow_item *item,
+			     struct mlx5_dv_matcher_workspace *wks,
 			     uint64_t last_item, uint32_t key_type)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -11446,18 +11461,32 @@ flow_dv_translate_item_ecpri(struct rte_eth_dev *dev, void *key,
 					RTE_BE16(RTE_ETHER_TYPE_ECPRI);
 		}
 	}
+	/* HWS matcher does need a non-empty mask. */
 	if (MLX5_ITEM_VALID(item, key_type))
 		return;
-	MLX5_ITEM_UPDATE(item, key_type, ecpri_v, ecpri_m,
-		&rte_flow_item_ecpri_mask);
+	MLX5_ITEM_UPDATE(item, key_type, ecpri_v, ecpri_m, &rte_flow_item_ecpri_mask);
 	/*
 	 * Maximal four DW samples are supported in a single matching now.
 	 * Two are used now for a eCPRI matching:
 	 * 1. Type: one byte, mask should be 0x00ff0000 in network order
 	 * 2. ID of a message: one or two bytes, mask 0xffff0000 or 0xff000000
 	 *    if any.
+	 * Translation also handles the following cases.
+	 * 1. HWS mode may face a case with NULL mask and value all zeros.
+	 * 2. Matching all eCPRI packets will be done in ETH / VLAN item.
+	 * 3. If type is not masked, then message body will not be masked either, forcefully.
 	 */
-	if (!ecpri_m->hdr.common.u32)
+	if (key_type == MLX5_SET_MATCHER_HS_M) {
+		if (!ecpri_m->hdr.common.u32) {
+			*wks->p_root_flags |= MLX5_EMPTY_ECPRI_TYPE_MASK;
+			return;
+		}
+		/* Initialized with 0, this should not hit. */
+		*wks->p_root_flags &= ~MLX5_EMPTY_ECPRI_TYPE_MASK;
+	}
+	if (key_type == MLX5_SET_MATCHER_HS_V && (*wks->p_root_flags & MLX5_EMPTY_ECPRI_TYPE_MASK))
+		return;
+	if ((key_type & MLX5_SET_MATCHER_SW) && !ecpri_m->hdr.common.u32)
 		return;
 	samples = priv->sh->ecpri_parser.ids;
 	/* Need to take the whole DW as the mask to fill the entry. */
@@ -11473,27 +11502,40 @@ flow_dv_translate_item_ecpri(struct rte_eth_dev *dev, void *key,
 	 * Checking if message body part needs to be matched.
 	 * Some wildcard rules only matching type field should be supported.
 	 */
-	if (ecpri_m->hdr.dummy[0]) {
-		if (key_type == MLX5_SET_MATCHER_SW_M)
-			common.u32 = rte_be_to_cpu_32(ecpri_vv->hdr.common.u32);
-		else
-			common.u32 = rte_be_to_cpu_32(ecpri_v->hdr.common.u32);
+	if (key_type == MLX5_SET_MATCHER_HS_M) {
+		if (!ecpri_m->hdr.dummy[0]) {
+			*wks->p_root_flags |= MLX5_EMPTY_ECPRI_BODY_MASK;
+			return;
+		}
+		*wks->p_root_flags &= ~MLX5_EMPTY_ECPRI_BODY_MASK;
+	}
+	if (key_type == MLX5_SET_MATCHER_HS_V && (*wks->p_root_flags & MLX5_EMPTY_ECPRI_BODY_MASK))
+		return;
+	if (key_type & MLX5_SET_MATCHER_SW) {
+		if (!ecpri_m->hdr.dummy[0])
+			return;
+		common.u32 = rte_be_to_cpu_32(ecpri_vv->hdr.common.u32);
+	} else if (key_type == MLX5_SET_MATCHER_HS_V) {
+		common.u32 = rte_be_to_cpu_32(ecpri_v->hdr.common.u32);
+	}
+	if (key_type != MLX5_SET_MATCHER_HS_M) {
 		switch (common.type) {
 		case RTE_ECPRI_MSG_TYPE_IQ_DATA:
 		case RTE_ECPRI_MSG_TYPE_RTC_CTRL:
 		case RTE_ECPRI_MSG_TYPE_DLY_MSR:
-			dw_v = MLX5_ADDR_OF(fte_match_set_misc4, misc4_v,
-					    prog_sample_field_value_1);
-			*(uint32_t *)dw_v = ecpri_v->hdr.dummy[0] &
-					    ecpri_m->hdr.dummy[0];
-			/* Sample#1, to match message body, offset 4. */
-			MLX5_SET(fte_match_set_misc4, misc4_v,
-				 prog_sample_field_id_1, samples[1]);
+			flow_dv_set_ecpri_sample1(misc4_v, ecpri_v, ecpri_m, samples[1]);
 			break;
 		default:
 			/* Others, do not match any sample ID. */
 			break;
 		}
+	} else {
+		/* When MLX5_SET_MATCHER_HS_M on root table (default value),
+		 * the sample ID and mask should be set, or else prog_sample_field_id_1 will
+		 * be zero and a mismatch with the HWS rule.
+		 * Empty body mask for a matcher returns directly in the previous lines.
+		 */
+		flow_dv_set_ecpri_sample1(misc4_v, ecpri_v, ecpri_m, samples[1]);
 	}
 }
 
@@ -14501,7 +14543,7 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
 					"cannot create eCPRI parser");
 		}
 		flow_dv_translate_item_ecpri
-				(dev, key, items, last_item, key_type);
+				(dev, key, items, wks, last_item, key_type);
 		/* No other protocol should follow eCPRI layer. */
 		last_item = MLX5_FLOW_LAYER_ECPRI;
 		break;
@@ -14698,6 +14740,7 @@ mlx5_flow_dv_translate_items_hws_impl(const struct rte_flow_item *items,
 		.attr = &rattr,
 		.rss_desc = &rss_desc,
 		.group = attr->group,
+		.p_root_flags = &attr->hws_root_match_flags,
 	};
 	int ret = 0;
 
