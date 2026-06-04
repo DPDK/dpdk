@@ -237,6 +237,8 @@ foreach l:libraries
         cflags += '-DRTE_USE_FUNCTION_VERSIONING'
     endif
     cflags += '-DRTE_LOG_DEFAULT_LOGTYPE=lib.' + l
+    cflags += '-DRTE_COMPONENT_CLASS=lib'
+    cflags += '-DRTE_COMPONENT_NAME=' + name
     if annotate_locks and cc.get_id() == 'clang'
         cflags += '-DRTE_ANNOTATE_LOCKS'
         cflags += '-Wthread-safety'
