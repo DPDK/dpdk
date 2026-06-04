@@ -136,6 +136,7 @@ ixgbe_flow_actions_check(const struct ci_flow_actions *actions,
 {
 	const struct rte_flow_action *action;
 	struct rte_eth_dev_data *dev_data = param->driver_ctx;
+	struct ixgbe_adapter *ad = IXGBE_DEV_PRIVATE_TO_ADAPTER(dev_data->dev_private);
 	size_t idx;
 
 	for (idx = 0; idx < actions->count; idx++) {
@@ -150,6 +151,17 @@ ixgbe_flow_actions_check(const struct ci_flow_actions *actions,
 						RTE_FLOW_ERROR_TYPE_ACTION,
 						action,
 						"queue index out of range");
+			}
+			break;
+		}
+		case RTE_FLOW_ACTION_TYPE_VF:
+		{
+			const struct rte_flow_action_vf *vf = action->conf;
+			if (vf->id >= ad->max_vfs) {
+				return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						action,
+						"VF id out of range");
 			}
 			break;
 		}
@@ -882,12 +894,6 @@ ixgbe_parse_ethertype_filter(struct rte_eth_dev *dev, const struct rte_flow_attr
 	if (ret)
 		return ret;
 
-	/* only one action is supported */
-	if (parsed_actions.count > 1) {
-		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
-					  parsed_actions.actions[1],
-					  "Only one action can be specified at a time");
-	}
 	action = parsed_actions.actions[0];
 
 	ret = cons_parse_ethertype_filter(pattern, action, filter, error);
@@ -1133,39 +1139,15 @@ ixgbe_parse_syn_filter(struct rte_eth_dev *dev, const struct rte_flow_attr *attr
  */
 static int
 cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
-			const struct rte_flow_attr *attr,
 			const struct rte_flow_item pattern[],
-			const struct rte_flow_action actions[],
+			const struct rte_flow_action *action,
 			struct ixgbe_l2_tunnel_conf *filter,
 			struct rte_flow_error *error)
 {
 	const struct rte_flow_item *item;
 	const struct rte_flow_item_e_tag *e_tag_spec;
 	const struct rte_flow_item_e_tag *e_tag_mask;
-	const struct rte_flow_action *act;
-	const struct rte_flow_action_vf *act_vf;
 	struct ixgbe_adapter *ad = IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-
-	if (!pattern) {
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ITEM_NUM,
-			NULL, "NULL pattern.");
-		return -rte_errno;
-	}
-
-	if (!actions) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ACTION_NUM,
-				   NULL, "NULL action.");
-		return -rte_errno;
-	}
-
-	if (!attr) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ATTR,
-				   NULL, "NULL attribute.");
-		return -rte_errno;
-	}
 
 	/* The first not void item should be e-tag. */
 	item = next_no_void_pattern(pattern, NULL);
@@ -1224,69 +1206,11 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	/* parse attr */
-	/* must be input direction */
-	if (!attr->ingress) {
-		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
-			attr, "Only support ingress.");
-		return -rte_errno;
-	}
-
-	/* not supported */
-	if (attr->egress) {
-		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
-			attr, "Not support egress.");
-		return -rte_errno;
-	}
-
-	/* not supported */
-	if (attr->transfer) {
-		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
-			attr, "No support for transfer.");
-		return -rte_errno;
-	}
-
-	/* not supported */
-	if (attr->priority) {
-		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
-			attr, "Not support priority.");
-		return -rte_errno;
-	}
-
-	/* check if the first not void action is VF or PF. */
-	act = next_no_void_action(actions, NULL);
-	if (act->type != RTE_FLOW_ACTION_TYPE_VF &&
-			act->type != RTE_FLOW_ACTION_TYPE_PF) {
-		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ACTION,
-			act, "Not supported action.");
-		return -rte_errno;
-	}
-
-	if (act->type == RTE_FLOW_ACTION_TYPE_VF) {
-		act_vf = (const struct rte_flow_action_vf *)act->conf;
+	if (action->type == RTE_FLOW_ACTION_TYPE_VF) {
+		const struct rte_flow_action_vf *act_vf = action->conf;
 		filter->pool = act_vf->id;
 	} else {
 		filter->pool = ad->max_vfs;
-	}
-
-	/* check if the next not void item is END */
-	act = next_no_void_action(actions, act);
-	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
-		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ACTION,
-			act, "Not supported action.");
-		return -rte_errno;
 	}
 
 	return 0;
@@ -1300,29 +1224,52 @@ ixgbe_parse_l2_tn_filter(struct rte_eth_dev *dev,
 			struct ixgbe_l2_tunnel_conf *l2_tn_filter,
 			struct rte_flow_error *error)
 {
+	struct rte_eth_dev_data *dev_data = dev->data;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev_data->dev_private);
+	struct ci_flow_actions parsed_actions;
+	struct ci_flow_actions_check_param ap_param = {
+		.allowed_types = (const enum rte_flow_action_type[]){
+			/* only vf/pf is allowed here */
+			RTE_FLOW_ACTION_TYPE_VF,
+			RTE_FLOW_ACTION_TYPE_PF,
+			RTE_FLOW_ACTION_TYPE_END
+		},
+		.driver_ctx = dev_data,
+		.check = ixgbe_flow_actions_check,
+		.max_actions = 1,
+	};
 	int ret = 0;
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_adapter *ad = IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	uint16_t vf_num;
-
-	ret = cons_parse_l2_tn_filter(dev, attr, pattern,
-				actions, l2_tn_filter, error);
+	const struct rte_flow_action *action;
 
 	if (hw->mac.type != ixgbe_mac_X550 &&
 		hw->mac.type != ixgbe_mac_X550EM_x &&
 		hw->mac.type != ixgbe_mac_X550EM_a &&
 		hw->mac.type != ixgbe_mac_E610) {
-		memset(l2_tn_filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ITEM,
 			NULL, "Not supported by L2 tunnel filter");
 		return -rte_errno;
 	}
 
-	vf_num = ad->max_vfs;
+	/* validate attributes */
+	ret = ci_flow_check_attr(attr, NULL, error);
+	if (ret)
+		return ret;
 
-	if (l2_tn_filter->pool > vf_num)
-		return -rte_errno;
+	/* parse requested actions */
+	ret = ci_flow_check_actions(actions, &ap_param, &parsed_actions, error);
+	if (ret)
+		return ret;
+
+	/* only one action is supported */
+	if (parsed_actions.count > 1) {
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+					  parsed_actions.actions[1],
+					  "Only one action can be specified at a time");
+	}
+	action = parsed_actions.actions[0];
+
+	ret = cons_parse_l2_tn_filter(dev, pattern, action, l2_tn_filter, error);
 
 	return ret;
 }
