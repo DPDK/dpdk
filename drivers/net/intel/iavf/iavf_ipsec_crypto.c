@@ -14,6 +14,7 @@
 #include "iavf_rxtx.h"
 #include "iavf_log.h"
 #include "iavf_generic_flow.h"
+#include "../common/flow_check.h"
 
 #include "iavf_ipsec_crypto.h"
 #include "iavf_ipsec_crypto_capabilities.h"
@@ -1953,15 +1954,16 @@ iavf_ipsec_flow_parse(struct iavf_adapter *ad,
 		      uint32_t array_len,
 		      const struct rte_flow_item pattern[],
 		      const struct rte_flow_action actions[],
-		      uint32_t priority,
+		      const struct rte_flow_attr *attr,
 		      void **meta,
 		      struct rte_flow_error *error)
 {
 	struct iavf_pattern_match_item *item = NULL;
 	int ret = -1;
 
-	if (priority >= 1)
-		return -rte_errno;
+	ret = ci_flow_check_attr(attr, NULL, error);
+	if (ret)
+		return ret;
 
 	item = iavf_search_pattern_match_item(pattern, array, array_len, error);
 	if (item && item->meta) {

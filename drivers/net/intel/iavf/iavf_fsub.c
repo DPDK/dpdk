@@ -20,6 +20,7 @@
 #include <rte_flow.h>
 #include <iavf.h>
 #include "iavf_generic_flow.h"
+#include "../common/flow_check.h"
 
 #define MAX_QGRP_NUM_TYPE      7
 #define IAVF_IPV6_ADDR_LENGTH  16
@@ -650,12 +651,15 @@ iavf_fsub_parse(struct iavf_adapter *ad,
 		uint32_t array_len,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
-		uint32_t priority,
+		const struct rte_flow_attr *attr,
 		void **meta,
 		struct rte_flow_error *error)
 {
 	struct iavf_fsub_conf *filter;
 	struct iavf_pattern_match_item *pattern_match_item = NULL;
+	struct ci_flow_attr_check_param attr_param = {
+		.allow_priority = true,
+	};
 	int ret = 0;
 
 	filter = rte_zmalloc(NULL, sizeof(*filter), 0);
@@ -664,6 +668,18 @@ iavf_fsub_parse(struct iavf_adapter *ad,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "No memory for iavf_fsub_conf_ptr");
 		return -ENOMEM;
+	}
+
+	ret = ci_flow_check_attr(attr, &attr_param, error);
+	if (ret)
+		goto error;
+
+	if (attr->priority > 1) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+				   attr, "Only support priority 0 and 1.");
+		ret = -rte_errno;
+		goto error;
 	}
 
 	/* search flow subscribe pattern */
@@ -687,7 +703,7 @@ iavf_fsub_parse(struct iavf_adapter *ad,
 		goto error;
 
 	/* parse flow subscribe pattern action */
-	ret = iavf_fsub_parse_action((void *)ad, actions, priority,
+	ret = iavf_fsub_parse_action((void *)ad, actions, attr->priority,
 				     error, filter);
 
 error:

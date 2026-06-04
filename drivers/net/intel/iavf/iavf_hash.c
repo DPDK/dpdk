@@ -22,6 +22,7 @@
 #include "iavf_log.h"
 #include "iavf.h"
 #include "iavf_generic_flow.h"
+#include "../common/flow_check.h"
 
 #define IAVF_PHINT_NONE				0
 #define IAVF_PHINT_GTPU				BIT_ULL(0)
@@ -86,7 +87,7 @@ iavf_hash_parse_pattern_action(struct iavf_adapter *ad,
 			       uint32_t array_len,
 			       const struct rte_flow_item pattern[],
 			       const struct rte_flow_action actions[],
-			       uint32_t priority,
+			       const struct rte_flow_attr *attr,
 			       void **meta,
 			       struct rte_flow_error *error);
 
@@ -1521,7 +1522,7 @@ iavf_hash_parse_pattern_action(__rte_unused struct iavf_adapter *ad,
 			       uint32_t array_len,
 			       const struct rte_flow_item pattern[],
 			       const struct rte_flow_action actions[],
-			       uint32_t priority,
+			       const struct rte_flow_attr *attr,
 			       void **meta,
 			       struct rte_flow_error *error)
 {
@@ -1530,8 +1531,9 @@ iavf_hash_parse_pattern_action(__rte_unused struct iavf_adapter *ad,
 	uint64_t phint = IAVF_PHINT_NONE;
 	int ret = 0;
 
-	if (priority >= 1)
-		return -rte_errno;
+	ret = ci_flow_check_attr(attr, NULL, error);
+	if (ret)
+		return ret;
 
 	rss_meta_ptr = rte_zmalloc(NULL, sizeof(*rss_meta_ptr), 0);
 	if (!rss_meta_ptr) {
