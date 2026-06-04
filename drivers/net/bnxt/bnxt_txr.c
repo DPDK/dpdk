@@ -238,15 +238,17 @@ static int bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 				uint16_t *coal_pkts,
 				struct tx_bd_long **last_txbd)
 {
+	struct tx_bd_long *last_txbd_save = *last_txbd;
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
 	struct bnxt_ring *ring = txr->tx_ring_struct;
+	uint16_t tx_raw_prod_save = txr->tx_raw_prod;
 	uint32_t outer_tpid_bd = 0;
 	struct tx_bd_long *txbd;
 	struct tx_bd_long_hi *txbd1 = NULL;
 	uint32_t vlan_tag_flags;
 	bool long_bd = false;
 	unsigned short nr_bds;
-	uint16_t prod;
+	uint16_t prod, idx;
 	bool pkt_needs_ts = 0;
 	struct rte_mbuf *m_seg;
 	struct rte_mbuf **tx_buf;
@@ -508,6 +510,24 @@ static int bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 
 	return 0;
 drop:
+	/* Roll back any descriptors and tx_buf_ring slots that were written
+	 * for this packet before the failure was detected.  Walking from the
+	 * saved producer index up to (but not including) the current one is
+	 * safe because we hold the Tx lock and the HW has not been notified
+	 * (the doorbell is only rung after bnxt_start_xmit() returns
+	 * successfully).
+	 */
+	idx = tx_raw_prod_save;
+
+	while (idx != txr->tx_raw_prod) {
+		uint16_t slot = RING_IDX(ring, idx);
+
+		txr->tx_buf_ring[slot] = NULL;
+		txr->tx_desc_ring[slot].address = 0;
+		idx = RING_NEXT(idx);
+	}
+	txr->tx_raw_prod = tx_raw_prod_save;
+	*last_txbd = last_txbd_save;
 	rte_pktmbuf_free(tx_pkt);
 ret:
 	return rc;
@@ -837,22 +857,28 @@ uint16_t _bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		if (unlikely(rc)) {
 			if (rc == -EINVAL) {
+				coal_pkts--;
 				rte_atomic_fetch_add_explicit(&txq->tx_mbuf_drop, 1,
 							      rte_memory_order_relaxed);
 				dropped++;
+				continue;
 			}
 			break;
 		}
 	}
 
-	if (likely(nb_tx_pkts)) {
+	/* last_txbd is used to check for if any packets have been sent in
+	 * the burst as bnxt_start_xmit will update it to the most recent
+	 * non-dropped buffer descriptor in the burst.
+	 */
+	if (likely(last_txbd != NULL)) {
 		/* Request a completion on the last packet */
 		last_txbd->flags_type &= ~TX_BD_LONG_FLAGS_NO_CMPL;
 		bnxt_db_write(&txq->tx_ring->tx_db, txq->tx_ring->tx_raw_prod);
 	}
 
-	nb_tx_pkts += dropped;
-	return nb_tx_pkts;
+	return RTE_MIN((uint16_t)(nb_tx_pkts + dropped), nb_pkts);
+
 }
 
 int bnxt_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
