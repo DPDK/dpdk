@@ -1381,6 +1381,7 @@ static int mlx5dr_matcher_init_root(struct mlx5dr_matcher *matcher)
 	LIST_INSERT_HEAD(&matcher->tbl->head, matcher, next);
 	pthread_spin_unlock(&ctx->ctrl_lock);
 
+	matcher->hws_root_match_flags = flow_attr.hws_root_match_flags;
 	return 0;
 
 free_mask:
