@@ -3816,6 +3816,7 @@ i40e_flow_check(struct rte_eth_dev *dev,
 	if (ret) {
 		return ret;
 	}
+	/* action and pattern validation will happen in each respective engine */
 
 	if (!pattern) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_NUM,
@@ -3830,14 +3831,11 @@ i40e_flow_check(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	/* Get the non-void item of action */
-	while ((actions + i)->type == RTE_FLOW_ACTION_TYPE_VOID)
-		i++;
-
-	if ((actions + i)->type == RTE_FLOW_ACTION_TYPE_RSS) {
-		filter_ctx->type = RTE_ETH_FILTER_HASH;
-		return i40e_hash_parse(dev, pattern, actions + i, &filter_ctx->rss_conf, error);
-	}
+	/* try parsing as RSS */
+	filter_ctx->type = RTE_ETH_FILTER_HASH;
+	ret = i40e_hash_parse(dev, pattern, actions, &filter_ctx->rss_conf, error);
+	if (!ret)
+		return ret;
 
 	i = 0;
 	/* Get the non-void item number of pattern */

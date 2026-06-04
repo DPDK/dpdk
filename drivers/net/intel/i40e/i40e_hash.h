@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-int i40e_hash_parse(const struct rte_eth_dev *dev,
+int i40e_hash_parse(struct rte_eth_dev *dev,
 		    const struct rte_flow_item pattern[],
 		    const struct rte_flow_action actions[],
 		    struct i40e_rte_flow_rss_conf *rss_conf,
