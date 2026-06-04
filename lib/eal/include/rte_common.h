@@ -918,6 +918,10 @@ __extension__ typedef uint64_t RTE_MARKER64[0];
 /** Take a macro value and get a string version of it */
 #define RTE_STR(x) _RTE_STR(x)
 
+/** Concatenate two tokens after expanding macros in both. */
+#define _RTE_CONCAT2(a, b) a ## b
+#define RTE_CONCAT(a, b) _RTE_CONCAT2(a, b)
+
 /**
  * ISO C helpers to modify format strings using variadic macros.
  * This is a replacement for the ", ## __VA_ARGS__" GNU extension.
