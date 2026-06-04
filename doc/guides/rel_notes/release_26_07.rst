@@ -69,6 +69,20 @@ New Features
     ``rte_eal_init`` and the application is responsible for probing each device,
   * ``--auto-probing`` enables the initial bus probing, which is the current default behavior.
 
+* **Changed mempool cache behaviour.**
+
+  * The mempool cache flush/refill algorithm was improved,
+    to reduce the mempool cache miss rate for most application types.
+    Applications where each lcore only puts or gets to a mempool,
+    e.g. pipelined applications where ethdev Rx and Tx run on separate lcores,
+    should adapt to the new algorithm by doubling their configured mempool cache size,
+    to avoid doubling their mempool cache miss rate.
+  * The effective size of a mempool cache was changed
+    to match the specified size at mempool creation;
+    the effective size was previously 50 % larger than requested.
+  * The size of the ``struct rte_mempool_cache`` was kept
+    for API/ABI compatibility purposes.
+
 * **Added RISC-V vector paths.**
 
   * Increased the default SIMD bitwidth to allow using the vector extension.
