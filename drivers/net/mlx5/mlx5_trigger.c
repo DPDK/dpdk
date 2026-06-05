@@ -116,6 +116,27 @@ error:
 	return -rte_errno;
 }
 
+static struct rte_mbuf *
+mlx5_alloc_null_mbuf(uint32_t data_len)
+{
+	size_t alloc_size = sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM +
+		rte_align32pow2(data_len);
+	struct rte_mbuf *m;
+
+	m = mlx5_malloc(MLX5_MEM_ZERO, alloc_size, 0, SOCKET_ID_ANY);
+	if (m == NULL)
+		return NULL;
+	m->buf_addr = RTE_PTR_ADD(m, sizeof(*m));
+	m->buf_len = alloc_size - sizeof(*m);
+	rte_mbuf_iova_set(m, rte_mem_virt2iova(m->buf_addr));
+	m->data_off = RTE_PKTMBUF_HEADROOM;
+	m->refcnt = 1;
+	m->nb_segs = 1;
+	m->port = RTE_MBUF_PORT_INVALID;
+	m->pool = NULL;
+	return m;
+}
+
 /**
  * Register Rx queue mempools and fill the Rx queue cache.
  * This function tolerates repeated mempool registration.
@@ -130,7 +151,8 @@ static int
 mlx5_rxq_mempool_register(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
 	struct rte_mempool *mp;
-	uint32_t s;
+	struct mlx5_eth_rxseg *seg;
+	uint16_t s;
 	int ret = 0;
 
 	mlx5_mr_flush_local_cache(&rxq_ctrl->rxq.mr_ctrl);
@@ -139,21 +161,35 @@ mlx5_rxq_mempool_register(struct mlx5_rxq_ctrl *rxq_ctrl)
 		return mlx5_mr_mempool_populate_cache(&rxq_ctrl->rxq.mr_ctrl,
 						      rxq_ctrl->rxq.mprq_mp);
 	for (s = 0; s < rxq_ctrl->rxq.rxseg_n; s++) {
-		bool is_extmem;
-
-		mp = rxq_ctrl->rxq.rxseg[s].mp;
-		is_extmem = (rte_pktmbuf_priv_flags(mp) &
-			     RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF) != 0;
-		ret = mlx5_mr_mempool_register(rxq_ctrl->sh->cdev, mp,
-					       is_extmem);
-		if (ret < 0 && rte_errno != EEXIST)
-			return ret;
-		ret = mlx5_mr_mempool_populate_cache(&rxq_ctrl->rxq.mr_ctrl,
-						     mp);
-		if (ret < 0)
-			return ret;
+		seg = &rxq_ctrl->rxq.rxseg[s];
+		mp = seg->mp;
+		if (mp) { /* Regular segment */
+			bool is_extmem = (rte_pktmbuf_priv_flags(mp) &
+					RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF) != 0;
+			ret = mlx5_mr_mempool_register(rxq_ctrl->sh->cdev, mp, is_extmem);
+			if (ret < 0 && rte_errno != EEXIST)
+				goto error;
+			ret = mlx5_mr_mempool_populate_cache(&rxq_ctrl->rxq.mr_ctrl, mp);
+			if (ret < 0)
+				goto error;
+		} else { /* NULL segment used in selective Rx */
+			seg->null_mbuf = mlx5_alloc_null_mbuf(seg->length);
+			if (seg->null_mbuf == NULL) {
+				rte_errno = ENOMEM;
+				ret = -rte_errno;
+				goto error;
+			}
+		}
 	}
 	return 0;
+
+error:
+	while (s-- > 0) {
+		seg = &rxq_ctrl->rxq.rxseg[s];
+		mlx5_free(seg->null_mbuf);
+		seg->null_mbuf = NULL;
+	}
+	return ret;
 }
 
 /**
