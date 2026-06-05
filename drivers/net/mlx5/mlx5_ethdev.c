@@ -381,6 +381,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->rx_seg_capa.multi_pools = !priv->config.mprq.enabled;
 	info->rx_seg_capa.offset_allowed = !priv->config.mprq.enabled;
 	info->rx_seg_capa.offset_align_log2 = 0;
+	info->rx_seg_capa.selective_rx = !!priv->sh->null_mr;
 	info->rx_offload_capa = (mlx5_get_rx_port_offloads() |
 				 info->rx_queue_offload_capa);
 	info->tx_offload_capa = mlx5_get_tx_port_offloads(dev);
@@ -708,6 +709,25 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	return -rte_errno;
 }
 
+static bool
+mlx5_selective_rx_enabled(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	for (uint32_t q = 0; q < priv->rxqs_n; ++q) {
+		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, q);
+
+		if (rxq_ctrl == NULL || rxq_ctrl->is_hairpin)
+			continue;
+		for (uint16_t s = 0; s < rxq_ctrl->rxq.rxseg_n; s++) {
+			if (rxq_ctrl->rxq.rxseg[s].mp == NULL)
+				return true;
+		}
+	}
+
+	return false;
+}
+
 /**
  * Configure the RX function to use.
  *
@@ -723,6 +743,11 @@ mlx5_select_rx_function(struct rte_eth_dev *dev)
 	eth_rx_burst_t rx_pkt_burst = mlx5_rx_burst;
 
 	MLX5_ASSERT(dev != NULL);
+	if (mlx5_selective_rx_enabled(dev)) {
+		DRV_LOG(DEBUG, "port %u forced to scalar SPRQ Rx (selective Rx configured)",
+			dev->data->port_id);
+		return rx_pkt_burst;
+	}
 	if (mlx5_shared_rq_enabled(dev)) {
 		rx_pkt_burst = mlx5_rx_burst_out_of_order;
 		DRV_LOG(DEBUG, "port %u forced to use SPRQ"

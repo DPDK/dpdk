@@ -96,6 +96,7 @@ struct mlx5_eth_rxseg {
 	uint16_t length; /**< Segment data length, configures split point. */
 	uint16_t offset; /**< Data offset from beginning of mbuf data buffer. */
 	uint32_t reserved; /**< Reserved field. */
+	struct rte_mbuf *null_mbuf; /**< For selective Rx. */
 };
 
 /* RX queue descriptor. */

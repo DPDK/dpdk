@@ -103,6 +103,10 @@ New Features
   * Added support for transmitting LLDP packets based on mbuf packet type.
   * Implemented AVX2 context descriptor transmit paths.
 
+* **Updated NVIDIA mlx5 ethernet driver.**
+
+  * Added support for selective Rx in scalar SPRQ Rx path.
+
 * **Updated PCAP ethernet driver.**
 
   * Added support for VLAN insertion and stripping.

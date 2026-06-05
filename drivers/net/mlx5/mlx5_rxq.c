@@ -151,26 +151,30 @@ rxq_alloc_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 		struct mlx5_eth_rxseg *seg = &rxq_ctrl->rxq.rxseg[i % sges_n];
 		struct rte_mbuf *buf;
 
-		buf = rte_pktmbuf_alloc(seg->mp);
-		if (buf == NULL) {
-			if (rxq_ctrl->share_group == 0)
-				DRV_LOG(ERR, "port %u queue %u empty mbuf pool",
-					RXQ_PORT_ID(rxq_ctrl),
-					rxq_ctrl->rxq.idx);
-			else
-				DRV_LOG(ERR, "share group %u queue %u empty mbuf pool",
-					rxq_ctrl->share_group,
-					rxq_ctrl->share_qid);
-			rte_errno = ENOMEM;
-			goto error;
+		if (seg->mp) {
+			buf = rte_pktmbuf_alloc(seg->mp);
+			if (buf == NULL) {
+				if (rxq_ctrl->share_group == 0)
+					DRV_LOG(ERR, "port %u queue %u empty mbuf pool",
+						RXQ_PORT_ID(rxq_ctrl),
+						rxq_ctrl->rxq.idx);
+				else
+					DRV_LOG(ERR, "share group %u queue %u empty mbuf pool",
+						rxq_ctrl->share_group,
+						rxq_ctrl->share_qid);
+				rte_errno = ENOMEM;
+				goto error;
+			}
+			/* Only vectored Rx routines rely on headroom size. */
+			MLX5_ASSERT(!has_vec_support ||
+				    DATA_OFF(buf) >= RTE_PKTMBUF_HEADROOM);
+			/* Buffer is supposed to be empty. */
+			MLX5_ASSERT(rte_pktmbuf_data_len(buf) == 0);
+			MLX5_ASSERT(rte_pktmbuf_pkt_len(buf) == 0);
+			MLX5_ASSERT(!buf->next);
+		} else {
+			buf = seg->null_mbuf;
 		}
-		/* Only vectored Rx routines rely on headroom size. */
-		MLX5_ASSERT(!has_vec_support ||
-			    DATA_OFF(buf) >= RTE_PKTMBUF_HEADROOM);
-		/* Buffer is supposed to be empty. */
-		MLX5_ASSERT(rte_pktmbuf_data_len(buf) == 0);
-		MLX5_ASSERT(rte_pktmbuf_pkt_len(buf) == 0);
-		MLX5_ASSERT(!buf->next);
 		SET_DATA_OFF(buf, seg->offset);
 		PORT(buf) = rxq_ctrl->rxq.port_id;
 		DATA_LEN(buf) = seg->length;
@@ -324,9 +328,13 @@ rxq_free_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 		rxq->rq_pi = elts_ci;
 	}
 	for (i = 0; i != q_n; ++i) {
-		if ((*rxq->elts)[i] != NULL)
+		if ((*rxq->elts)[i] != NULL && (*rxq->elts)[i]->pool != NULL)
 			rte_pktmbuf_free_seg((*rxq->elts)[i]);
 		(*rxq->elts)[i] = NULL;
+	}
+	for (i = 0; i < rxq->rxseg_n; i++) {
+		mlx5_free(rxq->rxseg[i].null_mbuf);
+		rxq->rxseg[i].null_mbuf = NULL;
 	}
 }
 
@@ -1815,7 +1823,9 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	int ret;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_ctrl *tmpl;
-	unsigned int mb_len = rte_pktmbuf_data_room_size(rx_seg[0].mp);
+	struct rte_mempool *first_mp = NULL;
+	struct rte_mempool *last_mp = NULL;
+	unsigned int mb_len;
 	struct mlx5_port_config *config = &priv->config;
 	uint64_t offloads = conf->offloads |
 			   dev->data->dev_conf.rxmode.offloads;
@@ -1827,7 +1837,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	unsigned int non_scatter_min_mbuf_size = max_rx_pktlen +
 							RTE_PKTMBUF_HEADROOM;
 	unsigned int max_lro_size = 0;
-	unsigned int first_mb_free_size = mb_len - RTE_PKTMBUF_HEADROOM;
+	unsigned int first_mb_free_size;
 	uint32_t mprq_log_actual_stride_num = 0;
 	uint32_t mprq_log_actual_stride_size = 0;
 	bool rx_seg_en = n_seg != 1 || rx_seg[0].offset || rx_seg[0].length;
@@ -1844,6 +1854,21 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	size_t alloc_size = sizeof(*tmpl) + desc_n * sizeof(struct rte_mbuf *);
 	const struct rte_eth_rxseg_split *qs_seg = rx_seg;
 	unsigned int tail_len;
+
+	/* Find first segment with a mempool. */
+	for (uint16_t seg = 0; seg < n_seg; seg++) {
+		if (rx_seg[seg].mp != NULL) {
+			first_mp = rx_seg[seg].mp;
+			break;
+		}
+	}
+	if (first_mp == NULL) {
+		DRV_LOG(ERR, "port %u Rx queue %u has no mempool", dev->data->port_id, idx);
+		rte_errno = EINVAL;
+		return NULL;
+	}
+	mb_len = rte_pktmbuf_data_room_size(first_mp);
+	first_mb_free_size = mb_len - RTE_PKTMBUF_HEADROOM;
 
 	if (mprq_en) {
 		/* Trim the number of descs needed. */
@@ -1884,35 +1909,44 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	do {
 		struct mlx5_eth_rxseg *hw_seg =
 					&tmpl->rxq.rxseg[tmpl->rxq.rxseg_n];
-		uint32_t buf_len, offset, seg_len;
+		uint32_t buf_len = 0, offset, seg_len;
 
 		/*
 		 * For the buffers beyond descriptions offset is zero,
 		 * the first buffer contains head room.
 		 */
-		buf_len = rte_pktmbuf_data_room_size(qs_seg->mp);
+		if (qs_seg->mp != NULL) {
+			last_mp = qs_seg->mp;
+			buf_len = rte_pktmbuf_data_room_size(qs_seg->mp);
+		} else if (last_mp != NULL) {
+			buf_len = rte_pktmbuf_data_room_size(last_mp);
+		} else {
+			buf_len = mb_len;
+		}
 		offset = (tmpl->rxq.rxseg_n >= n_seg ? 0 : qs_seg->offset) +
 			 (tmpl->rxq.rxseg_n ? 0 : RTE_PKTMBUF_HEADROOM);
 		/*
 		 * For the buffers beyond descriptions the length is
 		 * pool buffer length, zero lengths are replaced with
-		 * pool buffer length either.
+		 * pool buffer length for real segments,
+		 * or remaining packet length for discard segments.
 		 */
 		seg_len = tmpl->rxq.rxseg_n >= n_seg ? buf_len :
 						       qs_seg->length ?
 						       qs_seg->length :
-						       (buf_len - offset);
+						       qs_seg->mp != NULL ?
+						       (buf_len - offset) : tail_len;
 		/* Check is done in long int, now overflows. */
-		if (buf_len < seg_len + offset) {
+		if (qs_seg->mp != NULL && buf_len < seg_len + offset) {
 			DRV_LOG(ERR, "port %u Rx queue %u: Split offset/length "
 				     "%u/%u can't be satisfied",
 				     dev->data->port_id, idx,
-				     qs_seg->length, qs_seg->offset);
+				     qs_seg->offset, qs_seg->length);
 			rte_errno = EINVAL;
 			goto error;
 		}
 		if (seg_len > tail_len)
-			seg_len = buf_len - offset;
+			seg_len = qs_seg->mp != NULL ? buf_len - offset : tail_len;
 		if (++tmpl->rxq.rxseg_n > MLX5_MAX_RXQ_NSEG) {
 			DRV_LOG(ERR,
 				"port %u too many SGEs (%u) needed to handle"
@@ -2077,7 +2111,8 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	/* Save port ID. */
 	tmpl->rxq.port_id = dev->data->port_id;
 	tmpl->sh = priv->sh;
-	tmpl->rxq.mp = rx_seg[0].mp;
+	tmpl->rxq.sh = priv->sh;
+	tmpl->rxq.mp = first_mp;
 	tmpl->rxq.elts_n = log2above(desc);
 	tmpl->rxq.rq_repl_thresh = MLX5_VPMD_RXQ_RPLNSH_THRESH(desc_n);
 	tmpl->rxq.elts = (struct rte_mbuf *(*)[])(tmpl + 1);
