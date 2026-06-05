@@ -1402,16 +1402,15 @@ handle_ta_info(const char *cmd __rte_unused, const char *params,
 {
 	struct rte_event_timer_adapter_info adapter_info;
 	struct rte_event_timer_adapter *adapter;
-	uint16_t adapter_id;
+	unsigned long adapter_id;
 	int ret;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+	if (params == NULL || strlen(params) == 0 || !isdigit((unsigned char)*params))
 		return -1;
 
-	adapter_id = atoi(params);
-
+	adapter_id = strtoul(params, NULL, 10);
 	if (adapters == NULL || adapter_id >= RTE_EVENT_TIMER_ADAPTER_NUM_MAX) {
-		EVTIM_LOG_ERR("Invalid timer adapter id %u", adapter_id);
+		EVTIM_LOG_ERR("Invalid timer adapter id %lu", adapter_id);
 		return -EINVAL;
 	}
 
@@ -1419,7 +1418,7 @@ handle_ta_info(const char *cmd __rte_unused, const char *params,
 
 	ret = rte_event_timer_adapter_get_info(adapter, &adapter_info);
 	if (ret < 0) {
-		EVTIM_LOG_ERR("Failed to get info for timer adapter id %u", adapter_id);
+		EVTIM_LOG_ERR("Failed to get info for timer adapter id %lu", adapter_id);
 		return ret;
 	}
 
@@ -1448,16 +1447,15 @@ handle_ta_stats(const char *cmd __rte_unused, const char *params,
 {
 	struct rte_event_timer_adapter_stats stats;
 	struct rte_event_timer_adapter *adapter;
-	uint16_t adapter_id;
+	unsigned long adapter_id;
 	int ret;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+	if (params == NULL || strlen(params) == 0 || !isdigit((unsigned char)*params))
 		return -1;
 
-	adapter_id = atoi(params);
-
+	adapter_id = strtoul(params, NULL, 10);
 	if (adapters == NULL || adapter_id >= RTE_EVENT_TIMER_ADAPTER_NUM_MAX) {
-		EVTIM_LOG_ERR("Invalid timer adapter id %u", adapter_id);
+		EVTIM_LOG_ERR("Invalid timer adapter id %lu", adapter_id);
 		return -EINVAL;
 	}
 
@@ -1465,7 +1463,7 @@ handle_ta_stats(const char *cmd __rte_unused, const char *params,
 
 	ret = rte_event_timer_adapter_stats_get(adapter, &stats);
 	if (ret < 0) {
-		EVTIM_LOG_ERR("Failed to get stats for timer adapter id %u", adapter_id);
+		EVTIM_LOG_ERR("Failed to get stats for timer adapter id %lu", adapter_id);
 		return ret;
 	}
 
