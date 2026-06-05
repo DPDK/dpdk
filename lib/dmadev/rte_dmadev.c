@@ -4,6 +4,7 @@
  */
 
 #include <ctype.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <stdlib.h>
 
@@ -949,6 +950,25 @@ dmadev_handle_dev_list(const char *cmd __rte_unused,
 	return 0;
 }
 
+/* Parse an unsigned integer telemetry parameter, returning the value or
+ * -EINVAL.  'max' must be <= INT_MAX.
+ */
+static int
+dmadev_parse_uint(const char *str, char **end, unsigned long max)
+{
+	unsigned long val;
+
+	if (str == NULL || !isdigit((unsigned char)*str))
+		return -EINVAL;
+
+	errno = 0;
+	val = strtoul(str, end, 0);
+	if (errno != 0 || val > max)
+		return -EINVAL;
+
+	return (int)val;
+}
+
 #define ADD_CAPA(td, dc, c) rte_tel_data_add_dict_int(td, dma_capability_name(c), !!(dc & c))
 
 static int
@@ -961,10 +981,9 @@ dmadev_handle_dev_info(const char *cmd __rte_unused,
 	uint64_t dev_capa;
 	char *end_param;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+	dev_id = dmadev_parse_uint(params, &end_param, INT16_MAX);
+	if (dev_id < 0)
 		return -EINVAL;
-
-	dev_id = strtoul(params, &end_param, 0);
 	if (*end_param != '\0')
 		RTE_DMA_LOG(WARNING, "Extra parameters passed to dmadev telemetry command, ignoring");
 
@@ -1017,12 +1036,10 @@ dmadev_handle_dev_stats(const char *cmd __rte_unused,
 	struct rte_dma_stats dma_stats;
 	int dev_id, ret, vchan_id;
 	char *end_param;
-	const char *vchan_param;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+	dev_id = dmadev_parse_uint(params, &end_param, INT16_MAX);
+	if (dev_id < 0)
 		return -EINVAL;
-
-	dev_id = strtoul(params, &end_param, 0);
 
 	/* Function info_get validates dev_id so we don't need to. */
 	ret = rte_dma_info_get(dev_id, &dma_info);
@@ -1035,11 +1052,11 @@ dmadev_handle_dev_stats(const char *cmd __rte_unused,
 	if (dma_info.nb_vchans == 1 && *end_param == '\0')
 		vchan_id = 0;
 	else {
-		vchan_param = strtok(end_param, ",");
-		if (!vchan_param || strlen(vchan_param) == 0 || !isdigit(*vchan_param))
+		if (*end_param != ',')
 			return -EINVAL;
-
-		vchan_id = strtoul(vchan_param, &end_param, 0);
+		vchan_id = dmadev_parse_uint(end_param + 1, &end_param, UINT16_MAX);
+		if (vchan_id < 0)
+			return -EINVAL;
 	}
 	if (*end_param != '\0')
 		RTE_DMA_LOG(WARNING, "Extra parameters passed to dmadev telemetry command, ignoring");
@@ -1066,10 +1083,9 @@ dmadev_handle_dev_dump(const char *cmd __rte_unused,
 	int dev_id, ret;
 	FILE *f;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+	dev_id = dmadev_parse_uint(params, &end_param, INT16_MAX);
+	if (dev_id < 0)
 		return -EINVAL;
-
-	dev_id = strtoul(params, &end_param, 0);
 	if (*end_param != '\0')
 		RTE_DMA_LOG(WARNING, "Extra parameters passed to dmadev telemetry command, ignoring");
 
