@@ -617,6 +617,9 @@ cnxk_dmadev_probe(struct rte_pci_driver *pci_drv __rte_unused, struct rte_pci_de
 	dmadev->fp_obj->dev_private = dpivf;
 	dmadev->dev_ops = &cnxk_dmadev_ops;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	dpivf->is_cn10k = roc_model_is_cn10k();
 	dpivf->mcs_lock = NULL;
 	rdpi = &dpivf->rdpi;
