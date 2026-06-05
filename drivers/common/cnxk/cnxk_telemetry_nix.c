@@ -1015,76 +1015,56 @@ cnxk_nix_tel_handle_info_x(const char *cmd, const char *params,
 			   struct plt_tel_data *d)
 {
 	struct nix_tel_node *node;
-	char *name, *param;
 	char buf[1024];
+	char *comma, *end;
+	unsigned long qid;
 	int rc = -1;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
-		goto exit;
+	if (params == NULL || !isdigit((unsigned char)params[0]))
+		return -1;
 
-	plt_strlcpy(buf, params, PCI_PRI_STR_SIZE + 1);
-	name = strtok(buf, ",");
-	if (name == NULL)
-		goto exit;
+	plt_strlcpy(buf, params, sizeof(buf));	/* was PCI_PRI_STR_SIZE + 1 */
 
-	param = strtok(NULL, "\0");
+	/* params is "<pcidev_name>,<queue_id>" */
+	comma = strchr(buf, ',');
+	if (comma == NULL || !isdigit((unsigned char)comma[1]))
+		return -1;
+	*comma = '\0';
 
-	node = nix_tel_node_get_by_pcidev_name(name);
-	if (!node)
-		goto exit;
+	errno = 0;
+	qid = strtoul(comma + 1, &end, 10);
+	if (errno != 0 || (*end != '\0' && *end != ','))
+		return -1;
+
+	node = nix_tel_node_get_by_pcidev_name(buf);
+	if (node == NULL)
+		return -1;
 
 	plt_tel_data_start_dict(d);
 
 	if (strstr(cmd, "rq")) {
-		char *tok = strtok(param, ",");
-		int rq;
-
-		if (!tok)
-			goto exit;
-
-		rq = strtol(tok, NULL, 10);
-		if ((node->n_rq <= rq) || (rq < 0))
-			goto exit;
-
+		if (qid >= node->n_rq)
+			return -1;
 		if (strstr(cmd, "ctx"))
-			rc = cnxk_tel_nix_rq_ctx(node->nix, rq, d);
+			rc = cnxk_tel_nix_rq_ctx(node->nix, qid, d);
 		else
-			rc = cnxk_tel_nix_rq(node->rqs[rq], d);
-
+			rc = cnxk_tel_nix_rq(node->rqs[qid], d);
 	} else if (strstr(cmd, "cq")) {
-		char *tok = strtok(param, ",");
-		int cq;
-
-		if (!tok)
-			goto exit;
-
-		cq = strtol(tok, NULL, 10);
-		if ((node->n_cq <= cq) || (cq < 0))
-			goto exit;
-
+		if (qid >= node->n_cq)
+			return -1;
 		if (strstr(cmd, "ctx"))
-			rc = cnxk_tel_nix_cq_ctx(node->nix, cq, d);
+			rc = cnxk_tel_nix_cq_ctx(node->nix, qid, d);
 		else
-			rc = cnxk_tel_nix_cq(node->cqs[cq], d);
-
+			rc = cnxk_tel_nix_cq(node->cqs[qid], d);
 	} else if (strstr(cmd, "sq")) {
-		char *tok = strtok(param, ",");
-		int sq;
-
-		if (!tok)
-			goto exit;
-
-		sq = strtol(tok, NULL, 10);
-		if ((node->n_sq <= sq) || (sq < 0))
-			goto exit;
-
+		if (qid >= node->n_sq)
+			return -1;
 		if (strstr(cmd, "ctx"))
-			rc = cnxk_tel_nix_sq_ctx(node->nix, sq, d);
+			rc = cnxk_tel_nix_sq_ctx(node->nix, qid, d);
 		else
-			rc = cnxk_tel_nix_sq(node->sqs[sq], d);
+			rc = cnxk_tel_nix_sq(node->sqs[qid], d);
 	}
 
-exit:
 	return rc;
 }
 
