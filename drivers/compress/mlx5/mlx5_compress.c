@@ -117,7 +117,7 @@ mlx5_compress_qp_release(struct rte_compressdev *dev, uint16_t qp_id)
 	if (qp->opaque_mr.obj != NULL) {
 		void *opaq = qp->opaque_mr.addr;
 
-		mlx5_common_verbs_dereg_mr(&qp->opaque_mr);
+		mlx5_os_dereg_mr(&qp->opaque_mr);
 		rte_free(opaq);
 	}
 	mlx5_mr_btree_free(&qp->mr_ctrl.cache_bh);
@@ -199,7 +199,7 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	qp->priv = priv;
 	qp->ops = (struct rte_comp_op **)RTE_ALIGN((uintptr_t)(qp + 1),
 						   RTE_CACHE_LINE_SIZE);
-	if (mlx5_common_verbs_reg_mr(priv->cdev->pd, opaq_buf, qp->entries_n *
+	if (mlx5_os_reg_mr(priv->cdev->pd, opaq_buf, qp->entries_n *
 					sizeof(union mlx5_gga_compress_opaque),
 							 &qp->opaque_mr) != 0) {
 		rte_free(opaq_buf);

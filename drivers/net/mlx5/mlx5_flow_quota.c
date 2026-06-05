@@ -412,12 +412,11 @@ mlx5_quota_alloc_sq(struct mlx5_priv *priv)
 static void
 mlx5_quota_destroy_read_buf(struct mlx5_priv *priv)
 {
-	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_quota_ctx *qctx = &priv->quota_ctx;
 
 	if (qctx->mr.lkey) {
 		void *addr = qctx->mr.addr;
-		sh->cdev->mr_scache.dereg_mr_cb(&qctx->mr);
+		mlx5_os_dereg_mr(&qctx->mr);
 		mlx5_free(addr);
 	}
 	if (qctx->read_buf)
@@ -446,8 +445,7 @@ mlx5_quota_alloc_read_buf(struct mlx5_priv *priv)
 		DRV_LOG(DEBUG, "QUOTA: failed to allocate MTR ASO READ buffer [1]");
 		return -ENOMEM;
 	}
-	ret = sh->cdev->mr_scache.reg_mr_cb(sh->cdev->pd, buf,
-					    rd_buf_size, &qctx->mr);
+	ret = mlx5_os_reg_mr(sh->cdev->pd, buf, rd_buf_size, &qctx->mr);
 	if (ret) {
 		DRV_LOG(DEBUG, "QUOTA: failed to register MTR ASO READ MR");
 		return -errno;

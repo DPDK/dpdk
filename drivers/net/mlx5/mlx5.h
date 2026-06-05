@@ -2706,8 +2706,7 @@ int mlx5_aso_cnt_query(struct mlx5_dev_ctx_shared *sh,
 int mlx5_aso_ct_queue_init(struct mlx5_dev_ctx_shared *sh,
 			   struct mlx5_aso_ct_pools_mng *ct_mng,
 			   uint32_t nb_queues);
-int mlx5_aso_ct_queue_uninit(struct mlx5_dev_ctx_shared *sh,
-			     struct mlx5_aso_ct_pools_mng *ct_mng);
+int mlx5_aso_ct_queue_uninit(struct mlx5_aso_ct_pools_mng *ct_mng);
 int
 mlx5_aso_sq_create(struct mlx5_common_device *cdev, struct mlx5_aso_sq *sq,
 		   void *uar, uint16_t log_desc_n);

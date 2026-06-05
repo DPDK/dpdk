@@ -11086,12 +11086,9 @@ error:
 }
 
 static void
-flow_hw_ct_mng_destroy(struct rte_eth_dev *dev,
-		       struct mlx5_aso_ct_pools_mng *ct_mng)
+flow_hw_ct_mng_destroy(struct mlx5_aso_ct_pools_mng *ct_mng)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-
-	mlx5_aso_ct_queue_uninit(priv->sh, ct_mng);
+	mlx5_aso_ct_queue_uninit(ct_mng);
 	mlx5_free(ct_mng);
 }
 
@@ -11230,7 +11227,7 @@ err:
 		priv->hws_ctpool = NULL;
 	}
 	if (priv->ct_mng) {
-		flow_hw_ct_mng_destroy(dev, priv->ct_mng);
+		flow_hw_ct_mng_destroy(priv->ct_mng);
 		priv->ct_mng = NULL;
 	}
 	return ret;
@@ -11804,7 +11801,7 @@ __mlx5_flow_hw_resource_release(struct rte_eth_dev *dev, bool ctx_close)
 		priv->hws_ctpool = NULL;
 	}
 	if (priv->ct_mng) {
-		flow_hw_ct_mng_destroy(dev, priv->ct_mng);
+		flow_hw_ct_mng_destroy(priv->ct_mng);
 		priv->ct_mng = NULL;
 	}
 	mlx5_flow_quota_destroy(dev);

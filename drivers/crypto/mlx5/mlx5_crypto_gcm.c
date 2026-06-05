@@ -219,7 +219,6 @@ mlx5_crypto_gcm_mkey_klm_update(struct mlx5_crypto_priv *priv,
 static int
 mlx5_crypto_gcm_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 {
-	struct mlx5_crypto_priv *priv = dev->data->dev_private;
 	struct mlx5_crypto_qp *qp = dev->data->queue_pairs[qp_id];
 
 	if (qp->umr_qp_obj.qp != NULL)
@@ -231,7 +230,7 @@ mlx5_crypto_gcm_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 	if (qp->mr.obj != NULL) {
 		void *opaq = qp->mr.addr;
 
-		priv->dereg_mr_cb(&qp->mr);
+		mlx5_os_dereg_mr(&qp->mr);
 		rte_free(opaq);
 	}
 	mlx5_crypto_indirect_mkeys_release(qp, qp->entries_n);
@@ -363,7 +362,7 @@ mlx5_crypto_gcm_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		rte_errno = ENOMEM;
 		goto err;
 	}
-	if (priv->reg_mr_cb(priv->cdev->pd, mr_buf, mr_size, &qp->mr) != 0) {
+	if (mlx5_os_reg_mr(priv->cdev->pd, mr_buf, mr_size, &qp->mr) != 0) {
 		rte_free(mr_buf);
 		DRV_LOG(ERR, "Failed to register opaque MR.");
 		rte_errno = ENOMEM;
@@ -1186,7 +1185,6 @@ mlx5_crypto_gcm_init(struct mlx5_crypto_priv *priv)
 
 	/* Override AES-GCM specified ops. */
 	dev_ops->sym_session_configure = mlx5_crypto_sym_gcm_session_configure;
-	mlx5_os_set_reg_mr_cb(&priv->reg_mr_cb, &priv->dereg_mr_cb);
 	dev_ops->queue_pair_setup = mlx5_crypto_gcm_qp_setup;
 	dev_ops->queue_pair_release = mlx5_crypto_gcm_qp_release;
 	if (mlx5_crypto_is_ipsec_opt(priv)) {
