@@ -32,7 +32,7 @@ eth_dev_parse_port_params(const char *params, uint16_t *port_id,
 	uint64_t pi;
 
 	if (params == NULL || strlen(params) == 0 ||
-		!isdigit(*params) || port_id == NULL)
+		!isdigit((unsigned char)*params) || port_id == NULL)
 		return -EINVAL;
 
 	pi = strtoul(params, end_param, 0);
@@ -459,6 +459,7 @@ ethdev_parse_queue_params(const char *params, bool is_rx,
 	const char *qid_param;
 	uint16_t nb_queues;
 	char *end_param;
+	char *saveptr = NULL;
 	uint64_t qid;
 	int ret;
 
@@ -471,8 +472,8 @@ ethdev_parse_queue_params(const char *params, bool is_rx,
 	if (nb_queues == 1 && *end_param == '\0')
 		qid = 0;
 	else {
-		qid_param = strtok(end_param, ",");
-		if (!qid_param || strlen(qid_param) == 0 || !isdigit(*qid_param))
+		qid_param = strtok_r(end_param, ",", &saveptr);
+		if (!qid_param || strlen(qid_param) == 0 || !isdigit((unsigned char)*qid_param))
 			return -EINVAL;
 
 		qid = strtoul(qid_param, &end_param, 0);
@@ -1207,10 +1208,11 @@ static int
 eth_dev_parse_tm_params(char *params, uint32_t *result)
 {
 	const char *splited_param;
+	char *saveptr = NULL;
 	uint64_t ret;
 
-	splited_param = strtok(params, ",");
-	if (!splited_param || strlen(splited_param) == 0 || !isdigit(*splited_param))
+	splited_param = strtok_r(params, ",", &saveptr);
+	if (!splited_param || strlen(splited_param) == 0 || !isdigit((unsigned char)*splited_param))
 		return -EINVAL;
 
 	ret = strtoul(splited_param, &params, 0);
