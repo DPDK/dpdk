@@ -140,30 +140,38 @@ static int32_t ulp_pmd_get_mac_by_pci(const char *pci_name, uint8_t *mac)
 	glob_t gres;
 	FILE *fp;
 	int32_t rc = -EINVAL;
+	int32_t pr;
 
 	memset(path, 0, sizeof(path));
-	sprintf(path, PARENT_PHY_INTF_PATH, pci_name);
-
+	pr = snprintf(path, sizeof(path), PARENT_PHY_INTF_PATH, pci_name);
+	if (unlikely((size_t)pr >= sizeof(path) || pr < 0)) {
+		BNXT_DRV_DBG(ERR, "Error writing path: %s", path);
+		return rc;
+	}
 	/* There can be only one, no more, no less */
 	if (glob(path, 0, glob_error_fn, &gres) == 0) {
 		if (gres.gl_pathc != 1)
-			return rc;
+			goto free_glob;
 
 		/* Replace the PCI address with interface name and get index */
 		intf_name = basename(gres.gl_pathv[0]);
-		sprintf(path, ULP_PRT_MAC_PATH, pci_name, intf_name);
+		pr = snprintf(path, sizeof(path), ULP_PRT_MAC_PATH, pci_name, intf_name);
+		if (unlikely((size_t)pr >= sizeof(path) || pr < 0)) {
+			BNXT_DRV_DBG(ERR, "Error writing path: %s", path);
+			goto free_glob;
+		}
 
 		fp = fopen(path, "r");
 		if (!fp) {
 			BNXT_DRV_DBG(ERR, "Error in getting bond mac address\n");
-			return rc;
+			goto free_glob;
 		}
 
 		memset(dev_str, 0, sizeof(dev_str));
 		if (fgets(dev_str, sizeof(dev_str), fp) == NULL) {
 			BNXT_DRV_DBG(ERR, "Error in reading %s\n", path);
 			fclose(fp);
-			return rc;
+			goto free_glob;
 		}
 
 		if (sscanf(dev_str, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx\n",
@@ -171,6 +179,8 @@ static int32_t ulp_pmd_get_mac_by_pci(const char *pci_name, uint8_t *mac)
 			   &mac[3], &mac[4], &mac[5]) == 6)
 			rc = 0;
 		fclose(fp);
+free_glob:
+		globfree(&gres);
 	}
 	return rc;
 }
