@@ -7,6 +7,8 @@
 #include <stdalign.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <limits.h>
 
 #include <rte_cryptodev.h>
 #include <dev_driver.h>
@@ -454,6 +456,25 @@ security_capabilities_from_dev_id(int dev_id, const void **caps)
 	return 0;
 }
 
+/* Parse an unsigned integer parameter, returning the value or -EINVAL.
+ * 'max' must be <= INT_MAX.
+ */
+static int
+telemetry_parse_uint(const char *str, char **end, unsigned long max)
+{
+	unsigned long val;
+
+	if (str == NULL || !isdigit((unsigned char)*str))
+		return -EINVAL;
+
+	errno = 0;
+	val = strtoul(str, end, 0);
+	if (errno != 0 || val > max)
+		return -EINVAL;
+
+	return (int)val;
+}
+
 static int
 security_handle_cryptodev_sec_caps(const char *cmd __rte_unused, const char *params,
 				   struct rte_tel_data *d)
@@ -465,12 +486,9 @@ security_handle_cryptodev_sec_caps(const char *cmd __rte_unused, const char *par
 	int dev_id;
 	int rc;
 
-	if (!params || strlen(params) == 0 || !isdigit(*params))
+	dev_id = telemetry_parse_uint(params, &end_param, RTE_CRYPTO_MAX_DEVS - 1);
+	if (dev_id < 0 || *end_param != '\0')
 		return -EINVAL;
-
-	dev_id = strtoul(params, &end_param, 0);
-	if (*end_param != '\0')
-		CDEV_LOG_ERR("Extra parameters passed to command, ignoring");
 
 	rc = security_capabilities_from_dev_id(dev_id, (void *)&capabilities);
 	if (rc < 0)
@@ -493,23 +511,18 @@ security_handle_cryptodev_crypto_caps(const char *cmd __rte_unused, const char *
 {
 	const struct rte_security_capability *capabilities;
 	struct rte_tel_data *crypto_caps;
-	const char *capa_param;
 	int dev_id, capa_id;
 	int crypto_caps_n;
 	char *end_param;
 	int rc;
 
-	if (!params || strlen(params) == 0 || !isdigit(*params))
+	dev_id = telemetry_parse_uint(params, &end_param, RTE_CRYPTO_MAX_DEVS - 1);
+	if (dev_id < 0 || *end_param != ',')
 		return -EINVAL;
 
-	dev_id = strtoul(params, &end_param, 0);
-	capa_param = strtok(end_param, ",");
-	if (!capa_param || strlen(capa_param) == 0 || !isdigit(*capa_param))
+	capa_id = telemetry_parse_uint(end_param + 1, &end_param, INT_MAX);
+	if (capa_id < 0 || *end_param != '\0')
 		return -EINVAL;
-
-	capa_id = strtoul(capa_param, &end_param, 0);
-	if (*end_param != '\0')
-		CDEV_LOG_ERR("Extra parameters passed to command, ignoring");
 
 	rc = security_capabilities_from_dev_id(dev_id, (void *)&capabilities);
 	if (rc < 0)
