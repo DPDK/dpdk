@@ -1790,6 +1790,34 @@ handle_dev_list(const char *cmd __rte_unused,
 	return 0;
 }
 
+/* Get dev ID from parameter string */
+static int
+parse_dev_id(const char *params, uint8_t *dev_id, char **next_param)
+{
+	char *end_param;
+	unsigned long id;
+
+	if (params == NULL || *params == '\0' ||
+	    !isdigit((unsigned char)*params))
+		return -1;
+
+	id = strtoul(params, &end_param, 10);
+	if (next_param != NULL) {
+		*next_param = end_param;
+	} else if (*end_param != '\0') {
+		RTE_EDEV_LOG_DEBUG(
+			"Extra parameters passed to eventdev telemetry command, ignoring");
+	}
+
+	if (id >= RTE_EVENT_MAX_DEVS) {
+		RTE_EDEV_LOG_DEBUG(
+			"Invalid device id out of range %lu", id);
+		return -1;
+	}
+	*dev_id = id;
+	return 0;
+}
+
 static int
 handle_dev_info(const char *cmd __rte_unused,
 		const char *params,
@@ -1797,15 +1825,9 @@ handle_dev_info(const char *cmd __rte_unused,
 {
 	uint8_t dev_id;
 	struct rte_eventdev *dev;
-	char *end_param;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+	if (parse_dev_id(params, &dev_id, NULL) < 0)
 		return -1;
-
-	dev_id = strtoul(params, &end_param, 10);
-	if (*end_param != '\0')
-		RTE_EDEV_LOG_DEBUG(
-			"Extra parameters passed to eventdev telemetry command, ignoring");
 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_eventdevs[dev_id];
@@ -1833,15 +1855,9 @@ handle_port_list(const char *cmd __rte_unused,
 	int i;
 	uint8_t dev_id;
 	struct rte_eventdev *dev;
-	char *end_param;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+	if (parse_dev_id(params, &dev_id, NULL) < 0)
 		return -1;
-
-	dev_id = strtoul(params, &end_param, 10);
-	if (*end_param != '\0')
-		RTE_EDEV_LOG_DEBUG(
-			"Extra parameters passed to eventdev telemetry command, ignoring");
 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_eventdevs[dev_id];
@@ -1861,15 +1877,9 @@ handle_queue_list(const char *cmd __rte_unused,
 	int i;
 	uint8_t dev_id;
 	struct rte_eventdev *dev;
-	char *end_param;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+	if (parse_dev_id(params, &dev_id, NULL) != 0)
 		return -1;
-
-	dev_id = strtoul(params, &end_param, 10);
-	if (*end_param != '\0')
-		RTE_EDEV_LOG_DEBUG(
-			"Extra parameters passed to eventdev telemetry command, ignoring");
 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_eventdevs[dev_id];
@@ -1886,27 +1896,28 @@ handle_queue_links(const char *cmd __rte_unused,
 		   const char *params,
 		   struct rte_tel_data *d)
 {
-	int i, ret, port_id = 0;
+	int i, ret;
 	char *end_param;
 	uint8_t dev_id;
 	uint8_t queues[RTE_EVENT_MAX_QUEUES_PER_DEV];
 	uint8_t priorities[RTE_EVENT_MAX_QUEUES_PER_DEV];
-	const char *p_param;
+	unsigned long port_id;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+	if (parse_dev_id(params, &dev_id, &end_param) != 0)
 		return -1;
 
-	/* Get dev ID from parameter string */
-	dev_id = strtoul(params, &end_param, 10);
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 
-	p_param = strtok(end_param, ",");
-	if (p_param == NULL || strlen(p_param) == 0 || !isdigit(*p_param))
+	if (*end_param != ',' || !isdigit((unsigned char)end_param[1]))
 		return -1;
 
-	port_id = strtoul(p_param, &end_param, 10);
-	p_param = strtok(NULL, "\0");
-	if (p_param != NULL)
+	port_id = strtoul(end_param + 1, &end_param, 10);
+	if (port_id >= RTE_EVENT_MAX_PORTS_PER_DEV) {
+		RTE_EDEV_LOG_DEBUG("Invalid port id out of range %lu", port_id);
+		return -1;
+	}
+
+	if (*end_param != '\0')
 		RTE_EDEV_LOG_DEBUG(
 			"Extra parameters passed to eventdev telemetry command, ignoring");
 
@@ -1998,18 +2009,11 @@ handle_dev_xstats(const char *cmd __rte_unused,
 		  const char *params,
 		  struct rte_tel_data *d)
 {
-	int dev_id;
+	uint8_t dev_id;
 	enum rte_event_dev_xstats_mode mode;
-	char *end_param;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+	if (parse_dev_id(params, &dev_id, NULL) != 0)
 		return -1;
-
-	/* Get dev ID from parameter string */
-	dev_id = strtoul(params, &end_param, 10);
-	if (*end_param != '\0')
-		RTE_EDEV_LOG_DEBUG(
-			"Extra parameters passed to eventdev telemetry command, ignoring");
 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 
@@ -2022,29 +2026,25 @@ handle_port_xstats(const char *cmd __rte_unused,
 		   const char *params,
 		   struct rte_tel_data *d)
 {
-	int dev_id;
-	int port_queue_id = 0;
+	uint8_t dev_id;
 	enum rte_event_dev_xstats_mode mode;
+	unsigned long port_queue_id;
 	char *end_param;
-	const char *p_param;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+	if (parse_dev_id(params, &dev_id, &end_param) != 0)
 		return -1;
-
-	/* Get dev ID from parameter string */
-	dev_id = strtoul(params, &end_param, 10);
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 
-	p_param = strtok(end_param, ",");
 	mode = RTE_EVENT_DEV_XSTATS_PORT;
 
-	if (p_param == NULL || strlen(p_param) == 0 || !isdigit(*p_param))
+	if (*end_param != ',' || !isdigit((unsigned char)end_param[1]))
 		return -1;
 
-	port_queue_id = strtoul(p_param, &end_param, 10);
+	port_queue_id = strtoul(end_param + 1, &end_param, 10);
+	if (port_queue_id >= RTE_EVENT_MAX_PORTS_PER_DEV)
+		return -1;
 
-	p_param = strtok(NULL, "\0");
-	if (p_param != NULL)
+	if (*end_param != '\0')
 		RTE_EDEV_LOG_DEBUG(
 			"Extra parameters passed to eventdev telemetry command, ignoring");
 
@@ -2056,29 +2056,26 @@ handle_queue_xstats(const char *cmd __rte_unused,
 		    const char *params,
 		    struct rte_tel_data *d)
 {
-	int dev_id;
-	int port_queue_id = 0;
+	uint8_t dev_id;
+	unsigned long port_queue_id;
 	enum rte_event_dev_xstats_mode mode;
 	char *end_param;
-	const char *p_param;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+	if (parse_dev_id(params, &dev_id, &end_param) != 0)
 		return -1;
 
-	/* Get dev ID from parameter string */
-	dev_id = strtoul(params, &end_param, 10);
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 
-	p_param = strtok(end_param, ",");
 	mode = RTE_EVENT_DEV_XSTATS_QUEUE;
 
-	if (p_param == NULL || strlen(p_param) == 0 || !isdigit(*p_param))
+	if (*end_param != ',' || !isdigit((unsigned char)end_param[1]))
 		return -1;
 
-	port_queue_id = strtoul(p_param, &end_param, 10);
+	port_queue_id = strtoul(end_param + 1, &end_param, 10);
+	if (port_queue_id >= RTE_EVENT_MAX_QUEUES_PER_DEV)
+		return -1;
 
-	p_param = strtok(NULL, "\0");
-	if (p_param != NULL)
+	if (*end_param != '\0')
 		RTE_EDEV_LOG_DEBUG(
 			"Extra parameters passed to eventdev telemetry command, ignoring");
 
@@ -2090,18 +2087,13 @@ handle_dev_dump(const char *cmd __rte_unused,
 		const char *params,
 		struct rte_tel_data *d)
 {
-	char *buf, *end_param;
-	int dev_id, ret;
+	char *buf;
+	uint8_t dev_id;
+	int ret;
 	FILE *f;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+	if (parse_dev_id(params, &dev_id, NULL) != 0)
 		return -1;
-
-	/* Get dev ID from parameter string */
-	dev_id = strtoul(params, &end_param, 10);
-	if (*end_param != '\0')
-		RTE_EDEV_LOG_DEBUG(
-			"Extra parameters passed to eventdev telemetry command, ignoring");
 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 
