@@ -211,33 +211,30 @@ copy_inb_sa_10k(struct rte_tel_data *d, uint32_t i, void *sa)
 static int
 parse_params(const char *params, uint32_t *vals, size_t n_vals)
 {
-	char dlim[2] = ",";
-	char *params_args;
 	size_t count = 0;
-	char *token;
 
-	if (vals == NULL || params == NULL || strlen(params) == 0)
+	if (params == NULL || !isdigit((unsigned char)params[0]))
 		return -1;
 
-	/* strtok expects char * and param is const char *. Hence on using
-	 * params as "const char *" compiler throws warning.
-	 */
-	params_args = strdup(params);
-	if (params_args == NULL)
-		return -1;
+	while (count < n_vals) {
+		char *end;
+		unsigned long v;
 
-	token = strtok(params_args, dlim);
-	while (token && isdigit(*token) && count < n_vals) {
-		vals[count++] = strtoul(token, NULL, 10);
-		token = strtok(NULL, dlim);
+		errno = 0;
+		v = strtoul(params, &end, 10);
+		if (errno != 0 || v > UINT32_MAX)
+			return -EINVAL;
+		vals[count++] = v;
+
+		if (*end == '\0')
+			break;
+
+		if (*end != ',' || !isdigit((unsigned char)end[1]))
+			return -EINVAL;
+		params = end + 1;
 	}
 
-	free(params_args);
-
-	if (count < n_vals)
-		return -1;
-
-	return 0;
+	return count == n_vals ? 0 : -EINVAL;
 }
 
 static int
@@ -252,13 +249,13 @@ ethdev_sec_tel_handle_sa_info(const char *cmd __rte_unused, const char *params,
 	uint32_t i;
 	int ret;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
-		return -EINVAL;
-
 	if (parse_params(params, vals, RTE_DIM(vals)) < 0)
 		return -EINVAL;
 
 	port_id = vals[0];
+	if (port_id >= RTE_MAX_ETHPORTS)
+		return -EINVAL;
+
 	sa_idx = vals[1];
 
 	if (!rte_eth_dev_is_valid_port(port_id)) {
@@ -320,12 +317,13 @@ ethdev_sec_tel_handle_info(const char *cmd __rte_unused, const char *params,
 	struct cnxk_eth_sec_sess *eth_sec, *tvar;
 	struct rte_eth_dev *eth_dev;
 	struct cnxk_eth_dev *dev;
-	uint16_t port_id;
+	unsigned long port_id;
 	char *end_p;
 
-	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+	if (params == NULL || !isdigit((unsigned char)*params))
 		return -EINVAL;
 
+	errno = 0;
 	port_id = strtoul(params, &end_p, 0);
 	if (errno != 0)
 		return -EINVAL;
@@ -333,8 +331,8 @@ ethdev_sec_tel_handle_info(const char *cmd __rte_unused, const char *params,
 	if (*end_p != '\0')
 		plt_err("Extra parameters passed to telemetry, ignoring it");
 
-	if (!rte_eth_dev_is_valid_port(port_id)) {
-		plt_err("Invalid port id %u", port_id);
+	if (port_id >= RTE_MAX_ETHPORTS || !rte_eth_dev_is_valid_port(port_id)) {
+		plt_err("Invalid port id %lu", port_id);
 		return -EINVAL;
 	}
 
