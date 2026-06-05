@@ -53,6 +53,7 @@ from api.testpmd.config import (
     TXRingParams,
     TxUDPPortPair,
 )
+from api.testpmd.types import RxOffloadCapability, TxOffloadCapability
 from framework.params import Switch, YesNoSwitch
 from framework.testbed_model.cpu import LogicalCoreList
 from framework.testbed_model.port import Port
@@ -175,11 +176,11 @@ class TestPmdParamsDict(EalParamsDict, total=False):
     rx_segments_length: list[int] | None
     multi_rx_mempool: Switch
     rx_shared_queue: Switch | int
-    rx_offloads: int | None
+    rx_offloads: RxOffloadCapability | int | None
     rx_mq_mode: RXMultiQueueMode | None
     tx_queues: int | None
     tx_ring: TXRingParams | None
-    tx_offloads: int | None
+    tx_offloads: TxOffloadCapability | int | None
     eth_link_speed: int | None
     disable_link_check: Switch
     disable_device_start: Switch

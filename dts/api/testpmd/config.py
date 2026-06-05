@@ -19,12 +19,15 @@ from framework.params import (
     YesNoSwitch,
     bracketed,
     comma_separated,
+    hex_from_flag_or_int,
     hex_from_flag_value,
     modify_str,
     str_from_flag_value,
 )
 from framework.params.eal import EalParams
 from framework.utils import StrEnum
+
+from .types import RxOffloadCapability, TxOffloadCapability
 
 
 class PortTopology(StrEnum):
@@ -577,12 +580,16 @@ class TestPmdParams(EalParams):
     )
     multi_rx_mempool: Switch = None
     rx_shared_queue: Switch | int = field(default=None, metadata=Params.long("rxq-share"))
-    rx_offloads: int | None = field(default=None, metadata=Params.convert_value(hex))
+    rx_offloads: RxOffloadCapability | int | None = field(
+        default=None, metadata=Params.convert_value(hex_from_flag_or_int)
+    )
     rx_mq_mode: RXMultiQueueMode | None = None
 
     tx_queues: int | None = field(default=None, metadata=Params.long("txq"))
     tx_ring: TXRingParams | None = None
-    tx_offloads: int | None = field(default=None, metadata=Params.convert_value(hex))
+    tx_offloads: TxOffloadCapability | int | None = field(
+        default=None, metadata=Params.convert_value(hex_from_flag_or_int)
+    )
 
     eth_link_speed: int | None = None
     disable_link_check: Switch = None

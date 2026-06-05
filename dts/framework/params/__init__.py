@@ -130,6 +130,20 @@ def hex_from_flag_value(flag: Flag) -> str:
     return hex(flag.value)
 
 
+def hex_from_flag_or_int(value: Flag | int) -> str:
+    """Returns a :class:`enum.Flag` or integer value converted to hexadecimal.
+
+    Args:
+        value: An instance of :class:`Flag` or an integer.
+
+    Returns:
+        The value in hexadecimal representation.
+    """
+    if isinstance(value, Flag):
+        return hex_from_flag_value(value)
+    return hex(value)
+
+
 class ParamsModifier(TypedDict, total=False):
     """Params modifiers dict compatible with the :func:`dataclasses.field` metadata parameter."""
 
