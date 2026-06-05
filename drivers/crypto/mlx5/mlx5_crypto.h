@@ -40,8 +40,6 @@ struct mlx5_crypto_priv {
 	TAILQ_ENTRY(mlx5_crypto_priv) next;
 	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
 	struct rte_cryptodev *crypto_dev;
-	mlx5_reg_mr_t reg_mr_cb; /* Callback to reg_mr func */
-	mlx5_dereg_mr_t dereg_mr_cb; /* Callback to dereg_mr func */
 	struct mlx5_uar uar; /* User Access Region. */
 	uint32_t max_segs_num; /* Maximum supported data segs. */
 	uint32_t max_klm_num; /* Maximum supported klm. */

@@ -259,12 +259,11 @@ mlx5_hws_aging_check(struct mlx5_priv *priv, struct mlx5_hws_cnt_pool *cpool)
 }
 
 static void
-mlx5_hws_cnt_raw_data_free(struct mlx5_dev_ctx_shared *sh,
-			   struct mlx5_hws_cnt_raw_data_mng *mng)
+mlx5_hws_cnt_raw_data_free(struct mlx5_hws_cnt_raw_data_mng *mng)
 {
 	if (mng == NULL)
 		return;
-	sh->cdev->mr_scache.dereg_mr_cb(&mng->mr);
+	mlx5_os_dereg_mr(&mng->mr);
 	mlx5_free(mng->raw);
 	mlx5_free(mng);
 }
@@ -296,8 +295,7 @@ mlx5_hws_cnt_raw_data_alloc(struct mlx5_dev_ctx_shared *sh, uint32_t n,
 				   NULL, "failed to allocate raw counters memory");
 		goto error;
 	}
-	ret = sh->cdev->mr_scache.reg_mr_cb(sh->cdev->pd, mng->raw, sz,
-					    &mng->mr);
+	ret = mlx5_os_reg_mr(sh->cdev->pd, mng->raw, sz, &mng->mr);
 	if (ret) {
 		rte_flow_error_set(error, errno,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -306,7 +304,7 @@ mlx5_hws_cnt_raw_data_alloc(struct mlx5_dev_ctx_shared *sh, uint32_t n,
 	}
 	return mng;
 error:
-	mlx5_hws_cnt_raw_data_free(sh, mng);
+	mlx5_hws_cnt_raw_data_free(mng);
 	return NULL;
 }
 
@@ -639,8 +637,7 @@ error:
 }
 
 static void
-mlx5_hws_cnt_pool_dcs_free(struct mlx5_dev_ctx_shared *sh,
-			   struct mlx5_hws_cnt_pool *cpool)
+mlx5_hws_cnt_pool_dcs_free(struct mlx5_hws_cnt_pool *cpool)
 {
 	uint32_t idx;
 
@@ -649,7 +646,7 @@ mlx5_hws_cnt_pool_dcs_free(struct mlx5_dev_ctx_shared *sh,
 	for (idx = 0; idx < MLX5_HWS_CNT_DCS_NUM; idx++)
 		mlx5_devx_cmd_destroy(cpool->dcs_mng.dcs[idx].obj);
 	if (cpool->raw_mng) {
-		mlx5_hws_cnt_raw_data_free(sh, cpool->raw_mng);
+		mlx5_hws_cnt_raw_data_free(cpool->raw_mng);
 		cpool->raw_mng = NULL;
 	}
 }
@@ -842,8 +839,8 @@ mlx5_hws_cnt_pool_destroy(struct mlx5_dev_ctx_shared *sh,
 	}
 	mlx5_hws_cnt_pool_action_destroy(cpool);
 	if (cpool->cfg.host_cpool == NULL) {
-		mlx5_hws_cnt_pool_dcs_free(sh, cpool);
-		mlx5_hws_cnt_raw_data_free(sh, cpool->raw_mng);
+		mlx5_hws_cnt_pool_dcs_free(cpool);
+		mlx5_hws_cnt_raw_data_free(cpool->raw_mng);
 	}
 	mlx5_free((void *)cpool->cfg.name);
 	mlx5_hws_cnt_pool_deinit(cpool);

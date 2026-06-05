@@ -492,12 +492,12 @@ mlx5_mr_lookup_cache(struct mlx5_mr_share_cache *share_cache,
  *   Pointer to MR to free.
  */
 void
-mlx5_mr_free(struct mlx5_mr *mr, mlx5_dereg_mr_t dereg_mr_cb)
+mlx5_mr_free(struct mlx5_mr *mr)
 {
 	if (mr == NULL)
 		return;
 	DRV_LOG(DEBUG, "freeing MR(%p):", (void *)mr);
-	dereg_mr_cb(&mr->pmd_mr);
+	mlx5_os_dereg_mr(&mr->pmd_mr);
 	rte_bitmap_free(mr->ms_bmp);
 	mlx5_free(mr);
 }
@@ -545,7 +545,7 @@ mlx5_mr_garbage_collect(struct mlx5_mr_share_cache *share_cache)
 		struct mlx5_mr *mr = mr_next;
 
 		mr_next = LIST_NEXT(mr, mr);
-		mlx5_mr_free(mr, share_cache->dereg_mr_cb);
+		mlx5_mr_free(mr);
 	}
 }
 
@@ -821,7 +821,7 @@ alloc_resources:
 		data.start = RTE_ALIGN_FLOOR(addr, msl->page_sz);
 		data.end = data.start + msl->page_sz;
 		rte_mcfg_mem_read_unlock();
-		mlx5_mr_free(mr, share_cache->dereg_mr_cb);
+		mlx5_mr_free(mr);
 		goto alloc_resources;
 	}
 	MLX5_ASSERT(data.msl == data_re.msl);
@@ -845,7 +845,7 @@ alloc_resources:
 		 * Must be unlocked before calling rte_free() because
 		 * mlx5_mr_mem_event_free_cb() can be called inside.
 		 */
-		mlx5_mr_free(mr, share_cache->dereg_mr_cb);
+		mlx5_mr_free(mr);
 		return entry->lkey;
 	}
 	/*
@@ -912,7 +912,7 @@ alloc_resources:
 	 * mlx5_alloc_buf_extern() which eventually calls rte_malloc_socket()
 	 * through mlx5_alloc_verbs_buf().
 	 */
-	share_cache->reg_mr_cb(pd, (void *)data.start, len, &mr->pmd_mr);
+	mlx5_os_reg_mr(pd, (void *)data.start, len, &mr->pmd_mr);
 	if (mr->pmd_mr.obj == NULL) {
 		DRV_LOG(DEBUG, "Fail to create an MR for address (%p)",
 		      (void *)addr);
@@ -948,7 +948,7 @@ err_nolock:
 	 * calling rte_free() because mlx5_mr_mem_event_free_cb() can be called
 	 * inside.
 	 */
-	mlx5_mr_free(mr, share_cache->dereg_mr_cb);
+	mlx5_mr_free(mr);
 	return UINT32_MAX;
 }
 
@@ -1139,9 +1139,6 @@ mlx5_mr_release_cache(struct mlx5_mr_share_cache *share_cache)
 int
 mlx5_mr_create_cache(struct mlx5_mr_share_cache *share_cache, int socket)
 {
-	/* Set the reg_mr and dereg_mr callback functions */
-	mlx5_os_set_reg_mr_cb(&share_cache->reg_mr_cb,
-			      &share_cache->dereg_mr_cb);
 	rte_rwlock_init(&share_cache->rwlock);
 	rte_rwlock_init(&share_cache->mprwlock);
 	/* Initialize B-tree and allocate memory for global MR cache table. */
@@ -1189,8 +1186,7 @@ mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl)
  *   Pointer to MR structure on success, NULL otherwise.
  */
 struct mlx5_mr *
-mlx5_create_mr_ext(void *pd, uintptr_t addr, size_t len, int socket_id,
-		   mlx5_reg_mr_t reg_mr_cb)
+mlx5_create_mr_ext(void *pd, uintptr_t addr, size_t len, int socket_id)
 {
 	struct mlx5_mr *mr = NULL;
 
@@ -1199,7 +1195,7 @@ mlx5_create_mr_ext(void *pd, uintptr_t addr, size_t len, int socket_id,
 			 RTE_CACHE_LINE_SIZE, socket_id);
 	if (mr == NULL)
 		return NULL;
-	reg_mr_cb(pd, (void *)addr, len, &mr->pmd_mr);
+	mlx5_os_reg_mr(pd, (void *)addr, len, &mr->pmd_mr);
 	if (mr->pmd_mr.obj == NULL) {
 		DRV_LOG(WARNING,
 			"Fail to create MR for address (%p)",
@@ -1624,14 +1620,13 @@ mlx5_mempool_reg_create(struct rte_mempool *mp, unsigned int mrs_n,
  *   Whether @p mpr owns its MRs exclusively, i.e. they are not shared.
  */
 static void
-mlx5_mempool_reg_destroy(struct mlx5_mr_share_cache *share_cache,
-			 struct mlx5_mempool_reg *mpr, bool standalone)
+mlx5_mempool_reg_destroy(struct mlx5_mempool_reg *mpr, bool standalone)
 {
 	if (standalone) {
 		unsigned int i;
 
 		for (i = 0; i < mpr->mrs_n; i++)
-			share_cache->dereg_mr_cb(&mpr->mrs[i].pmd_mr);
+			mlx5_os_dereg_mr(&mpr->mrs[i].pmd_mr);
 		mlx5_free(mpr->mrs);
 	}
 	mlx5_free(mpr);
@@ -1748,7 +1743,7 @@ mlx5_mr_mempool_register_primary(struct mlx5_mr_share_cache *share_cache,
 		const struct mlx5_range *range = &ranges[i];
 		size_t len = range->end - range->start;
 
-		if (share_cache->reg_mr_cb(pd, (void *)range->start, len,
+		if (mlx5_os_reg_mr(pd, (void *)range->start, len,
 		    &mr->pmd_mr) < 0) {
 			DRV_LOG(ERR,
 				"Failed to create an MR in PD %p for address range "
@@ -1763,7 +1758,7 @@ mlx5_mr_mempool_register_primary(struct mlx5_mr_share_cache *share_cache,
 			mp->name);
 	}
 	if (i != ranges_n) {
-		mlx5_mempool_reg_destroy(share_cache, new_mpr, true);
+		mlx5_mempool_reg_destroy(new_mpr, true);
 		rte_errno = EINVAL;
 		goto exit;
 	}
@@ -1785,13 +1780,13 @@ mlx5_mr_mempool_register_primary(struct mlx5_mr_share_cache *share_cache,
 	if (mpr != NULL) {
 		DRV_LOG(DEBUG, "Mempool %s is already registered for PD %p",
 			mp->name, pd);
-		mlx5_mempool_reg_destroy(share_cache, new_mpr, true);
+		mlx5_mempool_reg_destroy(new_mpr, true);
 		rte_errno = EEXIST;
 		goto exit;
 	} else if (old_mpr != NULL) {
 		DRV_LOG(DEBUG, "Mempool %s registration for PD %p updated for external memory",
 			mp->name, pd);
-		mlx5_mempool_reg_destroy(share_cache, old_mpr, standalone);
+		mlx5_mempool_reg_destroy(old_mpr, standalone);
 	}
 exit:
 	free(ranges);
@@ -1860,7 +1855,7 @@ mlx5_mr_mempool_unregister_primary(struct mlx5_mr_share_cache *share_cache,
 		rte_errno = ENOENT;
 		return -1;
 	}
-	mlx5_mempool_reg_destroy(share_cache, mpr, standalone);
+	mlx5_mempool_reg_destroy(mpr, standalone);
 	return 0;
 }
 

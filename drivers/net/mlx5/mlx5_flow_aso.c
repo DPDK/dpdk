@@ -19,17 +19,15 @@
 /**
  * Free MR resources.
  *
- * @param[in] cdev
- *   Pointer to the mlx5 common device.
  * @param[in] mr
  *   MR to free.
  */
 static void
-mlx5_aso_dereg_mr(struct mlx5_common_device *cdev, struct mlx5_pmd_mr *mr)
+mlx5_aso_dereg_mr(struct mlx5_pmd_mr *mr)
 {
 	void *addr = mr->addr;
 
-	cdev->mr_scache.dereg_mr_cb(mr);
+	mlx5_os_dereg_mr(mr);
 	mlx5_free(addr);
 	memset(mr, 0, sizeof(*mr));
 }
@@ -59,7 +57,7 @@ mlx5_aso_reg_mr(struct mlx5_common_device *cdev, size_t length,
 		DRV_LOG(ERR, "Failed to create ASO bits mem for MR.");
 		return -1;
 	}
-	ret = cdev->mr_scache.reg_mr_cb(cdev->pd, mr->addr, length, mr);
+	ret = mlx5_os_reg_mr(cdev->pd, mr->addr, length, mr);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to create direct Mkey.");
 		mlx5_free(mr->addr);
@@ -362,7 +360,7 @@ mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh,
 		if (mlx5_aso_sq_create(cdev, &sh->aso_age_mng->aso_sq,
 				       sh->tx_uar.obj,
 				       MLX5_ASO_QUEUE_LOG_DESC)) {
-			mlx5_aso_dereg_mr(cdev, &sh->aso_age_mng->aso_sq.mr);
+			mlx5_aso_dereg_mr(&sh->aso_age_mng->aso_sq.mr);
 			return -1;
 		}
 		mlx5_aso_age_init_sq(&sh->aso_age_mng->aso_sq);
@@ -399,14 +397,14 @@ mlx5_aso_queue_uninit(struct mlx5_dev_ctx_shared *sh,
 
 	switch (aso_opc_mod) {
 	case ASO_OPC_MOD_FLOW_HIT:
-		mlx5_aso_dereg_mr(sh->cdev, &sh->aso_age_mng->aso_sq.mr);
+		mlx5_aso_dereg_mr(&sh->aso_age_mng->aso_sq.mr);
 		sq = &sh->aso_age_mng->aso_sq;
 		break;
 	case ASO_OPC_MOD_POLICER:
 		mlx5_aso_mtr_queue_uninit(sh, NULL, &sh->mtrmng->pools_mng);
 		break;
 	case ASO_OPC_MOD_CONNECTION_TRACKING:
-		mlx5_aso_ct_queue_uninit(sh, sh->ct_mng);
+		mlx5_aso_ct_queue_uninit(sh->ct_mng);
 		break;
 	default:
 		DRV_LOG(ERR, "Unknown ASO operation mode");
@@ -1147,15 +1145,14 @@ __mlx5_aso_ct_get_pool(struct mlx5_dev_ctx_shared *sh,
 }
 
 int
-mlx5_aso_ct_queue_uninit(struct mlx5_dev_ctx_shared *sh,
-			 struct mlx5_aso_ct_pools_mng *ct_mng)
+mlx5_aso_ct_queue_uninit(struct mlx5_aso_ct_pools_mng *ct_mng)
 {
 	uint32_t i;
 
 	/* 64B per object for query. */
 	for (i = 0; i < ct_mng->nb_sq; i++) {
 		if (ct_mng->aso_sqs[i].mr.addr)
-			mlx5_aso_dereg_mr(sh->cdev, &ct_mng->aso_sqs[i].mr);
+			mlx5_aso_dereg_mr(&ct_mng->aso_sqs[i].mr);
 		mlx5_aso_destroy_sq(&ct_mng->aso_sqs[i]);
 	}
 	return 0;
@@ -1197,7 +1194,7 @@ mlx5_aso_ct_queue_init(struct mlx5_dev_ctx_shared *sh,
 error:
 	do {
 		if (ct_mng->aso_sqs[i].mr.addr)
-			mlx5_aso_dereg_mr(sh->cdev, &ct_mng->aso_sqs[i].mr);
+			mlx5_aso_dereg_mr(&ct_mng->aso_sqs[i].mr);
 		mlx5_aso_destroy_sq(&ct_mng->aso_sqs[i]);
 	} while (i--);
 	ct_mng->nb_sq = 0;
