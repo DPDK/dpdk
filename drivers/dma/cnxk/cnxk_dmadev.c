@@ -581,6 +581,9 @@ cnxk_dmadev_probe(struct rte_pci_driver *pci_drv __rte_unused, struct rte_pci_de
 	dmadev->fp_obj->completed_status = cnxk_dmadev_completed_status;
 	dmadev->fp_obj->burst_capacity = cnxk_damdev_burst_capacity;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	if (roc_model_is_cn10k()) {
 		dpivf->is_cn10k = true;
 		dmadev->fp_obj->copy = cn10k_dmadev_copy;
