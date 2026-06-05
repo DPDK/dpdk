@@ -895,6 +895,22 @@ mbuf_pool_find(unsigned int sock_id, uint16_t idx)
 	return rte_mempool_lookup((const char *)pool_name);
 }
 
+static inline struct rte_mempool *
+mbuf_pool_find_first(unsigned int sock_id)
+{
+	struct rte_mempool *mp;
+	uint16_t idx;
+
+	for (idx = 0; idx < mbuf_data_size_n; idx++) {
+		if (mbuf_data_size[idx] == 0) /* no mempool with this index */
+			continue;
+		mp = mbuf_pool_find(sock_id, idx);
+		if (mp != NULL)
+			return mp;
+	}
+	return NULL;
+}
+
 static inline uint16_t
 common_fwd_stream_receive(struct fwd_stream *fs, struct rte_mbuf **burst,
 	unsigned int nb_pkts)

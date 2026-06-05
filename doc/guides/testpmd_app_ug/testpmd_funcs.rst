@@ -850,7 +850,8 @@ mbuf for remaining segments will be allocated from the last valid pool).
    testpmd> set rxpkts (x[,y]*)
 
 Where x[,y]* represents a CSV list of values, without white space. Zero value
-means to use the corresponding memory pool data buffer size.
+means to use the corresponding memory pool data buffer size,
+or to discard all remaining packet data for a discard segment (mbuf-size=0).
 
 set rxhdrs
 ~~~~~~~~~~
