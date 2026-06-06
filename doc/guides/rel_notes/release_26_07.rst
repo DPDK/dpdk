@@ -107,6 +107,12 @@ New Features
   and assigning no mempool to some configuration segments.
   This is a driver capability advertised in the ``selective_rx`` bit.
 
+* **Added vhost support for dynamic memory regions.**
+
+  The feature ``VHOST_USER_PROTOCOL_F_CONFIGURE_MEM_SLOTS`` has been implemented
+  to support adding and removing memory regions without resetting
+  the whole guest memory map.
+
 * **Added LinkData sxe2 ethernet driver.**
 
   Added network driver for the LinkData network adapters.
