@@ -143,7 +143,7 @@ The following dependencies are not part of DPDK and must be installed separately
   - BlueField-2: **24.28.1002** and above.
   - BlueField-3: **32.36.3126** and above.
 
-  New features may be added in more recent firmwares.
+  New features may be added in more recent :ref:`firmwares <mlx5_firmware_config>`.
 
 Libraries and kernel modules can be provided either by the Linux distribution,
 or by installing NVIDIA MLNX_OFED/EN which provides compatibility with older kernels.
@@ -170,12 +170,6 @@ It is possible to build rdma-core as static libraries starting with version 21::
     CFLAGS=-fPIC cmake -DENABLE_STATIC=1 -DNO_PYVERBS=1 -DNO_MAN_PAGES=1 -GNinja ..
     ninja
     ninja install
-
-The firmware can be updated with `mlxup
-<https://docs.nvidia.com/networking/display/mlxupfwutility>`_.
-The latest firmwares can be downloaded at
-https://network.nvidia.com/support/firmware/firmware-downloads/
-
 
 NVIDIA MLNX_OFED/EN
 ^^^^^^^^^^^^^^^^^^^
@@ -489,6 +483,11 @@ Additional information can be found in the WinOF2 user manual.
 
 Firmware Configuration
 ~~~~~~~~~~~~~~~~~~~~~~
+
+The firmware can be updated with `mlxup
+<https://docs.nvidia.com/networking/display/mlxupfwutility>`_
+after `downloading a new version
+<https://network.nvidia.com/support/firmware/firmware-downloads/>`_.
 
 Firmware features can be configured as key/value pairs.
 
