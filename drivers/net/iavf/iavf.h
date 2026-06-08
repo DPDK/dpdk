@@ -284,6 +284,7 @@ struct iavf_info {
 	struct rte_eth_dev *eth_dev;
 
 	bool in_reset_recovery;
+	bool reset_pending;
 
 	uint32_t ptp_caps;
 	rte_spinlock_t phc_time_aq_lock;

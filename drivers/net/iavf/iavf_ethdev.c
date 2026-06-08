@@ -100,6 +100,7 @@ static int iavf_dev_start(struct rte_eth_dev *dev);
 static int iavf_dev_stop(struct rte_eth_dev *dev);
 static int iavf_dev_close(struct rte_eth_dev *dev);
 static int iavf_dev_reset(struct rte_eth_dev *dev);
+static bool iavf_is_reset_detected(struct iavf_adapter *adapter);
 static int iavf_dev_info_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
 static const uint32_t *iavf_dev_supported_ptypes_get(struct rte_eth_dev *dev,
@@ -2988,6 +2989,14 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	iavf_flow_uninit(adapter);
 
 	iavf_vf_reset(hw);
+	/*
+	 * If a reset is pending, wait for the PF to disable the VF's admin
+	 * receive queue (its first reset action) before we shut it down
+	 * ourselves.  This ensures iavf_check_vf_reset_done() does not see
+	 * a stale VFACTIVE value on the re-init path.
+	 */
+	if (vf->reset_pending)
+		iavf_is_reset_detected(adapter);
 	iavf_shutdown_adminq(hw);
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
 		/* disable uio intr before callback unregister */
@@ -3067,6 +3076,7 @@ iavf_dev_reset(struct rte_eth_dev *dev)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	/*
 	 * Check whether the VF reset has been done and inform application,
 	 * to avoid calling the virtual channel command, which may cause
@@ -3079,8 +3089,10 @@ iavf_dev_reset(struct rte_eth_dev *dev)
 	}
 	iavf_set_no_poll(adapter, false);
 
+	vf->reset_pending = true;
 	PMD_DRV_LOG(DEBUG, "Start dev_reset ...");
 	ret = iavf_dev_uninit(dev);
+	vf->reset_pending = false;
 	if (ret)
 		return ret;
 
