@@ -150,6 +150,7 @@ rte_vmbus_cleanup(void)
 			error = -1;
 
 		rte_vmbus_unmap_device(dev);
+		rte_intr_instance_free(dev->intr_handle);
 
 		dev->device.driver = NULL;
 		rte_bus_remove_device(&rte_vmbus_bus, &dev->device);
