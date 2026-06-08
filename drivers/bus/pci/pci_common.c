@@ -344,6 +344,10 @@ pci_cleanup(void)
 			rte_errno = errno;
 			error = -1;
 		}
+
+		if (drv->drv_flags & RTE_PCI_DRV_NEED_MAPPING)
+			rte_pci_unmap_device(dev);
+
 		dev->device.driver = NULL;
 
 free:
