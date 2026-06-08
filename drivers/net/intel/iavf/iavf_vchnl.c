@@ -299,8 +299,15 @@ iavf_read_msg_from_pf(struct iavf_adapter *adapter, uint16_t buf_len,
 		/* async reply msg on command issued by vf previously */
 		result = IAVF_MSG_CMD;
 		if (opcode != vf->pend_cmd) {
-			PMD_DRV_LOG(WARNING, "command mismatch, expect %u, get %u",
-					vf->pend_cmd, opcode);
+			if (opcode == VIRTCHNL_OP_UNKNOWN)
+				PMD_DRV_LOG(DEBUG,
+					    "Spurious msg with opcode 0, pending cmd %u",
+					    vf->pend_cmd);
+			else
+				PMD_DRV_LOG(WARNING,
+					    "command mismatch, expect %u, get %u",
+					    vf->pend_cmd, opcode);
+
 			result = IAVF_MSG_ERR;
 		}
 	}
