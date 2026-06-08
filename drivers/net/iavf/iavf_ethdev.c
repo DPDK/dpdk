@@ -2828,7 +2828,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	adapter->stopped = 1;
 	adapter->mac_primary_set = false;
 
-	if (iavf_dev_event_handler_init())
+	if (!vf->in_reset_recovery && iavf_dev_event_handler_init())
 		goto init_vf_err;
 
 	if (iavf_init_vf(eth_dev) != 0) {
