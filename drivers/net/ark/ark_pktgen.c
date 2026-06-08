@@ -4,9 +4,12 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
+#include <rte_byteorder.h>
 #include <rte_thread.h>
 
 #include "ark_pktgen.h"
@@ -355,12 +358,11 @@ static int32_t parse_ipv4_string(char const *ip_address);
 static int32_t
 parse_ipv4_string(char const *ip_address)
 {
-	unsigned int ip[4];
+	struct in_addr addr;
 
-	if (sscanf(ip_address, "%u.%u.%u.%u",
-		   &ip[0], &ip[1], &ip[2], &ip[3]) != 4)
+	if (inet_pton(AF_INET, ip_address, &addr) != 1)
 		return 0;
-	return ip[3] + ip[2] * 0x100 + ip[1] * 0x10000ul + ip[0] * 0x1000000ul;
+	return rte_be_to_cpu_32(addr.s_addr);
 }
 
 static void
