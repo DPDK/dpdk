@@ -23,6 +23,130 @@ DEFAULT_PREFIX = "rte"
 CMDS = []
 
 
+def send_command(sock, cmd, output_buf_len, echo=False, pretty=False):
+    """Send a telemetry command and return the parsed JSON reply"""
+    sock.send(cmd.encode())
+    return read_socket(sock, output_buf_len, echo, pretty)
+
+
+def get_cmd_payload(reply, cmd):
+    """Return the payload for a command response if present"""
+    if isinstance(reply, dict) and len(reply) == 1:
+        return next(iter(reply.values()))
+    return None
+
+
+def get_path_value(payload, path):
+    """Resolve a dotted path (e.g. '.name' or '.a.b') from a JSON payload"""
+    if not path:
+        return payload
+
+    keys = [k for k in path.lstrip(".").split(".") if k]
+    val = payload
+    for key in keys:
+        if not isinstance(val, dict) or key not in val:
+            return None
+        val = val[key]
+    return val
+
+
+def parse_selectors(selector_text):
+    """Parse whitespace-separated dotted selectors"""
+    selectors = selector_text.split()
+    if not selectors:
+        print("Invalid FOREACH syntax: missing selector")
+        return None
+    if any(not selector.startswith(".") for selector in selectors):
+        print("Invalid FOREACH syntax: selector must start with '.'")
+        return None
+    return selectors
+
+
+def parse_foreach(text):
+    """Parse FOREACH [<var>] /<cmd> /<parameterized cmd> .<value> [.<value> ...]"""
+    try:
+        tokens = text.split(None, 3)
+    except ValueError:
+        print("Invalid FOREACH syntax")
+        return None
+
+    if len(tokens) != 4:
+        print("Invalid FOREACH syntax")
+        return None
+
+    _, arg1, arg2, arg3 = tokens
+    if arg1.startswith("/"):
+        var_name = None
+        list_cmd = arg1
+        iter_cmd = arg2
+        selector_text = arg3
+    else:
+        var_name = arg1
+        list_cmd = arg2
+        try:
+            iter_cmd, selector_text = arg3.split(None, 1)
+        except ValueError:
+            print("Invalid FOREACH syntax")
+            return None
+
+    if not list_cmd.startswith("/") or not iter_cmd.startswith("/"):
+        print("Invalid FOREACH syntax: commands must start with '/'")
+        return None
+
+    selectors = parse_selectors(selector_text)
+    if selectors is None:
+        return None
+
+    return var_name, list_cmd, iter_cmd, selectors
+
+
+def build_foreach_result(item, var_name, payload, selectors):
+    """Build one FOREACH result entry based on selector count and index mode"""
+    values = {selector.lstrip("."): get_path_value(payload, selector) for selector in selectors}
+
+    if var_name is None and len(selectors) == 1:
+        return next(iter(values.values()))
+    if var_name is None:
+        return values
+
+    return {var_name: item, **values}
+
+
+def handle_foreach(sock, output_buf_len, text, pretty=False):
+    """Handle FOREACH queries and print telemetry-like JSON array output"""
+    parsed = parse_foreach(text)
+    if parsed is None:
+        return
+    var_name, list_cmd, iter_cmd, selectors = parsed
+
+    list_reply = send_command(sock, list_cmd, output_buf_len)
+    values = get_cmd_payload(list_reply, list_cmd)
+    if not isinstance(values, list):
+        print("FOREACH source command did not return a JSON array")
+        return
+
+    output = []
+    for item in values:
+        if var_name is None:
+            cmd = "{},{}".format(iter_cmd, item)
+        else:
+            cmd = iter_cmd.replace("$" + var_name, str(item))
+        item_reply = send_command(sock, cmd, output_buf_len)
+        item_payload = get_cmd_payload(item_reply, cmd)
+        output.append(build_foreach_result(item, var_name, item_payload, selectors))
+
+    indent = 2 if pretty else None
+    print(json.dumps(output, indent=indent))
+
+
+def handle_command(sock, output_buf_len, text, pretty=False):
+    """Execute a user command if recognized"""
+    if text.startswith("/"):
+        send_command(sock, text, output_buf_len, echo=True, pretty=pretty)
+    elif text.startswith("FOREACH "):
+        handle_foreach(sock, output_buf_len, text, pretty)
+
+
 def read_socket(sock, buf_len, echo=True, pretty=False):
     """Read data from socket and return it in JSON format"""
     reply = sock.recv(buf_len).decode()
@@ -140,9 +264,7 @@ def handle_socket(args, path):
     try:
         text = input(prompt).strip()
         while text != "quit":
-            if text.startswith("/"):
-                sock.send(text.encode())
-                read_socket(sock, output_buf_len, pretty=prompt)
+            handle_command(sock, output_buf_len, text, pretty=prompt)
             text = input(prompt).strip()
     except EOFError:
         pass

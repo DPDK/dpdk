@@ -88,6 +88,48 @@ and query information using the telemetry client python script.
        {"/help": {"/ethdev/xstats": "Returns the extended stats for a port.
        Parameters: int port_id"}}
 
+   * Run a compound query using ``FOREACH``.
+
+     The ``FOREACH`` command runs a list command, iterates each returned item,
+     runs a second command for each item, and emits combined JSON output.
+
+     Start with the simplest form (no loop variable)::
+
+        FOREACH /<list_cmd> /<iter_cmd> .<field> [.<field> ...]
+
+     To include numbered output, use a loop variable::
+
+        FOREACH <var> /<list_cmd> /<iter_cmd_with_$var> .<field> [.<field> ...]
+
+     Notes:
+
+     - Field selectors are whitespace-separated tokens, each starting with ``.``.
+     - In no-variable mode, the iter command is called as ``/<iter_cmd>,<item>``.
+     - In loop-variable mode, use ``$<var>`` in the iter command
+       where the item value should be substituted.
+
+     Examples::
+
+        --> FOREACH /ethdev/list /ethdev/stats .opackets
+        [0, 0]
+
+        --> FOREACH /ethdev/list /ethdev/stats .ipackets .opackets
+        [{"ipackets": 0, "opackets": 0}, {"ipackets": 0, "opackets": 0}]
+
+        --> FOREACH i /ethdev/list /ethdev/info,$i .name
+        [{"i": 0, "name": "0000:16:00.0"}, {"i": 1, "name": "0000:16:00.1"}]
+
+        --> FOREACH i /ethdev/list /ethdev/stats,$i .ipackets .opackets
+        [{"i": 0, "ipackets": 0, "opackets": 0}, {"i": 1, "ipackets": 0, "opackets": 0}]
+
+     Output behavior:
+
+     - Without loop variable and one field: returns an array of values.
+     - Without loop variable and multiple fields: returns an array of objects
+       containing named value fields.
+     - With loop variable: returns an array of objects
+       containing the loop variable field and requested value fields.
+
 
 Connecting to Different DPDK Processes
 --------------------------------------
