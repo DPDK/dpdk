@@ -3023,35 +3023,24 @@ mlkem_encap_op_evp(struct rte_crypto_op *cop,
 		return -1;
 	}
 
-	if (EVP_PKEY_fromdata_init(pctx) != 1) {
-		OSSL_PARAM_free(params);
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
-	}
+	cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 
-	if (EVP_PKEY_fromdata(pctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1) {
-		OSSL_PARAM_free(params);
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
-	}
-	OSSL_PARAM_free(params);
+	if (EVP_PKEY_fromdata_init(pctx) != 1)
+		goto err_params;
 
-	if (pkey == NULL) {
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
-	}
+	if (EVP_PKEY_fromdata(pctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1)
+		goto err_params;
+
+	if (pkey == NULL)
+		goto err_params;
 
 	cctx = EVP_PKEY_CTX_new_from_pkey(NULL, pkey, NULL);
-	if (cctx == NULL) {
-		EVP_PKEY_free(pkey);
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
-	}
+	if (cctx == NULL)
+		goto err_pkey;
 
-	if (EVP_PKEY_encapsulate_init(cctx, NULL) != 1) {
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
-	}
+
+	if (EVP_PKEY_encapsulate_init(cctx, NULL) != 1)
+		goto err_encap;
 
 	if (op->encap.message.length) {
 		const OSSL_PARAM kem_params[] = {
@@ -3060,49 +3049,42 @@ mlkem_encap_op_evp(struct rte_crypto_op *cop,
 			OSSL_PARAM_END
 		};
 
-		if (EVP_PKEY_encapsulate_init(cctx, kem_params) != 1) {
-			EVP_PKEY_free(pkey);
-			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-			return -1;
-		}
+		if (EVP_PKEY_encapsulate_init(cctx, kem_params) != 1)
+			goto err_encap;
 	}
 
 	if (EVP_PKEY_encapsulate(cctx, NULL, &outlen, NULL, &keylen) != 1) {
 		OPENSSL_LOG(ERR, "Failed to determine output length");
-		EVP_PKEY_free(pkey);
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
+		goto err_encap;
 	}
 
 	if (outlen > op->encap.cipher.length) {
 		OPENSSL_LOG(ERR, "Insufficient buffer for cipher text");
-		EVP_PKEY_free(pkey);
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
+		goto err_encap;
 	}
 
 	if (keylen > op->encap.sk.length) {
 		OPENSSL_LOG(ERR, "Insufficient buffer for shared key");
-		EVP_PKEY_free(pkey);
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
+		goto err_encap;
 	}
 
 	if (EVP_PKEY_encapsulate(cctx, op->encap.cipher.data, &outlen,
 			op->encap.sk.data, &keylen) != 1) {
 		OPENSSL_LOG(ERR, "Failed to encapculate");
-		EVP_PKEY_free(pkey);
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
+		goto err_encap;
 	}
 
 	op->encap.cipher.length = outlen;
 	op->encap.sk.length = keylen;
-
-	EVP_PKEY_CTX_free(cctx);
-	EVP_PKEY_free(pkey);
 	ret = 0;
 	cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+
+err_encap:
+	EVP_PKEY_CTX_free(cctx);
+err_pkey:
+	EVP_PKEY_free(pkey);
+err_params:
+	OSSL_PARAM_free(params);
 	return ret;
 }
 
@@ -3150,65 +3132,51 @@ mlkem_decap_op_evp(struct rte_crypto_op *cop,
 		return -1;
 	}
 
-	if (EVP_PKEY_fromdata_init(pctx) != 1) {
-		OSSL_PARAM_free(params);
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
-	}
+	cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 
-	if (EVP_PKEY_fromdata(pctx, &pkey, EVP_PKEY_PRIVATE_KEY, params) != 1) {
-		OSSL_PARAM_free(params);
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
-	}
-	OSSL_PARAM_free(params);
+	if (EVP_PKEY_fromdata_init(pctx) != 1)
+		goto err_params;
 
-	if (pkey == NULL) {
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
-	}
+	if (EVP_PKEY_fromdata(pctx, &pkey, EVP_PKEY_PRIVATE_KEY, params) != 1)
+		goto err_params;
+
+	if (pkey == NULL)
+		goto err_params;
 
 	cctx = EVP_PKEY_CTX_new_from_pkey(NULL, pkey, NULL);
-	if (cctx == NULL) {
-		EVP_PKEY_free(pkey);
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
-	}
+	if (cctx == NULL)
+		goto err_pkey;
 
-	if (EVP_PKEY_decapsulate_init(cctx, params) != 1) {
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
-	}
+	if (EVP_PKEY_decapsulate_init(cctx, NULL) != 1)
+		goto err_decap;
 
 	if (EVP_PKEY_decapsulate(cctx, NULL, &keylen,
 		op->decap.cipher.data, op->decap.cipher.length) != 1) {
 		OPENSSL_LOG(ERR, "Failed to determine output length");
-		EVP_PKEY_free(pkey);
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
+		goto err_decap;
 	}
 
 	if (keylen > op->decap.sk.length) {
 		OPENSSL_LOG(ERR, "Insufficient buffer for shared key");
-		EVP_PKEY_free(pkey);
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
+		goto err_decap;
 	}
 
 	if (EVP_PKEY_decapsulate(cctx, op->decap.sk.data, &keylen,
 			op->decap.cipher.data, op->decap.cipher.length) != 1) {
 		OPENSSL_LOG(ERR, "Failed to decapsulate");
-		EVP_PKEY_free(pkey);
-		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return -1;
+		goto err_decap;
 	}
 
 	op->decap.sk.length = keylen;
-
-	EVP_PKEY_CTX_free(cctx);
-	EVP_PKEY_free(pkey);
 	ret = 0;
 	cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+
+err_decap:
+	EVP_PKEY_CTX_free(cctx);
+err_pkey:
+	EVP_PKEY_free(pkey);
+err_params:
+	OSSL_PARAM_free(params);
 	return ret;
 }
 
