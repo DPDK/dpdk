@@ -16,7 +16,7 @@
 
 /* Maximum number of layers per model */
 #ifdef RTE_MLDEV_CNXK_ENABLE_TVMRT
-#define ML_CNXK_MODEL_MAX_LAYERS 128
+#define ML_CNXK_MODEL_MAX_LAYERS 512
 #else
 #define ML_CNXK_MODEL_MAX_LAYERS 1
 #endif

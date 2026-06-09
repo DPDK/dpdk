@@ -398,6 +398,7 @@ tvmrt_ml_json_graph_get_arrays(json_t *json_parsed, json_t **nodes, json_t **arg
 int
 tvmrt_ml_model_json_parse(struct cnxk_ml_model *model)
 {
+	struct cnxk_ml_dev *cnxk_mldev = model->cnxk_mldev;
 	struct tvmrt_ml_param_names param_names;
 	json_error_t json_error;
 	json_t *json_parsed;
@@ -407,6 +408,7 @@ tvmrt_ml_model_json_parse(struct cnxk_ml_model *model)
 	json_t *json_node_row_ptr;
 	json_t *json_shape_values;
 	json_t *json_dtype_values;
+	uint16_t nb_active_mrvl_layers;
 	uint16_t nb_mrvl_layers;
 	uint16_t nb_llvm_layers;
 	DLDevice device;
@@ -508,6 +510,21 @@ tvmrt_ml_model_json_parse(struct cnxk_ml_model *model)
 		plt_err("Invalid model, nb_llvm_layers = %u, nb_mrvl_layers = %u, nb_layers = %u",
 			nb_llvm_layers, nb_mrvl_layers, model->nb_layers);
 		ret = -EINVAL;
+		goto error;
+	}
+
+	nb_active_mrvl_layers = 0;
+	for (i = 0; i < cnxk_mldev->max_mrvl_layers; i++) {
+		if (cnxk_mldev->index_map[i].active)
+			nb_active_mrvl_layers++;
+	}
+
+	if (nb_active_mrvl_layers + nb_mrvl_layers > cnxk_mldev->max_mrvl_layers) {
+		ret = -ENOSPC;
+		plt_err("TVM runtime: Total MRVL layers (%u) exceeds maximum supported "
+			"MRVL layers (%" PRIu64 "), model_id = %u, error = %d",
+			nb_active_mrvl_layers + nb_mrvl_layers, cnxk_mldev->max_mrvl_layers,
+			model->model_id, ret);
 		goto error;
 	}
 

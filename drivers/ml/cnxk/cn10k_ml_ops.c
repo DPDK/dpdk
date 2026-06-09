@@ -624,15 +624,15 @@ cn10k_ml_layer_load(void *device, uint16_t model_id, const char *layer_name, uin
 		return ret;
 
 	/* Get index */
-	for (idx = 0; idx < cnxk_mldev->max_nb_layers; idx++) {
+	for (idx = 0; idx < cnxk_mldev->max_mrvl_layers; idx++) {
 		if (!cnxk_mldev->index_map[idx].active) {
 			layer->index = idx;
 			break;
 		}
 	}
 
-	if (idx >= cnxk_mldev->max_nb_layers) {
-		plt_err("No slots available for model layers, model_id = %u, layer_id = %u",
+	if (idx >= cnxk_mldev->max_mrvl_layers) {
+		plt_err("No slots available for model MRVL layers, model_id = %u, layer_id = %u",
 			model->model_id, layer_id);
 		return -1;
 	}

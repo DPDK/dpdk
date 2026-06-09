@@ -93,9 +93,9 @@ struct cnxk_ml_dev {
 #endif
 
 	/* Maximum number of layers */
-	uint64_t max_nb_layers;
+	uint64_t max_mrvl_layers;
 
-	/* Index map */
+	/* Index map for MRVL layers */
 	struct cnxk_ml_index_map *index_map;
 };
 

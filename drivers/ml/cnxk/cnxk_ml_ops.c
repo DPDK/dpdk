@@ -636,30 +636,30 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 
 	/* Set device capabilities */
 	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_PCI)
-		cnxk_mldev->max_nb_layers =
+		cnxk_mldev->max_mrvl_layers =
 			cnxk_mldev->cn10k_mldev.fw.req->cn10k_req.jd.fw_load.cap.s.max_models;
 	else
-		cnxk_mldev->max_nb_layers = ML_CNXK_MAX_MODELS;
+		cnxk_mldev->max_mrvl_layers = 0;
 
 	cnxk_mldev->mldev->enqueue_burst = cnxk_ml_enqueue_burst;
 	cnxk_mldev->mldev->dequeue_burst = cnxk_ml_dequeue_burst;
 	cnxk_mldev->mldev->op_error_get = cnxk_ml_op_error_get;
 
 	/* Allocate and initialize index_map */
-	if (cnxk_mldev->index_map == NULL) {
+	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_PCI && cnxk_mldev->index_map == NULL) {
 		cnxk_mldev->index_map =
 			rte_zmalloc("cnxk_ml_index_map",
-				    sizeof(struct cnxk_ml_index_map) * cnxk_mldev->max_nb_layers,
+				    sizeof(struct cnxk_ml_index_map) * cnxk_mldev->max_mrvl_layers,
 				    RTE_CACHE_LINE_SIZE);
 		if (cnxk_mldev->index_map == NULL) {
-			plt_err("Failed to get memory for index_map, nb_layers %" PRIu64,
-				cnxk_mldev->max_nb_layers);
+			plt_err("Failed to get memory for index_map, nb_mrvl_layers %" PRIu64,
+				cnxk_mldev->max_mrvl_layers);
 			ret = -ENOMEM;
 			goto error;
 		}
 	}
 
-	for (i = 0; i < cnxk_mldev->max_nb_layers; i++)
+	for (i = 0; i < cnxk_mldev->max_mrvl_layers; i++)
 		cnxk_mldev->index_map[i].active = false;
 
 	/* Initialize xstats */
