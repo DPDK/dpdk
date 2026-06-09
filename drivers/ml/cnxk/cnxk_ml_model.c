@@ -16,7 +16,7 @@ cnxk_ml_model_get_type(struct rte_ml_model_params *params)
 	uint32_t payload_crc32c;
 	uint32_t header_crc32c;
 
-	type = mvtvm_ml_model_type_get(params);
+	type = tvmrt_ml_model_type_get(params);
 	if (type == ML_CNXK_MODEL_TYPE_TVM)
 		return ML_CNXK_MODEL_TYPE_TVM;
 	else if (type == ML_CNXK_MODEL_TYPE_INVALID)
@@ -89,6 +89,6 @@ cnxk_ml_model_dump(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model, 
 		if (layer->type == ML_CNXK_LAYER_TYPE_MRVL)
 			cn10k_ml_layer_print(cnxk_mldev, layer, fp);
 		else
-			mvtvm_ml_layer_print(cnxk_mldev, layer, fp);
+			tvmrt_ml_layer_print(cnxk_mldev, layer, fp);
 	}
 }

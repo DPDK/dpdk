@@ -250,7 +250,7 @@ cnxk_ml_xstats_model_name_update(struct cnxk_ml_dev *cnxk_mldev, uint16_t model_
 		if (model->type == ML_CNXK_MODEL_TYPE_GLOW)
 			cn10k_ml_xstat_model_name_set(cnxk_mldev, model, stat_id, i, suffix);
 		else
-			mvtvm_ml_model_xstat_name_set(cnxk_mldev, model, stat_id, i, suffix);
+			tvmrt_ml_model_xstat_name_set(cnxk_mldev, model, stat_id, i, suffix);
 
 		stat_id++;
 	}
@@ -312,7 +312,7 @@ layer_xstats:
 	goto exit_xstats;
 
 model_xstats:
-	value = mvtvm_ml_model_xstat_get(cnxk_mldev, model, type);
+	value = tvmrt_ml_model_xstat_get(cnxk_mldev, model, type);
 
 exit_xstats:
 	roc_clk_freq_get(&rclk_freq, &sclk_freq);
@@ -1211,7 +1211,7 @@ cnxk_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, u
 	if (type == ML_CNXK_MODEL_TYPE_GLOW)
 		ret = cn10k_ml_model_load(cnxk_mldev, params, model);
 	else
-		ret = mvtvm_ml_model_load(cnxk_mldev, params, model);
+		ret = tvmrt_ml_model_load(cnxk_mldev, params, model);
 	if (ret != 0)
 		goto error;
 
@@ -1225,7 +1225,7 @@ cnxk_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, u
 		total_wb_pages = total_wb_pages + model->layer[layer_id].glow.ocm_map.wb_pages;
 		max_scratch_pages = PLT_MAX(max_scratch_pages,
 					    model->layer[layer_id].glow.ocm_map.scratch_pages);
-#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
+#ifdef RTE_MLDEV_CNXK_ENABLE_TVMRT
 	} else {
 		for (layer_id = 0; layer_id < model->nb_layers; layer_id++) {
 			if (model->layer[layer_id].type == ML_CNXK_LAYER_TYPE_MRVL) {
@@ -1247,7 +1247,7 @@ cnxk_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, u
 			plt_ml_dbg("layer_id = %u: wb_pages = %u, scratch_pages = %u", layer_id,
 				   model->layer[layer_id].glow.ocm_map.wb_pages,
 				   model->layer[layer_id].glow.ocm_map.scratch_pages);
-#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
+#ifdef RTE_MLDEV_CNXK_ENABLE_TVMRT
 		} else {
 			for (layer_id = 0; layer_id < model->nb_layers; layer_id++) {
 				if (model->layer[layer_id].type == ML_CNXK_LAYER_TYPE_MRVL) {
@@ -1263,9 +1263,9 @@ cnxk_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, u
 
 		if (model->type == ML_CNXK_MODEL_TYPE_GLOW)
 			cn10k_ml_model_unload(cnxk_mldev, model);
-#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
+#ifdef RTE_MLDEV_CNXK_ENABLE_TVMRT
 		else {
-			mvtvm_ml_model_unload(cnxk_mldev, model);
+			tvmrt_ml_model_unload(cnxk_mldev, model);
 			return -ENOMEM;
 		}
 #endif
@@ -1312,7 +1312,7 @@ cnxk_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id)
 	if (model->type == ML_CNXK_MODEL_TYPE_GLOW)
 		ret = cn10k_ml_model_unload(cnxk_mldev, model);
 	else
-		ret = mvtvm_ml_model_unload(cnxk_mldev, model);
+		ret = tvmrt_ml_model_unload(cnxk_mldev, model);
 	if (ret != 0)
 		return ret;
 
@@ -1343,7 +1343,7 @@ cnxk_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id)
 	if (model->type == ML_CNXK_MODEL_TYPE_GLOW)
 		return cn10k_ml_model_start(cnxk_mldev, model);
 	else
-		return mvtvm_ml_model_start(cnxk_mldev, model);
+		return tvmrt_ml_model_start(cnxk_mldev, model);
 
 	return 0;
 }
@@ -1368,7 +1368,7 @@ cnxk_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id)
 	if (model->type == ML_CNXK_MODEL_TYPE_GLOW)
 		return cn10k_ml_model_stop(cnxk_mldev, model);
 	else
-		return mvtvm_ml_model_stop(cnxk_mldev, model);
+		return tvmrt_ml_model_stop(cnxk_mldev, model);
 
 	return 0;
 }
@@ -1444,7 +1444,7 @@ cnxk_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_buf
 	if (model->type == ML_CNXK_MODEL_TYPE_GLOW)
 		info = cn10k_ml_model_io_info_get(model, 0);
 	else
-		info = mvtvm_ml_model_io_info_get(model, 0);
+		info = tvmrt_ml_model_io_info_get(model, 0);
 
 	if (info == NULL)
 		return -EINVAL;
@@ -1500,7 +1500,7 @@ cnxk_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_b
 	if (model->type == ML_CNXK_MODEL_TYPE_GLOW)
 		info = cn10k_ml_model_io_info_get(model, model->nb_layers - 1);
 	else
-		info = mvtvm_ml_model_io_info_get(model, model->nb_layers - 1);
+		info = tvmrt_ml_model_io_info_get(model, model->nb_layers - 1);
 
 	if (info == NULL)
 		return -EINVAL;

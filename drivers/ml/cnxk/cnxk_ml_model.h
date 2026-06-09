@@ -11,10 +11,10 @@
 
 #include "cn10k_ml_model.h"
 
-#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
-#include "mvtvm_ml_model.h"
+#ifdef RTE_MLDEV_CNXK_ENABLE_TVMRT
+#include "tvmrt_ml_model.h"
 #else
-#include "mvtvm_ml_stubs.h"
+#include "tvmrt_ml_stubs.h"
 #endif
 
 #include "cnxk_ml_io.h"
@@ -152,9 +152,9 @@ struct cnxk_ml_model {
 		/* Model specific data - glow */
 		struct cn10k_ml_model_data glow;
 
-#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
-		/* Model type specific data - mvtvm */
-		struct mvtvm_ml_model_data mvtvm;
+#ifdef RTE_MLDEV_CNXK_ENABLE_TVMRT
+		/* Model type specific data - tvmrt */
+		struct tvmrt_ml_model_data tvmrt;
 #endif
 	};
 

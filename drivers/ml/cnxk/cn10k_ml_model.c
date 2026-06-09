@@ -729,7 +729,7 @@ int
 cn10k_ml_model_get_layer_id(struct cnxk_ml_model *model, const char *layer_name, uint16_t *layer_id)
 {
 	if (model->type == ML_CNXK_MODEL_TYPE_TVM)
-		return mvtvm_ml_model_get_layer_id(model, layer_name, layer_id);
+		return tvmrt_ml_model_get_layer_id(model, layer_name, layer_id);
 
 	*layer_id = 0;
 

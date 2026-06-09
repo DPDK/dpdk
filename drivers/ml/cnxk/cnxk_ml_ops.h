@@ -12,10 +12,12 @@
 
 #include "cn10k_ml_ops.h"
 
-#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
+#ifdef RTE_MLDEV_CNXK_ENABLE_TVMRT
 #include "mvtvm_ml_ops.h"
+#include "tvmrt_ml_ops.h"
 #else
 #include "mvtvm_ml_stubs.h"
+#include "tvmrt_ml_stubs.h"
 #endif
 
 /* Request structure */
@@ -25,9 +27,9 @@ struct __rte_aligned(ROC_ALIGN) cnxk_ml_req {
 		/* CN10K */
 		struct cn10k_ml_req cn10k_req;
 
-#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
-		/* MVTVM */
-		struct mvtvm_ml_req mvtvm_req;
+#ifdef RTE_MLDEV_CNXK_ENABLE_TVMRT
+		/* TVMRT */
+		struct tvmrt_ml_req tvmrt_req;
 #endif
 	};
 

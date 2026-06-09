@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright (c) 2023 Marvell.
+ * Copyright (c) 2026 Marvell.
  */
 
-#ifndef _MVTVM_ML_MODEL_H_
-#define _MVTVM_ML_MODEL_H_
+#ifndef _TVMRT_ML_MODEL_H_
+#define _TVMRT_ML_MODEL_H_
 
 #include <dlpack/dlpack.h>
 #include <jansson.h>
@@ -30,19 +30,19 @@ struct cnxk_ml_model;
 struct cnxk_ml_layer;
 
 /* Maximum number of objects per model */
-#define ML_MVTVM_MODEL_OBJECT_MAX 3
+#define ML_TVMRT_MODEL_OBJECT_MAX 3
 
 /* Magic number for TVM parameter blobs. */
 #define TVM_NDARRAY_LIST_MAGIC 0xF7E58D4F05049CB7ULL
 
 /* TVM parameter names structure */
-struct mvtvm_ml_param_names {
+struct tvmrt_ml_param_names {
 	char **name;
 	size_t count;
 };
 
 /* TVM object / artifact info structure */
-struct mvtvm_ml_model_object {
+struct tvmrt_ml_model_object {
 	/* Name */
 	char name[RTE_ML_STR_MAX];
 
@@ -85,7 +85,7 @@ struct tvmrt_glow_callback {
 };
 
 /* Model fast-path stats */
-struct mvtvm_ml_model_xstats {
+struct tvmrt_ml_model_xstats {
 	/* Total TVM runtime latency, sum of all inferences */
 	uint64_t tvm_rt_latency_tot;
 
@@ -105,11 +105,11 @@ struct mvtvm_ml_model_xstats {
 	uint64_t tvm_rt_reset_count;
 };
 
-struct mvtvm_ml_model_data {
+struct tvmrt_ml_model_data {
 	/* Model objects */
-	struct mvtvm_ml_model_object so;
-	struct mvtvm_ml_model_object json;
-	struct mvtvm_ml_model_object params;
+	struct tvmrt_ml_model_object so;
+	struct tvmrt_ml_model_object json;
+	struct tvmrt_ml_model_object params;
 
 	/* TVM runtime callbacks */
 	struct tvmrt_glow_callback cb;
@@ -130,7 +130,7 @@ struct mvtvm_ml_model_data {
 	struct cnxk_ml_io_info info;
 
 	/* Stats for burst ops */
-	struct mvtvm_ml_model_xstats *burst_xstats;
+	struct tvmrt_ml_model_xstats *burst_xstats;
 
 	/* Input Tensor */
 	DLTensor input_tensor[ML_CNXK_MODEL_MAX_INPUT_OUTPUT];
@@ -139,15 +139,15 @@ struct mvtvm_ml_model_data {
 	DLTensor output_tensor[ML_CNXK_MODEL_MAX_INPUT_OUTPUT];
 };
 
-enum cnxk_ml_model_type mvtvm_ml_model_type_get(struct rte_ml_model_params *params);
-int mvtvm_ml_model_blob_parse(struct rte_ml_model_params *params,
-			      struct mvtvm_ml_model_object *object);
-int mvtvm_ml_model_get_layer_id(struct cnxk_ml_model *model, const char *layer_name,
+enum cnxk_ml_model_type tvmrt_ml_model_type_get(struct rte_ml_model_params *params);
+int tvmrt_ml_model_blob_parse(struct rte_ml_model_params *params,
+			      struct tvmrt_ml_model_object *object);
+int tvmrt_ml_model_get_layer_id(struct cnxk_ml_model *model, const char *layer_name,
 				uint16_t *layer_id);
-void mvtvm_ml_model_io_info_set(struct cnxk_ml_model *model);
-struct cnxk_ml_io_info *mvtvm_ml_model_io_info_get(struct cnxk_ml_model *model, uint16_t layer_id);
-void mvtvm_ml_model_info_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model);
-void mvtvm_ml_layer_print(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *layer, FILE *fp);
-int mvtvm_ml_model_json_parse(struct cnxk_ml_model *model);
+void tvmrt_ml_model_io_info_set(struct cnxk_ml_model *model);
+struct cnxk_ml_io_info *tvmrt_ml_model_io_info_get(struct cnxk_ml_model *model, uint16_t layer_id);
+void tvmrt_ml_model_info_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model);
+void tvmrt_ml_layer_print(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *layer, FILE *fp);
+int tvmrt_ml_model_json_parse(struct cnxk_ml_model *model);
 
-#endif /* _MVTVM_ML_MODEL_H_ */
+#endif /* _TVMRT_ML_MODEL_H_ */

@@ -53,12 +53,13 @@ deps += ['mldev', 'common_cnxk', 'kvargs', 'hash']
 
 if enable_mvtvm
 
-dpdk_conf.set('RTE_MLDEV_CNXK_ENABLE_MVTVM', 1)
+dpdk_conf.set('RTE_MLDEV_CNXK_ENABLE_TVMRT', 1)
 
 sources += files(
         'mvtvm_ml_dev.c',
         'mvtvm_ml_ops.c',
-        'mvtvm_ml_model.c',
+        'tvmrt_ml_ops.c',
+        'tvmrt_ml_model.c',
 )
 
 ext_deps += jansson_dep
@@ -80,6 +81,7 @@ message('drivers/ml/cnxk: Disabled TVM model support')
 
 sources += files(
         'mvtvm_ml_stubs.c',
+        'tvmrt_ml_stubs.c',
 )
 
 endif

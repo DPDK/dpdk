@@ -9,7 +9,7 @@
 
 #include "cn10k_ml_dev.h"
 
-#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
+#ifdef RTE_MLDEV_CNXK_ENABLE_TVMRT
 #include "mvtvm_ml_dev.h"
 #endif
 
@@ -87,7 +87,7 @@ struct cnxk_ml_dev {
 	/* CN10K device structure */
 	struct cn10k_ml_dev cn10k_mldev;
 
-#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
+#ifdef RTE_MLDEV_CNXK_ENABLE_TVMRT
 	/* MVTVM device structure */
 	struct mvtvm_ml_dev mvtvm_mldev;
 #endif

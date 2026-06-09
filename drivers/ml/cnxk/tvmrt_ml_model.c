@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright (c) 2023 Marvell.
+ * Copyright (c) 2026 Marvell.
  */
 
 #include <errno.h>
@@ -22,13 +22,13 @@
 #include "cnxk_ml_utils.h"
 
 /* Objects list */
-char mvtvm_object_list[ML_MVTVM_MODEL_OBJECT_MAX][RTE_ML_STR_MAX] = {"mod.so", "mod.json",
-								     "mod.params"};
+static char tvmrt_object_list[ML_TVMRT_MODEL_OBJECT_MAX][RTE_ML_STR_MAX] = {"mod.so", "mod.json",
+									    "mod.params"};
 
 enum cnxk_ml_model_type
-mvtvm_ml_model_type_get(struct rte_ml_model_params *params)
+tvmrt_ml_model_type_get(struct rte_ml_model_params *params)
 {
-	bool object_found[ML_MVTVM_MODEL_OBJECT_MAX] = {false, false, false};
+	bool object_found[ML_TVMRT_MODEL_OBJECT_MAX] = {false, false, false};
 	enum cnxk_ml_model_type model_type;
 	struct archive_entry *entry;
 	struct archive *a;
@@ -47,18 +47,18 @@ mvtvm_ml_model_type_get(struct rte_ml_model_params *params)
 
 	/* Parse buffer for available objects */
 	while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
-		for (i = 0; i < ML_MVTVM_MODEL_OBJECT_MAX; i++) {
+		for (i = 0; i < ML_TVMRT_MODEL_OBJECT_MAX; i++) {
 			if (!object_found[i] &&
-			    (strcmp(archive_entry_pathname(entry), mvtvm_object_list[i]) == 0))
+			    (strcmp(archive_entry_pathname(entry), tvmrt_object_list[i]) == 0))
 				object_found[i] = true;
 		}
 		archive_read_data_skip(a);
 	}
 
 	/* Check if all objects are available */
-	for (i = 0; i < ML_MVTVM_MODEL_OBJECT_MAX; i++) {
+	for (i = 0; i < ML_TVMRT_MODEL_OBJECT_MAX; i++) {
 		if (!object_found[i]) {
-			plt_err("Object %s not found in archive!", mvtvm_object_list[i]);
+			plt_err("Object %s not found in archive!", tvmrt_object_list[i]);
 			model_type = ML_CNXK_MODEL_TYPE_INVALID;
 			goto cleanup;
 		}
@@ -74,15 +74,15 @@ cleanup:
 }
 
 int
-mvtvm_ml_model_blob_parse(struct rte_ml_model_params *params, struct mvtvm_ml_model_object *object)
+tvmrt_ml_model_blob_parse(struct rte_ml_model_params *params, struct tvmrt_ml_model_object *object)
 {
-	bool object_found[ML_MVTVM_MODEL_OBJECT_MAX] = {false, false, false};
+	bool object_found[ML_TVMRT_MODEL_OBJECT_MAX] = {false, false, false};
 	struct archive_entry *entry;
 	struct archive *a;
 	uint8_t i;
 	int ret;
 
-	memset(object, 0, ML_MVTVM_MODEL_OBJECT_MAX * sizeof(*object));
+	memset(object, 0, ML_TVMRT_MODEL_OBJECT_MAX * sizeof(*object));
 
 	/* Open archive */
 	a = archive_read_new();
@@ -97,10 +97,10 @@ mvtvm_ml_model_blob_parse(struct rte_ml_model_params *params, struct mvtvm_ml_mo
 
 	/* Read archive */
 	while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
-		for (i = 0; i < ML_MVTVM_MODEL_OBJECT_MAX; i++) {
+		for (i = 0; i < ML_TVMRT_MODEL_OBJECT_MAX; i++) {
 			if (!object_found[i] &&
-			    (strcmp(archive_entry_pathname(entry), mvtvm_object_list[i]) == 0)) {
-				memcpy(object[i].name, mvtvm_object_list[i], RTE_ML_STR_MAX);
+			    (strcmp(archive_entry_pathname(entry), tvmrt_object_list[i]) == 0)) {
+				memcpy(object[i].name, tvmrt_object_list[i], RTE_ML_STR_MAX);
 				object[i].size = archive_entry_size(entry);
 				object[i].buffer = rte_malloc(NULL, object[i].size, 0);
 				if (object[i].buffer == NULL) {
@@ -122,9 +122,9 @@ mvtvm_ml_model_blob_parse(struct rte_ml_model_params *params, struct mvtvm_ml_mo
 	}
 
 	/* Check if all objects are parsed */
-	for (i = 0; i < ML_MVTVM_MODEL_OBJECT_MAX; i++) {
+	for (i = 0; i < ML_TVMRT_MODEL_OBJECT_MAX; i++) {
 		if (!object_found[i]) {
-			plt_err("Object %s not found in archive!", mvtvm_object_list[i]);
+			plt_err("Object %s not found in archive!", tvmrt_object_list[i]);
 			ret = -EINVAL;
 			goto error;
 		}
@@ -133,7 +133,7 @@ mvtvm_ml_model_blob_parse(struct rte_ml_model_params *params, struct mvtvm_ml_mo
 	goto cleanup;
 
 error:
-	for (i = 0; i < ML_MVTVM_MODEL_OBJECT_MAX; i++) {
+	for (i = 0; i < ML_TVMRT_MODEL_OBJECT_MAX; i++) {
 		if (object[i].buffer != NULL)
 			rte_free(object[i].buffer);
 	}
@@ -146,7 +146,7 @@ cleanup:
 }
 
 int
-mvtvm_ml_model_get_layer_id(struct cnxk_ml_model *model, const char *layer_name, uint16_t *layer_id)
+tvmrt_ml_model_get_layer_id(struct cnxk_ml_model *model, const char *layer_name, uint16_t *layer_id)
 {
 	uint16_t i;
 
@@ -171,7 +171,7 @@ mvtvm_ml_model_get_layer_id(struct cnxk_ml_model *model, const char *layer_name,
 }
 
 static void
-mvtvm_ml_param_names_free(struct mvtvm_ml_param_names *param_names)
+tvmrt_ml_param_names_free(struct tvmrt_ml_param_names *param_names)
 {
 	size_t i;
 
@@ -184,7 +184,7 @@ mvtvm_ml_param_names_free(struct mvtvm_ml_param_names *param_names)
 }
 
 static int
-mvtvm_ml_blob_read_u64(const uint8_t *blob, size_t blob_size, size_t *offset, uint64_t *value)
+tvmrt_ml_blob_read_u64(const uint8_t *blob, size_t blob_size, size_t *offset, uint64_t *value)
 {
 	if (*offset + sizeof(*value) > blob_size)
 		return -EINVAL;
@@ -196,8 +196,8 @@ mvtvm_ml_blob_read_u64(const uint8_t *blob, size_t blob_size, size_t *offset, ui
 }
 
 static int
-mvtvm_ml_param_names_parse(const uint8_t *blob, size_t blob_size,
-			   struct mvtvm_ml_param_names *param_names)
+tvmrt_ml_param_names_parse(const uint8_t *blob, size_t blob_size,
+			   struct tvmrt_ml_param_names *param_names)
 {
 	uint64_t magic = 0;
 	uint64_t reserved = 0;
@@ -208,18 +208,18 @@ mvtvm_ml_param_names_parse(const uint8_t *blob, size_t blob_size,
 
 	memset(param_names, 0, sizeof(*param_names));
 
-	ret = mvtvm_ml_blob_read_u64(blob, blob_size, &offset, &magic);
+	ret = tvmrt_ml_blob_read_u64(blob, blob_size, &offset, &magic);
 	if (ret != 0)
 		return ret;
 
 	if (magic != TVM_NDARRAY_LIST_MAGIC)
 		return -EINVAL;
 
-	ret = mvtvm_ml_blob_read_u64(blob, blob_size, &offset, &reserved);
+	ret = tvmrt_ml_blob_read_u64(blob, blob_size, &offset, &reserved);
 	if (ret != 0)
 		return ret;
 
-	ret = mvtvm_ml_blob_read_u64(blob, blob_size, &offset, &count);
+	ret = tvmrt_ml_blob_read_u64(blob, blob_size, &offset, &count);
 	if (ret != 0)
 		return ret;
 
@@ -234,7 +234,7 @@ mvtvm_ml_param_names_parse(const uint8_t *blob, size_t blob_size,
 	for (i = 0; i < count; i++) {
 		uint64_t name_len = 0;
 
-		ret = mvtvm_ml_blob_read_u64(blob, blob_size, &offset, &name_len);
+		ret = tvmrt_ml_blob_read_u64(blob, blob_size, &offset, &name_len);
 		if (ret != 0)
 			goto error;
 
@@ -261,12 +261,12 @@ mvtvm_ml_param_names_parse(const uint8_t *blob, size_t blob_size,
 	return 0;
 
 error:
-	mvtvm_ml_param_names_free(param_names);
+	tvmrt_ml_param_names_free(param_names);
 	return ret;
 }
 
 static int
-mvtvm_ml_dtype_parse(const char *dtype_str, DLDataType *dtype)
+tvmrt_ml_dtype_parse(const char *dtype_str, DLDataType *dtype)
 {
 	const char *lanes_str;
 	char base[32] = {0};
@@ -321,7 +321,7 @@ mvtvm_ml_dtype_parse(const char *dtype_str, DLDataType *dtype)
 }
 
 static int
-mvtvm_ml_model_io_set(struct cnxk_ml_io *io, const char *name, json_t *shape, const char *dtype_str,
+tvmrt_ml_model_io_set(struct cnxk_ml_io *io, const char *name, json_t *shape, const char *dtype_str,
 		      DLDevice device)
 {
 	size_t i;
@@ -346,7 +346,7 @@ mvtvm_ml_model_io_set(struct cnxk_ml_io *io, const char *name, json_t *shape, co
 		io->shape_i64[i] = json_integer_value(dim);
 	}
 
-	ret = mvtvm_ml_dtype_parse(dtype_str, &io->datatype);
+	ret = tvmrt_ml_dtype_parse(dtype_str, &io->datatype);
 	if (ret != 0)
 		return ret;
 
@@ -357,8 +357,9 @@ mvtvm_ml_model_io_set(struct cnxk_ml_io *io, const char *name, json_t *shape, co
 	return 0;
 }
 
+
 static int
-mvtvm_ml_json_graph_get_arrays(json_t *json_parsed, json_t **nodes, json_t **arg_nodes,
+tvmrt_ml_json_graph_get_arrays(json_t *json_parsed, json_t **nodes, json_t **arg_nodes,
 			       json_t **heads, json_t **node_row_ptr, json_t **shape_values,
 			       json_t **dtype_values)
 {
@@ -395,9 +396,9 @@ mvtvm_ml_json_graph_get_arrays(json_t *json_parsed, json_t **nodes, json_t **arg
 }
 
 int
-mvtvm_ml_model_json_parse(struct cnxk_ml_model *model)
+tvmrt_ml_model_json_parse(struct cnxk_ml_model *model)
 {
-	struct mvtvm_ml_param_names param_names;
+	struct tvmrt_ml_param_names param_names;
 	json_error_t json_error;
 	json_t *json_parsed;
 	json_t *json_nodes;
@@ -414,16 +415,16 @@ mvtvm_ml_model_json_parse(struct cnxk_ml_model *model)
 	size_t j;
 
 	/* Parse param names from params buffer */
-	ret = mvtvm_ml_param_names_parse(model->mvtvm.params.buffer, model->mvtvm.params.size,
+	ret = tvmrt_ml_param_names_parse(model->tvmrt.params.buffer, model->tvmrt.params.size,
 					 &param_names);
 	if (ret != 0)
 		return ret;
 
 	/* Load JSON graph (single load for both stages) */
-	json_parsed = json_loadb((const char *)model->mvtvm.json.buffer, model->mvtvm.json.size, 0,
+	json_parsed = json_loadb((const char *)model->tvmrt.json.buffer, model->tvmrt.json.size, 0,
 				 &json_error);
 	if (json_parsed == NULL) {
-		mvtvm_ml_param_names_free(&param_names);
+		tvmrt_ml_param_names_free(&param_names);
 		plt_err("TVM runtime: Failed to parse JSON graph, model_id = %u", model->model_id);
 		return -EINVAL;
 	}
@@ -522,12 +523,12 @@ mvtvm_ml_model_json_parse(struct cnxk_ml_model *model)
 	device.device_type = kDLCPU;
 	device.device_id = 0;
 
-	ret = mvtvm_ml_json_graph_get_arrays(json_parsed, &json_nodes, &json_arg_nodes, &json_heads,
+	ret = tvmrt_ml_json_graph_get_arrays(json_parsed, &json_nodes, &json_arg_nodes, &json_heads,
 					     &json_node_row_ptr, &json_shape_values,
 					     &json_dtype_values);
 	if (ret == 0) {
-		model->mvtvm.info.nb_inputs = 0;
-		model->mvtvm.info.nb_outputs = 0;
+		model->tvmrt.info.nb_inputs = 0;
+		model->tvmrt.info.nb_outputs = 0;
 
 		for (i = 0; i < json_array_size(json_arg_nodes); i++) {
 			json_t *arg_node_idx = json_array_get(json_arg_nodes, i);
@@ -561,18 +562,18 @@ mvtvm_ml_model_json_parse(struct cnxk_ml_model *model)
 			if (j < param_names.count)
 				continue;
 
-			if (model->mvtvm.info.nb_inputs >= ML_CNXK_MODEL_MAX_INPUT_OUTPUT) {
+			if (model->tvmrt.info.nb_inputs >= ML_CNXK_MODEL_MAX_INPUT_OUTPUT) {
 				ret = -ENOTSUP;
 				break;
 			}
 
-			ret = mvtvm_ml_model_io_set(
-				&model->mvtvm.info.input[model->mvtvm.info.nb_inputs],
+			ret = tvmrt_ml_model_io_set(
+				&model->tvmrt.info.input[model->tvmrt.info.nb_inputs],
 				json_string_value(name), shape, json_string_value(dtype), device);
 			if (ret != 0)
 				break;
 
-			model->mvtvm.info.nb_inputs++;
+			model->tvmrt.info.nb_inputs++;
 		}
 
 		for (i = 0; ret == 0 && i < json_array_size(json_heads); i++) {
@@ -641,18 +642,18 @@ mvtvm_ml_model_json_parse(struct cnxk_ml_model *model)
 				break;
 			}
 
-			if (model->mvtvm.info.nb_outputs >= ML_CNXK_MODEL_MAX_INPUT_OUTPUT) {
+			if (model->tvmrt.info.nb_outputs >= ML_CNXK_MODEL_MAX_INPUT_OUTPUT) {
 				ret = -ENOTSUP;
 				break;
 			}
 
-			ret = mvtvm_ml_model_io_set(
-				&model->mvtvm.info.output[model->mvtvm.info.nb_outputs],
+			ret = tvmrt_ml_model_io_set(
+				&model->tvmrt.info.output[model->tvmrt.info.nb_outputs],
 				json_string_value(name), shape, json_string_value(dtype), device);
 			if (ret != 0)
 				break;
 
-			model->mvtvm.info.nb_outputs++;
+			model->tvmrt.info.nb_outputs++;
 		}
 	}
 
@@ -661,17 +662,17 @@ mvtvm_ml_model_json_parse(struct cnxk_ml_model *model)
 			model->model_id, ret);
 
 	json_decref(json_parsed);
-	mvtvm_ml_param_names_free(&param_names);
+	tvmrt_ml_param_names_free(&param_names);
 	return ret;
 
 error:
 	json_decref(json_parsed);
-	mvtvm_ml_param_names_free(&param_names);
+	tvmrt_ml_param_names_free(&param_names);
 	return ret;
 }
 
 static enum rte_ml_io_type
-mvtvm_ml_io_type_map(DLDataType dltype)
+tvmrt_ml_io_type_map(DLDataType dltype)
 {
 	switch (dltype.code) {
 	case kDLInt:
@@ -714,7 +715,7 @@ mvtvm_ml_io_type_map(DLDataType dltype)
 }
 
 void
-mvtvm_ml_model_io_info_set(struct cnxk_ml_model *model)
+tvmrt_ml_model_io_info_set(struct cnxk_ml_model *model)
 {
 	int32_t i;
 	uint32_t j;
@@ -723,97 +724,97 @@ mvtvm_ml_model_io_info_set(struct cnxk_ml_model *model)
 		goto tvm_mrvl_model;
 
 	/* Inputs, set for layer_id = 0 */
-	model->mvtvm.info.total_input_sz_d = 0;
-	model->mvtvm.info.total_input_sz_q = 0;
-	for (i = 0; i < model->mvtvm.info.nb_inputs; i++) {
-		model->mvtvm.info.input[i].dtype =
-			mvtvm_ml_io_type_map(model->mvtvm.info.input[i].datatype);
-		model->mvtvm.info.input[i].qtype =
-			mvtvm_ml_io_type_map(model->mvtvm.info.input[i].model_datatype);
+	model->tvmrt.info.total_input_sz_d = 0;
+	model->tvmrt.info.total_input_sz_q = 0;
+	for (i = 0; i < model->tvmrt.info.nb_inputs; i++) {
+		model->tvmrt.info.input[i].dtype =
+			tvmrt_ml_io_type_map(model->tvmrt.info.input[i].datatype);
+		model->tvmrt.info.input[i].qtype =
+			tvmrt_ml_io_type_map(model->tvmrt.info.input[i].model_datatype);
 
-		model->mvtvm.info.input[i].nb_elements = 1;
-		for (j = 0; j < model->mvtvm.info.input[i].nb_dims; j++) {
-			model->mvtvm.info.input[i].shape[j] =
-				PLT_U32_CAST(model->mvtvm.info.input[i].shape_i64[j]);
-			model->mvtvm.info.input[i].nb_elements *=
-				model->mvtvm.info.input[i].shape[j];
+		model->tvmrt.info.input[i].nb_elements = 1;
+		for (j = 0; j < model->tvmrt.info.input[i].nb_dims; j++) {
+			model->tvmrt.info.input[i].shape[j] =
+				PLT_U32_CAST(model->tvmrt.info.input[i].shape_i64[j]);
+			model->tvmrt.info.input[i].nb_elements *=
+				model->tvmrt.info.input[i].shape[j];
 		}
 
-		model->mvtvm.info.input[i].sz_d =
-			model->mvtvm.info.input[i].nb_elements *
-			rte_ml_io_type_size_get(model->mvtvm.info.input[i].dtype);
-		model->mvtvm.info.input[i].sz_q =
-			model->mvtvm.info.input[i].nb_elements *
-			rte_ml_io_type_size_get(model->mvtvm.info.input[i].qtype);
+		model->tvmrt.info.input[i].sz_d =
+			model->tvmrt.info.input[i].nb_elements *
+			rte_ml_io_type_size_get(model->tvmrt.info.input[i].dtype);
+		model->tvmrt.info.input[i].sz_q =
+			model->tvmrt.info.input[i].nb_elements *
+			rte_ml_io_type_size_get(model->tvmrt.info.input[i].qtype);
 
-		model->mvtvm.info.total_input_sz_d += model->mvtvm.info.input[i].sz_d;
-		model->mvtvm.info.total_input_sz_q += model->mvtvm.info.input[i].sz_q;
+		model->tvmrt.info.total_input_sz_d += model->tvmrt.info.input[i].sz_d;
+		model->tvmrt.info.total_input_sz_q += model->tvmrt.info.input[i].sz_q;
 
-		model->mvtvm.input_tensor[i].device = model->mvtvm.info.input[i].device;
-		model->mvtvm.input_tensor[i].ndim = model->mvtvm.info.input[i].nb_dims;
-		model->mvtvm.input_tensor[i].dtype = model->mvtvm.info.input[i].datatype;
-		model->mvtvm.input_tensor[i].shape = model->mvtvm.info.input[i].shape_i64;
-		model->mvtvm.input_tensor[i].strides = NULL;
-		model->mvtvm.input_tensor[i].byte_offset = 0;
+		model->tvmrt.input_tensor[i].device = model->tvmrt.info.input[i].device;
+		model->tvmrt.input_tensor[i].ndim = model->tvmrt.info.input[i].nb_dims;
+		model->tvmrt.input_tensor[i].dtype = model->tvmrt.info.input[i].datatype;
+		model->tvmrt.input_tensor[i].shape = model->tvmrt.info.input[i].shape_i64;
+		model->tvmrt.input_tensor[i].strides = NULL;
+		model->tvmrt.input_tensor[i].byte_offset = 0;
 
 		plt_ml_dbg("model_id = %u, input[%u] - sz_d = %u sz_q = %u", model->model_id, i,
-			   model->mvtvm.info.input[i].sz_d, model->mvtvm.info.input[i].sz_q);
+			   model->tvmrt.info.input[i].sz_d, model->tvmrt.info.input[i].sz_q);
 	}
 
 	/* Outputs, set for nb_layers - 1 */
-	model->mvtvm.info.total_output_sz_d = 0;
-	model->mvtvm.info.total_output_sz_q = 0;
-	for (i = 0; i < model->mvtvm.info.nb_outputs; i++) {
-		model->mvtvm.info.output[i].dtype =
-			mvtvm_ml_io_type_map(model->mvtvm.info.output[i].datatype);
-		model->mvtvm.info.output[i].qtype =
-			mvtvm_ml_io_type_map(model->mvtvm.info.output[i].model_datatype);
+	model->tvmrt.info.total_output_sz_d = 0;
+	model->tvmrt.info.total_output_sz_q = 0;
+	for (i = 0; i < model->tvmrt.info.nb_outputs; i++) {
+		model->tvmrt.info.output[i].dtype =
+			tvmrt_ml_io_type_map(model->tvmrt.info.output[i].datatype);
+		model->tvmrt.info.output[i].qtype =
+			tvmrt_ml_io_type_map(model->tvmrt.info.output[i].model_datatype);
 
-		model->mvtvm.info.output[i].nb_elements = 1;
-		for (j = 0; j < model->mvtvm.info.output[i].nb_dims; j++) {
-			model->mvtvm.info.output[i].shape[j] =
-				PLT_U32_CAST(model->mvtvm.info.output[i].shape_i64[j]);
-			model->mvtvm.info.output[i].nb_elements *=
-				model->mvtvm.info.output[i].shape[j];
+		model->tvmrt.info.output[i].nb_elements = 1;
+		for (j = 0; j < model->tvmrt.info.output[i].nb_dims; j++) {
+			model->tvmrt.info.output[i].shape[j] =
+				PLT_U32_CAST(model->tvmrt.info.output[i].shape_i64[j]);
+			model->tvmrt.info.output[i].nb_elements *=
+				model->tvmrt.info.output[i].shape[j];
 		}
 
-		model->mvtvm.info.output[i].sz_d =
-			model->mvtvm.info.output[i].nb_elements *
-			rte_ml_io_type_size_get(model->mvtvm.info.output[i].dtype);
-		model->mvtvm.info.output[i].sz_q =
-			model->mvtvm.info.output[i].nb_elements *
-			rte_ml_io_type_size_get(model->mvtvm.info.output[i].qtype);
+		model->tvmrt.info.output[i].sz_d =
+			model->tvmrt.info.output[i].nb_elements *
+			rte_ml_io_type_size_get(model->tvmrt.info.output[i].dtype);
+		model->tvmrt.info.output[i].sz_q =
+			model->tvmrt.info.output[i].nb_elements *
+			rte_ml_io_type_size_get(model->tvmrt.info.output[i].qtype);
 
-		model->mvtvm.info.total_output_sz_d += model->mvtvm.info.output[i].sz_d;
-		model->mvtvm.info.total_output_sz_q += model->mvtvm.info.output[i].sz_q;
+		model->tvmrt.info.total_output_sz_d += model->tvmrt.info.output[i].sz_d;
+		model->tvmrt.info.total_output_sz_q += model->tvmrt.info.output[i].sz_q;
 
-		model->mvtvm.output_tensor[i].device = model->mvtvm.info.output[i].device;
-		model->mvtvm.output_tensor[i].ndim = model->mvtvm.info.output[i].nb_dims;
-		model->mvtvm.output_tensor[i].dtype = model->mvtvm.info.output[i].datatype;
-		model->mvtvm.output_tensor[i].shape = model->mvtvm.info.output[i].shape_i64;
-		model->mvtvm.output_tensor[i].strides = NULL;
-		model->mvtvm.output_tensor[i].byte_offset = 0;
+		model->tvmrt.output_tensor[i].device = model->tvmrt.info.output[i].device;
+		model->tvmrt.output_tensor[i].ndim = model->tvmrt.info.output[i].nb_dims;
+		model->tvmrt.output_tensor[i].dtype = model->tvmrt.info.output[i].datatype;
+		model->tvmrt.output_tensor[i].shape = model->tvmrt.info.output[i].shape_i64;
+		model->tvmrt.output_tensor[i].strides = NULL;
+		model->tvmrt.output_tensor[i].byte_offset = 0;
 
 		plt_ml_dbg("model_id = %u, output[%u] - sz_d = %u sz_q = %u", model->model_id, i,
-			   model->mvtvm.info.output[i].sz_d, model->mvtvm.info.output[i].sz_q);
+			   model->tvmrt.info.output[i].sz_d, model->tvmrt.info.output[i].sz_q);
 	}
 
 	return;
 
 tvm_mrvl_model:
-	cn10k_ml_layer_io_info_set(&model->mvtvm.info, &model->layer[0].glow.metadata);
+	cn10k_ml_layer_io_info_set(&model->tvmrt.info, &model->layer[0].glow.metadata);
 }
 
 struct cnxk_ml_io_info *
-mvtvm_ml_model_io_info_get(struct cnxk_ml_model *model, uint16_t layer_id)
+tvmrt_ml_model_io_info_get(struct cnxk_ml_model *model, uint16_t layer_id)
 {
 	RTE_SET_USED(layer_id);
 
-	return &model->mvtvm.info;
+	return &model->tvmrt.info;
 }
 
 void
-mvtvm_ml_model_info_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model)
+tvmrt_ml_model_info_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model)
 {
 	struct rte_ml_model_info *info;
 	struct rte_ml_io_info *output;
@@ -837,43 +838,43 @@ mvtvm_ml_model_info_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *mo
 	info->io_layout = RTE_ML_IO_LAYOUT_SPLIT;
 	info->min_batches = model->batch_size;
 	info->max_batches = model->batch_size;
-	info->nb_inputs = model->mvtvm.info.nb_inputs;
+	info->nb_inputs = model->tvmrt.info.nb_inputs;
 	info->input_info = input;
-	info->nb_outputs = model->mvtvm.info.nb_outputs;
+	info->nb_outputs = model->tvmrt.info.nb_outputs;
 	info->output_info = output;
 	info->wb_size = 0;
 
 	/* Set input info */
 	for (i = 0; i < info->nb_inputs; i++) {
-		rte_memcpy(input[i].name, model->mvtvm.info.input[i].name, MRVL_ML_INPUT_NAME_LEN);
-		input[i].nb_dims = model->mvtvm.info.input[i].nb_dims;
-		input[i].shape = &model->mvtvm.info.input[i].shape[0];
-		input[i].type = model->mvtvm.info.input[i].qtype;
-		input[i].nb_elements = model->mvtvm.info.input[i].nb_elements;
-		input[i].size = model->mvtvm.info.input[i].nb_elements *
-				rte_ml_io_type_size_get(model->mvtvm.info.input[i].qtype);
-		input[i].scale = model->mvtvm.info.input[i].scale;
+		rte_memcpy(input[i].name, model->tvmrt.info.input[i].name, MRVL_ML_INPUT_NAME_LEN);
+		input[i].nb_dims = model->tvmrt.info.input[i].nb_dims;
+		input[i].shape = &model->tvmrt.info.input[i].shape[0];
+		input[i].type = model->tvmrt.info.input[i].qtype;
+		input[i].nb_elements = model->tvmrt.info.input[i].nb_elements;
+		input[i].size = model->tvmrt.info.input[i].nb_elements *
+				rte_ml_io_type_size_get(model->tvmrt.info.input[i].qtype);
+		input[i].scale = model->tvmrt.info.input[i].scale;
 		input[i].zero_point = 0;
 	}
 
 	/* Set output info */
 	for (i = 0; i < info->nb_outputs; i++) {
-		rte_memcpy(output[i].name, model->mvtvm.info.output[i].name,
+		rte_memcpy(output[i].name, model->tvmrt.info.output[i].name,
 			   MRVL_ML_OUTPUT_NAME_LEN);
-		output[i].nb_dims = model->mvtvm.info.output[i].nb_dims;
-		output[i].shape = &model->mvtvm.info.output[i].shape[0];
-		output[i].type = model->mvtvm.info.output[i].qtype;
-		output[i].nb_elements = model->mvtvm.info.output[i].nb_elements;
-		output[i].size = model->mvtvm.info.output[i].nb_elements *
-				 rte_ml_io_type_size_get(model->mvtvm.info.output[i].qtype);
-		output[i].scale = model->mvtvm.info.output[i].scale;
+		output[i].nb_dims = model->tvmrt.info.output[i].nb_dims;
+		output[i].shape = &model->tvmrt.info.output[i].shape[0];
+		output[i].type = model->tvmrt.info.output[i].qtype;
+		output[i].nb_elements = model->tvmrt.info.output[i].nb_elements;
+		output[i].size = model->tvmrt.info.output[i].nb_elements *
+				 rte_ml_io_type_size_get(model->tvmrt.info.output[i].qtype);
+		output[i].scale = model->tvmrt.info.output[i].scale;
 		output[i].zero_point = 0;
 	}
 
 	return;
 
 tvm_mrvl_model:
-	cn10k_ml_model_info_set(cnxk_mldev, model, &model->mvtvm.info,
+	cn10k_ml_model_info_set(cnxk_mldev, model, &model->tvmrt.info,
 				&model->layer[0].glow.metadata);
 
 	strlcpy(info->name, model->name, RTE_ML_STR_MAX);
@@ -882,7 +883,7 @@ tvm_mrvl_model:
 }
 
 void
-mvtvm_ml_layer_print(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *layer, FILE *fp)
+tvmrt_ml_layer_print(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *layer, FILE *fp)
 {
 	char str[STR_LEN];
 	uint8_t i;
