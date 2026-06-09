@@ -671,9 +671,6 @@ cn10k_ml_layer_load(void *device, uint16_t model_id, const char *layer_name, uin
 	rte_memcpy(&layer->glow.metadata, buffer, sizeof(struct cn10k_ml_model_metadata));
 	cn10k_ml_model_metadata_update(&layer->glow.metadata);
 
-	/* Set layer name */
-	rte_memcpy(layer->name, layer->glow.metadata.model.name, MRVL_ML_MODEL_NAME_LEN);
-
 	/* Enable support for batch_size of 256 */
 	if (layer->glow.metadata.model.batch_size == 0)
 		layer->batch_size = 256;
