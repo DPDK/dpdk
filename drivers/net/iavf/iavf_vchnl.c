@@ -524,8 +524,16 @@ iavf_handle_virtchnl_msg(struct rte_eth_dev *dev)
 		ret = iavf_clean_arq_element(hw, &info, &pending);
 
 		if (ret != IAVF_SUCCESS) {
-			PMD_DRV_LOG(INFO, "Failed to read msg from AdminQ,"
-				    "ret: %d", ret);
+			/*
+			 * IAVF_ERR_ADMIN_QUEUE_NO_WORK (-57) means AQ is empty
+			 * and is a normal way to terminate the drain loop.
+			 * Log error only for genuine other failure codes.
+			 * Incorrect logging like this during VF resets might
+			 * mislead into chasing a non-existent AQ failure.
+			 */
+			if (ret != IAVF_ERR_ADMIN_QUEUE_NO_WORK)
+				PMD_DRV_LOG(INFO, "Failed to read msg from AdminQ,"
+					    "ret: %d", ret);
 			break;
 		}
 		aq_opc = rte_le_to_cpu_16(info.desc.opcode);
