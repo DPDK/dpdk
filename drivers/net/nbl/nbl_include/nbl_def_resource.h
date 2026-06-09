@@ -77,6 +77,8 @@ struct nbl_resource_ops {
 	int (*add_multi_rule)(void *priv, u16 vsi_id);
 	void (*del_multi_rule)(void *priv, u16 vsi_id);
 	int (*cfg_multi_mcast)(void *priv, u16 vsi_id, u16 enable);
+	int (*add_multi_mcast)(void *priv, u16 vsi);
+	void (*del_multi_mcast)(void *priv, u16 vsi);
 	void (*clear_flow)(void *priv, u16 vsi_id);
 	int (*cfg_dsch)(void *priv, u16 vsi_id, bool vld);
 	int (*setup_cqs)(void *priv, u16 vsi_id, u16 real_qps, bool rss_indir_set);
