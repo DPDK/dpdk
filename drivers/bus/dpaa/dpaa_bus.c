@@ -193,8 +193,6 @@ dpaa_sec_available(void)
 	return -1;
 }
 
-static void dpaa_clean_device_list(void);
-
 static int
 dpaa_create_device_list(void)
 {
@@ -336,21 +334,13 @@ qdma_dpaa:
 	return 0;
 
 cleanup:
-	dpaa_clean_device_list();
-	return ret;
-}
-
-static void
-dpaa_clean_device_list(void)
-{
-	struct rte_dpaa_device *dev = NULL;
-
 	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus) {
 		rte_bus_remove_device(&rte_dpaa_bus, &dev->device);
 		rte_intr_instance_free(dev->intr_handle);
 		free(dev);
-		dev = NULL;
 	}
+
+	return ret;
 }
 
 RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa_portal_init)
@@ -699,7 +689,6 @@ rte_dpaa_bus_scan(void)
 	ret = pthread_key_create(&dpaa_portal_key, dpaa_portal_finish);
 	if (ret) {
 		DPAA_BUS_LOG(DEBUG, "Unable to create pthread key. (%d)", ret);
-		dpaa_clean_device_list();
 		return ret;
 	}
 
