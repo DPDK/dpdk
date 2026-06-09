@@ -25,6 +25,26 @@ ALIASES = {}
 ALIAS_FILE = ".dpdk_telemetry_aliases"
 MAX_ALIAS_EXPANSIONS = 32
 
+BASIC_HELP_TEXT = """Basic usage:
+    /<command>[,<params>]      Send a telemetry command to the app
+    FOREACH ...                Run a compound query over list items
+    help                       Show this help
+    help /<command>            Show app-provided help for a command
+    help FOREACH               Show FOREACH usage and examples
+    quit                       Exit the client
+"""
+
+FOREACH_HELP_TEXT = """FOREACH usage:
+    FOREACH /<list_cmd> /<iter_cmd> .<field> [.<field> ...]
+    FOREACH <var> /<list_cmd> /<iter_cmd_with_$var> .<field> [.<field> ...]
+
+Examples:
+    FOREACH /ethdev/list /ethdev/stats .opackets
+    FOREACH /ethdev/list /ethdev/stats .ipackets .opackets
+    FOREACH i /ethdev/list /ethdev/info,$i .name
+    FOREACH i /ethdev/list /ethdev/stats,$i .ipackets .opackets
+"""
+
 
 def load_aliases(alias_path=None):
     """Load aliases from $HOME/.dpdk_telemetry_aliases or a custom path if provided"""
@@ -209,10 +229,57 @@ def handle_foreach(sock, output_buf_len, text, pretty=False):
     print(json.dumps(output, indent=indent))
 
 
+def command_exists(cmd):
+    """Check if a telemetry command exists in the command list"""
+    return cmd in CMDS
+
+
+def app_help_command_for(target_cmd):
+    """Build a '/help,<command>' query for app-side command help"""
+    if not target_cmd:
+        return None
+    normalized = target_cmd.strip()
+    if not normalized.startswith("/"):
+        return None
+    if not command_exists(normalized):
+        print("Unknown command for help: {}".format(normalized))
+        return None
+    return "/help,{}".format(normalized)
+
+
+def handle_user_help(sock, output_buf_len, text, pretty=False):
+    """Handle local 'help' command and command-specific help lookup"""
+    parts = text.split(None, 1)
+    if len(parts) == 1:
+        print(BASIC_HELP_TEXT, end="")
+        return
+
+    help_arg = parts[1].strip()
+    if help_arg.upper() == "FOREACH":
+        print(FOREACH_HELP_TEXT, end="")
+        return
+    elif help_arg.lower() == "alias" or help_arg.lower() == "aliases":
+        if not ALIASES:
+            print("No aliases defined")
+            return
+        print("Defined aliases:")
+        for name, command in ALIASES.items():
+            print(f"  {name}='{command}'")
+        return
+
+    cmd = app_help_command_for(help_arg)
+    if cmd is None:
+        print("Usage: help [FOREACH|/<command>]")
+        return
+    send_command(sock, cmd, output_buf_len, echo=True, pretty=pretty)
+
+
 def handle_command(sock, output_buf_len, text, pretty=False):
     """Execute a user command if recognized"""
     if text.startswith("/"):
         send_command(sock, text, output_buf_len, echo=True, pretty=pretty)
+    elif text == "help" or text.startswith("help "):
+        handle_user_help(sock, output_buf_len, text, pretty)
     elif text.startswith("FOREACH "):
         handle_foreach(sock, output_buf_len, text, pretty)
 
@@ -346,7 +413,7 @@ def handle_socket(args, path):
 
 def readline_complete(text, state):
     """Find any matching commands from the list based on user input"""
-    all_cmds = ["quit"] + list(ALIASES.keys()) + CMDS
+    all_cmds = ["quit", "help"] + list(ALIASES.keys()) + CMDS
     if text:
         matches = [c for c in all_cmds if c.startswith(text)]
     else:

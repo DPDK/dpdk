@@ -81,12 +81,32 @@ and query information using the telemetry client python script.
        ...
        "tx_priority7_xon_to_xoff_packets": 0}}
 
-   * Get the help text for a command. This will indicate what parameters are
-     required. Pass the command as a parameter::
+   * Get the help text for a command.
+     This will indicate what parameters are required.
+     Use the ``help`` keyword followed by the command or keyword of interest,
+     for example::
 
-       --> /help,/ethdev/xstats
-       {"/help": {"/ethdev/xstats": "Returns the extended stats for a port.
-       Parameters: int port_id"}}
+       --> help FOREACH
+       FOREACH usage:
+          FOREACH /<list_cmd> /<iter_cmd> .<field> [.<field> ...]
+          FOREACH <var> /<list_cmd> /<iter_cmd_with_$var> .<field> [.<field> ...]
+
+       Examples:
+          FOREACH /ethdev/list /ethdev/stats .opackets
+          ...
+
+       --> help /ethdev/xstats
+       {"/help": {"/ethdev/xstats": "Returns the extended stats for a port. Parameters: int port_id"}}
+
+   ..  note::
+
+       For commands starting with ``/`` that are telemetry endpoints,
+       the help text can also be obtained by sending the ``/help`` command to the telemetry socket.
+       In this case, the parameter must be separated by a comma, not a space.
+       For example::
+
+          --> /help,/ethdev/xstats
+          {"/help": {"/ethdev/xstats": "Returns the extended stats for a port. Parameters: int port_id"}}
 
    * Run a compound query using ``FOREACH``.
 
