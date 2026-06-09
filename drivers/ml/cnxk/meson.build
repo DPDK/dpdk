@@ -19,27 +19,21 @@ if not jansson_dep.found()
         enable_mvtvm = false
 endif
 
-dlpack_dep = dependency('dlpack', method: 'cmake', required: false, cmake_args: 'CONFIG')
+dlpack_dep = dependency('dlpack', method: 'cmake', required: false)
 if not dlpack_dep.found()
         message('drivers/ml/cnxk: dlpack not found')
         enable_mvtvm = false
 endif
 
-dmlc_dep = dependency('dmlc', method: 'cmake', required: false, cmake_args: 'CONFIG')
+dmlc_dep = dependency('dmlc', method: 'cmake', required: false)
 if not dmlc_dep.found()
         message('drivers/ml/cnxk: dmlc not found')
         enable_mvtvm = false
 endif
 
-tvm_dep = dependency('tvm', method: 'cmake', required: false, cmake_args: 'CONFIG', modules : ['tvm::tvm_runtime'])
+tvm_dep = dependency('tvm', method: 'cmake', required: false, modules : ['tvm::tvm_runtime'])
 if not tvm_dep.found()
         message('drivers/ml/cnxk: tvm_runtime not found')
-        enable_mvtvm = false
-endif
-
-tvmdp_dep = dependency('tvmdp', method: 'pkg-config', required: false)
-if not tvmdp_dep.found()
-        message('drivers/ml/cnxk: tvmdp not found')
         enable_mvtvm = false
 endif
 
@@ -68,10 +62,10 @@ sources += files(
 )
 
 ext_deps += jansson_dep
+ext_deps += libarchive
 ext_deps += dlpack_dep
 ext_deps += dmlc_dep
 ext_deps += tvm_dep
-ext_deps += tvmdp_dep
 stdcpp_dep = cc.find_library('stdc++', required: true)
 if not cc.links(min_c_code, dependencies: stdcpp_dep)
     error('broken dependency, "libstdc++"')

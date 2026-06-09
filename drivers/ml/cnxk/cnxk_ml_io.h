@@ -6,7 +6,7 @@
 #define _CNXK_ML_IO_H_
 
 #ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
-#include <tvmdp.h>
+#include <dlpack/dlpack.h>
 #endif
 
 #include <rte_mldev.h>
@@ -16,7 +16,7 @@
 
 /* Maximum number of layers per model */
 #ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
-#define ML_CNXK_MODEL_MAX_LAYERS TVMDP_MODEL_LAYERS_MAX
+#define ML_CNXK_MODEL_MAX_LAYERS 128
 #else
 #define ML_CNXK_MODEL_MAX_LAYERS 1
 #endif
@@ -41,7 +41,7 @@ struct cnxk_ml_io {
 	/* Number of dimensions in shape */
 	uint32_t nb_dims;
 
-	/* Shape of input */
+	/* Shape */
 	uint32_t shape[ML_CNXK_MODEL_MAX_DIMS];
 
 	/* Number of elements */
@@ -58,6 +58,20 @@ struct cnxk_ml_io {
 
 	/* Zero point */
 	int64_t zero_point;
+
+#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
+	/* Shape - int64_t */
+	int64_t shape_i64[ML_CNXK_MODEL_MAX_DIMS];
+
+	/* Data type */
+	DLDataType datatype;
+
+	/* Model data type */
+	DLDataType model_datatype;
+
+	/* Device */
+	DLDevice device;
+#endif
 };
 
 /* Model / Layer IO structure */

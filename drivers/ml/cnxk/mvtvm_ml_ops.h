@@ -7,11 +7,10 @@
 
 #include <dlpack/dlpack.h>
 
-#include <tvmdp.h>
-
 #include <rte_mldev.h>
 
 #include "cnxk_ml_xstats.h"
+#include "mvtvm_ml_model.h"
 
 struct cnxk_ml_dev;
 struct cnxk_ml_model;
@@ -56,8 +55,6 @@ struct mvtvm_ml_req {
 };
 
 int mvtvm_ml_dev_info_get(struct cnxk_ml_dev *mldev, struct rte_ml_dev_info *dev_info);
-int mvtvm_ml_dev_configure(struct cnxk_ml_dev *cnxk_mldev, const struct rte_ml_dev_config *conf);
-int mvtvm_ml_dev_close(struct cnxk_ml_dev *cnxk_mldev);
 int mvtvm_ml_dev_dump(struct cnxk_ml_dev *cnxk_mldev, FILE *fp);
 int mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *params,
 			struct cnxk_ml_model *model);

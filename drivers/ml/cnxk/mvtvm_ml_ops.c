@@ -2,7 +2,17 @@
  * Copyright (c) 2023 Marvell.
  */
 
+#include <errno.h>
+#include <linux/limits.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
 #include <dlpack/dlpack.h>
+#include <jansson.h>
 
 #include <rte_common.h>
 #include <rte_cycles.h>
@@ -19,6 +29,76 @@
 /* ML model macros */
 #define MVTVM_ML_MODEL_MEMZONE_NAME "ml_mvtvm_model_mz"
 
+/* Shared memory file descriptor name */
+#define ML_MODEL_SHMFD_NAME "mvtvm_shmfd"
+
+/* Shared memory file descriptor path */
+#define ML_MODEL_SHMFD_PATH "/proc/%d/fd/%d"
+
+static int
+mvtvm_ml_tvm_func_get(struct cnxk_ml_model *model, TVMModuleHandle module, const char *name,
+		      TVMFunctionHandle *func)
+{
+	int ret;
+
+	ret = TVMModGetFunction(module, name, 0, func);
+	if (ret != 0) {
+		plt_err("Model load failed, model_id = %u, ret = %d, msg = %s", model->model_id,
+			ret, TVMGetLastError());
+		return ret;
+	}
+
+	if (*func == NULL) {
+		ret = -ENOENT;
+		plt_err("Model load failed, model_id = %u, function '%s' not found",
+			model->model_id, name);
+	}
+
+	return ret;
+}
+
+static int
+mvtvm_ml_tvm_func_call(struct cnxk_ml_model *model, TVMFunctionHandle func, const char *name,
+		       TVMValue *values, int *types, int num_args, TVMValue *ret_val, int *ret_type,
+		       int ret_type_code)
+{
+	int ret;
+
+	ret = TVMFuncCall(func, values, types, num_args, ret_val, ret_type);
+	if (ret != 0) {
+		plt_err("Error calling TVM function '%s', model_id = %u, ret = %d, msg = %s", name,
+			model->model_id, ret, TVMGetLastError());
+		return ret;
+	}
+
+	if (*ret_type != ret_type_code) {
+		ret = -EINVAL;
+		plt_err("TVM function '%s' returned unexpected type, model_id = %u, expected = %d, "
+			"actual = %d",
+			name, model->model_id, ret_type_code, *ret_type);
+	}
+
+	return ret;
+}
+
+static void
+mvtvm_ml_tvm_func_free(TVMFunctionHandle *func)
+{
+	if ((func != NULL) && (*func != NULL)) {
+		TVMFuncFree(*func);
+		*func = NULL;
+	}
+}
+
+static void
+mvtvm_ml_tvm_mod_free(TVMModuleHandle *mod)
+{
+	if ((mod != NULL) && (*mod != NULL)) {
+		TVMModFree(*mod);
+		*mod = NULL;
+	}
+}
+
 __rte_hot static void
 mvtvm_ml_set_poll_addr(struct cnxk_ml_req *req)
 {
@@ -30,8 +110,8 @@ mvtvm_ml_model_xstat_name_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_mod
 			      uint16_t stat_id, uint16_t entry, char *suffix)
 {
 	snprintf(cnxk_mldev->xstats.entries[stat_id].map.name,
-		 sizeof(cnxk_mldev->xstats.entries[stat_id].map.name), "%s-%s-%s",
-		 model->mvtvm.metadata.model.name, model_xstats[entry].name, suffix);
+		 sizeof(cnxk_mldev->xstats.entries[stat_id].map.name), "%s-%s-%s", model->name,
+		 model_xstats[entry].name, suffix);
 }
 
 #define ML_AVG_FOREACH_QP_MVTVM(cnxk_mldev, model, qp_id, value, count)                            \
@@ -106,41 +186,11 @@ mvtvm_ml_dev_info_get(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_dev_info *de
 
 	dev_info->max_queue_pairs = mvtvm_mldev->max_nb_qpairs;
 	dev_info->max_desc = ML_MVTVM_MAX_DESC_PER_QP;
-	dev_info->max_io = ML_MVTVM_MAX_INPUT_OUTPUT;
+	dev_info->max_io = ML_CNXK_MODEL_MAX_INPUT_OUTPUT;
 	dev_info->max_segments = ML_MVTVM_MAX_SEGMENTS;
 	dev_info->align_size = RTE_CACHE_LINE_SIZE;
 
 	return 0;
-}
-
-int
-mvtvm_ml_dev_configure(struct cnxk_ml_dev *cnxk_mldev, const struct rte_ml_dev_config *conf)
-{
-	int ret;
-
-	RTE_SET_USED(conf);
-
-	/* Configure TVMDP library */
-	ret = tvmdp_configure(cnxk_mldev->mldev->data->nb_models, rte_get_tsc_cycles);
-	if (ret != 0)
-		plt_err("TVMDP configuration failed, error = %d", ret);
-
-	return ret;
-}
-
-int
-mvtvm_ml_dev_close(struct cnxk_ml_dev *cnxk_mldev)
-{
-	int ret;
-
-	RTE_SET_USED(cnxk_mldev);
-
-	/* Close TVMDP library configuration */
-	ret = tvmdp_close();
-	if (ret != 0)
-		plt_err("TVMDP close failed, error = %d", ret);
-
-	return ret;
 }
 
 int
@@ -159,16 +209,26 @@ mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 	struct mvtvm_ml_model_object object[ML_MVTVM_MODEL_OBJECT_MAX];
 	struct tvmrt_glow_callback *callback;
 	char str[RTE_MEMZONE_NAMESIZE];
+	char path[PATH_MAX];
 	const struct plt_memzone *mz;
 	size_t model_object_size = 0;
 	size_t model_xstats_size = 0;
-	uint16_t nb_mrvl_layers;
-	uint16_t nb_llvm_layers;
-	uint8_t layer_id = 0;
 	uint64_t mz_size = 0;
+	TVMFunctionHandle create_fn = NULL;
+	TVMFunctionHandle register_cb_fn = NULL;
+	TVMModuleHandle module_so = NULL;
+	TVMByteArray tvm_params;
+	TVMValue ret_value = {0};
+	TVMValue arg_values[4] = {0};
+	TVMValue tvm_arg_values[1] = {0};
+	int ret_type = kTVMNullptr;
+	int arg_types[4] = {0};
+	int tvm_arg_types[1] = {0};
+	DLDevice device;
 	int ret;
 
 	RTE_SET_USED(cnxk_mldev);
+	model->mvtvm.fd = -1;
 
 	ret = mvtvm_ml_model_blob_parse(params, object);
 	if (ret != 0)
@@ -192,80 +252,39 @@ mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 	}
 
 	/* Copy mod.so */
-	model->mvtvm.object.so.addr = mz->addr;
-	model->mvtvm.object.so.size = object[0].size;
-	rte_memcpy(model->mvtvm.object.so.name, object[0].name, TVMDP_NAME_STRLEN);
-	rte_memcpy(model->mvtvm.object.so.addr, object[0].buffer, object[0].size);
+	model->mvtvm.so.buffer = mz->addr;
+	model->mvtvm.so.size = object[0].size;
+	rte_memcpy(model->mvtvm.so.name, object[0].name, RTE_ML_STR_MAX);
+	rte_memcpy(model->mvtvm.so.buffer, object[0].buffer, object[0].size);
 	rte_free(object[0].buffer);
 
 	/* Copy mod.json */
-	model->mvtvm.object.json.addr =
-		RTE_PTR_ADD(model->mvtvm.object.so.addr,
-			    RTE_ALIGN_CEIL(model->mvtvm.object.so.size, RTE_CACHE_LINE_MIN_SIZE));
-	model->mvtvm.object.json.size = object[1].size;
-	rte_memcpy(model->mvtvm.object.json.name, object[1].name, TVMDP_NAME_STRLEN);
-	rte_memcpy(model->mvtvm.object.json.addr, object[1].buffer, object[1].size);
+	model->mvtvm.json.buffer =
+		RTE_PTR_ADD(model->mvtvm.so.buffer,
+			    RTE_ALIGN_CEIL(model->mvtvm.so.size, RTE_CACHE_LINE_MIN_SIZE));
+	model->mvtvm.json.size = object[1].size;
+	rte_memcpy(model->mvtvm.json.name, object[1].name, RTE_ML_STR_MAX);
+	rte_memcpy(model->mvtvm.json.buffer, object[1].buffer, object[1].size);
 	rte_free(object[1].buffer);
 
 	/* Copy mod.params */
-	model->mvtvm.object.params.addr =
-		RTE_PTR_ADD(model->mvtvm.object.json.addr,
-			    RTE_ALIGN_CEIL(model->mvtvm.object.json.size, RTE_CACHE_LINE_MIN_SIZE));
-	model->mvtvm.object.params.size = object[2].size;
-	rte_memcpy(model->mvtvm.object.params.name, object[2].name, TVMDP_NAME_STRLEN);
-	rte_memcpy(model->mvtvm.object.params.addr, object[2].buffer, object[2].size);
+	model->mvtvm.params.buffer =
+		RTE_PTR_ADD(model->mvtvm.json.buffer,
+			    RTE_ALIGN_CEIL(model->mvtvm.json.size, RTE_CACHE_LINE_MIN_SIZE));
+	model->mvtvm.params.size = object[2].size;
+	rte_memcpy(model->mvtvm.params.name, object[2].name, RTE_ML_STR_MAX);
+	rte_memcpy(model->mvtvm.params.buffer, object[2].buffer, object[2].size);
 	rte_free(object[2].buffer);
 
-	/* Get metadata - stage 1 */
-	ret = tvmdp_model_metadata_get_stage1(model->mvtvm.object.json.addr,
-					      model->mvtvm.object.json.size,
-					      &model->mvtvm.metadata);
-	if (ret != 0) {
-		plt_err("TVMDP: Failed to parse metadata - stage 1, model_id = %u, error = %d",
-			model->model_id, ret);
+	ret = mvtvm_ml_model_json_parse(model);
+	if (ret != 0)
 		goto error;
-	}
-
-	/* Set model fields */
-	plt_strlcpy(model->name, model->mvtvm.metadata.model.name, TVMDP_NAME_STRLEN);
-	model->batch_size = 1;
-	model->nb_layers = model->mvtvm.metadata.model.nb_layers;
-
-	/* Update layer info */
-	nb_mrvl_layers = 0;
-	nb_llvm_layers = 0;
-	for (layer_id = 0; layer_id < model->mvtvm.metadata.model.nb_layers; layer_id++) {
-		rte_strscpy(model->layer[layer_id].name,
-			    model->mvtvm.metadata.model.layer[layer_id].name, TVMDP_NAME_STRLEN);
-		if (strcmp(model->mvtvm.metadata.model.layer[layer_id].type, "mrvl") == 0 ||
-		    strcmp(model->mvtvm.metadata.model.layer[layer_id].type, "MRVL") == 0) {
-			model->layer[layer_id].type = ML_CNXK_LAYER_TYPE_MRVL;
-			nb_mrvl_layers++;
-		} else if (strcmp(model->mvtvm.metadata.model.layer[layer_id].type, "llvm") == 0 ||
-			   strcmp(model->mvtvm.metadata.model.layer[layer_id].type, "LLVM") == 0) {
-			model->layer[layer_id].type = ML_CNXK_LAYER_TYPE_LLVM;
-			nb_llvm_layers++;
-		}
-	}
-
-	if ((nb_llvm_layers == 0) && (nb_mrvl_layers == 0)) {
-		plt_err("Invalid model, nb_llvm_layers = %u, nb_mrvl_layers = %u", nb_llvm_layers,
-			nb_mrvl_layers);
-		goto error;
-	}
-
-	/* Set model subtype */
-	if ((nb_llvm_layers == 0) && (nb_mrvl_layers == 1))
-		model->subtype = ML_CNXK_MODEL_SUBTYPE_TVM_MRVL;
-	else if ((nb_llvm_layers > 0) && (nb_mrvl_layers == 0))
-		model->subtype = ML_CNXK_MODEL_SUBTYPE_TVM_LLVM;
-	else
-		model->subtype = ML_CNXK_MODEL_SUBTYPE_TVM_HYBRID;
 
 	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_VDEV &&
 	    model->subtype != ML_CNXK_MODEL_SUBTYPE_TVM_LLVM) {
 		plt_err("Unsupported model sub-type");
-		return -ENOTSUP;
+		ret = -ENOTSUP;
+		goto error;
 	}
 
 	/* Set callback function array */
@@ -284,22 +303,119 @@ mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 		callback = NULL;
 	}
 
-	/* Initialize model in TVMDP */
-	ret = tvmdp_model_load(cnxk_mldev, model->model_id, (void *)(&model->mvtvm.object),
-			       callback);
-	if (ret != 0) {
-		plt_err("TVMDP: Model load failed, model_id = %u, error = %d", model->model_id,
-			ret);
-		goto error;
-	}
-
-	/* Get model metadata - stage 2 */
-	ret = tvmdp_model_metadata_get_stage2(model->model_id, &model->mvtvm.metadata);
-	if (ret != 0) {
-		plt_err("TVMDP: Failed to get metadata, model_id = %u, error = %d",
+	/* Initialize model in TVM runtime */
+	if (model->mvtvm.graph_module != NULL) {
+		ret = -EBUSY;
+		plt_err("TVM runtime: Model load failed, model_id = %u, error = %d",
 			model->model_id, ret);
 		goto error;
 	}
+
+	snprintf(path, sizeof(path), "%s_%d_%u", ML_MODEL_SHMFD_NAME, getpid(), model->model_id);
+	model->mvtvm.fd = memfd_create(path, 0);
+	if (model->mvtvm.fd < 0) {
+		ret = (errno == 0) ? -EIO : -errno;
+		plt_err("TVM runtime: Model load failed, model_id = %u, error = %d",
+			model->model_id, ret);
+		goto error;
+	}
+
+	if (write(model->mvtvm.fd, model->mvtvm.so.buffer, model->mvtvm.so.size) !=
+	    (ssize_t)model->mvtvm.so.size) {
+		ret = (errno == 0) ? -EIO : -errno;
+		plt_err("TVM runtime: Model load failed, model_id = %u, error = %d",
+			model->model_id, ret);
+		goto error;
+	}
+
+	if (lseek(model->mvtvm.fd, 0, SEEK_SET) < 0) {
+		ret = (errno == 0) ? -EIO : -errno;
+		plt_err("TVM runtime: Model load failed, model_id = %u, error = %d",
+			model->model_id, ret);
+		goto error;
+	}
+
+	snprintf(path, sizeof(path), ML_MODEL_SHMFD_PATH, getpid(), model->mvtvm.fd);
+	ret = TVMModLoadFromFile(path, "so", &module_so);
+	if (ret != 0) {
+		plt_err("TVM runtime: Model load failed, model_id = %u, ret = %d, msg = %s",
+			model->model_id, ret, TVMGetLastError());
+		goto error;
+	}
+
+	/* Set device info */
+	device.device_type = kDLCPU;
+	device.device_id = 0;
+
+	if (callback != NULL) {
+		ret = mvtvm_ml_tvm_func_get(model, module_so, "register_cb", &register_cb_fn);
+		if (ret != 0)
+			goto error;
+
+		arg_values[0].v_handle = callback;
+		arg_types[0] = kTVMOpaqueHandle;
+		arg_values[1].v_handle = cnxk_mldev;
+		arg_types[1] = kTVMOpaqueHandle;
+		arg_values[2].v_int64 = model->model_id;
+		arg_types[2] = kDLInt;
+
+		ret = mvtvm_ml_tvm_func_call(model, register_cb_fn, "register_cb", arg_values,
+					     arg_types, 3, &ret_value, &ret_type, kTVMNullptr);
+		if (ret != 0)
+			goto error;
+	}
+
+	ret = TVMFuncGetGlobal("tvm.graph_executor.create", &create_fn);
+	if (ret != 0) {
+		plt_err("TVM runtime: Model load failed, model_id = %u, ret = %d, msg = %s",
+			model->model_id, ret, TVMGetLastError());
+		goto error;
+	}
+
+	arg_values[0].v_str = (const char *)model->mvtvm.json.buffer;
+	arg_types[0] = kTVMStr;
+	arg_values[1].v_handle = module_so;
+	arg_types[1] = kTVMModuleHandle;
+	arg_values[2].v_int64 = device.device_type;
+	arg_types[2] = kDLInt;
+	arg_values[3].v_int64 = device.device_id;
+	arg_types[3] = kDLInt;
+
+	ret = mvtvm_ml_tvm_func_call(model, create_fn, "tvm.graph_executor.create", arg_values,
+				     arg_types, 4, &ret_value, &ret_type, kTVMModuleHandle);
+	if (ret != 0)
+		goto error;
+	model->mvtvm.graph_module = ret_value.v_handle;
+
+	ret = mvtvm_ml_tvm_func_get(model, model->mvtvm.graph_module, "load_params",
+				    &model->mvtvm.load_params);
+	if (ret != 0)
+		goto error;
+	ret = mvtvm_ml_tvm_func_get(model, model->mvtvm.graph_module, "set_input_zero_copy",
+				    &model->mvtvm.set_input_zero_copy);
+	if (ret != 0)
+		goto error;
+	ret = mvtvm_ml_tvm_func_get(model, model->mvtvm.graph_module, "set_output_zero_copy",
+				    &model->mvtvm.set_output_zero_copy);
+	if (ret != 0)
+		goto error;
+	ret = mvtvm_ml_tvm_func_get(model, model->mvtvm.graph_module, "run", &model->mvtvm.run);
+	if (ret != 0)
+		goto error;
+
+	mvtvm_ml_tvm_func_free(&register_cb_fn);
+	mvtvm_ml_tvm_mod_free(&module_so);
+
+	/* Load model parameters into TVM runtime */
+	tvm_params.data = (const char *)model->mvtvm.params.buffer;
+	tvm_params.size = model->mvtvm.params.size;
+	tvm_arg_values[0].v_handle = &tvm_params;
+	tvm_arg_types[0] = kTVMBytes;
+
+	ret = mvtvm_ml_tvm_func_call(model, model->mvtvm.load_params, "load_params", tvm_arg_values,
+				     tvm_arg_types, 1, &ret_value, &ret_type, kTVMNullptr);
+	if (ret != 0)
+		goto error;
 
 	/* Update model I/O data */
 	mvtvm_ml_model_io_info_set(model);
@@ -310,9 +426,9 @@ mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 	/* Update model xstats name */
 	cnxk_ml_xstats_model_name_update(cnxk_mldev, model->model_id);
 
-	model->mvtvm.burst_xstats = RTE_PTR_ADD(
-		model->mvtvm.object.params.addr,
-		RTE_ALIGN_CEIL(model->mvtvm.object.params.size, RTE_CACHE_LINE_MIN_SIZE));
+	model->mvtvm.burst_xstats =
+		RTE_PTR_ADD(model->mvtvm.params.buffer,
+			    RTE_ALIGN_CEIL(model->mvtvm.params.size, RTE_CACHE_LINE_MIN_SIZE));
 
 	for (int qp_id = 0; qp_id < cnxk_mldev->mldev->data->nb_queue_pairs; qp_id++) {
 		model->mvtvm.burst_xstats[qp_id].tvm_rt_latency_tot = 0;
@@ -341,7 +457,20 @@ mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 	return 0;
 
 error:
-	rte_memzone_free(mz);
+	mvtvm_ml_tvm_func_free(&register_cb_fn);
+	if (model != NULL) {
+		mvtvm_ml_tvm_func_free(&model->mvtvm.load_params);
+		mvtvm_ml_tvm_func_free(&model->mvtvm.set_input_zero_copy);
+		mvtvm_ml_tvm_func_free(&model->mvtvm.set_output_zero_copy);
+		mvtvm_ml_tvm_func_free(&model->mvtvm.run);
+		mvtvm_ml_tvm_mod_free(&model->mvtvm.graph_module);
+		if (model->mvtvm.fd >= 0)
+			close(model->mvtvm.fd);
+		memset(&model->mvtvm, 0, sizeof(model->mvtvm));
+		model->mvtvm.fd = -1;
+	}
+	mvtvm_ml_tvm_mod_free(&module_so);
+	plt_memzone_free(mz);
 
 	return ret;
 }
@@ -351,20 +480,28 @@ mvtvm_ml_model_unload(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *mode
 {
 	char str[RTE_MEMZONE_NAMESIZE];
 	const struct plt_memzone *mz;
-	int ret;
 
 	RTE_SET_USED(cnxk_mldev);
 
-	/* Initialize model in TVMDP */
-	ret = tvmdp_model_unload(model->model_id);
-	if (ret != 0) {
-		plt_err("TVMDP: Model unload failed, model_id = %u, error = %d", model->model_id,
-			ret);
-		return ret;
-	}
+	/* Unload model from TVM runtime */
+	if (model->model_id >= cnxk_mldev->mldev->data->nb_models)
+		return -EINVAL;
+
+	if (model->mvtvm.graph_module == NULL)
+		return -EINVAL;
+
+	mvtvm_ml_tvm_func_free(&model->mvtvm.load_params);
+	mvtvm_ml_tvm_func_free(&model->mvtvm.set_input_zero_copy);
+	mvtvm_ml_tvm_func_free(&model->mvtvm.set_output_zero_copy);
+	mvtvm_ml_tvm_func_free(&model->mvtvm.run);
+	mvtvm_ml_tvm_mod_free(&model->mvtvm.graph_module);
+	if (model->mvtvm.fd >= 0)
+		close(model->mvtvm.fd);
+	memset(&model->mvtvm, 0, sizeof(model->mvtvm));
+	model->mvtvm.fd = -1;
 
 	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u", MVTVM_ML_MODEL_MEMZONE_NAME, model->model_id);
-	mz = rte_memzone_lookup(str);
+	mz = plt_memzone_lookup(str);
 	if (mz == NULL) {
 		plt_err("Memzone lookup failed for TVM model: model_id = %u, mz = %s",
 			model->model_id, str);
@@ -455,13 +592,13 @@ mvtvm_ml_io_quantize(void *device, uint16_t model_id, const char *layer_name,
 #endif
 
 	/* Get layer id */
-	for (layer_id = 0; layer_id < model->mvtvm.metadata.model.nb_layers; layer_id++) {
+	for (layer_id = 0; layer_id < model->nb_layers; layer_id++) {
 		if (strcmp(model->layer[layer_id].name, layer_name) == 0)
 			break;
 	}
 
 #ifdef CNXK_ML_DEV_DEBUG
-	if (layer_id == model->mvtvm.metadata.model.nb_layers) {
+	if (layer_id == model->nb_layers) {
 		plt_err("Invalid layer name: %s", layer_name);
 		return -EINVAL;
 	}
@@ -516,13 +653,13 @@ mvtvm_ml_io_dequantize(void *device, uint16_t model_id, const char *layer_name, 
 	}
 #endif
 
-	for (layer_id = 0; layer_id < model->mvtvm.metadata.model.nb_layers; layer_id++) {
+	for (layer_id = 0; layer_id < model->nb_layers; layer_id++) {
 		if (strcmp(model->layer[layer_id].name, layer_name) == 0)
 			break;
 	}
 
 #ifdef CNXK_ML_DEV_DEBUG
-	if (layer_id == model->mvtvm.metadata.model.nb_layers) {
+	if (layer_id == model->nb_layers) {
 		plt_err("Invalid layer name: %s", layer_name);
 		return -EINVAL;
 	}
@@ -553,27 +690,68 @@ static int
 mvtvm_ml_model_run(struct cnxk_ml_model *model, struct rte_ml_op *op, struct cnxk_ml_req *req)
 {
 	uint8_t i;
+	struct mvtvm_ml_result *run_result;
+	TVMValue arg_values[2] = {0};
+	int arg_types[2] = {0};
+	TVMValue ret_value = {0};
+	int ret_type = kTVMNullptr;
+	int ret = 0;
 
 	rte_memcpy(req->mvtvm_req.input_tensor, model->mvtvm.input_tensor,
-		   model->mvtvm.metadata.model.num_input * sizeof(DLTensor));
-	for (i = 0; i < model->mvtvm.metadata.model.num_input; i++) {
+		   model->mvtvm.info.nb_inputs * sizeof(DLTensor));
+	for (i = 0; i < model->mvtvm.info.nb_inputs; i++) {
 		req->mvtvm_req.input_tensor[i].data = op->input[i]->addr;
 		req->mvtvm_req.input_tensor[i].byte_offset = 0;
 	}
 
 	rte_memcpy(req->mvtvm_req.output_tensor, model->mvtvm.output_tensor,
-		   model->mvtvm.metadata.model.num_output * sizeof(DLTensor));
-	for (i = 0; i < model->mvtvm.metadata.model.num_output; i++) {
+		   model->mvtvm.info.nb_outputs * sizeof(DLTensor));
+	for (i = 0; i < model->mvtvm.info.nb_outputs; i++) {
 		req->mvtvm_req.output_tensor[i].data = op->output[i]->addr;
 		req->mvtvm_req.output_tensor[i].byte_offset = 0;
 	}
 
-	tvmdp_model_run(model->model_id, model->mvtvm.metadata.model.num_input,
-			req->mvtvm_req.input_tensor, model->mvtvm.metadata.model.num_output,
-			req->mvtvm_req.output_tensor, &req->mvtvm_req.result,
-			&req->mvtvm_req.status);
+	run_result = &req->mvtvm_req.result;
+	run_result->stats.start_ns = rte_get_tsc_cycles();
+	run_result->error_code = 0;
+
+	for (i = 0; i < model->mvtvm.info.nb_inputs; i++) {
+		arg_values[0].v_int64 = i;
+		arg_types[0] = kDLInt;
+		arg_values[1].v_handle = &req->mvtvm_req.input_tensor[i];
+		arg_types[1] = kTVMDLTensorHandle;
+		ret = mvtvm_ml_tvm_func_call(model, model->mvtvm.set_input_zero_copy,
+					     "set_input_zero_copy", arg_values, arg_types, 2,
+					     &ret_value, &ret_type, kTVMNullptr);
+		if (ret != 0)
+			goto out;
+	}
+
+	for (i = 0; i < model->mvtvm.info.nb_outputs; i++) {
+		arg_values[0].v_int64 = i;
+		arg_types[0] = kDLInt;
+		arg_values[1].v_handle = &req->mvtvm_req.output_tensor[i];
+		arg_types[1] = kTVMDLTensorHandle;
+		ret = mvtvm_ml_tvm_func_call(model, model->mvtvm.set_output_zero_copy,
+					     "set_output_zero_copy", arg_values, arg_types, 2,
+					     &ret_value, &ret_type, kTVMNullptr);
+		if (ret != 0)
+			goto out;
+	}
+
+	ret = mvtvm_ml_tvm_func_call(model, model->mvtvm.run, "run", NULL, NULL, 0, &ret_value,
+				     &ret_type, kTVMNullptr);
+	if (ret != 0)
+		goto out;
+
+out:
+	run_result->stats.end_ns = rte_get_tsc_cycles();
+	req->mvtvm_req.status = 0x1;
 
 	plt_write64(ML_CNXK_POLL_JOB_FINISH, req->status);
+
+	if (ret != 0)
+		run_result->error_code = -EIO;
 
 	return 0;
 }

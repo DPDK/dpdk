@@ -77,23 +77,6 @@ mvtvm_ml_dev_info_get(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_dev_info *de
 }
 
 int
-mvtvm_ml_dev_configure(struct cnxk_ml_dev *cnxk_mldev, const struct rte_ml_dev_config *conf)
-{
-	RTE_SET_USED(cnxk_mldev);
-	RTE_SET_USED(conf);
-
-	return 0;
-}
-
-int
-mvtvm_ml_dev_close(struct cnxk_ml_dev *cnxk_mldev)
-{
-	RTE_SET_USED(cnxk_mldev);
-
-	return 0;
-}
-
-int
 mvtvm_ml_dev_dump(struct cnxk_ml_dev *cnxk_mldev, FILE *fp)
 {
 	RTE_SET_USED(cnxk_mldev);

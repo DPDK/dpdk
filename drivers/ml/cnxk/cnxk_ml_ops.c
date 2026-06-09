@@ -634,10 +634,6 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 		}
 	}
 
-	ret = mvtvm_ml_dev_configure(cnxk_mldev, conf);
-	if (ret != 0)
-		goto error;
-
 	/* Set device capabilities */
 	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_PCI)
 		cnxk_mldev->max_nb_layers =
@@ -704,9 +700,6 @@ cnxk_ml_dev_close(struct rte_ml_dev *dev)
 
 	/* Un-initialize xstats */
 	cnxk_ml_xstats_uninit(cnxk_mldev);
-
-	if (mvtvm_ml_dev_close(cnxk_mldev) != 0)
-		plt_err("Failed to close MVTVM ML Device");
 
 	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_PCI) {
 		if (cn10k_ml_dev_close(cnxk_mldev) != 0)
@@ -1234,7 +1227,7 @@ cnxk_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, u
 					    model->layer[layer_id].glow.ocm_map.scratch_pages);
 #ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
 	} else {
-		for (layer_id = 0; layer_id < model->mvtvm.metadata.model.nb_layers; layer_id++) {
+		for (layer_id = 0; layer_id < model->nb_layers; layer_id++) {
 			if (model->layer[layer_id].type == ML_CNXK_LAYER_TYPE_MRVL) {
 				total_wb_pages = total_wb_pages +
 						 model->layer[layer_id].glow.ocm_map.wb_pages;
@@ -1256,8 +1249,7 @@ cnxk_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, u
 				   model->layer[layer_id].glow.ocm_map.scratch_pages);
 #ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
 		} else {
-			for (layer_id = 0; layer_id < model->mvtvm.metadata.model.nb_layers;
-			     layer_id++) {
+			for (layer_id = 0; layer_id < model->nb_layers; layer_id++) {
 				if (model->layer[layer_id].type == ML_CNXK_LAYER_TYPE_MRVL) {
 					plt_ml_dbg(
 						"layer_id = %u: wb_pages = %u, scratch_pages = %u",

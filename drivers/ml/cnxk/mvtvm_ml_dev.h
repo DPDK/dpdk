@@ -19,9 +19,6 @@ extern struct rte_ml_dev_ops cnxk_ml_ops;
 /* Maximum number of descriptors per queue-pair */
 #define ML_MVTVM_MAX_DESC_PER_QP 1024
 
-/* Maximum number of inputs / outputs per model */
-#define ML_MVTVM_MAX_INPUT_OUTPUT 32
-
 /* Maximum number of segments for IO data */
 #define ML_MVTVM_MAX_SEGMENTS 1
 

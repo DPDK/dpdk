@@ -111,13 +111,13 @@ on CPU cores or hardware accelerators.
 
 .. note::
 
-   DPDK CNXK ML driver requires TVM version 0.10.0
+   DPDK CNXK ML driver requires TVM version legacy-v0.19.post branch.
 
 .. code-block:: console
 
    git clone https://github.com/apache/tvm.git
    cd tvm
-   git checkout v0.11.0 -b v0.11.0
+   git checkout legacy-v0.19.post -b legacy-v0.19.post
    git submodule update --init
    cmake -S ./ -B build \
       -DCMAKE_INSTALL_PREFIX=<install_prefix> \
@@ -134,37 +134,6 @@ When cross-compiling, more options must be provided to CMake:
    -DMACHINE_NAME=aarch64-linux-gnu \
    -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
    -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY
-
-TVMDP
-~~~~~
-
-  Marvell's `TVM Dataplane Library <https://github.com/MarvellEmbeddedProcessors/tvmdp>`_
-  works as an interface between TVM runtime and DPDK drivers.
-  TVMDP library provides a simplified C interface
-  for TVM's runtime based on C++.
-
-.. note::
-
-   TVMDP library is dependent on TVM, dlpack, jansson and dmlc-core libraries.
-
-.. code-block:: console
-
-   git clone https://github.com/MarvellEmbeddedProcessors/tvmdp.git
-   cd tvmdp
-   git checkout main
-   cmake -S ./ -B build \
-      -DCMAKE_INSTALL_PREFIX=<install_prefix> \
-      -DBUILD_SHARED_LIBS=ON
-   make -C build
-   make -C build install
-
-When cross-compiling, more options must be provided to CMake:
-
-.. code-block:: console
-
-   -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-   -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-   -DCMAKE_FIND_ROOT_PATH=<install_prefix>
 
 libarchive
 ~~~~~~~~~~
