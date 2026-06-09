@@ -130,6 +130,41 @@ and query information using the telemetry client python script.
      - With loop variable: returns an array of objects
        containing the loop variable field and requested value fields.
 
+   * Use command aliases.
+
+     The telemetry script can load aliases at startup from::
+
+        $HOME/.dpdk_telemetry_aliases
+
+     or from a custom path provided via the ``--alias-file`` script flag.
+     Each alias entry must be in ``alias=command`` format.
+     Empty lines and lines starting with ``#`` are ignored.
+
+     Example alias file::
+
+        # Basic shortcuts
+        ls=/ethdev/list
+        names=FOREACH i /ethdev/list /ethdev/info,$i .name
+        q=quit
+
+     Alias behavior is intentionally similar to shell aliases:
+
+     - The first token of the entered input is checked for an alias match.
+     - If matched, that first token is replaced with its expansion.
+     - Alias expansion is recursive (aliases can expand to other aliases).
+     - Expansion has a safety limit to prevent infinite loops.
+
+     Examples::
+
+        --> ls
+        {"/ethdev/list": [0, 1]}
+
+        --> names
+        [{"i": 0, "name": "0000:16:00.0"}, {"i": 1, "name": "0000:16:00.1"}]
+
+        --> q
+        # exits the client
+
 
 Connecting to Different DPDK Processes
 --------------------------------------
