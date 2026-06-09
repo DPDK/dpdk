@@ -698,6 +698,47 @@ static void nbl_disp_chan_del_multi_rule_req(void *priv, u16 vsi)
 	chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
 }
 
+static int nbl_disp_cfg_multi_mcast(void *priv, u16 vsi, u16 enable)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+	int ret = 0;
+
+	if (enable)
+		ret = NBL_OPS_CALL(res_ops->add_multi_mcast,
+				   (NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), vsi));
+	else
+		NBL_OPS_CALL(res_ops->del_multi_mcast, (NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), vsi));
+
+	return ret;
+}
+
+static int nbl_disp_chan_cfg_multi_mcast_req(void *priv, u16 vsi, u16 enable)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	const struct nbl_channel_ops *chan_ops = NBL_DISP_MGT_TO_CHAN_OPS(disp_mgt);
+	struct nbl_common_info *common = NBL_DISP_MGT_TO_COMMON(disp_mgt);
+	struct nbl_chan_param_cfg_multi_mcast param = {0};
+	struct nbl_chan_send_info chan_send;
+	int ret = 0;
+
+	if (NBL_IS_COEXISTENCE(common)) {
+		ret = ioctl(common->devfd, NBL_DEV_USER_SET_MCAST_MODE, &enable);
+		if (ret) {
+			NBL_LOG(ERR, "userspace send cfg_multi_mcast ioctl msg failed ret %d",
+				ret);
+			return ret;
+		}
+		return 0;
+	}
+
+	param.vsi = vsi;
+	param.enable = enable;
+	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_CFG_MULTI_MCAST_RULE,
+		      &param, sizeof(param), NULL, 0, 1);
+	return chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
+}
+
 static int nbl_disp_cfg_dsch(void *priv, u16 vsi_id, bool vld)
 {
 	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
@@ -1145,6 +1186,10 @@ do {									\
 			 NBL_DISP_CTRL_LVL_MGT,				\
 			 NBL_CHAN_MSG_DEL_MULTI_RULE,			\
 			 nbl_disp_chan_del_multi_rule_req, NULL);	\
+	NBL_DISP_SET_OPS(cfg_multi_mcast, nbl_disp_cfg_multi_mcast,	\
+			 NBL_DISP_CTRL_LVL_MGT,				\
+			 NBL_CHAN_MSG_CFG_MULTI_MCAST_RULE,		\
+			 nbl_disp_chan_cfg_multi_mcast_req, NULL);	\
 	NBL_DISP_SET_OPS(cfg_dsch, nbl_disp_cfg_dsch,			\
 			 NBL_DISP_CTRL_LVL_MGT, NBL_CHAN_MSG_CFG_DSCH,	\
 			 nbl_disp_chan_cfg_dsch_req, NULL);		\

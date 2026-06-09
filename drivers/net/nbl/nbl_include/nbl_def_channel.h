@@ -371,6 +371,11 @@ struct nbl_chan_param_del_multi_rule {
 	u16 vsi;
 };
 
+struct nbl_chan_param_cfg_multi_mcast {
+	u16 vsi;
+	u16 enable;
+};
+
 struct nbl_chan_param_cfg_dsch {
 	u16 vsi_id;
 	bool vld;
