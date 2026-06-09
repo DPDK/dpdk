@@ -784,6 +784,8 @@ int nbl_promiscuous_enable(struct rte_eth_dev *eth_dev)
 	struct nbl_common_info *common = &adapter->common;
 
 	if (!common->is_vf) {
+		disp_ops->cfg_multi_mcast(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+					  dev_mgt->net_dev->vsi_id, 1);
 		disp_ops->set_promisc_mode(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
 					   dev_mgt->net_dev->vsi_id, 1);
 		dev_mgt->net_dev->promisc = 1;
@@ -802,6 +804,8 @@ int nbl_promiscuous_disable(struct rte_eth_dev *eth_dev)
 	struct nbl_common_info *common = &adapter->common;
 
 	if (!common->is_vf) {
+		disp_ops->cfg_multi_mcast(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+					  dev_mgt->net_dev->vsi_id, 0);
 		disp_ops->set_promisc_mode(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
 					   dev_mgt->net_dev->vsi_id, 0);
 		dev_mgt->net_dev->promisc = 0;
@@ -1012,6 +1016,7 @@ static void nbl_dev_leonis_stop(void *p)
 		disp_ops->del_multi_rule(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), net_dev->vsi_id);
 		disp_ops->del_macvlan(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), mac, 0, net_dev->vsi_id);
 	}
+	disp_ops->cfg_multi_mcast(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), net_dev->vsi_id, 0);
 }
 
 static void nbl_dev_remove_ops(struct nbl_dev_ops_tbl **dev_ops_tbl)
