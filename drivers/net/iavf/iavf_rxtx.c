@@ -3632,9 +3632,9 @@ iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 		m = tx_pkts[i];
 		ol_flags = m->ol_flags;
 
-		/* Check condition for nb_segs > IAVF_TX_MAX_MTU_SEG. */
+		/* Validate segment count and packet length. */
 		if (!(ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG))) {
-			if (m->nb_segs > IAVF_TX_MAX_MTU_SEG) {
+			if (m->nb_segs > IAVF_TX_MAX_MTU_SEG || m->pkt_len > IAVF_FRAME_SIZE_MAX) {
 				rte_errno = EINVAL;
 				return i;
 			}
