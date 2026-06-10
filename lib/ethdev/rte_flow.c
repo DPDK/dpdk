@@ -36,7 +36,7 @@ uint64_t rte_flow_dynf_metadata_mask;
 struct rte_flow_desc_data {
 	const char *name;
 	size_t size;
-	size_t (*desc_fn)(void *dst, const void *src);
+	size_t (*desc_fn)(void *dst, const void *src, size_t size);
 };
 
 /**
@@ -68,16 +68,17 @@ rte_flow_conv_copy(void *buf, const void *data, const size_t size,
 	if (buf != NULL)
 		rte_memcpy(buf, data, (size > sz ? sz : size));
 	if (rte_type && desc[type].desc_fn)
-		sz += desc[type].desc_fn(size > 0 ? buf : NULL, data);
+		sz += desc[type].desc_fn(size > 0 ? buf : NULL, data,
+					 size > sz ? size - sz : 0);
 	return sz;
 }
 
 static size_t
-rte_flow_item_flex_conv(void *buf, const void *data)
+rte_flow_item_flex_conv(void *buf, const void *data, size_t size)
 {
 	struct rte_flow_item_flex *dst = buf;
 	const struct rte_flow_item_flex *src = data;
-	if (buf) {
+	if (buf && size >= src->length) {
 		dst->pattern = rte_memcpy
 			((void *)((uintptr_t)(dst + 1)), src->pattern,
 			 src->length);
