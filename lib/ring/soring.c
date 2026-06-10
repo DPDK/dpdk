@@ -202,21 +202,21 @@ __rte_soring_move_cons_head(struct rte_soring *r, uint32_t stage, uint32_t num,
 
 static __rte_always_inline void
 __rte_soring_update_tail(struct __rte_ring_headtail *rht,
-	enum rte_ring_sync_type st, uint32_t head, uint32_t next, uint32_t enq)
+		 enum rte_ring_sync_type st, uint32_t head, uint32_t next)
 {
 	uint32_t n;
 
 	switch (st) {
 	case RTE_RING_SYNC_ST:
 	case RTE_RING_SYNC_MT:
-		__rte_ring_update_tail(&rht->ht, head, next, st, enq);
+		__rte_ring_update_tail(&rht->ht, head, next, st);
 		break;
 	case RTE_RING_SYNC_MT_RTS:
 		__rte_ring_rts_update_tail(&rht->rts);
 		break;
 	case RTE_RING_SYNC_MT_HTS:
 		n = next - head;
-		__rte_ring_hts_update_tail(&rht->hts, head, n, enq);
+		__rte_ring_hts_update_tail(&rht->hts, head, n);
 		break;
 	default:
 		/* unsupported mode, shouldn't be here */
@@ -295,7 +295,7 @@ soring_enqueue(struct rte_soring *r, const void *objs,
 			&prod_head, &prod_next, &nb_free);
 	if (n != 0) {
 		__enqueue_elems(r, objs, meta, prod_head, n);
-		__rte_soring_update_tail(&r->prod, st, prod_head, prod_next, 1);
+		__rte_soring_update_tail(&r->prod, st, prod_head, prod_next);
 	}
 
 	if (free_space != NULL)
@@ -401,7 +401,7 @@ soring_dequeue(struct rte_soring *r, void *objs, void *meta,
 	/* we have some elems to consume */
 	if (n != 0) {
 		__dequeue_elems(r, objs, meta, cons_head, n);
-		__rte_soring_update_tail(&r->cons, st, cons_head, cons_next, 0);
+		__rte_soring_update_tail(&r->cons, st, cons_head, cons_next);
 	}
 
 	if (available != NULL)

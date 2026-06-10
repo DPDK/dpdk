@@ -25,11 +25,9 @@
  */
 static __rte_always_inline void
 __rte_ring_hts_update_tail(struct rte_ring_hts_headtail *ht, uint32_t old_tail,
-	uint32_t num, uint32_t enqueue)
+			   uint32_t num)
 {
 	uint32_t tail;
-
-	RTE_SET_USED(enqueue);
 
 	tail = old_tail + num;
 
@@ -217,7 +215,7 @@ __rte_ring_do_hts_enqueue_elem(struct rte_ring *r, const void *obj_table,
 
 	if (n != 0) {
 		__rte_ring_enqueue_elems(r, head, obj_table, esize, n);
-		__rte_ring_hts_update_tail(&r->hts_prod, head, n, 1);
+		__rte_ring_hts_update_tail(&r->hts_prod, head, n);
 	}
 
 	if (free_space != NULL)
@@ -258,7 +256,7 @@ __rte_ring_do_hts_dequeue_elem(struct rte_ring *r, void *obj_table,
 
 	if (n != 0) {
 		__rte_ring_dequeue_elems(r, head, obj_table, esize, n);
-		__rte_ring_hts_update_tail(&r->hts_cons, head, n, 0);
+		__rte_ring_hts_update_tail(&r->hts_cons, head, n);
 	}
 
 	if (available != NULL)
