@@ -436,7 +436,7 @@ fslmc_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
 }
 
 static int
-rte_fslmc_close(void)
+rte_fslmc_close(struct rte_bus *bus __rte_unused)
 {
 	int ret = 0;
 

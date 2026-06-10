@@ -179,29 +179,10 @@ rte_auxiliary_unregister(struct rte_auxiliary_driver *driver)
 	rte_bus_remove_driver(&auxiliary_bus, &driver->driver);
 }
 
-static int
-auxiliary_cleanup(void)
+static void
+auxiliary_free_device(struct rte_device *dev)
 {
-	struct rte_auxiliary_device *dev;
-	int error = 0;
-
-	RTE_BUS_FOREACH_DEV(dev, &auxiliary_bus) {
-		int ret;
-
-		if (rte_dev_is_probed(&dev->device)) {
-			ret = auxiliary_unplug_device(&dev->device);
-			if (ret < 0) {
-				rte_errno = errno;
-				error = -1;
-			}
-		}
-
-		rte_devargs_remove(dev->device.devargs);
-		rte_bus_remove_device(&auxiliary_bus, &dev->device);
-		free(dev);
-	}
-
-	return error;
+	free(RTE_BUS_DEVICE(dev, struct rte_auxiliary_device));
 }
 
 static int
@@ -247,7 +228,8 @@ auxiliary_get_iommu_class(void)
 struct rte_bus auxiliary_bus = {
 	.scan = auxiliary_scan,
 	.probe = rte_bus_generic_probe,
-	.cleanup = auxiliary_cleanup,
+	.free_device = auxiliary_free_device,
+	.cleanup = rte_bus_generic_cleanup,
 	.find_device = rte_bus_generic_find_device,
 	.match = auxiliary_bus_match,
 	.probe_device = auxiliary_probe_device,

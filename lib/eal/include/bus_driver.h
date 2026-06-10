@@ -227,16 +227,30 @@ typedef int (*rte_bus_hot_unplug_handler_t)(struct rte_device *dev);
 typedef int (*rte_bus_sigbus_handler_t)(const void *failure_addr);
 
 /**
+ * Free a bus-specific device structure.
+ *
+ * @param dev
+ *	Device pointer.
+ */
+typedef void (*rte_bus_free_device_t)(struct rte_device *dev);
+
+/**
  * Implementation specific cleanup function which is responsible for cleaning up
  * devices on that bus with applicable drivers.
  *
+ * The cleanup operation is the counterpart to scan, removing all devices added
+ * during scan.
+ *
  * This is called while iterating over each registered bus.
+ *
+ * @param bus
+ *   Pointer to the bus to cleanup.
  *
  * @return
  * 0 for successful cleanup
  * !0 for any error during cleanup
  */
-typedef int (*rte_bus_cleanup_t)(void);
+typedef int (*rte_bus_cleanup_t)(struct rte_bus *bus);
 
 /**
  * Check if a driver matches a device.
@@ -336,6 +350,7 @@ struct rte_bus {
 				/**< handle hot-unplug failure on the bus */
 	rte_bus_sigbus_handler_t sigbus_handler;
 					/**< handle sigbus error on the bus */
+	rte_bus_free_device_t free_device; /**< Free bus-specific device */
 	rte_bus_cleanup_t cleanup;   /**< Cleanup devices on bus */
 	RTE_TAILQ_HEAD(, rte_device) device_list; /**< List of devices on the bus */
 	RTE_TAILQ_HEAD(, rte_driver) driver_list; /**< List of drivers on the bus */
@@ -623,6 +638,23 @@ struct rte_driver *rte_bus_find_driver(const struct rte_bus *bus, const struct r
  */
 __rte_internal
 int rte_bus_generic_probe(struct rte_bus *bus);
+
+/**
+ * Generic cleanup function for buses.
+ *
+ * Iterates through all devices on the bus, unplugs probed devices,
+ * removes devargs, removes devices from the bus list, and frees device structures.
+ *
+ * This function can be used by buses that don't require special cleanup
+ * logic and just need the standard device cleanup sequence.
+ *
+ * @param bus
+ *   Pointer to the bus to cleanup.
+ * @return
+ *   0 on success, -1 if any errors occurred during cleanup.
+ */
+__rte_internal
+int rte_bus_generic_cleanup(struct rte_bus *bus);
 
 #ifdef __cplusplus
 }

@@ -491,26 +491,17 @@ platform_bus_get_iommu_class(void)
 	return RTE_IOVA_DC;
 }
 
-static int
-platform_bus_cleanup(void)
+static void
+platform_free_device(struct rte_device *dev)
 {
-	struct rte_platform_device *pdev;
-
-	RTE_BUS_FOREACH_DEV(pdev, &platform_bus) {
-		if (rte_dev_is_probed(&pdev->device))
-			platform_bus_unplug_device(&pdev->device);
-
-		rte_devargs_remove(pdev->device.devargs);
-		rte_bus_remove_device(&platform_bus, &pdev->device);
-		free(pdev);
-	}
-
-	return 0;
+	free(RTE_BUS_DEVICE(dev, struct rte_platform_device));
 }
 
 static struct rte_bus platform_bus = {
 	.scan = platform_bus_scan,
 	.probe = rte_bus_generic_probe,
+	.free_device = platform_free_device,
+	.cleanup = rte_bus_generic_cleanup,
 	.find_device = rte_bus_generic_find_device,
 	.match = platform_bus_match,
 	.probe_device = platform_bus_probe_device,
@@ -520,7 +511,6 @@ static struct rte_bus platform_bus = {
 	.dma_unmap = platform_bus_dma_unmap,
 	.get_iommu_class = platform_bus_get_iommu_class,
 	.dev_iterate = rte_bus_generic_dev_iterate,
-	.cleanup = platform_bus_cleanup,
 };
 
 RTE_REGISTER_BUS(platform, platform_bus);

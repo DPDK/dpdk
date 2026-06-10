@@ -124,6 +124,37 @@ next_driver:
 	return (probed && probed == failed) ? -1 : 0;
 }
 
+/*
+ * Generic cleanup function for buses.
+ * Iterates through all devices on the bus, unplugs probed devices,
+ * removes devargs, removes devices from the bus list, and frees device structures.
+ */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_generic_cleanup)
+int
+rte_bus_generic_cleanup(struct rte_bus *bus)
+{
+	struct rte_device *dev;
+	int error = 0;
+
+	RTE_VERIFY(bus->free_device);
+	RTE_VERIFY(bus->unplug_device);
+
+	while ((dev = TAILQ_FIRST(&bus->device_list)) != NULL) {
+		if (rte_dev_is_probed(dev)) {
+			if (bus->unplug_device(dev) < 0) {
+				rte_errno = errno;
+				error = -1;
+			}
+		}
+
+		rte_devargs_remove(dev->devargs);
+		rte_bus_remove_device(bus, dev);
+		bus->free_device(dev);
+	}
+
+	return error;
+}
+
 /* Probe all devices of all buses */
 RTE_EXPORT_SYMBOL(rte_bus_probe)
 int
@@ -164,7 +195,7 @@ eal_bus_cleanup(void)
 	TAILQ_FOREACH(bus, &rte_bus_list, next) {
 		if (bus->cleanup == NULL)
 			continue;
-		if (bus->cleanup() != 0)
+		if (bus->cleanup(bus) != 0)
 			ret = -1;
 	}
 

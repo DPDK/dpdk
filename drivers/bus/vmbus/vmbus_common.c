@@ -144,12 +144,12 @@ rte_vmbus_probe(void)
 }
 
 static int
-rte_vmbus_cleanup(void)
+rte_vmbus_cleanup(struct rte_bus *bus)
 {
 	struct rte_vmbus_device *dev;
 	int error = 0;
 
-	RTE_BUS_FOREACH_DEV(dev, &rte_vmbus_bus) {
+	RTE_BUS_FOREACH_DEV(dev, bus) {
 		const struct rte_vmbus_driver *drv;
 		int ret;
 
@@ -167,7 +167,7 @@ rte_vmbus_cleanup(void)
 		rte_intr_instance_free(dev->intr_handle);
 
 		dev->device.driver = NULL;
-		rte_bus_remove_device(&rte_vmbus_bus, &dev->device);
+		rte_bus_remove_device(bus, &dev->device);
 		free(dev);
 	}
 

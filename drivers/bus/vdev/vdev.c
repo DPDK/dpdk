@@ -548,26 +548,19 @@ scan:
 	return 0;
 }
 
-static int
-vdev_cleanup(void)
+static void
+vdev_free_device(struct rte_device *dev)
 {
-	struct rte_vdev_device *dev;
-	int error = 0;
+	free(RTE_BUS_DEVICE(dev, struct rte_vdev_device));
+}
+
+static int
+vdev_cleanup(struct rte_bus *bus)
+{
+	int error;
 
 	rte_spinlock_recursive_lock(&vdev_device_list_lock);
-	RTE_BUS_FOREACH_DEV(dev, &rte_vdev_bus) {
-		int ret;
-
-		if (rte_dev_is_probed(&dev->device)) {
-			ret = vdev_unplug_device(&dev->device);
-			if (ret < 0)
-				error = -1;
-		}
-
-		rte_devargs_remove(dev->device.devargs);
-		rte_bus_remove_device(&rte_vdev_bus, &dev->device);
-		free(dev);
-	}
+	error = rte_bus_generic_cleanup(bus);
 	rte_spinlock_recursive_unlock(&vdev_device_list_lock);
 
 	return error;
@@ -608,6 +601,7 @@ vdev_get_iommu_class(void)
 static struct rte_bus rte_vdev_bus = {
 	.scan = vdev_scan,
 	.probe = rte_bus_generic_probe,
+	.free_device = vdev_free_device,
 	.cleanup = vdev_cleanup,
 	.find_device = vdev_find_device,
 	.match = vdev_bus_match,

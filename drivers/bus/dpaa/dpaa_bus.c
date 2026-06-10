@@ -807,12 +807,12 @@ dpaa_bus_probe_device(struct rte_driver *drv, struct rte_device *dev)
 }
 
 static int
-dpaa_bus_cleanup(void)
+dpaa_bus_cleanup(struct rte_bus *bus)
 {
 	struct rte_dpaa_device *dev;
 
 	BUS_INIT_FUNC_TRACE();
-	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus) {
+	RTE_BUS_FOREACH_DEV(dev, bus) {
 		const struct rte_dpaa_driver *drv;
 		int ret = 0;
 
