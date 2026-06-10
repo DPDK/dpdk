@@ -135,6 +135,8 @@ New Features
 
   * Added support for transmitting LLDP packets based on mbuf packet type.
   * Implemented AVX2 context descriptor transmit paths.
+  * Fixed duplicate send of 'VIRTCHNL_OP_RESET_VF' during PF reset recovery
+    which could cause virtchnl state corruption.
 
 * **Updated NVIDIA mlx5 ethernet driver.**
 

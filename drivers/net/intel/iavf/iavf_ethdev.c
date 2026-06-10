@@ -3168,22 +3168,29 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	ret = iavf_dev_stop(dev);
 
 	/*
-	 * Release redundant queue resource when close the dev
-	 * so that other vfs can re-use the queues.
+	 * Prevent sending close-time virtchnl messages to the AdminQ
+	 * during PF-initiated reset recovery.
 	 */
-	if (vf->lv_enabled) {
-		ret = iavf_request_queues(dev, IAVF_MAX_NUM_QUEUES_DFLT);
-		if (ret)
-			PMD_DRV_LOG(ERR, "Reset the num of queues failed");
+	if (!vf->pf_reset_in_progress) {
 
-		vf->max_rss_qregion = IAVF_MAX_NUM_QUEUES_DFLT;
+		/*
+		 * Release redundant queue resource when close the dev
+		 * so that other vfs can re-use the queues.
+		 */
+		if (vf->lv_enabled) {
+			ret = iavf_request_queues(dev, IAVF_MAX_NUM_QUEUES_DFLT);
+			if (ret)
+				PMD_DRV_LOG(ERR, "Reset the num of queues failed");
+			vf->max_rss_qregion = IAVF_MAX_NUM_QUEUES_DFLT;
+		}
+
+		/*
+		 * Disable promiscuous mode before resetting the VF. This is to avoid
+		 * potential issues when the PF is bound to the kernel driver.
+		 */
+		if (vf->promisc_unicast_enabled || vf->promisc_multicast_enabled)
+			iavf_config_promisc(adapter, false, false);
 	}
-
-	/* Disable promiscuous mode before resetting the VF. This is to avoid
-	 * potential issues when the PF is bound to the kernel driver.
-	 */
-	if (vf->promisc_unicast_enabled || vf->promisc_multicast_enabled)
-		iavf_config_promisc(adapter, false, false);
 
 	adapter->closed = true;
 
@@ -3196,7 +3203,12 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	iavf_flow_flush(dev, NULL);
 	iavf_flow_uninit(adapter);
 
-	iavf_vf_reset(hw);
+	/*
+	 * Prevent sending VIRTCHNL_OP_RESET_VF during PF-initiated
+	 * reset recovery.
+	 */
+	if (!vf->pf_reset_in_progress)
+		iavf_vf_reset(hw);
 	/*
 	 * If a reset is pending, wait for the PF to disable the VF's admin
 	 * receive queue (its first reset action) before we shut it down
@@ -3380,6 +3392,7 @@ iavf_handle_hw_reset(struct rte_eth_dev *dev, bool vf_initiated_reset)
 	}
 
 	vf->in_reset_recovery = true;
+	vf->pf_reset_in_progress = !vf_initiated_reset;
 	iavf_set_no_poll(adapter, false);
 
 	/* Call the pre reset callback */
@@ -3430,6 +3443,7 @@ exit:
 		vf->post_reset_cb(dev->data->port_id, ret, vf->post_reset_cb_arg);
 
 	vf->in_reset_recovery = false;
+	vf->pf_reset_in_progress = false;
 	iavf_set_no_poll(adapter, false);
 
 	return;
