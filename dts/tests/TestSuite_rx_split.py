@@ -27,7 +27,7 @@ from framework.exception import InteractiveCommandExecutionError
 from framework.test_suite import TestSuite, func_test
 
 PAYLOAD = bytes(range(256))
-ETHER_HDR_LEN = len(Ether())
+ETHER_HDR_LEN = len(Ether(dst="00:00:00:00:00:00"))
 IP_HDR_LEN = len(IP())
 ETHER_IP_HDR_LEN = ETHER_HDR_LEN + IP_HDR_LEN
 ETHER_MIN_FRAME_LEN = 60
