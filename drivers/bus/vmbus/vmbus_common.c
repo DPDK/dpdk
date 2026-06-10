@@ -100,10 +100,16 @@ vmbus_probe_device(struct rte_driver *drv, struct rte_device *dev)
 		return 1;
 	}
 
+	/* allocate interrupt handle instance */
+	vmbus_dev->intr_handle =
+		rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
+	if (vmbus_dev->intr_handle == NULL)
+		return -ENOMEM;
+
 	/* map resources for device */
 	ret = rte_vmbus_map_device(vmbus_dev);
 	if (ret != 0)
-		return ret;
+		goto free_intr;
 
 	if (vmbus_dev->device.numa_node < 0 && rte_socket_count() > 1)
 		VMBUS_LOG(INFO, "Device %s is not NUMA-aware", guid);
@@ -112,7 +118,15 @@ vmbus_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	VMBUS_LOG(INFO, "  probe driver: %s", vmbus_drv->driver.name);
 	ret = vmbus_drv->probe(vmbus_drv, vmbus_dev);
 	if (ret != 0)
-		rte_vmbus_unmap_device(vmbus_dev);
+		goto unmap;
+
+	return 0;
+
+unmap:
+	rte_vmbus_unmap_device(vmbus_dev);
+free_intr:
+	rte_intr_instance_free(vmbus_dev->intr_handle);
+	vmbus_dev->intr_handle = NULL;
 
 	return ret;
 }
