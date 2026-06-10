@@ -82,6 +82,10 @@ New Features
   but objects within each bulk are not ordered as expected by a stack.
   Furthermore, it is not strictly bounded by its size, but might hold more objects.
 
+* **Added unplug operation support to DPAA bus.**
+
+  Implemented device unplug operation to allow runtime removal of DPAA devices.
+
 * **Added TPID support to VLAN tag insertion.**
 
   Added ``rte_vlan_insert_tpid()`` to the net library.
