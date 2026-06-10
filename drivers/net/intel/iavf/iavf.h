@@ -292,6 +292,7 @@ struct iavf_info {
 
 	bool in_reset_recovery;
 	bool reset_pending;
+	bool pf_reset_in_progress;
 
 	uint32_t ptp_caps;
 	rte_spinlock_t phc_time_aq_lock;
