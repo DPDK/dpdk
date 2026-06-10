@@ -165,7 +165,7 @@ using ``rte_dev_event_callback_register()`` function.
    on the device in question.
    When ``RTE_DEV_EVENT_REMOVE`` event is delivered,
    it indicates that the kernel has removed the device;
-   the application should call ``rte_dev_remove()`` to clean up EAL resources.
+   the application should call ``rte_dev_remove()`` to unplug the device driver.
 
 
 Event Notification Usage
@@ -256,13 +256,17 @@ When ``rte_dev_remove()`` is called, the following sequence occurs:
    See `Multi-process Synchronization`_ for details.
 
 #. **Device Unplug**:
-   The bus's ``unplug()`` method is called (``dev->bus->unplug()``),
-   which triggers the driver's remove function.
-   This typically stops device operations, releases device resources,
-   unmaps memory regions, and unregisters from subsystems.
+   The bus's ``unplug_device()`` method is called (``dev->bus->unplug_device()``),
+   which triggers the driver's remove function
+   and releases resources allocated during probe
+   (such as interrupt handles and device memory mappings).
 
-#. **Devargs Cleanup**:
-   The devargs associated with the device are removed from the global list.
+.. note::
+
+   The device structure, its devargs, and its entry in the bus device list
+   are NOT freed during ``rte_dev_remove()``.
+   They remain in memory until ``rte_eal_cleanup()`` is called,
+   at which point the bus's ``cleanup()`` method handles complete device deletion.
 
 
 Multi-process Synchronization

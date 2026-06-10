@@ -101,7 +101,7 @@ typedef int (*rte_bus_probe_device_t)(struct rte_driver *drv, struct rte_device 
  *	0 on success.
  *	!0 on error.
  */
-typedef int (*rte_bus_unplug_t)(struct rte_device *dev);
+typedef int (*rte_bus_unplug_device_t)(struct rte_device *dev);
 
 /**
  * Bus specific parsing function.
@@ -323,7 +323,7 @@ struct rte_bus {
 	rte_bus_find_device_t find_device; /**< Find a device on the bus */
 	rte_bus_match_t match;       /**< Check if driver matches device */
 	rte_bus_probe_device_t probe_device; /**< Probe single device with driver */
-	rte_bus_unplug_t unplug;     /**< Remove single device from driver */
+	rte_bus_unplug_device_t unplug_device; /**< Remove single device from driver */
 	rte_bus_parse_t parse;       /**< Parse a device name */
 	rte_bus_dev_compare_t dev_compare; /**< Compare two device names */
 	rte_bus_devargs_parse_t devargs_parse; /**< Parse bus devargs */

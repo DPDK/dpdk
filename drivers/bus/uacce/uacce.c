@@ -385,40 +385,10 @@ uacce_probe_device(struct rte_driver *drv, struct rte_device *dev)
 }
 
 static int
-uacce_cleanup(void)
+uacce_unplug_device(struct rte_device *rte_dev)
 {
-	struct rte_uacce_device *dev;
-	int error = 0;
-
-	RTE_BUS_FOREACH_DEV(dev, &uacce_bus) {
-		const struct rte_uacce_driver *dr;
-		int ret = 0;
-
-		if (!rte_dev_is_probed(&dev->device))
-			goto free;
-		dr = RTE_BUS_DRIVER(dev->device.driver, *dr);
-		if (dr->remove == NULL)
-			goto free;
-
-		ret = dr->remove(dev);
-		if (ret < 0) {
-			rte_errno = errno;
-			error = -1;
-		}
-		dev->device.driver = NULL;
-
-free:
-		rte_bus_remove_device(&uacce_bus, &dev->device);
-		free(dev);
-	}
-
-	return error;
-}
-
-static int
-uacce_detach_dev(struct rte_uacce_device *dev)
-{
-	const struct rte_uacce_driver *dr = RTE_BUS_DRIVER(dev->device.driver, *dr);
+	const struct rte_uacce_driver *dr = RTE_BUS_DRIVER(rte_dev->driver, *dr);
+	struct rte_uacce_device *dev = RTE_BUS_DEVICE(rte_dev, *dev);
 	int ret = 0;
 
 	UACCE_BUS_DEBUG("detach device %s using driver: %s", dev->device.name, dr->driver.name);
@@ -429,25 +399,32 @@ uacce_detach_dev(struct rte_uacce_device *dev)
 			return ret;
 	}
 
-	dev->device.driver = NULL;
-
 	return 0;
 }
 
 static int
-uacce_unplug(struct rte_device *dev)
+uacce_cleanup(void)
 {
-	struct rte_uacce_device *uacce_dev = RTE_BUS_DEVICE(dev, *uacce_dev);
-	int ret;
+	struct rte_uacce_device *dev;
+	int error = 0;
 
-	ret = uacce_detach_dev(uacce_dev);
-	if (ret == 0) {
-		rte_bus_remove_device(&uacce_bus, &uacce_dev->device);
-		rte_devargs_remove(dev->devargs);
-		free(uacce_dev);
+	RTE_BUS_FOREACH_DEV(dev, &uacce_bus) {
+		int ret = 0;
+
+		if (rte_dev_is_probed(&dev->device)) {
+			ret = uacce_unplug_device(&dev->device);
+			if (ret < 0) {
+				rte_errno = errno;
+				error = -1;
+			}
+		}
+
+		rte_devargs_remove(dev->device.devargs);
+		rte_bus_remove_device(&uacce_bus, &dev->device);
+		free(dev);
 	}
 
-	return ret;
+	return error;
 }
 
 static int
@@ -577,7 +554,7 @@ static struct rte_bus uacce_bus = {
 	.cleanup = uacce_cleanup,
 	.match = uacce_bus_match,
 	.probe_device = uacce_probe_device,
-	.unplug = uacce_unplug,
+	.unplug_device = uacce_unplug_device,
 	.find_device = rte_bus_generic_find_device,
 	.parse = uacce_parse,
 	.dev_iterate = rte_bus_generic_dev_iterate,

@@ -279,6 +279,25 @@ ifpga_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	return ret;
 }
 
+static int
+ifpga_unplug_device(struct rte_device *dev)
+{
+	const struct rte_afu_driver *afu_drv = RTE_BUS_DRIVER(dev->driver, *afu_drv);
+	struct rte_afu_device *afu_dev = RTE_BUS_DEVICE(dev, *afu_dev);
+	int ret = 0;
+
+	if (afu_drv->remove) {
+		ret = afu_drv->remove(afu_dev);
+		if (ret)
+			return ret;
+	}
+
+	rte_intr_instance_free(afu_dev->intr_handle);
+	afu_dev->intr_handle = NULL;
+
+	return 0;
+}
+
 /*
  * Cleanup the content of the Intel FPGA bus, and call the remove() function
  * for all registered devices.
@@ -290,50 +309,22 @@ ifpga_cleanup(void)
 	int error = 0;
 
 	RTE_BUS_FOREACH_DEV(afu_dev, &rte_ifpga_bus) {
-		const struct rte_afu_driver *drv;
 		int ret = 0;
 
-		if (!rte_dev_is_probed(&afu_dev->device))
-			goto free;
-		drv = RTE_BUS_DRIVER(afu_dev->device.driver, *drv);
-		if (drv->remove == NULL)
-			goto free;
-
-		ret = drv->remove(afu_dev);
-		if (ret < 0) {
-			rte_errno = errno;
-			error = -1;
+		if (rte_dev_is_probed(&afu_dev->device)) {
+			ret = ifpga_unplug_device(&afu_dev->device);
+			if (ret < 0) {
+				rte_errno = errno;
+				error = -1;
+			}
 		}
-		afu_dev->device.driver = NULL;
 
-free:
-		rte_bus_remove_device(&rte_ifpga_bus, &afu_dev->device);
 		rte_devargs_remove(afu_dev->device.devargs);
-		rte_intr_instance_free(afu_dev->intr_handle);
+		rte_bus_remove_device(&rte_ifpga_bus, &afu_dev->device);
 		free(afu_dev);
 	}
 
 	return error;
-}
-
-static int
-ifpga_unplug(struct rte_device *dev)
-{
-	struct rte_afu_device *afu_dev = RTE_BUS_DEVICE(dev, *afu_dev);
-	const struct rte_afu_driver *afu_drv = RTE_BUS_DRIVER(dev->driver, *afu_drv);
-	int ret;
-
-	ret = afu_drv->remove(afu_dev);
-	if (ret)
-		return ret;
-
-	rte_bus_remove_device(&rte_ifpga_bus, &afu_dev->device);
-
-	rte_devargs_remove(dev->devargs);
-	rte_intr_instance_free(afu_dev->intr_handle);
-	free(afu_dev);
-	return 0;
-
 }
 
 static int
@@ -387,7 +378,7 @@ static struct rte_bus rte_ifpga_bus = {
 	.find_device = rte_bus_generic_find_device,
 	.match       = ifpga_bus_match,
 	.probe_device = ifpga_probe_device,
-	.unplug      = ifpga_unplug,
+	.unplug_device = ifpga_unplug_device,
 	.parse       = ifpga_parse,
 };
 

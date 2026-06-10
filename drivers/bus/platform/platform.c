@@ -416,19 +416,15 @@ device_release_driver(struct rte_platform_device *pdev)
 		if (ret)
 			PLATFORM_LOG_LINE(WARNING, "failed to remove %s", pdev->name);
 	}
-
-	pdev->device.driver = NULL;
 }
 
 static int
-platform_bus_unplug(struct rte_device *dev)
+platform_bus_unplug_device(struct rte_device *dev)
 {
 	struct rte_platform_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
 
 	device_release_driver(pdev);
 	device_cleanup(pdev);
-	rte_devargs_remove(pdev->device.devargs);
-	free(pdev);
 
 	return 0;
 }
@@ -501,10 +497,12 @@ platform_bus_cleanup(void)
 	struct rte_platform_device *pdev;
 
 	RTE_BUS_FOREACH_DEV(pdev, &platform_bus) {
+		if (rte_dev_is_probed(&pdev->device))
+			platform_bus_unplug_device(&pdev->device);
+
+		rte_devargs_remove(pdev->device.devargs);
 		rte_bus_remove_device(&platform_bus, &pdev->device);
-		if (!rte_dev_is_probed(&pdev->device))
-			continue;
-		platform_bus_unplug(&pdev->device);
+		free(pdev);
 	}
 
 	return 0;
@@ -516,7 +514,7 @@ static struct rte_bus platform_bus = {
 	.find_device = rte_bus_generic_find_device,
 	.match = platform_bus_match,
 	.probe_device = platform_bus_probe_device,
-	.unplug = platform_bus_unplug,
+	.unplug_device = platform_bus_unplug_device,
 	.parse = platform_bus_parse,
 	.dma_map = platform_bus_dma_map,
 	.dma_unmap = platform_bus_dma_unmap,

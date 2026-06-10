@@ -374,14 +374,11 @@ rte_cdx_unregister(struct rte_cdx_driver *driver)
 	rte_bus_remove_driver(&rte_cdx_bus, &driver->driver);
 }
 
-/*
- * If vendor/device ID match, call the remove() function of the
- * driver.
- */
 static int
-cdx_detach_dev(struct rte_cdx_device *dev)
+cdx_unplug_device(struct rte_device *rte_dev)
 {
-	const struct rte_cdx_driver *dr = RTE_BUS_DRIVER(dev->device.driver, *dr);
+	const struct rte_cdx_driver *dr = RTE_BUS_DRIVER(rte_dev->driver, *dr);
+	struct rte_cdx_device *dev = RTE_BUS_DEVICE(rte_dev, *dev);
 	int ret = 0;
 
 	CDX_BUS_DEBUG("detach device %s using driver: %s",
@@ -393,30 +390,12 @@ cdx_detach_dev(struct rte_cdx_device *dev)
 			return ret;
 	}
 
-	/* clear driver structure */
-	dev->device.driver = NULL;
-
 	rte_cdx_unmap_device(dev);
 
 	rte_intr_instance_free(dev->intr_handle);
 	dev->intr_handle = NULL;
 
 	return 0;
-}
-
-static int
-cdx_unplug(struct rte_device *dev)
-{
-	struct rte_cdx_device *cdx_dev = RTE_BUS_DEVICE(dev, *cdx_dev);
-	int ret;
-
-	ret = cdx_detach_dev(cdx_dev);
-	if (ret == 0) {
-		rte_bus_remove_device(&rte_cdx_bus, &cdx_dev->device);
-		rte_devargs_remove(dev->devargs);
-		free(cdx_dev);
-	}
-	return ret;
 }
 
 static int
@@ -452,7 +431,7 @@ static struct rte_bus rte_cdx_bus = {
 	.find_device = rte_bus_generic_find_device,
 	.match = cdx_bus_match,
 	.probe_device = cdx_probe_device,
-	.unplug = cdx_unplug,
+	.unplug_device = cdx_unplug_device,
 	.parse = cdx_parse,
 	.dma_map = cdx_dma_map,
 	.dma_unmap = cdx_dma_unmap,

@@ -385,18 +385,20 @@ local_dev_remove(struct rte_device *dev)
 {
 	int ret;
 
-	if (dev->bus->unplug == NULL) {
-		EAL_LOG(ERR, "Function unplug not supported by bus (%s)",
+	if (dev->bus->unplug_device == NULL) {
+		EAL_LOG(ERR, "Function unplug_device not supported by bus (%s)",
 			dev->bus->name);
 		return -ENOTSUP;
 	}
 
-	ret = dev->bus->unplug(dev);
+	ret = dev->bus->unplug_device(dev);
 	if (ret) {
 		EAL_LOG(ERR, "Driver cannot detach the device (%s)",
 			dev->name);
 		return (ret < 0) ? ret : -ENOENT;
 	}
+
+	dev->driver = NULL;
 
 	return 0;
 }

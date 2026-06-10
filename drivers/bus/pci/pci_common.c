@@ -282,13 +282,10 @@ pci_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	return ret;
 }
 
-/*
- * If vendor/device ID match, call the remove() function of the
- * driver.
- */
 static int
-rte_pci_detach_dev(struct rte_pci_device *dev)
+pci_unplug_device(struct rte_device *rte_dev)
 {
+	struct rte_pci_device *dev = RTE_BUS_DEVICE(rte_dev, *dev);
 	struct rte_pci_addr *loc;
 	const struct rte_pci_driver *dr = RTE_BUS_DRIVER(dev->device.driver, *dr);
 	int ret = 0;
@@ -307,9 +304,6 @@ rte_pci_detach_dev(struct rte_pci_device *dev)
 		if (ret < 0)
 			return ret;
 	}
-
-	/* clear driver structure */
-	dev->device.driver = NULL;
 
 	if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING)
 		/* unmap resources for devices that use igb_uio */
@@ -330,33 +324,17 @@ pci_cleanup(void)
 	int error = 0;
 
 	RTE_BUS_FOREACH_DEV(dev, &rte_pci_bus) {
-		const struct rte_pci_driver *drv;
 		int ret = 0;
 
-		if (!rte_dev_is_probed(&dev->device))
-			goto free;
-		drv = RTE_BUS_DRIVER(dev->device.driver, *drv);
-		if (drv->remove == NULL)
-			goto free;
-
-		ret = drv->remove(dev);
-		if (ret < 0) {
-			rte_errno = errno;
-			error = -1;
+		if (rte_dev_is_probed(&dev->device)) {
+			ret = pci_unplug_device(&dev->device);
+			if (ret < 0) {
+				rte_errno = errno;
+				error = -1;
+			}
 		}
 
-		if (drv->drv_flags & RTE_PCI_DRV_NEED_MAPPING)
-			rte_pci_unmap_device(dev);
-
-		dev->device.driver = NULL;
-
-free:
-		/* free interrupt handles */
-		rte_intr_instance_free(dev->intr_handle);
-		dev->intr_handle = NULL;
-		rte_intr_instance_free(dev->vfio_req_intr_handle);
-		dev->vfio_req_intr_handle = NULL;
-
+		rte_devargs_remove(dev->device.devargs);
 		rte_bus_remove_device(&rte_pci_bus, &dev->device);
 		pci_free(RTE_PCI_DEVICE_INTERNAL(dev));
 	}
@@ -517,21 +495,6 @@ pci_sigbus_handler(const void *failure_addr)
 				pdev->name);
 			ret = -1;
 		}
-	}
-	return ret;
-}
-
-static int
-pci_unplug(struct rte_device *dev)
-{
-	struct rte_pci_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
-	int ret;
-
-	ret = rte_pci_detach_dev(pdev);
-	if (ret == 0) {
-		rte_bus_remove_device(&rte_pci_bus, &pdev->device);
-		rte_devargs_remove(dev->devargs);
-		pci_free(RTE_PCI_DEVICE_INTERNAL(pdev));
 	}
 	return ret;
 }
@@ -784,7 +747,7 @@ struct rte_bus rte_pci_bus = {
 	.find_device = rte_bus_generic_find_device,
 	.match = pci_bus_match,
 	.probe_device = pci_probe_device,
-	.unplug = pci_unplug,
+	.unplug_device = pci_unplug_device,
 	.parse = pci_parse,
 	.dev_compare = pci_dev_compare,
 	.devargs_parse = rte_pci_devargs_parse,

@@ -122,13 +122,11 @@ auxiliary_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	return ret;
 }
 
-/*
- * Call the remove() function of the driver.
- */
 static int
-rte_auxiliary_driver_remove_dev(struct rte_auxiliary_device *dev)
+auxiliary_unplug_device(struct rte_device *rte_dev)
 {
-	const struct rte_auxiliary_driver *drv = RTE_BUS_DRIVER(dev->device.driver, *drv);
+	const struct rte_auxiliary_driver *drv = RTE_BUS_DRIVER(rte_dev->driver, *drv);
+	struct rte_auxiliary_device *dev = RTE_BUS_DEVICE(rte_dev, *dev);
 	int ret = 0;
 
 	AUXILIARY_LOG(DEBUG, "Driver %s remove auxiliary device %s on NUMA node %i",
@@ -140,8 +138,8 @@ rte_auxiliary_driver_remove_dev(struct rte_auxiliary_device *dev)
 			return ret;
 	}
 
-	/* clear driver structure */
-	dev->device.driver = NULL;
+	rte_intr_instance_free(dev->intr_handle);
+	dev->intr_handle = NULL;
 
 	return 0;
 }
@@ -182,22 +180,6 @@ rte_auxiliary_unregister(struct rte_auxiliary_driver *driver)
 }
 
 static int
-auxiliary_unplug(struct rte_device *dev)
-{
-	struct rte_auxiliary_device *adev = RTE_BUS_DEVICE(dev, *adev);
-	int ret;
-
-	ret = rte_auxiliary_driver_remove_dev(adev);
-	if (ret == 0) {
-		rte_bus_remove_device(&auxiliary_bus, &adev->device);
-		rte_devargs_remove(dev->devargs);
-		rte_intr_instance_free(adev->intr_handle);
-		free(adev);
-	}
-	return ret;
-}
-
-static int
 auxiliary_cleanup(void)
 {
 	struct rte_auxiliary_device *dev;
@@ -206,13 +188,17 @@ auxiliary_cleanup(void)
 	RTE_BUS_FOREACH_DEV(dev, &auxiliary_bus) {
 		int ret;
 
-		if (!rte_dev_is_probed(&dev->device))
-			continue;
-		ret = auxiliary_unplug(&dev->device);
-		if (ret < 0) {
-			rte_errno = errno;
-			error = -1;
+		if (rte_dev_is_probed(&dev->device)) {
+			ret = auxiliary_unplug_device(&dev->device);
+			if (ret < 0) {
+				rte_errno = errno;
+				error = -1;
+			}
 		}
+
+		rte_devargs_remove(dev->device.devargs);
+		rte_bus_remove_device(&auxiliary_bus, &dev->device);
+		free(dev);
 	}
 
 	return error;
@@ -265,7 +251,7 @@ struct rte_bus auxiliary_bus = {
 	.find_device = rte_bus_generic_find_device,
 	.match = auxiliary_bus_match,
 	.probe_device = auxiliary_probe_device,
-	.unplug = auxiliary_unplug,
+	.unplug_device = auxiliary_unplug_device,
 	.parse = auxiliary_parse,
 	.dma_map = auxiliary_dma_map,
 	.dma_unmap = auxiliary_dma_unmap,

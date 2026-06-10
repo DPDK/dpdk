@@ -343,19 +343,15 @@ next_driver:
 }
 
 static int
-vdev_remove_driver(struct rte_vdev_device *dev)
+vdev_unplug_device(struct rte_device *rte_dev)
 {
-	const char *name = rte_vdev_device_name(dev);
-	const struct rte_vdev_driver *driver;
+	const struct rte_vdev_driver *driver = RTE_BUS_DRIVER(rte_dev->driver, *driver);
+	struct rte_vdev_device *dev = RTE_BUS_DEVICE(rte_dev, *dev);
 
-	if (!dev->device.driver) {
-		VDEV_LOG(DEBUG, "no driver attach to device %s", name);
-		return 1;
-	}
+	if (driver->remove)
+		return driver->remove(dev);
 
-	driver = RTE_BUS_DRIVER(dev->device.driver, *driver);
-
-	return driver->remove(dev);
+	return 0;
 }
 
 RTE_EXPORT_SYMBOL(rte_vdev_uninit)
@@ -376,7 +372,12 @@ rte_vdev_uninit(const char *name)
 		goto unlock;
 	}
 
-	ret = vdev_remove_driver(dev);
+	if (rte_dev_is_probed(&dev->device)) {
+		ret = vdev_unplug_device(&dev->device);
+	} else {
+		VDEV_LOG(DEBUG, "no driver attach to device %s", name);
+		ret = 1;
+	}
 	if (ret)
 		goto unlock;
 
@@ -553,27 +554,21 @@ vdev_cleanup(void)
 	struct rte_vdev_device *dev;
 	int error = 0;
 
+	rte_spinlock_recursive_lock(&vdev_device_list_lock);
 	RTE_BUS_FOREACH_DEV(dev, &rte_vdev_bus) {
-		const struct rte_vdev_driver *drv;
 		int ret;
 
-		if (!rte_dev_is_probed(&dev->device))
-			goto free;
+		if (rte_dev_is_probed(&dev->device)) {
+			ret = vdev_unplug_device(&dev->device);
+			if (ret < 0)
+				error = -1;
+		}
 
-		drv = RTE_BUS_DRIVER(dev->device.driver, *drv);
-
-		if (drv->remove == NULL)
-			goto free;
-
-		ret = drv->remove(dev);
-		if (ret < 0)
-			error = -1;
-
-		dev->device.driver = NULL;
-free:
+		rte_devargs_remove(dev->device.devargs);
 		rte_bus_remove_device(&rte_vdev_bus, &dev->device);
 		free(dev);
 	}
+	rte_spinlock_recursive_unlock(&vdev_device_list_lock);
 
 	return error;
 }
@@ -589,12 +584,6 @@ vdev_find_device(const struct rte_bus *bus, const struct rte_device *start,
 	rte_spinlock_recursive_unlock(&vdev_device_list_lock);
 
 	return dev;
-}
-
-static int
-vdev_unplug(struct rte_device *dev)
-{
-	return rte_vdev_uninit(dev->name);
 }
 
 static enum rte_iova_mode
@@ -623,7 +612,7 @@ static struct rte_bus rte_vdev_bus = {
 	.find_device = vdev_find_device,
 	.match = vdev_bus_match,
 	.probe_device = vdev_probe_device,
-	.unplug = vdev_unplug,
+	.unplug_device = vdev_unplug_device,
 	.parse = vdev_parse,
 	.dma_map = vdev_dma_map,
 	.dma_unmap = vdev_dma_unmap,
