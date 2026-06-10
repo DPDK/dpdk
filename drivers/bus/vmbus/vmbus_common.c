@@ -144,34 +144,29 @@ rte_vmbus_probe(void)
 }
 
 static int
-rte_vmbus_cleanup(struct rte_bus *bus)
+vmbus_unplug_device(struct rte_device *rte_dev)
 {
-	struct rte_vmbus_device *dev;
-	int error = 0;
+	const struct rte_vmbus_driver *drv = RTE_BUS_DRIVER(rte_dev->driver, *drv);
+	struct rte_vmbus_device *dev = RTE_BUS_DEVICE(rte_dev, *dev);
+	int ret = 0;
 
-	RTE_BUS_FOREACH_DEV(dev, bus) {
-		const struct rte_vmbus_driver *drv;
-		int ret;
-
-		if (!rte_dev_is_probed(&dev->device))
-			continue;
-		drv = RTE_BUS_DRIVER(dev->device.driver, *drv);
-		if (drv->remove == NULL)
-			continue;
-
+	if (drv->remove != NULL) {
 		ret = drv->remove(dev);
 		if (ret < 0)
-			error = -1;
-
-		rte_vmbus_unmap_device(dev);
-		rte_intr_instance_free(dev->intr_handle);
-
-		dev->device.driver = NULL;
-		rte_bus_remove_device(bus, &dev->device);
-		free(dev);
+			return ret;
 	}
 
-	return error;
+	rte_vmbus_unmap_device(dev);
+	rte_intr_instance_free(dev->intr_handle);
+	dev->intr_handle = NULL;
+
+	return 0;
+}
+
+static void
+vmbus_free_device(struct rte_device *dev)
+{
+	free(RTE_BUS_DEVICE(dev, struct rte_vmbus_device));
 }
 
 static int
@@ -222,10 +217,12 @@ rte_vmbus_unregister(struct rte_vmbus_driver *driver)
 struct rte_bus rte_vmbus_bus = {
 	.scan = rte_vmbus_scan,
 	.probe = rte_bus_generic_probe,
-	.cleanup = rte_vmbus_cleanup,
+	.free_device = vmbus_free_device,
+	.cleanup = rte_bus_generic_cleanup,
 	.find_device = rte_bus_generic_find_device,
 	.match = vmbus_bus_match,
 	.probe_device = vmbus_probe_device,
+	.unplug_device = vmbus_unplug_device,
 	.parse = vmbus_parse,
 	.dev_compare = vmbus_dev_compare,
 };
