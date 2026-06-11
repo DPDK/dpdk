@@ -38,6 +38,7 @@ enum hv_uio_map {
  */
 struct rte_vmbus_device {
 	struct rte_device device;              /**< Inherit core device */
+	char name[RTE_DEV_NAME_MAX_LEN];       /**< VMBUS device name */
 	rte_uuid_t device_id;		       /**< VMBUS device id */
 	rte_uuid_t class_id;		       /**< VMBUS device type */
 	uint32_t relid;			       /**< id for primary */
