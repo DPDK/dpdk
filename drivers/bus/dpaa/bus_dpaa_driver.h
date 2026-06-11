@@ -82,7 +82,6 @@ struct rte_dpaa_device {
 	struct rte_device device;
 	union {
 		struct rte_eth_dev *eth_dev;
-		struct rte_cryptodev *crypto_dev;
 		struct rte_dma_dev *dmadev;
 	};
 	struct dpaa_device_id id;

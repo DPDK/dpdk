@@ -3773,7 +3773,6 @@ cryptodev_dpaa_sec_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 				struct rte_dpaa_device *dpaa_dev)
 {
 	struct rte_cryptodev *cryptodev;
-	char cryptodev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	int retval;
 	struct rte_cryptodev_pmd_init_params init_params = {
 		.name = "",
@@ -3786,14 +3785,11 @@ cryptodev_dpaa_sec_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	snprintf(cryptodev_name, sizeof(cryptodev_name), "%s", dpaa_dev->name);
-
-	cryptodev = rte_cryptodev_pmd_create(cryptodev_name, &dpaa_dev->device, &init_params);
+	cryptodev = rte_cryptodev_pmd_create(dpaa_dev->name, &dpaa_dev->device, &init_params);
 	if (cryptodev == NULL) {
 		DPAA_SEC_ERR("failed to create cryptodev vdev");
 		return -ENOMEM;
 	}
-	dpaa_dev->crypto_dev = cryptodev;
 
 	/* if sec device version is not configured */
 	if (!rta_get_sec_era()) {
@@ -3839,7 +3835,7 @@ cryptodev_dpaa_sec_remove(struct rte_dpaa_device *dpaa_dev)
 	struct rte_cryptodev *cryptodev;
 	int ret;
 
-	cryptodev = dpaa_dev->crypto_dev;
+	cryptodev = rte_cryptodev_pmd_get_named_dev(dpaa_dev->name);
 	if (cryptodev == NULL)
 		return -ENODEV;
 
