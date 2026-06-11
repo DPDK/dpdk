@@ -79,19 +79,6 @@ typedef struct rte_device *
  * Implementation specific probe function which is responsible for linking
  * devices on that bus with applicable drivers.
  *
- * @param dev
- *	Device pointer that was returned by a previous call to find_device.
- *
- * @return
- *	0 on success.
- *	!0 on error.
- */
-typedef int (*rte_bus_plug_t)(struct rte_device *dev);
-
-/**
- * Implementation specific probe function which is responsible for linking
- * devices on that bus with applicable drivers.
- *
  * @param drv
  *	Driver that matches the device.
  * @param dev

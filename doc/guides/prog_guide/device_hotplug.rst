@@ -234,7 +234,7 @@ When ``rte_dev_probe()`` is called, the following sequence occurs:
    and the attach operation fails if the device is not found.
 
 #. **Device Probe**:
-   The bus's ``plug()`` method is called, which triggers the device driver's probe function.
+   The bus's ``probe_device()`` method is called, which triggers the device driver's probe function.
    The probe function typically allocates device-specific resources,
    maps device memory regions, initializes device hardware,
    and registers the device with the appropriate subsystem (e.g., ethdev for network devices).

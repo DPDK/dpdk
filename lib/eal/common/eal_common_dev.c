@@ -193,7 +193,7 @@ local_dev_probe(const char *devargs, struct rte_device **new_dev)
 		goto err_devarg;
 
 	if (da->bus->probe_device == NULL) {
-		EAL_LOG(ERR, "Function plug not supported by bus (%s)",
+		EAL_LOG(ERR, "Function probe_device not supported by bus (%s)",
 			da->bus->name);
 		ret = -ENOTSUP;
 		goto err_devarg;
