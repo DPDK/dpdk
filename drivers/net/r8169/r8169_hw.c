@@ -1979,6 +1979,66 @@ rtl8168_switch_to_sgmii_mode(struct rtl_hw *hw)
 	rtl8168_set_mcu_ocp_bit(hw, 0xEB16, BIT_1);
 }
 
+static u16
+rtl8125_get_fifo_nf(struct rtl_hw *hw)
+{
+	u32 magic = 0;
+	u32 mtu;
+
+	mtu = hw->mtu;
+
+	if (hw->mcfg >= CFG_METHOD_48 && hw->mcfg <= CFG_METHOD_61) {
+		if (mtu < 9500)
+			magic = 14215 + mtu;
+		else
+			return 0x5CA;
+	} else if (hw->mcfg >= CFG_METHOD_70 && hw->mcfg <= CFG_METHOD_71) {
+		if (mtu < 9500)
+			magic = 14447;
+		else
+			magic = 4947;
+
+		magic += mtu * (mtu < 9500 ? 1 : 2);
+	} else if (hw->mcfg >= CFG_METHOD_91) {
+		if (mtu < 9500)
+			magic = 17171;
+		else
+			magic = 7671;
+
+		magic += mtu * (mtu < 9500 ? 1 : 2);
+	}
+
+	return (u16)(magic >> 4);
+}
+
+static u16
+rtl8125_get_fifo_ne(struct rtl_hw *hw)
+{
+	u32 magic = 0;
+	u32 mtu;
+
+	mtu = hw->mtu;
+
+	if (hw->mcfg >= CFG_METHOD_48 && hw->mcfg <= CFG_METHOD_61) {
+		return 0x6BE;
+	} else if (hw->mcfg >= CFG_METHOD_70 && hw->mcfg <= CFG_METHOD_71) {
+		if (mtu < 9500)
+			return 0x107C;
+
+		magic = 77033;
+	} else if (hw->mcfg >= CFG_METHOD_91) {
+		if (mtu < 9500)
+			return 0x2C4A;
+
+		magic = 190910;
+	}
+
+	if (magic > mtu)
+		return (u16)((magic - mtu) >> 4);
+	else
+		return 0;
+}
+
 static void
 rtl_exit_oob(struct rtl_hw *hw)
 {
@@ -2007,12 +2067,9 @@ rtl_exit_oob(struct rtl_hw *hw)
 	rtl_wait_ll_share_fifo_ready(hw);
 
 	if (rtl_is_8125(hw)) {
-		rtl_mac_ocp_write(hw, 0xC0AA, 0x07D0);
-
-		rtl_mac_ocp_write(hw, 0xC0A6, 0x01B5);
-
+		rtl_mac_ocp_write(hw, 0xC0A6, rtl8125_get_fifo_nf(hw));
+		rtl_mac_ocp_write(hw, 0xC0AA, rtl8125_get_fifo_ne(hw));
 		rtl_mac_ocp_write(hw, 0xC01E, 0x5555);
-
 	} else {
 		data16 = rtl_mac_ocp_read(hw, 0xE8DE) | BIT_15;
 		rtl_mac_ocp_write(hw, 0xE8DE, data16);
