@@ -2592,7 +2592,6 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
 	}
 
 	eth_dev->device = &dpaa_dev->device;
-	dpaa_dev->eth_dev = eth_dev;
 
 	qman_ern_register_cb(dpaa_free_mbuf);
 
@@ -2678,7 +2677,7 @@ rte_dpaa_remove(struct rte_dpaa_device *dpaa_dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	eth_dev = dpaa_dev->eth_dev;
+	eth_dev = rte_eth_dev_allocated(dpaa_dev->device.name);
 	dpaa_eth_dev_close(eth_dev);
 	ret = rte_eth_dev_release_port(eth_dev);
 	dpaa_valid_dev--;

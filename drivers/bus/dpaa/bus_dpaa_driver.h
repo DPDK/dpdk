@@ -80,9 +80,6 @@ struct dpaa_device_id {
 
 struct rte_dpaa_device {
 	struct rte_device device;
-	union {
-		struct rte_eth_dev *eth_dev;
-	};
 	struct dpaa_device_id id;
 	struct rte_intr_handle *intr_handle;
 	enum rte_dpaa_type device_type; /**< Ethernet or crypto type device */
