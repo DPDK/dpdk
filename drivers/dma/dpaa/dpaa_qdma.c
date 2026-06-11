@@ -965,8 +965,24 @@ dpaa_qdma_start(__rte_unused struct rte_dma_dev *dev)
 }
 
 static int
-dpaa_qdma_close(__rte_unused struct rte_dma_dev *dev)
+dpaa_qdma_close(struct rte_dma_dev *dmadev)
 {
+	struct fsl_qdma_engine *fsl_qdma = dmadev->data->dev_private;
+	uint32_t i, j, regs_size;
+
+	regs_size = fsl_qdma->block_offset * fsl_qdma->num_blocks;
+	regs_size += (QDMA_CTRL_REGION_SIZE + QDMA_STATUS_REGION_SIZE);
+
+	for (i = 0; i < QDMA_BLOCKS; i++)
+		fsl_qdma_free_stq_res(&fsl_qdma->stat_queues[i]);
+
+	for (i = 0; i < QDMA_BLOCKS; i++) {
+		for (j = 0; j < QDMA_QUEUES; j++)
+			fsl_qdma_free_cmdq_res(&fsl_qdma->cmd_queues[i][j]);
+	}
+
+	munmap(fsl_qdma->ctrl_base, regs_size);
+
 	return 0;
 }
 
@@ -1420,7 +1436,6 @@ dpaa_qdma_probe(__rte_unused struct rte_dpaa_driver *dpaa_drv,
 		return -EINVAL;
 	}
 
-	dpaa_dev->dmadev = dmadev;
 	dmadev->dev_ops = &dpaa_qdma_ops;
 	dmadev->device = &dpaa_dev->device;
 	dmadev->fp_obj->dev_private = dmadev->data->dev_private;
@@ -1445,24 +1460,8 @@ dpaa_qdma_probe(__rte_unused struct rte_dpaa_driver *dpaa_drv,
 static int
 dpaa_qdma_remove(struct rte_dpaa_device *dpaa_dev)
 {
-	struct rte_dma_dev *dmadev = dpaa_dev->dmadev;
-	struct fsl_qdma_engine *fsl_qdma = dmadev->data->dev_private;
-	uint32_t i, j, regs_size;
-
-	regs_size = fsl_qdma->block_offset * fsl_qdma->num_blocks;
-	regs_size += (QDMA_CTRL_REGION_SIZE + QDMA_STATUS_REGION_SIZE);
-
-	for (i = 0; i < QDMA_BLOCKS; i++)
-		fsl_qdma_free_stq_res(&fsl_qdma->stat_queues[i]);
-
-	for (i = 0; i < QDMA_BLOCKS; i++) {
-		for (j = 0; j < QDMA_QUEUES; j++)
-			fsl_qdma_free_cmdq_res(&fsl_qdma->cmd_queues[i][j]);
-	}
-
-	munmap(fsl_qdma->ctrl_base, regs_size);
-
-	(void)rte_dma_pmd_release(dpaa_dev->device.name);
+	if (rte_dma_pmd_release(dpaa_dev->device.name))
+		DPAA_QDMA_ERR("Device cleanup failed");
 
 	return 0;
 }
