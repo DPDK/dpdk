@@ -38,6 +38,14 @@ rtl_hw_phy_config_9151a_1(struct rtl_hw *hw)
 
 	rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x80B6);
 	rtl_mdio_direct_write_phy_ocp(hw, 0xA438, 0xB6C3);
+
+	rtl_set_phy_mcu_patch_request(hw);
+
+	rtl_set_eth_phy_ocp_bit(hw, 0xA466, BIT_1);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x837C);
+	rtl_clear_eth_phy_ocp_bit(hw, 0xA438, BIT_14);
+
+	rtl_clear_phy_mcu_patch_request(hw);
 }
 
 static void
