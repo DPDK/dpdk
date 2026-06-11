@@ -1443,7 +1443,7 @@ rte_epoll_ctl(int epfd, int op, int fd,
 
 	if (!event) {
 		EAL_LOG(ERR, "rte_epoll_event can't be NULL");
-		return -1;
+		return -EINVAL;
 	}
 
 	/* using per thread epoll fd */
@@ -1460,13 +1460,21 @@ rte_epoll_ctl(int epfd, int op, int fd,
 
 	ev.events = event->epdata.event;
 	if (epoll_ctl(epfd, op, fd, &ev) < 0) {
+		int err = errno;
+
+		/* the fd is already in the set (e.g. shared across vectors):
+		 * keep the event valid and report -EEXIST, not a hard error.
+		 */
+		if (op == EPOLL_CTL_ADD && err == EEXIST)
+			return -EEXIST;
+
 		EAL_LOG(ERR, "Error op %d fd %d epoll_ctl, %s",
-			op, fd, strerror(errno));
+			op, fd, strerror(err));
 		if (op == EPOLL_CTL_ADD)
 			/* rollback status when CTL_ADD fail */
 			rte_atomic_store_explicit(&event->status, RTE_EPOLL_INVALID,
 					rte_memory_order_relaxed);
-		return -1;
+		return -err;
 	}
 
 	if (op == EPOLL_CTL_DEL && rte_atomic_load_explicit(&event->status,
@@ -1518,8 +1526,6 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 			EAL_LOG(DEBUG,
 				"efd %d associated with vec %d added on epfd %d",
 				rev->fd, vec, epfd);
-		else
-			rc = -EPERM;
 		break;
 	case RTE_INTR_EVENT_DEL:
 		epfd_op = EPOLL_CTL_DEL;
@@ -1531,8 +1537,6 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 		}
 
 		rc = rte_epoll_ctl(rev->epfd, epfd_op, rev->fd, rev);
-		if (rc)
-			rc = -EPERM;
 		break;
 	default:
 		EAL_LOG(ERR, "event op type mismatch");
