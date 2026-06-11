@@ -104,7 +104,8 @@ rte_epoll_wait_interruptible(int epfd, struct rte_epoll_event *events,
  *   Note: The caller must take care the object deletion after CTL_DEL.
  * @return
  *   - On success, zero.
- *   - On failure, a negative value.
+ *   - On failure, a negative errno value, e.g. -EEXIST if the fd is already
+ *     registered on the epoll instance (a fd shared between vectors).
  */
 int
 rte_epoll_ctl(int epfd, int op, int fd,
