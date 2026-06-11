@@ -347,6 +347,7 @@ enum RTL_register_content {
 	RxCfg_pause_slot_en = (1 << 11),
 	RxCfg_9356SEL       = (1 << 6),
 	EnableRxDescV4_0    = (1 << 1), /* Not in rcr */
+	RX_CRC_DROP_EN      = (1 << 0),
 
 	/* TX config bits */
 	TxInterFrameGapShift = 24,

@@ -912,6 +912,29 @@ rtl8125_set_rx_desc_type(struct rtl_hw *hw)
 }
 
 static void
+rtl8125_set_rx_crc_drop(struct rtl_hw *hw, bool enable)
+{
+	switch (hw->mcfg) {
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_58:
+	case CFG_METHOD_59:
+	case CFG_METHOD_60:
+	case CFG_METHOD_61:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
+	case CFG_METHOD_91:
+		if (enable)
+			RTL_W8(hw, 0xD8, RTL_R8(hw, 0xD8) | RX_CRC_DROP_EN);
+		else
+			RTL_W8(hw, 0xD8, RTL_R8(hw, 0xD8) & ~RX_CRC_DROP_EN);
+		break;
+	}
+}
+
+static void
 rtl8125_hw_config(struct rtl_hw *hw)
 {
 	u32 mac_ocp_data;
@@ -966,6 +989,8 @@ rtl8125_hw_config(struct rtl_hw *hw)
 	}
 
 	rtl8125_set_rx_desc_type(hw);
+
+	rtl8125_set_rx_crc_drop(hw, false);
 
 	if (hw->mcfg == CFG_METHOD_58 || hw->mcfg == CFG_METHOD_91) {
 		rtl_clear_mac_ocp_bit(hw, 0xE00C, BIT_12);
