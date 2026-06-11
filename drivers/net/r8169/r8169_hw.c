@@ -467,6 +467,9 @@ rtl_csi_other_fun_read(struct rtl_hw *hw, u8 multi_fun_sel_bit, u32 addr)
 	int i;
 	u32 value = 0xffffffff;
 
+	if (hw->mcfg == CFG_METHOD_60)
+		goto exit;
+
 	cmd = CSIAR_Read | CSIAR_ByteEn << CSIAR_ByteEn_shift |
 	      (addr & CSIAR_Addr_Mask);
 
@@ -505,6 +508,9 @@ rtl_csi_other_fun_write(struct rtl_hw *hw, u8 multi_fun_sel_bit, u32 addr,
 {
 	u32 cmd;
 	int i;
+
+	if (hw->mcfg == CFG_METHOD_60)
+		return;
 
 	RTL_W32(hw, CSIDR, value);
 	cmd = CSIAR_Write | CSIAR_ByteEn << CSIAR_ByteEn_shift |
