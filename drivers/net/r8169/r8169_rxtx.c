@@ -672,7 +672,18 @@ rtl_rx_init(struct rte_eth_dev *dev)
 
 	rtl_enable_cfg9346_write(hw);
 
-	if (!rtl_is_8125(hw)) {
+	if (rtl_is_8125(hw)) {
+		/* RSS_control_0 */
+		if (hw->EnableRss) {
+			rtl_init_rss(hw, nb_rx_queues);
+			rtl8125_config_rss(hw, nb_rx_queues);
+		} else {
+			RTL_W32(hw, RSS_CTRL_8125, 0x00);
+		}
+
+		/* VMQ_control */
+		rtl8125_set_rx_q_num(hw, nb_rx_queues);
+	} else {
 		/* RX ftr mcu enable */
 		csi_tmp = rtl_eri_read(hw, 0xDC, 1, ERIAR_ExGMAC);
 		csi_tmp &= ~BIT_0;
@@ -699,17 +710,6 @@ rtl_rx_init(struct rte_eth_dev *dev)
 		rtl_clear_rdu = rtl8125_clear_rdu;
 	else
 		rtl_clear_rdu = rtl8168_clear_rdu;
-
-	/* RSS_control_0 */
-	if (hw->EnableRss) {
-		rtl_init_rss(hw, nb_rx_queues);
-		rtl8125_config_rss(hw, nb_rx_queues);
-	} else {
-		RTL_W32(hw, RSS_CTRL_8125, 0x00);
-	}
-
-	/* VMQ_control */
-	rtl8125_set_rx_q_num(hw, nb_rx_queues);
 
 	RTL_W8(hw, ChipCmd, RTL_R8(hw, ChipCmd) | CmdRxEnb);
 
