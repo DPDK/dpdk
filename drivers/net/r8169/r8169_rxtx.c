@@ -1621,8 +1621,7 @@ rtl_xmit_pkt(struct rtl_hw *hw, struct rtl_tx_queue *txq,
 
 		len = m_seg->data_len;
 
-		if (len == 0)
-			break;
+		RTE_ASSERT(len > 0);
 
 		txd = &txq->hw_ring[tail];
 
@@ -1971,10 +1970,7 @@ rtl_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		if (txq->tx_free < tx_pkt->nb_segs)
 			break;
 
-		/* Check mbuf is valid */
-		if (tx_pkt->nb_segs == 0 || tx_pkt->pkt_len == 0 ||
-		    (tx_pkt->nb_segs > 1 && tx_pkt->next == NULL))
-			break;
+		RTE_ASSERT(tx_pkt->pkt_len > 0);
 
 		rtl_xmit_pkt(hw, txq, tx_pkt);
 	}
