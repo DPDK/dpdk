@@ -1108,6 +1108,7 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	void *ctx;
 	unsigned int i, nb_rx = 0, j;
 	uint32_t ol_flags;
+	uint32_t delay_ms;
 	bool outer_ipv4;
 	int ret = 0;
 
@@ -1215,7 +1216,9 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 		goto out;
 	}
 
-	rte_delay_ms(1);
+	/* Multi-segment fragments requires more delay for burst Tx and reassembly in Rx path. */
+	delay_ms = sg_mode ? 10 : 1;
+	rte_delay_ms(delay_ms);
 
 	/* Retry few times before giving up */
 	nb_rx = 0;
