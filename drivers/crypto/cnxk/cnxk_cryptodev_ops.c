@@ -52,6 +52,9 @@ cnxk_cpt_get_mlen(void)
 			       (RTE_ALIGN_CEIL(ROC_MAX_SG_IN_OUT_CNT, 4) >> 2) * ROC_SG_ENTRY_SIZE),
 			      8);
 
+	/* Space for discarding AAD bytes from output stream in GCM OOP */
+	len += ROC_SE_MAX_AAD_SIZE;
+
 	return len;
 }
 

@@ -403,8 +403,28 @@ sg_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t 
 			if (unlikely(req_flags & ROC_SE_SINGLE_BUF_INPLACE)) {
 				i = fill_sg_comp_from_buf_min(scatter_comp, i, params->bufs, &size);
 			} else {
-				i = fill_sg_comp_from_iov(scatter_comp, i, params->dst_iov, 0,
-							  &size, aad_buf, aad_offset);
+				uint32_t dst_offset = 0;
+
+				if (passthrough_len) {
+					if (unlikely(passthrough_len > ROC_SE_MAX_AAD_SIZE)) {
+						plt_dp_err(
+							"Passthrough length %u exceeds reserved space %u",
+							passthrough_len, ROC_SE_MAX_AAD_SIZE);
+						return -1;
+					}
+					uint64_t meta_passthrough =
+						(uint64_t)params->meta_buf.vaddr +
+						params->meta_buf.size - ROC_SE_MAX_AAD_SIZE;
+					i = fill_sg_comp(scatter_comp, i, meta_passthrough,
+							 passthrough_len);
+					size -= passthrough_len;
+					dst_offset = passthrough_len;
+					aad_offset = 0;
+				}
+				if (size)
+					i = fill_sg_comp_from_iov(scatter_comp, i, params->dst_iov,
+								  dst_offset, &size, aad_buf,
+								  aad_offset);
 			}
 			if (unlikely(size)) {
 				plt_dp_err("Insufficient buffer space,"
@@ -426,8 +446,28 @@ sg_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t 
 			if (unlikely(req_flags & ROC_SE_SINGLE_BUF_INPLACE)) {
 				i = fill_sg_comp_from_buf_min(scatter_comp, i, params->bufs, &size);
 			} else {
-				i = fill_sg_comp_from_iov(scatter_comp, i, params->dst_iov, 0,
-							  &size, aad_buf, aad_offset);
+				uint32_t dst_offset = 0;
+
+				if (passthrough_len) {
+					if (unlikely(passthrough_len > ROC_SE_MAX_AAD_SIZE)) {
+						plt_dp_err(
+							"Passthrough length %u exceeds reserved space %u",
+							passthrough_len, ROC_SE_MAX_AAD_SIZE);
+						return -1;
+					}
+					uint64_t meta_passthrough =
+						(uint64_t)params->meta_buf.vaddr +
+						params->meta_buf.size - ROC_SE_MAX_AAD_SIZE;
+					i = fill_sg_comp(scatter_comp, i, meta_passthrough,
+							 passthrough_len);
+					size -= passthrough_len;
+					dst_offset = passthrough_len;
+					aad_offset = 0;
+				}
+				if (size)
+					i = fill_sg_comp_from_iov(scatter_comp, i, params->dst_iov,
+								  dst_offset, &size, aad_buf,
+								  aad_offset);
 			}
 
 			if (unlikely(size)) {
@@ -601,8 +641,28 @@ sg2_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t
 				i = fill_sg2_comp_from_buf_min(scatter_comp, i, params->bufs,
 							       &size);
 			} else {
-				i = fill_sg2_comp_from_iov(scatter_comp, i, params->dst_iov, 0,
-							   &size, aad_buf, aad_offset);
+				uint32_t dst_offset = 0;
+
+				if (passthrough_len) {
+					if (unlikely(passthrough_len > ROC_SE_MAX_AAD_SIZE)) {
+						plt_dp_err(
+							"Passthrough length %u exceeds reserved space %u",
+							passthrough_len, ROC_SE_MAX_AAD_SIZE);
+						return -1;
+					}
+					uint64_t meta_passthrough =
+						(uint64_t)params->meta_buf.vaddr +
+						params->meta_buf.size - ROC_SE_MAX_AAD_SIZE;
+					i = fill_sg2_comp(scatter_comp, i, meta_passthrough,
+							  passthrough_len);
+					size -= passthrough_len;
+					dst_offset = passthrough_len;
+					aad_offset = 0;
+				}
+				if (size)
+					i = fill_sg2_comp_from_iov(scatter_comp, i, params->dst_iov,
+								   dst_offset, &size, aad_buf,
+								   aad_offset);
 			}
 			if (unlikely(size)) {
 				plt_dp_err("Insufficient buffer space,"
@@ -625,8 +685,28 @@ sg2_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t
 				i = fill_sg2_comp_from_buf_min(scatter_comp, i, params->bufs,
 							       &size);
 			} else {
-				i = fill_sg2_comp_from_iov(scatter_comp, i, params->dst_iov, 0,
-							   &size, aad_buf, aad_offset);
+				uint32_t dst_offset = 0;
+
+				if (passthrough_len) {
+					if (unlikely(passthrough_len > ROC_SE_MAX_AAD_SIZE)) {
+						plt_dp_err(
+							"Passthrough length %u exceeds reserved space %u",
+							passthrough_len, ROC_SE_MAX_AAD_SIZE);
+						return -1;
+					}
+					uint64_t meta_passthrough =
+						(uint64_t)params->meta_buf.vaddr +
+						params->meta_buf.size - ROC_SE_MAX_AAD_SIZE;
+					i = fill_sg2_comp(scatter_comp, i, meta_passthrough,
+							  passthrough_len);
+					size -= passthrough_len;
+					dst_offset = passthrough_len;
+					aad_offset = 0;
+				}
+				if (size)
+					i = fill_sg2_comp_from_iov(scatter_comp, i, params->dst_iov,
+								   dst_offset, &size, aad_buf,
+								   aad_offset);
 			}
 
 			if (unlikely(size)) {
