@@ -14,6 +14,7 @@
 #define CRC32_VEC_LEN2     348
 #define CRC16_VEC_LEN1     12
 #define CRC16_VEC_LEN2     2
+#define CRC16_VEC_LEN3     348
 
 /* CRC test vector */
 static const uint8_t crc_vec[CRC_VEC_LEN] = {
@@ -46,6 +47,7 @@ static const uint32_t crc32_vec2_res = 0xefaae02f;
 static const uint32_t crc16_vec_res = 0x6bec;
 static const uint32_t crc16_vec1_res = 0x8cdd;
 static const uint32_t crc16_vec2_res = 0xec5b;
+static const uint32_t crc16_vec3_res = 0x6271;
 
 static int
 crc_all_algs(const char *desc, enum rte_net_crc_type type,
@@ -137,6 +139,12 @@ crc_autotest(void)
 	ret |= crc_all_algs("16-bit CCITT CRC:  Test 6", RTE_NET_CRC16_CCITT, crc16_vec2,
 		CRC16_VEC_LEN2, crc16_vec2_res);
 
+	/* 16-bit CCITT CRC:  Test 7 */
+	memset(test_data, 0, CRC32_VEC_LEN1);
+	for (i = 0; i < CRC16_VEC_LEN3; i += 12)
+		rte_memcpy(&test_data[i], crc16_vec1, 12);
+	ret |= crc_all_algs("16-bit CCITT CRC: Test 7", RTE_NET_CRC16_CCITT, test_data,
+		CRC16_VEC_LEN3, crc16_vec3_res);
 	return ret;
 }
 
