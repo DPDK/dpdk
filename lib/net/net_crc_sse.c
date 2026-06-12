@@ -182,39 +182,24 @@ crc32_eth_calc_pclmulqdq(
 		goto single_fold_loop;
 	}
 
-	if (unlikely(data_len < 32)) {
-		if (unlikely(data_len == 16)) {
-			/* 16 bytes */
-			fold = _mm_loadu_si128((const __m128i *)data);
-			fold = _mm_xor_si128(fold, temp);
-			goto reduction_128_64;
-		}
+	if (unlikely(data_len < 16)) {
+		/* 0 to 15 bytes */
+		alignas(16) uint8_t buffer[16];
 
-		if (unlikely(data_len < 16)) {
-			/* 0 to 15 bytes */
-			alignas(16) uint8_t buffer[16];
+		memset(buffer, 0, sizeof(buffer));
+		memcpy(buffer, data, data_len);
 
-			memset(buffer, 0, sizeof(buffer));
-			memcpy(buffer, data, data_len);
-
-			fold = _mm_load_si128((const __m128i *)buffer);
-			fold = _mm_xor_si128(fold, temp);
-			if (unlikely(data_len < 4)) {
-				fold = xmm_shift_left(fold, 8 - data_len);
-				goto barret_reduction;
-			}
-			fold = xmm_shift_left(fold, 16 - data_len);
-			goto reduction_128_64;
-		}
-		/* 17 to 31 bytes */
-		fold = _mm_loadu_si128((const __m128i *)data);
+		fold = _mm_load_si128((const __m128i *)buffer);
 		fold = _mm_xor_si128(fold, temp);
-		n = 16;
-		k = params->rk3_rk4;
-		goto partial_bytes;
+		if (unlikely(data_len < 4)) {
+			fold = xmm_shift_left(fold, 8 - data_len);
+			goto barret_reduction;
+		}
+		fold = xmm_shift_left(fold, 16 - data_len);
+		goto reduction_128_64;
 	}
 
-	/** At least 32 bytes in the buffer */
+	/** At least 16 bytes in the buffer */
 	/** Apply CRC initial value */
 	fold = _mm_loadu_si128((const __m128i *)data);
 	fold = _mm_xor_si128(fold, temp);
@@ -229,7 +214,7 @@ single_fold_loop:
 		fold = crcr32_folding_round(temp, k, fold);
 	}
 
-partial_bytes:
+	/** Partial bytes - process last <16 bytes */
 	if (likely(n < data_len)) {
 
 		__m128i last16, a, b;
@@ -244,12 +229,8 @@ partial_bytes:
 		b = _mm_shuffle_epi8(fold, temp);
 		b = _mm_blendv_epi8(b, last16, temp);
 
-		/* k = rk1 & rk2 */
-		temp = _mm_clmulepi64_si128(a, k, 0x01);
-		fold = _mm_clmulepi64_si128(a, k, 0x10);
-
-		fold = _mm_xor_si128(fold, temp);
-		fold = _mm_xor_si128(fold, b);
+		/* k = rk3 & rk4 */
+		fold = crcr32_folding_round(b, k, a);
 	}
 
 	/** Reduction 128 -> 32 Assumes: fold holds 128bit folded data */
