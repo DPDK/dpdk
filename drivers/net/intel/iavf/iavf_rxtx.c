@@ -1716,6 +1716,14 @@ iavf_recv_scattered_pkts_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
 				rxm->data_len = (uint16_t)(rx_packet_len -
 							RTE_ETHER_CRC_LEN);
 			}
+		} else if (unlikely(rx_packet_len == 0)) {
+			/*
+			 * NIC split CRC bytes into a trailing segment which is
+			 * now empty after hardware CRC stripping. Free it.
+			 */
+			rte_pktmbuf_free_seg(rxm);
+			first_seg->nb_segs--;
+			last_seg->next = NULL;
 		}
 
 		first_seg->port = rxq->port_id;
@@ -1884,6 +1892,14 @@ iavf_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			} else
 				rxm->data_len = (uint16_t)(rx_packet_len -
 							RTE_ETHER_CRC_LEN);
+		} else if (unlikely(rx_packet_len == 0)) {
+			/*
+			 * NIC split CRC bytes into a trailing segment which is
+			 * now empty after hardware CRC stripping. Free it.
+			 */
+			rte_pktmbuf_free_seg(rxm);
+			first_seg->nb_segs--;
+			last_seg->next = NULL;
 		}
 
 		first_seg->port = rxq->port_id;
