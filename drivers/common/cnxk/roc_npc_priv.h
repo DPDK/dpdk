@@ -554,4 +554,15 @@ int npc_aging_ctrl_thread_create(struct roc_npc *roc_npc, const struct roc_npc_a
 				 struct roc_npc_flow *flow);
 void npc_aging_ctrl_thread_destroy(struct roc_npc *roc_npc);
 int npc_rss_free_grp_get(struct npc *npc, uint32_t *pos);
+
+#define SKIP_SIZE_PKIND_MEMZONE "roc_skip_size_pkind_cfg"
+
+struct skip_size_pkind_cfg {
+	uint8_t count;
+	struct {
+		uint8_t skip_size;
+		uint8_t pkind;
+	} entries[NPC_SKIP_SIZE_PKIND_MAX];
+};
+
 #endif /* _ROC_NPC_PRIV_H_ */

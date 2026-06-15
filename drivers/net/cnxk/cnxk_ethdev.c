@@ -1639,10 +1639,9 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		goto free_nix_lf;
 	}
 
-	rc = roc_nix_switch_hdr_set(nix, dev->npc.switch_header_type,
-				    dev->npc.pre_l2_size_offset,
+	rc = roc_nix_switch_hdr_set(nix, dev->npc.switch_header_type, dev->npc.pre_l2_size_offset,
 				    dev->npc.pre_l2_size_offset_mask,
-				    dev->npc.pre_l2_size_shift_dir);
+				    dev->npc.pre_l2_size_shift_dir, dev->npc.skip_size);
 	if (rc) {
 		plt_err("Failed to enable switch type nix_lf rc=%d", rc);
 		goto free_nix_lf;
@@ -2365,7 +2364,7 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 		return 0;
 
 	/* Disable switch hdr pkind */
-	roc_nix_switch_hdr_set(&dev->nix, 0, 0, 0, 0);
+	roc_nix_switch_hdr_set(&dev->nix, 0, 0, 0, 0, 0);
 
 	/* Clear the flag since we are closing down */
 	dev->configured = 0;

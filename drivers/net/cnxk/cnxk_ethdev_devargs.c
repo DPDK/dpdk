@@ -239,6 +239,25 @@ parse_switch_header_type(const char *key, const char *value, void *extra_args)
 	if (strcmp(value, "pre_l2") == 0)
 		*(uint16_t *)extra_args = ROC_PRIV_FLAGS_PRE_L2;
 
+	if (strcmp(value, "skip_size") == 0)
+		*(uint16_t *)extra_args = ROC_PRIV_FLAGS_SKIP_SIZE;
+
+	return 0;
+}
+
+static int
+parse_skip_size_info(const char *key, const char *value, void *extra_args)
+{
+	RTE_SET_USED(key);
+	uint32_t val;
+
+	errno = 0;
+	val = strtoul(value, NULL, 0);
+	if (errno || val > 255)
+		return -EINVAL;
+
+	*(uint16_t *)extra_args = val;
+
 	return 0;
 }
 
@@ -303,6 +322,7 @@ parse_val_u16(const char *key, const char *value, void *extra_args)
 #define CNXK_FORCE_TAIL_DROP	  "force_tail_drop"
 #define CNXK_DIS_XQE_DROP	  "disable_xqe_drop"
 #define CNXK_RXC_STEP		  "rxc_step"
+#define CNXK_SKIP_SIZE_INFO	  "skip_size_info"
 
 int
 cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
@@ -317,6 +337,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint16_t custom_meta_aura_dis = 0;
 	uint16_t flow_prealloc_size = 1;
 	uint16_t switch_header_type = 0;
+	uint16_t skip_size_info = 0;
 	uint16_t flow_max_priority = 3;
 	uint16_t outb_nb_crypto_qs = 1;
 	uint32_t ipsec_in_min_spi = 0;
@@ -392,6 +413,8 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	rte_kvargs_process(kvlist, CNXK_FORCE_TAIL_DROP, &parse_flag, &force_tail_drop);
 	rte_kvargs_process(kvlist, CNXK_DIS_XQE_DROP, &parse_flag, &dis_xqe_drop);
 	rte_kvargs_process(kvlist, CNXK_RXC_STEP, &parse_rxc_step, &rxc_step);
+	rte_kvargs_process(kvlist, CNXK_SKIP_SIZE_INFO, &parse_skip_size_info,
+			   &skip_size_info);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -424,6 +447,7 @@ null_devargs:
 		dev->npc.flow_max_priority = flow_max_priority;
 
 	dev->npc.switch_header_type = switch_header_type;
+	dev->npc.skip_size = skip_size_info;
 	dev->npc.sdp_channel = sdp_chan.channel;
 	dev->npc.sdp_channel_mask = sdp_chan.mask;
 	dev->npc.is_sdp_mask_set = sdp_chan.is_sdp_mask_set;
@@ -448,7 +472,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_cnxk,
 			      CNXK_MAX_SQB_COUNT "=<8-512>"
 			      CNXK_FLOW_PREALLOC_SIZE "=<1-32>"
 			      CNXK_FLOW_MAX_PRIORITY "=<1-32>"
-			      CNXK_SWITCH_HEADER_TYPE "=<higig2|dsa|chlen90b>"
+			      CNXK_SWITCH_HEADER_TYPE "=<higig2|dsa|chlen90b|skip_size>"
 			      CNXK_RSS_TAG_AS_XOR "=1"
 			      CNXK_IPSEC_IN_MAX_SPI "=<1-65535>"
 			      CNXK_OUTB_NB_DESC "=<1-65535>"
@@ -463,4 +487,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_cnxk,
 			      CNXK_CUSTOM_META_AURA_DIS "=1"
 			      CNXK_FORCE_TAIL_DROP "=1"
 			      CNXK_DIS_XQE_DROP "=1"
-			      CNXK_RXC_STEP "=<0-1048575>");
+			      CNXK_RXC_STEP "=<0-1048575>"
+			      CNXK_SKIP_SIZE_INFO "=<0x0-0xff>");

@@ -553,7 +553,7 @@ nix_lf_setup(struct cnxk_eswitch_dev *eswitch_dev)
 		goto free_cqs;
 	}
 
-	rc = roc_nix_switch_hdr_set(nix, 0, 0, 0, 0);
+	rc = roc_nix_switch_hdr_set(nix, 0, 0, 0, 0, 0);
 	if (rc) {
 		plt_err("switch hdr set failed = %s(%d)", roc_error_msg_get(rc), rc);
 		goto free_cqs;

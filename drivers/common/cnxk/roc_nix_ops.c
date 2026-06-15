@@ -501,17 +501,49 @@ roc_nix_lso_fmt_get(struct roc_nix *roc_nix,
 	return 0;
 }
 
+static int
+skip_size_pkind_get(uint8_t skip_size, uint8_t *pkind)
+{
+	struct skip_size_pkind_cfg *cfg;
+	const struct plt_memzone *mz;
+	int i;
+
+	mz = plt_memzone_lookup(SKIP_SIZE_PKIND_MEMZONE);
+	if (!mz)
+		return -ENOMEM;
+	cfg = mz->addr;
+
+	for (i = 0; i < cfg->count; i++) {
+		if (cfg->entries[i].skip_size == skip_size) {
+			*pkind = cfg->entries[i].pkind;
+			return 0;
+		}
+	}
+
+	if (cfg->count >= NPC_SKIP_SIZE_PKIND_MAX) {
+		plt_err("skip_size PKIND limit (%d) reached", NPC_SKIP_SIZE_PKIND_MAX);
+		return -ENOSPC;
+	}
+
+	i = cfg->count;
+	cfg->entries[i].skip_size = skip_size;
+	cfg->entries[i].pkind = NPC_RX_SKIP_SIZE_PKIND + i;
+	*pkind = cfg->entries[i].pkind;
+	cfg->count++;
+	return 0;
+}
+
 int
 roc_nix_switch_hdr_set(struct roc_nix *roc_nix, uint64_t switch_header_type,
-		       uint8_t pre_l2_size_offset,
-		       uint8_t pre_l2_size_offset_mask,
-		       uint8_t pre_l2_size_shift_dir)
+		       uint8_t pre_l2_size_offset, uint8_t pre_l2_size_offset_mask,
+		       uint8_t pre_l2_size_shift_dir, uint8_t skip_size)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct dev *dev = &nix->dev;
 	struct mbox *mbox = mbox_get(dev->mbox);
 	struct npc_set_pkind *req;
 	struct msg_resp *rsp;
+	uint8_t pkind = 0;
 	int rc = -ENOSPC;
 
 	if (switch_header_type == 0)
@@ -524,6 +556,7 @@ roc_nix_switch_hdr_set(struct roc_nix *roc_nix, uint64_t switch_header_type,
 	    switch_header_type != ROC_PRIV_FLAGS_EXDSA &&
 	    switch_header_type != ROC_PRIV_FLAGS_VLAN_EXDSA &&
 	    switch_header_type != ROC_PRIV_FLAGS_PRE_L2 &&
+	    switch_header_type != ROC_PRIV_FLAGS_SKIP_SIZE &&
 	    switch_header_type != ROC_PRIV_FLAGS_CUSTOM) {
 		plt_err("switch header type is not supported");
 		rc = NIX_ERR_PARAM;
@@ -564,6 +597,13 @@ roc_nix_switch_hdr_set(struct roc_nix *roc_nix, uint64_t switch_header_type,
 		req->var_len_off = pre_l2_size_offset;
 		req->var_len_off_mask = pre_l2_size_offset_mask;
 		req->shift_dir = pre_l2_size_shift_dir;
+	} else if (switch_header_type == ROC_PRIV_FLAGS_SKIP_SIZE) {
+		rc = skip_size_pkind_get(skip_size, &pkind);
+		if (rc)
+			goto exit;
+		req->mode = ROC_PRIV_FLAGS_CUSTOM;
+		req->pkind = pkind;
+		req->skip_size = skip_size;
 	}
 
 	req->dir = PKIND_RX;

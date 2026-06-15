@@ -183,8 +183,8 @@ Runtime Config Options
 
    With the above configuration, higig2 will be enabled on that port and the
    traffic on this port should be higig2 traffic only. Supported switch header
-   types are "chlen24b", "chlen90b", "dsa", "exdsa", "higig2", "vlan_exdsa" and
-   "pre_l2".
+   types are "chlen24b", "chlen90b", "dsa", "exdsa", "higig2", "vlan_exdsa",
+   "pre_l2" and "skip_size".
 
 - ``Flow pre_l2 info`` (default ``0x0/0x0/0x0``)
 
@@ -211,6 +211,21 @@ Runtime Config Options
    position of the rightmost set bit. If the mask is 0x7c and shift direction
    is 0 (i.e., left shift) then the shift count will be 1, that is, (8 - n),
    where n is the absolute position of leftmost set bit.
+
+- ``Skip size info`` (default ``0x0``)
+
+   When the switch header type is set to "skip_size",
+   the number of bytes to skip before the Ethernet header
+   can be configured using ``skip_size_info`` devargs parameter.
+   The value is in hexadecimal format and the valid range is 0 to 0xff.
+   This configures the PKIND so that the NPC parser skips the specified number of bytes.
+
+   For example::
+
+      -a 0002:02:00.0,switch_header="skip_size",skip_size_info=0x2
+
+   With the above configuration, 2 bytes will be skipped before the Ethernet header
+   when parsing the incoming packets.
 
 - ``RSS tag as XOR`` (default ``0``)
 

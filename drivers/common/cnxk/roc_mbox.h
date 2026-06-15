@@ -462,8 +462,11 @@ struct ready_msg_rsp {
 };
 
 enum npc_pkind_type {
+	NPC_RX_SKIP_SIZE_PKIND = 46ULL,
+	NPC_RX_CPT_SKIP_SIZE_PKIND = 50ULL,
+	NPC_RX_CPT_HDR_PTP_PKIND = 54ULL,
 	NPC_RX_CUSTOM_PRE_L2_PKIND = 55ULL,
-	NPC_RX_VLAN_EXDSA_PKIND = 56ULL,
+	NPC_RX_VLAN_EXDSA_PKIND,
 	NPC_RX_CHLEN24B_PKIND,
 	NPC_RX_CPT_HDR_PKIND,
 	NPC_RX_CHLEN90B_PKIND,
@@ -473,6 +476,8 @@ enum npc_pkind_type {
 	NPC_RX_EDSA_PKIND,
 	NPC_TX_DEF_PKIND,
 };
+
+#define NPC_SKIP_SIZE_PKIND_MAX 4
 
 /* Struct to set pkind */
 struct npc_set_pkind {
@@ -484,6 +489,7 @@ struct npc_set_pkind {
 #define ROC_PRIV_FLAGS_EXDSA	  BIT_ULL(4)
 #define ROC_PRIV_FLAGS_VLAN_EXDSA BIT_ULL(5)
 #define ROC_PRIV_FLAGS_PRE_L2	  BIT_ULL(6)
+#define ROC_PRIV_FLAGS_SKIP_SIZE  BIT_ULL(7)
 #define ROC_PRIV_FLAGS_CUSTOM	  BIT_ULL(63)
 	uint64_t __io mode;
 #define PKIND_TX BIT_ULL(0)
@@ -498,6 +504,10 @@ struct npc_set_pkind {
 	uint8_t __io shift_dir;
 	/* Shift direction to get length of the
 	 * header at var_len_off
+	 */
+	uint8_t __io skip_size;
+	/* Number of bytes to skip before the Ethernet header.
+	 * Valid only in case custom flag.
 	 */
 };
 
