@@ -745,6 +745,19 @@ Runtime Config Options for inline device
    With the above configuration, inline inbound IPsec post-processing
    should be done by the application.
 
+- ``Enable CPT Completion Queue for inline IPsec`` (default ``1`` for CN20K, ``0`` otherwise)
+
+   CPT Completion Queue for inline IPsec event delivery can be enabled or disabled
+   by ``cpt_cq_enable`` devargs parameter.
+   This option is supported on OCTEON CN20K SoC family.
+
+   For example::
+
+      -a 0002:1d:00.0,cpt_cq_enable=1
+
+   With the above configuration, driver would enable CPT completion queue
+   for inline IPsec event delivery instead of using the err-ring poll thread.
+
 Port Representors
 -----------------
 

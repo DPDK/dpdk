@@ -742,7 +742,7 @@ nix_inl_parse_devargs(struct rte_devargs *devargs,
 	uint32_t meta_buf_sz = 0;
 	uint8_t rx_inj_ena = 0;
 	uint8_t selftest = 0;
-	uint8_t cpt_cq_enable = 0;
+	uint8_t cpt_cq_enable = roc_feature_nix_has_cpt_cq_support() ? 1 : 0;
 
 	memset(&cpt_channel, 0, sizeof(cpt_channel));
 
