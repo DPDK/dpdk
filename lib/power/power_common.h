@@ -25,6 +25,14 @@ extern int rte_power_logtype;
 
 #define POWER_CONVERT_TO_DECIMAL 10
 
+#define RTE_POWER_VALID_LCOREID_OR_ERR_RET(lcore_id, retval) do {   \
+	if (rte_eal_lcore_role(lcore_id) != ROLE_RTE &&             \
+	    rte_eal_lcore_role(lcore_id) != ROLE_SERVICE) {         \
+		POWER_LOG(ERR, "lcore id %u is invalid", lcore_id); \
+		return retval;                                      \
+	}                                                           \
+} while (0)
+
 /* check if scaling driver matches one we want */
 __rte_internal
 int cpufreq_check_scaling_driver(const char *driver);

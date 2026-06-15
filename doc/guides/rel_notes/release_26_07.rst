@@ -224,6 +224,10 @@ New Features
 
   On ARM, both IPsec MB and OpenSSL are required for full functionality.
 
+* **Updated lcore validation in power library.**
+
+  Lcore ID validation was moved into the cpufreq framework before driver dispatch.
+
 * **Extended BPF API.**
 
   * Added an extensible BPF loading API comprising the function

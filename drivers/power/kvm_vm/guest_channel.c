@@ -61,11 +61,6 @@ guest_channel_host_connect(const char *path, unsigned int lcore_id)
 	char fd_path[PATH_MAX];
 	int fd = -1;
 
-	if (lcore_id >= RTE_MAX_LCORE) {
-		GUEST_CHANNEL_LOG(ERR, "Channel(%u) is out of range 0...%d",
-				lcore_id, RTE_MAX_LCORE-1);
-		return -1;
-	}
 	/* check if path is already open */
 	if (global_fds[lcore_id] != -1) {
 		GUEST_CHANNEL_LOG(ERR, "Channel(%u) is already open with fd %d",
@@ -127,12 +122,6 @@ guest_channel_send_msg(struct rte_power_channel_packet *pkt,
 	int ret, buffer_len = sizeof(*pkt);
 	void *buffer = pkt;
 
-	if (lcore_id >= RTE_MAX_LCORE) {
-		GUEST_CHANNEL_LOG(ERR, "Channel(%u) is out of range 0...%d",
-				lcore_id, RTE_MAX_LCORE-1);
-		return -1;
-	}
-
 	if (global_fds[lcore_id] < 0) {
 		GUEST_CHANNEL_LOG(ERR, "Channel is not connected");
 		return -1;
@@ -168,12 +157,6 @@ int power_guest_channel_read_msg(void *pkt,
 
 	if (pkt_len == 0 || pkt == NULL)
 		return -1;
-
-	if (lcore_id >= RTE_MAX_LCORE) {
-		GUEST_CHANNEL_LOG(ERR, "Channel(%u) is out of range 0...%d",
-				lcore_id, RTE_MAX_LCORE-1);
-		return -1;
-	}
 
 	if (global_fds[lcore_id] < 0) {
 		GUEST_CHANNEL_LOG(ERR, "Channel is not connected");
@@ -225,11 +208,6 @@ int rte_power_guest_channel_receive_msg(void *pkt,
 void
 guest_channel_host_disconnect(unsigned int lcore_id)
 {
-	if (lcore_id >= RTE_MAX_LCORE) {
-		GUEST_CHANNEL_LOG(ERR, "Channel(%u) is out of range 0...%d",
-				lcore_id, RTE_MAX_LCORE-1);
-		return;
-	}
 	if (global_fds[lcore_id] < 0)
 		return;
 	close(global_fds[lcore_id]);
