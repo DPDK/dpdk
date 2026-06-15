@@ -665,14 +665,14 @@ cn9k_nix_prepare_mseg(struct cn9k_eth_txq *txq, struct rte_mbuf *m, struct rte_m
 #else
 	RTE_SET_USED(cookie);
 #endif
-#ifdef RTE_ENABLE_ASSERT
-	m->next = NULL;
-	m->nb_segs = 1;
-#endif
-	m = m_next;
-	if (!m)
+	if (likely(!m_next))
 		goto done;
 
+	if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F)) {
+		m->next = NULL;
+		m->nb_segs = 1;
+	}
+	m = m_next;
 	/* Fill mbuf segments */
 	do {
 		m_next = m->next;
@@ -704,12 +704,13 @@ cn9k_nix_prepare_mseg(struct cn9k_eth_txq *txq, struct rte_mbuf *m, struct rte_m
 			sg_u = sg->u;
 			slist++;
 		}
-#ifdef RTE_ENABLE_ASSERT
-		m->next = NULL;
-#endif
+		if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F))
+			m->next = NULL;
 		m = m_next;
 	} while (nb_segs);
 
+	if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F))
+		rte_io_wmb();
 done:
 	sg->u = sg_u;
 	sg->segs = i;
@@ -720,9 +721,6 @@ done:
 	segdw += (off >> 1) + 1 + !!(flags & NIX_TX_OFFLOAD_TSTAMP_F);
 	send_hdr->w0.sizem1 = segdw - 1;
 
-#ifdef RTE_ENABLE_ASSERT
-	rte_io_wmb();
-#endif
 	return segdw;
 }
 
@@ -950,10 +948,10 @@ cn9k_nix_prepare_mseg_vec_list(struct cn9k_eth_txq *txq,
 	RTE_SET_USED(cookie);
 #endif
 
-#ifdef RTE_ENABLE_ASSERT
-	m->next = NULL;
-	m->nb_segs = 1;
-#endif
+	if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F)) {
+		m->next = NULL;
+		m->nb_segs = 1;
+	}
 	m = m_next;
 	/* Fill mbuf segments */
 	do {
@@ -984,9 +982,8 @@ cn9k_nix_prepare_mseg_vec_list(struct cn9k_eth_txq *txq,
 			sg_u = sg->u;
 			slist++;
 		}
-#ifdef RTE_ENABLE_ASSERT
-		m->next = NULL;
-#endif
+		if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F))
+			m->next = NULL;
 		m = m_next;
 	} while (nb_segs);
 
@@ -1002,9 +999,6 @@ cn9k_nix_prepare_mseg_vec_list(struct cn9k_eth_txq *txq,
 		 !!(flags & NIX_TX_OFFLOAD_TSTAMP_F);
 	send_hdr->w0.sizem1 = segdw - 1;
 
-#ifdef RTE_ENABLE_ASSERT
-	rte_io_wmb();
-#endif
 	return segdw;
 }
 
@@ -1088,6 +1082,10 @@ cn9k_nix_xmit_pkts_mseg_vector(uint64x2_t *cmd0, uint64x2_t *cmd1,
 			return;
 		}
 	}
+
+	/* Multi segment mbufs */
+	if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F))
+		rte_io_wmb();
 
 	for (j = 0; j < NIX_DESCS_PER_LOOP;) {
 		/* Fit consecutive packets in same LMTLINE. */

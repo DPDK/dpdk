@@ -410,8 +410,6 @@ skip_parse:
 		 * Hence, flag argument is not required.
 		 */
 		nix_cqe_xtract_mseg(rx, mbuf, val, 0);
-	else
-		mbuf->next = NULL;
 }
 
 static inline uint16_t
@@ -826,12 +824,6 @@ cn9k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 			nix_cqe_xtract_mseg((union nix_rx_parse_u *)
 						(cq0 + CQE_SZ(3) + 8), mbuf3,
 					    mbuf_initializer, flags);
-		} else {
-			/* Update that no more segments */
-			mbuf0->next = NULL;
-			mbuf1->next = NULL;
-			mbuf2->next = NULL;
-			mbuf3->next = NULL;
 		}
 
 		/* Store the mbufs to rx_pkts */
