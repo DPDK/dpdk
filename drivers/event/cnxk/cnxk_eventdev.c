@@ -566,7 +566,7 @@ parse_list(const char *value, void *opaque, param_parse_t fn)
 		else if (*s == ']')
 			end = s;
 
-		if (start && start < end) {
+		if (start && end && start < end) {
 			*end = 0;
 			fn(start + 1, opaque);
 			s = end;
