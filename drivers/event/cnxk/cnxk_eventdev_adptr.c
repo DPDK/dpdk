@@ -275,7 +275,7 @@ cnxk_sso_rx_adapter_queue_add(
 		return rc;
 	}
 
-	dev->rx_offloads |= cnxk_eth_dev->rx_offload_flags;
+	dev->rx_offloads |= (uint64_t)cnxk_eth_dev->rx_offload_flags;
 	return 0;
 }
 
@@ -312,7 +312,7 @@ cnxk_sso_rx_adapter_start(const struct rte_eventdev *event_dev,
 {
 	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
-	dev->rx_offloads |= cnxk_eth_dev->rx_offload_flags;
+	dev->rx_offloads |= (uint64_t)cnxk_eth_dev->rx_offload_flags;
 	return 0;
 }
 
