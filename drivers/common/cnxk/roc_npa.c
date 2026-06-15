@@ -1113,6 +1113,9 @@ roc_npa_pool_destroy(uint64_t aura_handle)
 	struct npa_lf *lf = idev_npa_obj_get();
 	int rc = 0, aura_id;
 
+	if (lf == NULL)
+		return NPA_ERR_DEVICE_NOT_BOUNDED;
+
 	plt_npa_dbg("lf=%p aura_handle=0x%" PRIx64, lf, aura_handle);
 	aura_id = roc_npa_aura_handle_to_aura(aura_handle);
 

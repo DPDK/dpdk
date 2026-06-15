@@ -283,6 +283,9 @@ roc_npa_ctx_dump(void)
 		if (lf->aura_attr[q].halo) {
 			aq->ctype = NPA_AQ_CTYPE_HALO;
 			rc = mbox_process_msg(mbox, (void *)&rsp_cn20k);
+		} else if (roc_model_is_cn20k()) {
+			aq->ctype = NPA_AQ_CTYPE_AURA;
+			rc = mbox_process_msg(mbox, (void *)&rsp_cn20k);
 		} else {
 			aq->ctype = NPA_AQ_CTYPE_AURA;
 			rc = mbox_process_msg(mbox, (void *)&rsp);
@@ -323,7 +326,10 @@ roc_npa_ctx_dump(void)
 		aq->ctype = NPA_AQ_CTYPE_POOL;
 		aq->op = NPA_AQ_INSTOP_READ;
 
-		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (roc_model_is_cn20k())
+			rc = mbox_process_msg(mbox, (void *)&rsp_cn20k);
+		else
+			rc = mbox_process_msg(mbox, (void *)&rsp);
 		if (rc) {
 			plt_err("Failed to get pool(%d) context", q);
 			goto exit;

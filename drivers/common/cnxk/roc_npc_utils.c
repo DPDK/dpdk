@@ -486,7 +486,7 @@ npc_process_ipv6_field_hash_o20k(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
 	uint8_t hash_field[ROC_IPV6_ADDR_LEN];
 	struct npc_xtract_info *xinfo;
 	uint32_t hash = 0, mask;
-	int intf, i, rc = 0;
+	int intf, i, hash_idx = 0, rc = 0;
 
 	memset(hash_field, 0, sizeof(hash_field));
 
@@ -505,14 +505,18 @@ npc_process_ipv6_field_hash_o20k(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
 		if (rc == 0)
 			continue;
 
-		rc = npc_ipv6_field_hash_get(pst->npc, (const uint32_t *)hash_field, intf, i,
-					     &hash);
+		if (hash_idx >= NPC_MAX_HASH)
+			break;
+
+		rc = npc_ipv6_field_hash_get(pst->npc, (const uint32_t *)hash_field, intf,
+					     hash_idx, &hash);
 		if (rc)
 			return rc;
 
 		mask = GENMASK(31, 0);
 		memcpy(pst->mcam_mask + xinfo->key_off, (uint8_t *)&mask, 4);
 		memcpy(pst->mcam_data + xinfo->key_off, (uint8_t *)&hash, 4);
+		hash_idx++;
 	}
 
 	return 0;

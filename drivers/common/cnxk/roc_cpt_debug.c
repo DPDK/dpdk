@@ -33,7 +33,7 @@ cpt_cnxk_parse_hdr_dump(FILE *file, const struct cpt_parse_hdr_s *cpth)
 		 cpth->w0.num_frags, cpth->w0.pkt_out);
 
 	/* W1 */
-	cpt_dump(file, "W1: wqe_ptr \t0x%016lx\t", cpth->wqe_ptr);
+	cpt_dump(file, "W1: wqe_ptr \t0x%016" PRIx64 "\t", cpth->wqe_ptr);
 
 	/* W2 */
 	cpt_dump(file, "W2: pkt_inline \t0x%x\t\torig_pkt_aura \t0x%x", cpth->w2.pkt_inline,
@@ -135,29 +135,28 @@ cpt_cn10k_parse_hdr_dump(FILE *file, const struct cpt_cn10k_parse_hdr_s *cpth)
 	cpt_dump(file, "W0: cookie \t0x%x\t\tmatch_id \t0x%04x \t",
 		  cpth->w0.cookie, cpth->w0.match_id);
 	cpt_dump(file, "W0: err_sum \t%u \t", cpth->w0.err_sum);
-	cpt_dump(file, "W0: reas_sts \t0x%x\t\tet_owr \t%u\t\tpkt_fmt \t%u \t",
-		  cpth->w0.reas_sts, cpth->w0.et_owr, cpth->w0.pkt_fmt);
-	cpt_dump(file, "W0: pad_len \t%u\t\tnum_frags \t%u\t\tpkt_out \t%u \t",
-		  cpth->w0.pad_len, cpth->w0.num_frags, cpth->w0.pkt_out);
+	cpt_dump(file, "W0: reas_sts \t0x%x\t\tet_owr \t%u\t\tpkt_fmt \t%u \t", cpth->w0.reas_sts,
+		 cpth->w0.et_owr, cpth->w0.pkt_fmt);
+	cpt_dump(file, "W0: pad_len \t%u\t\tnum_frags \t%u\t\tpkt_out \t%u \t", cpth->w0.pad_len,
+		 cpth->w0.num_frags, cpth->w0.pkt_out);
 
 	/* W1 */
-	cpt_dump(file, "W1: wqe_ptr \t0x%016lx\t",
-			plt_be_to_cpu_64(cpth->wqe_ptr));
+	cpt_dump(file, "W1: wqe_ptr \t0x%016" PRIx64 "\t",
+		 (uint64_t)plt_be_to_cpu_64(cpth->wqe_ptr));
 
 	/* W2 */
-	cpt_dump(file, "W2: frag_age \t0x%x\t\torig_pf_func \t0x%04x",
-		  cpth->w2.frag_age, cpth->w2.orig_pf_func);
-	cpt_dump(file, "W2: il3_off \t0x%x\t\tfi_pad \t0x%x \t",
-		  cpth->w2.il3_off, cpth->w2.fi_pad);
+	cpt_dump(file, "W2: frag_age \t0x%x\t\torig_pf_func \t0x%04x", cpth->w2.frag_age,
+		 cpth->w2.orig_pf_func);
+	cpt_dump(file, "W2: il3_off \t0x%x\t\tfi_pad \t0x%x \t", cpth->w2.il3_off, cpth->w2.fi_pad);
 	cpt_dump(file, "W2: fi_offset \t0x%x \t", cpth->w2.fi_offset);
 
 	/* W3 */
-	cpt_dump(file, "W3: hw_ccode \t0x%x\t\tuc_ccode \t0x%x\t\tspi \t0x%08x",
-		  cpth->w3.hw_ccode, cpth->w3.uc_ccode, cpth->w3.spi);
+	cpt_dump(file, "W3: hw_ccode \t0x%x\t\tuc_ccode \t0x%x\t\tspi \t0x%08x", cpth->w3.hw_ccode,
+		 cpth->w3.uc_ccode, cpth->w3.spi);
 
 	/* W4 */
-	cpt_dump(file, "W4: esn \t%" PRIx64 " \t OR frag1_wqe_ptr \t0x%" PRIx64,
-		  cpth->esn, plt_be_to_cpu_64(cpth->frag1_wqe_ptr));
+	cpt_dump(file, "W4: esn \t%" PRIx64 " \t OR frag1_wqe_ptr \t0x%" PRIx64, cpth->esn,
+		 (uint64_t)plt_be_to_cpu_64(cpth->frag1_wqe_ptr));
 
 	/* offset of 0 implies 256B, otherwise it implies offset*8B */
 	offset = cpth->w2.fi_offset;

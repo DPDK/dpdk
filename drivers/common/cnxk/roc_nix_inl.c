@@ -638,9 +638,8 @@ nix_inl_reass_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 		res_addr_offset = (uint64_t)(inl_dev->res_addr_offset & 0xFF) << 48;
 		if (res_addr_offset)
 			res_addr_offset |= (1UL << 56);
+		cpt_cq_ena = (uint64_t)inl_dev->cpt_cq_ena << 63;
 	}
-
-	cpt_cq_ena = (uint64_t)inl_dev->cpt_cq_ena << 63;
 	lf_cfg->enable = 1;
 	lf_cfg->profile_id = profile_id;
 	lf_cfg->rx_inline_sa_base = (uintptr_t)nix->inb_sa_base[profile_id] | cpt_cq_ena;
