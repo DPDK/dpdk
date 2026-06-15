@@ -1199,22 +1199,33 @@ cnxk_on_ipsec_inb_sa_create(struct rte_security_ipsec_xform *ipsec,
 			break;
 		case RTE_CRYPTO_AUTH_MD5_HMAC:
 		case RTE_CRYPTO_AUTH_SHA1_HMAC:
-			memcpy(in_sa->sha1_or_gcm.hmac_key, auth_key,
-			       auth_key_len);
-			ctx_len = offsetof(struct roc_ie_on_inb_sa,
-					   sha1_or_gcm.selector);
+			if (auth_key_len > (int)sizeof(in_sa->sha1_or_gcm.hmac_key)) {
+				plt_err("Auth key len %d exceeds max %zu for algo %u", auth_key_len,
+					sizeof(in_sa->sha1_or_gcm.hmac_key), auth_xform->auth.algo);
+				return -EINVAL;
+			}
+			memcpy(in_sa->sha1_or_gcm.hmac_key, auth_key, auth_key_len);
+			ctx_len = offsetof(struct roc_ie_on_inb_sa, sha1_or_gcm.selector);
 			break;
 		case RTE_CRYPTO_AUTH_SHA256_HMAC:
 		case RTE_CRYPTO_AUTH_SHA384_HMAC:
 		case RTE_CRYPTO_AUTH_SHA512_HMAC:
+			if (auth_key_len > (int)sizeof(in_sa->sha2.hmac_key)) {
+				plt_err("Auth key len %d exceeds max %zu for algo %u", auth_key_len,
+					sizeof(in_sa->sha2.hmac_key), auth_xform->auth.algo);
+				return -EINVAL;
+			}
 			memcpy(in_sa->sha2.hmac_key, auth_key, auth_key_len);
-			ctx_len = offsetof(struct roc_ie_on_inb_sa,
-					   sha2.selector);
+			ctx_len = offsetof(struct roc_ie_on_inb_sa, sha2.selector);
 			break;
 		case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
+			if (auth_key_len > (int)sizeof(in_sa->aes_xcbc.key)) {
+				plt_err("Auth key len %d exceeds max %zu for algo %u", auth_key_len,
+					sizeof(in_sa->aes_xcbc.key), auth_xform->auth.algo);
+				return -EINVAL;
+			}
 			memcpy(in_sa->aes_xcbc.key, auth_key, auth_key_len);
-			ctx_len = offsetof(struct roc_ie_on_inb_sa,
-					   aes_xcbc.selector);
+			ctx_len = offsetof(struct roc_ie_on_inb_sa, aes_xcbc.selector);
 			break;
 		default:
 			plt_err("Unsupported auth algorithm %u", auth_xform->auth.algo);
