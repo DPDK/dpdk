@@ -541,7 +541,6 @@ cn20k_eth_sec_sso_work_cb(uint64_t *gw, void *args, enum nix_inl_event_type type
 	uintptr_t nixtx;
 	uint8_t port;
 
-	RTE_SET_USED(args);
 	plt_nix_dbg("Received %s event", get_inl_event_type(type));
 
 	switch ((gw[0] >> 28) & 0xF) {
@@ -561,8 +560,26 @@ cn20k_eth_sec_sso_work_cb(uint64_t *gw, void *args, enum nix_inl_event_type type
 		/* Fall through */
 	default:
 		if (type) {
-			eth_dev = &rte_eth_devices[port_id];
 			struct cpt_cq_s *cqs = (struct cpt_cq_s *)cq_s;
+
+			if (type == NIX_INL_INB_CPT_CQ) {
+				struct cn20k_inb_priv_data *inb_priv;
+
+				inb_priv = roc_nix_inl_ow_ipsec_inb_sa_sw_rsvd(args);
+				if (inb_priv->eth_sec && inb_priv->eth_sec->eth_dev) {
+					eth_dev = inb_priv->eth_sec->eth_dev;
+				} else {
+					plt_err("Inbound CPT CQ event: no eth_dev in SA priv");
+					return;
+				}
+			} else {
+				if (port_id >= RTE_MAX_ETHPORTS) {
+					plt_err("CPT CQ event: invalid port_id %u", port_id);
+					return;
+				}
+				eth_dev = &rte_eth_devices[port_id];
+			}
+
 			if (type < NIX_INL_SSO) {
 				cn20k_eth_sec_post_event(eth_dev, args, type,
 							 (uint16_t)cqs->w0.s.uc_compcode,
@@ -804,6 +821,7 @@ cn20k_eth_sec_session_create(void *device, struct rte_security_session_conf *con
 	inl_dev = !!dev->inb.inl_dev;
 
 	memset(eth_sec, 0, sizeof(struct cnxk_eth_sec_sess));
+	eth_sec->eth_dev = eth_dev;
 	sess_priv.u64 = 0;
 
 	lock = inbound ? &dev->inb.lock : &dev->outb.lock;

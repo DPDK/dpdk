@@ -225,6 +225,9 @@ struct cnxk_eth_sec_sess {
 
 	/* Out-Of-Place processing */
 	bool inb_oop;
+
+	/* Back pointer to eth_dev for port_id derivation in CQ callbacks */
+	struct rte_eth_dev *eth_dev;
 };
 
 TAILQ_HEAD(cnxk_eth_sec_sess_list, cnxk_eth_sec_sess);
