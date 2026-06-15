@@ -752,6 +752,7 @@ inl_outb_soft_exp_poll(struct nix_inl_dev *inl_dev, uint32_t ring_idx)
 
 		if (sa != NULL) {
 			uint64_t tmp[2];
+			tmp[0] = ~0ULL;
 			inl_dev->work_cb(tmp, sa, (port_id << 8) | 0x1);
 			__atomic_store_n(ring_base + tail_l + 1, 0ULL, __ATOMIC_RELAXED);
 			__atomic_fetch_add((uint32_t *)ring_base, 1, __ATOMIC_ACQ_REL);
