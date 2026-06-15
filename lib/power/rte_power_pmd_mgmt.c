@@ -511,7 +511,8 @@ rte_power_ethdev_pmgmt_queue_enable(unsigned int lcore_id, uint16_t port_id,
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
-	if (queue_id >= RTE_MAX_QUEUES_PER_PORT || lcore_id >= RTE_MAX_LCORE) {
+	if (queue_id >= RTE_MAX_QUEUES_PER_PORT ||
+	    !rte_lcore_is_enabled(lcore_id)) {
 		ret = -EINVAL;
 		goto end;
 	}
@@ -627,7 +628,7 @@ rte_power_ethdev_pmgmt_queue_disable(unsigned int lcore_id,
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
-	if (lcore_id >= RTE_MAX_LCORE || queue_id >= RTE_MAX_QUEUES_PER_PORT)
+	if (!rte_lcore_is_enabled(lcore_id) || queue_id >= RTE_MAX_QUEUES_PER_PORT)
 		return -EINVAL;
 
 	/* check if the queue is stopped */
@@ -729,8 +730,8 @@ RTE_EXPORT_SYMBOL(rte_power_pmd_mgmt_set_scaling_freq_min)
 int
 rte_power_pmd_mgmt_set_scaling_freq_min(unsigned int lcore, unsigned int min)
 {
-	if (lcore >= RTE_MAX_LCORE) {
-		POWER_LOG(ERR, "Invalid lcore ID: %u", lcore);
+	if (!rte_lcore_is_enabled(lcore)) {
+		POWER_LOG(ERR, "lcore id %u is not enabled", lcore);
 		return -EINVAL;
 	}
 
@@ -747,8 +748,8 @@ RTE_EXPORT_SYMBOL(rte_power_pmd_mgmt_set_scaling_freq_max)
 int
 rte_power_pmd_mgmt_set_scaling_freq_max(unsigned int lcore, unsigned int max)
 {
-	if (lcore >= RTE_MAX_LCORE) {
-		POWER_LOG(ERR, "Invalid lcore ID: %u", lcore);
+	if (!rte_lcore_is_enabled(lcore)) {
+		POWER_LOG(ERR, "lcore id %u is not enabled", lcore);
 		return -EINVAL;
 	}
 
@@ -769,8 +770,8 @@ RTE_EXPORT_SYMBOL(rte_power_pmd_mgmt_get_scaling_freq_min)
 int
 rte_power_pmd_mgmt_get_scaling_freq_min(unsigned int lcore)
 {
-	if (lcore >= RTE_MAX_LCORE) {
-		POWER_LOG(ERR, "Invalid lcore ID: %u", lcore);
+	if (!rte_lcore_is_enabled(lcore)) {
+		POWER_LOG(ERR, "lcore id %u is not enabled", lcore);
 		return -EINVAL;
 	}
 
@@ -784,8 +785,8 @@ RTE_EXPORT_SYMBOL(rte_power_pmd_mgmt_get_scaling_freq_max)
 int
 rte_power_pmd_mgmt_get_scaling_freq_max(unsigned int lcore)
 {
-	if (lcore >= RTE_MAX_LCORE) {
-		POWER_LOG(ERR, "Invalid lcore ID: %u", lcore);
+	if (!rte_lcore_is_enabled(lcore)) {
+		POWER_LOG(ERR, "lcore id %u is not enabled", lcore);
 		return -EINVAL;
 	}
 
