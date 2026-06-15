@@ -227,6 +227,7 @@ New Features
 * **Updated lcore validation in power library.**
 
   Lcore ID validation was moved into the cpufreq framework before driver dispatch.
+  Power QoS API was updated to accept service lcores.
 
 * **Extended BPF API.**
 
