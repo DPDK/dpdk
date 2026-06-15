@@ -508,7 +508,7 @@ cnxk_tim_parse_ring_ctl_list(const char *value, void *opaque)
 		else
 			continue;
 
-		if (start && start < end) {
+		if (start && end && start < end) {
 			*end = 0;
 			cnxk_tim_parse_ring_param(start + 1, opaque);
 			start = end;

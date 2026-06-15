@@ -285,7 +285,7 @@ cnxk_sso_rx_adapter_queues_add(const struct rte_eventdev *event_dev,
 	/* Propagate force bp devarg */
 	cnxk_eth_dev->nix.force_rx_aura_bp = dev->force_ena_bp;
 	cnxk_sso_tstamp_cfg(eth_dev->data->port_id, eth_dev, dev);
-	dev->rx_offloads |= cnxk_eth_dev->rx_offload_flags;
+	dev->rx_offloads |= (uint64_t)cnxk_eth_dev->rx_offload_flags;
 	return 0;
 
 fail:
@@ -330,7 +330,7 @@ cnxk_sso_rx_adapter_start(const struct rte_eventdev *event_dev,
 {
 	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
-	dev->rx_offloads |= cnxk_eth_dev->rx_offload_flags;
+	dev->rx_offloads |= (uint64_t)cnxk_eth_dev->rx_offload_flags;
 	return 0;
 }
 

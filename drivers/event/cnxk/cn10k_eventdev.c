@@ -660,7 +660,7 @@ cn10k_sso_tstamp_hdl_update(uint16_t port_id, uint16_t flags, bool ptp_en)
 	struct rte_eventdev *event_dev = cnxk_eth_dev->evdev_priv;
 	struct cnxk_sso_evdev *evdev = cnxk_sso_pmd_priv(event_dev);
 
-	evdev->rx_offloads |= flags;
+	evdev->rx_offloads |= (uint64_t)flags;
 	if (ptp_en)
 		evdev->tstamp[port_id] = &cnxk_eth_dev->tstamp;
 	else
