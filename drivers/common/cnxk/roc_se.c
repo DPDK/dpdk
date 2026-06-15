@@ -512,12 +512,22 @@ roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type, const ui
 		 * less than 128. Pass it as regular AES-CBC cipher to CPT, but keep type in
 		 * se_ctx as AES_DOCSISBPI to skip block size checks in instruction preparation.
 		 */
+		if (key_len > sizeof(fctx->enc.encr_key)) {
+			plt_err("Cipher key length %u exceeds max %zu", key_len,
+				sizeof(fctx->enc.encr_key));
+			return -1;
+		}
 		cpt_ciph_aes_key_type_set(fctx, key_len);
 		fctx->enc.enc_cipher = ROC_SE_AES_CBC;
 		memcpy(fctx->enc.encr_key, key, key_len);
 		goto success;
 	case ROC_SE_DES_DOCSISBPI:
 		/* See case ROC_SE_DES3_CBC: for explanation */
+		if (key_len * 3 > sizeof(fctx->enc.encr_key)) {
+			plt_err("DES-DOCSISBPI key length %u exceeds max %zu", key_len,
+				sizeof(fctx->enc.encr_key) / 3);
+			return -1;
+		}
 		for (i = 0; i < 3; i++)
 			memcpy(fctx->enc.encr_key + key_len * i, key, key_len);
 		/*
@@ -582,6 +592,11 @@ roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type, const ui
 	if (se_ctx->hash_type != ROC_SE_GMAC_TYPE)
 		fctx->enc.enc_cipher = type;
 
+	if (key_len > sizeof(fctx->enc.encr_key)) {
+		plt_err("Cipher key length %u exceeds max %zu", key_len,
+			sizeof(fctx->enc.encr_key));
+		return -1;
+	}
 	memcpy(fctx->enc.encr_key, key, key_len);
 
 success:
