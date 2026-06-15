@@ -1238,7 +1238,6 @@ i40e_hash_parse(struct rte_eth_dev *dev,
 		},
 		.max_actions = 1,
 		.driver_ctx = dev->data->dev_private,
-		.rss_queues_contig = true,
 		/* each pattern type will add specific check function */
 	};
 	const struct rte_flow_action_rss *rss_act;
@@ -1265,6 +1264,8 @@ i40e_hash_parse(struct rte_eth_dev *dev,
 	/* VLAN path */
 	if (is_vlan) {
 		ac_param.check = i40e_hash_validate_queue_region;
+		/* queue regions must be contiguous */
+		ac_param.rss_queues_contig = true;
 		ret = ci_flow_check_actions(actions, &ac_param, &parsed_actions, error);
 		if (ret)
 			return ret;
