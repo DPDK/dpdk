@@ -168,7 +168,7 @@ nix_lf_q_irq_get_and_clear(struct nix *nix, uint16_t q, uint32_t off,
 	reg = roc_atomic64_add_nosync(wdata, (int64_t *)(nix->base + off));
 
 	if (reg & BIT_ULL(42) /* OP_ERR */) {
-		plt_err("Failed execute irq get off=0x%x", off);
+		plt_err("Failed execute irq get queue=%d off=0x%x", q, off);
 		return 0;
 	}
 	qint = reg & 0xff;
@@ -262,6 +262,10 @@ nix_lf_q_irq(void *param)
 	plt_err("Queue_intr=0x%" PRIx64 " qintx=%d pf=%d, vf=%d", intr, qintx,
 		dev->pf, dev->vf);
 
+	/* Dump registers to std out */
+	roc_nix_lf_reg_dump(nix_priv_to_roc_nix(nix), NULL);
+	roc_nix_queues_ctx_dump(nix_priv_to_roc_nix(nix), NULL);
+
 	/* Handle RQ interrupts */
 	for (q = 0; q < nix->nb_rx_queues; q++) {
 		rq = q % nix->qints;
@@ -322,10 +326,6 @@ nix_lf_q_irq(void *param)
 
 	/* Clear interrupt */
 	plt_write64(intr, nix->base + NIX_LF_QINTX_INT(qintx));
-
-	/* Dump registers to std out */
-	roc_nix_lf_reg_dump(nix_priv_to_roc_nix(nix), NULL);
-	roc_nix_queues_ctx_dump(nix_priv_to_roc_nix(nix), NULL);
 
 	/* Call reset callback */
 	if (intr_cb && dev->ops->q_err_cb)
