@@ -61,13 +61,13 @@ nix_link_advertising_get(struct cnxk_eth_dev *dev, struct roc_nix_link_info *lin
 		} else {
 			for (bit = 0; bit < ROC_NIX_LINK_SPEED_MAX; bit++) {
 				if (link_info->speed_bitmask & BIT_ULL(bit))
-					advertise |= rte_to_ethtool_mode[bit];
+					advertise |= (uint64_t)rte_to_ethtool_mode[bit];
 			}
 			goto exit;
 		}
 	}
 
-	advertise |= mac_to_ethtool_mode[linfo.lmac_type_id][link_info->full_duplex];
+	advertise |= (uint64_t)mac_to_ethtool_mode[linfo.lmac_type_id][link_info->full_duplex];
 exit:
 	return advertise;
 }
