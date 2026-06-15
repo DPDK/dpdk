@@ -540,6 +540,8 @@ nix_cn10k_lf_sq_dump(__io struct nix_cn10k_sq_ctx_s *ctx, uint32_t *sqb_aura_p, 
 static inline void
 nix_lf_sq_dump(__io struct nix_cn20k_sq_ctx_s *ctx, uint32_t *sqb_aura_p, FILE *file)
 {
+	int64_t *sq_cnt_ptr = NULL;
+
 	nix_dump(file, "W0: sqe_way_mask \t\t%d\nW0: cq \t\t\t\t%d",
 		 ctx->sqe_way_mask, ctx->cq);
 	nix_dump(file, "W0: sdp_mcast \t\t\t%d\nW0: substream \t\t\t0x%03x",
@@ -561,6 +563,7 @@ nix_lf_sq_dump(__io struct nix_cn20k_sq_ctx_s *ctx, uint32_t *sqb_aura_p, FILE *
 	nix_dump(file, "W2: smq_rr_count[ub:lb] \t\t%x:%x\n", ctx->smq_rr_count_ub,
 		 ctx->smq_rr_count_lb);
 
+	nix_dump(file, "W3: update_sq_count\t\t%d\n", ctx->update_sq_count);
 	nix_dump(file, "W3: smq_next_sq_vld\t\t%d\nW3: smq_pend\t\t\t%d",
 		 ctx->smq_next_sq_vld, ctx->smq_pend);
 	nix_dump(file, "W3: smenq_next_sqb_vld  \t%d\nW3: head_offset\t\t\t%d",
@@ -588,6 +591,12 @@ nix_lf_sq_dump(__io struct nix_cn20k_sq_ctx_s *ctx, uint32_t *sqb_aura_p, FILE *
 		 ctx->vfi_lso_sizem1);
 	nix_dump(file, "W9: vfi_lso_total\t\t%d", ctx->vfi_lso_total);
 
+	nix_dump(file, "W10: sq_count_iova \t\t0x%" PRIx64 "", (uint64_t)ctx->sq_count_iova);
+	sq_cnt_ptr = (int64_t *)(uintptr_t)(ctx->sq_count_iova << 3);
+	if (sq_cnt_ptr && ctx->update_sq_count)
+		nix_dump(file, "sq_count value \t\t0x%" PRIx64 "",
+			 plt_atomic_load_explicit((uint64_t __plt_atomic *)sq_cnt_ptr,
+						  plt_memory_order_relaxed));
 	nix_dump(file, "W10: scm_lso_rem \t\t0x%" PRIx64 "", (uint64_t)ctx->scm_lso_rem);
 	nix_dump(file, "W11: octs \t\t\t0x%" PRIx64 "", (uint64_t)ctx->octs);
 	nix_dump(file, "W12: pkts \t\t\t0x%" PRIx64 "", (uint64_t)ctx->pkts);
