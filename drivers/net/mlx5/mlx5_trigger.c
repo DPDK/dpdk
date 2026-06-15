@@ -1561,9 +1561,8 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 	} else {
 		DRV_LOG(INFO, "port %u FDB default rule is disabled", dev->data->port_id);
 	}
-	if (!priv->sh->config.lacp_by_user && priv->pf_bond >= 0 && priv->master)
-		if (mlx5_flow_hw_lacp_rx_flow(dev))
-			goto error;
+	if (mlx5_flow_lacp_miss_needed(dev) && mlx5_flow_hw_lacp_rx_flow(dev) != 0)
+		goto error;
 	if (priv->isolated)
 		return 0;
 	ret = mlx5_flow_hw_create_ctrl_rx_tables(dev);
@@ -1682,7 +1681,7 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 		DRV_LOG(INFO, "port %u FDB default rule is disabled",
 			dev->data->port_id);
 	}
-	if (!priv->sh->config.lacp_by_user && priv->pf_bond >= 0 && priv->master) {
+	if (mlx5_flow_lacp_miss_needed(dev)) {
 		ret = mlx5_flow_lacp_miss(dev);
 		if (ret)
 			DRV_LOG(INFO, "port %u LACP rule cannot be created - "

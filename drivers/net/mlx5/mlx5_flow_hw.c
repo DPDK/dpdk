@@ -10661,15 +10661,6 @@ flow_hw_cleanup_ctrl_fdb_tables(struct rte_eth_dev *dev)
 	if (!priv->hw_ctrl_fdb)
 		return;
 	hw_ctrl_fdb = priv->hw_ctrl_fdb;
-	/* Clean up templates used for LACP default miss table. */
-	if (hw_ctrl_fdb->hw_lacp_rx_tbl)
-		claim_zero(flow_hw_table_destroy(dev, hw_ctrl_fdb->hw_lacp_rx_tbl, NULL));
-	if (hw_ctrl_fdb->lacp_rx_actions_tmpl)
-		claim_zero(flow_hw_actions_template_destroy(dev, hw_ctrl_fdb->lacp_rx_actions_tmpl,
-			   NULL));
-	if (hw_ctrl_fdb->lacp_rx_items_tmpl)
-		claim_zero(flow_hw_pattern_template_destroy(dev, hw_ctrl_fdb->lacp_rx_items_tmpl,
-			   NULL));
 	/* Clean up templates used for default Tx metadata copy. */
 	if (hw_ctrl_fdb->hw_tx_meta_cpy_tbl)
 		claim_zero(flow_hw_table_destroy(dev, hw_ctrl_fdb->hw_tx_meta_cpy_tbl, NULL));
@@ -10746,6 +10737,96 @@ flow_hw_create_lacp_rx_table(struct rte_eth_dev *dev,
 	};
 
 	return flow_hw_table_create(dev, &cfg, &it, 1, &at, 1, error);
+}
+
+/*
+ * Clean up templates and table used for redirecting LACP traffic to kernel.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+static void
+flow_hw_cleanup_lacp_miss_tables(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_hw_lacp_miss *hw_lacp_miss;
+
+	if (priv->hw_lacp_miss == NULL)
+		return;
+
+	hw_lacp_miss = priv->hw_lacp_miss;
+
+	if (hw_lacp_miss->hw_lacp_rx_tbl)
+		claim_zero(flow_hw_table_destroy(dev, hw_lacp_miss->hw_lacp_rx_tbl, NULL));
+	if (hw_lacp_miss->lacp_rx_actions_tmpl)
+		claim_zero(flow_hw_actions_template_destroy(dev,
+							    hw_lacp_miss->lacp_rx_actions_tmpl,
+							    NULL));
+	if (hw_lacp_miss->lacp_rx_items_tmpl)
+		claim_zero(flow_hw_pattern_template_destroy(dev,
+							    hw_lacp_miss->lacp_rx_items_tmpl,
+							    NULL));
+
+	mlx5_free(hw_lacp_miss);
+	priv->hw_lacp_miss = NULL;
+}
+
+/*
+ * Create templates and table for redirecting LACP traffic to kernel.
+ *
+ * LACP traffic redirection is needed whenever LACP bond is managed by the kernel.
+ * Required rule has a following structure:
+ *
+ * - ingress rule on root table
+ * - match EtherType 0x8809
+ * - action DEFAULT_MISS
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   0 on success. Negative errno otherwise.
+ */
+static int
+flow_hw_create_lacp_miss_tables(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_hw_lacp_miss *hw_lacp_miss;
+
+	hw_lacp_miss = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*hw_lacp_miss), 0, SOCKET_ID_ANY);
+	if (!hw_lacp_miss) {
+		DRV_LOG(ERR, "port %u Failed to allocate memory for LACP miss tables",
+			dev->data->port_id);
+		return -ENOMEM;
+	}
+	priv->hw_lacp_miss = hw_lacp_miss;
+
+	hw_lacp_miss->lacp_rx_items_tmpl = flow_hw_create_lacp_rx_pattern_template(dev, NULL);
+	if (!hw_lacp_miss->lacp_rx_items_tmpl) {
+		DRV_LOG(ERR, "port %u Failed to create pattern template for LACP Rx traffic",
+			dev->data->port_id);
+		goto error;
+	}
+	hw_lacp_miss->lacp_rx_actions_tmpl = flow_hw_create_lacp_rx_actions_template(dev, NULL);
+	if (!hw_lacp_miss->lacp_rx_actions_tmpl) {
+		DRV_LOG(ERR, "port %u Failed to create actions template for LACP Rx traffic",
+			dev->data->port_id);
+		goto error;
+	}
+	hw_lacp_miss->hw_lacp_rx_tbl =
+		flow_hw_create_lacp_rx_table(dev, hw_lacp_miss->lacp_rx_items_tmpl,
+					     hw_lacp_miss->lacp_rx_actions_tmpl, NULL);
+	if (!hw_lacp_miss->hw_lacp_rx_tbl) {
+		DRV_LOG(ERR, "port %u Failed to create template table for LACP Rx traffic",
+			dev->data->port_id);
+		goto error;
+	}
+
+	return 0;
+
+error:
+	flow_hw_cleanup_lacp_miss_tables(dev);
+	return -EINVAL;
 }
 
 /**
@@ -10875,31 +10956,6 @@ flow_hw_create_ctrl_tables(struct rte_eth_dev *dev, struct rte_flow_error *error
 		if (!hw_ctrl_fdb->hw_tx_meta_cpy_tbl) {
 			DRV_LOG(ERR, "port %u failed to create table for default"
 				" Tx metadata copy flow rule", dev->data->port_id);
-			goto err;
-		}
-	}
-	/* Create LACP default miss table. */
-	if (!priv->sh->config.lacp_by_user && priv->pf_bond >= 0 && priv->master) {
-		hw_ctrl_fdb->lacp_rx_items_tmpl =
-				flow_hw_create_lacp_rx_pattern_template(dev, error);
-		if (!hw_ctrl_fdb->lacp_rx_items_tmpl) {
-			DRV_LOG(ERR, "port %u failed to create pattern template"
-				" for LACP Rx traffic", dev->data->port_id);
-			goto err;
-		}
-		hw_ctrl_fdb->lacp_rx_actions_tmpl =
-				flow_hw_create_lacp_rx_actions_template(dev, error);
-		if (!hw_ctrl_fdb->lacp_rx_actions_tmpl) {
-			DRV_LOG(ERR, "port %u failed to create actions template"
-				" for LACP Rx traffic", dev->data->port_id);
-			goto err;
-		}
-		hw_ctrl_fdb->hw_lacp_rx_tbl = flow_hw_create_lacp_rx_table
-				(dev, hw_ctrl_fdb->lacp_rx_items_tmpl,
-				 hw_ctrl_fdb->lacp_rx_actions_tmpl, error);
-		if (!hw_ctrl_fdb->hw_lacp_rx_tbl) {
-			DRV_LOG(ERR, "port %u failed to create template table for"
-				" for LACP Rx traffic", dev->data->port_id);
 			goto err;
 		}
 	}
@@ -11625,6 +11681,7 @@ __flow_hw_resource_release(struct rte_eth_dev *dev, bool ctx_close)
 
 	flow_hw_rxq_flag_set(dev, false);
 	flow_hw_flush_all_ctrl_flows(dev);
+	flow_hw_cleanup_lacp_miss_tables(dev);
 	flow_hw_cleanup_ctrl_fdb_tables(dev);
 	flow_hw_cleanup_tx_repr_tagging(dev);
 	flow_hw_action_template_drop_release(dev);
@@ -12055,6 +12112,14 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 		ret = flow_hw_setup_tx_repr_tagging(dev, error);
 		if (ret)
 			goto err;
+	}
+	if (mlx5_flow_lacp_miss_needed(dev)) {
+		ret = flow_hw_create_lacp_miss_tables(dev);
+		if (ret) {
+			rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					   "Unable to create LACP miss flow tables");
+			goto err;
+		}
 	}
 	/*
 	 * DEFAULT_MISS action have different behaviors in different domains.
@@ -16051,10 +16116,10 @@ mlx5_flow_hw_lacp_rx_flow(struct rte_eth_dev *dev)
 		.type = MLX5_CTRL_FLOW_TYPE_LACP_RX,
 	};
 
-	if (!priv->dr_ctx || !priv->hw_ctrl_fdb || !priv->hw_ctrl_fdb->hw_lacp_rx_tbl)
+	if (!priv->dr_ctx || !priv->hw_lacp_miss || !priv->hw_lacp_miss->hw_lacp_rx_tbl)
 		return 0;
 	return flow_hw_create_ctrl_flow(dev, dev,
-					priv->hw_ctrl_fdb->hw_lacp_rx_tbl,
+					priv->hw_lacp_miss->hw_lacp_rx_tbl,
 					eth_lacp, 0, miss_action, 0, &flow_info, false);
 }
 
