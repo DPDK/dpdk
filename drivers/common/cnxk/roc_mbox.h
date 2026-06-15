@@ -47,8 +47,8 @@ struct mbox_msghdr {
 #define RVU_VF_VFPF_MBOX0 (0x0000)
 #define RVU_VF_VFPF_MBOX1 (0x0008)
 
-#define MBOX_DOWN_MSG 1
-#define MBOX_UP_MSG   2
+#define MBOX_DOWN_MSG 1ULL
+#define MBOX_UP_MSG   2ULL
 
 /* Mailbox message types */
 #define MBOX_MSG_MASK	 0xFFFF
