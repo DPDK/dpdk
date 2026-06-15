@@ -2220,6 +2220,13 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	/* Register callback for inline meta pool create 1:N pool:aura */
 	roc_nix_inl_custom_meta_pool_cb_register(cnxk_nix_inl_custom_meta_pool_cb);
 
+	/* Reserve memory for lookup_memory */
+	if (!cnxk_nix_fastpath_lookup_mem_get()) {
+		plt_err("Failed to reserve lookup memory");
+		rc = -ENOMEM;
+		goto dev_fini;
+	}
+
 	dev->eth_dev = eth_dev;
 	dev->configured = 0;
 	dev->ptype_disable = 0;
