@@ -1117,10 +1117,8 @@ cn20k_nix_xmit_prepare(struct cn20k_eth_txq *txq, struct rte_mbuf *m, struct rte
 	if (flags & NIX_TX_NEED_EXT_HDR && flags & NIX_TX_OFFLOAD_TSO_F &&
 	    (ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
 		uint16_t lso_sb;
-		uint64_t mask;
 
-		mask = -(!w1.il3type);
-		lso_sb = (mask & w1.ol4ptr) + (~mask & w1.il4ptr) + m->l4_len;
+		lso_sb = (w1.il3type ? w1.il4ptr : w1.ol4ptr) + m->l4_len;
 
 		send_hdr_ext->w0.lso_sb = lso_sb;
 		send_hdr_ext->w0.lso = 1;
@@ -1732,13 +1730,11 @@ cn20k_nix_prepare_tso(struct rte_mbuf *m, union nix_send_hdr_w1_u *w1, union nix
 		      uint64_t ol_flags, const uint64_t flags, const uint64_t lso_tun_fmt)
 {
 	uint16_t lso_sb;
-	uint64_t mask;
 
 	if (!(ol_flags & RTE_MBUF_F_TX_TCP_SEG))
 		return;
 
-	mask = -(!w1->il3type);
-	lso_sb = (mask & w1->ol4ptr) + (~mask & w1->il4ptr) + m->l4_len;
+	lso_sb = (w1->il3type ? w1->il4ptr : w1->ol4ptr) + m->l4_len;
 
 	w0->u |= BIT(14);
 	w0->lso_sb = lso_sb;
