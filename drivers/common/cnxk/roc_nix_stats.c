@@ -503,46 +503,51 @@ roc_nix_xstats_names_get(struct roc_nix *roc_nix,
 	struct idev_cfg *idev = idev_get_cfg();
 	uint64_t i, count = 0;
 
-	PLT_SET_USED(limit);
-
 	for (i = 0; i < CNXK_NIX_NUM_TX_XSTATS; i++) {
-		NIX_XSTATS_NAME_PRINT(xstats_names, count, nix_tx_xstats, i);
+		if (xstats_names && count < limit)
+			NIX_XSTATS_NAME_PRINT(xstats_names, count, nix_tx_xstats, i);
 		count++;
 	}
 
 	for (i = 0; i < CNXK_NIX_NUM_RX_XSTATS; i++) {
-		NIX_XSTATS_NAME_PRINT(xstats_names, count, nix_rx_xstats, i);
+		if (xstats_names && count < limit)
+			NIX_XSTATS_NAME_PRINT(xstats_names, count, nix_rx_xstats, i);
 		count++;
 	}
 
 	if (nix->inb_inl_dev && idev) {
 		if (idev->nix_inl_dev) {
 			for (i = 0; i < CNXK_INL_NIX_NUM_RX_XSTATS; i++) {
-				NIX_XSTATS_NAME_PRINT(xstats_names, count,
-						      inl_nix_rx_xstats, i);
+				if (xstats_names && count < limit)
+					NIX_XSTATS_NAME_PRINT(xstats_names, count,
+							      inl_nix_rx_xstats, i);
 				count++;
 			}
 			for (i = 0; i < CNXK_INL_NIX_RQ_XSTATS; i++) {
-				NIX_XSTATS_NAME_PRINT(xstats_names, count,
-						      inl_nix_rq_xstats, i);
+				if (xstats_names && count < limit)
+					NIX_XSTATS_NAME_PRINT(xstats_names, count,
+							      inl_nix_rq_xstats, i);
 				count++;
 			}
 			for (i = 0; i < PLT_DIM(inl_sw_xstats); i++) {
-				NIX_XSTATS_NAME_PRINT(xstats_names, count, inl_sw_xstats, i);
+				if (xstats_names && count < limit)
+					NIX_XSTATS_NAME_PRINT(xstats_names, count, inl_sw_xstats,
+							      i);
 				count++;
 			}
 		}
 	}
 
 	for (i = 0; i < CNXK_NIX_NUM_QUEUE_XSTATS; i++) {
-		NIX_XSTATS_NAME_PRINT(xstats_names, count, nix_q_xstats, i);
+		if (xstats_names && count < limit)
+			NIX_XSTATS_NAME_PRINT(xstats_names, count, nix_q_xstats, i);
 		count++;
 	}
 
 	if (roc_model_is_cn10k() || roc_model_is_cn20k()) {
 		for (i = 0; i < CNXK_NIX_NUM_CN10K_RX_XSTATS; i++) {
-			NIX_XSTATS_NAME_PRINT(xstats_names, count,
-					      nix_cn10k_rx_xstats, i);
+			if (xstats_names && count < limit)
+				NIX_XSTATS_NAME_PRINT(xstats_names, count, nix_cn10k_rx_xstats, i);
 			count++;
 		}
 	}
@@ -552,30 +557,29 @@ roc_nix_xstats_names_get(struct roc_nix *roc_nix,
 
 	if (roc_model_is_cn9k()) {
 		for (i = 0; i < CNXK_NIX_NUM_RX_XSTATS_CGX; i++) {
-			NIX_XSTATS_NAME_PRINT(xstats_names, count,
-					      nix_rx_xstats_cgx, i);
+			if (xstats_names && count < limit)
+				NIX_XSTATS_NAME_PRINT(xstats_names, count, nix_rx_xstats_cgx, i);
 			count++;
 		}
 
 		for (i = 0; i < CNXK_NIX_NUM_TX_XSTATS_CGX; i++) {
-			NIX_XSTATS_NAME_PRINT(xstats_names, count,
-					      nix_tx_xstats_cgx, i);
+			if (xstats_names && count < limit)
+				NIX_XSTATS_NAME_PRINT(xstats_names, count, nix_tx_xstats_cgx, i);
 			count++;
 		}
 
 	} else {
 		for (i = 0; i < CNXK_NIX_NUM_RX_XSTATS_RPM; i++) {
-			NIX_XSTATS_NAME_PRINT(xstats_names, count,
-					      nix_rx_xstats_rpm, i);
+			if (xstats_names && count < limit)
+				NIX_XSTATS_NAME_PRINT(xstats_names, count, nix_rx_xstats_rpm, i);
 			count++;
 		}
 
 		for (i = 0; i < CNXK_NIX_NUM_TX_XSTATS_RPM; i++) {
-			NIX_XSTATS_NAME_PRINT(xstats_names, count,
-					      nix_tx_xstats_rpm, i);
+			if (xstats_names && count < limit)
+				NIX_XSTATS_NAME_PRINT(xstats_names, count, nix_tx_xstats_rpm, i);
 			count++;
 		}
 	}
-
 	return count;
 }
