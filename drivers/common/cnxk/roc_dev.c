@@ -1796,14 +1796,17 @@ dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 
 	rc = npa_lf_init(dev, pci_dev);
 	if (rc)
-		goto stop_msg_thrd;
+		goto vf_flr_unregister;
 
 	/* Setup LMT line base */
 	rc = dev_lmt_setup(dev);
 	if (rc)
-		goto stop_msg_thrd;
+		goto vf_flr_unregister;
 
 	return rc;
+vf_flr_unregister:
+	if (!is_vf)
+		dev_vf_flr_unregister_irqs(pci_dev, dev);
 stop_msg_thrd:
 	/* Exiting the mbox sync thread */
 	if (dev->sync.start_thread) {
@@ -1812,10 +1815,14 @@ stop_msg_thrd:
 		plt_thread_join(dev->sync.pfvf_msg_thread, NULL);
 	}
 thread_fail:
-	pthread_mutex_destroy(&dev->sync.mutex);
-	pthread_cond_destroy(&dev->sync.pfvf_msg_cond);
+	if (pci_dev->max_vfs > 0) {
+		pthread_mutex_destroy(&dev->sync.mutex);
+		pthread_cond_destroy(&dev->sync.pfvf_msg_cond);
+	}
 iounmap:
 	dev_vf_mbase_put(pci_dev, vf_mbase);
+	mbox_fini(&dev->mbox_vfpf);
+	mbox_fini(&dev->mbox_vfpf_up);
 mbox_unregister:
 	dev_mbox_unregister_irq(pci_dev, dev);
 	if (dev->ops)

@@ -592,14 +592,15 @@ roc_ree_dev_init(struct roc_ree_vf *vf)
 	vf->block_address = ree_get_blkaddr(dev);
 	if (!vf->block_address) {
 		plt_err("Could not determine block PF number");
-		goto fail;
+		rc = -ENODEV;
+		goto dev_fini;
 	}
 
 	/* Get number of queues available on the device */
 	rc = roc_ree_available_queues_get(vf, &nb_queues);
 	if (rc) {
 		plt_err("Could not determine the number of queues available");
-		goto fail;
+		goto dev_fini;
 	}
 
 	/* Don't exceed the limits set per VF */
@@ -607,7 +608,8 @@ roc_ree_dev_init(struct roc_ree_vf *vf)
 
 	if (nb_queues == 0) {
 		plt_err("No free queues available on the device");
-		goto fail;
+		rc = -ENOSPC;
+		goto dev_fini;
 	}
 
 	vf->max_queues = nb_queues;
@@ -618,18 +620,23 @@ roc_ree_dev_init(struct roc_ree_vf *vf)
 	rc = roc_ree_max_matches_get(vf, &max_matches);
 	if (rc) {
 		plt_err("Could not determine the maximum matches supported");
-		goto fail;
+		goto dev_fini;
 	}
 	/* Don't exceed the limits set per VF */
 	max_matches = RTE_MIN(max_matches, REE_MAX_MATCHES_PER_VF);
 	if (max_matches == 0) {
 		plt_err("Could not determine the maximum matches supported");
-		goto fail;
+		rc = -EIO;
+		goto dev_fini;
 	}
 
 	vf->max_matches = max_matches;
 
 	plt_ree_dbg("Max matches supported by device: %d", vf->max_matches);
+
+	return 0;
+dev_fini:
+	dev_fini(dev, pci_dev);
 fail:
 	return rc;
 }
