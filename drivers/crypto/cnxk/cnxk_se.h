@@ -2281,9 +2281,14 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		return -1;
 	}
 
-	if (c_form->key.length < cipher_key_len) {
-		plt_dp_err("Invalid cipher params keylen %u",
-			   c_form->key.length);
+	if (enc_type == ROC_SE_DES3_CBC || enc_type == ROC_SE_DES3_ECB ||
+	    enc_type == ROC_SE_DES_DOCSISBPI) {
+		if (c_form->key.length != cipher_key_len) {
+			plt_dp_err("Invalid cipher params keylen %u", c_form->key.length);
+			return -1;
+		}
+	} else if (c_form->key.length < cipher_key_len) {
+		plt_dp_err("Invalid cipher params keylen %u", c_form->key.length);
 		return -1;
 	}
 
