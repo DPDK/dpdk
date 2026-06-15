@@ -865,6 +865,10 @@ cn20k_eth_sec_session_create(void *device, struct rte_security_session_conf *con
 			goto err;
 		}
 
+		rc = roc_npc_skip_size_pkind_get(&dev->npc);
+		if (rc >= 0)
+			inb_sa_dptr->w0.s.pkind = rc;
+
 		cn20k_eth_sec_inb_sa_misc_fill(inb_sa_dptr, ipsec);
 
 		inb_priv = roc_nix_inl_ow_ipsec_inb_sa_sw_rsvd(inb_sa);
@@ -1136,6 +1140,10 @@ cn20k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 		rc = cnxk_ow_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto, 0);
 		if (rc)
 			return -EINVAL;
+
+		rc = roc_npc_skip_size_pkind_get(&dev->npc);
+		if (rc >= 0)
+			inb_sa_dptr->w0.s.pkind = rc;
 
 		cn20k_eth_sec_inb_sa_misc_fill(inb_sa_dptr, ipsec);
 

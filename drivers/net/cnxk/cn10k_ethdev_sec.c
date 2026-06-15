@@ -853,6 +853,10 @@ cn10k_eth_sec_session_create(void *device,
 			goto err;
 		}
 
+		rc = roc_npc_skip_size_pkind_get(&dev->npc);
+		if (rc >= 0)
+			inb_sa_dptr->w0.s.pkind = rc;
+
 		inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd(inb_sa);
 		/* Back pointer to get eth_sec */
 		inb_priv->eth_sec = eth_sec;
@@ -1151,6 +1155,11 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 		rc = cnxk_ot_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto, 0);
 		if (rc)
 			goto err;
+
+		rc = roc_npc_skip_size_pkind_get(&dev->npc);
+		if (rc >= 0)
+			inb_sa_dptr->w0.s.pkind = rc;
+
 		/* Use cookie for original data */
 		inb_sa_dptr->w1.s.cookie = inb_sa->w1.s.cookie;
 
