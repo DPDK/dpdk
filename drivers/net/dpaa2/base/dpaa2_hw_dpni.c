@@ -423,7 +423,7 @@ dpaa2_distset_to_dpkg_profile_cfg(
 				kg_cfg->extracts[i].extract.from_hdr.prot =
 					NET_PROT_TCP;
 				kg_cfg->extracts[i].extract.from_hdr.field =
-					NH_FLD_TCP_PORT_SRC;
+					NH_FLD_TCP_PORT_DST;
 				kg_cfg->extracts[i].type =
 					DPKG_EXTRACT_FROM_HDR;
 				kg_cfg->extracts[i].extract.from_hdr.type =
