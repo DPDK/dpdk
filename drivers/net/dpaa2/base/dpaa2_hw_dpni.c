@@ -226,7 +226,7 @@ dpaa2_distset_to_dpkg_profile_cfg(
 	uint32_t loop = 0, i = 0;
 	uint64_t dist_field = 0;
 	int l2_configured = 0, l3_configured = 0;
-	int l4_configured = 0, sctp_configured = 0;
+	int l4_configured = 0;
 	int mpls_configured = 0;
 	int vlan_configured = 0;
 	int esp_configured = 0;
@@ -405,6 +405,8 @@ dpaa2_distset_to_dpkg_profile_cfg(
 			case RTE_ETH_RSS_NONFRAG_IPV6_UDP:
 			case RTE_ETH_RSS_IPV6_TCP_EX:
 			case RTE_ETH_RSS_IPV6_UDP_EX:
+			case RTE_ETH_RSS_NONFRAG_IPV4_SCTP:
+			case RTE_ETH_RSS_NONFRAG_IPV6_SCTP:
 
 				if (l4_configured)
 					break;
@@ -424,34 +426,6 @@ dpaa2_distset_to_dpkg_profile_cfg(
 					NET_PROT_TCP;
 				kg_cfg->extracts[i].extract.from_hdr.field =
 					NH_FLD_TCP_PORT_DST;
-				kg_cfg->extracts[i].type =
-					DPKG_EXTRACT_FROM_HDR;
-				kg_cfg->extracts[i].extract.from_hdr.type =
-					DPKG_FULL_FIELD;
-				i++;
-				break;
-
-			case RTE_ETH_RSS_NONFRAG_IPV4_SCTP:
-			case RTE_ETH_RSS_NONFRAG_IPV6_SCTP:
-
-				if (sctp_configured)
-					break;
-				sctp_configured = 1;
-
-				kg_cfg->extracts[i].extract.from_hdr.prot =
-					NET_PROT_SCTP;
-				kg_cfg->extracts[i].extract.from_hdr.field =
-					NH_FLD_SCTP_PORT_SRC;
-				kg_cfg->extracts[i].type =
-					DPKG_EXTRACT_FROM_HDR;
-				kg_cfg->extracts[i].extract.from_hdr.type =
-					DPKG_FULL_FIELD;
-				i++;
-
-				kg_cfg->extracts[i].extract.from_hdr.prot =
-					NET_PROT_SCTP;
-				kg_cfg->extracts[i].extract.from_hdr.field =
-					NH_FLD_SCTP_PORT_DST;
 				kg_cfg->extracts[i].type =
 					DPKG_EXTRACT_FROM_HDR;
 				kg_cfg->extracts[i].extract.from_hdr.type =
