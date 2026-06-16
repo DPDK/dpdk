@@ -263,6 +263,13 @@ eth_dev_fp_ops_reset(struct rte_eth_fp_ops *fpo)
 	*fpo = (struct rte_eth_fp_ops) {
 		.rx_pkt_burst = dummy_eth_rx_burst,
 		.tx_pkt_burst = dummy_eth_tx_burst,
+		.tx_pkt_prepare = rte_eth_tx_pkt_prepare_dummy,
+		.rx_queue_count = rte_eth_queue_count_dummy,
+		.tx_queue_count = rte_eth_queue_count_dummy,
+		.rx_descriptor_status = rte_eth_descriptor_status_dummy,
+		.tx_descriptor_status = rte_eth_descriptor_status_dummy,
+		.recycle_tx_mbufs_reuse = rte_eth_recycle_tx_mbufs_reuse_dummy,
+		.recycle_rx_descriptors_refill = rte_eth_recycle_rx_descriptors_refill_dummy,
 		.rxq = {
 			.data = (void **)&dummy_queues_array[port_id],
 			.clbk = dummy_data,
