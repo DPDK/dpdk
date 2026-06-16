@@ -4573,7 +4573,8 @@ static const struct token token_list[] = {
 		.help = "tag control information",
 		.next = NEXT(item_vlan, NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
-		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vlan, hdr.vlan_tci)),
+		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_vlan,
+					  hdr.vlan_tci, "\xff\xff")),
 	},
 	[ITEM_VLAN_PCP] = {
 		.name = "pcp",
