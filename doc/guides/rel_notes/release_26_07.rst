@@ -150,6 +150,10 @@ New Features
 
   * Added support for selective Rx in scalar SPRQ Rx path.
 
+* **Updated NXP dpaa2 driver.**
+
+  * Added inner RSS level support for tunnelled traffic.
+
 * **Updated PCAP ethernet driver.**
 
   * Added support for VLAN insertion and stripping.

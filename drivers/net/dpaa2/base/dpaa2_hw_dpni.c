@@ -220,6 +220,13 @@ dpaa2_remove_flow_dist(struct rte_eth_dev *eth_dev,
 	return ret;
 }
 
+/* dpkg from_hdr.hdr_index value selecting the innermost IP instance (see
+ * fsl_dpkg.h, where hdr_index is only defined for NET_PROT_IP/IPv4/IPv6/
+ * VLAN/MPLS). Used to hash on the inner IP of tunnelled traffic when
+ * RTE_ETH_RSS_LEVEL_INNERMOST is requested.
+ */
+#define DPAA2_DIST_HDR_INDEX_LAST 0xff
+
 int
 dpaa2_distset_to_dpkg_profile_cfg(
 		uint64_t req_dist_set,
@@ -234,8 +241,18 @@ dpaa2_distset_to_dpkg_profile_cfg(
 	int esp_configured = 0;
 	int ah_configured = 0;
 	int pppoe_configured = 0;
+	uint8_t hdr_index = 0;
 
 	memset(kg_cfg, 0, sizeof(struct dpkg_profile_cfg));
+
+	/* RTE_ETH_RSS_LEVEL_INNERMOST asks for the inner header to be hashed.
+	 * Map it to the innermost IP instance in the key extracts; the level
+	 * bits are not protocol bits, so strip them before the loop.
+	 */
+	if ((req_dist_set & RTE_ETH_RSS_LEVEL_MASK) == RTE_ETH_RSS_LEVEL_INNERMOST)
+		hdr_index = DPAA2_DIST_HDR_INDEX_LAST;
+	req_dist_set &= ~RTE_ETH_RSS_LEVEL_MASK;
+
 	while (req_dist_set) {
 		if (req_dist_set % 2 != 0) {
 			dist_field = 1ULL << loop;
@@ -373,6 +390,8 @@ dpaa2_distset_to_dpkg_profile_cfg(
 
 				kg_cfg->extracts[i].extract.from_hdr.prot =
 					NET_PROT_IP;
+				kg_cfg->extracts[i].extract.from_hdr.hdr_index =
+					hdr_index;
 				kg_cfg->extracts[i].extract.from_hdr.field =
 					NH_FLD_IP_SRC;
 				kg_cfg->extracts[i].type =
@@ -383,6 +402,8 @@ dpaa2_distset_to_dpkg_profile_cfg(
 
 				kg_cfg->extracts[i].extract.from_hdr.prot =
 					NET_PROT_IP;
+				kg_cfg->extracts[i].extract.from_hdr.hdr_index =
+					hdr_index;
 				kg_cfg->extracts[i].extract.from_hdr.field =
 					NH_FLD_IP_DST;
 				kg_cfg->extracts[i].type =
@@ -393,6 +414,8 @@ dpaa2_distset_to_dpkg_profile_cfg(
 
 				kg_cfg->extracts[i].extract.from_hdr.prot =
 					NET_PROT_IP;
+				kg_cfg->extracts[i].extract.from_hdr.hdr_index =
+					hdr_index;
 				kg_cfg->extracts[i].extract.from_hdr.field =
 					NH_FLD_IP_PROTO;
 				kg_cfg->extracts[i].type =
