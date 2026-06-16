@@ -5,6 +5,8 @@
 #ifndef __MANA_H__
 #define __MANA_H__
 
+#include <pthread.h>
+
 #define	PCI_VENDOR_ID_MICROSOFT		0x1414
 #define PCI_DEVICE_ID_MICROSOFT_MANA_PF	0x00b9
 #define PCI_DEVICE_ID_MICROSOFT_MANA	0x00ba
@@ -337,6 +339,26 @@ struct mana_process_priv {
 	void *db_page;
 };
 
+enum mana_device_state {
+	/* Normal running */
+	MANA_DEV_ACTIVE		= 0,
+	/* In reset enter processing */
+	MANA_DEV_RESET_ENTER	= 1,
+	/*
+	 * Reset enter processing completed.
+	 * Waiting for reset exit or in reset exit processing.
+	 */
+	MANA_DEV_RESET_EXIT	= 2,
+	/* Reset failed */
+	MANA_DEV_RESET_FAILED	= 3,
+};
+
+/* burst_state bit layout:
+ *   Bit 0: in-burst (set by data path CAS 0→1, cleared on exit).
+ *   Bit 1: blocked  (set by reset path to reject new bursts).
+ */
+#define MANA_BURST_BLOCKED	2
+
 struct mana_priv {
 	struct rte_eth_dev_data *dev_data;
 	struct mana_process_priv *process_priv;
@@ -368,6 +390,15 @@ struct mana_priv {
 	uint64_t max_mr_size;
 	struct mana_mr_btree mr_btree;
 	rte_spinlock_t	mr_btree_lock;
+	RTE_ATOMIC(enum mana_device_state) dev_state;
+	/* mutex for synchronizing mana reset and some mana_dev_ops callbacks */
+	pthread_mutex_t reset_ops_lock;
+	/* Reset thread ID, valid when reset_thread_active is true */
+	rte_thread_t reset_thread;
+	RTE_ATOMIC(bool) reset_thread_active;
+	/* Condvar to wake reset thread early on PCI remove */
+	pthread_mutex_t reset_cond_mutex;
+	pthread_cond_t reset_cond;
 };
 
 struct mana_txq_desc {
@@ -427,6 +458,14 @@ struct mana_txq {
 	struct mana_mr_btree mr_btree;
 	struct mana_stats stats;
 	unsigned int socket;
+	unsigned int txq_idx;
+
+	/*
+	 * Bit 0: in-burst flag (set by data path, cleared on exit).
+	 * Bit 1: blocked flag (set by reset path via fetch_or).
+	 * Data path CAS 0→1 to enter; fails if blocked bit is set.
+	 */
+	RTE_ATOMIC(uint32_t) burst_state;
 };
 
 struct mana_rxq {
@@ -462,6 +501,14 @@ struct mana_rxq {
 	struct mana_mr_btree mr_btree;
 
 	unsigned int socket;
+	unsigned int rxq_idx;
+
+	/*
+	 * Bit 0: in-burst flag (set by data path, cleared on exit).
+	 * Bit 1: blocked flag (set by reset path via fetch_or).
+	 * Data path CAS 0→1 to enter; fails if blocked bit is set.
+	 */
+	RTE_ATOMIC(uint32_t) burst_state;
 };
 
 extern int mana_logtype_driver;
@@ -543,6 +590,8 @@ enum mana_mp_req_type {
 	MANA_MP_REQ_CREATE_MR,
 	MANA_MP_REQ_START_RXTX,
 	MANA_MP_REQ_STOP_RXTX,
+	MANA_MP_REQ_RESET_ENTER,
+	MANA_MP_REQ_RESET_EXIT,
 };
 
 /* Pameters for IPC. */
@@ -563,8 +612,9 @@ void mana_mp_uninit_primary(void);
 void mana_mp_uninit_secondary(void);
 int mana_mp_req_verbs_cmd_fd(struct rte_eth_dev *dev);
 int mana_mp_req_mr_create(struct mana_priv *priv, uintptr_t addr, uint32_t len);
+int mana_map_doorbell_secondary(struct rte_eth_dev *eth_dev, int fd);
 
-void mana_mp_req_on_rxtx(struct rte_eth_dev *dev, enum mana_mp_req_type type);
+int mana_mp_req_on_rxtx(struct rte_eth_dev *dev, enum mana_mp_req_type type);
 
 void *mana_alloc_verbs_buf(size_t size, void *data);
 void mana_free_verbs_buf(void *ptr, void *data __rte_unused);

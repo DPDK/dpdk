@@ -140,6 +140,12 @@ New Features
   * Added support for transmitting LLDP packets based on mbuf packet type.
   * Implemented AVX2 context descriptor transmit paths.
 
+* **Updated Microsoft mana driver.**
+
+  * Added device reset support to the MANA PMD,
+    doing automatic recovery from hardware service reset events,
+    and notification to upper layers of the reset lifecycle.
+
 * **Updated NVIDIA mlx5 ethernet driver.**
 
   * Added support for selective Rx in scalar SPRQ Rx path.

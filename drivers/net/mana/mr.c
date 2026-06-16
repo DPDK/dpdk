@@ -314,8 +314,10 @@ mana_mr_btree_init(struct mana_mr_btree *bt, int n, int socket)
 void
 mana_mr_btree_free(struct mana_mr_btree *bt)
 {
-	rte_free(bt->table);
-	memset(bt, 0, sizeof(*bt));
+	if (bt && bt->table) {
+		rte_free(bt->table);
+		memset(bt, 0, sizeof(*bt));
+	}
 }
 
 int

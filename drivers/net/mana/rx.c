@@ -36,6 +36,11 @@ mana_rq_ring_doorbell(struct mana_rxq *rxq)
 		db_page = process_priv->db_page;
 	}
 
+	if (!db_page) {
+		DP_LOG(ERR, "db_page is NULL, cannot ring RX doorbell");
+		return -EINVAL;
+	}
+
 	/* Hardware Spec specifies that software client should set 0 for
 	 * wqe_cnt for Receive Queues.
 	 */
@@ -172,7 +177,7 @@ mana_stop_rx_queues(struct rte_eth_dev *dev)
 
 	for (i = 0; i < priv->num_queues; i++)
 		if (dev->data->rx_queue_state[i] == RTE_ETH_QUEUE_STATE_STOPPED)
-			return -EINVAL;
+			return 0;
 
 	if (priv->rwq_qp) {
 		ret = ibv_destroy_qp(priv->rwq_qp);
@@ -255,6 +260,9 @@ mana_start_rx_queues(struct rte_eth_dev *dev)
 	for (i = 0; i < priv->num_queues; i++) {
 		struct mana_rxq *rxq = dev->data->rx_queues[i];
 		struct ibv_wq_init_attr wq_attr = {};
+
+		rxq->rxq_idx = i;
+		DRV_LOG(DEBUG, "assigning rxq_idx to %d", i);
 
 		manadv_set_context_attr(priv->ib_ctx,
 			MANADV_CTX_ATTR_BUF_ALLOCATORS,
@@ -451,6 +459,16 @@ mana_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	uint32_t pkt_len;
 	uint32_t i;
 	int polled = 0;
+	uint32_t expected = 0;
+
+	/* Single atomic CAS: enter burst only if device is active (0→1).
+	 * Fails immediately if reset path has set the blocked bit.
+	 */
+	if (unlikely(!rte_atomic_compare_exchange_strong_explicit(
+			&rxq->burst_state, &expected, 1,
+			rte_memory_order_acquire,
+			rte_memory_order_relaxed)))
+		return 0;
 
 repoll:
 	/* Polling on new completions if we have no backlog */
@@ -591,6 +609,9 @@ drop:
 			DRV_LOG(ERR, "failed to post %d WQEs, ret %d",
 				wqe_consumed, ret);
 	}
+
+	rte_atomic_fetch_and_explicit(&rxq->burst_state, ~(uint32_t)1,
+				     rte_memory_order_release);
 
 	return pkt_received;
 }

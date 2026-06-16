@@ -2,10 +2,13 @@
  * Copyright 2022 Microsoft Corporation
  */
 
+#include <sys/mman.h>
 #include <rte_malloc.h>
 #include <ethdev_driver.h>
 #include <rte_log.h>
+#include <rte_eal_paging.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <infiniband/verbs.h>
 
@@ -120,6 +123,23 @@ mana_mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 }
 
 static int
+mana_mp_reset_enter(struct rte_eth_dev *dev)
+{
+	struct mana_process_priv *proc_priv = dev->process_private;
+
+	void *addr = proc_priv->db_page;
+
+	/* Reset the db_page to NULL */
+	proc_priv->db_page = NULL;
+
+	if (addr)
+		(void)munmap(addr, rte_mem_page_size());
+
+	DRV_LOG(DEBUG, "Secondary doorbell pages unmapped");
+	return 0;
+}
+
+static int
 mana_mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 {
 	struct rte_mp_msg mp_res = { 0 };
@@ -168,6 +188,52 @@ mana_mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 		rte_mb();
 
 		res->result = 0;
+		ret = rte_mp_reply(&mp_res, peer);
+		break;
+
+	case MANA_MP_REQ_RESET_ENTER:
+		DRV_LOG(INFO, "Port %u reset enter", dev->data->port_id);
+		res->result = mana_mp_reset_enter(dev);
+
+		ret = rte_mp_reply(&mp_res, peer);
+		break;
+
+	case MANA_MP_REQ_RESET_EXIT:
+		DRV_LOG(INFO, "Port %u reset exit", dev->data->port_id);
+		{
+			struct mana_process_priv *proc_priv =
+				dev->process_private;
+
+			if (proc_priv->db_page != NULL) {
+				DRV_LOG(DEBUG,
+					"Secondary doorbell already "
+					"mapped to %p",
+					proc_priv->db_page);
+				res->result = 0;
+			} else if (mp_msg->num_fds < 1) {
+				DRV_LOG(ERR,
+					"No FD in RESET_EXIT message");
+				res->result = -EINVAL;
+			} else {
+				ret = mana_map_doorbell_secondary(dev,
+							mp_msg->fds[0]);
+				if (ret) {
+					DRV_LOG(ERR,
+						"Failed secondary "
+						"doorbell map %d",
+						mp_msg->fds[0]);
+					res->result = -ENODEV;
+				} else {
+					res->result = 0;
+				}
+			}
+
+			/* Close the fd whenever present, even if
+			 * db_page was already mapped.
+			 */
+			if (mp_msg->num_fds >= 1)
+				close(mp_msg->fds[0]);
+		}
 		ret = rte_mp_reply(&mp_res, peer);
 		break;
 
@@ -254,7 +320,7 @@ mana_mp_req_verbs_cmd_fd(struct rte_eth_dev *dev)
 	}
 
 	ret = mp_res->fds[0];
-	DRV_LOG(ERR, "port %u command FD from primary is %d",
+	DRV_LOG(DEBUG, "port %u command FD from primary is %d",
 		dev->data->port_id, ret);
 exit:
 	free(mp_rep.msgs);
@@ -298,26 +364,35 @@ mana_mp_req_mr_create(struct mana_priv *priv, uintptr_t addr, uint32_t len)
 	return ret;
 }
 
-void
+int
 mana_mp_req_on_rxtx(struct rte_eth_dev *dev, enum mana_mp_req_type type)
 {
 	struct rte_mp_msg mp_req = { 0 };
 	struct rte_mp_msg *mp_res;
-	struct rte_mp_reply mp_rep;
+	struct rte_mp_reply mp_rep = { 0 };
 	struct mana_mp_param *res;
 	struct timespec ts = {.tv_sec = MANA_MP_REQ_TIMEOUT_SEC, .tv_nsec = 0};
-	int i, ret;
+	int i, ret = 0;
 
-	if (type != MANA_MP_REQ_START_RXTX && type != MANA_MP_REQ_STOP_RXTX) {
+	if (type != MANA_MP_REQ_START_RXTX && type != MANA_MP_REQ_STOP_RXTX &&
+	    type != MANA_MP_REQ_RESET_ENTER && type != MANA_MP_REQ_RESET_EXIT) {
 		DRV_LOG(ERR, "port %u unknown request (req_type %d)",
 			dev->data->port_id, type);
-		return;
+		return -EINVAL;
 	}
 
 	if (rte_atomic_load_explicit(&mana_shared_data->secondary_cnt, rte_memory_order_relaxed) == 0)
-		return;
+		return 0;
 
 	mp_init_msg(&mp_req, type, dev->data->port_id);
+
+	/* Include IB cmd FD for secondary doorbell remap */
+	if (type == MANA_MP_REQ_RESET_EXIT) {
+		struct mana_priv *priv = dev->data->dev_private;
+
+		mp_req.num_fds = 1;
+		mp_req.fds[0] = priv->ib_ctx->cmd_fd;
+	}
 
 	ret = rte_mp_request_sync(&mp_req, &mp_rep, &ts);
 	if (ret) {
@@ -329,6 +404,7 @@ mana_mp_req_on_rxtx(struct rte_eth_dev *dev, enum mana_mp_req_type type)
 	if (mp_rep.nb_sent != mp_rep.nb_received) {
 		DRV_LOG(ERR, "port %u not all secondaries responded (%d)",
 			dev->data->port_id, type);
+		ret = -ETIMEDOUT;
 		goto exit;
 	}
 	for (i = 0; i < mp_rep.nb_received; i++) {
@@ -337,9 +413,11 @@ mana_mp_req_on_rxtx(struct rte_eth_dev *dev, enum mana_mp_req_type type)
 		if (res->result) {
 			DRV_LOG(ERR, "port %u request failed on secondary %d",
 				dev->data->port_id, i);
+			ret = res->result;
 			goto exit;
 		}
 	}
 exit:
 	free(mp_rep.msgs);
+	return ret;
 }

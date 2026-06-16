@@ -71,3 +71,42 @@ The user can specify below argument in devargs.
     The default value is not set,
     meaning all the NICs will be probed and loaded.
     User can specify multiple mac=xx:xx:xx:xx:xx:xx arguments for up to 8 NICs.
+
+Device Reset Support
+--------------------
+
+The MANA PMD supports automatic recovery from hardware service reset events.
+When the MANA kernel driver receives a hardware service event,
+it initiates a device reset and notifies userspace
+via ``IBV_EVENT_DEVICE_FATAL``.
+
+The driver handles this transparently through a two-phase reset flow:
+
+Enter phase
+   The interrupt handler blocks new data path bursts
+   and waits for all in-flight burst calls to drain
+   using per-queue atomic flags,
+   then spawns a control thread for the remaining work.
+
+Teardown and exit phase
+   The control thread tears down IB resources and queues,
+   unmaps secondary process doorbell pages, and closes the device.
+   After a delay for hardware recovery, it re-probes the PCI device,
+   reinstalls the interrupt handler, reinitializes resources, and restarts queues.
+
+The driver emits the following ethdev recovery events
+to notify upper layers (e.g. netvsc) of the reset lifecycle:
+
+``RTE_ETH_EVENT_ERR_RECOVERING``
+   Reset has started.
+
+``RTE_ETH_EVENT_RECOVERY_SUCCESS``
+   Device has recovered successfully.
+
+``RTE_ETH_EVENT_RECOVERY_FAILED``
+   Recovery failed.
+
+To distinguish a PCI hot-remove from a service reset,
+the driver registers for PCI device removal events.
+This requires the application to call ``rte_dev_event_monitor_start()``
+for removal events to be delivered (e.g. testpmd ``--hot-plug-handling`` option).

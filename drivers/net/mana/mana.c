@@ -103,6 +103,8 @@ mana_dev_configure(struct rte_eth_dev *dev)
 			      RTE_ETH_RX_OFFLOAD_VLAN_STRIP);
 
 	priv->num_queues = dev->data->nb_rx_queues;
+	DRV_LOG(DEBUG, "priv %p, port %u, dev port %u, num_queues: %u",
+		priv, priv->port_id, priv->dev_port, priv->num_queues);
 
 	manadv_set_context_attr(priv->ib_ctx, MANADV_CTX_ATTR_BUF_ALLOCATORS,
 				(void *)((uintptr_t)&(struct manadv_ctx_allocators){
@@ -214,8 +216,8 @@ mana_dev_start(struct rte_eth_dev *dev)
 
 	DRV_LOG(INFO, "TX/RX queues have started");
 
-	/* Enable datapath for secondary processes */
-	mana_mp_req_on_rxtx(dev, MANA_MP_REQ_START_RXTX);
+	/* Intentionally ignore errors — secondary may not be running */
+	(void)mana_mp_req_on_rxtx(dev, MANA_MP_REQ_START_RXTX);
 
 	ret = rxq_intr_enable(priv);
 	if (ret) {
@@ -242,26 +244,33 @@ mana_dev_stop(struct rte_eth_dev *dev)
 {
 	int ret;
 	struct mana_priv *priv = dev->data->dev_private;
+	enum mana_device_state state;
 
-	rxq_intr_disable(priv);
+	state = rte_atomic_load_explicit(&priv->dev_state,
+					 rte_memory_order_acquire);
+	if (state == MANA_DEV_ACTIVE ||
+	    state == MANA_DEV_RESET_FAILED) {
+		rxq_intr_disable(priv);
+		DRV_LOG(DEBUG, "rxq_intr_disable called");
+	}
 
 	dev->tx_pkt_burst = mana_tx_burst_removed;
 	dev->rx_pkt_burst = mana_rx_burst_removed;
 
-	/* Stop datapath on secondary processes */
-	mana_mp_req_on_rxtx(dev, MANA_MP_REQ_STOP_RXTX);
+	/* Intentionally ignore errors — secondary may not be running */
+	(void)mana_mp_req_on_rxtx(dev, MANA_MP_REQ_STOP_RXTX);
 
 	rte_wmb();
 
 	ret = mana_stop_tx_queues(dev);
 	if (ret) {
-		DRV_LOG(ERR, "failed to stop tx queues");
+		DRV_LOG(ERR, "failed to stop tx queues, ret %d", ret);
 		return ret;
 	}
 
 	ret = mana_stop_rx_queues(dev);
 	if (ret) {
-		DRV_LOG(ERR, "failed to stop tx queues");
+		DRV_LOG(ERR, "failed to stop rx queues, ret %d", ret);
 		return ret;
 	}
 
@@ -275,34 +284,64 @@ mana_dev_close(struct rte_eth_dev *dev)
 {
 	struct mana_priv *priv = dev->data->dev_private;
 	int ret;
+	enum mana_device_state state;
 
+	DRV_LOG(DEBUG, "Free MR for priv %p", priv);
 	mana_remove_all_mr(priv);
 
-	ret = mana_intr_uninstall(priv);
-	if (ret)
-		return ret;
+	state = rte_atomic_load_explicit(&priv->dev_state,
+					 rte_memory_order_acquire);
+	if (state == MANA_DEV_ACTIVE ||
+	    state == MANA_DEV_RESET_FAILED) {
+		ret = mana_intr_uninstall(priv);
+		if (ret)
+			return ret;
+	}
 
 	if (priv->ib_parent_pd) {
-		int err = ibv_dealloc_pd(priv->ib_parent_pd);
-		if (err)
-			DRV_LOG(ERR, "Failed to deallocate parent PD: %d", err);
+		ret = ibv_dealloc_pd(priv->ib_parent_pd);
+		if (ret)
+			DRV_LOG(ERR,
+				"Failed to deallocate parent PD: %d", ret);
 		priv->ib_parent_pd = NULL;
 	}
 
 	if (priv->ib_pd) {
-		int err = ibv_dealloc_pd(priv->ib_pd);
-		if (err)
-			DRV_LOG(ERR, "Failed to deallocate PD: %d", err);
+		ret = ibv_dealloc_pd(priv->ib_pd);
+		if (ret)
+			DRV_LOG(ERR, "Failed to deallocate PD: %d", ret);
 		priv->ib_pd = NULL;
 	}
 
-	ret = ibv_close_device(priv->ib_ctx);
-	if (ret) {
-		ret = errno;
-		return ret;
+	state = rte_atomic_load_explicit(&priv->dev_state,
+					 rte_memory_order_acquire);
+	if (state == MANA_DEV_ACTIVE ||
+	    state == MANA_DEV_RESET_FAILED) {
+		if (priv->ib_ctx) {
+			ret = ibv_close_device(priv->ib_ctx);
+			if (ret) {
+				ret = errno;
+				return ret;
+			}
+			priv->ib_ctx = NULL;
+		}
 	}
 
 	return 0;
+}
+
+/*
+ * Called from mana_pci_remove to free resources allocated
+ * during probe that are not freed by dev_close.
+ */
+static void
+mana_dev_free_resources(struct rte_eth_dev *dev)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+
+	pthread_mutex_destroy(&priv->reset_ops_lock);
+	pthread_mutex_destroy(&priv->reset_cond_mutex);
+	pthread_cond_destroy(&priv->reset_cond);
 }
 
 static int
@@ -389,6 +428,39 @@ mana_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->default_txportconf.nb_queues = 1;
 
 	return 0;
+}
+
+/*
+ * Try to acquire the reset lock and verify the device is active.
+ * Returns 0 with lock held on success, or -EBUSY if the lock
+ * could not be acquired or the device is not in ACTIVE state.
+ */
+static int
+mana_reset_trylock(struct mana_priv *priv)
+{
+	if (pthread_mutex_trylock(&priv->reset_ops_lock))
+		return -EBUSY;
+
+	if (rte_atomic_load_explicit(&priv->dev_state,
+	    rte_memory_order_acquire) != MANA_DEV_ACTIVE) {
+		pthread_mutex_unlock(&priv->reset_ops_lock);
+		return -EBUSY;
+	}
+	return 0;
+}
+
+static int
+mana_dev_info_get_lock(struct rte_eth_dev *dev,
+		       struct rte_eth_dev_info *dev_info)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	int ret;
+
+	if (mana_reset_trylock(priv))
+		return -EBUSY;
+	ret = mana_dev_info_get(dev, dev_info);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+	return ret;
 }
 
 static void
@@ -552,6 +624,22 @@ fail:
 	return ret;
 }
 
+static int
+mana_dev_tx_queue_setup_lock(struct rte_eth_dev *dev, uint16_t queue_idx,
+			     uint16_t nb_desc, unsigned int socket_id,
+			     const struct rte_eth_txconf *tx_conf)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	int ret;
+
+	if (mana_reset_trylock(priv))
+		return -EBUSY;
+	ret = mana_dev_tx_queue_setup(dev, queue_idx,
+				      nb_desc, socket_id, tx_conf);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+	return ret;
+}
+
 static void
 mana_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
@@ -626,6 +714,23 @@ fail:
 	rte_free(rxq->gdma_comp_buf);
 	rte_free(rxq->desc_ring);
 	rte_free(rxq);
+	return ret;
+}
+
+static int
+mana_dev_rx_queue_setup_lock(struct rte_eth_dev *dev, uint16_t queue_idx,
+			     uint16_t nb_desc, unsigned int socket_id,
+			     const struct rte_eth_rxconf *rx_conf __rte_unused,
+			     struct rte_mempool *mp)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	int ret;
+
+	if (mana_reset_trylock(priv))
+		return -EBUSY;
+	ret = mana_dev_rx_queue_setup(dev, queue_idx, nb_desc,
+				      socket_id, rx_conf, mp);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
 	return ret;
 }
 
@@ -820,33 +925,267 @@ mana_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return mana_ifreq(priv, SIOCSIFMTU, &request);
 }
 
+static int
+mana_dev_configure_lock(struct rte_eth_dev *dev)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	int ret;
+
+	if (mana_reset_trylock(priv))
+		return -EBUSY;
+	ret = mana_dev_configure(dev);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+	return ret;
+}
+
+static int
+mana_dev_start_lock(struct rte_eth_dev *dev)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	int ret;
+
+	if (mana_reset_trylock(priv))
+		return -EBUSY;
+	ret = mana_dev_start(dev);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+	return ret;
+}
+
+/*
+ * Join the reset thread if it is active. Uses CAS on
+ * reset_thread_active to ensure only one caller joins.
+ * If called from the reset thread itself (e.g. via a recovery
+ * event callback that calls dev_stop/dev_close), detach instead
+ * of joining to avoid deadlock and let the thread self-free.
+ */
+static void
+mana_join_reset_thread(struct mana_priv *priv)
+{
+	bool expected = true;
+
+	if (rte_atomic_compare_exchange_strong_explicit(
+			&priv->reset_thread_active, &expected, false,
+			rte_memory_order_acq_rel,
+			rte_memory_order_acquire)) {
+		if (rte_thread_equal(rte_thread_self(),
+				     priv->reset_thread)) {
+			/* Self case: detach so resources are freed on
+			 * thread exit. Don't modify dev_state — the
+			 * caller (dev_stop_lock/dev_close_lock) handles
+			 * state transitions.
+			 */
+			rte_thread_detach(priv->reset_thread);
+			return;
+		}
+
+		pthread_mutex_lock(&priv->reset_cond_mutex);
+		rte_atomic_store_explicit(&priv->dev_state,
+			MANA_DEV_ACTIVE, rte_memory_order_release);
+		pthread_cond_signal(&priv->reset_cond);
+		pthread_mutex_unlock(&priv->reset_cond_mutex);
+		rte_thread_join(priv->reset_thread, NULL);
+	}
+}
+
+/*
+ * Clear per-queue burst_state so the data path CAS can succeed again.
+ * Must be called under reset_ops_lock when transitioning back to ACTIVE
+ * after a failed or aborted reset.
+ */
+static void
+mana_clear_burst_state(struct rte_eth_dev *dev)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	int i;
+
+	for (i = 0; i < priv->num_queues; i++) {
+		struct mana_rxq *rxq = dev->data->rx_queues[i];
+		struct mana_txq *txq = dev->data->tx_queues[i];
+
+		if (rxq)
+			rte_atomic_store_explicit(&rxq->burst_state, 0,
+						  rte_memory_order_release);
+		if (txq)
+			rte_atomic_store_explicit(&txq->burst_state, 0,
+						  rte_memory_order_release);
+	}
+}
+
+/*
+ * Custom lock wrappers for dev_stop and dev_close.
+ * These join any active reset thread and use a blocking lock (not
+ * trylock) so they wait for any in-progress reset processing to
+ * finish, rather than returning -EBUSY. When the device is not in
+ * MANA_DEV_ACTIVE state, they transition state to MANA_DEV_ACTIVE.
+ */
+static int
+mana_dev_stop_lock(struct rte_eth_dev *dev)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	int ret;
+
+	mana_join_reset_thread(priv);
+
+	pthread_mutex_lock(&priv->reset_ops_lock);
+
+	if (rte_atomic_load_explicit(&priv->dev_state,
+	    rte_memory_order_acquire) != MANA_DEV_ACTIVE) {
+		mana_clear_burst_state(dev);
+		rte_atomic_store_explicit(&priv->dev_state,
+			MANA_DEV_ACTIVE, rte_memory_order_release);
+		pthread_mutex_unlock(&priv->reset_ops_lock);
+		return 0;
+	}
+
+	ret = mana_dev_stop(dev);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+	return ret;
+}
+
+static int
+mana_dev_close_lock(struct rte_eth_dev *dev)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	int ret;
+
+	mana_join_reset_thread(priv);
+
+	pthread_mutex_lock(&priv->reset_ops_lock);
+
+	if (rte_atomic_load_explicit(&priv->dev_state,
+	    rte_memory_order_acquire) != MANA_DEV_ACTIVE) {
+		mana_clear_burst_state(dev);
+		rte_atomic_store_explicit(&priv->dev_state,
+			MANA_DEV_ACTIVE, rte_memory_order_release);
+	}
+
+	ret = mana_dev_close(dev);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+	return ret;
+}
+
+static int
+mana_rss_hash_update_lock(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_conf *rss_conf)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	int ret;
+
+	if (mana_reset_trylock(priv))
+		return -EBUSY;
+	ret = mana_rss_hash_update(dev, rss_conf);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+	return ret;
+}
+
+static int
+mana_rss_hash_conf_get_lock(struct rte_eth_dev *dev,
+			    struct rte_eth_rss_conf *rss_conf)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	int ret;
+
+	if (mana_reset_trylock(priv))
+		return -EBUSY;
+	ret = mana_rss_hash_conf_get(dev, rss_conf);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+	return ret;
+}
+
+static void
+mana_dev_tx_queue_release_lock(struct rte_eth_dev *dev, uint16_t qid)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+
+	if (mana_reset_trylock(priv)) {
+		DRV_LOG(ERR, "Device reset in progress, "
+			"mana_dev_tx_queue_release not called");
+		return;
+	}
+	mana_dev_tx_queue_release(dev, qid);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+}
+
+static void
+mana_dev_rx_queue_release_lock(struct rte_eth_dev *dev, uint16_t qid)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+
+	if (mana_reset_trylock(priv)) {
+		DRV_LOG(ERR, "Device reset in progress, "
+			"mana_dev_rx_queue_release not called");
+		return;
+	}
+	mana_dev_rx_queue_release(dev, qid);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+}
+
+static int
+mana_rx_intr_enable_lock(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	int ret;
+
+	if (mana_reset_trylock(priv))
+		return -EBUSY;
+	ret = mana_rx_intr_enable(dev, rx_queue_id);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+	return ret;
+}
+
+static int
+mana_rx_intr_disable_lock(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	int ret;
+
+	if (mana_reset_trylock(priv))
+		return -EBUSY;
+	ret = mana_rx_intr_disable(dev, rx_queue_id);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+	return ret;
+}
+
+static int
+mana_mtu_set_lock(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct mana_priv *priv = dev->data->dev_private;
+	int ret;
+
+	if (mana_reset_trylock(priv))
+		return -EBUSY;
+	ret = mana_mtu_set(dev, mtu);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+	return ret;
+}
+
 static const struct eth_dev_ops mana_dev_ops = {
-	.dev_configure		= mana_dev_configure,
-	.dev_start		= mana_dev_start,
-	.dev_stop		= mana_dev_stop,
-	.dev_close		= mana_dev_close,
-	.dev_infos_get		= mana_dev_info_get,
+	.dev_configure		= mana_dev_configure_lock,
+	.dev_start		= mana_dev_start_lock,
+	.dev_stop		= mana_dev_stop_lock,
+	.dev_close		= mana_dev_close_lock,
+	.dev_infos_get		= mana_dev_info_get_lock,
 	.txq_info_get		= mana_dev_tx_queue_info,
 	.rxq_info_get		= mana_dev_rx_queue_info,
 	.dev_supported_ptypes_get = mana_supported_ptypes,
-	.rss_hash_update	= mana_rss_hash_update,
-	.rss_hash_conf_get	= mana_rss_hash_conf_get,
-	.tx_queue_setup		= mana_dev_tx_queue_setup,
-	.tx_queue_release	= mana_dev_tx_queue_release,
-	.rx_queue_setup		= mana_dev_rx_queue_setup,
-	.rx_queue_release	= mana_dev_rx_queue_release,
-	.rx_queue_intr_enable	= mana_rx_intr_enable,
-	.rx_queue_intr_disable	= mana_rx_intr_disable,
+	.rss_hash_update	= mana_rss_hash_update_lock,
+	.rss_hash_conf_get	= mana_rss_hash_conf_get_lock,
+	.tx_queue_setup		= mana_dev_tx_queue_setup_lock,
+	.tx_queue_release	= mana_dev_tx_queue_release_lock,
+	.rx_queue_setup		= mana_dev_rx_queue_setup_lock,
+	.rx_queue_release	= mana_dev_rx_queue_release_lock,
+	.rx_queue_intr_enable	= mana_rx_intr_enable_lock,
+	.rx_queue_intr_disable	= mana_rx_intr_disable_lock,
 	.link_update		= mana_dev_link_update,
 	.stats_get		= mana_dev_stats_get,
 	.stats_reset		= mana_dev_stats_reset,
-	.mtu_set		= mana_mtu_set,
+	.mtu_set		= mana_mtu_set_lock,
 };
 
 static const struct eth_dev_ops mana_dev_secondary_ops = {
 	.stats_get = mana_dev_stats_get,
 	.stats_reset = mana_dev_stats_reset,
-	.dev_infos_get = mana_dev_info_get,
+	.dev_infos_get = mana_dev_info_get_lock,
 };
 
 uint16_t
@@ -1031,28 +1370,516 @@ mana_ibv_device_to_pci_addr(const struct ibv_device *device,
 	return 0;
 }
 
+static int mana_pci_probe(struct rte_pci_driver *pci_drv,
+			  struct rte_pci_device *pci_dev);
+static void mana_intr_handler(void *arg);
+static void mana_reset_exit(struct mana_priv *priv);
+
+/* Delay before initiating reset exit after reset enter completes */
+#define MANA_RESET_TIMER_US (15 * 1000000ULL) /* 15 seconds */
+
 /*
- * Interrupt handler from IB layer to notify this device is being removed.
+ * Callback for PCI device removal events from EAL.
+ * If the device is in reset (RESET_EXIT state), this means the PCI
+ * device was hot-removed rather than a service reset. Wake the reset
+ * thread via condvar and notify netvsc via RTE_ETH_EVENT_INTR_RMV.
+ */
+static void
+mana_pci_remove_event_cb(const char *device_name,
+			 enum rte_dev_event_type event, void *cb_arg)
+{
+	struct mana_priv *priv = cb_arg;
+	struct rte_eth_dev *dev;
+
+	if (event != RTE_DEV_EVENT_REMOVE)
+		return;
+
+	DRV_LOG(INFO, "PCI device %s removed", device_name);
+
+	/* Wake the reset thread immediately */
+	pthread_mutex_lock(&priv->reset_cond_mutex);
+	rte_atomic_store_explicit(&priv->dev_state,
+		MANA_DEV_RESET_FAILED, rte_memory_order_release);
+	pthread_cond_signal(&priv->reset_cond);
+	pthread_mutex_unlock(&priv->reset_cond_mutex);
+
+	/* Wait for the reset thread to finish teardown and release
+	 * reset_ops_lock before emitting INTR_RMV to the application.
+	 */
+	pthread_mutex_lock(&priv->reset_ops_lock);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+
+	dev = &rte_eth_devices[priv->port_id];
+	DRV_LOG(INFO, "Sending RTE_ETH_EVENT_INTR_RMV for port %u",
+		priv->port_id);
+	rte_eth_dev_callback_process(dev,
+		RTE_ETH_EVENT_INTR_RMV, NULL);
+}
+
+/*
+ * Reset thread: performs teardown immediately, waits for the
+ * recovery timer, then re-probes and restarts the device.
+ * Runs on a control thread so it can call blocking IPC, ibv
+ * teardown, and rte_intr_callback_unregister (which all must
+ * not run on the EAL interrupt thread).
+ */
+static uint32_t
+mana_reset_thread(void *arg)
+{
+	struct mana_priv *priv = (struct mana_priv *)arg;
+	struct rte_eth_dev *dev = &rte_eth_devices[priv->port_id];
+	struct timespec ts;
+	int ret;
+	int i;
+
+	DRV_LOG(INFO, "Reset thread started");
+
+	pthread_mutex_lock(&priv->reset_ops_lock);
+
+	/* Teardown: stop data path, unmap secondary doorbells, close device,
+	 * free MR caches. Must happen immediately — hardware may be gone.
+	 */
+	ret = mana_dev_stop(dev);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to stop mana dev ret %d", ret);
+		rte_atomic_store_explicit(&priv->dev_state,
+			MANA_DEV_RESET_FAILED, rte_memory_order_release);
+		goto reset_failed;
+	}
+
+	ret = mana_mp_req_on_rxtx(dev, MANA_MP_REQ_RESET_ENTER);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to reset secondary processes ret = %d",
+			ret);
+		rte_atomic_store_explicit(&priv->dev_state,
+			MANA_DEV_RESET_FAILED, rte_memory_order_release);
+		goto reset_failed;
+	}
+
+	ret = mana_dev_close(dev);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to close mana dev ret %d", ret);
+		rte_atomic_store_explicit(&priv->dev_state,
+			MANA_DEV_RESET_FAILED, rte_memory_order_release);
+		goto reset_failed;
+	}
+
+	for (i = 0; i < priv->num_queues; i++) {
+		struct mana_rxq *rxq = dev->data->rx_queues[i];
+		struct mana_txq *txq = dev->data->tx_queues[i];
+
+		DRV_LOG(DEBUG, "Free MR for priv = %p, rxq %u, txq %u",
+			priv, rxq->rxq_idx, txq->txq_idx);
+		mana_mr_btree_free(&rxq->mr_btree);
+		mana_mr_btree_free(&txq->mr_btree);
+	}
+
+	DRV_LOG(DEBUG, "Teardown complete");
+
+	rte_atomic_store_explicit(&priv->dev_state, MANA_DEV_RESET_EXIT,
+				     rte_memory_order_release);
+
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+
+	/* Wait for the recovery timer before re-probing.
+	 * Check dev_state under reset_cond_mutex before waiting:
+	 * if mana_pci_remove_event_cb already set RESET_FAILED
+	 * (under the same mutex), we skip the wait entirely.
+	 * This avoids losing a condvar signal that arrived before
+	 * we entered the wait.
+	 */
+	DRV_LOG(INFO, "Waiting %us for hardware recovery",
+		(unsigned int)(MANA_RESET_TIMER_US / 1000000));
+
+	clock_gettime(CLOCK_REALTIME, &ts);
+	ts.tv_sec += MANA_RESET_TIMER_US / 1000000;
+
+	pthread_mutex_lock(&priv->reset_cond_mutex);
+	while (rte_atomic_load_explicit(&priv->dev_state,
+	       rte_memory_order_acquire) == MANA_DEV_RESET_EXIT) {
+		if (pthread_cond_timedwait(&priv->reset_cond,
+		    &priv->reset_cond_mutex, &ts))
+			break; /* timeout */
+	}
+	pthread_mutex_unlock(&priv->reset_cond_mutex);
+
+	pthread_mutex_lock(&priv->reset_ops_lock);
+
+	if (rte_atomic_load_explicit(&priv->dev_state,
+	    rte_memory_order_acquire) != MANA_DEV_RESET_EXIT) {
+		DRV_LOG(INFO, "Reset thread: dev_state=%d, skipping exit",
+			(int)rte_atomic_load_explicit(&priv->dev_state,
+			rte_memory_order_acquire));
+		pthread_mutex_unlock(&priv->reset_ops_lock);
+		return 0;
+	}
+
+	DRV_LOG(INFO, "Reset thread: initiating reset exit");
+	mana_reset_exit(priv);
+	/* Lock is released by mana_reset_exit_delay.
+	 * reset_thread_active remains true — the joiner
+	 * (mana_join_reset_thread) will either join or detach
+	 * (if called from this thread's own callback).
+	 */
+	return 0;
+
+reset_failed:
+	mana_clear_burst_state(dev);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+
+	DRV_LOG(INFO, "Sending RTE_ETH_EVENT_RECOVERY_FAILED for port %u",
+		priv->port_id);
+	rte_eth_dev_callback_process(dev,
+		RTE_ETH_EVENT_RECOVERY_FAILED, NULL);
+	return 0;
+}
+
+static void
+mana_reset_enter(struct mana_priv *priv)
+{
+	int ret;
+	int i;
+	struct rte_eth_dev *dev = &rte_eth_devices[priv->port_id];
+
+	/*
+	 * Lock ownership: mana_intr_handler acquires reset_ops_lock,
+	 * mana_reset_enter sets state/drains/spawns thread and releases it.
+	 * The reset thread independently acquires/releases the lock for
+	 * teardown and for the exit (re-probe) phase.
+	 */
+
+	rte_atomic_store_explicit(&priv->dev_state, MANA_DEV_RESET_ENTER,
+				     rte_memory_order_release);
+
+	DRV_LOG(DEBUG, "Entering into device reset state");
+	DRV_LOG(DEBUG, "Resetting dev = %p, priv = %p", dev, priv);
+
+	/* Set the blocked bit on each queue's burst_state so new bursts
+	 * are rejected, then wait for any in-flight burst (bit 0) to finish.
+	 */
+	for (i = 0; i < priv->num_queues; i++) {
+		struct mana_rxq *rxq = dev->data->rx_queues[i];
+		struct mana_txq *txq = dev->data->tx_queues[i];
+
+		if (rxq)
+			rte_atomic_fetch_or_explicit(&rxq->burst_state,
+				MANA_BURST_BLOCKED,
+				rte_memory_order_release);
+		if (txq)
+			rte_atomic_fetch_or_explicit(&txq->burst_state,
+				MANA_BURST_BLOCKED,
+				rte_memory_order_release);
+	}
+
+	/* Wait for all in-flight burst calls to finish (bit 0 to clear) */
+	for (i = 0; i < priv->num_queues; i++) {
+		struct mana_rxq *rxq = dev->data->rx_queues[i];
+		struct mana_txq *txq = dev->data->tx_queues[i];
+
+		if (rxq)
+			while (rte_atomic_load_explicit(&rxq->burst_state,
+				    rte_memory_order_acquire) & 1)
+				rte_pause();
+		if (txq)
+			while (rte_atomic_load_explicit(&txq->burst_state,
+				    rte_memory_order_acquire) & 1)
+				rte_pause();
+	}
+
+	DRV_LOG(DEBUG, "All data path threads drained");
+
+	/* Join previous reset thread if it completed but was not joined.
+	 * Use CAS to avoid double-join if another path joined first.
+	 * Don't use mana_join_reset_thread() here — we are already in
+	 * RESET_ENTER state and must not change dev_state to ACTIVE.
+	 */
+	{
+		bool expected = true;
+
+		if (rte_atomic_compare_exchange_strong_explicit(
+				&priv->reset_thread_active, &expected, false,
+				rte_memory_order_acq_rel,
+				rte_memory_order_acquire))
+			rte_thread_join(priv->reset_thread, NULL);
+	}
+
+	ret = rte_thread_create_internal_control(&priv->reset_thread,
+						 "mana-reset",
+						 mana_reset_thread, priv);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to create reset thread ret %d", ret);
+		rte_atomic_store_explicit(&priv->dev_state,
+					  MANA_DEV_RESET_FAILED,
+					  rte_memory_order_release);
+		goto reset_failed;
+	}
+	rte_atomic_store_explicit(&priv->reset_thread_active,
+		true, rte_memory_order_release);
+
+	DRV_LOG(DEBUG, "Reset thread started");
+
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+	return;
+
+reset_failed:
+	mana_clear_burst_state(dev);
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+}
+
+static int
+mana_reset_exit_delay(void *arg)
+{
+	struct mana_priv *priv = (struct mana_priv *)arg;
+	int ret = 0;
+	int i;
+	struct rte_eth_dev *dev;
+	struct rte_pci_device *pci_dev;
+
+	DRV_LOG(DEBUG, "Delayed mana device reset complete processing");
+
+	/* If the app called dev_stop/dev_close during the timer window,
+	 * state is no longer RESET_EXIT. Nothing to do.
+	 */
+	if (rte_atomic_load_explicit(&priv->dev_state,
+	    rte_memory_order_acquire) != MANA_DEV_RESET_EXIT) {
+		DRV_LOG(DEBUG, "State is not RESET_EXIT, skipping");
+		pthread_mutex_unlock(&priv->reset_ops_lock);
+		return ret;
+	}
+
+	dev = &rte_eth_devices[priv->port_id];
+	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
+
+	DRV_LOG(DEBUG, "Resetting dev = %p, priv = %p", dev, priv);
+
+	ret = ibv_close_device(priv->ib_ctx);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to close ibv device %d", ret);
+		rte_atomic_store_explicit(&priv->dev_state, MANA_DEV_RESET_FAILED,
+				     rte_memory_order_release);
+		goto out;
+	}
+	priv->ib_ctx = NULL;
+
+	ret = mana_pci_probe(NULL, pci_dev);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to probe mana pci dev ret %d", ret);
+		rte_atomic_store_explicit(&priv->dev_state, MANA_DEV_RESET_FAILED,
+				     rte_memory_order_release);
+		goto out;
+	}
+
+	/*
+	 * Init the local MR caches.
+	 */
+	for (i = 0; i < priv->num_queues; i++) {
+		struct mana_rxq *rxq = dev->data->rx_queues[i];
+		struct mana_txq *txq = dev->data->tx_queues[i];
+
+		ret = mana_mr_btree_init(&rxq->mr_btree,
+					 MANA_MR_BTREE_PER_QUEUE_N,
+					 rxq->socket);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to init RXQ %d MR btree "
+				"on socket %u, ret %d", i, rxq->socket, ret);
+			goto mr_init_failed_rxq;
+		}
+
+		ret = mana_mr_btree_init(&txq->mr_btree,
+					 MANA_MR_BTREE_PER_QUEUE_N,
+					 txq->socket);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to init TXQ %d MR btree "
+				"on socket %u, ret %d", i, txq->socket, ret);
+			goto mr_init_failed_txq;
+		}
+	}
+	DRV_LOG(DEBUG, "priv %p, num_queues %u", priv, priv->num_queues);
+
+	/* Start secondaries */
+	ret = mana_mp_req_on_rxtx(dev, MANA_MP_REQ_RESET_EXIT);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to start secondary processes ret = %d",
+			ret);
+		goto mr_init_failed_all;
+	}
+
+	ret = mana_dev_start(dev);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to start mana dev ret %d", ret);
+		goto mr_init_failed_all;
+	}
+
+	/* Clear per-queue burst_state before marking device active so
+	 * data path CAS can succeed again.
+	 */
+	for (i = 0; i < priv->num_queues; i++) {
+		struct mana_rxq *rxq = dev->data->rx_queues[i];
+		struct mana_txq *txq = dev->data->tx_queues[i];
+
+		if (rxq)
+			rte_atomic_store_explicit(&rxq->burst_state, 0,
+						  rte_memory_order_release);
+		if (txq)
+			rte_atomic_store_explicit(&txq->burst_state, 0,
+						  rte_memory_order_release);
+	}
+
+	rte_atomic_store_explicit(&priv->dev_state, MANA_DEV_ACTIVE,
+				     rte_memory_order_release);
+
+	DRV_LOG(DEBUG, "Exiting the reset complete processing");
+	goto out;
+
+mr_init_failed_all:
+	i = priv->num_queues;
+	goto mr_init_failed_rxq;
+
+mr_init_failed_txq:
+	/* RXQ btree at index i was initialized, free it */
+	mana_mr_btree_free(&((struct mana_rxq *)
+			     dev->data->rx_queues[i])->mr_btree);
+
+mr_init_failed_rxq:
+	/* Free all fully initialized btrees for indices < i */
+	for (int j = 0; j < i; j++) {
+		struct mana_rxq *rxq = dev->data->rx_queues[j];
+		struct mana_txq *txq = dev->data->tx_queues[j];
+
+		mana_mr_btree_free(&rxq->mr_btree);
+		mana_mr_btree_free(&txq->mr_btree);
+	}
+	rte_atomic_store_explicit(&priv->dev_state, MANA_DEV_RESET_FAILED,
+				     rte_memory_order_release);
+
+out:
+	pthread_mutex_unlock(&priv->reset_ops_lock);
+
+	if (!ret) {
+		DRV_LOG(INFO, "Sending RTE_ETH_EVENT_RECOVERY_SUCCESS for port %u",
+			priv->port_id);
+		rte_eth_dev_callback_process(dev,
+			RTE_ETH_EVENT_RECOVERY_SUCCESS, NULL);
+	} else {
+		DRV_LOG(INFO, "Sending RTE_ETH_EVENT_RECOVERY_FAILED for port %u",
+			priv->port_id);
+		rte_eth_dev_callback_process(dev,
+			RTE_ETH_EVENT_RECOVERY_FAILED, NULL);
+	}
+	return ret;
+}
+
+static void
+mana_reset_exit(struct mana_priv *priv)
+{
+	int ret;
+
+	if (!priv) {
+		DRV_LOG(ERR, "Private structure invalid");
+		return;
+	}
+	DRV_LOG(DEBUG, "Entering into device reset complete processing");
+
+	rxq_intr_disable(priv);
+
+	/* Unregister the interrupt handler. Since mana_reset_exit is always
+	 * called from mana_reset_thread (a non-interrupt thread), the
+	 * interrupt source is inactive and rte_intr_callback_unregister
+	 * succeeds directly.
+	 */
+	if (priv->intr_handle) {
+		ret = rte_intr_callback_unregister(priv->intr_handle,
+						   mana_intr_handler, priv);
+		if (ret < 0)
+			DRV_LOG(ERR, "Failed to unregister intr callback ret %d",
+				ret);
+		else
+			DRV_LOG(DEBUG, "%d intr callback(s) removed", ret);
+
+		rte_intr_instance_free(priv->intr_handle);
+		priv->intr_handle = NULL;
+	}
+
+	/* Proceed directly to reset exit delay (re-probe and restart).
+	 * No need for a separate thread - we are already on
+	 * mana_reset_thread which is a non-interrupt control thread.
+	 */
+	mana_reset_exit_delay(priv);
+}
+
+/*
+ * Interrupt handler from IB layer to notify this device is
+ * being removed or reset.
  */
 static void
 mana_intr_handler(void *arg)
 {
 	struct mana_priv *priv = arg;
 	struct ibv_context *ctx = priv->ib_ctx;
-	struct ibv_async_event event;
+	struct ibv_async_event event = { 0 };
+	struct rte_eth_dev *dev;
 
 	/* Read and ack all messages from IB device */
 	while (true) {
 		if (ibv_get_async_event(ctx, &event))
 			break;
 
-		if (event.event_type == IBV_EVENT_DEVICE_FATAL) {
-			struct rte_eth_dev *dev;
-
-			dev = &rte_eth_devices[priv->port_id];
-			if (dev->data->dev_conf.intr_conf.rmv)
+		switch (event.event_type) {
+		case IBV_EVENT_DEVICE_FATAL:
+			DRV_LOG(INFO, "IBV_EVENT_DEVICE_FATAL received, dev_state=%d",
+				(int)rte_atomic_load_explicit(&priv->dev_state,
+				rte_memory_order_acquire));
+			if (rte_atomic_load_explicit(&priv->dev_state,
+			    rte_memory_order_acquire) == MANA_DEV_ACTIVE) {
+				/* Notify upper layers (e.g. netvsc) before
+				 * acquiring the lock so they can switch data
+				 * path before mana stops queues. Emitting
+				 * outside the lock avoids deadlock if the
+				 * callback calls dev_stop/dev_close.
+				 */
+				dev = &rte_eth_devices[priv->port_id];
+				DRV_LOG(INFO,
+					"Sending RTE_ETH_EVENT_ERR_RECOVERING for port %u",
+					priv->port_id);
 				rte_eth_dev_callback_process(dev,
-					RTE_ETH_EVENT_INTR_RMV, NULL);
+					RTE_ETH_EVENT_ERR_RECOVERING,
+					NULL);
+
+				pthread_mutex_lock(&priv->reset_ops_lock);
+
+				/* Re-check after lock to avoid racing with
+				 * mana_pci_remove_event_cb which may have
+				 * set RESET_FAILED while we waited.
+				 */
+				if (rte_atomic_load_explicit(&priv->dev_state,
+				    rte_memory_order_acquire) !=
+				    MANA_DEV_ACTIVE) {
+					pthread_mutex_unlock(
+						&priv->reset_ops_lock);
+					break;
+				}
+
+				mana_reset_enter(priv);
+
+				if (rte_atomic_load_explicit(&priv->dev_state,
+				    rte_memory_order_acquire) ==
+				    MANA_DEV_RESET_FAILED) {
+					DRV_LOG(INFO,
+						"Sending RTE_ETH_EVENT_RECOVERY_FAILED for port %u",
+						priv->port_id);
+					rte_eth_dev_callback_process(dev,
+						RTE_ETH_EVENT_RECOVERY_FAILED,
+						NULL);
+				}
+			} else {
+				DRV_LOG(ERR, "Already in reset handling, dev_state=%d",
+					(int)rte_atomic_load_explicit(&priv->dev_state,
+					rte_memory_order_acquire));
+			}
+			break;
+
+		default:
+			break;
 		}
 
 		ibv_ack_async_event(&event);
@@ -1063,6 +1890,23 @@ static int
 mana_intr_uninstall(struct mana_priv *priv)
 {
 	int ret;
+	struct rte_eth_dev *dev;
+
+	if (!priv->intr_handle)
+		return 0;
+
+	/* Unregister PCI device removal event callback.
+	 * Do not retry on -EAGAIN to avoid deadlock: the callback
+	 * may be blocked waiting for reset_ops_lock which we hold.
+	 */
+	dev = &rte_eth_devices[priv->port_id];
+	if (dev->device) {
+		ret = rte_dev_event_callback_unregister(dev->device->name,
+			mana_pci_remove_event_cb, priv);
+		if (ret < 0 && ret != -ENOENT)
+			DRV_LOG(WARNING, "Failed to unregister PCI remove cb ret %d",
+				ret);
+	}
 
 	ret = rte_intr_callback_unregister(priv->intr_handle,
 					   mana_intr_handler, priv);
@@ -1072,6 +1916,7 @@ mana_intr_uninstall(struct mana_priv *priv)
 	}
 
 	rte_intr_instance_free(priv->intr_handle);
+	priv->intr_handle = NULL;
 
 	return 0;
 }
@@ -1127,6 +1972,16 @@ mana_intr_install(struct rte_eth_dev *eth_dev, struct mana_priv *priv)
 		goto free_intr;
 	}
 
+	/* Register for PCI device removal events to distinguish
+	 * PCI hot-remove from service reset. This requires the
+	 * application to call rte_dev_event_monitor_start() for
+	 * events to be delivered (e.g. testpmd --hot-plug-handling).
+	 */
+	ret = rte_dev_event_callback_register(eth_dev->device->name,
+					      mana_pci_remove_event_cb, priv);
+	if (ret)
+		DRV_LOG(WARNING, "Failed to register PCI remove event callback");
+
 	eth_dev->intr_handle = priv->intr_handle;
 	return 0;
 
@@ -1156,7 +2011,7 @@ mana_proc_priv_init(struct rte_eth_dev *dev)
 /*
  * Map the doorbell page for the secondary process through IB device handle.
  */
-static int
+int
 mana_map_doorbell_secondary(struct rte_eth_dev *eth_dev, int fd)
 {
 	struct mana_process_priv *priv = eth_dev->process_private;
@@ -1294,16 +2149,28 @@ mana_probe_port(struct ibv_device *ibdev, struct ibv_device_attr_ex *dev_attr,
 	char name[RTE_ETH_NAME_MAX_LEN];
 	int ret;
 	struct ibv_context *ctx = NULL;
+	bool is_reset = false;
+	pthread_mutexattr_t mattr;
+	pthread_condattr_t cattr;
 
 	rte_ether_format_addr(address, sizeof(address), addr);
-	DRV_LOG(INFO, "device located port %u address %s", port, address);
 
-	priv = rte_zmalloc_socket(NULL, sizeof(*priv), RTE_CACHE_LINE_SIZE,
-				  SOCKET_ID_ANY);
-	if (!priv)
-		return -ENOMEM;
+	DRV_LOG(DEBUG, "device located port %u address %s", port, address);
 
 	snprintf(name, sizeof(name), "%s_port%d", pci_dev->device.name, port);
+
+	eth_dev = rte_eth_dev_allocated(name);
+	if (eth_dev) {
+		is_reset = true;
+		priv = eth_dev->data->dev_private;
+		DRV_LOG(DEBUG, "Device reset for eth_dev %p priv %p",
+			eth_dev, priv);
+	} else {
+		priv = rte_zmalloc_socket(NULL, sizeof(*priv), RTE_CACHE_LINE_SIZE,
+					  SOCKET_ID_ANY);
+		if (!priv)
+			return -ENOMEM;
+	}
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		int fd;
@@ -1317,6 +2184,7 @@ mana_probe_port(struct ibv_device *ibdev, struct ibv_device_attr_ex *dev_attr,
 
 		eth_dev->device = &pci_dev->device;
 		eth_dev->dev_ops = &mana_dev_secondary_ops;
+
 		ret = mana_proc_priv_init(eth_dev);
 		if (ret)
 			goto failed;
@@ -1336,7 +2204,7 @@ mana_probe_port(struct ibv_device *ibdev, struct ibv_device_attr_ex *dev_attr,
 			goto failed;
 		}
 
-		/* fd is no not used after mapping doorbell */
+		/* fd is not used after mapping doorbell */
 		close(fd);
 
 		eth_dev->tx_pkt_burst = mana_tx_burst;
@@ -1354,22 +2222,6 @@ mana_probe_port(struct ibv_device *ibdev, struct ibv_device_attr_ex *dev_attr,
 		ret = -ENODEV;
 		goto failed;
 	}
-
-	eth_dev = rte_eth_dev_allocate(name);
-	if (!eth_dev) {
-		ret = -ENOMEM;
-		goto failed;
-	}
-
-	eth_dev->data->mac_addrs =
-		rte_calloc("mana_mac", 1,
-			   sizeof(struct rte_ether_addr), 0);
-	if (!eth_dev->data->mac_addrs) {
-		ret = -ENOMEM;
-		goto failed;
-	}
-
-	rte_ether_addr_copy(addr, eth_dev->data->mac_addrs);
 
 	priv->ib_pd = ibv_alloc_pd(ctx);
 	if (!priv->ib_pd) {
@@ -1390,10 +2242,6 @@ mana_probe_port(struct ibv_device *ibdev, struct ibv_device_attr_ex *dev_attr,
 	}
 
 	priv->ib_ctx = ctx;
-	priv->port_id = eth_dev->data->port_id;
-	priv->dev_port = port;
-	eth_dev->data->dev_private = priv;
-	priv->dev_data = eth_dev->data;
 
 	priv->max_rx_queues = dev_attr->orig_attr.max_qp;
 	priv->max_tx_queues = dev_attr->orig_attr.max_qp;
@@ -1415,22 +2263,71 @@ mana_probe_port(struct ibv_device *ibdev, struct ibv_device_attr_ex *dev_attr,
 		name, priv->max_rx_queues, priv->max_rx_desc,
 		priv->max_send_sge, priv->max_mr_size);
 
-	rte_eth_copy_pci_info(eth_dev, pci_dev);
+	if (!is_reset) {
+		eth_dev = rte_eth_dev_allocate(name);
+		if (!eth_dev) {
+			ret = -ENOMEM;
+			goto failed;
+		}
 
-	/* Create async interrupt handler */
-	ret = mana_intr_install(eth_dev, priv);
-	if (ret) {
-		DRV_LOG(ERR, "Failed to install intr handler");
-		goto failed;
+		eth_dev->data->mac_addrs =
+			rte_calloc("mana_mac", 1,
+				   sizeof(struct rte_ether_addr), 0);
+		if (!eth_dev->data->mac_addrs) {
+			ret = -ENOMEM;
+			goto failed;
+		}
+
+		rte_ether_addr_copy(addr, eth_dev->data->mac_addrs);
+	} else {
+		/*
+		 * Reset path.
+		 */
+		rte_ether_format_addr(address, RTE_ETHER_ADDR_FMT_SIZE,
+				      eth_dev->data->mac_addrs);
+		DRV_LOG(DEBUG, "Found existing eth_dev %p with mac addr %s",
+			eth_dev, address);
+		DRV_LOG(DEBUG, "ib_ctx = %p", priv->ib_ctx);
+		goto out;
 	}
 
-	eth_dev->device = &pci_dev->device;
+	priv->port_id = eth_dev->data->port_id;
+	priv->dev_port = port;
+	eth_dev->data->dev_private = priv;
+	priv->dev_data = eth_dev->data;
+	rte_atomic_store_explicit(&priv->dev_state, MANA_DEV_ACTIVE,
+				     rte_memory_order_release);
 
-	DRV_LOG(INFO, "device %s at port %u", name, eth_dev->data->port_id);
+	rte_eth_copy_pci_info(eth_dev, pci_dev);
+
+	pthread_mutexattr_init(&mattr);
+	pthread_mutexattr_setpshared(&mattr, PTHREAD_PROCESS_SHARED);
+	pthread_mutex_init(&priv->reset_ops_lock, &mattr);
+	pthread_mutex_init(&priv->reset_cond_mutex, &mattr);
+	pthread_mutexattr_destroy(&mattr);
+
+	pthread_condattr_init(&cattr);
+	pthread_condattr_setpshared(&cattr, PTHREAD_PROCESS_SHARED);
+	pthread_cond_init(&priv->reset_cond, &cattr);
+	pthread_condattr_destroy(&cattr);
+
+	eth_dev->device = &pci_dev->device;
 
 	eth_dev->rx_pkt_burst = mana_rx_burst_removed;
 	eth_dev->tx_pkt_burst = mana_tx_burst_removed;
 	eth_dev->dev_ops = &mana_dev_ops;
+
+out:
+	/* Create async interrupt handler */
+	ret = mana_intr_install(eth_dev, priv);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to install intr handler, ret %d", ret);
+		goto failed;
+	}
+	DRV_LOG(INFO, "mana_intr_install succeeded");
+
+	DRV_LOG(INFO, "device %s priv %p dev port %d at port %u",
+		name, priv, priv->dev_port, eth_dev->data->port_id);
 
 	rte_eth_dev_probing_finish(eth_dev);
 
@@ -1439,20 +2336,29 @@ mana_probe_port(struct ibv_device *ibdev, struct ibv_device_attr_ex *dev_attr,
 failed:
 	/* Free the resource for the port failed */
 	if (priv) {
-		if (priv->ib_parent_pd)
+		if (priv->ib_parent_pd) {
 			ibv_dealloc_pd(priv->ib_parent_pd);
+			priv->ib_parent_pd = NULL;
+		}
 
-		if (priv->ib_pd)
+		if (priv->ib_pd) {
 			ibv_dealloc_pd(priv->ib_pd);
+			priv->ib_pd = NULL;
+		}
 	}
 
-	if (eth_dev)
-		rte_eth_dev_release_port(eth_dev);
+	if (!is_reset) {
+		if (eth_dev)
+			rte_eth_dev_release_port(eth_dev);
 
-	rte_free(priv);
+		rte_free(priv);
+	}
 
-	if (ctx)
+	if (ctx) {
 		ibv_close_device(ctx);
+		if (is_reset && priv)
+			priv->ib_ctx = NULL;
+	}
 
 	return ret;
 }
@@ -1617,7 +2523,17 @@ mana_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 static int
 mana_dev_uninit(struct rte_eth_dev *dev)
 {
-	return mana_dev_close(dev);
+	struct mana_priv *priv = dev->data->dev_private;
+	int ret;
+
+	/* Join reset thread before teardown to ensure it has exited
+	 * before we destroy the condvar/mutex in free_resources.
+	 */
+	mana_join_reset_thread(priv);
+
+	ret = mana_dev_close(dev);
+	mana_dev_free_resources(dev);
+	return ret;
 }
 
 /*
