@@ -2494,7 +2494,7 @@ static int bnxt_flow_ctrl_get_op(struct rte_eth_dev *dev,
 		return rc;
 
 	memset(fc_conf, 0, sizeof(*fc_conf));
-	if (bp->link_info->auto_pause)
+	if (bp->link_info->autoneg & BNXT_AUTONEG_FLOW_CTRL)
 		fc_conf->autoneg = 1;
 	switch (bp->link_info->pause) {
 	case 0:
@@ -2528,6 +2528,14 @@ static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
 		PMD_DRV_LOG_LINE(ERR,
 			    "Flow Control Settings cannot be modified on VF or on shared PF");
 		return -ENOTSUP;
+	}
+
+	if (fc_conf->autoneg) {
+		bp->link_info->autoneg |= BNXT_AUTONEG_FLOW_CTRL;
+	} else {
+		if (bp->link_info->autoneg & BNXT_AUTONEG_FLOW_CTRL)
+			bp->link_info->link_reconfig_needed = true;
+		bp->link_info->autoneg &= ~BNXT_AUTONEG_FLOW_CTRL;
 	}
 
 	switch (fc_conf->mode) {
@@ -2571,7 +2579,7 @@ static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
 		}
 		break;
 	}
-	return bnxt_set_hwrm_link_config(bp, true);
+	return bnxt_hwrm_set_pause(bp);
 }
 
 /* Add UDP tunneling port */

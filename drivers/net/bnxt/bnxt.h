@@ -88,6 +88,8 @@
 #define HWRM_VERSION_1_9_1		0x10901
 #define HWRM_VERSION_1_9_2		0x10903
 #define HWRM_VERSION_1_10_2_13		0x10a020d
+/* Minimum spec version that supports AUTONEG_PAUSE bit in auto_pause field */
+#define HWRM_SPEC_CODE_AUTONEG_PAUSE	0x10201
 
 #define BNXT_MAX_MTU		9574
 #define BNXT_NUM_VLANS		2
@@ -331,6 +333,14 @@ struct bnxt_link_info {
 	uint8_t                 active_lanes;
 	uint8_t			option_flags;
 	uint16_t                pmd_speed_lanes;
+	/* Bitmask tracking which autoneg modes are active */
+	uint8_t			autoneg;
+#define BNXT_AUTONEG_SPEED		1 /* speed autoneg enabled */
+#define BNXT_AUTONEG_FLOW_CTRL		2 /* pause/flow-ctrl autoneg enabled */
+	/* True after autoneg->forced FC transition; cleared once set_pause
+	 * sends the combined pause+link HWRM request successfully.
+	 */
+	bool			link_reconfig_needed;
 };
 
 #define BNXT_COS_QUEUE_COUNT	8

@@ -1849,6 +1849,26 @@ static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
 	link_info->auto_pause = resp->auto_pause;
 	link_info->force_pause = resp->force_pause;
 	link_info->auto_mode = resp->auto_mode;
+
+	if (link_info->auto_mode != HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_MODE_NONE) {
+		link_info->autoneg = BNXT_AUTONEG_SPEED;
+		if (bp->hwrm_spec_code >= HWRM_SPEC_CODE_AUTONEG_PAUSE) {
+			if (link_info->auto_pause &
+			    HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_AUTONEG_PAUSE)
+				link_info->autoneg |=
+					BNXT_AUTONEG_FLOW_CTRL;
+		} else {
+			/* Firmware < HWRM_SPEC_CODE_AUTONEG_PAUSE does not
+			 * expose the AUTONEG_PAUSE bit.  Infer flow-ctrl
+			 * autoneg from any non-zero auto_pause configuration.
+			 */
+			if (link_info->auto_pause)
+				link_info->autoneg |= BNXT_AUTONEG_FLOW_CTRL;
+		}
+	} else {
+		link_info->autoneg = 0;
+	}
+
 	link_info->phy_type = resp->phy_type;
 	link_info->media_type = resp->media_type;
 
@@ -4056,6 +4076,206 @@ link_down:
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
 	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+	return rc;
+}
+
+static void
+bnxt_hwrm_set_pause_common(struct bnxt *bp,
+			   struct hwrm_port_phy_cfg_input *req)
+{
+	struct bnxt_link_info *link_info = bp->link_info;
+
+	if (link_info->autoneg & BNXT_AUTONEG_FLOW_CTRL) {
+		if (bp->hwrm_spec_code >= HWRM_SPEC_CODE_AUTONEG_PAUSE)
+			req->auto_pause =
+			    HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_AUTONEG_PAUSE;
+		if (link_info->auto_pause &
+		    HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_RX)
+			req->auto_pause |=
+			    HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_RX;
+		if (link_info->auto_pause &
+		    HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_TX)
+			req->auto_pause |=
+			    HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_TX;
+		req->enables |=
+			rte_cpu_to_le_32(HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_PAUSE);
+	} else {
+		if (link_info->force_pause &
+		    HWRM_PORT_PHY_CFG_INPUT_FORCE_PAUSE_RX)
+			req->force_pause |=
+			    HWRM_PORT_PHY_CFG_INPUT_FORCE_PAUSE_RX;
+		if (link_info->force_pause &
+		    HWRM_PORT_PHY_CFG_INPUT_FORCE_PAUSE_TX)
+			req->force_pause |=
+			    HWRM_PORT_PHY_CFG_INPUT_FORCE_PAUSE_TX;
+		req->enables |=
+			rte_cpu_to_le_32(HWRM_PORT_PHY_CFG_INPUT_ENABLES_FORCE_PAUSE);
+		if (bp->hwrm_spec_code >= HWRM_SPEC_CODE_AUTONEG_PAUSE) {
+			req->auto_pause = req->force_pause;
+			req->enables |=
+				rte_cpu_to_le_32(HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_PAUSE);
+		}
+	}
+}
+
+static int
+bnxt_hwrm_set_link_common(struct bnxt *bp, struct hwrm_port_phy_cfg_input *req)
+{
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
+	struct bnxt_link_info *link_info = bp->link_info;
+	uint16_t autoneg, speed;
+	uint32_t en = 0;
+
+	autoneg = bnxt_check_eth_link_autoneg(dev_conf->link_speeds);
+
+	if (BNXT_CHIP_P5_P7(bp) &&
+	    dev_conf->link_speeds & RTE_ETH_LINK_SPEED_40G)
+		autoneg = 0;
+
+	if (autoneg == 1 && BNXT_CHIP_P5(bp) &&
+	    link_info->auto_mode == 0 &&
+	    link_info->force_pam4_link_speed ==
+	    HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_200GB)
+		autoneg = 0;
+
+	speed = bnxt_parse_eth_link_speed(bp, dev_conf->link_speeds,
+					  link_info);
+	req->flags |=
+		rte_cpu_to_le_32(HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESET_PHY);
+
+	if (autoneg == 0 &&
+	    (link_info->phy_type == HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASET ||
+	     link_info->phy_type == HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASETE ||
+	     link_info->media_type == HWRM_PORT_PHY_QCFG_OUTPUT_MEDIA_TYPE_TP)) {
+		PMD_DRV_LOG_LINE(ERR, "10GBase-T devices must autoneg");
+		return -EINVAL;
+	}
+
+	if (BNXT_LINK_SPEEDS_V2(bp)) {
+		/* speeds-v2 firmware uses a separate field layout */
+		if (autoneg == 1) {
+			req->flags |= rte_cpu_to_le_32
+				(HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESTART_AUTONEG);
+			req->auto_mode =
+				HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_SPEED_MASK;
+			req->auto_link_speeds2_mask = rte_cpu_to_le_16
+				(bnxt_parse_eth_link_speed_mask(bp,
+						dev_conf->link_speeds));
+			en |= HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_LINK_SPEEDS2_MASK |
+			      HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_MODE;
+		} else {
+			req->flags |= rte_cpu_to_le_32
+				(HWRM_PORT_PHY_CFG_INPUT_FLAGS_FORCE);
+			if (speed) {
+				req->force_link_speeds2 =
+					rte_cpu_to_le_16(speed);
+				en |= HWRM_PORT_PHY_CFG_INPUT_ENABLES_FORCE_LINK_SPEEDS2;
+			}
+		}
+	} else if (autoneg == 1 &&
+		   (link_info->support_auto_speeds ||
+		    link_info->support_pam4_auto_speeds)) {
+		req->flags |= rte_cpu_to_le_32
+			(HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESTART_AUTONEG);
+		req->auto_link_speed_mask = rte_cpu_to_le_16
+			(bnxt_parse_eth_link_speed_mask(bp,
+					dev_conf->link_speeds));
+		req->auto_link_pam4_speed_mask =
+			rte_cpu_to_le_16(link_info->auto_pam4_link_speed_mask);
+		en |= HWRM_PORT_PHY_CFG_IN_EN_AUTO_LINK_SPEED_MASK |
+		      HWRM_PORT_PHY_CFG_IN_EN_AUTO_PAM4_LINK_SPD_MASK |
+		      HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_MODE;
+		req->auto_mode = HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_SPEED_MASK;
+	} else {
+		req->flags |= rte_cpu_to_le_32
+			(HWRM_PORT_PHY_CFG_INPUT_FLAGS_FORCE);
+
+		/* No requested speed: keep the PHY's current speed rather
+		 * than forcing 0.
+		 */
+		if (!speed) {
+			if (link_info->force_pam4_link_speed)
+				speed = link_info->force_pam4_link_speed;
+			else if (link_info->force_link_speed)
+				speed = link_info->force_link_speed;
+			else if (link_info->auto_pam4_link_speed_mask)
+				speed = link_info->auto_pam4_link_speed_mask;
+			else if (link_info->support_pam4_speeds)
+				speed = link_info->support_pam4_speeds;
+			else
+				speed = link_info->auto_link_speed;
+			/* Auto PAM4 link speed is zero, but auto_link_speed is
+			 * not. Use the auto_link_speed.
+			 */
+			if (link_info->auto_link_speed != 0 &&
+			    link_info->auto_pam4_link_speed_mask == 0)
+				speed = link_info->auto_link_speed;
+		}
+
+		if (speed) {
+			if (link_info->link_signal_mode) {
+				req->force_pam4_link_speed =
+					rte_cpu_to_le_16(speed);
+				en |= HWRM_PORT_PHY_CFG_IN_EN_FORCE_PAM4_LINK_SPEED;
+			} else {
+				req->force_link_speed =
+					rte_cpu_to_le_16(speed);
+			}
+		}
+	}
+
+	req->auto_duplex = bnxt_parse_eth_link_duplex(dev_conf->link_speeds);
+	en |= HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_DUPLEX;
+	req->enables |= rte_cpu_to_le_32(en);
+
+	return 0;
+}
+
+int bnxt_hwrm_set_pause(struct bnxt *bp)
+{
+	struct hwrm_port_phy_cfg_input req = {0};
+	struct hwrm_port_phy_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct bnxt_link_info *link_info = bp->link_info;
+	bool reconfig;
+	int rc;
+
+	/* Full reprogram on FC autoneg, or the autoneg->forced transition */
+	reconfig = (link_info->autoneg & BNXT_AUTONEG_FLOW_CTRL) ||
+		   link_info->link_reconfig_needed;
+
+	/* Validate speeds up front, as bnxt_set_hwrm_link_config() does */
+	if (reconfig) {
+		rc = bnxt_validate_link_speed(bp);
+		if (rc)
+			return rc;
+	}
+
+	HWRM_PREP(&req, HWRM_PORT_PHY_CFG, BNXT_USE_CHIMP_MB);
+
+	bnxt_hwrm_set_pause_common(bp, &req);
+
+	if (reconfig) {
+		rc = bnxt_hwrm_set_link_common(bp, &req);
+		if (rc) {
+			HWRM_UNLOCK();
+			return rc;
+		}
+	}
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+	/* HWRM_CHECK_RESULT() returns on any transport or firmware error,
+	 * so the state updates below are reached only on success.
+	 */
+	HWRM_CHECK_RESULT();
+
+	if (!(link_info->autoneg & BNXT_AUTONEG_FLOW_CTRL)) {
+		link_info->pause = link_info->force_pause;
+		link_info->auto_pause = 0;
+	}
+	link_info->link_reconfig_needed = false;
+
 	HWRM_UNLOCK();
 	return rc;
 }
