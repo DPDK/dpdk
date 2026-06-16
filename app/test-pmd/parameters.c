@@ -1286,10 +1286,10 @@ launch_args_parse(int argc, char** argv)
 			set_pkt_forwarding_mode(optarg);
 			break;
 		case TESTPMD_OPT_RSS_IP_NUM:
-			rss_hf = RTE_ETH_RSS_IP;
+			rss_hf |= RTE_ETH_RSS_IP;
 			break;
 		case TESTPMD_OPT_RSS_UDP_NUM:
-			rss_hf = RTE_ETH_RSS_UDP;
+			rss_hf |= RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP;
 			break;
 		case TESTPMD_OPT_RSS_LEVEL_INNER_NUM:
 			rss_hf |= RTE_ETH_RSS_LEVEL_INNERMOST;
