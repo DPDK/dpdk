@@ -1414,3 +1414,97 @@ cnxk_nix_tx_descriptor_dump(const struct rte_eth_dev *eth_dev, uint16_t qid, uin
 
 	return roc_nix_sq_desc_dump(nix, qid, offset, num, file);
 }
+
+static uint32_t
+cnxk_roc_fec_to_ethdev_capa(int roc_fec)
+{
+	switch (roc_fec) {
+	case ROC_FEC_BASER:
+		return RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
+	case ROC_FEC_RS:
+		return RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+	default:
+		return RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
+	}
+}
+
+static int
+cnxk_ethdev_fec_to_roc(uint32_t fec_capa)
+{
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(RS))
+		return ROC_FEC_RS;
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(BASER))
+		return ROC_FEC_BASER;
+	return ROC_FEC_NONE;
+}
+
+static uint32_t
+cnxk_fec_capa_from_supported(uint64_t supported_fec)
+{
+	uint32_t capa = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) | RTE_ETH_FEC_MODE_CAPA_MASK(AUTO);
+
+	if (supported_fec & (1ULL << ROC_FEC_BASER))
+		capa |= RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
+	if (supported_fec & (1ULL << ROC_FEC_RS))
+		capa |= RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+
+	return capa;
+}
+
+int
+cnxk_nix_fec_get_capability(struct rte_eth_dev *eth_dev, struct rte_eth_fec_capa *speed_fec_capa,
+			    unsigned int num)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	struct roc_nix_link_info link_info;
+	uint64_t supported_fec = 0;
+	int rc;
+
+	rc = roc_nix_mac_fec_supported_get(nix, &supported_fec);
+	if (rc == 0 && supported_fec != 0) {
+		rc = roc_nix_mac_link_info_get(nix, &link_info);
+		if (rc)
+			return rc;
+
+		if (speed_fec_capa == NULL || num == 0)
+			return 1;
+
+		speed_fec_capa[0].speed = link_info.speed;
+		speed_fec_capa[0].capa = cnxk_fec_capa_from_supported(supported_fec);
+		return 1;
+	}
+
+	return rc;
+}
+
+int
+cnxk_nix_fec_get(struct rte_eth_dev *eth_dev, uint32_t *fec_capa)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	struct roc_nix_link_info link_info;
+	int rc;
+
+	rc = roc_nix_mac_link_info_get(nix, &link_info);
+	if (rc)
+		return rc;
+
+	*fec_capa = cnxk_roc_fec_to_ethdev_capa(link_info.fec);
+	return 0;
+}
+
+int
+cnxk_nix_fec_set(struct rte_eth_dev *eth_dev, uint32_t fec_capa)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+	int roc_fec;
+
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(AUTO))
+		roc_fec = ROC_FEC_RS;
+	else
+		roc_fec = cnxk_ethdev_fec_to_roc(fec_capa);
+
+	return roc_nix_mac_fec_set(nix, roc_fec);
+}

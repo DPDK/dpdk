@@ -667,6 +667,12 @@ int cnxk_nix_tm_mark_ip_dscp(struct rte_eth_dev *eth_dev, int mark_green,
 int cnxk_nix_tx_descriptor_dump(const struct rte_eth_dev *eth_dev, uint16_t qid, uint16_t offset,
 				uint16_t num, FILE *file);
 
+/* FEC */
+int cnxk_nix_fec_get_capability(struct rte_eth_dev *eth_dev,
+				struct rte_eth_fec_capa *speed_fec_capa, unsigned int num);
+int cnxk_nix_fec_get(struct rte_eth_dev *eth_dev, uint32_t *fec_capa);
+int cnxk_nix_fec_set(struct rte_eth_dev *eth_dev, uint32_t fec_capa);
+
 /* MTR */
 int cnxk_nix_mtr_ops_get(struct rte_eth_dev *dev, void *ops);
 

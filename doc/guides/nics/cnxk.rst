@@ -29,6 +29,7 @@ Features of the CNXK Ethdev PMD are:
 - Port hardware statistics
 - Link state information
 - Link flow control
+- Forward Error Correction (FEC)
 - MTU update
 - Scatter-Gather IO support
 - Vector Poll mode driver
@@ -527,6 +528,27 @@ Runtime Config Options
    Above devarg parameters are configurable per device, user needs to pass the
    parameters to all the PCIe devices if application requires to configure on
    all the ethdev ports.
+
+Forward Error Correction (FEC)
+------------------------------
+
+The CNXK PMD supports the DPDK FEC ethdev API on physical function (PF) ports
+for links where firmware reports FEC support
+(typically high-speed Ethernet interfaces such as 25G, 50G and 100G).
+
+Supported FEC modes exposed through the ethdev API are:
+
+- ``RTE_ETH_FEC_NOFEC``: FEC disabled
+- ``RTE_ETH_FEC_AUTO``: maps to Reed-Solomon (RS) FEC on set
+- ``RTE_ETH_FEC_BASER``: Base-R FEC
+- ``RTE_ETH_FEC_RS``: Reed-Solomon FEC
+
+.. note::
+
+   ``rte_eth_fec_get_capability()`` and ``rte_eth_fec_set()``
+   are supported on PF ports only.
+   SR-IOV virtual function (VF) ports can use ``rte_eth_fec_get()``
+   to read the current FEC mode from link status.
 
 Limitations
 -----------
