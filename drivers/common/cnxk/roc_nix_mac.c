@@ -258,6 +258,57 @@ exit:
 }
 
 int
+roc_nix_mac_fec_set(struct roc_nix *roc_nix, int fec)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+	struct mbox *mbox = mbox_get(dev->mbox);
+	struct fec_mode *req;
+	int rc = -ENOSPC;
+
+	if (roc_nix_is_vf_or_sdp(roc_nix)) {
+		rc = NIX_ERR_OP_NOTSUP;
+		goto exit;
+	}
+
+	req = mbox_alloc_msg_cgx_set_fec_param(mbox);
+	if (req == NULL)
+		goto exit;
+	req->fec = fec;
+
+	rc = mbox_process(mbox);
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+int
+roc_nix_mac_fec_supported_get(struct roc_nix *roc_nix, uint64_t *supported_fec)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+	struct mbox *mbox = mbox_get(dev->mbox);
+	struct cgx_fw_data *rsp = NULL;
+	int rc;
+
+	if (roc_nix_is_vf_or_sdp(roc_nix)) {
+		rc = NIX_ERR_OP_NOTSUP;
+		goto exit;
+	}
+
+	mbox_alloc_msg_cgx_get_aux_link_info(mbox);
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		goto exit;
+
+	*supported_fec = rsp->fwdata.supported_fec;
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+int
 roc_nix_mac_link_info_set(struct roc_nix *roc_nix,
 			  struct roc_nix_link_info *link_info)
 {

@@ -975,6 +975,8 @@ int __roc_api roc_nix_mac_link_info_set(struct roc_nix *roc_nix,
 					struct roc_nix_link_info *link_info);
 int __roc_api roc_nix_mac_link_info_get(struct roc_nix *roc_nix,
 					struct roc_nix_link_info *link_info);
+int __roc_api roc_nix_mac_fec_set(struct roc_nix *roc_nix, int fec);
+int __roc_api roc_nix_mac_fec_supported_get(struct roc_nix *roc_nix, uint64_t *supported_fec);
 int __roc_api roc_nix_mac_mtu_set(struct roc_nix *roc_nix, uint16_t mtu);
 int __roc_api roc_nix_mac_max_rx_len_set(struct roc_nix *roc_nix,
 					 uint16_t maxlen);
