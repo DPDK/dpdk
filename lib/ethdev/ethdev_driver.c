@@ -875,7 +875,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_eth_queue_count_dummy)
 int
 rte_eth_queue_count_dummy(void *queue __rte_unused)
 {
-	return -ENOTSUP;
+	return 0;
 }
 
 RTE_EXPORT_INTERNAL_SYMBOL(rte_eth_descriptor_status_dummy)
