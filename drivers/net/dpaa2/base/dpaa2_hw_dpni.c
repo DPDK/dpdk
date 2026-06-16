@@ -260,6 +260,8 @@ dpaa2_distset_to_dpkg_profile_cfg(
 			case RTE_ETH_RSS_PPPOE:
 				if (pppoe_configured)
 					break;
+				pppoe_configured = 1;
+
 				kg_cfg->extracts[i].extract.from_hdr.prot =
 					NET_PROT_PPPOE;
 				kg_cfg->extracts[i].extract.from_hdr.field =
