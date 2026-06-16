@@ -397,7 +397,6 @@ dpaa2_distset_to_dpkg_profile_cfg(
 					DPKG_EXTRACT_FROM_HDR;
 				kg_cfg->extracts[i].extract.from_hdr.type =
 					DPKG_FULL_FIELD;
-				kg_cfg->num_extracts++;
 				i++;
 			break;
 
