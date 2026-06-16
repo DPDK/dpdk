@@ -103,15 +103,10 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 	uint64_t req_dist_set, int tc_index)
 {
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
-	struct fsl_mc_io *dpni = eth_dev->process_private;
-	struct dpni_rx_dist_cfg tc_cfg;
-	struct dpkg_profile_cfg kg_cfg;
-	void *p_params;
-	int ret, tc_dist_queues;
+	int tc_dist_queues;
 
-	/*TC distribution size is set with dist_queues or
-	 * nb_rx_queues % dist_queues in order of TC priority index.
-	 * Calculating dist size for this tc_index:-
+	/* TC distribution size is set with dist_queues or
+	 * (nb_rx_queues - tc_index*dist_queues) in order of TC priority index.
 	 */
 	tc_dist_queues = eth_dev->data->nb_rx_queues -
 		tc_index * priv->dist_queues;
@@ -122,6 +117,24 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 
 	if (tc_dist_queues > priv->dist_queues)
 		tc_dist_queues = priv->dist_queues;
+
+	return dpaa2_setup_flow_dist_size(eth_dev, req_dist_set,
+					   tc_index, tc_dist_queues);
+}
+
+int
+dpaa2_setup_flow_dist_size(struct rte_eth_dev *eth_dev,
+	uint64_t req_dist_set, int tc_index, uint16_t dist_size)
+{
+	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
+	struct fsl_mc_io *dpni = eth_dev->process_private;
+	struct dpni_rx_dist_cfg tc_cfg;
+	struct dpkg_profile_cfg kg_cfg;
+	void *p_params;
+	int ret;
+
+	if (dist_size == 0)
+		return 0;
 
 	p_params = rte_malloc(NULL,
 		DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
@@ -150,7 +163,7 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 		return -ENOBUFS;
 	}
 
-	tc_cfg.dist_size = tc_dist_queues;
+	tc_cfg.dist_size = dist_size;
 	tc_cfg.enable = true;
 	tc_cfg.tc = tc_index;
 
@@ -167,6 +180,9 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 		DPAA2_PMD_ERR("RX Hash dist for failed(err=%d)", ret);
 		return ret;
 	}
+
+	if (tc_index < MAX_TCS)
+		priv->dist_size_cur[tc_index] = dist_size;
 
 	return 0;
 }

@@ -412,6 +412,12 @@ struct dpaa2_dev_priv {
 	uint8_t max_cgs;
 	uint8_t cgid_in_use[MAX_RX_QUEUES];
 
+	/* Current hash distribution size per RX TC, written by
+	 * dpaa2_setup_flow_dist_size() and read by reta_query / reta_update.
+	 * Zero means "use default" (= nb_rx_queues clamped to dist_queues).
+	 */
+	uint16_t dist_size_cur[MAX_TCS];
+
 	uint16_t dpni_ver_major;
 	uint16_t dpni_ver_minor;
 	uint32_t speed_capa;
@@ -467,6 +473,9 @@ int dpaa2_distset_to_dpkg_profile_cfg(uint64_t req_dist_set,
 
 int dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 		uint64_t req_dist_set, int tc_index);
+
+int dpaa2_setup_flow_dist_size(struct rte_eth_dev *eth_dev,
+		uint64_t req_dist_set, int tc_index, uint16_t dist_size);
 
 int dpaa2_remove_flow_dist(struct rte_eth_dev *eth_dev,
 			   uint8_t tc_index);

@@ -80,6 +80,33 @@ bool dpaa2_print_parser_result;
 #define MAX_NB_RX_DESC_IN_PEB	11264
 static int total_nb_rx_desc;
 
+/* Size of the RETA (Redirection Table) we expose to the standard DPDK API.
+ * Must be a multiple of RTE_ETH_RETA_GROUP_SIZE (64). DPAA2 has no actual
+ * indirection table in HW; this is the granularity at which uniform RSS
+ * patterns are inspected by dpaa2_dev_rss_reta_update().
+ */
+#define DPAA2_RETA_SIZE		64
+
+/* Values of dist_size accepted by the DPNI 'dpni_set_rx_hash_dist' MC command.
+ * Source: fsl_dpni.h, "struct dpni_rx_dist_cfg::dist_size" documentation.
+ * Used by dpaa2_dev_rss_reta_update() to validate user-requested patterns.
+ */
+static const uint16_t dpaa2_dist_size_allowed[] = {
+	1, 2, 3, 4, 6, 7, 8, 12, 14, 16, 24, 28, 32, 48, 56, 64,
+	96, 112, 128, 192, 224, 256, 384, 448, 512, 768, 896, 1024,
+};
+
+static bool
+dpaa2_dist_size_is_supported(uint16_t n)
+{
+	size_t i;
+	for (i = 0; i < RTE_DIM(dpaa2_dist_size_allowed); i++) {
+		if (dpaa2_dist_size_allowed[i] == n)
+			return true;
+	}
+	return false;
+}
+
 int dpaa2_valid_dev;
 struct rte_mempool *dpaa2_tx_sg_pool;
 
@@ -426,6 +453,14 @@ dpaa2_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->max_vmdq_pools = RTE_ETH_16_POOLS;
 	dev_info->flow_type_rss_offloads = DPAA2_RSS_OFFLOAD_ALL |
 		RTE_ETH_RSS_LEVEL_OUTERMOST | RTE_ETH_RSS_LEVEL_INNERMOST;
+	/* DPAA2 has no software-visible indirection table: incoming packets are
+	 * dispatched to FQs via 'queue_id = hash % dist_size'. We expose the
+	 * standard RETA API as an emulation that only accepts uniform patterns
+	 * 'reta[i] = i % N' and translates them into a dpni_set_rx_hash_dist
+	 * command with dist_size=N. See dpaa2_dev_rss_reta_update().
+	 */
+	dev_info->reta_size = DPAA2_RETA_SIZE;
+	dev_info->hash_key_size = 0;
 
 	dev_info->default_rxportconf.burst_size = dpaa2_dqrr_size;
 	/* same is rx size for best perf */
@@ -2509,6 +2544,170 @@ dpaa2_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/* Emulation of the standard DPDK RETA API on top of DPAA2's
+ * dpni_set_rx_hash_dist MC command.
+ *
+ * DPAA2 hardware dispatches incoming frames using 'queue_id = hash % dist_size'
+ * (no software-visible indirection table). To expose the standard
+ * rte_eth_dev_rss_reta_update() interface, we accept ONLY uniform patterns of
+ * the form 'reta[i] = i % N' where N is in the HW-allowed dist_size list. Any
+ * other pattern (weighted RSS, non-contiguous queue IDs, gaps) is rejected
+ * with -ENOTSUP. This is enough to support dynamic RSS scale-up/down across
+ * a contiguous queue subset, which is the main use case for adaptive
+ * dataplane CPU usage.
+ *
+ * Applies the new dist_size on every configured RX TC, mirroring the
+ * behavior of dpaa2_dev_rss_hash_update().
+ */
+static int
+dpaa2_dev_rss_reta_update(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_reta_entry64 *reta_conf,
+			  uint16_t reta_size)
+{
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
+	uint16_t i, max_q = 0, n;
+	int tc_index, ret;
+	bool any_set = false;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (reta_size != DPAA2_RETA_SIZE) {
+		DPAA2_PMD_ERR("Invalid reta_size %u (expected %u)",
+			      reta_size, DPAA2_RETA_SIZE);
+		return -EINVAL;
+	}
+
+	/* dpaa2 cannot merge a partial RETA into the live table, so only a
+	 * full update (every entry of every group) is accepted.
+	 */
+	for (i = 0; i < reta_size / RTE_ETH_RETA_GROUP_SIZE; i++) {
+		if (reta_conf[i].mask != UINT64_MAX) {
+			DPAA2_PMD_ERR("partial RETA update not supported; set all %u entries",
+				      DPAA2_RETA_SIZE);
+			return -ENOTSUP;
+		}
+	}
+
+	/* First pass: validate queue IDs, find max, and require at least
+	 * one slot to be selected via the per-group mask.
+	 */
+	for (i = 0; i < reta_size; i++) {
+		uint16_t grp = i / RTE_ETH_RETA_GROUP_SIZE;
+		uint16_t pos = i % RTE_ETH_RETA_GROUP_SIZE;
+		uint16_t q;
+
+		if (!(reta_conf[grp].mask & (1ULL << pos)))
+			continue;
+		any_set = true;
+
+		q = reta_conf[grp].reta[pos];
+		if (q >= dev->data->nb_rx_queues) {
+			DPAA2_PMD_ERR("reta[%u] = %u out of range (max %u)",
+				i, q, dev->data->nb_rx_queues - 1);
+			return -EINVAL;
+		}
+		if (q > max_q)
+			max_q = q;
+	}
+
+	if (!any_set) {
+		DPAA2_PMD_WARN("reta_update called with empty mask, no-op");
+		return 0;
+	}
+
+	n = max_q + 1;
+
+	/* Second pass: enforce the uniform pattern reta[i] = i % n on every
+	 * slot the user has selected. dpaa2 HW cannot honor any other layout.
+	 */
+	for (i = 0; i < reta_size; i++) {
+		uint16_t grp = i / RTE_ETH_RETA_GROUP_SIZE;
+		uint16_t pos = i % RTE_ETH_RETA_GROUP_SIZE;
+		uint16_t expected = i % n;
+		uint16_t q;
+
+		if (!(reta_conf[grp].mask & (1ULL << pos)))
+			continue;
+
+		q = reta_conf[grp].reta[pos];
+		if (q != expected) {
+			DPAA2_PMD_ERR("Non-uniform RETA pattern at slot %u "
+				"(got queue %u, expected %u). dpaa2 HW "
+				"only supports queue_id = hash mod N with "
+				"contiguous queues 0..N-1.",
+				i, q, expected);
+			return -ENOTSUP;
+		}
+	}
+
+	if (!dpaa2_dist_size_is_supported(n)) {
+		DPAA2_PMD_ERR("dist_size %u not supported by HW. Allowed: "
+			"1,2,3,4,6,7,8,12,14,16,24,28,32,48,56,64,...",
+			n);
+		return -ENOTSUP;
+	}
+
+	/* Apply on every configured RX TC, matching rss_hash_update behavior. */
+	for (tc_index = 0; tc_index < priv->num_rx_tc; tc_index++) {
+		ret = dpaa2_setup_flow_dist_size(dev,
+				eth_conf->rx_adv_conf.rss_conf.rss_hf,
+				tc_index, n);
+		if (ret) {
+			DPAA2_PMD_ERR("Failed to apply dist_size=%u on tc%d (err=%d)",
+				n, tc_index, ret);
+			return ret;
+		}
+	}
+
+	DPAA2_PMD_DEBUG("RETA updated: dist_size now %u on %u TC(s)",
+			n, priv->num_rx_tc);
+	return 0;
+}
+
+/* Synthesizes a RETA snapshot from the currently-active dist_size on TC 0.
+ * Since DPAA2 always uses uniform 'hash mod N' distribution, the returned
+ * RETA is reta[i] = i % dist_size_cur[0].
+ */
+static int
+dpaa2_dev_rss_reta_query(struct rte_eth_dev *dev,
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size)
+{
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	uint16_t i, n;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (reta_size != DPAA2_RETA_SIZE) {
+		DPAA2_PMD_ERR("Invalid reta_size %u (expected %u)",
+			      reta_size, DPAA2_RETA_SIZE);
+		return -EINVAL;
+	}
+
+	/* Use the cached dist_size on TC 0 (representative). Fall back to the
+	 * default (nb_rx_queues clamped to dist_queues) when never programmed.
+	 */
+	n = priv->dist_size_cur[0];
+	if (n == 0) {
+		n = priv->dist_queues;
+		if (n > dev->data->nb_rx_queues)
+			n = dev->data->nb_rx_queues;
+	}
+	if (n == 0)
+		return -EINVAL;
+
+	for (i = 0; i < reta_size; i++) {
+		uint16_t grp = i / RTE_ETH_RETA_GROUP_SIZE;
+		uint16_t pos = i % RTE_ETH_RETA_GROUP_SIZE;
+
+		if (reta_conf[grp].mask & (1ULL << pos))
+			reta_conf[grp].reta[pos] = i % n;
+	}
+
+	return 0;
+}
+
 RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_eth_eventq_attach)
 int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,
 		int eth_rx_queue_id,
@@ -2737,6 +2936,8 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.mac_addr_set         = dpaa2_dev_set_mac_addr,
 	.rss_hash_update      = dpaa2_dev_rss_hash_update,
 	.rss_hash_conf_get    = dpaa2_dev_rss_hash_conf_get,
+	.reta_update          = dpaa2_dev_rss_reta_update,
+	.reta_query           = dpaa2_dev_rss_reta_query,
 	.flow_ops_get         = dpaa2_dev_flow_ops_get,
 	.rxq_info_get	      = dpaa2_rxq_info_get,
 	.txq_info_get	      = dpaa2_txq_info_get,
