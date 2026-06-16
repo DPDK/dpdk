@@ -215,16 +215,6 @@ dpaa_create_device_list(void)
 
 		dev->device.numa_node = SOCKET_ID_ANY;
 
-		/* Allocate interrupt handle instance */
-		dev->intr_handle =
-			rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
-		if (dev->intr_handle == NULL) {
-			DPAA_BUS_LOG(ERR, "Failed to allocate intr handle");
-			ret = -ENOMEM;
-			free(dev);
-			goto cleanup;
-		}
-
 		cfg = &dpaa_netcfg->port_cfg[i];
 		fman_intf = cfg->fman_if;
 
@@ -273,16 +263,6 @@ dpaa_create_device_list(void)
 		if (!dev) {
 			DPAA_BUS_LOG(ERR, "Failed to allocate SEC devices");
 			ret = -1;
-			goto cleanup;
-		}
-
-		/* Allocate interrupt handle instance */
-		dev->intr_handle =
-			rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
-		if (dev->intr_handle == NULL) {
-			DPAA_BUS_LOG(ERR, "Failed to allocate intr handle");
-			ret = -ENOMEM;
-			free(dev);
 			goto cleanup;
 		}
 
@@ -336,7 +316,6 @@ qdma_dpaa:
 cleanup:
 	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus) {
 		rte_bus_remove_device(&rte_dpaa_bus, &dev->device);
-		rte_intr_instance_free(dev->intr_handle);
 		free(dev);
 	}
 
@@ -637,7 +616,8 @@ rte_dpaa_bus_dev_build(void)
 	return 0;
 }
 
-static int rte_dpaa_setup_intr(struct rte_intr_handle *intr_handle)
+static int
+dpaa_setup_intr(struct rte_intr_handle *intr_handle)
 {
 	int fd;
 
@@ -645,12 +625,12 @@ static int rte_dpaa_setup_intr(struct rte_intr_handle *intr_handle)
 	if (fd < 0) {
 		DPAA_BUS_ERR("Cannot set up eventfd, error %i (%s)",
 			     errno, strerror(errno));
-		return errno;
+		return -errno;
 	}
 
 	if (rte_intr_fd_set(intr_handle, fd) ||
 			rte_intr_type_set(intr_handle, RTE_INTR_HANDLE_EXT)) {
-		int err = rte_errno;
+		int err = -rte_errno;
 
 		close(fd);
 		rte_intr_fd_set(intr_handle, -1);
@@ -666,7 +646,6 @@ static int rte_dpaa_setup_intr(struct rte_intr_handle *intr_handle)
 static int
 rte_dpaa_bus_scan(void)
 {
-	struct rte_dpaa_device *dev;
 	FILE *svr_file = NULL;
 	uint32_t svr_ver;
 	static int process_once;
@@ -755,14 +734,6 @@ rte_dpaa_bus_scan(void)
 	 */
 	rte_mbuf_set_platform_mempool_ops(DPAA_MEMPOOL_OPS_NAME);
 
-	RTE_BUS_FOREACH_DEV(dev, &rte_dpaa_bus) {
-		if (dev->device_type == FSL_DPAA_ETH) {
-			ret = rte_dpaa_setup_intr(dev->intr_handle);
-			if (ret)
-				DPAA_BUS_ERR("Error setting up interrupt.");
-		}
-	}
-
 	/* And initialize the PA->VA translation table */
 	dpaax_iova_table_populate();
 
@@ -790,10 +761,29 @@ dpaa_bus_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	struct rte_dpaa_driver *dpaa_drv = RTE_BUS_DRIVER(drv, *dpaa_drv);
 	int ret;
 
-	ret = dpaa_drv->probe(dpaa_drv, dpaa_dev);
-	if (ret != 0)
-		DPAA_BUS_ERR("unable to probe: %s", dpaa_dev->name);
+	/* Allocate interrupt handle instance */
+	dpaa_dev->intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
+	if (dpaa_dev->intr_handle == NULL) {
+		DPAA_BUS_ERR("Failed to allocate intr handle");
+		return -ENOMEM;
+	}
 
+	if (dpaa_dev->device_type == FSL_DPAA_ETH) {
+		ret = dpaa_setup_intr(dpaa_dev->intr_handle);
+		if (ret != 0) {
+			DPAA_BUS_ERR("error setting up interrupt: %s", dpaa_dev->name);
+			goto release_intr;
+		}
+	}
+
+	ret = dpaa_drv->probe(dpaa_drv, dpaa_dev);
+	if (ret != 0) {
+		DPAA_BUS_ERR("unable to probe: %s", dpaa_dev->name);
+		rte_intr_fd_close(dpaa_dev->intr_handle);
+release_intr:
+		rte_intr_instance_free(dpaa_dev->intr_handle);
+		dpaa_dev->intr_handle = NULL;
+	}
 	return ret;
 }
 
@@ -801,29 +791,35 @@ static int
 dpaa_bus_cleanup(struct rte_bus *bus)
 {
 	struct rte_dpaa_device *dev;
+	int error = 0;
 
 	BUS_INIT_FUNC_TRACE();
 	RTE_BUS_FOREACH_DEV(dev, bus) {
 		const struct rte_dpaa_driver *drv;
-		int ret = 0;
+		int ret;
 
 		if (!rte_dev_is_probed(&dev->device))
-			continue;
+			goto next;
 		drv = RTE_BUS_DRIVER(dev->device.driver, *drv);
 		if (drv->remove == NULL)
-			continue;
+			goto next;
 		ret = drv->remove(dev);
 		if (ret < 0) {
 			rte_errno = errno;
-			return -1;
+			error = -1;
+			goto next;
 		}
 		dev->device.driver = NULL;
+next:
+		rte_intr_fd_close(dev->intr_handle);
+		rte_intr_instance_free(dev->intr_handle);
+		dev->intr_handle = NULL;
 	}
 	dpaa_portal_finish((void *)DPAA_PER_LCORE_PORTAL);
 	dpaa_bus_global_init = 0;
 	DPAA_BUS_DEBUG("Bus cleanup done");
 
-	return 0;
+	return error;
 }
 
 /* Adding destructor for double check in case non-gracefully
