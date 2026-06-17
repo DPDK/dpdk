@@ -2425,10 +2425,14 @@ evaluate(struct bpf_verifier *bvf)
 		.s = {.min = MAX_BPF_STACK_SIZE, .max = MAX_BPF_STACK_SIZE},
 	};
 
-	bvf->evst->rv[EBPF_REG_1].v = bvf->prm->prog_arg;
-	bvf->evst->rv[EBPF_REG_1].mask = UINT64_MAX;
-	if (bvf->prm->prog_arg.type == RTE_BPF_ARG_RAW)
-		eval_max_bound(bvf->evst->rv + EBPF_REG_1, UINT64_MAX);
+	for (uint32_t pai = 0; pai != bvf->prm->nb_prog_arg; ++pai) {
+		struct bpf_reg_val *reg = &bvf->evst->rv[EBPF_REG_1 + pai];
+
+		reg->v = bvf->prm->prog_arg[pai];
+		reg->mask = UINT64_MAX;
+		if (reg->v.type == RTE_BPF_ARG_RAW)
+			eval_max_bound(reg, UINT64_MAX);
+	}
 
 	bvf->evst->rv[EBPF_REG_10] = rvfp;
 
@@ -2521,20 +2525,41 @@ evaluate(struct bpf_verifier *bvf)
 	return rc;
 }
 
+static bool
+prog_arg_is_valid(const struct rte_bpf_arg *prog_arg)
+{
+	/* check input argument type, don't allow mbuf ptr on 32-bit */
+	if (prog_arg->type != RTE_BPF_ARG_RAW &&
+			prog_arg->type != RTE_BPF_ARG_PTR &&
+			(sizeof(uint64_t) != sizeof(uintptr_t) ||
+			prog_arg->type != RTE_BPF_ARG_PTR_MBUF)) {
+		RTE_BPF_LOG_FUNC_LINE(ERR, "unsupported argument type");
+		return false;
+	}
+
+	return true;
+}
+
 int
 __rte_bpf_validate(const struct rte_bpf_prm_ex *prm, uint32_t *stack_sz)
 {
 	int32_t rc;
 	struct bpf_verifier bvf;
 
-	/* check input argument type, don't allow mbuf ptr on 32-bit */
-	if (prm->prog_arg.type != RTE_BPF_ARG_RAW &&
-			prm->prog_arg.type != RTE_BPF_ARG_PTR &&
-			(sizeof(uint64_t) != sizeof(uintptr_t) ||
-			prm->prog_arg.type != RTE_BPF_ARG_PTR_MBUF)) {
-		RTE_BPF_LOG_FUNC_LINE(ERR, "unsupported argument type");
+	if (prm->nb_prog_arg > EBPF_FUNC_MAX_ARGS) {
+		RTE_BPF_LOG_FUNC_LINE(ERR,
+			"support up to %u arguments, found %u",
+			EBPF_FUNC_MAX_ARGS, prm->nb_prog_arg);
 		return -ENOTSUP;
 	}
+
+	for (uint32_t pai = 0; pai != prm->nb_prog_arg; ++pai)
+		if (!prog_arg_is_valid(&prm->prog_arg[pai])) {
+			RTE_BPF_LOG_FUNC_LINE(ERR,
+				"unsupported argument %d (r%d) type",
+				pai, EBPF_REG_1 + pai);
+			return -ENOTSUP;
+		}
 
 	memset(&bvf, 0, sizeof(bvf));
 	bvf.prm = prm;

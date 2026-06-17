@@ -12,7 +12,7 @@
 
 struct rte_bpf {
 	struct rte_bpf_prm_ex prm;
-	struct rte_bpf_jit jit;
+	struct rte_bpf_jit_ex jit;
 	size_t sz;
 	uint32_t stack_sz;
 };

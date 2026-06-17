@@ -22,12 +22,20 @@ The library API provides the following basic operations for working with BPF pro
   By utilizing ``struct rte_bpf_prm_ex``, you can load an eBPF program
   from an ELF file on disk.
 
+* **Direct Execution**: You can execute a BPF program directly from your application code
+  using ``rte_bpf_exec_ex`` (or the burst variant ``rte_bpf_exec_burst_ex``).
+  This API allows passing an execution context (``struct rte_bpf_prog_ctx``)
+  containing up to 5 custom arguments.
+
+* **JIT Execution**: For maximum performance, you can retrieve the natively compiled (JIT)
+  function pointer for a loaded program using ``rte_bpf_get_jit_ex``
+  and call it directly from your code with the same arguments.
+
 * **Cleanup:** Destroy a BPF execution context and free the associated memory
   using ``rte_bpf_destroy``.
 
-*   Execute eBPF bytecode associated with provided input parameter.
-
 The following is a concise example of loading an eBPF program from an ELF file,
+and executing it directly, utilizing the JIT-compiled version if available:
 
 .. code-block:: c
 
@@ -54,6 +62,22 @@ The following is a concise example of loading an eBPF program from an ELF file,
    struct rte_bpf *bpf = rte_bpf_load_ex(&prm);
    if (bpf == NULL) {
        /* Handle load failure */
+   }
+
+   struct rte_bpf_prog_ctx ctx = {
+       .arg[0] = { .ptr = mbuf },
+       .arg[1] = { .u64 = RTE_PTYPE_L2_MASK | RTE_PTYPE_L3_MASK },
+   };
+
+   struct rte_bpf_jit_ex jit;
+   uint64_t ret;
+   if (rte_bpf_get_jit_ex(bpf, &jit) == 0 && jit.func2 != NULL) {
+       /* Call the JIT-compiled function directly for best performance */
+       ret = jit.func2(ctx.arg[0], ctx.arg[1]);
+   } else {
+       /* Fallback to interpreter */
+       uint64_t flags = 0;
+       ret = rte_bpf_exec_ex(bpf, &ctx, flags);
    }
 
    rte_bpf_destroy(bpf);

@@ -149,7 +149,8 @@ rte_bpf_load(const struct rte_bpf_prm *prm)
 			.raw.nb_ins = prm->nb_ins,
 			.xsym = prm->xsym,
 			.nb_xsym = prm->nb_xsym,
-			.prog_arg = prm->prog_arg,
+			.prog_arg[0] = prm->prog_arg,
+			.nb_prog_arg = 1,
 		});
 }
 
@@ -170,7 +171,8 @@ rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
 			.elf_file.section = sname,
 			.xsym = prm->xsym,
 			.nb_xsym = prm->nb_xsym,
-			.prog_arg = prm->prog_arg,
+			.prog_arg[0] = prm->prog_arg,
+			.nb_prog_arg = 1,
 		});
 }
 
@@ -271,6 +273,6 @@ rte_bpf_load_ex(const struct rte_bpf_prm_ex *prm)
 	}
 
 	RTE_BPF_LOG_FUNC_LINE(INFO, "successfully creates %p(jit={.func=%p,.sz=%zu});",
-		load.bpf, load.bpf->jit.func, load.bpf->jit.sz);
+		load.bpf, load.bpf->jit.raw, load.bpf->jit.sz);
 	return load.bpf;
 }

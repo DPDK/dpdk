@@ -1568,7 +1568,7 @@ __rte_bpf_jit_x86(struct rte_bpf *bpf)
 	if (rc != 0)
 		munmap(st.ins, st.sz);
 	else {
-		bpf->jit.func = (void *)st.ins;
+		bpf->jit.raw = st.ins;
 		bpf->jit.sz = st.sz;
 	}
 

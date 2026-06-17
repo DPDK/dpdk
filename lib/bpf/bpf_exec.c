@@ -10,6 +10,7 @@
 #include <rte_log.h>
 #include <rte_debug.h>
 #include <rte_byteorder.h>
+#include <rte_errno.h>
 
 #include "bpf_impl.h"
 
@@ -502,6 +503,12 @@ rte_bpf_exec_burst(const struct rte_bpf *bpf, void *ctx[], uint64_t rc[],
 	uint64_t reg[EBPF_REG_NUM];
 	uint64_t stack[MAX_BPF_STACK_SIZE / sizeof(uint64_t)];
 
+	if (bpf->prm.nb_prog_arg != 1) {
+		/* Use rte_bpf_exec_burst_ex with this program. */
+		rte_errno = EINVAL;
+		return 0;
+	}
+
 	for (i = 0; i != num; i++) {
 
 		reg[EBPF_REG_1] = (uintptr_t)ctx[i];
@@ -513,12 +520,127 @@ rte_bpf_exec_burst(const struct rte_bpf *bpf, void *ctx[], uint64_t rc[],
 	return i;
 }
 
+static uint32_t
+exec_vm_burst_ex(const struct rte_bpf *bpf, const struct rte_bpf_prog_ctx *ctx,
+	uint64_t rc[], uint32_t num)
+{
+	uint32_t i;
+	uint64_t reg[EBPF_REG_NUM];
+	uint64_t stack[MAX_BPF_STACK_SIZE / sizeof(uint64_t)];
+
+	for (i = 0; i != num; i++) {
+
+		switch (bpf->prm.nb_prog_arg) {
+		case 5:
+			reg[EBPF_REG_5] = ctx[i].arg[4].u64;
+			/* FALLTHROUGH */
+		case 4:
+			reg[EBPF_REG_4] = ctx[i].arg[3].u64;
+			/* FALLTHROUGH */
+		case 3:
+			reg[EBPF_REG_3] = ctx[i].arg[2].u64;
+			/* FALLTHROUGH */
+		case 2:
+			reg[EBPF_REG_2] = ctx[i].arg[1].u64;
+			/* FALLTHROUGH */
+		case 1:
+			reg[EBPF_REG_1] = ctx[i].arg[0].u64;
+			/* FALLTHROUGH */
+		case 0:
+			break;
+		}
+
+		reg[EBPF_REG_10] = (uintptr_t)(stack + RTE_DIM(stack));
+
+		rc[i] = bpf_exec(bpf, reg);
+	}
+
+	return i;
+}
+
+static uint32_t
+exec_jit_burst_ex(const struct rte_bpf *bpf, const struct rte_bpf_prog_ctx *ctx,
+	uint64_t rc[], uint32_t num)
+{
+	uint32_t i = 0;
+	const struct rte_bpf_jit_ex jit = bpf->jit;
+
+	/*
+	 * Fast path: assumes application pre-validated RTE_BPF_EXEC_FLAG_JIT
+	 * and successful JIT generation. No explicit NULL checks here.
+	 */
+	switch (bpf->prm.nb_prog_arg) {
+	case 0:
+		for (i = 0; i != num; i++)
+			rc[i] = jit.func0();
+		break;
+	case 1:
+		for (i = 0; i != num; i++) {
+			const union rte_bpf_func_arg *const arg = ctx[i].arg;
+			rc[i] = jit.func1(arg[0]);
+		}
+		break;
+	case 2:
+		for (i = 0; i != num; i++) {
+			const union rte_bpf_func_arg *const arg = ctx[i].arg;
+			rc[i] = jit.func2(arg[0], arg[1]);
+		}
+		break;
+	case 3:
+		for (i = 0; i != num; i++) {
+			const union rte_bpf_func_arg *const arg = ctx[i].arg;
+			rc[i] = jit.func3(arg[0], arg[1], arg[2]);
+		}
+		break;
+	case 4:
+		for (i = 0; i != num; i++) {
+			const union rte_bpf_func_arg *const arg = ctx[i].arg;
+			rc[i] = jit.func4(arg[0], arg[1], arg[2], arg[3]);
+		}
+		break;
+	case 5:
+		for (i = 0; i != num; i++) {
+			const union rte_bpf_func_arg *const arg = ctx[i].arg;
+			rc[i] = jit.func5(arg[0], arg[1], arg[2], arg[3], arg[4]);
+		}
+		break;
+	}
+
+	return i;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bpf_exec_burst_ex, 26.07)
+uint32_t
+rte_bpf_exec_burst_ex(const struct rte_bpf *bpf, const struct rte_bpf_prog_ctx *ctx,
+	uint64_t rc[], uint32_t num, uint64_t flags)
+{
+	if ((flags & ~RTE_BPF_EXEC_FLAG_MASK) != 0) {
+		rte_errno = EINVAL;
+		return 0;
+	}
+
+	return (flags & RTE_BPF_EXEC_FLAG_JIT) != 0 ?
+		exec_jit_burst_ex(bpf, ctx, rc, num) :
+		exec_vm_burst_ex(bpf, ctx, rc, num);
+}
+
 RTE_EXPORT_SYMBOL(rte_bpf_exec)
 uint64_t
 rte_bpf_exec(const struct rte_bpf *bpf, void *ctx)
 {
-	uint64_t rc;
+	uint64_t rc = UINT64_MAX;
 
 	rte_bpf_exec_burst(bpf, &ctx, &rc, 1);
+	return rc;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bpf_exec_ex, 26.07)
+uint64_t
+rte_bpf_exec_ex(const struct rte_bpf *bpf, const struct rte_bpf_prog_ctx *ctx,
+		uint64_t flags)
+{
+	uint64_t rc = UINT64_MAX;
+
+	rte_bpf_exec_burst_ex(bpf, ctx, &rc, 1, flags);
 	return rc;
 }

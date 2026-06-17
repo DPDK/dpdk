@@ -16,8 +16,8 @@ void
 rte_bpf_destroy(struct rte_bpf *bpf)
 {
 	if (bpf != NULL) {
-		if (bpf->jit.func != NULL)
-			munmap(bpf->jit.func, bpf->jit.sz);
+		if (bpf->jit.raw != NULL)
+			munmap(bpf->jit.raw, bpf->jit.sz);
 		munmap(bpf, bpf->sz);
 	}
 }
@@ -29,7 +29,33 @@ rte_bpf_get_jit(const struct rte_bpf *bpf, struct rte_bpf_jit *jit)
 	if (bpf == NULL || jit == NULL)
 		return -EINVAL;
 
-	jit[0] = bpf->jit;
+	if (bpf->prm.nb_prog_arg != 1) {
+		RTE_BPF_LOG_LINE(ERR,
+			"this program takes %d arguments, use rte_bpf_get_jit_ex",
+			bpf->prm.nb_prog_arg);
+		return -EINVAL;
+	}
+
+	*jit = (struct rte_bpf_jit) {
+		.func = bpf->jit.raw,
+		.sz = bpf->jit.sz,
+	};
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bpf_get_jit_ex, 26.07)
+int
+rte_bpf_get_jit_ex(const struct rte_bpf *bpf, struct rte_bpf_jit_ex *jit)
+{
+	if (bpf == NULL || jit == NULL)
+		return -EINVAL;
+
+	if (bpf->jit.raw == NULL) {
+		RTE_BPF_LOG_LINE(ERR, "no JIT-compiled version");
+		return -ENOENT;
+	}
+
+	*jit = bpf->jit;
 	return 0;
 }
 
