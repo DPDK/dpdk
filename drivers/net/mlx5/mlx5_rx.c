@@ -662,7 +662,7 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec,
 					if (!*elt) {
 						for (i--; i >= 0; --i) {
 							elt_idx = (elts_ci +
-								   i) & elts_n;
+								   i) & e_mask;
 							elt = &(*rxq->elts)
 								[elt_idx];
 							rte_pktmbuf_free_seg
