@@ -463,11 +463,13 @@ gve_read_nic_clock(void *arg)
 	if (!priv || !priv->nic_ts_report_mz)
 		return;
 
+	pthread_mutex_lock(&priv->nic_ts_lock);
 	memset(priv->nic_ts_report, 0, sizeof(struct gve_nic_ts_report));
 
 	err = gve_adminq_report_nic_timestamp(priv, priv->nic_ts_report_mz->iova);
 	if (err == 0) {
 		ts = be64_to_cpu(priv->nic_ts_report->nic_timestamp);
+		pthread_mutex_unlock(&priv->nic_ts_lock);
 		rte_atomic_store_explicit(&priv->last_read_nic_timestamp, ts,
 					  rte_memory_order_relaxed);
 		PMD_DRV_LOG(DEBUG, "Fetched NIC Timestamp: %" PRIu64, ts);
@@ -476,6 +478,7 @@ gve_read_nic_clock(void *arg)
 		rte_atomic_store_explicit(&priv->nic_ts_stale, 0,
 					  rte_memory_order_release);
 	} else {
+		pthread_mutex_unlock(&priv->nic_ts_lock);
 		PMD_DRV_LOG(ERR, "Failed to read NIC clock, AQ err: %d", err);
 		fails = rte_atomic_fetch_add_explicit(&priv->nic_ts_read_fails, 1,
 						      rte_memory_order_relaxed) + 1;
@@ -705,11 +708,12 @@ gve_dev_close(struct rte_eth_dev *dev)
 	if (gve_get_flow_subsystem_ok(priv))
 		gve_teardown_flow_subsystem(priv);
 
-	pthread_mutex_destroy(&priv->flow_rule_lock);
-
 	gve_free_queues(dev);
 	gve_teardown_device_resources(priv);
 	gve_adminq_free(priv);
+
+	pthread_mutex_destroy(&priv->flow_rule_lock);
+	pthread_mutex_destroy(&priv->nic_ts_lock);
 
 	dev->data->mac_addrs = NULL;
 
@@ -1278,6 +1282,38 @@ gve_flow_ops_get(struct rte_eth_dev *dev, const struct rte_flow_ops **ops)
 	return 0;
 }
 
+static int
+gve_read_clock(struct rte_eth_dev *dev, uint64_t *clock)
+{
+	struct gve_priv *priv = dev->data->dev_private;
+	uint64_t ts;
+	int err;
+
+	if (!priv->nic_timestamp_supported)
+		return -EOPNOTSUPP;
+
+	if (!priv->nic_ts_report_mz)
+		return -EIO;
+
+	pthread_mutex_lock(&priv->nic_ts_lock);
+	err = gve_adminq_report_nic_timestamp(priv, priv->nic_ts_report_mz->iova);
+	if (err != 0) {
+		pthread_mutex_unlock(&priv->nic_ts_lock);
+		return err;
+	}
+
+	ts = be64_to_cpu(priv->nic_ts_report->nic_timestamp);
+	pthread_mutex_unlock(&priv->nic_ts_lock);
+	*clock = ts;
+
+	/* Update the cached value */
+	rte_atomic_store_explicit(&priv->last_read_nic_timestamp, ts, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&priv->nic_ts_read_fails, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&priv->nic_ts_stale, 0, rte_memory_order_release);
+
+	return 0;
+}
+
 static const struct eth_dev_ops gve_eth_dev_ops = {
 	.dev_configure        = gve_dev_configure,
 	.dev_start            = gve_dev_start,
@@ -1332,6 +1368,7 @@ static const struct eth_dev_ops gve_eth_dev_ops_dqo = {
 	.rss_hash_conf_get    = gve_rss_hash_conf_get,
 	.reta_update          = gve_rss_reta_update,
 	.reta_query           = gve_rss_reta_query,
+	.read_clock           = gve_read_clock,
 };
 
 static int
@@ -1640,9 +1677,18 @@ gve_dev_init(struct rte_eth_dev *eth_dev)
 	priv->max_nb_txq = max_tx_queues;
 	priv->max_nb_rxq = max_rx_queues;
 
+	pthread_mutexattr_init(&mutexattr);
+	pthread_mutexattr_setpshared(&mutexattr, PTHREAD_PROCESS_SHARED);
+	pthread_mutex_init(&priv->flow_rule_lock, &mutexattr);
+	pthread_mutex_init(&priv->nic_ts_lock, &mutexattr);
+	pthread_mutexattr_destroy(&mutexattr);
+
 	err = gve_init_priv(priv, false);
-	if (err)
+	if (err) {
+		pthread_mutex_destroy(&priv->flow_rule_lock);
+		pthread_mutex_destroy(&priv->nic_ts_lock);
 		return err;
+	}
 
 	if (gve_is_gqi(priv)) {
 		eth_dev->dev_ops = &gve_eth_dev_ops;
@@ -1655,11 +1701,6 @@ gve_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	eth_dev->data->mac_addrs = &priv->dev_addr;
-
-	pthread_mutexattr_init(&mutexattr);
-	pthread_mutexattr_setpshared(&mutexattr, PTHREAD_PROCESS_SHARED);
-	pthread_mutex_init(&priv->flow_rule_lock, &mutexattr);
-	pthread_mutexattr_destroy(&mutexattr);
 
 	return 0;
 }
