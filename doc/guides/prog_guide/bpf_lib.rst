@@ -22,6 +22,11 @@ The library API provides the following basic operations for working with BPF pro
   By utilizing ``struct rte_bpf_prm_ex``, you can load an eBPF program
   from an ELF file on disk.
 
+* **Execution via Callbacks**: Once loaded, a BPF program can be attached
+  to a specific ethernet device port and queue
+  to automatically process incoming or outgoing packets
+  using ``rte_bpf_eth_rx_install`` or ``rte_bpf_eth_tx_install``.
+
 * **Direct Execution**: You can execute a BPF program directly from your application code
   using ``rte_bpf_exec_ex`` (or the burst variant ``rte_bpf_exec_burst_ex``).
   This API allows passing an execution context (``struct rte_bpf_prog_ctx``)

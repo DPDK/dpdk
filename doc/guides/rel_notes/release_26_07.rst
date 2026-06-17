@@ -159,6 +159,9 @@ New Features
   * Added support for loading and executing BPF programs with up to 5 arguments.
     This introduces new API functions ``rte_bpf_exec_ex``,
     ``rte_bpf_exec_burst_ex``, and ``rte_bpf_get_jit_ex``.
+  * Added API functions ``rte_bpf_eth_rx_install`` and ``rte_bpf_eth_tx_install``
+    for installing already loaded BPF programs as port callbacks
+    (as opposed to loading them directly from ELF files).
 
 * **Added AI review helpers.**
 

@@ -490,13 +490,11 @@ rte_bpf_eth_tx_unload(uint16_t port, uint16_t queue)
 }
 
 static int
-bpf_eth_elf_load(struct bpf_eth_cbh *cbh, uint16_t port, uint16_t queue,
-	const struct rte_bpf_prm *prm, const char *fname, const char *sname,
-	uint32_t flags)
+bpf_eth_elf_install(struct bpf_eth_cbh *cbh, uint16_t port, uint16_t queue,
+	struct rte_bpf *bpf, uint32_t flags)
 {
 	int32_t rc;
 	struct bpf_eth_cbi *bc;
-	struct rte_bpf *bpf;
 	rte_rx_callback_fn frx;
 	rte_tx_callback_fn ftx;
 	struct rte_bpf_jit jit;
@@ -504,14 +502,17 @@ bpf_eth_elf_load(struct bpf_eth_cbh *cbh, uint16_t port, uint16_t queue,
 	frx = NULL;
 	ftx = NULL;
 
-	if (prm == NULL || rte_eth_dev_is_valid_port(port) == 0 ||
+	if (bpf == NULL || rte_eth_dev_is_valid_port(port) == 0 ||
 			queue >= RTE_MAX_QUEUES_PER_PORT)
 		return -EINVAL;
 
+	if (bpf->prm.nb_prog_arg != 1)
+		return -EINVAL;
+
 	if (cbh->type == BPF_ETH_RX)
-		frx = select_rx_callback(prm->prog_arg.type, flags);
+		frx = select_rx_callback(bpf->prm.prog_arg[0].type, flags);
 	else
-		ftx = select_tx_callback(prm->prog_arg.type, flags);
+		ftx = select_tx_callback(bpf->prm.prog_arg[0].type, flags);
 
 	if (frx == NULL && ftx == NULL) {
 		RTE_BPF_LOG_LINE(ERR, "%s(%u, %u): no callback selected;",
@@ -519,16 +520,11 @@ bpf_eth_elf_load(struct bpf_eth_cbh *cbh, uint16_t port, uint16_t queue,
 		return -EINVAL;
 	}
 
-	bpf = rte_bpf_elf_load(prm, fname, sname);
-	if (bpf == NULL)
-		return -rte_errno;
-
 	rte_bpf_get_jit(bpf, &jit);
 
 	if ((flags & RTE_BPF_ETH_F_JIT) != 0 && jit.func == NULL) {
 		RTE_BPF_LOG_LINE(ERR, "%s(%u, %u): no JIT generated;",
 			__func__, port, queue);
-		rte_bpf_destroy(bpf);
 		return -ENOTSUP;
 	}
 
@@ -551,7 +547,6 @@ bpf_eth_elf_load(struct bpf_eth_cbh *cbh, uint16_t port, uint16_t queue,
 
 	if (bc->cb == NULL) {
 		rc = -rte_errno;
-		rte_bpf_destroy(bpf);
 		bpf_eth_cbi_cleanup(bc);
 	} else
 		rc = 0;
@@ -565,12 +560,32 @@ rte_bpf_eth_rx_elf_load(uint16_t port, uint16_t queue,
 	const struct rte_bpf_prm *prm, const char *fname, const char *sname,
 	uint32_t flags)
 {
+	struct rte_bpf *bpf;
+	int32_t rc;
+
+	bpf = rte_bpf_elf_load(prm, fname, sname);
+	if (bpf == NULL)
+		return -rte_errno;
+
+	rc = rte_bpf_eth_rx_install(port, queue, bpf, flags);
+
+	if (rc < 0)
+		rte_bpf_destroy(bpf);
+
+	return rc;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bpf_eth_rx_install, 26.07)
+int
+rte_bpf_eth_rx_install(uint16_t port, uint16_t queue, struct rte_bpf *bpf,
+	uint32_t flags)
+{
 	int32_t rc;
 	struct bpf_eth_cbh *cbh;
 
 	cbh = &rx_cbh;
 	rte_spinlock_lock(&cbh->lock);
-	rc = bpf_eth_elf_load(cbh, port, queue, prm, fname, sname, flags);
+	rc = bpf_eth_elf_install(cbh, port, queue, bpf, flags);
 	rte_spinlock_unlock(&cbh->lock);
 
 	return rc;
@@ -582,12 +597,32 @@ rte_bpf_eth_tx_elf_load(uint16_t port, uint16_t queue,
 	const struct rte_bpf_prm *prm, const char *fname, const char *sname,
 	uint32_t flags)
 {
+	struct rte_bpf *bpf;
+	int32_t rc;
+
+	bpf = rte_bpf_elf_load(prm, fname, sname);
+	if (bpf == NULL)
+		return -rte_errno;
+
+	rc = rte_bpf_eth_tx_install(port, queue, bpf, flags);
+
+	if (rc < 0)
+		rte_bpf_destroy(bpf);
+
+	return rc;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bpf_eth_tx_install, 26.07)
+int
+rte_bpf_eth_tx_install(uint16_t port, uint16_t queue, struct rte_bpf *bpf,
+	uint32_t flags)
+{
 	int32_t rc;
 	struct bpf_eth_cbh *cbh;
 
 	cbh = &tx_cbh;
 	rte_spinlock_lock(&cbh->lock);
-	rc = bpf_eth_elf_load(cbh, port, queue, prm, fname, sname, flags);
+	rc = bpf_eth_elf_install(cbh, port, queue, bpf, flags);
 	rte_spinlock_unlock(&cbh->lock);
 
 	return rc;
