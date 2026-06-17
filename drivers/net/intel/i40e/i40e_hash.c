@@ -1089,12 +1089,18 @@ i40e_hash_validate_rss_common(const struct rte_flow_action_rss *rss_act,
 				"Symmetric hash function not supported without specific patterns");
 	}
 
-	/* hash types are not supported for global RSS configuration */
-	if (rss_act->types != 0) {
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ACTION_CONF, rss_act,
-				"RSS types not supported without a pattern");
-	}
+	/*
+	 * When RSS types is not specified in testpmd, it will set up a default
+	 * RSS types value for the flow. Even though no hash engine part calling
+	 * this particular function will use RSS types parameter for anything,
+	 * we cannot reject having it because it is extra effort for testpmd
+	 * user to avoid specifying it.
+	 *
+	 * So, instead, accept types value even though we are not using it for
+	 * anything, but produce a warning for the user.
+	 */
+	if (rss_act->types != 0)
+		PMD_DRV_LOG(WARNING, "RSS types specified but will not be used");
 
 	/* check RSS key length if it is specified */
 	if (rss_act->key_len != 0 && rss_act->key_len != I40E_RSS_KEY_LEN) {
