@@ -80,7 +80,7 @@ struct evst_pool {
 };
 
 struct bpf_verifier {
-	const struct rte_bpf_prm *prm;
+	const struct rte_bpf_prm_ex *prm;
 	struct inst_node *in;
 	uint64_t stack_sz;
 	uint32_t nb_nodes;
@@ -1837,7 +1837,7 @@ add_edge(struct bpf_verifier *bvf, struct inst_node *node, uint32_t nidx)
 {
 	uint32_t ne;
 
-	if (nidx >= bvf->prm->nb_ins) {
+	if (nidx >= bvf->prm->raw.nb_ins) {
 		RTE_BPF_LOG_FUNC_LINE(ERR,
 			"program boundary violation at pc: %u, next pc: %u",
 			get_node_idx(bvf, node), nidx);
@@ -1946,10 +1946,10 @@ log_unreachable(const struct bpf_verifier *bvf)
 	struct inst_node *node;
 	const struct ebpf_insn *ins;
 
-	for (i = 0; i != bvf->prm->nb_ins; i++) {
+	for (i = 0; i != bvf->prm->raw.nb_ins; i++) {
 
 		node = bvf->in + i;
-		ins = bvf->prm->ins + i;
+		ins = bvf->prm->raw.ins + i;
 
 		if (node->colour == WHITE &&
 				ins->code != (BPF_LD | BPF_IMM | EBPF_DW))
@@ -1966,7 +1966,7 @@ log_loop(const struct bpf_verifier *bvf)
 	uint32_t i, j;
 	struct inst_node *node;
 
-	for (i = 0; i != bvf->prm->nb_ins; i++) {
+	for (i = 0; i != bvf->prm->raw.nb_ins; i++) {
 
 		node = bvf->in + i;
 		if (node->colour != BLACK)
@@ -1998,9 +1998,9 @@ validate(struct bpf_verifier *bvf)
 	const char *err;
 
 	rc = 0;
-	for (i = 0; i < bvf->prm->nb_ins; i++) {
+	for (i = 0; i < bvf->prm->raw.nb_ins; i++) {
 
-		ins = bvf->prm->ins + i;
+		ins = bvf->prm->raw.ins + i;
 		node = bvf->in + i;
 
 		err = check_syntax(ins);
@@ -2432,7 +2432,7 @@ evaluate(struct bpf_verifier *bvf)
 
 	bvf->evst->rv[EBPF_REG_10] = rvfp;
 
-	ins = bvf->prm->ins;
+	ins = bvf->prm->raw.ins;
 	node = bvf->in;
 	next = node;
 	rc = 0;
@@ -2522,23 +2522,23 @@ evaluate(struct bpf_verifier *bvf)
 }
 
 int
-__rte_bpf_validate(struct rte_bpf *bpf)
+__rte_bpf_validate(const struct rte_bpf_prm_ex *prm, uint32_t *stack_sz)
 {
 	int32_t rc;
 	struct bpf_verifier bvf;
 
 	/* check input argument type, don't allow mbuf ptr on 32-bit */
-	if (bpf->prm.prog_arg.type != RTE_BPF_ARG_RAW &&
-			bpf->prm.prog_arg.type != RTE_BPF_ARG_PTR &&
+	if (prm->prog_arg.type != RTE_BPF_ARG_RAW &&
+			prm->prog_arg.type != RTE_BPF_ARG_PTR &&
 			(sizeof(uint64_t) != sizeof(uintptr_t) ||
-			bpf->prm.prog_arg.type != RTE_BPF_ARG_PTR_MBUF)) {
+			prm->prog_arg.type != RTE_BPF_ARG_PTR_MBUF)) {
 		RTE_BPF_LOG_FUNC_LINE(ERR, "unsupported argument type");
 		return -ENOTSUP;
 	}
 
 	memset(&bvf, 0, sizeof(bvf));
-	bvf.prm = &bpf->prm;
-	bvf.in = calloc(bpf->prm.nb_ins, sizeof(bvf.in[0]));
+	bvf.prm = prm;
+	bvf.in = calloc(prm->raw.nb_ins, sizeof(bvf.in[0]));
 	if (bvf.in == NULL)
 		return -ENOMEM;
 
@@ -2555,11 +2555,11 @@ __rte_bpf_validate(struct rte_bpf *bpf)
 
 	/* copy collected info */
 	if (rc == 0) {
-		bpf->stack_sz = bvf.stack_sz;
+		*stack_sz = bvf.stack_sz;
 
 		/* for LD_ABS/LD_IND, we'll need extra space on the stack */
 		if (bvf.nb_ldmb_nodes != 0)
-			bpf->stack_sz = RTE_ALIGN_CEIL(bpf->stack_sz +
+			*stack_sz = RTE_ALIGN_CEIL(*stack_sz +
 				sizeof(uint64_t), sizeof(uint64_t));
 	}
 

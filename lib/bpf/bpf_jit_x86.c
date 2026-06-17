@@ -1324,12 +1324,12 @@ emit(struct bpf_jit_state *st, const struct rte_bpf *bpf)
 
 	emit_prolog(st, bpf->stack_sz);
 
-	for (i = 0; i != bpf->prm.nb_ins; i++) {
+	for (i = 0; i != bpf->prm.raw.nb_ins; i++) {
 
 		st->idx = i;
 		st->off[i] = st->sz;
 
-		ins = bpf->prm.ins + i;
+		ins = bpf->prm.raw.ins + i;
 
 		dr = ebpf2x86[ins->dst_reg];
 		sr = ebpf2x86[ins->src_reg];
@@ -1532,13 +1532,13 @@ __rte_bpf_jit_x86(struct rte_bpf *bpf)
 
 	/* init state */
 	memset(&st, 0, sizeof(st));
-	st.off = malloc(bpf->prm.nb_ins * sizeof(st.off[0]));
+	st.off = malloc(bpf->prm.raw.nb_ins * sizeof(st.off[0]));
 	if (st.off == NULL)
 		return -ENOMEM;
 
 	/* fill with fake offsets */
 	st.exit.off = INT32_MAX;
-	for (i = 0; i != bpf->prm.nb_ins; i++)
+	for (i = 0; i != bpf->prm.raw.nb_ins; i++)
 		st.off[i] = INT32_MAX;
 
 	/*

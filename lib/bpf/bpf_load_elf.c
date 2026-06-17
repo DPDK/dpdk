@@ -2,10 +2,15 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
+#include "bpf_impl.h"
+
+#include <errno.h>
+
+#ifdef RTE_LIBRTE_BPF_ELF
+
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <inttypes.h>
@@ -25,8 +30,6 @@
 #include <rte_eal.h>
 #include <rte_byteorder.h>
 #include <rte_errno.h>
-
-#include "bpf_impl.h"
 
 /* To overcome compatibility issue */
 #ifndef EM_BPF
@@ -56,7 +59,7 @@ bpf_find_xsym(const char *sn, enum rte_bpf_xtype type,
  */
 static int
 resolve_xsym(const char *sn, size_t ofs, struct ebpf_insn *ins, size_t ins_sz,
-	const struct rte_bpf_prm *prm)
+	const struct rte_bpf_prm_ex *prm)
 {
 	uint32_t idx, fidx;
 	enum rte_bpf_xtype type;
@@ -183,7 +186,7 @@ find_elf_code(Elf *elf, const char *section, Elf_Data **psd, size_t *pidx)
  */
 static int
 process_reloc(Elf *elf, size_t sym_idx, Elf64_Rel *re, size_t re_sz,
-	struct ebpf_insn *ins, size_t ins_sz, const struct rte_bpf_prm *prm)
+	struct ebpf_insn *ins, size_t ins_sz, const struct rte_bpf_prm_ex *prm)
 {
 	int32_t rc;
 	uint32_t i, n;
@@ -232,8 +235,8 @@ process_reloc(Elf *elf, size_t sym_idx, Elf64_Rel *re, size_t re_sz,
  * and update bpf code.
  */
 static int
-elf_reloc_code(Elf *elf, Elf_Data *ed, size_t sidx,
-	const struct rte_bpf_prm *prm)
+elf_reloc_code(Elf *elf, struct ebpf_insn *ins, size_t ins_sz, size_t sidx,
+	const struct rte_bpf_prm_ex *prm)
 {
 	Elf64_Rel *re;
 	Elf_Scn *sc;
@@ -256,7 +259,7 @@ elf_reloc_code(Elf *elf, Elf_Data *ed, size_t sidx,
 					sd->d_size % sizeof(re[0]) != 0)
 				return -EINVAL;
 			rc = process_reloc(elf, sh->sh_link,
-				sd->d_buf, sd->d_size, ed->d_buf, ed->d_size,
+				sd->d_buf, sd->d_size, ins, ins_sz,
 				prm);
 		}
 	}
@@ -264,72 +267,96 @@ elf_reloc_code(Elf *elf, Elf_Data *ed, size_t sidx,
 	return rc;
 }
 
-static struct rte_bpf *
-bpf_load_elf(const struct rte_bpf_prm *prm, int32_t fd, const char *section)
+void
+__rte_bpf_load_elf_cleanup(struct __rte_bpf_load *load)
 {
-	Elf *elf;
+	elf_end(load->elf);
+
+	if (load->elf_fd >= 0 && close(load->elf_fd) < 0) {
+		const int close_errno = errno;
+		RTE_BPF_LOG_FUNC_LINE(ERR, "error %d closing: %s",
+			close_errno, strerror(close_errno));
+	}
+}
+
+int
+__rte_bpf_load_elf_file(struct __rte_bpf_load *load)
+{
+	const struct rte_bpf_prm_ex *const prm = &load->prm;
+
+	RTE_ASSERT(prm->origin == RTE_BPF_ORIGIN_ELF_FILE);
+
+	if (prm->elf_file.path == NULL || prm->elf_file.section == NULL)
+		return -EINVAL;
+
+	if (elf_version(EV_CURRENT) == EV_NONE)
+		return -ENOTSUP;
+
+	load->elf_fd = open(prm->elf_file.path, O_RDONLY);
+	if (load->elf_fd < 0) {
+		const int open_errno = errno;
+		RTE_BPF_LOG_FUNC_LINE(ERR, "error %d opening \"%s\": %s",
+			open_errno, prm->elf_file.path, strerror(open_errno));
+		return -open_errno;
+	}
+
+	load->elf = elf_begin(load->elf_fd, ELF_C_READ, NULL);
+	if (load->elf == NULL) {
+		const int rc = elf_errno();
+		RTE_BPF_LOG_FUNC_LINE(ERR, "error %d opening ELF \"%s\": %s",
+			rc, prm->elf_file.path, elf_errmsg(rc));
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+int
+__rte_bpf_load_elf_code(struct __rte_bpf_load *load)
+{
+	struct rte_bpf_prm_ex *const prm = &load->prm;
 	Elf_Data *sd;
 	size_t sidx;
-	int32_t rc;
-	struct rte_bpf *bpf;
-	struct rte_bpf_prm np;
+	int rc;
 
-	elf_version(EV_CURRENT);
-	elf = elf_begin(fd, ELF_C_READ, NULL);
+	rc = find_elf_code(load->elf, prm->elf_file.section, &sd, &sidx);
+	if (rc < 0)
+		return rc;
 
-	rc = find_elf_code(elf, section, &sd, &sidx);
-	if (rc == 0)
-		rc = elf_reloc_code(elf, sd, sidx, prm);
+	prm->origin = RTE_BPF_ORIGIN_RAW;
+	prm->raw.ins = sd->d_buf;
+	prm->raw.nb_ins = sd->d_size / sizeof(struct ebpf_insn);
 
-	if (rc == 0) {
-		np = prm[0];
-		np.ins = sd->d_buf;
-		np.nb_ins = sd->d_size / sizeof(struct ebpf_insn);
-		bpf = rte_bpf_load(&np);
-	} else {
-		bpf = NULL;
-		rte_errno = -rc;
-	}
+	rc = elf_reloc_code(load->elf, sd->d_buf, sd->d_size, sidx, prm);
+	if (rc < 0)
+		return -EINVAL;
 
-	elf_end(elf);
-	return bpf;
+	return 0;
 }
 
-RTE_EXPORT_SYMBOL(rte_bpf_elf_load)
-struct rte_bpf *
-rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
-	const char *sname)
+#else /* RTE_LIBRTE_BPF_ELF */
+
+void
+__rte_bpf_load_elf_cleanup(struct __rte_bpf_load *load)
 {
-	int32_t fd, rc;
-	struct rte_bpf *bpf;
-
-	if (prm == NULL || fname == NULL || sname == NULL) {
-		rte_errno = EINVAL;
-		return NULL;
-	}
-
-	fd = open(fname, O_RDONLY);
-	if (fd < 0) {
-		rc = errno;
-		RTE_BPF_LOG_LINE(ERR, "%s(%s) error code: %d(%s)",
-			__func__, fname, rc, strerror(rc));
-		rte_errno = EINVAL;
-		return NULL;
-	}
-
-	bpf = bpf_load_elf(prm, fd, sname);
-	close(fd);
-
-	if (bpf == NULL) {
-		RTE_BPF_LOG_LINE(ERR,
-			"%s(fname=\"%s\", sname=\"%s\") failed, "
-			"error code: %d",
-			__func__, fname, sname, rte_errno);
-		return NULL;
-	}
-
-	RTE_BPF_LOG_LINE(INFO, "%s(fname=\"%s\", sname=\"%s\") "
-		"successfully creates %p(jit={.func=%p,.sz=%zu});",
-		__func__, fname, sname, bpf, bpf->jit.func, bpf->jit.sz);
-	return bpf;
+	RTE_ASSERT(load->elf == NULL);
+	RTE_ASSERT(load->elf_fd < 0);
 }
+
+int
+__rte_bpf_load_elf_file(struct __rte_bpf_load *load)
+{
+	RTE_SET_USED(load);
+	RTE_BPF_LOG_FUNC_LINE(ERR, "not supported, rebuild with libelf installed");
+	return -ENOTSUP;
+}
+
+int
+__rte_bpf_load_elf_code(struct __rte_bpf_load *load)
+{
+	RTE_SET_USED(load);
+	RTE_BPF_LOG_FUNC_LINE(ERR, "not supported, rebuild with libelf installed");
+	return -ENOTSUP;
+}
+
+#endif /* RTE_LIBRTE_BPF_ELF */

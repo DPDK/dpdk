@@ -15,17 +15,48 @@ for more information.
 Also it introduces basic framework to load/unload BPF-based filters
 on eth devices (right now only via SW RX/TX callbacks).
 
-The library API provides the following basic operations:
+The library API provides the following basic operations for working with BPF programs:
 
-*  Create a new BPF execution context and load user provided eBPF code into it.
+* **Loading**: The extensible API (``rte_bpf_load_ex``) is the recommended way
+  to load a BPF program.
+  By utilizing ``struct rte_bpf_prm_ex``, you can load an eBPF program
+  from an ELF file on disk.
 
-*   Destroy an BPF execution context and its runtime structures and free the associated memory.
+* **Cleanup:** Destroy a BPF execution context and free the associated memory
+  using ``rte_bpf_destroy``.
 
 *   Execute eBPF bytecode associated with provided input parameter.
 
-*   Provide information about natively compiled code for given BPF context.
+The following is a concise example of loading an eBPF program from an ELF file,
 
-*   Load BPF program from the ELF file and install callback to execute it on given ethdev port/queue.
+.. code-block:: c
+
+   struct rte_bpf_prm_ex prm = {
+       .sz = sizeof(struct rte_bpf_prm_ex),
+       .origin = RTE_BPF_ORIGIN_ELF_FILE,
+       .elf_file = {
+           .path = "ptype.o",
+           .section = ".text",
+       },
+       .nb_prog_arg = 2,
+       .prog_arg = {
+           [0] = {
+               .type = RTE_BPF_ARG_PTR_MBUF,
+               .size = sizeof(struct rte_mbuf),
+               .buf_size = RTE_MBUF_DEFAULT_BUF_SIZE,
+           },
+           [1] = {
+               .type = RTE_BPF_ARG_RAW,
+               .size = sizeof(uint64_t),
+           },
+       },
+   };
+   struct rte_bpf *bpf = rte_bpf_load_ex(&prm);
+   if (bpf == NULL) {
+       /* Handle load failure */
+   }
+
+   rte_bpf_destroy(bpf);
 
 Packet data load instructions
 -----------------------------

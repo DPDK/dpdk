@@ -111,12 +111,12 @@ jump_offset_init(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
 {
 	uint32_t i;
 
-	ctx->map = malloc(bpf->prm.nb_ins * sizeof(ctx->map[0]));
+	ctx->map = malloc(bpf->prm.raw.nb_ins * sizeof(ctx->map[0]));
 	if (ctx->map == NULL)
 		return -ENOMEM;
 
 	/* Fill with fake offsets */
-	for (i = 0; i != bpf->prm.nb_ins; i++) {
+	for (i = 0; i != bpf->prm.raw.nb_ins; i++) {
 		ctx->map[i].off = INT32_MAX;
 		ctx->map[i].off_to_b = 0;
 	}
@@ -1130,8 +1130,8 @@ check_program_has_call(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
 	uint8_t op;
 	uint32_t i;
 
-	for (i = 0; i != bpf->prm.nb_ins; i++) {
-		ins = bpf->prm.ins + i;
+	for (i = 0; i != bpf->prm.raw.nb_ins; i++) {
+		ins = bpf->prm.raw.ins + i;
 		op = ins->code;
 
 		switch (op) {
@@ -1168,10 +1168,10 @@ emit(struct a64_jit_ctx *ctx, struct rte_bpf *bpf)
 
 	emit_prologue(ctx);
 
-	for (i = 0; i != bpf->prm.nb_ins; i++) {
+	for (i = 0; i != bpf->prm.raw.nb_ins; i++) {
 
 		jump_offset_update(ctx, i);
-		ins = bpf->prm.ins + i;
+		ins = bpf->prm.raw.ins + i;
 		op = ins->code;
 		off = ins->off;
 		imm = ins->imm;

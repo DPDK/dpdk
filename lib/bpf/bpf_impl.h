@@ -11,17 +11,45 @@
 #define MAX_BPF_STACK_SIZE	0x200
 
 struct rte_bpf {
-	struct rte_bpf_prm prm;
+	struct rte_bpf_prm_ex prm;
 	struct rte_bpf_jit jit;
 	size_t sz;
 	uint32_t stack_sz;
+};
+
+/* Temporary copies etc. used by the load process. */
+struct __rte_bpf_load {
+	struct rte_bpf_prm_ex prm;
+
+	/* Loading ELF and applying relocations. */
+	int elf_fd;  /* ELF fd, must be negative (not zero) by default. */
+	void *elf;  /* Using void to avoid dependency on libelf. */
+
+	/* Value we are going to return, if any. */
+	struct rte_bpf *bpf;
 };
 
 /*
  * Use '__rte' prefix for non-static internal functions
  * to avoid potential name conflict with other libraries.
  */
-int __rte_bpf_validate(struct rte_bpf *bpf);
+
+/* Free temporary resources created by opening ELF. */
+void
+__rte_bpf_load_elf_cleanup(struct __rte_bpf_load *load);
+
+/* Open the ELF file. */
+int
+__rte_bpf_load_elf_file(struct __rte_bpf_load *load);
+
+/* Get code from ELF and apply relocations to it. */
+int
+__rte_bpf_load_elf_code(struct __rte_bpf_load *load);
+
+/* Validate final BPF code and calculate stack size. */
+int
+__rte_bpf_validate(const struct rte_bpf_prm_ex *prm, uint32_t *stack_sz);
+
 int __rte_bpf_jit(struct rte_bpf *bpf);
 int __rte_bpf_jit_x86(struct rte_bpf *bpf);
 int __rte_bpf_jit_arm64(struct rte_bpf *bpf);

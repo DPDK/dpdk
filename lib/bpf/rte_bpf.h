@@ -86,7 +86,47 @@ struct rte_bpf_xsym {
 };
 
 /**
- * Input parameters for loading eBPF code.
+ * Possible origins of eBPF program code.
+ */
+enum rte_bpf_origin {
+	RTE_BPF_ORIGIN_RAW,		/**< code loaded from raw array */
+	RTE_BPF_ORIGIN_RESERVED,	/**< reserved for cBPF */
+	RTE_BPF_ORIGIN_ELF_FILE,	/**< code loaded from elf_file */
+};
+
+/**
+ * Input parameters for loading eBPF code, extensible version.
+ *
+ * Follows libbpf conventions for extensible structs.
+ */
+struct rte_bpf_prm_ex {
+	size_t sz;  /**< size of this struct for backward compatibility */
+
+	uint32_t flags;  /**< flags controlling eBPF load and other options */
+
+	enum rte_bpf_origin origin;  /**< origin of eBPF program code */
+
+	/** program origin parameters, member in use depends on origin */
+	union {
+		struct {
+			const struct ebpf_insn *ins;  /**< eBPF instructions */
+			uint32_t nb_ins;  /**< number of instructions in ins */
+		} raw;
+		struct {
+			const char *path;  /**< path to the ELF file */
+			const char *section;  /**< ELF section with the code */
+		} elf_file;
+	};
+
+	const struct rte_bpf_xsym *xsym;
+	/**< array of external symbols that eBPF code is allowed to reference */
+	uint32_t nb_xsym;  /**< number of elements in xsym */
+
+	struct rte_bpf_arg prog_arg;  /**< input arg description */
+};
+
+/**
+ * Input parameters for loading eBPF code, legacy version.
  */
 struct rte_bpf_prm {
 	const struct ebpf_insn *ins; /**< array of eBPF instructions */
@@ -115,6 +155,32 @@ struct rte_bpf;
  */
 void
 rte_bpf_destroy(struct rte_bpf *bpf);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: This API may change, or be removed, without prior notice.
+ *
+ * Create a new eBPF execution context, load code from specified origin into it.
+ *
+ * @param prm
+ *   Parameters used to create and initialise the BPF execution context.
+ *
+ *   Member sz must be set to the struct size as known to the application.
+ *   If it exceeds the size known to the library, and the extra part has
+ *   non-zero bytes, parameter is rejected. If it's smaller than the size known
+ *   to the library, defaults are used for the members that are not present.
+ * @return
+ *   BPF handle that is used in future BPF operations,
+ *   or NULL on error, with error code set in rte_errno.
+ *   Possible rte_errno errors include:
+ *   - EINVAL  - invalid parameter passed to function
+ *   - ENOMEM  - can't reserve enough memory
+ *   - ENOTSUP - requested feature is not supported (e.g. no libelf to load ELF)
+ */
+__rte_experimental
+struct rte_bpf *
+rte_bpf_load_ex(const struct rte_bpf_prm_ex *prm)
+	__rte_malloc __rte_dealloc(rte_bpf_destroy, 1);
 
 /**
  * Create a new eBPF execution context and load given BPF code into it.

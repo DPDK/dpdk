@@ -47,7 +47,7 @@
 		RTE_BPF_LOG_LINE(ERR, \
 			"%s(%p): division by 0 at pc: %#zx;", \
 			__func__, bpf, \
-			(uintptr_t)(ins) - (uintptr_t)(bpf)->prm.ins); \
+			(uintptr_t)(ins) - (uintptr_t)(bpf)->prm.raw.ins); \
 		return 0; \
 	} \
 } while (0)
@@ -81,7 +81,7 @@
 		RTE_BPF_LOG_LINE(ERR, \
 			"%s(%p): unsupported atomic operation at pc: %#zx;", \
 			__func__, bpf, \
-			(uintptr_t)(ins) - (uintptr_t)(bpf)->prm.ins); \
+			(uintptr_t)(ins) - (uintptr_t)(bpf)->prm.raw.ins); \
 		return 0; \
 	} \
 } while (0)
@@ -157,7 +157,7 @@ bpf_ld_mbuf(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM],
 		RTE_BPF_LOG_LINE(DEBUG, "%s(bpf=%p, mbuf=%p, ofs=%u, len=%u): "
 			"load beyond packet boundary at pc: %#zx;",
 			__func__, bpf, mb, off, len,
-			(uintptr_t)(ins) - (uintptr_t)(bpf)->prm.ins);
+			(uintptr_t)(ins) - (uintptr_t)(bpf)->prm.raw.ins);
 	return p;
 }
 
@@ -166,7 +166,7 @@ bpf_exec(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM])
 {
 	const struct ebpf_insn *ins;
 
-	for (ins = bpf->prm.ins; ; ins++) {
+	for (ins = bpf->prm.raw.ins; ; ins++) {
 		switch (ins->code) {
 		/* 32 bit ALU IMM operations */
 		case (BPF_ALU | BPF_ADD | BPF_K):
@@ -483,7 +483,7 @@ bpf_exec(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM])
 			RTE_BPF_LOG_LINE(ERR,
 				"%s(%p): invalid opcode %#x at pc: %#zx;",
 				__func__, bpf, ins->code,
-				(uintptr_t)ins - (uintptr_t)bpf->prm.ins);
+				(uintptr_t)ins - (uintptr_t)bpf->prm.raw.ins);
 			return 0;
 		}
 	}

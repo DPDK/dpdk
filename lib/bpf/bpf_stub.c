@@ -10,23 +10,6 @@
  * Contains stubs for unimplemented public API functions
  */
 
-#ifndef RTE_LIBRTE_BPF_ELF
-RTE_EXPORT_SYMBOL(rte_bpf_elf_load)
-struct rte_bpf *
-rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
-	const char *sname)
-{
-	if (prm == NULL || fname == NULL || sname == NULL) {
-		rte_errno = EINVAL;
-		return NULL;
-	}
-
-	RTE_BPF_LOG_FUNC_LINE(ERR, "not supported, rebuild with libelf installed");
-	rte_errno = ENOTSUP;
-	return NULL;
-}
-#endif
-
 #ifndef RTE_HAS_LIBPCAP
 RTE_EXPORT_SYMBOL(rte_bpf_convert)
 struct rte_bpf_prm *

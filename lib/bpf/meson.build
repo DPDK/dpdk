@@ -19,6 +19,7 @@ sources = files('bpf.c',
         'bpf_dump.c',
         'bpf_exec.c',
         'bpf_load.c',
+        'bpf_load_elf.c',
         'bpf_pkt.c',
         'bpf_stub.c',
         'bpf_validate.c')
@@ -38,10 +39,9 @@ deps += ['mbuf', 'net', 'ethdev']
 dep = dependency('libelf', required: false, method: 'pkg-config')
 if dep.found()
     dpdk_conf.set('RTE_LIBRTE_BPF_ELF', 1)
-    sources += files('bpf_load_elf.c')
     ext_deps += dep
 else
-    warning('libelf is missing, rte_bpf_elf_load API will be disabled')
+    warning('libelf is missing, ELF API will be disabled')
 endif
 
 if dpdk_conf.has('RTE_HAS_LIBPCAP')

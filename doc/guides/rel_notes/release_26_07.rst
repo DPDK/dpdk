@@ -150,6 +150,13 @@ New Features
   * Added ``eof`` devarg to use link state to signal end of receive file input.
   * Added unit test suite.
 
+* **Extended BPF API.**
+
+  * Added an extensible BPF loading API comprising the function
+    ``rte_bpf_load_ex`` and struct ``rte_bpf_prm_ex``.
+    This enables new features
+    while avoiding future ABI breakages.
+
 * **Added AI review helpers.**
 
   Added AGENTS.md file for AI review
