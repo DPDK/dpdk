@@ -11,6 +11,10 @@
 
 extern struct rte_bus rte_fslmc_bus;
 
+RTE_TAILQ_HEAD(fslmc_control_device_list, rte_device);
+extern struct fslmc_control_device_list fslmc_control_devices;
+
 void fslmc_bus_remove_device(struct rte_dpaa2_device *dev);
+void fslmc_remove_control_device(struct rte_dpaa2_device *dev);
 
 #endif /* BUS_FSLMC_PRIVATE_H */

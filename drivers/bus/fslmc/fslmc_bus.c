@@ -30,6 +30,15 @@
 struct rte_bus rte_fslmc_bus;
 static int fslmc_bus_device_count[DPAA2_DEVTYPE_MAX];
 
+/*
+ * Control devices (MPORTAL, IO, CON, CI, BPOOL, MUX, DPRC) are bus infrastructure,
+ * not regular devices. They are initialized during scan/setup and don't participate
+ * in normal probe/unplug. Keep them in a separate list to avoid interference with
+ * generic bus operations.
+ */
+struct fslmc_control_device_list fslmc_control_devices =
+	TAILQ_HEAD_INITIALIZER(fslmc_control_devices);
+
 #define DPAA2_SEQN_DYNFIELD_NAME "dpaa2_seqn_dynfield"
 RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_seqn_dynfield_offset)
 int dpaa2_seqn_dynfield_offset = -1;
@@ -107,14 +116,53 @@ fslmc_bus_remove_device(struct rte_dpaa2_device *dev)
 }
 
 static void
+insert_in_control_device_list(struct rte_dpaa2_device *dev)
+{
+	struct rte_device *rte_dev;
+	struct rte_device *prev;
+
+	prev = NULL;
+	TAILQ_FOREACH(rte_dev, &fslmc_control_devices, next) {
+		if (compare_dpaa2_devname(dev, RTE_BUS_DEVICE(rte_dev, *dev)) < 0)
+			break;
+		prev = rte_dev;
+	}
+
+	if (prev != NULL)
+		TAILQ_INSERT_AFTER(&fslmc_control_devices, prev, &dev->device, next);
+	else
+		TAILQ_INSERT_HEAD(&fslmc_control_devices, &dev->device, next);
+
+	if (dev->dev_type < DPAA2_DEVTYPE_MAX)
+		fslmc_bus_device_count[dev->dev_type]++;
+}
+
+void
+fslmc_remove_control_device(struct rte_dpaa2_device *dev)
+{
+	if (dev->dev_type < DPAA2_DEVTYPE_MAX)
+		fslmc_bus_device_count[dev->dev_type]--;
+
+	TAILQ_REMOVE(&fslmc_control_devices, &dev->device, next);
+	rte_intr_instance_free(dev->intr_handle);
+	free(dev);
+}
+
+static void
 dump_device_list(void)
 {
 	struct rte_dpaa2_device *dev;
+	struct rte_device *rte_dev;
 
 	/* Only if the log level has been set to Debugging, print list */
 	if (rte_log_can_log(dpaa2_logtype_bus, RTE_LOG_DEBUG)) {
 		DPAA2_BUS_LOG(DEBUG, "List of devices scanned on bus:");
 		RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus) {
+			DPAA2_BUS_LOG(DEBUG, "\t\t%s", dev->device.name);
+		}
+		DPAA2_BUS_LOG(DEBUG, "List of control devices:");
+		TAILQ_FOREACH(rte_dev, &fslmc_control_devices, next) {
+			dev = RTE_BUS_DEVICE(rte_dev, struct rte_dpaa2_device);
 			DPAA2_BUS_LOG(DEBUG, "\t\t%s", dev->device.name);
 		}
 	}
@@ -166,11 +214,39 @@ scan_one_fslmc_device(char *dev_name)
 		dev_id = ptr + 1;
 	}
 
-	/* For all other devices, we allocate rte_dpaa2_device.
-	 * For those devices where there is no driver, probe would release
-	 * the memory associated with the rte_dpaa2_device after necessary
-	 * initialization.
+	/*
+	 * DPAA2_MPORTAL and DPAA2_IO types are handled separately,
+	 * see fslmc_filter_control_devices()
+	 *
+	 * Note: Only check for explicit blocklist (RTE_DEV_BLOCKED).
+	 * Control objects (dpbp, dpcon, etc.) are required even in allowlist
+	 * mode as they are initialized by fslmc_vfio_process_group(), not probed.
 	 */
+	if (dev_type != DPAA2_MPORTAL && dev_type != DPAA2_IO) {
+		struct rte_devargs *devargs = rte_bus_find_devargs(&rte_fslmc_bus, dev_name);
+
+		if (devargs && devargs->policy == RTE_DEV_BLOCKED) {
+			DPAA2_BUS_DEBUG("Skipping blocklisted device (%s)", dev_name);
+			return 0;
+		}
+	}
+
+	/* For secondary processes, control objects are not needed */
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		switch (dev_type) {
+		case DPAA2_ETH:
+		case DPAA2_CRYPTO:
+		case DPAA2_QDMA:
+		case DPAA2_IO:
+		case DPAA2_MPORTAL:
+		case DPAA2_DPRC:
+			break;
+		default:
+			DPAA2_BUS_DEBUG("Skipping device in secondary process (%s)", dev_name);
+			return 0;
+		}
+	}
+
 	dev = calloc(1, sizeof(struct rte_dpaa2_device));
 	if (!dev) {
 		DPAA2_BUS_ERR("Unable to allocate device object");
@@ -203,8 +279,16 @@ scan_one_fslmc_device(char *dev_name)
 	dev->device.name = dev->name;
 	dev->device.devargs = rte_bus_find_devargs(&rte_fslmc_bus, dev_name);
 
-	/* Add device in the fslmc device list */
-	insert_in_device_list(dev);
+	switch (dev_type) {
+	case DPAA2_ETH:
+	case DPAA2_CRYPTO:
+	case DPAA2_QDMA:
+		insert_in_device_list(dev);
+		break;
+	default:
+		insert_in_control_device_list(dev);
+		break;
+	}
 
 	return 0;
 cleanup:
@@ -299,6 +383,97 @@ fslmc_dev_compare(const char *name1, const char *name2)
 }
 
 static int
+fslmc_filter_control_devices(void)
+{
+	bool is_dpmcp_in_blocklist = false, is_dpio_in_blocklist = false;
+	int dpmcp_count = 0, dpio_count = 0;
+	struct rte_dpaa2_device *dev;
+	struct rte_device *rte_dev;
+	struct rte_device *tmp_dev;
+
+	/* Track MPORTAL/DPIO blocklists */
+	RTE_TAILQ_FOREACH_SAFE(rte_dev, &fslmc_control_devices, next, tmp_dev) {
+		dev = RTE_BUS_DEVICE(rte_dev, *dev);
+		if (dev->dev_type != DPAA2_MPORTAL && dev->dev_type != DPAA2_IO)
+			continue;
+		/* Only check for explicit blocklist, not allowlist */
+		if (dev->device.devargs && dev->device.devargs->policy == RTE_DEV_BLOCKED) {
+			DPAA2_BUS_LOG(DEBUG, "%s Blocked, skipping", dev->device.name);
+			if (dev->dev_type == DPAA2_MPORTAL)
+				is_dpmcp_in_blocklist = true;
+			else if (dev->dev_type == DPAA2_IO)
+				is_dpio_in_blocklist = true;
+			fslmc_remove_control_device(dev);
+			continue;
+		}
+		if (dev->dev_type == DPAA2_MPORTAL)
+			dpmcp_count++;
+		else if (dev->dev_type == DPAA2_IO)
+			dpio_count++;
+	}
+
+	if (dpmcp_count == 0) {
+		DPAA2_BUS_ERR("No MC Portal device found");
+		return -ENODEV;
+	}
+
+	/* Automatic MPORTAL split: primary keeps first, secondary keeps last */
+	if (!is_dpmcp_in_blocklist) {
+		int current_device = 0;
+		int keep_index;
+
+		/* Check MPORTAL availability for secondary */
+		if (rte_eal_process_type() == RTE_PROC_SECONDARY && dpmcp_count < 2) {
+			DPAA2_BUS_ERR("No MC Portal device found for secondary");
+			return -ENODEV;
+		}
+
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+			keep_index = 0;
+		else
+			keep_index = dpmcp_count - 1;
+
+		RTE_TAILQ_FOREACH_SAFE(rte_dev, &fslmc_control_devices, next, tmp_dev) {
+			dev = RTE_BUS_DEVICE(rte_dev, *dev);
+			if (dev->dev_type != DPAA2_MPORTAL)
+				continue;
+			if (current_device != keep_index)
+				fslmc_remove_control_device(dev);
+
+			current_device++;
+			if (current_device == dpmcp_count)
+				break;
+		}
+	}
+
+	/* Automatic DPIO split: secondary keeps last only, primary removes last */
+	if (!is_dpio_in_blocklist && dpio_count > 1) {
+		int last_index = dpio_count - 1;
+		int current_device = 0;
+
+		RTE_TAILQ_FOREACH_SAFE(rte_dev, &fslmc_control_devices, next, tmp_dev) {
+			dev = RTE_BUS_DEVICE(rte_dev, *dev);
+			if (dev->dev_type != DPAA2_IO)
+				continue;
+
+			if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
+					current_device != last_index) {
+				fslmc_remove_control_device(dev);
+			} else if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
+					current_device == last_index) {
+				fslmc_remove_control_device(dev);
+			}
+
+			current_device++;
+			if (current_device == dpio_count)
+				break;
+		}
+	}
+
+	return 0;
+}
+
+static int
 rte_fslmc_scan(void)
 {
 	struct rte_dpaa2_device *dev;
@@ -377,7 +552,13 @@ rte_fslmc_scan(void)
 scan_fail_cleanup:
 	closedir(dir);
 
-	/* Remove all devices in the list */
+	while (!TAILQ_EMPTY(&fslmc_control_devices)) {
+		struct rte_device *rte_dev = TAILQ_FIRST(&fslmc_control_devices);
+
+		dev = RTE_BUS_DEVICE(rte_dev, *dev);
+		fslmc_remove_control_device(dev);
+	}
+
 	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus)
 		fslmc_bus_remove_device(dev);
 scan_fail:
@@ -399,7 +580,7 @@ rte_fslmc_probe(struct rte_bus *bus)
 	};
 	int ret;
 
-	if (TAILQ_EMPTY(&rte_fslmc_bus.device_list))
+	if (TAILQ_EMPTY(&rte_fslmc_bus.device_list) && TAILQ_EMPTY(&fslmc_control_devices))
 		return 0;
 
 	dpaa2_seqn_dynfield_offset =
@@ -425,6 +606,12 @@ rte_fslmc_probe(struct rte_bus *bus)
 			DPAA2_BUS_ERR("FSLMC VFIO Mapping failed");
 			goto vfio_close_group;
 		}
+	}
+
+	ret = fslmc_filter_control_devices();
+	if (ret) {
+		DPAA2_BUS_ERR("Unable to filter control devices %d", ret);
+		goto vfio_dma_unmap;
 	}
 
 	ret = fslmc_vfio_process_group();

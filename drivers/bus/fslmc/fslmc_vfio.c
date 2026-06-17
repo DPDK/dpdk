@@ -1610,6 +1610,7 @@ int
 fslmc_vfio_close_group(void)
 {
 	struct rte_dpaa2_device *dev;
+	struct rte_device *rte_dev;
 	int vfio_group_fd;
 	const char *group_name = fslmc_vfio_get_group_name();
 
@@ -1622,29 +1623,13 @@ fslmc_vfio_close_group(void)
 		return -EIO;
 	}
 
-	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus) {
-		switch (dev->dev_type) {
-		case DPAA2_ETH:
-		case DPAA2_CRYPTO:
-		case DPAA2_QDMA:
-		case DPAA2_IO:
-			fslmc_close_iodevices(dev, vfio_group_fd);
-			break;
-		case DPAA2_CON:
-		case DPAA2_CI:
-		case DPAA2_BPOOL:
-		case DPAA2_MUX:
-			if (rte_eal_process_type() == RTE_PROC_SECONDARY)
-				continue;
-
-			fslmc_close_iodevices(dev, vfio_group_fd);
-			break;
-		case DPAA2_DPRTC:
-		default:
-			DPAA2_BUS_DEBUG("Device cannot be closed: Not supported (%s)",
-					dev->device.name);
-		}
+	TAILQ_FOREACH(rte_dev, &fslmc_control_devices, next) {
+		dev = RTE_BUS_DEVICE(rte_dev, *dev);
+		fslmc_close_iodevices(dev, vfio_group_fd);
 	}
+
+	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus)
+		fslmc_close_iodevices(dev, vfio_group_fd);
 
 	fslmc_vfio_clear_group(vfio_group_fd);
 
@@ -1654,168 +1639,80 @@ fslmc_vfio_close_group(void)
 int
 fslmc_vfio_process_group(void)
 {
-	int ret;
-	int found_mportal = 0;
 	struct rte_dpaa2_device *dev;
-	bool is_dpmcp_in_blocklist = false, is_dpio_in_blocklist = false;
-	int dpmcp_count = 0, dpio_count = 0, current_device;
+	struct rte_device *rte_dev;
+	struct rte_device *tmp_dev;
+	int ret;
 
-	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus) {
-		if (dev->dev_type == DPAA2_MPORTAL) {
-			dpmcp_count++;
-			if (dev->device.devargs &&
-			    dev->device.devargs->policy == RTE_DEV_BLOCKED)
-				is_dpmcp_in_blocklist = true;
+	/* Process MPORTAL - should be initialized first */
+	RTE_TAILQ_FOREACH_SAFE(rte_dev, &fslmc_control_devices, next, tmp_dev) {
+		dev = RTE_BUS_DEVICE(rte_dev, *dev);
+		if (dev->dev_type != DPAA2_MPORTAL)
+			continue;
+		ret = fslmc_process_mcp(dev);
+		if (ret) {
+			DPAA2_BUS_ERR("Unable to map MC Portal");
+			return ret;
 		}
-		if (dev->dev_type == DPAA2_IO) {
-			dpio_count++;
-			if (dev->device.devargs &&
-			    dev->device.devargs->policy == RTE_DEV_BLOCKED)
-				is_dpio_in_blocklist = true;
-		}
+		fslmc_remove_control_device(dev);
+		break;
 	}
 
-	/* Search the MCP as that should be initialized first. */
-	current_device = 0;
-	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus) {
-		if (dev->dev_type == DPAA2_MPORTAL) {
-			current_device++;
-			if (dev->device.devargs &&
-			    dev->device.devargs->policy == RTE_DEV_BLOCKED) {
-				DPAA2_BUS_LOG(DEBUG, "%s Blocked, skipping",
-					      dev->device.name);
-				fslmc_bus_remove_device(dev);
-				continue;
-			}
-
-			if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
-			    !is_dpmcp_in_blocklist) {
-				if (dpmcp_count == 1 ||
-				    current_device != dpmcp_count) {
-					fslmc_bus_remove_device(dev);
-					continue;
-				}
-			}
-
-			if (!found_mportal) {
-				ret = fslmc_process_mcp(dev);
-				if (ret) {
-					DPAA2_BUS_ERR("Unable to map MC Portal");
-					return ret;
-				}
-				found_mportal = 1;
-			}
-
-			fslmc_bus_remove_device(dev);
-			/* Ideally there is only a single dpmcp, but in case
-			 * multiple exists, looping on remaining devices.
-			 */
-		}
+	/* Remove any remaining MPORTAL devices */
+	RTE_TAILQ_FOREACH_SAFE(rte_dev, &fslmc_control_devices, next, tmp_dev) {
+		dev = RTE_BUS_DEVICE(rte_dev, *dev);
+		if (dev->dev_type == DPAA2_MPORTAL)
+			fslmc_remove_control_device(dev);
 	}
 
-	/* Cannot continue if there is not even a single mportal */
-	if (!found_mportal) {
-		DPAA2_BUS_ERR("No MC Portal device found. Not continuing");
-		return -EIO;
-	}
-
-	/* Search for DPRC device next as it updates endpoint of
+	/* Process DPRC device next as it updates endpoint of
 	 * other devices.
 	 */
-	current_device = 0;
-	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus) {
-		if (dev->dev_type == DPAA2_DPRC) {
-			ret = fslmc_process_iodevices(dev);
-			if (ret) {
-				DPAA2_BUS_ERR("Unable to process dprc");
-				return ret;
-			}
-			fslmc_bus_remove_device(dev);
+	RTE_TAILQ_FOREACH_SAFE(rte_dev, &fslmc_control_devices, next, tmp_dev) {
+		dev = RTE_BUS_DEVICE(rte_dev, *dev);
+		if (dev->dev_type != DPAA2_DPRC)
+			continue;
+		ret = fslmc_process_iodevices(dev);
+		if (ret) {
+			DPAA2_BUS_ERR("Unable to process dprc");
+			return ret;
 		}
+		fslmc_remove_control_device(dev);
 	}
 
-	current_device = 0;
-	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus) {
-		if (dev->dev_type == DPAA2_IO)
-			current_device++;
-		if (dev->device.devargs &&
-		    dev->device.devargs->policy == RTE_DEV_BLOCKED) {
-			DPAA2_BUS_LOG(DEBUG, "%s Blocked, skipping",
-				      dev->device.name);
-			fslmc_bus_remove_device(dev);
-			continue;
-		}
-		if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
-		    dev->dev_type != DPAA2_ETH &&
-		    dev->dev_type != DPAA2_CRYPTO &&
-		    dev->dev_type != DPAA2_QDMA &&
-		    dev->dev_type != DPAA2_IO) {
-			fslmc_bus_remove_device(dev);
-			continue;
-		}
+	/* Process remaining control devices */
+	RTE_TAILQ_FOREACH_SAFE(rte_dev, &fslmc_control_devices, next, tmp_dev) {
+		dev = RTE_BUS_DEVICE(rte_dev, *dev);
 		switch (dev->dev_type) {
-		case DPAA2_ETH:
-		case DPAA2_CRYPTO:
-		case DPAA2_QDMA:
-			ret = fslmc_process_iodevices(dev);
-			if (ret) {
-				DPAA2_BUS_DEBUG("Dev (%s) init failed",
-						dev->device.name);
-				return ret;
-			}
-			break;
 		case DPAA2_CON:
 		case DPAA2_CI:
 		case DPAA2_BPOOL:
 		case DPAA2_DPRTC:
 		case DPAA2_MUX:
-			/* IN case of secondary processes, all control objects
-			 * like dpbp, dpcon, dpci are not initialized/required
-			 * - all of these are assumed to be initialized and made
-			 *   available by primary.
-			 */
-			if (rte_eal_process_type() == RTE_PROC_SECONDARY)
-				continue;
-
-			/* Call the object creation routine and remove the
-			 * device entry from device list
-			 */
-			ret = fslmc_process_iodevices(dev);
-			if (ret) {
-				DPAA2_BUS_DEBUG("Dev (%s) init failed",
-						dev->device.name);
-				return ret;
-			}
-
-			break;
 		case DPAA2_IO:
-			if (!is_dpio_in_blocklist && dpio_count > 1) {
-				if (rte_eal_process_type() == RTE_PROC_SECONDARY
-				    && current_device != dpio_count) {
-					fslmc_bus_remove_device(dev);
-					break;
-				}
-				if (rte_eal_process_type() == RTE_PROC_PRIMARY
-				    && current_device == dpio_count) {
-					fslmc_bus_remove_device(dev);
-					break;
-				}
-			}
-
 			ret = fslmc_process_iodevices(dev);
 			if (ret) {
 				DPAA2_BUS_DEBUG("Dev (%s) init failed",
 						dev->device.name);
 				return ret;
 			}
-
 			break;
-		case DPAA2_UNKNOWN:
 		default:
 			/* Unknown - ignore */
 			DPAA2_BUS_DEBUG("Found unknown device (%s)",
 					dev->device.name);
-			fslmc_bus_remove_device(dev);
+			fslmc_remove_control_device(dev);
+			break;
+		}
+	}
+
+	/* Process regular devices */
+	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus) {
+		ret = fslmc_process_iodevices(dev);
+		if (ret) {
+			DPAA2_BUS_DEBUG("Dev (%s) init failed",
+					dev->device.name);
+			return ret;
 		}
 	}
 
