@@ -21,6 +21,9 @@ struct rte_bpf {
 struct __rte_bpf_load {
 	struct rte_bpf_prm_ex prm;
 
+	/* Conversion from cBPF. */
+	struct ebpf_insn *ins;
+
 	/* Loading ELF and applying relocations. */
 	int elf_fd;  /* ELF fd, must be negative (not zero) by default. */
 	void *elf;  /* Using void to avoid dependency on libelf. */
@@ -33,6 +36,14 @@ struct __rte_bpf_load {
  * Use '__rte' prefix for non-static internal functions
  * to avoid potential name conflict with other libraries.
  */
+
+/* Free temporary resources created by converting from cBPF to eBPF. */
+void
+__rte_bpf_convert_cleanup(struct __rte_bpf_load *load);
+
+/* Convert program from cBPF to eBPF. */
+int
+__rte_bpf_convert(struct __rte_bpf_load *load);
 
 /* Free temporary resources created by opening ELF. */
 void

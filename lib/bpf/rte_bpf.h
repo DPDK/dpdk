@@ -95,9 +95,11 @@ struct rte_bpf_xsym {
  */
 enum rte_bpf_origin {
 	RTE_BPF_ORIGIN_RAW,		/**< code loaded from raw array */
-	RTE_BPF_ORIGIN_RESERVED,	/**< reserved for cBPF */
+	RTE_BPF_ORIGIN_CBPF,		/**< code converted from cbpf */
 	RTE_BPF_ORIGIN_ELF_FILE,	/**< code loaded from elf_file */
 };
+
+struct bpf_insn;
 
 /**
  * Input parameters for loading eBPF code, extensible version.
@@ -117,6 +119,10 @@ struct rte_bpf_prm_ex {
 			const struct ebpf_insn *ins;  /**< eBPF instructions */
 			uint32_t nb_ins;  /**< number of instructions in ins */
 		} raw;
+		struct {
+			const struct bpf_insn *ins;  /**< cBPF instructions */
+			uint32_t nb_ins;  /**< number of instructions in ins */
+		} cbpf;
 		struct {
 			const char *path;  /**< path to the ELF file */
 			const char *section;  /**< ELF section with the code */

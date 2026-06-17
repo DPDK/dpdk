@@ -240,6 +240,9 @@ load_try(struct __rte_bpf_load *load, const struct rte_bpf_prm_ex *app_prm)
 	switch (load->prm.origin) {
 	case RTE_BPF_ORIGIN_RAW:
 		break;
+	case RTE_BPF_ORIGIN_CBPF:
+		rc = rc < 0 ? rc : __rte_bpf_convert(load);
+		break;
 	case RTE_BPF_ORIGIN_ELF_FILE:
 		rc = rc < 0 ? rc : __rte_bpf_load_elf_file(load);
 		rc = rc < 0 ? rc : __rte_bpf_load_elf_code(load);
@@ -254,6 +257,13 @@ load_try(struct __rte_bpf_load *load, const struct rte_bpf_prm_ex *app_prm)
 	return rc;
 }
 
+static void
+load_cleanup(struct __rte_bpf_load *load)
+{
+	__rte_bpf_convert_cleanup(load);
+	__rte_bpf_load_elf_cleanup(load);
+}
+
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bpf_load_ex, 26.07)
 struct rte_bpf *
 rte_bpf_load_ex(const struct rte_bpf_prm_ex *prm)
@@ -262,7 +272,7 @@ rte_bpf_load_ex(const struct rte_bpf_prm_ex *prm)
 
 	const int rc = load_try(&load, prm);
 
-	__rte_bpf_load_elf_cleanup(&load);
+	load_cleanup(&load);
 
 	RTE_ASSERT((rc < 0) == (load.bpf == NULL));
 

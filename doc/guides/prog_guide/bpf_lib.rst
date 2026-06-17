@@ -115,7 +115,6 @@ Not currently supported eBPF features
 -------------------------------------
 
  - JIT support only available for X86_64 and arm64 platforms
- - cBPF
  - tail-pointer call
  - eBPF MAP
  - external function calls for 32-bit platforms

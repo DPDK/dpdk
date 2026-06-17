@@ -15,14 +15,16 @@ if arch_subdir == 'x86' and dpdk_conf.get('RTE_ARCH_32')
     subdir_done()
 endif
 
-sources = files('bpf.c',
+sources = files(
+        'bpf.c',
+        'bpf_convert.c',
         'bpf_dump.c',
         'bpf_exec.c',
         'bpf_load.c',
         'bpf_load_elf.c',
         'bpf_pkt.c',
-        'bpf_stub.c',
-        'bpf_validate.c')
+        'bpf_validate.c',
+)
 
 if arch_subdir == 'x86' and dpdk_conf.get('RTE_ARCH_64')
     sources += files('bpf_jit_x86.c')
@@ -45,8 +47,7 @@ else
 endif
 
 if dpdk_conf.has('RTE_HAS_LIBPCAP')
-    sources += files('bpf_convert.c')
     ext_deps += pcap_dep
 else
-    warning('libpcap is missing, rte_bpf_convert API will be disabled')
+    warning('libpcap is missing, cBPF API will be disabled')
 endif
