@@ -1118,17 +1118,40 @@ Remove an UDP port for VXLAN packet filter on a port::
 tx_vlan set
 ~~~~~~~~~~~
 
-Set hardware insertion of VLAN IDs in packets sent on a port::
+Set hardware insertion of VLAN TCI (Tag Control Information) in packets sent on a port::
 
-   testpmd> tx_vlan set (port_id) vlan_id[, vlan_id_outer]
+   testpmd> tx_vlan set (port_id) vlan_tci[, vlan_tci_outer]
+
+The ``vlan_tci`` parameter accepts the full 16-bit VLAN Tag Control Information (TCI):
+
+Bits 0-11
+   VLAN ID (0-4095).
+
+Bit 12
+   CFI (Canonical Format Indicator) / DEI (Drop Eligible Indicator).
+
+Bits 13-15
+   Priority (0-7, 802.1p Class of Service).
 
 For example, set a single VLAN ID (5) insertion on port 0::
 
-   tx_vlan set 0 5
+   testpmd> tx_vlan set 0 5
 
-Or, set double VLAN ID (inner: 2, outer: 3) insertion on port 1::
+Or, set a VLAN with priority 3 and VLAN ID 100 on port 0::
 
-   tx_vlan set 1 2 3
+   testpmd> tx_vlan set 0 0x6064
+
+Calculation: ``(priority << 13) | vlan_id``.
+Priority 3 in bits 13-15: ``(3 << 13) = 0x6000``.
+VLAN ID 100 in bits 0-11: ``100 = 0x0064``.
+Combined TCI: ``0x6000 | 0x0064 = 0x6064``.
+
+Or, set double VLAN with priority (inner: priority 2, ID 10; outer: priority 5, ID 20)::
+
+   testpmd> tx_vlan set 1 0x400A 0xA014
+
+Inner TCI calculation: ``(2 << 13) | 10 = 0x400A``.
+Outer TCI calculation: ``(5 << 13) | 20 = 0xA014``.
 
 
 tx_vlan set pvid

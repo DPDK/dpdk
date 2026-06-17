@@ -37,8 +37,8 @@ do_macfwd(struct rte_mbuf *pkts_burst[], uint16_t nb_rx,
 		mb->ol_flags |= ol_flags;
 		mb->l2_len = sizeof(struct rte_ether_hdr);
 		mb->l3_len = sizeof(struct rte_ipv4_hdr);
-		mb->vlan_tci = txp->tx_vlan_id;
-		mb->vlan_tci_outer = txp->tx_vlan_id_outer;
+		mb->vlan_tci = txp->tx_vlan_tci;
+		mb->vlan_tci_outer = txp->tx_vlan_tci_outer;
 	}
 }
 

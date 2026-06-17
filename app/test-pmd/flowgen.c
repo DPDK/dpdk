@@ -84,8 +84,8 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	rte_pktmbuf_free_bulk(pkts_burst, nb_rx);
 
 	mbp = current_fwd_lcore()->mbp;
-	vlan_tci = ports[fs->tx_port].tx_vlan_id;
-	vlan_tci_outer = ports[fs->tx_port].tx_vlan_id_outer;
+	vlan_tci = ports[fs->tx_port].tx_vlan_tci;
+	vlan_tci_outer = ports[fs->tx_port].tx_vlan_tci_outer;
 
 	tx_offloads = ports[fs->tx_port].dev_conf.txmode.offloads;
 	if (tx_offloads	& RTE_ETH_TX_OFFLOAD_VLAN_INSERT)

@@ -346,8 +346,8 @@ struct rte_port {
 	uint16_t		parse_tunnel:1; /**< Parse internal headers */
 	uint16_t                tso_segsz;  /**< Segmentation offload MSS for non-tunneled packets. */
 	uint16_t                tunnel_tso_segsz; /**< Segmentation offload MSS for tunneled pkts. */
-	uint16_t                tx_vlan_id;/**< The tag ID */
-	uint16_t                tx_vlan_id_outer;/**< The outer tag ID */
+	uint16_t                tx_vlan_tci;/**< The TCI */
+	uint16_t                tx_vlan_tci_outer;/**< The outer TCI */
 	volatile uint16_t        port_status;    /**< port started or not */
 	uint8_t                 need_setup;     /**< port just attached */
 	uint8_t                 need_reconfig;  /**< need reconfiguring port or not */
@@ -1142,8 +1142,8 @@ int rx_vft_set(portid_t port_id, uint16_t vlan_id, int on);
 void vlan_extend_set(portid_t port_id, int on);
 void vlan_tpid_set(portid_t port_id, enum rte_vlan_type vlan_type,
 		   uint16_t tp_id);
-void tx_vlan_set(portid_t port_id, uint16_t vlan_id);
-void tx_qinq_set(portid_t port_id, uint16_t vlan_id, uint16_t vlan_id_outer);
+void tx_vlan_set(portid_t port_id, uint16_t vlan_tci);
+void tx_qinq_set(portid_t port_id, uint16_t vlan_tci, uint16_t vlan_tci_outer);
 void tx_vlan_reset(portid_t port_id);
 void tx_vlan_pvid_set(portid_t port_id, uint16_t vlan_id, int on);
 

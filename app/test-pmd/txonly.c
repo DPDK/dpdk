@@ -325,8 +325,8 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	mbp = current_fwd_lcore()->mbp;
 	txp = &ports[fs->tx_port];
 	tx_offloads = txp->dev_conf.txmode.offloads;
-	vlan_tci = txp->tx_vlan_id;
-	vlan_tci_outer = txp->tx_vlan_id_outer;
+	vlan_tci = txp->tx_vlan_tci;
+	vlan_tci_outer = txp->tx_vlan_tci_outer;
 	if (tx_offloads	& RTE_ETH_TX_OFFLOAD_VLAN_INSERT)
 		ol_flags = RTE_MBUF_F_TX_VLAN;
 	if (tx_offloads & RTE_ETH_TX_OFFLOAD_QINQ_INSERT)

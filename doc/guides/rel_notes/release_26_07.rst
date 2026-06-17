@@ -187,6 +187,11 @@ New Features
     for installing already loaded BPF programs as port callbacks
     (as opposed to loading them directly from ELF files).
 
+* **Updated testpmd application.**
+
+  Added support for setting VLAN priority and CFI/DEI bits
+  in ``tx_vlan set``/``tx_qinq set`` commands and ``vlan_tci`` parameter.
+
 * **Added AI review helpers.**
 
   Added AGENTS.md file for AI review

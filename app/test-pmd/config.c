@@ -6918,13 +6918,10 @@ vlan_tpid_set(portid_t port_id, enum rte_vlan_type vlan_type, uint16_t tp_id)
 }
 
 void
-tx_vlan_set(portid_t port_id, uint16_t vlan_id)
+tx_vlan_set(portid_t port_id, uint16_t vlan_tci)
 {
 	struct rte_eth_dev_info dev_info;
 	int ret;
-
-	if (vlan_id_is_invalid(vlan_id))
-		return;
 
 	if (ports[port_id].dev_conf.txmode.offloads &
 	    RTE_ETH_TX_OFFLOAD_QINQ_INSERT) {
@@ -6945,19 +6942,14 @@ tx_vlan_set(portid_t port_id, uint16_t vlan_id)
 
 	tx_vlan_reset(port_id);
 	ports[port_id].dev_conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
-	ports[port_id].tx_vlan_id = vlan_id;
+	ports[port_id].tx_vlan_tci = vlan_tci;
 }
 
 void
-tx_qinq_set(portid_t port_id, uint16_t vlan_id, uint16_t vlan_id_outer)
+tx_qinq_set(portid_t port_id, uint16_t vlan_tci, uint16_t vlan_tci_outer)
 {
 	struct rte_eth_dev_info dev_info;
 	int ret;
-
-	if (vlan_id_is_invalid(vlan_id))
-		return;
-	if (vlan_id_is_invalid(vlan_id_outer))
-		return;
 
 	ret = eth_dev_info_get_print_err(port_id, &dev_info);
 	if (ret != 0)
@@ -6973,8 +6965,8 @@ tx_qinq_set(portid_t port_id, uint16_t vlan_id, uint16_t vlan_id_outer)
 	tx_vlan_reset(port_id);
 	ports[port_id].dev_conf.txmode.offloads |= (RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
 						    RTE_ETH_TX_OFFLOAD_QINQ_INSERT);
-	ports[port_id].tx_vlan_id = vlan_id;
-	ports[port_id].tx_vlan_id_outer = vlan_id_outer;
+	ports[port_id].tx_vlan_tci = vlan_tci;
+	ports[port_id].tx_vlan_tci_outer = vlan_tci_outer;
 }
 
 void
@@ -6983,8 +6975,8 @@ tx_vlan_reset(portid_t port_id)
 	ports[port_id].dev_conf.txmode.offloads &=
 				~(RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
 				  RTE_ETH_TX_OFFLOAD_QINQ_INSERT);
-	ports[port_id].tx_vlan_id = 0;
-	ports[port_id].tx_vlan_id_outer = 0;
+	ports[port_id].tx_vlan_tci = 0;
+	ports[port_id].tx_vlan_tci_outer = 0;
 }
 
 void

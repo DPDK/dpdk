@@ -85,7 +85,7 @@ do_5tswap(struct rte_mbuf *pkts_burst[], uint16_t nb_rx,
 	txp = &ports[fs->tx_port];
 	ol_flags = ol_flags_init(txp->dev_conf.txmode.offloads);
 	vlan_qinq_set(pkts_burst, nb_rx, ol_flags,
-		      txp->tx_vlan_id, txp->tx_vlan_id_outer);
+		      txp->tx_vlan_tci, txp->tx_vlan_tci_outer);
 	for (i = 0; i < nb_rx; i++) {
 		if (likely(i < nb_rx - 1))
 			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[i+1],
