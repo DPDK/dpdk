@@ -261,6 +261,7 @@ struct gve_rx_queue {
 	struct rte_mbuf **refill_bufs;
 
 	uint8_t is_gqi_qpl;
+	bool timestamp_enabled;
 };
 
 struct gve_flow {
@@ -372,7 +373,31 @@ struct gve_priv {
 	RTE_ATOMIC(uint8_t) nic_ts_stale;
 	rte_thread_t nic_ts_thread_id;
 	RTE_ATOMIC(uint8_t) nic_ts_thread_should_stop;
+
+	int mbuf_timestamp_offset;
+	uint64_t mbuf_timestamp_mask;
 };
+
+/* Expand the hardware timestamp to the full 64 bits of width.
+ *
+ * This algorithm works by using the passed hardware timestamp to generate a
+ * diff relative to the last read of the nic clock. This diff can be positive or
+ * negative, as it is possible that we have read the clock more recently than
+ * the hardware has received this packet. To detect this, we use the high bit of
+ * the diff, and assume that the read is more recent if the high bit is set. In
+ * this case we invert the process.
+ *
+ * Note that this means if the time delta between packet reception and the last
+ * clock read is greater than ~2 seconds, this will provide invalid results.
+ */
+static inline uint64_t
+gve_reconstruct_ts(uint64_t last_sync, uint32_t ts)
+{
+	uint32_t low = (uint32_t)last_sync;
+	int32_t diff = (int32_t)(ts - low);
+
+	return last_sync + diff;
+}
 
 static inline bool
 gve_is_gqi(struct gve_priv *priv)

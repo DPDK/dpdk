@@ -214,6 +214,7 @@ static int
 gve_dev_configure(struct rte_eth_dev *dev)
 {
 	struct gve_priv *priv = dev->data->dev_private;
+	int err;
 
 	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) {
 		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
@@ -223,13 +224,22 @@ gve_dev_configure(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO)
 		priv->enable_rsc = 1;
 
+	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+		err = rte_mbuf_dyn_rx_timestamp_register(&priv->mbuf_timestamp_offset,
+							 &priv->mbuf_timestamp_mask);
+		if (err < 0) {
+			PMD_DRV_LOG(ERR, "Failed to register dynamic timestamp field");
+			return err;
+		}
+	}
+
 	/* Reset RSS RETA in case number of queues changed. */
 	if (priv->rss_config.indir) {
 		struct gve_rss_config update_reta_config;
 		gve_init_rss_config_from_priv(priv, &update_reta_config);
 		gve_generate_rss_reta(dev, &update_reta_config);
 
-		int err = gve_adminq_configure_rss(priv, &update_reta_config);
+		err = gve_adminq_configure_rss(priv, &update_reta_config);
 		if (err)
 			PMD_DRV_LOG(ERR,
 				"Could not reconfigure RSS redirection table.");
@@ -828,6 +838,8 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 
 	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_RSS_HASH;
+	if (!gve_is_gqi(priv) && priv->nic_ts_report_mz)
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 	dev_info->tx_offload_capa =
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS	|
 		RTE_ETH_TX_OFFLOAD_UDP_CKSUM	|
@@ -1683,6 +1695,7 @@ gve_dev_init(struct rte_eth_dev *eth_dev)
 	pthread_mutex_init(&priv->nic_ts_lock, &mutexattr);
 	pthread_mutexattr_destroy(&mutexattr);
 
+	priv->mbuf_timestamp_offset = -1;
 	err = gve_init_priv(priv, false);
 	if (err) {
 		pthread_mutex_destroy(&priv->flow_rule_lock);

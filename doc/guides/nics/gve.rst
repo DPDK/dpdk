@@ -72,6 +72,7 @@ Supported features of the GVE PMD are:
 - Tx UDP/TCP/SCTP Checksum
 - RSS hash configuration
 - RSS redirection table query and update
+- Timestamp offload
 
 Currently, only GQI_QPL and GQI_RDA queue format are supported in PMD.
 Jumbo Frame is not supported in PMD for now.
@@ -131,6 +132,25 @@ Security Protocols
 - Only ingress flow rules are allowed.
 - Flow priorities are not supported (must be 0).
 - Masking is limited to full matches i.e. ``0x00...0`` or ``0xFF...F``.
+
+Timestamp Offload
+^^^^^^^^^^^^^^^^^
+
+The driver supports hardware-based packet timestamping on supported devices
+via the standard ``RTE_ETH_RX_OFFLOAD_TIMESTAMP`` offload capability.
+Both the ethdev ``.read_clock`` operation and per-packet Rx timestamp offloading
+require the DQO queue format.
+
+**Limitations**
+
+- If the driver fails to fetch the NIC hardware clock for 7 consecutive periods,
+  the cached timestamp is marked as stale,
+  and the reconstructed timestamps are no longer propagated to the mbuf.
+- The timestamp reconstruction is only accurate
+  if the time between a packet's reception
+  and the last hardware clock sync is less than approximately 2 seconds.
+  The driver's internal clock sync period is set to respect this limitation.
+
 
 Device Reset
 ^^^^^^^^^^^^

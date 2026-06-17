@@ -160,6 +160,8 @@ gve_rx_burst_dqo(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
 	volatile struct gve_rx_compl_desc_dqo *rx_desc;
 	struct gve_rx_queue *rxq;
+	uint64_t last_sync = 0;
+	struct gve_priv *priv;
 	struct rte_mbuf *rxm;
 	uint16_t rx_buf_id;
 	uint16_t pkt_len;
@@ -171,6 +173,15 @@ gve_rx_burst_dqo(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	nb_rx = 0;
 	rxq = rx_queue;
 	rx_id = rxq->rx_tail;
+	priv = rxq->hw;
+
+	if (rxq->timestamp_enabled &&
+	    !rte_atomic_load_explicit(&priv->nic_ts_stale,
+				      rte_memory_order_acquire)) {
+		last_sync =
+			rte_atomic_load_explicit(&priv->last_read_nic_timestamp,
+						 rte_memory_order_relaxed);
+	}
 
 	while (nb_rx < nb_pkts) {
 		rx_desc = &rxq->compl_ring[rx_id];
@@ -207,6 +218,16 @@ gve_rx_burst_dqo(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->ol_flags = RTE_MBUF_F_RX_RSS_HASH;
 		gve_parse_csum_ol_flags(rxm, rx_desc);
 		rxm->hash.rss = rte_le_to_cpu_32(rx_desc->hash);
+
+		if (last_sync != 0 &&
+		    (rx_desc->ts_sub_nsecs_low & GVE_DQO_RX_HWTSTAMP_VALID) &&
+		    priv->mbuf_timestamp_offset >= 0) {
+			uint32_t ts = rte_le_to_cpu_32(rx_desc->ts);
+			uint64_t full_ts = gve_reconstruct_ts(last_sync, ts);
+
+			*RTE_MBUF_DYNFIELD(rxm, priv->mbuf_timestamp_offset, uint64_t *) = full_ts;
+			rxm->ol_flags |= priv->mbuf_timestamp_mask;
+		}
 
 		rx_pkts[nb_rx++] = rxm;
 		bytes += pkt_len;
@@ -319,6 +340,11 @@ gve_rx_queue_setup_dqo(struct rte_eth_dev *dev, uint16_t queue_id,
 		PMD_DRV_LOG(ERR, "Failed to allocate memory for rx queue structure");
 		return -ENOMEM;
 	}
+
+	/* Setup hardware timestamping if enabled */
+	if ((conf->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) ||
+	    (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP))
+		rxq->timestamp_enabled = true;
 
 	/* check free_thresh here */
 	free_thresh = conf->rx_free_thresh ?

@@ -135,6 +135,10 @@ New Features
 
   Added network driver for the LinkData network adapters.
 
+* **Updated Google gve driver.**
+
+  * Added hardware timestamping support on DQO queues.
+
 * **Updated Intel iavf driver.**
 
   * Added support for transmitting LLDP packets based on mbuf packet type.
