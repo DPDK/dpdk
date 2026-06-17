@@ -32,6 +32,9 @@ extern int rte_bpf_logtype;
 #define RTE_BPF_LOG_LINE(lvl, ...) \
 	RTE_LOG_LINE(lvl, BPF, __VA_ARGS__)
 
+#define RTE_BPF_LOG_FUNC_LINE(lvl, fmt, ...) \
+	RTE_LOG_LINE(lvl, BPF, "%s(): " fmt, __func__, ##__VA_ARGS__)
+
 static inline size_t
 bpf_size(uint32_t bpf_op_sz)
 {

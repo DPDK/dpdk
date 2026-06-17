@@ -247,8 +247,8 @@ static int bpf_convert_filter(const struct bpf_insn *prog, size_t len,
 	uint8_t bpf_src;
 
 	if (len > BPF_MAXINSNS) {
-		RTE_BPF_LOG_LINE(ERR, "%s: cBPF program too long (%zu insns)",
-			    __func__, len);
+		RTE_BPF_LOG_FUNC_LINE(ERR, "cBPF program too long (%zu insns)",
+			    len);
 		return -EINVAL;
 	}
 
@@ -483,8 +483,8 @@ do_pass:
 
 			/* Unknown instruction. */
 		default:
-			RTE_BPF_LOG_LINE(ERR, "%s: Unknown instruction!: %#x",
-				    __func__, fp->code);
+			RTE_BPF_LOG_FUNC_LINE(ERR, "Unknown instruction!: %#x",
+				    fp->code);
 			goto err;
 		}
 
@@ -528,7 +528,7 @@ rte_bpf_convert(const struct bpf_program *prog)
 	int ret;
 
 	if (prog == NULL) {
-		RTE_BPF_LOG_LINE(ERR, "%s: NULL program", __func__);
+		RTE_BPF_LOG_FUNC_LINE(ERR, "NULL program");
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -536,13 +536,13 @@ rte_bpf_convert(const struct bpf_program *prog)
 	/* 1st pass: calculate the eBPF program length */
 	ret = bpf_convert_filter(prog->bf_insns, prog->bf_len, NULL, &ebpf_len);
 	if (ret < 0) {
-		RTE_BPF_LOG_LINE(ERR, "%s: cannot get eBPF length", __func__);
+		RTE_BPF_LOG_FUNC_LINE(ERR, "cannot get eBPF length");
 		rte_errno = -ret;
 		return NULL;
 	}
 
-	RTE_BPF_LOG_LINE(DEBUG, "%s: prog len cBPF=%u -> eBPF=%u",
-		    __func__, prog->bf_len, ebpf_len);
+	RTE_BPF_LOG_FUNC_LINE(DEBUG, "prog len cBPF=%u -> eBPF=%u",
+		    prog->bf_len, ebpf_len);
 
 	prm = rte_zmalloc("bpf_filter",
 			  sizeof(*prm) + ebpf_len * sizeof(*ebpf), 0);
@@ -557,7 +557,7 @@ rte_bpf_convert(const struct bpf_program *prog)
 	/* 2nd pass: remap cBPF to eBPF instructions  */
 	ret = bpf_convert_filter(prog->bf_insns, prog->bf_len, ebpf, &ebpf_len);
 	if (ret < 0) {
-		RTE_BPF_LOG_LINE(ERR, "%s: cannot convert cBPF to eBPF", __func__);
+		RTE_BPF_LOG_FUNC_LINE(ERR, "cannot convert cBPF to eBPF");
 		rte_free(prm);
 		rte_errno = -ret;
 		return NULL;

@@ -100,7 +100,7 @@ rte_bpf_load(const struct rte_bpf_prm *prm)
 
 	if (rc != 0) {
 		rte_errno = -rc;
-		RTE_BPF_LOG_LINE(ERR, "%s: %d-th xsym is invalid", __func__, i);
+		RTE_BPF_LOG_FUNC_LINE(ERR, "%d-th xsym is invalid", i);
 		return NULL;
 	}
 

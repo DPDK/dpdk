@@ -1838,16 +1838,16 @@ add_edge(struct bpf_verifier *bvf, struct inst_node *node, uint32_t nidx)
 	uint32_t ne;
 
 	if (nidx >= bvf->prm->nb_ins) {
-		RTE_BPF_LOG_LINE(ERR,
-			"%s: program boundary violation at pc: %u, next pc: %u",
-			__func__, get_node_idx(bvf, node), nidx);
+		RTE_BPF_LOG_FUNC_LINE(ERR,
+			"program boundary violation at pc: %u, next pc: %u",
+			get_node_idx(bvf, node), nidx);
 		return -EINVAL;
 	}
 
 	ne = node->nb_edge;
 	if (ne >= RTE_DIM(node->edge_dest)) {
-		RTE_BPF_LOG_LINE(ERR, "%s: internal error at pc: %u",
-			__func__, get_node_idx(bvf, node));
+		RTE_BPF_LOG_FUNC_LINE(ERR, "internal error at pc: %u",
+			get_node_idx(bvf, node));
 		return -EINVAL;
 	}
 
@@ -2005,8 +2005,7 @@ validate(struct bpf_verifier *bvf)
 
 		err = check_syntax(ins);
 		if (err != 0) {
-			RTE_BPF_LOG_LINE(ERR, "%s: %s at pc: %u",
-				__func__, err, i);
+			RTE_BPF_LOG_FUNC_LINE(ERR, "%s at pc: %u", err, i);
 			rc |= -EINVAL;
 		}
 
@@ -2230,9 +2229,9 @@ save_cur_eval_state(struct bpf_verifier *bvf, struct inst_node *node)
 	/* get new eval_state for this node */
 	st = pull_eval_state(&bvf->evst_sr_pool);
 	if (st == NULL) {
-		RTE_BPF_LOG_LINE(ERR,
-			"%s: internal error (out of space) at pc: %u",
-			__func__, get_node_idx(bvf, node));
+		RTE_BPF_LOG_FUNC_LINE(ERR,
+			"internal error (out of space) at pc: %u",
+			get_node_idx(bvf, node));
 		return -ENOMEM;
 	}
 
@@ -2462,8 +2461,8 @@ evaluate(struct bpf_verifier *bvf)
 				err = ins_chk[op].eval(bvf, ins + idx);
 				stats.nb_eval++;
 				if (err != NULL) {
-					RTE_BPF_LOG_LINE(ERR, "%s: %s at pc: %u",
-						__func__, err, idx);
+					RTE_BPF_LOG_FUNC_LINE(ERR,
+						"%s at pc: %u", err, idx);
 					rc = -EINVAL;
 				}
 			}
@@ -2533,7 +2532,7 @@ __rte_bpf_validate(struct rte_bpf *bpf)
 			bpf->prm.prog_arg.type != RTE_BPF_ARG_PTR &&
 			(sizeof(uint64_t) != sizeof(uintptr_t) ||
 			bpf->prm.prog_arg.type != RTE_BPF_ARG_PTR_MBUF)) {
-		RTE_BPF_LOG_LINE(ERR, "%s: unsupported argument type", __func__);
+		RTE_BPF_LOG_FUNC_LINE(ERR, "unsupported argument type");
 		return -ENOTSUP;
 	}
 

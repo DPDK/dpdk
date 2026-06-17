@@ -122,7 +122,7 @@ check_elf_header(const Elf64_Ehdr *eh)
 		err = "unexpected machine type";
 
 	if (err != NULL) {
-		RTE_BPF_LOG_LINE(ERR, "%s(): %s", __func__, err);
+		RTE_BPF_LOG_FUNC_LINE(ERR, "%s", err);
 		return -EINVAL;
 	}
 

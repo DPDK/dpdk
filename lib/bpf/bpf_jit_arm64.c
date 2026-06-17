@@ -98,8 +98,8 @@ check_invalid_args(struct a64_jit_ctx *ctx, uint32_t limit)
 
 	for (idx = 0; idx < limit; idx++) {
 		if (rte_le_to_cpu_32(ctx->ins[idx]) == A64_INVALID_OP_CODE) {
-			RTE_BPF_LOG_LINE(ERR,
-				"%s: invalid opcode at %u;", __func__, idx);
+			RTE_BPF_LOG_FUNC_LINE(ERR,
+				"invalid opcode at %u;", idx);
 			return -EINVAL;
 		}
 	}
