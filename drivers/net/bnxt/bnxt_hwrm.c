@@ -2880,15 +2880,16 @@ bnxt_hwrm_vnic_rss_cfg_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 		req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
 		req.hash_type = rte_cpu_to_le_32(bnxt_sanitize_rss_type(bp, vnic->hash_type));
-		/* Update req with vnic ring_select_mode for P7 */
 		if (BNXT_CHIP_P7(bp))
 			req.ring_select_mode = vnic->ring_select_mode;
-		/* When the vnic_id in the request field is a valid
-		 * one, the hash_mode_flags in the request field must
-		 * be set to DEFAULT. And any request to change the
-		 * default behavior must be done in a separate call
-		 * to HWRM_VNIC_RSS_CFG by exclusively setting hash
-		 * mode and vnic_id, rss_ctx_idx to INVALID.
+
+		/* Do not embed hash_mode_flags here for VFs. Doing so, plus
+		 * syncing prev_hash_mode below, permanently short-circuits
+		 * bnxt_hwrm_vnic_rss_cfg_hash_mode_p5()'s guard for every VF,
+		 * so a trusted VF's explicit RSS hash-level request (e.g.
+		 * rss level-outer) is silently dropped. Firmware's own gate
+		 * (vnic_rss_cfg_cmd()) permits trusted VFs on that call, so
+		 * treat VFs the same as PFs here.
 		 */
 		req.hash_mode_flags = BNXT_HASH_MODE_DEFAULT;
 
@@ -2917,70 +2918,46 @@ static int
 bnxt_hwrm_vnic_rss_cfg_hash_mode_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	struct hwrm_vnic_rss_cfg_output *resp = bp->hwrm_cmd_resp_addr;
-	struct hwrm_vnic_rss_cfg_input req = {.req_type = 0 };
+	struct hwrm_vnic_rss_cfg_input req = {.req_type = 0};
 	int rc = 0;
 
-	/* The reason we are returning success here is that this
-	 * call is in the context of user/stack RSS configuration.
-	 * Even though OUTER RSS is not supported, the normal RSS
-	 * configuration should continue to work.
-	 */
+	/* Return success when outer RSS is unsupported so normal RSS works. */
 	if ((BNXT_CHIP_P5(bp) && BNXT_VNIC_OUTER_RSS_UNSUPPORTED(bp)) ||
 	    (!BNXT_CHIP_P5(bp) && !(bp->vnic_cap_flags & BNXT_VNIC_CAP_OUTER_RSS)))
 		return 0;
 
-	/* TODO Revisit for Thor 2 */
-	/* if (BNXT_CHIP_P5_P7(bp))
-	 *	bnxt_hwrm_vnic_rss_cfg_p5(bp, vnic);
-	 */
-	/* Don't call RSS hash level configuration if the current
-	 * hash level is the same as the hash level that is requested.
-	 */
 	if (vnic->prev_hash_mode == vnic->hash_mode)
+		return 0;
+
+	/* Trusted VFs now reach this call the same as PFs; firmware's own
+	 * gate (IS_PF_FID() || pcie_func_is_trusted_vf()) restricts which
+	 * callers it accepts the request from. Firmware would reject a
+	 * request from an untrusted VF, so keep it a silent no-op here
+	 * instead of surfacing a new HWRM error.
+	 * The fw_grp_ids/num_lb_ctxts check guards against a NULL RSS
+	 * context that is not yet initialized or has been torn down by
+	 * a port stop.
+	 */
+	if (BNXT_VF(bp) &&
+	    (!BNXT_VF_IS_TRUSTED(bp) || !vnic->fw_grp_ids || !vnic->num_lb_ctxts))
 		return 0;
 
 	HWRM_PREP(&req, HWRM_VNIC_RSS_CFG, BNXT_USE_CHIMP_MB);
 
-	/* For FW, hash_mode == DEFAULT means that
-	 * the FW is capable of doing INNER & OUTER RSS as well.
-	 * DEFAULT doesn't mean that the FW is
-	 * going to change the hash_mode to INNER. However, for
-	 * the USER, DEFAULT means, change the hash mode to the
-	 * NIC's DEFAULT hash mode which is INNER.
-	 *
-	 * Hence, driver should make the translation of hash_mode
-	 * to INNERMOST when hash_mode from the dpdk stack is
-	 * DEFAULT.
+	/* FW DEFAULT keeps existing hash level; translate to INNERMOST so
+	 * the NIC uses its hardware default (inner headers).
 	 */
 	if (vnic->hash_mode == BNXT_HASH_MODE_DEFAULT)
 		req.hash_mode_flags = BNXT_HASH_MODE_INNERMOST;
 	else
 		req.hash_mode_flags = vnic->hash_mode;
 
-	/* VFs must use actual vnic_id for per-VNIC configuration.
-	 * PFs can use INVALID vnic_id for global configuration.
-	 * This is because VFs don't have permission to configure
-	 * global hash mode, even if they're trusted.
-	 */
-	if (BNXT_VF(bp)) {
-		req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
-		req.rss_ctx_idx = rte_cpu_to_le_16(vnic->fw_grp_ids[0]);
-		PMD_DRV_LOG_LINE(DEBUG, "VF using per-VNIC RSS config (vnic_id=%u)",
-				vnic->fw_vnic_id);
-	} else {
-		req.vnic_id = rte_cpu_to_le_16(BNXT_DFLT_VNIC_ID_INVALID);
-		req.rss_ctx_idx = rte_cpu_to_le_16(BNXT_RSS_CTX_IDX_INVALID);
-		PMD_DRV_LOG_LINE(DEBUG, "PF using global RSS config");
-	}
-
+	req.vnic_id = rte_cpu_to_le_16(BNXT_DFLT_VNIC_ID_INVALID);
+	req.rss_ctx_idx = rte_cpu_to_le_16(BNXT_RSS_CTX_IDX_INVALID);
 	PMD_DRV_LOG_LINE(DEBUG, "RSS CFG: Hash level %d", req.hash_mode_flags);
-	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req),
-				    BNXT_USE_CHIMP_MB);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
 	HWRM_CHECK_RESULT();
-	/* Store the programmed hash_mode in prev_hash_mode so that
-	 * it can checked against the next user requested hash mode.
-	 */
 	if (!rc)
 		vnic->prev_hash_mode = vnic->hash_mode;
 	HWRM_UNLOCK();
