@@ -155,6 +155,7 @@ New Features
   * Added an extensible BPF loading API comprising the function
     ``rte_bpf_load_ex`` and struct ``rte_bpf_prm_ex``.
     This enables new features such as loading classic BPF (cBPF),
+    loading ELF images directly from memory buffers,
     and executing multi-argument programs, while avoiding future ABI breakages.
   * Added support for loading and executing BPF programs with up to 5 arguments.
     This introduces new API functions ``rte_bpf_exec_ex``,

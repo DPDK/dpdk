@@ -20,7 +20,7 @@ The library API provides the following basic operations for working with BPF pro
 * **Loading**: The extensible API (``rte_bpf_load_ex``) is the recommended way
   to load a BPF program.
   By utilizing ``struct rte_bpf_prm_ex``, you can load an eBPF program
-  from an ELF file on disk.
+  from an ELF file on disk, or load eBPF/cBPF bytecode directly from memory buffers.
 
 * **Execution via Callbacks**: Once loaded, a BPF program can be attached
   to a specific ethernet device port and queue

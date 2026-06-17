@@ -97,6 +97,7 @@ enum rte_bpf_origin {
 	RTE_BPF_ORIGIN_RAW,		/**< code loaded from raw array */
 	RTE_BPF_ORIGIN_CBPF,		/**< code converted from cbpf */
 	RTE_BPF_ORIGIN_ELF_FILE,	/**< code loaded from elf_file */
+	RTE_BPF_ORIGIN_ELF_MEMORY,	/**< code loaded from elf_memory */
 };
 
 struct bpf_insn;
@@ -127,6 +128,11 @@ struct rte_bpf_prm_ex {
 			const char *path;  /**< path to the ELF file */
 			const char *section;  /**< ELF section with the code */
 		} elf_file;
+		struct {
+			const void *data;  /**< pointer to the ELF image */
+			size_t size;  /**< size of the ELF image */
+			const char *section;  /**< ELF section with the code */
+		} elf_memory;
 	};
 
 	const struct rte_bpf_xsym *xsym;

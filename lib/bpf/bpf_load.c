@@ -247,6 +247,10 @@ load_try(struct __rte_bpf_load *load, const struct rte_bpf_prm_ex *app_prm)
 		rc = rc < 0 ? rc : __rte_bpf_load_elf_file(load);
 		rc = rc < 0 ? rc : __rte_bpf_load_elf_code(load);
 		break;
+	case RTE_BPF_ORIGIN_ELF_MEMORY:
+		rc = rc < 0 ? rc : __rte_bpf_load_elf_memory(load);
+		rc = rc < 0 ? rc : __rte_bpf_load_elf_code(load);
+		break;
 	default:
 		rc = rc < 0 ? rc : -EINVAL;
 	}

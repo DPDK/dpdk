@@ -308,6 +308,36 @@ __rte_bpf_load_elf_file(struct __rte_bpf_load *load)
 		return -EINVAL;
 	}
 
+	load->elf_section = prm->elf_file.section;
+
+	return 0;
+}
+
+int
+__rte_bpf_load_elf_memory(struct __rte_bpf_load *load)
+{
+	const struct rte_bpf_prm_ex *const prm = &load->prm;
+
+	RTE_ASSERT(prm->origin == RTE_BPF_ORIGIN_ELF_MEMORY);
+
+	if (prm->elf_memory.data == NULL || prm->elf_memory.section == NULL)
+		return -EINVAL;
+
+	if (elf_version(EV_CURRENT) == EV_NONE)
+		return -ENOTSUP;
+
+	load->elf = elf_memory(
+		/* Cast away const, we are not going to modify the ELF image. */
+		(char *)(uintptr_t)prm->elf_memory.data, prm->elf_memory.size);
+	if (load->elf == NULL) {
+		const int rc = elf_errno();
+		RTE_BPF_LOG_FUNC_LINE(ERR, "error %d opening ELF image: %s",
+			rc, elf_errmsg(rc));
+		return -EINVAL;
+	}
+
+	load->elf_section = prm->elf_memory.section;
+
 	return 0;
 }
 
@@ -319,7 +349,7 @@ __rte_bpf_load_elf_code(struct __rte_bpf_load *load)
 	size_t sidx;
 	int rc;
 
-	rc = find_elf_code(load->elf, prm->elf_file.section, &sd, &sidx);
+	rc = find_elf_code(load->elf, load->elf_section, &sd, &sidx);
 	if (rc < 0)
 		return rc;
 
@@ -345,6 +375,14 @@ __rte_bpf_load_elf_cleanup(struct __rte_bpf_load *load)
 
 int
 __rte_bpf_load_elf_file(struct __rte_bpf_load *load)
+{
+	RTE_SET_USED(load);
+	RTE_BPF_LOG_FUNC_LINE(ERR, "not supported, rebuild with libelf installed");
+	return -ENOTSUP;
+}
+
+int
+__rte_bpf_load_elf_memory(struct __rte_bpf_load *load)
 {
 	RTE_SET_USED(load);
 	RTE_BPF_LOG_FUNC_LINE(ERR, "not supported, rebuild with libelf installed");

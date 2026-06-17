@@ -27,6 +27,7 @@ struct __rte_bpf_load {
 	/* Loading ELF and applying relocations. */
 	int elf_fd;  /* ELF fd, must be negative (not zero) by default. */
 	void *elf;  /* Using void to avoid dependency on libelf. */
+	const char *elf_section;
 
 	/* Value we are going to return, if any. */
 	struct rte_bpf *bpf;
@@ -52,6 +53,10 @@ __rte_bpf_load_elf_cleanup(struct __rte_bpf_load *load);
 /* Open the ELF file. */
 int
 __rte_bpf_load_elf_file(struct __rte_bpf_load *load);
+
+/* Open the ELF memory image. */
+int
+__rte_bpf_load_elf_memory(struct __rte_bpf_load *load);
 
 /* Get code from ELF and apply relocations to it. */
 int
