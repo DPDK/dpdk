@@ -911,6 +911,7 @@ eal_parse_service_coremask(const char *coremask)
 		if (coremask[i] != '0')
 			return -1;
 
+	rte_bitset_clear_all(cfg->core_indices, RTE_MAX_LCORE);
 	for (; idx < RTE_MAX_LCORE; idx++)
 		lcore_config[idx].core_index = -1;
 
@@ -937,6 +938,7 @@ update_lcore_config(const rte_cpuset_t *cpuset, bool remap, uint16_t remap_base)
 	int ret = 0;
 
 	/* set everything to disabled first, then set up values */
+	rte_bitset_clear_all(cfg->core_indices, RTE_MAX_LCORE);
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
 		cfg->lcore_role[i] = ROLE_OFF;
 		lcore_config[i].core_index = -1;
@@ -966,6 +968,7 @@ update_lcore_config(const rte_cpuset_t *cpuset, bool remap, uint16_t remap_base)
 				continue;
 			}
 
+			rte_bitset_set(cfg->core_indices, count);
 			cfg->lcore_role[lcore_id] = ROLE_RTE;
 			lcore_config[lcore_id].core_index = count;
 			CPU_ZERO(&lcore_config[lcore_id].cpuset);
@@ -1388,6 +1391,7 @@ eal_parse_lcores(const char *lcores)
 	CPU_ZERO(&cpuset);
 
 	/* Reset lcore config */
+	rte_bitset_clear_all(cfg->core_indices, RTE_MAX_LCORE);
 	for (idx = 0; idx < RTE_MAX_LCORE; idx++) {
 		cfg->lcore_role[idx] = ROLE_OFF;
 		lcore_config[idx].core_index = -1;
@@ -1452,6 +1456,7 @@ eal_parse_lcores(const char *lcores)
 			set_count--;
 
 			if (cfg->lcore_role[idx] != ROLE_RTE) {
+				rte_bitset_set(cfg->core_indices, count);
 				lcore_config[idx].core_index = count;
 				cfg->lcore_role[idx] = ROLE_RTE;
 				count++;

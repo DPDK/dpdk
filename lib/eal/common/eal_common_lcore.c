@@ -6,8 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <rte_common.h>
+#include <rte_bitset.h>
 #include <rte_branch_prediction.h>
+#include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
@@ -183,6 +184,9 @@ rte_eal_cpu_init(void)
 
 		/* By default, lcore 1:1 map to cpu id */
 		CPU_SET(lcore_id, &lcore_config[lcore_id].cpuset);
+
+		/* This is the first time we discover the lcores, so the bitset should be zeroed */
+		rte_bitset_set(config->core_indices, count);
 
 		/* By default, each detected core is enabled */
 		config->lcore_role[lcore_id] = ROLE_RTE;
@@ -373,11 +377,20 @@ eal_lcore_non_eal_allocate(void)
 	struct lcore_callback *callback;
 	struct lcore_callback *prev;
 	unsigned int lcore_id;
+	int core_index = -1;
 
 	rte_rwlock_write_lock(&lcore_lock);
+	core_index = rte_bitset_find_first_clear(cfg->core_indices, RTE_MAX_LCORE);
+	if (core_index == -1) {
+		EAL_LOG(DEBUG, "No core_index available.");
+		lcore_id = RTE_MAX_LCORE;
+		goto out;
+	}
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		if (cfg->lcore_role[lcore_id] != ROLE_OFF)
 			continue;
+		rte_bitset_set(cfg->core_indices, core_index);
+		lcore_config[lcore_id].core_index = core_index;
 		cfg->lcore_role[lcore_id] = ROLE_NON_EAL;
 		cfg->lcore_count++;
 		break;
@@ -399,6 +412,8 @@ eal_lcore_non_eal_allocate(void)
 		}
 		EAL_LOG(DEBUG, "Initialization refused for lcore %u.",
 			lcore_id);
+		rte_bitset_clear(cfg->core_indices, lcore_config[lcore_id].core_index);
+		lcore_config[lcore_id].core_index = -1;
 		cfg->lcore_role[lcore_id] = ROLE_OFF;
 		cfg->lcore_count--;
 		lcore_id = RTE_MAX_LCORE;
@@ -420,6 +435,8 @@ eal_lcore_non_eal_release(unsigned int lcore_id)
 		goto out;
 	TAILQ_FOREACH(callback, &lcore_callbacks, next)
 		callback_uninit(callback, lcore_id);
+	rte_bitset_clear(cfg->core_indices, lcore_config[lcore_id].core_index);
+	lcore_config[lcore_id].core_index = -1;
 	cfg->lcore_role[lcore_id] = ROLE_OFF;
 	cfg->lcore_count--;
 out:
