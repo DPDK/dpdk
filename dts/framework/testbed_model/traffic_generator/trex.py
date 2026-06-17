@@ -13,6 +13,7 @@ from scapy.packet import Packet
 
 from framework.config.node import OS, NodeConfiguration
 from framework.config.test_run import TrexTrafficGeneratorConfig
+from framework.exception import SSHTimeoutError
 from framework.parser import TextParser
 from framework.remote_session.blocking_app import BlockingApp
 from framework.remote_session.python_shell import PythonShell
@@ -220,7 +221,9 @@ class TrexTrafficGenerator(PerformanceTrafficGenerator):
         ]
         self._shell.send_command("\n".join(packet_stream))
 
-    def _send_traffic_and_get_stats(self, duration: float, send_mpps: float | None = None) -> str:
+    def _send_traffic_and_get_stats(
+        self, duration: float, send_mpps: float | None = None, retry_attempts: int = 5
+    ) -> str:
         """Send traffic and get TG Rx stats.
 
         Sends traffic from the TRex client's ports for the given duration.
@@ -230,15 +233,32 @@ class TrexTrafficGenerator(PerformanceTrafficGenerator):
         Args:
             duration: The traffic generation duration.
             send_mpps: The millions of packets per second for TRex to send from each port.
+            retry_attempts: The number of times to retry this command on failure.
+
+        Raises:
+            SSHTimeoutError: If TRex fails to send traffic in the allotted attempts.
         """
-        if send_mpps:
-            self._shell.send_command(f"""{self.stl_client_name}.start(ports=[0, 1],
-                mult = '{send_mpps}mpps',
-                duration = {duration})""")
-        else:
-            self._shell.send_command(f"""{self.stl_client_name}.start(ports=[0, 1],
-                mult = '100%',
-                duration = {duration})""")
+        link_down = True
+        attempt = 0
+
+        while link_down and attempt < retry_attempts:
+            if send_mpps:
+                result = self._shell.send_command(f"""{self.stl_client_name}.start(ports=[0, 1],
+                    mult = '{send_mpps}mpps',
+                    duration = {duration})""")
+            else:
+                result = self._shell.send_command(f"""{self.stl_client_name}.start(ports=[0, 1],
+                    mult = '100%',
+                    duration = {duration})""")
+            link_down = "link is DOWN" in result
+            if link_down:
+                self._logger.info(
+                    f"Generate traffic command failed (attempt {attempt + 1} of {retry_attempts})"
+                )
+                time.sleep(0.25)
+            attempt += 1
+        if link_down:
+            raise SSHTimeoutError("Link failed to come up, Traffic could not be generated.")
 
         time.sleep(duration)
 
