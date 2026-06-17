@@ -3514,6 +3514,121 @@ run_test(const struct bpf_test *tst)
 
 }
 
+/* Test all eBPF load APIs with prm set to NULL. */
+static int
+test_bpf_load_null(void)
+{
+	struct rte_bpf *bpf;
+	int saved_errno;
+
+	rte_errno = 0;
+	bpf = rte_bpf_load(NULL);
+	saved_errno = rte_errno;
+	rte_bpf_destroy(bpf);
+	RTE_TEST_ASSERT_NULL(bpf, "rte_bpf_load(NULL) did not return NULL\n");
+	RTE_TEST_ASSERT_EQUAL(saved_errno, EINVAL,
+		"rte_bpf_load(NULL) did not set rte_errno to EINVAL\n");
+
+	rte_errno = 0;
+	bpf = rte_bpf_elf_load(NULL, "a", "b");
+	saved_errno = rte_errno;
+	rte_bpf_destroy(bpf);
+	RTE_TEST_ASSERT_NULL(bpf, "rte_bpf_elf_load(NULL, \"a\", \"b\") did not return NULL\n");
+	RTE_TEST_ASSERT_EQUAL(saved_errno, EINVAL,
+		"rte_bpf_elf_load(NULL, \"a\", \"b\") did not set rte_errno to EINVAL\n");
+
+	rte_errno = 0;
+	bpf = rte_bpf_load_ex(NULL);
+	saved_errno = rte_errno;
+	rte_bpf_destroy(bpf);
+	RTE_TEST_ASSERT_NULL(bpf, "rte_bpf_load_ex(NULL) did not return NULL\n");
+	RTE_TEST_ASSERT_EQUAL(saved_errno, EINVAL,
+		"rte_bpf_load_ex(NULL) did not set rte_errno to EINVAL\n");
+
+	return 0;
+}
+REGISTER_FAST_TEST(bpf_load_null_autotest, NOHUGE_OK, ASAN_OK, test_bpf_load_null);
+
+/* Test calling wrong API for execution of a multi-argument eBPF program. */
+static int
+test_bpf_exec_wrong_nb_prog_arg(void)
+{
+	static const struct ebpf_insn ins[] = {
+		{ .code = (EBPF_ALU64 | EBPF_MOV | BPF_K), .dst_reg = EBPF_REG_0, .imm = 0 },
+		{ .code = (BPF_JMP | EBPF_EXIT), }
+	};
+	static const struct rte_bpf_prm_ex prm = {
+		.sz = sizeof(struct rte_bpf_prm_ex),
+		.origin = RTE_BPF_ORIGIN_RAW,
+		.raw.ins = ins,
+		.raw.nb_ins = RTE_DIM(ins),
+		.prog_arg = {
+			{ .type = RTE_BPF_ARG_RAW, .size = sizeof(uint64_t) },
+			{ .type = RTE_BPF_ARG_RAW, .size = sizeof(uint64_t) },
+		},
+		.nb_prog_arg = 2, /* Intentionally mismatched: expects 2, burst gives 1 */
+	};
+
+	struct rte_bpf *bpf;
+	uint64_t rc[1];
+	void *ctx[1] = {NULL};
+	uint32_t result;
+	int saved_errno;
+
+	bpf = rte_bpf_load_ex(&prm);
+	RTE_TEST_ASSERT_NOT_NULL(bpf, "rte_bpf_load_ex failed\n");
+
+	rte_errno = 0;
+	result = rte_bpf_exec_burst(bpf, ctx, rc, 1);
+	saved_errno = rte_errno;
+	rte_bpf_destroy(bpf);
+	RTE_TEST_ASSERT_EQUAL(result, 0, "rte_bpf_exec_burst did not return 0\n");
+	RTE_TEST_ASSERT_EQUAL(saved_errno, EINVAL,
+		"rte_bpf_exec_burst did not set rte_errno to EINVAL\n");
+
+	return 0;
+}
+REGISTER_FAST_TEST(bpf_exec_wrong_nb_prog_arg_autotest, NOHUGE_OK, ASAN_OK,
+		test_bpf_exec_wrong_nb_prog_arg);
+
+/* Test passing unsupported flags when executing an eBPF program. */
+static int
+test_bpf_exec_wrong_flags(void)
+{
+	static const struct ebpf_insn ins[] = {
+		{ .code = (EBPF_ALU64 | EBPF_MOV | BPF_K), .dst_reg = EBPF_REG_0, .imm = 0 },
+		{ .code = (BPF_JMP | EBPF_EXIT), }
+	};
+	static const struct rte_bpf_prm_ex prm = {
+		.sz = sizeof(struct rte_bpf_prm_ex),
+		.origin = RTE_BPF_ORIGIN_RAW,
+		.raw.ins = ins,
+		.raw.nb_ins = RTE_DIM(ins),
+		.prog_arg = { { .type = RTE_BPF_ARG_RAW, .size = sizeof(uint64_t) } },
+		.nb_prog_arg = 1,
+	};
+
+	struct rte_bpf *bpf;
+	uint64_t rc[1];
+	struct rte_bpf_prog_ctx ctx_ex[1] = {};
+	uint32_t result;
+	int saved_errno;
+
+	bpf = rte_bpf_load_ex(&prm);
+	RTE_TEST_ASSERT_NOT_NULL(bpf, "rte_bpf_load_ex failed\n");
+
+	rte_errno = 0;
+	result = rte_bpf_exec_burst_ex(bpf, ctx_ex, rc, 1, UINT64_MAX);
+	saved_errno = rte_errno;
+	rte_bpf_destroy(bpf);
+	RTE_TEST_ASSERT_EQUAL(result, 0, "rte_bpf_exec_burst_ex did not return 0\n");
+	RTE_TEST_ASSERT_EQUAL(saved_errno, EINVAL,
+		"rte_bpf_exec_burst_ex did not set rte_errno to EINVAL\n");
+
+	return 0;
+}
+REGISTER_FAST_TEST(bpf_exec_wrong_flags_autotest, NOHUGE_OK, ASAN_OK, test_bpf_exec_wrong_flags);
+
 static int
 test_bpf(void)
 {
@@ -4444,7 +4559,18 @@ REGISTER_FAST_TEST(bpf_elf_autotest, NOHUGE_OK, ASAN_OK, test_bpf_elf);
 static int
 test_bpf_convert(void)
 {
-	printf("BPF convert RTE_HAS_LIBPCAP is undefined, skipping test\n");
+	int dummy = 0;
+	struct rte_bpf_prm *prm;
+
+	prm = rte_bpf_convert(NULL);
+	rte_free(prm);
+	RTE_TEST_ASSERT_NULL(prm, "rte_bpf_convert(NULL) without libpcap did not return NULL\n");
+
+	prm = rte_bpf_convert((const struct bpf_program *)&dummy);
+	rte_free(prm);
+	RTE_TEST_ASSERT_NULL(prm, "rte_bpf_convert(&dummy) without libpcap did not return NULL\n");
+
+	printf("BPF convert RTE_HAS_LIBPCAP is undefined, skipping full test\n");
 	return TEST_SKIPPED;
 }
 
