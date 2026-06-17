@@ -18,6 +18,7 @@
 #include <rte_rib6.h>
 
 #include "rib_log.h"
+#include "rib6_internal.h"
 
 #define RTE_RIB_VALID_NODE	1
 /* Maximum length of a RIB6 name. */
@@ -413,6 +414,18 @@ rte_rib6_get_depth(const struct rte_rib6_node *node, uint8_t *depth)
 	}
 	*depth = node->depth;
 	return 0;
+}
+
+bool
+rte_rib6_node_has_children(const struct rte_rib6_node *node)
+{
+	return node->left != NULL || node->right != NULL;
+}
+
+struct rte_rib6_node *
+rte_rib6_get_parent(const struct rte_rib6_node *node)
+{
+	return node->parent;
 }
 
 void *

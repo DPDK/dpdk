@@ -32,3 +32,10 @@ DPDK_25 {
 
 	local: *;
 };
+
+INTERNAL {
+	global:
+
+	rte_rib6_node_has_children;
+	rte_rib6_get_parent;
+};

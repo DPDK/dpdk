@@ -22,6 +22,7 @@ static int32_t test_free_null(void);
 static int32_t test_add_del_invalid(void);
 static int32_t test_get_invalid(void);
 static int32_t test_lookup(void);
+static int32_t test_drift(void);
 
 #define MAX_ROUTES	(1 << 16)
 /** Maximum number of tbl8 for 2-byte entries */
@@ -387,6 +388,78 @@ test_lookup(void)
 	return TEST_SUCCESS;
 }
 
+/*
+ * Reproducer for the rsvd_tbl8s drift bug. depth_diff used to maintain
+ * rsvd_tbl8s is computed from the current RIB state, so it is not
+ * invariant between the ADD of a prefix and its later DEL when a
+ * covering parent prefix is removed in between.
+ *
+ * Layout: one /28 parent (fcde::/28) and three /48 siblings under it
+ * (fcde:0:6000::/48, fcde:1:6000::/48, fcde:2:6000::/48). The second
+ * hextet's high 12 bits are zero, so the three /48 IPs all fall inside
+ * the /28.
+ *
+ * One asymmetric sequence is enough to wrap the counter:
+ *   ADD /28                                  rsvd_tbl8s += 1
+ *   ADD /48 child_0,1,2 (with /28 parent)    rsvd_tbl8s += 2 each (+6)
+ *   DEL /28 (sibling /48 found)              rsvd_tbl8s -= 0
+ *   DEL /48 child_0,1,2 (no parent left)     rsvd_tbl8s -= 3 each (-9)
+ */
+static int32_t
+test_drift(void)
+{
+	struct rte_fib6_conf config = { 0 };
+	struct rte_fib6 *fib;
+	struct rte_ipv6_addr parent =
+		RTE_IPV6(0xfcde, 0, 0, 0, 0, 0, 0, 0);
+	struct rte_ipv6_addr child[3] = {
+		RTE_IPV6(0xfcde, 0, 0x6000, 0, 0, 0, 0, 0),
+		RTE_IPV6(0xfcde, 1, 0x6000, 0, 0, 0, 0, 0),
+		RTE_IPV6(0xfcde, 2, 0x6000, 0, 0, 0, 0, 0),
+	};
+	unsigned int c;
+	int ret;
+
+	config.max_routes = 1024;
+	config.rib_ext_sz = 0;
+	config.default_nh = 0;
+	config.type = RTE_FIB6_TRIE;
+	config.trie.nh_sz = RTE_FIB6_TRIE_2B;
+	config.trie.num_tbl8 = 256;
+
+	fib = rte_fib6_create(__func__, SOCKET_ID_ANY, &config);
+	RTE_TEST_ASSERT(fib != NULL, "Failed to create FIB\n");
+
+	ret = rte_fib6_add(fib, &parent, 28, 0xa);
+	RTE_TEST_ASSERT(ret == 0, "ADD /28 failed (ret=%d)\n", ret);
+
+	for (c = 0; c < 3; c++) {
+		ret = rte_fib6_add(fib, &child[c], 48, 0xb + c);
+		RTE_TEST_ASSERT(ret == 0,
+			"ADD /48 child %u failed (ret=%d)\n", c, ret);
+	}
+
+	ret = rte_fib6_delete(fib, &parent, 28);
+	RTE_TEST_ASSERT(ret == 0, "DEL /28 failed (ret=%d)\n", ret);
+
+	for (c = 0; c < 3; c++) {
+		ret = rte_fib6_delete(fib, &child[c], 48);
+		RTE_TEST_ASSERT(ret == 0,
+			"DEL /48 child %u failed (ret=%d)\n", c, ret);
+	}
+
+	/* Pre-fix: -ENOSPC. Post-fix: succeeds. */
+	ret = rte_fib6_add(fib, &parent, 28, 0xe);
+	RTE_TEST_ASSERT(ret == 0,
+		"Fresh ADD /28 spuriously failed (ret=%d)\n", ret);
+
+	ret = rte_fib6_delete(fib, &parent, 28);
+	RTE_TEST_ASSERT(ret == 0, "Final DEL /28 failed (ret=%d)\n", ret);
+
+	rte_fib6_free(fib);
+	return TEST_SUCCESS;
+}
+
 static struct unit_test_suite fib6_fast_tests = {
 	.suite_name = "fib6 autotest",
 	.setup = NULL,
@@ -397,6 +470,7 @@ static struct unit_test_suite fib6_fast_tests = {
 	TEST_CASE(test_add_del_invalid),
 	TEST_CASE(test_get_invalid),
 	TEST_CASE(test_lookup),
+	TEST_CASE(test_drift),
 	TEST_CASES_END()
 	}
 };
