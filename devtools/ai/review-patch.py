@@ -19,6 +19,7 @@ from datetime import date
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Any, Iterator
+from enum import Flag, auto
 
 from _common import (
     PROVIDERS,
@@ -120,6 +121,12 @@ EXIT_WARNINGS = 2
 EXIT_ERRORS = 3
 
 
+class ReviewParseState(Flag):
+    NORMAL = auto()
+    IN_ERROR = auto()
+    IN_WARNING = auto()
+
+
 def classify_review(review_text: str, output_format: str) -> int:
     """Classify review result and return appropriate exit code.
 
@@ -147,21 +154,42 @@ def classify_review(review_text: str, output_format: str) -> int:
             pass  # Fall through to text scanning
 
     if not has_errors and not has_warnings:
-        # Scan review text for severity indicators.
-        # Match section headers and inline markers across text/markdown/html.
-        for line in review_text.splitlines():
-            stripped = line.strip().lower()
-            # Skip quoted patch context lines
-            if stripped.startswith(">") or stripped.startswith("diff --git"):
+        # Matches against error or warning section headers
+        rgx_header_match: str = r"(#+\s)?(\*+)?(<h[1-3]>)?{err_or_warn}"
+        # Matches against observed filler text
+        rgx_filler_match: str = r"(none(.)?$|\(must fix\)$|$)"
+
+        curr_line: str
+        for curr_line in review_text.splitlines():
+            stripped: str = curr_line.strip().lower()
+
+            if (
+                stripped.startswith(">")
+                or stripped.startswith("diff --git")
+                or stripped == ""
+            ):
                 continue
-            if re.match(r"^(#{1,3}\s+)?(\*{0,2})error", stripped) or re.match(
-                r"^<h[1-3]>\s*error", stripped
+
+            elif re.match(rgx_header_match.format(err_or_warn="error"), stripped):
+                curr_state = ReviewParseState.IN_ERROR
+
+            elif re.match(rgx_header_match.format(err_or_warn="warning"), stripped):
+                curr_state = ReviewParseState.IN_WARNING
+
+            elif curr_state == ReviewParseState.IN_ERROR and not re.match(
+                rgx_filler_match, stripped
             ):
+                curr_state = ReviewParseState.NORMAL
                 has_errors = True
-            elif re.match(r"^(#{1,3}\s+)?(\*{0,2})warning", stripped) or re.match(
-                r"^<h[1-3]>\s*warning", stripped
+
+            elif curr_state == ReviewParseState.IN_WARNING and not re.match(
+                rgx_filler_match, stripped
             ):
+                curr_state = ReviewParseState.NORMAL
                 has_warnings = True
+
+            else:
+                curr_state = ReviewParseState.NORMAL
 
     if has_errors:
         return EXIT_ERRORS
