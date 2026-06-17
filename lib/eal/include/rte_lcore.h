@@ -31,11 +31,17 @@ RTE_DECLARE_PER_LCORE(unsigned, _lcore_id);  /**< Per thread "lcore id". */
  * The lcore role (used in RTE or not).
  */
 enum rte_lcore_role_t {
-	ROLE_RTE,
-	ROLE_OFF,
-	ROLE_SERVICE,
-	ROLE_NON_EAL,
+	RTE_LCORE_ROLE_RTE,
+	RTE_LCORE_ROLE_OFF,
+	RTE_LCORE_ROLE_SERVICE,
+	RTE_LCORE_ROLE_NON_EAL,
 };
+
+/* Old lcore role aliases for backward compatibility. */
+#define ROLE_RTE	RTE_LCORE_ROLE_RTE
+#define ROLE_OFF	RTE_LCORE_ROLE_OFF
+#define ROLE_SERVICE	RTE_LCORE_ROLE_SERVICE
+#define ROLE_NON_EAL	RTE_LCORE_ROLE_NON_EAL
 
 /**
  * Get a lcore's role.
@@ -308,7 +314,8 @@ rte_lcore_callback_unregister(void *handle);
 typedef int (*rte_lcore_iterate_cb)(unsigned int lcore_id, void *arg);
 
 /**
- * Iterate on all active lcores (ROLE_RTE, ROLE_SERVICE and ROLE_NON_EAL).
+ * Iterate on all active lcores (RTE_LCORE_ROLE_RTE, RTE_LCORE_ROLE_SERVICE
+ * and RTE_LCORE_ROLE_NON_EAL).
  * No modification on the lcore states is allowed in the callback.
  *
  * Note: as opposed to init/uninit callbacks, iteration callbacks can be

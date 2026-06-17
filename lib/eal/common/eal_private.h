@@ -433,7 +433,7 @@ uint64_t get_tsc_freq_arch(void);
  * Allocate a free lcore to associate to a non-EAL thread.
  *
  * @return
- *   - the id of a lcore with role ROLE_NON_EAL on success.
+ *   - the id of a lcore with role RTE_LCORE_ROLE_NON_EAL on success.
  *   - RTE_MAX_LCORE if none was available or initializing was refused (see
  *     rte_lcore_callback_register).
  */
@@ -444,7 +444,7 @@ unsigned int eal_lcore_non_eal_allocate(void);
  * Counterpart of eal_lcore_non_eal_allocate().
  *
  * @param lcore_id
- *   The lcore with role ROLE_NON_EAL to release.
+ *   The lcore with role RTE_LCORE_ROLE_NON_EAL to release.
  */
 void eal_lcore_non_eal_release(unsigned int lcore_id);
 

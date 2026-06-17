@@ -353,7 +353,7 @@ test_mempool_sp_sc(void)
 		ret = -1;
 		goto err;
 	}
-	if (rte_eal_lcore_role(lcore_next) != ROLE_RTE) {
+	if (rte_eal_lcore_role(lcore_next) != RTE_LCORE_ROLE_RTE) {
 		ret = -1;
 		goto err;
 	}

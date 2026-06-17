@@ -98,9 +98,9 @@ thread_is_valid(struct pmd_internals *softnic, uint32_t thread_id)
 	if (thread_id == rte_get_main_lcore())
 		return 0; /* FALSE */
 
-	if (softnic->params.sc && rte_lcore_has_role(thread_id, ROLE_SERVICE))
+	if (softnic->params.sc && rte_lcore_has_role(thread_id, RTE_LCORE_ROLE_SERVICE))
 		return 1; /* TRUE */
-	if (!softnic->params.sc && rte_lcore_has_role(thread_id, ROLE_RTE))
+	if (!softnic->params.sc && rte_lcore_has_role(thread_id, RTE_LCORE_ROLE_RTE))
 		return 1; /* TRUE */
 
 	return 0; /* FALSE */

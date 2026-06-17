@@ -107,7 +107,7 @@ rte_service_init(void)
 	int i;
 	struct rte_config *cfg = rte_eal_get_configuration();
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
-		if (lcore_config[i].core_role == ROLE_SERVICE) {
+		if (lcore_config[i].core_role == RTE_LCORE_ROLE_SERVICE) {
 			if ((unsigned int)i == cfg->main_lcore)
 				continue;
 			rte_service_lcore_add(i);
@@ -718,7 +718,7 @@ set_lcore_state(uint32_t lcore, int32_t state)
 	lcore_config[lcore].core_role = state;
 
 	/* update per-lcore optimized state tracking */
-	cs->is_service_core = (state == ROLE_SERVICE);
+	cs->is_service_core = (state == RTE_LCORE_ROLE_SERVICE);
 
 	rte_eal_trace_service_lcore_state_change(lcore, state);
 }
@@ -734,7 +734,7 @@ rte_service_lcore_reset_all(void)
 
 		if (cs->is_service_core) {
 			rte_bitset_clear_all(cs->mapped_services, RTE_SERVICE_NUM_MAX);
-			set_lcore_state(i, ROLE_RTE);
+			set_lcore_state(i, RTE_LCORE_ROLE_RTE);
 			/* runstate act as guard variable Use
 			 * store-release memory order here to synchronize
 			 * with load-acquire in runstate read functions.
@@ -761,7 +761,7 @@ rte_service_lcore_add(uint32_t lcore)
 	if (cs->is_service_core)
 		return -EALREADY;
 
-	set_lcore_state(lcore, ROLE_SERVICE);
+	set_lcore_state(lcore, RTE_LCORE_ROLE_SERVICE);
 
 	/* ensure that after adding a core the mask and state are defaults */
 	rte_bitset_clear_all(cs->mapped_services, RTE_SERVICE_NUM_MAX);
@@ -793,7 +793,7 @@ rte_service_lcore_del(uint32_t lcore)
 			RUNSTATE_STOPPED)
 		return -EBUSY;
 
-	set_lcore_state(lcore, ROLE_RTE);
+	set_lcore_state(lcore, RTE_LCORE_ROLE_RTE);
 
 	rte_smp_wmb();
 	return 0;
@@ -1126,7 +1126,7 @@ rte_service_dump(FILE *f, uint32_t id)
 
 	fprintf(f, "Service Cores Summary\n");
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
-		if (lcore_config[i].core_role != ROLE_SERVICE)
+		if (lcore_config[i].core_role != RTE_LCORE_ROLE_SERVICE)
 			continue;
 
 		service_dump_calls_per_lcore(f, i);
