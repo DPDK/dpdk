@@ -3583,18 +3583,18 @@ iavf_rx_burst_mode_get(struct rte_eth_dev *dev,
 		       __rte_unused uint16_t queue_id,
 		       struct rte_eth_burst_mode *mode)
 {
-	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
-	size_t i;
+	struct iavf_adapter *adapter =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	enum iavf_rx_func_type rx_func_type = adapter->rx_func_type;
 
-	for (i = 0; i < RTE_DIM(iavf_rx_path_infos); i++) {
-		if (pkt_burst == iavf_rx_path_infos[i].pkt_burst) {
-			snprintf(mode->info, sizeof(mode->info), "%s",
-				 iavf_rx_path_infos[i].info);
-			return 0;
-		}
-	}
+	if ((size_t)rx_func_type >= RTE_DIM(iavf_rx_path_infos) ||
+			iavf_rx_path_infos[rx_func_type].info == NULL)
+		return -EINVAL;
 
-	return -EINVAL;
+	snprintf(mode->info, sizeof(mode->info), "%s",
+		 iavf_rx_path_infos[rx_func_type].info);
+
+	return 0;
 }
 
 static const struct ci_tx_path_info iavf_tx_path_infos[] = {
@@ -3701,18 +3701,18 @@ iavf_tx_burst_mode_get(struct rte_eth_dev *dev,
 		       __rte_unused uint16_t queue_id,
 		       struct rte_eth_burst_mode *mode)
 {
-	eth_tx_burst_t pkt_burst = dev->tx_pkt_burst;
-	size_t i;
+	struct iavf_adapter *adapter =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	enum iavf_tx_func_type tx_func_type = adapter->tx_func_type;
 
-	for (i = 0; i < RTE_DIM(iavf_tx_path_infos); i++) {
-		if (pkt_burst == iavf_tx_path_infos[i].pkt_burst) {
-			snprintf(mode->info, sizeof(mode->info), "%s",
-				 iavf_tx_path_infos[i].info);
-			return 0;
-		}
-	}
+	if ((size_t)tx_func_type >= RTE_DIM(iavf_tx_path_infos) ||
+			iavf_tx_path_infos[tx_func_type].info == NULL)
+		return -EINVAL;
 
-	return -EINVAL;
+	snprintf(mode->info, sizeof(mode->info), "%s",
+		 iavf_tx_path_infos[tx_func_type].info);
+
+	return 0;
 }
 
 static uint16_t
