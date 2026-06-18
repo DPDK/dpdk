@@ -7119,6 +7119,7 @@ flow_dv_counter_free(struct rte_eth_dev *dev, uint32_t counter)
 	struct mlx5_flow_counter_pool *pool = NULL;
 	struct mlx5_flow_counter *cnt;
 	enum mlx5_counter_type cnt_type;
+	uint32_t query_gen;
 
 	if (!counter)
 		return;
@@ -7143,16 +7144,17 @@ flow_dv_counter_free(struct rte_eth_dev *dev, uint32_t counter)
 	cnt->pool = pool;
 	/*
 	 * Put the counter back to list to be updated in none fallback mode.
-	 * Currently, we are using two list alternately, while one is in query,
+	 * Currently, we are using two lists alternately, while one is in query,
 	 * add the freed counter to the other list based on the pool query_gen
 	 * value. After query finishes, add counter the list to the global
-	 * container counter list. The list changes while query starts. In
-	 * this case, lock will not be needed as query callback and release
-	 * function both operate with the different list.
+	 * container counter list. Cache query_gen into a local variable before
+	 * TAILQ_INSERT_TAIL, since the macro evaluates its head argument
+	 * multiple times and pool->query_gen is a volatile bit-field.
 	 */
 	if (!priv->sh->sws_cmng.counter_fallback) {
 		rte_spinlock_lock(&pool->csl);
-		TAILQ_INSERT_TAIL(&pool->counters[pool->query_gen], cnt, next);
+		query_gen = pool->query_gen;
+		TAILQ_INSERT_TAIL(&pool->counters[query_gen], cnt, next);
 		rte_spinlock_unlock(&pool->csl);
 	} else {
 		cnt->dcs_when_free = cnt->dcs_when_active;
