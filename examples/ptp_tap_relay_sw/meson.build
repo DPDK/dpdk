@@ -10,4 +10,3 @@ sources = files(
         'ptp_tap_relay_sw.c',
 )
 deps += ['net']
-cflags += no_shadow_cflag
