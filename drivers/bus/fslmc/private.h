@@ -11,4 +11,6 @@
 
 extern struct rte_bus rte_fslmc_bus;
 
+void fslmc_bus_remove_device(struct rte_dpaa2_device *dev);
+
 #endif /* BUS_FSLMC_PRIVATE_H */

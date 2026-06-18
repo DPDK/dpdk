@@ -86,6 +86,22 @@ insert_in_device_list(struct rte_dpaa2_device *newdev)
 }
 
 static void
+fslmc_free_device(struct rte_device *rte_dev)
+{
+	struct rte_dpaa2_device *dev = RTE_BUS_DEVICE(rte_dev, *dev);
+
+	rte_intr_instance_free(dev->intr_handle);
+	free(dev);
+}
+
+void
+fslmc_bus_remove_device(struct rte_dpaa2_device *dev)
+{
+	rte_bus_remove_device(&rte_fslmc_bus, &dev->device);
+	fslmc_free_device(&dev->device);
+}
+
+static void
 dump_device_list(void)
 {
 	struct rte_dpaa2_device *dev;
@@ -369,11 +385,8 @@ scan_fail_cleanup:
 	closedir(dir);
 
 	/* Remove all devices in the list */
-	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus) {
-		rte_bus_remove_device(&rte_fslmc_bus, &dev->device);
-		rte_intr_instance_free(dev->intr_handle);
-		free(dev);
-	}
+	RTE_BUS_FOREACH_DEV(dev, &rte_fslmc_bus)
+		fslmc_bus_remove_device(dev);
 scan_fail:
 	DPAA2_BUS_DEBUG("FSLMC Bus Not Available. Skipping (%d)", ret);
 	/* Irrespective of failure, scan only return success */
