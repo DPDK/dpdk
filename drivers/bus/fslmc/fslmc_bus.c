@@ -628,22 +628,24 @@ fslmc_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
 }
 
 static int
-fslmc_bus_unplug_device(struct rte_device *rte_dev);
-
-static int
-rte_fslmc_close(struct rte_bus *bus)
+fslmc_cleanup(struct rte_bus *bus)
 {
-	struct rte_dpaa2_device *dev;
-	int ret = 0;
+	int ret;
 
-	RTE_BUS_FOREACH_DEV(dev, bus) {
-		if (rte_dev_is_probed(&dev->device) && fslmc_bus_unplug_device(&dev->device))
-			DPAA2_BUS_ERR("Unable to remove %s", dev->device.name);
-	}
+	ret = rte_bus_generic_cleanup(bus);
+	if (ret)
+		DPAA2_BUS_INFO("Unable to cleanup devices %d", ret);
 
 	ret = fslmc_vfio_close_group();
 	if (ret)
 		DPAA2_BUS_INFO("Unable to close devices %d", ret);
+
+	while (!TAILQ_EMPTY(&fslmc_control_devices)) {
+		struct rte_device *rte_dev = TAILQ_FIRST(&fslmc_control_devices);
+		struct rte_dpaa2_device *dev = RTE_BUS_DEVICE(rte_dev, *dev);
+
+		fslmc_remove_control_device(dev);
+	}
 
 	return 0;
 }
@@ -766,7 +768,8 @@ fslmc_bus_unplug_device(struct rte_device *rte_dev)
 struct rte_bus rte_fslmc_bus = {
 	.scan = rte_fslmc_scan,
 	.probe = rte_fslmc_probe,
-	.cleanup = rte_fslmc_close,
+	.free_device = fslmc_free_device,
+	.cleanup = fslmc_cleanup,
 	.parse = rte_fslmc_parse,
 	.dev_compare = fslmc_dev_compare,
 	.find_device = rte_bus_generic_find_device,
