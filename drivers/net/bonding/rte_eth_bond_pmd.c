@@ -1619,8 +1619,7 @@ bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, uint8_t mode)
 		eth_dev->rx_pkt_burst = bond_ethdev_rx_burst;
 		break;
 	case BONDING_MODE_8023AD:
-		if (bond_mode_8023ad_enable(eth_dev) != 0)
-			return -1;
+		bond_mode_8023ad_enable(eth_dev);
 
 		if (internals->mode4.dedicated_queues.enabled == 0) {
 			eth_dev->rx_pkt_burst = bond_ethdev_rx_burst_8023ad;
@@ -1641,13 +1640,13 @@ bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, uint8_t mode)
 		eth_dev->rx_pkt_burst = bond_ethdev_rx_burst_active_backup;
 		break;
 	case BONDING_MODE_ALB:
-		if (bond_mode_alb_enable(eth_dev) != 0)
-			return -1;
+		bond_mode_alb_enable(eth_dev);
 
 		eth_dev->tx_pkt_burst = bond_ethdev_tx_burst_alb;
 		eth_dev->rx_pkt_burst = bond_ethdev_rx_burst_alb;
 		break;
 	default:
+		RTE_BOND_LOG(ERR, "Invalid mode %#x", mode);
 		return -1;
 	}
 

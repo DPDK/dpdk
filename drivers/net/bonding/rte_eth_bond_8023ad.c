@@ -1287,7 +1287,7 @@ bond_mode_8023ad_setup(struct rte_eth_dev *dev,
 		bond_mode_8023ad_start(dev);
 }
 
-int
+void
 bond_mode_8023ad_enable(struct rte_eth_dev *bond_dev)
 {
 	struct bond_dev_private *internals = bond_dev->data->dev_private;
@@ -1296,8 +1296,6 @@ bond_mode_8023ad_enable(struct rte_eth_dev *bond_dev)
 	for (i = 0; i < internals->active_member_count; i++)
 		bond_mode_8023ad_activate_member(bond_dev,
 				internals->active_members[i]);
-
-	return 0;
 }
 
 int
