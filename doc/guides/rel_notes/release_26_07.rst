@@ -154,6 +154,10 @@ New Features
   * Added ``eof`` devarg to use link state to signal end of receive file input.
   * Added unit test suite.
 
+* **Updated Marvell cnxk crypto driver.**
+
+  * Added support for ML-KEM and ML-DSA on CN20K platform.
+
 * **Extended BPF API.**
 
   * Added an extensible BPF loading API comprising the function

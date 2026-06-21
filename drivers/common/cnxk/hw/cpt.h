@@ -58,6 +58,7 @@ enum cpt_eng_type {
 	CPT_ENG_TYPE_AE = 1,
 	CPT_ENG_TYPE_SE = 2,
 	CPT_ENG_TYPE_IE = 3,
+	CPT_ENG_TYPE_RE = 4,
 	CPT_MAX_ENG_TYPES,
 };
 

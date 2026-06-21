@@ -28,6 +28,9 @@ cnxk_cpt_default_ff_get(void)
 	if (roc_model_is_cn10ka_b0() || roc_model_is_cn10kb() || roc_model_is_cn20k())
 		ff |= RTE_CRYPTODEV_FF_SECURITY_RX_INJECT;
 
+	if (roc_model_is_cn20k())
+		ff |= RTE_CRYPTODEV_FF_MLDSA_SIGN_PREHASH;
+
 	return ff;
 }
 
@@ -54,6 +57,14 @@ cnxk_cpt_eng_grp_add(struct roc_cpt *roc_cpt)
 	if (ret < 0) {
 		plt_err("Could not add CPT AE engines");
 		return -ENOTSUP;
+	}
+
+	if (roc_model_is_cn20k()) {
+		ret = roc_cpt_eng_grp_add(roc_cpt, CPT_ENG_TYPE_RE);
+		if (ret < 0) {
+			plt_err("Could not add CPT RE engines");
+			return ret;
+		}
 	}
 
 	return 0;

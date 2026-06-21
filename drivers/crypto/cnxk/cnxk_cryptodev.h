@@ -10,8 +10,9 @@
 
 #include "roc_ae.h"
 #include "roc_cpt.h"
+#include "roc_re_ml_tables.h"
 
-#define CNXK_CPT_MAX_CAPS		 60
+#define CNXK_CPT_MAX_CAPS		 62
 #define CNXK_SEC_IPSEC_CRYPTO_MAX_CAPS	 16
 #define CNXK_SEC_TLS_1_3_CRYPTO_MAX_CAPS 3
 #define CNXK_SEC_TLS_1_2_CRYPTO_MAX_CAPS 7
@@ -33,6 +34,7 @@ struct cnxk_cpt_vf {
 		sec_dtls_1_2_crypto_caps[CNXK_SEC_TLS_1_2_CRYPTO_MAX_CAPS];
 	struct rte_security_capability sec_caps[CNXK_SEC_MAX_CAPS];
 	uint64_t cnxk_fpm_iova[ROC_AE_EC_ID_PMAX];
+	uint64_t cnxk_ml_iova[ROC_RE_ML_ZETA_IDX_MAX];
 	struct roc_ae_ec_group *ec_grp[ROC_AE_EC_ID_PMAX];
 	uint16_t max_qps_limit;
 	uint16_t rx_inject_qp;

@@ -10,6 +10,7 @@
 #include <rte_malloc.h>
 
 #include "roc_ae.h"
+#include "roc_re.h"
 
 #include "cnxk_cryptodev_ops.h"
 
@@ -24,8 +25,11 @@ struct cnxk_ae_sess {
 		struct rte_crypto_rsa_xform rsa_ctx;
 		struct rte_crypto_modex_xform mod_ctx;
 		struct roc_ae_ec_ctx ec_ctx;
+		struct rte_crypto_ml_kem_xform ml_kem_ctx;
+		struct rte_crypto_ml_dsa_xform ml_dsa_ctx;
 	};
 	uint64_t *cnxk_fpm_iova;
+	uint64_t *cnxk_ml_iova;
 	struct roc_ae_ec_group **ec_grp;
 	uint64_t cpt_inst_w4;
 	uint64_t cpt_inst_w7;
@@ -50,6 +54,15 @@ struct cnxk_ae_sess {
 		} w0;
 		uint8_t rsvd[256];
 	} hw_ctx __plt_aligned(ROC_ALIGN);
+};
+
+static const uint8_t mldsa_hash_algo[] = {
+	[RTE_CRYPTO_AUTH_SHA3_224] = 0xA,
+	[RTE_CRYPTO_AUTH_SHA3_256] = 0xB,
+	[RTE_CRYPTO_AUTH_SHA3_384] = 0xC,
+	[RTE_CRYPTO_AUTH_SHA3_512] = 0xD,
+	[RTE_CRYPTO_AUTH_SHAKE_128] = 0xE,
+	[RTE_CRYPTO_AUTH_SHAKE_256] = 0xF,
 };
 
 static __rte_always_inline void
@@ -260,6 +273,32 @@ _exit:
 }
 
 static __rte_always_inline int
+cnxk_ae_fill_ml_kem_params(struct cnxk_ae_sess *sess,
+			   struct rte_crypto_asym_xform *xform)
+{
+	struct rte_crypto_ml_kem_xform *ml_kem = &sess->ml_kem_ctx;
+	if (xform->mlkem.type == RTE_CRYPTO_ML_KEM_NONE)
+		return -EINVAL;
+
+	ml_kem->type = xform->mlkem.type;
+	return 0;
+}
+
+static __rte_always_inline int
+cnxk_ae_fill_ml_dsa_params(struct cnxk_ae_sess *sess,
+			   struct rte_crypto_asym_xform *xform)
+{
+	struct rte_crypto_ml_dsa_xform *ml_dsa = &sess->ml_dsa_ctx;
+	if (xform->mldsa.type == RTE_CRYPTO_ML_DSA_NONE)
+		return -EINVAL;
+
+	ml_dsa->type = xform->mldsa.type;
+	ml_dsa->sign_deterministic = xform->mldsa.sign_deterministic;
+	ml_dsa->sign_prehash = xform->mldsa.sign_prehash;
+	return 0;
+}
+
+static __rte_always_inline int
 cnxk_ae_fill_session_parameters(struct cnxk_ae_sess *sess,
 				struct rte_crypto_asym_xform *xform)
 {
@@ -283,6 +322,12 @@ cnxk_ae_fill_session_parameters(struct cnxk_ae_sess *sess,
 	case RTE_CRYPTO_ASYM_XFORM_SM2:
 	case RTE_CRYPTO_ASYM_XFORM_EDDSA:
 		ret = cnxk_ae_fill_ec_params(sess, xform);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_ML_KEM:
+		ret = cnxk_ae_fill_ml_kem_params(sess, xform);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_ML_DSA:
+		ret = cnxk_ae_fill_ml_dsa_params(sess, xform);
 		break;
 	default:
 		return -ENOTSUP;
@@ -560,6 +605,280 @@ cnxk_ae_enqueue_rsa_op(struct rte_crypto_op *op, struct roc_ae_buf_ptr *meta_buf
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		return -EINVAL;
 	}
+	return 0;
+}
+
+static __rte_always_inline int __rte_hot
+cnxk_ae_enqueue_ml_kem_op(struct rte_crypto_op *op, struct roc_ae_buf_ptr *meta_buf,
+		       struct cnxk_ae_sess *sess, struct cpt_inst_s *inst)
+{
+	size_t metabuf_len = cnxk_cpt_asym_get_mlen(), reqbuf_len;
+	struct rte_crypto_ml_kem_op *mlkem = &op->asym->mlkem;
+	union cpt_inst_w4 w4;
+	uint32_t dlen = 0;
+	uint16_t param2;
+	uint8_t *dptr;
+
+	/* Input buffer */
+	dptr = meta_buf->vaddr;
+	inst->dptr = (uintptr_t)dptr;
+
+	switch (mlkem->op) {
+	case RTE_CRYPTO_ML_KEM_OP_KEYGEN:
+		reqbuf_len = mlkem->keygen.d.length + mlkem->keygen.z.length;
+		if (reqbuf_len > (metabuf_len - dlen)) {
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			return -ENOMEM;
+		}
+
+		memcpy(dptr, mlkem->keygen.d.data, mlkem->keygen.d.length);
+		dptr += mlkem->keygen.d.length;
+		memcpy(dptr, mlkem->keygen.z.data, mlkem->keygen.z.length);
+		dptr += mlkem->keygen.z.length;
+
+		dlen = mlkem->keygen.d.length + mlkem->keygen.z.length;
+		w4.s.opcode_major = ROC_RE_MAJOR_OP_MLKEM;
+		w4.s.opcode_minor = ROC_RE_MINOR_OP_MLKEM_KEYGEN;
+		param2 = sess->ml_kem_ctx.type;
+		param2 |= (!!dlen << ROC_RE_ML_KEM_PARAM2_INSEED_BIT);
+		break;
+	case RTE_CRYPTO_ML_KEM_OP_ENCAP:
+		reqbuf_len = mlkem->encap.message.length + mlkem->encap.ek.length;
+		if (reqbuf_len > (metabuf_len - dlen)) {
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			return -ENOMEM;
+		}
+
+		memcpy(dptr, mlkem->encap.message.data, mlkem->encap.message.length);
+		dptr += mlkem->encap.message.length;
+		memcpy(dptr, mlkem->encap.ek.data, mlkem->encap.ek.length);
+		dptr += mlkem->encap.ek.length;
+
+		dlen = mlkem->encap.message.length + mlkem->encap.ek.length;
+		w4.s.opcode_major = ROC_RE_MAJOR_OP_MLKEM;
+		w4.s.opcode_minor = ROC_RE_MINOR_OP_MLKEM_ENCAP;
+		param2 = sess->ml_kem_ctx.type;
+		param2 |= (!!mlkem->encap.message.length << ROC_RE_ML_KEM_PARAM2_INMSG_BIT);
+		break;
+	case RTE_CRYPTO_ML_KEM_OP_DECAP:
+		reqbuf_len = mlkem->decap.dk.length + mlkem->decap.cipher.length;
+		if (reqbuf_len > (metabuf_len - dlen)) {
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			return -ENOMEM;
+		}
+
+		memcpy(dptr, mlkem->decap.dk.data, mlkem->decap.dk.length);
+		dptr += mlkem->decap.dk.length;
+		memcpy(dptr, mlkem->decap.cipher.data, mlkem->decap.cipher.length);
+		dptr += mlkem->decap.cipher.length;
+
+		dlen = mlkem->decap.cipher.length + mlkem->decap.dk.length;
+		w4.s.opcode_major = ROC_RE_MAJOR_OP_MLKEM;
+		w4.s.opcode_minor = ROC_RE_MINOR_OP_MLKEM_DECAP;
+		param2 = sess->ml_kem_ctx.type;
+		break;
+	default:
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		return -EINVAL;
+	}
+
+	w4.s.param1 = 0;
+	w4.s.param2 = param2;
+	w4.s.dlen = dlen;
+
+	inst->w4.u64 = w4.u64;
+
+	/* Reuse entire space of meta buffer as output is large in PQC */
+	inst->rptr = (uintptr_t)meta_buf->vaddr;
+
+	return 0;
+}
+
+static __rte_always_inline int __rte_hot
+cnxk_ae_enqueue_ml_dsa_op(struct rte_crypto_op *op, struct roc_ae_buf_ptr *meta_buf,
+		       struct cnxk_ae_sess *sess, struct cpt_inst_s *inst)
+{
+	size_t metabuf_len = cnxk_cpt_asym_get_mlen(), reqbuf_len;
+	struct rte_crypto_ml_dsa_op *mldsa = &op->asym->mldsa;
+	enum rte_crypto_auth_algorithm hash;
+	bool sign_deterministic;
+	union cpt_inst_w4 w4;
+	uint16_t param1 = 0;
+	uint32_t dlen = 0;
+	uint16_t param2;
+	uint8_t *dptr;
+	uint8_t minor;
+
+	/* Input buffer */
+	dptr = meta_buf->vaddr;
+	inst->dptr = (uintptr_t)dptr;
+
+	switch (mldsa->op) {
+	case RTE_CRYPTO_ML_DSA_OP_KEYGEN:
+		reqbuf_len = mldsa->keygen.seed.length;
+		if (reqbuf_len > (metabuf_len - dlen)) {
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			return -ENOMEM;
+		}
+
+		param2 = sess->ml_dsa_ctx.type;
+
+		memcpy(dptr, mldsa->keygen.seed.data, mldsa->keygen.seed.length);
+		dptr += mldsa->keygen.seed.length;
+		param2 |= (!!mldsa->keygen.seed.length << ROC_RE_ML_DSA_PARAM2_SEED_BIT);
+
+		dlen += mldsa->keygen.seed.length;
+		w4.s.opcode_major = ROC_RE_MAJOR_OP_MLDSA;
+		w4.s.opcode_minor = ROC_RE_MINOR_OP_MLDSA_KEYGEN;
+		break;
+	case RTE_CRYPTO_ML_DSA_OP_SIGN:
+		reqbuf_len = mldsa->siggen.message.length + mldsa->siggen.privkey.length +
+			     mldsa->siggen.ctx.length + mldsa->siggen.mu.length +
+			     mldsa->siggen.seed.length;
+
+		if (reqbuf_len > (metabuf_len - dlen)) {
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			return -ENOMEM;
+		}
+
+		sign_deterministic = sess->ml_dsa_ctx.sign_deterministic;
+		hash = op->asym->mldsa.siggen.hash;
+		minor = ROC_RE_MINOR_OP_MLDSA_SIGN;
+
+		param1 = mldsa->siggen.message.length;
+		param2 = sess->ml_dsa_ctx.type;
+		if (hash == 0) {
+			minor |= (0 << ROC_RE_ML_DSA_MINOR_MSG_TYPE_BIT);
+		} else if (mldsa->siggen.mu.length != 0) {
+			minor |= (3 << ROC_RE_ML_DSA_MINOR_MSG_TYPE_BIT);
+		} else {
+			if (!sess->ml_dsa_ctx.sign_prehash ||
+				hash >= RTE_DIM(mldsa_hash_algo) || mldsa_hash_algo[hash] == 0) {
+				op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+				return -EINVAL;
+			}
+
+			minor |= (1 << ROC_RE_ML_DSA_MINOR_MSG_TYPE_BIT);
+			param2 |= (mldsa_hash_algo[hash] << ROC_RE_ML_DSA_PARAM2_SIGN_BIT);
+		}
+
+		minor |= ((sign_deterministic ? 0 : 2) << ROC_RE_ML_DSA_MINOR_SIGN_TYPE_BIT);
+
+		if (!sign_deterministic) {
+			if (!mldsa->siggen.seed.length) {
+				op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+				return -EINVAL;
+			}
+
+			memcpy(dptr, mldsa->siggen.seed.data, mldsa->siggen.seed.length);
+			dptr += mldsa->siggen.seed.length;
+			dlen += mldsa->siggen.seed.length;
+		}
+
+		memcpy(dptr, mldsa->siggen.privkey.data, mldsa->siggen.privkey.length);
+		dptr += mldsa->siggen.privkey.length;
+		dlen += mldsa->siggen.privkey.length;
+
+		memcpy(dptr, mldsa->siggen.ctx.data, mldsa->siggen.ctx.length);
+		dptr += mldsa->siggen.ctx.length;
+		dlen += mldsa->siggen.ctx.length;
+		if (mldsa->siggen.ctx.length > (UINT16_MAX >> ROC_RE_ML_DSA_PARAM2_CTXN_BIT)) {
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			return -EINVAL;
+		}
+		param2 |= ((uint16_t)mldsa->siggen.ctx.length
+				<< ROC_RE_ML_DSA_PARAM2_CTXN_BIT);
+
+		if (mldsa->siggen.mu.length != 0) {
+			memcpy(dptr, mldsa->siggen.mu.data, mldsa->siggen.mu.length);
+			dptr += mldsa->siggen.mu.length;
+			dlen += mldsa->siggen.mu.length;
+			param1 = mldsa->siggen.mu.length;
+		} else if (mldsa->siggen.message.length != 0) {
+			memcpy(dptr, mldsa->siggen.message.data, mldsa->siggen.message.length);
+			dptr += mldsa->siggen.message.length;
+			dlen += mldsa->siggen.message.length;
+		}
+
+		w4.s.opcode_major = ROC_RE_MAJOR_OP_MLDSA;
+		w4.s.opcode_minor = minor;
+		break;
+	case RTE_CRYPTO_ML_DSA_OP_VERIFY:
+		reqbuf_len = mldsa->sigver.message.length + mldsa->sigver.pubkey.length +
+			     mldsa->sigver.ctx.length + mldsa->sigver.mu.length +
+			     mldsa->sigver.sign.length;
+
+		if (reqbuf_len > (metabuf_len - dlen)) {
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			return -ENOMEM;
+		}
+
+		hash = op->asym->mldsa.sigver.hash;
+		minor = ROC_RE_MINOR_OP_MLDSA_VERIFY;
+
+		param1 = mldsa->sigver.message.length;
+		param2 = sess->ml_dsa_ctx.type;
+		if (hash == 0) {
+			minor |= (0 << ROC_RE_ML_DSA_MINOR_MSG_TYPE_BIT);
+		} else if (mldsa->sigver.mu.length != 0) {
+			minor |= (3 << ROC_RE_ML_DSA_MINOR_MSG_TYPE_BIT);
+		} else {
+			if (!sess->ml_dsa_ctx.sign_prehash ||
+				hash >= RTE_DIM(mldsa_hash_algo) || mldsa_hash_algo[hash] == 0) {
+				op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+				return -EINVAL;
+			}
+
+			minor |= (1 << ROC_RE_ML_DSA_MINOR_MSG_TYPE_BIT);
+			param2 |= (mldsa_hash_algo[hash] << ROC_RE_ML_DSA_PARAM2_SIGN_BIT);
+		}
+
+		memcpy(dptr, mldsa->sigver.pubkey.data, mldsa->sigver.pubkey.length);
+		dptr += mldsa->sigver.pubkey.length;
+		dlen += mldsa->sigver.pubkey.length;
+
+		memcpy(dptr, mldsa->sigver.ctx.data, mldsa->sigver.ctx.length);
+		dptr += mldsa->sigver.ctx.length;
+		dlen += mldsa->sigver.ctx.length;
+		if (mldsa->sigver.ctx.length > (UINT16_MAX >> ROC_RE_ML_DSA_PARAM2_CTXN_BIT)) {
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			return -EINVAL;
+		}
+		param2 |= ((uint16_t)mldsa->sigver.ctx.length
+				<< ROC_RE_ML_DSA_PARAM2_CTXN_BIT);
+
+		if (mldsa->sigver.mu.length != 0) {
+			memcpy(dptr, mldsa->sigver.mu.data, mldsa->sigver.mu.length);
+			dptr += mldsa->sigver.mu.length;
+			dlen += mldsa->sigver.mu.length;
+			param1 = mldsa->sigver.mu.length;
+		} else if (mldsa->sigver.message.length != 0) {
+			memcpy(dptr, mldsa->sigver.message.data, mldsa->sigver.message.length);
+			dptr += mldsa->sigver.message.length;
+			dlen += mldsa->sigver.message.length;
+		}
+
+		memcpy(dptr, mldsa->sigver.sign.data, mldsa->sigver.sign.length);
+		dptr += mldsa->sigver.sign.length;
+		dlen += mldsa->sigver.sign.length;
+
+		w4.s.opcode_major = ROC_RE_MAJOR_OP_MLDSA;
+		w4.s.opcode_minor = minor;
+		break;
+	default:
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		return -EINVAL;
+	}
+
+	w4.s.param1 = param1;
+	w4.s.param2 = param2;
+	w4.s.dlen = dlen;
+
+	inst->w4.u64 = w4.u64;
+
+	/* Reuse entire space of meta buffer as output is large in PQC */
+	inst->rptr = (uintptr_t)meta_buf->vaddr;
+
 	return 0;
 }
 
@@ -1712,6 +2031,55 @@ cnxk_ae_dequeue_ecdh_op(struct rte_crypto_ecdh_op_param *ecdh, uint8_t *rptr,
 	}
 }
 
+static __rte_always_inline void
+cnxk_ae_dequeue_mlkem_op(struct rte_crypto_ml_kem_op *mlkem, uint8_t *rptr,
+	enum rte_crypto_ml_kem_type type)
+{
+	switch (mlkem->op) {
+	case RTE_CRYPTO_ML_KEM_OP_KEYGEN:
+		mlkem->keygen.dk.length = rte_crypto_ml_kem_privkey_size[type];
+		memcpy(mlkem->keygen.dk.data, rptr, mlkem->keygen.dk.length);
+		mlkem->keygen.ek.length = rte_crypto_ml_kem_pubkey_size[type];
+		memcpy(mlkem->keygen.ek.data, rptr + 384 * (type + 1), mlkem->keygen.ek.length);
+		break;
+	case RTE_CRYPTO_ML_KEM_OP_ENCAP:
+		mlkem->encap.sk.length = 32;
+		memcpy(mlkem->encap.sk.data, rptr, mlkem->encap.sk.length);
+		mlkem->encap.cipher.length = rte_crypto_ml_kem_cipher_size[type];
+		memcpy(mlkem->encap.cipher.data, rptr + 32, mlkem->encap.cipher.length);
+		break;
+	case RTE_CRYPTO_ML_KEM_OP_DECAP:
+		mlkem->decap.sk.length = 32;
+		memcpy(mlkem->decap.sk.data, rptr, mlkem->decap.sk.length);
+		break;
+	default:
+		break;
+	}
+}
+
+static __rte_always_inline void
+cnxk_ae_dequeue_mldsa_op(struct rte_crypto_ml_dsa_op *mldsa, uint8_t *rptr,
+	enum rte_crypto_ml_dsa_type type)
+{
+	switch (mldsa->op) {
+	case RTE_CRYPTO_ML_DSA_OP_KEYGEN:
+		mldsa->keygen.pubkey.length = rte_crypto_ml_dsa_pubkey_size[type];
+		memcpy(mldsa->keygen.pubkey.data, rptr, mldsa->keygen.pubkey.length);
+		mldsa->keygen.privkey.length = rte_crypto_ml_dsa_privkey_size[type];
+		memcpy(mldsa->keygen.privkey.data, rptr + mldsa->keygen.pubkey.length,
+		       mldsa->keygen.privkey.length);
+		break;
+	case RTE_CRYPTO_ML_DSA_OP_SIGN:
+		mldsa->siggen.sign.length = rte_crypto_ml_dsa_sign_size[type];
+		memcpy(mldsa->siggen.sign.data, rptr, mldsa->siggen.sign.length);
+		break;
+	case RTE_CRYPTO_ML_DSA_OP_VERIFY:
+		break;
+	default:
+		break;
+	}
+}
+
 static __rte_always_inline void *
 cnxk_ae_alloc_meta(struct roc_ae_buf_ptr *buf,
 		   struct rte_mempool *cpt_meta_pool,
@@ -1752,62 +2120,55 @@ cnxk_ae_enqueue(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 	switch (sess->xfrm_type) {
 	case RTE_CRYPTO_ASYM_XFORM_MODEX:
 		ret = cnxk_ae_modex_prep(op, &meta_buf, &sess->mod_ctx, inst);
-		if (unlikely(ret))
-			goto req_fail;
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_RSA:
 		ret = cnxk_ae_enqueue_rsa_op(op, &meta_buf, sess, inst);
-		if (unlikely(ret))
-			goto req_fail;
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
 		ret = cnxk_ae_enqueue_ecdsa_op(op, &meta_buf, sess,
 					       sess->cnxk_fpm_iova,
 					       sess->ec_grp, inst);
-		if (unlikely(ret))
-			goto req_fail;
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_EDDSA:
 		ret = cnxk_ae_enqueue_eddsa_op(op, &meta_buf, sess,
 					       sess->cnxk_fpm_iova,
 					       sess->ec_grp, inst);
-		if (unlikely(ret))
-			goto req_fail;
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_SM2:
 		ret = cnxk_ae_enqueue_sm2_op(op, &meta_buf, sess,
 					       sess->cnxk_fpm_iova,
 					       sess->ec_grp, inst);
-		if (unlikely(ret))
-			goto req_fail;
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_ECPM:
 		ret = cnxk_ae_ecpm_prep(&asym_op->ecpm.scalar, &asym_op->ecpm.p, &meta_buf,
 					sess->ec_grp[sess->ec_ctx.curveid],
 					sess->ec_ctx.curveid, inst);
-		if (unlikely(ret))
-			goto req_fail;
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_ECFPM:
 		ret = cnxk_ae_ecfpm_prep(&asym_op->ecpm.scalar, &meta_buf,
 					 sess->cnxk_fpm_iova,
 					 sess->ec_grp[sess->ec_ctx.curveid],
 					 sess->ec_ctx.curveid, inst);
-		if (unlikely(ret))
-			goto req_fail;
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_ECDH:
 		ret = cnxk_ae_enqueue_ecdh_op(op, &meta_buf, sess,
 					       sess->cnxk_fpm_iova,
 					       sess->ec_grp, inst);
-		if (unlikely(ret))
-			goto req_fail;
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_ML_KEM:
+		ret = cnxk_ae_enqueue_ml_kem_op(op, &meta_buf, sess, inst);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_ML_DSA:
+		ret = cnxk_ae_enqueue_ml_dsa_op(op, &meta_buf, sess, inst);
 		break;
 	default:
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		ret = -EINVAL;
 		goto req_fail;
 	}
+
+	if (unlikely(ret))
+		goto req_fail;
 
 	mop = mdata;
 	mop[0] = inst->rptr;
@@ -1851,6 +2212,12 @@ cnxk_ae_post_process(struct rte_crypto_op *cop, struct cnxk_ae_sess *sess,
 	case RTE_CRYPTO_ASYM_XFORM_ECDH:
 		cnxk_ae_dequeue_ecdh_op(&op->ecdh, rptr, &sess->ec_ctx,
 					sess->ec_grp, op->flags);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_ML_KEM:
+		cnxk_ae_dequeue_mlkem_op(&op->mlkem, rptr, sess->ml_kem_ctx.type);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_ML_DSA:
+		cnxk_ae_dequeue_mldsa_op(&op->mldsa, rptr, sess->ml_dsa_ctx.type);
 		break;
 	default:
 		cop->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;

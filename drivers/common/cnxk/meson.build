@@ -65,6 +65,7 @@ sources = files(
         'roc_npc_utils.c',
         'roc_platform.c',
         'roc_platform_base_symbols.c',
+        'roc_re_ml_tables.c',
         'roc_se.c',
         'roc_sso.c',
         'roc_sso_debug.c',

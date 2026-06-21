@@ -632,6 +632,9 @@ roc_cpt_dev_configure(struct roc_cpt *roc_cpt, int nb_lf, bool rxc_ena, uint16_t
 		eng_grpmsk = (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_AE]) |
 			     (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_SE]);
 
+	if (roc_model_is_cn20k())
+		eng_grpmsk |= (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_RE]);
+
 	if (roc_errata_cpt_has_ctx_fetch_issue()) {
 		ctx_ilen_valid = true;
 		/* Inbound SA size is max context size */
@@ -1097,6 +1100,7 @@ roc_cpt_eng_grp_add(struct roc_cpt *roc_cpt, enum cpt_eng_type eng_type)
 	case CPT_ENG_TYPE_AE:
 	case CPT_ENG_TYPE_SE:
 	case CPT_ENG_TYPE_IE:
+	case CPT_ENG_TYPE_RE:
 		break;
 	default:
 		ret = -EINVAL;
