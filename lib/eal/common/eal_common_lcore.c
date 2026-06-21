@@ -77,7 +77,7 @@ rte_eal_lcore_role(unsigned int lcore_id)
 	struct rte_config *cfg = rte_eal_get_configuration();
 
 	if (lcore_id >= RTE_MAX_LCORE)
-		return RTE_LCORE_ROLE_OFF;
+		return ROLE_OFF;
 	return cfg->lcore_role[lcore_id];
 }
 
@@ -100,7 +100,7 @@ int rte_lcore_is_enabled(unsigned int lcore_id)
 
 	if (lcore_id >= RTE_MAX_LCORE)
 		return 0;
-	return cfg->lcore_role[lcore_id] == RTE_LCORE_ROLE_RTE;
+	return cfg->lcore_role[lcore_id] == ROLE_RTE;
 }
 
 RTE_EXPORT_SYMBOL(rte_get_next_lcore)
@@ -177,7 +177,7 @@ rte_eal_cpu_init(void)
 		lcore_to_socket_id[lcore_id] = socket_id;
 
 		if (eal_cpu_detected(lcore_id) == 0) {
-			config->lcore_role[lcore_id] = RTE_LCORE_ROLE_OFF;
+			config->lcore_role[lcore_id] = ROLE_OFF;
 			lcore_config[lcore_id].core_index = -1;
 			continue;
 		}
@@ -189,8 +189,8 @@ rte_eal_cpu_init(void)
 		rte_bitset_set(config->core_indices, count);
 
 		/* By default, each detected core is enabled */
-		config->lcore_role[lcore_id] = RTE_LCORE_ROLE_RTE;
-		lcore_config[lcore_id].core_role = RTE_LCORE_ROLE_RTE;
+		config->lcore_role[lcore_id] = ROLE_RTE;
+		lcore_config[lcore_id].core_role = ROLE_RTE;
 		lcore_config[lcore_id].core_id = eal_cpu_core_id(lcore_id);
 		lcore_config[lcore_id].numa_id = socket_id;
 		EAL_LOG(DEBUG, "Detected lcore %u as "
@@ -318,7 +318,7 @@ rte_lcore_callback_register(const char *name, rte_lcore_init_cb init,
 	if (callback->init == NULL)
 		goto no_init;
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-		if (cfg->lcore_role[lcore_id] == RTE_LCORE_ROLE_OFF)
+		if (cfg->lcore_role[lcore_id] == ROLE_OFF)
 			continue;
 		if (callback_init(callback, lcore_id) == 0)
 			continue;
@@ -326,7 +326,7 @@ rte_lcore_callback_register(const char *name, rte_lcore_init_cb init,
 		 * previous lcore.
 		 */
 		while (lcore_id-- != 0) {
-			if (cfg->lcore_role[lcore_id] == RTE_LCORE_ROLE_OFF)
+			if (cfg->lcore_role[lcore_id] == ROLE_OFF)
 				continue;
 			callback_uninit(callback, lcore_id);
 		}
@@ -358,7 +358,7 @@ rte_lcore_callback_unregister(void *handle)
 	if (callback->uninit == NULL)
 		goto no_uninit;
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-		if (cfg->lcore_role[lcore_id] == RTE_LCORE_ROLE_OFF)
+		if (cfg->lcore_role[lcore_id] == ROLE_OFF)
 			continue;
 		callback_uninit(callback, lcore_id);
 	}
@@ -387,11 +387,11 @@ eal_lcore_non_eal_allocate(void)
 		goto out;
 	}
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-		if (cfg->lcore_role[lcore_id] != RTE_LCORE_ROLE_OFF)
+		if (cfg->lcore_role[lcore_id] != ROLE_OFF)
 			continue;
 		rte_bitset_set(cfg->core_indices, core_index);
 		lcore_config[lcore_id].core_index = core_index;
-		cfg->lcore_role[lcore_id] = RTE_LCORE_ROLE_NON_EAL;
+		cfg->lcore_role[lcore_id] = ROLE_NON_EAL;
 		cfg->lcore_count++;
 		break;
 	}
@@ -414,7 +414,7 @@ eal_lcore_non_eal_allocate(void)
 			lcore_id);
 		rte_bitset_clear(cfg->core_indices, lcore_config[lcore_id].core_index);
 		lcore_config[lcore_id].core_index = -1;
-		cfg->lcore_role[lcore_id] = RTE_LCORE_ROLE_OFF;
+		cfg->lcore_role[lcore_id] = ROLE_OFF;
 		cfg->lcore_count--;
 		lcore_id = RTE_MAX_LCORE;
 		goto out;
@@ -431,13 +431,13 @@ eal_lcore_non_eal_release(unsigned int lcore_id)
 	struct lcore_callback *callback;
 
 	rte_rwlock_write_lock(&lcore_lock);
-	if (cfg->lcore_role[lcore_id] != RTE_LCORE_ROLE_NON_EAL)
+	if (cfg->lcore_role[lcore_id] != ROLE_NON_EAL)
 		goto out;
 	TAILQ_FOREACH(callback, &lcore_callbacks, next)
 		callback_uninit(callback, lcore_id);
 	rte_bitset_clear(cfg->core_indices, lcore_config[lcore_id].core_index);
 	lcore_config[lcore_id].core_index = -1;
-	cfg->lcore_role[lcore_id] = RTE_LCORE_ROLE_OFF;
+	cfg->lcore_role[lcore_id] = ROLE_OFF;
 	cfg->lcore_count--;
 out:
 	rte_rwlock_write_unlock(&lcore_lock);
@@ -453,7 +453,7 @@ rte_lcore_iterate(rte_lcore_iterate_cb cb, void *arg)
 
 	rte_rwlock_read_lock(&lcore_lock);
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-		if (cfg->lcore_role[lcore_id] == RTE_LCORE_ROLE_OFF)
+		if (cfg->lcore_role[lcore_id] == ROLE_OFF)
 			continue;
 		ret = cb(lcore_id, arg);
 		if (ret != 0)
@@ -467,11 +467,11 @@ static const char *
 lcore_role_str(enum rte_lcore_role_t role)
 {
 	switch (role) {
-	case RTE_LCORE_ROLE_RTE:
+	case ROLE_RTE:
 		return "RTE";
-	case RTE_LCORE_ROLE_SERVICE:
+	case ROLE_SERVICE:
 		return "SERVICE";
-	case RTE_LCORE_ROLE_NON_EAL:
+	case ROLE_NON_EAL:
 		return "NON_EAL";
 	default:
 		return "UNKNOWN";

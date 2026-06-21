@@ -359,7 +359,7 @@ rte_graph_model_mcore_dispatch_core_bind(rte_graph_t id, int lcore)
 		goto fail;
 	}
 
-	if (rte_lcore_has_role(lcore, RTE_LCORE_ROLE_OFF))
+	if (rte_lcore_has_role(lcore, ROLE_OFF))
 		SET_ERR_JMP(ENOLINK, fail, "lcore %d is invalid", lcore);
 
 	STAILQ_FOREACH(graph, &graph_list, next)
