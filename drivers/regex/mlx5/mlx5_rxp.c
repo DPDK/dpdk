@@ -54,6 +54,7 @@ rxp_create_mkey(struct mlx5_regex_priv *priv, void *ptr, size_t size,
 	uint32_t access, struct mlx5_regex_mkey *mkey)
 {
 	struct mlx5_devx_mkey_attr mkey_attr;
+	struct mlx5_hca_attr *hca_attr = &priv->cdev->config.hca_attr;
 
 	/* Register the memory. */
 	mkey->umem = mlx5_glue->devx_umem_reg(priv->cdev->ctx, ptr, size, access);
@@ -72,6 +73,9 @@ rxp_create_mkey(struct mlx5_regex_priv *priv, void *ptr, size_t size,
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	mkey_attr.pd = priv->cdev->pdn;
 #endif
+	/* If only relaxed order is allowed. */
+	if (hca_attr->mkc_order_write_after_write_ro_only)
+		mlx5_devx_mkey_attr_set_ordering(&mkey_attr, hca_attr);
 	mkey->mkey = mlx5_devx_cmd_mkey_create(priv->cdev->ctx, &mkey_attr);
 	if (!mkey->mkey) {
 		DRV_LOG(ERR, "Failed to create direct mkey!");

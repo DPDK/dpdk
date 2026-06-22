@@ -755,9 +755,14 @@ mlx5_regexdev_setup_fastpath(struct mlx5_regex_priv *priv, uint32_t qp_id)
 	setup_qps(priv, qp);
 
 	if (priv->has_umr) {
+		struct mlx5_hca_attr *hca_attr = &priv->cdev->config.hca_attr;
+
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		attr.pd = priv->cdev->pdn;
 #endif
+		/* If only relaxed order is allowed. */
+		if (hca_attr->mkc_order_write_after_write_ro_only)
+			mlx5_devx_mkey_attr_set_ordering(&attr, hca_attr);
 		for (i = 0; i < qp->nb_desc; i++) {
 			attr.klm_num = MLX5_REGEX_MAX_KLM_NUM;
 			attr.klm_array = qp->jobs[i].imkey_array;

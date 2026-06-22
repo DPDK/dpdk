@@ -1463,7 +1463,9 @@ struct mlx5_ifc_mkc_bits {
 	u8 bsf_octword_size[0x20];
 	u8 reserved_at_120[0x80];
 	u8 translations_octword_size[0x20];
-	u8 reserved_at_1c0[0x19];
+	u8 reserved_at_1c0[0x16];
+	u8 order_read_after_write[0x2];
+	u8 reserved_at_1d8[0x1];
 	u8 relaxed_ordering_read[0x1];
 	u8 reserved_at_1da[0x1];
 	u8 log_page_size[0x5];
@@ -1476,6 +1478,13 @@ struct mlx5_ifc_mkc_bits {
 enum {
 	MLX5_MKEY_CRYPTO_DISABLED = 0x0,
 	MLX5_MKEY_CRYPTO_ENABLED = 0x1,
+};
+
+/* MKC read_after_write_ordering field (2-bit, dword 0x38 bits 9:8). */
+enum mlx5_mkc_raw_ordering {
+	MLX5_MKC_RAW_ORDERING_SO = 0x0,
+	MLX5_MKC_RAW_ORDERING_SAO = 0x1,
+	MLX5_MKC_RAW_ORDERING_RO = 0x2,
 };
 
 struct mlx5_ifc_create_mkey_out_bits {
@@ -1827,7 +1836,8 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 log_max_mcg[0x8];
 	u8 reserved_at_320[0x3];
 	u8 log_max_transport_domain[0x5];
-	u8 reserved_at_328[0x3];
+	u8 reserved_at_328[0x2];
+	u8 pci_relaxed_ordered_read[0x1];
 	u8 log_max_pd[0x5];
 	u8 reserved_at_330[0xb];
 	u8 log_max_xrcd[0x5];
@@ -1860,7 +1870,9 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 ext_stride_num_range[0x1];
 	u8 reserved_at_3a1[0x2];
 	u8 log_max_stride_sz_rq[0x5];
-	u8 reserved_at_3a8[0x3];
+	u8 mkc_order_read_after_write[0x1];
+	u8 mkc_order_write_after_write_ro_only[0x1];
+	u8 reserved_at_3aa[0x1];
 	u8 log_min_stride_sz_rq[0x5];
 	u8 reserved_at_3b0[0x3];
 	u8 log_max_stride_sz_sq[0x5];

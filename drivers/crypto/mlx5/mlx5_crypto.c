@@ -97,7 +97,11 @@ mlx5_crypto_indirect_mkeys_prepare(struct mlx5_crypto_priv *priv,
 				   mlx5_crypto_mkey_update_t update_cb)
 {
 	uint32_t i;
+	struct mlx5_hca_attr *hca_attr = &priv->cdev->config.hca_attr;
 
+	/* If only relaxed order is allowed. */
+	if (hca_attr->mkc_order_write_after_write_ro_only)
+		mlx5_devx_mkey_attr_set_ordering(attr, hca_attr);
 	for (i = 0; i < qp->entries_n; i++) {
 		attr->klm_array = update_cb(priv, qp, i);
 		qp->mkey[i] = mlx5_devx_cmd_mkey_create(priv->cdev->ctx, attr);

@@ -34,6 +34,7 @@ struct mlx5_devx_mkey_attr {
 	uint32_t pg_access:1;
 	uint32_t relaxed_ordering_write:1;
 	uint32_t relaxed_ordering_read:1;
+	uint32_t read_after_write_ordering:2;
 	uint32_t umr_en:1;
 	uint32_t crypto_en:2;
 	uint32_t set_remote_rw:1;
@@ -237,6 +238,9 @@ struct mlx5_hca_attr {
 	uint32_t vhca_id:16;
 	uint32_t relaxed_ordering_write:1;
 	uint32_t relaxed_ordering_read:1;
+	uint32_t pci_relaxed_ordered_read:1;
+	uint32_t mkc_order_read_after_write:1;
+	uint32_t mkc_order_write_after_write_ro_only:1;
 	uint32_t access_register_user:1;
 	uint32_t wqe_index_ignore:1;
 	uint32_t cross_channel:1;
@@ -748,6 +752,11 @@ int mlx5_devx_cmd_query_hca_attr(void *ctx,
 __rte_internal
 struct mlx5_devx_obj *mlx5_devx_cmd_mkey_create(void *ctx,
 					      struct mlx5_devx_mkey_attr *attr);
+
+__rte_internal
+void
+mlx5_devx_mkey_attr_set_ordering(struct mlx5_devx_mkey_attr *mkey_attr,
+				 const struct mlx5_hca_attr *hca_attr);
 __rte_internal
 int mlx5_devx_get_out_command_status(void *out);
 __rte_internal

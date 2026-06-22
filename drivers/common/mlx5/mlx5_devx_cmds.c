@@ -332,6 +332,29 @@ mlx5_devx_cmd_flow_counter_query(struct mlx5_devx_obj *dcs,
 }
 
 /**
+ * Apply PCI relaxed-ordering and read-after-write ordering to mkey attributes.
+ *
+ * @param[in, out] mkey_attr
+ *   Mkey attributes to update.
+ * @param[in] hca_attr
+ *   HCA capabilities from mlx5_devx_cmd_query_hca_attr().
+ */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_mkey_attr_set_ordering)
+void
+mlx5_devx_mkey_attr_set_ordering(struct mlx5_devx_mkey_attr *mkey_attr,
+				 const struct mlx5_hca_attr *hca_attr)
+{
+	if (!mkey_attr || !hca_attr)
+		return;
+
+	mkey_attr->relaxed_ordering_write = hca_attr->relaxed_ordering_write;
+	mkey_attr->relaxed_ordering_read =
+		hca_attr->relaxed_ordering_read || hca_attr->pci_relaxed_ordered_read;
+	if (hca_attr->mkc_order_read_after_write)
+		mkey_attr->read_after_write_ordering = MLX5_MKC_RAW_ORDERING_RO;
+}
+
+/**
  * Create a new mkey.
  *
  * @param[in] ctx
@@ -417,6 +440,8 @@ mlx5_devx_cmd_mkey_create(void *ctx,
 	MLX5_SET(mkc, mkc, relaxed_ordering_write,
 		 attr->relaxed_ordering_write);
 	MLX5_SET(mkc, mkc, relaxed_ordering_read, attr->relaxed_ordering_read);
+	MLX5_SET(mkc, mkc, order_read_after_write,
+		 attr->read_after_write_ordering);
 	MLX5_SET64(mkc, mkc, start_addr, attr->addr);
 	MLX5_SET64(mkc, mkc, len, attr->size);
 	MLX5_SET(mkc, mkc, crypto_en, attr->crypto_en);
@@ -1003,6 +1028,12 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 						relaxed_ordering_write);
 	attr->relaxed_ordering_read = MLX5_GET(cmd_hca_cap, hcattr,
 					       relaxed_ordering_read);
+	attr->pci_relaxed_ordered_read = MLX5_GET(cmd_hca_cap, hcattr,
+						  pci_relaxed_ordered_read);
+	attr->mkc_order_read_after_write = MLX5_GET(cmd_hca_cap, hcattr,
+						    mkc_order_read_after_write);
+	attr->mkc_order_write_after_write_ro_only = MLX5_GET(cmd_hca_cap, hcattr,
+							     mkc_order_write_after_write_ro_only);
 	attr->access_register_user = MLX5_GET(cmd_hca_cap, hcattr,
 					      access_register_user);
 	attr->eth_net_offloads = MLX5_GET(cmd_hca_cap, hcattr,

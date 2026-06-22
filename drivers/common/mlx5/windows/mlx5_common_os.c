@@ -384,7 +384,7 @@ mlx5_os_reg_mr(void *pd,
 {
 	struct mlx5_devx_mkey_attr mkey_attr;
 	struct mlx5_pd *mlx5_pd = (struct mlx5_pd *)pd;
-	struct mlx5_hca_attr attr;
+	struct mlx5_hca_attr attr = { 0 };
 	struct mlx5_devx_obj *mkey;
 	void *obj;
 
@@ -403,10 +403,8 @@ mlx5_os_reg_mr(void *pd,
 	mkey_attr.size = length;
 	mkey_attr.umem_id = ((struct mlx5_devx_umem *)(obj))->umem_id;
 	mkey_attr.pd = mlx5_pd->pdn;
-	if (!mlx5_haswell_broadwell_cpu) {
-		mkey_attr.relaxed_ordering_write = attr.relaxed_ordering_write;
-		mkey_attr.relaxed_ordering_read = attr.relaxed_ordering_read;
-	}
+	if (!mlx5_haswell_broadwell_cpu)
+		mlx5_devx_mkey_attr_set_ordering(&mkey_attr, &attr);
 	mkey = mlx5_devx_cmd_mkey_create(mlx5_pd->devx_ctx, &mkey_attr);
 	if (!mkey) {
 		claim_zero(mlx5_os_umem_dereg(obj));

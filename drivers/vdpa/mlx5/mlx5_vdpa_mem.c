@@ -179,6 +179,7 @@ static int
 mlx5_vdpa_create_indirect_mkey(struct mlx5_vdpa_priv *priv)
 {
 	struct mlx5_devx_mkey_attr mkey_attr;
+	struct mlx5_hca_attr *hca_attr = &priv->cdev->config.hca_attr;
 	struct mlx5_vdpa_query_mr *mrs =
 		(struct mlx5_vdpa_query_mr *)priv->mrs;
 	struct mlx5_vdpa_query_mr *entry;
@@ -242,6 +243,9 @@ mlx5_vdpa_create_indirect_mkey(struct mlx5_vdpa_priv *priv)
 	mkey_attr.pg_access = 0;
 	mkey_attr.klm_array = klm_array;
 	mkey_attr.klm_num = klm_index;
+	/* If only relaxed order is allowed. */
+	if (hca_attr->mkc_order_write_after_write_ro_only)
+		mlx5_devx_mkey_attr_set_ordering(&mkey_attr, hca_attr);
 	entry = &mrs[mem->nregions];
 	entry->mkey = mlx5_devx_cmd_mkey_create(priv->cdev->ctx, &mkey_attr);
 	if (!entry->mkey) {
