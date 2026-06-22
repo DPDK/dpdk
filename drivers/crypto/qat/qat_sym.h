@@ -175,6 +175,7 @@ cipher_encrypt_err:
 	return -EINVAL;
 }
 #else
+#ifndef RTE_ARCH_ARM
 static __rte_always_inline void
 bpi_cipher_ipsec(uint8_t *src, uint8_t *dst, uint8_t *iv, int srclen,
 		uint64_t *expkey, IMB_MGR *m, uint8_t docsis_key_len)
@@ -186,7 +187,8 @@ bpi_cipher_ipsec(uint8_t *src, uint8_t *dst, uint8_t *iv, int srclen,
 	else if (docsis_key_len == ICP_QAT_HW_DES_KEY_SZ)
 		des_cfb_one(dst, src, (uint64_t *)iv, expkey, srclen);
 }
-#endif
+#endif /* RTE_ARCH_ARM */
+#endif /* RTE_QAT_OPENSSL */
 
 static inline uint32_t
 qat_bpicipher_postprocess(struct qat_sym_session *ctx,
@@ -237,8 +239,13 @@ qat_bpicipher_postprocess(struct qat_sym_session *ctx,
 		bpi_cipher_encrypt(last_block, dst, iv, block_len,
 				last_block_len, ctx->bpi_ctx);
 #else
+#ifndef RTE_ARCH_ARM
 		bpi_cipher_ipsec(last_block, dst, iv, last_block_len, ctx->expkey,
 			ctx->mb_mgr, ctx->docsis_key_len);
+#else
+		RTE_SET_USED(dst);
+		RTE_SET_USED(iv);
+#endif
 #endif
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 		QAT_DP_HEXDUMP_LOG(DEBUG, "BPI: src after post-process:",

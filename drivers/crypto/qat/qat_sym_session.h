@@ -14,10 +14,10 @@
 #include "icp_qat_fw.h"
 #include "icp_qat_fw_la.h"
 
-#ifndef RTE_QAT_OPENSSL
-#ifndef RTE_ARCH_ARM
+#ifdef RTE_ARCH_ARM
+#include <ipsec-mb.h>
+#else
 #include <intel-ipsec-mb.h>
-#endif
 #endif
 
 /*

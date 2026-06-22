@@ -213,6 +213,15 @@ New Features
   * Added VF support for the Amber-Lite 40G NIC variant,
     with new device IDs ``0x503f`` and ``0x513f``.
 
+* **Updated Intel qat crypto driver dependency requirements.**
+
+  The QAT crypto PMD now requires IPsec MB library (v1.4.0+)
+  for HMAC precomputes on all platforms.
+  OpenSSL 3.0+ is now optional and used only for DOCSIS BPI cipher fallback.
+  Previously, QAT could build with OpenSSL-only on x86.
+
+  On ARM, both IPsec MB and OpenSSL are required for full functionality.
+
 * **Extended BPF API.**
 
   * Added an extensible BPF loading API comprising the function

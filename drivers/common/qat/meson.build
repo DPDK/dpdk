@@ -36,47 +36,61 @@ if disable_drivers.contains(qat_crypto_asym_path)
             'Explicitly disabled via build config')
 endif
 
-libcrypto = dependency('libcrypto', required: false, method: 'pkg-config')
+# IPsec MB is REQUIRED for HMAC precomputes (no OpenSSL 3.0 alternative)
+# OpenSSL is OPTIONAL for DOCSIS BPI cipher fallback
+IMB_required_ver = '1.4.0'
 
-if arch_subdir == 'arm'
-    if libcrypto.found()
-        ext_deps += libcrypto
-        dpdk_conf.set('RTE_QAT_OPENSSL', true)
+# Only check IPsec MB if qat_crypto wasn't already disabled
+if qat_crypto
+    if arch_subdir == 'arm'
+        IMB_header = '#include<ipsec-mb.h>'
     else
-        qat_crypto = false
-        dpdk_drvs_disabled += qat_crypto_path
-        set_variable('drv_' + qat_crypto_path.underscorify() + '_disable_reason',
-        'missing dependency for Arm, libcrypto')
+        IMB_header = '#include<intel-ipsec-mb.h>'
     endif
-else
-    IMB_required_ver = '1.4.0'
-    IMB_header = '#include<intel-ipsec-mb.h>'
+
+    # Check for IPsec MB library (required)
     libipsecmb = cc.find_library('IPSec_MB', required: false)
     if libipsecmb.found() and cc.links(
             'int main(void) {return 0;}', dependencies: libipsecmb)
-        # version comes with quotes, so we split based on " and take the middle
         imb_ver = cc.get_define('IMB_VERSION_STR',
             prefix : IMB_header).split('"')[1]
 
         if (imb_ver.version_compare('>=' + IMB_required_ver))
             ext_deps += libipsecmb
-        elif libcrypto.found()
-            ext_deps += libcrypto
-            dpdk_conf.set('RTE_QAT_OPENSSL', true)
+            dpdk_conf.set('RTE_QAT_IPSECMB', true)
         else
             qat_crypto = false
             dpdk_drvs_disabled += qat_crypto_path
             set_variable('drv_' + qat_crypto_path.underscorify() + '_disable_reason',
-                'missing dependency, libipsecmb or libcrypto')
+                'IPSec_MB version >= @0@ is required, found version @1@'.format(
+                    IMB_required_ver, imb_ver))
         endif
-    elif libcrypto.found()
-        ext_deps += libcrypto
-        dpdk_conf.set('RTE_QAT_OPENSSL', true)
     else
         qat_crypto = false
         dpdk_drvs_disabled += qat_crypto_path
         set_variable('drv_' + qat_crypto_path.underscorify() + '_disable_reason',
-            'missing dependency, libipsecmb or libcrypto')
+            'missing required dependency, libIPSec_MB >= @0@'.format(IMB_required_ver))
+    endif
+endif
+
+# Check for OpenSSL (optional, for DOCSIS BPI cipher fallback)
+openssl_required_ver = '3.0.0'
+if qat_crypto
+    libcrypto = dependency('libcrypto', required: false, method: 'pkg-config', version: '>= ' + openssl_required_ver)
+    if libcrypto.found()
+        ext_deps += libcrypto
+        dpdk_conf.set('RTE_QAT_OPENSSL', true)
+        if arch_subdir == 'arm'
+            message('QAT: Using OpenSSL @0@ for DOCSIS on ARM'.format(libcrypto.version()))
+        else
+            message('QAT: OpenSSL @0@ available for DOCSIS fallback'.format(libcrypto.version()))
+        endif
+    else
+        if arch_subdir == 'arm'
+            warning('QAT: OpenSSL >= @0@ not found - DOCSIS algorithms will not be available on ARM'.format(openssl_required_ver))
+        else
+            message('QAT: OpenSSL >= @0@ not found - DOCSIS will use IPsec MB only'.format(openssl_required_ver))
+        endif
     endif
 endif
 

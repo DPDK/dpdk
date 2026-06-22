@@ -99,8 +99,13 @@ qat_bpicipher_preprocess(struct qat_sym_session *ctx,
 		op_bpi_cipher_decrypt(last_block, dst, iv, block_len,
 				last_block_len, ctx->bpi_ctx);
 #else
+#ifndef RTE_ARCH_ARM
 		bpi_cipher_ipsec(last_block, dst, iv, last_block_len, ctx->expkey,
 			ctx->mb_mgr, ctx->docsis_key_len);
+#else
+		RTE_SET_USED(dst);
+		RTE_SET_USED(iv);
+#endif
 #endif
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 		QAT_DP_HEXDUMP_LOG(DEBUG, "BPI: src after pre-process:",
