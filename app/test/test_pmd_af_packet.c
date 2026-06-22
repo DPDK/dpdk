@@ -659,19 +659,22 @@ test_af_packet_loopback(void)
 
 	/* Set TAP fd to non-blocking for reading */
 	int flags = fcntl(tap_fd, F_GETFL, 0);
-	fcntl(tap_fd, F_SETFL, flags | O_NONBLOCK);
+	if (flags < 0 || fcntl(tap_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+		printf("fcntl failed: %s\n", strerror(errno));
+		return TEST_FAILED;
+	}
 
 	/* Allocate and send packets */
 	allocated = alloc_tx_mbufs(tx_bufs, BURST_SIZE);
 	if (allocated == 0) {
-		printf("SKIPPED: Could not allocate mbufs\n");
-		return TEST_SKIPPED;
+		printf("Could not allocate mbufs\n");
+		return TEST_FAILED;
 	}
 
 	nb_tx = do_tx_burst(port_id, 0, tx_bufs, allocated);
 	if (nb_tx == 0) {
-		printf("SKIPPED: No packets transmitted\n");
-		return TEST_SKIPPED;
+		printf("No packets transmitted\n");
+		return TEST_FAILED;
 	}
 
 	/*
