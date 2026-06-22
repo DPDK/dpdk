@@ -2065,8 +2065,19 @@ inline_ipsec_testsuite_setup(void)
 	memcpy(&local_port_conf, &port_conf, sizeof(port_conf));
 	/* Add Multi seg flags */
 	if (sg_mode) {
-		uint16_t max_data_room = RTE_MBUF_DEFAULT_DATAROOM *
-			dev_info.rx_desc_lim.nb_seg_max;
+		uint32_t max_data_room;
+
+		if (dev_info.rx_desc_lim.nb_seg_max == 0) {
+			printf("SG mode unsupported: invalid max Rx segments (0)\n");
+			return TEST_SKIPPED;
+		}
+
+		max_data_room = RTE_MBUF_DEFAULT_DATAROOM * dev_info.rx_desc_lim.nb_seg_max;
+		if (max_data_room <= 256) {
+			printf("SG mode unsupported: max data room (%u) too small\n",
+				max_data_room);
+			return TEST_SKIPPED;
+		}
 
 		local_port_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_SCATTER;
 		local_port_conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
