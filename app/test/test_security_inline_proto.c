@@ -95,8 +95,7 @@ static struct rte_eth_conf port_conf = {
 	},
 	.txmode = {
 		.mq_mode = RTE_ETH_MQ_TX_NONE,
-		.offloads = RTE_ETH_TX_OFFLOAD_SECURITY |
-			    RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE,
+		.offloads = RTE_ETH_TX_OFFLOAD_SECURITY,
 	},
 	.lpbk_mode = 1,  /* enable loopback */
 };
