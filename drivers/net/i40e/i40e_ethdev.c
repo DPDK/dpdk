@@ -11998,8 +11998,7 @@ i40e_update_customized_ptype(struct rte_eth_dev *dev, uint8_t *pkg,
 			for (n = 0; n < proto_num; n++) {
 				if (proto[n].proto_id != proto_id)
 					continue;
-				memset(name, 0, sizeof(name));
-				strcpy(name, proto[n].name);
+				strlcpy(name, proto[n].name, sizeof(name));
 				PMD_DRV_LOG(INFO, "name = %s", name);
 				if (!strncasecmp(name, "PPPOE", 5))
 					ptype_mapping[i].sw_ptype |=
