@@ -221,7 +221,7 @@ parse_entry(const char *value, struct test_configure_entry *entry)
 	if (value == NULL || entry == NULL)
 		goto out;
 
-	strncpy(input, value, 254);
+	strlcpy(input, value, sizeof(input));
 	if (*input == '\0')
 		goto out;
 

@@ -103,7 +103,6 @@ args_parse(int argc, char **argv, char *rules_file, char *data_file,
 	char **argvopt;
 	int opt;
 	int opt_idx;
-	size_t len;
 	static struct option lgopts[] = {
 		{ "help",  0, 0, ARG_HELP},
 		/* Rules database file to load. */
@@ -133,20 +132,16 @@ args_parse(int argc, char **argv, char *rules_file, char *data_file,
 				lgopts, &opt_idx)) != EOF) {
 		switch (opt) {
 		case ARG_RULES_FILE_NAME:
-			len = strnlen(optarg, MAX_FILE_NAME - 1);
-			if (len == MAX_FILE_NAME)
+			if (strlcpy(rules_file, optarg, MAX_FILE_NAME) >= MAX_FILE_NAME)
 				rte_exit(EXIT_FAILURE,
 					 "Rule file name to long max %d\n",
 					 MAX_FILE_NAME - 1);
-			strncpy(rules_file, optarg, MAX_FILE_NAME - 1);
 			break;
 		case ARG_DATA_FILE_NAME:
-			len = strnlen(optarg, MAX_FILE_NAME - 1);
-			if (len == MAX_FILE_NAME)
+			if (strlcpy(data_file, optarg, MAX_FILE_NAME) >= MAX_FILE_NAME)
 				rte_exit(EXIT_FAILURE,
 					 "Data file name to long max %d\n",
 					 MAX_FILE_NAME - 1);
-			strncpy(data_file, optarg, MAX_FILE_NAME - 1);
 			break;
 		case ARG_NUM_OF_JOBS:
 			*nb_jobs = atoi(optarg);
