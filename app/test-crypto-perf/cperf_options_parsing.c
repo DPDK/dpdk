@@ -482,8 +482,7 @@ parse_device_type(struct cperf_options *opts, const char *arg)
 	if (strlen(arg) > (sizeof(opts->device_type) - 1))
 		return -1;
 
-	strncpy(opts->device_type, arg, sizeof(opts->device_type) - 1);
-	*(opts->device_type + sizeof(opts->device_type) - 1) = '\0';
+	strlcpy(opts->device_type, arg, sizeof(opts->device_type));
 
 	return 0;
 }
@@ -1134,7 +1133,7 @@ cperf_options_default(struct cperf_options *opts)
 	opts->segment_sz = 0;
 
 	opts->imix_distribution_count = 0;
-	strncpy(opts->device_type, "crypto_aesni_mb",
+	strlcpy(opts->device_type, "crypto_aesni_mb",
 			sizeof(opts->device_type));
 	opts->nb_qps = 1;
 

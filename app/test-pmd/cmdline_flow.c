@@ -11911,7 +11911,7 @@ parse_string0(struct context *ctx, const struct token *token __rte_unused,
 	if (!ctx->object)
 		return len;
 	buf = (uint8_t *)ctx->object + arg_data->offset;
-	strncpy(buf, str, len);
+	memcpy(buf, str, len);
 	if (ctx->objmask)
 		memset((uint8_t *)ctx->objmask + arg_data->offset, 0xff, len);
 	return len;
