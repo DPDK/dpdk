@@ -409,7 +409,7 @@ nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 	struct nix_inl_dev *inl_dev = NULL;
 	uint64_t max_sa, i, sa_pow2_sz;
 	uint64_t sa_idx_w, lenm1_max;
-	uint64_t res_addr_offset;
+	uint64_t res_addr_offset = 0;
 	uint8_t profile_id = 0;
 	struct mbox *mbox;
 	size_t inb_sa_sz;
@@ -503,13 +503,12 @@ nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 				def_cptq = 0;
 			else
 				def_cptq = inl_dev->nix_inb_qids[inl_dev->inb_cpt_lf_id];
+			res_addr_offset = (uint64_t)(inl_dev->res_addr_offset & 0xFF) << 48;
+			if (res_addr_offset)
+				res_addr_offset |= (1UL << 56);
+			cpt_cq_ena = (uint64_t)inl_dev->cpt_cq_ena << 63;
 		}
 
-		res_addr_offset = (uint64_t)(inl_dev->res_addr_offset & 0xFF) << 48;
-		if (res_addr_offset)
-			res_addr_offset |= (1UL << 56);
-
-		cpt_cq_ena = (uint64_t)inl_dev->cpt_cq_ena << 63;
 		lf_cfg->enable = 1;
 		lf_cfg->profile_id = profile_id; /* IPsec profile is 0th one */
 		lf_cfg->rx_inline_sa_base = (uintptr_t)nix->inb_sa_base[profile_id] | cpt_cq_ena;
