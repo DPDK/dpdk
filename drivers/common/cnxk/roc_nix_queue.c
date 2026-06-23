@@ -10,6 +10,49 @@
 /* Default SQB slack per SQ */
 #define ROC_NIX_SQB_SLACK_DFLT 24
 
+typedef void *(*nix_aq_enq_alloc_t)(struct mbox *mbox);
+
+static inline void
+nix_aq_enq_write_rq_ena(void *msg, uint16_t qid, bool enable)
+{
+	struct nix_aq_enq_req *aq = msg;
+
+	aq->qidx = qid;
+	aq->ctype = NIX_AQ_CTYPE_RQ;
+	aq->op = NIX_AQ_INSTOP_WRITE;
+	aq->rq.ena = enable;
+	aq->rq_mask.ena = ~(aq->rq_mask.ena);
+}
+
+static inline int
+nix_rq_bulk_ena_dis_fill(struct mbox *mbox, struct roc_nix_rq *rqs, int nb_rx_queues,
+			 bool enable, nix_aq_enq_alloc_t alloc)
+{
+	int i;
+
+	for (i = 0; i < nb_rx_queues; i++) {
+		void *aq;
+		int rc;
+
+		if (rqs[i].qid == UINT16_MAX)
+			continue;
+
+		aq = alloc(mbox);
+		if (!aq) {
+			rc = mbox_process(mbox);
+			if (rc)
+				return rc;
+			aq = alloc(mbox);
+			if (!aq)
+				return -ENOSPC;
+		}
+
+		nix_aq_enq_write_rq_ena(aq, rqs[i].qid, enable);
+	}
+
+	return 0;
+}
+
 static inline uint32_t
 nix_qsize_to_val(enum nix_q_size qsize)
 {
@@ -45,6 +88,28 @@ nix_rq_vwqe_flush(struct roc_nix_rq *rq, uint16_t vwqe_interval)
 		wait_ns = rq->vwqe_wait_tmo * (vwqe_interval + 1) * 100;
 		plt_delay_us((wait_ns / 1E3) + 1);
 	}
+}
+
+static int
+nix_rq_bulk_ena_dis(struct nix *nix, struct roc_nix_rq *rqs, int nb_rx_queues, bool enable)
+{
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
+	nix_aq_enq_alloc_t alloc;
+	int rc;
+
+	if (roc_model_is_cn9k())
+		alloc = (nix_aq_enq_alloc_t)mbox_alloc_msg_nix_aq_enq;
+	else if (roc_model_is_cn10k())
+		alloc = (nix_aq_enq_alloc_t)mbox_alloc_msg_nix_cn10k_aq_enq;
+	else /* CN20K */
+		alloc = (nix_aq_enq_alloc_t)mbox_alloc_msg_nix_cn20k_aq_enq;
+
+	rc = nix_rq_bulk_ena_dis_fill(mbox, rqs, nb_rx_queues, enable, alloc);
+	if (!rc && mbox_nonempty_nolock(mbox, 0))
+		rc = mbox_process(mbox);
+
+	mbox_put(mbox);
+	return rc;
 }
 
 int
@@ -124,6 +189,43 @@ roc_nix_sq_ena_dis(struct roc_nix_sq *sq, bool enable)
 	sq->enable = enable;
 done:
 	return rc;
+}
+
+int
+roc_nix_rq_multi_ena_dis(struct roc_nix *roc_nix, struct roc_nix_rq *rqs, int nb_rx_queues,
+			 bool enable)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct roc_nix_rq *rq;
+	int rc, i;
+
+	rc = nix_rq_bulk_ena_dis(nix, rqs, nb_rx_queues, enable);
+	if (rc) {
+		plt_err("Failed to %s Rx queues rc=%d pf=%d vf=%d nb_rx_queues=%d",
+			enable ? "enable" : "disable", rc, nix->dev.pf, nix->dev.vf,
+			nb_rx_queues);
+		return rc;
+	}
+
+	for (i = 0; i < nb_rx_queues; i++) {
+		rq = &rqs[i];
+
+		if (rq->qid == UINT16_MAX)
+			continue;
+
+		nix_rq_vwqe_flush(rq, nix->vwqe_interval);
+
+		/* Check for meta aura if RQ is enabled */
+		if (enable && nix->need_meta_aura) {
+			rc = roc_nix_inl_meta_aura_check(rq->roc_nix, rq);
+			if (rc) {
+				plt_err("Failed meta aura check for rq=%u rc=%d pf=%d vf=%d",
+					rq->qid, rc, nix->dev.pf, nix->dev.vf);
+				return rc;
+			}
+		}
+	}
+	return 0;
 }
 
 int

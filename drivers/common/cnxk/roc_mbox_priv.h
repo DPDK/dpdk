@@ -113,14 +113,12 @@ mbox_rsp_init(uint16_t mbox_id, void *msghdr)
 }
 
 static inline bool
-mbox_nonempty(struct mbox *mbox, int devid)
+mbox_nonempty_nolock(struct mbox *mbox, int devid)
 {
 	struct mbox_dev *mdev = &mbox->dev[devid];
 	bool ret;
 
-	plt_spinlock_lock(&mdev->mbox_lock);
-	ret = mdev->num_msgs != 0;
-	plt_spinlock_unlock(&mdev->mbox_lock);
+	ret = mdev->num_msgs != 0 && mdev->msg_size != 0;
 
 	return ret;
 }
