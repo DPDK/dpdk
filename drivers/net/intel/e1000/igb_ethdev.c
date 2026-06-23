@@ -2047,8 +2047,9 @@ static int eth_igb_xstats_get_names_by_id(struct rte_eth_dev *dev,
 				PMD_INIT_LOG(ERR, "id value isn't valid");
 				return -1;
 			}
-			strcpy(xstats_names[i].name,
-					xstats_names_copy[ids[i]].name);
+			strlcpy(xstats_names[i].name,
+					xstats_names_copy[ids[i]].name,
+					sizeof(xstats_names[i].name));
 		}
 		return limit;
 	}
