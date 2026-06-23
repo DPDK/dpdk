@@ -211,7 +211,7 @@ cpfl_flow_js_pattern_key_proto_field(json_t *ob_fields,
 			PMD_DRV_LOG(ERR, "The 'name' is too long.");
 			goto err;
 		}
-		strncpy(js_field->fields[i].name, name, CPFL_JS_STR_SIZE - 1);
+		strlcpy(js_field->fields[i].name, name, CPFL_JS_STR_SIZE);
 
 		if (js_field->type == RTE_FLOW_ITEM_TYPE_ETH ||
 		    js_field->type == RTE_FLOW_ITEM_TYPE_IPV4) {
@@ -716,8 +716,7 @@ cpfl_flow_js_mr_key(json_t *ob_mr_keys, struct cpfl_flow_js_mr_key *js_mr_key)
 					PMD_DRV_LOG(ERR, "The 'name' is too long.");
 					goto err;
 				}
-				strncpy(js_mr_key->actions[i].prog.name, name,
-					CPFL_JS_STR_SIZE - 1);
+				strlcpy(js_mr_key->actions[i].prog.name, name, CPFL_JS_STR_SIZE);
 			}
 
 			ob_param = json_object_get(object, "parameters");
@@ -742,8 +741,8 @@ cpfl_flow_js_mr_key(json_t *ob_mr_keys, struct cpfl_flow_js_mr_key *js_mr_key)
 						PMD_DRV_LOG(ERR, "The 'name' is too long.");
 						goto err;
 					}
-					strncpy(js_mr_key->actions[i].prog.params[j].name, name,
-						CPFL_JS_STR_SIZE - 1);
+					strlcpy(js_mr_key->actions[i].prog.params[j].name, name,
+						CPFL_JS_STR_SIZE);
 				}
 				ret = cpfl_json_t_to_uint16(subobject, "size", &value);
 				if (ret < 0) {
@@ -810,7 +809,7 @@ cpfl_flow_js_mr_layout(json_t *ob_layouts, struct cpfl_flow_js_mr_action_mod *js
 			PMD_DRV_LOG(ERR, "The 'hint' is too long.");
 			goto err;
 		}
-		strncpy(js_mod->layout[i].hint, hint, CPFL_JS_STR_SIZE - 1);
+		strlcpy(js_mod->layout[i].hint, hint, CPFL_JS_STR_SIZE);
 	}
 
 	return 0;
@@ -856,7 +855,7 @@ cpfl_flow_js_mr_content(json_t *ob_content, struct cpfl_flow_js_mr_action_mod *j
 			PMD_DRV_LOG(ERR, "The 'type' is too long.");
 			goto err;
 		}
-		strncpy(js_mod->content.fields[i].type, type, CPFL_JS_STR_SIZE - 1);
+		strlcpy(js_mod->content.fields[i].type, type, CPFL_JS_STR_SIZE);
 		ret = cpfl_json_t_to_uint16(object, "start", &start);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "Can not parse 'start'.");
@@ -1806,8 +1805,7 @@ cpfl_parse_check_prog_action(struct cpfl_flow_js_mr_key_action *key_act,
 			return -EINVAL;
 		if (param->has_name) {
 			mr_key_prog->has_name = TRUE;
-			strncpy(mr_key_prog->name[param->index], param->name,
-				CPFL_JS_STR_SIZE - 1);
+			strlcpy(mr_key_prog->name[param->index], param->name, CPFL_JS_STR_SIZE);
 		}
 	}
 

@@ -2534,7 +2534,7 @@ cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *a
 	hw->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
 	adapter->host_id = get_running_host_id();
 
-	strncpy(adapter->name, pci_dev->device.name, PCI_PRI_STR_SIZE);
+	strlcpy(adapter->name, pci_dev->device.name, sizeof(adapter->name));
 
 	memcpy(&base->caps, &req_caps, sizeof(struct virtchnl2_get_capabilities));
 

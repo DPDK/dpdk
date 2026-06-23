@@ -1497,7 +1497,7 @@ idpf_adapter_ext_init(struct rte_pci_device *pci_dev, struct idpf_adapter_ext *a
 	hw->device_id = pci_dev->id.device_id;
 	hw->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
 
-	strncpy(adapter->name, pci_dev->device.name, PCI_PRI_STR_SIZE);
+	strlcpy(adapter->name, pci_dev->device.name, sizeof(adapter->name));
 
 	memcpy(&base->caps, &req_caps, sizeof(struct virtchnl2_get_capabilities));
 

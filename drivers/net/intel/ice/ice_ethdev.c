@@ -1897,7 +1897,7 @@ ice_send_driver_ver(struct ice_hw *hw)
 	dv.minor_ver = 0;
 	dv.build_ver = 0;
 	dv.subbuild_ver = 0;
-	strncpy((char *)dv.driver_string, "dpdk", sizeof(dv.driver_string));
+	strlcpy((char *)dv.driver_string, "dpdk", sizeof(dv.driver_string));
 
 	return ice_aq_send_driver_ver(hw, &dv, NULL);
 }
@@ -2054,24 +2054,22 @@ int ice_load_pkg(struct ice_adapter *adapter, bool use_dsn, uint64_t dsn)
 	if (!use_dsn)
 		goto no_dsn;
 
-	strncpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_UPDATES,
-		ICE_MAX_PKG_FILENAME_SIZE);
-	strcat(pkg_file, opt_ddp_filename);
+	strlcpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_UPDATES, ICE_MAX_PKG_FILENAME_SIZE);
+	strlcat(pkg_file, opt_ddp_filename, ICE_MAX_PKG_FILENAME_SIZE);
 	if (ice_firmware_read(pkg_file, &buf, &bufsz) == 0)
 		goto load_fw;
 
-	strncpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_DEFAULT,
-		ICE_MAX_PKG_FILENAME_SIZE);
-	strcat(pkg_file, opt_ddp_filename);
+	strlcpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_DEFAULT, ICE_MAX_PKG_FILENAME_SIZE);
+	strlcat(pkg_file, opt_ddp_filename, ICE_MAX_PKG_FILENAME_SIZE);
 	if (ice_firmware_read(pkg_file, &buf, &bufsz) == 0)
 		goto load_fw;
 
 no_dsn:
-	strncpy(pkg_file, ICE_PKG_FILE_UPDATES, ICE_MAX_PKG_FILENAME_SIZE);
+	strlcpy(pkg_file, ICE_PKG_FILE_UPDATES, ICE_MAX_PKG_FILENAME_SIZE);
 	if (ice_firmware_read(pkg_file, &buf, &bufsz) == 0)
 		goto load_fw;
 
-	strncpy(pkg_file, ICE_PKG_FILE_DEFAULT, ICE_MAX_PKG_FILENAME_SIZE);
+	strlcpy(pkg_file, ICE_PKG_FILE_DEFAULT, ICE_MAX_PKG_FILENAME_SIZE);
 	if (ice_firmware_read(pkg_file, &buf, &bufsz) < 0) {
 		PMD_INIT_LOG(ERR, "Failed to load default DDP package " ICE_PKG_FILE_DEFAULT);
 		return -1;
