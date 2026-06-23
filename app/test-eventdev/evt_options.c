@@ -23,7 +23,7 @@ evt_options_default(struct evt_options *opt)
 	memset(opt, 0, sizeof(*opt));
 	opt->verbose_level = 1; /* Enable minimal prints */
 	opt->dev_id = 0;
-	strncpy(opt->test_name, "order_queue", EVT_TEST_NAME_MAX_LEN);
+	strlcpy(opt->test_name, "order_queue", sizeof(opt->test_name));
 	opt->nb_flows = 1024;
 	opt->socket_id = SOCKET_ID_ANY;
 	opt->pool_sz = 16 * 1024;
