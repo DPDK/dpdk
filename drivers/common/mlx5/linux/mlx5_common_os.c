@@ -231,7 +231,7 @@ try_dev_id:
 		rte_errno = ENOENT;
 		return -rte_errno;
 	}
-	strncpy(ifname, match, IF_NAMESIZE);
+	strlcpy(ifname, match, IF_NAMESIZE);
 	return 0;
 }
 
