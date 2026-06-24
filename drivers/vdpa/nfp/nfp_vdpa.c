@@ -119,8 +119,6 @@ nfp_vdpa_vfio_setup(struct nfp_vdpa_dev *device)
 	char dev_name[RTE_DEV_NAME_MAX_LEN] = {0};
 	struct rte_pci_device *pci_dev = device->pci_dev;
 
-	rte_pci_unmap_device(pci_dev);
-
 	rte_pci_device_name(&pci_dev->addr, dev_name, RTE_DEV_NAME_MAX_LEN);
 	ret = rte_vfio_get_group_num(rte_pci_get_sysfs_path(), dev_name,
 			&device->iommu_group);
@@ -1301,7 +1299,7 @@ static struct nfp_class_driver nfp_vdpa = {
 	.drv_class = NFP_CLASS_VDPA,
 	.name = RTE_STR(NFP_VDPA_DRIVER_NAME),
 	.id_table = pci_id_nfp_vdpa_map,
-	.drv_flags =  RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.drv_flags = RTE_PCI_DRV_INTR_LSC,
 	.probe = nfp_vdpa_pci_probe,
 	.remove = nfp_vdpa_pci_remove,
 };
