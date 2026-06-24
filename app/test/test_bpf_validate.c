@@ -1536,6 +1536,23 @@ test_alu64_div_mod_overflow(void)
 REGISTER_FAST_TEST(bpf_validate_alu64_div_mod_overflow_autotest, NOHUGE_OK, ASAN_OK,
 	test_alu64_div_mod_overflow);
 
+/* 64-bit left shift by 63. */
+static int
+test_alu64_lsh_63(void)
+{
+	return verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (EBPF_ALU64 | BPF_LSH | BPF_K),
+			.imm = 63,
+		},
+		.pre.dst = make_signed_domain(3, 5),
+		.post.dst = unknown,
+	});
+}
+
+REGISTER_FAST_TEST(bpf_validate_alu64_lsh_63_autotest, NOHUGE_OK, ASAN_OK,
+	test_alu64_lsh_63);
+
 /* 64-bit multiplication of constant and immediate with overflow. */
 static int
 test_alu64_mul_k_overflow(void)

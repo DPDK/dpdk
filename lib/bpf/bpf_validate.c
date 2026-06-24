@@ -746,7 +746,8 @@ eval_lsh(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
 
 	/* check that dreg values are and would remain always positive */
 	if ((uint64_t)rd->s.min >> (opsz - 1) != 0 || rd->s.max >=
-			RTE_LEN2MASK(opsz - rs->u.max - 1, int64_t))
+			(rs->u.max == opsz - 1 ? 0 :
+				 RTE_LEN2MASK(opsz - rs->u.max - 1, int64_t)))
 		eval_smax_bound(rd, msk);
 	else {
 		rd->s.max <<= rs->u.max;
