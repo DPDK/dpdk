@@ -303,7 +303,7 @@ int bnx2x_vf_get_resources(struct bnx2x_softc *sc, uint8_t tx_count, uint8_t rx_
 
 	PMD_DRV_LOG(DEBUG, sc, "status block count = %d, base status block = %x",
 		sc->igu_sb_cnt, sc->igu_base_sb);
-	strncpy(sc->fw_ver, sc_resp.fw_ver, sizeof(sc->fw_ver));
+	strlcpy(sc->fw_ver, sc_resp.fw_ver, sizeof(sc->fw_ver));
 
 	if (rte_is_valid_assigned_ether_addr(&sc_resp.resc.current_mac_addr))
 		rte_ether_addr_copy(&sc_resp.resc.current_mac_addr,
