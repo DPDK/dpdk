@@ -4071,37 +4071,12 @@ s32 txgbe_reset_pipeline_raptor(struct txgbe_hw *hw)
 	return err;
 }
 
-s32 txgbe_e56_check_phy_link(struct txgbe_hw *hw, u32 *speed,
-				bool *link_up)
+bool txgbe_gpio_ext_check(struct txgbe_hw *hw, u8 gpio_ext_mask)
 {
-	u32 rdata = 0;
-	u32 links_reg = 0;
+	u32 gpio_ext = rd32(hw, TXGBE_GPIOEXT);
 
-	/* must read it twice because the state may
-	 * not be correct the first time you read it
-	 */
-	rdata = rd32_epcs(hw, 0x30001);
-	rdata = rd32_epcs(hw, 0x30001);
+	if (gpio_ext & gpio_ext_mask)
+		return true;
 
-	if (rdata & TXGBE_AML_PHY_LINK_UP)
-		*link_up = true;
-	else
-		*link_up = false;
-
-	links_reg = rd32(hw, TXGBE_PORTSTAT);
-	if (*link_up) {
-		if ((links_reg & TXGBE_CFG_PORT_ST_AML_LINK_40G) ==
-				TXGBE_CFG_PORT_ST_AML_LINK_40G)
-			*speed = TXGBE_LINK_SPEED_40GB_FULL;
-		else if ((links_reg & TXGBE_CFG_PORT_ST_AML_LINK_25G) ==
-				TXGBE_CFG_PORT_ST_AML_LINK_25G)
-			*speed = TXGBE_LINK_SPEED_25GB_FULL;
-		else if ((links_reg & TXGBE_CFG_PORT_ST_AML_LINK_10G) ==
-				TXGBE_CFG_PORT_ST_AML_LINK_10G)
-			*speed = TXGBE_LINK_SPEED_10GB_FULL;
-	} else {
-		*speed = TXGBE_LINK_SPEED_UNKNOWN;
-	}
-
-	return 0;
+	return false;
 }
