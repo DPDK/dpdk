@@ -267,9 +267,15 @@ RTE_EXPORT_SYMBOL(rte_dev_probe)
 int
 rte_dev_probe(const char *devargs)
 {
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+	bool do_mp = !!internal_conf->no_shconf;
 	struct eal_dev_mp_req req;
 	struct rte_device *dev;
 	int ret;
+
+	if (!do_mp)
+		goto skip_mp_req;
 
 	memset(&req, 0, sizeof(req));
 	req.t = EAL_DEV_REQ_TYPE_ATTACH;
@@ -294,6 +300,7 @@ rte_dev_probe(const char *devargs)
 
 	/* attach a shared device from primary start from here: */
 
+skip_mp_req:
 	/* primary attach the new device itself. */
 	ret = local_dev_probe(devargs, &dev);
 
@@ -310,6 +317,9 @@ rte_dev_probe(const char *devargs)
 		if (ret != -EEXIST)
 			return ret;
 	}
+
+	if (!do_mp)
+		goto skip_mp_notify;
 
 	/* primary send attach sync request to secondary. */
 	ret = eal_dev_hotplug_request_to_secondary(&req);
@@ -337,16 +347,19 @@ rte_dev_probe(const char *devargs)
 		goto rollback;
 	}
 
+skip_mp_notify:
 	return 0;
 
 rollback:
-	req.t = EAL_DEV_REQ_TYPE_ATTACH_ROLLBACK;
+	if (do_mp) {
+		req.t = EAL_DEV_REQ_TYPE_ATTACH_ROLLBACK;
 
-	/* primary send rollback request to secondary. */
-	if (eal_dev_hotplug_request_to_secondary(&req) != 0)
-		EAL_LOG(WARNING,
-			"Failed to rollback device attach on secondary."
-			"Devices in secondary may not sync with primary");
+		/* primary send rollback request to secondary. */
+		if (eal_dev_hotplug_request_to_secondary(&req) != 0)
+			EAL_LOG(WARNING,
+				"Failed to rollback device attach on secondary."
+				"Devices in secondary may not sync with primary");
+	}
 
 	/* primary rollback itself. */
 	if (local_dev_remove(dev) != 0)
@@ -407,6 +420,9 @@ RTE_EXPORT_SYMBOL(rte_dev_remove)
 int
 rte_dev_remove(struct rte_device *dev)
 {
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+	bool do_mp = !!internal_conf->no_shconf;
 	struct eal_dev_mp_req req;
 	char *devargs;
 	int ret;
@@ -415,6 +431,9 @@ rte_dev_remove(struct rte_device *dev)
 		EAL_LOG(ERR, "Device is not probed");
 		return -ENOENT;
 	}
+
+	if (!do_mp)
+		goto skip_mp_req;
 
 	ret = build_devargs(dev->bus->name, dev->name, "", &devargs);
 	if (ret != 0)
@@ -474,6 +493,7 @@ rte_dev_remove(struct rte_device *dev)
 			goto rollback;
 	}
 
+skip_mp_req:
 	/* primary detach the device itself. */
 	ret = local_dev_remove(dev);
 
@@ -490,13 +510,15 @@ rte_dev_remove(struct rte_device *dev)
 	return 0;
 
 rollback:
-	req.t = EAL_DEV_REQ_TYPE_DETACH_ROLLBACK;
+	if (do_mp) {
+		req.t = EAL_DEV_REQ_TYPE_DETACH_ROLLBACK;
 
-	/* primary send rollback request to secondary. */
-	if (eal_dev_hotplug_request_to_secondary(&req) != 0)
-		EAL_LOG(WARNING,
-			"Failed to rollback device detach on secondary."
-			"Devices in secondary may not sync with primary");
+		/* primary send rollback request to secondary. */
+		if (eal_dev_hotplug_request_to_secondary(&req) != 0)
+			EAL_LOG(WARNING,
+				"Failed to rollback device detach on secondary."
+				"Devices in secondary may not sync with primary");
+	}
 
 	return ret;
 }
