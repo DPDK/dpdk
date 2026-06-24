@@ -438,7 +438,12 @@ typedef union {
 #define E56PHY_FETX_FFE_TRAIN_CFG_0_KRT_FETX_INIT_FFE_CFG_2 9, 8
 #define E56PHY_FETX_FFE_TRAIN_CFG_0_KRT_FETX_INIT_FFE_CFG_3 13, 12
 
-#define PHYINIT_TIMEOUT 1000 /* PHY initialization timeout value in 0.5ms unit */
+/* PHYINIT_TIMEOUT, a loop iteration counter, not a fixed time unit.
+ * The actual timeout duration depends on the usec_delay() or msleep()
+ * value used inside the polling loop. For example, when usec_delay(500)
+ * is used, the total timeout is approximately PHYINIT_TIMEOUT * 500 us.
+ */
+#define PHYINIT_TIMEOUT 1000
 
 #define E56G__BASEADDR 0x0
 
@@ -1754,7 +1759,7 @@ set_fields_e56(unsigned int *src_data, unsigned int bit_high,
 	}
 }
 
-int txgbe_e56_rx_rd_second_code_40g(struct txgbe_hw *hw, int *SECOND_CODE, int lane);
+void txgbe_e56_rx_rd_second_code_40g(struct txgbe_hw *hw, int *SECOND_CODE, int lane);
 void txgbe_e56_rx_rd_second_code(struct txgbe_hw *hw, int *SECOND_CODE);
 u32 txgbe_e56_cfg_40g(struct txgbe_hw *hw);
 u32 txgbe_e56_cfg_25g(struct txgbe_hw *hw);

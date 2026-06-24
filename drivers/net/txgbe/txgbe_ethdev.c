@@ -2054,7 +2054,7 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (hw->mac.type == txgbe_mac_aml)
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40)
 		rte_eal_alarm_cancel(txgbe_dev_setup_link_alarm_handler_aml, hw);
 
 	rte_eal_alarm_cancel(txgbe_dev_detect_sfp, dev);
@@ -3206,7 +3206,7 @@ txgbe_dev_setup_link_thread_handler(void *param)
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 
 	rte_thread_detach(rte_thread_self());
-	if (hw->mac.type == txgbe_mac_aml)
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40)
 		txgbe_dev_setup_link_alarm_handler_aml(hw);
 	else
 		txgbe_dev_setup_link_alarm_handler(dev);
