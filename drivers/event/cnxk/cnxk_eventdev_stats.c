@@ -309,7 +309,7 @@ cnxk_sso_xstats_get_names(const struct rte_eventdev *event_dev,
 
 	for (i = 0; i < xstats_mode_count; i++) {
 		xidx = i + start_offset;
-		strncpy(xstats_names[i].name, xstats_names_copy[xidx].name,
+		strlcpy(xstats_names[i].name, xstats_names_copy[xidx].name,
 			sizeof(xstats_names[i].name));
 		ids[i] = xidx;
 	}
