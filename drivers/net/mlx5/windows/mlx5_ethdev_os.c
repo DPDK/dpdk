@@ -67,7 +67,7 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char ifname[MLX5_NAMESIZE])
 	}
 	priv = dev->data->dev_private;
 	context_obj = (mlx5_context_st *)priv->sh->cdev->ctx;
-	strncpy(ifname, context_obj->mlx5_dev.name, MLX5_NAMESIZE);
+	strlcpy(ifname, context_obj->mlx5_dev.name, MLX5_NAMESIZE);
 	return 0;
 }
 

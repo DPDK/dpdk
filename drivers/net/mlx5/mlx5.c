@@ -1916,10 +1916,10 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	sh->txpp.skew = sh->config.tx_skew;
 	sh->refcnt = 1;
 	sh->max_port = spawn->max_port;
-	strncpy(sh->ibdev_name, mlx5_os_get_ctx_device_name(sh->cdev->ctx),
-		sizeof(sh->ibdev_name) - 1);
-	strncpy(sh->ibdev_path, mlx5_os_get_ctx_device_path(sh->cdev->ctx),
-		sizeof(sh->ibdev_path) - 1);
+	strlcpy(sh->ibdev_name, mlx5_os_get_ctx_device_name(sh->cdev->ctx),
+		sizeof(sh->ibdev_name));
+	strlcpy(sh->ibdev_path, mlx5_os_get_ctx_device_path(sh->cdev->ctx),
+		sizeof(sh->ibdev_path));
 	sh->phdev = mlx5_get_physical_device(sh->cdev);
 	if (!sh->phdev)
 		goto error;
