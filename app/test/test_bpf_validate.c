@@ -1764,6 +1764,23 @@ test_alu64_sub_x_src_signed_max_zero(void)
 REGISTER_FAST_TEST(bpf_validate_alu64_sub_x_src_signed_max_zero_autotest, NOHUGE_OK, ASAN_OK,
 	test_alu64_sub_x_src_signed_max_zero);
 
+/* 64-bit bitwise XOR between a negative scalar range and zero immediate. */
+static int
+test_alu64_xor_k_negative(void)
+{
+	return verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (EBPF_ALU64 | BPF_XOR | BPF_K),
+			.imm = 0,
+		},
+		.pre.dst = make_signed_domain(INT64_MIN, 0),
+		.post.dst = unknown,
+	});
+}
+
+REGISTER_FAST_TEST(bpf_validate_alu64_xor_k_negative_autotest, NOHUGE_OK, ASAN_OK,
+	test_alu64_xor_k_negative);
+
 /* Jump if greater than immediate. */
 static int
 test_jmp64_jeq_k(void)
