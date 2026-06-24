@@ -15,6 +15,8 @@
 #include <arpa/inet.h>
 #include <errno.h>
 
+#include <rte_string_fns.h>
+
 #include "conn.h"
 
 #define MSG_CMD_TOO_LONG "Command too long."
@@ -115,8 +117,8 @@ conn_init(struct conn_params *p)
 	}
 
 	/* Fill in */
-	strncpy(conn->welcome, p->welcome, CONN_WELCOME_LEN_MAX);
-	strncpy(conn->prompt, p->prompt, CONN_PROMPT_LEN_MAX);
+	strlcpy(conn->welcome, p->welcome, CONN_WELCOME_LEN_MAX + 1);
+	strlcpy(conn->prompt, p->prompt, CONN_PROMPT_LEN_MAX + 1);
 	conn->buf_size = p->buf_size;
 	conn->msg_in_len_max = p->msg_in_len_max;
 	conn->msg_out_len_max = p->msg_out_len_max;

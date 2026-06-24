@@ -338,12 +338,12 @@ parse_key_string(const char *key_str, uint8_t *key)
 		if (pt_end == NULL) {
 			if (strlen(pt_start) > 2)
 				return 0;
-			strncpy(sub_str, pt_start, 2);
+			memcpy(sub_str, pt_start, 2);
 		} else {
 			if (pt_end - pt_start > 2)
 				return 0;
 
-			strncpy(sub_str, pt_start, pt_end - pt_start);
+			memcpy(sub_str, pt_start, pt_end - pt_start);
 			pt_start = pt_end + 1;
 		}
 

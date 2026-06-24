@@ -1576,19 +1576,19 @@ l2fwd_crypto_options_print(struct l2fwd_crypto_options *options)
 	char string_aead_op[MAX_STR_LEN];
 
 	if (options->cipher_xform.cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
-		strcpy(string_cipher_op, "Encrypt");
+		strlcpy(string_cipher_op, "Encrypt", sizeof(string_cipher_op));
 	else
-		strcpy(string_cipher_op, "Decrypt");
+		strlcpy(string_cipher_op, "Decrypt", sizeof(string_cipher_op));
 
 	if (options->auth_xform.auth.op == RTE_CRYPTO_AUTH_OP_GENERATE)
-		strcpy(string_auth_op, "Auth generate");
+		strlcpy(string_auth_op, "Auth generate", sizeof(string_auth_op));
 	else
-		strcpy(string_auth_op, "Auth verify");
+		strlcpy(string_auth_op, "Auth verify", sizeof(string_auth_op));
 
 	if (options->aead_xform.aead.op == RTE_CRYPTO_AEAD_OP_ENCRYPT)
-		strcpy(string_aead_op, "Authenticated encryption");
+		strlcpy(string_aead_op, "Authenticated encryption", sizeof(string_aead_op));
 	else
-		strcpy(string_aead_op, "Authenticated decryption");
+		strlcpy(string_aead_op, "Authenticated decryption", sizeof(string_aead_op));
 
 
 	printf("Options:-\nn");
