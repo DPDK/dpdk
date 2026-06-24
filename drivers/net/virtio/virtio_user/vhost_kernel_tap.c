@@ -60,7 +60,7 @@ vhost_tap_open(const char *ifname, unsigned int r_flags, bool multi_queue)
 
 retry_mono_q:
 	memset(&ifr, 0, sizeof(ifr));
-	strncpy(ifr.ifr_name, ifname, IFNAMSIZ - 1);
+	strlcpy(ifr.ifr_name, ifname, IFNAMSIZ);
 	ifr.ifr_flags = r_flags;
 	if (multi_queue)
 		ifr.ifr_flags |= IFF_MULTI_QUEUE;
