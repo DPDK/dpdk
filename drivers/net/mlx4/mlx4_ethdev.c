@@ -127,7 +127,7 @@ try_dev_id:
 		rte_errno = ENODEV;
 		return -rte_errno;
 	}
-	strncpy(*ifname, match, sizeof(*ifname));
+	strlcpy(*ifname, match, sizeof(*ifname));
 	return 0;
 }
 
