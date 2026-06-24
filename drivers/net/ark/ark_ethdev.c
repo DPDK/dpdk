@@ -929,7 +929,7 @@ process_file_args(const char *key, const char *value, void *extra_args)
 			return -1;
 		}
 		if (first) {
-			strncpy(args, line, ARK_MAX_ARG_LEN);
+			strlcpy(args, line, ARK_MAX_ARG_LEN);
 			first = 0;
 		} else {
 			strncat(args, line, ARK_MAX_ARG_LEN);
