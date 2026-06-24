@@ -188,6 +188,41 @@ struct cperf_sm2_test_data {
 	int curve;
 };
 
+struct cperf_mldsa_test_data {
+	const char *name;
+	enum rte_crypto_ml_dsa_type type;
+	struct {
+		uint8_t *data;
+		uint32_t length;
+	} privkey;
+	struct {
+		uint8_t *data;
+		uint32_t length;
+	} pubkey;
+	struct {
+		uint8_t *data;
+		uint32_t length;
+	} message;
+	struct {
+		uint8_t *data;
+		uint32_t length;
+	} sign;
+	struct {
+		uint8_t *data;
+		uint32_t length;
+	} ctx;
+	struct {
+		uint8_t *data;
+		uint32_t length;
+	} seed;
+	struct {
+		uint8_t *data;
+		uint32_t length;
+	} mu;
+	enum rte_crypto_auth_algorithm hash;
+	bool sign_deterministic;
+};
+
 struct cperf_test_vector*
 cperf_test_vector_get_dummy(struct cperf_options *options);
 
@@ -215,5 +250,7 @@ extern struct cperf_rsa_test_data rsa_qt_perf_data[4];
 extern struct cperf_rsa_plaintext rsa_plaintext;
 extern struct cperf_mlkem_test_data mlkem_encap_perf_data[];
 extern struct cperf_mlkem_test_data mlkem_decap_perf_data[];
+extern struct cperf_mldsa_test_data mldsa_sign_perf_data[];
+extern struct cperf_mldsa_test_data mldsa_verify_perf_data[];
 
 #endif

@@ -251,6 +251,58 @@ cperf_set_ops_asym_mlkem(struct rte_crypto_op **ops,
 	}
 }
 
+static void
+cperf_set_ops_asym_mldsa(struct rte_crypto_op **ops,
+		uint32_t src_buf_offset __rte_unused,
+		uint32_t dst_buf_offset __rte_unused, uint16_t nb_ops,
+		void *sess,
+		const struct cperf_options *options,
+		const struct cperf_test_vector *test_vector __rte_unused,
+		uint16_t iv_offset __rte_unused,
+		uint32_t *imix_idx __rte_unused,
+		uint64_t *tsc_start __rte_unused)
+{
+	uint16_t i;
+
+	for (i = 0; i < nb_ops; i++) {
+		struct rte_crypto_asym_op *asym_op = ops[i]->asym;
+
+		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		rte_crypto_op_attach_asym_session(ops[i], sess);
+
+		if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_SIGN) {
+			asym_op->mldsa.op = RTE_CRYPTO_ML_DSA_OP_SIGN;
+			asym_op->mldsa.siggen.privkey.data = options->mldsa_data->privkey.data;
+			asym_op->mldsa.siggen.privkey.length = options->mldsa_data->privkey.length;
+			asym_op->mldsa.siggen.message.data = options->mldsa_data->message.data;
+			asym_op->mldsa.siggen.message.length = options->mldsa_data->message.length;
+			asym_op->mldsa.siggen.sign.data = options->mldsa_data->sign.data;
+			asym_op->mldsa.siggen.sign.length = options->mldsa_data->sign.length;
+			asym_op->mldsa.siggen.ctx.data = options->mldsa_data->ctx.data;
+			asym_op->mldsa.siggen.ctx.length = options->mldsa_data->ctx.length;
+			asym_op->mldsa.siggen.seed.data = options->mldsa_data->seed.data;
+			asym_op->mldsa.siggen.seed.length = options->mldsa_data->seed.length;
+			asym_op->mldsa.siggen.mu.data = options->mldsa_data->mu.data;
+			asym_op->mldsa.siggen.mu.length = options->mldsa_data->mu.length;
+			asym_op->mldsa.siggen.hash = options->mldsa_data->hash;
+		} else if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_VERIFY) {
+			asym_op->mldsa.op = RTE_CRYPTO_ML_DSA_OP_VERIFY;
+			asym_op->mldsa.sigver.pubkey.data = options->mldsa_data->pubkey.data;
+			asym_op->mldsa.sigver.pubkey.length = options->mldsa_data->pubkey.length;
+			asym_op->mldsa.sigver.message.data = options->mldsa_data->message.data;
+			asym_op->mldsa.sigver.message.length = options->mldsa_data->message.length;
+			asym_op->mldsa.sigver.sign.data = options->mldsa_data->sign.data;
+			asym_op->mldsa.sigver.sign.length = options->mldsa_data->sign.length;
+			asym_op->mldsa.sigver.ctx.data = options->mldsa_data->ctx.data;
+			asym_op->mldsa.sigver.ctx.length = options->mldsa_data->ctx.length;
+			asym_op->mldsa.sigver.mu.data = options->mldsa_data->mu.data;
+			asym_op->mldsa.sigver.mu.length = options->mldsa_data->mu.length;
+			asym_op->mldsa.sigver.hash = options->mldsa_data->hash;
+		} else {
+			rte_panic("Unsupported ML-DSA operation type %d\n", options->asym_op_type);
+		}
+	}
+}
 
 #ifdef RTE_LIB_SECURITY
 static void
@@ -1269,6 +1321,21 @@ cperf_create_session(struct rte_mempool *sess_mp,
 
 		return asym_sess;
 	}
+	if (options->op_type == CPERF_ASYM_MLDSA44) {
+		xform.next = NULL;
+		xform.xform_type = RTE_CRYPTO_ASYM_XFORM_ML_DSA;
+		xform.mldsa.type = RTE_CRYPTO_ML_DSA_44;
+		xform.mldsa.sign_deterministic =
+		   options->mldsa_data->sign_deterministic;
+		xform.mldsa.sign_prehash = false;
+
+		ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mp, &asym_sess);
+		if (ret < 0 || asym_sess == NULL) {
+			RTE_LOG(ERR, USER1, "ML-DSA Asym session create failed\n");
+			return NULL;
+		}
+		return asym_sess;
+	}
 
 	if (options->op_type == CPERF_ASYM_MLKEM512) {
 		xform.next = NULL;
@@ -1599,6 +1666,9 @@ cperf_get_op_functions(const struct cperf_options *options,
 		break;
 	case CPERF_ASYM_SM2:
 		op_fns->populate_ops = cperf_set_ops_asym_sm2;
+		break;
+	case CPERF_ASYM_MLDSA44:
+		op_fns->populate_ops = cperf_set_ops_asym_mldsa;
 		break;
 	case CPERF_ASYM_MLKEM512:
 		op_fns->populate_ops = cperf_set_ops_asym_mlkem;

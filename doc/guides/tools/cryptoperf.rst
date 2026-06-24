@@ -183,6 +183,7 @@ The following are the application command-line options:
            rsa
            sm2
            mlkem_512
+           mldsa_44
            ipsec
            tls-record
 

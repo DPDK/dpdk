@@ -41,7 +41,7 @@ usage(char *progname)
 		" --optype cipher-only / auth-only / cipher-then-auth / auth-then-cipher /\n"
 		"        aead / pdcp / docsis / ipsec / modex / rsa / secp192r1 /\n"
 		"        secp224r1 / secp256r1 / secp384r1 / secp521r1 / eddsa / sm2 /\n"
-		"        mlkem_512 /\n"
+		"        mlkem_512 / mldsa_44 /\n"
 		"        tls-record : set operation type\n"
 		" --sessionless: enable session-less crypto operations\n"
 		" --shared-session: share 1 session across all queue pairs on crypto device\n"
@@ -559,6 +559,10 @@ parse_op_type(struct cperf_options *opts, const char *arg)
 		{
 			cperf_op_type_strs[CPERF_ASYM_SM2],
 			CPERF_ASYM_SM2
+		},
+		{
+			cperf_op_type_strs[CPERF_ASYM_MLDSA44],
+			CPERF_ASYM_MLDSA44
 		},
 		{
 			cperf_op_type_strs[CPERF_ASYM_MLKEM512],
@@ -1180,6 +1184,7 @@ cperf_options_default(struct cperf_options *opts)
 	opts->eddsa_data = &ed25519_perf_data;
 	opts->sm2_data = &sm2_perf_data;
 	opts->mlkem_data = &mlkem_encap_perf_data[0];
+	opts->mldsa_data = &mldsa_sign_perf_data[0];
 	opts->asym_op_type = RTE_CRYPTO_ASYM_OP_ENCRYPT;
 }
 
@@ -1709,6 +1714,17 @@ cperf_options_check(struct cperf_options *options)
 	}
 #endif
 
+	if (options->op_type == CPERF_ASYM_MLDSA44) {
+		if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_SIGN)
+			options->mldsa_data = &mldsa_sign_perf_data[0];
+		else if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_VERIFY)
+			options->mldsa_data = &mldsa_verify_perf_data[0];
+		else {
+			RTE_LOG(ERR, USER1, "ML-DSA only supports sign and verify operations\n");
+			return -EINVAL;
+		}
+	}
+
 	return 0;
 }
 
@@ -1759,6 +1775,8 @@ cperf_options_dump(struct cperf_options *opts)
 				   rte_crypto_asym_op_strings[opts->asym_op_type]);
 		if (opts->op_type == CPERF_ASYM_RSA)
 			printf("# rsa test name: %s\n", opts->rsa_data->name);
+		if (opts->op_type == CPERF_ASYM_MLDSA44)
+			printf("# mldsa test name: %s\n", opts->mldsa_data->name);
 		if (opts->op_type == CPERF_ASYM_MLKEM512)
 			printf("# mlkem test name: %s\n", opts->mlkem_data->name);
 	}
