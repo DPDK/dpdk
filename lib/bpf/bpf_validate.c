@@ -915,7 +915,7 @@ eval_mul(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
 	/* check for overflow */
 	} else if (rd->u.max <= msk >> opsz / 2 && rs->u.max <= msk >> opsz) {
 		rd->u.max *= rs->u.max;
-		rd->u.min *= rd->u.min;
+		rd->u.min *= rs->u.min;
 	} else
 		eval_umax_bound(rd, msk);
 
@@ -926,7 +926,7 @@ eval_mul(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
 	/* check that both operands are positive and no overflow */
 	} else if (rd->s.min >= 0 && rs->s.min >= 0) {
 		rd->s.max *= rs->s.max;
-		rd->s.min *= rd->s.min;
+		rd->s.min *= rs->s.min;
 	} else
 		eval_smax_bound(rd, msk);
 }

@@ -1289,6 +1289,23 @@ test_alu64_div_mod_overflow(void)
 REGISTER_FAST_TEST(bpf_validate_alu64_div_mod_overflow_autotest, NOHUGE_OK, ASAN_OK,
 	test_alu64_div_mod_overflow);
 
+/* 64-bit mul of small scalar range and immediate. */
+static int
+test_alu64_mul_k_range_small(void)
+{
+	return verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (EBPF_ALU64 | BPF_MUL | BPF_K),
+			.imm = 11,
+		},
+		.pre.dst = make_unsigned_domain(17, 29),
+		.post.dst = make_unsigned_domain(17 * 11, 29 * 11),
+	});
+}
+
+REGISTER_FAST_TEST(bpf_validate_alu64_mul_k_range_small_autotest, NOHUGE_OK, ASAN_OK,
+	test_alu64_mul_k_range_small);
+
 /* 64-bit negation when interval first element is INT64_MIN. */
 static int
 test_alu64_neg_int64min_first(void)
