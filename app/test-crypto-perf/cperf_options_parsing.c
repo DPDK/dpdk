@@ -41,6 +41,7 @@ usage(char *progname)
 		" --optype cipher-only / auth-only / cipher-then-auth / auth-then-cipher /\n"
 		"        aead / pdcp / docsis / ipsec / modex / rsa / secp192r1 /\n"
 		"        secp224r1 / secp256r1 / secp384r1 / secp521r1 / eddsa / sm2 /\n"
+		"        mlkem_512 /\n"
 		"        tls-record : set operation type\n"
 		" --sessionless: enable session-less crypto operations\n"
 		" --shared-session: share 1 session across all queue pairs on crypto device\n"
@@ -558,6 +559,10 @@ parse_op_type(struct cperf_options *opts, const char *arg)
 		{
 			cperf_op_type_strs[CPERF_ASYM_SM2],
 			CPERF_ASYM_SM2
+		},
+		{
+			cperf_op_type_strs[CPERF_ASYM_MLKEM512],
+			CPERF_ASYM_MLKEM512
 		},
 		{
 			cperf_op_type_strs[CPERF_TLS],
@@ -1174,6 +1179,7 @@ cperf_options_default(struct cperf_options *opts)
 	opts->secp521r1_data = &secp521r1_perf_data;
 	opts->eddsa_data = &ed25519_perf_data;
 	opts->sm2_data = &sm2_perf_data;
+	opts->mlkem_data = &mlkem_encap_perf_data[0];
 	opts->asym_op_type = RTE_CRYPTO_ASYM_OP_ENCRYPT;
 }
 
@@ -1669,6 +1675,18 @@ cperf_options_check(struct cperf_options *options)
 		}
 	}
 
+	if (options->op_type == CPERF_ASYM_MLKEM512) {
+		if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_ENCRYPT)
+			options->mlkem_data = &mlkem_encap_perf_data[0];
+		else if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_DECRYPT)
+			options->mlkem_data = &mlkem_decap_perf_data[0];
+		else {
+			RTE_LOG(ERR, USER1,
+				"ML-KEM operations only support encrypt (encapsulate) and decrypt (decapsulate)\n");
+			return -EINVAL;
+		}
+	}
+
 #ifdef RTE_LIB_SECURITY
 	if (options->op_type == CPERF_DOCSIS) {
 		if (check_docsis_buffer_length(options) < 0)
@@ -1741,6 +1759,8 @@ cperf_options_dump(struct cperf_options *opts)
 				   rte_crypto_asym_op_strings[opts->asym_op_type]);
 		if (opts->op_type == CPERF_ASYM_RSA)
 			printf("# rsa test name: %s\n", opts->rsa_data->name);
+		if (opts->op_type == CPERF_ASYM_MLKEM512)
+			printf("# mlkem test name: %s\n", opts->mlkem_data->name);
 	}
 	printf("# sessionless: %s\n", opts->sessionless ? "yes" : "no");
 	printf("# shared session: %s\n", opts->shared_session ? "yes" : "no");

@@ -208,6 +208,49 @@ cperf_set_ops_asym_sm2(struct rte_crypto_op **ops,
 	}
 }
 
+static void
+cperf_set_ops_asym_mlkem(struct rte_crypto_op **ops,
+		uint32_t src_buf_offset __rte_unused,
+		uint32_t dst_buf_offset __rte_unused, uint16_t nb_ops,
+		void *sess,
+		const struct cperf_options *options,
+		const struct cperf_test_vector *test_vector __rte_unused,
+		uint16_t iv_offset __rte_unused,
+		uint32_t *imix_idx __rte_unused,
+		uint64_t *tsc_start __rte_unused)
+{
+	uint16_t i;
+
+	for (i = 0; i < nb_ops; i++) {
+		struct rte_crypto_asym_op *asym_op = ops[i]->asym;
+
+		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		rte_crypto_op_attach_asym_session(ops[i], sess);
+
+		if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_ENCRYPT) {
+			asym_op->mlkem.op = RTE_CRYPTO_ML_KEM_OP_ENCAP;
+			asym_op->mlkem.encap.ek.data = options->mlkem_data->ek.data;
+			asym_op->mlkem.encap.ek.length = options->mlkem_data->ek.length;
+			asym_op->mlkem.encap.cipher.data = options->mlkem_data->cipher.data;
+			asym_op->mlkem.encap.cipher.length = options->mlkem_data->cipher.length;
+			asym_op->mlkem.encap.sk.data = options->mlkem_data->sk.data;
+			asym_op->mlkem.encap.sk.length = options->mlkem_data->sk.length;
+			asym_op->mlkem.encap.message.data = options->mlkem_data->message.data;
+			asym_op->mlkem.encap.message.length = options->mlkem_data->message.length;
+		} else if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_DECRYPT) {
+			asym_op->mlkem.op = RTE_CRYPTO_ML_KEM_OP_DECAP;
+			asym_op->mlkem.decap.dk.data = options->mlkem_data->dk.data;
+			asym_op->mlkem.decap.dk.length = options->mlkem_data->dk.length;
+			asym_op->mlkem.decap.cipher.data = options->mlkem_data->cipher.data;
+			asym_op->mlkem.decap.cipher.length = options->mlkem_data->cipher.length;
+			asym_op->mlkem.decap.sk.data = options->mlkem_data->sk.data;
+			asym_op->mlkem.decap.sk.length = options->mlkem_data->sk.length;
+		} else {
+			rte_panic("Unsupported ML-KEM operation type %d\n", options->asym_op_type);
+		}
+	}
+}
+
 
 #ifdef RTE_LIB_SECURITY
 static void
@@ -1226,6 +1269,21 @@ cperf_create_session(struct rte_mempool *sess_mp,
 
 		return asym_sess;
 	}
+
+	if (options->op_type == CPERF_ASYM_MLKEM512) {
+		xform.next = NULL;
+		xform.xform_type = RTE_CRYPTO_ASYM_XFORM_ML_KEM;
+		xform.mlkem.type = RTE_CRYPTO_ML_KEM_512;
+
+		ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mp, &asym_sess);
+		if (ret < 0 || asym_sess == NULL) {
+			RTE_LOG(ERR, USER1, "ML-KEM Asym session create failed\n");
+			return NULL;
+		}
+		return asym_sess;
+	}
+
+
 #ifdef RTE_LIB_SECURITY
 	/*
 	 * security only
@@ -1541,6 +1599,9 @@ cperf_get_op_functions(const struct cperf_options *options,
 		break;
 	case CPERF_ASYM_SM2:
 		op_fns->populate_ops = cperf_set_ops_asym_sm2;
+		break;
+	case CPERF_ASYM_MLKEM512:
+		op_fns->populate_ops = cperf_set_ops_asym_mlkem;
 		break;
 #ifdef RTE_LIB_SECURITY
 	case CPERF_PDCP:

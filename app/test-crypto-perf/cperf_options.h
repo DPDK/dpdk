@@ -101,6 +101,7 @@ enum cperf_op_type {
 	CPERF_ASYM_SECP521R1,
 	CPERF_ASYM_ED25519,
 	CPERF_ASYM_SM2,
+	CPERF_ASYM_MLKEM512,
 	CPERF_TLS,
 };
 
@@ -187,6 +188,7 @@ struct cperf_options {
 	struct cperf_ecdsa_test_data *secp521r1_data;
 	struct cperf_eddsa_test_data *eddsa_data;
 	struct cperf_sm2_test_data *sm2_data;
+	struct cperf_mlkem_test_data *mlkem_data;
 	enum rte_crypto_asym_op_type asym_op_type;
 	enum rte_crypto_auth_algorithm asym_hash_alg;
 	struct cperf_rsa_test_data *rsa_data;

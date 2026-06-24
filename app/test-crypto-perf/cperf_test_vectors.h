@@ -107,6 +107,31 @@ struct cperf_modex_test_data {
 	} result;
 };
 
+struct cperf_mlkem_test_data {
+	const char *name;
+	enum rte_crypto_ml_kem_type type;
+	struct {
+		uint8_t *data;
+		uint32_t length;
+	} dk;
+	struct {
+		uint8_t *data;
+		uint32_t length;
+	} ek;
+	struct {
+		uint8_t *data;
+		uint32_t length;
+	} message;
+	struct {
+		uint8_t *data;
+		uint32_t length;
+	} cipher;
+	struct {
+		uint8_t *data;
+		uint32_t length;
+	} sk;
+};
+
 #define TEST_DATA_SIZE 4096
 struct cperf_rsa_plaintext {
 	uint8_t data[TEST_DATA_SIZE];
@@ -188,5 +213,7 @@ extern struct cperf_rsa_test_data rsa_pub_perf_data[4];
 extern struct cperf_rsa_test_data rsa_exp_perf_data[4];
 extern struct cperf_rsa_test_data rsa_qt_perf_data[4];
 extern struct cperf_rsa_plaintext rsa_plaintext;
+extern struct cperf_mlkem_test_data mlkem_encap_perf_data[];
+extern struct cperf_mlkem_test_data mlkem_decap_perf_data[];
 
 #endif
