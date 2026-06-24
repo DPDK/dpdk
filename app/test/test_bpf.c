@@ -391,6 +391,13 @@ cmp_res(const char *func, uint64_t exp_rc, uint64_t ret_rc,
 	return ret;
 }
 
+/* Empty prepare function */
+static void
+dummy_prepare(void *arg)
+{
+	RTE_SET_USED(arg);
+}
+
 /* store immediate test-cases */
 static const struct ebpf_insn test_store1_prog[] = {
 	{
@@ -3155,6 +3162,70 @@ static const struct ebpf_insn test_ld_mbuf3_prog[] = {
 	},
 };
 
+/* divide INT64_MIN by -1 */
+static const struct ebpf_insn test_int64min_udiv_uint64max_prog[] = {
+	/* Load INT64_MIN into r0 */
+	{
+		.code = (BPF_LD | BPF_IMM | EBPF_DW),
+		.dst_reg = EBPF_REG_0,
+		.imm = (int32_t)INT64_MIN,
+	},
+	{
+		.imm = (int32_t)(INT64_MIN >> 32),
+	},
+	/* Divide r0 by immediate -1 */
+	{
+		.code = (EBPF_ALU64 | BPF_DIV | BPF_K),
+		.dst_reg = EBPF_REG_0,
+		.imm = -1,
+	},
+	/* Exit for correctness otherwise */
+	{
+		.code = (BPF_JMP | EBPF_EXIT),
+	},
+};
+
+static int
+test_int64min_udiv_uint64max_check(uint64_t rc, const void *arg)
+{
+	RTE_SET_USED(arg);
+	/* 0x8000000000000000ull / 0xFFFFFFFFFFFFFFFFull == 0 */
+	TEST_ASSERT_EQUAL(rc, 0, "expected 0, found %#" PRIx64, rc);
+	return TEST_SUCCESS;
+}
+
+/* modulo INT64_MIN by -1 */
+static const struct ebpf_insn test_int64min_umod_uint64max_prog[] = {
+	/* Load INT64_MIN into r0 */
+	{
+		.code = (BPF_LD | BPF_IMM | EBPF_DW),
+		.dst_reg = EBPF_REG_0,
+		.imm = (int32_t)INT64_MIN,
+	},
+	{
+		.imm = (int32_t)(INT64_MIN >> 32),
+	},
+	/* Modulo r0 by immediate -1 */
+	{
+		.code = (EBPF_ALU64 | BPF_MOD | BPF_K),
+		.dst_reg = EBPF_REG_0,
+		.imm = -1,
+	},
+	/* Exit for correctness otherwise */
+	{
+		.code = (BPF_JMP | EBPF_EXIT),
+	},
+};
+
+static int
+test_int64min_umod_uint64max_check(uint64_t rc, const void *arg)
+{
+	RTE_SET_USED(arg);
+	/* 0x8000000000000000ull % 0xFFFFFFFFFFFFFFFFull == 0x8000000000000000ull  */
+	TEST_ASSERT_EQUAL(rc, (uint64_t)INT64_MIN, "expected INT64_MIN, found %#" PRIx64, rc);
+	return TEST_SUCCESS;
+}
+
 /* all bpf test cases */
 static const struct bpf_test tests[] = {
 	{
@@ -3462,6 +3533,34 @@ static const struct bpf_test tests[] = {
 		.check_result = test_ld_mbuf1_check,
 		/* mbuf as input argument is not supported on 32 bit platform */
 		.allow_fail = (sizeof(uint64_t) != sizeof(uintptr_t)),
+	},
+	{
+		.name = "test_int64min_udiv_uint64max",
+		.arg_sz = sizeof(struct dummy_vect8),
+		.prm = {
+			.ins = test_int64min_udiv_uint64max_prog,
+			.nb_ins = RTE_DIM(test_int64min_udiv_uint64max_prog),
+			.prog_arg = {
+				.type = RTE_BPF_ARG_PTR,
+				.size = sizeof(struct dummy_vect8),
+			},
+		},
+		.prepare = dummy_prepare,
+		.check_result = test_int64min_udiv_uint64max_check,
+	},
+	{
+		.name = "test_int64min_umod_uint64max",
+		.arg_sz = 1,
+		.prm = {
+			.ins = test_int64min_umod_uint64max_prog,
+			.nb_ins = RTE_DIM(test_int64min_umod_uint64max_prog),
+			.prog_arg = {
+				.type = RTE_BPF_ARG_PTR,
+				.size = 1,
+			},
+		},
+		.prepare = dummy_prepare,
+		.check_result = test_int64min_umod_uint64max_check,
 	},
 };
 
