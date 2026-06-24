@@ -138,7 +138,7 @@ open_socket_ctrl_channel(void)
 
 	memset(&un, 0, sizeof(struct sockaddr_un));
 	un.sun_family = AF_UNIX;
-	strncpy(un.sun_path, CNXK_ESWITCH_CTRL_MSG_SOCK_PATH, sizeof(un.sun_path) - 1);
+	strlcpy(un.sun_path, CNXK_ESWITCH_CTRL_MSG_SOCK_PATH, sizeof(un.sun_path));
 
 	if (bind(sock_fd, (struct sockaddr *)&un, sizeof(un)) < 0) {
 		plt_err("Failed to bind %s: %s", un.sun_path, strerror(errno));
