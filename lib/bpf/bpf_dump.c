@@ -42,6 +42,8 @@ static const char *const jump_tbl[16] = {
 	[BPF_JSET >> 4] = "jset",  [EBPF_JNE >> 4] = "jne",
 	[EBPF_JSGT >> 4] = "jsgt", [EBPF_JSGE >> 4] = "jsge",
 	[EBPF_CALL >> 4] = "call", [EBPF_EXIT >> 4] = "exit",
+	[EBPF_JLT >> 4] = "jlt",   [EBPF_JLE >> 4] = "jle",
+	[EBPF_JSLT >> 4] = "jslt", [EBPF_JSLE >> 4] = "jsle",
 };
 
 static inline const char *
