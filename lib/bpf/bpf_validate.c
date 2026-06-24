@@ -1373,6 +1373,14 @@ eval_store(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 }
 
 static const char *
+eval_ja(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
+{
+	RTE_SET_USED(bvf);
+	RTE_SET_USED(ins);
+	return NULL;
+}
+
+static const char *
 eval_func_arg(struct bpf_verifier *bvf, const struct rte_bpf_arg *arg,
 	struct bpf_reg_val *rv)
 {
@@ -2023,6 +2031,7 @@ static const struct bpf_ins_check ins_chk[UINT8_MAX + 1] = {
 		.mask = { .dreg = ZERO_REG, .sreg = ZERO_REG},
 		.off = { .min = 0, .max = UINT16_MAX},
 		.imm = { .min = 0, .max = 0},
+		.eval = eval_ja,
 	},
 	/* jcc IMM instructions */
 	[(BPF_JMP | BPF_JEQ | BPF_K)] = {
@@ -2138,6 +2147,7 @@ static const struct bpf_ins_check ins_chk[UINT8_MAX + 1] = {
 		.mask = { .dreg = ALL_REGS, .sreg = ALL_REGS},
 		.off = { .min = 0, .max = UINT16_MAX},
 		.imm = { .min = 0, .max = 0},
+		.eval = eval_jcc,
 	},
 	[(BPF_JMP | EBPF_JSGE | BPF_X)] = {
 		.mask = { .dreg = ALL_REGS, .sreg = ALL_REGS},
@@ -2890,22 +2900,27 @@ evaluate(struct bpf_verifier *bvf)
 				stats.nb_save++;
 			}
 
-			if (ins_chk[op].eval != NULL) {
-				rc = __rte_bpf_validate_debug_evaluate_step(
-					debug, idx, prev_nb_edge > 1 ?
-						RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_ENTER :
-						RTE_BPF_VALIDATE_DEBUG_EVENT_STEP);
-				if (rc < 0)
-					break;
+			if (ins_chk[op].eval == NULL) {
+				RTE_BPF_LOG_FUNC_LINE(ERR,
+					"Unrecognized instruction at pc: %u", idx);
+				rc = -EINVAL;
+				break;
+			}
 
-				err = ins_chk[op].eval(bvf, ins + idx);
-				stats.nb_eval++;
-				if (err != NULL) {
-					RTE_BPF_LOG_FUNC_LINE(ERR,
-						"%s at pc: %u", err, idx);
-					rc = -EINVAL;
-					break;
-				}
+			rc = __rte_bpf_validate_debug_evaluate_step(debug, idx,
+				prev_nb_edge > 1 ?
+					RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_ENTER :
+					RTE_BPF_VALIDATE_DEBUG_EVENT_STEP);
+			if (rc < 0)
+				break;
+
+			err = ins_chk[op].eval(bvf, ins + idx);
+			stats.nb_eval++;
+			if (err != NULL) {
+				RTE_BPF_LOG_FUNC_LINE(ERR,
+					"%s at pc: %u", err, idx);
+				rc = -EINVAL;
+				break;
 			}
 
 			log_dbg_eval_state(bvf, ins + idx, idx);

@@ -1172,6 +1172,24 @@ test_jmp64_jeq_k(void)
 REGISTER_FAST_TEST(bpf_validate_jmp64_jeq_k_autotest, NOHUGE_OK, ASAN_OK,
 	test_jmp64_jeq_k);
 
+/* Jump if signed less than another register. */
+static int
+test_jmp64_jslt_x(void)
+{
+	return verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JSLT | BPF_X),
+		},
+		.pre.dst = make_signed_domain(-3, 3),
+		.pre.src = make_signed_domain(0, 0),
+		.post.dst = make_signed_domain(0, 3),
+		.jump.dst = make_signed_domain(-3, -1),
+	});
+}
+
+REGISTER_FAST_TEST(bpf_validate_jmp64_jslt_x_autotest, NOHUGE_OK, ASAN_OK,
+	test_jmp64_jslt_x);
+
 /* 64-bit load from heap (should be set to unknown). */
 static int
 test_mem_ldx_dw_heap(void)
