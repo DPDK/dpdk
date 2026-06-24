@@ -1154,6 +1154,141 @@ test_alu64_add_x_scalar_scalar(void)
 REGISTER_FAST_TEST(bpf_validate_alu64_add_x_scalar_scalar_autotest, NOHUGE_OK, ASAN_OK,
 	test_alu64_add_x_scalar_scalar);
 
+/* 64-bit division and modulo of UINT64_MAX*2/3. */
+static int
+test_alu64_div_mod_big_constant(void)
+{
+	const uint64_t dividend = UINT64_MAX / 3 * 2;
+	static const uint64_t divisors[] = {
+		1,
+		2,
+		3,
+		UINT64_MAX / 3,
+		INT64_MAX,
+		INT64_MIN,
+		UINT64_MAX / 3 * 2,
+		UINT64_MAX / 4 * 3,
+		UINT64_MAX,
+	};
+	for (int index = 0; index != RTE_DIM(divisors); ++index) {
+		const uint64_t divisor = divisors[index];
+
+		TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+			.tested_instruction = {
+				.code = (EBPF_ALU64 | BPF_DIV | BPF_X),
+			},
+			.pre.dst = make_singleton_domain(dividend),
+			.pre.src = make_singleton_domain(divisor),
+			.post.dst = make_singleton_domain(dividend / divisor),
+		}), "(EBPF_ALU64 | BPF_DIV | BPF_X) check, index=%d", index);
+
+		TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+			.tested_instruction = {
+				.code = (EBPF_ALU64 | BPF_MOD | BPF_X),
+			},
+			.pre.dst = make_singleton_domain(dividend),
+			.pre.src = make_singleton_domain(divisor),
+			.post.dst = make_singleton_domain(dividend % divisor),
+		}), "(EBPF_ALU64 | BPF_MOD | BPF_X) check, index=%d", index);
+	}
+
+	return TEST_SUCCESS;
+}
+
+REGISTER_FAST_TEST(bpf_validate_alu64_div_mod_big_constant_autotest, NOHUGE_OK, ASAN_OK,
+	test_alu64_div_mod_big_constant);
+
+/* 64-bit division and modulo of UINT64_MAX/3..UINT64_MAX*2/3 by a constant. */
+static int
+test_alu64_div_mod_big_range(void)
+{
+	const uint64_t dividend_first = UINT64_MAX / 3;
+	const uint64_t dividend_last = UINT64_MAX / 3 * 2;
+	static const uint64_t divisors[] = {
+		1,
+		2,
+		3,
+		UINT64_MAX / 3,
+		INT64_MAX,
+		INT64_MIN,
+		UINT64_MAX / 3 * 2,
+		UINT64_MAX / 4 * 3,
+		UINT64_MAX,
+	};
+	for (int index = 0; index != RTE_DIM(divisors); ++index) {
+		const uint64_t divisor = divisors[index];
+
+		TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+			.tested_instruction = {
+				.code = (EBPF_ALU64 | BPF_DIV | BPF_X),
+			},
+			.pre.dst = make_unsigned_domain(dividend_first, dividend_last),
+			.pre.src = make_singleton_domain(divisor),
+			.post.dst = make_unsigned_domain(0, dividend_last),
+		}), "(EBPF_ALU64 | BPF_DIV | BPF_X) check, index=%d", index);
+
+		TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+			.tested_instruction = {
+				.code = (EBPF_ALU64 | BPF_MOD | BPF_X),
+			},
+			.pre.dst = make_unsigned_domain(dividend_first, dividend_last),
+			.pre.src = make_singleton_domain(divisor),
+			.post.dst = make_unsigned_domain(0, RTE_MIN(dividend_last, divisor - 1)),
+		}), "(EBPF_ALU64 | BPF_MOD | BPF_X) check, index=%d", index);
+	}
+
+	return TEST_SUCCESS;
+}
+
+REGISTER_FAST_TEST(bpf_validate_alu64_div_mod_big_range_autotest, NOHUGE_OK, ASAN_OK,
+	test_alu64_div_mod_big_range);
+
+/* 64-bit division and modulo of INT64_MIN by -1. */
+static int
+test_alu64_div_mod_overflow(void)
+{
+	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (EBPF_ALU64 | BPF_DIV | BPF_K),
+			.imm = -1,
+		},
+		.pre.dst = make_singleton_domain(INT64_MIN),
+		.post.dst = make_singleton_domain(0),
+	}), "(EBPF_ALU64 | BPF_DIV | BPF_K) check");
+
+	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (EBPF_ALU64 | BPF_DIV | BPF_X),
+		},
+		.pre.dst = make_singleton_domain(INT64_MIN),
+		.pre.src = make_singleton_domain(-1),
+		.post.dst = make_singleton_domain(0),
+	}), "(EBPF_ALU64 | BPF_DIV | BPF_X) check");
+
+	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (EBPF_ALU64 | BPF_MOD | BPF_K),
+			.imm = -1,
+		},
+		.pre.dst = make_singleton_domain(INT64_MIN),
+		.post.dst = make_singleton_domain(INT64_MIN),
+	}), "(EBPF_ALU64 | BPF_MOD | BPF_K) check");
+
+	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (EBPF_ALU64 | BPF_MOD | BPF_X),
+		},
+		.pre.dst = make_singleton_domain(INT64_MIN),
+		.pre.src = make_singleton_domain(-1),
+		.post.dst = make_singleton_domain(INT64_MIN),
+	}), "(EBPF_ALU64 | BPF_MOD | BPF_X) check");
+
+	return TEST_SUCCESS;
+}
+
+REGISTER_FAST_TEST(bpf_validate_alu64_div_mod_overflow_autotest, NOHUGE_OK, ASAN_OK,
+	test_alu64_div_mod_overflow);
+
 /* 64-bit negation when interval first element is INT64_MIN. */
 static int
 test_alu64_neg_int64min_first(void)
