@@ -24,6 +24,8 @@ sources = files(
         'bpf_load_elf.c',
         'bpf_pkt.c',
         'bpf_validate.c',
+        'bpf_validate_debug.c',
+        'bpf_value_set.c',
 )
 
 if arch_subdir == 'x86' and dpdk_conf.get('RTE_ARCH_64')
@@ -32,9 +34,12 @@ elif dpdk_conf.has('RTE_ARCH_ARM64')
     sources += files('bpf_jit_arm64.c')
 endif
 
-headers = files('bpf_def.h',
+headers = files(
+        'bpf_def.h',
         'rte_bpf.h',
-        'rte_bpf_ethdev.h')
+        'rte_bpf_ethdev.h',
+        'rte_bpf_validate_debug.h',
+)
 
 deps += ['mbuf', 'net', 'ethdev']
 

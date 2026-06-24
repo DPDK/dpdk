@@ -227,6 +227,15 @@ New Features
     for installing already loaded BPF programs as port callbacks
     (as opposed to loading them directly from ELF files).
 
+* **Added BPF validation debugging API.**
+
+  * Introduced a new API (prefixed with ``rte_bpf_validate_debug_``)
+    to introspect the BPF validator.
+    This provides a mechanism to set breakpoints or catchpoints during validation
+    and inspect the verifier's internal state (such as tracked register bounds).
+    This API is crucial primarily for writing comprehensive tests for the validator,
+    but also serves as a foundation for a future interactive eBPF validation debugger.
+
 * **Updated testpmd application.**
 
   Added support for setting VLAN priority and CFI/DEI bits

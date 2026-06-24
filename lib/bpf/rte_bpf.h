@@ -118,6 +118,7 @@ enum rte_bpf_origin {
 };
 
 struct bpf_insn;
+struct rte_bpf_validate_debug;
 
 /**
  * Input parameters for loading eBPF code, extensible version.
@@ -158,6 +159,9 @@ struct rte_bpf_prm_ex {
 
 	struct rte_bpf_arg prog_arg[EBPF_FUNC_MAX_ARGS];  /**< program arguments */
 	uint32_t nb_prog_arg;  /**< program argument count */
+
+	/* Validate debug instance. */
+	struct rte_bpf_validate_debug *debug;
 };
 
 /**

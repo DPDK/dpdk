@@ -9,9 +9,13 @@
 #include <stdint.h>
 #include <inttypes.h>
 
+#include <rte_bpf_validate_debug.h>
 #include <rte_common.h>
 
 #include "bpf_impl.h"
+#include "bpf_validate.h"
+#include "bpf_validate_debug.h"
+#include "bpf_value_set.h"
 
 #define BPF_ARG_PTR_STACK RTE_BPF_ARG_RESERVED
 
@@ -92,6 +96,7 @@ struct bpf_verifier {
 	struct inst_node *evin;
 	struct evst_pool evst_sr_pool; /* for evst save/restore */
 	struct evst_pool evst_tp_pool; /* for evst track/prune */
+	struct rte_bpf_validate_debug *debug;
 };
 
 struct bpf_ins_check {
@@ -117,6 +122,409 @@ struct bpf_ins_check {
 
 /* For LD_IND R6 is an implicit CTX register. */
 #define	IND_SRC_REGS	(WRT_REGS ^ 1 << EBPF_REG_6)
+
+/*
+ * Debugging internal interface and helpers.
+ */
+
+static bool
+reg_val_range_is_valid(const struct bpf_reg_val *rv)
+{
+	if (rv->v.type == RTE_BPF_ARG_UNDEF)
+		return true;
+
+	if (rv->s.min > rv->s.max)
+		return false;
+
+	if (rv->u.min > rv->u.max)
+		return false;
+
+	/* If one of the ranges does not change sign, the other should match. */
+	if (rv->s.min >= 0 || rv->s.max < 0 ||
+			rv->u.min > INT64_MAX || rv->u.max <= INT64_MAX)
+		return rv->u.min == (uint64_t)rv->s.min &&
+			rv->u.max == (uint64_t)rv->s.max;
+
+	return true;
+}
+
+int
+__rte_bpf_validate_state_is_valid(const struct bpf_verifier *verifier)
+{
+	const struct bpf_eval_state *const st = verifier->evst;
+
+	for (int reg = 0; reg != RTE_DIM(st->rv); ++reg)
+		if (!reg_val_range_is_valid(st->rv + reg))
+			return false;
+
+	for (int var = 0; var != RTE_DIM(st->sv); ++var)
+		if (!reg_val_range_is_valid(st->sv + var))
+			return false;
+
+	return true;
+}
+
+int
+__rte_bpf_validate_can_access(const struct bpf_verifier *verifier,
+	const struct ebpf_insn *access, uint64_t off64)
+{
+	const struct bpf_eval_state *const st = verifier->evst;
+	const struct bpf_reg_val *rv;
+	/* Set of accessed byte offsets relative to memory area base. */
+	struct value_set access_set;
+	uint32_t opsz;
+
+	switch (BPF_CLASS(access->code)) {
+	case BPF_LDX:
+		rv = &st->rv[access->src_reg];
+		if (rv->v.type == BPF_ARG_PTR_STACK)
+			/* Not supporting stack access queries yet. */
+			return -ENOTSUP;
+		break;
+	case BPF_ST:
+		rv = &st->rv[access->dst_reg];
+		break;
+	case BPF_STX:
+		rv = &st->rv[access->dst_reg];
+		if (st->rv[access->src_reg].v.type == RTE_BPF_ARG_UNDEF)
+			return false;
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	if (!RTE_BPF_ARG_PTR_TYPE(rv->v.type) || rv->v.size == 0)
+		return false;
+
+	access_set = value_set_from_pair(rv->s.min, rv->s.max, rv->u.min, rv->u.max);
+	value_set_translate(&access_set, off64);
+	opsz = bpf_size(BPF_SIZE(access->code));
+	value_set_add_contiguous(&access_set, 0, opsz - 1);
+
+	return value_set_is_covered_by_contiguous(&access_set, 0, rv->v.size - 1);
+}
+
+/* Return true if instruction `code` is supported by `may_jump`. */
+static bool
+may_jump_code_is_supported(uint8_t code)
+{
+	if (BPF_CLASS(code) != BPF_JMP)
+		return false;
+
+	switch (BPF_OP(code)) {
+	case BPF_JEQ:
+	case BPF_JGT:
+	case BPF_JGE:
+	case EBPF_JNE:
+	case EBPF_JSGT:
+	case EBPF_JSGE:
+	case EBPF_JLT:
+	case EBPF_JLE:
+	case EBPF_JSLT:
+	case EBPF_JSLE:
+		return true;
+	default:
+		return false;
+	}
+}
+
+/* Return true if instruction `code` corresponds to a signed comparison. */
+static bool
+may_jump_code_is_signed(uint8_t code)
+{
+	switch (BPF_OP(code)) {
+	case EBPF_JSGT:
+	case EBPF_JSGE:
+	case EBPF_JSLT:
+	case EBPF_JSLE:
+		return true;
+	default:
+		return false;
+	}
+}
+
+/* Return true the specified jump condition _may_ be true. */
+static bool
+may_jump(uint8_t code, const struct value_set *origin,
+	const struct value_set *dst_set, const struct value_set *src_set)
+{
+	switch (BPF_OP(code)) {
+	case BPF_JEQ:
+		return value_sets_intersect(dst_set, src_set);
+	case EBPF_JNE:
+		return !(value_set_is_singleton(dst_set) &&
+			value_sets_equal(dst_set, src_set));
+	case BPF_JGT:
+	case EBPF_JSGT:
+		return !value_sets_based_less_or_equal(origin, dst_set, src_set);
+	case BPF_JGE:
+	case EBPF_JSGE:
+		return !value_sets_based_less(origin, dst_set, src_set);
+	case EBPF_JLT:
+	case EBPF_JSLT:
+		return !value_sets_based_less_or_equal(origin, src_set, dst_set);
+	case EBPF_JSLE:
+	case EBPF_JLE:
+		return !value_sets_based_less(origin, src_set, dst_set);
+	}
+	/* may_jump_code_is_supported should have caught this */
+	RTE_ASSERT(false);
+	return false;
+}
+
+/* Return instruction code for jump condition complement (negated result). */
+static uint8_t
+may_jump_code_complement(uint8_t code)
+{
+	switch (BPF_OP(code)) {
+	case BPF_JEQ:
+	case EBPF_JNE:
+		return code ^ BPF_JEQ ^ EBPF_JNE;
+	case BPF_JGT:
+	case EBPF_JLE:
+		return code ^ BPF_JGT ^ EBPF_JLE;
+	case BPF_JGE:
+	case EBPF_JLT:
+		return code ^ BPF_JGE ^ EBPF_JLT;
+	case EBPF_JSGT:
+	case EBPF_JSLE:
+		return code ^ EBPF_JSGT ^ EBPF_JSLE;
+	case EBPF_JSGE:
+	case EBPF_JSLT:
+		return code ^ EBPF_JSGE ^ EBPF_JSLT;
+	}
+	/* may_jump_code_is_supported should have caught this */
+	RTE_ASSERT(false);
+	return 0;
+}
+
+int
+__rte_bpf_validate_may_jump(const struct bpf_verifier *verifier,
+	const struct ebpf_insn *jump, uint64_t imm64)
+{
+	const struct bpf_eval_state *const st = verifier->evst;
+	const struct bpf_reg_val *rd, *rs;
+	struct value_set dst_set, src_set, origin;
+	int result;
+
+	if (!may_jump_code_is_supported(jump->code))
+		return -ENOTSUP;
+
+	rd = &st->rv[jump->dst_reg];
+	dst_set = (rd->v.type == RTE_BPF_ARG_UNDEF) ? value_set_full :
+		value_set_from_pair(rd->s.min, rd->s.max, rd->u.min, rd->u.max);
+
+	rs = BPF_SRC(jump->code) == BPF_X ? &st->rv[jump->src_reg] : NULL;
+	src_set = rs == NULL ? value_set_singleton((int64_t)jump->imm) :
+		rs->v.type == RTE_BPF_ARG_UNDEF ? value_set_full :
+		value_set_from_pair(rs->s.min, rs->s.max, rs->u.min, rs->u.max);
+
+	value_set_translate(&src_set, imm64);
+
+	if (RTE_BPF_ARG_PTR_TYPE(rd->v.type) &&
+			(rs != NULL && RTE_BPF_ARG_PTR_TYPE(rs->v.type)) &&
+			rd->v.size == rs->v.size) {
+		/*
+		 * Both sides are pointers with the same memory area size.
+		 * Until tracking of memory areas is implemented we will consider them
+		 * pointing to the same memory area just because of this.
+		 * In this case our value sets represent offsets from the memory area base,
+		 * which is some unknown distance from the scalar zero (NULL).
+		 * We know however that the memory area cannot cross zero address.
+		 * Thus range of origin relative to memory base starts with 1 byte gap
+		 * after the memory area and ends just before it.
+		 */
+		origin = value_set_contiguous(rd->v.size + 1, -1);
+	} else {
+		/* Scalar value of a pointer depends on the memory area base address. */
+		if (RTE_BPF_ARG_PTR_TYPE(rd->v.type))
+			value_set_add_contiguous(&dst_set, 1, UINT64_MAX - rd->v.size);
+		if (rs != NULL && RTE_BPF_ARG_PTR_TYPE(rs->v.type))
+			value_set_add_contiguous(&dst_set, 1, UINT64_MAX - rs->v.size);
+		origin = value_set_singleton(0);
+	}
+
+	if (may_jump_code_is_signed(jump->code))
+		/* Shift origin to the minimal value for signed comparisons. */
+		value_set_translate(&origin, INT64_MIN);
+
+	result = 0;
+
+	if (may_jump(jump->code, &origin, &dst_set, &src_set))
+		result |= RTE_BPF_VALIDATE_DEBUG_MAY_BE_TRUE;
+
+	if (may_jump(may_jump_code_complement(jump->code), &origin, &dst_set, &src_set))
+		result |= RTE_BPF_VALIDATE_DEBUG_MAY_BE_FALSE;
+
+	return result;
+}
+
+/* Like snprintf, but advances (except for overflow) ptr and reduces szleft. */
+__rte_format_printf(3, 4)
+static int
+buf_printf(char **ptr, ssize_t *szleft, const char *format, ...)
+{
+	va_list args;
+	int rc;
+
+	va_start(args, format);
+	rc = vsnprintf(*ptr, RTE_MAX(0, *szleft), format, args);
+	va_end(args);
+
+	if (rc > 0) {
+		*szleft -= rc;
+		if (*szleft > 0)
+			*ptr += rc;
+	}
+
+	return rc;
+}
+
+static int
+format_memory_area(char **ptr, ssize_t *szleft, const struct bpf_reg_val *rv)
+{
+	switch (rv->v.type) {
+	case RTE_BPF_ARG_RAW:
+		return 0;
+	case RTE_BPF_ARG_PTR:
+		return buf_printf(ptr, szleft, "%%buffer<%zu> + ",
+			(size_t)rv->v.size);
+	case RTE_BPF_ARG_PTR_MBUF:
+		return buf_printf(ptr, szleft, "%%mbuf<%zu, %zu> + ",
+			(size_t)rv->v.size, (size_t)rv->v.buf_size);
+	case BPF_ARG_PTR_STACK:
+		return buf_printf(ptr, szleft, "%%stack + ");
+	default:
+		return -ENOTSUP;
+	}
+}
+
+/* Format min..max interval using validate-debug API and updating ptr and szleft. */
+static int
+buf_print_interval(char **ptr, ssize_t *szleft, char format, uint64_t min, uint64_t max)
+{
+	int rc;
+
+	rc = rte_bpf_validate_debug_format_interval(*ptr, RTE_MAX(0, *szleft),
+		format, min, max);
+
+	if (rc > 0) {
+		*szleft -= rc;
+		if (*szleft > 0)
+			*ptr += rc;
+	}
+
+	return rc;
+}
+
+/* Format rv roughly as "<signed-range> INTERSECT <unsigned-hex-range>" */
+static int
+format_register_range(char **ptr, ssize_t *szleft, const struct bpf_reg_val *rv)
+{
+	int rc;
+	uint64_t expected_unsigned_min, expected_unsigned_max;
+	const bool valid = reg_val_range_is_valid(rv);
+
+	/* Print signed unless trivial. */
+	if (!valid || rv->s.min != INT64_MIN || rv->s.max != INT64_MAX) {
+		rc = buf_print_interval(ptr, szleft, 'd', rv->s.min, rv->s.max);
+		if (rc < 0)
+			return rc;
+
+		if (valid) {
+			/* Skip printing unsigned if it has expected values. */
+			if (rv->s.min >= 0 || rv->s.max < 0) {
+				expected_unsigned_min = (uint64_t)rv->s.min;
+				expected_unsigned_max = (uint64_t)rv->s.max;
+			} else {
+				expected_unsigned_min = 0;
+				expected_unsigned_max = UINT64_MAX;
+			}
+
+			if (rv->u.min == expected_unsigned_min &&
+					rv->u.max == expected_unsigned_max)
+				return 0;
+		}
+
+		rc = buf_printf(ptr, szleft, " INTERSECT ");
+		if (rc < 0)
+			return rc;
+	}
+
+	rc = buf_print_interval(ptr, szleft, 'x', rv->u.min, rv->u.max);
+	if (rc < 0)
+		return rc;
+
+	if (!valid) {
+		rc = buf_printf(ptr, szleft, " (!)");
+		if (rc < 0)
+			return rc;
+	}
+
+	return 0;
+}
+
+/* Format rv roughly as "<memory-object> + <offsets-range>" */
+static int
+format_reg_val(char *buffer, size_t bufsz, const struct bpf_reg_val *rv)
+{
+	char *ptr = buffer;
+	ssize_t szleft = bufsz;
+	int rc;
+
+	if (rv->v.type == RTE_BPF_ARG_UNDEF)
+		return snprintf(buffer, bufsz, "%%undefined");
+
+	/* Print data area info, if any. */
+	rc = format_memory_area(&ptr, &szleft, rv);
+	if (rc < 0)
+		return rc;
+
+	rc = format_register_range(&ptr, &szleft, rv);
+	if (rc < 0)
+		return rc;
+
+	/* At least one snprintf was called and added terminating zero. */
+	RTE_ASSERT(szleft < (ssize_t)bufsz);
+	--szleft;
+
+	return bufsz - szleft;
+}
+
+int
+__rte_bpf_validate_format_register_info(const struct bpf_verifier *verifier,
+	char *buffer, size_t bufsz, uint8_t reg)
+{
+	if (reg >= EBPF_REG_NUM)
+		return -EINVAL;
+
+	return format_reg_val(buffer, bufsz, &verifier->evst->rv[reg]);
+}
+
+int
+__rte_bpf_validate_format_frame_info(const struct bpf_verifier *verifier,
+	char *buffer, size_t bufsz, int32_t offset)
+{
+	if (offset % sizeof(uint64_t) != 0)
+		return -EINVAL;
+
+	if (offset >= 0 || offset < -MAX_BPF_STACK_SIZE)
+		return -ERANGE;
+
+	offset = (MAX_BPF_STACK_SIZE + offset) / sizeof(uint64_t);
+
+	return format_reg_val(buffer, bufsz, &verifier->evst->sv[offset]);
+}
+
+int32_t
+__rte_bpf_validate_get_frame_size(const struct bpf_verifier *verifier)
+{
+	if (verifier->stack_sz > INT32_MAX)
+		return -ERANGE;
+
+	return verifier->stack_sz;
+}
+
 
 /*
  * check and evaluate functions for particular instruction types.
@@ -2405,7 +2813,9 @@ evaluate(struct bpf_verifier *bvf)
 	const char *err;
 	const struct ebpf_insn *ins;
 	struct inst_node *next, *node;
-	int rc = 0;
+	int prev_nb_edge;  /* branching number of the previous instruction */
+	int rc, debug_rc;
+	struct rte_bpf_validate_debug *const debug = bvf->prm->debug;
 
 	struct {
 		uint32_t nb_eval;
@@ -2439,11 +2849,15 @@ evaluate(struct bpf_verifier *bvf)
 	ins = bvf->prm->raw.ins;
 	node = bvf->in;
 	next = node;
+	prev_nb_edge = 1;
 
 	memset(&stats, 0, sizeof(stats));
 
-	while (node != NULL) {
+	rc = __rte_bpf_validate_debug_evaluate_start(debug, bvf, bvf->prm);
+	if (rc < 0)
+		return rc;
 
+	while (node != NULL) {
 		/*
 		 * current node evaluation, make sure we evaluate
 		 * each node only once.
@@ -2464,6 +2878,13 @@ evaluate(struct bpf_verifier *bvf)
 			}
 
 			if (ins_chk[op].eval != NULL) {
+				rc = __rte_bpf_validate_debug_evaluate_step(
+					debug, idx, prev_nb_edge > 1 ?
+						RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_ENTER :
+						RTE_BPF_VALIDATE_DEBUG_EVENT_STEP);
+				if (rc < 0)
+					break;
+
 				err = ins_chk[op].eval(bvf, ins + idx);
 				stats.nb_eval++;
 				if (err != NULL) {
@@ -2499,10 +2920,17 @@ evaluate(struct bpf_verifier *bvf)
 			 */
 			if (node->nb_edge > 1 && prune_eval_state(bvf, node,
 					next) == 0) {
+				rc = __rte_bpf_validate_debug_evaluate_step(
+					debug, get_node_idx(bvf, next),
+					RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_PRUNE);
+				if (rc < 0)
+					break;
+
 				next = NULL;
 				stats.nb_prune++;
 			} else {
 				next->prev_node = node;
+				prev_nb_edge = node->nb_edge;
 				node = next;
 			}
 		} else {
@@ -2511,8 +2939,18 @@ evaluate(struct bpf_verifier *bvf)
 			 * mark it's @start state as safe for future references,
 			 * and proceed with parent.
 			 */
+
+			if (prev_nb_edge != 0) {
+				rc = __rte_bpf_validate_debug_evaluate_step(
+					debug, get_node_idx(bvf, node) + 1,
+					RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_RETURN);
+				if (rc < 0)
+					break;
+			}
+
 			node->cur_edge = 0;
 			save_safe_eval_state(bvf, node);
+			prev_nb_edge = 0;
 			node = node->prev_node;
 
 			/* first node will not have prev, signalling finish */
@@ -2532,7 +2970,11 @@ evaluate(struct bpf_verifier *bvf)
 		__func__, bvf, rc,
 		stats.nb_eval, stats.nb_prune, stats.nb_save, stats.nb_restore);
 
-	return rc;
+	debug_rc = __rte_bpf_validate_debug_evaluate_finish(debug, rc);
+	rc = debug_rc < 0 ? debug_rc : rc;
+
+	/* Caller does not expect positive values. */
+	return RTE_MIN(0, rc);
 }
 
 static bool

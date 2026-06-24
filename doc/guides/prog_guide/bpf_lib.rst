@@ -116,6 +116,37 @@ For example, ``(BPF_IND | BPF_W | BPF_LD)`` means:
 and ``R1-R5`` were scratched.
 
 
+Validation Debugging
+--------------------
+
+The DPDK BPF library includes a validation debugging API
+designed primarily for writing comprehensive unit tests for the eBPF verifier.
+It allows developers to introspect the abstract interpretation process step-by-step
+to guarantee that the verifier correctly models the semantics of eBPF instructions.
+
+The validation debugging API operates using a gdb-like approach:
+
+#. **Initialization:** Create a debug session using
+   ``rte_bpf_validate_debug_create()`` and pass it to the loader
+   via the ``debug`` field in ``struct rte_bpf_prm_ex``.
+#. **Breakpoints and Catchpoints:** Before loading,
+   use ``rte_bpf_validate_debug_break()`` or ``rte_bpf_validate_debug_catch()``
+   to register callback functions that trigger at specific instruction indices
+   (program counters) or upon specific validation events.
+#. **State Introspection:** Within the callbacks, the API provides functions
+   like ``rte_bpf_validate_debug_can_access()``,
+   ``rte_bpf_validate_debug_may_jump()``, and various formatting functions
+   to safely inspect the verifier's internal belief about register bounds
+   and memory states at that specific execution point.
+
+When adding a test for a new eBPF instruction or fixing a validator bug,
+developers should utilize the harness provided in ``app/test/test_bpf_validate.c``.
+This harness encapsulates the debugging API,
+allowing you to define the expected abstract domains (signed and unsigned intervals)
+for registers before and after a tested instruction,
+generating the necessary eBPF bytecode and breakpoints automatically.
+
+
 Not currently supported eBPF features
 -------------------------------------
 
