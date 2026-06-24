@@ -56,11 +56,24 @@ class TestRxSplit(TestSuite):
         packet = Ether() / IP() / Raw(load=PAYLOAD)
         return adjust_addresses([packet])[0]
 
-    def _start_and_verify(self, testpmd: TestPmd, expected: Callable[[bytes], bytes]) -> None:
+    def _start_and_verify(
+        self,
+        testpmd: TestPmd,
+        expected: Callable[[bytes], bytes] | bytes | int | None = None,
+    ) -> None:
         """Start testpmd, send the default packet, and verify received bytes."""
         testpmd.start()
         packet = self._build_packet()
-        self._send_and_verify(testpmd, packet, expected(bytes(packet)))
+        raw = bytes(packet)
+        if expected is None:
+            raw_expected = raw
+        elif isinstance(expected, int):
+            raw_expected = raw[:expected]
+        elif isinstance(expected, bytes):
+            raw_expected = expected
+        else:
+            raw_expected = expected(raw)
+        self._send_and_verify(testpmd, packet, raw_expected)
 
     def _send_and_verify(self, testpmd: TestPmd, tg_packet: Packet, expected: bytes) -> None:
         """Clear stats, send a packet, and verify received content and stats.
@@ -128,11 +141,7 @@ class TestRxSplit(TestSuite):
             rx_segments_length=[ETHER_IP_HDR_LEN, 0],
             mbuf_size=[256, 0],
         ) as testpmd:
-
-            def expected(packet: bytes) -> bytes:
-                return packet[:ETHER_IP_HDR_LEN]
-
-            self._start_and_verify(testpmd, expected)
+            self._start_and_verify(testpmd, ETHER_IP_HDR_LEN)
 
     @func_test
     def selective_rx_headers_discard_length(self) -> None:
@@ -151,11 +160,7 @@ class TestRxSplit(TestSuite):
             rx_segments_length=[ETHER_IP_HDR_LEN, len(PAYLOAD)],
             mbuf_size=[256, 0],
         ) as testpmd:
-
-            def expected(packet: bytes) -> bytes:
-                return packet[:ETHER_IP_HDR_LEN]
-
-            self._start_and_verify(testpmd, expected)
+            self._start_and_verify(testpmd, ETHER_IP_HDR_LEN)
 
     @func_test
     def selective_rx_payload_only(self) -> None:
@@ -173,11 +178,7 @@ class TestRxSplit(TestSuite):
             rx_segments_length=[ETHER_IP_HDR_LEN, len(PAYLOAD)],
             mbuf_size=[0, 512],
         ) as testpmd:
-
-            def expected(_: bytes) -> bytes:
-                return PAYLOAD
-
-            self._start_and_verify(testpmd, expected)
+            self._start_and_verify(testpmd, PAYLOAD)
 
     @func_test
     def selective_rx_two_segments(self) -> None:
