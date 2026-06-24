@@ -172,9 +172,9 @@ parse_table_entry(struct rte_swx_ctl_pipeline *p,
 	line[0] = 0;
 	for (i = 0; i < n_tokens; i++) {
 		if (i)
-			strcat(line, " ");
+			strlcat(line, " ", MAX_LINE_SIZE);
 
-		strcat(line, tokens[i]);
+		strlcat(line, tokens[i], MAX_LINE_SIZE);
 	}
 
 	/* Read the table entry from the input buffer. */

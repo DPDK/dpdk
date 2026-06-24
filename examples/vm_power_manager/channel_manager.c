@@ -875,8 +875,7 @@ add_vm(const char *vm_name)
 		rte_free(new_domain);
 		return -1;
 	}
-	strncpy(new_domain->name, vm_name, sizeof(new_domain->name));
-	new_domain->name[sizeof(new_domain->name) - 1] = '\0';
+	strlcpy(new_domain->name, vm_name, sizeof(new_domain->name));
 	memset(new_domain->channel_mask, 0, RTE_MAX_LCORE);
 	new_domain->num_channels = 0;
 
