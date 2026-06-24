@@ -702,6 +702,8 @@ struct txgbe_phy_info {
 				u8 dev_addr, u8 data);
 	s32 (*read_i2c_sff8472)(struct txgbe_hw *hw, u8 byte_offset,
 				u8 *sff8472_data);
+	s32 (*read_i2c_sff8636)(struct txgbe_hw *hw, u8 page, u8 byte_offset,
+				u8 *sff8636_data);
 	s32 (*read_i2c_eeprom)(struct txgbe_hw *hw, u8 byte_offset,
 				u8 *eeprom_data);
 	s32 (*write_i2c_eeprom)(struct txgbe_hw *hw, u8 byte_offset,

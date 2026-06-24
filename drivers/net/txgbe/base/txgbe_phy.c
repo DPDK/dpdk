@@ -830,6 +830,10 @@ s32 txgbe_identify_sfp_module(struct txgbe_hw *hw)
 		return TXGBE_ERR_SFP_NOT_PRESENT;
 	}
 
+	err = hw->mac.acquire_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
+	if (err)
+		return -EBUSY;
+
 	err = hw->phy.read_i2c_eeprom(hw, TXGBE_SFF_IDENTIFIER,
 					     &identifier);
 	if (err != 0) {
@@ -839,11 +843,13 @@ ERR_I2C:
 			hw->phy.id = 0;
 			hw->phy.type = txgbe_phy_unknown;
 		}
+		hw->mac.release_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
 		return TXGBE_ERR_SFP_NOT_PRESENT;
 	}
 
 	if (identifier != TXGBE_SFF_IDENTIFIER_SFP) {
 		hw->phy.type = txgbe_phy_sfp_unsupported;
+		hw->mac.release_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
 		return TXGBE_ERR_SFP_NOT_SUPPORTED;
 	}
 
@@ -888,7 +894,42 @@ ERR_I2C:
 	  * 11  SFP_1g_sx_CORE0 - chip-specific
 	  * 12  SFP_1g_sx_CORE1 - chip-specific
 	  */
-	if (cable_tech & TXGBE_SFF_CABLE_DA_ACTIVE) {
+	if (cable_tech & TXGBE_SFF_CABLE_DA_PASSIVE) {
+		if (hw->bus.lan_id == 0)
+			hw->phy.sfp_type = txgbe_sfp_type_da_cu_core0;
+		else
+			hw->phy.sfp_type = txgbe_sfp_type_da_cu_core1;
+
+		if (hw->phy.sfp_type == txgbe_sfp_type_da_cu_core0 ||
+		    hw->phy.sfp_type == txgbe_sfp_type_da_cu_core1) {
+			hw->dac_sfp = true;
+		}
+
+		if (comp_copper_len == TXGBE_SFF_COPPER_1M)
+			hw->bypass_ctle = true;
+		else
+			hw->bypass_ctle = false;
+
+		if (comp_codes_25g == TXGBE_SFF_25GBASECR_91FEC ||
+		    comp_codes_25g == TXGBE_SFF_25GBASECR_74FEC ||
+		    comp_codes_25g == TXGBE_SFF_25GBASECR_NOFEC) {
+			hw->phy.fiber_suppport_speed =
+				TXGBE_LINK_SPEED_25GB_FULL |
+				TXGBE_LINK_SPEED_10GB_FULL;
+		} else {
+			hw->phy.fiber_suppport_speed |=
+				TXGBE_LINK_SPEED_10GB_FULL;
+		}
+	} else if (comp_codes_25g == TXGBE_SFF_25GAUI_C2M_AOC_BER_5 ||
+		   comp_codes_25g == TXGBE_SFF_25GAUI_C2M_ACC_BER_5 ||
+		   comp_codes_25g == TXGBE_SFF_25GAUI_C2M_AOC_BER_12 ||
+		   comp_codes_25g == TXGBE_SFF_25GAUI_C2M_ACC_BER_12) {
+		hw->dac_sfp = false;
+		hw->phy.sfp_type = (hw->bus.lan_id == 0
+				? txgbe_sfp_type_25g_aoc_core0
+				: txgbe_sfp_type_25g_aoc_core1);
+	} else if (cable_tech & TXGBE_SFF_CABLE_DA_ACTIVE) {
+		hw->dac_sfp = false;
 		err = hw->phy.read_i2c_eeprom(hw,
 			TXGBE_SFF_CABLE_SPEC_COMP, &cable_spec);
 		if (err != 0)
@@ -1005,6 +1046,7 @@ ERR_I2C:
 	/* Allow any DA cable vendor */
 	if (cable_tech & (TXGBE_SFF_CABLE_DA_PASSIVE |
 			  TXGBE_SFF_CABLE_DA_ACTIVE)) {
+		hw->mac.release_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
 		return 0;
 	}
 
@@ -1017,6 +1059,7 @@ ERR_I2C:
 	      hw->phy.sfp_type == txgbe_sfp_type_1g_sx_core0 ||
 	      hw->phy.sfp_type == txgbe_sfp_type_1g_sx_core1)) {
 		hw->phy.type = txgbe_phy_sfp_unsupported;
+		hw->mac.release_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
 		return TXGBE_ERR_SFP_NOT_SUPPORTED;
 	}
 
@@ -1031,9 +1074,11 @@ ERR_I2C:
 	      hw->phy.sfp_type == txgbe_sfp_type_1g_sx_core1)) {
 		DEBUGOUT("SFP+ module not supported");
 		hw->phy.type = txgbe_phy_sfp_unsupported;
+		hw->mac.release_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
 		return TXGBE_ERR_SFP_NOT_SUPPORTED;
 	}
 
+	hw->mac.release_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
 	return err;
 }
 
@@ -1046,28 +1091,13 @@ ERR_I2C:
 s32 txgbe_identify_qsfp_module(struct txgbe_hw *hw)
 {
 	s32 err = TXGBE_ERR_PHY_ADDR_INVALID;
-	u32 vendor_oui = 0;
-	enum txgbe_sfp_type stored_sfp_type = hw->phy.sfp_type;
-	u8 identifier = 0;
-	u8 comp_codes_1g = 0;
-	u8 comp_codes_10g = 0;
-	u8 oui_bytes[3] = {0, 0, 0};
-	u16 enforce_sfp = 0;
-	u8 connector = 0;
-	u8 cable_length = 0;
-	u8 device_tech = 0;
-	bool active_cable = false;
+	u8 identifier = 0, transceiver_type = 0;
 	u32 value;
 
-	if (hw->phy.media_type != txgbe_media_type_fiber_qsfp) {
-		hw->phy.sfp_type = txgbe_sfp_type_not_present;
-		err = TXGBE_ERR_SFP_NOT_PRESENT;
-		goto out;
-	}
+	/* config GPIO before read i2c */
+	wr32(hw, TXGBE_GPIODATA, TXGBE_GPIOBIT_1);
 
 	if (hw->mac.type == txgbe_mac_aml40) {
-		/* config GPIO before read i2c */
-		wr32(hw, TXGBE_GPIODATA, TXGBE_GPIOBIT_1);
 		value = rd32(hw, TXGBE_GPIOEXT);
 		if (value & TXGBE_SFP1_MOD_PRST_LS) {
 			hw->phy.sfp_type = txgbe_sfp_type_not_present;
@@ -1075,175 +1105,68 @@ s32 txgbe_identify_qsfp_module(struct txgbe_hw *hw)
 		}
 	}
 
-	err = hw->phy.read_i2c_eeprom(hw, TXGBE_SFF_IDENTIFIER,
-					     &identifier);
-ERR_I2C:
-	if (err != 0) {
+	if (hw->phy.media_type != txgbe_media_type_fiber_qsfp) {
 		hw->phy.sfp_type = txgbe_sfp_type_not_present;
-		hw->phy.id = 0;
-		hw->phy.type = txgbe_phy_unknown;
 		return TXGBE_ERR_SFP_NOT_PRESENT;
 	}
-	if (identifier != TXGBE_SFF_IDENTIFIER_QSFP_PLUS) {
+
+	err = hw->mac.acquire_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
+	if (err != 0)
+		return -EBUSY;
+
+	err = hw->phy.read_i2c_sff8636(hw, 0, TXGBE_SFF_IDENTIFIER,
+				       &identifier);
+
+	if (err != 0)
+		goto err_read_i2c_eeprom;
+
+	if (identifier != TXGBE_SFF_IDENTIFIER_QSFP &&
+	    identifier != TXGBE_SFF_IDENTIFIER_QSFP_PLUS) {
+		PMD_INIT_LOG(ERR, "port[%d] QSFP module not supported, identifier = 0x%x",
+			     hw->bus.lan_id, identifier);
 		hw->phy.type = txgbe_phy_sfp_unsupported;
 		err = TXGBE_ERR_SFP_NOT_SUPPORTED;
-		goto out;
-	}
+	} else {
+		err = hw->phy.read_i2c_sff8636(hw, 0,
+					       TXGBE_ETHERNET_COMP_OFFSET,
+					       &transceiver_type);
+		if (err != 0)
+			goto err_read_i2c_eeprom;
 
-	hw->phy.id = identifier;
-
-	err = hw->phy.read_i2c_eeprom(hw, TXGBE_SFF_QSFP_10GBE_COMP,
-					     &comp_codes_10g);
-
-	if (err != 0)
-		goto ERR_I2C;
-
-	err = hw->phy.read_i2c_eeprom(hw, TXGBE_SFF_QSFP_1GBE_COMP,
-					     &comp_codes_1g);
-
-	if (err != 0)
-		goto ERR_I2C;
-
-	if (comp_codes_10g & TXGBE_SFF_QSFP_DA_PASSIVE_CABLE) {
-		hw->phy.type = txgbe_phy_qsfp_unknown_passive;
-		if (hw->mac.type == txgbe_mac_aml40) {
+		if (transceiver_type & TXGBE_SFF_ETHERNET_40G_CR4) {
 			if (hw->bus.lan_id == 0)
 				hw->phy.sfp_type = txgbe_qsfp_type_40g_cu_core0;
 			else
 				hw->phy.sfp_type = txgbe_qsfp_type_40g_cu_core1;
-		} else {
-			if (hw->bus.lan_id == 0)
-				hw->phy.sfp_type = txgbe_sfp_type_da_cu_core0;
-			else
-				hw->phy.sfp_type = txgbe_sfp_type_da_cu_core1;
-		}
-	} else if (comp_codes_10g & TXGBE_SFF_40GBASE_SR4) {
-		if (hw->bus.lan_id == 0)
-			hw->phy.sfp_type = txgbe_qsfp_type_40g_sr_core0;
-		else
-			hw->phy.sfp_type = txgbe_qsfp_type_40g_sr_core1;
-	} else if (comp_codes_10g & TXGBE_SFF_40GBASE_LR4) {
-		if (hw->bus.lan_id == 0)
-			hw->phy.sfp_type = txgbe_qsfp_type_40g_lr_core0;
-		else
-			hw->phy.sfp_type = txgbe_qsfp_type_40g_lr_core1;
-	} else if (comp_codes_10g & (TXGBE_SFF_10GBASESR_CAPABLE |
-				     TXGBE_SFF_10GBASELR_CAPABLE)) {
-		if (hw->bus.lan_id == 0)
-			hw->phy.sfp_type = txgbe_sfp_type_srlr_core0;
-		else
-			hw->phy.sfp_type = txgbe_sfp_type_srlr_core1;
-	} else {
-		if (comp_codes_10g & TXGBE_SFF_QSFP_DA_ACTIVE_CABLE)
-			active_cable = true;
-
-		if (!active_cable) {
-			hw->phy.read_i2c_eeprom(hw,
-					TXGBE_SFF_QSFP_CONNECTOR,
-					&connector);
-
-			hw->phy.read_i2c_eeprom(hw,
-					TXGBE_SFF_QSFP_CABLE_LENGTH,
-					&cable_length);
-
-			hw->phy.read_i2c_eeprom(hw,
-					TXGBE_SFF_QSFP_DEVICE_TECH,
-					&device_tech);
-
-			if (connector ==
-				     TXGBE_SFF_QSFP_CONNECTOR_NOT_SEPARABLE &&
-			    cable_length > 0 &&
-			    ((device_tech >> 4) ==
-				     TXGBE_SFF_QSFP_TRANSMITTER_850NM_VCSEL))
-				active_cable = true;
+			hw->phy.fiber_suppport_speed =
+						TXGBE_LINK_SPEED_40GB_FULL |
+						TXGBE_LINK_SPEED_10GB_FULL;
 		}
 
-		if (active_cable) {
-			hw->phy.type = txgbe_phy_qsfp_unknown_active;
+		if (transceiver_type & TXGBE_SFF_ETHERNET_40G_SR4) {
 			if (hw->bus.lan_id == 0)
-				hw->phy.sfp_type =
-					txgbe_sfp_type_da_act_lmt_core0;
+				hw->phy.sfp_type = txgbe_qsfp_type_40g_sr_core0;
 			else
-				hw->phy.sfp_type =
-					txgbe_sfp_type_da_act_lmt_core1;
-		} else {
-			/* unsupported module type */
-			hw->phy.type = txgbe_phy_sfp_unsupported;
-			err = TXGBE_ERR_SFP_NOT_SUPPORTED;
-			goto out;
+				hw->phy.sfp_type = txgbe_qsfp_type_40g_sr_core1;
+		}
+
+		if (transceiver_type & TXGBE_SFF_ETHERNET_40G_LR4) {
+			if (hw->bus.lan_id == 0)
+				hw->phy.sfp_type = txgbe_qsfp_type_40g_lr_core0;
+			else
+				hw->phy.sfp_type = txgbe_qsfp_type_40g_lr_core1;
 		}
 	}
 
-	if (hw->phy.sfp_type != stored_sfp_type)
-		hw->phy.sfp_setup_needed = true;
-
-	/* Determine if the QSFP+ PHY is dual speed or not. */
-	hw->phy.multispeed_fiber = false;
-	if (((comp_codes_1g & TXGBE_SFF_1GBASESX_CAPABLE) &&
-	   (comp_codes_10g & TXGBE_SFF_10GBASESR_CAPABLE)) ||
-	   ((comp_codes_1g & TXGBE_SFF_1GBASELX_CAPABLE) &&
-	   (comp_codes_10g & TXGBE_SFF_10GBASELR_CAPABLE)))
-		hw->phy.multispeed_fiber = true;
-
-	/* Determine PHY vendor for optical modules */
-	if (comp_codes_10g & (TXGBE_SFF_10GBASESR_CAPABLE |
-			      TXGBE_SFF_10GBASELR_CAPABLE))  {
-		err = hw->phy.read_i2c_eeprom(hw,
-					    TXGBE_SFF_QSFP_VENDOR_OUI_BYTE0,
-					    &oui_bytes[0]);
-
-		if (err != 0)
-			goto ERR_I2C;
-
-		err = hw->phy.read_i2c_eeprom(hw,
-					    TXGBE_SFF_QSFP_VENDOR_OUI_BYTE1,
-					    &oui_bytes[1]);
-
-		if (err != 0)
-			goto ERR_I2C;
-
-		err = hw->phy.read_i2c_eeprom(hw,
-					    TXGBE_SFF_QSFP_VENDOR_OUI_BYTE2,
-					    &oui_bytes[2]);
-
-		if (err != 0)
-			goto ERR_I2C;
-
-		vendor_oui =
-		  ((oui_bytes[0] << 24) |
-		   (oui_bytes[1] << 16) |
-		   (oui_bytes[2] << 8));
-
-		if (vendor_oui == TXGBE_SFF_VENDOR_OUI_INTEL)
-			hw->phy.type = txgbe_phy_qsfp_intel;
-		else
-			hw->phy.type = txgbe_phy_qsfp_unknown;
-
-		hw->mac.get_device_caps(hw, &enforce_sfp);
-		if (!(enforce_sfp & TXGBE_DEVICE_CAPS_ALLOW_ANY_SFP)) {
-			/* Make sure we're a supported PHY type */
-			if (hw->phy.type == txgbe_phy_qsfp_intel) {
-				err = 0;
-			} else {
-				if (hw->allow_unsupported_sfp) {
-					DEBUGOUT("WARNING: Wangxun (R) Network Connections are quality tested using Wangxun (R) Ethernet Optics. "
-						"Using untested modules is not supported and may cause unstable operation or damage to the module or the adapter. "
-						"Wangxun Corporation is not responsible for any harm caused by using untested modules.");
-					err = 0;
-				} else {
-					DEBUGOUT("QSFP module not supported");
-					hw->phy.type =
-						txgbe_phy_sfp_unsupported;
-					err = TXGBE_ERR_SFP_NOT_SUPPORTED;
-				}
-			}
-		} else {
-			err = 0;
-		}
-	}
-
-out:
+	hw->mac.release_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
 	return err;
+
+err_read_i2c_eeprom:
+	hw->mac.release_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
+	hw->phy.sfp_type = txgbe_sfp_type_not_present;
+	hw->phy.id = 0;
+	hw->phy.type = txgbe_phy_unknown;
+	return TXGBE_ERR_SFP_NOT_PRESENT;
 }
 
 /**
@@ -1279,6 +1202,28 @@ s32 txgbe_read_i2c_sff8472(struct txgbe_hw *hw, u8 byte_offset,
 }
 
 /**
+ *  txgbe_read_i2c_sff8636 - Reads 8 bit word over I2C interface
+ *  @hw: pointer to hardware structure
+ *  @byte_offset: byte offset at address 0xA2
+ *  @eeprom_data: value read
+ *
+ *  Performs byte read operation to SFP module's SFF-8472 data over I2C
+ **/
+s32 txgbe_read_i2c_sff8636(struct txgbe_hw *hw, u8 page, u8 byte_offset,
+				 u8 *sff8636_data)
+{
+	s32 err = hw->phy.write_i2c_byte(hw, TXGBE_SFF_QSFP_PAGE_SELECT,
+					TXGBE_I2C_EEPROM_DEV_ADDR,
+					page);
+	if (err != 0)
+		return err;
+
+	return hw->phy.read_i2c_byte(hw, byte_offset,
+					TXGBE_I2C_EEPROM_DEV_ADDR,
+					sff8636_data);
+}
+
+/**
  *  txgbe_write_i2c_eeprom - Writes 8 bit EEPROM word over I2C interface
  *  @hw: pointer to hardware structure
  *  @byte_offset: EEPROM byte offset to write
@@ -1295,7 +1240,7 @@ s32 txgbe_write_i2c_eeprom(struct txgbe_hw *hw, u8 byte_offset,
 }
 
 /**
- *  txgbe_read_i2c_byte_unlocked - Reads 8 bit word over I2C
+ *  txgbe_read_i2c_byte - Reads 8 bit word over I2C
  *  @hw: pointer to hardware structure
  *  @byte_offset: byte offset to read
  *  @dev_addr: address to read from
@@ -1304,7 +1249,7 @@ s32 txgbe_write_i2c_eeprom(struct txgbe_hw *hw, u8 byte_offset,
  *  Performs byte read operation to SFP module's EEPROM over I2C interface at
  *  a specified device address.
  **/
-s32 txgbe_read_i2c_byte_unlocked(struct txgbe_hw *hw, u8 byte_offset,
+s32 txgbe_read_i2c_byte(struct txgbe_hw *hw, u8 byte_offset,
 					   u8 dev_addr, u8 *data)
 {
 	txgbe_i2c_start(hw, dev_addr);
@@ -1334,63 +1279,6 @@ s32 txgbe_read_i2c_byte_unlocked(struct txgbe_hw *hw, u8 byte_offset,
 }
 
 /**
- *  txgbe_read_i2c_byte - Reads 8 bit word over I2C
- *  @hw: pointer to hardware structure
- *  @byte_offset: byte offset to read
- *  @dev_addr: address to read from
- *  @data: value read
- *
- *  Performs byte read operation to SFP module's EEPROM over I2C interface at
- *  a specified device address.
- **/
-s32 txgbe_read_i2c_byte(struct txgbe_hw *hw, u8 byte_offset,
-				u8 dev_addr, u8 *data)
-{
-	u32 swfw_mask = hw->phy.phy_semaphore_mask;
-	int err = 0;
-
-	if (hw->mac.acquire_swfw_sync(hw, swfw_mask))
-		return TXGBE_ERR_SWFW_SYNC;
-	err = txgbe_read_i2c_byte_unlocked(hw, byte_offset, dev_addr, data);
-	hw->mac.release_swfw_sync(hw, swfw_mask);
-	return err;
-}
-
-/**
- *  txgbe_write_i2c_byte_unlocked - Writes 8 bit word over I2C
- *  @hw: pointer to hardware structure
- *  @byte_offset: byte offset to write
- *  @dev_addr: address to write to
- *  @data: value to write
- *
- *  Performs byte write operation to SFP module's EEPROM over I2C interface at
- *  a specified device address.
- **/
-s32 txgbe_write_i2c_byte_unlocked(struct txgbe_hw *hw, u8 byte_offset,
-					    u8 dev_addr, u8 data)
-{
-	txgbe_i2c_start(hw, dev_addr);
-
-	/* wait tx empty */
-	if (!po32m(hw, TXGBE_I2CICR, TXGBE_I2CICR_TXEMPTY,
-		TXGBE_I2CICR_TXEMPTY, NULL, 100, 100)) {
-		return -TERR_TIMEOUT;
-	}
-
-	wr32(hw, TXGBE_I2CDATA, byte_offset | TXGBE_I2CDATA_STOP);
-	wr32(hw, TXGBE_I2CDATA, data | TXGBE_I2CDATA_WRITE);
-
-	/* wait for write complete */
-	if (!po32m(hw, TXGBE_I2CICR, TXGBE_I2CICR_RXFULL,
-		TXGBE_I2CICR_RXFULL, NULL, 100, 100)) {
-		return -TERR_TIMEOUT;
-	}
-	txgbe_i2c_stop(hw);
-
-	return 0;
-}
-
-/**
  *  txgbe_write_i2c_byte - Writes 8 bit word over I2C
  *  @hw: pointer to hardware structure
  *  @byte_offset: byte offset to write
@@ -1401,17 +1289,26 @@ s32 txgbe_write_i2c_byte_unlocked(struct txgbe_hw *hw, u8 byte_offset,
  *  a specified device address.
  **/
 s32 txgbe_write_i2c_byte(struct txgbe_hw *hw, u8 byte_offset,
-				 u8 dev_addr, u8 data)
+			       u8 dev_addr, u8 data)
 {
-	u32 swfw_mask = hw->phy.phy_semaphore_mask;
-	int err = 0;
+	txgbe_i2c_start(hw, dev_addr);
 
-	if (hw->mac.acquire_swfw_sync(hw, swfw_mask))
-		return TXGBE_ERR_SWFW_SYNC;
-	err = txgbe_write_i2c_byte_unlocked(hw, byte_offset, dev_addr, data);
-	hw->mac.release_swfw_sync(hw, swfw_mask);
+	/* wait tx empty */
+	if (!po32m(hw, TXGBE_I2CICR, TXGBE_I2CICR_TXEMPTY,
+		   TXGBE_I2CICR_TXEMPTY, NULL, 100, 100))
+		return -TERR_TIMEOUT;
 
-	return err;
+	wr32(hw, TXGBE_I2CDATA, byte_offset);
+	wr32(hw, TXGBE_I2CDATA, data | TXGBE_I2CDATA_WRITE);
+
+	/* wait for write complete */
+	if (!po32m(hw, TXGBE_I2CICR, TXGBE_I2CICR_RXFULL,
+		   TXGBE_I2CICR_RXFULL, NULL, 100, 100))
+		return -TERR_TIMEOUT;
+
+	txgbe_i2c_stop(hw);
+
+	return 0;
 }
 
 /**
