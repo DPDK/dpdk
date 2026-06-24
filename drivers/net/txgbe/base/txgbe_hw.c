@@ -2909,8 +2909,6 @@ s32 txgbe_init_ops_generic(struct txgbe_hw *hw)
 	phy->read_i2c_eeprom = txgbe_read_i2c_eeprom;
 	phy->write_i2c_eeprom = txgbe_write_i2c_eeprom;
 	phy->identify_sfp = txgbe_identify_module;
-	phy->read_i2c_byte_unlocked = txgbe_read_i2c_byte_unlocked;
-	phy->write_i2c_byte_unlocked = txgbe_write_i2c_byte_unlocked;
 	phy->check_overtemp = txgbe_check_overtemp;
 	phy->reset = txgbe_reset_phy;
 	phy->set_link_hostif = txgbe_hic_ephy_set_link;

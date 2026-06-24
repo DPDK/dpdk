@@ -261,7 +261,9 @@
 #define TXGBE_SFF_SFF_8472_COMP		0x5E
 #define TXGBE_SFF_SFF_8472_OSCB		0x6E
 #define TXGBE_SFF_SFF_8472_ESCB		0x76
+#define TXGBE_SFF_QSFP_PAGE_SELECT      0x7F
 
+#define TXGBE_SFF_IDENTIFIER_QSFP	0x0C
 #define TXGBE_SFF_IDENTIFIER_QSFP_PLUS	0x0D
 #define TXGBE_SFF_QSFP_VENDOR_OUI_BYTE0	0xA5
 #define TXGBE_SFF_QSFP_VENDOR_OUI_BYTE1	0xA6
@@ -289,12 +291,20 @@
 #define TXGBE_SFF_4x10GBASESR_CAP		0x11
 #define TXGBE_SFF_40GBASEPSM4_PARALLEL		0x12
 #define TXGBE_SFF_40GBASE_SWMD4_CAP		0x1f
+#define TXGBE_SFF_COPPER_5M			0x5
+#define TXGBE_SFF_COPPER_3M			0x3
+#define TXGBE_SFF_COPPER_1M			0x1
 
 #define TXGBE_SFF_DA_SPEC_ACTIVE_LIMITING	0x4
 #define TXGBE_SFF_25GAUI_C2M_AOC_BER_5		0x1
 #define TXGBE_SFF_25GAUI_C2M_ACC_BER_5		0x8
 #define TXGBE_SFF_25GAUI_C2M_AOC_BER_12		0x18
 #define TXGBE_SFF_25GAUI_C2M_ACC_BER_12		0x19
+
+#define TXGBE_ETHERNET_COMP_OFFSET		0x83
+#define TXGBE_SFF_ETHERNET_40G_CR4		MS(3, 0x1)
+#define TXGBE_SFF_ETHERNET_40G_SR4		MS(2, 0x1)
+#define TXGBE_SFF_ETHERNET_40G_LR4		MS(1, 0x1)
 
 #define TXGBE_SFF_SOFT_RS_SELECT_MASK		0x8
 #define TXGBE_SFF_SOFT_RS_SELECT_10G		0x8
@@ -493,14 +503,12 @@ s32 txgbe_identify_qsfp_module(struct txgbe_hw *hw);
 s32 txgbe_check_overtemp(struct txgbe_hw *hw);
 s32 txgbe_read_i2c_byte(struct txgbe_hw *hw, u8 byte_offset,
 				u8 dev_addr, u8 *data);
-s32 txgbe_read_i2c_byte_unlocked(struct txgbe_hw *hw, u8 byte_offset,
-					 u8 dev_addr, u8 *data);
 s32 txgbe_write_i2c_byte(struct txgbe_hw *hw, u8 byte_offset,
 				 u8 dev_addr, u8 data);
-s32 txgbe_write_i2c_byte_unlocked(struct txgbe_hw *hw, u8 byte_offset,
-					  u8 dev_addr, u8 data);
 s32 txgbe_read_i2c_sff8472(struct txgbe_hw *hw, u8 byte_offset,
-					  u8 *sff8472_data);
+				  u8 *sff8472_data);
+s32 txgbe_read_i2c_sff8636(struct txgbe_hw *hw, u8 page, u8 byte_offset,
+					  u8 *sff8636_data);
 s32 txgbe_read_i2c_eeprom(struct txgbe_hw *hw, u8 byte_offset,
 				  u8 *eeprom_data);
 s32 txgbe_write_i2c_eeprom(struct txgbe_hw *hw, u8 byte_offset,
