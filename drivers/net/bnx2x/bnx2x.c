@@ -3596,7 +3596,7 @@ static void bnx2x_drv_info_ether_stat(struct bnx2x_softc *sc)
 {
 	struct eth_stats_info *ether_stat = &sc->sp->drv_info_to_mcp.ether_stat;
 
-	strncpy(ether_stat->version, BNX2X_DRIVER_VERSION,
+	strlcpy(ether_stat->version, BNX2X_DRIVER_VERSION,
 		ETH_STAT_INFO_VERSION_LEN);
 
 	sc->sp_objs[0].mac_obj.get_n_elements(sc, &sc->sp_objs[0].mac_obj,
