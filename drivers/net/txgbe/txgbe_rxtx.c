@@ -4664,12 +4664,13 @@ txgbe_dev_tx_init(struct rte_eth_dev *dev)
 		/* Setup the HW Tx Head and TX Tail descriptor pointers */
 		wr32(hw, TXGBE_TXRP(txq->reg_idx), 0);
 		wr32(hw, TXGBE_TXWP(txq->reg_idx), 0);
-	}
 
-#ifndef RTE_LIB_SECURITY
-	for (i = 0; i < 4; i++)
-		wr32(hw, TXGBE_TDM_DESC_CHK(i), 0xFFFFFFFF);
+#ifdef RTE_LIB_SECURITY
+		if (!txq->using_ipsec)
 #endif
+			wr32m(hw, TXGBE_TDM_DESC_CHK(txq->reg_idx / 32),
+			      RTE_BIT32(txq->reg_idx % 32), RTE_BIT32(txq->reg_idx % 32));
+	}
 
 	/* Device configured with multiple TX queues. */
 	txgbe_dev_mq_tx_configure(dev);
