@@ -1096,7 +1096,9 @@ eval_jgt_jle(struct bpf_reg_val *trd, struct bpf_reg_val *trs,
 	struct bpf_reg_val *frd, struct bpf_reg_val *frs)
 {
 	frd->u.max = RTE_MIN(frd->u.max, frs->u.max);
+	frs->u.min = RTE_MAX(frs->u.min, frd->u.min);
 	trd->u.min = RTE_MAX(trd->u.min, trs->u.min + 1);
+	trs->u.max = RTE_MIN(trs->u.max, trd->u.max - 1);
 }
 
 static void
@@ -1104,7 +1106,9 @@ eval_jlt_jge(struct bpf_reg_val *trd, struct bpf_reg_val *trs,
 	struct bpf_reg_val *frd, struct bpf_reg_val *frs)
 {
 	frd->u.min = RTE_MAX(frd->u.min, frs->u.min);
+	frs->u.max = RTE_MIN(frs->u.max, frd->u.max);
 	trd->u.max = RTE_MIN(trd->u.max, trs->u.max - 1);
+	trs->u.min = RTE_MAX(trs->u.min, trd->u.min + 1);
 }
 
 static void
@@ -1112,7 +1116,9 @@ eval_jsgt_jsle(struct bpf_reg_val *trd, struct bpf_reg_val *trs,
 	struct bpf_reg_val *frd, struct bpf_reg_val *frs)
 {
 	frd->s.max = RTE_MIN(frd->s.max, frs->s.max);
+	frs->s.min = RTE_MAX(frs->s.min, frd->s.min);
 	trd->s.min = RTE_MAX(trd->s.min, trs->s.min + 1);
+	trs->s.max = RTE_MIN(trs->s.max, trd->s.max - 1);
 }
 
 static void
@@ -1120,7 +1126,9 @@ eval_jslt_jsge(struct bpf_reg_val *trd, struct bpf_reg_val *trs,
 	struct bpf_reg_val *frd, struct bpf_reg_val *frs)
 {
 	frd->s.min = RTE_MAX(frd->s.min, frs->s.min);
+	frs->s.max = RTE_MIN(frs->s.max, frd->s.max);
 	trd->s.max = RTE_MIN(trd->s.max, trs->s.max - 1);
+	trs->s.min = RTE_MAX(trs->s.min, trd->s.min + 1);
 }
 
 static const char *
