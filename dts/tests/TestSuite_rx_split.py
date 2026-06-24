@@ -211,6 +211,30 @@ class TestRxSplit(TestSuite):
             self._start_and_verify(testpmd, expected)
 
     @func_test
+    def selective_rx_runtime_config(self) -> None:
+        """Configure selective Rx at runtime after initial startup.
+
+        Steps:
+            Start testpmd with two mbuf-size pools but no rxpkts/rxhdrs.
+            Stop ports, configure buffer split offload, set rxpkts, restart ports.
+            Send an Ether/IP/payload packet.
+
+        Verify:
+            Initial startup succeeds without error.
+            Received packet has Ether + IP headers only after runtime config.
+            Port stats show expected rx_packets and rx_bytes.
+        """
+        with self._create_testpmd(
+            mbuf_size=[512, 0],
+        ) as testpmd:
+            self._start_and_verify(testpmd)
+            testpmd.stop()
+            testpmd.stop_all_ports()
+            testpmd.send_command("port config 0 rx_offload buffer_split on")
+            testpmd.send_command(f"set rxpkts {ETHER_IP_HDR_LEN},0")
+            self._start_and_verify(testpmd, ETHER_IP_HDR_LEN)
+
+    @func_test
     def selective_rx_no_offload(self) -> None:
         """Configure selective Rx with buffer split disabled.
 

@@ -2750,8 +2750,7 @@ rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	uint32_t prev_hdrs = 0;
 	int ret;
 
-	if (multi_rx_mempool == 0 &&
-	    (rx_pkt_nb_segs > 1 || mbuf_data_size_n > 1)) {
+	if (multi_rx_mempool == 0 && rx_pkt_nb_segs > 1) {
 		unsigned int nb_segs = RTE_MAX(rx_pkt_nb_segs, (uint8_t)mbuf_data_size_n);
 
 		/* multi-segment configuration */
