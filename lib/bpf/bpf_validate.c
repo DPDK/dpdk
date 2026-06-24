@@ -2401,11 +2401,11 @@ prune_eval_state(struct bpf_verifier *bvf, const struct inst_node *node,
 static int
 evaluate(struct bpf_verifier *bvf)
 {
-	int32_t rc;
 	uint32_t idx, op;
 	const char *err;
 	const struct ebpf_insn *ins;
 	struct inst_node *next, *node;
+	int rc = 0;
 
 	struct {
 		uint32_t nb_eval;
@@ -2439,11 +2439,10 @@ evaluate(struct bpf_verifier *bvf)
 	ins = bvf->prm->raw.ins;
 	node = bvf->in;
 	next = node;
-	rc = 0;
 
 	memset(&stats, 0, sizeof(stats));
 
-	while (node != NULL && rc == 0) {
+	while (node != NULL) {
 
 		/*
 		 * current node evaluation, make sure we evaluate
@@ -2457,17 +2456,20 @@ evaluate(struct bpf_verifier *bvf)
 
 			/* for jcc node make a copy of evaluation state */
 			if (node->nb_edge > 1) {
-				rc |= save_cur_eval_state(bvf, node);
+				rc = save_cur_eval_state(bvf, node);
+				if (rc < 0)
+					break;
 				stats.nb_save++;
 			}
 
-			if (ins_chk[op].eval != NULL && rc == 0) {
+			if (ins_chk[op].eval != NULL) {
 				err = ins_chk[op].eval(bvf, ins + idx);
 				stats.nb_eval++;
 				if (err != NULL) {
 					RTE_BPF_LOG_FUNC_LINE(ERR,
 						"%s at pc: %u", err, idx);
 					rc = -EINVAL;
+					break;
 				}
 			}
 
