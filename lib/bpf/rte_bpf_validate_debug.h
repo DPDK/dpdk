@@ -49,6 +49,8 @@ enum rte_bpf_validate_debug_event {
 	RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_PRUNE,
 	/* End of branch verification, after the last verified instruction. */
 	RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_RETURN,
+	/* Pruning branch as dynamically unreachable. */
+	RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_UNREACHABLE,
 	/* Number of valid event values. */
 	RTE_BPF_VALIDATE_DEBUG_EVENT_END,
 };

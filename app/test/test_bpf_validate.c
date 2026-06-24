@@ -135,6 +135,11 @@ static const struct domain unknown = {
 	.u = { .min = 0, .max = UINT64_MAX },
 };
 
+/* Unreachable state. */
+static const struct state unreachable = {
+	.is_unreachable = true,
+};
+
 
 /* BUILDING DOMAINS */
 
@@ -1710,12 +1715,84 @@ test_jmp64_jslt_x(void)
 REGISTER_FAST_TEST(bpf_validate_jmp64_jslt_x_autotest, NOHUGE_OK, ASAN_OK,
 	test_jmp64_jslt_x);
 
+/* Jump on ordering comparisons with potential bound overflow. */
+static int
+test_jmp64_ordering_overflow(void)
+{
+	/* In this test signed and unsigned cases are spelled out explicitly. */
+	const bool also_signed = false;
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JSLT | BPF_X),
+		},
+		.pre.dst = make_singleton_domain(42),
+		.pre.src = make_singleton_domain(INT64_MIN),
+		.jump = unreachable,
+	}, also_signed), "signed less than INT64_MIN");
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JSGT | BPF_X),
+		},
+		.pre.dst = make_singleton_domain(42),
+		.pre.src = make_singleton_domain(INT64_MAX),
+		.jump = unreachable,
+	}, also_signed), "signed greater than INT64_MAX");
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JLT | BPF_X),
+		},
+		.pre.dst = make_singleton_domain(42),
+		.pre.src = make_singleton_domain(0),
+		.jump = unreachable,
+	}, also_signed), "unsigned less than zero");
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | BPF_JGT | BPF_X),
+		},
+		.pre.dst = make_singleton_domain(42),
+		.pre.src = make_singleton_domain(UINT64_MAX),
+		.jump = unreachable,
+	}, also_signed), "unsigned greater than UINT64_MAX");
+
+	return TEST_SUCCESS;
+}
+
+REGISTER_FAST_TEST(bpf_validate_jmp64_ordering_overflow_autotest, NOHUGE_OK, ASAN_OK,
+	test_jmp64_ordering_overflow);
+
 /* Jump on ordering comparisons between two ranges. */
 static int
 test_jmp64_ordering_ranges(void)
 {
 	/* All ranges used are valid for both signed and unsigned comparisons. */
 	const bool also_signed = true;
+
+	/*
+	 *               20 ---- dst ---- 60
+	 * 0 - src - 10
+	 */
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JLT | BPF_X),
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.pre.src = make_signed_domain(0, 10),
+		.jump = unreachable,
+	}, also_signed), "strict, dst range strongly greater than src range");
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JLE | BPF_X),
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.pre.src = make_signed_domain(0, 10),
+		.jump = unreachable,
+	}, also_signed), "non-strict, dst range strongly greater than src range");
 
 	/*
 	 *     20 ---- dst ---- 60
@@ -1817,15 +1894,38 @@ test_jmp64_ordering_ranges(void)
 		.post.src = make_signed_domain(40, 59),
 	}, also_signed), "non-strict, dst range weakly less than src range");
 
+	/*
+	 *     20 ---- dst ---- 60
+	 *                          70 - src - 80
+	 */
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JLT | BPF_X),
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.pre.src = make_signed_domain(70, 80),
+		.post = unreachable,
+	}, also_signed), "strict, dst range strongly less than src range");
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JLE | BPF_X),
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.pre.src = make_signed_domain(70, 80),
+		.post = unreachable,
+	}, also_signed), "non-strict, dst range strongly less than src range");
+
 	return TEST_SUCCESS;
 }
 
 REGISTER_FAST_TEST(bpf_validate_jmp64_ordering_ranges_autotest, NOHUGE_OK, ASAN_OK,
 	test_jmp64_ordering_ranges);
 
-/* Jump on ordering comparisons with singleton. */
+/* Jump on ordering comparisons with singleton inside the range. */
 static int
-test_jmp64_ordering_singleton(void)
+test_jmp64_ordering_singleton_inside(void)
 {
 	/* All ranges used are valid for both signed and unsigned comparisons. */
 	const bool also_signed = true;
@@ -1878,8 +1978,177 @@ test_jmp64_ordering_singleton(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(bpf_validate_jmp64_ordering_singleton_autotest, NOHUGE_OK, ASAN_OK,
-	test_jmp64_ordering_singleton);
+REGISTER_FAST_TEST(bpf_validate_jmp64_ordering_singleton_inside_autotest, NOHUGE_OK, ASAN_OK,
+	test_jmp64_ordering_singleton_inside);
+
+/* Jump on ordering comparisons with singleton outside the range. */
+static int
+test_jmp64_ordering_singleton_outside(void)
+{
+	/* All ranges used are valid for both signed and unsigned comparisons. */
+	const bool also_signed = true;
+
+	/*
+	 *       20 ---- dst ---- 60
+	 *  imm
+	 */
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JLT | BPF_K),
+			.imm = 10,
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.jump = unreachable,
+	}, also_signed), "(BPF_JMP | EBPF_JLT | BPF_K) check, range greater than imm");
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JLE | BPF_K),
+			.imm = 10,
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.jump = unreachable,
+	}, also_signed), "(BPF_JMP | EBPF_JLE | BPF_K) check, range greater than imm");
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | BPF_JGT | BPF_K),
+			.imm = 10,
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.post = unreachable,
+	}, also_signed), "(BPF_JMP | EBPF_JGT | BPF_K) check, range greater than imm");
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | BPF_JGE | BPF_K),
+			.imm = 10,
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.post = unreachable,
+	}, also_signed), "(BPF_JMP | EBPF_JGE | BPF_K) check, range greater than imm");
+
+	/*
+	 *       20 ---- dst ---- 60
+	 *                            imm
+	 */
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JLT | BPF_K),
+			.imm = 70,
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.post = unreachable,
+	}, also_signed), "(BPF_JMP | EBPF_JLT | BPF_K) check, range less than imm");
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JLE | BPF_K),
+			.imm = 70,
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.post = unreachable,
+	}, also_signed), "(BPF_JMP | EBPF_JLE | BPF_K) check, range less than imm");
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | BPF_JGT | BPF_K),
+			.imm = 70,
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.jump = unreachable,
+	}, also_signed), "(BPF_JMP | EBPF_JGT | BPF_K) check, range less than imm");
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | BPF_JGE | BPF_K),
+			.imm = 70,
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.jump = unreachable,
+	}, also_signed), "(BPF_JMP | EBPF_JGE | BPF_K) check, range less than imm");
+
+	return TEST_SUCCESS;
+}
+
+REGISTER_FAST_TEST(bpf_validate_jmp64_ordering_singleton_outside_autotest, NOHUGE_OK, ASAN_OK,
+	test_jmp64_ordering_singleton_outside);
+
+/* Jump on ordering comparisons with ranges "touching" each other. */
+static int
+test_jmp64_ordering_touching(void)
+{
+	/* All ranges used are valid for both signed and unsigned comparisons. */
+	const bool also_signed = true;
+
+	for (int overlap = 0; overlap != 3; ++overlap) {
+
+		/*
+		 *                  20 - dst - 30
+		 * 10 - src - (19 + overlap)
+		 */
+
+		TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+			.tested_instruction = {
+				.code = (BPF_JMP | EBPF_JLT | BPF_X),
+			},
+			.pre.dst = make_signed_domain(20, 30),
+			.pre.src = make_signed_domain(10, 19 + overlap),
+			.jump = overlap <= 1 ? unreachable : (struct state){
+				.dst = make_singleton_domain(20),
+				.src = make_singleton_domain(21),
+			},
+		}, also_signed), "strict, dst left touching src right, overlap=%d", overlap);
+
+		TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+			.tested_instruction = {
+				.code = (BPF_JMP | EBPF_JLE | BPF_X),
+			},
+			.pre.dst = make_signed_domain(20, 30),
+			.pre.src = make_signed_domain(10, 19 + overlap),
+			.jump = overlap < 1 ? unreachable : (struct state){
+				.dst = make_signed_domain(20, 19 + overlap),
+				.src = make_signed_domain(20, 19 + overlap),
+			},
+		}, also_signed), "non-strict, dst left touching src right, overlap=%d", overlap);
+
+		/*
+		 * 10 - dst - (19 + overlap)
+		 *                  20 - src - 30
+		 */
+
+		TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+			.tested_instruction = {
+				.code = (BPF_JMP | EBPF_JLT | BPF_X),
+			},
+			.pre.dst = make_signed_domain(10, 19 + overlap),
+			.pre.src = make_signed_domain(20, 30),
+			.post = overlap < 1 ? unreachable : (struct state){
+				.dst = make_signed_domain(20, 19 + overlap),
+				.src = make_signed_domain(20, 19 + overlap),
+			},
+		}, also_signed), "strict, dst right touching src left, overlap=%d", overlap);
+
+		TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+			.tested_instruction = {
+				.code = (BPF_JMP | EBPF_JLE | BPF_X),
+			},
+			.pre.dst = make_signed_domain(10, 19 + overlap),
+			.pre.src = make_signed_domain(20, 30),
+			.post = overlap <= 1 ? unreachable : (struct state){
+				.dst = make_singleton_domain(21),
+				.src = make_singleton_domain(20),
+			},
+		}, also_signed), "non-strict, dst right touching src left, overlap=%d", overlap);
+	}
+
+	return TEST_SUCCESS;
+}
+
+REGISTER_FAST_TEST(bpf_validate_jmp64_ordering_touching_autotest, NOHUGE_OK, ASAN_OK,
+	test_jmp64_ordering_touching);
 
 /* 64-bit load from heap (should be set to unknown). */
 static int

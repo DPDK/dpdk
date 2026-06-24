@@ -19,6 +19,9 @@
 
 #define BPF_ARG_PTR_STACK RTE_BPF_ARG_RESERVED
 
+/* type containing no values (AKA "bottom", "never" etc)  */
+#define BPF_ARG_UNINHABITED ((enum rte_bpf_arg_type)(RTE_BPF_ARG_UNDEF - 1))
+
 struct bpf_reg_val {
 	struct rte_bpf_arg v;
 	uint64_t mask;
@@ -36,6 +39,8 @@ struct bpf_eval_state {
 	SLIST_ENTRY(bpf_eval_state) next; /* for @safe list traversal */
 	struct bpf_reg_val rv[EBPF_REG_NUM];
 	struct bpf_reg_val sv[MAX_BPF_STACK_SIZE / sizeof(uint64_t)];
+	/* flag set for branches determined to be dynamically unreachable */
+	bool unreachable;
 };
 
 SLIST_HEAD(bpf_evst_head, bpf_eval_state);
@@ -174,6 +179,9 @@ __rte_bpf_validate_can_access(const struct bpf_verifier *verifier,
 	struct value_set access_set;
 	uint32_t opsz;
 
+	if (st->unreachable)
+		return -ENOENT;
+
 	switch (BPF_CLASS(access->code)) {
 	case BPF_LDX:
 		rv = &st->rv[access->src_reg];
@@ -309,6 +317,10 @@ __rte_bpf_validate_may_jump(const struct bpf_verifier *verifier,
 
 	if (!may_jump_code_is_supported(jump->code))
 		return -ENOTSUP;
+
+	if (st->unreachable)
+		/* Set no bits since neither false nor true is possible. */
+		return 0;
 
 	rd = &st->rv[jump->dst_reg];
 	dst_set = (rd->v.type == RTE_BPF_ARG_UNDEF) ? value_set_full :
@@ -1521,40 +1533,68 @@ static void
 eval_jgt_jle(struct bpf_reg_val *trd, struct bpf_reg_val *trs,
 	struct bpf_reg_val *frd, struct bpf_reg_val *frs)
 {
-	frd->u.max = RTE_MIN(frd->u.max, frs->u.max);
-	frs->u.min = RTE_MAX(frs->u.min, frd->u.min);
-	trd->u.min = RTE_MAX(trd->u.min, trs->u.min + 1);
-	trs->u.max = RTE_MIN(trs->u.max, trd->u.max - 1);
+	if (frd->u.min <= frs->u.max) {
+		frd->u.max = RTE_MIN(frd->u.max, frs->u.max);
+		frs->u.min = RTE_MAX(frs->u.min, frd->u.min);
+	} else
+		frd->v.type = frs->v.type = BPF_ARG_UNINHABITED;
+
+	if (trs->u.min < trd->u.max) {
+		trd->u.min = RTE_MAX(trd->u.min, trs->u.min + 1);
+		trs->u.max = RTE_MIN(trs->u.max, trd->u.max - 1);
+	} else
+		trd->v.type = trs->v.type = BPF_ARG_UNINHABITED;
 }
 
 static void
 eval_jlt_jge(struct bpf_reg_val *trd, struct bpf_reg_val *trs,
 	struct bpf_reg_val *frd, struct bpf_reg_val *frs)
 {
-	frd->u.min = RTE_MAX(frd->u.min, frs->u.min);
-	frs->u.max = RTE_MIN(frs->u.max, frd->u.max);
-	trd->u.max = RTE_MIN(trd->u.max, trs->u.max - 1);
-	trs->u.min = RTE_MAX(trs->u.min, trd->u.min + 1);
+	if (frs->u.min <= frd->u.max) {
+		frd->u.min = RTE_MAX(frd->u.min, frs->u.min);
+		frs->u.max = RTE_MIN(frs->u.max, frd->u.max);
+	} else
+		frd->v.type = frs->v.type = BPF_ARG_UNINHABITED;
+
+	if (trd->u.min < trs->u.max) {
+		trd->u.max = RTE_MIN(trd->u.max, trs->u.max - 1);
+		trs->u.min = RTE_MAX(trs->u.min, trd->u.min + 1);
+	} else
+		trd->v.type = trs->v.type = BPF_ARG_UNINHABITED;
 }
 
 static void
 eval_jsgt_jsle(struct bpf_reg_val *trd, struct bpf_reg_val *trs,
 	struct bpf_reg_val *frd, struct bpf_reg_val *frs)
 {
-	frd->s.max = RTE_MIN(frd->s.max, frs->s.max);
-	frs->s.min = RTE_MAX(frs->s.min, frd->s.min);
-	trd->s.min = RTE_MAX(trd->s.min, trs->s.min + 1);
-	trs->s.max = RTE_MIN(trs->s.max, trd->s.max - 1);
+	if (frd->s.min <= frs->s.max) {
+		frd->s.max = RTE_MIN(frd->s.max, frs->s.max);
+		frs->s.min = RTE_MAX(frs->s.min, frd->s.min);
+	} else
+		frd->v.type = frs->v.type = BPF_ARG_UNINHABITED;
+
+	if (trs->s.min < trd->s.max) {
+		trd->s.min = RTE_MAX(trd->s.min, trs->s.min + 1);
+		trs->s.max = RTE_MIN(trs->s.max, trd->s.max - 1);
+	} else
+		trd->v.type = trs->v.type = BPF_ARG_UNINHABITED;
 }
 
 static void
 eval_jslt_jsge(struct bpf_reg_val *trd, struct bpf_reg_val *trs,
 	struct bpf_reg_val *frd, struct bpf_reg_val *frs)
 {
-	frd->s.min = RTE_MAX(frd->s.min, frs->s.min);
-	frs->s.max = RTE_MIN(frs->s.max, frd->s.max);
-	trd->s.max = RTE_MIN(trd->s.max, trs->s.max - 1);
-	trs->s.min = RTE_MAX(trs->s.min, trd->s.min + 1);
+	if (frs->s.min <= frd->s.max) {
+		frd->s.min = RTE_MAX(frd->s.min, frs->s.min);
+		frs->s.max = RTE_MIN(frs->s.max, frd->s.max);
+	} else
+		frd->v.type = frs->v.type = BPF_ARG_UNINHABITED;
+
+	if (trd->s.min < trs->s.max) {
+		trd->s.max = RTE_MIN(trd->s.max, trs->s.max - 1);
+		trs->s.min = RTE_MAX(trs->s.min, trd->s.min + 1);
+	} else
+		trd->v.type = trs->v.type = BPF_ARG_UNINHABITED;
 }
 
 static const char *
@@ -1608,6 +1648,14 @@ eval_jcc(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 		eval_jslt_jsge(trd, trs, frd, frs);
 	else if (op == EBPF_JSGE)
 		eval_jslt_jsge(frd, frs, trd, trs);
+
+	if (trd->v.type == BPF_ARG_UNINHABITED ||
+			trs->v.type == BPF_ARG_UNINHABITED)
+		tst->unreachable = true;
+
+	if (frd->v.type == BPF_ARG_UNINHABITED ||
+			frs->v.type == BPF_ARG_UNINHABITED)
+		fst->unreachable = true;
 
 	return NULL;
 }
@@ -2349,7 +2397,7 @@ set_edge_type(struct bpf_verifier *bvf, struct inst_node *node,
  * Depth-First Search (DFS) through previously constructed
  * Control Flow Graph (CFG).
  * Information collected at this path would be used later
- * to determine is there any loops, and/or unreachable instructions.
+ * to determine is there any loops, and/or statically unreachable instructions.
  * PREREQUISITE: there is at least one node.
  */
 static void
@@ -2397,7 +2445,7 @@ dfs(struct bpf_verifier *bvf)
 }
 
 /*
- * report unreachable instructions.
+ * report statically unreachable instructions.
  */
 static void
 log_unreachable(const struct bpf_verifier *bvf)
@@ -2970,13 +3018,21 @@ evaluate(struct bpf_verifier *bvf)
 				stats.nb_restore++;
 			}
 
+			if (bvf->evst->unreachable) {
+				rc = __rte_bpf_validate_debug_evaluate_step(
+					debug, get_node_idx(bvf, next),
+					RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_UNREACHABLE);
+				if (rc < 0)
+					break;
+
+				next = NULL;
 			/*
 			 * for jcc targets: check did we already evaluated
 			 * that path and can it's evaluation be skipped that
 			 * time.
 			 */
-			if (node->nb_edge > 1 && prune_eval_state(bvf, node,
-					next) == 0) {
+			} else if (node->nb_edge > 1 &&
+					prune_eval_state(bvf, node, next) == 0) {
 				rc = __rte_bpf_validate_debug_evaluate_step(
 					debug, get_node_idx(bvf, next),
 					RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_PRUNE);
