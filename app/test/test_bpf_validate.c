@@ -1289,6 +1289,23 @@ test_alu64_div_mod_overflow(void)
 REGISTER_FAST_TEST(bpf_validate_alu64_div_mod_overflow_autotest, NOHUGE_OK, ASAN_OK,
 	test_alu64_div_mod_overflow);
 
+/* 64-bit multiplication of constant and immediate with overflow. */
+static int
+test_alu64_mul_k_overflow(void)
+{
+	return verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (EBPF_ALU64 | BPF_MUL | BPF_K),
+			.imm = 0x12345678,
+		},
+		.pre.dst = make_singleton_domain(0x9876543210),
+		.post.dst = make_singleton_domain(0x9876543210u * 0x12345678),
+	});
+}
+
+REGISTER_FAST_TEST(bpf_validate_alu64_mul_k_overflow_autotest, NOHUGE_OK, ASAN_OK,
+	test_alu64_mul_k_overflow);
+
 /* 64-bit mul of small scalar range and immediate. */
 static int
 test_alu64_mul_k_range_small(void)

@@ -921,8 +921,8 @@ eval_mul(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
 
 	/* both operands are constants */
 	if (rd->s.min == rd->s.max && rs->s.min == rs->s.max) {
-		rd->s.min = (rd->s.min * rs->s.min) & msk;
-		rd->s.max = (rd->s.max * rs->s.max) & msk;
+		rd->s.min = ((uint64_t)rd->s.min * (uint64_t)rs->s.min) & msk;
+		rd->s.max = ((uint64_t)rd->s.max * (uint64_t)rs->s.max) & msk;
 	/* check that both operands are positive and no overflow */
 	} else if (rd->s.min >= 0 && rs->s.min >= 0) {
 		rd->s.max *= rs->s.max;
