@@ -2574,7 +2574,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	params.drv_minor = QEDE_PMD_VERSION_MINOR;
 	params.drv_rev = QEDE_PMD_VERSION_REVISION;
 	params.drv_eng = QEDE_PMD_VERSION_PATCH;
-	strncpy((char *)params.name, QEDE_PMD_VER_PREFIX,
+	strlcpy((char *)params.name, QEDE_PMD_VER_PREFIX,
 		QEDE_PMD_DRV_VER_STR_SIZE);
 
 	qede_assign_rxtx_handlers(eth_dev, true);
