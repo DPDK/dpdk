@@ -13,6 +13,7 @@
 #include "txgbe_hw.h"
 #include "txgbe_aml.h"
 #include "txgbe_aml40.h"
+#include "txgbe_e56.h"
 
 void txgbe_init_ops_aml40(struct txgbe_hw *hw)
 {
@@ -24,6 +25,7 @@ void txgbe_init_ops_aml40(struct txgbe_hw *hw)
 
 	/* PHY */
 	phy->get_media_type = txgbe_get_media_type_aml40;
+	phy->setup_link_core = txgbe_setup_phy_link_aml40;
 
 	/* LINK */
 	mac->init_mac_link_ops = txgbe_init_mac_link_ops_aml40;
@@ -52,6 +54,13 @@ s32 txgbe_check_mac_link_aml40(struct txgbe_hw *hw, u32 *speed,
 
 	if (link_up_wait_to_complete) {
 		for (i = 0; i < hw->mac.max_link_up_time; i++) {
+			if (!hw->link_valid) {
+				*link_up = false;
+
+				msleep(100);
+				continue;
+			}
+
 			if (!(links_reg & TXGBE_PORTSTAT_UP)) {
 				*link_up = false;
 			} else {
@@ -67,6 +76,9 @@ s32 txgbe_check_mac_link_aml40(struct txgbe_hw *hw, u32 *speed,
 		else
 			*link_up = false;
 	}
+
+	if (!hw->link_valid)
+		*link_up = false;
 
 	if (*link_up) {
 		if ((links_reg & TXGBE_CFG_PORT_ST_AML_LINK_40G) ==
@@ -107,20 +119,24 @@ u32 txgbe_get_media_type_aml40(struct txgbe_hw *hw)
 	return txgbe_media_type_fiber_qsfp;
 }
 
-s32 txgbe_setup_mac_link_aml40(struct txgbe_hw *hw,
-			       u32 speed,
-			       bool autoneg_wait_to_complete)
+s32 txgbe_setup_phy_link_aml40(struct txgbe_hw *hw,
+				      u32 speed,
+				      bool autoneg_wait_to_complete,
+				      bool *need_reset)
 {
 	bool autoneg = false;
 	s32 status = 0;
+	s32 ret_status = 0;
 	u32 link_speed = TXGBE_LINK_SPEED_UNKNOWN;
 	bool link_up = false;
+	int i;
 	u32 link_capabilities = TXGBE_LINK_SPEED_UNKNOWN;
+	u32 value;
 
-	if (hw->phy.sfp_type == txgbe_sfp_type_not_present) {
-		DEBUGOUT("SFP not detected, skip setup mac link");
-		return 0;
-	}
+	*need_reset = false;
+
+	if (hw->phy.sfp_type == txgbe_sfp_type_not_present)
+		hw->phy.identify_sfp(hw);
 
 	/* Check to see if speed passed in is supported. */
 	status = hw->mac.get_link_capabilities(hw,
@@ -132,18 +148,42 @@ s32 txgbe_setup_mac_link_aml40(struct txgbe_hw *hw,
 	if (speed == TXGBE_LINK_SPEED_UNKNOWN)
 		return TXGBE_ERR_LINK_SETUP;
 
-	status = hw->mac.check_link(hw, &link_speed, &link_up,
-				    autoneg_wait_to_complete);
+	for (i = 0; i < 4; i++) {
+		txgbe_e56_check_phy_link(hw, &link_speed, &link_up);
+		if (link_up)
+			break;
+		msleep(250);
+	}
 
 	if (link_speed == speed && link_up)
-		return status;
+		goto out;
 
-	if (speed & TXGBE_LINK_SPEED_40GB_FULL)
-		speed = 0x20;
+	rte_spinlock_lock(&hw->phy_lock);
+	ret_status = txgbe_set_link_to_amlite(hw, speed);
+	if (ret_status == TXGBE_ERR_TIMEOUT)
+		hw->link_valid = false;
+	rte_spinlock_unlock(&hw->phy_lock);
 
-	status = hw->phy.set_link_hostif(hw, (u8)speed, autoneg, true);
+	for (i = 0; i < 4; i++) {
+		txgbe_e56_check_phy_link(hw, &link_speed, &link_up);
+		if (link_up)
+			goto out;
+		msleep(250);
+	}
 
-	txgbe_wait_for_link_up_aml(hw, speed);
+out:
+	if (link_up) {
+		value = rd32(hw, TXGBE_PORTSTAT);
+		if (!(value & TXGBE_PORTSTAT_UP)) {
+			DEBUGOUT("MAC link 0x14404: 0x%x", value);
+			*need_reset = true;
+			value = rd32(hw, 0x110b0);
+			DEBUGOUT("MAC intr status 0x110b0: 0x%x", value);
+		}
+	} else {
+		*need_reset = true;
+		DEBUGOUT("Link reconfiguration required. Reset scheduled in 2000ms.");
+	}
 
 	return status;
 }
@@ -159,6 +199,5 @@ void txgbe_init_mac_link_ops_aml40(struct txgbe_hw *hw)
 	mac->flap_tx_laser =
 		txgbe_flap_tx_laser_multispeed_fiber;
 
-	mac->setup_link = txgbe_setup_mac_link_aml40;
 	mac->set_rate_select_speed = txgbe_set_hard_rate_select_speed;
 }
