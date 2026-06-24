@@ -124,6 +124,7 @@ run_test(uint32_t case_id, struct test_configure *case_cfg)
 {
 	uint32_t i;
 	uint32_t nb_lcores = rte_lcore_count();
+	uint32_t main_lcore = rte_get_main_lcore();
 	struct test_configure_entry *mem_size = &case_cfg->mem_size;
 	struct test_configure_entry *buf_size = &case_cfg->buf_size;
 	struct test_configure_entry *ring_size = &case_cfg->ring_size;
@@ -137,6 +138,14 @@ run_test(uint32_t case_id, struct test_configure *case_cfg)
 	if (nb_lcores <= case_cfg->num_worker) {
 		printf("Case %u: Not enough lcores.\n", case_id);
 		return;
+	}
+
+	for (uint32_t i = 0; i < case_cfg->num_worker; i++) {
+		if (case_cfg->dma_config[i].lcore_dma_map.lcore == main_lcore) {
+			printf("Case %u: worker %u cannot run on the EAL main lcore (%u).\n",
+			       case_id, i, main_lcore);
+			return;
+		}
 	}
 
 	printf("Number of used lcores: %u.\n", nb_lcores);
