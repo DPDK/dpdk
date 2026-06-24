@@ -1485,6 +1485,96 @@ test_jmp64_jslt_x(void)
 REGISTER_FAST_TEST(bpf_validate_jmp64_jslt_x_autotest, NOHUGE_OK, ASAN_OK,
 	test_jmp64_jslt_x);
 
+/* Jump on ordering relationship with narrower range. */
+static int
+test_jmp64_jxx_x_ordering_narrower(void)
+{
+	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | BPF_JGT | BPF_X),
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.pre.src = make_signed_domain(30, 50),
+		.post.dst = make_signed_domain(20, 50),
+		.jump.dst = make_signed_domain(31, 60),
+	}), "(BPF_JMP | BPF_JGT | BPF_X) check");
+
+	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | BPF_JGE | BPF_X),
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.pre.src = make_signed_domain(30, 50),
+		.post.dst = make_signed_domain(20, 49),
+		.jump.dst = make_signed_domain(30, 60),
+	}), "(BPF_JMP | BPF_JGE | BPF_X) check");
+
+	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JLT | BPF_X),
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.pre.src = make_signed_domain(30, 50),
+		.post.dst = make_signed_domain(30, 60),
+		.jump.dst = make_signed_domain(20, 49),
+	}), "(BPF_JMP | EBPF_JLT | BPF_X) check");
+
+	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JLE | BPF_X),
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.pre.src = make_signed_domain(30, 50),
+		.post.dst = make_signed_domain(31, 60),
+		.jump.dst = make_signed_domain(20, 50),
+	}), "(BPF_JMP | EBPF_JLE | BPF_X) check");
+
+	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JSGT | BPF_X),
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.pre.src = make_signed_domain(30, 50),
+		.post.dst = make_signed_domain(20, 50),
+		.jump.dst = make_signed_domain(31, 60),
+	}), "(BPF_JMP | EBPF_JSGT | BPF_X) check");
+
+	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JSGE | BPF_X),
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.pre.src = make_signed_domain(30, 50),
+		.post.dst = make_signed_domain(20, 49),
+		.jump.dst = make_signed_domain(30, 60),
+	}), "(BPF_JMP | EBPF_JSGE | BPF_X) check");
+
+	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JSLT | BPF_X),
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.pre.src = make_signed_domain(30, 50),
+		.post.dst = make_signed_domain(30, 60),
+		.jump.dst = make_signed_domain(20, 49),
+	}), "(BPF_JMP | EBPF_JSLT | BPF_X) check");
+
+	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JSLE | BPF_X),
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.pre.src = make_signed_domain(30, 50),
+		.post.dst = make_signed_domain(31, 60),
+		.jump.dst = make_signed_domain(20, 50),
+	}), "(BPF_JMP | EBPF_JSLE | BPF_X) check");
+
+	return TEST_SUCCESS;
+}
+
+REGISTER_FAST_TEST(bpf_validate_jmp64_jxx_x_ordering_narrower_autotest, NOHUGE_OK, ASAN_OK,
+	test_jmp64_jxx_x_ordering_narrower);
+
 /* 64-bit load from heap (should be set to unknown). */
 static int
 test_mem_ldx_dw_heap(void)
