@@ -2449,6 +2449,7 @@ evaluate(struct bpf_verifier *bvf)
 		 * each node only once.
 		 */
 		if (next != NULL) {
+			/* just started or stepped down the tree, node == next */
 
 			bvf->evin = node;
 			idx = get_node_idx(bvf, node);
@@ -2481,8 +2482,10 @@ evaluate(struct bpf_verifier *bvf)
 		next = get_next_node(bvf, node);
 
 		if (next != NULL) {
-
-			/* proceed with next child */
+			/*
+			 * proceed with next child
+			 * next points to an unwalked subtree of node
+			 */
 			if (node->cur_edge == node->nb_edge &&
 					node->evst.cur != NULL) {
 				restore_cur_eval_state(bvf, node);
@@ -2514,6 +2517,11 @@ evaluate(struct bpf_verifier *bvf)
 
 			/* first node will not have prev, signalling finish */
 		}
+
+		/*
+		 * next != NULL: stepped down the tree, node == next;
+		 * next == NULL: stepped up after processing or pruning subtree;
+		 */
 	}
 
 	RTE_LOG(DEBUG, BPF, "%s(%p) returns %d, stats:\n"
