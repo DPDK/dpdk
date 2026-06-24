@@ -211,15 +211,15 @@ populate_model(struct roc_model *model, uint32_t midr)
 		if (model_db[i].impl == impl && model_db[i].part == part &&
 		    model_db[i].major == major && model_db[i].minor == minor) {
 			model->flag = model_db[i].flag;
-			strncpy(model->name, model_db[i].name,
-				ROC_MODEL_STR_LEN_MAX - 1);
+			strlcpy(model->name, model_db[i].name,
+				ROC_MODEL_STR_LEN_MAX);
 			found = true;
 			break;
 		}
 not_found:
 	if (!found) {
 		model->flag = 0;
-		strncpy(model->name, "unknown", ROC_MODEL_STR_LEN_MAX - 1);
+		strlcpy(model->name, "unknown", ROC_MODEL_STR_LEN_MAX);
 		plt_err("Invalid RoC model (impl=0x%x, part=0x%x, major=0x%x, minor=0x%x)",
 			impl, part, major, minor);
 	}
@@ -297,7 +297,7 @@ of_env_get(struct roc_model *model)
 	FILE *fp;
 
 	if (access(path, F_OK) != 0) {
-		strncpy(model->env, "HW_PLATFORM", ROC_MODEL_STR_LEN_MAX - 1);
+		strlcpy(model->env, "HW_PLATFORM", ROC_MODEL_STR_LEN_MAX);
 		model->flag |= ROC_ENV_HW;
 		return;
 	}
