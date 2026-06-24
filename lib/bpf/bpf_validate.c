@@ -2187,6 +2187,10 @@ evst_pool_init(struct bpf_verifier *bvf)
 {
 	uint32_t k, n;
 
+	if (bvf->nb_jcc_nodes > UINT32_MAX / 4)
+		/* Calculations that follow may overflow. */
+		return -E2BIG;
+
 	/*
 	 * We need nb_jcc_nodes + 1 for save_cur/restore_cur
 	 * remaining ones will be used for state tracking/pruning.
