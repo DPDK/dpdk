@@ -30,6 +30,23 @@ extern "C" {
 /** Mask with all supported `RTE_BPF_EXEC_FLAG_*` flags set. */
 #define RTE_BPF_EXEC_FLAG_MASK  RTE_BPF_EXEC_FLAG_JIT
 
+/* Format instructions as assembler. */
+#define RTE_BPF_FORMAT_FLAG_DISASSEMBLY		0
+/* Format instructions as hexadecimal. */
+#define RTE_BPF_FORMAT_FLAG_HEXADECIMAL		RTE_BIT32(0)
+
+/* Only valid in disassembly mode. */
+/* Format jump offsets relative to the next instruction. */
+#define RTE_BPF_FORMAT_FLAG_RELATIVE_JUMPS	0
+/* Format jump targets relative to the start of the program. */
+#define RTE_BPF_FORMAT_FLAG_ABSOLUTE_JUMPS	RTE_BIT32(1)
+
+/* Only valid in hexadecimal mode. */
+/* Format full hexadecimal representation of wide instructions. */
+#define RTE_BPF_FORMAT_FLAG_AUTO_WIDE		0
+/* Format as hexadecimal only first half of wide instructions. */
+#define RTE_BPF_FORMAT_FLAG_NEVER_WIDE		RTE_BIT32(2)
+
 /**
  * Possible types for function/BPF program arguments.
  */
@@ -390,6 +407,40 @@ rte_bpf_get_jit(const struct rte_bpf *bpf, struct rte_bpf_jit *jit);
 __rte_experimental
 int
 rte_bpf_get_jit_ex(const struct rte_bpf *bpf, struct rte_bpf_jit_ex *jit);
+
+/**
+ * Determine instruction width.
+ *
+ * @return
+ *   True if ins points to a wide (128-bit) instruction.
+ */
+__rte_experimental
+bool
+rte_bpf_insn_is_wide(const struct ebpf_insn *ins);
+
+/**
+ * Print eBPF instruction into a buffer.
+ *
+ * Semantics of handling buffer size repeats those of snprintf.
+ *
+ * @param buffer
+ *   Output buffer (may be NULL if bufsz is zero).
+ * @param bufsz
+ *   Output buffer size.
+ * @param ins
+ *   Narrow or wide (depending on opcode) eBPF instruction. That is, when
+ *   `rte_bpf_insn_is_wide` is true `ins[1]` is also accessed.
+ * @param pc
+ *   Current instruction number for displaying absolute jump targets.
+ * @param flags
+ *   Bitwise-OR combination of `RTE_BPF_FORMAT_FLAG_*` values.
+ * @return
+ *   Number of characters to be written excluding terminating zero.
+ */
+__rte_experimental
+int
+rte_bpf_format(char *buffer, size_t bufsz, const struct ebpf_insn *ins,
+	uint32_t pc, uint32_t flags);
 
 /**
  * Dump epf instructions to a file.
