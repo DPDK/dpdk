@@ -32,6 +32,31 @@ RTE_LOG_REGISTER(test_bpf_validate_logtype, test.bpf_validate, NOTICE);
 #define REGISTER_FORMAT_BUFFER_SIZE 256
 #define DISASSEMBLY_FORMAT_BUFFER_SIZE 64
 
+#define COMPARISON_INDEX_IMMEDIATE RTE_BIT32(0)
+#define COMPARISON_INDEX_GREATER   RTE_BIT32(1)
+#define COMPARISON_INDEX_INCLUSIVE RTE_BIT32(2)
+#define COMPARISON_INDEX_SIGNED    RTE_BIT32(3)
+
+/* List comparison opcodes to make their index bits match constants above.  */
+static const uint8_t comparisons_opcode[] = {
+	(BPF_JMP | EBPF_JLT  | BPF_X),
+	(BPF_JMP | EBPF_JLT  | BPF_K),
+	(BPF_JMP |  BPF_JGT  | BPF_X),
+	(BPF_JMP |  BPF_JGT  | BPF_K),
+	(BPF_JMP | EBPF_JLE  | BPF_X),
+	(BPF_JMP | EBPF_JLE  | BPF_K),
+	(BPF_JMP |  BPF_JGE  | BPF_X),
+	(BPF_JMP |  BPF_JGE  | BPF_K),
+	(BPF_JMP | EBPF_JSLT | BPF_X),
+	(BPF_JMP | EBPF_JSLT | BPF_K),
+	(BPF_JMP | EBPF_JSGT | BPF_X),
+	(BPF_JMP | EBPF_JSGT | BPF_K),
+	(BPF_JMP | EBPF_JSLE | BPF_X),
+	(BPF_JMP | EBPF_JSLE | BPF_K),
+	(BPF_JMP | EBPF_JSGE | BPF_X),
+	(BPF_JMP | EBPF_JSGE | BPF_K),
+};
+
 /* Interval bounded by two signed values, inclusive; min <= max. */
 struct signed_interval {
 	int64_t min;
@@ -1044,6 +1069,206 @@ verify_instruction(struct verify_instruction_param prm)
 	return rc;
 }
 
+static int
+opcode_comparison_index(uint8_t opcode)
+{
+	for (int index = 0; index != RTE_DIM(comparisons_opcode); ++index)
+		if (comparisons_opcode[index] == opcode)
+			return index;
+	TEST_LOG_LINE(ERR, "Unsupported or not a comparison opcode: %hhx", opcode);
+	RTE_VERIFY(false);
+}
+
+/* Change two-register comparison verification to immediate one. */
+static bool
+make_comparison_immediate(struct verify_instruction_param *prm)
+{
+	int comparison_index = opcode_comparison_index(prm->tested_instruction.code);
+	const int64_t value = prm->pre.src.s.min;
+
+	if ((comparison_index & COMPARISON_INDEX_IMMEDIATE) != 0) {
+		TEST_LOG_LINE(ERR, "Comparison %hhx is already immediate.",
+			prm->tested_instruction.code);
+		RTE_VERIFY(false);
+	}
+
+	if (!domain_is_singleton(&prm->pre.src) || !domain_is_singleton(&prm->post.src) ||
+			!domain_is_singleton(&prm->jump.src)) {
+		TEST_LOG_LINE(DEBUG, "Cannot make immediate out of a non-singleton domain.");
+		return false;
+	}
+	if (prm->pre.src.is_pointer || prm->post.src.is_pointer || prm->jump.src.is_pointer) {
+		TEST_LOG_LINE(DEBUG, "Cannot make immediate out of a pointer.");
+		return false;
+	}
+	if (prm->post.src.s.min != value || prm->jump.src.s.min != value) {
+		TEST_LOG_LINE(DEBUG, "Cannot make immediate if the value changes.");
+		return false;
+	}
+	if (!fits_in_imm32(value)) {
+		TEST_LOG_LINE(ERR, "Cannot make immediate unless value fits in int32.");
+		return false;
+	}
+
+	comparison_index |= COMPARISON_INDEX_IMMEDIATE;
+	prm->tested_instruction.code = comparisons_opcode[comparison_index];
+	prm->tested_instruction.imm = value;
+
+	RTE_VERIFY(prm->pre.src.is_defined);
+	prm->pre.src.is_defined = false;
+
+	if (!prm->post.is_unreachable) {
+		RTE_VERIFY(prm->post.src.is_defined);
+		prm->post.src.is_defined = false;
+	}
+
+	if (!prm->jump.is_unreachable) {
+		RTE_VERIFY(prm->jump.src.is_defined);
+		prm->jump.src.is_defined = false;
+	}
+
+	return true;
+}
+
+/* Change immediate comparison verification to two-register one. */
+static void
+make_comparison_two_register(struct verify_instruction_param *prm)
+{
+	int comparison_index = opcode_comparison_index(prm->tested_instruction.code);
+	const int64_t value = prm->tested_instruction.imm;
+
+	if ((comparison_index & COMPARISON_INDEX_IMMEDIATE) == 0) {
+		TEST_LOG_LINE(ERR, "Comparison %hhx is already two-register.",
+			prm->tested_instruction.code);
+		RTE_VERIFY(false);
+	}
+
+	comparison_index &= ~COMPARISON_INDEX_IMMEDIATE;
+	prm->tested_instruction.code = comparisons_opcode[comparison_index];
+	prm->tested_instruction.imm = 0;
+
+	RTE_VERIFY(!prm->pre.src.is_defined);
+	prm->pre.src = make_singleton_domain(value);
+
+	if (!prm->post.is_unreachable) {
+		RTE_VERIFY(!prm->post.src.is_defined);
+		prm->post.src = prm->pre.src;
+	}
+
+	if (!prm->jump.is_unreachable) {
+		RTE_VERIFY(!prm->jump.src.is_defined);
+		prm->jump.src = prm->pre.src;
+	}
+}
+
+/* Change comparison verification to complement (negated result) one. */
+static void
+make_comparison_complement(struct verify_instruction_param *prm)
+{
+	int comparison_index = opcode_comparison_index(prm->tested_instruction.code);
+	comparison_index ^= COMPARISON_INDEX_GREATER | COMPARISON_INDEX_INCLUSIVE;
+	prm->tested_instruction.code = comparisons_opcode[comparison_index];
+	RTE_SWAP(prm->post, prm->jump);
+}
+
+/* Change comparison verification to converse (swapped operands) one. */
+static void
+make_comparison_converse(struct verify_instruction_param *prm)
+{
+	int comparison_index = opcode_comparison_index(prm->tested_instruction.code);
+	comparison_index ^= COMPARISON_INDEX_GREATER;
+	prm->tested_instruction.code = comparisons_opcode[comparison_index];
+	RTE_SWAP(prm->pre.dst, prm->pre.src);
+	RTE_SWAP(prm->post.dst, prm->post.src);
+	RTE_SWAP(prm->jump.dst, prm->jump.src);
+}
+
+/* Change signed comparison verification to unsigned one. */
+static void
+make_comparison_signed(struct verify_instruction_param *prm)
+{
+	int comparison_index = opcode_comparison_index(prm->tested_instruction.code);
+	if ((comparison_index & COMPARISON_INDEX_SIGNED) != 0) {
+		TEST_LOG_LINE(ERR, "Comparison %hhx is already signed.",
+			prm->tested_instruction.code);
+		RTE_VERIFY(false);
+	}
+	comparison_index |= COMPARISON_INDEX_SIGNED;
+	prm->tested_instruction.code = comparisons_opcode[comparison_index];
+}
+
+/* Verify specified two-register comparison and, if possible, immediate one. */
+static int
+verify_comparison_subcase(struct verify_instruction_param prm)
+{
+	TEST_ASSERT_SUCCESS(verify_instruction(prm), "two-register version check");
+
+	if (make_comparison_immediate(&prm))
+		TEST_ASSERT_SUCCESS(verify_instruction(prm), "immediate version check");
+
+	return TEST_SUCCESS;
+}
+
+/*
+ * Verify comparison instruction validation behaviour.
+ *
+ * Call `verify_instruction` for all valid variations of the instruction.
+ *
+ * For instance, `jgt r2, r3` verifies:
+ * * `jgt r2, r3`;
+ * * `jlt r3, r2` src and dst swapped with each other;
+ * * `jle r2, r3` with post and jump domains swapped with each other;
+ * * `jge r3, r2` with all corresponding swaps;
+ * * immediate versions of everything above where possible,
+ *   that is, register on the right is an int32 scalar singleton;
+ * * signed versions of everything above if `also_signed` is true;
+ *
+ * Regardless if passed instruction compares with immediate or singleton src
+ * both cases are generated and tested.
+ */
+static int
+verify_comparison(struct verify_instruction_param prm, bool also_signed)
+{
+	fill_verify_instruction_defaults(&prm);
+
+	if (!prm.pre.src.is_defined)
+		/* Convert from immediate form to simplify further logic. */
+		make_comparison_two_register(&prm);
+
+	/* All reachable domains must be defined by this point. */
+	RTE_VERIFY(prm.pre.dst.is_defined);
+	RTE_VERIFY(prm.pre.src.is_defined);
+	if (!prm.post.is_unreachable) {
+		RTE_VERIFY(prm.post.dst.is_defined);
+		RTE_VERIFY(prm.post.src.is_defined);
+	}
+	if (!prm.jump.is_unreachable) {
+		RTE_VERIFY(prm.jump.dst.is_defined);
+		RTE_VERIFY(prm.jump.src.is_defined);
+	}
+
+	for (int make_signed = 0; make_signed <= also_signed; ++make_signed) {
+		if (make_signed)
+			make_comparison_signed(&prm);
+
+		for (int complement = false; complement <= true; ++complement) {
+
+			for (int converse = false; converse <= true; ++converse) {
+
+				TEST_ASSERT_SUCCESS(verify_comparison_subcase(prm),
+					"make_signed=%d, complement=%d, converse=%d",
+					make_signed, complement, converse);
+
+				make_comparison_converse(&prm);
+			}
+
+			make_comparison_complement(&prm);
+		}
+	}
+
+	return TEST_SUCCESS;
+}
+
 
 /* TESTS FOR SPECIFIC INSTRUCTIONS */
 
@@ -1485,31 +1710,69 @@ test_jmp64_jslt_x(void)
 REGISTER_FAST_TEST(bpf_validate_jmp64_jslt_x_autotest, NOHUGE_OK, ASAN_OK,
 	test_jmp64_jslt_x);
 
-/* Jump on ordering relationship with narrower range. */
+/* Jump on ordering comparisons between two ranges. */
 static int
-test_jmp64_jxx_x_ordering_narrower(void)
+test_jmp64_ordering_ranges(void)
 {
-	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+	/* All ranges used are valid for both signed and unsigned comparisons. */
+	const bool also_signed = true;
+
+	/*
+	 *     20 ---- dst ---- 60
+	 * 10 -- src -- 40
+	 */
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
 		.tested_instruction = {
-			.code = (BPF_JMP | BPF_JGT | BPF_X),
+			.code = (BPF_JMP | EBPF_JLT | BPF_X),
 		},
 		.pre.dst = make_signed_domain(20, 60),
-		.pre.src = make_signed_domain(30, 50),
-		.post.dst = make_signed_domain(20, 50),
-		.jump.dst = make_signed_domain(31, 60),
-	}), "(BPF_JMP | BPF_JGT | BPF_X) check");
+		.pre.src = make_signed_domain(10, 40),
+		.jump.dst = make_signed_domain(20, 39),
+		.jump.src = make_signed_domain(21, 40),
+	}, also_signed), "strict, dst range weakly greater than src range");
 
-	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
 		.tested_instruction = {
-			.code = (BPF_JMP | BPF_JGE | BPF_X),
+			.code = (BPF_JMP | EBPF_JLE | BPF_X),
 		},
 		.pre.dst = make_signed_domain(20, 60),
-		.pre.src = make_signed_domain(30, 50),
-		.post.dst = make_signed_domain(20, 49),
-		.jump.dst = make_signed_domain(30, 60),
-	}), "(BPF_JMP | BPF_JGE | BPF_X) check");
+		.pre.src = make_signed_domain(10, 40),
+		.jump.dst = make_signed_domain(20, 40),
+		.jump.src = make_signed_domain(20, 40),
+	}, also_signed), "non-strict, dst range weakly greater than src range");
 
-	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+	/*
+	 *     20 ---- dst ---- 60
+	 * 10 -------- src -------- 70
+	 */
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JLT | BPF_X),
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.pre.src = make_signed_domain(10, 70),
+		.post.src = make_signed_domain(10, 60),
+		.jump.src = make_signed_domain(21, 70),
+	}, also_signed), "strict, dst range included in src range");
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JLE | BPF_X),
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.pre.src = make_signed_domain(10, 70),
+		.post.src = make_signed_domain(10, 59),
+		.jump.src = make_signed_domain(20, 70),
+	}, also_signed), "non-strict, dst range included in src range");
+
+	/*
+	 *     20 ---- dst ---- 60
+	 *        30 - src - 50
+	 */
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
 		.tested_instruction = {
 			.code = (BPF_JMP | EBPF_JLT | BPF_X),
 		},
@@ -1517,9 +1780,9 @@ test_jmp64_jxx_x_ordering_narrower(void)
 		.pre.src = make_signed_domain(30, 50),
 		.post.dst = make_signed_domain(30, 60),
 		.jump.dst = make_signed_domain(20, 49),
-	}), "(BPF_JMP | EBPF_JLT | BPF_X) check");
+	}, also_signed), "strict, dst range includes src range");
 
-	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
 		.tested_instruction = {
 			.code = (BPF_JMP | EBPF_JLE | BPF_X),
 		},
@@ -1527,53 +1790,96 @@ test_jmp64_jxx_x_ordering_narrower(void)
 		.pre.src = make_signed_domain(30, 50),
 		.post.dst = make_signed_domain(31, 60),
 		.jump.dst = make_signed_domain(20, 50),
-	}), "(BPF_JMP | EBPF_JLE | BPF_X) check");
+	}, also_signed), "non-strict, dst range includes src range");
 
-	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+	/*
+	 *     20 ---- dst ---- 60
+	 *             40 -- src -- 70
+	 */
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
 		.tested_instruction = {
-			.code = (BPF_JMP | EBPF_JSGT | BPF_X),
+			.code = (BPF_JMP | EBPF_JLT | BPF_X),
 		},
 		.pre.dst = make_signed_domain(20, 60),
-		.pre.src = make_signed_domain(30, 50),
-		.post.dst = make_signed_domain(20, 50),
-		.jump.dst = make_signed_domain(31, 60),
-	}), "(BPF_JMP | EBPF_JSGT | BPF_X) check");
+		.pre.src = make_signed_domain(40, 70),
+		.post.dst = make_signed_domain(40, 60),
+		.post.src = make_signed_domain(40, 60),
+	}, also_signed), "strict, dst range weakly less than src range");
 
-	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
 		.tested_instruction = {
-			.code = (BPF_JMP | EBPF_JSGE | BPF_X),
+			.code = (BPF_JMP | EBPF_JLE | BPF_X),
 		},
 		.pre.dst = make_signed_domain(20, 60),
-		.pre.src = make_signed_domain(30, 50),
-		.post.dst = make_signed_domain(20, 49),
-		.jump.dst = make_signed_domain(30, 60),
-	}), "(BPF_JMP | EBPF_JSGE | BPF_X) check");
-
-	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
-		.tested_instruction = {
-			.code = (BPF_JMP | EBPF_JSLT | BPF_X),
-		},
-		.pre.dst = make_signed_domain(20, 60),
-		.pre.src = make_signed_domain(30, 50),
-		.post.dst = make_signed_domain(30, 60),
-		.jump.dst = make_signed_domain(20, 49),
-	}), "(BPF_JMP | EBPF_JSLT | BPF_X) check");
-
-	TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
-		.tested_instruction = {
-			.code = (BPF_JMP | EBPF_JSLE | BPF_X),
-		},
-		.pre.dst = make_signed_domain(20, 60),
-		.pre.src = make_signed_domain(30, 50),
-		.post.dst = make_signed_domain(31, 60),
-		.jump.dst = make_signed_domain(20, 50),
-	}), "(BPF_JMP | EBPF_JSLE | BPF_X) check");
+		.pre.src = make_signed_domain(40, 70),
+		.post.dst = make_signed_domain(41, 60),
+		.post.src = make_signed_domain(40, 59),
+	}, also_signed), "non-strict, dst range weakly less than src range");
 
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(bpf_validate_jmp64_jxx_x_ordering_narrower_autotest, NOHUGE_OK, ASAN_OK,
-	test_jmp64_jxx_x_ordering_narrower);
+REGISTER_FAST_TEST(bpf_validate_jmp64_ordering_ranges_autotest, NOHUGE_OK, ASAN_OK,
+	test_jmp64_ordering_ranges);
+
+/* Jump on ordering comparisons with singleton. */
+static int
+test_jmp64_ordering_singleton(void)
+{
+	/* All ranges used are valid for both signed and unsigned comparisons. */
+	const bool also_signed = true;
+
+	/*
+	 *     20 ---- dst ---- 60
+	 *             imm
+	 */
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JLT | BPF_K),
+			.imm = 40,
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.post.dst = make_signed_domain(40, 60),
+		.jump.dst = make_signed_domain(20, 39),
+	}, also_signed), "(BPF_JMP | EBPF_JLT | BPF_K) check");
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | BPF_JGT | BPF_K),
+			.imm = 40,
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.post.dst = make_signed_domain(20, 40),
+		.jump.dst = make_signed_domain(41, 60),
+	}, also_signed), "(BPF_JMP | EBPF_JGT | BPF_K) check");
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | EBPF_JLE | BPF_K),
+			.imm = 40,
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.post.dst = make_signed_domain(41, 60),
+		.jump.dst = make_signed_domain(20, 40),
+	}, also_signed), "(BPF_JMP | EBPF_JLE | BPF_K) check");
+
+	TEST_ASSERT_SUCCESS(verify_comparison((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_JMP | BPF_JGE | BPF_K),
+			.imm = 40,
+		},
+		.pre.dst = make_signed_domain(20, 60),
+		.post.dst = make_signed_domain(20, 39),
+		.jump.dst = make_signed_domain(40, 60),
+	}, also_signed), "(BPF_JMP | EBPF_JGE | BPF_K) check");
+
+	return TEST_SUCCESS;
+}
+
+REGISTER_FAST_TEST(bpf_validate_jmp64_ordering_singleton_autotest, NOHUGE_OK, ASAN_OK,
+	test_jmp64_ordering_singleton);
 
 /* 64-bit load from heap (should be set to unknown). */
 static int
