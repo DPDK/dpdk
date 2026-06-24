@@ -124,8 +124,8 @@ cnxk_eswitch_dev_remove(struct rte_pci_device *pci_dev)
 				}
 				sun.sun_family = AF_UNIX;
 				sunlen = sizeof(struct sockaddr_un);
-				strncpy(sun.sun_path, CNXK_ESWITCH_CTRL_MSG_SOCK_PATH,
-					sizeof(sun.sun_path) - 1);
+				strlcpy(sun.sun_path, CNXK_ESWITCH_CTRL_MSG_SOCK_PATH,
+					sizeof(sun.sun_path));
 
 				if (connect(sock_fd, (struct sockaddr *)&sun, sunlen) < 0) {
 					plt_err("Failed to connect socket: %s, err %d",
