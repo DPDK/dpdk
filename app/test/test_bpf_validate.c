@@ -1713,6 +1713,40 @@ test_alu64_neg_zero_last(void)
 REGISTER_FAST_TEST(bpf_validate_alu64_neg_zero_last_autotest, NOHUGE_OK, ASAN_OK,
 	test_alu64_neg_zero_last);
 
+/* 64-bit bitwise OR between a positive scalar range and negative immediate. */
+static int
+test_alu64_or_k_negative(void)
+{
+	return verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (EBPF_ALU64 | BPF_OR | BPF_K),
+			.imm = -2,
+		},
+		.pre.dst = make_signed_domain(5, 6),
+		.post.dst = make_signed_domain(-2, -1),
+	});
+}
+
+REGISTER_FAST_TEST(bpf_validate_alu64_or_k_negative_autotest, NOHUGE_OK, ASAN_OK,
+	test_alu64_or_k_negative);
+
+/* 64-bit bitwise OR between a positive scalar range and positive immediate. */
+static int
+test_alu64_or_k_positive(void)
+{
+	return verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (EBPF_ALU64 | BPF_OR | BPF_K),
+			.imm = 2,
+		},
+		.pre.dst = make_signed_domain(5, 6),
+		.post.dst = make_signed_domain(5, 7),
+	});
+}
+
+REGISTER_FAST_TEST(bpf_validate_alu64_or_k_positive_autotest, NOHUGE_OK, ASAN_OK,
+	test_alu64_or_k_positive);
+
 /* Jump if greater than immediate. */
 static int
 test_jmp64_jeq_k(void)

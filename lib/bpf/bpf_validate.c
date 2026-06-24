@@ -875,7 +875,7 @@ eval_or(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
 		rd->u.max |= rs->u.max;
 	} else {
 		rd->u.max = eval_uor_max(rd->u.max, rs->u.max, opsz);
-		rd->u.min |= rs->u.min;
+		rd->u.min = RTE_MAX(rd->u.min, rs->u.min);
 	}
 
 	/* both operands are constants */
@@ -884,9 +884,9 @@ eval_or(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
 		rd->s.max |= rs->s.max;
 
 	/* both operands are non-negative */
-	} else if (rd->s.min >= 0 || rs->s.min >= 0) {
+	} else if (rd->s.min >= 0 && rs->s.min >= 0) {
 		rd->s.max = eval_uor_max(rd->s.max, rs->s.max, opsz);
-		rd->s.min |= rs->s.min;
+		rd->s.min = RTE_MAX(rd->s.min, rs->s.min);
 	} else
 		eval_smax_bound(rd, msk);
 }
