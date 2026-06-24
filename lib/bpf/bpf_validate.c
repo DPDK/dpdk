@@ -524,8 +524,7 @@ eval_mul(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
 }
 
 static const char *
-eval_divmod(uint32_t op, struct bpf_reg_val *rd, struct bpf_reg_val *rs,
-	size_t opsz, uint64_t msk)
+eval_divmod(uint32_t op, struct bpf_reg_val *rd, struct bpf_reg_val *rs, uint64_t msk)
 {
 	/* both operands are constants */
 	if (rd->u.min == rd->u.max && rs->u.min == rs->u.max) {
@@ -546,33 +545,16 @@ eval_divmod(uint32_t op, struct bpf_reg_val *rd, struct bpf_reg_val *rs,
 		rd->u.min = 0;
 	}
 
-	/* if we have 32-bit values - extend them to 64-bit */
-	if (opsz == sizeof(uint32_t) * CHAR_BIT) {
-		rd->s.min = (int32_t)rd->s.min;
-		rd->s.max = (int32_t)rd->s.max;
-		rs->s.min = (int32_t)rs->s.min;
-		rs->s.max = (int32_t)rs->s.max;
-	}
-
-	/* both operands are constants */
-	if (rd->s.min == rd->s.max && rs->s.min == rs->s.max) {
-		if (rs->s.max == 0)
-			return "division by 0";
-		if (op == BPF_DIV) {
-			rd->s.min /= rs->s.min;
-			rd->s.max /= rs->s.max;
-		} else {
-			rd->s.min %= rs->s.min;
-			rd->s.max %= rs->s.max;
-		}
-	} else if (op == BPF_MOD) {
-		rd->s.min = RTE_MAX(rd->s.max, 0);
-		rd->s.min = RTE_MIN(rd->s.min, 0);
+	if (rd->u.min >= (uint64_t)INT64_MIN || rd->u.max <= (uint64_t)INT64_MAX) {
+		/*
+		 * All values have the same sign bit, which means range
+		 * contiguous as unsigned is also contiguous as signed,
+		 * so we can just reuse it without any changes.
+		 */
+		rd->s.min = rd->u.min;
+		rd->s.max = rd->u.max;
 	} else
 		eval_smax_bound(rd, msk);
-
-	rd->s.max &= msk;
-	rd->s.min &= msk;
 
 	return NULL;
 }
@@ -757,7 +739,7 @@ eval_alu(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 	else if (op == BPF_MUL)
 		eval_mul(rd, &rs, opsz, msk);
 	else if (op == BPF_DIV || op == BPF_MOD)
-		err = eval_divmod(op, rd, &rs, opsz, msk);
+		err = eval_divmod(op, rd, &rs, msk);
 	else if (op == BPF_NEG)
 		eval_neg(rd, opsz, msk);
 	else if (op == EBPF_MOV)
