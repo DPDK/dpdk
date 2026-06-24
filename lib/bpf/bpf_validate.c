@@ -239,7 +239,19 @@ eval_apply_mask(struct bpf_reg_val *rv, uint64_t mask)
 static void
 eval_add(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, uint64_t msk)
 {
+	struct bpf_reg_val rs_buf;
 	struct bpf_reg_val rv;
+
+	if (RTE_BPF_ARG_PTR_TYPE(rs->v.type) != 0) {
+		if (RTE_BPF_ARG_PTR_TYPE(rd->v.type) != 0) {
+			/* treat sum of pointers as sum of two unknown scalars */
+			eval_fill_max_bound(&rs_buf, msk);
+			*rd = rs_buf;
+			rs = &rs_buf;
+		} else
+			/* scalar + pointer is a pointer of the same type */
+			rd->v = rs->v;
+	}
 
 	rv.u.min = (rd->u.min + rs->u.min) & msk;
 	rv.u.max = (rd->u.max + rs->u.max) & msk;
