@@ -229,10 +229,10 @@ cryptodev_scheduler_create(const char *name,
 			return -ENOMEM;
 		}
 
-		strncpy(sched_ctx->init_worker_names[
+		strlcpy(sched_ctx->init_worker_names[
 					sched_ctx->nb_init_workers],
 				init_params->worker_names[i],
-				RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN - 1);
+				RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN);
 
 		sched_ctx->nb_init_workers++;
 	}
@@ -443,8 +443,8 @@ parse_worker_arg(const char *key __rte_unused,
 		return -ENOMEM;
 	}
 
-	strncpy(param->worker_names[param->nb_workers++], value,
-			RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN - 1);
+	strlcpy(param->worker_names[param->nb_workers++], value,
+			RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN);
 
 	return 0;
 }
