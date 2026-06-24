@@ -1154,6 +1154,132 @@ test_alu64_add_x_scalar_scalar(void)
 REGISTER_FAST_TEST(bpf_validate_alu64_add_x_scalar_scalar_autotest, NOHUGE_OK, ASAN_OK,
 	test_alu64_add_x_scalar_scalar);
 
+/* 64-bit negation when interval first element is INT64_MIN. */
+static int
+test_alu64_neg_int64min_first(void)
+{
+	static const int64_t other_values[] = {
+		INT64_MIN,
+		INT64_MIN + 1,
+		INT64_MIN + 13,
+		-17,
+		-1,
+		0,
+		1,
+		19,
+		INT64_MAX - 23,
+		INT64_MAX - 1,
+		INT64_MAX,
+	};
+	for (int other_index = 0; other_index != RTE_DIM(other_values); ++other_index) {
+		const int64_t other_value = other_values[other_index];
+		TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+			.tested_instruction = {
+				.code = (EBPF_ALU64 | BPF_NEG),
+			},
+			.pre.dst = make_signed_domain(INT64_MIN, other_value),
+			.post.dst = other_value > 0 ? unknown :
+				make_unsigned_domain(-(uint64_t)other_value, INT64_MIN),
+		}), "other_index=%d", other_index);
+	}
+	return TEST_SUCCESS;
+}
+
+REGISTER_FAST_TEST(bpf_validate_alu64_neg_int64min_first_autotest, NOHUGE_OK, ASAN_OK,
+	test_alu64_neg_int64min_first);
+
+/* 64-bit negation when interval last element is INT64_MIN. */
+static int
+test_alu64_neg_int64min_last(void)
+{
+	static const uint64_t other_values[] = {
+		0,
+		1,
+		19,
+		INT64_MAX - 23,
+		INT64_MAX - 1,
+		INT64_MAX,
+		INT64_MIN,
+	};
+	for (int other_index = 0; other_index != RTE_DIM(other_values); ++other_index) {
+		const int64_t other_value = other_values[other_index];
+		TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+			.tested_instruction = {
+				.code = (EBPF_ALU64 | BPF_NEG),
+			},
+			.pre.dst = make_unsigned_domain(other_value, INT64_MIN),
+			.post.dst = make_signed_domain(INT64_MIN, -(uint64_t)other_value),
+		}), "other_index=%d", other_index);
+	}
+	return TEST_SUCCESS;
+}
+
+REGISTER_FAST_TEST(bpf_validate_alu64_neg_int64min_last_autotest, NOHUGE_OK, ASAN_OK,
+	test_alu64_neg_int64min_last);
+
+/* 64-bit negation when interval first element is zero. */
+static int
+test_alu64_neg_zero_first(void)
+{
+	static const uint64_t other_values[] = {
+		0,
+		1,
+		19,
+		INT64_MAX - 23,
+		INT64_MAX - 1,
+		INT64_MAX,
+		INT64_MIN,
+		INT64_MIN + 1,
+		INT64_MIN + 13,
+		-17,
+		-1,
+	};
+	for (int other_index = 0; other_index != RTE_DIM(other_values); ++other_index) {
+		const uint64_t other_value = other_values[other_index];
+		TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+			.tested_instruction = {
+				.code = (EBPF_ALU64 | BPF_NEG),
+			},
+			.pre.dst = make_unsigned_domain(0, other_value),
+			.post.dst = other_value > (uint64_t)INT64_MIN ? unknown :
+				make_signed_domain(-(uint64_t)other_value, 0),
+		}), "other_index=%d", other_index);
+	}
+	return TEST_SUCCESS;
+}
+
+REGISTER_FAST_TEST(bpf_validate_alu64_neg_zero_first_autotest, NOHUGE_OK, ASAN_OK,
+	test_alu64_neg_zero_first);
+
+/* 64-bit negation when interval last element is zero. */
+static int
+test_alu64_neg_zero_last(void)
+{
+	static const int64_t other_values[] = {
+		INT64_MIN,
+		INT64_MIN + 1,
+		INT64_MIN + 13,
+		-17,
+		-1,
+		0,
+	};
+	for (int other_index = 0; other_index != RTE_DIM(other_values); ++other_index) {
+		const int64_t other_value = other_values[other_index];
+		TEST_ASSERT_SUCCESS(verify_instruction((struct verify_instruction_param){
+			.tested_instruction = {
+				.code = (EBPF_ALU64 | BPF_NEG),
+			},
+			.pre.dst = make_signed_domain(other_value, 0),
+			.post.dst = make_unsigned_domain(0, -(uint64_t)other_value),
+		}), "other_index=%d", other_index);
+	}
+
+	return TEST_SUCCESS;
+}
+
+REGISTER_FAST_TEST(bpf_validate_alu64_neg_zero_last_autotest, NOHUGE_OK, ASAN_OK,
+	test_alu64_neg_zero_last);
+
 /* Jump if greater than immediate. */
 static int
 test_jmp64_jeq_k(void)
