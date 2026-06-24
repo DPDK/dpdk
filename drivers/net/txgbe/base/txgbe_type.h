@@ -64,6 +64,9 @@
 #define TXGBE_AML_ALARM_THRE_MASK       0x1FFE0000U
 #define TXGBE_AML_DALARM_THRE_MASK      0x0001FFE0U
 
+#define CL74_KRTR_TRAINING_TIMEOUT     6000    /* 6000ms c74 training timeout */
+#define AN_TRAINING_MODE               0       /* 0: not dis an 1: dis an */
+
 struct txgbe_thermal_diode_data {
 	s16 temp;
 	s16 alarm_thresh;
@@ -690,6 +693,8 @@ struct txgbe_phy_info {
 	s32 (*setup_link_speed)(struct txgbe_hw *hw, u32 speed,
 				bool autoneg_wait_to_complete);
 	s32 (*check_link)(struct txgbe_hw *hw, u32 *speed, bool *link_up);
+	s32 (*setup_link_core)(struct txgbe_hw *hw, u32 speed,
+			       bool autoneg_wait_to_complete, bool *need_reset);
 	s32 (*get_fw_version)(struct txgbe_hw *hw, u32 *fw_version);
 	s32 (*read_i2c_byte)(struct txgbe_hw *hw, u8 byte_offset,
 				u8 dev_addr, u8 *data);
@@ -732,7 +737,9 @@ struct txgbe_phy_info {
 	u16 ffe_set;
 	u16 ffe_main;
 	u16 ffe_pre;
+	u16 ffe_pre2;
 	u16 ffe_post;
+	u16 fec_mode;
 };
 
 #define TXGBE_DEVARG_BP_AUTO		"auto_neg"
@@ -823,6 +830,7 @@ struct txgbe_devargs {
 struct txgbe_hw {
 	void IOMEM *hw_addr;
 	void *back;
+	void *dev_back;
 	struct txgbe_mac_info mac;
 	struct txgbe_addr_filter_info addr_ctrl;
 	struct txgbe_fc_info fc;
@@ -885,8 +893,12 @@ struct txgbe_hw {
 	/*amlite: new SW-FW mbox */
 	u8 swfw_index;
 	rte_atomic32_t swfw_busy;
+	bool link_valid;
+	bool reconfig_rx;
 	u32 fec_mode;
 	u32 cur_fec_link;
+	int temperature;
+	u32 bp_link_mode;
 };
 
 struct txgbe_backplane_ability {

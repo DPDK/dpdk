@@ -592,6 +592,17 @@ null:
 	fdir_conf->drop_queue = drop_queue;
 }
 
+static void
+txgbe_override_mac_ops(struct txgbe_hw *hw)
+{
+	struct txgbe_mac_info *mac = &hw->mac;
+
+	if (hw->phy.multispeed_fiber)
+		mac->setup_mac_link = txgbe_setup_mac_link_aml;
+	else
+		mac->setup_link = txgbe_setup_mac_link_aml;
+}
+
 static int
 eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 {
@@ -651,6 +662,7 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	/* Vendor and Device ID need to be set before init of shared code */
 	hw->back = pci_dev;
+	hw->dev_back = eth_dev;
 	hw->port_id = eth_dev->data->port_id;
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
@@ -685,6 +697,9 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		PMD_INIT_LOG(ERR, "Shared code init failed: %d", err);
 		return -EIO;
 	}
+
+	if (hw->mac.type == txgbe_mac_aml)
+		txgbe_override_mac_ops(hw);
 
 	/* Unlock any pending hardware semaphore */
 	txgbe_swfw_lock_reset(hw);
@@ -2039,6 +2054,9 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	if (hw->mac.type == txgbe_mac_aml)
+		rte_eal_alarm_cancel(txgbe_dev_setup_link_alarm_handler_aml, hw);
+
 	rte_eal_alarm_cancel(txgbe_dev_detect_sfp, dev);
 	rte_eal_alarm_cancel(txgbe_tx_queue_clear_error, dev);
 	txgbe_dev_wait_setup_link_complete(dev, 0);
@@ -3093,6 +3111,65 @@ txgbe_tx_ring_recovery(struct rte_eth_dev *dev)
 	}
 }
 
+void
+txgbe_dev_setup_link_alarm_handler_aml(void *param)
+{
+	struct txgbe_hw *hw = (struct txgbe_hw *)param;
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)hw->dev_back;
+	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+	u32 speed;
+	bool autoneg = false;
+	u32 gssr = hw->phy.phy_semaphore_mask;
+
+	if (!hw)
+		return;
+
+	speed = hw->phy.autoneg_advertised;
+	if (!speed)
+		hw->mac.get_link_capabilities(hw, &speed, &autoneg);
+
+	/* firmware is configuring phy now, delay host driver config action */
+	if (hw->mac.acquire_swfw_sync(hw, gssr) != 0) {
+		rte_eal_alarm_set(1000 * 1000 * 2,
+				  txgbe_dev_setup_link_alarm_handler_aml, hw);
+		PMD_DRV_LOG(DEBUG, "delay config ephy");
+		return;
+	}
+
+	hw->mac.setup_link(hw, speed, true);
+
+	u32 link_speed = TXGBE_LINK_SPEED_UNKNOWN;
+	bool link_up = false;
+
+	hw->mac.check_link(hw, &link_speed, &link_up, false);
+	if (link_up) {
+		PMD_DRV_LOG(DEBUG, "LINK UP IN HANDLER");
+		intr->flags &= ~TXGBE_FLAG_NEED_LINK_CONFIG;
+		txgbe_dev_link_update_share(dev, 0);
+	}
+
+	hw->mac.release_swfw_sync(hw, gssr);
+
+	intr->flags &= ~TXGBE_FLAG_NEED_LINK_CONFIG;
+}
+
+s32 txgbe_setup_mac_link_aml(struct txgbe_hw *hw,
+				    u32 speed,
+				    bool autoneg_wait_to_complete)
+{
+	bool need_reset = false;
+	s32 status = 0;
+
+	status = hw->phy.setup_link_core(hw, speed, autoneg_wait_to_complete, &need_reset);
+	if (status)
+		return status;
+
+	if (!hw->adapter_stopped && need_reset)
+		rte_eal_alarm_set(2000 * 1000, txgbe_dev_setup_link_alarm_handler_aml, hw);
+
+	return status;
+}
+
 /*
  * If @timeout_ms was 0, it means that it will not return until link complete.
  * It returns 1 on complete, return 0 on timeout.
@@ -3126,9 +3203,13 @@ txgbe_dev_setup_link_thread_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 	struct txgbe_adapter *ad = TXGBE_DEV_ADAPTER(dev);
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 
 	rte_thread_detach(rte_thread_self());
-	txgbe_dev_setup_link_alarm_handler(dev);
+	if (hw->mac.type == txgbe_mac_aml)
+		txgbe_dev_setup_link_alarm_handler_aml(hw);
+	else
+		txgbe_dev_setup_link_alarm_handler(dev);
 	rte_atomic_store_explicit(&ad->link_thread_running, 0, rte_memory_order_seq_cst);
 	return 0;
 }
