@@ -812,10 +812,11 @@ eval_max_load(struct bpf_reg_val *rv, uint64_t mask)
 	/* full 64-bit load */
 	if (mask == UINT64_MAX)
 		eval_smax_bound(rv, mask);
-
-	/* zero-extend load */
-	rv->s.min = rv->u.min;
-	rv->s.max = rv->u.max;
+	else {
+		/* zero-extend load */
+		rv->s.min = rv->u.min;
+		rv->s.max = rv->u.max;
+	}
 }
 
 
