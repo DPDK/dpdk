@@ -1384,6 +1384,23 @@ test_alu64_add_x_scalar_scalar(void)
 REGISTER_FAST_TEST(bpf_validate_alu64_add_x_scalar_scalar_autotest, NOHUGE_OK, ASAN_OK,
 	test_alu64_add_x_scalar_scalar);
 
+/* 64-bit bitwise AND between a scalar range and immediate. */
+static int
+test_alu64_and_k(void)
+{
+	return verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (EBPF_ALU64 | BPF_AND | BPF_K),
+			.imm = 5,
+		},
+		.pre.dst = make_signed_domain(6, 8),
+		.post.dst = make_signed_domain(0, 7),
+	});
+}
+
+REGISTER_FAST_TEST(bpf_validate_alu64_and_k_autotest, NOHUGE_OK, ASAN_OK,
+	test_alu64_and_k);
+
 /* 64-bit division and modulo of UINT64_MAX*2/3. */
 static int
 test_alu64_div_mod_big_constant(void)

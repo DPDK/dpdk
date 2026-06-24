@@ -848,7 +848,7 @@ eval_and(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
 		rd->u.max &= rs->u.max;
 	} else {
 		rd->u.max = eval_uand_max(rd->u.max, rs->u.max, opsz);
-		rd->u.min &= rs->u.min;
+		rd->u.min = 0;
 	}
 
 	/* both operands are constants */
@@ -859,7 +859,7 @@ eval_and(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
 	} else if (rd->s.min >= 0 || rs->s.min >= 0) {
 		rd->s.max = eval_uand_max(rd->s.max & (msk >> 1),
 			rs->s.max & (msk >> 1), opsz);
-		rd->s.min &= rs->s.min;
+		rd->s.min = 0;
 	} else
 		eval_smax_bound(rd, msk);
 }
