@@ -14,7 +14,9 @@ s32 txgbe_check_mac_link_aml40(struct txgbe_hw *hw,
 s32 txgbe_get_link_capabilities_aml40(struct txgbe_hw *hw,
 				      u32 *speed, bool *autoneg);
 u32 txgbe_get_media_type_aml40(struct txgbe_hw *hw);
-s32 txgbe_setup_mac_link_aml40(struct txgbe_hw *hw, u32 speed,
-			       bool autoneg_wait_to_complete);
+s32 txgbe_setup_phy_link_aml40(struct txgbe_hw *hw,
+				      u32 speed,
+				      bool autoneg_wait_to_complete,
+				      bool *need_reset);
 void txgbe_init_mac_link_ops_aml40(struct txgbe_hw *hw);
 #endif /* _TXGBE_AML40_H_ */
