@@ -417,7 +417,7 @@ struct txgbe_tx_queue {
 	bool		    resetting;
 	const struct rte_memzone *headwb;
 	uint64_t             headwb_dma;
-	volatile uint32_t    *headwb_mem;
+	RTE_ATOMIC(uint32_t) *headwb_mem;
 };
 
 struct txgbe_txq_ops {
@@ -425,6 +425,41 @@ struct txgbe_txq_ops {
 	void (*free_swring)(struct txgbe_tx_queue *txq);
 	void (*reset)(struct txgbe_tx_queue *txq);
 };
+
+/**
+ * Check whether Tx descriptors in the range (last, next]  are done
+ * in Tx head write-back mode.
+ *
+ * In head write-back mode, the hardware periodically updates *headwb_mem
+ * with the index of the next descriptor it will process.
+ * All descriptors before the head are considered processed by hardware and can
+ * be safely freed. The descriptor pointed to by head itself is not yet processed.
+ *
+ * @param head
+ *   Current hardware head index read from headwb_mem.
+ * @param last
+ *   The highest-index descriptor cleaned in the previous round
+ *   (exclusive: descriptors at or before this index are already freed).
+ * @param next
+ *   The highest-index descriptor to be cleaned in this round
+ *   (inclusive: this descriptor is the target of the current cleanup).
+ * @return
+ *   true if all descriptors in the range (last, next] have been completed
+ *   by hardware and can be freed, false otherwise.
+ */
+static inline bool
+txgbe_tx_headwb_desc_done(uint16_t head, uint16_t last, uint16_t next)
+{
+	if (next == head)
+		return false;
+	else if (next > head && head > last)
+		return false;
+	/* wrap case */
+	else if (last > next && (head > last || head < next))
+		return false;
+
+	return true;
+}
 
 /* Takes an ethdev and a queue and sets up the tx function to be used based on
  * the queue parameters. Used in tx_queue_setup by primary process and then
