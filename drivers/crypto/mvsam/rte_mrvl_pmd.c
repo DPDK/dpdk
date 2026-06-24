@@ -1146,7 +1146,7 @@ parse_name_arg(const char *key __rte_unused,
 		return -EINVAL;
 	}
 
-	strncpy(params->name, value, RTE_CRYPTODEV_NAME_MAX_LEN);
+	strlcpy(params->name, value, RTE_CRYPTODEV_NAME_MAX_LEN);
 
 	return 0;
 }
