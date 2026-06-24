@@ -1769,6 +1769,8 @@ int txgbe_temp_track_seq(struct txgbe_hw *hw, u32 speed);
 int txgbe_e56_get_temp(struct txgbe_hw *hw, int *temp);
 int txgbe_set_link_to_amlite(struct txgbe_hw *hw, u32 speed);
 int txgbe_e56_reconfig_rx(struct txgbe_hw *hw, u32 speed);
+s32 txgbe_e56_check_phy_link(struct txgbe_hw *hw, u32 *speed,
+				    bool *link_up);
 s32 txgbe_e56_fec_set(struct txgbe_hw *hw);
 s32 txgbe_e56_fec_polling(struct txgbe_hw *hw, bool *link_up);
 u32 txgbe_e56_tx_ffe_cfg(struct txgbe_hw *hw, u32 speed);

@@ -105,6 +105,8 @@
 #define   VR_AN_INTR_CMPLT		  MS16(0, 0x1)
 #define   VR_AN_INTR_LINK		  MS16(1, 0x1)
 #define   VR_AN_INTR_PG_RCV		  MS16(2, 0x1)
+#define   TXGBE_E56_AN_TXDIS              MS16(3, 0x1)
+#define   TXGBE_E56_AN_PG_RCV             MS16(4, 0x1)
 #define VR_AN_KR_MODE_CL                  0x078003
 #define   VR_AN_KR_MODE_CL_PDET		  MS16(0, 0x1)
 #define VR_XS_OR_PCS_MMD_DIGI_CTL1        0x038000
@@ -428,6 +430,24 @@
 #define TXGBE_BP_M_NAUTO                     0
 #define TXGBE_BP_M_AUTO                      1
 
+#define kr_read_poll(op, val, cond, sleep_us, \
+		     times, args...) \
+({ \
+	unsigned long __sleep_us = (sleep_us); \
+	u32 __times = (times); \
+	u32 i; \
+	int __cond = 0; \
+	for (i = 0; i < __times; i++) { \
+		(val) = op(args); \
+		if (cond) { \
+			__cond = 1; \
+			break; \
+		} \
+		usec_delay(__sleep_us);\
+	} \
+	(__cond) ? 0 : -1; \
+})
+
 #ifndef CL72_KRTR_PRBS_MODE_EN
 #define CL72_KRTR_PRBS_MODE_EN	0xFFFF	/* open kr prbs check */
 #endif
@@ -490,6 +510,8 @@ void txgbe_autoc_write(struct txgbe_hw *hw, u64 value);
 void txgbe_bp_mode_set(struct txgbe_hw *hw);
 void txgbe_set_phy_temp(struct txgbe_hw *hw);
 void txgbe_bp_down_event(struct txgbe_hw *hw);
+int txgbe_is_dac_cable(struct txgbe_hw *hw);
+int txgbe_xpcs_an_enabled(struct txgbe_hw *hw);
 s32 txgbe_kr_handle(struct txgbe_hw *hw);
 
 #endif /* _TXGBE_PHY_H_ */

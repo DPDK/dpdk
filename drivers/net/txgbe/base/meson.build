@@ -13,4 +13,5 @@ base_sources = files(
         'txgbe_phy.c',
         'txgbe_vf.c',
         'txgbe_e56.c',
+        'txgbe_e56_bp.c',
 )

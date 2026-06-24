@@ -2503,6 +2503,27 @@ void txgbe_set_phy_temp(struct txgbe_hw *hw)
 	}
 }
 
+int txgbe_is_dac_cable(struct txgbe_hw *hw)
+{
+	if (hw->phy.sfp_type == txgbe_sfp_type_da_cu_core0 ||
+	    hw->phy.sfp_type == txgbe_sfp_type_da_cu_core1 ||
+	    hw->phy.sfp_type == txgbe_sfp_type_da_act_lmt_core0 ||
+	    hw->phy.sfp_type == txgbe_sfp_type_da_act_lmt_core1 ||
+	    hw->phy.sfp_type == txgbe_qsfp_type_40g_cu_core0 ||
+	    hw->phy.sfp_type == txgbe_qsfp_type_40g_cu_core1)
+		return true;
+
+	return false;
+}
+
+int txgbe_xpcs_an_enabled(struct txgbe_hw *hw)
+{
+	if (!(txgbe_is_dac_cable(hw) || txgbe_is_backplane(hw)))
+		return false;
+
+	return hw->devarg.auto_neg ? true : false;
+}
+
 /**
  * txgbe_kr_handle - Handle the interrupt of auto-negotiation
  * @hw: pointer to hardware structure

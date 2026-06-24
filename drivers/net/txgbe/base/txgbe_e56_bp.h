@@ -276,4 +276,7 @@ typedef union {
 #define E56PHY_CMS_ANA_OVRDVAL_10_ADDR   (E56PHY_CMS_BASE_ADDR + 0xD8)
 #define E56PHY_CMS_ANA_OVRDVAL_7_ANA_LCPLL_LF_LPF_SETCODE_CALIB_I	8, 4
 
+int txgbe_e56_set_phy_link_mode(struct txgbe_hw *hw,
+				u8 bp_link_mode, u32 need_restart);
+int txgbe_handle_e56_bkp_an73_flow(struct txgbe_hw *hw);
 #endif
