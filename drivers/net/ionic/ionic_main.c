@@ -393,8 +393,8 @@ ionic_identify(struct ionic_adapter *adapter)
 	ident->drv.kernel_ver = 0;
 	snprintf(ident->drv.kernel_ver_str,
 		sizeof(ident->drv.kernel_ver_str), "DPDK");
-	strncpy(ident->drv.driver_ver_str, IONIC_DRV_VERSION,
-		sizeof(ident->drv.driver_ver_str) - 1);
+	strlcpy(ident->drv.driver_ver_str, IONIC_DRV_VERSION,
+		sizeof(ident->drv.driver_ver_str));
 
 	nwords = RTE_MIN(drv_size, cmd_size);
 	for (i = 0; i < nwords; i++)
