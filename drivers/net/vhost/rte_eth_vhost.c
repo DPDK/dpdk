@@ -209,7 +209,7 @@ vhost_dev_xstats_get_names(struct rte_eth_dev *dev,
 	}
 
 	for (i = 0; i < count; i++)
-		strncpy(xstats_names[i].name, name[i].name, RTE_ETH_XSTATS_NAME_SIZE);
+		strlcpy(xstats_names[i].name, name[i].name, RTE_ETH_XSTATS_NAME_SIZE);
 
 	free(name);
 
