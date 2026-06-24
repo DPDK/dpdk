@@ -582,6 +582,11 @@ eval_neg(struct bpf_reg_val *rd, size_t opsz, uint64_t msk)
 {
 	uint64_t ux, uy;
 	int64_t sx, sy;
+	/* additional limits imposed by signed on unsigned and back */
+	struct bpf_reg_val cross_limits = {
+		.s = { INT64_MIN, INT64_MAX },
+		.u = { 0, UINT64_MAX },
+	};
 
 	/* if we have 32-bit values - extend them to 64-bit */
 	if (opsz == sizeof(uint32_t) * CHAR_BIT) {
@@ -589,11 +594,29 @@ eval_neg(struct bpf_reg_val *rd, size_t opsz, uint64_t msk)
 		rd->u.max = (int32_t)rd->u.max;
 	}
 
-	ux = -(int64_t)rd->u.min & msk;
-	uy = -(int64_t)rd->u.max & msk;
+	if (rd->u.min == 0) {
+		/* special case: ranges that include 0 and, possibly, 1 */
 
-	rd->u.max = RTE_MAX(ux, uy);
-	rd->u.min = RTE_MIN(ux, uy);
+		/*
+		 * Calculate requirements on the signed range of negation.
+		 * It is only possible when negated range does not cross from
+		 * INT64_MIN to INT64_MAX, which means our original range does
+		 * not reach (uint64_t)-INT64_MAX.
+		 */
+		if (rd->u.max < (uint64_t)-INT64_MAX) {
+			cross_limits.s.min = -rd->u.max;
+			cross_limits.s.max = -rd->u.min;
+		}
+
+		if (rd->u.max != 0)
+			rd->u.max = UINT64_MAX;
+	} else {
+		ux = -rd->u.min & msk;
+		uy = -rd->u.max & msk;
+
+		rd->u.max = RTE_MAX(ux, uy);
+		rd->u.min = RTE_MIN(ux, uy);
+	}
 
 	/* if we have 32-bit values - extend them to 64-bit */
 	if (opsz == sizeof(uint32_t) * CHAR_BIT) {
@@ -601,11 +624,27 @@ eval_neg(struct bpf_reg_val *rd, size_t opsz, uint64_t msk)
 		rd->s.max = (int32_t)rd->s.max;
 	}
 
-	sx = -rd->s.min & msk;
-	sy = -rd->s.max & msk;
+	if (rd->s.min == INT64_MIN) {
+		/* special case: negation of INT64_MIN is INT64_MIN */
+		if (rd->s.max <= 0) {
+			cross_limits.u.min = -(uint64_t)rd->s.max;
+			cross_limits.u.max = -(uint64_t)rd->s.min;
+		}
+		if (rd->s.max != INT64_MIN)
+			rd->s.max = INT64_MAX;
+	} else {
+		/* since max >= min, neither can be INT64_MIN here */
+		sx = -rd->s.min & msk;
+		sy = -rd->s.max & msk;
 
-	rd->s.max = RTE_MAX(sx, sy);
-	rd->s.min = RTE_MIN(sx, sy);
+		rd->s.max = RTE_MAX(sx, sy);
+		rd->s.min = RTE_MIN(sx, sy);
+	}
+
+	rd->s.min = RTE_MAX(rd->s.min, cross_limits.s.min) & msk;
+	rd->s.max = RTE_MIN(rd->s.max, cross_limits.s.max) & msk;
+	rd->u.min = RTE_MAX(rd->u.min, cross_limits.u.min) & msk;
+	rd->u.max = RTE_MIN(rd->u.max, cross_limits.u.max) & msk;
 }
 
 static const char *
