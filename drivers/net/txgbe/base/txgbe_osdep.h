@@ -162,6 +162,10 @@ static inline u64 REVERT_BIT_MASK64(u64 mask)
 	       ((mask & 0xFFFFFFFF00000000) >> 32);
 }
 
+#define BITS_PER_LONG	(__SIZEOF_LONG__ * 8)
+#define GENMASK(h, l) \
+	(((~0UL) << (l)) & (~0UL >> (BITS_PER_LONG - 1 - (h))))
+
 #define IOMEM
 
 #define BIT(nr)         (1UL << (nr))

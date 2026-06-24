@@ -2010,6 +2010,10 @@ skip_link_setup:
 	txgbe_l2_tunnel_conf(dev);
 	txgbe_filter_restore(dev);
 
+	hw->bp_event_interval = 100 * 1000;
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40)
+		rte_eal_alarm_set(hw->bp_event_interval, txgbe_dev_e56_check_bp_event, dev);
+
 	if (tm_conf->root && !tm_conf->committed)
 		PMD_DRV_LOG(WARNING,
 			    "please call hierarchy_commit() "
@@ -2054,8 +2058,10 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40)
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40) {
+		rte_eal_alarm_cancel(txgbe_dev_e56_check_bp_event, dev);
 		rte_eal_alarm_cancel(txgbe_dev_setup_link_alarm_handler_aml, hw);
+	}
 
 	rte_eal_alarm_cancel(txgbe_dev_detect_sfp, dev);
 	rte_eal_alarm_cancel(txgbe_tx_queue_clear_error, dev);
@@ -2924,6 +2930,107 @@ txgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 		return txgbe_get_supported_ptypes(no_of_elements);
 
 	return NULL;
+}
+
+void txgbe_dev_e56_check_bp_event(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	u32 an_int1 = 0, value = 0, fsm = 0;
+	u32 __rte_unused an_int = 0;
+	int ret = 0;
+	bool need_link_update = false;
+
+	if (!hw)
+		return;
+
+	if (!(txgbe_xpcs_an_enabled(hw)))
+		return;
+
+	if (!hw->devarg.auto_neg)
+		return;
+
+	/* only continue if link is down */
+	if (dev->data->dev_link.link_status)
+		goto out;
+
+	value = rd32_epcs(hw, VR_AN_INTR);
+	an_int = value;
+	if (value & 0xF)
+		hw->bp_event_interval = 100 * 1000;
+
+	if (value & VR_AN_INTR_CMPLT) {
+		hw->an_done = true;
+		need_link_update = true;
+		value &= ~VR_AN_INTR_CMPLT;
+		wr32_epcs(hw, VR_AN_INTR, value);
+	}
+
+	if (value & VR_AN_INTR_LINK) {
+		value &= ~VR_AN_INTR_LINK;
+		wr32_epcs(hw, VR_AN_INTR, value);
+	}
+
+	if (value & TXGBE_E56_AN_TXDIS) {
+		value &= ~TXGBE_E56_AN_TXDIS;
+		wr32_epcs(hw, VR_AN_INTR, value);
+		rte_spinlock_lock(&hw->phy_lock);
+		txgbe_e56_set_phy_link_mode(hw, 10, hw->bypass_ctle);
+		rte_spinlock_unlock(&hw->phy_lock);
+		goto an_status;
+	}
+
+	if (value & VR_AN_INTR_PG_RCV) {
+		BP_LOG("%d Enter training\n", hw->port_id);
+		ret = txgbe_handle_e56_bkp_an73_flow(hw);
+		if (!AN_TRAINING_MODE) {
+			fsm = rd32_epcs(hw, 0x78010);
+			if (fsm & 0x8)
+				goto an_status;
+			if (ret) {
+				BP_LOG("Training FAILED, do reset\n");
+				rte_spinlock_lock(&hw->phy_lock);
+				txgbe_e56_set_phy_link_mode(hw, 10, hw->bypass_ctle);
+				rte_spinlock_unlock(&hw->phy_lock);
+			} else {
+				BP_LOG("ALL SUCCEEDED\n");
+			}
+		} else {
+			if (ret) {
+				BP_LOG("Training FAILED, do reset\n");
+				rte_spinlock_lock(&hw->phy_lock);
+				txgbe_e56_set_phy_link_mode(hw, 10, hw->bypass_ctle);
+				rte_spinlock_unlock(&hw->phy_lock);
+			} else {
+				hw->an_done = true;
+			}
+		}
+	}
+
+an_status:
+	an_int1 = rd32_epcs(hw, 0x78002);
+	if (an_int1 & VR_AN_INTR_CMPLT) {
+		hw->an_done = true;
+		need_link_update = true;
+	}
+
+	BP_LOG("%d RLU:%x MLU:%x INT:%x-%x CTL:%x fsm:%x pmd_cfg0:%x an_done:%d\n",
+		hw->port_id, rd32_epcs(hw, 0x30001), rd32(hw, 0x14404),
+		an_int, an_int1,
+		rd32_epcs(hw, 0x70000),
+		rd32_epcs(hw, 0x78010),
+		rd32_ephy(hw, 0x1400),
+		hw->an_done);
+
+	if (need_link_update)
+		txgbe_dev_link_update(dev, 0);
+
+	if (dev->data->dev_link.link_status)
+		hw->bp_event_interval = 2000 * 1000;
+
+out:
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40)
+		rte_eal_alarm_set(hw->bp_event_interval, txgbe_dev_e56_check_bp_event, dev);
 }
 
 static void

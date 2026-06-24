@@ -13,5 +13,7 @@
 #include "txgbe_hw.h"
 #include "txgbe_vf.h"
 #include "txgbe_dcb.h"
+#include "txgbe_e56.h"
+#include "txgbe_e56_bp.h"
 
 #endif /* _TXGBE_H_ */
