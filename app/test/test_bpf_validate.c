@@ -1747,6 +1747,23 @@ test_alu64_or_k_positive(void)
 REGISTER_FAST_TEST(bpf_validate_alu64_or_k_positive_autotest, NOHUGE_OK, ASAN_OK,
 	test_alu64_or_k_positive);
 
+/* 64-bit difference between two negative ranges.. */
+static int
+test_alu64_sub_x_src_signed_max_zero(void)
+{
+	return verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (EBPF_ALU64 | BPF_SUB | BPF_X),
+		},
+		.pre.dst = make_signed_domain(INT64_MIN, 0),
+		.pre.src = make_signed_domain(INT64_MIN, 0),
+		.post.dst = unknown,
+	});
+}
+
+REGISTER_FAST_TEST(bpf_validate_alu64_sub_x_src_signed_max_zero_autotest, NOHUGE_OK, ASAN_OK,
+	test_alu64_sub_x_src_signed_max_zero);
+
 /* Jump if greater than immediate. */
 static int
 test_jmp64_jeq_k(void)

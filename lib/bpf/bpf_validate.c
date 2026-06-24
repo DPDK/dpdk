@@ -716,9 +716,9 @@ eval_sub(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, uint64_t msk)
 		eval_umax_bound(&rv, msk);
 
 	if ((rd->s.min != rd->s.max || rs->s.min != rs->s.max) &&
-			(((rs->s.min < 0 && rv.s.min < rd->s.min) ||
+			(((rs->s.max < 0 && rv.s.min < rd->s.min) ||
 			rv.s.min > rd->s.min) ||
-			((rs->s.max < 0 && rv.s.max < rd->s.max) ||
+			((rs->s.min < 0 && rv.s.max < rd->s.max) ||
 			rv.s.max > rd->s.max)))
 		eval_smax_bound(&rv, msk);
 
