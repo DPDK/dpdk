@@ -490,7 +490,7 @@ eval_xor(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
 		rd->s.max ^= rs->s.max;
 
 	/* both operands are non-negative */
-	} else if (rd->s.min >= 0 || rs->s.min >= 0) {
+	} else if (rd->s.min >= 0 && rs->s.min >= 0) {
 		rd->s.max = eval_uor_max(rd->s.max, rs->s.max, opsz);
 		rd->s.min = 0;
 	} else
