@@ -1095,7 +1095,7 @@ static void
 eval_jgt_jle(struct bpf_reg_val *trd, struct bpf_reg_val *trs,
 	struct bpf_reg_val *frd, struct bpf_reg_val *frs)
 {
-	frd->u.max = RTE_MIN(frd->u.max, frs->u.min);
+	frd->u.max = RTE_MIN(frd->u.max, frs->u.max);
 	trd->u.min = RTE_MAX(trd->u.min, trs->u.min + 1);
 }
 
@@ -1111,7 +1111,7 @@ static void
 eval_jsgt_jsle(struct bpf_reg_val *trd, struct bpf_reg_val *trs,
 	struct bpf_reg_val *frd, struct bpf_reg_val *frs)
 {
-	frd->s.max = RTE_MIN(frd->s.max, frs->s.min);
+	frd->s.max = RTE_MIN(frd->s.max, frs->s.max);
 	trd->s.min = RTE_MAX(trd->s.min, trs->s.min + 1);
 }
 
