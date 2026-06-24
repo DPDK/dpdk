@@ -14,6 +14,7 @@
 #include "txgbe_aml.h"
 #include "txgbe_aml40.h"
 #include "txgbe_e56.h"
+#include "txgbe_e56_bp.h"
 
 void txgbe_init_ops_aml40(struct txgbe_hw *hw)
 {
@@ -98,7 +99,10 @@ s32 txgbe_get_link_capabilities_aml40(struct txgbe_hw *hw,
 	if (hw->phy.sfp_type == txgbe_qsfp_type_40g_cu_core0 ||
 	    hw->phy.sfp_type == txgbe_qsfp_type_40g_cu_core1) {
 		*speed = TXGBE_LINK_SPEED_40GB_FULL;
-		*autoneg = false;
+		*autoneg = true;
+	} else if (txgbe_is_backplane(hw)) {
+		*speed = TXGBE_LINK_SPEED_40GB_FULL;
+		*autoneg = true;
 	} else {
 		/*
 		 * Temporary workaround: set speed to 40G even if sfp not present
@@ -115,8 +119,22 @@ s32 txgbe_get_link_capabilities_aml40(struct txgbe_hw *hw,
 
 u32 txgbe_get_media_type_aml40(struct txgbe_hw *hw)
 {
-	UNREFERENCED_PARAMETER(hw);
-	return txgbe_media_type_fiber_qsfp;
+	u8 device_type = hw->subsystem_device_id & 0xF0;
+	enum txgbe_media_type media_type;
+
+	switch (device_type) {
+	case TXGBE_DEV_ID_KR_KX_KX4:
+		media_type = txgbe_media_type_backplane;
+		break;
+	case TXGBE_DEV_ID_SFP:
+		media_type = txgbe_media_type_fiber_qsfp;
+		break;
+	default:
+		media_type = txgbe_media_type_unknown;
+		break;
+	}
+
+	return media_type;
 }
 
 s32 txgbe_setup_phy_link_aml40(struct txgbe_hw *hw,
@@ -135,7 +153,7 @@ s32 txgbe_setup_phy_link_aml40(struct txgbe_hw *hw,
 
 	*need_reset = false;
 
-	if (hw->phy.sfp_type == txgbe_sfp_type_not_present)
+	if (hw->phy.sfp_type == txgbe_sfp_type_not_present && !txgbe_is_backplane(hw))
 		hw->phy.identify_sfp(hw);
 
 	/* Check to see if speed passed in is supported. */
@@ -147,6 +165,23 @@ s32 txgbe_setup_phy_link_aml40(struct txgbe_hw *hw,
 	speed &= link_capabilities;
 	if (speed == TXGBE_LINK_SPEED_UNKNOWN)
 		return TXGBE_ERR_LINK_SETUP;
+
+	if (txgbe_xpcs_an_enabled(hw)) {
+		txgbe_e56_check_phy_link(hw, &link_speed, &link_up);
+		if (link_up && hw->an_done && !autoneg_wait_to_complete)
+			return status;
+		rte_spinlock_lock(&hw->phy_lock);
+		txgbe_e56_set_phy_link_mode(hw, 40, autoneg_wait_to_complete);
+		rte_spinlock_unlock(&hw->phy_lock);
+		return status;
+	}
+
+	if (txgbe_is_backplane(hw) || txgbe_is_dac_cable(hw) ||
+	    hw->phy.ffe_set) {
+		rte_spinlock_lock(&hw->phy_lock);
+		txgbe_e56_tx_ffe_cfg(hw, speed);
+		rte_spinlock_unlock(&hw->phy_lock);
+	}
 
 	for (i = 0; i < 4; i++) {
 		txgbe_e56_check_phy_link(hw, &link_speed, &link_up);

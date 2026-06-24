@@ -26,7 +26,7 @@ int txgbe_e56_int_cmp(const void *a, const void *b)
 }
 
 s32 txgbe_e56_check_phy_link(struct txgbe_hw *hw, u32 *speed,
-				bool *link_up)
+				    bool *link_up)
 {
 	u32 rdata = 0;
 	u32 links_reg = 0;
@@ -74,7 +74,8 @@ u32 txgbe_e56_tx_ffe_cfg(struct txgbe_hw *hw, u32 speed)
 		post = S10G_TX_FFE_CFG_POST;
 	} else if (speed == TXGBE_LINK_SPEED_25GB_FULL) {
 		if (hw->phy.sfp_type == txgbe_sfp_type_da_cu_core0 ||
-		    hw->phy.sfp_type == txgbe_sfp_type_da_cu_core1) {
+		    hw->phy.sfp_type == txgbe_sfp_type_da_cu_core1 ||
+		    txgbe_is_backplane(hw)) {
 			ffe_main = S25G_TX_FFE_CFG_DAC_MAIN;
 			pre1 = S25G_TX_FFE_CFG_DAC_PRE1;
 			pre2 = S25G_TX_FFE_CFG_DAC_PRE2;
@@ -92,7 +93,8 @@ u32 txgbe_e56_tx_ffe_cfg(struct txgbe_hw *hw, u32 speed)
 		post = S10G_TX_FFE_CFG_POST;
 
 		if (hw->phy.sfp_type == txgbe_qsfp_type_40g_cu_core0 ||
-		    hw->phy.sfp_type == txgbe_qsfp_type_40g_cu_core1) {
+		    hw->phy.sfp_type == txgbe_qsfp_type_40g_cu_core1 ||
+		    txgbe_is_backplane(hw)) {
 			ffe_main = S40G_TX_FFE_CFG_MAIN;
 			pre1 = S40G_TX_FFE_CFG_PRE1;
 			pre2 = S40G_TX_FFE_CFG_PRE2;
@@ -1481,7 +1483,7 @@ txgbe_e56_rxs_osc_init_for_temp_track_range(struct txgbe_hw *hw, u32 speed)
 			rdata = rd32_ephy(hw, addr);
 
 			if (timer++ > PHYINIT_TIMEOUT) {
-				DEBUGOUT("ERROR: Wait E56PHY_CTRL_FSM_RX_STAT_0_ADDR Timeout!\n");
+				DEBUGOUT("ERROR: Wait E56PHY_CTRL_FSM_RX_STAT_0_ADDR Timeout!");
 				return -1;
 			}
 		}
@@ -1515,7 +1517,7 @@ txgbe_e56_rxs_osc_init_for_temp_track_range(struct txgbe_hw *hw, u32 speed)
 			if (((rdata >> (i * 8)) & 0x3f) == 0x21)
 				break;
 			if (timer++ > PHYINIT_TIMEOUT) {
-				DEBUGOUT("ERROR: Wait E56PHY_CTRL_FSM_RX_STAT_0_ADDR Timeout!\n");
+				DEBUGOUT("ERROR: Wait E56PHY_CTRL_FSM_RX_STAT_0_ADDR Timeout!");
 				return -1;
 			}
 		}
@@ -1591,7 +1593,7 @@ txgbe_e56_rxs_osc_init_for_temp_track_range(struct txgbe_hw *hw, u32 speed)
 			addr  = E56PHY_CTRL_FSM_RX_STAT_0_ADDR;
 			rdata = rd32_ephy(hw, addr);
 			if (timer++ > PHYINIT_TIMEOUT) {
-				DEBUGOUT("ERROR: Wait E56PHY_CTRL_FSM_RX_STAT_0_ADDR Timeout!\n");
+				DEBUGOUT("ERROR: Wait E56PHY_CTRL_FSM_RX_STAT_0_ADDR Timeout!");
 				return -1;
 			}
 		}
@@ -1637,7 +1639,7 @@ txgbe_e56_rxs_osc_init_for_temp_track_range(struct txgbe_hw *hw, u32 speed)
 			if (((rdata  >> (i * 8)) & 0x3f) == 0x21)
 				break;
 			if (timer++ > PHYINIT_TIMEOUT) {
-				DEBUGOUT("ERROR: Wait E56PHY_CTRL_FSM_RX_STAT_0_ADDR Timeout!\n");
+				DEBUGOUT("ERROR: Wait E56PHY_CTRL_FSM_RX_STAT_0_ADDR Timeout!");
 				return -1;
 			}
 		}
@@ -1902,7 +1904,7 @@ int txgbe_temp_track_seq_40g(struct txgbe_hw *hw, u32 speed)
 			CMVAR_UFINE_FMIN_WRAP = S25G_CMVAR_UFINE_FMIN_WRAP;
 			CMVAR_FINE_FMIN_WRAP = S25G_CMVAR_FINE_FMIN_WRAP;
 		} else {
-			DEBUGOUT("Error Speed\n");
+			DEBUGOUT("Error Speed");
 			return 0;
 		}
 
@@ -3163,7 +3165,7 @@ static int txgbe_e56_disable_rx40G(struct txgbe_hw *hw)
 		rdata = rd32_ephy(hw, addr);
 		usec_delay(100);
 		if (timer++ > PHYINIT_TIMEOUT) {
-			DEBUGOUT("ERROR: Wait E56PHY_CTRL_FSM_RX_STAT_0_ADDR Timeout!\n");
+			DEBUGOUT("ERROR: Wait E56PHY_CTRL_FSM_RX_STAT_0_ADDR Timeout!");
 			break;
 		}
 	}
@@ -3269,7 +3271,7 @@ static int txgbe_e56_disable_rx(struct txgbe_hw *hw)
 			break;
 		usec_delay(100);
 		if (timer++ > PHYINIT_TIMEOUT) {
-			DEBUGOUT("ERROR: Wait E56PHY_CTRL_FSM_RX_STAT_0_ADDR Timeout!\n");
+			DEBUGOUT("ERROR: Wait E56PHY_CTRL_FSM_RX_STAT_0_ADDR Timeout!");
 			break;
 		}
 	}

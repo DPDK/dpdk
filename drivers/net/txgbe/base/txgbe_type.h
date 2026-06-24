@@ -719,6 +719,7 @@ struct txgbe_phy_info {
 	u32 addr;
 	u32 id;
 	enum txgbe_sfp_type sfp_type;
+	u32 fiber_suppport_speed;
 	bool sfp_setup_needed;
 	u32 revision;
 	u32 media_type;
@@ -740,6 +741,7 @@ struct txgbe_phy_info {
 	u16 ffe_pre2;
 	u16 ffe_post;
 	u16 fec_mode;
+	u16 bp_capa;
 };
 
 #define TXGBE_DEVARG_BP_AUTO		"auto_neg"
@@ -899,7 +901,28 @@ struct txgbe_hw {
 	u32 cur_fec_link;
 	int temperature;
 	u32 bp_link_mode;
+	bool dac_sfp;
+	bool bypass_ctle;
+	u32 curbp_link_mode;
+	bool an_done;
+	u32 fsm;
+	u64 bp_event_interval;
 };
+
+typedef enum {
+	ABILITY_1000BASE_KX,
+	ABILITY_10GBASE_KX4,
+	ABILITY_10GBASE_KR,
+	ABILITY_40GBASE_KR4,
+	ABILITY_40GBASE_CR4,
+	ABILITY_100GBASE_CR10,
+	ABILITY_100GBASE_KP4,
+	ABILITY_100GBASE_KR4,
+	ABILITY_100GBASE_CR4,
+	ABILITY_25GBASE_KRCR_S,
+	ABILITY_25GBASE_KRCR,
+	ABILITY_MAX,
+} ability_filed_encding;
 
 struct txgbe_backplane_ability {
 	u32 next_page;	  /* Next Page (bit0) */

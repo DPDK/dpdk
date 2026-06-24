@@ -13,6 +13,7 @@
 #include "txgbe_hw.h"
 #include "txgbe_aml.h"
 #include "txgbe_e56.h"
+#include "txgbe_e56_bp.h"
 
 void txgbe_init_ops_aml(struct txgbe_hw *hw)
 {
@@ -84,6 +85,13 @@ s32 txgbe_check_mac_link_aml(struct txgbe_hw *hw, u32 *speed,
 		*speed = TXGBE_LINK_SPEED_UNKNOWN;
 	}
 
+	if (txgbe_xpcs_an_enabled(hw)) {
+		if (!hw->an_done) {
+			*link_up = false;
+			*speed = TXGBE_LINK_SPEED_UNKNOWN;
+		}
+	}
+
 	return 0;
 }
 
@@ -95,23 +103,41 @@ s32 txgbe_get_link_capabilities_aml(struct txgbe_hw *hw,
 		*speed = TXGBE_LINK_SPEED_10GB_FULL |
 			 TXGBE_LINK_SPEED_25GB_FULL;
 		*autoneg = true;
+	} else if (hw->phy.sfp_type == txgbe_sfp_type_da_cu_core0 ||
+		   hw->phy.sfp_type == txgbe_sfp_type_da_cu_core1) {
+		if (hw->phy.fiber_suppport_speed ==
+		    TXGBE_LINK_SPEED_10GB_FULL) {
+			hw->devarg.auto_neg = false;
+			*autoneg = false;
+		} else {
+			*autoneg = true;
+		}
+		*speed = hw->phy.fiber_suppport_speed;
 	} else if (hw->phy.sfp_type == txgbe_sfp_type_25g_sr_core0 ||
 		hw->phy.sfp_type == txgbe_sfp_type_25g_sr_core1 ||
 		hw->phy.sfp_type == txgbe_sfp_type_25g_lr_core0 ||
-		hw->phy.sfp_type == txgbe_sfp_type_25g_lr_core1) {
+		hw->phy.sfp_type == txgbe_sfp_type_25g_lr_core1 ||
+		hw->phy.sfp_type == txgbe_sfp_type_25g_aoc_core0 ||
+		hw->phy.sfp_type == txgbe_sfp_type_25g_aoc_core1) {
 		*speed = TXGBE_LINK_SPEED_25GB_FULL;
 		*autoneg = false;
-	} else if (hw->phy.sfp_type == txgbe_sfp_type_25g_aoc_core0 ||
-		   hw->phy.sfp_type == txgbe_sfp_type_25g_aoc_core1) {
-		*speed = TXGBE_LINK_SPEED_25GB_FULL;
+	} else if (hw->phy.media_type == txgbe_media_type_backplane) {
+		/* Backplane */
+		*speed = TXGBE_LINK_SPEED_10GB_FULL |
+			 TXGBE_LINK_SPEED_25GB_FULL;
+		/* Backplane supports autonegotiation */
+		*autoneg = hw->devarg.auto_neg;
+	} else if (hw->phy.media_type == txgbe_media_type_fiber) {
+		/* Fiber */
+		*speed = TXGBE_LINK_SPEED_10GB_FULL |
+			 TXGBE_LINK_SPEED_25GB_FULL;
 		*autoneg = false;
 	} else {
-		/* SFP */
-		if (hw->phy.sfp_type == txgbe_sfp_type_not_present)
-			*speed = TXGBE_LINK_SPEED_25GB_FULL;
-		else
-			*speed = TXGBE_LINK_SPEED_10GB_FULL;
-		*autoneg = true;
+		/* Unknown */
+		*speed = TXGBE_LINK_SPEED_UNKNOWN;
+		*autoneg = false;
+		PMD_DRV_LOG(DEBUG, "GET link capabilities failed");
+		return TXGBE_ERR_LINK_SETUP;
 	}
 
 	return 0;
@@ -193,7 +219,7 @@ s32 txgbe_setup_phy_link_aml(struct txgbe_hw *hw,
 
 	*need_reset = false;
 
-	if (hw->phy.sfp_type == txgbe_sfp_type_not_present) {
+	if (hw->phy.sfp_type == txgbe_sfp_type_not_present && !txgbe_is_backplane(hw)) {
 		DEBUGOUT("SFP not detected, skip setup mac link");
 		return 0;
 	}
@@ -215,6 +241,23 @@ s32 txgbe_setup_phy_link_aml(struct txgbe_hw *hw,
 	speed &= link_capabilities;
 	if (speed == TXGBE_LINK_SPEED_UNKNOWN)
 		return TXGBE_ERR_LINK_SETUP;
+
+	if (txgbe_xpcs_an_enabled(hw)) {
+		txgbe_e56_check_phy_link(hw, &link_speed, &link_up);
+		if (link_up && hw->an_done && !autoneg_wait_to_complete)
+			return status;
+		rte_spinlock_lock(&hw->phy_lock);
+		txgbe_e56_set_phy_link_mode(hw, speed, autoneg_wait_to_complete);
+		rte_spinlock_unlock(&hw->phy_lock);
+		return 0;
+	}
+
+	if (txgbe_is_backplane(hw) || txgbe_is_dac_cable(hw) ||
+	    hw->phy.ffe_set) {
+		rte_spinlock_lock(&hw->phy_lock);
+		txgbe_e56_tx_ffe_cfg(hw, speed);
+		rte_spinlock_unlock(&hw->phy_lock);
+	}
 
 	if (txgbe_gpio_ext_check(hw, TXGBE_SFP1_MOD_ABS_LS |
 				 TXGBE_SFP1_RX_LOS_LS)) {

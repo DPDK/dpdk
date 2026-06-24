@@ -4071,6 +4071,12 @@ s32 txgbe_reset_pipeline_raptor(struct txgbe_hw *hw)
 	return err;
 }
 
+bool txgbe_is_backplane(struct txgbe_hw *hw)
+{
+	return hw->phy.get_media_type(hw) == txgbe_media_type_backplane ?
+						 true : false;
+}
+
 bool txgbe_gpio_ext_check(struct txgbe_hw *hw, u8 gpio_ext_mask)
 {
 	u32 gpio_ext = rd32(hw, TXGBE_GPIOEXT);
