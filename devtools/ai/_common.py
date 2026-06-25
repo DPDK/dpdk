@@ -6,12 +6,22 @@
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
 from typing import Any, NoReturn
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+
+# Optional dependency for Vertex AI
+try:
+    from google.auth import default as google_auth_default
+    from google.auth.exceptions import GoogleAuthError
+    from google.auth.transport.requests import Request as GoogleAuthRequest
+    VERTEX_AI_AVAILABLE = True
+except ImportError:
+    VERTEX_AI_AVAILABLE = False
 
 # Provider configurations (model defaults; override with --model).
 PROVIDERS: dict[str, dict[str, str]] = {
@@ -65,10 +75,14 @@ def get_git_config(key: str) -> str | None:
 def list_providers() -> NoReturn:
     """Print available providers and exit."""
     print("Available AI Providers:\n")
-    print(f"{'Provider':<12} {'Default Model':<30} {'API Key Variable'}")
-    print(f"{'--------':<12} {'-------------':<30} {'----------------'}")
+    print(f"{'Provider':<12} {'Default Model':<30} {'API Key (Direct Auth)'}")
+    print(f"{'--------':<12} {'-------------':<30} {'---------------------'}")
     for name, config in PROVIDERS.items():
         print(f"{name:<12} {config['default_model']:<30} {config['env_var']}")
+    if VERTEX_AI_AVAILABLE:
+        print("\nVertex AI authentication is available (use --auth vertex)")
+    else:
+        print("\nVertex AI authentication requires: pip install google-auth")
     sys.exit(0)
 
 
@@ -128,25 +142,174 @@ def print_token_summary(
     print(format_token_summary(usage, provider, model), file=sys.stderr)
 
 
-def _build_request_meta(
-    provider: str, api_key: str, model: str
-) -> tuple[str, dict[str, str]]:
-    """Return (url, headers) for a provider request."""
-    config = PROVIDERS[provider]
+def get_vertex_credentials() -> tuple[str, str]:
+    """Get Google Cloud access token and project for Vertex AI.
+
+    Uses Application Default Credentials (ADC).
+    Requires: gcloud auth application-default login
+
+    Returns: (access_token, project_id)
+    """
+    credentials, project = google_auth_default()
+
+    # Refresh credentials to get access token
+    auth_request = GoogleAuthRequest()
+    credentials.refresh(auth_request)
+
+    project = (os.environ.get("GOOGLE_CLOUD_PROJECT")
+               or os.environ.get("GCP_PROJECT")
+               or project)
+
+    if not project:
+        error("Could not detect GCP project. "
+              "Set GOOGLE_CLOUD_PROJECT environment variable "
+              "or run: gcloud config set project PROJECT_ID")
+
+    return credentials.token, project
+
+
+def model_to_vertex(model: str, provider: str) -> str:
+    """Convert model name to Vertex AI format.
+
+    Anthropic models use @ for version dates:
+    - API format: claude-sonnet-4-5-20250929
+    - Vertex format: claude-sonnet-4-5@20250929
+
+    OpenAI/xAI models need publisher prefix:
+    - Vertex requires: openai/gpt-oss-120b-maas
+
+    Other providers use the same format for both.
+    """
     if provider == "anthropic":
+        # Match pattern: ends with -YYYYMMDD (8 digits)
+        if model.count('-') >= 3:
+            parts = model.rsplit('-', 1)
+            if len(parts) == 2 and len(parts[1]) == 8 and parts[1].isdigit():
+                return f"{parts[0]}@{parts[1]}"
+    elif provider in ("openai", "xai"):
+        # Add publisher prefix if not already present
+        if "/" not in model:
+            return f"{provider}/{model}"
+    return model
+
+
+def detect_auth_method(provider: str) -> str:
+    """Detect authentication method for a provider.
+
+    Args:
+        provider: The provider name (e.g., "anthropic", "openai")
+
+    Returns:
+        "direct" or "vertex"
+    """
+    env_var = PROVIDERS[provider]["env_var"]
+    if os.environ.get(env_var):
+        return "direct"
+    if VERTEX_AI_AVAILABLE:
+        try:
+            credentials, project = google_auth_default()
+            if credentials and project:
+                return "vertex"
+        except GoogleAuthError:
+            pass
+    return "direct"
+
+
+def get_auth_string(auth_choice: str, provider: str) -> str:
+    """Get authentication string for API requests.
+
+    Args:
+        auth_choice: User's auth choice ("auto", "direct", or "vertex")
+        provider: Provider name
+
+    Returns:
+        Authentication string - either "vertex" or "direct:<api_key>"
+    """
+    config = PROVIDERS[provider]
+
+    # Determine actual auth method
+    if auth_choice == "auto":
+        auth_method = detect_auth_method(provider)
+    else:
+        auth_method = auth_choice
+
+    # Build auth string based on method
+    if auth_method == "vertex":
+        if not VERTEX_AI_AVAILABLE:
+            error("Vertex AI support requires 'google-auth' library. "
+                  "Install with: pip install google-auth")
+        return "vertex"
+
+    api_key = os.environ.get(config["env_var"])
+    if not api_key:
+        error(f"{config['env_var']} environment variable not set")
+    return f"direct:{api_key}"
+
+
+def _build_request_meta(
+    provider: str, auth: str, model: str, request_data: dict[str, Any]
+) -> tuple[str, dict[str, str], dict[str, Any]]:
+    """Return (url, headers, request_data) for a provider request.
+
+    Args:
+        provider: Provider name
+        auth: Authentication string - either "direct:<api_key>" or "vertex"
+        model: Model identifier
+        request_data: The request payload (may be modified for Vertex)
+
+    Returns:
+        Tuple of (url, headers, modified_request_data)
+    """
+    config = PROVIDERS[provider]
+
+    if auth.startswith("direct:"):
+        api_key = auth[7:]
+        if provider == "anthropic":
+            request_data["model"] = model
+            return config["endpoint"], {
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            }, request_data
+        if provider == "google":
+            url = f"{config['endpoint']}/{model}:generateContent?key={api_key}"
+            return url, {"Content-Type": "application/json"}, request_data
+        # openai, xai
+        request_data["model"] = model
         return config["endpoint"], {
             "Content-Type": "application/json",
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-        }
-    if provider == "google":
-        url = f"{config['endpoint']}/{model}:generateContent?key={api_key}"
-        return url, {"Content-Type": "application/json"}
-    # openai, xai
-    return config["endpoint"], {
+            "Authorization": f"Bearer {api_key}",
+        }, request_data
+
+    # Vertex AI authentication
+    if auth != "vertex":
+        error(f"Invalid auth format: {auth}")
+
+    access_token, project_id = get_vertex_credentials()
+    location = os.environ.get("CLOUD_ML_REGION", "global")
+
+    if location == "global":
+        vertex_base = "https://aiplatform.googleapis.com"
+    else:
+        vertex_base = f"https://{location}-aiplatform.googleapis.com"
+    vertex_base += f"/v1/projects/{project_id}/locations/{location}"
+
+    headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}",
+        "Authorization": f"Bearer {access_token}",
     }
+    vertex_model = model_to_vertex(model, provider)
+
+    if provider == "anthropic":
+        request_data["anthropic_version"] = "vertex-2023-10-16"
+        url = f"{vertex_base}/publishers/anthropic/models/{vertex_model}:rawPredict"
+    elif provider == "google":
+        url = f"{vertex_base}/publishers/google/models/{vertex_model}:generateContent"
+    else:  # openai, xai
+        request_data["model"] = vertex_model
+        url = f"{vertex_base}/endpoints/openapi/chat/completions"
+
+    return url, headers, request_data
 
 
 def _extract_usage(provider: str, result: dict[str, Any]) -> TokenUsage:
@@ -208,7 +371,7 @@ def _print_verbose_usage(usage: TokenUsage) -> None:
 
 def send_request(
     provider: str,
-    api_key: str,
+    auth: str,
     model: str,
     request_data: dict[str, Any],
     *,
@@ -220,8 +383,19 @@ def send_request(
     The caller assembles the provider-specific request body via its own
     build_*_request helpers (the prompts differ per script). This function
     handles transport, error reporting, and token-usage extraction.
+
+    Args:
+        provider: Provider name (anthropic, openai, xai, google)
+        auth: Authentication string - either "direct:<api_key>" or "vertex"
+        model: Model identifier
+        request_data: Provider-specific request payload
+        timeout: Request timeout in seconds
+        verbose: Show detailed token usage
+
+    Returns:
+        Tuple of (response_text, token_usage)
     """
-    url, headers = _build_request_meta(provider, api_key, model)
+    url, headers, request_data = _build_request_meta(provider, auth, model, request_data)
     body = json.dumps(request_data).encode("utf-8")
     req = Request(url, data=body, headers=headers)
 
@@ -232,13 +406,20 @@ def send_request(
         error_body = e.read().decode("utf-8")
         try:
             error_data = json.loads(error_body)
-            error(f"API error: {error_data.get('error', error_body)}")
+            if isinstance(error_data, list) and error_data:
+                error_data = error_data[0]
+            if isinstance(error_data, dict):
+                error(f"API error: {error_data.get('error', error_body)}")
+            else:
+                error(f"API error: {error_body}")
         except json.JSONDecodeError:
             error(f"API error ({e.code}): {error_body}")
     except URLError as e:
         if isinstance(e.reason, TimeoutError):
             error(f"Request timed out after {timeout} seconds")
         error(f"Connection error: {e.reason}")
+    except TimeoutError:
+        error(f"Request timed out after {timeout} seconds")
 
     usage = _extract_usage(provider, result)
     if verbose:

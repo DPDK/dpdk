@@ -14,6 +14,7 @@ OUTPUT_DIR=""
 PROVIDERS=""
 FORMAT="text"
 VERBOSE=""
+AUTH=""
 EXTRA_ARGS=()
 
 usage() {
@@ -37,12 +38,14 @@ Options:
     --large-file MODE      Handle large files: error, truncate, chunk,
                            commits-only, summary
     --max-tokens N         Max input tokens
+    --auth METHOD          Authentication: auto, direct, vertex (default: auto)
     -v, --verbose          Show verbose output from each provider
     -h, --help             Show this help message
 
-Environment Variables:
-    Set API keys for providers you want to use:
-    ANTHROPIC_API_KEY, OPENAI_API_KEY, XAI_API_KEY, GOOGLE_API_KEY
+Authentication:
+    Direct: Set API keys for providers you want to use:
+        ANTHROPIC_API_KEY, OPENAI_API_KEY, XAI_API_KEY, GOOGLE_API_KEY
+    Vertex AI: Use --auth vertex with Google Cloud credentials
 
 Examples:
     $(basename "$0") my-patch.patch
@@ -149,6 +152,11 @@ while [[ $# -gt 0 ]]; do
             EXTRA_ARGS+=("--max-tokens" "$2")
             shift 2
             ;;
+        --auth)
+            [[ -z "${2:-}" || "$2" == -* ]] && error "$1 requires an argument"
+            AUTH="$2"
+            shift 2
+            ;;
         -v|--verbose)
             VERBOSE="-v"
             shift
@@ -193,7 +201,11 @@ esac
 
 # Get providers to use
 if [[ -z "$PROVIDERS" ]]; then
-    PROVIDERS=$(get_available_providers)
+    if [[ "$AUTH" == "vertex" ]]; then
+        PROVIDERS="anthropic,openai,xai,google"
+    else
+        PROVIDERS=$(get_available_providers)
+    fi
 fi
 
 if [[ -z "$PROVIDERS" ]]; then
@@ -241,6 +253,7 @@ for provider in "${PROVIDER_LIST[@]}"; do
             -a "$AGENTS_FILE" \
             -f "$FORMAT" \
             ${VERBOSE:+"$VERBOSE"} \
+            ${AUTH:+--auth "$AUTH"} \
             "${EXTRA_ARGS[@]}" \
             "$PATCH_FILE" | tee "$OUTPUT_FILE"
         rc=${PIPESTATUS[0]}
@@ -250,6 +263,7 @@ for provider in "${PROVIDER_LIST[@]}"; do
             -a "$AGENTS_FILE" \
             -f "$FORMAT" \
             ${VERBOSE:+"$VERBOSE"} \
+            ${AUTH:+--auth "$AUTH"} \
             "${EXTRA_ARGS[@]}" \
             "$PATCH_FILE"
         rc=$?

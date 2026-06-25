@@ -26,6 +26,7 @@ from _common import (
     TokenUsage,
     add_token_args,
     error,
+    get_auth_string,
     get_git_config,
     list_providers,
     print_token_summary,
@@ -488,7 +489,6 @@ def build_system_prompt(review_date: str, release: str | None) -> str:
 
 
 def build_anthropic_request(
-    model: str,
     max_tokens: int,
     system_prompt: str,
     agents_content: str,
@@ -502,7 +502,6 @@ def build_anthropic_request(
         patch_name=patch_name, format_instruction=format_instruction
     )
     return {
-        "model": model,
         "max_tokens": max_tokens,
         "system": [
             {"type": "text", "text": system_prompt},
@@ -522,7 +521,6 @@ def build_anthropic_request(
 
 
 def build_openai_request(
-    model: str,
     max_tokens: int,
     system_prompt: str,
     agents_content: str,
@@ -536,7 +534,6 @@ def build_openai_request(
         patch_name=patch_name, format_instruction=format_instruction
     )
     return {
-        "model": model,
         "max_tokens": max_tokens,
         "messages": [
             {"role": "system", "content": system_prompt},
@@ -581,7 +578,7 @@ def build_google_request(
 
 def call_api(
     provider: str,
-    api_key: str,
+    auth: str,
     model: str,
     max_tokens: int,
     system_prompt: str,
@@ -595,7 +592,6 @@ def call_api(
     """Build the per-provider request body and dispatch via _common."""
     if provider == "anthropic":
         request_data = build_anthropic_request(
-            model,
             max_tokens,
             system_prompt,
             agents_content,
@@ -614,7 +610,6 @@ def call_api(
         )
     else:  # openai, xai
         request_data = build_openai_request(
-            model,
             max_tokens,
             system_prompt,
             agents_content,
@@ -624,7 +619,7 @@ def call_api(
         )
     return send_request(
         provider,
-        api_key,
+        auth,
         model,
         request_data,
         timeout=timeout,
@@ -842,6 +837,12 @@ Exit Codes:
     )
     add_token_args(parser)
     parser.add_argument(
+        "--auth",
+        choices=["auto", "direct", "vertex"],
+        default="auto",
+        help="Authentication method: auto (default), direct (API key), vertex (Google Cloud)",
+    )
+    parser.add_argument(
         "-f",
         "--format",
         choices=OUTPUT_FORMATS,
@@ -958,10 +959,8 @@ Exit Codes:
     config = PROVIDERS[args.provider]
     model = args.model or config["default_model"]
 
-    # Get API key
-    api_key = os.environ.get(config["env_var"])
-    if not api_key:
-        error(f"{config['env_var']} environment variable not set")
+    # Get authentication string
+    auth = get_auth_string(args.auth, args.provider)
 
     # Validate files
     agents_path = Path(args.agents)
@@ -1069,7 +1068,7 @@ Exit Codes:
 
                 review_text, call_usage = call_api(
                     args.provider,
-                    api_key,
+                    auth,
                     model,
                     args.tokens,
                     system_prompt,
@@ -1139,7 +1138,7 @@ Exit Codes:
 
                 review_text, call_usage = call_api(
                     args.provider,
-                    api_key,
+                    auth,
                     model,
                     args.tokens,
                     system_prompt,
@@ -1164,6 +1163,7 @@ Exit Codes:
     if args.verbose:
         print("=== Request ===", file=sys.stderr)
         print(f"Provider: {args.provider}", file=sys.stderr)
+        print(f"Auth method: {'vertex' if auth == 'vertex' else 'direct'}", file=sys.stderr)
         print(f"Model: {model}", file=sys.stderr)
         print(f"Review date: {review_date}", file=sys.stderr)
         if args.release:
@@ -1192,7 +1192,7 @@ Exit Codes:
     if estimated_tokens > 0:  # Not already processed
         review_text, call_usage = call_api(
             args.provider,
-            api_key,
+            auth,
             model,
             args.tokens,
             system_prompt,
