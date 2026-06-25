@@ -171,6 +171,7 @@ foreach subpath:subdirs
         pkgconfig_extra_libs = []
         testpmd_sources = []
         require_iova_in_mbuf = true
+        use_function_versioning = false
         # for handling base code files which may need extra cflags
         base_sources = []
         base_cflags = []
@@ -264,6 +265,15 @@ foreach subpath:subdirs
 
         enabled_drivers += name
         lib_name = '_'.join(['rte', class, name])
+        dpdk_conf.set(lib_name.to_upper(), 1)
+
+        if developer_mode and is_windows and use_function_versioning
+            message('@0@: Function versioning is not supported by Windows.'.format(name))
+        endif
+        if use_function_versioning
+            cflags += '-DRTE_USE_FUNCTION_VERSIONING'
+        endif
+
         cflags += '-DRTE_COMPONENT_CLASS=pmd_' + class
         cflags += '-DRTE_COMPONENT_NAME=' + name
         cflags += '-DRTE_LOG_DEFAULT_LOGTYPE=' + '.'.join([log_prefix, name])
@@ -271,7 +281,6 @@ foreach subpath:subdirs
             cflags += '-DRTE_ANNOTATE_LOCKS'
             cflags += '-Wthread-safety'
         endif
-        dpdk_conf.set(lib_name.to_upper(), 1)
 
         dpdk_extra_ldflags += pkgconfig_extra_libs
 
@@ -363,7 +372,18 @@ foreach subpath:subdirs
                     depends: [version_map])
         endif
 
-        shared_lib = shared_library(lib_name, sources_pmd_info,
+        if not use_function_versioning or is_windows
+            # Use pre-built objects and pmdinfo sources to build shared library.
+            shared_sources = [sources_pmd_info]
+        else
+            # For compat we need to rebuild with RTE_BUILD_SHARED_LIB defined.
+            # Use original sources and pmdinfo sources.
+            cflags += '-DRTE_BUILD_SHARED_LIB'
+            shared_sources = sources + [sources_pmd_info]
+            objs = []
+        endif
+
+        shared_lib = shared_library(lib_name, shared_sources,
                 objects: objs,
                 include_directories: includes,
                 dependencies: shared_deps,
