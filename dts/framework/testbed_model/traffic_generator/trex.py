@@ -95,9 +95,9 @@ class TrexTrafficGenerator(PerformanceTrafficGenerator):
             tg_node: TG node the TRex instance is operating on.
             config: Traffic generator config provided for TRex instance.
         """
-        assert (
-            tg_node.config.os == OS.linux
-        ), "Linux is the only supported OS for trex traffic generation"
+        assert tg_node.config.os == OS.linux, (
+            "Linux is the only supported OS for trex traffic generation"
+        )
 
         super().__init__(tg_node=tg_node, config=config)
         self._tg_node_config = tg_node.config

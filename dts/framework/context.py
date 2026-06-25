@@ -60,9 +60,9 @@ class LocalContext:
                 else _field.default
             )
 
-            assert (
-                default is not MISSING
-            ), "{LocalContext.__name__} must have defaults on all fields!"
+            assert default is not MISSING, (
+                "{LocalContext.__name__} must have defaults on all fields!"
+            )
 
             setattr(self, _field.name, default)
 
@@ -108,7 +108,7 @@ def filter_cores(
 ) -> Callable[[type["TestProtocol"]], Callable]:
     """Decorates functions that require a temporary update to the lcore specifier."""
 
-    def decorator(func: type["TestProtocol"]) -> Callable:
+    def decorator(func: type["TestProtocol"]) -> Callable[P, type["TestProtocol"]]:
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> Any:
             local_ctx = get_ctx().local

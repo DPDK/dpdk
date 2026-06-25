@@ -105,7 +105,7 @@ class LogicalCoreList:
 
         # the input lcores may not be sorted
         self._lcore_list.sort()
-        self._lcore_str = f'{",".join(self._get_consecutive_lcores_range(self._lcore_list))}'
+        self._lcore_str = f"{','.join(self._get_consecutive_lcores_range(self._lcore_list))}"
 
     @property
     def lcore_list(self) -> list[int]:

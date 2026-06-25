@@ -87,9 +87,9 @@ def send_packets_and_capture(
         CapturingTrafficGenerator,
     )
 
-    assert isinstance(
-        get_ctx().func_tg, CapturingTrafficGenerator
-    ), "Cannot capture with a non-capturing traffic generator"
+    assert isinstance(get_ctx().func_tg, CapturingTrafficGenerator), (
+        "Cannot capture with a non-capturing traffic generator"
+    )
     tg: CapturingTrafficGenerator = cast(CapturingTrafficGenerator, get_ctx().func_tg)
     # TODO: implement @requires for types of traffic generator
     packets = adjust_addresses(packets)
@@ -308,8 +308,7 @@ def _verify_l2_frame(received_packet: Ether, contains_l3: bool) -> bool:
     if contains_l3:
         expected_src_mac = get_ctx().topology.sut_port_egress.mac_address
     log_debug(
-        f"Comparing received src mac '{received_packet.src}' "
-        f"with expected '{expected_src_mac}'."
+        f"Comparing received src mac '{received_packet.src}' with expected '{expected_src_mac}'."
     )
     if received_packet.src != expected_src_mac:
         return False
@@ -344,9 +343,9 @@ def assess_performance_by_packet(
         PerformanceTrafficGenerator,
     )
 
-    assert isinstance(
-        get_ctx().perf_tg, PerformanceTrafficGenerator
-    ), "Cannot send performance traffic with non-performance traffic generator"
+    assert isinstance(get_ctx().perf_tg, PerformanceTrafficGenerator), (
+        "Cannot send performance traffic with non-performance traffic generator"
+    )
     tg: PerformanceTrafficGenerator = cast(PerformanceTrafficGenerator, get_ctx().perf_tg)
     # TODO: implement @requires for types of traffic generator
     return tg.calculate_traffic_and_stats(packet, duration, send_mpps)

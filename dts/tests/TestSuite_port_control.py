@@ -44,8 +44,7 @@ class TestPortControl(TestSuite):
         recv_pakts = [
             p
             for p in recv_pakts
-            if
-            (
+            if (
                 # Remove padding from the bytes.
                 hasattr(p, "load") and p.load.decode("utf-8").replace("\x00", "") == payload
             )

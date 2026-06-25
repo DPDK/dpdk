@@ -74,7 +74,7 @@ class ShellPool:
 
     def start_new_pool(self) -> None:
         """Start a new shell pool."""
-        self._logger.debug(f"Starting new shell pool and advancing to level {self.pool_level+1}.")
+        self._logger.debug(f"Starting new shell pool and advancing to level {self.pool_level + 1}.")
         self._pools.append(set())
 
     def terminate_current_pool(self) -> None:

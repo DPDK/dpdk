@@ -279,7 +279,7 @@ class RSSOffloadTypesFlag(Flag):
         Returns:
             An instance of this flag.
         """
-        flag = cls(0)
+        flag: RSSOffloadTypesFlag = cls(0)
         for name in names.split():
             flag |= cls.from_str(name)
         return flag
@@ -966,7 +966,7 @@ class PacketOffloadFlag(Flag):
         Returns:
             An instance of this flag.
         """
-        flag = cls(0)
+        flag: PacketOffloadFlag = cls(0)
         for name in names.split():
             flag |= cls.from_str(name)
         return flag
@@ -1174,7 +1174,7 @@ class RtePTypes(Flag):
         Returns:
             An instance of this flag.
         """
-        flag = cls(0)
+        flag: RtePTypes = cls(0)
         for name in names.split():
             flag |= cls.from_str(name)
         return flag

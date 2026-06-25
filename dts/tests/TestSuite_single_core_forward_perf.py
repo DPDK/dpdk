@@ -144,7 +144,7 @@ class TestSingleCoreForwardPerf(TestSuite):
         for params in self.test_parameters:
             verify(
                 params["pass"] is True,
-                f"""Packets forwarded is less than {(1 -self.delta_tolerance)*100}%
+                f"""Packets forwarded is less than {(1 - self.delta_tolerance) * 100}%
                 of the expected baseline.
                 Measured MPPS = {params["measured_mpps"]}
                 Expected MPPS = {params["expected_mpps"]}""",

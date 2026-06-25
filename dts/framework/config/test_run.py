@@ -233,9 +233,9 @@ class TestSuiteConfig(FrozenModel):
         from framework.test_suite import find_by_name
 
         test_suite_spec = find_by_name(self.test_suite_name)
-        assert (
-            test_suite_spec is not None
-        ), f"{self.test_suite_name} is not a valid test suite module name."
+        assert test_suite_spec is not None, (
+            f"{self.test_suite_name} is not a valid test suite module name."
+        )
         return test_suite_spec
 
     @cached_property
@@ -384,9 +384,9 @@ class PortLinkConfig(FrozenModel):
     @model_validator(mode="after")
     def verify_distinct_nodes(self) -> Self:
         """Verify that each side of the link has distinct nodes."""
-        assert (
-            self.left.node_type != self.right.node_type
-        ), "Linking ports of the same node is unsupported."
+        assert self.left.node_type != self.right.node_type, (
+            "Linking ports of the same node is unsupported."
+        )
         return self
 
 

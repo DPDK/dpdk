@@ -101,12 +101,12 @@ class TestCryptodevThroughput(TestSuite):
         print(f"{'Throughput Results'.center(border_len)}\n{'=' * border_len}")
         for k, v in test_vals[0].items():
             print(f"|{k.title():<{element_len}}", end="")
-        print(f"|\n{'='*border_len}")
+        print(f"|\n{'=' * border_len}")
 
         for test_val in test_vals:
             for k, v in test_val.items():
                 print(f"|{v:<{element_len}}", end="")
-            print(f"|\n{'='*border_len}")
+            print(f"|\n{'=' * border_len}")
 
     def _verify_throughput(
         self,

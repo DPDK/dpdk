@@ -314,9 +314,9 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
             kwargs: Additional keyword arguments. Supported arguments correspond to the parameters
                 of :meth:`PythonShell.__init__` in this case.
         """
-        assert (
-            tg_node.config.os == OS.linux
-        ), "Linux is the only supported OS for scapy traffic generation"
+        assert tg_node.config.os == OS.linux, (
+            "Linux is the only supported OS for scapy traffic generation"
+        )
 
         super().__init__(tg_node=tg_node, config=config, **kwargs)
 

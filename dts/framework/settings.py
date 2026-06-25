@@ -249,9 +249,9 @@ class _DTSArgumentParser(argparse.ArgumentParser):
             if _is_from_env(action):
                 action_name = _get_action_name(action)
                 env_var_name = _get_env_var_name(action)
-                assert (
-                    env_var_name is not None
-                ), "Action was set from environment, but no environment variable name was found."
+                assert env_var_name is not None, (
+                    "Action was set from environment, but no environment variable name was found."
+                )
                 env_var_value = os.environ.get(env_var_name)
 
                 message = message.replace(
@@ -260,7 +260,7 @@ class _DTSArgumentParser(argparse.ArgumentParser):
                 )
 
         print(f"{self.prog}: error: {message}\n", file=sys.stderr)
-        self.exit(2, "For help and usage, " "run the command with the --help flag.\n")
+        self.exit(2, "For help and usage, run the command with the --help flag.\n")
 
 
 class _EnvVarHelpFormatter(ArgumentDefaultsHelpFormatter):

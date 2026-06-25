@@ -76,7 +76,9 @@ def _requires_stopped_ports(func: TestPmdMethod) -> TestPmdMethod:
     """
 
     @functools.wraps(func)
-    def _wrapper(self: "TestPmd", *args: P.args, **kwargs: P.kwargs) -> Any:
+    def _wrapper(
+        self: "TestPmd", *args: P.args, **kwargs: P.kwargs
+    ) -> Callable[Concatenate["TestPmd", P], Any]:
         if self.ports_started:
             self._logger.debug("Ports need to be stopped to continue.")
             self.stop_all_ports()
@@ -100,7 +102,9 @@ def _requires_started_ports(func: TestPmdMethod) -> TestPmdMethod:
     """
 
     @functools.wraps(func)
-    def _wrapper(self: "TestPmd", *args: P.args, **kwargs: P.kwargs) -> Any:
+    def _wrapper(
+        self: "TestPmd", *args: P.args, **kwargs: P.kwargs
+    ) -> Callable[Concatenate["TestPmd", P], Any]:
         if not self.ports_started:
             self._logger.debug("Ports need to be started to continue.")
             self.start_all_ports()
@@ -128,7 +132,9 @@ def _add_remove_mtu(mtu: int = 1500) -> Callable[[TestPmdMethod], TestPmdMethod]
 
     def decorator(func: TestPmdMethod) -> TestPmdMethod:
         @functools.wraps(func)
-        def wrapper(self: "TestPmd", *args: P.args, **kwargs: P.kwargs) -> Any:
+        def wrapper(
+            self: "TestPmd", *args: P.args, **kwargs: P.kwargs
+        ) -> Callable[Concatenate["TestPmd", P], Any]:
             original_mtu = self.ports[0].mtu
             self.set_port_mtu_all(mtu=mtu, verify=False)
             retval = func(self, *args, **kwargs)

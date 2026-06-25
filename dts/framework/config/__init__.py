@@ -85,9 +85,9 @@ class Configuration(FrozenModel):
             sut_node_port_peer = existing_port_links.get(
                 (self.test_run.system_under_test_node, link.sut_port), None
             )
-            assert (
-                sut_node_port_peer is not None
-            ), f"Invalid SUT node port specified for link port_topology.{link_idx}."
+            assert sut_node_port_peer is not None, (
+                f"Invalid SUT node port specified for link port_topology.{link_idx}."
+            )
 
             assert sut_node_port_peer is False or sut_node_port_peer == link.right, (
                 f"The SUT node port for link port_topology.{link_idx} is "
@@ -97,9 +97,9 @@ class Configuration(FrozenModel):
             tg_node_port_peer = existing_port_links.get(
                 (self.test_run.traffic_generator_node, link.tg_port), None
             )
-            assert (
-                tg_node_port_peer is not None
-            ), f"Invalid TG node port specified for link port_topology.{link_idx}."
+            assert tg_node_port_peer is not None, (
+                f"Invalid TG node port specified for link port_topology.{link_idx}."
+            )
 
             assert tg_node_port_peer is False or sut_node_port_peer == link.left, (
                 f"The TG node port for link port_topology.{link_idx} is "
@@ -117,16 +117,16 @@ class Configuration(FrozenModel):
         sut_node_name = self.test_run.system_under_test_node
         sut_node = next((n for n in self.nodes if n.name == sut_node_name), None)
 
-        assert (
-            sut_node is not None
-        ), f"The system_under_test_node {sut_node_name} is not a valid node name."
+        assert sut_node is not None, (
+            f"The system_under_test_node {sut_node_name} is not a valid node name."
+        )
 
         tg_node_name = self.test_run.traffic_generator_node
         tg_node = next((n for n in self.nodes if n.name == tg_node_name), None)
 
-        assert (
-            tg_node is not None
-        ), f"The traffic_generator_name {tg_node_name} is not a valid node name."
+        assert tg_node is not None, (
+            f"The traffic_generator_name {tg_node_name} is not a valid node name."
+        )
 
         return self
 

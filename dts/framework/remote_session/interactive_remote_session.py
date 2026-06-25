@@ -109,7 +109,7 @@ class InteractiveRemoteSession:
                 self._logger.debug(traceback.format_exc())
                 self._logger.warning(e)
                 self._logger.info(
-                    f"Retrying interactive session connection: retry number {retry_attempt +1}"
+                    f"Retrying interactive session connection: retry number {retry_attempt + 1}"
                 )
             else:
                 break

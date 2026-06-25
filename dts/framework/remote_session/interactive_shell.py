@@ -50,7 +50,9 @@ InteractiveShellDecorator: TypeAlias = Callable[[InteractiveShellMethod], Intera
 def only_active(func: InteractiveShellMethod) -> InteractiveShellMethod:
     """This decorator will skip running the method if the SSH channel is not active."""
 
-    def _wrapper(self: "InteractiveShell", *args: P.args, **kwargs: P.kwargs) -> R | None:
+    def _wrapper(
+        self: "InteractiveShell", *args: P.args, **kwargs: P.kwargs
+    ) -> Callable[P, "InteractiveShell"] | None:
         if self._ssh_channel.active:
             return func(self, *args, **kwargs)
         return None
@@ -167,7 +169,7 @@ class InteractiveShell(ABC):
                 break
             except InteractiveSSHTimeoutError:
                 self._logger.info(
-                    f"Interactive shell failed to start (attempt {attempt+1} out of "
+                    f"Interactive shell failed to start (attempt {attempt + 1} out of "
                     f"{self._init_attempts})"
                 )
         else:
