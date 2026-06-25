@@ -3345,11 +3345,18 @@ ixgbe_flow_dev_dump(struct rte_eth_dev *dev,
 		if (flow != NULL && p_flow != flow)
 			continue;
 
-		found = true;
-		if (p_flow->rule != NULL) {
-			rule_data = ixgbe_flow_rule_data(p_flow);
-			rule_size = ixgbe_flow_rule_size(p_flow);
+		/* this should not happen */
+		if (p_flow->rule == NULL) {
+			PMD_DRV_LOG(DEBUG, "Invalid flow");
+			continue;
 		}
+
+		rule_size = ixgbe_flow_rule_size(p_flow);
+		if (rule_size == 0)
+			continue;
+
+		found = true;
+		rule_data = ixgbe_flow_rule_data(p_flow);
 		engine_name = ixgbe_flow_rule_engine_name(p_flow);
 		ixgbe_flow_dump_blob(file, engine_name,
 			rule_data, rule_size);
