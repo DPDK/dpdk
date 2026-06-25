@@ -97,7 +97,6 @@ struct mbuf_table {
 };
 
 #define MAX_RX_QUEUE_PER_LCORE 16
-#define MAX_TX_QUEUE_PER_PORT 16
 struct __rte_cache_aligned lcore_queue_conf {
 	uint64_t tx_tsc;
 	uint16_t n_rx_queue;
@@ -736,8 +735,6 @@ main(int argc, char **argv)
 		fflush(stdout);
 
 		n_tx_queue = nb_lcores;
-		if (n_tx_queue > MAX_TX_QUEUE_PER_PORT)
-			n_tx_queue = MAX_TX_QUEUE_PER_PORT;
 
 		ret = rte_eth_dev_configure(portid, 1, (uint16_t)n_tx_queue,
 					    &local_port_conf);
