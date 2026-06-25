@@ -236,9 +236,8 @@ notify_existing_devices(rte_pmd_mlx5_driver_event_callback_t cb, void *opaque)
 		notify_existing_queues(port_id, cb, opaque);
 }
 
-RTE_EXPORT_SYMBOL(rte_pmd_mlx5_driver_event_cb_register)
-int
-rte_pmd_mlx5_driver_event_cb_register(rte_pmd_mlx5_driver_event_callback_t cb, void *opaque)
+RTE_DEFAULT_SYMBOL(26, int, rte_pmd_mlx5_driver_event_cb_register,
+		   (rte_pmd_mlx5_driver_event_callback_t cb, void *opaque))
 {
 	struct registered_cb *r;
 
@@ -264,9 +263,14 @@ rte_pmd_mlx5_driver_event_cb_register(rte_pmd_mlx5_driver_event_callback_t cb, v
 	return 0;
 }
 
-RTE_EXPORT_SYMBOL(rte_pmd_mlx5_driver_event_cb_unregister)
-int
-rte_pmd_mlx5_driver_event_cb_unregister(rte_pmd_mlx5_driver_event_callback_t cb)
+RTE_VERSION_EXPERIMENTAL_SYMBOL(int, rte_pmd_mlx5_driver_event_cb_register,
+				(rte_pmd_mlx5_driver_event_callback_t cb, void *opaque))
+{
+	return rte_pmd_mlx5_driver_event_cb_register(cb, opaque);
+}
+
+RTE_DEFAULT_SYMBOL(26, int, rte_pmd_mlx5_driver_event_cb_unregister,
+		   (rte_pmd_mlx5_driver_event_callback_t cb))
 {
 	struct registered_cb *r;
 	bool found = false;
@@ -287,6 +291,12 @@ rte_pmd_mlx5_driver_event_cb_unregister(rte_pmd_mlx5_driver_event_callback_t cb)
 	free(r);
 
 	return 0;
+}
+
+RTE_VERSION_EXPERIMENTAL_SYMBOL(int, rte_pmd_mlx5_driver_event_cb_unregister,
+				(rte_pmd_mlx5_driver_event_callback_t cb))
+{
+	return rte_pmd_mlx5_driver_event_cb_unregister(cb);
 }
 
 RTE_FINI(rte_pmd_mlx5_driver_event_cb_cleanup) {
