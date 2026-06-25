@@ -1276,11 +1276,19 @@ i40e_flow_dev_dump(struct rte_eth_dev *dev,
 		if (flow != NULL && p_flow != flow)
 			continue;
 
-		found = true;
-		if (p_flow->rule != NULL) {
-			rule_size = i40e_flow_rule_size(p_flow->filter_type);
-			rule_data = p_flow->rule;
+		/* should not happen */
+		if (p_flow->rule == NULL) {
+			PMD_DRV_LOG(DEBUG, "Invalid flow rule");
+			continue;
 		}
+
+		rule_size = i40e_flow_rule_size(p_flow->filter_type);
+		/* should not happen either */
+		if (rule_size == 0)
+			continue;
+
+		found = true;
+		rule_data = p_flow->rule;
 		i40e_flow_dump_blob(file,
 			i40e_flow_rule_name(p_flow->filter_type),
 			rule_data, rule_size);
