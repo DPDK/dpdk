@@ -1773,6 +1773,7 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 		},
 		.max_actions = 1,
 		.check = ice_switch_dcf_action_check,
+		.driver_ctx = container_of(ad, struct ice_dcf_adapter, parent),
 	};
 	struct ci_flow_actions_check_param param = {
 		.allowed_types = (enum rte_flow_action_type[]){
