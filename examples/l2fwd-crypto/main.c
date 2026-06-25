@@ -100,7 +100,6 @@ struct op_buffer {
 };
 
 #define MAX_RX_QUEUE_PER_LCORE 16
-#define MAX_TX_QUEUE_PER_PORT 16
 
 enum l2fwd_crypto_xform_chain {
 	L2FWD_CRYPTO_CIPHER_HASH,

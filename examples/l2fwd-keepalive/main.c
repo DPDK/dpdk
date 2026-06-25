@@ -65,7 +65,7 @@ static uint32_t l2fwd_dst_ports[RTE_MAX_ETHPORTS];
 static unsigned int l2fwd_rx_queue_per_lcore = 1;
 
 #define MAX_RX_QUEUE_PER_LCORE 16
-#define MAX_TX_QUEUE_PER_PORT 16
+
 struct __rte_cache_aligned lcore_queue_conf {
 	unsigned n_rx_port;
 	unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];

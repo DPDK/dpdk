@@ -83,7 +83,7 @@ static uint16_t nb_port_pair_params;
 static unsigned int l2fwd_rx_queue_per_lcore = 1;
 
 #define MAX_RX_QUEUE_PER_LCORE 16
-#define MAX_TX_QUEUE_PER_PORT 16
+
 /* List of queues to be polled for a given lcore. 8< */
 struct __rte_cache_aligned lcore_queue_conf {
 	unsigned int n_rx_port;

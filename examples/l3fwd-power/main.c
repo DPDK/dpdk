@@ -221,7 +221,6 @@ struct __rte_cache_aligned lcore_rx_queue {
 };
 
 #define MAX_RX_QUEUE_PER_LCORE 16
-#define MAX_TX_QUEUE_PER_PORT RTE_MAX_ETHPORTS
 #define MAX_RX_QUEUE_PER_PORT 128
 
 #define MAX_RX_QUEUE_INTERRUPT_PER_PORT 16

@@ -63,7 +63,7 @@ static unsigned lsi_dst_ports[RTE_MAX_ETHPORTS] = {0};
 #define MAX_PKT_BURST 32
 
 #define MAX_RX_QUEUE_PER_LCORE 16
-#define MAX_TX_QUEUE_PER_PORT 16
+
 /* List of queues must be polled for a give lcore. 8< */
 struct __rte_cache_aligned lcore_queue_conf {
 	unsigned n_rx_port;
