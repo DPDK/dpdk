@@ -5997,6 +5997,15 @@ ice_update_vsi_stats(struct ice_vsi *vsi)
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	int idx = rte_le_to_cpu_16(vsi->vsi_id);
 
+	/*
+	 * Unicast/multicast/broadcast counters include discarded packets. Received packets is
+	 * calculated by deducting discards from unicast/multicast/broadcast. To prevent a
+	 * potential underflow, read discards first to guarantee it is smaller than
+	 * unicast/multicast/broadcast.
+	 */
+	ice_stat_update_32(hw, GLV_RDPC(idx), vsi->offset_loaded,
+			   &oes->rx_discards, &nes->rx_discards);
+
 	ice_stat_update_40(hw, GLV_GORCH(idx), GLV_GORCL(idx),
 			   vsi->offset_loaded, &oes->rx_bytes,
 			   &nes->rx_bytes);
@@ -6020,8 +6029,6 @@ ice_update_vsi_stats(struct ice_vsi *vsi)
 	nes->rx_bytes -= (nes->rx_unicast + nes->rx_multicast +
 			  nes->rx_broadcast) * RTE_ETHER_CRC_LEN;
 
-	ice_stat_update_32(hw, GLV_RDPC(idx), vsi->offset_loaded,
-			   &oes->rx_discards, &nes->rx_discards);
 	/* GLV_REPC not supported */
 	/* GLV_RMPC not supported */
 	ice_stat_update_32(hw, GLSWID_RUPP(idx), vsi->offset_loaded,
