@@ -1523,8 +1523,16 @@ ice_dcf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 	ret = ice_dcf_query_stats(hw, &pstats);
 	if (ret == 0) {
 		ice_dcf_update_stats(&hw->eth_stats_offset, &pstats);
-		stats->ipackets = pstats.rx_unicast + pstats.rx_multicast +
-				pstats.rx_broadcast - pstats.rx_discards;
+		stats->ipackets = pstats.rx_unicast + pstats.rx_multicast + pstats.rx_broadcast;
+		/*
+		 * Unicast/multicast/broadcast counters include discarded packets, so subtract
+		 * rx_discards to report only the packets delivered to the application. The
+		 * counters are sampled from separate sources and can be momentarily inconsistent
+		 * under load. If rx_discards exceeds their sum then essentially nothing was
+		 * delivered, so saturate at zero rather than underflow.
+		 */
+		stats->ipackets = stats->ipackets >= pstats.rx_discards ?
+					stats->ipackets - pstats.rx_discards : 0;
 		stats->opackets = pstats.tx_broadcast + pstats.tx_multicast +
 						pstats.tx_unicast;
 		stats->imissed = pstats.rx_discards;
