@@ -2660,15 +2660,18 @@ ice_flow_dev_dump(struct rte_eth_dev *dev,
 		if (flow != NULL && p_flow != flow)
 			continue;
 
-		found = true;
-		if (p_flow->engine != NULL) {
-			rule_size = p_flow->engine->rule_size;
-			if (p_flow->rule != NULL)
-				rule_data = p_flow->rule;
+		/* this should not happen */
+		if (p_flow->engine == NULL || p_flow->rule == NULL) {
+			PMD_DRV_LOG(DEBUG, "Invalid flow");
+			continue;
 		}
 
-		if (p_flow->engine != NULL)
-			ice_flow_dump_blob(file,
+		found = true;
+
+		rule_size = p_flow->engine->rule_size;
+		rule_data = p_flow->rule;
+
+		ice_flow_dump_blob(file,
 				p_flow->engine->name != NULL ?
 				p_flow->engine->name : "unknown",
 				rule_data, rule_size);
