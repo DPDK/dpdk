@@ -513,6 +513,42 @@ than one that catches every style issue but misses the bug.
   }
   ```
 
+### Cryptographic and Security Code
+
+Applies only when the patch touches crypto PMDs (drivers/crypto/),
+the security or ipsec libraries, or code handling key material, IVs,
+or authentication digests. Stays silent on all other patches.
+
+- **Non-constant-time digest/tag comparison** (Error):
+  When verifying an authentication tag, digest, MAC, or ICV --
+  comparing a computed value against an attacker-supplied one to decide accept/reject --
+  plain memcmp leaks timing information.
+  Use rte_memeq_timingsafe() instead.
+  Return semantics differ from memcmp: memcmp returns 0 on equal,
+  rte_memeq_timingsafe() returns true on equal.
+  So `if (memcmp(tag, digest, len))` becomes
+  `if (!rte_memeq_timingsafe(tag, digest, len))`.
+  Do NOT flag memcmp on non-secret data: algorithm IDs, key lengths,
+  capability/feature structs, lookup keys.
+  Only flag comparisons that gate acceptance of attacker-influenced data.
+
+- **Sensitive material not zeroed before free** (Error):
+  Keys, expanded key schedules, HMAC ipad/opad, and session secrets
+  must be wiped, not merely freed -- a plain free leaves secrets in heap.
+  - rte_malloc/rte_zmalloc'd secret: use rte_free_sensitive() instead of rte_free()
+  - local/stack secret going out of scope: rte_memzero_explicit()
+    before return; plain memset() may be optimized away.
+  Do NOT flag buffers that never held secrets (descriptors, dev_info),
+  or memset the compiler cannot elide because the pointer escapes to free.
+
+- **Insecure RNG for keys/IVs** (Error):
+  rte_rand()/rand()/random() are not cryptographically secure;
+  do not use them to generate keys, IVs, or nonces in crypto/security code.
+
+Do NOT flag:
+- IV/nonce reuse -- a runtime property, not determinable from a patch.
+- memcmp on lengths, algorithm selectors, or non-secret config.
+
 ### Architecture & Patterns
 - Code that violates existing patterns in the code base
 - Missing error handling
@@ -1642,6 +1678,9 @@ Checked by `devtools/checkpatches.sh` -- not duplicated here.
 - [ ] `bool` used for pure true/false variables, parameters, and predicate return types
 - [ ] Shared variables use `rte_atomic_*_explicit()`, not `volatile` or bare access
 - [ ] Memory ordering is the weakest correct choice (`relaxed` for counters, `acquire`/`release` for publish/consume)
+- [ ] Auth tag/digest comparisons use rte_memeq_timingsafe(), not memcmp
+- [ ] Key material zeroed before free (rte_free_sensitive / rte_memzero_explicit)
+- [ ] Keys/IVs/nonces not generated with rte_rand()/rand()/random()
 
 ### API Tags
 
@@ -1753,6 +1792,9 @@ devtools/get-maintainer.sh <patch-file>
 - MTU accepted without scatter Rx when frame size exceeds single mbuf capacity (silent truncation/drop)
 - `mtu_set` rejects valid MTU when scatter Rx is already enabled
 - Rx function selection ignores `scattered_rx` flag or MTU-vs-mbuf-size comparison
+- Non-constant-time comparison of auth tag/digest/MAC/ICV (timing side channel)
+- Key material or session secrets freed without zeroing (rte_free_sensitive/rte_memzero_explicit)
+- Non-cryptographic RNG (rte_rand/rand/random) used to generate keys, IVs, or nonces
 
 *Process and format errors:*
 - Forbidden tokens in code
