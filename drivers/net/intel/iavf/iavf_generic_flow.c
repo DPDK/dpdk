@@ -2414,18 +2414,21 @@ iavf_flow_dev_dump(struct rte_eth_dev *dev,
 		if (flow != NULL && f != flow)
 			continue;
 
-		found = true;
-		if (f->engine != NULL) {
-			rule_size = f->engine->rule_size;
-			if (f->rule != NULL)
-				rule_data = f->rule;
+		/* this should not happen */
+		if (f->engine == NULL || f->rule == NULL) {
+			PMD_DRV_LOG(DEBUG, "Invalid flow");
+			continue;
 		}
 
-		if (f->engine != NULL)
-			iavf_flow_dump_blob(file,
-				f->engine->name != NULL ?
-					f->engine->name : "unknown",
-				rule_data, rule_size);
+		found = true;
+
+		rule_size = f->engine->rule_size;
+		rule_data = f->rule;
+
+		iavf_flow_dump_blob(file,
+			f->engine->name != NULL ?
+				f->engine->name : "unknown",
+			rule_data, rule_size);
 	}
 	rte_spinlock_unlock(&vf->flow_ops_lock);
 
