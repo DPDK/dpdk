@@ -72,7 +72,7 @@ __rte_used type name ## _v ## ver args; \
 type name ## _v ## ver args
 
 #define RTE_VERSION_EXPERIMENTAL_SYMBOL(type, name, args) VERSIONING_WARN \
-__asm__(".symver " RTE_STR(name) "_exp, " RTE_STR(name) "@EXPERIMENTAL") \
+__asm__(".symver " RTE_STR(name) "_exp, " RTE_STR(name) "@EXPERIMENTAL"); \
 __rte_used type name ## _exp args; \
 type name ## _exp args
 
