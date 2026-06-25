@@ -6845,7 +6845,10 @@ int bnxt_hwrm_func_backing_store_qcaps_v2(struct bnxt *bp)
 
 		flags = rte_le_to_cpu_32(resp->flags);
 		type = rte_le_to_cpu_16(resp->next_valid_type);
-		if (!(flags & HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_TYPE_VALID)) {
+		if (!(flags & HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_TYPE_VALID) ||
+		    (rte_le_to_cpu_16(req.type) ==
+		    HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_TTX_PACING_TQM_RING &&
+		    !(bp->fw_cap & BNXT_FW_CAP_TIMED_TX_PACING))) {
 			cnt = false;
 			goto next;
 		}
@@ -6922,7 +6925,10 @@ int bnxt_hwrm_func_backing_store_types_count(struct bnxt *bp)
 		type = rte_le_to_cpu_16(resp->next_valid_type);
 		HWRM_UNLOCK();
 
-		if (flags & HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_TYPE_VALID) {
+		if ((flags & HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_TYPE_VALID) &&
+		    !(rte_le_to_cpu_16(req.type) ==
+		    HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_TTX_PACING_TQM_RING &&
+		    !(bp->fw_cap & BNXT_FW_CAP_TIMED_TX_PACING))) {
 			PMD_DRV_LOG_LINE(DEBUG, "Valid types 0x%x", req.type);
 			types++;
 		}
