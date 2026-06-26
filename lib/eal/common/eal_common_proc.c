@@ -1199,11 +1199,21 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		ret = mp_request_async(eal_mp_socket_path(), copy, param, ts);
 
-		/* if we didn't send anything, put dummy request on the queue */
+		/* if we didn't send anything, put dummy request on the queue
+		 * and set a minimum-delay alarm so the callback fires immediately.
+		 */
 		if (ret == 0 && reply->nb_sent == 0) {
-			TAILQ_INSERT_TAIL(&pending_requests.requests, dummy,
-					next);
+			TAILQ_INSERT_TAIL(&pending_requests.requests, dummy, next);
 			dummy_used = true;
+			if (rte_eal_alarm_set(1, async_reply_handle,
+					(void *)(uintptr_t)dummy->id) < 0) {
+				EAL_LOG(ERR, "Fail to set alarm for dummy request");
+				/* roll back the changes */
+				TAILQ_REMOVE(&pending_requests.requests, dummy, next);
+				dummy_used = false;
+				ret = -1;
+				goto unlock_fail;
+			}
 		}
 
 		pthread_mutex_unlock(&pending_requests.lock);
@@ -1268,10 +1278,22 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 		reply->nb_sent = 0;
 	}
 
-	/* if we didn't send anything, put dummy request on the queue */
+	/* if we didn't send anything, put dummy request on the queue
+	 * and set a minimum-delay alarm so the callback fires immediately.
+	 */
 	if (ret == 0 && reply->nb_sent == 0) {
 		TAILQ_INSERT_HEAD(&pending_requests.requests, dummy, next);
 		dummy_used = true;
+
+		if (rte_eal_alarm_set(1, async_reply_handle,
+				(void *)(uintptr_t)dummy->id) < 0) {
+			EAL_LOG(ERR, "Fail to set alarm for dummy request");
+			/* roll back the changes */
+			TAILQ_REMOVE(&pending_requests.requests, dummy, next);
+			dummy_used = false;
+			ret = -1;
+			goto closedir_fail;
+		}
 	}
 
 	/* finally, unlock the queue */
