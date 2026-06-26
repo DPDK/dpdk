@@ -1244,6 +1244,28 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 		} else if (mp_request_async(path, copy, param, ts))
 			ret = -1;
 	}
+
+	/*
+	 * On partial failure, roll back all queued requests. We hold the lock
+	 * so no one else touches the queue. All requests in this batch share
+	 * the same param pointer. Stale alarms will fire and harmlessly find
+	 * nothing via ID-based lookup.
+	 */
+	if (ret != 0 && reply->nb_sent > 0) {
+		struct pending_request *r, *tmp;
+
+		RTE_TAILQ_FOREACH_SAFE(r, &pending_requests.requests, next, tmp) {
+			if (r->type == REQUEST_TYPE_ASYNC && r->async.param == param) {
+				TAILQ_REMOVE(&pending_requests.requests, r, next);
+				free(r->reply);
+				/* r->request == copy, freed below after the loop */
+				free(r);
+			}
+		}
+		/* requests on the queue were removed so keep things consistent */
+		reply->nb_sent = 0;
+	}
+
 	/* if we didn't send anything, put dummy request on the queue */
 	if (ret == 0 && reply->nb_sent == 0) {
 		TAILQ_INSERT_HEAD(&pending_requests.requests, dummy, next);
@@ -1262,6 +1284,11 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 	/* if dummy was unused, free it */
 	if (!dummy_used)
 		free(dummy);
+	/* if nothing was sent, nobody owns copy/param */
+	if (ret != 0) {
+		free(param);
+		free(copy);
+	}
 
 	return ret;
 closedir_fail:
