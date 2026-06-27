@@ -175,6 +175,9 @@ void sxe2_tx_mode_func_set(struct rte_eth_dev *dev)
 
 			if ((0 == (tx_mode_flags & SXE2_TX_MODE_VEC_SET_MASK)))
 				tx_mode_flags |=  SXE2_TX_MODE_VEC_SSE;
+#elif defined(RTE_ARCH_ARM64)
+			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON) == 1)
+				tx_mode_flags |= (vec_flags | SXE2_TX_MODE_VEC_NEON);
 #endif
 			if (tx_mode_flags & SXE2_TX_MODE_VEC_SET_MASK) {
 				ret = sxe2_tx_queues_vec_prepare(dev);
@@ -218,8 +221,15 @@ void sxe2_tx_mode_func_set(struct rte_eth_dev *dev)
 				dev->tx_pkt_burst = sxe2_tx_pkts_vec_sse_simple;
 			}
 		}
-	} else {
+#elif defined(RTE_ARCH_ARM64)
+		if (tx_mode_flags & SXE2_TX_MODE_VEC_NEON) {
+			dev->tx_pkt_prepare = sxe2_tx_pkts_prepare;
+			dev->tx_pkt_burst = sxe2_tx_pkts_vec_neon;
+		} else {
+			dev->tx_pkt_burst = sxe2_tx_pkts_vec_neon_simple;
+		}
 #endif
+	} else {
 		if (tx_mode_flags & SXE2_TX_MODE_SIMPLE_BATCH) {
 			dev->tx_pkt_prepare = NULL;
 			dev->tx_pkt_burst = sxe2_tx_pkts_simple;
@@ -227,9 +237,7 @@ void sxe2_tx_mode_func_set(struct rte_eth_dev *dev)
 			dev->tx_pkt_prepare = sxe2_tx_pkts_prepare;
 			dev->tx_pkt_burst = sxe2_tx_pkts;
 		}
-#ifdef RTE_ARCH_X86
 	}
-#endif
 }
 
 static const struct {
@@ -252,6 +260,12 @@ static const struct {
 	      "Vector SSE" },
 	{ sxe2_tx_pkts_vec_sse_simple,
 	      "Vector SSE Simple" },
+#endif
+#ifdef RTE_ARCH_ARM64
+	{ sxe2_tx_pkts_vec_neon,
+	  "Vector NEON" },
+	{ sxe2_tx_pkts_vec_neon_simple,
+	  "Vector NEON Simple" },
 #endif
 };
 
@@ -356,6 +370,11 @@ void sxe2_rx_mode_func_set(struct rte_eth_dev *dev)
 			if (((rx_mode_flags & SXE2_RX_MODE_VEC_SET_MASK) == 0) &&
 				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128)
 				rx_mode_flags |= SXE2_RX_MODE_VEC_SSE;
+
+#elif defined(RTE_ARCH_ARM64)
+			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON) == 1) {
+				rx_mode_flags |= (vec_flags | SXE2_RX_MODE_VEC_NEON);
+			}
 #endif
 			if ((rx_mode_flags & SXE2_RX_MODE_VEC_SET_MASK) != 0) {
 				ret = sxe2_rx_queues_vec_prepare(dev);
@@ -387,6 +406,14 @@ void sxe2_rx_mode_func_set(struct rte_eth_dev *dev)
 		}
 		return;
 	}
+#elif defined(RTE_ARCH_ARM64)
+	if (rx_mode_flags & SXE2_RX_MODE_VEC_SET_MASK) {
+		if (rx_mode_flags & SXE2_RX_MODE_VEC_OFFLOAD)
+			dev->rx_pkt_burst = sxe2_rx_pkts_scattered_vec_neon_offload;
+		else
+			dev->rx_pkt_burst = sxe2_rx_pkts_scattered_vec_neon;
+		return;
+	}
 #endif
 	if (sxe2_rx_offload_en_check(dev, RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT))
 		dev->rx_pkt_burst = sxe2_rx_pkts_scattered_split;
@@ -415,6 +442,12 @@ static const struct {
 	      "Offload Vector AVX2 Scattered" },
 	{ sxe2_rx_pkts_scattered_vec_sse_offload,
 	      "Vector SSE Scattered" },
+#endif
+#ifdef RTE_ARCH_ARM64
+	{ sxe2_rx_pkts_scattered_vec_neon,
+	  "Vector NEON Scattered" },
+	{ sxe2_rx_pkts_scattered_vec_neon_offload,
+	  "Offload Vector NEON Scattered" },
 #endif
 };
 

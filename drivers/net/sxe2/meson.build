@@ -48,6 +48,8 @@ if arch_subdir == 'x86'
                 include_directories: includes,
                 c_args: [cflags, '-mavx2'])
         objs += sxe2_avx2_lib.extract_objects('sxe2_txrx_vec_avx2.c')
+elif arch_subdir == 'arm'
+        sources += files('sxe2_txrx_vec_neon.c')
 endif
 
 sources += files(
