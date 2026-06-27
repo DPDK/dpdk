@@ -348,6 +348,184 @@ l_end:
 	return ret;
 }
 
+int32_t sxe2_drv_get_mac_stats(struct sxe2_adapter *adapter)
+{
+	int32_t ret = 0;
+	uint8_t i = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_vsi *vsi = adapter->vsi_ctxt.main_vsi;
+	struct sxe2_stats *stats = &vsi->vsi_stats.vsi_hw_stats;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_drv_mac_stats_resp resp = {0};
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_MAC_STATS_GET,
+				 NULL, 0,
+				 &resp, sizeof(resp));
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "vsi stats get failed, ret=%d", ret);
+		goto l_end;
+	}
+
+	stats->rx_out_of_buffer        = rte_le_to_cpu_64(resp.rx_out_of_buffer);
+	stats->rx_qblock_drop          = rte_le_to_cpu_64(resp.rx_qblock_drop);
+	stats->tx_frame_good           = rte_le_to_cpu_64(resp.tx_frame_good);
+	stats->rx_frame_good           = rte_le_to_cpu_64(resp.rx_frame_good);
+	stats->rx_crc_errors           = rte_le_to_cpu_64(resp.rx_crc_errors);
+	stats->tx_bytes_good           = rte_le_to_cpu_64(resp.tx_bytes_good);
+	stats->rx_bytes_good           = rte_le_to_cpu_64(resp.rx_bytes_good);
+	stats->tx_multicast_good       = rte_le_to_cpu_64(resp.tx_multicast_good);
+	stats->tx_broadcast_good       = rte_le_to_cpu_64(resp.tx_broadcast_good);
+	stats->rx_multicast_good       = rte_le_to_cpu_64(resp.rx_multicast_good);
+	stats->rx_broadcast_good       = rte_le_to_cpu_64(resp.rx_broadcast_good);
+	stats->rx_len_errors           = rte_le_to_cpu_64(resp.rx_len_errors);
+	stats->rx_out_of_range_errors  = rte_le_to_cpu_64(resp.rx_out_of_range_errors);
+	stats->rx_oversize_pkts_phy    = rte_le_to_cpu_64(resp.rx_oversize_pkts_phy);
+	stats->rx_symbol_err	       = rte_le_to_cpu_64(resp.rx_symbol_err);
+	stats->rx_pause_frame	       = rte_le_to_cpu_64(resp.rx_pause_frame);
+	stats->tx_pause_frame	       = rte_le_to_cpu_64(resp.tx_pause_frame);
+	stats->rx_discards_phy	       = rte_le_to_cpu_64(resp.rx_discards_phy);
+	stats->rx_discards_ips_phy     = rte_le_to_cpu_64(resp.rx_discards_ips_phy);
+	stats->tx_dropped_link_down    = rte_le_to_cpu_64(resp.tx_dropped_link_down);
+	stats->rx_undersize_good       = rte_le_to_cpu_64(resp.rx_undersize_good);
+	stats->rx_runt_error	       = rte_le_to_cpu_64(resp.rx_runt_error);
+	stats->tx_bytes_good_bad       = rte_le_to_cpu_64(resp.tx_bytes_good_bad);
+	stats->tx_frame_good_bad       = rte_le_to_cpu_64(resp.tx_frame_good_bad);
+	stats->rx_jabbers              = rte_le_to_cpu_64(resp.rx_jabbers);
+	stats->rx_size_64              = rte_le_to_cpu_64(resp.rx_size_64);
+	stats->rx_size_65_127          = rte_le_to_cpu_64(resp.rx_size_65_127);
+	stats->rx_size_128_255         = rte_le_to_cpu_64(resp.rx_size_128_255);
+	stats->rx_size_256_511         = rte_le_to_cpu_64(resp.rx_size_256_511);
+	stats->rx_size_512_1023        = rte_le_to_cpu_64(resp.rx_size_512_1023);
+	stats->rx_size_1024_1522       = rte_le_to_cpu_64(resp.rx_size_1024_1522);
+	stats->rx_size_1523_max        = rte_le_to_cpu_64(resp.rx_size_1523_max);
+	stats->rx_pcs_symbol_err_phy   = rte_le_to_cpu_64(resp.rx_pcs_symbol_err_phy);
+	stats->rx_corrected_bits_phy   = rte_le_to_cpu_64(resp.rx_corrected_bits_phy);
+	stats->rx_err_lane_0_phy       = rte_le_to_cpu_64(resp.rx_err_lane_0_phy);
+	stats->rx_err_lane_1_phy       = rte_le_to_cpu_64(resp.rx_err_lane_1_phy);
+	stats->rx_err_lane_2_phy       = rte_le_to_cpu_64(resp.rx_err_lane_2_phy);
+	stats->rx_err_lane_3_phy       = rte_le_to_cpu_64(resp.rx_err_lane_3_phy);
+	stats->rx_illegal_bytes        = rte_le_to_cpu_64(resp.rx_illegal_bytes);
+	stats->rx_oversize_good        = rte_le_to_cpu_64(resp.rx_oversize_good);
+	stats->tx_unicast              = rte_le_to_cpu_64(resp.tx_unicast);
+	stats->tx_broadcast            = rte_le_to_cpu_64(resp.tx_broadcast);
+	stats->tx_multicast            = rte_le_to_cpu_64(resp.tx_multicast);
+	stats->tx_vlan_packet_good     = rte_le_to_cpu_64(resp.tx_vlan_packet_good);
+	stats->tx_size_64              = rte_le_to_cpu_64(resp.tx_size_64);
+	stats->tx_size_65_127          = rte_le_to_cpu_64(resp.tx_size_65_127);
+	stats->tx_size_128_255         = rte_le_to_cpu_64(resp.tx_size_128_255);
+	stats->tx_size_256_511         = rte_le_to_cpu_64(resp.tx_size_256_511);
+	stats->tx_size_512_1023        = rte_le_to_cpu_64(resp.tx_size_512_1023);
+	stats->tx_size_1024_1522       = rte_le_to_cpu_64(resp.tx_size_1024_1522);
+	stats->tx_size_1523_max        = rte_le_to_cpu_64(resp.tx_size_1523_max);
+	stats->tx_underflow_error      = rte_le_to_cpu_64(resp.tx_underflow_error);
+	stats->rx_byte_good_bad        = rte_le_to_cpu_64(resp.rx_byte_good_bad);
+	stats->rx_frame_good_bad       = rte_le_to_cpu_64(resp.rx_frame_good_bad);
+	stats->rx_unicast_good         = rte_le_to_cpu_64(resp.rx_unicast_good);
+	stats->rx_vlan_packets         = rte_le_to_cpu_64(resp.rx_vlan_packets);
+
+	for (i = 0; i < SXE2_MAX_USER_PRIORITY; i++) {
+		stats->rx_prio_buf_discard[i]  =
+			rte_le_to_cpu_64(resp.rx_prio_buf_discard[i]);
+		stats->prio_xoff_rx[i]  =
+			rte_le_to_cpu_64(resp.prio_xoff_rx[i]);
+		stats->prio_xoff_tx[i]  =
+			rte_le_to_cpu_64(resp.prio_xoff_tx[i]);
+		stats->prio_xon_rx[i]  =
+			rte_le_to_cpu_64(resp.prio_xon_rx[i]);
+		stats->prio_xon_tx[i]  =
+			rte_le_to_cpu_64(resp.prio_xon_tx[i]);
+		stats->prio_xon_2_xoff[i]  =
+			rte_le_to_cpu_64(resp.prio_xon_2_xoff[i]);
+	}
+
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_mac_stats_reset(struct sxe2_adapter *adapter)
+{
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_MAC_STATS_CLEAR,
+				 NULL, 0,
+				 NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "mac stats reset failed, ret=%d", ret);
+		goto l_end;
+	}
+
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_get_vsi_stats(struct sxe2_adapter *adapter)
+{
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_vsi *vsi = adapter->vsi_ctxt.main_vsi;
+	struct sxe2_stats *new_stats = &vsi->vsi_stats.vsi_hw_stats;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_drv_vsi_stats_req req = {0};
+	struct sxe2_drv_vsi_stats_resp resp = {0};
+
+	req.vsi_id = rte_cpu_to_le_16(vsi->vsi_id);
+	req.sw_stats.rx_bytes = rte_cpu_to_le_64(vsi->vsi_stats.stats.ibytes);
+	req.sw_stats.rx_packets = rte_cpu_to_le_64(vsi->vsi_stats.stats.ipackets);
+	req.sw_stats.tx_bytes = rte_cpu_to_le_64(vsi->vsi_stats.stats.obytes);
+	req.sw_stats.tx_packets = rte_cpu_to_le_64(vsi->vsi_stats.stats.opackets);
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_VSI_STATS_GET,
+				 &req, sizeof(req),
+				 &resp, sizeof(resp));
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "vsi stats get failed, ret=%d", ret);
+		goto l_end;
+	}
+
+	new_stats->rx_vsi_unicast_packets   = rte_le_to_cpu_64(resp.rx_vsi_unicast_packets);
+	new_stats->rx_vsi_bytes             = rte_le_to_cpu_64(resp.rx_vsi_bytes);
+	new_stats->tx_vsi_unicast_packets   = rte_le_to_cpu_64(resp.tx_vsi_unicast_packets);
+	new_stats->tx_vsi_bytes             = rte_le_to_cpu_64(resp.tx_vsi_bytes);
+	new_stats->rx_vsi_multicast_packets = rte_le_to_cpu_64(resp.rx_vsi_multicast_packets);
+	new_stats->tx_vsi_multicast_packets = rte_le_to_cpu_64(resp.tx_vsi_multicast_packets);
+	new_stats->rx_vsi_broadcast_packets = rte_le_to_cpu_64(resp.rx_vsi_broadcast_packets);
+	new_stats->tx_vsi_broadcast_packets = rte_le_to_cpu_64(resp.tx_vsi_broadcast_packets);
+	new_stats->opackets = new_stats->tx_vsi_unicast_packets +
+			      new_stats->tx_vsi_multicast_packets +
+			      new_stats->tx_vsi_broadcast_packets;
+	new_stats->obytes = new_stats->tx_vsi_bytes;
+	new_stats->ipackets = new_stats->rx_vsi_unicast_packets +
+			      new_stats->rx_vsi_multicast_packets +
+			      new_stats->rx_vsi_broadcast_packets;
+	new_stats->ibytes = new_stats->rx_vsi_bytes;
+
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_vsi_stats_reset(struct sxe2_adapter *adapter)
+{
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_VSI_STATS_CLEAR,
+				 NULL, 0, NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "vsi stats reset failed, ret=%d", ret);
+		goto l_end;
+	}
+
+l_end:
+	return ret;
+}
+
 int32_t sxe2_drv_promisc_config(struct sxe2_adapter *adapter, bool set)
 {
 	int32_t ret = 0;
@@ -409,8 +587,9 @@ int32_t sxe2_drv_uc_config(struct sxe2_adapter *adapter, struct rte_ether_addr *
 	mac_filter_cfg_req.type = SXE2_MAC_FILTER_TYPE_UC;
 
 	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_MAC_ADDR_UC,
-		 &mac_filter_cfg_req, sizeof(mac_filter_cfg_req),
-		 NULL, 0);
+				 &mac_filter_cfg_req,
+				 sizeof(mac_filter_cfg_req),
+				 NULL, 0);
 
 	ret = sxe2_drv_cmd_exec(cdev, &param);
 	if (ret)
@@ -435,8 +614,8 @@ int32_t sxe2_drv_mc_config(struct sxe2_adapter *adapter, struct rte_ether_addr *
 	mac_filter_cfg_req.type = SXE2_MAC_FILTER_TYPE_MC;
 
 	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_MAC_ADDR_MC,
-		 &mac_filter_cfg_req, sizeof(mac_filter_cfg_req),
-		 NULL, 0);
+				  &mac_filter_cfg_req, sizeof(mac_filter_cfg_req),
+				 NULL, 0);
 
 	ret = sxe2_drv_cmd_exec(cdev, &param);
 	if (ret)
@@ -455,7 +634,7 @@ int32_t sxe2_drv_vlan_config_query(struct sxe2_adapter *adapter)
 	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_VLAN_CFG_QUERY,
 				 NULL, 0,
 				 &vlan_cfg_query_resp,
-	 sizeof(vlan_cfg_query_resp));
+				 sizeof(vlan_cfg_query_resp));
 
 	ret = sxe2_drv_cmd_exec(cdev, &param);
 	if (ret)
@@ -566,7 +745,8 @@ int32_t sxe2_drv_rss_key_set(struct sxe2_adapter *adapter, uint8_t *key, uint16_
 	rte_memcpy(req->key, key, key_size);
 
 	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_RSS_KEY_SET,
-		req, buf_size, NULL, 0);
+				 req, buf_size,
+				 NULL, 0);
 
 	ret = sxe2_drv_cmd_exec(cdev, &param);
 	if (ret) {
@@ -602,7 +782,8 @@ int32_t sxe2_drv_rss_lut_set(struct sxe2_adapter *adapter, uint8_t *lut, uint16_
 	rte_memcpy(req->lut, lut, lut_size);
 
 	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_RSS_LUT_SET,
-		req, buf_size, NULL, 0);
+				 req, buf_size,
+				 NULL, 0);
 
 	ret = sxe2_drv_cmd_exec(cdev, &param);
 	if (ret) {
@@ -629,7 +810,8 @@ int32_t sxe2_drv_rss_hash_ctrl_func(struct sxe2_adapter *adapter, enum sxe2_rss_
 	req.func = func;
 
 	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_RSS_FUNC_SET,
-		&req, sizeof(req), NULL, 0);
+				 &req, sizeof(req),
+				 NULL, 0);
 
 	ret = sxe2_drv_cmd_exec(cdev, &param);
 	if (ret)
@@ -665,7 +847,8 @@ int32_t sxe2_drv_rss_hf_add(struct sxe2_adapter *adapter,
 	sxe2_drv_flow_bitmap_fill(req.hash_flds, rss_conf->flds);
 
 	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_RSS_HF_ADD,
-		&req, sizeof(req), NULL, 0);
+				 &req, sizeof(req),
+				 NULL, 0);
 
 	ret = sxe2_drv_cmd_exec(cdev, &param);
 	if (ret)
@@ -703,7 +886,8 @@ int32_t sxe2_drv_rss_hf_clear(struct sxe2_adapter *adapter)
 	int32_t ret = 0;
 
 	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_RSS_HF_CLEAR,
-		NULL, 0, NULL, 0);
+				 NULL, 0,
+				 NULL, 0);
 
 	ret = sxe2_drv_cmd_exec(cdev, &param);
 	if (ret)
@@ -877,7 +1061,6 @@ int32_t sxe2_drv_tm_commit(struct sxe2_adapter *adapter)
 l_end:
 	return ret;
 }
-
 
 int32_t sxe2_drv_ipsec_get_capa(struct sxe2_adapter *adapter)
 {
@@ -1070,6 +1253,142 @@ int32_t sxe2_drv_ipsec_txsa_delete(struct sxe2_adapter *adapter,
 		PMD_DEV_LOG_ERR(adapter, DRV,
 				"Failed to delete tx sa, sa id: %u, ret: %d.",
 				sa_id, ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_queue_info_get_update(struct sxe2_adapter *adapter, struct eth_queue_stats *qstats)
+{
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_queue_map_info resp = {0};
+	struct sxe2_common_device *cdev = adapter->cdev;
+	uint8_t pool_idx;
+	uint8_t index;
+	int32_t ret;
+
+	if (!(adapter->cap_flags & SXE2_DEV_CAPS_OFFLOAD_Q_MAP)) {
+		ret = 0;
+		goto l_end;
+	}
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_TX_RX_MAP_GET,
+				 NULL, 0,
+				 &resp, sizeof(resp));
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret) {
+		PMD_LOG_ERR(DRV, "get queue info map failed, ret=%d", ret);
+		goto l_end;
+	}
+
+	for (pool_idx = 0; pool_idx < SXE2_RXQ_STATS_MAP_MAX_NUM; pool_idx++) {
+		qstats->q_ipackets[pool_idx] = resp.rxq_stats_map_info[pool_idx].rxq_lan_in_pkt_cnt;
+		qstats->q_ibytes[pool_idx] = resp.rxq_stats_map_info[pool_idx].rxq_lan_in_byte_cnt;
+	}
+
+	for (index = 0; index < SXE2_TXQ_STATS_MAP_MAX_NUM; index++) {
+		qstats->q_opackets[index] = resp.txq_stats_map_info[index].txq_lan_pkt_cnt;
+		qstats->q_obytes[index] = resp.txq_stats_map_info[index].txq_lan_byte_cnt;
+	}
+
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_rxq_mapping_set(struct rte_eth_dev *eth_dev, uint16_t queue_id, uint8_t pool_idx)
+{
+	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(eth_dev);
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_drv_rx_map_req req = {0};
+	struct sxe2_rx_queue *rxq = NULL;
+
+	rxq = eth_dev->data->rx_queues[queue_id];
+	if (rxq == NULL) {
+		PMD_LOG_ERR(DRV, "Rx queue %u is not available or setup",
+				queue_id);
+		ret = -EINVAL;
+		goto l_end;
+	}
+
+	req.queue_id = rxq->queue_id;
+	req.pool_idx = pool_idx;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_RX_MAP_SET,
+				 &req, sizeof(req),
+				 NULL, 0);
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_LOG_ERR(DRV, "get dev caps failed, ret=%d", ret);
+
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_txq_mapping_set(struct rte_eth_dev *eth_dev, uint16_t queue_id, uint8_t pool_idx)
+{
+	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(eth_dev);
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_drv_tx_map_req req = {0};
+	struct sxe2_tx_queue *txq = NULL;
+
+	txq = eth_dev->data->tx_queues[queue_id];
+	if (txq == NULL) {
+		PMD_LOG_ERR(DRV, "Rx queue %u is not available or setup", queue_id);
+		ret = -EINVAL;
+		goto l_end;
+	}
+
+	req.queue_id = txq->queue_id;
+	req.pool_idx = pool_idx;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_TX_MAP_SET,
+				 &req, sizeof(req),
+				 NULL, 0);
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_LOG_ERR(DRV, "get dev caps failed, ret=%d", ret);
+
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_mapping_reset(struct rte_eth_dev *eth_dev)
+{
+	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(eth_dev);
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_common_device *cdev = adapter->cdev;
+	int32_t ret;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_TX_RX_MAP_RESET,
+				 NULL, 0,
+				 NULL, 0);
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_LOG_ERR(DRV, "Reset queue mapping failed, ret=%d", ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_mapping_stats_info_clear(struct rte_eth_dev *eth_dev)
+{
+	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(eth_dev);
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_common_device *cdev = adapter->cdev;
+	int32_t ret;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_TX_RX_MAP_INFO_CLEAR,
+				 NULL, 0,
+				 NULL, 0);
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_LOG_ERR(DRV, "Clear map stats info failed, ret=%d", ret);
 
 	return ret;
 }

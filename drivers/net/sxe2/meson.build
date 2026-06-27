@@ -66,4 +66,6 @@ sources += files(
         'sxe2_tm.c',
         'sxe2_ipsec.c',
         'sxe2_security.c',
+        'sxe2_mp.c',
+        'sxe2_stats.c',
 )

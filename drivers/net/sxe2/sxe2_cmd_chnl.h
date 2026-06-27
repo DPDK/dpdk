@@ -64,6 +64,29 @@ int32_t sxe2_drv_ipsec_txsa_delete(struct sxe2_adapter *adapter,
 
 int32_t sxe2_drv_promisc_config(struct sxe2_adapter *adapter, bool set);
 
+int32_t sxe2_drv_mac_link_status_get(struct sxe2_adapter *adapter);
+
+int32_t sxe2_drv_get_mac_stats(struct sxe2_adapter *adapter);
+
+int32_t sxe2_drv_mac_stats_reset(struct sxe2_adapter *adapter);
+
+int32_t sxe2_drv_get_vsi_stats(struct sxe2_adapter *adapter);
+
+int32_t sxe2_drv_vsi_stats_reset(struct sxe2_adapter *adapter);
+
+int32_t sxe2_drv_queue_info_get_update(struct sxe2_adapter *adapter,
+				       struct eth_queue_stats *qstats);
+
+int32_t sxe2_drv_rxq_mapping_set(struct rte_eth_dev *eth_dev, uint16_t queue_id, uint8_t pool_idx);
+
+int32_t sxe2_drv_txq_mapping_set(struct rte_eth_dev *eth_dev, uint16_t queue_id, uint8_t pool_idx);
+
+int32_t sxe2_drv_mapping_reset(struct rte_eth_dev *eth_dev);
+
+int32_t sxe2_drv_mapping_stats_info_clear(struct rte_eth_dev *eth_dev);
+
+int32_t sxe2_drv_rxq_mapping_set(struct rte_eth_dev *eth_dev, uint16_t queue_id, uint8_t pool_idx);
+
 int32_t sxe2_drv_allmulti_config(struct sxe2_adapter *adapter, bool set);
 
 int32_t sxe2_drv_uc_config(struct sxe2_adapter *adapter, struct rte_ether_addr *addr, bool add);

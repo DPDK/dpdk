@@ -30,6 +30,8 @@
 #include "sxe2_mac.h"
 #include "sxe2_common.h"
 #include "sxe2_common_log.h"
+#include "sxe2_mp.h"
+#include "sxe2_stats.h"
 #include "sxe2_host_regs.h"
 #include "sxe2_ioctl_chnl_func.h"
 
@@ -131,6 +133,14 @@ static const struct eth_dev_ops sxe2_eth_dev_ops = {
 	.rss_hash_conf_get          = sxe2_dev_rss_hash_conf_get,
 
 	.tm_ops_get                 = sxe2_tm_ops_get,
+
+	.stats_get                  = sxe2_stats_info_get,
+	.stats_reset                = sxe2_stats_info_reset,
+	.xstats_get                 = sxe2_xstats_info_get,
+	.xstats_get_names           = sxe2_xstats_names_get,
+	.xstats_reset               = sxe2_stats_info_reset,
+
+	.queue_stats_mapping_set    = sxe2_queue_stats_mapping_set,
 };
 
 static int32_t sxe2_dev_configure(struct rte_eth_dev *dev)
@@ -1012,6 +1022,9 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		sxe2_rx_mode_func_set(dev);
 		sxe2_tx_mode_func_set(dev);
+		ret = sxe2_mp_init(dev);
+		if (ret != 0)
+			PMD_LOG_ERR(INIT, "Failed to mp init (secondary), ret=%d", ret);
 		goto l_end;
 	}
 
@@ -1063,12 +1076,27 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 		goto init_sched_err;
 	}
 
+	ret = sxe2_stats_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to stats init, ret=%d", ret);
+		goto init_xstats_err;
+	}
+
+	ret = sxe2_mp_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to mp init, ret=%d", ret);
+		goto init_xstats_err;
+	}
+
 	goto l_end;
 
-init_security_err:
-	sxe2_eth_uinit(dev);
+init_xstats_err:
+	(void)sxe2_sched_uinit(dev);
 init_sched_err:
 init_rss_err:
+	sxe2_security_uinit(dev);
+init_security_err:
+	sxe2_eth_uinit(dev);
 init_eth_err:
 init_dev_info_err:
 	sxe2_vsi_uninit(dev);
@@ -1080,8 +1108,13 @@ l_end:
 
 static int32_t sxe2_dev_close(struct rte_eth_dev *dev)
 {
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		sxe2_mp_uninit(dev);
+		goto l_end;
+	}
 	(void)sxe2_dev_stop(dev);
 	(void)sxe2_queues_release(dev);
+	sxe2_mp_uninit(dev);
 	(void)sxe2_rss_disable(dev);
 	(void)sxe2_sched_uinit(dev);
 	sxe2_vsi_uninit(dev);
@@ -1089,6 +1122,7 @@ static int32_t sxe2_dev_close(struct rte_eth_dev *dev)
 	sxe2_dev_pci_map_uinit(dev);
 	sxe2_eth_uinit(dev);
 
+l_end:
 	return 0;
 }
 
