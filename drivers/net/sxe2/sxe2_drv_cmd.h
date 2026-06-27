@@ -29,7 +29,7 @@
 
 #define SXE2_SCHED_MODE_DEFAULT			0
 #define SXE2_SCHED_MODE_TM			1
-#define SXE2_SCHED_MODE_HIGH_PERFORMANCE	2
+#define SXE2_SCHED_MODE_NO_SCHED		2
 #define SXE2_SCHED_MODE_INVALID			3
 
 #define SXE2_SRCVSI_PRUNE_MAX_NUM		2
@@ -347,6 +347,32 @@ struct __rte_aligned(4) __rte_packed_begin sxe2_rss_hf_req {
 	uint32_t hdr_type;
 	uint8_t symm;
 	uint8_t rsv1[3];
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_tm_res {
+	uint16_t teid;
+	uint8_t rsv[2];
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_tm_info {
+	uint32_t committed;
+	uint32_t peak;
+	uint8_t priority;
+	uint8_t reserve;
+	uint16_t weight;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_tm_add_mid_msg {
+	uint16_t parent_teid;
+	uint8_t adj_lvl;
+	struct sxe2_tm_info info;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_tm_add_queue_msg {
+	uint16_t parent_teid;
+	uint16_t queue_id;
+	uint8_t adj_lvl;
+	struct sxe2_tm_info info;
 } __rte_packed_end;
 
 enum sxe2_drv_cmd_module {

@@ -20,6 +20,7 @@
 #include "sxe2_queue.h"
 #include "sxe2_mac.h"
 #include "sxe2_osal.h"
+#include "sxe2_tm.h"
 #include "sxe2_filter.h"
 
 struct sxe2_link_msg {
@@ -308,6 +309,8 @@ struct sxe2_adapter {
 	struct sxe2_rss_context       rss_ctxt;
 	struct sxe2_link_context      link_ctxt;
 	struct sxe2_ptp_context       ptp_ctxt;
+	struct sxe2_sched_hw_cap      sched_ctxt;
+	struct sxe2_tm_context        tm_ctxt;
 	struct sxe2_devargs           devargs;
 	struct sxe2_switchdev_info    switchdev_info;
 	bool                          rule_started;
@@ -329,6 +332,8 @@ struct sxe2_adapter {
 void *sxe2_pci_map_addr_get(struct sxe2_adapter *adapter,
 			    enum sxe2_pci_map_resource res_type,
 			    uint16_t idx_in_func);
+
+uint32_t sxe2_sched_mode_get(struct sxe2_adapter *adapter);
 
 struct sxe2_pci_map_bar_info *sxe2_dev_get_bar_info(struct sxe2_adapter *adapter,
 						    enum sxe2_pci_map_resource res_type);

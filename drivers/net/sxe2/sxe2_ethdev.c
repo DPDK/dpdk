@@ -129,6 +129,8 @@ static const struct eth_dev_ops sxe2_eth_dev_ops = {
 	.reta_query                 = sxe2_dev_rss_reta_query,
 	.rss_hash_update            = sxe2_dev_rss_hash_update,
 	.rss_hash_conf_get          = sxe2_dev_rss_hash_conf_get,
+
+	.tm_ops_get                 = sxe2_tm_ops_get,
 };
 
 static int32_t sxe2_dev_configure(struct rte_eth_dev *dev)
@@ -564,6 +566,14 @@ static void sxe2_drv_dev_caps_set(struct sxe2_adapter *adapter,
 		adapter->cap_flags |= SXE2_DEV_CAPS_OFFLOAD_FC_STATE;
 }
 
+static void sxe2_sw_sched_hw_cap_set(struct sxe2_adapter *adapter,
+				     struct sxe2_txsch_caps *txsch_caps)
+{
+	adapter->sched_ctxt.tm_layers = txsch_caps->layer_cap;
+	adapter->sched_ctxt.root_max_children = txsch_caps->tm_mid_node_num;
+	adapter->sched_ctxt.prio_max = txsch_caps->prio_num;
+}
+
 static int32_t sxe2_func_caps_get(struct sxe2_adapter *adapter)
 {
 	int32_t ret = -1;
@@ -582,6 +592,8 @@ static int32_t sxe2_func_caps_get(struct sxe2_adapter *adapter)
 	sxe2_sw_rss_ctx_hw_cap_set(adapter, &dev_caps.rss_hash_caps);
 
 	sxe2_sw_vsi_ctx_hw_cap_set(adapter, &dev_caps.vsi_caps);
+
+	sxe2_sw_sched_hw_cap_set(adapter, &dev_caps.txsch_caps);
 
 l_end:
 	return ret;
@@ -919,6 +931,68 @@ void sxe2_dev_pci_map_uinit(struct rte_eth_dev *dev)
 	adapter->dev_info.dev_data = NULL;
 }
 
+uint32_t sxe2_sched_mode_get(struct sxe2_adapter *adapter)
+{
+	uint32_t ret_mode = SXE2_SCHED_MODE_INVALID;
+	struct sxe2_tm_context *tm_ctxt = &adapter->tm_ctxt;
+
+	if (adapter->devargs.no_sched_mode)
+		ret_mode = SXE2_SCHED_MODE_NO_SCHED;
+	else if (tm_ctxt->committed)
+		ret_mode = SXE2_SCHED_MODE_TM;
+	else
+		ret_mode = SXE2_SCHED_MODE_DEFAULT;
+
+	return ret_mode;
+}
+
+static int32_t sxe2_sched_init(struct rte_eth_dev *dev)
+{
+	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	int32_t ret = 0;
+
+	adapter->sched_ctxt.adj_lvl = adapter->devargs.sched_layer_mode;
+
+	if (adapter->devargs.no_sched_mode) {
+		PMD_LOG_DEBUG(DRV, "TM feature will be disabled in high-performance mode.");
+		adapter->cap_flags &= ~(SXE2_DEV_CAPS_OFFLOAD_TM);
+	} else {
+		ret = sxe2_tm_init(dev);
+		if (ret)
+			goto l_end;
+
+		ret = sxe2_drv_root_tree_alloc(dev);
+		if (ret)
+			goto l_end;
+	}
+
+l_end:
+	return ret;
+}
+
+static int32_t sxe2_sched_uinit(struct rte_eth_dev *dev)
+{
+	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	int32_t ret = 0;
+
+	if (!adapter->devargs.no_sched_mode) {
+		ret = sxe2_tm_uninit(dev);
+		if (ret) {
+			PMD_LOG_ERR(INIT, "Failed to uninit tm, ret=%d", ret);
+			goto l_end;
+		}
+
+		ret = sxe2_drv_root_tree_release(dev);
+		if (ret) {
+			PMD_LOG_ERR(INIT, "Failed to release root tree, ret=%d", ret);
+			goto l_end;
+		}
+	}
+
+l_end:
+	return ret;
+}
+
 static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 			     struct sxe2_dev_kvargs_info *kvargs __rte_unused)
 {
@@ -972,8 +1046,15 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 		goto init_rss_err;
 	}
 
+	ret = sxe2_sched_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to init sched, ret=%d", ret);
+		goto init_sched_err;
+	}
+
 	goto l_end;
 
+init_sched_err:
 init_rss_err:
 init_eth_err:
 init_dev_info_err:
@@ -989,6 +1070,7 @@ static int32_t sxe2_dev_close(struct rte_eth_dev *dev)
 	(void)sxe2_dev_stop(dev);
 	(void)sxe2_queues_release(dev);
 	(void)sxe2_rss_disable(dev);
+	(void)sxe2_sched_uinit(dev);
 	sxe2_vsi_uninit(dev);
 	sxe2_dev_pci_map_uinit(dev);
 	sxe2_eth_uinit(dev);

@@ -230,6 +230,7 @@ static void sxe2_txq_ctxt_cfg_fill(struct sxe2_tx_queue *txq,
 				   struct sxe2_drv_txq_cfg_req *req,
 				   uint16_t txq_cnt)
 {
+	struct sxe2_adapter *adapter = txq->vsi->adapter;
 	struct sxe2_drv_txq_ctxt *ctxt = req->cfg;
 	uint16_t q_idx = 0;
 
@@ -241,6 +242,8 @@ static void sxe2_txq_ctxt_cfg_fill(struct sxe2_tx_queue *txq,
 		ctxt->depth = txq[q_idx].ring_depth;
 		ctxt->dma_addr = txq[q_idx].base_addr;
 		ctxt->queue_id = txq[q_idx].queue_id;
+
+		ctxt->sched_mode = sxe2_sched_mode_get(adapter);
 	}
 }
 
@@ -310,6 +313,7 @@ int32_t sxe2_drv_txq_switch(struct sxe2_adapter *adapter, struct sxe2_tx_queue *
 	req.q_idx = txq->queue_id;
 
 	req.is_enable  = (uint8_t)enable;
+	req.sched_mode = sxe2_sched_mode_get(adapter);
 	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_TXQ_DISABLE,
 			&req, sizeof(req), NULL, 0);
 
@@ -713,4 +717,163 @@ int32_t sxe2_drv_ptp_gettime(struct sxe2_adapter *adapter, struct sxe2_rx_queue 
 	(void)adapter;
 	(void)rxq;
 	return 0;
+}
+
+int32_t sxe2_drv_root_tree_alloc(struct rte_eth_dev *dev)
+{
+	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	struct sxe2_tm_context *tm_ctxt = &adapter->tm_ctxt;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_tm_res tm_resp;
+	int32_t ret;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_SCHED_ROOT_TREE_ALLOC,
+				 NULL, 0,
+				 &tm_resp, sizeof(tm_resp));
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret) {
+		PMD_LOG_ERR(DRV, "add sched root failed, ret:%d", ret);
+		goto l_end;
+	}
+
+	tm_ctxt->root_teid = tm_resp.teid;
+
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_root_tree_release(struct rte_eth_dev *dev)
+{
+	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_tm_res tm_res = {0};
+	int32_t ret;
+
+	tm_res.teid = adapter->tm_ctxt.root_teid;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_SCHED_ROOT_TREE_RELEASE,
+				 &tm_res, sizeof(tm_res),
+				 NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret) {
+		PMD_LOG_ERR(DRV, "release sched root failed, ret:%d", ret);
+		goto l_end;
+	}
+
+l_end:
+	return ret;
+}
+
+static void sxe2_drv_tm_node_to_info(struct sxe2_adapter *adapter,
+		struct sxe2_tm_node *node, struct sxe2_tm_info *info)
+{
+	uint32_t rate = 0;
+
+	if (node->shaper_profile->profile.committed.rate == UINT64_MAX)
+		rate = UINT32_MAX;
+	else
+		rate = (uint32_t)(node->shaper_profile->profile.committed.rate * 8 / 1000);
+
+	info->committed = rte_cpu_to_le_32(rate);
+
+	if (node->shaper_profile->profile.peak.rate == UINT64_MAX)
+		rate = UINT32_MAX;
+	else
+		rate = (uint32_t)(node->shaper_profile->profile.peak.rate * 8 / 1000);
+
+	info->peak = rte_cpu_to_le_32(rate);
+
+	info->priority = (adapter->tm_ctxt.prio_max - 1 - node->priority);
+
+	info->weight = rte_cpu_to_le_16(node->hw_weight);
+}
+
+static int32_t sxe2_drv_tm_commit_node(struct sxe2_adapter *adapter,
+		struct sxe2_tm_node *tm_node)
+{
+	struct sxe2_drv_cmd_params cmd = { 0 };
+	struct sxe2_tm_add_mid_msg msg_mid = {0};
+	struct sxe2_tm_add_queue_msg msg_queue = {0};
+	struct sxe2_tm_res res = {0};
+	struct sxe2_common_device *cdev = adapter->cdev;
+	int32_t ret;
+	uint32_t i;
+
+	if (tm_node->type == SXE2_TM_NODE_TYPE_VSIG) {
+		goto l_add;
+	} else if (tm_node->type == SXE2_TM_NODE_TYPE_MID) {
+		sxe2_drv_tm_node_to_info(adapter, tm_node, &msg_mid.info);
+		msg_mid.parent_teid = rte_cpu_to_le_16(tm_node->parent->teid);
+		msg_mid.adj_lvl = adapter->sched_ctxt.adj_lvl;
+
+		sxe2_drv_cmd_params_fill(adapter, &cmd,
+					 SXE2_DRV_CMD_SCHED_TM_ADD_MID_NODE,
+					 &msg_mid, sizeof(msg_mid),
+					 &res, sizeof(res));
+		ret = sxe2_drv_cmd_exec(cdev, &cmd);
+		if (ret) {
+			PMD_LOG_ERR(DRV, "add tm mid node failed, ret:%d", ret);
+			goto l_end;
+		}
+	} else if (tm_node->type == SXE2_TM_NODE_TYPE_QUEUE) {
+		sxe2_drv_tm_node_to_info(adapter, tm_node, &msg_queue.info);
+		msg_queue.parent_teid = rte_cpu_to_le_16(tm_node->parent->teid);
+		msg_queue.queue_id = rte_cpu_to_le_16(tm_node->id);
+		msg_queue.adj_lvl = adapter->sched_ctxt.adj_lvl;
+
+		sxe2_drv_cmd_params_fill(adapter, &cmd,
+					 SXE2_DRV_CMD_SCHED_TM_ADD_QUEUE_NODE,
+					 &msg_queue, sizeof(msg_queue),
+					 &res, sizeof(res));
+		ret = sxe2_drv_cmd_exec(cdev, &cmd);
+		if (ret) {
+			PMD_LOG_ERR(DRV, "add tm queue failed, ret:%d", ret);
+			goto l_end;
+		}
+	} else {
+		PMD_LOG_ERR(DRV, "commit tm node failed, type:%d", tm_node->type);
+		ret = -EINVAL;
+		goto l_end;
+	}
+
+	tm_node->teid = rte_le_to_cpu_16(res.teid);
+
+l_add:
+	for (i = 0; i < tm_node->child_cnt; i++) {
+		ret = sxe2_drv_tm_commit_node(adapter, tm_node->children[i]);
+		if (ret)
+			goto l_end;
+	}
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_tm_commit(struct sxe2_adapter *adapter)
+{
+	struct sxe2_drv_cmd_params cmd = { 0 };
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_tm_res tm_res = {0};
+	int32_t ret;
+
+	tm_res.teid = adapter->tm_ctxt.root_teid;
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_SCHED_ROOT_CHILDREN_DELETE,
+				 &tm_res, sizeof(tm_res),
+				 NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret) {
+		PMD_LOG_ERR(DRV, "del tm root failed, ret:%d", ret);
+		goto l_end;
+	}
+
+	ret = sxe2_drv_tm_commit_node(adapter, adapter->tm_ctxt.root);
+	if (ret) {
+		PMD_LOG_ERR(DRV, "commit tm node failed, ret:%d", ret);
+		goto l_end;
+	}
+
+	PMD_LOG_DEBUG(DRV, "commit tm success");
+l_end:
+	return ret;
 }

@@ -63,4 +63,5 @@ sources += files(
         'sxe2_mac.c',
         'sxe2_filter.c',
         'sxe2_rss.c',
+        'sxe2_tm.c',
 )

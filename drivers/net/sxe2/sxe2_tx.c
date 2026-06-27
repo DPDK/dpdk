@@ -304,7 +304,6 @@ int32_t __rte_cold sxe2_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	offloads = tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
-
 	txq = sxe2_tx_queue_alloc(dev, queue_idx, nb_desc, socket_id);
 	if (txq == NULL) {
 		PMD_LOG_ERR(TX, "failed to alloc sxe2vf tx queue:%u resource", queue_idx);

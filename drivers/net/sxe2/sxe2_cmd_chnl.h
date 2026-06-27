@@ -38,6 +38,12 @@ int32_t sxe2_drv_mac_link_status_get(struct sxe2_adapter *adapter);
 
 int32_t sxe2_drv_promisc_config(struct sxe2_adapter *adapter, bool set);
 
+int32_t sxe2_drv_root_tree_release(struct rte_eth_dev *dev);
+
+int32_t sxe2_drv_root_tree_alloc(struct rte_eth_dev *dev);
+
+int32_t sxe2_drv_tm_commit(struct sxe2_adapter *adapter);
+
 int32_t sxe2_drv_allmulti_config(struct sxe2_adapter *adapter, bool set);
 
 int32_t sxe2_drv_uc_config(struct sxe2_adapter *adapter, struct rte_ether_addr *addr, bool add);
