@@ -348,6 +348,48 @@ l_end:
 	return ret;
 }
 
+int32_t sxe2_drv_rxq_bind_irq(struct sxe2_adapter *adapter, uint16_t rxq_idx, uint16_t msix_idx)
+{
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_drv_queue_irq_bind_req req = {0};
+	int32_t ret = 0;
+
+	req.msix_idx = msix_idx;
+	req.q_idx = rxq_idx;
+	req.itr_idx = 0;
+	req.bind = true;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_EVT_IRQ_BAND_RXQ,
+				 &req, sizeof(req),
+				 NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_ERR(adapter, DRV, "rxq bind irq failed, ret=%d", ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_rxq_unbind_irq(struct sxe2_adapter *adapter, uint16_t rxq_idx)
+{
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_drv_queue_irq_bind_req req = {0};
+	int32_t ret = 0;
+
+	req.bind = false;
+	req.q_idx = rxq_idx;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_EVT_IRQ_BAND_RXQ,
+				 &req, sizeof(req),
+				 NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_ERR(adapter, DRV, "rxq unbind irq failed, ret=%d", ret);
+
+	return ret;
+}
+
 int32_t sxe2_drv_get_mac_stats(struct sxe2_adapter *adapter)
 {
 	int32_t ret = 0;

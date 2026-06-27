@@ -29,6 +29,7 @@ int32_t
 sxe2_drv_dev_open(struct sxe2_common_device *cdev,
 		struct rte_pci_device *pci_dev);
 
+
 __rte_internal
 void
 sxe2_drv_dev_close(struct sxe2_common_device *cdev);
@@ -36,6 +37,23 @@ sxe2_drv_dev_close(struct sxe2_common_device *cdev);
 __rte_internal
 int32_t
 sxe2_drv_dev_handshake(struct sxe2_common_device *cdev);
+
+__rte_internal
+int32_t
+sxe2_drv_dev_rxq_irq_set(struct sxe2_common_device *cdev, uint16_t base_irq,
+			 int32_t *efd, uint16_t nb_irq);
+
+__rte_internal
+int32_t
+sxe2_drv_dev_other_irq_set(struct sxe2_common_device *cdev, int32_t efd, uint64_t event);
+
+__rte_internal
+int32_t
+sxe2_drv_dev_other_irq_get(struct sxe2_common_device *cdev, uint64_t *event);
+
+__rte_internal
+int32_t
+sxe2_drv_dev_reset_irq_set(struct sxe2_common_device *cdev, int32_t fd);
 
 __rte_internal
 void

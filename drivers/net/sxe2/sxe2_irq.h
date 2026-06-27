@@ -45,4 +45,25 @@ struct sxe2_irq_context {
 	int32_t *rxq_event_fd;
 };
 
+uint32_t sxe2_drv_dev_other_cause_get(struct sxe2_adapter *adapter);
+
+int32_t sxe2_intr_init(struct rte_eth_dev *dev);
+
+void sxe2_intr_uninit(struct rte_eth_dev *dev);
+
+int32_t sxe2_sw_irq_ctxt_init(struct rte_eth_dev *dev);
+
+void sxe2_sw_irq_ctxt_uninit(struct rte_eth_dev *dev);
+
+void sxe2_sw_irq_ctx_hw_cap_set(struct sxe2_adapter *adapter,
+		struct sxe2_drv_msix_caps *msix_caps);
+
+int32_t sxe2_rxq_intr_enable(struct rte_eth_dev *dev);
+
+void sxe2_rxq_intr_disable(struct rte_eth_dev *dev);
+
+int32_t sxe2_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
+
+int32_t sxe2_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
+
 #endif /* SXE2_IRQ_H */

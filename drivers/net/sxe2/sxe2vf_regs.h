@@ -1,0 +1,85 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright (C), 2025, Wuxi Stars Micro System Technologies Co., Ltd.
+ */
+
+#ifndef __SXE2VF_REGS_H__
+#define __SXE2VF_REGS_H__
+
+#define SXE2VF_MBX_Q_LEN_M      0x3FF
+#define SXE2VF_MBX_Q_LEN_VFE_M  RTE_BIT32(28)
+
+#define SXE2VF_MBX_Q_LEN_OVFL_M RTE_BIT32(29)
+#define SXE2VF_MBX_Q_LEN_CRIT_M RTE_BIT32(30)
+#define SXE2VF_MBX_Q_LEN_ENA_M  RTE_BIT32(31)
+
+#define SXE2VF_MBX_RQ_HEAD      (0x00008000)
+#define SXE2VF_MBX_RQ_TAIL      (0x00008400)
+#define SXE2VF_MBX_RQ_LEN       (0x00007C00)
+#define SXE2VF_MBX_RQ_BAH       (0x00007800)
+#define SXE2VF_MBX_RQ_BAL       (0x00007400)
+
+#define SXE2VF_MBX_TQ_HEAD      (0x00006C00)
+#define SXE2VF_MBX_TQ_TAIL      (0x00007000)
+#define SXE2VF_MBX_TQ_LEN       (0x00006800)
+#define SXE2VF_MBX_TQ_BAH       (0x00006400)
+#define SXE2VF_MBX_TQ_BAL       (0x00006000)
+
+#define SXE2VF_RXQ_TAIL(_QRX)                 (0x2000 + ((_QRX) * 4))
+#define SXE2VF_TXQ_TAIL(_QRX)                 (0x1000 + ((_QRX) * 4))
+
+#define SXE2VF_INT_BASE 0x00002800
+
+#define SXE2VF_DYN_CTL0 (SXE2VF_INT_BASE + 0x0)
+
+#define SXE2VF_DYN_CTL(_idx) (SXE2VF_INT_BASE + 0x4 + ((_idx) * 4))
+#define SXE2VF_VF_DYN_CTL(_idx) (SXE2VF_INT_BASE + ((_idx) * 4))
+
+#define SXE2VF_BAR4_MSIX_BASE 0
+#define SXE2VF_BAR4_MSIX_CTL(_idx) (SXE2VF_BAR4_MSIX_BASE + 0xC + ((_idx) * 0x10))
+#define SXE2VF_BAR4_MSIX_ENABLE 0
+#define SXE2VF_BAR4_MSIX_DISABLE 1
+
+#define SXE2VF_DYN_CTL_INTENABLE RTE_BIT32(0)
+#define SXE2VF_DYN_CTL_CLEARPBA   RTE_BIT32(1)
+#define SXE2VF_DYN_CTL_SWINT_TRIG RTE_BIT32(2)
+#define SXE2VF_DYN_CTL_SW_ITR_IDX_ENABLE RTE_BIT32(24)
+
+#define SXE2VF_DYN_CTL_INTENABLE_MSK \
+	RTE_BIT32(31)
+
+#define SXE2VF_DYN_CTL_ITR_IDX_SHIFT 3
+
+enum sxe2vf_itr_idx {
+	SXE2VF_ITR_IDX_0 = 0,
+	SXE2VF_ITR_IDX_1,
+	SXE2VF_ITR_IDX_2,
+	SXE2VF_ITR_IDX_NONE,
+};
+
+#define SXE2VF_INT_ITR0   (0x00002800 + 65 * 0x4)
+#define SXE2VF_INT_ITR(_i, _irq_idx) (SXE2VF_INT_ITR0 + \
+			0x4 + (_i) * 0x104 + ((_irq_idx) * 4))
+#define SXE2VF_VF_INT_ITR(_itr_idx, _irq_idx) (0x00002800 + \
+			(0x104 * (_itr_idx)) + ((_irq_idx) * 4))
+#define SXE2VF_PFG_INT_CTL_ITR_GRAN_0    (2)
+
+#define SXE2VF_PCIE_SYS_READY              0x38c
+#define SXE2VF_PCIE_SYS_READY_CORER_ASSERT RTE_BIT32(0)
+#define SXE2VF_PCIE_SYS_READY_STOP_DROP_DONE RTE_BIT32(2)
+#define SXE2VF_PCIE_SYS_READY_R5        RTE_BIT32(3)
+#define SXE2VF_PCIE_SYS_READY_STOP_DROP RTE_BIT32(16)
+
+#define SXE2VF_PCIE_DEV_CTRL_DEV_STATUS               0x78
+#define SXE2VF_PCIE_DEV_CTRL_DEV_STATUS_TRANS_PENDING RTE_BIT32(21)
+
+#define SXE2VF_VF_VRC_VFGEN_RSTAT             (0x5800)
+#define SXE2VF_VF_VRC_VFGEN_VFRSTAT           GENMASK(1, 0)
+#define SXE2VF_VF_VRC_VFGEN_VFRSTAT_VFR       (0)
+#define SXE2VF_VF_VRC_VFGEN_VFRSTAT_COMPLETE  (RTE_BIT32(0))
+#define SXE2VF_VF_VRC_VFGEN_VFRSTAT_VF_ACTIVE (RTE_BIT32(1))
+
+#define SXE2VF_VF_VRC_VFGEN_VFRSTAT_FORVF_VFR (1)
+#define SXE2VF_VF_VRC_VFGEN_VFRSTAT_FORVF_MASK \
+	(RTE_BIT32(10))
+
+#endif /* SXE2VF_VF_INT_ITR */

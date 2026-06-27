@@ -556,6 +556,14 @@ struct __rte_aligned(4) __rte_packed_begin sxe2_drv_tx_map_req {
 	uint8_t pool_idx;
 } __rte_packed_end;
 
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_queue_irq_bind_req {
+	uint16_t q_idx;
+	uint16_t msix_idx;
+	uint8_t itr_idx;
+	uint8_t bind;
+	uint8_t rsv[2];
+} __rte_packed_end;
+
 enum sxe2_drv_cmd_module {
 	SXE2_DRV_CMD_MODULE_HANDSHAKE = 0,
 	SXE2_DRV_CMD_MODULE_DEV = 1,

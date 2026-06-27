@@ -350,6 +350,12 @@ int32_t sxe2_dev_pci_res_seg_map(struct sxe2_adapter *adapter,
 				 uint32_t item_cnt,
 				 uint32_t item_base);
 
+void sxe2_pci_map_write_reg(struct sxe2_adapter *adapter,
+		enum sxe2_pci_map_resource res_type, uint16_t idx_in_func, uint32_t value);
+
+uint32_t sxe2_pci_map_read_reg(struct sxe2_adapter *adapter,
+		enum sxe2_pci_map_resource res_type, uint16_t idx_in_func);
+
 void sxe2_dev_pci_seg_unmap(struct sxe2_adapter *adapter, uint32_t res_type);
 
 int32_t sxe2_dev_pci_map_init(struct rte_eth_dev *dev);

@@ -22,6 +22,7 @@
 #include <rte_eal_paging.h>
 
 #include "sxe2_ethdev.h"
+#include "sxe2_irq.h"
 #include "sxe2_drv_cmd.h"
 #include "sxe2_cmd_chnl.h"
 #include "sxe2_tx.h"
@@ -106,6 +107,9 @@ static const struct eth_dev_ops sxe2_eth_dev_ops = {
 	.rx_queue_release           = sxe2_rx_queue_release,
 	.tx_queue_setup             = sxe2_tx_queue_setup,
 	.tx_queue_release           = sxe2_tx_queue_release,
+	.rx_queue_intr_enable       = sxe2_rx_queue_intr_enable,
+	.rx_queue_intr_disable      = sxe2_rx_queue_intr_disable,
+
 	.rxq_info_get               = sxe2_rx_queue_info_get,
 	.txq_info_get               = sxe2_tx_queue_info_get,
 	.rx_burst_mode_get          = sxe2_rx_burst_mode_get,
@@ -176,6 +180,8 @@ static int32_t sxe2_dev_stop(struct rte_eth_dev *dev)
 	if (adapter->started == 0)
 		goto l_end;
 
+	sxe2_rxq_intr_disable(dev);
+
 	sxe2_txqs_all_stop(dev);
 	sxe2_rxqs_all_stop(dev);
 
@@ -214,6 +220,12 @@ static int32_t sxe2_dev_start(struct rte_eth_dev *dev)
 		goto l_end;
 	}
 
+	ret = sxe2_rxq_intr_enable(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to enable rx queue intr");
+		goto l_rxq_intr_err;
+	}
+
 	ret = sxe2_queues_start(dev);
 	if (ret) {
 		PMD_LOG_ERR(INIT, "enable queues failed");
@@ -223,7 +235,10 @@ static int32_t sxe2_dev_start(struct rte_eth_dev *dev)
 	dev->data->dev_started = 1;
 	adapter->started = 1;
 	goto l_end;
+
 l_start_queues_err:
+	(void)sxe2_rxq_intr_disable(dev);
+l_rxq_intr_err:
 	(void)sxe2_filter_rule_stop(dev);
 l_end:
 	return ret;
@@ -604,6 +619,8 @@ static int32_t sxe2_func_caps_get(struct sxe2_adapter *adapter)
 
 	sxe2_sw_queue_ctx_hw_cap_set(adapter, &dev_caps.queue_caps);
 
+	sxe2_sw_irq_ctx_hw_cap_set(adapter, &dev_caps.msix_caps);
+
 	sxe2_sw_rss_ctx_hw_cap_set(adapter, &dev_caps.rss_hash_caps);
 
 	sxe2_sw_vsi_ctx_hw_cap_set(adapter, &dev_caps.vsi_caps);
@@ -623,6 +640,41 @@ static int32_t sxe2_dev_caps_get(struct sxe2_adapter *adapter)
 		PMD_LOG_ERR(INIT, "get function caps failed, ret=%d", ret);
 
 	return ret;
+}
+
+uint32_t sxe2_pci_map_read_reg(struct sxe2_adapter *adapter,
+		enum sxe2_pci_map_resource res_type, uint16_t idx_in_func)
+{
+	void *reg_addr;
+	uint32_t value;
+
+	reg_addr = sxe2_pci_map_addr_get(adapter, res_type, idx_in_func);
+	if (unlikely(reg_addr == NULL)) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "reg addr:0x%p is error.", reg_addr);
+		value = SXE2_PCI_MAP_INVALID_VAL;
+		goto l_ret;
+	}
+
+	value = SXE2_PCI_REG_READ(reg_addr);
+
+l_ret:
+	return value;
+}
+
+void sxe2_pci_map_write_reg(struct sxe2_adapter *adapter,
+		enum sxe2_pci_map_resource res_type, uint16_t idx_in_func, uint32_t value)
+{
+	void *reg_addr;
+
+	reg_addr = sxe2_pci_map_addr_get(adapter, res_type, idx_in_func);
+	if (unlikely(reg_addr == NULL)) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "reg addr:0x%p is error.", reg_addr);
+		goto l_ret;
+	}
+
+	SXE2_PCI_REG_WRITE_WC(reg_addr, value);
+l_ret:
+	return;
 }
 
 int32_t sxe2_dev_pci_seg_map(struct sxe2_adapter *adapter,
@@ -702,6 +754,27 @@ static int32_t sxe2_hw_init(struct rte_eth_dev *dev)
 		PMD_LOG_ERR(INIT, "Failed to get device caps, ret=[%d]", ret);
 
 	return ret;
+}
+
+static int32_t sxe2_sw_init(struct rte_eth_dev *dev)
+{
+	int32_t ret = -1;
+
+	PMD_INIT_FUNC_TRACE();
+
+	ret = sxe2_sw_irq_ctxt_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to sw irq ctxt init, ret=[%d]", ret);
+		goto l_end;
+	}
+
+l_end:
+	return ret;
+}
+
+static void sxe2_sw_uninit(struct rte_eth_dev *dev)
+{
+	sxe2_sw_irq_ctxt_uninit(dev);
 }
 
 int32_t sxe2_dev_pci_res_seg_map(struct sxe2_adapter *adapter,
@@ -1052,6 +1125,18 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 		goto init_dev_info_err;
 	}
 
+	ret = sxe2_sw_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to initialize sw parameters, ret=[%d]", ret);
+		goto init_sw_err;
+	}
+
+	ret = sxe2_intr_init(dev);
+	if (ret != 0) {
+		PMD_LOG_ERR(INIT, "Failed to initialize interrupt, ret:%d", ret);
+		goto init_irq_err;
+	}
+
 	ret = sxe2_eth_init(dev);
 	if (ret) {
 		PMD_LOG_ERR(INIT, "Failed to initialize eth parameters, ret=%d", ret);
@@ -1096,6 +1181,10 @@ init_sched_err:
 init_rss_err:
 	sxe2_security_uinit(dev);
 init_security_err:
+	sxe2_intr_uninit(dev);
+init_irq_err:
+	sxe2_sw_uninit(dev);
+init_sw_err:
 	sxe2_eth_uinit(dev);
 init_eth_err:
 init_dev_info_err:
@@ -1119,8 +1208,10 @@ static int32_t sxe2_dev_close(struct rte_eth_dev *dev)
 	(void)sxe2_sched_uinit(dev);
 	sxe2_vsi_uninit(dev);
 	sxe2_security_uinit(dev);
-	sxe2_dev_pci_map_uinit(dev);
+	sxe2_intr_uninit(dev);
+	sxe2_sw_uninit(dev);
 	sxe2_eth_uinit(dev);
+	sxe2_dev_pci_map_uinit(dev);
 
 l_end:
 	return 0;

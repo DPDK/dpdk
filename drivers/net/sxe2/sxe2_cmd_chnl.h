@@ -118,4 +118,8 @@ int32_t sxe2_drv_rss_hf_clear(struct sxe2_adapter *adapter);
 
 int32_t sxe2_drv_ptp_gettime(struct sxe2_adapter *adapter, struct sxe2_rx_queue *rxq);
 
+int32_t sxe2_drv_rxq_bind_irq(struct sxe2_adapter *adapter, uint16_t rxq_idx, uint16_t msix_idx);
+
+int32_t sxe2_drv_rxq_unbind_irq(struct sxe2_adapter *adapter, uint16_t rxq_idx);
+
 #endif /* SXE2_CMD_CHNL_H */

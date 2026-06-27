@@ -67,6 +67,7 @@ l_end:
 	return ret;
 }
 
+
 RTE_EXPORT_INTERNAL_SYMBOL(sxe2_drv_dev_open)
 int32_t
 sxe2_drv_dev_open(struct sxe2_common_device *cdev, struct rte_pci_device *pci_dev)
@@ -87,7 +88,7 @@ sxe2_drv_dev_open(struct sxe2_common_device *cdev, struct rte_pci_device *pci_de
 	if (fd < 0) {
 		ret = -EBADF;
 		PMD_LOG_ERR(COM, "Fail to open device:%s, ret=%d, err:%s",
-				drv_name, ret, strerror(errno));
+			    drv_name, ret, strerror(errno));
 		goto l_end;
 	}
 
@@ -159,6 +160,177 @@ l_end:
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(sxe2_drv_dev_rxq_irq_set)
+int32_t
+sxe2_drv_dev_rxq_irq_set(struct sxe2_common_device *cdev,
+		       uint16_t base_irq, int32_t *efd, uint16_t nb_irq)
+{
+	struct sxe2_ioctl_irq_set cmd_params;
+	int32_t ret = 0;
+	int32_t cmd_fd = 0;
+
+	if (cdev->config.kernel_reset) {
+		ret = -EPERM;
+		PMD_LOG_WARN(COM, "kernel reset, need restart app.");
+		goto l_end;
+	}
+
+	cmd_fd = SXE2_CDEV_TO_CMD_FD(cdev);
+	if (cmd_fd < 0) {
+		ret = -EBADF;
+		PMD_LOG_ERR(COM, "Failed to exec cmd, fd=%d", cmd_fd);
+		goto l_end;
+	}
+
+	PMD_LOG_DEBUG(COM, "Open fd=%d to set rxq irq, base_queue=%d, efds=%p, nb_irq=%d",
+		cmd_fd, base_irq, efd, nb_irq);
+
+	memset(&cmd_params, 0, sizeof(struct sxe2_ioctl_irq_set));
+	cmd_params.base_irq_in_com = base_irq;
+	cmd_params.cnt = nb_irq;
+	cmd_params.event_fd = efd;
+
+	pthread_mutex_lock(&cdev->config.lock);
+	ret = ioctl(cmd_fd, SXE2_COM_CMD_IO_IRQS_REQ, &cmd_params);
+	if (ret < 0) {
+		PMD_LOG_ERR(COM, "Failed to set io irqs, fd=%d, ret=%d, err:%s",
+			    cmd_fd, ret, strerror(errno));
+		pthread_mutex_unlock(&cdev->config.lock);
+		goto l_end;
+	}
+	pthread_mutex_unlock(&cdev->config.lock);
+
+l_end:
+	return ret;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(sxe2_drv_dev_other_irq_set)
+int32_t
+sxe2_drv_dev_other_irq_set(struct sxe2_common_device *cdev,
+			int32_t efd, uint64_t event)
+{
+	int32_t ret = 0;
+	int32_t cmd_fd = 0;
+	struct sxe2_ioctl_other_evt_set cmd_params;
+
+	if (cdev->config.kernel_reset) {
+		ret = -EPERM;
+		PMD_LOG_WARN(COM, "kernel reset, need restart app.");
+		goto l_end;
+	}
+
+	cmd_fd = SXE2_CDEV_TO_CMD_FD(cdev);
+	if (cmd_fd < 0) {
+		ret = -EBADF;
+		PMD_LOG_ERR(COM, "Failed to exec cmd, fd=%d", cmd_fd);
+		goto l_end;
+	}
+
+	PMD_LOG_DEBUG(COM, "Open fd=%d to set other irq, efd=%d, event=%"PRIu64"",
+		cmd_fd, efd, event);
+
+	memset(&cmd_params, 0, sizeof(struct sxe2_ioctl_other_evt_set));
+	cmd_params.eventfd = efd;
+	cmd_params.filter_table = event;
+
+	pthread_mutex_lock(&cdev->config.lock);
+	ret = ioctl(cmd_fd, SXE2_COM_CMD_EVT_IRQ_REQ, &cmd_params);
+	if (ret < 0) {
+		PMD_LOG_ERR(COM, "Failed to set others evt, fd=%d, ret=%d, err:%s",
+			   cmd_fd, ret, strerror(errno));
+		ret = -EIO;
+		pthread_mutex_unlock(&cdev->config.lock);
+		goto l_end;
+	}
+	pthread_mutex_unlock(&cdev->config.lock);
+
+l_end:
+	return ret;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(sxe2_drv_dev_other_irq_get)
+int32_t
+sxe2_drv_dev_other_irq_get(struct sxe2_common_device *cdev, uint64_t *event)
+{
+	int32_t ret = 0;
+	int32_t cmd_fd = 0;
+	struct sxe2_ioctl_other_evt_get cmd_params;
+
+	if (cdev->config.kernel_reset) {
+		ret = -EPERM;
+		PMD_LOG_WARN(COM, "kernel reset, need restart app.");
+		goto l_end;
+	}
+
+	cmd_fd = SXE2_CDEV_TO_CMD_FD(cdev);
+	if (cmd_fd < 0) {
+		ret = -EBADF;
+		PMD_LOG_ERR(COM, "Failed to exec cmd, fd=%d", cmd_fd);
+		goto l_end;
+	}
+
+	PMD_LOG_DEBUG(COM, "Open fd=%d to get other irq", cmd_fd);
+
+	memset(&cmd_params, 0, sizeof(struct sxe2_ioctl_other_evt_get));
+
+	pthread_mutex_lock(&cdev->config.lock);
+	ret = ioctl(cmd_fd, SXE2_COM_CMD_EVT_CAUSE_GET, &cmd_params);
+	if (ret < 0) {
+		PMD_LOG_ERR(COM, "Failed to set others evt, fd=%d, ret=%d, err:%s",
+			   cmd_fd, ret, strerror(errno));
+		ret = -EIO;
+		pthread_mutex_unlock(&cdev->config.lock);
+		goto l_end;
+	}
+	pthread_mutex_unlock(&cdev->config.lock);
+	*event = cmd_params.evt_cause;
+
+l_end:
+	return ret;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(sxe2_drv_dev_reset_irq_set)
+int32_t
+sxe2_drv_dev_reset_irq_set(struct sxe2_common_device *cdev, int32_t efd)
+{
+	int32_t ret = 0;
+	int32_t cmd_fd = 0;
+	struct sxe2_ioctl_reset_sub_set cmd_params;
+
+	if (cdev->config.kernel_reset) {
+		ret = -EPERM;
+		PMD_LOG_WARN(COM, "kernel reset, need restart app.");
+		goto l_end;
+	}
+
+	cmd_fd = SXE2_CDEV_TO_CMD_FD(cdev);
+	if (cmd_fd < 0) {
+		ret = -EBADF;
+		PMD_LOG_ERR(COM, "Failed to exec cmd, fd=%d", cmd_fd);
+		goto l_end;
+	}
+
+	PMD_LOG_DEBUG(COM, "Open fd=%d to set reset irq, efd=%d",
+		cmd_fd, efd);
+
+	memset(&cmd_params, 0, sizeof(struct sxe2_ioctl_reset_sub_set));
+	cmd_params.eventfd = efd;
+
+	pthread_mutex_lock(&cdev->config.lock);
+	ret = ioctl(cmd_fd, SXE2_COM_CMD_RST_IRQ_REQ, &cmd_params);
+	if (ret < 0) {
+		PMD_LOG_ERR(COM, "Failed to set reset irqs, fd=%d, ret=%d, err:%s",
+			   cmd_fd, ret, strerror(errno));
+		ret = -EIO;
+		pthread_mutex_unlock(&cdev->config.lock);
+		goto l_end;
+	}
+	pthread_mutex_unlock(&cdev->config.lock);
+
+l_end:
+	return ret;
+}
+
 RTE_EXPORT_INTERNAL_SYMBOL(sxe2_drv_dev_mmap)
 void
 *sxe2_drv_dev_mmap(struct sxe2_common_device *cdev, uint8_t bar_idx, uint64_t len, uint64_t offset)
@@ -223,7 +395,7 @@ l_end:
 RTE_EXPORT_INTERNAL_SYMBOL(sxe2_drv_dev_dma_map)
 int32_t
 sxe2_drv_dev_dma_map(struct sxe2_common_device *cdev, uint64_t vaddr,
-			uint64_t iova, uint64_t size)
+		     uint64_t iova, uint64_t size)
 {
 	struct sxe2_ioctl_iommu_dma_map cmd_params;
 	enum rte_iova_mode iova_mode;

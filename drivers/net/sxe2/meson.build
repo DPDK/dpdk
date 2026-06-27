@@ -68,4 +68,5 @@ sources += files(
         'sxe2_security.c',
         'sxe2_mp.c',
         'sxe2_stats.c',
+        'sxe2_irq.c',
 )
