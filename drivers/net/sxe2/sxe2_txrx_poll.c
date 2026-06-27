@@ -234,6 +234,44 @@ sxe2_tx_pkt_data_desc_count(struct rte_mbuf *tx_pkt)
 	return count;
 }
 
+static __rte_always_inline void sxe2_tx_desc_tunneling_params_fill(uint64_t offloads,
+					union sxe2_tx_offload_info ol_info,
+					uint32_t *desc_tunneling_params)
+{
+	if (offloads & RTE_MBUF_F_TX_OUTER_IP_CKSUM)
+		*desc_tunneling_params |= SXE2_TX_CTXT_DESC_EIPT_IPV4;
+	else if (offloads & RTE_MBUF_F_TX_OUTER_IPV4)
+		*desc_tunneling_params |= SXE2_TX_CTXT_DESC_EIPT_IPV4_NO_CSUM;
+	else if (offloads & RTE_MBUF_F_TX_OUTER_IPV6)
+		*desc_tunneling_params |= SXE2_TX_CTXT_DESC_EIPT_IPV6;
+
+	*desc_tunneling_params |=
+			SXE2_TX_CTXT_DESC_EIPLEN_VAL(ol_info.outer_l3_len);
+	switch (offloads & RTE_MBUF_F_TX_TUNNEL_MASK) {
+	case RTE_MBUF_F_TX_TUNNEL_IPIP:
+		break;
+	case RTE_MBUF_F_TX_TUNNEL_VXLAN:
+	case RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE:
+	case RTE_MBUF_F_TX_TUNNEL_GTP:
+	case RTE_MBUF_F_TX_TUNNEL_GENEVE:
+		*desc_tunneling_params |= SXE2_TX_CTXT_DESC_UDP_TUNNE;
+		break;
+	case RTE_MBUF_F_TX_TUNNEL_GRE:
+		*desc_tunneling_params |= SXE2_TX_CTXT_DESC_GRE_TUNNE;
+		break;
+	default:
+		PMD_LOG_ERR(TX, "Tunnel type [0x%" PRIx64 "] is not supported.",
+			    (uint64_t)(offloads & RTE_MBUF_F_TX_TUNNEL_MASK));
+		return;
+	}
+	*desc_tunneling_params |= SXE2_TX_CTXT_DESC_NATLEN_VAL(ol_info.l2_len);
+	if (!(*desc_tunneling_params & SXE2_TX_CTXT_DESC_EIPT_NONE) &&
+			(*desc_tunneling_params & SXE2_TX_CTXT_DESC_UDP_TUNNE) &&
+			(offloads & RTE_MBUF_F_TX_OUTER_UDP_CKSUM)) {
+		*desc_tunneling_params |= SXE2_TX_CTXT_DESC_L4T_CS_MASK;
+	}
+}
+
 static __rte_always_inline void
 sxe2_tx_desc_checksum_fill(uint64_t offloads, uint32_t *desc_cmd, uint32_t *desc_offset,
 		union sxe2_tx_offload_info ol_info)
@@ -414,7 +452,13 @@ uint16_t sxe2_tx_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkt
 			}
 		}
 
-		desc_offset |= SXE2_TX_DATA_DESC_MACLEN_VAL(ol_info.l2_len);
+		if ((offloads & RTE_MBUF_F_TX_TUNNEL_MASK) && ctxt_desc_num) {
+			desc_offset |= SXE2_TX_DATA_DESC_MACLEN_VAL(ol_info.outer_l2_len);
+			sxe2_tx_desc_tunneling_params_fill(offloads, ol_info,
+						&desc_tunneling_params);
+		} else {
+			desc_offset |= SXE2_TX_DATA_DESC_MACLEN_VAL(ol_info.l2_len);
+		}
 
 		if (offloads & SXE2_TX_OFFLOAD_CKSUM_MASK) {
 			sxe2_tx_desc_checksum_fill(offloads, &desc_cmd,

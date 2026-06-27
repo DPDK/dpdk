@@ -318,6 +318,7 @@ struct sxe2_adapter {
 	struct sxe2_sched_hw_cap      sched_ctxt;
 	struct sxe2_tm_context        tm_ctxt;
 	struct sxe2_devargs           devargs;
+	struct sxe2_udp_tunnel_ctx    udp_tunnel_ctx;
 	struct sxe2_security_ctx      security_ctx;
 	struct sxe2_repr_context      repr_ctxt;
 	struct sxe2_switchdev_info    switchdev_info;
@@ -368,6 +369,14 @@ uint32_t sxe2_pci_map_read_reg(struct sxe2_adapter *adapter,
 void sxe2_dev_pci_seg_unmap(struct sxe2_adapter *adapter, uint32_t res_type);
 
 int32_t sxe2_dev_pci_map_init(struct rte_eth_dev *dev);
+
+void sxe2_dev_pci_seg_unmap(struct sxe2_adapter *adapter, uint32_t res_type);
+
+int32_t sxe2_udp_tunnel_port_del_common(struct sxe2_adapter *ad,
+		enum sxe2_udp_tunnel_protocol tunnel_proto, uint16_t udp_port);
+
+int32_t sxe2_udp_tunnel_port_add_common(struct sxe2_adapter *ad,
+		enum sxe2_udp_tunnel_protocol tunnel_proto, uint16_t udp_port);
 
 void sxe2_dev_pci_map_uinit(struct rte_eth_dev *dev);
 

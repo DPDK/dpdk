@@ -1455,6 +1455,102 @@ int32_t sxe2_drv_ipsec_txsa_delete(struct sxe2_adapter *adapter,
 	return ret;
 }
 
+int32_t sxe2_drv_udp_tunnel_add(struct sxe2_adapter *adapter,
+			    enum sxe2_udp_tunnel_protocol tunnel_proto,
+			    uint16_t udp_port)
+{
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_udp_tunnel_req req = {};
+	struct sxe2_drv_cmd_params cmd = {};
+	int32_t ret = -1;
+
+	req.type = tunnel_proto;
+	req.port = udp_port;
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_UDPTUNNEL_ADD,
+				 &req, sizeof(req),
+				 NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret)
+		PMD_LOG_ERR(DRV, "Failed to add udp proto %d port %d, ret=%d",
+				tunnel_proto, udp_port, ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_udp_tunnel_del(struct sxe2_adapter *adapter,
+			    enum sxe2_udp_tunnel_protocol tunnel_proto,
+			    uint16_t udp_port)
+{
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_udp_tunnel_req req = {};
+	struct sxe2_drv_cmd_params cmd = {};
+	int32_t ret = -1;
+
+	req.type = tunnel_proto;
+	req.port = udp_port;
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_UDPTUNNEL_DEL,
+				 &req, sizeof(req),
+				 NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret)
+		PMD_LOG_ERR(DRV, "Failed to del udp proto %d port %d, ret=%d",
+				tunnel_proto, udp_port, ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_get_udp_tunnel_port(struct sxe2_adapter *adapter,
+				 enum sxe2_flow_udp_tunnel_protocol proto,
+				 uint16_t *port)
+{
+	int32_t ret = 0;
+	static const uint16_t flow_proto_to_udp_tunnel_proto[SXE2_FLOW_UDP_TUNNEL_MAX] = {
+		[SXE2_FLOW_UDP_TUNNEL_PROTOCOL_VXLAN] = SXE2_UDP_TUNNEL_PROTOCOL_VXLAN,
+		[SXE2_FLOW_UDP_TUNNEL_PROTOCOL_VXLAN_GPE] = SXE2_UDP_TUNNEL_PROTOCOL_VXLAN_GPE,
+		[SXE2_FLOW_UDP_TUNNEL_PROTOCOL_GENEVE] = SXE2_UDP_TUNNEL_PROTOCOL_GENEVE,
+		[SXE2_FLOW_UDP_TUNNEL_PROTOCOL_GTP_U] = SXE2_UDP_TUNNEL_PROTOCOL_GTP_U,
+		[SXE2_FLOW_UDP_TUNNEL_PROTOCOL_NVGRE] = SXE2_UDP_TUNNEL_PROTOCOL_NVGRE,
+	};
+	struct sxe2_udp_tunnel_cfg tunnel_config = {};
+
+	tunnel_config.protocol = flow_proto_to_udp_tunnel_proto[proto];
+	ret = sxe2_drv_udp_tunnel_get(adapter, &tunnel_config);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to get udp tunnel port, ret=%d", ret);
+		goto l_end;
+	}
+
+	*port = tunnel_config.fw_port;
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_udp_tunnel_get(struct sxe2_adapter *adapter,
+			    struct sxe2_udp_tunnel_cfg *tunnel_config)
+{
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_udp_tunnel_req req = {};
+	struct sxe2_drv_udp_tunnel_resp resp = {};
+	struct sxe2_drv_cmd_params cmd = {};
+	int32_t ret = -1;
+
+	req.type = tunnel_config->protocol;
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_UDPTUNNEL_GET,
+				 &req, sizeof(req),
+				 &resp, sizeof(resp));
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret)
+		PMD_LOG_ERR(DRV, "Failed to get udp proto %d port, ret=%d", req.type, ret);
+
+	tunnel_config->fw_port   = resp.port;
+	tunnel_config->fw_status = resp.enable;
+	tunnel_config->fw_dst_en = resp.dst;
+	tunnel_config->fw_src_en = resp.src;
+	tunnel_config->fw_used   = resp.fw_used;
+
+	return ret;
+}
+
 int32_t sxe2_drv_queue_info_get_update(struct sxe2_adapter *adapter, struct eth_queue_stats *qstats)
 {
 	struct sxe2_drv_cmd_params param = {0};

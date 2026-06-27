@@ -37,4 +37,10 @@ int32_t sxe2_flow_parse_pattern(struct rte_eth_dev *dev,
 			    struct rte_flow_error *error,
 			    struct sxe2_flow *flow);
 
+int32_t sxe2_flow_add_tunnel_port(struct rte_eth_dev *dev,
+			      struct rte_flow_error *error,
+			      struct sxe2_flow *flow,
+			      BITMAP_TYPE *flow_type,
+			      enum sxe2_flow_tunnel_type tunnel_type);
+
 #endif /* SXE2_FLOW_PARSE_PATTERN_H_ */

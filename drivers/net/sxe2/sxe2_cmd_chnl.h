@@ -67,6 +67,23 @@ int32_t sxe2_drv_ipsec_txsa_delete(struct sxe2_adapter *adapter,
 
 int32_t sxe2_drv_promisc_config(struct sxe2_adapter *adapter, bool set);
 
+int32_t sxe2_drv_udp_tunnel_add(struct sxe2_adapter *adapter,
+			    enum sxe2_udp_tunnel_protocol tunnel_proto,
+			    uint16_t udp_port);
+
+int32_t sxe2_drv_udp_tunnel_del(struct sxe2_adapter *adapter,
+			    enum sxe2_udp_tunnel_protocol tunnel_proto,
+			    uint16_t udp_port);
+
+int32_t sxe2_drv_udp_tunnel_get(struct sxe2_adapter *adapter,
+			    struct sxe2_udp_tunnel_cfg *tunnel_config);
+
+int32_t sxe2_drv_get_udp_tunnel_port(struct sxe2_adapter *adapter,
+				 enum sxe2_flow_udp_tunnel_protocol proto,
+				 uint16_t *port);
+
+int32_t sxe2_drv_vsi_info_get(struct sxe2_adapter *adapter, struct sxe2_vsi *vsi);
+
 int32_t sxe2_drv_vsi_info_get(struct sxe2_adapter *adapter, struct sxe2_vsi *vsi);
 
 int32_t sxe2_drv_mac_link_status_get(struct sxe2_adapter *adapter);

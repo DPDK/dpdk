@@ -8,7 +8,6 @@
 #include "sxe2_osal.h"
 #include "sxe2_common.h"
 
-
 int32_t sxe2_flow_ops_get(struct rte_eth_dev *dev, const struct rte_flow_ops **ops);
 
 int32_t sxe2_flow_init(struct rte_eth_dev *dev);
@@ -26,4 +25,6 @@ int32_t sxe2_flow_query_mgr(struct sxe2_adapter *adapter,
 			struct sxe2_flow *flow,
 			struct sxe2_fnav_cid_mgr **mgr_ptr,
 			struct rte_flow_error *error);
+
+int32_t sxe2_flow_init_udp_tunnel_port(struct rte_eth_dev *dev);
 #endif /* __SXE2_FLOW_H__ */

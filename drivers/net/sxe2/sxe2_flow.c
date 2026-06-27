@@ -523,6 +523,51 @@ static int32_t sxe2_flow_adjust_action(struct rte_eth_dev *dev __rte_unused,
 	return ret;
 }
 
+int32_t sxe2_flow_init_udp_tunnel_port(struct rte_eth_dev *dev)
+{
+	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	int32_t ret = 0;
+	uint16_t i = 0;
+	uint16_t *flow_udp_tunnel_port = NULL;
+
+	memset(adapter->flow_ctxt.tunnel_port_list, 0,
+	       sizeof(adapter->flow_ctxt.tunnel_port_list));
+
+	flow_udp_tunnel_port = adapter->flow_ctxt.tunnel_port_list;
+	for (i = 0; i < SXE2_FLOW_UDP_TUNNEL_MAX; i++) {
+		if (flow_udp_tunnel_port[i] == 0) {
+			ret = sxe2_drv_get_udp_tunnel_port(adapter, i,
+							   &flow_udp_tunnel_port[i]);
+			if (ret != 0) {
+				PMD_LOG_ERR(DRV, "Failed to get udp tunnel port, proto: %d,"
+					    "ret: %d", i, ret);
+				goto l_end;
+			}
+		}
+	}
+
+l_end:
+	return ret;
+}
+
+static int32_t sxe2_flowlist_add_tunnel_port(struct rte_eth_dev *dev,
+			struct rte_flow *flow_list,
+			struct rte_flow_error *error)
+{
+	struct sxe2_flow_list_t *sxe2_flow_list = &flow_list->sxe2_flow_list;
+	struct sxe2_flow *flow = TAILQ_FIRST(sxe2_flow_list);
+	enum sxe2_flow_tunnel_type tunnel_type = flow->meta.tunnel_type;
+	DECLARE_BITMAP(flow_type, SXE2_EXPANSION_MAX);
+	sxe2_bitmap_zero(flow_type, SXE2_EXPANSION_MAX);
+	sxe2_bitmap_copy(flow_type, flow->flow_type, SXE2_EXPANSION_MAX);
+	int32_t ret = 0;
+
+	if (flow->engine_type == SXE2_FLOW_ENGINE_FNAV)
+		return sxe2_flow_add_tunnel_port(dev, error, flow, flow_type, tunnel_type);
+
+	return ret;
+}
+
 static int32_t sxe2_flow_check_item_empty(uint8_t *item, uint16_t size)
 {
 	uint16_t i = 0;
@@ -678,6 +723,10 @@ static int32_t sxe2_flow_post_proc(struct rte_eth_dev *dev,
 			       struct rte_flow_error *error)
 {
 	int32_t ret = 0;
+
+	ret = sxe2_flowlist_add_tunnel_port(dev, flow_list, error);
+	if (ret)
+		goto l_end;
 
 	ret = sxe2_flowlist_add_proto_type(dev, flow_list, error);
 	if (ret)
@@ -1308,6 +1357,11 @@ int32_t sxe2_flow_init(struct rte_eth_dev *dev)
 
 	adapter->flow_ctxt.fnav_inited = 1;
 	rte_spinlock_init(&adapter->flow_ctxt.flow_list_lock);
+
+	ret = sxe2_flow_init_udp_tunnel_port(dev);
+	if (ret)
+		PMD_LOG_ERR(DRV, "Failed to init udp tunnel port, ret: %d.", ret);
+
 	return ret;
 }
 

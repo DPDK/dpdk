@@ -42,7 +42,7 @@
 
 #define SXE2_PCI_VENDOR_ID_1    0x1ff2
 #define SXE2_PCI_DEVICE_ID_PF_1 0x10b1
-#define SXE2_PCI_DEVICE_ID_VF_1 0x10b2
+#define SXE2_PCI_DEVICE_ID_VF_1 0x10b
 
 #define SXE2_PCI_VENDOR_ID_2    0x1d94
 #define SXE2_PCI_DEVICE_ID_PF_2 0x1260
@@ -114,6 +114,11 @@ static int32_t sxe2_dev_close(struct rte_eth_dev *dev);
 static int32_t sxe2_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info);
 static const uint32_t *sxe2_buffer_split_supported_hdr_ptypes_get(struct rte_eth_dev *dev
 				__rte_unused, size_t *no_of_elements __rte_unused);
+static int32_t sxe2_udp_tunnel_port_add(struct rte_eth_dev *dev,
+					struct rte_eth_udp_tunnel *tunnel_udp);
+static int32_t sxe2_udp_tunnel_port_del(struct rte_eth_dev *dev,
+					struct rte_eth_udp_tunnel *tunnel_udp);
+
 
 static const struct eth_dev_ops sxe2_eth_dev_ops = {
 	.dev_configure              = sxe2_dev_configure,
@@ -160,6 +165,9 @@ static const struct eth_dev_ops sxe2_eth_dev_ops = {
 	.reta_query                 = sxe2_dev_rss_reta_query,
 	.rss_hash_update            = sxe2_dev_rss_hash_update,
 	.rss_hash_conf_get          = sxe2_dev_rss_hash_conf_get,
+
+	.udp_tunnel_port_add        = sxe2_udp_tunnel_port_add,
+	.udp_tunnel_port_del        = sxe2_udp_tunnel_port_del,
 
 	.flow_ops_get               = sxe2_flow_ops_get,
 	.tm_ops_get                 = sxe2_tm_ops_get,
@@ -225,6 +233,12 @@ static int32_t sxe2_dev_start(struct rte_eth_dev *dev)
 	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
 	PMD_INIT_FUNC_TRACE();
 
+	ret = sxe2_flow_init_udp_tunnel_port(dev);
+	if (ret) {
+		PMD_LOG_ERR(DRV, "Failed to init udp tunnel port, ret: %d.", ret);
+		goto l_end;
+	}
+
 	ret = sxe2_queues_init(dev);
 	if (ret) {
 		PMD_LOG_ERR(INIT, "Failed to init queues.");
@@ -266,6 +280,182 @@ l_start_queues_err:
 	(void)sxe2_rxq_intr_disable(dev);
 l_rxq_intr_err:
 	(void)sxe2_filter_rule_stop(dev);
+l_end:
+	return ret;
+}
+
+static enum sxe2_udp_tunnel_protocol
+sxe2_udp_tunnel_type_rte_to_sxe2(enum rte_eth_tunnel_type rte_type)
+{
+	static enum sxe2_udp_tunnel_protocol sxe2_udp_proto_map[RTE_ETH_TUNNEL_TYPE_MAX] = {
+		[RTE_ETH_TUNNEL_TYPE_NONE] = SXE2_UDP_TUNNEL_MAX,
+		[RTE_ETH_TUNNEL_TYPE_VXLAN] = SXE2_UDP_TUNNEL_PROTOCOL_VXLAN,
+		[RTE_ETH_TUNNEL_TYPE_GENEVE] = SXE2_UDP_TUNNEL_PROTOCOL_GENEVE,
+		[RTE_ETH_TUNNEL_TYPE_TEREDO] = SXE2_UDP_TUNNEL_PROTOCOL_TEREDO,
+		[RTE_ETH_TUNNEL_TYPE_NVGRE] = SXE2_UDP_TUNNEL_PROTOCOL_NVGRE,
+		[RTE_ETH_TUNNEL_TYPE_IP_IN_GRE] = SXE2_UDP_TUNNEL_MAX,
+		[RTE_ETH_L2_TUNNEL_TYPE_E_TAG] = SXE2_UDP_TUNNEL_MAX,
+		[RTE_ETH_TUNNEL_TYPE_VXLAN_GPE] = SXE2_UDP_TUNNEL_PROTOCOL_VXLAN_GPE,
+		[RTE_ETH_TUNNEL_TYPE_ECPRI]  = SXE2_UDP_TUNNEL_PROTOCOL_ECPRI
+	};
+
+	if (rte_type >= RTE_ETH_TUNNEL_TYPE_MAX) {
+		PMD_LOG_ERR(DRV, "Invalid rte_eth_tunnel_type %d!", rte_type);
+		rte_type = RTE_ETH_TUNNEL_TYPE_NONE;
+	}
+
+	return sxe2_udp_proto_map[rte_type];
+}
+
+int32_t sxe2_udp_tunnel_port_add_common(struct sxe2_adapter *ad,
+				    enum sxe2_udp_tunnel_protocol tunnel_proto,
+				    uint16_t udp_port)
+{
+	struct sxe2_udp_tunnel_cfg *tunnel_config;
+	int32_t ret = -1;
+
+	rte_spinlock_lock(&ad->udp_tunnel_ctx.lock);
+
+	tunnel_config = &ad->udp_tunnel_ctx.tunnel_conf[tunnel_proto];
+
+	if (tunnel_config->dev_status == SXE2_UDP_TUNNEL_ENABLE) {
+		if (udp_port == tunnel_config->dev_port &&
+			tunnel_config->dev_ref_cnt < 0xFFFFU) {
+			tunnel_config->dev_ref_cnt++;
+			ret = 0;
+			goto l_unlock_end;
+		} else {
+			PMD_LOG_ERR(DRV, "Adding multiple ports to the same protocol "
+				    "is not supported!");
+			ret = -EINVAL;
+			goto l_unlock_end;
+		}
+	} else {
+		ret = sxe2_drv_udp_tunnel_add(ad, tunnel_proto, udp_port);
+		if (ret != 0)
+			goto l_unlock_end;
+
+		tunnel_config->protocol = tunnel_proto;
+		tunnel_config->dev_port = udp_port;
+		tunnel_config->dev_status  = SXE2_UDP_TUNNEL_ENABLE;
+		tunnel_config->dev_ref_cnt++;
+	}
+
+l_unlock_end:
+	rte_spinlock_unlock(&ad->udp_tunnel_ctx.lock);
+	return ret;
+}
+
+int32_t sxe2_udp_tunnel_port_del_common(struct sxe2_adapter *ad,
+				    enum sxe2_udp_tunnel_protocol tunnel_proto,
+				    uint16_t udp_port)
+{
+	struct sxe2_udp_tunnel_cfg *tunnel_config;
+	int32_t ret = -1;
+
+	rte_spinlock_lock(&ad->udp_tunnel_ctx.lock);
+	tunnel_config = &ad->udp_tunnel_ctx.tunnel_conf[tunnel_proto];
+
+	if (tunnel_config->dev_status == SXE2_UDP_TUNNEL_ENABLE &&
+		udp_port == tunnel_config->dev_port) {
+		if (tunnel_config->dev_ref_cnt > 1) {
+			tunnel_config->dev_ref_cnt--;
+			ret = 0;
+			goto l_unlock_end;
+		} else {
+			ret = sxe2_drv_udp_tunnel_del(ad, tunnel_proto, udp_port);
+			if (ret != 0)
+				goto l_unlock_end;
+
+			tunnel_config->dev_status  = SXE2_UDP_TUNNEL_DISABLE;
+			tunnel_config->dev_ref_cnt = 0;
+		}
+		goto l_unlock_end;
+	}
+
+	ret = -EINVAL;
+
+l_unlock_end:
+	rte_spinlock_unlock(&ad->udp_tunnel_ctx.lock);
+	return ret;
+}
+
+static int32_t sxe2_udp_tunnel_port_clear(struct rte_eth_dev *dev)
+{
+	struct sxe2_adapter *ad = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	struct sxe2_udp_tunnel_cfg *tunnel_config;
+	int32_t ret = 0;
+	uint16_t tunnel_proto = 0;
+
+	rte_spinlock_lock(&ad->udp_tunnel_ctx.lock);
+
+	for (tunnel_proto = 0; tunnel_proto < SXE2_UDP_TUNNEL_MAX; tunnel_proto++) {
+		tunnel_config = &ad->udp_tunnel_ctx.tunnel_conf[tunnel_proto];
+		if (tunnel_config->dev_status == SXE2_UDP_TUNNEL_ENABLE) {
+			ret = sxe2_drv_udp_tunnel_del(ad, tunnel_config->protocol,
+					tunnel_config->dev_port);
+			if (ret) {
+				PMD_LOG_ERR(DRV, "Failed to delete udp tunnel port %d, proto %d",
+					    tunnel_config->dev_port, tunnel_config->protocol);
+				goto l_unlock_end;
+			}
+
+			tunnel_config->dev_status  = SXE2_UDP_TUNNEL_DISABLE;
+			tunnel_config->dev_ref_cnt = 0;
+		}
+	}
+l_unlock_end:
+	rte_spinlock_unlock(&ad->udp_tunnel_ctx.lock);
+	return ret;
+}
+
+static int32_t sxe2_udp_tunnel_port_add(struct rte_eth_dev *dev,
+			struct rte_eth_udp_tunnel *tunnel_udp)
+{
+	int32_t ret = 0;
+	enum sxe2_udp_tunnel_protocol tunnel_proto;
+	struct sxe2_adapter *ad = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+
+	if (tunnel_udp->udp_port == 0) {
+		ret = -EINVAL;
+		goto l_end;
+	}
+
+	tunnel_proto = sxe2_udp_tunnel_type_rte_to_sxe2(tunnel_udp->prot_type);
+	if (tunnel_proto >= SXE2_UDP_TUNNEL_MAX) {
+		ret = -EINVAL;
+		goto l_end;
+	}
+
+	ret = sxe2_udp_tunnel_port_add_common(ad, tunnel_proto, tunnel_udp->udp_port);
+	if (ret) {
+		PMD_LOG_ERR(DRV, "Add tunnel port failed, ret = %d", ret);
+		goto l_end;
+	}
+
+l_end:
+	return ret;
+}
+
+static int32_t sxe2_udp_tunnel_port_del(struct rte_eth_dev *dev,
+			struct rte_eth_udp_tunnel *tunnel_udp)
+{
+	int32_t ret = 0;
+	enum sxe2_udp_tunnel_protocol tunnel_proto;
+	struct sxe2_adapter *ad = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+
+	tunnel_proto = sxe2_udp_tunnel_type_rte_to_sxe2(tunnel_udp->prot_type);
+	if (tunnel_proto >= SXE2_UDP_TUNNEL_MAX) {
+		ret = -EINVAL;
+		goto l_end;
+	}
+
+	ret = sxe2_udp_tunnel_port_del_common(ad, tunnel_proto, tunnel_udp->udp_port);
+	if (ret) {
+		PMD_LOG_ERR(DRV, "Delete tunnel port failed, ret = %d", ret);
+		goto l_end;
+	}
+
 l_end:
 	return ret;
 }
@@ -1287,15 +1477,20 @@ static int32_t sxe2_dev_close(struct rte_eth_dev *dev)
 	(void)sxe2_dev_stop(dev);
 	(void)sxe2_queues_release(dev);
 	sxe2_mp_uninit(dev);
-	(void)sxe2_rss_disable(dev);
 	(void)sxe2_sched_uinit(dev);
+	(void)sxe2_rss_disable(dev);
+	(void)sxe2_flow_uninit(dev);
+	(void)sxe2_udp_tunnel_port_clear(dev);
 	sxe2_vsi_uninit(dev);
 	sxe2_security_uinit(dev);
 	sxe2_intr_uninit(dev);
 	(void)sxe2_switchdev_uninit(dev);
 	sxe2_sw_uninit(dev);
+	(void)sxe2_switchdev_uninit(dev);
+	sxe2_dev_pci_map_uinit(dev);
 	sxe2_eth_uinit(dev);
 	sxe2_dev_pci_map_uinit(dev);
+	sxe2_free_repr_info(dev);
 
 l_end:
 	return 0;

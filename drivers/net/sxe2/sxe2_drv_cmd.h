@@ -617,6 +617,22 @@ struct __rte_aligned(4) __rte_packed_begin sxe2_drv_flow_fnav_query_stat_resp {
 	uint64_t stat_bytes;
 } __rte_packed_end;
 
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_udp_tunnel_req {
+	uint8_t type;
+	uint8_t rsv;
+	uint16_t port;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_udp_tunnel_resp {
+	uint8_t type;
+	uint8_t enable;
+	uint8_t dst;
+	uint8_t src;
+	uint16_t port;
+	uint8_t fw_used;
+	uint8_t rsv;
+} __rte_packed_end;
+
 enum sxe2_drv_cmd_module {
 	SXE2_DRV_CMD_MODULE_HANDSHAKE = 0,
 	SXE2_DRV_CMD_MODULE_DEV = 1,

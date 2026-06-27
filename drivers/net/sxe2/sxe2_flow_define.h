@@ -119,6 +119,7 @@ struct sxe2_flow_context {
 	struct rte_flow_list_t rte_flow_list;
 	rte_spinlock_t flow_list_lock;
 	struct sxe2_fnav_count_resource hw_res;
+	uint16_t tunnel_port_list[SXE2_FLOW_UDP_TUNNEL_MAX];
 	uint32_t fnav_inited;
 };
 #define SXE2_INVALID_RSS_ATTR	\
