@@ -124,6 +124,11 @@ static const struct eth_dev_ops sxe2_eth_dev_ops = {
 
 	.vlan_filter_set            = sxe2_dev_vlan_filter_set,
 	.vlan_offload_set           = sxe2_dev_vlan_offload_set,
+
+	.reta_update                = sxe2_dev_rss_reta_update,
+	.reta_query                 = sxe2_dev_rss_reta_query,
+	.rss_hash_update            = sxe2_dev_rss_hash_update,
+	.rss_hash_conf_get          = sxe2_dev_rss_hash_conf_get,
 };
 
 static int32_t sxe2_dev_configure(struct rte_eth_dev *dev)
@@ -137,6 +142,12 @@ static int32_t sxe2_dev_configure(struct rte_eth_dev *dev)
 	ret = sxe2_vlan_default_cfg(dev);
 	if (ret) {
 		PMD_LOG_ERR(INIT, "Failed to init vlan, ret=%d", ret);
+		goto end;
+	}
+
+	ret = sxe2_rss_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to init rss, ret=%d", ret);
 		goto end;
 	}
 
@@ -279,6 +290,22 @@ static int32_t sxe2_dev_infos_get(struct rte_eth_dev *dev,
 		RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
 		RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO |
 		RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO;
+
+
+	if (adapter->cap_flags & SXE2_DEV_CAPS_OFFLOAD_PTP)
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
+
+	if (adapter->cap_flags & SXE2_DEV_CAPS_OFFLOAD_RSS) {
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
+		dev_info->flow_type_rss_offloads  |= SXE2_RSS_HF_SUPPORT_ALL;
+		dev_info->reta_size = adapter->rss_ctxt.rss_lut_size;
+		dev_info->hash_key_size = adapter->rss_ctxt.rss_key_size;
+		dev_info->rss_algo_capa =
+			RTE_ETH_HASH_ALGO_TO_CAPA(RTE_ETH_HASH_FUNCTION_DEFAULT) |
+			RTE_ETH_HASH_ALGO_TO_CAPA(RTE_ETH_HASH_FUNCTION_TOEPLITZ) |
+			RTE_ETH_HASH_ALGO_TO_CAPA(RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ) |
+			RTE_ETH_HASH_ALGO_TO_CAPA(RTE_ETH_HASH_FUNCTION_SIMPLE_XOR);
+	}
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -551,6 +578,8 @@ static int32_t sxe2_func_caps_get(struct sxe2_adapter *adapter)
 	sxe2_drv_dev_caps_set(adapter,  &dev_caps);
 
 	sxe2_sw_queue_ctx_hw_cap_set(adapter, &dev_caps.queue_caps);
+
+	sxe2_sw_rss_ctx_hw_cap_set(adapter, &dev_caps.rss_hash_caps);
 
 	sxe2_sw_vsi_ctx_hw_cap_set(adapter, &dev_caps.vsi_caps);
 
@@ -937,8 +966,15 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 		goto init_eth_err;
 	}
 
+	ret = sxe2_rss_disable(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to disable rss, ret=%d", ret);
+		goto init_rss_err;
+	}
+
 	goto l_end;
 
+init_rss_err:
 init_eth_err:
 init_dev_info_err:
 	sxe2_vsi_uninit(dev);
@@ -952,6 +988,7 @@ static int32_t sxe2_dev_close(struct rte_eth_dev *dev)
 {
 	(void)sxe2_dev_stop(dev);
 	(void)sxe2_queues_release(dev);
+	(void)sxe2_rss_disable(dev);
 	sxe2_vsi_uninit(dev);
 	sxe2_dev_pci_map_uinit(dev);
 	sxe2_eth_uinit(dev);

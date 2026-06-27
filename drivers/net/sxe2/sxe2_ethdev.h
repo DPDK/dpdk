@@ -15,6 +15,7 @@
 
 #include "sxe2_common.h"
 #include "sxe2_vsi.h"
+#include "sxe2_rss.h"
 #include "sxe2_irq.h"
 #include "sxe2_queue.h"
 #include "sxe2_mac.h"
@@ -120,6 +121,11 @@ enum {
 	SXE2_FLAG_FNAV_ENABLE = 20,
 
 	SXE2_FLAGS_NBITS
+};
+
+struct sxe2_ptp_context {
+	uint64_t mbuf_rx_ts_flag;
+	int32_t mbuf_rx_ts_offset;
 };
 
 struct sxe2_devargs {
@@ -299,7 +305,9 @@ struct sxe2_adapter {
 	struct sxe2_queue_context     q_ctxt;
 	struct sxe2_vsi_context       vsi_ctxt;
 	struct sxe2_filter_context    filter_ctxt;
+	struct sxe2_rss_context       rss_ctxt;
 	struct sxe2_link_context      link_ctxt;
+	struct sxe2_ptp_context       ptp_ctxt;
 	struct sxe2_devargs           devargs;
 	struct sxe2_switchdev_info    switchdev_info;
 	bool                          rule_started;

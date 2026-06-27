@@ -541,3 +541,176 @@ int32_t sxe2_drv_vlan_filter_switch(struct sxe2_adapter *adapter, bool on)
 
 	return ret;
 }
+
+int32_t sxe2_drv_rss_key_set(struct sxe2_adapter *adapter, uint8_t *key, uint16_t key_size)
+{
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_rss_key_req *req = NULL;
+	int32_t ret = 0;
+	uint16_t buf_size = sizeof(*req) + key_size;
+
+	req = rte_zmalloc("drv_cmd_rss_key", buf_size, 0);
+	if (!req) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to alloc rss key");
+		ret = -ENOMEM;
+		goto l_end;
+	}
+
+	req->vsi_id = rte_cpu_to_le_16(adapter->vsi_ctxt.dpdk_vsi_id);
+	req->key_size = rte_cpu_to_le_16(key_size);
+	rte_memcpy(req->key, key, key_size);
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_RSS_KEY_SET,
+		req, buf_size, NULL, 0);
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to cmd set rss key, ret=%d", ret);
+		goto l_end;
+	}
+
+l_end:
+	if (req) {
+		rte_free(req);
+		req = NULL;
+	}
+	return ret;
+}
+
+int32_t sxe2_drv_rss_lut_set(struct sxe2_adapter *adapter, uint8_t *lut, uint16_t lut_size)
+{
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_rss_lut_req *req = NULL;
+	int32_t ret = 0;
+	uint16_t buf_size = sizeof(struct sxe2_rss_lut_req) + lut_size;
+
+	req = rte_zmalloc("drv_cmd_rss_lut", buf_size, 0);
+	if (!req) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to alloc rss lut");
+		ret = -ENOMEM;
+		goto l_end;
+	}
+
+	req->vsi_id = rte_cpu_to_le_16(adapter->vsi_ctxt.dpdk_vsi_id);
+	req->lut_size = rte_cpu_to_le_16(lut_size);
+	rte_memcpy(req->lut, lut, lut_size);
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_RSS_LUT_SET,
+		req, buf_size, NULL, 0);
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to cmd set rss lut, ret=%d", ret);
+		goto l_end;
+	}
+
+l_end:
+	if (req) {
+		rte_free(req);
+		req = NULL;
+	}
+	return ret;
+}
+
+int32_t sxe2_drv_rss_hash_ctrl_func(struct sxe2_adapter *adapter, enum sxe2_rss_hash_key_func func)
+{
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_rss_func_req req = {0};
+	int32_t ret = 0;
+
+	req.vsi_id = rte_cpu_to_le_16(adapter->vsi_ctxt.dpdk_vsi_id);
+	req.func = func;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_RSS_FUNC_SET,
+		&req, sizeof(req), NULL, 0);
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to cmd set rss func, ret=%d", ret);
+	return ret;
+}
+
+static void sxe2_drv_flow_bitmap_fill(uint32_t *bitmap, uint16_t *list)
+{
+	uint16_t index = 0;
+	uint16_t i = 0;
+	uint16_t map_size = sizeof(*bitmap) * SXE2_BITS_PER_BYTE;
+
+	while (list[i] != SXE2_FLOW_END) {
+		index = list[i] / map_size;
+		bitmap[index] |= (1UL << (list[i] % map_size));
+		i++;
+	}
+}
+
+int32_t sxe2_drv_rss_hf_add(struct sxe2_adapter *adapter,
+			struct sxe2_rss_hf_config *rss_conf)
+{
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_rss_hf_req req = {0};
+	int32_t ret = 0;
+
+	req.vsi_id = rte_cpu_to_le_16(adapter->vsi_ctxt.dpdk_vsi_id);
+	req.symm = rss_conf->symm;
+	req.hdr_type = rte_cpu_to_le_32(SXE2_RSS_OUTER_HEADERS);
+	sxe2_drv_flow_bitmap_fill(req.headers, rss_conf->hdrs);
+	sxe2_drv_flow_bitmap_fill(req.hash_flds, rss_conf->flds);
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_RSS_HF_ADD,
+		&req, sizeof(req), NULL, 0);
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to cmd add rss hf, ret=%d", ret);
+	return ret;
+}
+
+int32_t sxe2_drv_rss_hf_del(struct sxe2_adapter *adapter,
+				struct sxe2_rss_hf_config *rss_conf)
+{
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_rss_hf_req req = {0};
+	int32_t ret = 0;
+
+	req.vsi_id = rte_cpu_to_le_16(adapter->vsi_ctxt.dpdk_vsi_id);
+	req.symm = rss_conf->symm;
+	req.hdr_type = rte_cpu_to_le_32(SXE2_RSS_OUTER_HEADERS);
+	sxe2_drv_flow_bitmap_fill(req.headers, rss_conf->hdrs);
+	sxe2_drv_flow_bitmap_fill(req.hash_flds, rss_conf->flds);
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_RSS_HF_DEL,
+		&req, sizeof(req), NULL, 0);
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to cmd del rss hf, ret=%d", ret);
+	return ret;
+}
+
+int32_t sxe2_drv_rss_hf_clear(struct sxe2_adapter *adapter)
+{
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	int32_t ret = 0;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_RSS_HF_CLEAR,
+		NULL, 0, NULL, 0);
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to cmd clear rss hf, ret=%d", ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_ptp_gettime(struct sxe2_adapter *adapter, struct sxe2_rx_queue *rxq)
+{
+	(void)adapter;
+	(void)rxq;
+	return 0;
+}

@@ -6,6 +6,7 @@
 #define SXE2_DRV_CMD_H
 
 #include "sxe2_osal.h"
+#include "sxe2_flow_public.h"
 
 #define SXE2_DRV_CMD_MODULE_S        (16)
 #define SXE2_MK_DRV_CMD(module, cmd) (((module) << SXE2_DRV_CMD_MODULE_S) | ((cmd) & 0xFFFF))
@@ -318,6 +319,34 @@ struct __rte_aligned(4) __rte_packed_begin sxe2_vlan_filter_switch_req {
 	uint16_t vsi_id;
 	uint8_t is_oper_enable;
 	uint8_t rsv;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_rss_key_req {
+	uint16_t vsi_id;
+	uint16_t key_size;
+	uint8_t key[];
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_rss_lut_req {
+	uint16_t vsi_id;
+	uint16_t lut_size;
+	uint8_t lut[];
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_rss_func_req {
+	uint16_t vsi_id;
+	uint8_t func;
+	uint8_t rsv[1];
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_rss_hf_req {
+	uint16_t vsi_id;
+	uint8_t rsv[2];
+	uint32_t headers[BITS_TO_U32(SXE2_FLOW_HDR_MAX)];
+	uint32_t hash_flds[BITS_TO_U32(SXE2_FLOW_FLD_ID_MAX)];
+	uint32_t hdr_type;
+	uint8_t symm;
+	uint8_t rsv1[3];
 } __rte_packed_end;
 
 enum sxe2_drv_cmd_module {

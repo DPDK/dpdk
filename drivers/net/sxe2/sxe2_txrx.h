@@ -27,5 +27,8 @@ extern const uint32_t sxe2_ptype_tbl[];
 
 const uint32_t *sxe2_dev_supported_ptypes_get(struct rte_eth_dev *dev,
 					      size_t *no_of_elements);
+#ifndef RTE_LIBRTE_SXE2_16BYTE_RX_DESC
+int32_t sxe2_rx_update_ptp_time(struct sxe2_rx_queue *rxq);
+#endif
 
 #endif /* SXE2_TXRX_H */

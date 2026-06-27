@@ -17,6 +17,7 @@ void sxe2_sw_queue_ctx_hw_cap_set(struct sxe2_adapter *adapter,
 
 int32_t sxe2_queues_init(struct rte_eth_dev *dev)
 {
+	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
 	int32_t ret = 0;
 	uint16_t buf_size;
 	uint16_t frame_size;
@@ -34,6 +35,16 @@ int32_t sxe2_queues_init(struct rte_eth_dev *dev)
 		rxq->rx_buf_len = RTE_MIN(rxq->rx_buf_len, SXE2_RX_MAX_DATA_BUF_SIZE);
 		if (frame_size > rxq->rx_buf_len)
 			dev->data->scattered_rx = 1;
+	}
+
+	adapter->ptp_ctxt.mbuf_rx_ts_offset = -1;
+	adapter->ptp_ctxt.mbuf_rx_ts_flag = 0;
+	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+		ret = rte_mbuf_dyn_rx_timestamp_register
+			(&adapter->ptp_ctxt.mbuf_rx_ts_offset,
+			 (uint64_t *)&adapter->ptp_ctxt.mbuf_rx_ts_flag);
+		if (ret)
+			PMD_LOG_ERR(INIT, "Failed to enable timestamp offloads, ret=%d", ret);
 	}
 
 	return ret;

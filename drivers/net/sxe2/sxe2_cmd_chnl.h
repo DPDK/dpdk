@@ -53,4 +53,20 @@ int32_t sxe2_drv_vlan_insert_strip_cfg(struct sxe2_adapter *adapter);
 
 int32_t sxe2_drv_vlan_filter_switch(struct sxe2_adapter *adapter, bool on);
 
+int32_t sxe2_drv_rss_key_set(struct sxe2_adapter *adapter, uint8_t *key, uint16_t key_size);
+
+int32_t sxe2_drv_rss_lut_set(struct sxe2_adapter *adapter, uint8_t *lut, uint16_t lut_size);
+
+int32_t sxe2_drv_rss_hash_ctrl_func(struct sxe2_adapter *adapter, enum sxe2_rss_hash_key_func func);
+
+int32_t sxe2_drv_rss_hf_add(struct sxe2_adapter *adapter,
+			struct sxe2_rss_hf_config *rss_conf);
+
+int32_t sxe2_drv_rss_hf_del(struct sxe2_adapter *adapter,
+				struct sxe2_rss_hf_config *rss_conf);
+
+int32_t sxe2_drv_rss_hf_clear(struct sxe2_adapter *adapter);
+
+int32_t sxe2_drv_ptp_gettime(struct sxe2_adapter *adapter, struct sxe2_rx_queue *rxq);
+
 #endif /* SXE2_CMD_CHNL_H */

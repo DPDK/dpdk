@@ -17,6 +17,7 @@
 #include "sxe2_queue.h"
 #include "sxe2_ethdev.h"
 #include "sxe2_common_log.h"
+#include "sxe2_cmd_chnl.h"
 
 static __rte_always_inline int32_t
 sxe2_tx_bufs_free(struct sxe2_tx_queue *txq)
@@ -282,6 +283,30 @@ l_end:
 	return;
 }
 
+static __rte_always_inline void sxe2_desc_tso_fill(struct rte_mbuf *tx_pkt,
+						   uint64_t *desc_type_cmd_tso_mss,
+						   union sxe2_tx_offload_info ol_info)
+{
+	uint32_t hdr_len;
+	uint32_t tso_len;
+
+	if (!ol_info.l4_len) {
+		PMD_LOG_DEBUG(TX, "TSO ERROR: L4 length is 0");
+		goto l_end;
+	}
+	hdr_len = ol_info.l2_len + ol_info.l3_len + ol_info.l4_len;
+	if (tx_pkt->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
+		hdr_len += ol_info.outer_l2_len + ol_info.outer_l3_len;
+
+	tso_len = tx_pkt->pkt_len - hdr_len;
+	*desc_type_cmd_tso_mss |=
+			((uint64_t)SXE2_TX_CTXT_DESC_CMD_TSO << SXE2_TX_CTXT_DESC_CMD_SHIFT) |
+			((uint64_t)tso_len << SXE2_TX_CTXT_DESC_TSO_LEN_SHIFT) |
+			((uint64_t)tx_pkt->tso_segsz << SXE2_TX_CTXT_DESC_MSS_SHIFT);
+l_end:
+	return;
+}
+
 static __rte_always_inline uint64_t
 sxe2_tx_data_desc_build_cobt(uint32_t cmd, uint32_t offset, uint16_t buf_size, uint16_t l2tag)
 {
@@ -395,6 +420,11 @@ uint16_t sxe2_tx_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkt
 				rte_pktmbuf_free_seg(buffer->mbuf);
 				buffer->mbuf = NULL;
 			}
+			if (offloads & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG))
+				sxe2_desc_tso_fill(tx_pkt,
+					&desc_type_cmd_tso_mss, ol_info);
+			else if (offloads & RTE_MBUF_F_TX_IEEE1588_TMST)
+				desc_type_cmd_tso_mss |= SXE2_TX_CTXT_DESC_CMD_TSYN_MASK;
 
 			if (offloads & RTE_MBUF_F_TX_QINQ) {
 				desc_l2tag2 = tx_pkt->vlan_tci_outer;
@@ -707,6 +737,57 @@ sxe2_rx_desc_filter_para_fill(struct sxe2_rx_queue *rxq __rte_unused,
 #endif
 }
 
+#ifndef RTE_LIBRTE_SXE2_16BYTE_RX_DESC
+int32_t sxe2_rx_update_ptp_time(struct sxe2_rx_queue *rxq)
+{
+	struct sxe2_adapter *adapter;
+	uint64_t cur_time_ms;
+	int32_t ret = 0;
+	cur_time_ms = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
+
+	if (likely((cur_time_ms - rxq->update_time) < SXE2_RX_PKTS_TS_TIMEOUT_VAL))
+		goto l_end;
+	rxq->update_time = cur_time_ms;
+	adapter = rxq->vsi->adapter;
+	rxq->ts_need_update = true;
+	ret = sxe2_drv_ptp_gettime(adapter, rxq);
+	if (rxq->desc_ts < rxq->ts_low)
+		rxq->ts_need_update = false;
+
+	PMD_LOG_INFO(RX, "rxq update time ret=%d, cur time=%" PRIu64 ", rxqh=%" PRIu64 ", rxql=%d",
+		     ret, cur_time_ms, rxq->ts_high, rxq->ts_low);
+l_end:
+	return ret;
+}
+
+static inline void sxe2_rx_desc_ptp_para_fill(struct sxe2_rx_queue *rxq,
+					      struct rte_mbuf *mbuf,
+					      union sxe2_rx_desc *desc)
+{
+	struct sxe2_adapter *adapter = rxq->vsi->adapter;
+	uint64_t ts_ns;
+
+	if (adapter->ptp_ctxt.mbuf_rx_ts_flag != 0 &&
+	    (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) &&
+	    SXE2_RX_DESC_RXDID_VAL_GET(desc->wb.rxdid_src) == SXE2_RX_DESC_RXDID_1588) {
+		rxq->desc_ts = rte_le_to_cpu_32(desc->wb_ts.ts_h);
+		(void)sxe2_rx_update_ptp_time(rxq);
+		if (rxq->ts_need_update && rxq->desc_ts < rxq->ts_low)
+			rxq->ts_high += 1;
+
+		rxq->ts_need_update = true;
+		rxq->ts_low = rxq->desc_ts;
+		rxq->update_time = rte_get_timer_cycles() /
+			(rte_get_timer_hz() / 1000);
+		ts_ns = rxq->ts_high * NSEC_PER_SEC + rxq->ts_low;
+		*RTE_MBUF_DYNFIELD(mbuf, adapter->ptp_ctxt.mbuf_rx_ts_offset, uint64_t *) = ts_ns;
+		mbuf->ol_flags |= adapter->ptp_ctxt.mbuf_rx_ts_flag;
+		PMD_LOG_INFO(RX, "receive ptp pkt,ts_s=%" PRIu64 ", ts_ns=%d", rxq->ts_high,
+			     rxq->ts_low);
+	}
+}
+#endif
+
 static __rte_always_inline void
 sxe2_rx_mbuf_common_fields_fill(struct sxe2_rx_queue *rxq, struct rte_mbuf *mbuf,
 		union sxe2_rx_desc *rxd)
@@ -717,10 +798,12 @@ sxe2_rx_mbuf_common_fields_fill(struct sxe2_rx_queue *rxq, struct rte_mbuf *mbuf
 
 	mbuf->ol_flags = 0;
 	mbuf->packet_type = sxe2_ptype_tbl[SXE2_RX_DESC_PTYPE_VAL_GET(qword1)];
-
 	pkt_flags = sxe2_rx_desc_error_para(rxq, rxd);
 	sxe2_rx_desc_vlan_para_fill(mbuf, rxd);
 	sxe2_rx_desc_filter_para_fill(rxq, mbuf, rxd);
+#ifndef RTE_LIBRTE_SXE2_16BYTE_RX_DESC
+	sxe2_rx_desc_ptp_para_fill(rxq, mbuf, rxd);
+#endif
 
 	mbuf->ol_flags |= pkt_flags;
 }
