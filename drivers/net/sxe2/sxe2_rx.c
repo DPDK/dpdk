@@ -294,6 +294,11 @@ int32_t __rte_cold sxe2_rx_queue_setup(struct rte_eth_dev *dev,
 		goto l_end;
 	}
 
+	if (!sxe2_ipsec_valid_rx_offloads(offloads)) {
+		ret = -EINVAL;
+		goto l_end;
+	}
+
 	rxq = sxe2_rx_queue_alloc(dev, queue_idx, nb_desc, socket_id);
 	if (rxq == NULL) {
 		PMD_LOG_ERR(RX, "rx queue[%d] resource alloc failed", queue_idx);

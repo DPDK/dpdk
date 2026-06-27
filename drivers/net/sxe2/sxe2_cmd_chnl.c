@@ -877,3 +877,199 @@ int32_t sxe2_drv_tm_commit(struct sxe2_adapter *adapter)
 l_end:
 	return ret;
 }
+
+
+int32_t sxe2_drv_ipsec_get_capa(struct sxe2_adapter *adapter)
+{
+	int32_t ret = -1;
+	struct sxe2_drv_cmd_params cmd = { 0 };
+	struct sxe2_drv_ipsec_capa_resq resp;
+	struct sxe2_common_device *cdev = adapter->cdev;
+
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_IPSEC_CAP_GET,
+				 NULL, 0,
+				 &resp, sizeof(resp));
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to get ipsec specifications, ret=%d", ret);
+		goto l_end;
+	}
+
+	adapter->security_ctx.ipsec_ctx.max_tx_sa = rte_le_to_cpu_16(resp.tx_sa_cnt);
+	adapter->security_ctx.ipsec_ctx.max_rx_sa = rte_le_to_cpu_16(resp.rx_sa_cnt);
+	adapter->security_ctx.ipsec_ctx.max_tcam = rte_le_to_cpu_16(resp.ip_id_cnt);
+	adapter->security_ctx.ipsec_ctx.max_udp_group = rte_le_to_cpu_16(resp.udp_group_cnt);
+
+	PMD_DEV_LOG_INFO(adapter, DRV, "Max tx sa:%u, max rx sa:%u, max tcam:%u, udp group:%u.",
+			 rte_le_to_cpu_16(resp.tx_sa_cnt),
+			 rte_le_to_cpu_16(resp.rx_sa_cnt),
+			 rte_le_to_cpu_16(resp.ip_id_cnt),
+			 rte_le_to_cpu_16(resp.udp_group_cnt));
+
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_ipsec_resource_clear(struct sxe2_adapter *adapter)
+{
+	int32_t ret = -1;
+	struct sxe2_drv_cmd_params cmd = { 0 };
+	struct sxe2_common_device *cdev = adapter->cdev;
+
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_IPSEC_RESOURCE_CLEAR,
+				 NULL, 0,
+				 NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to clear ipsec resource, ret=%d", ret);
+		goto l_end;
+	}
+
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_ipsec_txsa_add(struct sxe2_adapter *adapter,
+		struct sxe2_ipsec_tx_sa *tx_sa)
+{
+	struct sxe2_drv_cmd_params cmd               = { 0 };
+	struct sxe2_drv_ipsec_txsa_add_req req   = { 0 };
+	struct sxe2_drv_ipsec_txsa_add_resp resp = { 0 };
+	struct sxe2_common_device *cdev = adapter->cdev;
+	int32_t ret                                   = -1;
+	uint32_t mode                                  = 0;
+	uint32_t i                                     = 0;
+
+	if (tx_sa->algo == SXE2_IPSEC_ALGO_SM4_CBC_AND_SM3_96_HMAC)
+		mode |= IPSEC_TX_ENGINE_SM4;
+	if (tx_sa->mode == SXE2_IPSEC_MODE_ENC_AND_AUTH)
+		mode |= IPSEC_TX_ENCRYPT;
+	req.mode = rte_cpu_to_le_32(mode);
+	for (i = 0; i < SXE2_IPSEC_KEY_LEN; i++) {
+		req.encrypt_keys[i] = tx_sa->enc_key[i];
+		req.auth_keys[i] = tx_sa->auth_key[i];
+	}
+
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_IPSEC_TXSA_ADD,
+				 &req, sizeof(req),
+				 &resp, sizeof(resp));
+
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "failed to add tx sa, ret=%d", ret);
+		goto l_end;
+	}
+	tx_sa->hw_sa_id = rte_le_to_cpu_16(resp.index);
+
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_ipsec_rxsa_add(struct sxe2_adapter *adapter,
+		struct sxe2_ipsec_rx_sa *rx_sa,
+		struct sxe2_ipsec_rx_tcam *rx_tcam,
+		struct sxe2_ipsec_rx_udp_group *rx_udp_group)
+{
+	struct sxe2_drv_cmd_params cmd               = { 0 };
+	struct sxe2_drv_ipsec_rxsa_add_req req   = { 0 };
+	struct sxe2_drv_ipsec_rxsa_add_resp resp = { 0 };
+	struct sxe2_common_device *cdev = adapter->cdev;
+	int32_t ret                                   = -1;
+	uint32_t mode                                  = 0;
+	uint32_t i                                     = 0;
+
+	if (rx_sa->algo == SXE2_IPSEC_ALGO_SM4_CBC_AND_SM3_96_HMAC)
+		mode |= IPSEC_RX_ENGINE_SM4;
+	if (rx_sa->mode == SXE2_IPSEC_MODE_ENC_AND_AUTH)
+		mode |= IPSEC_RX_DECRYPT;
+	if (rx_tcam->ip_addr.type == RTE_SECURITY_IPSEC_TUNNEL_IPV6) {
+		mode |= IPSEC_RX_IPV6;
+		memcpy(req.ipaddr, rx_tcam->ip_addr.dst_ipv6, sizeof(req.ipaddr));
+	} else {
+		req.ipaddr[0] = rx_tcam->ip_addr.dst_ipv4;
+	}
+	req.mode = rte_cpu_to_le_32(mode);
+	req.spi = rte_cpu_to_le_32(rx_sa->spi);
+	if (rx_udp_group != NULL) {
+		req.udp_port = rte_cpu_to_le_32((uint32_t)rx_udp_group->udp_port);
+		req.sport_en = rx_udp_group->sport_en;
+		req.dport_en = rx_udp_group->dport_en;
+	}
+
+	PMD_DEV_LOG_INFO(adapter, DRV, "Add rx sa, mode: 0x%x, spi: 0x%x, udp_port: %u, "
+			 "sport_en: %u, dport_en: %u.",
+			 req.mode, req.spi, req.udp_port, req.sport_en, req.dport_en);
+
+	/* encrypt and auth keys */
+	for (i = 0; i < SXE2_IPSEC_KEY_LEN; i++) {
+		req.encrypt_keys[i] = rx_sa->enc_key[i];
+		req.auth_keys[i] = rx_sa->auth_key[i];
+	}
+
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_IPSEC_RXSA_ADD,
+				 &req, sizeof(req),
+				 &resp, sizeof(resp));
+
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to add rx sa, ret=%d", ret);
+		goto l_end;
+	}
+	rx_sa->hw_sa_id = rte_le_to_cpu_16(resp.sa_idx);
+	rx_sa->hw_ip_id = resp.ip_id;
+	rx_tcam->hw_ip_id = resp.ip_id;
+	rx_sa->hw_udp_group_id = resp.udp_group_id;
+	if (rx_udp_group != NULL)
+		rx_udp_group->hw_group_id = resp.udp_group_id;
+
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_ipsec_rxsa_delete(struct sxe2_adapter *adapter,
+					struct sxe2_ipsec_rx_sa *rx_sa)
+{
+	struct sxe2_drv_ipsec_rxsa_del_req req = { 0 };
+	struct sxe2_drv_cmd_params cmd             = { 0 };
+	struct sxe2_common_device *cdev = adapter->cdev;
+	int32_t ret                                 = -1;
+
+	req.sa_idx = rte_cpu_to_le_16(rx_sa->hw_sa_id);
+	req.spi = rte_cpu_to_le_32(rx_sa->spi);
+	req.ip_id = rx_sa->hw_ip_id;
+	req.group_id = rx_sa->hw_udp_group_id;
+
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_IPSEC_RXSA_DEL,
+				 &req, sizeof(req),
+				 NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret)
+		PMD_DEV_LOG_ERR(adapter, DRV,
+				"Failed to delete rx sa, sa id: %u, spi: %u, "
+				"ip id: %u, udp group id: %u, ret: %d.",
+				rx_sa->hw_sa_id, rx_sa->spi, rx_sa->hw_ip_id,
+				rx_sa->hw_udp_group_id, ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_ipsec_txsa_delete(struct sxe2_adapter *adapter,
+					   uint16_t sa_id)
+{
+	struct sxe2_drv_ipsec_txsa_del_req req = { 0 };
+	struct sxe2_drv_cmd_params cmd             = { 0 };
+	struct sxe2_common_device *cdev = adapter->cdev;
+	int32_t ret                                 = -1;
+
+	req.sa_idx = rte_cpu_to_le_16(sa_id);
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_IPSEC_TXSA_DEL,
+				 &req, sizeof(req),
+				 NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret)
+		PMD_DEV_LOG_ERR(adapter, DRV,
+				"Failed to delete tx sa, sa id: %u, ret: %d.",
+				sa_id, ret);
+
+	return ret;
+}

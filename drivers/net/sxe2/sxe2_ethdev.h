@@ -20,6 +20,8 @@
 #include "sxe2_queue.h"
 #include "sxe2_mac.h"
 #include "sxe2_osal.h"
+#include "sxe2_security.h"
+#include "sxe2_ipsec.h"
 #include "sxe2_tm.h"
 #include "sxe2_filter.h"
 
@@ -312,6 +314,7 @@ struct sxe2_adapter {
 	struct sxe2_sched_hw_cap      sched_ctxt;
 	struct sxe2_tm_context        tm_ctxt;
 	struct sxe2_devargs           devargs;
+	struct sxe2_security_ctx      security_ctx;
 	struct sxe2_switchdev_info    switchdev_info;
 	bool                          rule_started;
 	bool                          flow_isolated;

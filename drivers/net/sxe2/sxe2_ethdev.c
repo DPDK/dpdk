@@ -297,6 +297,11 @@ static int32_t sxe2_dev_infos_get(struct rte_eth_dev *dev,
 	if (adapter->cap_flags & SXE2_DEV_CAPS_OFFLOAD_PTP)
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 
+	if (sxe2_ipsec_supported(adapter)) {
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_SECURITY;
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_SECURITY;
+	}
+
 	if (adapter->cap_flags & SXE2_DEV_CAPS_OFFLOAD_RSS) {
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 		dev_info->flow_type_rss_offloads  |= SXE2_RSS_HF_SUPPORT_ALL;
@@ -1040,6 +1045,12 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 		goto init_eth_err;
 	}
 
+	ret = sxe2_security_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to initialize security, ret=%d", ret);
+		goto init_security_err;
+	}
+
 	ret = sxe2_rss_disable(dev);
 	if (ret) {
 		PMD_LOG_ERR(INIT, "Failed to disable rss, ret=%d", ret);
@@ -1054,6 +1065,8 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 
 	goto l_end;
 
+init_security_err:
+	sxe2_eth_uinit(dev);
 init_sched_err:
 init_rss_err:
 init_eth_err:
@@ -1072,6 +1085,7 @@ static int32_t sxe2_dev_close(struct rte_eth_dev *dev)
 	(void)sxe2_rss_disable(dev);
 	(void)sxe2_sched_uinit(dev);
 	sxe2_vsi_uninit(dev);
+	sxe2_security_uinit(dev);
 	sxe2_dev_pci_map_uinit(dev);
 	sxe2_eth_uinit(dev);
 

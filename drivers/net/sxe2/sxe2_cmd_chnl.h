@@ -44,6 +44,26 @@ int32_t sxe2_drv_root_tree_alloc(struct rte_eth_dev *dev);
 
 int32_t sxe2_drv_tm_commit(struct sxe2_adapter *adapter);
 
+int32_t sxe2_drv_ipsec_resource_clear(struct sxe2_adapter *adapter);
+
+int32_t sxe2_drv_ipsec_get_capa(struct sxe2_adapter *adapter);
+
+int32_t sxe2_drv_ipsec_rxsa_add(struct sxe2_adapter *adapter,
+			    struct sxe2_ipsec_rx_sa *rx_sa,
+			    struct sxe2_ipsec_rx_tcam *rx_tcam,
+			    struct sxe2_ipsec_rx_udp_group *rx_udp_group);
+
+int32_t sxe2_drv_ipsec_txsa_add(struct sxe2_adapter *adapter,
+			    struct sxe2_ipsec_tx_sa *tx_sa);
+
+int32_t sxe2_drv_ipsec_rxsa_delete(struct sxe2_adapter *adapter,
+			       struct sxe2_ipsec_rx_sa *rx_sa);
+
+int32_t sxe2_drv_ipsec_txsa_delete(struct sxe2_adapter *adapter,
+			       uint16_t sa_id);
+
+int32_t sxe2_drv_promisc_config(struct sxe2_adapter *adapter, bool set);
+
 int32_t sxe2_drv_allmulti_config(struct sxe2_adapter *adapter, bool set);
 
 int32_t sxe2_drv_uc_config(struct sxe2_adapter *adapter, struct rte_ether_addr *addr, bool add);

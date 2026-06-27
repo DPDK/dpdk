@@ -307,6 +307,25 @@ l_end:
 	return;
 }
 
+static __rte_always_inline void sxe2_desc_ipsec_fill(struct rte_mbuf *tx_pkt,
+			struct sxe2_tx_queue *txq, uint16_t *ipsec_offset,
+			uint64_t *desc_type_cmd_tso_mss)
+{
+	struct sxe2_ipsec_pkt_metadata *md = NULL;
+	uint16_t ipsec_pkt_md_offset = txq->ipsec_pkt_md_offset;
+
+	md = RTE_MBUF_DYNFIELD(tx_pkt, ipsec_pkt_md_offset, struct sxe2_ipsec_pkt_metadata *);
+	*ipsec_offset = md->esp_head_offset;
+	*desc_type_cmd_tso_mss |= SXE2_TX_CTXT_DESC_IPSEC_EN;
+	if (md->mode == SXE2_IPSEC_MODE_ONLY_ENCRYPT)
+		*desc_type_cmd_tso_mss |= SXE2_TX_CTXT_DESC_IPSEC_MODE;
+
+	if (md->algo == SXE2_IPSEC_ALGO_SM4_CBC_AND_SM3_96_HMAC)
+		*desc_type_cmd_tso_mss |= SXE2_TX_CTXT_DESC_IPSEC_ENGINE;
+
+	*desc_type_cmd_tso_mss |= (uint64_t)(md->sa_idx) << SXE2_TX_CTXT_DESC_IPSEC_SA_SHIFT;
+}
+
 static __rte_always_inline uint64_t
 sxe2_tx_data_desc_build_cobt(uint32_t cmd, uint32_t offset, uint16_t buf_size, uint16_t l2tag)
 {
@@ -425,6 +444,11 @@ uint16_t sxe2_tx_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkt
 					&desc_type_cmd_tso_mss, ol_info);
 			else if (offloads & RTE_MBUF_F_TX_IEEE1588_TMST)
 				desc_type_cmd_tso_mss |= SXE2_TX_CTXT_DESC_CMD_TSYN_MASK;
+
+			if (offloads & RTE_MBUF_F_TX_SEC_OFFLOAD) {
+				sxe2_desc_ipsec_fill(tx_pkt, txq, &ipsec_offset,
+						     &desc_type_cmd_tso_mss);
+			}
 
 			if (offloads & RTE_MBUF_F_TX_QINQ) {
 				desc_l2tag2 = tx_pkt->vlan_tci_outer;
@@ -786,6 +810,36 @@ static inline void sxe2_rx_desc_ptp_para_fill(struct sxe2_rx_queue *rxq,
 			     rxq->ts_low);
 	}
 }
+
+static inline void sxe2_rx_desc_ipsec_para_fill(struct sxe2_rx_queue *rxq __rte_unused,
+		struct rte_mbuf *mbuf, union sxe2_rx_desc *desc)
+{
+	uint32_t status_lrocnt_fdpf_id = rte_le_to_cpu_32(desc->wb.status_lrocnt_fdpf_id);
+	enum sxe2_rx_desc_ipsec_status ipsec_status;
+
+	if (status_lrocnt_fdpf_id & SXE2_RX_DESC_IPSEC_PKT_MASK) {
+		mbuf->ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD;
+		ipsec_status = SXE2_RX_DESC_IPSEC_STATUS_VAL_GET(status_lrocnt_fdpf_id);
+		switch (ipsec_status) {
+		case SXE2_RX_DESC_IPSEC_STATUS_SUCCESS:
+			break;
+		case SXE2_RX_DESC_IPSEC_STATUS_PKG_OVER_2K:
+		case SXE2_RX_DESC_IPSEC_STATUS_SPI_IP_INVALID:
+		case SXE2_RX_DESC_IPSEC_STATUS_SA_INVALID:
+		case SXE2_RX_DESC_IPSEC_STATUS_NOT_ALIGN:
+		case SXE2_RX_DESC_IPSEC_STATUS_ICV_ERROR:
+		case SXE2_RX_DESC_IPSEC_STATUS_BY_PASSH:
+		case SXE2_RX_DESC_IPSEC_STATUS_MAC_BY_PASSH:
+			PMD_LOG_INFO(RX, "IPsec status error:%d", ipsec_status);
+			mbuf->ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
+			break;
+		default:
+			PMD_LOG_INFO(RX, "Invalid ipsec status:%d", ipsec_status);
+			mbuf->ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
+			break;
+		}
+	}
+}
 #endif
 
 static __rte_always_inline void
@@ -802,6 +856,7 @@ sxe2_rx_mbuf_common_fields_fill(struct sxe2_rx_queue *rxq, struct rte_mbuf *mbuf
 	sxe2_rx_desc_vlan_para_fill(mbuf, rxd);
 	sxe2_rx_desc_filter_para_fill(rxq, mbuf, rxd);
 #ifndef RTE_LIBRTE_SXE2_16BYTE_RX_DESC
+	sxe2_rx_desc_ipsec_para_fill(rxq, mbuf, rxd);
 	sxe2_rx_desc_ptp_para_fill(rxq, mbuf, rxd);
 #endif
 

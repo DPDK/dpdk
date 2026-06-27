@@ -375,6 +375,67 @@ struct __rte_aligned(4) __rte_packed_begin sxe2_tm_add_queue_msg {
 	struct sxe2_tm_info info;
 } __rte_packed_end;
 
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_ipsec_capa_resq {
+	uint16_t tx_sa_cnt;
+	uint16_t rx_sa_cnt;
+	uint16_t ip_id_cnt;
+	uint16_t udp_group_cnt;
+} __rte_packed_end;
+
+#define SXE2_IPSEC_KEY_LEN (32)
+#define SXE2_IPV6_ADDR_LEN (4)
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_ipsec_txsa_add_req {
+	uint32_t mode;
+	uint8_t encrypt_keys[SXE2_IPSEC_KEY_LEN];
+	uint8_t auth_keys[SXE2_IPSEC_KEY_LEN];
+	bool func_type;
+	uint8_t func_id;
+	uint8_t drv_id;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_ipsec_txsa_add_resp {
+	uint16_t index;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_ipsec_rxsa_add_req {
+	uint32_t mode;
+	uint32_t spi;
+	uint32_t ipaddr[SXE2_IPV6_ADDR_LEN];
+	uint32_t udp_port;
+	uint8_t sport_en;
+	uint8_t dport_en;
+	uint8_t is_over_sdn;
+	uint8_t sdn_group_id;
+	uint8_t encrypt_keys[SXE2_IPSEC_KEY_LEN];
+	uint8_t auth_keys[SXE2_IPSEC_KEY_LEN];
+	bool func_type;
+	uint8_t func_id;
+	uint8_t drv_id;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_ipsec_rxsa_add_resp {
+	uint8_t ip_id;
+	uint8_t udp_group_id;
+	uint16_t sa_idx;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_ipsec_txsa_del_req {
+	uint16_t sa_idx;
+	bool func_type;
+	uint8_t func_id;
+	uint8_t drv_id;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_ipsec_rxsa_del_req {
+	uint8_t ip_id;
+	uint8_t group_id;
+	uint16_t sa_idx;
+	uint32_t spi;
+	bool func_type;
+	uint8_t func_id;
+	uint8_t drv_id;
+} __rte_packed_end;
+
 enum sxe2_drv_cmd_module {
 	SXE2_DRV_CMD_MODULE_HANDSHAKE = 0,
 	SXE2_DRV_CMD_MODULE_DEV = 1,

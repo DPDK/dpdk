@@ -304,6 +304,11 @@ int32_t __rte_cold sxe2_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	offloads = tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
+	if (!sxe2_ipsec_valid_tx_offloads(offloads)) {
+		ret = -EINVAL;
+		goto end;
+	}
+
 	txq = sxe2_tx_queue_alloc(dev, queue_idx, nb_desc, socket_id);
 	if (txq == NULL) {
 		PMD_LOG_ERR(TX, "failed to alloc sxe2vf tx queue:%u resource", queue_idx);
@@ -326,6 +331,9 @@ int32_t __rte_cold sxe2_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->vsi               = vsi;
 	txq->ops               = sxe2_tx_default_ops_get();
 	txq->ops.queue_reset(txq);
+
+	if (sxe2_ipsec_supported(adapter) && txq->offloads & RTE_ETH_TX_OFFLOAD_SECURITY)
+		txq->ipsec_pkt_md_offset = sxe2_ipsec_pkt_md_offset_get(adapter);
 
 	dev->data->tx_queues[queue_idx] = txq;
 	ret = 0;
