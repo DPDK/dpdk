@@ -120,12 +120,6 @@ enum {
 	SXE2_FLAGS_NBITS
 };
 
-struct sxe2_link_context {
-	rte_spinlock_t link_lock;
-	bool link_up;
-	uint32_t  speed;
-};
-
 struct sxe2_devargs {
 	uint8_t flow_dup_pattern_mode;
 	uint8_t func_flow_direct_en;
@@ -266,6 +260,12 @@ struct sxe2_sched_hw_cap {
 	uint8_t adj_lvl;
 };
 
+struct sxe2_link_context {
+	rte_spinlock_t link_lock;
+	bool link_up;
+	uint32_t  speed;
+};
+
 struct sxe2_adapter {
 	struct sxe2_common_device      *cdev;
 	struct sxe2_dev_info            dev_info;
@@ -275,9 +275,10 @@ struct sxe2_adapter {
 	struct sxe2_irq_context       irq_ctxt;
 	struct sxe2_queue_context     q_ctxt;
 	struct sxe2_vsi_context       vsi_ctxt;
-	struct sxe2_devargs			  devargs;
-	uint16_t                           dev_port_id;
-	uint64_t                           cap_flags;
+	struct sxe2_link_context      link_ctxt;
+	struct sxe2_devargs           devargs;
+	uint16_t                      dev_port_id;
+	uint64_t                      cap_flags;
 	enum sxe2_dev_type            dev_type;
 	struct rte_ether_addr           mac_addr;
 	uint8_t                              port_idx;

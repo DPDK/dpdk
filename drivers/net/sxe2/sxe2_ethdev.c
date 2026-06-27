@@ -27,6 +27,7 @@
 #include "sxe2_tx.h"
 #include "sxe2_rx.h"
 #include "sxe2_txrx.h"
+#include "sxe2_mac.h"
 #include "sxe2_common.h"
 #include "sxe2_common_log.h"
 #include "sxe2_host_regs.h"
@@ -78,6 +79,41 @@ static struct sxe2_pci_map_addr_info sxe2_net_map_addr_info_pf[SXE2_PCI_MAP_RES_
 				      .reg_width = 10},
 };
 
+static int32_t sxe2_dev_configure(struct rte_eth_dev *dev);
+static int32_t sxe2_dev_start(struct rte_eth_dev *dev);
+static int32_t sxe2_dev_stop(struct rte_eth_dev *dev);
+static int32_t sxe2_dev_close(struct rte_eth_dev *dev);
+static int32_t sxe2_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info);
+static const uint32_t *sxe2_buffer_split_supported_hdr_ptypes_get(struct rte_eth_dev *dev
+				__rte_unused, size_t *no_of_elements __rte_unused);
+
+static const struct eth_dev_ops sxe2_eth_dev_ops = {
+	.dev_configure              = sxe2_dev_configure,
+	.dev_start                  = sxe2_dev_start,
+	.dev_stop                   = sxe2_dev_stop,
+	.dev_close                  = sxe2_dev_close,
+	.dev_infos_get              = sxe2_dev_infos_get,
+	.dev_supported_ptypes_get   = sxe2_dev_supported_ptypes_get,
+	.link_update                = sxe2_link_update,
+
+	.rx_queue_start             = sxe2_rx_queue_start,
+	.rx_queue_stop              = sxe2_rx_queue_stop,
+	.tx_queue_start             = sxe2_tx_queue_start,
+	.tx_queue_stop              = sxe2_tx_queue_stop,
+	.rx_queue_setup             = sxe2_rx_queue_setup,
+	.rx_queue_release           = sxe2_rx_queue_release,
+	.tx_queue_setup             = sxe2_tx_queue_setup,
+	.tx_queue_release           = sxe2_tx_queue_release,
+	.rxq_info_get               = sxe2_rx_queue_info_get,
+	.txq_info_get               = sxe2_tx_queue_info_get,
+	.rx_burst_mode_get          = sxe2_rx_burst_mode_get,
+	.tx_burst_mode_get          = sxe2_tx_burst_mode_get,
+	.tx_done_cleanup            = sxe2_tx_done_cleanup,
+
+	.mtu_set                    = sxe2_mtu_set,
+	.buffer_split_supported_hdr_ptypes_get = sxe2_buffer_split_supported_hdr_ptypes_get,
+};
+
 static int32_t sxe2_dev_configure(struct rte_eth_dev *dev)
 {
 	int32_t ret = 0;
@@ -122,6 +158,12 @@ static int32_t sxe2_dev_start(struct rte_eth_dev *dev)
 	sxe2_rx_mode_func_set(dev);
 	sxe2_tx_mode_func_set(dev);
 
+	ret = sxe2_link_update_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to initialize link update, ret:%d", ret);
+		goto l_end;
+	}
+
 	ret = sxe2_queues_start(dev);
 	if (ret) {
 		PMD_LOG_ERR(INIT, "enable queues failed");
@@ -134,16 +176,6 @@ static int32_t sxe2_dev_start(struct rte_eth_dev *dev)
 
 l_end:
 	return ret;
-}
-
-static int32_t sxe2_dev_close(struct rte_eth_dev *dev)
-{
-	(void)sxe2_dev_stop(dev);
-	(void)sxe2_queues_release(dev);
-	sxe2_vsi_uninit(dev);
-	sxe2_dev_pci_map_uinit(dev);
-
-	return 0;
 }
 
 static int32_t sxe2_dev_infos_get(struct rte_eth_dev *dev,
@@ -270,28 +302,49 @@ static int32_t sxe2_dev_infos_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static const struct eth_dev_ops sxe2_eth_dev_ops = {
-	.dev_configure              = sxe2_dev_configure,
-	.dev_start                  = sxe2_dev_start,
-	.dev_stop                   = sxe2_dev_stop,
-	.dev_close                  = sxe2_dev_close,
-	.dev_infos_get              = sxe2_dev_infos_get,
+static const uint32_t *
+sxe2_buffer_split_supported_hdr_ptypes_get(struct rte_eth_dev *dev __rte_unused,
+					   size_t *no_of_elements __rte_unused)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_L4_SCTP,
 
-	.rx_queue_start             = sxe2_rx_queue_start,
-	.rx_queue_stop              = sxe2_rx_queue_stop,
-	.tx_queue_start             = sxe2_tx_queue_start,
-	.tx_queue_stop              = sxe2_tx_queue_stop,
-	.rx_queue_setup             = sxe2_rx_queue_setup,
-	.rx_queue_release           = sxe2_rx_queue_release,
-	.tx_queue_setup             = sxe2_tx_queue_setup,
-	.tx_queue_release           = sxe2_tx_queue_release,
+		RTE_PTYPE_TUNNEL_GRENAT,
 
-	.rxq_info_get               = sxe2_rx_queue_info_get,
-	.txq_info_get               = sxe2_tx_queue_info_get,
-	.rx_burst_mode_get          = sxe2_rx_burst_mode_get,
-	.tx_burst_mode_get          = sxe2_tx_burst_mode_get,
-	.tx_done_cleanup            = sxe2_tx_done_cleanup,
-};
+		RTE_PTYPE_TUNNEL_GRENAT | RTE_PTYPE_INNER_L2_ETHER,
+
+		RTE_PTYPE_TUNNEL_GRENAT | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_TUNNEL_GRENAT | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
+
+		RTE_PTYPE_TUNNEL_GRENAT | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_TUNNEL_GRENAT | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_TUNNEL_GRENAT | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_INNER_L4_SCTP,
+
+		RTE_PTYPE_TUNNEL_GRENAT | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_TUNNEL_GRENAT | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_TUNNEL_GRENAT | RTE_PTYPE_INNER_L2_ETHER |
+			RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_INNER_L4_SCTP,
+
+		RTE_PTYPE_UNKNOWN
+	};
+
+	return ptypes;
+}
 
 struct sxe2_pci_map_bar_info *sxe2_dev_get_bar_info(struct sxe2_adapter *adapter,
 						    enum sxe2_pci_map_resource res_type)
@@ -358,6 +411,29 @@ void *sxe2_pci_map_addr_get(struct sxe2_adapter *adapter,
 
 l_end:
 	return addr;
+}
+
+static int32_t sxe2_eth_init(struct rte_eth_dev *dev)
+{
+	int32_t ret = 0;
+
+	ret = sxe2_link_update_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to initialize link update, ret:%d", ret);
+		goto l_end;
+	}
+
+	ret = sxe2_mtu_set(dev, dev->data->mtu);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to set mtu, ret=%d", ret);
+		goto l_end;
+	}
+l_end:
+	return ret;
+}
+
+static void sxe2_eth_uinit(struct rte_eth_dev *dev __rte_unused)
+{
 }
 
 static void sxe2_drv_dev_caps_set(struct sxe2_adapter *adapter,
@@ -789,18 +865,38 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 		goto init_dev_info_err;
 	}
 
+	ret = sxe2_eth_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to initialize eth parameters, ret=%d", ret);
+		goto init_eth_err;
+	}
+
 	goto l_end;
 
+init_eth_err:
 init_dev_info_err:
 	sxe2_vsi_uninit(dev);
 init_vsi_err:
+	sxe2_dev_pci_map_uinit(dev);
 l_end:
 	return ret;
+}
+
+static int32_t sxe2_dev_close(struct rte_eth_dev *dev)
+{
+	(void)sxe2_dev_stop(dev);
+	(void)sxe2_queues_release(dev);
+	sxe2_vsi_uninit(dev);
+	sxe2_dev_pci_map_uinit(dev);
+	sxe2_eth_uinit(dev);
+
+	return 0;
 }
 
 static int32_t sxe2_dev_uninit(struct rte_eth_dev *dev)
 {
 	int32_t ret = 0;
+
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		goto l_end;
 

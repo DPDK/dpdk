@@ -321,3 +321,25 @@ int32_t sxe2_drv_txq_switch(struct sxe2_adapter *adapter, struct sxe2_tx_queue *
 
 	return ret;
 }
+
+int32_t sxe2_drv_mac_link_status_get(struct sxe2_adapter *adapter)
+{
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_drv_link_info_resp resp = {0};
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_LINK_STATUS_GET,
+				 NULL, 0,
+				 &resp, sizeof(resp));
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "link status get failed, ret=%d", ret);
+		goto l_end;
+	}
+	adapter->link_ctxt.speed = resp.speed;
+	adapter->link_ctxt.link_up = resp.status;
+
+l_end:
+	return ret;
+}

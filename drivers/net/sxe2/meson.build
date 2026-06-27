@@ -60,4 +60,5 @@ sources += files(
         'sxe2_txrx_poll.c',
         'sxe2_txrx.c',
         'sxe2_txrx_vec.c',
+        'sxe2_mac.c',
 )

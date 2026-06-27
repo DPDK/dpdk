@@ -34,4 +34,6 @@ int32_t sxe2_drv_txq_ctxt_cfg(struct sxe2_adapter *adapter,
 			      struct sxe2_tx_queue *txq,
 			      uint16_t txq_cnt);
 
+int32_t sxe2_drv_mac_link_status_get(struct sxe2_adapter *adapter);
+
 #endif /* SXE2_CMD_CHNL_H */
