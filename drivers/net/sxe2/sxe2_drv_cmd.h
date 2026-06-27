@@ -233,6 +233,93 @@ struct __rte_aligned(4) __rte_packed_begin sxe2_drv_link_info_resp {
 	uint8_t rsv[3];
 } __rte_packed_end;
 
+struct __rte_aligned(4) __rte_packed_begin sxe2_switchdev_info {
+	uint8_t is_switchdev;
+	uint8_t primary;
+	uint8_t representor;
+	uint8_t port_name_type;
+	uint32_t ctrl_num;
+	uint32_t pf_num;
+	uint32_t vf_num;
+	uint32_t mpesw_owner;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_vlan_cfg_query_resp {
+	uint16_t vsi_id;
+	uint8_t port_vlan_exist;
+	uint8_t is_switchdev;
+	uint16_t tpid;
+	uint16_t vid;
+	uint8_t outer_insert;
+	uint8_t outer_strip;
+	uint8_t inner_insert;
+	uint8_t inner_strip;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_vlan_offload_cfg_req {
+	uint16_t vsi_id;
+	uint16_t tpid;
+	uint8_t outer_insert;
+	uint8_t outer_strip;
+	uint8_t inner_insert;
+	uint8_t inner_strip;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_port_vlan_cfg_req {
+	uint16_t vsi_id;
+	uint16_t tpid;
+	uint16_t vid;
+	uint8_t prio;
+	uint8_t rsv;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_mac_filter_cfg_req {
+	uint16_t vsi_id;
+	uint8_t addr[SXE2_ETH_ALEN];
+	uint8_t type;
+	uint8_t is_add;
+	uint8_t rsv[2];
+} __rte_packed_end;
+
+enum sxe2_promisc_filter_type {
+	SXE2_PROMISC_FILTER_TYPE_PROMISC = 0,
+	SXE2_PROMISC_FILTER_TYPE_ALLMULTI,
+	SXE2_PROMISC_FILTER_TYPE_MAX,
+};
+
+enum sxe2_mac_filter_type {
+	SXE2_MAC_FILTER_TYPE_UC = 0,
+	SXE2_MAC_FILTER_TYPE_MC,
+	SXE2_MAC_FILTER_TYPE_MAX,
+};
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_promisc_filter_cfg_req {
+	uint16_t vsi_id;
+	uint8_t type;
+	uint8_t is_add;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_srcvsi_ext_cfg_req {
+	uint16_t vsi_id;
+	uint16_t srcvsi_list[SXE2_SRCVSI_PRUNE_MAX_NUM];
+	uint8_t srcvsi_cnt;
+	uint8_t is_add;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_vlan_filter_cfg_req {
+	uint16_t vsi_id;
+	uint16_t vlan_id;
+	uint16_t tpid_id;
+	uint8_t prio;
+	uint8_t is_add;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_vlan_filter_switch_req {
+	uint16_t vsi_id;
+	uint8_t is_oper_enable;
+	uint8_t rsv;
+} __rte_packed_end;
+
 enum sxe2_drv_cmd_module {
 	SXE2_DRV_CMD_MODULE_HANDSHAKE = 0,
 	SXE2_DRV_CMD_MODULE_DEV = 1,

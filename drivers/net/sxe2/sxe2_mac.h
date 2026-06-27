@@ -43,6 +43,40 @@ struct sxe2_mac_mc_list {
 
 int32_t sxe2_link_update_init(struct rte_eth_dev *dev);
 
+int32_t sxe2_mac_default_cfg(struct rte_eth_dev *dev);
+
+int32_t sxe2_vlan_cfg_init(struct rte_eth_dev *dev);
+
+int32_t sxe2_mac_addr_init(struct rte_eth_dev *dev);
+
+void sxe2_mac_addr_uinit(struct rte_eth_dev *dev);
+
+int32_t sxe2_mac_addr_add(struct rte_eth_dev *dev,
+			struct rte_ether_addr *mac_addr,
+			__rte_unused uint32_t index, __rte_unused uint32_t pool);
+
+void sxe2_mac_addr_del(struct rte_eth_dev *dev,  uint32_t index);
+
+int32_t sxe2_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr);
+
+int32_t sxe2_set_mc_addr_list(struct rte_eth_dev *dev,
+	struct rte_ether_addr *mc_addrs,
+	uint32_t mc_addrs_num);
+
+int32_t sxe2_promisc_enable(struct rte_eth_dev *dev);
+
+int32_t sxe2_promisc_disable(struct rte_eth_dev *dev);
+
+int32_t sxe2_allmulti_enable(struct rte_eth_dev *dev);
+
+int32_t sxe2_allmulti_disable(struct rte_eth_dev *dev);
+
+int32_t sxe2_dev_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int32_t on);
+
+int32_t sxe2_dev_vlan_offload_set(struct rte_eth_dev *dev, int32_t mask);
+
+int32_t sxe2_vlan_default_cfg(struct rte_eth_dev *dev);
+
 int32_t sxe2_link_update(struct rte_eth_dev *dev, __rte_unused int32_t wait_to_complete);
 
 int32_t sxe2_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);

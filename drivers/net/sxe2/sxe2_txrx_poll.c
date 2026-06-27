@@ -660,6 +660,53 @@ l_end:
 	return flags;
 }
 
+static inline void sxe2_rx_desc_vlan_para_fill(struct rte_mbuf *mbuf,
+			union sxe2_rx_desc *desc)
+{
+	if (0 == (rte_le_to_cpu_64(desc->wb.status_err_ptype_len) &
+		  SXE2_RX_DESC_STATUS_L2TAG1_P_MASK)) {
+		mbuf->vlan_tci = 0;
+	} else {
+		mbuf->ol_flags |= (RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED);
+		mbuf->vlan_tci = rte_le_to_cpu_16(desc->wb.l2tag1);
+		PMD_LOG_DEBUG(RX, "Rx desc mbuf vlan, vlan_tci:%u",
+			mbuf->vlan_tci);
+	}
+#ifndef RTE_LIBRTE_SXE2_16BYTE_RX_DESC
+	if (0 == (rte_le_to_cpu_32(desc->wb.status_lrocnt_fdpf_id) &
+				SXE2_RX_DESC_EXT_STATUS_L2TAG2P_MASK)) {
+		mbuf->vlan_tci_outer = 0;
+	} else {
+		mbuf->ol_flags |= RTE_MBUF_F_RX_QINQ_STRIPPED | RTE_MBUF_F_RX_QINQ |
+				RTE_MBUF_F_RX_VLAN_STRIPPED | RTE_MBUF_F_RX_VLAN;
+		mbuf->vlan_tci_outer = mbuf->vlan_tci;
+		mbuf->vlan_tci = rte_le_to_cpu_16(desc->wb.l2tag2_2nd);
+		PMD_LOG_DEBUG(RX, "Rx desc out vlan, l2tag2_1st:%u l2tag2_2nd:%u.",
+				rte_le_to_cpu_16(desc->wb.l2tag2_1st),
+				rte_le_to_cpu_16(desc->wb.l2tag2_2nd));
+	}
+#endif
+}
+
+static inline void
+sxe2_rx_desc_filter_para_fill(struct sxe2_rx_queue *rxq __rte_unused,
+		struct rte_mbuf *mbuf, union sxe2_rx_desc *desc)
+{
+	if (SXE2_RX_DESC_STATUS_RSS_VLD_MASK &
+				rte_le_to_cpu_64(desc->wb.status_err_ptype_len)) {
+		mbuf->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
+		mbuf->hash.rss = rte_le_to_cpu_32(desc->wb.filter_status);
+		PMD_LOG_DEBUG(RX, "rss id:%u", mbuf->hash.rss);
+	}
+#ifndef RTE_LIBRTE_SXE2_16BYTE_RX_DESC
+	if (SXE2_RX_DESC_FD_VLD_MASK & desc->wb.rxdid_src) {
+		mbuf->ol_flags |= (RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID);
+		mbuf->hash.fdir.hi = rte_le_to_cpu_32(desc->wb.fd_filter_id);
+		PMD_LOG_DEBUG(RX, "fdir id:%u", mbuf->hash.fdir.hi);
+	}
+#endif
+}
+
 static __rte_always_inline void
 sxe2_rx_mbuf_common_fields_fill(struct sxe2_rx_queue *rxq, struct rte_mbuf *mbuf,
 		union sxe2_rx_desc *rxd)
@@ -672,6 +719,8 @@ sxe2_rx_mbuf_common_fields_fill(struct sxe2_rx_queue *rxq, struct rte_mbuf *mbuf
 	mbuf->packet_type = sxe2_ptype_tbl[SXE2_RX_DESC_PTYPE_VAL_GET(qword1)];
 
 	pkt_flags = sxe2_rx_desc_error_para(rxq, rxd);
+	sxe2_rx_desc_vlan_para_fill(mbuf, rxd);
+	sxe2_rx_desc_filter_para_fill(rxq, mbuf, rxd);
 
 	mbuf->ol_flags |= pkt_flags;
 }

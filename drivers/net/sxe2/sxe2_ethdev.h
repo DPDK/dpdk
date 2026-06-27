@@ -15,9 +15,11 @@
 
 #include "sxe2_common.h"
 #include "sxe2_vsi.h"
-#include "sxe2_queue.h"
 #include "sxe2_irq.h"
+#include "sxe2_queue.h"
+#include "sxe2_mac.h"
 #include "sxe2_osal.h"
+#include "sxe2_filter.h"
 
 struct sxe2_link_msg {
 	uint32_t speed;
@@ -35,7 +37,7 @@ enum sxe2_fnav_tunnel_flag_type {
 #define SXE2_FRAME_SIZE_MAX    9832
 #define SXE2_VLAN_TAG_SIZE     4
 #define SXE2_ETH_OVERHEAD \
-	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + SXE2_VLAN_TAG_SIZE)
+	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + 2 * SXE2_VLAN_TAG_SIZE)
 #define SXE2_ETH_MAX_LEN (RTE_ETHER_MTU + SXE2_ETH_OVERHEAD)
 
 #ifdef SXE2_TEST
@@ -266,6 +268,27 @@ struct sxe2_link_context {
 	uint32_t  speed;
 };
 
+struct sxe2_filter_context {
+	rte_spinlock_t filter_lock;
+	struct sxe2_vlan_info               vlan_info;
+	struct sxe2_uc_filter_list_head    uc_list;
+	struct sxe2_mc_filter_list_head    mc_list;
+	struct sxe2_vlan_filter_list_head  vlan_list;
+	uint8_t                                 uc_num;
+	uint8_t                                 mc_num;
+	uint8_t                                 vlan_num;
+	uint8_t                                 rsv;
+	uint32_t hw_promisc_flags;
+	uint32_t cur_promisc_flags;
+
+	bool hw_uplink_config;
+	bool cur_uplink_config;
+	bool hw_repr_config;
+	bool cur_repr_config;
+	bool hw_l2_config;
+	bool cur_l2_config;
+};
+
 struct sxe2_adapter {
 	struct sxe2_common_device      *cdev;
 	struct sxe2_dev_info            dev_info;
@@ -275,10 +298,14 @@ struct sxe2_adapter {
 	struct sxe2_irq_context       irq_ctxt;
 	struct sxe2_queue_context     q_ctxt;
 	struct sxe2_vsi_context       vsi_ctxt;
+	struct sxe2_filter_context    filter_ctxt;
 	struct sxe2_link_context      link_ctxt;
 	struct sxe2_devargs           devargs;
-	uint16_t                      dev_port_id;
-	uint64_t                      cap_flags;
+	struct sxe2_switchdev_info    switchdev_info;
+	bool                          rule_started;
+	bool                          flow_isolated;
+	uint16_t                           dev_port_id;
+	uint64_t                           cap_flags;
 	enum sxe2_dev_type            dev_type;
 	struct rte_ether_addr           mac_addr;
 	uint8_t                              port_idx;
@@ -312,5 +339,13 @@ void sxe2_dev_pci_seg_unmap(struct sxe2_adapter *adapter, uint32_t res_type);
 int32_t sxe2_dev_pci_map_init(struct rte_eth_dev *dev);
 
 void sxe2_dev_pci_map_uinit(struct rte_eth_dev *dev);
+
+static inline bool
+sxe2_dev_port_vlan_check(struct rte_eth_dev *dev)
+{
+	struct sxe2_adapter *ad = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+
+	return ad->filter_ctxt.vlan_info.port_vlan_exist;
+}
 
 #endif /* SXE2_ETHDEV_H */

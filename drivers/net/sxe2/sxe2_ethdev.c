@@ -110,8 +110,20 @@ static const struct eth_dev_ops sxe2_eth_dev_ops = {
 	.tx_burst_mode_get          = sxe2_tx_burst_mode_get,
 	.tx_done_cleanup            = sxe2_tx_done_cleanup,
 
+	.promiscuous_enable         = sxe2_promisc_enable,
+	.promiscuous_disable        = sxe2_promisc_disable,
+	.allmulticast_enable        = sxe2_allmulti_enable,
+	.allmulticast_disable       = sxe2_allmulti_disable,
+
+	.mac_addr_add               = sxe2_mac_addr_add,
+	.mac_addr_remove            = sxe2_mac_addr_del,
+	.mac_addr_set               = sxe2_mac_addr_set,
+	.set_mc_addr_list           = sxe2_set_mc_addr_list,
 	.mtu_set                    = sxe2_mtu_set,
 	.buffer_split_supported_hdr_ptypes_get = sxe2_buffer_split_supported_hdr_ptypes_get,
+
+	.vlan_filter_set            = sxe2_dev_vlan_filter_set,
+	.vlan_offload_set           = sxe2_dev_vlan_offload_set,
 };
 
 static int32_t sxe2_dev_configure(struct rte_eth_dev *dev)
@@ -122,6 +134,13 @@ static int32_t sxe2_dev_configure(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.rxmode.mq_mode  & RTE_ETH_MQ_RX_RSS_FLAG)
 		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
+	ret = sxe2_vlan_default_cfg(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to init vlan, ret=%d", ret);
+		goto end;
+	}
+
+end:
 	return ret;
 }
 
@@ -136,6 +155,8 @@ static int32_t sxe2_dev_stop(struct rte_eth_dev *dev)
 
 	sxe2_txqs_all_stop(dev);
 	sxe2_rxqs_all_stop(dev);
+
+	(void)sxe2_filter_rule_stop(dev);
 
 	dev->data->dev_started = 0;
 	adapter->started = 0;
@@ -164,16 +185,23 @@ static int32_t sxe2_dev_start(struct rte_eth_dev *dev)
 		goto l_end;
 	}
 
+	ret = sxe2_filter_rule_start(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to add all mc addr to fw.");
+		goto l_end;
+	}
+
 	ret = sxe2_queues_start(dev);
 	if (ret) {
 		PMD_LOG_ERR(INIT, "enable queues failed");
-		goto l_end;
+		goto l_start_queues_err;
 	}
 
 	dev->data->dev_started = 1;
 	adapter->started = 1;
 	goto l_end;
-
+l_start_queues_err:
+	(void)sxe2_filter_rule_stop(dev);
 l_end:
 	return ret;
 }
@@ -193,6 +221,7 @@ static int32_t sxe2_dev_infos_get(struct rte_eth_dev *dev,
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 
 	dev_info->rx_offload_capa =
+		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
 		RTE_ETH_RX_OFFLOAD_KEEP_CRC |
 		RTE_ETH_RX_OFFLOAD_SCATTER |
 		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
@@ -201,9 +230,15 @@ static int32_t sxe2_dev_infos_get(struct rte_eth_dev *dev,
 		RTE_ETH_RX_OFFLOAD_SCTP_CKSUM |
 		RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
 		RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT |
+#ifndef RTE_LIBRTE_SXE2_16BYTE_RX_DESC
+		RTE_ETH_RX_OFFLOAD_QINQ_STRIP |
+#endif
+		RTE_ETH_RX_OFFLOAD_VLAN_EXTEND |
 		RTE_ETH_RX_OFFLOAD_TCP_LRO;
 
 	dev_info->tx_offload_capa =
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+		RTE_ETH_TX_OFFLOAD_QINQ_INSERT |
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
 		RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE |
 		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
@@ -417,6 +452,12 @@ static int32_t sxe2_eth_init(struct rte_eth_dev *dev)
 {
 	int32_t ret = 0;
 
+	ret = sxe2_filter_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to initialize l2 filter, ret:%d", ret);
+		goto l_end;
+	}
+
 	ret = sxe2_link_update_init(dev);
 	if (ret) {
 		PMD_LOG_ERR(INIT, "Failed to initialize link update, ret:%d", ret);
@@ -428,12 +469,37 @@ static int32_t sxe2_eth_init(struct rte_eth_dev *dev)
 		PMD_LOG_ERR(INIT, "Failed to set mtu, ret=%d", ret);
 		goto l_end;
 	}
+
+	ret = sxe2_mac_addr_init(dev);
+	if (ret != 0) {
+		PMD_LOG_ERR(INIT, "Failed to initialize mac address, ret:%d", ret);
+		goto l_end;
+	}
+
+	ret = sxe2_mac_default_cfg(dev);
+	if (ret != 0) {
+		PMD_LOG_ERR(INIT, "Failed to configure default mac address, ret:%d", ret);
+		goto l_err;
+	}
+
+	ret = sxe2_vlan_cfg_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to initialize vlan config, ret:%d", ret);
+		goto l_err;
+	}
+	goto l_end;
+
+l_err:
+	sxe2_mac_addr_uinit(dev);
+	(void)sxe2_filter_uinit(dev);
 l_end:
 	return ret;
 }
 
 static void sxe2_eth_uinit(struct rte_eth_dev *dev __rte_unused)
 {
+	sxe2_mac_addr_uinit(dev);
+	(void)sxe2_filter_uinit(dev);
 }
 
 static void sxe2_drv_dev_caps_set(struct sxe2_adapter *adapter,

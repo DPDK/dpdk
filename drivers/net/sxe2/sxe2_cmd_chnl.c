@@ -343,3 +343,201 @@ int32_t sxe2_drv_mac_link_status_get(struct sxe2_adapter *adapter)
 l_end:
 	return ret;
 }
+
+int32_t sxe2_drv_promisc_config(struct sxe2_adapter *adapter, bool set)
+{
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_promisc_filter_cfg_req promisc_filter_cfg_req = {0};
+
+	promisc_filter_cfg_req.vsi_id = adapter->vsi_ctxt.dpdk_vsi_id;
+	promisc_filter_cfg_req.is_add = set;
+	promisc_filter_cfg_req.type = SXE2_PROMISC_FILTER_TYPE_PROMISC;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_PROMISC_CFG,
+				 &promisc_filter_cfg_req,
+				 sizeof(promisc_filter_cfg_req),
+				 NULL, 0);
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_WARN(adapter, DRV, "promic config failed, ret=%d", ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_allmulti_config(struct sxe2_adapter *adapter, bool set)
+{
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_promisc_filter_cfg_req promisc_filter_cfg_req = {0};
+
+	promisc_filter_cfg_req.vsi_id = adapter->vsi_ctxt.dpdk_vsi_id;
+	promisc_filter_cfg_req.is_add = set;
+	promisc_filter_cfg_req.type = SXE2_PROMISC_FILTER_TYPE_ALLMULTI;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_ALLMULTI_CFG,
+				 &promisc_filter_cfg_req,
+				 sizeof(promisc_filter_cfg_req),
+				 NULL, 0);
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_WARN(adapter, DRV, "allmulti config failed, ret=%d", ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_uc_config(struct sxe2_adapter *adapter, struct rte_ether_addr *addr, bool add)
+{
+	int32_t ret = 0;
+	int32_t i;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_mac_filter_cfg_req mac_filter_cfg_req = {0};
+
+	mac_filter_cfg_req.vsi_id = adapter->vsi_ctxt.dpdk_vsi_id;
+	for (i = 0; i < SXE2_ETH_ALEN; i++)
+		mac_filter_cfg_req.addr[i] = addr->addr_bytes[i];
+	mac_filter_cfg_req.is_add = add;
+	mac_filter_cfg_req.type = SXE2_MAC_FILTER_TYPE_UC;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_MAC_ADDR_UC,
+		 &mac_filter_cfg_req, sizeof(mac_filter_cfg_req),
+		 NULL, 0);
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_WARN(adapter, DRV, "uc config query failed, ret=%d", ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_mc_config(struct sxe2_adapter *adapter, struct rte_ether_addr *addr, bool add)
+{
+	int32_t ret = 0;
+	int32_t i;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_mac_filter_cfg_req mac_filter_cfg_req = {0};
+
+	mac_filter_cfg_req.vsi_id = adapter->vsi_ctxt.dpdk_vsi_id;
+	for (i = 0; i < SXE2_ETH_ALEN; i++)
+		mac_filter_cfg_req.addr[i] = addr->addr_bytes[i];
+
+	mac_filter_cfg_req.is_add = add;
+	mac_filter_cfg_req.type = SXE2_MAC_FILTER_TYPE_MC;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_MAC_ADDR_MC,
+		 &mac_filter_cfg_req, sizeof(mac_filter_cfg_req),
+		 NULL, 0);
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_WARN(adapter, DRV, "mac config query failed, ret=%d", ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_vlan_config_query(struct sxe2_adapter *adapter)
+{
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_drv_vlan_cfg_query_resp vlan_cfg_query_resp = {0};
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_VLAN_CFG_QUERY,
+				 NULL, 0,
+				 &vlan_cfg_query_resp,
+	 sizeof(vlan_cfg_query_resp));
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_WARN(adapter, DRV, "vlan config query failed, ret=%d", ret);
+
+	adapter->filter_ctxt.vlan_info.port_vlan_exist = vlan_cfg_query_resp.port_vlan_exist;
+	adapter->filter_ctxt.vlan_info.is_switchdev = vlan_cfg_query_resp.is_switchdev;
+
+
+	adapter->filter_ctxt.vlan_info.tpid = vlan_cfg_query_resp.tpid;
+	adapter->filter_ctxt.vlan_info.vid = vlan_cfg_query_resp.vid;
+
+	adapter->filter_ctxt.vlan_info.outer_insert = vlan_cfg_query_resp.outer_insert;
+	adapter->filter_ctxt.vlan_info.outer_strip = vlan_cfg_query_resp.outer_strip;
+	adapter->filter_ctxt.vlan_info.inner_insert = vlan_cfg_query_resp.inner_insert;
+	adapter->filter_ctxt.vlan_info.inner_strip = vlan_cfg_query_resp.inner_strip;
+
+	return ret;
+}
+
+int32_t sxe2_drv_vlan_filter_id_config(struct sxe2_adapter *adapter,
+				       struct sxe2_vlan *vlan, bool on)
+{
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_vlan_filter_cfg_req vlan_filter_cfg_req = {0};
+
+	vlan_filter_cfg_req.vsi_id = adapter->vsi_ctxt.dpdk_vsi_id;
+	vlan_filter_cfg_req.tpid_id = vlan->tpid;
+	vlan_filter_cfg_req.vlan_id = vlan->vid;
+	vlan_filter_cfg_req.prio = vlan->prio;
+	vlan_filter_cfg_req.is_add = on;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_VLAN_FILTER_ADD_DEL,
+				 &vlan_filter_cfg_req, sizeof(vlan_filter_cfg_req),
+				 NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_WARN(adapter, DRV, "vlan config failed, ret=%d", ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_vlan_insert_strip_cfg(struct sxe2_adapter *adapter)
+{
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_drv_vlan_offload_cfg_req vlan_offload_cfg_req = {0};
+
+	vlan_offload_cfg_req.vsi_id = adapter->vsi_ctxt.dpdk_vsi_id;
+	vlan_offload_cfg_req.tpid = adapter->filter_ctxt.vlan_info.tpid;
+	vlan_offload_cfg_req.outer_insert = adapter->filter_ctxt.vlan_info.outer_insert;
+	vlan_offload_cfg_req.outer_strip = adapter->filter_ctxt.vlan_info.outer_strip;
+	vlan_offload_cfg_req.inner_insert = adapter->filter_ctxt.vlan_info.inner_insert;
+	vlan_offload_cfg_req.inner_strip = adapter->filter_ctxt.vlan_info.inner_strip;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_VLAN_OFFLOAD_CFG,
+				 &vlan_offload_cfg_req,
+				 sizeof(vlan_offload_cfg_req),
+				 NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_WARN(adapter, DRV, "vlan config query failed, ret=%d", ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_vlan_filter_switch(struct sxe2_adapter *adapter, bool on)
+{
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_vlan_filter_switch_req vlan_filter_switch_req = {0};
+
+	vlan_filter_switch_req.vsi_id = adapter->vsi_ctxt.dpdk_vsi_id;
+	vlan_filter_switch_req.is_oper_enable = on;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_VLAN_FILTER_SWITCH,
+				 &vlan_filter_switch_req,
+				 sizeof(vlan_filter_switch_req),
+				 NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_WARN(adapter, DRV, "vlan config filter failed, ret=%d", ret);
+
+	return ret;
+}
