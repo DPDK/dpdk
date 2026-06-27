@@ -165,16 +165,54 @@ static void sxe2_tx_queue_mbufs_release_vec(struct sxe2_tx_queue *txq)
 		return;
 	}
 	i = txq->next_dd - (txq->rs_thresh - 1);
-	buffer = txq->buffer_ring;
-	if (txq->next_use < i) {
-		for ( ; i < txq->ring_depth; ++i) {
+#ifdef CC_AVX512_SUPPORT
+	struct rte_eth_dev *dev;
+	struct sxe2_tx_buffer_vec *buffer_vec;
+
+	dev = &rte_eth_devices[txq->port_id];
+
+	if (dev->tx_pkt_burst == sxe2_tx_pkts_vec_avx512 ||
+		dev->tx_pkt_burst == sxe2_tx_pkts_vec_avx512_simple) {
+		buffer_vec = (struct sxe2_tx_buffer_vec *)txq->buffer_ring;
+
+		if (txq->next_use < i) {
+			for ( ; i < txq->ring_depth; ++i) {
+				if (buffer_vec[i].mbuf != NULL) {
+					rte_pktmbuf_free_seg(buffer_vec[i].mbuf);
+					buffer_vec[i].mbuf = NULL;
+				}
+			}
+			i = 0;
+		}
+		for ( ; i < txq->next_use; ++i) {
+			if (buffer_vec[i].mbuf != NULL) {
+				rte_pktmbuf_free_seg(buffer_vec[i].mbuf);
+				buffer_vec[i].mbuf = NULL;
+			}
+		}
+	} else {
+#endif
+		buffer = txq->buffer_ring;
+		buffer = txq->buffer_ring;
+		if (txq->next_use < i) {
+			for ( ; i < txq->ring_depth; ++i) {
+				if (buffer[i].mbuf != NULL) {
+					rte_pktmbuf_free_seg(buffer[i].mbuf);
+					buffer[i].mbuf = NULL;
+				}
+			}
+			i = 0;
+		}
+		for (; i < txq->next_use; ++i) {
 			if (buffer[i].mbuf != NULL) {
 				rte_pktmbuf_free_seg(buffer[i].mbuf);
 				buffer[i].mbuf = NULL;
 			}
 		}
-		i = 0;
+#ifdef CC_AVX512_SUPPORT
 	}
+#endif
+
 	for (; i < txq->next_use; ++i) {
 		if (buffer[i].mbuf != NULL) {
 			rte_pktmbuf_free_seg(buffer[i].mbuf);

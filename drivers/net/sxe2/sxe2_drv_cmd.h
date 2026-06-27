@@ -67,20 +67,20 @@ enum sxe2_dev_type {
 	SXE2_DEV_T_MAX,
 };
 
-struct sxe2_drv_queue_caps {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_queue_caps {
 	uint16_t queues_cnt;
 	uint16_t base_idx_in_pf;
-};
+} __rte_packed_end;
 
-struct sxe2_drv_msix_caps {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_msix_caps {
 	uint16_t msix_vectors_cnt;
 	uint16_t base_idx_in_func;
-};
+} __rte_packed_end;
 
-struct sxe2_drv_rss_hash_caps {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_rss_hash_caps {
 	uint16_t hash_key_size;
 	uint16_t lut_key_size;
-};
+} __rte_packed_end;
 
 enum sxe2_vf_vsi_valid {
 	SXE2_VF_VSI_BOTH = 0,
@@ -89,18 +89,18 @@ enum sxe2_vf_vsi_valid {
 	SXE2_VF_VSI_MAX,
 };
 
-struct sxe2_drv_vsi_caps {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_vsi_caps {
 	uint16_t func_id;
 	uint16_t dpdk_vsi_id;
 	uint16_t kernel_vsi_id;
 	uint16_t vsi_type;
-};
+} __rte_packed_end;
 
-struct sxe2_drv_representor_caps {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_representor_caps {
 	uint16_t cnt_repr_vf;
 	uint8_t rsv[2];
 	struct sxe2_drv_vsi_caps repr_vf_id[256];
-};
+} __rte_packed_end;
 
 enum sxe2_phys_port_name_type {
 	SXE2_PHYS_PORT_NAME_TYPE_NOTSET = 0,
@@ -111,25 +111,25 @@ enum sxe2_phys_port_name_type {
 	SXE2_PHYS_PORT_NAME_TYPE_UNKNOWN,
 };
 
-struct sxe2_switchdev_mode_info {
+struct __rte_aligned(4) __rte_packed_begin sxe2_switchdev_mode_info {
 	uint8_t pf_id;
 	uint8_t is_switchdev;
 	uint8_t rsv[2];
-};
+} __rte_packed_end;
 
-struct sxe2_switchdev_cpvsi_info {
+struct __rte_aligned(4) __rte_packed_begin sxe2_switchdev_cpvsi_info {
 	uint16_t cp_vsi_id;
 	uint8_t rsv[2];
-};
+} __rte_packed_end;
 
-struct sxe2_txsch_caps {
+struct __rte_aligned(4) __rte_packed_begin sxe2_txsch_caps {
 	uint8_t layer_cap;
 	uint8_t tm_mid_node_num;
 	uint8_t prio_num;
 	uint8_t rev;
-};
+} __rte_packed_end;
 
-struct sxe2_drv_dev_caps_resp {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_dev_caps_resp {
 	struct sxe2_drv_queue_caps queue_caps;
 	struct sxe2_drv_msix_caps msix_caps;
 	struct sxe2_drv_rss_hash_caps rss_hash_caps;
@@ -141,24 +141,24 @@ struct sxe2_drv_dev_caps_resp {
 	uint8_t dev_type;
 	uint8_t rev;
 	uint32_t cap_flags;
-};
+} __rte_packed_end;
 
-struct sxe2_drv_dev_info_resp {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_dev_info_resp {
 	uint64_t dsn;
 	uint16_t vsi_id;
 	uint8_t rsv[2];
 	uint8_t mac_addr[SXE2_ETH_ALEN];
 	uint8_t rsv2[2];
-};
+} __rte_packed_end;
 
-struct sxe2_drv_dev_fw_info_resp {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_dev_fw_info_resp {
 	uint8_t main_version_id;
 	uint8_t sub_version_id;
 	uint8_t fix_version_id;
 	uint8_t build_id;
-};
+} __rte_packed_end;
 
-struct sxe2_drv_rxq_ctxt {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_rxq_ctxt {
 	uint64_t dma_addr;
 	uint32_t max_lro_size;
 	uint32_t split_type_mask;
@@ -170,62 +170,62 @@ struct sxe2_drv_rxq_ctxt {
 	uint8_t keep_crc_en;
 	uint8_t split_en;
 	uint8_t desc_size;
-};
+} __rte_packed_end;
 
-struct sxe2_drv_rxq_cfg_req {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_rxq_cfg_req {
 	uint16_t q_cnt;
 	uint16_t vsi_id;
 	uint16_t max_frame_size;
 	uint8_t rsv[2];
 	struct sxe2_drv_rxq_ctxt cfg[];
-};
+} __rte_packed_end;
 
-struct sxe2_drv_txq_ctxt {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_txq_ctxt {
 	uint64_t dma_addr;
 	uint32_t sched_mode;
 	uint16_t queue_id;
 	uint16_t depth;
 	uint16_t vsi_id;
 	uint8_t rsv[2];
-};
+} __rte_packed_end;
 
-struct sxe2_drv_txq_cfg_req {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_txq_cfg_req {
 	uint16_t q_cnt;
 	uint16_t vsi_id;
 	struct sxe2_drv_txq_ctxt cfg[];
-};
+} __rte_packed_end;
 
-struct sxe2_drv_q_switch_req {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_q_switch_req {
 	uint16_t q_idx;
 	uint16_t vsi_id;
 	uint8_t is_enable;
 	uint8_t sched_mode;
 	uint8_t rsv[2];
-};
+} __rte_packed_end;
 
-struct sxe2_drv_vsi_create_req_resp {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_vsi_create_req_resp {
 	uint16_t vsi_id;
 	uint16_t vsi_type;
 	struct sxe2_drv_queue_caps used_queues;
 	struct sxe2_drv_msix_caps used_msix;
-};
+} __rte_packed_end;
 
-struct sxe2_drv_vsi_free_req {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_vsi_free_req {
 	uint16_t vsi_id;
 	uint8_t rsv[2];
-};
+} __rte_packed_end;
 
-struct sxe2_drv_vsi_info_get_req {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_vsi_info_get_req {
 	uint16_t vsi_id;
 	uint8_t rsv[2];
-};
+} __rte_packed_end;
 
-struct sxe2_drv_vsi_info_get_resp {
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_vsi_info_get_resp {
 	uint16_t vsi_id;
 	uint16_t vsi_type;
 	struct sxe2_drv_queue_caps used_queues;
 	struct sxe2_drv_msix_caps used_msix;
-};
+} __rte_packed_end;
 
 enum sxe2_drv_cmd_module {
 	SXE2_DRV_CMD_MODULE_HANDSHAKE = 0,

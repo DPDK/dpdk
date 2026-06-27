@@ -157,6 +157,19 @@ void sxe2_tx_mode_func_set(struct rte_eth_dev *dev)
 		if (ret == 0 &&
 		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 			tx_mode_flags = vec_flags;
+#ifdef RTE_ARCH_X86
+			if ((rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512) &&
+			    (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
+			    (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1)) {
+#ifdef CC_AVX512_SUPPORT
+				tx_mode_flags |= SXE2_TX_MODE_VEC_AVX512;
+#else
+				PMD_LOG_INFO(TX, "AVX512 is not supported in build env.");
+#endif
+			}
+			if ((tx_mode_flags & SXE2_TX_MODE_VEC_SET_MASK) == 0)
+				tx_mode_flags |= SXE2_TX_MODE_VEC_SSE;
+#endif
 			if (tx_mode_flags & SXE2_TX_MODE_VEC_SET_MASK) {
 				ret = sxe2_tx_queues_vec_prepare(dev);
 				if (ret != 0)
@@ -172,14 +185,25 @@ void sxe2_tx_mode_func_set(struct rte_eth_dev *dev)
 		tx_mode_flags = adapter->q_ctxt.tx_mode_flags;
 	}
 
-#ifdef RTE_ARCH_X86
 	if (tx_mode_flags & SXE2_TX_MODE_VEC_SET_MASK) {
-		if (tx_mode_flags & SXE2_TX_MODE_VEC_OFFLOAD) {
-			dev->tx_pkt_prepare = sxe2_tx_pkts_prepare;
-			dev->tx_pkt_burst = sxe2_tx_pkts_vec_sse;
+		dev->tx_pkt_prepare = NULL;
+#ifdef RTE_ARCH_X86
+		if (tx_mode_flags & SXE2_TX_MODE_VEC_AVX512) {
+#ifdef CC_AVX512_SUPPORT
+			if (tx_mode_flags & SXE2_TX_MODE_VEC_OFFLOAD) {
+				dev->tx_pkt_prepare = sxe2_tx_pkts_prepare;
+				dev->tx_pkt_burst = sxe2_tx_pkts_vec_avx512;
+			} else {
+				dev->tx_pkt_burst = sxe2_tx_pkts_vec_avx512_simple;
+			}
+#endif
 		} else {
-			dev->tx_pkt_prepare = NULL;
-			dev->tx_pkt_burst = sxe2_tx_pkts_vec_sse_simple;
+			if (tx_mode_flags & SXE2_TX_MODE_VEC_OFFLOAD) {
+				dev->tx_pkt_prepare = sxe2_tx_pkts_prepare;
+				dev->tx_pkt_burst = sxe2_tx_pkts_vec_sse;
+			} else {
+				dev->tx_pkt_burst = sxe2_tx_pkts_vec_sse_simple;
+			}
 		}
 	} else {
 #endif
@@ -201,8 +225,16 @@ static const struct {
 } sxe2_tx_burst_infos[] = {
 	{ sxe2_tx_pkts,   "Scalar" },
 #ifdef RTE_ARCH_X86
-	{ sxe2_tx_pkts_vec_sse,        "Vector SSE" },
-	{ sxe2_tx_pkts_vec_sse_simple, "Vector SSE Simple" },
+#ifdef CC_AVX512_SUPPORT
+	{ sxe2_tx_pkts_vec_avx512,
+	      "Vector AVX512" },
+	{ sxe2_tx_pkts_vec_avx512_simple,
+	      "Vector AVX512 Simple" },
+#endif
+	{ sxe2_tx_pkts_vec_sse,
+	      "Vector SSE" },
+	{ sxe2_tx_pkts_vec_sse_simple,
+	      "Vector SSE Simple" },
 #endif
 };
 
@@ -288,6 +320,20 @@ void sxe2_rx_mode_func_set(struct rte_eth_dev *dev)
 		if (ret == 0 &&
 		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 			rx_mode_flags = vec_flags;
+#ifdef RTE_ARCH_X86
+			if ((rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512) &&
+				(rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
+				(rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1)) {
+#ifdef CC_AVX512_SUPPORT
+				rx_mode_flags |= SXE2_RX_MODE_VEC_AVX512;
+#else
+				PMD_LOG_INFO(RX, "AVX512 support detected but not enabled");
+#endif
+			}
+			if ((rx_mode_flags & SXE2_RX_MODE_VEC_SET_MASK) == 0 &&
+				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128)
+				rx_mode_flags |= SXE2_RX_MODE_VEC_SSE;
+#endif
 			if ((rx_mode_flags & SXE2_RX_MODE_VEC_SET_MASK) != 0) {
 				ret = sxe2_rx_queues_vec_prepare(dev);
 				if (ret != 0)
@@ -301,7 +347,16 @@ void sxe2_rx_mode_func_set(struct rte_eth_dev *dev)
 
 #ifdef RTE_ARCH_X86
 	if (rx_mode_flags & SXE2_RX_MODE_VEC_SET_MASK) {
-		dev->rx_pkt_burst = sxe2_rx_pkts_scattered_vec_sse_offload;
+		if (rx_mode_flags & SXE2_RX_MODE_VEC_AVX512) {
+#ifdef CC_AVX512_SUPPORT
+			if (rx_mode_flags & SXE2_RX_MODE_VEC_OFFLOAD)
+				dev->rx_pkt_burst = sxe2_rx_pkts_scattered_vec_avx512_offload;
+			else
+				dev->rx_pkt_burst = sxe2_rx_pkts_scattered_vec_avx512;
+#endif
+		} else {
+			dev->rx_pkt_burst = sxe2_rx_pkts_scattered_vec_sse_offload;
+		}
 		return;
 	}
 #endif
@@ -315,19 +370,30 @@ static const struct {
 	eth_rx_burst_t rx_burst;
 	const char *info;
 } sxe2_rx_burst_infos[] = {
-	{ sxe2_rx_pkts_scattered,          "Scalar Scattered" },
-	{ sxe2_rx_pkts_scattered_split,          "Scalar Scattered split" },
+	{ sxe2_rx_pkts_scattered,
+	      "Scalar Scattered" },
+	{ sxe2_rx_pkts_scattered_split,
+	      "Scalar Scattered split" },
 #ifdef RTE_ARCH_X86
-	{ sxe2_rx_pkts_scattered_vec_sse_offload,      "Vector SSE Scattered" },
+#ifdef CC_AVX512_SUPPORT
+	{ sxe2_rx_pkts_scattered_vec_avx512,
+	      "Vector AVX512 Scattered" },
+	{ sxe2_rx_pkts_scattered_vec_avx512_offload,
+	      "Offload Vector AVX512 Scattered" },
+#endif
+	{ sxe2_rx_pkts_scattered_vec_sse_offload,
+	      "Vector SSE Scattered" },
 #endif
 };
 
 int32_t sxe2_rx_burst_mode_get(struct rte_eth_dev *dev,
-			__rte_unused uint16_t queue_id, struct rte_eth_burst_mode *mode)
+			       __rte_unused uint16_t queue_id,
+			       struct rte_eth_burst_mode *mode)
 {
 	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
 	int32_t ret = -EINVAL;
 	uint32_t i, size;
+
 	size = RTE_DIM(sxe2_rx_burst_infos);
 	for (i = 0; i < size; ++i) {
 		if (pkt_burst == sxe2_rx_burst_infos[i].rx_burst) {
