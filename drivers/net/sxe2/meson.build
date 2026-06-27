@@ -39,6 +39,15 @@ if arch_subdir == 'x86'
                         c_args: avx512_args)
                 objs += sxe2_avx512_lib.extract_objects('sxe2_txrx_vec_avx512.c')
         endif
+        sxe2_avx2_lib = static_library('sxe2_avx2_lib',
+                'sxe2_txrx_vec_avx2.c',
+                dependencies: [static_rte_ethdev,
+                        static_rte_kvargs, static_rte_hash,
+                        static_rte_security, static_rte_cryptodev,
+                        static_rte_bus_pci],
+                include_directories: includes,
+                c_args: [cflags, '-mavx2'])
+        objs += sxe2_avx2_lib.extract_objects('sxe2_txrx_vec_avx2.c')
 endif
 
 sources += files(

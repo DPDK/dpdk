@@ -167,8 +167,14 @@ void sxe2_tx_mode_func_set(struct rte_eth_dev *dev)
 				PMD_LOG_INFO(TX, "AVX512 is not supported in build env.");
 #endif
 			}
-			if ((tx_mode_flags & SXE2_TX_MODE_VEC_SET_MASK) == 0)
-				tx_mode_flags |= SXE2_TX_MODE_VEC_SSE;
+			if (((tx_mode_flags & SXE2_TX_MODE_VEC_SET_MASK) == 0) &&
+			    ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1) ||
+			    (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1)) &&
+			    (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256))
+				tx_mode_flags |= SXE2_TX_MODE_VEC_AVX2;
+
+			if ((0 == (tx_mode_flags & SXE2_TX_MODE_VEC_SET_MASK)))
+				tx_mode_flags |=  SXE2_TX_MODE_VEC_SSE;
 #endif
 			if (tx_mode_flags & SXE2_TX_MODE_VEC_SET_MASK) {
 				ret = sxe2_tx_queues_vec_prepare(dev);
@@ -197,6 +203,13 @@ void sxe2_tx_mode_func_set(struct rte_eth_dev *dev)
 				dev->tx_pkt_burst = sxe2_tx_pkts_vec_avx512_simple;
 			}
 #endif
+		} else if (tx_mode_flags & SXE2_TX_MODE_VEC_AVX2) {
+			if (tx_mode_flags & SXE2_TX_MODE_VEC_OFFLOAD) {
+				dev->tx_pkt_prepare = sxe2_tx_pkts_prepare;
+				dev->tx_pkt_burst = sxe2_tx_pkts_vec_avx2;
+			} else {
+				dev->tx_pkt_burst = sxe2_tx_pkts_vec_avx2_simple;
+			}
 		} else {
 			if (tx_mode_flags & SXE2_TX_MODE_VEC_OFFLOAD) {
 				dev->tx_pkt_prepare = sxe2_tx_pkts_prepare;
@@ -231,6 +244,10 @@ static const struct {
 	{ sxe2_tx_pkts_vec_avx512_simple,
 	      "Vector AVX512 Simple" },
 #endif
+	{ sxe2_tx_pkts_vec_avx2,
+	      "Vector AVX2" },
+	{ sxe2_tx_pkts_vec_avx2_simple,
+	      "Vector AVX2 Simple" },
 	{ sxe2_tx_pkts_vec_sse,
 	      "Vector SSE" },
 	{ sxe2_tx_pkts_vec_sse_simple,
@@ -330,7 +347,13 @@ void sxe2_rx_mode_func_set(struct rte_eth_dev *dev)
 				PMD_LOG_INFO(RX, "AVX512 support detected but not enabled");
 #endif
 			}
-			if ((rx_mode_flags & SXE2_RX_MODE_VEC_SET_MASK) == 0 &&
+			if (((rx_mode_flags & SXE2_RX_MODE_VEC_SET_MASK) == 0) &&
+				((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1) ||
+				(rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1)) &&
+				(rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256))
+				rx_mode_flags |= SXE2_RX_MODE_VEC_AVX2;
+
+			if (((rx_mode_flags & SXE2_RX_MODE_VEC_SET_MASK) == 0) &&
 				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128)
 				rx_mode_flags |= SXE2_RX_MODE_VEC_SSE;
 #endif
@@ -354,6 +377,11 @@ void sxe2_rx_mode_func_set(struct rte_eth_dev *dev)
 			else
 				dev->rx_pkt_burst = sxe2_rx_pkts_scattered_vec_avx512;
 #endif
+		} else if (rx_mode_flags & SXE2_RX_MODE_VEC_AVX2) {
+			if (rx_mode_flags & SXE2_RX_MODE_VEC_OFFLOAD)
+				dev->rx_pkt_burst = sxe2_rx_pkts_scattered_vec_avx2_offload;
+			else
+				dev->rx_pkt_burst = sxe2_rx_pkts_scattered_vec_avx2;
 		} else {
 			dev->rx_pkt_burst = sxe2_rx_pkts_scattered_vec_sse_offload;
 		}
@@ -381,6 +409,10 @@ static const struct {
 	{ sxe2_rx_pkts_scattered_vec_avx512_offload,
 	      "Offload Vector AVX512 Scattered" },
 #endif
+	{ sxe2_rx_pkts_scattered_vec_avx2,
+	      "Vector AVX2 Scattered" },
+	{ sxe2_rx_pkts_scattered_vec_avx2_offload,
+	      "Offload Vector AVX2 Scattered" },
 	{ sxe2_rx_pkts_scattered_vec_sse_offload,
 	      "Vector SSE Scattered" },
 #endif

@@ -11,19 +11,21 @@
 #define SXE2_RX_MODE_VEC_SIMPLE    RTE_BIT32(0)
 #define SXE2_RX_MODE_VEC_OFFLOAD   RTE_BIT32(1)
 #define SXE2_RX_MODE_VEC_SSE       RTE_BIT32(2)
+#define SXE2_RX_MODE_VEC_AVX2      RTE_BIT32(3)
 #define SXE2_RX_MODE_VEC_AVX512    RTE_BIT32(4)
 #define SXE2_RX_MODE_BATCH_ALLOC   RTE_BIT32(10)
 #define SXE2_RX_MODE_VEC_SET_MASK	(SXE2_RX_MODE_VEC_SIMPLE | \
 			SXE2_RX_MODE_VEC_OFFLOAD | SXE2_RX_MODE_VEC_SSE | \
-			SXE2_RX_MODE_VEC_AVX512)
+			SXE2_RX_MODE_VEC_AVX2 | SXE2_RX_MODE_VEC_AVX512)
 #define SXE2_TX_MODE_VEC_SIMPLE   RTE_BIT32(0)
 #define SXE2_TX_MODE_VEC_OFFLOAD  RTE_BIT32(1)
 #define SXE2_TX_MODE_VEC_SSE      RTE_BIT32(2)
+#define SXE2_TX_MODE_VEC_AVX2     RTE_BIT32(3)
 #define SXE2_TX_MODE_VEC_AVX512   RTE_BIT32(4)
 #define SXE2_TX_MODE_SIMPLE_BATCH RTE_BIT32(10)
 #define SXE2_TX_MODE_VEC_SET_MASK	(SXE2_TX_MODE_VEC_SIMPLE | \
 			SXE2_TX_MODE_VEC_OFFLOAD | SXE2_TX_MODE_VEC_SSE | \
-			SXE2_TX_MODE_VEC_AVX512)
+			SXE2_TX_MODE_VEC_AVX2 | SXE2_TX_MODE_VEC_AVX512)
 #define SXE2_TX_VEC_NO_SUPPORT_OFFLOAD (		  \
 			RTE_ETH_TX_OFFLOAD_MULTI_SEGS |		  \
 			RTE_ETH_TX_OFFLOAD_QINQ_INSERT |	  \
@@ -67,6 +69,12 @@ uint16_t sxe2_tx_pkts_vec_avx512_ctx_offload(void *tx_queue,
 uint16_t sxe2_rx_pkts_scattered_vec_avx512(void *rx_queue,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 uint16_t sxe2_rx_pkts_scattered_vec_avx512_offload(void *rx_queue,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+uint16_t sxe2_tx_pkts_vec_avx2_simple(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
+uint16_t sxe2_tx_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
+uint16_t sxe2_rx_pkts_scattered_vec_avx2(void *rx_queue,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+uint16_t sxe2_rx_pkts_scattered_vec_avx2_offload(void *rx_queue,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 #endif
 int32_t __rte_cold sxe2_tx_vec_support_check(struct rte_eth_dev *dev, uint32_t *vec_flags);
