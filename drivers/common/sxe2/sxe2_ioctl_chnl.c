@@ -110,7 +110,7 @@ sxe2_drv_dev_close(struct sxe2_common_device *cdev)
 	if (fd >= 0)
 		close(fd);
 	PMD_LOG_INFO(COM, "closed device fd=%d", fd);
-	SXE2_CDEV_TO_CMD_FD(cdev) = -1;
+	SXE2_CDEV_TO_CMD_FD(cdev) = SXE2_CMD_FD_INVALID;
 }
 
 RTE_EXPORT_INTERNAL_SYMBOL(sxe2_drv_dev_handshake)

@@ -14,6 +14,8 @@
 
 #define SXE2_COMMON_PCI_DRIVER_NAME "sxe2_pci"
 
+#define SXE2_CMD_FD_INVALID (-1)
+
 #define SXE2_CDEV_TO_CMD_FD(cdev) \
 	((cdev)->config.cmd_fd)
 

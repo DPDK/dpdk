@@ -199,6 +199,102 @@ static int32_t sxe2_parse_representor(const char *key, const char *value, void *
 l_end:
 	return ret;
 }
+static int32_t sxe2_dma_mem_map(struct sxe2_common_device *cdev,
+				const void *addr, size_t len, bool do_map)
+{
+	struct rte_memseg_list *msl;
+	struct rte_memseg *ms;
+	size_t cur_len = 0;
+	int32_t ret = 0;
+
+	msl = rte_mem_virt2memseg_list(addr);
+	if (msl == NULL) {
+		ret = -EINVAL;
+		PMD_LOG_ERR(COM, "Invalid virt addr=%p.", addr);
+		goto l_end;
+	}
+
+	if ((uintptr_t)addr != RTE_ALIGN((uintptr_t)addr, msl->page_sz) ||
+		(len != RTE_ALIGN(len, msl->page_sz))) {
+		ret = -EINVAL;
+		PMD_LOG_ERR(COM, "Addr=%p and len=%zu not align page size=%" PRIu64 ".",
+			    addr, len, msl->page_sz);
+		goto l_end;
+	}
+
+	/* memsegs are contiguous in memory */
+	ms = rte_mem_virt2memseg(addr, msl);
+	while (cur_len < len) {
+		/* some memory segments may have invalid IOVA */
+		if (ms->iova == RTE_BAD_IOVA) {
+			PMD_LOG_WARN(COM, "Memory segment at %p has bad IOVA, skipping.",
+					ms->addr);
+			goto next;
+		}
+		if (do_map)
+			sxe2_drv_dev_dma_map(cdev, ms->addr_64,
+					ms->iova, ms->len);
+		else
+			sxe2_drv_dev_dma_unmap(cdev, ms->iova);
+
+next:
+		cur_len += ms->len;
+		++ms;
+	}
+
+l_end:
+	return ret;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(sxe2_common_mem_event_cb)
+void
+sxe2_common_mem_event_cb(enum rte_mem_event type,
+		const void *addr, size_t size, void *arg __rte_unused)
+{
+	struct sxe2_common_device *cdev = NULL;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		goto l_end;
+
+	pthread_mutex_lock(&sxe2_common_devices_list_lock);
+	switch (type) {
+	case RTE_MEM_EVENT_FREE:
+		TAILQ_FOREACH(cdev, &sxe2_common_devices_list, next)
+			(void)sxe2_dma_mem_map(cdev, addr, size, 0);
+		break;
+	case RTE_MEM_EVENT_ALLOC:
+		TAILQ_FOREACH(cdev, &sxe2_common_devices_list, next)
+			(void)sxe2_dma_mem_map(cdev, addr, size, 1);
+		break;
+	default:
+		break;
+	}
+	pthread_mutex_unlock(&sxe2_common_devices_list_lock);
+l_end:
+	return;
+}
+
+static int32_t sxe2_memseg_walk_cb(const struct rte_memseg_list *msl,
+				   const struct rte_memseg *ms, void *arg)
+{
+	struct sxe2_common_device *cdev = arg;
+	int32_t ret = 0;
+
+	if (msl->external && !msl->heap)
+		goto l_end;
+
+	if (ms->iova == RTE_BAD_IOVA)
+		goto l_end;
+
+	ret = sxe2_drv_dev_dma_map(cdev, ms->addr_64, ms->iova, ms->len);
+	if (ret != 0) {
+		PMD_LOG_ERR(COM, "Fail to memseg dma map.");
+		goto l_end;
+	}
+
+l_end:
+	return ret;
+}
 
 static int32_t sxe2_common_device_setup(struct sxe2_common_device *cdev)
 {
@@ -219,6 +315,18 @@ static int32_t sxe2_common_device_setup(struct sxe2_common_device *cdev)
 		PMD_LOG_ERR(COM, "Handshake failed, ret=%d", ret);
 		goto l_close_dev;
 	}
+
+	rte_mcfg_mem_read_lock();
+	ret = rte_memseg_walk_thread_unsafe(sxe2_memseg_walk_cb, cdev);
+	if (ret) {
+		PMD_LOG_ERR(COM, "Fail to walk memseg, ret=%d", ret);
+		rte_mcfg_mem_read_unlock();
+		goto l_close_dev;
+	}
+	rte_mcfg_mem_read_unlock();
+
+	(void)rte_mem_event_callback_register("SXE2_MEM_EVENT_CB",
+			sxe2_common_mem_event_cb, NULL);
 
 	goto l_end;
 
@@ -251,6 +359,7 @@ static struct sxe2_common_device *sxe2_common_device_alloc(
 	}
 	cdev->dev = rte_dev;
 	cdev->class_type = class_type;
+	cdev->config.cmd_fd = SXE2_CMD_FD_INVALID;
 	cdev->config.kernel_reset = false;
 	pthread_mutex_init(&cdev->config.lock, NULL);
 
@@ -631,6 +740,7 @@ static int32_t sxe2_common_pci_id_table_update(const struct rte_pci_id *id_table
 
 	updated_table = calloc(num_ids, sizeof(*updated_table));
 	if (!updated_table) {
+		ret = -ENOMEM;
 		PMD_LOG_ERR(COM, "Failed to allocate memory for PCI ID table");
 		goto l_end;
 	}
