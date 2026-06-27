@@ -664,13 +664,12 @@ static __rte_always_inline void
 sxe2_rx_mbuf_common_fields_fill(struct sxe2_rx_queue *rxq, struct rte_mbuf *mbuf,
 		union sxe2_rx_desc *rxd)
 {
-	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 	uint64_t qword1;
 	uint64_t pkt_flags;
 	qword1 = rte_le_to_cpu_64(rxd->wb.status_err_ptype_len);
 
 	mbuf->ol_flags = 0;
-	mbuf->packet_type = ptype_tbl[SXE2_RX_DESC_PTYPE_VAL_GET(qword1)];
+	mbuf->packet_type = sxe2_ptype_tbl[SXE2_RX_DESC_PTYPE_VAL_GET(qword1)];
 
 	pkt_flags = sxe2_rx_desc_error_para(rxq, rxd);
 

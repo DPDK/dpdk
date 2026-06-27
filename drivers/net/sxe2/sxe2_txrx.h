@@ -23,4 +23,9 @@ int32_t sxe2_tx_burst_mode_get(struct rte_eth_dev *dev,
 int32_t sxe2_rx_burst_mode_get(struct rte_eth_dev *dev,
 			__rte_unused uint16_t queue_id, struct rte_eth_burst_mode *mode);
 
+extern const uint32_t sxe2_ptype_tbl[];
+
+const uint32_t *sxe2_dev_supported_ptypes_get(struct rte_eth_dev *dev,
+					      size_t *no_of_elements);
+
 #endif /* SXE2_TXRX_H */

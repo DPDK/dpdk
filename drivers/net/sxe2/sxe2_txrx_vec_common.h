@@ -12,6 +12,7 @@
 #include "sxe2_rx.h"
 #include "sxe2_queue.h"
 #include "sxe2_tx.h"
+#include "sxe2_txrx.h"
 #include "sxe2_vsi.h"
 #include "sxe2_ethdev.h"
 #define SXE2_RX_NUM_PER_LOOP_SSE    4

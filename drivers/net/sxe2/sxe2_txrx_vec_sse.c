@@ -338,7 +338,6 @@ sxe2_rx_pkts_common_vec_sse(struct sxe2_rx_queue *rxq,
 	uint32_t i;
 	uint32_t bit_num;
 	uint16_t done_num = 0;
-	const uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 	const __m128i crc_adjust =
 			_mm_set_epi16(0, 0, 0,
 				      -rxq->crc_len,
@@ -461,10 +460,10 @@ sxe2_rx_pkts_common_vec_sse(struct sxe2_rx_queue *rxq,
 					mbuf_arr[1]);
 		_mm_storeu_si128((void *)&rx_pkts[i]->rx_descriptor_fields1,
 					mbuf_arr[0]);
-		rx_pkts[i + 3]->packet_type = ptype_tbl[_mm_extract_epi16(ptype_all, 3)];
-		rx_pkts[i + 2]->packet_type = ptype_tbl[_mm_extract_epi16(ptype_all, 7)];
-		rx_pkts[i + 1]->packet_type = ptype_tbl[_mm_extract_epi16(ptype_all, 1)];
-		rx_pkts[i]->packet_type     = ptype_tbl[_mm_extract_epi16(ptype_all, 5)];
+		rx_pkts[i + 3]->packet_type = sxe2_ptype_tbl[_mm_extract_epi16(ptype_all, 3)];
+		rx_pkts[i + 2]->packet_type = sxe2_ptype_tbl[_mm_extract_epi16(ptype_all, 7)];
+		rx_pkts[i + 1]->packet_type = sxe2_ptype_tbl[_mm_extract_epi16(ptype_all, 1)];
+		rx_pkts[i]->packet_type     = sxe2_ptype_tbl[_mm_extract_epi16(ptype_all, 5)];
 		bit_num = rte_popcount64(_mm_cvtsi128_si64(staterr));
 		done_num += bit_num;
 		if (likely(bit_num != SXE2_RX_NUM_PER_LOOP_SSE))

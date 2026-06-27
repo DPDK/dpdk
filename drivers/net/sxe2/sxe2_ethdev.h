@@ -279,7 +279,6 @@ struct sxe2_adapter {
 	uint16_t                           dev_port_id;
 	uint64_t                           cap_flags;
 	enum sxe2_dev_type            dev_type;
-	uint32_t    ptype_tbl[SXE2_MAX_PTYPE_NUM];
 	struct rte_ether_addr           mac_addr;
 	uint8_t                              port_idx;
 	uint8_t                              pf_idx;
