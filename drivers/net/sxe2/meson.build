@@ -77,4 +77,5 @@ sources += files(
         'sxe2_flow_parse_action.c',
         'sxe2_flow_parse_pattern.c',
         'sxe2_flow_parse_engine.c',
+        'sxe2_dump.c',
 )

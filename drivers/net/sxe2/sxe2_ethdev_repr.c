@@ -11,6 +11,7 @@
 #include "sxe2_txrx.h"
 #include "sxe2_switchdev.h"
 #include "sxe2_mp.h"
+#include "sxe2_dump.h"
 #include "sxe2_stats.h"
 #include "sxe2_flow.h"
 
@@ -235,6 +236,8 @@ static const struct eth_dev_ops sxe2_switchdev_repr_dev_ops = {
 	.promiscuous_disable        = sxe2_repr_promisc_disable,
 	.allmulticast_enable        = sxe2_repr_allmulti_enable,
 	.allmulticast_disable       = sxe2_repr_allmulti_disable,
+
+	.eth_dev_priv_dump          = sxe2_eth_dev_priv_dump,
 
 	.stats_get                  = sxe2_stats_info_get,
 	.stats_reset                = sxe2_stats_info_reset,

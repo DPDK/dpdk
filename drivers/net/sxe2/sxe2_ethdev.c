@@ -37,6 +37,7 @@
 #include "sxe2_host_regs.h"
 #include "sxe2_switchdev.h"
 #include "sxe2_ioctl_chnl_func.h"
+#include "sxe2_dump.h"
 #include "sxe2_ethdev_repr.h"
 #include "sxe2vf_regs.h"
 #include "sxe2_msg.h"
@@ -201,6 +202,8 @@ static const struct eth_dev_ops sxe2_eth_dev_ops = {
 
 	.get_module_info            = sxe2_get_module_info,
 	.get_module_eeprom          = sxe2_get_module_eeprom,
+
+	.eth_dev_priv_dump          = sxe2_eth_dev_priv_dump,
 };
 
 static int32_t sxe2_dev_configure(struct rte_eth_dev *dev)
