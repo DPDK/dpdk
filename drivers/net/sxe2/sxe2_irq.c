@@ -10,6 +10,7 @@
 #include <rte_alarm.h>
 #include <fcntl.h>
 #include <rte_stdatomic.h>
+#include <rte_common.h>
 
 #include "sxe2_ethdev.h"
 #include "sxe2_irq.h"
@@ -47,6 +48,31 @@ static struct sxe2_event_handler event_handler = {
 
 static RTE_ATOMIC(uint32_t)event_thread_run;
 
+static int32_t sxe2_fc_state_callback(struct rte_eth_dev *dev)
+{
+	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	struct sxe2_drv_vsi_fc_get_resp fc_resp = {0};
+	int32_t ret;
+
+	if (!(adapter->cap_flags & SXE2_DEV_CAPS_OFFLOAD_FC_STATE)) {
+		ret = 0;
+		goto l_end;
+	}
+	ret = sxe2_drv_fc_state_get(adapter, &fc_resp);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to get fc state, ret=[%d]", ret);
+		goto l_end;
+	}
+	adapter->fc_state_ctx.cfg_state = fc_resp.fc_enable;
+	if (dev->data->dev_started) {
+		PMD_LOG_NOTICE(DRV, "Interrupt event: FC status changed."
+			       "cfg_state:%u curr_state:%u",
+				adapter->fc_state_ctx.cfg_state,
+				adapter->fc_state_ctx.curr_state);
+	}
+l_end:
+	return ret;
+}
 
 static void sxe2_event_irq_common_handler(struct sxe2_adapter *adapter, uint64_t oicr)
 {
@@ -67,6 +93,10 @@ static void sxe2_event_irq_common_handler(struct sxe2_adapter *adapter, uint64_t
 	if (oicr & RTE_BIT32(SXE2_COM_SW_MODE_LEGACY)) {
 		PMD_DEV_LOG_INFO(adapter, DRV, "event notify legacy");
 		(void)sxe2_switchdev_notify_callback(adapter, false);
+	}
+	if (oicr & RTE_BIT32(SXE2_COM_FC_ST_CHANGE)) {
+		PMD_DEV_LOG_INFO(adapter, DRV, "fc event notify legacy");
+		(void)sxe2_fc_state_callback(dev);
 	}
 }
 

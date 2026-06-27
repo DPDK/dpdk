@@ -66,6 +66,15 @@ static const struct rte_pci_id pci_id_sxe2_tbl[] = {
 	{ .vendor_id = 0, },
 };
 
+#define SXE2_TXSCH_NODE_ADJ_LVL_MAX 3
+
+#define SXE2_DEVARG_FLOW_DUP_PATTERN_MODE "flow-duplicate-pattern"
+#define SXE2_DEVARG_FUNC_FLOW_DIRCT "function-flow-direct"
+#define SXE2_DEVARG_FNAV_STAT_TYPE "fnav-stat-type"
+#define SXE2_DEVARG_NO_SCHED_MODE "no-sched-mode"
+#define SXE2_DEVARG_SCHED_LAYER_MODE "sched-layer-mode"
+#define SXE2_DEVARG_RX_LOW_LATENCY "rx-low-latency"
+
 static struct sxe2_pci_map_addr_info sxe2_net_map_addr_info_pf[SXE2_PCI_MAP_RES_MAX_COUNT] = {
 	[SXE2_PCI_MAP_RES_INVALID] = {.addr_base = 0,
 				      .bar_idx = 0,
@@ -959,6 +968,134 @@ sxe2_buffer_split_supported_hdr_ptypes_get(struct rte_eth_dev *dev __rte_unused,
 	return ptypes;
 }
 
+static int32_t sxe2_parse_fnav_stat_type(const char *key, const char *value, void *args)
+{
+	int32_t ret = -EINVAL;
+	uint8_t *num = (uint8_t *)args;
+	unsigned long fnav_stat_type;
+	char *endptr = NULL;
+
+	if (value == NULL || args == NULL) {
+		ret = 0;
+		goto l_end;
+	}
+	errno = 0;
+	fnav_stat_type = strtoul(value, &endptr, 10);
+	if (errno != 0 || endptr == value || *endptr != '\0') {
+		PMD_LOG_WARN(INIT, "%s: \"%s\" is not a valid int value.",
+			key, value);
+		goto l_end;
+	}
+	if (fnav_stat_type > SXE2_FNAV_STAT_ENA_ALL ||
+		fnav_stat_type == SXE2_FNAV_STAT_ENA_NONE) {
+		PMD_LOG_ERR(INIT, "%s: \"%s\" out of range [1-3].",
+			key, value);
+		goto l_end;
+	}
+	*num = (uint8_t)fnav_stat_type;
+	ret = 0;
+l_end:
+	return ret;
+}
+
+static int32_t sxe2_parse_sched_layer_mode(const char *key, const char *value, void *args)
+{
+	int32_t ret = -EINVAL;
+	uint8_t *num = (uint8_t *)args;
+	unsigned long sched_layer_mode;
+	char *endptr = NULL;
+
+	if (value == NULL || args == NULL) {
+		ret = 0;
+		goto l_end;
+	}
+	errno = 0;
+	sched_layer_mode = strtoul(value, &endptr, 10);
+	if (errno != 0 || endptr == value || *endptr != '\0') {
+		PMD_LOG_WARN(INIT, "%s: \"%s\" is not a valid int value.",
+			key, value);
+		goto l_end;
+	}
+	if (sched_layer_mode > SXE2_TXSCH_NODE_ADJ_LVL_MAX) {
+		PMD_LOG_ERR(INIT, "%s: \"%s\" > 3.",
+			key, value);
+		goto l_end;
+	}
+	*num = (uint8_t)sched_layer_mode;
+	ret = 0;
+l_end:
+	return ret;
+}
+
+static int32_t sxe2_parse_flow_dup_pattern_mode(const char *key, const char *value, void *args)
+{
+	uint8_t *num = (uint8_t *)args;
+	char *end;
+	unsigned long val;
+	int32_t ret = -EINVAL;
+
+	if (value == NULL || args == NULL) {
+		ret = 0;
+		goto l_end;
+	}
+	errno = 0;
+	val = strtoul(value, &end, 10);
+	if (errno != 0 || end == value || *end != '\0') {
+		PMD_LOG_ERR(INIT, "Invalid 8-bit integer value for key %s: %s", key, value);
+		goto l_end;
+	}
+
+	if (val >= SXE2_FLOW_SW_PATTERN_MAX) {
+		PMD_LOG_ERR(INIT, "%s: \"%s\" out of range [0-%u].",
+			key, value, SXE2_FLOW_SW_PATTERN_MAX - 1);
+		goto l_end;
+	}
+
+	/* Convert user values to internal enum:
+	 *   user 0 (reject) -> SXE2_FLOW_SW_PATTERN_ONLY (0)
+	 *   user 1 (FIFO)   -> SXE2_FLOW_SW_PATTERN_FIRST (2)
+	 *   user 2 (LIFO)   -> SXE2_FLOW_SW_PATTERN_LAST (1)
+	 */
+	static const uint8_t udc_tbl[] = {
+		SXE2_FLOW_SW_PATTERN_ONLY,
+		SXE2_FLOW_SW_PATTERN_FIRST,
+		SXE2_FLOW_SW_PATTERN_LAST,
+	};
+	*num = udc_tbl[val];
+	ret = 0;
+l_end:
+	return ret;
+}
+
+static int32_t sxe2_parse_bool(const char *key, const char *value, void *args)
+{
+	int32_t ret = -EINVAL;
+	uint8_t *num = (uint8_t *)args;
+	unsigned long bool_val;
+	char *endptr = NULL;
+
+	if (value == NULL || args == NULL) {
+		ret = 0;
+		goto l_end;
+	}
+	errno = 0;
+	bool_val = strtoul(value, &endptr, 10);
+	if (errno != 0 || endptr == value || *endptr != '\0') {
+		PMD_LOG_WARN(INIT, "%s: \"%s\" is not a valid int value.",
+			key, value);
+		goto l_end;
+	}
+	if (bool_val != 0 && bool_val != 1) {
+		PMD_LOG_ERR(INIT, "%s: \"%s\" out of range [0|1].",
+			key, value);
+		goto l_end;
+	}
+	*num = (uint8_t)bool_val;
+	ret = 0;
+l_end:
+	return ret;
+}
+
 struct sxe2_pci_map_bar_info *sxe2_dev_get_bar_info(struct sxe2_adapter *adapter,
 						    enum sxe2_pci_map_resource res_type)
 {
@@ -1024,6 +1161,67 @@ void *sxe2_pci_map_addr_get(struct sxe2_adapter *adapter,
 
 l_end:
 	return addr;
+}
+
+static int32_t sxe2_args_parse(struct rte_eth_dev *dev, struct sxe2_dev_kvargs_info *kvargs)
+{
+	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	int32_t ret = 0;
+	PMD_INIT_FUNC_TRACE();
+
+	adapter->devargs.flow_dup_pattern_mode = SXE2_FLOW_SW_PATTERN_FIRST;
+
+	if (kvargs == NULL)
+		goto l_end;
+	ret = sxe2_kvargs_process(kvargs, SXE2_DEVARG_FNAV_STAT_TYPE,
+				 &sxe2_parse_fnav_stat_type,
+				 &adapter->devargs.fnav_stat_type);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, INIT, "Failed to parse fnav stat type, ret:%d", ret);
+		goto l_end;
+	}
+
+	ret = sxe2_kvargs_process(kvargs, SXE2_DEVARG_NO_SCHED_MODE,
+				 &sxe2_parse_bool,
+				 &adapter->devargs.no_sched_mode);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, INIT, "Failed to parse no sched mode, ret:%d", ret);
+		goto l_end;
+	}
+	ret = sxe2_kvargs_process(kvargs, SXE2_DEVARG_SCHED_LAYER_MODE,
+				 &sxe2_parse_sched_layer_mode,
+				 &adapter->devargs.sched_layer_mode);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, INIT, "Failed to parse sched layer mode, ret:%d", ret);
+		goto l_end;
+	}
+
+	ret = sxe2_kvargs_process(kvargs, SXE2_DEVARG_FLOW_DUP_PATTERN_MODE,
+				 &sxe2_parse_flow_dup_pattern_mode,
+				 &adapter->devargs.flow_dup_pattern_mode);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, INIT, "Failed to parse flow dup pattern mode, ret:%d",
+				ret);
+		goto l_end;
+	}
+
+	ret = sxe2_kvargs_process(kvargs, SXE2_DEVARG_FUNC_FLOW_DIRCT,
+				 &sxe2_parse_bool,
+				 &adapter->devargs.func_flow_direct_en);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, INIT, "Failed to parse function flow rule enable,"
+				"ret:%d", ret);
+		goto l_end;
+	}
+	ret = sxe2_kvargs_process(kvargs, SXE2_DEVARG_RX_LOW_LATENCY,
+				 &sxe2_parse_bool,
+				 &adapter->devargs.rx_low_latency);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, INIT, "Failed to parse rx low latency, ret:%d", ret);
+		goto l_end;
+	}
+l_end:
+	return ret;
 }
 
 static int32_t sxe2_eth_init(struct rte_eth_dev *dev)
@@ -1578,6 +1776,37 @@ void sxe2_dev_pci_map_uinit(struct rte_eth_dev *dev)
 	adapter->dev_info.dev_data = NULL;
 }
 
+static int32_t sxe2_fc_state_init(struct rte_eth_dev *dev)
+{
+	struct sxe2_adapter *adapter =
+		SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	struct sxe2_drv_vsi_fc_get_resp fc_resp = {0};
+	int32_t ret;
+
+	if (!(adapter->cap_flags & SXE2_DEV_CAPS_OFFLOAD_FC_STATE)) {
+		adapter->fc_state_ctx.cfg_state = 0;
+		adapter->fc_state_ctx.curr_state = 0;
+		ret = 0;
+		goto l_end;
+	}
+	ret = sxe2_drv_fc_state_get(adapter, &fc_resp);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to get fc state, ret=[%d]", ret);
+		goto l_end;
+	}
+	adapter->fc_state_ctx.cfg_state = fc_resp.fc_enable;
+	adapter->fc_state_ctx.curr_state = 0;
+l_end:
+	return ret;
+}
+static void sxe2_fc_state_uinit(struct rte_eth_dev *dev)
+{
+	struct sxe2_adapter *adapter =
+		SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	adapter->fc_state_ctx.cfg_state = 0;
+	adapter->fc_state_ctx.curr_state = 0;
+}
+
 uint32_t sxe2_sched_mode_get(struct sxe2_adapter *adapter)
 {
 	uint32_t ret_mode = SXE2_SCHED_MODE_INVALID;
@@ -1660,6 +1889,12 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 		goto l_end;
 	}
 
+	ret = sxe2_args_parse(dev, kvargs);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to parse devargs, ret=%d", ret);
+		goto l_end;
+	}
+
 	ret = sxe2_hw_init(dev);
 	if (ret) {
 		PMD_LOG_ERR(INIT, "Failed to initialize hw, ret=[%d]", ret);
@@ -1726,6 +1961,12 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 		goto init_flow_err;
 	}
 
+	ret = sxe2_fc_state_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to init fc state, ret=%d", ret);
+		goto init_fc_state_err;
+	}
+
 	ret = sxe2_sched_init(dev);
 	if (ret) {
 		PMD_LOG_ERR(INIT, "Failed to init sched, ret=%d", ret);
@@ -1749,6 +1990,8 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 init_xstats_err:
 	(void)sxe2_sched_uinit(dev);
 init_sched_err:
+	sxe2_fc_state_uinit(dev);
+init_fc_state_err:
 	(void)sxe2_flow_uninit(dev);
 init_flow_err:
 init_rss_err:
@@ -1794,6 +2037,7 @@ static int32_t sxe2_dev_close(struct rte_eth_dev *dev)
 	sxe2_eth_uinit(dev);
 	sxe2_dev_pci_map_uinit(dev);
 	sxe2_free_repr_info(dev);
+	sxe2_fc_state_uinit(dev);
 
 l_end:
 	return 0;
@@ -2099,6 +2343,13 @@ RTE_INIT(rte_sxe2_pmd_init)
 RTE_PMD_EXPORT_NAME(net_sxe2);
 RTE_PMD_REGISTER_PCI_TABLE(net_sxe2, pci_id_sxe2_tbl);
 RTE_PMD_REGISTER_KMOD_DEP(net_sxe2, "* sxe2");
+RTE_PMD_REGISTER_PARAM_STRING(net_sxe2,
+	"flow-duplicate-pattern=<0|1|2> "
+	"function-flow-direct=<0|1> "
+	"fnav-stat-type=<1|2|3> "
+	"no-sched-mode=<0|1> "
+	"sched-layer-mode=<0-3> "
+	"rx-low-latency=<0|1>");
 
 RTE_LOG_REGISTER_SUFFIX(sxe2_log_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(sxe2_log_driver, driver, NOTICE);

@@ -310,6 +310,11 @@ struct sxe2_filter_context {
 	bool cur_l2_config;
 };
 
+struct sxe2_fc_state_ctxt {
+	uint8_t curr_state;
+	uint8_t cfg_state;
+};
+
 struct sxe2_adapter {
 	struct sxe2_common_device      *cdev;
 	struct sxe2_dev_info            dev_info;
@@ -331,6 +336,7 @@ struct sxe2_adapter {
 	struct sxe2_security_ctx      security_ctx;
 	struct sxe2_repr_context      repr_ctxt;
 	struct sxe2_switchdev_info    switchdev_info;
+	struct sxe2_fc_state_ctxt     fc_state_ctx;
 	bool                          rule_started;
 	bool                          flow_isolated;
 	bool                          flow_isolate_cfg;

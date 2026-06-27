@@ -651,6 +651,23 @@ struct __rte_aligned(4) __rte_packed_begin sxe2_drv_sfp_resp {
 	uint8_t data[];
 } __rte_packed_end;
 
+enum sxe2_fc_type {
+	SXE2_FC_T_DIS = 0,
+	SXE2_FC_T_LFC,
+	SXE2_FC_T_PFC,
+	SXE2_FC_T_UNKNOWN = 255,
+};
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_vsi_fc_get_req {
+	uint16_t vsi_id;
+	uint8_t rsv[2];
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_vsi_fc_get_resp {
+	uint8_t fc_enable;
+	uint8_t rsv[3];
+} __rte_packed_end;
+
 enum sxe2_drv_cmd_module {
 	SXE2_DRV_CMD_MODULE_HANDSHAKE = 0,
 	SXE2_DRV_CMD_MODULE_DEV = 1,

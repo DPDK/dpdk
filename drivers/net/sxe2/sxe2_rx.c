@@ -467,11 +467,23 @@ l_end:
 int32_t __rte_cold sxe2_rxqs_all_start(struct rte_eth_dev *dev)
 {
 	struct rte_eth_dev_data *data = dev->data;
+	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	struct sxe2_drv_vsi_fc_get_resp fc_resp = {0};
 	struct sxe2_rx_queue *rxq;
 	uint16_t nb_rxq;
 	uint16_t nb_started_rxq;
 	int32_t ret;
 	PMD_INIT_FUNC_TRACE();
+
+	if (adapter->cap_flags & SXE2_DEV_CAPS_OFFLOAD_FC_STATE) {
+		ret = sxe2_drv_fc_state_get(adapter, &fc_resp);
+		if (ret) {
+			PMD_LOG_ERR(RX, "Failed to get fc state, ret=[%d]", ret);
+			goto l_end;
+		}
+		adapter->fc_state_ctx.cfg_state = fc_resp.fc_enable;
+		adapter->fc_state_ctx.curr_state = adapter->fc_state_ctx.cfg_state;
+	}
 
 	for (nb_rxq = 0; nb_rxq < data->nb_rx_queues; nb_rxq++) {
 		rxq = dev->data->rx_queues[nb_rxq];
