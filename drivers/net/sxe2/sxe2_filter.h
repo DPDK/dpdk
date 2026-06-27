@@ -89,6 +89,8 @@ int32_t sxe2_l2_rule_update(struct sxe2_adapter *adapter);
 
 int32_t sxe2_filter_rule_stop(struct rte_eth_dev *dev);
 
+int32_t sxe2_switchdev_rule_update(struct sxe2_adapter *adapter);
+
 int32_t sxe2_filter_rule_start(struct rte_eth_dev *dev);
 
 int32_t sxe2_filter_init(struct rte_eth_dev *dev);

@@ -32,9 +32,13 @@
 #include "sxe2_common.h"
 #include "sxe2_common_log.h"
 #include "sxe2_mp.h"
+#include "sxe2_flow.h"
 #include "sxe2_stats.h"
 #include "sxe2_host_regs.h"
+#include "sxe2_switchdev.h"
 #include "sxe2_ioctl_chnl_func.h"
+#include "sxe2_ethdev_repr.h"
+#include "sxe2vf_regs.h"
 
 #define SXE2_PCI_VENDOR_ID_1    0x1ff2
 #define SXE2_PCI_DEVICE_ID_PF_1 0x10b1
@@ -80,6 +84,27 @@ static struct sxe2_pci_map_addr_info sxe2_net_map_addr_info_pf[SXE2_PCI_MAP_RES_
 	[SXE2_PCI_MAP_RES_IRQ_MSIX] = {.addr_base = SXE2_BAR4_MSIX_CTL(0),
 				      .bar_idx = 4,
 				      .reg_width = 10},
+};
+
+static struct sxe2_pci_map_addr_info sxe2_net_map_addr_info_vf[SXE2_PCI_MAP_RES_MAX_COUNT] = {
+	[SXE2_PCI_MAP_RES_INVALID]  = {.addr_base = 0,
+				      .bar_idx = 0,
+				      .reg_width = 0},
+	[SXE2_PCI_MAP_RES_DOORBELL_TX] = {.addr_base = SXE2VF_TXQ_TAIL(0),
+				      .bar_idx = 0,
+				      .reg_width = 4},
+	[SXE2_PCI_MAP_RES_DOORBELL_RX_TAIL] = {.addr_base = SXE2VF_RXQ_TAIL(0),
+				      .bar_idx = 0,
+				      .reg_width = 4},
+	[SXE2_PCI_MAP_RES_IRQ_DYN] = {.addr_base = SXE2VF_VF_DYN_CTL(0),
+				      .bar_idx = 0,
+				      .reg_width = 4},
+	[SXE2_PCI_MAP_RES_IRQ_ITR] = {.addr_base = SXE2VF_VF_INT_ITR(0, 0),
+				      .bar_idx = 0,
+				      .reg_width = 4},
+	[SXE2_PCI_MAP_RES_IRQ_MSIX] = {.addr_base = SXE2VF_BAR4_MSIX_CTL(0),
+				      .bar_idx = 4,
+				      .reg_width = 0x10},
 };
 
 static int32_t sxe2_dev_configure(struct rte_eth_dev *dev);
@@ -136,6 +161,7 @@ static const struct eth_dev_ops sxe2_eth_dev_ops = {
 	.rss_hash_update            = sxe2_dev_rss_hash_update,
 	.rss_hash_conf_get          = sxe2_dev_rss_hash_conf_get,
 
+	.flow_ops_get               = sxe2_flow_ops_get,
 	.tm_ops_get                 = sxe2_tm_ops_get,
 
 	.stats_get                  = sxe2_stats_info_get,
@@ -555,7 +581,7 @@ l_end:
 	return ret;
 }
 
-static void sxe2_eth_uinit(struct rte_eth_dev *dev __rte_unused)
+void sxe2_eth_uinit(struct rte_eth_dev *dev __rte_unused)
 {
 	sxe2_mac_addr_uinit(dev);
 	(void)sxe2_filter_uinit(dev);
@@ -596,6 +622,16 @@ static void sxe2_drv_dev_caps_set(struct sxe2_adapter *adapter,
 		adapter->cap_flags |= SXE2_DEV_CAPS_OFFLOAD_FC_STATE;
 }
 
+static void sxe2_sw_representor_ctx_hw_cap_set(struct sxe2_adapter *adapter,
+			struct sxe2_drv_representor_caps *repr_caps)
+{
+	adapter->repr_ctxt.nb_vf = repr_caps->cnt_repr_vf;
+	if (adapter->repr_ctxt.nb_vf > 0) {
+		memcpy(adapter->repr_ctxt.repr_vf_id, repr_caps->repr_vf_id,
+			adapter->repr_ctxt.nb_vf * sizeof(struct sxe2_drv_vsi_caps));
+	}
+}
+
 static void sxe2_sw_sched_hw_cap_set(struct sxe2_adapter *adapter,
 				     struct sxe2_txsch_caps *txsch_caps)
 {
@@ -625,8 +661,28 @@ static int32_t sxe2_func_caps_get(struct sxe2_adapter *adapter)
 
 	sxe2_sw_vsi_ctx_hw_cap_set(adapter, &dev_caps.vsi_caps);
 
+	sxe2_sw_representor_ctx_hw_cap_set(adapter, &dev_caps.repr_caps);
+
 	sxe2_sw_sched_hw_cap_set(adapter, &dev_caps.txsch_caps);
 
+l_end:
+	return ret;
+}
+
+static int32_t sxe2_switchdev_info_get(struct sxe2_adapter *adapter)
+{
+	int32_t ret = 0;
+	struct sxe2_switchdev_info switchdev_info = {0};
+
+	ret = sxe2_drv_switchdev_info_get(adapter, &switchdev_info);
+	if (ret)
+		goto l_end;
+	if (switchdev_info.primary && switchdev_info.representor) {
+		PMD_LOG_ERR(INIT, "device could not be both primary and representor");
+		ret = -ENODEV;
+		goto l_end;
+	}
+	adapter->switchdev_info = switchdev_info;
 l_end:
 	return ret;
 }
@@ -636,9 +692,16 @@ static int32_t sxe2_dev_caps_get(struct sxe2_adapter *adapter)
 	int32_t ret = -1;
 
 	ret = sxe2_func_caps_get(adapter);
-	if (ret)
+	if (ret) {
 		PMD_LOG_ERR(INIT, "get function caps failed, ret=%d", ret);
+		goto l_end;
+	}
 
+	ret = sxe2_switchdev_info_get(adapter);
+	if (ret)
+		PMD_LOG_ERR(INIT, "get switchdev info failed, ret=%d", ret);
+
+l_end:
 	return ret;
 }
 
@@ -924,7 +987,10 @@ int32_t sxe2_dev_pci_map_init(struct rte_eth_dev *dev)
 	bar_info[1].seg_info = seg_info;
 	map_ctxt->bar_info = bar_info;
 
-	map_ctxt->addr_info = sxe2_net_map_addr_info_pf;
+	if (adapter->dev_type == SXE2_DEV_T_VF)
+		map_ctxt->addr_info = sxe2_net_map_addr_info_vf;
+	else
+		map_ctxt->addr_info = sxe2_net_map_addr_info_pf;
 
 	ret = sxe2_dev_pci_res_seg_map(adapter, SXE2_PCI_MAP_RES_DOORBELL_TX,
 				       txq_cnt, txq_base);
@@ -1082,7 +1148,7 @@ l_end:
 }
 
 static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
-			     struct sxe2_dev_kvargs_info *kvargs __rte_unused)
+			     __rte_unused struct sxe2_dev_kvargs_info *kvargs)
 {
 	int32_t ret = 0;
 
@@ -1125,6 +1191,12 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 		goto init_dev_info_err;
 	}
 
+	ret = sxe2_switchdev_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to initialize switchdev mode, ret=[%d]", ret);
+		goto init_switchdev_err;
+	}
+
 	ret = sxe2_sw_init(dev);
 	if (ret) {
 		PMD_LOG_ERR(INIT, "Failed to initialize sw parameters, ret=[%d]", ret);
@@ -1155,6 +1227,12 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 		goto init_rss_err;
 	}
 
+	ret = sxe2_flow_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to init flow, ret=%d", ret);
+		goto init_flow_err;
+	}
+
 	ret = sxe2_sched_init(dev);
 	if (ret) {
 		PMD_LOG_ERR(INIT, "Failed to init sched, ret=%d", ret);
@@ -1178,15 +1256,19 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 init_xstats_err:
 	(void)sxe2_sched_uinit(dev);
 init_sched_err:
+	(void)sxe2_flow_uninit(dev);
+init_flow_err:
 init_rss_err:
 	sxe2_security_uinit(dev);
 init_security_err:
+	sxe2_eth_uinit(dev);
+init_eth_err:
 	sxe2_intr_uninit(dev);
 init_irq_err:
 	sxe2_sw_uninit(dev);
 init_sw_err:
-	sxe2_eth_uinit(dev);
-init_eth_err:
+	(void)sxe2_switchdev_uninit(dev);
+init_switchdev_err:
 init_dev_info_err:
 	sxe2_vsi_uninit(dev);
 init_vsi_err:
@@ -1201,6 +1283,7 @@ static int32_t sxe2_dev_close(struct rte_eth_dev *dev)
 		sxe2_mp_uninit(dev);
 		goto l_end;
 	}
+	sxe2_repr_all_close(dev);
 	(void)sxe2_dev_stop(dev);
 	(void)sxe2_queues_release(dev);
 	sxe2_mp_uninit(dev);
@@ -1209,6 +1292,7 @@ static int32_t sxe2_dev_close(struct rte_eth_dev *dev)
 	sxe2_vsi_uninit(dev);
 	sxe2_security_uinit(dev);
 	sxe2_intr_uninit(dev);
+	(void)sxe2_switchdev_uninit(dev);
 	sxe2_sw_uninit(dev);
 	sxe2_eth_uinit(dev);
 	sxe2_dev_pci_map_uinit(dev);
@@ -1220,9 +1304,28 @@ l_end:
 static int32_t sxe2_dev_uninit(struct rte_eth_dev *dev)
 {
 	int32_t ret = 0;
+	int32_t i = 0;
+	struct sxe2_adapter *adapter = NULL;
+	struct rte_eth_dev *rep_dev = NULL;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		goto l_end;
+
+	adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	for (i = 0; i < adapter->repr_ctxt.nb_repr_vf; i++) {
+		rep_dev = adapter->repr_ctxt.vf_rep_eth_dev[i];
+		if (rep_dev) {
+			ret = rep_dev->dev_ops->dev_close(rep_dev);
+			if (ret)
+				goto l_end;
+			if (rep_dev->intr_handle)
+				rte_intr_instance_free(rep_dev->intr_handle);
+			ret = rte_eth_dev_release_port(rep_dev);
+			if (ret)
+				goto l_end;
+			adapter->repr_ctxt.vf_rep_eth_dev[i] = NULL;
+		}
+	}
 
 	ret = sxe2_dev_close(dev);
 	if (ret) {
@@ -1255,6 +1358,65 @@ static int32_t sxe2_eth_pmd_remove(struct sxe2_common_device *cdev)
 
 l_end:
 	return ret;
+}
+
+static uint16_t sxe2_switchdev_repr_id_encode_get(struct sxe2_switchdev_info *switchdev_info)
+{
+	enum rte_eth_representor_type type;
+	uint16_t repr = switchdev_info->vf_num;
+	uint32_t pf = switchdev_info->pf_num;
+
+	switch (switchdev_info->port_name_type) {
+	case SXE2_PHYS_PORT_NAME_TYPE_UPLINK:
+		if (!switchdev_info->representor)
+			return UINT16_MAX;
+		type = RTE_ETH_REPRESENTOR_PF;
+		pf = switchdev_info->mpesw_owner;
+		break;
+	case SXE2_PHYS_PORT_NAME_TYPE_PFVF:
+	default:
+		type = RTE_ETH_REPRESENTOR_VF;
+		break;
+	}
+
+	return SXE2_REPRESENTOR_ID(pf, type, repr);
+}
+
+static bool sxe2_switchdev_repr_match(struct sxe2_adapter *adapter,
+				   struct rte_eth_devargs *req_eth_da)
+{
+	uint32_t port_idx = 0;
+	uint32_t repr_idx;
+	uint16_t kernel_repr_id = sxe2_switchdev_repr_id_encode_get(&adapter->switchdev_info);
+	uint16_t repr_id;
+
+	switch (req_eth_da->type) {
+	case RTE_ETH_REPRESENTOR_PF:
+		break;
+	case RTE_ETH_REPRESENTOR_VF:
+		if (adapter->switchdev_info.port_name_type !=
+		SXE2_PHYS_PORT_NAME_TYPE_PFVF) {
+			rte_errno = EBUSY;
+			return false;
+		}
+		break;
+	case RTE_ETH_REPRESENTOR_NONE:
+		rte_errno = EBUSY;
+		return false;
+	default:
+		rte_errno = ENOTSUP;
+		return false;
+	}
+
+	for (repr_idx = 0; repr_idx < req_eth_da->nb_representor_ports; ++repr_idx) {
+		repr_id = SXE2_REPRESENTOR_ID(req_eth_da->ports[port_idx],
+					      req_eth_da->type,
+					      req_eth_da->representor_ports[repr_idx]);
+		if (repr_id == kernel_repr_id)
+			return true;
+	}
+	rte_errno = EBUSY;
+	return false;
 }
 
 static int32_t sxe2_eth_pmd_probe_pf(struct sxe2_common_device *cdev,
@@ -1298,10 +1460,34 @@ static int32_t sxe2_eth_pmd_probe_pf(struct sxe2_common_device *cdev,
 		goto l_release_port;
 	}
 
+	if (req_eth_da->nb_representor_ports > 0) {
+		if (!adapter->switchdev_info.is_switchdev) {
+			PMD_DEV_LOG_ERR(adapter, INIT, "Representor requested but Switchdev not enabled");
+			ret = -ENOTSUP;
+			goto l_dev_uinit;
+		}
+
+		if (!sxe2_switchdev_repr_match(adapter, req_eth_da)) {
+			PMD_DEV_LOG_ERR(adapter, INIT, "Representor parameters mismatch");
+			ret = -ENOTSUP;
+			goto l_dev_uinit;
+		}
+
+		ret = sxe2_switchdev_repr_devs_init(adapter, req_eth_da);
+		if (ret) {
+			PMD_DEV_LOG_ERR(adapter, INIT, "Failed to init representor, ret=%d", ret);
+			goto l_dev_uinit;
+		}
+	} else {
+		PMD_DEV_LOG_DEBUG(adapter, INIT, "No representors requested, skipping.");
+	}
+
 	rte_eth_dev_probing_finish(eth_dev);
 	PMD_DEV_LOG_DEBUG(adapter, INIT, "Sxe2 eth pmd probe successful!");
 	goto l_end;
 
+l_dev_uinit:
+	(void)sxe2_dev_uninit(eth_dev);
 l_release_port:
 	(void)rte_eth_dev_release_port(eth_dev);
 l_end:
@@ -1370,6 +1556,11 @@ static struct sxe2_class_driver sxe2_eth_pmd = {
 	.intr_lsc = 1,
 	.intr_rmv = 1,
 };
+
+bool sxe2_ethdev_check(struct rte_eth_dev *dev)
+{
+	return !strcmp(dev->device->driver->name, "sxe2_pci");
+}
 
 RTE_INIT(rte_sxe2_pmd_init)
 {

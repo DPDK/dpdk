@@ -454,6 +454,14 @@ uint16_t sxe2_tx_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkt
 				desc_l2tag2 = tx_pkt->vlan_tci_outer;
 				desc_type_cmd_tso_mss |= SXE2_TX_CTXT_DESC_CMD_IL2TAG2_MASK;
 			}
+			if (unlikely(vsi->vsi_type == SXE2_VSI_T_DPDK_ESW)) {
+				desc_type_cmd_tso_mss |=
+					(SXE2_TX_CTXT_DESC_CMD_SWTCH_VSI <<
+					SXE2_TX_CTXT_DESC_CMD_SHIFT);
+				desc_type_cmd_tso_mss |=
+					((vsi->adapter->repr_priv_data->repr_vf_vsi_id & 0x3FFULL)
+					<< SXE2_TX_CTXT_DESC_VSI_SHIFT);
+			}
 
 			ctxt_desc->tunneling_params =
 				rte_cpu_to_le_32(desc_tunneling_params);

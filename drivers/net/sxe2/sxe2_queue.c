@@ -24,7 +24,11 @@ int32_t sxe2_queues_init(struct rte_eth_dev *dev)
 	struct sxe2_rx_queue *rxq;
 	uint16_t nb_rxq;
 
-	frame_size = dev->data->mtu + SXE2_ETH_OVERHEAD;
+	if (adapter->is_dev_repr)
+		frame_size = SXE2_FRAME_SIZE_MAX - SXE2_ETH_OVERHEAD;
+	else
+		frame_size = dev->data->mtu + SXE2_ETH_OVERHEAD;
+
 	for (nb_rxq = 0; nb_rxq < dev->data->nb_rx_queues; nb_rxq++) {
 		rxq = dev->data->rx_queues[nb_rxq];
 		if (!rxq)

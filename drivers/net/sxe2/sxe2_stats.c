@@ -154,7 +154,12 @@ static int32_t sxe2_vsi_hw_stats_get_update(struct sxe2_adapter *adapter)
 
 	ret = sxe2_drv_get_vsi_stats(adapter);
 	if (ret) {
-		PMD_LOG_ERR(DRV, "get vsi stats failed, ret:%d.", ret);
+		if (adapter->is_dev_repr) {
+			PMD_LOG_WARN(DRV, "get repr vsi stats failed, ret:%d.", ret);
+			ret = 0;
+		} else {
+			PMD_LOG_ERR(DRV, "get vsi stats failed, ret:%d.", ret);
+		}
 		goto l_end;
 	}
 
@@ -226,7 +231,7 @@ static void sxe2_stats_update(struct sxe2_adapter *adapter)
 	stats->rx_sw_drop_bytes = sw_stats->rx_sw_drop_bytes +
 			sw_stats_prev->rx_sw_drop_bytes;
 
-	if (adapter->dev_type != SXE2_DEV_T_VF) {
+	if (adapter->dev_type != SXE2_DEV_T_VF  && !adapter->is_dev_repr) {
 		stats->rx_out_of_buffer = hw_stats->rx_out_of_buffer;
 		stats->rx_qblock_drop = hw_stats->rx_qblock_drop;
 		stats->tx_frame_good = hw_stats->tx_frame_good;
@@ -359,7 +364,7 @@ int32_t sxe2_xstats_info_get(struct rte_eth_dev *dev,
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		return sxe2_mp_req_get_xstats(dev, xstats, usr_cnt);
 
-	if (adapter->dev_type == SXE2_DEV_T_VF)
+	if (adapter->dev_type == SXE2_DEV_T_VF || adapter->is_dev_repr)
 		xstats_cnt = SXE2_XSTAT_CNT_VF;
 	else
 		xstats_cnt = SXE2_XSTAT_CNT_PF;
@@ -382,7 +387,7 @@ int32_t sxe2_xstats_info_get(struct rte_eth_dev *dev,
 		goto end;
 	}
 
-	if (adapter->dev_type == SXE2_DEV_T_VF) {
+	if (adapter->dev_type == SXE2_DEV_T_VF || adapter->is_dev_repr) {
 		sxe2_stats_update(adapter);
 		for (i = 0; i < xstats_cnt; i++) {
 			(void)sxe2_xstat_vf_offset_get(i, &offset);
@@ -426,7 +431,7 @@ int32_t sxe2_xstats_names_get(__rte_unused struct rte_eth_dev *dev,
 	int32_t ret = -1;
 	uint32_t xstats_cnt = 0;
 
-	if (adapter->dev_type == SXE2_DEV_T_VF) {
+	if (adapter->dev_type == SXE2_DEV_T_VF || adapter->is_dev_repr) {
 		field = sxe2_xstats_field_vf;
 		xstats_cnt = SXE2_XSTAT_CNT_VF;
 	} else {
@@ -471,7 +476,7 @@ int32_t sxe2_stats_hw_reset(struct rte_eth_dev *dev)
 		PMD_LOG_ERR(DRV, "reset vsi stats failed, ret:%d.", ret);
 		goto l_end;
 	}
-	if (adapter->dev_type != SXE2_DEV_T_VF) {
+	if (adapter->dev_type != SXE2_DEV_T_VF && !adapter->is_dev_repr) {
 		ret = sxe2_drv_mac_stats_reset(adapter);
 		if (ret) {
 			PMD_LOG_ERR(DRV, "reset mac stats failed, ret:%d.", ret);

@@ -193,13 +193,23 @@ struct sxe2_vsi_context {
 	uint16_t bond_member_dpdk_vsi_id[SXE2_MAX_BOND_MEMBER_CNT];
 
 	struct sxe2_vsi *main_vsi;
+
+	struct sxe2_vsi_list_head other_vsi_list;
 };
 
 void sxe2_sw_vsi_ctx_hw_cap_set(struct sxe2_adapter *adapter,
-		struct sxe2_drv_vsi_caps *vsi_caps);
+				struct sxe2_drv_vsi_caps *vsi_caps);
+
+int32_t sxe2_other_vsi_create(struct sxe2_adapter *adapter,  uint16_t cnt_vf);
 
 int32_t sxe2_vsi_init(struct rte_eth_dev *dev);
 
 void sxe2_vsi_uninit(struct rte_eth_dev *dev);
+
+int32_t sxe2_vsi_repr_main_vsi_create(struct rte_eth_dev *dev,
+				  struct sxe2_adapter *parent_adapter,
+				  uint16_t repr_id);
+
+void sxe2_vsi_repr_main_vsi_destroy(struct rte_eth_dev *dev);
 
 #endif /* SXE2_VSI_H */

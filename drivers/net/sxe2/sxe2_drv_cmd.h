@@ -108,7 +108,6 @@ enum sxe2_phys_port_name_type {
 	SXE2_PHYS_PORT_NAME_TYPE_LEGACY,
 	SXE2_PHYS_PORT_NAME_TYPE_UPLINK,
 	SXE2_PHYS_PORT_NAME_TYPE_PFVF,
-
 	SXE2_PHYS_PORT_NAME_TYPE_UNKNOWN,
 };
 
@@ -562,6 +561,60 @@ struct __rte_aligned(4) __rte_packed_begin sxe2_drv_queue_irq_bind_req {
 	uint8_t itr_idx;
 	uint8_t bind;
 	uint8_t rsv[2];
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_switchdev_uplink_info {
+	uint8_t pf_id;
+	uint8_t is_set;
+	uint8_t rsv[2];
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_switchdev_repr_info {
+	uint8_t pf_id;
+	uint8_t is_set;
+	uint8_t rsv[2];
+	uint16_t cp_vsi_id;
+	uint16_t repr_pf_id;
+	uint16_t repr_vf_id;
+	uint16_t repr_q_id;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_flow_filter_req {
+	uint32_t flow_id;
+	struct sxe2_flow_meta meta;
+	enum sxe2_flow_engine_type engine_type;
+	struct sxe2_flow_pattern pattern_outer;
+	struct sxe2_flow_pattern pattern_inner;
+	struct sxe2_flow_action action;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_flow_filter_resp {
+	enum sxe2_flow_engine_type engine_type;
+	uint32_t flow_id;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_flow_fnav_get_stat_id_req {
+	uint8_t need_update;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_flow_fnav_get_stat_id_resp {
+	uint32_t stat_id;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_flow_fnav_free_stat_id_req {
+	uint32_t stat_id;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_flow_fnav_query_stat_req {
+	uint32_t stat_id;
+	uint32_t stat_ctrl;
+	uint32_t is_clear;
+} __rte_packed_end;
+
+struct __rte_aligned(4) __rte_packed_begin sxe2_drv_flow_fnav_query_stat_resp {
+	uint32_t stat_index;
+	uint64_t stat_hits;
+	uint64_t stat_bytes;
 } __rte_packed_end;
 
 enum sxe2_drv_cmd_module {

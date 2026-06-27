@@ -20,6 +20,7 @@
 #include "sxe2vf_regs.h"
 #include "sxe2_host_regs.h"
 #include "sxe2_cmd_chnl.h"
+#include "sxe2_switchdev.h"
 
 #define SXE2_INT_EVENT_OICR_ALL (SXE2_PF_INT_OICR_SWINT | \
 					SXE2_PF_INT_OICR_LAN_TX_ERR | \
@@ -58,6 +59,14 @@ static void sxe2_event_irq_common_handler(struct sxe2_adapter *adapter, uint64_t
 			rte_eth_dev_callback_process(dev,
 						     RTE_ETH_EVENT_INTR_LSC,
 						     NULL);
+	}
+	if (oicr & RTE_BIT32(SXE2_COM_SW_MODE_SWITCHDEV)) {
+		PMD_DEV_LOG_INFO(adapter, DRV, "event notify switchdev");
+		(void)sxe2_switchdev_notify_callback(adapter, true);
+	}
+	if (oicr & RTE_BIT32(SXE2_COM_SW_MODE_LEGACY)) {
+		PMD_DEV_LOG_INFO(adapter, DRV, "event notify legacy");
+		(void)sxe2_switchdev_notify_callback(adapter, false);
 	}
 }
 
@@ -882,6 +891,42 @@ l_end:
 	return ret;
 }
 
+int32_t sxe2_repr_rxq_intr_enable(struct rte_eth_dev *dev)
+{
+	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	uint16_t rxq_cnt = dev->data->nb_rx_queues;
+	int32_t ret = 0;
+	uint16_t qid = adapter->repr_priv_data->repr_q_id;
+	uint32_t val;
+
+	if (!rxq_cnt)
+		goto l_end;
+
+	sxe2_pci_hw_irq_disable(adapter, qid);
+	sxe2_pci_hw_int_itr_set(adapter, qid, SXE2_ITR_INTERVAL_NORMAL);
+	ret = sxe2_drv_rxq_bind_irq(adapter, qid, qid);
+	if (ret != 0) {
+		PMD_DEV_LOG_ERR(adapter, INIT, "RXQ[%u] bind IRQ[%u] failed.",
+				qid, qid);
+		goto l_end;
+	}
+	sxe2_pci_hw_irq_enable(adapter, qid);
+
+	val = sxe2_pci_hw_irq_dyn_ctl_read(adapter, qid);
+	if ((val & SXE2VF_DYN_CTL_INTENABLE) == 0)
+		goto l_end;
+
+	sxe2_pci_hw_msix_disable(adapter, qid);
+	sxe2_pci_hw_irq_trigger(adapter, qid);
+	val = sxe2_pci_hw_irq_dyn_ctl_read(adapter, qid);
+	sxe2_pci_hw_irq_clear_pba(adapter, qid);
+	val = sxe2_pci_hw_irq_dyn_ctl_read(adapter, qid);
+	sxe2_pci_hw_msix_enable(adapter, qid);
+
+l_end:
+	return ret;
+}
+
 void sxe2_rxq_intr_disable(struct rte_eth_dev *dev)
 {
 	struct sxe2_adapter *adapter =
@@ -900,6 +945,15 @@ void sxe2_rxq_intr_disable(struct rte_eth_dev *dev)
 
 l_end:
 	return;
+}
+
+void sxe2_repr_rxq_intr_disable(struct rte_eth_dev *dev)
+{
+	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	uint16_t qid = adapter->repr_priv_data->repr_q_id;
+
+	sxe2_pci_hw_irq_disable(adapter, qid);
+	(void)sxe2_drv_rxq_unbind_irq(adapter, qid);
 }
 
 int32_t sxe2_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)

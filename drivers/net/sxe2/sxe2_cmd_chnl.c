@@ -64,6 +64,23 @@ int32_t sxe2_drv_dev_caps_get(struct sxe2_adapter *adapter, struct sxe2_drv_dev_
 	return ret;
 }
 
+int32_t sxe2_drv_switchdev_info_get(struct sxe2_adapter *adapter,
+				    struct sxe2_switchdev_info *switchdev_info)
+{
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_DEV_GET_SWITCHDEV_INFO,
+				 NULL, 0, switchdev_info,
+				 sizeof(struct sxe2_switchdev_info));
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_ERR(adapter, DRV, "get switchdev info failed, ret=%d", ret);
+
+	return ret;
+}
+
 int32_t sxe2_drv_dev_info_get(struct sxe2_adapter *adapter,
 				struct sxe2_drv_dev_info_resp *dev_info_resp)
 {
@@ -167,7 +184,11 @@ static int32_t sxe2_rxq_ctxt_cfg_fill(struct sxe2_rx_queue *rxq,
 	req->q_cnt = rxq_cnt;
 	req->max_frame_size = dev_data->mtu + SXE2_ETH_OVERHEAD;
 
-	ctxt->queue_id = rxq->queue_id;
+	if (adapter->is_dev_repr)
+		ctxt->queue_id = adapter->repr_priv_data->repr_q_id;
+	else
+		ctxt->queue_id = rxq->queue_id;
+
 	ctxt->depth = rxq->ring_depth;
 	ctxt->buf_len = RTE_ALIGN(rxq->rx_buf_len, SXE2_RXQ_CTXT_CFG_BUF_LEN_ALIGN);
 	ctxt->dma_addr = rxq->base_addr;
@@ -241,7 +262,10 @@ static void sxe2_txq_ctxt_cfg_fill(struct sxe2_tx_queue *txq,
 		ctxt = &req->cfg[q_idx];
 		ctxt->depth = txq[q_idx].ring_depth;
 		ctxt->dma_addr = txq[q_idx].base_addr;
-		ctxt->queue_id = txq[q_idx].queue_id;
+		if (adapter->is_dev_repr)
+			ctxt->queue_id = adapter->repr_priv_data->repr_q_id;
+		else
+			ctxt->queue_id = txq[q_idx].queue_id;
 
 		ctxt->sched_mode = sxe2_sched_mode_get(adapter);
 	}
@@ -288,7 +312,10 @@ int32_t sxe2_drv_rxq_switch(struct sxe2_adapter *adapter, struct sxe2_rx_queue *
 	struct sxe2_drv_q_switch_req req;
 
 	req.vsi_id = rte_cpu_to_le_16(rxq->vsi->vsi_id);
-	req.q_idx = rxq->queue_id;
+	if (adapter->is_dev_repr)
+		req.q_idx = adapter->repr_priv_data->repr_q_id;
+	else
+		req.q_idx = rxq->queue_id;
 
 	req.is_enable  = (uint8_t)enable;
 	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_RXQ_DISABLE,
@@ -310,7 +337,10 @@ int32_t sxe2_drv_txq_switch(struct sxe2_adapter *adapter, struct sxe2_tx_queue *
 	struct sxe2_drv_q_switch_req req;
 
 	req.vsi_id = rte_cpu_to_le_16(txq->vsi->vsi_id);
-	req.q_idx = txq->queue_id;
+	if (adapter->is_dev_repr)
+		req.q_idx = adapter->repr_priv_data->repr_q_id;
+	else
+		req.q_idx = txq->queue_id;
 
 	req.is_enable  = (uint8_t)enable;
 	req.sched_mode = sxe2_sched_mode_get(adapter);
@@ -323,6 +353,37 @@ int32_t sxe2_drv_txq_switch(struct sxe2_adapter *adapter, struct sxe2_tx_queue *
 				enable, ret);
 	}
 
+	return ret;
+}
+
+int32_t sxe2_drv_vsi_info_get(struct sxe2_adapter *adapter, struct sxe2_vsi *vsi)
+{
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_drv_vsi_info_get_req vsi_info_get_req = {0};
+	struct sxe2_drv_vsi_info_get_resp vsi_info_get_resp = {0};
+
+	vsi_info_get_req.vsi_id = vsi->vsi_id;
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_VSI_INFO_GET,
+			&vsi_info_get_req, sizeof(vsi_info_get_req),
+			&vsi_info_get_resp, sizeof(vsi_info_get_resp));
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "switchdev cpvsi info get failed, ret=%d", ret);
+		goto l_end;
+	}
+
+	vsi->txqs.q_cnt = vsi_info_get_resp.used_queues.queues_cnt;
+	vsi->txqs.base_idx_in_func = vsi_info_get_resp.used_queues.base_idx_in_pf;
+
+	vsi->rxqs.q_cnt = vsi_info_get_resp.used_queues.queues_cnt;
+	vsi->rxqs.base_idx_in_func = vsi_info_get_resp.used_queues.base_idx_in_pf;
+
+	vsi->irqs.avail_cnt = vsi_info_get_resp.used_msix.msix_vectors_cnt;
+	vsi->irqs.base_idx_in_pf = vsi_info_get_resp.used_msix.base_idx_in_func;
+
+l_end:
 	return ret;
 }
 
@@ -610,6 +671,101 @@ int32_t sxe2_drv_allmulti_config(struct sxe2_adapter *adapter, bool set)
 	ret = sxe2_drv_cmd_exec(cdev, &param);
 	if (ret)
 		PMD_DEV_LOG_WARN(adapter, DRV, "allmulti config failed, ret=%d", ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_switchdev_uplink_config(struct sxe2_adapter *adapter,  bool set)
+{
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_switchdev_uplink_info switchdev_uplink_info_req = {0};
+
+	switchdev_uplink_info_req.pf_id = adapter->pf_idx;
+	switchdev_uplink_info_req.is_set = set;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_SWITCH_UPLINK,
+				 &switchdev_uplink_info_req,
+				 sizeof(switchdev_uplink_info_req),
+				 NULL, 0);
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_WARN(adapter, DRV, "switchdev uplink info config failed, ret=%d", ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_switchdev_repr_vf_config(struct sxe2_adapter *adapter,
+				      struct sxe2_switchdev_repr_info *repr_vf,
+				      bool set)
+{
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_switchdev_repr_info switchdev_repr_info_req = {0};
+
+	switchdev_repr_info_req.pf_id = adapter->pf_idx;
+	switchdev_repr_info_req.is_set = set;
+	switchdev_repr_info_req.cp_vsi_id = repr_vf->cp_vsi_id;
+	switchdev_repr_info_req.repr_pf_id = repr_vf->repr_pf_id;
+	switchdev_repr_info_req.repr_vf_id = repr_vf->repr_vf_id;
+	switchdev_repr_info_req.repr_q_id = repr_vf->repr_q_id;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_SWITCH_REPR,
+			&switchdev_repr_info_req,
+			sizeof(switchdev_repr_info_req),
+			NULL, 0);
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_WARN(adapter, DRV, "switchdev repr info config failed, ret=%d", ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_switchdev_mode_get(struct sxe2_adapter *adapter, bool *is_switchdev)
+{
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_switchdev_mode_info switchdev_mode_info_req = {0};
+	struct sxe2_switchdev_mode_info switchdev_mode_info_resp = {0};
+
+	switchdev_mode_info_req.pf_id = adapter->pf_idx;
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_SWITCH_MODE,
+				 &switchdev_mode_info_req,
+				 sizeof(switchdev_mode_info_req),
+				 &switchdev_mode_info_resp,
+				 sizeof(switchdev_mode_info_resp));
+
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_WARN(adapter, DRV, "switchdev mode info get failed, ret=%d", ret);
+	else
+		*is_switchdev = (bool)switchdev_mode_info_resp.is_switchdev;
+
+	return ret;
+}
+
+int32_t sxe2_drv_switchdev_cpvsi_get(struct sxe2_adapter *adapter, uint16_t *cp_vsi_id)
+{
+	int32_t ret = 0;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_switchdev_cpvsi_info switchdev_cpvsi_resp = {0};
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_SWITCH_CPVSI,
+				 NULL, 0,
+				 &switchdev_cpvsi_resp,
+				 sizeof(switchdev_cpvsi_resp));
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_WARN(adapter, DRV, "switchdev cpvsi info get failed, ret=%d", ret);
+	else
+		*cp_vsi_id = switchdev_cpvsi_resp.cp_vsi_id;
 
 	return ret;
 }
@@ -1431,6 +1587,153 @@ int32_t sxe2_drv_mapping_stats_info_clear(struct rte_eth_dev *eth_dev)
 	ret = sxe2_drv_cmd_exec(cdev, &param);
 	if (ret)
 		PMD_LOG_ERR(DRV, "Clear map stats info failed, ret=%d", ret);
+
+	return ret;
+}
+
+int32_t sxe2_drv_flow_filter_add(struct sxe2_adapter *adapter, struct sxe2_flow *flow)
+{
+	struct sxe2_drv_flow_filter_req req = { 0 };
+	struct sxe2_drv_flow_filter_resp resp = { 0 };
+	struct sxe2_drv_cmd_params cmd             = { 0 };
+	struct sxe2_common_device *cdev = adapter->cdev;
+	int32_t ret                                 = -1;
+
+	memcpy(&req.pattern_inner, &flow->pattern_inner, sizeof(req.pattern_inner));
+	memcpy(&req.pattern_outer, &flow->pattern_outer, sizeof(req.pattern_outer));
+	memcpy(&req.action, &flow->action, sizeof(req.action));
+	memcpy(&req.meta, &flow->meta, sizeof(req.meta));
+	req.engine_type = flow->engine_type;
+	req.flow_id = 0;
+
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_FLOW_FILTER_ADD, &req,
+			   sizeof(req), &resp, sizeof(resp));
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret)
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to add flow filter, ret: %d.", ret);
+	flow->flow_id = resp.flow_id;
+	flow->create_err = ret;
+	return ret;
+}
+
+int32_t sxe2_drv_flow_filter_del(struct sxe2_adapter *adapter, struct sxe2_flow *flow)
+{
+	struct sxe2_drv_cmd_params cmd             = { 0 };
+	struct sxe2_drv_flow_filter_req req = { 0 };
+	struct sxe2_common_device *cdev = adapter->cdev;
+	int32_t ret                                 = -1;
+	memcpy(&req.pattern_inner, &flow->pattern_inner, sizeof(req.pattern_inner));
+	memcpy(&req.pattern_outer, &flow->pattern_outer, sizeof(req.pattern_outer));
+	memcpy(&req.action, &flow->action, sizeof(req.action));
+	memcpy(&req.meta, &flow->meta, sizeof(req.meta));
+	req.engine_type = flow->engine_type;
+	req.flow_id = flow->flow_id;
+
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_FLOW_FILTER_DEL, &req,
+			   sizeof(req), NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret)
+		PMD_DEV_LOG_ERR(adapter, DRV,
+			"Failed to delete flow filter, flow id: %u, ret: %d.",
+			flow->flow_id, ret);
+	return ret;
+}
+
+int32_t sxe2_drv_flow_fnav_get_stat_id(struct sxe2_adapter *adapter, uint32_t *stat_id)
+{
+	struct sxe2_drv_flow_fnav_get_stat_id_req req = { 0 };
+	struct sxe2_drv_flow_fnav_get_stat_id_resp resp = { 0 };
+	struct sxe2_drv_cmd_params cmd             = { 0 };
+	struct sxe2_common_device *cdev = adapter->cdev;
+	int32_t ret                                 = -1;
+
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_FLOW_FNAV_STAT_ALLOC,
+				 &req, sizeof(req),
+				 &resp, sizeof(resp));
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to get fnav stat id, ret: %d.", ret);
+		goto l_end;
+	}
+	*stat_id = resp.stat_id;
+
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_flow_fnav_free_stat(struct sxe2_adapter *adapter, uint32_t stat_id)
+{
+	struct sxe2_drv_flow_fnav_free_stat_id_req req = { 0 };
+	struct sxe2_drv_cmd_params cmd             = { 0 };
+	struct sxe2_common_device *cdev = adapter->cdev;
+	int32_t ret                                 = -1;
+
+	req.stat_id = stat_id;
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_FLOW_FNAV_STAT_FREE,
+				 &req, sizeof(req),
+				 NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to free fnav stat id, ret: %d.", ret);
+		goto l_end;
+	}
+
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_flow_fnav_query_stat(struct sxe2_adapter *adapter,
+		struct sxe2_fnav_cid_mgr *mgr)
+{
+	struct sxe2_drv_flow_fnav_query_stat_req req = { 0 };
+	struct sxe2_drv_flow_fnav_query_stat_resp resp = { 0 };
+	struct sxe2_drv_cmd_params cmd             = { 0 };
+	struct sxe2_common_device *cdev = adapter->cdev;
+	int32_t ret                                 = -1;
+
+	req.stat_id = mgr->stat_index;
+	req.stat_ctrl = mgr->count_type;
+	req.is_clear = 1;
+
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_FLOW_FNAV_STAT_QUERY,
+				 &req, sizeof(req),
+				 &resp, sizeof(resp));
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV,
+			"Failed to query fnav stat, stat id: %u, ret: %d.",
+			req.stat_id, ret);
+		goto l_end;
+	}
+	mgr->hits += resp.stat_hits;
+	mgr->bytes += resp.stat_bytes;
+
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_srcvsi_prune_config(struct sxe2_adapter *adapter,
+			uint16_t *vsi_list, uint16_t vsi_cnt, bool set)
+{
+	int32_t ret = 0;
+	uint16_t idx;
+	struct sxe2_common_device *cdev = adapter->cdev;
+	struct sxe2_drv_cmd_params param = {0};
+	struct sxe2_srcvsi_ext_cfg_req srcvsi_list_prune_cfg_req = {0};
+
+	srcvsi_list_prune_cfg_req.vsi_id = adapter->vsi_ctxt.dpdk_vsi_id;
+	srcvsi_list_prune_cfg_req.is_add = set;
+	srcvsi_list_prune_cfg_req.srcvsi_cnt = vsi_cnt;
+	for (idx = 0; idx < vsi_cnt; idx++)
+		srcvsi_list_prune_cfg_req.srcvsi_list[idx] = vsi_list[idx];
+
+	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_VSI_SRCVSI_PRUNE,
+				 &srcvsi_list_prune_cfg_req,
+				 sizeof(srcvsi_list_prune_cfg_req),
+				 NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &param);
+	if (ret)
+		PMD_DEV_LOG_WARN(adapter, DRV, "srcvsi prune config failed, ret=%d", ret);
 
 	return ret;
 }

@@ -9,6 +9,7 @@
 #include "sxe2_common_log.h"
 #include "sxe2_ethdev.h"
 #include "sxe2_cmd_chnl.h"
+#include "sxe2_switchdev.h"
 
 static struct sxe2_mac_filter *sxe2_uc_filter_find(struct sxe2_adapter *adapter,
 			struct rte_ether_addr *macaddr)
@@ -698,16 +699,96 @@ l_end:
 	return ret;
 }
 
+static int32_t sxe2_uplink_hw_clear(struct sxe2_adapter *adapter)
+{
+	int32_t ret = 0;
+
+	if (adapter->filter_ctxt.hw_uplink_config) {
+		if (adapter->dev_type == SXE2_DEV_T_PF) {
+			ret = sxe2_uplink_clear(adapter);
+			if (ret) {
+				PMD_DEV_LOG_ERR(adapter, DRV,
+						"Failed to clear uplink, ret:%d", ret);
+				goto l_end;
+			}
+			adapter->filter_ctxt.hw_uplink_config = false;
+		}
+	}
+
+l_end:
+	return ret;
+}
+
+static int32_t sxe2_uplink_hw_set(struct sxe2_adapter *adapter)
+{
+	int32_t ret = 0;
+
+	if (!adapter->filter_ctxt.hw_uplink_config) {
+		if (adapter->dev_type == SXE2_DEV_T_PF) {
+			ret = sxe2_uplink_set(adapter);
+			if (ret && ret != -EEXIST) {
+				PMD_DEV_LOG_ERR(adapter, DRV, "Failed to set uplink, ret:%d", ret);
+				goto l_end;
+			}
+			adapter->filter_ctxt.hw_uplink_config = true;
+			ret = 0;
+		}
+	}
+
+l_end:
+	return ret;
+}
+
+static int32_t sxe2_repr_hw_clear(struct sxe2_adapter *adapter)
+{
+	int32_t ret = 0;
+
+	if (adapter->filter_ctxt.hw_repr_config) {
+		if (adapter->dev_type == SXE2_DEV_T_PF ||
+			adapter->dev_type == SXE2_DEV_T_PF_BOND) {
+			ret = sxe2_repr_clear(adapter);
+			if (ret) {
+				PMD_DEV_LOG_ERR(adapter, DRV, "Failed to clear repr, ret:%d", ret);
+				goto l_end;
+			}
+			adapter->filter_ctxt.hw_repr_config = false;
+		}
+	}
+
+l_end:
+	return ret;
+}
+
+static int32_t sxe2_repr_hw_set(struct sxe2_adapter *adapter)
+{
+	int32_t ret = 0;
+
+	if (!adapter->filter_ctxt.hw_repr_config) {
+		if (adapter->dev_type == SXE2_DEV_T_PF ||
+			adapter->dev_type == SXE2_DEV_T_PF_BOND) {
+			ret = sxe2_repr_set(adapter);
+			if (ret && ret != -EEXIST) {
+				PMD_DEV_LOG_ERR(adapter, DRV, "Failed to set repr, ret:%d", ret);
+				goto l_end;
+			}
+			adapter->filter_ctxt.hw_repr_config = true;
+			ret = 0;
+		}
+	}
+l_end:
+	return ret;
+}
+
 int32_t sxe2_l2_rule_update(struct sxe2_adapter *adapter)
 {
 	int32_t ret = 0;
 
-	if (!adapter->flow_isolated && !adapter->switchdev_info.is_switchdev &&
-	    adapter->rule_started) {
+	if (!adapter->flow_isolated &&
+	    !adapter->switchdev_info.is_switchdev &&
+	    adapter->rule_started)
 		adapter->filter_ctxt.cur_l2_config = true;
-	} else {
+	else
 		adapter->filter_ctxt.cur_l2_config = false;
-	}
 
 	if (adapter->filter_ctxt.cur_l2_config !=
 	    adapter->filter_ctxt.hw_l2_config) {
@@ -721,6 +802,38 @@ int32_t sxe2_l2_rule_update(struct sxe2_adapter *adapter)
 				adapter->filter_ctxt.hw_l2_config = false;
 		}
 	}
+	return ret;
+}
+
+int32_t sxe2_switchdev_rule_update(struct sxe2_adapter *adapter)
+{
+	int32_t ret = 0;
+
+	if (!adapter->flow_isolated &&
+	    adapter->switchdev_info.is_switchdev) {
+		adapter->filter_ctxt.cur_uplink_config = true;
+		adapter->filter_ctxt.cur_repr_config = true;
+	} else {
+		adapter->filter_ctxt.cur_uplink_config = false;
+		adapter->filter_ctxt.cur_repr_config = false;
+	}
+
+	if (adapter->filter_ctxt.cur_uplink_config !=
+	    adapter->filter_ctxt.hw_uplink_config) {
+		if (adapter->filter_ctxt.cur_uplink_config)
+			ret = sxe2_uplink_hw_set(adapter);
+		else
+			ret = sxe2_uplink_hw_clear(adapter);
+	}
+
+	if (adapter->filter_ctxt.cur_repr_config !=
+	    adapter->filter_ctxt.hw_repr_config) {
+		if (adapter->filter_ctxt.cur_repr_config)
+			ret = sxe2_repr_hw_set(adapter);
+		else
+			ret = sxe2_repr_hw_clear(adapter);
+	}
+
 	return ret;
 }
 

@@ -169,6 +169,37 @@ static int32_t sxe2_parse_class_type(const char *key, const char *value, void *a
 	return ret;
 }
 
+static int32_t sxe2_parse_driver(const char *key, const char *value, void *args)
+{
+	int32_t ret = -EINVAL;
+
+	if (value == NULL || args == NULL) {
+		ret = 0;
+		goto l_end;
+	}
+
+	if (strcmp(value, "sxe2") != 0) {
+		PMD_LOG_ERR(COM, "%s: \"%s\" is not a valid driver.",
+			key, value);
+		goto l_end;
+	}
+l_end:
+	return ret;
+}
+
+static int32_t sxe2_parse_representor(const char *key, const char *value, void *args)
+{
+	int32_t ret = 0;
+
+	if (value == NULL || args == NULL)
+		goto l_end;
+
+	PMD_LOG_INFO(COM, "representor arg %s: \"%s\".", key, value);
+
+l_end:
+	return ret;
+}
+
 static int32_t sxe2_common_device_setup(struct sxe2_common_device *cdev)
 {
 	struct rte_pci_device *pci_dev = RTE_BUS_DEVICE(cdev->dev, *pci_dev);
@@ -394,6 +425,21 @@ static int32_t sxe2_common_pci_probe(struct rte_pci_driver *pci_drv __rte_unused
 			goto l_free_args;
 		}
 
+		ret = sxe2_kvargs_process(kv_info_p, SXE2_DEVARGS_KEY_DRIVER,
+				sxe2_parse_driver, NULL);
+		if (ret < 0) {
+			PMD_LOG_ERR(COM, "Unsupported sxe2 driver name: %s",
+				rte_dev->devargs->args);
+			goto l_free_args;
+		}
+
+		ret = sxe2_kvargs_process(kv_info_p, SXE2_DEVARGS_KEY_REPR,
+				sxe2_parse_representor, NULL);
+		if (ret < 0) {
+			PMD_LOG_ERR(COM, "Unsupported sxe2 driver representor: %s",
+				rte_dev->devargs->args);
+			goto l_free_args;
+		}
 	}
 
 	cdev = sxe2_common_device_alloc(rte_dev, class_type);

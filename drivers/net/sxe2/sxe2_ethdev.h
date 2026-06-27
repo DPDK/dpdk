@@ -65,6 +65,9 @@ enum sxe2_fnav_tunnel_flag_type {
 #define upper_32_bits(n) ((uint32_t)(((n) >> 16) >> 16))
 #define lower_32_bits(n) ((uint32_t)((n) & 0xffffffff))
 
+#define SXE2_REPRESENTOR_ID(pf, type, repr) \
+		(((pf) << 14) + ((type) << 12) + ((repr) & 0xfff))
+
 #define SXE2_I2C_EEPROM_DEV_ADDR	0xA0
 #define SXE2_I2C_EEPROM_DEV_ADDR2	0xA2
 #define SXE2_MODULE_TYPE_SFP		0x03
@@ -309,16 +312,20 @@ struct sxe2_adapter {
 	struct sxe2_vsi_context       vsi_ctxt;
 	struct sxe2_filter_context    filter_ctxt;
 	struct sxe2_rss_context       rss_ctxt;
+	struct sxe2_flow_context      flow_ctxt;
 	struct sxe2_link_context      link_ctxt;
 	struct sxe2_ptp_context       ptp_ctxt;
 	struct sxe2_sched_hw_cap      sched_ctxt;
 	struct sxe2_tm_context        tm_ctxt;
 	struct sxe2_devargs           devargs;
 	struct sxe2_security_ctx      security_ctx;
+	struct sxe2_repr_context      repr_ctxt;
 	struct sxe2_switchdev_info    switchdev_info;
 	bool                          rule_started;
 	bool                          flow_isolated;
+	bool                          flow_isolate_cfg;
 	uint16_t                           dev_port_id;
+	bool                          is_dev_repr;
 	uint64_t                           cap_flags;
 	enum sxe2_dev_type            dev_type;
 	struct rte_ether_addr           mac_addr;
@@ -335,6 +342,8 @@ struct sxe2_adapter {
 void *sxe2_pci_map_addr_get(struct sxe2_adapter *adapter,
 			    enum sxe2_pci_map_resource res_type,
 			    uint16_t idx_in_func);
+
+bool sxe2_ethdev_check(struct rte_eth_dev *dev);
 
 uint32_t sxe2_sched_mode_get(struct sxe2_adapter *adapter);
 
@@ -361,6 +370,8 @@ void sxe2_dev_pci_seg_unmap(struct sxe2_adapter *adapter, uint32_t res_type);
 int32_t sxe2_dev_pci_map_init(struct rte_eth_dev *dev);
 
 void sxe2_dev_pci_map_uinit(struct rte_eth_dev *dev);
+
+void sxe2_eth_uinit(struct rte_eth_dev *dev);
 
 static inline bool
 sxe2_dev_port_vlan_check(struct rte_eth_dev *dev)

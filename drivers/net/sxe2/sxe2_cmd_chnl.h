@@ -12,6 +12,9 @@
 int32_t sxe2_drv_dev_caps_get(struct sxe2_adapter *adapter,
 		struct sxe2_drv_dev_caps_resp *dev_caps);
 
+int32_t sxe2_drv_switchdev_info_get(struct sxe2_adapter *adapter,
+		struct sxe2_switchdev_info *switchdev_info);
+
 int32_t sxe2_drv_dev_info_get(struct sxe2_adapter *adapter,
 		struct sxe2_drv_dev_info_resp *dev_info_resp);
 
@@ -64,6 +67,8 @@ int32_t sxe2_drv_ipsec_txsa_delete(struct sxe2_adapter *adapter,
 
 int32_t sxe2_drv_promisc_config(struct sxe2_adapter *adapter, bool set);
 
+int32_t sxe2_drv_vsi_info_get(struct sxe2_adapter *adapter, struct sxe2_vsi *vsi);
+
 int32_t sxe2_drv_mac_link_status_get(struct sxe2_adapter *adapter);
 
 int32_t sxe2_drv_get_mac_stats(struct sxe2_adapter *adapter);
@@ -90,6 +95,15 @@ int32_t sxe2_drv_rxq_mapping_set(struct rte_eth_dev *eth_dev, uint16_t queue_id,
 int32_t sxe2_drv_allmulti_config(struct sxe2_adapter *adapter, bool set);
 
 int32_t sxe2_drv_uc_config(struct sxe2_adapter *adapter, struct rte_ether_addr *addr, bool add);
+
+int32_t sxe2_drv_switchdev_uplink_config(struct sxe2_adapter *adapter,  bool set);
+
+int32_t sxe2_drv_switchdev_repr_vf_config(struct sxe2_adapter *adapter,
+				struct sxe2_switchdev_repr_info *repr_vf, bool set);
+
+int32_t sxe2_drv_switchdev_cpvsi_get(struct sxe2_adapter *adapter, uint16_t *cp_vsi_id);
+
+int32_t sxe2_drv_switchdev_mode_get(struct sxe2_adapter *adapter, bool *is_switchdev);
 
 int32_t sxe2_drv_mc_config(struct sxe2_adapter *adapter, struct rte_ether_addr *addr, bool add);
 
@@ -121,5 +135,19 @@ int32_t sxe2_drv_ptp_gettime(struct sxe2_adapter *adapter, struct sxe2_rx_queue 
 int32_t sxe2_drv_rxq_bind_irq(struct sxe2_adapter *adapter, uint16_t rxq_idx, uint16_t msix_idx);
 
 int32_t sxe2_drv_rxq_unbind_irq(struct sxe2_adapter *adapter, uint16_t rxq_idx);
+
+int32_t sxe2_drv_flow_filter_add(struct sxe2_adapter *adapter, struct sxe2_flow *flow);
+
+int32_t sxe2_drv_flow_filter_del(struct sxe2_adapter *adapter, struct sxe2_flow *flow);
+
+int32_t sxe2_drv_flow_fnav_get_stat_id(struct sxe2_adapter *adapter, uint32_t *stat_id);
+
+int32_t sxe2_drv_flow_fnav_free_stat(struct sxe2_adapter *adapter, uint32_t stat_id);
+
+int32_t sxe2_drv_flow_fnav_query_stat(struct sxe2_adapter *adapter,
+		struct sxe2_fnav_cid_mgr *mgr);
+
+int32_t sxe2_drv_srcvsi_prune_config(struct sxe2_adapter *adapter,
+		uint16_t *vsi_list, uint16_t vsi_cnt, bool set);
 
 #endif /* SXE2_CMD_CHNL_H */

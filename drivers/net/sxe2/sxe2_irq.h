@@ -60,7 +60,11 @@ void sxe2_sw_irq_ctx_hw_cap_set(struct sxe2_adapter *adapter,
 
 int32_t sxe2_rxq_intr_enable(struct rte_eth_dev *dev);
 
+int32_t sxe2_repr_rxq_intr_enable(struct rte_eth_dev *dev);
+
 void sxe2_rxq_intr_disable(struct rte_eth_dev *dev);
+
+void sxe2_repr_rxq_intr_disable(struct rte_eth_dev *dev);
 
 int32_t sxe2_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
 

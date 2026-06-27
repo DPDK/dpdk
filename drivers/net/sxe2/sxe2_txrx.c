@@ -151,6 +151,13 @@ void sxe2_tx_mode_func_set(struct rte_eth_dev *dev)
 	uint32_t batch_flags = 0;
 
 	PMD_INIT_FUNC_TRACE();
+
+	if (adapter->is_dev_repr) {
+		dev->tx_pkt_prepare = sxe2_tx_pkts_prepare;
+		dev->tx_pkt_burst = sxe2_tx_pkts;
+		tx_mode_flags = 0;
+		return;
+	}
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		tx_mode_flags = 0;
 		ret = sxe2_tx_vec_support_check(dev, &vec_flags);

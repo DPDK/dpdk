@@ -18,6 +18,8 @@
 	((cdev)->config.cmd_fd)
 
 #define SXE2_DEVARGS_KEY_CLASS "class"
+#define SXE2_DEVARGS_KEY_DRIVER "driver"
+#define SXE2_DEVARGS_KEY_REPR "representor"
 
 struct sxe2_class_driver;
 

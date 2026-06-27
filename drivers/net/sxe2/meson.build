@@ -71,4 +71,10 @@ sources += files(
         'sxe2_mp.c',
         'sxe2_stats.c',
         'sxe2_irq.c',
+        'sxe2_switchdev.c',
+        'sxe2_ethdev_repr.c',
+        'sxe2_flow.c',
+        'sxe2_flow_parse_action.c',
+        'sxe2_flow_parse_pattern.c',
+        'sxe2_flow_parse_engine.c',
 )
