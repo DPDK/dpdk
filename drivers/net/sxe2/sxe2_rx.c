@@ -479,20 +479,13 @@ int32_t __rte_cold sxe2_rxqs_all_start(struct rte_eth_dev *dev)
 			goto l_free_started_queue;
 		}
 
-		rte_atomic_store_explicit(&rxq->sw_stats.pkts, 0,
-			rte_memory_order_relaxed);
-		rte_atomic_store_explicit(&rxq->sw_stats.bytes, 0,
-			rte_memory_order_relaxed);
-		rte_atomic_store_explicit(&rxq->sw_stats.drop_pkts, 0,
-			rte_memory_order_relaxed);
-		rte_atomic_store_explicit(&rxq->sw_stats.drop_bytes, 0,
-			rte_memory_order_relaxed);
-		rte_atomic_store_explicit(&rxq->sw_stats.unicast_pkts, 0,
-			rte_memory_order_relaxed);
-		rte_atomic_store_explicit(&rxq->sw_stats.broadcast_pkts, 0,
-			rte_memory_order_relaxed);
-		rte_atomic_store_explicit(&rxq->sw_stats.multicast_pkts, 0,
-			rte_memory_order_relaxed);
+		rxq->sw_stats.pkts = 0;
+		rxq->sw_stats.bytes = 0;
+		rxq->sw_stats.drop_pkts = 0;
+		rxq->sw_stats.drop_bytes = 0;
+		rxq->sw_stats.unicast_pkts = 0;
+		rxq->sw_stats.broadcast_pkts = 0;
+		rxq->sw_stats.multicast_pkts = 0;
 	}
 	ret = 0;
 	goto l_end;
@@ -524,31 +517,15 @@ void __rte_cold sxe2_rxqs_all_stop(struct rte_eth_dev *dev)
 
 		rxq = dev->data->rx_queues[nb_rxq];
 		if (rxq) {
-			sw_stats_prev->ipackets +=
-				rte_atomic_load_explicit(&rxq->sw_stats.pkts,
-					rte_memory_order_relaxed);
-			sw_stats_prev->ierrors +=
-				rte_atomic_load_explicit(&rxq->sw_stats.drop_pkts,
-					rte_memory_order_relaxed);
-			sw_stats_prev->ibytes +=
-				rte_atomic_load_explicit(&rxq->sw_stats.bytes,
-					rte_memory_order_relaxed);
+			sw_stats_prev->ipackets += rxq->sw_stats.pkts;
+			sw_stats_prev->ierrors += rxq->sw_stats.drop_pkts;
+			sw_stats_prev->ibytes += rxq->sw_stats.bytes;
 
-			sw_stats_prev->rx_sw_unicast_packets +=
-				rte_atomic_load_explicit(&rxq->sw_stats.unicast_pkts,
-					rte_memory_order_relaxed);
-			sw_stats_prev->rx_sw_broadcast_packets +=
-				rte_atomic_load_explicit(&rxq->sw_stats.broadcast_pkts,
-					rte_memory_order_relaxed);
-			sw_stats_prev->rx_sw_multicast_packets +=
-				rte_atomic_load_explicit(&rxq->sw_stats.multicast_pkts,
-					rte_memory_order_relaxed);
-			sw_stats_prev->rx_sw_drop_packets +=
-				rte_atomic_load_explicit(&rxq->sw_stats.drop_pkts,
-					rte_memory_order_relaxed);
-			sw_stats_prev->rx_sw_drop_bytes +=
-				rte_atomic_load_explicit(&rxq->sw_stats.drop_bytes,
-					rte_memory_order_relaxed);
+			sw_stats_prev->rx_sw_unicast_packets += rxq->sw_stats.unicast_pkts;
+			sw_stats_prev->rx_sw_broadcast_packets += rxq->sw_stats.broadcast_pkts;
+			sw_stats_prev->rx_sw_multicast_packets += rxq->sw_stats.multicast_pkts;
+			sw_stats_prev->rx_sw_drop_packets += rxq->sw_stats.drop_pkts;
+			sw_stats_prev->rx_sw_drop_bytes += rxq->sw_stats.drop_bytes;
 		}
 	}
 }

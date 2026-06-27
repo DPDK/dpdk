@@ -7,7 +7,6 @@
 
 #include <rte_ethdev.h>
 #include <rte_io.h>
-#include <rte_stdatomic.h>
 #include <ethdev_driver.h>
 
 #include "sxe2_drv_cmd.h"
@@ -123,13 +122,13 @@ struct sxe2_rxq_stats {
 };
 
 struct sxe2_rxq_sw_stats {
-	RTE_ATOMIC(uint64_t)pkts;
-	RTE_ATOMIC(uint64_t)bytes;
-	RTE_ATOMIC(uint64_t)drop_pkts;
-	RTE_ATOMIC(uint64_t)drop_bytes;
-	RTE_ATOMIC(uint64_t)unicast_pkts;
-	RTE_ATOMIC(uint64_t)multicast_pkts;
-	RTE_ATOMIC(uint64_t)broadcast_pkts;
+	uint64_t pkts;
+	uint64_t bytes;
+	uint64_t drop_pkts;
+	uint64_t drop_bytes;
+	uint64_t unicast_pkts;
+	uint64_t multicast_pkts;
+	uint64_t broadcast_pkts;
 };
 
 struct sxe2_rx_queue {

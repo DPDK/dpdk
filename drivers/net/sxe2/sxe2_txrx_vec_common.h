@@ -130,27 +130,20 @@ sxe2_tx_desc_fill_offloads(struct rte_mbuf *mbuf, uint64_t *desc_qw1)
 static inline void sxe2_vf_rx_vec_sw_stats_cnt(struct sxe2_rx_queue *rxq,
 		struct rte_mbuf *mbuf, uint8_t umbcast_flag)
 {
-	if (rxq->vsi->adapter->devargs.sw_stats_en) {
-		rte_atomic_fetch_add_explicit(&rxq->sw_stats.pkts, 1,
-					rte_memory_order_relaxed);
-		rte_atomic_fetch_add_explicit(&rxq->sw_stats.bytes,
-				 mbuf->pkt_len + RTE_ETHER_CRC_LEN, rte_memory_order_relaxed);
-		switch (SXE2_RX_UMBCAST_FLAGS_VAL_GET(umbcast_flag)) {
-		case SXE2_RX_DESC_STATUS_UNICAST:
-			rte_atomic_fetch_add_explicit(&rxq->sw_stats.unicast_pkts, 1,
-					rte_memory_order_relaxed);
-			break;
-		case SXE2_RX_DESC_STATUS_MULTICAST:
-			rte_atomic_fetch_add_explicit(&rxq->sw_stats.multicast_pkts, 1,
-					rte_memory_order_relaxed);
-			break;
-		case SXE2_RX_DESC_STATUS_BROADCAST:
-			rte_atomic_fetch_add_explicit(&rxq->sw_stats.broadcast_pkts, 1,
-					rte_memory_order_relaxed);
-			break;
-		default:
-			break;
-		}
+	rxq->sw_stats.pkts += 1;
+	rxq->sw_stats.bytes += mbuf->pkt_len + RTE_ETHER_CRC_LEN;
+	switch (SXE2_RX_UMBCAST_FLAGS_VAL_GET(umbcast_flag)) {
+	case SXE2_RX_DESC_STATUS_UNICAST:
+		rxq->sw_stats.unicast_pkts += 1;
+		break;
+	case SXE2_RX_DESC_STATUS_MULTICAST:
+		rxq->sw_stats.multicast_pkts += 1;
+		break;
+	case SXE2_RX_DESC_STATUS_BROADCAST:
+		rxq->sw_stats.broadcast_pkts += 1;
+		break;
+	default:
+		break;
 	}
 }
 
@@ -196,11 +189,9 @@ sxe2_rx_pkts_refactor(struct sxe2_rx_queue *rxq,
 			} else if (split_rxe_flags[buf_idx] & SXE2_RX_DESC_STATUS_EOP_MASK) {
 				continue;
 			} else {
-				rte_atomic_fetch_add_explicit(&rxq->sw_stats.drop_pkts, 1,
-					rte_memory_order_relaxed);
-				rte_atomic_fetch_add_explicit(&rxq->sw_stats.drop_bytes,
-				 first_seg->pkt_len - rxq->crc_len + RTE_ETHER_CRC_LEN,
-				 rte_memory_order_relaxed);
+				rxq->sw_stats.drop_pkts += 1;
+				rxq->sw_stats.drop_bytes +=
+					first_seg->pkt_len - rxq->crc_len + RTE_ETHER_CRC_LEN;
 				rte_pktmbuf_free(first_seg);
 				first_seg = NULL;
 				last_seg  = NULL;
@@ -218,11 +209,10 @@ sxe2_rx_pkts_refactor(struct sxe2_rx_queue *rxq,
 				mbuf_bufs[buf_idx]->data_len += rxq->crc_len;
 				mbuf_bufs[buf_idx]->pkt_len  += rxq->crc_len;
 			} else {
-				rte_atomic_fetch_add_explicit(&rxq->sw_stats.drop_pkts, 1,
-					rte_memory_order_relaxed);
-				rte_atomic_fetch_add_explicit(&rxq->sw_stats.drop_bytes,
-				 mbuf_bufs[buf_idx]->pkt_len - rxq->crc_len + RTE_ETHER_CRC_LEN,
-				 rte_memory_order_relaxed);
+				rxq->sw_stats.drop_pkts += 1;
+				rxq->sw_stats.drop_bytes +=
+					mbuf_bufs[buf_idx]->pkt_len - rxq->crc_len +
+					RTE_ETHER_CRC_LEN;
 				rte_pktmbuf_free_seg(mbuf_bufs[buf_idx]);
 				continue;
 			}

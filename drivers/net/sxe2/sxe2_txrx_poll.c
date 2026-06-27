@@ -682,23 +682,17 @@ sxe2_rx_sw_stats_update(struct sxe2_rx_queue *rxq, struct rte_mbuf *mbuf,
 		union sxe2_rx_desc *rxd)
 {
 	uint64_t qword1 = rte_le_to_cpu_64(rxd->wb.status_err_ptype_len);
-	rte_atomic_fetch_add_explicit(&rxq->sw_stats.pkts, 1,
-		rte_memory_order_relaxed);
-	rte_atomic_fetch_add_explicit(&rxq->sw_stats.bytes,
-			mbuf->pkt_len + RTE_ETHER_CRC_LEN,
-			rte_memory_order_relaxed);
+	rxq->sw_stats.pkts += 1;
+	rxq->sw_stats.bytes += mbuf->pkt_len + RTE_ETHER_CRC_LEN;
 	switch (SXE2_RX_DESC_STATUS_UMBCAST_VAL_GET(qword1)) {
 	case SXE2_RX_DESC_STATUS_UNICAST:
-		rte_atomic_fetch_add_explicit(&rxq->sw_stats.unicast_pkts, 1,
-			rte_memory_order_relaxed);
+		rxq->sw_stats.unicast_pkts += 1;
 		break;
 	case SXE2_RX_DESC_STATUS_MULTICAST:
-		rte_atomic_fetch_add_explicit(&rxq->sw_stats.multicast_pkts, 1,
-			rte_memory_order_relaxed);
+		rxq->sw_stats.multicast_pkts += 1;
 		break;
 	case SXE2_RX_DESC_STATUS_BROADCAST:
-		rte_atomic_fetch_add_explicit(&rxq->sw_stats.broadcast_pkts, 1,
-			rte_memory_order_relaxed);
+		rxq->sw_stats.broadcast_pkts += 1;
 		break;
 	default:
 		break;
@@ -787,11 +781,9 @@ uint16_t sxe2_rx_pkts_scattered(void *rx_queue, struct rte_mbuf **rx_pkts, uint1
 
 		if (unlikely(qword1 & SXE2_RX_DESC_ERROR_RXE_MASK) ||
 			unlikely(qword1 & SXE2_RX_DESC_ERROR_OVERSIZE_MASK)) {
-			rte_atomic_fetch_add_explicit(&rxq->sw_stats.drop_pkts, 1,
-				rte_memory_order_relaxed);
-			rte_atomic_fetch_add_explicit(&rxq->sw_stats.drop_bytes,
-				first_seg->pkt_len - rxq->crc_len + RTE_ETHER_CRC_LEN,
-				rte_memory_order_relaxed);
+			rxq->sw_stats.drop_pkts += 1;
+			rxq->sw_stats.drop_bytes +=
+				first_seg->pkt_len - rxq->crc_len + RTE_ETHER_CRC_LEN;
 			rte_pktmbuf_free(first_seg);
 			first_seg = NULL;
 			continue;
@@ -822,8 +814,7 @@ uint16_t sxe2_rx_pkts_scattered(void *rx_queue, struct rte_mbuf **rx_pkts, uint1
 
 		sxe2_rx_mbuf_common_fields_fill(rxq, first_seg, &desc_tmp);
 
-		if (rxq->vsi->adapter->devargs.sw_stats_en)
-			sxe2_rx_sw_stats_update(rxq, first_seg, &desc_tmp);
+		sxe2_rx_sw_stats_update(rxq, first_seg, &desc_tmp);
 
 		rte_prefetch0(RTE_PTR_ADD(first_seg->buf_addr, first_seg->data_off));
 
@@ -990,11 +981,9 @@ uint16_t sxe2_rx_pkts_scattered_split(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		if (unlikely(qword1 & SXE2_RX_DESC_ERROR_RXE_MASK) ||
 			unlikely(qword1 & SXE2_RX_DESC_ERROR_OVERSIZE_MASK)) {
-			rte_atomic_fetch_add_explicit(&rxq->sw_stats.drop_pkts, 1,
-				rte_memory_order_relaxed);
-			rte_atomic_fetch_add_explicit(&rxq->sw_stats.drop_bytes,
-				first_seg->pkt_len - rxq->crc_len + RTE_ETHER_CRC_LEN,
-				rte_memory_order_relaxed);
+			rxq->sw_stats.drop_pkts += 1;
+			rxq->sw_stats.drop_bytes +=
+				first_seg->pkt_len - rxq->crc_len + RTE_ETHER_CRC_LEN;
 			rte_pktmbuf_free(first_seg);
 			first_seg = NULL;
 			continue;
@@ -1023,8 +1012,7 @@ uint16_t sxe2_rx_pkts_scattered_split(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->port = rxq->port_id;
 		sxe2_rx_mbuf_common_fields_fill(rxq, first_seg, &desc_tmp);
 
-		if (rxq->vsi->adapter->devargs.sw_stats_en)
-			sxe2_rx_sw_stats_update(rxq, first_seg, &desc_tmp);
+		sxe2_rx_sw_stats_update(rxq, first_seg, &desc_tmp);
 
 		rte_prefetch0(RTE_PTR_ADD(first_seg->buf_addr, first_seg->data_off));
 

@@ -891,7 +891,7 @@ l_end:
 static int32_t sxe2_parse_eth_devargs(struct rte_device *dev,
 			  struct rte_eth_devargs *eth_da)
 {
-	int ret = 0;
+	int32_t ret = 0;
 
 	if (dev->devargs == NULL)
 		return 0;

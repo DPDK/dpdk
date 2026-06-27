@@ -483,41 +483,16 @@ static __rte_always_inline uint16_t
 sxe2_rx_pkts_scattered_batch_vec_sse(struct sxe2_rx_queue *rxq,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
-	const uint64_t *split_rxe_flags64;
 	uint8_t split_rxe_flags[SXE2_RX_PKTS_BURST_BATCH_NUM_VEC] = {0};
 	uint8_t umbcast_flags[SXE2_RX_PKTS_BURST_BATCH_NUM_VEC] = {0};
 	uint16_t rx_done_num;
 	uint16_t rx_pkt_done_num;
 	rx_pkt_done_num = 0;
 
-	if (rxq->vsi->adapter->devargs.sw_stats_en) {
-		rx_done_num = sxe2_rx_pkts_common_vec_sse(rxq, rx_pkts,
-				nb_pkts, split_rxe_flags, umbcast_flags);
-	} else {
-		rx_done_num = sxe2_rx_pkts_common_vec_sse(rxq, rx_pkts,
-				nb_pkts, split_rxe_flags, NULL);
-	}
+	rx_done_num = sxe2_rx_pkts_common_vec_sse(rxq, rx_pkts,
+			nb_pkts, split_rxe_flags, umbcast_flags);
 	if (rx_done_num == 0)
 		goto l_end;
-	if (!rxq->vsi->adapter->devargs.sw_stats_en) {
-		split_rxe_flags64 = (uint64_t *)split_rxe_flags;
-		if (rxq->pkt_first_seg == NULL &&
-			split_rxe_flags64[0] == 0 &&
-			split_rxe_flags64[1] == 0 &&
-			split_rxe_flags64[2] == 0 &&
-			split_rxe_flags64[3] == 0) {
-			rx_pkt_done_num = rx_done_num;
-			goto l_end;
-		}
-		if (rxq->pkt_first_seg == NULL) {
-			while (rx_pkt_done_num < rx_done_num &&
-			       split_rxe_flags[rx_pkt_done_num] == 0)
-				rx_pkt_done_num++;
-			if (rx_pkt_done_num == rx_done_num)
-				goto l_end;
-			rxq->pkt_first_seg = rx_pkts[rx_pkt_done_num];
-		}
-	}
 	rx_pkt_done_num += sxe2_rx_pkts_refactor(rxq, &rx_pkts[rx_pkt_done_num],
 			rx_done_num - rx_pkt_done_num, &split_rxe_flags[rx_pkt_done_num],
 			&umbcast_flags[rx_pkt_done_num]);
