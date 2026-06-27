@@ -1833,3 +1833,49 @@ int32_t sxe2_drv_srcvsi_prune_config(struct sxe2_adapter *adapter,
 
 	return ret;
 }
+
+int32_t sxe2_drv_sfp_eeprom_read(struct sxe2_adapter *adapter, struct sxe2_sfp_read_info *sfp_info)
+{
+	int32_t ret = -1;
+	struct sxe2_drv_sfp_req req = {0};
+	struct sxe2_drv_sfp_resp *resp = NULL;
+	struct sxe2_drv_cmd_params cmd = {0};
+
+	resp = rte_zmalloc("read sfp data", sizeof(*resp) + sfp_info->len, 0);
+	if (!resp) {
+		PMD_LOG_ERR(DRV, "Alloc memory failed");
+		ret = -ENOMEM;
+		goto l_end;
+	}
+
+	req.is_wr = false;
+	req.is_qsfp = sfp_info->is_qsfp;
+	req.page_cnt = rte_cpu_to_le_16(sfp_info->page_cnt);
+	req.offset = rte_cpu_to_le_16(sfp_info->offset);
+	req.data_len = rte_cpu_to_le_16(sfp_info->len);
+	req.bus_addr = rte_cpu_to_le_16(sfp_info->bus_addr);
+
+	PMD_DEV_LOG_INFO(adapter, DRV, "is_qsfp=%u, page_cnt=%u, offset=%u, datalen=%u, "
+			 "bus_addr=%u", sfp_info->is_qsfp, sfp_info->page_cnt, sfp_info->offset,
+			 sfp_info->len, sfp_info->bus_addr);
+
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_OPT_EEP_GET,
+				 &req, sizeof(req),
+				 resp, sizeof(*resp) + sfp_info->len);
+	ret = sxe2_drv_cmd_exec(adapter->cdev, &cmd);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to read sfp, ret=%d", ret);
+		goto l_end;
+	}
+
+	ret = 0;
+	rte_memcpy(sfp_info->data, resp->data, sfp_info->len);
+
+l_end:
+	if (resp) {
+		rte_free(resp);
+		resp = NULL;
+	}
+
+	return ret;
+}

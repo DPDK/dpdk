@@ -167,4 +167,7 @@ int32_t sxe2_drv_flow_fnav_query_stat(struct sxe2_adapter *adapter,
 int32_t sxe2_drv_srcvsi_prune_config(struct sxe2_adapter *adapter,
 		uint16_t *vsi_list, uint16_t vsi_cnt, bool set);
 
+int32_t sxe2_drv_sfp_eeprom_read(struct sxe2_adapter *adapter,
+		struct sxe2_sfp_read_info *sfp_info);
+
 #endif /* SXE2_CMD_CHNL_H */

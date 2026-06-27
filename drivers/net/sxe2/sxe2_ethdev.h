@@ -274,6 +274,15 @@ struct sxe2_sched_hw_cap {
 	uint8_t adj_lvl;
 };
 
+struct sxe2_sfp_read_info {
+	uint8_t *data;
+	uint16_t offset;
+	uint16_t len;
+	uint16_t bus_addr;
+	uint16_t page_cnt;
+	bool is_qsfp;
+};
+
 struct sxe2_link_context {
 	rte_spinlock_t link_lock;
 	bool link_up;

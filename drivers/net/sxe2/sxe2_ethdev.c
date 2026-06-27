@@ -39,6 +39,7 @@
 #include "sxe2_ioctl_chnl_func.h"
 #include "sxe2_ethdev_repr.h"
 #include "sxe2vf_regs.h"
+#include "sxe2_msg.h"
 
 #define SXE2_PCI_VENDOR_ID_1    0x1ff2
 #define SXE2_PCI_DEVICE_ID_PF_1 0x10b1
@@ -120,6 +121,10 @@ static int32_t sxe2_udp_tunnel_port_del(struct rte_eth_dev *dev,
 					struct rte_eth_udp_tunnel *tunnel_udp);
 static int32_t sxe2_fw_version_string_get(struct rte_eth_dev *dev,
 				      char *fw_version, size_t fw_size);
+static int32_t sxe2_get_module_info(struct rte_eth_dev *dev,
+				struct rte_eth_dev_module_info *info);
+static int32_t sxe2_get_module_eeprom(struct rte_eth_dev *dev,
+				  struct rte_dev_eeprom_info *info);
 
 static const struct eth_dev_ops sxe2_eth_dev_ops = {
 	.dev_configure              = sxe2_dev_configure,
@@ -184,6 +189,9 @@ static const struct eth_dev_ops sxe2_eth_dev_ops = {
 	.fw_version_get             = sxe2_fw_version_string_get,
 
 	.get_monitor_addr           = sxe2_get_monitor_addr,
+
+	.get_module_info            = sxe2_get_module_info,
+	.get_module_eeprom          = sxe2_get_module_eeprom,
 };
 
 static int32_t sxe2_dev_configure(struct rte_eth_dev *dev)
@@ -285,6 +293,296 @@ l_start_queues_err:
 	(void)sxe2_rxq_intr_disable(dev);
 l_rxq_intr_err:
 	(void)sxe2_filter_rule_stop(dev);
+l_end:
+	return ret;
+}
+
+static int32_t sxe2_sfp_type_get(struct sxe2_adapter *adapter, uint8_t *type)
+{
+	int32_t ret = -1;
+	struct sxe2_sfp_read_info sfp_info;
+
+	memset(&sfp_info, 0, sizeof(sfp_info));
+	sfp_info.bus_addr = SXE2_SFP_E2P_I2C_7BIT_ADDR0;
+	sfp_info.len = 1;
+	sfp_info.data = type;
+	sfp_info.offset = 0;
+	sfp_info.page_cnt = 0;
+	sfp_info.is_qsfp = false;
+
+	ret = sxe2_drv_sfp_eeprom_read(adapter, &sfp_info);
+	if (ret)
+		goto l_end;
+
+	ret = 0;
+	PMD_LOG_INFO(DRV, "Get sfp type success, type=%u", *type);
+
+l_end:
+	return ret;
+}
+
+static int32_t sxe2_sfp_module_info_get(struct sxe2_adapter *adapter,
+						  struct rte_eth_dev_module_info *info)
+{
+	int32_t ret = -1;
+	bool page_swap = false;
+	uint8_t sff8472_rev = 0;
+	uint8_t addr_mode = 0;
+	struct sxe2_sfp_read_info sfp_info;
+
+	memset(&sfp_info, 0, sizeof(sfp_info));
+	sfp_info.bus_addr = SXE2_SFP_E2P_I2C_7BIT_ADDR0;
+	sfp_info.is_qsfp = false;
+	sfp_info.len = 1;
+	sfp_info.data = &sff8472_rev;
+	sfp_info.offset = SXE2_MODULE_SFF_8472_COMP;
+	sfp_info.page_cnt = 0;
+
+	ret = sxe2_drv_sfp_eeprom_read(adapter, &sfp_info);
+	if (ret) {
+		ret = -EIO;
+		PMD_LOG_ERR(DRV, "Failed to read 8472 protocol, ret=%d", ret);
+		goto l_end;
+	}
+
+	sfp_info.data = &addr_mode;
+	sfp_info.offset = SXE2_MODULE_SFF_8472_SWAP;
+
+	ret = sxe2_drv_sfp_eeprom_read(adapter, &sfp_info);
+	if (ret) {
+		ret = -EIO;
+		PMD_LOG_ERR(DRV, "Failed to read A2 page, ret=%d", ret);
+		goto l_end;
+	}
+
+	if (addr_mode & SXE2_MODULE_SFF_ADDR_MODE) {
+		PMD_LOG_ERR(DRV, "address change required to access page 0xA2, "
+			    "but not supported. please report the module "
+			    "type to the driver maintainers.");
+		page_swap = true;
+	}
+
+	PMD_LOG_INFO(DRV, "Read sfp module info, sff_8472=%u, a2_page=%u, swap_page=%d",
+		     sff8472_rev, addr_mode, page_swap);
+
+	if (sff8472_rev == SXE2_MODULE_SFF_8472_UNSUP ||
+	    page_swap ||
+	    !(addr_mode & SXE2_MODULE_SFF_DDM_IMPLEMENTED)) {
+		info->type = SXE2_MODULE_SFF_8079;
+		info->eeprom_len = SXE2_MODULE_SFF_8079_LEN;
+	} else {
+		info->type = SXE2_MODULE_SFF_8472;
+		info->eeprom_len = SXE2_MODULE_SFF_8472_LEN;
+	}
+
+	ret = 0;
+
+l_end:
+	return ret;
+}
+
+static int32_t
+sxe2_qsfp_module_info_get(struct sxe2_adapter *adapter, struct rte_eth_dev_module_info *info)
+{
+	int32_t ret = -1;
+	uint8_t sff8636_rev = 0;
+	struct sxe2_sfp_read_info sfp_info;
+
+	memset(&sfp_info, 0, sizeof(sfp_info));
+	sfp_info.bus_addr = SXE2_SFP_E2P_I2C_7BIT_ADDR0;
+	sfp_info.is_qsfp = true;
+	sfp_info.len = 1;
+	sfp_info.data = &sff8636_rev;
+	sfp_info.offset = SXE2_MODULE_REVISION_ADDR;
+	sfp_info.page_cnt = 0;
+
+	ret = sxe2_drv_sfp_eeprom_read(adapter, &sfp_info);
+	if (ret) {
+		ret = -EIO;
+		PMD_LOG_ERR(DRV, "Failed to read 8636 protocol, ret=%d", ret);
+		goto l_end;
+	}
+
+	if (sff8636_rev > 0x02) {
+		info->type = SXE2_MODULE_SFF_8636;
+		info->eeprom_len = SXE2_MODULE_SFF_8636_MAX_LEN;
+	} else {
+		info->type = SXE2_MODULE_SFF_8436;
+		info->eeprom_len = SXE2_MODULE_SFF_8436_MAX_LEN;
+	}
+
+l_end:
+	return ret;
+}
+
+static int32_t
+sxe2_get_module_info(struct rte_eth_dev *dev, struct rte_eth_dev_module_info *info)
+{
+	int32_t ret = -1;
+	uint8_t type = 0;
+	struct sxe2_adapter *adapter = dev->data->dev_private;
+
+	ret = sxe2_sfp_type_get(adapter, &type);
+	if (ret) {
+		ret = -EIO;
+		PMD_LOG_ERR(DRV, "Failed to read sfp type, ret=%d", ret);
+		goto l_end;
+	}
+
+	switch (type) {
+	case SXE2_MODULE_SFF_SFP_TYPE:
+		ret = sxe2_sfp_module_info_get(adapter, info);
+		if (ret)
+			goto l_end;
+		break;
+	case SXE2_MODULE_TYPE_QSFP_PLUS:
+	case SXE2_MODULE_TYPE_QSFP28:
+		ret = sxe2_qsfp_module_info_get(adapter, info);
+		if (ret)
+			goto l_end;
+		break;
+	default:
+		ret = -ENXIO;
+		PMD_LOG_ERR(DRV, "Invalid sfp type, type=%d.", type);
+		goto l_end;
+	}
+
+	PMD_LOG_INFO(DRV, "sfp eeprom type=%x, eeprom len=%d.", info->type, info->eeprom_len);
+
+l_end:
+	return ret;
+}
+
+static int32_t
+sxe2_get_sfp_eeprom(struct sxe2_adapter *adapter, struct sxe2_sfp_read_info *sfp_info)
+{
+	int32_t ret = -1;
+	uint16_t ori_len = sfp_info->len;
+	uint16_t ori_offset = sfp_info->offset;
+
+	if ((ori_len + ori_offset) > SXE2_SFP_EEP_LEN_MAX) {
+		sfp_info->len = (uint16_t)(SXE2_SFP_EEP_LEN_MAX - ori_offset);
+		ret = sxe2_drv_sfp_eeprom_read(adapter, sfp_info);
+		if (ret)
+			goto l_end;
+		sfp_info->bus_addr = SXE2_SFP_E2P_I2C_7BIT_ADDR1;
+		sfp_info->len = (uint16_t)(ori_len - (SXE2_SFP_EEP_LEN_MAX - ori_offset));
+		sfp_info->data = (uint8_t *)(sfp_info->data) + (SXE2_SFP_EEP_LEN_MAX - ori_offset);
+		sfp_info->offset = 0;
+		sfp_info->page_cnt = 0;
+		ret = sxe2_drv_sfp_eeprom_read(adapter, sfp_info);
+	} else {
+		ret = sxe2_drv_sfp_eeprom_read(adapter, sfp_info);
+	}
+
+l_end:
+	if (ret)
+		PMD_LOG_ERR(DRV, "Failed to read sfp.");
+	return ret;
+}
+
+static int32_t
+sxe2_get_qsfp_eeprom(struct sxe2_adapter *adapter,
+					  struct sxe2_sfp_read_info *sfp_info)
+{
+	int32_t ret = -1;
+	uint16_t ori_len = sfp_info->len;
+	uint16_t ori_offset = sfp_info->offset;
+	uint16_t read_len = 0;
+	uint16_t remain_len = 0;
+
+	if ((ori_len + ori_offset) > SXE2_SFP_EEP_LEN_MAX) {
+		sfp_info->len = (uint16_t)(SXE2_SFP_EEP_LEN_MAX - ori_offset);
+		ret = sxe2_drv_sfp_eeprom_read(adapter, sfp_info);
+		if (ret)
+			goto l_end;
+
+		do {
+			read_len = read_len + sfp_info->len;
+			sfp_info->data = (uint8_t *)(sfp_info->data) + sfp_info->len;
+			sfp_info->offset = SXE2_QSFP_PAGE_OFST_START;
+			sfp_info->page_cnt++;
+			remain_len = (uint16_t)(ori_len - read_len);
+			sfp_info->len = (remain_len > SXE2_QSFP_PAGE_OFST_START) ?
+					SXE2_QSFP_PAGE_OFST_START : remain_len;
+			ret = sxe2_drv_sfp_eeprom_read(adapter, sfp_info);
+			if (ret)
+				goto l_end;
+		} while (remain_len > SXE2_QSFP_PAGE_OFST_START);
+	} else {
+		ret = sxe2_drv_sfp_eeprom_read(adapter, sfp_info);
+	}
+
+l_end:
+	if (ret)
+		PMD_LOG_ERR(DRV, "Failed to read sfp.");
+	return ret;
+}
+
+static int32_t
+sxe2_get_module_eeprom(struct rte_eth_dev *dev, struct rte_dev_eeprom_info *info)
+{
+	int32_t ret = -1;
+	uint8_t type = 0;
+	struct sxe2_adapter *adapter = dev->data->dev_private;
+	struct sxe2_sfp_read_info sfp_info;
+
+	memset(&sfp_info, 0, sizeof(sfp_info));
+
+	if (!info || !info->length || !info->data ||
+			info->offset >= SXE2_SFP_EEP_LEN_MAX) {
+		ret = -EINVAL;
+		goto l_end;
+	}
+
+	PMD_LOG_INFO(DRV, "Dump sfp eeprom info offset=0x%x, len=0x%x.",
+		     info->offset, info->length);
+
+	ret = sxe2_sfp_type_get(adapter, &type);
+	if (ret) {
+		ret = -EIO;
+		PMD_LOG_ERR(DRV, "Failed to read sfp type, ret=%d", ret);
+		goto l_end;
+	}
+
+	sfp_info.bus_addr = SXE2_SFP_E2P_I2C_7BIT_ADDR0;
+	sfp_info.len = info->length;
+	sfp_info.data = info->data;
+	sfp_info.offset = info->offset;
+	sfp_info.page_cnt = 0;
+
+	switch (type) {
+	case SXE2_MODULE_SFF_SFP_TYPE:
+		if (info->length > SXE2_SFP_EEP_LEN_MAX * 2) {
+			ret = -EINVAL;
+			PMD_LOG_ERR(DRV, "sfp read size[%u] > eeprom max size[%d], ret=%d",
+				    info->length, SXE2_SFP_EEP_LEN_MAX * 2, ret);
+			goto l_end;
+		}
+		sfp_info.is_qsfp = false;
+		ret = sxe2_get_sfp_eeprom(adapter, &sfp_info);
+		if (ret)
+			goto l_end;
+		break;
+	case SXE2_MODULE_TYPE_QSFP_PLUS:
+	case SXE2_MODULE_TYPE_QSFP28:
+		if (info->length > SXE2_MODULE_SFF_8636_MAX_LEN) {
+			ret = -EINVAL;
+			PMD_LOG_ERR(DRV, "sfp read size[%u] > eeprom max size[%d], ret=%d",
+				    info->length, SXE2_SFP_EEP_LEN_MAX * 2, ret);
+			goto l_end;
+		}
+		sfp_info.is_qsfp = true;
+		ret = sxe2_get_qsfp_eeprom(adapter, &sfp_info);
+		if (ret)
+			goto l_end;
+		break;
+	default:
+		ret = -ENXIO;
+		PMD_LOG_ERR(DRV, "Invalid sfp type, type=%d.", type);
+		goto l_end;
+	}
+
 l_end:
 	return ret;
 }
