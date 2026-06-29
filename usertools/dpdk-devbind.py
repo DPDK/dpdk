@@ -111,6 +111,9 @@ misc_devices = [cnxk_bphy, cnxk_bphy_cgx, cnxk_inl_dev,
 # global dict ethernet devices present. Dictionary indexed by PCI address.
 # Each device within this is itself a dictionary of device properties
 devices = {}
+# for bsd, cache of all devices with ifconfig info merged in. populated once on first call.
+devices_cache = None
+
 # list of supported DPDK drivers
 dpdk_drivers = ["igb_uio", "vfio-pci", "uio_pci_generic"] if is_linux else ["nic_uio"]
 # list of currently loaded kernel modules
@@ -220,7 +223,10 @@ def get_pci_device_details(dev_id, probe_lspci):
 def clear_data():
     '''This function clears any old data'''
     global devices
+    global devices_cache
     devices = {}
+    if is_bsd:
+        devices_cache = None
 
 
 def get_basic_devinfo_linux(devices_type):
@@ -253,38 +259,89 @@ def get_basic_devinfo_linux(devices_type):
             dev[name.rstrip(":")] = value_list[len(value_list) - 1] \
                 .rstrip("]").lstrip("[")
 
+def init_devices_cache_bsd():
+    '''Initialize the devices cache by parsing pciconf -lv and ifconfig -a once.
+    Returns a list of device dictionaries with ifconfig data merged in.'''
+    global devices_cache
+
+    if devices_cache is not None:
+        return devices_cache
+
+    # Get all PCI device info in one call
+    pciconf_output = subprocess.check_output(["pciconf", "-lv"]).decode("utf8")
+    # Get all network interface info in one call
+    ifconfig_output = subprocess.check_output(["ifconfig", "-a"]).decode("utf8").splitlines()
+
+    devices_cache = []
+    current_dev = None
+
+    # Parse pciconf -lv output
+    for line in pciconf_output.splitlines():
+        # Main device line: none0@pci0:0:0:0: class=0x088000 rev=0x04 hdr=0x00 vendor=0x8086 device=0x09a2
+        if line and '@pci' in line:
+            # Save previous device if any
+            if current_dev:
+                devices_cache.append(current_dev)
+
+            # Parse slot/address from first part
+            name_addr, fields = line.split(maxsplit=1)
+            devname, addr = name_addr.split('@')
+            # Remove trailing colon from address
+            addr = addr.rstrip(':')
+
+            current_dev = {}
+            current_dev["Slot"] = addr
+            current_dev["Slot_str"] = addr
+
+            # Extract driver base name from device name (e.g., "nic_uio2" -> "nic_uio", "ixl0" -> "ixl")
+            # Device name format is like: "nic_uio2", "ioat0", "em0", "ixl1", "none0", etc.
+            current_dev["Driver_str"] = devname.rstrip('0123456789')
+
+            # Parse class/vendor/device from rest of line
+            fields_list = fields.split()
+            for field in fields_list:
+                if '=' in field:
+                    name, value = field.split("=")
+                    name = name.title()
+                    if name.startswith("Sub"):
+                        name = "S" + name[3:].title()
+                    # For class code, extract only first 2 hex digits (class part)
+                    if name == "Class" and value.startswith("0x") and len(value) > 4:
+                        current_dev[name + "_str"] = value
+                        current_dev[name] = value[2:4]  # Extract just class code (e.g., "02" from "0x020000")
+                    else:
+                        current_dev[name + "_str"] = value
+                        current_dev[name] = value[2:] if value.startswith("0x") else value
+
+            # Check if this is a network device and attach interface info
+            if "Class" in current_dev:
+                class_code = current_dev.get("Class", "")
+                if class_code == "02":  # Network controller
+                    iflines = [ln for ln in ifconfig_output if ln.startswith(f"{devname}:")]
+                    if iflines:
+                        current_dev["Interface"] = devname
+
+        # Device description line: device = 'Intel 82576 Gigabit Network Connection'
+        elif current_dev and "device" in line.lower() and "=" in line:
+            current_dev["Device_str"] = line.split("=")[1].strip().strip("'")
+
+    # Add the last device
+    if current_dev:
+        devices_cache.append(current_dev)
+
+    return devices_cache
 
 def get_basic_devinfo_bsd(devices_type):
+    '''Filter the pre-cached device list by device type and populate devices dict.'''
     global devices
 
-    dev_lines = subprocess.check_output(["pciconf", "-l"]).decode("utf8").splitlines()
-    netifs = subprocess.check_output(["ifconfig", "-a"]).decode("utf8").splitlines()
-    for dev_line in dev_lines:
-        dev = {}
-        name_addr, fields = dev_line.split(maxsplit=1)
-        devname, addr = name_addr.split('@')
-        dev["Slot"] = addr
-        dev["Slot_str"] = addr
-        dev["Driver_str"] = devname[:-1]
-        if devices_type == network_devices:
-            iflines = [ln for ln in netifs if ln.startswith(f"{devname}:")]
-            if iflines:
-                dev["Interface"] = devname
-        fields = fields.split()
-        for field in fields:
-            name, value = field.split("=")
-            name = name.title()
-            if name.startswith("Sub"):
-                name = "S" + name[3:].title()
-            dev[name + "_str"] = value
-            dev[name] = value[2:] if value.startswith("0x") else value
-        # explicitly query the device name string
-        devdetails = subprocess.check_output(["pciconf", "-lv", addr]).decode("utf8")
-        for devline in devdetails.splitlines():
-            if devline.lstrip().startswith("device") and "=" in devline:
-                dev["Device_str"] = devline.split("=")[1].strip().strip("'")
+    # Initialize cache on first call (subsequent calls return cached data)
+    all_devices = init_devices_cache_bsd()
+
+    # Filter by device type and add to devices dict
+    for dev in all_devices:
         if device_type_match(dev, devices_type):
-            devices[addr] = dict(dev)
+            devices[dev["Slot"]] = dict(dev)
 
 
 def get_device_details(devices_type):
