@@ -1111,8 +1111,8 @@ uadk_crypto_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		if (sess->auth.operation == RTE_CRYPTO_AUTH_OP_VERIFY) {
 			uint8_t *dst = qp->temp_digest[i % BURST_MAX];
 
-			if (memcmp(dst, op->sym->auth.digest.data,
-				   sess->auth.digest_length) != 0)
+			if (!rte_memeq_timingsafe(dst, op->sym->auth.digest.data,
+						  sess->auth.digest_length))
 				op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 		}
 
