@@ -747,9 +747,6 @@ void
 rte_memzero_explicit(void *dst, size_t sz);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Timing-safe memory equality comparison.
  *
  * This function compares two memory regions in constant time,
@@ -770,7 +767,6 @@ rte_memzero_explicit(void *dst, size_t sz);
  * @return
  *   true if the memory regions are identical, false if they differ.
  */
-__rte_experimental
 static inline bool
 rte_memeq_timingsafe(const void *a, const void *b, size_t n)
 {

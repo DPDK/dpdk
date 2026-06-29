@@ -305,6 +305,10 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* **eal: promoted timing-safe memory comparison from experimental to stable.**
+
+  The inline function ``rte_memeq_timingsafe()`` is no longer marked experimental.
+
 * **ethdev: promoted flow metadata API from experimental to stable.**
 
   The following ethdev symbols are no longer marked experimental:
