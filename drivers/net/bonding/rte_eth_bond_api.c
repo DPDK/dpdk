@@ -706,8 +706,12 @@ __eth_bond_member_remove_lock_free(uint16_t bonding_port_id,
 			&rte_eth_devices[bonding_port_id].data->port_id);
 
 	/* Restore original MAC address of member device */
-	rte_eth_dev_default_mac_addr_set(member_port_id,
-			&internals->members[member_idx].persisted_mac_addr);
+	if (rte_eth_dev_default_mac_addr_set(member_port_id,
+			&internals->members[member_idx].persisted_mac_addr)) {
+		RTE_BOND_LOG(ERR,
+				"Failed to restore MAC address on member port %u",
+				member_port_id);
+	}
 
 	/* remove additional MAC addresses from the member */
 	member_remove_mac_addresses(bonding_eth_dev, member_port_id);
