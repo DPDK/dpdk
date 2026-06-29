@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2020 NXP
+ * Copyright 2018-2026 NXP
  */
 
 #include <stdbool.h>
@@ -99,7 +99,7 @@ enetc_xmit_pkts(void *tx_queue,
 		tx_swbd = &tx_ring->q_swbd[i];
 		txbd->frm_len = tx_pkts[start]->pkt_len;
 		txbd->buf_len = txbd->frm_len;
-		txbd->flags = rte_cpu_to_le_16(ENETC_TXBD_FLAGS_F);
+		txbd->flags = ENETC_TXBD_FLAGS_F;
 		txbd->addr = (uint64_t)(uintptr_t)
 		rte_cpu_to_le_64((size_t)tx_swbd->buffer_addr->buf_iova +
 				 tx_swbd->buffer_addr->data_off);
