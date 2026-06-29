@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2024 NXP
+ * Copyright 2024-2026 NXP
  */
 
 #include <stdbool.h>
@@ -279,6 +279,7 @@ enetc4_tx_queue_setup(struct rte_eth_dev *dev,
 		     const struct rte_eth_txconf *tx_conf)
 {
 	int err;
+	uint32_t tx_data;
 	struct enetc_bdr *tx_ring;
 	struct rte_eth_dev_data *data = dev->data;
 	struct enetc_eth_adapter *priv =
@@ -301,6 +302,10 @@ enetc4_tx_queue_setup(struct rte_eth_dev *dev,
 		goto fail;
 
 	tx_ring->ndev = dev;
+	/* reset queue */
+	tx_data = enetc4_txbdr_rd(&priv->hw.hw, tx_ring->index, ENETC_TBMR);
+	tx_data &= ~ENETC_TBMR_EN;
+	enetc4_txbdr_wr(&priv->hw.hw, tx_ring->index, ENETC_TBMR, tx_data);
 	enetc4_setup_txbdr(&priv->hw.hw, tx_ring);
 	data->tx_queues[queue_idx] = tx_ring;
 	tx_ring->tx_deferred_start = tx_conf->tx_deferred_start;
@@ -427,6 +432,7 @@ enetc4_rx_queue_setup(struct rte_eth_dev *dev,
 		     struct rte_mempool *mb_pool)
 {
 	int err = 0;
+	uint32_t rx_enable;
 	struct enetc_bdr *rx_ring;
 	struct rte_eth_dev_data *data =  dev->data;
 	struct enetc_eth_adapter *adapter =
@@ -450,6 +456,10 @@ enetc4_rx_queue_setup(struct rte_eth_dev *dev,
 		goto fail;
 
 	rx_ring->ndev = dev;
+	/* reset queue */
+	rx_enable = enetc4_rxbdr_rd(&adapter->hw.hw, rx_ring->index, ENETC_RBMR);
+	rx_enable &= ~ENETC_RBMR_EN;
+	enetc4_rxbdr_wr(&adapter->hw.hw, rx_ring->index, ENETC_RBMR, rx_enable);
 	enetc4_setup_rxbdr(&adapter->hw.hw, rx_ring, mb_pool);
 	data->rx_queues[rx_queue_id] = rx_ring;
 	rx_ring->rx_deferred_start = rx_conf->rx_deferred_start;
