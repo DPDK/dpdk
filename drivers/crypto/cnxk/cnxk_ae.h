@@ -8,6 +8,7 @@
 #include <rte_common.h>
 #include <rte_crypto_asym.h>
 #include <rte_malloc.h>
+#include <rte_memory.h>
 
 #include "roc_ae.h"
 
@@ -1602,7 +1603,8 @@ cnxk_ae_dequeue_rsa_op(struct rte_crypto_op *cop, uint8_t *rptr,
 			 * Offset output data pointer by length field
 			 * (2 bytes) and compare signed data.
 			 */
-			if (memcmp(rptr + 2, rsa->message.data, rsa->message.length))
+			if (!rte_memeq_timingsafe(rptr + 2,
+						  rsa->message.data, rsa->message.length))
 				cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 		}
 		break;
