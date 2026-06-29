@@ -824,17 +824,20 @@ igc_rss_configure(struct rte_eth_dev *dev)
 	uint16_t i;
 
 	/* Fill in redirection table. */
-	for (i = 0; i < IGC_RSS_RDT_SIZD; i++) {
-		union igc_rss_reta_reg reta;
-		uint16_t q_idx, reta_idx;
+	for (i = 0; i < IGC_RSS_RDT_SIZD; i += IGC_RSS_RDT_REG_SIZE) {
+		union igc_rss_reta_reg reta = { .dword = 0 };
+		uint16_t reta_idx;
 
-		q_idx = (uint8_t)((dev->data->nb_rx_queues > 1) ?
-				   i % dev->data->nb_rx_queues : 0);
-		reta_idx = i % sizeof(reta);
-		reta.bytes[reta_idx] = q_idx;
-		if (reta_idx == sizeof(reta) - 1)
-			IGC_WRITE_REG_LE_VALUE(hw,
-				IGC_RETA(i / sizeof(reta)), reta.dword);
+		RTE_BUILD_BUG_ON(sizeof(reta.bytes) != IGC_RSS_RDT_REG_SIZE);
+		for (reta_idx = 0; reta_idx < IGC_RSS_RDT_REG_SIZE; reta_idx++) {
+			uint16_t q_idx;
+
+			q_idx = (uint8_t)((dev->data->nb_rx_queues > 1) ?
+				(i + reta_idx) % dev->data->nb_rx_queues : 0);
+			reta.bytes[reta_idx] = q_idx;
+		}
+		IGC_WRITE_REG_LE_VALUE(hw,
+			IGC_RETA(i / IGC_RSS_RDT_REG_SIZE), reta.dword);
 	}
 
 	/*
@@ -940,18 +943,18 @@ igc_add_rss_filter(struct rte_eth_dev *dev, struct igc_rss_filter *rss)
 	igc_rss_conf_set(rss_filter, &rss->conf);
 
 	/* Fill in redirection table. */
-	for (i = 0, j = 0; i < IGC_RSS_RDT_SIZD; i++, j++) {
-		union igc_rss_reta_reg reta;
-		uint16_t q_idx, reta_idx;
+	for (i = 0, j = 0; i < IGC_RSS_RDT_SIZD; i += IGC_RSS_RDT_REG_SIZE) {
+		union igc_rss_reta_reg reta = { .dword = 0 };
+		uint16_t reta_idx;
 
-		if (j == rss->conf.queue_num)
-			j = 0;
-		q_idx = rss->conf.queue[j];
-		reta_idx = i % sizeof(reta);
-		reta.bytes[reta_idx] = q_idx;
-		if (reta_idx == sizeof(reta) - 1)
-			IGC_WRITE_REG_LE_VALUE(hw,
-				IGC_RETA(i / sizeof(reta)), reta.dword);
+		RTE_BUILD_BUG_ON(sizeof(reta.bytes) != IGC_RSS_RDT_REG_SIZE);
+		for (reta_idx = 0; reta_idx < IGC_RSS_RDT_REG_SIZE; reta_idx++, j++) {
+			if (j == rss->conf.queue_num)
+				j = 0;
+			reta.bytes[reta_idx] = rss->conf.queue[j];
+		}
+		IGC_WRITE_REG_LE_VALUE(hw,
+			IGC_RETA(i / IGC_RSS_RDT_REG_SIZE), reta.dword);
 	}
 
 	if (rss_conf.rss_key == NULL)
