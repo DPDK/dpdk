@@ -115,6 +115,7 @@ struct enetc_eth_hw {
 	uint32_t vsi_timeout; /* VSI-PSI message wait timeout (iterations) */
 	uint32_t vsi_delay;   /* VSI-PSI message wait delay (us) */
 	uint32_t *txq_prior;  /* per-queue TX priority (TBMR priority bits) */
+	uint8_t nc_mode;      /* 1 = non-cacheable BD memory, use _nc ops */
 };
 
 /*
@@ -315,8 +316,28 @@ uint16_t enetc_recv_pkts(void *rxq, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);
 uint16_t enetc_recv_pkts_nc(void *rxq, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);
+uint16_t enetc_xmit_pkts_cacheable(void *txq, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
+uint16_t enetc_recv_pkts_cacheable(void *rxq, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
 
 int enetc_refill_rx_ring(struct enetc_bdr *rx_ring, const int buff_cnt);
+
+/*
+ * Cache-maintenance constants for cacheable BD ring mode.
+ *
+ * BD = 16 bytes, cache line = 64 bytes => 4 BDs per cache line.
+ * Every dcbf in enetc_refill_rx_ring() flushes a full 64-byte cache line.
+ * To ensure each dcbf covers only fully-written BDs the caller
+ * must pass a count rounded DOWN to a multiple of ENETC_BD_PER_CL so that
+ * the last partial group is left in cache to be completed and flushed in
+ * the next call.
+ */
+#define ENETC_BD_PER_CL		(RTE_CACHE_LINE_SIZE / sizeof(union enetc_rx_bd))
+#define ENETC_BD_PER_CL_MASK	(ENETC_BD_PER_CL - 1)
+/* Round n DOWN to the nearest multiple of ENETC_BD_PER_CL. */
+#define ENETC_BD_ALIGN_DOWN(n)	((n) & ~(unsigned int)ENETC_BD_PER_CL_MASK)
+
 void enetc4_dev_hw_init(struct rte_eth_dev *eth_dev);
 void enetc_print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr);
 

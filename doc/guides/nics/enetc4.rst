@@ -140,3 +140,13 @@ PF/Common devargs
   Usage example::
 
     dpdk-testpmd -a 0000:00:00.0,enetc4_txq_prior=1|2|3 -- -i
+
+``nc``
+  Select non-cacheable Rx/Tx ops (BD rings mapped as non-cacheable memory).
+  Set to ``1`` to use non-cacheable descriptor ring operations.
+  By default, cacheable BD rings with software cache maintenance are used.
+  Applies to both PF and VF.
+
+  Usage example::
+
+    dpdk-testpmd -a 0000:00:00.0,nc=1 -- -i

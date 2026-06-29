@@ -12,6 +12,30 @@
 #define ENETC4_VSI_DISABLE		"enetc4_vsi_disable"
 #define ENETC4_VSI_TIMEOUT		"enetc4_vsi_timeout"
 #define ENETC4_VSI_DELAY		"enetc4_vsi_delay"
+#define ENETC4_NC_MEMORY		"nc"
+
+static void
+enetc4_vf_get_devarg_nc(struct rte_eth_dev *dev)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_devargs *devargs = dev->device->devargs;
+	struct rte_kvargs *kvlist;
+	const char *val;
+
+	if (!devargs)
+		return;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (!kvlist)
+		return;
+
+	val = rte_kvargs_get(kvlist, ENETC4_NC_MEMORY);
+	if (val && atoi(val) == 1)
+		hw->nc_mode = 1;
+
+	rte_kvargs_free(kvlist);
+}
 
 #define ENETC_CRC_TABLE_SIZE		256
 #define ENETC_POLY			0x1021
@@ -1370,6 +1394,14 @@ enetc4_vf_dev_init(struct rte_eth_dev *eth_dev)
 
 	enetc4_dev_hw_init(eth_dev);
 
+	hw->nc_mode = 0;
+	enetc4_vf_get_devarg_nc(eth_dev);
+	if (hw->nc_mode) {
+		eth_dev->rx_pkt_burst = &enetc_recv_pkts_nc;
+		eth_dev->tx_pkt_burst = &enetc_xmit_pkts_nc;
+		ENETC_PMD_LOG(INFO, "nc=1: using non-cacheable BD ops (_nc)");
+	}
+
 	si_cap = enetc_rd(enetc_hw, ENETC_SICAPR0);
 	hw->max_tx_queues = si_cap & ENETC_SICAPR0_BDR_MASK;
 	hw->max_rx_queues = (si_cap >> 16) & ENETC_SICAPR0_BDR_MASK;
@@ -1477,5 +1509,6 @@ RTE_PMD_REGISTER_KMOD_DEP(net_enetc4_vf, "* igb_uio | uio_pci_generic");
 RTE_PMD_REGISTER_PARAM_STRING(net_enetc4_vf,
 			      ENETC4_VSI_DISABLE "=<any> "
 			      ENETC4_VSI_TIMEOUT "=<uint> "
-			      ENETC4_VSI_DELAY "=<uint>");
+			      ENETC4_VSI_DELAY "=<uint> "
+			      ENETC4_NC_MEMORY "=<int>");
 RTE_LOG_REGISTER_DEFAULT(enetc4_vf_logtype_pmd, NOTICE);

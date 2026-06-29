@@ -167,6 +167,7 @@ New Features
   * Added devargs options ``enetc4_vsi_timeout`` and ``enetc4_vsi_delay``
     for VSI-PSI messaging timeout and delay.
   * Added devargs option ``enetc4_txq_prior`` to set Tx queues priorities.
+  * Added devargs option ``nc`` to select non-cacheable Rx/Tx ops.
 
 * **Updated PCAP ethernet driver.**
 
