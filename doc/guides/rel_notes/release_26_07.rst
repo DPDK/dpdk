@@ -162,6 +162,7 @@ New Features
 * **Updated NXP enetc ethernet driver.**
 
   * Added support for ESP packet type in packet parsing.
+  * Added scatter-gather support for ENETC4 PFs and VFs.
 
 * **Updated PCAP ethernet driver.**
 

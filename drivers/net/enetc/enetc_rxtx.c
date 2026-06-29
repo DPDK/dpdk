@@ -149,54 +149,65 @@ enetc_xmit_pkts_nc(void *tx_queue,
 		struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts)
 {
-	struct enetc_swbd *tx_swbd;
-	int i, start, bds_to_use;
-	struct enetc_tx_bd *txbd;
 	struct enetc_bdr *tx_ring = (struct enetc_bdr *)tx_queue;
-	unsigned int buflen, j;
+	int i, start, bds_to_use, bd_count;
+	struct enetc_tx_bd *txbd = NULL;
+	struct rte_mbuf *seg;
+	uint16_t seg_len, segs_per_pkt;
+	bool is_first_seg;
+	unsigned int j;
 	uint8_t *data;
 
 	i = tx_ring->next_to_use;
-
 	bds_to_use = enetc_bd_unused(tx_ring);
-	if (bds_to_use < nb_pkts)
-		nb_pkts = bds_to_use;
+	bd_count = tx_ring->bd_count;
 
 	start = 0;
-	while (nb_pkts--) {
-		tx_ring->q_swbd[i].buffer_addr = tx_pkts[start];
+	while (start < nb_pkts) {
+		seg = tx_pkts[start];
+		segs_per_pkt = seg->nb_segs;
 
-		buflen = rte_pktmbuf_pkt_len(tx_ring->q_swbd[i].buffer_addr);
-		data = rte_pktmbuf_mtod(tx_ring->q_swbd[i].buffer_addr, void *);
-		for (j = 0; j <= buflen; j += RTE_CACHE_LINE_SIZE)
-			dcbf(data + j);
+		if (bds_to_use < segs_per_pkt)
+			break;
 
-		txbd = ENETC_TXBD(*tx_ring, i);
-		txbd->flags = 0;
-		if (tx_ring->q_swbd[i].buffer_addr->ol_flags & ENETC4_TX_CKSUM_OFFLOAD_MASK)
-			enetc4_tx_offload_checksum(tx_ring->q_swbd[i].buffer_addr, txbd);
+		is_first_seg = true;
+		while (seg) {
+			tx_ring->q_swbd[i].buffer_addr = NULL;
+			seg_len = rte_pktmbuf_data_len(seg);
+			data = rte_pktmbuf_mtod(seg, void *);
 
-		tx_swbd = &tx_ring->q_swbd[i];
-		txbd->frm_len = buflen;
-		txbd->buf_len = txbd->frm_len;
-		txbd->addr = (uint64_t)(uintptr_t)
-		rte_cpu_to_le_64((size_t)tx_swbd->buffer_addr->buf_iova +
-				 tx_swbd->buffer_addr->data_off);
-		txbd->flags |= ENETC4_TXBD_FLAGS_F;
-		i++;
+			/* Flush payload to PoC so HW DMA reads the correct data. */
+			for (j = 0; j < seg_len; j += RTE_CACHE_LINE_SIZE)
+				dcbf(data + j);
+			/* Cover the last byte of an unaligned buffer. */
+			dcbf(data + (seg_len - 1));
+
+			txbd = ENETC_TXBD(*tx_ring, i);
+			txbd->flags = 0;
+			if (is_first_seg) {
+				tx_ring->q_swbd[i].buffer_addr = tx_pkts[start];
+				txbd->frm_len = rte_pktmbuf_pkt_len(seg);
+				if (seg->ol_flags & ENETC4_TX_CKSUM_OFFLOAD_MASK)
+					enetc4_tx_offload_checksum(seg, txbd);
+				is_first_seg = false;
+			}
+
+			txbd->buf_len = rte_cpu_to_le_16(seg_len);
+			txbd->addr = rte_cpu_to_le_64(rte_mbuf_data_iova(seg));
+			seg = seg->next;
+			i++;
+			bds_to_use--;
+			if (unlikely(i == bd_count))
+				i = 0;
+		}
+
+		/* Set the frame-last flag on the final BD of this packet. */
+		if (likely(txbd))
+			txbd->flags |= ENETC4_TXBD_FLAGS_F;
 		start++;
-		if (unlikely(i == tx_ring->bd_count))
-			i = 0;
 	}
 
-	/* we're only cleaning up the Tx ring here, on the assumption that
-	 * software is slower than hardware and hardware completed sending
-	 * older frames out by now.
-	 * We're also cleaning up the ring before kicking off Tx for the new
-	 * batch to minimize chances of contention on the Tx ring
-	 */
 	enetc_clean_tx_ring(tx_ring);
-
 	tx_ring->next_to_use = i;
 	enetc_wr_reg(tx_ring->tcir, i);
 	return start;
@@ -501,38 +512,63 @@ enetc_clean_rx_ring_nc(struct enetc_bdr *rx_ring,
 	int cleaned_cnt, i;
 	struct enetc_swbd *rx_swbd;
 	union enetc_rx_bd *rxbd, rxbd_temp;
+	struct rte_mbuf *first_seg, *cur_seg;
 	uint32_t bd_status;
 	uint8_t *data;
 	uint32_t j;
+	struct rte_mbuf *seg;
+	uint16_t data_len;
 
 	/* next descriptor to process */
 	i = rx_ring->next_to_clean;
-	/* next descriptor to process */
 	rxbd = ENETC_RXBD(*rx_ring, i);
-
 	cleaned_cnt = enetc_bd_unused(rx_ring);
 	rx_swbd = &rx_ring->q_swbd[i];
+
+	/* Restore partial multi-segment chain from a previous burst. */
+	first_seg = rx_ring->pkt_first_seg;
+	cur_seg = rx_ring->pkt_last_seg;
 
 	while (likely(rx_frm_cnt < work_limit)) {
 		rxbd_temp = *rxbd;
 		bd_status = rte_le_to_cpu_32(rxbd_temp.r.lstatus);
-		if (!bd_status)
+		/* LSTATUS_R indicates this BD has been written by HW */
+		if (!(bd_status & ENETC_RXBD_LSTATUS_R))
 			break;
 		if (rxbd_temp.r.error)
 			rx_ring->ierrors++;
 
-		rx_swbd->buffer_addr->pkt_len = rxbd_temp.r.buf_len -
-						rx_ring->crc_len;
-		rx_swbd->buffer_addr->data_len = rx_swbd->buffer_addr->pkt_len;
-		rx_swbd->buffer_addr->hash.rss = rxbd_temp.r.rss_hash;
-		enetc_dev_rx_parse(rx_swbd->buffer_addr,
-				   rxbd_temp.r.parse_summary);
+		seg = rx_swbd->buffer_addr;
+		data_len = rte_le_to_cpu_16(rxbd_temp.r.buf_len);
+		seg->data_len = data_len;
 
-		data = rte_pktmbuf_mtod(rx_swbd->buffer_addr, void *);
-		for (j = 0; j <= rx_swbd->buffer_addr->pkt_len; j += RTE_CACHE_LINE_SIZE)
+		if (!first_seg) {
+			first_seg = seg;
+			cur_seg = seg;
+			first_seg->pkt_len = data_len;
+			enetc_dev_rx_parse(first_seg, rxbd_temp.r.parse_summary);
+			first_seg->hash.rss = rxbd_temp.r.rss_hash;
+		} else {
+			first_seg->pkt_len += data_len;
+			first_seg->nb_segs++;
+			cur_seg->next = seg;
+			cur_seg = seg;
+		}
+
+		/* Invalidate packet data cache lines so CPU reads HW-written data. */
+		data = rte_pktmbuf_mtod(seg, void *);
+		for (j = 0; j < data_len; j += RTE_CACHE_LINE_SIZE)
 			dccivac(data + j);
+		dccivac(data + (data_len - 1));
 
-		rx_pkts[rx_frm_cnt] = rx_swbd->buffer_addr;
+		if (bd_status & ENETC_RXBD_LSTATUS_F) {
+			seg->next = NULL;
+			first_seg->pkt_len -= rx_ring->crc_len;
+			rx_pkts[rx_frm_cnt] = first_seg;
+			rx_frm_cnt++;
+			first_seg = NULL;
+		}
+
 		cleaned_cnt++;
 		rx_swbd++;
 		i++;
@@ -541,9 +577,11 @@ enetc_clean_rx_ring_nc(struct enetc_bdr *rx_ring,
 			rx_swbd = &rx_ring->q_swbd[i];
 		}
 		rxbd = ENETC_RXBD(*rx_ring, i);
-		rx_frm_cnt++;
 	}
 
+	/* Save partial chain for the next burst if frame is incomplete. */
+	rx_ring->pkt_first_seg = first_seg;
+	rx_ring->pkt_last_seg = cur_seg;
 	rx_ring->next_to_clean = i;
 	enetc_refill_rx_ring(rx_ring, cleaned_cnt);
 
