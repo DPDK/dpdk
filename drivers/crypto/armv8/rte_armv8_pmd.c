@@ -631,8 +631,8 @@ process_armv8_chained_op(struct armv8_crypto_qp *qp, struct rte_crypto_op *op,
 
 	op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 	if (sess->auth.operation == RTE_CRYPTO_AUTH_OP_VERIFY) {
-		if (memcmp(adst, op->sym->auth.digest.data,
-				sess->auth.digest_length) != 0) {
+		if (!rte_memeq_timingsafe(adst, op->sym->auth.digest.data,
+					  sess->auth.digest_length)) {
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 		}
 	}
