@@ -110,3 +110,21 @@ VF-specific devargs
   Usage example::
 
     dpdk-testpmd -a 0000:00:01.0,enetc4_vsi_disable -- -i
+
+``enetc4_vsi_timeout``
+  Set the VSI-PSI message wait timeout as an iteration count.
+  Controls how many polling iterations the driver waits
+  for a VSI-PSI response before timing out.
+  Defaults to ``ENETC4_DEF_VSI_WAIT_TIMEOUT_UPDATE`` when not set.
+
+  Usage example::
+
+    dpdk-testpmd -a 0000:00:01.0,enetc4_vsi_timeout=200 -- -i
+
+``enetc4_vsi_delay``
+  Set the VSI-PSI message wait delay in microseconds between polling iterations.
+  Defaults to ``ENETC4_DEF_VSI_WAIT_DELAY_UPDATE`` when not set.
+
+  Usage example::
+
+    dpdk-testpmd -a 0000:00:01.0,enetc4_vsi_delay=10 -- -i

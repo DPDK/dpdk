@@ -164,6 +164,8 @@ New Features
   * Added support for ESP packet type in packet parsing.
   * Added scatter-gather support for ENETC4 PFs and VFs.
   * Added devargs option ``enetc4_vsi_disable`` to disable VSI-PSI messaging.
+  * Added devargs options ``enetc4_vsi_timeout`` and ``enetc4_vsi_delay``
+    for VSI-PSI messaging timeout and delay.
 
 * **Updated PCAP ethernet driver.**
 
