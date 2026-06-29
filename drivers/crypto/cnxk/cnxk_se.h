@@ -3367,7 +3367,7 @@ compl_auth_verify(struct rte_crypto_op *op, uint8_t *gen_mac, uint64_t mac_len)
 		return;
 	}
 
-	if (memcmp(mac, gen_mac, mac_len))
+	if (!rte_memeq_timingsafe(mac, gen_mac, mac_len))
 		op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 	else
 		op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
