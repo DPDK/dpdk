@@ -1490,8 +1490,8 @@ static int cpu_crypto_auth(struct ccp_qp *qp,
 	}
 
 	if (sess->auth.op == CCP_AUTH_OP_VERIFY) {
-		if (memcmp(dst, op->sym->auth.digest.data,
-			   sess->auth.digest_length) != 0) {
+		if (!rte_memeq_timingsafe(dst, op->sym->auth.digest.data,
+					  sess->auth.digest_length)) {
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 		} else {
 			op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
@@ -2801,8 +2801,8 @@ static inline void ccp_auth_dq_prepare(struct rte_crypto_op *op)
 
 	op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 	if (session->auth.op == CCP_AUTH_OP_VERIFY) {
-		if (memcmp(addr + offset, digest_data,
-			   session->auth.digest_length) != 0)
+		if (!rte_memeq_timingsafe(addr + offset, digest_data,
+					  session->auth.digest_length))
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 
 	} else {
