@@ -47,8 +47,7 @@ pkg.generate(name: 'DPDK', # main DPDK pkgconfig file
         description: '''The Data Plane Development Kit (DPDK).
 Note that CFLAGS might contain an -march flag higher than typical baseline.
 This is required for a number of static inline functions in the public headers.''',
-        requires: ['libdpdk-libs', libbsd], # may need libbsd for string funcs
-                      # if libbsd is not enabled, then this is blank
+        requires: ['libdpdk-libs'],
         libraries_private: ['-Wl,--whole-archive'] +
             dpdk_drivers + dpdk_static_libraries +
             ['-Wl,--no-whole-archive'] + platform_flags

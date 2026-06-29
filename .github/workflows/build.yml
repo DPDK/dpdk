@@ -58,7 +58,6 @@ jobs:
       build_deps: |
         ccache \
         libarchive-dev \
-        libbsd-dev \
         libbpf-dev \
         libfdt-dev \
         libibverbs-dev \
@@ -254,7 +253,6 @@ jobs:
         jansson-devel \
         libarchive-devel \
         libatomic \
-        libbsd-devel \
         libbpf-devel \
         libfdt-devel \
         libpcap-devel \

@@ -147,7 +147,6 @@ Build a DPDK container image (using Docker)
 
       # Setup container to build DPDK applications
       RUN dnf -y upgrade && dnf -y install \
-          libbsd-devel \
           numactl-libs \
           libbpf-devel \
           libbpf \

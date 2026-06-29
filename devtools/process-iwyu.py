@@ -60,9 +60,9 @@ def get_build_config(builddir, condition):
         return [ln for ln in f.readlines() if condition(ln)]
 
 
-def uses_libbsd(builddir):
-    "return whether the build uses libbsd or not"
-    return bool(get_build_config(builddir, lambda ln: 'RTE_USE_LIBBSD' in ln))
+def uses_native_strlcpy(builddir):
+    "return whether the build uses fallback strlcpy or libc native one"
+    return bool(get_build_config(builddir, lambda ln: 'RTE_HAS_STRLCPY' in ln))
 
 
 def process(args):
@@ -74,9 +74,9 @@ def process(args):
     print("Warning: The results of this script may include false positives which are required for different systems",
           file=sys.stderr)
 
-    keep_str_fns = uses_libbsd(build_dir)  # check for libbsd
+    keep_str_fns = uses_native_strlcpy(build_dir)  # check for strlcpy fallback in use
     if keep_str_fns:
-        print("Warning: libbsd is present, build will fail to detect incorrect removal of rte_string_fns.h",
+        print("Warning: strlcpy is present, build will fail to detect incorrect removal of rte_string_fns.h",
               file=sys.stderr)
     # turn on werror
     run_meson(['configure', build_dir, '-Dwerror=true'])

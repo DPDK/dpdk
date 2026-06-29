@@ -134,7 +134,7 @@ static int
 test_rte_strlcat(void)
 {
 	/* only run actual unit tests if we have system-provided strlcat */
-#if defined(__BSD_VISIBLE) || defined(RTE_USE_LIBBSD)
+#ifdef RTE_HAS_STRLCPY
 #define BUF_LEN 32
 	const char dst[BUF_LEN] = "Test string";
 	const char src[] = " appended";
@@ -168,7 +168,7 @@ test_rte_strlcat(void)
 	}
 	LOG("Checked %zu combinations\n", i);
 #undef BUF_LEN
-#endif /* defined(__BSD_VISIBLE) || defined(RTE_USE_LIBBSD) */
+#endif /* RTE_HAS_STRLCPY */
 
 	return 0;
 }

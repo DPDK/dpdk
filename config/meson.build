@@ -266,10 +266,9 @@ if libarchive.found()
     dpdk_conf.set('RTE_HAS_LIBARCHIVE', 1)
 endif
 
-# check for libbsd
-libbsd = dependency('libbsd', required: false, method: 'pkg-config')
-if libbsd.found()
-    dpdk_conf.set('RTE_USE_LIBBSD', 1)
+# check for strlcpy/strlcat in native libc, otherwise use DPDK fallback
+if cc.has_function('strlcpy', prefix: '#include <string.h>', args: '-D_GNU_SOURCE')
+    dpdk_conf.set('RTE_HAS_STRLCPY', 1)
 endif
 
 jansson_dep = dependency('jansson', required: false, method: 'pkg-config')

@@ -354,7 +354,6 @@ Create a ``Containerfile`` in the top-level DPDK source directory:
    FROM fedora:latest
 
    RUN dnf -y upgrade && dnf -y install \
-       libbsd-devel \
        numactl-devel \
        meson \
        ninja-build \

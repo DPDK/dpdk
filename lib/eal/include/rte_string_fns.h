@@ -55,7 +55,7 @@ rte_strsplit(char *string, int stringlen,
 /**
  * @internal
  * DPDK-specific version of strlcpy for systems without
- * libc or libbsd copies of the function
+ * a native libc copy of the function
  */
 static inline size_t
 rte_strlcpy(char *dst, const char *src, size_t size)
@@ -66,7 +66,7 @@ rte_strlcpy(char *dst, const char *src, size_t size)
 /**
  * @internal
  * DPDK-specific version of strlcat for systems without
- * libc or libbsd copies of the function
+ * a native libc copy of the function
  */
 static inline size_t
 rte_strlcat(char *dst, const char *src, size_t size)
@@ -81,23 +81,13 @@ rte_strlcat(char *dst, const char *src, size_t size)
 }
 #endif
 
-/* pull in a strlcpy function */
-#ifdef RTE_EXEC_ENV_FREEBSD
-#ifndef __BSD_VISIBLE /* non-standard functions are hidden */
+/* provide strlcpy/strlcat aliases where not natively available */
+#if !defined(RTE_HAS_STRLCPY) || \
+	(defined(RTE_EXEC_ENV_FREEBSD) && !defined(__BSD_VISIBLE)) || \
+	(defined(__GLIBC__) && !defined(__USE_MISC))
 #define strlcpy(dst, src, size) rte_strlcpy(dst, src, size)
 #define strlcat(dst, src, size) rte_strlcat(dst, src, size)
 #endif
-
-#else /* non-BSD platforms */
-#ifdef RTE_USE_LIBBSD
-#include <bsd/string.h>
-
-#else /* no BSD header files, create own */
-#define strlcpy(dst, src, size) rte_strlcpy(dst, src, size)
-#define strlcat(dst, src, size) rte_strlcat(dst, src, size)
-
-#endif /* RTE_USE_LIBBSD */
-#endif /* FREEBSD */
 
 #ifdef __cplusplus
 extern "C" {

@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#undef RTE_USE_LIBBSD
 #include <stdbool.h>
 
 #include <eal_export.h>

@@ -13,8 +13,6 @@
 #include <sys/stat.h>
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-/* we won't link against libbsd, so just always use DPDKs-specific strlcpy */
-#undef RTE_USE_LIBBSD
 #include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_common.h>
