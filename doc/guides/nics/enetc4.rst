@@ -1,5 +1,5 @@
 .. SPDX-License-Identifier: BSD-3-Clause
-   Copyright 2024-2025 NXP
+   Copyright 2024-2026 NXP
 
 ENETC4 Poll Mode Driver
 =======================
@@ -90,3 +90,23 @@ Driver compilation and testing
 Follow instructions available in the document
 :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
 to launch **testpmd**.
+
+
+Driver Arguments (devargs)
+--------------------------
+
+The ENETC4 PMD supports the following device arguments (devargs)
+that can be passed via ``-a`` (allow-list) option in DPDK applications.
+
+VF-specific devargs
+~~~~~~~~~~~~~~~~~~~
+
+``enetc4_vsi_disable``
+  Disable VSI-PSI messaging for the VF.
+  When present, features that require VSI-PSI communication
+  (link update, MAC filter, VLAN filter) are replaced with no-op stubs.
+  Useful when the PF driver does not support VSI-PSI messages.
+
+  Usage example::
+
+    dpdk-testpmd -a 0000:00:01.0,enetc4_vsi_disable -- -i

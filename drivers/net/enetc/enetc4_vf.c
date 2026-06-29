@@ -3,10 +3,13 @@
  */
 
 #include <stdbool.h>
+#include <rte_kvargs.h>
 #include <rte_random.h>
 #include <dpaax_iova_table.h>
 #include "enetc_logs.h"
 #include "enetc.h"
+
+#define ENETC4_VSI_DISABLE		"enetc4_vsi_disable"
 
 #define ENETC_CRC_TABLE_SIZE		256
 #define ENETC_POLY			0x1021
@@ -688,6 +691,13 @@ end:
 }
 
 static int
+enetc4_vf_link_update_dummy(struct rte_eth_dev *dev __rte_unused,
+			    int wait_to_complete __rte_unused)
+{
+	return 0;
+}
+
+static int
 enetc4_vf_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 {
 	struct enetc_psi_reply_msg *reply_msg;
@@ -1148,6 +1158,27 @@ static const struct rte_pci_id pci_vf_id_enetc4_map[] = {
 };
 
 /* Features supported by this driver */
+/* ops table used when VSI messaging is disabled */
+static const struct eth_dev_ops enetc4_vf_ops_no_vsi_m = {
+	.dev_configure        = enetc4_dev_configure,
+	.dev_start            = enetc4_vf_dev_start,
+	.dev_stop             = enetc4_vf_dev_stop,
+	.dev_close            = enetc4_dev_close,
+	.stats_get            = enetc4_vf_stats_get,
+	.dev_infos_get        = enetc4_vf_dev_infos_get,
+	.mtu_set              = enetc4_vf_mtu_set,
+	.link_update	      = enetc4_vf_link_update_dummy,
+	.rx_queue_setup       = enetc4_rx_queue_setup,
+	.rx_queue_start       = enetc4_rx_queue_start,
+	.rx_queue_stop        = enetc4_rx_queue_stop,
+	.rx_queue_release     = enetc4_rx_queue_release,
+	.tx_queue_setup       = enetc4_tx_queue_setup,
+	.tx_queue_start       = enetc4_tx_queue_start,
+	.tx_queue_stop        = enetc4_tx_queue_stop,
+	.tx_queue_release     = enetc4_tx_queue_release,
+	.dev_supported_ptypes_get = enetc4_supported_ptypes_get,
+};
+
 static const struct eth_dev_ops enetc4_vf_ops = {
 	.dev_configure        = enetc4_dev_configure,
 	.dev_start            = enetc4_vf_dev_start,
@@ -1283,7 +1314,28 @@ enetc4_vf_dev_init(struct rte_eth_dev *eth_dev)
 	struct enetc_hw *enetc_hw = &hw->hw;
 
 	PMD_INIT_FUNC_TRACE();
-	eth_dev->dev_ops = &enetc4_vf_ops;
+
+	/* check if VSI messaging should be disabled via devarg */
+	if (eth_dev->device->devargs) {
+		struct rte_kvargs *kvlist;
+
+		kvlist = rte_kvargs_parse(eth_dev->device->devargs->args,
+					  NULL);
+		if (kvlist) {
+			if (rte_kvargs_count(kvlist, ENETC4_VSI_DISABLE) != 0) {
+				ENETC_PMD_NOTICE("VSI messaging disabled by devarg");
+				eth_dev->dev_ops = &enetc4_vf_ops_no_vsi_m;
+			} else {
+				eth_dev->dev_ops = &enetc4_vf_ops;
+			}
+			rte_kvargs_free(kvlist);
+		} else {
+			eth_dev->dev_ops = &enetc4_vf_ops;
+		}
+	} else {
+		eth_dev->dev_ops = &enetc4_vf_ops;
+	}
+
 	enetc4_dev_hw_init(eth_dev);
 
 	si_cap = enetc_rd(enetc_hw, ENETC_SICAPR0);
@@ -1304,8 +1356,9 @@ enetc4_vf_dev_init(struct rte_eth_dev *eth_dev)
 	ENETC_PMD_DEBUG("port_id %d vendorID=0x%x deviceID=0x%x",
 			eth_dev->data->port_id, pci_dev->id.vendor_id,
 			pci_dev->id.device_id);
-	/* update link */
-	enetc4_vf_link_update(eth_dev, 0);
+	/* update link if VSI messaging is enabled */
+	if (eth_dev->dev_ops == &enetc4_vf_ops)
+		enetc4_vf_link_update(eth_dev, 0);
 
 	return 0;
 }
@@ -1389,4 +1442,6 @@ static struct rte_pci_driver rte_enetc4_vf_pmd = {
 RTE_PMD_REGISTER_PCI(net_enetc4_vf, rte_enetc4_vf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_enetc4_vf, pci_vf_id_enetc4_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_enetc4_vf, "* igb_uio | uio_pci_generic");
+RTE_PMD_REGISTER_PARAM_STRING(net_enetc4_vf,
+			      ENETC4_VSI_DISABLE "=<any>");
 RTE_LOG_REGISTER_DEFAULT(enetc4_vf_logtype_pmd, NOTICE);
