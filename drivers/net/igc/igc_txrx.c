@@ -1683,7 +1683,11 @@ igc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 * The "last descriptor" of the previously sent packet, if any,
 		 * which used the last descriptor to allocate.
 		 */
-		tx_end = sw_ring[tx_last].last_id;
+		tx_end = (uint16_t)(tx_last);
+		if (tx_end >= txq->nb_tx_desc)
+			tx_end = (uint16_t)(tx_end - txq->nb_tx_desc);
+
+		tx_end = sw_ring[tx_end].last_id;
 
 		/*
 		 * The next descriptor following that "last descriptor" in the
