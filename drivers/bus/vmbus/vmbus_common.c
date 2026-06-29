@@ -93,13 +93,6 @@ vmbus_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	VMBUS_LOG(INFO, "VMBUS device %s on NUMA socket %i",
 		  guid, vmbus_dev->device.numa_node);
 
-	/* no initialization when marked as blocked, return without error */
-	if (vmbus_dev->device.devargs != NULL &&
-		vmbus_dev->device.devargs->policy == RTE_DEV_BLOCKED) {
-		VMBUS_LOG(INFO, "  Device is blocked, not initializing");
-		return 1;
-	}
-
 	/* allocate interrupt handle instance */
 	vmbus_dev->intr_handle =
 		rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);

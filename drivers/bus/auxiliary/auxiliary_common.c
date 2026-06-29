@@ -84,13 +84,6 @@ auxiliary_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	if (!auxiliary_dev_exists(dev->name))
 		return -ENOENT;
 
-	/* No initialization when marked as blocked, return without error. */
-	if (aux_dev->device.devargs != NULL &&
-	    aux_dev->device.devargs->policy == RTE_DEV_BLOCKED) {
-		AUXILIARY_LOG(INFO, "Device is blocked, not initializing");
-		return -1;
-	}
-
 	if (aux_dev->device.numa_node < 0 && rte_socket_count() > 1)
 		AUXILIARY_LOG(INFO, "Device %s is not NUMA-aware", aux_dev->name);
 

@@ -193,13 +193,6 @@ pci_probe_device(struct rte_driver *drv, struct rte_device *dev)
 		loc->domain, loc->bus, loc->devid, loc->function,
 		pci_dev->device.numa_node);
 
-	/* no initialization when marked as blocked, return without error */
-	if (pci_dev->device.devargs != NULL &&
-		pci_dev->device.devargs->policy == RTE_DEV_BLOCKED) {
-		PCI_LOG(INFO, "  Device is blocked, not initializing");
-		return 1;
-	}
-
 	if (pci_dev->device.numa_node < 0 && rte_socket_count() > 1)
 		PCI_LOG(INFO, "Device %s is not NUMA-aware", pci_dev->name);
 
