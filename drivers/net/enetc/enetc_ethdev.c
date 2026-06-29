@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2024 NXP
+ * Copyright 2018-2026 NXP
  */
 
 #include <stdbool.h>
@@ -95,6 +95,7 @@ enetc_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused,
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_L4_SCTP,
 		RTE_PTYPE_L4_ICMP,
+		RTE_PTYPE_TUNNEL_ESP
 	};
 
 	*no_of_elements = RTE_DIM(ptypes);

@@ -159,6 +159,10 @@ New Features
   * Added inner RSS level support for tunnelled traffic.
   * Added RSS RETA query and update support.
 
+* **Updated NXP enetc ethernet driver.**
+
+  * Added support for ESP packet type in packet parsing.
+
 * **Updated PCAP ethernet driver.**
 
   * Added support for VLAN insertion and stripping.

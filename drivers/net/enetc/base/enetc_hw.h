@@ -226,6 +226,10 @@ enum enetc_bdr_type {TX, RX};
 			(0x0003 | ENETC_PKT_TYPE_IPV4)
 #define ENETC_PKT_TYPE_IPV6_ICMP \
 			(0x0003 | ENETC_PKT_TYPE_IPV6)
+#define ENETC_PKT_TYPE_IPV4_ESP \
+			(0x0005 | ENETC_PKT_TYPE_IPV4)
+#define ENETC_PKT_TYPE_IPV6_ESP \
+			(0x0005 | ENETC_PKT_TYPE_IPV6)
 
 /* PCI device info */
 struct enetc_hw {
