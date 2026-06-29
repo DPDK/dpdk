@@ -131,6 +131,55 @@ test_dma_info_get(void)
 }
 
 static int
+check_configure_extra(struct rte_dma_info *info)
+{
+	struct rte_dma_conf conf = { 0 };
+	int ret;
+
+	/* Check undefined flags */
+	for (int i = 2; i < 64; i++) {
+		memset(&conf, 0, sizeof(conf));
+		conf.nb_vchans = info->max_vchans;
+		conf.flags = RTE_BIT64(i);
+		ret = rte_dma_configure(test_dev_id, &conf);
+		RTE_TEST_ASSERT(ret == -EINVAL,
+			"Expected -EINVAL for undefined flag bit %d, %d", i, ret);
+	}
+
+	/* Check enable silent mode without support */
+	if (!(info->dev_capa & RTE_DMA_CAPA_SILENT)) {
+		memset(&conf, 0, sizeof(conf));
+		conf.nb_vchans = info->max_vchans;
+		conf.flags = RTE_DMA_CFG_FLAG_SILENT;
+		ret = rte_dma_configure(test_dev_id, &conf);
+		RTE_TEST_ASSERT(ret == -EINVAL,
+			"Expected -EINVAL for SILENT without capa, %d", ret);
+	}
+
+	/* Check enable enqueue/dequeue mode without support */
+	if (!(info->dev_capa & RTE_DMA_CAPA_OPS_ENQ_DEQ)) {
+		memset(&conf, 0, sizeof(conf));
+		conf.nb_vchans = info->max_vchans;
+		conf.flags = RTE_DMA_CFG_FLAG_ENQ_DEQ;
+		ret = rte_dma_configure(test_dev_id, &conf);
+		RTE_TEST_ASSERT(ret == -EINVAL,
+			"Expected -EINVAL for ENQ_DEQ without capa, %d", ret);
+	}
+
+	/* Check non-zero priority without SP capability */
+	if (!(info->dev_capa & RTE_DMA_CAPA_PRI_POLICY_SP)) {
+		memset(&conf, 0, sizeof(conf));
+		conf.nb_vchans = info->max_vchans;
+		conf.priority = 1;
+		ret = rte_dma_configure(test_dev_id, &conf);
+		RTE_TEST_ASSERT(ret == -EINVAL,
+			"Expected -EINVAL for non-zero priority without SP, %d", ret);
+	}
+
+	return 0;
+}
+
+static int
 test_dma_configure(void)
 {
 	struct rte_dma_conf conf = { 0 };
@@ -156,12 +205,9 @@ test_dma_configure(void)
 	ret = rte_dma_configure(test_dev_id, &conf);
 	RTE_TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
 
-	/* Check enable silent mode */
-	memset(&conf, 0, sizeof(conf));
-	conf.nb_vchans = info.max_vchans;
-	conf.flags = RTE_DMA_CFG_FLAG_SILENT;
-	ret = rte_dma_configure(test_dev_id, &conf);
-	RTE_TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
+	/* Check flags, priority extra validations */
+	ret = check_configure_extra(&info);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to check configure extra");
 
 	/* Configure success */
 	memset(&conf, 0, sizeof(conf));
@@ -209,12 +255,21 @@ check_direction(void)
 }
 
 static int
-check_port_type(struct rte_dma_info *dev_info)
+check_vchan_port(struct rte_dma_info *dev_info)
 {
 	struct rte_dma_vchan_conf vchan_conf;
 	int ret;
 
-	/* Check src port type validation */
+	/* Check invalid port_type enum values */
+	memset(&vchan_conf, 0, sizeof(vchan_conf));
+	vchan_conf.direction = RTE_DMA_DIR_MEM_TO_MEM;
+	vchan_conf.nb_desc = dev_info->min_desc;
+	vchan_conf.src_port.port_type = RTE_DMA_PORT_PCIE + 1;
+	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
+	RTE_TEST_ASSERT(ret == -EINVAL,
+		"Expected -EINVAL for invalid port_type, %d", ret);
+
+	/* Check src port type vs direction mismatch */
 	memset(&vchan_conf, 0, sizeof(vchan_conf));
 	vchan_conf.direction = RTE_DMA_DIR_MEM_TO_MEM;
 	vchan_conf.nb_desc = dev_info->min_desc;
@@ -222,13 +277,112 @@ check_port_type(struct rte_dma_info *dev_info)
 	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
 	RTE_TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
 
-	/* Check dst port type validation */
+	/* Check dst port type vs direction mismatch */
 	memset(&vchan_conf, 0, sizeof(vchan_conf));
 	vchan_conf.direction = RTE_DMA_DIR_MEM_TO_MEM;
 	vchan_conf.nb_desc = dev_info->min_desc;
 	vchan_conf.dst_port.port_type = RTE_DMA_PORT_PCIE;
 	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
 	RTE_TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
+
+	/* Check non-zero reserved fields in src_port */
+	memset(&vchan_conf, 0, sizeof(vchan_conf));
+	vchan_conf.direction = RTE_DMA_DIR_MEM_TO_MEM;
+	vchan_conf.nb_desc = dev_info->min_desc;
+	vchan_conf.src_port.reserved[0] = 1;
+	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
+	RTE_TEST_ASSERT(ret == -EINVAL,
+		"Expected -EINVAL for non-zero src_port.reserved, %d", ret);
+
+	/* Check non-zero reserved fields in dst_port */
+	memset(&vchan_conf, 0, sizeof(vchan_conf));
+	vchan_conf.direction = RTE_DMA_DIR_MEM_TO_MEM;
+	vchan_conf.nb_desc = dev_info->min_desc;
+	vchan_conf.dst_port.reserved[0] = 1;
+	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
+	RTE_TEST_ASSERT(ret == -EINVAL,
+		"Expected -EINVAL for non-zero dst_port.reserved, %d", ret);
+
+	return 0;
+}
+
+static int
+check_vchan_domain(struct rte_dma_info *dev_info)
+{
+	struct rte_dma_vchan_conf vchan_conf;
+	int ret;
+
+	/* Check invalid domain type enum */
+	memset(&vchan_conf, 0, sizeof(vchan_conf));
+	vchan_conf.direction = RTE_DMA_DIR_MEM_TO_MEM;
+	vchan_conf.nb_desc = dev_info->min_desc;
+	vchan_conf.domain.type = RTE_DMA_INTER_OS_DOMAIN + 1;
+	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
+	RTE_TEST_ASSERT(ret == -EINVAL,
+		"Expected -EINVAL for invalid domain type, %d", ret);
+
+	/* Check non-zero domain.reserved */
+	memset(&vchan_conf, 0, sizeof(vchan_conf));
+	vchan_conf.direction = RTE_DMA_DIR_MEM_TO_MEM;
+	vchan_conf.nb_desc = dev_info->min_desc;
+	vchan_conf.domain.reserved[0] = 1;
+	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
+	RTE_TEST_ASSERT(ret == -EINVAL,
+		"Expected -EINVAL for non-zero domain.reserved, %d", ret);
+
+	/* Check inter-domain type without MEM_TO_MEM direction */
+	memset(&vchan_conf, 0, sizeof(vchan_conf));
+	vchan_conf.direction = RTE_DMA_DIR_MEM_TO_DEV;
+	vchan_conf.nb_desc = dev_info->min_desc;
+	vchan_conf.domain.type = RTE_DMA_INTER_PROCESS_DOMAIN;
+	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
+	RTE_TEST_ASSERT(ret == -EINVAL,
+		"Expected -EINVAL for inter-domain non-MEM_TO_MEM, %d", ret);
+
+	/* Check domain INTER_PROCESS without capability */
+	memset(&vchan_conf, 0, sizeof(vchan_conf));
+	vchan_conf.direction = RTE_DMA_DIR_MEM_TO_MEM;
+	vchan_conf.nb_desc = dev_info->min_desc;
+	vchan_conf.domain.type = RTE_DMA_INTER_PROCESS_DOMAIN;
+	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
+	RTE_TEST_ASSERT(ret == -EINVAL,
+		"Expected -EINVAL for INTER_PROCESS without capa, %d", ret);
+
+	/* Check domain INTER_OS without capability */
+	memset(&vchan_conf, 0, sizeof(vchan_conf));
+	vchan_conf.direction = RTE_DMA_DIR_MEM_TO_MEM;
+	vchan_conf.nb_desc = dev_info->min_desc;
+	vchan_conf.domain.type = RTE_DMA_INTER_OS_DOMAIN;
+	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
+	RTE_TEST_ASSERT(ret == -EINVAL,
+		"Expected -EINVAL for INTER_OS without capa, %d", ret);
+
+	return 0;
+}
+
+static int
+check_auto_free_conf(struct rte_dma_info *dev_info)
+{
+	struct rte_dma_vchan_conf vchan_conf;
+	int ret;
+
+	/* Check non-zero reserved fields in auto_free */
+	memset(&vchan_conf, 0, sizeof(vchan_conf));
+	vchan_conf.direction = RTE_DMA_DIR_MEM_TO_MEM;
+	vchan_conf.nb_desc = dev_info->min_desc;
+	vchan_conf.auto_free.reserved[0] = 1;
+	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
+	RTE_TEST_ASSERT(ret == -EINVAL,
+		"Expected -EINVAL for non-zero auto_free.reserved, %d", ret);
+
+	/* Check auto_free.m2d.pool without M2D auto-free capability */
+	memset(&vchan_conf, 0, sizeof(vchan_conf));
+	vchan_conf.direction = RTE_DMA_DIR_MEM_TO_MEM;
+	vchan_conf.nb_desc = dev_info->min_desc;
+	vchan_conf.auto_free.m2d.pool = (struct rte_mempool *)(uintptr_t)0x1;
+	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
+	RTE_TEST_ASSERT(ret == -EINVAL,
+		"Expected -EINVAL for auto_free without M2D capa, %d", ret);
 
 	return 0;
 }
@@ -274,9 +428,17 @@ test_dma_vchan_setup(void)
 	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
 	RTE_TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
 
-	/* Check port type */
-	ret = check_port_type(&dev_info);
-	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to check port type");
+	/* Check port type and reserved fields */
+	ret = check_vchan_port(&dev_info);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to check vchan port");
+
+	/* Check domain param validation */
+	ret = check_vchan_domain(&dev_info);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to check vchan domain");
+
+	/* Check auto_free config validation */
+	ret = check_auto_free_conf(&dev_info);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to check auto_free conf");
 
 	/* Check vchan setup success */
 	memset(&vchan_conf, 0, sizeof(vchan_conf));

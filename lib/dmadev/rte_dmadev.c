@@ -480,6 +480,7 @@ RTE_EXPORT_SYMBOL(rte_dma_configure)
 int
 rte_dma_configure(int16_t dev_id, const struct rte_dma_conf *dev_conf)
 {
+	const uint64_t valid_flags = RTE_DMA_CFG_FLAG_SILENT | RTE_DMA_CFG_FLAG_ENQ_DEQ;
 	struct rte_dma_info dev_info;
 	struct rte_dma_dev *dev;
 	int ret;
@@ -510,18 +511,28 @@ rte_dma_configure(int16_t dev_id, const struct rte_dma_conf *dev_conf)
 			"Device %d configure too many vchans", dev_id);
 		return -EINVAL;
 	}
+
+	if (dev_info.dev_capa & RTE_DMA_CAPA_PRI_POLICY_SP) {
+		if (dev_conf->priority >= dev_info.nb_priorities) {
+			RTE_DMA_LOG(ERR, "Device %d configure invalid priority", dev_id);
+			return -EINVAL;
+		}
+	} else {
+		if (dev_conf->priority != 0) {
+			RTE_DMA_LOG(ERR, "Device %d should not configure priority", dev_id);
+			return -EINVAL;
+		}
+	}
+
+	if ((dev_conf->flags & ~valid_flags) != 0) {
+		RTE_DMA_LOG(ERR, "Device %d configure invalid flags", dev_id);
+		return -EINVAL;
+	}
 	if ((dev_conf->flags & RTE_DMA_CFG_FLAG_SILENT) &&
 	    !(dev_info.dev_capa & RTE_DMA_CAPA_SILENT)) {
 		RTE_DMA_LOG(ERR, "Device %d don't support silent", dev_id);
 		return -EINVAL;
 	}
-
-	if ((dev_info.dev_capa & RTE_DMA_CAPA_PRI_POLICY_SP) &&
-	    (dev_conf->priority >= dev_info.nb_priorities)) {
-		RTE_DMA_LOG(ERR, "Device %d configure invalid priority", dev_id);
-		return -EINVAL;
-	}
-
 	if ((dev_conf->flags & RTE_DMA_CFG_FLAG_ENQ_DEQ) &&
 	    !(dev_info.dev_capa & RTE_DMA_CAPA_OPS_ENQ_DEQ)) {
 		RTE_DMA_LOG(ERR, "Device %d don't support enqueue/dequeue", dev_id);
@@ -632,13 +643,85 @@ rte_dma_close(int16_t dev_id)
 	return ret;
 }
 
+/* Perform verification on rte_dma_vchan_conf only. */
+static int
+dma_check_vchan_conf(int16_t dev_id, const struct rte_dma_vchan_conf *conf)
+{
+	bool src_is_dev, dst_is_dev;
+
+	if (conf->direction != RTE_DMA_DIR_MEM_TO_MEM &&
+	    conf->direction != RTE_DMA_DIR_MEM_TO_DEV &&
+	    conf->direction != RTE_DMA_DIR_DEV_TO_MEM &&
+	    conf->direction != RTE_DMA_DIR_DEV_TO_DEV) {
+		RTE_DMA_LOG(ERR, "Device %d direction invalid!", dev_id);
+		return -EINVAL;
+	}
+
+	if (conf->src_port.port_type != RTE_DMA_PORT_NONE &&
+	    conf->src_port.port_type != RTE_DMA_PORT_PCIE) {
+		RTE_DMA_LOG(ERR, "Device %d source port type unsupported", dev_id);
+		return -EINVAL;
+	}
+	if (conf->src_port.reserved[0] != 0 || conf->src_port.reserved[1] != 0) {
+		RTE_DMA_LOG(ERR, "Device %d src_port has non-zero reserved fields", dev_id);
+		return -EINVAL;
+	}
+	src_is_dev = conf->direction == RTE_DMA_DIR_DEV_TO_MEM ||
+		     conf->direction == RTE_DMA_DIR_DEV_TO_DEV;
+	if ((conf->src_port.port_type == RTE_DMA_PORT_NONE && src_is_dev) ||
+	    (conf->src_port.port_type != RTE_DMA_PORT_NONE && !src_is_dev)) {
+		RTE_DMA_LOG(ERR, "Device %d source port type invalid", dev_id);
+		return -EINVAL;
+	}
+
+	if (conf->dst_port.port_type != RTE_DMA_PORT_NONE &&
+	    conf->dst_port.port_type != RTE_DMA_PORT_PCIE) {
+		RTE_DMA_LOG(ERR, "Device %d destination port type unsupported", dev_id);
+		return -EINVAL;
+	}
+	if (conf->dst_port.reserved[0] != 0 || conf->dst_port.reserved[1] != 0) {
+		RTE_DMA_LOG(ERR, "Device %d dst_port has non-zero reserved fields", dev_id);
+		return -EINVAL;
+	}
+	dst_is_dev = conf->direction == RTE_DMA_DIR_MEM_TO_DEV ||
+		     conf->direction == RTE_DMA_DIR_DEV_TO_DEV;
+	if ((conf->dst_port.port_type == RTE_DMA_PORT_NONE && dst_is_dev) ||
+	    (conf->dst_port.port_type != RTE_DMA_PORT_NONE && !dst_is_dev)) {
+		RTE_DMA_LOG(ERR,
+			"Device %d destination port type invalid", dev_id);
+		return -EINVAL;
+	}
+
+	if (conf->auto_free.reserved[0] != 0 || conf->auto_free.reserved[1] != 0) {
+		RTE_DMA_LOG(ERR, "Device %d auto_free has non-zero reserved fields", dev_id);
+		return -EINVAL;
+	}
+
+	if (conf->domain.type != RTE_DMA_INTER_DOMAIN_NONE &&
+	    conf->domain.type != RTE_DMA_INTER_PROCESS_DOMAIN &&
+	    conf->domain.type != RTE_DMA_INTER_OS_DOMAIN) {
+		RTE_DMA_LOG(ERR, "Device %d domain type invalid!", dev_id);
+		return -EINVAL;
+	}
+	if (conf->domain.reserved[0] != 0 || conf->domain.reserved[1] != 0) {
+		RTE_DMA_LOG(ERR, "Device %d domain has non-zero reserved fields", dev_id);
+		return -EINVAL;
+	}
+	if (conf->domain.type != RTE_DMA_INTER_DOMAIN_NONE &&
+	    conf->direction != RTE_DMA_DIR_MEM_TO_MEM) {
+		RTE_DMA_LOG(ERR, "Device %d inter domain only support mem-to-mem transfer", dev_id);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 RTE_EXPORT_SYMBOL(rte_dma_vchan_setup)
 int
 rte_dma_vchan_setup(int16_t dev_id, uint16_t vchan,
 		    const struct rte_dma_vchan_conf *conf)
 {
 	struct rte_dma_info dev_info;
-	bool src_is_dev, dst_is_dev;
 	struct rte_dma_dev *dev;
 	int ret;
 
@@ -653,6 +736,10 @@ rte_dma_vchan_setup(int16_t dev_id, uint16_t vchan,
 		return -EBUSY;
 	}
 
+	ret = dma_check_vchan_conf(dev_id, conf);
+	if (ret != 0)
+		return ret;
+
 	ret = rte_dma_info_get(dev_id, &dev_info);
 	if (ret != 0) {
 		RTE_DMA_LOG(ERR, "Device %d get device info fail", dev_id);
@@ -666,34 +753,7 @@ rte_dma_vchan_setup(int16_t dev_id, uint16_t vchan,
 		RTE_DMA_LOG(ERR, "Device %d vchan out range!", dev_id);
 		return -EINVAL;
 	}
-	if (conf->domain.type != RTE_DMA_INTER_DOMAIN_NONE &&
-	    conf->direction != RTE_DMA_DIR_MEM_TO_MEM) {
-		RTE_DMA_LOG(ERR, "Device %d inter domain only support mem-to-mem transfer", dev_id);
-		return -EINVAL;
-	}
-	if (conf->domain.type == RTE_DMA_INTER_OS_DOMAIN &&
-	    !(dev_info.dev_capa & RTE_DMA_CAPA_INTER_OS_DOMAIN)) {
-		RTE_DMA_LOG(ERR, "Device %d does not support inter os domain", dev_id);
-		return -EINVAL;
-	}
-	if (conf->domain.type == RTE_DMA_INTER_PROCESS_DOMAIN &&
-	    !(dev_info.dev_capa & RTE_DMA_CAPA_INTER_PROCESS_DOMAIN)) {
-		RTE_DMA_LOG(ERR, "Device %d does not support inter process domain", dev_id);
-		return -EINVAL;
-	}
-	if ((conf->domain.type == RTE_DMA_INTER_PROCESS_DOMAIN ||
-	    conf->domain.type == RTE_DMA_INTER_OS_DOMAIN) &&
-	    (conf->domain.reserved[0] != 0 || conf->domain.reserved[1] != 0)) {
-		RTE_DMA_LOG(ERR, "Device %d does not support non-zero reserved fields", dev_id);
-		return -EINVAL;
-	}
-	if (conf->direction != RTE_DMA_DIR_MEM_TO_MEM &&
-	    conf->direction != RTE_DMA_DIR_MEM_TO_DEV &&
-	    conf->direction != RTE_DMA_DIR_DEV_TO_MEM &&
-	    conf->direction != RTE_DMA_DIR_DEV_TO_DEV) {
-		RTE_DMA_LOG(ERR, "Device %d direction invalid!", dev_id);
-		return -EINVAL;
-	}
+
 	if (conf->direction == RTE_DMA_DIR_MEM_TO_MEM &&
 	    !(dev_info.dev_capa & RTE_DMA_CAPA_MEM_TO_MEM)) {
 		RTE_DMA_LOG(ERR,
@@ -724,19 +784,21 @@ rte_dma_vchan_setup(int16_t dev_id, uint16_t vchan,
 			"Device %d number of descriptors invalid", dev_id);
 		return -EINVAL;
 	}
-	src_is_dev = conf->direction == RTE_DMA_DIR_DEV_TO_MEM ||
-		     conf->direction == RTE_DMA_DIR_DEV_TO_DEV;
-	if ((conf->src_port.port_type == RTE_DMA_PORT_NONE && src_is_dev) ||
-	    (conf->src_port.port_type != RTE_DMA_PORT_NONE && !src_is_dev)) {
-		RTE_DMA_LOG(ERR, "Device %d source port type invalid", dev_id);
+
+	if (conf->auto_free.m2d.pool != NULL &&
+	    !(dev_info.dev_capa & RTE_DMA_CAPA_M2D_AUTO_FREE)) {
+		RTE_DMA_LOG(ERR, "Device %d does not support m2d auto free", dev_id);
 		return -EINVAL;
 	}
-	dst_is_dev = conf->direction == RTE_DMA_DIR_MEM_TO_DEV ||
-		     conf->direction == RTE_DMA_DIR_DEV_TO_DEV;
-	if ((conf->dst_port.port_type == RTE_DMA_PORT_NONE && dst_is_dev) ||
-	    (conf->dst_port.port_type != RTE_DMA_PORT_NONE && !dst_is_dev)) {
-		RTE_DMA_LOG(ERR,
-			"Device %d destination port type invalid", dev_id);
+
+	if (conf->domain.type == RTE_DMA_INTER_OS_DOMAIN &&
+	    !(dev_info.dev_capa & RTE_DMA_CAPA_INTER_OS_DOMAIN)) {
+		RTE_DMA_LOG(ERR, "Device %d does not support inter os domain", dev_id);
+		return -EINVAL;
+	}
+	if (conf->domain.type == RTE_DMA_INTER_PROCESS_DOMAIN &&
+	    !(dev_info.dev_capa & RTE_DMA_CAPA_INTER_PROCESS_DOMAIN)) {
+		RTE_DMA_LOG(ERR, "Device %d does not support inter process domain", dev_id);
 		return -EINVAL;
 	}
 
