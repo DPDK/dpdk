@@ -12,6 +12,7 @@
 #include <rte_errno.h>
 #include <rte_malloc.h>
 #include <rte_mempool.h>
+#include <rte_memory.h>
 
 #include "otx_cryptodev.h"
 #include "otx_cryptodev_capabilities.h"
@@ -739,7 +740,7 @@ otx_cpt_asym_rsa_op(struct rte_crypto_op *cop, struct cpt_request_info *req,
 		}
 		memcpy(rsa->sign.data, req->rptr, rsa->sign.length);
 
-		if (memcmp(rsa->sign.data, rsa->message.data,
+		if (!rte_memeq_timingsafe(rsa->sign.data, rsa->message.data,
 			   rsa->message.length)) {
 			CPT_LOG_DP_ERR("RSA verification failed");
 			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
