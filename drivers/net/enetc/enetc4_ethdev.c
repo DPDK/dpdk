@@ -3,12 +3,74 @@
  */
 
 #include <stdbool.h>
+#include <rte_kvargs.h>
 #include <rte_random.h>
 #include <dpaax_iova_table.h>
 
 #include "base/enetc4_hw.h"
 #include "enetc_logs.h"
 #include "enetc.h"
+
+#define ENETC4_TXQ_PRIORITIES	"enetc4_txq_prior"
+
+static int
+parse_txq_prior(const char *key __rte_unused, const char *value, void *opaque)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)opaque;
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	char *input_str = strdup(value);
+	char *str;
+	uint32_t i = 0;
+
+	if (!input_str)
+		return -ENOMEM;
+
+	hw->txq_prior = calloc(hw->max_tx_queues, sizeof(uint32_t));
+	if (!hw->txq_prior) {
+		free(input_str);
+		return -ENOMEM;
+	}
+
+	str = strtok(input_str, "|");
+	while (str != NULL && i < hw->max_tx_queues) {
+		hw->txq_prior[i++] = (uint32_t)atoi(str);
+		str = strtok(NULL, "|");
+	}
+
+	free(input_str);
+	return 0;
+}
+
+static int
+enetc4_get_devargs(struct rte_eth_dev *dev, const char *key)
+{
+	struct rte_devargs *devargs = dev->device->devargs;
+	struct rte_kvargs *kvlist;
+
+	if (!devargs)
+		return 0;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (!kvlist)
+		return 0;
+
+	if (!rte_kvargs_count(kvlist, key)) {
+		rte_kvargs_free(kvlist);
+		return 0;
+	}
+
+	if (!strcmp(key, ENETC4_TXQ_PRIORITIES)) {
+		if (rte_kvargs_process(kvlist, key,
+				       parse_txq_prior, (void *)dev) < 0) {
+			rte_kvargs_free(kvlist);
+			return 0;
+		}
+	}
+
+	rte_kvargs_free(kvlist);
+	return 0;
+}
 
 /* Supported Rx offloads */
 static uint64_t dev_rx_offloads_sup =
@@ -316,9 +378,14 @@ enetc4_tx_queue_setup(struct rte_eth_dev *dev,
 	data->tx_queues[queue_idx] = tx_ring;
 	tx_ring->tx_deferred_start = tx_conf->tx_deferred_start;
 	if (!tx_conf->tx_deferred_start) {
+		uint32_t tx_en = ENETC_TBMR_EN;
+
+		/* apply TX queue priority if configured */
+		if (priv->hw.txq_prior)
+			tx_en |= priv->hw.txq_prior[tx_ring->index];
 		/* enable ring */
 		enetc4_txbdr_wr(&priv->hw.hw, tx_ring->index,
-			       ENETC_TBMR, ENETC_TBMR_EN);
+			       ENETC_TBMR, tx_en);
 		dev->data->tx_queue_state[tx_ring->index] =
 			       RTE_ETH_QUEUE_STATE_STARTED;
 	} else {
@@ -1015,6 +1082,8 @@ enetc4_dev_init(struct rte_eth_dev *eth_dev)
 	hw->max_tx_queues = si_cap & ENETC_SICAPR0_BDR_MASK;
 	hw->max_rx_queues = (si_cap >> 16) & ENETC_SICAPR0_BDR_MASK;
 
+	enetc4_get_devargs(eth_dev, ENETC4_TXQ_PRIORITIES);
+
 	ENETC_PMD_DEBUG("Max RX queues = %d Max TX queues = %d",
 			hw->max_rx_queues, hw->max_tx_queues);
 	error = enetc4_mac_init(hw, eth_dev);
@@ -1041,7 +1110,15 @@ enetc4_dev_init(struct rte_eth_dev *eth_dev)
 static int
 enetc4_dev_uninit(struct rte_eth_dev *eth_dev)
 {
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+
 	PMD_INIT_FUNC_TRACE();
+
+	if (hw->txq_prior) {
+		free(hw->txq_prior);
+		hw->txq_prior = NULL;
+	}
 
 	return enetc4_dev_close(eth_dev);
 }
@@ -1071,4 +1148,6 @@ static struct rte_pci_driver rte_enetc4_pmd = {
 RTE_PMD_REGISTER_PCI(net_enetc4, rte_enetc4_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_enetc4, pci_id_enetc4_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_enetc4, "* vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(net_enetc4,
+			      ENETC4_TXQ_PRIORITIES "=<string>");
 RTE_LOG_REGISTER_DEFAULT(enetc4_logtype_pmd, NOTICE);

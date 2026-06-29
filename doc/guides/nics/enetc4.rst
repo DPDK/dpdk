@@ -128,3 +128,15 @@ VF-specific devargs
   Usage example::
 
     dpdk-testpmd -a 0000:00:01.0,enetc4_vsi_delay=10 -- -i
+
+PF/Common devargs
+~~~~~~~~~~~~~~~~~
+
+``enetc4_txq_prior``
+  Set per-queue Tx ring priority (TBMR bits).
+  The value is a ``|``-separated list of priority values, one per Tx queue.
+  Values beyond the maximum supported Tx queue count are discarded.
+
+  Usage example::
+
+    dpdk-testpmd -a 0000:00:00.0,enetc4_txq_prior=1|2|3 -- -i

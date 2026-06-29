@@ -114,6 +114,7 @@ struct enetc_eth_hw {
 	uint32_t max_tx_queues;
 	uint32_t vsi_timeout; /* VSI-PSI message wait timeout (iterations) */
 	uint32_t vsi_delay;   /* VSI-PSI message wait delay (us) */
+	uint32_t *txq_prior;  /* per-queue TX priority (TBMR priority bits) */
 };
 
 /*
