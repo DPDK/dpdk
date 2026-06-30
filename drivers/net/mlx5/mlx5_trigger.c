@@ -1201,7 +1201,7 @@ static int mlx5_dev_allocate_consec_tx_mem(struct rte_eth_dev *dev)
 	void *umem_buf = NULL;
 
 	/* Legacy per queue allocation, do nothing here. */
-	if (priv->sh->config.txq_mem_algn == 0)
+	if (priv->sh->config.txq_mem_algn == 0 || !mlx5_devx_obj_ops_en(priv->sh))
 		return 0;
 	alignment = (size_t)1 << priv->sh->config.txq_mem_algn;
 	total_size = priv->consec_tx_mem.sq_total_size + priv->consec_tx_mem.cq_total_size;
