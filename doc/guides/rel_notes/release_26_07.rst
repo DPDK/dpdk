@@ -187,6 +187,13 @@ New Features
 
   * Added support for ML-KEM and ML-DSA on CN20K platform.
 
+* **Updated Wangxun ngbe driver.**
+
+  * Implemented UDP Segmentation Offload (USO) in the transmit path.
+    The ``RTE_ETH_TX_OFFLOAD_UDP_TSO`` capability was advertised
+    since the driver's initial integration but the data path was missing;
+    it is now functional.
+
 * **Extended BPF API.**
 
   * Added an extensible BPF loading API comprising the function
