@@ -16,7 +16,7 @@
 /* In QLEN must be whole number of 32 descriptors. */
 #define IAVF_ALIGN_RING_DESC      32
 #define IAVF_MIN_RING_DESC        64
-#define IAVF_MAX_RING_DESC        4096
+#define IAVF_MAX_RING_DESC        (8192 - 32)
 #define IAVF_DMA_MEM_ALIGN        4096
 /* Base address of the HW descriptor ring should be 128B aligned. */
 #define IAVF_RING_BASE_ALIGN      128
