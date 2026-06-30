@@ -158,6 +158,17 @@ Runtime Configuration
 
     -a 80:00.0,source-prune=1
 
+- ``Scheduler rate-limiter burst size`` (default ``0``)
+
+  The hardware Tx scheduler uses a default rate-limiter burst size that favours throughput.
+  Time-sensitive applications can lower this value to reduce Tx latency jitter
+  at the cost of throughput by setting the ``rl_burst_size`` devargs parameter, in bytes.
+  A value of ``0`` (the default) keeps the hardware default.
+
+  For example::
+
+    -a 80:00.0,rl_burst_size=2048
+
 - ``Protocol extraction for per queue``
 
   Configure the RX queues to do protocol extraction into mbuf for protocol

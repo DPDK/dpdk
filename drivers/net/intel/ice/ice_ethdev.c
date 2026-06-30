@@ -41,6 +41,7 @@
 #define ICE_DDP_FILENAME_ARG      "ddp_pkg_file"
 #define ICE_DDP_LOAD_SCHED_ARG    "ddp_load_sched_topo"
 #define ICE_TM_LEVELS_ARG         "tm_sched_levels"
+#define ICE_RL_BURST_SIZE_ARG     "rl_burst_size"
 #define ICE_SOURCE_PRUNE_ARG      "source-prune"
 #define ICE_LINK_STATE_ON_CLOSE   "link_state_on_close"
 
@@ -59,6 +60,7 @@ static const char * const ice_valid_args[] = {
 	ICE_DDP_FILENAME_ARG,
 	ICE_DDP_LOAD_SCHED_ARG,
 	ICE_TM_LEVELS_ARG,
+	ICE_RL_BURST_SIZE_ARG,
 	ICE_SOURCE_PRUNE_ARG,
 	ICE_LINK_STATE_ON_CLOSE,
 	NULL
@@ -2146,6 +2148,29 @@ parse_u64(const char *key, const char *value, void *args)
 }
 
 static int
+parse_u32(const char *key, const char *value, void *args)
+{
+	uint32_t *num = args;
+	unsigned long tmp;
+	char *endptr;
+
+	errno = 0;
+	tmp = strtoul(value, &endptr, 0);
+	if (errno != 0 || endptr == value || *endptr != '\0') {
+		PMD_DRV_LOG(WARNING, "%s: \"%s\" is not a valid u32", key, value);
+		return -1;
+	}
+	if (tmp > UINT32_MAX) {
+		PMD_DRV_LOG(WARNING, "%s: value \"%s\" is out of range", key, value);
+		return -1;
+	}
+
+	*num = (uint32_t)tmp;
+
+	return 0;
+}
+
+static int
 parse_tx_sched_levels(const char *key, const char *value, void *args)
 {
 	uint8_t *num = args;
@@ -2446,6 +2471,11 @@ static int ice_parse_devargs(struct rte_eth_dev *dev)
 	if (ret)
 		goto bail;
 
+	ret = rte_kvargs_process(kvlist, ICE_RL_BURST_SIZE_ARG,
+				 &parse_u32, &ad->devargs.rl_burst_size);
+	if (ret)
+		goto bail;
+
 	ret = rte_kvargs_process(kvlist, ICE_SOURCE_PRUNE_ARG,
 				 &parse_bool, &ad->devargs.source_prune);
 	if (ret)
@@ -2657,6 +2687,21 @@ ice_dev_init(struct rte_eth_dev *dev)
 	ret = ice_init_hw(hw);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to initialize HW");
+		return -EINVAL;
+	}
+
+	/*
+	 * Override the hardware default scheduler rate-limiter burst size only
+	 * when the user explicitly requests it. A smaller burst reduces Tx
+	 * latency jitter for time-sensitive traffic at the cost of throughput,
+	 * so it must not change for every port. ice_cfg_rl_burst_size()
+	 * validates the value against the hardware-allowed range.
+	 */
+	if (ad->devargs.rl_burst_size != 0 &&
+	    ice_cfg_rl_burst_size(hw, ad->devargs.rl_burst_size) != 0) {
+		PMD_INIT_LOG(ERR, "Invalid rl_burst_size %u bytes",
+			     ad->devargs.rl_burst_size);
+		ice_deinit_hw(hw);
 		return -EINVAL;
 	}
 
@@ -7718,6 +7763,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_ice,
 			      ICE_DDP_FILENAME_ARG "=</path/to/file>"
 			      ICE_DDP_LOAD_SCHED_ARG "=<0|1>"
 			      ICE_TM_LEVELS_ARG "=<N>"
+			      ICE_RL_BURST_SIZE_ARG "=<N>"
 			      ICE_SOURCE_PRUNE_ARG "=<0|1>"
 			      ICE_RX_LOW_LATENCY_ARG "=<0|1>"
 			      ICE_LINK_STATE_ON_CLOSE "=<down|up|initial>");
