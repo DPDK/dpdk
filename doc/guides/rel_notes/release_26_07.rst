@@ -200,6 +200,11 @@ New Features
     The ``RTE_ETH_TX_OFFLOAD_UDP_TSO`` capability was advertised
     since the driver's initial integration but the data path was missing;
     it is now functional.
+  * Added support for VF sensing PF down.
+    VFs now detect when the PF goes down
+    (via the mailbox ``TXGBE_VT_MSGTYPE_CTS`` flag) and report link down.
+    When the PF comes back, the VF triggers an ``RTE_ETH_EVENT_INTR_RESET`` event
+    so the application can reset the VF and resume normal packet Rx/Tx.
 
 * **Extended BPF API.**
 

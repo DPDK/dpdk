@@ -281,6 +281,8 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	hw->subsystem_device_id = pci_dev->id.subsystem_device_id;
 	hw->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
+	rte_atomic_store_explicit(&hw->pf_running, true,
+				  rte_memory_order_release);
 
 	/* initialize the vfta */
 	memset(shadow_vfta, 0, sizeof(*shadow_vfta));
@@ -1405,10 +1407,21 @@ static s32 txgbevf_get_pf_link_status(struct rte_eth_dev *dev)
 	if (retval)
 		return 0;
 
+	if (!(msgbuf[0] & TXGBE_NOFITY_VF_LINK_STATUS))
+		return 0;
+
 	rte_eth_linkstatus_get(dev, &link);
 
+	if (!rte_atomic_load_explicit(&hw->pf_running,
+				      rte_memory_order_acquire)) {
+		link.link_status =  RTE_ETH_LINK_DOWN;
+		link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+		link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
+		return rte_eth_linkstatus_set(dev, &link);
+	}
+
 	link_up = msgbuf[1] & TXGBE_VFSTATUS_UP;
-	link_speed = (msgbuf[1] & 0xFFF0) >> 1;
+	link_speed = (msgbuf[1] & 0x1FFFFE) >> 1;
 
 	if (link_up == link.link_status && link_speed == link.link_speed)
 		return 0;
@@ -1434,10 +1447,23 @@ static s32 txgbevf_get_pf_link_status(struct rte_eth_dev *dev)
 static void txgbevf_check_link_for_intr(struct rte_eth_dev *dev)
 {
 	struct rte_eth_link orig_link, new_link;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 
 	rte_eth_linkstatus_get(dev, &orig_link);
-	txgbevf_dev_link_update(dev, 0);
-	rte_eth_linkstatus_get(dev, &new_link);
+
+	if (rte_atomic_load_explicit(&hw->pf_running,
+				     rte_memory_order_acquire)) {
+		txgbevf_dev_link_update(dev, 0);
+		rte_eth_linkstatus_get(dev, &new_link);
+	} else {
+		DEBUGOUT("PF ifconfig down, so VF link down");
+		new_link.link_status = RTE_ETH_LINK_DOWN;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+		new_link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
+		new_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
+					  RTE_ETH_LINK_SPEED_FIXED);
+		rte_eth_linkstatus_set(dev, &new_link);
+	}
 
 	PMD_DRV_LOG(INFO, "orig_link: %d, new_link: %d",
 		    orig_link.link_status, new_link.link_status);
@@ -1450,22 +1476,58 @@ static void txgbevf_check_link_for_intr(struct rte_eth_dev *dev)
 static void txgbevf_mbx_process(struct rte_eth_dev *dev)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_mbx_info *mbx = &hw->mbx;
+	u32 msgbuf = 0;
 	u32 in_msg = 0;
 
-	/* peek the message first */
+	/* Peek the message first */
 	in_msg = rd32(hw, TXGBE_VFMBX);
 
-	/* PF reset VF event */
-	if (in_msg & TXGBE_PF_CONTROL_MSG) {
-		if (in_msg & TXGBE_NOFITY_VF_LINK_STATUS) {
-			txgbevf_get_pf_link_status(dev);
-		} else {
-			/* dummy mbx read to ack pf */
-			txgbe_read_mbx(hw, &in_msg, 1, 0);
-			/* check link status if pf ping vf */
+	/* PF control message */
+	if (!(in_msg & TXGBE_PF_CONTROL_MSG))
+		return;
+
+	txgbevf_get_pf_link_status(dev);
+
+	if (!(in_msg & TXGBE_VT_MSGTYPE_CTS)) {
+		/*
+		 * PF is not ready for this VF (e.g. PF ifconfig down).
+		 *
+		 * Send VF_RESET to ask the PF to reconfigure us. The PF only
+		 * marks this VF as ready (and starts sending CTS) after it
+		 * processes VF_RESET, so this request is the only way to
+		 * recover. If write_posted() succeeds the PF is back up and
+		 * we notify the application to reset the VF; otherwise the PF
+		 * is still down, so we mark it down and reset the stats
+		 * baselines (hardware counters are cleared during PF reset).
+		 *
+		 * write_posted() may busy-wait for the ACK in the interrupt
+		 * thread, but the PF does not send further mailbox messages
+		 * once it is down, so this blocking is not continuously
+		 * triggered.
+		 */
+		int err;
+
+		msgbuf = TXGBE_VF_RESET;
+		err = mbx->write_posted(hw, &msgbuf, 1, 0);
+		if (err) {
+			rte_atomic_store_explicit(&hw->pf_running, false,
+						  rte_memory_order_release);
 			txgbevf_check_link_for_intr(dev);
+			hw->rx_loaded = true;
+			hw->offset_loaded = true;
+		} else {
+			rte_atomic_store_explicit(&hw->pf_running, true,
+						  rte_memory_order_release);
+			rte_eth_dev_callback_process(dev,
+					RTE_ETH_EVENT_INTR_RESET, NULL);
 		}
+		return;
 	}
+
+	/* Check link status if pf only ping vf */
+	if (!(in_msg & TXGBE_NOFITY_VF_LINK_STATUS))
+		txgbevf_check_link_for_intr(dev);
 }
 
 static int

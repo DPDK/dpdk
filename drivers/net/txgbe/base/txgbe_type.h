@@ -899,6 +899,7 @@ struct txgbe_hw {
 	rte_atomic32_t swfw_busy;
 	bool link_valid;
 	bool reconfig_rx;
+	RTE_ATOMIC(bool) pf_running;
 	u32 fec_mode;
 	u32 cur_fec_link;
 	int temperature;
