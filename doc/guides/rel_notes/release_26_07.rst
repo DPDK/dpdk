@@ -205,6 +205,8 @@ New Features
     (via the mailbox ``TXGBE_VT_MSGTYPE_CTS`` flag) and report link down.
     When the PF comes back, the VF triggers an ``RTE_ETH_EVENT_INTR_RESET`` event
     so the application can reset the VF and resume normal packet Rx/Tx.
+  * Added VF support for the Amber-Lite 40G NIC variant,
+    with new device IDs ``0x503f`` and ``0x513f``.
 
 * **Extended BPF API.**
 

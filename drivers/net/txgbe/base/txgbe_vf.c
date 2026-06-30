@@ -134,7 +134,8 @@ s32 txgbe_reset_hw_vf(struct txgbe_hw *hw)
 	}
 
 	/* amlite: bme */
-	if (hw->mac.type == txgbe_mac_aml_vf)
+	if (hw->mac.type == txgbe_mac_aml_vf ||
+	    hw->mac.type == txgbe_mac_aml40_vf)
 		wr32(hw, TXGBE_BME_AML, 0x1);
 
 	if (!timeout)
@@ -493,8 +494,7 @@ s32 txgbe_check_mac_link_vf(struct txgbe_hw *hw, u32 *speed,
 	/* for SFP+ modules and DA cables it can take up to 500usecs
 	 * before the link status is correct
 	 */
-	if ((mac->type == txgbe_mac_sp_vf ||
-	     mac->type == txgbe_mac_aml_vf) && wait_to_complete) {
+	if (wait_to_complete) {
 		if (po32m(hw, TXGBE_VFSTATUS, TXGBE_VFSTATUS_UP,
 			0, NULL, 5, 100))
 			goto out;
