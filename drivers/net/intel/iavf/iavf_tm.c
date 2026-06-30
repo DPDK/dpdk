@@ -804,17 +804,23 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 	int index = 0, node_committed = 0;
 	int i, ret_val = IAVF_SUCCESS;
 
-	/* check if port is stopped */
-	if (adapter->stopped != 1) {
-		PMD_DRV_LOG(ERR, "Please stop port first");
-		ret_val = IAVF_ERR_NOT_READY;
-		goto err;
-	}
-
 	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS)) {
 		PMD_DRV_LOG(ERR, "VF queue tc mapping is not supported");
 		ret_val = IAVF_NOT_SUPPORTED;
 		goto fail_clear;
+	}
+
+	/*
+	 * Allow reconfiguration on a running port only when a single queue is
+	 * involved (single TC node and single QoS element); otherwise the port
+	 * must be stopped first. qos_cap is valid here because the
+	 * VIRTCHNL_VF_OFFLOAD_QOS capability was checked above.
+	 */
+	if ((vf->tm_conf.nb_tc_node != 1 || vf->qos_cap->num_elem != 1) &&
+	    adapter->stopped != 1) {
+		PMD_DRV_LOG(ERR, "Please stop port first");
+		ret_val = IAVF_ERR_NOT_READY;
+		goto err;
 	}
 
 	/* check if all TC nodes are set with VF vsi */
@@ -856,7 +862,7 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 		q_tc_mapping->tc[tm_node->tc].req.queue_count++;
 
 		if (tm_node->shaper_profile) {
-			q_bw->cfg[node_committed].queue_id = node_committed;
+			q_bw->cfg[node_committed].queue_id = tm_node->id;
 			q_bw->cfg[node_committed].shaper.peak =
 			tm_node->shaper_profile->profile.peak.rate /
 			1000 * IAVF_BITS_PER_BYTE;
@@ -900,7 +906,8 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 		goto fail_clear;
 
 	vf->qtc_map = qtc_map;
-	vf->tm_conf.committed = true;
+	if (adapter->stopped == 1)
+		vf->tm_conf.committed = true;
 	return ret_val;
 
 fail_clear:
