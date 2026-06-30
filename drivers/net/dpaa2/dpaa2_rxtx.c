@@ -890,10 +890,6 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 #endif
 
-		if (eth_data->dev_conf.rxmode.offloads &
-				RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
-			rte_vlan_strip(bufs[num_rx]);
-
 		dq_storage++;
 		num_rx++;
 	} while (pending);
@@ -1099,11 +1095,6 @@ dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				*dpaa2_timestamp_dynfield(bufs[num_rx]);
 		}
 #endif
-
-		if (eth_data->dev_conf.rxmode.offloads &
-				RTE_ETH_RX_OFFLOAD_VLAN_STRIP) {
-			rte_vlan_strip(bufs[num_rx]);
-		}
 
 			dq_storage++;
 			num_rx++;

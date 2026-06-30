@@ -158,6 +158,10 @@ New Features
 
   * Added inner RSS level support for tunnelled traffic.
   * Added RSS RETA query and update support.
+  * Removed the software VLAN strip offload:
+    ``RTE_ETH_RX_OFFLOAD_VLAN_STRIP`` is no longer advertised,
+    as no hardware strip backs it.
+    An application that needs the tag removed must now strip it itself.
 
 * **Updated NXP enetc ethernet driver.**
 
