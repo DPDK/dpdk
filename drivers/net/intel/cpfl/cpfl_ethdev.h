@@ -340,7 +340,7 @@ cpfl_get_vsi_id(struct cpfl_itf *itf)
 
 		return repr->vport_info->vport.info.vsi_id;
 	} else if (itf->type == CPFL_ITF_TYPE_VPORT) {
-		if (itf->adapter->base.hw.device_id == CPFL_DEV_ID_MEV) {
+		if (!idpf_is_vf_device(&itf->adapter->base.hw)) {
 			vport_id = ((struct cpfl_vport *)itf)->base.vport_id;
 
 			vport_identity.func_type = CPCHNL2_FTYPE_LAN_PF;
@@ -359,7 +359,7 @@ cpfl_get_vsi_id(struct cpfl_itf *itf)
 
 			vsi_id = info->vport.info.vsi_id;
 		} else {
-			if (itf->adapter->base.hw.device_id == IXD_DEV_ID_VCPF)
+			if (idpf_is_vf_device(&itf->adapter->base.hw))
 				vsi_id = (uint16_t)((struct cpfl_vport *)itf)->vport_info.vsi_id;
 		}
 	}
@@ -402,7 +402,7 @@ vcpf_get_abs_qid(uint16_t port_id,  uint32_t queue_type)
 		return CPFL_INVALID_HW_ID;
 	if (itf->type == CPFL_ITF_TYPE_VPORT) {
 		vport = (void *)itf;
-		if (itf->adapter->base.hw.device_id == IXD_DEV_ID_VCPF) {
+		if (idpf_is_vf_device(&itf->adapter->base.hw)) {
 			switch (queue_type) {
 			case VIRTCHNL2_QUEUE_TYPE_TX:
 				return vport->vport_info.abs_start_txq_id;
