@@ -440,7 +440,7 @@ valid_pcapng_file(const char *file_name, uint64_t started, unsigned int expected
 	int ret;
 
 	ctx.start_ns = started;
-	ctx.end_ns = current_timestamp();
+	ctx.end_ns = current_timestamp() + NS_PER_S;
 
 	ctx.pcap = pcap_open_offline_with_tstamp_precision(file_name,
 							   PCAP_TSTAMP_PRECISION_NANO,
