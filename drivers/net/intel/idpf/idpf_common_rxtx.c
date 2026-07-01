@@ -952,9 +952,6 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				idpf_split_tx_free(txq->complq);
 		}
 
-		if (txq->nb_tx_free < tx_pkt->nb_segs)
-			break;
-
 		cmd_dtype = 0;
 		ol_flags = tx_pkt->ol_flags;
 		tx_offload.l2_len = tx_pkt->l2_len;
@@ -976,6 +973,9 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		else
 			nb_used = tx_pkt->nb_segs + nb_ctx;
 
+		if (txq->nb_tx_free < nb_used)
+			break;
+
 		if (ol_flags & CI_TX_CKSUM_OFFLOAD_MASK)
 			cmd_dtype = IDPF_TXD_FLEX_FLOW_CMD_CS_EN;
 
@@ -994,16 +994,43 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t first_sw_id = sw_id;
 
 		do {
+			uint16_t slen = tx_pkt->data_len;
+			rte_iova_t buf_dma_addr = rte_mbuf_data_iova(tx_pkt);
+
+			/* Split segment across multiple descriptors if needed
+			 * for TSO packets where segment exceeds max buf size.
+			 */
+			while ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) &&
+					unlikely(slen > CI_MAX_DATA_PER_TXD)) {
+				txd = &txr[tx_id];
+				txn = &sw_ring[txe->next_id];
+				txe->mbuf = NULL;
+
+				txd->buf_addr = rte_cpu_to_le_64(buf_dma_addr);
+				txd->qw1.cmd_dtype = cmd_dtype |
+					IDPF_TX_DESC_DTYPE_FLEX_FLOW_SCHE;
+				txd->qw1.rxr_bufsize = CI_MAX_DATA_PER_TXD;
+				txd->qw1.compl_tag = sw_id;
+
+				buf_dma_addr += CI_MAX_DATA_PER_TXD;
+				slen -= CI_MAX_DATA_PER_TXD;
+
+				tx_id++;
+				if (tx_id == txq->nb_tx_desc)
+					tx_id = 0;
+				sw_id = txe->next_id;
+				txe = txn;
+			}
+
 			txd = &txr[tx_id];
 			txn = &sw_ring[txe->next_id];
 			txe->mbuf = tx_pkt;
 
 			/* Setup TX descriptor */
-			txd->buf_addr =
-				rte_cpu_to_le_64(rte_mbuf_data_iova(tx_pkt));
-			cmd_dtype |= IDPF_TX_DESC_DTYPE_FLEX_FLOW_SCHE;
-			txd->qw1.cmd_dtype = cmd_dtype;
-			txd->qw1.rxr_bufsize = tx_pkt->data_len;
+			txd->buf_addr = rte_cpu_to_le_64(buf_dma_addr);
+			txd->qw1.cmd_dtype = cmd_dtype |
+				IDPF_TX_DESC_DTYPE_FLEX_FLOW_SCHE;
+			txd->qw1.rxr_bufsize = slen;
 			txd->qw1.compl_tag = sw_id;
 			tx_id++;
 			if (tx_id == txq->nb_tx_desc)
