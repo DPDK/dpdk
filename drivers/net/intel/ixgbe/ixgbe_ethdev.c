@@ -7425,6 +7425,12 @@ ixgbe_get_module_info(struct rte_eth_dev *dev,
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -E_RTE_SECONDARY;
 
+	if (hw->phy.media_type == ixgbe_media_type_copper) {
+		PMD_DRV_LOG(DEBUG, "Port %u is Base-T (copper), no SFF module info.",
+				dev->data->port_id);
+		return -ENOTSUP;
+	}
+
 	/* Check whether we support SFF-8472 or not */
 	status = hw->phy.ops.read_i2c_eeprom(hw,
 					     IXGBE_SFF_SFF_8472_COMP,
@@ -7477,6 +7483,12 @@ ixgbe_get_module_eeprom(struct rte_eth_dev *dev,
 	 */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -E_RTE_SECONDARY;
+
+	if (hw->phy.media_type == ixgbe_media_type_copper) {
+		PMD_DRV_LOG(DEBUG, "Port %u is Base-T (copper), cannot read module EEPROM.",
+				dev->data->port_id);
+		return -ENOTSUP;
+	}
 
 	for (i = info->offset; i < info->offset + info->length; i++) {
 		if (i < RTE_ETH_MODULE_SFF_8079_LEN)
