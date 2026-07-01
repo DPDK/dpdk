@@ -927,13 +927,14 @@ iavf_config_vlan_strip_v2(struct iavf_adapter *adapter, bool enable)
 	stripping_caps = &vf->vlan_v2_caps.offloads.stripping_support;
 
 	/* When VLAN extend is disabled, Single VLAN mode which is Outer VLAN
-	 * When VLAN extend is enabled, QinQ mode, this API works only on
-	 * Inner VLAN strip which is always 0x8100.
+	 * When VLAN extend is enabled i.e. DVM mode or when hardware reports
+	 * Single VLAN capability through inner stripping_caps, this API
+	 * works only on Inner VLAN strip which is always 0x8100.
 	 */
 	if (!qinq && (stripping_caps->outer & VIRTCHNL_VLAN_ETHERTYPE_8100) &&
 	    (stripping_caps->outer & VIRTCHNL_VLAN_TOGGLE))
 		ethertype = &vlan_strip.outer_ethertype_setting;
-	else if (qinq && (stripping_caps->inner & VIRTCHNL_VLAN_ETHERTYPE_8100) &&
+	else if ((stripping_caps->inner & VIRTCHNL_VLAN_ETHERTYPE_8100) &&
 		 (stripping_caps->inner & VIRTCHNL_VLAN_TOGGLE))
 		ethertype = &vlan_strip.inner_ethertype_setting;
 	else
@@ -1026,7 +1027,7 @@ iavf_config_vlan_insert_v2(struct iavf_adapter *adapter, bool enable)
 	if (!qinq && (insertion_caps->outer & VIRTCHNL_VLAN_ETHERTYPE_8100) &&
 	    (insertion_caps->outer & VIRTCHNL_VLAN_TOGGLE))
 		ethertype = &vlan_insert.outer_ethertype_setting;
-	else if (qinq && (insertion_caps->inner & VIRTCHNL_VLAN_ETHERTYPE_8100) &&
+	else if ((insertion_caps->inner & VIRTCHNL_VLAN_ETHERTYPE_8100) &&
 		 (insertion_caps->inner & VIRTCHNL_VLAN_TOGGLE))
 		ethertype = &vlan_insert.inner_ethertype_setting;
 	else
