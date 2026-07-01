@@ -286,7 +286,7 @@ rte_bpf_load_ex(const struct rte_bpf_prm_ex *prm)
 		return NULL;
 	}
 
-	RTE_BPF_LOG_FUNC_LINE(INFO, "successfully creates %p(jit={.func=%p,.sz=%zu});",
+	RTE_BPF_LOG_FUNC_LINE(DEBUG, "successfully creates %p(jit={.func=%p,.sz=%zu});",
 		load.bpf, load.bpf->jit.raw, load.bpf->jit.sz);
 	return load.bpf;
 }
