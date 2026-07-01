@@ -1502,12 +1502,50 @@ vhost_dev_priv_dump(struct rte_eth_dev *dev, FILE *f)
 	return 0;
 }
 
+static void
+eth_rxq_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
+		 struct rte_eth_rxq_info *qinfo)
+{
+	struct rte_vhost_vring vring;
+	struct vhost_queue *vq = dev->data->rx_queues[rx_queue_id];
+
+	qinfo->nb_desc = 0;
+
+	if (vq == NULL || vq->vid < 0)
+		return;
+
+	if (rte_vhost_get_vhost_vring(vq->vid, vq->virtqueue_id, &vring) < 0)
+		return;
+
+	qinfo->nb_desc = vring.size;
+}
+
+static void
+eth_txq_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
+		 struct rte_eth_txq_info *qinfo)
+{
+	struct rte_vhost_vring vring;
+	struct vhost_queue *vq = dev->data->tx_queues[tx_queue_id];
+
+	qinfo->nb_desc = 0;
+
+	if (vq == NULL || vq->vid < 0)
+		return;
+
+	if (rte_vhost_get_vhost_vring(vq->vid, vq->virtqueue_id, &vring) < 0)
+		return;
+
+	qinfo->nb_desc = vring.size;
+}
+
 static const struct eth_dev_ops ops = {
 	.dev_start = eth_dev_start,
 	.dev_stop = eth_dev_stop,
 	.dev_close = eth_dev_close,
 	.dev_configure = eth_dev_configure,
 	.dev_infos_get = eth_dev_info,
+	.rxq_info_get = eth_rxq_info_get,
+	.txq_info_get = eth_txq_info_get,
 	.rx_queue_setup = eth_rx_queue_setup,
 	.tx_queue_setup = eth_tx_queue_setup,
 	.rx_queue_release = eth_rx_queue_release,
