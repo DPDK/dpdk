@@ -89,7 +89,23 @@ struct rte_mbuf *
 ip_frag_process(struct ip_frag_pkt *fp, struct rte_ip_frag_death_row *dr,
 	struct rte_mbuf *mb, uint16_t ofs, uint16_t len, uint16_t more_frags)
 {
-	uint32_t idx;
+	uint32_t i, idx;
+
+	/*
+	 * Discard an exact duplicate fragment. If a previously stored fragment
+	 * already covers the same offset and length, this fragment carries no
+	 * new data. Reassembly is tolerant of duplicates (RFC 791), so drop
+	 * only this mbuf and keep the reassembly entry intact rather than
+	 * treating it as an error. Fragments overlapping an existing one with
+	 * different bounds are not handled here.
+	 */
+	for (i = 0; i != fp->last_idx; i++) {
+		if (fp->frags[i].mb != NULL && fp->frags[i].ofs == ofs &&
+				fp->frags[i].len == len) {
+			IP_FRAG_MBUF2DR(dr, mb);
+			return NULL;
+		}
+	}
 
 	fp->frag_size += len;
 

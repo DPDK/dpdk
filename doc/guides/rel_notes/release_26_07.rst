@@ -301,6 +301,10 @@ API Changes
   - ``rte_pmd_mlx5_enable_steering``
   - ``rte_pmd_mlx5_disable_steering``
 
+* **ip_frag: changed handling of malformed fragments.**
+
+  - Duplicate fragments are tolerated instead of failing reassembly.
+
 
 ABI Changes
 -----------
