@@ -92,16 +92,38 @@ ip_frag_process(struct ip_frag_pkt *fp, struct rte_ip_frag_death_row *dr,
 	uint32_t i, idx;
 
 	/*
-	 * Discard an exact duplicate fragment. If a previously stored fragment
-	 * already covers the same offset and length, this fragment carries no
-	 * new data. Reassembly is tolerant of duplicates (RFC 791), so drop
-	 * only this mbuf and keep the reassembly entry intact rather than
-	 * treating it as an error. Fragments overlapping an existing one with
-	 * different bounds are not handled here.
+	 * Scan the fragments already collected for this datagram before
+	 * storing the new one. The stored set is kept free of duplicates and
+	 * overlaps, so a single pass is sufficient.
 	 */
 	for (i = 0; i != fp->last_idx; i++) {
-		if (fp->frags[i].mb != NULL && fp->frags[i].ofs == ofs &&
-				fp->frags[i].len == len) {
+		if (fp->frags[i].mb == NULL)
+			continue;
+
+		/*
+		 * Exact duplicate: carries no new data. Reassembly tolerates
+		 * duplicates (RFC 791), so drop only this mbuf and keep the
+		 * entry.
+		 */
+		if (fp->frags[i].ofs == ofs && fp->frags[i].len == len) {
+			IP_FRAG_MBUF2DR(dr, mb);
+			return NULL;
+		}
+
+		/*
+		 * Overlap with an existing fragment. Per RFC 8200 section 4.5
+		 * (and RFC 5722) the datagram must be discarded; the same is
+		 * applied to IPv4. Free all collected fragments, drop this one,
+		 * and invalidate the entry.
+		 */
+		if (ofs < fp->frags[i].ofs + fp->frags[i].len && fp->frags[i].ofs < ofs + len) {
+			IP_FRAG_LOG(DEBUG,
+				    "%s:%d overlap ofs: %u len: %u\n"
+				    "fragment: %p ofs: %u len %u\n\n",
+				    __func__, __LINE__, ofs, len,
+				    fp, fp->frags[i].ofs, fp->frags[i].len);
+			ip_frag_free(fp, dr);
+			ip_frag_key_invalidate(&fp->key);
 			IP_FRAG_MBUF2DR(dr, mb);
 			return NULL;
 		}

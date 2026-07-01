@@ -304,6 +304,10 @@ API Changes
 * **ip_frag: changed handling of malformed fragments.**
 
   - Duplicate fragments are tolerated instead of failing reassembly.
+  - Overlapping fragments are rejected on arrival rather than during reassembly.
+
+  Overlap is now detected on arrival, which adds a scan of the
+  already received fragments per fragment and may affect throughput.
 
 
 ABI Changes
