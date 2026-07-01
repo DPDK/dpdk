@@ -83,6 +83,9 @@ insert_in_device_list(struct rte_dpaa2_device *newdev)
 
 	if (!inserted)
 		rte_bus_add_device(&rte_fslmc_bus, &newdev->device);
+
+	if (newdev->dev_type < DPAA2_DEVTYPE_MAX)
+		fslmc_bus_device_count[newdev->dev_type]++;
 }
 
 static void
@@ -90,6 +93,8 @@ fslmc_free_device(struct rte_device *rte_dev)
 {
 	struct rte_dpaa2_device *dev = RTE_BUS_DEVICE(rte_dev, *dev);
 
+	if (dev->dev_type < DPAA2_DEVTYPE_MAX)
+		fslmc_bus_device_count[dev->dev_type]--;
 	rte_intr_instance_free(dev->intr_handle);
 	free(dev);
 }
@@ -202,9 +207,6 @@ scan_one_fslmc_device(char *dev_name)
 	}
 	dev->device.name = dev->name;
 	dev->device.devargs = rte_bus_find_devargs(&rte_fslmc_bus, dev_name);
-
-	/* Update the device found into the device_count table */
-	fslmc_bus_device_count[dev->dev_type]++;
 
 	/* Add device in the fslmc device list */
 	insert_in_device_list(dev);
