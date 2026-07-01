@@ -111,9 +111,15 @@ rte_ipv4_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 	ip_ofs = (uint16_t)(flag_offset & RTE_IPV4_HDR_OFFSET_MASK);
 	ip_flag = (uint16_t)(flag_offset & RTE_IPV4_HDR_MF_FLAG);
 
+	/*
+	 * RFC 791 requires using: source, destination, identifier field and protocol
+	 */
+
 	/* use first 8 bytes only */
 	memcpy(&key.src_dst[0], &ip_hdr->src_addr, 8);
-	key.id = ip_hdr->packet_id;
+
+	/* packet_id is 16 bits and proto id is 8 bits */
+	key.id = ((uint32_t) ip_hdr->next_proto_id << 16) | ip_hdr->packet_id;
 	key.key_len = IPV4_KEYLEN;
 
 	ip_ofs *= RTE_IPV4_HDR_OFFSET_UNITS;
