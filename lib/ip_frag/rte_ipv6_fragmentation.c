@@ -6,7 +6,6 @@
 #include <errno.h>
 
 #include <eal_export.h>
-#include <rte_memcpy.h>
 
 #include "ip_frag_common.h"
 
@@ -24,7 +23,7 @@ __fill_ipv6hdr_frag(struct rte_ipv6_hdr *dst,
 {
 	struct rte_ipv6_fragment_ext *fh;
 
-	rte_memcpy(dst, src, sizeof(*dst));
+	*dst = *src;
 	dst->payload_len = rte_cpu_to_be_16(len);
 	dst->proto = IPPROTO_FRAGMENT;
 
