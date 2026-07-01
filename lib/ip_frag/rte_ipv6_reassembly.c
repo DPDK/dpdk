@@ -174,8 +174,13 @@ rte_ipv6_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 		tbl, tbl->max_cycles, tbl->entry_mask, tbl->max_entries,
 		tbl->use_entries);
 
-	/* check that fragment length is greater then zero. */
-	if (ip_len <= 0) {
+	/*
+	 * Drop fragments with no payload, and any fragment whose end would
+	 * make the reassembled payload exceed 65535 bytes. The payload_len
+	 * field is 16 bits, so otherwise it is silently truncated while the
+	 * mbuf still holds the full length.
+	 */
+	if (ip_len <= 0 || ip_ofs + ip_len > UINT16_MAX) {
 		IP_FRAG_MBUF2DR(dr, mb);
 		return NULL;
 	}
