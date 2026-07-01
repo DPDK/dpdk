@@ -305,6 +305,7 @@ API Changes
 
   - Duplicate fragments are tolerated instead of failing reassembly.
   - Overlapping fragments are rejected on arrival rather than during reassembly.
+  - For IPv6, fragments with per-fragment extension headers are rejected.
 
   Overlap is now detected on arrival, which adds a scan of the
   already received fragments per fragment and may affect throughput.
