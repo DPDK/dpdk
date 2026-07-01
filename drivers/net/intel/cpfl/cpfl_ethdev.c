@@ -369,6 +369,12 @@ cpfl_dev_stats_reset(struct rte_eth_dev *dev)
 	struct virtchnl2_vport_stats *pstats = NULL;
 	int ret;
 
+	/* VF devices do not support VIRTCHNL2_OP_GET_STATS */
+	if (idpf_is_vf_device(&vport->adapter->hw)) {
+		cpfl_reset_mbuf_alloc_failed_stats(dev);
+		return 0;
+	}
+
 	ret = idpf_vc_stats_query(vport, &pstats);
 	if (ret != 0)
 		return ret;
@@ -1703,7 +1709,7 @@ cpfl_handle_vchnl_event_msg(struct cpfl_adapter_ext *adapter, uint8_t *msg, uint
 	}
 
 	/* ignore if it is ctrl vport */
-	if (adapter->base.hw.device_id == CPFL_DEV_ID_MEV &&
+	if (!idpf_is_vf_device(&adapter->base.hw) &&
 			adapter->ctrl_vport.base.vport_id == vc_event->vport_id)
 		return;
 
@@ -1946,7 +1952,7 @@ cpfl_stop_cfgqs(struct cpfl_adapter_ext *adapter)
 	int i, ret;
 
 	for (i = 0; i < adapter->num_tx_cfgq; i++) {
-		if (adapter->base.hw.device_id == IXD_DEV_ID_VCPF)
+		if (idpf_is_vf_device(&adapter->base.hw))
 			ret = idpf_vc_ena_dis_one_queue_vcpf(&adapter->base,
 					adapter->cfgq_info[0].id,
 					VIRTCHNL2_QUEUE_TYPE_CONFIG_TX, false);
@@ -1961,7 +1967,7 @@ cpfl_stop_cfgqs(struct cpfl_adapter_ext *adapter)
 	}
 
 	for (i = 0; i < adapter->num_rx_cfgq; i++) {
-		if (adapter->base.hw.device_id == IXD_DEV_ID_VCPF)
+		if (idpf_is_vf_device(&adapter->base.hw))
 			ret = idpf_vc_ena_dis_one_queue_vcpf(&adapter->base,
 					adapter->cfgq_info[1].id,
 					VIRTCHNL2_QUEUE_TYPE_CONFIG_RX, false);
@@ -1997,7 +2003,7 @@ cpfl_start_cfgqs(struct cpfl_adapter_ext *adapter)
 	}
 
 	for (i = 0; i < adapter->num_tx_cfgq; i++) {
-		if (adapter->base.hw.device_id == IXD_DEV_ID_VCPF)
+		if (idpf_is_vf_device(&adapter->base.hw))
 			ret = idpf_vc_ena_dis_one_queue_vcpf(&adapter->base,
 					adapter->cfgq_info[0].id,
 					VIRTCHNL2_QUEUE_TYPE_CONFIG_TX, true);
@@ -2011,7 +2017,7 @@ cpfl_start_cfgqs(struct cpfl_adapter_ext *adapter)
 	}
 
 	for (i = 0; i < adapter->num_rx_cfgq; i++) {
-		if (adapter->base.hw.device_id == IXD_DEV_ID_VCPF)
+		if (idpf_is_vf_device(&adapter->base.hw))
 			ret = idpf_vc_ena_dis_one_queue_vcpf(&adapter->base,
 					adapter->cfgq_info[1].id,
 					VIRTCHNL2_QUEUE_TYPE_CONFIG_RX, true);
@@ -2185,7 +2191,7 @@ cpfl_cfgq_setup(struct cpfl_adapter_ext *adapter)
 	for (i = 0; i < adapter->num_cfgq; i++) {
 		if (i % 2 == 0) {
 		/* Setup Tx config queue */
-			if (adapter->base.hw.device_id == IXD_DEV_ID_VCPF)
+			if (idpf_is_vf_device(&adapter->base.hw))
 				create_cfgq_info[i].id = cfgq_info->cfgq[i].qid;
 			else
 				create_cfgq_info[i].id = vport->base.chunks_info.tx_start_qid +
@@ -2195,7 +2201,7 @@ cpfl_cfgq_setup(struct cpfl_adapter_ext *adapter)
 			create_cfgq_info[i].len = CPFL_CFGQ_RING_SIZE;
 			create_cfgq_info[i].buf_size = CPFL_CFGQ_BUFFER_SIZE;
 			memset(&create_cfgq_info[i].reg, 0, sizeof(struct idpf_ctlq_reg));
-			if (adapter->base.hw.device_id == IXD_DEV_ID_VCPF)
+			if (idpf_is_vf_device(&adapter->base.hw))
 				create_cfgq_info[i].reg.tail = cfgq_info->cfgq[i].qtail_reg_start;
 			else
 				create_cfgq_info[i].reg.tail = tx_qtail_start +
@@ -2203,7 +2209,7 @@ cpfl_cfgq_setup(struct cpfl_adapter_ext *adapter)
 
 		} else {
 		/* Setup Rx config queue */
-			if (adapter->base.hw.device_id == IXD_DEV_ID_VCPF)
+			if (idpf_is_vf_device(&adapter->base.hw))
 				create_cfgq_info[i].id = cfgq_info->cfgq[i].qid;
 			else
 				create_cfgq_info[i].id = vport->base.chunks_info.rx_start_qid +
@@ -2213,7 +2219,7 @@ cpfl_cfgq_setup(struct cpfl_adapter_ext *adapter)
 			create_cfgq_info[i].len = CPFL_CFGQ_RING_SIZE;
 			create_cfgq_info[i].buf_size = CPFL_CFGQ_BUFFER_SIZE;
 			memset(&create_cfgq_info[i].reg, 0, sizeof(struct idpf_ctlq_reg));
-			if (adapter->base.hw.device_id == IXD_DEV_ID_VCPF)
+			if (idpf_is_vf_device(&adapter->base.hw))
 				create_cfgq_info[i].reg.tail = cfgq_info->cfgq[i].qtail_reg_start;
 			else
 				create_cfgq_info[i].reg.tail = rx_qtail_start +
@@ -2289,7 +2295,7 @@ cpfl_ctrl_path_close(struct cpfl_adapter_ext *adapter)
 {
 	cpfl_stop_cfgqs(adapter);
 	cpfl_remove_cfgqs(adapter);
-	if (adapter->base.hw.device_id == CPFL_DEV_ID_MEV)
+	if (!idpf_is_vf_device(&adapter->base.hw))
 		idpf_vc_vport_destroy(&adapter->ctrl_vport.base);
 	else
 		vcpf_del_queues(adapter);
@@ -2300,7 +2306,7 @@ cpfl_ctrl_path_open(struct cpfl_adapter_ext *adapter)
 {
 	int ret;
 
-	if (adapter->base.hw.device_id == CPFL_DEV_ID_MEV) {
+	if (!idpf_is_vf_device(&adapter->base.hw)) {
 		ret = cpfl_vc_create_ctrl_vport(adapter);
 		if (ret) {
 			PMD_INIT_LOG(ERR, "Failed to create control vport");
@@ -2329,7 +2335,7 @@ cpfl_ctrl_path_open(struct cpfl_adapter_ext *adapter)
 	ret = cpfl_cfgq_setup(adapter);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to setup control queues");
-		if (adapter->base.hw.device_id == CPFL_DEV_ID_MEV)
+		if (!idpf_is_vf_device(&adapter->base.hw))
 			goto err_cfgq_setup;
 		else
 			goto err_del_cfg;
@@ -2355,7 +2361,7 @@ err_add_cfgq:
 	cpfl_remove_cfgqs(adapter);
 err_cfgq_setup:
 err_init_ctrl_vport:
-	if (adapter->base.hw.device_id == CPFL_DEV_ID_MEV)
+	if (!idpf_is_vf_device(&adapter->base.hw))
 		idpf_vc_vport_destroy(&adapter->ctrl_vport.base);
 err_del_cfg:
 	vcpf_del_queues(adapter);
@@ -2835,7 +2841,7 @@ cpfl_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 		}
 	}
 	/* get the vport info */
-	if (adapter->base.hw.device_id == IXD_DEV_ID_VCPF) {
+	if (idpf_is_vf_device(&adapter->base.hw)) {
 		pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 		vi.func_type = VCPF_CPCHNL2_FTYPE_LAN_VF;
 		vi.pf_id = CPFL_HOST0_CPF_ID;

@@ -63,6 +63,7 @@
 (PCI_BASE_CLASS_NETWORK_ETHERNET << 16 | PCI_SUB_BASE_CLASS_NETWORK_ETHERNET << 8 |  \
 IDPF_NETWORK_ETHERNET_PROGIF)
 
+__rte_internal
 bool idpf_is_vf_device(struct idpf_hw *hw);
 
 enum idpf_rx_func_type {

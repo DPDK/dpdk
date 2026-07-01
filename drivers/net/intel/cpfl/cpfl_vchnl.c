@@ -216,7 +216,7 @@ cpfl_config_ctlq_rx(struct cpfl_adapter_ext *adapter)
 	uint16_t num_qs;
 	int size, err, i;
 
-	if (adapter->base.hw.device_id != IXD_DEV_ID_VCPF) {
+	if (!idpf_is_vf_device(&adapter->base.hw)) {
 		if (vport->base.rxq_model != VIRTCHNL2_QUEUE_MODEL_SINGLE) {
 			PMD_DRV_LOG(ERR, "This rxq model isn't supported.");
 			err = -EINVAL;
@@ -235,7 +235,7 @@ cpfl_config_ctlq_rx(struct cpfl_adapter_ext *adapter)
 		return err;
 	}
 
-	if (adapter->base.hw.device_id == IXD_DEV_ID_VCPF)
+	if (idpf_is_vf_device(&adapter->base.hw))
 		vc_rxqs->vport_id = rte_cpu_to_le_32(VCPF_CFGQ_VPORT_ID);
 	else
 		vc_rxqs->vport_id = vport->base.vport_id;
@@ -249,7 +249,7 @@ cpfl_config_ctlq_rx(struct cpfl_adapter_ext *adapter)
 		rxq_info->queue_id = adapter->cfgq_info[2 * i + 1].id;
 		rxq_info->model = VIRTCHNL2_QUEUE_MODEL_SINGLE;
 		rxq_info->data_buffer_size = adapter->cfgq_info[2 * i + 1].buf_size;
-		if (adapter->base.hw.device_id != IXD_DEV_ID_VCPF)
+		if (!idpf_is_vf_device(&adapter->base.hw))
 			rxq_info->max_pkt_size = vport->base.max_pkt_len;
 		rxq_info->desc_ids = VIRTCHNL2_RXDID_2_FLEX_SQ_NIC_M;
 		rxq_info->qflags |= VIRTCHNL2_RX_DESC_SIZE_32BYTE;
@@ -281,7 +281,7 @@ cpfl_config_ctlq_tx(struct cpfl_adapter_ext *adapter)
 	uint16_t num_qs;
 	int size, err, i;
 
-	if (adapter->base.hw.device_id != IXD_DEV_ID_VCPF) {
+	if (!idpf_is_vf_device(&adapter->base.hw)) {
 		if (vport->base.txq_model != VIRTCHNL2_QUEUE_MODEL_SINGLE) {
 			PMD_DRV_LOG(ERR, "This txq model isn't supported.");
 			err = -EINVAL;
@@ -300,7 +300,7 @@ cpfl_config_ctlq_tx(struct cpfl_adapter_ext *adapter)
 		return err;
 	}
 
-	if (adapter->base.hw.device_id == IXD_DEV_ID_VCPF)
+	if (idpf_is_vf_device(&adapter->base.hw))
 		vc_txqs->vport_id = rte_cpu_to_le_32(VCPF_CFGQ_VPORT_ID);
 	else
 		vc_txqs->vport_id = vport->base.vport_id;

@@ -451,6 +451,7 @@ err_check_reset:
  *
  * Return: 1 for VF device, 0 for PF device.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_is_vf_device)
 bool idpf_is_vf_device(struct idpf_hw *hw)
 {
 	if (hw->device_id == IDPF_DEV_ID_SRIOV  || hw->device_id == IXD_DEV_ID_VCPF)
@@ -608,6 +609,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(idpf_vport_rss_config)
 int
 idpf_vport_rss_config(struct idpf_vport *vport)
 {
+	struct idpf_hw *hw = &vport->adapter->hw;
 	int ret;
 
 	ret = idpf_vc_rss_key_set(vport);
@@ -622,10 +624,13 @@ idpf_vport_rss_config(struct idpf_vport *vport)
 		return ret;
 	}
 
-	ret = idpf_vc_rss_hash_set(vport);
-	if (ret != 0) {
-		DRV_LOG(ERR, "Failed to configure RSS hash");
-		return ret;
+	/* VF devices do not support setting RSS hash */
+	if (!idpf_is_vf_device(hw)) {
+		ret = idpf_vc_rss_hash_set(vport);
+		if (ret != 0) {
+			DRV_LOG(ERR, "Failed to configure RSS hash");
+			return ret;
+		}
 	}
 
 	return ret;
