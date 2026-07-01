@@ -178,6 +178,28 @@ rte_ipv6_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 		return NULL;
 	}
 
+	/*
+	 * Only a fragment header directly following the IPv6 header is supported.
+	 * Per-fragment (unfragmentable) extension headers placed
+	 * before the fragment header are not handled: ipv6_frag_reassemble()
+	 * patches the IPv6 header's next-header field and removes the fragment
+	 * header assuming it sits immediately after the IPv6 header, so such a
+	 * fragment would be reassembled into a corrupt datagram. Drop it.
+	 *
+	 * Extension headers after the fragment header (destination options,
+	 * AH, ESP, upper-layer) are part of the fragmentable payload and are
+	 * reassembled as opaque bytes, so they are not affected. The test uses
+	 * the fragment header's position rather than l3_len so that callers
+	 * which include later headers in l3_len are not rejected.
+	 */
+	if ((uintptr_t)frag_hdr != (uintptr_t)(ip_hdr + 1)) {
+		IP_FRAG_LOG(DEBUG,
+			    "%s:%d: drop fragment with header before frag header, offset %zu\n",
+			    __func__, __LINE__, (uintptr_t)frag_hdr - (uintptr_t)ip_hdr);
+		IP_FRAG_MBUF2DR(dr, mb);
+		return NULL;
+	}
+
 	if (unlikely(trim > 0))
 		rte_pktmbuf_trim(mb, trim);
 
