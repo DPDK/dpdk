@@ -160,6 +160,7 @@ source_file_deps = {
     'test_rawdev.c': ['rawdev', 'bus_vdev', 'raw_skeleton'],
     'test_rcu_qsbr.c': ['rcu', 'hash'],
     'test_rcu_qsbr_perf.c': ['rcu', 'hash'],
+    'test_reassembly.c': ['net', 'ip_frag'],
     'test_reassembly_perf.c': ['net', 'ip_frag'],
     'test_reciprocal_division.c': [],
     'test_reciprocal_division_perf.c': [],
