@@ -1729,6 +1729,17 @@ init_config_port_offloads(portid_t pid, uint32_t socket_id)
 	}
 }
 
+/*
+ * Socket id that mbuf pools are created (and named) with when NUMA
+ * support is disabled: --socket-num if given, otherwise SOCKET_ID_ANY.
+ */
+static unsigned int
+uma_socket_id(void)
+{
+	return socket_num == UMA_NO_CONFIG ?
+	       (unsigned int)SOCKET_ID_ANY : socket_num;
+}
+
 static void
 init_config(void)
 {
@@ -1778,8 +1789,7 @@ init_config(void)
 					socket_id = socket_ids[0];
 			}
 		} else {
-			socket_id = (socket_num == UMA_NO_CONFIG) ?
-				    0 : socket_num;
+			socket_id = uma_socket_id();
 		}
 		/* Apply default TxRx configuration for all ports */
 		init_config_port_offloads(pid, socket_id);
@@ -1823,7 +1833,7 @@ init_config(void)
 			mempools[i] = mbuf_pool_create
 					(mbuf_data_size[i],
 					 nb_mbuf_per_pool,
-					 SOCKET_ID_ANY, i);
+					 uma_socket_id(), i);
 		}
 	}
 
@@ -1841,7 +1851,8 @@ init_config(void)
 			rte_lcore_to_socket_id(fwd_lcores_cpuids[lc_id]));
 
 		if (mbp == NULL)
-			mbp = mbuf_pool_find_first(0);
+			mbp = mbuf_pool_find_first(numa_support ?
+				0 : uma_socket_id());
 		fwd_lcores[lc_id]->mbp = mbp;
 #ifdef RTE_LIB_GSO
 		/* initialize GSO context */
@@ -1920,10 +1931,7 @@ init_fwd_streams(void)
 			}
 		}
 		else {
-			if (socket_num == UMA_NO_CONFIG)
-				port->socket_id = 0;
-			else
-				port->socket_id = socket_num;
+			port->socket_id = uma_socket_id();
 		}
 	}
 
@@ -3152,8 +3160,7 @@ start_port(portid_t pid)
 				} else {
 					struct rte_mempool *mp =
 						mbuf_pool_find_first
-							((numa_support ? port->socket_id :
-							(unsigned int)SOCKET_ID_ANY));
+							(port->socket_id);
 					if (mp == NULL) {
 						fprintf(stderr,
 							"Failed to setup RX queue: No mempool allocation on the socket %d\n",
