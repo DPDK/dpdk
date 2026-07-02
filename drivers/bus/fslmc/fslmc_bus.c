@@ -123,18 +123,47 @@ dump_device_list(void)
 static int
 scan_one_fslmc_device(char *dev_name)
 {
-	char *dup_dev_name, *t_ptr;
+	enum rte_dpaa2_dev_type dev_type = DPAA2_UNKNOWN;
 	struct rte_dpaa2_device *dev = NULL;
+	static const struct {
+		const char *prefix;
+		enum rte_dpaa2_dev_type type;
+	} dev_types[] = {
+		{ "dpni.", DPAA2_ETH },
+		{ "dpseci.", DPAA2_CRYPTO },
+		{ "dpcon.", DPAA2_CON },
+		{ "dpbp.", DPAA2_BPOOL },
+		{ "dpio.", DPAA2_IO },
+		{ "dpci.", DPAA2_CI },
+		{ "dpmcp.", DPAA2_MPORTAL },
+		{ "dpdmai.", DPAA2_QDMA },
+		{ "dpdmux.", DPAA2_MUX },
+		{ "dprtc.", DPAA2_DPRTC },
+		{ "dprc.", DPAA2_DPRC },
+	};
+	char *dev_id;
 	int ret = -1;
 
-	if (!dev_name)
+	if (dev_name == NULL)
 		return ret;
 
-	/* Creating a temporary copy to perform cut-parse over string */
-	dup_dev_name = strdup(dev_name);
-	if (!dup_dev_name) {
-		DPAA2_BUS_ERR("Unable to allocate device name memory");
-		return -ENOMEM;
+	for (unsigned int i = 0; i < RTE_DIM(dev_types); i++) {
+		if (strncmp(dev_types[i].prefix, dev_name, strlen(dev_types[i].prefix)) != 0)
+			continue;
+		dev_id = dev_name + strlen(dev_types[i].prefix);
+		dev_type = dev_types[i].type;
+		break;
+	}
+
+	if (dev_type == DPAA2_UNKNOWN) {
+		char *ptr = strchr(dev_name, '.');
+
+		if (ptr == NULL) {
+			DPAA2_BUS_ERR("Invalid device found: (%s)", dev_name);
+			ret = 0;
+			goto cleanup;
+		}
+		dev_id = ptr + 1;
 	}
 
 	/* For all other devices, we allocate rte_dpaa2_device.
@@ -145,11 +174,11 @@ scan_one_fslmc_device(char *dev_name)
 	dev = calloc(1, sizeof(struct rte_dpaa2_device));
 	if (!dev) {
 		DPAA2_BUS_ERR("Unable to allocate device object");
-		free(dup_dev_name);
 		return -ENOMEM;
 	}
 
 	dev->device.numa_node = SOCKET_ID_ANY;
+	dev->dev_type = dev_type;
 
 	/* Allocate interrupt instance */
 	dev->intr_handle =
@@ -160,46 +189,12 @@ scan_one_fslmc_device(char *dev_name)
 		goto cleanup;
 	}
 
-	/* Parse the device name and ID */
-	t_ptr = strtok(dup_dev_name, ".");
-	if (!t_ptr) {
-		DPAA2_BUS_ERR("Invalid device found: (%s)", dup_dev_name);
+	if (sscanf(dev_id, "%hu", &dev->object_id) != 1) {
+		DPAA2_BUS_ERR("Failed to parse object ID");
 		ret = -EINVAL;
 		goto cleanup;
 	}
-	if (!strncmp("dpni", t_ptr, 4))
-		dev->dev_type = DPAA2_ETH;
-	else if (!strncmp("dpseci", t_ptr, 6))
-		dev->dev_type = DPAA2_CRYPTO;
-	else if (!strncmp("dpcon", t_ptr, 5))
-		dev->dev_type = DPAA2_CON;
-	else if (!strncmp("dpbp", t_ptr, 4))
-		dev->dev_type = DPAA2_BPOOL;
-	else if (!strncmp("dpio", t_ptr, 4))
-		dev->dev_type = DPAA2_IO;
-	else if (!strncmp("dpci", t_ptr, 4))
-		dev->dev_type = DPAA2_CI;
-	else if (!strncmp("dpmcp", t_ptr, 5))
-		dev->dev_type = DPAA2_MPORTAL;
-	else if (!strncmp("dpdmai", t_ptr, 6))
-		dev->dev_type = DPAA2_QDMA;
-	else if (!strncmp("dpdmux", t_ptr, 6))
-		dev->dev_type = DPAA2_MUX;
-	else if (!strncmp("dprtc", t_ptr, 5))
-		dev->dev_type = DPAA2_DPRTC;
-	else if (!strncmp("dprc", t_ptr, 4))
-		dev->dev_type = DPAA2_DPRC;
-	else
-		dev->dev_type = DPAA2_UNKNOWN;
 
-	t_ptr = strtok(NULL, ".");
-	if (!t_ptr) {
-		DPAA2_BUS_ERR("Skipping invalid device (%s)", dup_dev_name);
-		ret = 0;
-		goto cleanup;
-	}
-
-	sscanf(t_ptr, "%hu", &dev->object_id);
 	if (rte_strscpy(dev->name, dev_name, sizeof(dev->name)) < 0) {
 		DPAA2_BUS_ERR("Unable to copy device name: %s", rte_strerror(rte_errno));
 		ret = -rte_errno;
@@ -211,12 +206,8 @@ scan_one_fslmc_device(char *dev_name)
 	/* Add device in the fslmc device list */
 	insert_in_device_list(dev);
 
-	/* Don't need the duplicated device filesystem entry anymore */
-	free(dup_dev_name);
-
 	return 0;
 cleanup:
-	free(dup_dev_name);
 	if (dev) {
 		rte_intr_instance_free(dev->intr_handle);
 		free(dev);
