@@ -3078,9 +3078,11 @@ cmd_setup_rxtx_queue_parsed(
 
 		mp = mbuf_pool_find_first(socket_id);
 		if (mp == NULL) {
+			char buf[16];
+
 			fprintf(stderr,
-				"Failed to setup RX queue: No mempool allocation on the socket %d\n",
-				rxring_numa[res->portid]);
+				"Failed to setup RX queue: No mempool allocation on the socket %s\n",
+				socket_id_str(socket_id, buf, sizeof(buf)));
 			return;
 		}
 		ret = rx_queue_setup(res->portid,

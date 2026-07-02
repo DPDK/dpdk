@@ -1263,6 +1263,7 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 		 unsigned int socket_id, uint16_t size_idx)
 {
 	char pool_name[RTE_MEMPOOL_NAMESIZE];
+	char sock_str[16];
 	struct rte_mempool *rte_mp = NULL;
 #ifndef RTE_EXEC_ENV_WINDOWS
 	uint32_t mb_size;
@@ -1274,14 +1275,17 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 		rte_mp = rte_mempool_lookup(pool_name);
 		if (rte_mp == NULL)
 			rte_exit(EXIT_FAILURE,
-				"Get mbuf pool for socket %u failed: %s\n",
-				socket_id, rte_strerror(rte_errno));
+				"Get mbuf pool for socket %s failed: %s\n",
+				socket_id_str(socket_id, sock_str,
+					      sizeof(sock_str)),
+				rte_strerror(rte_errno));
 		return rte_mp;
 	}
 
 	TESTPMD_LOG(INFO,
-		"create a new mbuf pool <%s>: n=%u, size=%u, socket=%u\n",
-		pool_name, nb_mbuf, mbuf_seg_size, socket_id);
+		"create a new mbuf pool <%s>: n=%u, size=%u, socket=%s\n",
+		pool_name, nb_mbuf, mbuf_seg_size,
+		socket_id_str(socket_id, sock_str, sizeof(sock_str)));
 
 	switch (mp_alloc_type) {
 	case MP_ALLOC_NATIVE:
@@ -1366,8 +1370,9 @@ err:
 #endif
 	if (rte_mp == NULL) {
 		rte_exit(EXIT_FAILURE,
-			"Creation of mbuf pool for socket %u failed: %s\n",
-			socket_id, rte_strerror(rte_errno));
+			"Creation of mbuf pool for socket %s failed: %s\n",
+			socket_id_str(socket_id, sock_str, sizeof(sock_str)),
+			rte_strerror(rte_errno));
 	} else if (verbose_level > 0) {
 		rte_mempool_dump(stdout, rte_mp);
 	}
@@ -2972,6 +2977,7 @@ int
 start_port(portid_t pid)
 {
 	int diag;
+	char buf[16];
 	portid_t pi;
 	portid_t p_pi = RTE_MAX_ETHPORTS;
 	portid_t pl[RTE_MAX_ETHPORTS];
@@ -3026,8 +3032,9 @@ start_port(portid_t pid)
 				}
 			}
 			configure_rxtx_dump_callbacks(0);
-			printf("Configuring Port %d (socket %u)\n", pi,
-					port->socket_id);
+			printf("Configuring Port %d (socket %s)\n", pi,
+					socket_id_str(port->socket_id,
+						buf, sizeof(buf)));
 			if (nb_hairpinq > 0 &&
 			    rte_eth_dev_hairpin_capability_get(pi, &cap)) {
 				fprintf(stderr,
@@ -3155,8 +3162,9 @@ start_port(portid_t pid)
 							(port->socket_id);
 					if (mp == NULL) {
 						fprintf(stderr,
-							"Failed to setup RX queue: No mempool allocation on the socket %d\n",
-							port->socket_id);
+							"Failed to setup RX queue: No mempool allocation on the socket %s\n",
+							socket_id_str(port->socket_id,
+								buf, sizeof(buf)));
 						return -1;
 					}
 					diag = rx_queue_setup(pi, qi,

@@ -808,6 +808,7 @@ port_infos_display(portid_t port_id)
 	static const char *info_border = "*********************";
 	uint16_t mtu;
 	char name[RTE_ETH_NAME_MAX_LEN];
+	char buf[16];
 	int ret;
 	char fw_version[ETHDEV_FWVERS_LEN];
 	uint32_t lanes;
@@ -841,7 +842,8 @@ port_infos_display(portid_t port_id)
 
 	if (rte_dev_devargs(dev_info.device) && rte_dev_devargs(dev_info.device)->args)
 		printf("\nDevargs: %s", rte_dev_devargs(dev_info.device)->args);
-	printf("\nConnect to socket: %u", port->socket_id);
+	printf("\nConnect to socket: %s",
+	       socket_id_str(port->socket_id, buf, sizeof(buf)));
 
 	if (port_numa[port_id] != NUMA_NO_CONFIG) {
 		mp = mbuf_pool_find(port_numa[port_id], 0);
@@ -849,7 +851,8 @@ port_infos_display(portid_t port_id)
 			printf("\nmemory allocation on the socket: %d",
 							port_numa[port_id]);
 	} else
-		printf("\nmemory allocation on the socket: %u",port->socket_id);
+		printf("\nmemory allocation on the socket: %s",
+		       socket_id_str(port->socket_id, buf, sizeof(buf)));
 
 	printf("\nLink status: %s\n", (link.link_status) ? ("up") : ("down"));
 	printf("Link speed: %s\n", rte_eth_link_speed_to_str(link.link_speed));
@@ -5642,6 +5645,7 @@ pkt_fwd_config_display(struct fwd_config *cfg)
 	struct fwd_stream *fs;
 	lcoreid_t  lc_id;
 	streamid_t sm_id;
+	char buf[16];
 
 	printf("%s%s%s packet forwarding%s - ports=%d - cores=%d - streams=%d - "
 		"NUMA support %s, MP allocation mode: %s\n",
@@ -5664,12 +5668,14 @@ pkt_fwd_config_display(struct fwd_config *cfg)
 		       fwd_lcores[lc_id]->stream_nb);
 		for (sm_id = 0; sm_id < fwd_lcores[lc_id]->stream_nb; sm_id++) {
 			fs = fwd_streams[fwd_lcores[lc_id]->stream_idx + sm_id];
-			printf("\n  RX P=%d/Q=%d (socket %u) -> TX "
-			       "P=%d/Q=%d (socket %u) ",
+			printf("\n  RX P=%d/Q=%d (socket %s) -> ",
 			       fs->rx_port, fs->rx_queue,
-			       ports[fs->rx_port].socket_id,
+			       socket_id_str(ports[fs->rx_port].socket_id,
+					     buf, sizeof(buf)));
+			printf("TX P=%d/Q=%d (socket %s) ",
 			       fs->tx_port, fs->tx_queue,
-			       ports[fs->tx_port].socket_id);
+			       socket_id_str(ports[fs->tx_port].socket_id,
+					     buf, sizeof(buf)));
 			print_ethaddr("peer=",
 				      &peer_eth_addrs[fs->peer_addr]);
 		}

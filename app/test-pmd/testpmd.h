@@ -873,6 +873,17 @@ current_fwd_lcore(void)
 void
 parse_fwd_portlist(const char *port);
 
+/* Format a socket id for display, SOCKET_ID_ANY as "any". */
+static inline const char *
+socket_id_str(unsigned int socket_id, char *buf, size_t size)
+{
+	if (socket_id == (unsigned int)SOCKET_ID_ANY)
+		snprintf(buf, size, "any");
+	else
+		snprintf(buf, size, "%u", socket_id);
+	return buf;
+}
+
 /* Mbuf Pools */
 static inline void
 mbuf_poolname_build(unsigned int sock_id, char *mp_name,
