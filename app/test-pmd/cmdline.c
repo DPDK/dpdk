@@ -3092,7 +3092,8 @@ cmd_setup_rxtx_queue_parsed(
 				     &port->rxq[res->qid].conf,
 				     mp);
 		if (ret)
-			fprintf(stderr, "Failed to setup RX queue\n");
+			fprintf(stderr, "Failed to setup RX queue: %s\n",
+				rte_strerror(-ret));
 	} else {
 		socket_id = txring_numa[res->portid];
 		if (!numa_support || socket_id == NUMA_NO_CONFIG)
@@ -3109,7 +3110,8 @@ cmd_setup_rxtx_queue_parsed(
 					     socket_id,
 					     &port->txq[res->qid].conf);
 		if (ret)
-			fprintf(stderr, "Failed to setup TX queue\n");
+			fprintf(stderr, "Failed to setup TX queue: %s\n",
+				rte_strerror(-ret));
 	}
 }
 
