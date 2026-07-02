@@ -1740,6 +1740,31 @@ uma_socket_id(void)
 	       (unsigned int)SOCKET_ID_ANY : socket_num;
 }
 
+/*
+ * Socket id to use for a port: the socket its mbuf pools are created
+ * on and where its queue resources are placed.
+ */
+static unsigned int
+port_socket_id(portid_t pid)
+{
+	unsigned int socket_id;
+
+	if (!numa_support)
+		return uma_socket_id();
+
+	socket_id = port_numa[pid];
+	if (socket_id == NUMA_NO_CONFIG) {
+		socket_id = rte_eth_dev_socket_id(pid);
+		/*
+		 * If socket_id is invalid,
+		 * set to the first available socket.
+		 */
+		if (check_socket_id(socket_id) < 0)
+			socket_id = socket_ids[0];
+	}
+	return socket_id;
+}
+
 static void
 init_config(void)
 {
@@ -1774,25 +1799,8 @@ init_config(void)
 	}
 
 	RTE_ETH_FOREACH_DEV(pid) {
-		uint32_t socket_id;
-
-		if (numa_support) {
-			socket_id = port_numa[pid];
-			if (port_numa[pid] == NUMA_NO_CONFIG) {
-				socket_id = rte_eth_dev_socket_id(pid);
-
-				/*
-				 * if socket_id is invalid,
-				 * set to the first available socket.
-				 */
-				if (check_socket_id(socket_id) < 0)
-					socket_id = socket_ids[0];
-			}
-		} else {
-			socket_id = uma_socket_id();
-		}
 		/* Apply default TxRx configuration for all ports */
-		init_config_port_offloads(pid, socket_id);
+		init_config_port_offloads(pid, port_socket_id(pid));
 	}
 	/*
 	 * Create pools of mbuf.
@@ -1916,23 +1924,7 @@ init_fwd_streams(void)
 				nb_txq, port->dev_info.max_tx_queues);
 			return -1;
 		}
-		if (numa_support) {
-			if (port_numa[pid] != NUMA_NO_CONFIG)
-				port->socket_id = port_numa[pid];
-			else {
-				port->socket_id = rte_eth_dev_socket_id(pid);
-
-				/*
-				 * if socket_id is invalid,
-				 * set to the first available socket.
-				 */
-				if (check_socket_id(port->socket_id) < 0)
-					port->socket_id = socket_ids[0];
-			}
-		}
-		else {
-			port->socket_id = uma_socket_id();
-		}
+		port->socket_id = port_socket_id(pid);
 	}
 
 	q = RTE_MAX(nb_rxq, nb_txq);
@@ -3603,14 +3595,9 @@ attach_port(char *identifier)
 static void
 setup_attached_port(portid_t pi)
 {
-	unsigned int socket_id;
 	int ret;
 
-	socket_id = (unsigned)rte_eth_dev_socket_id(pi);
-	/* if socket_id is invalid, set to the first available socket. */
-	if (check_socket_id(socket_id) < 0)
-		socket_id = socket_ids[0];
-	reconfig(pi, socket_id);
+	reconfig(pi, port_socket_id(pi));
 	ret = rte_eth_promiscuous_enable(pi);
 	if (ret != 0)
 		fprintf(stderr,
