@@ -1291,7 +1291,7 @@ test_alu64_add_k(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_add_k_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_add_k_autotest,
 	test_alu64_add_k);
 
 /* 64-bit addition of immediate to a pointer range. */
@@ -1309,7 +1309,7 @@ test_alu64_add_k_pointer(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_add_k_pointer_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_add_k_pointer_autotest,
 	test_alu64_add_k_pointer);
 
 /* 64-bit addition of pointer to a pointer. */
@@ -1327,7 +1327,7 @@ test_alu64_add_x_pointer_pointer(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_add_x_pointer_pointer_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_add_x_pointer_pointer_autotest,
 	test_alu64_add_x_pointer_pointer);
 
 /* 64-bit addition of scalar to a pointer. */
@@ -1345,7 +1345,7 @@ test_alu64_add_x_pointer_scalar(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_add_x_pointer_scalar_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_add_x_pointer_scalar_autotest,
 	test_alu64_add_x_pointer_scalar);
 
 /* 64-bit addition of pointer to a scalar. */
@@ -1363,7 +1363,7 @@ test_alu64_add_x_scalar_pointer(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_add_x_scalar_pointer_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_add_x_scalar_pointer_autotest,
 	test_alu64_add_x_scalar_pointer);
 
 /* 64-bit addition of scalar to a scalar. */
@@ -1381,7 +1381,7 @@ test_alu64_add_x_scalar_scalar(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_add_x_scalar_scalar_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_add_x_scalar_scalar_autotest,
 	test_alu64_add_x_scalar_scalar);
 
 /* 64-bit bitwise AND between a scalar range and immediate. */
@@ -1398,7 +1398,7 @@ test_alu64_and_k(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_and_k_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_and_k_autotest,
 	test_alu64_and_k);
 
 /* 64-bit division and modulo of UINT64_MAX*2/3. */
@@ -1442,7 +1442,7 @@ test_alu64_div_mod_big_constant(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_div_mod_big_constant_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_div_mod_big_constant_autotest,
 	test_alu64_div_mod_big_constant);
 
 /* 64-bit division and modulo of UINT64_MAX/3..UINT64_MAX*2/3 by a constant. */
@@ -1487,7 +1487,7 @@ test_alu64_div_mod_big_range(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_div_mod_big_range_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_div_mod_big_range_autotest,
 	test_alu64_div_mod_big_range);
 
 /* 64-bit division and modulo of INT64_MIN by -1. */
@@ -1533,7 +1533,7 @@ test_alu64_div_mod_overflow(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_div_mod_overflow_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_div_mod_overflow_autotest,
 	test_alu64_div_mod_overflow);
 
 /* 64-bit left shift by 63. */
@@ -1550,7 +1550,7 @@ test_alu64_lsh_63(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_lsh_63_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_lsh_63_autotest,
 	test_alu64_lsh_63);
 
 /* 64-bit multiplication of constant and immediate with overflow. */
@@ -1567,7 +1567,7 @@ test_alu64_mul_k_overflow(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_mul_k_overflow_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_mul_k_overflow_autotest,
 	test_alu64_mul_k_overflow);
 
 /* 64-bit mul of small scalar range and immediate. */
@@ -1584,7 +1584,7 @@ test_alu64_mul_k_range_small(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_mul_k_range_small_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_mul_k_range_small_autotest,
 	test_alu64_mul_k_range_small);
 
 /* 64-bit negation when interval first element is INT64_MIN. */
@@ -1618,7 +1618,7 @@ test_alu64_neg_int64min_first(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_neg_int64min_first_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_neg_int64min_first_autotest,
 	test_alu64_neg_int64min_first);
 
 /* 64-bit negation when interval last element is INT64_MIN. */
@@ -1647,7 +1647,7 @@ test_alu64_neg_int64min_last(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_neg_int64min_last_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_neg_int64min_last_autotest,
 	test_alu64_neg_int64min_last);
 
 /* 64-bit negation when interval first element is zero. */
@@ -1681,7 +1681,7 @@ test_alu64_neg_zero_first(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_neg_zero_first_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_neg_zero_first_autotest,
 	test_alu64_neg_zero_first);
 
 /* 64-bit negation when interval last element is zero. */
@@ -1710,7 +1710,7 @@ test_alu64_neg_zero_last(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_neg_zero_last_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_neg_zero_last_autotest,
 	test_alu64_neg_zero_last);
 
 /* 64-bit bitwise OR between a positive scalar range and negative immediate. */
@@ -1727,7 +1727,7 @@ test_alu64_or_k_negative(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_or_k_negative_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_or_k_negative_autotest,
 	test_alu64_or_k_negative);
 
 /* 64-bit bitwise OR between a positive scalar range and positive immediate. */
@@ -1744,7 +1744,7 @@ test_alu64_or_k_positive(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_or_k_positive_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_or_k_positive_autotest,
 	test_alu64_or_k_positive);
 
 /* 64-bit difference between two negative ranges.. */
@@ -1761,7 +1761,7 @@ test_alu64_sub_x_src_signed_max_zero(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_sub_x_src_signed_max_zero_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_sub_x_src_signed_max_zero_autotest,
 	test_alu64_sub_x_src_signed_max_zero);
 
 /* 64-bit bitwise XOR between a negative scalar range and zero immediate. */
@@ -1778,7 +1778,7 @@ test_alu64_xor_k_negative(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_alu64_xor_k_negative_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_alu64_xor_k_negative_autotest,
 	test_alu64_xor_k_negative);
 
 /* Jump if greater than immediate. */
@@ -1796,7 +1796,7 @@ test_jmp64_jeq_k(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_jmp64_jeq_k_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_jmp64_jeq_k_autotest,
 	test_jmp64_jeq_k);
 
 /* Jump if signed less than another register. */
@@ -1814,7 +1814,7 @@ test_jmp64_jslt_x(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_jmp64_jslt_x_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_jmp64_jslt_x_autotest,
 	test_jmp64_jslt_x);
 
 /* Jump on ordering comparisons with potential bound overflow. */
@@ -1863,7 +1863,7 @@ test_jmp64_ordering_overflow(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(bpf_validate_jmp64_ordering_overflow_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_jmp64_ordering_overflow_autotest,
 	test_jmp64_ordering_overflow);
 
 /* Jump on ordering comparisons between two ranges. */
@@ -2022,7 +2022,7 @@ test_jmp64_ordering_ranges(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(bpf_validate_jmp64_ordering_ranges_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_jmp64_ordering_ranges_autotest,
 	test_jmp64_ordering_ranges);
 
 /* Jump on ordering comparisons with singleton inside the range. */
@@ -2080,7 +2080,7 @@ test_jmp64_ordering_singleton_inside(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(bpf_validate_jmp64_ordering_singleton_inside_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_jmp64_ordering_singleton_inside_autotest,
 	test_jmp64_ordering_singleton_inside);
 
 /* Jump on ordering comparisons with singleton outside the range. */
@@ -2175,7 +2175,7 @@ test_jmp64_ordering_singleton_outside(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(bpf_validate_jmp64_ordering_singleton_outside_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_jmp64_ordering_singleton_outside_autotest,
 	test_jmp64_ordering_singleton_outside);
 
 /* Jump on ordering comparisons with ranges "touching" each other. */
@@ -2249,7 +2249,7 @@ test_jmp64_ordering_touching(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_FAST_TEST(bpf_validate_jmp64_ordering_touching_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_jmp64_ordering_touching_autotest,
 	test_jmp64_ordering_touching);
 
 /* 64-bit load from heap (should be set to unknown). */
@@ -2267,5 +2267,5 @@ test_mem_ldx_dw_heap(void)
 	});
 }
 
-REGISTER_FAST_TEST(bpf_validate_mem_ldx_dw_heap_autotest, NOHUGE_OK, ASAN_OK,
+REGISTER_ATTIC_TEST(bpf_validate_mem_ldx_dw_heap_autotest,
 	test_mem_ldx_dw_heap);
