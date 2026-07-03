@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 
 #include <rte_alarm.h>
+#include <rte_thread.h>
 #include <rte_string_fns.h>
 #include <rte_eal_memconfig.h>
 #include <rte_malloc.h>
@@ -33,6 +34,54 @@ const char * const virtio_user_backend_strings[] = {
 	[VIRTIO_USER_BACKEND_VHOST_KERNEL] = "VHOST_NET",
 	[VIRTIO_USER_BACKEND_VHOST_VDPA] = "VHOST_VDPA",
 };
+
+/*
+ * Collect the primary device's kick/call fds (interleaved kick,call per queue)
+ * for sharing with a secondary process. Caller must serialize against the
+ * control path (dev->mutex) so the fd arrays are not freed concurrently.
+ */
+int
+virtio_user_get_eventfds_from_dev(struct virtio_user_dev *dev,
+				 int fds[VIRTIO_USER_MAX_EVENTFDS])
+{
+	uint32_t max_queues;
+	int i, total_fds = 0;
+	int kickfd, callfd;
+
+	if (dev == NULL || fds == NULL)
+		return -EINVAL;
+
+	if (dev->kickfds == NULL || dev->callfds == NULL) {
+		PMD_INIT_LOG(ERR, "Device eventfd arrays not initialized");
+		return -EINVAL;
+	}
+
+	max_queues = dev->max_queue_pairs * 2;
+	if (dev->hw_cvq)
+		max_queues += 1;
+
+	if (max_queues * VIRTIO_USER_EVENTFDS_PER_QUEUE > VIRTIO_USER_MAX_EVENTFDS) {
+		PMD_INIT_LOG(ERR,
+			     "Device needs %u eventfds, exceeds MP limit %d",
+			     max_queues * VIRTIO_USER_EVENTFDS_PER_QUEUE,
+			     VIRTIO_USER_MAX_EVENTFDS);
+		return -E2BIG;
+	}
+
+	for (i = 0; i < (int)max_queues; i++) {
+		kickfd = dev->kickfds[i];
+		callfd = dev->callfds[i];
+		if (kickfd < 0 || callfd < 0) {
+			PMD_INIT_LOG(ERR, "Queue %d has invalid fds (kick=%d call=%d)",
+				     i, kickfd, callfd);
+			return -EINVAL;
+		}
+		fds[total_fds++] = kickfd;
+		fds[total_fds++] = callfd;
+	}
+
+	return total_fds;
+}
 
 static int
 virtio_user_uninit_notify_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
@@ -733,7 +782,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, uint16_t queues,
 {
 	uint64_t backend_features;
 
-	pthread_mutex_init(&dev->mutex, NULL);
+	rte_thread_mutex_init_shared(&dev->mutex);
 	strlcpy(dev->path, path, PATH_MAX);
 
 	dev->started = 0;
@@ -865,9 +914,15 @@ virtio_user_dev_uninit(struct virtio_user_dev *dev)
 
 	rte_mem_event_callback_unregister(VIRTIO_USER_MEM_EVENT_CLB_NAME, dev);
 
+	/*
+	 * Serialize closing/freeing the kick/call fd arrays against the MP
+	 * handler, which reads them under the same lock to share them with
+	 * secondary processes.
+	 */
+	pthread_mutex_lock(&dev->mutex);
 	virtio_user_dev_uninit_notify(dev);
-
 	virtio_user_free_vrings(dev);
+	pthread_mutex_unlock(&dev->mutex);
 
 	free(dev->ifname);
 
