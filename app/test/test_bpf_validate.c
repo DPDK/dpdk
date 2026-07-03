@@ -1291,9 +1291,6 @@ test_alu64_add_k(void)
 	});
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_alu64_add_k_autotest,
-	test_alu64_add_k);
-
 /* 64-bit addition of immediate to a pointer range. */
 static int
 test_alu64_add_k_pointer(void)
@@ -1308,9 +1305,6 @@ test_alu64_add_k_pointer(void)
 		.post.dst = make_pointer_domain(11 + 17, 29 + 17),
 	});
 }
-
-REGISTER_ATTIC_TEST(bpf_validate_alu64_add_k_pointer_autotest,
-	test_alu64_add_k_pointer);
 
 /* 64-bit addition of pointer to a pointer. */
 static int
@@ -1327,9 +1321,6 @@ test_alu64_add_x_pointer_pointer(void)
 	});
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_alu64_add_x_pointer_pointer_autotest,
-	test_alu64_add_x_pointer_pointer);
-
 /* 64-bit addition of scalar to a pointer. */
 static int
 test_alu64_add_x_pointer_scalar(void)
@@ -1344,9 +1335,6 @@ test_alu64_add_x_pointer_scalar(void)
 		.post.dst = make_pointer_domain(11 + 17, 29 + 23),
 	});
 }
-
-REGISTER_ATTIC_TEST(bpf_validate_alu64_add_x_pointer_scalar_autotest,
-	test_alu64_add_x_pointer_scalar);
 
 /* 64-bit addition of pointer to a scalar. */
 static int
@@ -1363,9 +1351,6 @@ test_alu64_add_x_scalar_pointer(void)
 	});
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_alu64_add_x_scalar_pointer_autotest,
-	test_alu64_add_x_scalar_pointer);
-
 /* 64-bit addition of scalar to a scalar. */
 static int
 test_alu64_add_x_scalar_scalar(void)
@@ -1381,9 +1366,6 @@ test_alu64_add_x_scalar_scalar(void)
 	});
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_alu64_add_x_scalar_scalar_autotest,
-	test_alu64_add_x_scalar_scalar);
-
 /* 64-bit bitwise AND between a scalar range and immediate. */
 static int
 test_alu64_and_k(void)
@@ -1397,9 +1379,6 @@ test_alu64_and_k(void)
 		.post.dst = make_signed_domain(0, 7),
 	});
 }
-
-REGISTER_ATTIC_TEST(bpf_validate_alu64_and_k_autotest,
-	test_alu64_and_k);
 
 /* 64-bit division and modulo of UINT64_MAX*2/3. */
 static int
@@ -1442,9 +1421,6 @@ test_alu64_div_mod_big_constant(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_alu64_div_mod_big_constant_autotest,
-	test_alu64_div_mod_big_constant);
-
 /* 64-bit division and modulo of UINT64_MAX/3..UINT64_MAX*2/3 by a constant. */
 static int
 test_alu64_div_mod_big_range(void)
@@ -1486,9 +1462,6 @@ test_alu64_div_mod_big_range(void)
 
 	return TEST_SUCCESS;
 }
-
-REGISTER_ATTIC_TEST(bpf_validate_alu64_div_mod_big_range_autotest,
-	test_alu64_div_mod_big_range);
 
 /* 64-bit division and modulo of INT64_MIN by -1. */
 static int
@@ -1533,9 +1506,6 @@ test_alu64_div_mod_overflow(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_alu64_div_mod_overflow_autotest,
-	test_alu64_div_mod_overflow);
-
 /* 64-bit left shift by 63. */
 static int
 test_alu64_lsh_63(void)
@@ -1549,9 +1519,6 @@ test_alu64_lsh_63(void)
 		.post.dst = unknown,
 	});
 }
-
-REGISTER_ATTIC_TEST(bpf_validate_alu64_lsh_63_autotest,
-	test_alu64_lsh_63);
 
 /* 64-bit multiplication of constant and immediate with overflow. */
 static int
@@ -1567,9 +1534,6 @@ test_alu64_mul_k_overflow(void)
 	});
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_alu64_mul_k_overflow_autotest,
-	test_alu64_mul_k_overflow);
-
 /* 64-bit mul of small scalar range and immediate. */
 static int
 test_alu64_mul_k_range_small(void)
@@ -1583,9 +1547,6 @@ test_alu64_mul_k_range_small(void)
 		.post.dst = make_unsigned_domain(17 * 11, 29 * 11),
 	});
 }
-
-REGISTER_ATTIC_TEST(bpf_validate_alu64_mul_k_range_small_autotest,
-	test_alu64_mul_k_range_small);
 
 /* 64-bit negation when interval first element is INT64_MIN. */
 static int
@@ -1618,9 +1579,6 @@ test_alu64_neg_int64min_first(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_alu64_neg_int64min_first_autotest,
-	test_alu64_neg_int64min_first);
-
 /* 64-bit negation when interval last element is INT64_MIN. */
 static int
 test_alu64_neg_int64min_last(void)
@@ -1646,9 +1604,6 @@ test_alu64_neg_int64min_last(void)
 	}
 	return TEST_SUCCESS;
 }
-
-REGISTER_ATTIC_TEST(bpf_validate_alu64_neg_int64min_last_autotest,
-	test_alu64_neg_int64min_last);
 
 /* 64-bit negation when interval first element is zero. */
 static int
@@ -1681,9 +1636,6 @@ test_alu64_neg_zero_first(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_alu64_neg_zero_first_autotest,
-	test_alu64_neg_zero_first);
-
 /* 64-bit negation when interval last element is zero. */
 static int
 test_alu64_neg_zero_last(void)
@@ -1710,9 +1662,6 @@ test_alu64_neg_zero_last(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_alu64_neg_zero_last_autotest,
-	test_alu64_neg_zero_last);
-
 /* 64-bit bitwise OR between a positive scalar range and negative immediate. */
 static int
 test_alu64_or_k_negative(void)
@@ -1726,9 +1675,6 @@ test_alu64_or_k_negative(void)
 		.post.dst = make_signed_domain(-2, -1),
 	});
 }
-
-REGISTER_ATTIC_TEST(bpf_validate_alu64_or_k_negative_autotest,
-	test_alu64_or_k_negative);
 
 /* 64-bit bitwise OR between a positive scalar range and positive immediate. */
 static int
@@ -1744,9 +1690,6 @@ test_alu64_or_k_positive(void)
 	});
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_alu64_or_k_positive_autotest,
-	test_alu64_or_k_positive);
-
 /* 64-bit difference between two negative ranges.. */
 static int
 test_alu64_sub_x_src_signed_max_zero(void)
@@ -1761,9 +1704,6 @@ test_alu64_sub_x_src_signed_max_zero(void)
 	});
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_alu64_sub_x_src_signed_max_zero_autotest,
-	test_alu64_sub_x_src_signed_max_zero);
-
 /* 64-bit bitwise XOR between a negative scalar range and zero immediate. */
 static int
 test_alu64_xor_k_negative(void)
@@ -1777,9 +1717,6 @@ test_alu64_xor_k_negative(void)
 		.post.dst = unknown,
 	});
 }
-
-REGISTER_ATTIC_TEST(bpf_validate_alu64_xor_k_negative_autotest,
-	test_alu64_xor_k_negative);
 
 /* Jump if greater than immediate. */
 static int
@@ -1796,9 +1733,6 @@ test_jmp64_jeq_k(void)
 	});
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_jmp64_jeq_k_autotest,
-	test_jmp64_jeq_k);
-
 /* Jump if signed less than another register. */
 static int
 test_jmp64_jslt_x(void)
@@ -1813,9 +1747,6 @@ test_jmp64_jslt_x(void)
 		.jump.dst = make_signed_domain(-3, -1),
 	});
 }
-
-REGISTER_ATTIC_TEST(bpf_validate_jmp64_jslt_x_autotest,
-	test_jmp64_jslt_x);
 
 /* Jump on ordering comparisons with potential bound overflow. */
 static int
@@ -1862,9 +1793,6 @@ test_jmp64_ordering_overflow(void)
 
 	return TEST_SUCCESS;
 }
-
-REGISTER_ATTIC_TEST(bpf_validate_jmp64_ordering_overflow_autotest,
-	test_jmp64_ordering_overflow);
 
 /* Jump on ordering comparisons between two ranges. */
 static int
@@ -2022,9 +1950,6 @@ test_jmp64_ordering_ranges(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_jmp64_ordering_ranges_autotest,
-	test_jmp64_ordering_ranges);
-
 /* Jump on ordering comparisons with singleton inside the range. */
 static int
 test_jmp64_ordering_singleton_inside(void)
@@ -2079,9 +2004,6 @@ test_jmp64_ordering_singleton_inside(void)
 
 	return TEST_SUCCESS;
 }
-
-REGISTER_ATTIC_TEST(bpf_validate_jmp64_ordering_singleton_inside_autotest,
-	test_jmp64_ordering_singleton_inside);
 
 /* Jump on ordering comparisons with singleton outside the range. */
 static int
@@ -2175,9 +2097,6 @@ test_jmp64_ordering_singleton_outside(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_jmp64_ordering_singleton_outside_autotest,
-	test_jmp64_ordering_singleton_outside);
-
 /* Jump on ordering comparisons with ranges "touching" each other. */
 static int
 test_jmp64_ordering_touching(void)
@@ -2249,9 +2168,6 @@ test_jmp64_ordering_touching(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_jmp64_ordering_touching_autotest,
-	test_jmp64_ordering_touching);
-
 /* 64-bit load from heap (should be set to unknown). */
 static int
 test_mem_ldx_dw_heap(void)
@@ -2267,5 +2183,47 @@ test_mem_ldx_dw_heap(void)
 	});
 }
 
-REGISTER_ATTIC_TEST(bpf_validate_mem_ldx_dw_heap_autotest,
-	test_mem_ldx_dw_heap);
+static struct
+unit_test_suite test_bpf_validate_suite  = {
+	.suite_name = "Test BPF Validate Unit Test Suite",
+	.unit_test_cases = {
+		TEST_CASE(test_alu64_add_k),
+		TEST_CASE(test_alu64_add_k_pointer),
+		TEST_CASE(test_alu64_add_x_pointer_pointer),
+		TEST_CASE(test_alu64_add_x_pointer_scalar),
+		TEST_CASE(test_alu64_add_x_scalar_pointer),
+		TEST_CASE(test_alu64_add_x_scalar_scalar),
+		TEST_CASE(test_alu64_and_k),
+		TEST_CASE(test_alu64_div_mod_big_constant),
+		TEST_CASE(test_alu64_div_mod_big_range),
+		TEST_CASE(test_alu64_div_mod_overflow),
+		TEST_CASE(test_alu64_lsh_63),
+		TEST_CASE(test_alu64_mul_k_overflow),
+		TEST_CASE(test_alu64_mul_k_range_small),
+		TEST_CASE(test_alu64_neg_int64min_first),
+		TEST_CASE(test_alu64_neg_int64min_last),
+		TEST_CASE(test_alu64_neg_zero_first),
+		TEST_CASE(test_alu64_neg_zero_last),
+		TEST_CASE(test_alu64_or_k_negative),
+		TEST_CASE(test_alu64_or_k_positive),
+		TEST_CASE(test_alu64_sub_x_src_signed_max_zero),
+		TEST_CASE(test_alu64_xor_k_negative),
+		TEST_CASE(test_jmp64_jeq_k),
+		TEST_CASE(test_jmp64_jslt_x),
+		TEST_CASE(test_jmp64_ordering_overflow),
+		TEST_CASE(test_jmp64_ordering_ranges),
+		TEST_CASE(test_jmp64_ordering_singleton_inside),
+		TEST_CASE(test_jmp64_ordering_singleton_outside),
+		TEST_CASE(test_jmp64_ordering_touching),
+		TEST_CASE(test_mem_ldx_dw_heap),
+		TEST_CASES_END()
+	}
+};
+
+static int
+test_bpf_validate(void)
+{
+	return unit_test_suite_runner(&test_bpf_validate_suite);
+}
+
+REGISTER_FAST_TEST(bpf_validate_autotest, NOHUGE_OK, ASAN_OK, test_bpf_validate);
