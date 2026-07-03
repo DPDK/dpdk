@@ -11,6 +11,14 @@
 #include "../virtio.h"
 #include "../virtio_ring.h"
 
+#include <rte_eal.h>
+
+/* Max eventfds shareable over the MP channel (bounded by SCM_RIGHTS). */
+#define VIRTIO_USER_MAX_EVENTFDS RTE_MP_MAX_FD_NUM
+
+/* Each queue contributes one kick fd and one call fd to the MP channel. */
+#define VIRTIO_USER_EVENTFDS_PER_QUEUE 2
+
 enum virtio_user_backend_type {
 	VIRTIO_USER_BACKEND_UNKNOWN,
 	VIRTIO_USER_BACKEND_VHOST_USER,
@@ -89,5 +97,20 @@ int virtio_user_dev_get_rss_config(struct virtio_user_dev *dev, void *dst, size_
 				   int length);
 void virtio_user_dev_delayed_disconnect_handler(void *param);
 int virtio_user_dev_server_reconnect(struct virtio_user_dev *dev);
+
+/**
+ * Collect a primary device's kick/call eventfds for sharing with a
+ * secondary process over the multiprocess channel.
+ *
+ * @param dev
+ *   Pointer to the virtio_user device (primary).
+ * @param fds
+ *   Output array, must hold at least VIRTIO_USER_MAX_EVENTFDS elements.
+ * @return
+ *   Number of fds written on success, negative errno on error.
+ */
+int virtio_user_get_eventfds_from_dev(struct virtio_user_dev *dev,
+				     int fds[VIRTIO_USER_MAX_EVENTFDS]);
+
 extern const char * const virtio_user_backend_strings[];
 #endif
