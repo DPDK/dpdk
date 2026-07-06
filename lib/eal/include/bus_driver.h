@@ -7,7 +7,6 @@
 
 #include <rte_bus.h>
 #include <rte_compat.h>
-#include <rte_dev.h>
 #include <rte_eal.h>
 #include <rte_tailq.h>
 
@@ -15,8 +14,10 @@
 extern "C" {
 #endif
 
+struct rte_dev_iterator;
 struct rte_devargs;
 struct rte_device;
+struct rte_driver;
 
 /** Double linked list of buses */
 RTE_TAILQ_HEAD(rte_bus_list, rte_bus);
@@ -48,6 +49,27 @@ typedef int (*rte_bus_scan_t)(void);
  *	!0 for any error while probing
  */
 typedef int (*rte_bus_probe_t)(struct rte_bus *bus);
+
+/**
+ * Device comparison function.
+ *
+ * This type of function is used to compare an rte_device with arbitrary
+ * data.
+ *
+ * @param dev
+ *   Device handle.
+ *
+ * @param data
+ *   Data to compare against. The type of this parameter is determined by
+ *   the kind of comparison performed by the function.
+ *
+ * @return
+ *   0 if the device matches the data.
+ *   !0 if the device does not match.
+ *   <0 if ordering is possible and the device is lower than the data.
+ *   >0 if ordering is possible and the device is greater than the data.
+ */
+typedef int (*rte_dev_cmp_t)(const struct rte_device *dev, const void *data);
 
 /**
  * Device iterator to find a device on a bus.
