@@ -2432,7 +2432,7 @@ static int txgbe_e56_cl72_training(struct txgbe_hw *hw)
 		break;
 	default:
 		BP_LOG("%s %d :Invalid speed\n", __func__, __LINE__);
-		break;
+		return -EINVAL;
 	}
 
 	BP_LOG("2.3 Wait %dG KR phy mode init ....\n", bylinkmode);
@@ -2583,6 +2583,10 @@ int txgbe_handle_e56_bkp_an73_flow(struct txgbe_hw *hw)
 	}
 
 	status = txgbe_e56_cl72_training(hw);
+	if (status) {
+		BP_LOG("CL72 training failed, status = %d\n", status);
+		return status;
+	}
 
 	rdata = rd32_ephy(hw, E56PHY_RXS_IDLE_DETECT_1_ADDR);
 	set_fields_e56(&rdata, E56PHY_RXS_IDLE_DETECT_1_IDLE_TH_ADC_PEAK_MAX, 0x28);
