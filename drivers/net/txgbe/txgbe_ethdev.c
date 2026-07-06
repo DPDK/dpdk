@@ -3264,14 +3264,15 @@ void
 txgbe_dev_setup_link_alarm_handler_aml(void *param)
 {
 	struct txgbe_hw *hw = (struct txgbe_hw *)param;
+
+	if (!hw)
+		return;
+
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)hw->dev_back;
 	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
 	u32 speed;
 	bool autoneg = false;
 	u32 gssr = hw->phy.phy_semaphore_mask;
-
-	if (!hw)
-		return;
 
 	speed = hw->phy.autoneg_advertised;
 	if (!speed)
