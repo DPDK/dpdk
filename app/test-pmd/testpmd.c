@@ -3365,6 +3365,8 @@ port_free_job_list(portid_t pi)
 {
 	struct rte_port *port = &ports[pi];
 	free(port->job_list);
+	port->job_list = NULL;
+	port->queue_nb = 0;
 }
 
 static void
