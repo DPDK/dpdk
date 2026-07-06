@@ -68,7 +68,6 @@ void
 virtio_crypto_queue_release(struct virtqueue *vq)
 {
 	struct virtio_crypto_hw *hw;
-	uint16_t i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -80,9 +79,6 @@ virtio_crypto_queue_release(struct virtqueue *vq)
 		hw->vqs[vq->vq_queue_index] = NULL;
 		rte_memzone_free(vq->mz);
 		rte_mempool_free(vq->mpool);
-		for (i = 0; i < vq->vq_nentries; i++)
-			rte_free(vq->vq_descx[i].cookie);
-
 		rte_free(vq);
 	}
 }
@@ -102,8 +98,6 @@ virtio_crypto_queue_setup(struct rte_cryptodev *dev,
 	unsigned int vq_size;
 	struct virtio_crypto_hw *hw = dev->data->dev_private;
 	struct virtqueue *vq = NULL;
-	uint32_t i = 0;
-	uint32_t j;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -175,29 +169,12 @@ virtio_crypto_queue_setup(struct rte_cryptodev *dev,
 					"Cannot create mempool");
 			goto mpool_create_err;
 		}
-		for (i = 0; i < nb_desc; i++) {
-			vq->vq_descx[i].cookie =
-				rte_zmalloc("crypto PMD op cookie pointer",
-					sizeof(struct virtio_crypto_op_cookie),
-					RTE_CACHE_LINE_SIZE);
-			if (vq->vq_descx[i].cookie == NULL) {
-				VIRTIO_CRYPTO_DRV_LOG_ERR("Failed to "
-						"alloc mem for cookie");
-				goto cookie_alloc_err;
-			}
-		}
 	}
 
 	*pvq = vq;
 
 	return 0;
 
-cookie_alloc_err:
-	rte_mempool_free(vq->mpool);
-	if (i != 0) {
-		for (j = 0; j < i; j++)
-			rte_free(vq->vq_descx[j].cookie);
-	}
 mpool_create_err:
 	rte_free(vq);
 	return -ENOMEM;
