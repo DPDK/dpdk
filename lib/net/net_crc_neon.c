@@ -16,6 +16,7 @@
 /** PMULL CRC computation context structure */
 struct crc_pmull_ctx {
 	uint64x2_t rk1_rk2;
+	uint64x2_t rk3_rk4;
 	uint64x2_t rk5_rk6;
 	uint64x2_t rk7_rk8;
 };
@@ -136,54 +137,69 @@ crc32_eth_calc_pmull(
 	temp = vreinterpretq_u64_u32(vsetq_lane_u32(crc, vmovq_n_u32(0), 0));
 
 	/**
-	 * Folding all data into single 16 byte data block
-	 * Assumes: fold holds first 16 bytes of data
+	 * Folding all data into 4 parallel 16 byte data block
+	 * Later folds 4 parallel blocks into single fold block
 	 */
-	if (unlikely(data_len < 32)) {
-		if (unlikely(data_len == 16)) {
-			/* 16 bytes */
-			fold = vld1q_u64((const uint64_t *)data);
-			fold = veorq_u64(fold, temp);
-			goto reduction_128_64;
-		}
-
-		if (unlikely(data_len < 16)) {
-			/* 0 to 15 bytes */
-			alignas(16) uint8_t buffer[16];
-
-			memset(buffer, 0, sizeof(buffer));
-			memcpy(buffer, data, data_len);
-
-			fold = vld1q_u64((uint64_t *)buffer);
-			fold = veorq_u64(fold, temp);
-			if (unlikely(data_len < 4)) {
-				fold = vshift_bytes_left(fold, 8 - data_len);
-				goto barret_reduction;
-			}
-			fold = vshift_bytes_left(fold, 16 - data_len);
-			goto reduction_128_64;
-		}
-		/* 17 to 31 bytes */
-		fold = vld1q_u64((const uint64_t *)data);
-		fold = veorq_u64(fold, temp);
-		n = 16;
+	if (likely(data_len >= 64)) {
+		uint64x2_t fold1, fold2, fold3, fold4;
+		uint64x2_t temp1, temp2, temp3, temp4;
+		fold1 = vld1q_u64((const uint64_t *)(data +  0));
+		fold2 = vld1q_u64((const uint64_t *)(data + 16));
+		fold3 = vld1q_u64((const uint64_t *)(data + 32));
+		fold4 = vld1q_u64((const uint64_t *)(data + 48));
+		fold1 = veorq_u64(fold1, temp);
 		k = params->rk1_rk2;
-		goto partial_bytes;
+
+		for (n = 64; (n + 64) <= data_len; n += 64) {
+			temp1 = vld1q_u64((const uint64_t *)&data[n +  0]);
+			temp2 = vld1q_u64((const uint64_t *)&data[n + 16]);
+			temp3 = vld1q_u64((const uint64_t *)&data[n + 32]);
+			temp4 = vld1q_u64((const uint64_t *)&data[n + 48]);
+			fold1 = crcr32_folding_round(temp1, k, fold1);
+			fold2 = crcr32_folding_round(temp2, k, fold2);
+			fold3 = crcr32_folding_round(temp3, k, fold3);
+			fold4 = crcr32_folding_round(temp4, k, fold4);
+		}
+		k = params->rk3_rk4;
+		fold1 = crcr32_folding_round(fold2, k, fold1);
+		fold1 = crcr32_folding_round(fold3, k, fold1);
+		fold = crcr32_folding_round(fold4, k, fold1);
+		goto single_fold_loop;
 	}
 
-	/** At least 32 bytes in the buffer */
+	if (unlikely(data_len < 16)) {
+		/* 0 to 15 bytes */
+		alignas(16) uint8_t buffer[16];
+
+		memset(buffer, 0, sizeof(buffer));
+		memcpy(buffer, data, data_len);
+
+		fold = vld1q_u64((uint64_t *)buffer);
+		fold = veorq_u64(fold, temp);
+		if (unlikely(data_len < 4)) {
+			fold = vshift_bytes_left(fold, 8 - data_len);
+			goto barret_reduction;
+		}
+		fold = vshift_bytes_left(fold, 16 - data_len);
+		goto reduction_128_64;
+	}
+
+	/** At least 16 bytes in the buffer */
 	/** Apply CRC initial value */
 	fold = vld1q_u64((const uint64_t *)data);
 	fold = veorq_u64(fold, temp);
 
-	/** Main folding loop - the last 16 bytes is processed separately */
-	k = params->rk1_rk2;
-	for (n = 16; (n + 16) <= data_len; n += 16) {
+	/** Single folding loop - the last 16 bytes is processed separately */
+	k = params->rk3_rk4;
+	n = 16;
+
+single_fold_loop:
+	for (; (n + 16) <= data_len; n += 16) {
 		temp = vld1q_u64((const uint64_t *)&data[n]);
 		fold = crcr32_folding_round(temp, k, fold);
 	}
 
-partial_bytes:
+	/** Partial bytes - process last <16 bytes */
 	if (likely(n < data_len)) {
 		uint64x2_t last16, a, b, mask;
 		uint32_t rem = data_len & 15;
@@ -194,15 +210,8 @@ partial_bytes:
 		mask = vshift_bytes_left(vdupq_n_u64(-1), 16 - rem);
 		b = vorrq_u64(b, vandq_u64(mask, last16));
 
-		/* k = rk1 & rk2 */
-		temp = vreinterpretq_u64_p128(vmull_p64(
-				vgetq_lane_p64(vreinterpretq_p64_u64(a), 1),
-				vgetq_lane_p64(vreinterpretq_p64_u64(k), 0)));
-		fold = vreinterpretq_u64_p128(vmull_p64(
-				vgetq_lane_p64(vreinterpretq_p64_u64(a), 0),
-				vgetq_lane_p64(vreinterpretq_p64_u64(k), 1)));
-		fold = veorq_u64(fold, temp);
-		fold = veorq_u64(fold, b);
+		/* k = rk3 & rk4 */
+		fold = crcr32_folding_round(b, k, a);
 	}
 
 	/** Reduction 128 -> 32 Assumes: fold holds 128bit folded data */
@@ -221,22 +230,26 @@ void
 rte_net_crc_neon_init(void)
 {
 	/* Initialize CRC16 data */
-	uint64_t ccitt_k1_k2[2] = {0x189aeLLU, 0x8e10LLU};
+	uint64_t ccitt_k1_k2[2] = {0x14ff2LLU, 0x19a3cLLU};
+	uint64_t ccitt_k3_k4[2] = {0x189aeLLU, 0x8e10LLU};
 	uint64_t ccitt_k5_k6[2] = {0x189aeLLU, 0x114aaLLU};
 	uint64_t ccitt_k7_k8[2] = {0x11c581910LLU, 0x10811LLU};
 
 	/* Initialize CRC32 data */
-	uint64_t eth_k1_k2[2] = {0xccaa009eLLU, 0x1751997d0LLU};
+	uint64_t eth_k1_k2[2] = {0x1c6e41596LLU, 0x154442bd4LLU};
+	uint64_t eth_k3_k4[2] = {0xccaa009eLLU, 0x1751997d0LLU};
 	uint64_t eth_k5_k6[2] = {0xccaa009eLLU, 0x163cd6124LLU};
 	uint64_t eth_k7_k8[2] = {0x1f7011640LLU, 0x1db710641LLU};
 
 	/** Save the params in context structure */
 	crc16_ccitt_pmull.rk1_rk2 = vld1q_u64(ccitt_k1_k2);
+	crc16_ccitt_pmull.rk3_rk4 = vld1q_u64(ccitt_k3_k4);
 	crc16_ccitt_pmull.rk5_rk6 = vld1q_u64(ccitt_k5_k6);
 	crc16_ccitt_pmull.rk7_rk8 = vld1q_u64(ccitt_k7_k8);
 
 	/** Save the params in context structure */
 	crc32_eth_pmull.rk1_rk2 = vld1q_u64(eth_k1_k2);
+	crc32_eth_pmull.rk3_rk4 = vld1q_u64(eth_k3_k4);
 	crc32_eth_pmull.rk5_rk6 = vld1q_u64(eth_k5_k6);
 	crc32_eth_pmull.rk7_rk8 = vld1q_u64(eth_k7_k8);
 }
