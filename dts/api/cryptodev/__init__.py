@@ -117,7 +117,6 @@ class Cryptodev:
                     f"dependencies missing for virtual device {self._app_params['vdevs'][0].name}"
                 )
             raise e
-
         regex = r"^\s+\d+.*$"
         parser_options = re.MULTILINE
         parser: type[CryptodevResults]
@@ -126,7 +125,7 @@ class Cryptodev:
             case TestType.throughput:
                 parser = ThroughputResults
             case TestType.latency:
-                regex = r"total operations:.*time[^\n]*"
+                regex = r"total operations:.*?time[^\n]*"
                 parser_options |= re.DOTALL
                 parser = LatencyResults
             case TestType.pmd_cyclecount:
