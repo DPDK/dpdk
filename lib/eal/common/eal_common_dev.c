@@ -269,7 +269,7 @@ rte_dev_probe(const char *devargs)
 {
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
-	bool do_mp = !!internal_conf->no_shconf;
+	bool do_mp = internal_conf->no_shconf == 0;
 	struct eal_dev_mp_req req;
 	struct rte_device *dev;
 	int ret;
@@ -428,7 +428,7 @@ rte_dev_remove(struct rte_device *dev)
 {
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
-	bool do_mp = !!internal_conf->no_shconf;
+	bool do_mp = internal_conf->no_shconf == 0;
 	struct eal_dev_mp_req req;
 	char *devargs;
 	int ret;
