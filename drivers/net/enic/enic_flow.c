@@ -407,7 +407,7 @@ enic_copy_item_ipv4_v1(struct copy_item_args *arg)
 
 	/* check that the supplied mask exactly matches capability */
 	if (!mask_exact_match((const uint8_t *)&supported_mask,
-			      (const uint8_t *)item->mask, sizeof(*mask))) {
+			      (const uint8_t *)mask, sizeof(*mask))) {
 		ENICPMD_LOG(ERR, "IPv4 exact match mask");
 		return ENOTSUP;
 	}
@@ -445,7 +445,7 @@ enic_copy_item_udp_v1(struct copy_item_args *arg)
 
 	/* check that the supplied mask exactly matches capability */
 	if (!mask_exact_match((const uint8_t *)&supported_mask,
-			      (const uint8_t *)item->mask, sizeof(*mask))) {
+			      (const uint8_t *)mask, sizeof(*mask))) {
 		ENICPMD_LOG(ERR, "UDP exact match mask");
 		return ENOTSUP;
 	}
@@ -484,7 +484,7 @@ enic_copy_item_tcp_v1(struct copy_item_args *arg)
 
 	/* check that the supplied mask exactly matches capability */
 	if (!mask_exact_match((const uint8_t *)&supported_mask,
-			     (const uint8_t *)item->mask, sizeof(*mask))) {
+			     (const uint8_t *)mask, sizeof(*mask))) {
 		ENICPMD_LOG(ERR, "TCP exact match mask");
 		return ENOTSUP;
 	}
