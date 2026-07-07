@@ -642,9 +642,18 @@ fslmc_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
 }
 
 static int
-rte_fslmc_close(struct rte_bus *bus __rte_unused)
+fslmc_bus_unplug_device(struct rte_device *rte_dev);
+
+static int
+rte_fslmc_close(struct rte_bus *bus)
 {
+	struct rte_dpaa2_device *dev;
 	int ret = 0;
+
+	RTE_BUS_FOREACH_DEV(dev, bus) {
+		if (rte_dev_is_probed(&dev->device) && fslmc_bus_unplug_device(&dev->device))
+			DPAA2_BUS_ERR("Unable to remove %s", dev->device.name);
+	}
 
 	ret = fslmc_vfio_close_group();
 	if (ret)
