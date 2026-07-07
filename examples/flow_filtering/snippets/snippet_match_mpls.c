@@ -24,7 +24,7 @@ snippet_mpls_create_actions(__rte_unused uint16_t port_id, struct rte_flow_actio
 	/* Create one action that moves the packet to the selected queue. */
 	struct rte_flow_action_queue *queue;
 
-	queue = calloc(1, sizeof(struct rte_flow_item_ipv4));
+	queue = calloc(1, sizeof(struct rte_flow_action_queue));
 	if (queue == NULL)
 		fprintf(stderr, "Failed to allocate memory for queue\n");
 
