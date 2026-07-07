@@ -55,11 +55,11 @@
  */
 #define NFP_PCI_MIN_MAP_SIZE        0x080000        /* 512K */
 
-#define NFP_PCIE_P2C_FIXED_SIZE(bar)               (1 << (bar)->bitsize)
-#define NFP_PCIE_P2C_BULK_SIZE(bar)                (1 << (bar)->bitsize)
+#define NFP_PCIE_P2C_FIXED_SIZE(bar)               RTE_BIT64((bar)->bitsize)
+#define NFP_PCIE_P2C_BULK_SIZE(bar)                RTE_BIT64((bar)->bitsize)
 #define NFP_PCIE_P2C_GENERAL_TARGET_OFFSET(bar, x) ((x) << ((bar)->bitsize - 2))
 #define NFP_PCIE_P2C_GENERAL_TOKEN_OFFSET(bar, x) ((x) << ((bar)->bitsize - 4))
-#define NFP_PCIE_P2C_GENERAL_SIZE(bar)             (1 << ((bar)->bitsize - 4))
+#define NFP_PCIE_P2C_GENERAL_SIZE(bar)             RTE_BIT64(((bar)->bitsize - 4))
 
 #define NFP_PCIE_P2C_EXPBAR_OFFSET(bar_index)      ((bar_index) * 4)
 
@@ -443,7 +443,7 @@ matching_bar_exist(struct nfp_bar *bar,
 			(bar_token < 0 || bar_token == token) &&
 			bar_action == action &&
 			bar->base <= offset &&
-			(bar->base + (1 << bar->bitsize)) >= (offset + size))
+			(bar->base + RTE_BIT64(bar->bitsize)) >= (offset + size))
 		return true;
 
 	/* No match */
