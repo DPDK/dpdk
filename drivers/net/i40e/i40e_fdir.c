@@ -1232,12 +1232,12 @@ i40e_flow_store_flex_mask(struct i40e_pf *pf,
 			flex_mask.word_mask |=
 				I40E_FLEX_WORD_MASK(i / sizeof(uint16_t));
 			if (mask_tmp != UINT16_MAX) {
+				if (nb_bitmask >= I40E_FDIR_BITMASK_NUM_WORD)
+					return -1;
 				flex_mask.bitmask[nb_bitmask].mask = ~mask_tmp;
 				flex_mask.bitmask[nb_bitmask].offset =
 					i / sizeof(uint16_t);
 				nb_bitmask++;
-				if (nb_bitmask > I40E_FDIR_BITMASK_NUM_WORD)
-					return -1;
 			}
 		}
 	}
@@ -1491,15 +1491,17 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 				}
 			}
 
-			if (cfg_flex_pit)
-				i40e_flow_set_fdir_flex_pit(pf, layer_idx,
-						filter->input.flow_ext.raw_id);
-
 			/* Store flex mask to SW */
 			for (i = 0; i < I40E_FDIR_MAX_FLEX_LEN; i++)
 				flex_mask[i] =
 					filter->input.flow_ext.flex_mask[i];
 
+			/* Validate the flex mask before writing any hardware
+			 * register. i40e_flow_set_fdir_flex_pit() below programs
+			 * the global GLQF_ORT register, which is shared by all
+			 * PFs on the NIC, so it must not be touched for a rule
+			 * that is going to be rejected.
+			 */
 			ret = i40e_flow_store_flex_mask(pf, pctype, flex_mask);
 			if (ret == -1) {
 				PMD_DRV_LOG(ERR, "Exceed maximal"
@@ -1509,9 +1511,14 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 				PMD_DRV_LOG(ERR, "Conflict with the"
 					    " first flexible rule");
 				return -EINVAL;
-			} else if (ret == 0) {
-				i40e_flow_set_fdir_flex_msk(pf, pctype);
 			}
+
+			if (cfg_flex_pit)
+				i40e_flow_set_fdir_flex_pit(pf, layer_idx,
+						filter->input.flow_ext.raw_id);
+
+			if (ret == 0)
+				i40e_flow_set_fdir_flex_msk(pf, pctype);
 		}
 
 		ret = i40e_sw_fdir_filter_insert(pf, &check_filter);
