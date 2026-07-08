@@ -317,9 +317,21 @@ iavf_read_msg_from_pf(struct iavf_adapter *adapter, uint16_t buf_len,
 			iavf_handle_link_change_event(vf->eth_dev, vpe);
 			break;
 		case VIRTCHNL_EVENT_RESET_IMPENDING:
-			vf->vf_reset = true;
-			iavf_set_no_poll(adapter, false);
-			PMD_DRV_LOG(INFO, "VF is resetting");
+			/*
+			 * Force link down on impending reset to drop
+			 * the cached link-up state; a fresh LSC up
+			 * event will be re-issued by the PF once the
+			 * VF is reinitialised.
+			 */
+			vf->link_up = false;
+			if (!vf->vf_reset) {
+				vf->vf_reset = true;
+				iavf_set_no_poll(adapter, false);
+				iavf_dev_event_post(vf->eth_dev,
+					RTE_ETH_EVENT_INTR_RESET,
+					NULL, 0);
+			}
+			PMD_DRV_LOG(DEBUG, "VF is resetting");
 			break;
 		case VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
 			vf->dev_closed = true;
