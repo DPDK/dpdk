@@ -922,7 +922,12 @@ iavf_config_vlan_strip_v2(struct iavf_adapter *adapter, bool enable)
 	uint32_t *ethertype;
 	int qinq = adapter->dev_data->dev_conf.rxmode.offloads &
 		   RTE_ETH_RX_OFFLOAD_VLAN_EXTEND;
+	bool strip_qinq = adapter->dev_data->dev_conf.rxmode.offloads &
+			  RTE_ETH_RX_OFFLOAD_QINQ_STRIP;
 	int ret;
+
+	if (qinq && strip_qinq && adapter->tpid == RTE_ETHER_TYPE_VLAN)
+		iavf_config_outer_vlan_strip_v2(adapter, enable);
 
 	stripping_caps = &vf->vlan_v2_caps.offloads.stripping_support;
 
