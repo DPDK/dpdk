@@ -208,6 +208,7 @@ node_clone(struct node *node, const char *name)
 			goto free;
 		}
 
+		reg->xstats->nb_xstats = node->xstats->nb_xstats;
 		for (i = 0; i < node->xstats->nb_xstats; i++)
 			if (rte_strscpy(reg->xstats->xstat_desc[i], node->xstats->xstat_desc[i],
 					RTE_NODE_XSTAT_DESC_SIZE) < 0)
