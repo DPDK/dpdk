@@ -25,6 +25,12 @@
 #       By removing the `test_suites` field, this test run will run every test suite available.
 #   `vdevs`:
 #       Uncomment to add a specific virtual device to run on the SUT node.
+#   `port_topology`:
+#   	By providing an empty list, DTS will run in no link topology mode and will not allocate a TG
+#   	node.
+#   `traffic_generator_node`:
+#   	This field may be None When `port_topology` is specified as a no link topology, Otherwise it
+#   	is required.
 
 # Define the test run environment
 dpdk:
@@ -58,8 +64,8 @@ test_suites: # see `Optional Fields`; the following test suites will be run in t
 # The machine running the DPDK test executable
 system_under_test_node: "SUT 1"
 # Traffic generator node to use for this execution environment
-traffic_generator_node: "TG 1"
-port_topology:
+traffic_generator_node: "TG 1" # see `Optional Fields`
+port_topology: # see `Optional Fields`
   - sut.port-0 <-> tg.port-0  # explicit link. `sut` and `tg` are special identifiers that refer
                               # to the respective test run's configured nodes.
   - port-1 <-> port-1         # implicit link, left side is always SUT, right side is always TG.

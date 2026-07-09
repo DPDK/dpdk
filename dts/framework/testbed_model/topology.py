@@ -73,6 +73,8 @@ class Topology:
             ConfigurationError: If an unsupported link topology is supplied.
         """
         type = LinkTopology.NO_LINK
+        sut_ports = []
+        tg_ports = []
 
         if port_link := next(port_links, None):
             type = LinkTopology.ONE_LINK
@@ -103,10 +105,12 @@ class Topology:
             case "sut":
                 return ctx.sut_node, self.sut_ports
             case "tg":
-                return ctx.tg_node, self.tg_ports
-            case _:
-                msg = f"Invalid node `{node_identifier}` given."
+                if ctx.tg_node is not None:
+                    return ctx.tg_node, self.tg_ports
+                msg = "node tg does not exist with current topology."
                 raise InternalError(msg)
+        msg = f"Invalid node `{node_identifier}` given."
+        raise InternalError(msg)
 
     def get_crypto_vfs(self, num_vfs: int) -> list[Port]:
         """Retrieve virtual functions from active crypto vfs.
@@ -139,6 +143,8 @@ class Topology:
 
         Binds all the ports to the right kernel driver to retrieve MAC addresses and logical names.
         """
+        if self.type is LinkTopology.NO_LINK:
+            return
         self._prepare_devbind_script()
         self._setup_ports("sut")
         self._setup_ports("tg")
@@ -148,6 +154,8 @@ class Topology:
 
         Restores all the ports to their original drivers before the test run.
         """
+        if self.type is LinkTopology.NO_LINK:
+            return
         self._restore_ports_original_drivers("sut")
         self._restore_ports_original_drivers("tg")
 
@@ -338,7 +346,8 @@ class Topology:
             node.main_session.devbind_script_path = devbind_script_path
 
         ctx = get_ctx()
-        prepare_node(ctx.tg_node)
+        if ctx.tg_node:
+            prepare_node(ctx.tg_node)
         prepare_node(ctx.sut_node)
 
     @property

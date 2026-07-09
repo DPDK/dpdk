@@ -107,6 +107,7 @@ from functools import cached_property
 from types import MethodType
 from typing import ClassVar, Protocol, Union
 
+from api.capabilities import LinkTopology
 from framework.config.test_run import TestRunConfiguration
 from framework.context import Context, init_ctx
 from framework.exception import InternalError, SkippedTestException, TestCaseVerifyError
@@ -191,24 +192,33 @@ class TestRun:
         self.logger = get_dts_logger()
 
         sut_node = next(n for n in nodes if n.name == config.system_under_test_node)
-        tg_node = next(n for n in nodes if n.name == config.traffic_generator_node)
-
-        topology = Topology.from_port_links(
-            PortLink(sut_node.ports_by_name[link.sut_port], tg_node.ports_by_name[link.tg_port])
-            for link in self.config.port_topology
-        )
+        if config.port_topology != []:
+            tg_node = next(n for n in nodes if n.name == config.traffic_generator_node)
+            topology = Topology.from_port_links(
+                PortLink(sut_node.ports_by_name[link.sut_port], tg_node.ports_by_name[link.tg_port])
+                for link in self.config.port_topology
+            )
+        else:
+            tg_node = None
+            topology = Topology.from_port_links(iter([]))
 
         dpdk_build_env = DPDKBuildEnvironment(config.dpdk.build, sut_node)
         dpdk_runtime_env = DPDKRuntimeEnvironment(config.dpdk, sut_node, dpdk_build_env)
 
         func_traffic_generator = (
             create_traffic_generator(config.func_traffic_generator, tg_node)
-            if config.func and config.func_traffic_generator
+            if config.func
+            and config.func_traffic_generator
+            and topology.type is not LinkTopology.NO_LINK
+            and tg_node is not None
             else None
         )
         perf_traffic_generator = (
             create_traffic_generator(config.perf_traffic_generator, tg_node)
-            if config.perf and config.perf_traffic_generator
+            if config.perf
+            and config.perf_traffic_generator
+            and topology.type is not LinkTopology.NO_LINK
+            and tg_node is not None
             else None
         )
 
@@ -337,16 +347,18 @@ class TestRunSetup(State):
     def next(self) -> State | None:
         """Process state and return the next one."""
         test_run = self.test_run
-        init_ctx(test_run.ctx)
+        ctx = test_run.ctx
+        init_ctx(ctx)
 
-        self.logger.info(f"Running on SUT node '{test_run.ctx.sut_node.name}'.")
+        self.logger.info(f"Running on SUT node '{ctx.sut_node.name}'.")
         test_run.init_random_seed()
         test_run.remaining_tests = deque(test_run.selected_tests)
 
-        test_run.ctx.sut_node.setup()
-        test_run.ctx.tg_node.setup()
-        test_run.ctx.dpdk.setup()
-        test_run.ctx.topology.setup()
+        ctx.sut_node.setup()
+        if ctx.topology.type is not LinkTopology.NO_LINK and ctx.tg_node is not None:
+            ctx.tg_node.setup()
+        ctx.dpdk.setup()
+        ctx.topology.setup()
 
         testrun_nic_info: list[dict[str, str]] = (
             self.test_run.ctx.sut_node.main_session.get_nic_info()
@@ -357,27 +369,26 @@ class TestRunSetup(State):
         self.logger.info(f"DUT NIC info written to: {SETTINGS.output_dir}/dut_info.json")
 
         if test_run.config.use_virtual_functions:
-            test_run.ctx.topology.instantiate_vf_ports()
-        if test_run.ctx.sut_node.cryptodevs and test_run.config.crypto:
-            test_run.ctx.topology.instantiate_crypto_ports()
-            test_run.ctx.topology.bind_cryptodevs("dpdk")
+            ctx.topology.instantiate_vf_ports()
+        if ctx.sut_node.cryptodevs and test_run.config.crypto:
+            ctx.topology.instantiate_crypto_ports()
+            ctx.topology.bind_cryptodevs("dpdk")
 
-        test_run.ctx.topology.configure_ports("sut", "dpdk")
-        if test_run.ctx.func_tg:
-            test_run.ctx.func_tg.setup(test_run.ctx.topology)
-        if test_run.ctx.perf_tg:
-            test_run.ctx.perf_tg.setup(test_run.ctx.topology)
+        ctx.topology.configure_ports("sut", "dpdk")
+        if ctx.func_tg and ctx.topology.type is not LinkTopology.NO_LINK:
+            ctx.func_tg.setup(ctx.topology)
+        if ctx.perf_tg and ctx.topology.type is not LinkTopology.NO_LINK:
+            ctx.perf_tg.setup(ctx.topology)
 
         self.result.ports = [
-            port.to_dict()
-            for port in test_run.ctx.topology.sut_ports + test_run.ctx.topology.tg_ports
+            port.to_dict() for port in ctx.topology.sut_ports + ctx.topology.tg_ports
         ]
-        self.result.sut_session_info = test_run.ctx.sut_node.node_info
-        self.result.dpdk_build_info = test_run.ctx.dpdk_build.get_dpdk_build_info()
+        self.result.sut_session_info = ctx.sut_node.node_info
+        self.result.dpdk_build_info = ctx.dpdk_build.get_dpdk_build_info()
 
         self.logger.debug(f"Found capabilities to check: {test_run.required_capabilities}")
         test_run.supported_capabilities = get_supported_capabilities(
-            test_run.ctx.sut_node, test_run.ctx.topology, test_run.required_capabilities
+            ctx.sut_node, ctx.topology, test_run.required_capabilities
         )
 
         return TestRunExecution(test_run, self.result)
@@ -453,20 +464,22 @@ class TestRunTeardown(State):
 
     def next(self) -> State | None:
         """Next state."""
+        ctx = self.test_run.ctx
         if self.test_run.config.use_virtual_functions:
-            self.test_run.ctx.topology.delete_vf_ports()
-        if self.test_run.ctx.sut_node.cryptodevs:
-            self.test_run.ctx.topology.delete_crypto_vf_ports()
+            ctx.topology.delete_vf_ports()
+        if ctx.sut_node.cryptodevs:
+            ctx.topology.delete_crypto_vf_ports()
 
-        self.test_run.ctx.shell_pool.terminate_current_pool()
-        if self.test_run.ctx.func_tg and self.test_run.ctx.func_tg.is_setup:
-            self.test_run.ctx.func_tg.teardown()
-        if self.test_run.ctx.perf_tg and self.test_run.ctx.perf_tg.is_setup:
-            self.test_run.ctx.perf_tg.teardown()
-        self.test_run.ctx.topology.teardown()
-        self.test_run.ctx.dpdk.teardown()
-        self.test_run.ctx.tg_node.teardown()
-        self.test_run.ctx.sut_node.teardown()
+        ctx.shell_pool.terminate_current_pool()
+        if ctx.func_tg is not None and ctx.func_tg.is_setup:
+            ctx.func_tg.teardown()
+        if ctx.perf_tg is not None and ctx.perf_tg.is_setup:
+            ctx.perf_tg.teardown()
+        ctx.topology.teardown()
+        ctx.dpdk.teardown()
+        if ctx.topology.type is not LinkTopology.NO_LINK and ctx.tg_node is not None:
+            ctx.tg_node.teardown()
+        ctx.sut_node.teardown()
         return None
 
     def on_error(self, ex: BaseException) -> State | None:

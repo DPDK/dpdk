@@ -61,7 +61,11 @@ class DTSRunner:
             self._check_dts_python_version()
 
             for node_config in self._configuration.nodes:
-                nodes.append(Node(node_config))
+                if self._configuration.test_run.port_topology == []:
+                    if node_config.name == self._configuration.test_run.system_under_test_node:
+                        nodes.append(Node(node_config))
+                else:
+                    nodes.append(Node(node_config))
 
             test_run = TestRun(
                 self._configuration.test_run,
