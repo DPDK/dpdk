@@ -98,6 +98,7 @@ Finally, test cases **retry** when they fail and DTS is configured to re-run.
         "InternalError" -> "exit":ew
 """
 
+import json
 import random
 from collections import deque
 from collections.abc import Iterable
@@ -347,6 +348,14 @@ class TestRunSetup(State):
         test_run.ctx.dpdk.setup()
         test_run.ctx.topology.setup()
 
+        testrun_nic_info: list[dict[str, str]] = (
+            self.test_run.ctx.sut_node.main_session.get_nic_info()
+        )
+        with open(f"{SETTINGS.output_dir}/dut_info.json", "w") as file:
+            json.dump(testrun_nic_info, file, indent=3)
+
+        self.logger.info(f"DUT NIC info written to: {SETTINGS.output_dir}/dut_info.json")
+
         if test_run.config.use_virtual_functions:
             test_run.ctx.topology.instantiate_vf_ports()
         if test_run.ctx.sut_node.cryptodevs and test_run.config.crypto:
@@ -370,6 +379,7 @@ class TestRunSetup(State):
         test_run.supported_capabilities = get_supported_capabilities(
             test_run.ctx.sut_node, test_run.ctx.topology, test_run.required_capabilities
         )
+
         return TestRunExecution(test_run, self.result)
 
     def on_error(self, ex: BaseException) -> State | None:
