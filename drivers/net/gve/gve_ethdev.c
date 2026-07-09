@@ -1579,11 +1579,11 @@ gve_init_priv(struct gve_priv *priv, bool skip_describe_device)
 		goto free_adminq;
 	}
 
-	/* Set default descriptor counts */
-	gve_set_default_ring_size_bounds(priv);
-
 	if (skip_describe_device)
 		goto setup_device;
+
+	/* Set default descriptor counts */
+	gve_set_default_ring_size_bounds(priv);
 
 	/* Get the initial information we need from the device */
 	err = gve_adminq_describe_device(priv);
