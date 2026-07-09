@@ -200,6 +200,11 @@ gve_rx_burst_dqo(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		}
 
 		rx_buf_id = rte_le_to_cpu_16(rx_desc->buf_id);
+		if (unlikely(rx_buf_id >= rxq->nb_rx_desc)) {
+			PMD_DRV_DP_LOG(ERR, "Invalid buf_id %d", rx_buf_id);
+			continue;
+		}
+
 		rxm = rxq->sw_ring[rx_buf_id];
 		gve_completed_buf_list_push(rxq, rx_buf_id);
 
