@@ -4056,6 +4056,8 @@ tx_err:
 	for (i = 0; i < nb_txq; i++)
 		ice_tx_queue_stop(dev, i);
 
+	pf->adapter_stopped = true;
+
 	return -EIO;
 }
 
