@@ -152,6 +152,7 @@ gve_rx(struct gve_rx_queue *rxq, volatile struct gve_rx_desc *rxd, uint16_t rx_i
 
 	rxe = rxq->sw_ring[rx_id];
 	gve_rx_mbuf(rxq, rxe, frag_size, rx_id);
+	rxq->sw_ring[rx_id] = NULL;
 	rxq->stats.bytes += frag_size;
 
 	if (is_first_frag) {
