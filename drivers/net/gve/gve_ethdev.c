@@ -291,6 +291,8 @@ gve_alloc_stats_report(struct gve_priv *priv,
 	if (!priv->stats_report_mem)
 		return -ENOMEM;
 
+	memset(priv->stats_report_mem->addr, 0, priv->stats_report_mem->len);
+
 	/* offset by skipping stats written by gve. */
 	priv->stats_start_idx = (GVE_TX_STATS_REPORT_NUM * nb_tx_queues) +
 		(GVE_RX_STATS_REPORT_NUM * nb_rx_queues);
