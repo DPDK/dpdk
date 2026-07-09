@@ -2579,7 +2579,13 @@ i40e_dev_start(struct rte_eth_dev *dev)
 		i40e_dev_link_update(dev, !rte_intr_allow_others(intr_handle));
 		pf->mac_config_on_link_up = !dev->data->dev_link.link_status;
 		/* enable uio intr after callback register */
-		rte_intr_enable(intr_handle);
+		if (rte_intr_enable(intr_handle) != 0) {
+			if (rte_eal_alarm_set(I40E_ALARM_INTERVAL,
+					  i40e_dev_alarm_handler, dev) != 0)
+				PMD_DRV_LOG(WARNING, "Failed to set alarm");
+			else
+				pf->use_aq_polling = true;
+		}
 	}
 
 	i40e_filter_restore(pf);
@@ -2625,6 +2631,9 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.intr_conf.rxq == 0) {
 		rte_eal_alarm_cancel(i40e_dev_alarm_handler, dev);
 		rte_intr_enable(intr_handle);
+	} else if (pf->use_aq_polling) {
+		rte_eal_alarm_cancel(i40e_dev_alarm_handler, dev);
+		pf->use_aq_polling = false;
 	}
 
 	/* Disable all queues */
