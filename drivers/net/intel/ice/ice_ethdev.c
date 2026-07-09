@@ -3,6 +3,7 @@
  */
 
 #include <rte_string_fns.h>
+#include <rte_alarm.h>
 #include <ethdev_pci.h>
 
 #include <ctype.h>
@@ -110,7 +111,11 @@ enum ice_link_state_on_close {
 
 #define ICE_RSS_LUT_GLOBAL_QUEUE_NB	64
 
+/* Polling interval used when the interrupt path is unavailable */
+#define ICE_AQ_ALARM_INTERVAL 50000 /* us */
+
 static int ice_dev_configure(struct rte_eth_dev *dev);
+static void ice_aq_alarm_handler(void *param);
 static int ice_dev_start(struct rte_eth_dev *dev);
 static int ice_dev_stop(struct rte_eth_dev *dev);
 static int ice_dev_close(struct rte_eth_dev *dev);
@@ -1472,6 +1477,28 @@ ice_handle_aq_msg(struct rte_eth_dev *dev)
 				    opcode);
 			break;
 		}
+	}
+}
+
+/*
+ * Alarm-based AdminQ polling handler that drains the AdminQ to process
+ * async events, then re-arms itself.
+ *
+ * @param param
+ *  The address of parameter (struct rte_eth_dev *) registered before.
+ *
+ * @return
+ *  void
+ */
+static void
+ice_aq_alarm_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	if (!pf->adapter_stopped) {
+		ice_handle_aq_msg(dev);
+		rte_eal_alarm_set(ICE_AQ_ALARM_INTERVAL, ice_aq_alarm_handler, dev);
 	}
 }
 
@@ -2960,6 +2987,11 @@ ice_dev_stop(struct rte_eth_dev *dev)
 
 	pf->adapter_stopped = true;
 	dev->data->dev_started = 0;
+
+	if (pf->use_aq_polling) {
+		rte_eal_alarm_cancel(ice_aq_alarm_handler, dev);
+		pf->use_aq_polling = false;
+	}
 
 	return 0;
 }
@@ -4479,7 +4511,15 @@ ice_dev_start(struct rte_eth_dev *dev)
 	if (ice_rxq_intr_setup(dev))
 		return -EIO;
 
-	rte_intr_enable(pci_dev->intr_handle);
+	/* Fall back to polling the AdminQ via an alarm on platforms where
+	 * interrupt delivery is unavailable.
+	 */
+	if (rte_intr_enable(pci_dev->intr_handle) != 0) {
+		if (rte_eal_alarm_set(ICE_AQ_ALARM_INTERVAL, ice_aq_alarm_handler, dev) != 0)
+			PMD_DRV_LOG(WARNING, "Failed to set alarm for AdminQ polling");
+		else
+			pf->use_aq_polling = true;
+	}
 
 	/* Enable receiving broadcast packets and transmitting packets */
 	ice_set_bit(ICE_PROMISC_BCAST_RX, pmask);
