@@ -152,6 +152,7 @@ gve_rx_burst_dqo(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (rx_id_bufq == rxq->nb_rx_desc)
 			rx_id_bufq = 0;
 		rxq->nb_rx_hold++;
+		rxq->sw_ring[rx_id_bufq] = NULL;
 
 		rxm->pkt_len = pkt_len;
 		rxm->data_len = pkt_len;
