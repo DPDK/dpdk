@@ -2688,6 +2688,8 @@ iavf_uninit_vf(struct rte_eth_dev *dev)
 	vf->qos_cap = NULL;
 	free(vf->qtc_map);
 	vf->qtc_map = NULL;
+	rte_free(vf->proto_xtr);
+	vf->proto_xtr = NULL;
 
 	rte_free(vf->rss_lut);
 	vf->rss_lut = NULL;
@@ -3045,6 +3047,9 @@ iavf_dev_close(struct rte_eth_dev *dev)
 			vf->rss_key = NULL;
 		}
 	}
+
+	rte_free(vf->proto_xtr);
+	vf->proto_xtr = NULL;
 
 	rte_free(vf->vf_res);
 	vf->vsi_res = NULL;
