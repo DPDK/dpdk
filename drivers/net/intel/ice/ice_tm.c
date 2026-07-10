@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2022 Intel Corporation
  */
+#include <stdlib.h>
+
 #include <rte_ethdev.h>
 #include <rte_tm_driver.h>
 
@@ -714,7 +716,7 @@ ice_tm_setup_txq_node(struct ice_pf *pf, struct ice_hw *hw, uint16_t qid, uint32
 		uint8_t txqs_moved = 0;
 		uint16_t buf_size = ice_struct_size(buf, txqs, 1);
 
-		buf = ice_malloc(hw, buf_size);
+		buf = calloc(1, buf_size);
 		if (buf == NULL)
 			return -ENOMEM;
 
@@ -727,9 +729,9 @@ ice_tm_setup_txq_node(struct ice_pf *pf, struct ice_hw *hw, uint16_t qid, uint32
 
 		int ret = ice_aq_move_recfg_lan_txq(hw, 1, true, false, false, false, 50,
 						NULL, buf, buf_size, &txqs_moved, NULL);
+		free(buf);
 		if (ret || txqs_moved == 0) {
 			PMD_DRV_LOG(ERR, "move lan queue %u failed", qid);
-			ice_free(hw, buf);
 			return ICE_ERR_PARAM;
 		}
 
