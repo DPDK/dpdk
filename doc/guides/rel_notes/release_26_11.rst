@@ -146,6 +146,13 @@ New Features
     with per-descriptor mbuf free (``rte_pktmbuf_free_seg``) and prefetch hints.
   * Changed the set of per-queue xstats counters.
 
+* **Added AMD AE4DMA DMA PMD.**
+
+  Added a new dmadev driver for the AMD AE4DMA hardware DMA engine.
+  Each PCI function exposes 16 hardware command queues; the PMD registers one
+  dmadev per channel with a single virtual channel and supports
+  memory-to-memory copy operations.
+
 * **Added per-queue statistics API in bbdev.**
 
   Added ``rte_bbdev_queue_stats_get()`` function to retrieve statistics

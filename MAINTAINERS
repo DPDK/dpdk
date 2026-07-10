@@ -1368,6 +1368,11 @@ F: doc/guides/compressdevs/features/zsda.ini
 DMAdev Drivers
 --------------
 
+AMD AE4DMA
+M: Bhagyada Modali <bhagyada.modali@amd.com>
+F: drivers/dma/ae4dma/
+F: doc/guides/dmadevs/ae4dma.rst
+
 Intel IDXD - EXPERIMENTAL
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: Kevin Laatz <kevin.laatz@intel.com>

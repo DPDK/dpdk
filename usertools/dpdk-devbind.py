@@ -48,6 +48,7 @@ device_types = {
     'dma': {
         'name': 'DMA',
         'match': [
+            {'Class': '08', 'Vendor': '1022', 'Device': '149b'},  # AMD AE4DMA
             {'Class': '08', 'Vendor': '177d', 'Device': 'a081'},  # Marvell CNXK DMA
             {'Class': '08', 'Vendor': '177d', 'Device': 'a08c'},  # Marvell ODM DMA
             {'Class': '08', 'Vendor': '19e5', 'Device': 'a122'},  # HiSilicon DMA

@@ -11,6 +11,7 @@ an application through DMA API.
    :maxdepth: 1
    :numbered:
 
+   ae4dma
    cnxk
    dpaa
    dpaa2
