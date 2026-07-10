@@ -97,6 +97,9 @@ iavf_tm_conf_uninit(struct rte_eth_dev *dev)
 			     shaper_profile, node);
 		rte_free(shaper_profile);
 	}
+
+	free(vf->qtc_map);
+	vf->qtc_map = NULL;
 }
 
 static inline struct iavf_tm_node *
@@ -801,7 +804,8 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 	struct virtchnl_queues_bw_cfg *q_bw = NULL;
 	struct iavf_tm_node_list *queue_list = &vf->tm_conf.queue_list;
 	struct iavf_tm_node *tm_node;
-	struct iavf_qtc_map *qtc_map;
+	struct iavf_qtc_map *qtc_map = NULL;
+	struct iavf_qtc_map *old_qtc_map = vf->qtc_map; /* to free memory if new map assigned */
 	uint16_t size, size_q;
 	int index = 0, node_committed = 0;
 	int i, ret_val = IAVF_SUCCESS;
@@ -889,8 +893,7 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 		goto fail_clear;
 
 	/* store the queue TC mapping info */
-	qtc_map = rte_zmalloc("qtc_map",
-		sizeof(struct iavf_qtc_map) * q_tc_mapping->num_tc, 0);
+	qtc_map = calloc(q_tc_mapping->num_tc, sizeof(struct iavf_qtc_map));
 	if (!qtc_map) {
 		ret_val = IAVF_ERR_NO_MEMORY;
 		goto fail_clear;
@@ -910,6 +913,7 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 		goto fail_clear;
 
 	vf->qtc_map = qtc_map;
+	free(old_qtc_map);
 	if (adapter->stopped == 1)
 		vf->tm_conf.committed = true;
 	free(q_bw);
@@ -925,5 +929,6 @@ fail_clear:
 err:
 	free(q_bw);
 	free(q_tc_mapping);
+	free(qtc_map);
 	return ret_val;
 }
