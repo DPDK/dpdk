@@ -3170,6 +3170,10 @@ dpaa2_napi_subscribe(struct rte_eth_dev *dev, uint16_t queue_id,
 	}
 	rte_atomic_store_explicit(&dpaa2_q->napi_sub_dpio, dpio,
 			rte_memory_order_release);
+	/* pin this portal's MSI to the worker's core: a CDAN wake then lands on
+	 * the same core the worker sleeps on, instead of the default spread.
+	 */
+	dpaa2_dpio_affine_intr_to_core(dpio->hw_id);
 	return 0;
 }
 

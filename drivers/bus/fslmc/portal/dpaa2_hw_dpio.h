@@ -58,6 +58,10 @@ int dpaa2_dpio_intr_init(struct dpaa2_dpio_dev *dpio_dev, int threshold,
 __rte_internal
 void dpaa2_dpio_intr_deinit(struct dpaa2_dpio_dev *dpio_dev);
 
+/* pin a DPIO's MSI IRQ to the calling lcore's core (rx-queue interrupt mode) */
+__rte_internal
+void dpaa2_dpio_affine_intr_to_core(int32_t dpio_id);
+
 /* allocate memory for FQ - dq storage */
 __rte_internal
 int

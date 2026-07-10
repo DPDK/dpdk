@@ -149,7 +149,6 @@ dpaa2_core_cluster_sdest(int cpu_id)
 	return dpaa2_core_cluster_base + x;
 }
 
-#ifdef RTE_EVENT_DPAA2
 static void
 dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id, int cpu_id)
 {
@@ -204,7 +203,19 @@ dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id, int cpu_id)
 
 	fclose(file);
 }
-#endif /* RTE_EVENT_DPAA2 */
+
+/* Pin the dpio's MSI IRQ to the calling lcore's core (best-effort), so a
+ * worker sleeping on this portal's eventfd is woken on its own core.
+ */
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_dpio_affine_intr_to_core)
+void
+dpaa2_dpio_affine_intr_to_core(int32_t dpio_id)
+{
+	int cpu_id = dpaa2_get_core_id();
+
+	if (cpu_id >= 0)
+		dpaa2_affine_dpio_intr_to_respective_core(dpio_id, cpu_id);
+}
 
 /* threshold: DQRR fill raising DQRI (< ring depth); timeout: holdoff in ITP units.
  * Per-mode values from the caller (eventdev vs rx-queue intr).
@@ -324,8 +335,8 @@ dpaa2_configure_stashing(struct dpaa2_dpio_dev *dpio_dev, int cpu_id, bool ethrx
 			DPAA2_BUS_ERR("Interrupt registration failed for dpio");
 			return -1;
 		}
+		dpaa2_affine_dpio_intr_to_respective_core(dpio_dev->hw_id, cpu_id);
 	}
-	dpaa2_affine_dpio_intr_to_respective_core(dpio_dev->hw_id, cpu_id);
 #else
 	RTE_SET_USED(ethrx);
 #endif
