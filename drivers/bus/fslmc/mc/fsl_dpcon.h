@@ -95,4 +95,22 @@ int dpcon_get_api_version(struct fsl_mc_io *mc_io,
 			  uint16_t *major_ver,
 			  uint16_t *minor_ver);
 
+/**
+ * struct dpcon_notification_cfg - Notification parameters
+ * @dpio_id:	DPIO object id that receives the channel's CDAN
+ * @priority:	Priority within the DPIO channel (0-7)
+ * @user_ctx:	User context provided with each CDAN message
+ */
+struct dpcon_notification_cfg {
+	int dpio_id;
+	uint8_t priority;
+	uint64_t user_ctx;
+};
+
+__rte_internal
+int dpcon_set_notification(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t token,
+			   const struct dpcon_notification_cfg *cfg);
+
 #endif /* __FSL_DPCON_H */
