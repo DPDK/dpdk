@@ -33,6 +33,216 @@ ae4dma_queue_dma_zone_reserve(const char *queue_name, uint32_t queue_size, int s
 }
 
 static int
+ae4dma_dev_configure(struct rte_dma_dev *dev __rte_unused, const struct rte_dma_conf *dev_conf,
+		uint32_t conf_sz)
+{
+	if (conf_sz < sizeof(struct rte_dma_conf))
+		return -EINVAL;
+
+	if (dev_conf->nb_vchans != 1)
+		return -EINVAL;
+
+	return 0;
+}
+
+/* Setup a virtual channel for AE4DMA, only 1 vchan is supported per dmadev. */
+static int
+ae4dma_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan __rte_unused,
+		const struct rte_dma_vchan_conf *qconf, uint32_t qconf_sz)
+{
+	struct ae4dma_dmadev *ae4dma = dev->fp_obj->dev_private;
+	struct ae4dma_cmd_queue *cmd_q = &ae4dma->cmd_q;
+	uint16_t max_desc = qconf->nb_desc;
+
+	if (qconf_sz < sizeof(struct rte_dma_vchan_conf))
+		return -EINVAL;
+
+	/*
+	 * The framework already clamps nb_desc to the advertised [min_desc,
+	 * max_desc] range. The HW ring slot is computed by masking a
+	 * free-running 16-bit index, so the depth must be a power of two:
+	 * round up here when the application asks for a non-power-of-two size.
+	 */
+	if (!rte_is_power_of_2(max_desc))
+		max_desc = rte_align32pow2(max_desc);
+
+	cmd_q->qcfg = *qconf;
+	cmd_q->qcfg.nb_desc = max_desc;
+
+	/*
+	 * Reset ring indices and stats when (re)configuring the vchan.
+	 * hw_base is (re)sampled from the HW consumer index in dev_start.
+	 */
+	cmd_q->next_write = 0;
+	cmd_q->next_read = 0;
+	cmd_q->last_write = 0;
+	cmd_q->hw_base = 0;
+	memset(&cmd_q->stats, 0, sizeof(cmd_q->stats));
+	return 0;
+}
+
+static int
+ae4dma_dev_start(struct rte_dma_dev *dev)
+{
+	struct ae4dma_dmadev *ae4dma = dev->fp_obj->dev_private;
+	struct ae4dma_cmd_queue *cmd_q = &ae4dma->cmd_q;
+	uint16_t nb = cmd_q->qcfg.nb_desc;
+	uint16_t hw_pos;
+
+	if (nb == 0)
+		return -EBUSY;
+
+	/*
+	 * Program ring depth and (re)enable the HW queue. On HW that resets
+	 * the queue indices on enable, this must happen before we sample
+	 * read_idx below.
+	 */
+	AE4DMA_WRITE_REG(&cmd_q->hwq_regs->max_idx, nb);
+	AE4DMA_WRITE_REG(&cmd_q->hwq_regs->control_reg.control_raw, AE4DMA_CMD_QUEUE_ENABLE);
+
+	/*
+	 * The dmadev ring index is a free-running 16-bit counter that restarts
+	 * from 0 on every (re)start. read_idx is HW-owned (read-only), so we
+	 * cannot force it to 0; instead anchor index 0 to wherever the HW
+	 * consumer currently sits (hw_base) and derive the ring slot as
+	 * (hw_base + idx) & (nb - 1). write_idx is set equal to read_idx so the
+	 * queue starts empty without touching the read-only read_idx register.
+	 */
+	hw_pos = (uint16_t)(AE4DMA_READ_REG(&cmd_q->hwq_regs->read_idx) & (nb - 1));
+	cmd_q->hw_base = hw_pos;
+	cmd_q->next_write = 0;
+	cmd_q->next_read = 0;
+	cmd_q->last_write = 0;
+	AE4DMA_WRITE_REG(&cmd_q->hwq_regs->write_idx, hw_pos);
+	return 0;
+}
+
+static int
+ae4dma_dev_stop(struct rte_dma_dev *dev)
+{
+	struct ae4dma_dmadev *ae4dma = dev->fp_obj->dev_private;
+	struct ae4dma_cmd_queue *cmd_q = &ae4dma->cmd_q;
+
+	if (cmd_q->hwq_regs != NULL)
+		AE4DMA_WRITE_REG(&cmd_q->hwq_regs->control_reg.control_raw,
+			AE4DMA_CMD_QUEUE_DISABLE);
+	return 0;
+}
+
+static int
+ae4dma_dev_info_get(const struct rte_dma_dev *dev __rte_unused,
+		struct rte_dma_info *info, uint32_t size __rte_unused)
+{
+	info->dev_capa = RTE_DMA_CAPA_MEM_TO_MEM | RTE_DMA_CAPA_OPS_COPY;
+	info->max_vchans = 1;
+	info->min_desc = 2;
+	info->max_desc = AE4DMA_DESCRIPTORS_PER_CMDQ;
+	info->nb_vchans = 1;
+	return 0;
+}
+
+static int
+ae4dma_dev_close(struct rte_dma_dev *dev)
+{
+	struct ae4dma_dmadev *ae4dma = dev->fp_obj->dev_private;
+	struct ae4dma_cmd_queue *cmd_q = &ae4dma->cmd_q;
+
+	if (cmd_q->hwq_regs != NULL)
+		AE4DMA_WRITE_REG(&cmd_q->hwq_regs->control_reg.control_raw,
+			AE4DMA_CMD_QUEUE_DISABLE);
+
+	rte_memzone_free(cmd_q->mz);
+	cmd_q->mz = NULL;
+	cmd_q->qbase_desc = NULL;
+	cmd_q->qbase_addr = NULL;
+	cmd_q->qbase_phys_addr = 0;
+	return 0;
+}
+
+static int
+ae4dma_dev_dump(const struct rte_dma_dev *dev, FILE *f)
+{
+	struct ae4dma_dmadev *ae4dma = dev->fp_obj->dev_private;
+	struct ae4dma_cmd_queue *cmd_q = &ae4dma->cmd_q;
+	void *mmio = ae4dma->io_regs;
+
+	fprintf(f, "cmd_q->id              = %" PRIx64 "\n", cmd_q->id);
+	fprintf(f, "cmd_q->qidx            = %" PRIx64 "\n", cmd_q->qidx);
+	fprintf(f, "cmd_q->qsize           = %" PRIx64 "\n", cmd_q->qsize);
+	fprintf(f, "mmio_base_addr         = %p\n", mmio);
+	fprintf(f, "queues per ae4dma engine     = %d\n",
+		AE4DMA_READ_REG_OFFSET(mmio, AE4DMA_COMMON_CONFIG_OFFSET));
+	fprintf(f, "== Private Data ==\n");
+	fprintf(f, "  Config: { ring_size: %u }\n", cmd_q->qcfg.nb_desc);
+	fprintf(f, "  Ring virt: %p\tphys: %#" PRIx64 "\n", (void *)cmd_q->qbase_desc,
+		(uint64_t)cmd_q->qbase_phys_addr);
+	fprintf(f, "  Next write: %u\n", cmd_q->next_write);
+	fprintf(f, "  Next read: %u\n", cmd_q->next_read);
+	fprintf(f, "  current queue depth: %u\n",
+		(uint16_t)(cmd_q->next_write - cmd_q->next_read));
+	fprintf(f, "  }\n");
+	fprintf(f, "  Key Stats { submitted: %" PRIu64 ", comp: %" PRIu64 ", failed: %" PRIu64 " }\n",
+		cmd_q->stats.submitted, cmd_q->stats.completed, cmd_q->stats.errors);
+	return 0;
+}
+
+static int
+ae4dma_stats_get(const struct rte_dma_dev *dev, uint16_t vchan __rte_unused,
+		struct rte_dma_stats *rte_stats, uint32_t size __rte_unused)
+{
+	const struct ae4dma_dmadev *ae4dma = dev->fp_obj->dev_private;
+	const struct ae4dma_cmd_queue *cmd_q = &ae4dma->cmd_q;
+
+	*rte_stats = cmd_q->stats;
+	return 0;
+}
+
+static int
+ae4dma_stats_reset(struct rte_dma_dev *dev, uint16_t vchan __rte_unused)
+{
+	struct ae4dma_dmadev *ae4dma = dev->fp_obj->dev_private;
+	struct ae4dma_cmd_queue *cmd_q = &ae4dma->cmd_q;
+
+	memset(&cmd_q->stats, 0, sizeof(cmd_q->stats));
+	return 0;
+}
+
+/*
+ * Report channel state to the dmadev framework.
+ *
+ *   RTE_DMA_VCHAN_HALTED_ERROR - HW queue is disabled (never started, or
+ *                                stopped via dev_stop()).
+ *   RTE_DMA_VCHAN_IDLE         - HW has caught up: read_idx == write_idx,
+ *                                no descriptors in flight.
+ *   RTE_DMA_VCHAN_ACTIVE       - HW still has descriptors to process.
+ */
+static int
+ae4dma_vchan_status(const struct rte_dma_dev *dev, uint16_t vchan __rte_unused,
+		enum rte_dma_vchan_status *status)
+{
+	const struct ae4dma_dmadev *ae4dma = dev->fp_obj->dev_private;
+	const struct ae4dma_cmd_queue *cmd_q = &ae4dma->cmd_q;
+	uint32_t ctrl, hw_read, hw_write;
+
+	if (cmd_q->hwq_regs == NULL) {
+		*status = RTE_DMA_VCHAN_HALTED_ERROR;
+		return 0;
+	}
+
+	ctrl = AE4DMA_READ_REG(&cmd_q->hwq_regs->control_reg.control_raw);
+	if ((ctrl & AE4DMA_CMD_QUEUE_ENABLE) == 0) {
+		*status = RTE_DMA_VCHAN_HALTED_ERROR;
+		return 0;
+	}
+
+	hw_read = AE4DMA_READ_REG(&cmd_q->hwq_regs->read_idx);
+	hw_write = AE4DMA_READ_REG(&cmd_q->hwq_regs->write_idx);
+
+	*status = (hw_read == hw_write) ? RTE_DMA_VCHAN_IDLE : RTE_DMA_VCHAN_ACTIVE;
+	return 0;
+}
+
+static int
 ae4dma_add_queue(struct ae4dma_dmadev *dev, struct rte_pci_device *pci, uint8_t qn,
 		const char *pci_name)
 {
@@ -90,6 +300,19 @@ ae4dma_channel_dev_name(char *out, size_t outlen, const char *pci_name, unsigned
 static int
 ae4dma_dmadev_create(const char *name, struct rte_pci_device *dev, uint8_t qn)
 {
+	static const struct rte_dma_dev_ops ae4dma_dmadev_ops = {
+		.dev_close = ae4dma_dev_close,
+		.dev_configure = ae4dma_dev_configure,
+		.dev_dump = ae4dma_dev_dump,
+		.dev_info_get = ae4dma_dev_info_get,
+		.dev_start = ae4dma_dev_start,
+		.dev_stop = ae4dma_dev_stop,
+		.stats_get = ae4dma_stats_get,
+		.stats_reset = ae4dma_stats_reset,
+		.vchan_status = ae4dma_vchan_status,
+		.vchan_setup = ae4dma_vchan_setup,
+	};
+
 	char hwq_dev_name[RTE_DEV_NAME_MAX_LEN] = {0};
 	struct ae4dma_dmadev *ae4dma;
 	struct rte_dma_dev *dmadev;
@@ -104,6 +327,7 @@ ae4dma_dmadev_create(const char *name, struct rte_pci_device *dev, uint8_t qn)
 	}
 	dmadev->device = &dev->device;
 	dmadev->fp_obj->dev_private = dmadev->data->dev_private;
+	dmadev->dev_ops = &ae4dma_dmadev_ops;
 
 	ae4dma = dmadev->data->dev_private;
 
