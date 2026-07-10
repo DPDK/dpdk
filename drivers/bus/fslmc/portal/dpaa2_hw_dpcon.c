@@ -18,13 +18,12 @@
 #include <rte_cycles.h>
 #include <rte_kvargs.h>
 #include <dev_driver.h>
-#include <ethdev_driver.h>
+#include <eal_export.h>
 
 #include <bus_fslmc_driver.h>
 #include <mc/fsl_dpcon.h>
 #include <portal/dpaa2_hw_pvt.h>
-#include "dpaa2_eventdev.h"
-#include "dpaa2_eventdev_logs.h"
+#include <fslmc_logs.h>
 
 TAILQ_HEAD(dpcon_dev_list, dpaa2_dpcon_dev);
 static struct dpcon_dev_list dpcon_dev_list
@@ -55,8 +54,7 @@ rte_dpaa2_create_dpcon_device(int dev_fd __rte_unused,
 	/* Allocate DPAA2 dpcon handle */
 	dpcon_node = rte_malloc(NULL, sizeof(struct dpaa2_dpcon_dev), 0);
 	if (!dpcon_node) {
-		DPAA2_EVENTDEV_ERR(
-				"Memory allocation failed for dpcon device");
+		DPAA2_BUS_ERR("Memory allocation failed for dpcon device");
 		return -1;
 	}
 
@@ -65,8 +63,7 @@ rte_dpaa2_create_dpcon_device(int dev_fd __rte_unused,
 	ret = dpcon_open(&dpcon_node->dpcon,
 			 CMD_PRI_LOW, dpcon_id, &dpcon_node->token);
 	if (ret) {
-		DPAA2_EVENTDEV_ERR("Unable to open dpcon device: err(%d)",
-				   ret);
+		DPAA2_BUS_ERR("Unable to open dpcon device: err(%d)", ret);
 		rte_free(dpcon_node);
 		return -1;
 	}
@@ -75,8 +72,7 @@ rte_dpaa2_create_dpcon_device(int dev_fd __rte_unused,
 	ret = dpcon_get_attributes(&dpcon_node->dpcon,
 				   CMD_PRI_LOW, dpcon_node->token, &attr);
 	if (ret != 0) {
-		DPAA2_EVENTDEV_ERR("dpcon attribute fetch failed: err(%d)",
-				   ret);
+		DPAA2_BUS_ERR("dpcon attribute fetch failed: err(%d)", ret);
 		rte_free(dpcon_node);
 		return -1;
 	}
@@ -92,6 +88,7 @@ rte_dpaa2_create_dpcon_device(int dev_fd __rte_unused,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa2_alloc_dpcon_dev)
 struct dpaa2_dpcon_dev *rte_dpaa2_alloc_dpcon_dev(void)
 {
 	struct dpaa2_dpcon_dev *dpcon_dev = NULL;
@@ -105,6 +102,7 @@ struct dpaa2_dpcon_dev *rte_dpaa2_alloc_dpcon_dev(void)
 	return dpcon_dev;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa2_free_dpcon_dev)
 void rte_dpaa2_free_dpcon_dev(struct dpaa2_dpcon_dev *dpcon)
 {
 	struct dpaa2_dpcon_dev *dpcon_dev = NULL;

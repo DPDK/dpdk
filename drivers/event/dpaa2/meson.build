@@ -7,7 +7,6 @@ if not is_linux
 endif
 deps += ['bus_vdev', 'net_dpaa2', 'crypto_dpaa2_sec']
 sources = files(
-        'dpaa2_hw_dpcon.c',
         'dpaa2_eventdev.c',
         'dpaa2_eventdev_selftest.c',
 )

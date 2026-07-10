@@ -274,6 +274,12 @@ struct dpaa2_dpcon_dev {
 	uint8_t channel_index;
 };
 
+/* DPCON channel pool, shared by the net rx-interrupt path and the event PMD */
+__rte_internal
+struct dpaa2_dpcon_dev *rte_dpaa2_alloc_dpcon_dev(void);
+__rte_internal
+void rte_dpaa2_free_dpcon_dev(struct dpaa2_dpcon_dev *dpcon);
+
 /* Refer to Table 7-3 in SEC BG */
 #define QBMAN_FLE_WORD4_FMT_SBF 0x0    /* Single buffer frame */
 #define QBMAN_FLE_WORD4_FMT_SGE 0x2 /* Scatter gather frame */
