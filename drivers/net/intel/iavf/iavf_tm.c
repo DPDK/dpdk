@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2017 Intel Corporation
  */
+#include <stdlib.h>
+
 #include <rte_tm_driver.h>
 
 #include "iavf.h"
@@ -795,8 +797,8 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct virtchnl_queue_tc_mapping *q_tc_mapping;
-	struct virtchnl_queues_bw_cfg *q_bw;
+	struct virtchnl_queue_tc_mapping *q_tc_mapping = NULL;
+	struct virtchnl_queues_bw_cfg *q_bw = NULL;
 	struct iavf_tm_node_list *queue_list = &vf->tm_conf.queue_list;
 	struct iavf_tm_node *tm_node;
 	struct iavf_qtc_map *qtc_map;
@@ -832,7 +834,7 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 
 	size = sizeof(*q_tc_mapping) + sizeof(q_tc_mapping->tc[0]) *
 		(vf->qos_cap->num_elem - 1);
-	q_tc_mapping = rte_zmalloc("q_tc", size, 0);
+	q_tc_mapping = calloc(1, size);
 	if (!q_tc_mapping) {
 		ret_val = IAVF_ERR_NO_MEMORY;
 		goto fail_clear;
@@ -840,7 +842,7 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 
 	size_q = sizeof(*q_bw) + sizeof(q_bw->cfg[0]) *
 		(vf->num_queue_pairs - 1);
-	q_bw = rte_zmalloc("q_bw", size_q, 0);
+	q_bw = calloc(1, size_q);
 	if (!q_bw) {
 		ret_val = IAVF_ERR_NO_MEMORY;
 		goto fail_clear;
@@ -889,8 +891,10 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 	/* store the queue TC mapping info */
 	qtc_map = rte_zmalloc("qtc_map",
 		sizeof(struct iavf_qtc_map) * q_tc_mapping->num_tc, 0);
-	if (!qtc_map)
-		return IAVF_ERR_NO_MEMORY;
+	if (!qtc_map) {
+		ret_val = IAVF_ERR_NO_MEMORY;
+		goto fail_clear;
+	}
 
 	for (i = 0; i < q_tc_mapping->num_tc; i++) {
 		q_tc_mapping->tc[i].req.start_queue_id = index;
@@ -908,6 +912,8 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 	vf->qtc_map = qtc_map;
 	if (adapter->stopped == 1)
 		vf->tm_conf.committed = true;
+	free(q_bw);
+	free(q_tc_mapping);
 	return ret_val;
 
 fail_clear:
@@ -917,5 +923,7 @@ fail_clear:
 		iavf_tm_conf_init(dev);
 	}
 err:
+	free(q_bw);
+	free(q_tc_mapping);
 	return ret_val;
 }
