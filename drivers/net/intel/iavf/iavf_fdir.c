@@ -806,6 +806,14 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 				 * ethertype, if the spec and mask is valid,
 				 * set ethertype into input set.
 				 */
+				/* ETH should be present via pattern pre-validation. */
+				if (hdr1 == NULL) {
+					rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Missing ETH header before IPv4 fragment.");
+					return -rte_errno;
+				}
 				input_set |= IAVF_INSET_ETHERTYPE;
 				VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr1, ETH,
 								 ETHERTYPE);
@@ -911,6 +919,14 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 				 * ethertype, if the spec and mask is valid,
 				 * set ethertype into input set.
 				 */
+				/* ETH should be present via pattern pre-validation. */
+				if (hdr1 == NULL) {
+					rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Missing ETH header before IPv6 fragment.");
+					return -rte_errno;
+				}
 				input_set |= IAVF_INSET_ETHERTYPE;
 				VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr1, ETH,
 								 ETHERTYPE);
