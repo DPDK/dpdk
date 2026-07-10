@@ -1397,8 +1397,12 @@ test_dmadev_setup(void)
 	if (rte_dma_stats_get(dev_id, vchan, &stats) != 0)
 		ERR_RETURN("Error with rte_dma_stats_get()\n");
 
-	if (rte_dma_burst_capacity(dev_id, vchan) < 32)
-		ERR_RETURN("Error: Device does not have sufficient burst capacity to run tests");
+	if (rte_dma_burst_capacity(dev_id, vchan) < 32) {
+		RTE_LOG(ERR, USER1,
+			"DMA Dev %u: insufficient burst capacity (32 required), skipping tests\n",
+			dev_id);
+		return TEST_SKIPPED;
+	}
 
 	if (stats.completed != 0 || stats.submitted != 0 || stats.errors != 0)
 		ERR_RETURN("Error device stats are not all zero: completed = %"PRIu64", "
