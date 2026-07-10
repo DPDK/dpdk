@@ -1904,6 +1904,7 @@ iavf_register_parser(struct iavf_flow_parser *parser,
 		list = &vf->dist_parser_list;
 		TAILQ_INSERT_HEAD(list, parser_node, node);
 	} else {
+		rte_free(parser_node);
 		return -EINVAL;
 	}
 
