@@ -47,3 +47,24 @@ On probe the PMD performs the following steps for each PCI function:
   programs the queue base address and ring depth into the per-queue registers,
   and enables the queue.
 * Interrupts are masked; completion is polled by the application.
+
+Usage
+-----
+
+Once a dmadev has been started, copies are submitted with ``rte_dma_copy()`` and
+completions are reaped with ``rte_dma_completed()`` or ``rte_dma_completed_status()``.
+See the :ref:`Enqueue / Dequeue API <dmadev_enqueue_dequeue>` section of
+the dmadev library documentation for details.
+
+Limitations
+-----------
+
+* Only memory-to-memory copies are supported. Fill, scatter-gather and
+  any other operation types are not advertised in ``rte_dma_info::dev_capa``.
+* The maximum number of descriptors per virtual channel is fixed by hardware at 32,
+  and the engine reserves one slot to distinguish a full ring from an empty one,
+  so at most 31 operations can be outstanding (``rte_dma_burst_capacity()`` returns at most 31).
+  The PMD rounds the requested ring size up to a power of two and clamps it to 32.
+* Only a single virtual channel per dmadev is supported;
+  use the 16 per-PCI-function dmadevs to obtain channel-level parallelism.
+* Interrupt-driven completion is not supported.

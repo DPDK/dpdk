@@ -159,6 +159,76 @@ ae4dma_dev_close(struct rte_dma_dev *dev)
 	return 0;
 }
 
+/* Ring the doorbell: publish all enqueued descriptors to the hardware. */
+static inline void
+__submit(struct ae4dma_dmadev *ae4dma)
+{
+	struct ae4dma_cmd_queue *cmd_q = &ae4dma->cmd_q;
+	uint16_t nb = cmd_q->qcfg.nb_desc;
+
+	if (nb == 0)
+		return;
+
+	/* The HW producer index is the ring slot of the next free descriptor. */
+	AE4DMA_WRITE_REG(&cmd_q->hwq_regs->write_idx,
+		(cmd_q->hw_base + cmd_q->next_write) & (nb - 1));
+	cmd_q->stats.submitted += (uint16_t)(cmd_q->next_write - cmd_q->last_write);
+	cmd_q->last_write = cmd_q->next_write;
+}
+
+static int
+ae4dma_submit(void *dev_private, uint16_t vchan __rte_unused)
+{
+	struct ae4dma_dmadev *ae4dma = dev_private;
+
+	__submit(ae4dma);
+	return 0;
+}
+
+/* Write a copy descriptor; returns the free-running ring_idx assigned to it. */
+static inline int
+__write_desc_copy(void *dev_private, rte_iova_t src, rte_iova_t dst,
+		uint32_t len, uint64_t flags)
+{
+	struct ae4dma_dmadev *ae4dma = dev_private;
+	struct ae4dma_cmd_queue *cmd_q = &ae4dma->cmd_q;
+	uint16_t ring_idx = cmd_q->next_write;
+	uint16_t nb = cmd_q->qcfg.nb_desc;
+	struct ae4dma_desc *dma_desc;
+	uint16_t in_flight;
+
+	if (nb == 0)
+		return -EINVAL;
+
+	/* Reserve one slot to distinguish full from empty on the ring. */
+	in_flight = (uint16_t)(cmd_q->next_write - cmd_q->next_read);
+	if (in_flight >= nb - 1)
+		return -ENOSPC;
+
+	dma_desc = &cmd_q->qbase_desc[(cmd_q->hw_base + ring_idx) & (nb - 1)];
+	memset(dma_desc, 0, sizeof(*dma_desc));
+	dma_desc->length = len;
+	dma_desc->src_hi = upper_32_bits(src);
+	dma_desc->src_lo = lower_32_bits(src);
+	dma_desc->dst_hi = upper_32_bits(dst);
+	dma_desc->dst_lo = lower_32_bits(dst);
+
+	cmd_q->next_write++;
+	if (flags & RTE_DMA_OP_FLAG_SUBMIT)
+		__submit(ae4dma);
+
+	/* dmadev ring_idx is a free-running 16-bit value, not a ring slot. */
+	return ring_idx;
+}
+
+/* Enqueue a copy operation onto the ae4dma device. */
+static int
+ae4dma_enqueue_copy(void *dev_private, uint16_t vchan __rte_unused, rte_iova_t src, rte_iova_t dst,
+		uint32_t length, uint64_t flags)
+{
+	return __write_desc_copy(dev_private, src, dst, length, flags);
+}
+
 static int
 ae4dma_dev_dump(const struct rte_dma_dev *dev, FILE *f)
 {
@@ -184,6 +254,178 @@ ae4dma_dev_dump(const struct rte_dma_dev *dev, FILE *f)
 	fprintf(f, "  Key Stats { submitted: %" PRIu64 ", comp: %" PRIu64 ", failed: %" PRIu64 " }\n",
 		cmd_q->stats.submitted, cmd_q->stats.completed, cmd_q->stats.errors);
 	return 0;
+}
+
+/* Translate an AE4DMA descriptor error code to the dmadev status code. */
+static inline enum rte_dma_status_code
+__translate_status_ae4dma_to_dma(enum ae4dma_dma_err status)
+{
+	switch (status) {
+	case AE4DMA_DMA_ERR_NO_ERR:
+		return RTE_DMA_STATUS_SUCCESSFUL;
+	case AE4DMA_DMA_ERR_INV_LEN:
+		return RTE_DMA_STATUS_INVALID_LENGTH;
+	case AE4DMA_DMA_ERR_INV_SRC:
+		return RTE_DMA_STATUS_INVALID_SRC_ADDR;
+	case AE4DMA_DMA_ERR_INV_DST:
+		return RTE_DMA_STATUS_INVALID_DST_ADDR;
+	default:
+		return RTE_DMA_STATUS_ERROR_UNKNOWN;
+	}
+}
+
+/* True if the descriptor at ring slot has been flagged as failed by HW. */
+static inline bool
+ae4dma_desc_failed(volatile struct ae4dma_desc *hw_desc)
+{
+	/*
+	 * read_idx advancing is the definitive completion signal.
+	 * The per-descriptor status byte is informational and may not yet be written
+	 * when we observe it, so a slot is only a failure if the HW flagged DESC_ERROR
+	 * or set a non-zero err_code.
+	 */
+	return hw_desc->dw1.status == AE4DMA_DMA_DESC_ERROR ||
+		hw_desc->dw1.err_code != AE4DMA_DMA_ERR_NO_ERR;
+}
+
+/*
+ * Number of descriptors the HW has completed since our last reap,
+ * without consuming them (non-blocking, no state change).
+ *
+ * The AE4DMA engine signals completion by advancing the per-queue read_idx register;
+ * it does not (reliably) write a status word back into the descriptor.
+ * We therefore use the HW read_idx register as the source of truth for how many ops are done.
+ *
+ * next_read/next_write are free-running 16-bit indices;
+ * the HW ring slot is ((hw_base + idx) & mask)
+ * and the number of in-flight ops is (next_write - next_read),
+ * both relying on nb_desc being a power of two.
+ */
+static inline uint16_t
+ae4dma_pending(struct ae4dma_cmd_queue *cmd_q)
+{
+	uint16_t nb = cmd_q->qcfg.nb_desc;
+	uint16_t hw_read_pos, tail_pos;
+	uint16_t newly_done, in_flight;
+	uint16_t mask;
+
+	if (nb == 0)
+		return 0;
+	mask = nb - 1;
+
+	in_flight = (uint16_t)(cmd_q->next_write - cmd_q->next_read);
+	if (in_flight == 0)
+		return 0;
+
+	/* Descriptors HW has consumed since our last visit: [tail, read). */
+	hw_read_pos = (uint16_t)(AE4DMA_READ_REG(&cmd_q->hwq_regs->read_idx) & mask);
+	tail_pos = (uint16_t)((cmd_q->hw_base + cmd_q->next_read) & mask);
+	newly_done = (uint16_t)((hw_read_pos - tail_pos) & mask);
+
+	return RTE_MIN(newly_done, in_flight);
+}
+
+/*
+ * Report ops that completed successfully, stopping at the first failure.
+ *
+ * Per the dmadev contract, this reaps only the run of successful ops at the head of
+ * the completed region and stops as soon as it meets a failed one.
+ * The failed op is left in place (not consumed) and *has_error is set
+ * so the application switches to rte_dma_completed_status() to retrieve its status.
+ * last_idx is the ring_idx of the last successfully completed op.
+ */
+static uint16_t
+ae4dma_completed(void *dev_private, uint16_t vchan __rte_unused, const uint16_t max_ops,
+		uint16_t *last_idx, bool *has_error)
+{
+	struct ae4dma_dmadev *ae4dma = dev_private;
+	struct ae4dma_cmd_queue *cmd_q = &ae4dma->cmd_q;
+	uint16_t mask = cmd_q->qcfg.nb_desc - 1;
+	uint16_t ready, count;
+
+	*has_error = false;
+
+	ready = ae4dma_pending(cmd_q);
+	if (ready > max_ops)
+		ready = max_ops;
+
+	for (count = 0; count < ready; count++) {
+		uint16_t slot = (cmd_q->hw_base + cmd_q->next_read + count) & mask;
+
+		if (ae4dma_desc_failed(&cmd_q->qbase_desc[slot])) {
+			*has_error = true;
+			break;
+		}
+	}
+
+	cmd_q->next_read += count;
+	cmd_q->stats.completed += count;
+	*last_idx = (uint16_t)(cmd_q->next_read - 1);
+
+	return count;
+}
+
+/*
+ * Report per-op status for all completed ops, including failures.
+ *
+ * Unlike ae4dma_completed(), this consumes failed ops too so
+ * the application can drain past an error.
+ * last_idx is the ring_idx of the last op reported.
+ */
+static uint16_t
+ae4dma_completed_status(void *dev_private, uint16_t vchan __rte_unused, uint16_t max_ops,
+		uint16_t *last_idx, enum rte_dma_status_code *status)
+{
+	struct ae4dma_dmadev *ae4dma = dev_private;
+	struct ae4dma_cmd_queue *cmd_q = &ae4dma->cmd_q;
+	uint16_t mask = cmd_q->qcfg.nb_desc - 1;
+	uint16_t ready, fails = 0;
+	uint16_t i;
+
+	ready = ae4dma_pending(cmd_q);
+	if (ready > max_ops)
+		ready = max_ops;
+
+	for (i = 0; i < ready; i++) {
+		uint16_t slot = (cmd_q->hw_base + cmd_q->next_read + i) & mask;
+		volatile struct ae4dma_desc *hw_desc = &cmd_q->qbase_desc[slot];
+
+		if (ae4dma_desc_failed(hw_desc)) {
+			status[i] = __translate_status_ae4dma_to_dma(
+				(enum ae4dma_dma_err)hw_desc->dw1.err_code);
+			AE4DMA_PMD_WARN("Desc failed: status=%u err=%u", hw_desc->dw1.status,
+				hw_desc->dw1.err_code);
+			fails++;
+		} else {
+			status[i] = RTE_DMA_STATUS_SUCCESSFUL;
+		}
+	}
+
+	cmd_q->next_read += ready;
+	cmd_q->stats.completed += ready;
+	cmd_q->stats.errors += fails;
+	*last_idx = (uint16_t)(cmd_q->next_read - 1);
+
+	return ready;
+}
+
+/* Get the remaining capacity of the ring. */
+static uint16_t
+ae4dma_burst_capacity(const void *dev_private, uint16_t vchan __rte_unused)
+{
+	const struct ae4dma_dmadev *ae4dma = dev_private;
+	const struct ae4dma_cmd_queue *cmd_q = &ae4dma->cmd_q;
+	uint16_t nb = cmd_q->qcfg.nb_desc;
+	uint16_t in_flight;
+
+	if (nb == 0)
+		return 0;
+
+	/* One slot reserved to distinguish full from empty. */
+	in_flight = (uint16_t)(cmd_q->next_write - cmd_q->next_read);
+	if (in_flight >= nb - 1)
+		return 0;
+	return (uint16_t)(nb - 1 - in_flight);
 }
 
 static int
@@ -328,6 +570,13 @@ ae4dma_dmadev_create(const char *name, struct rte_pci_device *dev, uint8_t qn)
 	dmadev->device = &dev->device;
 	dmadev->fp_obj->dev_private = dmadev->data->dev_private;
 	dmadev->dev_ops = &ae4dma_dmadev_ops;
+
+	dmadev->fp_obj->burst_capacity = ae4dma_burst_capacity;
+	dmadev->fp_obj->completed = ae4dma_completed;
+	dmadev->fp_obj->completed_status = ae4dma_completed_status;
+	dmadev->fp_obj->copy = ae4dma_enqueue_copy;
+	dmadev->fp_obj->submit = ae4dma_submit;
+	/* fill capability not advertised: leave fp_obj->fill as zero-initialised. */
 
 	ae4dma = dmadev->data->dev_private;
 
