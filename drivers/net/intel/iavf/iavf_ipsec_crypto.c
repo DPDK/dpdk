@@ -1572,6 +1572,8 @@ iavf_security_ctx_destroy(struct iavf_adapter *adapter)
 		return -ENODEV;
 
 	/* free and reset security data structures */
+	rte_free(iavf_sctx->crypto_capabilities);
+	iavf_sctx->crypto_capabilities = NULL;
 	rte_free(iavf_sctx);
 	rte_free(sctx);
 
