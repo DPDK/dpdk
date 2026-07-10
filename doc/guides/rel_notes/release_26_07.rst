@@ -168,6 +168,7 @@ New Features
     ``RTE_ETH_RX_OFFLOAD_VLAN_STRIP`` is no longer advertised,
     as no hardware strip backs it.
     An application that needs the tag removed must now strip it itself.
+  * Added Rx queue interrupt support.
 
 * **Updated NXP enetc ethernet driver.**
 

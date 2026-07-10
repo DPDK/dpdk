@@ -5,6 +5,8 @@
 
 #include <time.h>
 #include <net/if.h>
+#include <unistd.h>
+#include <errno.h>
 
 #include <eal_export.h>
 #include <rte_mbuf.h>
@@ -25,6 +27,7 @@
 #include <dpaa2_hw_mempool.h>
 #include <dpaa2_hw_dpio.h>
 #include <mc/fsl_dpmng.h>
+#include <mc/fsl_dpcon.h>
 #include "dpaa2_ethdev.h"
 #include "dpaa2_sparser.h"
 #include <fsl_qbman_debug.h>
@@ -658,6 +661,8 @@ dpaa2_clear_queue_active_dps(struct dpaa2_queue *q, int num_lcores)
 	}
 }
 
+static void dpaa2_dev_rx_queue_intr_unbind(struct dpaa2_queue *dpaa2_q);
+
 static void
 dpaa2_free_rx_tx_queues(struct rte_eth_dev *dev)
 {
@@ -675,6 +680,13 @@ dpaa2_free_rx_tx_queues(struct rte_eth_dev *dev)
 		/* cleaning up queue storage */
 		for (i = 0; i < priv->nb_rx_queues; i++) {
 			dpaa2_q = priv->rx_vq[i];
+			if (dpaa2_q->napi_dpcon) {	/* release the rx-intr channel */
+				dpaa2_dev_rx_queue_intr_unbind(dpaa2_q);
+				rte_dpaa2_free_dpcon_dev(dpaa2_q->napi_dpcon);
+				dpaa2_q->napi_dpcon = NULL;
+				rte_atomic_store_explicit(&dpaa2_q->napi_sub_dpio,
+						NULL, rte_memory_order_release);
+			}
 			dpaa2_clear_queue_active_dps(dpaa2_q,
 						RTE_MAX_LCORE);
 			dpaa2_queue_storage_free(dpaa2_q,
@@ -727,6 +739,15 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 #endif
 
 	PMD_INIT_FUNC_TRACE();
+
+	/* interrupt mode is fixed once set; the queue count may still change */
+	if (priv->intr_mode_set &&
+	    priv->intr_mode != eth_conf->intr_conf.rxq) {
+		DPAA2_PMD_ERR("Rx interrupt mode is fixed after configure; close the port to change it");
+		return -ENOTSUP;
+	}
+	priv->intr_mode = eth_conf->intr_conf.rxq;
+	priv->intr_mode_set = 1;
 
 	/* Rx offloads which are enabled by default */
 	if (dev_rx_offloads_nodis & ~rx_offloads) {
@@ -880,6 +901,28 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		}
 	}
 
+	/* allocate the intr handle once, sized to the queue ceiling; kept across
+	 * reconfigure and freed at dev_close so the app epoll registration holds
+	 */
+	if (dev->data->dev_conf.intr_conf.rxq && dev->intr_handle == NULL) {
+		dev->intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
+		if (!dev->intr_handle ||
+		    rte_intr_vec_list_alloc(dev->intr_handle, "rxq_intr",
+				priv->nb_rx_queues) ||
+		    rte_intr_nb_efd_set(dev->intr_handle, priv->nb_rx_queues) ||
+		    rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_EXT)) {
+			DPAA2_PMD_ERR("Failed to set up rx-queue interrupts");
+			/* capture the error before cleanup may clobber rte_errno */
+			ret = rte_errno ? -rte_errno : -EIO;
+			if (dev->intr_handle) {
+				rte_intr_vec_list_free(dev->intr_handle);
+				rte_intr_instance_free(dev->intr_handle);
+				dev->intr_handle = NULL;
+			}
+			return ret;
+		}
+	}
+
 	dpaa2_tm_init(dev);
 
 	return 0;
@@ -898,6 +941,7 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = dev->process_private;
+	bool dpcon_allocated = false;
 	struct dpaa2_queue *dpaa2_q;
 	struct dpni_queue cfg;
 	uint8_t options = 0;
@@ -938,12 +982,44 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	dpaa2_q->bp_array = rte_dpaa2_bpid_info;
 	dpaa2_q->offloads = rx_conf->offloads;
 
+	/* NAPI: grab a DPCON channel so dev_start can bind this FQ statically.
+	 * The DQRR burst replaces the poll path for every queue at once, so a
+	 * missing channel is fatal rather than a silent per-queue fallback.
+	 */
+	rte_atomic_store_explicit(&dpaa2_q->napi_sub_dpio, NULL,
+			rte_memory_order_release);
+	if (dev->data->dev_conf.intr_conf.rxq && !dpaa2_q->napi_dpcon) {
+		dpaa2_q->napi_dpcon = rte_dpaa2_alloc_dpcon_dev();
+		if (!dpaa2_q->napi_dpcon) {
+			DPAA2_PMD_ERR("rxq %d: no DPCON for rx-queue interrupts",
+				      rx_queue_id);
+			return -ENODEV;
+		}
+		dpcon_allocated = true;
+		/* the DPCON must be enabled to generate CDAN notifications */
+		ret = dpcon_enable(&dpaa2_q->napi_dpcon->dpcon, CMD_PRI_LOW,
+				   dpaa2_q->napi_dpcon->token);
+		if (ret) {
+			DPAA2_PMD_ERR("rxq %d: dpcon_enable: %d", rx_queue_id, ret);
+			goto err_free_dpcon;
+		}
+	}
+
 	/*Get the flow id from given VQ id*/
 	flow_id = dpaa2_q->flow_id;
 	memset(&cfg, 0, sizeof(struct dpni_queue));
 
 	options = options | DPNI_QUEUE_OPT_USER_CTX;
 	cfg.user_context = (size_t)(dpaa2_q);
+
+	/* napi: schedule the FQ to its DPCON once, when the channel is first
+	 * grabbed; never re-bound (the MC refuses scheduled->parked at runtime)
+	 */
+	if (dpcon_allocated) {
+		options |= DPNI_QUEUE_OPT_DEST;
+		cfg.destination.type = DPNI_DEST_DPCON;
+		cfg.destination.id = dpaa2_q->napi_dpcon->dpcon_id;
+	}
 
 	/* check if a private cgr available. */
 	for (i = 0; i < priv->max_cgs; i++) {
@@ -985,7 +1061,7 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			dpaa2_q->tc_index, flow_id, options, &cfg);
 	if (ret) {
 		DPAA2_PMD_ERR("Error in setting the rx flow: = %d", ret);
-		return ret;
+		goto err_free_dpcon;
 	}
 
 	dpaa2_q->nb_desc = nb_rx_desc;
@@ -1026,7 +1102,7 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		if (ret) {
 			DPAA2_PMD_ERR("Error in setting taildrop. err=(%d)",
 				ret);
-			return ret;
+			goto err_free_dpcon;
 		}
 	} else { /* Disable tail Drop */
 		struct dpni_taildrop taildrop = {0};
@@ -1046,12 +1122,22 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		if (ret) {
 			DPAA2_PMD_ERR("Error in setting taildrop. err=(%d)",
 				ret);
-			return ret;
+			goto err_free_dpcon;
 		}
 	}
 
 	dev->data->rx_queues[rx_queue_id] = dpaa2_q;
 	return 0;
+
+err_free_dpcon:
+	/* free only the DPCON this call allocated; a pre-existing one belongs to
+	 * an earlier setup and is released at dev_close
+	 */
+	if (dpcon_allocated) {
+		rte_dpaa2_free_dpcon_dev(dpaa2_q->napi_dpcon);
+		dpaa2_q->napi_dpcon = NULL;
+	}
+	return ret;
 }
 
 static int
@@ -1210,6 +1296,28 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/* drop a queue's worker portal reference; the FQ stays scheduled to its DPCON
+ * (only dpni_reset at close un-schedules it). Teardown only.
+ */
+static void
+dpaa2_dev_rx_queue_intr_unbind(struct dpaa2_queue *dpaa2_q)
+{
+	if (!dpaa2_q || !dpaa2_q->napi_dpcon)
+		return;
+
+	/* the portal (CDAN, DQRI) can only be torn down on the polling lcore;
+	 * warn if the app skipped rte_eth_dev_rx_intr_disable() before stop/close
+	 */
+	if (dpaa2_q->napi_armed)
+		DPAA2_PMD_WARN("rxq flow %u freed while armed; call "
+			       "rte_eth_dev_rx_intr_disable() on the polling "
+			       "lcore before stop/close", dpaa2_q->flow_id);
+
+	/* CDAN and DQRI teardown is the worker's job via rte_eth_dev_rx_intr_disable() */
+	rte_atomic_store_explicit(&dpaa2_q->napi_sub_dpio, NULL,
+			rte_memory_order_release);
+}
+
 static void
 dpaa2_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
@@ -1239,6 +1347,10 @@ dpaa2_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		priv->cgid_in_use[dpaa2_q->cgid] = 0;
 		dpaa2_q->cgid = DPAA2_INVALID_CGID;
 	}
+
+	/* keep the DPCON on the FQ across a reconfigure; freed at dev_close */
+	if (dpaa2_q->napi_dpcon)
+		dpaa2_dev_rx_queue_intr_unbind(dpaa2_q);
 }
 
 static int
@@ -1289,7 +1401,9 @@ dpaa2_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 
 	if (dev->rx_pkt_burst == dpaa2_dev_prefetch_rx ||
 		dev->rx_pkt_burst == dpaa2_dev_rx ||
-		dev->rx_pkt_burst == dpaa2_dev_loopback_rx) {
+		dev->rx_pkt_burst == dpaa2_dev_loopback_rx ||
+		dev->rx_pkt_burst == dpaa2_dev_rx_channel ||
+		dev->rx_pkt_burst == dpaa2_dev_prefetch_rx_channel) {
 		*no_of_elements = RTE_DIM(ptypes);
 		return ptypes;
 	}
@@ -1389,6 +1503,27 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 	intr_handle = dpaa2_dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
+
+	/* napi: FQs are scheduled to their DPCON at rx_queue_setup, not here; just
+	 * select the channel burst (the worker subscribes its portal later)
+	 */
+	if (dev->data->dev_conf.intr_conf.rxq) {
+		for (i = 0; i < data->nb_rx_queues; i++) {
+			dpaa2_q = data->rx_queues[i];
+			/* the channel burst below derefs napi_dpcon, so every
+			 * rx queue must own a channel
+			 */
+			if (!dpaa2_q->napi_dpcon) {
+				DPAA2_PMD_ERR("napi: rxq %d has no DPCON channel", i);
+				return -ENODEV;
+			}
+		}
+		if (priv->flags & DPAA2_NO_PREFETCH_RX)
+			dev->rx_pkt_burst = dpaa2_dev_rx_channel;
+		else
+			dev->rx_pkt_burst = dpaa2_dev_prefetch_rx_channel;
+	}
+
 	ret = dpni_enable(dpni, CMD_PRI_LOW, priv->token);
 	if (ret) {
 		DPAA2_PMD_ERR("Failure in enabling dpni %d device: err=%d",
@@ -1569,6 +1704,15 @@ dpaa2_dev_close(struct rte_eth_dev *dev)
 
 	/* Free private queues memory */
 	dpaa2_free_rx_tx_queues(dev);
+	/* release the rx-queue interrupt vector and instance allocated at
+	 * dev_configure (configure/close pair); the per-queue CDAN and portal
+	 * teardown is the worker's job via rte_eth_dev_rx_intr_disable().
+	 */
+	if (dev->intr_handle) {
+		rte_intr_vec_list_free(dev->intr_handle);
+		rte_intr_instance_free(dev->intr_handle);
+		dev->intr_handle = NULL;
+	}
 	/* Close the device at underlying layer*/
 	ret = dpni_close(dpni, CMD_PRI_LOW, priv->token);
 	if (ret) {
@@ -2897,6 +3041,258 @@ rte_pmd_dpaa2_thread_init(void)
 	}
 }
 
+/* Arm rx-queue interrupts on the worker lcore: subscribe its ethrx portal to
+ * the queue's DPCON channel (one-shot per-portal MC) and unmask the portal DQRI
+ * (pure QBMan).
+ *
+ * Affinity is static queue-to-lcore; a lcore may own several rx queues. The
+ * DQRI and the eventfd are portal-wide; on wake the worker polls each armed
+ * queue's channel (one FQ per channel, no per-frame demux) and the portal's
+ * inhibit bit is reference-counted by the number of its
+ * queues currently armed (ethrx_intr_refcnt) -- disabling one queue must not
+ * mask wakeups still wanted by its siblings. napi_armed and ethrx_intr_refcnt
+ * are plain (not atomic): these ops run on the queue's owner lcore against its
+ * own portal (one portal per lcore), so per-portal isolation keeps them from
+ * racing, not control-plane serialization.
+ *
+ * A re-home reclaims the channel by poking the old portal, so the caller must
+ * have quiesced the previous owner and disabled the queue there; napi_armed is
+ * then 0 and only the new portal is counted.
+ */
+/* Drain the portal DQRR (consuming pending CDANs) then clear SWPn_ISR.
+ * Clearing while the ring is non-empty re-asserts the DQRI at once, so drain
+ * first. Shared by arm and disarm; the caller sets the inhibit bit.
+ */
+static void
+dpaa2_napi_drain_portal(struct dpaa2_dpio_dev *dpio)
+{
+	const struct qbman_result *dq;
+
+	while ((dq = qbman_swp_dqrr_next(dpio->sw_portal)))
+		qbman_swp_dqrr_consume(dpio->sw_portal, dq);
+	qbman_swp_interrupt_clear_status(dpio->sw_portal, 0xffffffff);
+}
+
+/* Quiesce this queue's in-flight prefetch VDQ before a sleep: a pull left in
+ * flight strands the FQ (no empty->non-empty edge, no CDAN). Returns -EAGAIN if
+ * the completed pull captured a frame -> abort the sleep and keep polling.
+ */
+static int
+dpaa2_napi_quiesce_vdq(struct dpaa2_queue *dpaa2_q)
+{
+	struct queue_storage_info_t *qs = dpaa2_q->q_storage[rte_lcore_id()];
+	struct qbman_result *dq;
+
+	if (!qs || !qs->active_dqs)
+		return 0;
+	dq = qs->active_dqs;
+	while (!qbman_check_command_complete(dq))
+		;
+	/* a completed pull holding a frame must not be dropped: leave it. Inspect
+	 * without qbman_check_new_result(), which zeroes the token the next burst
+	 * needs to detect completion.
+	 */
+	if (!qbman_result_DQ_is_pull_complete(dq) ||
+	    (qbman_result_DQ_flags(dq) & QBMAN_DQ_STAT_VALIDFRAME)) {
+		return -EAGAIN;
+	}
+	/* empty pull-complete: consume the token, drop the storage for a fresh pull */
+	while (!qbman_check_new_result(dq))
+		;
+	clear_swp_active_dqs(qs->active_dpio_id);
+	qs->active_dqs = NULL;
+	return 0;
+}
+
+/* Route this DPCON's CDAN to the worker's DPIO at MC level (re-issued on
+ * re-home), with the queue as the wake-demux context.
+ */
+static int
+dpaa2_napi_set_cdan_dest(struct dpaa2_queue *dpaa2_q, struct dpaa2_dpio_dev *dpio)
+{
+	struct dpcon_notification_cfg ncfg = {
+		.dpio_id = dpio->hw_id,
+		.priority = 0,
+		.user_ctx = (uint64_t)(uintptr_t)dpaa2_q,
+	};
+
+	return dpcon_set_notification(&dpaa2_q->napi_dpcon->dpcon,
+			CMD_PRI_LOW, dpaa2_q->napi_dpcon->token, &ncfg);
+}
+
+/* (Re)subscribe the queue's DPCON channel to dpio: set the CDAN context on the
+ * new portal, route notifications there, and wire the queue's eventfd into the
+ * generic rx-intr epoll. CDAN is not enabled here; the arm path is the sole
+ * arming point. Runs on the initial arm and on an lcore re-home.
+ */
+static int
+dpaa2_napi_subscribe(struct rte_eth_dev *dev, uint16_t queue_id,
+		     struct dpaa2_dpio_dev *dpio, struct dpaa2_dpio_dev *old)
+{
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct dpaa2_queue *dpaa2_q = priv->rx_vq[queue_id];
+	uint16_t chid = dpaa2_q->napi_dpcon->qbman_ch_id;
+	int ret;
+
+	if (old) {
+		/* re-home: CDAN already off old (-EBUSY ensures it was disabled
+		 * first); just drop the sub, never touch a foreign portal.
+		 */
+		rte_atomic_store_explicit(&dpaa2_q->napi_sub_dpio, NULL,
+				rte_memory_order_release);
+	}
+	/* push_set ORs the channel-0 bit (idempotent across queues sharing the
+	 * portal); CDAN context = the queue, so the wake path can demux it.
+	 */
+	qbman_swp_push_set(dpio->sw_portal, 0, 1);
+	/* context only; the arm path is the sole place that enables the CDAN */
+	ret = qbman_swp_CDAN_set_context(dpio->sw_portal, chid,
+			(uint64_t)(uintptr_t)dpaa2_q);
+	if (ret) {
+		DPAA2_PMD_ERR("napi: CDAN set_context rxq %d: %d", queue_id, ret);
+		return ret;
+	}
+	ret = dpaa2_napi_set_cdan_dest(dpaa2_q, dpio);
+	if (ret) {
+		DPAA2_PMD_ERR("napi: dpcon_set_notification rxq %d: %d",
+			      queue_id, ret);
+		return ret;		/* CDAN not enabled here -> nothing to unwind */
+	}
+	DPAA2_PMD_DEBUG("napi-cdan rxq=%u dpio=%u chid=%u",
+		queue_id, dpio->index, chid);
+	/* point the queue's eventfd at the portal DQRI fd for the generic epoll */
+	if (rte_intr_vec_list_index_set(dev->intr_handle, queue_id,
+			queue_id + RTE_INTR_VEC_RXTX_OFFSET) ||
+	    rte_intr_efds_index_set(dev->intr_handle, queue_id,
+			rte_intr_fd_get(dpio->intr_handle))) {
+		DPAA2_PMD_ERR("napi: efd wiring rxq %d", queue_id);
+		return -EIO;
+	}
+	rte_atomic_store_explicit(&dpaa2_q->napi_sub_dpio, dpio,
+			rte_memory_order_release);
+	return 0;
+}
+
+static int
+dpaa2_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct dpaa2_queue *dpaa2_q = priv->rx_vq[queue_id];
+	struct dpaa2_dpio_dev *dpio, *old;
+	int ret;
+
+	/* the generic API has no dev_started guard (unlike the burst dummy ops),
+	 * so it can reach us after a stop; do not arm a stopped port, let the
+	 * caller fall back to polling.
+	 */
+	if (!dev->data->dev_started)
+		return -EIO;
+	if (!dpaa2_q->napi_dpcon)
+		return -ENOTSUP;	/* no channel -> caller keeps polling */
+
+	if (dpaa2_affine_qbman_ethrx_swp())
+		return -EIO;
+	dpio = DPAA2_PER_LCORE_ETHRX_DPIO;
+
+	old = rte_atomic_load_explicit(&dpaa2_q->napi_sub_dpio, rte_memory_order_acquire);
+	if (old && old != dpio && dpaa2_q->napi_armed) {
+		DPAA2_PMD_ERR("rxq %d still armed on another portal; disable it first",
+			      queue_id);
+		return -EBUSY;
+	}
+
+	ret = dpaa2_napi_quiesce_vdq(dpaa2_q);
+	if (ret)
+		return ret;
+
+	/* holdoff 0: the DQRI fires immediately on the first entry, so the
+	 * threshold is moot (1 here). build_epoll=false: the generic rx-intr API
+	 * waits on the application epoll, not the portal's private one. Idempotent
+	 * per dpio.
+	 */
+	ret = dpaa2_dpio_intr_init(dpio, 1, 0, false);
+	if (ret)
+		return ret;
+
+	if (old != dpio) {
+		ret = dpaa2_napi_subscribe(dev, queue_id, dpio, old);
+		if (ret)
+			return ret;
+	}
+
+	/* first arm on this portal: mask + drain stale CDANs, so the unmask on
+	 * the 0 -> 1 edge below is the sole DQRI open (independent of prior state)
+	 */
+	if (!dpaa2_q->napi_armed && dpio->ethrx_intr_refcnt == 0) {
+		qbman_swp_interrupt_set_inhibit(dpio->sw_portal, 1);
+		dpaa2_napi_drain_portal(dpio);
+	}
+
+	/* CDAN is one-shot and the sole arming point, re-armed every sleep.
+	 * Publish armed/refcnt only on a successful initial enable.
+	 */
+	ret = qbman_swp_CDAN_enable(dpio->sw_portal, dpaa2_q->napi_dpcon->qbman_ch_id);
+	if (ret) {
+		DPAA2_PMD_DEBUG("napi: CDAN arm rxq %d: %d", queue_id, ret);
+		/* initial arm: nothing published; re-arm: state kept. Don't sleep. */
+		return -EAGAIN;
+	}
+
+	if (!dpaa2_q->napi_armed) {
+		dpaa2_q->napi_armed = 1;
+		/* unmask the portal DQRI once, on the 0 -> 1 armed-queue edge */
+		if (dpio->ethrx_intr_refcnt++ == 0)
+			qbman_swp_interrupt_set_inhibit(dpio->sw_portal, 0);
+	}
+
+	return 0;
+}
+
+/* Disarm rx-queue interrupts for this queue. The portal DQRI is masked only
+ * once the last of its queues disarms; act on the portal the queue is actually
+ * subscribed to, not the caller's current portal.
+ */
+static int
+dpaa2_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct dpaa2_queue *dpaa2_q = priv->rx_vq[queue_id];
+	struct dpaa2_dpio_dev *dpio;
+	uint64_t ev;
+	ssize_t nb;
+
+	dpio = rte_atomic_load_explicit(&dpaa2_q->napi_sub_dpio, rte_memory_order_acquire);
+	if (dpio && dpaa2_q->napi_armed) {
+		dpaa2_q->napi_armed = 0;
+		/* Silence this queue's CDAN on the portal the worker owns. Runs on
+		 * the polling lcore, so this is the only safe place to drive the
+		 * single-owner software portal. It also returns the channel to the
+		 * pool clean (CDAN disabled) and lets a sibling queue keep its own
+		 * interrupt (per-queue, unlike the portal-wide DQRI mask below).
+		 */
+		qbman_swp_CDAN_disable(dpio->sw_portal,
+				dpaa2_q->napi_dpcon->qbman_ch_id);
+		if (dpio->ethrx_intr_refcnt > 0 &&
+		    --dpio->ethrx_intr_refcnt == 0) {
+			/* last queue on the shared portal: drain + clear so the next
+			 * arm sees a clean portal (once per wake), then mask.
+			 */
+			dpaa2_napi_drain_portal(dpio);
+			qbman_swp_interrupt_set_inhibit(dpio->sw_portal, 1);
+			/* drain the VFIO eventfd: it is EPOLLET and the EAL leaves
+			 * RTE_INTR_HANDLE_EXT undrained, so a stale count suppresses the
+			 * next wake edge. Same as dpaa/mlx4/mlx5 do on disarm.
+			 */
+			nb = read(rte_intr_fd_get(dpio->intr_handle), &ev, sizeof(ev));
+			if (nb != (ssize_t)sizeof(ev) && errno != EAGAIN)
+				DPAA2_PMD_DEBUG("napi: eventfd drain rxq %d (%zd)",
+						queue_id, nb);
+		}
+	}
+
+	return 0;
+}
+
 static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.dev_configure	  = dpaa2_eth_dev_configure,
 	.dev_start	      = dpaa2_dev_start,
@@ -2925,6 +3321,11 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.vlan_tpid_set	      = dpaa2_vlan_tpid_set,
 	.rx_queue_setup    = dpaa2_dev_rx_queue_setup,
 	.rx_queue_release  = dpaa2_dev_rx_queue_release,
+	/* arm/disarm drive the per-lcore QBMan portal: the app must call
+	 * rte_eth_dev_rx_intr_disable() from the polling lcore before stop/close.
+	 */
+	.rx_queue_intr_enable = dpaa2_dev_rx_queue_intr_enable,
+	.rx_queue_intr_disable = dpaa2_dev_rx_queue_intr_disable,
 	.tx_queue_setup    = dpaa2_dev_tx_queue_setup,
 	.rx_burst_mode_get = dpaa2_dev_rx_burst_mode_get,
 	.tx_burst_mode_get = dpaa2_dev_tx_burst_mode_get,

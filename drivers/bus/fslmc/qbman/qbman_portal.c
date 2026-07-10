@@ -448,6 +448,7 @@ int qbman_swp_interrupt_get_inhibit(struct qbman_swp *p)
 	return qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_IIR);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(qbman_swp_interrupt_set_inhibit)
 void qbman_swp_interrupt_set_inhibit(struct qbman_swp *p, int inhibit)
 {
 	qbman_cinh_write(&p->sys, QBMAN_CINH_SWP_IIR,
@@ -1878,6 +1879,7 @@ void qbman_pull_desc_set_wq(struct qbman_pull_desc *d, uint32_t wqid,
 	d->pull.dq_src = wqid;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(qbman_pull_desc_set_channel)
 void qbman_pull_desc_set_channel(struct qbman_pull_desc *d, uint32_t chid,
 				 enum qbman_pull_type_e dct)
 {
@@ -2921,6 +2923,7 @@ static int qbman_swp_CDAN_set(struct qbman_swp *s, uint16_t channelid,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(qbman_swp_CDAN_set_context)
 int qbman_swp_CDAN_set_context(struct qbman_swp *s, uint16_t channelid,
 			       uint64_t ctx)
 {
@@ -2929,6 +2932,7 @@ int qbman_swp_CDAN_set_context(struct qbman_swp *s, uint16_t channelid,
 				  0, ctx);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(qbman_swp_CDAN_enable)
 int qbman_swp_CDAN_enable(struct qbman_swp *s, uint16_t channelid)
 {
 	return qbman_swp_CDAN_set(s, channelid,
@@ -2936,6 +2940,7 @@ int qbman_swp_CDAN_enable(struct qbman_swp *s, uint16_t channelid)
 				  1, 0);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(qbman_swp_CDAN_disable)
 int qbman_swp_CDAN_disable(struct qbman_swp *s, uint16_t channelid)
 {
 	return qbman_swp_CDAN_set(s, channelid,

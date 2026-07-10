@@ -444,6 +444,9 @@ struct dpaa2_dev_priv {
 	rte_spinlock_t lpbk_qp_lock;
 
 	uint8_t channel_inuse;
+	/* Rx-interrupt mode latched at the first dev_configure */
+	uint8_t intr_mode;
+	uint8_t intr_mode_set;
 	/* Stores correction offset for one step timestamping */
 	uint16_t ptp_correction_offset;
 	/* for mac counters */
@@ -500,6 +503,10 @@ uint16_t dpaa2_dev_loopback_rx(void *queue, struct rte_mbuf **bufs,
 
 uint16_t dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs,
 			       uint16_t nb_pkts);
+uint16_t dpaa2_dev_prefetch_rx_channel(void *queue, struct rte_mbuf **bufs,
+				       uint16_t nb_pkts);
+uint16_t dpaa2_dev_rx_channel(void *queue, struct rte_mbuf **bufs,
+			      uint16_t nb_pkts);
 void dpaa2_dev_process_parallel_event(struct qbman_swp *swp,
 				      const struct qbman_fd *fd,
 				      const struct qbman_result *dq,

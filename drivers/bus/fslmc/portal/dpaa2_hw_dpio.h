@@ -50,6 +50,14 @@ int dpaa2_affine_qbman_swp(void);
 __rte_internal
 int dpaa2_affine_qbman_ethrx_swp(void);
 
+/* set up / tear down a DPIO portal's DQRI interrupt (rx-queue interrupt mode) */
+__rte_internal
+int dpaa2_dpio_intr_init(struct dpaa2_dpio_dev *dpio_dev, int threshold,
+			 int timeout, bool build_epoll);
+
+__rte_internal
+void dpaa2_dpio_intr_deinit(struct dpaa2_dpio_dev *dpio_dev);
+
 /* allocate memory for FQ - dq storage */
 __rte_internal
 int

@@ -189,6 +189,7 @@ int qbman_swp_interrupt_get_inhibit(struct qbman_swp *p);
  * @p: the given software portal object.
  * @mask: The value to set in SWP_IIR register.
  */
+__rte_internal
 void qbman_swp_interrupt_set_inhibit(struct qbman_swp *p, int inhibit);
 
 	/************/
@@ -400,6 +401,7 @@ void qbman_pull_desc_set_wq(struct qbman_pull_desc *d, uint32_t wqid,
  * @chid: the channel id to be dequeued.
  * @dct: the dequeue command type.
  */
+__rte_internal
 void qbman_pull_desc_set_channel(struct qbman_pull_desc *d, uint32_t chid,
 				 enum qbman_pull_type_e dct);
 
@@ -1298,6 +1300,7 @@ int qbman_swp_fq_xoff(struct qbman_swp *s, uint32_t fqid);
  *
  * Return 0 for success, or negative error code for failure.
  */
+__rte_internal
 int qbman_swp_CDAN_set_context(struct qbman_swp *s, uint16_t channelid,
 			       uint64_t ctx);
 
@@ -1308,6 +1311,7 @@ int qbman_swp_CDAN_set_context(struct qbman_swp *s, uint16_t channelid,
  *
  * Return 0 for success, or negative error code for failure.
  */
+__rte_internal
 int qbman_swp_CDAN_enable(struct qbman_swp *s, uint16_t channelid);
 
 /**
@@ -1317,6 +1321,7 @@ int qbman_swp_CDAN_enable(struct qbman_swp *s, uint16_t channelid);
  *
  * Return 0 for success, or negative error code for failure.
  */
+__rte_internal
 int qbman_swp_CDAN_disable(struct qbman_swp *s, uint16_t channelid);
 
 /**

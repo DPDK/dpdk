@@ -764,13 +764,13 @@ dump_err_pkts(struct dpaa2_queue *dpaa2_q)
  * It will return the packets as requested in previous call without honoring
  * the current nb_pkts or bufs space.
  */
-uint16_t
-dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+static __rte_always_inline uint16_t
+dpaa2_dev_prefetch_rx_common(void *queue, struct rte_mbuf **bufs,
+			     uint16_t nb_pkts, bool by_channel)
 {
 	/* Function receive frames for a given device and VQ*/
 	struct dpaa2_queue *dpaa2_q = queue;
 	struct qbman_result *dq_storage, *dq_storage1 = NULL;
-	uint32_t fqid = dpaa2_q->fqid;
 	int ret, num_rx = 0, pull_size;
 	uint8_t pending, status;
 	struct qbman_swp *swp;
@@ -778,12 +778,18 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct qbman_pull_desc pulldesc;
 	struct queue_storage_info_t *q_storage;
 	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
-	struct dpaa2_dev_priv *priv = eth_data->dev_private;
 
 	q_storage = dpaa2_q->q_storage[rte_lcore_id()];
 
-	if (unlikely(priv->flags & DPAAX_RX_ERROR_QUEUE_FLAG))
-		dump_err_pkts(priv->rx_err_vq);
+	/* the error-queue drain runs on the regular portal (DPAA2_PER_LCORE_PORTAL);
+	 * the channel/interrupt path owns the ethrx portal, so skip it there
+	 */
+	if (!by_channel) {
+		struct dpaa2_dev_priv *priv = eth_data->dev_private;
+
+		if (unlikely(priv->flags & DPAAX_RX_ERROR_QUEUE_FLAG))
+			dump_err_pkts(priv->rx_err_vq);
+	}
 
 	if (unlikely(!DPAA2_PER_LCORE_ETHRX_DPIO)) {
 		ret = dpaa2_affine_qbman_ethrx_swp();
@@ -793,7 +799,7 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 	}
 
-	if (unlikely(!rte_dpaa2_bpid_info &&
+	if (!by_channel && unlikely(!rte_dpaa2_bpid_info &&
 		     rte_eal_process_type() == RTE_PROC_SECONDARY))
 		rte_dpaa2_bpid_info = dpaa2_q->bp_array;
 
@@ -806,7 +812,12 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		qbman_pull_desc_clear(&pulldesc);
 		qbman_pull_desc_set_numframes(&pulldesc,
 					      q_storage->last_num_pkts);
-		qbman_pull_desc_set_fq(&pulldesc, fqid);
+		if (by_channel)
+			qbman_pull_desc_set_channel(&pulldesc,
+				dpaa2_q->napi_dpcon->qbman_ch_id,
+				qbman_pull_type_active);
+		else
+			qbman_pull_desc_set_fq(&pulldesc, dpaa2_q->fqid);
 		qbman_pull_desc_set_storage(&pulldesc, dq_storage,
 			(uint64_t)(DPAA2_VADDR_TO_IOVA(dq_storage)), 1);
 		if (check_swp_active_dqs(DPAA2_PER_LCORE_ETHRX_DPIO->index)) {
@@ -842,7 +853,12 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	dq_storage1 = q_storage->dq_storage[q_storage->toggle];
 	qbman_pull_desc_clear(&pulldesc);
 	qbman_pull_desc_set_numframes(&pulldesc, pull_size);
-	qbman_pull_desc_set_fq(&pulldesc, fqid);
+	if (by_channel)
+		qbman_pull_desc_set_channel(&pulldesc,
+			dpaa2_q->napi_dpcon->qbman_ch_id,
+			qbman_pull_type_active);
+	else
+		qbman_pull_desc_set_fq(&pulldesc, dpaa2_q->fqid);
 	qbman_pull_desc_set_storage(&pulldesc, dq_storage1,
 		(uint64_t)(DPAA2_VADDR_TO_IOVA(dq_storage1)), 1);
 
@@ -885,6 +901,8 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			bufs[num_rx] = eth_fd_to_mbuf(fd, eth_data->port_id);
 #if defined(RTE_LIBRTE_IEEE1588)
 		if (bufs[num_rx]->ol_flags & RTE_MBUF_F_RX_IEEE1588_TMST) {
+			struct dpaa2_dev_priv *priv = eth_data->dev_private;
+
 			priv->rx_timestamp =
 				*dpaa2_timestamp_dynfield(bufs[num_rx]);
 		}
@@ -916,6 +934,27 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	dpaa2_q->rx_pkts += num_rx;
 
 	return num_rx;
+}
+
+uint16_t __rte_hot
+dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+{
+	return dpaa2_dev_prefetch_rx_common(queue, bufs, nb_pkts, false);
+}
+
+/* rx interrupt/CDAN path: each Rx FQ is scheduled to its own DPCON channel,
+ * which a CDAN notifies on empty->non-empty. A VDQ on a scheduled FQ never
+ * completes, so the channel is drained by a volatile pull on the CHANNEL (not
+ * the FQID); one FQ per channel, so no demux is needed. Same prefetch pipeline
+ * as dpaa2_dev_prefetch_rx (one VDQ kept in flight to mask the ~700 cycle
+ * latency); the portal's single in-flight VDQ (global_active_dqs) must be
+ * quiesced before an interrupt sleep.
+ */
+uint16_t __rte_hot
+dpaa2_dev_prefetch_rx_channel(void *queue, struct rte_mbuf **bufs,
+			      uint16_t nb_pkts)
+{
+	return dpaa2_dev_prefetch_rx_common(queue, bufs, nb_pkts, true);
 }
 
 void __rte_hot
@@ -997,8 +1036,9 @@ dpaa2_dev_process_ordered_event(struct qbman_swp *swp,
 	qbman_swp_dqrr_consume(swp, dq);
 }
 
-uint16_t
-dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+static __rte_always_inline uint16_t
+dpaa2_dev_rx_common(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts,
+		    bool by_channel)
 {
 	/* Function receive frames for a given device and VQ */
 	struct dpaa2_queue *dpaa2_q = queue;
@@ -1012,24 +1052,39 @@ dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
 	struct dpaa2_dev_priv *priv = eth_data->dev_private;
 
-	if (unlikely(priv->flags & DPAAX_RX_ERROR_QUEUE_FLAG))
+	if (!by_channel && unlikely(priv->flags & DPAAX_RX_ERROR_QUEUE_FLAG))
 		dump_err_pkts(priv->rx_err_vq);
 
-	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
-		ret = dpaa2_affine_qbman_swp();
-		if (ret) {
-			DPAA2_PMD_ERR(
-				"Failed to allocate IO portal, tid: %d",
-				rte_gettid());
-			return 0;
+	if (by_channel) {
+		if (unlikely(!DPAA2_PER_LCORE_ETHRX_DPIO)) {
+			ret = dpaa2_affine_qbman_ethrx_swp();
+			if (ret) {
+				DPAA2_PMD_ERR("Failure in affining portal");
+				return 0;
+			}
 		}
+		swp = DPAA2_PER_LCORE_ETHRX_PORTAL;
+	} else {
+		if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
+			ret = dpaa2_affine_qbman_swp();
+			if (ret) {
+				DPAA2_PMD_ERR("Failed to allocate IO portal, tid: %d",
+					rte_gettid());
+				return 0;
+			}
+		}
+		swp = DPAA2_PER_LCORE_PORTAL;
 	}
-	swp = DPAA2_PER_LCORE_PORTAL;
 
 	do {
 		dq_storage = dpaa2_q->q_storage[0]->dq_storage[0];
 		qbman_pull_desc_clear(&pulldesc);
-		qbman_pull_desc_set_fq(&pulldesc, fqid);
+		if (by_channel)
+			qbman_pull_desc_set_channel(&pulldesc,
+				dpaa2_q->napi_dpcon->qbman_ch_id,
+				qbman_pull_type_active);
+		else
+			qbman_pull_desc_set_fq(&pulldesc, fqid);
 		qbman_pull_desc_set_storage(&pulldesc, dq_storage,
 				(size_t)(DPAA2_VADDR_TO_IOVA(dq_storage)), 1);
 
@@ -1106,6 +1161,22 @@ dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	dpaa2_q->rx_pkts += num_rx;
 
 	return num_rx;
+}
+
+uint16_t
+dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+{
+	return dpaa2_dev_rx_common(queue, bufs, nb_pkts, false);
+}
+
+/* rx-interrupt path: synchronous volatile dequeue on the queue's DPCON channel
+ * (no prefetch pipeline, so nothing is left in flight across an interrupt
+ * sleep, and a channel VDQ -- unlike an FQ VDQ -- completes on a scheduled FQ).
+ */
+uint16_t __rte_hot
+dpaa2_dev_rx_channel(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+{
+	return dpaa2_dev_rx_common(queue, bufs, nb_pkts, true);
 }
 
 uint16_t dpaa2_dev_tx_conf(void *queue)
@@ -1500,7 +1571,6 @@ send_n_return:
 	}
 skip_tx:
 	dpaa2_q->tx_pkts += num_tx;
-
 	for (loop = 0; loop < free_count; loop++) {
 		if (buf_to_free[loop].pkt_id < num_tx)
 			rte_pktmbuf_free_seg(buf_to_free[loop].seg);
