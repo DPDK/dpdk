@@ -205,13 +205,12 @@ dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id, int cpu_id)
 	fclose(file);
 }
 
-static int dpaa2_dpio_intr_init(struct dpaa2_dpio_dev *dpio_dev)
+static int dpaa2_dpio_intr_init(struct dpaa2_dpio_dev *dpio_dev, bool build_epoll)
 {
 	struct epoll_event epoll_ev;
 	int eventfd, dpio_epoll_fd, ret;
 	int threshold = 0x3, timeout = 0xFF;
 
-	dpio_epoll_fd = epoll_create(1);
 	ret = rte_dpaa2_intr_enable(dpio_dev->intr_handle, 0);
 	if (ret) {
 		DPAA2_BUS_ERR("Interrupt registration failed");
@@ -231,16 +230,34 @@ static int dpaa2_dpio_intr_init(struct dpaa2_dpio_dev *dpio_dev)
 	qbman_swp_dqrr_thrshld_write(dpio_dev->sw_portal, threshold);
 	qbman_swp_intr_timeout_write(dpio_dev->sw_portal, timeout);
 
-	eventfd = rte_intr_fd_get(dpio_dev->intr_handle);
-	epoll_ev.events = EPOLLIN | EPOLLPRI | EPOLLET;
-	epoll_ev.data.fd = eventfd;
+	dpio_dev->epoll_fd = -1;
 
-	ret = epoll_ctl(dpio_epoll_fd, EPOLL_CTL_ADD, eventfd, &epoll_ev);
-	if (ret < 0) {
-		DPAA2_BUS_ERR("epoll_ctl failed");
-		return -1;
+	/* The event PMD dequeues by sleeping on a private epoll instance owned
+	 * by the portal, so build it here. A caller that waits on another
+	 * epoll (the net rx-queue-interrupt path uses the application's) skips
+	 * this.
+	 */
+	if (build_epoll) {
+		dpio_epoll_fd = epoll_create1(EPOLL_CLOEXEC);
+		if (dpio_epoll_fd < 0) {
+			DPAA2_BUS_ERR("epoll_create failed");
+			rte_dpaa2_intr_disable(dpio_dev->intr_handle, 0);
+			return -1;
+		}
+
+		eventfd = rte_intr_fd_get(dpio_dev->intr_handle);
+		epoll_ev.events = EPOLLIN | EPOLLPRI | EPOLLET;
+		epoll_ev.data.fd = eventfd;
+
+		ret = epoll_ctl(dpio_epoll_fd, EPOLL_CTL_ADD, eventfd, &epoll_ev);
+		if (ret < 0) {
+			DPAA2_BUS_ERR("epoll_ctl failed");
+			rte_dpaa2_intr_disable(dpio_dev->intr_handle, 0);
+			close(dpio_epoll_fd);
+			return -1;
+		}
+		dpio_dev->epoll_fd = dpio_epoll_fd;
 	}
-	dpio_dev->epoll_fd = dpio_epoll_fd;
 
 	return 0;
 }
@@ -253,7 +270,10 @@ static void dpaa2_dpio_intr_deinit(struct dpaa2_dpio_dev *dpio_dev)
 	if (ret)
 		DPAA2_BUS_ERR("DPIO interrupt disable failed");
 
-	close(dpio_dev->epoll_fd);
+	if (dpio_dev->epoll_fd >= 0) {
+		close(dpio_dev->epoll_fd);
+		dpio_dev->epoll_fd = -1;
+	}
 }
 #endif
 
@@ -277,7 +297,7 @@ dpaa2_configure_stashing(struct dpaa2_dpio_dev *dpio_dev, int cpu_id)
 	}
 
 #ifdef RTE_EVENT_DPAA2
-	if (dpaa2_dpio_intr_init(dpio_dev)) {
+	if (dpaa2_dpio_intr_init(dpio_dev, true)) {
 		DPAA2_BUS_ERR("Interrupt registration failed for dpio");
 		return -1;
 	}
