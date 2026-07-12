@@ -1838,6 +1838,7 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ITEM, item,
 					   "Not support range");
+			return -rte_errno;
 		}
 
 		input_set = (tunnel_type && !is_outer) ?
