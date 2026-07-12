@@ -13,9 +13,9 @@ with tempfile.NamedTemporaryFile() as obj:
     # from https://gcc.gnu.org/bugzilla/show_bug.cgi?id=90028
     gather_params = '0x8(,%ymm1,1),%ymm0{%k2}'
     src = '__asm__("vpgatherqq {}");'.format(gather_params).encode('utf-8')
-    subprocess.run(cc + ['-c', '-xc', '-o', obj.name, '-'], input=src, check=True)
+    subprocess.run(cc + ['-c', '-xc', '-o', obj.name, '-'], input=src, check=True, shell=False)
     asm = subprocess.run([objdump, '-d', '--no-show-raw-insn', obj.name],
-                         stdout=subprocess.PIPE, check=True).stdout.decode('utf-8')
+                         stdout=subprocess.PIPE, check=True, shell=False).stdout.decode('utf-8')
     if gather_params not in asm:
 	    print('vpgatherqq displacement error with as')
 	    sys.exit(1)
