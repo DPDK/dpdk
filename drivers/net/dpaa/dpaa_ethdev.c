@@ -570,7 +570,7 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 		}
 		ret = rte_intr_callback_unregister(intr_handle,
 			dpaa_interrupt_handler, (void *)dev);
-		if (ret) {
+		if (ret < 0) {
 			DPAA_PMD_WARN("%s: unregister interrupt failed(%d)",
 				dev->data->name, ret);
 		}
