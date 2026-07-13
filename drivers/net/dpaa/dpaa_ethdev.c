@@ -1332,7 +1332,7 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		rxq->nb_desc = nb_desc;
 		/* Enable tail drop with cgr on this queue */
 		qm_cgr_cs_thres_set64(&cgr_opts.cgr.cs_thres, nb_desc, 0);
-		ret = qman_modify_cgr(dpaa_intf->cgr_rx, 0, &cgr_opts);
+		ret = qman_modify_cgr(&dpaa_intf->cgr_rx[queue_idx], 0, &cgr_opts);
 		if (ret) {
 			DPAA_PMD_WARN(
 				"rx taildrop modify fail on fqid %d (ret=%d)",
