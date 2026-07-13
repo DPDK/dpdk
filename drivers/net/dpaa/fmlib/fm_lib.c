@@ -305,6 +305,9 @@ fm_pcd_kg_scheme_delete(t_handle h_scheme)
 
 	_fml_dbg("Calling...");
 
+	if (p_dev == NULL)
+		return E_NO_DEVICE;
+
 	p_pcd_dev =  (t_device *)p_dev->h_user_priv;
 	id.obj = UINT_TO_PTR(p_dev->id);
 
