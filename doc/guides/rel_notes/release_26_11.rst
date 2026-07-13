@@ -74,6 +74,12 @@ New Features
     ``xdp_meta_rx_ts_valid_mask``.
   * Added ``read_clock`` operation to query the PTP hardware clock.
 
+* **Updated Intel iavf driver.**
+
+  * Runtime Rx/Tx queue setup is now automatically disabled
+    while a per-queue bandwidth ``rte_tm`` hierarchy is committed,
+    to avoid corrupting queue state on E810 VFs.
+
 * **Updated NXP DPAA2 ethernet driver.**
 
   * Added the inner IP header to the RSS hash so tunneled traffic is
