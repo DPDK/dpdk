@@ -2708,18 +2708,20 @@ static int
 rte_dpaa_remove(struct rte_dpaa_device *dpaa_dev)
 {
 	struct rte_eth_dev *eth_dev;
-	int ret;
+	int ret = 0;
 
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev = dpaa_dev->eth_dev;
-	dpaa_eth_dev_close(eth_dev);
-	ret = rte_eth_dev_release_port(eth_dev);
-	dpaa_valid_dev--;
-	if (!dpaa_valid_dev) {
-		rte_mempool_free(dpaa_tx_sg_pool);
-		dpaa_finish();
+	ret = dpaa_eth_dev_close(eth_dev);
+	if (eth_dev->state !=  RTE_ETH_DEV_UNUSED) {
+		dpaa_eth_dev_close(eth_dev);
+		ret = rte_eth_dev_release_port(eth_dev);
 	}
+	dpaa_valid_dev--;
+	if (!dpaa_valid_dev)
+		rte_mempool_free(dpaa_tx_sg_pool);
+
 	return ret;
 }
 
