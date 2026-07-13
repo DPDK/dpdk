@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2017-2022 NXP
+ * Copyright 2017-2022, 2025-2026 NXP
  *
  */
 
@@ -247,7 +247,7 @@ int qman_global_init(void)
 	const struct device_node *dt_node;
 	size_t lenp;
 	const u32 *chanid;
-	static int ccsr_map_fd;
+	int ccsr_map_fd;
 	const uint32_t *qman_addr;
 	uint64_t phys_addr;
 	uint64_t regs_size;
@@ -335,9 +335,9 @@ int qman_global_init(void)
 		pr_err("Can not open /dev/mem for qman ccsr map\n");
 		return ccsr_map_fd;
 	}
-
 	qman_ccsr_map = mmap(NULL, regs_size, PROT_READ | PROT_WRITE,
 			     MAP_SHARED, ccsr_map_fd, phys_addr);
+	close(ccsr_map_fd);
 	if (qman_ccsr_map == MAP_FAILED) {
 		pr_err("Can not map qman ccsr base\n");
 		return -EINVAL;
