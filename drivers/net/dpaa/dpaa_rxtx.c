@@ -375,6 +375,10 @@ static inline void dpaa_checksum(struct rte_mbuf *mbuf)
 	struct rte_ipv6_hdr *ipv6_hdr = (struct rte_ipv6_hdr *)l3_hdr;
 
 	DPAA_DP_LOG(DEBUG, "Calculating checksum for mbuf: %p", mbuf);
+	if (mbuf->l3_len == 0) {
+		DPAA_DP_LOG(WARNING, "l3_len is 0, skipping checksum for mbuf: %p", mbuf);
+		return;
+	}
 
 	if (((mbuf->packet_type & RTE_PTYPE_L3_MASK) == RTE_PTYPE_L3_IPV4) ||
 	    ((mbuf->packet_type & RTE_PTYPE_L3_MASK) ==
