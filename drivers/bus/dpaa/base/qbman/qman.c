@@ -1921,7 +1921,7 @@ int qman_fq_flow_control(struct qman_fq *fq, int xon)
 		goto out;
 	}
 	mcc = qm_mc_start(&p->p);
-	mcc->alterfq.fqid = fq->fqid;
+	mcc->alterfq.fqid = fq->fqid_be;
 	mcc->alterfq.count = 0;
 	myverb = xon ? QM_MCC_VERB_ALTER_FQXON : QM_MCC_VERB_ALTER_FQXOFF;
 
