@@ -1534,6 +1534,9 @@ int qman_create_fq(u32 fqid, u32 flags, struct qman_fq *fq)
 err:
 	if (flags & QMAN_FQ_FLAG_DYNAMIC_FQID)
 		qman_release_fqid(fqid);
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+	clear_fq_table_entry(fq->key);
+#endif
 	return -EIO;
 }
 
