@@ -133,7 +133,7 @@ static const struct rte_dpaa_xstats_name_off dpaa_xstats_strings[] = {
 		offsetof(struct dpaa_if_stats, terr)},
 	{"tx_vlan_frame",
 		offsetof(struct dpaa_if_stats, tvlan)},
-	{"rx_undersized",
+	{"tx_undersized",
 		offsetof(struct dpaa_if_stats, tund)},
 	{"rx_frame_counter",
 		offsetof(struct dpaa_if_rx_bmi_stats, fmbm_rfrc)},
