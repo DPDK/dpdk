@@ -159,6 +159,7 @@ def classify_review(review_text: str, output_format: str) -> int:
         rgx_header_match: str = r"(#+\s)?(\*+)?(<h[1-3]>)?{err_or_warn}"
         # Matches against observed filler text
         rgx_filler_match: str = r"(none(.)?$|\(must fix\)$|$)"
+        curr_state: ReviewParseState = ReviewParseState.NORMAL
 
         curr_line: str
         for curr_line in review_text.splitlines():
