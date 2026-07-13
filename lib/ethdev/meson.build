@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-use_function_versioning = true
-
 sources = files(
         'ethdev_driver.c',
         'ethdev_private.c',
