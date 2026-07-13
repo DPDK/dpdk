@@ -145,7 +145,7 @@ void bman_thread_irq(void)
 
 int bman_init_ccsr(const struct device_node *node)
 {
-	static int ccsr_map_fd;
+	int ccsr_map_fd;
 	uint64_t phys_addr;
 	const uint32_t *bman_addr;
 	uint64_t regs_size;
@@ -169,6 +169,7 @@ int bman_init_ccsr(const struct device_node *node)
 
 	bman_ccsr_map = mmap(NULL, regs_size, PROT_READ |
 			     PROT_WRITE, MAP_SHARED, ccsr_map_fd, phys_addr);
+	close(ccsr_map_fd);
 	if (bman_ccsr_map == MAP_FAILED) {
 		pr_err("Can not map BMan CCSR base Bman: "
 		       "0x%x Phys: 0x%" PRIx64 " size 0x%" PRIu64,
