@@ -55,6 +55,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated Intel iavf driver.**
+
+  * Runtime Rx/Tx queue setup is now automatically disabled while a
+    per-queue bandwidth ``rte_tm`` hierarchy is committed, to avoid
+    corrupting queue state on E810 VFs.
+
 
 Removed Items
 -------------

@@ -912,6 +912,8 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 	if (ret_val)
 		goto fail_clear;
 
+	/* replace the previously committed mapping, if any */
+	rte_free(vf->qtc_map);
 	vf->qtc_map = qtc_map;
 	free(old_qtc_map);
 	if (adapter->stopped == 1)

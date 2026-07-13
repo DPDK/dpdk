@@ -1160,9 +1160,18 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->reta_size = vf->vf_res->rss_lut_size;
 	dev_info->flow_type_rss_offloads = IAVF_RSS_OFFLOAD_ALL;
 	dev_info->max_mac_addrs = IAVF_NUM_MACADDR_MAX;
-	dev_info->dev_capa =
-		RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
-		RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
+	/*
+	 * Runtime queue setup can race with the hardware Tx rate limiter on
+	 * E810 VFs and corrupt queue state. Once a per-queue bandwidth rte_tm
+	 * hierarchy has been committed (vf->qtc_map is set), stop advertising
+	 * the capability so the ethdev layer rejects further rx/tx_queue_setup()
+	 * calls on a running port with -EBUSY. The capability is re-advertised
+	 * automatically once the rte_tm hierarchy is torn down.
+	 */
+	if (vf->qtc_map == NULL)
+		dev_info->dev_capa =
+			RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
+			RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
 	dev_info->rx_offload_capa =
 		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
 		RTE_ETH_RX_OFFLOAD_QINQ_STRIP |
@@ -2759,6 +2768,14 @@ iavf_uninit_vf(struct rte_eth_dev *dev)
 	vf->qtc_map = NULL;
 	rte_free(vf->proto_xtr);
 	vf->proto_xtr = NULL;
+
+	/*
+	 * Drop the committed queue/TC bandwidth mapping so a subsequent
+	 * iavf_init_vf() (e.g. after a device reset) starts with runtime
+	 * Rx/Tx queue setup available again (see iavf_dev_info_get()).
+	 */
+	rte_free(vf->qtc_map);
+	vf->qtc_map = NULL;
 
 	rte_free(vf->rss_lut);
 	vf->rss_lut = NULL;

@@ -150,6 +150,16 @@ Intel\ |reg| E800 Series Ethernet devices:
   for example: ``-a 18:00.0,quanta_size=2048``.
   The default value is 1024, and quanta size should be set as the product of 64 in legacy host interface mode.
 
+* Runtime (post-start) Rx/Tx queue setup can race with the hardware Tx rate
+  limiter on E810 VFs and corrupt queue state.
+  Once an application commits a per-queue bandwidth ``rte_tm`` hierarchy,
+  the driver automatically stops advertising
+  ``RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP`` and
+  ``RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP``,
+  so ``rte_eth_rx_queue_setup()``/``rte_eth_tx_queue_setup()``
+  are rejected with ``-EBUSY`` on a running port for as long as queue rate
+  limiting is active.
+
 * When using the Intel out-of-tree "ice" PF/kernel driver v1.13.7 or later,
   to create VFs with >16 queues (aka. "large VFs"),
   it is necessary to change the rss_lut_vf_addr setting in sysfs from the default of 64 to 512.
