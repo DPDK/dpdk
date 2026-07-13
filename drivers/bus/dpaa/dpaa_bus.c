@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright 2017-2025 NXP
+ * Copyright 2017-2026 NXP
  *
  */
 /* System headers */
@@ -724,17 +724,16 @@ rte_dpaa_bus_scan(void)
 			dpaa_bus.svr_ver);
 	}
 
-	/* Disabling the default push mode for LS1043A */
+	/* Disabling the default push mode for LS1043A due to errata */
 	if (dpaa_bus.svr_ver == SVR_LS1043A_FAMILY) {
 		dpaa_bus.max_push_rxq_num = 0;
-		return 0;
+	} else {
+		penv = getenv("DPAA_PUSH_QUEUES_NUMBER");
+		if (penv)
+			dpaa_bus.max_push_rxq_num = atoi(penv);
+		if (dpaa_bus.max_push_rxq_num > DPAA_MAX_PUSH_MODE_QUEUE)
+			dpaa_bus.max_push_rxq_num = DPAA_MAX_PUSH_MODE_QUEUE;
 	}
-
-	penv = getenv("DPAA_PUSH_QUEUES_NUMBER");
-	if (penv)
-		dpaa_bus.max_push_rxq_num = atoi(penv);
-	if (dpaa_bus.max_push_rxq_num > DPAA_MAX_PUSH_MODE_QUEUE)
-		dpaa_bus.max_push_rxq_num = DPAA_MAX_PUSH_MODE_QUEUE;
 
 	/* Device list creation is only done once */
 	if (!process_once) {
