@@ -2,8 +2,6 @@
 # Copyright 2018 6WIND S.A.
 # Copyright 2018 Mellanox Technologies, Ltd
 
-use_function_versioning = true
-
 if not (is_linux or is_windows)
     build = false
     reason = 'only supported on Linux and Windows'

@@ -12537,7 +12537,9 @@ flow_disable_steering_run_on_related(struct rte_eth_dev *dev,
 	}
 }
 
-RTE_DEFAULT_SYMBOL(27, void, rte_pmd_mlx5_disable_steering, (void))
+RTE_EXPORT_SYMBOL(rte_pmd_mlx5_disable_steering)
+void
+rte_pmd_mlx5_disable_steering(void)
 {
 	uint16_t port_id;
 
@@ -12561,12 +12563,9 @@ RTE_DEFAULT_SYMBOL(27, void, rte_pmd_mlx5_disable_steering, (void))
 	mlx5_steering_disabled = true;
 }
 
-RTE_VERSION_EXPERIMENTAL_SYMBOL(void, rte_pmd_mlx5_disable_steering, (void))
-{
-	rte_pmd_mlx5_disable_steering();
-}
-
-RTE_DEFAULT_SYMBOL(27, int, rte_pmd_mlx5_enable_steering, (void))
+RTE_EXPORT_SYMBOL(rte_pmd_mlx5_enable_steering)
+int
+rte_pmd_mlx5_enable_steering(void)
 {
 	uint16_t port_id;
 
@@ -12581,11 +12580,6 @@ RTE_DEFAULT_SYMBOL(27, int, rte_pmd_mlx5_enable_steering, (void))
 	mlx5_steering_disabled = false;
 
 	return 0;
-}
-
-RTE_VERSION_EXPERIMENTAL_SYMBOL(int, rte_pmd_mlx5_enable_steering, (void))
-{
-	return rte_pmd_mlx5_enable_steering();
 }
 
 bool
