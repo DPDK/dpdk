@@ -164,6 +164,7 @@ Runtime Configuration
   Time-sensitive applications can lower this value to reduce Tx latency jitter
   at the cost of throughput by setting the ``rl_burst_size`` devargs parameter, in bytes.
   A value of ``0`` (the default) keeps the hardware default.
+  Values outside the range supported by the hardware cause the driver to fail to initialize.
 
   For example::
 
