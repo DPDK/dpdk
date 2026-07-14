@@ -65,6 +65,14 @@ flow_verbs_discover_priorities(struct rte_eth_dev *dev,
 		.eth = {
 			.type = IBV_FLOW_SPEC_ETH,
 			.size = sizeof(struct ibv_flow_spec_eth),
+			.val = {
+				.dst_mac = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
+				.src_mac = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
+			},
+			.mask = {
+				.dst_mac = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
+				.src_mac = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
+			},
 		},
 		.drop = {
 			.size = sizeof(struct ibv_flow_spec_action_drop),
