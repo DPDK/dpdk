@@ -19794,6 +19794,22 @@ mlx5_flow_discover_dr_action_support(struct rte_eth_dev *dev)
 	void *matcher = NULL;
 	void *flow = NULL;
 	int ret = -1;
+	struct rte_flow_item_eth eth;
+	struct rte_flow_item item = {
+		.type = RTE_FLOW_ITEM_TYPE_ETH,
+		.spec = &eth,
+		.mask = &eth,
+	};
+
+	memset(&eth, 0, sizeof(eth));
+	memset(&eth.hdr.dst_addr, 0xff, sizeof(eth.hdr.dst_addr));
+	memset(&eth.hdr.src_addr, 0xff, sizeof(eth.hdr.src_addr));
+	flow_dv_translate_item_eth(mask.buf, &item,
+				   /* inner */ false, /* group */ 0,
+				   MLX5_SET_MATCHER_SW_M);
+	flow_dv_translate_item_eth(value.buf, &item,
+				   /* inner */ false, /* group */ 0,
+				   MLX5_SET_MATCHER_SW_V);
 
 	tbl = mlx5_flow_dv_tbl_resource_get(dev, 0, 0, 0, false, NULL,
 					    0, 0, 0, NULL);
@@ -20683,6 +20699,8 @@ flow_dv_discover_priorities(struct rte_eth_dev *dev,
 	flow.dv.actions[0] = action;
 	flow.dv.actions_n = 1;
 	memset(&eth, 0, sizeof(eth));
+	memset(&eth.hdr.dst_addr, 0xff, sizeof(eth.hdr.dst_addr));
+	memset(&eth.hdr.src_addr, 0xff, sizeof(eth.hdr.src_addr));
 	flow_dv_translate_item_eth(matcher.mask.buf, &item,
 				   /* inner */ false, /* group */ 0,
 				   MLX5_SET_MATCHER_SW_M);
