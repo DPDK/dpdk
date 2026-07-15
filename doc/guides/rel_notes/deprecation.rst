@@ -158,3 +158,10 @@ Deprecation Notices
 * net/iavf: The dynamic mbuf field used to detect LLDP packets on the
   transmit path in the iavf PMD will be removed in a future release.
   After removal, only packet type-based detection will be supported.
+
+* net/iavf: The ``auto_reconfig`` devarg is deprecated
+  and will be removed in a future release.
+  It allows disabling the automatic restoration of device settings
+  after a VF reset, but this is of questionable value
+  since most applications expect their settings to be preserved
+  transparently across a reset.
