@@ -1,8 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-.. _install_from_ports:
-
 Installing DPDK from the Ports Collection
 =========================================
 
@@ -61,7 +59,7 @@ Compiling and Running the Example Applications
 
 When the DPDK has been installed from the ports collection it installs
 its example applications in ``/usr/local/share/dpdk/examples``.
-These examples can be compiled and run as described in :ref:`compiling_sample_apps`.
+These examples can be compiled and run as described in :doc:`build_sample_apps`.
 
 .. note::
 
@@ -73,7 +71,7 @@ These examples can be compiled and run as described in :ref:`compiling_sample_ap
 
    To install a copy of the DPDK compiled using gcc, please download the
    official DPDK package from https://core.dpdk.org/download/ and install manually using
-   the instructions given in the next chapter, :ref:`building_from_source`
+   the instructions given in the next chapter, :doc:`build_dpdk`
 
 An example application can therefore be copied to a user's home directory and
 compiled and run as below, where we have 2 memory blocks of size 1G reserved

@@ -72,8 +72,7 @@ Prerequisites
 
 - DPDK environment
 
-  Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup
-  DPDK environment.
+  Follow the DPDK :doc:`/linux_gsg/index` to setup DPDK environment.
 
 
 Runtime Configuration

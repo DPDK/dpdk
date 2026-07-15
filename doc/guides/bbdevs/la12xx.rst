@@ -56,7 +56,7 @@ Currently supported by DPDK:
 - NXP LA1224 BSP **1.0+**.
 - NXP LA1224 PCIe Modem card connected to ARM host.
 
-- Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
+- Follow the DPDK :doc:`/linux_gsg/index` to setup the basic DPDK environment.
 
 * Use dev arg option ``modem=0`` to identify the modem instance for a given
   device. This is required only if more than 1 modem cards are attached to host.
@@ -86,7 +86,7 @@ BBDEV provides a test application, ``test-bbdev.py`` and range of test data for 
 the functionality of the device, depending on the device's capabilities.
 
 For more details on how to use the test application,
-see :ref:`test_bbdev_application`.
+see :doc:`/tools/testbbdev`.
 
 
 Test Vectors

@@ -22,8 +22,7 @@ The following Yunsilicon device models are supported by the same xsc driver:
 Prerequisites
 -------------
 
-- Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>`
-  to setup the basic DPDK environment.
+- Follow the DPDK :doc:`/linux_gsg/index` to setup the basic DPDK environment.
 
 - Learn about `Yunsilicon metaScale Series NICs
   <https://www.yunsilicon.com/#/productInformation>`_.

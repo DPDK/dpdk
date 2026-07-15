@@ -52,14 +52,11 @@ See :doc:`/platform/cnxk` for setup information.
 Driver compilation and testing
 ------------------------------
 
-Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
-for details.
+Refer to the document :doc:`build_and_test` for details.
 
 #. Running testpmd:
 
-   Follow instructions available in the document
-   :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
-   to run testpmd.
+   Follow instructions available in the document :doc:`build_and_test` to run testpmd.
 
    Example output:
 

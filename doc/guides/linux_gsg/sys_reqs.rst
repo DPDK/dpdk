@@ -14,8 +14,7 @@ BIOS Setting Prerequisite on x86
 For the majority of platforms, no special BIOS settings are needed to use basic DPDK functionality.
 However, for additional HPET timer and power management functionality,
 and high performance of small packets, BIOS setting changes may be needed.
-Consult the section on :ref:`Enabling Additional Functionality <Enabling_Additional_Functionality>`
-for more information on the required changes.
+Consult the section on :doc:`enable_func` for more information on the required changes.
 
 Compilation of the DPDK
 -----------------------

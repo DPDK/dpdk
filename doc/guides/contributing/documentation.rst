@@ -1,8 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright 2018 The DPDK contributors
 
-.. _doc_guidelines:
-
 DPDK Documentation Guidelines
 =============================
 
@@ -685,7 +683,7 @@ The following are some guidelines for use of Doxygen in the DPDK API documentati
      }
 
   Note: postfix comments should be aligned with spaces not tabs in accordance
-  with the :ref:`coding_style`.
+  with the :doc:`coding_style`.
 
 * If a single comment type can't be used, due to line length limitations then
   prefix comments should be preferred.

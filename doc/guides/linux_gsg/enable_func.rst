@@ -3,8 +3,6 @@
 
 .. include:: <isonum.txt>
 
-.. _Enabling_Additional_Functionality:
-
 Enabling Additional Functionality
 =================================
 

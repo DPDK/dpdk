@@ -29,7 +29,7 @@ The command line options are:
     Run testpmd in interactive mode.
     In this mode, the testpmd starts with a prompt that can be used to start and stop forwarding,
     configure the application and display stats on the current packet processing session.
-    See :ref:`testpmd_runtime` for more details.
+    See :doc:`testpmd_funcs` for more details.
 
     In non-interactive mode,
     the application starts with the configuration specified on the command-line and

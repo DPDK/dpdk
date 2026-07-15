@@ -102,8 +102,7 @@ enabling debugging options may affect system performance.
 Driver compilation and testing
 ------------------------------
 
-Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
-for details.
+Refer to the document :doc:`build_and_test` for details.
 
 Jumbo: Limitation
 -----------------
@@ -195,9 +194,7 @@ This section provides instructions to configure SR-IOV with Linux OS.
 #. Running testpmd:
    (Supply ``--log-level="pmd.net.bnx2x.driver",7`` to view informational messages):
 
-   Follow instructions available in the document
-   :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
-   to run testpmd.
+   Follow instructions available in the document :doc:`build_and_test` to run testpmd.
 
    Example output:
 

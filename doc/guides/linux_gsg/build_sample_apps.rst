@@ -24,7 +24,7 @@ Running a Sample Application
     - In case needed, ports being used by the application should be
       bound to the corresponding kernel driver.
 
-    Refer to :ref:`linux_gsg_linux_drivers` for more details.
+    Refer to :doc:`linux_drivers` for more details.
 
 The application is linked with the DPDK target environment's Environmental Abstraction Layer (EAL) library,
 which provides some options that are generic to every DPDK application.

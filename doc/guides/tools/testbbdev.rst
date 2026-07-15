@@ -1,8 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2017 Intel Corporation
 
-.. _test_bbdev_application:
-
 dpdk-test-bbdev Application
 ===========================
 

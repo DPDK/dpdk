@@ -134,7 +134,7 @@ BBDEV provides a test application, ``test-bbdev.py`` and range of test data for 
 the functionality of the device, depending on the device's capabilities.
 
 For more details on how to use the test application,
-see :ref:`test_bbdev_application`.
+see :doc:`/tools/testbbdev`.
 
 
 Test Vectors

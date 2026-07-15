@@ -109,7 +109,7 @@ DPAA_SEC driver has similar pre-requisites as described in :ref:`dpaa_overview`.
 See :doc:`/platform/dpaa` for setup information
 
 
-- Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
+- Follow the DPDK :doc:`/linux_gsg/index` to setup the basic DPDK environment.
 
 
 Enabling logs

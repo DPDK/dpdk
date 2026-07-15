@@ -38,7 +38,7 @@ Currently supported by DPDK:
 - NXP SDK **2.0+** or LSDK **18.09+**
 - Supported architectures:  **arm64 LE**.
 
-- Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
+- Follow the DPDK :doc:`/linux_gsg/index` to setup the basic DPDK environment.
 
 
 Initialization

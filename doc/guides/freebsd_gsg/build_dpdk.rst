@@ -3,8 +3,6 @@
 
 .. include:: <isonum.txt>
 
-.. _building_from_source:
-
 Compiling the DPDK Target from Source
 =====================================
 

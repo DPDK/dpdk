@@ -140,7 +140,7 @@ Make your Changes
 
 Make your planned changes in the cloned ``dpdk`` repo. Here are some guidelines and requirements:
 
-* Follow the :ref:`coding_style` guidelines.
+* Follow the :doc:`coding_style` guidelines.
 
 * If you are a new contributor, or if your mail address changed,
   you may update the ``.mailmap`` file.
@@ -161,7 +161,7 @@ Make your planned changes in the cloned ``dpdk`` repo. Here are some guidelines 
   * For other PMDs and more info, refer to the ``MAINTAINERS`` file.
 
 * New external functions should be exported.
-  See the :doc:`ABI policy <abi_policy>` and :ref:`ABI versioning <abi_versioning>`
+  See the :doc:`ABI policy <abi_policy>` and :doc:`abi_versioning`
   guides.
 
 * Any new API function should be used in ``/app`` test directory.
@@ -179,7 +179,7 @@ Make your planned changes in the cloned ``dpdk`` repo. Here are some guidelines 
 * Add tests to the ``app/test`` unit test framework where possible.
 
 * Add documentation, if relevant, in the form of Doxygen comments or a User Guide in RST format.
-  See the :ref:`Documentation Guidelines <doc_guidelines>`.
+  See the :doc:`documentation`.
 
 * Code and related documentation must be updated atomically in the same patch.
 

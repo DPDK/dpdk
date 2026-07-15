@@ -14,7 +14,7 @@ printing out detailed debug information whenever an error is detected.
 AddressSanitizer is a part of LLVM (3.1+) and GCC (4.8+).
 
 Enabling ASan is done by passing the -Db_sanitize=address option to the meson build system,
-see :ref:`linux_gsg_compiling_dpdk` for details.
+see :doc:`/linux_gsg/build_dpdk` for details.
 
 The way ASan is integrated with clang requires to allow undefined symbols when linking code.
 To do this, the -Db_lundef=false option must be added.

@@ -5,8 +5,6 @@
 
 .. include:: <isonum.txt>
 
-.. _linux_gsg_linux_drivers:
-
 Linux Drivers
 =============
 

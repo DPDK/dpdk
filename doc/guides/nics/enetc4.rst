@@ -87,9 +87,7 @@ The following dependencies are not part of DPDK and must be installed separately
 Driver compilation and testing
 ------------------------------
 
-Follow instructions available in the document
-:ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
-to launch **testpmd**.
+Follow instructions available in the document :doc:`build_and_test` to launch **testpmd**.
 
 
 Driver Arguments (devargs)

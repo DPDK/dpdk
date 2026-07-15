@@ -45,7 +45,7 @@ Prerequisites
 - Learning about Wangxun 25 Gigabit Ethernet NICs using
   `<https://www.net-swift.com/a/25GbE-tong-yong-lei-FF5025.html>`_.
 
-- Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
+- Follow the DPDK :doc:`/linux_gsg/index` to setup the basic DPDK environment.
 
 Configuration
 -------------
@@ -180,8 +180,7 @@ Please note that following ``devargs`` are only set for Amber-Lite NICs.
 Driver compilation and testing
 ------------------------------
 
-Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
-for details.
+Refer to the document :doc:`build_and_test` for details.
 
 Sample Application Notes
 ------------------------

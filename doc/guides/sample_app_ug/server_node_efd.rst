@@ -122,8 +122,8 @@ generator side.
 For examples of application command lines and traffic generator flows, please
 refer to the DPDK Test Report. For more details on how to set up and run the
 sample applications provided with DPDK package, please refer to the
-:ref:`DPDK Getting Started Guide for Linux <linux_gsg>` and
-:ref:`DPDK Getting Started Guide for FreeBSD <freebsd_gsg>`.
+:doc:`DPDK Getting Started Guide for Linux </linux_gsg/index>` and
+:doc:`DPDK Getting Started Guide for FreeBSD </freebsd_gsg/index>`.
 
 
 Explanation

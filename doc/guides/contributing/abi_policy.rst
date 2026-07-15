@@ -17,13 +17,13 @@ General Guidelines
    with the major ABI version is mandatory in subsequent releases until a
    :ref:`new major ABI version <new_abi_version>` is declared.
 #. Major ABI versions are usually but not always declared aligned with a
-   :ref:`LTS release <stable_lts_releases>`.
+   :doc:`LTS release <stable>`.
 #. The ABI version is managed at a project level in DPDK, and is reflected in
    all non-experimental :ref:`library's soname <what_is_soname>`.
 #. The ABI should be preserved and not changed lightly. ABI changes must follow
    the outlined :ref:`deprecation process <abi_changes>`.
-#. The addition of symbols is generally not problematic. The modification of
-   symbols is managed with :ref:`ABI Versioning <abi_versioning>`.
+#. The addition of symbols is generally not problematic.
+   The modification of symbols is managed with :doc:`abi_versioning`.
 #. The removal of symbols is considered an :ref:`ABI breakage <abi_breakages>`,
    once approved these will form part of the next ABI version.
 #. Libraries or APIs marked as :ref:`experimental <experimental_apis>`
@@ -143,7 +143,7 @@ The requirements for changing the ABI are:
      CPU vendors, end-users, etc.
 
 #. Backward compatibility with the major ABI version must be maintained through
-   :ref:`abi_versioning`, with :ref:`forward-only <forward-only>` compatibility
+   :doc:`abi_versioning`, with :ref:`forward-only <forward-only>` compatibility
    offered for any ABI changes that are indicated to be part of the next ABI
    version.
 
@@ -225,7 +225,7 @@ declarations of major ABI versions.
 
 * DPDK 21.02 release defines a new function ``rte_foo(uint8_t bar)``.
   This is not a problem as long as the symbol ``rte_foo@DPDK_21`` is
-  preserved through :ref:`abi_versioning`.
+  preserved through :doc:`abi_versioning`.
 
   - The new function may be marked with the ``__rte_experimental`` tag for a
     number of releases, as described in the section :ref:`experimental_apis`.

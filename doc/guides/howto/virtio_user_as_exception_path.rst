@@ -59,7 +59,7 @@ Example Usage With Testpmd
 
 To run a simple test of virtio-user as exception path using testpmd:
 
-#. Compile DPDK and bind a NIC to vfio-pci as documented in :ref:`linux_gsg_linux_drivers`.
+#. Compile DPDK and bind a NIC to vfio-pci as documented in :doc:`/linux_gsg/linux_drivers`.
 
    This physical NIC is for communicating with the outside world,
    and serves as a packet source in this example.

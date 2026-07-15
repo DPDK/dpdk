@@ -191,7 +191,7 @@ Prerequisites
 See :doc:`/platform/dpaa` for setup information
 
 
-- Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>`
+- Follow the DPDK :doc:`/linux_gsg/index`
   to setup the basic DPDK environment.
 - DPAA driver has dependency on kernel to perform various functionalities.
   So kernel and DPDK version should be compatible for proper working.
@@ -241,14 +241,11 @@ state during application initialization:
 Driver compilation and testing
 ------------------------------
 
-Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
-for details.
+Refer to the document :doc:`build_and_test` for details.
 
 #. Running testpmd:
 
-   Follow instructions available in the document
-   :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
-   to run testpmd.
+   Follow instructions available in the document :doc:`build_and_test` to run testpmd.
 
    Example output:
 

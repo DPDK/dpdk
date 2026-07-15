@@ -1,8 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2015 Intel Corporation.
 
-.. _linux_gsg_compiling_dpdk:
-
 Compiling the DPDK Target from Source
 =====================================
 

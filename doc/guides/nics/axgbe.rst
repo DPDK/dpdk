@@ -34,8 +34,7 @@ See :doc:`/linux_gsg/build_dpdk` for instructions.
 
 By default the AXGBE PMD library will be built into the DPDK library.
 
-For configuring and using UIO frameworks, please also refer :ref:`the
-documentation that comes with DPDK suite <linux_gsg>`.
+For configuring and using UIO frameworks, please also refer :doc:`the documentation that comes with DPDK suite </linux_gsg/index>`.
 
 
 Prerequisites and Pre-conditions
@@ -50,8 +49,7 @@ Now system is ready to run DPDK application.
 Usage Example
 -------------
 
-Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
-for details.
+Refer to the document :doc:`build_and_test` for details.
 
 Example output:
 

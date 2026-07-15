@@ -36,7 +36,7 @@ Prerequisites
 - Learning about Wangxun 1 Gigabit Ethernet NICs using
   `<https://www.net-swift.com/a/386.html>`_.
 
-- Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
+- Follow the DPDK :doc:`/linux_gsg/index` to setup the basic DPDK environment.
 
 
 Configuration
@@ -74,8 +74,7 @@ NGBE PMD provides the following log types available for control:
 Driver compilation and testing
 ------------------------------
 
-Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
-for details.
+Refer to the document :doc:`build_and_test` for details.
 
 
 Limitations or Known issues

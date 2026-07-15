@@ -324,7 +324,7 @@ CXGBE PF Only Runtime Options
 Driver compilation and testing
 ------------------------------
 
-Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+Refer to the document :doc:`build_and_test`
 for details.
 
 Linux
@@ -434,7 +434,7 @@ devices managed by librte_net_cxgbe in Linux operating system.
 #. Running testpmd
 
    Follow instructions available in the document
-   :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+   :doc:`build_and_test`
    to run testpmd.
 
    .. note::
@@ -547,7 +547,7 @@ virtual functions.
 #. Running testpmd
 
    Follow instructions available in the document
-   :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+   :doc:`build_and_test`
    to bind virtual functions and run testpmd.
 
    Example output:

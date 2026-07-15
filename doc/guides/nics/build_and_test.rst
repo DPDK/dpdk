@@ -1,8 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2017 Cavium, Inc
 
-.. _pmd_build_and_test:
-
 Compiling and testing a PMD for a NIC
 =====================================
 
@@ -13,8 +11,8 @@ TestPMD is one of the reference applications distributed with the DPDK. Its main
 purpose is to forward packets between Ethernet ports on a network interface and
 as such is the best way to test a PMD.
 
-Refer to the :ref:`testpmd application user guide <testpmd_ug>` for detailed
-information on how to build and run testpmd.
+Refer to the :doc:`/testpmd_app_ug/index`
+for detailed information on how to build and run testpmd.
 
 Driver Compilation
 ------------------
@@ -143,8 +141,7 @@ This section demonstrates how to setup and run ``testpmd`` in Linux.
 
       testpmd>
 
-   Refer to the :ref:`testpmd runtime functions <testpmd_runtime>` for a list
-   of available commands.
+   Refer to the :doc:`/testpmd_app_ug/testpmd_funcs` for a list of available commands.
 
    .. note::
       When ``testpmd`` is built with shared library, use option ``-d`` to load

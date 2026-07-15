@@ -108,8 +108,7 @@ Usage example
 
 This section shows some example of using **testpmd** with a fail-safe PMD.
 
-#. To build a PMD and configure DPDK, refer to the document
-   :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`.
+#. To build a PMD and configure DPDK, refer to the document :doc:`build_and_test`.
 
 #. Start testpmd. The sub-device ``84:00.0`` should be blocked from normal EAL
    operations to avoid probing it twice, as the PCI bus is in blocklist mode.

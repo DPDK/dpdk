@@ -518,8 +518,7 @@ How to build the suite
 The build instructions for the DPDK suite should be followed. By default
 the ENIC PMD library will be built into the DPDK library.
 
-Refer to the document :ref:`compiling and testing a PMD for a NIC
-<pmd_build_and_test>` for details.
+Refer to the document :doc:`build_and_test` for details.
 
 For configuring and using UIO and VFIO frameworks, please refer to the
 documentation that comes with DPDK suite.

@@ -182,4 +182,4 @@ Configurations before running DPDK
    In the example above ``85:00.0`` is on socket 1 and should be used by cores on socket 1 for the best performance.
 
 #. Check which kernel drivers need to be loaded and whether there is a need to unbind the network ports from their kernel drivers.
-   More details about DPDK setup and Linux kernel requirements see :ref:`linux_gsg_compiling_dpdk` and :ref:`linux_gsg_linux_drivers`.
+   More details about DPDK setup and Linux kernel requirements see :doc:`build_dpdk` and :doc:`linux_drivers`.

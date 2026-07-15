@@ -84,8 +84,7 @@ Only PF supports coexistence between DPDK and kernel driver; VF does not.
 Prerequisites
 -------------
 
-#. Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>`
-   to setup the basic DPDK environment.
+#. Follow the DPDK :doc:`/linux_gsg/index` to setup the basic DPDK environment.
 
 #. NBL PMD requires the ``vfio-pci`` kernel driver.
    The ``igb_uio`` and ``uio_pci_generic`` drivers are not supported.
