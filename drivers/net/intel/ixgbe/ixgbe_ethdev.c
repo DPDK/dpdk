@@ -3118,14 +3118,17 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 	rte_intr_disable(intr_handle);
 
 	do {
-		ret = rte_intr_callback_unregister(intr_handle,
+		int cb_ret = rte_intr_callback_unregister(intr_handle,
 				ixgbe_dev_interrupt_handler, dev);
-		if (ret >= 0 || ret == -ENOENT) {
+		if (cb_ret >= 0 || cb_ret == -ENOENT) {
 			break;
-		} else if (ret != -EAGAIN) {
+		} else if (cb_ret != -EAGAIN) {
 			PMD_INIT_LOG(ERR,
 				"intr callback unregister failed: %d",
-				ret);
+				cb_ret);
+			if (ret == 0)
+				ret = cb_ret;
+			break;
 		}
 		rte_delay_ms(100);
 	} while (retries++ < (10 + IXGBE_LINK_UP_TIME));
