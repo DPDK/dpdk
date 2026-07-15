@@ -10,7 +10,7 @@
 #include <rte_common.h>
 #include <rte_devargs.h>
 #include <rte_kvargs.h>
-#include <bus_driver.h>
+#include <rte_bus.h>
 #include <rte_class.h>
 
 #include "test.h"
@@ -160,22 +160,11 @@ test_valid_devargs(void)
 		  "pci", "1:2.3", NULL },
 		{ "pci:1:2.3,k0=v0",
 		  0, 0, 1, "pci", "1:2.3", NULL },
+		{ "net_null0",
+		  0, 0, 0, "vdev", "net_null0", NULL },
 	};
-	static const struct devargs_case legacy_ring_list[] = {
-		{ "net_ring0",
-		  0, 0, 0, "vdev", "net_ring0", NULL },
-		{ "net_ring0,iface=test,path=/class/bus/,queues=1",
-		  0, 0, 3, "vdev", "net_ring0", NULL },
-	};
-	struct rte_bus *vdev_bus = rte_bus_find_by_name("vdev");
-	int ret;
 
-	ret = test_valid_devargs_cases(list, RTE_DIM(list));
-	if (vdev_bus != NULL && vdev_bus->parse("net_ring0", NULL) == 0)
-		/* Ring vdev driver enabled. */
-		ret |= test_valid_devargs_cases(legacy_ring_list,
-						RTE_DIM(legacy_ring_list));
-	return ret;
+	return test_valid_devargs_cases(list, RTE_DIM(list));
 }
 
 /* Test several invalid cases */
