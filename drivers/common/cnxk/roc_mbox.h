@@ -359,6 +359,8 @@ struct mbox_msghdr {
 				msg_rsp)					\
 	M(NIX_RX_INL_QUEUE_CFG,	0x8033, nix_rx_inl_queue_cfg,				\
 			      nix_rx_inline_qcfg_req, msg_rsp)		\
+	M(NIX_AF_RX_FLOW_VEC_CTRL_SET, 0x8034, nix_af_rx_flow_vec_ctrl_set,                        \
+	  nix_af_rx_flow_vec_ctrl_write_req, msg_rsp)                                              \
 	/* MCS mbox IDs (range 0xa000 - 0xbFFF) */                                                 \
 	M(MCS_ALLOC_RESOURCES, 0xa000, mcs_alloc_resources, mcs_alloc_rsrc_req,                    \
 	  mcs_alloc_rsrc_rsp)                                                                      \
@@ -2771,6 +2773,61 @@ struct npc_cn20k_mcam_write_entry_req {
 	uint8_t __io hw_prio;	   /* hardware priority, valid for cn20k */
 	uint8_t __io req_kw_type;  /* Type of kw which should be written */
 	uint64_t __io reserved;	   /* reserved for future use */
+};
+
+union nix_af_rx_flow_vec_ctrl0x {
+	struct nix_af_rx_flow_vec_ctrl0x_s {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+		uint64_t __io reserved : 14;
+		uint64_t __io sov_offset : 8;
+		uint64_t __io sov_mask : 16;
+		uint64_t __io sov_inv : 1;
+		uint64_t __io eov_offset : 8;
+		uint64_t __io eov_mask : 16;
+		uint64_t __io eov_inv : 1;
+#else
+		uint64_t __io eov_inv : 1;
+		uint64_t __io eov_mask : 16;
+		uint64_t __io eov_offset : 8;
+		uint64_t __io sov_inv : 1;
+		uint64_t __io sov_mask : 16;
+		uint64_t __io sov_offset : 8;
+		uint64_t __io reserved : 14;
+#endif
+	} __plt_packed_end s;
+	uint64_t __io val;
+};
+
+union nix_af_rx_flow_vec_ctrl1x {
+	struct nix_af_rx_flow_vec_ctrl1x_s {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+		uint64_t __io reserved : 35;
+		uint64_t __io valid : 1;
+		uint64_t __io lid : 3;
+		uint64_t __io ltype_match : 4;
+		uint64_t __io ltype_mask : 4;
+		uint64_t __io ver_offset : 9;
+		uint64_t __io ver_match : 4;
+		uint64_t __io ver_mask : 4;
+#else
+		uint64_t __io ver_mask : 4;
+		uint64_t __io ver_match : 4;
+		uint64_t __io ver_offset : 9;
+		uint64_t __io ltype_mask : 4;
+		uint64_t __io ltype_match : 4;
+		uint64_t __io lid : 3;
+		uint64_t __io valid : 1;
+		uint64_t __io reserved : 35;
+#endif
+	} __plt_packed_end s;
+	uint64_t __io val;
+};
+
+#define NIX_AF_RX_FLOW_VEC_CTRL_MAX 4
+struct nix_af_rx_flow_vec_ctrl_write_req {
+	struct mbox_msghdr hdr;
+	union nix_af_rx_flow_vec_ctrl0x ctrl0x[NIX_AF_RX_FLOW_VEC_CTRL_MAX];
+	union nix_af_rx_flow_vec_ctrl1x ctrl1x[NIX_AF_RX_FLOW_VEC_CTRL_MAX];
 };
 
 /* Enable/Disable a given entry */
