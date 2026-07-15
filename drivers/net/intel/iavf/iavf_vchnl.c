@@ -920,7 +920,7 @@ iavf_config_vlan_strip_v2(struct iavf_adapter *adapter, bool enable)
 	uint8_t msg_buf[IAVF_AQ_BUF_SZ] = {0};
 	struct iavf_cmd_info args;
 	uint32_t *ethertype;
-	int qinq = adapter->dev_data->dev_conf.rxmode.offloads &
+	bool qinq = adapter->dev_data->dev_conf.rxmode.offloads &
 		   RTE_ETH_RX_OFFLOAD_VLAN_EXTEND;
 	bool strip_qinq = adapter->dev_data->dev_conf.rxmode.offloads &
 			  RTE_ETH_RX_OFFLOAD_QINQ_STRIP;
@@ -943,7 +943,8 @@ iavf_config_vlan_strip_v2(struct iavf_adapter *adapter, bool enable)
 		 (stripping_caps->inner & VIRTCHNL_VLAN_TOGGLE))
 		ethertype = &vlan_strip.inner_ethertype_setting;
 	else
-		return -ENOTSUP;
+		/* Return success for non-inner VLAN supported hardware */
+		return (qinq && adapter->tpid == RTE_ETHER_TYPE_VLAN) ? 0 : -ENOTSUP;
 
 	memset(&vlan_strip, 0, sizeof(vlan_strip));
 	vlan_strip.vport_id = vf->vsi_res->vsi_id;
@@ -1036,7 +1037,8 @@ iavf_config_vlan_insert_v2(struct iavf_adapter *adapter, bool enable)
 		 (insertion_caps->inner & VIRTCHNL_VLAN_TOGGLE))
 		ethertype = &vlan_insert.inner_ethertype_setting;
 	else
-		return -ENOTSUP;
+		/* Return success for non-inner VLAN supported hardware */
+		return (qinq && adapter->tpid == RTE_ETHER_TYPE_VLAN) ? 0 : -ENOTSUP;
 
 	memset(&vlan_insert, 0, sizeof(vlan_insert));
 	vlan_insert.vport_id = vf->vsi_res->vsi_id;
@@ -1067,7 +1069,7 @@ iavf_add_del_vlan_v2(struct iavf_adapter *adapter, uint16_t vlanid, bool add)
 	struct virtchnl_vlan *vlan_setting;
 	struct iavf_cmd_info args;
 	uint32_t filtering_caps;
-	int qinq = adapter->dev_data->dev_conf.rxmode.offloads &
+	bool qinq = adapter->dev_data->dev_conf.rxmode.offloads &
 		   RTE_ETH_RX_OFFLOAD_VLAN_EXTEND;
 	int err;
 
