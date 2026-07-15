@@ -328,6 +328,50 @@ struct cnxk_macsec_sess {
 };
 TAILQ_HEAD(cnxk_macsec_sess_list, cnxk_macsec_sess);
 
+/* Pattern template: owns deep copies tracked in copies[]. */
+struct cnxk_flow_pattern_template {
+	struct rte_flow_pattern_template_attr attr;
+	struct rte_flow_item *pattern;
+	/* Mirrored roc handle for table-level ownership/lifecycle in roc. */
+	struct roc_npc_pattern_template *roc_tmpl;
+	uint16_t nb_items;
+	void **copies;
+	uint16_t nb_copies;
+	uint32_t refcnt;
+};
+
+/* Actions template: owns deep copies tracked in copies[]. */
+struct cnxk_flow_actions_template {
+	struct rte_flow_actions_template_attr attr;
+	struct rte_flow_action *actions;
+	struct rte_flow_action *masks;
+	/* Mirrored roc handle for table-level ownership/lifecycle in roc. */
+	struct roc_npc_actions_template *roc_tmpl;
+	uint16_t nb_actions;
+	void **copies;
+	uint16_t nb_copies;
+	uint32_t refcnt;
+};
+
+/* Template table wrapper. The roc layer owns rule storage, MCAM reservation
+ * and rule lifecycle; cnxk keeps rte templates for per-rule translation.
+ */
+struct cnxk_flow_table {
+	/* roc engine table handle: storage, MCAM, rule lifecycle. */
+	struct roc_npc_template_table *roc_table;
+
+	struct cnxk_flow_pattern_template **pattern_templates;
+	struct cnxk_flow_actions_template **actions_templates;
+	uint8_t nb_pattern_templates;
+	uint8_t nb_actions_templates;
+
+	uint32_t nb_flows;
+	struct roc_npc_attr flow_attr;
+	/* roc_npc_attr has no transfer field; replay it into each rule attr. */
+	bool transfer;
+	enum rte_flow_table_insertion_type insertion_type;
+};
+
 struct cnxk_eth_dev {
 	/* ROC NIX */
 	struct roc_nix nix;
