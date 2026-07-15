@@ -4,7 +4,7 @@
 .. include:: <isonum.txt>
 
 IOAT DMA Device Driver
-=======================
+======================
 
 The ``ioat`` dmadev driver provides a poll-mode driver (PMD) for Intel\
 |reg| QuickData Technology which is part of part of Intel\ |reg| I/O
@@ -15,7 +15,7 @@ cloning packet data, to be accelerated by IOAT hardware rather than having to
 be done by software, freeing up CPU cycles for other tasks.
 
 Hardware Requirements
-----------------------
+---------------------
 
 The ``dpdk-devbind.py`` script, included with DPDK, can be used to show the
 presence of supported hardware. Running ``dpdk-devbind.py --status-dev dma``
@@ -30,13 +30,13 @@ absence of pci-id database entries for them at this point.
         Cascade Lake.
 
 Compilation
-------------
+-----------
 
 For builds using ``meson`` and ``ninja``, the driver will be built when the
 target platform is x86-based. No additional compilation steps are necessary.
 
 Device Setup
--------------
+------------
 
 Intel\ |reg| IOAT devices will need to be bound to a suitable DPDK-supported
 user-space IO driver such as ``vfio-pci`` in order to be used by DPDK.
@@ -51,7 +51,7 @@ For example::
 	$ dpdk-devbind.py -b vfio-pci 00:01.0 00:01.1
 
 Device Probing and Initialization
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For devices bound to a suitable DPDK-supported driver (``vfio-pci``), the HW
 devices will be found as part of the device scan done at application
@@ -69,12 +69,12 @@ Once probed successfully, the device will appear as a ``dmadev``, that is a
 ``rte_dmadev`` library.
 
 Using IOAT DMAdev Devices
---------------------------
+-------------------------
 
 To use IOAT devices from an application, the ``dmadev`` API can be used.
 
 Device Configuration
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 IOAT configuration requirements:
 
@@ -87,7 +87,7 @@ Once configured, the device can then be made ready for use by calling the
 ``rte_dma_start()`` API.
 
 Performing Data Copies
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 Refer to the :ref:`Enqueue / Dequeue APIs <dmadev_enqueue_dequeue>` section of the dmadev library
 documentation for details on operation enqueue, submission and completion API usage.

@@ -106,7 +106,7 @@ Terminal 1: output log::
   received packet with src ip = 176.80.50.4
 
 Range IPv4 drop
-----------------
+---------------
 
 Description
 ~~~~~~~~~~~

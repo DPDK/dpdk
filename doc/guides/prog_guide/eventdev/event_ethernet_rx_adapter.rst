@@ -258,7 +258,7 @@ The ``rte_event_eth_rx_adapter_instance_get()`` function reports
 Rx adapter instance ID for a specified ethernet device ID and Rx queue index.
 
 Interrupt Based Rx Queues
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The service core function is typically set up to poll ethernet Rx queues for
 packets. Certain queues may have low packet rates and it would be more

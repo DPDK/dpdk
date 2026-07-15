@@ -475,7 +475,7 @@ Supported Versions
 * DTLS 1.2
 
 Device Features and Capabilities
----------------------------------
+--------------------------------
 
 Device Capabilities For Security Operations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

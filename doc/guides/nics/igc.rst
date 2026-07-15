@@ -2,7 +2,7 @@
     Copyright(c) 2020 Intel Corporation.
 
 IGC Poll Mode Driver
-======================
+====================
 
 The IGC PMD (**librte_net_e1000**) provides poll mode driver support for Foxville
 I225 and I226 Series Network Adapters.

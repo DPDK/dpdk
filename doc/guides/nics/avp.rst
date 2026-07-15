@@ -3,7 +3,7 @@
     All rights reserved.
 
 AVP Poll Mode Driver
-=================================================================
+====================
 
 The Accelerated Virtual Port (AVP) device is a shared memory based device
 only available on `virtualization platforms <http://www.windriver.com/products/titanium-cloud/>`_

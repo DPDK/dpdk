@@ -417,7 +417,7 @@ is stored in these two bits.
 .. _Efd_references:
 
 References
------------
+----------
 
 1- EFD is based on collaborative research work between Intel and
 Carnegie Mellon University (CMU), interested readers can refer to the paper

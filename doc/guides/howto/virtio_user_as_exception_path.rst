@@ -51,7 +51,7 @@ in :numref:`figure_virtio_user_as_exception_path`.
 
 
 Example Usage With Testpmd
----------------------------
+--------------------------
 
 .. note::
 

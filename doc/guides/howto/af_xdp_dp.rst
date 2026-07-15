@@ -137,7 +137,7 @@ Example
 -------
 
 Build a DPDK container image (using Docker)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1. Create a Dockerfile (should be placed in top level DPDK directory):
 

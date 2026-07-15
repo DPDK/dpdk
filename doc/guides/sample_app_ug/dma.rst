@@ -304,7 +304,7 @@ if it was enabled. After that, copies are sent in burst mode using ``rte_eth_tx_
     :dedent: 0
 
 The Packet Copying Functions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In order to perform SW packet copy, there are user-defined functions to the first copy
 the packet metadata (``pktmbuf_metadata_copy()``) and then the packet data

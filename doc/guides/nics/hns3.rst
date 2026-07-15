@@ -2,7 +2,7 @@
     Copyright(c) 2018-2019 HiSilicon Limited.
 
 HNS3 Poll Mode Driver
-===============================
+=====================
 
 The hns3 PMD (**librte_net_hns3**) provides poll mode driver support
 for the inbuilt HiSilicon Network Subsystem(HNS) network engine

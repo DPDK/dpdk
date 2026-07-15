@@ -353,7 +353,7 @@ To use this feature the user must set the devarg on process start as a device ad
 
 
 Running QAT PMD with Intel IPsec MB library
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The QAT PMD requires IPsec MB library
 for HMAC partial hash calculation in symmetric precomputes function.

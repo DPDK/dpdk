@@ -5,7 +5,7 @@ Installing DPDK Using the meson build system
 ============================================
 
 Summary
---------
+-------
 For many platforms, compiling and installing DPDK should work using the
 following set of commands::
 
@@ -29,7 +29,7 @@ More detail on each of these steps can be got from the following sections.
 
 
 Getting the Tools
-------------------
+-----------------
 
 The ``meson`` tool is used to configure a DPDK build. On most Linux
 distributions this can be got using the local package management system,
@@ -54,7 +54,7 @@ It is best advised to go over the following links for the complete dependencies:
 
 
 Configuring the Build
-----------------------
+---------------------
 
 To configure a build, run the meson tool, passing the path to the directory
 to be used for the build e.g. ``meson setup build``, as shown above. If calling
@@ -150,7 +150,7 @@ example::
 
 
 Performing the Build
----------------------
+--------------------
 
 Use ``ninja`` to perform the actual build inside the build folder
 previously configured. In most cases no arguments are necessary.
@@ -163,7 +163,7 @@ printing each command on a new line as it runs.
 
 
 Installing the Compiled Files
-------------------------------
+-----------------------------
 
 Use ``meson install`` to install the required DPDK files onto the system.
 The install prefix defaults to ``/usr/local`` but can be used as with other
@@ -205,7 +205,7 @@ and other build tools to be used, as well as characteristics of the target
 machine.
 
 Using the DPDK within an Application
--------------------------------------
+------------------------------------
 
 To compile and link against DPDK within an application, pkg-config should
 be used to query the correct parameters. Examples of this are given in the

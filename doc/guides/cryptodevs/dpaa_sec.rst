@@ -77,7 +77,7 @@ AEAD algorithms:
 * ``RTE_CRYPTO_AEAD_AES_GCM``
 
 Supported DPAA SoCs
---------------------
+-------------------
 
 * LS1046A/LS1026A
 * LS1043A/LS1023A

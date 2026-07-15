@@ -740,7 +740,7 @@ TB-mode. CB-mode is a reduced version, where only one CB exists:
     Turbo decoding of Code Blocks in mbuf structure
 
 BBDEV LDPC Encode Operation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The operation flags that can be set for each LDPC encode operation are
 given below.
@@ -883,7 +883,7 @@ showing the Turbo encoding of CBs using BBDEV interface in TB-mode
 is also valid for LDPC encode.
 
 BBDEV LDPC Decode Operation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The operation flags that can be set for each LDPC decode operation are
 given below.

@@ -168,7 +168,7 @@ After that, VFIO can be used with hardware devices as usual.
    in situations where IOMMU is not available.
 
 VFIO Memory Mapping Limits
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For DMA mapping of either external memory or hugepages, VFIO interface is used.
 VFIO does not support partial unmap of once mapped memory. Hence DPDK's memory is
@@ -198,7 +198,7 @@ Alternatively, one can also change this value in an already loaded kernel module
    echo 512000 > /sys/module/vfio_iommu_type1/parameters/dma_entry_limit
 
 Creating Virtual Functions using vfio-pci
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Since Linux version 5.7,
 the ``vfio-pci`` module supports the creation of virtual functions.

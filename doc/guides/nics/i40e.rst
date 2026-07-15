@@ -2,7 +2,7 @@
     Copyright(c) 2016 Intel Corporation.
 
 I40E Poll Mode Driver
-======================
+=====================
 
 The i40e PMD (**librte_net_i40e**) provides poll mode driver support for
 10/25/40 Gbps Intel® Ethernet 700 Series Network Adapters based on
@@ -447,7 +447,7 @@ Check the flow director status:
 
 
 Floating VEB
-~~~~~~~~~~~~~
+~~~~~~~~~~~~
 
 The Intel® Ethernet 700 Series support a feature called
 "Floating VEB".
@@ -550,7 +550,7 @@ For example, to use only 48bit prefix for IPv6 src address for IPv6 TCP RSS:
    testpmd> port config 0 pctype 43 hash_inset set field 15
 
 Queue region configuration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 The Intel® Ethernet 700 Series supports a feature of queue regions
 configuration for RSS in the PF, so that different traffic classes or
 different packet classification types can be separated to different
@@ -572,7 +572,7 @@ APIs are used.
    testpmd> show port (port_id) queue-region
 
 Generic flow API
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 - ``RSS Flow``
 

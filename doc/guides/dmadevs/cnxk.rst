@@ -22,7 +22,7 @@ Prerequisites and Compilation procedure
 See :doc:`../platform/cnxk` for setup information.
 
 Device Setup
--------------
+------------
 
 The ``dpdk-devbind.py`` script, included with DPDK,
 can be used to show the presence of supported hardware.

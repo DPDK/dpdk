@@ -82,7 +82,7 @@ Supported Asymmetric Algorithms
 .. include:: overview_asym_table.txt
 
 Supported Operating Systems
--------------------------------
+---------------------------
 
 .. _table_crypto_pmd_os:
 

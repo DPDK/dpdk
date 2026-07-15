@@ -141,7 +141,7 @@ and <MAC address> being the desired MAC address.
 
 
 Is it safe to add an entry to the hash table while running?
-------------------------------------------------------------
+-----------------------------------------------------------
 Currently the table implementation is not a thread safe implementation and assumes that locking between threads and processes is handled by the user's application.
 This is likely to be supported in future releases.
 

@@ -2,7 +2,7 @@
     Copyright(c) 2018 Cavium Networks.
 
 ZLIB Compression Poll Mode Driver
-==================================
+=================================
 
 The ZLIB PMD (**librte_compress_zlib**) provides poll mode compression &
 decompression driver based on SW zlib library,

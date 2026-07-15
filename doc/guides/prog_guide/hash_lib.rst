@@ -73,7 +73,7 @@ multi-process mode).
 
 
 Multi-thread support
----------------------
+--------------------
 
 The hash library supports multithreading, and the user specifies the needed mode of operation at the creation time of the hash table
 by appropriately setting the flag. In all modes of operation lookups are thread-safe meaning lookups can be called from multiple
@@ -106,7 +106,7 @@ For concurrent writes, and concurrent reads and writes the following flag values
 
 
 Extendable Bucket Functionality support
-----------------------------------------
+---------------------------------------
 An extra flag is used to enable this functionality (flag is not set by default). When the (RTE_HASH_EXTRA_FLAGS_EXT_TABLE) is set and
 in the very unlikely case due to excessive hash collisions that a key has failed to be inserted, the hash table bucket is extended with a linked
 list to insert these failed keys. This feature is important for the workloads (e.g. telco workloads) that need to insert up to 100% of the
@@ -178,7 +178,7 @@ readers are not referencing the position anymore. User can configure integrated 
 
 
 Implementation Details (with Extendable Bucket)
--------------------------------------------------
+-----------------------------------------------
 When the RTE_HASH_EXTRA_FLAGS_EXT_TABLE flag is set, the hash table implementation still uses the same Cuckoo Hash algorithm to store the keys into
 the first and second tables. However, in the very unlikely event that a key can't be inserted after certain number of the Cuckoo displacements is
 reached, the secondary bucket of this key is extended

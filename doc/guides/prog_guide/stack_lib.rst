@@ -40,7 +40,7 @@ spinlock.
 .. _Stack_Library_LF_Stack:
 
 Lock-free Stack
-------------------
+---------------
 
 The lock-free stack consists of a linked list of elements, each containing a
 data pointer and a next pointer, and an atomic stack depth counter. The

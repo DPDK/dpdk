@@ -579,7 +579,7 @@ Casts and sizeof
   The redundant parenthesis rules do not apply to sizeof(var) instances.
 
 C Function Definition, Declaration and Use
--------------------------------------------
+------------------------------------------
 
 Prototypes
 ~~~~~~~~~~

@@ -49,7 +49,7 @@ FPGA LTE FEC does not support the following:
 
 
 Installation
---------------
+------------
 
 Section 3 of the DPDK manual provides instructions on installing and compiling DPDK.
 
@@ -80,7 +80,7 @@ For more details on how to bind the PF device and create VF devices, see
 
 
 Configure the VFs through PF
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The PCI virtual functions must be configured before working or getting assigned
 to VMs/Containers. The configuration involves allocating the number of hardware

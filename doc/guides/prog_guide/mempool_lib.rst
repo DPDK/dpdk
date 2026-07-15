@@ -117,7 +117,7 @@ In contrast to the default caches, user-owned caches can be used by unregistered
 .. _Mempool_Handlers:
 
 Mempool Handlers
-------------------------
+----------------
 
 This allows external memory subsystems, such as external hardware memory
 management systems and software based memory allocators, to be used with DPDK.

@@ -1866,7 +1866,7 @@ To have a different decapsulation header, one of those commands must be called
 before the flow rule creation.
 
 Config Raw Encapsulation
-~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Configure the raw data to be used when encapsulating a packet by
 rte_flow_action_raw_encap::
@@ -2158,7 +2158,7 @@ Switch on/off deferred start of a specific port queue::
    testpmd> port (port_id) (rxq|txq) (queue_id) deferred_start (on|off)
 
 port setup queue
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 Setup a rx/tx queue on a specific port::
 
@@ -2952,7 +2952,7 @@ Suspend port traffic management hierarchy node
    testpmd> suspend port tm node (port_id) (node_id)
 
 Resume port traffic management hierarchy node
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
    testpmd> resume port tm node (port_id) (node_id)
 
@@ -4961,7 +4961,7 @@ Query indirect action having id 100::
    testpmd> flow indirect_action 0 query 100
 
 Enqueueing query of indirect actions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``flow queue indirect_action query`` adds query operation for an indirect
 action to a queue. It is bound to ``rte_flow_async_action_handle_query()``::
@@ -5359,7 +5359,7 @@ ESP rules can be created by the following commands::
         actions queue index 3 / end
 
 Sample AH rules
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 AH rules can be created by the following commands::
 
@@ -5567,7 +5567,7 @@ Match with comparison rule can be created as following using ``compare``.
 	     actions count / drop / end
 
 BPF Functions
---------------
+-------------
 
 The following sections show functions to load/unload eBPF based filters.
 

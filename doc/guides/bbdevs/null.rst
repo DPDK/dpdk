@@ -2,7 +2,7 @@
     Copyright(c) 2017 Intel Corporation
 
 BBDEV null Poll Mode Driver
-============================
+===========================
 
 The (**baseband_null**) is a bbdev poll mode driver which provides a minimal
 implementation of a software bbdev device. As a null device it does not modify

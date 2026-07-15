@@ -379,7 +379,7 @@ implementation of vBF does not support deletion [1]_. An error code ``-EINVAL`` 
 .. [1] Traditional bloom filter does not support proactive deletion. Supporting proactive deletion require additional implementation and performance overhead.
 
 References
------------
+----------
 
 [Member-bloom] B H Bloom, "Space/Time Trade-offs in Hash Coding with Allowable Errors," Communications of the ACM, 1970.
 

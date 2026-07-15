@@ -571,7 +571,7 @@ Following statuses can be used:
     OK
 
 LDPC decoder test vectors template
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For LDPC decoder it has to be always set to ``RTE_BBDEV_OP_LDPC_DEC``
 
@@ -695,7 +695,7 @@ Following statuses can be used:
 
 
 LDPC encoder test vectors template
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For turbo encoder it has to be always set to ``RTE_BBDEV_OP_LDPC_ENC``
 

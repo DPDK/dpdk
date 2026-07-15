@@ -2,7 +2,7 @@
     Copyright(c) 2019-2020 Intel Corporation.
 
 AF_XDP Poll Mode Driver
-==========================
+=======================
 
 AF_XDP is an address family that is optimized for high performance
 packet processing. AF_XDP sockets enable the possibility for an XDP program to

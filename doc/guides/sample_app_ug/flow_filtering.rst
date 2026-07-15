@@ -172,7 +172,7 @@ This action closes the port and device using ``rte_eth_dev_stop`` and ``rte_eth_
 
 
 Flow API Snippets
-------------------
+-----------------
 
 The ``snippets`` directory offers additional customization options through code snippets.
 These snippets cover various aspects of flow configuration, allowing developers to reuse them.

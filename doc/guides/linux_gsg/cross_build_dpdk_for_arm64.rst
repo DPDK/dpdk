@@ -186,7 +186,7 @@ LLVM/Clang toolchain
 --------------------
 
 Obtain the cross toolchain
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The latest LLVM/Clang cross compiler toolchain can be downloaded from:
 https://developer.arm.com/tools-and-software/open-source-software/developer-tools/llvm-toolchain.

@@ -691,7 +691,7 @@ Example command to run perf queue test with event DMA adapter:
                --prod_type_dmadev --dma_adptr_mode=1
 
 PERF_ATQ Test
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
 
 This is a performance test case that aims at testing the following with
 ``all types queue`` eventdev scheme.
@@ -922,7 +922,7 @@ Example command to run pipeline atq test with vector events:
         --enable_vector  --vector_size 512
 
 PIPELINE_ATQ Test
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 
 This is a pipeline test case that aims at testing the following with
 ``all types queue`` eventdev scheme.

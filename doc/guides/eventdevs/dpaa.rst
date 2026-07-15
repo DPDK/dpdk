@@ -2,7 +2,7 @@
    Copyright 2017 NXP
 
 NXP DPAA Eventdev Driver
-=========================
+========================
 
 The dpaa eventdev is an implementation of the eventdev API, that provides a
 wide range of the eventdev features. The eventdev relies on a dpaa based
@@ -23,7 +23,7 @@ The DPAA EVENTDEV implements many features in the eventdev API;
 - Atomic flows
 
 Supported DPAA SoCs
---------------------
+-------------------
 
 - LS1046A/LS1026A
 - LS1043A/LS1023A

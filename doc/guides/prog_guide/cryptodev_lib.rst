@@ -158,7 +158,7 @@ packet processing pipeline.
 
 
 Device Features and Capabilities
----------------------------------
+--------------------------------
 
 Crypto devices define their functionality through two mechanisms, global device
 features and algorithm capabilities. Global devices features identify device

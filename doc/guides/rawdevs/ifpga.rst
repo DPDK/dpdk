@@ -2,7 +2,7 @@
     Copyright(c) 2018-2022 Intel Corporation.
 
 IFPGA Rawdev Driver
-======================
+===================
 
 FPGA is used more and more widely in Cloud and NFV, one primary reason is
 that FPGA not only provides ASIC performance but also it's more flexible
@@ -203,7 +203,7 @@ Each AFU device has specific configuration data, they are defined in ``rte_pmd_a
 
 
 Open FPGA Stack
-=====================
+===============
 
 Open FPGA Stack (OFS) is a collection of RTL and open source software providing
 interfaces to access the instantiated RTL easily in an FPGA. OFS leverages the

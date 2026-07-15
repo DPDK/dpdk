@@ -152,7 +152,7 @@ To accommodate future custom implementations function pointers
 model is used for both *crypto_prepare* and *process* implementations.
 
 SA database API
-----------------
+---------------
 
 SA database(SAD) is a table with <key, value> pairs.
 
@@ -322,7 +322,7 @@ Supported features
 
 
 Telemetry support
-------------------
+-----------------
 
 Telemetry support implements SA details and IPsec packet add data counters
 statistics. Per SA telemetry statistics can be enabled using

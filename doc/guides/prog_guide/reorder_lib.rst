@@ -2,13 +2,13 @@
     Copyright(c) 2015 Intel Corporation.
 
 Reorder Library
-=================
+===============
 
 The Reorder Library provides a mechanism for reordering mbufs based on their
 sequence number.
 
 Operation
-----------
+---------
 
 The reorder library is essentially a buffer that reorders mbufs.
 The user inserts out of order mbufs into the reorder buffer and pulls in-order
@@ -34,7 +34,7 @@ mbufs.
 
 
 Implementation Details
--------------------------
+----------------------
 
 The reorder library is implemented as a pair of buffers, which referred to as
 the *Order* buffer and the *Ready* buffer.
@@ -67,7 +67,7 @@ buffer first and then from the Order buffer until a gap is found (mbufs that
 have not arrived yet).
 
 Use Case: Packet Distributor
--------------------------------
+----------------------------
 
 An application using the DPDK packet distributor could make use of the reorder
 library to transmit packets in the same order they were received.

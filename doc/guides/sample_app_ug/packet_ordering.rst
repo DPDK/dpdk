@@ -2,7 +2,7 @@
     Copyright(c) 2015 Intel Corporation.
 
 Packet Ordering Application
-============================
+===========================
 
 The Packet Ordering sample app simply shows the impact of reordering a stream.
 It's meant to stress the library with different configurations for performance.

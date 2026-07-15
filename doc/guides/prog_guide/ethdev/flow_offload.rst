@@ -619,7 +619,7 @@ Matches tag item set by other flows. Multiple tags are supported by specifying
    +----------+-----------+---------------------------------------+
 
 Item: ``META``
-^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^
 
 Matches 32 bit metadata item set.
 
@@ -1314,7 +1314,7 @@ Matches a IP Authentication Header (RFC 4302).
 - Default ``mask`` matches spi.
 
 Item: ``HIGIG2``
-^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^
 
 Matches a HIGIG2 header field. It is layer 2.5 protocol and used in
 Broadcom switches.
@@ -2464,7 +2464,7 @@ the original packet the resulting packet must be a valid packet.
    +----------------+----------------------------------------+
 
 Action: ``RAW_DECAP``
-^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^
 
 Remove outer header whose template is provided in its data buffer,
 as defined in the ``rte_flow_action_raw_decap``
@@ -2587,7 +2587,7 @@ This action modifies the payload of matched flow
 and the packet should be valid after removing.
 
 Action: ``SET_TP_SRC``
-^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
 This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Set a new source port number in the outermost TCP/UDP header.
@@ -2606,7 +2606,7 @@ flow pattern item. Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
    +---------------+--------------------+
 
 Action: ``SET_TP_DST``
-^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
 This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Set a new destination port number in the outermost TCP/UDP header.
@@ -2625,7 +2625,7 @@ flow pattern item. Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
    +---------------+-------------------------+
 
 Action: ``MAC_SWAP``
-^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
 
 Swap the source and destination MAC addresses in the outermost Ethernet
 header.
@@ -2779,7 +2779,7 @@ application. Multiple tags are supported by specifying index.
    +-----------+----------------------------+
 
 Action: ``SET_META``
-^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
 This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Set metadata. Item ``META`` matches metadata.

@@ -210,7 +210,7 @@ All settings are managed through the bonding port API and always are propagated
 in one direction (from bonding to members).
 
 Link Status Change Interrupts / Polling
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Link bonding devices support the registration of a link status change callback,
 using the ``rte_eth_dev_callback_register`` API, this will be called when the

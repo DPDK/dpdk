@@ -1567,7 +1567,7 @@ The source files for the DPDK dropper are located at:
 *   DPDK/lib/sched/rte_red.c
 
 Integration with the DPDK QoS Scheduler
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 RED functionality in the DPDK QoS scheduler is disabled by default.
 The parameter is found in the build configuration files in the DPDK/config directory.

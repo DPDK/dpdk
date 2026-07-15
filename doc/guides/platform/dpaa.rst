@@ -9,7 +9,7 @@ based layerscape platform and information about common offload
 hw block drivers of **NXP QorIQ DPAA** SoC family.
 
 Supported DPAA SoCs
---------------------
+-------------------
 
 * LS1046A/LS1026A
 * LS1043A/LS1023A

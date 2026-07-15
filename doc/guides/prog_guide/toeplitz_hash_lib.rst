@@ -186,7 +186,7 @@ same as in ``desired_hash``.
 
 
 Adjust tuple API
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 The ``rte_thash_get_complement()`` function is a user-friendly wrapper around
 a number of other functions. It alters a passed tuple to meet the above

@@ -136,7 +136,7 @@ Utility Libraries
 
 
 Howto Guides
--------------
+------------
 
 .. toctree::
     :maxdepth: 1

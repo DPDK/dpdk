@@ -156,7 +156,7 @@ each Rx queue uses its own mempool.
     :dedent: 1
 
 Packet Reassembly and Forwarding
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For each input packet, the packet forwarding operation is done by the l3fwd_simple_forward() function.
 If the packet is an IPv4 or IPv6 fragment, then it calls ``rte_ipv4_reassemble_packet()`` for IPv4 packets,

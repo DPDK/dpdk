@@ -2,7 +2,7 @@
     Copyright(c) 2020 Intel Corporation.
 
 VMDq Forwarding Sample Application
-==========================================
+==================================
 
 The VMDq Forwarding sample application is a simple example of packet processing using the DPDK.
 The application performs L2 forwarding using VMDq to divide the incoming traffic into queues.

@@ -134,7 +134,7 @@ This function calls the start callback of the eventdev PMD if supported,
 and the ``rte_service_run_state_set()`` to enable the service function if one exists.
 
 Enqueuing Packets to the Adapter
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The application needs to notify the adapter about the transmit port and queue used
 to send the packet. The transmit port is set in the ``struct rte_mbuf::port`` field

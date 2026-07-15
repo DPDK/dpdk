@@ -2,7 +2,7 @@
     Copyright(c) 2020 Intel Corporation
 
 Intel(R) ACC100 5G/4G FEC Poll Mode Drivers
-======================================================
+===========================================
 
 The BBDEV ACC100 5G/4G FEC poll mode driver (PMD) supports an
 implementation of a VRAN FEC wireless acceleration function.

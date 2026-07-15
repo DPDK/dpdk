@@ -288,7 +288,7 @@ added to the Release Notes:
 .. _new_abi_version:
 
 New ABI versions
-------------------
+----------------
 
 A new ABI version may be declared aligned with a given release.
 The requirement to preserve compatibility with the previous major ABI version

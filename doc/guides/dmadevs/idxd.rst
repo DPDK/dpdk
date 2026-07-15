@@ -14,7 +14,7 @@ data operations, such as data copies, to hardware, freeing up CPU cycles for
 other tasks.
 
 Hardware Requirements
-----------------------
+---------------------
 
 The ``dpdk-devbind.py`` script, included with DPDK, can be used to show the
 presence of supported hardware. Running ``dpdk-devbind.py --status-dev dma``
@@ -24,13 +24,13 @@ as devices with type “0b25”, due to the absence of pci-id database entries f
 them at this point.
 
 Compilation
-------------
+-----------
 
 For builds using ``meson`` and ``ninja``, the driver will be built when the
 target platform is x86-based. No additional compilation steps are necessary.
 
 Device Setup
--------------
+------------
 
 Intel\ |reg| DSA devices can use the IDXD kernel driver or DPDK-supported drivers,
 such as ``vfio-pci``. Both are supported by the IDXD PMD.
@@ -42,7 +42,7 @@ such as ``vfio-pci``. Both are supported by the IDXD PMD.
    Multi-process is not supported when using the kernel IDXD driver.
 
 Intel\ |reg| DSA devices using IDXD kernel driver
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To use an Intel\ |reg| DSA device bound to the IDXD kernel driver, the device must first be configured.
 The `accel-config <https://github.com/intel/idxd-config>`_ utility library can be used for configuration.
@@ -121,7 +121,7 @@ giving each an equal share of resources::
 
 
 Devices using VFIO/UIO drivers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The HW devices to be used will need to be bound to a user-space IO driver for use.
 The ``dpdk-devbind.py`` script can be used to view the state of the devices
@@ -138,7 +138,7 @@ For example::
    ``0000:6a:01.0-q0``, ``00006a:01.0-q1``, etc.
 
 Device Probing and Initialization
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For devices bound to a suitable DPDK-supported VFIO/UIO driver, the HW devices will
 be found as part of the device scan done at application initialization time without
@@ -177,12 +177,12 @@ that is a "DMA device type" inside DPDK, and can be accessed using APIs from the
 ``rte_dmadev`` library.
 
 Using IDXD DMAdev Devices
---------------------------
+-------------------------
 
 To use the devices from an application, the dmadev API can be used.
 
 Device Configuration
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 IDXD configuration requirements:
 
@@ -195,7 +195,7 @@ Once configured, the device can then be made ready for use by calling the
 ``rte_dma_start()`` API.
 
 Performing Data Copies
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 Refer to the :ref:`Enqueue / Dequeue APIs <dmadev_enqueue_dequeue>` section of the dmadev library
 documentation for details on operation enqueue, submission and completion API usage.

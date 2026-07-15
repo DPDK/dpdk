@@ -96,7 +96,7 @@ Prerequisites
 * A PTP time transmitter reachable on the same L2 network.
 
 Start the relay
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 .. code-block:: console
 

@@ -212,7 +212,7 @@ variables:
 Normally, these options do not need to be changed.
 
 Runtime Override of Per-Page-Size Memory Limits
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 By default, DPDK uses compile-time configured limits
 for memory allocation per page size (as set by ``RTE_MAX_MEM_MB_PER_TYPE``).

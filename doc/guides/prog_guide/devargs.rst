@@ -217,7 +217,7 @@ See :doc:`device_hotplug` for detailed information on runtime device management.
 
 
 Parsing Devargs in Drivers
----------------------------
+--------------------------
 
 PMD drivers can parse devargs using the kvargs library:
 

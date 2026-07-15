@@ -2,7 +2,7 @@
     Copyright(c) 2018 Intel Corporation.
 
 ICE Poll Mode Driver
-======================
+====================
 
 The ice PMD (**librte_net_ice**) provides poll mode driver support for
 10/25/50/100/200 Gbps Intel® Ethernet 800 Series Network Adapters based on
@@ -400,7 +400,7 @@ report a MDD event and drop the packets.
 The APPs based on DPDK should avoid providing such packets.
 
 Device Config Function (DCF)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This section demonstrates ICE DCF PMD, which shares the core module with ICE
 PMD and iAVF PMD.

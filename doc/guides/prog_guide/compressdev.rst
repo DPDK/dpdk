@@ -291,7 +291,7 @@ enough to store digest, which is 20 bytes for SHA-1 and
 32 bytes for SHA2-256.
 
 Compression API Stateless operation
-------------------------------------
+-----------------------------------
 
 An op is processed stateless if it has
 - op_type set to RTE_COMP_OP_STATELESS
@@ -305,7 +305,7 @@ complete. The application can enqueue multiple stateless ops in a single burst
 and must attach priv_xform handle to such ops.
 
 priv_xform in Stateless operation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A priv_xform is private data managed internally by the PMD to do stateless processing.
 A priv_xform is initialized by an application providing a generic xform structure
@@ -427,7 +427,7 @@ processed i.e. dequeued with status = RTE_COMP_OP_STATUS_SUCCESS.
 .. _compressdev_stateful_op:
 
 Compression API Stateful operation
------------------------------------
+----------------------------------
 
 The compression API provides RTE_COMP_FF_STATEFUL_COMPRESSION and
 RTE_COMP_FF_STATEFUL_DECOMPRESSION feature flag for the PMD to reflect

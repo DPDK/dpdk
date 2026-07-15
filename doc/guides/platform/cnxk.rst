@@ -143,7 +143,7 @@ The primary use case for SDP is to enable the smart NIC use case. Typical usage 
    vice-versa.
 
 cnxk packet flow
-----------------------
+----------------
 
 The :numref:`figure_cnxk_packet_flow_hw_accelerators` diagram depicts
 the packet flow on cnxk SoC in conjunction with use of various HW accelerators.

@@ -360,7 +360,7 @@ For example:
      }
 
 Custom Memory Hooks
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
 
 The ACL library supports custom memory allocation for runtime structures.
 

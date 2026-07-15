@@ -2,7 +2,7 @@
     Copyright(c) 2017 Intel Corporation.
 
 OPDL Eventdev Poll Mode Driver
-==================================
+==============================
 
 The OPDL (Ordered Packet Distribution Library) eventdev is a specific\
 implementation of the eventdev API. It is particularly suited to packet\

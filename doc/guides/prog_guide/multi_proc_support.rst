@@ -324,7 +324,7 @@ pointer. The resulting response will then be delivered to the correct requestor.
     to do so will cause the requestor to time out while waiting on a response.
 
 Misc considerations
-~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
 
 Due to the underlying IPC implementation being single-threaded, recursive
 requests (i.e. sending a request while responding to another request) is not

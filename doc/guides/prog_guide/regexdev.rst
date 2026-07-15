@@ -147,7 +147,7 @@ require global locks and hinder performance.
 
 
 Device Features and Capabilities
----------------------------------
+--------------------------------
 
 RegEx devices may support different feature set.
 In order to get the supported PMD feature ``rte_regexdev_info_get``

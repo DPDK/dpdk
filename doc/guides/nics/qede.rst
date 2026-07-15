@@ -3,7 +3,7 @@
     Copyright(c) 2017 Cavium, Inc
 
 QEDE Poll Mode Driver
-======================
+=====================
 
 The QEDE poll mode driver library (**librte_net_qede**) implements support
 for **QLogic FastLinQ QL4xxxx 10G/25G/40G/50G/100G Intelligent Ethernet Adapters (IEA) and Converged Network Adapters (CNA)** family of adapters as well as SR-IOV virtual functions (VF). It is supported on

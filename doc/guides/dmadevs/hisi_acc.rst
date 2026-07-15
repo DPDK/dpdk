@@ -16,7 +16,7 @@ Supported Kunpeng SoCs
 
 
 Device Setup
--------------
+------------
 
 In order to use the device in DPDK, user should
 insmod `uacce.ko`, `hisi_qm.ko`
@@ -45,7 +45,7 @@ named ``hisi_zip-0-dma0`` and ``hisi_zip-0-dma1``.
    and algorithms contain ``udma``.
 
 Device Configuration
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 Configuration requirements:
 
