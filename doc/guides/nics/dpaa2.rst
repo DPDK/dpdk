@@ -638,7 +638,7 @@ The following capabilities are supported:
 Usage example
 ~~~~~~~~~~~~~
 
-For a detailed usage description please refer to "Traffic Management" section in DPDK :doc:`../testpmd_app_ug/testpmd_funcs`.
+For a detailed usage description please refer to :ref:`testpmd_traffic_management`.
 
 #. Run testpmd as follows:
 

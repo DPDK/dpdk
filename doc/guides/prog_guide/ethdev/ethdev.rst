@@ -360,8 +360,8 @@ Two scenarios exist where an application may want the mbuf released immediately:
   for each destination interface used
   to request it to release all used mbufs.
 
-To determine if a driver supports this API, check for the *Free Tx mbuf on demand* feature
-in the *Network Interface Controller Drivers* document.
+To determine if a driver supports this API, check for the
+:ref:`nic_features_free_tx_mbuf_on_demand` feature.
 
 
 Hardware Offload

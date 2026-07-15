@@ -616,8 +616,7 @@ Usage example
 
 		testpmd> flow create 0 ingress pattern ipv4 src is 10.10.10.1 / end actions meter mtr_id 0 / end
 
-For a detailed usage description please refer to "Traffic Metering and Policing" section in DPDK :doc:`Testpmd Runtime Functions <../testpmd_app_ug/testpmd_funcs>`.
-
+For a detailed usage description please refer to :ref:`testpmd_traffic_metering_and_policing`.
 
 
 .. _tmapi:
@@ -672,7 +671,7 @@ The following capabilities are not supported:
 Usage example
 ~~~~~~~~~~~~~
 
-For a detailed usage description please refer to "Traffic Management" section in DPDK :doc:`../testpmd_app_ug/testpmd_funcs`.
+For a detailed usage description please refer to :ref:`testpmd_traffic_management`.
 
 #. Run testpmd as follows:
 

@@ -43,8 +43,7 @@ two additional command-line parameters are available to the EAL:
 *   ``--file-prefix:`` to allow processes that do not want to co-operate to have different memory regions
 
 A number of example applications are provided that demonstrate how multiple DPDK processes can be used together.
-These are more fully documented in the "Multi- process Sample Application" chapter
-in the *DPDK Sample Application's User Guide*.
+These are more fully documented in :doc:`/sample_app_ug/multi_process`.
 
 Memory Sharing
 --------------
@@ -91,7 +90,7 @@ In this model, the first of the processes spawned should be spawned using the ``
 while all subsequent instances should be spawned using the ``--proc-type=secondary`` flag.
 
 The simple_mp and symmetric_mp sample applications demonstrate this usage model.
-They are described in the "Multi-process Sample Application" chapter in the *DPDK Sample Application's User Guide*.
+They are described in :doc:`/sample_app_ug/multi_process`.
 
 Asymmetric/Non-Peer Processes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -102,7 +101,7 @@ server distributing received packets among worker or client threads, which are r
 In this case, extensive use of rte_ring objects is made, which are located in shared hugepage memory.
 
 The client_server_mp sample application shows this usage model.
-It is described in the "Multi-process Sample Application" chapter in the *DPDK Sample Application's User Guide*.
+It is described in :doc:`/sample_app_ug/multi_process`.
 
 Running Multiple Independent DPDK Applications
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

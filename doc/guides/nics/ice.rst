@@ -19,8 +19,8 @@ Linux Prerequisites
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
-- To get better performance on Intel platforms, please follow the "How to get best performance with NICs on Intel platforms"
-  section of the :ref:`Getting Started Guide for Linux <linux_gsg>`.
+- To get better performance on Intel platforms,
+  please follow :doc:`/linux_gsg/nic_perf_intel_platform`.
 
 - Please follow the matching list to download specific kernel driver, firmware and DDP package from
   `https://www.intel.com/content/www/us/en/search.html?ws=text#q=e810&t=Downloads&layout=table`.

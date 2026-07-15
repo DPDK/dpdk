@@ -30,8 +30,7 @@ AXGBE PMD has support for:
 Building DPDK
 -------------
 
-See the :ref:`DPDK Getting Started Guide for Linux <linux_gsg>` for
-instructions on how to build DPDK.
+See :doc:`/linux_gsg/build_dpdk` for instructions.
 
 By default the AXGBE PMD library will be built into the DPDK library.
 

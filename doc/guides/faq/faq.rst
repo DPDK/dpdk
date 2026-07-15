@@ -6,7 +6,7 @@ What does "EAL: map_all_hugepages(): open failed: Permission denied Cannot init 
 
 This is most likely due to the test application not being run with sudo to promote the user to a superuser.
 Alternatively, applications can also be run as regular user.
-For more information, please refer to :ref:`DPDK Getting Started Guide <linux_gsg>`.
+For more information, please refer to :ref:`Running_Without_Root_Privileges`.
 
 
 If I want to change the number of hugepages allocated, how do I remove the original pages allocated?

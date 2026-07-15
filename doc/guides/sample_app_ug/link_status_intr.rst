@@ -84,8 +84,8 @@ Driver Initialization
 ~~~~~~~~~~~~~~~~~~~~~
 
 The main part of the code in the main() function relates to the initialization of the driver.
-To fully understand this code, it is recommended to study the chapters that related to the Poll Mode Driver in the
-*DPDK Programmer's Guide and the DPDK API Reference*.
+To fully understand this code, it is recommended to study
+:doc:`/prog_guide/ethdev/ethdev` and the DPDK API Reference.
 
 .. literalinclude:: ../../../examples/link_status_interrupt/main.c
         :language: c

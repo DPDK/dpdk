@@ -2439,6 +2439,8 @@ manage link bonding devices from within testpmd interactive prompt.
 
 See :doc:`../prog_guide/link_bonding_poll_mode_drv_lib` for more information.
 
+.. _testpmd_traffic_metering_and_policing:
+
 Traffic Metering and Policing
 -----------------------------
 
@@ -2650,6 +2652,8 @@ where:
 
 * ``clear``: Flag that indicates whether the statistics counters should
   be cleared (i.e. set to zero) immediately after they have been read or not.
+
+.. _testpmd_traffic_management:
 
 Traffic Management
 ------------------

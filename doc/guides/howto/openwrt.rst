@@ -150,7 +150,7 @@ Running DPDK
 ~~~~~~~~~~~~
 
 More detailed info about how to run a DPDK application please refer to
-``Running DPDK Applications`` section of :ref:`the DPDK documentation <linux_gsg>`.
+:ref:`linux_gsg_running_apps`.
 
 .. note::
 

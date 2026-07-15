@@ -24,8 +24,8 @@ Prerequisites
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
-- To get better performance on Intel platforms, please follow the "How to get best performance with NICs on Intel platforms"
-  section of the :ref:`Getting Started Guide for Linux <linux_gsg>`.
+- To get better performance on Intel platforms,
+  please follow :doc:`/linux_gsg/nic_perf_intel_platform`.
 
 
 Configuration

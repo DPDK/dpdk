@@ -233,4 +233,5 @@ This application classifies based on the QinQ double VLAN tags and the IP destin
    |                | Lowest Priority TC: 4   | class (Best effort) serviced in WRR              |                                  |
    +----------------+-------------------------+--------------------------------------------------+----------------------------------+
 
-Please refer to the "QoS Scheduler" chapter in the *DPDK Programmer's Guide* for more information about these parameters.
+Please refer to the :doc:`/prog_guide/ethdev/qos_framework`
+for more information about these parameters.

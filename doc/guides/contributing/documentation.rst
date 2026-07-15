@@ -58,6 +58,8 @@ Role of the Documentation
 The following items outline the roles of the different parts of the documentation and when they need to be updated or
 added to by the developer.
 
+.. _contrib_doc_guidelines_release_notes:
+
 * **Release Notes**
 
   The Release Notes document which features have been added in the current and previous releases of DPDK and highlight

@@ -178,8 +178,9 @@ Driver Initialization
 
 The main part of the code in the ``main()`` function relates to the initialization
 of the driver. To fully understand this code, it is recommended to study the
-chapters related to the Poll Mode and Event mode Driver in the
-*DPDK Programmer's Guide* - Rel 1.4 EAR and the *DPDK API Reference*.
+chapters related to :doc:`/prog_guide/ethdev/ethdev`
+and :doc:`/prog_guide/eventdev/eventdev`,
+as well as the DPDK API Reference.
 
 .. literalinclude:: ../../../examples/l2fwd-event/main.c
         :language: c

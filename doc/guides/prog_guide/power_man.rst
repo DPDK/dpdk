@@ -290,10 +290,6 @@ Get Num Dies
 References
 ----------
 
-*   The :doc:`../sample_app_ug/l3_forward_power_man`
-    chapter in the :doc:`../sample_app_ug/index` section.
-
-*   The :doc:`../sample_app_ug/vm_power_management`
-    chapter in the :doc:`../sample_app_ug/index` section.
-
-*   The :doc:`../nics/overview` chapter in the :doc:`../nics/index` section
+* :doc:`../sample_app_ug/l3_forward_power_man`
+* :doc:`../sample_app_ug/vm_power_management`
+* :doc:`../nics/overview`

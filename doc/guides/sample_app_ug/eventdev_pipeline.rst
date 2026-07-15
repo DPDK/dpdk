@@ -61,8 +61,8 @@ will print an error message:
           rx: 0
           tx: 1
 
-Configuration of the eventdev is covered in detail in the programmers guide,
-see the Event Device Library section.
+Configuration of the eventdev is covered in detail in the programmer's guide,
+see :doc:`/prog_guide/eventdev/eventdev`.
 
 
 Observing the Application
@@ -143,5 +143,6 @@ transmitted, and an overview of the distribution of work across worker cores.
 To get a full dump of the state of the eventdev PMD, pass the ``-D`` flag to
 this application. When the app is terminated using ``Ctrl+C``, the
 ``rte_event_dev_dump()`` function is called, resulting in a dump of the
-statistics that the PMD provides. The statistics provided depend on the PMD
-used, see the Event Device Drivers section for a list of eventdev PMDs.
+statistics that the PMD provides.
+The statistics provided depend on the PMD used,
+see :doc:`/eventdevs/index` for a list of eventdev PMDs.

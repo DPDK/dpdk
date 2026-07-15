@@ -39,9 +39,9 @@ Copy the DPDK application binary to your target, then run the application as fol
 .. note::
 
     The ``--proc-type`` and ``--file-prefix`` EAL options are used for running
-    multiple DPDK processes. See the "Multi-process Sample Application"
-    chapter in the *DPDK Sample Applications User Guide* and the *DPDK
-    Programmers Guide* for more details.
+    multiple DPDK processes.
+    See :doc:`/sample_app_ug/multi_process`
+    and :doc:`/prog_guide/multi_proc_support` for more details.
 
 Logical Core Use by Applications
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -123,5 +123,5 @@ Additional Sample Applications
 
 Additional sample applications are included in the DPDK examples directory.
 These sample applications may be built and run in a manner similar to that described in earlier sections in this manual.
-In addition, see the *DPDK Sample Applications User Guide* for a description of the application,
+In addition, see :doc:`/sample_app_ug/index` for descriptions of the applications,
 specific instructions on compilation and execution and some explanation of the code.

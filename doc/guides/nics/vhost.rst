@@ -10,7 +10,7 @@ The user can handle virtqueues as one of normal DPDK port.
 Vhost Implementation in DPDK
 ----------------------------
 
-Please refer to Chapter "Vhost Library" of *DPDK Programmer's Guide* to know detail of vhost.
+Please refer to :doc:`/prog_guide/vhost_lib` for details about vhost.
 
 Features and Limitations of vhost PMD
 -------------------------------------

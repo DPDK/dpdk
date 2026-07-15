@@ -169,7 +169,7 @@ Make your planned changes in the cloned ``dpdk`` repo. Here are some guidelines 
 * When introducing a new device API, at least one driver should implement it.
 
 * Important changes will require an addition to the release notes in ``doc/guides/rel_notes/``.
-  See the :ref:`Release Notes section of the Documentation Guidelines <doc_guidelines>` for details.
+  See the :ref:`release notes guidelines <contrib_doc_guidelines_release_notes>`.
 
 * Test the compilation works with different targets, compilers and options, see :ref:`contrib_check_compilation`.
 

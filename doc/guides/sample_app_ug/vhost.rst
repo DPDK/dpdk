@@ -87,7 +87,7 @@ Then start testpmd for packet forwarding testing.
     > start tx_first
 
 For more information about vIOMMU and NO-IOMMU and VFIO please refer to
-:doc:`/../linux_gsg/linux_drivers` section of the DPDK Getting started guide.
+the :doc:`Linux Drivers </../linux_gsg/linux_drivers>` section of the documentation.
 
 Inject packets
 --------------

@@ -12,7 +12,7 @@ for fast guest VM to guest VM communication and guest VM to host communication.
 Vhost is a kernel acceleration module for virtio qemu backend.
 
 For basic qemu-KVM installation and other Intel EM poll mode driver in guest VM,
-please refer to Chapter "Driver for VM Emulated Devices".
+please refer to :doc:`/nics/e1000em`.
 
 In this chapter, we will demonstrate usage of virtio PMD with two backends,
 standard qemu vhost back end.

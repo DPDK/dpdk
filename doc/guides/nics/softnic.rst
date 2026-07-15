@@ -9,9 +9,9 @@ is DIY and reconfigurable through ``firmware`` (DPDK Packet Framework script).
 
 The Soft NIC leverages the DPDK Packet Framework libraries (librte_port,
 librte_table and librte_pipeline) to make it modular, flexible and extensible
-with new functionality. Please refer to DPDK Programmer's Guide, Chapter
-``Packet Framework`` and DPDK Sample Application User Guide,
-Chapter ``IP Pipeline Application`` for more details.
+with new functionality.
+Please refer to :doc:`/prog_guide/packet_framework` and
+:doc:`/sample_app_ug/ip_pipeline` for more details.
 
 The Soft NIC is configured through the standard DPDK ethdev API (ethdev, flow,
 QoS, security). The internal framework is not externally visible.
@@ -47,9 +47,8 @@ Flow
 Supported Operating Systems
 ---------------------------
 
-Any Linux distribution fulfilling the conditions described in ``System Requirements``
-section of :ref:`the DPDK documentation <linux_gsg>` or refer to *DPDK
-Release Notes*.
+Any Linux distribution fulfilling the conditions described in
+:doc:`/linux_gsg/sys_reqs` or refer to :doc:`/rel_notes/index`.
 
 
 Runtime Configuration

@@ -204,7 +204,7 @@ For example, create a flow rule:
 
 	testpmd> flow create 0 ingress pattern eth type is 0x0806 / end actions queue index 2 / end
 
-For a detailed usage description please refer to "Flow rules management" section in DPDK :doc:`../testpmd_app_ug/testpmd_funcs`.
+For a detailed usage description please refer to :ref:`testpmd_rte_flow`.
 
 Traffic Management API
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -219,7 +219,7 @@ For example, add shaper profile
 
 	testpmd> add port tm node shaper profile 0 0 0 0 25000000 0 0
 
-For a detailed usage description please refer to "Traffic Management" section in DPDK :doc:`../testpmd_app_ug/testpmd_funcs`.
+For a detailed usage description please refer to :ref:`testpmd_traffic_management`.
 
 Limitations or Known issues
 ---------------------------

@@ -125,8 +125,10 @@ The following prerequisites apply:
 
 .. note::
 
-    Follow the *DPDK Sample Application's User Guide*, L2 Forwarding/L3 Forwarding and
-    TestPMD for instructions on how to run a DPDK application using an assigned VMXNET3 device.
+   Follow the :doc:`L2 Forwarding </sample_app_ug/l2_forward_real_virtual>`,
+   :doc:`L3 Forwarding </sample_app_ug/l3_forward>` and
+   :doc:`TestPMD </testpmd_app_ug/index>` guides
+   for instructions on how to run a DPDK application using an assigned VMXNET3 device.
 
 VMXNET3 with a Native NIC Connected to a vSwitch
 ------------------------------------------------

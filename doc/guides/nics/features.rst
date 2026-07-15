@@ -443,7 +443,8 @@ Inline crypto
 
 Supports inline crypto processing defined by rte_security library to perform crypto
 operations of security protocol while packet is received in NIC. NIC is not aware
-of protocol operations. See Security library and PMD documentation for more details.
+of protocol operations.
+See :doc:`/prog_guide/rte_security` and PMD documentation for more details.
 
 * **[uses]       rte_eth_rxconf,rte_eth_rxmode**: ``offloads:RTE_ETH_RX_OFFLOAD_SECURITY``,
 * **[uses]       rte_eth_txconf,rte_eth_txmode**: ``offloads:RTE_ETH_TX_OFFLOAD_SECURITY``.
@@ -465,7 +466,8 @@ Inline protocol
 Supports inline protocol processing defined by rte_security library to perform
 protocol processing for the security protocol (e.g. IPsec, MACSEC) while the
 packet is received at NIC. The NIC is capable of understanding the security
-protocol operations. See security library and PMD documentation for more details.
+protocol operations.
+See :doc:`/prog_guide/rte_security` and PMD documentation for more details.
 
 * **[uses]       rte_eth_rxconf,rte_eth_rxmode**: ``offloads:RTE_ETH_RX_OFFLOAD_SECURITY``,
 * **[uses]       rte_eth_txconf,rte_eth_txmode**: ``offloads:RTE_ETH_TX_OFFLOAD_SECURITY``.

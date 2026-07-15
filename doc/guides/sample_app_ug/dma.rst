@@ -135,8 +135,8 @@ used by the application:
     :end-before: >8 End of allocates mempool to hold the mbufs.
     :dedent: 1
 
-Mbufs are the packet buffer structure used by DPDK. They are explained in
-detail in the "Mbuf Library" section of the *DPDK Programmer's Guide*.
+Mbufs are the packet buffer structure used by DPDK.
+They are explained in detail in the :doc:`/prog_guide/mbuf_lib`.
 
 The ``main()`` function also initializes the ports:
 

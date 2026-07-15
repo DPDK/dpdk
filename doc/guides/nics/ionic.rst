@@ -57,6 +57,5 @@ Runtime Configuration
 Building DPDK
 -------------
 
-The ionic PMD supports UIO and VFIO. Please refer to the
-:ref:`DPDK documentation that comes with the DPDK suite <linux_gsg>`
-for instructions on how to build DPDK.
+The ionic PMD supports UIO and VFIO.
+Please refer to :doc:`/linux_gsg/build_dpdk` for instructions.

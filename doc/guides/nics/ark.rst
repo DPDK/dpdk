@@ -272,8 +272,7 @@ extension file generated above.  For example:
 Building DPDK
 -------------
 
-See the :ref:`DPDK Getting Started Guide for Linux <linux_gsg>` for
-instructions on how to build DPDK.
+See :doc:`/linux_gsg/build_dpdk` for instructions.
 
 By default the ARK PMD library will be built into the DPDK library.
 
@@ -354,9 +353,9 @@ are required, please contact Atomic Rules support.
 Supported Operating Systems
 ---------------------------
 
-Any Linux distribution fulfilling the conditions described in ``System Requirements``
-section of :ref:`the DPDK documentation <linux_gsg>` or refer to *DPDK
-Release Notes*.  ARM and PowerPC architectures are not supported at this time.
+Any Linux distribution fulfilling the conditions described in
+:doc:`/linux_gsg/sys_reqs` or refer to :doc:`/rel_notes/index`.
+ARM and PowerPC architectures are not supported at this time.
 
 
 Supported Features
