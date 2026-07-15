@@ -49,6 +49,49 @@ cn10k_flow_info_get(struct rte_eth_dev *dev, struct rte_flow_port_info *port_inf
 }
 
 int
+cn10k_flow_push(struct rte_eth_dev *eth_dev, uint32_t queue, struct rte_flow_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_npc *npc = &dev->npc;
+	bool reset_rx = false;
+	int rc;
+
+	/* Flush the pending async ops to hardware first. */
+	rc = cnxk_flow_push(eth_dev, queue, error);
+	if (rc)
+		return rc;
+
+	/* Async push, unlike sync create/destroy, does not toggle the MARK and
+	 * VLAN-strip RX offloads; reconcile each with its refcount so the Rx
+	 * function matches the live rules.
+	 */
+	if (roc_npc_mark_actions_get(npc) &&
+	    !(dev->rx_offload_flags & NIX_RX_OFFLOAD_MARK_UPDATE_F)) {
+		dev->rx_offload_flags |= NIX_RX_OFFLOAD_MARK_UPDATE_F;
+		reset_rx = true;
+	} else if (!roc_npc_mark_actions_get(npc) &&
+		   (dev->rx_offload_flags & NIX_RX_OFFLOAD_MARK_UPDATE_F)) {
+		dev->rx_offload_flags &= ~NIX_RX_OFFLOAD_MARK_UPDATE_F;
+		reset_rx = true;
+	}
+
+	if (roc_npc_vtag_actions_get(npc) &&
+	    !(dev->rx_offload_flags & NIX_RX_OFFLOAD_VLAN_STRIP_F)) {
+		dev->rx_offload_flags |= NIX_RX_OFFLOAD_VLAN_STRIP_F;
+		reset_rx = true;
+	} else if (!roc_npc_vtag_actions_get(npc) &&
+		   (dev->rx_offload_flags & NIX_RX_OFFLOAD_VLAN_STRIP_F)) {
+		dev->rx_offload_flags &= ~NIX_RX_OFFLOAD_VLAN_STRIP_F;
+		reset_rx = true;
+	}
+
+	if (reset_rx)
+		cn10k_eth_set_rx_function(eth_dev);
+
+	return 0;
+}
+
+int
 cn10k_flow_destroy(struct rte_eth_dev *eth_dev, struct rte_flow *rte_flow,
 		   struct rte_flow_error *error)
 {

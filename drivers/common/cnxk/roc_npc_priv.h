@@ -427,6 +427,99 @@ struct npc_age_flow_entry {
 
 TAILQ_HEAD(npc_age_flow_list_head, npc_age_flow_entry);
 
+/* Queue-based async template flow engine types. */
+
+/* One in-flight async op in a queue ring. */
+struct roc_npc_async_op {
+	struct roc_npc_template_flow *flow; /**< Rule the op acts on. */
+	void *user_data;		    /**< Echoed back by flow_pull. */
+	bool is_create;			    /**< true = create, false = destroy. */
+	bool is_update;			    /**< true = in-place actions rewrite. */
+	bool done;			    /**< Set once pushed to hardware. */
+	int rc;				    /**< Result captured at push time. */
+};
+
+/* Fixed-size op ring; head/pushed/tail are free-running indices. */
+struct roc_npc_flow_queue {
+	struct roc_npc_async_op *ops; /**< size entries, power-of-two. */
+	uint32_t size;		      /**< Ring capacity (power of two). */
+	uint32_t head;		      /**< Next slot to enqueue into. */
+	uint32_t pushed;	      /**< Ops up to here are committed. */
+	uint32_t tail;		      /**< Next slot to return via pull. */
+};
+
+/* A deep-copied, retained rule awaiting (or holding) a hardware entry. */
+struct roc_npc_template_flow {
+	struct roc_npc_template_table *table; /**< Owning table. */
+	struct roc_npc_flow *roc_flow;	      /**< HW flow (PATTERN, once committed). */
+	struct roc_npc_item_info *items;      /**< Deep-copied merged pattern. */
+	struct roc_npc_action *actions;	      /**< Deep-copied merged actions. */
+	struct roc_npc_flow flow;	      /**< Embedded HW flow (INDEX path). */
+	struct roc_npc_attr attr;	      /**< Priority / ingress / egress. */
+	uint64_t npc_default_action;	      /**< Resolved port default action. */
+	uint32_t flowkey_cfg;		      /**< RSS flow key captured at create. */
+	uint32_t slot;			      /**< Pre-reserved index (INDEX path). */
+	uint16_t dst_pf_func;		      /**< Resolved destination pf_func. */
+	uint16_t nb_items;		      /**< Item count (excluding END). */
+	uint16_t nb_actions;		      /**< Action count (excluding END). */
+	/* Pending in-place actions update, applied at push. */
+	struct {
+		uint64_t npc_action;
+		uint64_t npc_action2;
+		uint64_t vtag_action;
+		uint32_t recv_queue;
+		bool pending;	   /**< An update is enqueued, awaiting push. */
+		bool old_match_id; /**< Old action set carried a mark/match_id. */
+		bool old_vtag;	   /**< Old action set carried RX vtag strip. */
+		bool new_match_id; /**< New action set carries a mark/match_id. */
+		bool new_vtag;	   /**< New action set carries RX vtag strip. */
+	} pending_update;
+	TAILQ_ENTRY(roc_npc_template_flow) link;
+};
+
+TAILQ_HEAD(roc_npc_template_flow_list, roc_npc_template_flow);
+
+/* Pattern template blueprint. */
+struct roc_npc_pattern_template {
+	struct roc_npc_pattern_template_attr attr;
+	struct roc_npc_item_info *pattern; /**< nb_items + END terminator. */
+	void **copies;			   /**< Tracked payload allocations. */
+	uint16_t nb_copies;		   /**< Entries used in copies[]. */
+	uint16_t nb_items;		   /**< Item count (excluding END). */
+	uint32_t refcnt;		   /**< Tables referencing this template. */
+};
+
+/* Actions template blueprint. */
+struct roc_npc_actions_template {
+	struct roc_npc_actions_template_attr attr;
+	struct roc_npc_action *actions; /**< nb_actions + END terminator. */
+	struct roc_npc_action *masks;	/**< Per-action masks (optional). */
+	void **copies;			/**< Tracked conf allocations. */
+	uint16_t nb_copies;		/**< Entries used in copies[]. */
+	uint16_t nb_actions;		/**< Action count (excluding END). */
+	uint32_t refcnt;		/**< Tables referencing this template. */
+};
+
+/* Template table and rule storage. */
+struct roc_npc_template_table {
+	int *mcam_ids;				 /**< Reserved entries (index). */
+	struct roc_npc_template_flow *flow_pool; /**< Per-index rule slots. */
+	struct roc_npc_pattern_template **pattern_templates;
+	struct roc_npc_actions_template **actions_templates;
+	struct roc_npc_template_flow_list live_flows; /**< Live pattern rules. */
+	struct roc_npc_template_table *next;	      /**< Port table list link. */
+	void *cookie;				      /**< Opaque consumer context. */
+	struct roc_npc_attr flow_attr;		      /**< Priority/ingress/egress. */
+	enum roc_npc_template_table_insertion_type insertion_type;
+	plt_spinlock_t lock;	      /**< Guards live_flows/nb_live. */
+	uint32_t nb_flows;	      /**< Max rules the table holds. */
+	uint32_t nb_live;	      /**< Live pattern rules count. */
+	uint32_t transfer;	      /**< Transfer (port) rule. */
+	uint8_t nb_pattern_templates; /**< pattern_templates entries. */
+	uint8_t nb_actions_templates; /**< actions_templates entries. */
+	bool hw_released;	      /**< Entries freed by a flush. */
+};
+
 struct npc {
 	struct mbox *mbox;			/* Mbox */
 	uint64_t keyx_supp_nmask[NPC_MAX_INTF]; /* nibble mask */
@@ -459,6 +552,10 @@ struct npc {
 	struct plt_bitmap *rss_grp_entries;
 	struct npc_flow_list ipsec_list;
 	uint8_t enable_debug;
+	/* Queue-based async template flow state owned by roc. */
+	struct roc_npc_flow_queue *flow_queues;
+	uint16_t nb_flow_queues;
+	struct roc_npc_template_table *flow_tables;
 };
 
 #define NPC_HASH_FIELD_LEN 16
@@ -533,6 +630,7 @@ int npc_mcam_fetch_hw_cap(struct npc *npc, uint8_t *npc_hw_cap);
 int npc_get_free_mcam_entry(struct mbox *mbox, struct roc_npc_flow *flow, struct npc *npc);
 void npc_delete_prio_list_entry(struct npc *npc, struct roc_npc_flow *flow);
 int npc_flow_free_all_resources(struct npc *npc);
+void npc_template_tables_flush_reconcile(struct npc *npc);
 const struct roc_npc_item_info *
 npc_parse_skip_void_and_any_items(const struct roc_npc_item_info *pattern);
 int npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc);

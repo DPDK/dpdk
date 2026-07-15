@@ -59,6 +59,7 @@ sources = files(
         'roc_npa_type.c',
         'roc_npc.c',
         'roc_npc_aging.c',
+        'roc_npc_flow_template.c',
         'roc_npc_mcam.c',
         'roc_npc_mcam_dump.c',
         'roc_npc_parse.c',

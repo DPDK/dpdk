@@ -5,6 +5,7 @@
 #include "cn10k_flow.h"
 #include "cn10k_rx.h"
 #include "cn10k_tx.h"
+#include "cnxk_flow.h"
 
 static uint16_t
 nix_rx_offload_flags(struct rte_eth_dev *eth_dev)
@@ -916,7 +917,26 @@ npc_flow_ops_override(void)
 	cnxk_flow_ops.create = cn10k_flow_create;
 	cnxk_flow_ops.destroy = cn10k_flow_destroy;
 	cnxk_flow_ops.info_get = cn10k_flow_info_get;
+
+	cnxk_flow_ops.configure = cnxk_flow_configure;
+	cnxk_flow_ops.pattern_template_create = cnxk_flow_pattern_template_create;
+	cnxk_flow_ops.pattern_template_destroy = cnxk_flow_pattern_template_destroy;
+	cnxk_flow_ops.actions_template_create = cnxk_flow_actions_template_create;
+	cnxk_flow_ops.actions_template_destroy = cnxk_flow_actions_template_destroy;
+	cnxk_flow_ops.template_table_create = cnxk_flow_template_table_create;
+	cnxk_flow_ops.template_table_destroy = cnxk_flow_template_table_destroy;
 }
+
+/* Fast-path (async) flow ops. Installed per-port in cn10k_nix_probe(). */
+static const struct rte_flow_fp_ops cn10k_flow_fp_ops = {
+	.async_create = cnxk_flow_async_create,
+	.async_create_by_index = cnxk_flow_async_create_by_index,
+	.async_create_by_index_with_pattern = cnxk_flow_async_create_by_index_with_pattern,
+	.async_actions_update = cnxk_flow_async_actions_update,
+	.async_destroy = cnxk_flow_async_destroy,
+	.push = cn10k_flow_push,
+	.pull = cnxk_flow_pull,
+};
 
 static int
 cn10k_nix_remove(struct rte_pci_device *pci_dev)
@@ -965,6 +985,9 @@ cn10k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	}
 
 	dev = cnxk_eth_pmd_priv(eth_dev);
+
+	/* Install fast-path (async) flow ops for this port. */
+	eth_dev->flow_fp_ops = &cn10k_flow_fp_ops;
 
 	/* DROP_RE is not supported with inline IPSec for CN10K A0 and
 	 * when vector mode is enabled.
