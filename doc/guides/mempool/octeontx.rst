@@ -46,7 +46,7 @@ Please note that enabling debugging options may affect system performance.
 Driver Compilation
 ~~~~~~~~~~~~~~~~~~
 
-See :doc:`../linux_gsg/build_dpdk` for more information on compiling DPDK.
+See :doc:`/linux_gsg/build_dpdk` for more information on compiling DPDK.
 
 
 Initialization

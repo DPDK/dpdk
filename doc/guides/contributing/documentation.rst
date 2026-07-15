@@ -182,7 +182,7 @@ To build the documentation::
 
    ninja -C build doc
 
-See :doc:`../linux_gsg/build_dpdk` for more detail on compiling DPDK with meson.
+See :doc:`/linux_gsg/build_dpdk` for more detail on compiling DPDK with meson.
 
 The output is generated in the directory ``build/doc/``, with:
 

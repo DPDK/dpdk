@@ -566,7 +566,7 @@ Building DTS API docs
 ---------------------
 
 The documentation is built using the standard DPDK build system.
-See :doc:`../linux_gsg/build_dpdk` for more details on compiling DPDK with meson.
+See :doc:`/linux_gsg/build_dpdk` for more details on compiling DPDK with meson.
 
 After executing the meson command, build the documentation with:
 

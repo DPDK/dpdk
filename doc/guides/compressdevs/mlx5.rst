@@ -24,7 +24,7 @@ So, using the BlueField device (starting from BlueField-2), the compress
 class operations can be supported in parallel to the net, vDPA and
 RegEx class operations.
 
-See :doc:`../../platform/mlx5` guide for more design details.
+See :doc:`/platform/mlx5` guide for more design details.
 
 Features
 --------

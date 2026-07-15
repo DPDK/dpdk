@@ -102,7 +102,7 @@ By default, IXGBE_MAX_RING_DESC is set to 8192 and RTE_PMD_IXGBE_RX_MAX_BURST is
 Windows Prerequisites and Pre-conditions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- Follow the :doc:`guide for Windows <../windows_gsg/run_apps>`
+- Follow the :doc:`guide for Windows </windows_gsg/run_apps>`
   to setup the basic DPDK environment.
 
 - Identify the Intel\ |reg| Ethernet adapter and get the latest NVM/FW version.

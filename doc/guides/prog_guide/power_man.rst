@@ -179,7 +179,7 @@ The "monitor" mode is only supported in the following configurations and scenari
 
 * Not all Ethernet drivers support monitoring, even if the underlying
   platform may support the necessary CPU instructions. Please refer to
-  :doc:`../nics/overview` for more information.
+  :doc:`/nics/overview` for more information.
 
 
 API Overview for Ethernet PMD Power Management

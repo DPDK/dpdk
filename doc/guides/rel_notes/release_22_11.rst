@@ -109,7 +109,7 @@ New Features
 * **Added GVE net PMD.**
 
   * Added the new ``gve`` net driver for Google Virtual Ethernet devices.
-  * See the :doc:`../nics/gve` NIC guide for more details on this new driver.
+  * See the :doc:`/nics/gve` NIC guide for more details on this new driver.
 
 * **Updated Intel iavf driver.**
 
@@ -123,7 +123,7 @@ New Features
 
   Added the new ``idpf`` net driver
   for Intel\ |reg| Infrastructure Processing Unit (Intel\ |reg| IPU) E2100.
-  See the :doc:`../nics/idpf` NIC guide for more details on this new driver.
+  See the :doc:`/nics/idpf` NIC guide for more details on this new driver.
 
 * **Updated Marvell cnxk driver.**
 
@@ -209,7 +209,7 @@ New Features
 * **Added UADK crypto driver.**
 
   Added a new crypto driver for the UADK library. See the
-  :doc:`../cryptodevs/uadk` guide for more details on this new driver.
+  :doc:`/cryptodevs/uadk` guide for more details on this new driver.
 
 * **Added bbdev operation for FFT processing.**
 
@@ -263,17 +263,17 @@ New Features
 
   Added new application to test ``rte_security`` session create/destroy
   performance.
-  See the :doc:`../tools/securityperf` for more details.
+  See the :doc:`/tools/securityperf` for more details.
 
 * **Updated IPsec sample application.**
 
   Added support for lookaside sessions in event mode.
-  See the :doc:`../sample_app_ug/ipsec_secgw` for more details.
+  See the :doc:`/sample_app_ug/ipsec_secgw` for more details.
 
 * **Updated FIPS validation sample application.**
 
   Added support for asymmetric crypto algorithms.
-  See the :doc:`../sample_app_ug/fips_validation` for more details.
+  See the :doc:`/sample_app_ug/fips_validation` for more details.
 
 * **Rewrote pmdinfo script.**
 

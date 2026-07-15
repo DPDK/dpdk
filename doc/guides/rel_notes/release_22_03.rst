@@ -177,7 +177,7 @@ New Features
   for applications that as well as providing standard dataplane functionality
   also want to have fast and low latency access to GPIO pin state.
 
-  See the :doc:`../rawdevs/cnxk_gpio` rawdev guide for more details on this
+  See the :doc:`/rawdevs/cnxk_gpio` rawdev guide for more details on this
   driver.
 
 * **Updated testpmd to support software UDP/TCP checksum over multiple segments.**

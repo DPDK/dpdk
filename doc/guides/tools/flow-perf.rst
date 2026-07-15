@@ -44,8 +44,8 @@ Running the Application
 EAL Command-line Options
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Please refer to :doc:`EAL parameters (Linux) <../linux_gsg/linux_eal_parameters>`
-or :doc:`EAL parameters (FreeBSD) <../freebsd_gsg/freebsd_eal_parameters>` for
+Please refer to :doc:`EAL parameters (Linux) </linux_gsg/linux_eal_parameters>`
+or :doc:`EAL parameters (FreeBSD) </freebsd_gsg/freebsd_eal_parameters>` for
 a list of available EAL command-line options.
 
 

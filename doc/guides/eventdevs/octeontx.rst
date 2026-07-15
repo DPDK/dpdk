@@ -39,7 +39,7 @@ Supported OCTEON TX SoCs
 Prerequisites
 -------------
 
-See :doc:`../platform/octeontx` for setup information.
+See :doc:`/platform/octeontx` for setup information.
 
 
 Initialization

@@ -54,7 +54,7 @@ New Features
 
   Added the new ``hinic`` net driver for Huawei Intelligent PCIE Network
   Adapters based on the Huawei Ethernet Controller Hi1822.
-  See the :doc:`../nics/hinic` guide for more details on this new driver.
+  See the :doc:`/nics/hinic` guide for more details on this new driver.
 
 * **Updated the Intel ice driver.**
 
@@ -93,7 +93,7 @@ New Features
 * **Added memif PMD.**
 
   Added a new Shared Memory Packet Interface (``memif``) PMD.
-  See the :doc:`../nics/memif` guide for more details on this new driver.
+  See the :doc:`/nics/memif` guide for more details on this new driver.
 
 * **Updated the AF_XDP PMD.**
 
@@ -122,7 +122,7 @@ New Features
 
   Added a new ``fpga_lte_fec`` bbdev driver for the Intel\ |reg| FPGA PAC
   (Programmable  Acceleration Card) N3000.  See the
-  :doc:`../bbdevs/fpga_lte_fec` BBDEV guide for more details on this new driver.
+  :doc:`/bbdevs/fpga_lte_fec` BBDEV guide for more details on this new driver.
 
 * **Updated the TURBO_SW bbdev PMD.**
 

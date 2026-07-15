@@ -10,7 +10,7 @@ New Features
 * **Added support for Hyper-V netvsc PMD.**
 
   The new ``netvsc`` poll mode driver provides native support for
-  networking on Hyper-V. See the :doc:`../nics/netvsc` NIC driver guide
+  networking on Hyper-V. See the :doc:`/nics/netvsc` NIC driver guide
   for more details on this new driver.
 
 * **Added Flow API support for CXGBE PMD.**
@@ -73,7 +73,7 @@ New Features
 * **Added a new compression PMD using Intel's QuickAssist (QAT) device family.**
 
   Added the new ``QAT`` compression driver, for compression and decompression
-  operations in software. See the :doc:`../compressdevs/qat_comp` compression
+  operations in software. See the :doc:`/compressdevs/qat_comp` compression
   driver guide for details on this new driver.
 
 * **Updated the ISA-L PMD.**

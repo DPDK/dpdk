@@ -97,7 +97,7 @@ Build Qemu:
 DPDK build
 ~~~~~~~~~~
 
-See :doc:`../linux_gsg/build_dpdk` for details.
+See :doc:`/linux_gsg/build_dpdk` for details.
 
 
 Testpmd launch
@@ -304,7 +304,7 @@ Guest tuning
 DPDK build
 ~~~~~~~~~~
 
-See :doc:`../linux_gsg/build_dpdk` for details.
+See :doc:`/linux_gsg/build_dpdk` for details.
 
 
 Testpmd launch

@@ -24,7 +24,7 @@ as described in the "Getting Started Guide" for your platform.
 This will also build testpmd.
 
 Detailed instructions are available
-in the :doc:`meson build guide <../prog_guide/build-sdk-meson>`.
+in the :doc:`meson build guide </prog_guide/build-sdk-meson>`.
 
 The ethdev layer supports below build options for debug purpose:
 

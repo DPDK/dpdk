@@ -19,7 +19,7 @@ New Features
   Now, it is possible to use the shortened ``-l`` form
   to map lcore IDs to threads running on specific CPUs.
 
-  See the :doc:`../linux_gsg/eal_args.include` guide for examples.
+  See the :doc:`/linux_gsg/eal_args.include` guide for examples.
 
 * **Added PMU library.**
 
@@ -38,7 +38,7 @@ New Features
 * **Added Mucse rnp net driver.**
 
   Added a new network PMD which supports Mucse 10 Gigabit Ethernet NICs.
-  See the :doc:`../nics/rnp` for more details.
+  See the :doc:`/nics/rnp` for more details.
 
 * **Added RSS type for RoCE v2.**
 
@@ -75,7 +75,7 @@ New Features
   Added a crypto driver for ZSDA devices
   to support some encrypt, decrypt and hash algorithms.
 
-  See the :doc:`../cryptodevs/zsda` guide for more details on the new driver.
+  See the :doc:`/cryptodevs/zsda` guide for more details on the new driver.
 
 * **Updated Marvell cnxk crypto driver.**
 
@@ -96,7 +96,7 @@ New Features
 
   Added vector adapter producer mode in eventdev test to measure performance.
 
-  See the :doc:`../prog_guide/eventdev/event_vector_adapter` guide
+  See the :doc:`/prog_guide/eventdev/event_vector_adapter` guide
   for more details on the new library.
 
 * **Added event vector adapter support in CN20K event device driver.**
@@ -111,7 +111,7 @@ New Features
   to manage multiple network protocols/features with runtime configurability,
   in-built node-reusability and optimized control/data plane synchronization.
 
-  See section ``Graph feature arc`` in :doc:`../prog_guide/graph_lib` for more details.
+  See section ``Graph feature arc`` in :doc:`/prog_guide/graph_lib` for more details.
 
   Added ``ip4 output`` feature arc processing in ``ip4_rewrite`` node.
 

@@ -171,7 +171,7 @@ are shown below.
      {"/dmadev/stats": {"submitted": 0, "completed": 0, "errors": 0}}
 
 For more information on how to use the Telemetry interface, see
-the :doc:`../howto/telemetry`.
+the :doc:`/howto/telemetry`.
 
 
 Inter-domain DMA Transfers

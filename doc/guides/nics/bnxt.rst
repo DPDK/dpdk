@@ -77,7 +77,7 @@ It can direct some traffic, for example data plane traffic, to DPDK.
 Rest of the traffic, for example control plane traffic, would be redirected to
 the traditional Linux networking stack.
 
-Refer to :doc:`../howto/flow_bifurcation`
+Refer to :doc:`/howto/flow_bifurcation`
 
 Benefits of the flow bifurcation include:
 

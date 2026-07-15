@@ -15,10 +15,10 @@ for more information.
 Linux Prerequisites
 -------------------
 
-Follow the DPDK :doc:`../linux_gsg/index` to setup the basic DPDK environment.
+Follow the DPDK :doc:`/linux_gsg/index` to setup the basic DPDK environment.
 
 To get better performance on Intel platforms,
-please follow the :doc:`../linux_gsg/nic_perf_intel_platform`.
+please follow the :doc:`/linux_gsg/nic_perf_intel_platform`.
 
 
 Recommended Matching List

@@ -126,7 +126,7 @@ with :ref:`hardware steering (HWS) <mlx5_hws>`,
 a WQE-based high scaling and safer flow insertion/destruction.
 It allows inserting millions of rules per second.
 
-While using the :doc:`synchronous flow API <../prog_guide/ethdev/flow_offload>`
+While using the :doc:`synchronous flow API </prog_guide/ethdev/flow_offload>`
 is convenient and easy to manage,
 it is not efficient enough at a large scale.
 That's why mlx5 allows offloading many features asynchronously.
@@ -154,7 +154,7 @@ All references to these flows held by the application
 should be discarded directly but neither destroyed nor flushed.
 The application should re-create the flows as required after the port restart.
 
-See :doc:`../../platform/mlx5` guide for more design details,
+See :doc:`/platform/mlx5` guide for more design details,
 including prerequisites installation.
 
 :ref:`All the features are detailed in a chapter below. <mlx5_net_features>`
@@ -1332,7 +1332,7 @@ Flow Rule Creation
 
 In mlx5 devices, the flow rules are inserted in HW tables.
 
-As explained in the :doc:`flow API documentation <../prog_guide/ethdev/flow_offload>`,
+As explained in the :doc:`flow API documentation </prog_guide/ethdev/flow_offload>`,
 a rule can be created synchronously (``rte_flow_create``)
 or asynchronously (``rte_flow_async_create``)
 with the help of a template table (``rte_flow_template_table_create``).

@@ -132,7 +132,7 @@ New Features
   The current release only supports 3GPP CRC, Turbo Coding and Rate
   Matching operations, as specified in 3GPP TS 36.212.
 
-  See the :doc:`../prog_guide/bbdev` programmer's guide for more details.
+  See the :doc:`/prog_guide/bbdev` programmer's guide for more details.
 
 * **Added New eventdev Ordered Packet Distribution Library (OPDL) PMD.**
 
@@ -175,7 +175,7 @@ New Features
   structures/buffers. Also, southbound APIs provide a means of integrating devices
   either as part of a physical bus (PCI, FSLMC etc) or through ``vdev``.
 
-  See the :doc:`../prog_guide/rawdev` programmer's guide for more details.
+  See the :doc:`/prog_guide/rawdev` programmer's guide for more details.
 
 * **Added new multi-process communication channel.**
 

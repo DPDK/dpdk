@@ -91,7 +91,7 @@ New Features
 * **Added a new driver for Intel Foxville I225 devices.**
 
   Added the new ``igc`` net driver for Intel Foxville I225 devices. See the
-  :doc:`../nics/igc` NIC guide for more details on this new driver.
+  :doc:`/nics/igc` NIC guide for more details on this new driver.
 
 * **Updated Intel i40e driver.**
 
@@ -211,7 +211,7 @@ New Features
 
   Added a new ``fpga_5gnr_fec`` bbdev driver for the Intel\ |reg| FPGA PAC
   (Programmable  Acceleration Card) N3000.  See the
-  :doc:`../bbdevs/fpga_5gnr_fec` BBDEV guide for more details on this new driver.
+  :doc:`/bbdevs/fpga_5gnr_fec` BBDEV guide for more details on this new driver.
 
 * **Updated the DSW event device.**
 

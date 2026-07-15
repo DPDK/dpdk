@@ -124,7 +124,7 @@ The following sections describe aspects that are specific to the IP reassemble s
 IPv4 Fragment Table Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This application uses the :doc:`../prog_guide/ip_fragment_reassembly_lib` library.
+This application uses the :doc:`/prog_guide/ip_fragment_reassembly_lib` library.
 The fragment table maintains information about already received fragments of the packet.
 Each IP packet is uniquely identified by triple <Source IP address>, <Destination IP address>, <ID>.
 To avoid lock contention, each Rx queue has its own fragment table.

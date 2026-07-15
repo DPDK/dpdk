@@ -168,4 +168,4 @@ Using Commands
 
 To use commands, with a DPDK app running (e.g. testpmd), use the
 ``dpdk-telemetry.py`` script.
-For details on its use, see the :doc:`../howto/telemetry`.
+For details on its use, see the :doc:`/howto/telemetry`.

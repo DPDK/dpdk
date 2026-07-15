@@ -129,7 +129,7 @@ an ARMv8 machine.
     make
     sudo insmod pmu_el0_cycle_counter.ko
 
-Please refer to :doc:`../linux_gsg/build_dpdk` for generic details on compiling DPDK with meson.
+Please refer to :doc:`/linux_gsg/build_dpdk` for generic details on compiling DPDK with meson.
 
 In order to enable ``PMU`` based ``rte_rdtsc()``, user needs to configure the
 build with ``-Dc_args='-DRTE_ARM_EAL_RDTSC_USE_PMU'``.

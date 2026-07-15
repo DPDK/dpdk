@@ -2437,7 +2437,7 @@ Link Bonding Functions
 The Link Bonding functions make it possible to dynamically create and
 manage link bonding devices from within testpmd interactive prompt.
 
-See :doc:`../prog_guide/link_bonding_poll_mode_drv_lib` for more information.
+See :doc:`/prog_guide/link_bonding_poll_mode_drv_lib` for more information.
 
 .. _testpmd_traffic_metering_and_policing:
 

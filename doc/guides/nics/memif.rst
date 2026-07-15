@@ -238,7 +238,7 @@ Show status::
 
     testpmd> show port stats 0
 
-For more details on testpmd please refer to :doc:`../testpmd_app_ug/index`.
+For more details on testpmd please refer to :doc:`/testpmd_app_ug/index`.
 
 Example: testpmd and VPP
 ------------------------

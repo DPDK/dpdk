@@ -66,7 +66,7 @@ Compilation
 The OCTEON TX crypto poll mode driver can be compiled either natively on
 **OCTEON TX** :sup:`®` board or cross-compiled on an x86 based platform.
 
-Refer :doc:`../platform/octeontx` for details about setting up the platform
+Refer :doc:`/platform/octeontx` for details about setting up the platform
 and building DPDK applications.
 
 .. note::

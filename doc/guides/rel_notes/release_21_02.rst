@@ -137,13 +137,13 @@ New Features
 
   Added a new compress PMD for BlueField-2 adapters.
 
-  See the :doc:`../compressdevs/mlx5` for more details.
+  See the :doc:`/compressdevs/mlx5` for more details.
 
 * **Added python script to run crypto perf tests and graph the results.**
 
   A new Python script has been added to automate running crypto performance
   tests and output graphed results to PDF files.
-  See the :doc:`../tools/cryptoperf` guide for more details.
+  See the :doc:`/tools/cryptoperf` guide for more details.
 
 * **Added Windows support to pmdinfogen.**
 

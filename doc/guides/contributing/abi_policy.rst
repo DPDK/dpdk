@@ -38,7 +38,7 @@ General Guidelines
 .. note::
 
    Please note that this policy does not currently apply to the
-   :doc:`Windows build <../windows_gsg/intro>`.
+   :doc:`Windows build </windows_gsg/intro>`.
 
 What is an ABI?
 ~~~~~~~~~~~~~~~

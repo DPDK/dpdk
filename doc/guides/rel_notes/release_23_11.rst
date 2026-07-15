@@ -118,7 +118,7 @@ New Features
 * **Added a new vDPA PMD for Corigine NFP devices.**
 
   Added a new Corigine NFP vDPA (``nfp_vdpa``) PMD.
-  See the :doc:`../vdpadevs/nfp` guide for more details on this driver.
+  See the :doc:`/vdpadevs/nfp` guide for more details on this driver.
 
 * **Updated Corigine/Netronome nfp driver.**
 

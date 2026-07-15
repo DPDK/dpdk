@@ -40,4 +40,4 @@ They are located in the ``dpdk/app`` and ``dpdk/examples`` directories.
 The app directory contains sample applications that are used to test DPDK (such as autotests)
 or the Poll Mode Drivers (test-pmd).
 
-The examples directory contains :doc:`Sample applications<../sample_app_ug/index>` that show how libraries can be used.
+The examples directory contains :doc:`Sample applications </sample_app_ug/index>` that show how libraries can be used.

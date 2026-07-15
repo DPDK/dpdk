@@ -199,7 +199,7 @@ New Features
 * **Added NXP ENETFEC PMD [EXPERIMENTAL].**
 
   Added the new ENETFEC driver for the NXP IMX8MMEVK platform. See the
-  :doc:`../nics/enetfec` NIC driver guide for more details on this new driver.
+  :doc:`/nics/enetfec` NIC driver guide for more details on this new driver.
 
 * **Updated Solarflare network PMD.**
 
@@ -240,7 +240,7 @@ New Features
 * **Added new vDPA PMD based on Xilinx devices.**
 
   Added a new Xilinx vDPA  (``sfc_vdpa``) PMD.
-  See the :doc:`../vdpadevs/sfc` guide for more details on this driver.
+  See the :doc:`/vdpadevs/sfc` guide for more details on this driver.
 
 * **Added telemetry callbacks to the cryptodev library.**
 
@@ -322,7 +322,7 @@ New Features
 * **Added NXP LA12xx baseband PMD.**
 
   * Added a new baseband PMD for NXP LA12xx Software defined radio.
-  * See the :doc:`../bbdevs/la12xx` for more details.
+  * See the :doc:`/bbdevs/la12xx` for more details.
 
 * **Updated Mellanox compress driver.**
 

@@ -9,7 +9,7 @@ NVIDIA MLX5 vDPA Driver
 The mlx5 vDPA (vhost data path acceleration) driver (``librte_vdpa_mlx5``)
 provides support for NVIDIA NIC and DPU device families.
 
-See :doc:`../../platform/mlx5` guide for design details,
+See :doc:`/platform/mlx5` guide for design details,
 and which PMDs can be combined with vDPA PMD.
 
 

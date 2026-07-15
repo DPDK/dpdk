@@ -49,4 +49,4 @@ mode is usually the most suitable and the fastest one. For overcommitted
 scenarios (multiple threads share same set of cores) the ``ring_mt_rts`` or
 ``ring_mt_hts`` modes usually provide a better alternative.
 For more information about ``rte_ring`` structure, behaviour and available
-synchronisation modes please refer to: :doc:`../prog_guide/ring_lib`.
+synchronisation modes please refer to: :doc:`/prog_guide/ring_lib`.

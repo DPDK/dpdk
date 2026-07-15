@@ -92,7 +92,7 @@ Test steps
       ninja
       sudo meson install
 
-#. Prepare hugepages for DPDK (see also :doc:`../tools/hugepages`)
+#. Prepare hugepages for DPDK (see also :doc:`/tools/hugepages`)
 
    .. code-block:: console
 

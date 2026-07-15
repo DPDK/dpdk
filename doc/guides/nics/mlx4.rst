@@ -306,7 +306,7 @@ Quick Start Guide
         service openibd restart
 
 #. Install DPDK and you are ready to go.
-   See :doc:`compilation instructions <../linux_gsg/build_dpdk>`.
+   See :doc:`compilation instructions </linux_gsg/build_dpdk>`.
 
 Performance tuning
 ------------------

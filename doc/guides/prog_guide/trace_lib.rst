@@ -164,7 +164,7 @@ the trace buffers to the filesystem. By default, the trace files are stored in
 It can be overridden by the ``--trace-dir=<directory path>`` EAL command line
 option.
 
-For more information, refer to :doc:`../linux_gsg/linux_eal_parameters` for
+For more information, refer to :doc:`/linux_gsg/linux_eal_parameters` for
 trace EAL command line options.
 
 View and analyze the recorded events

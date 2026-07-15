@@ -10,7 +10,7 @@ library defines generic APIs to create and free security sessions which can
 support full protocol offload as well as inline crypto operation with
 NIC or crypto devices.
 
-The security protocols are discussed in the :doc:`../howto/security` guide.
+The security protocols are discussed in the :doc:`/howto/security` guide.
 
 Design Principles
 -----------------
@@ -884,4 +884,4 @@ are shown below.
 	 capabilities>], "crypto_caps_n": <number of capabilities>}}
 
 For more information on how to use the Telemetry interface, see
-the :doc:`../howto/telemetry`.
+the :doc:`/howto/telemetry`.

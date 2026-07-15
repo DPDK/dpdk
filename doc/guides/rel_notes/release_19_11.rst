@@ -81,12 +81,12 @@ New Features
 
   Added the new ``hns3`` net driver for the inbuilt Hisilicon Network
   Subsystem 3 (HNS3) network engine found in the Hisilicon Kunpeng 920 SoC.
-  See the :doc:`../nics/hns3` guide for more details on this new driver.
+  See the :doc:`/nics/hns3` guide for more details on this new driver.
 
 * **Added NXP PFE PMD.**
 
   Added the new PFE driver for the NXP LS1012A platform. See the
-  :doc:`../nics/pfe` NIC driver guide for more details on this new driver.
+  :doc:`/nics/pfe` NIC driver guide for more details on this new driver.
 
 * **Updated Broadcom bnxt driver.**
 
@@ -180,7 +180,7 @@ New Features
 * **Added Marvell NITROX symmetric crypto PMD.**
 
   Added a symmetric crypto PMD for Marvell NITROX V security processor.
-  See the :doc:`../cryptodevs/nitrox` guide for more details on this new PMD.
+  See the :doc:`/cryptodevs/nitrox` guide for more details on this new PMD.
 
 * **Added asymmetric support to Marvell OCTEON TX crypto PMD.**
 
@@ -281,7 +281,7 @@ New Features
   compilers store their internal representation of the source code that
   the linker uses at the final stage of the compilation process.
 
-  See :doc:`../prog_guide/lto` for more information:
+  See :doc:`/prog_guide/lto` for more information:
 
 * **Added IOVA as VA support for KNI.**
 
@@ -301,8 +301,8 @@ Removed Items
 
 * Removed library-level ABI versions. These have been replaced with a single
   project-level ABI version for non-experimental libraries and an ABI version of
-  ``0`` for experimental libraries. Review the :doc:`../contributing/abi_policy`
-  and :doc:`../contributing/abi_versioning` guides for more information.
+  ``0`` for experimental libraries. Review the :doc:`/contributing/abi_policy`
+  and :doc:`/contributing/abi_versioning` guides for more information.
 
 * Removed duplicated set of commands for Rx offload configuration from testpmd::
 
@@ -418,7 +418,7 @@ API Changes
 ABI Changes
 -----------
 
-* policy: Please note the revisions to the :doc:`../contributing/abi_policy`
+* policy: Please note the revisions to the :doc:`/contributing/abi_policy`
   introducing major ABI versions, with DPDK 19.11 becoming the first major
   version ``v20``. ABI changes to add new features continue to be permitted in
   subsequent releases, with the condition that ABI compatibility with the major

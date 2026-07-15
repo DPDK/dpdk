@@ -13,7 +13,7 @@ ethdev port list, and eal parameters.
 Telemetry Interface
 -------------------
 
-The :doc:`../prog_guide/telemetry_lib` opens a socket with path
+The :doc:`/prog_guide/telemetry_lib` opens a socket with path
 *<runtime_directory>/dpdk_telemetry.<version>*. The version represents the
 telemetry version, the latest is v2. For example, a client would connect to a
 socket with path  */var/run/dpdk/\*/dpdk_telemetry.v2* (when the primary process

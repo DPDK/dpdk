@@ -19,7 +19,7 @@ The block supports following modes of DMA transfers:
 Prerequisites and Compilation procedure
 ---------------------------------------
 
-See :doc:`../platform/cnxk` for setup information.
+See :doc:`/platform/cnxk` for setup information.
 
 Device Setup
 ------------

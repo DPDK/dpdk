@@ -157,7 +157,7 @@ it is required to update environment variables as below:
    CMAKE_PREFIX_PATH='<install_prefix>/lib/cmake/tvm:<install_prefix>/lib/cmake/dlpack:<install_prefix>/lib/cmake/dmlc'
    PKG_CONFIG_PATH='<install_prefix>/lib/pkgconfig'
 
-Refer to :doc:`../platform/cnxk` for instructions to build your DPDK application.
+Refer to :doc:`/platform/cnxk` for instructions to build your DPDK application.
 
 
 Initialization

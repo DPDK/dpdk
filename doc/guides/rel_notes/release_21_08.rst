@@ -68,7 +68,7 @@ New Features
 * **Added Wangxun ngbe PMD.**
 
   Added a new PMD for Wangxun 1Gb Ethernet NICs.
-  See the :doc:`../nics/ngbe` for more details.
+  See the :doc:`/nics/ngbe` for more details.
 
 * **Added inflight packets clear API in vhost library.**
 
@@ -107,7 +107,7 @@ New Features
   Added Baseband PHY PMD which allows configuration of the BPHY hardware block
   comprising accelerators and DSPs specifically tailored for 5G/LTE inline
   use cases. Configuration happens via standard rawdev enq/deq operations. See
-  the :doc:`../rawdevs/cnxk_bphy` rawdev guide for more details on this driver.
+  the :doc:`/rawdevs/cnxk_bphy` rawdev guide for more details on this driver.
 
 * **Added support for Marvell CN10K, CN9K, event Rx/Tx adapter.**
 

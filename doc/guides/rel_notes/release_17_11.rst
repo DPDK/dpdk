@@ -22,7 +22,7 @@ New Features
 * **Added a new driver for Marvell Armada 7k/8k devices.**
 
   Added the new ``mrvl`` net driver for Marvell Armada 7k/8k devices. See the
-  :doc:`../nics/mvpp2` NIC guide for more details on this new driver.
+  :doc:`/nics/mvpp2` NIC guide for more details on this new driver.
 
 * **Updated mlx4 driver.**
 
@@ -77,7 +77,7 @@ New Features
   * DPAA Mempool driver for supporting offloaded packet memory pool
   * DPAA PMD for DPAA devices
 
-  See the :doc:`../nics/dpaa` document for more details of this new driver.
+  See the :doc:`/nics/dpaa` document for more details of this new driver.
 
 * **Updated support for Cavium OCTEONTX Device.**
 
@@ -87,7 +87,7 @@ New Features
   * OCTEONTX Ethdev PMD
   * OCTEONTX Eventdev-Ethdev Rx adapter
 
-  See the :doc:`../nics/octeontx` document for more details of this new driver.
+  See the :doc:`/nics/octeontx` document for more details of this new driver.
 
 * **Added PF support to the Netronome NFP PMD.**
 
@@ -132,7 +132,7 @@ New Features
   * The DES DOCSIS BPI algorithm.
 
   This change requires version 0.47 of the IPsec Multi-buffer library. For
-  more details see the :doc:`../cryptodevs/aesni_mb` documentation.
+  more details see the :doc:`/cryptodevs/aesni_mb` documentation.
 
 * **Updated the OpenSSL PMD.**
 
@@ -144,13 +144,13 @@ New Features
 * **Added NXP DPAA SEC crypto PMD.**
 
   A new ``dpaa_sec`` hardware based crypto PMD for NXP DPAA devices has been
-  added. See the :doc:`../cryptodevs/dpaa_sec` document for more details.
+  added. See the :doc:`/cryptodevs/dpaa_sec` document for more details.
 
 * **Added MRVL crypto PMD.**
 
   A new crypto PMD has been added, which provides several ciphering and hashing
   algorithms. All cryptography operations use the MUSDK library crypto API.
-  See the :doc:`../cryptodevs/mvsam` document for more details.
+  See the :doc:`/cryptodevs/mvsam` document for more details.
 
 * **Add new benchmarking mode to dpdk-test-crypto-perf application.**
 
@@ -164,7 +164,7 @@ New Features
   for protocols like IPsec using inline ipsec offload to ethernet devices or
   full protocol offload with lookaside crypto devices.
 
-  See the :doc:`../prog_guide/rte_security` section of the DPDK Programmers
+  See the :doc:`/prog_guide/rte_security` section of the DPDK Programmers
   Guide document for more information.
 
 * **Updated the DPAA2_SEC crypto driver to support rte_security.**
@@ -227,7 +227,7 @@ New Features
   return not only whether the element has been inserted in one of the sets but
   also which set it belongs to.
 
-  See the :doc:`../prog_guide/member_lib` documentation in the Programmers
+  See the :doc:`/prog_guide/member_lib` documentation in the Programmers
   Guide, for more information.
 
 * **Added the Generic Segmentation Offload Library.**

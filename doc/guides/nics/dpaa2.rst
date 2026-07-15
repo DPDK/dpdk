@@ -420,7 +420,7 @@ Supported DPAA2 SoCs
 Prerequisites
 -------------
 
-See :doc:`../platform/dpaa2` for setup information
+See :doc:`/platform/dpaa2` for setup information
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
@@ -619,7 +619,7 @@ of configured tx queues.
 
 After hierarchy is complete it can be committed.
 
-For an additional description please refer to DPDK :doc:`../prog_guide/ethdev/traffic_management`.
+For an additional description please refer to DPDK :doc:`/prog_guide/ethdev/traffic_management`.
 
 Supported Features
 ~~~~~~~~~~~~~~~~~~

@@ -33,12 +33,12 @@ Common Offload HW Drivers
 
 #. **NIC Driver**
 
-   See :doc:`../nics/mlx5` for NVIDIA mlx5 NIC driver information.
+   See :doc:`/nics/mlx5` for NVIDIA mlx5 NIC driver information.
 
 #. **Cryptodev Driver**
 
    This is based on the crypto extension support of armv8. See
-   :doc:`../cryptodevs/armv8` for armv8 crypto driver information.
+   :doc:`/cryptodevs/armv8` for armv8 crypto driver information.
 
 .. note::
 
@@ -71,7 +71,7 @@ an x86 based platform.
 Native Compilation
 ~~~~~~~~~~~~~~~~~~
 
-Refer to :doc:`../nics/mlx5` for prerequisites. Either NVIDIA MLNX_OFED/EN or
+Refer to :doc:`/nics/mlx5` for prerequisites. Either NVIDIA MLNX_OFED/EN or
 rdma-core library with corresponding kernel drivers is required.
 
 .. code-block:: console
@@ -82,7 +82,7 @@ rdma-core library with corresponding kernel drivers is required.
 Cross Compilation
 ~~~~~~~~~~~~~~~~~
 
-Refer to :doc:`../linux_gsg/cross_build_dpdk_for_arm64` to install the cross
+Refer to :doc:`/linux_gsg/cross_build_dpdk_for_arm64` to install the cross
 toolchain for ARM64. Base on that, additional header files and libraries are
 required:
 

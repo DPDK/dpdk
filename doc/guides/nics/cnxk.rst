@@ -46,7 +46,7 @@ Features of the CNXK Ethdev PMD are:
 Prerequisites
 -------------
 
-See :doc:`../platform/cnxk` for setup information.
+See :doc:`/platform/cnxk` for setup information.
 
 
 Driver compilation and testing

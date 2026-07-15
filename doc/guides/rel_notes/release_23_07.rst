@@ -185,7 +185,7 @@ New Features
   PDCP features such as IV generation, sequence number handling, etc are supported.
   It is planned to add more features such as packet caching in future releases.
 
-  See :doc:`../prog_guide/pdcp_lib` for more information.
+  See :doc:`/prog_guide/pdcp_lib` for more information.
 
 * **Added TCP/IPv6 support in GRO library.**
 
@@ -203,7 +203,7 @@ New Features
 
   Added an application to test the performance of DMA device and CPU.
 
-  See the :doc:`../tools/dmaperf` for more details.
+  See the :doc:`/tools/dmaperf` for more details.
 
 
 Removed Items

@@ -304,7 +304,7 @@ and has three available power management schemes:
   The reaction time of the scale mode is longer
   than the pause and monitor mode.
 
-See :doc:`Power Management<../prog_guide/power_man>` chapter
+See :doc:`Power Management </prog_guide/power_man>` chapter
 in the DPDK Programmer's Guide for more details on PMD power management.
 
 .. code-block:: console

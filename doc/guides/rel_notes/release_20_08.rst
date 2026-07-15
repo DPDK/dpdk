@@ -216,14 +216,14 @@ New Features
 
   Added new command line option ``--portmap="(port, port)[,(port, port)]"`` to
   pass forwarding port details.
-  See the :doc:`../sample_app_ug/l2_forward_real_virtual` for more
+  See the :doc:`/sample_app_ug/l2_forward_real_virtual` for more
   details of this parameter usage.
 
 * **Updated ipsec-secgw sample application.**
 
   Added ``rte_flow`` based rules, which allows hardware parsing and steering
   of ingress packets to specific NIC queues.
-  See the :doc:`../sample_app_ug/ipsec_secgw` for more details.
+  See the :doc:`/sample_app_ug/ipsec_secgw` for more details.
 
 
 Removed Items

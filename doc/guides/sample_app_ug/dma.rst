@@ -38,7 +38,7 @@ Running the Application
 In order to run the hardware copy application, the copying device
 needs to be bound to user-space IO driver.
 
-Refer to the :doc:`../prog_guide/dmadev` for information on using the library.
+Refer to the :doc:`/prog_guide/dmadev` for information on using the library.
 
 The application requires a number of command line options:
 
@@ -320,4 +320,4 @@ The metadata in this example is copied from ``rx_descriptor_fields1`` marker of
 ``rte_mbuf`` struct up to ``buf_len`` member.
 
 In order to understand why software packet copying is done as shown
-above, please refer to the :doc:`../prog_guide/mbuf_lib`.
+above, please refer to the :doc:`/prog_guide/mbuf_lib`.

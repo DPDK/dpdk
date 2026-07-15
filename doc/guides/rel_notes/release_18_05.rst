@@ -124,7 +124,7 @@ New Features
 * **Added Ethernet poll mode driver for AMD XGBE devices.**
 
   Added the new ``axgbe`` ethernet poll mode driver for AMD XGBE devices.
-  See the :doc:`../nics/axgbe` nic driver guide for more details on this
+  See the :doc:`/nics/axgbe` nic driver guide for more details on this
   new driver.
 
 * **Updated szedata2 PMD.**
@@ -186,13 +186,13 @@ New Features
 
   Added a new Poll Mode Driver for virtio crypto devices, which provides
   AES-CBC ciphering and AES-CBC with HMAC-SHA1 algorithm-chaining. See the
-  :doc:`../cryptodevs/virtio` crypto driver guide for more details on
+  :doc:`/cryptodevs/virtio` crypto driver guide for more details on
   this new driver.
 
 * **Added AMD CCP Crypto PMD.**
 
   Added the new ``ccp`` crypto driver for AMD CCP devices. See the
-  :doc:`../cryptodevs/ccp` crypto driver guide for more details on
+  :doc:`/cryptodevs/ccp` crypto driver guide for more details on
   this new driver.
 
 * **Updated AESNI MB PMD.**
@@ -209,7 +209,7 @@ New Features
 * **Added a new compression poll mode driver using Intels ISA-L.**
 
    Added the new ``ISA-L`` compression driver, for compression and decompression
-   operations in software. See the :doc:`../compressdevs/isal` compression driver
+   operations in software. See the :doc:`/compressdevs/isal` compression driver
    guide for details on this new driver.
 
 * **Added the Event Timer Adapter Library.**
@@ -224,7 +224,7 @@ New Features
   The OcteonTx Timer block enables software to schedule events for a future
   time, it is exposed to an application via the Event timer adapter library.
 
-  See the :doc:`../eventdevs/octeontx` guide for more details
+  See the :doc:`/eventdevs/octeontx` guide for more details
 
 * **Added Event Crypto Adapter Library.**
 
@@ -245,7 +245,7 @@ New Features
   with OPAE (Open Programmable Acceleration Engine) shared code to provide common FPGA
   management ops for FPGA operation.
 
-  See the :doc:`../rawdevs/ifpga` programmer's guide for more details.
+  See the :doc:`/rawdevs/ifpga` programmer's guide for more details.
 
 * **Added DPAA2 QDMA Driver (in rawdev).**
 
@@ -264,7 +264,7 @@ New Features
   between GPP and AIOP is achieved via using DPCI devices exposed by MC for
   GPP <--> AIOP interaction.
 
-  See the :doc:`../rawdevs/dpaa2_cmdif` guide for more details.
+  See the :doc:`/rawdevs/dpaa2_cmdif` guide for more details.
 
 * **Added device event monitor framework.**
 

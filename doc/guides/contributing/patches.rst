@@ -730,7 +730,7 @@ We do our best to include CI and self-test infrastructure
 that can be used on an individual developer basis.
 
 For details on running the unit tests, see :doc:`unit_test`.
-It is also recommended to run the :doc:`DTS <../tools/dts>` comprehensive tests.
+It is also recommended to run the :doc:`DTS </tools/dts>` comprehensive tests.
 Finally, you can also push to a branch on the GitHub service
 to trigger a comprehensive set of compile and unit test runs.
 

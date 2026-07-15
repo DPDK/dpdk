@@ -48,9 +48,9 @@ https://ninja-build.org/
 
 It is best advised to go over the following links for the complete dependencies:
 
-* :doc:`Linux <../linux_gsg/sys_reqs>`
-* :doc:`FreeBSD <../freebsd_gsg/build_dpdk>`
-* :doc:`Windows <../windows_gsg/build_dpdk>`
+* :doc:`Linux </linux_gsg/sys_reqs>`
+* :doc:`FreeBSD </freebsd_gsg/build_dpdk>`
+* :doc:`Windows </windows_gsg/build_dpdk>`
 
 
 Configuring the Build

@@ -19,16 +19,16 @@ There are two sample applications: ``dpdk-dumpcap`` and older ``dpdk-pdump``.
 Introduction
 ------------
 
-The :doc:`librte_pdump <../prog_guide/pdump_lib>` library provides the API
+The :doc:`librte_pdump </prog_guide/pdump_lib>` library provides the API
 required to allow users to initialize the packet capture framework
 and to enable or disable packet capture.
 The library works on a multi-process communication model
 and its usage is recommended for debugging purposes.
 
-The :doc:`librte_pcapng <../prog_guide/pcapng_lib>` library provides the API
+The :doc:`librte_pcapng </prog_guide/pcapng_lib>` library provides the API
 to format packets and write them to a file in Pcapng format.
 
-The :doc:`dpdk-dumpcap <../tools/dumpcap>` is a tool that captures packets in
+The :doc:`dpdk-dumpcap </tools/dumpcap>` is a tool that captures packets in
 like Wireshark dumpcap does for Linux.
 It runs as a DPDK secondary process and captures packets
 from one or more interfaces and writes them to a file in Pcapng format.

@@ -20,7 +20,7 @@ The AF_XDP DP provisions and advertises networking interfaces to Kubernetes,
 while the CNI configures and plumbs network interfaces for the Pod.
 
 This document explains how to use the `AF_XDP Device Plugin for Kubernetes`_
-with a DPDK application using the :doc:`../nics/af_xdp`.
+with a DPDK application using the :doc:`/nics/af_xdp`.
 
 .. _AF_XDP Device Plugin for Kubernetes: https://github.com/redhat-et/afxdp-plugins-for-kubernetes
 
@@ -28,7 +28,7 @@ with a DPDK application using the :doc:`../nics/af_xdp`.
 Background
 ----------
 
-The standard :doc:`../nics/af_xdp` initialization process involves loading an eBPF program
+The standard :doc:`/nics/af_xdp` initialization process involves loading an eBPF program
 onto the kernel netdev to be used by the PMD.
 This operation requires root or escalated Linux privileges
 and thus prevents the PMD from working in an unprivileged container.
@@ -130,7 +130,7 @@ Device Plugin and DPDK container prerequisites:
 
 * dpdk-testpmd application should have AF_XDP feature enabled.
 
-  For further information see the docs for the: :doc:`../../nics/af_xdp`.
+  For further information see the docs for the: :doc:`/nics/af_xdp`.
 
 
 Example

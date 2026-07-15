@@ -94,7 +94,7 @@ Installation
 The OCTEON cnxk crypto PMD may be compiled natively on an OCTEON cnxk platform
 or cross-compiled on an x86 platform.
 
-Refer to :doc:`../platform/cnxk` for instructions to build your DPDK
+Refer to :doc:`/platform/cnxk` for instructions to build your DPDK
 application.
 
 .. note::
@@ -280,7 +280,7 @@ The OCTEON cnxk SoCs can accelerate IPsec traffic in lookaside protocol mode,
 with its **cryptographic accelerator (CPT)**. ``OCTEON cnxk crypto PMD`` implements
 this as an ``RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL`` offload.
 
-Refer to :doc:`../prog_guide/rte_security` for more details on protocol offloads.
+Refer to :doc:`/prog_guide/rte_security` for more details on protocol offloads.
 
 This feature can be tested with ipsec-secgw sample application.
 

@@ -208,7 +208,7 @@ Those two commands will be:
 .. note::
 
    For further examples of use of the command-line, see
-   :doc:`cmdline example application <../sample_app_ug/cmd_line>`
+   :doc:`cmdline example application </sample_app_ug/cmd_line>`
 
 Defining Command Result Structure
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

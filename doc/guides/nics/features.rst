@@ -1018,7 +1018,7 @@ PMD power management using monitor addresses
 --------------------------------------------
 
 Supports getting a monitoring condition to use together with Ethernet PMD power
-management (see :doc:`../prog_guide/power_man` for more details).
+management (see :doc:`/prog_guide/power_man` for more details).
 
 * **[implements] eth_dev_ops**: ``get_monitor_addr``
 

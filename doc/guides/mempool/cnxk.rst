@@ -38,7 +38,7 @@ CN20k NPA supports:
 Prerequisites and Compilation procedure
 ---------------------------------------
 
-   See :doc:`../platform/cnxk` for setup information.
+   See :doc:`/platform/cnxk` for setup information.
 
 Pre-Installation Configuration
 ------------------------------

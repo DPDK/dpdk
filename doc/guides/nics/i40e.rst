@@ -78,7 +78,7 @@ Linux Prerequisites
 Windows Prerequisites
 ---------------------
 
-- Follow the :doc:`guide for Windows <../windows_gsg/run_apps>`
+- Follow the :doc:`guide for Windows </windows_gsg/run_apps>`
   to setup the basic DPDK environment.
 
 - Identify the Intel® Ethernet adapter and get the latest NVM/FW version.

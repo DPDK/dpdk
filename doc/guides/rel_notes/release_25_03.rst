@@ -125,7 +125,7 @@ New Features
   Added a compress driver for ZSDA devices
   to support the deflate compression and decompression algorithm.
 
-  See the :doc:`../compressdevs/zsda` guide for more details on the new driver.
+  See the :doc:`/compressdevs/zsda` guide for more details on the new driver.
 
 * **Added atomic tests to the eventdev test application.**
 

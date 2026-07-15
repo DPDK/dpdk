@@ -16,7 +16,7 @@ This PMD is configuring the RegEx HW engine.
 For the PMD to work, the application must supply
 a precompiled rule file in rof2 format.
 
-See :doc:`../../platform/mlx5` guide for more design details.
+See :doc:`/platform/mlx5` guide for more design details.
 
 Features
 --------

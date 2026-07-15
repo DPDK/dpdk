@@ -10,7 +10,7 @@ APIs which support a number of different Crypto operations. The framework
 currently only supports cipher, authentication, chained cipher/authentication
 and AEAD symmetric and asymmetric Crypto operations.
 
-The usages in security protocols are discussed in the :doc:`../howto/security` guide.
+The usages in security protocols are discussed in the :doc:`/howto/security` guide.
 
 Design Principles
 -----------------
@@ -1127,4 +1127,4 @@ are shown below.
      capabilities>], "crypto_caps_n": <number of capabilities>}}
 
 For more information on how to use the Telemetry interface, see
-the :doc:`../howto/telemetry`.
+the :doc:`/howto/telemetry`.

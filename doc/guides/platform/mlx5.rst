@@ -64,11 +64,11 @@ For example: ``class=crypto:regex`` will probe both Crypto and RegEx PMDs.
 Supported Classes
 ~~~~~~~~~~~~~~~~~
 
-- ``class=compress`` for :doc:`../../compressdevs/mlx5`.
-- ``class=crypto`` for :doc:`../../cryptodevs/mlx5`.
-- ``class=eth`` for :doc:`../../nics/mlx5`.
-- ``class=regex`` for :doc:`../../regexdevs/mlx5`.
-- ``class=vdpa`` for :doc:`../../vdpadevs/mlx5`.
+- ``class=compress`` for :doc:`/compressdevs/mlx5`.
+- ``class=crypto`` for :doc:`/cryptodevs/mlx5`.
+- ``class=eth`` for :doc:`/nics/mlx5`.
+- ``class=regex`` for :doc:`/regexdevs/mlx5`.
+- ``class=vdpa`` for :doc:`/vdpadevs/mlx5`.
 
 By default, the mlx5 device will be probed by the ``eth`` PMD.
 
@@ -207,7 +207,7 @@ to match the kernel modules and libraries they come with.
 
    Several versions of NVIDIA MLNX_OFED/EN are available. Installing the version
    this DPDK release was developed and tested against is strongly recommended.
-   Please check the "Tested Platforms" section in the :doc:`../../rel_notes/index`.
+   Please check the "Tested Platforms" section in the :doc:`/rel_notes/index`.
 
 
 .. _mlx5_windows_prerequisites:

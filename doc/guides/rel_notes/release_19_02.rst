@@ -82,7 +82,7 @@ New Features
 * **Added ICE net PMD.**
 
   Added the new ``ice`` net driver for Intel(R) Ethernet Network Adapters E810.
-  See the :doc:`../nics/ice` NIC guide for more details on this new driver.
+  See the :doc:`/nics/ice` NIC guide for more details on this new driver.
 
 * **Added support for SW-assisted VDPA live migration.**
 
@@ -112,7 +112,7 @@ New Features
   algorithm-chaining, and AES-GCM and NULL algorithms only at present. It is
   planned to add more algorithms in future releases.
 
-  See :doc:`../prog_guide/ipsec_lib` for more information.
+  See :doc:`/prog_guide/ipsec_lib` for more information.
 
 * **Updated the ipsec-secgw sample application.**
 
@@ -126,7 +126,7 @@ New Features
   ipsec-secgw application. It is planned to add the outstanding functionality
   in future releases.
 
-  See :doc:`../sample_app_ug/ipsec_secgw` for more information.
+  See :doc:`/sample_app_ug/ipsec_secgw` for more information.
 
 * **Enabled checksum support in the ISA-L compressdev driver.**
 

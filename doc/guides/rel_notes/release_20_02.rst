@@ -34,7 +34,7 @@ New Features
 * **Added IONIC net PMD.**
 
   Added the new ``ionic`` net driver for Pensando Ethernet Network Adapters.
-  See the :doc:`../nics/ionic` NIC guide for more details on this new driver.
+  See the :doc:`/nics/ionic` NIC guide for more details on this new driver.
 
 * **Updated Broadcom bnxt driver.**
 
@@ -104,7 +104,7 @@ New Features
 * **Add new vDPA PMD based on Mellanox devices.**
 
   Added a new Mellanox vDPA  (``mlx5_vdpa``) PMD.
-  See the :doc:`../vdpadevs/mlx5` guide for more details on this driver.
+  See the :doc:`/vdpadevs/mlx5` guide for more details on this driver.
 
 * **Added support for virtio-PMD notification data.**
 

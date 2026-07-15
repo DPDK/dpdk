@@ -115,7 +115,7 @@ New Features
 * **Added UADK compress driver.**
 
   Added a new compress driver for the UADK library. See the
-  :doc:`../compressdevs/uadk` guide for more details on this new driver.
+  :doc:`/compressdevs/uadk` guide for more details on this new driver.
 
 * **Updated Marvell CNXK DMA driver.**
 

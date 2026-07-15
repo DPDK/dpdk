@@ -118,7 +118,7 @@ New Features
 * **Updated Intel igc driver.**
 
   Added Intel Foxville I226 devices in ``igc`` driver.
-  See the :doc:`../nics/igc` NIC guide for more details.
+  See the :doc:`/nics/igc` NIC guide for more details.
 
 * **Updated Mellanox mlx5 driver.**
 

@@ -40,4 +40,4 @@ must be installed separately:
   allocates resources such as number of VFs, input/output queues for itself and
   the number of i/o queues each VF can use.
 
-See :doc:`../platform/cnxk` for SDP interface information which provides PCIe endpoint support for a remote host.
+See :doc:`/platform/cnxk` for SDP interface information which provides PCIe endpoint support for a remote host.

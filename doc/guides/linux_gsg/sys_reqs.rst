@@ -88,7 +88,7 @@ For libraries the additional dependencies include:
 
 For poll-mode drivers, the additional dependencies for each driver can be
 found in that driver's documentation in the relevant DPDK guide document,
-e.g. :doc:`../nics/index`
+e.g. :doc:`/nics/index`
 
 .. _linux_gsg_running_apps:
 

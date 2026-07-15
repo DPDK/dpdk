@@ -112,7 +112,7 @@ New Features
 
   Added the new cpfl net driver
   for Intel\ |reg| Infrastructure Processing Unit (Intel\ |reg| IPU) E2100.
-  See the :doc:`../nics/cpfl` NIC guide for more details on this new driver.
+  See the :doc:`/nics/cpfl` NIC guide for more details on this new driver.
 
 * **Updated Intel igc driver.**
 

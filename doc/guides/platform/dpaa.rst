@@ -24,15 +24,15 @@ Common Offload HW Block Drivers
 
 #. **Nics Driver**
 
-   See :doc:`../nics/dpaa` for NXP dpaa nic driver information.
+   See :doc:`/nics/dpaa` for NXP dpaa nic driver information.
 
 #. **Cryptodev Driver**
 
-   See :doc:`../cryptodevs/dpaa_sec` for NXP dpaa cryptodev driver information.
+   See :doc:`/cryptodevs/dpaa_sec` for NXP dpaa cryptodev driver information.
 
 #. **Eventdev Driver**
 
-   See :doc:`../eventdevs/dpaa` for NXP dpaa eventdev driver information.
+   See :doc:`/eventdevs/dpaa` for NXP dpaa eventdev driver information.
 
 
 Steps To Setup Platform

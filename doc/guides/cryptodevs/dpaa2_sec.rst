@@ -161,7 +161,7 @@ Prerequisites
 DPAA2_SEC driver has similar pre-requisites as described in :ref:`dpaa2_overview`.
 The following dependencies are not part of DPDK and must be installed separately:
 
-See :doc:`../platform/dpaa2` for setup information
+See :doc:`/platform/dpaa2` for setup information
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 

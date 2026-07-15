@@ -31,7 +31,7 @@ Supported DPAA SoCs
 Prerequisites
 -------------
 
-See :doc:`../platform/dpaa` for setup information
+See :doc:`/platform/dpaa` for setup information
 
 Currently supported by DPDK:
 

@@ -19,20 +19,20 @@ Related Documentation
 Here is a list of related documents that provide detail of each library,
 its capabilities and what level of support it currently has within DPDK.
 
-:doc:`../prog_guide/cryptodev_lib`
+:doc:`/prog_guide/cryptodev_lib`
    This section contains the design of the crypto API.
 
-:doc:`../cryptodevs/index`
+:doc:`/cryptodevs/index`
    This section contains information about all the crypto drivers in DPDK,
    such as feature support availability, cipher algorithms and authentication algorithms.
 
-:doc:`../prog_guide/rte_security`
+:doc:`/prog_guide/rte_security`
    This library is the session-level glue between ethdev and cryptodev APIs
    for the supported protocols.
 
 High-level protocol processing
-   * :doc:`../prog_guide/ipsec_lib`
-   * :doc:`../prog_guide/pdcp_lib`
+   * :doc:`/prog_guide/ipsec_lib`
+   * :doc:`/prog_guide/pdcp_lib`
 
 
 Protocols
@@ -55,15 +55,15 @@ Standard Link
 
 Level of Support in DPDK
   * Supported
-  * :doc:`Sample Application <../sample_app_ug/l2_forward_macsec>`
+  * :doc:`Sample Application </sample_app_ug/l2_forward_macsec>`
 
 Supported Algorithms
   * As specified by MACsec specification: AES-128-GCM, AES-256-GCM
 
 Drivers
-  * Marvell :doc:`cnxk <../nics/cnxk>`
-  * Marvell/Aquantia :doc:`atlantic <../nics/atlantic>` with PMD-specific API
-  * Intel :doc:`ixgbe <../nics/ixgbe>` with PMD-specific API
+  * Marvell :doc:`cnxk </nics/cnxk>`
+  * Marvell/Aquantia :doc:`atlantic </nics/atlantic>` with PMD-specific API
+  * Intel :doc:`ixgbe </nics/ixgbe>` with PMD-specific API
 
 Facts
   * Uses the AES-GCM cryptography algorithm.
@@ -100,8 +100,8 @@ Standard Link
 
 Level of Support in DPDK
   * Supported
-  * :doc:`High-level library <../prog_guide/ipsec_lib>`
-  * :doc:`Sample application <../sample_app_ug/ipsec_secgw>`
+  * :doc:`High-level library </prog_guide/ipsec_lib>`
+  * :doc:`Sample application </sample_app_ug/ipsec_secgw>`
 
 Supported Algorithms
   * AES-GCM and ChaCha20-Poly1305
@@ -109,13 +109,13 @@ Supported Algorithms
   * HMAC-SHA1/SHA2 for integrity protection and authenticity
 
 Drivers
-  * Intel :doc:`ixgbe <../nics/ixgbe>`, :doc:`iavf <../nics/intel_vf>`,
-    :doc:`qat <../cryptodevs/qat>`, :doc:`ipsec_mb <../cryptodevs/aesni_mb>`
-  * Marvell :doc:`cnxk <../nics/cnxk>`, :doc:`mvsam <../cryptodevs/mvsam>`
-  * Netronome :doc:`nfp <../nics/nfp>`
-  * NXP :doc:`caam_jr <../cryptodevs/caam_jr>`,
-    :doc:`dpaa_sec <../cryptodevs/dpaa_sec>`, :doc:`dpaa2_sec <../cryptodevs/dpaa2_sec>`
-  * Wangxun :doc:`txgbe <../nics/txgbe>`
+  * Intel :doc:`ixgbe </nics/ixgbe>`, :doc:`iavf </nics/intel_vf>`,
+    :doc:`qat </cryptodevs/qat>`, :doc:`ipsec_mb </cryptodevs/aesni_mb>`
+  * Marvell :doc:`cnxk </nics/cnxk>`, :doc:`mvsam </cryptodevs/mvsam>`
+  * Netronome :doc:`nfp </nics/nfp>`
+  * NXP :doc:`caam_jr </cryptodevs/caam_jr>`,
+    :doc:`dpaa_sec </cryptodevs/dpaa_sec>`, :doc:`dpaa2_sec </cryptodevs/dpaa2_sec>`
+  * Wangxun :doc:`txgbe </nics/txgbe>`
 
 Pros
   * Uses public keys to create an encrypted, authenticated tunnel.
@@ -219,7 +219,7 @@ Supported Algorithms
   * CHACHA20-POLY1305
 
 Drivers
-  * Marvell :doc:`cnxk <../cryptodevs/cnxk>`
+  * Marvell :doc:`cnxk </cryptodevs/cnxk>`
 
 
 PDCP
@@ -239,7 +239,7 @@ Standard Link
 
 Level of Support in DPDK
   * Supported
-  * :doc:`High-level library <../prog_guide/pdcp_lib>`
+  * :doc:`High-level library </prog_guide/pdcp_lib>`
   * rte_security based PDCP sessions are also supported
 
 Supported Algorithms
@@ -247,11 +247,11 @@ Supported Algorithms
   * Authentication: NULL, AES-CMAC, SNOW 3G, ZUC
 
 Drivers supporting rte_security API (and used with the PDCP library)
-  * NXP :doc:`dpaa_sec <../cryptodevs/dpaa_sec>`, :doc:`dpaa2_sec <../cryptodevs/dpaa2_sec>`
+  * NXP :doc:`dpaa_sec </cryptodevs/dpaa_sec>`, :doc:`dpaa2_sec </cryptodevs/dpaa2_sec>`
 
 Drivers supported only with the PDCP library
-  * Intel :doc:`qat <../cryptodevs/qat>`, :doc:`ipsec_mb <../cryptodevs/aesni_mb>`
-  * Marvell :doc:`cnxk <../nics/cnxk>`
+  * Intel :doc:`qat </cryptodevs/qat>`, :doc:`ipsec_mb </cryptodevs/aesni_mb>`
+  * Marvell :doc:`cnxk </nics/cnxk>`
 
 Pros
   * Compresses the IP header of user plane packets

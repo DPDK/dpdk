@@ -60,12 +60,12 @@ New Features
 * **Added a net PMD NFB.**
 
   Added the new ``nfb`` net driver for Netcope NFB cards. See
-  the :doc:`../nics/nfb` NIC guide for more details on this new driver.
+  the :doc:`/nics/nfb` NIC guide for more details on this new driver.
 
 * **Added IPN3KE net PMD.**
 
   Added the new ``ipn3ke`` net driver for the Intel® FPGA PAC (Programmable
-  Acceleration Card) N3000. See the :doc:`../nics/ipn3ke` NIC guide for more
+  Acceleration Card) N3000. See the :doc:`/nics/ipn3ke` NIC guide for more
   details on this new driver.
 
   In addition ``ifpga_rawdev`` was also updated to support Intel® FPGA PAC

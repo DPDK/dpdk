@@ -32,7 +32,7 @@ when the MKEY is configured to perform crypto operations.
 
 The encryption does not require text to be aligned to the AES block size (128b).
 
-See :doc:`../../platform/mlx5` guide for more design details.
+See :doc:`/platform/mlx5` guide for more design details.
 
 AES-GCM
 ~~~~~~~

@@ -47,7 +47,7 @@ The features supported by the device and not yet supported by this PMD include:
 Prerequisites
 -------------
 
-See :doc:`../platform/octeontx` for setup information.
+See :doc:`/platform/octeontx` for setup information.
 
 Configuration
 -------------

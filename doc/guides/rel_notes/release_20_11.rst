@@ -194,7 +194,7 @@ New Features
 
   Added a new PMD for Wangxun 10 Gigabit Ethernet NICs.
 
-  See the :doc:`../nics/txgbe` for more details.
+  See the :doc:`/nics/txgbe` for more details.
 
 * **Updated Virtio driver.**
 
@@ -252,7 +252,7 @@ New Features
 * **Added Broadcom BCMFS symmetric crypto PMD.**
 
   Added a symmetric crypto PMD for Broadcom FlexSparc crypto units.
-  See :doc:`../cryptodevs/bcmfs` guide for more details on this new PMD.
+  See :doc:`/cryptodevs/bcmfs` guide for more details on this new PMD.
 
 * **Updated NXP DPAA2_SEC crypto PMD.**
 
@@ -279,7 +279,7 @@ New Features
 
   Added a new ``acc100`` bbdev driver for the Intel\ |reg| ACC100 accelerator
   also known as Mount Bryce.  See the
-  :doc:`../bbdevs/acc100` BBDEV guide for more details on this new driver.
+  :doc:`/bbdevs/acc100` BBDEV guide for more details on this new driver.
 
 * **Updated rte_security library to support SDAP.**
 
@@ -304,7 +304,7 @@ New Features
 * **Added a new driver for the Intel Dynamic Load Balancer v2.0 device.**
 
   Added the new ``dlb2`` eventdev driver for the Intel DLB V2.0 device. See the
-  :doc:`../eventdevs/dlb2` eventdev guide for more details on this new driver.
+  :doc:`/eventdevs/dlb2` eventdev guide for more details on this new driver.
 
 * **Added Ice Lake (Gen4) support for Intel NTB.**
 
@@ -380,7 +380,7 @@ New Features
 
   Added vhost asynchronous APIs support, which demonstrates how the application
   can leverage IOAT DMA channels with vhost asynchronous APIs.
-  See the :doc:`../sample_app_ug/vhost` for more details.
+  See the :doc:`/sample_app_ug/vhost` for more details.
 
 
 Removed Items

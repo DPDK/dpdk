@@ -401,7 +401,7 @@ can be configured via generic flow API offered by DPDK.
 
 The :ref:`flow_isolated_mode` is supported.
 
-For an additional description please refer to DPDK :doc:`../prog_guide/ethdev/flow_offload`.
+For an additional description please refer to DPDK :doc:`/prog_guide/ethdev/flow_offload`.
 
 Supported flow actions
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -576,7 +576,7 @@ MVPP2 PMD supports DPDK traffic metering and policing that allows the following:
 
 #. Gather statistics.
 
-For an additional description please refer to DPDK :doc:`../prog_guide/ethdev/traffic_metering_and_policing`.
+For an additional description please refer to DPDK :doc:`/prog_guide/ethdev/traffic_metering_and_policing`.
 
 The policer objects defined by this feature can work with the default policer defined via config file as described in :ref:`QoS Support <extconf>`.
 
@@ -655,7 +655,7 @@ of configured tx queues.
 After hierarchy is complete it can be committed.
 
 
-For an additional description please refer to DPDK :doc:`../prog_guide/ethdev/traffic_management`.
+For an additional description please refer to DPDK :doc:`/prog_guide/ethdev/traffic_management`.
 
 Limitations
 ~~~~~~~~~~~

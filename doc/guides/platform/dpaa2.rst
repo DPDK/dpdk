@@ -26,23 +26,23 @@ Common Offload HW Block Drivers
 
 #. **Nics Driver**
 
-   See :doc:`../nics/dpaa2` for NXP dpaa2 nic driver information.
+   See :doc:`/nics/dpaa2` for NXP dpaa2 nic driver information.
 
 #. **Cryptodev Driver**
 
-   See :doc:`../cryptodevs/dpaa2_sec` for NXP dpaa2 cryptodev driver information.
+   See :doc:`/cryptodevs/dpaa2_sec` for NXP dpaa2 cryptodev driver information.
 
 #. **Eventdev Driver**
 
-   See :doc:`../eventdevs/dpaa2` for NXP dpaa2 eventdev driver information.
+   See :doc:`/eventdevs/dpaa2` for NXP dpaa2 eventdev driver information.
 
 #. **Rawdev AIOP CMDIF Driver**
 
-   See :doc:`../rawdevs/dpaa2_cmdif` for NXP dpaa2 AIOP command interface driver information.
+   See :doc:`/rawdevs/dpaa2_cmdif` for NXP dpaa2 AIOP command interface driver information.
 
 #. **DMA Driver**
 
-   See :doc:`../dmadevs/dpaa2` for NXP dpaa2 QDMA driver information.
+   See :doc:`/dmadevs/dpaa2` for NXP dpaa2 QDMA driver information.
 
 
 Steps To Setup Platform

@@ -86,17 +86,17 @@ New Features
 * **Added a new net driver for Marvell Armada 3k device.**
 
   Added the new ``mvneta`` net driver for Marvell Armada 3k device. See the
-  :doc:`../nics/mvneta` NIC guide for more details on this new driver.
+  :doc:`/nics/mvneta` NIC guide for more details on this new driver.
 
 * **Added NXP ENETC PMD.**
 
   Added the new enetc driver for the NXP enetc platform. See the
-  :doc:`../nics/enetc` NIC driver guide for more details on this new driver.
+  :doc:`/nics/enetc` NIC driver guide for more details on this new driver.
 
 * **Added Ethernet poll mode driver for Aquantia aQtion family of 10G devices.**
 
   Added the new ``atlantic`` ethernet poll mode driver for Aquantia XGBE devices.
-  See the :doc:`../nics/atlantic` NIC driver guide for more details on this
+  See the :doc:`/nics/atlantic` NIC driver guide for more details on this
   driver.
 
 * **Updated mlx5 driver.**
@@ -185,7 +185,7 @@ New Features
 * **Added NXP CAAM JR PMD.**
 
   Added the new caam job ring driver for NXP platforms. See the
-  :doc:`../cryptodevs/caam_jr` guide for more details on this new driver.
+  :doc:`/cryptodevs/caam_jr` guide for more details on this new driver.
 
 * **Added support for GEN3 devices to Intel QAT driver.**
 
@@ -239,7 +239,7 @@ New Features
   executed per core and uses the number of empty polls as a hint for system
   power management.
 
-  See the :doc:`../prog_guide/power_man` section of the DPDK Programmers
+  See the :doc:`/prog_guide/power_man` section of the DPDK Programmers
   Guide document for more information.
 
 * **Added JSON power policy interface for containers.**

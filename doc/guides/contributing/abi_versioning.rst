@@ -267,10 +267,11 @@ used by newly built applications.
 Enabling versioning macros
 __________________________
 
-Finally, we need to indicate to the :doc:`meson/ninja build system
-<../prog_guide/build-sdk-meson>` to enable versioning macros when building the
-library or driver. In the libraries or driver where we have added symbol
-versioning, in the ``meson.build`` file we add the following
+Finally, we need to indicate
+to the :doc:`Meson/Ninja build system </prog_guide/build-sdk-meson>`
+to enable versioning macros when building the library or driver.
+In the libraries or driver where we have added symbol versioning,
+in the ``meson.build`` file we add the following
 
 .. code-block:: none
 

@@ -21,7 +21,7 @@ The binary is generated in the build directory by default:
     ~/DPDK/examples/helloworld$ ls build/app
     helloworld helloworld.map
 
-Please refer to :doc:`../linux_gsg/build_dpdk` for details on compiling with meson.
+Please refer to :doc:`/linux_gsg/build_dpdk` for details on compiling with meson.
 
 Build Your Own Application Outside the Development Kit
 ------------------------------------------------------

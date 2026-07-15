@@ -40,4 +40,4 @@ be preempted at any point during a push or pop operation and will not impede
 the progress of any other thread.
 
 For a more detailed description of the stack implementations, please refer to
-:doc:`../prog_guide/stack_lib`.
+:doc:`/prog_guide/stack_lib`.

@@ -78,7 +78,7 @@ Test steps
       ninja
       sudo ninja install
 
-#. Prepare hugepages for DPDK (see also :doc:`../tools/hugepages`)
+#. Prepare hugepages for DPDK (see also :doc:`/tools/hugepages`)
 
    .. code-block:: console
 

@@ -60,7 +60,7 @@ Configuring and Building the DPDK ZSDA PMDs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Further information on configuring, building and installing DPDK is described
-:doc:`here <../linux_gsg/build_dpdk>`.
+:doc:`here </linux_gsg/build_dpdk>`.
 
 
 Build Configuration
