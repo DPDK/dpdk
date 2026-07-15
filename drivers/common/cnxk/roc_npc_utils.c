@@ -1088,7 +1088,7 @@ npc_get_free_mcam_entry(struct mbox *mbox, struct roc_npc_flow *flow, struct npc
 					     flow->key_type);
 		if (rc) {
 			plt_npc_dbg("npc: failed to allocate MCAM entry.");
-			return rc;
+			goto err;
 		}
 
 		new_entry->flow = flow;
@@ -1096,7 +1096,7 @@ npc_get_free_mcam_entry(struct mbox *mbox, struct roc_npc_flow *flow, struct npc
 		rc = npc_alloc_mcam_by_ref_entry(mbox, flow, npc, &rsp_local);
 
 		if (rc)
-			return rc;
+			goto err;
 
 		new_entry->flow = flow;
 

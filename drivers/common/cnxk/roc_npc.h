@@ -473,6 +473,9 @@ int __roc_api roc_npc_mcam_alloc_entries(struct roc_npc *roc_npc, int ref_entry,
 int __roc_api roc_npc_mcam_ena_dis_entry(struct roc_npc *roc_npc, struct roc_npc_flow *mcam,
 					 bool enable);
 int __roc_api roc_npc_mcam_write_entry(struct roc_npc *roc_npc, struct roc_npc_flow *mcam);
+
+void __roc_api roc_npc_mcam_write_rx_finalize(struct roc_npc *roc_npc, struct roc_npc_flow *flow);
+
 void __roc_api roc_npc_defrag_mcam_banks(struct roc_npc *roc_npc);
 uint8_t __roc_api roc_npc_get_key_type(struct roc_npc *roc_npc, struct roc_npc_flow *flow);
 uint8_t __roc_api roc_npc_kex_key_type_config_get(struct roc_npc *roc_npc);
@@ -508,4 +511,98 @@ void __roc_api roc_npc_sdp_channel_get(struct roc_npc *roc_npc, uint16_t *chan_b
 int __roc_api roc_npc_mcam_get_stats(struct roc_npc *roc_npc, struct roc_npc_flow *flow,
 				     uint64_t *count);
 int __roc_api roc_npc_skip_size_pkind_get(struct roc_npc *roc_npc);
+
+/*
+ * Queue-based (async) template flow API.
+ */
+enum roc_npc_template_table_insertion_type {
+	/* HW MCAM entry allocated per rule at create time (match based). */
+	ROC_NPC_TEMPLATE_INSERTION_PATTERN,
+	/* MCAM range reserved up front; rules placed at an app-chosen index. */
+	ROC_NPC_TEMPLATE_INSERTION_INDEX_WITH_PATTERN,
+};
+
+struct roc_npc_flow_queue_attr {
+	uint32_t size; /**< Number of in-flight async ops the queue can hold. */
+};
+
+struct roc_npc_pattern_template_attr {
+	uint32_t relaxed_matching : 1;
+	uint32_t ingress : 1;
+	uint32_t egress : 1;
+	uint32_t transfer : 1;
+	uint32_t reserved : 28;
+};
+
+struct roc_npc_actions_template_attr {
+	uint32_t ingress : 1;
+	uint32_t egress : 1;
+	uint32_t transfer : 1;
+	uint32_t reserved : 29;
+};
+
+struct roc_npc_template_table_attr {
+	struct roc_npc_attr flow_attr; /**< Priority / ingress / egress. */
+	uint32_t transfer : 1;	       /**< roc_npc_attr has no transfer bit. */
+	uint32_t reserved : 31;
+	enum roc_npc_template_table_insertion_type insertion_type;
+	uint32_t nb_flows; /**< Max rules the table can hold. */
+	void *cookie;	   /**< Opaque consumer context, retrievable per rule. */
+};
+
+/** Result of one completed async operation, returned by roc_npc_flow_pull. */
+struct roc_npc_flow_op_result {
+	void *user_data; /**< user_data passed at async_create/destroy time. */
+	int rc;		 /**< 0 on success, negative errno on failure. */
+};
+
+/* Opaque template/table/flow handles owned by the roc layer. */
+struct roc_npc_pattern_template;
+struct roc_npc_actions_template;
+struct roc_npc_template_table;
+struct roc_npc_template_flow;
+
+int __roc_api roc_npc_flow_configure(struct roc_npc *roc_npc, uint16_t nb_queues,
+				     const struct roc_npc_flow_queue_attr *queue_attr[]);
+
+struct roc_npc_pattern_template *__roc_api roc_npc_pattern_template_create(
+	struct roc_npc *roc_npc, const struct roc_npc_pattern_template_attr *attr,
+	const struct roc_npc_item_info pattern[], int *errcode);
+int __roc_api roc_npc_pattern_template_destroy(struct roc_npc *roc_npc,
+					       struct roc_npc_pattern_template *tmpl);
+
+struct roc_npc_actions_template *__roc_api roc_npc_actions_template_create(
+	struct roc_npc *roc_npc, const struct roc_npc_actions_template_attr *attr,
+	const struct roc_npc_action actions[], const struct roc_npc_action masks[], int *errcode);
+int __roc_api roc_npc_actions_template_destroy(struct roc_npc *roc_npc,
+					       struct roc_npc_actions_template *tmpl);
+
+struct roc_npc_template_table *__roc_api roc_npc_template_table_create(
+	struct roc_npc *roc_npc, const struct roc_npc_template_table_attr *attr,
+	struct roc_npc_pattern_template *pattern_templates[], uint8_t nb_pattern_templates,
+	struct roc_npc_actions_template *actions_templates[], uint8_t nb_actions_templates,
+	int *errcode);
+int __roc_api roc_npc_template_table_destroy(struct roc_npc *roc_npc,
+					     struct roc_npc_template_table *table);
+
+struct roc_npc_template_flow *__roc_api roc_npc_async_flow_create(
+	struct roc_npc *roc_npc, uint32_t queue_id, struct roc_npc_template_table *table,
+	const struct roc_npc_item_info pattern[], const struct roc_npc_action actions[],
+	uint16_t dst_pf_func, uint64_t npc_default_action, void *user_data, int *errcode);
+int __roc_api roc_npc_async_flow_destroy(struct roc_npc *roc_npc, uint32_t queue_id,
+					 struct roc_npc_template_flow *flow, void *user_data);
+struct roc_npc_template_flow *__roc_api roc_npc_async_flow_create_by_index_with_pattern(
+	struct roc_npc *roc_npc, uint32_t queue_id, struct roc_npc_template_table *table,
+	uint32_t rule_index, const struct roc_npc_item_info pattern[],
+	const struct roc_npc_action actions[], void *user_data, int *errcode);
+int __roc_api roc_npc_async_flow_actions_update(struct roc_npc *roc_npc, uint32_t queue_id,
+						struct roc_npc_template_flow *flow,
+						const struct roc_npc_action actions[],
+						void *user_data);
+int __roc_api roc_npc_flow_push(struct roc_npc *roc_npc, uint32_t queue_id);
+int __roc_api roc_npc_flow_pull(struct roc_npc *roc_npc, uint32_t queue_id,
+				struct roc_npc_flow_op_result res[], uint16_t n_res);
+bool __roc_api roc_npc_async_flow_resolve(struct roc_npc *roc_npc, void *handle,
+					  struct roc_npc_flow **flow);
+void *__roc_api roc_npc_async_flow_table_cookie(struct roc_npc_template_flow *flow);
 #endif /* _ROC_NPC_H_ */

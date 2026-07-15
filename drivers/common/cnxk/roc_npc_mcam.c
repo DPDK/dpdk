@@ -714,7 +714,6 @@ npc_mcam_fetch_kex_cfg(struct npc *npc)
 	struct mbox *mbox = mbox_get(npc->mbox);
 	int rc = 0;
 
-
 	if (!roc_model_is_cn20k()) {
 		mbox_alloc_msg_npc_get_kex_cfg(mbox);
 		rc = mbox_process_msg(mbox, (void *)&kex_rsp);
@@ -782,6 +781,46 @@ npc_mcam_set_channel(struct roc_npc_flow *flow, struct npc_cn20k_mcam_write_entr
 
 	req->entry_data.kw[0] |= (uint64_t)chan;
 	req->entry_data.kw_mask[0] |= (uint64_t)mask;
+	flow->mcam_data[0] |= (uint64_t)chan;
+	flow->mcam_mask[0] |= (uint64_t)mask;
+}
+
+/* Fold RQ into the action word and program the RX channel into kw[0],
+ * matching the RX steps the sync path does in npc_mcam_alloc_and_write().
+ */
+void
+roc_npc_mcam_write_rx_finalize(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+	uint16_t chan, mask;
+	uint64_t op;
+
+	if (flow->nix_intf != NIX_INTF_RX)
+		return;
+
+	/* Set the RQ in the action index field, but only for UCAST* ops that
+	 * use it as a receive queue. Clear then set so a re-finalize on an
+	 * async QUEUE update leaves no stale bits.
+	 */
+	op = flow->npc_action & 0xFULL;
+	if (op == NIX_RX_ACTIONOP_UCAST || op == NIX_RX_ACTIONOP_UCAST_IPSEC ||
+	    op == NIX_RX_ACTIONOP_UCAST_CPT) {
+		flow->npc_action &= ~GENMASK_ULL(39, 20);
+		flow->npc_action |= ((uint64_t)flow->recv_queue << 20) & GENMASK_ULL(39, 20);
+	}
+
+	/* Program the RX channel into kw[0]. */
+	chan = npc->channel;
+	mask = BIT_ULL(12) - 1;
+
+	flow->mcam_data[0] &= ~(GENMASK(11, 0));
+	flow->mcam_mask[0] &= ~(GENMASK(11, 0));
+
+	if (roc_model_runtime_is_cn10k() && !roc_npc_action_is_rx_inline(flow->npc_action)) {
+		chan = (chan & NIX_CHAN_CPT_X2P_MASK);
+		mask = (mask & NIX_CHAN_CPT_X2P_MASK);
+	}
+
 	flow->mcam_data[0] |= (uint64_t)chan;
 	flow->mcam_mask[0] |= (uint64_t)mask;
 }
@@ -1430,5 +1469,9 @@ npc_flow_free_all_resources(struct npc *npc)
 			plt_free(flow);
 		}
 	}
+
+	/* Reconcile template-table bookkeeping for all teardown paths. */
+	npc_template_tables_flush_reconcile(npc);
+
 	return rc;
 }

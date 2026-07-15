@@ -16,6 +16,8 @@ int cn20k_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 int cn20k_flow_info_get(struct rte_eth_dev *dev, struct rte_flow_port_info *port_info,
 			struct rte_flow_queue_info *queue_info, struct rte_flow_error *err);
 
+int cn20k_flow_push(struct rte_eth_dev *dev, uint32_t queue, struct rte_flow_error *error);
+
 #define CNXK_NPC_COUNTERS_MAX 512
 
 #endif /* __CN20K_FLOW_H__ */
