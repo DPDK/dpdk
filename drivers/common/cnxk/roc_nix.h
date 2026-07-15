@@ -1052,6 +1052,8 @@ int __roc_api roc_nix_npc_rx_ena_dis(struct roc_nix *roc_nix, bool enable);
 int __roc_api roc_nix_npc_mcast_config(struct roc_nix *roc_nix,
 				       bool mcast_enable, bool prom_enable);
 
+int __roc_api roc_nix_af_rx_flow_vec_ctrl_set(struct roc_nix *roc_nix);
+
 /* RSS */
 void __roc_api roc_nix_rss_key_default_fill(struct roc_nix *roc_nix,
 					    uint8_t key[ROC_NIX_RSS_KEY_LEN]);

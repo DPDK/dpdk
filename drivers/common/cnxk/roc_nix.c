@@ -3,6 +3,7 @@
  */
 
 #include "roc_api.h"
+#include "roc_nix_flow_vec.h"
 #include "roc_priv.h"
 
 bool
@@ -524,7 +525,15 @@ skip_dev_init:
 	roc_nix_get_hw_info(roc_nix);
 	nix->dev.drv_inited = true;
 
+	if (roc_model_is_cn20k()) {
+		rc = roc_nix_af_rx_flow_vec_ctrl_set(roc_nix);
+		if (rc)
+			goto tm_conf_fini;
+	}
+
 	return 0;
+tm_conf_fini:
+	nix_tm_conf_fini(roc_nix);
 unregister_irqs:
 	nix_unregister_irqs(nix);
 lf_detach:
@@ -587,4 +596,36 @@ roc_nix_max_rep_count(struct roc_nix *roc_nix)
 exit:
 	mbox_put(mbox);
 	return rc;
+}
+
+static int
+nix_af_rx_flow_vec_ctrl_set(struct mbox *mbox)
+{
+	struct nix_af_rx_flow_vec_ctrl_write_req *req;
+	struct nix_af_rx_flow_vec_ctrl_write_rsp *rsp;
+	int rc = -ENOSPC;
+
+	req = mbox_alloc_msg_nix_af_rx_flow_vec_ctrl_set(mbox_get(mbox));
+	if (req == NULL)
+		goto exit;
+
+	memcpy(&req->ctrl0x, nix_flow_ctrl0, sizeof(nix_flow_ctrl0));
+	memcpy(&req->ctrl1x, nix_flow_ctrl1, sizeof(nix_flow_ctrl1));
+
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		goto exit;
+
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+int
+roc_nix_af_rx_flow_vec_ctrl_set(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+
+	return nix_af_rx_flow_vec_ctrl_set(dev->mbox);
 }
