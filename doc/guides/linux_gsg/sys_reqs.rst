@@ -131,7 +131,7 @@ System Software
     *   PROC_PAGE_MONITOR support
 
     *   HPET and HPET_MMAP configuration options should also be enabled if HPET support is required.
-        See the section on :ref:`High Precision Event Timer (HPET) Functionality <High_Precision_Event_Timer>` for more details.
+        See the section on :ref:`High_Precision_Event_Timer` for more details.
 
 .. _linux_gsg_hugepages:
 

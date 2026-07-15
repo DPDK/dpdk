@@ -48,8 +48,7 @@ by calling the ``rte_dma_start()`` API.
 Performing Data Copies
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Refer to the :ref:`Enqueue / Dequeue API <dmadev_enqueue_dequeue>`
-section of the dmadev library documentation
+Refer to the :ref:`dmadev_enqueue_dequeue` section of the dmadev library documentation
 for details on operation enqueue and submission API usage.
 
 Performance Tuning Parameters

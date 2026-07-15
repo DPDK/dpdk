@@ -31,8 +31,7 @@ The NIC's on both servers are connected to a switch
 which is also connected to the traffic generator.
 
 The switch is configured to broadcast traffic on all the NIC ports.
-A :ref:`Sample switch configuration <lm_bond_virtio_sriov_switch_conf>`
-can be found in this section.
+A :ref:`lm_bond_virtio_sriov_switch_conf` can be found in this section.
 
 The host is running the Kernel PF driver (ixgbe or i40e).
 
@@ -46,8 +45,8 @@ Live Migration steps
 --------------------
 
 The sample scripts mentioned in the steps below can be found in the
-:ref:`Sample host scripts <lm_bond_virtio_sriov_host_scripts>` and
-:ref:`Sample VM scripts <lm_bond_virtio_sriov_vm_scripts>` sections.
+:ref:`lm_bond_virtio_sriov_host_scripts` and
+:ref:`lm_bond_virtio_sriov_vm_scripts` sections.
 
 On host_server_1: Terminal 1
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -89,7 +89,7 @@ Once configured, the device can then be made ready for use by calling the
 Performing Data Copies
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Refer to the :ref:`Enqueue / Dequeue APIs <dmadev_enqueue_dequeue>` section of the dmadev library
+Refer to the :ref:`dmadev_enqueue_dequeue` section of the dmadev library
 documentation for details on operation enqueue, submission and completion API usage.
 
 It is expected that, for efficiency reasons, a burst of operations will be enqueued to the

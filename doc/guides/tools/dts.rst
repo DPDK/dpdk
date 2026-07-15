@@ -385,7 +385,7 @@ Framework Coding Guidelines
 
 When contributing code to the DTS framework,
 follow existing conventions to ensure consistency.
-The :ref:`DTS developer tools <dts_dev_tools>` will flag basic issues.
+The :ref:`dts_dev_tools` will flag basic issues.
 Also, be sure to :ref:`build the API documentation <building_api_docs>`
 to catch any problems during the build.
 

@@ -27,7 +27,7 @@ Configuration
 -------------
 
 See :ref:`mlx5 common compilation <mlx5_common_compilation>`,
-:ref:`mlx5 firmware configuration <mlx5_firmware_config>`,
+:ref:`mlx5_firmware_config`,
 and :ref:`mlx5 common driver options <mlx5_common_driver_options>`.
 
 

@@ -161,8 +161,7 @@ Make your planned changes in the cloned ``dpdk`` repo. Here are some guidelines 
   * For other PMDs and more info, refer to the ``MAINTAINERS`` file.
 
 * New external functions should be exported.
-  See the :doc:`ABI policy <abi_policy>` and :doc:`abi_versioning`
-  guides.
+  See the :doc:`abi_policy` and :doc:`abi_versioning` guides.
 
 * Any new API function should be used in ``/app`` test directory.
 

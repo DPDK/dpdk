@@ -21,7 +21,7 @@ FIB API Overview
 
 The main configuration struct contains:
 
-* Type of :ref:`dataplane algorithm <fib_dataplane_algorithms>`.
+* Type of :ref:`fib_dataplane_algorithms`.
 
 * Default next hop ID.
 

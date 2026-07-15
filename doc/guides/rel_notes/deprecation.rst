@@ -4,8 +4,7 @@
 ABI and API Deprecation
 =======================
 
-See the guidelines document for details
-of the :doc:`ABI policy </contributing/abi_policy>`.
+See the guidelines document for details of the :doc:`/contributing/abi_policy`.
 
 With DPDK 23.11, there will be a new major ABI version: 24.
 This means that during the development of 23.11,

@@ -4,7 +4,7 @@
 Event DMA Adapter Library
 =========================
 
-DPDK :doc:`eventdev library <eventdev>` provides event driven programming model
+DPDK :doc:`eventdev` provides event driven programming model
 with features to schedule events.
 :doc:`../dmadev` provides an interface to DMA poll mode drivers
 that support DMA operations.

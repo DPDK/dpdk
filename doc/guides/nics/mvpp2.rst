@@ -35,13 +35,13 @@ Features of the MVPP2 PMD are:
 - L4 checksum offload
 - Packet type parsing
 - Basic stats
-- :ref:`Extended stats <extstats>`
+- :ref:`extstats`
 - RX flow control
 - Scattered TX frames
 - :ref:`QoS <extconf>`
-- :ref:`Flow API <flowapi>`
-- :ref:`Traffic metering and policing <mtrapi>`
-- :ref:`Traffic Management API <tmapi>`
+- :ref:`flowapi`
+- :ref:`mtrapi`
+- :ref:`tmapi`
 
 Limitations
 -----------

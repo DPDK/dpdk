@@ -4,7 +4,7 @@
 Event Crypto Adapter Library
 ============================
 
-The DPDK :doc:`Eventdev library <eventdev>` provides event driven
+The DPDK :doc:`eventdev` provides event driven
 programming model with features to schedule events.
 The :doc:`../cryptodev_lib` provides an interface to
 the crypto poll mode drivers that support different crypto operations.

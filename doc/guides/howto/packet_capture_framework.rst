@@ -28,7 +28,7 @@ and its usage is recommended for debugging purposes.
 The :doc:`librte_pcapng </prog_guide/pcapng_lib>` library provides the API
 to format packets and write them to a file in Pcapng format.
 
-The :doc:`dpdk-dumpcap </tools/dumpcap>` is a tool that captures packets in
+The :doc:`/tools/dumpcap` is a tool that captures packets in
 like Wireshark dumpcap does for Linux.
 It runs as a DPDK secondary process and captures packets
 from one or more interfaces and writes them to a file in Pcapng format.

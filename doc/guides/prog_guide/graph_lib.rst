@@ -537,8 +537,8 @@ Feature arc
 An ordered list of feature nodes in a given network layer is called as feature arc.
 It consists of three objects:
 
-- :ref:`Start node <Start_Node>`
-- :ref:`End feature node <End_Feature_Node>`
+- :ref:`Start_Node`
+- :ref:`End_Feature_Node`
 - :ref:`Zero or more feature nodes <Feature_Nodes>`
 
 In order to :ref:`create <Feature_Arc_Registration>` a feature arc object,
@@ -774,7 +774,7 @@ using ``rte_graph_feature_enable()`` and ``rte_graph_feature_disable()`` functio
 .. note::
 
    RCU argument is optional argument to enable/disable API.
-   See :ref:`control/data plane synchronization <Control_Data_Plane_Synchronization>`
+   See :ref:`Control_Data_Plane_Synchronization`
    and :ref:`notifier_cb <Feature_Notifier_Cb>` for more details on when RCU is needed.
 
 Fast path traversal rules
@@ -845,7 +845,7 @@ whenever any feature is enabled at runtime.
 *****************
 
 Following code-snippet explains fast path traversal rule for ``Feature-1``
-:ref:`feature node <Feature_Nodes>` shown in :ref:`figure <Figure_Arc_2>`.
+:ref:`Feature_Nodes` shown in :ref:`figure <Figure_Arc_2>`.
 
 .. code-block:: c
 

@@ -226,8 +226,8 @@ but now points to the above newly named function ``rte_acl_create_v21``.
 We have now mapped the original rte_acl_create symbol to the original function
 (but with a new name).
 
-Please see the section :ref:`Enabling versioning macros
-<enabling_versioning_macros>` to enable this macro in the meson/ninja build.
+Please see the section :ref:`enabling_versioning_macros`
+to enable this macro in the Meson/Ninja build.
 
 Next, we need to create the new version of the symbol. We create a new
 function name and implement it appropriately, then wrap it in a call to ``RTE_DEFAULT_SYMBOL``.
@@ -256,7 +256,7 @@ used by newly built applications.
 .. note::
 
    **Before you leave**, please take care reviewing the sections on
-   :ref:`enabling versioning macros <enabling_versioning_macros>`,
+   :ref:`enabling_versioning_macros`,
    and :ref:`ABI deprecation <abi_deprecation>`.
 
 
