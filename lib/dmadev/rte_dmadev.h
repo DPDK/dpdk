@@ -1015,26 +1015,41 @@ rte_dma_submit(int16_t dev_id, uint16_t vchan)
 }
 
 /**
- * Return the number of operations that have been successfully completed.
- * Once an operation has been reported as completed, the results of that
- * operation will be visible to all cores on the system.
+ * Return the number of operations that have completed successfully,
+ * starting from the current ring position.
+ *
+ * This function reports a contiguous run of successfully completed operations.
+ * It stops at the first operation that either failed or has not yet completed.
+ * Once an operation is reported as successfully completed,
+ * the results of that operation are visible to all cores on the system.
  *
  * @param dev_id
  *   The identifier of the device.
  * @param vchan
- *   The identifier of virtual DMA channel.
+ *   The identifier of the virtual DMA channel.
  * @param nb_cpls
- *   The maximum number of completed operations that can be processed.
+ *   The maximum number of completed operations to report.
  * @param[out] last_idx
- *   The last completed operation's ring_idx.
+ *   The ring_idx of the last successfully completed operation reported by this call.
+ *   The function stops at the first failed or incomplete operation,
+ *   and reports at most nb_cpls operations,
+ *   so this may not be the last successful operation
+ *   the device has actually completed.
  *   If not required, NULL can be passed in.
  * @param[out] has_error
- *   Indicates if there are transfer error.
+ *   When set to true, a failed operation was encountered
+ *   among the completed operations on the device (within the nb_cpls limit),
+ *   causing the function to stop early.
+ *   The returned count covers only the successful completions
+ *   preceding that first failure.
+ *   When false, all operations reported by this call succeeded;
+ *   the function stopped either because nb_cpls operations have been reported,
+ *   or because no more completed operations are available on the device.
  *   If not required, NULL can be passed in.
  *
  * @return
- *   The number of operations that successfully completed. This return value
- *   must be less than or equal to the value of nb_cpls.
+ *   The number of operations that successfully completed.
+ *   This return value is less than or equal to the value of nb_cpls.
  */
 static inline uint16_t
 rte_dma_completed(int16_t dev_id, uint16_t vchan, const uint16_t nb_cpls,
@@ -1074,30 +1089,37 @@ rte_dma_completed(int16_t dev_id, uint16_t vchan, const uint16_t nb_cpls,
 }
 
 /**
- * Return the number of operations that have been completed, and the operations
- * result may succeed or fail.
- * Once an operation has been reported as completed successfully, the results of that
- * operation will be visible to all cores on the system.
+ * Return the number of operations that have completed (successfully or with error),
+ * starting from the current ring position.
+ *
+ * This function reports all completed operations up to nb_cpls,
+ * regardless of whether each individual operation succeeded or failed.
+ * Once an operation has been reported as completed successfully,
+ * the results of that operation are visible to all cores on the system.
  *
  * @param dev_id
  *   The identifier of the device.
  * @param vchan
- *   The identifier of virtual DMA channel.
+ *   The identifier of the virtual DMA channel.
  * @param nb_cpls
- *   Indicates the size of status array.
+ *   The size of the status array,
+ *   i.e. the maximum number of completed operations to report.
  * @param[out] last_idx
- *   The last completed operation's ring_idx.
+ *   The ring_idx of the last completed operation reported by this call,
+ *   whether successful or failed.
+ *   The function reports up to nb_cpls completed operations
+ *   without stopping on errors, so this may not be the last operation
+ *   the device has actually completed.
  *   If not required, NULL can be passed in.
  * @param[out] status
- *   This is a pointer to an array of length 'nb_cpls' that holds the completion
- *   status code of each operation.
+ *   Pointer to an array of length 'nb_cpls'
+ *   that receives the completion status code of each reported operation.
  *   @see enum rte_dma_status_code
  *
  * @return
- *   The number of operations that completed. This return value must be less
- *   than or equal to the value of nb_cpls.
- *   If this number is greater than zero (assuming n), then n values in the
- *   status array are also set.
+ *   The number of operations that completed.
+ *   This return value is less than or equal to the value of nb_cpls.
+ *   If this number is n (n > 0), the first n entries in the status array are valid.
  */
 static inline uint16_t
 rte_dma_completed_status(int16_t dev_id, uint16_t vchan,
