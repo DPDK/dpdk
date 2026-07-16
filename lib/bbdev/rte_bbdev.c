@@ -815,6 +815,26 @@ rte_bbdev_stats_reset(uint16_t dev_id)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bbdev_queue_stats_get, 26.07)
+int rte_bbdev_queue_stats_get(uint16_t dev_id, uint16_t queue_id, struct rte_bbdev_stats *stats)
+{
+	struct rte_bbdev *dev = get_dev(dev_id);
+
+	VALID_DEV_OR_RET_ERR(dev, dev_id);
+	VALID_QUEUE_OR_RET_ERR(queue_id, dev);
+
+	if (stats == NULL) {
+		rte_bbdev_log(ERR, "NULL stats structure");
+		return -EINVAL;
+	}
+
+	*stats = dev->data->queues[queue_id].queue_stats;
+
+	rte_bbdev_log_debug("Retrieved stats for queue %u of device %u",
+			    queue_id, dev_id);
+	return 0;
+}
+
 RTE_EXPORT_SYMBOL(rte_bbdev_info_get)
 int
 rte_bbdev_info_get(uint16_t dev_id, struct rte_bbdev_info *dev_info)

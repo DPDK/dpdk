@@ -133,6 +133,11 @@ New Features
     with per-descriptor mbuf free (``rte_pktmbuf_free_seg``) and prefetch hints.
   * Changed the set of per-queue xstats counters.
 
+* **Added per-queue statistics API in bbdev.**
+
+  Added ``rte_bbdev_queue_stats_get()`` function to retrieve statistics
+  for a specific queue, complementing the existing device-level statistics API.
+
 
 Removed Items
 -------------
