@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2018 Intel Corporation
  */
+
+#define ALLOW_INTERNAL_API
+
 #include <stdio.h>
 #include <unistd.h>
 #include <stdint.h>

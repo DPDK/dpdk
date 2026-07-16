@@ -280,9 +280,6 @@ foreach arg: extra_flags
     endif
 endforeach
 
-# Enable using internal APIs in unit tests
-cflags += '-DALLOW_INTERNAL_API'
-
 # create a symlink in the app/test directory for the binary, for backward compatibility
 if not is_windows
     custom_target('test_symlink',

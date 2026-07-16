@@ -2,6 +2,8 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
+#define ALLOW_INTERNAL_API
+
 #include "test.h"
 
 #include <errno.h>

@@ -2,6 +2,8 @@
  * Copyright (c) 2021 NVIDIA Corporation & Affiliates
  */
 
+#define ALLOW_INTERNAL_API
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
