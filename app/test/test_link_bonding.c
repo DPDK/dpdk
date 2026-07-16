@@ -19,7 +19,6 @@
 #include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_ethdev.h>
-#include <ethdev_driver.h>
 #include <rte_log.h>
 #include <rte_lcore.h>
 #include <rte_memory.h>
@@ -4763,7 +4762,7 @@ test_alb_change_mac_in_reply_sent(void)
 	int retval = 0;
 
 	struct rte_ether_addr bond_mac, client_mac;
-	struct rte_ether_addr *member_mac1, *member_mac2;
+	struct rte_ether_addr member_mac1, member_mac2;
 
 	TEST_ASSERT_SUCCESS(
 			initialize_bonding_device_with_members(BONDING_MODE_ALB,
@@ -4779,9 +4778,7 @@ test_alb_change_mac_in_reply_sent(void)
 				MAX_PKT_BURST);
 	}
 
-	rte_ether_addr_copy(
-			rte_eth_devices[test_params->bonding_port_id].data->mac_addrs,
-			&bond_mac);
+	rte_eth_macaddr_get(test_params->bonding_port_id, &bond_mac);
 
 	/*
 	 * Generating four packets with different mac and ip addresses and sending
@@ -4831,10 +4828,8 @@ test_alb_change_mac_in_reply_sent(void)
 			RTE_ARP_OP_REPLY);
 	rte_eth_tx_burst(test_params->bonding_port_id, 0, &pkt, 1);
 
-	member_mac1 =
-			rte_eth_devices[test_params->member_port_ids[0]].data->mac_addrs;
-	member_mac2 =
-			rte_eth_devices[test_params->member_port_ids[1]].data->mac_addrs;
+	rte_eth_macaddr_get(test_params->member_port_ids[0], &member_mac1);
+	rte_eth_macaddr_get(test_params->member_port_ids[1], &member_mac2);
 
 	/*
 	 * Checking if packets are properly distributed on bonding ports. Packets
@@ -4852,13 +4847,13 @@ test_alb_change_mac_in_reply_sent(void)
 						sizeof(struct rte_ether_hdr));
 
 			if (member_idx%2 == 0) {
-				if (!rte_is_same_ether_addr(member_mac1,
+				if (!rte_is_same_ether_addr(&member_mac1,
 						&arp_pkt->arp_data.arp_sha)) {
 					retval = -1;
 					goto test_end;
 				}
 			} else {
-				if (!rte_is_same_ether_addr(member_mac2,
+				if (!rte_is_same_ether_addr(&member_mac2,
 						&arp_pkt->arp_data.arp_sha)) {
 					retval = -1;
 					goto test_end;
@@ -4885,7 +4880,7 @@ test_alb_reply_from_client(void)
 	int retval = 0;
 
 	struct rte_ether_addr bond_mac, client_mac;
-	struct rte_ether_addr *member_mac1, *member_mac2;
+	struct rte_ether_addr member_mac1, member_mac2;
 
 	TEST_ASSERT_SUCCESS(
 			initialize_bonding_device_with_members(BONDING_MODE_ALB,
@@ -4900,9 +4895,7 @@ test_alb_reply_from_client(void)
 				MAX_PKT_BURST);
 	}
 
-	rte_ether_addr_copy(
-			rte_eth_devices[test_params->bonding_port_id].data->mac_addrs,
-			&bond_mac);
+	rte_eth_macaddr_get(test_params->bonding_port_id, &bond_mac);
 
 	/*
 	 * Generating four packets with different mac and ip addresses and placing
@@ -4963,8 +4956,8 @@ test_alb_reply_from_client(void)
 	rte_eth_rx_burst(test_params->bonding_port_id, 0, pkts_sent, MAX_PKT_BURST);
 	rte_eth_tx_burst(test_params->bonding_port_id, 0, NULL, 0);
 
-	member_mac1 = rte_eth_devices[test_params->member_port_ids[0]].data->mac_addrs;
-	member_mac2 = rte_eth_devices[test_params->member_port_ids[1]].data->mac_addrs;
+	rte_eth_macaddr_get(test_params->member_port_ids[0], &member_mac1);
+	rte_eth_macaddr_get(test_params->member_port_ids[1], &member_mac2);
 
 	/*
 	 * Checking if update ARP packets were properly send on member ports.
@@ -4981,13 +4974,13 @@ test_alb_reply_from_client(void)
 						sizeof(struct rte_ether_hdr));
 
 			if (member_idx%2 == 0) {
-				if (!rte_is_same_ether_addr(member_mac1,
+				if (!rte_is_same_ether_addr(&member_mac1,
 						&arp_pkt->arp_data.arp_sha)) {
 					retval = -1;
 					goto test_end;
 				}
 			} else {
-				if (!rte_is_same_ether_addr(member_mac2,
+				if (!rte_is_same_ether_addr(&member_mac2,
 						&arp_pkt->arp_data.arp_sha)) {
 					retval = -1;
 					goto test_end;
@@ -5035,9 +5028,7 @@ test_alb_receive_vlan_reply(void)
 				MAX_PKT_BURST);
 	}
 
-	rte_ether_addr_copy(
-			rte_eth_devices[test_params->bonding_port_id].data->mac_addrs,
-			&bond_mac);
+	rte_eth_macaddr_get(test_params->bonding_port_id, &bond_mac);
 
 	/*
 	 * Generating packet with double VLAN header and placing it in the rx queue.
