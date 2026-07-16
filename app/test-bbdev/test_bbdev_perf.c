@@ -5850,30 +5850,6 @@ validation_test(struct active_device *ad, struct test_op_params *op_params)
 }
 
 static int
-get_bbdev_queue_stats(uint16_t dev_id, uint16_t queue_id,
-		struct rte_bbdev_stats *stats)
-{
-	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
-	struct rte_bbdev_stats *q_stats;
-
-	if (queue_id >= dev->data->num_queues)
-		return -1;
-
-	q_stats = &dev->data->queues[queue_id].queue_stats;
-
-	stats->enqueued_count = q_stats->enqueued_count;
-	stats->dequeued_count = q_stats->dequeued_count;
-	stats->enqueue_err_count = q_stats->enqueue_err_count;
-	stats->dequeue_err_count = q_stats->dequeue_err_count;
-	stats->enqueue_warn_count = q_stats->enqueue_warn_count;
-	stats->dequeue_warn_count = q_stats->dequeue_warn_count;
-	stats->acc_offload_cycles = q_stats->acc_offload_cycles;
-	stats->enqueue_depth_avail = q_stats->enqueue_depth_avail;
-
-	return 0;
-}
-
-static int
 offload_latency_test_fft(struct rte_mempool *mempool, struct test_buffers *bufs,
 		struct rte_bbdev_fft_op *ref_op, uint16_t dev_id,
 		uint16_t queue_id, const uint16_t num_to_process,
@@ -5906,7 +5882,7 @@ offload_latency_test_fft(struct rte_mempool *mempool, struct test_buffers *bufs,
 					&ops_enq[enq], burst_sz - enq);
 		} while (unlikely(burst_sz != enq));
 
-		ret = get_bbdev_queue_stats(dev_id, queue_id, &stats);
+		ret = rte_bbdev_queue_stats_get(dev_id, queue_id, &stats);
 		TEST_ASSERT_SUCCESS(ret,
 				"Failed to get stats for queue (%u) of device (%u)",
 				queue_id, dev_id);
@@ -5988,7 +5964,7 @@ offload_latency_test_mldts(struct rte_mempool *mempool, struct test_buffers *buf
 					&ops_enq[enq], burst_sz - enq);
 		} while (unlikely(burst_sz != enq));
 
-		ret = get_bbdev_queue_stats(dev_id, queue_id, &stats);
+		ret = rte_bbdev_queue_stats_get(dev_id, queue_id, &stats);
 		TEST_ASSERT_SUCCESS(ret,
 				"Failed to get stats for queue (%u) of device (%u)",
 				queue_id, dev_id);
@@ -6069,7 +6045,7 @@ offload_latency_test_dec(struct rte_mempool *mempool, struct test_buffers *bufs,
 					&ops_enq[enq], burst_sz - enq);
 		} while (unlikely(burst_sz != enq));
 
-		ret = get_bbdev_queue_stats(dev_id, queue_id, &stats);
+		ret = rte_bbdev_queue_stats_get(dev_id, queue_id, &stats);
 		TEST_ASSERT_SUCCESS(ret,
 				"Failed to get stats for queue (%u) of device (%u)",
 				queue_id, dev_id);
@@ -6163,7 +6139,7 @@ offload_latency_test_ldpc_dec(struct rte_mempool *mempool,
 		} while (unlikely(burst_sz != enq));
 
 		enq_sw_last_time = rte_rdtsc_precise() - enq_start_time;
-		ret = get_bbdev_queue_stats(dev_id, queue_id, &stats);
+		ret = rte_bbdev_queue_stats_get(dev_id, queue_id, &stats);
 		TEST_ASSERT_SUCCESS(ret,
 				"Failed to get stats for queue (%u) of device (%u)",
 				queue_id, dev_id);
@@ -6251,7 +6227,7 @@ offload_latency_test_enc(struct rte_mempool *mempool, struct test_buffers *bufs,
 
 		enq_sw_last_time = rte_rdtsc_precise() - enq_start_time;
 
-		ret = get_bbdev_queue_stats(dev_id, queue_id, &stats);
+		ret = rte_bbdev_queue_stats_get(dev_id, queue_id, &stats);
 		TEST_ASSERT_SUCCESS(ret,
 				"Failed to get stats for queue (%u) of device (%u)",
 				queue_id, dev_id);
@@ -6332,7 +6308,7 @@ offload_latency_test_ldpc_enc(struct rte_mempool *mempool,
 		} while (unlikely(burst_sz != enq));
 
 		enq_sw_last_time = rte_rdtsc_precise() - enq_start_time;
-		ret = get_bbdev_queue_stats(dev_id, queue_id, &stats);
+		ret = rte_bbdev_queue_stats_get(dev_id, queue_id, &stats);
 		TEST_ASSERT_SUCCESS(ret,
 				"Failed to get stats for queue (%u) of device (%u)",
 				queue_id, dev_id);
@@ -6482,7 +6458,7 @@ offload_cost_test(struct active_device *ad,
 			rte_get_tsc_hz());
 
 	struct rte_bbdev_stats stats = {0};
-	ret = get_bbdev_queue_stats(ad->dev_id, queue_id, &stats);
+	ret = rte_bbdev_queue_stats_get(ad->dev_id, queue_id, &stats);
 	TEST_ASSERT_SUCCESS(ret,
 			"Failed to get stats for queue (%u) of device (%u)",
 			queue_id, ad->dev_id);

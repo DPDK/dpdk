@@ -316,6 +316,26 @@ rte_bbdev_stats_get(uint16_t dev_id, struct rte_bbdev_stats *stats);
 int
 rte_bbdev_stats_reset(uint16_t dev_id);
 
+/**
+ * Retrieve the statistics of a specific queue.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param queue_id
+ *   The index of the queue.
+ * @param stats
+ *   Pointer to structure to where statistics will be copied. On error, this
+ *   location may or may not have been modified.
+ *
+ * @return
+ *   - 0 on success
+ *   - -ENODEV if dev_id is invalid
+ *   - -EINVAL if stats is NULL
+ *   - -ERANGE if queue_id is out of range
+ */
+__rte_experimental
+int rte_bbdev_queue_stats_get(uint16_t dev_id, uint16_t queue_id, struct rte_bbdev_stats *stats);
+
 /** Device information supplied by the device's driver */
 
 /* Structure rte_bbdev_driver_info 8< */
