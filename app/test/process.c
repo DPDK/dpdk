@@ -1,0 +1,229 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(c) 2010-2014 Intel Corporation
+ */
+
+#include <errno.h>  /* errno */
+#include <limits.h> /* PATH_MAX */
+#ifndef RTE_EXEC_ENV_WINDOWS
+#include <sys/wait.h>
+#endif
+#include <stdlib.h> /* NULL */
+#include <string.h> /* strerror */
+#include <unistd.h>
+#include <dirent.h>
+
+#include <rte_string_fns.h> /* strlcpy */
+#include <rte_devargs.h>
+#include <rte_eal.h>
+
+#ifdef RTE_LIB_PDUMP
+#ifdef RTE_NET_RING
+#include <rte_thread.h>
+#include "test_pdump.h"
+#endif
+#endif
+
+#include "test.h"
+#include "process.h"
+
+#define PREFIX_ALLOW "--allow="
+#define PREFIX_DRIVER_PATH "--driver-path="
+
+static int
+add_parameter_allow(char **argv, int max_capacity)
+{
+	struct rte_devargs *devargs;
+	int count = 0;
+
+	RTE_EAL_DEVARGS_FOREACH(NULL, devargs) {
+		if (strlen(devargs->name) == 0)
+			continue;
+
+		if (devargs->data == NULL || strlen(devargs->data) == 0) {
+			if (asprintf(&argv[count], PREFIX_ALLOW"%s", devargs->name) < 0)
+				break;
+		} else {
+			if (asprintf(&argv[count], PREFIX_ALLOW"%s,%s",
+					 devargs->name, devargs->data) < 0)
+				break;
+		}
+
+		if (++count == max_capacity)
+			break;
+	}
+
+	return count;
+}
+
+static int
+add_parameter_driver_path(char **argv, int max_capacity)
+{
+	const char *driver_path;
+	int count = 0;
+
+	RTE_EAL_DRIVER_PATH_FOREACH(driver_path, true) {
+		if (asprintf(&argv[count], PREFIX_DRIVER_PATH"%s", driver_path) < 0)
+			break;
+
+		if (++count == max_capacity)
+			break;
+	}
+
+	return count;
+}
+
+int
+process_dup(const char *const argv[], int numargs, const char *env_value)
+{
+	int num = 0;
+	char **argv_cpy;
+	int allow_num;
+	int driver_path_num;
+	int argv_num;
+	int i, status;
+#ifdef RTE_LIB_PDUMP
+#ifdef RTE_NET_RING
+	rte_thread_t thread;
+	int rc;
+#endif
+#endif
+
+	pid_t pid = fork();
+	if (pid < 0)
+		return -1;
+	else if (pid == 0) {
+		allow_num = rte_devargs_type_count(RTE_DEVTYPE_ALLOWED);
+		driver_path_num = rte_eal_driver_path_count(true);
+		argv_num = numargs + allow_num + driver_path_num + 1;
+		argv_cpy = calloc(argv_num, sizeof(char *));
+		if (!argv_cpy)
+			rte_panic("Memory allocation failed\n");
+
+		/* make a copy of the arguments to be passed to exec */
+		for (i = 0; i < numargs; i++) {
+			argv_cpy[i] = strdup(argv[i]);
+			if (argv_cpy[i] == NULL)
+				rte_panic("Error dup args\n");
+		}
+		if (allow_num > 0)
+			num = add_parameter_allow(&argv_cpy[i], allow_num);
+		num += numargs;
+
+		if (driver_path_num > 0) {
+			int added = add_parameter_driver_path(&argv_cpy[num], driver_path_num);
+			num += added;
+		}
+
+#ifdef RTE_EXEC_ENV_LINUX
+		{
+			const char *procdir = "/proc/self/fd/";
+			struct dirent *dirent;
+			char *endptr;
+			int fd, fdir;
+			DIR *dir;
+
+			/* close all open file descriptors, check /proc/self/fd
+			 * to only call close on open fds. Exclude fds 0, 1 and
+			 * 2
+			 */
+			dir = opendir(procdir);
+			if (dir == NULL) {
+				rte_panic("Error opening %s: %s\n", procdir,
+						strerror(errno));
+			}
+
+			fdir = dirfd(dir);
+			if (fdir < 0) {
+				status = errno;
+				closedir(dir);
+				rte_panic("Error %d obtaining fd for dir %s: %s\n",
+						fdir, procdir,
+						strerror(status));
+			}
+
+			while ((dirent = readdir(dir)) != NULL) {
+
+				if (strcmp(dirent->d_name, ".") == 0 ||
+					strcmp(dirent->d_name, "..") == 0)
+					continue;
+
+				errno = 0;
+				fd = strtol(dirent->d_name, &endptr, 10);
+				if (errno != 0 || endptr[0] != '\0') {
+					printf("Error converting name fd %d %s:\n",
+						fd, dirent->d_name);
+					continue;
+				}
+
+				if (fd == fdir || fd <= 2)
+					continue;
+
+				close(fd);
+			}
+			closedir(dir);
+		}
+#endif
+		printf("Running binary with argv[]:");
+		for (i = 0; i < num; i++)
+			printf("'%s' ", argv_cpy[i]);
+		printf("\n");
+		fflush(stdout);
+
+		/* set the environment variable */
+		if (setenv(RECURSIVE_ENV_VAR, env_value, 1) != 0)
+			rte_panic("Cannot export environment variable\n");
+		if (execv(argv_cpy[0], argv_cpy) < 0)
+			rte_panic("Cannot exec: %s\n", strerror(errno));
+	}
+	/* parent process does a wait */
+#ifdef RTE_LIB_PDUMP
+#ifdef RTE_NET_RING
+	if ((strcmp(env_value, "run_pdump_server_tests") == 0)) {
+		rc = rte_thread_create(&thread, NULL, send_pkts, NULL);
+		if (rc != 0) {
+			rte_panic("Cannot start send pkts thread: %s\n",
+				  strerror(rc));
+		}
+	}
+#endif
+#endif
+
+	while (wait(&status) != pid)
+		;
+#ifdef RTE_LIB_PDUMP
+#ifdef RTE_NET_RING
+	if ((strcmp(env_value, "run_pdump_server_tests") == 0)) {
+		flag_for_send_pkts = 0;
+		rte_thread_join(thread, NULL);
+	}
+#endif
+#endif
+	return status;
+}
+
+#ifndef RTE_EXEC_ENV_LINUX
+const char *
+file_prefix_arg(void)
+{
+	return "";
+}
+#else /* RTE_EXEC_ENV_LINUX */
+char *
+get_current_prefix(char *prefix, int size)
+{
+	rte_basename(rte_eal_get_runtime_dir(), prefix, size);
+	return prefix;
+}
+
+/* Return a --file-prefix=XXXX argument */
+const char *
+file_prefix_arg(void)
+{
+	static char prefix[NAME_MAX + sizeof("--file-prefix=")];
+	char tmp[NAME_MAX];
+
+	snprintf(prefix, sizeof(prefix), "--file-prefix=%s",
+			get_current_prefix(tmp, sizeof(tmp)));
+	return prefix;
+}
+#endif /* RTE_EXEC_ENV_LINUX */

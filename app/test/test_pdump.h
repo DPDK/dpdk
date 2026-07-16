@@ -11,6 +11,9 @@
 /* sample test to send packets to the pdump client recursively */
 uint32_t send_pkts(void *empty);
 
+/* flag to stop send_pkts thread */
+extern uint16_t flag_for_send_pkts;
+
 /* Sample test to create setup for the pdump server tests */
 int test_pdump_init(void);
 

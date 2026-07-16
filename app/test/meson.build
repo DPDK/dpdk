@@ -5,6 +5,10 @@
 deps += ['cmdline', 'ring', 'mempool', 'mbuf']
 sources += files('commands.c', 'test.c')
 
+if not is_windows
+    sources += files('process.c')
+endif
+
 # optional dependencies: some files may use these - and so we should link them in -
 # but do not explicitly require them so they are not listed in the per-file lists below
 optional_deps = ['crypto_scheduler', 'lpm']
