@@ -409,6 +409,8 @@ cperf_set_ops_security_ipsec(struct rte_crypto_op **ops,
 		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 		rte_security_attach_session(ops[i], sess);
 		sym_op->m_src = (struct rte_mbuf *)((uint8_t *)ops[i] + src_buf_offset);
+		if (options->is_outbound)
+			rte_pktmbuf_reset(sym_op->m_src);
 		sym_op->m_src->pkt_len = test_buffer_size;
 
 		while ((m->next != NULL) && (offset >= m->data_len)) {
