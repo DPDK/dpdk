@@ -2,6 +2,8 @@
  * Copyright(c) 2010-2019 Intel Corporation
  */
 
+#define ALLOW_INTERNAL_API
+
 #include "test.h"
 
 #include <stdio.h>
