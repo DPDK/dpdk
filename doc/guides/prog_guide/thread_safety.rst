@@ -44,7 +44,7 @@ The mempool library is based on the DPDK lockless ring library and therefore is 
 Performance Insensitive API
 ---------------------------
 
-Outside of the performance sensitive areas described in Section 25.1,
+Outside of the performance sensitive areas described above,
 the DPDK provides a thread-safe API for most other libraries.
 For example, malloc and memzone functions are safe for use in multi-threaded and multi-process environments.
 

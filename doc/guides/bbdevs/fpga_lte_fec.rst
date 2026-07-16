@@ -51,9 +51,9 @@ FPGA LTE FEC does not support the following:
 Installation
 ------------
 
-Section 3 of the DPDK manual provides instructions on installing and compiling DPDK.
+See :doc:`/linux_gsg/build_dpdk` for build instructions.
 
-DPDK requires hugepages to be configured as detailed in section 2 of the DPDK manual.
+DPDK requires hugepages to be configured as described in :ref:`linux_gsg_hugepages`.
 The bbdev test application has been tested with a configuration 40 x 1GB hugepages. The
 hugepage configuration of a server may be examined using:
 

@@ -23,9 +23,9 @@ LA12xx PMD supports the following features:
 Installation
 ------------
 
-Section 3 of the DPDK manual provides instructions on installing and compiling DPDK.
+See :doc:`/linux_gsg/build_dpdk` for build instructions.
 
-DPDK requires hugepages to be configured as detailed in section 2 of the DPDK manual.
+DPDK requires hugepages to be configured as described in :ref:`linux_gsg_hugepages`.
 
 Initialization
 --------------

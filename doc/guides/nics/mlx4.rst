@@ -267,7 +267,7 @@ Installing NVIDIA MLNX_OFED
 
         connectx_port_config
 
-#. Continue with :ref:`section 2 of the Quick Start Guide <mlx4_QSG_2>`.
+#. Continue with the :ref:`Quick Start Guide <mlx4_QSG_2>`.
 
 
 Quick Start Guide

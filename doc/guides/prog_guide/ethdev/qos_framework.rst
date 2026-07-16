@@ -456,6 +456,8 @@ Usually, once the occupancy of the NIC TX input queue drops below a predefined t
 the port scheduler is woken up (interrupt based or polling based,
 by continuously monitoring the queue occupancy) to push more packets into the queue.
 
+.. _qos_internal_time_reference:
+
 Internal Time Reference
 """""""""""""""""""""""
 
@@ -625,8 +627,8 @@ while the implementation of the token bucket operations is described in :numref:
    |   |                        |       | or CPU cycles for ease of credit consumption operation               |
    |   |                        |       | (as the current time is also maintained in bytes).                   |
    |   |                        |       |                                                                      |
-   |   |                        |       | See  Section 26.2.4.5.1 "Internal Time Reference" for an             |
-   |   |                        |       | explanation of why the time is maintained in byte units.             |
+   |   |                        |       | See :ref:`qos_internal_time_reference` for an                        |
+   |   |                        |       | explanation of why time is maintained in byte units.                 |
    |   |                        |       |                                                                      |
    +---+------------------------+-------+----------------------------------------------------------------------+
    | 2 | tb_period              | Bytes | Time period that should elapse since the last credit update in order |
@@ -1205,9 +1207,9 @@ The use cases supported by the dropper are:
 
 *   *    Mark empty (record the time at which a packet queue becomes empty)
 
-The configuration use case is explained in :ref:`Section 2.23.3.1 <Configuration>`,
-the enqueue operation is explained in  :ref:`Section 2.23.3.2 <Enqueue_Operation>`
-and the mark empty operation is explained in :ref:`Section 2.23.3.3 <Queue_Empty_Operation>`.
+The configuration use case is explained in :ref:`Configuration`,
+the enqueue operation is explained in :ref:`Enqueue_Operation`
+and the mark empty operation is explained in :ref:`Queue_Empty_Operation`.
 
 .. _Configuration:
 
@@ -1321,8 +1323,8 @@ Where:
 
 .. note::
 
-    The filter weight, wq = 1/2^n, where n is the filter weight parameter value passed to the dropper module
-	on configuration (see :ref:`Section2.23.3.1 <Configuration>` ).
+   The filter weight, wq = 1/2^n, where n is the filter weight parameter value
+   passed to the dropper module on configuration (see :ref:`Configuration`).
 
 Average Queue Size Calculation when the Queue is Empty
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1368,6 +1370,8 @@ Since the time reference is in bytes, the port speed is implied in the expressio
 The dropper does not have to be configured with the actual port speed.
 It adjusts automatically to low speed and high speed links.
 
+.. _qos_dropper_implementation:
+
 Implementation
 """"""""""""""
 
@@ -1406,7 +1410,8 @@ These approaches include:
 
 *   Large look-up table (76 KB)
 
-The method that was finally selected (described above in Section 26.3.2.2.1) outperforms all of these approaches
+The method described in the :ref:`implementation section <qos_dropper_implementation>`
+outperforms all of these approaches
 in terms of run-time performance and memory requirements and
 also achieves accuracy comparable to floating-point evaluation.
 :numref:`table_qos_17` lists the performance of each of these alternative approaches relative to the method that is used in the dropper.
@@ -1420,7 +1425,7 @@ As can be seen, the floating-point implementation achieved the worst performance
    | Method                                                                             | Relative Performance |
    |                                                                                    |                      |
    +====================================================================================+======================+
-   | Current dropper method (see :ref:`Section 23.3.2.1.3 <Droppers>`)                  | 100%                 |
+   | Current dropper method (see :ref:`Droppers`)                                       | 100%                 |
    |                                                                                    |                      |
    +------------------------------------------------------------------------------------+----------------------+
    | Fixed-point method with small (512B) look-up table                                 | 148%                 |
@@ -1560,7 +1565,7 @@ Integration with the DPDK QoS Scheduler Sample Application
 
 The DPDK QoS Scheduler Application reads a configuration file on start-up.
 The configuration file includes a section containing RED parameters.
-The format of these parameters is described in :ref:`Section2.23.3.1 <Configuration>`.
+The format of these parameters is described in :ref:`Configuration`.
 A sample RED configuration is shown below. In this example, the queue size is 64 packets.
 
 .. note::
