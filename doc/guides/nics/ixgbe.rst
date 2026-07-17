@@ -68,6 +68,7 @@ are listed in the Tested Platforms section of the Release Notes for each release
 ============  =====================  ===============  ===============
 DPDK version  Kernel driver version  E610 FW version  X550 FW version
 ============  =====================  ===============  ===============
+   26.07              6.4.4               1.60             3.70
    26.03              6.3.4               1.41             3.70
    25.11              6.2.5               1.30
 ============  =====================  ===============  ===============
