@@ -22,11 +22,9 @@ extern "C" {
  * @internal
  * Stubs only used when GFNI is not available.
  */
-__rte_internal
 uint32_t
 rte_thash_gfni_stub(const uint64_t *mtrx, const uint8_t *key, int len);
 
-__rte_internal
 void
 rte_thash_gfni_bulk_stub(const uint64_t *mtrx, int len, uint8_t *tuple[],
 	uint32_t val[], uint32_t num);
