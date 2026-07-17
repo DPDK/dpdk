@@ -136,6 +136,14 @@ Deprecation Notices
   The legacy actions should be removed
   once ``MODIFY_FIELD`` alternative is implemented in drivers.
 
+* graph: The internal scheduling mechanism of ``struct rte_graph``
+  will change in DPDK 26.11.
+  The circular buffer fields (``head``, ``tail``, ``cir_mask``, ``cir_start``)
+  will be replaced with a topological bitmap scheduler.
+  A new field will be added to ``struct rte_node`` for the scheduling order.
+  The graph walk functions will process nodes in topological order
+  using bitmap scanning instead of the circular buffer.
+
 * pipeline: The pipeline library legacy API (functions rte_pipeline_*)
   will be deprecated and subsequently removed in DPDK 24.11 release.
   Before this, the new pipeline library API (functions rte_swx_pipeline_*)
