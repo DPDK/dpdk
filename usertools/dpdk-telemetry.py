@@ -22,7 +22,7 @@ SOCKET_NAME = "dpdk_telemetry.{}".format(TELEMETRY_VERSION)
 DEFAULT_PREFIX = "rte"
 CMDS = []
 ALIASES = {}
-ALIAS_FILE = ".dpdk_telemetry_aliases"
+ALIAS_FILE = "telemetry_aliases"
 MAX_ALIAS_EXPANSIONS = 32
 
 BASIC_HELP_TEXT = """Basic usage:
@@ -46,19 +46,30 @@ Examples:
 """
 
 
+def get_default_alias_path():
+    config_home = os.environ.get("XDG_CONFIG_HOME")
+    if config_home:
+        return os.path.join(config_home, "dpdk", ALIAS_FILE)
+
+    home = os.environ.get("HOME")
+    if not home:
+        return None
+
+    return os.path.join(home, ".config", "dpdk", ALIAS_FILE)
+
+
 def load_aliases(alias_path=None):
-    """Load aliases from $HOME/.dpdk_telemetry_aliases or a custom path if provided"""
+    """Load aliases from the config directory or a custom path if provided"""
     aliases = {}
     if alias_path and not os.path.isfile(alias_path):
         print("Warning: alias file {} not found, skipping".format(alias_path), file=sys.stderr)
         return aliases
 
     if not alias_path:
-        home = os.environ.get("HOME")
-        if not home:
+        alias_path = get_default_alias_path()
+        if not alias_path:
             return aliases
 
-        alias_path = os.path.join(home, ALIAS_FILE)
         if not os.path.isfile(alias_path):
             return aliases
 
@@ -434,7 +445,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--alias-file",
-    help=f"Provide a custom alias file instead of $HOME/{ALIAS_FILE}",
+    help="Provide a custom alias file instead of the default config path",
 )
 parser.add_argument(
     "-i", "--instance", default="0", type=int, help="Provide instance number for DPDK application"

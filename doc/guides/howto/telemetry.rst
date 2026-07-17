@@ -154,9 +154,11 @@ and query information using the telemetry client python script.
 
      The telemetry script can load aliases at startup from::
 
-        $HOME/.dpdk_telemetry_aliases
+        $XDG_CONFIG_HOME/dpdk/telemetry_aliases
 
-     or from a custom path provided via the ``--alias-file`` script flag.
+     If ``XDG_CONFIG_HOME`` is not set, ``$HOME/.config/dpdk/telemetry_aliases`` is used.
+     A custom path can also be provided via the ``--alias-file`` script flag.
+
      Each alias entry must be in ``alias=command`` format.
      Empty lines and lines starting with ``#`` are ignored.
 
