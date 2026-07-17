@@ -282,7 +282,7 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(JUMP_TO_TABLE_INDEX, sizeof(struct rte_flow_action_jump_to_table_index)),
 };
 
-RTE_DEFAULT_SYMBOL(26, int, rte_flow_dynf_metadata_register, (void))
+RTE_DEFAULT_SYMBOL(27, int, rte_flow_dynf_metadata_register, (void))
 {
 	int offset;
 	int flag;

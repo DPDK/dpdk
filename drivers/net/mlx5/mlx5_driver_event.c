@@ -236,7 +236,7 @@ notify_existing_devices(rte_pmd_mlx5_driver_event_callback_t cb, void *opaque)
 		notify_existing_queues(port_id, cb, opaque);
 }
 
-RTE_DEFAULT_SYMBOL(26, int, rte_pmd_mlx5_driver_event_cb_register,
+RTE_DEFAULT_SYMBOL(27, int, rte_pmd_mlx5_driver_event_cb_register,
 		   (rte_pmd_mlx5_driver_event_callback_t cb, void *opaque))
 {
 	struct registered_cb *r;
@@ -269,7 +269,7 @@ RTE_VERSION_EXPERIMENTAL_SYMBOL(int, rte_pmd_mlx5_driver_event_cb_register,
 	return rte_pmd_mlx5_driver_event_cb_register(cb, opaque);
 }
 
-RTE_DEFAULT_SYMBOL(26, int, rte_pmd_mlx5_driver_event_cb_unregister,
+RTE_DEFAULT_SYMBOL(27, int, rte_pmd_mlx5_driver_event_cb_unregister,
 		   (rte_pmd_mlx5_driver_event_callback_t cb))
 {
 	struct registered_cb *r;

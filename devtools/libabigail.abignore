@@ -33,10 +33,3 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Temporary exceptions till next major ABI version ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-; Ignore new bit selective_rx in rte_eth_rxseg_capa bitmap hole
-[suppress_type]
-        name = rte_eth_rxseg_capa
-        type_kind = struct
-        has_size_change = no
-        has_data_member_inserted_at = 6
