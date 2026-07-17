@@ -53,16 +53,18 @@ class TestSingleCoreForwardPerf(TestSuite):
         self.test_parameters = self.config.test_parameters
         self.delta_tolerance = self.config.delta_tolerance
 
-    def _transmit(self, testpmd: TestPmd, frame_size: int) -> float:
+    def _transmit(self, testpmd: TestPmd, frame_size: int, repetitions: int = 1) -> float:
         """Create a testpmd session with every rule in the given list, verify jump behavior.
 
         Args:
             testpmd: The testpmd shell to use for forwarding packets.
             frame_size: The size of the frame to transmit.
+            repetitions: The number of times to rerun the transmission.
 
         Returns:
             The MPPS (millions of packets per second) forwarded by the SUT.
         """
+        assert repetitions > 0, "Invalid number of repetitions given."
         # Build packet with dummy values, and account for the 14B and 20B Ether and IP headers
         packet = (
             Ether(src="52:00:00:00:00:00")
@@ -71,13 +73,13 @@ class TestSingleCoreForwardPerf(TestSuite):
         )
 
         testpmd.start()
+        rx_avg = 0.0
 
-        # Transmit for 30 seconds.
-        stats = assess_performance_by_packet(packet=packet, duration=30)
-
-        rx_mpps = stats.rx_pps / 1_000_000
-
-        return rx_mpps
+        for _ in range(repetitions):
+            # Transmit for 5 seconds.
+            stats = assess_performance_by_packet(packet=packet, duration=5)
+            rx_avg += stats.rx_pps
+        return rx_avg / (repetitions * 1_000_000)
 
     def _produce_stats_table(self, test_parameters: list[dict[str, int | float]]) -> None:
         """Display performance results in table format and write to structured JSON file.
@@ -131,7 +133,9 @@ class TestSingleCoreForwardPerf(TestSuite):
             with TestPmd(
                 **driver_specific_testpmd_args,
             ) as testpmd:
-                params["measured_mpps"] = round(self._transmit(testpmd, frame_size), 3)
+                params["measured_mpps"] = round(
+                    self._transmit(testpmd, frame_size, repetitions=5), 3
+                )
                 params["performance_delta"] = round(
                     (float(params["measured_mpps"]) - float(params["expected_mpps"]))
                     / float(params["expected_mpps"]),
