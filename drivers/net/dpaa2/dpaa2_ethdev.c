@@ -453,8 +453,7 @@ dpaa2_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->max_hash_mac_addrs = 0;
 	dev_info->max_vfs = 0;
 	dev_info->max_vmdq_pools = RTE_ETH_16_POOLS;
-	dev_info->flow_type_rss_offloads = DPAA2_RSS_OFFLOAD_ALL |
-		RTE_ETH_RSS_LEVEL_OUTERMOST | RTE_ETH_RSS_LEVEL_INNERMOST;
+	dev_info->flow_type_rss_offloads = DPAA2_RSS_OFFLOAD_ALL;
 	/* DPAA2 has no software-visible indirection table: incoming packets are
 	 * dispatched to FQs via 'queue_id = hash % dist_size'. We expose the
 	 * standard RETA API as an emulation that only accepts uniform patterns
