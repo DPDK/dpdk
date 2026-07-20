@@ -313,15 +313,6 @@ Structure Declarations
 * Use of the structures should be by separate variable declarations and those declarations must be extern if they are declared in a header file.
 * Externally visible structure definitions should have the structure name prefixed by ``rte_`` to avoid namespace collisions.
 
-.. note::
-
-    Avoid using ``bool`` in structures because it wastes space and
-    the type size is unclear. A preferred use of
-    ``bool`` is mainly as a return type from functions that return true/false,
-    and maybe local variable functions.
-
-    Ref: `LKML <https://lkml.org/lkml/2017/11/21/384>`_
-
 Queues
 ~~~~~~
 
