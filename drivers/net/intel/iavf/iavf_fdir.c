@@ -1271,13 +1271,13 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 			ecpri_spec = item->spec;
 			ecpri_mask = item->mask;
 
-			ecpri_common.u32 = rte_be_to_cpu_32(ecpri_spec->hdr.common.u32);
-
 			hdr = &hdrs->proto_hdr[layer];
 
 			VIRTCHNL_SET_PROTO_HDR_TYPE(hdr, ECPRI);
 
 			if (ecpri_spec && ecpri_mask) {
+				ecpri_common.u32 = rte_be_to_cpu_32(ecpri_spec->hdr.common.u32);
+
 				if (ecpri_common.type == RTE_ECPRI_MSG_TYPE_IQ_DATA &&
 						ecpri_mask->hdr.type0.pc_id == UINT16_MAX) {
 					input_set |= IAVF_ECPRI_PC_RTC_ID;
