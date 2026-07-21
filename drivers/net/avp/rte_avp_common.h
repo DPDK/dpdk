@@ -117,7 +117,7 @@ struct __rte_cache_aligned __rte_packed_begin rte_avp_desc {
 } __rte_packed_end;
 
 
-/**{ AVP device features */
+/**@{ AVP device features */
 #define RTE_AVP_FEATURE_VLAN_OFFLOAD (1 << 0) /**< Emulated HW VLAN offload */
 /**@} */
 
@@ -160,14 +160,14 @@ struct __rte_cache_aligned __rte_packed_begin rte_avp_desc {
 #define RTE_AVP_MAX_MSIX_VECTORS 1
 /**@} */
 
-/**@} AVP Migration status/ack register values */
+/**@{ AVP Migration status/ack register values */
 #define RTE_AVP_MIGRATION_NONE      0 /**< Migration never executed */
 #define RTE_AVP_MIGRATION_DETACHED  1 /**< Device attached during migration */
 #define RTE_AVP_MIGRATION_ATTACHED  2 /**< Device reattached during migration */
 #define RTE_AVP_MIGRATION_ERROR     3 /**< Device failed to attach/detach */
 /**@} */
 
-/**@} AVP MMIO Register Offsets */
+/**@{ AVP MMIO Register Offsets */
 #define RTE_AVP_REGISTER_BASE 0
 #define RTE_AVP_INTERRUPT_MASK_OFFSET (RTE_AVP_REGISTER_BASE + 0)
 #define RTE_AVP_INTERRUPT_STATUS_OFFSET (RTE_AVP_REGISTER_BASE + 4)
@@ -175,7 +175,7 @@ struct __rte_cache_aligned __rte_packed_begin rte_avp_desc {
 #define RTE_AVP_MIGRATION_ACK_OFFSET (RTE_AVP_REGISTER_BASE + 12)
 /**@} */
 
-/**@} AVP Interrupt Status Mask */
+/**@{ AVP Interrupt Status Mask */
 #define RTE_AVP_MIGRATION_INTERRUPT_MASK (1 << 1)
 #define RTE_AVP_APP_INTERRUPTS_MASK      0xFFFFFFFF
 #define RTE_AVP_NO_INTERRUPTS_MASK       0
@@ -268,7 +268,7 @@ RTE_AVP_MAKE_VERSION(RTE_AVP_RELEASE_VERSION_1, \
 		     RTE_AVP_MINOR_VERSION_13)
 
 /**
- * Access AVP device version values
+ * @{ Access AVP device version values
  */
 #define RTE_AVP_GET_RELEASE_VERSION(_version) (((_version) >> 16) & 0xffff)
 #define RTE_AVP_GET_MAJOR_VERSION(_version) (((_version) >> 8) & 0xff)
