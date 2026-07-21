@@ -202,18 +202,23 @@ deinit_ports(void)
 static int
 testsuite_setup(void)
 {
-	const char *vdev_name = "event_sw0";
-
 	int err = init_ports();
 	TEST_ASSERT(err == 0, "Port initialization failed err %d\n", err);
 
 	if (rte_event_dev_count() == 0) {
+#ifdef RTE_EVENT_SW
+		const char *vdev_name = "event_sw0";
+
 		printf("Failed to find a valid event device,"
 			" testing with event_sw0 device\n");
 		err = rte_vdev_init(vdev_name, NULL);
 		TEST_ASSERT(err == 0, "vdev %s creation failed  %d\n",
 			vdev_name, err);
 		event_dev_delete = 1;
+#else
+		printf("Failed to find a valid event device, skipping test\n");
+		return TEST_SKIPPED;
+#endif
 	}
 	return err;
 }
