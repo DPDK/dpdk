@@ -1504,7 +1504,7 @@ mlx5_get_mempool_ranges(struct rte_mempool *mp, bool is_extmem,
 	qsort(chunks, chunks_n, sizeof(chunks[0]), mlx5_range_compare_start);
 	contig_n = 1;
 	for (i = 1; i < chunks_n; i++)
-		if (chunks[i - 1].end != chunks[i].start) {
+		if (chunks[i - 1].end < chunks[i].start) {
 			chunks[contig_n - 1].end = chunks[i - 1].end;
 			chunks[contig_n] = chunks[i];
 			contig_n++;
