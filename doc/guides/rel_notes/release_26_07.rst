@@ -6,68 +6,8 @@
 DPDK Release 26.07
 ==================
 
-.. **Read this first.**
-
-   The text in the sections below explains how to update the release notes.
-
-   Use proper spelling, capitalization and punctuation in all sections.
-
-   Variable and config names should be quoted as fixed width text:
-   ``LIKE_THIS``.
-
-   Build the docs and view the output file to ensure the changes are correct::
-
-      ninja -C build doc
-      xdg-open build/doc/guides/html/rel_notes/release_26_07.html
-
-
 New Features
 ------------
-
-.. This section should contain new features added in this release.
-   Sample format:
-
-   * **Add a title in the past tense with a full stop.**
-
-     Add a short 1-2 sentence description in the past tense.
-     The description should be enough to allow someone scanning
-     the release notes to understand the new feature.
-
-     If the feature adds a lot of sub-features you can use a bullet list
-     like this:
-
-     * Added feature foo to do something.
-     * Enhanced feature bar to do something else.
-
-     Refer to the previous release notes for examples.
-
-     Suggested order in release notes items:
-     * Core libs (EAL, mempool, ring, mbuf, buses)
-     * Device abstraction libs and PMDs (ordered alphabetically by vendor name)
-       - ethdev (lib, PMDs)
-       - cryptodev (lib, PMDs)
-       - eventdev (lib, PMDs)
-       - etc
-     * Other libs
-     * Apps, Examples, Tools (if significant)
-
-     This section is a comment. Do not overwrite or remove it.
-     Also, make sure to start the actual text at the margin.
-     =======================================================
-
-* **Added option to change memory limits per page size.**
-
-  Added the EAL option ``--pagesz-mem``
-  to override the default per-page-size memory limits.
-  Each maximum can be configured with a pair ``<pagesz>:<limit>``.
-
-* **Added option to disable auto probing.**
-
-  Added EAL options affecting the initial bus probing.
-
-  * ``-A`` or ``--no-auto-probing`` disable the initial bus probing: no device is probed during
-    ``rte_eal_init`` and the application is responsible for probing each device,
-  * ``--auto-probing`` enables the initial bus probing, which is the current default behavior.
 
 * **Changed mempool cache behaviour.**
 
@@ -82,6 +22,20 @@ New Features
     the effective size was previously 50 % larger than requested.
   * The size of the ``struct rte_mempool_cache`` was kept
     for API/ABI compatibility purposes.
+
+* **Added option to change memory limits per page size.**
+
+  Added the EAL option ``--pagesz-mem``
+  to override the default per-page-size memory limits.
+  Each maximum can be configured with a pair ``<pagesz>:<limit>``.
+
+* **Added option to disable device auto probing.**
+
+  Added EAL options affecting the initial bus probing to find devices.
+
+  * ``-A`` or ``--no-auto-probing`` disables the initial bus probing: no device is probed during
+    ``rte_eal_init`` and the application is responsible for probing each device.
+  * ``--auto-probing`` enables the initial bus probing, which is the current default behavior.
 
 * **Added RISC-V vector paths.**
 
@@ -112,7 +66,7 @@ New Features
 
 * **Added no-IOMMU mode to UACCE bus.**
 
-  Added no-IOMMU mode for devices without or not enabling IOMMU/SVA.
+  Added no-IOMMU mode for devices that do not have or do not enable IOMMU/SVA support.
 
 * **Added unplug operation support to VMBUS bus.**
 
@@ -131,13 +85,9 @@ New Features
   to support adding and removing memory regions without resetting
   the whole guest memory map.
 
-* **Added LinkData sxe2 ethernet driver.**
-
-  Added network driver for the LinkData network adapters.
-
 * **Updated Google gve driver.**
 
-  * Added hardware timestamping support on DQO queues.
+  Added hardware timestamping support on DQO queues.
 
 * **Updated Intel iavf driver.**
 
@@ -147,18 +97,22 @@ New Features
 
 * **Updated Intel ice driver.**
 
-  * Added ``rl_burst_size`` devarg to configure the scheduler rate-limiter
-    burst size, reducing Tx latency jitter for time-sensitive traffic.
+  Added ``rl_burst_size`` devarg to configure the scheduler rate-limiter
+  burst size, reducing Tx latency jitter for time-sensitive traffic.
+
+* **Added LinkData sxe2 ethernet driver.**
+
+  Added network driver for the LinkData network adapters.
 
 * **Updated Microsoft mana driver.**
 
-  * Added device reset support to the MANA PMD,
-    doing automatic recovery from hardware service reset events,
-    and notification to upper layers of the reset lifecycle.
+  Added device reset support to the MANA PMD,
+  doing automatic recovery from hardware service reset events,
+  and notification to upper layers of the reset lifecycle.
 
 * **Updated NVIDIA mlx5 ethernet driver.**
 
-  * Added support for selective Rx in scalar SPRQ Rx path.
+  Added support for selective Rx in scalar SPRQ Rx path.
 
 * **Updated NXP dpaa2 driver.**
 
@@ -189,16 +143,12 @@ New Features
   * Added ``eof`` devarg to use link state to signal end of receive file input.
   * Added unit test suite.
 
-* **Updated Marvell cnxk crypto driver.**
-
-  * Added support for ML-KEM and ML-DSA on CN20K platform.
-
 * **Updated Wangxun ngbe driver.**
 
-  * Implemented UDP Segmentation Offload (USO) in the transmit path.
-    The ``RTE_ETH_TX_OFFLOAD_UDP_TSO`` capability was advertised
-    since the driver's initial integration but the data path was missing;
-    it is now functional.
+  Implemented UDP Segmentation Offload (USO) in the transmit path.
+  The ``RTE_ETH_TX_OFFLOAD_UDP_TSO`` capability was advertised
+  since the driver's initial integration but the data path was missing;
+  it is now functional.
 
 * **Updated Wangxun txgbe driver.**
 
@@ -222,6 +172,10 @@ New Features
   Previously, QAT could build with OpenSSL-only on x86.
 
   On ARM, both IPsec MB and OpenSSL are required for full functionality.
+
+* **Updated Marvell cnxk crypto driver.**
+
+  Added support for ML-KEM and ML-DSA on CN20K platform.
 
 * **Updated lcore validation in power library.**
 
@@ -276,15 +230,6 @@ New Features
 Removed Items
 -------------
 
-.. This section should contain removed items in this release. Sample format:
-
-   * Add a short 1-2 sentence description of the removed item
-     in the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
 * crypto/openssl: Removed support for OpenSSL 1.x versions from the OpenSSL crypto PMD.
 
   The OpenSSL crypto PMD now requires OpenSSL 3.0 as the minimum version,
@@ -304,25 +249,9 @@ Removed Items
 API Changes
 -----------
 
-.. This section should contain API changes. Sample format:
+* eal: Promoted ``rte_memeq_timingsafe()`` from experimental to stable.
 
-   * sample: Add a short 1-2 sentence description of the API change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
-* **eal: promoted timing-safe memory comparison from experimental to stable.**
-
-  The inline function ``rte_memeq_timingsafe()`` is no longer marked experimental.
-
-* **ethdev: promoted flow metadata API from experimental to stable.**
-
-  The following ethdev symbols are no longer marked experimental:
+* ethdev: Promoted the following flow metadata symbols from experimental to stable:
 
   - ``rte_flow_dynf_metadata_register``
   - ``rte_flow_dynf_metadata_offs``
@@ -331,16 +260,15 @@ API Changes
   - ``rte_flow_dynf_metadata_get``
   - ``rte_flow_dynf_metadata_set``
 
-* **mlx5: promoted driver event and steering management APIs from experimental to stable.**
-
-  The following mlx5 functions are no longer marked experimental:
+* mlx5: Promoted the following driver event and steering management functions
+  from experimental to stable:
 
   - ``rte_pmd_mlx5_driver_event_cb_register``
   - ``rte_pmd_mlx5_driver_event_cb_unregister``
   - ``rte_pmd_mlx5_enable_steering``
   - ``rte_pmd_mlx5_disable_steering``
 
-* **ip_frag: changed handling of malformed fragments.**
+* ip_frag: Changed handling of malformed fragments.
 
   - Duplicate fragments are tolerated instead of failing reassembly.
   - Overlapping fragments are rejected on arrival rather than during reassembly.
@@ -354,54 +282,11 @@ API Changes
 ABI Changes
 -----------
 
-.. This section should contain ABI changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the ABI change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
 * No ABI change that would break compatibility with 25.11.
-
-
-Known Issues
-------------
-
-.. This section should contain new known issues in this release. Sample format:
-
-   * **Add title in present tense with full stop.**
-
-     Add a short 1-2 sentence description of the known issue
-     in the present tense. Add information on any known workarounds.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
 
 
 Tested Platforms
 ----------------
-
-.. This section should contain a list of platforms that were tested
-   with this release.
-
-   The format is:
-
-   * <vendor> platform with <vendor> <type of devices> combinations
-
-     * List of CPU
-     * List of OS
-     * List of devices
-     * Other relevant details...
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
 
 * Intel\ |reg| platforms with Intel\ |reg| NICs combinations
 
