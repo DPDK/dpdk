@@ -222,7 +222,7 @@ int rte_pci_write_config(const struct rte_pci_device *device,
  * @param len
  *   The length of the data buffer.
  * @param offset
- *   The offset into MMIO space described by @bar.
+ *   The offset into MMIO space described by @p bar.
  * @return
  *   Number of bytes read on success, negative on error.
  */
@@ -246,7 +246,7 @@ int rte_pci_mmio_read(const struct rte_pci_device *device, int bar,
  * @param len
  *   The length of the data buffer.
  * @param offset
- *   The offset into MMIO space described by @bar.
+ *   The offset into MMIO space described by @p bar.
  * @return
  *   Number of bytes written on success, negative on error.
  */
