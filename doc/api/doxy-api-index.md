@@ -37,12 +37,15 @@ The public API headers are grouped by topics:
   [latency](@ref rte_latencystats.h),
   [devargs](@ref rte_devargs.h),
   [PCI](@ref rte_pci.h),
+  [PCI bus](@ref rte_bus_pci.h),
   [vdev](@ref rte_bus_vdev.h)
 
 - **device specific**:
+  [ring PMD](@ref rte_eth_ring.h),
   [softnic](@ref rte_eth_softnic.h),
   [bond](@ref rte_eth_bond.h),
   [vhost](@ref rte_vhost.h),
+  [vhost PMD](@ref rte_eth_vhost.h),
   [vdpa](@ref rte_vdpa.h),
   [ixgbe](@ref rte_pmd_ixgbe.h),
   [i40e](@ref rte_pmd_i40e.h),
@@ -51,16 +54,21 @@ The public API headers are grouped by topics:
   [cnxk](@ref rte_pmd_cnxk.h),
   [cnxk_crypto](@ref rte_pmd_cnxk_crypto.h),
   [cnxk_eventdev](@ref rte_pmd_cnxk_eventdev.h),
+  [cnxk_gpio](@ref rte_pmd_cnxk_gpio.h),
   [cnxk_mempool](@ref rte_pmd_cnxk_mempool.h),
   [dpaa](@ref rte_pmd_dpaa.h),
   [dpaa2](@ref rte_pmd_dpaa2.h),
   [mlx5](@ref rte_pmd_mlx5.h),
+  [ntnic](@ref rte_pmd_ntnic.h),
   [dpaa2_mempool](@ref rte_dpaa2_mempool.h),
   [dpaa2_cmdif](@ref rte_pmd_dpaa2_cmdif.h),
   [dpaax_qdma](@ref rte_pmd_dpaax_qdma.h),
   [crypto_scheduler](@ref rte_cryptodev_scheduler.h),
   [dlb2](@ref rte_pmd_dlb2.h),
-  [ifpga](@ref rte_pmd_ifpga.h)
+  [ifpga](@ref rte_pmd_ifpga.h),
+  [ntb](@ref rte_pmd_ntb.h),
+  [acc](@ref rte_acc_cfg.h),
+  [fpga_5gnr_fec](@ref rte_pmd_fpga_5gnr_fec.h)
 
 - **memory**:
   [per-lcore](@ref rte_per_lcore.h),

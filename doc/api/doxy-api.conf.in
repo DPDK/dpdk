@@ -5,12 +5,15 @@ PROJECT_NAME            = DPDK
 PROJECT_NUMBER          = @VERSION@
 USE_MDFILE_AS_MAINPAGE  = @TOPDIR@/doc/api/doxy-api-index.md
 INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
+                          @TOPDIR@/drivers/baseband/acc \
+                          @TOPDIR@/drivers/baseband/fpga_5gnr_fec \
+                          @TOPDIR@/drivers/bus/pci \
                           @TOPDIR@/drivers/bus/vdev \
                           @TOPDIR@/drivers/common/dpaax \
                           @TOPDIR@/drivers/crypto/cnxk \
                           @TOPDIR@/drivers/crypto/scheduler \
-                          @TOPDIR@/drivers/event/dlb2 \
                           @TOPDIR@/drivers/event/cnxk \
+                          @TOPDIR@/drivers/event/dlb2 \
                           @TOPDIR@/drivers/mempool/cnxk \
                           @TOPDIR@/drivers/mempool/dpaa2 \
                           @TOPDIR@/drivers/net/ark \
@@ -23,10 +26,16 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/drivers/net/intel/iavf \
                           @TOPDIR@/drivers/net/intel/ixgbe \
                           @TOPDIR@/drivers/net/mlx5 \
+                          @TOPDIR@/drivers/net/ntnic \
+                          @TOPDIR@/drivers/net/ring \
                           @TOPDIR@/drivers/net/softnic \
+                          @TOPDIR@/drivers/net/vhost \
+                          @TOPDIR@/drivers/power/kvm_vm \
                           @TOPDIR@/drivers/raw/cnxk_bphy \
+                          @TOPDIR@/drivers/raw/cnxk_gpio \
                           @TOPDIR@/drivers/raw/dpaa2_cmdif \
                           @TOPDIR@/drivers/raw/ifpga \
+                          @TOPDIR@/drivers/raw/ntb \
                           @TOPDIR@/lib/eal/include \
                           @TOPDIR@/lib/eal/include/generic \
                           @TOPDIR@/lib/acl \
