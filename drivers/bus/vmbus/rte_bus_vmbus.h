@@ -111,7 +111,7 @@ int rte_vmbus_max_channels(const struct rte_vmbus_device *device);
  *
  * @param primary
  *   A pointer to primary VMBUS channel
- * @param chan
+ * @param new_chan
  *   A pointer to a secondary VMBUS channel pointer that will be filled.
  * @return
  *   - 0 Success; channel opened.
@@ -158,6 +158,8 @@ bool rte_vmbus_chan_rx_empty(const struct vmbus_channel *channel);
 /**
  * Send the specified buffer on the given channel
  *
+ * @param dev
+ *	A pointer to a rte_vmbus_device structure describing the device
  * @param channel
  *	Pointer to vmbus_channel structure.
  * @param type
@@ -184,7 +186,9 @@ int rte_vmbus_chan_send(struct rte_vmbus_device *dev,
 /**
  * Explicitly signal host that data is available
  *
- * @param
+ * @param dev
+ *	A pointer to a rte_vmbus_device structure describing the device
+ * @param channel
  *	Pointer to vmbus_channel structure.
  *
  * Used when batching multiple sends and only signaling host
@@ -203,11 +207,10 @@ struct iova_list {
 /**
  * Send a scattered buffer on the given channel
  *
+ * @param dev
+ *	A pointer to a rte_vmbus_device structure describing the device
  * @param channel
  *	Pointer to vmbus_channel structure.
- * @param type
- *	Type of packet that is being send e.g. negotiate, time
- *	packet etc.
  * @param gpa
  *	Array of buffers to send
  * @param gpacnt
@@ -218,8 +221,6 @@ struct iova_list {
  *	 Maximum size of what the buffer will hold
  * @param xact
  *	Identifier of the request
- * @param flags
- *	Message type inband, rxbuf, gpa
  * @param need_sig
  *	Is host signal tx is required (optional)
  *
@@ -234,13 +235,15 @@ int rte_vmbus_chan_send_sglist(struct rte_vmbus_device *dev,
  * Receive response to request on the given channel
  * skips the channel header.
  *
- * @param channel
+ * @param dev
+ *	A pointer to a rte_vmbus_device structure describing the device
+ * @param chan
  *	Pointer to vmbus_channel structure.
  * @param data
  *	Pointer to the buffer you want to receive the data into.
  * @param len
  *	Pointer to size of receive buffer (in/out)
- * @param
+ * @param request_id
  *	Pointer to received transaction_id
  * @return
  *   On success, returns 0
@@ -255,7 +258,7 @@ int rte_vmbus_chan_recv(struct rte_vmbus_device *dev,
  * Receive response to request on the given channel
  * includes the channel header.
  *
- * @param channel
+ * @param chan
  *	Pointer to vmbus_channel structure.
  * @param data
  *	Pointer to the buffer you want to receive the data into.
@@ -272,7 +275,9 @@ int rte_vmbus_chan_recv_raw(struct vmbus_channel *chan,
  * Notify host of bytes read (after recv_raw)
  * Signals host if required.
  *
- * @param channel
+ * @param dev
+ *	A pointer to a rte_vmbus_device structure describing the device
+ * @param chan
  *	Pointer to vmbus_channel structure.
  * @param bytes_read
  *	Number of bytes read since last signal
@@ -284,7 +289,7 @@ void rte_vmbus_chan_signal_read(struct rte_vmbus_device *dev,
 /**
  * Determine sub channel index of the given channel
  *
- * @param channel
+ * @param chan
  *	Pointer to vmbus_channel structure.
  * @return
  *   Sub channel index (0 for primary)
@@ -309,7 +314,9 @@ void rte_vmbus_set_latency(const struct rte_vmbus_device *dev,
 /**
  * For debug dump contents of ring buffer.
  *
- * @param channel
+ * @param f
+ *	Output file to dump to.
+ * @param chan
  *	Pointer to vmbus_channel structure.
  */
 void rte_vmbus_chan_dump(FILE *f, const struct vmbus_channel *chan);
