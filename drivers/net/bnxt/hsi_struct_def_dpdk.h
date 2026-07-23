@@ -24457,6 +24457,9 @@ struct hwrm_func_backing_store_qcaps_v2_input {
 	/* RoCE HWRM trace. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_ROCE_HWRM_TRACE \
 		UINT32_C(0x24)
+	/* TimedTx pacing TQM ring. */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_TTX_PACING_TQM_RING \
+		UINT32_C(0x25)
 	/* Invalid type. */
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_INVALID \
 		UINT32_C(0xffff)
