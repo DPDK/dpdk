@@ -602,6 +602,13 @@ cn9k_eth_sec_session_create(void *device,
 
 	ipsec = &conf->ipsec;
 	crypto = conf->crypto_xform;
+
+	rc = cnxk_ipsec_xform_verify(ipsec, crypto);
+	if (rc) {
+		plt_err("Crypto xform verify failed, rc=%d", rc);
+		return rc;
+	}
+
 	inbound = !!(ipsec->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS);
 
 	lock = inbound ? &dev->inb.lock : &dev->outb.lock;

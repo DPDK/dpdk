@@ -817,6 +817,13 @@ cn20k_eth_sec_session_create(void *device, struct rte_security_session_conf *con
 
 	ipsec = &conf->ipsec;
 	crypto = conf->crypto_xform;
+
+	rc = cnxk_ipsec_xform_verify(ipsec, crypto);
+	if (rc) {
+		plt_err("Crypto xform verify failed, rc=%d", rc);
+		return rc;
+	}
+
 	inbound = !!(ipsec->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS);
 	inl_dev = !!dev->inb.inl_dev;
 
