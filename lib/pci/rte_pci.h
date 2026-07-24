@@ -187,8 +187,6 @@ struct rte_pci_addr {
 
 /** Any PCI device identifier (vendor, device, ...) */
 #define RTE_PCI_ANY_ID (0xffff)
-/** @deprecated Replaced with RTE_PCI_ANY_ID */
-#define PCI_ANY_ID RTE_DEPRECATED(PCI_ANY_ID) RTE_PCI_ANY_ID
 #define RTE_CLASS_ANY_ID (0xffffff)
 
 /**
