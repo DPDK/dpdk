@@ -488,19 +488,17 @@ eth_vhost_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 		/* Do VLAN tag insertion */
 		if (m->ol_flags & RTE_MBUF_F_TX_VLAN) {
 			int error = rte_vlan_insert(&m);
-			if (unlikely(error)) {
-				rte_pktmbuf_free(m);
-				continue;
-			}
+
+			if (unlikely(error))
+				break;
 		}
 
 		if (r->internal->tx_sw_csum)
 			vhost_dev_tx_sw_csum(m);
 
-
-		bufs[nb_send] = m;
-		++nb_send;
+		bufs[i] = m;
 	}
+	nb_send = i;
 
 	/* Enqueue packets to guest RX queue */
 	while (nb_send) {
@@ -520,7 +518,7 @@ eth_vhost_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	for (i = 0; likely(i < nb_tx); i++)
 		nb_bytes += bufs[i]->pkt_len;
 
-	nb_missed = nb_bufs - nb_tx;
+	nb_missed = nb_send;
 
 	r->stats.pkts += nb_tx;
 	r->stats.bytes += nb_bytes;
