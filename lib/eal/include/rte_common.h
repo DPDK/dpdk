@@ -132,19 +132,6 @@ typedef uint16_t unaligned_uint16_t;
 #endif
 
 /**
- * @deprecated
- * @see __rte_packed_begin
- * @see __rte_packed_end
- *
- * Force a structure to be packed
- */
-#ifdef RTE_TOOLCHAIN_MSVC
-#define __rte_packed RTE_DEPRECATED(__rte_packed)
-#else
-#define __rte_packed (RTE_DEPRECATED(__rte_packed) __attribute__((__packed__)))
-#endif
-
-/**
  * Force a structure to be packed
  * Usage:
  *     struct __rte_packed_begin mystruct { ... } __rte_packed_end;
