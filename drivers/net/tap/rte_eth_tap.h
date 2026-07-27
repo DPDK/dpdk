@@ -73,7 +73,7 @@ struct pmd_internals {
 	char remote_iface[IFNAMSIZ];	  /* Remote netdevice name */
 	char name[IFNAMSIZ];		  /* Internal Tap device name */
 	int type;                         /* Type field - TUN|TAP */
-	int persist;			  /* 1 if keep link up, else 0 */
+	bool persist;			  /* keep link up */
 	struct rte_ether_addr eth_addr;   /* Mac address of the device port */
 	struct rte_ether_addr *mc_addrs;  /* multicast address list */
 	uint32_t nb_mc_addrs;             /* multicast address count */
@@ -83,8 +83,8 @@ struct pmd_internals {
 	int nlsk_fd;                      /* Netlink socket fd */
 
 #ifdef HAVE_TCA_FLOWER
-	int flow_init;                    /* 1 if qdiscs were created */
-	int flow_isolate;                 /* 1 if flow isolation is enabled */
+	bool flow_init;                   /* qdiscs were created */
+	bool flow_isolate;                /* flow isolation is enabled */
 
 	struct tap_rss *rss;		  /* BPF program */
 

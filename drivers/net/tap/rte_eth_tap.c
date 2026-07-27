@@ -158,7 +158,7 @@ static int tap_intr_handle_set(struct rte_eth_dev *dev, int set);
  *   -1 on failure, fd on success
  */
 static int
-tun_alloc(struct pmd_internals *pmd, int is_keepalive, int persistent)
+tun_alloc(struct pmd_internals *pmd, bool is_keepalive, bool persistent)
 {
 	struct ifreq ifr;
 #ifdef IFF_MULTI_QUEUE
@@ -1540,7 +1540,7 @@ tap_setup_queue(struct rte_eth_dev *dev,
 			pmd->name, fd, dir, qid);
 		gso_ctx = NULL;
 	} else {
-		fd = tun_alloc(pmd, 0, 0);
+		fd = tun_alloc(pmd, false, false);
 		if (fd < 0) {
 			TAP_LOG(ERR, "%s: tun_alloc() failed.", pmd->name);
 			return -1;
@@ -2147,7 +2147,7 @@ static const struct eth_dev_ops ops = {
 static int
 eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 		   const char *remote_iface, struct rte_ether_addr *mac_addr,
-		   enum rte_tuntap_type type, int persist)
+		   enum rte_tuntap_type type, bool persist)
 {
 	int numa_node = rte_socket_id();
 	struct rte_eth_dev *dev;
@@ -2234,7 +2234,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	 * This keep-alive file descriptor will guarantee that the TUN device
 	 * exists even when all of its queues are closed
 	 */
-	pmd->ka_fd = tun_alloc(pmd, 1, persist);
+	pmd->ka_fd = tun_alloc(pmd, true, persist);
 	if (pmd->ka_fd == -1) {
 		TAP_LOG(ERR, "Unable to create %s interface", tuntap_name);
 		goto error_exit;
@@ -2507,7 +2507,7 @@ rte_pmd_tun_probe(struct rte_vdev_device *dev)
 	TAP_LOG(DEBUG, "Initializing pmd_tun for %s", name);
 
 	ret = eth_dev_tap_create(dev, tun_name, remote_iface, 0,
-				 ETH_TUNTAP_TYPE_TUN, 0);
+				 ETH_TUNTAP_TYPE_TUN, false);
 
 leave:
 	if (ret == -1) {
@@ -2630,7 +2630,7 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	struct rte_ether_addr user_mac = { .addr_bytes = {0} };
 	struct rte_eth_dev *eth_dev;
 	int tap_devices_count_increased = 0;
-	int persist = 0;
+	bool persist = false;
 
 	name = rte_vdev_device_name(dev);
 	params = rte_vdev_device_args(dev);
@@ -2718,7 +2718,7 @@ secondary_fail:
 			}
 
 			if (rte_kvargs_count(kvlist, ETH_TAP_PERSIST_ARG) == 1)
-				persist = 1;
+				persist = true;
 		}
 	}
 
