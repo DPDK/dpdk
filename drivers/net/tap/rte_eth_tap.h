@@ -51,6 +51,7 @@ struct rx_queue {
 	uint16_t queue_id;		/* queue ID*/
 	struct queue_stats stats;        /* Stats for this RX queue */
 	uint16_t max_rx_segs;           /* max scatter segments per packet */
+	bool intr_mode;                 /* Rx queue interrupt mode */
 	struct rte_eth_rxmode *rxmode;  /* RX features */
 	struct rte_mbuf *pool;          /* mbufs pool for this queue */
 	struct tun_pi pi;               /* packet info for iovecs */
@@ -95,6 +96,7 @@ struct pmd_internals {
 
 	struct rte_intr_handle *intr_handle;         /* LSC interrupt handle. */
 	bool intr_mode;                   /* Rx queue interrupt mode */
+	bool intr_mode_set;               /* intr_mode locked after configure */
 	int ka_fd;                        /* keep-alive file descriptor */
 	struct rte_mempool *gso_ctx_mp;     /* Mempool for GSO packets */
 };
