@@ -1170,7 +1170,7 @@ tap_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 
 	tap_rxq_pool_free(rxq->pool);
 
-	if (dev->data->tx_queues[qid] == NULL)
+	if (dev->data->tx_queues == NULL || dev->data->tx_queues[qid] == NULL)
 		tap_queue_close(process_private, qid);
 
 	rte_free(rxq);
@@ -1187,7 +1187,7 @@ tap_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 		return;
 
 	process_private = rte_eth_devices[txq->out_port].process_private;
-	if (dev->data->rx_queues[qid] == NULL)
+	if (dev->data->rx_queues == NULL || dev->data->rx_queues[qid] == NULL)
 		tap_queue_close(process_private, qid);
 
 	rte_free(txq);
