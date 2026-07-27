@@ -409,7 +409,7 @@ Runtime Config Options
    When transmit completion handler is enabled,
    the PMD invokes the callback handler provided by the application
    for every packet which has external buf attached to mbuf
-   and frees main mbuf, external buffer is provided to applicatoin.
+   and frees main mbuf, external buffer is provided to application.
    Once external buffer is handed over to application,
    it is application responsibility either to free or reuse external buffer
    using ``tx_compl_ena`` devargs parameter.
