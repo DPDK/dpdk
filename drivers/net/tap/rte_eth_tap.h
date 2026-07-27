@@ -51,6 +51,7 @@ struct rx_queue {
 	uint16_t queue_id;		/* queue ID*/
 	struct pkt_stats stats;         /* Stats for this RX queue */
 	uint16_t nb_rx_desc;            /* max number of mbufs available */
+	bool intr_mode;                 /* Rx queue interrupt mode */
 	struct rte_eth_rxmode *rxmode;  /* RX features */
 	struct rte_mbuf *pool;          /* mbufs pool for this queue */
 	struct iovec (*iovecs)[];       /* descriptors for this queue */
@@ -94,6 +95,7 @@ struct pmd_internals {
 	struct tx_queue txq[RTE_PMD_TAP_MAX_QUEUES]; /* List of TX queues */
 	struct rte_intr_handle *intr_handle;         /* LSC interrupt handle. */
 	bool intr_mode;                   /* Rx queue interrupt mode */
+	bool intr_mode_set;               /* intr_mode locked after configure */
 	int ka_fd;                        /* keep-alive file descriptor */
 	struct rte_mempool *gso_ctx_mp;     /* Mempool for GSO packets */
 };
