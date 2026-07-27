@@ -112,3 +112,47 @@ tap_rx_intr_vec_set(struct rte_eth_dev *dev, int set)
 		return tap_rx_intr_vec_install(dev);
 	return 0;
 }
+
+/**
+ * Arm a queue for Rx interrupts.
+ *
+ * @param dev
+ *   Pointer to the tap rte_eth_dev device structure.
+ * @param queue_id
+ *   Rx queue index.
+ *
+ * @return
+ *   0 on success, -ENOTSUP if the port was not configured for Rx interrupts.
+ */
+int
+tap_rx_queue_intr_enable(struct rte_eth_dev *dev,
+			 uint16_t queue_id __rte_unused)
+{
+	struct pmd_internals *pmd = dev->data->dev_private;
+
+	if (!pmd->intr_mode)
+		return -ENOTSUP;
+	return 0;
+}
+
+/**
+ * Disarm a queue from Rx interrupts.
+ *
+ * @param dev
+ *   Pointer to the tap rte_eth_dev device structure.
+ * @param queue_id
+ *   Rx queue index.
+ *
+ * @return
+ *   0 on success, -ENOTSUP if the port was not configured for Rx interrupts.
+ */
+int
+tap_rx_queue_intr_disable(struct rte_eth_dev *dev,
+			  uint16_t queue_id __rte_unused)
+{
+	struct pmd_internals *pmd = dev->data->dev_private;
+
+	if (!pmd->intr_mode)
+		return -ENOTSUP;
+	return 0;
+}

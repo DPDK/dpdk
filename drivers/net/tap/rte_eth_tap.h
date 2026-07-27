@@ -10,6 +10,7 @@
 #include <sys/uio.h>
 #include <inttypes.h>
 #include <net/if.h>
+#include <stdbool.h>
 
 #include <linux/if_tun.h>
 
@@ -92,6 +93,7 @@ struct pmd_internals {
 	struct rx_queue rxq[RTE_PMD_TAP_MAX_QUEUES]; /* List of RX queues */
 	struct tx_queue txq[RTE_PMD_TAP_MAX_QUEUES]; /* List of TX queues */
 	struct rte_intr_handle *intr_handle;         /* LSC interrupt handle. */
+	bool intr_mode;                   /* Rx queue interrupt mode */
 	int ka_fd;                        /* keep-alive file descriptor */
 	struct rte_mempool *gso_ctx_mp;     /* Mempool for GSO packets */
 };
@@ -103,5 +105,7 @@ struct pmd_process_private {
 /* tap_intr.c */
 
 int tap_rx_intr_vec_set(struct rte_eth_dev *dev, int set);
+int tap_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
+int tap_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
 
 #endif /* _RTE_ETH_TAP_H_ */
