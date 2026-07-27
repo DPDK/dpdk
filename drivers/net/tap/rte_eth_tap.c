@@ -254,6 +254,12 @@ tun_alloc(struct pmd_internals *pmd, int is_keepalive, int persistent)
 		goto error;
 	}
 
+	/* data queue fds in interrupt mode wake through epoll, not the SIGIO
+	 * trigger; the keep-alive fd always keeps SIGIO
+	 */
+	if (!is_keepalive && pmd->intr_mode)
+		return fd;
+
 	/* Find a free realtime signal */
 	for (signo = SIGRTMIN + 1; signo < SIGRTMAX; signo++) {
 		struct sigaction sa;
@@ -477,7 +483,7 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	unsigned long num_rx_bytes = 0;
 	uint32_t trigger = tap_trigger;
 
-	if (trigger == rxq->trigger_seen)
+	if (!rxq->intr_mode && trigger == rxq->trigger_seen)
 		return 0;
 
 	process_private = rte_eth_devices[rxq->in_port].process_private;
@@ -937,6 +943,16 @@ tap_dev_configure(struct rte_eth_dev *dev)
 	struct pmd_internals *pmd = dev->data->dev_private;
 	bool intr_mode = dev->data->dev_conf.intr_conf.rxq;
 
+	/* The queue fd is created once and its SIGIO trigger is armed for poll
+	 * mode only; the interrupt mode cannot be toggled on an existing port.
+	 */
+	if (pmd->intr_mode_set && pmd->intr_mode != intr_mode) {
+		TAP_LOG(ERR,
+			"%s: Rx interrupt mode is fixed after configure, close and reopen the port to change it",
+			dev->device->name);
+		return -ENOTSUP;
+	}
+
 	if (dev->data->nb_rx_queues != dev->data->nb_tx_queues) {
 		TAP_LOG(ERR,
 			"%s: number of rx queues %d must be equal to number of tx queues %d",
@@ -947,6 +963,7 @@ tap_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	pmd->intr_mode = intr_mode;
+	pmd->intr_mode_set = true;
 
 	TAP_LOG(INFO, "%s: %s: TX configured queues number: %u",
 		dev->device->name, pmd->name, dev->data->nb_tx_queues);
@@ -1620,6 +1637,7 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->queue_id = rx_queue_id;
 	rxq->max_rx_segs = max_rx_segs;
 	rxq->rxmode = &dev->data->dev_conf.rxmode;
+	rxq->intr_mode = internals->intr_mode;
 
 	dev->data->rx_queues[rx_queue_id] = rxq;
 	int fd = tap_setup_queue(dev, rx_queue_id, 1);
