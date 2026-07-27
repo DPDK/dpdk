@@ -935,6 +935,7 @@ static int
 tap_dev_configure(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
+	bool intr_mode = dev->data->dev_conf.intr_conf.rxq;
 
 	if (dev->data->nb_rx_queues != dev->data->nb_tx_queues) {
 		TAP_LOG(ERR,
@@ -944,6 +945,8 @@ tap_dev_configure(struct rte_eth_dev *dev)
 			dev->data->nb_tx_queues);
 		return -1;
 	}
+
+	pmd->intr_mode = intr_mode;
 
 	TAP_LOG(INFO, "%s: %s: TX configured queues number: %u",
 		dev->device->name, pmd->name, dev->data->nb_tx_queues);
@@ -2098,6 +2101,8 @@ static const struct eth_dev_ops ops = {
 	.tx_queue_stop          = tap_tx_queue_stop,
 	.rx_queue_release       = tap_rx_queue_release,
 	.tx_queue_release       = tap_tx_queue_release,
+	.rx_queue_intr_enable   = tap_rx_queue_intr_enable,
+	.rx_queue_intr_disable  = tap_rx_queue_intr_disable,
 	.flow_ctrl_get          = tap_flow_ctrl_get,
 	.flow_ctrl_set          = tap_flow_ctrl_set,
 	.link_update            = tap_link_update,
