@@ -416,7 +416,7 @@ static int32_t sxe2_flow_src_split_proc(struct rte_eth_dev *dev,
 					ret = -ENOMEM;
 					goto l_end;
 				}
-				rte_memcpy(flow_new, flow, sizeof(struct sxe2_flow));
+				*flow_new = *flow;
 				TAILQ_INSERT_TAIL(sxe2_flow_list, flow_new, next);
 				flow_new->meta.flow_src_vsi =
 						flow_src_vsi[SXE2_MAX_DRV_TYPE_DPDK][idx];
@@ -437,7 +437,7 @@ static int32_t sxe2_flow_src_split_proc(struct rte_eth_dev *dev,
 					ret = -ENOMEM;
 					goto l_end;
 				}
-				rte_memcpy(flow_new, flow, sizeof(struct sxe2_flow));
+				*flow_new = *flow;
 				TAILQ_INSERT_TAIL(sxe2_flow_list, flow_new, next);
 				flow_new->meta.flow_src_vsi =
 					flow_src_vsi[SXE2_MAX_DRV_TYPE_KERNEL][idx];
@@ -697,8 +697,7 @@ static int32_t sxe2_flow_tunnel_split_proc(struct rte_eth_dev *dev __rte_unused,
 					ret = -ENOMEM;
 					goto l_end;
 				}
-				rte_memcpy(sxe2_flow_new, sxe2_flow_exist,
-					sizeof(struct sxe2_flow));
+				*sxe2_flow_new = *sxe2_flow_exist;
 				pattern = &sxe2_flow_new->pattern_outer;
 				sxe2_flow_new->meta.tunnel_type =
 					SXE2_FLOW_TUNNEL_TYPE_GRE;
