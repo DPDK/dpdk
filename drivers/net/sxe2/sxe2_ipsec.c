@@ -1159,7 +1159,7 @@ int sxe2_ipsec_pkt_metadata_set(void *device, struct rte_security_session *sessi
 
 	md = RTE_MBUF_DYNFIELD(m, sxe2_sctx->ipsec_ctx.md_offset, struct sxe2_ipsec_pkt_metadata *);
 
-	memcpy(md, &sxe2_sess->pkt_metadata_template, sizeof(struct sxe2_ipsec_pkt_metadata));
+	*md = sxe2_sess->pkt_metadata_template;
 	md->esp_head_offset = offset;
 
 	PMD_LOG_INFO(DRV, "ipsec metadata set, offset:%u, said:%u, mode:%u, algo:%u.", offset,
