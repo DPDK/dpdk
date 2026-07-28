@@ -263,8 +263,7 @@ int32_t sxe2_drv_rxq_ctxt_cfg(struct sxe2_adapter *adapter,
 		PMD_DEV_LOG_ERR(adapter, DRV, "rxq cfg failed, ret=%d", ret);
 
 l_end:
-	if (req)
-		rte_free(req);
+	rte_free(req);
 	return ret;
 }
 
@@ -320,8 +319,7 @@ int32_t sxe2_drv_txq_ctxt_cfg(struct sxe2_adapter *adapter,
 		PMD_DEV_LOG_ERR(adapter, DRV, "txq cfg failed, ret=%d", ret);
 
 l_end:
-	if (req)
-		rte_free(req);
+	rte_free(req);
 	return ret;
 }
 
