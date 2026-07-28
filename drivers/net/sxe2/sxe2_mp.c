@@ -282,8 +282,7 @@ int32_t sxe2_mp_request_simple(struct rte_eth_dev *dev,
 	*result_out = ((struct sxe2_mp_param *)reply.msgs[0].param)->result;
 
 out:
-	if (reply.msgs != NULL)
-		free(reply.msgs);
+	free(reply.msgs);
 
 	return ret;
 }

@@ -1121,8 +1121,7 @@ uint16_t sxe2_rx_pkts_scattered_split(void *rx_queue, struct rte_mbuf **rx_pkts,
 			new_mbuf_pay = rte_mbuf_raw_alloc(rxq->rx_seg[1].mp);
 			if (unlikely(new_mbuf_pay == NULL)) {
 				rxq->vsi->adapter->dev_info.dev_data->rx_mbuf_alloc_failed++;
-				if (new_mbuf != NULL)
-					rte_pktmbuf_free(new_mbuf);
+				rte_pktmbuf_free(new_mbuf);
 				new_mbuf = NULL;
 				break;
 			}
