@@ -439,8 +439,7 @@ int32_t sxe2_dev_rss_reta_update(struct rte_eth_dev *dev,
 	rte_memcpy(rss_ctxt->rss_lut, lut_tmp, reta_size);
 
 l_end:
-	if (lut_tmp)
-		rte_free(lut_tmp);
+	rte_free(lut_tmp);
 	return ret;
 }
 
