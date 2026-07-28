@@ -594,8 +594,7 @@ l_release_port:
 		struct rte_eth_dev *rep_dev = adapter->repr_ctxt.vf_rep_eth_dev[tmp_repr_idx];
 		if (rep_dev) {
 			sxe2_repr_dev_uinit(rep_dev);
-			if (rep_dev->intr_handle)
-				rte_intr_instance_free(rep_dev->intr_handle);
+			rte_intr_instance_free(rep_dev->intr_handle);
 			rte_eth_dev_release_port(rep_dev);
 			adapter->repr_ctxt.vf_rep_eth_dev[tmp_repr_idx] = NULL;
 		}

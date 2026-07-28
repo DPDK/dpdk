@@ -2063,8 +2063,7 @@ static int32_t sxe2_dev_uninit(struct rte_eth_dev *dev)
 			ret = rep_dev->dev_ops->dev_close(rep_dev);
 			if (ret)
 				goto l_end;
-			if (rep_dev->intr_handle)
-				rte_intr_instance_free(rep_dev->intr_handle);
+			rte_intr_instance_free(rep_dev->intr_handle);
 			ret = rte_eth_dev_release_port(rep_dev);
 			if (ret)
 				goto l_end;
