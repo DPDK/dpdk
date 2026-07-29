@@ -696,8 +696,7 @@ main(int argc, char **argv)
 		l2fwd_poll_resource_setup(rsrc);
 
 	/* initialize port stats */
-	memset(&rsrc->port_stats, 0,
-					sizeof(struct l2fwd_port_statistics));
+	memset(rsrc->port_stats, 0, sizeof(rsrc->port_stats));
 
 	/* All settings are done. Now enable eth devices */
 	RTE_ETH_FOREACH_DEV(port_id) {
