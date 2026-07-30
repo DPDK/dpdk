@@ -98,9 +98,10 @@ Removed Items
   Per-queue xstats are now reported for all queues, not just the first 16.
   The ``rx_qN_errors`` xstat is removed, drops are still counted in ``ierrors``.
 
-* pipeline: Removed the legacy pipeline library API:
-  ``rte_pipeline_*``, ``rte_port_in_action_*`` and ``rte_table_action_*`` functions.
-  The SWX pipeline API (``rte_swx_pipeline_*``) remains.
+* pipeline: Removed the legacy library API:
+  ``rte_pipeline_*``, ``rte_table_*``, ``rte_table_action_*``,
+  and ``rte_port_in_action_*`` functions.
+  The SWX API (``rte_swx_pipeline_*``, ``rte_swx_table_*``) remains.
   Removed the ``dpdk-test-pipeline`` application,
   and the ``ip_pipeline`` example application,
   which were based on the legacy pipeline library API.
