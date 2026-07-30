@@ -3425,6 +3425,10 @@ Limitations
 
 #. In template tables of group 0, the modify action must be fully masked.
 
+#. On group 0 (root table), when using the non-template flow API, modifying a
+   field and reading it as ``src`` in a subsequent
+   ``RTE_FLOW_ACTION_TYPE_MODIFY_FIELD`` action is not supported.
+
 #. Modification of an arbitrary place in a packet via
    the special ``RTE_FLOW_FIELD_START`` field ID is not supported.
 
