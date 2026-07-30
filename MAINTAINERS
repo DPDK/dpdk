@@ -1739,8 +1739,6 @@ F: lib/pipeline/
 F: lib/port/
 F: lib/table/
 F: doc/guides/prog_guide/packet_framework.rst
-F: app/test-pipeline/
-F: doc/guides/sample_app_ug/test_pipeline.rst
 F: examples/ip_pipeline/
 F: examples/pipeline/
 F: doc/guides/sample_app_ug/ip_pipeline.rst

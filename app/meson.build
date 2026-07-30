@@ -28,7 +28,6 @@ apps = [
         'test-flow-perf',
         'test-gpudev',
         'test-mldev',
-        'test-pipeline',
         'test-pmd',
         'test-regex',
         'test-sad',
