@@ -185,6 +185,10 @@ Removed Items
   The only remaining method for detecting LLDP packets is by using
   the mbuf packet type in conjunction with the ``enable_lldp`` devarg.
 
+* Removed the ``ip_pipeline`` example application, which was based on
+  the legacy pipeline library API.
+  The ``pipeline`` example application covers the SWX pipeline API.
+
 
 API Changes
 -----------
