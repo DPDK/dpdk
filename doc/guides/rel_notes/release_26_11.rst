@@ -98,6 +98,9 @@ Removed Items
   Per-queue xstats are now reported for all queues, not just the first 16.
   The ``rx_qN_errors`` xstat is removed, drops are still counted in ``ierrors``.
 
+* Removed the ``dpdk-test-pipeline`` application, which was based on
+  the legacy pipeline library API.
+
 
 API Changes
 -----------
