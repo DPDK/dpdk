@@ -112,6 +112,9 @@ Removed Items
 * Removed the legacy table library API (``rte_table_*`` functions).
   The SWX table API (``rte_swx_table_*``) remains.
 
+* Removed the legacy port library API (``rte_port_*`` functions).
+  The SWX port API (``rte_swx_port_*``) remains.
+
 
 API Changes
 -----------
