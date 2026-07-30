@@ -189,13 +189,6 @@ The public API headers are grouped by topics:
     [reass](@ref rte_port_ras.h),
     [sched](@ref rte_port_sched.h),
     [src/sink](@ref rte_port_source_sink.h)
-  * [table](@ref rte_table.h):
-    [lpm IPv4](@ref rte_table_lpm.h),
-    [lpm IPv6](@ref rte_table_lpm_ipv6.h),
-    [ACL](@ref rte_table_acl.h),
-    [hash](@ref rte_table_hash.h),
-    [array](@ref rte_table_array.h),
-    [stub](@ref rte_table_stub.h)
   * SWX pipeline:
     [control](@ref rte_swx_ctl.h),
     [extern](@ref rte_swx_extern.h),
