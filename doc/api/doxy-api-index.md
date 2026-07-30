@@ -196,9 +196,6 @@ The public API headers are grouped by topics:
     [hash](@ref rte_table_hash.h),
     [array](@ref rte_table_array.h),
     [stub](@ref rte_table_stub.h)
-  * [pipeline](@ref rte_pipeline.h)
-    [port_in_action](@ref rte_port_in_action.h)
-    [table_action](@ref rte_table_action.h)
   * SWX pipeline:
     [control](@ref rte_swx_ctl.h),
     [extern](@ref rte_swx_extern.h),
