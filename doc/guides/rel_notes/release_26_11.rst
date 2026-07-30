@@ -105,6 +105,10 @@ Removed Items
   the legacy pipeline library API.
   The ``pipeline`` example application covers the SWX pipeline API.
 
+* Removed the legacy pipeline library API: ``rte_pipeline_*``,
+  ``rte_port_in_action_*`` and ``rte_table_action_*`` functions.
+  The SWX pipeline API (``rte_swx_pipeline_*``) remains.
+
 
 API Changes
 -----------
