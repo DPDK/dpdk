@@ -109,6 +109,9 @@ Removed Items
   ``rte_port_in_action_*`` and ``rte_table_action_*`` functions.
   The SWX pipeline API (``rte_swx_pipeline_*``) remains.
 
+* Removed the legacy table library API (``rte_table_*`` functions).
+  The SWX table API (``rte_swx_table_*``) remains.
+
 
 API Changes
 -----------
