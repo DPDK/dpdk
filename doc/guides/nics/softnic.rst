@@ -10,8 +10,7 @@ is DIY and reconfigurable through ``firmware`` (DPDK Packet Framework script).
 The Soft NIC leverages the DPDK Packet Framework libraries (librte_port,
 librte_table and librte_pipeline) to make it modular, flexible and extensible
 with new functionality.
-Please refer to :doc:`/prog_guide/packet_framework` and
-:doc:`/sample_app_ug/ip_pipeline` for more details.
+Please refer to :doc:`/prog_guide/packet_framework` for more details.
 
 The Soft NIC is configured through the standard DPDK ethdev API (ethdev, flow,
 QoS, security). The internal framework is not externally visible.

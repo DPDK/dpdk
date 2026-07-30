@@ -101,6 +101,10 @@ Removed Items
 * Removed the ``dpdk-test-pipeline`` application, which was based on
   the legacy pipeline library API.
 
+* Removed the ``ip_pipeline`` example application, which was based on
+  the legacy pipeline library API.
+  The ``pipeline`` example application covers the SWX pipeline API.
+
 
 API Changes
 -----------
