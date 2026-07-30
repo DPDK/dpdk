@@ -2083,7 +2083,6 @@ RTE_TRACE_POINT_FP(
 	rte_trace_point_emit_int(ret);
 )
 
-/* Called in loop in examples/ip_pipeline */
 RTE_TRACE_POINT_FP(
 	rte_eth_trace_link_get,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id, const struct rte_eth_link *link),
@@ -2091,7 +2090,6 @@ RTE_TRACE_POINT_FP(
 	rte_trace_point_emit_u32(link->link_speed);
 )
 
-/* Called in loop in examples/ip_pipeline */
 RTE_TRACE_POINT_FP(
 	rte_eth_trace_link_speed_to_str,
 	RTE_TRACE_POINT_ARGS(uint32_t link_speed, const char *ret),

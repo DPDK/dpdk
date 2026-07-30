@@ -44,7 +44,6 @@ Sample Applications User Guides
     vhost_blk
     vhost_crypto
     vdpa
-    ip_pipeline
     pipeline
     eventdev_pipeline
     dist_app

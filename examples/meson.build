@@ -19,7 +19,6 @@ all_examples = [
         'flow_filtering',
         'helloworld',
         'ip_fragmentation',
-        'ip_pipeline',
         'ip_reassembly',
         'ipsec-secgw',
         'ipv4_multicast',
