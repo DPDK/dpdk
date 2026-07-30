@@ -100,8 +100,8 @@ Removed Items
 
 * pipeline: Removed the legacy library API:
   ``rte_pipeline_*``, ``rte_table_*``, ``rte_table_action_*``,
-  and ``rte_port_in_action_*`` functions.
-  The SWX API (``rte_swx_pipeline_*``, ``rte_swx_table_*``) remains.
+  ``rte_port_*`` and ``rte_port_in_action_*`` functions.
+  The SWX API (``rte_swx_pipeline_*``, ``rte_swx_table_*``, ``rte_swx_port_*``) remains.
   Removed the ``dpdk-test-pipeline`` application,
   and the ``ip_pipeline`` example application,
   which were based on the legacy pipeline library API.

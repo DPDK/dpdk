@@ -182,13 +182,6 @@ The public API headers are grouped by topics:
   [bitmap](@ref rte_bitmap.h)
 
 - **packet framework**:
-  * [port](@ref rte_port.h):
-    [ethdev](@ref rte_port_ethdev.h),
-    [ring](@ref rte_port_ring.h),
-    [frag](@ref rte_port_frag.h),
-    [reass](@ref rte_port_ras.h),
-    [sched](@ref rte_port_sched.h),
-    [src/sink](@ref rte_port_source_sink.h)
   * SWX pipeline:
     [control](@ref rte_swx_ctl.h),
     [extern](@ref rte_swx_extern.h),
