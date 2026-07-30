@@ -142,11 +142,6 @@ Deprecation Notices
   The graph walk functions will process nodes in topological order
   using bitmap scanning instead of the circular buffer.
 
-* table: The table library legacy API (functions rte_table_*)
-  will be deprecated and subsequently removed in DPDK 24.11 release.
-  Before this, the new table library API (functions rte_swx_table_*)
-  will gradually transition from experimental to stable status.
-
 * port: The port library legacy API (functions rte_port_*)
   will be deprecated and subsequently removed in DPDK 24.11 release.
   Before this, the new port library API (functions rte_swx_port_*)
