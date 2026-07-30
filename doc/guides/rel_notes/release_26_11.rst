@@ -99,7 +99,9 @@ Removed Items
   The ``rx_qN_errors`` xstat is removed, drops are still counted in ``ierrors``.
 
 * pipeline: Removed the ``dpdk-test-pipeline`` application,
-  which was based on the legacy pipeline library API.
+  and the ``ip_pipeline`` example application,
+  which were based on the legacy pipeline library API.
+  The ``pipeline`` example application covers the SWX pipeline API.
 
 
 API Changes
