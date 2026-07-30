@@ -91,12 +91,6 @@ expression E;
 - if (E != NULL) rte_ring_free(E);
 + rte_ring_free(E);
 |
-- if (E != NULL) rte_port_in_action_free(E);
-+ rte_port_in_action_free(E);
-|
-- if (E != NULL) rte_port_in_action_profile_free(E);
-+ rte_port_in_action_profile_free(E);
-|
 - if (E != NULL) rte_sched_port_free(E);
 + rte_sched_port_free(E);
 |
@@ -117,12 +111,6 @@ expression E;
 |
 - if (E != NULL) rte_swx_table_selector_free(E);
 + rte_swx_table_selector_free(E);
-|
-- if (E != NULL) rte_table_action_free(E);
-+ rte_table_action_free(E);
-|
-- if (E != NULL) rte_table_action_profile_free(E);
-+ rte_table_action_profile_free(E);
 |
 - if (E != NULL) rte_tel_data_free(E);
 + rte_tel_data_free(E);

@@ -142,11 +142,6 @@ Deprecation Notices
   The graph walk functions will process nodes in topological order
   using bitmap scanning instead of the circular buffer.
 
-* pipeline: The pipeline library legacy API (functions rte_pipeline_*)
-  will be deprecated and subsequently removed in DPDK 24.11 release.
-  Before this, the new pipeline library API (functions rte_swx_pipeline_*)
-  will gradually transition from experimental to stable status.
-
 * table: The table library legacy API (functions rte_table_*)
   will be deprecated and subsequently removed in DPDK 24.11 release.
   Before this, the new table library API (functions rte_swx_table_*)
