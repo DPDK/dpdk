@@ -2639,6 +2639,8 @@ int mlx5_os_vf_mac_addr_modify(struct mlx5_priv *priv, unsigned int iface_idx,
 			       int vf_index);
 int mlx5_os_set_promisc(struct rte_eth_dev *dev, int enable);
 int mlx5_os_set_allmulti(struct rte_eth_dev *dev, int enable);
+bool mlx5_os_get_promisc(struct rte_eth_dev *dev);
+bool mlx5_os_get_allmulti(struct rte_eth_dev *dev);
 int mlx5_os_set_nonblock_channel_fd(int fd);
 void mlx5_os_mac_addr_flush(struct rte_eth_dev *dev);
 void mlx5_os_net_cleanup(void);
