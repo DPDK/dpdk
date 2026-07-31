@@ -967,6 +967,101 @@ mlx5_nl_allmulti(int nlsk_fd, unsigned int iface_idx, int enable)
 }
 
 /**
+ * Query link information via Netlink.
+ *
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] iface_idx
+ *   Net device interface index.
+ * @param[in] cb
+ *   Callback to process the response.
+ * @param[out] arg
+ *   Opaque argument for the callback.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise.
+ */
+static int
+mlx5_nl_link_info(int nlsk_fd, unsigned int iface_idx,
+		  int (*cb)(struct nlmsghdr *, void *), void *arg)
+{
+	struct {
+		struct nlmsghdr hdr;
+		struct ifinfomsg ifi;
+	} req = {
+		.hdr = {
+			.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg)),
+			.nlmsg_type = RTM_GETLINK,
+			.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK,
+		},
+		.ifi = {
+			.ifi_family = AF_UNSPEC,
+			.ifi_index = iface_idx,
+		},
+	};
+	uint32_t sn = MLX5_NL_SN_GENERATE;
+	int ret;
+
+	ret = mlx5_nl_send(nlsk_fd, &req.hdr, sn);
+	if (ret >= 0)
+		ret = mlx5_nl_recv(nlsk_fd, sn, cb, arg);
+	return ret;
+}
+
+static int
+mlx5_nl_get_flags_cb(struct nlmsghdr *nh, void *arg)
+{
+	struct ifinfomsg *ifm = NLMSG_DATA(nh);
+
+	*(uint32_t *)arg = ifm->ifi_flags;
+	return 0;
+}
+
+/**
+ * Get promiscuous mode via Netlink.
+ *
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] iface_idx
+ *   Net device interface index.
+ *
+ * @return
+ *   True if promiscuous mode is enabled, false otherwise.
+ */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_nl_get_promisc)
+bool
+mlx5_nl_get_promisc(int nlsk_fd, unsigned int iface_idx)
+{
+	uint32_t flags = 0;
+
+	if (mlx5_nl_link_info(nlsk_fd, iface_idx, mlx5_nl_get_flags_cb, &flags))
+		return false;
+	return !!(flags & IFF_PROMISC);
+}
+
+/**
+ * Get all multicast mode via Netlink.
+ *
+ * @param[in] nlsk_fd
+ *   Netlink socket file descriptor.
+ * @param[in] iface_idx
+ *   Net device interface index.
+ *
+ * @return
+ *   True if all multicast mode is enabled, false otherwise.
+ */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_nl_get_allmulti)
+bool
+mlx5_nl_get_allmulti(int nlsk_fd, unsigned int iface_idx)
+{
+	uint32_t flags = 0;
+
+	if (mlx5_nl_link_info(nlsk_fd, iface_idx, mlx5_nl_get_flags_cb, &flags))
+		return false;
+	return !!(flags & IFF_ALLMULTI);
+}
+
+/**
  * Process network interface information from Netlink message.
  *
  * @param nh
@@ -2313,21 +2408,6 @@ int
 mlx5_nl_get_mtu_bounds(int nl, unsigned int ifindex, uint16_t *min_mtu, uint16_t *max_mtu)
 {
 	struct mlx5_mtu out = { 0 };
-	struct {
-		struct nlmsghdr nh;
-		struct ifinfomsg info;
-	} req = {
-		.nh = {
-			.nlmsg_len = NLMSG_LENGTH(sizeof(req.info)),
-			.nlmsg_type = RTM_GETLINK,
-			.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK,
-		},
-		.info = {
-			.ifi_family = AF_UNSPEC,
-			.ifi_index = ifindex,
-		},
-	};
-	uint32_t sn = MLX5_NL_SN_GENERATE;
 	int ret;
 
 	if (min_mtu == NULL || max_mtu == NULL) {
@@ -2335,11 +2415,7 @@ mlx5_nl_get_mtu_bounds(int nl, unsigned int ifindex, uint16_t *min_mtu, uint16_t
 		return -rte_errno;
 	}
 
-	ret = mlx5_nl_send(nl, &req.nh, sn);
-	if (ret < 0)
-		return ret;
-
-	ret = mlx5_nl_recv(nl, sn, mlx5_nl_get_mtu_bounds_cb, &out);
+	ret = mlx5_nl_link_info(nl, ifindex, mlx5_nl_get_mtu_bounds_cb, &out);
 	if (ret < 0)
 		return ret;
 

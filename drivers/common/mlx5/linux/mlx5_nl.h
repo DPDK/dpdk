@@ -74,6 +74,10 @@ int mlx5_nl_promisc(int nlsk_fd, unsigned int iface_idx, int enable);
 __rte_internal
 int mlx5_nl_allmulti(int nlsk_fd, unsigned int iface_idx, int enable);
 __rte_internal
+bool mlx5_nl_get_promisc(int nlsk_fd, unsigned int iface_idx);
+__rte_internal
+bool mlx5_nl_get_allmulti(int nlsk_fd, unsigned int iface_idx);
+__rte_internal
 unsigned int mlx5_nl_portnum(int nl, const char *name, struct mlx5_dev_info *dev_info);
 __rte_internal
 unsigned int mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex,
