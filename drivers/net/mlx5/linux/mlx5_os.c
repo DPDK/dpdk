@@ -3484,6 +3484,40 @@ mlx5_os_set_allmulti(struct rte_eth_dev *dev, int enable)
 }
 
 /**
+ * Get device promiscuous mode
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   True if promiscuous mode is enabled, false otherwise.
+ */
+bool
+mlx5_os_get_promisc(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	return mlx5_nl_get_promisc(priv->nl_socket_route, mlx5_ifindex(dev));
+}
+
+/**
+ * Get device all multicast mode
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   True if all multicast mode is enabled, false otherwise.
+ */
+bool
+mlx5_os_get_allmulti(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	return mlx5_nl_get_allmulti(priv->nl_socket_route, mlx5_ifindex(dev));
+}
+
+/**
  * Flush device MAC addresses
  *
  * @param dev

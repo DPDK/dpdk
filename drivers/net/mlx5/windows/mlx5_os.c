@@ -830,6 +830,38 @@ mlx5_os_set_allmulti(struct rte_eth_dev *dev, int enable)
 }
 
 /**
+ * Get device promiscuous mode
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   Always false on Windows.
+ */
+bool
+mlx5_os_get_promisc(struct rte_eth_dev *dev)
+{
+	RTE_SET_USED(dev);
+	return false;
+}
+
+/**
+ * Get device all multicast mode
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   Always false on Windows.
+ */
+bool
+mlx5_os_get_allmulti(struct rte_eth_dev *dev)
+{
+	RTE_SET_USED(dev);
+	return false;
+}
+
+/**
  * DPDK callback to register a PCI device.
  *
  * This function spawns Ethernet devices out of a given device.

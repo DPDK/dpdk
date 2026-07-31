@@ -1455,6 +1455,20 @@ continue_dev_start:
 		}
 	}
 #endif
+	if (priv->sh->dev_cap.vf || priv->sh->dev_cap.sf) {
+		if (mlx5_os_get_promisc(dev) != dev->data->promiscuous) {
+			DRV_LOG(INFO, "port %u forcing promiscuous mode to %s",
+				dev->data->port_id,
+				dev->data->promiscuous ? "enabled" : "disabled");
+			mlx5_os_set_promisc(dev, dev->data->promiscuous);
+		}
+		if (mlx5_os_get_allmulti(dev) != dev->data->all_multicast) {
+			DRV_LOG(INFO, "port %u forcing all multicast mode to %s",
+				dev->data->port_id,
+				dev->data->all_multicast ? "enabled" : "disabled");
+			mlx5_os_set_allmulti(dev, dev->data->all_multicast);
+		}
+	}
 	ret = mlx5_traffic_enable(dev);
 	if (ret) {
 		DRV_LOG(ERR, "port %u failed to set defaults flows",
