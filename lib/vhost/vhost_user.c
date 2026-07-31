@@ -72,7 +72,7 @@ VHOST_MESSAGE_HANDLER(VHOST_USER_RESET_OWNER, vhost_user_reset_owner, false, fal
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_MEM_TABLE, vhost_user_set_mem_table, true, true) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_GET_MAX_MEM_SLOTS, vhost_user_get_max_mem_slots, false, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_ADD_MEM_REG, vhost_user_add_mem_reg, true, true) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_REM_MEM_REG, vhost_user_rem_mem_reg, false, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_REM_MEM_REG, vhost_user_rem_mem_reg, true, true) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_LOG_BASE, vhost_user_set_log_base, true, true) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_LOG_FD, vhost_user_set_log_fd, true, true) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_NUM, vhost_user_set_vring_num, false, true) \
@@ -1728,6 +1728,13 @@ vhost_user_rem_mem_reg(struct virtio_net **pdev,
 	struct VhostUserMemoryRegion *region = &ctx->msg.payload.memreg.region;
 	struct virtio_net *dev = *pdev;
 	uint32_t i;
+
+	/*
+	 * The specification says no file descriptor should be passed with
+	 * this message, but some front-ends send one anyway. Tolerate it and
+	 * close it without using it, as the specification requires.
+	 */
+	close_msg_fds(ctx);
 
 	if (dev->mem == NULL || dev->mem->nregions == 0) {
 		VHOST_CONFIG_LOG(dev->ifname, ERR, "no memory regions to remove");
