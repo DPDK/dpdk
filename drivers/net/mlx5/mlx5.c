@@ -2498,6 +2498,16 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		mlx5_free(priv->rss_conf.rss_key);
 	if (priv->reta_idx != NULL)
 		mlx5_free(priv->reta_idx);
+	if (priv->sh->dev_cap.vf || priv->sh->dev_cap.sf) {
+		if (mlx5_os_get_promisc(dev)) {
+			DRV_LOG(DEBUG, "port %u resetting promiscuous mode", dev->data->port_id);
+			mlx5_os_set_promisc(dev, 0);
+		}
+		if (mlx5_os_get_allmulti(dev)) {
+			DRV_LOG(DEBUG, "port %u resetting all multicast mode", dev->data->port_id);
+			mlx5_os_set_allmulti(dev, 0);
+		}
+	}
 	if (sh->dev_cap.vf)
 		mlx5_os_mac_addr_flush(dev);
 	if (priv->nl_socket_route >= 0)
