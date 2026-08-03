@@ -9588,7 +9588,8 @@ flow_hw_pattern_template_create(struct rte_eth_dev *dev,
 		}
 	}
 	rte_atomic_fetch_add_explicit(&it->refcnt, 1, rte_memory_order_relaxed);
-	if (external) {
+	/* AGGR_AFFINITY only supports under group 0 */
+	if (external && !(it->item_flags & MLX5_FLOW_ITEM_AGGR_AFFINITY)) {
 		rc = pattern_template_validate(dev, &it, 1, error);
 		if (rc)
 			goto error;
