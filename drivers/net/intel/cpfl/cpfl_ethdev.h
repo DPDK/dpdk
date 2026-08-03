@@ -16,6 +16,7 @@
 
 #include <idpf_common_device.h>
 #include <idpf_common_virtchnl.h>
+#include <idpf_ptp.h>
 #include <base/idpf_prototype.h>
 #include <base/virtchnl2.h>
 

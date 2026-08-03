@@ -2,6 +2,7 @@
  * Copyright(c) 2025 Intel Corporation
  */
 
+#include <eal_export.h>
 #include "idpf_ptp.h"
 #include "idpf_common_virtchnl.h"
 #include "base/virtchnl2.h"
@@ -38,6 +39,7 @@ idpf_ptp_get_features_access(const struct idpf_adapter *adapter)
 		IDPF_PTP_ACCESS(adapter, VIRTCHNL2_CAP_PTP_TX_TSTAMPS);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_ptp_get_caps)
 int
 idpf_ptp_get_caps(struct idpf_adapter *adapter)
 {
@@ -212,6 +214,7 @@ idpf_ptp_get_cross_time(struct idpf_adapter *adapter,
 	return err;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_ptp_set_dev_clk_time)
 int
 idpf_ptp_set_dev_clk_time(struct idpf_adapter *adapter, uint64_t time)
 {
@@ -256,6 +259,7 @@ idpf_ptp_adj_dev_clk_time(struct idpf_adapter *adapter, int64_t delta)
 	return err;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_ptp_adj_dev_clk_fine)
 int
 idpf_ptp_adj_dev_clk_fine(struct idpf_adapter *adapter, uint64_t incval)
 {
@@ -487,6 +491,7 @@ idpf_ptp_read_src_clk_reg_mailbox(struct idpf_adapter *adapter,
  *
  * Return: 0 on success, -errno otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_ptp_read_src_clk_reg)
 int
 idpf_ptp_read_src_clk_reg(struct idpf_adapter *adapter, uint64_t *src_clk)
 {

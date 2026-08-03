@@ -88,13 +88,17 @@ struct idpf_ptp_dev_timers {
 	uint64_t dev_clk_time_ns;
 };
 
+__rte_internal
 int idpf_ptp_get_caps(struct idpf_adapter *adapter);
+__rte_internal
 int idpf_ptp_read_src_clk_reg(struct idpf_adapter *adapter, uint64_t *src_clk);
 int idpf_ptp_get_dev_clk_time(struct idpf_adapter *adapter,
 			     struct idpf_ptp_dev_timers *dev_clk_time);
 int idpf_ptp_get_cross_time(struct idpf_adapter *adapter,
 			    struct idpf_ptp_dev_timers *cross_time);
+__rte_internal
 int idpf_ptp_set_dev_clk_time(struct idpf_adapter *adapter, uint64_t time);
+__rte_internal
 int idpf_ptp_adj_dev_clk_fine(struct idpf_adapter *adapter, uint64_t incval);
 int idpf_ptp_adj_dev_clk_time(struct idpf_adapter *adapter, int64_t delta);
 int idpf_ptp_get_vport_tstamps_caps(struct idpf_vport *vport);

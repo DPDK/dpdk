@@ -1341,6 +1341,110 @@ cpfl_hairpin_unbind(struct rte_eth_dev *dev, uint16_t rx_port)
 	return 0;
 }
 
+static int
+cpfl_timesync_enable(struct rte_eth_dev *dev)
+{
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_vport *vport = &cpfl_vport->base;
+	struct idpf_adapter *adapter = vport->adapter;
+	struct timespec sys_ts;
+	uint64_t ns;
+	int ret;
+
+	if (dev->data->dev_started && !(dev->data->dev_conf.rxmode.offloads &
+	    RTE_ETH_RX_OFFLOAD_TIMESTAMP)) {
+		PMD_DRV_LOG(ERR, "Rx timestamp offload not configured");
+		return -1;
+	}
+
+	/* PTP state is shared by all vports of the adapter. */
+	if (adapter->ptp != NULL)
+		return 0;
+
+	adapter->ptp = rte_zmalloc(NULL, sizeof(struct idpf_ptp), 0);
+	if (adapter->ptp == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to allocate memory for PTP");
+		return -ENOMEM;
+	}
+
+	ret = idpf_ptp_get_caps(adapter);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get PTP capabilities, err=%d", ret);
+		goto fail_ptp;
+	}
+
+	/*
+	 * Write the default increment time value if the clock adjustments
+	 * are enabled.
+	 */
+	if (adapter->ptp->adj_dev_clk_time_access != IDPF_PTP_NONE) {
+		ret = idpf_ptp_adj_dev_clk_fine(adapter, adapter->ptp->base_incval);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "PTP set incval failed, err=%d", ret);
+			goto fail_ptp;
+		}
+	}
+
+	/* Do not initialize the PTP if the device clock time cannot be read. */
+	if (adapter->ptp->get_dev_clk_time_access == IDPF_PTP_NONE) {
+		PMD_DRV_LOG(ERR, "Getting device clock time is not supported");
+		ret = -EIO;
+		goto fail_ptp;
+	}
+
+	/* Set the device clock time to system time. */
+	if (adapter->ptp->set_dev_clk_time_access != IDPF_PTP_NONE) {
+		clock_gettime(CLOCK_REALTIME, &sys_ts);
+		ns = rte_timespec_to_ns(&sys_ts);
+		ret = idpf_ptp_set_dev_clk_time(adapter, ns);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "PTP set clock time failed, err=%d", ret);
+			goto fail_ptp;
+		}
+	}
+
+	adapter->ptp->cmd.shtime_enable_mask = PF_GLTSYN_CMD_SYNC_SHTIME_EN_M;
+	adapter->ptp->cmd.exec_cmd_mask = PF_GLTSYN_CMD_SYNC_EXEC_CMD_M;
+
+	return 0;
+
+fail_ptp:
+	rte_free(adapter->ptp);
+	adapter->ptp = NULL;
+	return ret;
+}
+
+static int
+cpfl_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
+{
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_adapter *adapter = cpfl_vport->base.adapter;
+	uint64_t time;
+	int ret;
+
+	ret = idpf_ptp_read_src_clk_reg(adapter, &time);
+	if (ret)
+		PMD_DRV_LOG(ERR, "PTP read time failed, err %d", ret);
+	else
+		*ts = rte_ns_to_timespec(time);
+
+	return ret;
+}
+
+static int
+cpfl_timesync_disable(struct rte_eth_dev *dev)
+{
+	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
+	struct idpf_adapter *adapter = cpfl_vport->base.adapter;
+
+	if (adapter->ptp != NULL) {
+		rte_free(adapter->ptp);
+		adapter->ptp = NULL;
+	}
+
+	return 0;
+}
+
 static const struct eth_dev_ops cpfl_eth_dev_ops = {
 	.dev_configure			= cpfl_dev_configure,
 	.dev_close			= cpfl_dev_close,
@@ -1374,6 +1478,9 @@ static const struct eth_dev_ops cpfl_eth_dev_ops = {
 	.hairpin_get_peer_ports         = cpfl_hairpin_get_peer_ports,
 	.hairpin_bind                   = cpfl_hairpin_bind,
 	.hairpin_unbind                 = cpfl_hairpin_unbind,
+	.timesync_enable                = cpfl_timesync_enable,
+	.timesync_read_time             = cpfl_timesync_read_time,
+	.timesync_disable               = cpfl_timesync_disable,
 };
 
 static int
