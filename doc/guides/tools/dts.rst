@@ -393,6 +393,24 @@ are available on the SUT node:
 - gcov v8.0 or greater (included in GCC package)
 
 
+Code Coverage
+~~~~~~~~~~~~~
+
+DTS has the ablilty to track code usage during test runs,
+and generate an HTML coverage report
+which shows the coverage percentage
+for the various DPDK libraries and drivers utilized during execution.
+The DPDK build directory must be compiled on the SUT node,
+as a pre-built directory may not be properly configured for code coverage.
+Code coverage can be enabled by using the ``--code-coverage`` parameter when running DTS.
+
+To use code coverage, please make sure the following dependencies
+are available on the SUT node:
+
+- lcov v1.15 or greater
+- gcov v8.0 or greater (included in GCC package)
+
+
 Contributing to DTS
 -------------------
 

@@ -314,6 +314,9 @@ class DPDKBuildEnvironment:
         if SETTINGS.code_coverage:
             meson_args._add_arg("-Db_coverage=true")
 
+        if SETTINGS.code_coverage:
+            meson_args._add_arg("-Db_coverage=true")
+
         self._session.build_dpdk(
             self._env_vars,
             meson_args,
