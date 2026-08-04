@@ -1183,6 +1183,20 @@ class TestPmd(DPDKShell):
         """Overrides :meth:`~.dpdk_shell.close`."""
         self.stop()
         self.send_command("quit", "Bye...")
+
+        # gives testpmd enough time to write .gcda files for code coverage before quitting
+        if SETTINGS.code_coverage:
+            timeout = 10
+            interval = 0.2
+            start_time = time.time()
+            while time.time() - start_time < timeout:
+                pgrep_result = self._node.main_session.send_command(
+                    "pgrep dpdk-testpmd", verify=False
+                )
+                if pgrep_result.return_code != 0 or not pgrep_result.stdout.strip():
+                    break
+                time.sleep(interval)
+
         return super().close()
 
     """
