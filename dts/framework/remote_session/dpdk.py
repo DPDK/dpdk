@@ -109,8 +109,8 @@ class DPDKBuildEnvironment:
                         "Cannot create code coverage report using a precompiled build directory."
                     )
                 self._set_remote_dpdk_build_dir(build_dir)
-            case DPDKUncompiledBuildConfiguration(build_options=build_options):
-                self._configure_dpdk_build(build_options)
+            case DPDKUncompiledBuildConfiguration():
+                self._configure_dpdk_build(self.config.build_options)
                 self._build_dpdk()
 
     def teardown(self) -> None:
@@ -295,17 +295,21 @@ class DPDKBuildEnvironment:
         `remote_dpdk_tree_path` has already been set on the SUT node.
         """
         ctx = get_ctx()
+        build_options = getattr(self.config, "build_options")
         # If the SUT is an ice driver device, make sure to build with 16B descriptors.
         if (
             ctx.topology.type is not LinkTopology.NO_LINK
             and ctx.topology.sut_port_ingress
             and ctx.topology.sut_port_ingress.config.os_driver == "ice"
         ):
-            meson_args = MesonArgs(
-                default_library="static", libdir="lib", c_args="-DRTE_NET_INTEL_USE_16BYTE_DESC"
-            )
+            if "c_args" in build_options.build_args:
+                build_options.build_args["c_args"].append("DRTE_NET_INTEL_USE_16BYTE_DESC")
+            else:
+                build_options.build_args["c_args"] = ["DRTE_NET_INTEL_USE_16BYTE_DESC"]
+
+            meson_args = MesonArgs(build_options.build_args, default_library="static", libdir="lib")
         else:
-            meson_args = MesonArgs(default_library="static", libdir="lib")
+            meson_args = MesonArgs(build_options.build_args, default_library="static", libdir="lib")
 
         if SETTINGS.code_coverage:
             meson_args._add_arg("-Db_coverage=true")
