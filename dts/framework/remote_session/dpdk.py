@@ -30,6 +30,7 @@ from framework.exception import ConfigurationError, RemoteFileNotFoundError
 from framework.logger import DTSLogger, get_dts_logger
 from framework.params.eal import EalParams
 from framework.remote_session.remote_session import CommandResult
+from framework.settings import SETTINGS
 from framework.testbed_model.cpu import LogicalCore, LogicalCoreCount, LogicalCoreList, lcore_filter
 from framework.testbed_model.node import Node
 from framework.testbed_model.os_session import OSSession
@@ -81,6 +82,10 @@ class DPDKBuildEnvironment:
         DPDK setup includes setting all internals needed for the build, the copying of DPDK
         sources and then building DPDK or using the exist ones from the `dpdk_location`. The drivers
         are bound to those that DPDK needs.
+
+        Raises:
+            ConfigurationError: When DTS is run with code coverage enabled, but is also provided
+            a precompiled build directory.
         """
         if not isinstance(self.config.dpdk_location, RemoteDPDKTreeLocation):
             self._node.main_session.create_directory(self.remote_dpdk_tree_path)
@@ -99,6 +104,10 @@ class DPDKBuildEnvironment:
 
         match self.config:
             case DPDKPrecompiledBuildConfiguration(precompiled_build_dir=build_dir):
+                if SETTINGS.code_coverage:
+                    raise ConfigurationError(
+                        "Cannot create code coverage report using a precompiled build directory."
+                    )
                 self._set_remote_dpdk_build_dir(build_dir)
             case DPDKUncompiledBuildConfiguration(build_options=build_options):
                 self._configure_dpdk_build(build_options)
@@ -108,7 +117,31 @@ class DPDKBuildEnvironment:
         """Teardown the DPDK build on the target node.
 
         Removes the DPDK tree and/or build directory/tarball depending on the configuration.
+        If code coverage is enabled, the coverage report and .info file are generated and
+        copied onto the local filesystem before teardown.
         """
+        try:
+            if SETTINGS.code_coverage:
+                report_folder = PurePath(self.remote_dpdk_build_dir / "meson-logs")
+                output_dir = SETTINGS.output_dir
+                Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+                coverage_status = self._session.generate_coverage_report(self.remote_dpdk_build_dir)
+                if coverage_status:
+                    self._session.copy_dir_from(report_folder, output_dir)
+                    self._logger.info(
+                        "Coverage HTML report generated, "
+                        f"available at {output_dir}/meson-logs/coveragereport/index.html"
+                    )
+                    self._session.send_command(
+                        f"rm -r {self.remote_dpdk_build_dir}/meson-logs/", privileged=True
+                    )
+                else:
+                    self._logger.info("Failed to generate code coverage report")
+
+        except Exception as e:
+            self._logger.info(f"Unable to create code coverage report due to an error: {e}")
+
         match self.config.dpdk_location:
             case LocalDPDKTreeLocation():
                 self._node.main_session.remove_remote_dir(self.remote_dpdk_tree_path)
@@ -273,6 +306,9 @@ class DPDKBuildEnvironment:
             )
         else:
             meson_args = MesonArgs(default_library="static", libdir="lib")
+
+        if SETTINGS.code_coverage:
+            meson_args._add_arg("-Db_coverage=true")
 
         self._session.build_dpdk(
             self._env_vars,

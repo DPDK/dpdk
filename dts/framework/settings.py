@@ -159,6 +159,8 @@ class Settings:
     re_run: int = 0
     #:
     random_seed: int | None = None
+    #:
+    code_coverage: bool = False
 
 
 SETTINGS: Settings = Settings()
@@ -486,6 +488,14 @@ def _get_parser() -> _DTSArgumentParser:
         help="The seed to use with the pseudo-random generator. If not specified, the configuration"
         " value is used instead. If that's also not specified, a random seed is generated.",
         metavar="NUMBER",
+    )
+    _add_env_var_to_action(action)
+
+    action = parser.add_argument(
+        "--code-coverage",
+        action="store_true",
+        default=False,
+        help="Used to build DPDK with code coverage enabled.",
     )
     _add_env_var_to_action(action)
 
