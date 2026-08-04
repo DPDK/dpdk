@@ -1406,6 +1406,9 @@ tf_msg_get_tbl_entry(struct tf *tfp,
 	struct tf_session *tfs;
 	uint32_t flags = 0;
 
+	if (size > sizeof(resp.data))
+		return -EINVAL;
+
 	/* Retrieve the session information */
 	rc = tf_session_get_session_internal(tfp, &tfs);
 	if (rc) {
@@ -1493,6 +1496,9 @@ tf_msg_get_global_cfg(struct tf *tfp,
 	struct tf_dev_info *dev;
 	struct tf_session *tfs;
 
+	if (params->config_sz_in_bytes > sizeof(resp.data))
+		return -EINVAL;
+
 	/* Retrieve the session information */
 	rc = tf_session_get_session_internal(tfp, &tfs);
 	if (rc) {
@@ -1552,7 +1558,7 @@ tf_msg_get_global_cfg(struct tf *tfp,
 	if (params->config)
 		tfp_memcpy(params->config,
 			   resp.data,
-			   resp_size);
+			   params->config_sz_in_bytes);
 	else
 		return -EFAULT;
 
@@ -1746,6 +1752,9 @@ tf_msg_get_if_tbl_entry(struct tf *tfp,
 	struct tf_dev_info *dev;
 	struct tf_session *tfs;
 
+	if (params->data_sz_in_bytes > sizeof(resp.data))
+		return -EINVAL;
+
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);
 	if (rc) {
@@ -1790,7 +1799,7 @@ tf_msg_get_if_tbl_entry(struct tf *tfp,
 	if (rc != 0)
 		return rc;
 
-	tfp_memcpy(&params->data[0], resp.data, req.size);
+	tfp_memcpy(&params->data[0], resp.data, params->data_sz_in_bytes);
 
 	return 0;
 }
