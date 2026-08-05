@@ -162,6 +162,11 @@ Removed Items
   which were based on the legacy pipeline library API.
   The ``pipeline`` example application covers the SWX pipeline API.
 
+* net/iavf: Removed the ``auto_reconfig`` devarg.
+
+  The restoration of the promiscuous and all-multicast settings after a VF reset
+  is now unconditional.
+
 
 API Changes
 -----------
