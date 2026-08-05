@@ -348,4 +348,5 @@ def assess_performance_by_packet(
     )
     tg: PerformanceTrafficGenerator = cast(PerformanceTrafficGenerator, get_ctx().perf_tg)
     # TODO: implement @requires for types of traffic generator
+    packet = adjust_addresses([packet])[0]
     return tg.calculate_traffic_and_stats(packet, duration, send_mpps)
