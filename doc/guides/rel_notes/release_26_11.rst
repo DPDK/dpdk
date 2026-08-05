@@ -83,6 +83,11 @@ Removed Items
     ``rte_rib6_is_equal``
   * table: ``RTE_LPM_IPV6_ADDR_SIZE``
 
+* net/iavf: Removed the ``auto_reconfig`` devarg.
+
+  The restoration of the promiscuous and all-multicast settings after a VF reset is
+  now unconditional.
+
 
 API Changes
 -----------
