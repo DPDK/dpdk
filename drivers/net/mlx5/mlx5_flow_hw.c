@@ -9020,12 +9020,19 @@ flow_hw_adjust_pattern(struct rte_eth_dev *dev, const struct rte_flow_pattern_te
 		return NULL;
 	*nb_items = rc;
 
-	if (priv->sh->config.dv_esw_en && attr->ingress && !attr->egress && !attr->transfer) {
+	if (priv->sh->config.dv_esw_en &&
+	    priv->sh->config.repr_matching &&
+	    attr->ingress &&
+	    !attr->egress &&
+	    !attr->transfer) {
 		*copied_items = flow_hw_prepend_item(items, *nb_items, &port, error);
 		if (!*copied_items)
 			return NULL;
 		return *copied_items;
-	} else if (priv->sh->config.dv_esw_en && !attr->ingress && attr->egress &&
+	} else if (priv->sh->config.dv_esw_en &&
+		    priv->sh->config.repr_matching &&
+		   !attr->ingress &&
+		   attr->egress &&
 		   !attr->transfer) {
 		if (*item_flags & MLX5_FLOW_ITEM_SQ) {
 			DRV_LOG(DEBUG,
