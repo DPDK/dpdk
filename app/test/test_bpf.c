@@ -15,24 +15,12 @@
 #include <rte_random.h>
 #include <rte_byteorder.h>
 #include <rte_errno.h>
-
-#include "test.h"
-
-#if !defined(RTE_LIB_BPF)
-
-static int
-test_bpf(void)
-{
-	printf("BPF not supported, skipping test\n");
-	return TEST_SKIPPED;
-}
-
-#else
-
 #include <rte_bpf.h>
 #include <rte_ether.h>
 #include <rte_ip.h>
 #include <rte_udp.h>
+
+#include "test.h"
 
 
 /* Tests of most simple BPF programs (no instructions, one instruction etc.) */
@@ -3894,7 +3882,6 @@ test_bpf(void)
 	return rc;
 }
 
-#endif /* !RTE_LIB_BPF */
 
 REGISTER_FAST_TEST(bpf_autotest, NOHUGE_OK, ASAN_OK, test_bpf);
 
