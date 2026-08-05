@@ -1341,6 +1341,9 @@ iavf_dev_link_update(struct rte_eth_dev *dev,
 	case 100000:
 		new_link.link_speed = RTE_ETH_SPEED_NUM_100G;
 		break;
+	case 200000:
+		new_link.link_speed = RTE_ETH_SPEED_NUM_200G;
+		break;
 	default:
 		new_link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 		break;
