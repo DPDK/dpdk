@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from enum import auto
 from typing import ClassVar
 
+from scapy.layers.inet import IP
 from scapy.packet import Packet
 
 from framework.config.node import OS, NodeConfiguration
@@ -66,7 +67,6 @@ class TrexTrafficGenerator(PerformanceTrafficGenerator):
 
     Attributes:
         stl_client_name: The name of the stateless client used in the stateless API.
-        packet_stream_name: The name of the stateless packet stream used in the stateless API.
     """
 
     _os_session: OSSession
@@ -78,13 +78,15 @@ class TrexTrafficGenerator(PerformanceTrafficGenerator):
     _python_indentation: ClassVar[str] = " " * 4
 
     stl_client_name: ClassVar[str] = "client"
-    packet_stream_name: ClassVar[str] = "stream"
 
     _streaming_mode: TrexStatelessTXModes = TrexStatelessTXModes.STLTXCont
 
     _tg_cores: int = 10
 
     _trex_app: BlockingApp
+
+    _topology: Topology
+    _stream_names_by_port: dict[int, list[str]]
 
     def __init__(self, tg_node: Node, config: TrexTrafficGeneratorConfig) -> None:
         """Initialize the TRex server.
@@ -108,6 +110,7 @@ class TrexTrafficGenerator(PerformanceTrafficGenerator):
     def setup(self, topology: Topology):
         """Initialize and start a TRex server process."""
         super().setup(topology)
+        self._topology = topology
 
         self._shell = PythonShell(self._tg_node, "TRex-client", privileged=True)
 
@@ -196,30 +199,54 @@ class TrexTrafficGenerator(PerformanceTrafficGenerator):
         procedure = [
             f"{self.stl_client_name}.connect()",
             f"{self.stl_client_name}.reset(ports = [0, 1])",
+            f"{self.stl_client_name}.set_port_attr(ports=[0, 1], promiscuous=True)",
             f"{self.stl_client_name}.clear_stats()",
-            f"{self.stl_client_name}.add_streams({self.packet_stream_name}, ports=[0, 1])",
         ]
+
+        for port_id, stream_names in self._stream_names_by_port.items():
+            procedure.append(
+                f"{self.stl_client_name}.add_streams("
+                f"[{', '.join(stream_names)}], ports=[{port_id}])"
+            )
 
         for command in procedure:
             self._shell.send_command(command)
 
     def _create_packet_stream(self, packet: Packet) -> None:
-        """Create TRex packet stream with the given packet.
+        """Create TRex packet streams, two per direction.
 
         Args:
             packet: The packet being used for the performance test.
         """
-        # Create the tx packet on the TG shell
-        self._shell.send_command(f"packet={packet.command()}")
+        forward: Packet = packet.copy()
+        reverse: Packet = packet.copy()
+        reverse.src = "52:00:00:00:00:00"
+        reverse.dst = self._topology.sut_port_egress.mac_address
 
-        packet_stream = [
-            f"{self.packet_stream_name} = trex.stl.trex_stl_streams.STLStream(",
-            f"name='Test_{len(packet)}_bytes',",
-            "packet=trex.stl.trex_stl_packet_builder_scapy.STLPktBuilder(pkt=packet),",
-            f"mode=trex.stl.trex_stl_streams.{self._streaming_mode}(percentage=100),",
-            ")",
-        ]
-        self._shell.send_command("\n".join(packet_stream))
+        self._stream_names_by_port = {}
+
+        for port_id, direction_packet in ((0, forward), (1, reverse)):
+            stream_names: list[str] = []
+            ip_prefix: str = direction_packet[IP].dst.rsplit(".", 1)[0]
+
+            for index in range(2):
+                packet_var = f"packet_p{port_id}_{index}"
+                stream_var = f"stream_p{port_id}_{index}"
+                direction_packet[IP].dst = f"{ip_prefix}.{index}"
+                self._shell.send_command(f"{packet_var}={direction_packet.command()}")
+
+                # percentage=50 per stream: two streams share the port.
+                stream_definition = [
+                    f"{stream_var} = trex.stl.trex_stl_streams.STLStream(",
+                    f"name='Test_{len(packet)}_bytes_p{port_id}_{index}',",
+                    "packet=trex.stl.trex_stl_packet_builder_scapy.STLPktBuilder("
+                    f"pkt={packet_var}),",
+                    f"mode=trex.stl.trex_stl_streams.{self._streaming_mode}(percentage=50),",
+                    ")",
+                ]
+                self._shell.send_command("\n".join(stream_definition))
+                stream_names.append(stream_var)
+            self._stream_names_by_port[port_id] = stream_names
 
     def _send_traffic_and_get_stats(
         self, duration: float, send_mpps: float | None = None, retry_attempts: int = 5
@@ -236,28 +263,38 @@ class TrexTrafficGenerator(PerformanceTrafficGenerator):
             retry_attempts: The number of times to retry this command on failure.
 
         Raises:
-            SSHTimeoutError: If TRex fails to send traffic in the allotted attempts.
+            SSHTimeoutError: If TRex refuses to start traffic in the allotted attempts.
         """
-        link_down = True
+        started = False
         attempt = 0
 
-        while link_down and attempt < retry_attempts:
-            if send_mpps:
-                result = self._shell.send_command(f"""{self.stl_client_name}.start(ports=[0, 1],
-                    mult = '{send_mpps}mpps',
-                    duration = {duration})""")
-            else:
-                result = self._shell.send_command(f"""{self.stl_client_name}.start(ports=[0, 1],
-                    mult = '100%',
-                    duration = {duration})""")
-            link_down = "link is DOWN" in result
-            if link_down:
-                self._logger.info(
-                    f"Generate traffic command failed (attempt {attempt + 1} of {retry_attempts})"
+        mult = f"'{send_mpps}mpps'" if send_mpps else "'100%'"
+        while not started and attempt < retry_attempts:
+            # Capture the RC and verify that a refused start can never silently produce a
+            # 0.0 Mpps measurement.
+            self._shell.send_command("_start_rc = None")
+            result = self._shell.send_command(
+                f"_start_rc = {self.stl_client_name}.start(ports=[0, 1], "
+                f"mult={mult}, duration={duration})"
+            )
+            ok = self._shell.send_command(
+                "bool(_start_rc is not None"
+                " and (not hasattr(_start_rc, 'good') or _start_rc.good()))"
+            )
+            started = "True" in ok
+            if not started:
+                error_text = result + self._shell.send_command(
+                    "str(getattr(_start_rc, 'err', lambda: '')()) if _start_rc is not None else ''"
                 )
+                self._logger.info(
+                    f"Traffic start refused (attempt {attempt + 1} of {retry_attempts}): "
+                    f"{error_text.strip()}"
+                )
+                if "link is DOWN" not in error_text:
+                    raise SSHTimeoutError(f"TRex refused to start traffic: {error_text.strip()}")
                 time.sleep(0.25)
             attempt += 1
-        if link_down:
+        if not started:
             raise SSHTimeoutError("Link failed to come up, Traffic could not be generated.")
 
         time.sleep(duration)
