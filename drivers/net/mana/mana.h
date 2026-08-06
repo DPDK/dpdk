@@ -552,7 +552,7 @@ struct mana_mp_param {
 
 	/* MANA_MP_REQ_CREATE_MR */
 	uintptr_t addr;
-	uint32_t len;
+	uint64_t len;
 };
 
 #define MANA_MP_NAME	"net_mana_mp"
@@ -561,7 +561,7 @@ int mana_mp_init_secondary(void);
 void mana_mp_uninit_primary(void);
 void mana_mp_uninit_secondary(void);
 int mana_mp_req_verbs_cmd_fd(struct rte_eth_dev *dev);
-int mana_mp_req_mr_create(struct mana_priv *priv, uintptr_t addr, uint32_t len);
+int mana_mp_req_mr_create(struct mana_priv *priv, uintptr_t addr, uint64_t len);
 
 void mana_mp_req_on_rxtx(struct rte_eth_dev *dev, enum mana_mp_req_type type);
 
