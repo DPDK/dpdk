@@ -878,13 +878,15 @@ memif_listener_handler(void *arg)
 	return;
 
  error:
+	if (cc != NULL) {
+		rte_intr_callback_unregister(cc->intr_handle, memif_intr_handler,
+					 cc);
+		rte_intr_instance_free(cc->intr_handle);
+		rte_free(cc);
+	}
 	if (sockfd >= 0) {
 		close(sockfd);
 		sockfd = -1;
-	}
-	if (cc != NULL) {
-		rte_intr_instance_free(cc->intr_handle);
-		rte_free(cc);
 	}
 }
 
