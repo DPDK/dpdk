@@ -699,8 +699,8 @@ skip_parse:
 							      &mac_addr) == 0)
 					print_ethaddr("\n\tMAC address: ",
 						      &mac_addr);
-				rte_eth_dev_get_name_by_port(port_id, name);
-				printf("\n\tDevice name: %s", name);
+				if (rte_eth_dev_get_name_by_port(port_id, name, sizeof(name)) == 0)
+					printf("\n\tDevice name: %s", name);
 				if (rte_eth_dev_info_get(port_id, &dev_info) == 0)
 					device_infos_display_speeds(dev_info.speed_capa);
 				printf("\n");
@@ -832,8 +832,8 @@ port_infos_display(portid_t port_id)
 	       info_border, port_id, info_border);
 	if (eth_macaddr_get_print_err(port_id, &mac_addr) == 0)
 		print_ethaddr("MAC address: ", &mac_addr);
-	rte_eth_dev_get_name_by_port(port_id, name);
-	printf("\nDevice name: %s", name);
+	if (rte_eth_dev_get_name_by_port(port_id, name, sizeof(name)) == 0)
+		printf("\nDevice name: %s", name);
 	printf("\nDriver name: %s", dev_info.driver_name);
 
 	if (rte_eth_dev_fw_version_get(port_id, fw_version,
@@ -1033,7 +1033,10 @@ port_summary_display(portid_t port_id)
 	if (ret != 0)
 		return;
 
-	rte_eth_dev_get_name_by_port(port_id, name);
+	ret = rte_eth_dev_get_name_by_port(port_id, name, sizeof(name));
+	if (ret != 0)
+		return;
+
 	ret = eth_macaddr_get_print_err(port_id, &mac_addr);
 	if (ret != 0)
 		return;
