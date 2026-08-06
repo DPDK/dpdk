@@ -964,7 +964,6 @@ F: doc/guides/nics/nfb.rst
 F: doc/guides/nics/features/nfb.ini
 
 Netronome nfp
-M: Chaoyong He <chaoyong.he@corigine.com>
 F: drivers/common/nfp/
 F: drivers/net/nfp/
 F: doc/guides/nics/nfp.rst
@@ -1458,7 +1457,6 @@ T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/vdpa/meson.build
 
 Corigine nfp vDPA
-M: Chaoyong He <chaoyong.he@corigine.com>
 F: drivers/vdpa/nfp/
 F: doc/guides/vdpadevs/nfp.rst
 F: doc/guides/vdpadevs/features/nfp.ini
