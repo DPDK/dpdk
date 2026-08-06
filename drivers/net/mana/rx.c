@@ -73,10 +73,10 @@ mana_post_rx_wqe(struct mana_rxq *rxq, struct rte_mbuf *mbuf)
 	int ret;
 	struct mana_mr_cache *mr;
 
+	/* Don't free mbuf on error: the caller bulk-frees it from &mbufs[i]. */
 	mr = mana_alloc_pmd_mr(&rxq->mr_btree, priv, mbuf);
 	if (!mr) {
 		DP_LOG(ERR, "failed to register RX MR");
-		rte_pktmbuf_free(mbuf);
 		return -ENOMEM;
 	}
 
