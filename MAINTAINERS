@@ -996,7 +996,6 @@ F: doc/guides/nics/features/enetc.ini
 F: doc/guides/nics/features/enetc4.ini
 
 NXP enetfec - EXPERIMENTAL
-M: Apeksha Gupta <apeksha.gupta@nxp.com>
 M: Sachin Saxena <sachin.saxena@nxp.com>
 F: drivers/net/enetfec/
 F: doc/guides/nics/enetfec.rst
