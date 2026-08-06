@@ -20,7 +20,7 @@ extern struct mana_shared_data *mana_shared_data;
  * Process MR request from secondary process.
  */
 static int
-mana_mp_mr_create(struct mana_priv *priv, uintptr_t addr, uint32_t len)
+mana_mp_mr_create(struct mana_priv *priv, uintptr_t addr, uint64_t len)
 {
 	struct ibv_mr *ibv_mr;
 	int ret;
@@ -331,7 +331,7 @@ exit:
  * Request the primary process to register a MR.
  */
 int
-mana_mp_req_mr_create(struct mana_priv *priv, uintptr_t addr, uint32_t len)
+mana_mp_req_mr_create(struct mana_priv *priv, uintptr_t addr, uint64_t len)
 {
 	struct rte_mp_msg mp_req = {0};
 	struct rte_mp_msg *mp_res;
