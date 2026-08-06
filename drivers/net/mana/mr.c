@@ -13,7 +13,8 @@
 struct mana_range {
 	uintptr_t	start;
 	uintptr_t	end;
-	uint32_t	len;
+	/* 64-bit: a mempool chunk can be 4GB or more, which overflows uint32_t. */
+	uint64_t	len;
 };
 
 void
@@ -47,13 +48,13 @@ mana_new_pmd_mr(struct mana_mr_btree *local_tree, struct mana_priv *priv,
 
 	for (i = 0; i < pool->nb_mem_chunks; i++) {
 		if (ranges[i].len > priv->max_mr_size) {
-			DP_LOG(ERR, "memory chunk size %u exceeding max MR",
+			DP_LOG(ERR, "memory chunk size %" PRIu64 " exceeding max MR",
 			       ranges[i].len);
 			return -ENOMEM;
 		}
 
 		DP_LOG(DEBUG,
-		       "registering memory chunk start 0x%" PRIxPTR " len %u",
+		       "registering memory chunk start 0x%" PRIxPTR " len %" PRIu64,
 		       ranges[i].start, ranges[i].len);
 
 		if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
@@ -62,7 +63,7 @@ mana_new_pmd_mr(struct mana_mr_btree *local_tree, struct mana_priv *priv,
 						    ranges[i].len);
 			if (ret) {
 				DP_LOG(ERR,
-				       "MR failed start 0x%" PRIxPTR " len %u",
+				       "MR failed start 0x%" PRIxPTR " len %" PRIu64,
 				       ranges[i].start, ranges[i].len);
 				return ret;
 			}
@@ -98,7 +99,7 @@ mana_new_pmd_mr(struct mana_mr_btree *local_tree, struct mana_priv *priv,
 				return ret;
 			}
 		} else {
-			DP_LOG(ERR, "MR failed at 0x%" PRIxPTR " len %u",
+			DP_LOG(ERR, "MR failed at 0x%" PRIxPTR " len %" PRIu64,
 			       ranges[i].start, ranges[i].len);
 			return -errno;
 		}
