@@ -795,7 +795,7 @@ cnxk_gpio_process_buf(struct cnxk_gpio *gpio, struct rte_rawdev_buf *rbuf)
 static bool
 cnxk_gpio_valid(struct cnxk_gpiochip *gpiochip, int gpio)
 {
-	return gpio < gpiochip->num_gpios && gpiochip->gpios[gpio];
+	return (gpio >= 0) && (gpio < gpiochip->num_gpios) && gpiochip->gpios[gpio];
 }
 
 static int
