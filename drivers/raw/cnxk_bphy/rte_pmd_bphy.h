@@ -174,6 +174,7 @@ enum cnxk_bphy_cgx_eth_link_mode {
 	__CNXK_BPHY_CGX_ETH_LINK_MODE_MAX
 };
 
+/** Available CPRI modes */
 enum cnxk_bphy_cgx_eth_mode_cpri {
 	/** 2.4G Lane Rate */
 	CNXK_BPHY_CGX_ETH_MODE_CPRI_2_4G_BIT,
@@ -191,6 +192,7 @@ enum cnxk_bphy_cgx_eth_mode_cpri {
 	CNXK_BPHY_CGX_ETH_MODE_CPRI_24_3G_BIT,
 };
 
+/** Available mode groups */
 enum cnxk_bphy_cgx_mode_group {
 	/** ETH group */
 	CNXK_BPHY_CGX_MODE_GROUP_ETH,
