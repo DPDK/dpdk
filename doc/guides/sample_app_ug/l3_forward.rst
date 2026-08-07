@@ -210,7 +210,8 @@ In this command:
 
 *   The --mode option defines PMD to be used for packet I/O.
 
-*   The --eventq-sched option enables synchronization menthod of event queue so that packets will be scheduled accordingly.
+*   The --eventq-sched option enables synchronization method of event queue
+    so that packets will be scheduled accordingly.
 
 If application uses S/W scheduler, it uses following DPDK services:
 
