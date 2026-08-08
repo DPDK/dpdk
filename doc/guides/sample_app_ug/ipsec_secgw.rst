@@ -260,7 +260,7 @@ Where:
      via Rx queue setup.
 
 *   ``--vector-pool-sz``: Number of buffers in vector pool.
-    By default, vector pool size depeneds on packet pool size
+    By default, vector pool size depends on packet pool size
     and size of each vector.
 
 *   ``--desc-nb NUMBER_OF_DESC``: Number of descriptors per queue pair.
