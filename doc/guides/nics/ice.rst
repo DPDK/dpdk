@@ -13,6 +13,7 @@ the following controllers,
 - Intel Ethernet Connection E823
 - Intel Ethernet Connection E825
 - Intel Ethernet Controller E830
+- Intel Ethernet Controller E835
 
 Linux Prerequisites
 -------------------
@@ -58,16 +59,16 @@ The full list of in-tree and out-of-tree Linux kernel drivers from kernel.org
 and Linux distributions that were tested and verified
 are listed in the Tested Platforms section of the Release Notes for each release.
 
-=====  =============  ===========  =========  ============  =======  =======
-DPDK   Kernel Driver  Default DDP  COMMS DDP  Wireless DDP  E810 FW  E830 FW
-=====  =============  ===========  =========  ============  =======  =======
+=====  =============  ===========  =========  ============  =======  ============
+DPDK   Kernel Driver  Default DDP  COMMS DDP  Wireless DDP  E810 FW  E830/E835 FW
+=====  =============  ===========  =========  ============  =======  ============
 26.07     2.6.6         1.3.59      1.3.63       1.3.28      5.0      2.10
 26.03     2.4.5         1.3.53      1.3.61       1.3.25      4.91     1.20
 25.11     2.3.14        1.3.43      1.3.55       1.3.25      4.9      1.11
 24.11     1.15.4        1.3.36      1.3.46       1.3.14      4.6
 23.11     1.13.7        1.3.36      1.3.46       1.3.14      4.4
 22.11     1.10.1        1.3.30      1.3.37       1.3.10      4.1
-=====  =============  ===========  =========  ============  =======  =======
+=====  =============  ===========  =========  ============  =======  ============
 
 
 Dynamic Device Personalization (DDP) package loading
