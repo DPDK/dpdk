@@ -1565,6 +1565,7 @@ idpf_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 	int ret = 0;
 
 	dev->dev_ops = &idpf_eth_dev_ops;
+	dev->data->numa_node = dev->device->numa_node;
 	vport->adapter = &adapter->base;
 	vport->sw_idx = param->idx;
 	vport->devarg_id = param->devarg_id;
