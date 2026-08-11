@@ -25,20 +25,20 @@ __rte_stack_std_push(struct rte_stack *s, void * const *obj_table,
 {
 	struct rte_stack_std *stack = &s->stack_std;
 	unsigned int index;
-	void **cache_objs;
+	void **stack_objs;
 
 	rte_spinlock_lock(&stack->lock);
-	cache_objs = &stack->objs[stack->len];
+	stack_objs = &stack->objs[stack->len];
 
-	/* Is there sufficient space in the stack? */
-	if ((stack->len + n) > s->capacity) {
+	if (unlikely((stack->len + n) > s->capacity)) {
+		/* Insufficient space in the stack. */
 		rte_spinlock_unlock(&stack->lock);
 		return 0;
 	}
 
-	/* Add elements back into the cache */
+	/* Push objects to the stack */
 	for (index = 0; index < n; ++index, obj_table++)
-		cache_objs[index] = *obj_table;
+		stack_objs[index] = *obj_table;
 
 	stack->len += n;
 
@@ -63,20 +63,22 @@ __rte_stack_std_pop(struct rte_stack *s, void **obj_table, unsigned int n)
 {
 	struct rte_stack_std *stack = &s->stack_std;
 	unsigned int index, len;
-	void **cache_objs;
+	void **stack_objs;
 
 	rte_spinlock_lock(&stack->lock);
 
 	if (unlikely(n > stack->len)) {
+		/* Insufficient objects in the stack. */
 		rte_spinlock_unlock(&stack->lock);
 		return 0;
 	}
 
-	cache_objs = stack->objs;
+	stack_objs = stack->objs;
 
+	/* Pop objects from the stack */
 	for (index = 0, len = stack->len - 1; index < n;
 			++index, len--, obj_table++)
-		*obj_table = cache_objs[len];
+		*obj_table = stack_objs[len];
 
 	stack->len -= n;
 	rte_spinlock_unlock(&stack->lock);
