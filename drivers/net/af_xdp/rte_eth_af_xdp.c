@@ -83,7 +83,9 @@ RTE_LOG_REGISTER_DEFAULT(af_xdp_logtype, NOTICE);
 
 #define ETH_AF_XDP_MP_KEY "afxdp_mp_send_fds"
 
-#define DP_BASE_PATH			"/tmp/afxdp_dp"
+/* Directory holding the per interface device plugin endpoints. */
+#define DP_DIR_NAME			"afxdp_dp"
+#define DP_LEGACY_BASE_PATH		"/tmp/" DP_DIR_NAME
 #define DP_UDS_SOCK             "afxdp.sock"
 #define DP_XSK_MAP				"xsks_map"
 #define MAX_LONG_OPT_SZ			64
@@ -2459,6 +2461,47 @@ afxdp_mp_send_fds(const struct rte_mp_msg *request, const void *peer)
 	return 0;
 }
 
+/*
+ * Build the default device plugin path for an interface.
+ *
+ * Unix domain sockets and pinned maps are runtime state, so the EAL runtime
+ * directory is preferred: it is per user and per file prefix, and both of its
+ * levels are created with mode 0700. The AF_XDP Device Plugin for Kubernetes
+ * still creates and mounts these endpoints below DP_LEGACY_BASE_PATH, so that
+ * location is used when the runtime directory holds no usable entry.
+ *
+ * The interface name is always part of the path: it keeps the endpoints of
+ * several interfaces distinct when more than one is mounted in a single pod.
+ *
+ * "size" is the longest path the caller can use, which may be shorter than the
+ * destination buffer. A runtime directory candidate that does not fit is
+ * skipped rather than rejected, so the shorter legacy path stays reachable.
+ */
+static int
+get_dflt_dp_path(char *dp_path, size_t size, const char *if_name,
+		 const char *entry)
+{
+	int ret;
+
+	ret = snprintf(dp_path, size, "%s/%s/%s/%s", rte_eal_get_runtime_dir(),
+		       DP_DIR_NAME, if_name, entry);
+	if (ret >= 0 && (size_t)ret < size && access(dp_path, F_OK) == 0)
+		return 0;
+
+	ret = snprintf(dp_path, size, "%s/%s/%s", DP_LEGACY_BASE_PATH, if_name,
+		       entry);
+	if (ret < 0 || (size_t)ret >= size) {
+		AF_XDP_LOG_LINE(ERR, "Device plugin path for %s is too long", if_name);
+		return -ENAMETOOLONG;
+	}
+
+	AF_XDP_LOG_LINE(NOTICE,
+		"No usable '%s' entry for %s below '%s', falling back to '%s'",
+		entry, if_name, rte_eal_get_runtime_dir(), DP_LEGACY_BASE_PATH);
+
+	return 0;
+}
+
 static int
 rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 {
@@ -2522,6 +2565,11 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 		return -EINVAL;
 	}
 
+	if (strlen(if_name) == 0) {
+		AF_XDP_LOG_LINE(ERR, "Network interface must be specified");
+		return -EINVAL;
+	}
+
 	if (use_cni && use_pinned_map) {
 		AF_XDP_LOG_LINE(ERR, "When '%s' parameter is used, '%s' parameter is not valid",
 			ETH_AF_XDP_USE_CNI_ARG, ETH_AF_XDP_USE_PINNED_MAP_ARG);
@@ -2543,13 +2591,20 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	}
 
 	if (use_cni && !strnlen(dp_path, PATH_MAX)) {
-		snprintf(dp_path, sizeof(dp_path), "%s/%s/%s", DP_BASE_PATH, if_name, DP_UDS_SOCK);
+		/* The UDS path is bounded by sun_path, not by PATH_MAX. */
+		ret = get_dflt_dp_path(dp_path,
+				RTE_SIZEOF_FIELD(struct sockaddr_un, sun_path),
+				if_name, DP_UDS_SOCK);
+		if (ret < 0)
+			return ret;
 		AF_XDP_LOG_LINE(INFO, "'%s' parameter not provided, setting value to '%s'",
 			ETH_AF_XDP_DP_PATH_ARG, dp_path);
 	}
 
 	if (use_pinned_map && !strnlen(dp_path, PATH_MAX)) {
-		snprintf(dp_path, sizeof(dp_path), "%s/%s/%s", DP_BASE_PATH, if_name, DP_XSK_MAP);
+		ret = get_dflt_dp_path(dp_path, sizeof(dp_path), if_name, DP_XSK_MAP);
+		if (ret < 0)
+			return ret;
 		AF_XDP_LOG_LINE(INFO, "'%s' parameter not provided, setting value to '%s'",
 			ETH_AF_XDP_DP_PATH_ARG, dp_path);
 	}
@@ -2561,9 +2616,15 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 		return -EINVAL;
 	}
 
-	if (strlen(if_name) == 0) {
-		AF_XDP_LOG_LINE(ERR, "Network interface must be specified");
-		return -EINVAL;
+	/*
+	 * The socket address is copied into sun_path which is much shorter than
+	 * PATH_MAX, reject an oversized path instead of silently truncating it.
+	 */
+	if (use_cni && strnlen(dp_path, PATH_MAX) >=
+		       RTE_SIZEOF_FIELD(struct sockaddr_un, sun_path)) {
+		AF_XDP_LOG_LINE(ERR, "'%s' value '%s' is too long for a unix socket address",
+				ETH_AF_XDP_DP_PATH_ARG, dp_path);
+		return -ENAMETOOLONG;
 	}
 
 	/* get numa node id from net sysfs */
