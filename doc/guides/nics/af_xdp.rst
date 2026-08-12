@@ -196,11 +196,12 @@ The EAL vdev argument ``dp_path`` is used alongside
 the ``use_cni`` or ``use_pinned_map`` arguments
 to explicitly tell the AF_XDP PMD where to find either:
 
-1. The UDS to interact with the AF_XDP Device Plugin. OR
-2. The pinned xskmap to use when creating AF_XDP sockets.
+#. The UDS to interact with the AF_XDP Device Plugin. OR
+#. The pinned xskmap to use when creating AF_XDP sockets.
 
-If this argument is not passed alongside the ``use_cni`` or ``use_pinned_map`` arguments then
-the AF_XDP PMD configures it internally to the `AF_XDP Device Plugin for Kubernetes`_.
+For ``use_cni`` the path becomes a Unix socket address,
+so it must fit the ``sun_path`` field of ``struct sockaddr_un``
+(108 bytes on Linux).
 
 .. _AF_XDP Device Plugin for Kubernetes: https://github.com/redhat-et/afxdp-plugins-for-kubernetes
 
@@ -211,6 +212,29 @@ the AF_XDP PMD configures it internally to the `AF_XDP Device Plugin for Kuberne
 .. code-block:: console
 
    --vdev=net_af_xdp0,use_pinned_map=1,dp_path="/tmp/afxdp_dp/<<interface name>>/xsks_map"
+
+When ``dp_path`` is not given, the PMD builds a default from the
+interface name and one of two base directories:
+
+#. ``afxdp_dp/<<interface name>>/`` in the EAL runtime directory
+   returned by ``rte_eal_get_runtime_dir()``, when an entry is found there.
+   That is ``/var/run/dpdk/rte`` for a process running as root
+   with the default ``--file-prefix``;
+   see :doc:`../prog_guide/multi_proc_support` for the other cases.
+#. ``/tmp/afxdp_dp/<<interface name>>/`` otherwise,
+   where the `AF_XDP Device Plugin for Kubernetes`_ mounts it.
+
+The file within that directory is ``afxdp.sock`` for ``use_cni``
+and ``xsks_map`` for ``use_pinned_map``.
+Use of the second location is only maintained for compatibility
+and therefore is logged at notice level.
+The interface name component keeps the endpoints distinct
+when several interfaces are mounted in a single pod.
+
+.. note::
+
+   A pinned map lives on a bpffs mount,
+   so bind mount it into the runtime directory to use the first location.
 
 Limitations
 -----------
