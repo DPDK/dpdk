@@ -163,6 +163,12 @@ New Features
   Added ``rte_bbdev_queue_stats_get()`` function to retrieve statistics
   for a specific queue, complementing the existing device-level statistics API.
 
+* **Supported auto-detection of uncore power driver.**
+
+  The uncore power library got automatic probing of multiple uncore drivers
+  when using ``RTE_UNCORE_PM_ENV_AUTO_DETECT``,
+  instead of defaulting only to the Intel uncore driver.
+
 
 Removed Items
 -------------

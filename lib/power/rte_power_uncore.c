@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  * Copyright(c) 2023 AMD Corporation
  */
+#include <errno.h>
 
 #include <eal_export.h>
 #include <rte_spinlock.h>
@@ -46,6 +47,42 @@ rte_power_register_uncore_ops(struct rte_power_uncore_ops *driver_ops)
 	return 0;
 }
 
+static uint32_t
+power_uncore_driver_name2env(const char *name)
+{
+	for (uint32_t i = 0; i < RTE_DIM(uncore_env_str); i++) {
+		if (!strcmp(name, uncore_env_str[i]))
+			return i;
+	}
+
+	return UINT32_MAX;
+}
+
+static int
+power_uncore_probe_driver(void)
+{
+	struct rte_power_uncore_ops *ops;
+	uint32_t env;
+	int ret;
+
+	global_uncore_ops = NULL;
+	/* Use package-0 and die-0 to probe uncore driver. */
+	RTE_TAILQ_FOREACH(ops, &uncore_ops_list, next) {
+		ret = ops->init(0, 0);
+		if (ret == 0) {
+			ops->exit(0, 0);
+			env = power_uncore_driver_name2env(ops->name);
+			if (env == UINT32_MAX)
+				continue;
+			global_uncore_env = env;
+			global_uncore_ops = ops;
+			break;
+		}
+	}
+
+	return global_uncore_ops != NULL ? 0 : -ENODEV;
+}
+
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_power_set_uncore_env, 23.11)
 int
 rte_power_set_uncore_env(enum rte_uncore_power_mgmt_env env)
@@ -60,12 +97,12 @@ rte_power_set_uncore_env(enum rte_uncore_power_mgmt_env env)
 		goto out;
 	}
 
-	if (env == RTE_UNCORE_PM_ENV_AUTO_DETECT)
-		/* Currently only intel_uncore is supported.
-		 * This will be extended with auto-detection support
-		 * for multiple uncore implementations.
-		 */
-		env = RTE_UNCORE_PM_ENV_INTEL_UNCORE;
+	if (env == RTE_UNCORE_PM_ENV_AUTO_DETECT) {
+		ret = power_uncore_probe_driver();
+		if (ret != 0)
+			POWER_LOG(ERR, "Probe uncore driver failed, ret = %d", ret);
+		goto out;
+	}
 
 	if (env < RTE_DIM(uncore_env_str)) {
 		RTE_TAILQ_FOREACH(ops, &uncore_ops_list, next)
