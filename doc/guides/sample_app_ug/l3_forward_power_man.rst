@@ -106,7 +106,7 @@ where,
 
 *   -U: optional, sets uncore min/max frequency to maximum value.
 
-*   -i (frequency index): optional, sets uncore frequency to frequency index value, by setting min and max values to be the same.
+*   -i (frequency index): set target frequency for uncore by specified frequency index.
 
 *   --config (port,queue,lcore)[,(port,queue,lcore)]: determines which queues from which ports are mapped to which cores.
 
