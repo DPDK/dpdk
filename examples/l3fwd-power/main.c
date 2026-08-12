@@ -2270,28 +2270,31 @@ init_power_library(void)
 	unsigned int lcore_id;
 	int ret = 0;
 
-	RTE_LCORE_FOREACH(lcore_id) {
-		/* init power management library */
-		ret = rte_power_init(lcore_id);
-		if (ret) {
-			RTE_LOG(ERR, L3FWD_POWER,
-				"Library initialization failed on core %u\n",
-				lcore_id);
-			return ret;
-		}
-		/* we're not supporting the VM channel mode */
-		env = rte_power_get_env();
-		if (env != PM_ENV_ACPI_CPUFREQ &&
-				env != PM_ENV_PSTATE_CPUFREQ &&
-				env != PM_ENV_AMD_PSTATE_CPUFREQ &&
-				env != PM_ENV_CPPC_CPUFREQ) {
-			RTE_LOG(ERR, L3FWD_POWER,
-				"Only ACPI and PSTATE mode are supported\n");
-			return -1;
+	/* only legacy mode relies on the initialization of cpufreq library */
+	if (app_mode == APP_MODE_LEGACY) {
+		RTE_LCORE_FOREACH(lcore_id) {
+			/* init power management library */
+			ret = rte_power_init(lcore_id);
+			if (ret) {
+				RTE_LOG(ERR, L3FWD_POWER,
+					"Library initialization failed on core %u\n",
+					lcore_id);
+				return ret;
+			}
+			/* we're not supporting the VM channel mode */
+			env = rte_power_get_env();
+			if (env != PM_ENV_ACPI_CPUFREQ &&
+					env != PM_ENV_PSTATE_CPUFREQ &&
+					env != PM_ENV_AMD_PSTATE_CPUFREQ &&
+					env != PM_ENV_CPPC_CPUFREQ) {
+				RTE_LOG(ERR, L3FWD_POWER,
+					"Only ACPI and PSTATE mode are supported\n");
+				return -1;
+			}
 		}
 	}
 
-	if (cpu_resume_latency != -1) {
+	if (app_mode == APP_MODE_LEGACY && cpu_resume_latency != -1) {
 		RTE_LCORE_FOREACH(lcore_id) {
 			/* Back old CPU resume latency. */
 			ret = rte_power_qos_get_cpu_resume_latency(lcore_id);
@@ -2329,14 +2332,16 @@ deinit_power_library(void)
 	unsigned int lcore_id, max_pkg, max_die, die, pkg;
 	int ret = 0;
 
-	RTE_LCORE_FOREACH(lcore_id) {
-		/* deinit power management library */
-		ret = rte_power_exit(lcore_id);
-		if (ret) {
-			RTE_LOG(ERR, L3FWD_POWER,
-				"Library deinitialization failed on core %u\n",
-				lcore_id);
-			return ret;
+	if (app_mode == APP_MODE_LEGACY) {
+		RTE_LCORE_FOREACH(lcore_id) {
+			/* deinit power management library */
+			ret = rte_power_exit(lcore_id);
+			if (ret) {
+				RTE_LOG(ERR, L3FWD_POWER,
+					"Library deinitialization failed on core %u\n",
+					lcore_id);
+				return ret;
+			}
 		}
 	}
 
@@ -2360,7 +2365,7 @@ deinit_power_library(void)
 		}
 	}
 
-	if (cpu_resume_latency != -1) {
+	if (app_mode == APP_MODE_LEGACY && cpu_resume_latency != -1) {
 		RTE_LCORE_FOREACH(lcore_id) {
 			/* Restore the original value. */
 			rte_power_qos_set_cpu_resume_latency(lcore_id,
@@ -2602,8 +2607,7 @@ main(int argc, char **argv)
 	RTE_LOG(INFO, L3FWD_POWER, "Selected operation mode: %s\n",
 			mode_to_str(app_mode));
 
-	/* only legacy mode relies on power library */
-	if ((app_mode == APP_MODE_LEGACY) && init_power_library())
+	if (init_power_library())
 		rte_exit(EXIT_FAILURE, "init_power_library failed\n");
 
 	if (update_lcore_params() < 0)
@@ -2975,7 +2979,7 @@ main(int argc, char **argv)
 		rte_eth_dev_close(portid);
 	}
 
-	if ((app_mode == APP_MODE_LEGACY) && deinit_power_library())
+	if (deinit_power_library())
 		rte_exit(EXIT_FAILURE, "deinit_power_library failed\n");
 
 	if (rte_eal_cleanup() < 0)
