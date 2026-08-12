@@ -149,9 +149,6 @@ static struct rte_timer telemetry_timer;
 /* stats index returned by metrics lib */
 int telstats_index;
 
-/* flag to check if uncore option enabled */
-int enabled_uncore = -1;
-
 struct telstats_name {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
 };
@@ -168,12 +165,6 @@ enum busy_rate {
 	ZERO = 0,
 	PARTIAL = 50,
 	FULL = 100
-};
-
-enum uncore_choice {
-	UNCORE_MIN = 0,
-	UNCORE_MAX = 1,
-	UNCORE_IDX = 2
 };
 
 /* reference poll count to measure core busyness */
@@ -211,6 +202,19 @@ enum freq_scale_hint_t
 	FREQ_HIGHER   =       1,
 	FREQ_HIGHEST  =       2
 };
+
+enum uncore_choice {
+	UNCORE_MIN = 0,
+	UNCORE_MAX = 1,
+	UNCORE_IDX = 2
+};
+
+/* flag to check if uncore option enabled */
+int enabled_uncore = -1;
+static struct uncore_cfg {
+	enum uncore_choice uncore_choice;
+	uint32_t freq_idx;
+} uncore_cfg;
 
 struct __rte_cache_aligned lcore_rx_queue {
 	uint16_t port_id;
@@ -1552,80 +1556,6 @@ parse_uint(const char *opt, uint32_t max, uint32_t *res)
 }
 
 static int
-parse_uncore_options(enum uncore_choice choice, const char *argument)
-{
-	unsigned int die, pkg, max_pkg, max_die;
-	int ret = 0;
-	ret = rte_power_set_uncore_env(RTE_UNCORE_PM_ENV_AUTO_DETECT);
-	if (ret < 0) {
-		RTE_LOG(INFO, L3FWD_POWER, "Failed to set uncore env\n");
-		return ret;
-	}
-
-	max_pkg = rte_power_uncore_get_num_pkgs();
-	if (max_pkg == 0)
-		return -1;
-
-	for (pkg = 0; pkg < max_pkg; pkg++) {
-		max_die = rte_power_uncore_get_num_dies(pkg);
-		if (max_die == 0)
-			return -1;
-		for (die = 0; die < max_die; die++) {
-			ret = rte_power_uncore_init(pkg, die);
-			if (ret == -1) {
-				RTE_LOG(INFO, L3FWD_POWER, "Unable to initialize uncore for pkg %02u die %02u\n"
-				, pkg, die);
-				return ret;
-			}
-			if (choice == UNCORE_MIN) {
-				ret = rte_power_uncore_freq_min(pkg, die);
-				if (ret == -1) {
-					RTE_LOG(INFO, L3FWD_POWER,
-					"Unable to set the uncore frequency to minimum value for pkg %02u die %02u\n"
-					, pkg, die);
-					return ret;
-				}
-			} else if (choice == UNCORE_MAX) {
-				ret = rte_power_uncore_freq_max(pkg, die);
-				if (ret == -1) {
-					RTE_LOG(INFO, L3FWD_POWER,
-					"Unable to set uncore frequency to maximum value for pkg %02u die %02u\n"
-					, pkg, die);
-					return ret;
-				}
-			} else if (choice == UNCORE_IDX) {
-				char *ptr = NULL;
-				int frequency_index = strtol(argument, &ptr, 10);
-				if (argument == ptr) {
-					RTE_LOG(INFO, L3FWD_POWER, "Index given is not a valid number.");
-					return -1;
-				}
-				int freq_array_len = rte_power_uncore_get_num_freqs(pkg, die);
-				if (frequency_index > freq_array_len - 1) {
-					RTE_LOG(INFO, L3FWD_POWER,
-					"Frequency index given out of range, please choose a value from 0 to %d.\n",
-					freq_array_len);
-					return -1;
-				}
-				ret = rte_power_set_uncore_freq(pkg, die, frequency_index);
-				if (ret == -1) {
-					RTE_LOG(INFO, L3FWD_POWER,
-					"Unable to set specified frequency index for pkg %02u die %02u\n",
-					pkg, die);
-					return ret;
-				}
-			} else {
-				RTE_LOG(INFO, L3FWD_POWER, "Uncore choice provided invalid\n");
-				return -1;
-			}
-		}
-	}
-
-	RTE_LOG(INFO, L3FWD_POWER, "Successfully set max/min/index uncore frequency.\n");
-	return ret;
-}
-
-static int
 parse_portmask(const char *portmask)
 {
 	char *end = NULL;
@@ -1792,25 +1722,21 @@ parse_args(int argc, char **argv)
 			promiscuous_on = 1;
 			break;
 		case 'u':
-			enabled_uncore = parse_uncore_options(UNCORE_MIN, NULL);
-			if (enabled_uncore < 0) {
-				print_usage(prgname);
-				return -1;
-			}
+			enabled_uncore = 0;
+			uncore_cfg.uncore_choice = UNCORE_MIN;
 			break;
 		case 'U':
-			enabled_uncore = parse_uncore_options(UNCORE_MAX, NULL);
-			if (enabled_uncore < 0) {
-				print_usage(prgname);
-				return -1;
-			}
+			enabled_uncore = 0;
+			uncore_cfg.uncore_choice = UNCORE_MAX;
 			break;
 		case 'i':
-			enabled_uncore = parse_uncore_options(UNCORE_IDX, optarg);
-			if (enabled_uncore < 0) {
+			enabled_uncore = 0;
+			if (parse_uint(optarg, UINT32_MAX, &uncore_cfg.freq_idx) != 0) {
+				RTE_LOG(INFO, L3FWD_POWER, "Index given is not a valid number.");
 				print_usage(prgname);
 				return -1;
 			}
+			uncore_cfg.uncore_choice = UNCORE_IDX;
 			break;
 		/* long options */
 		case 0:
@@ -2264,6 +2190,78 @@ static int check_ptype(uint16_t portid)
 }
 
 static int
+power_uncore_init(void)
+{
+	unsigned int die, pkg, max_pkg, max_die;
+	int ret;
+
+	if (enabled_uncore == -1)
+		return 0;
+
+	ret = rte_power_set_uncore_env(RTE_UNCORE_PM_ENV_AUTO_DETECT);
+	if (ret < 0) {
+		RTE_LOG(INFO, L3FWD_POWER, "Failed to set uncore env\n");
+		return ret;
+	}
+
+	max_pkg = rte_power_uncore_get_num_pkgs();
+	if (max_pkg == 0)
+		return -1;
+
+	for (pkg = 0; pkg < max_pkg; pkg++) {
+		max_die = rte_power_uncore_get_num_dies(pkg);
+		if (max_die == 0)
+			return -1;
+		for (die = 0; die < max_die; die++) {
+			ret = rte_power_uncore_init(pkg, die);
+			if (ret == -1) {
+				RTE_LOG(INFO, L3FWD_POWER, "Unable to initialize uncore for pkg %02u die %02u\n"
+				, pkg, die);
+				return ret;
+			}
+			if (uncore_cfg.uncore_choice == UNCORE_MIN) {
+				ret = rte_power_uncore_freq_min(pkg, die);
+				if (ret == -1) {
+					RTE_LOG(INFO, L3FWD_POWER,
+					"Unable to set the uncore frequency to minimum value for pkg %02u die %02u\n"
+					, pkg, die);
+					return ret;
+				}
+			} else if (uncore_cfg.uncore_choice == UNCORE_MAX) {
+				ret = rte_power_uncore_freq_max(pkg, die);
+				if (ret == -1) {
+					RTE_LOG(INFO, L3FWD_POWER,
+					"Unable to set uncore frequency to maximum value for pkg %02u die %02u\n"
+					, pkg, die);
+					return ret;
+				}
+			} else if (uncore_cfg.uncore_choice == UNCORE_IDX) {
+				int freq_array_len = rte_power_uncore_get_num_freqs(pkg, die);
+				if (freq_array_len <= 0) {
+					RTE_LOG(INFO, L3FWD_POWER, "Get uncore frequency number failed.\n");
+					return -1;
+				}
+				if (uncore_cfg.freq_idx > (uint32_t)(freq_array_len - 1)) {
+					RTE_LOG(INFO, L3FWD_POWER,
+					"Frequency index given out of range, please choose a value from 0 to %d.\n",
+					freq_array_len - 1);
+					return -1;
+				}
+				ret = rte_power_set_uncore_freq(pkg, die, uncore_cfg.freq_idx);
+				if (ret == -1) {
+					RTE_LOG(INFO, L3FWD_POWER,
+					"Unable to set specified frequency index for pkg %02u die %02u\n",
+					pkg, die);
+					return ret;
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
+static int
 init_power_library(void)
 {
 	enum power_management_env env;
@@ -2293,6 +2291,10 @@ init_power_library(void)
 			}
 		}
 	}
+
+	ret = power_uncore_init();
+	if (ret != 0)
+		return ret;
 
 	if (cpu_resume_latency != -1) {
 		RTE_LCORE_FOREACH(lcore_id) {
