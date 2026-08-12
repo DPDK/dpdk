@@ -55,6 +55,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated AF_XDP driver.**
+
+  * Changed the default device plugin endpoint path used when
+    ``use_cni`` or ``use_pinned_map`` is set without ``dp_path``.
+    See :doc:`../nics/af_xdp` for more details.
+
 
 Removed Items
 -------------

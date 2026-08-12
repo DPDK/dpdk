@@ -68,7 +68,28 @@ arguments to explicitly tell the AF_XDP PMD where to find either:
 2. The pinned xskmap to use when creating AF_XDP sockets.
 
 If this argument is not passed alongside the ``use_cni`` or ``use_pinned_map`` arguments
-then the AF_XDP PMD configures it internally to the `AF_XDP Device Plugin for Kubernetes`_.
+then the AF_XDP PMD builds the path itself.
+It looks for ``afxdp_dp/<if_name>/afxdp.sock``
+(or ``afxdp_dp/<if_name>/xsks_map``) in the EAL runtime directory,
+the conventional location for runtime state such as sockets.
+When no such entry exists, the PMD falls back to the same file
+below ``/tmp/afxdp_dp``, the location used by the
+`AF_XDP Device Plugin for Kubernetes`_.
+
+.. note::
+
+   The ``/tmp/afxdp_dp`` fallback exists only for compatibility with
+   deployments of the `AF_XDP Device Plugin for Kubernetes`_
+   that mount the endpoint there.
+   New deployments should mount the endpoint
+   below the EAL runtime directory,
+   or point at it explicitly with ``dp_path``.
+   A pinned map lives on a bpffs mount,
+   so it has to be bind mounted into that directory;
+   it cannot be pinned into the runtime directory itself.
+   The ``<if_name>`` component of the path must be kept in either location:
+   it is what distinguishes the endpoints
+   when several interfaces are mounted in a single pod.
 
 .. note::
 
@@ -80,8 +101,9 @@ then the AF_XDP PMD configures it internally to the `AF_XDP Device Plugin for Ku
    DPDK AF_XDP PMD > v23.11 will work with latest version of the AF_XDP Device Plugin
    through a combination of the ``dp_path`` and/or the ``use_cni`` parameter.
    In these versions of the PMD if a user doesn't explicitly set the ``dp_path`` parameter
-   when using ``use_cni`` then that path is transparently configured in the AF_XDP PMD
-   to the default `AF_XDP Device Plugin for Kubernetes`_ mount point path.
+   when using ``use_cni`` then the PMD looks for the endpoint
+   below the EAL runtime directory first,
+   and falls back to the default `AF_XDP Device Plugin for Kubernetes`_ mount point path.
    The path can be overridden by explicitly setting the ``dp_path`` param.
 
 .. note::
@@ -339,4 +361,6 @@ Run dpdk-testpmd with the AF_XDP Device Plugin + CNI
 .. note::
 
    If the ``dp_path`` parameter isn't explicitly set with ``use_cni`` or ``use_pinned_map``
-   the AF_XDP PMD will set the parameter values to the `AF_XDP Device Plugin for Kubernetes`_ defaults.
+   the AF_XDP PMD looks for the endpoint below the EAL runtime directory first,
+   and only then below the ``/tmp/afxdp_dp`` location
+   used by the `AF_XDP Device Plugin for Kubernetes`_.
