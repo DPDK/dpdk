@@ -7,7 +7,8 @@ IDPF Poll Mode Driver
 =====================
 
 The idpf PMD (**librte_net_idpf**) provides poll mode driver support for
-Intel\ |reg| Infrastructure Processing Unit (Intel\ |reg| IPU) E2100.
+Intel\ |reg| Infrastructure Processing Unit (Intel\ |reg| IPU) E2100 and
+Intel\ |reg| Infrastructure Processing Unit (Intel\ |reg| IPU) E2200.
 
 
 Linux Prerequisites
