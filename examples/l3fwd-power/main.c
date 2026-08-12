@@ -1499,7 +1499,7 @@ print_usage(const char *prgname)
 		"  -P: enable promiscuous mode\n"
 		"  -u: set min/max frequency for uncore to minimum value\n"
 		"  -U: set min/max frequency for uncore to maximum value\n"
-		"  -i (frequency index): set min/max frequency for uncore to specified frequency index\n"
+		"  -i (frequency index): set target frequency for uncore by specified frequency index\n"
 		"  --config (port,queue,lcore): rx queues configuration\n"
 		"  --cpu-resume-latency LATENCY: set CPU resume latency to control C-state selection,"
 		" 0 : just allow to enter C0-state\n"
@@ -1582,7 +1582,7 @@ parse_uncore_options(enum uncore_choice choice, const char *argument)
 				ret = rte_power_uncore_freq_min(pkg, die);
 				if (ret == -1) {
 					RTE_LOG(INFO, L3FWD_POWER,
-					"Unable to set the uncore min/max to minimum uncore frequency value for pkg %02u die %02u\n"
+					"Unable to set the uncore frequency to minimum value for pkg %02u die %02u\n"
 					, pkg, die);
 					return ret;
 				}
@@ -1590,7 +1590,7 @@ parse_uncore_options(enum uncore_choice choice, const char *argument)
 				ret = rte_power_uncore_freq_max(pkg, die);
 				if (ret == -1) {
 					RTE_LOG(INFO, L3FWD_POWER,
-					"Unable to set uncore min/max to maximum uncore frequency value for pkg %02u die %02u\n"
+					"Unable to set uncore frequency to maximum value for pkg %02u die %02u\n"
 					, pkg, die);
 					return ret;
 				}
@@ -1611,7 +1611,7 @@ parse_uncore_options(enum uncore_choice choice, const char *argument)
 				ret = rte_power_set_uncore_freq(pkg, die, frequency_index);
 				if (ret == -1) {
 					RTE_LOG(INFO, L3FWD_POWER,
-					"Unable to set min/max uncore index value for pkg %02u die %02u\n",
+					"Unable to set specified frequency index for pkg %02u die %02u\n",
 					pkg, die);
 					return ret;
 				}
