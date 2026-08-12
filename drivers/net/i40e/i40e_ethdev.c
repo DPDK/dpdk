@@ -1992,6 +1992,9 @@ i40e_dev_configure(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
 		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
+	/* A new configuration reverts the RETA to the driver default. */
+	pf->adapter->rss_reta_updated = 0;
+
 	ret = i40e_dev_init_vlan(dev);
 	if (ret < 0)
 		goto err;
@@ -2675,8 +2678,6 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 
 	hw->adapter_stopped = 1;
 	dev->data->dev_started = 0;
-
-	pf->adapter->rss_reta_updated = 0;
 
 	return 0;
 }
