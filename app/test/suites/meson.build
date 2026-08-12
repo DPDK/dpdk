@@ -145,7 +145,7 @@ if not is_windows and dpdk_conf.has('RTE_LIB_TELEMETRY')
         test_args += ['--vdev=rawdev_skeleton0']
     endif
     test_args += ['-a', '0000:00:00.0']
-    test('telemetry_all', find_program('test_telemetry.sh'),
+    test('telemetry_all', find_program('test_telemetry.py'),
             args: test_args,
             timeout : timeout_seconds_fast,
             is_parallel : false,
