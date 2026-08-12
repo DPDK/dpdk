@@ -2294,7 +2294,7 @@ init_power_library(void)
 		}
 	}
 
-	if (app_mode == APP_MODE_LEGACY && cpu_resume_latency != -1) {
+	if (cpu_resume_latency != -1) {
 		RTE_LCORE_FOREACH(lcore_id) {
 			/* Back old CPU resume latency. */
 			ret = rte_power_qos_get_cpu_resume_latency(lcore_id);
@@ -2365,7 +2365,7 @@ deinit_power_library(void)
 		}
 	}
 
-	if (app_mode == APP_MODE_LEGACY && cpu_resume_latency != -1) {
+	if (cpu_resume_latency != -1) {
 		RTE_LCORE_FOREACH(lcore_id) {
 			/* Restore the original value. */
 			rte_power_qos_set_cpu_resume_latency(lcore_id,
