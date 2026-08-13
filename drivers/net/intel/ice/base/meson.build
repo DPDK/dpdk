@@ -44,11 +44,6 @@ else
     ]
 endif
 
-# Bugzilla ID: 678
-if (toolchain == 'gcc' and cc.version().version_compare('>=11.0.0'))
-    error_cflags += ['-Wno-array-bounds']
-endif
-
 foreach flag: error_cflags
     if cc.has_argument(flag)
         base_cflags += flag
