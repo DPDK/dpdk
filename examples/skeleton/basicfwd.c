@@ -176,11 +176,11 @@ main(int argc, char *argv[])
 	unsigned nb_ports;
 	uint16_t portid;
 
-	/* Initializion the Environment Abstraction Layer (EAL). 8< */
+	/* Initialize the Environment Abstraction Layer (EAL). 8< */
 	int ret = rte_eal_init(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
-	/* >8 End of initialization the Environment Abstraction Layer (EAL). */
+	/* >8 End of initializing the Environment Abstraction Layer (EAL). */
 
 	argc -= ret;
 	argv += ret;
