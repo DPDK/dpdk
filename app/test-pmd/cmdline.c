@@ -581,12 +581,6 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set port (port_id) rxq (queue_id) avail_thresh (0..99)>\n "
 			"    set available descriptors threshold for Rx queue\n\n"
 
-			"set stat_qmap (tx|rx) (port_id) (queue_id) (qmapping)\n"
-			"    Set statistics mapping (qmapping 0..15) for RX/TX"
-			" queue on port.\n"
-			"    e.g., 'set stat_qmap rx 0 2 5' sets rx queue 2"
-			" on port 0 to mapping 5.\n\n"
-
 			"set xstats-hide-zero on|off\n"
 			"    Set the option to hide the zero values"
 			" for xstats display.\n"
