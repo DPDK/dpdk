@@ -153,15 +153,6 @@ struct txgbe_interrupt {
 	uint64_t mask_orig; /* save mask during delayed handler */
 };
 
-#define TXGBE_NB_STAT_MAPPING  32
-#define QSM_REG_NB_BITS_PER_QMAP_FIELD 8
-#define NB_QMAP_FIELDS_PER_QSM_REG 4
-#define QMAP_FIELD_RESERVED_BITS_MASK 0x0f
-struct txgbe_stat_mappings {
-	uint32_t tqsm[TXGBE_NB_STAT_MAPPING];
-	uint32_t rqsm[TXGBE_NB_STAT_MAPPING];
-};
-
 struct txgbe_vfta {
 	uint32_t vfta[TXGBE_VFTA_SIZE];
 };
@@ -355,7 +346,6 @@ struct txgbe_adapter {
 	struct rte_eth_fdir_conf    fdir_conf;
 	struct txgbe_hw_fdir_info   fdir;
 	struct txgbe_interrupt      intr;
-	struct txgbe_stat_mappings  stat_mappings;
 	struct txgbe_vfta           shadow_vfta;
 	struct txgbe_hwstrip        hwstrip;
 	struct txgbe_dcb_config     dcb_config;
@@ -397,9 +387,6 @@ struct txgbe_adapter {
 
 #define TXGBE_DEV_FDIR(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->fdir)
-
-#define TXGBE_DEV_STAT_MAPPINGS(dev) \
-	(&((struct txgbe_adapter *)(dev)->data->dev_private)->stat_mappings)
 
 #define TXGBE_DEV_VFTA(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->shadow_vfta)
