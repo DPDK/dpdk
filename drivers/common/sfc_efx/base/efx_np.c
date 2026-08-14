@@ -235,7 +235,8 @@ static	__checkReturn		efx_rc_t
 efx_np_get_fixed_port_props(
 	__in			efx_nic_t *enp,
 	__in			efx_np_handle_t nph,
-	__out_opt		uint8_t *sup_cap_rawp,
+	__out_bcount_opt(MC_CMD_ETH_AN_FIELDS_LEN)
+				uint8_t *sup_cap_rawp,
 	__out_opt		uint32_t *sup_cap_maskp,
 	__out_opt		efx_qword_t *loopback_cap_maskp)
 {
