@@ -89,6 +89,11 @@ Removed Items
     ``rte_rib6_is_equal``
   * table: ``RTE_LPM_IPV6_ADDR_SIZE``
 
+* ethdev: Removed support for ethdev queue stats mapping.
+
+  ``rte_eth_dev_set_tx_queue_stats_mapping`` and ``rte_eth_dev_set_rx_queue_stats_mapping``
+  were deprecated and are now removed.
+
 
 API Changes
 -----------

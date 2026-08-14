@@ -311,26 +311,6 @@ RTE_TRACE_POINT(
 )
 
 RTE_TRACE_POINT(
-	rte_ethdev_trace_set_rx_queue_stats_mapping,
-	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint16_t rx_queue_id,
-		uint8_t stat_idx, int ret),
-	rte_trace_point_emit_u16(port_id);
-	rte_trace_point_emit_u16(rx_queue_id);
-	rte_trace_point_emit_u8(stat_idx);
-	rte_trace_point_emit_int(ret);
-)
-
-RTE_TRACE_POINT(
-	rte_ethdev_trace_set_tx_queue_stats_mapping,
-	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint16_t tx_queue_id,
-		uint8_t stat_idx, int ret),
-	rte_trace_point_emit_u16(port_id);
-	rte_trace_point_emit_u16(tx_queue_id);
-	rte_trace_point_emit_u8(stat_idx);
-	rte_trace_point_emit_int(ret);
-)
-
-RTE_TRACE_POINT(
 	rte_ethdev_trace_fw_version_get,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id, const char *fw_version,
 		size_t fw_size, int ret),
