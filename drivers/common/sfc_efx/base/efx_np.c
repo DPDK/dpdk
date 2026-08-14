@@ -190,7 +190,7 @@ efx_np_cap_mask_hw_to_sw(
 	__in				unsigned int hw_sw_map_nentries,
 	__in_bcount(hw_cap_data_nbytes)	const uint8_t *hw_cap_data,
 	__in				size_t hw_cap_data_nbytes,
-	__out				uint32_t *sw_cap_maskp)
+	__inout				uint32_t *sw_cap_maskp)
 {
 	FOREACH_SUP_CAP(hw_sw_map, hw_sw_map_nentries,
 	    hw_cap_data, hw_cap_data_nbytes) {
@@ -216,6 +216,8 @@ efx_np_cap_hw_data_to_sw_mask(
 	__in			const uint8_t *hw_data,
 	__out			uint32_t *sw_maskp)
 {
+	*sw_maskp = 0;
+
 	EFX_NP_CAP_MASK_HW_TO_SW(efx_np_cap_map_tech, ETH_AN_FIELDS_TECH_MASK,
 	    hw_data, sw_maskp);
 
@@ -429,20 +431,20 @@ efx_np_link_state(
 	_NOTE(ARGUNUSED(lbp))
 #endif /* EFSYS_OPT_LOOPBACK */
 
-	if (lsp->enls_an_supported != B_FALSE)
-		lsp->enls_adv_cap_mask |= 1U << EFX_PHY_CAP_AN;
-
 	efx_np_cap_hw_data_to_sw_mask(
 	    MCDI_OUT2(req, const uint8_t, LINK_STATE_OUT_ADVERTISED_ABILITIES),
 	    &lsp->enls_adv_cap_mask);
 
-	if (status_flags & (1U << MC_CMD_LINK_STATUS_FLAGS_AN_ABLE))
-		lsp->enls_lp_cap_mask |= 1U << EFX_PHY_CAP_AN;
+	if (lsp->enls_an_supported != B_FALSE)
+		lsp->enls_adv_cap_mask |= 1U << EFX_PHY_CAP_AN;
 
 	efx_np_cap_hw_data_to_sw_mask(
 	    MCDI_OUT2(req, const uint8_t,
 		    LINK_STATE_OUT_LINK_PARTNER_ABILITIES),
 	    &lsp->enls_lp_cap_mask);
+
+	if (status_flags & (1U << MC_CMD_LINK_STATUS_FLAGS_AN_ABLE))
+		lsp->enls_lp_cap_mask |= 1U << EFX_PHY_CAP_AN;
 
 	tech = MCDI_OUT_WORD(req, LINK_STATE_OUT_LINK_TECHNOLOGY);
 
