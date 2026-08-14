@@ -733,7 +733,7 @@ static					void
 efx_np_stat_describe(
 	__in				uint8_t *hw_entry_buf,
 	__in				unsigned int lut_nentries,
-	__out_ecount_opt(lut_nentries)	efx_np_stat_t *lut)
+	__out_ecount(lut_nentries)	efx_np_stat_t *lut)
 {
 	const efx_np_stat_t *map;
 	efx_mac_stat_t sw_id;
