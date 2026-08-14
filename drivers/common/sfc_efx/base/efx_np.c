@@ -1170,7 +1170,7 @@ efx_np_cap_mask_sw_to_hw(
 	__in				uint32_t mask_sw,
 	__in_opt			efx_np_cap_filter_cb *filter_cb,
 	__in_opt			void *filter_arg,
-	__out				uint8_t *mask_hwp)
+	__inout				uint8_t *mask_hwp)
 {
 	FOREACH_SUP_CAP(hw_sw_map, hw_sw_map_nentries,
 	    hw_cap_data, hw_cap_data_nbytes) {
@@ -1179,8 +1179,8 @@ efx_np_cap_mask_sw_to_hw(
 		if ((mask_sw & flag_sw) != flag_sw)
 			continue;
 
-		if (filter_cb != NULL &&
-		    filter_cb(hw_sw_map->encm_hw, filter_arg) == B_FALSE)
+		if ((filter_cb != NULL) && (filter_arg != NULL) &&
+		    (filter_cb(hw_sw_map->encm_hw, filter_arg) == B_FALSE))
 			continue;
 
 		mask_hwp[CAP_BYTE(hw_sw_map)] |= CAP_FLAG(hw_sw_map);
