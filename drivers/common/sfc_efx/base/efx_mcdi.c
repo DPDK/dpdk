@@ -3550,18 +3550,27 @@ efx_mcdi_set_nic_addr_regions(
 	__in		efx_nic_t *enp,
 	__in		const efx_nic_dma_region_info_t *endrip)
 {
-	EFX_MCDI_DECLARE_BUF(payload,
-		MC_CMD_SET_DESC_ADDR_REGIONS_IN_LENMAX_MCDI2,
-		MC_CMD_SET_DESC_ADDR_REGIONS_OUT_LEN);
 	efx_qword_t *trgt_addr_base;
+	uint8_t *payload = NULL;
 	efx_mcdi_req_t req;
 	unsigned int i;
+	size_t size;
 	efx_rc_t rc;
 
 	if (endrip->endri_count >
 	    MC_CMD_SET_DESC_ADDR_REGIONS_IN_TRGT_ADDR_BASE_MAXNUM) {
 		rc = EINVAL;
 		goto fail1;
+	}
+
+	size = EFX_MCDI_BUF_SIZE(
+	    MC_CMD_SET_DESC_ADDR_REGIONS_IN_LEN(endrip->endri_count),
+	    MC_CMD_SET_DESC_ADDR_REGIONS_OUT_LEN);
+
+	EFSYS_KMEM_ALLOC(enp->en_esip, size, payload);
+	if (payload == NULL) {
+		rc = ENOMEM;
+		goto fail2;
 	}
 
 	req.emr_cmd = MC_CMD_SET_DESC_ADDR_REGIONS;
@@ -3598,11 +3607,16 @@ efx_mcdi_set_nic_addr_regions(
 
 	if (req.emr_rc != 0) {
 		rc = req.emr_rc;
-		goto fail2;
+		goto fail3;
 	}
+
+	EFSYS_KMEM_FREE(enp->en_esip, size, payload);
 
 	return (0);
 
+fail3:
+	EFSYS_PROBE(fail3);
+	EFSYS_KMEM_FREE(enp->en_esip, size, payload);
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:
