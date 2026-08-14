@@ -202,7 +202,7 @@ sfc_flow_rss_ctx_reuse(struct sfc_adapter *sa,
 		       uint16_t sw_qid_min, const uint16_t *sw_qids)
 {
 	struct sfc_flow_rss *flow_rss = &sa->flow_rss;
-	static struct sfc_flow_rss_ctx *ctx;
+	struct sfc_flow_rss_ctx *ctx;
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
