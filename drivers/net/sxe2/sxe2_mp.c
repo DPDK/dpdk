@@ -15,6 +15,11 @@
 #include "sxe2_stats.h"
 #include "sxe2_common_log.h"
 
+/* The shared qstats array must hold every queue the primary may write. */
+static_assert(SXE2_RXQ_STATS_MAP_MAX_NUM <= SXE2_MP_MAX_QSTATS &&
+	      SXE2_TXQ_STATS_MAP_MAX_NUM <= SXE2_MP_MAX_QSTATS,
+	      "shared qstats array too small for per-queue stats");
+
 static RTE_ATOMIC(uint16_t)primary_ethdev_cnt;
 static RTE_ATOMIC(uint16_t)secondary_ethdev_cnt;
 static const struct rte_memzone *sxe2_mp_mz;
@@ -65,9 +70,11 @@ sxe2_mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 
 	switch (param->type) {
 	case SXE2_MP_REQ_GET_STATS:
+		memset(mz_data->payload.stats_blk.qstats, 0,
+		       sizeof(mz_data->payload.stats_blk.qstats));
 		ret = sxe2_stats_info_get(dev,
 					  &mz_data->payload.stats_blk.stats,
-					  &mz_data->payload.stats_blk.qstats);
+					  mz_data->payload.stats_blk.qstats);
 		break;
 	case SXE2_MP_REQ_GET_XSTATS:
 		cnt = sxe2_xstats_info_get(dev,
@@ -324,8 +331,13 @@ int32_t sxe2_mp_req_get_stats(struct rte_eth_dev *dev,
 
 	mz_data = (struct sxe2_mp_shared_data *)sxe2_mp_mz->addr;
 	memcpy(stats, &mz_data->payload.stats_blk.stats, sizeof(*stats));
-	if (qstats != NULL)
-		memcpy(qstats, &mz_data->payload.stats_blk.qstats, sizeof(*qstats));
+	if (qstats != NULL) {
+		uint16_t nb_queues = RTE_MAX(dev->data->nb_rx_queues,
+					     dev->data->nb_tx_queues);
+
+		memcpy(qstats, mz_data->payload.stats_blk.qstats,
+		       RTE_MIN(nb_queues, SXE2_MP_MAX_QSTATS) * sizeof(*qstats));
+	}
 	PMD_LOG_DEBUG(DRV, "sxe2_mp: stats received via IPC for port %u",
 			  dev->data->port_id);
 	ret = 0;
