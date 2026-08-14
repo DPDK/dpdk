@@ -1183,9 +1183,9 @@ sfc_rx_qinit(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 	else
 		rxq_info->type = EFX_RXQ_TYPE_DEFAULT;
 
-	rxq_info->type_flags |=
-		(offloads & RTE_ETH_RX_OFFLOAD_SCATTER) ?
-		EFX_RXQ_FLAG_SCATTER : EFX_RXQ_FLAG_NONE;
+	rxq_info->type_flags = rxq_info->extra_type_flags |
+		((offloads & RTE_ETH_RX_OFFLOAD_SCATTER) ?
+		EFX_RXQ_FLAG_SCATTER : EFX_RXQ_FLAG_NONE);
 
 	if ((encp->enc_tunnel_encapsulations_supported != 0) &&
 	    (sfc_dp_rx_offload_capa(sa->priv.dp_rx) &
@@ -1660,7 +1660,7 @@ sfc_rx_qinit_info(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 	SFC_ASSERT(rte_is_power_of_2(max_entries));
 
 	rxq_info->max_entries = max_entries;
-	rxq_info->type_flags = extra_efx_type_flags;
+	rxq_info->extra_type_flags = extra_efx_type_flags;
 
 	return 0;
 }
