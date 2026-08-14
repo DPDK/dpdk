@@ -1554,17 +1554,6 @@ Set available descriptors threshold for a specific Rx queue of port::
 
 Use 0 value to disable the threshold and corresponding event.
 
-set stat_qmap
-~~~~~~~~~~~~~
-
-Set statistics mapping (qmapping 0..15) for RX/TX queue on port::
-
-   testpmd> set stat_qmap (tx|rx) (port_id) (queue_id) (qmapping)
-
-For example, to set rx queue 2 on port 0 to mapping 5::
-
-   testpmd>set stat_qmap rx 0 2 5
-
 set xstats-hide-zero
 ~~~~~~~~~~~~~~~~~~~~
 
