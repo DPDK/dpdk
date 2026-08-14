@@ -14,7 +14,7 @@ cnxk_nix_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats,
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct roc_nix *nix = &dev->nix;
 	struct roc_nix_stats nix_stats;
-	int rc = 0, i;
+	int rc, i;
 
 	rc = roc_nix_stats_get(nix, &nix_stats);
 	if (rc)
@@ -33,30 +33,34 @@ cnxk_nix_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats,
 	stats->ibytes = nix_stats.rx_octs;
 	stats->ierrors = nix_stats.rx_err;
 
-	if (qstats != NULL) {
-		for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
-			struct roc_nix_stats_queue qstats_data;
-			uint16_t qidx;
+	if (qstats == NULL)
+		goto exit;
 
-			if (dev->txq_stat_map[i] & (1U << 31)) {
-				qidx = dev->txq_stat_map[i] & 0xFFFF;
-				rc = roc_nix_stats_queue_get(nix, qidx, 0, &qstats_data);
-				if (rc)
-					goto exit;
-				qstats->q_opackets[i] = qstats_data.tx_pkts;
-				qstats->q_obytes[i] = qstats_data.tx_octs;
-			}
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		struct roc_nix_stats_queue qstats_data;
 
-			if (dev->rxq_stat_map[i] & (1U << 31)) {
-				qidx = dev->rxq_stat_map[i] & 0xFFFF;
-				rc = roc_nix_stats_queue_get(nix, qidx, 1, &qstats_data);
-				if (rc)
-					goto exit;
-				qstats->q_ipackets[i] = qstats_data.rx_pkts;
-				qstats->q_ibytes[i] = qstats_data.rx_octs;
-				qstats->q_errors[i] = qstats_data.rx_drop_pkts;
-			}
-		}
+		if (i >= RTE_ETHDEV_QUEUE_STAT_CNTRS)
+			break;
+
+		rc = roc_nix_stats_queue_get(nix, i, 0, &qstats_data);
+		if (rc)
+			goto exit;
+		qstats->q_opackets[i] = qstats_data.tx_pkts;
+		qstats->q_obytes[i] = qstats_data.tx_octs;
+	}
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		struct roc_nix_stats_queue qstats_data;
+
+		if (i >= RTE_ETHDEV_QUEUE_STAT_CNTRS)
+			break;
+
+		rc = roc_nix_stats_queue_get(nix, i, 1, &qstats_data);
+		if (rc)
+			goto exit;
+		qstats->q_ipackets[i] = qstats_data.rx_pkts;
+		qstats->q_ibytes[i] = qstats_data.rx_octs;
+		qstats->q_errors[i] = qstats_data.rx_drop_pkts;
 	}
 exit:
 	return rc;
@@ -68,25 +72,6 @@ cnxk_nix_stats_reset(struct rte_eth_dev *eth_dev)
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 
 	return roc_nix_stats_reset(&dev->nix);
-}
-
-int
-cnxk_nix_queue_stats_mapping(struct rte_eth_dev *eth_dev, uint16_t queue_id,
-			     uint8_t stat_idx, uint8_t is_rx)
-{
-	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-
-	if (is_rx) {
-		if (queue_id >= dev->nb_rxq)
-			return -EINVAL;
-		dev->rxq_stat_map[stat_idx] = ((1U << 31) | queue_id);
-	} else {
-		if (queue_id >= dev->nb_txq)
-			return -EINVAL;
-		dev->txq_stat_map[stat_idx] = ((1U << 31) | queue_id);
-	}
-
-	return 0;
 }
 
 int

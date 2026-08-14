@@ -423,10 +423,6 @@ struct cnxk_eth_dev {
 	/* LSO Tunnel format indices */
 	uint64_t lso_tun_fmt;
 
-	/* Per queue statistics counters */
-	uint32_t txq_stat_map[RTE_ETHDEV_QUEUE_STAT_CNTRS];
-	uint32_t rxq_stat_map[RTE_ETHDEV_QUEUE_STAT_CNTRS];
-
 	/* Security data */
 	struct cnxk_eth_dev_sec_inb inb;
 	struct cnxk_eth_dev_sec_outb outb;
@@ -700,8 +696,6 @@ void cnxk_eth_dev_link_status_get_cb(struct roc_nix *nix,
 void cnxk_eth_dev_q_err_cb(struct roc_nix *nix, void *data);
 int cnxk_nix_link_info_configure(struct rte_eth_dev *eth_dev);
 int cnxk_nix_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete);
-int cnxk_nix_queue_stats_mapping(struct rte_eth_dev *dev, uint16_t queue_id,
-				 uint8_t stat_idx, uint8_t is_rx);
 int cnxk_nix_stats_reset(struct rte_eth_dev *dev);
 int cnxk_nix_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		       struct eth_queue_stats *qstats);
