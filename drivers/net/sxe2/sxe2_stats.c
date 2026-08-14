@@ -328,9 +328,11 @@ int32_t sxe2_stats_info_get(struct rte_eth_dev *dev,
 	if (ret)
 		goto end;
 
-	ret = sxe2_drv_queue_info_get_update(adapter, qstats);
-	if (ret)
-		goto end;
+	if (qstats != NULL) {
+		ret = sxe2_drv_queue_info_get_update(adapter, qstats);
+		if (ret)
+			goto end;
+	}
 
 	sxe2_stats_update(adapter);
 
