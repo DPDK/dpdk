@@ -778,22 +778,30 @@ efx_np_stats_describe(
 	__out_opt			uint32_t *nprocessedp,
 	__out_opt			uint32_t *nstats_maxp)
 {
-	EFX_MCDI_DECLARE_BUF(payload,
-	    MC_CMD_MAC_STATISTICS_DESCRIPTOR_IN_LEN,
-	    MC_CMD_MAC_STATISTICS_DESCRIPTOR_OUT_LENMAX_MCDI2);
+	uint8_t *payload = NULL;
 	uint32_t nprocessed;
 	efx_mcdi_req_t req;
 	uint8_t *entries;
 	uint32_t stride;
 	unsigned int i;
 	size_t out_sz;
+	size_t size;
 	efx_rc_t rc;
 
-	req.emr_out_length = MC_CMD_MAC_STATISTICS_DESCRIPTOR_OUT_LENMAX_MCDI2;
-	req.emr_in_length = MC_CMD_MAC_STATISTICS_DESCRIPTOR_IN_LEN;
+	size = EFX_MCDI_BUF_SIZE(MC_CMD_MAC_STATISTICS_DESCRIPTOR_IN_LEN,
+	    MC_CMD_MAC_STATISTICS_DESCRIPTOR_OUT_LENMAX_MCDI2);
+
+	EFSYS_KMEM_ALLOC(enp->en_esip, size, payload);
+	if (payload == NULL) {
+		rc = ENOMEM;
+		goto fail1;
+	}
+
 	req.emr_cmd = MC_CMD_MAC_STATISTICS_DESCRIPTOR;
-	req.emr_out_buf = payload;
 	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAC_STATISTICS_DESCRIPTOR_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAC_STATISTICS_DESCRIPTOR_OUT_LENMAX_MCDI2;
 
 	MCDI_IN_SET_DWORD(req, MAC_STATISTICS_DESCRIPTOR_IN_PORT_HANDLE, nph);
 	MCDI_IN_SET_DWORD(req, MAC_STATISTICS_DESCRIPTOR_IN_OFFSET, req_ofst);
@@ -802,13 +810,13 @@ efx_np_stats_describe(
 
 	if (req.emr_rc != 0) {
 		rc = req.emr_rc;
-		goto fail1;
+		goto fail2;
 	}
 
 	out_sz = req.emr_out_length_used;
 	if (out_sz < MC_CMD_MAC_STATISTICS_DESCRIPTOR_OUT_LENMIN) {
 		rc = EMSGSIZE;
-		goto fail2;
+		goto fail3;
 	}
 
 	if (nstats_maxp != NULL) {
@@ -818,13 +826,13 @@ efx_np_stats_describe(
 	}
 
 	if (lut_nentries == 0 || lut == NULL || nprocessedp == NULL)
-		return (0);
+		goto out;
 
 	stride = MCDI_OUT_DWORD(req, MAC_STATISTICS_DESCRIPTOR_OUT_ENTRY_SIZE);
 	nprocessed = MC_CMD_MAC_STATISTICS_DESCRIPTOR_OUT_ENTRIES_NUM(out_sz);
 	if (nprocessed == 0) {
 		rc = EMSGSIZE;
-		goto fail3;
+		goto fail4;
 	}
 
 	entries = MCDI_OUT2(req, uint8_t,
@@ -834,14 +842,19 @@ efx_np_stats_describe(
 		efx_np_stat_describe(entries + i * stride, lut_nentries, lut);
 
 	*nprocessedp = nprocessed;
+
+out:
+	EFSYS_KMEM_FREE(enp->en_esip, size, payload);
+
 	return (0);
 
+fail4:
+	EFSYS_PROBE(fail4);
 fail3:
 	EFSYS_PROBE(fail3);
-
 fail2:
 	EFSYS_PROBE(fail2);
-
+	EFSYS_KMEM_FREE(enp->en_esip, size, payload);
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 	return (rc);
