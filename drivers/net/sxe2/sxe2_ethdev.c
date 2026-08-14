@@ -194,8 +194,6 @@ static const struct eth_dev_ops sxe2_eth_dev_ops = {
 	.xstats_get_names           = sxe2_xstats_names_get,
 	.xstats_reset               = sxe2_stats_info_reset,
 
-	.queue_stats_mapping_set    = sxe2_queue_stats_mapping_set,
-
 	.fw_version_get             = sxe2_fw_version_string_get,
 
 	.get_monitor_addr           = sxe2_get_monitor_addr,
@@ -1308,9 +1306,6 @@ static void sxe2_drv_dev_caps_set(struct sxe2_adapter *adapter,
 
 	if (dev_caps->cap_flags & SXE2_DEV_CAPS_OFFLOAD_PTP)
 		adapter->cap_flags |= SXE2_DEV_CAPS_OFFLOAD_PTP;
-
-	if (dev_caps->cap_flags & SXE2_DEV_CAPS_OFFLOAD_Q_MAP)
-		adapter->cap_flags |= SXE2_DEV_CAPS_OFFLOAD_Q_MAP;
 
 	if (dev_caps->cap_flags & SXE2_DEV_CAPS_OFFLOAD_FC_STATE)
 		adapter->cap_flags |= SXE2_DEV_CAPS_OFFLOAD_FC_STATE;
