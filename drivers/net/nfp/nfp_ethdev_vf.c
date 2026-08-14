@@ -172,6 +172,7 @@ nfp_netvf_close(struct rte_eth_dev *dev)
 	pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	hw_priv = dev->process_private;
 
+	rte_free(net_hw->eth_qstats_base);
 	rte_free(net_hw->eth_xstats_base);
 	rte_free(hw_priv);
 
@@ -339,6 +340,17 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 		goto hw_priv_free;
 	}
 
+	net_hw->eth_qstats_base = rte_calloc("eth_queue_stats",
+			RTE_MAX(net_hw->max_rx_queues, net_hw->max_tx_queues),
+			sizeof(struct eth_queue_stats), 0);
+	if (net_hw->eth_qstats_base == NULL) {
+		PMD_INIT_LOG(ERR, "No memory for queue stats base values on device %s!",
+				pci_dev->device.name);
+		rte_free(net_hw->eth_xstats_base);
+		err = -ENOMEM;
+		goto hw_priv_free;
+	}
+
 	/* Work out where in the BAR the queues start. */
 	start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
 	tx_bar_off = nfp_qcp_queue_offset(dev_info, start_q);
@@ -406,6 +418,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	return 0;
 
 free_xstats:
+	rte_free(net_hw->eth_qstats_base);
 	rte_free(net_hw->eth_xstats_base);
 hw_priv_free:
 	rte_free(hw_priv);

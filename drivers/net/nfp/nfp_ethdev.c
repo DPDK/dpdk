@@ -663,6 +663,7 @@ nfp_net_uninit(struct rte_eth_dev *eth_dev)
 	if ((net_hw->super.cap_ext & NFP_NET_CFG_CTRL_FLOW_STEER) != 0)
 		nfp_net_flow_priv_uninit(hw_priv->pf_dev, net_hw->idx);
 
+	rte_free(net_hw->eth_qstats_base);
 	rte_free(net_hw->eth_xstats_base);
 	if ((net_hw->super.cap & NFP_NET_CFG_CTRL_TXRWB) != 0)
 		nfp_net_txrwb_free(eth_dev);
@@ -1091,6 +1092,17 @@ nfp_net_init(struct rte_eth_dev *eth_dev,
 		goto ipsec_exit;
 	}
 
+	net_hw->eth_qstats_base = rte_calloc("eth_queue_stats",
+			RTE_MAX(net_hw->max_rx_queues, net_hw->max_tx_queues),
+			sizeof(struct eth_queue_stats), 0);
+	if (net_hw->eth_qstats_base == NULL) {
+		PMD_INIT_LOG(ERR, "No memory for queue stats base values on device %s!",
+				pci_dev->device.name);
+		rte_free(net_hw->eth_xstats_base);
+		err = -ENOMEM;
+		goto ipsec_exit;
+	}
+
 	/* Work out where in the BAR the queues start. */
 	tx_base = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
 	rx_base = nn_cfg_readl(hw, NFP_NET_CFG_START_RXQ);
@@ -1183,6 +1195,7 @@ txrwb_free:
 	if ((hw->cap & NFP_NET_CFG_CTRL_TXRWB) != 0)
 		nfp_net_txrwb_free(eth_dev);
 xstats_free:
+	rte_free(net_hw->eth_qstats_base);
 	rte_free(net_hw->eth_xstats_base);
 ipsec_exit:
 	nfp_ipsec_uninit(eth_dev);

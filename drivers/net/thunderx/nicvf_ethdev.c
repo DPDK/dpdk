@@ -306,13 +306,13 @@ nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 
 	/* Reading per RX ring stats */
 	for (qidx = rx_start; qidx <= rx_end; qidx++) {
-		if (qidx >= RTE_ETHDEV_QUEUE_STAT_CNTRS)
+		if (qidx >= dev->data->nb_rx_queues)
 			break;
 
 		nicvf_hw_get_rx_qstats(nic, &rx_qstats, qidx);
 		if (qstats != NULL) {
-			qstats->q_ibytes[qidx] = rx_qstats.q_rx_bytes;
-			qstats->q_ipackets[qidx] = rx_qstats.q_rx_packets;
+			qstats[qidx].q_ibytes = rx_qstats.q_rx_bytes;
+			qstats[qidx].q_ipackets = rx_qstats.q_rx_packets;
 		}
 	}
 
@@ -321,13 +321,13 @@ nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 
 	/* Reading per TX ring stats */
 	for (qidx = tx_start; qidx <= tx_end; qidx++) {
-		if (qidx >= RTE_ETHDEV_QUEUE_STAT_CNTRS)
+		if (qidx >= dev->data->nb_tx_queues)
 			break;
 
 		nicvf_hw_get_tx_qstats(nic, &tx_qstats, qidx);
 		if (qstats != NULL) {
-			qstats->q_obytes[qidx] = tx_qstats.q_tx_bytes;
-			qstats->q_opackets[qidx] = tx_qstats.q_tx_packets;
+			qstats[qidx].q_obytes = tx_qstats.q_tx_bytes;
+			qstats[qidx].q_opackets = tx_qstats.q_tx_packets;
 		}
 	}
 
@@ -342,14 +342,14 @@ nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 
 		/* Reading per RX ring stats */
 		for (qidx = rx_start; qidx <= rx_end; qidx++) {
-			if (qidx >= RTE_ETHDEV_QUEUE_STAT_CNTRS)
+			if (qidx >= dev->data->nb_rx_queues)
 				break;
 
 			nicvf_hw_get_rx_qstats(snic, &rx_qstats,
 					       qidx % MAX_RCV_QUEUES_PER_QS);
 			if (qstats != NULL) {
-				qstats->q_ibytes[qidx] = rx_qstats.q_rx_bytes;
-				qstats->q_ipackets[qidx] = rx_qstats.q_rx_packets;
+				qstats[qidx].q_ibytes = rx_qstats.q_rx_bytes;
+				qstats[qidx].q_ipackets = rx_qstats.q_rx_packets;
 			}
 		}
 
@@ -357,14 +357,14 @@ nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		nicvf_tx_range(dev, snic, &tx_start, &tx_end);
 		/* Reading per TX ring stats */
 		for (qidx = tx_start; qidx <= tx_end; qidx++) {
-			if (qidx >= RTE_ETHDEV_QUEUE_STAT_CNTRS)
+			if (qidx >= dev->data->nb_tx_queues)
 				break;
 
 			nicvf_hw_get_tx_qstats(snic, &tx_qstats,
 					       qidx % MAX_SND_QUEUES_PER_QS);
 			if (qstats != NULL) {
-				qstats->q_obytes[qidx] = tx_qstats.q_tx_bytes;
-				qstats->q_opackets[qidx] = tx_qstats.q_tx_packets;
+				qstats[qidx].q_obytes = tx_qstats.q_tx_bytes;
+				qstats[qidx].q_opackets = tx_qstats.q_tx_packets;
 			}
 		}
 	}

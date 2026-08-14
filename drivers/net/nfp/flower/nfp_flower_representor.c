@@ -324,15 +324,15 @@ nfp_flower_repr_stats_get(struct rte_eth_dev *ethdev,
 	repr->repr_stats.ipackets = 0;
 	repr->repr_stats.ibytes = 0;
 	for (i = 0; i < ethdev->data->nb_rx_queues; i++) {
-		repr->repr_stats.ipackets += repr->repr_qstats.q_ipackets[i];
-		repr->repr_stats.ibytes += repr->repr_qstats.q_ibytes[i];
+		repr->repr_stats.ipackets += repr->repr_qstats[i].q_ipackets;
+		repr->repr_stats.ibytes += repr->repr_qstats[i].q_ibytes;
 	}
 
 	repr->repr_stats.opackets = 0;
 	repr->repr_stats.obytes = 0;
 	for (i = 0; i < ethdev->data->nb_tx_queues; i++) {
-		repr->repr_stats.opackets += repr->repr_qstats.q_opackets[i];
-		repr->repr_stats.obytes += repr->repr_qstats.q_obytes[i];
+		repr->repr_stats.opackets += repr->repr_qstats[i].q_opackets;
+		repr->repr_stats.obytes += repr->repr_qstats[i].q_obytes;
 	}
 
 	*stats = repr->repr_stats;
@@ -347,7 +347,8 @@ nfp_flower_repr_stats_reset(struct rte_eth_dev *ethdev)
 
 	repr = ethdev->data->dev_private;
 	memset(&repr->repr_stats, 0, sizeof(struct rte_eth_stats));
-	memset(&repr->repr_qstats, 0, sizeof(struct eth_queue_stats));
+	memset(repr->repr_qstats, 0,
+			sizeof(struct eth_queue_stats) * repr->repr_nb_qstats);
 
 	return 0;
 }
@@ -403,8 +404,8 @@ nfp_flower_repr_rx_burst(void *rx_queue,
 		for (i = 0; i < total_dequeue; i++)
 			data_len += rx_pkts[i]->data_len;
 
-		repr->repr_qstats.q_ipackets[rxq->qidx] += total_dequeue;
-		repr->repr_qstats.q_ibytes[rxq->qidx] += data_len;
+		repr->repr_qstats[rxq->qidx].q_ipackets += total_dequeue;
+		repr->repr_qstats[rxq->qidx].q_ibytes += data_len;
 	}
 
 	return total_dequeue;
@@ -451,8 +452,8 @@ nfp_flower_repr_tx_burst(void *tx_queue,
 		for (i = 0; i < sent; i++)
 			data_len += tx_pkts[i]->data_len;
 
-		repr->repr_qstats.q_opackets[txq->qidx] += sent;
-		repr->repr_qstats.q_obytes[txq->qidx] += data_len;
+		repr->repr_qstats[txq->qidx].q_opackets += sent;
+		repr->repr_qstats[txq->qidx].q_obytes += data_len;
 	}
 
 	return sent;
@@ -528,6 +529,7 @@ nfp_flower_repr_uninit(struct rte_eth_dev *eth_dev)
 
 	repr = eth_dev->data->dev_private;
 	nfp_flower_repr_base_uninit(repr);
+	rte_free(repr->repr_qstats);
 	rte_free(repr->ring);
 
 	if (nfp_flower_repr_is_phy(repr)) {
@@ -893,6 +895,17 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 		return -ENOMEM;
 	}
 
+	repr->repr_nb_qstats = RTE_MAX(app_fw_flower->pf_hw->max_rx_queues,
+			app_fw_flower->pf_hw->max_tx_queues);
+	repr->repr_qstats = rte_zmalloc_socket("nfp_repr_qstats",
+			sizeof(struct eth_queue_stats) * repr->repr_nb_qstats,
+			RTE_CACHE_LINE_SIZE, numa_node);
+	if (repr->repr_qstats == NULL) {
+		PMD_DRV_LOG(ERR, "Queue stats alloc failed for %s.", ring_name);
+		rte_free(repr->ring);
+		return -ENOMEM;
+	}
+
 	eth_dev->dev_ops = &nfp_flower_repr_dev_ops;
 	eth_dev->rx_pkt_burst = nfp_flower_repr_rx_burst;
 	eth_dev->tx_pkt_burst = nfp_flower_repr_tx_burst;
@@ -928,6 +941,7 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 	return 0;
 
 ring_cleanup:
+	rte_free(repr->repr_qstats);
 	rte_free(repr->ring);
 
 	return ret;
