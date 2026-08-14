@@ -44,6 +44,7 @@
 #define IAVF_ENABLE_AUTO_RESET_ARG "auto_reset"
 #define IAVF_NO_POLL_ON_LINK_DOWN_ARG "no-poll-on-link-down"
 #define IAVF_MBUF_CHECK_ARG       "mbuf_check"
+#define IAVF_ENABLE_LLDP_ARG       "enable_lldp"
 #define IAVF_ENABLE_PTYPE_LLDP_ARG "enable_ptype_lldp"
 uint64_t iavf_timestamp_dynflag;
 int iavf_timestamp_dynfield_offset = -1;
@@ -55,6 +56,7 @@ static const char * const iavf_valid_args[] = {
 	IAVF_ENABLE_AUTO_RESET_ARG,
 	IAVF_NO_POLL_ON_LINK_DOWN_ARG,
 	IAVF_MBUF_CHECK_ARG,
+	IAVF_ENABLE_LLDP_ARG,
 	IAVF_ENABLE_PTYPE_LLDP_ARG,
 	NULL
 };
@@ -1061,12 +1063,12 @@ iavf_dev_start(struct rte_eth_dev *dev)
 	if (rte_mbuf_dynfield_lookup("intel_pmd_dynfield_tx_lldp", NULL) >= 0)
 		PMD_DRV_LOG(WARNING,
 			"Tx LLDP dynamic mbuf field is no longer supported. "
-			"Use enable_ptype_lldp devarg and packet type instead.");
+			"Use enable_lldp devarg and packet type instead.");
 
 	for (uint16_t i = 0; i < dev->data->nb_tx_queues; i++) {
 		struct ci_tx_queue *txq = dev->data->tx_queues[i];
 		if (txq)
-			txq->lldp_enabled = adapter->devargs.enable_ptype_lldp;
+			txq->lldp_enabled = adapter->devargs.enable_lldp;
 	}
 
 	if (iavf_init_queues(dev) != 0) {
@@ -2561,8 +2563,15 @@ static int iavf_parse_devargs(struct rte_eth_dev *dev)
 		ad->devargs.no_poll_on_link_down = 1;
 	}
 
-	ret = rte_kvargs_process(kvlist, IAVF_ENABLE_PTYPE_LLDP_ARG,
-				 &parse_bool, &ad->devargs.enable_ptype_lldp);
+	if (rte_kvargs_count(kvlist, IAVF_ENABLE_PTYPE_LLDP_ARG) > 0) {
+		PMD_INIT_LOG(ERR, "devarg '%s' has been renamed to '%s'",
+			IAVF_ENABLE_PTYPE_LLDP_ARG, IAVF_ENABLE_LLDP_ARG);
+		ret = -EINVAL;
+		goto bail;
+	}
+
+	ret = rte_kvargs_process(kvlist, IAVF_ENABLE_LLDP_ARG,
+				 &parse_bool, &ad->devargs.enable_lldp);
 	if (ret)
 		goto bail;
 

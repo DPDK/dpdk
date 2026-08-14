@@ -79,6 +79,8 @@ New Features
   * Runtime Rx/Tx queue setup is now automatically disabled
     while a per-queue bandwidth ``rte_tm`` hierarchy is committed,
     to avoid corrupting queue state on E810 VFs.
+  * Renamed the ``enable_ptype_lldp`` devarg to ``enable_lldp``.
+    The old name is no longer accepted.
 
 * **Updated NXP DPAA2 ethernet driver.**
 
@@ -170,7 +172,7 @@ Removed Items
 * net/iavf: Removed the dynamic mbuf field method for detecting LLDP packets
   on the transmit path, along with the ``set tx lldp on`` testpmd command.
   The only remaining method for detecting LLDP packets is by using
-  the mbuf packet type in conjunction with the ``enable_ptype_lldp`` devarg.
+  the mbuf packet type in conjunction with the ``enable_lldp`` devarg.
 
 
 API Changes
