@@ -239,9 +239,7 @@ static int eth_igc_xstats_get_names_by_id(struct rte_eth_dev *dev,
 		const uint64_t *ids, struct rte_eth_xstat_name *xstats_names,
 		unsigned int limit);
 static int eth_igc_xstats_reset(struct rte_eth_dev *dev);
-static int
-eth_igc_queue_stats_mapping_set(struct rte_eth_dev *dev,
-	uint16_t queue_id, uint8_t stat_idx, uint8_t is_rx);
+
 static int
 eth_igc_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
 static int
@@ -317,7 +315,6 @@ static const struct eth_dev_ops eth_igc_ops = {
 	.xstats_get_names	= eth_igc_xstats_get_names,
 	.stats_reset		= eth_igc_xstats_reset,
 	.xstats_reset		= eth_igc_xstats_reset,
-	.queue_stats_mapping_set = eth_igc_queue_stats_mapping_set,
 	.rx_queue_intr_enable	= eth_igc_rx_queue_intr_enable,
 	.rx_queue_intr_disable	= eth_igc_rx_queue_intr_disable,
 	.flow_ctrl_get		= eth_igc_flow_ctrl_get,
@@ -1362,7 +1359,7 @@ eth_igc_dev_init(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct igc_adapter *igc = IGC_DEV_PRIVATE(dev);
 	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
-	int i, error = 0;
+	int error = 0;
 
 	PMD_INIT_FUNC_TRACE();
 	dev->dev_ops = &eth_igc_ops;
@@ -1492,12 +1489,6 @@ eth_igc_dev_init(struct rte_eth_dev *dev)
 
 	/* enable support intr */
 	igc_intr_other_enable(dev);
-
-	/* initiate queue status */
-	for (i = 0; i < IGC_QUEUE_PAIRS_NUM; i++) {
-		igc->txq_stats_map[i] = -1;
-		igc->rxq_stats_map[i] = -1;
-	}
 
 	igc_flow_init(dev);
 	igc_clear_all_filter(dev);
@@ -2031,7 +2022,6 @@ static int
 eth_igc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats,
 		struct eth_queue_stats *qstats)
 {
-	struct igc_adapter *igc = IGC_DEV_PRIVATE(dev);
 	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct e1000_hw_stats *stats = IGC_DEV_PRIVATE_STATS(dev);
 	struct igc_hw_queue_stats *queue_stats =
@@ -2069,20 +2059,12 @@ eth_igc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats,
 
 	/* Get per-queue statuses */
 	if (qstats) {
-		for (i = 0; i < IGC_QUEUE_PAIRS_NUM; i++) {
-			/* GET TX queue statuses */
-			int map_id = igc->txq_stats_map[i];
-			if (map_id >= 0) {
-				qstats->q_opackets[map_id] += queue_stats->pqgptc[i];
-				qstats->q_obytes[map_id] += queue_stats->pqgotc[i];
-			}
-			/* Get RX queue statuses */
-			map_id = igc->rxq_stats_map[i];
-			if (map_id >= 0) {
-				qstats->q_ipackets[map_id] += queue_stats->pqgprc[i];
-				qstats->q_ibytes[map_id] += queue_stats->pqgorc[i];
-				qstats->q_errors[map_id] += queue_stats->rqdpc[i];
-			}
+		for (i = 0; i < RTE_MIN(IGC_QUEUE_PAIRS_NUM, RTE_ETHDEV_QUEUE_STAT_CNTRS); i++) {
+			qstats->q_opackets[i] += queue_stats->pqgptc[i];
+			qstats->q_obytes[i] += queue_stats->pqgotc[i];
+			qstats->q_ipackets[i] += queue_stats->pqgprc[i];
+			qstats->q_ibytes[i] += queue_stats->pqgorc[i];
+			qstats->q_errors[i] += queue_stats->rqdpc[i];
 		}
 	}
 
@@ -2229,28 +2211,6 @@ eth_igc_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 		}
 		return n;
 	}
-}
-
-static int
-eth_igc_queue_stats_mapping_set(struct rte_eth_dev *dev,
-		uint16_t queue_id, uint8_t stat_idx, uint8_t is_rx)
-{
-	struct igc_adapter *igc = IGC_DEV_PRIVATE(dev);
-
-	/* check queue id is valid */
-	if (queue_id >= IGC_QUEUE_PAIRS_NUM) {
-		PMD_DRV_LOG(ERR, "queue id(%u) error, max is %u",
-			queue_id, IGC_QUEUE_PAIRS_NUM - 1);
-		return -EINVAL;
-	}
-
-	/* store the mapping status id */
-	if (is_rx)
-		igc->rxq_stats_map[queue_id] = stat_idx;
-	else
-		igc->txq_stats_map[queue_id] = stat_idx;
-
-	return 0;
 }
 
 static int
