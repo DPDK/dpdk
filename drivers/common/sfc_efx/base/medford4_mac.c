@@ -172,8 +172,8 @@ medford4_mac_stats_upload(
 	efx_port_t *epp = &(enp->en_port);
 	efx_rc_t rc;
 
-	rc = efx_np_mac_stats(enp,
-		    epp->ep_np_handle, EFX_STATS_UPLOAD, esmp, 0);
+	rc = efx_np_mac_stats(enp, epp->ep_np_handle, enp->en_vport_id,
+	    esmp, EFX_STATS_UPLOAD, 0);
 	if (rc != 0)
 		goto fail1;
 
@@ -196,13 +196,15 @@ medford4_mac_stats_periodic(
 
 	if (period_ms == 0) {
 		rc = efx_np_mac_stats(enp, epp->ep_np_handle,
-			    EFX_STATS_DISABLE, NULL, 0);
+		    enp->en_vport_id, NULL, EFX_STATS_DISABLE, 0);
 	} else if (events != B_FALSE) {
 		rc = efx_np_mac_stats(enp, epp->ep_np_handle,
-			    EFX_STATS_ENABLE_EVENTS, esmp, period_ms);
+		    enp->en_vport_id, esmp, EFX_STATS_ENABLE_EVENTS,
+		    period_ms);
 	} else {
 		rc = efx_np_mac_stats(enp, epp->ep_np_handle,
-			    EFX_STATS_ENABLE_NOEVENTS, esmp, period_ms);
+		    enp->en_vport_id, esmp, EFX_STATS_ENABLE_NOEVENTS,
+		    period_ms);
 	}
 
 	if (rc != 0)
