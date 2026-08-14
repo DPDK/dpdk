@@ -216,11 +216,6 @@ struct ixgbe_interrupt {
 	uint32_t mask_original;
 };
 
-struct ixgbe_stat_mapping_registers {
-	uint32_t tqsm[IXGBE_NB_STAT_MAPPING_REGS];
-	uint32_t rqsmr[IXGBE_NB_STAT_MAPPING_REGS];
-};
-
 struct ixgbe_vfta {
 	uint32_t vfta[IXGBE_VFTA_SIZE];
 };
@@ -471,7 +466,6 @@ struct ixgbe_adapter {
 	struct rte_eth_fdir_conf    fdir_conf;
 	struct ixgbe_hw_fdir_info   fdir;
 	struct ixgbe_interrupt      intr;
-	struct ixgbe_stat_mapping_registers stat_mappings;
 	struct ixgbe_vfta           shadow_vfta;
 	struct ixgbe_hwstrip		hwstrip;
 	struct ixgbe_dcb_config     dcb_config;
@@ -545,9 +539,6 @@ uint16_t ixgbe_vf_representor_tx_burst(void *tx_queue, struct rte_mbuf **tx_pkts
 
 #define IXGBE_DEV_PRIVATE_TO_FDIR_INFO(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->fdir)
-
-#define IXGBE_DEV_PRIVATE_TO_STAT_MAPPINGS(adapter) \
-	(&((struct ixgbe_adapter *)adapter)->stat_mappings)
 
 #define IXGBE_DEV_PRIVATE_TO_VFTA(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->shadow_vfta)
