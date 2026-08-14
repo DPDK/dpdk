@@ -1546,6 +1546,7 @@ mrvl_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 			MRVL_LOG(ERR,
 				"tx queue %d stats out of range (0 - %d)",
 				idx, RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
+			continue;
 		}
 
 		ret = pp2_ppio_outq_get_statistics(priv->ppio, idx,
