@@ -1614,12 +1614,13 @@ fail1:
 efx_np_mac_stats(
 	__in		efx_nic_t *enp,
 	__in		efx_np_handle_t nph,
-	__in		efx_stats_action_t action,
+	__in		uint32_t vport_id,
 	__in_opt	const efsys_mem_t *esmp,
+	__in		efx_stats_action_t action,
 	__in		uint16_t period_ms)
 {
 	EFX_MCDI_DECLARE_BUF(payload,
-	    MC_CMD_GET_NETPORT_STATISTICS_IN_LEN,
+	    MC_CMD_GET_NETPORT_STATISTICS_V2_IN_LEN,
 	    MC_CMD_GET_NETPORT_STATISTICS_OUT_LENMIN);
 	boolean_t enable = (action == EFX_STATS_ENABLE_NOEVENTS);
 	boolean_t events = (action == EFX_STATS_ENABLE_EVENTS);
@@ -1630,7 +1631,7 @@ efx_np_mac_stats(
 	efx_rc_t rc;
 
 	req.emr_out_length = MC_CMD_GET_NETPORT_STATISTICS_OUT_LENMIN;
-	req.emr_in_length = MC_CMD_GET_NETPORT_STATISTICS_IN_LEN;
+	req.emr_in_length = MC_CMD_GET_NETPORT_STATISTICS_V2_IN_LEN;
 	req.emr_cmd = MC_CMD_GET_NETPORT_STATISTICS;
 	req.emr_out_buf = payload;
 	req.emr_in_buf = payload;
@@ -1671,6 +1672,14 @@ efx_np_mac_stats(
 		    EFSYS_MEM_ADDR(esmp) >> 32);
 		MCDI_IN_SET_DWORD(req, GET_NETPORT_STATISTICS_IN_DMA_LEN, sz);
 	}
+
+	/*
+	 * NOTE: Do not use EVB_PORT_ID_ASSIGNED when disabling periodic stats,
+	 *	 as this may fail (and leave periodic DMA enabled) if the
+	 *	 vadapter has already been deleted.
+	 */
+	MCDI_IN_SET_DWORD(req, GET_NETPORT_STATISTICS_V2_IN_PORT_ID,
+		(disable ? EVB_PORT_ID_NULL : vport_id));
 
 	efx_mcdi_execute(enp, &req);
 

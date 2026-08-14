@@ -2250,7 +2250,7 @@ efx_mcdi_mac_stats_clear(
 
 	if (efx_np_supported(enp) != B_FALSE) {
 		rc = efx_np_mac_stats(enp, epp->ep_np_handle,
-			    EFX_STATS_CLEAR, NULL, 0);
+		    enp->en_vport_id, NULL, EFX_STATS_CLEAR, 0);
 	} else {
 		rc = efx_mcdi_mac_stats(enp, enp->en_vport_id, NULL,
 				EFX_STATS_CLEAR, 0);

@@ -1988,8 +1988,9 @@ extern	__checkReturn	efx_rc_t
 efx_np_mac_stats(
 	__in		efx_nic_t *enp,
 	__in		efx_np_handle_t nph,
-	__in		efx_stats_action_t action,
+	__in		uint32_t vport_id,
 	__in_opt	const efsys_mem_t *esmp,
+	__in		efx_stats_action_t action,
 	__in		uint16_t period_ms);
 #endif /* EFSYS_OPT_MAC_STATS */
 
