@@ -504,7 +504,7 @@ efx_np_sw_link_mode_to_cap(
 	return (0);
 }
 
-static					void
+__success(*supportedp != 0)	static	void
 efx_np_cap_enum_sw_to_hw(
 	__in_ecount(hw_sw_map_nentries)	const struct efx_np_cap_map *hw_sw_map,
 	__in				unsigned int hw_sw_map_nentries,
