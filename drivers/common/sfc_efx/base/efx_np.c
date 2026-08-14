@@ -436,9 +436,6 @@ efx_np_link_state(
 	    MCDI_OUT2(req, const uint8_t, LINK_STATE_OUT_ADVERTISED_ABILITIES),
 	    &lsp->enls_adv_cap_mask);
 
-	if (lsp->enls_an_supported != B_FALSE)
-		lsp->enls_adv_cap_mask |= 1U << EFX_PHY_CAP_AN;
-
 	efx_np_cap_hw_data_to_sw_mask(
 	    MCDI_OUT2(req, const uint8_t,
 		    LINK_STATE_OUT_LINK_PARTNER_ABILITIES),
@@ -1030,10 +1027,12 @@ efx_np_attach(
 	if (rc != 0)
 		goto fail3;
 
-	if (ls.enls_an_supported != B_FALSE)
-		epp->ep_phy_cap_mask |= 1U << EFX_PHY_CAP_AN;
-
 	epp->ep_adv_cap_mask = ls.enls_adv_cap_mask;
+
+	if (ls.enls_an_supported != B_FALSE) {
+		epp->ep_adv_cap_mask |= 1U << EFX_PHY_CAP_AN;
+		epp->ep_phy_cap_mask |= 1U << EFX_PHY_CAP_AN;
+	}
 
 #if EFSYS_OPT_LOOPBACK
 	efx_np_assign_loopback_props(enp);

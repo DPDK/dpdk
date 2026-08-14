@@ -34,13 +34,16 @@ medford4_phy_get_link(
 	efx_np_handle_t nph = enp->en_port.ep_np_handle;
 	efx_np_link_state_t ls;
 	efx_np_mac_state_t ms;
+	uint32_t preserve_an;
 	efx_rc_t rc;
+
+	preserve_an = enp->en_port.ep_adv_cap_mask & (1U << EFX_PHY_CAP_AN);
 
 	rc = efx_np_link_state(enp, nph, &ls);
 	if (rc != 0)
 		goto fail1;
 
-	elsp->epls.epls_adv_cap_mask = ls.enls_adv_cap_mask;
+	elsp->epls.epls_adv_cap_mask = ls.enls_adv_cap_mask | preserve_an;
 	elsp->epls.epls_lp_cap_mask = ls.enls_lp_cap_mask;
 	elsp->epls.epls_lane_count = ls.enls_lane_count;
 	elsp->els_loopback = ls.enls_loopback;
