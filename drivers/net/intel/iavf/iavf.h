@@ -325,7 +325,7 @@ struct iavf_devargs {
 	int auto_reset;
 	int no_poll_on_link_down;
 	uint64_t mbuf_check;
-	int enable_ptype_lldp;
+	int enable_lldp;
 };
 
 struct iavf_security_ctx;
