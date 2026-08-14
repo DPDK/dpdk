@@ -394,11 +394,10 @@ efx_mcdi_rss_context_write_table(
 	__in			unsigned int nentries)
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	uint8_t *payload = NULL;
 	efx_mcdi_req_t req;
-	EFX_MCDI_DECLARE_BUF(payload,
-	     MC_CMD_RSS_CONTEXT_WRITE_TABLE_IN_LENMAX_MCDI2,
-	     MC_CMD_RSS_CONTEXT_WRITE_TABLE_OUT_LEN);
 	unsigned int i;
+	size_t size;
 	int rc;
 
 	if (nentries >
@@ -413,6 +412,16 @@ efx_mcdi_rss_context_write_table(
 		goto fail2;
 	}
 
+	size = EFX_MCDI_BUF_SIZE(
+	    MC_CMD_RSS_CONTEXT_WRITE_TABLE_IN_LEN(nentries),
+	    MC_CMD_RSS_CONTEXT_WRITE_TABLE_OUT_LEN);
+
+	EFSYS_KMEM_ALLOC(enp->en_esip, size, payload);
+	if (payload == NULL) {
+		rc = ENOMEM;
+		goto fail3;
+	}
+
 	req.emr_cmd = MC_CMD_RSS_CONTEXT_WRITE_TABLE;
 	req.emr_in_buf = payload;
 	req.emr_in_length = MC_CMD_RSS_CONTEXT_WRITE_TABLE_IN_LEN(nentries);
@@ -425,7 +434,7 @@ efx_mcdi_rss_context_write_table(
 	for (i = 0; i < nentries; ++i) {
 		if (table[i] >= encp->enc_rx_scale_indirection_max_nqueues) {
 			rc = EINVAL;
-			goto fail3;
+			goto fail4;
 		}
 
 		MCDI_IN_POPULATE_INDEXED_DWORD_2(req,
@@ -437,13 +446,17 @@ efx_mcdi_rss_context_write_table(
 	efx_mcdi_execute(enp, &req);
 	if (req.emr_rc != 0) {
 		rc = req.emr_rc;
-		goto fail4;
+		goto fail5;
 	}
 
+	EFSYS_KMEM_FREE(enp->en_esip, size, payload);
 	return (0);
 
+fail5:
+	EFSYS_PROBE(fail5);
 fail4:
 	EFSYS_PROBE(fail4);
+	EFSYS_KMEM_FREE(enp->en_esip, size, payload);
 fail3:
 	EFSYS_PROBE(fail3);
 fail2:
