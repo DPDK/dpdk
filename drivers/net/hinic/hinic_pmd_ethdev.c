@@ -1329,14 +1329,13 @@ hinic_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 
 	/* rx queue stats */
 	if (qstats) {
-		q_num = (nic_dev->num_rq < RTE_ETHDEV_QUEUE_STAT_CNTRS) ?
-				nic_dev->num_rq : RTE_ETHDEV_QUEUE_STAT_CNTRS;
+		q_num = (nic_dev->num_rq < dev->data->nb_rx_queues) ?
+				nic_dev->num_rq : dev->data->nb_rx_queues;
 		for (i = 0; i < q_num; i++) {
 			rxq = nic_dev->rxqs[i];
 			hinic_rxq_get_stats(rxq, &rxq_stats);
-			qstats->q_ipackets[i] = rxq_stats.packets;
-			qstats->q_ibytes[i] = rxq_stats.bytes;
-			qstats->q_errors[i] = rxq_stats.rx_discards;
+			qstats[i].q_ipackets = rxq_stats.packets;
+			qstats[i].q_ibytes = rxq_stats.bytes;
 
 			stats->ierrors += rxq_stats.errors;
 			rx_discards_pmd += rxq_stats.rx_discards;
@@ -1344,13 +1343,13 @@ hinic_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		}
 
 		/* tx queue stats */
-		q_num = (nic_dev->num_sq < RTE_ETHDEV_QUEUE_STAT_CNTRS) ?
-			nic_dev->num_sq : RTE_ETHDEV_QUEUE_STAT_CNTRS;
+		q_num = (nic_dev->num_sq < dev->data->nb_tx_queues) ?
+			nic_dev->num_sq : dev->data->nb_tx_queues;
 		for (i = 0; i < q_num; i++) {
 			txq = nic_dev->txqs[i];
 			hinic_txq_get_stats(txq, &txq_stats);
-			qstats->q_opackets[i] = txq_stats.packets;
-			qstats->q_obytes[i] = txq_stats.bytes;
+			qstats[i].q_opackets = txq_stats.packets;
+			qstats[i].q_obytes = txq_stats.bytes;
 			stats->oerrors += (txq_stats.tx_busy + txq_stats.off_errs);
 		}
 	} else {

@@ -954,12 +954,13 @@ atl_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 	stats->rx_nombuf = swstats->rx_nombuf;
 
 	if (qstats != NULL) {
-		for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
-			qstats->q_ipackets[i] = swstats->q_ipackets[i];
-			qstats->q_opackets[i] = swstats->q_opackets[i];
-			qstats->q_ibytes[i] = swstats->q_ibytes[i];
-			qstats->q_obytes[i] = swstats->q_obytes[i];
-			qstats->q_errors[i] = swstats->q_errors[i];
+		for (i = 0; i < dev->data->nb_rx_queues && i < AQ_HW_MAX_RX_QUEUES; i++) {
+			qstats[i].q_ipackets = swstats->rxq[i].packets;
+			qstats[i].q_ibytes = swstats->rxq[i].bytes;
+		}
+		for (i = 0; i < dev->data->nb_tx_queues && i < AQ_HW_MAX_TX_QUEUES; i++) {
+			qstats[i].q_opackets = swstats->txq[i].packets;
+			qstats[i].q_obytes = swstats->txq[i].bytes;
 		}
 	}
 	return 0;

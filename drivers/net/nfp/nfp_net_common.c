@@ -919,35 +919,29 @@ nfp_net_stats_get(struct rte_eth_dev *dev,
 
 	/* Reading per RX ring stats */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
-			break;
-
 		uint64_t q_ipackets = nn_cfg_readq(&hw->super, NFP_NET_CFG_RXR_STATS(i));
-		q_ipackets -= hw->eth_qstats_base.q_ipackets[i];
+		q_ipackets -= hw->eth_qstats_base[i].q_ipackets;
 
 		uint64_t q_ibytes = nn_cfg_readq(&hw->super, NFP_NET_CFG_RXR_STATS(i) + 0x8);
-		q_ibytes -= hw->eth_qstats_base.q_ibytes[i];
+		q_ibytes -= hw->eth_qstats_base[i].q_ibytes;
 
 		if (qstats != NULL) {
-			qstats->q_ipackets[i] = q_ipackets;
-			qstats->q_ibytes[i] = q_ibytes;
+			qstats[i].q_ipackets = q_ipackets;
+			qstats[i].q_ibytes = q_ibytes;
 		}
 	}
 
 	/* Reading per TX ring stats */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
-			break;
-
 		uint64_t q_opackets = nn_cfg_readq(&hw->super, NFP_NET_CFG_TXR_STATS(i));
-		q_opackets -= hw->eth_qstats_base.q_opackets[i];
+		q_opackets -= hw->eth_qstats_base[i].q_opackets;
 
 		uint64_t q_obytes = nn_cfg_readq(&hw->super, NFP_NET_CFG_TXR_STATS(i) + 0x8);
-		q_obytes -= hw->eth_qstats_base.q_obytes[i];
+		q_obytes -= hw->eth_qstats_base[i].q_obytes;
 
 		if (qstats != NULL) {
-			qstats->q_opackets[i] = q_opackets;
-			qstats->q_obytes[i] = q_obytes;
+			qstats[i].q_opackets = q_opackets;
+			qstats[i].q_obytes = q_obytes;
 		}
 	}
 
@@ -999,25 +993,19 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 
 	/* Reading per RX ring stats */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
-			break;
-
-		hw->eth_qstats_base.q_ipackets[i] =
+		hw->eth_qstats_base[i].q_ipackets =
 				nn_cfg_readq(&hw->super, NFP_NET_CFG_RXR_STATS(i));
 
-		hw->eth_qstats_base.q_ibytes[i] =
+		hw->eth_qstats_base[i].q_ibytes =
 				nn_cfg_readq(&hw->super, NFP_NET_CFG_RXR_STATS(i) + 0x8);
 	}
 
 	/* Reading per TX ring stats */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
-			break;
-
-		hw->eth_qstats_base.q_opackets[i] =
+		hw->eth_qstats_base[i].q_opackets =
 				nn_cfg_readq(&hw->super, NFP_NET_CFG_TXR_STATS(i));
 
-		hw->eth_qstats_base.q_obytes[i] =
+		hw->eth_qstats_base[i].q_obytes =
 				nn_cfg_readq(&hw->super, NFP_NET_CFG_TXR_STATS(i) + 0x8);
 	}
 

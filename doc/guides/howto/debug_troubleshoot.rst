@@ -120,8 +120,9 @@ RX-TX port and associated cores :numref:`dtg_rx_tx_drop`.
    * Identify if there are multiple RX queue configured for port by
      ``nb_rx_queues`` using ``rte_eth_dev_info_get``.
 
-   * Using ``rte_eth_dev_stats`` fetch drops in q_errors, check if RX thread
-     is configured to fetch packets from the port queue pair.
+   * Using ``rte_eth_dev_stats`` fetch drops in ``ierrors`` and ``imissed``,
+     check if RX thread is configured to fetch packets from the port queue
+     pair.
 
    * Using ``rte_eth_dev_stats`` shows drops in ``rx_nombuf``, check if RX
      thread has enough cycles to consume the packets from the queue.

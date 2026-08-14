@@ -53,9 +53,10 @@ struct mlx5_xstats_name_off {
 	unsigned int offset;
 };
 
+/* Only used with offsetof() for the xstats names table. */
 struct mlx5_rq_stats {
 	/** Total number of hairpin queue packets received that are dropped. */
-	uint64_t q_oobs[RTE_ETHDEV_QUEUE_STAT_CNTRS];
+	uint64_t q_oobs;
 };
 
 /* Compressed CQE context. */

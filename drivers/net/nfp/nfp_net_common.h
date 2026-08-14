@@ -250,7 +250,8 @@ struct nfp_net_hw {
 
 	/** Records starting point for counters */
 	struct rte_eth_stats eth_stats_base;
-	struct eth_queue_stats eth_qstats_base;
+	/** Per-queue counters, one entry per queue */
+	struct eth_queue_stats *eth_qstats_base;
 	struct rte_eth_xstat *eth_xstats_base;
 
 	struct nfp_cpp_area *ctrl_area;

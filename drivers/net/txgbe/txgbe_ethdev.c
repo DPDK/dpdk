@@ -2452,13 +2452,13 @@ txgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 	stats->obytes = hw_stats->tx_bytes;
 
 	if (qstats != NULL) {
-		for (i = 0; i < TXGBE_MAX_QP; i++) {
-			if (i >= RTE_ETHDEV_QUEUE_STAT_CNTRS)
-				break;
-			qstats->q_ipackets[i] += hw_stats->qp[i].rx_qp_packets;
-			qstats->q_ibytes[i] += hw_stats->qp[i].rx_qp_bytes;
-			qstats->q_opackets[i] += hw_stats->qp[i].tx_qp_packets;
-			qstats->q_obytes[i] += hw_stats->qp[i].tx_qp_bytes;
+		for (i = 0; i < TXGBE_MAX_QP && i < dev->data->nb_rx_queues; i++) {
+			qstats[i].q_ipackets += hw_stats->qp[i].rx_qp_packets;
+			qstats[i].q_ibytes += hw_stats->qp[i].rx_qp_bytes;
+		}
+		for (i = 0; i < TXGBE_MAX_QP && i < dev->data->nb_tx_queues; i++) {
+			qstats[i].q_opackets += hw_stats->qp[i].tx_qp_packets;
+			qstats[i].q_obytes += hw_stats->qp[i].tx_qp_bytes;
 		}
 	}
 

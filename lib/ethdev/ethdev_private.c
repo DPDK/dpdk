@@ -510,8 +510,6 @@ eth_stats_qstats_get(uint16_t port_id, struct rte_eth_stats *stats, struct eth_q
 	}
 
 	memset(stats, 0, sizeof(*stats));
-	if (qstats != NULL)
-		memset(qstats, 0, sizeof(*qstats));
 
 	if (dev->dev_ops->stats_get == NULL)
 		return -ENOTSUP;

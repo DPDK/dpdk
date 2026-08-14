@@ -1156,10 +1156,9 @@ axgbe_dev_stats_get(struct rte_eth_dev *dev,
 			stats->rx_nombuf += rxq->rx_mbuf_alloc_failed;
 			stats->ierrors += rxq->errors;
 
-			if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-				qstats->q_ipackets[i] = rxq->pkts;
-				qstats->q_ibytes[i] = rxq->bytes;
-				qstats->q_errors[i] = rxq->errors + rxq->rx_mbuf_alloc_failed;
+			if (qstats != NULL && i < dev->data->nb_rx_queues) {
+				qstats[i].q_ipackets = rxq->pkts;
+				qstats[i].q_ibytes = rxq->bytes;
 			}
 		} else {
 			PMD_DRV_LOG_LINE(DEBUG, "Rx queue not setup for port %d",
@@ -1174,9 +1173,9 @@ axgbe_dev_stats_get(struct rte_eth_dev *dev,
 			stats->obytes += txq->bytes;
 			stats->oerrors += txq->errors;
 
-			if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-				qstats->q_opackets[i] = txq->pkts;
-				qstats->q_obytes[i] = txq->bytes;
+			if (qstats != NULL && i < dev->data->nb_tx_queues) {
+				qstats[i].q_opackets = txq->pkts;
+				qstats[i].q_obytes = txq->bytes;
 			}
 		} else {
 			PMD_DRV_LOG_LINE(DEBUG, "Tx queue not setup for port %d",

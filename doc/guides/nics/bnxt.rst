@@ -588,9 +588,7 @@ Basic stats include:
 * ierrors
 * oerrors
 
-By default, per-queue stats for 16 queues are supported. For more than 16
-queues, BNXT PMD should be compiled with ``RTE_ETHDEV_QUEUE_STAT_CNTRS``
-set to the desired number of queues.
+Per-queue stats are supported for all configured queues.
 
 Extended Stats
 ^^^^^^^^^^^^^^

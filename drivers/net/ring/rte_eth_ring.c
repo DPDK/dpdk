@@ -203,17 +203,15 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 	unsigned long rx_total = 0, tx_total = 0;
 	const struct pmd_internals *internal = dev->data->dev_private;
 
-	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
-			i < dev->data->nb_rx_queues; i++) {
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		if (qstats != NULL)
-			qstats->q_ipackets[i] = internal->rx_ring_queues[i].rx_pkts;
+			qstats[i].q_ipackets = internal->rx_ring_queues[i].rx_pkts;
 		rx_total += internal->rx_ring_queues[i].rx_pkts;
 	}
 
-	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
-			i < dev->data->nb_tx_queues; i++) {
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		if (qstats != NULL)
-			qstats->q_opackets[i] = internal->tx_ring_queues[i].tx_pkts;
+			qstats[i].q_opackets = internal->tx_ring_queues[i].tx_pkts;
 		tx_total += internal->tx_ring_queues[i].tx_pkts;
 	}
 

@@ -25,9 +25,9 @@ nfb_eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		if (rx_queue == NULL)
 			continue;
 
-		if (qstats && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_ipackets[i] = rx_queue->rx_pkts;
-			qstats->q_ibytes[i] = rx_queue->rx_bytes;
+		if (qstats && i < dev->data->nb_rx_queues) {
+			qstats[i].q_ipackets = rx_queue->rx_pkts;
+			qstats[i].q_ibytes = rx_queue->rx_bytes;
 		}
 	}
 
@@ -36,9 +36,9 @@ nfb_eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		if (tx_queue == NULL)
 			continue;
 
-		if (qstats && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_opackets[i] = tx_queue->tx_pkts;
-			qstats->q_obytes[i] = tx_queue->tx_bytes;
+		if (qstats && i < dev->data->nb_tx_queues) {
+			qstats[i].q_opackets = tx_queue->tx_pkts;
+			qstats[i].q_obytes = tx_queue->tx_bytes;
 		}
 	}
 

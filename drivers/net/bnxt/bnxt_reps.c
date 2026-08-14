@@ -909,11 +909,10 @@ int bnxt_rep_stats_get_op(struct rte_eth_dev *eth_dev,
 		stats->imissed += rep_bp->rx_drop_pkts[i];
 
 		if (qstats) {
-			qstats->q_ipackets[i] = rep_bp->rx_pkts[i];
-			qstats->q_ibytes[i] = rep_bp->rx_bytes[i];
-			qstats->q_opackets[i] = rep_bp->tx_pkts[i];
-			qstats->q_obytes[i] = rep_bp->tx_bytes[i];
-			qstats->q_errors[i] = rep_bp->rx_drop_pkts[i];
+			qstats[i].q_ipackets = rep_bp->rx_pkts[i];
+			qstats[i].q_ibytes = rep_bp->rx_bytes[i];
+			qstats[i].q_opackets = rep_bp->tx_pkts[i];
+			qstats[i].q_obytes = rep_bp->tx_bytes[i];
 		}
 	}
 

@@ -626,9 +626,9 @@ otx_ep_dev_stats_get(struct rte_eth_dev *eth_dev,
 
 	for (i = 0; i < otx_epvf->nb_tx_queues; i++) {
 		ostats = &otx_epvf->instr_queue[i]->stats;
-		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_opackets[i] = ostats->tx_pkts;
-			qstats->q_obytes[i] = ostats->tx_bytes;
+		if (qstats != NULL && i < eth_dev->data->nb_tx_queues) {
+			qstats[i].q_opackets = ostats->tx_pkts;
+			qstats[i].q_obytes = ostats->tx_bytes;
 		}
 		stats->opackets += ostats->tx_pkts;
 		stats->obytes += ostats->tx_bytes;
@@ -636,10 +636,9 @@ otx_ep_dev_stats_get(struct rte_eth_dev *eth_dev,
 	}
 	for (i = 0; i < otx_epvf->nb_rx_queues; i++) {
 		istats = &otx_epvf->droq[i]->stats;
-		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_ipackets[i] = istats->pkts_received;
-			qstats->q_ibytes[i] = istats->bytes_received;
-			qstats->q_errors[i] = istats->rx_err;
+		if (qstats != NULL && i < eth_dev->data->nb_rx_queues) {
+			qstats[i].q_ipackets = istats->pkts_received;
+			qstats[i].q_ibytes = istats->bytes_received;
 		}
 		stats->ipackets += istats->pkts_received;
 		stats->ibytes += istats->bytes_received;

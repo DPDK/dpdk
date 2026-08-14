@@ -912,12 +912,13 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		rxq = &internals->rx_queues[i];
 		txq = rxq->pair;
 
-		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_ipackets[i] = rxq->stats.rx_pkts;
-			qstats->q_ibytes[i] = rxq->stats.rx_bytes;
-			qstats->q_opackets[i] = txq->stats.tx_pkts;
-			qstats->q_obytes[i] = txq->stats.tx_bytes;
-			qstats->q_errors[i] = 0; /* Not used */
+		if (qstats != NULL) {
+			qstats[i].q_ipackets = rxq->stats.rx_pkts;
+			qstats[i].q_ibytes = rxq->stats.rx_bytes;
+			if (i < dev->data->nb_tx_queues) {
+				qstats[i].q_opackets = txq->stats.tx_pkts;
+				qstats[i].q_obytes = txq->stats.tx_bytes;
+			}
 		}
 
 		ipackets += rxq->stats.rx_pkts;

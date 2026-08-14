@@ -1264,7 +1264,6 @@ static int ena_stats_get(struct rte_eth_dev *dev,
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 	int rc;
 	int i;
-	int max_rings_stats;
 
 	memset(&ena_stats, 0, sizeof(ena_stats));
 
@@ -1295,26 +1294,18 @@ static int ena_stats_get(struct rte_eth_dev *dev,
 
 	/* Queue statistics */
 	if (qstats) {
-		max_rings_stats = RTE_MIN(dev->data->nb_rx_queues,
-			RTE_ETHDEV_QUEUE_STAT_CNTRS);
-		for (i = 0; i < max_rings_stats; ++i) {
+		for (i = 0; i < dev->data->nb_rx_queues; ++i) {
 			struct ena_stats_rx *rx_stats = &adapter->rx_ring[i].rx_stats;
 
-			qstats->q_ibytes[i] = rx_stats->bytes;
-			qstats->q_ipackets[i] = rx_stats->cnt;
-			qstats->q_errors[i] = rx_stats->bad_desc_num +
-				rx_stats->bad_req_id +
-				rx_stats->bad_desc +
-				rx_stats->unknown_error;
+			qstats[i].q_ibytes = rx_stats->bytes;
+			qstats[i].q_ipackets = rx_stats->cnt;
 		}
 
-		max_rings_stats = RTE_MIN(dev->data->nb_tx_queues,
-			RTE_ETHDEV_QUEUE_STAT_CNTRS);
-		for (i = 0; i < max_rings_stats; ++i) {
+		for (i = 0; i < dev->data->nb_tx_queues; ++i) {
 			struct ena_stats_tx *tx_stats = &adapter->tx_ring[i].tx_stats;
 
-			qstats->q_obytes[i] = tx_stats->bytes;
-			qstats->q_opackets[i] = tx_stats->cnt;
+			qstats[i].q_obytes = tx_stats->bytes;
+			qstats[i].q_opackets = tx_stats->cnt;
 		}
 	}
 

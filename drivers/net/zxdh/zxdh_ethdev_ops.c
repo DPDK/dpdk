@@ -1824,37 +1824,29 @@ zxdh_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 	}
 
 	stats->rx_nombuf = dev->data->rx_mbuf_alloc_failed;
-	for (i = 0; (i < dev->data->nb_rx_queues) && (i < RTE_ETHDEV_QUEUE_STAT_CNTRS); i++) {
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct zxdh_virtnet_rx *rxvq = dev->data->rx_queues[i];
 
 		if (rxvq == NULL)
 			continue;
 		if (qstats != NULL) {
-			qstats->q_ipackets[i] = *(uint64_t *)(((char *)rxvq) +
+			qstats[i].q_ipackets = *(uint64_t *)(((char *)rxvq) +
 					zxdh_rxq_stat_strings[0].offset);
-			qstats->q_ibytes[i] = *(uint64_t *)(((char *)rxvq) +
+			qstats[i].q_ibytes = *(uint64_t *)(((char *)rxvq) +
 					zxdh_rxq_stat_strings[1].offset);
-			qstats->q_errors[i] = *(uint64_t *)(((char *)rxvq) +
-					zxdh_rxq_stat_strings[2].offset);
-			qstats->q_errors[i] += *(uint64_t *)(((char *)rxvq) +
-					zxdh_rxq_stat_strings[5].offset);
 		}
 	}
 
-	for (i = 0; (i < dev->data->nb_tx_queues) && (i < RTE_ETHDEV_QUEUE_STAT_CNTRS); i++) {
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		struct zxdh_virtnet_tx *txvq = dev->data->tx_queues[i];
 
 		if (txvq == NULL)
 			continue;
 		if (qstats != NULL) {
-			qstats->q_opackets[i] = *(uint64_t *)(((char *)txvq) +
+			qstats[i].q_opackets = *(uint64_t *)(((char *)txvq) +
 					zxdh_txq_stat_strings[0].offset);
-			qstats->q_obytes[i] = *(uint64_t *)(((char *)txvq) +
+			qstats[i].q_obytes = *(uint64_t *)(((char *)txvq) +
 					zxdh_txq_stat_strings[1].offset);
-			qstats->q_errors[i] += *(uint64_t *)(((char *)txvq) +
-					zxdh_txq_stat_strings[2].offset);
-			qstats->q_errors[i] += *(uint64_t *)(((char *)txvq) +
-					zxdh_txq_stat_strings[5].offset);
 		}
 	}
 	return 0;
@@ -2002,13 +1994,13 @@ int zxdh_dev_stats_reset(struct rte_eth_dev *dev)
 	if (hw->is_pf)
 		zxdh_hw_stats_reset(dev, ZXDH_MAC_STATS_RESET);
 	zxdh_np_stats_reset(dev);
-	for (i = 0; ((i < dev->data->nb_rx_queues) && (i < RTE_ETHDEV_QUEUE_STAT_CNTRS)); i++) {
+	for (i = 0; (i < dev->data->nb_rx_queues); i++) {
 		struct zxdh_virtnet_rx *rxvq = dev->data->rx_queues[i];
 		if (rxvq == NULL)
 			continue;
 		memset(&rxvq->stats, 0, sizeof(struct zxdh_virtnet_stats));
 	}
-	for (i = 0; ((i < dev->data->nb_tx_queues) && (i < RTE_ETHDEV_QUEUE_STAT_CNTRS)); i++) {
+	for (i = 0; (i < dev->data->nb_tx_queues); i++) {
 		struct zxdh_virtnet_tx *txvq = dev->data->tx_queues[i];
 		if (txvq == NULL)
 			continue;

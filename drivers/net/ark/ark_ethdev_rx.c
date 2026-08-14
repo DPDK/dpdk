@@ -592,10 +592,9 @@ ark_rx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats,
 	stats->ibytes += ibytes;
 	stats->imissed += idropped;
 
-	if (qstats && queue->queue_index < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-		qstats->q_ipackets[queue->queue_index] = ipackets;
-		qstats->q_ibytes[queue->queue_index] = ibytes;
-		qstats->q_errors[queue->queue_index] = idropped;
+	if (qstats != NULL) {
+		qstats[queue->queue_index].q_ipackets = ipackets;
+		qstats[queue->queue_index].q_ibytes = ibytes;
 	}
 }
 

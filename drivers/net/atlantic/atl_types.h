@@ -15,6 +15,8 @@
 #include <rte_common.h>
 #include <ethdev_driver.h>
 
+#include "atl_common.h"
+
 typedef uint8_t		u8;
 typedef int8_t		s8;
 typedef uint16_t	u16;
@@ -225,11 +227,14 @@ struct atl_sw_stats {
 	u64 pcrc8ec;
 
 	u64 rx_nombuf;
-	u64 q_ipackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
-	u64 q_opackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
-	u64 q_ibytes[RTE_ETHDEV_QUEUE_STAT_CNTRS];
-	u64 q_obytes[RTE_ETHDEV_QUEUE_STAT_CNTRS];
-	u64 q_errors[RTE_ETHDEV_QUEUE_STAT_CNTRS];
+	struct {
+		u64 packets;
+		u64 bytes;
+	} rxq[AQ_HW_MAX_RX_QUEUES];
+	struct {
+		u64 packets;
+		u64 bytes;
+	} txq[AQ_HW_MAX_TX_QUEUES];
 };
 
 #endif

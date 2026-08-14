@@ -3346,12 +3346,14 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev,
 
 	if (qstats != NULL) {
 		for (i = 0; i < RTE_MIN_T(IXGBE_QUEUE_STAT_COUNTERS,
-				RTE_ETHDEV_QUEUE_STAT_CNTRS, typeof(i)); i++) {
-			qstats->q_ipackets[i] = hw_stats->qprc[i];
-			qstats->q_opackets[i] = hw_stats->qptc[i];
-			qstats->q_ibytes[i] = hw_stats->qbrc[i];
-			qstats->q_obytes[i] = hw_stats->qbtc[i];
-			qstats->q_errors[i] = hw_stats->qprdc[i];
+				dev->data->nb_rx_queues, typeof(i)); i++) {
+			qstats[i].q_ipackets = hw_stats->qprc[i];
+			qstats[i].q_ibytes = hw_stats->qbrc[i];
+		}
+		for (i = 0; i < RTE_MIN_T(IXGBE_QUEUE_STAT_COUNTERS,
+				dev->data->nb_tx_queues, typeof(i)); i++) {
+			qstats[i].q_opackets = hw_stats->qptc[i];
+			qstats[i].q_obytes = hw_stats->qbtc[i];
 		}
 	}
 

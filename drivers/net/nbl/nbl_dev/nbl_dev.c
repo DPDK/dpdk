@@ -534,8 +534,6 @@ int nbl_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats,
 		goto update_hw_stats_fail;
 
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
-		if (qstats && i < RTE_ETHDEV_QUEUE_STAT_CNTRS)
-			qstats->q_errors[i] = net_dev->hw_stats.total_uvn_stat_pkt_drop[i];
 		rte_stats->imissed += net_dev->hw_stats.total_uvn_stat_pkt_drop[i];
 	}
 

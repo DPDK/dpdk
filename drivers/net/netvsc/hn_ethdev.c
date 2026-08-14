@@ -1122,9 +1122,9 @@ static int hn_dev_stats_get(struct rte_eth_dev *dev,
 		stats->obytes += txq->stats.bytes;
 		stats->oerrors += txq->stats.errors;
 
-		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_opackets[i] += txq->stats.packets;
-			qstats->q_obytes[i] += txq->stats.bytes;
+		if (qstats != NULL) {
+			qstats[i].q_opackets += txq->stats.packets;
+			qstats[i].q_obytes += txq->stats.bytes;
 		}
 	}
 
@@ -1139,9 +1139,9 @@ static int hn_dev_stats_get(struct rte_eth_dev *dev,
 		stats->ierrors += rxq->stats.errors;
 		stats->imissed += rxq->stats.ring_full;
 
-		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_ipackets[i] += rxq->stats.packets;
-			qstats->q_ibytes[i] += rxq->stats.bytes;
+		if (qstats != NULL) {
+			qstats[i].q_ipackets += rxq->stats.packets;
+			qstats[i].q_ibytes += rxq->stats.bytes;
 		}
 	}
 

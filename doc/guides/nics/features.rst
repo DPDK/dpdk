@@ -757,8 +757,9 @@ These apply to all drivers.
 Stats per queue
 ---------------
 
-Supports per queue stats: q_ipackets, q_opackets, q_ibytes, q_obytes, q_errors.
-Statistics only supplied for first ``RTE_ETHDEV_QUEUE_STAT_CNTRS`` (16) queues.
+Supports per queue stats: q_ipackets, q_opackets, q_ibytes, q_obytes.
+Statistics are supplied for all configured queues,
+subject to any hardware counter limit of the device.
 If driver does not support this feature the per queue stats will be zero.
 
 * **[implements] eth_dev_ops**: ``stats_get``, ``stats_reset``.

@@ -24,25 +24,16 @@
 extern "C" {
 #endif
 
-#define RTE_ETHDEV_QUEUE_STAT_CNTRS 16 /* max 256 */
-
 /**
  * @internal
- * Structure used to pass queue stats back to ethdev
- * for drivers which rely on ethdev to add the queue stats automatically to xstats.
+ * Per-queue counters added to xstats by ethdev.
+ * The array is allocated and zeroed by ethdev, with one entry per queue.
  */
 struct eth_queue_stats {
-	/* Queue stats are limited to max 256 queues. */
-	/** Total number of queue Rx packets. */
-	uint64_t q_ipackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
-	/** Total number of queue Tx packets. */
-	uint64_t q_opackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
-	/** Total number of successfully received queue bytes. */
-	uint64_t q_ibytes[RTE_ETHDEV_QUEUE_STAT_CNTRS];
-	/** Total number of successfully transmitted queue bytes. */
-	uint64_t q_obytes[RTE_ETHDEV_QUEUE_STAT_CNTRS];
-	/** Total number of queue packets received that are dropped. */
-	uint64_t q_errors[RTE_ETHDEV_QUEUE_STAT_CNTRS];
+	uint64_t q_ipackets;	/**< Number of received packets. */
+	uint64_t q_opackets;	/**< Number of transmitted packets. */
+	uint64_t q_ibytes;	/**< Number of received bytes. */
+	uint64_t q_obytes;	/**< Number of transmitted bytes. */
 };
 
 /**
@@ -456,7 +447,11 @@ typedef int (*eth_speed_lanes_get_capability_t)(struct rte_eth_dev *dev,
  * @param stats
  *   The stats structure to be completed by the driver and returned to the user.
  * @param qstats
- *   Any queue statistics to be returned.
+ *   Any queue statistics to be returned, indexed by queue id.
+ *   The array has RTE_MAX(nb_rx_queues, nb_tx_queues) entries and is
+ *   zeroed by ethdev before the driver is called. The driver must not
+ *   write past nb_rx_queues for the Rx fields, or past nb_tx_queues
+ *   for the Tx fields.
  *   @note: This parameter can be NULL
  */
 typedef int (*eth_stats_get_t)(struct rte_eth_dev *dev,

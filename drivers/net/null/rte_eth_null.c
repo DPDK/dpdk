@@ -332,9 +332,9 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		stats->ipackets += pkts;
 		stats->ibytes += bytes;
 
-		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_ipackets[i] = pkts;
-			qstats->q_ibytes[i] = bytes;
+		if (qstats != NULL && i < dev->data->nb_rx_queues) {
+			qstats[i].q_ipackets = pkts;
+			qstats[i].q_ibytes = bytes;
 		}
 	}
 
@@ -348,9 +348,9 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		stats->opackets += pkts;
 		stats->obytes += bytes;
 
-		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_opackets[i] = pkts;
-			qstats->q_obytes[i] = bytes;
+		if (qstats != NULL && i < dev->data->nb_tx_queues) {
+			qstats[i].q_opackets = pkts;
+			qstats[i].q_obytes = bytes;
 		}
 	}
 

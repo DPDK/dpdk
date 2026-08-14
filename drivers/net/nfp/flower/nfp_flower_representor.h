@@ -22,7 +22,9 @@ struct nfp_flower_representor {
 	struct rte_ring **ring;
 	struct rte_eth_link link;
 	struct rte_eth_stats repr_stats;
-	struct eth_queue_stats repr_qstats;
+	/** Per-queue counters, one entry per queue */
+	struct eth_queue_stats *repr_qstats;
+	uint16_t repr_nb_qstats;
 
 	struct rte_eth_xstat *repr_xstats_base;
 	uint8_t *mac_stats;
