@@ -614,7 +614,6 @@ xsc_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		if (qstats != NULL && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
 			qstats->q_opackets[idx] += txq->stats.tx_pkts;
 			qstats->q_obytes[idx] += txq->stats.tx_bytes;
-			qstats->q_errors[idx] += txq->stats.tx_errors;
 		}
 		stats->opackets += txq->stats.tx_pkts;
 		stats->obytes += txq->stats.tx_bytes;
