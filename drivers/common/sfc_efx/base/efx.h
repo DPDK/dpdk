@@ -439,7 +439,8 @@ extern	__checkReturn	efx_rc_t
 efx_mcdi_client_mac_addr_get(
 	__in		efx_nic_t *enp,
 	__in		uint32_t client_handle,
-	__out		uint8_t addr_bytes[EFX_MAC_ADDR_LEN]);
+	__out_bcount(EFX_MAC_ADDR_LEN)
+			uint8_t addr_bytes[EFX_MAC_ADDR_LEN]);
 
 LIBEFX_API
 extern	__checkReturn	efx_rc_t

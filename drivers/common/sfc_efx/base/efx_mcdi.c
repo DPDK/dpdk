@@ -737,7 +737,8 @@ fail1:
 efx_mcdi_client_mac_addr_get(
 	__in		efx_nic_t *enp,
 	__in		uint32_t client_handle,
-	__out		uint8_t addr_bytes[EFX_MAC_ADDR_LEN])
+	__out_bcount(EFX_MAC_ADDR_LEN)
+			uint8_t addr_bytes[EFX_MAC_ADDR_LEN])
 {
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload,
