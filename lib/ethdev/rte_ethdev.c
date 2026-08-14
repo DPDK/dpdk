@@ -160,11 +160,6 @@ static const struct {
 	{RTE_ETH_DEV_CAPA_FLOW_SHARED_OBJECT_KEEP, "FLOW_SHARED_OBJECT_KEEP"},
 };
 
-enum {
-	STAT_QMAP_TX = 0,
-	STAT_QMAP_RX
-};
-
 static const struct {
 	enum rte_eth_hash_function algo;
 	const char *name;
@@ -4003,63 +3998,6 @@ rte_eth_xstats_query_state(uint16_t port_id, uint64_t id)
 		return dev->dev_ops->xstats_query_state(dev, id - basic_count);
 
 	return -ENOTSUP;
-}
-
-static int
-eth_dev_set_queue_stats_mapping(uint16_t port_id, uint16_t queue_id,
-		uint8_t stat_idx, uint8_t is_rx)
-{
-	struct rte_eth_dev *dev;
-
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	dev = &rte_eth_devices[port_id];
-
-	if (is_rx && (queue_id >= dev->data->nb_rx_queues))
-		return -EINVAL;
-
-	if (!is_rx && (queue_id >= dev->data->nb_tx_queues))
-		return -EINVAL;
-
-	if (stat_idx >= RTE_ETHDEV_QUEUE_STAT_CNTRS)
-		return -EINVAL;
-
-	if (dev->dev_ops->queue_stats_mapping_set == NULL)
-		return -ENOTSUP;
-	return dev->dev_ops->queue_stats_mapping_set(dev, queue_id, stat_idx, is_rx);
-}
-
-RTE_EXPORT_SYMBOL(rte_eth_dev_set_tx_queue_stats_mapping)
-int
-rte_eth_dev_set_tx_queue_stats_mapping(uint16_t port_id, uint16_t tx_queue_id,
-		uint8_t stat_idx)
-{
-	int ret;
-
-	ret = eth_err(port_id, eth_dev_set_queue_stats_mapping(port_id,
-						tx_queue_id,
-						stat_idx, STAT_QMAP_TX));
-
-	rte_ethdev_trace_set_tx_queue_stats_mapping(port_id, tx_queue_id,
-						    stat_idx, ret);
-
-	return ret;
-}
-
-RTE_EXPORT_SYMBOL(rte_eth_dev_set_rx_queue_stats_mapping)
-int
-rte_eth_dev_set_rx_queue_stats_mapping(uint16_t port_id, uint16_t rx_queue_id,
-		uint8_t stat_idx)
-{
-	int ret;
-
-	ret = eth_err(port_id, eth_dev_set_queue_stats_mapping(port_id,
-						rx_queue_id,
-						stat_idx, STAT_QMAP_RX));
-
-	rte_ethdev_trace_set_rx_queue_stats_mapping(port_id, rx_queue_id,
-						    stat_idx, ret);
-
-	return ret;
 }
 
 RTE_EXPORT_SYMBOL(rte_eth_dev_fw_version_get)

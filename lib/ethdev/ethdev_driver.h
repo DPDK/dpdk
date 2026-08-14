@@ -567,15 +567,6 @@ typedef int (*eth_xstats_disable_counter_t)(struct rte_eth_dev *dev, uint64_t id
 /** @internal Query the state of an xstat the can be enabled and disabled in runtime. */
 typedef int (*eth_xstats_query_state_t)(struct rte_eth_dev *dev, uint64_t id);
 
-/**
- * @internal
- * Set a queue statistics mapping for a Tx/Rx queue of an Ethernet device.
- */
-typedef int (*eth_queue_stats_mapping_set_t)(struct rte_eth_dev *dev,
-					     uint16_t queue_id,
-					     uint8_t stat_idx,
-					     uint8_t is_rx);
-
 /** @internal Get specific information of an Ethernet device. */
 typedef int (*eth_dev_infos_get_t)(struct rte_eth_dev *dev,
 				   struct rte_eth_dev_info *dev_info);
@@ -1454,8 +1445,6 @@ struct eth_dev_ops {
 	eth_xstats_reset_t         xstats_reset;
 	/** Get names of extended statistics */
 	eth_xstats_get_names_t     xstats_get_names;
-	/** Configure per queue stat counter mapping */
-	eth_queue_stats_mapping_set_t queue_stats_mapping_set;
 
 	eth_dev_infos_get_t        dev_infos_get; /**< Get device info */
 	/** Retrieve Rx queue information */

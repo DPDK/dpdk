@@ -764,13 +764,6 @@ If driver does not support this feature the per queue stats will be zero.
 * **[implements] eth_dev_ops**: ``stats_get``, ``stats_reset``.
 * **[related]    API**: ``rte_eth_stats_get``, ``rte_eth_stats_reset()``.
 
-May also support configuring per-queue stat counter mapping.
-Used by some drivers to workaround HW limitations.
-
-* **[implements] eth_dev_ops**: ``queue_stats_mapping_set``.
-* **[related]    API**: ``rte_eth_dev_set_rx_queue_stats_mapping()``,
-  ``rte_eth_dev_set_tx_queue_stats_mapping()``.
-
 
 .. _nic_features_extended_stats:
 
