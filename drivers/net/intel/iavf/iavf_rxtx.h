@@ -155,23 +155,12 @@
 #define IAVF_TX_OFFLOAD_NOTSUP_MASK \
 		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ IAVF_TX_OFFLOAD_MASK)
 
-#define IAVF_TX_LLDP_DYNFIELD "intel_pmd_dynfield_tx_lldp"
-
-/* LLDP Tx modes */
-#define IAVF_LLDP_DISABLED 0
-#define IAVF_LLDP_PTYPE    1
-#define IAVF_LLDP_DYNFIELD 2
-
-#define IAVF_CHECK_TX_LLDP(m, lldp_mode) \
-	((lldp_mode) && \
-	((((lldp_mode) == IAVF_LLDP_PTYPE) && \
-	((m)->packet_type & RTE_PTYPE_L2_MASK) == RTE_PTYPE_L2_ETHER_LLDP) || \
-	(((lldp_mode) == IAVF_LLDP_DYNFIELD) && \
-	*RTE_MBUF_DYNFIELD((m), rte_pmd_iavf_tx_lldp_dynfield_offset, uint8_t *))))
+#define IAVF_CHECK_TX_LLDP(m, ptype_lldp_enabled) \
+	((ptype_lldp_enabled) && \
+	((m)->packet_type & RTE_PTYPE_L2_MASK) == RTE_PTYPE_L2_ETHER_LLDP)
 
 extern uint64_t iavf_timestamp_dynflag;
 extern int iavf_timestamp_dynfield_offset;
-extern int rte_pmd_iavf_tx_lldp_dynfield_offset;
 
 typedef void (*iavf_rxd_to_pkt_fields_t)(struct ci_rx_queue *rxq,
 				struct rte_mbuf *mb,
