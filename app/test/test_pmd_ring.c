@@ -4,7 +4,10 @@
 #include "test.h"
 #include <string.h>
 
+#include <inttypes.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <rte_eth_ring.h>
 #include <rte_ethdev.h>
@@ -557,6 +560,147 @@ test_ethdev_configure_ports(void)
 	return TEST_SUCCESS;
 }
 
+/*
+ * Per-queue xstats are added by ethdev for all configured queues.
+ * Use a port with different Rx and Tx queue counts to check that each
+ * direction is reported independently.
+ */
+#define QSTATS_NB_RXQ 3
+#define QSTATS_NB_TXQ 5
+#define QSTATS_NB_RINGS 5 /* RTE_MAX(QSTATS_NB_RXQ, QSTATS_NB_TXQ) */
+
+static int
+test_queue_xstats(void)
+{
+	struct rte_ring *qrings[QSTATS_NB_RINGS] = { };
+	struct rte_eth_xstat_name *names = NULL;
+	struct rte_eth_xstat *xstats = NULL;
+	struct rte_eth_conf null_conf;
+	unsigned int i, nb_names, found;
+	char expected[RTE_ETH_XSTATS_NAME_SIZE];
+	int port = -1, nb_xstats, ret = -1;
+	uint16_t q;
+
+	for (q = 0; q < QSTATS_NB_RINGS; q++) {
+		char name[RTE_RING_NAMESIZE];
+
+		snprintf(name, sizeof(name), "RQ%u", q);
+		qrings[q] = rte_ring_create(name, RING_SIZE, SOCKET0,
+				RING_F_SP_ENQ | RING_F_SC_DEQ);
+		if (qrings[q] == NULL) {
+			printf("rte_ring_create %s failed\n", name);
+			goto out;
+		}
+	}
+
+	port = rte_eth_from_rings("net_ringq", qrings, QSTATS_NB_RXQ,
+			qrings, QSTATS_NB_TXQ, SOCKET0);
+	if (port < 0) {
+		printf("failed to create port\n");
+		goto out;
+	}
+
+	memset(&null_conf, 0, sizeof(null_conf));
+	if (rte_eth_dev_configure(port, QSTATS_NB_RXQ, QSTATS_NB_TXQ,
+			&null_conf) < 0) {
+		printf("configure failed\n");
+		goto out;
+	}
+
+	for (q = 0; q < QSTATS_NB_RXQ; q++) {
+		if (rte_eth_rx_queue_setup(port, q, RING_SIZE, SOCKET0,
+				NULL, mp) < 0) {
+			printf("Rx queue %u setup failed\n", q);
+			goto out;
+		}
+	}
+	for (q = 0; q < QSTATS_NB_TXQ; q++) {
+		if (rte_eth_tx_queue_setup(port, q, RING_SIZE, SOCKET0,
+				NULL) < 0) {
+			printf("Tx queue %u setup failed\n", q);
+			goto out;
+		}
+	}
+
+	nb_xstats = rte_eth_xstats_get_names(port, NULL, 0);
+	if (nb_xstats <= 0) {
+		printf("no xstats reported\n");
+		goto out;
+	}
+
+	names = calloc(nb_xstats, sizeof(*names));
+	xstats = calloc(nb_xstats, sizeof(*xstats));
+	if (names == NULL || xstats == NULL) {
+		printf("out of memory\n");
+		goto out;
+	}
+
+	nb_names = rte_eth_xstats_get_names(port, names, nb_xstats);
+	if (nb_names != (unsigned int)nb_xstats) {
+		printf("got %u names, expected %d\n", nb_names, nb_xstats);
+		goto out;
+	}
+
+	if (rte_eth_xstats_get(port, xstats, nb_xstats) != nb_xstats) {
+		printf("xstats count does not match names count\n");
+		goto out;
+	}
+
+	/* No traffic has passed, so every counter must still be zero. */
+	for (i = 0; i < (unsigned int)nb_xstats; i++) {
+		if (xstats[i].value != 0) {
+			printf("xstat '%s' is %"PRIu64", expected 0\n",
+					names[xstats[i].id].name, xstats[i].value);
+			goto out;
+		}
+	}
+
+	/* Every configured queue must have its counters, in both directions. */
+	for (q = 0; q < QSTATS_NB_RXQ + QSTATS_NB_TXQ; q++) {
+		bool rx = q < QSTATS_NB_RXQ;
+
+		snprintf(expected, sizeof(expected), "%s_q%u_packets",
+				rx ? "rx" : "tx", rx ? q : q - QSTATS_NB_RXQ);
+
+		for (i = 0, found = 0; i < nb_names; i++)
+			if (strcmp(names[i].name, expected) == 0)
+				found++;
+
+		if (found != 1) {
+			printf("expected one '%s', got %u\n", expected, found);
+			goto out;
+		}
+	}
+
+	/* Queues beyond the configured count must not be reported. */
+	snprintf(expected, sizeof(expected), "rx_q%u_packets", QSTATS_NB_RXQ);
+	for (i = 0; i < nb_names; i++) {
+		if (strcmp(names[i].name, expected) == 0) {
+			printf("unexpected stat '%s'\n", expected);
+			goto out;
+		}
+	}
+
+	snprintf(expected, sizeof(expected), "tx_q%u_packets", QSTATS_NB_TXQ);
+	for (i = 0; i < nb_names; i++) {
+		if (strcmp(names[i].name, expected) == 0) {
+			printf("unexpected stat '%s'\n", expected);
+			goto out;
+		}
+	}
+
+	ret = TEST_SUCCESS;
+out:
+	free(names);
+	free(xstats);
+	if (port >= 0)
+		rte_eth_dev_close(port);
+	for (q = 0; q < QSTATS_NB_RINGS; q++)
+		rte_ring_free(qrings[q]);
+
+	return ret;
+}
+
 static int
 test_get_stats_for_port(void)
 {
@@ -581,6 +725,7 @@ unit_test_suite test_pmd_ring_suite  = {
 		TEST_CASE(test_send_basic_packets),
 		TEST_CASE(test_get_stats_for_port),
 		TEST_CASE(test_stats_reset_for_port),
+		TEST_CASE(test_queue_xstats),
 		TEST_CASE(test_pmd_ring_pair_create_attach),
 		TEST_CASE(test_command_line_ring_port),
 		TEST_CASES_END()
