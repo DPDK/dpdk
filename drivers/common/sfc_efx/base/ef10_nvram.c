@@ -2386,7 +2386,7 @@ ef10_nvram_type_to_partn(
 	efx_mcdi_iface_t *emip = &(enp->en_mcdi.em_emip);
 	ef10_parttbl_entry_t *parttbl = NULL;
 	size_t parttbl_rows = 0;
-	unsigned int i;
+	size_t i;
 
 	EFSYS_ASSERT3U(type, !=, EFX_NVRAM_INVALID);
 	EFSYS_ASSERT3U(type, <, EFX_NVRAM_NTYPES);
@@ -2418,7 +2418,7 @@ ef10_nvram_partn_to_type(
 	efx_mcdi_iface_t *emip = &(enp->en_mcdi.em_emip);
 	ef10_parttbl_entry_t *parttbl = NULL;
 	size_t parttbl_rows = 0;
-	unsigned int i;
+	size_t i;
 
 	EFSYS_ASSERT(typep != NULL);
 

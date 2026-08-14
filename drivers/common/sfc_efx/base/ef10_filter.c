@@ -1300,7 +1300,7 @@ ef10_filter_supported_filters(
 	size_t mcdi_list_length;
 	size_t mcdi_encap_list_length;
 	size_t list_length;
-	uint32_t i;
+	size_t i;
 	uint32_t next_buf_idx;
 	size_t next_buf_length;
 	efx_rc_t rc;

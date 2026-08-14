@@ -30,7 +30,7 @@ mcdi_mon_decode_stats(
 {
 	efx_mcdi_iface_t *emip = &(enp->en_mcdi.em_emip);
 	efx_mon_stat_portmask_t port_mask;
-	uint16_t sensor;
+	size_t sensor;
 	size_t sensor_max;
 	uint32_t stat_mask[(EFX_MON_NSTATS + 31) / 32];
 	uint32_t idx = 0;

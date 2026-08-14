@@ -140,8 +140,8 @@ efx_dhcp_csum(
 	__in_bcount(size)	uint8_t const *data,
 	__in			size_t size)
 {
-	unsigned int pos;
 	uint8_t checksum = 0;
+	size_t pos;
 
 	for (pos = 0; pos < size; pos++)
 		checksum += data[pos];
