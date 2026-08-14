@@ -1211,60 +1211,59 @@ efx_np_cap_mask_sw_to_hw(
 	    MC_CMD_##_hw_cap_section##_LEN, (_mask_sw),			\
 	    (_filter_cb), (_filter_arg), (_mask_hwp))
 
-static					void
+__success(*supportedp != 0)	static	void
 efx_np_cap_sw_mask_to_hw_enum(
 	__in_ecount(hw_sw_map_nentries)	const struct efx_np_cap_map *hw_sw_map,
 	__in				unsigned int hw_sw_map_nentries,
 	__in_bcount(hw_cap_data_nbytes)	const uint8_t *hw_cap_data,
 	__in				size_t hw_cap_data_nbytes,
 	__in				uint32_t mask_sw,
+	__in				uint16_t enum_hw_def,
 	__in_opt			efx_np_cap_filter_cb *filter_cb,
 	__in_opt			void *filter_arg,
 	__out				boolean_t *supportedp,
 	__out_opt			uint16_t *enum_hwp)
 {
-	unsigned int sw_nflags_req = 0;
-	uint32_t sw_check_mask = 0;
+	boolean_t supported = B_FALSE;
+	uint32_t matched_mask = 0;
+	uint32_t flags_seen = 0;
 	unsigned int i;
 
 	for (i = 0; i < hw_sw_map_nentries; ++i) {
-		uint32_t flag_sw = 1U << hw_sw_map->encm_sw;
-		unsigned int byte_idx = CAP_BYTE(hw_sw_map);
-		uint8_t flag_hw = CAP_FLAG(hw_sw_map);
+		uint32_t flag_sw = 1U << hw_sw_map[i].encm_sw;
+		unsigned int byte_idx = CAP_BYTE(&hw_sw_map[i]);
+		uint8_t flag_hw = CAP_FLAG(&hw_sw_map[i]);
 
-		if (byte_idx >= hw_cap_data_nbytes) {
-			++(hw_sw_map);
+		if (byte_idx >= hw_cap_data_nbytes)
 			continue;
-		}
 
-		if ((mask_sw & flag_sw) == flag_sw) {
-			if ((sw_check_mask & flag_sw) == 0)
-				++(sw_nflags_req);
+		if ((mask_sw & flag_sw) != flag_sw)
+			continue;
 
-			sw_check_mask |= flag_sw;
+		flags_seen |= flag_sw;
 
-			if ((hw_cap_data[byte_idx] & flag_hw) == flag_hw) {
-				if (filter_cb == NULL ||
-				    filter_cb(hw_sw_map->encm_hw, filter_arg) !=
-				    B_FALSE) {
-					mask_sw &= ~(flag_sw);
+		if ((hw_cap_data[byte_idx] & flag_hw) != flag_hw)
+			continue;
 
-					if (enum_hwp != NULL)
-						*enum_hwp = hw_sw_map->encm_hw;
-				}
-			}
-		}
+		if ((filter_cb != NULL) && (filter_arg != NULL) &&
+		    (filter_cb(hw_sw_map[i].encm_hw, filter_arg) == B_FALSE))
+			continue;
 
-		++(hw_sw_map);
+		if (enum_hwp != NULL && (matched_mask & flag_sw) == 0)
+			*enum_hwp = hw_sw_map[i].encm_hw;
+
+		matched_mask |= flag_sw;
+		supported = B_TRUE;
 	}
 
-	if (sw_check_mask != 0 && (mask_sw & sw_check_mask) == sw_check_mask) {
-		/* Failed to select the enum by at least one capability bit. */
-		*supportedp = B_FALSE;
-		return;
+	if (flags_seen == 0) {
+		if (enum_hwp != NULL)
+			*enum_hwp = enum_hw_def;
+
+		supported = B_TRUE;
 	}
 
-	*supportedp = B_TRUE;
+	*supportedp = supported;
 }
 
 /*
@@ -1276,12 +1275,13 @@ efx_np_cap_sw_mask_to_hw_enum(
  */
 #define	EFX_NP_CAP_SW_MASK_TO_HW_ENUM(					\
 	    _hw_sw_cap_map, _hw_cap_section, _hw_cap_data,		\
-	    _mask_sw, _filter_cb, _filter_arg, _supportedp, _enum_hwp)	\
+	    _mask_sw, _enum_hw_def, _filter_cb, _filter_arg,		\
+	    _supportedp, _enum_hwp)					\
 	efx_np_cap_sw_mask_to_hw_enum((_hw_sw_cap_map),			\
 	    EFX_ARRAY_SIZE(_hw_sw_cap_map),				\
 	    MCDI_STRUCT_MEMBER((_hw_cap_data), const uint8_t,		\
 		    MC_CMD_##_hw_cap_section),				\
-	    MC_CMD_##_hw_cap_section##_LEN, (_mask_sw),			\
+	    MC_CMD_##_hw_cap_section##_LEN, (_mask_sw), (_enum_hw_def),	\
 	    (_filter_cb), (_filter_arg),				\
 	    (_supportedp), (_enum_hwp))
 
@@ -1396,6 +1396,7 @@ efx_np_link_ctrl(
 	} else {
 		EFX_NP_CAP_SW_MASK_TO_HW_ENUM(efx_np_cap_map_tech,
 		    ETH_AN_FIELDS_TECH_MASK, cap_data_raw, cap_mask_sw,
+		    MC_CMD_ETH_TECH_AUTO,
 		    efx_np_filter_tech_by_lane_count_cb, &lane_count,
 		    &supported, &link_tech);
 
@@ -1424,10 +1425,9 @@ efx_np_link_ctrl(
 		 */
 		EFX_NP_CAP_SW_MASK_TO_HW_ENUM(efx_np_cap_map_fec_req,
 		    ETH_AN_FIELDS_FEC_MASK, cap_data_raw, cap_mask_sw,
-		    NULL, NULL, &supported, &cap_enum_hw);
+		    cap_enum_hw, NULL, NULL, &supported, &cap_enum_hw);
 
-		if ((cap_mask_sw & EFX_PHY_CAP_FEC_MASK) != 0
-		    && supported == B_FALSE) {
+		if (supported == B_FALSE) {
 			rc = ENOTSUP;
 			goto fail5;
 		}
