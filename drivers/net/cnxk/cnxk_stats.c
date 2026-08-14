@@ -45,7 +45,6 @@ cnxk_nix_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats,
 					goto exit;
 				qstats->q_opackets[i] = qstats_data.tx_pkts;
 				qstats->q_obytes[i] = qstats_data.tx_octs;
-				qstats->q_errors[i] = qstats_data.tx_drop_pkts;
 			}
 
 			if (dev->rxq_stat_map[i] & (1U << 31)) {
@@ -55,7 +54,7 @@ cnxk_nix_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats,
 					goto exit;
 				qstats->q_ipackets[i] = qstats_data.rx_pkts;
 				qstats->q_ibytes[i] = qstats_data.rx_octs;
-				qstats->q_errors[i] += qstats_data.rx_drop_pkts;
+				qstats->q_errors[i] = qstats_data.rx_drop_pkts;
 			}
 		}
 	}
