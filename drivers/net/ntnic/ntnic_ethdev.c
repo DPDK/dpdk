@@ -209,7 +209,6 @@ static int dpdk_stats_collect(struct pmd_internals *internals, struct rte_eth_st
 		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
 			qstats->q_opackets[i] = internals->txq_scg[i].tx_pkts;
 			qstats->q_obytes[i] = internals->txq_scg[i].tx_bytes;
-			qstats->q_errors[i] = internals->txq_scg[i].err_pkts;
 		}
 		tx_total += internals->txq_scg[i].tx_pkts;
 		tx_total_b += internals->txq_scg[i].tx_bytes;
