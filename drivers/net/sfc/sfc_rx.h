@@ -110,6 +110,7 @@ struct sfc_rxq_info {
 	unsigned int		entries;
 	efx_rxq_type_t		type;
 	unsigned int		type_flags;
+	unsigned int		extra_type_flags;
 	struct sfc_dp_rxq	*dp;
 	boolean_t		deferred_start;
 	boolean_t		deferred_started;
