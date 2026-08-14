@@ -31,9 +31,4 @@ int32_t sxe2_stats_info_reset(struct rte_eth_dev *dev);
 
 int32_t sxe2_stats_init(struct rte_eth_dev *dev);
 
-int32_t sxe2_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
-				  uint16_t queue_id, uint8_t pool_idx, uint8_t is_rx);
-
-int32_t sxe2_queue_stats_map_init(struct rte_eth_dev *dev);
-
 #endif

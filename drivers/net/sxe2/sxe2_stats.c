@@ -499,90 +499,20 @@ l_end:
 
 int32_t sxe2_stats_info_reset(struct rte_eth_dev *dev)
 {
-	int32_t ret;
-	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
-
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		return sxe2_mp_req_reset_stats(dev);
 
-	if (adapter->cap_flags & SXE2_DEV_CAPS_OFFLOAD_Q_MAP) {
-		ret = sxe2_drv_mapping_stats_info_clear(dev);
-		if (ret)
-			goto l_end;
-	}
-
-	ret = sxe2_stats_hw_reset(dev);
-	if (ret)
-		goto l_end;
-
-l_end:
-	return ret;
+	return sxe2_stats_hw_reset(dev);
 }
 
 int32_t sxe2_stats_init(struct rte_eth_dev *dev)
 {
 	PMD_INIT_FUNC_TRACE();
-	int32_t ret;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	ret = sxe2_queue_stats_map_init(dev);
-	if (ret)
-		goto l_end;
+	dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
-	ret = sxe2_stats_hw_reset(dev);
-	if (ret)
-		goto l_end;
-
-l_end:
-	return ret;
-}
-
-int32_t sxe2_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
-				  uint16_t queue_id, uint8_t pool_idx, uint8_t is_rx)
-{
-	int32_t ret = -1;
-	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(eth_dev);
-
-	if (!(adapter->cap_flags & SXE2_DEV_CAPS_OFFLOAD_Q_MAP)) {
-		PMD_LOG_ERR(DRV, "VF does not support queue mapping! ");
-		goto l_end;
-	}
-
-	if (is_rx)
-		ret = sxe2_drv_rxq_mapping_set(eth_dev, queue_id, pool_idx);
-	else
-		ret = sxe2_drv_txq_mapping_set(eth_dev, queue_id, pool_idx);
-
-	if (ret) {
-		PMD_LOG_ERR(DRV, "Queue stats mapping failed ! "
-			"queue_id:%u pool_idx:%u", queue_id, pool_idx);
-		goto l_end;
-	}
-
-	PMD_LOG_DEBUG(DRV, "port %u %s queue_id %d stat map to pool[%u] ",
-		     (uint16_t)(eth_dev->data->port_id), is_rx ? "RX" : "TX",
-		     queue_id, pool_idx);
-l_end:
-	return ret;
-}
-
-int32_t sxe2_queue_stats_map_init(struct rte_eth_dev *dev)
-{
-	int32_t ret = 0;
-	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
-
-	if (adapter->cap_flags & SXE2_DEV_CAPS_OFFLOAD_Q_MAP) {
-		dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
-
-		ret = sxe2_drv_mapping_reset(dev);
-		if (ret) {
-			PMD_LOG_ERR(DRV, "Queue stats mapping init failed !");
-			goto l_end;
-		}
-	}
-
-l_end:
-	return ret;
+	return sxe2_stats_hw_reset(dev);
 }
