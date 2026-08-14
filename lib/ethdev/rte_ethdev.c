@@ -75,7 +75,6 @@ static const struct rte_eth_xstats_name_off eth_dev_stats_strings[] = {
 static const struct rte_eth_xstats_name_off eth_dev_rxq_stats_strings[] = {
 	{"packets", offsetof(struct eth_queue_stats, q_ipackets)},
 	{"bytes", offsetof(struct eth_queue_stats, q_ibytes)},
-	{"errors", offsetof(struct eth_queue_stats, q_errors)},
 };
 
 #define RTE_NB_RXQ_STATS RTE_DIM(eth_dev_rxq_stats_strings)
@@ -3387,8 +3386,8 @@ eth_dev_get_xstats_basic_count(struct rte_eth_dev *dev)
 	uint16_t nb_rxqs, nb_txqs;
 	int count;
 
-	nb_rxqs = RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	nb_txqs = RTE_MIN(dev->data->nb_tx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	nb_rxqs = dev->data->nb_rx_queues;
+	nb_txqs = dev->data->nb_tx_queues;
 
 	count = RTE_NB_STATS;
 	if (dev->data->dev_flags & RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS) {
@@ -3501,7 +3500,7 @@ eth_basic_stats_get_names(struct rte_eth_dev *dev,
 	if ((dev->data->dev_flags & RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS) == 0)
 		return cnt_used_entries;
 
-	num_q = RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	num_q = dev->data->nb_rx_queues;
 	for (id_queue = 0; id_queue < num_q; id_queue++) {
 		for (idx = 0; idx < RTE_NB_RXQ_STATS; idx++) {
 			unsigned int cc;
@@ -3518,7 +3517,7 @@ eth_basic_stats_get_names(struct rte_eth_dev *dev,
 		}
 
 	}
-	num_q = RTE_MIN(dev->data->nb_tx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	num_q = dev->data->nb_tx_queues;
 	for (id_queue = 0; id_queue < num_q; id_queue++) {
 		for (idx = 0; idx < RTE_NB_TXQ_STATS; idx++) {
 			unsigned int cc;
@@ -3708,54 +3707,61 @@ eth_basic_stats_get(uint16_t port_id, struct rte_eth_xstat *xstats)
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_stats eth_stats;
-	struct eth_queue_stats queue_stats;
+	struct eth_queue_stats *queue_stats = NULL;
 	unsigned int count = 0, i, q;
-	uint64_t val, *stats_ptr;
-	uint16_t nb_rxqs, nb_txqs;
+	uint16_t nb_rxqs, nb_txqs, nb_q;
+	uint64_t *stats_ptr;
 	int ret;
-
-	ret = eth_stats_qstats_get(port_id, &eth_stats, &queue_stats);
-	if (ret < 0)
-		return ret;
 
 	dev = &rte_eth_devices[port_id];
 
-	nb_rxqs = RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	nb_txqs = RTE_MIN(dev->data->nb_tx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	if (dev->data->dev_flags & RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS) {
+		nb_rxqs = dev->data->nb_rx_queues;
+		nb_txqs = dev->data->nb_tx_queues;
+	} else {
+		nb_rxqs = 0;
+		nb_txqs = 0;
+	}
+
+	nb_q = RTE_MAX(nb_rxqs, nb_txqs);
+	if (nb_q > 0) {
+		queue_stats = calloc(nb_q, sizeof(*queue_stats));
+		if (queue_stats == NULL)
+			return -ENOMEM;
+	}
+
+	ret = eth_stats_qstats_get(port_id, &eth_stats, queue_stats);
+	if (ret < 0)
+		goto out;
 
 	/* global stats */
 	for (i = 0; i < RTE_NB_STATS; i++) {
 		stats_ptr = RTE_PTR_ADD(&eth_stats,
 					eth_dev_stats_strings[i].offset);
-		val = *stats_ptr;
-		xstats[count++].value = val;
+		xstats[count++].value = *stats_ptr;
 	}
-
-	if ((dev->data->dev_flags & RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS) == 0)
-		return count;
 
 	/* per-rxq stats */
 	for (q = 0; q < nb_rxqs; q++) {
 		for (i = 0; i < RTE_NB_RXQ_STATS; i++) {
-			stats_ptr = RTE_PTR_ADD(&queue_stats,
-					eth_dev_rxq_stats_strings[i].offset +
-					q * sizeof(uint64_t));
-			val = *stats_ptr;
-			xstats[count++].value = val;
+			stats_ptr = RTE_PTR_ADD(&queue_stats[q],
+					eth_dev_rxq_stats_strings[i].offset);
+			xstats[count++].value = *stats_ptr;
 		}
 	}
 
 	/* per-txq stats */
 	for (q = 0; q < nb_txqs; q++) {
 		for (i = 0; i < RTE_NB_TXQ_STATS; i++) {
-			stats_ptr = RTE_PTR_ADD(&queue_stats,
-					eth_dev_txq_stats_strings[i].offset +
-					q * sizeof(uint64_t));
-			val = *stats_ptr;
-			xstats[count++].value = val;
+			stats_ptr = RTE_PTR_ADD(&queue_stats[q],
+					eth_dev_txq_stats_strings[i].offset);
+			xstats[count++].value = *stats_ptr;
 		}
 	}
-	return count;
+	ret = count;
+out:
+	free(queue_stats);
+	return ret;
 }
 
 static int

@@ -614,10 +614,10 @@ cnxk_rep_stats_get(struct rte_eth_dev *ethdev, struct rte_eth_stats *stats,
 	}
 
 	if (qstats != NULL) {
-		qstats->q_ipackets[0] = vf_stats.ipackets;
-		qstats->q_ibytes[0] = vf_stats.ibytes;
-		qstats->q_opackets[0] = vf_stats.opackets;
-		qstats->q_obytes[0] = vf_stats.obytes;
+		qstats[0].q_ipackets = vf_stats.ipackets;
+		qstats[0].q_ibytes = vf_stats.ibytes;
+		qstats[0].q_opackets = vf_stats.opackets;
+		qstats[0].q_obytes = vf_stats.obytes;
 	}
 
 	stats->ipackets = vf_stats.ipackets;

@@ -94,6 +94,10 @@ Removed Items
   ``rte_eth_dev_set_tx_queue_stats_mapping`` and ``rte_eth_dev_set_rx_queue_stats_mapping``
   were deprecated and are now removed.
 
+* ethdev: Removed the ``RTE_ETHDEV_QUEUE_STAT_CNTRS`` build time limit.
+  Per-queue xstats are now reported for all queues, not just the first 16.
+  The ``rx_qN_errors`` xstat is removed, drops are still counted in ``ierrors``.
+
 
 API Changes
 -----------

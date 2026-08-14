@@ -105,10 +105,15 @@ ionic_lif_get_abs_stats(const struct ionic_lif *lif, struct rte_eth_stats *stats
 {
 	struct ionic_lif_stats *ls = &lif->info->stats;
 	uint32_t i;
-	uint32_t num_rx_q_counters = RTE_MIN(lif->nrxqcqs, (uint32_t)
-			RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	uint32_t num_tx_q_counters = RTE_MIN(lif->ntxqcqs, (uint32_t)
-			RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	/*
+	 * The queue stats array is indexed by queue id and sized by the
+	 * queue counts passed to configure, which is not necessarily the
+	 * number of queues the LIF has allocated.
+	 */
+	uint32_t num_rx_q_counters = RTE_MIN(lif->nrxqcqs,
+			(uint32_t)lif->eth_dev->data->nb_rx_queues);
+	uint32_t num_tx_q_counters = RTE_MIN(lif->ntxqcqs,
+			(uint32_t)lif->eth_dev->data->nb_tx_queues);
 
 	memset(stats, 0, sizeof(*stats));
 
@@ -148,11 +153,8 @@ ionic_lif_get_abs_stats(const struct ionic_lif *lif, struct rte_eth_stats *stats
 	if (qstats != NULL) {
 		for (i = 0; i < num_rx_q_counters; i++) {
 			struct ionic_rx_stats *rx_stats = &lif->rxqcqs[i]->stats;
-			qstats->q_ipackets[i] = rx_stats->packets;
-			qstats->q_ibytes[i] = rx_stats->bytes;
-			qstats->q_errors[i] =
-				rx_stats->bad_cq_status +
-				rx_stats->bad_len;
+			qstats[i].q_ipackets = rx_stats->packets;
+			qstats[i].q_ibytes = rx_stats->bytes;
 		}
 	}
 
@@ -185,8 +187,8 @@ ionic_lif_get_abs_stats(const struct ionic_lif *lif, struct rte_eth_stats *stats
 	if (qstats != NULL) {
 		for (i = 0; i < num_tx_q_counters; i++) {
 			struct ionic_tx_stats *tx_stats = &lif->txqcqs[i]->stats;
-			qstats->q_opackets[i] = tx_stats->packets;
-			qstats->q_obytes[i] = tx_stats->bytes;
+			qstats[i].q_opackets = tx_stats->packets;
+			qstats[i].q_obytes = tx_stats->bytes;
 		}
 	}
 }

@@ -515,12 +515,15 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats, struct eth_q
 		tx_err_total += internal->tx_queue[i].err_pkts;
 		tx_bytes_total += internal->tx_queue[i].tx_bytes;
 
-		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_ipackets[i] = internal->rx_queue[i].rx_pkts;
-			qstats->q_ibytes[i] = internal->rx_queue[i].rx_bytes;
-			qstats->q_opackets[i] = internal->tx_queue[i].tx_pkts;
-			qstats->q_obytes[i] = internal->tx_queue[i].tx_bytes;
-			qstats->q_errors[i] = internal->rx_queue[i].rx_nombuf;
+		if (qstats != NULL) {
+			if (i < dev->data->nb_rx_queues) {
+				qstats[i].q_ipackets = internal->rx_queue[i].rx_pkts;
+				qstats[i].q_ibytes = internal->rx_queue[i].rx_bytes;
+			}
+			if (i < dev->data->nb_tx_queues) {
+				qstats[i].q_opackets = internal->tx_queue[i].tx_pkts;
+				qstats[i].q_obytes = internal->tx_queue[i].tx_bytes;
+			}
 		}
 	}
 

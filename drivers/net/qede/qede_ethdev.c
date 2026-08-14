@@ -397,10 +397,8 @@ static void qede_reset_queue_stats(struct qede_dev *qdev, bool xstats)
 
 	DP_VERBOSE(edev, ECORE_MSG_DEBUG, "Clearing queue stats\n");
 
-	rxq_stat_cntrs = RTE_MIN(QEDE_RSS_COUNT(dev),
-			       RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	txq_stat_cntrs = RTE_MIN(QEDE_TSS_COUNT(dev),
-			       RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	rxq_stat_cntrs = QEDE_RSS_COUNT(dev);
+	txq_stat_cntrs = QEDE_TSS_COUNT(dev);
 
 	for (qid = 0; qid < qdev->num_rx_queues; qid++) {
 		OSAL_MEMSET(((char *)(qdev->fp_array[qid].rxq)) +
@@ -1634,20 +1632,11 @@ qede_get_stats(struct rte_eth_dev *eth_dev, struct rte_eth_stats *eth_stats,
 	eth_stats->oerrors = stats.common.tx_err_drop_pkts;
 
 	/* Queue stats */
-	rxq_stat_cntrs = RTE_MIN(QEDE_RSS_COUNT(eth_dev),
-			       RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	txq_stat_cntrs = RTE_MIN(QEDE_TSS_COUNT(eth_dev),
-			       RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	if (rxq_stat_cntrs != (unsigned int)QEDE_RSS_COUNT(eth_dev) ||
-	    txq_stat_cntrs != (unsigned int)QEDE_TSS_COUNT(eth_dev))
-		DP_VERBOSE(edev, ECORE_MSG_DEBUG,
-		       "Not all the queue stats will be displayed. Set"
-		       " RTE_ETHDEV_QUEUE_STAT_CNTRS config param"
-		       " appropriately and retry.\n");
+	rxq_stat_cntrs = QEDE_RSS_COUNT(eth_dev);
+	txq_stat_cntrs = QEDE_TSS_COUNT(eth_dev);
 
 	for (qid = 0; qid < eth_dev->data->nb_rx_queues; qid++) {
 		uint64_t q_ipackets = 0;
-		uint64_t q_errors = 0;
 
 		for_each_hwfn(edev, hw_fn) {
 			idx = qid * edev->num_hwfns + hw_fn;
@@ -1657,21 +1646,10 @@ qede_get_stats(struct rte_eth_dev *eth_dev, struct rte_eth_stats *eth_stats,
 					(((char *)(qdev->fp_array[idx].rxq)) +
 					 offsetof(struct qede_rx_queue,
 					 rcv_pkts));
-			q_errors +=
-				*(uint64_t *)
-					(((char *)(qdev->fp_array[idx].rxq)) +
-					 offsetof(struct qede_rx_queue,
-					 rx_hw_errors)) +
-				*(uint64_t *)
-					(((char *)(qdev->fp_array[idx].rxq)) +
-					 offsetof(struct qede_rx_queue,
-					 rx_alloc_errors));
 		}
 
-		if (qstats != NULL) {
-			qstats->q_ipackets[i] = q_ipackets;
-			qstats->q_errors[i] = q_errors;
-		}
+		if (qstats != NULL)
+			qstats[i].q_ipackets = q_ipackets;
 
 		i++;
 		if (i == rxq_stat_cntrs)
@@ -1693,7 +1671,7 @@ qede_get_stats(struct rte_eth_dev *eth_dev, struct rte_eth_stats *eth_stats,
 		}
 
 		if (qstats != NULL)
-			qstats->q_opackets[j] = q_opackets;
+			qstats[j].q_opackets = q_opackets;
 
 		j++;
 		if (j == txq_stat_cntrs)

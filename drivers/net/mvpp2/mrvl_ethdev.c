@@ -1505,10 +1505,10 @@ mrvl_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 			continue;
 
 		idx = rxq->queue_id;
-		if (unlikely(idx >= RTE_ETHDEV_QUEUE_STAT_CNTRS)) {
+		if (unlikely(idx >= dev->data->nb_rx_queues)) {
 			MRVL_LOG(ERR,
 				"rx queue %d stats out of range (0 - %d)",
-				idx, RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
+				idx, dev->data->nb_rx_queues - 1);
 			continue;
 		}
 
@@ -1523,12 +1523,8 @@ mrvl_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		}
 
 		if (qstats != NULL) {
-			qstats->q_ibytes[idx] = rxq->bytes_recv;
-			qstats->q_ipackets[idx] = rx_stats.enq_desc - rxq->drop_mac;
-			qstats->q_errors[idx] = rx_stats.drop_early +
-					       rx_stats.drop_fullq +
-					       rx_stats.drop_bm +
-					       rxq->drop_mac;
+			qstats[idx].q_ibytes = rxq->bytes_recv;
+			qstats[idx].q_ipackets = rx_stats.enq_desc - rxq->drop_mac;
 		}
 		stats->ibytes += rxq->bytes_recv;
 		drop_mac += rxq->drop_mac;
@@ -1542,10 +1538,10 @@ mrvl_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 			continue;
 
 		idx = txq->queue_id;
-		if (unlikely(idx >= RTE_ETHDEV_QUEUE_STAT_CNTRS)) {
+		if (unlikely(idx >= dev->data->nb_tx_queues)) {
 			MRVL_LOG(ERR,
 				"tx queue %d stats out of range (0 - %d)",
-				idx, RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
+				idx, dev->data->nb_tx_queues - 1);
 			continue;
 		}
 
@@ -1558,8 +1554,8 @@ mrvl_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		}
 
 		if (qstats != NULL) {
-			qstats->q_opackets[idx] = tx_stats.deq_desc;
-			qstats->q_obytes[idx] = txq->bytes_sent;
+			qstats[idx].q_opackets = tx_stats.deq_desc;
+			qstats[idx].q_obytes = txq->bytes_sent;
 		}
 		stats->obytes += txq->bytes_sent;
 	}

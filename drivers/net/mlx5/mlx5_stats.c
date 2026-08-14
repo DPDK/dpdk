@@ -44,7 +44,7 @@ static int
 mlx5_rq_xstats_get(struct rte_eth_dev *dev,
 					struct rte_eth_xstat *stats)
 {
-	uint16_t n_stats_rq = RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	uint16_t n_stats_rq = dev->data->nb_rx_queues;
 	int cnt_used_entries = 0;
 
 	for (unsigned int idx = 0; idx < n_stats_rq; idx++) {
@@ -101,7 +101,7 @@ mlx5_rq_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
 	unsigned int i;
 	int cnt_used_entries = 0;
 
-	uint16_t n_stats_rq = RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	uint16_t n_stats_rq = dev->data->nb_rx_queues;
 
 	for (i = 0; (i != n_stats_rq); ++i) {
 		rxq = mlx5_rxq_get(dev, i);
@@ -227,17 +227,13 @@ mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		if (rxq == NULL)
 			continue;
 		idx = rxq->idx;
-		if (qstats != NULL && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+		if (qstats != NULL && idx < dev->data->nb_rx_queues) {
 #ifdef MLX5_PMD_SOFT_COUNTERS
-			qstats->q_ipackets[idx] += rxq->stats.ipackets -
+			qstats[idx].q_ipackets += rxq->stats.ipackets -
 				rxq->stats_reset.ipackets;
-			qstats->q_ibytes[idx] += rxq->stats.ibytes -
+			qstats[idx].q_ibytes += rxq->stats.ibytes -
 				rxq->stats_reset.ibytes;
 #endif
-			qstats->q_errors[idx] += (rxq->stats.idropped +
-					      rxq->stats.rx_nombuf) -
-					      (rxq->stats_reset.idropped +
-					      rxq->stats_reset.rx_nombuf);
 		}
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		tmp.ipackets += rxq->stats.ipackets - rxq->stats_reset.ipackets;
@@ -253,11 +249,11 @@ mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		if (txq == NULL)
 			continue;
 		idx = txq->idx;
-		if (qstats != NULL && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+		if (qstats != NULL && idx < dev->data->nb_tx_queues) {
 #ifdef MLX5_PMD_SOFT_COUNTERS
-			qstats->q_opackets[idx] += txq->stats.opackets -
+			qstats[idx].q_opackets += txq->stats.opackets -
 						txq->stats_reset.opackets;
-			qstats->q_obytes[idx] += txq->stats.obytes -
+			qstats[idx].q_obytes += txq->stats.obytes -
 						txq->stats_reset.obytes;
 #endif
 		}
@@ -467,7 +463,7 @@ mlx5_xstats_get_names(struct rte_eth_dev *dev,
 static struct mlx5_stat_counter_ctrl*
 mlx5_rxq_get_counter_by_id(struct rte_eth_dev *dev, uint64_t id, uint64_t *rq_id)
 {
-	uint16_t n_stats_rq = RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	uint16_t n_stats_rq = dev->data->nb_rx_queues;
 
 	for (int i = 0; (i != n_stats_rq); i++) {
 		struct mlx5_rxq_data *rxq_data = mlx5_rxq_data_get(dev, i);

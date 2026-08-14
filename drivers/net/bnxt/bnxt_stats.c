@@ -576,18 +576,14 @@ static void bnxt_fill_rte_eth_stats_ext(struct rte_eth_stats *stats,
 		uint64_t ibytes = ring_stats->rx_ucast_bytes +
 				ring_stats->rx_mcast_bytes +
 				ring_stats->rx_bcast_bytes;
-		uint64_t ierrors = ring_stats->rx_discard_pkts +
-				ring_stats->rx_error_pkts;
-
 		stats->ipackets += ipackets;
 		stats->ibytes += ibytes;
 		stats->imissed += ring_stats->rx_discard_pkts;
 		stats->ierrors += ring_stats->rx_error_pkts;
 
 		if (qstats) {
-			qstats->q_ipackets[i] = ipackets;
-			qstats->q_ibytes[i] = ibytes;
-			qstats->q_errors[i] = ierrors;
+			qstats[i].q_ipackets = ipackets;
+			qstats[i].q_ibytes = ibytes;
 		}
 	} else {
 		uint64_t opackets = ring_stats->tx_ucast_pkts +
@@ -602,8 +598,8 @@ static void bnxt_fill_rte_eth_stats_ext(struct rte_eth_stats *stats,
 		stats->oerrors += ring_stats->tx_discard_pkts;
 
 		if (qstats) {
-			qstats->q_opackets[i] = opackets;
-			qstats->q_obytes[i] = obytes;
+			qstats[i].q_opackets = opackets;
+			qstats[i].q_obytes = obytes;
 		}
 	}
 }
@@ -620,18 +616,14 @@ static void bnxt_fill_rte_eth_stats(struct rte_eth_stats *stats,
 		uint64_t ibytes = ring_stats->rx_ucast_bytes +
 				ring_stats->rx_mcast_bytes +
 				ring_stats->rx_bcast_bytes;
-		uint64_t ierrors = ring_stats->rx_discard_pkts +
-				ring_stats->rx_error_pkts;
-
 		stats->ipackets += ipackets;
 		stats->ibytes += ibytes;
 		stats->imissed += ring_stats->rx_discard_pkts;
 		stats->ierrors += ring_stats->rx_error_pkts;
 
 		if (qstats) {
-			qstats->q_ipackets[i] = ipackets;
-			qstats->q_ibytes[i] = ibytes;
-			qstats->q_errors[i] = ierrors;
+			qstats[i].q_ipackets = ipackets;
+			qstats[i].q_ibytes = ibytes;
 		}
 	} else {
 		uint64_t opackets = ring_stats->tx_ucast_pkts +
@@ -646,8 +638,8 @@ static void bnxt_fill_rte_eth_stats(struct rte_eth_stats *stats,
 		stats->oerrors += ring_stats->tx_discard_pkts;
 
 		if (qstats) {
-			qstats->q_opackets[i] = opackets;
-			qstats->q_obytes[i] = obytes;
+			qstats[i].q_opackets = opackets;
+			qstats[i].q_obytes = obytes;
 		}
 	}
 }
@@ -661,9 +653,7 @@ static int bnxt_stats_get_ext(struct rte_eth_dev *eth_dev,
 	struct bnxt *bp = eth_dev->data->dev_private;
 	unsigned int num_q_stats;
 
-	num_q_stats = RTE_MIN(bp->rx_cp_nr_rings,
-			      (unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS);
-
+	num_q_stats = RTE_MIN(bp->rx_cp_nr_rings, eth_dev->data->nb_rx_queues);
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
@@ -687,9 +677,7 @@ static int bnxt_stats_get_ext(struct rte_eth_dev *eth_dev,
 							 rte_memory_order_relaxed);
 	}
 
-	num_q_stats = RTE_MIN(bp->tx_cp_nr_rings,
-			      (unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS);
-
+	num_q_stats = RTE_MIN(bp->tx_cp_nr_rings, eth_dev->data->nb_tx_queues);
 	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
 		struct bnxt_tx_queue *txq = bp->tx_queues[i];
 		struct bnxt_cp_ring_info *cpr = txq->cp_ring;
@@ -728,9 +716,7 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 	if (BNXT_TPA_V2_P7(bp))
 		return bnxt_stats_get_ext(eth_dev, bnxt_stats, qstats);
 
-	num_q_stats = RTE_MIN(bp->rx_cp_nr_rings,
-			      (unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS);
-
+	num_q_stats = RTE_MIN(bp->rx_cp_nr_rings, eth_dev->data->nb_rx_queues);
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
@@ -753,9 +739,7 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 							 rte_memory_order_relaxed);
 	}
 
-	num_q_stats = RTE_MIN(bp->tx_cp_nr_rings,
-			      (unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS);
-
+	num_q_stats = RTE_MIN(bp->tx_cp_nr_rings, eth_dev->data->nb_tx_queues);
 	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
 		struct bnxt_tx_queue *txq = bp->tx_queues[i];
 		struct bnxt_cp_ring_info *cpr = txq->cp_ring;

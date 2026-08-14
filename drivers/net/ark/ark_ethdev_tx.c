@@ -433,9 +433,9 @@ ark_tx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats, struct eth_que
 	stats->obytes += bytes;
 	stats->oerrors += queue->tx_errors;
 
-	if (qstats && queue->queue_index < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-		qstats->q_opackets[queue->queue_index] = pkts;
-		qstats->q_obytes[queue->queue_index] = bytes;
+	if (qstats != NULL) {
+		qstats[queue->queue_index].q_opackets = pkts;
+		qstats[queue->queue_index].q_obytes = bytes;
 	}
 }
 
