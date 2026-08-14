@@ -3492,51 +3492,6 @@ int rte_eth_xstats_query_state(uint16_t port_id, uint64_t id);
 int rte_eth_xstats_reset(uint16_t port_id);
 
 /**
- *  Set a mapping for the specified transmit queue to the specified per-queue
- *  statistics counter.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param tx_queue_id
- *   The index of the transmit queue for which a queue stats mapping is required.
- *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
- *   to rte_eth_dev_configure().
- * @param stat_idx
- *   The per-queue packet statistics functionality number that the transmit
- *   queue is to be assigned.
- *   The value must be in the range [0, RTE_ETHDEV_QUEUE_STAT_CNTRS - 1].
- *   Max RTE_ETHDEV_QUEUE_STAT_CNTRS being 256.
- * @return
- *   Zero if successful. Non-zero otherwise.
- */
-__rte_deprecated
-int rte_eth_dev_set_tx_queue_stats_mapping(uint16_t port_id,
-		uint16_t tx_queue_id, uint8_t stat_idx);
-
-/**
- *  Set a mapping for the specified receive queue to the specified per-queue
- *  statistics counter.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param rx_queue_id
- *   The index of the receive queue for which a queue stats mapping is required.
- *   The value must be in the range [0, nb_rx_queue - 1] previously supplied
- *   to rte_eth_dev_configure().
- * @param stat_idx
- *   The per-queue packet statistics functionality number that the receive
- *   queue is to be assigned.
- *   The value must be in the range [0, RTE_ETHDEV_QUEUE_STAT_CNTRS - 1].
- *   Max RTE_ETHDEV_QUEUE_STAT_CNTRS being 256.
- * @return
- *   Zero if successful. Non-zero otherwise.
- */
-__rte_deprecated
-int rte_eth_dev_set_rx_queue_stats_mapping(uint16_t port_id,
-					   uint16_t rx_queue_id,
-					   uint8_t stat_idx);
-
-/**
  * Retrieve the Ethernet address of an Ethernet device.
  *
  * @param port_id

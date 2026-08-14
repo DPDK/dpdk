@@ -230,12 +230,6 @@ RTE_TRACE_POINT_REGISTER(rte_eth_trace_xstats_get,
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_xstats_reset,
 	lib.ethdev.xstats_reset)
 
-RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_set_tx_queue_stats_mapping,
-	lib.ethdev.set_tx_queue_stats_mapping)
-
-RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_set_rx_queue_stats_mapping,
-	lib.ethdev.set_rx_queue_stats_mapping)
-
 RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_fw_version_get,
 	lib.ethdev.fw_version_get)
 
