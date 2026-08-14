@@ -47,7 +47,6 @@
 #define IAVF_ENABLE_PTYPE_LLDP_ARG "enable_ptype_lldp"
 uint64_t iavf_timestamp_dynflag;
 int iavf_timestamp_dynfield_offset = -1;
-int rte_pmd_iavf_tx_lldp_dynfield_offset = -1;
 
 static const char * const iavf_valid_args[] = {
 	IAVF_PROTO_XTR_ARG,
@@ -1058,28 +1057,16 @@ iavf_dev_start(struct rte_eth_dev *dev)
 		}
 	}
 
-	/* Check Tx LLDP dynfield */
-	rte_pmd_iavf_tx_lldp_dynfield_offset =
-		rte_mbuf_dynfield_lookup(IAVF_TX_LLDP_DYNFIELD, NULL);
-	if (rte_pmd_iavf_tx_lldp_dynfield_offset > 0) {
+	/* Warn if an application still registers the removed LLDP Tx dynfield. */
+	if (rte_mbuf_dynfield_lookup("intel_pmd_dynfield_tx_lldp", NULL) >= 0)
 		PMD_DRV_LOG(WARNING,
-			"Using a dynamic mbuf field to identify LLDP packets is deprecated. "
-			"Set the 'enable_ptype_lldp' driver option and mbuf LLDP ptypes instead.");
-		if (adapter->devargs.enable_ptype_lldp)
-			PMD_DRV_LOG(WARNING,
-				"Both ptype and dynfield LLDP enabled; ptype takes precedence.");
-	}
+			"Tx LLDP dynamic mbuf field is no longer supported. "
+			"Use enable_ptype_lldp devarg and packet type instead.");
 
 	for (uint16_t i = 0; i < dev->data->nb_tx_queues; i++) {
 		struct ci_tx_queue *txq = dev->data->tx_queues[i];
-		if (txq) {
-			if (adapter->devargs.enable_ptype_lldp)
-				txq->lldp_mode = IAVF_LLDP_PTYPE;
-			else if (rte_pmd_iavf_tx_lldp_dynfield_offset > 0)
-				txq->lldp_mode = IAVF_LLDP_DYNFIELD;
-			else
-				txq->lldp_mode = IAVF_LLDP_DISABLED;
-		}
+		if (txq)
+			txq->lldp_enabled = adapter->devargs.enable_ptype_lldp;
 	}
 
 	if (iavf_init_queues(dev) != 0) {
@@ -3064,11 +3051,6 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	 */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		iavf_set_rx_function(eth_dev);
-		/* LLDP may have been enabled by the primary process. Store the offset before
-		 * setting the TX function because it may be used in the selection function.
-		 */
-		rte_pmd_iavf_tx_lldp_dynfield_offset =
-			rte_mbuf_dynfield_lookup(IAVF_TX_LLDP_DYNFIELD, NULL);
 		iavf_set_tx_function(eth_dev);
 		return 0;
 	}
