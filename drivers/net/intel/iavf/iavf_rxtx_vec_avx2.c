@@ -1903,7 +1903,7 @@ iavf_fill_ctx_desc_tunneling_field(volatile uint64_t *qw0,
 
 static __rte_always_inline void
 ctx_vtx1(volatile struct ci_tx_desc *txdp, struct rte_mbuf *pkt,
-		uint64_t flags, bool offload, uint8_t vlan_flag, uint8_t lldp_mode)
+		uint64_t flags, bool offload, uint8_t vlan_flag, bool ptype_lldp_enabled)
 {
 	uint64_t high_ctx_qw = IAVF_TX_DESC_DTYPE_CONTEXT;
 	uint64_t low_ctx_qw = 0;
@@ -1924,7 +1924,7 @@ ctx_vtx1(volatile struct ci_tx_desc *txdp, struct rte_mbuf *pkt,
 		}
 #endif
 	}
-	if (IAVF_CHECK_TX_LLDP(pkt, lldp_mode))
+	if (IAVF_CHECK_TX_LLDP(pkt, ptype_lldp_enabled))
 		high_ctx_qw |= IAVF_TX_CTX_DESC_SWTCH_UPLINK << IAVF_TXD_CTX_QW1_CMD_SHIFT;
 	uint64_t high_data_qw = (IAVF_TX_DESC_DTYPE_DATA |
 				((uint64_t)flags  << IAVF_TXD_QW1_CMD_SHIFT) |
@@ -1941,14 +1941,14 @@ ctx_vtx1(volatile struct ci_tx_desc *txdp, struct rte_mbuf *pkt,
 static __rte_always_inline void
 ctx_vtx(volatile struct ci_tx_desc *txdp,
 		struct rte_mbuf **pkt, uint16_t nb_pkts, uint64_t flags,
-		bool offload, uint8_t vlan_flag, uint8_t lldp_mode)
+		bool offload, uint8_t vlan_flag, bool ptype_lldp_enabled)
 {
 	uint64_t hi_data_qw_tmpl = (IAVF_TX_DESC_DTYPE_DATA |
 					((uint64_t)flags  << IAVF_TXD_QW1_CMD_SHIFT));
 
 	/* if unaligned on 32-bit boundary, do one to align */
 	if (((uintptr_t)txdp & 0x1F) != 0 && nb_pkts != 0) {
-		ctx_vtx1(txdp, *pkt, flags, offload, vlan_flag, lldp_mode);
+		ctx_vtx1(txdp, *pkt, flags, offload, vlan_flag, ptype_lldp_enabled);
 		nb_pkts--; txdp++; pkt++;
 	}
 
@@ -1985,7 +1985,7 @@ ctx_vtx(volatile struct ci_tx_desc *txdp,
 			}
 		}
 #endif
-		if (IAVF_CHECK_TX_LLDP(pkt[1], lldp_mode))
+		if (IAVF_CHECK_TX_LLDP(pkt[1], ptype_lldp_enabled))
 			hi_ctx_qw1 |= IAVF_TX_CTX_DESC_SWTCH_UPLINK << IAVF_TXD_CTX_QW1_CMD_SHIFT;
 
 #ifdef IAVF_TX_VLAN_QINQ_OFFLOAD
@@ -2006,7 +2006,7 @@ ctx_vtx(volatile struct ci_tx_desc *txdp,
 			}
 		}
 #endif
-		if (IAVF_CHECK_TX_LLDP(pkt[0], lldp_mode))
+		if (IAVF_CHECK_TX_LLDP(pkt[0], ptype_lldp_enabled))
 			hi_ctx_qw0 |= IAVF_TX_CTX_DESC_SWTCH_UPLINK << IAVF_TXD_CTX_QW1_CMD_SHIFT;
 
 		if (offload) {
@@ -2029,7 +2029,7 @@ ctx_vtx(volatile struct ci_tx_desc *txdp,
 	}
 
 	if (nb_pkts)
-		ctx_vtx1(txdp, *pkt, flags, offload, vlan_flag, lldp_mode);
+		ctx_vtx1(txdp, *pkt, flags, offload, vlan_flag, ptype_lldp_enabled);
 }
 
 static __rte_always_inline uint16_t
@@ -2043,7 +2043,7 @@ iavf_xmit_fixed_burst_vec_avx2_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 	/* bit2 is reserved and must be set to 1 according to Spec */
 	uint64_t flags = IAVF_TX_DESC_CMD_EOP | IAVF_TX_DESC_CMD_ICRC;
 	uint64_t rs = IAVF_TX_DESC_CMD_RS | flags;
-	uint8_t lldp_mode = txq->lldp_mode;
+	bool lldp_enabled = txq->lldp_enabled;
 
 	if (txq->nb_tx_free < txq->tx_free_thresh)
 		ci_tx_free_bufs_vec(txq, iavf_tx_desc_done, true);
@@ -2066,10 +2066,10 @@ iavf_xmit_fixed_burst_vec_avx2_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 		nb_mbuf = n >> 1;
 		ci_tx_backlog_entry_vec(txep, tx_pkts, nb_mbuf);
 
-		ctx_vtx(txdp, tx_pkts, nb_mbuf - 1, flags, offload, txq->vlan_flag, lldp_mode);
+		ctx_vtx(txdp, tx_pkts, nb_mbuf - 1, flags, offload, txq->vlan_flag, lldp_enabled);
 		tx_pkts += (nb_mbuf - 1);
 		txdp += (n - 2);
-		ctx_vtx1(txdp, *tx_pkts++, rs, offload, txq->vlan_flag, lldp_mode);
+		ctx_vtx1(txdp, *tx_pkts++, rs, offload, txq->vlan_flag, lldp_enabled);
 
 		nb_commit = (uint16_t)(nb_commit - n);
 
@@ -2083,7 +2083,7 @@ iavf_xmit_fixed_burst_vec_avx2_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 	nb_mbuf = nb_commit >> 1;
 	ci_tx_backlog_entry_vec(txep, tx_pkts, nb_mbuf);
 
-	ctx_vtx(txdp, tx_pkts, nb_mbuf, flags, offload, txq->vlan_flag, lldp_mode);
+	ctx_vtx(txdp, tx_pkts, nb_mbuf, flags, offload, txq->vlan_flag, lldp_enabled);
 	tx_id = (uint16_t)(tx_id + nb_commit);
 
 	if (tx_id > txq->tx_next_rs) {
