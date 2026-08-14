@@ -717,11 +717,9 @@ mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		if (rxq == NULL)
 			continue;
 		idx = rxq->stats.idx;
-		if (qstats != NULL && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_ipackets[idx] += rxq->stats.ipackets;
-			qstats->q_ibytes[idx] += rxq->stats.ibytes;
-			qstats->q_errors[idx] += (rxq->stats.idropped +
-					      rxq->stats.rx_nombuf);
+		if (qstats != NULL && idx < dev->data->nb_rx_queues) {
+			qstats[idx].q_ipackets += rxq->stats.ipackets;
+			qstats[idx].q_ibytes += rxq->stats.ibytes;
 		}
 		tmp.ipackets += rxq->stats.ipackets;
 		tmp.ibytes += rxq->stats.ibytes;
@@ -734,9 +732,9 @@ mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		if (txq == NULL)
 			continue;
 		idx = txq->stats.idx;
-		if (qstats != NULL && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_opackets[idx] += txq->stats.opackets;
-			qstats->q_obytes[idx] += txq->stats.obytes;
+		if (qstats != NULL && idx < dev->data->nb_tx_queues) {
+			qstats[idx].q_opackets += txq->stats.opackets;
+			qstats[idx].q_obytes += txq->stats.obytes;
 		}
 		tmp.opackets += txq->stats.opackets;
 		tmp.obytes += txq->stats.obytes;

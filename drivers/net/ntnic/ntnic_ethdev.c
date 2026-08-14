@@ -197,18 +197,18 @@ static int dpdk_stats_collect(struct pmd_internals *internals, struct rte_eth_st
 	ntnic_filter_ops->poll_statistics(internals);
 
 	for (i = 0; i < internals->nb_rx_queues; i++) {
-		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_ipackets[i] = internals->rxq_scg[i].rx_pkts;
-			qstats->q_ibytes[i] = internals->rxq_scg[i].rx_bytes;
+		if (qstats != NULL) {
+			qstats[i].q_ipackets = internals->rxq_scg[i].rx_pkts;
+			qstats[i].q_ibytes = internals->rxq_scg[i].rx_bytes;
 		}
 		rx_total += internals->rxq_scg[i].rx_pkts;
 		rx_total_b += internals->rxq_scg[i].rx_bytes;
 	}
 
 	for (i = 0; i < internals->nb_tx_queues; i++) {
-		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_opackets[i] = internals->txq_scg[i].tx_pkts;
-			qstats->q_obytes[i] = internals->txq_scg[i].tx_bytes;
+		if (qstats != NULL) {
+			qstats[i].q_opackets = internals->txq_scg[i].tx_pkts;
+			qstats[i].q_obytes = internals->txq_scg[i].tx_bytes;
 		}
 		tx_total += internals->txq_scg[i].tx_pkts;
 		tx_total_b += internals->txq_scg[i].tx_bytes;

@@ -1504,9 +1504,9 @@ vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		stats->obytes += bytes;
 		stats->oerrors += txStats.pktsTxError + txStats.pktsTxDiscard;
 
-		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_opackets[i] = packets;
-			qstats->q_obytes[i] = bytes;
+		if (qstats != NULL && i < dev->data->nb_tx_queues) {
+			qstats[i].q_opackets = packets;
+			qstats[i].q_obytes = bytes;
 		}
 	}
 
@@ -1526,10 +1526,9 @@ vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		stats->ierrors += rxStats.pktsRxError;
 		stats->imissed += rxStats.pktsRxOutOfBuf;
 
-		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_ipackets[i] = packets;
-			qstats->q_ibytes[i] = bytes;
-			qstats->q_errors[i] = rxStats.pktsRxError;
+		if (qstats != NULL && i < dev->data->nb_rx_queues) {
+			qstats[i].q_ipackets = packets;
+			qstats[i].q_ibytes = bytes;
 		}
 	}
 

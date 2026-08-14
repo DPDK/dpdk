@@ -2059,12 +2059,13 @@ eth_igc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats,
 
 	/* Get per-queue statuses */
 	if (qstats) {
-		for (i = 0; i < RTE_MIN(IGC_QUEUE_PAIRS_NUM, RTE_ETHDEV_QUEUE_STAT_CNTRS); i++) {
-			qstats->q_opackets[i] += queue_stats->pqgptc[i];
-			qstats->q_obytes[i] += queue_stats->pqgotc[i];
-			qstats->q_ipackets[i] += queue_stats->pqgprc[i];
-			qstats->q_ibytes[i] += queue_stats->pqgorc[i];
-			qstats->q_errors[i] += queue_stats->rqdpc[i];
+		for (i = 0; i < RTE_MIN(IGC_QUEUE_PAIRS_NUM, dev->data->nb_rx_queues); i++) {
+			qstats[i].q_ipackets += queue_stats->pqgprc[i];
+			qstats[i].q_ibytes += queue_stats->pqgorc[i];
+		}
+		for (i = 0; i < RTE_MIN(IGC_QUEUE_PAIRS_NUM, dev->data->nb_tx_queues); i++) {
+			qstats[i].q_opackets += queue_stats->pqgptc[i];
+			qstats[i].q_obytes += queue_stats->pqgotc[i];
 		}
 	}
 

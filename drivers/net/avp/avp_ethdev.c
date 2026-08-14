@@ -2256,10 +2256,9 @@ avp_dev_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats,
 			stats->ibytes += rxq->bytes;
 			stats->ierrors += rxq->errors;
 
-			if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-				qstats->q_ipackets[i] += rxq->packets;
-				qstats->q_ibytes[i] += rxq->bytes;
-				qstats->q_errors[i] += rxq->errors;
+			if (qstats != NULL && i < eth_dev->data->nb_rx_queues) {
+				qstats[i].q_ipackets += rxq->packets;
+				qstats[i].q_ibytes += rxq->bytes;
 			}
 		}
 	}
@@ -2272,9 +2271,9 @@ avp_dev_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats,
 			stats->obytes += txq->bytes;
 			stats->oerrors += txq->errors;
 
-			if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-				qstats->q_opackets[i] += txq->packets;
-				qstats->q_obytes[i] += txq->bytes;
+			if (qstats != NULL && i < eth_dev->data->nb_tx_queues) {
+				qstats[i].q_opackets += txq->packets;
+				qstats[i].q_obytes += txq->bytes;
 			}
 		}
 	}

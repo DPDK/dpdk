@@ -1075,8 +1075,8 @@ atl_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 * of returned packets.
 		 */
 		rx_pkts[nb_rx++] = rx_mbuf_first;
-		adapter->sw_stats.q_ipackets[rxq->queue_id]++;
-		adapter->sw_stats.q_ibytes[rxq->queue_id] +=
+		adapter->sw_stats.rxq[rxq->queue_id].packets++;
+		adapter->sw_stats.rxq[rxq->queue_id].bytes +=
 			rx_mbuf_first->pkt_len;
 
 		PMD_RX_LOG(DEBUG, "add mbuf segs=%d pkt_len=%d",
@@ -1297,8 +1297,8 @@ atl_xmit_pkt(struct aq_hw_s *hw, struct atl_tx_queue *txq,
 
 	txq->tx_free -= desc_count;
 
-	adapter->sw_stats.q_opackets[txq->queue_id]++;
-	adapter->sw_stats.q_obytes[txq->queue_id] += pay_len;
+	adapter->sw_stats.txq[txq->queue_id].packets++;
+	adapter->sw_stats.txq[txq->queue_id].bytes += pay_len;
 }
 
 uint16_t
