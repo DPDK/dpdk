@@ -90,12 +90,6 @@ static int virtio_intr_disable(struct rte_eth_dev *dev);
 static int virtio_get_monitor_addr(void *rx_queue,
 				struct rte_power_monitor_cond *pmc);
 
-static int virtio_dev_queue_stats_mapping_set(
-	struct rte_eth_dev *eth_dev,
-	uint16_t queue_id,
-	uint8_t stat_idx,
-	uint8_t is_rx);
-
 static void virtio_notify_peers(struct rte_eth_dev *dev);
 static void virtio_ack_link_announce(struct rte_eth_dev *dev);
 
@@ -672,8 +666,6 @@ static const struct eth_dev_ops virtio_eth_dev_ops = {
 	.rss_hash_conf_get       = virtio_dev_rss_hash_conf_get,
 	.reta_update             = virtio_dev_rss_reta_update,
 	.reta_query              = virtio_dev_rss_reta_query,
-	/* collect stats per queue */
-	.queue_stats_mapping_set = virtio_dev_queue_stats_mapping_set,
 	.vlan_filter_set         = virtio_vlan_filter_set,
 	.mac_addr_add            = virtio_mac_addr_add,
 	.mac_addr_remove         = virtio_mac_addr_remove,
@@ -693,8 +685,6 @@ const struct eth_dev_ops virtio_user_secondary_eth_dev_ops = {
 	.xstats_get_names        = virtio_dev_xstats_get_names,
 	.stats_reset             = virtio_dev_stats_reset,
 	.xstats_reset            = virtio_dev_stats_reset,
-	/* collect stats per queue */
-	.queue_stats_mapping_set = virtio_dev_queue_stats_mapping_set,
 };
 
 static void
@@ -2820,17 +2810,6 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->rx_desc_lim.nb_align = 1;
 	dev_info->tx_desc_lim.nb_align = 1;
 
-	return 0;
-}
-
-/*
- * It enables testpmd to collect per queue stats.
- */
-static int
-virtio_dev_queue_stats_mapping_set(__rte_unused struct rte_eth_dev *eth_dev,
-__rte_unused uint16_t queue_id, __rte_unused uint8_t stat_idx,
-__rte_unused uint8_t is_rx)
-{
 	return 0;
 }
 
