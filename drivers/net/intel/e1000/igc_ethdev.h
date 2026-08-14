@@ -227,8 +227,6 @@ struct igc_adapter {
 	struct e1000_hw		hw;
 	struct e1000_hw_stats	stats;
 	struct igc_hw_queue_stats queue_stats;
-	int16_t txq_stats_map[IGC_QUEUE_PAIRS_NUM];
-	int16_t rxq_stats_map[IGC_QUEUE_PAIRS_NUM];
 
 	struct igc_interrupt	intr;
 	struct igc_vfta	shadow_vfta;
