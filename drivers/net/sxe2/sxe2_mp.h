@@ -10,12 +10,17 @@
 #include <rte_memzone.h>
 #include <rte_stdatomic.h>
 
+#include "sxe2_drv_cmd.h"
+
 #define SXE2_MP_NAME		"sxe2_mp_msg"
 #define SXE2_MP_MZ_NAME		"sxe2_stats_mz"
 
 #define SXE2_MP_MSG_TIMEOUT 30
 
 #define SXE2_MP_MAX_XSTATS	128
+
+/* Must cover every queue the primary can report per-queue stats for. */
+#define SXE2_MP_MAX_QSTATS	SXE2_TXQ_STATS_MAP_MAX_NUM
 
 #define SXE2_MP_MAX_SPIN	100000
 
@@ -34,7 +39,7 @@ struct sxe2_mp_param {
 union sxe2_mp_shared_payload {
 	struct {
 		struct rte_eth_stats stats;
-		struct eth_queue_stats qstats;
+		struct eth_queue_stats qstats[SXE2_MP_MAX_QSTATS];
 	} stats_blk;
 	struct {
 		struct rte_eth_xstat xstats[SXE2_MP_MAX_XSTATS];
