@@ -1575,14 +1575,10 @@ int32_t sxe2_drv_queue_info_get_update(struct sxe2_adapter *adapter, struct eth_
 	struct sxe2_drv_cmd_params param = {0};
 	struct sxe2_queue_map_info resp = {0};
 	struct sxe2_common_device *cdev = adapter->cdev;
+	struct rte_eth_dev_data *dev_data = adapter->dev_info.dev_data;
 	uint8_t pool_idx;
 	uint8_t index;
 	int32_t ret;
-
-	if (!(adapter->cap_flags & SXE2_DEV_CAPS_OFFLOAD_Q_MAP)) {
-		ret = 0;
-		goto l_end;
-	}
 
 	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_TX_RX_MAP_GET,
 				 NULL, 0,
@@ -1593,14 +1589,16 @@ int32_t sxe2_drv_queue_info_get_update(struct sxe2_adapter *adapter, struct eth_
 		goto l_end;
 	}
 
-	for (pool_idx = 0; pool_idx < SXE2_RXQ_STATS_MAP_MAX_NUM; pool_idx++) {
-		qstats->q_ipackets[pool_idx] = resp.rxq_stats_map_info[pool_idx].rxq_lan_in_pkt_cnt;
-		qstats->q_ibytes[pool_idx] = resp.rxq_stats_map_info[pool_idx].rxq_lan_in_byte_cnt;
+	for (pool_idx = 0; pool_idx < SXE2_RXQ_STATS_MAP_MAX_NUM &&
+			pool_idx < dev_data->nb_rx_queues; pool_idx++) {
+		qstats[pool_idx].q_ipackets = resp.rxq_stats_map_info[pool_idx].rxq_lan_in_pkt_cnt;
+		qstats[pool_idx].q_ibytes = resp.rxq_stats_map_info[pool_idx].rxq_lan_in_byte_cnt;
 	}
 
-	for (index = 0; index < SXE2_TXQ_STATS_MAP_MAX_NUM; index++) {
-		qstats->q_opackets[index] = resp.txq_stats_map_info[index].txq_lan_pkt_cnt;
-		qstats->q_obytes[index] = resp.txq_stats_map_info[index].txq_lan_byte_cnt;
+	for (index = 0; index < SXE2_TXQ_STATS_MAP_MAX_NUM &&
+			index < dev_data->nb_tx_queues; index++) {
+		qstats[index].q_opackets = resp.txq_stats_map_info[index].txq_lan_pkt_cnt;
+		qstats[index].q_obytes = resp.txq_stats_map_info[index].txq_lan_byte_cnt;
 	}
 
 l_end:

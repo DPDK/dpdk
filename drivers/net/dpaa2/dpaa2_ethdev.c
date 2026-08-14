@@ -2002,20 +2002,17 @@ dpaa2_dev_stats_get(struct rte_eth_dev *dev,
 	stats->oerrors = value.page_2.egress_discarded_frames;
 	stats->imissed = value.page_2.ingress_nobuffer_discards;
 
-	/* Fill in per queue stats */
+	/* Fill in per queue stats. Byte counting is not implemented. */
 	if (qstats != NULL) {
-		for (i = 0; (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) &&
-			(i < priv->nb_rx_queues || i < priv->nb_tx_queues); ++i) {
+		for (i = 0; i < dev->data->nb_rx_queues; ++i) {
 			dpaa2_rxq = priv->rx_vq[i];
-			dpaa2_txq = priv->tx_vq[i];
 			if (dpaa2_rxq)
-				qstats->q_ipackets[i] = dpaa2_rxq->rx_pkts;
+				qstats[i].q_ipackets = dpaa2_rxq->rx_pkts;
+		}
+		for (i = 0; i < dev->data->nb_tx_queues; ++i) {
+			dpaa2_txq = priv->tx_vq[i];
 			if (dpaa2_txq)
-				qstats->q_opackets[i] = dpaa2_txq->tx_pkts;
-
-			/* Byte counting is not implemented */
-			qstats->q_ibytes[i]   = 0;
-			qstats->q_obytes[i]   = 0;
+				qstats[i].q_opackets = dpaa2_txq->tx_pkts;
 		}
 	}
 

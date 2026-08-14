@@ -701,9 +701,9 @@ virtio_update_stats(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		stats->opackets += txvq->stats.packets;
 		stats->obytes += txvq->stats.bytes;
 
-		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_opackets[i] = txvq->stats.packets;
-			qstats->q_obytes[i] = txvq->stats.bytes;
+		if (qstats != NULL && i < dev->data->nb_tx_queues) {
+			qstats[i].q_opackets = txvq->stats.packets;
+			qstats[i].q_obytes = txvq->stats.bytes;
 		}
 	}
 
@@ -716,9 +716,9 @@ virtio_update_stats(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		stats->ibytes += rxvq->stats.bytes;
 		stats->ierrors += rxvq->stats.errors;
 
-		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_ipackets[i] = rxvq->stats.packets;
-			qstats->q_ibytes[i] = rxvq->stats.bytes;
+		if (qstats != NULL && i < dev->data->nb_rx_queues) {
+			qstats[i].q_ipackets = rxvq->stats.packets;
+			qstats[i].q_ibytes = rxvq->stats.bytes;
 		}
 	}
 

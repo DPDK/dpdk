@@ -2763,10 +2763,9 @@ hinic3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		rxq->rxq_stats.errors = rxq->rxq_stats.csum_errors +
 					rxq->rxq_stats.other_errors;
 
-		if (qstats && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_ipackets[i] = rxq->rxq_stats.packets;
-			qstats->q_ibytes[i] = rxq->rxq_stats.bytes;
-			qstats->q_errors[i] = rxq->rxq_stats.errors;
+		if (qstats && i < dev->data->nb_rx_queues) {
+			qstats[i].q_ipackets = rxq->rxq_stats.packets;
+			qstats[i].q_ibytes = rxq->rxq_stats.bytes;
 		}
 		stats->ierrors += rxq->rxq_stats.errors;
 		rx_discards_pmd += rxq->rxq_stats.dropped;
@@ -2777,9 +2776,9 @@ hinic3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 	for (uint32_t i = 0; i < nic_dev->num_sqs; i++) {
 		struct hinic3_txq *txq = nic_dev->txqs[i];
 		stats->oerrors += (txq->txq_stats.tx_busy + txq->txq_stats.offload_errors);
-		if (qstats && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_opackets[i] = txq->txq_stats.packets;
-			qstats->q_obytes[i] = txq->txq_stats.bytes;
+		if (qstats && i < dev->data->nb_tx_queues) {
+			qstats[i].q_opackets = txq->txq_stats.packets;
+			qstats[i].q_obytes = txq->txq_stats.bytes;
 		}
 	}
 

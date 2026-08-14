@@ -39,28 +39,21 @@ cnxk_nix_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats,
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
 		struct roc_nix_stats_queue qstats_data;
 
-		if (i >= RTE_ETHDEV_QUEUE_STAT_CNTRS)
-			break;
-
 		rc = roc_nix_stats_queue_get(nix, i, 0, &qstats_data);
 		if (rc)
 			goto exit;
-		qstats->q_opackets[i] = qstats_data.tx_pkts;
-		qstats->q_obytes[i] = qstats_data.tx_octs;
+		qstats[i].q_opackets = qstats_data.tx_pkts;
+		qstats[i].q_obytes = qstats_data.tx_octs;
 	}
 
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		struct roc_nix_stats_queue qstats_data;
 
-		if (i >= RTE_ETHDEV_QUEUE_STAT_CNTRS)
-			break;
-
 		rc = roc_nix_stats_queue_get(nix, i, 1, &qstats_data);
 		if (rc)
 			goto exit;
-		qstats->q_ipackets[i] = qstats_data.rx_pkts;
-		qstats->q_ibytes[i] = qstats_data.rx_octs;
-		qstats->q_errors[i] = qstats_data.rx_drop_pkts;
+		qstats[i].q_ipackets = qstats_data.rx_pkts;
+		qstats[i].q_ibytes = qstats_data.rx_octs;
 	}
 exit:
 	return rc;

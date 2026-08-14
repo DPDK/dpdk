@@ -795,10 +795,10 @@ static int nbl_res_txrx_get_stats(void *priv, struct rte_eth_stats *rte_stats,
 		rxq_stats_reset = &rxq->rxq_stats_reset;
 		idx = rxq->queue_id;
 
-		if (qstats && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_ipackets[idx] += rxq_stats->rx_packets -
+		if (qstats && idx < eth_dev->data->nb_rx_queues) {
+			qstats[idx].q_ipackets += rxq_stats->rx_packets -
 							rxq_stats_reset->rx_packets;
-			qstats->q_ibytes[idx] += rxq_stats->rx_bytes - rxq_stats_reset->rx_bytes;
+			qstats[idx].q_ibytes += rxq_stats->rx_bytes - rxq_stats_reset->rx_bytes;
 		}
 		rte_stats->ipackets += rxq_stats->rx_packets - rxq_stats_reset->rx_packets;
 		rte_stats->ibytes += rxq_stats->rx_bytes - rxq_stats_reset->rx_bytes;
@@ -814,10 +814,10 @@ static int nbl_res_txrx_get_stats(void *priv, struct rte_eth_stats *rte_stats,
 		txq_stats_reset = &txq->txq_stats_reset;
 		idx = txq->queue_id;
 
-		if (qstats && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			qstats->q_opackets[idx] += txq_stats->tx_packets -
+		if (qstats && idx < eth_dev->data->nb_tx_queues) {
+			qstats[idx].q_opackets += txq_stats->tx_packets -
 							txq_stats_reset->tx_packets;
-			qstats->q_obytes[idx] += txq_stats->tx_bytes - txq_stats_reset->tx_bytes;
+			qstats[idx].q_obytes += txq_stats->tx_bytes - txq_stats_reset->tx_bytes;
 		}
 		rte_stats->opackets += txq_stats->tx_packets - txq_stats_reset->tx_packets;
 		rte_stats->obytes += txq_stats->tx_bytes - txq_stats_reset->tx_bytes;

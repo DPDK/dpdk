@@ -1843,11 +1843,6 @@ int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	struct bnxt_tx_queue *txq;
 	uint16_t queue_idx;
 
-	if (bp->rx_cp_nr_rings > RTE_ETHDEV_QUEUE_STAT_CNTRS)
-		PMD_DRV_LOG_LINE(ERR,
-			    "RxQ cnt %d > RTE_ETHDEV_QUEUE_STAT_CNTRS %d",
-			    bp->rx_cp_nr_rings, RTE_ETHDEV_QUEUE_STAT_CNTRS);
-
 	do {
 		rc = bnxt_hwrm_if_change(bp, true);
 		if (rc == 0 || rc != -EAGAIN)

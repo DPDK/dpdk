@@ -927,7 +927,8 @@ int hn_vf_stats_get(struct rte_eth_dev *dev,
 		 * rte_eth_stats_get API because we need to forward the
 		 * per-queue stats (qstats) which the public API does not
 		 * support.  The caller (eth_stats_qstats_get) has already
-		 * zeroed stats and qstats before invoking this callback.
+		 * zeroed stats, and qstats is zeroed by its allocation,
+		 * before invoking this callback.
 		 */
 		if (vf_dev->dev_ops->stats_get != NULL)
 			ret = vf_dev->dev_ops->stats_get(vf_dev, stats,

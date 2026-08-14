@@ -1328,14 +1328,16 @@ fm10k_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 	fm10k_update_hw_stats(hw, hw_stats);
 
 	ipackets = opackets = ibytes = obytes = imissed = 0;
-	for (i = 0; (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) &&
-			(i < hw->mac.max_queues); ++i) {
+	for (i = 0; i < hw->mac.max_queues; ++i) {
 		if (qstats != NULL) {
-			qstats->q_ipackets[i] = hw_stats->q[i].rx_packets.count;
-			qstats->q_opackets[i] = hw_stats->q[i].tx_packets.count;
-			qstats->q_ibytes[i]   = hw_stats->q[i].rx_bytes.count;
-			qstats->q_obytes[i]   = hw_stats->q[i].tx_bytes.count;
-			qstats->q_errors[i]   = hw_stats->q[i].rx_drops.count;
+			if (i < dev->data->nb_rx_queues) {
+				qstats[i].q_ipackets = hw_stats->q[i].rx_packets.count;
+				qstats[i].q_ibytes   = hw_stats->q[i].rx_bytes.count;
+			}
+			if (i < dev->data->nb_tx_queues) {
+				qstats[i].q_opackets = hw_stats->q[i].tx_packets.count;
+				qstats[i].q_obytes   = hw_stats->q[i].tx_bytes.count;
+			}
 		}
 		ipackets += hw_stats->q[i].rx_packets.count;
 		opackets += hw_stats->q[i].tx_packets.count;
