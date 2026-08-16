@@ -1573,6 +1573,7 @@ efx_np_mac_ctrl(
 	__in		efx_np_handle_t nph,
 	__in		const efx_np_mac_ctrl_t *mc)
 {
+	const efx_nic_cfg_t *encp = &enp->en_nic_cfg;
 	EFX_MCDI_DECLARE_BUF(payload,
 	    MC_CMD_MAC_CTRL_IN_LEN,
 	    MC_CMD_MAC_CTRL_OUT_LEN);
@@ -1596,9 +1597,19 @@ efx_np_mac_ctrl(
 	if (mc->enmc_set_pdu_only != B_FALSE)
 		goto skip_full_reconfigure;
 
-	cfg |= 1U << MC_CMD_MAC_CONFIG_OPTIONS_CFG_INCLUDE_FCS;
-	if (mc->enmc_include_fcs != B_FALSE)
-		flags |= 1U << MC_CMD_MAC_FLAGS_FLAG_INCLUDE_FCS;
+	/* Only PFs can control FCS stripping. */
+	if (EFX_PCI_FUNCTION_IS_PF(encp)) {
+		cfg |= 1U << MC_CMD_MAC_CONFIG_OPTIONS_CFG_INCLUDE_FCS;
+		if (mc->enmc_include_fcs != B_FALSE)
+			flags |= 1U << MC_CMD_MAC_FLAGS_FLAG_INCLUDE_FCS;
+	} else if (mc->enmc_include_fcs != B_FALSE) {
+		/*
+		 * Assume that FCS stripping being enabled is the driver's
+		 * default expectation and deny disabling it to VFs.
+		 */
+		rc = ENOTSUP;
+		goto fail1;
+	}
 
 	MCDI_IN_SET_DWORD(req, MAC_CTRL_IN_FLAGS, flags);
 
@@ -1620,12 +1631,22 @@ efx_np_mac_ctrl(
 			break;
 		default:
 			rc = EINVAL;
-			goto fail1;
+			goto fail2;
 		}
 	}
 
-	cfg |= 1U << MC_CMD_MAC_CONFIG_OPTIONS_CFG_FCNTL;
-	MCDI_IN_SET_DWORD(req, MAC_CTRL_IN_FCNTL, fcntl);
+	/* Only PFs can change flow control settings. */
+	if (EFX_PCI_FUNCTION_IS_PF(encp)) {
+		cfg |= 1U << MC_CMD_MAC_CONFIG_OPTIONS_CFG_FCNTL;
+		MCDI_IN_SET_DWORD(req, MAC_CTRL_IN_FCNTL, fcntl);
+	} else if (fcntl != MC_CMD_FCNTL_AUTO) {
+		/*
+		 * Assume that flow control auto-negotiation is the driver's
+		 * default expectation and deny any attempts to override it.
+		 */
+		rc = ENOTSUP;
+		goto fail3;
+	}
 
 skip_full_reconfigure:
 	MCDI_IN_SET_DWORD(req, MAC_CTRL_IN_V2_CONTROL_FLAGS, cfg);
@@ -1634,10 +1655,16 @@ skip_full_reconfigure:
 
 	if (req.emr_rc != 0) {
 		rc = req.emr_rc;
-		goto fail2;
+		goto fail4;
 	}
 
 	return (0);
+
+fail4:
+	EFSYS_PROBE(fail4);
+
+fail3:
+	EFSYS_PROBE(fail3);
 
 fail2:
 	EFSYS_PROBE(fail2);
