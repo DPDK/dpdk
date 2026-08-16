@@ -113,6 +113,8 @@ SFC EFX PMD has support for:
 
 - SR-IOV PF
 
+- SR-IOV VF
+
 - Port representors (see :ref: switch_representation)
 
 - VLAN stripping (if running firmware variant supports it)
@@ -155,6 +157,27 @@ block of objects and provide mempool info API to get the block size.
 
 Another limitation of a equal stride super-buffer mode, imposed by the
 firmware, is that it allows for a single RSS context.
+
+
+SR-IOV VF
+~~~~~~~~~
+
+X4 VF support requires management controller firmware version 1.4.0.8 or later.
+
+When the PMD operates as a VF, the following restrictions apply:
+
+- Link speed, FEC mode and lane count are accepted without
+  error but have no physical effect on the link, which is
+  exclusively under PF control.
+
+- Disabling flow control auto-negotiation is not supported.
+
+- FCS stripping cannot be disabled.
+
+- Link status change events are not delivered.
+
+- Periodic MAC statistics DMA is not available; statistics are
+  collected via one-shot uploads instead.
 
 
 Tunnels support

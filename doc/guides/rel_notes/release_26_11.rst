@@ -61,6 +61,10 @@ New Features
     ``use_cni`` or ``use_pinned_map`` is set without ``dp_path``.
     See :doc:`../nics/af_xdp` for more details.
 
+* **Updated Solarflare network driver.**
+
+  * Added VF support on AMD Solarflare X45xx adapters.
+
 
 Removed Items
 -------------
