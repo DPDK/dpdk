@@ -14646,10 +14646,18 @@ mlx5_hw_mirror_destroy(struct rte_eth_dev *dev, struct mlx5_mirror *mirror)
 	uint32_t i;
 
 	mlx5_indirect_list_remove_entry(&mirror->indirect);
-	for (i = 0; i < mirror->clones_num; i++)
-		mlx5_mirror_destroy_clone(dev, &mirror->clone[i]);
+	/*
+	 * The mirror action is a composite dest_array that references each
+	 * clone destination (jump table or Rx queue). It must be destroyed
+	 * before the clones so the underlying destinations are no longer
+	 * referenced when they are released; otherwise releasing a clone can
+	 * drop the last reference to a group table and destroy it while the
+	 * dest_array still points at it, leaking the firmware flow table.
+	 */
 	if (mirror->mirror_action)
 		mlx5dr_action_destroy(mirror->mirror_action);
+	for (i = 0; i < mirror->clones_num; i++)
+		mlx5_mirror_destroy_clone(dev, &mirror->clone[i]);
 	mlx5_free(mirror);
 }
 
