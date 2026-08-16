@@ -1749,15 +1749,31 @@ efx_np_mac_stats(
 	efx_mcdi_execute(enp, &req);
 
 	if (req.emr_rc != 0) {
+		const efx_nic_cfg_t *encp = &enp->en_nic_cfg;
+
+		if (req.emr_rc == EACCES && (enable | events) &&
+		    EFX_PCI_FUNCTION_IS_VF(encp)) {
+			/*
+			 * VFs cannot request periodic DMAing of statistics.
+			 * Indicate 'ENOTSUP' for the DPDK driver to handle
+			 * this gracefully and stick with one-time uploads.
+			 */
+			rc = ENOTSUP;
+			goto fail3;
+		}
+
 		/* EF10: Expect ENOENT if no DMA queues are initialised */
 		if ((req.emr_rc != ENOENT) ||
 		    (enp->en_rx_qcount + enp->en_tx_qcount != 0)) {
 			rc = req.emr_rc;
-			goto fail3;
+			goto fail4;
 		}
 	}
 
 	return (0);
+
+fail4:
+	EFSYS_PROBE(fail4);
 
 fail3:
 	EFSYS_PROBE(fail3);
