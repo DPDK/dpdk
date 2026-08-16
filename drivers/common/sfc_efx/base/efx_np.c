@@ -240,12 +240,29 @@ efx_np_get_fixed_port_props(
 	__out_opt		uint32_t *sup_cap_maskp,
 	__out_opt		efx_qword_t *loopback_cap_maskp)
 {
+	const efx_nic_cfg_t *encp = &enp->en_nic_cfg;
 	EFX_MCDI_DECLARE_BUF(payload,
 	    MC_CMD_GET_FIXED_PORT_PROPERTIES_IN_LEN,
 	    MC_CMD_GET_FIXED_PORT_PROPERTIES_OUT_V2_LEN);
 	const uint8_t *cap_data;
 	efx_mcdi_req_t req;
 	efx_rc_t rc;
+
+	/* VFs do not allow access to the fixed port data. */
+	if (EFX_PCI_FUNCTION_IS_VF(encp)) {
+		if (sup_cap_rawp != NULL)
+			memset(sup_cap_rawp, 0, MC_CMD_ETH_AN_FIELDS_LEN);
+
+		if (sup_cap_maskp != NULL)
+			*sup_cap_maskp = 0;
+
+		if (loopback_cap_maskp != NULL) {
+			memset(loopback_cap_maskp, 0,
+			    sizeof (*loopback_cap_maskp));
+		}
+
+		return (0);
+	}
 
 	req.emr_out_length = MC_CMD_GET_FIXED_PORT_PROPERTIES_OUT_V2_LEN;
 	req.emr_in_length = MC_CMD_GET_FIXED_PORT_PROPERTIES_IN_LEN;
@@ -1058,10 +1075,6 @@ efx_np_attach(
 	if (rc != 0)
 		goto fail1;
 
-	/*
-	 * FIXME: This may need revisiting for VFs, which
-	 * don't necessarily have access to these details.
-	 */
 	rc = efx_np_get_fixed_port_props(enp, epp->ep_np_handle,
 		    epp->ep_np_cap_data_raw, &epp->ep_phy_cap_mask,
 		    &epp->ep_np_loopback_cap_mask);
@@ -1077,6 +1090,26 @@ efx_np_attach(
 	if (ls.enls_an_supported != B_FALSE) {
 		epp->ep_adv_cap_mask |= 1U << EFX_PHY_CAP_AN;
 		epp->ep_phy_cap_mask |= 1U << EFX_PHY_CAP_AN;
+	}
+
+	/*
+	 * On VFs, 'efx_np_get_fixed_port_props' does not report any link
+	 * speeds; indicate the auto-negotiation ability and construct
+	 * the mask of theoretically supported link speed abilities.
+	 *
+	 * Also, indicate two flow control abilities that the VF cannot
+	 * manage, but that can be safely assumed to be available.
+	 */
+	if (EFX_PCI_FUNCTION_IS_VF(encp)) {
+		unsigned int i;
+
+		epp->ep_phy_cap_mask = 1U << EFX_PHY_CAP_AN |
+		    1U << EFX_PHY_CAP_PAUSE | 1U << EFX_PHY_CAP_ASYM;
+
+		for (i = 0; i < EFX_ARRAY_SIZE(efx_np_cap_map_tech); ++i) {
+			epp->ep_phy_cap_mask |=
+			    1U << efx_np_cap_map_tech[i].encm_sw;
+		}
 	}
 
 #if EFSYS_OPT_LOOPBACK
