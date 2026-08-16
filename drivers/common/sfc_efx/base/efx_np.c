@@ -1009,12 +1009,17 @@ efx_np_set_event_mask(
 	__in		efx_np_handle_t nph,
 	__in		boolean_t want_linkchange_events)
 {
+	const efx_nic_cfg_t *encp = &enp->en_nic_cfg;
 	EFX_MCDI_DECLARE_BUF(payload,
 	    MC_CMD_SET_NETPORT_EVENTS_MASK_IN_LEN,
 	    MC_CMD_SET_NETPORT_EVENTS_MASK_OUT_LEN);
 	efx_mcdi_req_t req;
 	efx_dword_t dword;
 	efx_rc_t rc;
+
+	/* VFs do not allow subscription to link change events. */
+	if (EFX_PCI_FUNCTION_IS_VF(encp))
+		return (0);
 
 	req.emr_out_length = MC_CMD_SET_NETPORT_EVENTS_MASK_OUT_LEN;
 	req.emr_in_length = MC_CMD_SET_NETPORT_EVENTS_MASK_IN_LEN;
@@ -1139,7 +1144,7 @@ efx_np_attach(
 	 */
 	epp->ep_np_prev_fec_ctrl = MC_CMD_FEC_AUTO;
 
-	/* Subscribe to link change events. */
+	/* Subscribe to link change events; a no-op on VFs. */
 	rc = efx_np_set_event_mask(enp, epp->ep_np_handle, B_TRUE);
 	if (rc != 0)
 		goto fail6;
