@@ -877,7 +877,7 @@ int alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx);
 
 void vhost_attach_vdpa_device(int vid, struct rte_vdpa_device *dev);
 
-void vhost_set_ifname(int, const char *if_name, unsigned int if_len);
+void vhost_set_ifname(int vid, const char *if_name);
 void vhost_setup_virtio_net(int vid, bool enable, bool legacy_ol_flags, bool stats_enabled,
 	bool support_iommu);
 void vhost_enable_extbuf(int vid);
