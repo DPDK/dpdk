@@ -38,7 +38,7 @@ endif
 
 # IPsec MB is REQUIRED for HMAC precomputes (no OpenSSL 3.0 alternative)
 # OpenSSL is OPTIONAL for DOCSIS BPI cipher fallback
-IMB_required_ver = '1.4.0'
+IMB_required_ver = '2.0.0'
 
 # Only check IPsec MB if qat_crypto wasn't already disabled
 if qat_crypto
@@ -47,8 +47,6 @@ if qat_crypto
     else
         IMB_header = '#include<intel-ipsec-mb.h>'
     endif
-
-    # Check for IPsec MB library (required)
     libipsecmb = cc.find_library('IPSec_MB', required: false)
     if libipsecmb.found() and cc.links(
             'int main(void) {return 0;}', dependencies: libipsecmb)

@@ -9,10 +9,11 @@ endif
 
 cflags += no_wvla_cflag
 
-IMB_required_ver = '1.4.0'
+IMB_required_ver = '2.0.0'
 IMB_header = '#include<intel-ipsec-mb.h>'
 if arch_subdir == 'arm'
     IMB_header = '#include<ipsec-mb.h>'
+    IMB_required_ver = '1.4.0'
 endif
 lib = cc.find_library('IPSec_MB', required: false)
 if not lib.found()

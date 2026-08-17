@@ -185,6 +185,8 @@ Removed Items
   The only remaining method for detecting LLDP packets is by using
   the mbuf packet type in conjunction with the ``enable_lldp`` devarg.
 
+*  crypto/aesni_mb: Removed support for versions older than 2.0 of IPsec MB Library.
+
 
 API Changes
 -----------
