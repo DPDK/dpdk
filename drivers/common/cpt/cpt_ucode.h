@@ -3354,10 +3354,10 @@ compl_auth_verify(struct rte_crypto_op *op,
 		return;
 	}
 
-	if (memcmp(mac, gen_mac, mac_len))
-		op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
-	else
+	if (rte_memeq_timingsafe(mac, gen_mac, mac_len))
 		op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+	else
+		op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 }
 
 static __rte_always_inline void
