@@ -20,10 +20,8 @@ is_aead_algo(IMB_HASH_ALG hash_alg, IMB_CIPHER_MODE cipher_mode)
 {
 	return (hash_alg == IMB_AUTH_CHACHA20_POLY1305 ||
 		hash_alg == IMB_AUTH_AES_CCM ||
-		cipher_mode == IMB_CIPHER_GCM
-#if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
-		|| cipher_mode == IMB_CIPHER_SM4_GCM
-#endif
+		cipher_mode == IMB_CIPHER_GCM ||
+		cipher_mode == IMB_CIPHER_SM4_GCM
 		);
 }
 
@@ -295,14 +293,12 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 		sess->template_job.hash_alg = IMB_AUTH_SHA_512;
 		auth_precompute = 0;
 		break;
-#if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
 	case RTE_CRYPTO_AUTH_SM3:
 		sess->template_job.hash_alg = IMB_AUTH_SM3;
 		break;
 	case RTE_CRYPTO_AUTH_SM3_HMAC:
 		sess->template_job.hash_alg = IMB_AUTH_HMAC_SM3;
 		break;
-#endif
 	default:
 		IPSEC_MB_LOG(ERR,
 			"Unsupported authentication algorithm selection");
@@ -353,9 +349,7 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 	uint8_t is_zuc = 0;
 	uint8_t is_snow3g = 0;
 	uint8_t is_kasumi = 0;
-#if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
 	uint8_t is_sm4 = 0;
-#endif
 
 	if (xform == NULL) {
 		sess->template_job.cipher_mode = IMB_CIPHER_NULL;
@@ -426,7 +420,6 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 		sess->iv.offset = xform->cipher.iv.offset;
 		sess->template_job.iv_len_in_bytes = xform->cipher.iv.length;
 		return 0;
-#if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
 	case RTE_CRYPTO_CIPHER_SM4_CBC:
 		sess->template_job.cipher_mode = IMB_CIPHER_SM4_CBC;
 		is_sm4 = 1;
@@ -435,13 +428,10 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 		sess->template_job.cipher_mode = IMB_CIPHER_SM4_ECB;
 		is_sm4 = 1;
 		break;
-#endif
-#if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
 	case RTE_CRYPTO_CIPHER_SM4_CTR:
 		sess->template_job.cipher_mode = IMB_CIPHER_SM4_CNTR;
 		is_sm4 = 1;
 		break;
-#endif
 	default:
 		IPSEC_MB_LOG(ERR, "Unsupported cipher mode parameter");
 		return -ENOTSUP;
@@ -576,7 +566,6 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 					&sess->cipher.pKeySched_kasumi_cipher);
 		sess->template_job.enc_keys = &sess->cipher.pKeySched_kasumi_cipher;
 		sess->template_job.dec_keys = &sess->cipher.pKeySched_kasumi_cipher;
-#if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
 	} else if (is_sm4) {
 		sess->template_job.key_len_in_bytes = IMB_KEY_128_BYTES;
 		IMB_SM4_KEYEXP(mb_mgr, xform->cipher.key.data,
@@ -584,7 +573,6 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 				sess->cipher.expanded_sm4_keys.decode);
 		sess->template_job.enc_keys = sess->cipher.expanded_sm4_keys.encode;
 		sess->template_job.dec_keys = sess->cipher.expanded_sm4_keys.decode;
-#endif
 	} else {
 		if (xform->cipher.key.length != 8) {
 			IPSEC_MB_LOG(ERR, "Invalid cipher key length");
@@ -724,7 +712,6 @@ aesni_mb_set_session_aead_parameters(IMB_MGR *mb_mgr,
 			return -EINVAL;
 		}
 		break;
-#if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
 	case RTE_CRYPTO_AEAD_SM4_GCM:
 		sess->template_job.cipher_mode = IMB_CIPHER_SM4_GCM;
 		sess->template_job.hash_alg = IMB_AUTH_SM4_GCM;
@@ -739,7 +726,6 @@ aesni_mb_set_session_aead_parameters(IMB_MGR *mb_mgr,
 		sess->template_job.enc_keys = &sess->cipher.gcm_key;
 		sess->template_job.dec_keys = &sess->cipher.gcm_key;
 		break;
-#endif
 	default:
 		IPSEC_MB_LOG(ERR, "Unsupported aead mode parameter");
 		return -ENOTSUP;
@@ -1065,11 +1051,11 @@ set_cpu_mb_job_params(IMB_JOB *job, struct aesni_mb_session *session,
 		job->u.CHACHA20_POLY1305.aad = aad->va;
 		break;
 
-#if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
+
 	case IMB_AUTH_SM4_GCM:
 		job->u.GCM.aad = aad->va;
 		break;
-#endif
+
 
 	default:
 		break;
@@ -1618,11 +1604,9 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 			imb_set_session(mb_mgr, job);
 		}
 		break;
-#if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
 	case IMB_AUTH_SM4_GCM:
 		job->u.GCM.aad = op->sym->aead.aad.data;
 		break;
-#endif
 	default:
 		break;
 	}
@@ -1753,7 +1737,6 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 			session->iv.offset);
 		break;
-#if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
 	case IMB_AUTH_SM4_GCM:
 		job->hash_start_src_offset_in_bytes = 0;
 		/*
@@ -1766,7 +1749,6 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 				session->iv.offset);
 		break;
-#endif
 
 	default:
 		job->hash_start_src_offset_in_bytes = auth_start_offset(
@@ -1813,11 +1795,9 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		job->msg_len_to_cipher_in_bytes = 0;
 		job->cipher_start_src_offset_in_bytes = 0;
 		break;
-#if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
 	case IMB_CIPHER_SM4_GCM:
 		job->msg_len_to_cipher_in_bytes = op->sym->aead.data.length;
 		break;
-#endif
 	default:
 		job->cipher_start_src_offset_in_bytes =
 					op->sym->cipher.data.offset;

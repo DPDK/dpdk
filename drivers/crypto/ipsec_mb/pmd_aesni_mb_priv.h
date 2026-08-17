@@ -725,7 +725,6 @@ static const struct rte_cryptodev_capabilities aesni_mb_capabilities[] = {
 			}, }
 		}, }
 	},
-#if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
 	{	/* SM3 */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -804,8 +803,6 @@ static const struct rte_cryptodev_capabilities aesni_mb_capabilities[] = {
 			}, }
 		}, }
 	},
-#endif
-#if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
 	{	/* SM4 CTR */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -856,7 +853,6 @@ static const struct rte_cryptodev_capabilities aesni_mb_capabilities[] = {
 			}, }
 		}, }
 	},
-#endif
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
@@ -964,10 +960,8 @@ static const unsigned int auth_digest_byte_lengths[] = {
 		[IMB_AUTH_ZUC_EIA3_BITLEN]	= 4,
 		[IMB_AUTH_SNOW3G_UIA2_BITLEN]	= 4,
 		[IMB_AUTH_KASUMI_UIA1]		= 4,
-#if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
 		[IMB_AUTH_SM3]			= 32,
 		[IMB_AUTH_HMAC_SM3]		= 32,
-#endif
 	/**< Vector mode dependent pointer table of the multi-buffer APIs */
 
 };
@@ -1029,7 +1023,6 @@ struct __rte_cache_aligned aesni_mb_session {
 			/* *< SNOW3G scheduled cipher key */
 			kasumi_key_sched_t pKeySched_kasumi_cipher;
 			/* *< KASUMI scheduled cipher key */
-#if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
 			struct {
 				alignas(16) uint32_t encode[IMB_SM4_KEY_SCHEDULE_ROUNDS];
 				/* *< encode key */
@@ -1039,7 +1032,6 @@ struct __rte_cache_aligned aesni_mb_session {
 			/* *< Expanded SM4 keys - Original 128 bit key is
 			 * expanded into 32 round keys, each 32 bits.
 			 */
-#endif
 		};
 	} cipher;
 

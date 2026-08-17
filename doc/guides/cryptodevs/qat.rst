@@ -360,7 +360,7 @@ that were previously used for HMAC precomputes.
 
 **On x86 platforms:**
 
-* Intel IPsec MB library (v1.4.0+) is required for HMAC precomputes.
+* Intel IPsec MB library (v2.0+) is required for HMAC precomputes.
 * OpenSSL (3.0+) is optional for DOCSIS BPI cipher fallback.
 
 **On ARM platforms:**
