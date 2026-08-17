@@ -748,7 +748,7 @@ txa_service_adapter_create_ext(uint8_t id, struct rte_eventdev *dev,
 		return -EINVAL;
 
 	socket_id = dev->data->socket_id;
-	snprintf(mem_name, TXA_MEM_NAME_LEN,
+	snprintf(mem_name, sizeof(mem_name),
 		"rte_event_eth_txa_%d",
 		id);
 
@@ -767,7 +767,7 @@ txa_service_adapter_create_ext(uint8_t id, struct rte_eventdev *dev,
 	txa->id = id;
 	txa->eventdev_id = dev->data->dev_id;
 	txa->socket_id = socket_id;
-	strncpy(txa->mem_name, mem_name, TXA_SERVICE_NAME_LEN);
+	strlcpy(txa->mem_name, mem_name, sizeof(txa->mem_name));
 	txa->conf_cb = conf_cb;
 	txa->conf_arg = conf_arg;
 	txa->service_id = TXA_INVALID_SERVICE_ID;
