@@ -583,10 +583,15 @@ eth_dev_tokenise_representor_list(char *p_val, struct rte_eth_devargs *eth_devar
 		return devargs;
 	}
 
+	/* len - 2 strips the outer '[' and ']'; guard against underflow and overflow */
+	if (len < 2 || (len - 2) >= BUFSIZ) {
+		RTE_ETHDEV_LOG_LINE(ERR, "Representor list too long or malformed: %s", p_val);
+		return -EINVAL;
+	}
 	memset(str, 0, BUFSIZ);
 	memset(da_val, 0, BUFSIZ);
 	/* Remove the exterior [] of the consolidated list */
-	strncpy(str, &p_val[1], len - 2);
+	memcpy(str, &p_val[1], len - 2);
 	while (1) {
 		if (str[i] == '\0') {
 			if (da_val[0] != '\0') {
