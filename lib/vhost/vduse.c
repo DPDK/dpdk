@@ -796,7 +796,7 @@ vduse_device_create(const char *path, bool compliant_ol_flags, bool extbuf, bool
 		goto out_dev_destroy;
 	}
 
-	strncpy(dev->ifname, path, IF_NAME_SZ - 1);
+	strlcpy(dev->ifname, path, sizeof(dev->ifname));
 	dev->vduse_ctrl_fd = control_fd;
 	dev->vduse_dev_fd = dev_fd;
 

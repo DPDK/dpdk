@@ -776,20 +776,15 @@ vhost_attach_vdpa_device(int vid, struct rte_vdpa_device *vdpa_dev)
 }
 
 void
-vhost_set_ifname(int vid, const char *if_name, unsigned int if_len)
+vhost_set_ifname(int vid, const char *if_name)
 {
 	struct virtio_net *dev;
-	unsigned int len;
 
 	dev = get_device(vid);
 	if (dev == NULL)
 		return;
 
-	len = if_len > sizeof(dev->ifname) ?
-		sizeof(dev->ifname) : if_len;
-
-	strncpy(dev->ifname, if_name, len);
-	dev->ifname[sizeof(dev->ifname) - 1] = '\0';
+	strlcpy(dev->ifname, if_name, sizeof(dev->ifname));
 }
 
 void
@@ -915,8 +910,7 @@ rte_vhost_get_ifname(int vid, char *buf, size_t len)
 
 	len = RTE_MIN(len, sizeof(dev->ifname));
 
-	strncpy(buf, dev->ifname, len);
-	buf[len - 1] = '\0';
+	strlcpy(buf, dev->ifname, len);
 
 	return 0;
 }
