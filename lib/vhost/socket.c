@@ -206,7 +206,6 @@ static void
 vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 {
 	int vid;
-	size_t size;
 	struct vhost_user_connection *conn;
 	int ret;
 	struct virtio_net *dev;
@@ -225,8 +224,7 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 		goto err;
 	}
 
-	size = strnlen(vsocket->path, PATH_MAX);
-	vhost_set_ifname(vid, vsocket->path, size);
+	vhost_set_ifname(vid, vsocket->path);
 
 	vhost_setup_virtio_net(vid, vsocket->use_builtin_virtio_net,
 		vsocket->net_compliant_ol_flags, vsocket->stats_enabled,
