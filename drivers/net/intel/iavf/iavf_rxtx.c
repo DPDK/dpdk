@@ -32,6 +32,7 @@
 
 #include "iavf.h"
 #include "iavf_rxtx.h"
+#include "iavf_rxtx_vec_common.h"
 #include "iavf_ipsec_crypto.h"
 #include "rte_pmd_iavf.h"
 
@@ -4024,6 +4025,105 @@ iavf_tx_done_cleanup_full(struct ci_tx_queue *txq,
 	}
 
 	return (int)pkt_cnt;
+}
+
+/*
+ * Reclaim completed Tx descriptors for a single queue using the cleanup
+ * routine that matches the active Tx path.
+ * Returns true if any descriptors were reclaimed.
+ */
+static bool
+iavf_tx_drain_cleanup(struct ci_tx_queue *txq,
+		      enum iavf_tx_func_type tx_func_type)
+{
+	switch (tx_func_type) {
+	case IAVF_TX_AVX2_CTX:
+	case IAVF_TX_AVX2_CTX_OFFLOAD:
+	case IAVF_TX_AVX512_CTX:
+	case IAVF_TX_AVX512_CTX_OFFLOAD:
+		return ci_tx_free_bufs_vec(txq, iavf_tx_desc_done, true) != 0;
+	case IAVF_TX_NEON:
+	case IAVF_TX_AVX2:
+	case IAVF_TX_AVX2_OFFLOAD:
+	case IAVF_TX_AVX512:
+	case IAVF_TX_AVX512_OFFLOAD:
+		return ci_tx_free_bufs_vec(txq, iavf_tx_desc_done, false) != 0;
+	case IAVF_TX_DEFAULT:
+	default:
+		return ci_tx_xmit_cleanup(txq) == 0;
+	}
+}
+
+/*
+ * iavf_dev_tx_drain - drain in-flight Tx descriptors after an
+ * impending PF reset event.
+ */
+void
+iavf_dev_tx_drain(struct rte_eth_dev *dev)
+{
+	struct iavf_adapter *adapter =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	enum iavf_tx_func_type tx_func_type = adapter->tx_func_type;
+	struct ci_tx_queue *txq;
+	uint64_t hz, deadline;
+	int idle_iters = 0;
+	uint16_t qid;
+
+	/*
+	 * Allow any Tx burst already in flight on a data-plane lcore to
+	 * write its remaining descriptors and notify. After
+	 * this window, the no_poll gate set by the caller is observed at
+	 * the next burst-entry and no new descriptors will be posted.
+	 */
+	rte_delay_us_block(IAVF_TX_DRAIN_SETTLE_US);
+
+	hz = rte_get_timer_hz();
+	deadline = rte_get_timer_cycles() +
+		(hz * IAVF_TX_DRAIN_TIMEOUT_US) / 1000000ULL;
+
+	while (rte_get_timer_cycles() < deadline) {
+		bool any_pending = false;
+		bool any_progress = false;
+
+		for (qid = 0; qid < dev->data->nb_tx_queues; qid++) {
+			txq = dev->data->tx_queues[qid];
+			if (txq == NULL ||
+			    dev->data->tx_queue_state[qid] !=
+				RTE_ETH_QUEUE_STATE_STARTED)
+				continue;
+
+			/*
+			 * nb_tx_free == nb_tx_desc - 1 means the ring is
+			 * empty (one descriptor is always reserved).
+			 */
+			if (txq->nb_tx_free >= txq->nb_tx_desc - 1)
+				continue;
+
+			any_pending = true;
+			if (iavf_tx_drain_cleanup(txq, tx_func_type))
+				any_progress = true;
+		}
+
+		if (!any_pending)
+			return;
+
+		if (any_progress) {
+			idle_iters = 0;
+		} else if (++idle_iters >= IAVF_TX_DRAIN_IDLE_MAX) {
+			/*
+			 * HW has not advanced the RS-bit write-back for
+			 * several polling intervals; either the queue is
+			 * quiescent except for the sub-rs_thresh tail
+			 * (which we cannot observe here) or HW is no
+			 * longer fetching. Further polling is unlikely to
+			 * help, and the PF teardown path has its own
+			 * grace period for the remainder.
+			 */
+			break;
+		}
+
+		rte_delay_us_block(IAVF_TX_DRAIN_POLL_US);
+	}
 }
 
 int
