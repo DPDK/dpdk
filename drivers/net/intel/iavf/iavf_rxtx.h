@@ -495,6 +495,11 @@ enum iavf_tx_ctx_desc_tunnel_l4_tunnel_type {
 /* Valid indicator bit for the time_stamp_low field */
 #define IAVF_RX_FLX_DESC_TS_VALID	(0x1UL)
 
+#define IAVF_TX_DRAIN_TIMEOUT_US	10000	/* total drain budget: 10 ms */
+#define IAVF_TX_DRAIN_SETTLE_US		100	/* let in-flight burst land  */
+#define IAVF_TX_DRAIN_POLL_US		50	/* poll interval             */
+#define IAVF_TX_DRAIN_IDLE_MAX		20	/* ~1 ms of no RS write-back */
+
 int iavf_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			   uint16_t queue_idx,
 			   uint16_t nb_desc,
@@ -630,6 +635,7 @@ void iavf_set_default_ptype_table(struct rte_eth_dev *dev);
 void iavf_rx_queue_release_mbufs_vec(struct ci_rx_queue *rxq);
 void iavf_rx_queue_release_mbufs_neon(struct ci_rx_queue *rxq);
 enum rte_vect_max_simd iavf_get_max_simd_bitwidth(void);
+void iavf_dev_tx_drain(struct rte_eth_dev *dev);
 
 static inline
 void iavf_dump_rx_descriptor(struct ci_rx_queue *rxq,
