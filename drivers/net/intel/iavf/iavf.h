@@ -293,6 +293,7 @@ struct iavf_info {
 	bool in_reset_recovery;
 	bool reset_pending;
 	bool pf_reset_in_progress;
+	bool start_pending;
 
 	uint32_t ptp_caps;
 	rte_spinlock_t phc_time_aq_lock;
@@ -532,4 +533,5 @@ void iavf_handle_hw_reset(struct rte_eth_dev *dev, bool vf_initiated_reset);
 void iavf_set_no_poll(struct iavf_adapter *adapter, bool link_change);
 bool is_iavf_supported(struct rte_eth_dev *dev);
 void iavf_hash_uninit(struct iavf_adapter *ad);
+void iavf_resume_pending_start(struct rte_eth_dev *dev);
 #endif /* _IAVF_ETHDEV_H_ */
