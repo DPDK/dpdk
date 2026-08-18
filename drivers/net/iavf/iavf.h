@@ -381,7 +381,7 @@ struct iavf_adapter {
 	alignas(RTE_CACHE_LINE_MIN_SIZE) uint32_t ptype_tbl[IAVF_MAX_PKT_TYPE];
 	bool stopped;
 	bool closed;
-	bool no_poll;
+	RTE_ATOMIC(bool) no_poll;
 	enum iavf_rx_burst_type rx_burst_type;
 	enum iavf_tx_burst_type tx_burst_type;
 	uint16_t fdir_ref_cnt;

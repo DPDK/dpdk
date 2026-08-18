@@ -3777,7 +3777,9 @@ iavf_recv_pkts_no_poll(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct iavf_rx_queue *rxq = rx_queue;
 	enum iavf_rx_burst_type rx_burst_type;
 
-	if (!rxq->vsi || rxq->vsi->adapter->no_poll)
+	if (!rxq->vsi ||
+	    rte_atomic_load_explicit(&rxq->vsi->adapter->no_poll,
+				     rte_memory_order_acquire))
 		return 0;
 
 	rx_burst_type = rxq->vsi->adapter->rx_burst_type;
@@ -3793,7 +3795,9 @@ iavf_xmit_pkts_no_poll(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct iavf_tx_queue *txq = tx_queue;
 	enum iavf_tx_burst_type tx_burst_type;
 
-	if (!txq->vsi || txq->vsi->adapter->no_poll)
+	if (!txq->vsi ||
+	    rte_atomic_load_explicit(&txq->vsi->adapter->no_poll,
+				     rte_memory_order_acquire))
 		return 0;
 
 	tx_burst_type = txq->vsi->adapter->tx_burst_type;
