@@ -15,6 +15,7 @@
 #include <linux/if_link.h>
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
+#include <linux/net_tstamp.h>
 #include "af_xdp_deps.h"
 
 #include <rte_ethdev.h>
@@ -61,6 +62,9 @@
 #ifndef PF_XDP
 #define PF_XDP AF_XDP
 #endif
+
+static int timestamp_dynfield_offset = -1;
+static uint64_t timestamp_dynflag;
 
 RTE_LOG_REGISTER_DEFAULT(af_xdp_logtype, NOTICE);
 #define RTE_LOGTYPE_NET_AF_XDP af_xdp_logtype
@@ -146,6 +150,10 @@ struct pkt_rx_queue {
 	struct pollfd fds[1];
 	int xsk_queue_idx;
 	int busy_budget;
+	bool rx_timestamp_enabled;
+	int rx_timestamp_offset;
+	int rx_timestamp_valid_offset;
+	uint8_t rx_timestamp_valid_mask;
 };
 
 struct tx_stats {
@@ -185,6 +193,9 @@ struct pmd_internals {
 
 	struct pkt_rx_queue *rx_queues;
 	struct pkt_tx_queue *tx_queues;
+	int rx_timestamp_offset;
+	int rx_timestamp_valid_offset;
+	uint8_t rx_timestamp_valid_mask;
 };
 
 struct pmd_process_private {
@@ -202,6 +213,9 @@ struct pmd_process_private {
 #define ETH_AF_XDP_USE_PINNED_MAP_ARG	"use_pinned_map"
 #define ETH_AF_XDP_DP_PATH_ARG			"dp_path"
 #define ETH_AF_XDP_MODE_ARG				"mode"
+#define ETH_AF_XDP_RX_TIMESTAMP_OFFSET_ARG	"xdp_meta_rx_ts_offset"
+#define ETH_AF_XDP_RX_TIMESTAMP_VALID_OFFSET_ARG	"xdp_meta_valid_hint_offset"
+#define ETH_AF_XDP_RX_TIMESTAMP_VALID_MASK_ARG	"xdp_meta_rx_ts_valid_mask"
 
 /* Define different modes for af_xdp prog to attach */
 #define ETH_AF_XDP_DRV_MODE_ARG			"drv"
@@ -234,6 +248,9 @@ static const char * const valid_arguments[] = {
 	ETH_AF_XDP_USE_PINNED_MAP_ARG,
 	ETH_AF_XDP_DP_PATH_ARG,
 	ETH_AF_XDP_MODE_ARG,
+	ETH_AF_XDP_RX_TIMESTAMP_OFFSET_ARG,
+	ETH_AF_XDP_RX_TIMESTAMP_VALID_OFFSET_ARG,
+	ETH_AF_XDP_RX_TIMESTAMP_VALID_MASK_ARG,
 	NULL
 };
 
@@ -332,6 +349,23 @@ reserve_fill_queue(struct xsk_umem_info *umem, uint16_t reserve_size,
 #endif
 }
 
+static inline void
+af_xdp_extract_timestamp(struct pkt_rx_queue *rxq, struct rte_mbuf *mbuf, const void *base)
+{
+	/*
+	 * Extract timestamp to mbuf dynamic field if validity offset is
+	 * not defined or flag is valid.
+	 */
+	if (rxq->rx_timestamp_valid_offset < 0 ||
+	    (*((const uint8_t *)base - rxq->rx_timestamp_valid_offset) &
+	     rxq->rx_timestamp_valid_mask)) {
+		uint64_t ts;
+		memcpy(&ts, (const char *)base - rxq->rx_timestamp_offset, sizeof(ts));
+		*RTE_MBUF_DYNFIELD(mbuf, timestamp_dynfield_offset, uint64_t *) = ts;
+		mbuf->ol_flags |= timestamp_dynflag;
+	}
+}
+
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
 static uint16_t
 af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
@@ -400,6 +434,11 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 		rte_pktmbuf_pkt_len(bufs[i]) = len;
 		rte_pktmbuf_data_len(bufs[i]) = len;
+
+		if (rxq->rx_timestamp_enabled)
+			af_xdp_extract_timestamp(rxq, bufs[i],
+						 rte_pktmbuf_mtod(bufs[i], void *));
+
 		rx_bytes += len;
 	}
 
@@ -458,6 +497,9 @@ af_xdp_rx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		addr = desc->addr;
 		len = desc->len;
 		pkt = xsk_umem__get_data(rxq->umem->mz->addr, addr);
+
+		if (rxq->rx_timestamp_enabled)
+			af_xdp_extract_timestamp(rxq, mbufs[i], pkt);
 
 		rte_memcpy(rte_pktmbuf_mtod(mbufs[i], void *), pkt, len);
 		rte_ring_enqueue(umem->buf_ring, (void *)addr);
@@ -741,9 +783,90 @@ eth_af_xdp_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 }
 
 static int
+eth_af_xdp_enable_hw_timestamping(const char *if_name)
+{
+	struct hwtstamp_config config = {0};
+	struct ifreq ifr = {0};
+	int fd, ret, err = 0;
+
+	fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (fd < 0)
+		return -errno;
+
+	ifr.ifr_data = (void *)&config;
+	strlcpy(ifr.ifr_name, if_name, IFNAMSIZ);
+
+	ret = ioctl(fd, SIOCGHWTSTAMP, &ifr);
+	if (ret < 0) {
+		err = -errno;
+		close(fd);
+		return err;
+	}
+
+	if (config.rx_filter == HWTSTAMP_FILTER_ALL ||
+	    config.rx_filter == HWTSTAMP_FILTER_SOME) {
+		close(fd);
+		return 0;
+	}
+
+	config.rx_filter = HWTSTAMP_FILTER_ALL;
+	ret = ioctl(fd, SIOCSHWTSTAMP, &ifr);
+	if (ret < 0)
+		err = -errno;
+	close(fd);
+
+	if (ret < 0)
+		return err;
+
+	if (config.rx_filter == HWTSTAMP_FILTER_NONE)
+		return -ENOTSUP;
+
+	return 0;
+}
+
+static int
 eth_dev_start(struct rte_eth_dev *dev)
 {
+	struct pmd_internals *internals = dev->data->dev_private;
+	bool rx_timestamp_enabled = false;
 	uint16_t i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct pkt_rx_queue *rxq = dev->data->rx_queues[i];
+		if (rxq && rxq->rx_timestamp_enabled) {
+			rx_timestamp_enabled = true;
+			break;
+		}
+	}
+
+	if (rx_timestamp_enabled) {
+		int rc;
+
+		if (internals->rx_timestamp_offset < 0) {
+			AF_XDP_LOG_LINE(ERR,
+				"Timestamp offload requested but xdp_meta_rx_ts_offset parameter not configured");
+			return -EINVAL;
+		}
+
+		rc = rte_mbuf_dyn_rx_timestamp_register(&timestamp_dynfield_offset,
+							&timestamp_dynflag);
+		if (rc) {
+			AF_XDP_LOG_LINE(ERR,
+				"Failed to register mbuf timestamp field");
+			return rc;
+		}
+		AF_XDP_LOG_LINE(INFO,
+			"Registered mbuf timestamp field, offset: %d",
+			timestamp_dynfield_offset);
+
+		rc = eth_af_xdp_enable_hw_timestamping(internals->if_name);
+		if (rc < 0) {
+			AF_XDP_LOG_LINE(ERR,
+				"Could not enable HW timestamping on %s: %s",
+				internals->if_name, strerror(-rc));
+			return rc;
+		}
+	}
 
 	dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
@@ -871,6 +994,11 @@ eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_mac_addrs = 1;
 	dev_info->max_rx_queues = internals->queue_cnt;
 	dev_info->max_tx_queues = internals->queue_cnt;
+
+	if (internals->rx_timestamp_offset >= 0) {
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
+		dev_info->rx_queue_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
+	}
 
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
@@ -1830,7 +1958,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 		   uint16_t rx_queue_id,
 		   uint16_t nb_rx_desc,
 		   unsigned int socket_id __rte_unused,
-		   const struct rte_eth_rxconf *rx_conf __rte_unused,
+		   const struct rte_eth_rxconf *rx_conf,
 		   struct rte_mempool *mb_pool)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
@@ -1876,7 +2004,13 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 	process_private->rxq_xsk_fds[rx_queue_id] = rxq->fds[0].fd;
 
 	rxq->port = dev->data->port_id;
-
+	rxq->rx_timestamp_offset = internals->rx_timestamp_offset;
+	rxq->rx_timestamp_valid_offset = internals->rx_timestamp_valid_offset;
+	rxq->rx_timestamp_valid_mask = internals->rx_timestamp_valid_mask;
+	rxq->rx_timestamp_enabled = (rxq->rx_timestamp_offset >= 0) &&
+					!!((dev->data->dev_conf.rxmode.offloads |
+					    rx_conf->offloads) &
+					   RTE_ETH_RX_OFFLOAD_TIMESTAMP);
 	dev->data->rx_queues[rx_queue_id] = rxq;
 	return 0;
 
@@ -2025,13 +2159,42 @@ parse_integer_arg(const char *key __rte_unused,
 {
 	int *i = (int *)extra_args;
 	char *end;
+	long val;
 
-	*i = strtol(value, &end, 10);
-	if (*i < 0) {
-		AF_XDP_LOG_LINE(ERR, "Argument has to be positive.");
+	if (value == NULL || extra_args == NULL)
+		return -EINVAL;
+
+	errno = 0;
+	val = strtol(value, &end, 10);
+	if (errno != 0 || end == value || *end != '\0' || val < 0 || val > INT_MAX) {
+		AF_XDP_LOG_LINE(ERR, "Argument has to be a valid non-negative integer.");
 		return -EINVAL;
 	}
 
+	*i = (int)val;
+	return 0;
+}
+
+/** parse hex from argument */
+static int
+parse_hex_arg(const char *key __rte_unused,
+	      const char *value, void *extra_args)
+{
+	int *i = (int *)extra_args;
+	char *end;
+	unsigned long val;
+
+	if (value == NULL || extra_args == NULL)
+		return -EINVAL;
+
+	errno = 0;
+	val = strtoul(value, &end, 16);
+	if (errno != 0 || end == value || *end != '\0' || val > UINT8_MAX) {
+		AF_XDP_LOG_LINE(ERR, "Validity mask must be a valid hex byte (0-0xFF).");
+		return -EINVAL;
+	}
+
+	*i = (int)val;
 	return 0;
 }
 
@@ -2149,7 +2312,9 @@ static int
 parse_parameters(struct rte_kvargs *kvlist, char *if_name, int *start_queue,
 		 int *queue_cnt, int *shared_umem, char *prog_path,
 		 int *busy_budget, int *force_copy, int *use_cni,
-		 int *use_pinned_map, char *dp_path, uint32_t *xdp_mode)
+		 int *use_pinned_map, char *dp_path, uint32_t *xdp_mode,
+		 int *rx_timestamp_offset, int *rx_timestamp_valid_offset,
+		 int *rx_timestamp_valid_mask)
 {
 	int ret;
 
@@ -2212,6 +2377,21 @@ parse_parameters(struct rte_kvargs *kvlist, char *if_name, int *start_queue,
 	if (ret < 0)
 		goto free_kvlist;
 
+	ret = rte_kvargs_process(kvlist, ETH_AF_XDP_RX_TIMESTAMP_OFFSET_ARG,
+				 &parse_integer_arg, rx_timestamp_offset);
+	if (ret < 0)
+		goto free_kvlist;
+
+	ret = rte_kvargs_process(kvlist, ETH_AF_XDP_RX_TIMESTAMP_VALID_OFFSET_ARG,
+				 &parse_integer_arg, rx_timestamp_valid_offset);
+	if (ret < 0)
+		goto free_kvlist;
+
+	ret = rte_kvargs_process(kvlist, ETH_AF_XDP_RX_TIMESTAMP_VALID_MASK_ARG,
+				 &parse_hex_arg, rx_timestamp_valid_mask);
+	if (ret < 0)
+		goto free_kvlist;
+
 free_kvlist:
 	rte_kvargs_free(kvlist);
 	return ret;
@@ -2251,7 +2431,9 @@ static struct rte_eth_dev *
 init_internals(struct rte_vdev_device *dev, const char *if_name,
 	       int start_queue_idx, int queue_cnt, int shared_umem,
 	       const char *prog_path, int busy_budget, int force_copy,
-	       int use_cni, int use_pinned_map, const char *dp_path, uint32_t xdp_mode)
+	       int use_cni, int use_pinned_map, const char *dp_path, uint32_t xdp_mode,
+	       int rx_timestamp_offset, int rx_timestamp_valid_offset,
+	       int rx_timestamp_valid_mask)
 {
 	const char *name = rte_vdev_device_name(dev);
 	const unsigned int numa_node = dev->device.numa_node;
@@ -2284,6 +2466,9 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 	internals->use_pinned_map = use_pinned_map;
 	internals->mode_flag = XDP_FLAGS_UPDATE_IF_NOEXIST | xdp_mode;
 	strlcpy(internals->dp_path, dp_path, PATH_MAX);
+	internals->rx_timestamp_offset = rx_timestamp_offset;
+	internals->rx_timestamp_valid_offset = rx_timestamp_valid_offset;
+	internals->rx_timestamp_valid_mask = (uint8_t)rx_timestamp_valid_mask;
 
 	if (xdp_get_channels_info(if_name, &internals->max_queue_cnt,
 				  &internals->configured_queue_cnt)) {
@@ -2518,6 +2703,9 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	int use_pinned_map = 0;
 	uint32_t xdp_mode = 0;
 	char dp_path[PATH_MAX] = {'\0'};
+	int rx_timestamp_offset = -1;
+	int rx_timestamp_valid_offset = -1;
+	int rx_timestamp_valid_mask = 0;
 	struct rte_eth_dev *eth_dev = NULL;
 	const char *name = rte_vdev_device_name(dev);
 
@@ -2561,7 +2749,8 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	if (parse_parameters(kvlist, if_name, &xsk_start_queue_idx,
 			     &xsk_queue_cnt, &shared_umem, prog_path,
 			     &busy_budget, &force_copy, &use_cni, &use_pinned_map,
-			     dp_path, &xdp_mode) < 0) {
+			     dp_path, &xdp_mode, &rx_timestamp_offset,
+			     &rx_timestamp_valid_offset, &rx_timestamp_valid_mask) < 0) {
 		AF_XDP_LOG_LINE(ERR, "Invalid kvargs value");
 		return -EINVAL;
 	}
@@ -2569,6 +2758,43 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	if (strlen(if_name) == 0) {
 		AF_XDP_LOG_LINE(ERR, "Network interface must be specified");
 		return -EINVAL;
+	}
+
+	if (rx_timestamp_offset >= 0) {
+		if (rx_timestamp_offset < (int)sizeof(uint64_t) ||
+		    rx_timestamp_offset > XDP_PACKET_HEADROOM) {
+			AF_XDP_LOG_LINE(ERR,
+				"Timestamp offset must be between %zu and %u bytes",
+				sizeof(uint64_t), XDP_PACKET_HEADROOM);
+			return -EINVAL;
+		}
+	}
+
+	if (rx_timestamp_valid_offset >= 0) {
+		if (rx_timestamp_offset < 0) {
+			AF_XDP_LOG_LINE(ERR,
+				"Timestamp offset must be configured when validity offset is configured");
+			return -EINVAL;
+		}
+		if (rx_timestamp_valid_offset < 1 ||
+		    rx_timestamp_valid_offset > XDP_PACKET_HEADROOM) {
+			AF_XDP_LOG_LINE(ERR,
+				"Validity hint offset must be between 1 and %u bytes",
+				XDP_PACKET_HEADROOM);
+			return -EINVAL;
+		}
+		if (rx_timestamp_valid_offset > rx_timestamp_offset - (int)sizeof(uint64_t) &&
+		    rx_timestamp_valid_offset <= rx_timestamp_offset) {
+			AF_XDP_LOG_LINE(ERR,
+				"Validity hint offset %d overlaps with 8-byte timestamp at offset %d",
+				rx_timestamp_valid_offset, rx_timestamp_offset);
+			return -EINVAL;
+		}
+		if (rx_timestamp_valid_mask == 0) {
+			AF_XDP_LOG_LINE(ERR,
+				"Validity mask cannot be zero when validity offset is configured");
+			return -EINVAL;
+		}
 	}
 
 	if (use_cni && use_pinned_map) {
@@ -2647,7 +2873,8 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	eth_dev = init_internals(dev, if_name, xsk_start_queue_idx,
 				 xsk_queue_cnt, shared_umem, prog_path,
 				 busy_budget, force_copy, use_cni, use_pinned_map,
-				 dp_path, xdp_mode);
+				 dp_path, xdp_mode, rx_timestamp_offset,
+				 rx_timestamp_valid_offset, rx_timestamp_valid_mask);
 	if (eth_dev == NULL) {
 		AF_XDP_LOG_LINE(ERR, "Failed to init internals");
 		return -1;

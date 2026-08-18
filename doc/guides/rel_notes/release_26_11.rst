@@ -60,6 +60,9 @@ New Features
   * Changed the default device plugin endpoint path used when
     ``use_cni`` or ``use_pinned_map`` is set without ``dp_path``.
     See :doc:`../nics/af_xdp` for more details.
+  * Added support for Rx metadata hardware timestamping via vdev devargs
+    ``xdp_meta_rx_ts_offset``, ``xdp_meta_valid_hint_offset``, and
+    ``xdp_meta_rx_ts_valid_mask``.
 
 * **Updated Solarflare network driver.**
 
