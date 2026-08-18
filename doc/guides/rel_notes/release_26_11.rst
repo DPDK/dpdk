@@ -63,6 +63,7 @@ New Features
   * Added support for Rx metadata hardware timestamping via vdev devargs
     ``xdp_meta_rx_ts_offset``, ``xdp_meta_valid_hint_offset``, and
     ``xdp_meta_rx_ts_valid_mask``.
+  * Added ``read_clock`` operation to query the PTP hardware clock.
 
 * **Updated Solarflare network driver.**
 

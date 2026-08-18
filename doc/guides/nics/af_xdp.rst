@@ -37,6 +37,9 @@ Prerequisites
    header is used to determine the kernel version at compile time.
 *  A kernel with version 5.4 or later is required for 32-bit OS.
 *  The busy polling feature requires kernel version >= v5.11.
+*  The ``read_clock`` feature requires a network interface with PTP
+   Hardware Clock support (capable of exposing a ``/dev/ptpX`` device via
+   ethtool ``ETHTOOL_GET_TS_INFO``).
 
 
 Options
@@ -275,6 +278,14 @@ to verify timestamp validity at ``xdp_meta_valid_hint_offset``.
     netdev interface via ``SIOCSHWTSTAMP`` (which requires ``CAP_NET_ADMIN``). This
     hardware filter setting persists on the netdev interface after the DPDK application
     exits.
+
+read_clock
+----------
+
+The PMD supports querying the underlying PTP hardware clock time via
+``rte_eth_read_clock()``. During device start, the PMD automatically discovers
+the hardware PHC index via ethtool and opens the PTP character device
+(``/dev/ptpX``).
 
 Limitations
 -----------
