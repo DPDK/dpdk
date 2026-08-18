@@ -21,6 +21,7 @@
 #define IAVF_AQ_BUF_SZ            4096
 #define IAVF_RESET_WAIT_CNT       2000
 #define IAVF_RESET_DETECTED_CNT   500
+#define IAVF_RESET_POLL_SCALE     4  /* Poll-interval scale for reset detection */
 #define IAVF_BUF_SIZE_MIN         1024
 #define IAVF_FRAME_SIZE_MAX       9728
 #define IAVF_QUEUE_BASE_ADDR_UNIT 128
