@@ -1084,6 +1084,9 @@ iavf_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
+	/* An explicit start supersedes any pending deferred start */
+	vf->start_pending = false;
+
 	return 0;
 
 error:
@@ -1119,6 +1122,9 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 
 	adapter->stopped = 1;
 	dev->data->dev_started = 0;
+
+	/* An explicit stop cancels any pending deferred start */
+	vf->start_pending = false;
 
 	return 0;
 }
@@ -3169,6 +3175,7 @@ iavf_handle_hw_reset(struct rte_eth_dev *dev)
 
 	vf->in_reset_recovery = true;
 	vf->pf_reset_in_progress = true;
+	vf->start_pending = false;
 	iavf_set_no_poll(adapter, false);
 
 	ret = iavf_dev_reset(dev);
@@ -3184,10 +3191,18 @@ iavf_handle_hw_reset(struct rte_eth_dev *dev)
 
 	/* start the device */
 	ret = iavf_dev_start(dev);
-	if (ret)
-		goto error;
+	if (ret == 0) {
+		dev->data->dev_started = 1;
+	} else {
+		PMD_DRV_LOG(WARNING,
+			    "dev_start failed during reset recovery (rc=%d);"
+			    "deferring to next link-up event",
+			    ret);
+		vf->start_pending = true;
+		dev->data->dev_started = 0;
+		ret = 0;
+	}
 
-	dev->data->dev_started = 1;
 	goto exit;
 
 error:
@@ -3270,6 +3285,45 @@ static struct rte_pci_driver rte_iavf_pmd = {
 	.probe = eth_iavf_pci_probe,
 	.remove = eth_iavf_pci_remove,
 };
+
+void
+iavf_resume_pending_start(struct rte_eth_dev *dev)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	int ret;
+
+	if (!vf->start_pending)
+		return;
+
+	if (vf->vf_reset || vf->in_reset_recovery)
+		return;
+
+	/*
+	 * If the application has already (re)started the port itself, the
+	 * deferred start is stale, the application's action is honoured
+	 * and resume pending is dropped to avoid starting an
+	 * already-running port a second time.
+	 */
+	if (dev->data->dev_started) {
+		vf->start_pending = false;
+		return;
+	}
+
+	if (!vf->link_up)
+		return;
+
+	vf->start_pending = false;
+	PMD_DRV_LOG(DEBUG, "PF link back up; resuming deferred dev_start");
+	ret = iavf_dev_start(dev);
+	if (ret == 0) {
+		dev->data->dev_started = 1;
+	} else {
+		PMD_DRV_LOG(ERR,
+			    "deferred dev_start failed (ret=%d); will retry on next link-up",
+			    ret);
+		vf->start_pending = true;
+	}
+}
 
 RTE_PMD_REGISTER_PCI(net_iavf, rte_iavf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_iavf, pci_id_iavf_map);

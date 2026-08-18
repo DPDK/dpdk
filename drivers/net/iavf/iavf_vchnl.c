@@ -271,6 +271,9 @@ iavf_handle_link_change_event(struct rte_eth_dev *dev,
 			    adapter->no_poll ? "on" : "off");
 	}
 
+	/* Retry a dev_start deferred by reset recovery, before the LSC post. */
+	iavf_resume_pending_start(dev);
+
 	iavf_dev_event_post(dev, RTE_ETH_EVENT_INTR_LSC, NULL, 0);
 
 	PMD_DRV_LOG(INFO, "Link status update:%s",
