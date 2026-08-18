@@ -236,6 +236,46 @@ when several interfaces are mounted in a single pod.
    A pinned map lives on a bpffs mount,
    so bind mount it into the runtime directory to use the first location.
 
+xdp_meta_rx_ts_offset
+~~~~~~~~~~~~~~~~~~~~~
+
+The ``xdp_meta_rx_ts_offset`` argument specifies the byte offset of the 64-bit Rx
+timestamp within the XDP metadata headroom area. All metadata offsets are measured
+backwards from the start of packet data (``rte_pktmbuf_mtod()``). The accepted range
+is 8 to 256 bytes.
+
+.. code-block:: console
+
+    --vdev net_af_xdp,iface=ens786f1,xdp_meta_rx_ts_offset=8
+
+xdp_meta_valid_hint_offset
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``xdp_meta_valid_hint_offset`` argument specifies the byte offset of the validity
+flag byte within the XDP metadata headroom area, measured backwards from the start of
+packet data. The accepted range is 1 to 256 bytes.
+
+.. code-block:: console
+
+    --vdev net_af_xdp,iface=ens786f1,xdp_meta_rx_ts_offset=8,xdp_meta_valid_hint_offset=12
+
+xdp_meta_rx_ts_valid_mask
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``xdp_meta_rx_ts_valid_mask`` argument specifies the bitmask (in hex) used
+to verify timestamp validity at ``xdp_meta_valid_hint_offset``.
+
+.. code-block:: console
+
+    --vdev net_af_xdp,iface=ens786f1,xdp_meta_rx_ts_offset=8,xdp_meta_valid_hint_offset=12,xdp_meta_rx_ts_valid_mask=0x1
+
+.. note::
+
+    Enabling dynamic Rx timestamping configures ``HWTSTAMP_FILTER_ALL`` on the kernel
+    netdev interface via ``SIOCSHWTSTAMP`` (which requires ``CAP_NET_ADMIN``). This
+    hardware filter setting persists on the netdev interface after the DPDK application
+    exits.
+
 Limitations
 -----------
 
