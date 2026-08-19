@@ -29,6 +29,9 @@ static bool hotplug_handle;
 #define EAL_UEV_MSG_LEN 4096
 #define EAL_UEV_MSG_ELEM_LEN 128
 
+/* Listen only to messages from kernel (not libudev) */
+#define EAL_UEV_GROUP_KERNEL 1
+
 /*
  * spinlock for device hot-unplug failure handling. If it try to access bus or
  * device, such as handle sigbus on bus or handle memory failure for device
@@ -116,7 +119,7 @@ dev_uev_socket_fd_create(void)
 	memset(&addr, 0, sizeof(addr));
 	addr.nl_family = AF_NETLINK;
 	addr.nl_pid = 0;
-	addr.nl_groups = 0xffffffff;
+	addr.nl_groups = EAL_UEV_GROUP_KERNEL;
 
 	ret = bind(fd, (struct sockaddr *) &addr, sizeof(addr));
 	if (ret < 0) {
@@ -160,13 +163,6 @@ dev_uev_parse(const char *buf, struct rte_dev_event *event, int length)
 		if (i >= length)
 			break;
 
-		/**
-		 * check device uevent from kernel side, no need to check
-		 * uevent from udev.
-		 */
-		if (!strncmp(buf, "libudev", 7)) {
-			return -1;
-		}
 		if (!strncmp(buf, "ACTION=", 7)) {
 			buf += 7;
 			i += 7;
