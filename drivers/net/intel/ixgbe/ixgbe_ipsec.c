@@ -36,6 +36,85 @@
 	(a).ipv6[2] == (b).ipv6[2] && \
 	(a).ipv6[3] == (b).ipv6[3])
 
+static inline void
+ixgbe_crypto_write_rx_ip(struct ixgbe_hw *hw, uint32_t idx,
+		const struct ipaddr *ip, bool enable)
+{
+	uint32_t reg_val = IPSRXIDX_WRITE | IPSRXIDX_TABLE_IP | (idx << 3);
+	uint32_t addr[4] = {0};
+
+	if (enable)
+		reg_val |= IPSRXIDX_RX_EN;
+
+	if (ip->type == IPv4)
+		/* only write last 4 bytes */
+		addr[3] = ip->ipv4;
+	else
+		memcpy(addr, ip->ipv6, sizeof(addr));
+
+	IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(0), addr[0]);
+	IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(1), addr[1]);
+	IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(2), addr[2]);
+	IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(3), addr[3]);
+	IXGBE_WAIT_RWRITE;
+}
+
+static inline void
+ixgbe_crypto_write_rx_spi(struct ixgbe_hw *hw, uint32_t idx,
+		uint32_t spi, uint32_t ip_idx, bool enable)
+{
+	uint32_t reg_val = IPSRXIDX_WRITE | IPSRXIDX_TABLE_SPI | (idx << 3);
+
+	if (enable)
+		reg_val |= IPSRXIDX_RX_EN;
+
+	IXGBE_WRITE_REG(hw, IXGBE_IPSRXSPI, rte_cpu_to_be_32(spi));
+	IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPIDX, ip_idx);
+	IXGBE_WAIT_RWRITE;
+}
+
+static inline void
+ixgbe_crypto_write_rx_key(struct ixgbe_hw *hw, uint32_t idx,
+		const uint8_t *key, uint32_t salt, uint32_t mode, bool enable)
+{
+	uint32_t reg_val = IPSRXIDX_WRITE | IPSRXIDX_TABLE_KEY | (idx << 3);
+
+	if (enable)
+		reg_val |= IPSRXIDX_RX_EN;
+
+	IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(0),
+		rte_cpu_to_be_32(*(const uint32_t *)&key[12]));
+	IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(1),
+		rte_cpu_to_be_32(*(const uint32_t *)&key[8]));
+	IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(2),
+		rte_cpu_to_be_32(*(const uint32_t *)&key[4]));
+	IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(3),
+		rte_cpu_to_be_32(*(const uint32_t *)&key[0]));
+	IXGBE_WRITE_REG(hw, IXGBE_IPSRXSALT, rte_cpu_to_be_32(salt));
+	IXGBE_WRITE_REG(hw, IXGBE_IPSRXMOD, mode);
+	IXGBE_WAIT_RWRITE;
+}
+
+static inline void
+ixgbe_crypto_write_tx_key(struct ixgbe_hw *hw, uint32_t idx,
+		const uint8_t *key, uint32_t salt, bool enable)
+{
+	uint32_t reg_val = IPSRXIDX_WRITE | (idx << 3);
+
+	if (enable)
+		reg_val |= IPSRXIDX_TX_EN;
+
+	IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(0),
+		rte_cpu_to_be_32(*(const uint32_t *)&key[12]));
+	IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(1),
+		rte_cpu_to_be_32(*(const uint32_t *)&key[8]));
+	IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(2),
+		rte_cpu_to_be_32(*(const uint32_t *)&key[4]));
+	IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(3),
+		rte_cpu_to_be_32(*(const uint32_t *)&key[0]));
+	IXGBE_WRITE_REG(hw, IXGBE_IPSTXSALT, rte_cpu_to_be_32(salt));
+	IXGBE_WAIT_TWRITE;
+}
 
 static void
 ixgbe_crypto_clear_ipsec_tables(struct rte_eth_dev *dev)
@@ -43,41 +122,19 @@ ixgbe_crypto_clear_ipsec_tables(struct rte_eth_dev *dev)
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_ipsec *priv = IXGBE_DEV_PRIVATE_TO_IPSEC(
 				dev->data->dev_private);
+	const struct ipaddr ip = {0};
+	const uint8_t key[16] = {0};
 	int i = 0;
 
 	/* clear Rx IP table*/
-	for (i = 0; i < IPSEC_MAX_RX_IP_COUNT; i++) {
-		uint16_t index = i << 3;
-		uint32_t reg_val = IPSRXIDX_WRITE | IPSRXIDX_TABLE_IP | index;
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(0), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(1), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(2), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(3), 0);
-		IXGBE_WAIT_RWRITE;
-	}
+	for (i = 0; i < IPSEC_MAX_RX_IP_COUNT; i++)
+		ixgbe_crypto_write_rx_ip(hw, i, &ip, false);
 
 	/* clear Rx SPI and Rx/Tx SA tables*/
 	for (i = 0; i < IPSEC_MAX_SA_COUNT; i++) {
-		uint32_t index = i << 3;
-		uint32_t reg_val = IPSRXIDX_WRITE | IPSRXIDX_TABLE_SPI | index;
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXSPI, 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPIDX, 0);
-		IXGBE_WAIT_RWRITE;
-		reg_val = IPSRXIDX_WRITE | IPSRXIDX_TABLE_KEY | index;
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(0), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(1), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(2), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(3), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXSALT, 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXMOD, 0);
-		IXGBE_WAIT_RWRITE;
-		reg_val = IPSRXIDX_WRITE | index;
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(0), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(1), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(2), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(3), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXSALT, 0);
-		IXGBE_WAIT_TWRITE;
+		ixgbe_crypto_write_rx_spi(hw, i, 0, 0, false);
+		ixgbe_crypto_write_rx_key(hw, i, key, 0, 0, false);
+		ixgbe_crypto_write_tx_key(hw, i, key, 0, false);
 	}
 
 	memset(priv->rx_ip_tbl, 0, sizeof(priv->rx_ip_tbl));
@@ -90,14 +147,14 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 {
 	struct rte_eth_dev_data *dev_data = ic_session->dev_data;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev_data->dev_private);
-	struct ixgbe_ipsec *priv = IXGBE_DEV_PRIVATE_TO_IPSEC(
-			dev_data->dev_private);
-	uint32_t reg_val;
-	int sa_index = -1;
+	struct ixgbe_ipsec *priv = IXGBE_DEV_PRIVATE_TO_IPSEC(dev_data->dev_private);
+	int i, sa_index = -1;
 	uint8_t key[16] = {0};
 
 	if (ic_session->op == IXGBE_OP_AUTHENTICATED_DECRYPTION) {
-		int i, ip_index = -1;
+		struct ixgbe_crypto_rx_ip_table *rxip;
+		struct ixgbe_crypto_rx_sa_table *rxsa;
+		int ip_index = -1, free_index = -1;
 
 		/* Find a match in the IP table*/
 		for (i = 0; i < IPSEC_MAX_RX_IP_COUNT; i++) {
@@ -106,22 +163,19 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 				ip_index = i;
 				break;
 			}
+			if (free_index == -1 && priv->rx_ip_tbl[i].ref_count == 0)
+				free_index = i;
 		}
 		/* If no match, find a free entry in the IP table*/
-		if (ip_index < 0) {
-			for (i = 0; i < IPSEC_MAX_RX_IP_COUNT; i++) {
-				if (priv->rx_ip_tbl[i].ref_count == 0) {
-					ip_index = i;
-					break;
-				}
-			}
-		}
+		if (ip_index < 0)
+			ip_index = free_index;
 
 		/* Fail if no match and no free entries*/
 		if (ip_index < 0) {
 			PMD_DRV_LOG(ERR, "No free entry left in the Rx IP table");
 			return -ENOSPC;
 		}
+		rxip = &priv->rx_ip_tbl[ip_index];
 
 		/* Find a free entry in the SA table*/
 		for (i = 0; i < IPSEC_MAX_SA_COUNT; i++) {
@@ -135,84 +189,35 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 			PMD_DRV_LOG(ERR, "No free entry left in the Rx SA table");
 			return -ENOSPC;
 		}
+		rxsa = &priv->rx_sa_tbl[sa_index];
 
-		priv->rx_ip_tbl[ip_index].ip.ipv6[0] =
-				ic_session->dst_ip.ipv6[0];
-		priv->rx_ip_tbl[ip_index].ip.ipv6[1] =
-				ic_session->dst_ip.ipv6[1];
-		priv->rx_ip_tbl[ip_index].ip.ipv6[2] =
-				ic_session->dst_ip.ipv6[2];
-		priv->rx_ip_tbl[ip_index].ip.ipv6[3] =
-				ic_session->dst_ip.ipv6[3];
-		priv->rx_ip_tbl[ip_index].ref_count++;
+		rxip->ref_count++;
+		memcpy(&rxip->ip, &ic_session->dst_ip, sizeof(rxip->ip));
 
-		priv->rx_sa_tbl[sa_index].spi =
-			rte_cpu_to_be_32(ic_session->spi);
-		priv->rx_sa_tbl[sa_index].ip_index = ip_index;
-		priv->rx_sa_tbl[sa_index].mode = IPSRXMOD_VALID;
-		if (ic_session->op == IXGBE_OP_AUTHENTICATED_DECRYPTION)
-			priv->rx_sa_tbl[sa_index].mode |=
-					(IPSRXMOD_PROTO | IPSRXMOD_DECRYPT);
-		if (ic_session->dst_ip.type == IPv6) {
-			priv->rx_sa_tbl[sa_index].mode |= IPSRXMOD_IPV6;
-			priv->rx_ip_tbl[ip_index].ip.type = IPv6;
-		} else if (ic_session->dst_ip.type == IPv4)
-			priv->rx_ip_tbl[ip_index].ip.type = IPv4;
+		rxsa->spi = ic_session->spi;
+		rxsa->ip_index = ip_index;
+		rxsa->mode = IPSRXMOD_VALID | IPSRXMOD_PROTO | IPSRXMOD_DECRYPT;
+		if (ic_session->dst_ip.type == IPv6)
+			rxsa->mode |= IPSRXMOD_IPV6;
 
-		priv->rx_sa_tbl[sa_index].used = 1;
+		rxsa->used = 1;
 
 		/* write IP table entry*/
-		reg_val = IPSRXIDX_RX_EN | IPSRXIDX_WRITE |
-				IPSRXIDX_TABLE_IP | (ip_index << 3);
-		if (priv->rx_ip_tbl[ip_index].ip.type == IPv4) {
-			IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(0), 0);
-			IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(1), 0);
-			IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(2), 0);
-			IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(3),
-					priv->rx_ip_tbl[ip_index].ip.ipv4);
-		} else {
-			IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(0),
-					priv->rx_ip_tbl[ip_index].ip.ipv6[0]);
-			IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(1),
-					priv->rx_ip_tbl[ip_index].ip.ipv6[1]);
-			IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(2),
-					priv->rx_ip_tbl[ip_index].ip.ipv6[2]);
-			IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(3),
-					priv->rx_ip_tbl[ip_index].ip.ipv6[3]);
-		}
-		IXGBE_WAIT_RWRITE;
+		ixgbe_crypto_write_rx_ip(hw, ip_index, &rxip->ip, true);
 
 		/* write SPI table entry*/
-		reg_val = IPSRXIDX_RX_EN | IPSRXIDX_WRITE |
-				IPSRXIDX_TABLE_SPI | (sa_index << 3);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXSPI,
-				priv->rx_sa_tbl[sa_index].spi);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPIDX,
-				priv->rx_sa_tbl[sa_index].ip_index);
-		IXGBE_WAIT_RWRITE;
+		ixgbe_crypto_write_rx_spi(hw, sa_index, rxsa->spi, ip_index, true);
 
+		/* write Key table entry*/
 		memcpy(key, ic_session->key, ic_session->key_len);
 
-		reg_val = IPSRXIDX_RX_EN | IPSRXIDX_WRITE |
-				IPSRXIDX_TABLE_KEY | (sa_index << 3);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(0),
-			rte_cpu_to_be_32(*(uint32_t *)&key[12]));
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(1),
-			rte_cpu_to_be_32(*(uint32_t *)&key[8]));
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(2),
-			rte_cpu_to_be_32(*(uint32_t *)&key[4]));
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(3),
-			rte_cpu_to_be_32(*(uint32_t *)&key[0]));
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXSALT,
-				rte_cpu_to_be_32(ic_session->salt));
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXMOD,
-				priv->rx_sa_tbl[sa_index].mode);
-		IXGBE_WAIT_RWRITE;
+		ixgbe_crypto_write_rx_key(hw, sa_index, key,
+				ic_session->salt, rxsa->mode, true);
 
 		rte_memzero_explicit(key, sizeof(key));
 
 	} else { /* sess->dir == RTE_CRYPTO_OUTBOUND */
-		int i;
+		struct ixgbe_crypto_tx_sa_table *txsa;
 
 		/* Find a free entry in the SA table*/
 		for (i = 0; i < IPSEC_MAX_SA_COUNT; i++) {
@@ -226,27 +231,16 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 			PMD_DRV_LOG(ERR, "No free entry left in the Tx SA table");
 			return -ENOSPC;
 		}
+		txsa = &priv->tx_sa_tbl[sa_index];
 
-		priv->tx_sa_tbl[sa_index].spi =
-			rte_cpu_to_be_32(ic_session->spi);
-		priv->tx_sa_tbl[sa_index].used = 1;
+		txsa->spi = ic_session->spi;
+		txsa->used = 1;
 		ic_session->sa_index = sa_index;
 
 		memcpy(key, ic_session->key, ic_session->key_len);
 
 		/* write Key table entry*/
-		reg_val = IPSRXIDX_RX_EN | IPSRXIDX_WRITE | (sa_index << 3);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(0),
-			rte_cpu_to_be_32(*(uint32_t *)&key[12]));
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(1),
-			rte_cpu_to_be_32(*(uint32_t *)&key[8]));
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(2),
-			rte_cpu_to_be_32(*(uint32_t *)&key[4]));
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(3),
-			rte_cpu_to_be_32(*(uint32_t *)&key[0]));
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXSALT,
-				rte_cpu_to_be_32(ic_session->salt));
-		IXGBE_WAIT_TWRITE;
+		ixgbe_crypto_write_tx_key(hw, sa_index, key, ic_session->salt, true);
 
 		rte_memzero_explicit(key, sizeof(key));
 	}
@@ -260,11 +254,13 @@ ixgbe_crypto_remove_sa(struct ixgbe_crypto_session *ic_session)
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(ic_session->dev_data->dev_private);
 	struct ixgbe_ipsec *priv =
 			IXGBE_DEV_PRIVATE_TO_IPSEC(ic_session->dev_data->dev_private);
-	uint32_t reg_val;
-	int sa_index = -1;
+	const uint8_t key[16] = {0};
+	int i, sa_index = -1;
 
 	if (ic_session->op == IXGBE_OP_AUTHENTICATED_DECRYPTION) {
-		int i, ip_index = -1;
+		struct ixgbe_crypto_rx_ip_table *rxip;
+		struct ixgbe_crypto_rx_sa_table *rxsa;
+		int ip_index = -1;
 
 		/* Find a match in the IP table*/
 		for (i = 0; i < IPSEC_MAX_RX_IP_COUNT; i++) {
@@ -279,11 +275,11 @@ ixgbe_crypto_remove_sa(struct ixgbe_crypto_session *ic_session)
 			PMD_DRV_LOG(ERR, "Entry not found in the Rx IP table");
 			return -ENOENT;
 		}
+		rxip = &priv->rx_ip_tbl[ip_index];
 
 		/* Find a free entry in the SA table*/
 		for (i = 0; i < IPSEC_MAX_SA_COUNT; i++) {
-			if (priv->rx_sa_tbl[i].spi ==
-				  rte_cpu_to_be_32(ic_session->spi)) {
+			if (priv->rx_sa_tbl[i].spi == ic_session->spi) {
 				sa_index = i;
 				break;
 			}
@@ -293,40 +289,28 @@ ixgbe_crypto_remove_sa(struct ixgbe_crypto_session *ic_session)
 			PMD_DRV_LOG(ERR, "Entry not found in the Rx SA table");
 			return -ENOENT;
 		}
+		rxsa = &priv->rx_sa_tbl[sa_index];
 
 		/* Disable and clear Rx SPI and key table entries*/
-		reg_val = IPSRXIDX_WRITE | IPSRXIDX_TABLE_SPI | (sa_index << 3);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXSPI, 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPIDX, 0);
-		IXGBE_WAIT_RWRITE;
-		reg_val = IPSRXIDX_WRITE | IPSRXIDX_TABLE_KEY | (sa_index << 3);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(0), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(1), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(2), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXKEY(3), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXSALT, 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSRXMOD, 0);
-		IXGBE_WAIT_RWRITE;
-		priv->rx_sa_tbl[sa_index].used = 0;
+		ixgbe_crypto_write_rx_spi(hw, sa_index, 0, 0, false);
+		ixgbe_crypto_write_rx_key(hw, sa_index, key, 0, 0, false);
+
+		/* Clear the SA table entry*/
+		*rxsa = (struct ixgbe_crypto_rx_sa_table){0};
 
 		/* If last used then clear the IP table entry*/
-		priv->rx_ip_tbl[ip_index].ref_count--;
-		if (priv->rx_ip_tbl[ip_index].ref_count == 0) {
-			reg_val = IPSRXIDX_WRITE | IPSRXIDX_TABLE_IP |
-					(ip_index << 3);
-			IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(0), 0);
-			IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(1), 0);
-			IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(2), 0);
-			IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(3), 0);
-			IXGBE_WAIT_RWRITE;
+		rxip->ref_count--;
+		if (rxip->ref_count == 0) {
+			const struct ipaddr ip = {0};
+			ixgbe_crypto_write_rx_ip(hw, ip_index, &ip, false);
+			*rxip = (struct ixgbe_crypto_rx_ip_table){0};
 		}
 	} else { /* session->dir == RTE_CRYPTO_OUTBOUND */
-		int i;
+		struct ixgbe_crypto_tx_sa_table *txsa;
 
 		/* Find a match in the SA table*/
 		for (i = 0; i < IPSEC_MAX_SA_COUNT; i++) {
-			if (priv->tx_sa_tbl[i].spi ==
-				    rte_cpu_to_be_32(ic_session->spi)) {
+			if (priv->tx_sa_tbl[i].spi == ic_session->spi) {
 				sa_index = i;
 				break;
 			}
@@ -336,15 +320,10 @@ ixgbe_crypto_remove_sa(struct ixgbe_crypto_session *ic_session)
 			PMD_DRV_LOG(ERR, "Entry not found in the Tx SA table");
 			return -ENOENT;
 		}
-		reg_val = IPSRXIDX_WRITE | (sa_index << 3);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(0), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(1), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(2), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(3), 0);
-		IXGBE_WRITE_REG(hw, IXGBE_IPSTXSALT, 0);
-		IXGBE_WAIT_TWRITE;
+		txsa = &priv->tx_sa_tbl[sa_index];
 
-		priv->tx_sa_tbl[sa_index].used = 0;
+		ixgbe_crypto_write_tx_key(hw, sa_index, key, 0, false);
+		*txsa = (struct ixgbe_crypto_tx_sa_table){0};
 	}
 
 	return 0;
