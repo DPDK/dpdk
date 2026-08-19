@@ -266,11 +266,20 @@ dev_uev_handler(__rte_unused void *param)
 
 	ret = recv(rte_intr_fd_get(intr_handle), buf, EAL_UEV_MSG_LEN,
 		   MSG_DONTWAIT);
-	if (ret < 0 && errno == EAGAIN)
-		return;
-	else if (ret <= 0) {
-		/* connection is closed or broken, can not up again. */
-		EAL_LOG(ERR, "uevent socket connection is broken.");
+	if (ret < 0) {
+		/* transient error */
+		if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+			return;
+
+		/* kernel netlink messages lost */
+		if (errno == ENOBUFS) {
+			EAL_LOG(NOTICE, "kernel receive buffer overrun");
+			return;
+		}
+
+		EAL_LOG(ERR, "unexpected error on uevent recv: %s",
+			strerror(errno));
+
 		rte_eal_alarm_set(1, dev_delayed_unregister, NULL);
 		return;
 	}
