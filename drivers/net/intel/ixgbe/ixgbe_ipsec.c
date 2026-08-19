@@ -119,9 +119,8 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 
 		/* Fail if no match and no free entries*/
 		if (ip_index < 0) {
-			PMD_DRV_LOG(ERR,
-				    "No free entry left in the Rx IP table");
-			return -1;
+			PMD_DRV_LOG(ERR, "No free entry left in the Rx IP table");
+			return -ENOSPC;
 		}
 
 		/* Find a free entry in the SA table*/
@@ -133,9 +132,8 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 		}
 		/* Fail if no free entries*/
 		if (sa_index < 0) {
-			PMD_DRV_LOG(ERR,
-				    "No free entry left in the Rx SA table");
-			return -1;
+			PMD_DRV_LOG(ERR, "No free entry left in the Rx SA table");
+			return -ENOSPC;
 		}
 
 		priv->rx_ip_tbl[ip_index].ip.ipv6[0] =
@@ -231,9 +229,8 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 		}
 		/* Fail if no free entries*/
 		if (sa_index < 0) {
-			PMD_DRV_LOG(ERR,
-				    "No free entry left in the Tx SA table");
-			return -1;
+			PMD_DRV_LOG(ERR, "No free entry left in the Tx SA table");
+			return -ENOSPC;
 		}
 
 		priv->tx_sa_tbl[sa_index].spi =
@@ -289,9 +286,8 @@ ixgbe_crypto_remove_sa(struct ixgbe_crypto_session *ic_session)
 
 		/* Fail if no match*/
 		if (ip_index < 0) {
-			PMD_DRV_LOG(ERR,
-				    "Entry not found in the Rx IP table");
-			return -1;
+			PMD_DRV_LOG(ERR, "Entry not found in the Rx IP table");
+			return -ENOENT;
 		}
 
 		/* Find a free entry in the SA table*/
@@ -304,9 +300,8 @@ ixgbe_crypto_remove_sa(struct ixgbe_crypto_session *ic_session)
 		}
 		/* Fail if no match*/
 		if (sa_index < 0) {
-			PMD_DRV_LOG(ERR,
-				    "Entry not found in the Rx SA table");
-			return -1;
+			PMD_DRV_LOG(ERR, "Entry not found in the Rx SA table");
+			return -ENOENT;
 		}
 
 		/* Disable and clear Rx SPI and key table entries*/
@@ -347,9 +342,8 @@ ixgbe_crypto_remove_sa(struct ixgbe_crypto_session *ic_session)
 		}
 		/* Fail if no match entries*/
 		if (sa_index < 0) {
-			PMD_DRV_LOG(ERR,
-				    "Entry not found in the Tx SA table");
-			return -1;
+			PMD_DRV_LOG(ERR, "Entry not found in the Tx SA table");
+			return -ENOENT;
 		}
 		reg_val = IPSRXIDX_WRITE | (sa_index << 3);
 		IXGBE_WRITE_REG(hw, IXGBE_IPSTXKEY(0), 0);
