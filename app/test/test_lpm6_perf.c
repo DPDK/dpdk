@@ -148,7 +148,7 @@ test_lpm6_perf(void)
 				large_route_table[i].depth);
 	}
 
-	total_time += rte_rdtsc() - begin;
+	total_time = rte_rdtsc() - begin;
 
 	printf("Average LPM Delete: %g cycles\n",
 			(double)total_time / NUM_ROUTE_ENTRIES);
