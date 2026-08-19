@@ -12,7 +12,11 @@ original source package.
 This driver is valid for the product(s) listed below
 
 * Intel® Ethernet Network Adapters E810
+* Intel® Ethernet Network Adapters E822
+* Intel® Ethernet Network Adapters E823
+* Intel® Ethernet Network Adapters E825
 * Intel® Ethernet Network Adapters E830
+* Intel® Ethernet Network Adapters E835
 
 Updating the driver
 ===================
