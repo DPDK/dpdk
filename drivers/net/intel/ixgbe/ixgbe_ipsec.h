@@ -12,6 +12,7 @@
 #include <rte_flow.h>
 
 #define IPSRXIDX_RX_EN                                    0x00000001
+#define IPSRXIDX_TX_EN                                    0x00000001
 #define IPSRXIDX_TABLE_IP                                 0x00000002
 #define IPSRXIDX_TABLE_SPI                                0x00000004
 #define IPSRXIDX_TABLE_KEY                                0x00000006
