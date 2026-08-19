@@ -334,6 +334,7 @@ ixgbe_crypto_remove_sa(struct rte_eth_dev *dev,
 			IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(1), 0);
 			IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(2), 0);
 			IXGBE_WRITE_REG(hw, IXGBE_IPSRXIPADDR(3), 0);
+			IXGBE_WAIT_RWRITE;
 		}
 	} else { /* session->dir == RTE_CRYPTO_OUTBOUND */
 		int i;
