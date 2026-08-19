@@ -229,7 +229,7 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 
 		priv->tx_sa_tbl[sa_index].spi =
 			rte_cpu_to_be_32(ic_session->spi);
-		priv->tx_sa_tbl[i].used = 1;
+		priv->tx_sa_tbl[sa_index].used = 1;
 		ic_session->sa_index = sa_index;
 
 		memcpy(key, ic_session->key, ic_session->key_len);
