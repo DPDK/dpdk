@@ -268,12 +268,11 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 }
 
 static int
-ixgbe_crypto_remove_sa(struct rte_eth_dev *dev,
-		       struct ixgbe_crypto_session *ic_session)
+ixgbe_crypto_remove_sa(struct ixgbe_crypto_session *ic_session)
 {
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(ic_session->dev_data->dev_private);
 	struct ixgbe_ipsec *priv =
-			IXGBE_DEV_PRIVATE_TO_IPSEC(dev->data->dev_private);
+			IXGBE_DEV_PRIVATE_TO_IPSEC(ic_session->dev_data->dev_private);
 	uint32_t reg_val;
 	int sa_index = -1;
 
@@ -441,7 +440,7 @@ ixgbe_crypto_remove_session(void *device,
 		return -ENODEV;
 	}
 
-	if (ixgbe_crypto_remove_sa(eth_dev, ic_session)) {
+	if (ixgbe_crypto_remove_sa(ic_session)) {
 		PMD_DRV_LOG(ERR, "Failed to remove session");
 		return -EFAULT;
 	}
