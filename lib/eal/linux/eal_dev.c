@@ -32,6 +32,9 @@ static bool hotplug_handle;
 /* Listen only to messages from kernel (not libudev) */
 #define EAL_UEV_GROUP_KERNEL 1
 
+/* Large uevent buffer */
+#define EAL_UEV_MSG_RCVBUF (4 * 1024 * 1024)
+
 /*
  * spinlock for device hot-unplug failure handling. If it try to access bus or
  * device, such as handle sigbus on bus or handle memory failure for device
@@ -103,6 +106,29 @@ static int cmp_dev_name(const struct rte_device *dev,
 	return strcmp(dev->name, name);
 }
 
+/*
+ * To avoid losing uevents increase the netlink receive buffer size,
+ * and override the kernel clamp value if necessary.
+ */
+static int
+dev_uev_set_rcvbuf(int fd, int n)
+{
+	int ret, val;
+	socklen_t len = sizeof(val);
+
+	ret = setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &n, sizeof(n));
+	if (ret < 0)
+		return ret;
+
+	/* kernel may have clamped our request */
+	ret = getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &val, &len);
+	if (ret >= 0 && len == sizeof(val) && val == n * 2)
+		return 0; /* request worked */
+
+	/* try again to override kernel restriction */
+	return setsockopt(fd, SOL_SOCKET, SO_RCVBUFFORCE, &n, sizeof(n));
+}
+
 static int
 dev_uev_socket_fd_create(void)
 {
@@ -126,6 +152,9 @@ dev_uev_socket_fd_create(void)
 		EAL_LOG(ERR, "Failed to bind uevent socket.");
 		goto err;
 	}
+
+	if (dev_uev_set_rcvbuf(fd, EAL_UEV_MSG_RCVBUF) < 0)
+		EAL_LOG(NOTICE, "Failed to set rcvbuf.");
 
 	if (rte_intr_fd_set(intr_handle, fd))
 		goto err;
