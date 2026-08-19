@@ -384,6 +384,12 @@ ixgbe_crypto_create_session(void *device,
 	}
 	aead_xform = &conf->crypto_xform->aead;
 
+	/* Only 16-byte keys are supported. */
+	if (aead_xform->key.length != 16) {
+		PMD_DRV_LOG(ERR, "Unsupported key length %u", aead_xform->key.length);
+		return -ENOTSUP;
+	}
+
 	if (conf->ipsec.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
 		if (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
 			ic_session->op = IXGBE_OP_AUTHENTICATED_DECRYPTION;
