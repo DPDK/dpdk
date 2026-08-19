@@ -819,6 +819,20 @@ controlled with tools like taskset (Linux) or cpuset (FreeBSD),
 - with affinity restricted to 2-3, the Control Threads will end up on
   CPU 2 (main lcore, which is the default when no CPU is available).
 
+DPDK uses control threads internally and those threads need to be able to run.
+If all available CPUs are used as dataplane lcores,
+control threads fall back to the main lcore and compete with a busy polling loop.
+Ensure that at least a part of one CPU is available for handling control events.
+
+The effects of control thread starvation are not always obvious,
+and include delayed alarms, missed device and hotplug events, unresponsive telemetry,
+and multi-process requests timing out so that secondary processes fail to start.
+
+.. warning::
+   On Linux, if DPDK lcore threads run under a real-time scheduling policy
+   such as ``SCHED_FIFO`` or ``SCHED_RR`` on the same CPU as a control thread,
+   then kernel events will be missed.
+
 .. _eal_known_issue_label:
 
 Known Issues
