@@ -94,10 +94,10 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 			dev_data->dev_private);
 	uint32_t reg_val;
 	int sa_index = -1;
+	uint8_t key[16] = {0};
 
 	if (ic_session->op == IXGBE_OP_AUTHENTICATED_DECRYPTION) {
 		int i, ip_index = -1;
-		uint8_t *key;
 
 		/* Find a match in the IP table*/
 		for (i = 0; i < IPSEC_MAX_RX_IP_COUNT; i++) {
@@ -191,11 +191,6 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 				priv->rx_sa_tbl[sa_index].ip_index);
 		IXGBE_WAIT_RWRITE;
 
-		/* write Key table entry*/
-		key = malloc(ic_session->key_len);
-		if (!key)
-			return -ENOMEM;
-
 		memcpy(key, ic_session->key, ic_session->key_len);
 
 		reg_val = IPSRXIDX_RX_EN | IPSRXIDX_WRITE |
@@ -214,10 +209,9 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 				priv->rx_sa_tbl[sa_index].mode);
 		IXGBE_WAIT_RWRITE;
 
-		free(key);
+		rte_memzero_explicit(key, sizeof(key));
 
 	} else { /* sess->dir == RTE_CRYPTO_OUTBOUND */
-		uint8_t *key;
 		int i;
 
 		/* Find a free entry in the SA table*/
@@ -238,10 +232,6 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 		priv->tx_sa_tbl[i].used = 1;
 		ic_session->sa_index = sa_index;
 
-		key = malloc(ic_session->key_len);
-		if (!key)
-			return -ENOMEM;
-
 		memcpy(key, ic_session->key, ic_session->key_len);
 
 		/* write Key table entry*/
@@ -258,7 +248,7 @@ ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
 				rte_cpu_to_be_32(ic_session->salt));
 		IXGBE_WAIT_TWRITE;
 
-		free(key);
+		rte_memzero_explicit(key, sizeof(key));
 	}
 
 	return 0;
