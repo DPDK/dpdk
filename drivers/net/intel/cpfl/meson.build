@@ -22,10 +22,6 @@ sources = files(
         'cpfl_rules.c',
 )
 
-if arch_subdir == 'x86' and cc_has_avx512
-    cflags += ['-DCC_AVX512_SUPPORT']
-endif
-
 if dpdk_conf.has('RTE_HAS_JANSSON')
     sources += files(
             'cpfl_flow.c',
