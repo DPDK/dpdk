@@ -1053,12 +1053,15 @@ struct i40e_customized_pctype {
 	bool valid;   /* Check if it's valid */
 };
 
-struct i40e_rte_flow_rss_conf {
-	struct rte_flow_action_rss conf;	/**< RSS parameters. */
+#define I40E_RSS_KEY_LEN ((I40E_PFQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t))
 
-	uint8_t key[(I40E_VFQF_HKEY_MAX_INDEX > I40E_PFQF_HKEY_MAX_INDEX ?
-		     I40E_VFQF_HKEY_MAX_INDEX : I40E_PFQF_HKEY_MAX_INDEX + 1) *
-		    sizeof(uint32_t)];		/**< Hash key. */
+struct i40e_rte_flow_rss_conf {
+	enum rte_eth_hash_function func;
+	uint64_t types; /**< Specific RSS hash types (see RTE_ETH_RSS_*). */
+	uint32_t key_len; /**< Hash key length in bytes. */
+	uint32_t queue_num; /**< Number of entries in @p queue. */
+
+	uint8_t key[I40E_RSS_KEY_LEN];		/**< Hash key. */
 	uint16_t queue[RTE_ETH_RSS_RETA_SIZE_512];	/**< Queues indices to use. */
 
 	bool symmetric_enable;		/**< true, if enable symmetric */

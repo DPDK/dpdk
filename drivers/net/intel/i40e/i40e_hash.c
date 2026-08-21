@@ -747,7 +747,7 @@ i40e_hash_config_pctype(struct i40e_hw *hw,
 			struct i40e_rte_flow_rss_conf *rss_conf,
 			uint32_t pctype)
 {
-	uint64_t rss_types = rss_conf->conf.types;
+	uint64_t rss_types = rss_conf->types;
 	int ret;
 
 	if (rss_types == 0) {
@@ -829,17 +829,16 @@ static int
 i40e_hash_config(struct i40e_pf *pf,
 		 struct i40e_rte_flow_rss_conf *rss_conf)
 {
-	struct rte_flow_action_rss *rss_info = &rss_conf->conf;
 	struct i40e_hw *hw = &pf->adapter->hw;
 	uint64_t pctypes;
 	int ret;
 
-	if (rss_info->func != RTE_ETH_HASH_FUNCTION_DEFAULT) {
-		ret = i40e_hash_config_func(hw, rss_info->func);
+	if (rss_conf->func != RTE_ETH_HASH_FUNCTION_DEFAULT) {
+		ret = i40e_hash_config_func(hw, rss_conf->func);
 		if (ret)
 			return ret;
 
-		if (rss_info->func != RTE_ETH_HASH_FUNCTION_TOEPLITZ)
+		if (rss_conf->func != RTE_ETH_HASH_FUNCTION_TOEPLITZ)
 			rss_conf->misc_reset_flags |=
 					I40E_HASH_FLOW_RESET_FLAG_FUNC;
 	}
@@ -852,9 +851,9 @@ i40e_hash_config(struct i40e_pf *pf,
 		rss_conf->misc_reset_flags |= I40E_HASH_FLOW_RESET_FLAG_REGION;
 	}
 
-	if (rss_info->key_len > 0) {
+	if (rss_conf->key_len > 0) {
 		ret = i40e_set_rss_key(pf->main_vsi, rss_conf->key,
-				       rss_info->key_len);
+				       rss_conf->key_len);
 		if (ret)
 			return ret;
 
@@ -862,13 +861,13 @@ i40e_hash_config(struct i40e_pf *pf,
 	}
 
 	/* Update lookup table */
-	if (rss_info->queue_num > 0) {
+	if (rss_conf->queue_num > 0) {
 		uint8_t lut[RTE_ETH_RSS_RETA_SIZE_512];
 		uint32_t i, j = 0;
 
 		for (i = 0; i < hw->func_caps.rss_table_size; i++) {
-			lut[i] = (uint8_t)rss_info->queue[j];
-			j = (j == rss_info->queue_num - 1) ? 0 : (j + 1);
+			lut[i] = (uint8_t)rss_conf->queue[j];
+			j = (j == rss_conf->queue_num - 1) ? 0 : (j + 1);
 		}
 
 		ret = i40e_set_rss_lut(pf->main_vsi, lut, (uint16_t)i);
@@ -876,7 +875,7 @@ i40e_hash_config(struct i40e_pf *pf,
 			return ret;
 
 		pf->hash_enabled_queues = 0;
-		for (i = 0; i < rss_info->queue_num; i++)
+		for (i = 0; i < rss_conf->queue_num; i++)
 			pf->hash_enabled_queues |= BIT_ULL(lut[i]);
 
 		pf->adapter->rss_reta_updated = 0;
@@ -933,8 +932,7 @@ i40e_hash_parse_key(const struct rte_flow_action_rss *rss_act,
 		memcpy(rss_conf->key, key, sizeof(rss_conf->key));
 	}
 
-	rss_conf->conf.key = rss_conf->key;
-	rss_conf->conf.key_len = sizeof(rss_conf->key);
+	rss_conf->key_len = sizeof(rss_conf->key);
 }
 
 static int
@@ -949,8 +947,8 @@ i40e_hash_parse_pattern_act(const struct rte_eth_dev *dev,
 	if (rss_act->key_len)
 		i40e_hash_parse_key(rss_act, rss_conf);
 
-	rss_conf->conf.func = rss_act->func;
-	rss_conf->conf.types = rss_act->types;
+	rss_conf->func = rss_act->func;
+	rss_conf->types = rss_act->types;
 	rss_conf->inset = i40e_hash_get_inset(rss_act->types, rss_conf->symmetric_enable);
 
 	return i40e_hash_get_pattern_pctypes(dev, pattern, rss_act,
@@ -963,8 +961,7 @@ i40e_hash_parse_queues(const struct rte_flow_action_rss *rss_act,
 {
 	memcpy(rss_conf->queue, rss_act->queue,
 	       rss_act->queue_num * sizeof(rss_conf->queue[0]));
-	rss_conf->conf.queue = rss_conf->queue;
-	rss_conf->conf.queue_num = rss_act->queue_num;
+	rss_conf->queue_num = rss_act->queue_num;
 	return 0;
 }
 
@@ -1277,7 +1274,7 @@ i40e_hash_parse(struct rte_eth_dev *dev,
 			return ret;
 		rss_act = parsed_actions.actions[0]->conf;
 		/* set up RSS functions */
-		rss_conf->conf.func = rss_act->func;
+		rss_conf->func = rss_act->func;
 		return i40e_hash_parse_queue_region(pattern, rss_act, rss_conf, error);
 	}
 	/* Empty pattern path */
@@ -1287,7 +1284,7 @@ i40e_hash_parse(struct rte_eth_dev *dev,
 		if (ret)
 			return ret;
 		rss_act = parsed_actions.actions[0]->conf;
-		rss_conf->conf.func = rss_act->func;
+		rss_conf->func = rss_act->func;
 		/* if there is a queue list, take that path */
 		if (rss_act->queue != NULL)
 			return i40e_hash_parse_queues(rss_act, rss_conf);
@@ -1379,10 +1376,6 @@ i40e_hash_filter_create(struct i40e_pf *pf,
 	new_conf = &filter->rss_filter_info;
 
 	memcpy(new_conf, rss_conf, sizeof(*new_conf));
-	if (new_conf->conf.queue_num)
-		new_conf->conf.queue = new_conf->queue;
-	if (new_conf->conf.key_len)
-		new_conf->conf.key = new_conf->key;
 
 	ret = i40e_hash_config(pf, new_conf);
 	if (ret) {

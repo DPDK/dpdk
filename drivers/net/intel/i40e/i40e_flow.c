@@ -4338,9 +4338,16 @@ i40e_flow_query(struct rte_eth_dev *dev __rte_unused,
 						   "action not supported");
 				return -rte_errno;
 			}
-			memcpy(rss_conf,
-				   &rss_rule->rss_filter_info.conf,
-				   sizeof(struct rte_flow_action_rss));
+			*rss_conf = (struct rte_flow_action_rss){
+				.func = rss_rule->rss_filter_info.func,
+				.types = rss_rule->rss_filter_info.types,
+				.key_len = rss_rule->rss_filter_info.key_len,
+				.queue_num = rss_rule->rss_filter_info.queue_num,
+				.key = rss_rule->rss_filter_info.key_len ?
+					rss_rule->rss_filter_info.key : NULL,
+				.queue = rss_rule->rss_filter_info.queue_num ?
+					rss_rule->rss_filter_info.queue : NULL,
+			};
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
