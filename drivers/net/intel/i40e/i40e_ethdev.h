@@ -1071,7 +1071,13 @@ struct i40e_rte_flow_rss_conf {
 	uint8_t region_priority;	/**< queue region priority */
 	uint8_t region_queue_num;	/**< region queue number */
 	uint16_t region_queue_start;	/**< region queue start */
+};
 
+/*
+ * Metadata for an installed RSS filter. Records which parts of the RSS
+ * configuration this filter owns, so they can be reset when filter is removed.
+ */
+struct i40e_rss_filter_data {
 	uint32_t misc_reset_flags;
 #define I40E_HASH_FLOW_RESET_FLAG_FUNC		0x01UL
 #define I40E_HASH_FLOW_RESET_FLAG_KEY		0x02UL
@@ -1088,6 +1094,7 @@ struct i40e_rte_flow_rss_conf {
 struct i40e_rss_filter {
 	TAILQ_ENTRY(i40e_rss_filter) next;
 	struct i40e_rte_flow_rss_conf rss_filter_info;
+	struct i40e_rss_filter_data filter_data;
 };
 
 TAILQ_HEAD(i40e_rss_conf_list, i40e_rss_filter);
