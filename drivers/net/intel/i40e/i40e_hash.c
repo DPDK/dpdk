@@ -827,8 +827,10 @@ i40e_hash_config_region(struct i40e_pf *pf,
 
 static int
 i40e_hash_config(struct i40e_pf *pf,
-		 struct i40e_rte_flow_rss_conf *rss_conf)
+		 struct i40e_rss_filter *filter)
 {
+	struct i40e_rte_flow_rss_conf *rss_conf = &filter->rss_filter_info;
+	struct i40e_rss_filter_data *filter_data = &filter->filter_data;
 	struct i40e_hw *hw = &pf->adapter->hw;
 	uint64_t pctypes;
 	int ret;
@@ -839,7 +841,7 @@ i40e_hash_config(struct i40e_pf *pf,
 			return ret;
 
 		if (rss_conf->func != RTE_ETH_HASH_FUNCTION_TOEPLITZ)
-			rss_conf->misc_reset_flags |=
+			filter_data->misc_reset_flags |=
 					I40E_HASH_FLOW_RESET_FLAG_FUNC;
 	}
 
@@ -848,7 +850,7 @@ i40e_hash_config(struct i40e_pf *pf,
 		if (ret)
 			return ret;
 
-		rss_conf->misc_reset_flags |= I40E_HASH_FLOW_RESET_FLAG_REGION;
+		filter_data->misc_reset_flags |= I40E_HASH_FLOW_RESET_FLAG_REGION;
 	}
 
 	if (rss_conf->key_len > 0) {
@@ -857,7 +859,7 @@ i40e_hash_config(struct i40e_pf *pf,
 		if (ret)
 			return ret;
 
-		rss_conf->misc_reset_flags |= I40E_HASH_FLOW_RESET_FLAG_KEY;
+		filter_data->misc_reset_flags |= I40E_HASH_FLOW_RESET_FLAG_KEY;
 	}
 
 	/* Update lookup table */
@@ -879,7 +881,7 @@ i40e_hash_config(struct i40e_pf *pf,
 			pf->hash_enabled_queues |= BIT_ULL(lut[i]);
 
 		pf->adapter->rss_reta_updated = 0;
-		rss_conf->misc_reset_flags |= I40E_HASH_FLOW_RESET_FLAG_QUEUE;
+		filter_data->misc_reset_flags |= I40E_HASH_FLOW_RESET_FLAG_QUEUE;
 	}
 
 	/* The codes behind configure the input sets and symmetric hash
@@ -906,14 +908,14 @@ i40e_hash_config(struct i40e_pf *pf,
 			if (ret)
 				return ret;
 
-			rss_conf->reset_symmetric_pctypes |= bit;
+			filter_data->reset_symmetric_pctypes |= bit;
 		}
 
 		ret = i40e_hash_config_pctype(hw, rss_conf, idx);
 		if (ret)
 			return ret;
 
-		rss_conf->reset_config_pctypes |= bit;
+		filter_data->reset_config_pctypes |= bit;
 		pctypes &= ~bit;
 	} while (pctypes);
 
@@ -1306,21 +1308,25 @@ i40e_hash_parse(struct rte_eth_dev *dev,
 }
 
 static void
-i40e_invalid_rss_filter(const struct i40e_rte_flow_rss_conf *ref_conf,
-			struct i40e_rte_flow_rss_conf *conf)
+i40e_invalid_rss_filter(const struct i40e_rss_filter *ref,
+			struct i40e_rss_filter *filter)
 {
-	uint32_t reset_flags = conf->misc_reset_flags;
+	const struct i40e_rte_flow_rss_conf *ref_conf = &ref->rss_filter_info;
+	const struct i40e_rss_filter_data *ref_data = &ref->filter_data;
+	const struct i40e_rte_flow_rss_conf *conf = &filter->rss_filter_info;
+	struct i40e_rss_filter_data *data = &filter->filter_data;
+	uint32_t reset_flags = data->misc_reset_flags;
 
-	conf->misc_reset_flags &= ~ref_conf->misc_reset_flags;
+	data->misc_reset_flags &= ~ref_data->misc_reset_flags;
 
 	if ((reset_flags & I40E_HASH_FLOW_RESET_FLAG_REGION) &&
-	    (ref_conf->misc_reset_flags & I40E_HASH_FLOW_RESET_FLAG_REGION) &&
+	    (ref_data->misc_reset_flags & I40E_HASH_FLOW_RESET_FLAG_REGION) &&
 	    (conf->region_queue_start != ref_conf->region_queue_start ||
 	     conf->region_queue_num != ref_conf->region_queue_num))
-		conf->misc_reset_flags |= I40E_HASH_FLOW_RESET_FLAG_REGION;
+		data->misc_reset_flags |= I40E_HASH_FLOW_RESET_FLAG_REGION;
 
-	conf->reset_config_pctypes &= ~ref_conf->reset_config_pctypes;
-	conf->reset_symmetric_pctypes &= ~ref_conf->reset_symmetric_pctypes;
+	data->reset_config_pctypes &= ~ref_data->reset_config_pctypes;
+	data->reset_symmetric_pctypes &= ~ref_data->reset_symmetric_pctypes;
 }
 
 int
@@ -1330,15 +1336,11 @@ i40e_hash_filter_restore(struct i40e_pf *pf)
 	int ret;
 
 	TAILQ_FOREACH(filter, &pf->rss_config_list, next) {
-		struct i40e_rte_flow_rss_conf *rss_conf =
-						&filter->rss_filter_info;
 		struct i40e_rss_filter *prev;
 
-		rss_conf->misc_reset_flags = 0;
-		rss_conf->reset_config_pctypes = 0;
-		rss_conf->reset_symmetric_pctypes = 0;
+		filter->filter_data = (struct i40e_rss_filter_data){0};
 
-		ret = i40e_hash_config(pf, rss_conf);
+		ret = i40e_hash_config(pf, filter);
 		if (ret) {
 			pf->hash_filter_enabled = 0;
 			i40e_pf_disable_rss(pf);
@@ -1351,8 +1353,7 @@ i40e_hash_filter_restore(struct i40e_pf *pf)
 		TAILQ_FOREACH(prev, &pf->rss_config_list, next) {
 			if (prev == filter)
 				break;
-			i40e_invalid_rss_filter(rss_conf,
-						&prev->rss_filter_info);
+			i40e_invalid_rss_filter(filter, prev);
 		}
 	}
 
@@ -1377,7 +1378,7 @@ i40e_hash_filter_create(struct i40e_pf *pf,
 
 	memcpy(new_conf, rss_conf, sizeof(*new_conf));
 
-	ret = i40e_hash_config(pf, new_conf);
+	ret = i40e_hash_config(pf, filter);
 	if (ret) {
 		rte_free(filter);
 		if (i40e_pf_config_rss(pf))
@@ -1389,7 +1390,7 @@ i40e_hash_filter_create(struct i40e_pf *pf,
 
 	/* Invalid previous RSS filter */
 	TAILQ_FOREACH(prev, &pf->rss_config_list, next)
-		i40e_invalid_rss_filter(new_conf, &prev->rss_filter_info);
+		i40e_invalid_rss_filter(filter, prev);
 
 	TAILQ_INSERT_TAIL(&pf->rss_config_list, filter, next);
 	return 0;
@@ -1397,7 +1398,7 @@ i40e_hash_filter_create(struct i40e_pf *pf,
 
 static int
 i40e_hash_reset_conf(struct i40e_pf *pf,
-		     struct i40e_rte_flow_rss_conf *rss_conf)
+		     struct i40e_rss_filter_data *filter_data)
 {
 	struct i40e_hw *hw = &pf->adapter->hw;
 	struct rte_eth_dev *dev;
@@ -1405,32 +1406,32 @@ i40e_hash_reset_conf(struct i40e_pf *pf,
 	uint32_t idx;
 	int ret;
 
-	if (rss_conf->misc_reset_flags & I40E_HASH_FLOW_RESET_FLAG_FUNC) {
+	if (filter_data->misc_reset_flags & I40E_HASH_FLOW_RESET_FLAG_FUNC) {
 		ret = i40e_hash_config_func(hw, RTE_ETH_HASH_FUNCTION_TOEPLITZ);
 		if (ret)
 			return ret;
 
-		rss_conf->misc_reset_flags &= ~I40E_HASH_FLOW_RESET_FLAG_FUNC;
+		filter_data->misc_reset_flags &= ~I40E_HASH_FLOW_RESET_FLAG_FUNC;
 	}
 
-	if (rss_conf->misc_reset_flags & I40E_HASH_FLOW_RESET_FLAG_REGION) {
+	if (filter_data->misc_reset_flags & I40E_HASH_FLOW_RESET_FLAG_REGION) {
 		dev = &rte_eth_devices[pf->dev_data->port_id];
 		ret = i40e_flush_queue_region_all_conf(dev, hw, pf, 0);
 		if (ret)
 			return ret;
 
-		rss_conf->misc_reset_flags &= ~I40E_HASH_FLOW_RESET_FLAG_REGION;
+		filter_data->misc_reset_flags &= ~I40E_HASH_FLOW_RESET_FLAG_REGION;
 	}
 
-	if (rss_conf->misc_reset_flags & I40E_HASH_FLOW_RESET_FLAG_KEY) {
+	if (filter_data->misc_reset_flags & I40E_HASH_FLOW_RESET_FLAG_KEY) {
 		ret = i40e_pf_reset_rss_key(pf);
 		if (ret)
 			return ret;
 
-		rss_conf->misc_reset_flags &= ~I40E_HASH_FLOW_RESET_FLAG_KEY;
+		filter_data->misc_reset_flags &= ~I40E_HASH_FLOW_RESET_FLAG_KEY;
 	}
 
-	if (rss_conf->misc_reset_flags & I40E_HASH_FLOW_RESET_FLAG_QUEUE) {
+	if (filter_data->misc_reset_flags & I40E_HASH_FLOW_RESET_FLAG_QUEUE) {
 		if (!pf->adapter->rss_reta_updated) {
 			ret = i40e_pf_reset_rss_reta(pf);
 			if (ret)
@@ -1438,11 +1439,11 @@ i40e_hash_reset_conf(struct i40e_pf *pf,
 		}
 
 		pf->hash_enabled_queues = 0;
-		rss_conf->misc_reset_flags &= ~I40E_HASH_FLOW_RESET_FLAG_QUEUE;
+		filter_data->misc_reset_flags &= ~I40E_HASH_FLOW_RESET_FLAG_QUEUE;
 	}
 
-	while (rss_conf->reset_config_pctypes) {
-		idx = rte_bsf64(rss_conf->reset_config_pctypes);
+	while (filter_data->reset_config_pctypes) {
+		idx = rte_bsf64(filter_data->reset_config_pctypes);
 
 		i40e_hash_enable_pctype(hw, idx, false);
 		inset = i40e_get_default_input_set(idx);
@@ -1452,17 +1453,17 @@ i40e_hash_reset_conf(struct i40e_pf *pf,
 				return ret;
 		}
 
-		rss_conf->reset_config_pctypes &= ~BIT_ULL(idx);
+		filter_data->reset_config_pctypes &= ~BIT_ULL(idx);
 	}
 
-	while (rss_conf->reset_symmetric_pctypes) {
-		idx = rte_bsf64(rss_conf->reset_symmetric_pctypes);
+	while (filter_data->reset_symmetric_pctypes) {
+		idx = rte_bsf64(filter_data->reset_symmetric_pctypes);
 
 		ret = i40e_hash_config_pctype_symmetric(hw, idx, false);
 		if (ret)
 			return ret;
 
-		rss_conf->reset_symmetric_pctypes &= ~BIT_ULL(idx);
+		filter_data->reset_symmetric_pctypes &= ~BIT_ULL(idx);
 	}
 
 	return 0;
@@ -1477,8 +1478,7 @@ i40e_hash_filter_destroy(struct i40e_pf *pf,
 
 	TAILQ_FOREACH(filter, &pf->rss_config_list, next) {
 		if (rss_filter == filter) {
-			ret = i40e_hash_reset_conf(pf,
-						   &filter->rss_filter_info);
+			ret = i40e_hash_reset_conf(pf, &filter->filter_data);
 			if (ret)
 				return ret;
 
@@ -1505,7 +1505,7 @@ i40e_hash_filter_flush(struct i40e_pf *pf)
 			int ret;
 
 			ret = i40e_hash_reset_conf(pf,
-						   &filter->rss_filter_info);
+						   &filter->filter_data);
 			if (ret)
 				return ret;
 
