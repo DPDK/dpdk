@@ -106,6 +106,10 @@
 /* rte_graph defines */
 #define RTE_GRAPH_BURST_SIZE 256
 #define RTE_LIBRTE_GRAPH_STATS 1
+/* RTE_GRAPH_PROFILE is not set */
+#define RTE_GRAPH_PROFILE_BURST_SMALL 8
+#define RTE_GRAPH_PROFILE_BURST_MEDIUM 32
+#define RTE_GRAPH_PROFILE_BURST_LARGE RTE_GRAPH_BURST_SIZE
 
 /****** driver defines ********/
 

@@ -233,6 +233,15 @@ New Features
   when using ``RTE_UNCORE_PM_ENV_AUTO_DETECT``,
   instead of defaulting only to the Intel uncore driver.
 
+* **Added graph profiling.**
+
+  Added build time configurable graph node profiling statistics
+  via ``RTE_GRAPH_PROFILE`` in ``rte_config.h`` (disabled by default).
+  When enabled, tracks cycles spent processing various burst size ranges per node.
+  The edges of the ranges are build time configurable via
+  ``RTE_GRAPH_PROFILE_BURST_SMALL``, ``RTE_GRAPH_PROFILE_BURST_MEDIUM``, and
+  ``RTE_GRAPH_PROFILE_BURST_LARGE`` in ``rte_config.h``.
+
 
 Removed Items
 -------------

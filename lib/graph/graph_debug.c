@@ -60,6 +60,7 @@ rte_graph_obj_dump(FILE *f, struct rte_graph *g, bool all)
 	rte_graph_off_t off;
 	struct rte_node *n;
 	rte_edge_t i;
+	uint64_t all_total_cycles = 0;
 
 	fprintf(f, "graph <%s> @ %p\n", g->name, g);
 	fprintf(f, "  id=%" PRIu32 "\n", g->id);
@@ -71,6 +72,12 @@ rte_graph_obj_dump(FILE *f, struct rte_graph *g, bool all)
 	fprintf(f, "  fence=0x%" PRIx64 "\n", g->fence);
 	fprintf(f, "  nodes_start=0x%" PRIx32 "\n", g->nodes_start);
 	fprintf(f, "  cir_start=%p\n", g->cir_start);
+
+	rte_graph_foreach_node(count, off, g, n) {
+		if (!all && n->idx == 0)
+			continue;
+		all_total_cycles += n->total_cycles;
+	}
 
 	rte_graph_foreach_node(count, off, g, n) {
 		if (!all && n->idx == 0)
@@ -93,6 +100,66 @@ rte_graph_obj_dump(FILE *f, struct rte_graph *g, bool all)
 				n->dispatch.total_sched_fail);
 		}
 		fprintf(f, "       total_calls=%" PRId64 "\n", n->total_calls);
+		if (rte_graph_has_stats_feature())
+			fprintf(f, "       total_cycles=%" PRIu64 " (%.1f%% of all nodes), avg cycles/call=%.1f\n",
+				n->total_cycles,
+				all_total_cycles == 0 ? 0.0 :
+				(double)n->total_cycles / (double)all_total_cycles * 100.0,
+				n->total_calls == 0 ? 0.0 :
+				(double)n->total_cycles / (double)n->total_calls);
+
+#ifdef RTE_GRAPH_PROFILE
+		static const uint16_t sample_sizes[] = {
+				0, 1, 2, RTE_GRAPH_PROFILE_BURST_SMALL,
+				RTE_GRAPH_PROFILE_BURST_MEDIUM, RTE_GRAPH_PROFILE_BURST_LARGE};
+		static_assert(RTE_DIM(sample_sizes) == 2U + RTE_DIM(n->usage_stats),
+				"usage_stats array size mismatch");
+		for (unsigned int idx = 0; idx < RTE_DIM(sample_sizes); idx++) {
+			uint64_t calls;
+			uint64_t cycles;
+			double objs_per_call;
+			if (idx < 2) {
+				calls = n->usage_stats_01[idx].calls;
+				cycles = n->usage_stats_01[idx].cycles;
+				objs_per_call = (double)idx;
+				fprintf(f, "       for %u objs/call\n",
+					idx);
+			} else {
+				calls = n->usage_stats[idx - 2].calls;
+				cycles = n->usage_stats[idx - 2].cycles;
+				objs_per_call = calls == 0 ? 0.0 :
+						(double)n->usage_stats[idx - 2].objs /
+						(double)calls;
+				if (idx < RTE_DIM(sample_sizes) - 1)
+					fprintf(f, "       for [%u;%u[ objs/call",
+						sample_sizes[idx], sample_sizes[idx + 1]);
+				else
+					fprintf(f, "       for %u+ objs/call",
+						sample_sizes[idx]);
+				if (calls != 0)
+					fprintf(f, ", avg %.1f objs/call\n",
+						objs_per_call);
+				fprintf(f, "\n");
+			}
+			fprintf(f, "         calls=%" PRIu64,
+				calls);
+			if (calls != 0) {
+				fprintf(f, " (%.1f%% of this node)\n",
+					n->total_calls == 0 ? 0.0 :
+					(double)calls / (double)n->total_calls * 100.0);
+				fprintf(f, "         cycles=%" PRIu64 " (%.1f%% of this node), avg cycles/call=%.1f",
+					cycles,
+					n->total_cycles == 0 ? 0.0 :
+					(double)cycles / (double)n->total_cycles * 100.0,
+					(double)cycles / (double)calls);
+				if (objs_per_call != 0.0)
+					fprintf(f, ", avg cycles/obj=%.1f",
+						(double)cycles / (double)calls / objs_per_call);
+			}
+			fprintf(f, "\n");
+		}
+#endif /* RTE_GRAPH_PROFILE */
+
 		for (i = 0; i < n->nb_edges; i++)
 			fprintf(f, "          edge[%d] <%s>\n", i,
 				n->nodes[i]->name);
