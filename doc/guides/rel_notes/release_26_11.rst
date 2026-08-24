@@ -127,6 +127,12 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* ethdev: Updated VMDq related API.
+
+  * At port configuration time, the number of VMDq pools advertised by a driver
+    is now used to validate VMDq related Rx and Tx modes
+    (``RTE_ETH_MQ_RX_VMDQ_FLAG``, ``RTE_ETH_MQ_TX_VMDQ_DCB``, ``RTE_ETH_MQ_TX_VMDQ_ONLY``).
+
 * eventdev: Promoted the following API from experimental to stable:
 
   * Rx adapter: ``rte_event_eth_rx_adapter_create_ext_with_params``,
