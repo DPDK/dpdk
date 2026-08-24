@@ -163,6 +163,12 @@ API Changes
   * ``rte_tel_data_add_dict_uint_hex``
   * ``rte_telemetry_register_cmd_arg``
 
+* **ethdev: updated VMDq related API.**
+
+  * At port configuration time, the number of VMDq pools advertised by a driver is now used to
+    validate VMDq related Rx and Tx modes (``RTE_ETH_MQ_RX_VMDQ_FLAG``, ``RTE_ETH_MQ_TX_VMDQ_DCB``,
+    ``RTE_ETH_MQ_TX_VMDQ_ONLY``).
+
 
 ABI Changes
 -----------
