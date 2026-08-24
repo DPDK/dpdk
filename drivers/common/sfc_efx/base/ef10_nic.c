@@ -2868,10 +2868,30 @@ ef10_nic_init(
 		if ((rc = ef10_upstream_port_vadaptor_alloc(enp)) != 0)
 			goto fail5;
 	}
+
+#if EFSYS_OPT_MAC_STATS
+	/*
+	 * Clear MAC statistics for the freshly allocated VADAPTER.
+	 * The probe-time wipe in 'ef10_nic_probe' predates the
+	 * allocation and cannot reach vadaptor-scoped counters;
+	 * do it here while 'en_vport_id' holds a valid value.
+	 */
+	rc = efx_mcdi_mac_stats_clear(enp);
+	if (rc != 0)
+		goto fail6;
+#endif
 	enp->en_nic_cfg.enc_mcdi_max_payload_length = MCDI_CTL_SDU_LEN_MAX_V2;
 
 	return (0);
 
+#if EFSYS_OPT_MAC_STATS
+fail6:
+	EFSYS_PROBE(fail6);
+	if (alloc_vadaptor != B_FALSE) {
+		(void) efx_mcdi_vadaptor_free(enp, enp->en_vport_id);
+		enp->en_vport_id = EVB_PORT_ID_NULL;
+	}
+#endif
 fail5:
 	EFSYS_PROBE(fail5);
 fail4:
