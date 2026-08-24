@@ -142,6 +142,9 @@ API Changes
     ``RTE_ETH_MQ_TX_VMDQ_ONLY``).
   * A check was added in ``rte_eth_dev_mac_addr_add`` to validate that the ``pool`` parameter is 0
     when VMDq is not configured.
+  * The ``RTE_ETH_NUM_RECEIVE_MAC_ADDR`` and ``RTE_ETH_VMDQ_NUM_UC_HASH_ARRAY`` macros are VMDq
+    related and are sizes of internal arrays in ethdev that only drivers need to care about.
+    Those macros are moved to the driver only ethdev API.
 
 
 ABI Changes
