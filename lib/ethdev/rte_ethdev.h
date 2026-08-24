@@ -4591,7 +4591,7 @@ int rte_eth_dev_priority_flow_ctrl_set(uint16_t port_id,
  *   - (-ENODEV) if *port* is invalid.
  *   - (-EIO) if device is removed.
  *   - (-ENOSPC) if no more MAC addresses can be added.
- *   - (-EINVAL) if MAC address is invalid.
+ *   - (-EINVAL) if MAC address is invalid or a non 0 pool was passed but VMDq is not enabled.
  */
 int rte_eth_dev_mac_addr_add(uint16_t port_id, struct rte_ether_addr *mac_addr,
 				uint32_t pool);

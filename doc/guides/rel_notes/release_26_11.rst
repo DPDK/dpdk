@@ -140,6 +140,8 @@ API Changes
   * At port configuration time, the number of VMDq pools advertised by a driver is now used to
     validate VMDq related Rx and Tx modes (``RTE_ETH_MQ_RX_VMDQ_FLAG``, ``RTE_ETH_MQ_TX_VMDQ_DCB``,
     ``RTE_ETH_MQ_TX_VMDQ_ONLY``).
+  * A check was added in ``rte_eth_dev_mac_addr_add`` to validate that the ``pool`` parameter is 0
+    when VMDq is not configured.
 
 
 ABI Changes
