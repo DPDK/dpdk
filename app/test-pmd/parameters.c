@@ -504,7 +504,9 @@ usage(char* progname)
 	printf("  --txonly-multi-flow: generate multiple flows in txonly mode\n");
 	printf("  --txonly-nb-flows=N: number of flows per lcore in txonly"
 	       " multi-flow mode (1-64, default 64)\n");
-	printf("  --tx-ip=src,dst: IP addresses in Tx-only mode\n");
+	printf("  --tx-ip=[port:]src,dst: IP addresses in Tx-only mode.\n"
+	       "    Without a port prefix the addresses apply to all ports.\n"
+	       "    May be given several times to configure ports individually.\n");
 	printf("  --tx-udp=src[,dst]: UDP ports in Tx-only mode\n");
 	printf("  --eth-link-speed: force link speed.\n");
 	printf("  --rxq-share: enable Rx queue sharing per switch and Rx domain\n");
@@ -1039,26 +1041,59 @@ launch_args_parse(int argc, char** argv)
 			break;
 		}
 		case TESTPMD_OPT_TX_IP_NUM: {
+			uint32_t src_addr, dst_addr;
+			unsigned long port_num;
+			bool port_given = false;
+			char *addrs = optarg;
 			struct in_addr in;
-			char *end;
+			portid_t port_id = 0;
+			char *sep, *end;
 
-			end = strchr(optarg, ',');
-			if (end == optarg || !end)
+			/* Optional "PORT:" prefix selects a single Tx port. */
+			sep = strchr(addrs, ':');
+			if (sep != NULL) {
+				*sep = '\0';
+				errno = 0;
+				port_num = strtoul(addrs, &end, 0);
+				if (errno != 0 || end == addrs ||
+						*end != '\0' ||
+						port_num >= RTE_MAX_ETHPORTS)
+					rte_exit(EXIT_FAILURE,
+						"Invalid tx-ip port: %s\n",
+						addrs);
+				port_id = (portid_t)port_num;
+				port_given = true;
+				addrs = sep + 1;
+			}
+
+			end = strchr(addrs, ',');
+			if (end == addrs || end == NULL)
 				rte_exit(EXIT_FAILURE,
-					"Invalid tx-ip: %s", optarg);
+					"Invalid tx-ip: %s\n", addrs);
 
-			*end++ = 0;
-			if (inet_pton(AF_INET, optarg, &in) == 0)
+			*end++ = '\0';
+			if (inet_pton(AF_INET, addrs, &in) == 0)
 				rte_exit(EXIT_FAILURE,
 					"Invalid source IP address: %s\n",
-					optarg);
-			tx_ip_src_addr = rte_be_to_cpu_32(in.s_addr);
+					addrs);
+			src_addr = rte_be_to_cpu_32(in.s_addr);
 
 			if (inet_pton(AF_INET, end, &in) == 0)
 				rte_exit(EXIT_FAILURE,
 					"Invalid destination IP address: %s\n",
-					optarg);
-			tx_ip_dst_addr = rte_be_to_cpu_32(in.s_addr);
+					end);
+			dst_addr = rte_be_to_cpu_32(in.s_addr);
+
+			if (port_given) {
+				tx_ip_src_addr[port_id] = src_addr;
+				tx_ip_dst_addr[port_id] = dst_addr;
+			} else {
+				/* No port given: apply to every port. */
+				for (pid = 0; pid < RTE_MAX_ETHPORTS; pid++) {
+					tx_ip_src_addr[pid] = src_addr;
+					tx_ip_dst_addr[pid] = dst_addr;
+				}
+			}
 			break;
 		}
 		case TESTPMD_OPT_TX_UDP_NUM: {

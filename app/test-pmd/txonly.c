@@ -50,12 +50,26 @@ uint16_t tx_udp_src_port = 9;
 uint16_t tx_udp_dst_port = 9;
 
 /* use RFC5735 / RFC2544 reserved network test addresses */
-uint32_t tx_ip_src_addr = (198U << 24) | (18 << 16) | (0 << 8) | 1;
-uint32_t tx_ip_dst_addr = (198U << 24) | (18 << 16) | (0 << 8) | 2;
+#define TX_IP_SRC_ADDR_DEF ((198U << 24) | (18 << 16) | (0 << 8) | 1)
+#define TX_IP_DST_ADDR_DEF ((198U << 24) | (18 << 16) | (0 << 8) | 2)
+
+uint32_t tx_ip_src_addr[RTE_MAX_ETHPORTS];
+uint32_t tx_ip_dst_addr[RTE_MAX_ETHPORTS];
+
+RTE_INIT(tx_ip_addr_init)
+{
+	portid_t pid;
+
+	for (pid = 0; pid < RTE_MAX_ETHPORTS; pid++) {
+		tx_ip_src_addr[pid] = TX_IP_SRC_ADDR_DEF;
+		tx_ip_dst_addr[pid] = TX_IP_DST_ADDR_DEF;
+	}
+}
 
 #define IP_DEFTTL  64   /* from RFC 1340. */
 
-static struct rte_ipv4_hdr pkt_ip_hdr; /**< IP header of transmitted packets. */
+/** IP header of transmitted packets, per Tx port. */
+static struct rte_ipv4_hdr pkt_ip_hdr[RTE_MAX_ETHPORTS];
 RTE_DEFINE_PER_LCORE(uint8_t, _src_port_var); /**< Source port variation */
 static struct rte_udp_hdr pkt_udp_hdr; /**< UDP header of tx packets. */
 
@@ -104,7 +118,8 @@ copy_buf_to_pkt(void* buf, unsigned len, struct rte_mbuf *pkt, unsigned offset)
 static void
 setup_pkt_udp_ip_headers(struct rte_ipv4_hdr *ip_hdr,
 			 struct rte_udp_hdr *udp_hdr,
-			 uint16_t pkt_data_len)
+			 uint16_t pkt_data_len,
+			 portid_t port_id)
 {
 	uint16_t pkt_len;
 
@@ -128,8 +143,8 @@ setup_pkt_udp_ip_headers(struct rte_ipv4_hdr *ip_hdr,
 	ip_hdr->next_proto_id = IPPROTO_UDP;
 	ip_hdr->packet_id = 0;
 	ip_hdr->total_length   = RTE_CPU_TO_BE_16(pkt_len);
-	ip_hdr->src_addr = rte_cpu_to_be_32(tx_ip_src_addr);
-	ip_hdr->dst_addr = rte_cpu_to_be_32(tx_ip_dst_addr);
+	ip_hdr->src_addr = rte_cpu_to_be_32(tx_ip_src_addr[port_id]);
+	ip_hdr->dst_addr = rte_cpu_to_be_32(tx_ip_dst_addr[port_id]);
 
 	/*
 	 * Compute IP header checksum.
@@ -208,7 +223,7 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 	 * Copy headers in first packet segment(s).
 	 */
 	copy_buf_to_pkt(eth_hdr, sizeof(*eth_hdr), pkt, 0);
-	copy_buf_to_pkt(&pkt_ip_hdr, sizeof(pkt_ip_hdr), pkt,
+	copy_buf_to_pkt(&pkt_ip_hdr[fs->tx_port], sizeof(*pkt_ip_hdr), pkt,
 			sizeof(struct rte_ether_hdr));
 	copy_buf_to_pkt(&pkt_udp_hdr, sizeof(pkt_udp_hdr), pkt,
 			sizeof(struct rte_ether_hdr) +
@@ -416,7 +431,7 @@ tx_only_begin(portid_t pi)
 		return -EINVAL;
 	}
 
-	setup_pkt_udp_ip_headers(&pkt_ip_hdr, &pkt_udp_hdr, pkt_data_len);
+	setup_pkt_udp_ip_headers(&pkt_ip_hdr[pi], &pkt_udp_hdr, pkt_data_len, pi);
 
 	timestamp_enable = false;
 	timestamp_mask = 0;
