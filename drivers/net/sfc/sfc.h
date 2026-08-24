@@ -156,6 +156,25 @@ struct sfc_adapter_shared {
 	unsigned int			nb_repr_txq;
 
 	struct sfc_nic_dma_info		nic_dma_info;
+
+	/*
+	 * Snapshot of the 'rte_eth_dev_info_get' output created by the primary
+	 * process attach path for the secondary process to use in its own
+	 * implementation of the 'dev_infos_get' method.
+	 *
+	 * Some driver-computed fields derived from mutable post-attach state
+	 * are knowingly stale, which is acceptable for the secondary process.
+	 *
+	 * This also contains a handful of stale fields which are normally
+	 * set by the ethdev layer upon invocation of the 'dev_infos_get',
+	 * so they will be overridden anyway in the secondary process.
+	 */
+	struct rte_eth_dev_info		dev_info_cache;
+	/*
+	 * Set to 'true' by the probe function from the primary process. The
+	 * secondary 'dev_infos_get' returns '-EAGAIN' when this is 'false'.
+	 */
+	RTE_ATOMIC(bool)		dev_info_cache_is_valid;
 };
 
 /* Adapter process private data */
