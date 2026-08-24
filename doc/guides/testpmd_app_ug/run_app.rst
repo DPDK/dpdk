@@ -155,12 +155,20 @@ The command line options are:
     Set the MAC address ``XX:XX:XX:XX:XX:XX`` of the peer port N,
     where 0 <= N < ``RTE_MAX_ETHPORTS``.
 
-*   ``--tx-ip=SRC,DST``
+*   ``--tx-ip=[N:]SRC,DST``
 
     Set the source and destination IP address used when doing transmit only test.
     The defaults address values are source 198.18.0.1 and
     destination 198.18.0.2. These are special purpose addresses
     reserved for benchmarking (RFC 5735).
+
+    Without the optional port prefix, the addresses apply to all ports.
+    With the prefix ``N:``, where 0 <= N < ``RTE_MAX_ETHPORTS``,
+    the addresses apply only to port N.
+    The option may be given several times to configure ports individually,
+    and later options override earlier ones::
+
+       --tx-ip=198.18.0.1,198.18.0.2 --tx-ip=1:10.1.0.3,10.1.0.4
 
 *   ``--tx-udp=SRC[,DST]``
 
