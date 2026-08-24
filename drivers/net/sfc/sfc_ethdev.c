@@ -3224,6 +3224,7 @@ sfc_eth_dev_secondary_init(struct rte_eth_dev *dev, uint32_t logtype_main)
 
 	sap->dp_rx = dp_rx;
 	sap->dp_tx = dp_tx;
+	sap->shared = sas;
 
 	dev->process_private = sap;
 	dev->rx_pkt_burst = dp_rx->pkt_burst;
