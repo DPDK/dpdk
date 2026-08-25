@@ -69,6 +69,11 @@ New Features
 
   * Added VF support on AMD Solarflare X45xx adapters.
 
+* **Updated NXP DPAA2 ethernet driver.**
+
+  * Added the inner IP header to the RSS hash so tunneled traffic is
+    distributed across the Rx queues.
+
 
 Removed Items
 -------------
