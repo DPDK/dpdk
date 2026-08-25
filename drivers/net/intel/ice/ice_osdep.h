@@ -5,6 +5,8 @@
 #ifndef _ICE_OSDEP_H_
 #define _ICE_OSDEP_H_
 
+/* File containing OS dependencies for base code */
+
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -24,7 +26,7 @@
 
 #include "ice_alloc.h"
 
-#include "../ice_logs.h"
+#include "ice_logs.h"
 
 #ifndef __INTEL_NET_BASE_OSDEP__
 #define __INTEL_NET_BASE_OSDEP__

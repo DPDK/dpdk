@@ -17,11 +17,3 @@ This driver is valid for the product(s) listed below
 * Intel® Ethernet Network Adapters E825
 * Intel® Ethernet Network Adapters E830
 * Intel® Ethernet Network Adapters E835
-
-Updating the driver
-===================
-
-NOTE: The source code in this directory should not be modified apart from
-the following file(s):
-
-    ice_osdep.h
