@@ -5,6 +5,8 @@
 #ifndef _I40E_OSDEP_H_
 #define _I40E_OSDEP_H_
 
+/* File containing OS dependencies for base code */
+
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -18,7 +20,7 @@
 #include <rte_log.h>
 #include <rte_io.h>
 
-#include "../i40e_logs.h"
+#include "i40e_logs.h"
 #include "i40e_status.h"
 
 #define INLINE inline
