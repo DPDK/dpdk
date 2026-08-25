@@ -381,42 +381,40 @@ dpaa2_distset_to_dpkg_profile_cfg(
 			case RTE_ETH_RSS_IPV6:
 			case RTE_ETH_RSS_FRAG_IPV6:
 			case RTE_ETH_RSS_NONFRAG_IPV6_OTHER:
-			case RTE_ETH_RSS_IPV6_EX:
+			case RTE_ETH_RSS_IPV6_EX: {
+				static const uint32_t ip_fields[] = {
+					NH_FLD_IP_SRC, NH_FLD_IP_DST,
+					NH_FLD_IP_PROTO };
+				static const uint8_t ip_hdr_index[] = {
+					0, (uint8_t)LAST_HDR_INDEX };
+				unsigned int f, h;
 
 				if (l3_configured)
 					break;
 				l3_configured = 1;
 
-				kg_cfg->extracts[i].extract.from_hdr.prot =
-					NET_PROT_IP;
-				kg_cfg->extracts[i].extract.from_hdr.field =
-					NH_FLD_IP_SRC;
-				kg_cfg->extracts[i].type =
-					DPKG_EXTRACT_FROM_HDR;
-				kg_cfg->extracts[i].extract.from_hdr.type =
-					DPKG_FULL_FIELD;
-				i++;
-
-				kg_cfg->extracts[i].extract.from_hdr.prot =
-					NET_PROT_IP;
-				kg_cfg->extracts[i].extract.from_hdr.field =
-					NH_FLD_IP_DST;
-				kg_cfg->extracts[i].type =
-					DPKG_EXTRACT_FROM_HDR;
-				kg_cfg->extracts[i].extract.from_hdr.type =
-					DPKG_FULL_FIELD;
-				i++;
-
-				kg_cfg->extracts[i].extract.from_hdr.prot =
-					NET_PROT_IP;
-				kg_cfg->extracts[i].extract.from_hdr.field =
-					NH_FLD_IP_PROTO;
-				kg_cfg->extracts[i].type =
-					DPKG_EXTRACT_FROM_HDR;
-				kg_cfg->extracts[i].extract.from_hdr.type =
-					DPKG_FULL_FIELD;
-				i++;
-			break;
+				/* Hash on the outer IP (index 0) and the innermost
+				 * IP instance. A plain frame has a single IP header,
+				 * so only the outer extract resolves; a tunnelled
+				 * frame resolves both and is also spread on its inner
+				 * IP.
+				 */
+				for (h = 0; h < RTE_DIM(ip_hdr_index); h++)
+					for (f = 0; f < RTE_DIM(ip_fields); f++) {
+						kg_cfg->extracts[i].extract.from_hdr.prot =
+							NET_PROT_IP;
+						kg_cfg->extracts[i].extract.from_hdr.hdr_index =
+							ip_hdr_index[h];
+						kg_cfg->extracts[i].extract.from_hdr.field =
+							ip_fields[f];
+						kg_cfg->extracts[i].type =
+							DPKG_EXTRACT_FROM_HDR;
+						kg_cfg->extracts[i].extract.from_hdr.type =
+							DPKG_FULL_FIELD;
+						i++;
+					}
+				break;
+			}
 
 			case RTE_ETH_RSS_NONFRAG_IPV4_TCP:
 			case RTE_ETH_RSS_NONFRAG_IPV6_TCP:

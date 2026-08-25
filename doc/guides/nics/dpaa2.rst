@@ -588,6 +588,9 @@ Other Limitations
 
 - RSS hash key cannot be modified.
 - RSS RETA cannot be configured.
+- RSS hashes on both the outer and the inner IP header. Tunnelled flows
+  that share the same inner IP but differ in their outer IP may therefore
+  be steered to different Rx queues.
 
 .. _dpaa2_dptmapi:
 
