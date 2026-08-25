@@ -21,11 +21,3 @@ This driver is valid for the product(s) listed below
 * Intel® Ethernet Controller X710 and XL710 Family
 * Intel® Ethernet Controller XXV710 for 25GbE backplane
 * Intel® Ethernet Controller XXV710 for 25GbE SFP28
-
-Updating the driver
-===================
-
-NOTE: The source code in this directory should not be modified apart from
-the following file(s):
-
-    i40e_osdep.h
