@@ -65,6 +65,11 @@ New Features
     ``xdp_meta_rx_ts_valid_mask``.
   * Added ``read_clock`` operation to query the PTP hardware clock.
 
+* **Updated NXP DPAA2 ethernet driver.**
+
+  * Added the inner IP header to the RSS hash so tunneled traffic is
+    distributed across the Rx queues.
+
 * **Updated Solarflare network driver.**
 
   * Added VF support on AMD Solarflare X45xx adapters.
