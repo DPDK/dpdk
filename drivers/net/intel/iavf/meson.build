@@ -12,7 +12,6 @@ deps += ['security', 'cryptodev']
 sources = files(
         'base/iavf_adminq.c',
         'base/iavf_common.c',
-        'base/iavf_impl.c',
 
         'iavf_base_symbols.c',
         'iavf_ethdev.c',
@@ -21,6 +20,7 @@ sources = files(
         'iavf_generic_flow.c',
         'iavf_fdir.c',
         'iavf_hash.c',
+        'iavf_osdep.c',
         'iavf_tm.c',
         'iavf_ipsec_crypto.c',
         'iavf_fsub.c',
