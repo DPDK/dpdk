@@ -812,43 +812,42 @@ eval_arsh(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
 }
 
 static uint64_t
-eval_umax_bits(uint64_t v, size_t opsz)
+eval_umax_bits(uint64_t v)
 {
 	if (v == 0)
 		return 0;
 
 	v = rte_clz64(v);
-	return RTE_LEN2MASK(opsz - v, uint64_t);
+	return RTE_LEN2MASK(64 - v, uint64_t);
 }
 
 /* estimate max possible value for (v1 & v2) */
 static uint64_t
-eval_uand_max(uint64_t v1, uint64_t v2, size_t opsz)
+eval_uand_max(uint64_t v1, uint64_t v2)
 {
-	v1 = eval_umax_bits(v1, opsz);
-	v2 = eval_umax_bits(v2, opsz);
+	v1 = eval_umax_bits(v1);
+	v2 = eval_umax_bits(v2);
 	return (v1 & v2);
 }
 
 /* estimate max possible value for (v1 | v2) */
 static uint64_t
-eval_uor_max(uint64_t v1, uint64_t v2, size_t opsz)
+eval_uor_max(uint64_t v1, uint64_t v2)
 {
-	v1 = eval_umax_bits(v1, opsz);
-	v2 = eval_umax_bits(v2, opsz);
+	v1 = eval_umax_bits(v1);
+	v2 = eval_umax_bits(v2);
 	return (v1 | v2);
 }
 
 static void
-eval_and(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
-	uint64_t msk)
+eval_and(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, uint64_t msk)
 {
 	/* both operands are constants */
 	if (rd->u.min == rd->u.max && rs->u.min == rs->u.max) {
 		rd->u.min &= rs->u.min;
 		rd->u.max &= rs->u.max;
 	} else {
-		rd->u.max = eval_uand_max(rd->u.max, rs->u.max, opsz);
+		rd->u.max = eval_uand_max(rd->u.max, rs->u.max);
 		rd->u.min = 0;
 	}
 
@@ -859,22 +858,21 @@ eval_and(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
 	/* at least one of operand is non-negative */
 	} else if (rd->s.min >= 0 || rs->s.min >= 0) {
 		rd->s.max = eval_uand_max(rd->s.max & (msk >> 1),
-			rs->s.max & (msk >> 1), opsz);
+			rs->s.max & (msk >> 1));
 		rd->s.min = 0;
 	} else
 		eval_smax_bound(rd, msk);
 }
 
 static void
-eval_or(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
-	uint64_t msk)
+eval_or(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, uint64_t msk)
 {
 	/* both operands are constants */
 	if (rd->u.min == rd->u.max && rs->u.min == rs->u.max) {
 		rd->u.min |= rs->u.min;
 		rd->u.max |= rs->u.max;
 	} else {
-		rd->u.max = eval_uor_max(rd->u.max, rs->u.max, opsz);
+		rd->u.max = eval_uor_max(rd->u.max, rs->u.max);
 		rd->u.min = RTE_MAX(rd->u.min, rs->u.min);
 	}
 
@@ -885,22 +883,21 @@ eval_or(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
 
 	/* both operands are non-negative */
 	} else if (rd->s.min >= 0 && rs->s.min >= 0) {
-		rd->s.max = eval_uor_max(rd->s.max, rs->s.max, opsz);
+		rd->s.max = eval_uor_max(rd->s.max, rs->s.max);
 		rd->s.min = RTE_MAX(rd->s.min, rs->s.min);
 	} else
 		eval_smax_bound(rd, msk);
 }
 
 static void
-eval_xor(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
-	uint64_t msk)
+eval_xor(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, uint64_t msk)
 {
 	/* both operands are constants */
 	if (rd->u.min == rd->u.max && rs->u.min == rs->u.max) {
 		rd->u.min ^= rs->u.min;
 		rd->u.max ^= rs->u.max;
 	} else {
-		rd->u.max = eval_uor_max(rd->u.max, rs->u.max, opsz);
+		rd->u.max = eval_uor_max(rd->u.max, rs->u.max);
 		rd->u.min = 0;
 	}
 
@@ -911,7 +908,7 @@ eval_xor(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, size_t opsz,
 
 	/* both operands are non-negative */
 	} else if (rd->s.min >= 0 && rs->s.min >= 0) {
-		rd->s.max = eval_uor_max(rd->s.max, rs->s.max, opsz);
+		rd->s.max = eval_uor_max(rd->s.max, rs->s.max);
 		rd->s.min = 0;
 	} else
 		eval_smax_bound(rd, msk);
@@ -1152,11 +1149,11 @@ eval_alu(struct bpf_verifier *bvf, const struct rte_ebpf_insn *ins)
 	else if (op == EBPF_ARSH)
 		eval_arsh(rd, &rs, opsz, msk);
 	else if (op == BPF_AND)
-		eval_and(rd, &rs, opsz, msk);
+		eval_and(rd, &rs, msk);
 	else if (op == BPF_OR)
-		eval_or(rd, &rs, opsz, msk);
+		eval_or(rd, &rs, msk);
 	else if (op == BPF_XOR)
-		eval_xor(rd, &rs, opsz, msk);
+		eval_xor(rd, &rs, msk);
 	else if (op == BPF_MUL)
 		eval_mul(rd, &rs, opsz, msk);
 	else if (op == BPF_DIV || op == BPF_MOD)

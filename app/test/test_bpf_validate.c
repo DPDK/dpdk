@@ -1277,6 +1277,48 @@ verify_comparison(struct verify_instruction_param prm, bool also_signed)
 
 /* TESTS FOR SPECIFIC INSTRUCTIONS */
 
+/* 32-bit bitwise AND between a scalar range and immediate, triggering UB. */
+static int
+test_alu32_and_k_ub(void)
+{
+	return verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_ALU | BPF_AND | BPF_K),
+			.imm = INT32_MAX,
+		},
+		.pre.dst = make_unsigned_domain(0, INT32_MAX),
+		.post.dst = make_unsigned_domain(0, INT32_MAX),
+	});
+}
+
+/* 32-bit bitwise OR between a scalar range and immediate, triggering UB. */
+static int
+test_alu32_or_k_ub(void)
+{
+	return verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_ALU | BPF_OR | BPF_K),
+			.imm = 0,
+		},
+		.pre.dst = make_unsigned_domain(0, INT32_MAX),
+		.post.dst = make_unsigned_domain(0, INT32_MAX),
+	});
+}
+
+/* 32-bit bitwise XOR between a scalar range and immediate, triggering UB. */
+static int
+test_alu32_xor_k_ub(void)
+{
+	return verify_instruction((struct verify_instruction_param){
+		.tested_instruction = {
+			.code = (BPF_ALU | BPF_XOR | BPF_K),
+			.imm = 0,
+		},
+		.pre.dst = make_unsigned_domain(0, INT32_MAX),
+		.post.dst = make_unsigned_domain(0, INT32_MAX),
+	});
+}
+
 /* 64-bit addition of immediate to a range. */
 static int
 test_alu64_add_k(void)
@@ -2187,6 +2229,9 @@ static struct
 unit_test_suite test_bpf_validate_suite  = {
 	.suite_name = "Test BPF Validate Unit Test Suite",
 	.unit_test_cases = {
+		TEST_CASE(test_alu32_and_k_ub),
+		TEST_CASE(test_alu32_or_k_ub),
+		TEST_CASE(test_alu32_xor_k_ub),
 		TEST_CASE(test_alu64_add_k),
 		TEST_CASE(test_alu64_add_k_pointer),
 		TEST_CASE(test_alu64_add_x_pointer_pointer),
