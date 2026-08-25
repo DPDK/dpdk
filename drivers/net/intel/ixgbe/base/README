@@ -25,12 +25,3 @@ This driver is valid for the product(s) listed below
 * Intel® Ethernet Server Adapter X520-T2
 * Intel® Ethernet Controller X550 Series
 * Intel® Ethernet Controller E610 Series
-
-Updating the driver
-===================
-
-NOTE: The source code in this directory should not be modified apart from
-the following file(s):
-
-    ixgbe_osdep.h
-    ixgbe_osdep.c

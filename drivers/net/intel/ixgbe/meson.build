@@ -3,7 +3,22 @@
 
 cflags += ['-DRTE_LIBRTE_IXGBE_BYPASS']
 
-subdir('base')
+base_sources = files(
+        'base/ixgbe_82598.c',
+        'base/ixgbe_82599.c',
+        'base/ixgbe_api.c',
+        'base/ixgbe_common.c',
+        'base/ixgbe_dcb_82598.c',
+        'base/ixgbe_dcb_82599.c',
+        'base/ixgbe_dcb.c',
+        'base/ixgbe_e610.c',
+        'base/ixgbe_hv_vf.c',
+        'base/ixgbe_mbx.c',
+        'base/ixgbe_phy.c',
+        'base/ixgbe_vf.c',
+        'base/ixgbe_x540.c',
+        'base/ixgbe_x550.c',
+)
 
 sources += files(
         'ixgbe_82599_bypass.c',

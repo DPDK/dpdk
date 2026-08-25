@@ -5,6 +5,8 @@
 #ifndef _IXGBE_OS_H_
 #define _IXGBE_OS_H_
 
+/* File containing OS dependencies for base code */
+
 #include <pthread.h>
 #include <string.h>
 #include <stdint.h>
