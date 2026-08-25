@@ -7,7 +7,14 @@ if is_windows
     subdir_done()
 endif
 
-subdir('base')
+base_sources = files(
+        'base/fm10k_api.c',
+        'base/fm10k_common.c',
+        'base/fm10k_mbx.c',
+        'base/fm10k_pf.c',
+        'base/fm10k_tlv.c',
+        'base/fm10k_vf.c',
+)
 
 sources += files(
         'fm10k_ethdev.c',

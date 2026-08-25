@@ -5,6 +5,8 @@
 #ifndef _FM10K_OSDEP_H_
 #define _FM10K_OSDEP_H_
 
+/* File containing OS dependencies for base code */
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -13,7 +15,7 @@
 #include <rte_cycles.h>
 #include <rte_io.h>
 
-#include "../fm10k_logs.h"
+#include "fm10k_logs.h"
 
 /* TODO: this does not look like it should be used... */
 #define ERROR_REPORT2(v1, v2, v3)   do { } while (0)
