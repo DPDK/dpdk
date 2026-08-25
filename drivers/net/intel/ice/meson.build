@@ -3,6 +3,11 @@
 
 sources = files(
         'ice_acl_filter.c',
+        'ice_dcf.c',
+        'ice_dcf_vf_representor.c',
+        'ice_dcf_ethdev.c',
+        'ice_dcf_parent.c',
+        'ice_dcf_sched.c',
         'ice_diagnose.c',
         'ice_ethdev.c',
         'ice_fdir_filter.c',
@@ -37,14 +42,6 @@ if arch_subdir == 'x86'
 elif arch_subdir == 'arm' and dpdk_conf.get('RTE_ARCH_64')
     sources += files('ice_rxtx_vec_neon.c')
 endif
-
-sources += files(
-        'ice_dcf.c',
-        'ice_dcf_vf_representor.c',
-        'ice_dcf_ethdev.c',
-        'ice_dcf_parent.c',
-        'ice_dcf_sched.c',
-)
 
 require_iova_in_mbuf = false
 
