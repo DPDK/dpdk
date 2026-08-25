@@ -17,7 +17,15 @@ if dpdk_conf.get('RTE_IOVA_IN_MBUF') == 0
     subdir_done()
 endif
 
-subdir('base')
+base_sources = files(
+        'base/i40e_adminq.c',
+        'base/i40e_common.c',
+        'base/i40e_dcb.c',
+        'base/i40e_diag.c',
+        'base/i40e_hmc.c',
+        'base/i40e_lan_hmc.c',
+        'base/i40e_nvm.c',
+)
 
 sources += files(
         'i40e_ethdev.c',
