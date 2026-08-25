@@ -27,12 +27,3 @@ This driver is valid for the product(s) listed below
 * Intel® Ethernet Controller I226
 * Intel® Ethernet Controller I354 Series
 * Intel® Ethernet Controller DH89XXCC Series
-
-Updating the driver
-===================
-
-NOTE: The source code in this directory should not be modified apart from
-the following file(s):
-
-    e1000_osdep.c
-    e1000_osdep.h

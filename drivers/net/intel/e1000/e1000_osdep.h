@@ -5,6 +5,8 @@
 #ifndef _E1000_OSDEP_H_
 #define _E1000_OSDEP_H_
 
+/* File containing OS dependencies for base code */
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -17,7 +19,7 @@
 #include <rte_byteorder.h>
 #include <rte_io.h>
 
-#include "../e1000_logs.h"
+#include "e1000_logs.h"
 
 #define DELAY(x) rte_delay_us_sleep(x)
 #define usec_delay(x) DELAY(x)

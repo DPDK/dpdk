@@ -9,7 +9,7 @@
 #include <rte_flow.h>
 #include <rte_time.h>
 
-#include "base/e1000_osdep.h"
+#include "e1000_osdep.h"
 #include "base/e1000_hw.h"
 #include "base/e1000_i225.h"
 #include "base/e1000_api.h"
