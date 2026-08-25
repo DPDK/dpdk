@@ -43,7 +43,7 @@
 #include "e1000_logs.h"
 #include "base/e1000_api.h"
 #include "e1000_ethdev.h"
-#include "base/e1000_osdep.h"
+#include "e1000_osdep.h"
 
 #define	E1000_TXD_VLAN_SHIFT	16
 
