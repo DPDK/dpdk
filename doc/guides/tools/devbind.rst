@@ -89,24 +89,24 @@ Examples
 
 To display current device status::
 
-   dpdk-devbind --status
+   dpdk-devbind.py --status
 
 To bind eth1 from the current driver and move to use vfio-pci::
 
-   dpdk-devbind --bind=vfio-pci eth1
+   dpdk-devbind.py --bind=vfio-pci eth1
 
 To unbind 0000:01:00.0 from using any driver::
 
-   dpdk-devbind -u 0000:01:00.0
+   dpdk-devbind.py -u 0000:01:00.0
 
 To bind 0000:02:00.0 and 0000:02:00.1 to the ixgbe kernel driver::
 
-   dpdk-devbind -b ixgbe 02:00.0 02:00.1
+   dpdk-devbind.py -b ixgbe 02:00.0 02:00.1
 
 To check status of all network ports, assign one to the vfio-pci driver and check status again::
 
    # Check the status of the available devices.
-   dpdk-devbind --status
+   dpdk-devbind.py --status
    Network devices using DPDK-compatible driver
    ============================================
    <none>
@@ -117,11 +117,11 @@ To check status of all network ports, assign one to the vfio-pci driver and chec
 
 
    # Bind the device to vfio-pci.
-   sudo dpdk-devbind -b vfio-pci 0000:0a:00.0
+   sudo dpdk-devbind.py -b vfio-pci 0000:0a:00.0
 
 
    # Recheck the status of the devices.
-   dpdk-devbind --status
+   dpdk-devbind.py --status
    Network devices using DPDK-compatible driver
    ============================================
    0000:0a:00.0 '82599ES 10-Gigabit' drv=vfio-pci unused=
