@@ -5,6 +5,8 @@
 #ifndef _IAVF_OSDEP_H_
 #define _IAVF_OSDEP_H_
 
+/* File containing OS dependencies for base code */
+
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
