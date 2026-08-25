@@ -22,11 +22,14 @@ deps += ['hash', 'net']
 if dpdk_conf.has('RTE_NET_IAVF')
     deps += 'net_iavf'
 else
-    includes += include_directories('../iavf/base')
+    includes += include_directories(
+            '../iavf',
+            '../iavf/base'
+    )
     sources += files(
             '../iavf/base/iavf_adminq.c',
             '../iavf/base/iavf_common.c',
-            '../iavf/base/iavf_impl.c',
+            '../iavf/iavf_osdep.c',
     )
 endif
 
