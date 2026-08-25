@@ -5,7 +5,7 @@
 #ifndef _CPFL_CONTROLQ_H_
 #define _CPFL_CONTROLQ_H_
 
-#include "base/idpf_osdep.h"
+#include "idpf_osdep.h"
 #include "base/idpf_controlq_api.h"
 
 #define CPFL_CTLQ_DESCRIPTOR_SIZE	32
