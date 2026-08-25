@@ -5,7 +5,7 @@
 #ifndef _IDPF_PTP_H_
 #define _IDPF_PTP_H_
 
-#include "base/idpf_osdep.h"
+#include "idpf_osdep.h"
 #include <rte_time.h>
 #include "idpf_common_device.h"
 

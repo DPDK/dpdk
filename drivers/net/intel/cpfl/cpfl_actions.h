@@ -5,7 +5,7 @@
 #ifndef _CPFL_ACTIONS_H_
 #define _CPFL_ACTIONS_H_
 
-#include "base/idpf_osdep.h"
+#include "idpf_osdep.h"
 
 #pragma pack(1)
 

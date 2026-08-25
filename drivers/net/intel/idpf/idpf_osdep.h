@@ -5,6 +5,8 @@
 #ifndef _IDPF_OSDEP_H_
 #define _IDPF_OSDEP_H_
 
+/* File containing OS dependencies for base code */
+
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -24,7 +26,7 @@
 #include <rte_io.h>
 #include <rte_compat.h>
 
-#include "../idpf_common_logs.h"
+#include "idpf_common_logs.h"
 
 #define INLINE inline
 #define STATIC static

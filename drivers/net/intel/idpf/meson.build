@@ -7,7 +7,10 @@ if is_windows
     subdir_done()
 endif
 
-subdir('base')
+base_sources = files(
+        'base/idpf_controlq.c',
+        'base/idpf_controlq_setup.c',
+)
 
 includes += include_directories('../iavf/base')
 
