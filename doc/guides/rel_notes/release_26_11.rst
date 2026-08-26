@@ -55,6 +55,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added TPID support to VLAN tag insertion.**
+
+  Added ``rte_vlan_insert_tpid()`` to the net library.
+
 * **Updated AF_XDP driver.**
 
   * Changed the default device plugin endpoint path used when
