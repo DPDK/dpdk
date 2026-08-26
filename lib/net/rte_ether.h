@@ -387,8 +387,9 @@ static inline int rte_vlan_strip(struct rte_mbuf *m)
  *   The packet mbuf.
  * @return
  *   - 0: On success
- *   -EPERM: mbuf is shared overwriting would be unsafe
- *   -ENOSPC: not enough headroom in mbuf
+ *   - -EINVAL: overwriting would be unsafe because mbuf is shared or
+ *            indirect, or mbuf's first segment is too short
+ *   - -ENOSPC: not enough headroom in mbuf
  */
 static inline int rte_vlan_insert(struct rte_mbuf **m)
 {
