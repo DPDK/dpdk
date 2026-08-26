@@ -75,6 +75,10 @@ New Features
   * Added the inner IP header to the RSS hash so tunneled traffic is
     distributed across the Rx queues.
 
+* **Added TPID support to VLAN tag insertion.**
+
+  Added ``rte_vlan_insert_tpid()`` to the net library.
+
 
 Removed Items
 -------------
