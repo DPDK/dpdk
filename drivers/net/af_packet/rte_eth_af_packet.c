@@ -222,14 +222,20 @@ eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 		/* check for vlan info */
 		if (ppd->tp_status & TP_STATUS_VLAN_VALID) {
+			uint16_t tpid;
+
 			mbuf->vlan_tci = ppd->tp_vlan_tci;
 			mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN;
 
 			if (pkt_q->vlan_strip) {
 				mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN_STRIPPED;
-			} else if (rte_vlan_insert(&mbuf) != 0) {
-				PMD_LOG(ERR, "Failed to reinsert VLAN tag");
-				mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN_STRIPPED;
+			} else {
+				tpid = (ppd->tp_status & TP_STATUS_VLAN_TPID_VALID) ?
+					ppd->tp_vlan_tpid : RTE_ETHER_TYPE_VLAN;
+				if (rte_vlan_insert_tpid(&mbuf, tpid) != 0) {
+					PMD_LOG(ERR, "Failed to reinsert VLAN tag");
+					mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN_STRIPPED;
+				}
 			}
 		}
 
