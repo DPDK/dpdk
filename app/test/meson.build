@@ -134,7 +134,7 @@ source_file_deps = {
     'test_meter.c': ['meter'],
     'test_metrics.c': ['metrics'],
     'test_mp_secondary.c': ['hash'],
-    'test_net_ether.c': ['net'],
+    'test_net_ether.c': ['net', 'mbuf'],
     'test_net_ip6.c': ['net'],
     'test_pcapng.c': ['net_null', 'net', 'ethdev', 'pcapng', 'bus_vdev'],
     'test_pdcp.c': ['eventdev', 'pdcp', 'net', 'timer', 'security'],
