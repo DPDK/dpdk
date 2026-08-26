@@ -612,6 +612,15 @@ copy_data(void *data, struct vhost_crypto_data_req *vc_req,
 }
 
 static void
+init_wb_data(struct rte_mempool *mp __rte_unused, void *opaque __rte_unused,
+		void *obj, unsigned int obj_idx __rte_unused)
+{
+	struct vhost_crypto_writeback_data *wb_data = obj;
+
+	wb_data->next = NULL;
+}
+
+static void
 write_back_data(struct vhost_crypto_data_req *vc_req)
 {
 	struct vhost_crypto_writeback_data *wb_data = vc_req->wb, *wb_last;
@@ -621,6 +630,8 @@ write_back_data(struct vhost_crypto_data_req *vc_req)
 		memset(wb_data->src, 0, wb_data->len);
 		wb_last = wb_data;
 		wb_data = wb_data->next;
+
+		wb_last->next = NULL;
 		rte_mempool_put(vc_req->wb_pool, wb_last);
 	}
 }
@@ -629,9 +640,10 @@ static void
 free_wb_data(struct vhost_crypto_writeback_data *wb_data,
 		struct rte_mempool *mp)
 {
-	while (wb_data->next != NULL)
+	if (wb_data->next != NULL)
 		free_wb_data(wb_data->next, mp);
 
+	wb_data->next = NULL;
 	rte_mempool_put(mp, wb_data);
 }
 
@@ -671,7 +683,7 @@ prepare_write_back_data(struct vhost_crypto_data_req *vc_req,
 		uint32_t max_n_descs)
 	__rte_shared_locks_required(&vc_req->vq->iotlb_lock)
 {
-	struct vhost_crypto_writeback_data *wb_data, *head;
+	struct vhost_crypto_writeback_data *wb_data, *head = NULL;
 	struct vhost_crypto_desc *desc = *cur_desc;
 	uint64_t dlen;
 	uint8_t *dst;
@@ -710,8 +722,7 @@ prepare_write_back_data(struct vhost_crypto_data_req *vc_req,
 			}
 
 			wb_data = wb_data->next;
-		} else
-			wb_data->next = NULL;
+		}
 	} else
 		offset -= desc->len;
 
@@ -753,8 +764,7 @@ prepare_write_back_data(struct vhost_crypto_data_req *vc_req,
 			}
 
 			wb_data = wb_data->next;
-		} else
-			wb_data->next = NULL;
+		}
 	}
 
 	if (unlikely(desc - head_desc == (int)max_n_descs))
@@ -1434,7 +1444,7 @@ rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
 	vcrypto->wb_pool = rte_mempool_create(name,
 			VHOST_CRYPTO_MBUF_POOL_SIZE,
 			sizeof(struct vhost_crypto_writeback_data),
-			128, 0, NULL, NULL, NULL, NULL,
+			128, 0, NULL, NULL, init_wb_data, NULL,
 			rte_socket_id(), 0);
 	if (!vcrypto->wb_pool) {
 		VC_LOG_ERR("Failed to creath mempool");
@@ -1525,7 +1535,7 @@ rte_vhost_crypto_set_zero_copy(int vid, enum rte_vhost_crypto_zero_copy option)
 		vcrypto->wb_pool = rte_mempool_create(name,
 				VHOST_CRYPTO_MBUF_POOL_SIZE,
 				sizeof(struct vhost_crypto_writeback_data),
-				128, 0, NULL, NULL, NULL, NULL,
+				128, 0, NULL, NULL, init_wb_data, NULL,
 				rte_socket_id(), 0);
 		if (!vcrypto->wb_pool) {
 			VC_LOG_ERR("Failed to creath mbuf pool");
