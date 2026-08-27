@@ -104,6 +104,16 @@
 	((((type) & 0x3) << 14) + (((host_id) & 0x1) << 13) +	\
 	 (((pf_id) & 0x1) << 12) + ((vf_id) & 0xfff))
 
+/* Max VFs per PCI device (functions 0-7) */
+#define VCPF_VFS_PER_PCI_DEV	8
+
+/* Calculate VF ID from PCI device and function IDs.
+ * VFs span multiple PCI devices, e.g.:
+ *   device 0: VF 0-7, device 1: VF 8-15, etc.
+ */
+#define VCPF_VF_ID_FROM_PCI(device_id, function) \
+	(((device_id) * VCPF_VFS_PER_PCI_DEV) + (function))
+
 struct cpfl_vport_param {
 	struct cpfl_adapter_ext *adapter;
 	uint16_t devarg_id; /* arg id from user */
