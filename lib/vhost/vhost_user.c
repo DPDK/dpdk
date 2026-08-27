@@ -2931,6 +2931,7 @@ vhost_user_check_and_alloc_queue_pair(struct virtio_net *dev,
 			struct vhu_msg_context *ctx)
 {
 	uint32_t vring_idx;
+	uint32_t queue_num;
 
 	switch (ctx->msg.request.frontend) {
 	case VHOST_USER_SET_VRING_KICK:
@@ -2954,8 +2955,13 @@ vhost_user_check_and_alloc_queue_pair(struct virtio_net *dev,
 		return 0;
 	}
 
-	if (vring_idx >= VHOST_MAX_VRING) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "invalid vring index: %u\n", vring_idx);
+	if (rte_vhost_driver_get_queue_num(dev->ifname, &queue_num) < 0) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "failed to get queue num");
+		return -1;
+	}
+
+	if (vring_idx >= queue_num * 2) {
+		VHOST_LOG_CONFIG(dev->ifname, ERR, "invalid vring index: %u", vring_idx);
 		return -1;
 	}
 
