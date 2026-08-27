@@ -2952,7 +2952,8 @@ cpfl_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 		pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 		vi.func_type = VCPF_CPCHNL2_FTYPE_LAN_VF;
 		vi.pf_id = CPFL_HOST0_CPF_ID;
-		vi.vf_id = pci_dev->addr.function;
+		vi.vf_id = VCPF_VF_ID_FROM_PCI(pci_dev->addr.devid,
+						pci_dev->addr.function);
 
 		v_id.vport_id = cpfl_vport->base.vport_info.info.vport_id;
 		v_id.vport_type = cpfl_vport->base.vport_info.info.vport_type;
