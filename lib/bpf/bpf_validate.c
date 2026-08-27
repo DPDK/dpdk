@@ -659,7 +659,7 @@ eval_apply_mask(struct bpf_reg_val *rv, uint64_t mask)
 static void
 eval_add(struct bpf_reg_val *rd, const struct bpf_reg_val *rs, uint64_t msk)
 {
-	struct bpf_reg_val rs_buf;
+	struct bpf_reg_val rs_buf = { .v.type = RTE_BPF_ARG_RAW };
 	struct bpf_reg_val rv;
 
 	if (RTE_BPF_ARG_PTR_TYPE(rs->v.type) != 0) {
