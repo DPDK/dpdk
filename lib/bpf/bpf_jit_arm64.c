@@ -545,12 +545,14 @@ emit_bitfield(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t rn,
 	emit_insn(ctx, insn, check_reg(rd) || check_reg(rn) ||
 		  check_immr_imms(is64, immr, imms));
 }
+
 static void
 emit_lsl(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t imm)
 {
 	const unsigned int width = is64 ? 64 : 32;
 	uint8_t imms, immr;
 
+	imm &= width - 1;
 	immr = (width - imm) & (width - 1);
 	imms = width - 1 - imm;
 
@@ -560,13 +562,19 @@ emit_lsl(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t imm)
 static void
 emit_lsr(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t imm)
 {
-	emit_bitfield(ctx, is64, rd, rd, imm, is64 ? 63 : 31, A64_UBFM);
+	const unsigned int width = is64 ? 64 : 32;
+
+	imm &= width - 1;
+	emit_bitfield(ctx, is64, rd, rd, imm, width - 1, A64_UBFM);
 }
 
 static void
 emit_asr(struct a64_jit_ctx *ctx, bool is64, uint8_t rd, uint8_t imm)
 {
-	emit_bitfield(ctx, is64, rd, rd, imm, is64 ? 63 : 31, A64_SBFM);
+	const unsigned int width = is64 ? 64 : 32;
+
+	imm &= width - 1;
+	emit_bitfield(ctx, is64, rd, rd, imm, width - 1, A64_SBFM);
 }
 
 #define A64_AND 0
