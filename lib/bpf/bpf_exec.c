@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <limits.h>
 
 #include <eal_export.h>
 #include <rte_common.h>
@@ -43,6 +44,16 @@
 #define BPF_OP_ALU_IMM(reg, ins, op, type)	\
 	((reg)[(ins)->dst_reg] = \
 		(type)(reg)[(ins)->dst_reg] op (type)(ins)->imm)
+
+#define BPF_OP_SHIFT_IMM(reg, ins, op, type)	\
+	((reg)[(ins)->dst_reg] =		\
+		(type)(reg)[(ins)->dst_reg] op	\
+		((ins)->imm & (sizeof(type) * CHAR_BIT - 1)))
+
+#define BPF_OP_SHIFT_REG(reg, ins, op, type)	\
+	((reg)[(ins)->dst_reg] =		\
+		(type)(reg)[(ins)->dst_reg] op	\
+		((reg)[(ins)->src_reg] & (sizeof(type) * CHAR_BIT - 1)))
 
 #define BPF_DIV_ZERO_CHECK(bpf, reg, ins, type) do { \
 	if ((type)(reg)[(ins)->src_reg] == 0) { \
@@ -184,10 +195,10 @@ bpf_exec(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM])
 			BPF_OP_ALU_IMM(reg, ins, |, uint32_t);
 			break;
 		case (BPF_ALU | BPF_LSH | BPF_K):
-			BPF_OP_ALU_IMM(reg, ins, <<, uint32_t);
+			BPF_OP_SHIFT_IMM(reg, ins, <<, uint32_t);
 			break;
 		case (BPF_ALU | BPF_RSH | BPF_K):
-			BPF_OP_ALU_IMM(reg, ins, >>, uint32_t);
+			BPF_OP_SHIFT_IMM(reg, ins, >>, uint32_t);
 			break;
 		case (BPF_ALU | BPF_XOR | BPF_K):
 			BPF_OP_ALU_IMM(reg, ins, ^, uint32_t);
@@ -218,10 +229,10 @@ bpf_exec(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM])
 			BPF_OP_ALU_REG(reg, ins, |, uint32_t);
 			break;
 		case (BPF_ALU | BPF_LSH | BPF_X):
-			BPF_OP_ALU_REG(reg, ins, <<, uint32_t);
+			BPF_OP_SHIFT_REG(reg, ins, <<, uint32_t);
 			break;
 		case (BPF_ALU | BPF_RSH | BPF_X):
-			BPF_OP_ALU_REG(reg, ins, >>, uint32_t);
+			BPF_OP_SHIFT_REG(reg, ins, >>, uint32_t);
 			break;
 		case (BPF_ALU | BPF_XOR | BPF_X):
 			BPF_OP_ALU_REG(reg, ins, ^, uint32_t);
@@ -263,13 +274,13 @@ bpf_exec(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM])
 			BPF_OP_ALU_IMM(reg, ins, |, uint64_t);
 			break;
 		case (EBPF_ALU64 | BPF_LSH | BPF_K):
-			BPF_OP_ALU_IMM(reg, ins, <<, uint64_t);
+			BPF_OP_SHIFT_IMM(reg, ins, <<, uint64_t);
 			break;
 		case (EBPF_ALU64 | BPF_RSH | BPF_K):
-			BPF_OP_ALU_IMM(reg, ins, >>, uint64_t);
+			BPF_OP_SHIFT_IMM(reg, ins, >>, uint64_t);
 			break;
 		case (EBPF_ALU64 | EBPF_ARSH | BPF_K):
-			BPF_OP_ALU_IMM(reg, ins, >>, int64_t);
+			BPF_OP_SHIFT_IMM(reg, ins, >>, int64_t);
 			break;
 		case (EBPF_ALU64 | BPF_XOR | BPF_K):
 			BPF_OP_ALU_IMM(reg, ins, ^, uint64_t);
@@ -300,13 +311,13 @@ bpf_exec(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM])
 			BPF_OP_ALU_REG(reg, ins, |, uint64_t);
 			break;
 		case (EBPF_ALU64 | BPF_LSH | BPF_X):
-			BPF_OP_ALU_REG(reg, ins, <<, uint64_t);
+			BPF_OP_SHIFT_REG(reg, ins, <<, uint64_t);
 			break;
 		case (EBPF_ALU64 | BPF_RSH | BPF_X):
-			BPF_OP_ALU_REG(reg, ins, >>, uint64_t);
+			BPF_OP_SHIFT_REG(reg, ins, >>, uint64_t);
 			break;
 		case (EBPF_ALU64 | EBPF_ARSH | BPF_X):
-			BPF_OP_ALU_REG(reg, ins, >>, int64_t);
+			BPF_OP_SHIFT_REG(reg, ins, >>, int64_t);
 			break;
 		case (EBPF_ALU64 | BPF_XOR | BPF_X):
 			BPF_OP_ALU_REG(reg, ins, ^, uint64_t);
