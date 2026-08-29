@@ -145,6 +145,47 @@ struct cmd_freq_list_result {
 	cmdline_fixed_string_t cpu_num;
 };
 
+/*
+ * Parse the vCPU argument of a query command, which is either "all" or a
+ * single vCPU number. A number indexes the per-vCPU arrays in the channel
+ * reply packets, so it must be below RTE_POWER_MAX_VCPU_PER_VM.
+ *
+ * Returns 1 for "all", 0 for a single vCPU, or -1 on error after printing
+ * the reason. On success *lcore_id is the lcore to communicate over, which
+ * for "all" is the first enabled lcore.
+ */
+static int
+parse_vcpu_arg(struct cmdline *cl, const char *str, unsigned int *lcore_id)
+{
+	unsigned long val;
+	char *ep;
+
+	if (!strcmp(str, "all")) {
+		/* Get first enabled lcore. */
+		*lcore_id = rte_get_next_lcore(-1, 0, 0);
+		if (*lcore_id == RTE_MAX_LCORE) {
+			cmdline_printf(cl, "Enabled core not found.\n");
+			return -1;
+		}
+		return 1;
+	}
+
+	errno = 0;
+	val = strtoul(str, &ep, 10);
+	if (errno != 0 || ep == str || *ep != '\0') {
+		cmdline_printf(cl, "Invalid vCPU number \"%s\".\n", str);
+		return -1;
+	}
+	if (val >= RTE_POWER_MAX_VCPU_PER_VM) {
+		cmdline_printf(cl, "vCPU number \"%s\" is out of range (max %u).\n",
+				str, RTE_POWER_MAX_VCPU_PER_VM - 1);
+		return -1;
+	}
+
+	*lcore_id = val;
+	return 0;
+}
+
 static int
 query_data(struct rte_power_channel_packet *pkt, unsigned int lcore_id)
 {
@@ -179,46 +220,28 @@ receive_freq_list(struct rte_power_channel_packet_freq_list *pkt_freq_list,
 
 static void
 cmd_query_freq_list_parsed(void *parsed_result,
-		__rte_unused struct cmdline *cl,
+		struct cmdline *cl,
 		__rte_unused void *data)
 {
 	struct cmd_freq_list_result *res = parsed_result;
 	unsigned int lcore_id;
 	struct rte_power_channel_packet_freq_list pkt_freq_list;
 	struct rte_power_channel_packet pkt;
-	bool query_list = false;
+	bool query_list;
 	int ret;
-	char *ep;
 
 	memset(&pkt, 0, sizeof(pkt));
 	memset(&pkt_freq_list, 0, sizeof(pkt_freq_list));
 
-	if (!strcmp(res->cpu_num, "all")) {
+	ret = parse_vcpu_arg(cl, res->cpu_num, &lcore_id);
+	if (ret < 0)
+		return;
 
-		/* Get first enabled lcore. */
-		lcore_id = rte_get_next_lcore(-1,
-				0,
-				0);
-		if (lcore_id == RTE_MAX_LCORE) {
-			cmdline_printf(cl, "Enabled core not found.\n");
-			return;
-		}
-
-		pkt.command = RTE_POWER_QUERY_FREQ_LIST;
-		strlcpy(pkt.vm_name, policy.vm_name, sizeof(pkt.vm_name));
-		query_list = true;
-	} else {
-		errno = 0;
-		lcore_id = (unsigned int)strtol(res->cpu_num, &ep, 10);
-		if (errno != 0 || lcore_id >= RTE_POWER_MAX_VCPU_PER_VM ||
-			ep == res->cpu_num) {
-			cmdline_printf(cl, "Invalid parameter provided.\n");
-			return;
-		}
-		pkt.command = RTE_POWER_QUERY_FREQ;
-		strlcpy(pkt.vm_name, policy.vm_name, sizeof(pkt.vm_name));
+	query_list = (ret == 1);
+	pkt.command = query_list ? RTE_POWER_QUERY_FREQ_LIST : RTE_POWER_QUERY_FREQ;
+	strlcpy(pkt.vm_name, policy.vm_name, sizeof(pkt.vm_name));
+	if (!query_list)
 		pkt.resource_id = lcore_id;
-	}
 
 	ret = query_data(&pkt, lcore_id);
 	if (ret < 0) {
@@ -289,46 +312,28 @@ receive_capabilities(struct rte_power_channel_packet_caps_list *pkt_caps_list,
 
 static void
 cmd_query_caps_list_parsed(void *parsed_result,
-		__rte_unused struct cmdline *cl,
+		struct cmdline *cl,
 		__rte_unused void *data)
 {
 	struct cmd_query_caps_result *res = parsed_result;
 	unsigned int lcore_id;
 	struct rte_power_channel_packet_caps_list pkt_caps_list;
 	struct rte_power_channel_packet pkt;
-	bool query_list = false;
+	bool query_list;
 	int ret;
-	char *ep;
 
 	memset(&pkt, 0, sizeof(pkt));
 	memset(&pkt_caps_list, 0, sizeof(pkt_caps_list));
 
-	if (!strcmp(res->cpu_num, "all")) {
+	ret = parse_vcpu_arg(cl, res->cpu_num, &lcore_id);
+	if (ret < 0)
+		return;
 
-		/* Get first enabled lcore. */
-		lcore_id = rte_get_next_lcore(-1,
-				0,
-				0);
-		if (lcore_id == RTE_MAX_LCORE) {
-			cmdline_printf(cl, "Enabled core not found.\n");
-			return;
-		}
-
-		pkt.command = RTE_POWER_QUERY_CAPS_LIST;
-		strlcpy(pkt.vm_name, policy.vm_name, sizeof(pkt.vm_name));
-		query_list = true;
-	} else {
-		errno = 0;
-		lcore_id = (unsigned int)strtol(res->cpu_num, &ep, 10);
-		if (errno != 0 || lcore_id >= RTE_POWER_MAX_VCPU_PER_VM ||
-			ep == res->cpu_num) {
-			cmdline_printf(cl, "Invalid parameter provided.\n");
-			return;
-		}
-		pkt.command = RTE_POWER_QUERY_CAPS;
-		strlcpy(pkt.vm_name, policy.vm_name, sizeof(pkt.vm_name));
+	query_list = (ret == 1);
+	pkt.command = query_list ? RTE_POWER_QUERY_CAPS_LIST : RTE_POWER_QUERY_CAPS;
+	strlcpy(pkt.vm_name, policy.vm_name, sizeof(pkt.vm_name));
+	if (!query_list)
 		pkt.resource_id = lcore_id;
-	}
 
 	ret = query_data(&pkt, lcore_id);
 	if (ret < 0) {
