@@ -7,7 +7,6 @@
 
 /* per-process array of device data */
 struct zsda_device_info zsda_devs[RTE_PMD_ZSDA_MAX_PCI_DEVICES];
-static int zsda_nb_pci_devices;
 
 /*
  * The set of PCI devices this driver supports
@@ -85,7 +84,6 @@ zsda_pci_device_allocate(struct rte_pci_device *pci_dev)
 		zsda_pci_dev = mz->addr;
 		zsda_devs[zsda_pci_dev->zsda_dev_id].mz = mz;
 		zsda_devs[zsda_pci_dev->zsda_dev_id].pci_dev = pci_dev;
-		zsda_nb_pci_devices++;
 		return zsda_pci_dev;
 	}
 
@@ -114,8 +112,6 @@ zsda_pci_device_allocate(struct rte_pci_device *pci_dev)
 	zsda_pci_dev->pci_dev = pci_dev;
 	zsda_devs[zsda_dev_id].pci_dev = pci_dev;
 
-	zsda_nb_pci_devices++;
-
 	return zsda_pci_dev;
 }
 
@@ -141,7 +137,6 @@ zsda_pci_device_release(const struct rte_pci_device *pci_dev)
 			rte_memzone_free(inst->mz);
 
 		memset(inst, 0, sizeof(struct zsda_device_info));
-		zsda_nb_pci_devices--;
 	}
 	return 0;
 }
