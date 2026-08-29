@@ -23,8 +23,6 @@ u16 qm_channel_pme = QMAN_CHANNEL_PME;
 
 /* Ccsr map address to access ccsrbased register */
 static void *qman_ccsr_map;
-/* The qman clock frequency */
-static u32 qman_clk;
 
 static __thread int qmfd = -1;
 static __thread struct qm_portal_config qpcfg;
@@ -371,8 +369,6 @@ int qman_global_init(void)
 	clk = of_get_property(dt_node, "clock-frequency", NULL);
 	if (!clk)
 		pr_warn("Can't find Qman clock frequency\n");
-	else
-		qman_clk = be32_to_cpu(*clk);
 
 #ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
 	return qman_setup_fq_lookup_table(CONFIG_FSL_QMAN_FQ_LOOKUP_MAX);
