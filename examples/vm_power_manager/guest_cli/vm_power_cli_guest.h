@@ -5,6 +5,8 @@
 #ifndef VM_POWER_CLI_H_
 #define VM_POWER_CLI_H_
 
+#include <rte_common.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

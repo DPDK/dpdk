@@ -2,21 +2,25 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-
-#include <stdint.h>
 #include <string.h>
 #include <stdio.h>
-#include <termios.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <inttypes.h>
+#include <stdlib.h>
 
-#include <cmdline_rdline.h>
 #include <cmdline_parse.h>
 #include <cmdline_parse_string.h>
 #include <cmdline_parse_num.h>
 #include <cmdline_socket.h>
 #include <cmdline.h>
+
+#include <rte_build_config.h>
 #include <rte_log.h>
 #include <rte_lcore.h>
 #include <rte_ethdev.h>
+#include <rte_errno.h>
+#include <rte_ether.h>
 
 #include <rte_power_cpufreq.h>
 #include <rte_power_guest_channel.h>
