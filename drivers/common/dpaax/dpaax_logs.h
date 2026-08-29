@@ -5,6 +5,7 @@
 #ifndef _DPAAX_LOGS_H_
 #define _DPAAX_LOGS_H_
 
+#include <rte_common.h>
 #include <rte_log.h>
 
 extern int dpaax_logger;
@@ -17,7 +18,7 @@ extern int dpaax_logger;
 			DPAAX_LOG(DEBUG, "WARN: " fmt, ##__VA_ARGS__); \
 	} while (0)
 #else
-#define DPAAX_HWWARN(cond, fmt, ...) do { } while (0)
+#define DPAAX_HWWARN(cond, fmt, ...) do { RTE_SET_USED(cond); } while (0)
 #endif
 
 #define DPAAX_LOG(level, ...) \
