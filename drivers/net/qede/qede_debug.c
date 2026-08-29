@@ -812,13 +812,6 @@ static struct split_type_defs s_split_type_defs[] = {
 	{"vf"}
 };
 
-/******************************** Variables *********************************/
-
-/**
- * The version of the calling app
- */
-static u32 s_app_ver;
-
 /**************************** Private Functions ******************************/
 
 /* Reads and returns a single dword from the specified unaligned buffer */
@@ -4864,16 +4857,6 @@ enum dbg_status qed_dbg_set_bin_ptr(struct ecore_hwfn *p_hwfn,
 	return DBG_STATUS_OK;
 }
 
-enum dbg_status qed_dbg_set_app_ver(u32 ver)
-{
-	if (ver < TOOLS_VERSION)
-		return DBG_STATUS_UNSUPPORTED_APP_VERSION;
-
-	s_app_ver = ver;
-
-	return DBG_STATUS_OK;
-}
-
 bool qed_read_fw_info(struct ecore_hwfn *p_hwfn,
 		      struct ecore_ptt *p_ptt, struct fw_info *fw_info)
 {
@@ -8086,9 +8069,6 @@ void qed_dbg_pf_init(struct ecore_dev *edev)
 	PMD_INIT_FUNC_TRACE(edev);
 
 	OSAL_MUTEX_INIT(&edev->dbg_lock);
-
-	/* Sync ver with debugbus qed code */
-	qed_dbg_set_app_ver(TOOLS_VERSION);
 
 	/* Debug values are after init values.
 	 * The offset is the first dword of the file.
