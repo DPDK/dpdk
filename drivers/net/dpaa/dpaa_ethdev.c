@@ -2380,6 +2380,11 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 
 		vsp_id = dev_vspids[loop];
 
+		/* Clean up a frame queue left behind by a previous run
+		 * before it is initialized.
+		 */
+		qman_shutdown_fq(fqid);
+
 		if (dpaa_intf->cgr_rx)
 			dpaa_intf->cgr_rx[loop].cgrid = cgrid[loop];
 

@@ -95,6 +95,7 @@ INTERNAL {
 	qman_retire_fq;
 	qman_set_fq_lookup_table;
 	qman_set_vdq;
+	qman_shutdown_fq;
 	qman_static_dequeue_add;
 	qman_thread_fd;
 	qman_thread_irq;
