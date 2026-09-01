@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2017-2018 Intel Corporation
  */
-#include <rte_malloc.h>
+		#include <rte_malloc.h>
 #include <rte_hash.h>
 #include <rte_jhash.h>
 #include <rte_mbuf.h>
@@ -206,8 +206,6 @@ struct vhost_crypto {
 
 	uint64_t last_session_id;
 
-	uint64_t cache_session_id;
-	struct rte_cryptodev_sym_session *cache_session;
 	/** socket id for the device */
 	int socket_id;
 
@@ -1227,22 +1225,14 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 	case VIRTIO_CRYPTO_CIPHER_DECRYPT:
 		session_id = req.header.session_id;
 
-		/* one branch to avoid unnecessary table lookup */
-		if (vcrypto->cache_session_id != session_id) {
-			err = rte_hash_lookup_data(vcrypto->session_map,
-					&session_id, (void **)&session);
-			if (unlikely(err < 0)) {
-				err = VIRTIO_CRYPTO_ERR;
-				VC_LOG_ERR("Failed to find session %"PRIu64,
+		err = rte_hash_lookup_data(vcrypto->session_map,
+				&session_id, (void **)&session);
+		if (unlikely(err < 0)) {
+			err = VIRTIO_CRYPTO_ERR;
+			VC_LOG_ERR("Failed to find session %"PRIu64,
 						session_id);
-				goto error_exit;
-			}
-
-			vcrypto->cache_session = session;
-			vcrypto->cache_session_id = session_id;
+			goto error_exit;
 		}
-
-		session = vcrypto->cache_session;
 
 		err = rte_crypto_op_attach_sym_session(op, session);
 		if (unlikely(err < 0)) {
@@ -1410,7 +1400,6 @@ rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
 
 	vcrypto->sess_pool = sess_pool;
 	vcrypto->cid = cryptodev_id;
-	vcrypto->cache_session_id = UINT64_MAX;
 	vcrypto->last_session_id = 1;
 	vcrypto->dev = dev;
 	vcrypto->option = RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE;
