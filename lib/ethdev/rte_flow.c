@@ -1246,7 +1246,7 @@ rte_flow_copy(struct rte_flow_desc *desc, size_t len,
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_dev_dump, 20.02)
+RTE_EXPORT_SYMBOL(rte_flow_dev_dump)
 int
 rte_flow_dev_dump(uint16_t port_id, struct rte_flow *flow,
 			FILE *file, struct rte_flow_error *error)

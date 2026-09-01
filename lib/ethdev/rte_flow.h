@@ -4559,9 +4559,6 @@ enum rte_flow_conv_op {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Dump hardware internal representation information of
  * rte flow to file.
  *
@@ -4577,7 +4574,6 @@ enum rte_flow_conv_op {
  * @return
  *   0 on success, a negative value otherwise.
  */
-__rte_experimental
 int
 rte_flow_dev_dump(uint16_t port_id, struct rte_flow *flow,
 		FILE *file, struct rte_flow_error *error);

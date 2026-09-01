@@ -6769,7 +6769,7 @@ rte_eth_timesync_write_time(uint16_t port_id, const struct timespec *timestamp)
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_read_clock, 19.08)
+RTE_EXPORT_SYMBOL(rte_eth_read_clock)
 int
 rte_eth_read_clock(uint16_t port_id, uint64_t *clock)
 {

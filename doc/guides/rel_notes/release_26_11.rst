@@ -197,6 +197,8 @@ API Changes
     ``rte_eth_hairpin_bind``,
     ``rte_eth_hairpin_unbind``,
     ``rte_eth_hairpin_get_peer_ports``
+  * clock: ``rte_eth_read_clock``
+  * flow dump: ``rte_flow_dev_dump``
 
 
 ABI Changes
