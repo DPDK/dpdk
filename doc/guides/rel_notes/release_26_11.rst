@@ -201,6 +201,10 @@ API Changes
   * flow dump: ``rte_flow_dev_dump``
   * FEC: ``rte_eth_fec_get_capability``, ``rte_eth_fec_get`` and ``rte_eth_fec_set``
   * link speed: ``rte_eth_link_speed_to_str`` and ``rte_eth_link_to_str``
+  * flow tunnel: ``rte_flow_tunnel_decap_set``, ``rte_flow_tunnel_match``,
+    ``rte_flow_tunnel_item_release``,
+    ``rte_flow_tunnel_action_decap_release`` and
+    ``rte_flow_get_restore_info``
 
 
 ABI Changes

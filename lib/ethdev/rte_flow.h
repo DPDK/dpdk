@@ -5270,7 +5270,6 @@ struct rte_flow_restore_info {
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_tunnel_decap_set(uint16_t port_id,
 			  struct rte_flow_tunnel *tunnel,
@@ -5301,7 +5300,6 @@ rte_flow_tunnel_decap_set(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_tunnel_match(uint16_t port_id,
 		      struct rte_flow_tunnel *tunnel,
@@ -5345,7 +5343,6 @@ rte_flow_restore_info_dynflag(void);
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_get_restore_info(uint16_t port_id,
 			  struct rte_mbuf *m,
@@ -5368,7 +5365,6 @@ rte_flow_get_restore_info(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_tunnel_action_decap_release(uint16_t port_id,
 				     struct rte_flow_action *actions,
@@ -5391,7 +5387,6 @@ rte_flow_tunnel_action_decap_release(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_tunnel_item_release(uint16_t port_id,
 			     struct rte_flow_item *items,
