@@ -78,7 +78,7 @@ __extension__ ({					\
 })
 
 /* MTR capabilities get */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_capabilities_get, 17.11)
+RTE_EXPORT_SYMBOL(rte_mtr_capabilities_get)
 int
 rte_mtr_capabilities_get(uint16_t port_id,
 	struct rte_mtr_capabilities *cap,
@@ -95,7 +95,7 @@ rte_mtr_capabilities_get(uint16_t port_id,
 }
 
 /* MTR meter profile add */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_meter_profile_add, 17.11)
+RTE_EXPORT_SYMBOL(rte_mtr_meter_profile_add)
 int
 rte_mtr_meter_profile_add(uint16_t port_id,
 	uint32_t meter_profile_id,
@@ -114,7 +114,7 @@ rte_mtr_meter_profile_add(uint16_t port_id,
 }
 
 /** MTR meter profile delete */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_meter_profile_delete, 17.11)
+RTE_EXPORT_SYMBOL(rte_mtr_meter_profile_delete)
 int
 rte_mtr_meter_profile_delete(uint16_t port_id,
 	uint32_t meter_profile_id,
@@ -131,7 +131,7 @@ rte_mtr_meter_profile_delete(uint16_t port_id,
 }
 
 /** MTR meter profile get */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_meter_profile_get, 22.11)
+RTE_EXPORT_SYMBOL(rte_mtr_meter_profile_get)
 struct rte_flow_meter_profile *
 rte_mtr_meter_profile_get(uint16_t port_id,
 	uint32_t meter_profile_id,
@@ -148,7 +148,7 @@ rte_mtr_meter_profile_get(uint16_t port_id,
 }
 
 /* MTR meter policy validate */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_meter_policy_validate, 21.05)
+RTE_EXPORT_SYMBOL(rte_mtr_meter_policy_validate)
 int
 rte_mtr_meter_policy_validate(uint16_t port_id,
 	struct rte_mtr_meter_policy_params *policy,
@@ -165,7 +165,7 @@ rte_mtr_meter_policy_validate(uint16_t port_id,
 }
 
 /* MTR meter policy add */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_meter_policy_add, 21.05)
+RTE_EXPORT_SYMBOL(rte_mtr_meter_policy_add)
 int
 rte_mtr_meter_policy_add(uint16_t port_id,
 	uint32_t policy_id,
@@ -183,7 +183,7 @@ rte_mtr_meter_policy_add(uint16_t port_id,
 }
 
 /** MTR meter policy delete */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_meter_policy_delete, 21.05)
+RTE_EXPORT_SYMBOL(rte_mtr_meter_policy_delete)
 int
 rte_mtr_meter_policy_delete(uint16_t port_id,
 	uint32_t policy_id,
@@ -200,7 +200,7 @@ rte_mtr_meter_policy_delete(uint16_t port_id,
 }
 
 /** MTR meter policy get */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_meter_policy_get, 22.11)
+RTE_EXPORT_SYMBOL(rte_mtr_meter_policy_get)
 struct rte_flow_meter_policy *
 rte_mtr_meter_policy_get(uint16_t port_id,
 	uint32_t policy_id,
@@ -217,7 +217,7 @@ rte_mtr_meter_policy_get(uint16_t port_id,
 }
 
 /** MTR object create */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_create, 17.11)
+RTE_EXPORT_SYMBOL(rte_mtr_create)
 int
 rte_mtr_create(uint16_t port_id,
 	uint32_t mtr_id,
@@ -236,7 +236,7 @@ rte_mtr_create(uint16_t port_id,
 }
 
 /** MTR object destroy */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_destroy, 17.11)
+RTE_EXPORT_SYMBOL(rte_mtr_destroy)
 int
 rte_mtr_destroy(uint16_t port_id,
 	uint32_t mtr_id,
@@ -253,7 +253,7 @@ rte_mtr_destroy(uint16_t port_id,
 }
 
 /** MTR object meter enable */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_meter_enable, 17.11)
+RTE_EXPORT_SYMBOL(rte_mtr_meter_enable)
 int
 rte_mtr_meter_enable(uint16_t port_id,
 	uint32_t mtr_id,
@@ -270,7 +270,7 @@ rte_mtr_meter_enable(uint16_t port_id,
 }
 
 /** MTR object meter disable */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_meter_disable, 17.11)
+RTE_EXPORT_SYMBOL(rte_mtr_meter_disable)
 int
 rte_mtr_meter_disable(uint16_t port_id,
 	uint32_t mtr_id,
@@ -287,7 +287,7 @@ rte_mtr_meter_disable(uint16_t port_id,
 }
 
 /** MTR object meter profile update */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_meter_profile_update, 17.11)
+RTE_EXPORT_SYMBOL(rte_mtr_meter_profile_update)
 int
 rte_mtr_meter_profile_update(uint16_t port_id,
 	uint32_t mtr_id,
@@ -305,7 +305,7 @@ rte_mtr_meter_profile_update(uint16_t port_id,
 }
 
 /** MTR object meter policy update */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_meter_policy_update, 21.05)
+RTE_EXPORT_SYMBOL(rte_mtr_meter_policy_update)
 int
 rte_mtr_meter_policy_update(uint16_t port_id,
 	uint32_t mtr_id,
@@ -323,7 +323,7 @@ rte_mtr_meter_policy_update(uint16_t port_id,
 }
 
 /** MTR object meter DSCP table update */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_meter_dscp_table_update, 17.11)
+RTE_EXPORT_SYMBOL(rte_mtr_meter_dscp_table_update)
 int
 rte_mtr_meter_dscp_table_update(uint16_t port_id,
 	uint32_t mtr_id, enum rte_mtr_color_in_protocol proto,
@@ -341,7 +341,7 @@ rte_mtr_meter_dscp_table_update(uint16_t port_id,
 }
 
 /** MTR object meter VLAN table update */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_meter_vlan_table_update, 22.07)
+RTE_EXPORT_SYMBOL(rte_mtr_meter_vlan_table_update)
 int
 rte_mtr_meter_vlan_table_update(uint16_t port_id,
 	uint32_t mtr_id, enum rte_mtr_color_in_protocol proto,
@@ -359,7 +359,7 @@ rte_mtr_meter_vlan_table_update(uint16_t port_id,
 }
 
 /** Set the input color protocol on MTR object */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_color_in_protocol_set, 22.07)
+RTE_EXPORT_SYMBOL(rte_mtr_color_in_protocol_set)
 int
 rte_mtr_color_in_protocol_set(uint16_t port_id,
 	uint32_t mtr_id,
@@ -378,7 +378,7 @@ rte_mtr_color_in_protocol_set(uint16_t port_id,
 }
 
 /** Get input color protocols of MTR object */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_color_in_protocol_get, 22.07)
+RTE_EXPORT_SYMBOL(rte_mtr_color_in_protocol_get)
 int
 rte_mtr_color_in_protocol_get(uint16_t port_id,
 	uint32_t mtr_id,
@@ -396,7 +396,7 @@ rte_mtr_color_in_protocol_get(uint16_t port_id,
 }
 
 /** Get input color protocol priority of MTR object */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_color_in_protocol_priority_get, 22.07)
+RTE_EXPORT_SYMBOL(rte_mtr_color_in_protocol_priority_get)
 int
 rte_mtr_color_in_protocol_priority_get(uint16_t port_id,
 	uint32_t mtr_id,
@@ -415,7 +415,7 @@ rte_mtr_color_in_protocol_priority_get(uint16_t port_id,
 }
 
 /** MTR object enabled stats update */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_stats_update, 17.11)
+RTE_EXPORT_SYMBOL(rte_mtr_stats_update)
 int
 rte_mtr_stats_update(uint16_t port_id,
 	uint32_t mtr_id,
@@ -433,7 +433,7 @@ rte_mtr_stats_update(uint16_t port_id,
 }
 
 /** MTR object stats read */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mtr_stats_read, 17.11)
+RTE_EXPORT_SYMBOL(rte_mtr_stats_read)
 int
 rte_mtr_stats_read(uint16_t port_id,
 	uint32_t mtr_id,

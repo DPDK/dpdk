@@ -727,9 +727,6 @@ enum rte_flow_item_type {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * QUOTA state.
  *
  * @see struct rte_flow_item_quota
@@ -1012,9 +1009,6 @@ static const struct rte_flow_item_ipv6 rte_flow_item_ipv6_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT.
  *
  * Matches an IPv6 routing extension header.
@@ -1687,9 +1681,6 @@ rte_flow_item_pppoe_proto_id_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_TAG
  *
  * Matches a specified tag value at the specified index.
@@ -1725,9 +1716,6 @@ static const struct rte_flow_item_l2tpv3oip rte_flow_item_l2tpv3oip_mask = {
 
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_MARK
  *
  * Matches an arbitrary integer value which was set using the ``MARK`` action
@@ -1754,9 +1742,6 @@ static const struct rte_flow_item_mark rte_flow_item_mark_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_NSH
  *
  * Match network service header (NSH), RFC 8300
@@ -1785,9 +1770,6 @@ static const struct rte_flow_item_nsh rte_flow_item_nsh_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_IGMP
  *
  * Match Internet Group Management Protocol (IGMP), RFC 2236
@@ -1807,9 +1789,6 @@ static const struct rte_flow_item_igmp rte_flow_item_igmp_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_AH
  *
  * Match IP Authentication Header (AH), RFC 4302
@@ -1830,9 +1809,6 @@ static const struct rte_flow_item_ah rte_flow_item_ah_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_PFCP
  *
  * Match PFCP Header
@@ -1853,9 +1829,6 @@ static const struct rte_flow_item_pfcp rte_flow_item_pfcp_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_ECPRI
  *
  * Match eCPRI Header
@@ -1896,9 +1869,6 @@ rte_flow_item_geneve_opt_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_INTEGRITY
  *
  * Match on packet integrity check result.
@@ -1966,9 +1936,6 @@ rte_flow_item_integrity_mask = {
 #define RTE_FLOW_CONNTRACK_PKT_STATE_BAD RTE_BIT32(4)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_CONNTRACK
  *
  * Matches the state of a packet after it passed the connection tracking
@@ -2003,9 +1970,6 @@ static const struct rte_flow_item_ethdev rte_flow_item_ethdev_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_L2TPV2
  *
  * Matches L2TPv2 Header
@@ -2031,9 +1995,6 @@ static const struct rte_flow_item_l2tpv2 rte_flow_item_l2tpv2_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_PPP
  *
  * Matches PPP Header
@@ -2073,9 +2034,6 @@ static const struct rte_flow_item_ib_bth rte_flow_item_ib_bth_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * RTE_FLOW_ITEM_TYPE_RANDOM
  *
  * Matches a random value.
@@ -2132,9 +2090,6 @@ struct rte_flow_item {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_FLEX
  *
  * Matches a specified set of fields within the network protocol
@@ -2217,9 +2172,7 @@ enum rte_flow_item_flex_tunnel_mode {
 };
 
 /**
- *
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
+ * Description of a single field of a flex item.
  */
 __extension__
 struct rte_flow_item_flex_field {
@@ -2235,8 +2188,7 @@ struct rte_flow_item_flex_field {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
+ * Description of a link between a flex item and its neighbour headers.
  */
 struct rte_flow_item_flex_link {
 	/**
@@ -2253,8 +2205,7 @@ struct rte_flow_item_flex_link {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
+ * Flex item configuration: field descriptions and neighbour links.
  */
 struct rte_flow_item_flex_conf {
 	/**
@@ -2319,9 +2270,6 @@ static const struct rte_flow_item_meter_color rte_flow_item_meter_color_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_AGGR_AFFINITY
  *
  * For multiple ports aggregated to a single DPDK port,
@@ -2440,9 +2388,6 @@ enum rte_flow_field_id {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * Packet header field descriptions, used by RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
  * and RTE_FLOW_ITEM_TYPE_COMPARE.
  */
@@ -3266,9 +3211,6 @@ enum rte_flow_action_type {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * QUOTA operational mode.
  *
  * @see struct rte_flow_action_quota
@@ -3280,9 +3222,6 @@ enum rte_flow_quota_mode {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Create QUOTA action.
  *
  * @see RTE_FLOW_ACTION_TYPE_QUOTA
@@ -3293,9 +3232,6 @@ struct rte_flow_action_quota {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Query indirect QUOTA action.
  *
  * @see RTE_FLOW_ACTION_TYPE_QUOTA
@@ -3305,9 +3241,6 @@ struct rte_flow_query_quota {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Indirect QUOTA update operations.
  *
  * @see struct rte_flow_update_quota
@@ -3318,9 +3251,6 @@ enum rte_flow_update_quota_op {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * @see RTE_FLOW_ACTION_TYPE_QUOTA
  *
  * Update indirect QUOTA action.
@@ -3345,9 +3275,6 @@ struct rte_flow_action_mark {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_JUMP
  *
  * Redirects packets to a group on the current device.
@@ -3370,9 +3297,6 @@ struct rte_flow_action_queue {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_AGE
  *
  * Report flow as aged-out if timeout passed without any matching
@@ -3404,9 +3328,6 @@ struct rte_flow_query_age {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_AGE
  *
  * Update indirect AGE action attributes:
@@ -3431,9 +3352,6 @@ struct rte_flow_update_age {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_COUNT
  *
  * Adds a counter action to a matched flow.
@@ -3610,9 +3528,6 @@ enum rte_flow_nat64_type {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * RTE_FLOW_ACTION_TYPE_NAT64
  *
  * Specify the NAT64 translation type.
@@ -3672,9 +3587,6 @@ struct rte_flow_action_of_push_mpls {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP
  *
  * VXLAN tunnel end-point encapsulation data definition
@@ -3706,9 +3618,6 @@ struct rte_flow_action_vxlan_encap {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP
  *
  * NVGRE tunnel end-point encapsulation data definition
@@ -3739,9 +3648,6 @@ struct rte_flow_action_nvgre_encap {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_RAW_ENCAP
  *
  * Raw tunnel end-point encapsulation data definition.
@@ -3764,9 +3670,6 @@ struct rte_flow_action_raw_encap {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_RAW_DECAP
  *
  * Raw tunnel end-point decapsulation data definition.
@@ -3784,9 +3687,6 @@ struct rte_flow_action_raw_decap {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC
  * RTE_FLOW_ACTION_TYPE_SET_IPV4_DST
  *
@@ -3799,9 +3699,6 @@ struct rte_flow_action_set_ipv4 {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC
  * RTE_FLOW_ACTION_TYPE_SET_IPV6_DST
  *
@@ -3814,9 +3711,6 @@ struct rte_flow_action_set_ipv6 {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH
  *
  * Valid flow definition for RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH include:
@@ -3832,9 +3726,6 @@ struct rte_flow_action_ipv6_ext_push {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE
  *
  * Valid flow definition for RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE include:
@@ -3846,9 +3737,6 @@ struct rte_flow_action_ipv6_ext_remove {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_SET_TP_SRC
  * RTE_FLOW_ACTION_TYPE_SET_TP_DST
  *
@@ -3879,9 +3767,6 @@ struct rte_flow_action_set_mac {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_SET_TAG
  *
  * Set a tag which is a transient data used during flow matching. This is not
@@ -3894,9 +3779,6 @@ struct rte_flow_action_set_tag {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_SET_META
  *
  * Set metadata. Metadata set by mbuf metadata dynamic field with
@@ -3929,9 +3811,6 @@ struct rte_flow_action_set_dscp {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_INDIRECT
  *
  * Opaque type returned after successfully creating an indirect action object.
@@ -3978,9 +3857,6 @@ enum rte_flow_conntrack_tcp_last_index {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * Configuration parameters for each direction of a TCP connection.
  * All fields should be in host byte order.
  * If needed, driver should convert all fields to network byte order
@@ -4015,9 +3891,6 @@ struct rte_flow_tcp_dir_param {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_CONNTRACK
  *
  * Configuration and initial state for the connection tracking module.
@@ -4096,9 +3969,6 @@ struct rte_flow_modify_conntrack {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_METER_COLOR
  *
  * The meter color should be set in the packet meta-data
@@ -4127,9 +3997,6 @@ enum rte_flow_modify_op {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
  *
  * Modify a destination header field according to the specified
@@ -4198,9 +4065,6 @@ struct rte_flow_indirect_update_flow_meter_mark {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * Program action argument configuration parameters.
  *
  * For each action argument, its *size* must be non-zero and its *value* must
@@ -4218,9 +4082,6 @@ struct rte_flow_action_prog_argument {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * RTE_FLOW_ACTION_TYPE_PROG
  *
  * Program action configuration parameters.
@@ -4266,9 +4127,6 @@ rte_flow_dynf_metadata_set(struct rte_mbuf *m, uint32_t v)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX
  *
  * Redirects packets to a particular index in a flow table.
@@ -4313,9 +4171,6 @@ struct rte_flow_meter_profile;
 struct rte_flow_meter_policy;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_SAMPLE
  *
  * Adds a sample action to a matched flow.
@@ -4559,9 +4414,6 @@ enum rte_flow_conv_op {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Dump hardware internal representation information of
  * rte flow to file.
  *
@@ -4577,7 +4429,6 @@ enum rte_flow_conv_op {
  * @return
  *   0 on success, a negative value otherwise.
  */
-__rte_experimental
 int
 rte_flow_dev_dump(uint16_t port_id, struct rte_flow *flow,
 		FILE *file, struct rte_flow_error *error);
@@ -4734,7 +4585,6 @@ rte_flow_destroy(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_actions_update(uint16_t port_id,
 			struct rte_flow *flow,
@@ -4949,7 +4799,6 @@ rte_flow_copy(struct rte_flow_desc *fd, size_t len,
  *
  * @see rte_flow_conv_op
  */
-__rte_experimental
 int
 rte_flow_conv(enum rte_flow_conv_op op,
 	      void *dst,
@@ -4985,15 +4834,11 @@ rte_flow_conv(enum rte_flow_conv_op op,
  * @see rte_flow_action_age
  * @see RTE_ETH_EVENT_FLOW_AGED
  */
-__rte_experimental
 int
 rte_flow_get_aged_flows(uint16_t port_id, void **contexts,
 			uint32_t nb_contexts, struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Get aged-out flows of a given port on the given flow queue.
  *
  * If application configure port attribute with RTE_FLOW_PORT_FLAG_STRICT_QUEUE,
@@ -5029,7 +4874,6 @@ rte_flow_get_aged_flows(uint16_t port_id, void **contexts,
  * @see RTE_ETH_EVENT_FLOW_AGED
  * @see rte_flow_port_flag
  */
-__rte_experimental
 int
 rte_flow_get_q_aged_flows(uint16_t port_id, uint32_t queue_id, void **contexts,
 			  uint32_t nb_contexts, struct rte_flow_error *error);
@@ -5056,9 +4900,6 @@ struct rte_flow_indir_action_conf {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Create an indirect action object that can be used in flow rules
  * via its handle.
  * The created object handle has single state and configuration
@@ -5082,7 +4923,6 @@ struct rte_flow_indir_action_conf {
  *   - (EINVAL) if *action* invalid.
  *   - (ENOTSUP) if *action* valid but unsupported.
  */
-__rte_experimental
 struct rte_flow_action_handle *
 rte_flow_action_handle_create(uint16_t port_id,
 			      const struct rte_flow_indir_action_conf *conf,
@@ -5090,9 +4930,6 @@ rte_flow_action_handle_create(uint16_t port_id,
 			      struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Destroy indirect action by handle.
  *
  * @param[in] port_id
@@ -5111,16 +4948,12 @@ rte_flow_action_handle_create(uint16_t port_id,
  *   - (-EBUSY) if action pointed by *action* handle still used by some rules
  *   rte_errno is also set.
  */
-__rte_experimental
 int
 rte_flow_action_handle_destroy(uint16_t port_id,
 			       struct rte_flow_action_handle *handle,
 			       struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Update in-place the action configuration and / or state pointed
  * by action *handle* with the configuration provided as *update* argument.
  * The update of the action configuration effects all flow rules reusing
@@ -5150,7 +4983,6 @@ rte_flow_action_handle_destroy(uint16_t port_id,
  *   - (-ENOENT) if indirect action object pointed by *handle* was not found.
  *   rte_errno is also set.
  */
-__rte_experimental
 int
 rte_flow_action_handle_update(uint16_t port_id,
 			      struct rte_flow_action_handle *handle,
@@ -5158,9 +4990,6 @@ rte_flow_action_handle_update(uint16_t port_id,
 			      struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Query the direct action by corresponding indirect action object handle.
  *
  * Retrieve action-specific data such as counters.
@@ -5182,7 +5011,6 @@ rte_flow_action_handle_update(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_action_handle_query(uint16_t port_id,
 			     const struct rte_flow_action_handle *handle,
@@ -5275,7 +5103,6 @@ struct rte_flow_restore_info {
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_tunnel_decap_set(uint16_t port_id,
 			  struct rte_flow_tunnel *tunnel,
@@ -5306,7 +5133,6 @@ rte_flow_tunnel_decap_set(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_tunnel_match(uint16_t port_id,
 		      struct rte_flow_tunnel *tunnel,
@@ -5325,7 +5151,6 @@ rte_flow_tunnel_match(uint16_t port_id,
  * @return
  *   The offload flag indicating rte_flow_get_restore_info() must be called.
  */
-__rte_experimental
 uint64_t
 rte_flow_restore_info_dynflag(void);
 
@@ -5350,7 +5175,6 @@ rte_flow_restore_info_dynflag(void);
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_get_restore_info(uint16_t port_id,
 			  struct rte_mbuf *m,
@@ -5373,7 +5197,6 @@ rte_flow_get_restore_info(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_tunnel_action_decap_release(uint16_t port_id,
 				     struct rte_flow_action *actions,
@@ -5396,7 +5219,6 @@ rte_flow_tunnel_action_decap_release(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_tunnel_item_release(uint16_t port_id,
 			     struct rte_flow_item *items,
@@ -5433,9 +5255,6 @@ rte_flow_pick_transfer_proxy(uint16_t port_id, uint16_t *proxy_port_id,
 			     struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Create the flex item with specified configuration over
  * the Ethernet device.
  *
@@ -5450,7 +5269,6 @@ rte_flow_pick_transfer_proxy(uint16_t port_id, uint16_t *proxy_port_id,
  * @return
  *   Non-NULL opaque pointer on success, NULL otherwise and rte_errno is set.
  */
-__rte_experimental
 struct rte_flow_item_flex_handle *
 rte_flow_flex_item_create(uint16_t port_id,
 			  const struct rte_flow_item_flex_conf *conf,
@@ -5470,7 +5288,6 @@ rte_flow_flex_item_create(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_flex_item_release(uint16_t port_id,
 			   const struct rte_flow_item_flex_handle *handle,
@@ -5490,9 +5307,6 @@ rte_flow_flex_item_release(uint16_t port_id,
 #define RTE_FLOW_PORT_FLAG_SHARE_INDIRECT RTE_BIT32(1)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Information about flow engine resources.
  * The zero value means a resource is not supported.
  */
@@ -5533,9 +5347,6 @@ struct rte_flow_port_info {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Information about flow engine asynchronous queues.
  * The value only valid if @p port_attr.max_nb_queues is not zero.
  */
@@ -5547,9 +5358,6 @@ struct rte_flow_queue_info {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Get information about flow engine resources.
  *
  * @param port_id
@@ -5567,7 +5375,6 @@ struct rte_flow_queue_info {
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_info_get(uint16_t port_id,
 		  struct rte_flow_port_info *port_info,
@@ -5575,9 +5382,6 @@ rte_flow_info_get(uint16_t port_id,
 		  struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Flow engine resources settings.
  * The zero value means on demand resource allocations only.
  */
@@ -5618,9 +5422,6 @@ struct rte_flow_port_attr {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Flow engine asynchronous queues settings.
  * The value means default value picked by PMD.
  */
@@ -5632,9 +5433,6 @@ struct rte_flow_queue_attr {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Configure the port's flow API engine.
  *
  * This API can only be invoked before the application
@@ -5662,7 +5460,6 @@ struct rte_flow_queue_attr {
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_configure(uint16_t port_id,
 		   const struct rte_flow_port_attr *port_attr,
@@ -5677,9 +5474,6 @@ rte_flow_configure(uint16_t port_id,
 struct rte_flow_pattern_template;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Flow pattern template attributes.
  */
 __extension__
@@ -5705,9 +5499,6 @@ struct rte_flow_pattern_template_attr {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Create flow pattern template.
  *
  * The pattern template defines common matching fields without values.
@@ -5731,7 +5522,6 @@ struct rte_flow_pattern_template_attr {
  * @return
  *   Handle on success, NULL otherwise and rte_errno is set.
  */
-__rte_experimental
 struct rte_flow_pattern_template *
 rte_flow_pattern_template_create(uint16_t port_id,
 		const struct rte_flow_pattern_template_attr *template_attr,
@@ -5739,9 +5529,6 @@ rte_flow_pattern_template_create(uint16_t port_id,
 		struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Destroy flow pattern template.
  *
  * This function may be called only when
@@ -5758,7 +5545,6 @@ rte_flow_pattern_template_create(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_pattern_template_destroy(uint16_t port_id,
 		struct rte_flow_pattern_template *pattern_template,
@@ -5771,9 +5557,6 @@ rte_flow_pattern_template_destroy(uint16_t port_id,
 struct rte_flow_actions_template;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Flow actions template attributes.
  */
 __extension__
@@ -5791,9 +5574,6 @@ struct rte_flow_actions_template_attr {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Create flow actions template.
  *
  * The actions template holds a list of action types without values.
@@ -5825,7 +5605,6 @@ struct rte_flow_actions_template_attr {
  * @return
  *   Handle on success, NULL otherwise and rte_errno is set.
  */
-__rte_experimental
 struct rte_flow_actions_template *
 rte_flow_actions_template_create(uint16_t port_id,
 		const struct rte_flow_actions_template_attr *template_attr,
@@ -5834,9 +5613,6 @@ rte_flow_actions_template_create(uint16_t port_id,
 		struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Destroy flow actions template.
  *
  * This function may be called only when
@@ -5853,7 +5629,6 @@ rte_flow_actions_template_create(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_actions_template_destroy(uint16_t port_id,
 		struct rte_flow_actions_template *actions_template,
@@ -5894,9 +5669,6 @@ struct rte_flow_template_table;
 /**@}*/
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Template table flow rules insertion type.
  */
 enum rte_flow_table_insertion_type {
@@ -5915,9 +5687,6 @@ enum rte_flow_table_insertion_type {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Template table hash index calculation function.
  */
 enum rte_flow_table_hash_func {
@@ -5940,9 +5709,6 @@ enum rte_flow_table_hash_func {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Table attributes.
  */
 struct rte_flow_template_table_attr {
@@ -5974,9 +5740,6 @@ struct rte_flow_template_table_attr {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Query whether a table can be resized.
  *
  * @param port_id
@@ -5987,15 +5750,11 @@ struct rte_flow_template_table_attr {
  * @return
  *   True if the table can be resized.
  */
-__rte_experimental
 bool
 rte_flow_template_table_resizable(__rte_unused uint16_t port_id,
 		const struct rte_flow_template_table_attr *tbl_attr);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Create flow template table.
  *
  * A template table consists of multiple pattern templates and actions
@@ -6024,7 +5783,6 @@ rte_flow_template_table_resizable(__rte_unused uint16_t port_id,
  * @return
  *   Handle on success, NULL otherwise and rte_errno is set.
  */
-__rte_experimental
 struct rte_flow_template_table *
 rte_flow_template_table_create(uint16_t port_id,
 		const struct rte_flow_template_table_attr *table_attr,
@@ -6035,9 +5793,6 @@ rte_flow_template_table_create(uint16_t port_id,
 		struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Destroy flow template table.
  *
  * This function may be called only when
@@ -6054,16 +5809,12 @@ rte_flow_template_table_create(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_template_table_destroy(uint16_t port_id,
 		struct rte_flow_template_table *template_table,
 		struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Set group miss actions.
  *
  * @param port_id
@@ -6081,7 +5832,6 @@ rte_flow_template_table_destroy(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_group_set_miss_actions(uint16_t port_id,
 				uint32_t group_id,
@@ -6090,9 +5840,6 @@ rte_flow_group_set_miss_actions(uint16_t port_id,
 				struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Asynchronous operation attributes.
  */
 __extension__
@@ -6105,9 +5852,6 @@ struct rte_flow_op_attr {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Enqueue rule creation operation.
  *
  * @param port_id
@@ -6140,7 +5884,6 @@ struct rte_flow_op_attr {
  *   The rule handle doesn't mean that the rule has been populated.
  *   Only completion result indicates that if there was success or failure.
  */
-__rte_experimental
 struct rte_flow *
 rte_flow_async_create(uint16_t port_id,
 		      uint32_t queue_id,
@@ -6154,9 +5897,6 @@ rte_flow_async_create(uint16_t port_id,
 		      struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Enqueue rule creation operation.
  *
  * @param port_id
@@ -6185,7 +5925,6 @@ rte_flow_async_create(uint16_t port_id,
  *   The rule handle doesn't mean that the rule has been populated.
  *   Only completion result indicates that if there was success or failure.
  */
-__rte_experimental
 struct rte_flow *
 rte_flow_async_create_by_index(uint16_t port_id,
 			       uint32_t queue_id,
@@ -6198,9 +5937,6 @@ rte_flow_async_create_by_index(uint16_t port_id,
 			       struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Enqueue rule creation by index with pattern operation.
  * Packets are only matched if there is a rule inserted at the index.
  *
@@ -6237,7 +5973,6 @@ rte_flow_async_create_by_index(uint16_t port_id,
  *   The rule handle doesn't mean that the rule has been populated.
  *   Only completion result indicates that if there was success or failure.
  */
-__rte_experimental
 struct rte_flow *
 rte_flow_async_create_by_index_with_pattern(uint16_t port_id,
 					    uint32_t queue_id,
@@ -6252,9 +5987,6 @@ rte_flow_async_create_by_index_with_pattern(uint16_t port_id,
 					    struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Enqueue rule destruction operation.
  *
  * This function enqueues a destruction operation on the queue.
@@ -6280,7 +6012,6 @@ rte_flow_async_create_by_index_with_pattern(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_async_destroy(uint16_t port_id,
 		       uint32_t queue_id,
@@ -6290,9 +6021,6 @@ rte_flow_async_destroy(uint16_t port_id,
 		       struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Enqueue rule update operation.
  *
  * @param port_id
@@ -6317,7 +6045,6 @@ rte_flow_async_destroy(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_async_actions_update(uint16_t port_id,
 			      uint32_t queue_id,
@@ -6329,9 +6056,6 @@ rte_flow_async_actions_update(uint16_t port_id,
 			      struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Push all internally stored rules to the HW.
  * Postponed rules are rules that were inserted with the postpone flag set.
  * Can be used to notify the HW about batch of rules prepared by the SW to
@@ -6348,16 +6072,12 @@ rte_flow_async_actions_update(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_push(uint16_t port_id,
 	      uint32_t queue_id,
 	      struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Asynchronous operation status.
  */
 enum rte_flow_op_status {
@@ -6372,9 +6092,6 @@ enum rte_flow_op_status {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Asynchronous operation result.
  */
 __extension__
@@ -6390,9 +6107,6 @@ struct rte_flow_op_result {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Pull a rte flow operation.
  * The application must invoke this function in order to complete
  * the flow rule offloading and to retrieve the flow rule operation status.
@@ -6414,7 +6128,6 @@ struct rte_flow_op_result {
  *   Number of results that were pulled,
  *   a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_pull(uint16_t port_id,
 	      uint32_t queue_id,
@@ -6423,9 +6136,6 @@ rte_flow_pull(uint16_t port_id,
 	      struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Enqueue indirect action creation operation.
  * @see rte_flow_action_handle_create
  *
@@ -6448,7 +6158,6 @@ rte_flow_pull(uint16_t port_id,
  * @return
  *   A valid handle in case of success, NULL otherwise and rte_errno is set.
  */
-__rte_experimental
 struct rte_flow_action_handle *
 rte_flow_async_action_handle_create(uint16_t port_id,
 		uint32_t queue_id,
@@ -6459,9 +6168,6 @@ rte_flow_async_action_handle_create(uint16_t port_id,
 		struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Enqueue indirect action destruction operation.
  * The destroy queue must be the same
  * as the queue on which the action was created.
@@ -6483,7 +6189,6 @@ rte_flow_async_action_handle_create(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_async_action_handle_destroy(uint16_t port_id,
 		uint32_t queue_id,
@@ -6493,9 +6198,6 @@ rte_flow_async_action_handle_destroy(uint16_t port_id,
 		struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Enqueue indirect action update operation.
  * @see rte_flow_action_handle_create
  *
@@ -6522,7 +6224,6 @@ rte_flow_async_action_handle_destroy(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_async_action_handle_update(uint16_t port_id,
 		uint32_t queue_id,
@@ -6533,9 +6234,6 @@ rte_flow_async_action_handle_update(uint16_t port_id,
 		struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Enqueue indirect action query operation.
  *
  * Retrieve action-specific data such as counters.
@@ -6566,7 +6264,6 @@ rte_flow_async_action_handle_update(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_async_action_handle_query(uint16_t port_id,
 		uint32_t queue_id,
@@ -6577,9 +6274,6 @@ rte_flow_async_action_handle_query(uint16_t port_id,
 		struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Query and update operational mode.
  *
  * @see rte_flow_action_handle_query_update()
@@ -6591,9 +6285,6 @@ enum rte_flow_query_update_mode {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Query and/or update indirect flow action.
  * If both query and update not NULL, the function atomically
  * queries and updates indirect action. Query and update are carried in order
@@ -6623,7 +6314,6 @@ enum rte_flow_query_update_mode {
  * - (-EINVAL) if *handle* or *mode* invalid or
  *             both *query* and *update* are NULL.
  */
-__rte_experimental
 int
 rte_flow_action_handle_query_update(uint16_t port_id,
 				    struct rte_flow_action_handle *handle,
@@ -6632,9 +6322,6 @@ rte_flow_action_handle_query_update(uint16_t port_id,
 				    struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Enqueue async indirect flow action query and/or update
  *
  * @param port_id
@@ -6666,7 +6353,6 @@ rte_flow_action_handle_query_update(uint16_t port_id,
  * - (-EINVAL) if *handle* or *mode* invalid or
  *             both *update* and *query* are NULL.
  */
-__rte_experimental
 int
 rte_flow_async_action_handle_query_update(uint16_t port_id, uint32_t queue_id,
 					  const struct rte_flow_op_attr *attr,
@@ -6679,9 +6365,6 @@ rte_flow_async_action_handle_query_update(uint16_t port_id, uint32_t queue_id,
 struct rte_flow_action_list_handle;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Configure INDIRECT_LIST flow action.
  *
  * @see RTE_FLOW_ACTION_TYPE_INDIRECT_LIST
@@ -6701,9 +6384,6 @@ struct rte_flow_action_indirect_list {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Create an indirect flow action object from flow actions list.
  * The object is identified by a unique handle.
  * The handle has single state and configuration
@@ -6727,7 +6407,6 @@ struct rte_flow_action_indirect_list {
  *   - (-EINVAL) if *actions* list invalid.
  *   - (-ENOTSUP) if *action* list element valid but unsupported.
  */
-__rte_experimental
 struct rte_flow_action_list_handle *
 rte_flow_action_list_handle_create(uint16_t port_id,
 				   const
@@ -6736,9 +6415,6 @@ rte_flow_action_list_handle_create(uint16_t port_id,
 				   struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Async function call to create an indirect flow action object
  * from flow actions list.
  * The object is identified by a unique handle.
@@ -6769,7 +6445,6 @@ rte_flow_action_list_handle_create(uint16_t port_id,
  *   - (-EINVAL) if *actions* list invalid.
  *   - (-ENOTSUP) if *action* list element valid but unsupported.
  */
-__rte_experimental
 struct rte_flow_action_list_handle *
 rte_flow_async_action_list_handle_create(uint16_t port_id, uint32_t queue_id,
 					 const struct rte_flow_op_attr *attr,
@@ -6779,9 +6454,6 @@ rte_flow_async_action_list_handle_create(uint16_t port_id, uint32_t queue_id,
 					 struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Destroy indirect actions list by handle.
  *
  * @param[in] port_id
@@ -6799,16 +6471,12 @@ rte_flow_async_action_list_handle_create(uint16_t port_id, uint32_t queue_id,
  *   - (-ENOENT) if actions list pointed by *action* handle was not found.
  *   - (-EBUSY) if actions list pointed by *action* handle still used
  */
-__rte_experimental
 int
 rte_flow_action_list_handle_destroy(uint16_t port_id,
 				    struct rte_flow_action_list_handle *handle,
 				    struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Enqueue indirect action list destruction operation.
  * The destroy queue must be the same
  * as the queue on which the action was created.
@@ -6835,7 +6503,6 @@ rte_flow_action_list_handle_destroy(uint16_t port_id,
  *   - (-ENOENT) if actions list pointed by *action* handle was not found.
  *   - (-EBUSY) if actions list pointed by *action* handle still used
  */
-__rte_experimental
 int
 rte_flow_async_action_list_handle_destroy
 		(uint16_t port_id, uint32_t queue_id,
@@ -6844,9 +6511,6 @@ rte_flow_async_action_list_handle_destroy
 		 void *user_data, struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Query and/or update indirect flow actions list.
  * If both query and update not NULL, the function atomically
  * queries and updates indirect action. Query and update are carried in order
@@ -6879,7 +6543,6 @@ rte_flow_async_action_list_handle_destroy
  * - (-EINVAL) if *handle* or *mode* invalid or
  *             both *query* and *update* are NULL.
  */
-__rte_experimental
 int
 rte_flow_action_list_handle_query_update(uint16_t port_id,
 					 const struct rte_flow_action_list_handle *handle,
@@ -6888,9 +6551,6 @@ rte_flow_action_list_handle_query_update(uint16_t port_id,
 					 struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Enqueue async indirect flow actions list query and/or update
  * If both query and update not NULL, the function atomically
  * queries and updates indirect action. Query and update are carried in order
@@ -6930,7 +6590,6 @@ rte_flow_action_list_handle_query_update(uint16_t port_id,
  * - (-EINVAL) if *handle* or *mode* invalid or
  *             both *update* and *query* are NULL.
  */
-__rte_experimental
 int
 rte_flow_async_action_list_handle_query_update(uint16_t port_id, uint32_t queue_id,
 					  const struct rte_flow_op_attr *attr,
@@ -6941,9 +6600,6 @@ rte_flow_async_action_list_handle_query_update(uint16_t port_id, uint32_t queue_
 					  struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Calculate the hash for a given pattern in a given table as
  * calculated by the HW.
  *
@@ -6966,16 +6622,12 @@ rte_flow_async_action_list_handle_query_update(uint16_t port_id, uint32_t queue_
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-ENOTSUP) if underlying device does not support this functionality.
  */
-__rte_experimental
 int
 rte_flow_calc_table_hash(uint16_t port_id, const struct rte_flow_template_table *table,
 			 const struct rte_flow_item pattern[], uint8_t pattern_template_index,
 			 uint32_t *hash, struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Destination field type for the hash calculation, when encap action is used.
  * The encap field implies the size, meaning XXX_SRC_PORT hash len is 2 bytes,
  * while XXX_NVGRE_FLOW_ID hash len is 1 byte.
@@ -6990,9 +6642,6 @@ enum rte_flow_encap_hash_field {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Simulate HW hash calculation that is done when an encap action is being used.
  * This hash can be stored in tunnel outer header to improve packet distribution.
  *
@@ -7019,16 +6668,12 @@ enum rte_flow_encap_hash_field {
  *   - (-EINVAL) if *pattern* doesn't hold enough information to calculate the hash
  *               or the dest is not supported.
  */
-__rte_experimental
 int
 rte_flow_calc_encap_hash(uint16_t port_id, const struct rte_flow_item pattern[],
 			 enum rte_flow_encap_hash_field dest_field, uint8_t hash_len,
 			 uint8_t *hash, struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Update template table for new flow rules capacity.
  *
  * @param port_id
@@ -7049,16 +6694,12 @@ rte_flow_calc_encap_hash(uint16_t port_id, const struct rte_flow_item pattern[],
  *               *table* resize to *nb_rules* is not supported or
  *               unrecoverable *table* error.
  */
-__rte_experimental
 int
 rte_flow_template_table_resize(uint16_t port_id,
 			       struct rte_flow_template_table *table,
 			       uint32_t nb_rules,
 			       struct rte_flow_error *error);
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Update *rule* for the new *table* configuration after table resize.
  * Must be called for each *rule* created before *table* resize.
  * If called for *rule* created after *table* resize returns success.
@@ -7085,7 +6726,6 @@ rte_flow_template_table_resize(uint16_t port_id,
  *               If *rule* cannot be updated after *table* resize,
  *               unrecoverable *table* error.
  */
-__rte_experimental
 int
 rte_flow_async_update_resized(uint16_t port_id, uint32_t queue,
 			      const struct rte_flow_op_attr *attr,
@@ -7093,9 +6733,6 @@ rte_flow_async_update_resized(uint16_t port_id, uint32_t queue,
 			      struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Resume normal operational mode after table was resized and
  * table rules were updated for the new table configuration.
  *
@@ -7115,7 +6752,6 @@ rte_flow_async_update_resized(uint16_t port_id, uint32_t queue,
  *   - (-EINVAL) if *table* cannot complete table resize,
  *               unrecoverable error.
  */
-__rte_experimental
 int
 rte_flow_template_table_resize_complete(uint16_t port_id,
 					struct rte_flow_template_table *table,

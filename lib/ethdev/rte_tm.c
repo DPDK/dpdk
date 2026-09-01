@@ -316,7 +316,7 @@ int rte_tm_node_add(uint16_t port_id,
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_tm_node_query, 24.11)
+RTE_EXPORT_SYMBOL(rte_tm_node_query)
 int rte_tm_node_query(uint16_t port_id,
 	uint32_t node_id,
 	uint32_t *parent_node_id,
