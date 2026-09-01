@@ -4949,7 +4949,6 @@ rte_flow_copy(struct rte_flow_desc *fd, size_t len,
  *
  * @see rte_flow_conv_op
  */
-__rte_experimental
 int
 rte_flow_conv(enum rte_flow_conv_op op,
 	      void *dst,

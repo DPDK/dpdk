@@ -1119,7 +1119,7 @@ rte_flow_conv_name(int is_action,
 }
 
 /** Helper function to convert flow API objects. */
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_conv, 18.11)
+RTE_EXPORT_SYMBOL(rte_flow_conv)
 int
 rte_flow_conv(enum rte_flow_conv_op op,
 	      void *dst,
