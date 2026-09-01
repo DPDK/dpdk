@@ -41,9 +41,6 @@
  *    A) Whether an MTR object is private to a flow or potentially shared by
  *       several flows has to be specified at creation time.
  *    B) Several meter actions can be potentially registered for the same flow.
- *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
  */
 #include <stdint.h>
 #include <rte_compat.h>
@@ -569,7 +566,6 @@ struct rte_mtr_error {
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-__rte_experimental
 int
 rte_mtr_capabilities_get(uint16_t port_id,
 	struct rte_mtr_capabilities *cap,
@@ -593,7 +589,6 @@ rte_mtr_capabilities_get(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-__rte_experimental
 int
 rte_mtr_meter_profile_add(uint16_t port_id,
 	uint32_t meter_profile_id,
@@ -615,7 +610,6 @@ rte_mtr_meter_profile_add(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-__rte_experimental
 int
 rte_mtr_meter_profile_delete(uint16_t port_id,
 	uint32_t meter_profile_id,
@@ -635,7 +629,6 @@ rte_mtr_meter_profile_delete(uint16_t port_id,
  * @return
  *   A valid handle in case of success, NULL otherwise.
  */
-__rte_experimental
 struct rte_flow_meter_profile *
 rte_mtr_meter_profile_get(uint16_t port_id,
 	uint32_t meter_profile_id,
@@ -663,7 +656,6 @@ rte_mtr_meter_profile_get(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-__rte_experimental
 int
 rte_mtr_meter_policy_validate(uint16_t port_id,
 	struct rte_mtr_meter_policy_params *policy,
@@ -690,7 +682,6 @@ rte_mtr_meter_policy_validate(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-__rte_experimental
 int
 rte_mtr_meter_policy_add(uint16_t port_id,
 	uint32_t policy_id,
@@ -711,7 +702,6 @@ rte_mtr_meter_policy_add(uint16_t port_id,
  * @return
  *   A valid handle in case of success, NULL otherwise.
  */
-__rte_experimental
 struct rte_flow_meter_policy *
 rte_mtr_meter_policy_get(uint16_t port_id,
 	uint32_t policy_id,
@@ -793,7 +783,6 @@ struct rte_mtr_meter_policy_params policy = \
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-__rte_experimental
 int
 rte_mtr_meter_policy_delete(uint16_t port_id,
 	uint32_t policy_id,
@@ -822,7 +811,6 @@ rte_mtr_meter_policy_delete(uint16_t port_id,
  *
  * @see enum rte_flow_action_type::RTE_FLOW_ACTION_TYPE_METER
  */
-__rte_experimental
 int
 rte_mtr_create(uint16_t port_id,
 	uint32_t mtr_id,
@@ -846,7 +834,6 @@ rte_mtr_create(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-__rte_experimental
 int
 rte_mtr_destroy(uint16_t port_id,
 	uint32_t mtr_id,
@@ -874,7 +861,6 @@ rte_mtr_destroy(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-__rte_experimental
 int
 rte_mtr_meter_disable(uint16_t port_id,
 	uint32_t mtr_id,
@@ -896,7 +882,6 @@ rte_mtr_meter_disable(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-__rte_experimental
 int
 rte_mtr_meter_enable(uint16_t port_id,
 	uint32_t mtr_id,
@@ -916,7 +901,6 @@ rte_mtr_meter_enable(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-__rte_experimental
 int
 rte_mtr_meter_profile_update(uint16_t port_id,
 	uint32_t mtr_id,
@@ -937,7 +921,6 @@ rte_mtr_meter_profile_update(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-__rte_experimental
 int
 rte_mtr_meter_policy_update(uint16_t port_id,
 	uint32_t mtr_id,
@@ -964,7 +947,6 @@ rte_mtr_meter_policy_update(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-__rte_experimental
 int
 rte_mtr_meter_dscp_table_update(uint16_t port_id,
 	uint32_t mtr_id, enum rte_mtr_color_in_protocol proto,
@@ -991,7 +973,6 @@ rte_mtr_meter_dscp_table_update(uint16_t port_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-__rte_experimental
 int
 rte_mtr_meter_vlan_table_update(uint16_t port_id, uint32_t mtr_id,
 				enum rte_mtr_color_in_protocol proto,
@@ -1022,7 +1003,6 @@ rte_mtr_meter_vlan_table_update(uint16_t port_id, uint32_t mtr_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-__rte_experimental
 int
 rte_mtr_color_in_protocol_set(uint16_t port_id, uint32_t mtr_id,
 	enum rte_mtr_color_in_protocol proto, uint32_t priority,
@@ -1042,7 +1022,6 @@ rte_mtr_color_in_protocol_set(uint16_t port_id, uint32_t mtr_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-__rte_experimental
 int
 rte_mtr_color_in_protocol_get(uint16_t port_id, uint32_t mtr_id,
 	uint64_t *proto_mask,
@@ -1064,7 +1043,6 @@ rte_mtr_color_in_protocol_get(uint16_t port_id, uint32_t mtr_id,
  * @return
  *   0 on success, non-zero error code otherwise.
  */
-__rte_experimental
 int
 rte_mtr_color_in_protocol_priority_get(uint16_t port_id, uint32_t mtr_id,
 	enum rte_mtr_color_in_protocol proto, uint32_t *priority,
@@ -1088,7 +1066,6 @@ rte_mtr_color_in_protocol_priority_get(uint16_t port_id, uint32_t mtr_id,
  *
  * @see enum rte_mtr_stats_type
  */
-__rte_experimental
 int
 rte_mtr_stats_update(uint16_t port_id,
 	uint32_t mtr_id,
@@ -1120,7 +1097,6 @@ rte_mtr_stats_update(uint16_t port_id,
  *
  * @see enum rte_mtr_stats_type
  */
-__rte_experimental
 int
 rte_mtr_stats_read(uint16_t port_id,
 	uint32_t mtr_id,
