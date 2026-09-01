@@ -16,6 +16,6 @@ pkg-config --libs --static $lib |
 	tr '[:space:]' '\n' |
 	sed -r "/^-l($deps)/! s,(^-l)(.*),\1:lib\2.a," |   # explicit .a
 	sed -n '/^-[Ll]/p' |   # extra link options may break with make
-	tac |
+	sed '1!G;h;$!d' | # emulate tac using sed
 	awk "/^-l:$lib.a/&&c++ {next} 1" | # drop first duplicates of main lib
-	tac
+	sed '1!G;h;$!d'
