@@ -5341,9 +5341,6 @@ int rte_eth_dev_get_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info);
 int rte_eth_dev_set_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Retrieve the type and size of plugin module EEPROM
  *
  * @param port_id
@@ -5358,15 +5355,11 @@ int rte_eth_dev_set_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info);
  *   - (-EIO) if device is removed.
  *   - others depends on the specific operations implementation.
  */
-__rte_experimental
 int
 rte_eth_dev_get_module_info(uint16_t port_id, struct rte_eth_dev_module_info *modinfo)
 	__rte_warn_unused_result;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Retrieve the data of plugin module EEPROM
  *
  * @param port_id
@@ -5382,7 +5375,6 @@ rte_eth_dev_get_module_info(uint16_t port_id, struct rte_eth_dev_module_info *mo
  *   - (-EIO) if device is removed.
  *   - others depends on the specific operations implementation.
  */
-__rte_experimental
 int
 rte_eth_dev_get_module_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info)
 	__rte_warn_unused_result;
