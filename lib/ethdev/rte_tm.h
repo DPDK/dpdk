@@ -1638,7 +1638,6 @@ rte_tm_node_add(uint16_t port_id,
  *   -EINVAL - port or node id value is invalid
  *   -ENOENT - no node exists with the provided id on the provided port
  */
-__rte_experimental
 int
 rte_tm_node_query(uint16_t port_id,
 	uint32_t node_id,

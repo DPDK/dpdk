@@ -5088,9 +5088,6 @@ int rte_eth_tx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
 	struct rte_eth_burst_mode *mode);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Retrieve the monitor condition for a given receive queue.
  *
  * @param port_id
@@ -5107,7 +5104,6 @@ int rte_eth_tx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
  *   -EINVAL: Invalid parameters.
  *   -ENODEV: Invalid port ID.
  */
-__rte_experimental
 int rte_eth_get_monitor_addr(uint16_t port_id, uint16_t queue_id,
 		struct rte_power_monitor_cond *pmc);
 
@@ -5398,7 +5394,6 @@ int rte_eth_timesync_adjust_time(uint16_t port_id, int64_t delta);
  *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function is not supported by the Ethernet driver.
  */
-__rte_experimental
 int rte_eth_timesync_adjust_freq(uint16_t port_id, int64_t ppm);
 
 /**
@@ -5585,9 +5580,6 @@ int rte_eth_dev_hairpin_capability_get(uint16_t port_id,
 				       struct rte_eth_hairpin_cap *cap);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * Ethernet device representor ID range entry
  */
 struct rte_eth_representor_range {
@@ -5605,9 +5597,6 @@ struct rte_eth_representor_range {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * Ethernet device representor information
  */
 struct rte_eth_representor_info {
@@ -5641,7 +5630,6 @@ struct rte_eth_representor_info {
  *   - (-EIO) if device is removed.
  *   - (>=0) number of available representor range entries.
  */
-__rte_experimental
 int rte_eth_representor_info_get(uint16_t port_id,
 				 struct rte_eth_representor_info *info);
 
@@ -6870,9 +6858,6 @@ rte_eth_recycle_mbufs(uint16_t rx_port_id, uint16_t rx_queue_id,
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get supported header protocols to split on Rx.
  *
  * When a packet type is announced to be split,
@@ -6897,7 +6882,6 @@ rte_eth_recycle_mbufs(uint16_t rx_port_id, uint16_t rx_queue_id,
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-__rte_experimental
 int rte_eth_buffer_split_get_supported_hdr_ptypes(uint16_t port_id, uint32_t *ptypes, int num)
 	__rte_warn_unused_result;
 
