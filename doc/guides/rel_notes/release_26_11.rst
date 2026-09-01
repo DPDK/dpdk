@@ -233,6 +233,9 @@ API Changes
     ``rte_eth_rx_descriptor_dump``, ``rte_eth_tx_descriptor_dump``,
     ``rte_eth_dev_rss_algo_name``, ``rte_eth_find_rss_algo`` and
     ``rte_eth_dev_get_reg_info_ext``
+  * speed lanes:
+    ``rte_eth_speed_lanes_get``, ``rte_eth_speed_lanes_set`` and
+    ``rte_eth_speed_lanes_get_capability``
 
 
 ABI Changes

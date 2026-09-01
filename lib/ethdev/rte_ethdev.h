@@ -3138,9 +3138,6 @@ int rte_eth_link_to_str(char *str, size_t len,
 			const struct rte_eth_link *eth_link);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get Active lanes.
  *
  * @param port_id
@@ -3157,13 +3154,9 @@ int rte_eth_link_to_str(char *str, size_t len,
  *   - (-EIO) if device is removed.
  *   - (-ENODEV)  if *port_id* invalid.
  */
-__rte_experimental
 int rte_eth_speed_lanes_get(uint16_t port_id, uint32_t *lanes);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Set speed lanes supported by the NIC.
  *
  * @param port_id
@@ -3181,13 +3174,9 @@ int rte_eth_speed_lanes_get(uint16_t port_id, uint32_t *lanes);
  *   - (-ENODEV)  if *port_id* invalid.
  *   - (-EINVAL)  if *lanes* count not in speeds capability list.
  */
-__rte_experimental
 int rte_eth_speed_lanes_set(uint16_t port_id, uint32_t speed_lanes);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get speed lanes supported by the NIC.
  *
  * @param port_id
@@ -3206,7 +3195,6 @@ int rte_eth_speed_lanes_set(uint16_t port_id, uint32_t speed_lanes);
  *   - (-ENODEV)  if *port_id* invalid.
  *   - (-EINVAL)  if *speed_lanes* invalid
  */
-__rte_experimental
 int rte_eth_speed_lanes_get_capability(uint16_t port_id,
 				       struct rte_eth_speed_lanes_capa *speed_lanes_capa,
 				       unsigned int num);

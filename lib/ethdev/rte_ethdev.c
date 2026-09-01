@@ -1945,7 +1945,7 @@ rte_eth_dev_set_link_down(uint16_t port_id)
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_speed_lanes_get, 24.11)
+RTE_EXPORT_SYMBOL(rte_eth_speed_lanes_get)
 int
 rte_eth_speed_lanes_get(uint16_t port_id, uint32_t *lane)
 {
@@ -1959,7 +1959,7 @@ rte_eth_speed_lanes_get(uint16_t port_id, uint32_t *lane)
 	return eth_err(port_id, dev->dev_ops->speed_lanes_get(dev, lane));
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_speed_lanes_get_capability, 24.11)
+RTE_EXPORT_SYMBOL(rte_eth_speed_lanes_get_capability)
 int
 rte_eth_speed_lanes_get_capability(uint16_t port_id,
 				   struct rte_eth_speed_lanes_capa *speed_lanes_capa,
@@ -1986,7 +1986,7 @@ rte_eth_speed_lanes_get_capability(uint16_t port_id,
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_speed_lanes_set, 24.11)
+RTE_EXPORT_SYMBOL(rte_eth_speed_lanes_set)
 int
 rte_eth_speed_lanes_set(uint16_t port_id, uint32_t speed_lanes_capa)
 {
