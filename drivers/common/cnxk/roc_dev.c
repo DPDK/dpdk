@@ -286,6 +286,17 @@ vf_pf_process_msgs(struct dev *dev, uint16_t vf)
 		msg = (struct mbox_msghdr *)((uintptr_t)mdev->mbase + offset);
 		size = mbox->rx_start + msg->next_msgoff - offset;
 
+		/*
+		 * next_msgoff is VF-controlled. Reject a message whose size is
+		 * smaller than the header or larger than the maximum request so
+		 * an underflowed size cannot be used as the copy length below.
+		 */
+		if (size < sizeof(struct mbox_msghdr) ||
+		    (size - sizeof(struct mbox_msghdr)) > MBOX_MSG_REQ_SIZE_MAX) {
+			plt_err("VF%d: invalid mbox msg size %zu", vf, size);
+			break;
+		}
+
 		/* RVU_PF_FUNC_S */
 		msg->pcifunc = dev_pf_func(dev->pf, vf);
 
