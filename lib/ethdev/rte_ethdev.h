@@ -6731,9 +6731,6 @@ rte_eth_tx_buffer(uint16_t port_id, uint16_t queue_id,
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Recycle used mbufs from a transmit queue of an Ethernet device, and move
  * these mbufs into a mbuf ring for a receive queue of an Ethernet device.
  * This can bypass mempool path to save CPU cycles.
@@ -6783,7 +6780,6 @@ rte_eth_tx_buffer(uint16_t port_id, uint16_t queue_id,
  * @return
  *   The number of recycling mbufs.
  */
-__rte_experimental
 static inline uint16_t
 rte_eth_recycle_mbufs(uint16_t rx_port_id, uint16_t rx_queue_id,
 		uint16_t tx_port_id, uint16_t tx_queue_id,
@@ -6886,9 +6882,6 @@ int rte_eth_buffer_split_get_supported_hdr_ptypes(uint16_t port_id, uint32_t *pt
 	__rte_warn_unused_result;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
- *
  * Get the number of used descriptors of a Tx queue.
  *
  * This function retrieves the number of used descriptors of a transmit queue.
@@ -6919,7 +6912,6 @@ int rte_eth_buffer_split_get_supported_hdr_ptypes(uint16_t port_id, uint32_t *pt
  * If the use case only involves checking the status of a specific descriptor slot,
  * opt for rte_eth_tx_descriptor_status() instead.
  */
-__rte_experimental
 static inline int
 rte_eth_tx_queue_count(uint16_t port_id, uint16_t queue_id)
 {

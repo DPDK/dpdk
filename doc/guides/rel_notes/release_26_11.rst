@@ -246,6 +246,8 @@ API Changes
     ``rte_eth_get_monitor_addr``, ``rte_eth_representor_info_get``,
     ``rte_eth_buffer_split_get_supported_hdr_ptypes``,
     ``rte_eth_timesync_adjust_freq`` and ``rte_tm_node_query``
+  * fast path inline funcs:
+    ``rte_eth_recycle_mbufs`` and ``rte_eth_tx_queue_count``
 
 
 ABI Changes
