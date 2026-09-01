@@ -186,6 +186,10 @@ API Changes
     related and are sizes of internal arrays in ethdev that only drivers need to care about.
     Those macros are moved to the driver only ethdev API.
 
+* ethdev: Promoted the following API from experimental to stable:
+
+  * meter (MTR) and policing: ``rte_mtr_*``
+
 
 ABI Changes
 -----------
