@@ -2522,7 +2522,7 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	return eth_err(port_id, ret);
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_rx_hairpin_queue_setup, 19.11)
+RTE_EXPORT_SYMBOL(rte_eth_rx_hairpin_queue_setup)
 int
 rte_eth_rx_hairpin_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 			       uint16_t nb_rx_desc,
@@ -2740,7 +2740,7 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 		       tx_queue_id, nb_tx_desc, socket_id, &local_conf));
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_tx_hairpin_queue_setup, 19.11)
+RTE_EXPORT_SYMBOL(rte_eth_tx_hairpin_queue_setup)
 int
 rte_eth_tx_hairpin_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 			       uint16_t nb_tx_desc,
@@ -2840,7 +2840,7 @@ rte_eth_tx_hairpin_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_hairpin_bind, 20.11)
+RTE_EXPORT_SYMBOL(rte_eth_hairpin_bind)
 int
 rte_eth_hairpin_bind(uint16_t tx_port, uint16_t rx_port)
 {
@@ -2868,7 +2868,7 @@ rte_eth_hairpin_bind(uint16_t tx_port, uint16_t rx_port)
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_hairpin_unbind, 20.11)
+RTE_EXPORT_SYMBOL(rte_eth_hairpin_unbind)
 int
 rte_eth_hairpin_unbind(uint16_t tx_port, uint16_t rx_port)
 {
@@ -2896,7 +2896,7 @@ rte_eth_hairpin_unbind(uint16_t tx_port, uint16_t rx_port)
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_hairpin_get_peer_ports, 20.11)
+RTE_EXPORT_SYMBOL(rte_eth_hairpin_get_peer_ports)
 int
 rte_eth_hairpin_get_peer_ports(uint16_t port_id, uint16_t *peer_ports,
 			       size_t len, uint32_t direction)
@@ -7074,7 +7074,7 @@ rte_eth_dev_adjust_nb_rx_tx_desc(uint16_t port_id,
 	return 0;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_dev_hairpin_capability_get, 19.11)
+RTE_EXPORT_SYMBOL(rte_eth_dev_hairpin_capability_get)
 int
 rte_eth_dev_hairpin_capability_get(uint16_t port_id,
 				   struct rte_eth_hairpin_cap *cap)

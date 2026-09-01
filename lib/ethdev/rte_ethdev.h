@@ -1234,9 +1234,6 @@ struct rte_eth_txconf {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * A structure used to return the Tx or Rx hairpin queue capabilities.
  */
 struct rte_eth_hairpin_queue_cap {
@@ -1256,9 +1253,6 @@ struct rte_eth_hairpin_queue_cap {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * A structure used to return the hairpin capabilities that are supported.
  */
 struct rte_eth_hairpin_cap {
@@ -1276,9 +1270,6 @@ struct rte_eth_hairpin_cap {
 #define RTE_ETH_MAX_HAIRPIN_PEERS 32
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * A structure used to hold hairpin peer data.
  */
 struct rte_eth_hairpin_peer {
@@ -1287,9 +1278,6 @@ struct rte_eth_hairpin_peer {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * A structure used to configure hairpin binding.
  */
 struct rte_eth_hairpin_conf {
@@ -2525,9 +2513,6 @@ int rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 		struct rte_mempool *mb_pool);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Allocate and set up a hairpin receive queue for an Ethernet device.
  *
  * The function set up the selected queue to be used in hairpin.
@@ -2551,7 +2536,6 @@ int rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
  *   - (-EINVAL) if bad parameter.
  *   - (-ENOMEM) if unable to allocate the resources.
  */
-__rte_experimental
 int rte_eth_rx_hairpin_queue_setup
 	(uint16_t port_id, uint16_t rx_queue_id, uint16_t nb_rx_desc,
 	 const struct rte_eth_hairpin_conf *conf);
@@ -2609,9 +2593,6 @@ int rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 		const struct rte_eth_txconf *tx_conf);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Allocate and set up a transmit hairpin queue for an Ethernet device.
  *
  * @param port_id
@@ -2633,15 +2614,11 @@ int rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
  *   - (-EINVAL) if bad parameter.
  *   - (-ENOMEM) if unable to allocate the resources.
  */
-__rte_experimental
 int rte_eth_tx_hairpin_queue_setup
 	(uint16_t port_id, uint16_t tx_queue_id, uint16_t nb_tx_desc,
 	 const struct rte_eth_hairpin_conf *conf);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get all the hairpin peer Rx / Tx ports of the current port.
  * The caller should ensure that the array is large enough to save the ports
  * list.
@@ -2664,14 +2641,10 @@ int rte_eth_tx_hairpin_queue_setup
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - Others detailed errors from PMDs.
  */
-__rte_experimental
 int rte_eth_hairpin_get_peer_ports(uint16_t port_id, uint16_t *peer_ports,
 				   size_t len, uint32_t direction);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Bind all hairpin Tx queues of one port to the Rx queues of the peer port.
  * It is only allowed to call this function after all hairpin queues are
  * configured properly and the devices are in started state.
@@ -2690,13 +2663,9 @@ int rte_eth_hairpin_get_peer_ports(uint16_t port_id, uint16_t *peer_ports,
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - Others detailed errors from PMDs.
  */
-__rte_experimental
 int rte_eth_hairpin_bind(uint16_t tx_port, uint16_t rx_port);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Unbind all hairpin Tx queues of one port from the Rx queues of the peer port.
  * This should be called before closing the Tx or Rx devices, if the bind
  * function is called before.
@@ -2717,7 +2686,6 @@ int rte_eth_hairpin_bind(uint16_t tx_port, uint16_t rx_port);
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - Others detailed errors from PMDs.
  */
-__rte_experimental
 int rte_eth_hairpin_unbind(uint16_t tx_port, uint16_t rx_port);
 
 /**
@@ -5704,9 +5672,6 @@ void *
 rte_eth_dev_get_sec_ctx(uint16_t port_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Query the device hairpin capabilities.
  *
  * @param port_id
@@ -5718,7 +5683,6 @@ rte_eth_dev_get_sec_ctx(uint16_t port_id);
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-EINVAL) if bad parameter.
  */
-__rte_experimental
 int rte_eth_dev_hairpin_capability_get(uint16_t port_id,
 				       struct rte_eth_hairpin_cap *cap);
 

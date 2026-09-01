@@ -191,6 +191,12 @@ API Changes
   * meter (MTR) and policing: ``rte_mtr_*``
   * SFF: ``rte_eth_dev_get_module_info`` and ``rte_eth_dev_get_module_eeprom``
   * flow conversion: ``rte_flow_conv``
+  * hairpin queue: ``rte_eth_rx_hairpin_queue_setup``,
+    ``rte_eth_tx_hairpin_queue_setup``,
+    ``rte_eth_dev_hairpin_capability_get``,
+    ``rte_eth_hairpin_bind``,
+    ``rte_eth_hairpin_unbind``,
+    ``rte_eth_hairpin_get_peer_ports``
 
 
 ABI Changes
