@@ -218,6 +218,9 @@ API Changes
   * remaining flow helpers: ``rte_flow_actions_update``, ``rte_flow_restore_info_dynflag``,
     ``rte_flow_calc_table_hash``, ``rte_flow_group_set_miss_actions``,
     and ``rte_flow_calc_encap_hash``
+  * congestion management:
+    ``rte_eth_cman_config_init``, ``rte_eth_cman_config_set``,
+    ``rte_eth_cman_config_get`` and ``rte_eth_cman_info_get``
 
 
 ABI Changes
