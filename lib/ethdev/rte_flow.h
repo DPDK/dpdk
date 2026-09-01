@@ -2252,10 +2252,6 @@ struct rte_flow_item_flex_link {
 	uint32_t next;
 };
 
-/**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- */
 struct rte_flow_item_flex_conf {
 	/**
 	 * Specifies the flex item and tunnel relations and tells the PMD
@@ -5402,9 +5398,6 @@ rte_flow_pick_transfer_proxy(uint16_t port_id, uint16_t *proxy_port_id,
 			     struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Create the flex item with specified configuration over
  * the Ethernet device.
  *
@@ -5419,7 +5412,6 @@ rte_flow_pick_transfer_proxy(uint16_t port_id, uint16_t *proxy_port_id,
  * @return
  *   Non-NULL opaque pointer on success, NULL otherwise and rte_errno is set.
  */
-__rte_experimental
 struct rte_flow_item_flex_handle *
 rte_flow_flex_item_create(uint16_t port_id,
 			  const struct rte_flow_item_flex_conf *conf,
@@ -5439,7 +5431,6 @@ rte_flow_flex_item_create(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_flex_item_release(uint16_t port_id,
 			   const struct rte_flow_item_flex_handle *handle,
