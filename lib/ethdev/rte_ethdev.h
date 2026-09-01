@@ -4404,9 +4404,6 @@ int  rte_eth_led_on(uint16_t port_id);
 int  rte_eth_led_off(uint16_t port_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get Forward Error Correction(FEC) capability.
  *
  * @param port_id
@@ -4431,15 +4428,11 @@ int  rte_eth_led_off(uint16_t port_id);
  *   - (-ENODEV)  if *port_id* invalid.
  *   - (-EINVAL)  if *num* or *speed_fec_capa* invalid
  */
-__rte_experimental
 int rte_eth_fec_get_capability(uint16_t port_id,
 			       struct rte_eth_fec_capa *speed_fec_capa,
 			       unsigned int num);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get current Forward Error Correction(FEC) mode.
  * If link is down and AUTO is enabled, AUTO is returned, otherwise,
  * configured FEC mode is returned.
@@ -4456,13 +4449,9 @@ int rte_eth_fec_get_capability(uint16_t port_id,
  *   - (-EIO) if device is removed.
  *   - (-ENODEV)  if *port_id* invalid.
  */
-__rte_experimental
 int rte_eth_fec_get(uint16_t port_id, uint32_t *fec_capa);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Set Forward Error Correction(FEC) mode.
  *
  * @param port_id
@@ -4482,7 +4471,6 @@ int rte_eth_fec_get(uint16_t port_id, uint32_t *fec_capa);
  *   - (-EIO) if device is removed.
  *   - (-ENODEV)  if *port_id* invalid.
  */
-__rte_experimental
 int rte_eth_fec_set(uint16_t port_id, uint32_t fec_capa);
 
 /**

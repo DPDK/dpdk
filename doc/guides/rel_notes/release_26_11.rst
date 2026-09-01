@@ -199,6 +199,7 @@ API Changes
     ``rte_eth_hairpin_get_peer_ports``
   * clock: ``rte_eth_read_clock``
   * flow dump: ``rte_flow_dev_dump``
+  * FEC: ``rte_eth_fec_get_capability``, ``rte_eth_fec_get`` and ``rte_eth_fec_set``
 
 
 ABI Changes

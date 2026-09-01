@@ -5254,7 +5254,7 @@ rte_eth_led_off(uint16_t port_id)
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_fec_get_capability, 20.11)
+RTE_EXPORT_SYMBOL(rte_eth_fec_get_capability)
 int
 rte_eth_fec_get_capability(uint16_t port_id,
 			   struct rte_eth_fec_capa *speed_fec_capa,
@@ -5282,7 +5282,7 @@ rte_eth_fec_get_capability(uint16_t port_id,
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_fec_get, 20.11)
+RTE_EXPORT_SYMBOL(rte_eth_fec_get)
 int
 rte_eth_fec_get(uint16_t port_id, uint32_t *fec_capa)
 {
@@ -5308,7 +5308,7 @@ rte_eth_fec_get(uint16_t port_id, uint32_t *fec_capa)
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_fec_set, 20.11)
+RTE_EXPORT_SYMBOL(rte_eth_fec_set)
 int
 rte_eth_fec_set(uint16_t port_id, uint32_t fec_capa)
 {
