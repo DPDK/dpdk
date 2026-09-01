@@ -248,6 +248,10 @@ API Changes
     ``rte_eth_timesync_adjust_freq`` and ``rte_tm_node_query``
   * fast path inline funcs:
     ``rte_eth_recycle_mbufs`` and ``rte_eth_tx_queue_count``
+  * buffer split and error handling types:
+    ``rte_eth_rxseg_split``, ``rte_eth_rxseg``, ``rte_eth_rxseg_capa``
+    and ``rte_eth_err_handle_mode``
+  * all remaining ``rte_flow`` item, action and async operation structures
 
 
 ABI Changes

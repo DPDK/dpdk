@@ -727,9 +727,6 @@ enum rte_flow_item_type {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * QUOTA state.
  *
  * @see struct rte_flow_item_quota
@@ -1012,9 +1009,6 @@ static const struct rte_flow_item_ipv6 rte_flow_item_ipv6_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT.
  *
  * Matches an IPv6 routing extension header.
@@ -1687,9 +1681,6 @@ rte_flow_item_pppoe_proto_id_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_TAG
  *
  * Matches a specified tag value at the specified index.
@@ -1725,9 +1716,6 @@ static const struct rte_flow_item_l2tpv3oip rte_flow_item_l2tpv3oip_mask = {
 
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_MARK
  *
  * Matches an arbitrary integer value which was set using the ``MARK`` action
@@ -1754,9 +1742,6 @@ static const struct rte_flow_item_mark rte_flow_item_mark_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_NSH
  *
  * Match network service header (NSH), RFC 8300
@@ -1785,9 +1770,6 @@ static const struct rte_flow_item_nsh rte_flow_item_nsh_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_IGMP
  *
  * Match Internet Group Management Protocol (IGMP), RFC 2236
@@ -1807,9 +1789,6 @@ static const struct rte_flow_item_igmp rte_flow_item_igmp_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_AH
  *
  * Match IP Authentication Header (AH), RFC 4302
@@ -1830,9 +1809,6 @@ static const struct rte_flow_item_ah rte_flow_item_ah_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_PFCP
  *
  * Match PFCP Header
@@ -1853,9 +1829,6 @@ static const struct rte_flow_item_pfcp rte_flow_item_pfcp_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_ECPRI
  *
  * Match eCPRI Header
@@ -1896,9 +1869,6 @@ rte_flow_item_geneve_opt_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_INTEGRITY
  *
  * Match on packet integrity check result.
@@ -1966,9 +1936,6 @@ rte_flow_item_integrity_mask = {
 #define RTE_FLOW_CONNTRACK_PKT_STATE_BAD RTE_BIT32(4)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_CONNTRACK
  *
  * Matches the state of a packet after it passed the connection tracking
@@ -2003,9 +1970,6 @@ static const struct rte_flow_item_ethdev rte_flow_item_ethdev_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_L2TPV2
  *
  * Matches L2TPv2 Header
@@ -2031,9 +1995,6 @@ static const struct rte_flow_item_l2tpv2 rte_flow_item_l2tpv2_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_PPP
  *
  * Matches PPP Header
@@ -2073,9 +2034,6 @@ static const struct rte_flow_item_ib_bth rte_flow_item_ib_bth_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * RTE_FLOW_ITEM_TYPE_RANDOM
  *
  * Matches a random value.
@@ -2132,9 +2090,6 @@ struct rte_flow_item {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_FLEX
  *
  * Matches a specified set of fields within the network protocol
@@ -2217,9 +2172,7 @@ enum rte_flow_item_flex_tunnel_mode {
 };
 
 /**
- *
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
+ * Description of a single field of a flex item.
  */
 __extension__
 struct rte_flow_item_flex_field {
@@ -2235,8 +2188,7 @@ struct rte_flow_item_flex_field {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
+ * Description of a link between a flex item and its neighbour headers.
  */
 struct rte_flow_item_flex_link {
 	/**
@@ -2252,6 +2204,9 @@ struct rte_flow_item_flex_link {
 	uint32_t next;
 };
 
+/**
+ * Flex item configuration: field descriptions and neighbour links.
+ */
 struct rte_flow_item_flex_conf {
 	/**
 	 * Specifies the flex item and tunnel relations and tells the PMD
@@ -2315,9 +2270,6 @@ static const struct rte_flow_item_meter_color rte_flow_item_meter_color_mask = {
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ITEM_TYPE_AGGR_AFFINITY
  *
  * For multiple ports aggregated to a single DPDK port,
@@ -2436,9 +2388,6 @@ enum rte_flow_field_id {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * Packet header field descriptions, used by RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
  * and RTE_FLOW_ITEM_TYPE_COMPARE.
  */
@@ -3262,9 +3211,6 @@ enum rte_flow_action_type {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * QUOTA operational mode.
  *
  * @see struct rte_flow_action_quota
@@ -3276,9 +3222,6 @@ enum rte_flow_quota_mode {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Create QUOTA action.
  *
  * @see RTE_FLOW_ACTION_TYPE_QUOTA
@@ -3289,9 +3232,6 @@ struct rte_flow_action_quota {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Query indirect QUOTA action.
  *
  * @see RTE_FLOW_ACTION_TYPE_QUOTA
@@ -3301,9 +3241,6 @@ struct rte_flow_query_quota {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Indirect QUOTA update operations.
  *
  * @see struct rte_flow_update_quota
@@ -3314,9 +3251,6 @@ enum rte_flow_update_quota_op {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * @see RTE_FLOW_ACTION_TYPE_QUOTA
  *
  * Update indirect QUOTA action.
@@ -3341,9 +3275,6 @@ struct rte_flow_action_mark {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_JUMP
  *
  * Redirects packets to a group on the current device.
@@ -3366,9 +3297,6 @@ struct rte_flow_action_queue {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_AGE
  *
  * Report flow as aged-out if timeout passed without any matching
@@ -3400,9 +3328,6 @@ struct rte_flow_query_age {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_AGE
  *
  * Update indirect AGE action attributes:
@@ -3427,9 +3352,6 @@ struct rte_flow_update_age {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_COUNT
  *
  * Adds a counter action to a matched flow.
@@ -3606,9 +3528,6 @@ enum rte_flow_nat64_type {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * RTE_FLOW_ACTION_TYPE_NAT64
  *
  * Specify the NAT64 translation type.
@@ -3668,9 +3587,6 @@ struct rte_flow_action_of_push_mpls {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP
  *
  * VXLAN tunnel end-point encapsulation data definition
@@ -3702,9 +3618,6 @@ struct rte_flow_action_vxlan_encap {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP
  *
  * NVGRE tunnel end-point encapsulation data definition
@@ -3735,9 +3648,6 @@ struct rte_flow_action_nvgre_encap {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_RAW_ENCAP
  *
  * Raw tunnel end-point encapsulation data definition.
@@ -3760,9 +3670,6 @@ struct rte_flow_action_raw_encap {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_RAW_DECAP
  *
  * Raw tunnel end-point decapsulation data definition.
@@ -3780,9 +3687,6 @@ struct rte_flow_action_raw_decap {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC
  * RTE_FLOW_ACTION_TYPE_SET_IPV4_DST
  *
@@ -3795,9 +3699,6 @@ struct rte_flow_action_set_ipv4 {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC
  * RTE_FLOW_ACTION_TYPE_SET_IPV6_DST
  *
@@ -3810,9 +3711,6 @@ struct rte_flow_action_set_ipv6 {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH
  *
  * Valid flow definition for RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH include:
@@ -3828,9 +3726,6 @@ struct rte_flow_action_ipv6_ext_push {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE
  *
  * Valid flow definition for RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE include:
@@ -3842,9 +3737,6 @@ struct rte_flow_action_ipv6_ext_remove {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_SET_TP_SRC
  * RTE_FLOW_ACTION_TYPE_SET_TP_DST
  *
@@ -3875,9 +3767,6 @@ struct rte_flow_action_set_mac {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_SET_TAG
  *
  * Set a tag which is a transient data used during flow matching. This is not
@@ -3890,9 +3779,6 @@ struct rte_flow_action_set_tag {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_SET_META
  *
  * Set metadata. Metadata set by mbuf metadata dynamic field with
@@ -3925,9 +3811,6 @@ struct rte_flow_action_set_dscp {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_INDIRECT
  *
  * Opaque type returned after successfully creating an indirect action object.
@@ -3974,9 +3857,6 @@ enum rte_flow_conntrack_tcp_last_index {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * Configuration parameters for each direction of a TCP connection.
  * All fields should be in host byte order.
  * If needed, driver should convert all fields to network byte order
@@ -4011,9 +3891,6 @@ struct rte_flow_tcp_dir_param {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_CONNTRACK
  *
  * Configuration and initial state for the connection tracking module.
@@ -4092,9 +3969,6 @@ struct rte_flow_modify_conntrack {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_METER_COLOR
  *
  * The meter color should be set in the packet meta-data
@@ -4123,9 +3997,6 @@ enum rte_flow_modify_op {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
  *
  * Modify a destination header field according to the specified
@@ -4194,9 +4065,6 @@ struct rte_flow_indirect_update_flow_meter_mark {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * Program action argument configuration parameters.
  *
  * For each action argument, its *size* must be non-zero and its *value* must
@@ -4214,9 +4082,6 @@ struct rte_flow_action_prog_argument {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * RTE_FLOW_ACTION_TYPE_PROG
  *
  * Program action configuration parameters.
@@ -4262,9 +4127,6 @@ rte_flow_dynf_metadata_set(struct rte_mbuf *m, uint32_t v)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX
  *
  * Redirects packets to a particular index in a flow table.
@@ -4309,9 +4171,6 @@ struct rte_flow_meter_profile;
 struct rte_flow_meter_policy;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * RTE_FLOW_ACTION_TYPE_SAMPLE
  *
  * Adds a sample action to a matched flow.
@@ -5615,9 +5474,6 @@ rte_flow_configure(uint16_t port_id,
 struct rte_flow_pattern_template;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Flow pattern template attributes.
  */
 __extension__
@@ -5701,9 +5557,6 @@ rte_flow_pattern_template_destroy(uint16_t port_id,
 struct rte_flow_actions_template;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Flow actions template attributes.
  */
 __extension__
@@ -5987,9 +5840,6 @@ rte_flow_group_set_miss_actions(uint16_t port_id,
 				struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Asynchronous operation attributes.
  */
 __extension__
@@ -6228,9 +6078,6 @@ rte_flow_push(uint16_t port_id,
 	      struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Asynchronous operation status.
  */
 enum rte_flow_op_status {
@@ -6245,9 +6092,6 @@ enum rte_flow_op_status {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Asynchronous operation result.
  */
 __extension__
@@ -6521,9 +6365,6 @@ rte_flow_async_action_handle_query_update(uint16_t port_id, uint32_t queue_id,
 struct rte_flow_action_list_handle;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Configure INDIRECT_LIST flow action.
  *
  * @see RTE_FLOW_ACTION_TYPE_INDIRECT_LIST

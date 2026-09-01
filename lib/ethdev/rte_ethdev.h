@@ -1055,9 +1055,6 @@ struct rte_eth_txmode {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * A structure used to configure an Rx packet segment to split.
  *
  * If RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT flag is set in offloads field,
@@ -1143,9 +1140,6 @@ struct rte_eth_rxseg_split {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * A common structure used to describe Rx packet segment properties.
  */
 union rte_eth_rxseg {
@@ -1734,9 +1728,6 @@ struct rte_eth_switch_info {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * Ethernet device Rx buffer segmentation capabilities.
  *
  * @see rte_eth_rxseg_split
@@ -1766,9 +1757,6 @@ enum rte_eth_representor_type {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this enumeration may change without prior notice.
- *
  * Ethernet device error handling mode.
  */
 enum rte_eth_err_handle_mode {
