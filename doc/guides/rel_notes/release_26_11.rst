@@ -200,6 +200,7 @@ API Changes
   * clock: ``rte_eth_read_clock``
   * flow dump: ``rte_flow_dev_dump``
   * FEC: ``rte_eth_fec_get_capability``, ``rte_eth_fec_get`` and ``rte_eth_fec_set``
+  * link speed: ``rte_eth_link_speed_to_str`` and ``rte_eth_link_to_str``
 
 
 ABI Changes

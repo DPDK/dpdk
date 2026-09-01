@@ -3104,9 +3104,6 @@ int rte_eth_link_get_nowait(uint16_t port_id, struct rte_eth_link *link)
 	__rte_warn_unused_result;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * The function converts a link_speed to a string. It handles all special
  * values like unknown or none speed.
  *
@@ -3116,7 +3113,6 @@ int rte_eth_link_get_nowait(uint16_t port_id, struct rte_eth_link *link)
  *   Link speed in textual format. It's pointer to immutable memory.
  *   No free is required.
  */
-__rte_experimental
 const char *rte_eth_link_speed_to_str(uint32_t link_speed);
 
 /**
@@ -3134,9 +3130,6 @@ __rte_experimental
 const char *rte_eth_link_connector_to_str(enum rte_eth_link_connector link_connector);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * The function converts a rte_eth_link struct representing a link status to
  * a string.
  *
@@ -3151,7 +3144,6 @@ const char *rte_eth_link_connector_to_str(enum rte_eth_link_connector link_conne
  * @return
  *   Number of bytes written to str array or -EINVAL if bad parameter.
  */
-__rte_experimental
 int rte_eth_link_to_str(char *str, size_t len,
 			const struct rte_eth_link *eth_link);
 

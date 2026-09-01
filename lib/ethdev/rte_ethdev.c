@@ -3224,7 +3224,7 @@ rte_eth_link_get_nowait(uint16_t port_id, struct rte_eth_link *eth_link)
 	return 0;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_link_speed_to_str, 20.11)
+RTE_EXPORT_SYMBOL(rte_eth_link_speed_to_str)
 const char *
 rte_eth_link_speed_to_str(uint32_t link_speed)
 {
@@ -3291,7 +3291,7 @@ rte_eth_link_speed_to_str(uint32_t link_speed)
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_link_to_str, 20.11)
+RTE_EXPORT_SYMBOL(rte_eth_link_to_str)
 int
 rte_eth_link_to_str(char *str, size_t len, const struct rte_eth_link *eth_link)
 {
