@@ -221,6 +221,9 @@ API Changes
   * congestion management:
     ``rte_eth_cman_config_init``, ``rte_eth_cman_config_set``,
     ``rte_eth_cman_config_get`` and ``rte_eth_cman_info_get``
+  * ip reassembly:
+    ``rte_eth_ip_reassembly_capability_get``, ``rte_eth_ip_reassembly_conf_get`` and
+    ``rte_eth_ip_reassembly_conf_set``
 
 
 ABI Changes

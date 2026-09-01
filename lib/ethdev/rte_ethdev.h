@@ -5799,9 +5799,6 @@ struct rte_eth_ip_reassembly_params {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get IP reassembly capabilities supported by the PMD. This is the first API
  * to be called for enabling the IP reassembly offload feature. PMD will return
  * the maximum values of parameters that PMD can support and user can call
@@ -5818,14 +5815,10 @@ struct rte_eth_ip_reassembly_params {
  *   - (-EINVAL) if device is not configured or *capa* passed is NULL.
  *   - (0) on success.
  */
-__rte_experimental
 int rte_eth_ip_reassembly_capability_get(uint16_t port_id,
 		struct rte_eth_ip_reassembly_params *capa);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get IP reassembly configuration parameters currently set in PMD.
  * The API will return error if the configuration is not already
  * set using rte_eth_ip_reassembly_conf_set() before calling this API or if
@@ -5843,14 +5836,10 @@ int rte_eth_ip_reassembly_capability_get(uint16_t port_id,
  *              configuration is not set using rte_eth_ip_reassembly_conf_set().
  *   - (0) on success.
  */
-__rte_experimental
 int rte_eth_ip_reassembly_conf_get(uint16_t port_id,
 		struct rte_eth_ip_reassembly_params *conf);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Set IP reassembly configuration parameters if the PMD supports IP reassembly
  * offload. User should first call rte_eth_ip_reassembly_capability_get() to
  * check the maximum values supported by the PMD before setting the
@@ -5876,7 +5865,6 @@ int rte_eth_ip_reassembly_conf_get(uint16_t port_id,
  *               successfully by the PMD.
  *   - (0) on success.
  */
-__rte_experimental
 int rte_eth_ip_reassembly_conf_set(uint16_t port_id,
 		const struct rte_eth_ip_reassembly_params *conf);
 
