@@ -216,10 +216,6 @@ struct __rte_cache_aligned vhost_crypto {
 
 	uint64_t last_session_id;
 
-	uint64_t cache_sym_session_id;
-	struct rte_cryptodev_sym_session *cache_sym_session;
-	uint64_t cache_asym_session_id;
-	struct rte_cryptodev_asym_session *cache_asym_session;
 	/** socket id for the device */
 	int socket_id;
 
@@ -1590,22 +1586,16 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 		memcpy(vc_req_out, vc_req, sizeof(struct vhost_crypto_data_req));
 		session_id = req.header.session_id;
 
-		/* one branch to avoid unnecessary table lookup */
-		if (vcrypto->cache_sym_session_id != session_id) {
-			err = rte_hash_lookup_data(vcrypto->session_map,
-					&session_id, (void **)&vhost_session);
-			if (unlikely(err < 0)) {
-				err = VIRTIO_CRYPTO_ERR;
-				VC_LOG_ERR("Failed to find session %"PRIu64,
+		err = rte_hash_lookup_data(vcrypto->session_map,
+				&session_id, (void **)&vhost_session);
+		if (unlikely(err < 0)) {
+			err = VIRTIO_CRYPTO_ERR;
+			VC_LOG_ERR("Failed to find session %"PRIu64,
 						session_id);
-				goto error_exit;
-			}
-
-			vcrypto->cache_sym_session = vhost_session->sym;
-			vcrypto->cache_sym_session_id = session_id;
+			goto error_exit;
 		}
 
-		sym_session = vcrypto->cache_sym_session;
+		sym_session = vhost_session->sym;
 		op->type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
 
 		err = rte_crypto_op_attach_sym_session(op, sym_session);
@@ -1641,22 +1631,16 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 	case VIRTIO_CRYPTO_AKCIPHER_DECRYPT:
 		session_id = req.header.session_id;
 
-		/* one branch to avoid unnecessary table lookup */
-		if (vcrypto->cache_asym_session_id != session_id) {
-			err = rte_hash_lookup_data(vcrypto->session_map,
-					&session_id, (void **)&vhost_session);
-			if (unlikely(err < 0)) {
-				err = VIRTIO_CRYPTO_ERR;
-				VC_LOG_ERR("Failed to find asym session %"PRIu64,
-						   session_id);
-				goto error_exit;
-			}
-
-			vcrypto->cache_asym_session = vhost_session->asym;
-			vcrypto->cache_asym_session_id = session_id;
+		err = rte_hash_lookup_data(vcrypto->session_map,
+				&session_id, (void **)&vhost_session);
+		if (unlikely(err < 0)) {
+			err = VIRTIO_CRYPTO_ERR;
+			VC_LOG_ERR("Failed to find asym session %"PRIu64,
+					   session_id);
+			goto error_exit;
 		}
 
-		asym_session = vcrypto->cache_asym_session;
+		asym_session = vhost_session->asym;
 		op->type = RTE_CRYPTO_OP_TYPE_ASYMMETRIC;
 
 		err = rte_crypto_op_attach_asym_session(op, asym_session);
@@ -1834,8 +1818,6 @@ rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
 
 	vcrypto->sess_pool = sess_pool;
 	vcrypto->cid = cryptodev_id;
-	vcrypto->cache_sym_session_id = UINT64_MAX;
-	vcrypto->cache_asym_session_id = UINT64_MAX;
 	vcrypto->last_session_id = 1;
 	vcrypto->dev = dev;
 	vcrypto->option = RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE;
