@@ -207,6 +207,13 @@ API Changes
     ``rte_flow_get_restore_info``
   * flow age: ``rte_flow_get_aged_flows`` and ``rte_flow_get_q_aged_flows``
   * flow action: ``rte_flow_action_handle_*`` and ``rte_flow_action_list_handle_*``
+  * flow template:
+    ``rte_flow_configure``, ``rte_flow_info_get``,
+    ``rte_flow_pattern_*``,
+    ``rte_flow_actions_*``,
+    ``rte_flow_template_*``,
+    ``rte_flow_async_*``,
+    ``rte_flow_push``, ``rte_flow_pull``
 
 
 ABI Changes
