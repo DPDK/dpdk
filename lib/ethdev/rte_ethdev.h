@@ -2373,9 +2373,6 @@ const char *rte_eth_dev_rx_offload_name(uint64_t offload);
 const char *rte_eth_dev_tx_offload_name(uint64_t offload);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Get RTE_ETH_DEV_CAPA_* flag name.
  *
  * @param capability
@@ -2383,7 +2380,6 @@ const char *rte_eth_dev_tx_offload_name(uint64_t offload);
  * @return
  *   Capability name or 'UNKNOWN' if the flag cannot be recognized.
  */
-__rte_experimental
 const char *rte_eth_dev_capability_name(uint64_t capability);
 
 /**
@@ -3455,9 +3451,6 @@ int rte_eth_xstats_reset(uint16_t port_id);
 int rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Retrieve the Ethernet addresses of an Ethernet device.
  *
  * @param port_id
@@ -3474,7 +3467,6 @@ int rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr);
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-__rte_experimental
 int rte_eth_macaddrs_get(uint16_t port_id, struct rte_ether_addr *ma,
 	unsigned int num);
 
@@ -3501,9 +3493,6 @@ int rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info)
 	__rte_warn_unused_result;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Retrieve the configuration of an Ethernet device.
  *
  * @param port_id
@@ -3515,7 +3504,6 @@ int rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info)
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-__rte_experimental
 int rte_eth_dev_conf_get(uint16_t port_id, struct rte_eth_conf *dev_conf)
 	__rte_warn_unused_result;
 
@@ -4774,9 +4762,6 @@ rte_eth_dev_rss_hash_conf_get(uint16_t port_id,
 			      struct rte_eth_rss_conf *rss_conf);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
- *
  *  Get the name of RSS hash algorithm.
  *
  * @param rss_algo
@@ -4785,14 +4770,10 @@ rte_eth_dev_rss_hash_conf_get(uint16_t port_id,
  * @return
  *   Hash algorithm name or 'UNKNOWN' if the rss_algo cannot be recognized.
  */
-__rte_experimental
 const char *
 rte_eth_dev_rss_algo_name(enum rte_eth_hash_function rss_algo);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
- *
  * Get RSS hash algorithm by its name.
  *
  * @param name
@@ -4805,7 +4786,6 @@ rte_eth_dev_rss_algo_name(enum rte_eth_hash_function rss_algo);
  *   - (0) if successful.
  *   - (-EINVAL) if not found.
  */
-__rte_experimental
 int
 rte_eth_find_rss_algo(const char *name, uint32_t *algo);
 
@@ -5200,7 +5180,6 @@ int rte_eth_get_monitor_addr(uint16_t port_id, uint16_t queue_id,
  *   - (-EIO) if device is removed.
  *   - others depends on the specific operations implementation.
  */
-__rte_experimental
 int rte_eth_dev_get_reg_info_ext(uint16_t port_id, struct rte_dev_reg_info *info);
 
 /**
@@ -5874,9 +5853,6 @@ typedef struct {
 } rte_eth_ip_reassembly_dynfield_t;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Dump private info from device to a file. Provided data and the order depends
  * on the PMD.
  *
@@ -5891,13 +5867,9 @@ typedef struct {
  *   - (-ENOTSUP) if the device does not support this function.
  *   - (-EIO) if device is removed.
  */
-__rte_experimental
 int rte_eth_dev_priv_dump(uint16_t port_id, FILE *file);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Dump ethdev Rx descriptor info to a file.
  *
  * This API is used for debugging, not a dataplane API.
@@ -5917,14 +5889,10 @@ int rte_eth_dev_priv_dump(uint16_t port_id, FILE *file);
  *   - On success, zero.
  *   - On failure, a negative value.
  */
-__rte_experimental
 int rte_eth_rx_descriptor_dump(uint16_t port_id, uint16_t queue_id,
 			       uint16_t offset, uint16_t num, FILE *file);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Dump ethdev Tx descriptor info to a file.
  *
  * This API is used for debugging, not a dataplane API.
@@ -5944,7 +5912,6 @@ int rte_eth_rx_descriptor_dump(uint16_t port_id, uint16_t queue_id,
  *   - On success, zero.
  *   - On failure, a negative value.
  */
-__rte_experimental
 int rte_eth_tx_descriptor_dump(uint16_t port_id, uint16_t queue_id,
 			       uint16_t offset, uint16_t num, FILE *file);
 

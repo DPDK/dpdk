@@ -227,6 +227,12 @@ API Changes
   * priority flow:
     ``rte_eth_dev_priority_flow_ctrl_queue_configure`` and
     ``rte_eth_dev_priority_flow_ctrl_queue_info_get``
+  * device info:
+    ``rte_eth_dev_capability_name``, ``rte_eth_dev_conf_get``,
+    ``rte_eth_macaddrs_get``, ``rte_eth_dev_priv_dump``,
+    ``rte_eth_rx_descriptor_dump``, ``rte_eth_tx_descriptor_dump``,
+    ``rte_eth_dev_rss_algo_name``, ``rte_eth_find_rss_algo`` and
+    ``rte_eth_dev_get_reg_info_ext``
 
 
 ABI Changes
