@@ -1322,7 +1322,7 @@ rte_flow_get_q_aged_flows(uint16_t port_id, uint32_t queue_id, void **contexts,
 				  NULL, rte_strerror(ENOTSUP));
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_action_handle_create, 21.05)
+RTE_EXPORT_SYMBOL(rte_flow_action_handle_create)
 struct rte_flow_action_handle *
 rte_flow_action_handle_create(uint16_t port_id,
 			      const struct rte_flow_indir_action_conf *conf,
@@ -1350,7 +1350,7 @@ rte_flow_action_handle_create(uint16_t port_id,
 	return handle;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_action_handle_destroy, 21.05)
+RTE_EXPORT_SYMBOL(rte_flow_action_handle_destroy)
 int
 rte_flow_action_handle_destroy(uint16_t port_id,
 			       struct rte_flow_action_handle *handle,
@@ -1374,7 +1374,7 @@ rte_flow_action_handle_destroy(uint16_t port_id,
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_action_handle_update, 21.05)
+RTE_EXPORT_SYMBOL(rte_flow_action_handle_update)
 int
 rte_flow_action_handle_update(uint16_t port_id,
 			      struct rte_flow_action_handle *handle,
@@ -1399,7 +1399,7 @@ rte_flow_action_handle_update(uint16_t port_id,
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_action_handle_query, 21.05)
+RTE_EXPORT_SYMBOL(rte_flow_action_handle_query)
 int
 rte_flow_action_handle_query(uint16_t port_id,
 			     const struct rte_flow_action_handle *handle,
@@ -2460,7 +2460,7 @@ rte_flow_async_action_handle_query(uint16_t port_id,
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_action_handle_query_update, 23.03)
+RTE_EXPORT_SYMBOL(rte_flow_action_handle_query_update)
 int
 rte_flow_action_handle_query_update(uint16_t port_id,
 				    struct rte_flow_action_handle *handle,
@@ -2513,7 +2513,7 @@ rte_flow_async_action_handle_query_update(uint16_t port_id, uint32_t queue_id,
 								  user_data, error);
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_action_list_handle_create, 23.07)
+RTE_EXPORT_SYMBOL(rte_flow_action_list_handle_create)
 struct rte_flow_action_list_handle *
 rte_flow_action_list_handle_create(uint16_t port_id,
 				   const
@@ -2541,7 +2541,7 @@ rte_flow_action_list_handle_create(uint16_t port_id,
 	return handle;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_action_list_handle_destroy, 23.07)
+RTE_EXPORT_SYMBOL(rte_flow_action_list_handle_destroy)
 int
 rte_flow_action_list_handle_destroy(uint16_t port_id,
 				    struct rte_flow_action_list_handle *handle,
@@ -2629,7 +2629,7 @@ rte_flow_async_action_list_handle_destroy(uint16_t port_id, uint32_t queue_id,
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_action_list_handle_query_update, 23.07)
+RTE_EXPORT_SYMBOL(rte_flow_action_list_handle_query_update)
 int
 rte_flow_action_list_handle_query_update(uint16_t port_id,
 			 const struct rte_flow_action_list_handle *handle,

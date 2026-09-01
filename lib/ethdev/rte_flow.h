@@ -5046,9 +5046,6 @@ struct rte_flow_indir_action_conf {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Create an indirect action object that can be used in flow rules
  * via its handle.
  * The created object handle has single state and configuration
@@ -5072,7 +5069,6 @@ struct rte_flow_indir_action_conf {
  *   - (EINVAL) if *action* invalid.
  *   - (ENOTSUP) if *action* valid but unsupported.
  */
-__rte_experimental
 struct rte_flow_action_handle *
 rte_flow_action_handle_create(uint16_t port_id,
 			      const struct rte_flow_indir_action_conf *conf,
@@ -5080,9 +5076,6 @@ rte_flow_action_handle_create(uint16_t port_id,
 			      struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Destroy indirect action by handle.
  *
  * @param[in] port_id
@@ -5101,16 +5094,12 @@ rte_flow_action_handle_create(uint16_t port_id,
  *   - (-EBUSY) if action pointed by *action* handle still used by some rules
  *   rte_errno is also set.
  */
-__rte_experimental
 int
 rte_flow_action_handle_destroy(uint16_t port_id,
 			       struct rte_flow_action_handle *handle,
 			       struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Update in-place the action configuration and / or state pointed
  * by action *handle* with the configuration provided as *update* argument.
  * The update of the action configuration effects all flow rules reusing
@@ -5140,7 +5129,6 @@ rte_flow_action_handle_destroy(uint16_t port_id,
  *   - (-ENOENT) if indirect action object pointed by *handle* was not found.
  *   rte_errno is also set.
  */
-__rte_experimental
 int
 rte_flow_action_handle_update(uint16_t port_id,
 			      struct rte_flow_action_handle *handle,
@@ -5148,9 +5136,6 @@ rte_flow_action_handle_update(uint16_t port_id,
 			      struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Query the direct action by corresponding indirect action object handle.
  *
  * Retrieve action-specific data such as counters.
@@ -5172,7 +5157,6 @@ rte_flow_action_handle_update(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_action_handle_query(uint16_t port_id,
 			     const struct rte_flow_action_handle *handle,
@@ -6562,9 +6546,6 @@ rte_flow_async_action_handle_query(uint16_t port_id,
 		struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Query and update operational mode.
  *
  * @see rte_flow_action_handle_query_update()
@@ -6576,9 +6557,6 @@ enum rte_flow_query_update_mode {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Query and/or update indirect flow action.
  * If both query and update not NULL, the function atomically
  * queries and updates indirect action. Query and update are carried in order
@@ -6608,7 +6586,6 @@ enum rte_flow_query_update_mode {
  * - (-EINVAL) if *handle* or *mode* invalid or
  *             both *query* and *update* are NULL.
  */
-__rte_experimental
 int
 rte_flow_action_handle_query_update(uint16_t port_id,
 				    struct rte_flow_action_handle *handle,
@@ -6686,9 +6663,6 @@ struct rte_flow_action_indirect_list {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Create an indirect flow action object from flow actions list.
  * The object is identified by a unique handle.
  * The handle has single state and configuration
@@ -6712,7 +6686,6 @@ struct rte_flow_action_indirect_list {
  *   - (-EINVAL) if *actions* list invalid.
  *   - (-ENOTSUP) if *action* list element valid but unsupported.
  */
-__rte_experimental
 struct rte_flow_action_list_handle *
 rte_flow_action_list_handle_create(uint16_t port_id,
 				   const
@@ -6764,9 +6737,6 @@ rte_flow_async_action_list_handle_create(uint16_t port_id, uint32_t queue_id,
 					 struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Destroy indirect actions list by handle.
  *
  * @param[in] port_id
@@ -6784,7 +6754,6 @@ rte_flow_async_action_list_handle_create(uint16_t port_id, uint32_t queue_id,
  *   - (-ENOENT) if actions list pointed by *action* handle was not found.
  *   - (-EBUSY) if actions list pointed by *action* handle still used
  */
-__rte_experimental
 int
 rte_flow_action_list_handle_destroy(uint16_t port_id,
 				    struct rte_flow_action_list_handle *handle,
@@ -6829,9 +6798,6 @@ rte_flow_async_action_list_handle_destroy
 		 void *user_data, struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Query and/or update indirect flow actions list.
  * If both query and update not NULL, the function atomically
  * queries and updates indirect action. Query and update are carried in order
@@ -6864,7 +6830,6 @@ rte_flow_async_action_list_handle_destroy
  * - (-EINVAL) if *handle* or *mode* invalid or
  *             both *query* and *update* are NULL.
  */
-__rte_experimental
 int
 rte_flow_action_list_handle_query_update(uint16_t port_id,
 					 const struct rte_flow_action_list_handle *handle,
