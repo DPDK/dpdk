@@ -1268,7 +1268,7 @@ rte_flow_dev_dump(uint16_t port_id, struct rte_flow *flow,
 				  NULL, rte_strerror(ENOSYS));
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_get_aged_flows, 20.05)
+RTE_EXPORT_SYMBOL(rte_flow_get_aged_flows)
 int
 rte_flow_get_aged_flows(uint16_t port_id, void **contexts,
 		    uint32_t nb_contexts, struct rte_flow_error *error)
@@ -1294,7 +1294,7 @@ rte_flow_get_aged_flows(uint16_t port_id, void **contexts,
 				  NULL, rte_strerror(ENOTSUP));
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_get_q_aged_flows, 22.11)
+RTE_EXPORT_SYMBOL(rte_flow_get_q_aged_flows)
 int
 rte_flow_get_q_aged_flows(uint16_t port_id, uint32_t queue_id, void **contexts,
 			  uint32_t nb_contexts, struct rte_flow_error *error)

@@ -205,6 +205,7 @@ API Changes
     ``rte_flow_tunnel_item_release``,
     ``rte_flow_tunnel_action_decap_release`` and
     ``rte_flow_get_restore_info``
+  * flow age: ``rte_flow_get_aged_flows`` and ``rte_flow_get_q_aged_flows``
 
 
 ABI Changes

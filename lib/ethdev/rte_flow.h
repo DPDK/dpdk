@@ -4980,15 +4980,11 @@ rte_flow_conv(enum rte_flow_conv_op op,
  * @see rte_flow_action_age
  * @see RTE_ETH_EVENT_FLOW_AGED
  */
-__rte_experimental
 int
 rte_flow_get_aged_flows(uint16_t port_id, void **contexts,
 			uint32_t nb_contexts, struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Get aged-out flows of a given port on the given flow queue.
  *
  * If application configure port attribute with RTE_FLOW_PORT_FLAG_STRICT_QUEUE,
@@ -5024,7 +5020,6 @@ rte_flow_get_aged_flows(uint16_t port_id, void **contexts,
  * @see RTE_ETH_EVENT_FLOW_AGED
  * @see rte_flow_port_flag
  */
-__rte_experimental
 int
 rte_flow_get_q_aged_flows(uint16_t port_id, uint32_t queue_id, void **contexts,
 			  uint32_t nb_contexts, struct rte_flow_error *error);
