@@ -1418,9 +1418,6 @@ struct rte_eth_pfc_conf {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * A structure used to retrieve information of queue based PFC.
  */
 struct rte_eth_pfc_queue_info {
@@ -1433,9 +1430,6 @@ struct rte_eth_pfc_queue_info {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * A structure used to configure Ethernet priority flow control parameters for
  * ethdev queues.
  *
@@ -4539,9 +4533,6 @@ int rte_eth_dev_mac_addr_add(uint16_t port_id, struct rte_ether_addr *mac_addr,
 				uint32_t pool);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Retrieve the information for queue based PFC.
  *
  * @param port_id
@@ -4555,14 +4546,10 @@ int rte_eth_dev_mac_addr_add(uint16_t port_id, struct rte_ether_addr *mac_addr,
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-__rte_experimental
 int rte_eth_dev_priority_flow_ctrl_queue_info_get(uint16_t port_id,
 		struct rte_eth_pfc_queue_info *pfc_queue_info);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Configure the queue based priority flow control for a given queue
  * for Ethernet device.
  *
@@ -4582,7 +4569,6 @@ int rte_eth_dev_priority_flow_ctrl_queue_info_get(uint16_t port_id,
  *   - (-EINVAL)  if bad parameter
  *   - (-EIO)     if flow control setup queue failure
  */
-__rte_experimental
 int rte_eth_dev_priority_flow_ctrl_queue_configure(uint16_t port_id,
 		struct rte_eth_pfc_queue_conf *pfc_queue_conf);
 

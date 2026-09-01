@@ -224,6 +224,9 @@ API Changes
   * ip reassembly:
     ``rte_eth_ip_reassembly_capability_get``, ``rte_eth_ip_reassembly_conf_get`` and
     ``rte_eth_ip_reassembly_conf_set``
+  * priority flow:
+    ``rte_eth_dev_priority_flow_ctrl_queue_configure`` and
+    ``rte_eth_dev_priority_flow_ctrl_queue_info_get``
 
 
 ABI Changes
