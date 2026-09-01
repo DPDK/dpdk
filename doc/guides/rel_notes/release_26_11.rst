@@ -215,6 +215,9 @@ API Changes
     ``rte_flow_async_*``,
     ``rte_flow_push``, ``rte_flow_pull``
   * flow flex: ``rte_flow_flex_item_create`` and ``rte_flow_flex_item_release``
+  * remaining flow helpers: ``rte_flow_actions_update``, ``rte_flow_restore_info_dynflag``,
+    ``rte_flow_calc_table_hash``, ``rte_flow_group_set_miss_actions``,
+    and ``rte_flow_calc_encap_hash``
 
 
 ABI Changes

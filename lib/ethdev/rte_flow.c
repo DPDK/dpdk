@@ -466,7 +466,7 @@ rte_flow_destroy(uint16_t port_id,
 				  NULL, rte_strerror(ENOSYS));
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_actions_update, 23.07)
+RTE_EXPORT_SYMBOL(rte_flow_actions_update)
 int
 rte_flow_actions_update(uint16_t port_id,
 			struct rte_flow *flow,
@@ -1519,7 +1519,7 @@ static struct {
 	.desc = { .name = "RTE_MBUF_F_RX_RESTORE_INFO", },
 };
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_restore_info_dynflag, 23.07)
+RTE_EXPORT_SYMBOL(rte_flow_restore_info_dynflag)
 uint64_t
 rte_flow_restore_info_dynflag(void)
 {
@@ -2062,7 +2062,7 @@ rte_flow_template_table_destroy(uint16_t port_id,
 				  NULL, rte_strerror(ENOTSUP));
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_group_set_miss_actions, 23.11)
+RTE_EXPORT_SYMBOL(rte_flow_group_set_miss_actions)
 int
 rte_flow_group_set_miss_actions(uint16_t port_id,
 				uint32_t group_id,
@@ -2691,7 +2691,7 @@ rte_flow_async_action_list_handle_query_update(uint16_t port_id, uint32_t queue_
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_calc_table_hash, 23.11)
+RTE_EXPORT_SYMBOL(rte_flow_calc_table_hash)
 int
 rte_flow_calc_table_hash(uint16_t port_id, const struct rte_flow_template_table *table,
 			 const struct rte_flow_item pattern[], uint8_t pattern_template_index,
@@ -2713,7 +2713,7 @@ rte_flow_calc_table_hash(uint16_t port_id, const struct rte_flow_template_table 
 	return flow_err(port_id, ret, error);
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_flow_calc_encap_hash, 24.03)
+RTE_EXPORT_SYMBOL(rte_flow_calc_encap_hash)
 int
 rte_flow_calc_encap_hash(uint16_t port_id, const struct rte_flow_item pattern[],
 			 enum rte_flow_encap_hash_field dest_field, uint8_t hash_len,

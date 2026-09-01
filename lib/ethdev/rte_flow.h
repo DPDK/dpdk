@@ -4726,7 +4726,6 @@ rte_flow_destroy(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_actions_update(uint16_t port_id,
 			struct rte_flow *flow,
@@ -5293,7 +5292,6 @@ rte_flow_tunnel_match(uint16_t port_id,
  * @return
  *   The offload flag indicating rte_flow_get_restore_info() must be called.
  */
-__rte_experimental
 uint64_t
 rte_flow_restore_info_dynflag(void);
 
@@ -5964,9 +5962,6 @@ rte_flow_template_table_destroy(uint16_t port_id,
 		struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Set group miss actions.
  *
  * @param port_id
@@ -5984,7 +5979,6 @@ rte_flow_template_table_destroy(uint16_t port_id,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-__rte_experimental
 int
 rte_flow_group_set_miss_actions(uint16_t port_id,
 				uint32_t group_id,
@@ -6765,9 +6759,6 @@ rte_flow_async_action_list_handle_query_update(uint16_t port_id, uint32_t queue_
 					  struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Calculate the hash for a given pattern in a given table as
  * calculated by the HW.
  *
@@ -6790,16 +6781,12 @@ rte_flow_async_action_list_handle_query_update(uint16_t port_id, uint32_t queue_
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-ENOTSUP) if underlying device does not support this functionality.
  */
-__rte_experimental
 int
 rte_flow_calc_table_hash(uint16_t port_id, const struct rte_flow_template_table *table,
 			 const struct rte_flow_item pattern[], uint8_t pattern_template_index,
 			 uint32_t *hash, struct rte_flow_error *error);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Destination field type for the hash calculation, when encap action is used.
  * The encap field implies the size, meaning XXX_SRC_PORT hash len is 2 bytes,
  * while XXX_NVGRE_FLOW_ID hash len is 1 byte.
@@ -6814,9 +6801,6 @@ enum rte_flow_encap_hash_field {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Simulate HW hash calculation that is done when an encap action is being used.
  * This hash can be stored in tunnel outer header to improve packet distribution.
  *
@@ -6843,7 +6827,6 @@ enum rte_flow_encap_hash_field {
  *   - (-EINVAL) if *pattern* doesn't hold enough information to calculate the hash
  *               or the dest is not supported.
  */
-__rte_experimental
 int
 rte_flow_calc_encap_hash(uint16_t port_id, const struct rte_flow_item pattern[],
 			 enum rte_flow_encap_hash_field dest_field, uint8_t hash_len,
