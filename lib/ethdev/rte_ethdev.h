@@ -1907,9 +1907,6 @@ struct __rte_cache_min_aligned rte_eth_txq_info {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice.
- *
  * Ethernet device Rx queue information structure for recycling mbufs.
  * Used to retrieve Rx queue information when Tx queue reusing mbufs and moving
  * them into Rx mbuf ring.
@@ -2679,9 +2676,6 @@ int rte_eth_hairpin_bind(uint16_t tx_port, uint16_t rx_port);
 int rte_eth_hairpin_unbind(uint16_t tx_port, uint16_t rx_port);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  *  Get the number of aggregated ports of the DPDK port (specified with port_id).
  *  It is used when multiple ports are aggregated into a single one.
  *
@@ -2693,13 +2687,9 @@ int rte_eth_hairpin_unbind(uint16_t tx_port, uint16_t rx_port);
  * @return
  *   - (>=0) the number of aggregated port if success.
  */
-__rte_experimental
 int rte_eth_dev_count_aggr_ports(uint16_t port_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  *  Map a Tx queue with an aggregated port of the DPDK port (specified with port_id).
  *  When multiple ports are aggregated into a single one,
  *  it allows choosing which port to use for Tx via a queue.
@@ -2723,7 +2713,6 @@ int rte_eth_dev_count_aggr_ports(uint16_t port_id);
  * @return
  *   Zero if successful. Non-zero otherwise.
  */
-__rte_experimental
 int rte_eth_dev_map_aggr_tx_affinity(uint16_t port_id, uint16_t tx_queue_id,
 				     uint8_t affinity);
 
@@ -2753,9 +2742,6 @@ int rte_eth_dev_socket_id(uint16_t port_id);
 int rte_eth_dev_is_valid_port(uint16_t port_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
- *
  * Check if Rx queue is valid.
  * If the queue has been setup, it is considered valid.
  *
@@ -2768,13 +2754,9 @@ int rte_eth_dev_is_valid_port(uint16_t port_id);
  *   - -EINVAL: if queue_id is out of range or queue has not been setup.
  *   - 0 if Rx queue is valid.
  */
-__rte_experimental
 int rte_eth_rx_queue_is_valid(uint16_t port_id, uint16_t queue_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
- *
  * Check if Tx queue is valid.
  * If the queue has been setup, it is considered valid.
  *
@@ -2787,7 +2769,6 @@ int rte_eth_rx_queue_is_valid(uint16_t port_id, uint16_t queue_id);
  *   - -EINVAL: if queue_id is out of range or queue has not been setup.
  *   - 0 if Tx queue is valid.
  */
-__rte_experimental
 int rte_eth_tx_queue_is_valid(uint16_t port_id, uint16_t queue_id);
 
 /**
@@ -3740,9 +3721,6 @@ int rte_eth_dev_get_vlan_offload(uint16_t port_id);
 int rte_eth_dev_set_vlan_pvid(uint16_t port_id, uint16_t pvid, int on);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Set Rx queue available descriptors threshold.
  *
  * @param port_id
@@ -3764,14 +3742,10 @@ int rte_eth_dev_set_vlan_pvid(uint16_t port_id, uint16_t pvid, int on);
  *   - (-ENOTSUP) if available Rx descriptors threshold is not supported.
  *   - (-EIO) if device is removed.
  */
-__rte_experimental
 int rte_eth_rx_avail_thresh_set(uint16_t port_id, uint16_t queue_id,
 			       uint8_t avail_thresh);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Find Rx queue with RTE_ETH_EVENT_RX_AVAIL_THRESH event pending.
  *
  * @param port_id
@@ -3794,7 +3768,6 @@ int rte_eth_rx_avail_thresh_set(uint16_t port_id, uint16_t queue_id,
  *   - (-ENOTSUP) if operation is not supported.
  *   - (-EIO) if device is removed.
  */
-__rte_experimental
 int rte_eth_rx_avail_thresh_query(uint16_t port_id, uint16_t *queue_id,
 				 uint8_t *avail_thresh);
 
@@ -5052,9 +5025,6 @@ int rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Retrieve information about given ports's Rx queue for recycling mbufs.
  *
  * @param port_id
@@ -5071,7 +5041,6 @@ int rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
  *   - -ENOTSUP: routine is not supported by the device PMD.
  *   - -EINVAL:  The queue_id is out of range.
  */
-__rte_experimental
 int rte_eth_recycle_rx_queue_info_get(uint16_t port_id,
 		uint16_t queue_id,
 		struct rte_eth_recycle_rxq_info *recycle_rxq_info);

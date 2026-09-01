@@ -236,6 +236,12 @@ API Changes
   * speed lanes:
     ``rte_eth_speed_lanes_get``, ``rte_eth_speed_lanes_set`` and
     ``rte_eth_speed_lanes_get_capability``
+  * queue helpers:
+    ``rte_eth_rx_queue_is_valid``, ``rte_eth_tx_queue_is_valid``,
+    ``rte_eth_rx_avail_thresh_set``, ``rte_eth_rx_avail_thresh_query``,
+    ``rte_eth_recycle_rx_queue_info_get``,
+    ``rte_eth_dev_count_aggr_ports`` and
+    ``rte_eth_dev_map_aggr_tx_affinity``
 
 
 ABI Changes

@@ -833,7 +833,7 @@ eth_dev_validate_tx_queue(const struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	return 0;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_rx_queue_is_valid, 23.07)
+RTE_EXPORT_SYMBOL(rte_eth_rx_queue_is_valid)
 int
 rte_eth_rx_queue_is_valid(uint16_t port_id, uint16_t queue_id)
 {
@@ -845,7 +845,7 @@ rte_eth_rx_queue_is_valid(uint16_t port_id, uint16_t queue_id)
 	return eth_dev_validate_rx_queue(dev, queue_id);
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_tx_queue_is_valid, 23.07)
+RTE_EXPORT_SYMBOL(rte_eth_tx_queue_is_valid)
 int
 rte_eth_tx_queue_is_valid(uint16_t port_id, uint16_t queue_id)
 {
@@ -5717,7 +5717,7 @@ int rte_eth_get_queue_rate_limit(uint16_t port_id, uint16_t queue_idx,
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_rx_avail_thresh_set, 22.07)
+RTE_EXPORT_SYMBOL(rte_eth_rx_avail_thresh_set)
 int rte_eth_rx_avail_thresh_set(uint16_t port_id, uint16_t queue_id,
 			       uint8_t avail_thresh)
 {
@@ -5750,7 +5750,7 @@ int rte_eth_rx_avail_thresh_set(uint16_t port_id, uint16_t queue_id,
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_rx_avail_thresh_query, 22.07)
+RTE_EXPORT_SYMBOL(rte_eth_rx_avail_thresh_query)
 int rte_eth_rx_avail_thresh_query(uint16_t port_id, uint16_t *queue_id,
 				 uint8_t *avail_thresh)
 {
@@ -6436,7 +6436,7 @@ rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 	return 0;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_recycle_rx_queue_info_get, 23.11)
+RTE_EXPORT_SYMBOL(rte_eth_recycle_rx_queue_info_get)
 int
 rte_eth_recycle_rx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 		struct rte_eth_recycle_rxq_info *recycle_rxq_info)
@@ -7409,7 +7409,7 @@ rte_eth_buffer_split_get_supported_hdr_ptypes(uint16_t port_id, uint32_t *ptypes
 	return j;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_dev_count_aggr_ports, 23.03)
+RTE_EXPORT_SYMBOL(rte_eth_dev_count_aggr_ports)
 int rte_eth_dev_count_aggr_ports(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
@@ -7427,7 +7427,7 @@ int rte_eth_dev_count_aggr_ports(uint16_t port_id)
 	return ret;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_dev_map_aggr_tx_affinity, 23.03)
+RTE_EXPORT_SYMBOL(rte_eth_dev_map_aggr_tx_affinity)
 int rte_eth_dev_map_aggr_tx_affinity(uint16_t port_id, uint16_t tx_queue_id,
 				     uint8_t affinity)
 {
