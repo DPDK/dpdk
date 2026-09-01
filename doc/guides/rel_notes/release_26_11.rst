@@ -324,6 +324,73 @@ API Changes
     related and are sizes of internal arrays in ethdev that only drivers need to care about.
     Those macros are moved to the driver only ethdev API.
 
+* ethdev: Promoted the following API from experimental to stable:
+
+  * meter (MTR) and policing: ``rte_mtr_*``
+  * SFF: ``rte_eth_dev_get_module_info`` and ``rte_eth_dev_get_module_eeprom``
+  * flow conversion: ``rte_flow_conv``
+  * hairpin queue: ``rte_eth_rx_hairpin_queue_setup``,
+    ``rte_eth_tx_hairpin_queue_setup``,
+    ``rte_eth_dev_hairpin_capability_get``,
+    ``rte_eth_hairpin_bind``,
+    ``rte_eth_hairpin_unbind``,
+    ``rte_eth_hairpin_get_peer_ports``
+  * clock: ``rte_eth_read_clock``
+  * flow dump: ``rte_flow_dev_dump``
+  * FEC: ``rte_eth_fec_get_capability``, ``rte_eth_fec_get`` and ``rte_eth_fec_set``
+  * link speed: ``rte_eth_link_speed_to_str`` and ``rte_eth_link_to_str``
+  * flow tunnel: ``rte_flow_tunnel_decap_set``, ``rte_flow_tunnel_match``,
+    ``rte_flow_tunnel_item_release``,
+    ``rte_flow_tunnel_action_decap_release`` and
+    ``rte_flow_get_restore_info``
+  * flow age: ``rte_flow_get_aged_flows`` and ``rte_flow_get_q_aged_flows``
+  * flow action: ``rte_flow_action_handle_*`` and ``rte_flow_action_list_handle_*``
+  * flow template:
+    ``rte_flow_configure``, ``rte_flow_info_get``,
+    ``rte_flow_pattern_*``,
+    ``rte_flow_actions_*``,
+    ``rte_flow_template_*``,
+    ``rte_flow_async_*``,
+    ``rte_flow_push``, ``rte_flow_pull``
+  * flow flex: ``rte_flow_flex_item_create`` and ``rte_flow_flex_item_release``
+  * remaining flow helpers: ``rte_flow_actions_update``, ``rte_flow_restore_info_dynflag``,
+    ``rte_flow_calc_table_hash``, ``rte_flow_group_set_miss_actions``,
+    and ``rte_flow_calc_encap_hash``
+  * congestion management:
+    ``rte_eth_cman_config_init``, ``rte_eth_cman_config_set``,
+    ``rte_eth_cman_config_get`` and ``rte_eth_cman_info_get``
+  * ip reassembly:
+    ``rte_eth_ip_reassembly_capability_get``, ``rte_eth_ip_reassembly_conf_get`` and
+    ``rte_eth_ip_reassembly_conf_set``
+  * priority flow:
+    ``rte_eth_dev_priority_flow_ctrl_queue_configure`` and
+    ``rte_eth_dev_priority_flow_ctrl_queue_info_get``
+  * device info:
+    ``rte_eth_dev_capability_name``, ``rte_eth_dev_conf_get``,
+    ``rte_eth_macaddrs_get``, ``rte_eth_dev_priv_dump``,
+    ``rte_eth_rx_descriptor_dump``, ``rte_eth_tx_descriptor_dump``,
+    ``rte_eth_dev_rss_algo_name``, ``rte_eth_find_rss_algo`` and
+    ``rte_eth_dev_get_reg_info_ext``
+  * speed lanes:
+    ``rte_eth_speed_lanes_get``, ``rte_eth_speed_lanes_set`` and
+    ``rte_eth_speed_lanes_get_capability``
+  * queue helpers:
+    ``rte_eth_rx_queue_is_valid``, ``rte_eth_tx_queue_is_valid``,
+    ``rte_eth_rx_avail_thresh_set``, ``rte_eth_rx_avail_thresh_query``,
+    ``rte_eth_recycle_rx_queue_info_get``,
+    ``rte_eth_dev_count_aggr_ports`` and
+    ``rte_eth_dev_map_aggr_tx_affinity``
+  * utility funcs:
+    ``rte_eth_get_monitor_addr``, ``rte_eth_representor_info_get``,
+    ``rte_eth_buffer_split_get_supported_hdr_ptypes``,
+    ``rte_eth_timesync_adjust_freq`` and ``rte_tm_node_query``
+  * fast path inline funcs:
+    ``rte_eth_recycle_mbufs`` and ``rte_eth_tx_queue_count``
+  * buffer split and error handling types:
+    ``rte_eth_rxseg_split``, ``rte_eth_rxseg``, ``rte_eth_rxseg_capa``
+    and ``rte_eth_err_handle_mode``
+  * all remaining ``rte_flow`` item, action and async operation structures
+
 
 ABI Changes
 -----------
