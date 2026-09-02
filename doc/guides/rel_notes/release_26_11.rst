@@ -111,6 +111,7 @@ API Changes
   * link profiles: ``rte_event_port_profile_links_set``,
     ``rte_event_port_profile_unlink`` and
     ``rte_event_port_profile_links_get``
+  * DMA adapter: ``rte_event_dma_adapter_*``
 
 
 ABI Changes
