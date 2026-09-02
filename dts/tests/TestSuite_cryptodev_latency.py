@@ -13,6 +13,7 @@ from api.capabilities import (
     LinkTopology,
     requires_link_topology,
 )
+from api.context import get_ctx
 from api.cryptodev import Cryptodev
 from api.cryptodev.config import (
     AeadAlgName,
@@ -30,7 +31,6 @@ from api.cryptodev.types import (
     CryptodevResults,
 )
 from api.test import skip, verify
-from framework.context import get_ctx
 from framework.test_suite import BaseConfig, TestSuite, crypto_test
 from framework.testbed_model.virtual_device import VirtualDevice
 
