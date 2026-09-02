@@ -13,8 +13,7 @@ from enum import EnumMeta, Flag, auto, unique
 from pathlib import PurePath
 from typing import Literal, NamedTuple
 
-from api.utils import StrEnum
-from framework.params import (
+from api.params import (
     Params,
     Switch,
     YesNoSwitch,
@@ -25,7 +24,8 @@ from framework.params import (
     modify_str,
     str_from_flag_value,
 )
-from framework.params.eal import EalParams
+from api.params.eal import EalParams
+from api.utils import StrEnum
 
 from .types import RxOffloadCapability, TxOffloadCapability
 
