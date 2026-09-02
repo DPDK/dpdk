@@ -101,6 +101,9 @@ API Changes
     ``rte_event_eth_rx_adapter_runtime_params_init``,
     ``rte_event_eth_rx_adapter_runtime_params_set`` and
     ``rte_event_eth_rx_adapter_runtime_params_get``
+  * Tx adapter: ``rte_event_eth_tx_adapter_runtime_params_init``,
+    ``rte_event_eth_tx_adapter_runtime_params_set`` and
+    ``rte_event_eth_tx_adapter_runtime_params_get``
 
 
 ABI Changes

@@ -557,7 +557,6 @@ rte_event_eth_tx_adapter_queue_stop(uint16_t eth_dev_id, uint16_t tx_queue_id);
  *  -  0: Success
  *  - <0: Error code on failure
  */
-__rte_experimental
 int
 rte_event_eth_tx_adapter_runtime_params_init(
 		struct rte_event_eth_tx_adapter_runtime_params *txa_params);
@@ -579,7 +578,6 @@ rte_event_eth_tx_adapter_runtime_params_init(
  * -  0: Success
  * - <0: Error code on failure
  */
-__rte_experimental
 int
 rte_event_eth_tx_adapter_runtime_params_set(uint8_t id,
 		struct rte_event_eth_tx_adapter_runtime_params *params);
@@ -597,7 +595,6 @@ rte_event_eth_tx_adapter_runtime_params_set(uint8_t id,
  * -  0: Success
  * - <0: Error code on failure
  */
-__rte_experimental
 int
 rte_event_eth_tx_adapter_runtime_params_get(uint8_t id,
 		struct rte_event_eth_tx_adapter_runtime_params *params);
