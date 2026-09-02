@@ -20,9 +20,9 @@ from api.packet import (
 )
 from api.testpmd import TestPmd
 from api.testpmd.config import EthPeer
+from api.utils import generate_random_packets
 from framework.test_suite import TestSuite, func_test
 from framework.testbed_model.virtual_device import VirtualDevice
-from framework.utils import generate_random_packets
 
 
 @requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
