@@ -113,6 +113,10 @@ API Changes
     ``rte_event_port_profile_links_get`` and
     ``rte_event_port_profile_unlink``
 
+* reorder: Promoted the following API from experimental to stable:
+  ``rte_reorder_seqn``, ``rte_reorder_drain_up_to_seqn``,
+  ``rte_reorder_min_seqn_set`` and ``rte_reorder_memory_footprint_get``.
+
 
 ABI Changes
 -----------

@@ -29,15 +29,11 @@ typedef uint32_t rte_reorder_seqn_t;
 extern int rte_reorder_seqn_dynfield_offset;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Read reorder sequence number from mbuf.
  *
  * @param mbuf Structure to read from.
  * @return pointer to reorder sequence number.
  */
-__rte_experimental
 static inline rte_reorder_seqn_t *
 rte_reorder_seqn(struct rte_mbuf *mbuf)
 {
@@ -170,9 +166,6 @@ rte_reorder_drain(struct rte_reorder_buffer *b, struct rte_mbuf **mbufs,
 		unsigned max_mbufs);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Fetch set of reordered packets up to specified sequence number (exclusive).
  *
  * Returns a set of in-order packets from the reorder buffer structure.
@@ -190,15 +183,11 @@ rte_reorder_drain(struct rte_reorder_buffer *b, struct rte_mbuf **mbufs,
  * @return
  *   Number of mbuf pointers written to mbufs. 0 <= N < max_mbufs.
  */
-__rte_experimental
 unsigned int
 rte_reorder_drain_up_to_seqn(struct rte_reorder_buffer *b, struct rte_mbuf **mbufs,
 		unsigned int max_mbufs, rte_reorder_seqn_t seqn);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Set minimum sequence number of packet allowed to be buffered.
  * To successfully set new value,
  * reorder buffer has to be empty (after create, reset or drain_all).
@@ -210,14 +199,10 @@ rte_reorder_drain_up_to_seqn(struct rte_reorder_buffer *b, struct rte_mbuf **mbu
  * @return
  *   0 on success, a negative value otherwise.
  */
-__rte_experimental
 unsigned int
 rte_reorder_min_seqn_set(struct rte_reorder_buffer *b, rte_reorder_seqn_t min_seqn);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Determine the amount of memory needed by the reorder buffer
  * to accommodate a given number of elements.
  * @see rte_reorder_init()
@@ -227,7 +212,6 @@ rte_reorder_min_seqn_set(struct rte_reorder_buffer *b, rte_reorder_seqn_t min_se
  * @return
  *   Reorder buffer footprint measured in bytes.
  */
-__rte_experimental
 unsigned int
 rte_reorder_memory_footprint_get(unsigned int size);
 

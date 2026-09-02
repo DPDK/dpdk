@@ -35,7 +35,7 @@ EAL_REGISTER_TAILQ(rte_reorder_tailq)
 #define RTE_REORDER_NAMESIZE 32
 
 #define RTE_REORDER_SEQN_DYNFIELD_NAME "rte_reorder_seqn_dynfield"
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_reorder_seqn_dynfield_offset, 20.11)
+RTE_EXPORT_SYMBOL(rte_reorder_seqn_dynfield_offset)
 int rte_reorder_seqn_dynfield_offset = -1;
 
 /* A generic circular buffer */
@@ -61,7 +61,7 @@ struct __rte_cache_aligned rte_reorder_buffer {
 static void
 rte_reorder_free_mbufs(struct rte_reorder_buffer *b);
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_reorder_memory_footprint_get, 23.07)
+RTE_EXPORT_SYMBOL(rte_reorder_memory_footprint_get)
 unsigned int
 rte_reorder_memory_footprint_get(unsigned int size)
 {
@@ -482,7 +482,7 @@ ready_buffer_seqn_find(const struct cir_buffer *ready_buf, const uint32_t seqn)
 	return low;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_reorder_drain_up_to_seqn, 23.03)
+RTE_EXPORT_SYMBOL(rte_reorder_drain_up_to_seqn)
 unsigned int
 rte_reorder_drain_up_to_seqn(struct rte_reorder_buffer *b, struct rte_mbuf **mbufs,
 		const unsigned int max_mbufs, const rte_reorder_seqn_t seqn)
@@ -553,7 +553,7 @@ rte_reorder_is_empty(const struct rte_reorder_buffer *b)
 	return true;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_reorder_min_seqn_set, 23.03)
+RTE_EXPORT_SYMBOL(rte_reorder_min_seqn_set)
 unsigned int
 rte_reorder_min_seqn_set(struct rte_reorder_buffer *b, rte_reorder_seqn_t min_seqn)
 {
