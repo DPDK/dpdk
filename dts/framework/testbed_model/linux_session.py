@@ -23,6 +23,7 @@ from api.exception import (
     InternalError,
     RemoteCommandExecutionError,
 )
+from api.testbed_model.linux_session import LinuxSession as LinuxSessionBase
 from api.utils import expand_range
 from framework.testbed_model.port import PortInfo
 
@@ -79,7 +80,7 @@ class LshwOutput(TypedDict):
     configuration: LshwConfigurationOutput
 
 
-class LinuxSession(PosixSession):
+class LinuxSession(PosixSession, LinuxSessionBase):
     """The implementation of non-Posix compliant parts of Linux."""
 
     @staticmethod
