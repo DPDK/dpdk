@@ -5,11 +5,11 @@
 
 from collections.abc import Callable
 
+from api.testbed_model.capability import TestProtocol
 from framework.context import Context
 from framework.context import filter_cores as _filter_cores
 from framework.context import get_ctx as _get_ctx
 from framework.context import init_ctx as _init_ctx
-from framework.testbed_model.capability import TestProtocol
 from framework.testbed_model.cpu import LogicalCoreCount, LogicalCoreList
 
 

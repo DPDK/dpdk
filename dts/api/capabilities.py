@@ -23,7 +23,7 @@ Examples:
     .. code:: python
 
         from framework.test_suite import TestSuite, func_test
-        from framework.testbed_model.capability import LinkTopology, requires_link_topology
+        from api.testbed_model.capability import LinkTopology, requires_link_topology
         # The whole test suite (each test case within) doesn't require any links.
         @requires_link_topology(LinkTopology.NO_LINK)
         @func_test
@@ -34,7 +34,7 @@ Examples:
     .. code:: python
 
         from framework.test_suite import TestSuite, func_test
-        from framework.testbed_model.capability import NicCapability, requires_nic_capability
+        from api.testbed_model.capability import NicCapability, requires_nic_capability
         class TestPmdBufferScatter(TestSuite):
             # only the test case requires the SCATTERED_RX_ENABLED capability
             # other test cases may not require it
@@ -237,7 +237,7 @@ def requires_link_topology(
     Returns:
         The decorated test case or test suite.
     """
-    from framework.testbed_model.capability import TopologyCapability
+    from api.testbed_model.capability import TopologyCapability
 
     def add_required_topology(
         test_case_or_suite: type["TestProtocol"],
@@ -260,7 +260,7 @@ def requires_nic_capability(
     Returns:
         The decorated test case or test suite.
     """
-    from framework.testbed_model.capability import DecoratedNicCapability
+    from api.testbed_model.capability import DecoratedNicCapability
 
     def add_required_capability(
         test_case_or_suite: type["TestProtocol"],

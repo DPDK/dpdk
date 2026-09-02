@@ -1,8 +1,8 @@
 .. SPDX-License-Identifier: BSD-3-Clause
 
-capability - Testbed Capabilities
+virtual\_device - Virtual Devices
 =================================
 
-.. automodule:: framework.testbed_model.capability
+.. automodule:: api.testbed_model.virtual_device
    :members:
    :show-inheritance:

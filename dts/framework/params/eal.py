@@ -6,12 +6,12 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
+from api.testbed_model.cpu import LogicalCoreList
+from api.testbed_model.virtual_device import VirtualDevice
 from framework.params import Params, Switch
-from framework.testbed_model.cpu import LogicalCoreList
-from framework.testbed_model.virtual_device import VirtualDevice
 
 if TYPE_CHECKING:
-    from framework.testbed_model.port import Port
+    from api.testbed_model.port import Port
 
 
 def _port_to_pci(port: "Port") -> str:

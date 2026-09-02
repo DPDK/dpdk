@@ -13,10 +13,10 @@ from typing import Any
 
 from scapy.packet import Packet
 
+from api.testbed_model.port import Port
 from framework.config.test_run import TrafficGeneratorConfig
 from framework.logger import DTSLogger, get_dts_logger
 from framework.testbed_model.node import Node
-from framework.testbed_model.port import Port
 from framework.testbed_model.topology import Topology
 
 

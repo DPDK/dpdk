@@ -26,6 +26,7 @@ from scapy.layers.l2 import Ether
 from scapy.packet import Packet
 
 from api.exception import InteractiveSSHSessionDeadError, InternalError
+from api.testbed_model.port import Port
 from api.testbed_model.traffic_generator.capturing_traffic_generator import (
     CapturingTrafficGenerator,
     PacketFilteringConfig,
@@ -34,7 +35,6 @@ from framework.config.node import OS
 from framework.config.test_run import ScapyTrafficGeneratorConfig
 from framework.remote_session.python_shell import PythonShell
 from framework.testbed_model.node import Node
-from framework.testbed_model.port import Port
 from framework.testbed_model.topology import Topology
 
 

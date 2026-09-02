@@ -16,6 +16,7 @@ from typing import ClassVar, Final
 from api.capabilities import LinkTopology
 from api.context import get_ctx
 from api.exception import ConfigurationError, RemoteFileNotFoundError
+from api.testbed_model.virtual_device import VirtualDevice
 from api.utils import MesonArgs, TarCompressionFormat
 from framework.config.test_run import (
     DPDKBuildConfiguration,
@@ -35,7 +36,6 @@ from framework.settings import SETTINGS
 from framework.testbed_model.cpu import LogicalCore, LogicalCoreCount, LogicalCoreList, lcore_filter
 from framework.testbed_model.node import Node
 from framework.testbed_model.os_session import OSSession
-from framework.testbed_model.virtual_device import VirtualDevice
 
 
 @dataclass(slots=True, frozen=True)

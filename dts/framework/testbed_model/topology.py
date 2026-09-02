@@ -19,10 +19,9 @@ from typing_extensions import Self
 
 from api.capabilities import LinkTopology
 from api.exception import ConfigurationError, InternalError
+from api.testbed_model.port import DriverKind, Port, PortConfig
 from framework.testbed_model.linux_session import LinuxSession
 from framework.testbed_model.node import Node, NodeIdentifier
-
-from .port import DriverKind, Port, PortConfig
 
 
 class PortLink(NamedTuple):

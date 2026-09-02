@@ -17,9 +17,9 @@ import scapy.utils
 from scapy.packet import Packet
 
 from api.artifact import Artifact
+from api.testbed_model.port import Port
 from api.testbed_model.traffic_generator.traffic_generator import TrafficGenerator
 from api.utils import get_packet_summaries
-from framework.testbed_model.port import Port
 
 
 def _get_default_capture_name() -> str:

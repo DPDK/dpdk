@@ -29,6 +29,7 @@ from dataclasses import dataclass
 from enum import Flag, auto
 from pathlib import Path, PurePath, PurePosixPath
 
+from api.testbed_model.port import Port, PortInfo
 from api.utils import MesonArgs, TarCompressionFormat
 from framework.config.node import NodeConfiguration
 from framework.logger import DTSLogger
@@ -37,7 +38,6 @@ from framework.remote_session.remote_session import CommandResult, RemoteSession
 from framework.settings import SETTINGS
 
 from .cpu import Architecture, LogicalCore
-from .port import Port, PortInfo
 
 
 class FilePermissions(Flag):
