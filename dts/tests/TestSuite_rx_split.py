@@ -21,10 +21,10 @@ from api.capabilities import (
 from api.exception import InteractiveCommandExecutionError
 from api.packet import adjust_addresses, send_packet_and_capture
 from api.test import fail, verify
+from api.test_suite import TestSuite, func_test
 from api.testpmd import TestPmd
 from api.testpmd.config import SimpleForwardingModes
 from api.testpmd.types import RxOffloadCapability, TxOffloadCapability
-from framework.test_suite import TestSuite, func_test
 
 PAYLOAD = bytes(range(256))
 ETHER_HDR_LEN = len(Ether(dst="00:00:00:00:00:00"))
