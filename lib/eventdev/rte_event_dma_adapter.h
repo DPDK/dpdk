@@ -8,10 +8,6 @@
 /**
  * @file rte_event_dma_adapter.h
  *
- * @warning
- * @b EXPERIMENTAL:
- * All functions in this file may be changed or removed without prior notice.
- *
  * DMA Event Adapter API.
  *
  * Eventdev library provides adapters to bridge between various components for providing new
@@ -282,7 +278,6 @@ struct rte_event_dma_adapter_stats {
  *     - 0: Success
  *     - <0: Error code on failure
  */
-__rte_experimental
 int rte_event_dma_adapter_create_ext(uint8_t id, uint8_t evdev_id,
 				     rte_event_dma_adapter_conf_cb conf_cb,
 				     enum rte_event_dma_adapter_mode mode, void *conf_arg);
@@ -308,7 +303,6 @@ int rte_event_dma_adapter_create_ext(uint8_t id, uint8_t evdev_id,
  *     - 0: Success
  *     - <0: Error code on failure
  */
-__rte_experimental
 int rte_event_dma_adapter_create(uint8_t id, uint8_t evdev_id,
 				 struct rte_event_port_conf *port_config,
 				 enum rte_event_dma_adapter_mode mode);
@@ -323,7 +317,6 @@ int rte_event_dma_adapter_create(uint8_t id, uint8_t evdev_id,
  *     - <0: Error code on failure, If the adapter still has queue pairs added to it, the function
  * returns -EBUSY.
  */
-__rte_experimental
 int rte_event_dma_adapter_free(uint8_t id);
 
 /**
@@ -340,7 +333,6 @@ int rte_event_dma_adapter_free(uint8_t id);
  *     - 0: Success
  *     - <0: Error code on failure.
  */
-__rte_experimental
 int rte_event_dma_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
 
 /**
@@ -362,7 +354,6 @@ int rte_event_dma_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
  *     - 0: Success, vchan added correctly.
  *     - <0: Error code on failure.
  */
-__rte_experimental
 int rte_event_dma_adapter_vchan_add(uint8_t id, int16_t dmadev_id, uint16_t vchan,
 				    const struct rte_event *event);
 
@@ -380,7 +371,6 @@ int rte_event_dma_adapter_vchan_add(uint8_t id, int16_t dmadev_id, uint16_t vcha
  *     - 0: Success, vchan deleted successfully.
  *     - <0: Error code on failure.
  */
-__rte_experimental
 int rte_event_dma_adapter_vchan_del(uint8_t id, int16_t dmadev_id, uint16_t vchan);
 
 /**
@@ -397,7 +387,6 @@ int rte_event_dma_adapter_vchan_del(uint8_t id, int16_t dmadev_id, uint16_t vcha
  *     - <0: Error code on failure, if the adapter doesn't use a rte_service function, this function
  * returns -ESRCH.
  */
-__rte_experimental
 int rte_event_dma_adapter_service_id_get(uint8_t id, uint32_t *service_id);
 
 /**
@@ -413,7 +402,6 @@ int rte_event_dma_adapter_service_id_get(uint8_t id, uint32_t *service_id);
  * @note The eventdev and dmadev to which the event_dma_adapter is connected should be started
  * before calling rte_event_dma_adapter_start().
  */
-__rte_experimental
 int rte_event_dma_adapter_start(uint8_t id);
 
 /**
@@ -426,7 +414,6 @@ int rte_event_dma_adapter_start(uint8_t id);
  *  - 0: Success, adapter stopped successfully.
  *  - <0: Error code on failure.
  */
-__rte_experimental
 int rte_event_dma_adapter_stop(uint8_t id);
 
 /**
@@ -439,7 +426,6 @@ int rte_event_dma_adapter_stop(uint8_t id);
  *  -  0: Success
  *  - <0: Error code on failure
  */
-__rte_experimental
 int rte_event_dma_adapter_runtime_params_init(struct rte_event_dma_adapter_runtime_params *params);
 
 /**
@@ -459,7 +445,6 @@ int rte_event_dma_adapter_runtime_params_init(struct rte_event_dma_adapter_runti
  *  -  0: Success
  *  - <0: Error code on failure
  */
-__rte_experimental
 int rte_event_dma_adapter_runtime_params_set(uint8_t id,
 					     struct rte_event_dma_adapter_runtime_params *params);
 
@@ -477,7 +462,6 @@ int rte_event_dma_adapter_runtime_params_set(uint8_t id,
  *  -  0: Success
  *  - <0: Error code on failure
  */
-__rte_experimental
 int rte_event_dma_adapter_runtime_params_get(uint8_t id,
 					     struct rte_event_dma_adapter_runtime_params *params);
 
@@ -493,7 +477,6 @@ int rte_event_dma_adapter_runtime_params_get(uint8_t id,
  *     - 0: Success, retrieved successfully.
  *     - <0: Error code on failure.
  */
-__rte_experimental
 int rte_event_dma_adapter_stats_get(uint8_t id, struct rte_event_dma_adapter_stats *stats);
 
 /**
@@ -506,7 +489,6 @@ int rte_event_dma_adapter_stats_get(uint8_t id, struct rte_event_dma_adapter_sta
  *     - 0: Success, statistics reset successfully.
  *     - <0: Error code on failure.
  */
-__rte_experimental
 int rte_event_dma_adapter_stats_reset(uint8_t id);
 
 /**
@@ -543,7 +525,6 @@ int rte_event_dma_adapter_stats_reset(uint8_t id);
  *     - ENOSPC: The event port was backpressured and unable to enqueue one or more events. This
  * error code is only applicable to closed systems.
  */
-__rte_experimental
 uint16_t rte_event_dma_adapter_enqueue(uint8_t evdev_id, uint8_t port_id, struct rte_event ev[],
 				       uint16_t nb_events);
 

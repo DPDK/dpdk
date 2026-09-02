@@ -234,7 +234,7 @@ rte_event_eth_tx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 		: 0;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_dma_adapter_caps_get, 23.11)
+RTE_EXPORT_SYMBOL(rte_event_dma_adapter_caps_get)
 int
 rte_event_dma_adapter_caps_get(uint8_t dev_id, uint8_t dma_dev_id, uint32_t *caps)
 {

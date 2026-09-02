@@ -1952,7 +1952,6 @@ rte_event_crypto_adapter_caps_get(uint8_t dev_id, uint8_t cdev_id,
  *     dmadev device.
  *   - <0: Error code returned by the driver function.
  */
-__rte_experimental
 int
 rte_event_dma_adapter_caps_get(uint8_t dev_id, uint8_t dmadev_id, uint32_t *caps);
 
