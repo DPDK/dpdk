@@ -17,8 +17,8 @@ import scapy.utils
 from scapy.packet import Packet
 
 from api.artifact import Artifact
+from api.utils import get_packet_summaries
 from framework.testbed_model.port import Port
-from framework.utils import get_packet_summaries
 
 from .traffic_generator import TrafficGenerator
 
