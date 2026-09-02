@@ -1031,7 +1031,7 @@ rte_event_port_link(uint8_t dev_id, uint8_t port_id,
 	return rte_event_port_profile_links_set(dev_id, port_id, queues, priorities, nb_links, 0);
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_port_profile_links_set, 23.11)
+RTE_EXPORT_SYMBOL(rte_event_port_profile_links_set)
 int
 rte_event_port_profile_links_set(uint8_t dev_id, uint8_t port_id, const uint8_t queues[],
 				 const uint8_t priorities[], uint16_t nb_links, uint8_t profile_id)
@@ -1122,7 +1122,7 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 	return rte_event_port_profile_unlink(dev_id, port_id, queues, nb_unlinks, 0);
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_port_profile_unlink, 23.11)
+RTE_EXPORT_SYMBOL(rte_event_port_profile_unlink)
 int
 rte_event_port_profile_unlink(uint8_t dev_id, uint8_t port_id, uint8_t queues[],
 			      uint16_t nb_unlinks, uint8_t profile_id)
@@ -1267,7 +1267,7 @@ rte_event_port_links_get(uint8_t dev_id, uint8_t port_id,
 	return count;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_port_profile_links_get, 23.11)
+RTE_EXPORT_SYMBOL(rte_event_port_profile_links_get)
 int
 rte_event_port_profile_links_get(uint8_t dev_id, uint8_t port_id, uint8_t queues[],
 				 uint8_t priorities[], uint8_t profile_id)

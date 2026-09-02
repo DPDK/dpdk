@@ -2208,7 +2208,6 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
  *  RTE_EVENT_QUEUE_CFG_SINGLE_LINK to more than one event ports)
  * (EINVAL) Invalid parameter
  */
-__rte_experimental
 int
 rte_event_port_profile_links_set(uint8_t dev_id, uint8_t port_id, const uint8_t queues[],
 				 const uint8_t priorities[], uint16_t nb_links, uint8_t profile_id);
@@ -2260,7 +2259,6 @@ rte_event_port_profile_links_set(uint8_t dev_id, uint8_t port_id, const uint8_t 
  * the rte_errno accordingly, Possible rte_errno values are
  * (EINVAL) Invalid parameter
  */
-__rte_experimental
 int
 rte_event_port_profile_unlink(uint8_t dev_id, uint8_t port_id, uint8_t queues[],
 			      uint16_t nb_unlinks, uint8_t profile_id);
@@ -2350,7 +2348,6 @@ rte_event_port_links_get(uint8_t dev_id, uint8_t port_id,
  *  *port_id*.
  * - <0 on failure.
  */
-__rte_experimental
 int
 rte_event_port_profile_links_get(uint8_t dev_id, uint8_t port_id, uint8_t queues[],
 				 uint8_t priorities[], uint8_t profile_id);
