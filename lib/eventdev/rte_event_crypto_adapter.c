@@ -1430,7 +1430,7 @@ rte_event_crypto_adapter_stats_reset(uint8_t id)
 	return 0;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_crypto_adapter_runtime_params_init, 23.03)
+RTE_EXPORT_SYMBOL(rte_event_crypto_adapter_runtime_params_init)
 int
 rte_event_crypto_adapter_runtime_params_init(
 		struct rte_event_crypto_adapter_runtime_params *params)
@@ -1469,7 +1469,7 @@ crypto_adapter_cap_check(struct event_crypto_adapter *adapter)
 	return 0;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_crypto_adapter_runtime_params_set, 23.03)
+RTE_EXPORT_SYMBOL(rte_event_crypto_adapter_runtime_params_set)
 int
 rte_event_crypto_adapter_runtime_params_set(uint8_t id,
 		struct rte_event_crypto_adapter_runtime_params *params)
@@ -1502,7 +1502,7 @@ rte_event_crypto_adapter_runtime_params_set(uint8_t id,
 	return 0;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_crypto_adapter_runtime_params_get, 23.03)
+RTE_EXPORT_SYMBOL(rte_event_crypto_adapter_runtime_params_get)
 int
 rte_event_crypto_adapter_runtime_params_get(uint8_t id,
 		struct rte_event_crypto_adapter_runtime_params *params)

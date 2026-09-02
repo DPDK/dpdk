@@ -104,6 +104,9 @@ API Changes
   * Tx adapter: ``rte_event_eth_tx_adapter_runtime_params_init``,
     ``rte_event_eth_tx_adapter_runtime_params_set`` and
     ``rte_event_eth_tx_adapter_runtime_params_get``
+  * crypto adapter: ``rte_event_crypto_adapter_runtime_params_init``,
+    ``rte_event_crypto_adapter_runtime_params_set`` and
+    ``rte_event_crypto_adapter_runtime_params_get``
 
 
 ABI Changes
