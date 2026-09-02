@@ -123,7 +123,7 @@ rte_tel_uint_to_hex_encoded_str(char *buf, size_t buf_len, uint64_t val,
 	return len < (int)buf_len ? 0 : -EINVAL;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_tel_data_add_array_uint_hex, 23.03)
+RTE_EXPORT_SYMBOL(rte_tel_data_add_array_uint_hex)
 int
 rte_tel_data_add_array_uint_hex(struct rte_tel_data *d, uint64_t val,
 				uint8_t display_bitwidth)
@@ -247,7 +247,7 @@ rte_tel_data_add_dict_container(struct rte_tel_data *d, const char *name,
 	return bytes < RTE_TEL_MAX_STRING_LEN ? 0 : E2BIG;
 }
 
-RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_tel_data_add_dict_uint_hex, 23.03)
+RTE_EXPORT_SYMBOL(rte_tel_data_add_dict_uint_hex)
 int
 rte_tel_data_add_dict_uint_hex(struct rte_tel_data *d, const char *name,
 			       uint64_t val, uint8_t display_bitwidth)

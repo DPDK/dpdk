@@ -174,7 +174,6 @@ rte_tel_data_add_array_container(struct rte_tel_data *d,
  * @return
  *   0 on success, negative errno on error.
  */
-__rte_experimental
 int
 rte_tel_data_add_array_uint_hex(struct rte_tel_data *d, uint64_t val,
 		uint8_t display_bitwidth);
@@ -276,7 +275,6 @@ rte_tel_data_add_dict_container(struct rte_tel_data *d, const char *name,
  * @return
  *   0 on success, negative errno on error.
  */
-__rte_experimental
 int
 rte_tel_data_add_dict_uint_hex(struct rte_tel_data *d, const char *name,
 		uint64_t val, uint8_t display_bitwidth);
@@ -364,7 +362,6 @@ rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help);
  * @return
  *   -ENOMEM for mem allocation failure.
  */
-__rte_experimental
 int
 rte_telemetry_register_cmd_arg(const char *cmd, telemetry_arg_cb fn, void *arg, const char *help);
 

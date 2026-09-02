@@ -117,6 +117,12 @@ API Changes
   ``rte_reorder_seqn``, ``rte_reorder_drain_up_to_seqn``,
   ``rte_reorder_min_seqn_set`` and ``rte_reorder_memory_footprint_get``.
 
+* telemetry: Promoted the following API from experimental to stable:
+
+  * ``rte_tel_data_add_array_uint_hex``
+  * ``rte_tel_data_add_dict_uint_hex``
+  * ``rte_telemetry_register_cmd_arg``
+
 
 ABI Changes
 -----------
