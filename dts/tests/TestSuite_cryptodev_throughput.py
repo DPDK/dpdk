@@ -29,9 +29,8 @@ from api.cryptodev.config import (
 from api.cryptodev.types import (
     CryptodevResults,
 )
-from api.test import verify
+from api.test import skip, verify
 from framework.context import get_ctx
-from framework.exception import SkippedTestException
 from framework.test_suite import BaseConfig, TestSuite, crypto_test
 from framework.testbed_model.virtual_device import VirtualDevice
 
@@ -153,12 +152,9 @@ class TestCryptodevThroughput(TestSuite):
             * Create a cryptodev instance with provided device type and buffer sizes.
         Verify:
             * The resulting Gbps is greater than expected_gbps*(1-delta_tolerance).
-
-        Raises:
-            SkippedTestException: When configuration is not provided.
         """
         if "aes_cbc" not in self.throughput_test_parameters:
-            raise SkippedTestException("test not configured")
+            skip("test not configured")
         app = Cryptodev(
             ptest=TestType.throughput,
             devtype=self.device_type,
@@ -183,12 +179,9 @@ class TestCryptodevThroughput(TestSuite):
             * Create a cryptodev instance with provided device type and buffer sizes.
         Verify:
             * The resulting Gbps is greater than expected_gbps*(1-delta_tolerance).
-
-        Raises:
-            SkippedTestException: When configuration is not provided.
         """
         if "aes_cbc_sha1" not in self.throughput_test_parameters:
-            raise SkippedTestException("test not configured")
+            skip("test not configured")
         app = Cryptodev(
             ptest=TestType.throughput,
             devtype=self.device_type,
@@ -218,12 +211,9 @@ class TestCryptodevThroughput(TestSuite):
             * Create a cryptodev instance with provided device type and buffer sizes.
         Verify:
             * The resulting Gbps is greater than expected_gbps*(1-delta_tolerance).
-
-        Raises:
-            SkippedTestException: When configuration is not provided.
         """
         if "aes_cbc_sha2" not in self.throughput_test_parameters:
-            raise SkippedTestException("test not configured")
+            skip("test not configured")
         app = Cryptodev(
             ptest=TestType.throughput,
             devtype=self.device_type,
@@ -252,12 +242,9 @@ class TestCryptodevThroughput(TestSuite):
             * Create a cryptodev instance with provided device type and buffer sizes.
         Verify:
             * The resulting Gbps is greater than expected_gbps*(1-delta_tolerance).
-
-        Raises:
-            SkippedTestException: When configuration is not provided.
         """
         if "aes_cbc_sha2_digest_16" not in self.throughput_test_parameters:
-            raise SkippedTestException("test not configured")
+            skip("test not configured")
         app = Cryptodev(
             ptest=TestType.throughput,
             devtype=self.device_type,
@@ -286,12 +273,9 @@ class TestCryptodevThroughput(TestSuite):
             * Create a cryptodev instance with provided device type and buffer sizes.
         Verify:
             * The resulting Gbps is greater than expected_gbps*(1-delta_tolerance).
-
-        Raises:
-            SkippedTestException: When configuration is not provided.
         """
         if "aead_aes_gcm" not in self.throughput_test_parameters:
-            raise SkippedTestException("test not configured")
+            skip("test not configured")
         app = Cryptodev(
             ptest=TestType.throughput,
             devtype=self.device_type,
@@ -318,12 +302,9 @@ class TestCryptodevThroughput(TestSuite):
             * Create a cryptodev instance with provided device type and buffer sizes.
         Verify:
             * The resulting Gbps is greater than expected_gbps*(1-delta_tolerance).
-
-        Raises:
-            SkippedTestException: When configuration is not provided.
         """
         if "aes_docsisbpi" not in self.throughput_test_parameters:
-            raise SkippedTestException("test not configured")
+            skip("test not configured")
         app = Cryptodev(
             ptest=TestType.throughput,
             devtype=self.device_type,
@@ -348,12 +329,9 @@ class TestCryptodevThroughput(TestSuite):
             * Create a cryptodev instance with provided device type and buffer sizes.
         Verify:
             * The resulting Gbps is greater than expected_gbps*(1-delta_tolerance).
-
-        Raises:
-            SkippedTestException: When configuration is not provided.
         """
         if "sha1_hmac" not in self.throughput_test_parameters:
-            raise SkippedTestException("test not configured")
+            skip("test not configured")
         app = Cryptodev(
             ptest=TestType.throughput,
             devtype=self.device_type,
@@ -379,12 +357,9 @@ class TestCryptodevThroughput(TestSuite):
             * Create a cryptodev instance with provided device type and buffer sizes.
         Verify:
             * The resulting Gbps is greater than expected_gbps*(1-delta_tolerance).
-
-        Raises:
-            SkippedTestException: When configuration is not provided.
         """
         if "snow3g_uea2_snow3g_uia2" not in self.throughput_test_parameters:
-            raise SkippedTestException("test not configured")
+            skip("test not configured")
         app = Cryptodev(
             ptest=TestType.throughput,
             devtype=self.device_type,
@@ -414,12 +389,9 @@ class TestCryptodevThroughput(TestSuite):
             * Create a cryptodev instance with provided device type and buffer sizes.
         Verify:
             * The resulting Gbps is greater than expected_gbps*(1-delta_tolerance).
-
-        Raises:
-            SkippedTestException: When configuration is not provided.
         """
         if "zuc_eea3_zuc_eia3" not in self.throughput_test_parameters:
-            raise SkippedTestException("test not configured")
+            skip("test not configured")
         app = Cryptodev(
             ptest=TestType.throughput,
             devtype=self.device_type,
@@ -449,12 +421,9 @@ class TestCryptodevThroughput(TestSuite):
             * Create a cryptodev instance with provided device type and buffer sizes.
         Verify:
             * The resulting Gbps is greater than expected_gbps*(1-delta_tolerance).
-
-        Raises:
-            SkippedTestException: When configuration is not provided.
         """
         if "kasumi_f8_kasumi_f9" not in self.throughput_test_parameters:
-            raise SkippedTestException("test not configured")
+            skip("test not configured")
         app = Cryptodev(
             ptest=TestType.throughput,
             devtype=self.device_type,
@@ -486,12 +455,9 @@ class TestCryptodevThroughput(TestSuite):
             * Create a cryptodev instance with crypto_aesni_mb and supplied buffer sizes.
         Verify:
             * The resulting Gbps is greater than expected_gbps*(1-delta_tolerance).
-
-        Raises:
-            SkippedTestException: When configuration is not provided.
         """
         if "aesni_mb_vdev" not in self.throughput_test_parameters:
-            raise SkippedTestException("test not configured")
+            skip("test not configured")
         app = Cryptodev(
             ptest=TestType.throughput,
             vdevs=[VirtualDevice("crypto_aesni_mb0")],
@@ -523,12 +489,9 @@ class TestCryptodevThroughput(TestSuite):
             * Create a cryptodev instance with crypto_aesni_gcm and supplied buffer sizes.
         Verify:
             * The resulting Gbps is greater than expected_gbps*(1-delta_tolerance).
-
-        Raises:
-            SkippedTestException: When configuration is not provided.
         """
         if "aesni_gcm_vdev" not in self.throughput_test_parameters:
-            raise SkippedTestException("test not configured")
+            skip("test not configured")
         app = Cryptodev(
             ptest=TestType.throughput,
             vdevs=[VirtualDevice("crypto_aesni_gcm0")],
@@ -556,12 +519,9 @@ class TestCryptodevThroughput(TestSuite):
             * Create a cryptodev instance with crypto_kasumi and supplied buffer sizes.
         Verify:
             * The resulting Gbps is greater than expected_gbps*(1-delta_tolerance).
-
-        Raises:
-            SkippedTestException: When configuration is not provided.
         """
         if "kasumi_vdev" not in self.throughput_test_parameters:
-            raise SkippedTestException("test not configured")
+            skip("test not configured")
         app = Cryptodev(
             vdevs=[VirtualDevice("crypto_kasumi0")],
             ptest=TestType.throughput,
@@ -592,12 +552,9 @@ class TestCryptodevThroughput(TestSuite):
             * Create a cryptodev instance with crypto_snow3g and supplied buffer sizes.
         Verify:
             * The resulting Gbps is greater than expected_gbps*(1-delta_tolerance).
-
-        Raises:
-            SkippedTestException: When configuration is not provided.
         """
         if "snow3g_vdev" not in self.throughput_test_parameters:
-            raise SkippedTestException("test not configured")
+            skip("test not configured")
         app = Cryptodev(
             ptest=TestType.throughput,
             vdevs=[VirtualDevice("crypto_snow3g0")],
@@ -629,12 +586,9 @@ class TestCryptodevThroughput(TestSuite):
             * Create a cryptodev instance with crypto_zuc and supplied buffer sizes.
         Verify:
             * The resulting Gbps is greater than expected_gbps*(1-delta_tolerance).
-
-        Raises:
-            SkippedTestException: When configuration is not provided.
         """
         if "zuc_vdev" not in self.throughput_test_parameters:
-            raise SkippedTestException("test not configured")
+            skip("test not configured")
         app = Cryptodev(
             ptest=TestType.throughput,
             vdevs=[VirtualDevice("crypto_zuc0")],
@@ -666,12 +620,9 @@ class TestCryptodevThroughput(TestSuite):
             * Create a cryptodev instance with provided device type and buffer sizes.
         Verify:
             * The resulting Gbps is greater than expected_gbps*(1-delta_tolerance).
-
-        Raises:
-            SkippedTestException: When configuration is not provided.
         """
         if "open_ssl_vdev" not in self.throughput_test_parameters:
-            raise SkippedTestException("test not configured")
+            skip("test not configured")
         app = Cryptodev(
             ptest=TestType.throughput,
             vdevs=[VirtualDevice("crypto_openssl0")],
