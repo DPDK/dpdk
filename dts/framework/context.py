@@ -16,10 +16,10 @@ from framework.testbed_model.node import Node
 from framework.testbed_model.topology import Topology
 
 if TYPE_CHECKING:
+    from api.testbed_model.capability import TestProtocol
     from api.testbed_model.traffic_generator.traffic_generator import TrafficGenerator
     from framework.remote_session.dpdk import DPDKBuildEnvironment, DPDKRuntimeEnvironment
     from framework.test_suite import TestCase, TestSuite
-    from framework.testbed_model.capability import TestProtocol
 
 P = ParamSpec("P")
 

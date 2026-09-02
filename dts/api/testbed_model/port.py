@@ -16,7 +16,7 @@ from api.exception import InternalError
 from framework.config.node import PortConfig
 
 if TYPE_CHECKING:
-    from .node import Node
+    from framework.testbed_model.node import Node
 
 DriverKind = Literal["kernel", "dpdk"]
 """The driver kind."""

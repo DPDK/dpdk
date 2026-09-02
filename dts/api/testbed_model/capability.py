@@ -26,7 +26,7 @@ Examples:
     .. code:: python
 
         from framework.test_suite import TestSuite, func_test
-        from framework.testbed_model.capability import LinkTopology, requires
+        from api.testbed_model.capability import LinkTopology, requires
         # The whole test suite (each test case within) doesn't require any links.
         @requires_link_topology(LinkTopology.NO_LINK)
         @func_test
@@ -37,7 +37,7 @@ Examples:
     .. code:: python
 
         from framework.test_suite import TestSuite, func_test
-        from framework.testbed_model.capability import NicCapability, requires
+        from api.testbed_model.capability import NicCapability, requires
         class TestPmdBufferScatter(TestSuite):
             # only the test case requires the SCATTERED_RX_ENABLED capability
             # other test cases may not require it
@@ -65,9 +65,9 @@ from typing_extensions import Self
 
 from api.capabilities import LinkTopology, NicCapability
 from api.exception import ConfigurationError, InternalError, SkippedTestException
+from api.testbed_model.port import DriverKind
 from framework.logger import get_dts_logger
 from framework.testbed_model.node import Node
-from framework.testbed_model.port import DriverKind
 from framework.testbed_model.topology import Topology
 
 if TYPE_CHECKING:

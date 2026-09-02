@@ -18,6 +18,7 @@ from pathlib import PurePath
 from typing import Literal, TypeAlias
 
 from api.exception import ConfigurationError, InternalError
+from api.testbed_model.port import Port
 from framework.config.node import (
     OS,
     NodeConfiguration,
@@ -27,7 +28,6 @@ from framework.logger import DTSLogger, get_dts_logger
 from .cpu import Architecture, LogicalCore
 from .linux_session import LinuxSession
 from .os_session import OSSession, OSSessionInfo
-from .port import Port
 
 
 class Node:

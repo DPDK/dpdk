@@ -7,6 +7,11 @@ testbed\_model - Testbed Modelling Package
    :members:
    :show-inheritance:
 
+.. automodule:: api.testbed_model
+   :members:
+   :noindex:
+   :show-inheritance:
+
 .. toctree::
    :hidden:
    :maxdepth: 1
@@ -15,8 +20,8 @@ testbed\_model - Testbed Modelling Package
    framework.testbed_model.linux_session
    framework.testbed_model.posix_session
    framework.testbed_model.node
-   framework.testbed_model.capability
+   api.testbed_model.capability
    framework.testbed_model.cpu
-   framework.testbed_model.port
+   api.testbed_model.port
    framework.testbed_model.topology
-   framework.testbed_model.virtual_device
+   api.testbed_model.virtual_device

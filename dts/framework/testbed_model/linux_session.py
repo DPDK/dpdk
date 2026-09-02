@@ -24,11 +24,10 @@ from api.exception import (
     RemoteCommandExecutionError,
 )
 from api.testbed_model.linux_session import LinuxSession as LinuxSessionBase
+from api.testbed_model.port import Port, PortInfo
 from api.utils import expand_range
-from framework.testbed_model.port import PortInfo
 
 from .cpu import LogicalCore
-from .port import Port
 from .posix_session import PosixSession
 
 
