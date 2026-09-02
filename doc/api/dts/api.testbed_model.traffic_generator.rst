@@ -3,7 +3,7 @@
 traffic\_generator Subpackage
 =============================
 
-.. automodule:: framework.testbed_model.traffic_generator
+.. automodule:: api.testbed_model.traffic_generator
    :members:
    :show-inheritance:
 
@@ -11,6 +11,6 @@ traffic\_generator Subpackage
    :hidden:
    :maxdepth: 1
 
-   framework.testbed_model.traffic_generator.traffic_generator
-   framework.testbed_model.traffic_generator.capturing_traffic_generator
+   api.testbed_model.traffic_generator.traffic_generator
+   api.testbed_model.traffic_generator.capturing_traffic_generator
    framework.testbed_model.traffic_generator.scapy
