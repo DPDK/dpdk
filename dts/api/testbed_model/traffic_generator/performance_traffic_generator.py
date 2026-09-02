@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from scapy.packet import Packet
 
-from .traffic_generator import TrafficGenerator
+from api.testbed_model.traffic_generator.traffic_generator import TrafficGenerator
 
 
 @dataclass(slots=True)

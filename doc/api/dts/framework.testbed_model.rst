@@ -9,12 +9,6 @@ testbed\_model - Testbed Modelling Package
 
 .. toctree::
    :hidden:
-   :maxdepth: 2
-
-   framework.testbed_model.traffic_generator
-
-.. toctree::
-   :hidden:
    :maxdepth: 1
 
    framework.testbed_model.os_session

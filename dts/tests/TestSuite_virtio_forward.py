@@ -9,14 +9,13 @@ Verify vhost/virtio pvp and fully virtual functionalities.
 from scapy.layers.inet import IP
 from scapy.layers.l2 import Ether
 
-from api.capabilities import LinkTopology
+from api.capabilities import LinkTopology, requires_link_topology
 from api.packet import send_packets_and_capture
 from api.test import log, verify
 from api.testbed_model.linux_session import LinuxSession
 from api.testpmd import TestPmd
 from api.testpmd.config import PortTopology, SimpleForwardingModes
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.capability import requires
 from framework.testbed_model.virtual_device import VirtualDevice
 
 
@@ -28,7 +27,7 @@ class TestVirtioForward(TestSuite):
     )
     vhost_user_vdev = VirtualDevice("eth_vhost0,iface=/tmp/vhost-net,client=1")
 
-    @requires(topology_type=LinkTopology.NO_LINK)
+    @requires_link_topology(LinkTopology.NO_LINK)
     @func_test
     def virtio_server(self) -> None:
         """Test virtio server packet transmission.
@@ -77,7 +76,7 @@ class TestVirtioForward(TestSuite):
                 "Vhost session failed to receive packets from virtio session.",
             )
 
-    @requires(topology_type=LinkTopology.NO_LINK)
+    @requires_link_topology(LinkTopology.NO_LINK)
     @func_test
     def virtio_server_reconnect(self) -> None:
         """Test virtio server reconnection.
@@ -132,7 +131,7 @@ class TestVirtioForward(TestSuite):
                     "Vhost session failed to receive packets from virtio session.",
                 )
 
-    @requires(topology_type=LinkTopology.ONE_LINK)
+    @requires_link_topology(LinkTopology.ONE_LINK)
     @func_test
     def pvp_loop(self) -> None:
         """Test vhost/virtio physical-virtual-physical topology.

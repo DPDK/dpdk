@@ -13,6 +13,10 @@ from scapy.layers.inet import IP
 from scapy.packet import Packet
 
 from api.exception import SSHTimeoutError
+from api.testbed_model.traffic_generator.performance_traffic_generator import (
+    PerformanceTrafficGenerator,
+    PerformanceTrafficStats,
+)
 from api.utils import StrEnum
 from framework.config.node import OS, NodeConfiguration
 from framework.config.test_run import TrexTrafficGeneratorConfig
@@ -22,10 +26,6 @@ from framework.remote_session.python_shell import PythonShell
 from framework.testbed_model.node import Node, create_session
 from framework.testbed_model.os_session import OSSession
 from framework.testbed_model.topology import Topology
-from framework.testbed_model.traffic_generator.performance_traffic_generator import (
-    PerformanceTrafficGenerator,
-    PerformanceTrafficStats,
-)
 
 
 @dataclass(slots=True)

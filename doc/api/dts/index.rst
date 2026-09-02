@@ -16,6 +16,7 @@ Packages
 
    tests
    api
+   api.testbed_model
    framework.testbed_model
    framework.remote_session
    framework.params
