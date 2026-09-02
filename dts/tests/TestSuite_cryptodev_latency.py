@@ -31,8 +31,8 @@ from api.cryptodev.types import (
     CryptodevResults,
 )
 from api.test import skip, verify
+from api.testbed_model.virtual_device import VirtualDevice
 from framework.test_suite import BaseConfig, TestSuite, crypto_test
-from framework.testbed_model.virtual_device import VirtualDevice
 
 config_list: list[dict[str, int | float | str]] = [
     {"buff_size": 64, "avg_cycles": 99_999.00, "avg_time_us": 9999.0},

@@ -11,9 +11,9 @@ from api.capabilities import (
     requires_link_topology,
 )
 from api.test import verify
+from api.testbed_model.port import Port
 from api.testpmd import TestPmd
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.port import Port
 
 
 class TestBlocklist(TestSuite):
