@@ -40,6 +40,7 @@ all_examples = [
         'ntb',
         'packet_ordering',
         'pipeline',
+        'ptp_tap_relay_sw',
         'ptpclient',
         'qos_meter',
         'qos_sched',
