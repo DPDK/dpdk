@@ -33,9 +33,8 @@ from api.exception import ConfigurationError, InternalError
 from api.testbed_model.capability import TestProtocol
 from api.utils import to_pascal_case
 from framework.config.common import FrozenModel
+from framework.logger import DTSLogger, get_dts_logger
 from framework.testbed_model.topology import Topology
-
-from .logger import DTSLogger, get_dts_logger
 
 if TYPE_CHECKING:
     from api.context import Context
