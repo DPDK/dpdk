@@ -12,9 +12,9 @@ from typing import ClassVar
 from scapy.layers.inet import IP
 from scapy.packet import Packet
 
+from api.exception import SSHTimeoutError
 from framework.config.node import OS, NodeConfiguration
 from framework.config.test_run import TrexTrafficGeneratorConfig
-from framework.exception import SSHTimeoutError
 from framework.parser import TextParser
 from framework.remote_session.blocking_app import BlockingApp
 from framework.remote_session.python_shell import PythonShell

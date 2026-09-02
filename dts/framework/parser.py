@@ -15,7 +15,7 @@ from typing import Any, Callable, TypedDict, cast
 
 from typing_extensions import Self
 
-from framework.exception import InternalError
+from api.exception import InternalError
 
 
 class ParserFn(TypedDict):
