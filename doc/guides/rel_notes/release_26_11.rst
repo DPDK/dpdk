@@ -108,6 +108,9 @@ API Changes
     ``rte_event_crypto_adapter_runtime_params_set`` and
     ``rte_event_crypto_adapter_runtime_params_get``
   * timer adapter: ``rte_event_timer_remaining_ticks_get``
+  * link profiles: ``rte_event_port_profile_links_set``,
+    ``rte_event_port_profile_unlink`` and
+    ``rte_event_port_profile_links_get``
 
 
 ABI Changes
