@@ -30,8 +30,8 @@ from api.testpmd.types import (
     RSSOffloadTypesFlag,
     TestPmdVerbosePacket,
 )
+from api.utils import StrEnum
 from framework.test_suite import BaseConfig, TestSuite, func_test
-from framework.utils import StrEnum
 
 
 class Config(BaseConfig):

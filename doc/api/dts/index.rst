@@ -35,7 +35,7 @@ Modules
    framework.context
    framework.logger
    framework.parser
-   framework.utils
+   api.utils
    api.exception
 
 
