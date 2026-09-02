@@ -95,6 +95,13 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* eventdev: Promoted the following API from experimental to stable:
+
+  * Rx adapter: ``rte_event_eth_rx_adapter_create_ext_with_params``,
+    ``rte_event_eth_rx_adapter_runtime_params_init``,
+    ``rte_event_eth_rx_adapter_runtime_params_set`` and
+    ``rte_event_eth_rx_adapter_runtime_params_get``
+
 
 ABI Changes
 -----------
