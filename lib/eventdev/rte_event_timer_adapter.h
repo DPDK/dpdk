@@ -705,7 +705,6 @@ rte_event_timer_cancel_burst(const struct rte_event_timer_adapter *adapter,
  *   the armed state or ticks_remaining is NULL
  *   - -ENOTSUP The timer adapter implementation does not support this API.
  */
-__rte_experimental
 int
 rte_event_timer_remaining_ticks_get(
 			const struct rte_event_timer_adapter *adapter,

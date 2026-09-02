@@ -107,6 +107,7 @@ API Changes
   * crypto adapter: ``rte_event_crypto_adapter_runtime_params_init``,
     ``rte_event_crypto_adapter_runtime_params_set`` and
     ``rte_event_crypto_adapter_runtime_params_get``
+  * timer adapter: ``rte_event_timer_remaining_ticks_get``
 
 
 ABI Changes
