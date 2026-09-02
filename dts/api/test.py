@@ -11,8 +11,8 @@ from datetime import datetime
 
 from api.artifact import Artifact
 from api.capabilities import LinkTopology
+from api.context import get_ctx
 from api.exception import InternalError, SkippedTestException, TestCaseVerifyError
-from framework.context import get_ctx
 from framework.logger import DTSLogger
 
 
