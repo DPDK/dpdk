@@ -1910,7 +1910,6 @@ ctx_vtx1(volatile struct ci_tx_desc *txdp, struct rte_mbuf *pkt,
 
 	if (offload) {
 		iavf_fill_ctx_desc_tunneling_avx2(&low_ctx_qw, pkt);
-#ifdef IAVF_TX_VLAN_QINQ_OFFLOAD
 		if (pkt->ol_flags & RTE_MBUF_F_TX_QINQ) {
 			uint64_t qinq_tag = vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2 ?
 				(uint64_t)pkt->vlan_tci_outer :
@@ -1922,7 +1921,6 @@ ctx_vtx1(volatile struct ci_tx_desc *txdp, struct rte_mbuf *pkt,
 			high_ctx_qw |= IAVF_TX_CTX_DESC_IL2TAG2 << IAVF_TXD_CTX_QW1_CMD_SHIFT;
 			low_ctx_qw |= (uint64_t)pkt->vlan_tci << IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
 		}
-#endif
 	}
 	if (IAVF_CHECK_TX_LLDP(pkt, ptype_lldp_enabled))
 		high_ctx_qw |= IAVF_TX_CTX_DESC_SWTCH_UPLINK << IAVF_TXD_CTX_QW1_CMD_SHIFT;
@@ -1967,7 +1965,6 @@ ctx_vtx(volatile struct ci_tx_desc *txdp,
 				((uint64_t)pkt[0]->data_len <<
 					IAVF_TXD_QW1_TX_BUF_SZ_SHIFT);
 
-#ifdef IAVF_TX_VLAN_QINQ_OFFLOAD
 		if (offload) {
 			/* tunnel fill assigns low_ctx_qw1; must run before QinQ/VLAN OR below */
 			iavf_fill_ctx_desc_tunneling_field(&low_ctx_qw1, pkt[1]);
@@ -1986,11 +1983,9 @@ ctx_vtx(volatile struct ci_tx_desc *txdp,
 					(uint64_t)pkt[1]->vlan_tci << IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
 			}
 		}
-#endif
 		if (IAVF_CHECK_TX_LLDP(pkt[1], ptype_lldp_enabled))
 			hi_ctx_qw1 |= IAVF_TX_CTX_DESC_SWTCH_UPLINK << IAVF_TXD_CTX_QW1_CMD_SHIFT;
 
-#ifdef IAVF_TX_VLAN_QINQ_OFFLOAD
 		if (offload) {
 			/* tunnel fill assigns low_ctx_qw0; must run before QinQ/VLAN OR below */
 			iavf_fill_ctx_desc_tunneling_field(&low_ctx_qw0, pkt[0]);
@@ -2009,7 +2004,6 @@ ctx_vtx(volatile struct ci_tx_desc *txdp,
 					(uint64_t)pkt[0]->vlan_tci << IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
 			}
 		}
-#endif
 		if (IAVF_CHECK_TX_LLDP(pkt[0], ptype_lldp_enabled))
 			hi_ctx_qw0 |= IAVF_TX_CTX_DESC_SWTCH_UPLINK << IAVF_TXD_CTX_QW1_CMD_SHIFT;
 
