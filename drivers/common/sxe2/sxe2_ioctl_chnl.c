@@ -367,15 +367,9 @@ l_err:
 
 RTE_EXPORT_INTERNAL_SYMBOL(sxe2_drv_dev_munmap)
 int32_t
-sxe2_drv_dev_munmap(struct sxe2_common_device *cdev, void *virt, uint64_t len)
+sxe2_drv_dev_munmap(struct sxe2_common_device *cdev __rte_unused, void *virt, uint64_t len)
 {
 	int32_t ret = 0;
-
-	if (cdev->config.kernel_reset) {
-		ret = -EPERM;
-		PMD_LOG_WARN(COM, "kernel reset, need restart app.");
-		goto l_end;
-	}
 
 	PMD_LOG_DEBUG(COM, "Munmap virt=%p, len=0x%"PRIx64"",
 		virt, len);
