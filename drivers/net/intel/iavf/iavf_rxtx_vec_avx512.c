@@ -2111,6 +2111,8 @@ ctx_vtx(volatile struct ci_tx_desc *txdp,
 
 #ifdef IAVF_TX_VLAN_QINQ_OFFLOAD
 		if (offload) {
+			/* tunnel fill assigns low_ctx_qw1; must run before QinQ/VLAN OR below */
+			iavf_fill_ctx_desc_tunnelling_field(&low_ctx_qw1, pkt[1]);
 			if (pkt[1]->ol_flags & RTE_MBUF_F_TX_QINQ) {
 				uint64_t qinq_tag = vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2 ?
 					(uint64_t)pkt[1]->vlan_tci_outer :
@@ -2131,6 +2133,8 @@ ctx_vtx(volatile struct ci_tx_desc *txdp,
 
 #ifdef IAVF_TX_VLAN_QINQ_OFFLOAD
 		if (offload) {
+			/* tunnel fill assigns low_ctx_qw0; must run before QinQ/VLAN OR below */
+			iavf_fill_ctx_desc_tunnelling_field(&low_ctx_qw0, pkt[0]);
 			if (pkt[0]->ol_flags & RTE_MBUF_F_TX_QINQ) {
 				uint64_t qinq_tag = vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2 ?
 					(uint64_t)pkt[0]->vlan_tci_outer :
@@ -2151,8 +2155,6 @@ ctx_vtx(volatile struct ci_tx_desc *txdp,
 		if (offload) {
 			iavf_txd_enable_offload(pkt[1], &hi_data_qw1, vlan_flag);
 			iavf_txd_enable_offload(pkt[0], &hi_data_qw0, vlan_flag);
-			iavf_fill_ctx_desc_tunnelling_field(&low_ctx_qw1, pkt[1]);
-			iavf_fill_ctx_desc_tunnelling_field(&low_ctx_qw0, pkt[0]);
 		}
 
 		__m512i desc0_3 =
