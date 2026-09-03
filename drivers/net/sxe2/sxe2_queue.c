@@ -39,6 +39,8 @@ int32_t sxe2_queues_init(struct rte_eth_dev *dev)
 		rxq->rx_buf_len = RTE_MIN(rxq->rx_buf_len, SXE2_RX_MAX_DATA_BUF_SIZE);
 		if (frame_size > rxq->rx_buf_len)
 			dev->data->scattered_rx = 1;
+		if (adapter->flow_ctxt.fnav_inited)
+			rxq->fnav_enable = true;
 	}
 
 	adapter->ptp_ctxt.mbuf_rx_ts_offset = -1;
