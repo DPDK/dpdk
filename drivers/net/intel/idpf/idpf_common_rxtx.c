@@ -1415,7 +1415,8 @@ uint16_t
 idpf_dp_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			  uint16_t nb_pkts)
 {
-	return ci_xmit_pkts(tx_queue, tx_pkts, nb_pkts, CI_TAG_IN_DATA_DESC,
+	/* QinQ always places the outer tag in the ctx desc, inner in the data desc. */
+	return ci_xmit_pkts(tx_queue, tx_pkts, nb_pkts, CI_TAG_IN_DATA_DESC, CI_TAG_IN_CTX_DESC,
 			idpf_get_context_desc, NULL, NULL);
 }
 
