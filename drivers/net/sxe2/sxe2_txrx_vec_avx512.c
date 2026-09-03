@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (C), 2025, Wuxi Stars Micro System Technologies Co., Ltd.
  */
-
-#ifndef SXE2_TEST
 #include <rte_vect.h>
 
 #include "sxe2_ethdev.h"
@@ -11,114 +9,6 @@
 #include "sxe2_txrx_vec.h"
 #include "sxe2_txrx_vec_common.h"
 #include "sxe2_vsi.h"
-
-static __rte_always_inline int32_t sxe2_tx_bufs_free_vec_avx512(struct sxe2_tx_queue *txq)
-{
-	struct sxe2_tx_buffer_vec *buffer;
-	struct rte_mbuf *mbuf;
-	struct rte_mbuf *mbuf_free_arr[SXE2_TX_FREE_BUFFER_SIZE_MAX_VEC];
-	struct rte_mempool *mp;
-	struct rte_mempool_cache *cache;
-	void **cache_objs;
-	uint32_t copied;
-	uint32_t i;
-	int32_t ret;
-	uint16_t rs_thresh;
-	uint16_t free_num;
-
-	if (rte_cpu_to_le_64(SXE2_TX_DESC_DTYPE_DESC_DONE) !=
-		(txq->desc_ring[txq->next_dd].wb.dd &
-			rte_cpu_to_le_64(SXE2_TX_DESC_DTYPE_MASK))) {
-		ret = 0;
-		goto l_end;
-	}
-
-	rs_thresh = txq->rs_thresh;
-
-	buffer = (struct sxe2_tx_buffer_vec *)txq->buffer_ring;
-	buffer += txq->next_dd - (rs_thresh - 1);
-
-	if ((txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) &&
-			(rs_thresh & 31) == 0) {
-		mp = buffer[0].mbuf->pool;
-		cache = rte_mempool_default_cache(mp, rte_lcore_id());
-
-		if (cache == NULL || cache->len)
-			goto normal;
-
-		if (rs_thresh > RTE_MEMPOOL_CACHE_MAX_SIZE) {
-			(void)rte_mempool_ops_enqueue_bulk(mp, (void *)buffer, rs_thresh);
-			goto done;
-		}
-		cache_objs = &cache->objs[cache->len];
-
-		copied = 0;
-		while (copied < rs_thresh) {
-			const __m512i objs0 = _mm512_loadu_si512(&buffer[copied]);
-			const __m512i objs1 = _mm512_loadu_si512(&buffer[copied + 8]);
-			const __m512i objs2 = _mm512_loadu_si512(&buffer[copied + 16]);
-			const __m512i objs3 = _mm512_loadu_si512(&buffer[copied + 24]);
-
-			_mm512_storeu_si512(&cache_objs[copied], objs0);
-			_mm512_storeu_si512(&cache_objs[copied + 8], objs1);
-			_mm512_storeu_si512(&cache_objs[copied + 16], objs2);
-			_mm512_storeu_si512(&cache_objs[copied + 24], objs3);
-			copied += 32;
-		}
-		cache->len += rs_thresh;
-
-		if (cache->len >= cache->flushthresh) {
-			(void)rte_mempool_ops_enqueue_bulk(mp,
-					&cache->objs[cache->size], cache->len - cache->size);
-			cache->len = cache->size;
-		}
-		goto done;
-	}
-
-normal:
-	mbuf = rte_pktmbuf_prefree_seg(buffer[0].mbuf);
-
-	if (likely(mbuf)) {
-		mbuf_free_arr[0] = mbuf;
-		free_num = 1;
-
-		for (i = 1; i < rs_thresh; ++i) {
-			mbuf = rte_pktmbuf_prefree_seg(buffer[i].mbuf);
-
-			if (likely(mbuf)) {
-				if (likely(mbuf->pool == mbuf_free_arr[0]->pool)) {
-					mbuf_free_arr[free_num] = mbuf;
-					free_num++;
-				} else {
-					rte_mempool_put_bulk(mbuf_free_arr[0]->pool,
-						(void *)mbuf_free_arr, free_num);
-
-				mbuf_free_arr[0] = mbuf;
-				free_num = 1;
-			}
-			}
-		}
-
-		rte_mempool_put_bulk(mbuf_free_arr[0]->pool,
-						(void *)mbuf_free_arr, free_num);
-	} else {
-		for (i = 1; i < rs_thresh; ++i) {
-			mbuf = rte_pktmbuf_prefree_seg(buffer[i].mbuf);
-			if (mbuf != NULL)
-				rte_mempool_put(mbuf->pool, mbuf);
-		}
-	}
-
-done:
-	txq->desc_free_num += txq->rs_thresh;
-	txq->next_dd       += txq->rs_thresh;
-	if (txq->next_dd >= txq->ring_depth)
-		txq->next_dd = txq->rs_thresh - 1;
-	ret = rs_thresh;
-
-l_end:
-	return ret;
-}
 
 static __rte_always_inline void
 sxe2_tx_desc_fill_one_avx512(volatile union sxe2_tx_data_desc *desc, struct rte_mbuf *pkt,
@@ -207,16 +97,6 @@ void sxe2_tx_desc_fill_avx512(volatile union sxe2_tx_data_desc *desc, struct rte
 	}
 }
 
-static __rte_always_inline void
-sxe2_tx_pkts_mbuf_fill_avx512(struct sxe2_tx_buffer_vec *buffer,
-	struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
-{
-	uint16_t i;
-
-	for (i = 0; i < nb_pkts; ++i)
-		buffer[i].mbuf = tx_pkts[i];
-}
-
 static __rte_always_inline uint16_t
 sxe2_tx_pkts_vec_avx512_batch(struct sxe2_tx_queue *txq, struct rte_mbuf **tx_pkts,
 	uint16_t nb_pkts, bool with_offloads)
@@ -228,7 +108,7 @@ sxe2_tx_pkts_vec_avx512_batch(struct sxe2_tx_queue *txq, struct rte_mbuf **tx_pk
 	uint16_t tx_num;
 
 	if (txq->desc_free_num < txq->free_thresh)
-		(void)sxe2_tx_bufs_free_vec_avx512(txq);
+		(void)sxe2_tx_bufs_free_vec(txq);
 
 	nb_pkts = RTE_MIN(txq->desc_free_num, nb_pkts);
 	if (unlikely(nb_pkts == 0)) {
@@ -241,15 +121,14 @@ sxe2_tx_pkts_vec_avx512_batch(struct sxe2_tx_queue *txq, struct rte_mbuf **tx_pk
 
 	next_use = txq->next_use;
 	desc     = &txq->desc_ring[next_use];
-	buffer   = (struct sxe2_tx_buffer_vec *)txq->buffer_ring;
-	buffer  += next_use;
+	buffer   = &txq->buffer_ring_vec[next_use];
 
 	txq->desc_free_num -= nb_pkts;
 
 	res_num = txq->ring_depth - txq->next_use;
 
 	if (tx_num >= res_num) {
-		sxe2_tx_pkts_mbuf_fill_avx512(buffer, tx_pkts, res_num);
+		sxe2_tx_pkts_mbuf_fill_vec(buffer, tx_pkts, res_num);
 
 		sxe2_tx_desc_fill_avx512(desc, tx_pkts, res_num,
 					SXE2_TX_DATA_DESC_CMD_EOP, with_offloads);
@@ -265,10 +144,10 @@ sxe2_tx_pkts_vec_avx512_batch(struct sxe2_tx_queue *txq, struct rte_mbuf **tx_pk
 		next_use     = 0;
 		txq->next_rs = txq->rs_thresh - 1;
 		desc         = txq->desc_ring;
-		buffer       = (struct sxe2_tx_buffer_vec *)txq->buffer_ring;
+		buffer       = &txq->buffer_ring_vec[next_use];
 	}
 
-	sxe2_tx_pkts_mbuf_fill_avx512(buffer, tx_pkts, tx_num);
+	sxe2_tx_pkts_mbuf_fill_vec(buffer, tx_pkts, tx_num);
 
 	sxe2_tx_desc_fill_avx512(desc, tx_pkts, tx_num,
 			SXE2_TX_DATA_DESC_CMD_EOP, with_offloads);
@@ -863,5 +742,3 @@ uint16_t sxe2_rx_pkts_scattered_vec_avx512_offload(void *rx_queue,
 	return sxe2_rx_pkts_scattered_common_vec_avx512(rx_queue,
 			rx_pkts, nb_pkts, true);
 }
-
-#endif

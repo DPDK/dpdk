@@ -40,7 +40,7 @@ sxe2_tx_pkts_vec_sse_batch(struct sxe2_tx_queue *txq,
 		uint16_t nb_pkts, bool with_offloads)
 {
 	volatile union sxe2_tx_data_desc *desc;
-	struct sxe2_tx_buffer *buffer;
+	struct sxe2_tx_buffer_vec *buffer;
 	uint16_t next_use;
 	uint16_t res_num;
 	uint16_t tx_num;
@@ -57,11 +57,11 @@ sxe2_tx_pkts_vec_sse_batch(struct sxe2_tx_queue *txq,
 	tx_num = nb_pkts;
 	next_use = txq->next_use;
 	desc     = &txq->desc_ring[next_use];
-	buffer   = &txq->buffer_ring[next_use];
+	buffer   = &txq->buffer_ring_vec[next_use];
 	txq->desc_free_num -= nb_pkts;
 	res_num = txq->ring_depth - txq->next_use;
 	if (tx_num >= res_num) {
-		sxe2_tx_pkts_mbuf_fill(buffer, tx_pkts, res_num);
+		sxe2_tx_pkts_mbuf_fill_vec(buffer, tx_pkts, res_num);
 		for (i = 0; i < res_num - 1; ++i, ++tx_pkts, ++desc) {
 			sxe2_tx_desc_fill_one_sse(desc, *tx_pkts,
 						  SXE2_TX_DATA_DESC_CMD_EOP,
@@ -74,9 +74,9 @@ sxe2_tx_pkts_vec_sse_batch(struct sxe2_tx_queue *txq,
 		next_use     = 0;
 		txq->next_rs = txq->rs_thresh - 1;
 		desc         = &txq->desc_ring[next_use];
-		buffer       = &txq->buffer_ring[next_use];
+		buffer       = &txq->buffer_ring_vec[next_use];
 	}
-	sxe2_tx_pkts_mbuf_fill(buffer, tx_pkts, tx_num);
+	sxe2_tx_pkts_mbuf_fill_vec(buffer, tx_pkts, tx_num);
 	for (i = 0; i < tx_num; ++i, ++tx_pkts, ++desc) {
 		sxe2_tx_desc_fill_one_sse(desc, *tx_pkts,
 					  SXE2_TX_DATA_DESC_CMD_EOP,
