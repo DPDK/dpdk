@@ -119,31 +119,16 @@ iavf_tx_vec_dev_check_default(struct rte_eth_dev *dev)
 	return ret;
 }
 
-/******************************************************************************
- * If user knows a specific offload is not enabled by APP,
- * the macro can be commented to save the effort of fast path.
- * Currently below 2 features are supported in TX path,
- * 1, checksum offload
- * 2, VLAN/QINQ insertion
- ******************************************************************************/
-#define IAVF_TX_CSUM_OFFLOAD
-#define IAVF_TX_VLAN_QINQ_OFFLOAD
-
 static __rte_always_inline void
 iavf_txd_enable_offload(__rte_unused struct rte_mbuf *tx_pkt,
 			uint64_t *txd_hi, uint8_t vlan_flag)
 {
-#if defined(IAVF_TX_CSUM_OFFLOAD) || defined(IAVF_TX_VLAN_QINQ_OFFLOAD)
 	uint64_t ol_flags = tx_pkt->ol_flags;
-#endif
 	uint32_t td_cmd = 0;
-#ifdef IAVF_TX_CSUM_OFFLOAD
 	uint32_t td_offset = 0;
-#endif
 
 	RTE_SET_USED(vlan_flag);
 
-#ifdef IAVF_TX_CSUM_OFFLOAD
 	/* Set MACLEN */
 	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
 		td_offset |= (tx_pkt->outer_l2_len >> 1)
@@ -191,9 +176,7 @@ iavf_txd_enable_offload(__rte_unused struct rte_mbuf *tx_pkt,
 	}
 
 	*txd_hi |= ((uint64_t)td_offset) << CI_TXD_QW1_OFFSET_S;
-#endif
 
-#ifdef IAVF_TX_VLAN_QINQ_OFFLOAD
 	if (ol_flags & RTE_MBUF_F_TX_QINQ) {
 		td_cmd |= IAVF_TX_DESC_CMD_IL2TAG1;
 		/* vlan_flag specifies outer tag location for QinQ. */
@@ -205,7 +188,6 @@ iavf_txd_enable_offload(__rte_unused struct rte_mbuf *tx_pkt,
 		td_cmd |= CI_TX_DESC_CMD_IL2TAG1;
 		*txd_hi |= ((uint64_t)tx_pkt->vlan_tci << CI_TXD_QW1_L2TAG1_S);
 	}
-#endif
 
 	*txd_hi |= ((uint64_t)td_cmd) << CI_TXD_QW1_CMD_S;
 }
