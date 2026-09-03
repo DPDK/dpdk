@@ -10,6 +10,7 @@
 #include <rte_ether.h>
 
 #include "zxdh_ethdev.h"
+#include "zxdh_queue.h"
 
 #define ZXDH_ETH_RSS_L2  RTE_ETH_RSS_L2_PAYLOAD
 #define ZXDH_ETH_RSS_IP \
@@ -39,6 +40,12 @@
 #define ZXDH_SPM_SPEED_4X_40G          RTE_BIT32(9)
 #define ZXDH_SPM_SPEED_4X_100G         RTE_BIT32(10)
 #define ZXDH_SPM_SPEED_4X_200G         RTE_BIT32(11)
+
+#define ZXDH_VLAN_TAG_LEN   4
+#define ZXDH_ETH_OVERHEAD  (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + ZXDH_VLAN_TAG_LEN * 2)
+/* Total per-packet fixed overhead: L2 wire overhead + uplink net header. */
+#define ZXDH_PKT_FIXED_OVERHEAD  (ZXDH_ETH_OVERHEAD + ZXDH_UL_NET_HDR_SIZE)
+#define ZXDH_MTU_TO_PKTLEN(mtu)  ((mtu) + ZXDH_PKT_FIXED_OVERHEAD)
 
 struct zxdh_np_stats_data {
 	uint64_t n_pkts_dropped;

@@ -70,8 +70,7 @@ zxdh_dev_infos_get(struct rte_eth_dev *dev,
 	dev_info->reta_size = RTE_ETH_RSS_RETA_SIZE_256;
 	dev_info->flow_type_rss_offloads = ZXDH_RSS_HF;
 
-	dev_info->max_mtu = ZXDH_MAX_RX_PKTLEN - RTE_ETHER_HDR_LEN -
-		RTE_VLAN_HLEN - ZXDH_DL_NET_HDR_SIZE;
+	dev_info->max_mtu = ZXDH_MAX_RX_PKTLEN - ZXDH_ETH_OVERHEAD - ZXDH_UL_NET_HDR_SIZE;
 	dev_info->min_mtu = ZXDH_ETHER_MIN_MTU;
 
 	dev_info->tx_offload_capa = (RTE_ETH_TX_OFFLOAD_MULTI_SEGS);
@@ -1263,6 +1262,27 @@ zxdh_dev_close(struct rte_eth_dev *dev)
 	return ret;
 }
 
+/*
+ * Determine whether the current configuration requires support for scattered
+ * receive.
+ */
+static bool
+zxdh_scattered_rx(struct rte_eth_dev *eth_dev)
+{
+	uint16_t buf_size;
+
+	if (eth_dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
+		return true;
+
+	PMD_DRV_LOG(DEBUG, "port %u min_rx_buf_size %u",
+		eth_dev->data->port_id, eth_dev->data->min_rx_buf_size);
+	buf_size = eth_dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM;
+	if (ZXDH_MTU_TO_PKTLEN(eth_dev->data->mtu) > buf_size)
+		return true;
+
+	return false;
+}
+
 static int32_t
 zxdh_set_rxtx_funcs(struct rte_eth_dev *eth_dev)
 {
@@ -1272,9 +1292,18 @@ zxdh_set_rxtx_funcs(struct rte_eth_dev *eth_dev)
 		PMD_DRV_LOG(ERR, "port %u not support rx mergeable", eth_dev->data->port_id);
 		return -1;
 	}
+
 	eth_dev->tx_pkt_prepare = zxdh_xmit_pkts_prepare;
+	eth_dev->data->scattered_rx = zxdh_scattered_rx(eth_dev);
+	eth_dev->data->lro = (eth_dev->data->dev_conf.rxmode.offloads &
+						RTE_ETH_RX_OFFLOAD_TCP_LRO) ? 1 : 0;
+
 	eth_dev->tx_pkt_burst = &zxdh_xmit_pkts_packed;
-	eth_dev->rx_pkt_burst = &zxdh_recv_pkts_packed;
+
+	if (eth_dev->data->scattered_rx || eth_dev->data->lro)
+		eth_dev->rx_pkt_burst = &zxdh_recv_pkts_packed;
+	else
+		eth_dev->rx_pkt_burst = &zxdh_recv_single_pkts;
 
 	return 0;
 }
@@ -1402,7 +1431,12 @@ zxdh_dev_start(struct rte_eth_dev *dev)
 	if (ret)
 		return ret;
 
-	zxdh_set_rxtx_funcs(dev);
+	ret = zxdh_set_rxtx_funcs(dev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "port %u set rxtx funcs failed", dev->data->port_id);
+		return ret;
+	}
+
 	ret = zxdh_intr_enable(dev);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "interrupt enable failed");

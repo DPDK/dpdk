@@ -36,29 +36,19 @@ struct zxdh_virtnet_stats {
 	uint64_t bytes;
 	uint64_t errors;
 	uint64_t idle;
-	uint64_t full;
-	uint64_t norefill;
-	uint64_t multicast;
-	uint64_t broadcast;
 	uint64_t truncated_err;
 	uint64_t offload_cfg_err;
 	uint64_t invalid_hdr_len_err;
 	uint64_t no_segs_err;
-	uint64_t size_bins[8];
 };
 
 struct __rte_cache_aligned zxdh_virtnet_rx {
 	struct zxdh_virtqueue         *vq;
-
-	uint64_t                  mbuf_initializer; /* value to init mbufs. */
 	struct rte_mempool       *mpool;            /* mempool for mbuf allocation */
-	uint16_t                  queue_id;         /* DPDK queue index. */
-	uint16_t                  port_id;          /* Device port identifier. */
 	struct zxdh_virtnet_stats      stats;
 	const struct rte_memzone *mz;               /* mem zone to populate RX ring. */
-
-	/* dummy mbuf, for wraparound when processing RX ring. */
-	struct rte_mbuf           fake_mbuf;
+	uint16_t                  queue_id;         /* DPDK queue index. */
+	uint16_t                  port_id;          /* Device port identifier. */
 };
 
 struct __rte_cache_aligned zxdh_virtnet_tx {
@@ -75,5 +65,6 @@ struct __rte_cache_aligned zxdh_virtnet_tx {
 uint16_t zxdh_xmit_pkts_packed(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
 uint16_t zxdh_xmit_pkts_prepare(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
 uint16_t zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+uint16_t zxdh_recv_single_pkts(void *rx_queue, struct rte_mbuf **rcv_pkts, uint16_t nb_pkts);
 
 #endif  /* ZXDH_RXTX_H */
