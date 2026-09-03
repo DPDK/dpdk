@@ -1151,33 +1151,32 @@ iavf_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union ci_rx_desc *rxdp)
 
 static inline void
 iavf_flex_rxd_to_vlan_tci(struct rte_mbuf *mb,
-			  volatile union ci_rx_flex_desc *rxdp)
+			  volatile union ci_rx_flex_desc *rxdp,
+			  uint8_t rx_flags)
 {
-	if (rte_le_to_cpu_64(rxdp->wb.status_error0) &
-		(1 << IAVF_RX_FLEX_DESC_STATUS0_L2TAG1P_S)) {
-		mb->ol_flags |= RTE_MBUF_F_RX_VLAN |
-				RTE_MBUF_F_RX_VLAN_STRIPPED;
-		mb->vlan_tci =
-			rte_le_to_cpu_16(rxdp->wb.l2tag1);
-	} else {
-		mb->vlan_tci = 0;
-	}
-
-	if (rte_le_to_cpu_16(rxdp->wb.status_error1) &
-	    (1 << IAVF_RX_FLEX_DESC_STATUS1_L2TAG2P_S)) {
-		if ((mb->ol_flags & RTE_MBUF_F_RX_VLAN_STRIPPED) == 0) {
-			mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
+	bool l2tag1_valid = rte_le_to_cpu_16(rxdp->wb.status_error0) &
+			(1 << IAVF_RX_FLEX_DESC_STATUS0_L2TAG1P_S);
+	bool l2tag2_valid = rte_le_to_cpu_16(rxdp->wb.status_error1) &
+			(1 << IAVF_RX_FLEX_DESC_STATUS1_L2TAG2P_S);
+	if (l2tag1_valid && l2tag2_valid) {
+		mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED |
+				RTE_MBUF_F_RX_QINQ | RTE_MBUF_F_RX_QINQ_STRIPPED;
+		/* with both tags, the rx_flags say which is outer vs inner */
+		if (rx_flags & IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG2_2) {
+			mb->vlan_tci_outer = rte_le_to_cpu_16(rxdp->wb.l2tag2_2nd);
+			mb->vlan_tci = rte_le_to_cpu_16(rxdp->wb.l2tag1);
 		} else {
-			/* if two tags, move Tag1 to outer tag field */
-			mb->ol_flags |= RTE_MBUF_F_RX_QINQ_STRIPPED | RTE_MBUF_F_RX_QINQ;
-			mb->vlan_tci_outer = mb->vlan_tci;
+			mb->vlan_tci_outer = rte_le_to_cpu_16(rxdp->wb.l2tag1);
+			mb->vlan_tci = rte_le_to_cpu_16(rxdp->wb.l2tag2_2nd);
 		}
-		mb->vlan_tci = rte_le_to_cpu_16(rxdp->wb.l2tag2_2nd);
-		PMD_RX_LOG(DEBUG, "Descriptor l2tag2_1: %u, l2tag2_2: %u",
-			   rte_le_to_cpu_16(rxdp->wb.l2tag2_1st),
-			   rte_le_to_cpu_16(rxdp->wb.l2tag2_2nd));
+	} else if (l2tag1_valid || l2tag2_valid) {
+		mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
+		mb->vlan_tci_outer = 0;
+		mb->vlan_tci = rte_le_to_cpu_16(
+				l2tag1_valid ? rxdp->wb.l2tag1 : rxdp->wb.l2tag2_2nd);
 	} else {
 		mb->vlan_tci_outer = 0;
+		mb->vlan_tci = 0;
 	}
 }
 
@@ -1564,7 +1563,7 @@ iavf_recv_pkts_flex_rxd(void *rx_queue,
 		rxm->ol_flags = 0;
 		rxm->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
-		iavf_flex_rxd_to_vlan_tci(rxm, &rxd);
+		iavf_flex_rxd_to_vlan_tci(rxm, &rxd, rxq->rx_flags);
 		iavf_flex_rxd_to_ipsec_crypto_status(rxm, &rxd,
 				&rxq->stats->ipsec_crypto);
 		rxd_to_pkt_fields_ops[rxq->rxdid](rxq, rxm, &rxd);
@@ -1731,7 +1730,7 @@ iavf_recv_scattered_pkts_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->ol_flags = 0;
 		first_seg->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
-		iavf_flex_rxd_to_vlan_tci(first_seg, &rxd);
+		iavf_flex_rxd_to_vlan_tci(first_seg, &rxd, rxq->rx_flags);
 		iavf_flex_rxd_to_ipsec_crypto_status(first_seg, &rxd,
 				&rxq->stats->ipsec_crypto);
 		rxd_to_pkt_fields_ops[rxq->rxdid](rxq, first_seg, &rxd);
@@ -2013,7 +2012,7 @@ iavf_rx_scan_hw_ring_flex_rxd(struct ci_rx_queue *rxq,
 
 			mb->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 				rte_le_to_cpu_16(rxdp[j].wb.ptype_flex_flags0)];
-			iavf_flex_rxd_to_vlan_tci(mb, &rxdp[j]);
+			iavf_flex_rxd_to_vlan_tci(mb, &rxdp[j], rxq->rx_flags);
 			iavf_flex_rxd_to_ipsec_crypto_status(mb, &rxdp[j],
 				&rxq->stats->ipsec_crypto);
 			rxd_to_pkt_fields_ops[rxq->rxdid](rxq, mb, &rxdp[j]);
