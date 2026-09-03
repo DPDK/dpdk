@@ -84,6 +84,7 @@ static void sxe2_event_irq_common_handler(struct sxe2_adapter *adapter, uint64_t
 	if (oicr & RTE_BIT32(SXE2_COM_EC_LINK_CHG)) {
 		PMD_DEV_LOG_INFO(adapter, DRV, "OICR=0x%" PRIx64, oicr);
 		(void)sxe2_drv_mac_link_status_get(adapter);
+		(void)sxe2_link_update(dev, 0);
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 			rte_eth_dev_callback_process(dev,
 						     RTE_ETH_EVENT_INTR_LSC,
@@ -96,6 +97,7 @@ static void sxe2_event_irq_common_handler(struct sxe2_adapter *adapter, uint64_t
 					continue;
 				repr_adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(repr_eth_dev);
 				(void)sxe2_drv_mac_link_status_get(repr_adapter);
+				(void)sxe2_link_update(repr_eth_dev, 0);
 				if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 					rte_eth_dev_callback_process(repr_eth_dev,
 								     RTE_ETH_EVENT_INTR_LSC,
