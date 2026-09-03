@@ -19,6 +19,17 @@ static void *sxe2_tx_doorbell_addr_get(struct sxe2_adapter *adapter, uint16_t qu
 				     queue_id);
 }
 
+static void sxe2_tx_queue_desc_ring_reset(struct sxe2_tx_queue *txq)
+{
+	uint16_t i;
+	static const union sxe2_tx_data_desc zeroed_desc = {{0}};
+
+	for (i = 0; i < txq->ring_depth; i++) {
+		txq->desc_ring[i] = zeroed_desc;
+		txq->desc_ring[i].wb.dd = rte_cpu_to_le_64(SXE2_TX_DESC_DTYPE_DESC_DONE);
+	}
+}
+
 static void sxe2_tx_tail_init(struct sxe2_adapter *adapter, struct sxe2_tx_queue *txq)
 {
 	txq->tdt_reg_addr = sxe2_tx_doorbell_addr_get(adapter, txq->queue_id);
@@ -28,25 +39,32 @@ static void sxe2_tx_tail_init(struct sxe2_adapter *adapter, struct sxe2_tx_queue
 void __rte_cold sxe2_tx_queue_reset(struct sxe2_tx_queue *txq)
 {
 	uint16_t prev, i;
-	volatile union sxe2_tx_data_desc *txd;
-	static const union sxe2_tx_data_desc zeroed_desc = {{0}};
 	struct sxe2_tx_buffer *tx_buffer = txq->buffer_ring;
 
-	for (i = 0; i < txq->ring_depth; i++)
-		txq->desc_ring[i] = zeroed_desc;
+	sxe2_tx_queue_desc_ring_reset(txq);
 
 	prev = txq->ring_depth - 1;
 	for (i = 0; i < txq->ring_depth; i++) {
-		txd = &txq->desc_ring[i];
-		if (txd == NULL)
-			continue;
-
-		txd->wb.dd = rte_cpu_to_le_64(SXE2_TX_DESC_DTYPE_DESC_DONE);
 		tx_buffer[i].mbuf       = NULL;
 		tx_buffer[i].last_id    = i;
 		tx_buffer[prev].next_id = i;
 		prev = i;
 	}
+
+	txq->desc_used_num = 0;
+	txq->desc_free_num = txq->ring_depth - 1;
+	txq->next_use      = 0;
+	txq->next_clean    = txq->ring_depth - 1;
+	txq->next_dd       = txq->rs_thresh  - 1;
+	txq->next_rs       = txq->rs_thresh  - 1;
+}
+
+void __rte_cold sxe2_tx_queue_reset_vec(struct sxe2_tx_queue *txq)
+{
+	sxe2_tx_queue_desc_ring_reset(txq);
+
+	memset(txq->buffer_ring, 0,
+		sizeof(struct sxe2_tx_buffer) * txq->ring_depth);
 
 	txq->desc_used_num = 0;
 	txq->desc_free_num = txq->ring_depth - 1;
@@ -70,10 +88,12 @@ void __rte_cold sxe2_tx_queue_mbufs_release(struct sxe2_tx_queue *txq)
 	}
 }
 
-static void sxe2_tx_buffer_ring_free(struct sxe2_tx_queue *txq)
+void __rte_cold sxe2_tx_buffer_ring_free(struct sxe2_tx_queue *txq)
 {
-	if (txq != NULL && txq->buffer_ring != NULL)
+	if (txq != NULL && txq->buffer_ring != NULL) {
 		rte_free(txq->buffer_ring);
+		txq->buffer_ring = NULL;
+	}
 }
 
 const struct sxe2_txq_ops sxe2_default_txq_ops = {
