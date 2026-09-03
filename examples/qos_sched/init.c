@@ -19,7 +19,6 @@
 #include "main.h"
 #include "cfg_file.h"
 
-uint32_t app_numa_mask = 0;
 static uint32_t app_inited_port_mask = 0;
 
 int app_pipe_to_profile[MAX_SCHED_SUBPORTS][MAX_SCHED_PIPES];
