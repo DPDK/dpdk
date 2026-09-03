@@ -312,6 +312,12 @@ int32_t sxe2_switchdev_repr_private_data_init(struct rte_eth_dev *dev,
 	repr_priv_data->repr_q_id = repr_id;
 	repr_priv_data->repr_pf_id = parent_adapter->pf_idx;
 	repr_priv_data->repr_vf_id = repr_id;
+	if (repr_id >= parent_adapter->repr_ctxt.nb_vf) {
+		PMD_LOG_ERR(INIT, "repr_id %u exceed max vf %u",
+			repr_id, parent_adapter->repr_ctxt.nb_vf);
+		ret = -EINVAL;
+		goto l_free;
+	}
 	repr_priv_data->repr_vf_primary_vsi_id =
 		parent_adapter->repr_ctxt.repr_vf_id[repr_id].kernel_vsi_id;
 	repr_priv_data->repr_vf_backup_vsi_id =
