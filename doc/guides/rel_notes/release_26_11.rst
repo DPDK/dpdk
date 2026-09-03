@@ -83,6 +83,8 @@ New Features
   * Added a fast single-segment Rx path (``zxdh_recv_single_pkts``)
     that is selected when the MTU fits in a single buffer.
   * Optimized the packed-ring Rx path.
+  * Optimized the packed-ring Tx path
+    with per-descriptor mbuf free (``rte_pktmbuf_free_seg``) and prefetch hints.
   * Changed the set of per-queue xstats counters.
 
 

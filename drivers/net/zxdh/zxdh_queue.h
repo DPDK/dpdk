@@ -124,7 +124,6 @@ struct zxdh_vring_packed {
 
 struct zxdh_vq_desc_extra {
 	void *cookie;
-	uint16_t ndescs;
 	uint16_t next;
 };
 
