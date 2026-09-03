@@ -109,30 +109,6 @@ Runtime Configuration
 
   Default value is 3 (count both packets and bytes).
 
-- ``drv-sw-stats`` parameter [int]
-
-  This parameter controls whether per-packet software statistics (SW stats)
-  are collected in the Rx data path.
-
-  Hardware packet statistic counters may be inaccurate for certain packet types
-  due to hardware design limitations.
-  When accuracy of Rx packet classification statistics is critical,
-  enabling this parameter allows the driver to accumulate statistics in software
-  as packets are received, providing an alternative statistical path
-  that bypasses hardware counter inaccuracies.
-
-  - 0: Disable software statistics collection (default).
-    The basic port statistics (``ipackets``, ``ibytes``) are reported
-    from the hardware counters.
-  - 1: Enable software statistics collection.
-    Per-packet software statistics are accumulated for unicast,
-    multicast, broadcast, and dropped packets in the Rx data path.
-
-  When enabled, the following extended statistics (xstats) are available:
-  ``rx_sw_unicast_packets``, ``rx_sw_multicast_packets``,
-  ``rx_sw_broadcast_packets``, ``rx_sw_drop_packets``,
-  and ``rx_sw_drop_bytes``.
-
 - ``no-sched-mode`` parameter [int]
 
   This parameter enables non-scheduling mode (no-sched mode).
@@ -208,8 +184,7 @@ reflect the actual packets processed by the driver.
 
 Receive Software Statistics
   These counters are collected in the Rx data path
-  when ``drv-sw-stats=1`` is configured (see the ``drv-sw-stats`` devarg above).
-  When ``drv-sw-stats`` is disabled (default), these xstats report zero.
+  on every received packet.
 
   - ``rx_sw_unicast_packets``: Number of unicast packets received.
   - ``rx_sw_multicast_packets``: Number of multicast packets received.
@@ -217,10 +192,8 @@ Receive Software Statistics
   - ``rx_sw_drop_packets``: Number of packets dropped in the Rx data path.
   - ``rx_sw_drop_bytes``: Number of bytes dropped in the Rx data path.
 
-  When ``drv-sw-stats`` is enabled, the basic counters
-  ``ipackets`` and ``ibytes`` (from ``rte_eth_stats``)
+  The basic counters ``ipackets`` and ``ibytes`` (from ``rte_eth_stats``)
   also reflect the software-accumulated packet and byte counts.
-  Otherwise, they are reported from hardware counters.
 
 Fnav Flow Engine Statistics
   The Fnav flow engine statistics type is controlled by
