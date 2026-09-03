@@ -953,7 +953,8 @@ static int32_t sxe2_flow_check_actions(struct rte_eth_dev *dev __rte_unused, str
 		}
 	}
 
-	if (engine_type == SXE2_FLOW_ENGINE_FNAV) {
+	if (engine_type == SXE2_FLOW_ENGINE_FNAV ||
+		engine_type == SXE2_FLOW_ENGINE_ACL) {
 		if (vsi_num) {
 			flow->action.q_region.q_index = 0;
 			flow->action.q_region.region = 7;
@@ -980,6 +981,7 @@ int32_t sxe2_flow_parse_action(struct rte_eth_dev *dev,
 	uint8_t action_num[SXE2_FLOW_ACTION_MAX] = {0};
 	enum sxe2_flow_engine_type engine_type = flow->engine_type;
 	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
+	struct sxe2_flow_count_resource *hw_res = NULL;
 
 	sxe2_flow_action_pre(flow);
 
@@ -988,7 +990,8 @@ int32_t sxe2_flow_parse_action(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
 		case RTE_FLOW_ACTION_TYPE_PASSTHRU:
-			if (engine_type == SXE2_FLOW_ENGINE_FNAV) {
+			if (engine_type == SXE2_FLOW_ENGINE_FNAV ||
+				engine_type == SXE2_FLOW_ENGINE_ACL) {
 				sxe2_set_bit(SXE2_FLOW_ACTION_PASSTHRU, flow->action.act_types);
 				action_num[SXE2_FLOW_ACTION_PASSTHRU]++;
 			} else {
@@ -1035,14 +1038,9 @@ int32_t sxe2_flow_parse_action(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			if (engine_type == SXE2_FLOW_ENGINE_FNAV) {
-				sxe2_set_bit(SXE2_FLOW_ACTION_COUNT, flow->action.act_types);
-				act_count = action->conf;
-				flow->action.count.user_id = act_count->id;
-				flow->action.count.driver_id = 0;
-				if (flow->action.count.user_id == 0)
-					flow->action.count.driver_id =
-						++adapter->flow_ctxt.hw_res.global_index;
-				action_num[SXE2_FLOW_ACTION_COUNT]++;
+				hw_res = &adapter->flow_ctxt.fnav_hw_res;
+			} else if (engine_type == SXE2_FLOW_ENGINE_ACL) {
+				hw_res = &adapter->flow_ctxt.acl_hw_res;
 			} else {
 				rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
@@ -1052,6 +1050,16 @@ int32_t sxe2_flow_parse_action(struct rte_eth_dev *dev,
 				ret = -EINVAL;
 				goto l_end;
 			}
+			sxe2_set_bit(SXE2_FLOW_ACTION_COUNT, flow->action.act_types);
+			act_count = action->conf;
+			flow->action.count.user_id =
+				(act_count == NULL) ? 0 : act_count->id;
+			flow->action.count.driver_id = 0;
+			if (flow->action.count.user_id == 0) {
+				flow->action.count.driver_id =
+					++hw_res->global_index;
+			}
+			action_num[SXE2_FLOW_ACTION_COUNT]++;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			if (engine_type == SXE2_FLOW_ENGINE_RSS) {

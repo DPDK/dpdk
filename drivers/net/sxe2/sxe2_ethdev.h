@@ -135,6 +135,7 @@ struct sxe2_devargs {
 	uint8_t flow_dup_pattern_mode;
 	uint8_t func_flow_direct_en;
 	uint8_t fnav_stat_type;
+	uint8_t acl_stat_type;
 	uint8_t no_sched_mode;
 	uint8_t sched_layer_mode;
 	uint8_t rx_low_latency;

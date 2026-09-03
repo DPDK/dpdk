@@ -80,12 +80,14 @@ sxe2_dump_dev_args_info(FILE *file, struct rte_eth_dev *dev)
 		"\t  -- no_sched_mode: %s\n"
 		"\t  -- flow-duplicate-pattern: %u\n"
 		"\t  -- fnav-stat-type: %u\n"
+		"\t  -- acl-stat-type: %u\n"
 		"\t  -- sched_layer_mode: %u\n"
 		"\t  -- rx_low_latency: %s\n"
 		"\t  -- function-flow-direct: %s\n",
 		adapter->devargs.no_sched_mode ? "On" : "Off",
 		adapter->devargs.flow_dup_pattern_mode,
 		adapter->devargs.fnav_stat_type,
+		adapter->devargs.acl_stat_type,
 		adapter->devargs.sched_layer_mode,
 		adapter->devargs.rx_low_latency ? "On" : "Off",
 		adapter->devargs.func_flow_direct_en ? "On" : "Off");
