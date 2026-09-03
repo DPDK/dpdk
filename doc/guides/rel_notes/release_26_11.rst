@@ -78,6 +78,13 @@ New Features
   * Added the inner IP header to the RSS hash so tunneled traffic is
     distributed across the Rx queues.
 
+* **Updated ZTE zxdh ethernet driver.**
+
+  * Added a fast single-segment Rx path (``zxdh_recv_single_pkts``) that
+    is selected when the MTU fits in a single buffer.
+  * Optimized the packed-ring Rx recv path.
+  * Changed the set of per-queue xstats counters.
+
 
 Removed Items
 -------------
