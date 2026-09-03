@@ -407,7 +407,7 @@ int32_t zxdh_enqueue_recv_refill_packed(struct zxdh_virtqueue *vq,
 {
 	struct zxdh_vring_packed_desc *start_dp = vq->vq_packed.ring.desc;
 	struct zxdh_vq_desc_extra *dxp;
-	uint16_t flags = vq->vq_packed.cached_flags;
+	uint16_t flags = vq->cached_flags;
 	int32_t i;
 	uint16_t idx;
 
@@ -415,7 +415,6 @@ int32_t zxdh_enqueue_recv_refill_packed(struct zxdh_virtqueue *vq,
 		idx = vq->vq_avail_idx;
 		dxp = &vq->vq_descx[idx];
 		dxp->cookie = (void *)cookie[i];
-		dxp->ndescs = 1;
 		/* rx pkt fill in data_off */
 		start_dp[idx].addr = rte_mbuf_iova_get(cookie[i]) + RTE_PKTMBUF_HEADROOM;
 		start_dp[idx].len = cookie[i]->buf_len - RTE_PKTMBUF_HEADROOM;
@@ -423,8 +422,8 @@ int32_t zxdh_enqueue_recv_refill_packed(struct zxdh_virtqueue *vq,
 		zxdh_queue_store_flags_packed(&start_dp[idx], flags);
 		if (++vq->vq_avail_idx >= vq->vq_nentries) {
 			vq->vq_avail_idx -= vq->vq_nentries;
-			vq->vq_packed.cached_flags ^= ZXDH_VRING_PACKED_DESC_F_AVAIL_USED;
-			flags = vq->vq_packed.cached_flags;
+			vq->cached_flags ^= ZXDH_VRING_PACKED_DESC_F_AVAIL_USED;
+			flags = vq->cached_flags;
 		}
 	}
 	vq->vq_free_cnt = (uint16_t)(vq->vq_free_cnt - num);
@@ -467,7 +466,7 @@ void zxdh_queue_rxvq_flush(struct zxdh_virtqueue *vq)
 	int32_t cnt = 0;
 
 	i = vq->vq_used_cons_idx;
-	while (zxdh_desc_used(&descs[i], vq) && cnt++ < vq->vq_nentries) {
+	while (desc_is_used(&descs[i], vq) && cnt++ < vq->vq_nentries) {
 		dxp = &vq->vq_descx[descs[i].id];
 		if (dxp->cookie != NULL) {
 			rte_pktmbuf_free(dxp->cookie);
@@ -477,7 +476,7 @@ void zxdh_queue_rxvq_flush(struct zxdh_virtqueue *vq)
 		vq->vq_used_cons_idx++;
 		if (vq->vq_used_cons_idx >= vq->vq_nentries) {
 			vq->vq_used_cons_idx -= vq->vq_nentries;
-			vq->vq_packed.used_wrap_counter ^= 1;
+			vq->used_wrap_counter ^= 1;
 		}
 		i = vq->vq_used_cons_idx;
 	}
