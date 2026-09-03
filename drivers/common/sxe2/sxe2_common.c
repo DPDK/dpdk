@@ -465,8 +465,12 @@ l_end:
 static int32_t sxe2_classes_driver_remove(struct sxe2_common_device *cdev)
 {
 	struct sxe2_class_driver *cdrv = cdev->cdrv;
+	int32_t ret = 0;
 
-	return cdrv->remove(cdev);
+	if (cdrv != NULL && cdrv->remove != NULL)
+		ret = cdrv->remove(cdev);
+
+	return ret;
 }
 
 static int32_t sxe2_kvargs_validate(struct sxe2_dev_kvargs_info *kv_info)
