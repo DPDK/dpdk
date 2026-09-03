@@ -324,10 +324,7 @@ int32_t sxe2_switchdev_repr_private_data_init(struct rte_eth_dev *dev,
 		parent_adapter->repr_ctxt.repr_vf_id[repr_id].dpdk_vsi_id;
 
 	repr_priv_data->repr_vf_vsi_id =
-		parent_adapter->repr_ctxt.repr_vf_id[repr_id].kernel_vsi_id !=
-		SXE2_INVALID_VSI_ID ?
-		parent_adapter->repr_ctxt.repr_vf_id[repr_id].kernel_vsi_id :
-		parent_adapter->repr_ctxt.repr_vf_id[repr_id].dpdk_vsi_id;
+		repr_priv_data->repr_vf_primary_vsi_id;
 
 	adapter->repr_priv_data = repr_priv_data;
 	goto l_end;
