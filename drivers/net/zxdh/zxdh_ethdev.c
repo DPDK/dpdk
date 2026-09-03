@@ -489,7 +489,7 @@ zxdh_dev_free_mbufs(struct rte_eth_dev *dev)
 		if (!vq)
 			continue;
 		while ((buf = zxdh_queue_detach_unused(vq)) != NULL)
-			rte_pktmbuf_free(buf);
+			rte_pktmbuf_free_seg(buf);
 		PMD_DRV_LOG(DEBUG, "freeing %s[%d] used and unused buf",
 		"rxq", i * 2);
 	}
@@ -498,7 +498,7 @@ zxdh_dev_free_mbufs(struct rte_eth_dev *dev)
 		if (!vq)
 			continue;
 		while ((buf = zxdh_queue_detach_unused(vq)) != NULL)
-			rte_pktmbuf_free(buf);
+			rte_pktmbuf_free_seg(buf);
 		PMD_DRV_LOG(DEBUG, "freeing %s[%d] used and unused buf",
 		"txq", i * 2 + 1);
 	}

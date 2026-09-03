@@ -85,6 +85,8 @@ New Features
     is selected when the MTU fits in a single buffer.
   * Optimized the packed-ring Rx recv path.
   * Changed the set of per-queue xstats counters.
+  * Optimized the packed-ring Tx xmit path with per-descriptor mbuf
+    free (``rte_pktmbuf_free_seg``) and prefetch hints.
 
 
 Removed Items
