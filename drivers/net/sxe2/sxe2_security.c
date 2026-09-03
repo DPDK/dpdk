@@ -326,6 +326,7 @@ void sxe2_security_uinit(struct rte_eth_dev *dev)
 	if (sctx != NULL) {
 		rte_free(sctx);
 		sctx = NULL;
+		dev->security_ctx = NULL;
 	}
 
 	sxe2_ipsec_uinit(adapter);
