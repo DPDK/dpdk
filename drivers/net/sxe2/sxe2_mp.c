@@ -335,8 +335,12 @@ int32_t sxe2_mp_req_get_stats(struct rte_eth_dev *dev,
 		uint16_t nb_queues = RTE_MAX(dev->data->nb_rx_queues,
 					     dev->data->nb_tx_queues);
 
+		/* The caller's array is sized for the configured queues, but
+		 * the primary only fills in the queues firmware has counters for.
+		 */
 		memcpy(qstats, mz_data->payload.stats_blk.qstats,
-		       RTE_MIN(nb_queues, SXE2_MP_MAX_QSTATS) * sizeof(*qstats));
+		       RTE_MIN_T(nb_queues, SXE2_MP_MAX_QSTATS, uint16_t) *
+		       sizeof(*qstats));
 	}
 	PMD_LOG_DEBUG(DRV, "sxe2_mp: stats received via IPC for port %u",
 			  dev->data->port_id);
