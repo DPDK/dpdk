@@ -1648,15 +1648,17 @@ int32_t sxe2_drv_udp_tunnel_get(struct sxe2_adapter *adapter,
 				 &req, sizeof(req),
 				 &resp, sizeof(resp));
 	ret = sxe2_drv_cmd_exec(cdev, &cmd);
-	if (ret)
+	if (ret) {
 		PMD_LOG_ERR(DRV, "Failed to get udp proto %d port, ret=%d", req.type, ret);
+		goto l_end;
+	}
 
 	tunnel_config->fw_port   = resp.port;
 	tunnel_config->fw_status = resp.enable;
 	tunnel_config->fw_dst_en = resp.dst;
 	tunnel_config->fw_src_en = resp.src;
 	tunnel_config->fw_used   = resp.fw_used;
-
+l_end:
 	return ret;
 }
 
