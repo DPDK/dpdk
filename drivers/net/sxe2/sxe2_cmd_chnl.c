@@ -1576,8 +1576,7 @@ int32_t sxe2_drv_queue_info_get_update(struct sxe2_adapter *adapter, struct eth_
 	struct sxe2_queue_map_info resp = {0};
 	struct sxe2_common_device *cdev = adapter->cdev;
 	struct rte_eth_dev_data *dev_data = adapter->dev_info.dev_data;
-	uint8_t pool_idx;
-	uint8_t index;
+	uint16_t i;
 	int32_t ret;
 
 	sxe2_drv_cmd_params_fill(adapter, &param, SXE2_DRV_CMD_TX_RX_MAP_GET,
@@ -1589,16 +1588,17 @@ int32_t sxe2_drv_queue_info_get_update(struct sxe2_adapter *adapter, struct eth_
 		goto l_end;
 	}
 
-	for (pool_idx = 0; pool_idx < SXE2_RXQ_STATS_MAP_MAX_NUM &&
-			pool_idx < dev_data->nb_rx_queues; pool_idx++) {
-		qstats[pool_idx].q_ipackets = resp.rxq_stats_map_info[pool_idx].rxq_lan_in_pkt_cnt;
-		qstats[pool_idx].q_ibytes = resp.rxq_stats_map_info[pool_idx].rxq_lan_in_byte_cnt;
+	/* Firmware has a limited number of queue counters, and reports them
+	 * for the first queues only. Later queues are not covered.
+	 */
+	for (i = 0; i < RTE_MIN(SXE2_RXQ_STATS_MAP_MAX_NUM, dev_data->nb_rx_queues); i++) {
+		qstats[i].q_ipackets = resp.rxq_stats_map_info[i].rxq_lan_in_pkt_cnt;
+		qstats[i].q_ibytes = resp.rxq_stats_map_info[i].rxq_lan_in_byte_cnt;
 	}
 
-	for (index = 0; index < SXE2_TXQ_STATS_MAP_MAX_NUM &&
-			index < dev_data->nb_tx_queues; index++) {
-		qstats[index].q_opackets = resp.txq_stats_map_info[index].txq_lan_pkt_cnt;
-		qstats[index].q_obytes = resp.txq_stats_map_info[index].txq_lan_byte_cnt;
+	for (i = 0; i < RTE_MIN(SXE2_TXQ_STATS_MAP_MAX_NUM, dev_data->nb_tx_queues); i++) {
+		qstats[i].q_opackets = resp.txq_stats_map_info[i].txq_lan_pkt_cnt;
+		qstats[i].q_obytes = resp.txq_stats_map_info[i].txq_lan_byte_cnt;
 	}
 
 l_end:
