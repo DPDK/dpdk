@@ -658,8 +658,8 @@ Usage::
     testpmd> set tx lldp on
 
 
-Limitations or Knowing issues
------------------------------
+Limitations or Known issues
+---------------------------
 
 16 Byte RX Descriptor setting is not available
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
