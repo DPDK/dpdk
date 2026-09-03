@@ -98,6 +98,17 @@ Runtime Configuration
 
   Default value is 3 (count both packets and bytes).
 
+- ``acl-stat-type`` parameter [int]
+
+  This parameter controls the ACL flow engine statistics type
+  used for flow rule hit counting (via ``rte_flow_query``).
+
+  - 1: Only count the number of packets.
+  - 2: Only count the number of bytes.
+  - 3: Count both packets and bytes (default).
+
+  Default value is 3 (count both packets and bytes).
+
 - ``drv-sw-stats`` parameter [int]
 
   This parameter controls whether per-packet software statistics (SW stats)
