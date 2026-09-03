@@ -2605,7 +2605,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	/* IAVF does not support timestamp queues, so pass NULL for ts_fns */
 	return ci_xmit_pkts(txq, tx_pkts, nb_pkts,
 			    (txq->vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1) ?
-				CI_VLAN_IN_L2TAG1 : CI_VLAN_IN_L2TAG2,
+				CI_TAG_IN_DATA_DESC : CI_TAG_IN_CTX_DESC,
 			    iavf_get_context_desc, &ipsec_ops, NULL);
 }
 
