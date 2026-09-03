@@ -98,8 +98,8 @@ struct rte_flow {
 };
 TAILQ_HEAD(rte_flow_list_t, rte_flow);
 
-struct sxe2_fnav_cid_mgr {
-	TAILQ_ENTRY(sxe2_fnav_cid_mgr) next;
+struct sxe2_flow_cid_mgr {
+	TAILQ_ENTRY(sxe2_flow_cid_mgr) next;
 	uint16_t stat_index;
 	uint32_t user_id;
 	uint32_t driver_id;
@@ -107,18 +107,18 @@ struct sxe2_fnav_cid_mgr {
 	uint64_t hits;
 	uint64_t bytes;
 };
-TAILQ_HEAD(sxe2_fnav_cid_mgr_list_t, sxe2_fnav_cid_mgr);
+TAILQ_HEAD(sxe2_flow_cid_mgr_list_t, sxe2_flow_cid_mgr);
 
-struct sxe2_fnav_count_resource {
+struct sxe2_flow_count_resource {
 	uint32_t count_type;
 	uint32_t global_index;
-	struct sxe2_fnav_cid_mgr_list_t fnav_cid_mgr_list;
+	struct sxe2_flow_cid_mgr_list_t flow_cid_mgr_list;
 };
 
 struct sxe2_flow_context {
 	struct rte_flow_list_t rte_flow_list;
 	rte_spinlock_t flow_list_lock;
-	struct sxe2_fnav_count_resource hw_res;
+	struct sxe2_flow_count_resource hw_res;
 	uint16_t tunnel_port_list[SXE2_FLOW_UDP_TUNNEL_MAX];
 	uint32_t fnav_inited;
 };

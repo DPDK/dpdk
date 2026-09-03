@@ -856,7 +856,7 @@ static int32_t sxe2_flow_rte_list_free(struct sxe2_adapter *adapter,
 	struct rte_flow *flow_temp = NULL;
 	struct sxe2_flow *hw_flow = NULL;
 	struct sxe2_flow *hw_flow_temp = NULL;
-	struct sxe2_fnav_cid_mgr *mgr = NULL;
+	struct sxe2_flow_cid_mgr *mgr = NULL;
 	rte_spinlock_lock(&adapter->flow_ctxt.flow_list_lock);
 	TAILQ_FOREACH(flow_temp, &adapter->flow_ctxt.rte_flow_list, next) {
 		if (flow_temp == flow)
@@ -1027,7 +1027,7 @@ static struct rte_flow *sxe2_flow_create(struct rte_eth_dev *dev,
 		goto l_free_flow;
 
 	TAILQ_FOREACH(flow, &flow_list->sxe2_flow_list, next) {
-		ret = sxe2_fnav_get_filter_cid(adapter, flow);
+		ret = sxe2_flow_get_filter_cid(adapter, flow);
 		if (ret != 0) {
 			PMD_LOG_ERR(DRV, "fnav get stats id failed, ret:%d", ret);
 			rte_flow_error_set(error, EIO,
@@ -1087,16 +1087,16 @@ l_end:
 	return ret;
 }
 
-int32_t sxe2_fnav_get_filter_cid(struct sxe2_adapter *adapter, struct sxe2_flow *flow)
+int32_t sxe2_flow_get_filter_cid(struct sxe2_adapter *adapter, struct sxe2_flow *flow)
 {
 	int32_t ret = 0;
-	struct sxe2_fnav_cid_mgr_list_t *cid_mgr_list =
-				&adapter->flow_ctxt.hw_res.fnav_cid_mgr_list;
+	struct sxe2_flow_cid_mgr_list_t *cid_mgr_list =
+				&adapter->flow_ctxt.hw_res.flow_cid_mgr_list;
 	uint32_t stat_index;
 	uint32_t user_id;
 	uint32_t driver_id;
-	struct sxe2_fnav_cid_mgr *temp = NULL;
-	struct sxe2_fnav_cid_mgr *mgr = NULL;
+	struct sxe2_flow_cid_mgr *temp = NULL;
+	struct sxe2_flow_cid_mgr *mgr = NULL;
 
 	if (sxe2_test_bit(SXE2_FLOW_ACTION_COUNT, flow->action.act_types)) {
 		user_id = flow->action.count.user_id;
@@ -1111,7 +1111,7 @@ int32_t sxe2_fnav_get_filter_cid(struct sxe2_adapter *adapter, struct sxe2_flow 
 		}
 		if (mgr == NULL) {
 			mgr = rte_zmalloc("sxe2_fnav_cid_mgr",
-				sizeof(struct sxe2_fnav_cid_mgr), 0);
+				sizeof(struct sxe2_flow_cid_mgr), 0);
 			if (!mgr) {
 				PMD_LOG_ERR(DRV,
 					"Failed to alloc sxe2vf_fnav_cid_mgr memory.");
@@ -1142,13 +1142,13 @@ l_end:
 
 int32_t sxe2_flow_free_mgr(struct sxe2_adapter *adapter,
 		       struct sxe2_flow *flow,
-		       struct sxe2_fnav_cid_mgr **mgr_ptr,
+		       struct sxe2_flow_cid_mgr **mgr_ptr,
 		       struct rte_flow_error *error)
 {
 	int32_t ret = 0;
-	struct sxe2_fnav_cid_mgr_list_t *cid_mgr_list =
-				&adapter->flow_ctxt.hw_res.fnav_cid_mgr_list;
-	struct sxe2_fnav_cid_mgr *mgr = *mgr_ptr;
+	struct sxe2_flow_cid_mgr_list_t *cid_mgr_list =
+				&adapter->flow_ctxt.hw_res.flow_cid_mgr_list;
+	struct sxe2_flow_cid_mgr *mgr = *mgr_ptr;
 	uint32_t user_id = flow->action.count.user_id;
 	if (user_id == 0) {
 		TAILQ_REMOVE(cid_mgr_list, mgr, next);
@@ -1169,14 +1169,14 @@ int32_t sxe2_flow_free_mgr(struct sxe2_adapter *adapter,
 
 int32_t sxe2_flow_query_mgr(struct sxe2_adapter *adapter,
 			struct sxe2_flow *flow,
-			struct sxe2_fnav_cid_mgr **mgr_ptr,
+			struct sxe2_flow_cid_mgr **mgr_ptr,
 			struct rte_flow_error *error)
 {
 	int32_t ret = 0;
-	struct sxe2_fnav_cid_mgr_list_t *cid_mgr_list =
-				&adapter->flow_ctxt.hw_res.fnav_cid_mgr_list;
-	struct sxe2_fnav_cid_mgr *temp = NULL;
-	struct sxe2_fnav_cid_mgr *mgr = NULL;
+	struct sxe2_flow_cid_mgr_list_t *cid_mgr_list =
+				&adapter->flow_ctxt.hw_res.flow_cid_mgr_list;
+	struct sxe2_flow_cid_mgr *temp = NULL;
+	struct sxe2_flow_cid_mgr *mgr = NULL;
 	uint32_t user_id = flow->action.count.user_id;
 	uint32_t driver_id = flow->action.count.driver_id;
 
@@ -1217,7 +1217,7 @@ static int32_t sxe2_flow_query_count(struct sxe2_adapter *adapter,
 				 struct rte_flow_error *error)
 {
 	int32_t ret = 0;
-	struct sxe2_fnav_cid_mgr *mgr = NULL;
+	struct sxe2_flow_cid_mgr *mgr = NULL;
 	switch (flow->action.count.stat_ctrl) {
 	case SXE2_FNAV_STAT_ENA_NONE:
 		count->hits_set = 0;
@@ -1347,7 +1347,7 @@ int32_t sxe2_flow_init(struct rte_eth_dev *dev)
 	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
 	int32_t ret = 0;
 	TAILQ_INIT(&adapter->flow_ctxt.rte_flow_list);
-	TAILQ_INIT(&adapter->flow_ctxt.hw_res.fnav_cid_mgr_list);
+	TAILQ_INIT(&adapter->flow_ctxt.hw_res.flow_cid_mgr_list);
 	if (adapter->devargs.fnav_stat_type)
 		adapter->flow_ctxt.hw_res.count_type =
 			adapter->devargs.fnav_stat_type;
@@ -1369,10 +1369,10 @@ int32_t sxe2_flow_uninit(struct rte_eth_dev *dev)
 	int32_t ret = 0;
 	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
 	struct rte_flow_error error;
-	struct sxe2_fnav_cid_mgr *mgr = NULL;
-	struct sxe2_fnav_cid_mgr *temp = NULL;
-	struct sxe2_fnav_cid_mgr_list_t *cid_mgr_list =
-						&adapter->flow_ctxt.hw_res.fnav_cid_mgr_list;
+	struct sxe2_flow_cid_mgr *mgr = NULL;
+	struct sxe2_flow_cid_mgr *temp = NULL;
+	struct sxe2_flow_cid_mgr_list_t *cid_mgr_list =
+						&adapter->flow_ctxt.hw_res.flow_cid_mgr_list;
 
 	ret = sxe2_flow_flush(dev, &error);
 	if (ret)
