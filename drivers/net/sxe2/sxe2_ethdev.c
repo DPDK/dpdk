@@ -779,6 +779,10 @@ static int32_t sxe2_dev_infos_get(struct rte_eth_dev *dev,
 	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
 	struct sxe2_vsi *vsi = adapter->vsi_ctxt.main_vsi;
 
+	if (unlikely(vsi == NULL)) {
+		PMD_LOG_ERR(INIT, "main vsi is NULL");
+		return -EINVAL;
+	}
 	dev_info->max_rx_queues = vsi->rxqs.q_cnt;
 	dev_info->max_tx_queues = vsi->txqs.q_cnt;
 	dev_info->min_rx_bufsize = SXE2_MIN_BUF_SIZE;
