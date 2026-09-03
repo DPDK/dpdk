@@ -1203,13 +1203,24 @@ l_end:
 int32_t sxe2_flow_get_filter_cid(struct sxe2_adapter *adapter, struct sxe2_flow *flow)
 {
 	int32_t ret = 0;
-	struct sxe2_flow_cid_mgr_list_t *cid_mgr_list =
-				&adapter->flow_ctxt.hw_res.flow_cid_mgr_list;
+	struct sxe2_flow_cid_mgr_list_t *cid_mgr_list = NULL;
 	uint32_t stat_index;
 	uint32_t user_id;
 	uint32_t driver_id;
 	struct sxe2_flow_cid_mgr *temp = NULL;
 	struct sxe2_flow_cid_mgr *mgr = NULL;
+	uint32_t count_type;
+
+	if (flow->engine_type == SXE2_FLOW_ENGINE_FNAV) {
+		cid_mgr_list = &adapter->flow_ctxt.fnav_hw_res.flow_cid_mgr_list;
+		count_type = adapter->flow_ctxt.fnav_hw_res.count_type;
+	} else if (flow->engine_type == SXE2_FLOW_ENGINE_ACL) {
+		cid_mgr_list = &adapter->flow_ctxt.acl_hw_res.flow_cid_mgr_list;
+		count_type = adapter->flow_ctxt.acl_hw_res.count_type;
+	} else {
+		ret = -ENOTSUP;
+		goto l_end;
+	}
 
 	if (sxe2_test_bit(SXE2_FLOW_ACTION_COUNT, flow->action.act_types)) {
 		user_id = flow->action.count.user_id;
@@ -1232,7 +1243,10 @@ int32_t sxe2_flow_get_filter_cid(struct sxe2_adapter *adapter, struct sxe2_flow 
 				goto l_end;
 			}
 
-			ret = sxe2_drv_flow_fnav_get_stat_id(adapter, &stat_index);
+			if (flow->engine_type == SXE2_FLOW_ENGINE_FNAV)
+				ret = sxe2_drv_flow_fnav_get_stat_id(adapter, &stat_index);
+			else if (flow->engine_type == SXE2_FLOW_ENGINE_ACL)
+				ret = sxe2_drv_flow_acl_get_stat_id(adapter, &stat_index);
 			if (ret) {
 				PMD_LOG_ERR(DRV, "Failed to alloc fw count id.");
 				rte_free(mgr);
@@ -1243,7 +1257,7 @@ int32_t sxe2_flow_get_filter_cid(struct sxe2_adapter *adapter, struct sxe2_flow 
 			mgr->user_id = user_id;
 			mgr->driver_id = driver_id;
 			mgr->stat_index = stat_index;
-			mgr->count_type = adapter->flow_ctxt.hw_res.count_type;
+			mgr->count_type = count_type;
 		}
 		flow->action.count.stat_index = mgr->stat_index;
 		flow->action.count.stat_ctrl = mgr->count_type;
@@ -1259,13 +1273,26 @@ int32_t sxe2_flow_free_mgr(struct sxe2_adapter *adapter,
 		       struct rte_flow_error *error)
 {
 	int32_t ret = 0;
-	struct sxe2_flow_cid_mgr_list_t *cid_mgr_list =
-				&adapter->flow_ctxt.hw_res.flow_cid_mgr_list;
+	struct sxe2_flow_cid_mgr_list_t *cid_mgr_list = NULL;
 	struct sxe2_flow_cid_mgr *mgr = *mgr_ptr;
 	uint32_t user_id = flow->action.count.user_id;
-	if (user_id == 0) {
-		TAILQ_REMOVE(cid_mgr_list, mgr, next);
-		ret = sxe2_drv_flow_fnav_free_stat(adapter, mgr->stat_index);
+
+	if (user_id == 0 && mgr) {
+		if (flow->engine_type == SXE2_FLOW_ENGINE_ACL) {
+			cid_mgr_list = &adapter->flow_ctxt.acl_hw_res.flow_cid_mgr_list;
+			TAILQ_REMOVE(cid_mgr_list, mgr, next);
+			ret = sxe2_drv_flow_acl_free_stat(adapter, mgr->stat_index);
+		} else if (flow->engine_type == SXE2_FLOW_ENGINE_FNAV) {
+			cid_mgr_list = &adapter->flow_ctxt.fnav_hw_res.flow_cid_mgr_list;
+			TAILQ_REMOVE(cid_mgr_list, mgr, next);
+			ret = sxe2_drv_flow_fnav_free_stat(adapter, mgr->stat_index);
+		} else {
+			PMD_LOG_ERR(DRV,
+				"Failed to free flow count, unknown engine type: %d.",
+				flow->engine_type);
+			ret = -ENOTSUP;
+			return ret;
+		}
 		if (ret) {
 			rte_flow_error_set(error, EIO,
 				RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -1286,12 +1313,18 @@ int32_t sxe2_flow_query_mgr(struct sxe2_adapter *adapter,
 			struct rte_flow_error *error)
 {
 	int32_t ret = 0;
-	struct sxe2_flow_cid_mgr_list_t *cid_mgr_list =
-				&adapter->flow_ctxt.hw_res.flow_cid_mgr_list;
+	struct sxe2_flow_cid_mgr_list_t *cid_mgr_list = NULL;
 	struct sxe2_flow_cid_mgr *temp = NULL;
 	struct sxe2_flow_cid_mgr *mgr = NULL;
 	uint32_t user_id = flow->action.count.user_id;
 	uint32_t driver_id = flow->action.count.driver_id;
+
+	if (flow->engine_type == SXE2_FLOW_ENGINE_ACL)
+		cid_mgr_list = &adapter->flow_ctxt.acl_hw_res.flow_cid_mgr_list;
+	else if (flow->engine_type == SXE2_FLOW_ENGINE_FNAV)
+		cid_mgr_list = &adapter->flow_ctxt.fnav_hw_res.flow_cid_mgr_list;
+	else
+		goto l_end;
 
 	TAILQ_FOREACH(temp, cid_mgr_list, next) {
 		if (temp->user_id == user_id &&
@@ -1309,7 +1342,15 @@ int32_t sxe2_flow_query_mgr(struct sxe2_adapter *adapter,
 		ret = -EINVAL;
 		goto l_end;
 	}
-	ret = sxe2_drv_flow_fnav_query_stat(adapter, mgr);
+
+	if (flow->engine_type == SXE2_FLOW_ENGINE_ACL) {
+		ret = sxe2_drv_flow_acl_query_stat(adapter, mgr);
+	} else if (flow->engine_type == SXE2_FLOW_ENGINE_FNAV) {
+		ret = sxe2_drv_flow_fnav_query_stat(adapter, mgr);
+	} else {
+		PMD_LOG_ERR(DRV, "query flow engine neither FNAV nor ACL");
+		ret = -ENOTSUP;
+	}
 	if (ret) {
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ITEM, NULL,
@@ -1460,12 +1501,18 @@ int32_t sxe2_flow_init(struct rte_eth_dev *dev)
 	struct sxe2_adapter *adapter = SXE2_DEV_PRIVATE_TO_ADAPTER(dev);
 	int32_t ret = 0;
 	TAILQ_INIT(&adapter->flow_ctxt.rte_flow_list);
-	TAILQ_INIT(&adapter->flow_ctxt.hw_res.flow_cid_mgr_list);
+	TAILQ_INIT(&adapter->flow_ctxt.fnav_hw_res.flow_cid_mgr_list);
+	TAILQ_INIT(&adapter->flow_ctxt.acl_hw_res.flow_cid_mgr_list);
 	if (adapter->devargs.fnav_stat_type)
-		adapter->flow_ctxt.hw_res.count_type =
+		adapter->flow_ctxt.fnav_hw_res.count_type =
 			adapter->devargs.fnav_stat_type;
 	else
-		adapter->flow_ctxt.hw_res.count_type = SXE2_FNAV_STAT_ENA_ALL;
+		adapter->flow_ctxt.fnav_hw_res.count_type = SXE2_FNAV_STAT_ENA_ALL;
+
+	if (adapter->devargs.acl_stat_type)
+		adapter->flow_ctxt.acl_hw_res.count_type = adapter->devargs.acl_stat_type;
+	else
+		adapter->flow_ctxt.acl_hw_res.count_type = SXE2_FNAV_STAT_ENA_ALL;
 
 	adapter->flow_ctxt.fnav_inited = 1;
 	rte_spinlock_init(&adapter->flow_ctxt.flow_list_lock);
@@ -1484,19 +1531,28 @@ int32_t sxe2_flow_uninit(struct rte_eth_dev *dev)
 	struct rte_flow_error error;
 	struct sxe2_flow_cid_mgr *mgr = NULL;
 	struct sxe2_flow_cid_mgr *temp = NULL;
-	struct sxe2_flow_cid_mgr_list_t *cid_mgr_list =
-						&adapter->flow_ctxt.hw_res.flow_cid_mgr_list;
+	struct sxe2_flow_cid_mgr_list_t *cid_mgr_list = NULL;
 
 	ret = sxe2_flow_flush(dev, &error);
 	if (ret)
 		PMD_LOG_ERR(DRV, "Failed to flush flow, ret: %d.", ret);
 
+	cid_mgr_list = &adapter->flow_ctxt.fnav_hw_res.flow_cid_mgr_list;
 	TAILQ_FOREACH_SAFE(mgr, cid_mgr_list, next, temp) {
 		TAILQ_REMOVE(cid_mgr_list, mgr, next);
 		ret = sxe2_drv_flow_fnav_free_stat(adapter, mgr->stat_index);
 		if (ret)
 			PMD_LOG_ERR(DRV,
 				"Failed to free fnav stat id, ret: %d.", ret);
+		rte_free(mgr);
+	}
+
+	cid_mgr_list = &adapter->flow_ctxt.acl_hw_res.flow_cid_mgr_list;
+	TAILQ_FOREACH_SAFE(mgr, cid_mgr_list, next, temp) {
+		TAILQ_REMOVE(cid_mgr_list, mgr, next);
+		ret = sxe2_drv_flow_acl_free_stat(adapter, mgr->stat_index);
+		if (ret)
+			PMD_LOG_ERR(DRV, "Failed to free acl stat id, ret: %d.", ret);
 		rte_free(mgr);
 	}
 	return ret;

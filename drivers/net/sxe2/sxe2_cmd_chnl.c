@@ -1726,6 +1726,77 @@ l_end:
 	return ret;
 }
 
+int32_t sxe2_drv_flow_acl_get_stat_id(struct sxe2_adapter *adapter, uint32_t *stat_id)
+{
+	struct sxe2_drv_flow_fnav_get_stat_id_req req = { 0 };
+	struct sxe2_drv_flow_fnav_get_stat_id_resp resp = { 0 };
+	struct sxe2_drv_cmd_params cmd             = { 0 };
+	struct sxe2_common_device *cdev = adapter->cdev;
+	int32_t ret                                 = -1;
+
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_FLOW_ACL_STAT_ALLOC,
+				&req, sizeof(req),
+				&resp, sizeof(resp));
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to get acl stat id, ret: %d.", ret);
+		goto l_end;
+	}
+	*stat_id = resp.stat_id;
+
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_flow_acl_free_stat(struct sxe2_adapter *adapter, uint32_t stat_id)
+{
+	struct sxe2_drv_flow_fnav_free_stat_id_req req = { 0 };
+	struct sxe2_drv_cmd_params cmd             = { 0 };
+	struct sxe2_common_device *cdev = adapter->cdev;
+	int32_t ret                                 = -1;
+
+	req.stat_id = stat_id;
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_FLOW_ACL_STAT_FREE,
+				&req, sizeof(req),
+				NULL, 0);
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to free acl stat id, ret: %d.", ret);
+		goto l_end;
+	}
+
+l_end:
+	return ret;
+}
+
+int32_t sxe2_drv_flow_acl_query_stat(struct sxe2_adapter *adapter,
+				     struct sxe2_flow_cid_mgr *mgr)
+{
+	struct sxe2_drv_flow_fnav_query_stat_req req = { 0 };
+	struct sxe2_drv_flow_fnav_query_stat_resp resp = { 0 };
+	struct sxe2_drv_cmd_params cmd             = { 0 };
+	struct sxe2_common_device *cdev = adapter->cdev;
+	int32_t ret                                 = -1;
+
+	req.stat_id = mgr->stat_index;
+	req.stat_ctrl = mgr->count_type;
+	req.is_clear = 1;
+
+	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_FLOW_ACL_STAT_QUERY,
+				 &req, sizeof(req), &resp, sizeof(resp));
+	ret = sxe2_drv_cmd_exec(cdev, &cmd);
+	if (ret) {
+		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to query ACL stat, stat id: %u, ret: %d.",
+				req.stat_id, ret);
+		goto l_end;
+	}
+	mgr->hits += resp.stat_hits;
+	mgr->bytes += resp.stat_bytes;
+
+l_end:
+	return ret;
+}
+
 int32_t sxe2_drv_srcvsi_prune_config(struct sxe2_adapter *adapter,
 			uint16_t *vsi_list, uint16_t vsi_cnt, bool set)
 {
