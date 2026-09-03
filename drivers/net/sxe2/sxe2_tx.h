@@ -9,6 +9,10 @@
 
 void __rte_cold sxe2_tx_queue_reset(struct sxe2_tx_queue *txq);
 
+void __rte_cold sxe2_tx_queue_reset_vec(struct sxe2_tx_queue *txq);
+
+void __rte_cold sxe2_tx_buffer_ring_free(struct sxe2_tx_queue *txq);
+
 int32_t __rte_cold sxe2_tx_queue_start(struct rte_eth_dev *dev, uint16_t queue_id);
 
 void sxe2_tx_queue_mbufs_release(struct sxe2_tx_queue *txq);
