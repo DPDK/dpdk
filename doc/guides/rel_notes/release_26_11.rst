@@ -132,6 +132,8 @@ New Features
   * Optimized the packed-ring Tx path
     with per-descriptor mbuf free (``rte_pktmbuf_free_seg``) and prefetch hints.
   * Changed the set of per-queue xstats counters.
+  * Optimized the packed-ring Tx xmit path with per-descriptor mbuf
+    free (``rte_pktmbuf_free_seg``) and prefetch hints.
 
 
 Removed Items
