@@ -95,22 +95,10 @@ static const struct rte_zxdh_xstats_name_off zxdh_rxq_stat_strings[] = {
 	{"good_bytes",             offsetof(struct zxdh_virtnet_rx, stats.bytes)},
 	{"errors",                 offsetof(struct zxdh_virtnet_rx, stats.errors)},
 	{"idle",                   offsetof(struct zxdh_virtnet_rx, stats.idle)},
-	{"full",                   offsetof(struct zxdh_virtnet_rx, stats.full)},
-	{"norefill",               offsetof(struct zxdh_virtnet_rx, stats.norefill)},
-	{"multicast_packets",      offsetof(struct zxdh_virtnet_rx, stats.multicast)},
-	{"broadcast_packets",      offsetof(struct zxdh_virtnet_rx, stats.broadcast)},
 	{"truncated_err",          offsetof(struct zxdh_virtnet_rx, stats.truncated_err)},
 	{"offload_cfg_err",        offsetof(struct zxdh_virtnet_rx, stats.offload_cfg_err)},
 	{"invalid_hdr_len_err",    offsetof(struct zxdh_virtnet_rx, stats.invalid_hdr_len_err)},
 	{"no_segs_err",            offsetof(struct zxdh_virtnet_rx, stats.no_segs_err)},
-	{"undersize_packets",      offsetof(struct zxdh_virtnet_rx, stats.size_bins[0])},
-	{"size_64_packets",        offsetof(struct zxdh_virtnet_rx, stats.size_bins[1])},
-	{"size_65_127_packets",    offsetof(struct zxdh_virtnet_rx, stats.size_bins[2])},
-	{"size_128_255_packets",   offsetof(struct zxdh_virtnet_rx, stats.size_bins[3])},
-	{"size_256_511_packets",   offsetof(struct zxdh_virtnet_rx, stats.size_bins[4])},
-	{"size_512_1023_packets",  offsetof(struct zxdh_virtnet_rx, stats.size_bins[5])},
-	{"size_1024_1518_packets", offsetof(struct zxdh_virtnet_rx, stats.size_bins[6])},
-	{"size_1519_max_packets",  offsetof(struct zxdh_virtnet_rx, stats.size_bins[7])},
 };
 
 static const struct rte_zxdh_xstats_name_off zxdh_txq_stat_strings[] = {
@@ -118,21 +106,10 @@ static const struct rte_zxdh_xstats_name_off zxdh_txq_stat_strings[] = {
 	{"good_bytes",             offsetof(struct zxdh_virtnet_tx, stats.bytes)},
 	{"errors",                 offsetof(struct zxdh_virtnet_tx, stats.errors)},
 	{"idle",                   offsetof(struct zxdh_virtnet_tx, stats.idle)},
-	{"norefill",               offsetof(struct zxdh_virtnet_tx, stats.norefill)},
-	{"multicast_packets",      offsetof(struct zxdh_virtnet_tx, stats.multicast)},
-	{"broadcast_packets",      offsetof(struct zxdh_virtnet_tx, stats.broadcast)},
 	{"truncated_err",          offsetof(struct zxdh_virtnet_tx, stats.truncated_err)},
 	{"offload_cfg_err",        offsetof(struct zxdh_virtnet_tx, stats.offload_cfg_err)},
 	{"invalid_hdr_len_err",    offsetof(struct zxdh_virtnet_tx, stats.invalid_hdr_len_err)},
 	{"no_segs_err",            offsetof(struct zxdh_virtnet_tx, stats.no_segs_err)},
-	{"undersize_packets",      offsetof(struct zxdh_virtnet_tx, stats.size_bins[0])},
-	{"size_64_packets",        offsetof(struct zxdh_virtnet_tx, stats.size_bins[1])},
-	{"size_65_127_packets",    offsetof(struct zxdh_virtnet_tx, stats.size_bins[2])},
-	{"size_128_255_packets",   offsetof(struct zxdh_virtnet_tx, stats.size_bins[3])},
-	{"size_256_511_packets",   offsetof(struct zxdh_virtnet_tx, stats.size_bins[4])},
-	{"size_512_1023_packets",  offsetof(struct zxdh_virtnet_tx, stats.size_bins[5])},
-	{"size_1024_1518_packets", offsetof(struct zxdh_virtnet_tx, stats.size_bins[6])},
-	{"size_1519_max_packets",  offsetof(struct zxdh_virtnet_tx, stats.size_bins[7])},
 };
 
 static const struct rte_zxdh_xstats_name_off zxdh_np_stat_strings[] = {
@@ -2017,6 +1994,21 @@ int zxdh_dev_mtu_set(struct rte_eth_dev *dev, uint16_t new_mtu)
 	struct zxdh_port_attr_table vport_att = {0};
 	uint16_t vfid = zxdh_vport_to_vfid(hw->vport);
 	int ret;
+
+	/* If device is started, refuse mtu that requires the support of
+	 * scattered packets when this feature has not been enabled before.
+	 */
+	if (dev->data->dev_started) {
+		uint32_t buf_size = dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM;
+		uint8_t need_scatter =
+			(dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER) ||
+			(uint32_t)ZXDH_MTU_TO_PKTLEN(new_mtu) > buf_size;
+
+		if (need_scatter && !dev->data->scattered_rx) {
+			PMD_DRV_LOG(ERR, "Stop port first.");
+			return -EINVAL;
+		}
+	}
 
 	if (hw->is_pf) {
 		ret = zxdh_get_panel_attr(dev, &panel);

@@ -326,15 +326,6 @@ zxdh_queue_enable_intr(struct zxdh_virtqueue *vq)
 	}
 }
 
-static inline void
-zxdh_mb(uint8_t weak_barriers)
-{
-	if (weak_barriers)
-		rte_atomic_thread_fence(rte_memory_order_seq_cst);
-	else
-		rte_mb();
-}
-
 static inline
 int32_t desc_is_used(struct zxdh_vring_packed_desc *desc, struct zxdh_virtqueue *vq)
 {
@@ -379,18 +370,6 @@ static inline void zxdh_queue_notify(struct zxdh_virtqueue *vq)
 		notify_data |= RTE_BIT32(31);
 	rte_write32(notify_data, vq->notify_addr);
 }
-
-static inline int32_t
-zxdh_queue_kick_prepare_packed(struct zxdh_virtqueue *vq)
-{
-	uint16_t flags = 0;
-
-	zxdh_mb(1);
-	flags = vq->vq_packed.ring.device->desc_event_flags;
-
-	return (flags != ZXDH_RING_EVENT_FLAGS_DISABLE);
-}
-
 
 struct rte_mbuf *zxdh_queue_detach_unused(struct zxdh_virtqueue *vq);
 int32_t zxdh_free_queues(struct rte_eth_dev *dev);
