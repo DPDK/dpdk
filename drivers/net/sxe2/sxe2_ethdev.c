@@ -2310,10 +2310,10 @@ static int32_t sxe2_parse_eth_devargs(struct rte_device *dev,
 		ret = rte_eth_devargs_parse(dev->devargs->cls_str,
 					    eth_da,
 					    1);
-		if (ret) {
+		if (ret < 0) {
 			PMD_LOG_ERR(INIT, "Failed to parse device arguments: %s",
 				dev->devargs->cls_str);
-			return -rte_errno;
+			return ret;
 		}
 	}
 
@@ -2321,10 +2321,10 @@ static int32_t sxe2_parse_eth_devargs(struct rte_device *dev,
 		ret = rte_eth_devargs_parse(dev->devargs->args,
 					    eth_da,
 					    1);
-		if (ret) {
+		if (ret < 0) {
 			PMD_LOG_ERR(INIT, "Failed to parse device arguments: %s",
 				dev->devargs->args);
-			return -rte_errno;
+			return ret;
 		}
 	}
 
