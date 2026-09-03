@@ -1715,9 +1715,13 @@ int32_t sxe2_drv_flow_filter_add(struct sxe2_adapter *adapter, struct sxe2_flow 
 	sxe2_drv_cmd_params_fill(adapter, &cmd, SXE2_DRV_CMD_FLOW_FILTER_ADD, &req,
 			   sizeof(req), &resp, sizeof(resp));
 	ret = sxe2_drv_cmd_exec(cdev, &cmd);
-	if (ret)
+	if (ret) {
 		PMD_DEV_LOG_ERR(adapter, DRV, "Failed to add flow filter, ret: %d.", ret);
+		goto l_end;
+	}
 	flow->flow_id = resp.flow_id;
+
+l_end:
 	flow->create_err = ret;
 	return ret;
 }
