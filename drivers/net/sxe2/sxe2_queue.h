@@ -62,7 +62,10 @@ struct sxe2_txq_ops {
 };
 struct sxe2_tx_queue {
 	volatile union sxe2_tx_data_desc *desc_ring;
-	struct sxe2_tx_buffer *buffer_ring;
+	union {
+		struct sxe2_tx_buffer *buffer_ring;
+		struct sxe2_tx_buffer_vec *buffer_ring_vec;
+	};
 	volatile uint32_t *tdt_reg_addr;
 
 	uint64_t offloads;
