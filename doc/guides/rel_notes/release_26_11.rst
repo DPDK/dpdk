@@ -78,6 +78,13 @@ New Features
 
   * Added VF support on AMD Solarflare X45xx adapters.
 
+* **Updated ZTE zxdh ethernet driver.**
+
+  * Added a fast single-segment Rx path (``zxdh_recv_single_pkts``)
+    that is selected when the MTU fits in a single buffer.
+  * Optimized the packed-ring Rx path.
+  * Changed the set of per-queue xstats counters.
+
 
 Removed Items
 -------------
