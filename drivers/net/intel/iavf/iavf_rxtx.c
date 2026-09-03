@@ -2596,6 +2596,9 @@ uint16_t
 iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct ci_tx_queue *txq = tx_queue;
+	/* vlan_flag gives both the single-VLAN and the QinQ outer tag position */
+	enum ci_l2tag_pos vlan_pos = (txq->vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1) ?
+			CI_TAG_IN_DATA_DESC : CI_TAG_IN_CTX_DESC;
 
 	const struct ci_ipsec_ops ipsec_ops = {
 		.get_ipsec_desc = iavf_get_ipsec_desc,
@@ -2603,9 +2606,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	};
 
 	/* IAVF does not support timestamp queues, so pass NULL for ts_fns */
-	return ci_xmit_pkts(txq, tx_pkts, nb_pkts,
-			    (txq->vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1) ?
-				CI_TAG_IN_DATA_DESC : CI_TAG_IN_CTX_DESC,
+	return ci_xmit_pkts(txq, tx_pkts, nb_pkts, vlan_pos, vlan_pos,
 			    iavf_get_context_desc, &ipsec_ops, NULL);
 }
 
