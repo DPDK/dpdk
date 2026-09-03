@@ -644,7 +644,6 @@ zxdh_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_logic_qidx)
 	struct zxdh_virtnet_tx *txvq = NULL;
 	struct zxdh_virtqueue *vq = NULL;
 	size_t sz_hdr_mz = 0;
-	void *sw_ring = NULL;
 	int32_t queue_type = zxdh_get_queue_type(vtpci_logic_qidx);
 	int32_t numa_node = dev->device->numa_node;
 	uint16_t vtpci_phy_qidx = 0;
@@ -692,11 +691,10 @@ zxdh_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_logic_qidx)
 	vq->vq_queue_index = vtpci_phy_qidx;
 	vq->vq_nentries = vq_size;
 
-	vq->vq_packed.used_wrap_counter = 1;
-	vq->vq_packed.cached_flags = ZXDH_VRING_PACKED_DESC_F_AVAIL;
-	vq->vq_packed.event_flags_shadow = 0;
+	vq->used_wrap_counter = 1;
+	vq->cached_flags = ZXDH_VRING_PACKED_DESC_F_AVAIL;
 	if (queue_type == ZXDH_VTNET_RQ)
-		vq->vq_packed.cached_flags |= ZXDH_VRING_DESC_F_WRITE;
+		vq->cached_flags |= ZXDH_VRING_DESC_F_WRITE;
 
 	/*
 	 * Reserve a memzone for vring elements
@@ -741,16 +739,6 @@ zxdh_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_logic_qidx)
 	}
 
 	if (queue_type == ZXDH_VTNET_RQ) {
-		size_t sz_sw = (ZXDH_MBUF_BURST_SZ + vq_size) * sizeof(vq->sw_ring[0]);
-
-		sw_ring = rte_zmalloc_socket("sw_ring", sz_sw, RTE_CACHE_LINE_SIZE, numa_node);
-		if (!sw_ring) {
-			PMD_DRV_LOG(ERR, "can not allocate RX soft ring");
-			ret = -ENOMEM;
-			goto fail_q_alloc;
-		}
-
-		vq->sw_ring = sw_ring;
 		rxvq = &vq->rxq;
 		rxvq->vq = vq;
 		rxvq->port_id = dev->data->port_id;
@@ -764,23 +752,9 @@ zxdh_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_logic_qidx)
 		txvq->zxdh_net_hdr_mem = hdr_mz->iova;
 	}
 
-	vq->offset = offsetof(struct rte_mbuf, buf_iova);
 	if (queue_type == ZXDH_VTNET_TQ) {
 		struct zxdh_tx_region *txr = hdr_mz->addr;
-		uint32_t i;
-
 		memset(txr, 0, vq_size * sizeof(*txr));
-		for (i = 0; i < vq_size; i++) {
-			/* first indirect descriptor is always the tx header */
-			struct zxdh_vring_packed_desc *start_dp = txr[i].tx_packed_indir;
-
-			zxdh_vring_desc_init_indirect_packed(start_dp,
-					RTE_DIM(txr[i].tx_packed_indir));
-			start_dp->addr = txvq->zxdh_net_hdr_mem + i * sizeof(*txr) +
-					offsetof(struct zxdh_tx_region, tx_hdr);
-			/* length will be updated to actual pi hdr size when xmit pkt */
-			start_dp->len = 0;
-		}
 	}
 	if (ZXDH_VTPCI_OPS(hw)->setup_queue(hw, vq) < 0) {
 		PMD_DRV_LOG(ERR, "setup_queue failed");
@@ -788,7 +762,6 @@ zxdh_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_logic_qidx)
 	}
 	return 0;
 fail_q_alloc:
-	rte_free(sw_ring);
 	rte_memzone_free(hdr_mz);
 	rte_memzone_free(mz);
 	rte_free(vq);
