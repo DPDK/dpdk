@@ -744,12 +744,12 @@ enum rte_event_dev_preschedule_type {
 	RTE_EVENT_PRESCHEDULE_NONE,
 	/**< Disable pre-schedule across the event device or on a given event port.
 	 * @ref rte_event_dev_config.preschedule_type
-	 * @ref rte_event_port_preschedule_modify()
+	 * @ref rte_event_port_preschedule_modify
 	 */
 	RTE_EVENT_PRESCHEDULE,
 	/**< Enable pre-schedule always across the event device or a given event port.
 	 * @ref rte_event_dev_config.preschedule_type
-	 * @ref rte_event_port_preschedule_modify()
+	 * @ref rte_event_port_preschedule_modify
 	 * @see RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE
 	 * @see RTE_EVENT_DEV_CAP_PER_PORT_PRESCHEDULE
 	 */
@@ -758,7 +758,7 @@ enum rte_event_dev_preschedule_type {
 	 * Delay issuing pre-schedule until there are no forward progress constraints with
 	 * the held flow contexts.
 	 * @ref rte_event_dev_config.preschedule_type
-	 * @ref rte_event_port_preschedule_modify()
+	 * @ref rte_event_port_preschedule_modify
 	 * @see RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE
 	 * @see RTE_EVENT_DEV_CAP_PER_PORT_PRESCHEDULE
 	 */
@@ -1524,8 +1524,8 @@ struct __rte_aligned(16) rte_event_vector {
  *
  * NOTE:
  *   In restoring event order of forwarded events, the eventdev API guarantees that
- *   all events from the same flow (i.e. same @ref rte_event.flow_id,
- *   @ref rte_event.priority and @ref rte_event.queue_id) will be put in the original
+ *   all events from the same flow (i.e. same @ref rte_event "flow_id",
+ *   @ref rte_event "priority" and @ref rte_event "queue_id") will be put in the original
  *   order before being forwarded to the destination queue.
  *   Some eventdevs may implement stricter ordering to achieve this aim,
  *   for example, restoring the order across *all* flows dequeued from the same ORDERED
@@ -1537,8 +1537,8 @@ struct __rte_aligned(16) rte_event_vector {
 #define RTE_SCHED_TYPE_ATOMIC           1
 /**< Atomic scheduling
  *
- * Events from an atomic flow, identified by a combination of @ref rte_event.flow_id,
- * @ref rte_event.queue_id and @ref rte_event.priority, can be scheduled only to a
+ * Events from an atomic flow, identified by a combination of @ref rte_event "flow_id",
+ * @ref rte_event "queue_id" and @ref rte_event "priority", can be scheduled only to a
  * single port at a time. The port is guaranteed to have exclusive (atomic)
  * access to the associated flow context, which enables the user to avoid SW
  * synchronization. Atomic flows also maintain event ordering
@@ -1618,12 +1618,12 @@ struct __rte_aligned(16) rte_event_vector {
 
 /* Event enqueue operations */
 #define RTE_EVENT_OP_NEW                0
-/**< The @ref rte_event.op field must be set to this operation type to inject a new event,
+/**< The @ref rte_event "op" field must be set to this operation type to inject a new event,
  * i.e. one not previously dequeued, into the event device, to be scheduled
  * for processing.
  */
 #define RTE_EVENT_OP_FORWARD            1
-/**< The application must set the @ref rte_event.op field to this operation type to return a
+/**< The application must set the @ref rte_event "op" field to this operation type to return a
  * previously dequeued event to the event device to be scheduled for further processing.
  *
  * This event *must* be enqueued to the same port that the
@@ -1631,7 +1631,7 @@ struct __rte_aligned(16) rte_event_vector {
  *
  * The event's fields, including (but not limited to) flow_id, scheduling type,
  * destination queue, and event payload e.g. mbuf pointer, may all be updated as
- * desired by the application, but the @ref rte_event.impl_opaque field must
+ * desired by the application, but the @ref rte_event "impl_opaque" field must
  * be kept to the same value as was present when the event was dequeued.
  */
 #define RTE_EVENT_OP_RELEASE            2
@@ -1659,7 +1659,7 @@ struct __rte_aligned(16) rte_event_vector {
  * should be considered filled.
  *
  * Events with this operation type must only be enqueued to the same port that the
- * event to be released was dequeued from. The @ref rte_event.impl_opaque
+ * event to be released was dequeued from. The @ref rte_event "impl_opaque"
  * field in the release event must have the same value as that in the original dequeued event.
  *
  * If a dequeued event is re-enqueued with operation type of @ref RTE_EVENT_OP_RELEASE,

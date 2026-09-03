@@ -128,7 +128,7 @@ extern "C" {
  * (like VRF table for IP lookup or IPsec SA for inbound policy etc). A
  * reference of allocated resource can be passed from control plane to
  * dataplane via *app_cookie* argument in @ref rte_graph_feature_enable(). A
- * corresponding dataplane API @ref rte_graph_feature_data_app_cookie_get() can
+ * corresponding dataplane API @ref rte_graph_feature_data_app_cookie_get can
  * be used to retrieve same cookie in fast path.
  *
  * When a feature is disabled, resources allocated during feature enable can be
@@ -138,9 +138,9 @@ extern "C" {
  *
  * If current feature node is not consuming packet, it might want to send it to
  * next enabled feature. Depending upon current node is a:
- * - start_node (via @ref rte_graph_feature_data_first_feature_get())
+ * - start_node (via @ref rte_graph_feature_data_first_feature_get)
  * - feature nodes added between start_node and end_node (via @ref
- *   rte_graph_feature_data_next_feature_get())
+ *   rte_graph_feature_data_next_feature_get)
  * - end_feature_node (must not call any feature arc steering APIs) as from
  *   this node packet exits feature arc
  *
@@ -151,7 +151,7 @@ extern "C" {
  *
  * rte_mbuf carries [feature_data] into feature arc specific mbuf dynamic
  * field. See @ref rte_graph_feature_arc_mbuf_dynfields and @ref
- * rte_graph_feature_arc_mbuf_dynfields_get() for more details.
+ * rte_graph_feature_arc_mbuf_dynfields_get for more details.
  *
  * Fast path synchronization
  * -------------------------
