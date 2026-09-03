@@ -1461,12 +1461,19 @@ iavf_vlan_tpid_set(struct rte_eth_dev *dev, enum rte_vlan_type vlan_type, uint16
 		return -ENOTSUP;
 	}
 
-	/* This API only fills internal iavf_adapter structure
-	 * and does not send any signal to hardware.
-	 * Inner VLAN always 0x8100, so not set explicitly.
-	 */
+	/* Inner VLAN always 0x8100, so not set explicitly. */
 	if (qinq && vlan_type == RTE_ETH_VLAN_TYPE_OUTER)
 		adapter->tpid = tpid; /* Outer VLAN can be 0x88a8 or 0x8100 */
+
+	/* Re-push insertion, and stripping if already enabled, so the new
+	 * outer TPID reaches the PF instead of only being cached here.
+	 */
+	iavf_dev_vlan_insert_set(dev);
+	if (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP) {
+		int ret = iavf_dev_vlan_offload_set(dev, RTE_ETH_QINQ_STRIP_MASK);
+		if (ret != 0)
+			return ret;
+	}
 
 	return 0;
 }
