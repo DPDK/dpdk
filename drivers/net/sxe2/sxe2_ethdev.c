@@ -1937,6 +1937,12 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 		goto init_switchdev_err;
 	}
 
+	ret = sxe2_eth_init(dev);
+	if (ret) {
+		PMD_LOG_ERR(INIT, "Failed to initialize eth parameters, ret=%d", ret);
+		goto init_eth_err;
+	}
+
 	ret = sxe2_sw_init(dev);
 	if (ret) {
 		PMD_LOG_ERR(INIT, "Failed to initialize sw parameters, ret=[%d]", ret);
@@ -1947,12 +1953,6 @@ static int32_t sxe2_dev_init(struct rte_eth_dev *dev,
 	if (ret != 0) {
 		PMD_LOG_ERR(INIT, "Failed to initialize interrupt, ret:%d", ret);
 		goto init_irq_err;
-	}
-
-	ret = sxe2_eth_init(dev);
-	if (ret) {
-		PMD_LOG_ERR(INIT, "Failed to initialize eth parameters, ret=%d", ret);
-		goto init_eth_err;
 	}
 
 	ret = sxe2_security_init(dev);
@@ -2009,12 +2009,12 @@ init_flow_err:
 init_rss_err:
 	sxe2_security_uinit(dev);
 init_security_err:
-	sxe2_eth_uinit(dev);
-init_eth_err:
 	sxe2_intr_uninit(dev);
 init_irq_err:
 	sxe2_sw_uninit(dev);
 init_sw_err:
+	sxe2_eth_uinit(dev);
+init_eth_err:
 	(void)sxe2_switchdev_uninit(dev);
 init_switchdev_err:
 init_dev_info_err:
