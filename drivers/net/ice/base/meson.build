@@ -40,6 +40,9 @@ error_cflags = [
 if (toolchain == 'gcc' and cc.version().version_compare('>=11.0.0'))
     error_cflags += ['-Wno-array-bounds']
 endif
+if cc.has_argument('-Wno-alloc-size')
+    error_cflags += ['-Wno-alloc-size']
+endif
 
 if is_windows and cc.get_id() != 'clang'
     cflags += ['-fno-asynchronous-unwind-tables']
