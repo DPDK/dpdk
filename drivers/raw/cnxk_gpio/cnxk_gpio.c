@@ -732,7 +732,7 @@ static int
 cnxk_gpio_probe(struct rte_vdev_device *dev)
 {
 	char name[RTE_RAWDEV_NAME_MAX_LEN];
-	struct cnxk_gpio_params *params;
+	struct cnxk_gpio_params *params = NULL;
 	struct cnxk_gpiochip *gpiochip;
 	struct rte_rawdev *rawdev;
 	char buf[CNXK_GPIO_BUFSZ];
