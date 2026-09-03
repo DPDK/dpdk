@@ -82,8 +82,7 @@ static uint32_t enabled_port_mask = 0;
 /* Promiscuous mode */
 static uint32_t promiscuous;
 
-/* number of devices/queues to support*/
-static uint32_t num_queues = 0;
+/* number of devices to support */
 static uint32_t num_devices;
 
 static int mergeable;
@@ -162,7 +161,7 @@ static struct rte_eth_conf vmdq_conf_default = {
 static unsigned lcore_ids[RTE_MAX_LCORE];
 static uint16_t ports[RTE_MAX_ETHPORTS];
 static unsigned num_ports = 0; /**< The number of ports specified in command line */
-static uint16_t num_pf_queues, num_vmdq_queues;
+static uint16_t num_pf_queues;
 static uint16_t vmdq_pool_base, vmdq_queue_base;
 static uint16_t queues_per_pool;
 
@@ -465,8 +464,6 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	/* NIC queues are divided into pf queues and vmdq queues.  */
 	num_pf_queues = dev_info.max_rx_queues - dev_info.vmdq_queue_num;
 	queues_per_pool = dev_info.vmdq_queue_num / dev_info.max_vmdq_pools;
-	num_vmdq_queues = num_devices * queues_per_pool;
-	num_queues = num_pf_queues + num_vmdq_queues;
 	vmdq_queue_base = dev_info.vmdq_queue_base;
 	vmdq_pool_base  = dev_info.vmdq_pool_base;
 	printf("pf queue num: %u, configured vmdq pool num: %u, each vmdq pool has %u queues\n",
