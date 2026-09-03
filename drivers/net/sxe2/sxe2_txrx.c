@@ -319,13 +319,12 @@ void sxe2_tx_mode_func_set(struct rte_eth_dev *dev)
 		ret = sxe2_tx_vec_support_check(dev, &vec_flags);
 		if (ret == 0 &&
 		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
-			tx_mode_flags = vec_flags;
 #ifdef RTE_ARCH_X86
 			if ((rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512) &&
 			    (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
 			    (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1)) {
 #ifdef CC_AVX512_SUPPORT
-				tx_mode_flags |= SXE2_TX_MODE_VEC_AVX512;
+				tx_mode_flags |= (vec_flags | SXE2_TX_MODE_VEC_AVX512);
 #else
 				PMD_LOG_INFO(TX, "AVX512 is not supported in build env.");
 #endif
@@ -334,10 +333,10 @@ void sxe2_tx_mode_func_set(struct rte_eth_dev *dev)
 			    ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1) ||
 			    (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1)) &&
 			    (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256))
-				tx_mode_flags |= SXE2_TX_MODE_VEC_AVX2;
+				tx_mode_flags |= (vec_flags | SXE2_TX_MODE_VEC_AVX2);
 
 			if ((0 == (tx_mode_flags & SXE2_TX_MODE_VEC_SET_MASK)))
-				tx_mode_flags |=  SXE2_TX_MODE_VEC_SSE;
+				tx_mode_flags |= (vec_flags | SXE2_TX_MODE_VEC_SSE);
 #elif defined(RTE_ARCH_ARM64)
 			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON) == 1)
 				tx_mode_flags |= (vec_flags | SXE2_TX_MODE_VEC_NEON);
@@ -520,13 +519,12 @@ void sxe2_rx_mode_func_set(struct rte_eth_dev *dev)
 		ret = sxe2_rx_vec_support_check(dev, &vec_flags);
 		if (ret == 0 &&
 		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
-			rx_mode_flags = vec_flags;
 #ifdef RTE_ARCH_X86
 			if ((rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512) &&
 				(rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
 				(rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1)) {
 #ifdef CC_AVX512_SUPPORT
-				rx_mode_flags |= SXE2_RX_MODE_VEC_AVX512;
+				rx_mode_flags |= (vec_flags | SXE2_RX_MODE_VEC_AVX512);
 #else
 				PMD_LOG_INFO(RX, "AVX512 support detected but not enabled");
 #endif
@@ -535,11 +533,11 @@ void sxe2_rx_mode_func_set(struct rte_eth_dev *dev)
 				((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1) ||
 				(rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1)) &&
 				(rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256))
-				rx_mode_flags |= SXE2_RX_MODE_VEC_AVX2;
+				rx_mode_flags |= (vec_flags | SXE2_RX_MODE_VEC_AVX2);
 
 			if (((rx_mode_flags & SXE2_RX_MODE_VEC_SET_MASK) == 0) &&
 				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128)
-				rx_mode_flags |= SXE2_RX_MODE_VEC_SSE;
+				rx_mode_flags |= (vec_flags | SXE2_RX_MODE_VEC_SSE);
 
 #elif defined(RTE_ARCH_ARM64)
 			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON) == 1) {
