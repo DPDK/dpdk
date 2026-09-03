@@ -23,8 +23,6 @@
 #define SYS_CPU_DIR "/sys/devices/system/cpu/cpu%u/topology/"
 
 static uint32_t app_main_core = 1;
-static uint32_t app_numa_mask;
-static uint64_t app_used_port_mask = 0;
 static uint64_t app_used_rx_port_mask = 0;
 static uint64_t app_used_tx_port_mask = 0;
 
@@ -214,7 +212,6 @@ app_parse_flow_conf(const char *conf_str)
 		return -1;
 	}
 	app_used_rx_port_mask |= mask;
-	app_used_port_mask |= mask;
 
 	mask = 1lu << pconf->tx_port;
 	if (app_used_tx_port_mask & mask) {
@@ -223,7 +220,6 @@ app_parse_flow_conf(const char *conf_str)
 		return -1;
 	}
 	app_used_tx_port_mask |= mask;
-	app_used_port_mask |= mask;
 
 	nb_pfc++;
 
@@ -404,7 +400,6 @@ app_parse_args(int argc, char **argv)
 			RTE_LOG(ERR, APP, "pfc %u: RX and WT must be on the same socket\n", i + 1);
 			return -1;
 		}
-		app_numa_mask |= 1 << rte_lcore_to_socket_id(qos_conf[i].rx_core);
 	}
 
 	return 0;
