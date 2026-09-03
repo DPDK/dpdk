@@ -372,7 +372,8 @@ static inline uint16_t
 ci_xmit_pkts(struct ci_tx_queue *txq,
 	     struct rte_mbuf **tx_pkts,
 	     uint16_t nb_pkts,
-	     enum ci_l2tag_pos l2tag_pos,
+	     enum ci_l2tag_pos single_vlan_pos,
+	     enum ci_l2tag_pos qinq_outer_pos,
 	     ci_get_ctx_desc_fn get_ctx_desc,
 	     const struct ci_ipsec_ops *ipsec_ops,
 	     const struct ci_timestamp_queue_fns *ts_fns)
@@ -480,13 +481,18 @@ ci_xmit_pkts(struct ci_tx_queue *txq,
 		}
 
 		/* Descriptor based VLAN/QinQ insertion */
-		/* for single vlan offload, only insert in data desc when CI_TAG_IN_DATA_DESC is set
-		 * for qinq offload, we always put inner tag in L2Tag1
+		/* for single vlan offload, only insert in data desc when single_vlan_pos is
+		 * CI_TAG_IN_DATA_DESC; for qinq offload, L2Tag1 always carries a tag, either
+		 * the outer (qinq_outer_pos == CI_TAG_IN_DATA_DESC) or otherwise the inner
 		 */
-		if (((ol_flags & RTE_MBUF_F_TX_VLAN) && l2tag_pos == CI_TAG_IN_DATA_DESC) ||
+		if (((ol_flags & RTE_MBUF_F_TX_VLAN) && single_vlan_pos == CI_TAG_IN_DATA_DESC) ||
 				(ol_flags & RTE_MBUF_F_TX_QINQ)) {
 			td_cmd |= CI_TX_DESC_CMD_IL2TAG1;
-			td_tag = tx_pkt->vlan_tci;
+			if ((ol_flags & RTE_MBUF_F_TX_QINQ) &&
+					qinq_outer_pos == CI_TAG_IN_DATA_DESC)
+				td_tag = tx_pkt->vlan_tci_outer;
+			else
+				td_tag = tx_pkt->vlan_tci;
 		}
 
 		/* Enable checksum offloading */
