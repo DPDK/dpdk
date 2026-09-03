@@ -1006,8 +1006,10 @@ get_context_desc(uint64_t ol_flags, const struct rte_mbuf *tx_pkt,
 uint16_t
 i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
-	/* i40e does not support IPsec or timestamp queues, so pass NULL for both */
-	return ci_xmit_pkts(tx_queue, tx_pkts, nb_pkts, CI_TAG_IN_DATA_DESC,
+	/* i40e does not support IPsec or timestamp queues, so pass NULL for both.
+	 * QinQ always places the outer tag in the ctx desc, inner in the data desc.
+	 */
+	return ci_xmit_pkts(tx_queue, tx_pkts, nb_pkts, CI_TAG_IN_DATA_DESC, CI_TAG_IN_CTX_DESC,
 			get_context_desc, NULL, NULL);
 }
 
