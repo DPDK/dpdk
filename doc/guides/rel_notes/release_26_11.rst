@@ -79,6 +79,13 @@ New Features
 
   Added ``rte_vlan_insert_tpid()`` to the net library.
 
+* **Updated ZTE zxdh ethernet driver.**
+
+  * Added a fast single-segment Rx path (``zxdh_recv_single_pkts``) that
+    is selected when the MTU fits in a single buffer.
+  * Optimized the packed-ring Rx recv path.
+  * Changed the set of per-queue xstats counters.
+
 
 Removed Items
 -------------

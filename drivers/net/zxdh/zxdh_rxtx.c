@@ -427,32 +427,6 @@ zxdh_update_packet_stats(struct zxdh_virtnet_stats *stats, struct rte_mbuf *mbuf
 	uint32_t s = mbuf->pkt_len;
 
 	stats->bytes += s;
-	#ifdef QUEUE_XSTAT
-	if (s == 64) {
-		stats->size_bins[1]++;
-	} else if (s > 64 && s < 1024) {
-		uint32_t bin;
-
-		/* count zeros, and offset into correct bin */
-		bin = (sizeof(s) * 8) - rte_clz32(s) - 5;
-		stats->size_bins[bin]++;
-	} else {
-		if (s < 64)
-			stats->size_bins[0]++;
-		else if (s < 1519)
-			stats->size_bins[6]++;
-		else
-			stats->size_bins[7]++;
-	}
-
-	ea = rte_pktmbuf_mtod(mbuf, struct rte_ether_addr *);
-	if (rte_is_multicast_ether_addr(ea)) {
-		if (rte_is_broadcast_ether_addr(ea))
-			stats->broadcast++;
-		else
-			stats->multicast++;
-	}
-	#endif
 }
 
 static void
@@ -613,10 +587,12 @@ zxdh_dequeue_burst_rx_packed(struct zxdh_virtqueue *vq,
 	uint16_t i, used_idx;
 	uint16_t id;
 
+	used_idx = vq->vq_used_cons_idx;
+	rte_prefetch0(&desc[used_idx]);
+
 	for (i = 0; i < num; i++) {
 		used_idx = vq->vq_used_cons_idx;
-		/**
-		 * desc_is_used has a load-acquire or rte_io_rmb inside
+		/* desc_is_used has a load-acquire or rte_io_rmb inside
 		 * and wait for used desc in virtqueue.
 		 */
 		if (!desc_is_used(&desc[used_idx], vq))
@@ -823,17 +799,52 @@ zxdh_rx_update_mbuf(struct zxdh_hw *hw, struct rte_mbuf *m, struct zxdh_net_hdr_
 	}
 }
 
-static void zxdh_discard_rxbuf(struct zxdh_virtqueue *vq, struct rte_mbuf *m)
+static void
+zxdh_refill_desc_unwrap(struct zxdh_virtqueue *vq, struct rte_mbuf **cookie,
+		uint16_t nb_pkts)
 {
-	int32_t error = 0;
-	/*
-	 * Requeue the discarded mbuf. This should always be
-	 * successful since it was just dequeued.
-	 */
-	error = zxdh_enqueue_recv_refill_packed(vq, &m, 1);
-	if (unlikely(error)) {
-		PMD_RX_LOG(ERR, "cannot enqueue discarded mbuf");
-		rte_pktmbuf_free(m);
+	struct zxdh_vring_packed_desc *start_dp = vq->vq_packed.ring.desc;
+	struct zxdh_vq_desc_extra *dxp;
+	uint16_t flags = vq->cached_flags;
+	int32_t i;
+	uint16_t idx;
+
+	idx = vq->vq_avail_idx;
+	for (i = 0; i < nb_pkts; i++) {
+		dxp = &vq->vq_descx[idx];
+		dxp->cookie = (void *)cookie[i];
+		start_dp[idx].addr = rte_mbuf_iova_get(cookie[i]) + RTE_PKTMBUF_HEADROOM;
+		start_dp[idx].len = cookie[i]->buf_len - RTE_PKTMBUF_HEADROOM;
+		zxdh_queue_store_flags_packed(&start_dp[idx], flags);
+		idx++;
+	}
+	vq->vq_avail_idx += nb_pkts;
+	vq->vq_free_cnt = vq->vq_free_cnt - nb_pkts;
+}
+
+static void
+zxdh_refill_que_descs(struct zxdh_virtqueue *vq, struct rte_eth_dev *dev)
+{
+	/* free_cnt may include mrg descs */
+	struct rte_mbuf *new_pkts[ZXDH_MBUF_BURST_SZ];
+	uint16_t free_cnt = RTE_MIN(ZXDH_MBUF_BURST_SZ, vq->vq_free_cnt);
+	struct zxdh_virtnet_rx *rxvq = &vq->rxq;
+	uint16_t  unwrap_cnt, left_cnt;
+
+	if (!rte_pktmbuf_alloc_bulk(rxvq->mpool, new_pkts, free_cnt)) {
+		left_cnt = free_cnt;
+		unwrap_cnt = 0;
+		if ((vq->vq_avail_idx + free_cnt) >= vq->vq_nentries) {
+			unwrap_cnt = vq->vq_nentries - vq->vq_avail_idx;
+			left_cnt = free_cnt - unwrap_cnt;
+			zxdh_refill_desc_unwrap(vq, new_pkts, unwrap_cnt);
+			vq->vq_avail_idx = 0;
+			vq->cached_flags ^= ZXDH_VRING_PACKED_DESC_F_AVAIL_USED;
+		}
+		if (left_cnt)
+			zxdh_refill_desc_unwrap(vq, new_pkts + unwrap_cnt, left_cnt);
+	} else {
+		dev->data->rx_mbuf_alloc_failed += free_cnt;
 	}
 }
 
@@ -852,7 +863,6 @@ zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t len = 0;
 	uint32_t seg_num = 0;
 	uint32_t seg_res = 0;
-	uint32_t error = 0;
 	uint16_t hdr_size = 0;
 	uint16_t nb_rx = 0;
 	uint16_t i;
@@ -874,7 +884,6 @@ zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 		prev = rxm;
 		len = lens[i];
 		header = rte_pktmbuf_mtod(rxm, struct zxdh_net_hdr_ul *);
-
 		seg_num  = header->type_hdr.num_buffers;
 
 		/* Private queue only handle type hdr */
@@ -886,7 +895,7 @@ zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 			rxvq->stats.invalid_hdr_len_err++;
 			continue;
 		}
-		rxm->data_off += hdr_size;
+		rxm->data_off = RTE_PKTMBUF_HEADROOM + hdr_size;
 		rxm->nb_segs = seg_num;
 		rxm->ol_flags = 0;
 		rcvd_pkt_len = len - hdr_size;
@@ -902,18 +911,19 @@ zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 			len = lens[i];
 			rxm = rcv_pkts[i];
 			rxm->data_len = len;
+			rxm->data_off = RTE_PKTMBUF_HEADROOM;
 			rcvd_pkt_len += len;
 			prev->next = rxm;
 			prev = rxm;
 			rxm->next = NULL;
-			seg_res -= 1;
+			seg_res--;
 		}
 
 		if (!seg_res) {
 			if (rcvd_pkt_len != rx_pkts[nb_rx]->pkt_len) {
 				PMD_RX_LOG(ERR, "dropped rcvd_pkt_len %d pktlen %d",
 					rcvd_pkt_len, rx_pkts[nb_rx]->pkt_len);
-				zxdh_discard_rxbuf(vq, rx_pkts[nb_rx]);
+				rte_pktmbuf_free(rx_pkts[nb_rx]);
 				rxvq->stats.errors++;
 				rxvq->stats.truncated_err++;
 				continue;
@@ -942,14 +952,14 @@ zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 			prev->next = rxm;
 			prev = rxm;
 			rxm->next = NULL;
-			extra_idx += 1;
+			extra_idx++;
 		}
 		seg_res -= rcv_cnt;
 		if (!seg_res) {
 			if (unlikely(rcvd_pkt_len != rx_pkts[nb_rx]->pkt_len)) {
 				PMD_RX_LOG(ERR, "dropped rcvd_pkt_len %d pktlen %d",
 					rcvd_pkt_len, rx_pkts[nb_rx]->pkt_len);
-				zxdh_discard_rxbuf(vq, rx_pkts[nb_rx]);
+				rte_pktmbuf_free(rx_pkts[nb_rx]);
 				rxvq->stats.errors++;
 				rxvq->stats.truncated_err++;
 				continue;
@@ -961,26 +971,92 @@ zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rxvq->stats.packets += nb_rx;
 
 refill:
-	/* Allocate new mbuf for the used descriptor */
-	if (likely(!zxdh_queue_full(vq))) {
-		struct rte_mbuf *new_pkts[ZXDH_MBUF_BURST_SZ];
-		/* free_cnt may include mrg descs */
-		uint16_t free_cnt = RTE_MIN(vq->vq_free_cnt, ZXDH_MBUF_BURST_SZ);
+	if (vq->vq_free_cnt > 0) {
+		struct rte_eth_dev *dev = hw->eth_dev;
+		zxdh_refill_que_descs(vq, dev);
+		zxdh_queue_notify(vq);
+	}
 
-		if (!rte_pktmbuf_alloc_bulk(rxvq->mpool, new_pkts, free_cnt)) {
-			error = zxdh_enqueue_recv_refill_packed(vq, new_pkts, free_cnt);
-			if (unlikely(error)) {
-				for (i = 0; i < free_cnt; i++)
-					rte_pktmbuf_free(new_pkts[i]);
-			}
+	return nb_rx;
+}
 
-			if (unlikely(zxdh_queue_kick_prepare_packed(vq)))
-				zxdh_queue_notify(vq);
-		} else {
-			struct rte_eth_dev *dev = hw->eth_dev;
+static inline int
+zxdh_init_mbuf(struct rte_mbuf *rxm, uint16_t len,
+		struct zxdh_hw *hw, struct zxdh_virtnet_rx *rxvq)
+{
+	uint16_t hdr_size = 0;
+	struct zxdh_net_hdr_ul *header;
 
-			dev->data->rx_mbuf_alloc_failed += free_cnt;
-		}
+	header = rte_pktmbuf_mtod(rxm, struct zxdh_net_hdr_ul *);
+	rxm->ol_flags = 0;
+	rxm->vlan_tci = 0;
+	rxm->vlan_tci_outer = 0;
+
+	hdr_size = header->type_hdr.pd_len << 1;
+	if (unlikely(hdr_size > len || hdr_size < ZXDH_TYPE_HDR_SIZE ||
+		     header->type_hdr.num_buffers != 1)) {
+		PMD_RX_LOG(DEBUG, "hdr_size:%u nb_segs %d is invalid",
+			hdr_size, header->type_hdr.num_buffers);
+		rte_pktmbuf_free(rxm);
+		rxvq->stats.errors++;
+		rxvq->stats.invalid_hdr_len_err++;
+		return -1;
+	}
+	zxdh_rx_update_mbuf(hw, rxm, header);
+
+	rxm->nb_segs = 1;
+	rxm->data_off = RTE_PKTMBUF_HEADROOM + hdr_size;
+	rxm->data_len = len - hdr_size;
+	rxm->port = hw->port_id;
+
+	if (rxm->data_len != rxm->pkt_len) {
+		PMD_RX_LOG(ERR, "dropped rcvd_pkt_len %d pktlen %d  bufaddr %p.",
+					rxm->data_len, rxm->pkt_len, rxm->buf_addr);
+		rte_pktmbuf_free(rxm);
+		rxvq->stats.truncated_err++;
+		rxvq->stats.errors++;
+		return -1;
+	}
+	return 0;
+}
+
+uint16_t
+zxdh_recv_single_pkts(void *rx_queue, struct rte_mbuf **rcv_pkts, uint16_t nb_pkts)
+{
+	struct zxdh_virtnet_rx *rxvq = rx_queue;
+	struct zxdh_virtqueue *vq = rxvq->vq;
+	struct zxdh_hw *hw = vq->hw;
+	uint32_t lens[ZXDH_MBUF_BURST_SZ];
+	uint16_t nb_rx = 0;
+	uint16_t num;
+	uint16_t i;
+
+	num = nb_pkts;
+	if (unlikely(num > ZXDH_MBUF_BURST_SZ))
+		num = ZXDH_MBUF_BURST_SZ;
+	num = zxdh_dequeue_burst_rx_packed(vq, rcv_pkts, lens, num);
+	if (num == 0) {
+		rxvq->stats.idle++;
+		goto refill;
+	}
+
+	for (i = 0; i < num; i++) {
+		struct rte_mbuf *rxm = rcv_pkts[i];
+		uint16_t len = lens[i];
+
+		if (unlikely(zxdh_init_mbuf(rxm, len, hw, &vq->rxq) < 0))
+			continue;
+		rcv_pkts[nb_rx] = rxm;
+		zxdh_update_packet_stats(&rxvq->stats, rxm);
+		nb_rx++;
+	}
+	rxvq->stats.packets += nb_rx;
+
+refill:
+	if (vq->vq_free_cnt > 0) {
+		struct rte_eth_dev *dev = hw->eth_dev;
+		zxdh_refill_que_descs(vq, dev);
+		zxdh_queue_notify(vq);
 	}
 	return nb_rx;
 }
