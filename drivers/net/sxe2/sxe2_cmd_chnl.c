@@ -1697,7 +1697,7 @@ l_end:
 }
 
 int32_t sxe2_drv_flow_fnav_query_stat(struct sxe2_adapter *adapter,
-		struct sxe2_fnav_cid_mgr *mgr)
+		struct sxe2_flow_cid_mgr *mgr)
 {
 	struct sxe2_drv_flow_fnav_query_stat_req req = { 0 };
 	struct sxe2_drv_flow_fnav_query_stat_resp resp = { 0 };
