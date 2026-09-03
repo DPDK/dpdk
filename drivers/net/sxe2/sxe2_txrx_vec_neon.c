@@ -34,6 +34,52 @@ sxe2_tx_desc_fill_one_neon(volatile union sxe2_tx_data_desc *desc,
 	vst1q_u64(RTE_CAST_PTR(uint64_t *, desc), data_desc);
 }
 
+static __rte_always_inline void
+sxe2_tx_desc_fill_4_neon_simple(volatile union sxe2_tx_data_desc *desc,
+				struct rte_mbuf **pkts)
+{
+	uint64x2_t d0, d1, d2, d3;
+	uint64x2x4_t v;
+	const uint64_t cmd_base = ((uint64_t)SXE2_TX_DESC_DTYPE_DATA) |
+				((uint64_t)SXE2_TX_DATA_DESC_CMD_EOP) <<
+				SXE2_TX_DATA_DESC_CMD_SHIFT;
+
+	d0 = (uint64x2_t){
+		rte_pktmbuf_iova(pkts[0]),
+		cmd_base |
+		((uint64_t)pkts[0]->data_len) << SXE2_TX_DATA_DESC_BUF_SZ_SHIFT |
+		((uint64_t)SXE2_TX_DATA_DESC_MACLEN_VAL(pkts[0]->l2_len))
+				<< SXE2_TX_DATA_DESC_OFFSET_SHIFT
+	};
+	d1 = (uint64x2_t){
+		rte_pktmbuf_iova(pkts[1]),
+		cmd_base |
+		((uint64_t)pkts[1]->data_len) << SXE2_TX_DATA_DESC_BUF_SZ_SHIFT |
+		((uint64_t)SXE2_TX_DATA_DESC_MACLEN_VAL(pkts[1]->l2_len))
+				<< SXE2_TX_DATA_DESC_OFFSET_SHIFT
+	};
+	d2 = (uint64x2_t){
+		rte_pktmbuf_iova(pkts[2]),
+		cmd_base |
+		((uint64_t)pkts[2]->data_len) << SXE2_TX_DATA_DESC_BUF_SZ_SHIFT |
+		((uint64_t)SXE2_TX_DATA_DESC_MACLEN_VAL(pkts[2]->l2_len))
+				<< SXE2_TX_DATA_DESC_OFFSET_SHIFT
+	};
+	d3 = (uint64x2_t){
+		rte_pktmbuf_iova(pkts[3]),
+		cmd_base |
+		((uint64_t)pkts[3]->data_len) << SXE2_TX_DATA_DESC_BUF_SZ_SHIFT |
+		((uint64_t)SXE2_TX_DATA_DESC_MACLEN_VAL(pkts[3]->l2_len))
+				<< SXE2_TX_DATA_DESC_OFFSET_SHIFT
+	};
+
+	v.val[0] = d0;
+	v.val[1] = d1;
+	v.val[2] = d2;
+	v.val[3] = d3;
+	vst1q_u64_x4(RTE_CAST_PTR(uint64_t *, desc), v);
+}
+
 static __rte_always_inline uint16_t
 sxe2_tx_pkts_vec_neon_batch(struct sxe2_tx_queue *txq, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts, bool with_offloads)
@@ -67,10 +113,18 @@ sxe2_tx_pkts_vec_neon_batch(struct sxe2_tx_queue *txq, struct rte_mbuf **tx_pkts
 
 	if (tx_num >= res_num) {
 		sxe2_tx_pkts_mbuf_fill_vec(buffer, tx_pkts, res_num);
-
-		for (i = 0; i < res_num - 1; ++i, ++tx_pkts, ++desc) {
-			sxe2_tx_desc_fill_one_neon(desc, *tx_pkts,
-					SXE2_TX_DATA_DESC_CMD_EOP, with_offloads);
+		if (with_offloads) {
+			for (i = 0; i < res_num - 1; ++i, ++tx_pkts, ++desc) {
+				sxe2_tx_desc_fill_one_neon(desc, *tx_pkts,
+						SXE2_TX_DATA_DESC_CMD_EOP, with_offloads);
+			}
+		} else {
+			for (i = 0; i + 3 < res_num - 1; i += 4, tx_pkts += 4, desc += 4)
+				sxe2_tx_desc_fill_4_neon_simple(desc, tx_pkts);
+			for (; i < res_num - 1; ++i, ++tx_pkts, ++desc) {
+				sxe2_tx_desc_fill_one_neon(desc, *tx_pkts,
+						SXE2_TX_DATA_DESC_CMD_EOP, false);
+			}
 		}
 
 		sxe2_tx_desc_fill_one_neon(desc, *tx_pkts++,
@@ -87,9 +141,18 @@ sxe2_tx_pkts_vec_neon_batch(struct sxe2_tx_queue *txq, struct rte_mbuf **tx_pkts
 
 	sxe2_tx_pkts_mbuf_fill_vec(buffer, tx_pkts, tx_num);
 
-	for (i = 0; i < tx_num; ++i, ++tx_pkts, ++desc) {
-		sxe2_tx_desc_fill_one_neon(desc, *tx_pkts,
-				SXE2_TX_DATA_DESC_CMD_EOP, with_offloads);
+	if (with_offloads) {
+		for (i = 0; i < tx_num; ++i, ++tx_pkts, ++desc) {
+			sxe2_tx_desc_fill_one_neon(desc, *tx_pkts,
+					SXE2_TX_DATA_DESC_CMD_EOP, true);
+		}
+	} else {
+		for (i = 0; i + 3 < tx_num; i += 4, tx_pkts += 4, desc += 4)
+			sxe2_tx_desc_fill_4_neon_simple(desc, tx_pkts);
+		for (; i < tx_num; ++i, ++tx_pkts, ++desc) {
+			sxe2_tx_desc_fill_one_neon(desc, *tx_pkts,
+					SXE2_TX_DATA_DESC_CMD_EOP, false);
+		}
 	}
 
 	next_use += tx_num;
