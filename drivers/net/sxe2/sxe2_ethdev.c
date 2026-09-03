@@ -1282,8 +1282,6 @@ void sxe2_eth_uinit(struct rte_eth_dev *dev __rte_unused)
 static void sxe2_drv_dev_caps_set(struct sxe2_adapter *adapter,
 			struct sxe2_drv_dev_caps_resp *dev_caps)
 {
-	adapter->port_idx = dev_caps->port_idx;
-
 	adapter->cap_flags = 0;
 
 	if (dev_caps->cap_flags & SXE2_DEV_CAPS_OFFLOAD_L2)
@@ -1339,6 +1337,8 @@ static int32_t sxe2_func_caps_get(struct sxe2_adapter *adapter)
 		goto l_end;
 
 	adapter->dev_type = dev_caps.dev_type;
+	adapter->port_idx = dev_caps.port_idx;
+	adapter->pf_idx = dev_caps.pf_idx;
 
 	sxe2_drv_dev_caps_set(adapter,  &dev_caps);
 
