@@ -1547,6 +1547,12 @@ int32_t sxe2_dev_pci_res_seg_map(struct sxe2_adapter *adapter,
 	struct sxe2_pci_map_addr_info *addr_info = NULL;
 	int32_t ret = 0;
 
+	if (unlikely(res_type >= SXE2_PCI_MAP_RES_MAX_COUNT)) {
+		PMD_DEV_LOG_ERR(adapter, INIT, "Invalid resource type %u", res_type);
+		ret = -EINVAL;
+		goto l_end;
+	}
+
 	addr_info = &adapter->map_ctxt.addr_info[res_type];
 	if (!addr_info || addr_info->bar_idx == SXE2_PCI_MAP_BAR_INVALID) {
 		PMD_DEV_LOG_ERR(adapter, INIT, "Invalid bar index with resource type %d", res_type);
