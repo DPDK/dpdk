@@ -700,8 +700,8 @@ will cause such packets to be transmitted::
    The old name is no longer accepted.
 
 
-Limitations or Knowing issues
------------------------------
+Limitations or Known issues
+---------------------------
 
 16 Byte RX Descriptor setting is not available
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
