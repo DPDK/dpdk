@@ -19,7 +19,7 @@
 
 #define SXE2_MP_MAX_XSTATS	128
 
-/* Must cover every queue the primary can report per-queue stats for. */
+/* Firmware has counters for the first queues only; Tx is the larger limit. */
 #define SXE2_MP_MAX_QSTATS	SXE2_TXQ_STATS_MAP_MAX_NUM
 
 #define SXE2_MP_MAX_SPIN	100000
