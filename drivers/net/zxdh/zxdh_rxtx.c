@@ -216,7 +216,7 @@ zxdh_xmit_cleanup_inorder_packed(struct zxdh_virtqueue *vq, int32_t num)
 	/* desc_is_used has a load-acquire or rte_io_rmb inside
 	 * and wait for used desc in virtqueue.
 	 */
-	while (num > 0 && zxdh_desc_used(&desc[used_idx], vq)) {
+	while (num > 0 && desc_is_used(&desc[used_idx], vq)) {
 		id = desc[used_idx].id;
 		do {
 			curr_id = used_idx;
@@ -226,7 +226,7 @@ zxdh_xmit_cleanup_inorder_packed(struct zxdh_virtqueue *vq, int32_t num)
 			num -= dxp->ndescs;
 			if (used_idx >= size) {
 				used_idx -= size;
-				vq->vq_packed.used_wrap_counter ^= 1;
+				vq->used_wrap_counter ^= 1;
 			}
 			if (dxp->cookie != NULL) {
 				rte_pktmbuf_free(dxp->cookie);
@@ -340,7 +340,7 @@ zxdh_enqueue_xmit_packed_fast(struct zxdh_virtnet_tx *txvq,
 	struct zxdh_virtqueue *vq = txvq->vq;
 	uint16_t id = vq->vq_avail_idx;
 	struct zxdh_vq_desc_extra *dxp = &vq->vq_descx[id];
-	uint16_t flags = vq->vq_packed.cached_flags;
+	uint16_t flags = vq->cached_flags;
 	struct zxdh_net_hdr_dl *hdr = NULL;
 	uint8_t hdr_len = vq->hw->dl_net_hdr_len;
 	struct zxdh_vring_packed_desc *dp = &vq->vq_packed.ring.desc[id];
@@ -355,7 +355,7 @@ zxdh_enqueue_xmit_packed_fast(struct zxdh_virtnet_tx *txvq,
 	dp->id   = id;
 	if (++vq->vq_avail_idx >= vq->vq_nentries) {
 		vq->vq_avail_idx -= vq->vq_nentries;
-		vq->vq_packed.cached_flags ^= ZXDH_VRING_PACKED_DESC_F_AVAIL_USED;
+		vq->cached_flags ^= ZXDH_VRING_PACKED_DESC_F_AVAIL_USED;
 	}
 	vq->vq_free_cnt--;
 	zxdh_queue_store_flags_packed(dp, flags);
@@ -381,7 +381,7 @@ zxdh_enqueue_xmit_packed(struct zxdh_virtnet_tx *txvq,
 
 	dxp->ndescs = needed;
 	dxp->cookie = cookie;
-	head_flags |= vq->vq_packed.cached_flags;
+	head_flags |= vq->cached_flags;
 
 	start_dp[idx].addr = txvq->zxdh_net_hdr_mem + RTE_PTR_DIFF(&txr[idx].tx_hdr, txr);
 	start_dp[idx].len  = hdr_len;
@@ -392,7 +392,7 @@ zxdh_enqueue_xmit_packed(struct zxdh_virtnet_tx *txvq,
 	idx++;
 	if (idx >= vq->vq_nentries) {
 		idx -= vq->vq_nentries;
-		vq->vq_packed.cached_flags ^= ZXDH_VRING_PACKED_DESC_F_AVAIL_USED;
+		vq->cached_flags ^= ZXDH_VRING_PACKED_DESC_F_AVAIL_USED;
 	}
 
 	zxdh_xmit_fill_net_hdr(vq, cookie, hdr);
@@ -404,14 +404,14 @@ zxdh_enqueue_xmit_packed(struct zxdh_virtnet_tx *txvq,
 		if (likely(idx != head_idx)) {
 			uint16_t flags = cookie->next ? ZXDH_VRING_DESC_F_NEXT : 0;
 
-			flags |= vq->vq_packed.cached_flags;
+			flags |= vq->cached_flags;
 			start_dp[idx].flags = flags;
 		}
 
 		idx++;
 		if (idx >= vq->vq_nentries) {
 			idx -= vq->vq_nentries;
-			vq->vq_packed.cached_flags ^= ZXDH_VRING_PACKED_DESC_F_AVAIL_USED;
+			vq->cached_flags ^= ZXDH_VRING_PACKED_DESC_F_AVAIL_USED;
 		}
 	} while ((cookie = cookie->next) != NULL);
 
@@ -480,7 +480,7 @@ zxdh_xmit_flush(struct zxdh_virtqueue *vq)
 			free_cnt += dxp->ndescs;
 			if (used_idx >= size) {
 				used_idx -= size;
-				vq->vq_packed.used_wrap_counter ^= 1;
+				vq->used_wrap_counter ^= 1;
 			}
 			if (dxp->cookie != NULL) {
 				rte_pktmbuf_free(dxp->cookie);
@@ -619,7 +619,7 @@ zxdh_dequeue_burst_rx_packed(struct zxdh_virtqueue *vq,
 		 * desc_is_used has a load-acquire or rte_io_rmb inside
 		 * and wait for used desc in virtqueue.
 		 */
-		if (!zxdh_desc_used(&desc[used_idx], vq))
+		if (!desc_is_used(&desc[used_idx], vq))
 			return i;
 		len[i] = desc[used_idx].len;
 		id = desc[used_idx].id;
@@ -637,7 +637,7 @@ zxdh_dequeue_burst_rx_packed(struct zxdh_virtqueue *vq,
 		vq->vq_used_cons_idx++;
 		if (vq->vq_used_cons_idx >= vq->vq_nentries) {
 			vq->vq_used_cons_idx -= vq->vq_nentries;
-			vq->vq_packed.used_wrap_counter ^= 1;
+			vq->used_wrap_counter ^= 1;
 		}
 	}
 	return i;
