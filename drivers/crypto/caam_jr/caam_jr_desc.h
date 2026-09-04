@@ -112,12 +112,12 @@
 /* Helper macro for dumping the hex representation of a descriptor */
 #define SEC_DUMP_DESC(descriptor, f) {					\
 	int __i;							\
-	CAAM_JR_INFO("Des@ 0x%08x\n", (uint32_t)((uint32_t *)(descriptor)));\
+	CAAM_JR_INFO("Des@ %p", (const void *)(descriptor));		\
 	for (__i = 0;						\
 		__i < SEC_GET_DESC_LEN(descriptor);			\
 		__i++) {						\
-		fprintf(f, "0x%08x: 0x%08x\n",			\
-			(uint32_t)(((uint32_t *)(descriptor)) + __i),	\
+		fprintf(f, "%p: 0x%08x\n",			\
+			(const void *)(((uint32_t *)(descriptor)) + __i), \
 			*(((uint32_t *)(descriptor)) + __i));		\
 	}								\
 }
