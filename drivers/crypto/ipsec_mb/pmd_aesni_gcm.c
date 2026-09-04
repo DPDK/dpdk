@@ -2,6 +2,8 @@
  * Copyright(c) 2016-2021 Intel Corporation
  */
 
+#include <rte_hexdump.h>
+
 #include "pmd_aesni_gcm_priv.h"
 
 static void
