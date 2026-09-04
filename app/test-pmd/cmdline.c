@@ -2004,9 +2004,9 @@ cmd_config_rx_tx_parsed(void *parsed_result,
 		return;
 	}
 
-	fwd_config_setup();
-
 	init_port_config();
+
+	fwd_config_setup();
 
 	cmd_reconfig_device_queue(RTE_PORT_ALL, 1, 1);
 }
