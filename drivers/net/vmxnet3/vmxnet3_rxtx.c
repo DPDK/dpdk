@@ -59,64 +59,6 @@
 
 static int vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t*, uint8_t);
 static void vmxnet3_tq_tx_complete(vmxnet3_tx_queue_t *);
-#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER_NOT_USED
-static void vmxnet3_rxq_dump(struct vmxnet3_rx_queue *);
-static void vmxnet3_txq_dump(struct vmxnet3_tx_queue *);
-#endif
-
-#ifdef RTE_LIBRTE_VMXNET3_DEBUG_DRIVER_NOT_USED
-static void
-vmxnet3_rxq_dump(struct vmxnet3_rx_queue *rxq)
-{
-	uint32_t avail = 0;
-
-	if (rxq == NULL)
-		return;
-
-	PMD_RX_LOG(DEBUG,
-		   "RXQ: cmd0 base : %p cmd1 base : %p comp ring base : %p.",
-		   rxq->cmd_ring[0].base, rxq->cmd_ring[1].base, rxq->comp_ring.base);
-	PMD_RX_LOG(DEBUG,
-		   "RXQ: cmd0 basePA : 0x%lx cmd1 basePA : 0x%lx comp ring basePA : 0x%lx.",
-		   (unsigned long)rxq->cmd_ring[0].basePA,
-		   (unsigned long)rxq->cmd_ring[1].basePA,
-		   (unsigned long)rxq->comp_ring.basePA);
-
-	avail = vmxnet3_cmd_ring_desc_avail(&rxq->cmd_ring[0]);
-	PMD_RX_LOG(DEBUG,
-		   "RXQ:cmd0: size=%u; free=%u; next2proc=%u; queued=%u",
-		   (uint32_t)rxq->cmd_ring[0].size, avail,
-		   rxq->comp_ring.next2proc,
-		   rxq->cmd_ring[0].size - avail);
-
-	avail = vmxnet3_cmd_ring_desc_avail(&rxq->cmd_ring[1]);
-	PMD_RX_LOG(DEBUG, "RXQ:cmd1 size=%u; free=%u; next2proc=%u; queued=%u",
-		   (uint32_t)rxq->cmd_ring[1].size, avail, rxq->comp_ring.next2proc,
-		   rxq->cmd_ring[1].size - avail);
-
-}
-
-static void
-vmxnet3_txq_dump(struct vmxnet3_tx_queue *txq)
-{
-	uint32_t avail = 0;
-
-	if (txq == NULL)
-		return;
-
-	PMD_TX_LOG(DEBUG, "TXQ: cmd base : %p comp ring base : %p data ring base : %p.",
-		   txq->cmd_ring.base, txq->comp_ring.base, txq->data_ring.base);
-	PMD_TX_LOG(DEBUG, "TXQ: cmd basePA : 0x%lx comp ring basePA : 0x%lx data ring basePA : 0x%lx.",
-		   (unsigned long)txq->cmd_ring.basePA,
-		   (unsigned long)txq->comp_ring.basePA,
-		   (unsigned long)txq->data_ring.basePA);
-
-	avail = vmxnet3_cmd_ring_desc_avail(&txq->cmd_ring);
-	PMD_TX_LOG(DEBUG, "TXQ: size=%u; free=%u; next2proc=%u; queued=%u",
-		   (uint32_t)txq->cmd_ring.size, avail,
-		   txq->comp_ring.next2proc, txq->cmd_ring.size - avail);
-}
-#endif
 
 static void
 vmxnet3_tx_cmd_ring_release_mbufs(vmxnet3_cmd_ring_t *ring)
