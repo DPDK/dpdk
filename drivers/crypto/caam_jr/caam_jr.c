@@ -462,7 +462,7 @@ caam_jr_prep_cdb(struct caam_jr_session *ses)
 	}
 
 #if CAAM_JR_DBG
-	SEC_DUMP_DESC(cdb->sh_desc);
+	SEC_DUMP_DESC(cdb->sh_desc, stdout);
 #endif
 
 	cdb->sh_hdr.hi.field.idlen = shared_desc_len;
