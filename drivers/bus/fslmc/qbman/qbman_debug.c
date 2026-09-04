@@ -9,6 +9,9 @@
 
 #include <eal_export.h>
 
+/* Mask used to extract the response verb from a management command result */
+#define QBMAN_RESPONSE_VERB_MASK  0x7f
+
 /* QBMan portal management command code */
 #define QBMAN_BP_QUERY            0x32
 #define QBMAN_FQ_QUERY            0x44
