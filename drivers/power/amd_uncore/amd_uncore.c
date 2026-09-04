@@ -100,7 +100,7 @@ power_get_available_uncore_freqs(struct uncore_power_info *ui)
 	}
 
 	POWER_DEBUG_LOG("%d frequency(s) of pkg %02u die %02u are available",
-			ui->num_uncore_freqs, ui->pkg, ui->die);
+			ui->nb_freqs, ui->pkg, ui->die);
 
 	return 0;
 }
