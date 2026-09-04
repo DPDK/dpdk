@@ -110,7 +110,6 @@ npa_aura_pool_init(struct mbox *m_box, uint32_t aura_id, struct npa_aura_s *aura
 	} else {
 		pool_init_req = mbox_alloc_msg_npa_aq_enq(mbox);
 	}
-	pool_init_req = mbox_alloc_msg_npa_aq_enq(mbox);
 	if (pool_init_req == NULL)
 		goto exit;
 	pool_init_req->aura_id = aura_id;
