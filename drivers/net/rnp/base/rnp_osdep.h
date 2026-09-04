@@ -90,14 +90,14 @@ rnp_reg_read32(const void *base, size_t offset)
 {
 	u32 v = rte_read32(((const u8 *)base + offset));
 
-	RNP_PMD_REG_LOG(DEBUG, "offset=%p val=%#"PRIx32"", offset, v);
+	RNP_PMD_REG_LOG(DEBUG, "offset=%#zx val=%#"PRIx32"", offset, v);
 	return v;
 }
 
 static inline void
 rnp_reg_write32(volatile void *base, size_t offset, u32 val)
 {
-	RNP_PMD_REG_LOG(DEBUG, "offset=%p val=%#"PRIx32"", offset, val);
+	RNP_PMD_REG_LOG(DEBUG, "offset=%#zx val=%#"PRIx32"", offset, val);
 	rte_write32(val, ((volatile u8 *)base + offset));
 }
 
