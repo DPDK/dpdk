@@ -33,21 +33,6 @@ extern "C" {
 #endif
 
 /**
- * Copy bytes from one location to another. The locations must not overlap.
- *
- * @param dst
- *   Pointer to the destination of the data.
- * @param src
- *   Pointer to the source data.
- * @param n
- *   Number of bytes to copy.
- * @return
- *   Pointer to the destination data.
- */
-static __rte_always_inline void *
-rte_memcpy(void *__rte_restrict dst, const void *__rte_restrict src, size_t n);
-
-/**
  * Copy bytes from one location to another,
  * locations must not overlap.
  * Use with n <= 15.
@@ -187,7 +172,7 @@ rte_mov256(uint8_t *__rte_restrict dst, const uint8_t *__rte_restrict src)
  * AVX512 implementation below
  */
 
-#define ALIGNMENT_MASK 0x3F
+#define RTE_MEMCPY_ALIGNMENT_MASK 0x3F
 
 /**
  * Copy 128-byte blocks from one location to another,
@@ -333,7 +318,7 @@ COPY_BLOCK_128_BACK63:
  * AVX implementation below
  */
 
-#define ALIGNMENT_MASK 0x1F
+#define RTE_MEMCPY_ALIGNMENT_MASK 0x1F
 
 /**
  * Copy 128-byte blocks from one location to another,
@@ -444,7 +429,7 @@ COPY_BLOCK_128_BACK31:
  * SSE implementation below
  */
 
-#define ALIGNMENT_MASK 0x0F
+#define RTE_MEMCPY_ALIGNMENT_MASK 0x0F
 
 /**
  * Macro for copying unaligned block from one location to another with constant load offset,
@@ -673,6 +658,18 @@ rte_memcpy_aligned_more_than_64(void *__rte_restrict dst, const void *__rte_rest
 	return ret;
 }
 
+/**
+ * Copy bytes from one location to another. The locations must not overlap.
+ *
+ * @param dst
+ *   Pointer to the destination of the data.
+ * @param src
+ *   Pointer to the source data.
+ * @param n
+ *   Number of bytes to copy.
+ * @return
+ *   Pointer to the destination data.
+ */
 static __rte_always_inline void *
 rte_memcpy(void *__rte_restrict dst, const void *__rte_restrict src, size_t n)
 {
@@ -709,13 +706,13 @@ rte_memcpy(void *__rte_restrict dst, const void *__rte_restrict src, size_t n)
 	}
 
 	/* Implementation for size > 64 bytes depends on alignment with vector register size. */
-	if (!(((uintptr_t)dst | (uintptr_t)src) & ALIGNMENT_MASK))
+	if ((((uintptr_t)dst | (uintptr_t)src) & RTE_MEMCPY_ALIGNMENT_MASK) == 0)
 		return rte_memcpy_aligned_more_than_64(dst, src, n);
 	else
 		return rte_memcpy_generic_more_than_64(dst, src, n);
 }
 
-#undef ALIGNMENT_MASK
+#undef RTE_MEMCPY_ALIGNMENT_MASK
 
 #ifdef __cplusplus
 }
