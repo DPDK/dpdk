@@ -2680,7 +2680,7 @@ static int qbman_swp_acquire_direct(struct qbman_swp *s, uint16_t bpid,
 {
 	struct qbman_acquire_desc *p;
 	struct qbman_acquire_rslt *r;
-	int num;
+	unsigned int num;
 
 	if (!num_buffers || (num_buffers > BMAN_VALID_RSLT_NUM_MASK))
 		return -EINVAL;
@@ -2727,7 +2727,7 @@ static int qbman_swp_acquire_cinh_direct(struct qbman_swp *s, uint16_t bpid,
 {
 	struct qbman_acquire_desc *p;
 	struct qbman_acquire_rslt *r;
-	int num;
+	unsigned int num;
 
 	if (!num_buffers || (num_buffers > BMAN_VALID_RSLT_NUM_MASK))
 		return -EINVAL;
