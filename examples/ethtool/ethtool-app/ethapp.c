@@ -4,6 +4,8 @@
 
 #include <stdlib.h>
 
+#include <rte_debug.h>
+
 #include <cmdline_parse.h>
 #include <cmdline_parse_num.h>
 #include <cmdline_parse_string.h>
@@ -914,6 +916,9 @@ void ethapp_main(void)
 	struct cmdline *ctx_cmdline;
 
 	ctx_cmdline = cmdline_stdin_new(list_prompt_commands, "EthApp> ");
+	if (ctx_cmdline == NULL)
+		rte_panic("Cannot create cmdline instance\n");
+
 	cmdline_interact(ctx_cmdline);
 	cmdline_stdin_exit(ctx_cmdline);
 }

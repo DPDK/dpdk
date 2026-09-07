@@ -44,7 +44,7 @@ struct app_port {
 struct app_config {
 	struct app_port ports[MAX_PORTS];
 	int cnt_ports;
-	int exit_now;
+	volatile int exit_now;
 };
 
 
