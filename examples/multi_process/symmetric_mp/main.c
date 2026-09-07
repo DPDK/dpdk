@@ -97,7 +97,7 @@ static void
 print_stats(int signum)
 {
 	unsigned i;
-	printf("\nExiting on signal %d\n\n", signum);
+
 	for (i = 0; i < num_ports; i++){
 		const uint8_t p_num = ports[i];
 		printf("Port %u: RX - %u, TX - %u, Drop - %u\n", (unsigned)p_num,

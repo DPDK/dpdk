@@ -319,8 +319,6 @@ signal_handler(int signum)
 	if (fdata->done)
 		rte_exit(1, "Exiting on signal %d\n", signum);
 	if ((signum == SIGINT || signum == SIGTERM) && !once) {
-		printf("\n\nSignal %d received, preparing to exit...\n",
-				signum);
 		if (cdata.dump_dev)
 			rte_event_dev_dump(0, stdout);
 		once = 1;

@@ -950,7 +950,6 @@ static void
 signal_handler(int signum)
 {
 	if (signum == SIGINT || signum == SIGTERM) {
-		printf("\nSignal %d received, preparing to exit...\n", signum);
 		signal(signum, SIG_DFL);
 		kill(getpid(), signum);
 	}

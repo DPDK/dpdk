@@ -529,9 +529,8 @@ lcore_tx(struct rte_ring *in_r)
 }
 
 static void
-int_handler(int sig_num)
+int_handler(int sig_num __rte_unused)
 {
-	printf("Exiting on signal %d\n", sig_num);
 	/* set quit flag for rx thread to exit */
 	quit_signal_rx = 1;
 }

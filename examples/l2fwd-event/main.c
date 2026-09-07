@@ -582,11 +582,8 @@ static void
 signal_handler(int signum)
 {
 	struct l2fwd_resources *rsrc = l2fwd_get_rsrc();
-	if (signum == SIGINT || signum == SIGTERM) {
-		printf("\n\nSignal %d received, preparing to exit...\n",
-				signum);
+	if (signum == SIGINT || signum == SIGTERM)
 		rsrc->force_quit = true;
-	}
 }
 
 int
