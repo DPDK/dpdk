@@ -850,24 +850,18 @@ vhost_blk_ctrlr_destroy(struct vhost_blk_ctrlr *ctrlr)
 	rte_vhost_driver_unregister(dev_pathname);
 }
 
+/* Set by the SIGINT handler to break the main loop. */
+static volatile sig_atomic_t quit;
+
 static void
 signal_handler(__rte_unused int signum)
 {
-	struct vhost_blk_ctrlr *ctrlr;
-
-	ctrlr = vhost_blk_ctrlr_find(dev_pathname);
-	if (ctrlr == NULL)
-		return;
-
-	if (ctrlr->started)
-		destroy_device(ctrlr->vid);
-
-	vhost_blk_ctrlr_destroy(ctrlr);
-	exit(0);
+	quit = 1;
 }
 
 int main(int argc, char *argv[])
 {
+	struct vhost_blk_ctrlr *ctrlr;
 	int ret;
 
 	/* init EAL */
@@ -895,8 +889,16 @@ int main(int argc, char *argv[])
 	}
 
 	/* loop for exit the application */
-	while (1)
+	while (!quit)
 		sleep(1);
+
+	ctrlr = vhost_blk_ctrlr_find(dev_pathname);
+	if (ctrlr != NULL) {
+		if (ctrlr->started)
+			destroy_device(ctrlr->vid);
+
+		vhost_blk_ctrlr_destroy(ctrlr);
+	}
 
 	/* clean up the EAL */
 	rte_eal_cleanup();
