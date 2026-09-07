@@ -46,7 +46,6 @@ implementer_generic = {
             'compiler_options': ['-mfpu=auto'],
             'flags': [
                 ['RTE_ARCH_ARM_NEON_MEMCPY', false],
-                ['RTE_ARCH_STRICT_ALIGN', true],
                 ['RTE_ARCH_ARMv8_AARCH32', true],
                 ['RTE_ARCH', 'armv8_aarch32'],
                 ['RTE_CACHE_LINE_SIZE', 64]
