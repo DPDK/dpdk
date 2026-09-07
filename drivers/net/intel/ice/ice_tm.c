@@ -859,9 +859,9 @@ commit_new_hierarchy(struct rte_eth_dev *dev)
 		}
 		/* TM hierarchy deleted. Restore default scheduler state. */
 		reset_hw_node_recursive(hw, hw->vsi_ctx[pf->main_vsi->idx]->sched.vsi_node[0]);
-		pf->main_vsi->nb_tm_txqs = pf->lan_nb_qps;
+		pf->main_vsi->nb_txqs = pf->lan_nb_qps;
 		pf->tm_conf.committed = false;
-		return ice_alloc_lan_q_ctx(hw, 0, 0, pf->main_vsi->nb_tm_txqs);
+		return ice_alloc_lan_q_ctx(hw, 0, 0, pf->main_vsi->nb_txqs);
 	}
 
 	/* handle case where VSI node needs to move DOWN the hierarchy */
@@ -889,13 +889,13 @@ commit_new_hierarchy(struct rte_eth_dev *dev)
 				nodes_created_per_level[i], i);
 	hw->vsi_ctx[pf->main_vsi->idx]->sched.vsi_node[0] = new_vsi_root;
 
-	pf->main_vsi->nb_tm_txqs =
+	pf->main_vsi->nb_txqs =
 			RTE_MIN(nodes_created_per_level[qg_lvl] * hw->max_children[qg_lvl],
 				hw->layer_info[q_lvl].max_device_nodes);
 
 	pf->tm_conf.committed = true; /* set flag to be checks on queue start */
 
-	return ice_alloc_lan_q_ctx(hw, 0, 0, pf->main_vsi->nb_tm_txqs);
+	return ice_alloc_lan_q_ctx(hw, 0, 0, pf->main_vsi->nb_txqs);
 }
 
 static int
