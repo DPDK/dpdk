@@ -3,6 +3,7 @@
  * Copyright 2017 Cavium, Inc.
  */
 
+#include <signal.h>
 #include <stdbool.h>
 
 #include <rte_eal.h>
@@ -43,7 +44,7 @@ struct setup_data {
 };
 
 struct __rte_cache_aligned fastpath_data {
-	volatile int done;
+	volatile sig_atomic_t done;
 	uint32_t evdev_service_id;
 	uint32_t rxadptr_service_id;
 	uint32_t txadptr_service_id;
@@ -68,7 +69,7 @@ struct config_data {
 	int enable_queue_priorities;
 	int quiet;
 	int dump_dev;
-	int dump_dev_signal;
+	volatile sig_atomic_t dump_dev_signal;
 	int all_type_queues;
 	unsigned int num_stages;
 	unsigned int worker_cq_depth;
@@ -127,15 +128,15 @@ schedule_devices(unsigned int lcore_id)
 	if (fdata->sched_core[lcore_id]) {
 		rte_service_run_iter_on_app_lcore(fdata->evdev_service_id,
 				!fdata->sched_single);
-		if (cdata.dump_dev_signal) {
-			rte_event_dev_dump(0, stdout);
-			cdata.dump_dev_signal = 0;
-		}
 	}
 
 	if (fdata->tx_core[lcore_id]) {
 		rte_service_run_iter_on_app_lcore(fdata->txadptr_service_id,
 				!fdata->tx_single);
+	}
+	if (cdata.dump_dev_signal) {
+		rte_event_dev_dump(0, stdout);
+		cdata.dump_dev_signal = 0;
 	}
 }
 

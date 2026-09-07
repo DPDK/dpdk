@@ -312,20 +312,16 @@ do_capability_setup(uint8_t eventdev_id)
 }
 
 static void
-signal_handler(int signum)
+signal_quit(int signum __rte_unused)
 {
-	static uint8_t once;
-
-	if (fdata->done)
-		rte_exit(1, "Exiting on signal %d\n", signum);
-	if ((signum == SIGINT || signum == SIGTERM) && !once) {
-		if (cdata.dump_dev)
-			rte_event_dev_dump(0, stdout);
-		once = 1;
+	if (fdata != NULL)
 		fdata->done = 1;
-	}
-	if (signum == SIGTSTP)
-		rte_event_dev_dump(0, stdout);
+}
+
+static void
+signal_dump(int signum __rte_unused)
+{
+	cdata.dump_dev_signal = 1;
 }
 
 static inline uint64_t
@@ -345,9 +341,19 @@ main(int argc, char **argv)
 	int lcore_id;
 	int err;
 
-	signal(SIGINT, signal_handler);
-	signal(SIGTERM, signal_handler);
-	signal(SIGTSTP, signal_handler);
+	/* second SIGINT/SIGTERM takes the default action */
+	struct sigaction sa = {
+		.sa_handler = signal_quit,
+		.sa_flags = SA_RESETHAND,
+	};
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
+
+	/* allow repeated dump signals */
+	sa.sa_handler = signal_dump;
+	sa.sa_flags = 0;
+	sigaction(SIGUSR1, &sa, NULL);
 
 	err = rte_eal_init(argc, argv);
 	if (err < 0)
@@ -451,6 +457,9 @@ main(int argc, char **argv)
 	}
 
 	rte_eal_mp_wait_lcore();
+
+	if (cdata.dump_dev)
+		rte_event_dev_dump(0, stdout);
 
 	if (!cdata.quiet && (port_stat(dev_id, worker_data[0].port_id) !=
 			(uint64_t)-ENOTSUP)) {
