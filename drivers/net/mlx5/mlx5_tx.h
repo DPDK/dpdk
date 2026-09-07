@@ -1437,19 +1437,9 @@ mlx5_tx_dseg_iptr(struct mlx5_txq_data *__rte_restrict txq,
 	dst = (uintptr_t)&dseg->inline_data[0];
 	src = (uintptr_t)buf;
 	if (len & 0x08) {
-#ifdef RTE_ARCH_STRICT_ALIGN
-		MLX5_ASSERT(dst == RTE_PTR_ALIGN(dst, sizeof(uint32_t)));
-		*(uint32_t *)dst = *(unaligned_uint32_t *)src;
-		dst += sizeof(uint32_t);
-		src += sizeof(uint32_t);
-		*(uint32_t *)dst = *(unaligned_uint32_t *)src;
-		dst += sizeof(uint32_t);
-		src += sizeof(uint32_t);
-#else
-		*(uint64_t *)dst = *(unaligned_uint64_t *)src;
+		*(unaligned_uint64_t *)dst = *(unaligned_uint64_t *)src;
 		dst += sizeof(uint64_t);
 		src += sizeof(uint64_t);
-#endif
 	}
 	if (len & 0x04) {
 		*(uint32_t *)dst = *(unaligned_uint32_t *)src;
