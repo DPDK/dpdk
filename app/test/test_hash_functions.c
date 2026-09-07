@@ -185,12 +185,12 @@ verify_precalculated_hash_func_tests(void)
 static int
 verify_jhash_32bits(void)
 {
-	unsigned i, j;
-	uint8_t key[64];
+	unsigned int i, j;
+	uint32_t key[16];
 	uint32_t hash, hash32;
 
-	for (i = 0; i < 64; i++)
-		key[i] = rand() & 0xff;
+	for (i = 0; i < RTE_DIM(key); i++)
+		key[i] = (uint32_t) rte_rand();
 
 	for (i = 0; i < RTE_DIM(hashtest_key_lens); i++) {
 		for (j = 0; j < RTE_DIM(hashtest_initvals); j++) {
@@ -199,9 +199,9 @@ verify_jhash_32bits(void)
 				hash = rte_jhash(key, hashtest_key_lens[i],
 						hashtest_initvals[j]);
 				/* Divide key length by 4 in rte_jhash for 32 bits */
-				hash32 = rte_jhash_32b((const unaligned_uint32_t *)key,
-						hashtest_key_lens[i] >> 2,
-						hashtest_initvals[j]);
+				hash32 = rte_jhash_32b(key,
+						       hashtest_key_lens[i] / sizeof(uint32_t),
+						       hashtest_initvals[j]);
 				if (hash != hash32) {
 					printf("rte_jhash returns different value (0x%x)"
 					       "than rte_jhash_32b (0x%x)\n",
