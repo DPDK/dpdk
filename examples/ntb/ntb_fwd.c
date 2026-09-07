@@ -41,7 +41,7 @@ struct ntb_fwd_stream {
 struct ntb_fwd_lcore_conf {
 	uint16_t stream_id;
 	uint16_t nb_stream;
-	uint8_t stopped;
+	volatile uint8_t stopped;
 };
 
 enum ntb_fwd_mode {
@@ -947,11 +947,16 @@ prompt(void)
 }
 
 static void
-signal_handler(int signum)
+signal_handler(__rte_unused int signum)
 {
-	if (signum == SIGINT || signum == SIGTERM) {
-		signal(signum, SIG_DFL);
-		kill(getpid(), signum);
+	struct ntb_fwd_lcore_conf *conf;
+	uint32_t lcore_id;
+
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
+		conf = &fwd_lcore_conf[lcore_id];
+
+		if (conf->nb_stream)
+			conf->stopped = 1;
 	}
 }
 
