@@ -848,7 +848,7 @@ commit_new_hierarchy(struct rte_eth_dev *dev)
 	const uint16_t new_root_level = pf->tm_conf.hidden_layers;
 	/* count nodes per hw level, not per logical */
 	uint16_t nodes_created_per_level[ICE_TM_MAX_LAYERS] = {0};
-	uint8_t q_lvl = ice_get_leaf_level(pf);
+	uint8_t q_lvl = ice_get_leaf_level(pf) + pf->tm_conf.hidden_layers;
 	uint8_t qg_lvl = q_lvl - 1;
 	struct ice_sched_node *new_vsi_root = hw->vsi_ctx[pf->main_vsi->idx]->sched.vsi_node[0];
 
