@@ -513,6 +513,15 @@ update_mac_address(struct rte_mbuf *m, unsigned dst_port)
 	rte_ether_addr_copy(&vmdq_ports_eth_addr[dst_port], &eth->src_addr);
 }
 
+/* Set by the SIGINT and SIGTERM handler to stop the forwarding loops. */
+static volatile sig_atomic_t quit;
+
+static void
+signal_handler(__rte_unused int signum)
+{
+	quit = 1;
+}
+
 /* When we receive a HUP signal, print out our stats */
 static void
 sighup_handler(int signum)
@@ -567,7 +576,7 @@ lcore_main(void *arg)
 		return 0;
 	}
 
-	for (;;) {
+	while (!quit) {
 		struct rte_mbuf *buf[MAX_PKT_BURST];
 		const uint16_t buf_size = RTE_DIM(buf);
 		for (p = 0; p < num_ports; p++) {
@@ -598,6 +607,8 @@ lcore_main(void *arg)
 			}
 		}
 	}
+
+	return 0;
 }
 
 /*
@@ -640,6 +651,8 @@ main(int argc, char *argv[])
 	uint16_t portid;
 
 	signal(SIGHUP, sighup_handler);
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -696,6 +709,11 @@ main(int argc, char *argv[])
 	}
 	/* call on main too */
 	(void) lcore_main((void*)i);
+
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
+		if (rte_eal_wait_lcore(lcore_id) < 0)
+			return -1;
+	}
 
 	/* clean up the EAL */
 	rte_eal_cleanup();
