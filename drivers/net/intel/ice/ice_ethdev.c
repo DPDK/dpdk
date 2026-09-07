@@ -3963,6 +3963,8 @@ ice_dev_configure(struct rte_eth_dev *dev)
 	ad->rx_func_type = ICE_RX_DEFAULT;
 	ad->tx_func_type = ICE_TX_DEFAULT;
 
+	pf->dcb_num_tcs = 1;
+
 	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
 		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
@@ -3991,6 +3993,8 @@ ice_dev_configure(struct rte_eth_dev *dev)
 			dcb_conf);
 		if (nb_tc_used < 0)
 			return -EINVAL;
+
+		pf->dcb_num_tcs = nb_tc_used;
 
 		ctxt.info = vsi->info;
 		if (rte_le_to_cpu_16(ctxt.info.mapping_flags) == ICE_AQ_VSI_Q_MAP_NONCONTIG) {
