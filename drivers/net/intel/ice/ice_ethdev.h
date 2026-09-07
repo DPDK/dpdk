@@ -609,6 +609,8 @@ struct ice_pf {
 	uint64_t rss_hf;
 	struct ice_tm_conf tm_conf;
 	uint16_t outer_ethertype;
+	/* Number of TCs requested, 1 if DCB not configured */
+	uint8_t dcb_num_tcs;
 	/* lock prevent race condition between lsc interrupt handler
 	 * and link status update during dev_start.
 	 */
