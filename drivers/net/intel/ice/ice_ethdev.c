@@ -1002,10 +1002,10 @@ ice_vsi_config_tc_queue_mapping(struct ice_hw *hw, struct ice_vsi *vsi,
 
 	/* vector 0 is reserved and 1 vector for ctrl vsi */
 	if (vsi->adapter->hw.func_caps.common_cap.num_msix_vectors < 2) {
-		vsi->nb_qps = 0;
+		vsi->nb_rxqs = 0;
 	} else {
-		vsi->nb_qps = RTE_MIN(vsi->nb_qps, ICE_MAX_Q_PER_TC);
-		vsi->nb_qps = RTE_MIN(vsi->nb_qps,
+		vsi->nb_rxqs = RTE_MIN(vsi->nb_rxqs, ICE_MAX_Q_PER_TC);
+		vsi->nb_rxqs = RTE_MIN(vsi->nb_rxqs,
 			(uint16_t)vsi->adapter->hw.func_caps.common_cap.num_msix_vectors - 2);
 
 		/* cap max QPs to what the HW reports as num-children for each layer.
@@ -1017,13 +1017,13 @@ ice_vsi_config_tc_queue_mapping(struct ice_hw *hw, struct ice_vsi *vsi,
 		uint32_t max_sched_vsi_nodes = 1;
 		for (uint8_t i = hw->sw_entry_point_layer; i < hw->num_tx_sched_layers - 1; i++) {
 			max_sched_vsi_nodes *= hw->max_children[i];
-			if (max_sched_vsi_nodes >= vsi->nb_qps)
+			if (max_sched_vsi_nodes >= vsi->nb_rxqs)
 				break;
 		}
-		vsi->nb_qps = RTE_MIN(vsi->nb_qps, max_sched_vsi_nodes);
+		vsi->nb_rxqs = RTE_MIN(vsi->nb_rxqs, max_sched_vsi_nodes);
 	}
 
-	/* nb_qps(hex)  -> fls */
+	/* nb_rxqs(hex)  -> fls */
 	/* 0000		-> 0 */
 	/* 0001		-> 0 */
 	/* 0002		-> 1 */
@@ -1034,7 +1034,7 @@ ice_vsi_config_tc_queue_mapping(struct ice_hw *hw, struct ice_vsi *vsi,
 	/* 0021 ~ 0040	-> 6 */
 	/* 0041 ~ 0080	-> 7 */
 	/* 0081 ~ 0100	-> 8 */
-	fls = (vsi->nb_qps == 0) ? 0 : rte_fls_u32(vsi->nb_qps - 1);
+	fls = (vsi->nb_rxqs == 0) ? 0 : rte_fls_u32(vsi->nb_rxqs - 1);
 
 	qp_idx = 0;
 	/* Set tc and queue mapping with VSI */
@@ -1045,7 +1045,7 @@ ice_vsi_config_tc_queue_mapping(struct ice_hw *hw, struct ice_vsi *vsi,
 	/* Associate queue number with VSI */
 	info->mapping_flags |= rte_cpu_to_le_16(ICE_AQ_VSI_Q_MAP_CONTIG);
 	info->q_mapping[0] = rte_cpu_to_le_16(vsi->base_queue);
-	info->q_mapping[1] = rte_cpu_to_le_16(vsi->nb_qps);
+	info->q_mapping[1] = rte_cpu_to_le_16(vsi->nb_rxqs);
 	info->valid_sections |=
 		rte_cpu_to_le_16(ICE_AQ_VSI_PROP_RXQ_MAP_VALID);
 	/* Set the info.ingress_table and info.egress_table
@@ -1753,7 +1753,7 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 	memset(&vsi_ctx, 0, sizeof(vsi_ctx));
 	switch (type) {
 	case ICE_VSI_PF:
-		vsi->nb_qps = pf->lan_nb_qps;
+		vsi->nb_rxqs = pf->lan_nb_qps;
 		vsi->base_queue = 1;
 		ice_vsi_config_default_rss(&vsi_ctx.info);
 		vsi_ctx.alloc_from_pool = true;
@@ -1816,11 +1816,11 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 				     ret);
 			goto fail_mem;
 		}
-		vsi->nb_tm_txqs = vsi->nb_qps;
+		vsi->nb_txqs = vsi->nb_rxqs;
 
 		break;
 	case ICE_VSI_CTRL:
-		vsi->nb_qps = pf->fdir_nb_qps;
+		vsi->nb_rxqs = pf->fdir_nb_qps;
 		vsi->base_queue = ICE_FDIR_QUEUE_ID;
 		vsi_ctx.alloc_from_pool = true;
 		vsi_ctx.flags = ICE_AQ_VSI_TYPE_PF;
@@ -1841,6 +1841,7 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 				     ret);
 			goto fail_mem;
 		}
+		vsi->nb_txqs = vsi->nb_rxqs;
 		break;
 	default:
 		/* for other types of VSI */
@@ -1851,14 +1852,14 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 	/* VF has MSIX interrupt in VF range, don't allocate here */
 	if (type == ICE_VSI_PF) {
 		ret = ice_res_pool_alloc(&pf->msix_pool,
-					 RTE_MIN(vsi->nb_qps,
+					 RTE_MIN(vsi->nb_rxqs,
 						 RTE_MAX_RXTX_INTR_VEC_ID));
 		if (ret < 0) {
 			PMD_INIT_LOG(ERR, "VSI MAIN %d get heap failed %d",
 				     vsi->vsi_id, ret);
 		}
 		vsi->msix_intr = ret;
-		vsi->nb_msix = RTE_MIN(vsi->nb_qps, RTE_MAX_RXTX_INTR_VEC_ID);
+		vsi->nb_msix = RTE_MIN(vsi->nb_rxqs, RTE_MAX_RXTX_INTR_VEC_ID);
 	} else if (type == ICE_VSI_CTRL) {
 		ret = ice_res_pool_alloc(&pf->msix_pool, 1);
 		if (ret < 0) {
@@ -1900,11 +1901,7 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 	}
 
 	/* At the beginning, only TC0. */
-	/* What we need here is the maximum number of the TX queues.
-	 * Currently vsi->nb_qps means it.
-	 * Correct it if any change.
-	 */
-	max_txqs[0] = vsi->nb_qps;
+	max_txqs[0] = vsi->nb_txqs;
 	ret = ice_cfg_vsi_lan(hw->port_info, vsi->idx,
 			      tc_bitmap, max_txqs);
 	if (ret != ICE_SUCCESS)
@@ -4628,8 +4625,8 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->min_rx_bufsize = ICE_BUF_SIZE_MIN;
 	dev_info->max_rx_pktlen = ICE_FRAME_SIZE_MAX;
-	dev_info->max_rx_queues = vsi->nb_qps;
-	dev_info->max_tx_queues = vsi->nb_tm_txqs;
+	dev_info->max_rx_queues = vsi->nb_rxqs;
+	dev_info->max_tx_queues = vsi->nb_txqs;
 	dev_info->max_mac_addrs = vsi->max_macaddrs;
 	dev_info->max_vfs = pci_dev->max_vfs;
 	dev_info->max_mtu = dev_info->max_rx_pktlen - ICE_ETH_OVERHEAD;
