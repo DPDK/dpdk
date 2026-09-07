@@ -330,6 +330,7 @@ struct ice_vsi {
 	struct ice_mac_filter_list mac_list; /* macvlan filter list */
 	struct ice_vlan_filter_list vlan_list; /* vlan filter list */
 	uint16_t nb_qps;         /* Number of queue pairs VSI can occupy */
+	uint16_t nb_tm_txqs;     /* Number of Tx queues usable by the committed TM hierarchy */
 	uint16_t nb_used_qps;    /* Number of queue pairs VSI uses */
 	uint16_t max_macaddrs;   /* Maximum number of MAC addresses */
 	uint16_t base_queue;     /* The first queue index of this VSI */
