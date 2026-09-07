@@ -231,6 +231,12 @@ static int flex_item_config(json_t *jroot,
 		} else if (match_strkey(key, "sample_data")) {
 			json_t *ji;
 			uint32_t i, size = json_array_size(jobj);
+			if (size > FLEX_ITEM_MAX_SAMPLES_NUM) {
+				printf("Number of sample_data entries (%u) exceeds maximum %u\n",
+				       size, FLEX_ITEM_MAX_SAMPLES_NUM);
+				ret = -EINVAL;
+				goto out;
+			}
 			for (i = 0; i < size; i++) {
 				ji = json_array_get(jobj, i);
 				ret = flex_field_parse
@@ -244,6 +250,12 @@ static int flex_item_config(json_t *jroot,
 		} else if (match_strkey(key, "input_link")) {
 			json_t *ji;
 			uint32_t i, size = json_array_size(jobj);
+			if (size > FLEX_ITEM_MAX_LINKS_NUM) {
+				printf("Number of input_link entries (%u) exceeds maximum %u\n",
+				       size, FLEX_ITEM_MAX_LINKS_NUM);
+				ret = -EINVAL;
+				goto out;
+			}
 			for (i = 0; i < size; i++) {
 				ji = json_array_get(jobj, i);
 				ret = flex_link_parse(ji,
@@ -258,6 +270,12 @@ static int flex_item_config(json_t *jroot,
 		} else if (match_strkey(key, "output_link")) {
 			json_t *ji;
 			uint32_t i, size = json_array_size(jobj);
+			if (size > FLEX_ITEM_MAX_LINKS_NUM) {
+				printf("Number of output_link entries (%u) exceeds maximum %u\n",
+				       size, FLEX_ITEM_MAX_LINKS_NUM);
+				ret = -EINVAL;
+				goto out;
+			}
 			for (i = 0; i < size; i++) {
 				ji = json_array_get(jobj, i);
 				ret = flex_link_parse
