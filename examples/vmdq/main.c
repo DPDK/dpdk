@@ -465,18 +465,27 @@ update_mac_address(struct rte_mbuf *m, unsigned dst_port)
 	rte_ether_addr_copy(&vmdq_ports_eth_addr[dst_port], &eth->src_addr);
 }
 
-/* When we receive a HUP signal, print out our stats */
+/* Set by the SIGHUP handler, consumed by the main lcore. */
+static volatile sig_atomic_t stats_requested;
+
 static void
-sighup_handler(int signum)
+sighup_handler(__rte_unused int signum)
+{
+	stats_requested = 1;
+}
+
+static void
+print_stats(void)
 {
 	unsigned int q = vmdq_queue_base;
+
 	for (; q < num_queues; q++) {
 		if ((q - vmdq_queue_base) % (num_vmdq_queues / num_pools) == 0)
 			printf("\nPool %u: ", (q - vmdq_queue_base) /
 			       (num_vmdq_queues / num_pools));
 		printf("%lu ", rxPackets[q]);
 	}
-	printf("\nFinished handling signal %d\n", signum);
+	putchar('\n');
 }
 
 /*
@@ -533,6 +542,11 @@ lcore_main(__rte_unused void *dummy)
 	for (;;) {
 		struct rte_mbuf *buf[MAX_PKT_BURST];
 		const uint16_t buf_size = RTE_DIM(buf);
+
+		if (stats_requested && lcore_id == rte_get_main_lcore()) {
+			stats_requested = 0;
+			print_stats();
+		}
 
 		for (p = 0; p < num_ports; p++) {
 			const uint8_t sport = ports[p];
