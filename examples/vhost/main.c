@@ -79,6 +79,9 @@ static int dma_count;
 /* mask of enabled ports */
 static uint32_t enabled_port_mask = 0;
 
+/* Set by the SIGINT handler to stop the worker loops. */
+static volatile sig_atomic_t quit;
+
 /* Promiscuous mode */
 static uint32_t promiscuous;
 
@@ -1491,7 +1494,7 @@ switch_worker(void *arg)
 		}
 	}
 
-	while(1) {
+	while (!quit) {
 		drain_mbuf_table(tx_q);
 		drain_vhost_table();
 		/*
@@ -1869,14 +1872,10 @@ unregister_drivers(int socket_num)
 	}
 }
 
-/* When we receive a INT signal, unregister vhost driver */
 static void
 sigint_handler(__rte_unused int signum)
 {
-	/* Unregister vhost driver. */
-	unregister_drivers(nb_sockets);
-
-	exit(0);
+	quit = 1;
 }
 
 static void
@@ -2066,6 +2065,9 @@ main(int argc, char *argv[])
 
 	RTE_LCORE_FOREACH_WORKER(lcore_id)
 		rte_eal_wait_lcore(lcore_id);
+
+	/* Unregister vhost driver. */
+	unregister_drivers(nb_sockets);
 
 	for (i = 0; i < dma_count; i++) {
 		if (rte_vhost_async_dma_unconfigure(dmas_id[i], 0) < 0) {
