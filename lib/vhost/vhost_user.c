@@ -858,9 +858,16 @@ void
 mem_set_dump(struct virtio_net *dev, void *ptr, size_t size, bool enable, uint64_t pagesz)
 {
 #ifdef MADV_DONTDUMP
-	void *start = RTE_PTR_ALIGN_FLOOR(ptr, pagesz);
-	uintptr_t end = RTE_ALIGN_CEIL((uintptr_t)ptr + size, pagesz);
-	size_t len = end - (uintptr_t)start;
+	void *start;
+	uintptr_t end;
+	size_t len;
+
+	if (ptr == NULL)
+		return;
+
+	start = RTE_PTR_ALIGN_FLOOR(ptr, pagesz);
+	end = RTE_ALIGN_CEIL((uintptr_t)ptr + size, pagesz);
+	len = end - (uintptr_t)start;
 
 	if (madvise(start, len, enable ? MADV_DODUMP : MADV_DONTDUMP) == -1) {
 		VHOST_CONFIG_LOG(dev->ifname, INFO,

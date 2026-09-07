@@ -2361,7 +2361,15 @@ static void *pci_bar_addr(struct rte_pci_device *dev, uint32_t bar)
 {
 	const struct rte_mem_resource *res = &dev->mem_resource[bar];
 	size_t offset = res->phys_addr % rte_mem_page_size();
-	void *vaddr = RTE_PTR_ADD(res->addr, offset);
+	void *vaddr;
+
+	/* Not an error: the memory BAR is absent on non LLQ supported devices */
+	if (res->addr == NULL) {
+		PMD_INIT_LOG_LINE(DEBUG, "PCI BAR [%u] address is NULL", bar);
+		return NULL;
+	}
+
+	vaddr = RTE_PTR_ADD(res->addr, offset);
 
 	PMD_INIT_LOG_LINE(INFO, "PCI BAR [%u]: phys_addr=0x%" PRIx64 ", addr=%p, offset=0x%zx, adjusted_addr=%p",
 		bar, res->phys_addr, res->addr, offset, vaddr);

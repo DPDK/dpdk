@@ -122,9 +122,13 @@ static int
 find_max_end_va(const struct rte_memseg_list *msl, void *arg)
 {
 	size_t sz = msl->memseg_arr.len * msl->page_sz;
-	void *end_va = RTE_PTR_ADD(msl->base_va, sz);
+	void *end_va;
 	void **max_va = arg;
 
+	if (msl->base_va == NULL)
+		return 0;
+
+	end_va = RTE_PTR_ADD(msl->base_va, sz);
 	if (*max_va < end_va)
 		*max_va = end_va;
 	return 0;

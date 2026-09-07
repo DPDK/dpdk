@@ -771,6 +771,13 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 			return -1;
 		}
 		memseg_len = (size_t)page_sz;
+
+		if (msl->base_va == NULL) {
+			EAL_LOG(ERR, "Base VA is NULL for memseg list");
+			close(fd);
+			return -1;
+		}
+
 		addr = RTE_PTR_ADD(msl->base_va, ms_idx * memseg_len);
 
 		/* we know this address is already mmapped by memseg list, so

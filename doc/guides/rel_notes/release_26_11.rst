@@ -55,6 +55,14 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Improved pointer arithmetic macros.**
+
+  Updated  the macros ``RTE_PTR_ADD``, ``RTE_PTR_SUB``,
+  ``RTE_PTR_ALIGN``, ``RTE_PTR_ALIGN_CEIL`` and ``RTE_PTR_ALIGN_FLOOR``
+  to preserve const/volatile qualifiers
+  and use pointer arithmetic instead of integer casts to enable compiler optimizations.
+  See API changes below.
+
 * **Added API to get CPU socket ID.**
 
   Added the experimental ``rte_cpu_socket_id()`` function
@@ -212,6 +220,19 @@ API Changes
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =======================================================
+
+* eal: Improved pointer arithmetic macros.
+
+  * ``RTE_PTR_ADD``, ``RTE_PTR_SUB``, ``RTE_PTR_ALIGN``, ``RTE_PTR_ALIGN_CEIL``,
+    and ``RTE_PTR_ALIGN_FLOOR`` now preserve const/volatile qualifiers.
+    These macros do not nest infinitely and may require intermediate variables.
+  * Passing NULL to ``RTE_PTR_ADD``, ``RTE_PTR_SUB``, ``RTE_PTR_ALIGN``,
+    ``RTE_PTR_ALIGN_CEIL``, or ``RTE_PTR_ALIGN_FLOOR`` clarified as undefined behavior.
+  * ``RTE_PTR_ADD`` and ``RTE_PTR_SUB`` no longer accept integer types
+    as the pointer argument; existing code should use native operators (e.g. + -).
+  * ``RTE_PTR_ALIGN``, ``RTE_PTR_ALIGN_CEIL`` and ``RTE_PTR_ALIGN_FLOOR``
+    still compile with an integer argument, but this is deprecated usage:
+    existing code should use ``RTE_ALIGN``, ``RTE_ALIGN_CEIL`` or ``RTE_ALIGN_FLOOR`` instead.
 
 * ethdev: Updated VMDq related API.
 

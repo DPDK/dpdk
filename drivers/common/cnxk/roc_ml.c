@@ -589,7 +589,9 @@ roc_ml_blk_init(struct roc_bphy *roc_bphy, struct roc_ml *roc_ml)
 
 	plt_ml_dbg(
 		"MLAB: Physical Address : 0x%016lx",
-		PLT_PTR_ADD_U64_CAST(ml->pci_dev->mem_resource[0].phys_addr, ML_MLAB_BLK_OFFSET));
+		   PLT_PTR_ADD_U64_CAST(
+				   (void *)(uintptr_t)(ml->pci_dev->mem_resource[0].phys_addr),
+				   ML_MLAB_BLK_OFFSET));
 	plt_ml_dbg("MLAB: Virtual Address : 0x%016lx",
 		   PLT_PTR_ADD_U64_CAST(ml->pci_dev->mem_resource[0].addr, ML_MLAB_BLK_OFFSET));
 

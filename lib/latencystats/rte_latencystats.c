@@ -104,6 +104,9 @@ latencystats_collect(uint64_t values[])
 	unsigned int i, scale;
 	const uint64_t *stats;
 
+	if (glob_stats == NULL)
+		return;
+
 	for (i = 0; i < NUM_LATENCY_STATS; i++) {
 		stats = RTE_PTR_ADD(glob_stats, lat_stats_strings[i].offset);
 		scale = lat_stats_strings[i].scale;

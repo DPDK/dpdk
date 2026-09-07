@@ -1443,7 +1443,7 @@ mlx5_mempool_get_extmem_cb(struct rte_mempool *mp, void *opaque,
 	seg = &heap[data->heap_size - 1];
 	msl = rte_mem_virt2memseg_list((void *)addr);
 	page_size = msl != NULL ? msl->page_sz : rte_mem_page_size();
-	page_start = RTE_PTR_ALIGN_FLOOR(addr, page_size);
+	page_start = RTE_ALIGN_FLOOR(addr, page_size);
 	seg->start = page_start;
 	seg->end = page_start + page_size;
 	/* Maintain the heap order. */

@@ -437,7 +437,7 @@ odm_dmadev_completed(void *dev_private, uint16_t vchan, const uint16_t nb_cpls, 
 	int cnt;
 
 	vq = &odm->vq[vchan];
-	const uint32_t *base_addr = vq->cring_mz->addr;
+	uint32_t *base_addr = vq->cring_mz->addr;
 	const uint16_t cring_max_entry = vq->cring_max_entry;
 
 	cring_head = vq->cring_head;
@@ -497,7 +497,7 @@ odm_dmadev_completed_status(void *dev_private, uint16_t vchan, const uint16_t nb
 	int cnt;
 
 	vq = &odm->vq[vchan];
-	const uint32_t *base_addr = vq->cring_mz->addr;
+	uint32_t *base_addr = vq->cring_mz->addr;
 	const uint16_t cring_max_entry = vq->cring_max_entry;
 
 	cring_head = vq->cring_head;

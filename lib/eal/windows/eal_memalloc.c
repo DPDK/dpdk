@@ -195,6 +195,11 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	msl_idx = msl - mcfg->memsegs;
 	cur_msl = &mcfg->memsegs[msl_idx];
 
+	if (cur_msl->base_va == NULL) {
+		EAL_LOG(ERR, "Base VA is NULL for memseg list");
+		return -1;
+	}
+
 	need = wa->n_segs;
 
 	/* try finding space in memseg list */

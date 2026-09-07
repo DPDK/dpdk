@@ -261,14 +261,14 @@ again:
 					aw7);
 
 			vst1q_u64((void *)lmt_addr, aw0);
-			vst1q_u64((void *)PLT_PTR_ADD(lmt_addr, 16), aw1);
-			vst1q_u64((void *)PLT_PTR_ADD(lmt_addr, 32), aw2);
-			vst1q_u64((void *)PLT_PTR_ADD(lmt_addr, 48), aw3);
-			vst1q_u64((void *)PLT_PTR_ADD(lmt_addr, 64), aw4);
-			vst1q_u64((void *)PLT_PTR_ADD(lmt_addr, 80), aw5);
-			vst1q_u64((void *)PLT_PTR_ADD(lmt_addr, 96), aw6);
-			vst1q_u64((void *)PLT_PTR_ADD(lmt_addr, 112), aw7);
-			lmt_addr = (uintptr_t)PLT_PTR_ADD(lmt_addr, 128);
+			vst1q_u64((void *)(lmt_addr + 16), aw1);
+			vst1q_u64((void *)(lmt_addr + 32), aw2);
+			vst1q_u64((void *)(lmt_addr + 48), aw3);
+			vst1q_u64((void *)(lmt_addr + 64), aw4);
+			vst1q_u64((void *)(lmt_addr + 80), aw5);
+			vst1q_u64((void *)(lmt_addr + 96), aw6);
+			vst1q_u64((void *)(lmt_addr + 112), aw7);
+			lmt_addr += 128;
 		} break;
 		case 4: {
 			uint64x2_t aw0, aw1, aw2, aw3;
@@ -291,10 +291,10 @@ again:
 					aw3);
 
 			vst1q_u64((void *)lmt_addr, aw0);
-			vst1q_u64((void *)PLT_PTR_ADD(lmt_addr, 16), aw1);
-			vst1q_u64((void *)PLT_PTR_ADD(lmt_addr, 32), aw2);
-			vst1q_u64((void *)PLT_PTR_ADD(lmt_addr, 48), aw3);
-			lmt_addr = (uintptr_t)PLT_PTR_ADD(lmt_addr, 64);
+			vst1q_u64((void *)(lmt_addr + 16), aw1);
+			vst1q_u64((void *)(lmt_addr + 32), aw2);
+			vst1q_u64((void *)(lmt_addr + 48), aw3);
+			lmt_addr += 64;
 		} break;
 		case 2: {
 			uint64x2_t aw0, aw1;
@@ -310,8 +310,8 @@ again:
 					aw1);
 
 			vst1q_u64((void *)lmt_addr, aw0);
-			vst1q_u64((void *)PLT_PTR_ADD(lmt_addr, 16), aw1);
-			lmt_addr = (uintptr_t)PLT_PTR_ADD(lmt_addr, 32);
+			vst1q_u64((void *)(lmt_addr + 16), aw1);
+			lmt_addr += 32;
 		} break;
 		case 1: {
 			__uint128_t aw0;
@@ -322,7 +322,7 @@ again:
 			aw0 |= (uint64_t)ev[0].sched_type << 32;
 
 			*((__uint128_t *)lmt_addr) = aw0;
-			lmt_addr = (uintptr_t)PLT_PTR_ADD(lmt_addr, 16);
+			lmt_addr += 16;
 		} break;
 		}
 		ev += parts;
@@ -338,7 +338,7 @@ again:
 		aw0 |= ev[0].event & (BIT_ULL(32) - 1);
 		aw0 |= (uint64_t)ev[0].sched_type << 32;
 		*((__uint128_t *)lmt_addr) = aw0;
-		lmt_addr = (uintptr_t)PLT_PTR_ADD(lmt_addr, 16);
+		lmt_addr += 16;
 	}
 #endif
 

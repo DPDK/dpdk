@@ -591,7 +591,7 @@ static void write_sgl(struct rte_mbuf *mbuf, struct sge_txq *q,
 			memcpy(sgl->sge, buf, part0);
 		part1 = RTE_PTR_DIFF((u8 *)end, (u8 *)q->stat);
 		rte_memcpy(q->desc, RTE_PTR_ADD((u8 *)buf, part0), part1);
-		end = RTE_PTR_ADD((void *)q->desc, part1);
+		end = RTE_PTR_ADD(q->desc, part1);
 	}
 	if ((uintptr_t)end & 8)           /* 0-pad to multiple of 16 */
 		*(u64 *)end = 0;
@@ -1297,7 +1297,7 @@ static void inline_tx_mbuf(const struct sge_txq *q, caddr_t from, caddr_t *to,
 		from = RTE_PTR_ADD(from, left);
 		left = len - left;
 		rte_memcpy((void *)q->desc, from, left);
-		*to = RTE_PTR_ADD((void *)q->desc, left);
+		*to = RTE_PTR_ADD(q->desc, left);
 	}
 }
 

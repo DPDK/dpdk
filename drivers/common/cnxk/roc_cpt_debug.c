@@ -16,8 +16,8 @@
 static inline void
 cpt_cnxk_parse_hdr_dump(FILE *file, const struct cpt_parse_hdr_s *cpth)
 {
-	struct cpt_frag_info_s *frag_info;
-	struct cpt_rxc_sg_s *rxc_sg;
+	const struct cpt_frag_info_s *frag_info;
+	const struct cpt_rxc_sg_s *rxc_sg;
 	uint32_t offset;
 	int i;
 
@@ -94,7 +94,7 @@ cpt_cnxk_parse_hdr_dump(FILE *file, const struct cpt_parse_hdr_s *cpth)
 		frag_info++;
 	}
 
-	rxc_sg = (struct cpt_rxc_sg_s *)frag_info;
+	rxc_sg = (const struct cpt_rxc_sg_s *)frag_info;
 	for (i = 0; i < cpth->w4.sctr_size; i++) {
 		cpt_dump(file, "CPT RXC SC SGS \t%p:", rxc_sg);
 		cpt_dump(file, "W0: seg1_size \t0x%x\t\tseg2_size \t0x%x\t\tseg3_size \t0x%04x",
@@ -125,9 +125,9 @@ cpt_cnxk_parse_hdr_dump(FILE *file, const struct cpt_parse_hdr_s *cpth)
 static inline void
 cpt_cn10k_parse_hdr_dump(FILE *file, const struct cpt_cn10k_parse_hdr_s *cpth)
 {
-	struct cpt_cn10k_frag_info_s *frag_info;
+	const struct cpt_cn10k_frag_info_s *frag_info;
 	uint32_t offset;
-	uint64_t *slot;
+	const uint64_t *slot;
 
 	cpt_dump(file, "CPT_PARSE \t0x%p:", cpth);
 
@@ -177,7 +177,7 @@ cpt_cn10k_parse_hdr_dump(FILE *file, const struct cpt_cn10k_parse_hdr_s *cpth)
 	cpt_dump(file, "W1: frag_size2 \t0x%x", frag_info->w1.frag_size2);
 	cpt_dump(file, "W1: frag_size3 \t0x%x", frag_info->w1.frag_size3);
 
-	slot = (uint64_t *)(frag_info + 1);
+	slot = (const uint64_t *)(frag_info + 1);
 	cpt_dump(file, "Frag Slot2:  WQE ptr \t%p", (void *)plt_be_to_cpu_64(slot[0]));
 	cpt_dump(file, "Frag Slot3:  WQE ptr \t%p", (void *)plt_be_to_cpu_64(slot[1]));
 }

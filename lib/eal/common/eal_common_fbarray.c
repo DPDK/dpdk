@@ -1048,7 +1048,7 @@ void *
 rte_fbarray_get(const struct rte_fbarray *arr, unsigned int idx)
 {
 	void *ret = NULL;
-	if (arr == NULL) {
+	if (arr == NULL || arr->data == NULL) {
 		rte_errno = EINVAL;
 		return NULL;
 	}

@@ -114,7 +114,8 @@ txq_uar_uninit_secondary(struct txq *txq)
 	void *addr;
 
 	addr = ppriv->uar_table[txq->stats.idx];
-	munmap(RTE_PTR_ALIGN_FLOOR(addr, page_size), page_size);
+	if (addr != NULL)
+		munmap(RTE_PTR_ALIGN_FLOOR(addr, page_size), page_size);
 }
 
 /**

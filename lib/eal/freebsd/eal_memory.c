@@ -206,6 +206,10 @@ rte_eal_hugepage_init(void)
 					"Could not find suitable space for memseg in existing memseg lists");
 				return -1;
 			}
+			if (msl->base_va == NULL) {
+				EAL_LOG(ERR, "Base VA is NULL for memseg list %d", msl_idx);
+				return -1;
+			}
 			arr = &msl->memseg_arr;
 			seg = rte_fbarray_get(arr, ms_idx);
 

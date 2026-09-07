@@ -79,9 +79,11 @@ static const unsigned int MALLOC_ELEM_TRAILER_LEN = RTE_CACHE_LINE_SIZE;
 #define MALLOC_TRAILER_COOKIE  0xadd2e55badbadbadULL /**< Trailer cookie.*/
 
 /* define macros to make referencing the header and trailer cookies easier */
-#define MALLOC_ELEM_TRAILER(elem) (*((uint64_t*)RTE_PTR_ADD(elem, \
-		elem->size - MALLOC_ELEM_TRAILER_LEN)))
-#define MALLOC_ELEM_HEADER(elem) (elem->header_cookie)
+#define MALLOC_ELEM_TRAILER(elem) \
+	/* typeof preserves qualifiers (const/volatile) of elem */ \
+	(*(typeof((elem)->header_cookie) *)RTE_PTR_ADD(elem, \
+		(elem)->size - MALLOC_ELEM_TRAILER_LEN))
+#define MALLOC_ELEM_HEADER(elem) ((elem)->header_cookie)
 
 static inline void
 set_header(struct malloc_elem *elem)
@@ -306,13 +308,31 @@ old_malloc_size(struct malloc_elem *elem)
 static inline struct malloc_elem *
 malloc_elem_from_data(const void *data)
 {
+	struct malloc_elem *result;
+
 	if (data == NULL)
 		return NULL;
 
-	struct malloc_elem *elem = RTE_PTR_SUB(data, MALLOC_ELEM_HEADER_LEN);
-	if (!malloc_elem_cookies_ok(elem))
-		return NULL;
-	return elem->state != ELEM_PAD ? elem:  RTE_PTR_SUB(elem, elem->pad);
+	/* The allocator returns a pointer in the middle of an allocation pool.
+	 * GCC's interprocedural analysis can't trace this and warns about
+	 * out-of-bounds access when we do backwards pointer arithmetic to
+	 * find the malloc_elem header.
+	 */
+	__rte_diagnostic_push
+	__rte_diagnostic_ignored_array_bounds
+	{
+		struct malloc_elem *elem =
+			RTE_PTR_SUB(RTE_PTR_UNQUAL(data), MALLOC_ELEM_HEADER_LEN);
+
+		if (!malloc_elem_cookies_ok(elem))
+			result = NULL;
+		else
+			result = elem->state != ELEM_PAD ? elem :
+				RTE_PTR_SUB(elem, elem->pad);
+	}
+	__rte_diagnostic_pop
+
+	return result;
 }
 
 /*
