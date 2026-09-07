@@ -1182,11 +1182,11 @@ vhost_crypto_check_chain_request(struct virtio_crypto_alg_chain_data_req *req)
 		(req->para.hash_start_src_offset <
 			VHOST_CRYPTO_MAX_DATA_SIZE) &&
 		(req->para.len_to_hash <= VHOST_CRYPTO_MAX_DATA_SIZE) &&
-		(req->para.cipher_start_src_offset + req->para.len_to_cipher <=
+		((uint64_t)req->para.cipher_start_src_offset + req->para.len_to_cipher <=
 			req->para.src_data_len) &&
-		(req->para.hash_start_src_offset + req->para.len_to_hash <=
+		((uint64_t)req->para.hash_start_src_offset + req->para.len_to_hash <=
 			req->para.src_data_len) &&
-		(req->para.dst_data_len + req->para.hash_result_len <=
+		((uint64_t)req->para.dst_data_len + req->para.hash_result_len <=
 			VHOST_CRYPTO_MAX_DATA_SIZE)))
 		return VIRTIO_CRYPTO_OK;
 	return VIRTIO_CRYPTO_BADMSG;
