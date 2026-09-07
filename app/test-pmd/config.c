@@ -1844,6 +1844,7 @@ port_flow_configure(portid_t port_id,
 {
 	struct rte_port *port;
 	struct rte_flow_error error;
+	struct queue_job_list *job_list;
 	const struct rte_flow_queue_attr **attr_list =
 	    alloca(sizeof(struct rte_flow_queue_attr *) * nb_queue);
 	int std_queue;
@@ -1852,23 +1853,31 @@ port_flow_configure(portid_t port_id,
 	    port_id == (portid_t)RTE_PORT_ALL)
 		return -EINVAL;
 	port = &ports[port_id];
-	port->queue_nb = nb_queue;
-	port->queue_sz = queue_attr->size;
 	for (std_queue = 0; std_queue < nb_queue; std_queue++)
 		attr_list[std_queue] = queue_attr;
-	free(port->job_list);
-	port->job_list = calloc(nb_queue, sizeof(*port->job_list));
-	if (port->job_list == NULL) {
+
+	/* Build the new job list before touching the device or port state. */
+	job_list = calloc(nb_queue, sizeof(*job_list));
+	if (job_list == NULL) {
 		TESTPMD_LOG(ERR, "Failed to allocate memory for operations tracking on port %u\n",
 			    port_id);
 		return -ENOMEM;
 	}
 	for (unsigned int i = 0; i < nb_queue; i++)
-		LIST_INIT(&port->job_list[i]);
+		LIST_INIT(&job_list[i]);
+
 	/* Poisoning to make sure PMDs update it in case of error. */
 	memset(&error, 0x66, sizeof(error));
-	if (rte_flow_configure(port_id, port_attr, nb_queue, attr_list, &error))
+	if (rte_flow_configure(port_id, port_attr, nb_queue, attr_list, &error)) {
+		free(job_list);
 		return port_flow_complain(&error);
+	}
+
+	/* Commit new state only after configure and allocation succeed. */
+	free(port->job_list);
+	port->job_list = job_list;
+	port->queue_nb = nb_queue;
+	port->queue_sz = queue_attr->size;
 	printf("Configure flows on port %u: "
 	       "number of queues %d with %d elements\n",
 	       port_id, nb_queue, queue_attr->size);
@@ -2881,6 +2890,12 @@ port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 	struct rte_flow_action_age *age = age_action_get(actions);
 	struct queue_job *job;
 
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		rte_flow_error_set(&error, ENODEV, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, rte_strerror(ENODEV));
+		return port_flow_complain(&error);
+	}
+
 	port = &ports[port_id];
 	if (port->flow_list) {
 		if (port->flow_list->id == UINT32_MAX) {
@@ -3857,6 +3872,12 @@ port_flow_create(portid_t port_id,
 	struct rte_flow_error error;
 	struct port_flow_tunnel *pft = NULL;
 	struct rte_flow_action_age *age = age_action_get(actions);
+
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		rte_flow_error_set(&error, ENODEV, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, rte_strerror(ENODEV));
+		return port_flow_complain(&error);
+	}
 
 	port = &ports[port_id];
 	if (port->flow_list) {
