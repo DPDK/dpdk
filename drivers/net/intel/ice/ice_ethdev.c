@@ -1816,6 +1816,7 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 				     ret);
 			goto fail_mem;
 		}
+		vsi->nb_tm_txqs = vsi->nb_qps;
 
 		break;
 	case ICE_VSI_CTRL:
@@ -2924,7 +2925,7 @@ ice_vsi_disable_queues_intr(struct ice_vsi *vsi)
 	uint16_t msix_intr, i;
 
 	/* disable interrupt and also clear all the exist config */
-	for (i = 0; i < vsi->nb_qps; i++) {
+	for (i = 0; i < vsi->nb_used_qps; i++) {
 		ICE_WRITE_REG(hw, QINT_TQCTL(vsi->base_queue + i), 0);
 		ICE_WRITE_REG(hw, QINT_RQCTL(vsi->base_queue + i), 0);
 		rte_wmb();
@@ -4628,7 +4629,7 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = ICE_BUF_SIZE_MIN;
 	dev_info->max_rx_pktlen = ICE_FRAME_SIZE_MAX;
 	dev_info->max_rx_queues = vsi->nb_qps;
-	dev_info->max_tx_queues = vsi->nb_qps;
+	dev_info->max_tx_queues = vsi->nb_tm_txqs;
 	dev_info->max_mac_addrs = vsi->max_macaddrs;
 	dev_info->max_vfs = pci_dev->max_vfs;
 	dev_info->max_mtu = dev_info->max_rx_pktlen - ICE_ETH_OVERHEAD;
