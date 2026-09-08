@@ -1295,6 +1295,7 @@ vhost_user_mmap_region(struct virtio_net *dev,
 	void *mmap_addr;
 	uint64_t mmap_size;
 	uint64_t alignment;
+	struct stat file_stat;
 	int populate;
 
 	/* Check for memory_size + mmap_offset overflow */
@@ -1331,6 +1332,19 @@ vhost_user_mmap_region(struct virtio_net *dev,
 		VHOST_CONFIG_LOG(dev->ifname, ERR,
 			"mmap size (0x%" PRIx64 ") or alignment (0x%" PRIx64 ") is invalid",
 			region->size + mmap_offset, alignment);
+		return -1;
+	}
+
+	/* Validate mmap_size does not exceed backing file size */
+	if (fstat(region->fd, &file_stat) == -1) {
+		VHOST_CONFIG_LOG(dev->ifname, ERR,
+			"failed to get backing file size: %s", strerror(errno));
+		return -1;
+	}
+	if (mmap_size > (uint64_t)file_stat.st_size) {
+		VHOST_CONFIG_LOG(dev->ifname, ERR,
+			"mmap size (0x%" PRIx64 ") exceeds backing file size (0x%" PRIx64 ")",
+			mmap_size, (uint64_t)file_stat.st_size);
 		return -1;
 	}
 
