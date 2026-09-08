@@ -5,6 +5,7 @@
  */
 
 #include <stdlib.h>
+#include <errno.h>
 
 #include <rte_memcpy.h>
 #include <rte_stdatomic.h>
@@ -53,6 +54,25 @@ struct __rte_cache_aligned amd_pstate_power_info {
 
 static struct amd_pstate_power_info lcore_power_info[RTE_MAX_LCORE];
 
+static int
+write_freq(struct amd_pstate_power_info *pi, uint32_t idx)
+{
+	if (fseek(pi->f, 0, SEEK_SET) < 0) {
+		POWER_LOG(ERR, "Fail to set file position indicator to 0 "
+			"for setting frequency for lcore %u", pi->lcore_id);
+		return -1;
+	}
+	if (fprintf(pi->f, "%u", pi->freqs[idx]) < 0) {
+		POWER_LOG(ERR, "Fail to write new frequency for "
+				"lcore %u", pi->lcore_id);
+		return -1;
+	}
+	fflush(pi->f);
+	pi->curr_idx = idx;
+
+	return 1;
+}
+
 /**
  * It is to set specific freq for specific logical core, according to the index
  * of supported frequencies.
@@ -72,20 +92,8 @@ set_freq_internal(struct amd_pstate_power_info *pi, uint32_t idx)
 
 	POWER_DEBUG_LOG("Frequency[%u] %u to be set for lcore %u",
 			idx, pi->freqs[idx], pi->lcore_id);
-	if (fseek(pi->f, 0, SEEK_SET) < 0) {
-		POWER_LOG(ERR, "Fail to set file position indicator to 0 "
-			"for setting frequency for lcore %u", pi->lcore_id);
-		return -1;
-	}
-	if (fprintf(pi->f, "%u", pi->freqs[idx]) < 0) {
-		POWER_LOG(ERR, "Fail to write new frequency for "
-				"lcore %u", pi->lcore_id);
-		return -1;
-	}
-	fflush(pi->f);
-	pi->curr_idx = idx;
 
-	return 1;
+	return write_freq(pi, idx);
 }
 
 /**
@@ -282,15 +290,21 @@ out:
 	return ret;
 }
 
-/**
- * It is to fopen the sys file for the future setting the lcore frequency.
- */
+static inline unsigned long
+abs_diff(unsigned long a, unsigned long b)
+{
+	return (a > b) ? a - b : b - a;
+}
+
 static int
 power_init_for_setting_freq(struct amd_pstate_power_info *pi)
 {
-	FILE *f = NULL;
+	FILE *f;
 	char buf[BUFSIZ];
-	uint32_t i, freq;
+	char *endptr;
+	unsigned long freq, freq_conv;
+	unsigned long best_diff, diff;
+	uint32_t i, best_idx;
 	int ret;
 
 	open_core_sysfs_file(&f, "rw+", POWER_SYSFILE_SETSPEED, pi->lcore_id);
@@ -299,7 +313,6 @@ power_init_for_setting_freq(struct amd_pstate_power_info *pi)
 				POWER_SYSFILE_SETSPEED);
 		goto err;
 	}
-
 	ret = read_core_sysfs_s(f, buf, sizeof(buf));
 	if (ret < 0) {
 		POWER_LOG(ERR, "Failed to read %s",
@@ -307,28 +320,50 @@ power_init_for_setting_freq(struct amd_pstate_power_info *pi)
 		goto err;
 	}
 
-	freq = strtoul(buf, NULL, POWER_CONVERT_TO_DECIMAL);
+	errno = 0;
+	freq = strtoul(buf, &endptr, POWER_CONVERT_TO_DECIMAL);
+	if (errno != 0 || endptr == buf || freq == 0) {
+		POWER_LOG(ERR, "Failed to parse frequency '%s' for lcore %u",
+				buf, pi->lcore_id);
+		goto err;
+	}
 
 	/* convert the frequency to nearest 1000 value
 	 * Ex: if freq=1396789 then freq_conv=1397000
 	 * Ex: if freq=800030 then freq_conv=800000
 	 */
-	unsigned int freq_conv = 0;
-	freq_conv = (freq + FREQ_ROUNDING_DELTA)
-				/ ROUND_FREQ_TO_N_1000;
+	freq_conv = (freq + FREQ_ROUNDING_DELTA) / ROUND_FREQ_TO_N_1000;
 	freq_conv = freq_conv * ROUND_FREQ_TO_N_1000;
 
-	for (i = 0; i < pi->nb_freqs; i++) {
-		if (freq_conv == pi->freqs[i]) {
-			pi->curr_idx = i;
-			pi->f = f;
-			return 0;
+	/* amd-pstate scales continuously, so the current frequency will
+	 * rarely match a bucket exactly. Use the nearest one.
+	 */
+	best_idx = 0;
+	best_diff = abs_diff(freq_conv, pi->freqs[0]);
+
+	for (i = 1; i < pi->nb_freqs; i++) {
+		diff = abs_diff(freq_conv, pi->freqs[i]);
+		if (diff < best_diff) {
+			best_diff = diff;
+			best_idx = i;
 		}
 	}
+
+	POWER_DEBUG_LOG("Freq %lu rounded to %lu matched bucket [%u] = %u "
+			"for lcore %u", freq, freq_conv, best_idx,
+			pi->freqs[best_idx], pi->lcore_id);
+
+	/* Program the bucket so curr_idx matches the actual frequency. */
+	pi->f = f;
+	if (write_freq(pi, best_idx) < 0)
+		goto err;
+
+	return 0;
 
 err:
 	if (f != NULL)
 		fclose(f);
+	pi->f = NULL;
 
 	return -1;
 }
