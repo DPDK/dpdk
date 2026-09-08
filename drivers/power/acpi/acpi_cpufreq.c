@@ -54,6 +54,8 @@ static struct acpi_power_info lcore_power_info[RTE_MAX_LCORE];
 static int
 set_freq_internal(struct acpi_power_info *pi, uint32_t idx)
 {
+	char buf[16];
+
 	if (idx >= RTE_MAX_LCORE_FREQS || idx >= pi->nb_freqs) {
 		POWER_LOG(ERR, "Invalid frequency index %u, which "
 				"should be less than %u", idx, pi->nb_freqs);
@@ -66,17 +68,13 @@ set_freq_internal(struct acpi_power_info *pi, uint32_t idx)
 
 	POWER_DEBUG_LOG("Frequency[%u] %u to be set for lcore %u",
 			idx, pi->freqs[idx], pi->lcore_id);
-	if (fseek(pi->f, 0, SEEK_SET) < 0) {
-		POWER_LOG(ERR, "Fail to set file position indicator to 0 "
-				"for setting frequency for lcore %u", pi->lcore_id);
-		return -1;
-	}
-	if (fprintf(pi->f, "%u", pi->freqs[idx]) < 0) {
+
+	snprintf(buf, sizeof(buf), "%u", pi->freqs[idx]);
+	if (write_core_sysfs_s(pi->f, buf) != 0) {
 		POWER_LOG(ERR, "Fail to write new frequency for "
 				"lcore %u", pi->lcore_id);
 		return -1;
 	}
-	fflush(pi->f);
 	pi->curr_idx = idx;
 
 	return 1;

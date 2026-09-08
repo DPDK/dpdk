@@ -57,17 +57,15 @@ static struct amd_pstate_power_info lcore_power_info[RTE_MAX_LCORE];
 static int
 write_freq(struct amd_pstate_power_info *pi, uint32_t idx)
 {
-	if (fseek(pi->f, 0, SEEK_SET) < 0) {
-		POWER_LOG(ERR, "Fail to set file position indicator to 0 "
-			"for setting frequency for lcore %u", pi->lcore_id);
+	char buf[16];
+
+	snprintf(buf, sizeof(buf), "%u", pi->freqs[idx]);
+
+	if (write_core_sysfs_s(pi->f, buf) != 0) {
+		POWER_LOG(ERR, "Fail to write new frequency for lcore %u",
+			  pi->lcore_id);
 		return -1;
 	}
-	if (fprintf(pi->f, "%u", pi->freqs[idx]) < 0) {
-		POWER_LOG(ERR, "Fail to write new frequency for "
-				"lcore %u", pi->lcore_id);
-		return -1;
-	}
-	fflush(pi->f);
 	pi->curr_idx = idx;
 
 	return 1;
