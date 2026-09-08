@@ -985,6 +985,13 @@ static void eth_tx_queue_release(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 {
 	struct pmd_internals *internals = eth_dev->data->dev_private;
 	struct ntnic_tx_queue *tx_q = &internals->txq_scg[queue_id];
+
+	/* Stop the HW queue and free its state before the rings are unmapped */
+	if (sg_ops != NULL && tx_q->vq != NULL) {
+		sg_ops->nthw_release_mngd_tx_virt_queue(tx_q->vq);
+		tx_q->vq = NULL;
+	}
+
 	deallocate_hw_virtio_queues(&tx_q->hwq);
 }
 
@@ -992,6 +999,13 @@ static void eth_rx_queue_release(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 {
 	struct pmd_internals *internals = eth_dev->data->dev_private;
 	struct ntnic_rx_queue *rx_q = &internals->rxq_scg[queue_id];
+
+	/* Stop the HW queue and free its state before the rings are unmapped */
+	if (sg_ops != NULL && rx_q->vq != NULL) {
+		sg_ops->nthw_release_mngd_rx_virt_queue(rx_q->vq);
+		rx_q->vq = NULL;
+	}
+
 	deallocate_hw_virtio_queues(&rx_q->hwq);
 }
 
@@ -1045,8 +1059,6 @@ static int eth_rx_scg_queue_setup(struct rte_eth_dev *eth_dev,
 
 	rx_q->mb_pool = mb_pool;
 
-	eth_dev->data->rx_queues[rx_queue_id] = rx_q;
-
 	mbp_priv = rte_mempool_get_priv(rx_q->mb_pool);
 	rx_q->buf_size = (uint16_t)(mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM);
 	rx_q->enabled = !rx_conf->rx_deferred_start;
@@ -1071,6 +1083,20 @@ static int eth_rx_scg_queue_setup(struct rte_eth_dev *eth_dev,
 			SPLIT_RING,
 			-1,
 			rx_conf->rx_deferred_start);
+
+	if (rx_q->vq == NULL) {
+		NT_LOG(ERR, NTNIC, "(%u) NTNIC RX queue %u virt queue setup failed",
+			internals->port, rx_queue_id);
+		deallocate_hw_virtio_queues(&rx_q->hwq);
+		return -1;
+	}
+
+	/*
+	 * Hand the queue to ethdev only once it is fully set up. ethdev does not
+	 * clear the entry when setup fails, and the release callback would then
+	 * tear down rings that were already freed above.
+	 */
+	eth_dev->data->rx_queues[rx_queue_id] = rx_q;
 
 	NT_LOG(DBG, NTNIC, "(%" PRIu32 ") NTNIC RX OVS-SW queues successfully setup",
 		internals->port);
@@ -1114,8 +1140,6 @@ static int eth_tx_scg_queue_setup(struct rte_eth_dev *eth_dev,
 		NT_LOG(ERR, NTNIC, "Error invalid tx queue id");
 		return -1;
 	}
-
-	eth_dev->data->tx_queues[tx_queue_id] = tx_q;
 
 	/* Calculate target ID for HW  - to be used in NTDVIO0 header bypass_port */
 	if (tx_q->rss_target_id >= 0) {
@@ -1165,6 +1189,16 @@ static int eth_tx_scg_queue_setup(struct rte_eth_dev *eth_dev,
 			-1,
 			IN_ORDER,
 			tx_conf->tx_deferred_start);
+
+	if (tx_q->vq == NULL) {
+		NT_LOG(ERR, NTNIC, "(%u) NTNIC TX queue %u virt queue setup failed",
+			tx_q->port, tx_queue_id);
+		deallocate_hw_virtio_queues(&tx_q->hwq);
+		return -1;
+	}
+
+	/* See eth_rx_scg_queue_setup() */
+	eth_dev->data->tx_queues[tx_queue_id] = tx_q;
 
 	tx_q->enabled = !tx_conf->tx_deferred_start;
 	tx_q->tx_deferred_start = tx_conf->tx_deferred_start;
@@ -1576,11 +1610,15 @@ eth_dev_close(struct rte_eth_dev *eth_dev)
 		uint q;
 
 		if (sg_ops != NULL) {
-			for (q = 0; q < internals->nb_rx_queues; q++)
+			for (q = 0; q < internals->nb_rx_queues; q++) {
 				sg_ops->nthw_release_mngd_rx_virt_queue(rx_q[q].vq);
+				rx_q[q].vq = NULL;
+			}
 
-			for (q = 0; q < internals->nb_tx_queues; q++)
+			for (q = 0; q < internals->nb_tx_queues; q++) {
 				sg_ops->nthw_release_mngd_tx_virt_queue(tx_q[q].vq);
+				tx_q[q].vq = NULL;
+			}
 		}
 	}
 
@@ -2650,11 +2688,13 @@ nthw_pci_dev_deinit(struct rte_eth_dev *eth_dev __rte_unused)
 		while (internals) {
 			for (i = internals->nb_tx_queues - 1; i >= 0; i--) {
 				sg_ops->nthw_release_mngd_tx_virt_queue(internals->txq_scg[i].vq);
+				internals->txq_scg[i].vq = NULL;
 				release_hw_virtio_queues(&internals->txq_scg[i].hwq);
 			}
 
 			for (i = internals->nb_rx_queues - 1; i >= 0; i--) {
 				sg_ops->nthw_release_mngd_rx_virt_queue(internals->rxq_scg[i].vq);
+				internals->rxq_scg[i].vq = NULL;
 				release_hw_virtio_queues(&internals->rxq_scg[i].hwq);
 			}
 
