@@ -4513,6 +4513,12 @@ i40e_macaddr_remove(struct rte_eth_dev *dev, uint32_t index)
 
 	macaddr = &(data->mac_addrs[index]);
 
+	if (!(pf->flags & I40E_FLAG_VMDQ)) {
+		if (i40e_vsi_delete_mac(pf->main_vsi, macaddr) != 0)
+			PMD_DRV_LOG(ERR, "Failed to remove MACVLAN filter");
+		return;
+	}
+
 	pool_sel = dev->data->mac_pool_sel[index];
 
 	for (i = 0; i < sizeof(pool_sel) * CHAR_BIT; i++) {
@@ -4521,8 +4527,7 @@ i40e_macaddr_remove(struct rte_eth_dev *dev, uint32_t index)
 				vsi = pf->main_vsi;
 			else {
 				/* No VMDQ pool enabled or configured */
-				if (!(pf->flags & I40E_FLAG_VMDQ) ||
-					(i > pf->nb_cfg_vmdq_vsi)) {
+				if (i > pf->nb_cfg_vmdq_vsi) {
 					PMD_DRV_LOG(ERR,
 						"No VMDQ pool enabled/configured");
 					return;
