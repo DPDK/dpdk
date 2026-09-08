@@ -41,13 +41,13 @@ cirbuf_add_buf_head(struct cirbuf *cbuf, const char *c, unsigned int n)
 	e = CIRBUF_IS_EMPTY(cbuf) ? 1 : 0;
 
 	if (n < cbuf->start + e) {
-		dprintf("s[%d] -> d[%d] (%d)\n", 0, cbuf->start - n + e, n);
+		cmdline_dprintf("s[%d] -> d[%d] (%d)\n", 0, cbuf->start - n + e, n);
 		memcpy(cbuf->buf + cbuf->start - n + e, c, n);
 	}
 	else {
-		dprintf("s[%d] -> d[%d] (%d)\n", + n - (cbuf->start + e), 0,
+		cmdline_dprintf("s[%d] -> d[%d] (%d)\n", + n - (cbuf->start + e), 0,
 			cbuf->start + e);
-		dprintf("s[%d] -> d[%d] (%d)\n", cbuf->maxlen - n +
+		cmdline_dprintf("s[%d] -> d[%d] (%d)\n", cbuf->maxlen - n +
 			(cbuf->start + e), 0, n - (cbuf->start + e));
 		memcpy(cbuf->buf, c  + n - (cbuf->start + e) , cbuf->start + e);
 		memcpy(cbuf->buf + cbuf->maxlen - n + (cbuf->start + e), c,
@@ -73,13 +73,13 @@ cirbuf_add_buf_tail(struct cirbuf *cbuf, const char *c, unsigned int n)
 	e = CIRBUF_IS_EMPTY(cbuf) ? 1 : 0;
 
 	if (n < cbuf->maxlen - cbuf->end - 1 + e) {
-		dprintf("s[%d] -> d[%d] (%d)\n", 0, cbuf->end + !e, n);
+		cmdline_dprintf("s[%d] -> d[%d] (%d)\n", 0, cbuf->end + !e, n);
 		memcpy(cbuf->buf + cbuf->end + !e, c, n);
 	}
 	else {
-		dprintf("s[%d] -> d[%d] (%d)\n", cbuf->end + !e, 0,
+		cmdline_dprintf("s[%d] -> d[%d] (%d)\n", cbuf->end + !e, 0,
 			cbuf->maxlen - cbuf->end - 1 + e);
-		dprintf("s[%d] -> d[%d] (%d)\n", cbuf->maxlen - cbuf->end - 1 +
+		cmdline_dprintf("s[%d] -> d[%d] (%d)\n", cbuf->maxlen - cbuf->end - 1 +
 			e, 0, n - cbuf->maxlen + cbuf->end + 1 - e);
 		memcpy(cbuf->buf + cbuf->end + !e, c, cbuf->maxlen -
 		       cbuf->end - 1 + e);
@@ -352,19 +352,19 @@ cirbuf_get_buf_head(struct cirbuf *cbuf, char *c, unsigned int size)
 		return 0;
 
 	if (cbuf->start <= cbuf->end) {
-		dprintf("s[%d] -> d[%d] (%d)\n", cbuf->start, 0, n);
+		cmdline_dprintf("s[%d] -> d[%d] (%d)\n", cbuf->start, 0, n);
 		memcpy(c, cbuf->buf + cbuf->start , n);
 	}
 	else {
 		/* check if we need to go from end to the beginning */
 		if (n <= cbuf->maxlen - cbuf->start) {
-			dprintf("s[%d] -> d[%d] (%d)\n", 0, cbuf->start, n);
+			cmdline_dprintf("s[%d] -> d[%d] (%d)\n", 0, cbuf->start, n);
 			memcpy(c, cbuf->buf + cbuf->start , n);
 		}
 		else {
-			dprintf("s[%d] -> d[%d] (%d)\n", cbuf->start, 0,
+			cmdline_dprintf("s[%d] -> d[%d] (%d)\n", cbuf->start, 0,
 				cbuf->maxlen - cbuf->start);
-			dprintf("s[%d] -> d[%d] (%d)\n", 0, cbuf->maxlen - cbuf->start,
+			cmdline_dprintf("s[%d] -> d[%d] (%d)\n", 0, cbuf->maxlen - cbuf->start,
 				n - cbuf->maxlen + cbuf->start);
 			memcpy(c, cbuf->buf + cbuf->start , cbuf->maxlen - cbuf->start);
 			memcpy(c + cbuf->maxlen - cbuf->start, cbuf->buf,
@@ -391,19 +391,19 @@ cirbuf_get_buf_tail(struct cirbuf *cbuf, char *c, unsigned int size)
 		return 0;
 
 	if (cbuf->start <= cbuf->end) {
-		dprintf("s[%d] -> d[%d] (%d)\n", cbuf->end - n + 1, 0, n);
+		cmdline_dprintf("s[%d] -> d[%d] (%d)\n", cbuf->end - n + 1, 0, n);
 		memcpy(c, cbuf->buf + cbuf->end - n + 1, n);
 	}
 	else {
 		/* check if we need to go from end to the beginning */
 		if (n <= cbuf->end + 1) {
-			dprintf("s[%d] -> d[%d] (%d)\n", 0, cbuf->end - n + 1, n);
+			cmdline_dprintf("s[%d] -> d[%d] (%d)\n", 0, cbuf->end - n + 1, n);
 			memcpy(c, cbuf->buf + cbuf->end - n + 1, n);
 		}
 		else {
-			dprintf("s[%d] -> d[%d] (%d)\n", 0,
+			cmdline_dprintf("s[%d] -> d[%d] (%d)\n", 0,
 				cbuf->maxlen - cbuf->start, cbuf->end + 1);
-			dprintf("s[%d] -> d[%d] (%d)\n",
+			cmdline_dprintf("s[%d] -> d[%d] (%d)\n",
 				cbuf->maxlen - n + cbuf->end + 1, 0, n - cbuf->end - 1);
 			memcpy(c + cbuf->maxlen - cbuf->start,
 					       cbuf->buf, cbuf->end + 1);

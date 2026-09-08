@@ -113,7 +113,7 @@ RTE_EXPORT_SYMBOL(cmdline_free)
 void
 cmdline_free(struct cmdline *cl)
 {
-	dprintf("called\n");
+	cmdline_dprintf("called\n");
 
 	if (!cl)
 		return;

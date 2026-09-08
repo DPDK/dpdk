@@ -26,7 +26,7 @@ cmdline_file_new(cmdline_parse_ctx_t *ctx, const char *prompt, const char *path)
 
 	fd = open(path, O_RDONLY, 0);
 	if (fd < 0) {
-		dprintf("open() failed\n");
+		cmdline_dprintf("open() failed\n");
 		return NULL;
 	}
 	return cmdline_new(ctx, prompt, fd, -1);
