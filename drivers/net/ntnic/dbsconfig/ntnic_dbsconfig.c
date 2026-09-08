@@ -1432,8 +1432,6 @@ static void nthw_release_tx_packets(struct nthw_virt_queue *txvq, uint16_t n, ui
 }
 
 static struct sg_ops_s sg_ops = {
-	.nthw_setup_rx_virt_queue = nthw_setup_rx_virt_queue,
-	.nthw_setup_tx_virt_queue = nthw_setup_tx_virt_queue,
 	.nthw_setup_mngd_rx_virt_queue = nthw_setup_mngd_rx_virt_queue,
 	.nthw_release_mngd_rx_virt_queue = nthw_release_mngd_rx_virt_queue,
 	.nthw_setup_mngd_tx_virt_queue = nthw_setup_mngd_tx_virt_queue,
