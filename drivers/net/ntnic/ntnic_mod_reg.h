@@ -24,36 +24,6 @@
 
 /* sg ops section */
 struct sg_ops_s {
-	/* Setup a virtQueue for a VM */
-	struct nthw_virt_queue *(*nthw_setup_rx_virt_queue)(nthw_dbs_t *p_nthw_dbs,
-		uint32_t index,
-		uint16_t start_idx,
-		uint16_t start_ptr,
-		void *avail_struct_phys_addr,
-		void *used_struct_phys_addr,
-		void *desc_struct_phys_addr,
-		uint16_t queue_size,
-		uint32_t host_id,
-		uint32_t header,
-		uint32_t vq_type,
-		int irq_vector,
-		uint8_t rx_deferred_start);
-	struct nthw_virt_queue *(*nthw_setup_tx_virt_queue)(nthw_dbs_t *p_nthw_dbs,
-		uint32_t index,
-		uint16_t start_idx,
-		uint16_t start_ptr,
-		void *avail_struct_phys_addr,
-		void *used_struct_phys_addr,
-		void *desc_struct_phys_addr,
-		uint16_t queue_size,
-		uint32_t host_id,
-		uint32_t port,
-		uint32_t virtual_port,
-		uint32_t header,
-		uint32_t vq_type,
-		int irq_vector,
-		uint32_t in_order,
-		uint8_t tx_deferred_start);
 	struct nthw_virt_queue *(*nthw_setup_mngd_rx_virt_queue)(nthw_dbs_t *p_nthw_dbs,
 		uint32_t index,
 		uint32_t queue_size,
