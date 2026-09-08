@@ -486,8 +486,9 @@ check_power_turbo(void)
 		return -1;
 	}
 
-	/* Check the current frequency */
-	ret = check_cur_freq(TEST_POWER_LCORE_ID, 1, false);
+	/* Nominal frequency is not at a fixed index in the table. */
+	ret = check_cur_freq(TEST_POWER_LCORE_ID,
+			rte_power_get_freq(TEST_POWER_LCORE_ID), false);
 	if (ret < 0)
 		return -1;
 
