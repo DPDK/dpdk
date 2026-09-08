@@ -358,7 +358,8 @@ static uint16_t dbs_qsize_log2(uint16_t qsize)
 	return qs;
 }
 
-static struct nthw_virt_queue *nthw_setup_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
+static int nthw_setup_rx_virt_queue(struct nthw_virt_queue *vq,
+	nthw_dbs_t *p_nthw_dbs,
 	uint32_t index,
 	uint16_t start_idx,
 	uint16_t start_ptr,
@@ -383,7 +384,7 @@ static struct nthw_virt_queue *nthw_setup_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	 */
 	if (set_rx_dr_data(p_nthw_dbs, index, (uint64_t)desc_struct_phys_addr, host_id, qs, header,
 			0) != 0) {
-		return NULL;
+		return -1;
 	}
 
 	/*
@@ -402,7 +403,7 @@ static struct nthw_virt_queue *nthw_setup_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	if (set_rx_uw_data(p_nthw_dbs, index,
 			(uint64_t)used_struct_phys_addr,
 			host_id, qs, 0, int_enable, vec, istk) != 0) {
-		return NULL;
+		return -1;
 	}
 
 	/*
@@ -416,7 +417,7 @@ static struct nthw_virt_queue *nthw_setup_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 		if (set_rx_am_data(p_nthw_dbs, index, (uint64_t)avail_struct_phys_addr,
 				RX_AM_DISABLE, host_id, 0,
 				irq_vector >= 0 ? 1 : 0) != 0) {
-			return NULL;
+			return -1;
 		}
 	}
 
@@ -432,25 +433,24 @@ static struct nthw_virt_queue *nthw_setup_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	 */
 	if (set_rx_am_data(p_nthw_dbs, index, (uint64_t)avail_struct_phys_addr, RX_AM_ENABLE,
 			host_id, 0, irq_vector >= 0 ? 1 : 0) != 0) {
-		return NULL;
+		return -1;
 	}
 
 	/* Save queue state */
-	rxvq[index].usage = NTHW_VIRTQ_UNMANAGED;
-	rxvq[index].mp_nthw_dbs = p_nthw_dbs;
-	rxvq[index].index = index;
-	rxvq[index].queue_size = queue_size;
-	rxvq[index].am_enable = (irq_vector < 0) ? RX_AM_ENABLE : RX_AM_DISABLE;
-	rxvq[index].host_id = host_id;
-	rxvq[index].avail_struct_phys_addr = avail_struct_phys_addr;
-	rxvq[index].used_struct_phys_addr = used_struct_phys_addr;
-	rxvq[index].desc_struct_phys_addr = desc_struct_phys_addr;
-	rxvq[index].vq_type = vq_type;
-	rxvq[index].in_order = 0;	/* not used */
-	rxvq[index].irq_vector = irq_vector;
+	vq->usage = NTHW_VIRTQ_UNMANAGED;
+	vq->mp_nthw_dbs = p_nthw_dbs;
+	vq->index = index;
+	vq->queue_size = queue_size;
+	vq->am_enable = (irq_vector < 0) ? RX_AM_ENABLE : RX_AM_DISABLE;
+	vq->host_id = host_id;
+	vq->avail_struct_phys_addr = avail_struct_phys_addr;
+	vq->used_struct_phys_addr = used_struct_phys_addr;
+	vq->desc_struct_phys_addr = desc_struct_phys_addr;
+	vq->vq_type = vq_type;
+	vq->in_order = 0;	/* not used */
+	vq->irq_vector = irq_vector;
 
-	/* Return queue handle */
-	return &rxvq[index];
+	return 0;
 }
 
 static int dbs_wait_hw_queue_shutdown(struct nthw_virt_queue *vq, int rx);
@@ -684,7 +684,8 @@ static int nthw_release_mngd_tx_virt_queue(struct nthw_virt_queue *txvq)
 	return dbs_internal_release_tx_virt_queue(txvq);
 }
 
-static struct nthw_virt_queue *nthw_setup_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
+static int nthw_setup_tx_virt_queue(struct nthw_virt_queue *vq,
+	nthw_dbs_t *p_nthw_dbs,
 	uint32_t index,
 	uint16_t start_idx,
 	uint16_t start_ptr,
@@ -712,7 +713,7 @@ static struct nthw_virt_queue *nthw_setup_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	 */
 	if (set_tx_dr_data(p_nthw_dbs, index, (uint64_t)desc_struct_phys_addr, host_id, qs, port,
 			header, 0) != 0) {
-		return NULL;
+		return -1;
 	}
 
 	/*
@@ -730,7 +731,7 @@ static struct nthw_virt_queue *nthw_setup_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	if (set_tx_uw_data(p_nthw_dbs, index,
 			(uint64_t)used_struct_phys_addr,
 			host_id, qs, 0, int_enable, vec, istk, in_order) != 0) {
-		return NULL;
+		return -1;
 	}
 
 	/*
@@ -739,7 +740,7 @@ static struct nthw_virt_queue *nthw_setup_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	 */
 	if (set_tx_am_data(p_nthw_dbs, index, (uint64_t)avail_struct_phys_addr, TX_AM_DISABLE,
 			host_id, 0, irq_vector >= 0 ? 1 : 0) != 0) {
-		return NULL;
+		return -1;
 	}
 
 	/*
@@ -749,7 +750,7 @@ static struct nthw_virt_queue *nthw_setup_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	dbs_init_tx_queue(p_nthw_dbs, index, start_idx, start_ptr);
 
 	if (nthw_dbs_set_tx_qp_data(p_nthw_dbs, index, virtual_port) != 0)
-		return NULL;
+		return -1;
 
 	/*
 	 * 2. Configure the DBS.TX_AM_DATA memory and enable the queues you plan to use;
@@ -763,28 +764,27 @@ static struct nthw_virt_queue *nthw_setup_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 		if (set_tx_am_data(p_nthw_dbs, index, (uint64_t)avail_struct_phys_addr,
 				TX_AM_ENABLE, host_id, 0,
 				irq_vector >= 0 ? 1 : 0) != 0) {
-			return NULL;
+			return -1;
 		}
 	}
 
 	/* Save queue state */
-	txvq[index].usage = NTHW_VIRTQ_UNMANAGED;
-	txvq[index].mp_nthw_dbs = p_nthw_dbs;
-	txvq[index].index = index;
-	txvq[index].queue_size = queue_size;
-	txvq[index].am_enable = (irq_vector < 0) ? TX_AM_ENABLE : TX_AM_DISABLE;
-	txvq[index].host_id = host_id;
-	txvq[index].port = port;
-	txvq[index].virtual_port = virtual_port;
-	txvq[index].avail_struct_phys_addr = avail_struct_phys_addr;
-	txvq[index].used_struct_phys_addr = used_struct_phys_addr;
-	txvq[index].desc_struct_phys_addr = desc_struct_phys_addr;
-	txvq[index].vq_type = vq_type;
-	txvq[index].in_order = in_order;
-	txvq[index].irq_vector = irq_vector;
+	vq->usage = NTHW_VIRTQ_UNMANAGED;
+	vq->mp_nthw_dbs = p_nthw_dbs;
+	vq->index = index;
+	vq->queue_size = queue_size;
+	vq->am_enable = (irq_vector < 0) ? TX_AM_ENABLE : TX_AM_DISABLE;
+	vq->host_id = host_id;
+	vq->port = port;
+	vq->virtual_port = virtual_port;
+	vq->avail_struct_phys_addr = avail_struct_phys_addr;
+	vq->used_struct_phys_addr = used_struct_phys_addr;
+	vq->desc_struct_phys_addr = desc_struct_phys_addr;
+	vq->vq_type = vq_type;
+	vq->in_order = in_order;
+	vq->irq_vector = irq_vector;
 
-	/* Return queue handle */
-	return &txvq[index];
+	return 0;
 }
 
 static struct nthw_virt_queue *
@@ -826,12 +826,15 @@ nthw_setup_mngd_rx_virt_queue_split(nthw_dbs_t *p_nthw_dbs,
 			queue_size * sizeof(*p_packet_buffers));
 	}
 
-	nthw_setup_rx_virt_queue(p_nthw_dbs, index, 0, 0, (void *)p_virt_struct_area->phys_addr,
-		(char *)p_virt_struct_area->phys_addr +
-		virtq_struct_layout.used_offset,
-		(char *)p_virt_struct_area->phys_addr +
-		virtq_struct_layout.desc_offset,
-		(uint16_t)queue_size, host_id, header, SPLIT_RING, irq_vector);
+	if (nthw_setup_rx_virt_queue(&rxvq[index], p_nthw_dbs, index, 0, 0,
+			(void *)p_virt_struct_area->phys_addr,
+			(char *)p_virt_struct_area->phys_addr + virtq_struct_layout.used_offset,
+			(char *)p_virt_struct_area->phys_addr + virtq_struct_layout.desc_offset,
+			(uint16_t)queue_size, host_id, header, SPLIT_RING, irq_vector) != 0) {
+		free(rxvq[index].p_virtual_addr);
+		rxvq[index].p_virtual_addr = NULL;
+		return NULL;
+	}
 
 	rxvq[index].usage = NTHW_VIRTQ_MANAGED;
 
@@ -882,13 +885,16 @@ nthw_setup_mngd_tx_virt_queue_split(nthw_dbs_t *p_nthw_dbs,
 			queue_size * sizeof(*p_packet_buffers));
 	}
 
-	nthw_setup_tx_virt_queue(p_nthw_dbs, index, 0, 0, (void *)p_virt_struct_area->phys_addr,
-		(char *)p_virt_struct_area->phys_addr +
-		virtq_struct_layout.used_offset,
-		(char *)p_virt_struct_area->phys_addr +
-		virtq_struct_layout.desc_offset,
-		(uint16_t)queue_size, host_id, port, virtual_port, header,
-		SPLIT_RING, irq_vector, in_order);
+	if (nthw_setup_tx_virt_queue(&txvq[index], p_nthw_dbs, index, 0, 0,
+			(void *)p_virt_struct_area->phys_addr,
+			(char *)p_virt_struct_area->phys_addr + virtq_struct_layout.used_offset,
+			(char *)p_virt_struct_area->phys_addr + virtq_struct_layout.desc_offset,
+			(uint16_t)queue_size, host_id, port, virtual_port, header,
+			SPLIT_RING, irq_vector, in_order) != 0) {
+		free(txvq[index].p_virtual_addr);
+		txvq[index].p_virtual_addr = NULL;
+		return NULL;
+	}
 
 	txvq[index].usage = NTHW_VIRTQ_MANAGED;
 
@@ -986,13 +992,18 @@ nthw_setup_managed_rx_virt_queue_packed(nthw_dbs_t *p_nthw_dbs,
 			VIRTQ_DESC_F_WRITE | VIRTQ_DESC_F_AVAIL, 1) != 0)
 		return NULL;
 
-	nthw_setup_rx_virt_queue(p_nthw_dbs, index, 0x8000, 0,	/* start wrap ring counter as 1 */
-		(void *)((uintptr_t)p_virt_struct_area->phys_addr +
-			pvirtq_layout.driver_event_offset),
-		(void *)((uintptr_t)p_virt_struct_area->phys_addr +
-			pvirtq_layout.device_event_offset),
-		p_virt_struct_area->phys_addr, (uint16_t)queue_size, host_id,
-		header, PACKED_RING, irq_vector);
+	if (nthw_setup_rx_virt_queue(vq, p_nthw_dbs, index,
+			0x8000, 0,	/* start wrap ring counter as 1 */
+			(void *)((uintptr_t)p_virt_struct_area->phys_addr +
+				pvirtq_layout.driver_event_offset),
+			(void *)((uintptr_t)p_virt_struct_area->phys_addr +
+				pvirtq_layout.device_event_offset),
+			p_virt_struct_area->phys_addr, (uint16_t)queue_size, host_id,
+			header, PACKED_RING, irq_vector) != 0) {
+		free(vq->p_virtual_addr);
+		vq->p_virtual_addr = NULL;
+		return NULL;
+	}
 
 	vq->usage = NTHW_VIRTQ_MANAGED;
 	return vq;
@@ -1020,13 +1031,18 @@ nthw_setup_managed_tx_virt_queue_packed(nthw_dbs_t *p_nthw_dbs,
 			p_packet_buffers, 0, 0) != 0)
 		return NULL;
 
-	nthw_setup_tx_virt_queue(p_nthw_dbs, index, 0x8000, 0,	/* start wrap ring counter as 1 */
-		(void *)((uintptr_t)p_virt_struct_area->phys_addr +
-			pvirtq_layout.driver_event_offset),
-		(void *)((uintptr_t)p_virt_struct_area->phys_addr +
-			pvirtq_layout.device_event_offset),
-		p_virt_struct_area->phys_addr, (uint16_t)queue_size, host_id,
-		port, virtual_port, header, PACKED_RING, irq_vector, in_order);
+	if (nthw_setup_tx_virt_queue(vq, p_nthw_dbs, index,
+			0x8000, 0,	/* start wrap ring counter as 1 */
+			(void *)((uintptr_t)p_virt_struct_area->phys_addr +
+				pvirtq_layout.driver_event_offset),
+			(void *)((uintptr_t)p_virt_struct_area->phys_addr +
+				pvirtq_layout.device_event_offset),
+			p_virt_struct_area->phys_addr, (uint16_t)queue_size, host_id,
+			port, virtual_port, header, PACKED_RING, irq_vector, in_order) != 0) {
+		free(vq->p_virtual_addr);
+		vq->p_virtual_addr = NULL;
+		return NULL;
+	}
 
 	vq->usage = NTHW_VIRTQ_MANAGED;
 	return vq;
