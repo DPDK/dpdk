@@ -26,7 +26,6 @@
 struct sg_ops_s {
 	/* Setup a virtQueue for a VM */
 	int (*nthw_setup_rx_virt_queue)(struct nthw_virt_queue *vq,
-		nthw_dbs_t *p_nthw_dbs,
 		uint32_t index,
 		uint16_t start_idx,
 		uint16_t start_ptr,
@@ -39,7 +38,6 @@ struct sg_ops_s {
 		uint32_t vq_type,
 		int irq_vector);
 	int (*nthw_setup_tx_virt_queue)(struct nthw_virt_queue *vq,
-		nthw_dbs_t *p_nthw_dbs,
 		uint32_t index,
 		uint16_t start_idx,
 		uint16_t start_ptr,
