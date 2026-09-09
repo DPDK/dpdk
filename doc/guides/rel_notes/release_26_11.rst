@@ -106,6 +106,7 @@ New Features
   * Added stats reset for the ENETC4 VF using a software snapshot/delta approach.
   * Added per-queue MSI-X Rx interrupt support for the ENETC4 VF.
   * Added SI-based port VLAN insertion (Tx) and removal (Rx) for ENETC4 PF and VF.
+  * Updated ENETC4 VF link status reporting to use bitmask encoding.
 
 Removed Items
 -------------
