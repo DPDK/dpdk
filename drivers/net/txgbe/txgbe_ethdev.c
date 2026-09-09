@@ -479,8 +479,8 @@ txgbe_parse_devargs(struct rte_eth_dev *dev)
 	u16 ffe_pre = 8;
 	u16 ffe_post = 44;
 	/* FDIR args */
-	u8 pballoc = 0;
-	u8 drop_queue = 127;
+	u16 pballoc = 0;
+	u16 drop_queue = 127;
 	/* New devargs for amberlite config */
 	u16 tx_headwb = 1;
 	u16 tx_headwb_size = 16;
