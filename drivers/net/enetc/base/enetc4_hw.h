@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2024 NXP
+ * Copyright 2024-2026 NXP
  *
  * This header file defines the register offsets and bit fields
  * of ENETC4 PF and VFs.
@@ -24,7 +24,12 @@ struct enetc_msg_swbd {
 
 /* enetc4 txbd flags */
 #define ENETC4_TXBD_FLAGS_L4CS		BIT(0)
+/* Request LSO (Large Send Offload) segmentation for this frame */
+#define ENETC4_TXBD_FLAGS_LSO		BIT(1)
+/* L4 checksum insertion (also used for checksum update on LSO) */
 #define ENETC4_TXBD_FLAGS_L_TX_CKSUM	BIT(3)
+/* Extended descriptor: the next 16B ring entry is an extension BD */
+#define ENETC4_TXBD_FLAGS_EXT		BIT(6)
 #define ENETC4_TXBD_FLAGS_F		BIT(7)
 /* L4 type */
 #define ENETC4_TXBD_L4T_UDP		BIT(0)
@@ -33,6 +38,31 @@ struct enetc_msg_swbd {
 #define ENETC4_TXBD_L3T			0
 /* IPv4 checksum */
 #define ENETC4_TXBD_IPCS		1
+
+/*
+ * Extension Transmit Buffer Descriptor (16B). When the standard BD has the
+ * extended flag set, this occupies the next ring entry and carries the extra
+ * fields required by LSO.
+ */
+struct enetc_tx_bd_ext {
+	uint32_t timestamp;	/* PTP timestamp, unused for LSO */
+	uint32_t vlan;		/* VLAN insert, unused for LSO */
+	uint32_t lso;		/* LSO_MAX_SEG_SIZE and FRM_LEN_EXT */
+	uint32_t flags;		/* extension flags */
+};
+
+/* LSO_MAX_SEG_SIZE occupies bits 13-0 of the LSO word */
+#define ENETC4_TXBD_EXT_LSO_SEG_MASK	0x3fff
+#define ENETC4_TXBD_EXT_LSO_SEG(mss) \
+		((uint32_t)((mss) & ENETC4_TXBD_EXT_LSO_SEG_MASK))
+/* FRM_LEN_EXT occupies bits 19-16 of the LSO word (top 4 bits of data len) */
+#define ENETC4_TXBD_EXT_FRM_LEN_EXT(x) \
+		(((uint32_t)((x) & 0xf)) << 16)
+
+/* NETC does not create LSO frames larger than this many bytes */
+#define ENETC4_LSO_MAX_FRAME		9600
+/* Maximum LSO data unit (payload to be segmented) supported by HW: 256KB */
+#define ENETC4_LSO_MAX_DATA_UNIT	(256 * 1024)
 
 /***************************ENETC port registers**************************/
 #define ENETC4_PMR		0x10
