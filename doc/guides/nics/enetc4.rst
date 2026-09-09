@@ -135,6 +135,17 @@ VF-specific devargs
 
     dpdk-testpmd -a 0000:00:01.0,enetc4_vsi_delay=10 -- -i
 
+``vf_link_legacy``
+  Select the legacy 4-bit PF-to-VF link speed code layout.
+  Set to ``1`` when the host PF is running a kernel older than v6.18.37.
+  Kernels before that release encode link speed in only 4 bits; without this
+  flag the driver interprets those codes as 8-bit values and reports incorrect
+  link speeds.
+
+  Usage example::
+
+    dpdk-testpmd -a 0000:00:01.0,vf_link_legacy=1 -- -i
+
 PF/Common devargs
 ~~~~~~~~~~~~~~~~~
 
