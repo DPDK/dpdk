@@ -81,6 +81,7 @@ New Features
   * Added ``RTE_ETH_RX_OFFLOAD_KEEP_CRC`` support
     for the ENETC4 PMD to preserve the Ethernet FCS.
   * Added TCP Segmentation Offload (TSO) support for the ENETC4 VF.
+  * Added Receive Segment Coalesce (RSC / hardware LRO) support for ENETC4 PF and VF.
 
 * **Updated Solarflare network driver.**
 
