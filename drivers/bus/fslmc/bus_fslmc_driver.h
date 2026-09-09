@@ -37,8 +37,6 @@
 extern "C" {
 #endif
 
-#define FSLMC_OBJECT_MAX_LEN 32   /**< Length of each device on bus */
-
 #define DPAA2_INVALID_MBUF_SEQN        0
 
 typedef uint32_t dpaa2_seqn_t;
@@ -108,7 +106,7 @@ struct rte_dpaa2_device {
 	char ep_name[RTE_DEV_NAME_MAX_LEN];
 	struct rte_intr_handle *intr_handle; /**< Interrupt handle */
 	struct rte_dpaa2_driver *driver;    /**< Associated driver */
-	char name[FSLMC_OBJECT_MAX_LEN];    /**< DPAA2 Object name*/
+	char name[RTE_DEV_NAME_MAX_LEN];
 };
 
 typedef int (*rte_dpaa2_obj_create_t)(int vdev_fd,
