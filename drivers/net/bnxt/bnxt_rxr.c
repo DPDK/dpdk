@@ -583,9 +583,8 @@ bnxt_parse_pkt_type_v3(struct rte_mbuf *mbuf,
 	flags2 = rte_le_to_cpu_32(rxcmp1->flags2);
 	meta = rte_le_to_cpu_32(rxcmp->metadata1_payload_offset);
 
-	/* TODO */
 	/* Validate ptype table indexing at build time. */
-	/* bnxt_check_ptype_constants_v3(); */
+	bnxt_check_ptype_constants_v3();
 
 	/*
 	 * Index format:

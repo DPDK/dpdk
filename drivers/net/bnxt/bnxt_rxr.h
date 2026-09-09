@@ -475,6 +475,17 @@ bnxt_parse_pkt_type_v2(struct rte_mbuf *mbuf,
 	(((f2) & RX_PKT_V3_CMPL_HI_FLAGS2_IP_TYPE) >> \
 	 (RX_PKT_V3_CMPL_FLAGS2_IP_TYPE_SFT - BNXT_PTYPE_TBL_IP_VER_SFT))
 
+static inline void
+bnxt_check_ptype_constants_v3(void)
+{
+	RTE_BUILD_BUG_ON(BNXT_CMPL_V3_ITYPE_TO_IDX(RX_PKT_V3_CMPL_FLAGS_ITYPE_MASK) !=
+			 BNXT_PTYPE_TBL_TYPE_MSK);
+	RTE_BUILD_BUG_ON(BNXT_CMPL_V3_VLAN_TO_IDX(RX_PKT_V3_CMPL_METADATA1_VALID) !=
+			 BNXT_PTYPE_TBL_VLAN_MSK);
+	RTE_BUILD_BUG_ON(BNXT_CMPL_V3_IP_VER_TO_IDX(RX_PKT_V3_CMPL_HI_FLAGS2_IP_TYPE) !=
+			 BNXT_PTYPE_TBL_IP_VER_MSK);
+}
+
 #define RX_CMP_V3_VLAN_VALID(rxcmp)        \
 	(((struct rx_pkt_v3_cmpl *)rxcmp)->metadata1_payload_offset &	\
 	 RX_PKT_V3_CMPL_METADATA1_VALID)
