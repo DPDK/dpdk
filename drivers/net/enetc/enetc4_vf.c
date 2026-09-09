@@ -1594,6 +1594,60 @@ static const struct rte_pci_id pci_vf_id_enetc4_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
+static int
+enetc4_vf_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	struct enetc_bdr *rx_ring;
+	uint16_t vec;
+
+	if (hw->nc_mode)
+		return -ENOTSUP;
+
+	if (!hw->rxq_intr_en)
+		return -ENOTSUP;
+
+	vec = queue_id + ENETC4_VF_RX_VEC_BASE;
+	rx_ring = (struct enetc_bdr *)dev->data->rx_queues[queue_id];
+
+	enetc_wr(enetc_hw, ENETC_SIMSIRRV(queue_id), vec);
+	/*
+	 * Do not overwrite RBICR1 when RSC (LRO) is active: the timer
+	 * programmed there is the coalesce-hold window and zeroing it
+	 * would disable coalescing, flushing every segment individually.
+	 */
+	if (!rx_ring->rsc_enable)
+		enetc4_rxbdr_wr(enetc_hw, queue_id, ENETC4_RBICR1, 0);
+	enetc4_rxbdr_wr(enetc_hw, queue_id, ENETC4_RBICR0,
+			ENETC4_RBICR0_ICEN | ENETC4_RBICR0_ICPT(1));
+	enetc_wr(enetc_hw, ENETC_SIRXIDR, BIT(queue_id));
+
+	enetc4_rxbdr_wr(enetc_hw, queue_id, ENETC_RBIER, ENETC_RBIER_RXTIE);
+
+	return 0;
+}
+
+static int
+enetc4_vf_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+
+	if (hw->nc_mode)
+		return -ENOTSUP;
+
+	if (!hw->rxq_intr_en)
+		return 0;
+
+	enetc4_rxbdr_wr(enetc_hw, queue_id, ENETC_RBIER, 0);
+	enetc_wr(enetc_hw, ENETC_SIMSIRRV(queue_id), 0);
+
+	return 0;
+}
+
 /* Features supported by this driver */
 /* ops table used when VSI messaging is disabled */
 static const struct eth_dev_ops enetc4_vf_ops_no_vsi_m = {
@@ -1612,6 +1666,8 @@ static const struct eth_dev_ops enetc4_vf_ops_no_vsi_m = {
 	.rx_queue_stop        = enetc4_rx_queue_stop,
 	.rx_queue_release     = enetc4_rx_queue_release,
 	.rxq_info_get         = enetc4_rxq_info_get,
+	.rx_queue_intr_enable  = enetc4_vf_rx_queue_intr_enable,
+	.rx_queue_intr_disable = enetc4_vf_rx_queue_intr_disable,
 	.tx_queue_setup       = enetc4_tx_queue_setup,
 	.tx_queue_start       = enetc4_tx_queue_start,
 	.tx_queue_stop        = enetc4_tx_queue_stop,
@@ -1645,6 +1701,8 @@ static const struct eth_dev_ops enetc4_vf_ops = {
 	.rx_queue_stop        = enetc4_rx_queue_stop,
 	.rx_queue_release     = enetc4_rx_queue_release,
 	.rxq_info_get         = enetc4_rxq_info_get,
+	.rx_queue_intr_enable  = enetc4_vf_rx_queue_intr_enable,
+	.rx_queue_intr_disable = enetc4_vf_rx_queue_intr_disable,
 	.tx_queue_setup       = enetc4_tx_queue_setup,
 	.tx_queue_start       = enetc4_tx_queue_start,
 	.tx_queue_stop        = enetc4_tx_queue_stop,
@@ -1920,6 +1978,34 @@ enetc4_vf_dev_intr(struct rte_eth_dev *eth_dev, bool enable)
 		/* Vector index 0 */
 		enetc_wr(enetc_hw, ENETC4_SIMSIVR, ENETC4_SI_INT_IDX);
 
+		if (rte_intr_cap_multiple(intr_handle) &&
+		    eth_dev->data->nb_rx_queues > 0) {
+			uint16_t nb_rx = eth_dev->data->nb_rx_queues;
+			uint16_t i;
+
+			ret = rte_intr_efd_enable(intr_handle,
+					nb_rx + ENETC4_VF_RX_VEC_BASE);
+			if (ret) {
+				ENETC_PMD_WARN("Failed to enable per-queue Rx eventfds: %d",
+					       ret);
+				hw->rxq_intr_en = 0;
+			} else {
+				ret = rte_intr_vec_list_alloc(intr_handle,
+						"enetc4_vf_rx_intr", nb_rx);
+				if (ret) {
+					ENETC_PMD_WARN("Failed to alloc intr vec list: %d",
+						       ret);
+					rte_intr_efd_disable(intr_handle);
+					hw->rxq_intr_en = 0;
+				} else {
+					for (i = 0; i < nb_rx; i++)
+						rte_intr_vec_list_index_set(intr_handle, i,
+							i + ENETC4_VF_RX_VEC_BASE);
+					hw->rxq_intr_en = 1;
+				}
+			}
+		}
+
 		/* enable uio/vfio intr/eventfd mapping */
 		ret = rte_intr_enable(intr_handle);
 		if (ret) {
@@ -1943,12 +2029,17 @@ enetc4_vf_dev_intr(struct rte_eth_dev *eth_dev, bool enable)
 		ENETC_PMD_WARN("Failed to un-register link notification %d", ret);
 disable:
 	enetc_vf_enable_mr_int(enetc_hw, false);
+	hw->rxq_intr_en = 0;
 	ret = rte_intr_disable(intr_handle);
 	if (ret)
 		ENETC_PMD_WARN("Failed to disable INTR %d", ret);
 intr_enable_fail:
-	rte_intr_callback_unregister(intr_handle,
+	rte_intr_vec_list_free(intr_handle);
+	rte_intr_efd_disable(intr_handle);
+	ret = rte_intr_callback_unregister(intr_handle,
 			enetc4_dev_interrupt_handler, eth_dev);
+	if (ret < 0)
+		ENETC_PMD_WARN("Failed to unregister intr callback: %d", ret);
 
 	return ret;
 }
@@ -1962,7 +2053,7 @@ static struct rte_pci_driver rte_enetc4_vf_pmd = {
 
 RTE_PMD_REGISTER_PCI(net_enetc4_vf, rte_enetc4_vf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_enetc4_vf, pci_vf_id_enetc4_map);
-RTE_PMD_REGISTER_KMOD_DEP(net_enetc4_vf, "* igb_uio | uio_pci_generic");
+RTE_PMD_REGISTER_KMOD_DEP(net_enetc4_vf, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_enetc4_vf,
 			      ENETC4_VSI_DISABLE "=<any> "
 			      ENETC4_VSI_TIMEOUT "=<uint> "

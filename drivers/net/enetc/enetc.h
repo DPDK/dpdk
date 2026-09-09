@@ -135,6 +135,7 @@ struct enetc_eth_hw {
 	uint32_t vsi_delay;   /* VSI-PSI message wait delay (us) */
 	uint32_t *txq_prior;  /* per-queue TX priority (TBMR priority bits) */
 	uint8_t nc_mode;      /* 1 = non-cacheable BD memory, use _nc ops */
+	uint8_t rxq_intr_en;  /* 1 = per-queue Rx MSI-X interrupts enabled */
 	/* 1 = legacy PF-to-VF link message layout (4-bit speed / 4-bit cookie),
 	 * for PF kernel versions before 6.18.37. Set via vf_link_legacy devarg.
 	 */
