@@ -726,6 +726,7 @@ cnxk_tim_add_entry_tmo_hwwqe(struct cnxk_tim_ring *const tim_ring,
 		}
 	}
 
+	cnt *= CNXK_TIM_ENT_PER_LMT;
 	/* SIZEM1 is 0 */
 	pa = (tim_ring->tbase & ~0xFF) + TIM_LF_SCHED_TIMER0;
 	pa |= (uint64_t)((nb_timers - cnt) << 4);

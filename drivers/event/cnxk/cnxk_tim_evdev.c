@@ -471,13 +471,13 @@ cnxk_tim_parse_ring_param(char *value, void *opaque)
 	if (!strlen(value))
 		return;
 
-	while (tok != NULL) {
+	while (tok != NULL && val < (&ring_ctl.enable_stats + 1)) {
 		*val = atoi(tok);
 		tok = strtok(NULL, "-");
 		val++;
 	}
 
-	if (val != (&ring_ctl.enable_stats + 1)) {
+	if (tok != NULL || val != (&ring_ctl.enable_stats + 1)) {
 		plt_err("Invalid ring param expected [ring-chunk_sz-disable_npa-enable_stats]");
 		return;
 	}
