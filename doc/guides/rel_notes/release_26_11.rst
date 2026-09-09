@@ -102,6 +102,7 @@ New Features
   * Added firmware version reporting for the ENETC4 VF.
   * Added register dump support for ENETC4 PF and VF.
   * Added ring parameters support for the ENETC4 VF (rxq_info_get / txq_info_get).
+  * Refreshed VF link speed on the link-up interrupt in the ENETC4 VF driver.
 
 Removed Items
 -------------
