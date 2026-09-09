@@ -47,7 +47,6 @@ static uint64_t dev_tx_offloads_sup =
 	RTE_ETH_TX_OFFLOAD_TCP_TSO |
 	RTE_ETH_TX_OFFLOAD_UDP_TSO;
 
-#define ENETC4_TXQ_PRIORITIES	"enetc4_txq_prior"
 #define ENETC4_NC_MEMORY	"nc"
 
 static int
@@ -55,24 +54,96 @@ parse_txq_prior(const char *key __rte_unused, const char *value, void *opaque)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)opaque;
 	struct enetc_eth_hw *hw =
-		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	char *input_str = strdup(value);
+				ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	char *input_str;
+	char *saveptr = NULL;
 	char *str;
 	uint32_t i = 0;
 
+	input_str = strdup(value);
 	if (!input_str)
 		return -ENOMEM;
 
+	free(hw->txq_prior);
 	hw->txq_prior = calloc(hw->max_tx_queues, sizeof(uint32_t));
 	if (!hw->txq_prior) {
 		free(input_str);
 		return -ENOMEM;
 	}
 
-	str = strtok(input_str, "|");
+	str = strtok_r(input_str, "|", &saveptr);
 	while (str != NULL && i < hw->max_tx_queues) {
-		hw->txq_prior[i++] = (uint32_t)atoi(str);
-		str = strtok(NULL, "|");
+		char *endptr = NULL;
+		unsigned long prio;
+
+		errno = 0;
+		prio = strtoul(str, &endptr, 10);
+		/*
+		 * strtoul() accepts a leading '-' and wraps it, so reject it
+		 * explicitly. Priority must fit in ENETC_TBMR[PRIO] (0..7).
+		 */
+		if (errno != 0 || endptr == str || *endptr != '\0' ||
+		    str[0] == '-' || prio > ENETC_TBMR_PRIO_MASK) {
+			ENETC_PMD_ERR("Invalid Tx priority value '%s' (expected 0..%u)",
+				      str, ENETC_TBMR_PRIO_MASK);
+			free(hw->txq_prior);
+			hw->txq_prior = NULL;
+			free(input_str);
+			return -EINVAL;
+		}
+		hw->txq_prior[i++] = (uint32_t)prio;
+		str = strtok_r(NULL, "|", &saveptr);
+	}
+
+	free(input_str);
+	return 0;
+}
+
+/* Parse enetc4_txq_wrr="w0|w1|..." devarg; weight 1..8 per ring. */
+static int parse_txq_wrr(const char *key __rte_unused, const char *value,
+			  void *opaque)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)opaque;
+	struct enetc_eth_hw *hw =
+			ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	char *input_str;
+	char *saveptr = NULL;
+	char *str;
+	uint32_t i = 0;
+
+	input_str = strdup(value);
+	if (!input_str)
+		return -ENOMEM;
+
+	free(hw->txq_wrr);
+	hw->txq_wrr = calloc(hw->max_tx_queues, sizeof(uint32_t));
+	if (!hw->txq_wrr) {
+		free(input_str);
+		return -ENOMEM;
+	}
+
+	str = strtok_r(input_str, "|", &saveptr);
+	while (str != NULL && i < hw->max_tx_queues) {
+		char *endptr = NULL;
+		unsigned long w;
+
+		errno = 0;
+		w = strtoul(str, &endptr, 10);
+		/*
+		 * strtoul() accepts a leading '-' and wraps it, so reject it
+		 * explicitly. WRR weight is limited to 1..8 (ENETC_TBMR_WRR).
+		 */
+		if (errno != 0 || endptr == str || *endptr != '\0' ||
+		    str[0] == '-' || w < 1 || w > 8) {
+			ENETC_PMD_ERR("Invalid Tx WRR weight value '%s' (expected 1..8)",
+				      str);
+			free(hw->txq_wrr);
+			hw->txq_wrr = NULL;
+			free(input_str);
+			return -EINVAL;
+		}
+		hw->txq_wrr[i++] = ENETC_TBMR_WRR(w);
+		str = strtok_r(NULL, "|", &saveptr);
 	}
 
 	free(input_str);
@@ -113,6 +184,13 @@ enetc4_get_devargs(struct rte_eth_dev *dev, const char *key)
 	if (!strcmp(key, ENETC4_TXQ_PRIORITIES)) {
 		if (rte_kvargs_process(kvlist, key,
 				       parse_txq_prior, (void *)dev) < 0) {
+			rte_kvargs_free(kvlist);
+			return 0;
+		}
+	}
+	if (!strcmp(key, ENETC4_TXQ_WRR)) {
+		if (rte_kvargs_process(kvlist, key,
+				       parse_txq_wrr, (void *)dev) < 0) {
 			rte_kvargs_free(kvlist);
 			return 0;
 		}
@@ -469,14 +547,17 @@ enetc4_tx_queue_setup(struct rte_eth_dev *dev,
 	data->tx_queues[queue_idx] = tx_ring;
 	tx_ring->tx_deferred_start = tx_conf->tx_deferred_start;
 	if (!tx_conf->tx_deferred_start) {
-		uint32_t tx_en = ENETC_TBMR_EN;
-
+		/* Clear scheduler bits before applying fresh devarg values. */
+		tx_data &= ~(ENETC_TBMR_PRIO_MASK | ENETC_TBMR_WRR_MASK);
+		tx_data |= ENETC_TBMR_EN;
 		/* apply TX queue priority if configured */
 		if (priv->hw.txq_prior)
-			tx_en |= priv->hw.txq_prior[tx_ring->index];
+			tx_data |= priv->hw.txq_prior[tx_ring->index];
+		if (priv->hw.txq_wrr)
+			tx_data |= priv->hw.txq_wrr[tx_ring->index];
 		/* enable ring */
 		enetc4_txbdr_wr(&priv->hw.hw, tx_ring->index,
-			       ENETC_TBMR, tx_en);
+			       ENETC_TBMR, tx_data);
 		dev->data->tx_queue_state[tx_ring->index] =
 			       RTE_ETH_QUEUE_STATE_STARTED;
 	} else {
@@ -918,7 +999,10 @@ enetc4_dev_close(struct rte_eth_dev *dev)
 		dev->data->tx_queues[i] = NULL;
 	}
 	dev->data->nb_tx_queues = 0;
-
+	free(hw->txq_prior);
+	hw->txq_prior = NULL;
+	free(hw->txq_wrr);
+	hw->txq_wrr = NULL;
 	if (rte_eal_iova_mode() == RTE_IOVA_PA)
 		dpaax_iova_table_depopulate();
 
@@ -1073,7 +1157,12 @@ enetc4_dev_configure(struct rte_eth_dev *dev)
 		enetc4_rxbdr_wr(enetc_hw, i, ENETC_RBMR, ENETC_BMR_RESET);
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		enetc4_rxbdr_wr(enetc_hw, i, ENETC_TBMR, ENETC_BMR_RESET);
+		enetc4_txbdr_wr(enetc_hw, i, ENETC_TBMR, ENETC_BMR_RESET);
+
+	hw->nc_mode = 0;
+	enetc4_get_devargs(dev, ENETC4_TXQ_PRIORITIES);
+	enetc4_get_devargs(dev, ENETC4_TXQ_WRR);
+	enetc4_get_devargs(dev, ENETC4_NC_MEMORY);
 
 	if (dev->data->nb_rx_queues <= 1)
 		return 0;
@@ -1206,7 +1295,13 @@ enetc4_tx_queue_start(struct rte_eth_dev *dev, uint16_t qidx)
 	if (dev->data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STOPPED) {
 		tx_data = enetc4_txbdr_rd(&priv->hw.hw, tx_ring->index,
 					 ENETC_TBMR);
-		tx_data = tx_data | ENETC_TBMR_EN;
+		/* Clear scheduler bits before applying fresh devarg values. */
+		tx_data &= ~(ENETC_TBMR_PRIO_MASK | ENETC_TBMR_WRR_MASK);
+		tx_data |= ENETC_TBMR_EN;
+		if (priv->hw.txq_prior)
+			tx_data |= priv->hw.txq_prior[tx_ring->index];
+		if (priv->hw.txq_wrr)
+			tx_data |= priv->hw.txq_wrr[tx_ring->index];
 		enetc4_txbdr_wr(&priv->hw.hw, tx_ring->index, ENETC_TBMR,
 			       tx_data);
 		dev->data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STARTED;
@@ -1508,15 +1603,7 @@ enetc4_dev_init(struct rte_eth_dev *eth_dev)
 static int
 enetc4_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct enetc_eth_hw *hw =
-		ENETC_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-
 	PMD_INIT_FUNC_TRACE();
-
-	if (hw->txq_prior) {
-		free(hw->txq_prior);
-		hw->txq_prior = NULL;
-	}
 
 	return enetc4_dev_close(eth_dev);
 }
@@ -1548,5 +1635,6 @@ RTE_PMD_REGISTER_PCI_TABLE(net_enetc4, pci_id_enetc4_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_enetc4, "* vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_enetc4,
 			      ENETC4_TXQ_PRIORITIES "=<string> "
+			      ENETC4_TXQ_WRR "=<string> "
 			      ENETC4_NC_MEMORY "=<int>");
 RTE_LOG_REGISTER_DEFAULT(enetc4_logtype_pmd, NOTICE);
