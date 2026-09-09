@@ -108,6 +108,7 @@ New Features
   * Added SI-based port VLAN insertion (Tx) and removal (Rx) for ENETC4 PF and VF.
   * Updated ENETC4 VF link status reporting to use bitmask encoding.
   * Added Tx PAUSE support for the ENETC4 VF via Rx congestion mode.
+  * Added WRR Tx scheduler devarg (``enetc4_txq_wrr``) for ENETC4 VF ring weights.
 
 Removed Items
 -------------
