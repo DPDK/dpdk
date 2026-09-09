@@ -530,6 +530,28 @@ enetc_clean_rx_ring(struct enetc_bdr *rx_ring,
 	return rx_frm_cnt;
 }
 
+/*
+ * Trim the Ethernet FCS from a received cluster when HW CRC strip is
+ * disabled. pkt_len is reduced by crc_len. If the FCS straddles the last
+ * two segments (last seg holds fewer bytes than crc_len), drop the trailing
+ * segment and trim the carry-over from its predecessor. prev_seg is the
+ * segment preceding last_seg in the chain (the caller already tracks it).
+ */
+static inline void
+enetc_rx_crc_trim(struct rte_mbuf *first_seg, struct rte_mbuf *prev_seg,
+		  struct rte_mbuf *last_seg, uint16_t crc_len)
+{
+	first_seg->pkt_len -= crc_len;
+	if (likely(last_seg->data_len > crc_len)) {
+		last_seg->data_len -= crc_len;
+	} else if (prev_seg != NULL) {
+		first_seg->nb_segs--;
+		prev_seg->data_len -= crc_len - last_seg->data_len;
+		prev_seg->next = NULL;
+		rte_pktmbuf_free_seg(last_seg);
+	}
+}
+
 static int
 enetc_clean_rx_ring_nc(struct enetc_bdr *rx_ring,
 		    struct rte_mbuf **rx_pkts,
@@ -539,7 +561,7 @@ enetc_clean_rx_ring_nc(struct enetc_bdr *rx_ring,
 	int cleaned_cnt, i;
 	struct enetc_swbd *rx_swbd;
 	union enetc_rx_bd *rxbd, rxbd_temp;
-	struct rte_mbuf *first_seg, *cur_seg;
+	struct rte_mbuf *first_seg = NULL, *cur_seg = NULL, *prev_seg = NULL;
 	uint32_t bd_status;
 	uint8_t *data;
 	uint32_t j;
@@ -572,6 +594,7 @@ enetc_clean_rx_ring_nc(struct enetc_bdr *rx_ring,
 		if (!first_seg) {
 			first_seg = seg;
 			cur_seg = seg;
+			prev_seg = NULL;
 			first_seg->pkt_len = data_len;
 			enetc_dev_rx_parse(first_seg, rxbd_temp.r.parse_summary);
 			first_seg->hash.rss = rxbd_temp.r.rss_hash;
@@ -579,6 +602,7 @@ enetc_clean_rx_ring_nc(struct enetc_bdr *rx_ring,
 			first_seg->pkt_len += data_len;
 			first_seg->nb_segs++;
 			cur_seg->next = seg;
+			prev_seg = cur_seg;
 			cur_seg = seg;
 		}
 
@@ -590,7 +614,9 @@ enetc_clean_rx_ring_nc(struct enetc_bdr *rx_ring,
 
 		if (bd_status & ENETC_RXBD_LSTATUS_F) {
 			seg->next = NULL;
-			first_seg->pkt_len -= rx_ring->crc_len;
+			if (rx_ring->crc_len)
+				enetc_rx_crc_trim(first_seg, prev_seg, seg,
+						  rx_ring->crc_len);
 			rx_pkts[rx_frm_cnt] = first_seg;
 			rx_frm_cnt++;
 			first_seg = NULL;
@@ -760,7 +786,7 @@ enetc_clean_rx_ring_cacheable(struct enetc_bdr *rx_ring,
 	int cleaned_cnt, i;
 	struct enetc_swbd *rx_swbd;
 	union enetc_rx_bd *rxbd;
-	struct rte_mbuf *first_seg, *cur_seg;
+	struct rte_mbuf *first_seg = NULL, *cur_seg = NULL, *prev_seg = NULL;
 	uint32_t bd_status;
 	uint8_t *data;
 	uint32_t j;
@@ -815,6 +841,7 @@ enetc_clean_rx_ring_cacheable(struct enetc_bdr *rx_ring,
 		if (!first_seg) {
 			first_seg = seg;
 			cur_seg = seg;
+			prev_seg = NULL;
 			first_seg->pkt_len = data_len;
 			enetc_dev_rx_parse(first_seg,
 					   rxbd->r.parse_summary);
@@ -823,6 +850,7 @@ enetc_clean_rx_ring_cacheable(struct enetc_bdr *rx_ring,
 			first_seg->pkt_len += data_len;
 			first_seg->nb_segs++;
 			cur_seg->next = seg;
+			prev_seg = cur_seg;
 			cur_seg = seg;
 		}
 
@@ -838,7 +866,10 @@ enetc_clean_rx_ring_cacheable(struct enetc_bdr *rx_ring,
 
 		if (bd_status & ENETC_RXBD_LSTATUS_F) {
 			seg->next = NULL;
-			first_seg->pkt_len -= rx_ring->crc_len;
+			if (rx_ring->crc_len)
+				enetc_rx_crc_trim(first_seg, prev_seg, seg,
+						  rx_ring->crc_len);
+
 			rx_pkts[rx_frm_cnt] = first_seg;
 			rx_frm_cnt++;
 			first_seg = NULL;

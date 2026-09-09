@@ -74,6 +74,13 @@ New Features
   * Added the inner IP header to the RSS hash so tunneled traffic is
     distributed across the Rx queues.
 
+* **Updated NXP ENETC4 PMD.**
+
+  Updated the NXP ENETC4 poll mode driver for i.MX95:
+
+  * Added ``RTE_ETH_RX_OFFLOAD_KEEP_CRC`` support
+    for the ENETC4 PMD to preserve the Ethernet FCS.
+
 * **Updated Solarflare network driver.**
 
   * Added VF support on AMD Solarflare X45xx adapters.
