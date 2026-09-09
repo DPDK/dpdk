@@ -52,6 +52,7 @@ static uint64_t dev_rx_offloads_sup =
 	RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
 	RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
 	RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
+	RTE_ETH_RX_OFFLOAD_KEEP_CRC |
 	RTE_ETH_RX_OFFLOAD_SCATTER;
 
 /* Supported Tx offloads */

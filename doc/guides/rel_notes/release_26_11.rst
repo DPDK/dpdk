@@ -89,6 +89,12 @@ New Features
     free (``rte_pktmbuf_free_seg``) and prefetch hints.
 
 
+* **Updated NXP ENETC4 PMD.**
+
+  Updated the NXP ENETC4 poll mode driver for i.MX95:
+
+  * Added KEEP_CRC Rx offload support for the ENETC4 PMD to preserve the Ethernet FCS.
+
 Removed Items
 -------------
 
