@@ -157,6 +157,8 @@ cnxk_sso_xstats_get(const struct rte_eventdev *event_dev,
 	};
 
 	for (i = 0; i < n && i < xstats_mode_count; i++) {
+		if (ids[i] < start_offset || (ids[i] - start_offset) >= xstats_mode_count)
+			goto invalid_value;
 		xstat = &xstats[ids[i] - start_offset];
 		value = *(uint64_t *)((char *)rsp + xstat->offset);
 		value = (value >> xstat->shift) & xstat->mask;
@@ -181,6 +183,7 @@ cnxk_sso_xstats_reset(struct rte_eventdev *event_dev,
 	struct cnxk_sso_xstats_name *xstat;
 	struct roc_sso_hws_stats hws_stats;
 	uint32_t xstats_mode_count = 0;
+	int16_t first_id, last_id, id;
 	uint32_t start_offset = 0;
 	unsigned int i;
 	uint64_t value;
@@ -191,44 +194,67 @@ cnxk_sso_xstats_reset(struct rte_eventdev *event_dev,
 	case RTE_EVENT_DEV_XSTATS_DEVICE:
 		return 0;
 	case RTE_EVENT_DEV_XSTATS_PORT:
-		if (queue_port_id >= (signed int)dev->nb_event_ports)
+		if (queue_port_id >= (int16_t)dev->nb_event_ports)
 			goto invalid_value;
 
 		xstats_mode_count = CNXK_SSO_NUM_HWS_XSTATS;
 		xstats = sso_hws_xstats;
-		rc = roc_sso_hws_stats_get(&dev->sso, queue_port_id,
-					   &hws_stats);
-		if (rc < 0)
-			goto invalid_value;
-		rsp = &hws_stats;
+		/* Negative id requests a reset of all ports. */
+		first_id = (queue_port_id < 0) ? 0 : queue_port_id;
+		last_id = (queue_port_id < 0) ? (int16_t)dev->nb_event_ports - 1 : queue_port_id;
 		break;
 	case RTE_EVENT_DEV_XSTATS_QUEUE:
-		if (queue_port_id >= (signed int)dev->nb_event_queues)
+		if (queue_port_id >= (int16_t)dev->nb_event_queues)
 			goto invalid_value;
 
 		xstats_mode_count = CNXK_SSO_NUM_GRP_XSTATS;
 		start_offset = CNXK_SSO_NUM_HWS_XSTATS;
 		xstats = sso_hwgrp_xstats;
-
-		rc = roc_sso_hwgrp_stats_get(&dev->sso, queue_port_id,
-					     &hwgrp_stats);
-		if (rc < 0)
-			goto invalid_value;
-		rsp = &hwgrp_stats;
+		/* Negative id requests a reset of all queues. */
+		first_id = (queue_port_id < 0) ? 0 : queue_port_id;
+		last_id = (queue_port_id < 0) ? (int16_t)dev->nb_event_queues - 1 : queue_port_id;
 		break;
 	default:
 		plt_err("Invalid mode received");
 		goto invalid_value;
 	};
 
-	for (i = 0; i < n && i < xstats_mode_count; i++) {
-		xstat = &xstats[ids[i] - start_offset];
-		value = *(uint64_t *)((char *)rsp + xstat->offset);
-		value = (value >> xstat->shift) & xstat->mask;
+	for (id = first_id; id <= last_id; id++) {
+		if (mode == RTE_EVENT_DEV_XSTATS_PORT) {
+			rc = roc_sso_hws_stats_get(&dev->sso, id, &hws_stats);
+			if (rc < 0)
+				goto invalid_value;
+			rsp = &hws_stats;
+		} else {
+			rc = roc_sso_hwgrp_stats_get(&dev->sso, id, &hwgrp_stats);
+			if (rc < 0)
+				goto invalid_value;
+			rsp = &hwgrp_stats;
+		}
 
-		xstat->reset_snap[queue_port_id] = value;
+		if (ids == NULL) {
+			for (i = 0; i < xstats_mode_count; i++) {
+				xstat = &xstats[i];
+				value = *(uint64_t *)((char *)rsp + xstat->offset);
+				value = (value >> xstat->shift) & xstat->mask;
+
+				xstat->reset_snap[id] = value;
+			}
+			continue;
+		}
+
+		for (i = 0; i < n; i++) {
+			if (ids[i] < start_offset || (ids[i] - start_offset) >= xstats_mode_count)
+				goto invalid_value;
+			xstat = &xstats[ids[i] - start_offset];
+			value = *(uint64_t *)((char *)rsp + xstat->offset);
+			value = (value >> xstat->shift) & xstat->mask;
+
+			xstat->reset_snap[id] = value;
+		}
 	}
-	return i;
+
+	return 0;
 invalid_value:
 	return -EINVAL;
 }
