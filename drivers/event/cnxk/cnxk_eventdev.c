@@ -488,13 +488,13 @@ parse_queue_param(char *value, void *opaque)
 	if (!strlen(value))
 		return;
 
-	while (tok != NULL) {
+	while (tok != NULL && val < (&queue_qos.iaq_prcnt + 1)) {
 		*val = atoi(tok);
 		tok = strtok(NULL, "-");
 		val++;
 	}
 
-	if (val != (&queue_qos.iaq_prcnt + 1)) {
+	if (tok != NULL || val != (&queue_qos.iaq_prcnt + 1)) {
 		plt_err("Invalid QoS parameter expected [Qx-TAQ-IAQ]");
 		return;
 	}
@@ -525,13 +525,13 @@ parse_stash_param(char *value, void *opaque)
 		return;
 
 	val = (uint16_t *)&queue_stash;
-	while (tok != NULL) {
+	while (tok != NULL && val < (&queue_stash.stash_length + 1)) {
 		*val = atoi(tok);
 		tok = strtok(NULL, "|");
 		val++;
 	}
 
-	if (val != (&queue_stash.stash_length + 1)) {
+	if (tok != NULL || val != (&queue_stash.stash_length + 1)) {
 		plt_err("Invalid QoS parameter expected [Qx|stash_offset|stash_length]");
 		return;
 	}
