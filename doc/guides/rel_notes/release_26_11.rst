@@ -94,6 +94,7 @@ New Features
   * Refreshed VF link speed on the link-up interrupt in the ENETC4 VF driver.
   * Added stats reset for the ENETC4 VF using a software snapshot/delta approach.
   * Added per-queue MSI-X Rx interrupt support for the ENETC4 VF.
+  * Added SI-based port VLAN insertion (Tx) and removal (Rx) for ENETC4 PF and VF.
 
 * **Updated ZTE zxdh ethernet driver.**
 
