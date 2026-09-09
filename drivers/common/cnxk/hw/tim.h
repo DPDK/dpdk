@@ -56,6 +56,6 @@
 #define TIM_MIN_BUCKET_SIZE    1
 #define TIM_BUCKET_WRAP_SIZE   3
 #define TIM_BUCKET_MIN_GAP     1
-#define TIM_NPA_TMO            0xFFFF
+#define TIM_NPA_TMO            0
 
 #endif /* __TIM_HW_H__ */

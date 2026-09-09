@@ -18,6 +18,7 @@ cnxk_tim_chnk_pool_create(struct cnxk_tim_ring *tim_ring,
 {
 	unsigned int mp_flags = 0;
 	unsigned int cache_sz;
+	const char *ops;
 	char pool_name[25];
 	int rc;
 
@@ -33,41 +34,43 @@ cnxk_tim_chnk_pool_create(struct cnxk_tim_ring *tim_ring,
 
 	cache_sz = CNXK_TIM_MAX_POOL_CACHE_SZ;
 	tim_ring->nb_chunks += (cache_sz * rte_lcore_count());
+
+	tim_ring->chunk_pool = rte_mempool_create_empty(pool_name, tim_ring->nb_chunks,
+							tim_ring->chunk_sz, cache_sz, 0,
+							rte_socket_id(), mp_flags);
+	if (tim_ring->chunk_pool == NULL) {
+		plt_err("Unable to create chunkpool.");
+		return -ENOMEM;
+	}
+
+	/* cn20k needs 256B-aligned chunk buffers (cn20k-tim 14.2). */
+	if (roc_model_is_cn20k())
+		tim_ring->chunk_pool->header_size = RTE_ALIGN_CEIL(
+			tim_ring->chunk_pool->header_size, CNXK_TIM_CN20K_CHUNK_BUF_ALIGN);
+
+	if (!tim_ring->disable_npa)
+		ops = rte_mbuf_platform_mempool_ops();
+	else if (mp_flags & RTE_MEMPOOL_F_SP_PUT)
+		ops = "ring_sp_sc";
+	else
+		ops = "ring_mp_mc";
+
+	rc = rte_mempool_set_ops_byname(tim_ring->chunk_pool, ops, NULL);
+	if (rc < 0) {
+		plt_err("Unable to set chunkpool ops");
+		goto free;
+	}
+
+	rc = rte_mempool_populate_default(tim_ring->chunk_pool);
+	if (rc < 0) {
+		plt_err("Unable to populate chunkpool.");
+		goto free;
+	}
+
 	if (!tim_ring->disable_npa) {
-		tim_ring->chunk_pool = rte_mempool_create_empty(
-			pool_name, tim_ring->nb_chunks, tim_ring->chunk_sz,
-			cache_sz, 0, rte_socket_id(), mp_flags);
-
-		if (tim_ring->chunk_pool == NULL) {
-			plt_err("Unable to create chunkpool.");
-			return -ENOMEM;
-		}
-
-		rc = rte_mempool_set_ops_byname(tim_ring->chunk_pool,
-						rte_mbuf_platform_mempool_ops(),
-						NULL);
-		if (rc < 0) {
-			plt_err("Unable to set chunkpool ops");
-			goto free;
-		}
-
-		rc = rte_mempool_populate_default(tim_ring->chunk_pool);
-		if (rc < 0) {
-			plt_err("Unable to set populate chunkpool.");
-			goto free;
-		}
-		tim_ring->aura = roc_npa_aura_handle_to_aura(
-			tim_ring->chunk_pool->pool_id);
+		tim_ring->aura = roc_npa_aura_handle_to_aura(tim_ring->chunk_pool->pool_id);
 		tim_ring->ena_dfb = tim_ring->ena_periodic ? 1 : 0;
 	} else {
-		tim_ring->chunk_pool = rte_mempool_create(
-			pool_name, tim_ring->nb_chunks, tim_ring->chunk_sz,
-			cache_sz, 0, NULL, NULL, NULL, NULL, rte_socket_id(),
-			mp_flags);
-		if (tim_ring->chunk_pool == NULL) {
-			plt_err("Unable to create chunkpool.");
-			return -ENOMEM;
-		}
 		tim_ring->ena_dfb = 1;
 	}
 
@@ -250,6 +253,10 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 		}
 	}
 
+	if (roc_model_is_cn20k())
+		tim_ring->chunk_sz =
+			RTE_ALIGN_CEIL(tim_ring->chunk_sz, CNXK_TIM_CN20K_CHUNK_BUF_ALIGN);
+
 	if (!dev->tim.feat.hwwqe && tim_ring->disable_npa) {
 		tim_ring->nb_chunks =
 			tim_ring->nb_timers /
@@ -274,7 +281,7 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 		goto tim_bkt_free;
 
 	rc = roc_tim_lf_config(&dev->tim, tim_ring->ring_id, clk_src,
-			       tim_ring->ena_periodic, tim_ring->ena_dfb,
+			       tim_ring->ena_periodic, tim_ring->ena_dfb, 0,
 			       tim_ring->nb_bkts, tim_ring->chunk_sz,
 			       tim_ring->tck_int, tim_ring->tck_nsec, clk_freq);
 	if (rc < 0) {
@@ -282,7 +289,7 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 		goto tim_chnk_free;
 	}
 
-	if (dev->tim.feat.hwwqe) {
+	if (dev->tim.feat.hwwqe && dev->tim.feat.hwwqe_ver != TIM_HWWQE_VER_0) {
 		rc = cnxk_tim_enable_hwwqe(dev, tim_ring);
 		if (rc < 0) {
 			plt_err("Failed to enable hwwqe");

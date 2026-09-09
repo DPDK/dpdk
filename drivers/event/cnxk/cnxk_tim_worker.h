@@ -625,14 +625,15 @@ cnxk_tim_add_entry_hwwqe(struct cnxk_tim_ring *const tim_ring, struct rte_event_
 	rsp >>= 4;
 	switch (rsp) {
 	case 0x3:
-		tim->state = RTE_EVENT_TIMER_ERROR_TOOEARLY;
-		rc = !rc;
-		break;
-	case 0x4:
 		tim->state = RTE_EVENT_TIMER_ERROR_TOOLATE;
 		rc = !rc;
 		break;
+	case 0x4:
+		tim->state = RTE_EVENT_TIMER_ERROR_TOOEARLY;
+		rc = !rc;
+		break;
 	case 0x1:
+	case 0x5:
 		tim->state = RTE_EVENT_TIMER_ARMED;
 		break;
 	default:

@@ -47,8 +47,8 @@ int __roc_api roc_tim_lf_enable(struct roc_tim *roc_tim, uint8_t ring_id,
 int __roc_api roc_tim_lf_disable(struct roc_tim *roc_tim, uint8_t ring_id);
 int __roc_api roc_tim_lf_config(struct roc_tim *roc_tim, uint8_t ring_id,
 				enum roc_tim_clk_src clk_src, uint8_t ena_periodic, uint8_t ena_dfb,
-				uint32_t bucket_sz, uint32_t chunk_sz, uint64_t interval,
-				uint64_t intervalns, uint64_t clockfreq);
+				uint8_t prio, uint32_t bucket_sz, uint32_t chunk_sz,
+				uint64_t interval, uint64_t intervalns, uint64_t clockfreq);
 int __roc_api roc_tim_lf_config_hwwqe(struct roc_tim *roc_tim, uint8_t ring_id,
 				      struct roc_tim_hwwqe_cfg *cfg);
 int __roc_api roc_tim_lf_interval(struct roc_tim *roc_tim,
