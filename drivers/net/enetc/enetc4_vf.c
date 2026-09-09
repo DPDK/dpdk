@@ -43,6 +43,12 @@ enetc4_vf_get_devarg_nc(struct rte_eth_dev *dev)
 #define ENETC_BYTE_SIZE			8
 #define ENETC_MSB_BIT			0x8000
 
+/* Backward-compat devarg for a PF running a kernel before 6.18.37, which uses
+ * the legacy PF-to-VF link message layout (4-bit speed code + 4-bit cookie).
+ * Usage: -a <pci_addr>,vf_link_legacy=1
+ */
+#define ENETC_VF_LINK_LEGACY		"vf_link_legacy"
+
 uint16_t enetc_crc_table[ENETC_CRC_TABLE_SIZE];
 bool enetc_crc_gen;
 
@@ -99,6 +105,59 @@ enetc_crc_calc(uint16_t crc, const uint8_t *buffer, size_t len)
 		buffer++;
 	}
 	return crc;
+}
+
+static int
+parse_vf_link_legacy(const char *key __rte_unused, const char *value,
+		     void *opaque)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)opaque;
+	struct enetc_eth_hw *hw =
+			ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	char *endptr;
+	unsigned long val;
+
+	if (!value || *value == '\0') {
+		ENETC_PMD_WARN("Empty value for devarg %s, ignoring",
+			       ENETC_VF_LINK_LEGACY);
+		return -EINVAL;
+	}
+
+	errno = 0;
+	val = strtoul(value, &endptr, 0);
+	if (errno != 0 || *endptr != '\0' || val > 1) {
+		ENETC_PMD_WARN("Invalid value '%s' for devarg %s, expected 0 or 1",
+			       value, ENETC_VF_LINK_LEGACY);
+		return -EINVAL;
+	}
+
+	hw->vf_link_legacy = (uint8_t)val;
+
+	return 0;
+}
+
+static void
+enetc4_vf_get_devargs(struct rte_eth_dev *dev)
+{
+	struct rte_devargs *devargs;
+	struct rte_kvargs *kvlist;
+
+	devargs = dev->device->devargs;
+	if (!devargs)
+		return;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (!kvlist)
+		return;
+
+	if (rte_kvargs_count(kvlist, ENETC_VF_LINK_LEGACY)) {
+		if (rte_kvargs_process(kvlist, ENETC_VF_LINK_LEGACY,
+				       parse_vf_link_legacy, (void *)dev) < 0)
+			ENETC_PMD_WARN("Failed to parse devarg %s",
+				       ENETC_VF_LINK_LEGACY);
+	}
+
+	rte_kvargs_free(kvlist);
 }
 
 static int
@@ -212,6 +271,7 @@ enetc4_msg_vsi_write_msg(struct enetc_hw *hw,
 static void
 enetc4_msg_vsi_reply_msg(struct enetc_hw *enetc_hw, struct enetc_psi_reply_msg *reply_msg)
 {
+	struct enetc_eth_hw *hw = container_of(enetc_hw, struct enetc_eth_hw, hw);
 	int vsimsgsr;
 	int8_t class_id = 0;
 	uint8_t status = 0;
@@ -221,8 +281,15 @@ enetc4_msg_vsi_reply_msg(struct enetc_hw *enetc_hw, struct enetc_psi_reply_msg *
 	/* Extracting 8 bits of message result in class_id */
 	class_id |= ((ENETC_SIMSGSR_GET_MC(vsimsgsr) >> 8) & 0xff);
 
-	/* Extracting 4 bits of message result in status */
-	status |= ((ENETC_SIMSGSR_GET_MC(vsimsgsr) >> 4) & 0xf);
+	/* Extracting message result in status. With an older kernel PF
+	 * (vf_link_legacy set) the lower byte holds a 4-bit cookie in the
+	 * low nibble and a 4-bit result in the high nibble, so extract the
+	 * upper 4 bits. Otherwise the full lower byte carries the result.
+	 */
+	if (hw->vf_link_legacy)
+		status |= ((ENETC_SIMSGSR_GET_MC(vsimsgsr) >> 4) & 0xf);
+	else
+		status |= (ENETC_SIMSGSR_GET_MC(vsimsgsr) & 0xff);
 
 	reply_msg->class_id = class_id;
 	reply_msg->status = status;
@@ -231,6 +298,7 @@ enetc4_msg_vsi_reply_msg(struct enetc_hw *enetc_hw, struct enetc_psi_reply_msg *
 static void
 enetc4_msg_get_psi_msg(struct enetc_hw *enetc_hw, struct enetc_psi_reply_msg *reply_msg)
 {
+	struct enetc_eth_hw *hw = container_of(enetc_hw, struct enetc_eth_hw, hw);
 	int vsimsgrr;
 	int8_t class_id = 0;
 	uint8_t status = 0;
@@ -240,8 +308,15 @@ enetc4_msg_get_psi_msg(struct enetc_hw *enetc_hw, struct enetc_psi_reply_msg *re
 	/* Extracting 8 bits of message result in class_id */
 	class_id |= ((ENETC_SIMSGSR_GET_MC(vsimsgrr) >> 8) & 0xff);
 
-	/* Extracting 4 bits of message result in status */
-	status |= ((ENETC_SIMSGSR_GET_MC(vsimsgrr) >> 4) & 0xf);
+	/* Extracting message result in status. With an older kernel PF
+	 * (vf_link_legacy set) the lower byte holds a 4-bit cookie in the
+	 * low nibble and a 4-bit result in the high nibble, so extract the
+	 * upper 4 bits. Otherwise the full lower byte carries the result.
+	 */
+	if (hw->vf_link_legacy)
+		status |= ((ENETC_SIMSGSR_GET_MC(vsimsgrr) >> 4) & 0xf);
+	else
+		status |= (ENETC_SIMSGSR_GET_MC(vsimsgrr) & 0xff);
 
 	reply_msg->class_id = class_id;
 	reply_msg->status = status;
@@ -731,6 +806,8 @@ enetc4_vf_link_update_dummy(struct rte_eth_dev *dev __rte_unused,
 static int
 enetc4_vf_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 {
+	struct enetc_eth_hw *hw =
+			ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct enetc_psi_reply_msg *reply_msg;
 	struct rte_eth_link link;
 	int err;
@@ -809,28 +886,91 @@ enetc4_vf_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused
 			link.link_speed = RTE_ETH_SPEED_NUM_5G;
 			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 			break;
-		case ENETC_SPEED_10G:
-			link.link_speed = RTE_ETH_SPEED_NUM_10G;
-			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
-			break;
-		case ENETC_SPEED_25G:
-			link.link_speed = RTE_ETH_SPEED_NUM_25G;
-			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
-			break;
-		case ENETC_SPEED_50G:
-			link.link_speed = RTE_ETH_SPEED_NUM_50G;
-			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
-			break;
-		case ENETC_SPEED_100G:
-			link.link_speed = RTE_ETH_SPEED_NUM_100G;
-			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
-			break;
-		case ENETC_SPEED_NOT_SUPPORTED:
-			ENETC_PMD_DEBUG("Speed not supported");
-			link.link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
-			break;
 		default:
-			ENETC_PMD_ERR("Unknown speed status");
+			if (hw->vf_link_legacy) {
+				/* Legacy PF-to-VF message layout (older kernel
+				 * PF): speeds greater than 5Gbps are encoded
+				 * with fixed 4-bit class codes rather than the
+				 * formula below.
+				 */
+				switch (reply_msg->status) {
+				case ENETC_SPEED_LEGACY_10G:
+					link.link_speed = RTE_ETH_SPEED_NUM_10G;
+					link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+					break;
+				case ENETC_SPEED_LEGACY_25G:
+					link.link_speed = RTE_ETH_SPEED_NUM_25G;
+					link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+					break;
+				case ENETC_SPEED_LEGACY_50G:
+					link.link_speed = RTE_ETH_SPEED_NUM_50G;
+					link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+					break;
+				case ENETC_SPEED_LEGACY_100G:
+					link.link_speed = RTE_ETH_SPEED_NUM_100G;
+					link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+					break;
+				case ENETC_SPEED_LEGACY_NOT_SUPPORTED:
+					ENETC_PMD_DEBUG("Speed not supported");
+					link.link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
+					break;
+				default:
+					ENETC_PMD_ERR("Unknown speed status");
+					link.link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
+					break;
+				}
+				break;
+			}
+
+			/* Any status reaching here is greater than
+			 * ENETC_SPEED_5000, as all values from 0x0 to
+			 * ENETC_SPEED_5000 are handled by the cases above. Speeds
+			 * greater than 5Gbps are not enumerated and follow the
+			 * formula:
+			 *
+			 *   SPEED = (link_speed - 5000) / 1000 + ENETC_SPEED_5000
+			 *
+			 * where link_speed is in Mbps. Reverse it here to get the
+			 * actual link speed (RTE_ETH_SPEED_NUM_* values are in Mbps).
+			 *
+			 * Validate the computed value against the set of speeds
+			 * that the NETC IP is known to support (> 5Gbps).
+			 * An unrecognised code yields UNKNOWN rather than a
+			 * fabricated speed.
+			 */
+			switch ((reply_msg->status - ENETC_SPEED_5000)
+				* 1000 + 5000) {
+			case RTE_ETH_SPEED_NUM_10G:
+				link.link_speed = RTE_ETH_SPEED_NUM_10G;
+				link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+				break;
+			case RTE_ETH_SPEED_NUM_25G:
+				link.link_speed = RTE_ETH_SPEED_NUM_25G;
+				link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+				break;
+			case RTE_ETH_SPEED_NUM_40G:
+				link.link_speed = RTE_ETH_SPEED_NUM_40G;
+				link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+				break;
+			case RTE_ETH_SPEED_NUM_50G:
+				link.link_speed = RTE_ETH_SPEED_NUM_50G;
+				link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+				break;
+			case RTE_ETH_SPEED_NUM_100G:
+				link.link_speed = RTE_ETH_SPEED_NUM_100G;
+				link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+				break;
+			case RTE_ETH_SPEED_NUM_200G:
+				link.link_speed = RTE_ETH_SPEED_NUM_200G;
+				link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+				break;
+			default:
+				ENETC_PMD_WARN("Unrecognized speed code 0x%x, "
+					       "reporting unknown",
+					       reply_msg->status);
+				link.link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
+				break;
+			}
 			break;
 		}
 	} else {
@@ -839,10 +979,9 @@ enetc4_vf_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused
 	}
 
 	link.link_autoneg = 1;
-
 	rte_eth_linkstatus_set(dev, &link);
-
 	rte_free(reply_msg);
+
 	return 0;
 }
 
@@ -1421,6 +1560,12 @@ enetc4_vf_dev_init(struct rte_eth_dev *eth_dev)
 	if (rte_eal_iova_mode() == RTE_IOVA_PA)
 		dpaax_iova_table_populate();
 
+	/* Parse VF specific devargs (e.g. vf_link_legacy) before the first
+	 * link update so that PF-to-VF link messages are interpreted using
+	 * the correct (legacy or current) layout.
+	 */
+	enetc4_vf_get_devargs(eth_dev);
+
 	ENETC_PMD_DEBUG("port_id %d vendorID=0x%x deviceID=0x%x",
 			eth_dev->data->port_id, pci_dev->id.vendor_id,
 			pci_dev->id.device_id);
@@ -1514,5 +1659,6 @@ RTE_PMD_REGISTER_PARAM_STRING(net_enetc4_vf,
 			      ENETC4_VSI_DISABLE "=<any> "
 			      ENETC4_VSI_TIMEOUT "=<uint> "
 			      ENETC4_VSI_DELAY "=<uint> "
-			      ENETC4_NC_MEMORY "=<int>");
+			      ENETC4_NC_MEMORY "=<int> "
+			      ENETC_VF_LINK_LEGACY "=<0|1>");
 RTE_LOG_REGISTER_DEFAULT(enetc4_vf_logtype_pmd, NOTICE);
