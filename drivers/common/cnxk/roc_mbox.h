@@ -3196,7 +3196,9 @@ struct tim_config_req {
 	uint32_t __io chunksize;
 	uint32_t __io interval_lo;
 	uint8_t __io gpioedge;
-	uint8_t __io rsvd[3];
+	uint8_t __io priority : 1;
+	uint8_t __io rsvd8 : 7;
+	uint8_t __io rsvd[2];
 	uint32_t __io interval_hi;
 	uint64_t __io intervalns;
 	uint64_t __io clockfreq;
@@ -3222,7 +3224,12 @@ struct tim_feat_info {
 	uint8_t __io engines;
 	uint8_t __io hwwqe : 1;
 	uint8_t __io intvl_ext : 1;
-	uint8_t __io rsvd8[4];
+	uint16_t __io max_prd_timers;
+#define TIM_HWWQE_VER_0 0
+#define TIM_HWWQE_VER_1 1
+	uint8_t __io hwwqe_ver : 4;
+	uint8_t __io rsvd4 : 4;
+	uint8_t __io rsvd8;
 	uint64_t __io rsvd[2];
 };
 

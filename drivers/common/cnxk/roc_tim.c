@@ -194,8 +194,8 @@ roc_tim_lf_base_get(struct roc_tim *roc_tim, uint8_t ring_id)
 
 int
 roc_tim_lf_config(struct roc_tim *roc_tim, uint8_t ring_id, enum roc_tim_clk_src clk_src,
-		  uint8_t ena_periodic, uint8_t ena_dfb, uint32_t bucket_sz, uint32_t chunk_sz,
-		  uint64_t interval, uint64_t intervalns, uint64_t clockfreq)
+		  uint8_t ena_periodic, uint8_t ena_dfb, uint8_t prio, uint32_t bucket_sz,
+		  uint32_t chunk_sz, uint64_t interval, uint64_t intervalns, uint64_t clockfreq)
 {
 	struct sso *sso = roc_sso_to_sso_priv(roc_tim->roc_sso);
 	struct dev *dev = &sso->dev;
@@ -217,6 +217,7 @@ roc_tim_lf_config(struct roc_tim *roc_tim, uint8_t ring_id, enum roc_tim_clk_src
 	req->interval_hi = interval >> 32;
 	req->intervalns = intervalns;
 	req->clockfreq = clockfreq;
+	req->priority = prio;
 	req->gpioedge = TIM_GPIO_LTOH_TRANS;
 
 	rc = mbox_process(mbox);
