@@ -100,6 +100,7 @@ New Features
     Users running a PF kernel older than 6.18.37 must pass ``vf_link_legacy=1``
     as a device argument, otherwise link speed reporting will be incorrect.
   * Added firmware version reporting for the ENETC4 VF.
+  * Added register dump support for ENETC4 PF and VF.
 
 Removed Items
 -------------
