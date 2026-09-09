@@ -275,6 +275,20 @@ struct enetc_rx_bd_ext {
 #define ENETC4_SICTR0		0x18
 #define ENETC4_SICTR1		0x1c
 
+/* PSI SI VLAN register: per-SI VLAN tag for insertion/removal */
+#define ENETC4_PSIVLANR(a)		((a) * 0x80 + 0x2008)
+#define ENETC4_PSIVLANR_E		BIT(31)  /* enable SI VLAN processing */
+#define ENETC4_PSIVLANR_VTEA		BIT(30)  /* 0=strip tag, 1=zero VID */
+#define ENETC4_PSIVLANR_PCP(v)		(((uint32_t)(v) & 0x7) << 13)
+#define ENETC4_PSIVLANR_DEI		BIT(12)
+#define ENETC4_PSIVLANR_VID(v)		((uint32_t)(v) & 0xfff)
+
+/* PSI SI configuration register 0 */
+#define ENETC4_PSICFGR0(a)		((a) * 0x80 + 0x2010)
+#define ENETC4_PSICFGR0_SIVC_CVLAN	BIT(24)  /* allow C-VLAN 0x8100 */
+#define ENETC4_PSICFGR0_SIVIE		BIT(14)  /* SI VLAN insertion enable */
+#define ENETC4_PSICFGR0_VTE		BIT(12)  /* SI VLAN removal enable */
+
 /* general register accessors */
 #define enetc4_rd_reg(reg)	rte_read32((void *)(reg))
 #define enetc4_wr_reg(reg, val)  rte_write32((val), (void *)(reg))

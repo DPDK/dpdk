@@ -188,6 +188,8 @@ struct enetc_eth_adapter {
 enum enetc_msg_cmd_class_id {
 	ENETC_CLASS_ID_MAC_FILTER = 0x20,
 	ENETC_CLASS_ID_VLAN_FILTER = 0x21,
+	/* Configure SI VLAN isolation (insert / remove) */
+	ENETC_CLASS_ID_SI_VLAN_ISO = 0x24,
 	ENETC_CLASS_ID_LINK_STATUS = 0x80,
 	ENETC_CLASS_ID_LINK_SPEED = 0x81,
 	ENETC_CLASS_ID_GET_IP_VER = 0xF0
@@ -211,6 +213,11 @@ enum enetc_msg_cmd_id {
 	ENETC_CMD_ID_GET_IP_INT = 2,
 	ENETC_CMD_ID_GET_IP_MNT = 3,
 	ENETC_CMD_ID_GET_IP_CFG = 4
+};
+
+/* Command IDs for class ID 0x24 (SI VLAN isolation) */
+enum enetc_msg_si_vlan_cmd_id {
+	ENETC_CMD_ID_SET_SI_VLAN_ISO = 1,
 };
 
 /* IP_VER value returned when the version is not available */
@@ -321,6 +328,22 @@ struct enetc_msg_vlan_exact_filter {
 	uint8_t tpid;
 	uint8_t reserved2;
 };
+
+/* VSI-PSI SI VLAN isolation message (class 0x24, cmd 0x1) */
+struct enetc_msg_si_vlan_iso {
+	struct enetc_msg_cmd_header header;
+	uint8_t ctrl;          /* E[7], VTEA[6], TPID[1:0] */
+	uint8_t pcp_dei_vid_hi; /* PCP[7:5], DEI[4], VID[11:8] */
+	uint8_t vid_lo;        /* VID[7:0] */
+	uint8_t reserved_0;
+	uint8_t flags;         /* SVIE[2], VTE[1] */
+	uint8_t reserved_1[3];
+};
+
+#define ENETC_SI_VLAN_ISO_E	BIT(7)  /* ctrl: enable SI VLAN */
+#define ENETC_SI_VLAN_ISO_VTEA	BIT(6)  /* ctrl: 0=strip, 1=zero VID */
+#define ENETC_SI_VLAN_ISO_SVIE	BIT(2)  /* flags: Tx insertion enable */
+#define ENETC_SI_VLAN_ISO_VTE	BIT(1)  /* flags: Rx removal enable */
 
 struct enetc_psi_reply_msg {
 	uint8_t class_id;
