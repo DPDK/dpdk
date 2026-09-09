@@ -61,6 +61,10 @@ Key functionality includes:
   with the KEEP_CRC Rx offload. RSC also requires the SCATTER Rx offload
   (coalesced frames span multiple buffers) and is not supported with the
   ``nc=1`` non-cacheable descriptor ring mode.
+- Per-queue Rx interrupts on VFs (cacheable Rx path only), enabling
+  interrupt-driven receive with ``vfio-pci``. Applications set
+  ``intr_conf.rxq = 1`` in ``rte_eth_conf`` to activate this feature.
+  See `Rx Interrupt Mode (VF)`_ for setup details.
 - Firmware version: The NETC IP version is reported via ``rte_eth_dev_fw_version_get``.
 - Registers dump: The station interface, port (PF only) and BD ring registers are dumped via ``rte_eth_dev_get_reg_info``.
 
@@ -179,3 +183,64 @@ PF/Common devargs
   Usage example::
 
     dpdk-testpmd -a 0000:00:00.0,nc=1 -- -i
+
+
+Rx Interrupt Mode (VF)
+----------------------
+
+The ENETC4 VF PMD supports per-queue MSI-X Rx interrupts on the cacheable
+(default) Rx path. This allows applications to block in ``epoll_wait``
+instead of busy-polling, reducing CPU utilization when traffic is absent.
+
+**MSI-X vector assignment**
+
+ENETC4 VF MSI-X vector 0 is reserved for the PSI-to-VSI mailbox interrupt
+(link status notifications). Rx queue ``i`` is mapped to vector ``i + 1``.
+The driver allocates all required eventfds before calling
+``rte_intr_enable()`` so that ``vfio-pci`` can wire each MSI-X vector to
+its eventfd when it programs the MSI-X table.
+
+**Kernel and driver requirements**
+
+- ``vfio-pci`` kernel module with no-IOMMU mode enabled (no SMMU required).
+- The non-cacheable memory mode (``nc=1`` devarg) does **not** support
+  Rx interrupts and returns ``-ENOTSUP`` from ``rx_queue_intr_enable``.
+
+**Host setup**
+
+.. code-block:: console
+
+   # Enable vfio-pci no-IOMMU mode (if SMMU is not available)
+   modprobe vfio enable_unsafe_noiommu_mode=1
+   modprobe vfio-pci
+
+   # Bind the VF to vfio-pci
+   echo vfio-pci > /sys/bus/pci/devices/<vf_pci_addr>/driver_override
+   echo <vf_pci_addr> > /sys/bus/pci/drivers_probe
+
+**Running l3fwd-power with a single queue and core**
+
+The ``l3fwd-power`` sample application demonstrates interrupt-driven Rx.
+It sets ``intr_conf.rxq = 1`` in ``rte_eth_conf``, which triggers the VF
+interrupt setup in the driver. The ``--vfio-intr=msix`` EAL flag instructs
+DPDK to use MSI-X eventfds for interrupt signalling.
+
+.. code-block:: console
+
+   ./dpdk-l3fwd-power -l 0-1 -n 1 --vfio-intr=msix \
+       -a <vf_pci_addr> -- \
+       -p 0x1 --config="(0,0,1)" --no-numa --interrupt-only
+
+Where:
+
+- ``-l 0-1`` assigns the main thread to core 0 and the forwarding lcore to
+  core 1.
+- ``-a <vf_pci_addr>`` specifies the VF PCI address (e.g. ``0000:01:00.1``).
+- ``--config="(0,0,1)"`` maps port 0, queue 0 to lcore 1.
+- ``--interrupt-only`` enables pure interrupt mode (no busy-poll fallback).
+
+With no incoming traffic the forwarding lcore sleeps in ``epoll_wait``;
+CPU utilization drops to near zero. On the first arriving packet the MSI-X
+interrupt fires, the lcore wakes, drains the ring, disables the interrupt,
+processes the burst, then re-enables and re-arms the interrupt before
+returning to sleep.
