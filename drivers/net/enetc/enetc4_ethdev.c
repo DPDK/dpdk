@@ -11,6 +11,21 @@
 #include "enetc_logs.h"
 #include "enetc.h"
 
+/* Supported Rx offloads */
+static uint64_t dev_rx_offloads_sup =
+	RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+	RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+	RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+	RTE_ETH_RX_OFFLOAD_SCATTER |
+	RTE_ETH_RX_OFFLOAD_KEEP_CRC;
+
+/* Supported Tx offloads */
+static uint64_t dev_tx_offloads_sup =
+	RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+	RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+	RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+	RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+
 #define ENETC4_TXQ_PRIORITIES	"enetc4_txq_prior"
 #define ENETC4_NC_MEMORY	"nc"
 
@@ -92,20 +107,6 @@ enetc4_get_devargs(struct rte_eth_dev *dev, const char *key)
 	rte_kvargs_free(kvlist);
 	return 0;
 }
-
-/* Supported Rx offloads */
-static uint64_t dev_rx_offloads_sup =
-	RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
-	RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
-	RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
-	RTE_ETH_RX_OFFLOAD_SCATTER;
-
-/* Supported Tx offloads */
-static uint64_t dev_tx_offloads_sup =
-	RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
-	RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
-	RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
-	RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 static int
 enetc4_dev_start(struct rte_eth_dev *dev)
@@ -536,6 +537,7 @@ enetc4_rx_queue_setup(struct rte_eth_dev *dev,
 	struct enetc_eth_adapter *adapter =
 			ENETC_DEV_PRIVATE(data->dev_private);
 	uint64_t rx_offloads = data->dev_conf.rxmode.offloads;
+	bool keep_crc;
 
 	PMD_INIT_FUNC_TRACE();
 	if (nb_rx_desc > MAX_BD_COUNT)
@@ -549,6 +551,9 @@ enetc4_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	rx_ring->index = rx_queue_id;
+	keep_crc = !!(rx_offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC);
+	rx_ring->crc_len = (uint8_t)(keep_crc ? RTE_ETHER_CRC_LEN : 0);
+
 	err = enetc4_alloc_rxbdr(rx_ring, nb_rx_desc);
 	if (err)
 		goto fail;
@@ -562,19 +567,25 @@ enetc4_rx_queue_setup(struct rte_eth_dev *dev,
 	data->rx_queues[rx_queue_id] = rx_ring;
 	rx_ring->rx_deferred_start = rx_conf->rx_deferred_start;
 
+	if (keep_crc)
+		rx_enable |= ENETC4_RBMR_CRC;
+	else
+		rx_enable &= ~ENETC4_RBMR_CRC;
+
 	if (!rx_conf->rx_deferred_start) {
 		/* enable ring */
+		rx_enable |= ENETC_RBMR_EN;
 		enetc4_rxbdr_wr(&adapter->hw.hw, rx_ring->index, ENETC_RBMR,
-			       ENETC_RBMR_EN);
+			       rx_enable);
 		dev->data->rx_queue_state[rx_ring->index] =
 			       RTE_ETH_QUEUE_STATE_STARTED;
 	} else {
+		enetc4_rxbdr_wr(&adapter->hw.hw, rx_ring->index, ENETC_RBMR,
+			       rx_enable);
 		dev->data->rx_queue_state[rx_ring->index] =
 			       RTE_ETH_QUEUE_STATE_STOPPED;
 	}
 
-	rx_ring->crc_len = (uint8_t)((rx_offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC) ?
-				     RTE_ETHER_CRC_LEN : 0);
 	return 0;
 fail:
 	rte_free(rx_ring);
