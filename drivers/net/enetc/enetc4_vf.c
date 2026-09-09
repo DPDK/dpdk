@@ -3,6 +3,7 @@
  */
 
 #include <stdbool.h>
+#include <rte_bus_pci.h>
 #include <rte_kvargs.h>
 #include <rte_random.h>
 #include <dpaax_iova_table.h>
@@ -433,6 +434,7 @@ enetc4_msg_vsi_send(struct enetc_eth_hw *hw, struct enetc_msg_swbd *msg)
 		case ENETC_CLASS_ID_MAC_FILTER:
 		case ENETC_CLASS_ID_LINK_STATUS:
 		case ENETC_CLASS_ID_LINK_SPEED:
+		case ENETC_CLASS_ID_GET_IP_VER:
 			break;
 		default:
 			err = -EIO;
@@ -794,6 +796,142 @@ end:
 	rte_free(msg->vaddr);
 	rte_free(msg);
 	return err;
+}
+
+/*
+ * Get the NETC IP minor revision (IP_MN) from the PSI using the 'Get IP
+ * version' command class (class ID 0xF0, cmd_id 0x1). In the reply, the
+ * low 8 bits of the return code carry the minor revision and the upper 8
+ * bits carry the class code (0xF0). The PSI only implements the IP_MN
+ * command of this class; the major revision comes from the PCI revision.
+ */
+static int
+enetc4_vf_get_ip_minor_revision(struct rte_eth_dev *dev, uint8_t *ip_mn)
+{
+	struct enetc_eth_hw *hw = ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	struct enetc_msg_swbd *msg;
+	uint32_t msg_size;
+	uint16_t mc;
+	uint8_t class_id;
+	int vsimsgsr;
+	int err = 0;
+
+	msg = rte_zmalloc(NULL, sizeof(*msg), RTE_CACHE_LINE_SIZE);
+	if (!msg) {
+		ENETC_PMD_ERR("Failed to alloc msg");
+		return -ENOMEM;
+	}
+
+	msg_size = RTE_ALIGN(sizeof(struct enetc_msg_cmd_get_ip_ver),
+				ENETC_VSI_PSI_MSG_SIZE);
+	msg->vaddr = rte_zmalloc(NULL, msg_size, 0);
+	if (!msg->vaddr) {
+		ENETC_PMD_ERR("Failed to alloc memory for msg");
+		rte_free(msg);
+		return -ENOMEM;
+	}
+
+	msg->dma = rte_mem_virt2iova((const void *)msg->vaddr);
+	msg->size = msg_size;
+
+	/* COOKIE is 0 so that the command is executed as blocking on PSI */
+	enetc_msg_vf_fill_common_hdr(msg, ENETC_CLASS_ID_GET_IP_VER,
+			ENETC_CMD_ID_GET_IP_MN, 0, 0, 0);
+
+	/* send the command and wait */
+	err = enetc4_msg_vsi_send(hw, msg);
+	if (err) {
+		ENETC_PMD_ERR("VSI message send error");
+		goto end;
+	}
+
+	/*
+	 * For the IP version command class the class-specific field is
+	 * reused to carry the 8-bit version value in the lower byte of the
+	 * return code, so parse the full low byte here instead of using the
+	 * generic reply parser.
+	 */
+	vsimsgsr = enetc4_rd(enetc_hw, ENETC4_VSIMSGSR);
+	mc = ENETC_SIMSGSR_GET_MC(vsimsgsr);
+	class_id = (mc >> 8) & 0xff;
+
+	if (class_id != ENETC_CLASS_ID_GET_IP_VER) {
+		ENETC_PMD_ERR("Wrong reply message 0x%x", class_id);
+		err = -EIO;
+		goto end;
+	}
+
+	*ip_mn = mc & 0xff;
+	if (*ip_mn == ENETC_IP_VER_NOT_AVAILABLE) {
+		ENETC_PMD_DEBUG("IP minor revision not available");
+		err = -ENOTSUP;
+	}
+
+end:
+	/* free memory no longer required */
+	rte_free(msg->vaddr);
+	rte_free(msg);
+	return err;
+}
+
+/*
+ * Retrieve the NETC firmware/IP version and format it as
+ * "<major>.<minor>". The IP major revision is taken from the PCI
+ * revision ID register, and the IP minor revision is fetched from the
+ * PSI via VSI-PSI messaging ('Get IP version' command class). This
+ * mirrors the behaviour of the kernel PF/VF drivers, where the PSI only
+ * implements the IP_MN command of the 0xF0 class.
+ */
+static int
+enetc4_vf_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
+{
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
+	uint8_t ip_mj = 0, ip_mn = 0;
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (fw_version == NULL)
+		return -EINVAL;
+
+	/* IP major revision is exposed through the PCI revision ID */
+	ret = rte_pci_read_config(pci_dev, &ip_mj, sizeof(ip_mj),
+			RTE_PCI_REVISION_ID);
+	if (ret != sizeof(ip_mj)) {
+		ENETC_PMD_ERR("Failed to read PCI revision ID");
+		return -EIO;
+	}
+
+	/* IP minor revision is fetched from the PSI via VSI-PSI messaging.
+	 * If the PSI reports the version as unavailable, fall back to a
+	 * partial version string so the caller still gets useful output.
+	 */
+	ret = enetc4_vf_get_ip_minor_revision(dev, &ip_mn);
+	if (ret && ret != -ENOTSUP) {
+		ENETC_PMD_ERR("Failed to get NETC minor revision");
+		return ret;
+	}
+
+	if (fw_size == 0) {
+		if (ret == -ENOTSUP)
+			return snprintf(NULL, 0, "%u.unknown", ip_mj) + 1;
+		else
+			return snprintf(NULL, 0, "%u.%u", ip_mj, ip_mn) + 1;
+	}
+
+	if (ret == -ENOTSUP)
+		ret = snprintf(fw_version, fw_size, "%u.unknown", ip_mj);
+	else
+		ret = snprintf(fw_version, fw_size, "%u.%u", ip_mj, ip_mn);
+	if (ret < 0)
+		return -EINVAL;
+
+	ret += 1; /* add trailing '\0' */
+	if ((size_t)ret > fw_size)
+		return ret;
+
+	return 0;
 }
 
 static int
@@ -1354,6 +1492,7 @@ static const struct eth_dev_ops enetc4_vf_ops = {
 	.dev_close            = enetc4_dev_close,
 	.stats_get            = enetc4_vf_stats_get,
 	.dev_infos_get        = enetc4_vf_dev_infos_get,
+	.fw_version_get       = enetc4_vf_fw_version_get,
 	.mtu_set              = enetc4_vf_mtu_set,
 	.mac_addr_set         = enetc4_vf_set_mac_addr,
 	.mac_addr_add	      = enetc4_vf_mac_addr_add,

@@ -99,6 +99,7 @@ New Features
   * Extended the PF-to-VF link speed code field from 4-bit to 8-bit in ENETC4.
     Users running a PF kernel older than 6.18.37 must pass ``vf_link_legacy=1``
     as a device argument, otherwise link speed reporting will be incorrect.
+  * Added firmware version reporting for the ENETC4 VF.
 
 Removed Items
 -------------

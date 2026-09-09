@@ -61,6 +61,7 @@ Key functionality includes:
   with the KEEP_CRC Rx offload. RSC also requires the SCATTER Rx offload
   (coalesced frames span multiple buffers) and is not supported with the
   ``nc=1`` non-cacheable descriptor ring mode.
+- Firmware version: The NETC IP version is reported via ``rte_eth_dev_fw_version_get``.
 
 
 Prerequisites
