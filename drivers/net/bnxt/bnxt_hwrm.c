@@ -6753,10 +6753,18 @@ static void bnxt_init_ctx_initializer(struct bnxt_ctx_mem *ctxm,
 {
 	ctxm->init_value = init_val;
 	ctxm->init_offset = BNXT_CTX_INIT_INVALID_OFFSET;
-	if (init_mask_set)
-		ctxm->init_offset = init_offset * 4;
-	else
+	if (init_mask_set) {
+		ctxm->init_offset = (uint16_t)(init_offset * 4);
+		if (ctxm->init_offset >= ctxm->entry_size) {
+			PMD_DRV_LOG_LINE(WARNING,
+					 "ctx type 0x%x: init_offset %u >= entry_size %u, disabling init",
+					 ctxm->type, ctxm->init_offset, ctxm->entry_size);
+			ctxm->init_value = 0;
+			ctxm->init_offset = BNXT_CTX_INIT_INVALID_OFFSET;
+		}
+	} else {
 		ctxm->init_value = 0;
+	}
 }
 
 static int bnxt_alloc_all_ctx_pg_info(struct bnxt *bp)
