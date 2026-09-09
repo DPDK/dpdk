@@ -962,10 +962,23 @@ static int match_vnic_rss_cfg(struct bnxt *bp,
 {
 	unsigned int match = 0, i;
 
+	if (rss->queue_num > bp->rx_nr_rings)
+		return -EINVAL;
+
 	if (vnic->rx_queue_cnt != rss->queue_num)
 		return -EINVAL;
 
 	for (i = 0; i < rss->queue_num; i++) {
+		if (rss->queue[i] >= bp->rx_nr_rings) {
+			PMD_DRV_LOG_LINE(ERR, "Queue ID %u for RSS exceeds ring count %u",
+					 rss->queue[i], bp->rx_nr_rings);
+			return -EINVAL;
+		}
+		if (!bp->rx_queues[rss->queue[i]]) {
+			PMD_DRV_LOG_LINE(ERR, "Queue ID %u for RSS is not configured",
+					 rss->queue[i]);
+			return -EINVAL;
+		}
 		if (!bp->rx_queues[rss->queue[i]]->vnic->rx_queue_cnt &&
 		    !bp->rx_queues[rss->queue[i]]->rx_started)
 			return -EINVAL;
