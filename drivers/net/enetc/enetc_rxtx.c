@@ -907,6 +907,240 @@ enetc_recv_pkts_nc(void *rxq, struct rte_mbuf **rx_pkts,
 	return enetc_clean_rx_ring_nc(rx_ring, rx_pkts, nb_pkts);
 }
 
+/*
+ * RSC (LRO) refill. buff_cnt is in 16B slots; each 32B descriptor is two
+ * slots. The even slot takes a fresh mbuf, the odd extension slot never owns
+ * a buffer, so walk the ring two slots at a time. Cache maintenance mirrors
+ * enetc_refill_rx_ring (dcbf per 64B line, i.e. two descriptors).
+ */
+int
+enetc_refill_rx_ring_rsc(struct enetc_bdr *rx_ring, const int buff_cnt)
+{
+	struct enetc_swbd *rx_swbd;
+	union enetc_rx_bd *rxbd, *grp_start_rxbd;
+	int i, j, k = ENETC_RXBD_BUNDLE;
+	struct rte_mbuf *m[ENETC_RXBD_BUNDLE];
+	struct rte_mempool *mb_pool;
+
+	i = rx_ring->next_to_use;
+	mb_pool = rx_ring->mb_pool;
+	rx_swbd = &rx_ring->q_swbd[i];
+	rxbd = ENETC_RXBD(*rx_ring, i);
+	grp_start_rxbd = rxbd;
+
+	for (j = 0; j < buff_cnt; j += 2) {
+		/* Bulk alloc one mbuf per descriptor (every two slots). */
+		if (k == ENETC_RXBD_BUNDLE) {
+			int want = (buff_cnt - j) / 2;
+			int m_cnt = RTE_MIN(want, ENETC_RXBD_BUNDLE);
+
+			k = 0;
+			if (rte_pktmbuf_alloc_bulk(mb_pool, m, m_cnt))
+				return -1;
+		}
+
+		rx_swbd->buffer_addr = m[k];
+		rxbd->w.addr = (uint64_t)(uintptr_t)
+			       rx_swbd->buffer_addr->buf_iova +
+			       rx_swbd->buffer_addr->data_off;
+		/* clear 'R' as well */
+		rxbd->r.lstatus = 0;
+		k++;
+
+		/* Extension (odd) slot never owns a buffer. */
+		rx_swbd[1].buffer_addr = NULL;
+
+		rx_swbd += 2;
+		rxbd += 2;
+		i += 2;
+
+		if (unlikely(i == rx_ring->bd_count)) {
+			/* Ring wrap: flush partial/full group before reset. */
+			dcbf((void *)grp_start_rxbd);
+			i = 0;
+			rxbd = ENETC_RXBD(*rx_ring, i);
+			rx_swbd = &rx_ring->q_swbd[i];
+			grp_start_rxbd = rxbd;
+		} else if ((i & ENETC_BD_PER_CL_MASK) == 0) {
+			/* Completed a full 4-slot (2-descriptor) cache line. */
+			dcbf((void *)grp_start_rxbd);
+			grp_start_rxbd = rxbd;
+		}
+	}
+
+	/* Flush any remaining partial group at the end of the fill. */
+	if (j && (i & ENETC_BD_PER_CL_MASK) != 0)
+		dcbf((void *)grp_start_rxbd);
+
+	if (likely(j)) {
+		rx_ring->next_to_alloc = i;
+		rx_ring->next_to_use = i;
+		/*
+		 * Internal indices track 16B slots, but the HW consumer-index
+		 * register counts 32B descriptors, so program i / 2.
+		 */
+		enetc_wr_reg(rx_ring->rcir, i / 2);
+	}
+
+	return j;
+}
+
+/*
+ * RSC (LRO) clean. Same non-cache-coherent discipline as
+ * enetc_clean_rx_ring_cacheable but walks 32B descriptors (two 16B slots
+ * each); the extension half at slot i+1 carries the RSC coalesce count.
+ * RSC_FRAMES > 1 flags the cluster RTE_MBUF_F_RX_LRO. RSC always strips the
+ * FCS (RBaMR[CRC] = 0), so no CRC trim is needed.
+ */
+static int
+enetc_clean_rx_ring_rsc(struct enetc_bdr *rx_ring,
+		    struct rte_mbuf **rx_pkts,
+		    int work_limit)
+{
+	int rx_frm_cnt = 0;
+	int cleaned_cnt, i;
+	struct enetc_swbd *rx_swbd;
+	union enetc_rx_bd *rxbd, rxbd_temp;
+	struct enetc_rx_bd_ext *rxbd_ext;
+	struct rte_mbuf *first_seg = NULL, *cur_seg = NULL;
+	uint32_t bd_status;
+	uint8_t *data;
+	uint32_t j;
+	struct rte_mbuf *seg;
+	uint16_t data_len;
+	uint8_t rsc_frames;
+
+	/* next descriptor to process */
+	i = rx_ring->next_to_clean;
+	rxbd = ENETC_RXBD(*rx_ring, i);
+	cleaned_cnt = enetc_bd_unused(rx_ring);
+	rx_swbd = &rx_ring->q_swbd[i];
+
+	/*
+	 * Always invalidate the cache line that contains next_to_clean before
+	 * the first status read. On RSC rings a 64B line holds two 32B
+	 * descriptors. See enetc_clean_rx_ring_cacheable for the full rationale
+	 * on why dccivac (clean+invalidate) is used from EL0 instead of DC IVAC.
+	 */
+	dccivac((void *)ENETC_RXBD(*rx_ring,
+			  (i & ~(int)ENETC_BD_PER_CL_MASK)));
+
+	while (likely(rx_frm_cnt < work_limit)) {
+		/* Atomically snapshot the 16B writeback half of the BD. */
+#ifdef RTE_ARCH_32
+		rte_memcpy(&rxbd_temp, rxbd, 16);
+#else
+		__uint128_t *dst128 = (__uint128_t *)&rxbd_temp;
+		const __uint128_t *src128 = (const __uint128_t *)rxbd;
+		*dst128 = *src128;
+#endif
+		bd_status = rte_le_to_cpu_32(rxbd_temp.r.lstatus);
+
+		if (!(bd_status & ENETC_RXBD_LSTATUS_R))
+			break;
+		if (rxbd_temp.r.error)
+			rx_ring->ierrors++;
+
+		/*
+		 * Extension half (odd slot) carries the RSC coalesce count.
+		 * Invariant: an RSC ring is allocated with bd_count = nb_desc * 2
+		 * (always even), next_to_clean starts at 0, and i only ever
+		 * advances by 2 with a wrap at i == bd_count. So i is always the
+		 * even (writeback) slot of a 32B descriptor and never exceeds
+		 * bd_count - 2; i + 1 is therefore always the matching odd
+		 * extension slot and stays in bounds (never wraps past the ring).
+		 */
+		rxbd_ext = (struct enetc_rx_bd_ext *)
+			   ENETC_RXBD(*rx_ring, i + 1);
+		rsc_frames = ENETC4_RXBD_EXT_RSC_FRAMES(rte_le_to_cpu_32(rxbd_ext->rsc_frames));
+
+		seg = rx_swbd->buffer_addr;
+		data_len = rte_le_to_cpu_16(rxbd_temp.r.buf_len);
+		seg->data_len = data_len;
+		if (!first_seg) {
+			first_seg = seg;
+			cur_seg = seg;
+			first_seg->pkt_len = data_len;
+			first_seg->ol_flags = 0;
+			enetc_dev_rx_parse(first_seg,
+						rxbd_temp.r.parse_summary);
+			first_seg->hash.rss = rxbd_temp.r.rss_hash;
+			/* RSC_FRAMES > 1 means HW coalesced segments (LRO). */
+			if (rsc_frames > 1)
+				first_seg->ol_flags |= RTE_MBUF_F_RX_LRO;
+		} else {
+			first_seg->pkt_len += data_len;
+			first_seg->nb_segs++;
+			cur_seg->next = seg;
+			cur_seg = seg;
+		}
+
+		/* Invalidate packet data so the CPU reads HW-DMA'd payload. */
+		data = rte_pktmbuf_mtod(seg, void *);
+		for (j = 0; j < data_len; j += RTE_CACHE_LINE_SIZE)
+			dccivac(data + j);
+		/*
+		 * Cover the last byte of an unaligned buffer. Guard against a
+		 * zero-length BD so data_len - 1 does not step before the
+		 * payload start.
+		 */
+		if (likely(data_len))
+			dccivac(data + (data_len - 1));
+
+		if (bd_status & ENETC_RXBD_LSTATUS_F) {
+			seg->next = NULL;
+			ENETC_PMD_DP_DEBUG("RSC_FRAMES=%u pkt_len=%u nb_segs=%u",
+					   rsc_frames, first_seg->pkt_len,
+					   first_seg->nb_segs);
+			rx_pkts[rx_frm_cnt] = first_seg;
+			rx_frm_cnt++;
+			first_seg = NULL;
+		}
+
+		/* Two 16B slots per 32B RSC descriptor. */
+		cleaned_cnt += 2;
+		rx_swbd += 2;
+		i += 2;
+		if (unlikely(i == rx_ring->bd_count)) {
+			i = 0;
+			rx_swbd = &rx_ring->q_swbd[i];
+		}
+		rxbd = ENETC_RXBD(*rx_ring, i);
+
+		/*
+		 * Crossed a 4-slot (cache-line, two-descriptor) boundary:
+		 * invalidate the new group so subsequent status reads fetch
+		 * fresh DDR data written by HW.
+		 */
+		if ((i & ENETC_BD_PER_CL_MASK) == 0 &&
+		    likely(rx_frm_cnt < work_limit))
+			dccivac((void *)rxbd);
+	}
+
+	rx_ring->next_to_clean = i;
+	enetc_refill_rx_ring_rsc(rx_ring, ENETC_BD_ALIGN_DOWN(cleaned_cnt));
+
+	/*
+	 * Write-1-to-clear this ring's event in SIRXIDR. Without this the
+	 * interrupt-coalescing timer never re-arms and HW stops coalescing
+	 * after the first RSC frame (this PMD is poll-mode and never services
+	 * the interrupt). SIRXIDR is W1C, one bit per ring; RBaIDR is
+	 * read-only. Matches the Linux driver's enetc_wr_reg_hot(idr, BIT()).
+	 */
+	enetc4_wr_reg(rx_ring->rbidr, BIT(rx_ring->index));
+
+	return rx_frm_cnt;
+}
+
+uint16_t
+enetc_recv_pkts_rsc(void *rxq, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
+{
+	struct enetc_bdr *rx_ring = (struct enetc_bdr *)rxq;
+
+	return enetc_clean_rx_ring_rsc(rx_ring, rx_pkts, nb_pkts);
+}
+
 uint16_t
 enetc_recv_pkts(void *rxq, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)

@@ -95,6 +95,7 @@ New Features
 
   * Added KEEP_CRC Rx offload support for the ENETC4 PMD to preserve the Ethernet FCS.
   * Added TCP Segmentation Offload (TSO) support for the ENETC4 VF.
+  * Added Receive Segment Coalesce (RSC / hardware LRO) support for ENETC4 PF and VF.
 
 Removed Items
 -------------

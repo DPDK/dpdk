@@ -100,6 +100,81 @@ struct enetc_tx_bd_ext {
 
 /* RBaMR[CRC]: 0 = FCS removed, 1 = FCS preserved (KEEP_CRC) */
 #define ENETC4_RBMR_CRC			BIT(8)
+/*
+ * RBaMR[BDS]: buffer descriptor size select for a receive ring.
+ * 0 = standard 16B descriptors, 1 = extended 32B descriptors.
+ * RSC requires 32B descriptors (BDS = 1). Matches the Linux enetc
+ * driver definition (ENETC_RBMR_BDS = BIT(2)).
+ */
+#define ENETC4_RBMR_BDS			BIT(2)
+
+/*
+ * Rx BDR a RSC register (RBaRSCR), offset 0x30 from the ring base.
+ * Controls Receive Segment Coalesce (RSC / LRO) for the ring.
+ */
+#define ENETC4_RBRSCR			0x30
+/* Enable RSC on this ring */
+#define ENETC4_RBRSCR_EN		BIT(31)
+/* Permit coalescing of TCP segments that carry the timestamp option */
+#define ENETC4_RBRSCR_CT		BIT(29)
+/* SIZE field (bits 15-0): maximum coalesced frame size produced by RSC */
+#define ENETC4_RBRSCR_SIZE(x)		((uint32_t)((x) & 0xffff))
+
+/*
+ * RBaICR0[ICEN]: interrupt coalescing enable. RSC requires interrupt
+ * coalescing to be enabled; the coalescing timer doubles as the RSC flush
+ * timer. ICPT (bits 8-0) is the packet-count threshold.
+ */
+#define ENETC4_RBICR0			0xa8
+#define ENETC4_RBICR0_ICEN		BIT(31)
+#define ENETC4_RBICR0_ICPT(x)		((uint32_t)((x) & 0x1ff))
+/* Rx BDR a interrupt coalescing register 1 (threshold timer) */
+#define ENETC4_RBICR1			0xac
+
+/*
+ * SI-level Rx interrupt detect register 0 (SIRXIDR0). W1C, one bit per Rx
+ * ring (RX0..RX23). The interrupt-coalescing timer (which also gates RSC
+ * coalescing) does not re-arm while a ring's detect bit stays set, so the
+ * poll-mode driver writes BIT(ring index) here every poll to keep RSC
+ * coalescing. The per-ring RBaIDR (0xa4) is read-only and cannot be used.
+ */
+#define ENETC_SIRXIDR			0xa28
+
+/*
+ * RSC (Receive Segment Coalesce) limits and defaults.
+ * Maximum coalesced frame size the HW will build (programmed in RBaRSCR[SIZE]).
+ * Bounded to 16 bits by the SIZE field width.
+ */
+#define ENETC4_RSC_MAX_FRAME		0xffff
+/* Default interrupt coalescing packet threshold used to satisfy RSC's ICEN
+ * precondition. The PMD is poll-mode, so this only gates the RSC flush timer.
+ */
+#define ENETC4_RSC_DEF_ICPT		1
+/*
+ * Default interrupt coalescing timer threshold (RBaICR1[ICTT]), in NETC
+ * platform clock cycles. This timer is the RSC coalesce-hold window: HW keeps
+ * a coalesced frame open while it runs and appends in-order segments. A value
+ * of 0 disables the timer and flushes every segment separately (no
+ * coalescing), so it must be non-zero for RSC to merge anything.
+ */
+#define ENETC4_RSC_DEF_ICTT		0x10000
+
+/*
+ * Extended 32B receive writeback buffer descriptor. Used only on RSC-enabled
+ * rings (RBaMR[BDS] = 1). The first 16 bytes match the standard descriptor
+ * writeback layout; the second 16 bytes carry the RSC and timestamp fields.
+ * RSC_FRAMES reports how many frames were coalesced (1 to 255; 1 means the
+ * frame was not coalesced).
+ */
+struct enetc_rx_bd_ext {
+	uint32_t timestamp;	/* offset 0x10: PTP timestamp */
+	uint32_t rsc_frames;	/* offset 0x14: RSC_FRAMES in bits 7-0 */
+	uint32_t rsc_abs_ts_delta; /* offset 0x18 */
+	uint32_t reserved;	/* offset 0x1c */
+};
+
+/* RSC_FRAMES occupies bits 7-0 of the rsc_frames word */
+#define ENETC4_RXBD_EXT_RSC_FRAMES(x)	((x) & 0xff)
 
 /* i.MX95 supports jumbo frame, but it is recommended to set the max frame
  * size to 2000 bytes.
