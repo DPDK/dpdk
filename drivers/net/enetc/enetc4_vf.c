@@ -224,15 +224,64 @@ enetc4_vf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 	uint8_t i;
 
 	PMD_INIT_FUNC_TRACE();
-	stats->ipackets = enetc4_rd(enetc_hw, ENETC4_SIRFRM0);
-	stats->opackets = enetc4_rd(enetc_hw, ENETC4_SITFRM0);
-	stats->ibytes = enetc4_rd(enetc_hw, ENETC4_SIROCT0);
-	stats->obytes = enetc4_rd(enetc_hw, ENETC4_SITOCT0);
-	stats->oerrors = enetc4_rd(enetc_hw, ENETC4_SITDFCR);
+
+	/*
+	 * The SI-level counters are read-only for a VF; they cannot be
+	 * zeroed directly. Instead, stats_reset captures a baseline
+	 * snapshot, and stats_get reports the delta so that the reported
+	 * values appear to start from zero after each reset call.
+	 */
+	stats->ipackets = enetc4_rd64(enetc_hw, ENETC4_SIRFRM0) -
+			  hw->vf_stats_saved.ipackets;
+	stats->opackets = enetc4_rd64(enetc_hw, ENETC4_SITFRM0) -
+			  hw->vf_stats_saved.opackets;
+	stats->ibytes   = enetc4_rd64(enetc_hw, ENETC4_SIROCT0) -
+			  hw->vf_stats_saved.ibytes;
+	stats->obytes   = enetc4_rd64(enetc_hw, ENETC4_SITOCT0) -
+			  hw->vf_stats_saved.obytes;
+	stats->oerrors  = (uint32_t)enetc4_rd(enetc_hw, ENETC4_SITDFCR) -
+			  (uint32_t)hw->vf_stats_saved.oerrors;
+
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rx_ring = dev->data->rx_queues[i];
 		stats->ierrors += rx_ring->ierrors;
 	}
+
+	return 0;
+}
+
+/*
+ * Reset VF statistics by capturing a new baseline snapshot of the
+ * SI-level hardware counters. Because those counters are read-only
+ * for a VF (hardware erratum prevents reliable clear via FLR/soft
+ * reset too), the driver uses a software delta approach: every
+ * stats_get call reports current_hw_value - saved_baseline.
+ */
+static int
+enetc4_vf_stats_reset(struct rte_eth_dev *dev)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	struct enetc_bdr *rx_ring;
+	uint8_t i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Snapshot current HW SI counter values as the new zero baseline. */
+	hw->vf_stats_saved.ipackets = enetc4_rd64(enetc_hw, ENETC4_SIRFRM0);
+	hw->vf_stats_saved.opackets = enetc4_rd64(enetc_hw, ENETC4_SITFRM0);
+	hw->vf_stats_saved.ibytes   = enetc4_rd64(enetc_hw, ENETC4_SIROCT0);
+	hw->vf_stats_saved.obytes   = enetc4_rd64(enetc_hw, ENETC4_SITOCT0);
+	hw->vf_stats_saved.oerrors  = enetc4_rd(enetc_hw, ENETC4_SITDFCR);
+
+	/* Reset the per-ring software Rx error accumulators. */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rx_ring = dev->data->rx_queues[i];
+		if (rx_ring)
+			rx_ring->ierrors = 0;
+	}
+
 	return 0;
 }
 
@@ -1553,6 +1602,7 @@ static const struct eth_dev_ops enetc4_vf_ops_no_vsi_m = {
 	.dev_stop             = enetc4_vf_dev_stop,
 	.dev_close            = enetc4_dev_close,
 	.stats_get            = enetc4_vf_stats_get,
+	.stats_reset          = enetc4_vf_stats_reset,
 	.dev_infos_get        = enetc4_vf_dev_infos_get,
 	.get_reg              = enetc4_vf_get_regs,
 	.mtu_set              = enetc4_vf_mtu_set,
@@ -1576,6 +1626,7 @@ static const struct eth_dev_ops enetc4_vf_ops = {
 	.dev_stop             = enetc4_vf_dev_stop,
 	.dev_close            = enetc4_dev_close,
 	.stats_get            = enetc4_vf_stats_get,
+	.stats_reset          = enetc4_vf_stats_reset,
 	.dev_infos_get        = enetc4_vf_dev_infos_get,
 	.fw_version_get       = enetc4_vf_fw_version_get,
 	.get_reg              = enetc4_vf_get_regs,

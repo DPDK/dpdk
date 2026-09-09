@@ -8,6 +8,7 @@
 #ifndef _ENETC4_HW_H_
 #define _ENETC4_HW_H_
 #include <rte_io.h>
+#include "enetc_hw.h"
 
 #define BIT(x)		((uint64_t)1 << ((x)))
 
@@ -277,6 +278,27 @@ struct enetc_rx_bd_ext {
 #define enetc4_wr_reg(reg, val)  rte_write32((val), (void *)(reg))
 
 #define enetc4_rd(hw, off)	 enetc4_rd_reg((size_t)(hw)->reg + (off))
+static inline uint64_t
+enetc4_rd64(struct enetc_hw *hw, uint32_t off)
+{
+	size_t base = (size_t)hw->reg + off;
+	uint32_t lo, hi, hi_check;
+
+	/*
+	 * A 64-bit statistics counter is read as two 32-bit accesses, so
+	 * the low word can carry into the high word between the two reads
+	 * and produce a value that is off by 2^32. Read the high word,
+	 * then the low word, then re-read the high word; if the high word
+	 * changed a carry happened during the sequence, so retry.
+	 */
+	do {
+		hi = enetc4_rd_reg(base + 4);
+		lo = enetc4_rd_reg(base);
+		hi_check = enetc4_rd_reg(base + 4);
+	} while (hi != hi_check);
+
+	return (uint64_t)hi << 32 | lo;
+}
 #define enetc4_wr(hw, off, val)  enetc4_wr_reg((size_t)(hw)->reg + (off), val)
 /* port register accessors - PF only */
 #define enetc4_port_rd(hw, off)  enetc4_rd_reg((size_t)(hw)->port + (off))
