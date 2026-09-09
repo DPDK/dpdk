@@ -98,7 +98,9 @@ def load_aliases(alias_path=None):
     except OSError as e:
         print("Warning: failed to read {}: {}".format(alias_path, e), file=sys.stderr)
 
-    print("Loaded {} aliases from {}".format(len(aliases), alias_path))
+    # only print this informational message in interactive mode
+    if os.isatty(sys.stdin.fileno()):
+        print("Loaded {} aliases from {}".format(len(aliases), alias_path))
     return aliases
 
 
