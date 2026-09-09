@@ -53,6 +53,8 @@ Key functionality includes:
 - Receive processing: Upon packet reception, the BD Ring status bit is set,
   facilitating packet processing.
 - Transmission: Packet transmission precedes reception, ensuring efficient data transfer.
+- TCP and UDP segmentation offload (TSO) on VFs, enabled per Tx queue
+  when the TSO offload flag is requested.
 
 
 Prerequisites

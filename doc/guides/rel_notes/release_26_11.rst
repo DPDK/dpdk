@@ -94,6 +94,7 @@ New Features
   Updated the NXP ENETC4 poll mode driver for i.MX95:
 
   * Added KEEP_CRC Rx offload support for the ENETC4 PMD to preserve the Ethernet FCS.
+  * Added TCP Segmentation Offload (TSO) support for the ENETC4 VF.
 
 Removed Items
 -------------

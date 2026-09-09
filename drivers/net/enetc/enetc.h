@@ -99,6 +99,7 @@ struct enetc_bdr {
 	uint64_t ierrors;
 	uint8_t rx_deferred_start;
 	uint8_t tx_deferred_start;
+	uint8_t lso_enable;
 };
 
 struct enetc_eth_hw {
@@ -311,6 +312,8 @@ int enetc4_vf_dev_intr(struct rte_eth_dev *eth_dev, bool enable);
 uint16_t enetc_xmit_pkts(void *txq, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 uint16_t enetc_xmit_pkts_nc(void *txq, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
+uint16_t enetc_xmit_pkts_lso(void *txq, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 uint16_t enetc_recv_pkts(void *rxq, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);
