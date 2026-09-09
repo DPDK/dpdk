@@ -169,7 +169,8 @@ enum enetc_msg_cmd_class_id {
 	ENETC_CLASS_ID_MAC_FILTER = 0x20,
 	ENETC_CLASS_ID_VLAN_FILTER = 0x21,
 	ENETC_CLASS_ID_LINK_STATUS = 0x80,
-	ENETC_CLASS_ID_LINK_SPEED = 0x81
+	ENETC_CLASS_ID_LINK_SPEED = 0x81,
+	ENETC_CLASS_ID_GET_IP_VER = 0xF0
 };
 
 /* Enum for command IDs */
@@ -183,8 +184,17 @@ enum enetc_msg_cmd_id {
 	ENETC_CMD_ID_GET_LINK_STATUS = 0,
 	ENETC_CMD_ID_REGISTER_LINK_NOTIF = 1,
 	ENETC_CMD_ID_UNREGISTER_LINK_NOTIF = 2,
-	ENETC_CMD_ID_GET_LINK_SPEED = 0
+	ENETC_CMD_ID_GET_LINK_SPEED = 0,
+	/* Get IP version command IDs (class ID 0xF0) */
+	ENETC_CMD_ID_GET_IP_MJ = 0,
+	ENETC_CMD_ID_GET_IP_MN = 1,
+	ENETC_CMD_ID_GET_IP_INT = 2,
+	ENETC_CMD_ID_GET_IP_MNT = 3,
+	ENETC_CMD_ID_GET_IP_CFG = 4
 };
+
+/* IP_VER value returned when the version is not available */
+#define ENETC_IP_VER_NOT_AVAILABLE	0xFF
 
 enum mac_addr_status {
 	ENETC_INVALID_MAC_ADDR = 0x0,
@@ -268,6 +278,11 @@ struct enetc_msg_cmd_get_link_status {
 };
 
 struct enetc_msg_cmd_get_link_speed {
+	struct enetc_msg_cmd_header header;
+};
+
+/* Get IP version command message format (class ID 0xF0) */
+struct enetc_msg_cmd_get_ip_ver {
 	struct enetc_msg_cmd_header header;
 };
 
