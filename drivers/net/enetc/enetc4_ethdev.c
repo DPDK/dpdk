@@ -1165,7 +1165,7 @@ enetc4_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
 	return 0;
 }
 
-static void
+void
 enetc4_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 			struct rte_eth_rxq_info *qinfo)
 {
@@ -1173,19 +1173,21 @@ enetc4_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 
 	qinfo->mp = rxq->mb_pool;
 	qinfo->scattered_rx = dev->data->scattered_rx;
-	qinfo->nb_desc = rxq->bd_count;
+	/* RSC rings use 2 slots per descriptor; report the requested count. */
+	qinfo->nb_desc = rxq->rsc_enable ? rxq->bd_count / 2 : rxq->bd_count;
 	qinfo->conf.rx_free_thresh = 0;
 	qinfo->conf.rx_deferred_start = rxq->rx_deferred_start;
 	qinfo->conf.rx_drop_en = 0;
 }
 
-static void
+void
 enetc4_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 			struct rte_eth_txq_info *qinfo)
 {
 	struct enetc_bdr *txq = dev->data->tx_queues[queue_id];
 
-	qinfo->nb_desc = txq->bd_count;
+	/* LSO rings use 2 slots per descriptor; report the requested count. */
+	qinfo->nb_desc = txq->lso_enable ? txq->bd_count / 2 : txq->bd_count;
 	qinfo->conf.tx_thresh.pthresh = 0;
 	qinfo->conf.tx_thresh.hthresh = 0;
 	qinfo->conf.tx_thresh.wthresh = 0;
