@@ -393,6 +393,10 @@ enetc_bd_unused(struct enetc_bdr *bdr)
 	return bdr->bd_count + bdr->next_to_clean - bdr->next_to_use - 1;
 }
 
+/* Per-ring BDR registers dumped by .get_reg (shared by PF and VF) */
+extern const uint32_t enetc4_txbdr_regs[6];
+extern const uint32_t enetc4_rxbdr_regs[8];
+
 /* CBDR prototypes */
 int enetc4_setup_cbdr(struct rte_eth_dev *dev, struct enetc_hw *hw,
 			int bd_count, struct netc_cbdr *cbdr);

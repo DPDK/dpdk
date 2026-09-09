@@ -934,6 +934,66 @@ enetc4_vf_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_si
 	return 0;
 }
 
+/* VF station interface registers dumped by .get_reg */
+static const uint32_t enetc4_vf_si_regs[] = {
+	ENETC_SIMR, ENETC_SICAPR0, ENETC_SIPMAR0, ENETC_SIPMAR1,
+	ENETC4_SIROCT0, ENETC4_SIRFRM0, ENETC4_SITOCT0, ENETC4_SITFRM0,
+	ENETC4_SITDFCR, ENETC4_SIMSIVR, ENETC4_VSIIER, ENETC4_VSIIDR,
+	ENETC4_VSIMSGSR, ENETC4_VSIMSGRR,
+};
+
+/*
+ * Dump the VF-accessible registers. Only station interface and per-ring
+ * BD ring registers are reachable by a VF; port registers are not.
+ * When info->data is NULL, only the register count and width are
+ * reported so the caller can size its buffer.
+ */
+static int
+enetc4_vf_get_regs(struct rte_eth_dev *dev, struct rte_dev_reg_info *regs)
+{
+	struct enetc_eth_hw *hw = ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	uint32_t count, addr;
+	uint32_t *buf;
+	uint16_t i, j;
+
+	count = RTE_DIM(enetc4_vf_si_regs);
+	count += RTE_DIM(enetc4_txbdr_regs) * dev->data->nb_tx_queues;
+	count += RTE_DIM(enetc4_rxbdr_regs) * dev->data->nb_rx_queues;
+
+	if (regs->data == NULL) {
+		regs->length = count;
+		regs->width = sizeof(uint32_t);
+		return 0;
+	}
+
+	if (regs->length && regs->length < count)
+		return -ENOTSUP;
+
+	buf = regs->data;
+
+	for (i = 0; i < RTE_DIM(enetc4_vf_si_regs); i++)
+		*buf++ = enetc_rd(enetc_hw, enetc4_vf_si_regs[i]);
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		for (j = 0; j < RTE_DIM(enetc4_txbdr_regs); j++) {
+			addr = ENETC_BDR(TX, i, enetc4_txbdr_regs[j]);
+			*buf++ = enetc_rd(enetc_hw, addr);
+		}
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		for (j = 0; j < RTE_DIM(enetc4_rxbdr_regs); j++) {
+			addr = ENETC_BDR(RX, i, enetc4_rxbdr_regs[j]);
+			*buf++ = enetc_rd(enetc_hw, addr);
+		}
+	}
+
+	regs->version = (uint32_t)hw->device_id << 16 | hw->revision_id;
+
+	return 0;
+}
+
 static int
 enetc4_vf_link_update_dummy(struct rte_eth_dev *dev __rte_unused,
 			    int wait_to_complete __rte_unused)
@@ -1472,6 +1532,7 @@ static const struct eth_dev_ops enetc4_vf_ops_no_vsi_m = {
 	.dev_close            = enetc4_dev_close,
 	.stats_get            = enetc4_vf_stats_get,
 	.dev_infos_get        = enetc4_vf_dev_infos_get,
+	.get_reg              = enetc4_vf_get_regs,
 	.mtu_set              = enetc4_vf_mtu_set,
 	.link_update	      = enetc4_vf_link_update_dummy,
 	.rx_queue_setup       = enetc4_rx_queue_setup,
@@ -1493,6 +1554,7 @@ static const struct eth_dev_ops enetc4_vf_ops = {
 	.stats_get            = enetc4_vf_stats_get,
 	.dev_infos_get        = enetc4_vf_dev_infos_get,
 	.fw_version_get       = enetc4_vf_fw_version_get,
+	.get_reg              = enetc4_vf_get_regs,
 	.mtu_set              = enetc4_vf_mtu_set,
 	.mac_addr_set         = enetc4_vf_set_mac_addr,
 	.mac_addr_add	      = enetc4_vf_mac_addr_add,
