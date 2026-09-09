@@ -702,7 +702,7 @@ cn20k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts, co
 	uint64_t mbuf_init = rxq->mbuf_initializer;
 	const void *lookup_mem = rxq->lookup_mem;
 	const uint64_t data_off = rxq->data_off;
-	uint8_t m_sz = sizeof(struct rte_mbuf);
+	const uint32_t m_sz = sizeof(struct rte_mbuf);
 	const uint64_t wdata = rxq->wdata;
 	const uint32_t qmask = rxq->qmask;
 	const uintptr_t desc = rxq->desc;
@@ -815,7 +815,7 @@ cn20k_nix_flush_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pk
 	uint64_t mbuf_init = rxq->mbuf_initializer;
 	const void *lookup_mem = rxq->lookup_mem;
 	const uint64_t data_off = rxq->data_off;
-	uint8_t m_sz = sizeof(struct rte_mbuf);
+	const uint32_t m_sz = sizeof(struct rte_mbuf);
 	const uint64_t wdata = rxq->wdata;
 	const uint32_t qmask = rxq->qmask;
 	const uintptr_t desc = rxq->desc;
