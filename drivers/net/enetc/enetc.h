@@ -237,10 +237,10 @@ enum vlan_status {
 	ENETC_VLAN_NO_RESOURCE = 0x3
 };
 
-enum link_status {
-	ENETC_LINK_UP = 0x0,
-	ENETC_LINK_DOWN = 0x1
-};
+/* Link status bitmask in PF-to-VF mailbox notification.
+ * Link up is encoded as the DOWN bit being clear.
+ */
+#define ENETC_LINK_DOWN  (1u << 0)
 
 enum speed {
 	ENETC_SPEED_UNKNOWN = 0x0,
