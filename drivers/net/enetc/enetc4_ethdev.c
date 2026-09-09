@@ -752,10 +752,22 @@ enetc4_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	if (!rx_conf->rx_deferred_start) {
-		/* enable ring */
+		/* Enable ring; apply congestion mode if TX PAUSE is already active. */
 		rx_enable |= ENETC_RBMR_EN;
+		/* vsi_lock serializes RBMR RMW with enetc4_vf_set_congestion_mode().
+		 * Only VF has that interrupt-driven path; PF skips the lock.
+		 */
+		if (adapter->hw.device_id == ENETC4_DEV_ID_VF)
+			pthread_mutex_lock(&adapter->hw.vsi_lock);
+		if (rte_atomic_load_explicit(&adapter->hw.tx_pause_active,
+					     rte_memory_order_relaxed))
+			rx_enable |= ENETC_RBMR_CM;
+		else
+			rx_enable &= ~(uint32_t)ENETC_RBMR_CM;
 		enetc4_rxbdr_wr(&adapter->hw.hw, rx_ring->index, ENETC_RBMR,
 			       rx_enable);
+		if (adapter->hw.device_id == ENETC4_DEV_ID_VF)
+			pthread_mutex_unlock(&adapter->hw.vsi_lock);
 		dev->data->rx_queue_state[rx_ring->index] =
 			       RTE_ETH_QUEUE_STATE_STARTED;
 	} else {
@@ -1134,11 +1146,21 @@ enetc4_rx_queue_start(struct rte_eth_dev *dev, uint16_t qidx)
 	PMD_INIT_FUNC_TRACE();
 	rx_ring = dev->data->rx_queues[qidx];
 	if (dev->data->rx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STOPPED) {
+		if (priv->hw.device_id == ENETC4_DEV_ID_VF)
+			pthread_mutex_lock(&priv->hw.vsi_lock);
 		rx_data = enetc4_rxbdr_rd(&priv->hw.hw, rx_ring->index,
 					 ENETC_RBMR);
-		rx_data = rx_data | ENETC_RBMR_EN;
+		rx_data |= ENETC_RBMR_EN;
+		/* Restore congestion mode if TX PAUSE is active. */
+		if (rte_atomic_load_explicit(&priv->hw.tx_pause_active,
+					     rte_memory_order_relaxed))
+			rx_data |= ENETC_RBMR_CM;
+		else
+			rx_data &= ~(uint32_t)ENETC_RBMR_CM;
 		enetc4_rxbdr_wr(&priv->hw.hw, rx_ring->index, ENETC_RBMR,
 			       rx_data);
+		if (priv->hw.device_id == ENETC4_DEV_ID_VF)
+			pthread_mutex_unlock(&priv->hw.vsi_lock);
 		dev->data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STARTED;
 	}
 
@@ -1156,11 +1178,15 @@ enetc4_rx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
 	PMD_INIT_FUNC_TRACE();
 	rx_ring = dev->data->rx_queues[qidx];
 	if (dev->data->rx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STARTED) {
+		if (priv->hw.device_id == ENETC4_DEV_ID_VF)
+			pthread_mutex_lock(&priv->hw.vsi_lock);
 		rx_data = enetc4_rxbdr_rd(&priv->hw.hw, rx_ring->index,
 					 ENETC_RBMR);
 		rx_data = rx_data & (~ENETC_RBMR_EN);
 		enetc4_rxbdr_wr(&priv->hw.hw, rx_ring->index, ENETC_RBMR,
 			       rx_data);
+		if (priv->hw.device_id == ENETC4_DEV_ID_VF)
+			pthread_mutex_unlock(&priv->hw.vsi_lock);
 		dev->data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
 
