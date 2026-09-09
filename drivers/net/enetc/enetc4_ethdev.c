@@ -24,7 +24,9 @@ static uint64_t dev_tx_offloads_sup =
 	RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
 	RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
 	RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
-	RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+	RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+	RTE_ETH_TX_OFFLOAD_TCP_TSO |
+	RTE_ETH_TX_OFFLOAD_UDP_TSO;
 
 #define ENETC4_TXQ_PRIORITIES	"enetc4_txq_prior"
 #define ENETC4_NC_MEMORY	"nc"
@@ -309,22 +311,37 @@ static int
 enetc4_alloc_txbdr(struct enetc_bdr *txr, uint16_t nb_desc)
 {
 	int size;
+	uint32_t ring_desc;
 
-	size = nb_desc * sizeof(struct enetc_swbd);
+	/*
+	 * On LSO-enabled rings each frame uses an extra 16B extension BD
+	 * (logical 32B descriptor) plus the payload BDs.  Size the ring with
+	 * twice the requested entries so the effective frame capacity is
+	 * preserved.  Non-LSO rings are sized exactly as requested.
+	 */
+	ring_desc = txr->lso_enable ? (uint32_t)nb_desc * 2 : (uint32_t)nb_desc;
+	if (ring_desc > MAX_BD_COUNT) {
+		ENETC_PMD_ERR("LSO ring_desc %u > MAX_BD_COUNT %u; "
+			      "reduce nb_desc to <= %u with LSO enabled",
+			      ring_desc, MAX_BD_COUNT, MAX_BD_COUNT / 2);
+		return -EINVAL;
+	}
+
+	size = ring_desc * sizeof(struct enetc_swbd);
 	/* Zero q_swbd so buffer_addr is NULL for all uninitialized slots. */
 	txr->q_swbd = rte_zmalloc(NULL, size, ENETC_BD_RING_ALIGN);
 	if (txr->q_swbd == NULL)
 		return -ENOMEM;
 
 	/* Allocate the TX BD ring: each BD is struct enetc_tx_bd (16 bytes). */
-	size = nb_desc * sizeof(struct enetc_tx_bd);
+	size = ring_desc * sizeof(struct enetc_tx_bd);
 	txr->bd_base = rte_zmalloc(NULL, size, ENETC_BD_RING_ALIGN);
 	if (txr->bd_base == NULL) {
 		rte_free(txr->q_swbd);
 		txr->q_swbd = NULL;
 		return -ENOMEM;
 	}
-	txr->bd_count = nb_desc;
+	txr->bd_count = ring_desc;
 	txr->next_to_clean = 0;
 	txr->next_to_use = 0;
 
@@ -376,6 +393,7 @@ enetc4_tx_queue_setup(struct rte_eth_dev *dev,
 	struct rte_eth_dev_data *data = dev->data;
 	struct enetc_eth_adapter *priv =
 			ENETC_DEV_PRIVATE(data->dev_private);
+	uint64_t tx_offloads;
 
 	PMD_INIT_FUNC_TRACE();
 	if (nb_desc > MAX_BD_COUNT)
@@ -389,6 +407,34 @@ enetc4_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	tx_ring->index = queue_idx;
+	/*
+	 * LSO (TCP/UDP segmentation) is a port-level offload. The Tx burst is
+	 * a single device-level function pointer, so it must be consistent for
+	 * all queues; likewise every ring must be sized the same way. Decide
+	 * from the port offloads only (not the per-queue tx_conf) so that all
+	 * queues either use the LSO burst with a doubled ring, or none do.
+	 * The LSO burst also handles non-TSO packets, so it is safe on queues
+	 * that never carry TSO traffic. LSO needs HW FCS insertion, so it is
+	 * incompatible with KEEP_CRC on Rx.
+	 */
+	tx_offloads = data->dev_conf.txmode.offloads;
+	if (tx_offloads & (RTE_ETH_TX_OFFLOAD_TCP_TSO |
+			   RTE_ETH_TX_OFFLOAD_UDP_TSO)) {
+		if (data->dev_conf.rxmode.offloads &
+		    RTE_ETH_RX_OFFLOAD_KEEP_CRC) {
+			ENETC_PMD_ERR("LSO (TSO) is incompatible with KEEP_CRC");
+			rte_free(tx_ring);
+			return -EINVAL;
+		}
+		tx_ring->lso_enable = 1;
+		dev->tx_pkt_burst = &enetc_xmit_pkts_lso;
+	} else {
+		struct enetc_eth_hw *hw =
+			ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+		dev->tx_pkt_burst = hw->nc_mode ? &enetc_xmit_pkts_nc :
+						  &enetc_xmit_pkts_cacheable;
+	}
+
 	err = enetc4_alloc_txbdr(tx_ring, nb_desc);
 	if (err)
 		goto fail;
