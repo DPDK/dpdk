@@ -67,6 +67,10 @@ Key functionality includes:
   See `Rx Interrupt Mode (VF)`_ for setup details.
 - Firmware version: The NETC IP version is reported via ``rte_eth_dev_fw_version_get``.
 - Registers dump: The station interface, port (PF only) and BD ring registers are dumped via ``rte_eth_dev_get_reg_info``.
+- SI-based port VLAN (pvid): Hardware VLAN tag insertion on Tx and removal on Rx, configured
+  via ``rte_eth_dev_set_vlan_pvid``. On a PF the registers are written directly; on a privileged
+  VF the request is forwarded to the kernel PF through the VSI-PSI mailbox (class 0x24).
+  Use the testpmd command ``tx_vlan set pvid <port_id> <vlan_id> on|off`` to enable or disable.
 
 .. note::
 

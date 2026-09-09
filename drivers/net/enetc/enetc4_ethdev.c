@@ -913,6 +913,50 @@ enetc4_dev_close(struct rte_eth_dev *dev)
 	return ret;
 }
 
+/* Configure SI-based VLAN insertion (Tx) and removal (Rx) for the PF. */
+static int
+enetc4_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	uint32_t psivlanr, psicfgr0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (vlan_id > RTE_ETHER_MAX_VLAN_ID) {
+		ENETC_PMD_ERR("Invalid vlan_id = %u > %d", vlan_id,
+			      RTE_ETHER_MAX_VLAN_ID);
+		return -EINVAL;
+	}
+
+	psicfgr0 = enetc4_port_rd(enetc_hw, ENETC4_PSICFGR0(0));
+
+	if (on) {
+		/* Build the VLAN register: enable bit + VID (PCP/DEI left 0) */
+		psivlanr = (uint32_t)ENETC4_PSIVLANR_E |
+			   ENETC4_PSIVLANR_VID(vlan_id);
+		enetc4_port_wr(enetc_hw, ENETC4_PSIVLANR(0), psivlanr);
+
+		/* Allow C-VLAN TPID, enable Tx insertion and Rx removal */
+		psicfgr0 |= ENETC4_PSICFGR0_SIVC_CVLAN |
+			    ENETC4_PSICFGR0_SIVIE |
+			    ENETC4_PSICFGR0_VTE;
+		enetc4_port_wr(enetc_hw, ENETC4_PSICFGR0(0), psicfgr0);
+	} else {
+		/* Clear Tx insertion, Rx removal and C-VLAN allow bits */
+		psicfgr0 &= ~(ENETC4_PSICFGR0_SIVC_CVLAN |
+			      ENETC4_PSICFGR0_SIVIE |
+			      ENETC4_PSICFGR0_VTE);
+		enetc4_port_wr(enetc_hw, ENETC4_PSICFGR0(0), psicfgr0);
+
+		/* Clear the VLAN register (disable SI VLAN processing) */
+		enetc4_port_wr(enetc_hw, ENETC4_PSIVLANR(0), 0);
+	}
+
+	return 0;
+}
+
 static int
 enetc4_promiscuous_enable(struct rte_eth_dev *dev)
 {
@@ -1310,6 +1354,7 @@ static const struct eth_dev_ops enetc4_ops = {
 	.get_reg              = enetc4_get_regs,
 	.promiscuous_enable   = enetc4_promiscuous_enable,
 	.promiscuous_disable  = enetc4_promiscuous_disable,
+	.vlan_pvid_set        = enetc4_vlan_pvid_set,
 	.rx_queue_setup       = enetc4_rx_queue_setup,
 	.rx_queue_start       = enetc4_rx_queue_start,
 	.rx_queue_stop        = enetc4_rx_queue_stop,
