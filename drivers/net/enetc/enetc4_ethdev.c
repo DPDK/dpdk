@@ -17,7 +17,8 @@ static uint64_t dev_rx_offloads_sup =
 	RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
 	RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
 	RTE_ETH_RX_OFFLOAD_SCATTER |
-	RTE_ETH_RX_OFFLOAD_KEEP_CRC;
+	RTE_ETH_RX_OFFLOAD_KEEP_CRC |
+	RTE_ETH_RX_OFFLOAD_TCP_LRO;
 
 /* Supported Tx offloads */
 static uint64_t dev_tx_offloads_sup =
@@ -302,6 +303,8 @@ enetc4_dev_infos_get(struct rte_eth_dev *dev,
 	dev_info->max_rx_pktlen = ENETC4_MAC_MAXFRM_SIZE;
 	dev_info->rx_offload_capa = dev_rx_offloads_sup;
 	dev_info->tx_offload_capa = dev_tx_offloads_sup;
+	/* Max RSC (LRO) coalesced frame size; matches RBaRSCR[SIZE]. */
+	dev_info->max_lro_pkt_size = ENETC4_RSC_MAX_FRAME;
 	dev_info->flow_type_rss_offloads = ENETC_RSS_OFFLOAD_ALL;
 
 	return 0;
@@ -517,22 +520,35 @@ static int
 enetc4_alloc_rxbdr(struct enetc_bdr *rxr, uint16_t nb_desc)
 {
 	int size;
+	uint32_t ring_desc;
 
-	size = nb_desc * sizeof(struct enetc_swbd);
+	/*
+	 * RSC rings use 32B descriptors (RBaMR[BDS] = 1), i.e. two 16B slots
+	 * each, so allocate 2 * nb_desc slots. Non-RSC rings use 16B slots.
+	 */
+	ring_desc = rxr->rsc_enable ? (uint32_t)nb_desc * 2 : (uint32_t)nb_desc;
+	if (ring_desc > MAX_BD_COUNT) {
+		ENETC_PMD_ERR("RSC ring_desc %u > MAX_BD_COUNT %u; "
+			      "reduce nb_desc to <= %u with RSC enabled",
+			      ring_desc, MAX_BD_COUNT, MAX_BD_COUNT / 2);
+		return -EINVAL;
+	}
+
+	size = ring_desc * sizeof(struct enetc_swbd);
 	/* Zero q_swbd so buffer_addr is NULL for all uninitialized slots. */
 	rxr->q_swbd = rte_zmalloc(NULL, size, ENETC_BD_RING_ALIGN);
 	if (rxr->q_swbd == NULL)
 		return -ENOMEM;
 
 	/* Allocate the RX BD ring: each BD is union enetc_rx_bd (16 bytes). */
-	size = nb_desc * sizeof(union enetc_rx_bd);
+	size = ring_desc * sizeof(union enetc_rx_bd);
 	rxr->bd_base = rte_zmalloc(NULL, size, ENETC_BD_RING_ALIGN);
 	if (rxr->bd_base == NULL) {
 		rte_free(rxr->q_swbd);
 		rxr->q_swbd = NULL;
 		return -ENOMEM;
 	}
-	rxr->bd_count = nb_desc;
+	rxr->bd_count = ring_desc;
 	rxr->next_to_clean = 0;
 	rxr->next_to_use = 0;
 	rxr->next_to_alloc = 0;
@@ -555,13 +571,30 @@ enetc4_setup_rxbdr(struct enetc_hw *hw, struct enetc_bdr *rx_ring,
 		       lower_32_bits((uint64_t)bd_address));
 	enetc4_rxbdr_wr(hw, idx, ENETC_RBBAR1,
 		       upper_32_bits((uint64_t)bd_address));
+	/*
+	 * RBaLENR counts HW descriptors. With RSC (BDS = 1) a descriptor is
+	 * 32B (two 16B slots), so program bd_count / 2; otherwise bd_count.
+	 */
 	enetc4_rxbdr_wr(hw, idx, ENETC_RBLENR,
-		       ENETC_RTBLENR_LEN(rx_ring->bd_count));
+		       ENETC_RTBLENR_LEN(rx_ring->rsc_enable ?
+				rx_ring->bd_count / 2 : rx_ring->bd_count));
 
 	rx_ring->mb_pool = mb_pool;
 	rx_ring->rcir = (void *)((size_t)hw->reg +
 			ENETC_BDR(RX, idx, ENETC_RBCIR));
-	enetc_refill_rx_ring(rx_ring, ENETC_BD_ALIGN_DOWN(enetc_bd_unused(rx_ring)));
+	/* RSC rings clear their Rx interrupt-detect event via SIRXIDR (see
+	 * enetc_clean_rx_ring_rsc); cache the register address here.
+	 */
+	if (rx_ring->rsc_enable)
+		rx_ring->rbidr = (void *)((size_t)hw->reg + ENETC_SIRXIDR);
+
+	/* RSC rings use the 2-slot-stride refill for 32B descriptors. */
+	if (rx_ring->rsc_enable)
+		enetc_refill_rx_ring_rsc(rx_ring,
+			ENETC_BD_ALIGN_DOWN(enetc_bd_unused(rx_ring)));
+	else
+		enetc_refill_rx_ring(rx_ring,
+			ENETC_BD_ALIGN_DOWN(enetc_bd_unused(rx_ring)));
 	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rx_ring->mb_pool) -
 		   RTE_PKTMBUF_HEADROOM);
 	enetc4_rxbdr_wr(hw, idx, ENETC_RBBSR, buf_size);
@@ -583,7 +616,9 @@ enetc4_rx_queue_setup(struct rte_eth_dev *dev,
 	struct enetc_eth_adapter *adapter =
 			ENETC_DEV_PRIVATE(data->dev_private);
 	uint64_t rx_offloads = data->dev_conf.rxmode.offloads;
+	uint32_t rsc_size;
 	bool keep_crc;
+	bool rsc_enable;
 
 	PMD_INIT_FUNC_TRACE();
 	if (nb_rx_desc > MAX_BD_COUNT)
@@ -600,9 +635,46 @@ enetc4_rx_queue_setup(struct rte_eth_dev *dev,
 	keep_crc = !!(rx_offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC);
 	rx_ring->crc_len = (uint8_t)(keep_crc ? RTE_ETHER_CRC_LEN : 0);
 
+	/*
+	 * RSC (LRO) is a port-level offload: the Rx burst is a single device
+	 * function pointer, so decide from port offloads (not per-queue
+	 * rx_conf) to keep all rings consistent. RSC needs HW FCS stripping
+	 * (RBaMR[CRC] = 0), so it is incompatible with KEEP_CRC.
+	 */
+	rsc_enable = !!(rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO);
+	if (rsc_enable) {
+		if (keep_crc) {
+			ENETC_PMD_ERR("RSC (LRO) is incompatible with KEEP_CRC");
+			rte_free(rx_ring);
+			return -EINVAL;
+		}
+		if (adapter->hw.nc_mode) {
+			ENETC_PMD_ERR("RSC (LRO) is incompatible with nc=1 (non-cacheable mode)");
+			rte_free(rx_ring);
+			return -EINVAL;
+		}
+		if (!(rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)) {
+			ENETC_PMD_ERR("RSC (LRO) requires RTE_ETH_RX_OFFLOAD_SCATTER");
+			rte_free(rx_ring);
+			return -EINVAL;
+		}
+		rx_ring->rsc_enable = 1;
+	}
+
+	data->lro = rsc_enable;
+	data->scattered_rx = rsc_enable;
+
 	err = enetc4_alloc_rxbdr(rx_ring, nb_rx_desc);
 	if (err)
 		goto fail;
+
+	if (rsc_enable) {
+		dev->rx_pkt_burst = &enetc_recv_pkts_rsc;
+	} else {
+		dev->rx_pkt_burst = adapter->hw.nc_mode ?
+				    &enetc_recv_pkts_nc :
+				    &enetc_recv_pkts_cacheable;
+	}
 
 	rx_ring->ndev = dev;
 	/* reset queue */
@@ -617,6 +689,49 @@ enetc4_rx_queue_setup(struct rte_eth_dev *dev,
 		rx_enable |= ENETC4_RBMR_CRC;
 	else
 		rx_enable &= ~ENETC4_RBMR_CRC;
+
+	if (rsc_enable) {
+		/*
+		 * RSC preconditions (all must hold or RBaRSCR[EN] is ignored):
+		 * BDS = 1 (32B descriptors), CRC = 0 (FCS stripped, enforced
+		 * above), ICEN = 1 (its timer doubles as the RSC flush timer),
+		 * and RBaRSCR[EN] with CT for timestamped segments. SIZE caps
+		 * the coalesced frame; honor rxmode.max_lro_pkt_size clamped to
+		 * the HW max.
+		 */
+		rx_enable |= ENETC4_RBMR_BDS;
+
+		/*
+		 * Commit RBMR[BDS] to HW now (ring still disabled, EN clear)
+		 * so the 32B descriptor mode is active before RBaRSCR[EN] is
+		 * set. BDS = 1 is a hard RSC precondition: if RBaRSCR[EN] is
+		 * written while BDS is still 0 in HW, RSC may be silently
+		 * ignored. The ring-enable step below writes RBMR again with
+		 * EN added.
+		 */
+		enetc4_rxbdr_wr(&adapter->hw.hw, rx_ring->index, ENETC_RBMR,
+			       rx_enable);
+
+		rsc_size = data->dev_conf.rxmode.max_lro_pkt_size;
+		if (rsc_size > ENETC4_RSC_MAX_FRAME)
+			rsc_size = ENETC4_RSC_MAX_FRAME;
+
+		/*
+		 * Program ICTT FIRST (with ICEN = 0) then enable ICEN, as the
+		 * RM requires. ICTT is the RSC coalesce-hold window; a zero
+		 * value disables the timer and forces HW to flush every frame
+		 * (no coalescing), so use a non-zero default.
+		 */
+		enetc4_rxbdr_wr(&adapter->hw.hw, rx_ring->index,
+			       ENETC4_RBICR1, ENETC4_RSC_DEF_ICTT);
+		enetc4_rxbdr_wr(&adapter->hw.hw, rx_ring->index,
+			       ENETC4_RBICR0, ENETC4_RBICR0_ICEN |
+			       ENETC4_RBICR0_ICPT(ENETC4_RSC_DEF_ICPT));
+		enetc4_rxbdr_wr(&adapter->hw.hw, rx_ring->index,
+			       ENETC4_RBRSCR, ENETC4_RBRSCR_EN |
+			       ENETC4_RBRSCR_CT |
+			       ENETC4_RBRSCR_SIZE(rsc_size));
+	}
 
 	if (!rx_conf->rx_deferred_start) {
 		/* enable ring */
