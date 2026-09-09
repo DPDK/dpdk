@@ -221,6 +221,263 @@ enetc_xmit_pkts_nc(void *tx_queue,
 	return start;
 }
 
+/*
+ * LSO (Large Send Offload) Tx burst.
+ *
+ * Dedicated burst used on Tx rings with LSO enabled (txr->lso_enable). It
+ * follows the same non-cache-coherent discipline as enetc_xmit_pkts_cacheable:
+ * payload lines are flushed with dcbf before handing the frame to HW and the
+ * written BD cache lines are flushed at the end of the batch.
+ *
+ * A TSO/USO frame uses an extended Tx descriptor: the standard BD points at
+ * the L2/L3/L4 header template (BUF_LEN = header length, FRM_LEN = payload
+ * length), followed by an extension BD in the next ring slot holding the
+ * segment size, then one BD per payload buffer with the F flag on the last.
+ * Non-TSO packets fall through to the normal encoding so mixed traffic works.
+ */
+uint16_t
+enetc_xmit_pkts_lso(void *tx_queue,
+		struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts)
+{
+	int i, start, bds_to_use;
+	struct enetc_tx_bd *txbd = NULL;
+	struct enetc_tx_bd_ext *txbd_ext;
+	struct enetc_bdr *tx_ring = (struct enetc_bdr *)tx_queue;
+	unsigned int j;
+	uint8_t *data;
+	struct rte_mbuf *seg;
+	uint16_t seg_len, segs_per_pkt;
+	bool is_first_seg;
+	int first_bd_idx, bd_count;
+
+	i = tx_ring->next_to_use;
+	bds_to_use = enetc_bd_unused(tx_ring);
+	bd_count = tx_ring->bd_count;
+	start = 0;
+
+	first_bd_idx = i;
+
+	while (start < nb_pkts) {
+		seg = tx_pkts[start];
+		segs_per_pkt = seg->nb_segs;
+
+		if (seg->ol_flags &
+		    (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)) {
+			bool is_udp_seg =
+				!!(seg->ol_flags & RTE_MBUF_F_TX_UDP_SEG);
+			uint32_t hdr_len = seg->l2_len + seg->l3_len +
+					   seg->l4_len;
+			uint32_t data_unit;
+			uint16_t first_payload;
+			struct rte_mbuf *dseg;
+			int bds_needed;
+
+			/* Header BD + extension BD + one BD per segment. */
+			bds_needed = 2 + segs_per_pkt;
+			if (bds_to_use < bds_needed)
+				break;
+
+			/*
+			 * Skip frames with nothing to segment, or whose
+			 * headers are not fully contained in the first
+			 * segment. The first BD carries the header template
+			 * and first_payload is computed as (first segment
+			 * data_len - hdr_len), so the L2/L3/L4 headers must
+			 * reside contiguously in the first mbuf; otherwise the
+			 * unsigned subtraction would underflow.
+			 */
+			if (unlikely(hdr_len >= rte_pktmbuf_pkt_len(seg) ||
+				     hdr_len > rte_pktmbuf_data_len(seg))) {
+				rte_pktmbuf_free(seg);
+				start++;
+				continue;
+			}
+			data_unit = rte_pktmbuf_pkt_len(seg) - hdr_len;
+
+			/*
+			 * Skip frames that violate HW LSO limits: a zero
+			 * segment size, a payload larger than the HW data
+			 * unit, or a per-segment frame (headers + segment)
+			 * bigger than the maximum LSO frame size.
+			 */
+			if (unlikely(seg->tso_segsz == 0 ||
+				     data_unit > ENETC4_LSO_MAX_DATA_UNIT ||
+				     hdr_len + seg->tso_segsz >
+					     ENETC4_LSO_MAX_FRAME)) {
+				rte_pktmbuf_free(seg);
+				start++;
+				continue;
+			}
+
+			/* Standard (first) BD: header template only. */
+			data = rte_pktmbuf_mtod(seg, void *);
+
+			seg_len = rte_pktmbuf_data_len(seg);
+			for (j = 0; j < seg_len; j += RTE_CACHE_LINE_SIZE)
+				dcbf(data + j);
+			dcbf(data + (seg_len - 1));
+
+			txbd = ENETC_TXBD(*tx_ring, i);
+			memset(txbd, 0, sizeof(*txbd));
+			tx_ring->q_swbd[i].buffer_addr = seg;
+
+			/* FRM_LEN low 16 bits = payload length, BUF_LEN = hdr. */
+			txbd->frm_len = rte_cpu_to_le_16(data_unit & 0xffff);
+			txbd->buf_len = rte_cpu_to_le_16((uint16_t)hdr_len);
+			txbd->addr = rte_cpu_to_le_64(rte_mbuf_data_iova(seg));
+
+			/* Checksum control for the per-segment L3/L4 rewrite. */
+			txbd->l3_start = seg->l2_len;
+			txbd->l3_hdr_size = seg->l3_len / 4;
+			if (seg->ol_flags & RTE_MBUF_F_TX_IPV6) {
+				txbd->l3t = 1;
+			} else {
+				txbd->l3t = ENETC4_TXBD_L3T;
+				txbd->ipcs = ENETC4_TXBD_IPCS;
+			}
+			txbd->l4t = is_udp_seg ? ENETC4_TXBD_L4T_UDP :
+						 ENETC4_TXBD_L4T_TCP;
+			txbd->flags = ENETC4_TXBD_FLAGS_L_TX_CKSUM |
+				      ENETC4_TXBD_FLAGS_L4CS |
+				      ENETC4_TXBD_FLAGS_LSO |
+				      ENETC4_TXBD_FLAGS_EXT;
+
+			i++;
+			bds_to_use--;
+			if (unlikely(i == bd_count))
+				i = 0;
+
+			/* Extension BD occupies the next ring slot. */
+			tx_ring->q_swbd[i].buffer_addr = NULL;
+			txbd_ext = (struct enetc_tx_bd_ext *)
+				   ENETC_TXBD(*tx_ring, i);
+			memset(txbd_ext, 0, sizeof(*txbd_ext));
+			txbd_ext->lso = rte_cpu_to_le_32(ENETC4_TXBD_EXT_LSO_SEG(seg->tso_segsz) |
+					ENETC4_TXBD_EXT_FRM_LEN_EXT(data_unit >> 16));
+
+			i++;
+			bds_to_use--;
+			if (unlikely(i == bd_count))
+				i = 0;
+
+			/*
+			 * Payload BDs. The first segment's payload starts after
+			 * the header template; remaining segments are pure
+			 * payload.
+			 */
+			first_payload = (uint16_t)(seg_len - hdr_len);
+			dseg = seg;
+			is_first_seg = true;
+			while (dseg) {
+				uint16_t dlen;
+				uint64_t daddr;
+
+				if (is_first_seg) {
+					dlen = first_payload;
+					daddr = rte_mbuf_data_iova(dseg) +
+						hdr_len;
+					is_first_seg = false;
+				} else {
+					dlen = rte_pktmbuf_data_len(dseg);
+					data = rte_pktmbuf_mtod(dseg, void *);
+					for (j = 0; j < dlen;
+					     j += RTE_CACHE_LINE_SIZE)
+						dcbf(data + j);
+					dcbf(data + (dlen - 1));
+					daddr = rte_mbuf_data_iova(dseg);
+				}
+
+				if (dlen == 0) {
+					dseg = dseg->next;
+					continue;
+				}
+
+				tx_ring->q_swbd[i].buffer_addr = NULL;
+				txbd = ENETC_TXBD(*tx_ring, i);
+				memset(txbd, 0, sizeof(*txbd));
+				txbd->buf_len = rte_cpu_to_le_16(dlen);
+				txbd->addr = rte_cpu_to_le_64(daddr);
+				i++;
+				bds_to_use--;
+				if (unlikely(i == bd_count))
+					i = 0;
+				dseg = dseg->next;
+			}
+
+			/* Mark the last written BD as frame-last. */
+			txbd->flags |= ENETC4_TXBD_FLAGS_F;
+			start++;
+			continue;
+		}
+
+		/* Non-TSO packet: standard single/multi-seg encoding. */
+		if (bds_to_use < segs_per_pkt)
+			break;
+
+		is_first_seg = true;
+		while (seg) {
+			tx_ring->q_swbd[i].buffer_addr = NULL;
+			seg_len = rte_pktmbuf_data_len(seg);
+			data = rte_pktmbuf_mtod(seg, void *);
+
+			for (j = 0; j < seg_len; j += RTE_CACHE_LINE_SIZE)
+				dcbf(data + j);
+			dcbf(data + (seg_len - 1));
+
+			txbd = ENETC_TXBD(*tx_ring, i);
+			txbd->flags = 0;
+			if (is_first_seg) {
+				tx_ring->q_swbd[i].buffer_addr = seg;
+				txbd->frm_len = rte_pktmbuf_pkt_len(seg);
+				if (seg->ol_flags & ENETC4_TX_CKSUM_OFFLOAD_MASK)
+					enetc4_tx_offload_checksum(seg, txbd);
+				is_first_seg = false;
+			}
+
+			txbd->buf_len = rte_cpu_to_le_16(seg_len);
+			txbd->addr = rte_cpu_to_le_64(rte_mbuf_data_iova(seg));
+			seg = seg->next;
+			i++;
+			bds_to_use--;
+
+			if (unlikely(i == bd_count))
+				i = 0;
+		}
+
+		txbd->flags |= ENETC4_TXBD_FLAGS_F;
+		start++;
+	}
+
+	/*
+	 * Flush TX BDs to PoC so HW (non-cache-coherent i.MX95) can read the
+	 * descriptors from memory.  Same discipline as enetc_xmit_pkts_cacheable:
+	 * walk from the cache-line-aligned start of first_bd_idx to just past
+	 * the last written BD, one dcbf per 64-byte (4-BD) line.
+	 */
+	if (likely(start > 0)) {
+		int n = first_bd_idx & ~ENETC_BD_PER_CL_MASK;
+		int written = (i - n + bd_count) % bd_count;
+
+		if (written == 0)
+			written = bd_count;
+		written = (written + ENETC_BD_PER_CL_MASK) &
+			  ~ENETC_BD_PER_CL_MASK;
+
+		while (written > 0) {
+			dcbf((void *)ENETC_TXBD(*tx_ring, n));
+			n = (n + ENETC_BD_PER_CL) % bd_count;
+			written -= ENETC_BD_PER_CL;
+		}
+	}
+
+	enetc_clean_tx_ring(tx_ring);
+	tx_ring->next_to_use = i;
+	enetc_wr_reg(tx_ring->tcir, i);
+
+	return start;
+}
+
 int
 enetc_refill_rx_ring(struct enetc_bdr *rx_ring, const int buff_cnt)
 {
