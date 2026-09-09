@@ -248,6 +248,8 @@ struct enetc_rx_bd_ext {
 #define ENETC4_VSIIDR            0xA08
 #define ENETC4_VSIIER_MRIE       BIT(9)
 #define ENETC4_SI_INT_IDX        0
+/* MSI-X vector base for per-Rx-queue interrupts; vector 0 is the mailbox. */
+#define ENETC4_VF_RX_VEC_BASE    1
 
 /* VSI Registers */
 #define ENETC4_VSIMSGSR  0x204   /* RO */

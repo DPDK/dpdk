@@ -879,7 +879,8 @@ enetc4_dev_close(struct rte_eth_dev *dev)
 		return 0;
 
 	if (hw->device_id == ENETC4_DEV_ID_VF) {
-		if (dev->data->dev_conf.intr_conf.lsc != 0)
+		if (dev->data->dev_conf.intr_conf.lsc != 0 ||
+		    dev->data->dev_conf.intr_conf.rxq != 0)
 			enetc4_vf_dev_intr(dev, false);
 		ret = enetc4_vf_dev_stop(dev);
 		pthread_mutex_destroy(&hw->vsi_lock);
@@ -1002,12 +1003,12 @@ enetc4_dev_configure(struct rte_eth_dev *dev)
 	if (hw->device_id != ENETC4_DEV_ID_VF)
 		enetc4_port_wr(enetc_hw, ENETC4_PARCSCR, checksum);
 
-	/* Enable interrupts */
 	if (hw->device_id == ENETC4_DEV_ID_VF) {
-		if (dev->data->dev_conf.intr_conf.lsc != 0) {
+		if (dev->data->dev_conf.intr_conf.lsc != 0 ||
+		    dev->data->dev_conf.intr_conf.rxq != 0) {
 			ret = enetc4_vf_dev_intr(dev, true);
 			if (ret)
-				ENETC_PMD_WARN("Failed to setup link interrupts");
+				ENETC_PMD_WARN("Failed to setup VF interrupts: %d", ret);
 		}
 	}
 

@@ -104,6 +104,7 @@ New Features
   * Added ring parameters support for the ENETC4 VF (rxq_info_get / txq_info_get).
   * Refreshed VF link speed on the link-up interrupt in the ENETC4 VF driver.
   * Added stats reset for the ENETC4 VF using a software snapshot/delta approach.
+  * Added per-queue MSI-X Rx interrupt support for the ENETC4 VF.
 
 Removed Items
 -------------
