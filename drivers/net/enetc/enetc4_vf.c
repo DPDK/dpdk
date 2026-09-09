@@ -2208,5 +2208,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_enetc4_vf,
 			      ENETC4_VSI_TIMEOUT "=<uint> "
 			      ENETC4_VSI_DELAY "=<uint> "
 			      ENETC4_NC_MEMORY "=<int> "
+			      ENETC4_TXQ_PRIORITIES "=<string> "
+			      ENETC4_TXQ_WRR "=<string> "
 			      ENETC_VF_LINK_LEGACY "=<0|1>");
 RTE_LOG_REGISTER_DEFAULT(enetc4_vf_logtype_pmd, NOTICE);

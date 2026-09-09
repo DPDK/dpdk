@@ -176,7 +176,19 @@ PF/Common devargs
 
   Usage example::
 
-    dpdk-testpmd -a 0000:00:00.0,enetc4_txq_prior=1|2|3 -- -i
+    dpdk-testpmd -a 0000:00:00.0,enetc4_txq_prior="1|2|3" -- -i
+
+``enetc4_txq_wrr``
+  Set per-queue WRR weight for the LEAF-level Tx scheduler (TBaMR bits [6:4]).
+  The value is a ``|``-separated list of WRR weights, one per Tx queue.
+  Meaningful only when the corresponding queues share the same strict-priority
+  level via ``enetc4_txq_prior``; queues with different priorities are
+  scheduled strictly regardless of their WRR weight.
+  Values beyond the maximum supported Tx queue count are discarded.
+
+  Usage example (WRR 2:4:1 on three equal-priority rings)::
+
+    dpdk-testpmd -a 0000:00:00.0,enetc4_txq_prior="1|1|1",enetc4_txq_wrr="2|4|1" -- -i
 
 ``nc``
   Select non-cacheable Rx/Tx ops (BD rings mapped as non-cacheable memory).
