@@ -68,6 +68,9 @@ struct enetc_msg_swbd {
 #define PM_CMD_CFG_TX_EN		BIT(0)
 #define PM_CMD_CFG_RX_EN		BIT(1)
 
+/* RBaMR[CRC]: 0 = FCS removed, 1 = FCS preserved (KEEP_CRC) */
+#define ENETC4_RBMR_CRC			BIT(8)
+
 /* i.MX95 supports jumbo frame, but it is recommended to set the max frame
  * size to 2000 bytes.
  */

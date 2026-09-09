@@ -78,6 +78,12 @@ New Features
   * Added the inner IP header to the RSS hash so tunneled traffic is
     distributed across the Rx queues.
 
+* **Updated NXP ENETC4 PMD.**
+
+  Updated the NXP ENETC4 poll mode driver for i.MX95:
+
+  * Added KEEP_CRC Rx offload support for the ENETC4 PMD to preserve the Ethernet FCS.
+
 * **Updated ZTE zxdh ethernet driver.**
 
   * Added a fast single-segment Rx path (``zxdh_recv_single_pkts``) that
