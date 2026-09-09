@@ -11,6 +11,24 @@
 #include "enetc_logs.h"
 #include "enetc.h"
 
+/*
+ * Per-ring Tx/Rx BDR registers dumped by .get_reg (shared by PF and VF).
+ * The array sizes here must match the extern declarations in enetc.h, which
+ * carry explicit dimensions so RTE_DIM() works at the use sites in enetc4_vf.c
+ * (a separate translation unit). The explicit dimensions below turn any drift
+ * between the initializer and the declared size into a compile error instead
+ * of a silent mismatch.
+ */
+const uint32_t enetc4_txbdr_regs[6] = {
+	ENETC_TBMR, ENETC_TBSR, ENETC_TBBAR0, ENETC_TBBAR1,
+	ENETC_TBCIR, ENETC_TBLENR,
+};
+
+const uint32_t enetc4_rxbdr_regs[8] = {
+	ENETC_RBMR, ENETC_RBSR, ENETC_RBBSR, ENETC_RBCIR,
+	ENETC_RBBAR0, ENETC_RBBAR1, ENETC_RBPIR, ENETC_RBLENR,
+};
+
 /* Supported Rx offloads */
 static uint64_t dev_rx_offloads_sup =
 	RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
@@ -1198,6 +1216,75 @@ enetc4_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused,
 	return ptypes;
 }
 
+/* Station interface registers dumped by .get_reg */
+static const uint32_t enetc4_pf_si_regs[] = {
+	ENETC_SIMR, ENETC_SICAPR0, ENETC_SIPMAR0, ENETC_SIPMAR1,
+	ENETC4_SIROCT0, ENETC4_SIRFRM0, ENETC4_SITOCT0, ENETC4_SITFRM0,
+	ENETC4_SITDFCR,
+};
+
+/* Port registers dumped by .get_reg (accessible only by the PF) */
+static const uint32_t enetc4_pf_port_regs[] = {
+	ENETC4_PMR, ENETC4_PSIPMMR, ENETC4_PMAR0, ENETC4_PMAR1,
+	ENETC4_PM_CMD_CFG(0), ENETC4_PM_MAXFRM(0), ENETC4_PM_IF_MODE(0),
+	ENETC4_PM_IF_STATUS(0),
+};
+
+/*
+ * Dump the PF-accessible registers: station interface, port and per-ring
+ * BD ring registers. When info->data is NULL, only the register count and
+ * width are reported so the caller can size its buffer.
+ */
+static int
+enetc4_get_regs(struct rte_eth_dev *dev, struct rte_dev_reg_info *regs)
+{
+	struct enetc_eth_hw *hw = ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	uint32_t count, addr;
+	uint32_t *buf;
+	uint16_t i, j;
+
+	count = RTE_DIM(enetc4_pf_si_regs);
+	count += RTE_DIM(enetc4_pf_port_regs);
+	count += RTE_DIM(enetc4_txbdr_regs) * dev->data->nb_tx_queues;
+	count += RTE_DIM(enetc4_rxbdr_regs) * dev->data->nb_rx_queues;
+
+	if (regs->data == NULL) {
+		regs->length = count;
+		regs->width = sizeof(uint32_t);
+		return 0;
+	}
+
+	if (regs->length && regs->length < count)
+		return -ENOTSUP;
+
+	buf = regs->data;
+
+	for (i = 0; i < RTE_DIM(enetc4_pf_si_regs); i++)
+		*buf++ = enetc4_rd(enetc_hw, enetc4_pf_si_regs[i]);
+
+	for (i = 0; i < RTE_DIM(enetc4_pf_port_regs); i++)
+		*buf++ = enetc4_port_rd(enetc_hw, enetc4_pf_port_regs[i]);
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		for (j = 0; j < RTE_DIM(enetc4_txbdr_regs); j++) {
+			addr = ENETC_BDR(TX, i, enetc4_txbdr_regs[j]);
+			*buf++ = enetc4_rd(enetc_hw, addr);
+		}
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		for (j = 0; j < RTE_DIM(enetc4_rxbdr_regs); j++) {
+			addr = ENETC_BDR(RX, i, enetc4_rxbdr_regs[j]);
+			*buf++ = enetc4_rd(enetc_hw, addr);
+		}
+	}
+
+	regs->version = (uint32_t)hw->device_id << 16 | hw->revision_id;
+
+	return 0;
+}
+
 /*
  * The set of PCI devices this driver supports
  */
@@ -1216,6 +1303,7 @@ static const struct eth_dev_ops enetc4_ops = {
 	.link_update          = enetc4_link_update,
 	.stats_get            = enetc4_stats_get,
 	.stats_reset          = enetc4_stats_reset,
+	.get_reg              = enetc4_get_regs,
 	.promiscuous_enable   = enetc4_promiscuous_enable,
 	.promiscuous_disable  = enetc4_promiscuous_disable,
 	.rx_queue_setup       = enetc4_rx_queue_setup,
