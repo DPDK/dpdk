@@ -450,15 +450,21 @@ static int
 txgbe_handle_devarg(__rte_unused const char *key, const char *value,
 		  void *extra_args)
 {
-	uint16_t *n = extra_args;
+	uint16_t *arg = extra_args;
+	char *endp;
+	unsigned long num;
 
 	if (value == NULL || extra_args == NULL)
 		return -EINVAL;
 
-	*n = (uint16_t)strtoul(value, NULL, 10);
-	if (*n == USHRT_MAX && errno == ERANGE)
-		return -1;
+	errno = 0;
+	num = strtoul(value, &endp, 10);
+	if (*value == '\0' || *endp != '\0')
+		return -EINVAL;
 
+	if (num > UINT16_MAX || errno == ERANGE)
+		return -ERANGE;
+	*arg = (uint16_t)num;
 	return 0;
 }
 
