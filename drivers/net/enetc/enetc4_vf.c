@@ -507,8 +507,10 @@ enetc4_process_psi_msg(struct rte_eth_dev *eth_dev, struct enetc_hw *enetc_hw)
 	enetc4_msg_get_psi_msg(enetc_hw, msg);
 
 	if (msg->class_id == ENETC_CLASS_ID_LINK_STATUS) {
-		switch (msg->status) {
-		case ENETC_LINK_UP:
+		if (msg->status & ENETC_LINK_DOWN) {
+			ENETC_PMD_DEBUG("Link is down");
+			link.link_status = RTE_ETH_LINK_DOWN;
+		} else {
 			ENETC_PMD_DEBUG("Link is up");
 			link.link_status = RTE_ETH_LINK_UP;
 			/* Re-query speed from PF so the cached value reflects
@@ -528,14 +530,6 @@ enetc4_process_psi_msg(struct rte_eth_dev *eth_dev, struct enetc_hw *enetc_hw)
 				enetc4_decode_link_speed(msg->status,
 							hw->vf_link_legacy,
 							&link);
-			break;
-		case ENETC_LINK_DOWN:
-			ENETC_PMD_DEBUG("Link is down");
-			link.link_status = RTE_ETH_LINK_DOWN;
-			break;
-		default:
-			ENETC_PMD_ERR("Unknown link status 0x%x", msg->status);
-			break;
 		}
 		ret = rte_eth_linkstatus_set(eth_dev, &link);
 		if (!ret)
@@ -1216,19 +1210,13 @@ enetc4_vf_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused
 	}
 
 	if (reply_msg->class_id == ENETC_CLASS_ID_LINK_STATUS) {
-		switch (reply_msg->status) {
-		case ENETC_LINK_UP:
-			link.link_status = RTE_ETH_LINK_UP;
-			break;
-		case ENETC_LINK_DOWN:
+		if (reply_msg->status & ENETC_LINK_DOWN)
 			link.link_status = RTE_ETH_LINK_DOWN;
-			break;
-		default:
-			ENETC_PMD_ERR("Unknown link status");
-			break;
-		}
+		else
+			link.link_status = RTE_ETH_LINK_UP;
 	} else {
 		ENETC_PMD_ERR("Wrong reply message");
+		rte_free(reply_msg);
 		return -1;
 	}
 
@@ -1244,6 +1232,7 @@ enetc4_vf_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused
 					 hw->vf_link_legacy, &link);
 	} else {
 		ENETC_PMD_ERR("Wrong reply message");
+		rte_free(reply_msg);
 		return -1;
 	}
 
