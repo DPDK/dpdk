@@ -991,6 +991,7 @@ F: doc/guides/nics/enetc.rst
 F: doc/guides/nics/enetc4.rst
 F: doc/guides/nics/features/enetc.ini
 F: doc/guides/nics/features/enetc4.ini
+F: doc/guides/nics/features/enetc4_vf.ini
 
 NXP enetfec - EXPERIMENTAL
 M: Sachin Saxena <sachin.saxena@nxp.com>
