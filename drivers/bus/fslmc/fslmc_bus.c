@@ -179,12 +179,12 @@ scan_one_fslmc_device(char *dev_name)
 	}
 
 	sscanf(t_ptr, "%hu", &dev->object_id);
-	dev->device.name = strdup(dev_name);
-	if (!dev->device.name) {
-		DPAA2_BUS_ERR("Unable to clone device name. Out of memory");
-		ret = -ENOMEM;
+	if (rte_strscpy(dev->name, dev_name, sizeof(dev->name)) < 0) {
+		DPAA2_BUS_ERR("Unable to copy device name: %s", rte_strerror(rte_errno));
+		ret = -rte_errno;
 		goto cleanup;
 	}
+	dev->device.name = dev->name;
 	dev->device.devargs = rte_bus_find_devargs(&rte_fslmc_bus, dev_name);
 
 	/* Update the device found into the device_count table */
