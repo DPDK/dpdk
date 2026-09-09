@@ -53,6 +53,9 @@
 /* size for marking hugepage non-cacheable */
 #define SIZE_2MB	0x200000
 
+#define ENETC4_TXQ_PRIORITIES	"enetc4_txq_prior"
+#define ENETC4_TXQ_WRR		"enetc4_txq_wrr"
+
 #define ENETC_TXBD(BDR, i) (&(((struct enetc_tx_bd *)((BDR).bd_base))[i]))
 #define ENETC_RXBD(BDR, i) (&(((union enetc_rx_bd *)((BDR).bd_base))[i]))
 
@@ -135,6 +138,7 @@ struct enetc_eth_hw {
 	uint32_t vsi_timeout; /* VSI-PSI message wait timeout (iterations) */
 	uint32_t vsi_delay;   /* VSI-PSI message wait delay (us) */
 	uint32_t *txq_prior;  /* per-queue TX priority (TBMR priority bits) */
+	uint32_t *txq_wrr;    /* per-queue TX WRR weight pre-shifted for TBMR[WRR] */
 	uint8_t nc_mode;      /* 1 = non-cacheable BD memory, use _nc ops */
 	uint8_t rxq_intr_en;  /* 1 = per-queue Rx MSI-X interrupts enabled */
 	/* 1 = legacy PF-to-VF link message layout (4-bit speed / 4-bit cookie),

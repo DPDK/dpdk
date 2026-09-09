@@ -86,6 +86,11 @@ enum enetc_bdr_type {TX, RX};
 
 #define ENETC_RTBLENR_LEN(n)		((n) & ~0x7)
 #define ENETC_TBMR_EN			BIT(31)
+/* TBaMR[WRR] bits [6:4]: weight for same-priority ring arbitration (0=1x .. 7=8x). */
+#define ENETC_TBMR_WRR_MASK		0x70
+#define ENETC_TBMR_WRR(n)		((((n) - 1) & 0x7) << 4)
+/* TBaMR[PRIO] bits [2:0]: strict priority (0=lowest, 7=highest). */
+#define ENETC_TBMR_PRIO_MASK		0x7
 
 /* Port regs, offset: 1_0000h */
 #define ENETC_PORT_BASE			0x10000
