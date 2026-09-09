@@ -64,6 +64,16 @@ Key functionality includes:
 - Firmware version: The NETC IP version is reported via ``rte_eth_dev_fw_version_get``.
 - Registers dump: The station interface, port (PF only) and BD ring registers are dumped via ``rte_eth_dev_get_reg_info``.
 
+.. note::
+
+   The LRO (RSC) and TSO (LSO) offloads use a doubled 32B buffer descriptor
+   ring layout that the primary process selects only during queue setup. A
+   secondary process cannot observe that per-queue choice and always uses the
+   base descriptor stride, so running the Rx/Tx datapath from a secondary
+   process is not supported when LRO or TSO is enabled. The ``nc=1``
+   non-cacheable ring mode is stored in shared memory and is honoured by the
+   secondary.
+
 
 Prerequisites
 -------------

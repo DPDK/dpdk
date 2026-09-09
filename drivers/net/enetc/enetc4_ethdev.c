@@ -882,6 +882,7 @@ enetc4_dev_close(struct rte_eth_dev *dev)
 		if (dev->data->dev_conf.intr_conf.lsc != 0)
 			enetc4_vf_dev_intr(dev, false);
 		ret = enetc4_vf_dev_stop(dev);
+		pthread_mutex_destroy(&hw->vsi_lock);
 	} else {
 		ret = enetc4_dev_stop(dev);
 	}
@@ -1368,7 +1369,32 @@ enetc4_dev_init(struct rte_eth_dev *eth_dev)
 	struct enetc_hw *enetc_hw = &hw->hw;
 
 	PMD_INIT_FUNC_TRACE();
+
 	eth_dev->dev_ops = &enetc4_ops;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		/*
+		 * Secondary process: dev_ops is set above, but the fast-path
+		 * burst pointers must also be set here or
+		 * rte_eth_rx_burst()/rte_eth_tx_burst() would dereference NULL.
+		 * hw->nc_mode lives in the shared dev_private and has already
+		 * been set by the primary, so honour it to match the base BD
+		 * ring layout. The RSC (LRO) and LSO (TSO) bursts use doubled
+		 * 32B descriptor rings that the primary selects only at queue
+		 * setup; the secondary cannot observe that choice, so it always
+		 * uses the base (nc or cacheable) burst. Running the Rx/Tx
+		 * datapath from a secondary is therefore not supported when LRO
+		 * or TSO is enabled (see the ENETC4 NIC guide).
+		 */
+		if (hw->nc_mode) {
+			eth_dev->rx_pkt_burst = &enetc_recv_pkts_nc;
+			eth_dev->tx_pkt_burst = &enetc_xmit_pkts_nc;
+		} else {
+			eth_dev->rx_pkt_burst = &enetc_recv_pkts_cacheable;
+			eth_dev->tx_pkt_burst = &enetc_xmit_pkts_cacheable;
+		}
+		return 0;
+	}
 	enetc4_dev_hw_init(eth_dev);
 
 	si_cap = enetc_rd(enetc_hw, ENETC_SICAPR0);

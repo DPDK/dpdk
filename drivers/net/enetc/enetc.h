@@ -5,6 +5,7 @@
 #ifndef _ENETC_H_
 #define _ENETC_H_
 
+#include <pthread.h>
 #include <rte_time.h>
 #include <ethdev_pci.h>
 
@@ -123,6 +124,7 @@ struct enetc_eth_hw {
 	 * for PF kernel versions before 6.18.37. Set via vf_link_legacy devarg.
 	 */
 	uint8_t vf_link_legacy;
+	pthread_mutex_t vsi_lock; /* serializes all VSI-PSI mailbox transactions */
 };
 
 /*
