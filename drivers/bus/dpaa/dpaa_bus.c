@@ -648,11 +648,14 @@ static int rte_dpaa_setup_intr(struct rte_intr_handle *intr_handle)
 		return errno;
 	}
 
-	if (rte_intr_fd_set(intr_handle, fd))
-		return rte_errno;
+	if (rte_intr_fd_set(intr_handle, fd) ||
+			rte_intr_type_set(intr_handle, RTE_INTR_HANDLE_EXT)) {
+		int err = rte_errno;
 
-	if (rte_intr_type_set(intr_handle, RTE_INTR_HANDLE_EXT))
-		return rte_errno;
+		close(fd);
+		rte_intr_fd_set(intr_handle, -1);
+		return err;
+	}
 
 	return 0;
 }

@@ -1382,14 +1382,16 @@ rte_dpaa2_vfio_setup_intr(struct rte_intr_handle *intr_handle,
 			return fd;
 		}
 
-		if (rte_intr_fd_set(intr_handle, fd))
-			return -rte_errno;
+		if (rte_intr_fd_set(intr_handle, fd) ||
+				rte_intr_type_set(intr_handle, RTE_INTR_HANDLE_VFIO_MSI) ||
+				rte_intr_dev_fd_set(intr_handle, vfio_dev_fd)) {
+			int error = -rte_errno;
 
-		if (rte_intr_type_set(intr_handle, RTE_INTR_HANDLE_VFIO_MSI))
-			return -rte_errno;
-
-		if (rte_intr_dev_fd_set(intr_handle, vfio_dev_fd))
-			return -rte_errno;
+			close(fd);
+			rte_intr_fd_set(intr_handle, -1);
+			rte_intr_dev_fd_set(intr_handle, -1);
+			return error;
+		}
 
 		return 0;
 	}
