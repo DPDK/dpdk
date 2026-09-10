@@ -86,7 +86,7 @@ validate_conf(const struct rte_event_vector_adapter_conf *conf,
 		return rc;
 	}
 
-	if (info->log2_sz && rte_is_power_of_2(conf->vector_sz) != 0) {
+	if (info->log2_sz && rte_is_power_of_2(conf->vector_sz) == 0) {
 		EVVEC_LOG_DBG("invalid vector size %u, should be a power of 2", conf->vector_sz);
 		return rc;
 	}
