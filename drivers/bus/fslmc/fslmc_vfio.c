@@ -217,13 +217,17 @@ static int
 fslmc_vfio_clear_group(int vfio_group_fd)
 {
 	struct fslmc_vfio_group *group;
-	struct fslmc_vfio_device *dev;
 	int clear = 0;
 
 	LIST_FOREACH(group, &s_vfio_container.groups, next) {
 		if (group->fd == vfio_group_fd) {
-			LIST_FOREACH(dev, &group->vfio_devices, next)
+			while (!LIST_EMPTY(&group->vfio_devices)) {
+				struct fslmc_vfio_device *dev = LIST_FIRST(&group->vfio_devices);
+
+				close(dev->fd);
 				LIST_REMOVE(dev, next);
+				rte_free(dev);
+			}
 
 			close(vfio_group_fd);
 			LIST_REMOVE(group, next);
@@ -323,6 +327,8 @@ fslmc_vfio_group_add_dev(int vfio_group_fd,
 		if (group->fd == vfio_group_fd) {
 			dev = rte_zmalloc(NULL,
 				sizeof(struct fslmc_vfio_device), 0);
+			if (dev == NULL)
+				return -ENOMEM;
 			dev->fd = dev_fd;
 			rte_strscpy(dev->dev_name, name, sizeof(dev->dev_name));
 			LIST_INSERT_HEAD(&group->vfio_devices, dev, next);
@@ -338,26 +344,25 @@ fslmc_vfio_group_remove_dev(int vfio_group_fd,
 {
 	struct fslmc_vfio_group *group = NULL;
 	struct fslmc_vfio_device *dev;
-	int removed = 0;
 
 	LIST_FOREACH(group, &s_vfio_container.groups, next) {
 		if (group->fd == vfio_group_fd)
 			break;
 	}
 
-	if (group) {
-		LIST_FOREACH(dev, &group->vfio_devices, next) {
-			if (!strcmp(dev->dev_name, name)) {
-				LIST_REMOVE(dev, next);
-				removed = 1;
-				break;
-			}
+	if (group == NULL)
+		goto err;
+
+	LIST_FOREACH(dev, &group->vfio_devices, next) {
+		if (strcmp(dev->dev_name, name) == 0) {
+			close(dev->fd);
+			LIST_REMOVE(dev, next);
+			rte_free(dev);
+			return 0;
 		}
 	}
 
-	if (removed)
-		return 0;
-
+err:
 	return -ENODEV;
 }
 
@@ -1251,11 +1256,21 @@ fslmc_vfio_setup_device(const char *dev_addr,
 	if (ret) {
 		DPAA2_BUS_ERR("%s cannot get device info err(%d)(%s)",
 			dev_addr, errno, strerror(errno));
+		close(*vfio_dev_fd);
+		*vfio_dev_fd = -1;
 		return ret;
 	}
 
-	return fslmc_vfio_group_add_dev(vfio_group_fd, *vfio_dev_fd,
-			dev_addr);
+	ret = fslmc_vfio_group_add_dev(vfio_group_fd, *vfio_dev_fd, dev_addr);
+	if (ret) {
+		DPAA2_BUS_ERR("%s cannot add device in group err(%d)(%s)",
+			dev_addr, ret, strerror(-ret));
+		close(*vfio_dev_fd);
+		*vfio_dev_fd = -1;
+		return ret;
+	}
+
+	return 0;
 }
 
 static intptr_t vfio_map_mcp_obj(const char *mcp_obj)
