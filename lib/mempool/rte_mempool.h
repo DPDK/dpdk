@@ -278,6 +278,11 @@ struct __rte_cache_aligned rte_mempool {
 	 */
 	struct rte_mempool_debug_stats stats[RTE_MAX_LCORE + 1];
 #endif
+
+	/*
+	 * Private data, if any, is located after the mempool header.
+	 * Per-lcore local cache, if any, is located after the private data.
+	 */
 };
 
 /** Spreading among memory channels not required. */
@@ -368,18 +373,6 @@ struct __rte_cache_aligned rte_mempool {
 #else
 #define RTE_MEMPOOL_CACHE_STAT_ADD(cache, name, n) do {} while (0)
 #endif
-
-/**
- * @internal Calculate the size of the mempool header.
- *
- * @param mp
- *   Pointer to the memory pool.
- * @param cs
- *   Size of the per-lcore cache.
- */
-#define RTE_MEMPOOL_HEADER_SIZE(mp, cs) \
-	(sizeof(*(mp)) + (((cs) == 0) ? 0 : \
-	(sizeof(struct rte_mempool_cache) * RTE_MAX_LCORE)))
 
 /* return the header of a mempool object (internal) */
 static inline struct rte_mempool_objhdr *
@@ -1907,8 +1900,7 @@ void rte_mempool_audit(struct rte_mempool *mp);
  */
 static inline void *rte_mempool_get_priv(struct rte_mempool *mp)
 {
-	return (char *)mp +
-		RTE_MEMPOOL_HEADER_SIZE(mp, mp->cache_size);
+	return (void *)(mp + 1);
 }
 
 /**

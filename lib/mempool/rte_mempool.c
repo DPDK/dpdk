@@ -873,6 +873,13 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	 * cache-aligned
 	 */
 	private_data_size = RTE_CACHE_LINE_ROUNDUP(private_data_size);
+	/*
+	 * If any private data, add padding, to guard against false sharing-like
+	 * effects on systems with a next-N-lines hardware prefetcher, when
+	 * accessing private data.
+	 */
+	if (private_data_size != 0)
+		private_data_size += RTE_CACHE_GUARD_LINES * RTE_CACHE_LINE_SIZE;
 
 	/* try to allocate tailq entry */
 	te = rte_zmalloc("MEMPOOL_TAILQ_ENTRY", sizeof(*te), 0);
@@ -881,8 +888,10 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 		goto exit_unlock;
 	}
 
-	mempool_size = RTE_MEMPOOL_HEADER_SIZE(mp, cache_size);
+	mempool_size = sizeof(struct rte_mempool);
 	mempool_size += private_data_size;
+	if (cache_size != 0)
+		mempool_size += RTE_MAX_LCORE * sizeof(struct rte_mempool_cache);
 
 	ret = snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_MZ_FORMAT, name);
 	if (ret < 0 || ret >= (int)sizeof(mz_name)) {
@@ -896,7 +905,7 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 
 	/* init the mempool structure */
 	mp = mz->addr;
-	memset(mp, 0, RTE_MEMPOOL_HEADER_SIZE(mp, cache_size));
+	memset(mp, 0, mempool_size);
 	ret = strlcpy(mp->name, name, sizeof(mp->name));
 	if (ret < 0 || ret >= (int)sizeof(mp->name)) {
 		rte_errno = ENAMETOOLONG;
@@ -935,10 +944,10 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 
 	/*
 	 * local_cache pointer is set even if cache_size is zero.
-	 * The local_cache points to just past the elt_pa[] array.
+	 * The local_cache points to just past the private data.
 	 */
 	mp->local_cache = (struct rte_mempool_cache *)
-		RTE_PTR_ADD(mp, RTE_MEMPOOL_HEADER_SIZE(mp, 0));
+		RTE_PTR_ADD(mp, sizeof(struct rte_mempool) + private_data_size);
 
 	/* Init all default caches. */
 	if (cache_size != 0) {
