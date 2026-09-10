@@ -193,7 +193,7 @@ static int test_mempool_creation_with_exceeded_cache_size(void)
 {
 	struct rte_mempool *mp_cov;
 
-	mp_cov = rte_mempool_create("test_mempool_cache_too_big",
+	mp_cov = rte_mempool_create("test_cache_too_big",
 		MEMPOOL_SIZE,
 		MEMPOOL_ELT_SIZE,
 		RTE_MEMPOOL_CACHE_MAX_SIZE + 32, 0,
@@ -213,7 +213,7 @@ static int test_mempool_creation_with_invalid_flags(void)
 {
 	struct rte_mempool *mp_cov;
 
-	mp_cov = rte_mempool_create("test_mempool_invalid_flags", MEMPOOL_SIZE,
+	mp_cov = rte_mempool_create("test_invalid_flags", MEMPOOL_SIZE,
 		MEMPOOL_ELT_SIZE, 0, 0,
 		NULL, NULL,
 		NULL, NULL,
@@ -335,7 +335,7 @@ test_mempool_sp_sc(void)
 
 	/* create a mempool with single producer/consumer ring */
 	if (mp_spsc == NULL) {
-		mp_spsc = rte_mempool_create("test_mempool_sp_sc", MEMPOOL_SIZE,
+		mp_spsc = rte_mempool_create("test_sp_sc", MEMPOOL_SIZE,
 			MEMPOOL_ELT_SIZE, 0, 0,
 			my_mp_init, NULL,
 			my_obj_init, NULL,
@@ -345,7 +345,7 @@ test_mempool_sp_sc(void)
 		if (mp_spsc == NULL)
 			RET_ERR();
 	}
-	if (rte_mempool_lookup("test_mempool_sp_sc") != mp_spsc) {
+	if (rte_mempool_lookup("test_sp_sc") != mp_spsc) {
 		printf("Cannot lookup mempool from its name\n");
 		ret = -1;
 		goto err;
@@ -442,7 +442,7 @@ test_mempool_same_name_twice_creation(void)
 {
 	struct rte_mempool *mp_tc, *mp_tc2;
 
-	mp_tc = rte_mempool_create("test_mempool_same_name", MEMPOOL_SIZE,
+	mp_tc = rte_mempool_create("test_same_name", MEMPOOL_SIZE,
 		MEMPOOL_ELT_SIZE, 0, 0,
 		NULL, NULL,
 		NULL, NULL,
@@ -451,7 +451,7 @@ test_mempool_same_name_twice_creation(void)
 	if (mp_tc == NULL)
 		RET_ERR();
 
-	mp_tc2 = rte_mempool_create("test_mempool_same_name", MEMPOOL_SIZE,
+	mp_tc2 = rte_mempool_create("test_same_name", MEMPOOL_SIZE,
 		MEMPOOL_ELT_SIZE, 0, 0,
 		NULL, NULL,
 		NULL, NULL,

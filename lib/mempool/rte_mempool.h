@@ -120,7 +120,21 @@ struct rte_mempool_objsz {
 	/**< Total size of an object (header + elt + trailer). */
 };
 
-/**< Maximum length of a memory pool's name. */
+/**
+ * Maximum length of a memory pool's name.
+ *
+ * Note:
+ * Needs room for memzone prefix indicating "mempool" type:
+ * "MP_<name>"
+ * Furthermore, the mempool driver needs additional room for its own memzone prefix, e.g.:
+ * "RG_MP_<name>" (ring driver) or "STK_MP_<name>" (stack driver).
+ * In order to fail early on too long names, the length of the memzone name reserved
+ * by the default mempool driver (ring) is considered when creating the mempool.
+ * The length of the memzone name reserved by various other mempool drivers is
+ * not considered when creating the mempool.
+ * If the name eventually turns out to be too long for the chosen mempool driver,
+ * populating the mempool will fail.
+ */
 #define RTE_MEMPOOL_NAMESIZE (RTE_RING_NAMESIZE - \
 			      sizeof(RTE_MEMPOOL_MZ_PREFIX) + 1)
 #define RTE_MEMPOOL_MZ_PREFIX "MP_"
@@ -234,8 +248,7 @@ struct __rte_cache_aligned rte_mempool {
 	unsigned int flags;              /**< Flags of the mempool. */
 	int socket_id;                   /**< Socket id passed at create. */
 	uint32_t size;                   /**< Max size of the mempool. */
-	uint32_t cache_size;
-	/**< Size of per-lcore default local cache. */
+	uint32_t cache_size;             /**< Size of per-lcore default local cache. */
 
 	uint32_t elt_size;               /**< Size of an element. */
 	uint32_t header_size;            /**< Size of header (before elt). */
@@ -976,6 +989,8 @@ rte_mempool_set_ops_byname(struct rte_mempool *mp, const char *name,
  *   - >=0: Success; return the index of the ops struct in the table.
  *   - -EINVAL - some missing callbacks while registering ops struct.
  *   - -ENOSPC - the maximum number of ops structs has been reached.
+ *   - -ENAMETOOLONG - the name of the ops is too long.
+ *   - -EEXIST - the name of the ops is already registered.
  */
 int rte_mempool_register_ops(const struct rte_mempool_ops *ops);
 
@@ -1326,6 +1341,15 @@ void rte_mempool_stats_reset(struct rte_mempool *mp);
 void rte_mempool_dump(FILE *f, struct rte_mempool *mp);
 
 /**
+ * Free a user-owned mempool cache.
+ *
+ * @param cache
+ *   A pointer to the mempool cache.
+ */
+void
+rte_mempool_cache_free(struct rte_mempool_cache *cache);
+
+/**
  * Create a user-owned mempool cache.
  *
  * This can be used by unregistered non-EAL threads to enable caching when they
@@ -1340,16 +1364,8 @@ void rte_mempool_dump(FILE *f, struct rte_mempool *mp);
  *   SOCKET_ID_ANY if there is no NUMA constraint for the reserved zone.
  */
 struct rte_mempool_cache *
-rte_mempool_cache_create(uint32_t size, int socket_id);
-
-/**
- * Free a user-owned mempool cache.
- *
- * @param cache
- *   A pointer to the mempool cache.
- */
-void
-rte_mempool_cache_free(struct rte_mempool_cache *cache);
+rte_mempool_cache_create(uint32_t size, int socket_id)
+	__rte_malloc __rte_dealloc(rte_mempool_cache_free, 1);
 
 /**
  * Get a pointer to the per-lcore default mempool cache.
