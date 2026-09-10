@@ -5038,6 +5038,10 @@ ice_apply_link_speed(struct rte_eth_dev *dev)
 					RTE_ETH_LINK_SPEED_100M;
 	}
 	speed = ice_parse_link_speeds(conf->link_speeds);
+	if (speed == ICE_AQ_LINK_SPEED_UNKNOWN) {
+		PMD_DRV_LOG(ERR, "No valid link speed setting specified");
+		return -EINVAL;
+	}
 
 	return ice_phy_conf_link(hw, speed, true);
 }
