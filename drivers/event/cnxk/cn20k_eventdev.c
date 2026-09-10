@@ -431,6 +431,9 @@ cn20k_sso_info_get(struct rte_eventdev *event_dev, struct rte_event_dev_info *de
 	dev_info->driver_name = RTE_STR(EVENTDEV_NAME_CN20K_PMD);
 	cnxk_sso_info_get(dev, dev_info);
 	dev_info->max_event_port_enqueue_depth = UINT32_MAX;
+	dev_info->event_dev_cap |= RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE |
+				   RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE |
+				   RTE_EVENT_DEV_CAP_PER_PORT_PRESCHEDULE;
 }
 
 static int
